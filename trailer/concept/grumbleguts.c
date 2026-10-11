@@ -70,6 +70,24 @@ static void blob_outline_only(int cx, int cy, int rx, int ry, uint8_t b) {
     tk_ellipse(cx, cy, rx, ry, b);
 }
 
+/* torso slab: a shaded trapezoid with round shoulder caps, so he has a
+ * chest with heft instead of a stack of circles */
+static void torso(int cx, int top, int bottom, int wtop, int wbot) {
+    tk_tri(cx - wtop - 1, top, cx + wtop + 1, top, cx + wbot + 1, bottom + 1, LINE);
+    tk_tri(cx - wtop - 1, top, cx + wbot + 1, bottom + 1, cx - wbot - 1, bottom + 1, LINE);
+    tk_tri(cx - wtop, top, cx + wtop, top, cx + wbot, bottom, SKINM[2]);
+    tk_tri(cx - wtop, top, cx + wbot, bottom, cx - wbot, bottom, SKINM[2]);
+    tk_tri(cx - wtop, top, cx - wtop / 3, top, cx - wbot, bottom, SKINM[1]);      /* left shade */
+    tk_tri(cx + wtop / 3, top, cx + wtop, top, cx + wbot, bottom, SKINM[3]);      /* right light */
+    blob(cx - wtop + 2, top + 3, 7, 6, SKINM); blob(cx + wtop - 2, top + 3, 7, 6, SKINM); /* deltoids */
+}
+static void pecs(int cx, int y, int w) {
+    blob(cx - w / 2, y, w / 2 + 1, w / 3, SKINM);
+    blob(cx + w / 2, y, w / 2 + 1, w / 3, SKINM);
+    tk_line(cx, y - w / 3, cx, y + w / 3, LINE);
+    tk_line(cx - w / 2 - 2, y + w / 3 + 1, cx + w / 2 + 2, y + w / 3 + 1, SKINM[1]); /* under-pec shadow */
+}
+
 static void horns(int cx, int cy, int s, int flip) {
     /* two curved bone horns on the brow, like ref 1 */
     for (int side = -1; side <= 1; side += 2) {
@@ -177,9 +195,12 @@ static void face(int cx, int cy, int s, int expr, int dir) {
 
 /* The man himself. s = scale (2 = ~110 px tall). view V_*, pose P_*, expr E_*. */
 static void grumbleguts(int cx, int yf, int s, int view, int pose, int expr) {
-    int belly_r = (pose == P_INFLATED) ? 26 * s : (pose == P_SUCK_IN) ? 14 * s : 19 * s;
-    int butt_r  = (pose == P_INFLATED) ? 20 * s : 13 * s;
-    int body_y  = yf - 30 * s;        /* belly centre */
+    int belly_r = (pose == P_INFLATED) ? 27 * s : (pose == P_SUCK_IN) ? 13 * s : 18 * s;
+    int belly_ry = (pose == P_INFLATED) ? 22 * s : (pose == P_SUCK_IN) ? 9 * s : 14 * s;
+    int butt_r  = (pose == P_INFLATED) ? 19 * s : 13 * s;
+    int body_y  = yf - 30 * s;        /* reference: waist */
+    int chest_top = body_y - 24 * s, chest_bot = body_y - 6 * s;
+    int belly_cy = chest_bot - 2 * s + belly_ry;   /* belly hangs from the chest */
     int head_y  = yf - 60 * s;
     int dir = (view == V_SIDE) ? 1 : (view == V_BACK_LOOK ? -1 : 1);
 
@@ -205,31 +226,30 @@ static void grumbleguts(int cx, int yf, int s, int view, int pose, int expr) {
 
     /* ---- body ---- */
     if (view == V_SIDE) {
-        /* profile: belly bulges forward (right), butt bulges back (left) */
-        blob(cx - 10 * s, body_y + 2 * s, butt_r, butt_r - 2 * s, SKINM);   /* butt */
-        tk_line(cx - 10 * s, body_y - 2 * s, cx - 10 * s, body_y + butt_r - 4 * s, LINE);   /* cleft */
-        blob(cx + 2 * s, body_y - 10 * s, 11 * s, 12 * s, SKINM);           /* chest */
-        blob(cx + 8 * s, body_y + 2 * s, belly_r, belly_r - 3 * s, BELLYM); /* belly */
-        tk_circle(cx + 8 * s + belly_r - 3 * s, body_y + 3 * s, 2, SKIN_D);               /* navel */
-        /* harness */
-        strap(cx - 2 * s, body_y - 20 * s, cx + 6 * s, body_y - 4 * s, s);
-        /* belt under the belly */
-        tk_rect(cx - 10 * s - butt_r + 2, body_y + belly_r - 6 * s, 20 * s + belly_r, 3 * s, LEATHER);
-        tk_frame(cx - 10 * s - butt_r + 2, body_y + belly_r - 6 * s, 20 * s + belly_r, 3 * s, LINE);
-        studs(cx - 6 * s, body_y + belly_r - 5 * s, cx + 10 * s + belly_r - 4 * s, body_y + belly_r - 5 * s, 6);
+        /* profile: chest slab leaning forward, belly hanging in front, butt behind */
+        blob(cx - 10 * s, body_y + 4 * s, butt_r, butt_r - 2 * s, SKINM);                   /* butt */
+        tk_line(cx - 10 * s, body_y, cx - 10 * s, body_y + butt_r - 2 * s, LINE);           /* cleft */
+        torso(cx + 2 * s, chest_top, chest_bot, 12 * s, 10 * s);
+        blob(cx + 9 * s, chest_top + 8 * s, 8 * s, 5 * s, SKINM);                             /* pec */
+        blob(cx + 6 * s, belly_cy, belly_r - 2 * s, belly_ry, BELLYM);                       /* belly */
+        tk_circle(cx + 6 * s + belly_r - 5 * s, belly_cy + 2 * s, 2, PAL_RAMP(RAMP_PEACH, 3)); /* navel */
+        strap(cx - 4 * s, chest_top + 2 * s, cx + 10 * s, chest_bot + 2 * s, s);
+        int by = belly_cy + belly_ry - 5 * s;
+        tk_rect(cx - 10 * s - butt_r + 2, by, 16 * s + butt_r + belly_r, 3 * s, LEATHER);
+        tk_frame(cx - 10 * s - butt_r + 2, by, 16 * s + butt_r + belly_r, 3 * s, LINE);
+        studs(cx - 6 * s, by + s, cx + 4 * s + belly_r, by + s, 6);
     } else if (view == V_FRONT) {
-        /* pecs on top of the gut: the effort shows */
-        blob(cx, body_y - 10 * s, 17 * s, 11 * s, SKINM);
-        tk_line(cx, body_y - 18 * s, cx, body_y - 4 * s, SKIN_D);
-        blob(cx, body_y + 3 * s, belly_r, belly_r - 3 * s, BELLYM);
-        tk_ellipse(cx, body_y + 6 * s, 2, 3, SKIN_D);                                      /* navel */
-        if (pose == P_INFLATED) { tk_ring(cx, body_y + 3 * s, belly_r - 4 * s, PAL_RAMP(RAMP_PEACH, 3)); tk_ring(cx, body_y + 3 * s, belly_r - 8 * s, PAL_RAMP(RAMP_PEACH, 3)); }
-        /* X harness with gold studs */
-        strap(cx - 12 * s, body_y - 20 * s, cx + 10 * s, body_y + 2 * s, s);
-        strap(cx + 12 * s, body_y - 20 * s, cx - 10 * s, body_y + 2 * s, s);
-        tk_circle(cx, body_y - 9 * s, 3 * s, LINE); tk_circle(cx, body_y - 9 * s, 2 * s, CHAIN);   /* ring */
+        torso(cx, chest_top, chest_bot, 19 * s, 15 * s);
+        pecs(cx, chest_top + 8 * s, 16 * s);
+        blob(cx, belly_cy, belly_r, belly_ry, BELLYM);
+        tk_ellipse(cx, belly_cy + belly_ry / 3, 2, 3, PAL_RAMP(RAMP_PEACH, 3));              /* navel */
+        if (pose == P_INFLATED) { tk_ring(cx, belly_cy, belly_r - 4 * s, PAL_RAMP(RAMP_PEACH, 4)); tk_ring(cx, belly_cy, belly_r - 9 * s, PAL_RAMP(RAMP_PEACH, 4)); }
+        /* X harness over the chest, ring at the sternum */
+        strap(cx - 15 * s, chest_top + 2 * s, cx + 11 * s, chest_bot + 4 * s, s);
+        strap(cx + 15 * s, chest_top + 2 * s, cx - 11 * s, chest_bot + 4 * s, s);
+        tk_circle(cx, chest_top + 10 * s, 3 * s, LINE); tk_circle(cx, chest_top + 10 * s, 2 * s, CHAIN);
         /* belt + buckle under the belly */
-        int by = body_y + belly_r - 6 * s;
+        int by = belly_cy + belly_ry - 5 * s;
         tk_rect(cx - belly_r + 2, by, 2 * belly_r - 4, 3 * s, LEATHER);
         tk_frame(cx - belly_r + 2, by, 2 * belly_r - 4, 3 * s, LINE);
         studs(cx - belly_r + 6, by + s, cx + belly_r - 6, by + s, 7);
@@ -237,9 +257,10 @@ static void grumbleguts(int cx, int yf, int s, int view, int pose, int expr) {
         else { tk_rect(cx - 2 * s, by, 4 * s, 3 * s, STUD); tk_frame(cx - 2 * s, by, 4 * s, 3 * s, LINE); }
     } else {
         /* back: broad shoulders, X straps, and THE BUTT front and centre */
-        blob(cx, body_y - 8 * s, 18 * s, 14 * s, SKINM);
-        strap(cx - 12 * s, body_y - 20 * s, cx + 8 * s, body_y, s);
-        strap(cx + 12 * s, body_y - 20 * s, cx - 8 * s, body_y, s);
+        torso(cx, chest_top, chest_bot + 4 * s, 19 * s, 14 * s);
+        tk_line(cx, chest_top + 4 * s, cx, chest_bot, SKINM[1]);                            /* spine */
+        strap(cx - 15 * s, chest_top + 2 * s, cx + 10 * s, chest_bot + 2 * s, s);
+        strap(cx + 15 * s, chest_top + 2 * s, cx - 10 * s, chest_bot + 2 * s, s);
         int by = body_y + 4 * s;
         blob(cx - butt_r / 2 - s, by + butt_r / 2, butt_r, butt_r, SKINM);
         blob(cx + butt_r / 2 + s, by + butt_r / 2, butt_r, butt_r, SKINM);
@@ -264,9 +285,9 @@ static void grumbleguts(int cx, int yf, int s, int view, int pose, int expr) {
     /* ---- arms: thick, biceps, clawed hands ---- */
     for (int side = -1; side <= 1; side += 2) {
         if (view == V_SIDE && side == -1) continue;
-        int ax = cx + side * 20 * s, ay = body_y - 12 * s;
+        int ax = cx + side * 22 * s, ay = chest_top + 10 * s;
         int raised = (pose == P_SPRING || pose == P_CROP) && side == 1;
-        if (pose == P_WIGGLE || view == V_BACK || view == V_BACK_LOOK) { ax = cx + side * 21 * s; ay = body_y - 6 * s; }
+        if (pose == P_WIGGLE || view == V_BACK || view == V_BACK_LOOK) { ax = cx + side * 22 * s; ay = chest_top + 12 * s; }
         blob(ax, raised ? ay - 10 * s : ay, 6 * s, 9 * s, SKINM);           /* bicep */
         int hx = ax + side * 2 * s, hy = raised ? ay - 22 * s : ay + 12 * s;
         if (pose == P_SNACK && side == 1) { hx = cx + 12 * s; hy = head_y + 6 * s; }
