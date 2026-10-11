@@ -33,10 +33,13 @@ typedef struct FrameBuf {
     uint32_t flush[2];            /* GP0(01h) texture cache flush      */
     uint32_t ot[OT_VIEWS][OT_LEN];
     uint32_t envs[OT_VIEWS][2][4];/* clip in / clip out per view      */
-    uint8_t  prim[PRIM_BYTES] __attribute__((aligned(4)));
+    uint8_t  *prim;               /* its half of s_prim               */
 } FrameBuf;
 
 static FrameBuf  s_fb[2];
+/* Both frames' display lists, back to back: together they are also the
+ * save scratch (plat_save_scratch below). */
+static uint8_t   s_prim[2][PRIM_BYTES] __attribute__((aligned(4)));
 int       g_cur;
 uint32_t  g_frame;
 uint32_t  g_rgb[256];
@@ -90,6 +93,7 @@ void gfx_init(void)
 #endif
     for (i = 0; i < 2; i++) {
         FrameBuf *f = &s_fb[i];
+        f->prim = s_prim[i];
         /* s_fb[i] draws into framebuffer i; it is displayed while the
          * next frame is being drawn into the other one */
         SetDefDispEnv(&f->disp, 0, i * SCR_H, SCR_W, SCR_H);
@@ -345,19 +349,34 @@ void gfx_busy_end(void)
     s_banner_rect.w = 0;
 }
 
-/* platform.h: the save/load scratch buffer is the idle half of the display
- * list memory. Once the GPU has finished the previous frame (DrawSync),
- * the prim buffer it was drawn from is unused until the current frame is
- * presented, and save_game()/load_game() run inside one frame. This
- * replaces the core's 88 KB static default (dropped by --gc-sections). */
-typedef char scratch_fits[PRIM_BYTES >= DOOMO_SAVE_SCRATCH_MIN ? 1 : -1];
+/* platform.h: the save/load scratch buffer is the display-list memory of
+ * BOTH frames (s_prim, contiguous). Once the GPU has finished the previous
+ * frame (DrawSync), its half is unused until the current frame is
+ * presented; the current half is empty while the core runs its update(),
+ * which is where saves and loads happen (one call, inside one frame). If
+ * something was drawn already, that much is drawn now (into the back
+ * buffer, like gfx_end would, so queued VRAM uploads are not lost) and the
+ * list starts over. This replaces the core's 88 KB static default
+ * (dropped by --gc-sections). */
+typedef char scratch_fits[2 * PRIM_BYTES >= DOOMO_SAVE_SCRATCH_MIN ? 1 : -1];
 
 void *plat_save_scratch(uint32_t *cap)
 {
+    FrameBuf *f = &s_fb[g_cur];
     DrawSync(0);
+    if (s_ptr != f->prim || s_up_tail != f->up_head || s_tail != f->head) {
+        gfx2d_flush();
+        termPrim((DR_TPAGE *)s_tail);
+        TAG_LINK(s_up_tail, f->flush);
+        TAG_LINK(f->flush, f->head);
+        DrawOTag(f->up_head);
+        DrawSync(0);
+        dbg("gfx: save scratch taken mid-frame, list drawn early\n");
+        gfx_begin();
+    }
     if (cap)
-        *cap = PRIM_BYTES;
-    return s_fb[g_cur ^ 1].prim;
+        *cap = 2 * PRIM_BYTES;
+    return s_prim[0];
 }
 
 /* framebuffer row the newest frame is being drawn into (harness shots) */

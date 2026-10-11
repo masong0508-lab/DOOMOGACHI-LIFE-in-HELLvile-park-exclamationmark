@@ -7,6 +7,9 @@ takes the lowest p_vaddr of *every* program header as the load address,
 which yields a 2 GB "executable". This converter only looks at PT_LOAD
 segments with a non-zero file size, pads to 2 KB sectors, fills in the BSS
 fields and refuses images that do not fit in the console's 2 MB of RAM.
+Segments whose load address differs from their run address are the scene
+overlays (ovl_plan.py / ovl_pack.py): they are left out of the EXE, but
+the RAM slot they run in counts towards the 2 MB.
 
 usage: elf2exe.py input.elf output.exe [--region NA|EU|JP]
 Stdlib only, deterministic output.
@@ -36,10 +39,16 @@ def main(argv):
         "<HHHHH", data, 42)
     segs = []
     bss_lo, bss_hi = None, None
+    ovl_hi = None
     for i in range(e_phnum):
         p_type, p_offset, p_vaddr, p_paddr, p_filesz, p_memsz, p_flags, p_align = \
             struct.unpack_from("<IIIIIIII", data, e_phoff + i * e_phentsize)
         if p_type != PT_LOAD or p_memsz == 0:
+            continue
+        if p_paddr != p_vaddr:
+            # a scene overlay (ovl_plan.py): its bytes go to OVL.BIN
+            # (ovl_pack.py), only the RAM slot it runs in counts here
+            ovl_hi = max(ovl_hi or 0, p_vaddr + p_memsz)
             continue
         if p_filesz:
             segs.append((p_vaddr, data[p_offset:p_offset + p_filesz]))
@@ -58,6 +67,7 @@ def main(argv):
         image[a - lo:a - lo + len(b)] = b
     # find _gp from the symbol table (not needed by the BIOS, informative)
     gp = 0
+    sym_end = 0
     try:
         for i in range(e_shnum):
             sh = struct.unpack_from("<IIIIIIIIII", data, e_shoff + i * e_shentsize)
@@ -68,10 +78,11 @@ def main(argv):
                     s = data[strtab[4] + st_name:data.index(b"\0", strtab[4] + st_name)]
                     if s == b"_gp":
                         gp = st_value
-                        break
+                    elif s == b"_end":
+                        sym_end = st_value
     except Exception:
         gp = 0
-    end = (bss_hi if bss_hi is not None else hi) - 0x80000000
+    end = max(bss_hi if bss_hi is not None else hi, ovl_hi or 0, sym_end) - 0x80000000
     if end > 0x200000 - 0x10000:
         print("elf2exe: image + bss end at 0x%x, leaves no room for the stack "
               "in 2 MB RAM" % (end + 0x80000000))

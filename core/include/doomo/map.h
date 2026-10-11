@@ -164,6 +164,14 @@ void map_load_def(const DoomoMapDef *d);
 int  map_event(DoomoMap *m, int tag);
 /* Door state 0 closed .. 256 fully open (-1 if not a door). */
 int  map_door_open(const DoomoMap *m, int cx, int cy);
+/* (additive) A door's open ceiling height in world units, 0 if (cx, cy)
+ * has no door mover. Use it instead of reading the definition's cells. */
+int  map_door_top(const DoomoMap *m, int cx, int cy);
+/* (ps1, additive) Copy the w x h top-left cells of a definition into dst
+ * (row-major, w per row). map_load_def() is the ONLY reader of
+ * DoomoMapDef.cells: the PS1 keeps the grids LZ-packed and overrides this
+ * (ps1/tools/packmaps.py), so nothing else may read through d->cells. */
+void map_def_cells(const DoomoMapDef *d, DoomoCell *dst, int w, int h);
 /* Bump a door (keys = bitmask 1 red, 2 blue). Returns 1 if it opens or
  * is open, 0 if it is locked / remote, -1 if not a door. */
 int  map_door_bump(DoomoMap *m, int cx, int cy, int keys);

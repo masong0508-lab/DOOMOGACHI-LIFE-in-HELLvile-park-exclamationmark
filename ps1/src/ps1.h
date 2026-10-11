@@ -49,11 +49,13 @@
 /* ---- frame / display list (gfx.c) ----------------------------------------- */
 #define OT_LEN        1536   /* depth slots per 3D view                     */
 #define OT_VIEWS      2      /* 3D views per frame (view3d / overworld)     */
-/* Display-list bytes per frame. The idle buffer is also the save scratch
- * (gfx.c plat_save_scratch): it must hold DOOMO_SAVE_SCRATCH_MIN (save.h:
- * a whole slot plus the codec's work area, 102.25 KB) so saves never
- * stream on the PS1; frames themselves have needed at most ~36 KB. */
-#define PRIM_BYTES    (103 * 1024)
+/* Display-list bytes per frame. Both frames' lists together are the save
+ * scratch (gfx.c plat_save_scratch): 2 x PRIM_BYTES must hold
+ * DOOMO_SAVE_SCRATCH_MIN (save.h: a whole slot plus the codec's work area,
+ * 102.25 KB) so saves never stream on the PS1. A frame has needed at most
+ * ~36 KB; a packed sky's first upload needs 2 x 24 KB + 4 KB at the start
+ * of a 3D view (vram.c). */
+#define PRIM_BYTES    (56 * 1024)
 
 typedef struct GfxPerf {
     uint32_t cpu_us;              /* begin_frame .. end_frame (CPU)       */
@@ -183,6 +185,13 @@ int  packart_is_sky(const uint8_t *p);
 const uint8_t *packart_resolve(const uint8_t *p);
 int  packart_sky_decode(const uint8_t *p, uint8_t *dst);
 int  packart_sky_edges(const uint8_t *p, uint8_t *top, uint8_t *bottom);
+
+/* ---- scene overlays (overlay.c, tools/ovl_plan.py) --------------------------
+ * The game disc reads scene code from OVL.BIN into one RAM slot when a
+ * scene starts (core scene.h plat_scene_code). overlay_init(): CD init +
+ * the OVL.BIN header (boot). The engine test links everything resident. */
+void     overlay_init(void);
+uint32_t overlay_loads(void);
 
 /* ---- engine test / fallback assets (etest*.c) ------------------------------- */
 const uint8_t *etest_texture(int tex_id, uint16_t time);

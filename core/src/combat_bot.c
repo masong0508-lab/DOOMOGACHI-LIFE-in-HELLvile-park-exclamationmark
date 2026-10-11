@@ -44,8 +44,10 @@ static int passable(int cx, int cy, int nx, int ny, int allow_lava)
         if (n->tag >= DOOMO_DOOR_TAG_REMOTE && open < 200) return 0;
         if (n->tag == DOOMO_DOOR_TAG_RED && !(doomo_player.keys & 1) && open < 200) return 0;
         if (n->tag == DOOMO_DOOR_TAG_BLUE && !(doomo_player.keys & 2) && open < 200) return 0;
-        ceil = doomo_map.def ? doomo_map.def->cells[ny * doomo_map.def->w + nx].ceil_h * DOOMO_HEIGHT_STEP
-                             : cw_ceil(nx, ny);
+        /* the door's open height (map.c's door mover; the definition's
+         * cells are not readable on every platform, map.h) */
+        ceil = map_door_top(&doomo_map, nx, ny);
+        if (!ceil) ceil = cw_ceil(nx, ny);
     } else {
         ceil = cw_ceil(nx, ny);
     }

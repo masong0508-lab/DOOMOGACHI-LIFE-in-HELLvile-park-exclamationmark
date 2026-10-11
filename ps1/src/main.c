@@ -94,6 +94,7 @@ static void plat_init_hw(void)
     boot_splash();
     memcard_init();      /* blocks ~2-3 s (BIOS _bu_init) */
     audio_hw_init();
+    overlay_init();      /* CD + OVL.BIN header: scene code comes from the disc */
     dbg("ps1: hardware ready (%s)\n", plat_name());
 }
 

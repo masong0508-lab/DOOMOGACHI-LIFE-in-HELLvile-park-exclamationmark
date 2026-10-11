@@ -25,6 +25,7 @@ option(DOOMO_ENGINE_TEST "Boot into the 3D engine test / benchmark" OFF)
 option(DOOMO_PAL         "Use PAL video timing"                     OFF)
 option(DOOMO_CORE        "Link the portable core (OFF = platform bring-up with fallback assets)" ON)
 option(DOOMO_PACK_ART    "Link the core's textures and skies LZ-compressed (tools/packart.py)" ON)
+option(DOOMO_OVERLAYS    "Game disc: load scene code from OVL.BIN into one RAM slot (tools/ovl_plan.py)" ON)
 set(DOOMO_EXE_NAME "doomogachi" CACHE STRING "Output executable base name")
 
 find_package(Python3 COMPONENTS Interpreter REQUIRED)
@@ -64,35 +65,94 @@ if(DOOMO_PACK_ART AND DOOMO_CORE AND EXISTS ${CORE_DIR}/gen/art_data.c)
 		COMMENT "Packing textures and skies (tools/packart.py)"
 		VERBATIM)
 	list(APPEND CORE_SRCS ${_pack_out}/art_data_ps1.c ${_pack_out}/packed_art.c)
+	# the maps' cell grids too (tools/packmaps.py, map.h map_def_cells)
+	set(_maps ${CORE_SRCS})
+	list(FILTER _maps INCLUDE REGEX "/core/gen/map_[a-z0-9_]+\\.c$")
+	list(FILTER CORE_SRCS EXCLUDE REGEX "/core/gen/map_[a-z0-9_]+\\.c$")
+	set(_packed_maps "")
+	foreach(_m ${_maps})
+		get_filename_component(_mn ${_m} NAME)
+		list(APPEND _packed_maps ${_pack_out}/maps/${_mn})
+	endforeach()
+	add_custom_command(
+		OUTPUT  ${_packed_maps}
+		COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/packmaps.py
+		        ${_pack_out}/maps ${_maps}
+		DEPENDS ${_maps} ${CMAKE_CURRENT_SOURCE_DIR}/tools/packmaps.py
+		        ${CMAKE_CURRENT_SOURCE_DIR}/tools/packart.py
+		COMMENT "Packing the maps' cells (tools/packmaps.py)"
+		VERBATIM)
+	list(APPEND CORE_SRCS ${_packed_maps})
 endif()
 
-add_executable(${DOOMO_EXE_NAME} ${PS1_SRCS} ${CORE_SRCS})
+# Every source is compiled once into an object library; the executable
+# links those objects (directly, never through an archive: the core's weak
+# stubs must be overridden).
+add_library(doomo_objs OBJECT ${PS1_SRCS} ${CORE_SRCS})
+set_target_properties(doomo_objs PROPERTIES PSN00BSDK_TARGET_TYPE EXECUTABLE_GPREL)
+# (the SDK libraries' interface carries the compile flags for the target type)
+target_link_libraries(doomo_objs PRIVATE ${PSN00BSDK_EXECUTABLE_LINK_LIBRARIES})
+
+# Scene overlays (game disc only; docs/PS1.md section 3): ovl_plan.py reads
+# the relocations of all objects, decides which scene code and const data
+# can live in a slot loaded from the disc, and writes the linker script and
+# the scene -> group table. The engine test keeps everything resident.
+set(DOOMO_USE_OVERLAYS OFF)
+if(DOOMO_OVERLAYS AND DOOMO_CORE AND NOT DOOMO_ENGINE_TEST)
+	set(DOOMO_USE_OVERLAYS ON)
+endif()
+string(REGEX REPLACE "nm$" "readelf" TOOLCHAIN_READELF "${TOOLCHAIN_NM}")
+string(REGEX REPLACE "nm\\.exe$" "readelf.exe" TOOLCHAIN_READELF "${TOOLCHAIN_READELF}")
+if(DOOMO_USE_OVERLAYS)
+	set(_ovl_ld ${CMAKE_CURRENT_BINARY_DIR}/ovl.ld)
+	set(_ovl_c  ${CMAKE_CURRENT_BINARY_DIR}/ovl_table.c)
+	add_custom_command(
+		OUTPUT  ${_ovl_ld} ${_ovl_c}
+		COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/ovl_plan.py
+		        --readelf ${TOOLCHAIN_READELF} --out-ld ${_ovl_ld} --out-c ${_ovl_c} --report
+		        $<TARGET_OBJECTS:doomo_objs>
+		DEPENDS doomo_objs $<TARGET_OBJECTS:doomo_objs> ${CMAKE_CURRENT_SOURCE_DIR}/tools/ovl_plan.py
+		COMMENT "Planning the scene overlays (tools/ovl_plan.py)"
+		COMMAND_EXPAND_LISTS
+		VERBATIM)
+	add_executable(${DOOMO_EXE_NAME} ${_ovl_c} $<TARGET_OBJECTS:doomo_objs>)
+	set(_ldscript ${_ovl_ld})
+	set_target_properties(${DOOMO_EXE_NAME} PROPERTIES LINK_DEPENDS ${_ovl_ld})
+else()
+	add_executable(${DOOMO_EXE_NAME} $<TARGET_OBJECTS:doomo_objs>)
+	set(_ldscript ${PSN00BSDK_LDSCRIPTS}/exe.ld)
+endif()
 if(DOOMO_PACKED_ART)
-	target_compile_definitions(${DOOMO_EXE_NAME} PRIVATE DOOMO_PACKED_ART=1)
+	target_compile_definitions(doomo_objs PRIVATE DOOMO_PACKED_ART=1 DOOMO_PACKED_MAPS=1)
 	target_link_options(${DOOMO_EXE_NAME} PRIVATE
 		-Wl,--defsym=doomo_art_tex_pix=0x01000000
-		-Wl,--defsym=doomo_art_sky_pix=0x01800000)
+		-Wl,--defsym=doomo_art_sky_pix=0x01800000
+		-Wl,--defsym=doomo_art_spr_pix_v=0x02000000)
 endif()
 set_target_properties(${DOOMO_EXE_NAME} PROPERTIES
 	PSN00BSDK_TARGET_TYPE EXECUTABLE_GPREL)
 target_link_libraries(${DOOMO_EXE_NAME} PRIVATE ${PSN00BSDK_EXECUTABLE_LINK_LIBRARIES})
 target_link_options(${DOOMO_EXE_NAME} PRIVATE
-	-T${PSN00BSDK_LDSCRIPTS}/exe.ld
+	-T${_ldscript}
 	-Wl,-Map=${CMAKE_CURRENT_BINARY_DIR}/${DOOMO_EXE_NAME}.ldmap
 	-Wl,--no-warn-rwx-segments)
-target_include_directories(${DOOMO_EXE_NAME} PRIVATE
-	${CORE_DIR}/include ${CMAKE_CURRENT_SOURCE_DIR}/src)
-target_compile_options(${DOOMO_EXE_NAME} PRIVATE -O2 -Wall -Wextra)
-
-if(DOOMO_ENGINE_TEST)
-	target_compile_definitions(${DOOMO_EXE_NAME} PRIVATE DOOMO_ENGINE_TEST=1)
-endif()
-if(DOOMO_CORE)
-	target_compile_definitions(${DOOMO_EXE_NAME} PRIVATE DOOMO_HAVE_CORE=1)
-endif()
-if(DOOMO_PAL)
-	target_compile_definitions(${DOOMO_EXE_NAME} PRIVATE DOOMO_PAL=1)
-endif()
+foreach(_t doomo_objs ${DOOMO_EXE_NAME})
+	target_include_directories(${_t} PRIVATE
+		${CORE_DIR}/include ${CMAKE_CURRENT_SOURCE_DIR}/src)
+	target_compile_options(${_t} PRIVATE -O2 -Wall -Wextra)
+	if(DOOMO_ENGINE_TEST)
+		target_compile_definitions(${_t} PRIVATE DOOMO_ENGINE_TEST=1)
+	endif()
+	if(DOOMO_CORE)
+		target_compile_definitions(${_t} PRIVATE DOOMO_HAVE_CORE=1)
+	endif()
+	if(DOOMO_PAL)
+		target_compile_definitions(${_t} PRIVATE DOOMO_PAL=1)
+	endif()
+	if(DOOMO_USE_OVERLAYS)
+		target_compile_definitions(${_t} PRIVATE DOOMO_OVERLAYS=1)
+	endif()
+endforeach()
 
 # Platform code: strict. Core code: C99, warnings on (owners run -Werror
 # in their own xcheck; a stray warning from another module must not break
@@ -130,6 +190,17 @@ add_custom_command(
 	           ${CMAKE_CURRENT_BINARY_DIR}/${DOOMO_EXE_NAME}.map
 	VERBATIM
 )
+# the scene overlays' bytes -> OVL.BIN on the disc (tools/ovl_pack.py)
+set(DOOMO_ISO_OVL "")
+if(DOOMO_USE_OVERLAYS)
+	add_custom_command(
+		TARGET ${DOOMO_EXE_NAME} POST_BUILD
+		COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/ovl_pack.py
+		        $<TARGET_FILE:${DOOMO_EXE_NAME}> ${CMAKE_CURRENT_BINARY_DIR}/OVL.BIN
+		BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/OVL.BIN
+		VERBATIM)
+	set(DOOMO_ISO_OVL "<file name=\"OVL.BIN\" type=\"data\" source=\"OVL.BIN\" />")
+endif()
 
 # Bootable, license-free disc image (works on emulators, softmodded and
 # modchipped consoles; see README.md).
@@ -201,11 +272,11 @@ else()
 		COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/harness/memcard_check.py
 		        ${_shots}/game_smoke/card1.mcd --icons ${_shots}/game_smoke/icons.png
 		        --expect BASLUS-DOOMO1*
-		COMMAND ${_run} --exe ${_exe} --script ${CORE_DIR}/tests/scripts/boot.txt
+		COMMAND ${_run} --exe ${_exe} --cue ${_cue} --script ${CORE_DIR}/tests/scripts/boot.txt
 		        --out ${_shots}/core_boot
-		COMMAND ${_run} --exe ${_exe} --script ${CORE_DIR}/tests/scripts/ui_gallery.txt
+		COMMAND ${_run} --exe ${_exe} --cue ${_cue} --script ${CORE_DIR}/tests/scripts/ui_gallery.txt
 		        --out ${_shots}/core_ui_gallery
-		COMMAND ${_run} --exe ${_exe} --script ${CORE_DIR}/tests/scripts/saves.txt
+		COMMAND ${_run} --exe ${_exe} --cue ${_cue} --script ${CORE_DIR}/tests/scripts/saves.txt
 		        --out ${_shots}/core_saves
 		DEPENDS disc
 		COMMENT "PCSX-Redux harness: game"

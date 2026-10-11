@@ -18,6 +18,7 @@
 		<directory_tree>
 			<file name="SYSTEM.CNF" type="data" source="${PROJECT_SOURCE_DIR}/system.cnf" />
 			<file name="DOOMO.EXE"  type="data" source="${DOOMO_EXE_NAME}.exe" />
+			${DOOMO_ISO_OVL}
 			<file name="README.TXT" type="data" source="${PROJECT_SOURCE_DIR}/README.md" />
 			<dummy sectors="1024"/>
 		</directory_tree>

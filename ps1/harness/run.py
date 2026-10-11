@@ -33,6 +33,9 @@ Buttons: A B X Y L R L2 R2 START SELECT UP DOWN LEFT RIGHT
 usage:
   run.py --exe build/doomogachi.exe --script S --out DIR [options]
   run.py --cue build/doomogachi.cue --script S --out DIR   (boot the disc)
+  run.py --exe build/doomogachi.exe --cue build/doomogachi.cue ...
+                    side-load the EXE with the disc in the drive (the game
+                    disc needs it: scene overlays come from OVL.BIN)
 options:
   --map FILE        symbol map (default: <exe dir>/doomogachi.map) for the
                     g_frame heartbeat used for hang detection and fps
@@ -283,7 +286,12 @@ def main():
                HARNESS_HANG=str(a.hang))
     argv = ["xvfb-run", "-a", a.emu, "-cli", "-stdout", "-run", "-bios", a.bios,
             "-memcard1", card1, "-memcard2", card2]
-    argv += ["-exe", image] if a.exe else ["-iso", image]
+    # --exe and --cue together: side-load the EXE with the disc in the
+    # drive (the game disc reads its scene overlays, OVL.BIN, from it)
+    if a.exe:
+        argv += ["-exe", image]
+    if a.cue:
+        argv += ["-iso", os.path.abspath(a.cue)]
     argv += ["-dofile", os.path.join(HERE, "harness.lua")]
     tty_path = os.path.join(out, "tty.log")
     status = "ok"

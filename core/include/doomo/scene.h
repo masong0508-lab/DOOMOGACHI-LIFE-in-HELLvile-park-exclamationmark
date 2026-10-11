@@ -25,6 +25,17 @@ void scene_draw(void);
 /* Ticks since the top scene was entered. */
 uint32_t scene_ticks(void);
 
+/* (ps1 overlays, additive) A platform may keep a scene's code out of RAM
+ * until it runs: the PS1 game disc loads it from the disc into one shared
+ * slot (ps1/src/overlay.c, docs/PS1.md section 3). scene.c brackets every
+ * call into a scene (enter / leave / update / draw) with
+ *     t = plat_scene_code(s);  s->fn();  plat_scene_code_end(t);
+ * so the code is there while it runs and the caller's code is back when a
+ * scene was switched from inside another scene. The defaults (weak, in
+ * scene.c) do nothing. Never call a scene's functions directly. */
+int  plat_scene_code(const DoomoScene *s);
+void plat_scene_code_end(int token);
+
 /* ---- shared scene scratch (perf pass, additive) --------------------------
  * On the GBA every byte of .bss is EWRAM, and most scenes' big buffers
  * (rendered images, editor state, per-scene caches) are only needed while

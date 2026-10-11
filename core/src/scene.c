@@ -18,6 +18,28 @@ typedef struct {
 static SceneSlot stack[SCENE_STACK_MAX];
 static int depth;
 
+/* (ps1 overlays) weak defaults: the code of every scene is always there */
+__attribute__((weak)) int plat_scene_code(const DoomoScene *s) { (void)s; return 0; }
+__attribute__((weak)) void plat_scene_code_end(int token) { (void)token; }
+
+static void call_enter(const DoomoScene *s, int arg)
+{
+    int t;
+    if (!s->enter) return;
+    t = plat_scene_code(s);
+    s->enter(arg);
+    plat_scene_code_end(t);
+}
+
+static void call_leave(const DoomoScene *s)
+{
+    int t;
+    if (!s || !s->leave) return;
+    t = plat_scene_code(s);
+    s->leave();
+    plat_scene_code_end(t);
+}
+
 const DoomoScene *const doomo_all_scenes[] = {
     &SCENE_BOOT, &SCENE_CONFIRM, &SCENE_TEXT_ENTRY, &SCENE_DIALOG,
     &SCENE_UI_GALLERY,
@@ -75,7 +97,7 @@ void scene_set(const DoomoScene *s, int arg)
 {
     while (depth > 0) {
         const DoomoScene *top = stack[--depth].s;
-        if (top && top->leave) top->leave();
+        call_leave(top);
     }
     if (!s) return;
     stack[0].s = s;
@@ -83,7 +105,7 @@ void scene_set(const DoomoScene *s, int arg)
     depth = 1;
     log_scene("scene: set ", s);
     input_eat();
-    if (s->enter) s->enter(arg);
+    call_enter(s, arg);
 }
 
 void scene_push(const DoomoScene *s, int arg)
@@ -91,7 +113,7 @@ void scene_push(const DoomoScene *s, int arg)
     if (!s) return;
     if (depth >= SCENE_STACK_MAX) {
         plat_log("scene: stack full, replacing top");
-        if (stack[depth - 1].s->leave) stack[depth - 1].s->leave();
+        call_leave(stack[depth - 1].s);
         depth--;
     }
     stack[depth].s = s;
@@ -99,7 +121,7 @@ void scene_push(const DoomoScene *s, int arg)
     depth++;
     log_scene("scene: push ", s);
     input_eat();
-    if (s->enter) s->enter(arg);
+    call_enter(s, arg);
 }
 
 void scene_pop(void)
@@ -110,7 +132,7 @@ void scene_pop(void)
     depth--;
     log_scene("scene: pop ", s);
     input_eat();
-    if (s->leave) s->leave();
+    call_leave(s);
 }
 
 const DoomoScene *scene_top(void)
@@ -131,7 +153,11 @@ void scene_update(void)
     if (depth <= 0) return;
     s = stack[depth - 1].s;
     stack[depth - 1].ticks++;
-    if (s->update) s->update();
+    if (s->update) {
+        int t = plat_scene_code(s);
+        s->update();
+        plat_scene_code_end(t);
+    }
 }
 
 /* While a lower scene of the stack is drawn, the stack is temporarily
@@ -145,7 +171,11 @@ void scene_draw(void)
     for (i = first; i < real; i++) {
         if (!stack[i].s->draw) continue;
         depth = i + 1;
-        stack[i].s->draw();
+        {
+            int t = plat_scene_code(stack[i].s);
+            stack[i].s->draw();
+            plat_scene_code_end(t);
+        }
         depth = real;
     }
 }

@@ -8,7 +8,7 @@ then crashes on the console with a Reserved Instruction exception. Our own
 objects use -march=r3000; this check catches anything pulled in from
 elsewhere. ps1/src/libgcc_r3000.c provides R3000 versions of the helpers.
 
-usage: check_isa.py OBJDUMP file.elf
+usage: check_isa.py OBJDUMP file.elf     (the .ovl_* overlay sections are skipped)
 """
 import re
 import subprocess
@@ -33,7 +33,20 @@ def main(argv):
         print(__doc__)
         return 2
     objdump, elf = argv[1], argv[2]
-    out = subprocess.run([objdump, "-d", "--no-show-raw-insn", elf],
+    # The scene overlays (.ovl_NN, ovl_plan.py) all share one address range
+    # and mix code with const data, so a disassembly of them is noise; they
+    # only hold core objects compiled -march=r3000 (libgcc helpers, the
+    # reason for this check, always stay resident in .text).
+    heads = subprocess.run([objdump, "-h", elf], capture_output=True, text=True,
+                           check=True).stdout
+    secs = []
+    lines = heads.splitlines()
+    for i, line in enumerate(lines):
+        m = re.match(r"^\s*\d+\s+(\S+)\s", line)
+        if m and i + 1 < len(lines) and "CODE" in lines[i + 1] and \
+                not m.group(1).startswith(".ovl_"):
+            secs += ["-j", m.group(1)]
+    out = subprocess.run([objdump, "-d", "--no-show-raw-insn"] + secs + [elf],
                          capture_output=True, text=True, check=True).stdout
     func = "?"
     bad = {}

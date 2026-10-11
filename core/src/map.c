@@ -94,6 +94,18 @@ static void sync_cell(const Mover *mv)
     else c->floor_h = (int8_t)step_floor(mv->cur);
 }
 
+/* weak: the PS1 keeps the cells packed and overrides it (map.h) */
+__attribute__((weak)) void map_def_cells(const DoomoMapDef *d, DoomoCell *dst, int w, int h)
+{
+    if (d->w == w) {
+        memcpy(dst, d->cells, (size_t)(w * h) * sizeof(DoomoCell));
+    } else {
+        int y;
+        for (y = 0; y < h; y++)
+            memcpy(&dst[y * w], &d->cells[y * d->w], (size_t)w * sizeof(DoomoCell));
+    }
+}
+
 void map_load_def(const DoomoMapDef *d)
 {
     int i, n;
@@ -108,14 +120,7 @@ void map_load_def(const DoomoMapDef *d)
     doomo_map.sky = d->sky;
     doomo_map.ambient = d->ambient;
     n = doomo_map.w * doomo_map.h;
-    if (d->w == doomo_map.w) {
-        memcpy(doomo_map.cells, d->cells, (size_t)n * sizeof(DoomoCell));
-    } else {
-        int y;
-        for (y = 0; y < doomo_map.h; y++)
-            memcpy(&doomo_map.cells[y * doomo_map.w], &d->cells[y * d->w],
-                   (size_t)doomo_map.w * sizeof(DoomoCell));
-    }
+    map_def_cells(d, doomo_map.cells, doomo_map.w, doomo_map.h);
     for (i = 0; i < n && nmovers < MOVER_MAX; i++) {
         DoomoCell *c = &doomo_map.cells[i];
         Mover *mv;
@@ -281,6 +286,12 @@ int map_door_open(const DoomoMap *m, int cx, int cy)
     span = mv->hi - mv->lo;
     if (span <= 0) return 256;
     return (mv->cur - mv->lo) * 256 / span;
+}
+
+int map_door_top(const DoomoMap *m, int cx, int cy)
+{
+    const Mover *mv = find_mover(m, cx, cy);
+    return mv && mv->kind == MV_DOOR ? mv->hi : 0;
 }
 
 int map_door_bump(DoomoMap *m, int cx, int cy, int keys)
