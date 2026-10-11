@@ -1,0 +1,35 @@
+# Engine test walk-through (build with -DDOOMO_ENGINE_TEST=ON).
+# The tour is deterministic per rendered frame; shots are taken on the way.
+wait 150
+fps tour
+wait 30
+shot et_000_hall
+wait 40
+shot et_040_lookup
+wait 50
+shot et_090_lookdown
+wait 70
+shot et_160_stairs
+wait 80
+shot et_240_climb
+wait 60
+shot et_300_balcony
+wait 110
+shot et_410_courtyard
+wait 90
+shot et_500_tp_courtyard
+wait 80
+shot et_580_tp_corridor
+wait 120
+shot et_700_cavern
+wait 70
+shot et_770_lava
+wait 100
+shot et_870_tp_hell
+wait 80
+shot et_950_tp_lift
+fpsend tour
+wait 60
+shot et_ow_1
+wait 90
+shot et_ow_2

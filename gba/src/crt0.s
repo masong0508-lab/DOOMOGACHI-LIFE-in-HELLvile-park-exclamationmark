@@ -66,7 +66,8 @@ rom_start:
 
     @ ROM wait states: WS0 3/1, prefetch on, SRAM 8 cycles (flash needs it)
     ldr     r1, =0x4317
-    strh    r1, [r0, #0x204]
+    add     r2, r0, #0x200
+    strh    r1, [r2, #4]
 
     @ copy .iwram (code + data) ROM -> IWRAM
     ldr     r0, =__iwram_lma
@@ -140,9 +141,10 @@ clear_words:
     .global gba_irq_master
 gba_irq_master:
     mov     r3, #0x04000000
-    ldr     r2, [r3, #0x200]            @ r2 = IE | (IF << 16)
+    add     r3, r3, #0x200
+    ldr     r2, [r3]                    @ r2 = IE | (IF << 16)
     and     r0, r2, r2, lsr #16         @ r0 = IE & IF
-    strh    r0, [r3, #0x202]            @ acknowledge in REG_IF
+    strh    r0, [r3, #2]                @ acknowledge in REG_IF
     ldr     r1, =0x03007FF8
     ldrh    r2, [r1]
     orr     r2, r2, r0

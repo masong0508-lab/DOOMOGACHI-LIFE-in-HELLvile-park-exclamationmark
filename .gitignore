@@ -10,3 +10,7 @@ build/
 /ps1/build/
 /screenshots/
 __pycache__/
+build-*/
+*/build-*/
+*.obj
+*.ldmap

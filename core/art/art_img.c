@@ -158,6 +158,39 @@ void img_heart(ArtImg *im, int cx, int cy, int s, uint8_t c)
         }
 }
 
+/* crisp hand-made heart bitmaps (5x5, 7x6, 9x8) with bottom-right
+ * shading and a top-left highlight - nicer than the implicit heart at
+ * small sizes */
+static const char *const heart_bm[3][8] = {
+    {".X.X.", "XXXXX", "XXXXX", ".XXX.", "..X..", 0, 0, 0},
+    {".XX.XX.", "XXXXXXX", "XXXXXXX", ".XXXXX.", "..XXX..", "...X...", 0, 0},
+    {".XXX.XXX.", "XXXXXXXXX", "XXXXXXXXX", "XXXXXXXXX", ".XXXXXXX.", "..XXXXX..",
+     "...XXX...", "....X...."}};
+
+void img_heart_px(ArtImg *im, int cx, int cy, int size, uint8_t fill, uint8_t dark, uint8_t hi)
+{
+    int x, y, w, h = 0;
+    const char *const *bm;
+    size = size < 0 ? 0 : (size > 2 ? 2 : size);
+    bm = heart_bm[size];
+    while (h < 8 && bm[h]) h++;
+    w = (int)strlen(bm[0]);
+    for (y = 0; y < h; y++)
+        for (x = 0; x < w; x++) {
+            int edge;
+            if (bm[y][x] != 'X') continue;
+            edge = (x + 1 >= w || bm[y][x + 1] != 'X') || (y + 1 >= h || bm[y + 1][x] != 'X');
+            img_put(im, cx - w / 2 + x, cy - h / 2 + y, edge ? dark : fill);
+        }
+    if (hi) {
+        img_put(im, cx - w / 2 + 1, cy - h / 2 + 1, hi);
+        if (size == 2) {
+            img_put(im, cx - w / 2 + 2, cy - h / 2 + 1, hi);
+            img_put(im, cx - w / 2 + 1, cy - h / 2 + 2, hi);
+        }
+    }
+}
+
 void img_star(ArtImg *im, int cx, int cy, int r, int filled, uint8_t c)
 {
     int pts[20], k;

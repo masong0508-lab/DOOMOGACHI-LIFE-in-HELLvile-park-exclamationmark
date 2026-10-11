@@ -5,10 +5,14 @@
  * artists shade, so even 3-shade paints look rich on a GBA screen.
  *
  * The light colormaps and tint maps are computed at BUILD time by artgen
- * (core/art/art_palette.c: perceptual nearest match that prefers staying
- * inside a colour's own shade family) and stored as const tables in
+ * (core/art/art_palette.c: a colour in shadow walks down its own shade
+ * family - and a paint continues into its related environment ramp - so
+ * shadows stay rich and hue-shifted instead of greying out; only below a
+ * family's darkest shade does it fall back to the perceptually nearest,
+ * hue-preserving colour) and stored as const tables in
  * core/gen/art_data.c; palette_init() just copies them into RAM so the
- * GBA boots instantly.
+ * GBA boots instantly. artgen links this file too and provides empty
+ * placeholders for those tables (it never calls palette_init()).
  */
 #include "doomo/palette.h"
 
@@ -204,7 +208,6 @@ int palette_luma(uint8_t index)
     return (r * 77 + g * 150 + b * 29) >> 8;
 }
 
-#ifndef DOOMO_ARTGEN
 uint8_t palette_darker(uint8_t index)
 {
     return doomo_art_darker[index];
@@ -226,4 +229,3 @@ void palette_init(void)
     memcpy(doomo_colormap, doomo_art_colormap, sizeof(doomo_colormap));
     memcpy(doomo_tintmap, doomo_art_tintmap, sizeof(doomo_tintmap));
 }
-#endif

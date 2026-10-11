@@ -106,8 +106,27 @@ enum {
     OPT_WEATHER, OPT_LCD_FILTER, OPT_WINDOW_SKIN, OPT_FONT_STYLE,
     OPT_SUBTITLES, OPT_COLORBLIND, OPT_REDUCE_FLASH,
     OPT_PET_NOTIFICATIONS, OPT_NEWS_TICKER, OPT_CLOCK_24H,
+    /* ---- foundation additions (append only) ---- */
+    OPT_TITLE_THEME,     /* title screen theme (unlockable values)          */
+    OPT_CURSOR,          /* menu cursor: heart / paw / star / skull ...     */
+    OPT_CAMERA_FILTER,   /* none / storybook / VHS / gameboy / sepia ...    */
+    OPT_UI_BOUNCE,       /* UI animation amount: off / subtle / boingy      */
+    /* cheats (page 6; values beyond 0 gated by UL_CAT_CHEAT unlocks) */
+    OPT_CHEAT_BIG_HEAD, OPT_CHEAT_CONFETTI, OPT_CHEAT_INFINITE_CANDY,
+    OPT_CHEAT_CUTE_DEMONS, OPT_CHEAT_BRUTAL_RESIDENTS, OPT_CHEAT_LOW_GRAV,
+    OPT_CHEAT_PAPER_MODE, OPT_CHEAT_GOD_MODE, OPT_CHEAT_RICH,
+    OPT_CHEAT_DISCO, OPT_CHEAT_TINY_DEMONS, OPT_CHEAT_ALL_GHOSTS,
     OPT_COUNT
 };
+DOOMO_STATIC_ASSERT(OPT_COUNT <= 64, options_fit);
+/* Option pages (DoomoOptionInfo.page). */
+enum { OPTPAGE_GAME, OPTPAGE_SHOOTER, OPTPAGE_SIM, OPTPAGE_AUDIO,
+       OPTPAGE_DISPLAY, OPTPAGE_ACCESS, OPTPAGE_CHEATS, OPTPAGE_COUNT };
+extern const char *const doomo_option_page_names[OPTPAGE_COUNT];
+/* Value constants for a few options other modules branch on. */
+enum { GORE_CUTE, GORE_BRUTAL, GORE_PER_WEAPON };
+enum { DIFF_PLUSHIE, DIFF_NORMAL, DIFF_NIGHTMARE, DIFF_ULTRA_HELLVILE };
+enum { CONTROLS_CLASSIC, CONTROLS_MODERN };
 #define DOOMO_OPT_BYTES 64
 typedef struct DoomoOptionInfo {
     const char *name;
@@ -149,6 +168,8 @@ typedef struct DoomoTown {
     DoomoResident   res[DOOMO_MAX_RESIDENTS];
     DoomoResident   player;          /* YOU: story protagonist / free play
                                         caretaker avatar (third-person body) */
+    /* ---- foundation additions ---- */
+    uint8_t         population;      /* TOWN_POP_* this island started as */
 } DoomoTown;
 
 /* town_res(DOOMO_PLAYER_ID) returns &doomo_town.player. The player can be
@@ -197,5 +218,26 @@ void grave_add(int resident_id);
 /* Clock helpers. */
 int  town_hour(void);
 int  town_is_night(void);                 /* 21:00..05:59 */
+
+/* ---- foundation additions ------------------------------------------------ */
+/* The record a premade citizen starts as: roster_premade(id) or, while the
+ * roster module has not landed, a deterministic generated stand-in (ids
+ * 500..999 hellborn). save.c deltas against this. */
+void town_premade_record(int id, DoomoResident *out);
+/* The record a Random Island citizen starts as for a town seed. */
+void town_random_record(uint32_t seed, int id, DoomoResident *out);
+/* Starting money for a new island (H$). */
+#define DOOMO_START_MONEY 500
+/* Re-sort / validate the edge list (after loading or bulk edits): drops
+ * self-edges, out-of-range ids and duplicates, normalises a < b. */
+void rel_normalize(void);
+/* Total of all inventory counts. */
+int  inv_total(void);
+/* 1 if the island has a living (non-empty, not dead) citizen in slot id. */
+int  town_alive(int id);
+/* "8:05 PM" / "20:05" per OPT_CLOCK_24H. buf >= 10 bytes. */
+void town_time_str(char *buf, int cap);
+extern const char *const doomo_weekday_names[7];
+extern const char *const doomo_rel_kind_names[REL_KIND_COUNT];
 
 #endif

@@ -51,6 +51,15 @@
 #define OT_VIEWS      2      /* 3D views per frame (view3d / overworld)     */
 #define PRIM_BYTES    (150 * 1024)
 
+typedef struct GfxPerf {
+    uint32_t cpu_us;              /* begin_frame .. end_frame (CPU)       */
+    uint32_t sync_us;             /* waiting for the GPU (GPU-bound)       */
+    uint32_t frame_vblanks;       /* vblanks between presented frames     */
+    uint32_t fps_x10;             /* presented frames per second x10      */
+    uint32_t prim_bytes, prims;   /* display list size of the last frame  */
+} GfxPerf;
+extern GfxPerf g_perf;
+
 extern int      g_cur;            /* buffer being built                  */
 extern uint32_t g_frame;          /* frames presented                    */
 extern uint32_t g_rgb[256];       /* palette -> 0x00BBGGRR for prims      */
@@ -60,6 +69,7 @@ void  gfx_init(void);
 void  gfx_begin(void);
 void  gfx_end(void);
 void *gfx_alloc(size_t bytes);    /* prim memory in the current buffer, or NULL */
+extern uint8_t *g_prim_ptr, *g_prim_end;
 size_t gfx_free_bytes(void);
 /* Append a primitive (tag word with len set) to the painter's chain. */
 void  gfx_chain(void *prim);
@@ -108,7 +118,7 @@ void gfx2d_init(void);
 /* ---- 3D (r3d.c, view3d.c, overworld.c, model.c) ---------------------------- */
 typedef struct R3Stats {
     uint16_t cells, faces, polys, subdiv, clipped, sprites, culled;
-    uint32_t cpu_us;
+    uint32_t cpu_us, t_setup, t_vis, t_cells;
 } R3Stats;
 extern R3Stats g_r3stats;
 
@@ -132,6 +142,9 @@ void core_combat_build_view(DoomoView3D *v);
 DoomoPlayerState *core_player(void);
 void core_palette_init(void);
 const int8_t *core_sfx_pcm(int sfx, uint32_t *len, uint32_t *rate);
+const uint16_t *core_palette(void);
+int  core_floor_z(const DoomoMap *m, int cx, int cy);   /* incl. door/lift anim */
+int  core_ceil_z(const DoomoMap *m, int cx, int cy);
 
 /* ---- engine test / fallback assets (etest*.c) ------------------------------- */
 const uint8_t *etest_texture(int tex_id, uint16_t time);
@@ -140,6 +153,7 @@ const DoomoImage *etest_sprite(int which, int frame);
 void etest_build_map(DoomoMap *m);
 void etest_run(void);                    /* never returns */
 extern const uint8_t etest_font[128][5];
+const uint16_t *etest_palette(void);
 
 /* ---- pad / audio / memcard / timing ------------------------------------------ */
 void     pad_init(void);
@@ -147,6 +161,7 @@ uint32_t pad_read(void);                 /* BTN_* bitmask */
 int      pad_analog(int *lx, int *ly, int *rx, int *ry);
 void     audio_hw_init(void);
 void     audio_hw_frame(void);
+void     memcard_early(void);
 void     memcard_init(void);
 void     timer_init(void);
 uint32_t timer_us(void);                 /* microseconds since boot (wraps) */

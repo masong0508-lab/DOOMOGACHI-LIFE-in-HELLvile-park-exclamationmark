@@ -23,6 +23,7 @@ project(
 
 option(DOOMO_ENGINE_TEST "Boot into the 3D engine test / benchmark" OFF)
 option(DOOMO_PAL         "Use PAL video timing"                     OFF)
+option(DOOMO_CORE        "Link the portable core (OFF = platform bring-up with fallback assets)" ON)
 set(DOOMO_EXE_NAME "doomogachi" CACHE STRING "Output executable base name")
 
 find_package(Python3 COMPONENTS Interpreter REQUIRED)
@@ -32,8 +33,12 @@ set(CORE_DIR   ${DOOMO_ROOT}/core)
 
 # Mirror core/sources.mk (wildcards!). CONFIGURE_DEPENDS re-globs on every
 # build so new core files from other modules are picked up automatically.
-file(GLOB CORE_SRCS CONFIGURE_DEPENDS ${CORE_DIR}/src/*.c ${CORE_DIR}/gen/*.c)
-list(SORT CORE_SRCS)
+if(DOOMO_CORE)
+	file(GLOB CORE_SRCS CONFIGURE_DEPENDS ${CORE_DIR}/src/*.c ${CORE_DIR}/gen/*.c)
+	list(SORT CORE_SRCS)
+else()
+	set(CORE_SRCS "")
+endif()
 file(GLOB PS1_SRCS CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/*.c
                                      ${CMAKE_CURRENT_SOURCE_DIR}/src/*.s)
 list(SORT PS1_SRCS)
@@ -64,7 +69,7 @@ endif()
 # in their own xcheck; a stray warning from another module must not break
 # the disc build).
 set_source_files_properties(${PS1_SRCS} PROPERTIES
-	COMPILE_OPTIONS "-std=gnu99;-Werror;-Wno-error=unused-function")
+	COMPILE_OPTIONS "-std=gnu99;-Werror;-fno-strict-aliasing")
 set_source_files_properties(${CORE_SRCS} PROPERTIES
 	COMPILE_OPTIONS "-std=c99")
 

@@ -26,7 +26,11 @@ int  btn_pressed(uint32_t b);        /* any of b went down this tick     */
 int  btn_released(uint32_t b);
 int  btn_repeat(uint32_t b);         /* pressed, then every 3 ticks after 12 */
 uint32_t btn_held_ticks(uint32_t b); /* how long the (first) button is held */
-/* Swallow all input this tick (e.g. after a scene change). */
+/* Swallow all input this tick (e.g. after a scene change). Buttons still
+ * held afterwards are ignored until they are released. */
 void input_eat(void);
+
+/* ---- foundation additions ---- */
+void input_reset(void);              /* forget all state (tests, boot)   */
 
 #endif

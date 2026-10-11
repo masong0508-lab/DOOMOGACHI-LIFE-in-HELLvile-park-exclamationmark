@@ -42,7 +42,9 @@ uint32_t  g_frame;
 uint32_t  g_rgb[256];
 uint16_t  g_pal15[256];
 
-static uint8_t  *s_ptr, *s_end;
+uint8_t  *g_prim_ptr, *g_prim_end;   /* prim allocator (inlined by r3d) */
+#define s_ptr g_prim_ptr
+#define s_end g_prim_end
 static uint32_t *s_tail;          /* last node of the draw chain      */
 static uint32_t *s_up_tail;       /* last node of the upload chain    */
 static int       s_views;
@@ -52,6 +54,8 @@ static int       s_first = 1;
 static uint32_t  s_prims;
 static uint32_t  s_vb_last;
 static int       s_pal_phase;
+static uint32_t  s_t_begin;
+GfxPerf          g_perf;
 
 /* link helpers on raw tag words */
 #define TAG_LINK(node, to) (*(node) = (*(node) & 0xff000000u) | ((uint32_t)(to) & 0x00ffffffu))
@@ -60,9 +64,10 @@ void gfx_fb_xy(int *x, int *y) { *x = 0; *y = g_cur ? SCR_H : 0; }
 
 static void palette_tables(void)
 {
+    const uint16_t *pal = core_palette();
     int i;
     for (i = 0; i < 256; i++) {
-        uint16_t c = doomo_palette[i];
+        uint16_t c = pal[i];
         int r = (c & 31) << 3, g = ((c >> 5) & 31) << 3, b = ((c >> 10) & 31) << 3;
         r |= r >> 5; g |= g >> 5; b |= b >> 5;
         g_rgb[i] = (uint32_t)r | ((uint32_t)g << 8) | ((uint32_t)b << 16);
@@ -135,6 +140,7 @@ void gfx_tpage(uint16_t tpage)
 void gfx_begin(void)
 {
     FrameBuf *f = &s_fb[g_cur];
+    s_t_begin = timer_us();
     s_ptr = f->prim;
     s_end = f->prim + PRIM_BYTES;
     s_views = 0;
@@ -269,7 +275,14 @@ void gfx_end(void)
     TAG_LINK(s_up_tail, f->flush);
     TAG_LINK(f->flush, f->head);
 
-    DrawSync(0);                /* previous frame finished drawing */
+    {
+        uint32_t t1 = timer_us();
+        g_perf.cpu_us = t1 - s_t_begin;
+        DrawSync(0);            /* previous frame finished drawing */
+        g_perf.sync_us = timer_us() - t1;
+        g_perf.prim_bytes = (uint32_t)(s_ptr - f->prim);
+        g_perf.prims = s_prims;
+    }
     /* 30 Hz: two vblanks per logic tick (PAL: 2,2,1 pattern = 30/s) */
 #ifdef DOOMO_PAL
     VSync((s_pal_phase++ % 3) == 2 ? 1 : 2);
@@ -278,7 +291,18 @@ void gfx_end(void)
 #endif
     (void)s_pal_phase;
     vb = (uint32_t)VSync(-1);
+    g_perf.frame_vblanks = vb - s_vb_last;
     s_vb_last = vb;
+    /* frame rate over the last ~second */
+    {
+        static uint32_t win_vb, win_frames;
+        win_frames++;
+        if (vb - win_vb >= 60) {
+            g_perf.fps_x10 = win_frames * 600 / (vb - win_vb);
+            win_vb = vb;
+            win_frames = 0;
+        }
+    }
     /* show what the GPU just finished, draw the new list into the other */
     PutDispEnv(&s_fb[g_cur ^ 1].disp);
     DrawOTagEnv(f->up_head, &f->draw);

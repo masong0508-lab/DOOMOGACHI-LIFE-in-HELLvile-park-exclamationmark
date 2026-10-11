@@ -3,6 +3,7 @@
  *
  *   gba/build/harness ROM.gba [--script FILE] [--shots DIR] [--save FILE]
  *                     [--frames N] [--scale S] [--fail-on-stub] [--quiet]
+ *                     [--nm NMFILE]   (arm-none-eabi-nm -n output, for profile)
  *
  * Runs the ROM in mGBA (no BIOS needed: HLE), feeds scripted input, prints
  * the ROM's mGBA debug log (plat_log) to stdout and writes PNG screenshots.
@@ -23,6 +24,8 @@
  *   expect-scene NAME   checked against "scene: NAME" log lines if the core
  *                       prints them; otherwise only a warning
  *   type "..."          not supported on GBA (warning)
+ *   profile N           sample the PC over N instructions and print the
+ *                       hottest functions (needs --nm, see below)
  * Buttons: A B L R START SELECT UP DOWN LEFT RIGHT, X (=SELECT+A),
  * Y (=SELECT+B).
  *
@@ -36,6 +39,7 @@
 #include <mgba/core/config.h>
 #include <mgba/core/interface.h>
 #include <mgba-util/vfs.h>
+#include <mgba/internal/arm/arm.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -86,7 +90,10 @@ static void on_log(struct mLogger *logger, int category, enum mLogLevel level,
         log_append(msg);
         if (!quiet) printf("%s\n", msg);
         if (strncmp(msg, "scene: ", 7) == 0) {
-            snprintf(last_scene, sizeof(last_scene), "%s", msg + 7);
+            size_t n = strcspn(msg + 7, " \r\n");
+            if (n >= sizeof(last_scene)) n = sizeof(last_scene) - 1;
+            memcpy(last_scene, msg + 7, n);
+            last_scene[n] = 0;
         }
         if (fail_on_stub && strncmp(msg, "STUB:", 5) == 0) {
             fprintf(stderr, "harness: stub ran: %s\n", msg);
@@ -134,8 +141,8 @@ static void run_ticks(uint32_t n)
         uint32_t before = ticks();
         run_frame();
         if (ticks() == before) {
-            if (++guard > 1200) {
-                fprintf(stderr, "harness: HANG - no logic tick for 20 s "
+            if (++guard > (ticks() ? 1200u : 3600u)) {
+                fprintf(stderr, "harness: HANG - no logic tick for 20 s (60 s at boot) "
                         "(tick %u)\n", (unsigned)ticks());
                 failed = 1;
                 return;
@@ -144,6 +151,102 @@ static void run_ticks(uint32_t n)
             guard = 0;
         }
         if (failed) return;
+    }
+}
+
+/* ---- sampling profiler: "profile N" steps N instructions, sampling the
+ * PC every 7th, and prints the hottest functions (needs --nm FILE with
+ * the output of `arm-none-eabi-nm -n ROM.elf`). */
+typedef struct Sym { uint32_t addr; char name[64]; uint32_t hits; } Sym;
+static Sym *syms;
+static int nsyms;
+
+static void load_nm(const char *path)
+{
+    FILE *f = fopen(path, "r");
+    char line[256];
+    if (!f) { fprintf(stderr, "harness: cannot open %s\n", path); return; }
+    while (fgets(line, sizeof(line), f)) {
+        unsigned long a;
+        char t, name[128];
+        if (sscanf(line, "%lx %c %127s", &a, &t, name) != 3) continue;
+        if (t != 'T' && t != 't' && t != 'W' && t != 'w') continue;
+        syms = realloc(syms, sizeof(Sym) * (size_t)(nsyms + 1));
+        syms[nsyms].addr = (uint32_t)a;
+        name[sizeof(syms[nsyms].name) - 1] = 0;
+        memcpy(syms[nsyms].name, name, sizeof(syms[nsyms].name));
+        syms[nsyms].hits = 0;
+        nsyms++;
+    }
+    fclose(f);
+}
+
+static int sym_cmp_hits(const void *a, const void *b)
+{
+    const Sym *x = a, *y = b;
+    return x->hits < y->hits ? 1 : x->hits > y->hits ? -1 : 0;
+}
+
+static uint32_t *pc_hist;          /* per-PC samples inside `focus` */
+static uint32_t focus_lo, focus_hi;
+
+static void profile(uint32_t steps, const char *focus)
+{
+    struct ARMCore *cpu = core->cpu;
+    uint32_t i, total = 0, unknown = 0;
+    int k;
+    focus_lo = focus_hi = 0;
+    if (focus) {
+        for (k = 0; k < nsyms; k++)
+            if (!strcmp(syms[k].name, focus)) {
+                focus_lo = syms[k].addr;
+                focus_hi = k + 1 < nsyms ? syms[k + 1].addr : focus_lo + 0x1000;
+            }
+        free(pc_hist);
+        pc_hist = calloc((focus_hi - focus_lo) / 2 + 1, sizeof(uint32_t));
+    }
+    for (k = 0; k < nsyms; k++) syms[k].hits = 0;
+    core->setKeys(core, keys);
+    for (i = 0; i < steps; i++) {
+        core->step(core);
+        if (i % 7 == 0) {
+            uint32_t pc = (uint32_t)cpu->gprs[15];
+            int lo = 0, hi = nsyms - 1, best = -1;
+            if (pc_hist && pc >= focus_lo + 8 && pc < focus_hi + 8)
+                pc_hist[(pc - 8 - focus_lo) / 2]++;
+            while (lo <= hi) {
+                int mid = (lo + hi) / 2;
+                if (syms[mid].addr <= pc) { best = mid; lo = mid + 1; }
+                else hi = mid - 1;
+            }
+            if (best >= 0 && pc - syms[best].addr < 0x10000) syms[best].hits++;
+            else unknown++;
+            total++;
+        }
+    }
+    {
+        Sym *copy = malloc(sizeof(Sym) * (size_t)(nsyms ? nsyms : 1));
+        memcpy(copy, syms, sizeof(Sym) * (size_t)nsyms);
+        qsort(copy, (size_t)nsyms, sizeof(Sym), sym_cmp_hits);
+        printf("harness: profile of %u instructions (%u samples, %u unknown)\n",
+               steps, total, unknown);
+        for (k = 0; k < nsyms && k < 25 && copy[k].hits; k++)
+            printf("harness:   %5.1f%%  %s\n", 100.0 * copy[k].hits / (total ? total : 1),
+                   copy[k].name);
+        free(copy);
+    }
+    if (pc_hist && focus_hi > focus_lo) {
+        /* hottest instructions of the focus function (ARM: PC - 8) */
+        uint32_t n = (focus_hi - focus_lo) / 2, j, best;
+        int r;
+        printf("harness: hottest addresses in %s:\n", focus);
+        for (r = 0; r < 40; r++) {
+            best = 0;
+            for (j = 0; j < n; j++) if (pc_hist[j] > pc_hist[best]) best = j;
+            if (!pc_hist[best]) break;
+            printf("harness:   0x%08x %u\n", focus_lo + best * 2, pc_hist[best]);
+            pc_hist[best] = 0;
+        }
     }
 }
 
@@ -250,6 +353,9 @@ static int run_script(const char *path)
             int i;
             if (argc == 1) keys = 0;
             for (i = 1; i < argc; i++) keys &= ~button_bits(argv[i]);
+        } else if (!strcmp(argv[0], "profile") && argc >= 2) {
+            if (!nsyms) fprintf(stderr, "harness: profile needs --nm FILE\n");
+            else profile((uint32_t)atoi(argv[1]), argc >= 3 ? argv[2] : NULL);
         } else if (!strcmp(argv[0], "shot") && argc >= 2) {
             shot(argv[1]);
         } else if (!strcmp(argv[0], "log")) {
@@ -349,6 +455,7 @@ int main(int argc, char **argv)
         else if (!strcmp(argv[i], "--scale") && i + 1 < argc) scale = atoi(argv[++i]);
         else if (!strcmp(argv[i], "--fail-on-stub")) fail_on_stub = 1;
         else if (!strcmp(argv[i], "--quiet")) quiet = 1;
+        else if (!strcmp(argv[i], "--nm") && i + 1 < argc) load_nm(argv[++i]);
         else if (argv[i][0] != '-' && !rom) rom = argv[i];
         else { fprintf(stderr, "harness: bad argument %s\n", argv[i]); return 2; }
     }

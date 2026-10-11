@@ -1,0 +1,268 @@
+/* runner_main.c - the headless runner: boots the core, plays a scripted
+ * input file and writes PNG screenshots (owner: foundation).
+ *
+ *   runner [--script FILE] [--shots DIR] [--w 240 --h 160] [--frames N]
+ *          [--saves DIR] [--seed N] [--zoom N] [--gba-input]
+ *          [--assert-no-stubs] [--quiet] [--verbose]
+ *
+ * Script lines (one command per line, '#' starts a comment):
+ *   wait N              run N frames
+ *   press BTN [BTN..]   hold for 1 frame, then 1 frame released
+ *   hold BTN N          hold BTN for N frames, then release it
+ *   down BTN / up BTN   press and keep holding / release one button
+ *   release             release everything
+ *   shot NAME           write SHOTS/NAME.png of the last frame
+ *   type "text"         type into the active text entry (1 char/frame;
+ *                       \n = OK, \b = delete)
+ *   expect-scene NAME   fail unless the top scene is NAME
+ *   scene NAME [ARG]    scene_set() to NAME (e.g. UI_GALLERY)
+ *   push NAME [ARG]     scene_push()
+ *   save SLOT / load SLOT / expect-save SLOT
+ *   log TEXT            print TEXT
+ *   no-stubs            fail now if any stub has run
+ * Buttons: UP DOWN LEFT RIGHT A B L R START SELECT X Y L2 R2.
+ * Exit status: 0 ok, 1 script failure, 2 stubs ran with --assert-no-stubs.
+ */
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
+#include <errno.h>
+#include <sys/stat.h>
+#include "native.h"
+
+static uint32_t held;
+static int gba_input;
+static const char *shots_dir = ".";
+static int zoom = 1;
+static int failures;
+static const char *script_name = "(no script)";
+static int line_no;
+
+static void step(int n)
+{
+    while (n-- > 0) {
+        plat_begin_frame();
+        doomo_frame(held | (gba_input ? DOOMO_INPUT_SYNTH_XY : 0));
+        plat_end_frame();
+    }
+}
+
+static uint32_t button(const char *s)
+{
+    static const struct { const char *n; uint32_t b; } names[] = {
+        { "UP", BTN_UP }, { "DOWN", BTN_DOWN }, { "LEFT", BTN_LEFT },
+        { "RIGHT", BTN_RIGHT }, { "A", BTN_A }, { "B", BTN_B }, { "L", BTN_L },
+        { "R", BTN_R }, { "START", BTN_START }, { "SELECT", BTN_SELECT },
+        { "X", BTN_X }, { "Y", BTN_Y }, { "L2", BTN_L2 }, { "R2", BTN_R2 }
+    };
+    size_t i;
+    for (i = 0; i < sizeof(names) / sizeof(names[0]); i++)
+        if (strcmp(s, names[i].n) == 0) return names[i].b;
+    return 0;
+}
+
+static void fail(const char *msg, const char *arg)
+{
+    fprintf(stderr, "runner: %s:%d: %s %s\n", script_name, line_no, msg, arg ? arg : "");
+    failures++;
+}
+
+static void mkdirs(const char *dir)
+{
+    char tmp[512];
+    size_t i;
+    snprintf(tmp, sizeof(tmp), "%s", dir);
+    for (i = 1; tmp[i]; i++) {
+        if (tmp[i] == '/') {
+            tmp[i] = 0;
+            mkdir(tmp, 0777);
+            tmp[i] = '/';
+        }
+    }
+    mkdir(tmp, 0777);
+}
+
+static void shot(const char *name)
+{
+    char path[700];
+    snprintf(path, sizeof(path), "%s/%s.png", shots_dir, name);
+    if (!nat_png_write(path, nat_fb, nat_w, nat_h, zoom)) fail("could not write", path);
+    else printf("shot: %s\n", path);
+}
+
+static int stub_check(const char *when)
+{
+    int i, n = nat_stub_count();
+    if (!n) return 0;
+    fprintf(stderr, "runner: %d stub(s) ran %s:\n", n, when);
+    for (i = 0; i < n; i++) fprintf(stderr, "  STUB: %s\n", nat_stub_name(i));
+    return n;
+}
+
+/* split a line into words; "quoted strings" keep spaces and escapes */
+static int split(char *line, char **argv, int max)
+{
+    int n = 0;
+    char *p = line;
+    while (*p && n < max) {
+        while (*p && isspace((unsigned char)*p)) p++;
+        if (!*p || *p == '#') break;
+        if (*p == '"') {
+            char *w = ++p, *o = p;
+            argv[n++] = w;
+            while (*p && *p != '"') {
+                if (*p == '\\' && p[1]) {
+                    p++;
+                    *o++ = *p == 'n' ? '\n' : *p == 'b' ? '\b' : *p == 't' ? '\t' : *p;
+                    p++;
+                } else {
+                    *o++ = *p++;
+                }
+            }
+            if (*p == '"') p++;
+            *o = 0;
+            continue;
+        }
+        argv[n++] = p;
+        while (*p && !isspace((unsigned char)*p)) p++;
+        if (*p) *p++ = 0;
+    }
+    return n;
+}
+
+static void run_line(char *line)
+{
+    char *argv[16];
+    int argc = split(line, argv, 16), i;
+    const char *cmd;
+    if (argc == 0) return;
+    cmd = argv[0];
+    if (strcmp(cmd, "wait") == 0) {
+        step(argc > 1 ? atoi(argv[1]) : 1);
+    } else if (strcmp(cmd, "press") == 0) {
+        uint32_t b = 0;
+        for (i = 1; i < argc; i++) {
+            uint32_t one = button(argv[i]);
+            if (!one) fail("unknown button", argv[i]);
+            b |= one;
+        }
+        held |= b;
+        step(1);
+        held &= ~b;
+        step(1);
+    } else if (strcmp(cmd, "hold") == 0) {
+        uint32_t b = argc > 1 ? button(argv[1]) : 0;
+        if (!b) { fail("unknown button", argc > 1 ? argv[1] : ""); return; }
+        held |= b;
+        step(argc > 2 ? atoi(argv[2]) : 1);
+        held &= ~b;
+    } else if (strcmp(cmd, "down") == 0) {
+        uint32_t b = argc > 1 ? button(argv[1]) : 0;
+        if (!b) fail("unknown button", argc > 1 ? argv[1] : "");
+        held |= b;
+    } else if (strcmp(cmd, "up") == 0) {
+        held &= ~(argc > 1 ? button(argv[1]) : 0u);
+    } else if (strcmp(cmd, "release") == 0) {
+        if (argc > 1) held &= ~button(argv[1]); else held = 0;
+    } else if (strcmp(cmd, "shot") == 0) {
+        shot(argc > 1 ? argv[1] : "shot");
+    } else if (strcmp(cmd, "type") == 0) {
+        const char *s = argc > 1 ? argv[1] : "";
+        for (; *s; s++) {
+            if (!ui_text_entry_feed((unsigned char)*s)) { fail("no text entry open for", argv[1]); break; }
+            step(1);
+        }
+    } else if (strcmp(cmd, "expect-scene") == 0) {
+        const DoomoScene *top = scene_top();
+        const char *want = argc > 1 ? argv[1] : "";
+        if (strncmp(want, "SCENE_", 6) == 0) want += 6;
+        if (!top || strcmp(top->name, want) != 0) {
+            char msg[128];
+            snprintf(msg, sizeof(msg), "expected scene %s but top is", want);
+            fail(msg, top ? top->name : "(none)");
+        }
+    } else if (strcmp(cmd, "scene") == 0 || strcmp(cmd, "push") == 0) {
+        const DoomoScene *s = argc > 1 ? scene_by_name(argv[1]) : NULL;
+        if (!s) { fail("unknown scene", argc > 1 ? argv[1] : ""); return; }
+        if (cmd[0] == 's') scene_set(s, argc > 2 ? atoi(argv[2]) : 0);
+        else scene_push(s, argc > 2 ? atoi(argv[2]) : 0);
+    } else if (strcmp(cmd, "save") == 0) {
+        if (!save_game(argc > 1 ? atoi(argv[1]) : 1)) fail("save failed:", save_last_error());
+    } else if (strcmp(cmd, "load") == 0) {
+        if (!load_game(argc > 1 ? atoi(argv[1]) : 1)) fail("load failed:", save_last_error());
+    } else if (strcmp(cmd, "expect-save") == 0) {
+        if (!save_exists(argc > 1 ? atoi(argv[1]) : 1)) fail("no valid save in slot", argc > 1 ? argv[1] : "1");
+    } else if (strcmp(cmd, "log") == 0) {
+        printf("log:");
+        for (i = 1; i < argc; i++) printf(" %s", argv[i]);
+        printf("\n");
+    } else if (strcmp(cmd, "no-stubs") == 0) {
+        if (stub_check("so far")) failures++;
+    } else {
+        fail("unknown command", cmd);
+    }
+}
+
+static void usage(void)
+{
+    fprintf(stderr,
+            "usage: runner [--script FILE] [--shots DIR] [--w N --h N] [--frames N]\n"
+            "              [--saves DIR] [--seed N] [--zoom N] [--gba-input]\n"
+            "              [--assert-no-stubs] [--quiet] [--verbose]\n");
+}
+
+int main(int argc, char **argv)
+{
+    NatOptions o;
+    const char *script = NULL;
+    int frames = -1, assert_no_stubs = 0, i;
+    memset(&o, 0, sizeof(o));
+    o.w = 240; o.h = 160; o.seed = 0x5EED1234u; o.save_dir = ".";
+    for (i = 1; i < argc; i++) {
+        const char *a = argv[i];
+        const char *val = i + 1 < argc ? argv[i + 1] : NULL;
+        if (strcmp(a, "--script") == 0 && val) { script = val; i++; }
+        else if (strcmp(a, "--shots") == 0 && val) { shots_dir = val; i++; }
+        else if (strcmp(a, "--w") == 0 && val) { o.w = atoi(val); i++; }
+        else if (strcmp(a, "--h") == 0 && val) { o.h = atoi(val); i++; }
+        else if (strcmp(a, "--frames") == 0 && val) { frames = atoi(val); i++; }
+        else if (strcmp(a, "--saves") == 0 && val) { o.save_dir = val; i++; }
+        else if (strcmp(a, "--seed") == 0 && val) { o.seed = (uint32_t)strtoul(val, NULL, 0); i++; }
+        else if (strcmp(a, "--zoom") == 0 && val) { zoom = atoi(val); i++; }
+        else if (strcmp(a, "--gba-input") == 0) gba_input = 1;
+        else if (strcmp(a, "--assert-no-stubs") == 0) assert_no_stubs = 1;
+        else if (strcmp(a, "--quiet") == 0) o.quiet = 1;
+        else if (strcmp(a, "--verbose") == 0) o.verbose = 1;
+        else if (strcmp(a, "--help") == 0 || strcmp(a, "-h") == 0) { usage(); return 0; }
+        else { fprintf(stderr, "runner: unknown option %s\n", a); usage(); return 1; }
+    }
+    if (o.w > NAT_MAX_W || o.h > NAT_MAX_H) {
+        fprintf(stderr, "runner: screen too big (max %dx%d)\n", NAT_MAX_W, NAT_MAX_H);
+        return 1;
+    }
+    mkdirs(shots_dir);
+    mkdirs(o.save_dir);
+    nat_init(&o);
+    doomo_init();
+    if (script) {
+        FILE *f = fopen(script, "r");
+        char line[1024];
+        if (!f) { fprintf(stderr, "runner: cannot open %s: %s\n", script, strerror(errno)); return 1; }
+        script_name = script;
+        while (fgets(line, sizeof(line), f)) {
+            line_no++;
+            line[strcspn(line, "\r\n")] = 0;
+            run_line(line);
+        }
+        fclose(f);
+    }
+    if (frames > 0) step(frames);
+    else if (!script) step(300);
+    if (assert_no_stubs && stub_check("during the run")) return 2;
+    if (failures) {
+        fprintf(stderr, "runner: %d failure(s)\n", failures);
+        return 1;
+    }
+    return 0;
+}

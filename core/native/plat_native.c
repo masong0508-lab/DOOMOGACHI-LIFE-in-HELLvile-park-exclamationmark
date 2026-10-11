@@ -1,0 +1,233 @@
+/* plat_native.c - the headless native platform: an 8bpp software
+ * framebuffer of any size up to 640x480, 2D drawing, file-backed saves,
+ * counted audio and logging (owner: foundation). The 3D views live in
+ * raycast.c and overworld.c. */
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include "native.h"
+
+uint8_t nat_fb[NAT_MAX_W * NAT_MAX_H];
+int nat_w = 240, nat_h = 160;
+uint32_t nat_tone_calls, nat_sample_calls;
+int nat_last_sample;
+
+static uint32_t ticks;
+static char save_dir[512] = ".";
+static uint32_t entropy = 0x5EED1234u;
+static int quiet, verbose;
+
+#define MAX_STUBS 128
+static char stub_names[MAX_STUBS][64];
+static int stub_n;
+
+void nat_init(const NatOptions *o)
+{
+    nat_w = DOOMO_CLAMP(o->w, 64, NAT_MAX_W);
+    nat_h = DOOMO_CLAMP(o->h, 64, NAT_MAX_H);
+    if (o->save_dir) {
+        strncpy(save_dir, o->save_dir, sizeof(save_dir) - 1);
+        save_dir[sizeof(save_dir) - 1] = 0;
+    }
+    entropy = o->seed;
+    quiet = o->quiet;
+    verbose = o->verbose;
+    ticks = 0;
+    memset(nat_fb, 0, sizeof(nat_fb));
+}
+
+int nat_stub_count(void) { return stub_n; }
+const char *nat_stub_name(int i) { return (i >= 0 && i < stub_n) ? stub_names[i] : ""; }
+
+/* ---- display ------------------------------------------------------------ */
+int plat_screen_w(void) { return nat_w; }
+int plat_screen_h(void) { return nat_h; }
+void plat_begin_frame(void) { }
+void plat_end_frame(void) { ticks++; }
+
+void plat_clear(uint8_t color)
+{
+    memset(nat_fb, color, (size_t)(nat_w * nat_h));
+}
+
+static int clip(int *x, int *y, int *w, int *h)
+{
+    if (*x < 0) { *w += *x; *x = 0; }
+    if (*y < 0) { *h += *y; *y = 0; }
+    if (*x + *w > nat_w) *w = nat_w - *x;
+    if (*y + *h > nat_h) *h = nat_h - *y;
+    return *w > 0 && *h > 0;
+}
+
+void plat_rect(int x, int y, int w, int h, uint8_t color)
+{
+    int j;
+    if (!clip(&x, &y, &w, &h)) return;
+    for (j = 0; j < h; j++) memset(&nat_fb[(y + j) * nat_w + x], color, (size_t)w);
+}
+
+void plat_shade_rect(int x, int y, int w, int h, int level)
+{
+    int i, j;
+    const uint8_t *map;
+    level = DOOMO_CLAMP(level, 0, DOOMO_LIGHT_LEVELS - 1);
+    map = doomo_colormap[level];
+    if (!clip(&x, &y, &w, &h)) return;
+    for (j = 0; j < h; j++) {
+        uint8_t *p = &nat_fb[(y + j) * nat_w + x];
+        for (i = 0; i < w; i++) p[i] = map[p[i]];
+    }
+}
+
+void plat_line(int x0, int y0, int x1, int y1, uint8_t color)
+{
+    int dx = x1 > x0 ? x1 - x0 : x0 - x1, sx = x0 < x1 ? 1 : -1;
+    int dy = y1 > y0 ? y0 - y1 : y1 - y0, sy = y0 < y1 ? 1 : -1;
+    int err = dx + dy, n = 0;
+    for (;;) {
+        nat_px(x0, y0, color);
+        if ((x0 == x1 && y0 == y1) || ++n > 4096) break;
+        {
+            int e2 = 2 * err;
+            if (e2 >= dy) { err += dy; x0 += sx; }
+            if (e2 <= dx) { err += dx; y0 += sy; }
+        }
+    }
+}
+
+void plat_text(int x, int y, const char *s, uint8_t color)
+{
+    int cx = x;
+    if (!s) return;
+    for (; *s; s++) {
+        unsigned ch = (unsigned char)*s;
+        int col, row;
+        if (ch == '\n') { cx = x; y += FONT_LINE; continue; }
+        if (ch < FONT_FIRST || ch > FONT_LAST) ch = '?';
+        if (cx > -FONT_ADVANCE && cx < nat_w && y > -8 && y < nat_h) {
+            for (col = 0; col < 5; col++) {
+                uint8_t bits = doomo_font[ch - FONT_FIRST][col];
+                for (row = 0; row < 8; row++)
+                    if (bits & (1 << row)) nat_px(cx + col, y + row, color);
+            }
+        }
+        cx += FONT_ADVANCE;
+    }
+}
+
+void plat_image(int x, int y, const DoomoImage *img, int scale, int flags,
+                uint8_t color)
+{
+    int ix, iy, w, h;
+    if (!img || !img->pix || !img->w || !img->h) return;
+    scale = DOOMO_CLAMP(scale, 1, 4);
+    w = img->w; h = img->h;
+    if (flags & IMG_SHADOW) {
+        /* soft 1 px drop shadow down-right of every opaque pixel */
+        for (iy = 0; iy < h; iy++)
+            for (ix = 0; ix < w; ix++) {
+                int sx = (flags & IMG_FLIPX) ? w - 1 - ix : ix;
+                if (!img->pix[iy * w + sx]) continue;
+                {
+                    int px = x + ix * scale + scale, py = y + iy * scale + scale, a, b;
+                    for (b = 0; b < scale; b++)
+                        for (a = 0; a < scale; a++) {
+                            int qx = px + a, qy = py + b;
+                            if ((unsigned)qx < (unsigned)nat_w && (unsigned)qy < (unsigned)nat_h)
+                                nat_fb[qy * nat_w + qx] = doomo_colormap[5][nat_fb[qy * nat_w + qx]];
+                        }
+                }
+            }
+    }
+    for (iy = 0; iy < h; iy++) {
+        for (ix = 0; ix < w; ix++) {
+            int sx = (flags & IMG_FLIPX) ? w - 1 - ix : ix;
+            uint8_t c = img->pix[iy * w + sx];
+            if (!c) continue;
+            if (flags & IMG_SILHOUETTE) c = color;
+            if (scale == 1) nat_px(x + ix, y + iy, c);
+            else plat_rect(x + ix * scale, y + iy * scale, scale, scale, c);
+        }
+    }
+}
+
+/* ---- audio: counted, optionally logged ----------------------------------- */
+void plat_tone(int channel, uint16_t freq_hz, uint8_t vol, uint8_t wave)
+{
+    nat_tone_calls++;
+    if (verbose) fprintf(stderr, "[tone] ch%d %uHz vol%u wave%u\n", channel, freq_hz, vol, wave);
+}
+
+void plat_sample(int sfx_id, uint8_t vol)
+{
+    nat_sample_calls++;
+    nat_last_sample = sfx_id;
+    if (verbose) fprintf(stderr, "[sfx] %d vol%u\n", sfx_id, vol);
+}
+
+/* ---- saves: one file per slot ---------------------------------------------- */
+static void slot_path(int slot, char *buf, size_t cap)
+{
+    snprintf(buf, cap, "%s/slot%d.sav", save_dir, slot);
+}
+
+int plat_save_write(int slot, const void *data, uint32_t size)
+{
+    char path[600], tmp[620];
+    FILE *f;
+    if (slot < 0 || slot > 1) return 0;
+    slot_path(slot, path, sizeof(path));
+    snprintf(tmp, sizeof(tmp), "%s.tmp", path);
+    f = fopen(tmp, "wb");
+    if (!f) return 0;
+    if (fwrite(data, 1, size, f) != size) { fclose(f); remove(tmp); return 0; }
+    if (fclose(f) != 0) { remove(tmp); return 0; }
+    if (rename(tmp, path) != 0) { remove(tmp); return 0; }
+    return 1;
+}
+
+int plat_save_read(int slot, void *data, uint32_t cap, uint32_t *size)
+{
+    char path[600];
+    FILE *f;
+    size_t n;
+    if (size) *size = 0;
+    if (slot < 0 || slot > 1) return 0;
+    slot_path(slot, path, sizeof(path));
+    f = fopen(path, "rb");
+    if (!f) return 0;
+    n = fread(data, 1, cap, f);
+    fclose(f);
+    if (size) *size = (uint32_t)n;
+    return n > 0;
+}
+
+int plat_save_erase(int slot)
+{
+    char path[600];
+    if (slot < 0 || slot > 1) return 0;
+    slot_path(slot, path, sizeof(path));
+    remove(path);
+    return 1;
+}
+
+/* ---- misc ----------------------------------------------------------------- */
+uint32_t plat_entropy(void) { return entropy; }
+uint32_t plat_ticks(void) { return ticks; }
+const char *plat_name(void) { return "NATIVE"; }
+
+void plat_log(const char *msg)
+{
+    if (!msg) return;
+    if (strncmp(msg, "STUB:", 5) == 0) {
+        int i;
+        for (i = 0; i < stub_n; i++)
+            if (strcmp(stub_names[i], msg + 6) == 0) break;
+        if (i == stub_n && stub_n < MAX_STUBS) {
+            strncpy(stub_names[stub_n], msg + (msg[5] == ' ' ? 6 : 5), 63);
+            stub_names[stub_n][63] = 0;
+            stub_n++;
+        }
+    }
+    if (!quiet) fprintf(stderr, "[%5u] %s\n", ticks, msg);
+}

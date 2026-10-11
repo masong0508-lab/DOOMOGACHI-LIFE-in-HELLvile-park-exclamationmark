@@ -11,9 +11,9 @@ static uint8_t s_padbuf[2][34];
 
 void pad_init(void)
 {
+    /* StartPAD() is called by memcard_init() after InitCARD() (the BIOS
+     * wants InitPAD -> InitCARD -> StartPAD -> StartCARD) */
     InitPAD(s_padbuf[0], 34, s_padbuf[1], 34);
-    StartPAD();
-    ChangeClearPAD(0);   /* leave the vblank IRQ to psxgpu */
 }
 
 static int s_lx = 128, s_ly = 128, s_rx = 128, s_ry = 128, s_analog;

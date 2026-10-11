@@ -60,12 +60,19 @@ void dbg(const char *fmt, ...)
 
 static void plat_init_hw(void)
 {
+    pad_init();          /* BIOS pad + card drivers before the SDK IRQ hook */
+    memcard_early();
     gfx_init();
-    InitGeom();
-    pad_init();
-    vram_init();
-    audio_hw_init();
+    dbg("ps1: gfx ok\n");
     memcard_init();
+    dbg("ps1: card ok\n");
+    InitGeom();
+    timer_init();
+    vram_init();
+    dbg("ps1: vram ok\n");
+    audio_hw_init();
+    dbg("ps1: spu ok\n");
+
 }
 
 int main(void)

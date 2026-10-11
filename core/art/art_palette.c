@@ -85,6 +85,64 @@ static uint8_t nearest_dir(int r, int g, int b, int ref, int darker)
     return (uint8_t)bi;
 }
 
+/* Each paint / skin / UI colour continues into a related environment ramp
+ * when its own 2-3 shades run out (shadows, outlines, light levels). */
+static int rel_ramp[256];
+static const int8_t paint_rel[PAL_PAINT_COUNT] = {
+    RAMP_STONE, RAMP_STONE, RAMP_STONE, RAMP_STONE,            /* white silver charcoal jet */
+    RAMP_BLOOD, RAMP_BLOOD, RAMP_PASTEL_PINK, RAMP_PASTEL_PINK,/* cherry blood rose bubblegum */
+    RAMP_PEACH, RAMP_LAVA, RAMP_WOOD, RAMP_CANDY,              /* peach tangerine rust honey */
+    RAMP_CANDY, RAMP_SICK, RAMP_GRASS, RAMP_MINT,              /* lemon chartreuse lime mint */
+    RAMP_GRASS, RAMP_MINT, RAMP_SKY, RAMP_SKY,                 /* forest teal cyan sky */
+    RAMP_SKY, RAMP_SKY, RAMP_VAPE, RAMP_VAPE,                  /* cobalt navy lavender grape */
+    RAMP_VAPE, RAMP_PASTEL_PINK, RAMP_WOOD, RAMP_WOOD,         /* vape magenta chocolate caramel */
+    RAMP_BONE, RAMP_SICK, RAMP_LAVA, RAMP_MINT};               /* bone slime hellfire ecto */
+static const int8_t skin_rel[PAL_SKIN_COUNT] = {
+    RAMP_PEACH, RAMP_PEACH, RAMP_PEACH, RAMP_PEACH, RAMP_WOOD, RAMP_WOOD, RAMP_WOOD, RAMP_WOOD};
+
+static void build_related(void)
+{
+    int i, k;
+    for (i = 0; i < 256; i++) rel_ramp[i] = -1;
+    for (k = 0; k < PAL_PAINT_COUNT; k++)
+        for (i = 0; i < 3; i++) rel_ramp[PAL_PAINT(k, i)] = paint_rel[k];
+    for (k = 0; k < PAL_SKIN_COUNT; k++)
+        for (i = 0; i < 3; i++) rel_ramp[PAL_SKIN(k, i)] = skin_rel[k];
+    rel_ramp[PAL_WHITE] = rel_ramp[PAL_GRAY_L] = rel_ramp[PAL_GRAY] = RAMP_STONE;
+    rel_ramp[PAL_GRAY_D] = rel_ramp[PAL_BLACK] = RAMP_STONE;
+    rel_ramp[PAL_UI_PINK] = rel_ramp[PAL_UI_PINK_D] = RAMP_PASTEL_PINK;
+    rel_ramp[PAL_UI_MINT] = rel_ramp[PAL_UI_MINT_D] = RAMP_MINT;
+    rel_ramp[PAL_UI_CREAM] = RAMP_PEACH;
+    rel_ramp[PAL_UI_RED] = rel_ramp[PAL_UI_RED_D] = RAMP_BLOOD;
+    rel_ramp[PAL_UI_GOLD] = RAMP_CANDY;
+    rel_ramp[PAL_UI_PURPLE] = RAMP_VAPE;
+    rel_ramp[PAL_UI_LCD] = RAMP_GRASS;
+}
+
+/* k is a shading candidate for i: same family or i's related ramp */
+static int kin(int i, int k)
+{
+    if (fam_id[k] == fam_id[i]) return 1;
+    if (rel_ramp[i] >= 0 && k >= PAL_RAMP(rel_ramp[i], 0) && k <= PAL_RAMP(rel_ramp[i], 7)) return 1;
+    return 0;
+}
+
+/* kin colour one clear step darker / lighter than i, closest to the
+ * requested rgb; -1 if none */
+static int kin_step(int i, int r, int g, int b, int darker)
+{
+    int k, best = -1;
+    uint32_t bestd = 0xFFFFFFFFu;
+    for (k = 1; k < 256; k++) {
+        uint32_t d;
+        if (k == i || !kin(i, k)) continue;
+        if (darker ? (L[k] >= L[i] - 8) : (L[k] <= L[i] + 8)) continue;
+        d = dist(r, g, b, k);
+        if (d < bestd) { bestd = d; best = k; }
+    }
+    return best;
+}
+
 static void set_family(int first, int n, int id)
 {
     int k;
@@ -138,7 +196,10 @@ static void build_steps(void)
         else if (i == PAL_UI_MINT) art_darker_tab[i] = PAL_UI_MINT_D;
         else if (i == PAL_UI_RED) art_darker_tab[i] = PAL_UI_RED_D;
         else if (L[i] < 14) art_darker_tab[i] = PAL_BLACK;
-        else art_darker_tab[i] = nearest_dir(dr, dg, db, i, 1);
+        else {
+            int k = kin_step(i, dr, dg, db, 1);
+            art_darker_tab[i] = (uint8_t)(k >= 0 ? k : nearest_dir(dr, dg, db, i, 1));
+        }
         /* lighter */
         if (contiguous(i) && fam_pos[i] < fam_len[i] - 1) art_lighter_tab[i] = (uint8_t)fam_member(i, fam_pos[i] + 1);
         else if (i == PAL_WHITE) art_lighter_tab[i] = PAL_WHITE;
@@ -150,7 +211,10 @@ static void build_steps(void)
         else if (i == PAL_UI_MINT_D) art_lighter_tab[i] = PAL_UI_MINT;
         else if (i == PAL_UI_RED_D) art_lighter_tab[i] = PAL_UI_RED;
         else if (L[i] > 244) art_lighter_tab[i] = PAL_WHITE;
-        else art_lighter_tab[i] = nearest_dir(lr, lg, lb, i, 0);
+        else {
+            int k = kin_step(i, lr, lg, lb, 0);
+            art_lighter_tab[i] = (uint8_t)(k >= 0 ? k : nearest_dir(lr, lg, lb, i, 0));
+        }
     }
 }
 
@@ -170,24 +234,55 @@ static uint8_t nearest_fam(int r, int g, int b, int ref, int slack_pct)
     return (uint8_t)gi;
 }
 
+/* Light level -> brightness factor (0..256): slightly faster than linear
+ * so corridors get moody, but level 8+ still reads clearly on a GBA. */
+static int light_factor(int lv)
+{
+    int quad = lv * lv * 256 / 225, lin = lv * 256 / 15;
+    return (quad + lin * 2) / 3;
+}
+
+/* Shade `i` down to brightness f/256. Pixel-art rule: a colour in shadow
+ * walks down its OWN ramp (rich, hue-shifted shadows instead of grey), so
+ * we first look for the family member whose brightness matches; only
+ * when the family has no shade that dark do we fall back to the nearest
+ * palette colour (with a small cool tint, so deep shadow leans blue). */
+static uint8_t shade_to(int i, int f)
+{
+    int r = R[i] * f / 256, g = G[i] * f / 256, b = B[i] * f / 256;
+    int tl = L[i] * f / 256, k, best = -1, famlo = 999;
+    uint32_t bestd = 0xFFFFFFFFu;
+    if (tl < 6) return PAL_BLACK;
+    for (k = 1; k < 256; k++)
+        if (kin(i, k) && L[k] < famlo) famlo = L[k];
+    if (tl >= famlo - 10) {
+        for (k = 1; k < 256; k++) {
+            int dl;
+            uint32_t d;
+            if (!kin(i, k)) continue;
+            if (L[k] > L[i]) continue;                 /* never brighter */
+            dl = L[k] - tl;
+            d = (uint32_t)(dl * dl) * 40u + dist(r, g, b, k) / 8u;
+            if (d < bestd) { bestd = d; best = k; }
+        }
+        if (best >= 0) return (uint8_t)best;
+    }
+    /* fallback: nearest overall, gently cooled, keeping the hue when the
+     * source is saturated */
+    b += (B[i] + 32) * (256 - f) / 1536;
+    r -= r * (256 - f) / 1536;
+    return nearest_dir(art_clamp(r, 0, 255), g, art_clamp(b, 0, 255), i, 1);
+}
+
 static void build_colormap(void)
 {
     int lv, i;
     for (lv = 0; lv < DOOMO_LIGHT_LEVELS; lv++) {
         art_colormap[lv][0] = 0;
         for (i = 1; i < 256; i++) {
-            int r, g, b, f;
             if (lv == DOOMO_LIGHT_LEVELS - 1) { art_colormap[lv][i] = (uint8_t)i; continue; }
             if (lv == 0) { art_colormap[lv][i] = PAL_BLACK; continue; }
-            /* slightly faster than linear falloff; shadows lean cool */
-            f = lv * lv * 256 / 225;                 /* quadratic       */
-            f = (f + lv * 256 / 15) / 2;             /* mix with linear */
-            r = R[i] * f / 256;
-            g = G[i] * f / 256;
-            b = B[i] * f / 256;
-            b += (B[i] + 24) * (256 - f) / 2048;     /* cool tint       */
-            r -= r * (256 - f) / 2048;
-            art_colormap[lv][i] = nearest_fam(r, g, b > 255 ? 255 : b, i, 35);
+            art_colormap[lv][i] = shade_to(i, light_factor(lv));
         }
     }
     /* monotonic: never brighter at a lower light level */
@@ -271,6 +366,7 @@ void art_palette_setup(void)
     set_list(grays, 5); set_list(pinks, 2); set_list(mints, 2); set_list(reds, 2);
     set_list(cream, 1); set_list(gold, 1); set_list(purple, 1); set_list(lcd, 1);
     fam_id[0] = -1;
+    build_related();
     for (k = 0; k < PAL_PAINT_COUNT; k++) set_family(PAL_PAINT(k, 0), 3, fam_count++);
     for (k = 0; k < PAL_SKIN_COUNT; k++) set_family(PAL_SKIN(k, 0), 3, fam_count++);
     for (k = 0; k < PAL_RAMP_COUNT; k++) set_family(PAL_RAMP(k, 0), 8, fam_count++);

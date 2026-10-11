@@ -35,6 +35,9 @@ extern void combat_start(int map_id) WEAKFN;
 extern void combat_build_view(DoomoView3D *v) WEAKFN;
 extern DoomoPlayerState doomo_player WEAKDATA;
 extern const int8_t *audio_sfx_pcm(int sfx, uint32_t *len, uint32_t *rate) WEAKFN;
+extern const uint16_t doomo_palette[256] WEAKDATA;
+extern int map_floor_z(const DoomoMap *m, int cx, int cy) WEAKFN;
+extern int map_ceil_z(const DoomoMap *m, int cx, int cy) WEAKFN;
 
 /* Hide the comparison from the optimiser so the address test is real. */
 #define PRESENT(sym) ({ const void *p_ = (const void *)&(sym); \
@@ -138,4 +141,23 @@ const int8_t *core_sfx_pcm(int sfx, uint32_t *len, uint32_t *rate)
     *len = 0;
     *rate = 0;
     return NULL;
+}
+
+const uint16_t *core_palette(void)
+{
+    return PRESENT(doomo_palette) ? doomo_palette : etest_palette();
+}
+
+int core_floor_z(const DoomoMap *m, int cx, int cy)
+{
+    if (PRESENT(map_floor_z))
+        return map_floor_z(m, cx, cy);
+    return map_cell(m, cx, cy)->floor_h * DOOMO_HEIGHT_STEP;
+}
+
+int core_ceil_z(const DoomoMap *m, int cx, int cy)
+{
+    if (PRESENT(map_ceil_z))
+        return map_ceil_z(m, cx, cy);
+    return map_cell(m, cx, cy)->ceil_h * DOOMO_HEIGHT_STEP;
 }

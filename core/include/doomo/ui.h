@@ -62,4 +62,100 @@ void ui_portrait(int x, int y, int resident_id, int scale, int expression);
 /* Tiny printf: %d %i %u %x %s %c %% with width/zero-pad (%3d, %02d). */
 int  doomo_snprintf(char *buf, int cap, const char *fmt, ...);
 
+/* ======================================================================
+ * foundation additions (additive; every 2D screen may use these)
+ * ==================================================================== */
+#include <stdarg.h>
+int  doomo_vsnprintf(char *buf, int cap, const char *fmt, va_list ap);
+
+/* ---- style colours ---------------------------------------------------- */
+/* Resolved colours of a window style (WIN_CUTE follows the player's
+ * OPT_WINDOW_SKIN choice). */
+typedef struct UiStyle {
+    uint8_t fill, fill_hi, fill_lo;   /* body: base, top band, bottom band  */
+    uint8_t outline;                  /* coloured outline (dark local hue)  */
+    uint8_t gloss;                    /* glossy highlight line              */
+    uint8_t text, text_dim;           /* body text / secondary text         */
+    uint8_t accent, accent_d;         /* cursor, selection pill             */
+    uint8_t title, title_bg;          /* name plates / headings             */
+} UiStyle;
+const UiStyle *ui_style(int style);
+uint8_t ui_style_text(int style);
+/* Window skins selectable for WIN_CUTE (OPT_WINDOW_SKIN values). */
+enum { WSKIN_STRAWBERRY, WSKIN_MINT_CHOC, WSKIN_VANILLA, WSKIN_LAVENDER,
+       WSKIN_SKY, WSKIN_PEACH, WSKIN_LEMON, WSKIN_BUBBLEGUM, WSKIN_HELLFIRE,
+       WSKIN_MIDNIGHT, WSKIN_TAMAGOTCHI, WSKIN_GOTH, WSKIN_COUNT };
+
+/* One shade lighter / darker inside a colour's own family (works without
+ * the art tables; paints, skins, ramps and UI colours). */
+uint8_t ui_lighter(uint8_t c);
+uint8_t ui_darker(uint8_t c);
+
+/* ---- animation helpers ------------------------------------------------- */
+/* Pop-in scale in 1/256 for `ticks` since appearing: anticipation dip,
+ * overshoot (~115%), settle at 256 after ~12 ticks. */
+int  ui_pop_scale(int ticks);
+/* Integer sine wave: amplitude * sin(t * 4096 / period). */
+int  ui_wave(int t, int period, int amplitude);
+/* Window that boings in: drawn scaled about its centre while ticks < 12.
+ * Returns 1 once fully open (draw the contents then). */
+int  ui_window_pop(int x, int y, int w, int h, int style, int ticks);
+
+/* ---- primitives (pure plat_rect spans, clipped) ------------------------- */
+void ui_fill_circle(int cx, int cy, int r, uint8_t c);
+void ui_fill_ellipse(int cx, int cy, int rx, int ry, uint8_t c);
+void ui_round_rect(int x, int y, int w, int h, int r, uint8_t c);
+void ui_frame(int x, int y, int w, int h, uint8_t c);   /* 1 px outline */
+/* Shaded, outlined heart centred at cx,cy; size = half-width in px (>=2). */
+void ui_heart(int cx, int cy, int size, uint8_t fill);
+/* Same with squash & stretch: sx256/sy256 scale x/y (256 = 1.0). */
+void ui_heart_squash(int cx, int cy, int size, int sx256, int sy256, uint8_t fill);
+/* Unshaded heart of any size (iris wipes, silhouettes). */
+void ui_heart_flat(int cx, int cy, int size, uint8_t c);
+/* Shaded 5-point star; r = outer radius. */
+void ui_star(int cx, int cy, int r, uint8_t fill);
+/* Twinkling 4-point sparkle; phase 0..15 drives its size. */
+void ui_sparkle(int cx, int cy, int phase, uint8_t c);
+/* Animated pastel backdrop behind menus: soft stripes + drifting hearts,
+ * stars and dots (style picks the palette: WIN_CUTE / MINT / HELL ...). */
+void ui_backdrop(int style, uint32_t t);
+
+/* ---- text extras ------------------------------------------------------- */
+void ui_text_shadow(int x, int y, const char *s, uint8_t color, uint8_t shadow);
+void ui_text_outline(int x, int y, const char *s, uint8_t color, uint8_t outline);
+/* Big text (integer scale 2..4) with outline + drop shadow, for titles. */
+void ui_text_big(int x, int y, const char *s, int scale, uint8_t color,
+                 uint8_t outline);
+int  ui_text_big_width(const char *s, int scale);
+/* Measure / draw only the first `chars` characters of a wrapped text
+ * (typewriter); returns lines. */
+int  ui_text_wrap_n(int x, int y, int w, const char *s, uint8_t color,
+                    int chars);
+/* "[A] Select  [B] Back" hint pill at the bottom edge of the screen. */
+void ui_hint(const char *s, int style);
+/* Title plate (pill with outline) centred at cx. */
+void ui_title(int cx, int y, const char *s, int style);
+/* Pill-shaped button; selected ones bounce and glow. */
+void ui_button(int x, int y, int w, const char *label, int selected, int style);
+/* Up/down scroll arrows (bouncing) at x, y_top / y_bottom. */
+void ui_scroll_arrows(int x, int y_top, int y_bottom, int up, int down);
+
+/* ---- list extras ------------------------------------------------------- */
+#define UI_LIST_ROW_H 12
+/* Optional per-item lock test used by ui_list_draw (locked rows are drawn
+ * greyed with a padlock); NULL = none. */
+extern int (*ui_list_locked_fn)(int index);
+
+/* ---- modal extras ------------------------------------------------------ */
+/* Type one character into the active text entry as if picked on the
+ * keyboard ('\b' = delete, '\n' = OK). Used by the native runner's
+ * `type` command and by platforms with a keyboard. 0 if none active. */
+int  ui_text_entry_feed(int c);
+int  ui_dialog_active(void);          /* SCENE_DIALOG is open            */
+/* Dialogue box style (default WIN_CUTE; HELL after the invasion). */
+void ui_dialog_style(int style);
+/* Pending toasts (for tests). */
+int  ui_toast_pending(void);
+void ui_toast_clear(void);
+
 #endif

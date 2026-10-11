@@ -1,0 +1,142 @@
+/* scene.c - the scene stack and the scene registry (owner: foundation).
+ *
+ * Changes take effect immediately (enter/leave run inside the call) and
+ * swallow the rest of the tick's input, so a press that opens a screen
+ * never also activates something on it. Overlay scenes (modals) draw the
+ * scenes below them first.
+ */
+#include "doomo/scene.h"
+#include "doomo/scenes.h"
+#include "doomo/input.h"
+#include "doomo/platform.h"
+
+typedef struct {
+    const DoomoScene *s;
+    uint32_t ticks;
+} SceneSlot;
+
+static SceneSlot stack[SCENE_STACK_MAX];
+static int depth;
+
+const DoomoScene *const doomo_all_scenes[] = {
+    &SCENE_BOOT, &SCENE_CONFIRM, &SCENE_TEXT_ENTRY, &SCENE_DIALOG,
+    &SCENE_UI_GALLERY,
+    &SCENE_TITLE, &SCENE_NEW_ISLAND, &SCENE_ISLAND, &SCENE_APARTMENTS,
+    &SCENE_ROSTER, &SCENE_RESIDENT, &SCENE_SHOP, &SCENE_GRAVEYARD,
+    &SCENE_NEWS, &SCENE_OPTIONS, &SCENE_SAVELOAD,
+    &SCENE_CREATOR,
+    &SCENE_EXORCISM, &SCENE_PET,
+    &SCENE_COMBAT, &SCENE_WORKSHOP, &SCENE_WELD_GAME, &SCENE_ARENA,
+    &SCENE_STORY, &SCENE_QUESTLOG, &SCENE_CUTSCENE, &SCENE_CREDITS,
+    NULL
+};
+
+static int name_eq(const char *a, const char *b)
+{
+    while (*a && *a == *b) { a++; b++; }
+    return *a == *b;
+}
+
+const DoomoScene *scene_by_name(const char *name)
+{
+    int i;
+    if (!name) return NULL;
+    if (name[0] == 'S' && name[1] == 'C' && name[2] == 'E' && name[3] == 'N' &&
+        name[4] == 'E' && name[5] == '_')
+        name += 6;
+    for (i = 0; doomo_all_scenes[i]; i++)
+        if (doomo_all_scenes[i]->name && name_eq(doomo_all_scenes[i]->name, name))
+            return doomo_all_scenes[i];
+    return NULL;
+}
+
+static void log_scene(const char *what, const DoomoScene *s)
+{
+    char buf[64];
+    int i = 0;
+    const char *p = what;
+    while (*p && i < 40) buf[i++] = *p++;
+    p = s && s->name ? s->name : "?";
+    while (*p && i < 63) buf[i++] = *p++;
+    buf[i] = 0;
+    plat_log(buf);
+}
+
+void scene_set(const DoomoScene *s, int arg)
+{
+    while (depth > 0) {
+        const DoomoScene *top = stack[--depth].s;
+        if (top && top->leave) top->leave();
+    }
+    if (!s) return;
+    stack[0].s = s;
+    stack[0].ticks = 0;
+    depth = 1;
+    log_scene("scene: set ", s);
+    input_eat();
+    if (s->enter) s->enter(arg);
+}
+
+void scene_push(const DoomoScene *s, int arg)
+{
+    if (!s) return;
+    if (depth >= SCENE_STACK_MAX) {
+        plat_log("scene: stack full, replacing top");
+        if (stack[depth - 1].s->leave) stack[depth - 1].s->leave();
+        depth--;
+    }
+    stack[depth].s = s;
+    stack[depth].ticks = 0;
+    depth++;
+    log_scene("scene: push ", s);
+    input_eat();
+    if (s->enter) s->enter(arg);
+}
+
+void scene_pop(void)
+{
+    const DoomoScene *s;
+    if (depth <= 0) return;
+    s = stack[depth - 1].s;
+    depth--;
+    log_scene("scene: pop ", s);
+    input_eat();
+    if (s->leave) s->leave();
+}
+
+const DoomoScene *scene_top(void)
+{
+    return depth > 0 ? stack[depth - 1].s : NULL;
+}
+
+int scene_depth(void) { return depth; }
+
+uint32_t scene_ticks(void)
+{
+    return depth > 0 ? stack[depth - 1].ticks : 0;
+}
+
+void scene_update(void)
+{
+    const DoomoScene *s;
+    if (depth <= 0) return;
+    s = stack[depth - 1].s;
+    stack[depth - 1].ticks++;
+    if (s->update) s->update();
+}
+
+/* While a lower scene of the stack is drawn, the stack is temporarily
+ * cut above it, so scene_top()/scene_ticks() describe the scene drawing. */
+void scene_draw(void)
+{
+    int first, i, real = depth;
+    if (depth <= 0) return;
+    first = depth - 1;
+    while (first > 0 && stack[first].s->overlay) first--;
+    for (i = first; i < real; i++) {
+        if (!stack[i].s->draw) continue;
+        depth = i + 1;
+        stack[i].s->draw();
+        depth = real;
+    }
+}

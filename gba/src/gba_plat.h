@@ -18,7 +18,19 @@ extern uint32_t gba_keys;                  /* raw KEYINPUT bits (1 = held)  */
  * skipped (the renderer could not keep 30 fps). All plat_* drawing calls
  * return immediately when set. */
 extern int gba_nodraw;
-void gba_irq_init(void);
+uint32_t gba_read_pad(void);             /* BTN_* mask incl. SYNTH_XY flag */
+void gba_pacing_reset(void);             /* forget frame debt (after loads) */
+void plat_init_hw(void);
+
+#define GBA_MAILBOX_MAGIC 0x42474D44u    /* "DMGB" */
+typedef struct GbaMailbox {
+    uint32_t magic;                      /* GBA_MAILBOX_MAGIC once booted  */
+    uint32_t ticks;                      /* doomo_frame() calls (30 Hz)    */
+    uint32_t drawn;                      /* frames actually presented      */
+    uint32_t fps10;                      /* engine test: fps x 10          */
+} GbaMailbox;
+extern volatile GbaMailbox gba_mailbox;
+void gba_irq_init(void) IWRAM_CALL;          /* irq.iwram.c */
 /* Cycle counter: timers 2+3 cascaded at 16.78 MHz. */
 static inline uint32_t gba_cycles(void) {
     uint16_t hi, lo, hi2;
@@ -48,7 +60,6 @@ void ow_init(void);
 
 /* ---- audio (audio.c, mixer in irq.iwram.c) ------------------------------- */
 void audio_hw_init(void);
-void audio_vblank(void);                 /* called from the VBlank IRQ */
 
 /* ---- save (save_flash.c) ------------------------------------------------- */
 void flash_init(void);

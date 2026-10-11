@@ -20,6 +20,10 @@ uint32_t gba_frames;
 uint32_t gba_keys;
 int gba_nodraw;
 
+/* Test-harness mailbox at 0x02000000 (gba.ld): the harness counts logic
+ * ticks with it, so scripts are independent of the render frame rate. */
+__attribute__((section(".mailbox"), used)) volatile GbaMailbox gba_mailbox;
+
 static uint32_t last_flip_vbl;
 static int      skipped_in_row;
 static uint32_t logic_base_vbl;     /* vblank count at logic tick 0 */
@@ -159,8 +163,11 @@ void plat_begin_frame(void)
 void plat_end_frame(void)
 {
     gba_frames++;
-    if (gba_nodraw) return;
-    video_flip();
+    gba_mailbox.ticks = gba_frames;
+    if (!gba_nodraw) {
+        video_flip();
+        gba_mailbox.drawn++;
+    }
 }
 
 void video_flip(void)
@@ -189,6 +196,9 @@ static void timers_init(void)
 
 void plat_init_hw(void)
 {
+    gba_mailbox.magic = GBA_MAILBOX_MAGIC;
+    gba_mailbox.ticks = 0;
+    gba_mailbox.drawn = 0;
     timers_init();
     video_init();
     gba_irq_init();
@@ -198,6 +208,13 @@ void plat_init_hw(void)
     ow_init();
     gba_logf("DOOMOGACHI GBA: boot ok, flash=%dKB (%s)", flash_detected(),
              flash_chip_name());
+}
+
+void gba_pacing_reset(void)
+{
+    logic_base_vbl = gba_vblanks - gba_frames * 2;
+    last_flip_vbl = gba_vblanks;
+    skipped_in_row = 0;
 }
 
 #ifdef ENGINE_TEST
@@ -211,8 +228,7 @@ int main(void)
     enginetest_main();
 #else
     doomo_init();
-    logic_base_vbl = gba_vblanks;
-    last_flip_vbl = gba_vblanks;
+    gba_pacing_reset();
     for (;;) {
         uint32_t b = read_pad();
         plat_begin_frame();

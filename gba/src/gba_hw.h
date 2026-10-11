@@ -164,6 +164,10 @@ typedef volatile int16_t  vs16;
 /* Hot code: ARM state, copied to IWRAM (32-bit, zero wait) at boot.
  * long_call because IWRAM is out of BL range from ROM. */
 #define IWRAM_CODE __attribute__((section(".iwram"), target("arm"), long_call, noinline))
+/* Prototype attribute for functions that live in IWRAM (or ROM) and are
+ * called from the other region: out of BL range, so call through a register. */
+#define IWRAM_CALL __attribute__((long_call))
+#define ROM_CALL   __attribute__((long_call))
 #define IWRAM_DATA __attribute__((section(".iwram_data")))
 #define IWRAM_BSS  __attribute__((section(".iwram_bss")))
 #define EWRAM_BSS  __attribute__((section(".ewram_bss")))

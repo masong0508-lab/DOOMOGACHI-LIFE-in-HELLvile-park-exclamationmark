@@ -34,6 +34,28 @@ enum {
 #define STR_ICON_B      "\x8C"
 #define STR_ICON_FIRE   "\x8F"
 #define STR_ICON_GHOST  "\x98"
+/* foundation additions: the rest of the icons */
+#define STR_ICON_ARROW_R "\x87"
+#define STR_ICON_ARROW_L "\x88"
+#define STR_ICON_ARROW_U "\x89"
+#define STR_ICON_ARROW_D "\x8A"
+#define STR_ICON_SMILE  "\x8D"
+#define STR_ICON_FROWN  "\x8E"
+#define STR_ICON_DROP   "\x90"
+#define STR_ICON_BOLT   "\x91"
+#define STR_ICON_FOOD   "\x92"
+#define STR_ICON_ZZZ    "\x93"
+#define STR_ICON_SPARK  "\x94"
+#define STR_ICON_BOMB   "\x95"
+#define STR_ICON_GUN    "\x96"
+#define STR_ICON_WRENCH "\x97"
+#define STR_ICON_EGG    "\x99"
+#define STR_ICON_HOUSE  "\x9A"
+#define STR_ICON_CLOUD  "\x9B"
+#define STR_ICON_CHECK  "\x9C"
+#define STR_ICON_X      "\x9D"
+#define STR_ICON_MALE   "\x9E"
+#define STR_ICON_FEMALE "\x9F"
 
 int font_text_width(const char *s);   /* widest line in pixels */
 
