@@ -288,10 +288,13 @@ static const char *colour_family(int c, char *buf, int cap)
 static void palette_room(int sw, int y, int h)
 {
     const UiStyle *st = ui_style(WIN_CREAM);
-    int cell = lib_big() ? 10 : 7, gw = cell * 16, gx = 10, gy = y + 6, i;
+    int cell = lib_big() ? 10 : 6, gw = cell * 16, gx = 10, gy = y + 6, i;
     int sel = G.pal_y * 16 + G.pal_x, ix = gx + gw + 10, iw = sw - ix - 6;
     uint8_t r, g, b;
     char buf[48];
+    if (gw + 10 > h) { cell = (h - 10) / 16; gw = cell * 16; }    /* very short screens */
+    ix = gx + gw + 10;
+    iw = sw - ix - 6;
     ui_window(gx - 5, gy - 5, gw + 10, gw + 10, WIN_CREAM);
     for (i = 0; i < 256; i++) {
         int cx = gx + (i & 15) * cell, cy = gy + (i >> 4) * cell;
@@ -306,7 +309,7 @@ static void palette_room(int sw, int y, int h)
         ui_frame(cx - 2 - b2, cy - 2 - b2, cell + 4 + 2 * b2, cell + 4 + 2 * b2, PAL_WHITE);
         ui_frame(cx - 1, cy - 1, cell + 2, cell + 2, PAL_BLACK);
     }
-    ui_window(ix, gy - 5, iw, h - 6, WIN_CREAM);
+    ui_window(ix, gy - 5, iw, gw + 10, WIN_CREAM);
     ix += 6;
     iw -= 12;
     ui_round_rect(ix, gy + 2, 28, 28, 3, PAL_BLACK);
@@ -319,15 +322,14 @@ static void palette_room(int sw, int y, int h)
     palette_rgb((uint8_t)sel, &r, &g, &b);
     {
         int ty = gy + 36;
-        ui_text_wrap(ix, ty, iw, colour_family(sel, buf, sizeof(buf)), st->text, 1);
-        ty += 2 * FONT_LINE;
+        ty += FONT_LINE * ui_text_wrap(ix, ty, iw, colour_family(sel, buf, sizeof(buf)), st->text, 1) + 2;
         doomo_snprintf(buf, sizeof(buf), "R%d G%d B%d", r, g, b);
         ui_text(ix, ty, buf, st->text_dim);
         ty += FONT_LINE;
         doomo_snprintf(buf, sizeof(buf), "Brightness %d", palette_luma((uint8_t)sel));
         ui_text(ix, ty, buf, st->text_dim);
         ty += FONT_LINE;
-        if (ty + FONT_LINE <= gy + h - 12) {
+        if (ty + FONT_LINE <= gy + gw) {
             doomo_snprintf(buf, sizeof(buf), "BGR555 %04x", doomo_palette[sel]);
             ui_text(ix, ty, buf, st->text_dim);
         }

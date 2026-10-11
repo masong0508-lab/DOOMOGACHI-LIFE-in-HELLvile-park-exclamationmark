@@ -183,7 +183,8 @@ static void stats_panel(int x, int y, int w, int h, int p, const UiStyle *st)
     uint32_t v = progress_get(p);
     ui_text_wrap(x, y, w, doomo_progress_names[p], st->accent, 1);
     doomo_snprintf(buf, sizeof(buf), "%u", (unsigned)v);
-    ui_text_big(x, y + 22, buf, 2, st->text, st->fill_lo);
+    ui_star(x + 6, y + 29, 6, PAL_UI_GOLD);
+    ui_text_big(x + 16, y + 22, buf, 2, st->accent, PAL_WHITE);
     /* the next unlock this counter is working towards (one registry pass
      * per selection, not per frame) */
     if (next_for1 != p + 1 || next_v != v) {
