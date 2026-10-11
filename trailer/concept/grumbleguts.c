@@ -1,0 +1,377 @@
+/* grumbleguts.c - concept sheets for GATEKEEPER GRUMBLEGUTS, drawn with the
+ * trailer toolkit in the game's real palette.
+ *   gcc -O2 -std=c11 -I.. -I../../core/include -I../build grumbleguts.c ../tk.c ../tk_chibi.c -lm
+ *   ./a.out OUTDIR   -> OUTDIR/gg_turnaround.png, gg_poses.png, gg_cards.png (4x)
+ * See docs/design/story/GRUMBLEGUTS_AND_DIRECTOR_NOTES.md for the brief:
+ * pot-bellied cartoon devil (Baloo posture, buff gym-demon muscle, bat wings,
+ * spiked tail) who is also a big-butt devil, in hell's leather-and-spikes
+ * dress code. Cartoon-modest: smooth peach cheeks, nothing else. */
+#include <stdio.h>
+#include <string.h>
+#include "tk.h"
+
+int  tk_write_png_rgb(const char *path, const uint8_t *rgb, int w, int h);
+void tk_fb_to_rgb(uint8_t *out);
+
+/* ---- palette picks ---------------------------------------------------- */
+#define SKIN_L  PAL_PAINT(PAINT_MAGENTA, 0)
+#define SKIN    PAL_PAINT(PAINT_MAGENTA, 1)
+#define SKIN_D  PAL_PAINT(PAINT_MAGENTA, 2)
+#define LINE    PAL_PAINT(PAINT_GRAPE, 2)      /* coloured outline, not black */
+#define BELLY_L PAL_PAINT(PAINT_PEACH, 0)
+#define BELLY   PAL_PAINT(PAINT_PEACH, 1)
+#define BELLY_D PAL_PAINT(PAINT_PEACH, 2)
+#define HORN    PAL_PAINT(PAINT_BONE, 0)
+#define HORN_D  PAL_PAINT(PAINT_BONE, 2)
+#define WING    PAL_PAINT(PAINT_JET, 1)
+#define WING_D  PAL_PAINT(PAINT_JET, 2)
+#define WING_L  PAL_PAINT(PAINT_CHARCOAL, 1)
+#define LEATHER PAL_PAINT(PAINT_JET, 1)
+#define LEATHER_D PAL_PAINT(PAINT_JET, 2)
+#define STUD    PAL_UI_GOLD
+#define CHAIN   PAL_PAINT(PAINT_SILVER, 1)
+#define EYE_W   PAL_PAINT(PAINT_LEMON, 0)
+#define PUPIL   PAL_BLACK
+#define FANG    PAL_WHITE
+#define MOUTH   PAL_PAINT(PAINT_BLOOD, 2)
+#define TONGUE  PAL_PAINT(PAINT_CHERRY, 1)
+
+enum { V_FRONT, V_SIDE, V_BACK, V_BACK_LOOK };
+enum { E_GRIN, E_WINK, E_SHOCK, E_SMUG, E_SUCK, E_YELP, E_LOVE };
+enum { P_STAND, P_SNACK, P_SUCK_IN, P_SPRING, P_WIGGLE, P_UNBUCKLE,
+       P_CROP, P_INFLATED, P_MIRROR };
+
+/* shaded blob: outline, dark, base, highlight */
+static void blob(int cx, int cy, int rx, int ry, uint8_t l, uint8_t b, uint8_t d) {
+    tk_ellipse(cx, cy, rx + 1, ry + 1, LINE);
+    tk_ellipse(cx, cy, rx, ry, d);
+    tk_ellipse(cx - rx / 8, cy - ry / 8, rx - rx / 6, ry - ry / 6, b);
+    tk_ellipse(cx - rx / 3, cy - ry / 3, rx / 3, ry / 4, l);
+}
+static void blob_outline_only(int cx, int cy, int rx, int ry, uint8_t b) {
+    tk_ellipse(cx, cy, rx + 1, ry + 1, LINE);
+    tk_ellipse(cx, cy, rx, ry, b);
+}
+
+static void horns(int cx, int cy, int s, int flip) {
+    /* two curved bone horns on the brow, like ref 1 */
+    for (int side = -1; side <= 1; side += 2) {
+        if (flip && side == 1) continue;
+        int x = cx + side * 9 * s / 2;
+        tk_ellipse(x, cy - 2 * s, 3 * s / 2 + 1, 4 * s + 1, LINE);
+        tk_ellipse(x, cy - 2 * s, 3 * s / 2, 4 * s, HORN_D);
+        tk_ellipse(x - side, cy - 3 * s, s, 3 * s, HORN);
+        tk_ellipse(x + side * s, cy - 6 * s, s, s, HORN);
+    }
+}
+
+static void wing(int x, int y, int s, int dir, int open) {
+    /* bat wing: three membrane triangles between finger bones */
+    int tip = open ? 34 * s / 2 : 10 * s / 2;
+    int x1 = x + dir * tip, y1 = y - 16 * s / 2;
+    int x2 = x + dir * (tip - 2 * s), y2 = y + 2 * s;
+    int x3 = x + dir * (tip / 2), y3 = y + 6 * s / 2;
+    tk_tri(x, y, x1, y1, x2, y2, LINE);
+    tk_tri(x, y, x2, y2, x3, y3, LINE);
+    tk_tri(x + dir, y, x1 - dir, y1 + 1, x2 - dir, y2 - 1, WING);
+    tk_tri(x + dir, y, x2 - dir, y2 - 1, x3 - dir, y3 - 1, WING_D);
+    tk_line(x, y, x1, y1, WING_L);
+    tk_line(x, y, x2, y2, WING_L);
+    tk_line(x, y, x3, y3, WING_L);
+    tk_circle(x1, y1, 1, HORN); /* claw on the thumb */
+}
+
+static void tail(int x, int y, int s, int dir) {
+    /* thick spiked tail curling out, spade tip */
+    for (int i = 0; i < 9; i++) {
+        int tx = x + dir * i * 3 * s / 2;
+        int ty = y + (i * i) / 3 - i * 2;
+        int r = s + 2 - i / 4;
+        tk_circle(tx, ty, r + 1, LINE);
+        tk_circle(tx, ty, r, i % 2 ? SKIN : SKIN_D);
+        if (i % 3 == 1) tk_tri(tx, ty - r, tx - 2, ty - r - 3 * s / 2, tx + 2, ty - r - 3 * s / 2, HORN);
+    }
+    int tx = x + dir * 9 * 3 * s / 2, ty = y + 27 - 18;
+    tk_tri(tx - dir * 2, ty - 4 * s / 2 - 1, tx + dir * 5 * s / 2 + dir, ty, tx - dir * 2, ty + 4 * s / 2 + 1, LINE);
+    tk_tri(tx - dir * 2, ty - 4 * s / 2, tx + dir * 5 * s / 2, ty, tx - dir * 2, ty + 4 * s / 2, SKIN_D);
+}
+
+static void studs(int x0, int y0, int x1, int y1, int n) {
+    for (int i = 0; i <= n; i++) {
+        int x = x0 + (x1 - x0) * i / n, y = y0 + (y1 - y0) * i / n;
+        tk_px(x, y, STUD); tk_px(x + 1, y, STUD); tk_px(x, y + 1, STUD); tk_px(x + 1, y + 1, STUD);
+    }
+}
+static void strap(int x0, int y0, int x1, int y1, int w) {
+    for (int k = -w; k <= w; k++) tk_line(x0 + k, y0, x1 + k, y1, LEATHER);
+    tk_line(x0 - w - 1, y0, x1 - w - 1, y1, LINE);
+    tk_line(x0 + w + 1, y0, x1 + w + 1, y1, LINE);
+    studs(x0, y0, x1, y1, 4);
+}
+
+static void face(int cx, int cy, int s, int expr, int dir) {
+    /* eyes: yellow sclera, heavy brow, black pupils; big fanged grin */
+    int ex = 4 * s, ey = cy - 2 * s;
+    for (int side = -1; side <= 1; side += 2) {
+        int x = cx + side * ex;
+        int winked = (expr == E_WINK && side == dir);
+        if (winked) {
+            tk_line(x - 2 * s, ey, x + 2 * s, ey + 1, LINE);
+            tk_line(x - 2 * s, ey + 1, x + 2 * s, ey + 2, LINE);
+            continue;
+        }
+        int rx = 3 * s, ry = expr == E_SHOCK || expr == E_YELP ? 3 * s : 2 * s;
+        tk_ellipse(x, ey, rx + 1, ry + 1, LINE);
+        tk_ellipse(x, ey, rx, ry, EYE_W);
+        if (expr == E_LOVE) tk_heart(x - 2, ey - 2, 2, PAL_PAINT(PAINT_CHERRY, 1));
+        else {
+            int px = x + dir * s, pr = expr == E_SHOCK ? 1 : s + 1;
+            tk_circle(px, ey, pr, PUPIL);
+            tk_px(px - 1, ey - 1, PAL_WHITE);
+        }
+        /* brow: angry V for grin/smug, raised for shock */
+        int by = ey - ry - 2;
+        if (expr == E_SHOCK || expr == E_YELP) { tk_line(x - 3 * s, by - 2, x + 3 * s, by - 2, LINE); tk_line(x - 3 * s, by - 3, x + 3 * s, by - 3, LINE); }
+        else { tk_line(x - 3 * s * side, by + 2, x + 3 * s * side, by - 1, LINE); tk_line(x - 3 * s * side, by + 3, x + 3 * s * side, by, LINE); }
+    }
+    /* snout + mouth */
+    int my = cy + 4 * s;
+    if (expr == E_SUCK) { tk_ellipse(cx, my, 2, 2, LINE); tk_ellipse(cx, my, 1, 1, MOUTH); return; }
+    if (expr == E_SHOCK || expr == E_YELP) {
+        tk_ellipse(cx, my + s, 3 * s, 3 * s + 1, LINE); tk_ellipse(cx, my + s, 3 * s - 1, 3 * s, MOUTH);
+        tk_ellipse(cx, my + 2 * s + 1, 2 * s, s, TONGUE);
+        tk_tri(cx - 2 * s, my - s, cx - s, my + s, cx - 3 * s + 1, my + s, FANG);
+        tk_tri(cx + 2 * s, my - s, cx + s, my + s, cx + 3 * s - 1, my + s, FANG);
+        return;
+    }
+    /* wide grin */
+    int w = expr == E_SMUG ? 6 * s : 8 * s;
+    tk_ellipse(cx + dir * s, my, w + 1, 3 * s, LINE);
+    tk_ellipse(cx + dir * s, my, w, 3 * s - 1, MOUTH);
+    tk_ellipse(cx + dir * s, my - 2 * s, w + 1, 2 * s, SKIN);      /* upper lip cut */
+    tk_line(cx + dir * s - w - 1, my - s, cx + dir * s + w + 1, my - s, LINE);
+    for (int i = -2; i <= 2; i++) {                                 /* fangs */
+        int fx = cx + dir * s + i * w / 2;
+        tk_tri(fx - 2, my - s, fx + 2, my - s, fx, my + s + (i == 0 ? 2 : 0), FANG);
+    }
+    tk_ellipse(cx + dir * s, my + 2 * s, w / 2, s, TONGUE);
+    if (expr == E_WINK || expr == E_LOVE) { tk_circle(cx + dir * 6 * s, cy + 2 * s, 2, PAL_PAINT(PAINT_ROSE, 0)); tk_circle(cx - dir * 6 * s, cy + 2 * s, 2, PAL_PAINT(PAINT_ROSE, 0)); }
+}
+
+/* The man himself. s = scale (2 = ~110 px tall). view V_*, pose P_*, expr E_*. */
+static void grumbleguts(int cx, int yf, int s, int view, int pose, int expr) {
+    int belly_r = (pose == P_INFLATED) ? 26 * s : (pose == P_SUCK_IN) ? 14 * s : 19 * s;
+    int butt_r  = (pose == P_INFLATED) ? 20 * s : 13 * s;
+    int body_y  = yf - 30 * s;        /* belly centre */
+    int head_y  = yf - 60 * s;
+    int dir = (view == V_SIDE) ? 1 : (view == V_BACK_LOOK ? -1 : 1);
+
+    /* ---- wings (behind everything) ---- */
+    int wy = body_y - 26 * s;
+    if (view == V_FRONT) { wing(cx - 14 * s, wy, s, -1, 1); wing(cx + 14 * s, wy, s, 1, 1); }
+    if (view == V_BACK || view == V_BACK_LOOK) { wing(cx - 10 * s, wy, s, -1, 1); wing(cx + 10 * s, wy, s, 1, 1); }
+    if (view == V_SIDE) wing(cx - 8 * s, wy, s, -1, 1);
+
+    /* ---- tail ---- */
+    if (view == V_SIDE) tail(cx - 12 * s, yf - 22 * s, s, -1);
+    else if (view == V_FRONT) tail(cx + 22 * s, yf - 16 * s, s, 1);
+    else tail(cx + 2 * s, yf - 24 * s, s, 1);
+
+    /* ---- legs: short, thick, clawed ---- */
+    for (int side = -1; side <= 1; side += 2) {
+        int lx = cx + side * 9 * s;
+        if (view == V_SIDE) lx = cx + side * 5 * s;
+        blob(lx, yf - 9 * s, 6 * s, 10 * s, SKIN_L, SKIN, SKIN_D);
+        /* claws */
+        for (int c = -1; c <= 1; c++) tk_tri(lx + c * 3 * s - 2, yf - 2 * s, lx + c * 3 * s + 2, yf - 2 * s, lx + c * 3 * s, yf + 2, HORN);
+    }
+
+    /* ---- body ---- */
+    if (view == V_SIDE) {
+        /* profile: belly bulges forward (right), butt bulges back (left) */
+        blob(cx - 10 * s, body_y + 2 * s, butt_r, butt_r - 2 * s, SKIN_L, SKIN, SKIN_D);   /* butt */
+        tk_line(cx - 10 * s, body_y - 2 * s, cx - 10 * s, body_y + butt_r - 4 * s, LINE);   /* cleft */
+        blob(cx + 2 * s, body_y - 10 * s, 11 * s, 12 * s, SKIN_L, SKIN, SKIN_D);           /* chest */
+        blob(cx + 8 * s, body_y + 2 * s, belly_r, belly_r - 3 * s, BELLY_L, BELLY, BELLY_D); /* belly */
+        tk_circle(cx + 8 * s + belly_r - 3 * s, body_y + 3 * s, 2, SKIN_D);               /* navel */
+        /* harness */
+        strap(cx - 2 * s, body_y - 20 * s, cx + 6 * s, body_y - 4 * s, s);
+        /* belt under the belly */
+        tk_rect(cx - 10 * s - butt_r + 2, body_y + belly_r - 6 * s, 20 * s + belly_r, 3 * s, LEATHER);
+        tk_frame(cx - 10 * s - butt_r + 2, body_y + belly_r - 6 * s, 20 * s + belly_r, 3 * s, LINE);
+        studs(cx - 6 * s, body_y + belly_r - 5 * s, cx + 10 * s + belly_r - 4 * s, body_y + belly_r - 5 * s, 6);
+    } else if (view == V_FRONT) {
+        /* pecs on top of the gut: the effort shows */
+        blob(cx, body_y - 10 * s, 17 * s, 11 * s, SKIN_L, SKIN, SKIN_D);
+        tk_line(cx, body_y - 18 * s, cx, body_y - 4 * s, SKIN_D);
+        blob(cx, body_y + 3 * s, belly_r, belly_r - 3 * s, BELLY_L, BELLY, BELLY_D);
+        tk_ellipse(cx, body_y + 6 * s, 2, 3, SKIN_D);                                      /* navel */
+        if (pose == P_INFLATED) { tk_ring(cx, body_y + 3 * s, belly_r - 4 * s, BELLY_D); tk_ring(cx, body_y + 3 * s, belly_r - 8 * s, BELLY_D); }
+        /* X harness with gold studs */
+        strap(cx - 12 * s, body_y - 20 * s, cx + 10 * s, body_y + 2 * s, s);
+        strap(cx + 12 * s, body_y - 20 * s, cx - 10 * s, body_y + 2 * s, s);
+        tk_circle(cx, body_y - 9 * s, 3 * s, LINE); tk_circle(cx, body_y - 9 * s, 2 * s, CHAIN);   /* ring */
+        /* belt + buckle under the belly */
+        int by = body_y + belly_r - 6 * s;
+        tk_rect(cx - belly_r + 2, by, 2 * belly_r - 4, 3 * s, LEATHER);
+        tk_frame(cx - belly_r + 2, by, 2 * belly_r - 4, 3 * s, LINE);
+        studs(cx - belly_r + 6, by + s, cx + belly_r - 6, by + s, 7);
+        if (pose == P_UNBUCKLE) { tk_rect(cx - 3 * s, by - s, 6 * s, 5 * s, STUD); tk_frame(cx - 3 * s, by - s, 6 * s, 5 * s, LINE); tk_line(cx + 3 * s, by + s, cx + 9 * s, by + 6 * s, LEATHER); }
+        else { tk_rect(cx - 2 * s, by, 4 * s, 3 * s, STUD); tk_frame(cx - 2 * s, by, 4 * s, 3 * s, LINE); }
+    } else {
+        /* back: broad shoulders, X straps, and THE BUTT front and centre */
+        blob(cx, body_y - 8 * s, 18 * s, 14 * s, SKIN_L, SKIN, SKIN_D);
+        strap(cx - 12 * s, body_y - 20 * s, cx + 8 * s, body_y, s);
+        strap(cx + 12 * s, body_y - 20 * s, cx - 8 * s, body_y, s);
+        int by = body_y + 4 * s;
+        blob(cx - butt_r / 2 - s, by + butt_r / 2, butt_r, butt_r, SKIN_L, SKIN, SKIN_D);
+        blob(cx + butt_r / 2 + s, by + butt_r / 2, butt_r, butt_r, SKIN_L, SKIN, SKIN_D);
+        tk_line(cx, by - 2, cx, by + butt_r, LINE);
+        /* belt sits above the cheeks */
+        tk_rect(cx - 17 * s, by - 2 * s, 34 * s, 3 * s, LEATHER); tk_frame(cx - 17 * s, by - 2 * s, 34 * s, 3 * s, LINE);
+        studs(cx - 14 * s, by - s, cx + 14 * s, by - s, 7);
+        if (pose == P_WIGGLE) {
+            for (int i = 0; i < 3; i++) {
+                tk_line(cx - butt_r - 4 * s - i * 3, by + 2 + i * 4, cx - butt_r - 1 * s - i * 3, by + 2 + i * 4, LINE);
+                tk_line(cx + butt_r + 1 * s + i * 3, by + 2 + i * 4, cx + butt_r + 4 * s + i * 3, by + 2 + i * 4, LINE);
+            }
+            tk_sparkles(cx, by + butt_r, 10, 7, 14 * s);
+        }
+        if (pose == P_INFLATED) {
+            /* a tiny pressure gauge on a cheek */
+            tk_circle(cx + butt_r / 2 + s, by + butt_r / 2, 4, PAL_WHITE); tk_ring(cx + butt_r / 2 + s, by + butt_r / 2, 4, LINE);
+            tk_line(cx + butt_r / 2 + s, by + butt_r / 2, cx + butt_r / 2 + s + 3, by + butt_r / 2 - 2, PAL_UI_RED);
+        }
+    }
+
+    /* ---- arms: thick, biceps, clawed hands ---- */
+    for (int side = -1; side <= 1; side += 2) {
+        if (view == V_SIDE && side == -1) continue;
+        int ax = cx + side * 20 * s, ay = body_y - 12 * s;
+        int raised = (pose == P_SPRING || pose == P_CROP) && side == 1;
+        if (pose == P_WIGGLE || view == V_BACK || view == V_BACK_LOOK) { ax = cx + side * 21 * s; ay = body_y - 6 * s; }
+        blob(ax, raised ? ay - 10 * s : ay, 6 * s, 9 * s, SKIN_L, SKIN, SKIN_D);           /* bicep */
+        int hx = ax + side * 2 * s, hy = raised ? ay - 22 * s : ay + 12 * s;
+        if (pose == P_SNACK && side == 1) { hx = cx + 12 * s; hy = head_y + 6 * s; }
+        if (pose == P_MIRROR && side == 1) { hx = cx + 26 * s; hy = body_y - 18 * s; }
+        blob(hx, hy, 5 * s, 5 * s, SKIN_L, SKIN, SKIN_D);                                   /* fist */
+        /* studded cuff */
+        tk_rect(hx - 5 * s, hy - 7 * s, 10 * s, 2 * s, LEATHER); studs(hx - 4 * s, hy - 6 * s, hx + 4 * s, hy - 6 * s, 3);
+        for (int c = -1; c <= 1; c++) tk_tri(hx + c * 3 * s - 1, hy + 4 * s, hx + c * 3 * s + 1, hy + 4 * s, hx + c * 3 * s, hy + 6 * s + 1, HORN);
+        if (pose == P_SNACK && side == 1) { tk_ring(hx + 4 * s, hy - 2 * s, 4, PAL_PAINT(PAINT_CARAMEL, 1)); tk_ring(hx + 4 * s, hy - 2 * s, 3, PAL_PAINT(PAINT_CARAMEL, 0)); tk_px(hx + 5 * s, hy - 4 * s, PAL_PAINT(PAINT_HELLFIRE, 1)); }
+        if (pose == P_CROP && side == 1) { tk_line(hx, hy - 4 * s, hx + 2 * s, hy - 30 * s, LINE); tk_line(hx + 1, hy - 4 * s, hx + 2 * s + 1, hy - 30 * s, LEATHER); tk_rect(hx + 2 * s - 2, hy - 34 * s, 5, 5 * s, LEATHER_D); }
+    }
+
+    /* ---- collar with spikes ---- */
+    int ny = head_y + 15 * s;
+    if (view == V_SIDE) ny = head_y + 15 * s;
+    tk_rect(cx - 10 * s, ny, 20 * s, 3 * s, LEATHER); tk_frame(cx - 10 * s, ny, 20 * s, 3 * s, LINE);
+    for (int i = -3; i <= 3; i++) tk_tri(cx + i * 3 * s - 1, ny, cx + i * 3 * s + 1, ny, cx + i * 3 * s, ny - 3 * s, CHAIN);
+    /* the gate key on a chain */
+    if (view == V_FRONT) { tk_line(cx, ny + 3 * s, cx, ny + 8 * s, CHAIN); tk_ring(cx, ny + 10 * s, 2, STUD); tk_line(cx, ny + 12 * s, cx, ny + 16 * s, STUD); tk_px(cx + 1, ny + 15 * s, STUD); tk_px(cx + 1, ny + 14 * s, STUD); }
+
+    /* ---- head ---- */
+    if (view == V_BACK) {
+        blob(cx, head_y, 13 * s, 13 * s, SKIN_L, SKIN, SKIN_D);
+        horns(cx, head_y - 8 * s, s, 0);
+        /* pointy ears */
+        tk_tri(cx - 12 * s, head_y, cx - 18 * s, head_y - 6 * s, cx - 10 * s, head_y - 6 * s, SKIN);
+        tk_tri(cx + 12 * s, head_y, cx + 18 * s, head_y - 6 * s, cx + 10 * s, head_y - 6 * s, SKIN);
+        return;
+    }
+    int hx = cx + (view == V_BACK_LOOK ? -5 * s : 0);
+    blob(hx, head_y, 14 * s, 13 * s, SKIN_L, SKIN, SKIN_D);
+    tk_tri(hx - 13 * s, head_y, hx - 19 * s, head_y - 7 * s, hx - 10 * s, head_y - 7 * s, LINE);
+    tk_tri(hx - 13 * s, head_y + 1, hx - 18 * s, head_y - 6 * s, hx - 11 * s, head_y - 6 * s, SKIN);
+    tk_tri(hx + 13 * s, head_y, hx + 19 * s, head_y - 7 * s, hx + 10 * s, head_y - 7 * s, LINE);
+    tk_tri(hx + 13 * s, head_y + 1, hx + 18 * s, head_y - 6 * s, hx + 11 * s, head_y - 6 * s, SKIN);
+    horns(hx, head_y - 9 * s, s, 0);
+    /* goatee */
+    tk_tri(hx - 3 * s, head_y + 11 * s, hx + 3 * s, head_y + 11 * s, hx, head_y + 17 * s, WING_D);
+    face(hx, head_y, s, expr, view == V_BACK_LOOK ? -1 : dir);
+}
+
+#define PW 120  /* panel width: left 120 px of the framebuffer */
+#define MAXP 6
+static uint8_t panels[MAXP][TH][PW][3];
+static int npanels;
+static void panel(void) {
+    static uint8_t rgb[TW * TH * 3];
+    tk_fb_to_rgb(rgb);
+    for (int y = 0; y < TH; y++) memcpy(panels[npanels][y], &rgb[y * TW * 3], PW * 3);
+    npanels++;
+}
+static void save(const char *dir, const char *name) {
+    int W = PW * npanels, S = 3;
+    static uint8_t big[PW * MAXP * 3 * TH * 3 * 3];
+    char path[512];
+    for (int y = 0; y < TH * S; y++)
+        for (int x = 0; x < W * S; x++) {
+            int px = x / S, py = y / S;
+            memcpy(&big[(y * W * S + x) * 3], panels[px / PW][py][px % PW], 3);
+        }
+    snprintf(path, sizeof path, "%s/%s.png", dir, name);
+    tk_write_png_rgb(path, big, W * S, TH * S);
+    printf("wrote %s\n", path);
+    npanels = 0;
+}
+static void shot(const char *label, int view, int pose, int expr, const char *note) {
+    static const uint8_t cols[4] = { PAL_RAMP(RAMP_LAVA, 1), PAL_RAMP(RAMP_LAVA, 2), PAL_RAMP(RAMP_STONE, 3), PAL_RAMP(RAMP_STONE, 5) };
+    tk_vgrad(0, 0, TW, TH, cols, 4);
+    tk_rect(0, 126, TW, 34, PAL_RAMP(RAMP_STONE, 2));
+    tk_line(0, 126, TW, 126, PAL_RAMP(RAMP_LAVA, 3));
+    grumbleguts(60, 122, 1, view, pose, expr);
+    tk_rect(0, 0, PW, 11, PAL_RAMP(RAMP_STONE, 1));
+    tk_text_outline(3, 2, label, PAL_UI_GOLD, LINE, 1);
+    tk_text_wrap(3, 130, PW - 6, note, PAL_UI_CREAM, 19);
+    panel();
+}
+
+static void backdrop(const char *title) {
+    static const uint8_t cols[4] = { PAL_RAMP(RAMP_LAVA, 1), PAL_RAMP(RAMP_LAVA, 2), PAL_RAMP(RAMP_STONE, 3), PAL_RAMP(RAMP_STONE, 5) };
+    tk_vgrad(0, 0, TW, TH, cols, 4);
+    tk_rect(0, 128, TW, 32, PAL_RAMP(RAMP_STONE, 2));
+    tk_line(0, 128, TW, 128, PAL_RAMP(RAMP_LAVA, 3));
+    tk_text_outline(4, 3, title, PAL_UI_GOLD, LINE, 1);
+}
+
+int main(int argc, char **argv) {
+    const char *out = argc > 1 ? argv[1] : ".";
+    shot("FRONT", V_FRONT, P_STAND, E_GRIN, "Gut + pecs, X harness");
+    shot("SIDE", V_SIDE, P_STAND, E_SMUG, "Belly front, butt back");
+    shot("BACK", V_BACK, P_STAND, E_GRIN, "Butt front & centre");
+    shot("TAUNT", V_BACK_LOOK, P_WIGGLE, E_WINK, "Wiggle, wink back");
+    save(out, "gg_turnaround");
+
+    shot("MONOLOGUE", V_FRONT, P_SNACK, E_SMUG, "Speech + bagel");
+    shot("SUCKS IN", V_FRONT, P_SUCK_IN, E_SUCK, "Looking menacing?");
+    shot("SPROING", V_FRONT, P_SPRING, E_SHOCK, "Springs back. Scratch");
+    shot("UNBUCKLE", V_FRONT, P_UNBUCKLE, E_LOVE, "Belt sigh, flirt eyes");
+    shot("THE CROP", V_FRONT, P_CROP, E_WINK, "Hell's biggest flirt");
+    save(out, "gg_poses");
+
+    shot("FULL (FRONT)", V_FRONT, P_INFLATED, E_YELP, "Feast: meter maxed");
+    shot("FULL (BACK)", V_BACK, P_INFLATED, E_YELP, "Cheek gauge in red");
+    /* scale vs a citizen */
+    {
+        static const uint8_t cols[4] = { PAL_RAMP(RAMP_LAVA, 1), PAL_RAMP(RAMP_LAVA, 2), PAL_RAMP(RAMP_STONE, 3), PAL_RAMP(RAMP_STONE, 5) };
+        tk_vgrad(0, 0, TW, TH, cols, 4); tk_rect(0, 126, TW, 34, PAL_RAMP(RAMP_STONE, 2));
+        grumbleguts(48, 122, 1, V_FRONT, P_STAND, E_GRIN);
+        tk_chibi(100, 122, &TK_HERO, 1, TKE_SHOCK, TKM_O, 3, 1);
+        tk_rect(0, 0, PW, 11, PAL_RAMP(RAMP_STONE, 1)); tk_text_outline(3, 2, "SCALE", PAL_UI_GOLD, LINE, 1);
+        tk_text_wrap(3, 130, PW - 6, "vs a citizen chibi", PAL_UI_CREAM, 19);
+        panel();
+    }
+    /* bestiary card: head only */
+    {
+        tk_rect(0, 0, TW, TH, PAL_RAMP(RAMP_STONE, 4));
+        tk_window(4, 4, PW - 8, TH - 8, 1);
+        grumbleguts(60, 150, 1, V_FRONT, P_STAND, E_WINK);          /* head in the card, body under the label */
+        tk_rect(4, 96, PW - 8, 60, PAL_UI_CREAM);
+        tk_text(10, 100, "GRUMBLEGUTS", PAL_UI_RED, 1);
+        tk_text_wrap(10, 110, PW - 20, "Keeper of the Sealed Gate. Also of a very large seat.", PAL_BLACK, 18);
+        panel();
+    }
+    save(out, "gg_feast");
+    return 0;
+}
