@@ -21,7 +21,7 @@
 #define SONG_LYRIC_LINES  8
 #define SONG_LYRIC_LEN    28          /* 27 chars + NUL                     */
 #define SONG_TITLE_LEN    16
-#define SONG_SINGERS      4
+#define SONG_SINGERS      25          /* a whole choir                      */
 #define SONG_NO_SINGER    0xFFFF
 
 /* Note cell values. Melodic tracks: 0 rest, 1 hold (tie previous),
@@ -33,8 +33,8 @@ enum { SONG_DRUM_NONE, SONG_DRUM_KICK, SONG_DRUM_SNARE, SONG_DRUM_HAT,
        SONG_DRUM_COWBELL, SONG_DRUM_COUNT };
 
 /* Scales for the editor's snap-to-scale helper. */
-enum { SCALE_MAJOR, SCALE_MINOR, SCALE_PENTATONIC, SCALE_BLUES,
-       SCALE_HARMONIC_MINOR, SCALE_CHROMATIC, SCALE_COUNT };
+enum { SONG_SCALE_MAJOR, SONG_SCALE_MINOR, SONG_SCALE_PENTATONIC, SONG_SCALE_BLUES,
+       SONG_SCALE_HARMONIC_MINOR, SONG_SCALE_CHROMATIC, SONG_SCALE_COUNT };
 
 enum { SONGF_VALID = 1, SONGF_CUSTOM = 2, SONGF_LOOP = 4, SONGF_FAVORITE = 8,
        SONGF_HELLISH = 16 };
@@ -45,7 +45,7 @@ typedef struct DoomoSong {
     uint8_t  genre;                     /* MUSIC_* index (catalog music names) */
     uint8_t  bpm;                       /* 60..220 */
     uint8_t  key;                       /* 0..11 (C..B) */
-    uint8_t  scale;                     /* SCALE_* */
+    uint8_t  scale;                     /* SONG_SCALE_* */
     uint8_t  swing;                     /* 0..8 */
     uint8_t  wave[SONG_TRACKS];         /* WAVE_* (platform.h) per track */
     uint8_t  vol[SONG_TRACKS];          /* 0..15 */
@@ -53,9 +53,21 @@ typedef struct DoomoSong {
     uint8_t  order[SONG_ORDER_MAX];     /* pattern indices */
     uint8_t  notes[SONG_PATTERNS][SONG_TRACKS][SONG_STEPS];
     char     lyrics[SONG_LYRIC_LINES][SONG_LYRIC_LEN];
-    uint16_t singer[SONG_SINGERS];      /* resident ids or SONG_NO_SINGER */
+    uint16_t singer[SONG_SINGERS];      /* the choir: resident ids or SONG_NO_SINGER */
+    uint32_t line_singers[SONG_LYRIC_LINES]; /* per lyric line: bit i = singer[i]
+                                           sings it (solo, duet, a section or
+                                           the full choir); 0 = singer[0] */
+    uint8_t  choir_layout;              /* CHOIR_* stage arrangement */
     uint32_t seed;                      /* generator seed (0 = hand made) */
-} DoomoSong;                            /* ~800 bytes */
+} DoomoSong;                            /* ~870 bytes */
+
+/* Stage arrangements for the choir (risers, semicircle, ...). */
+enum { CHOIR_RISERS, CHOIR_SEMICIRCLE, CHOIR_SECTIONS, CHOIR_PYRAMID,
+       CHOIR_LAYOUT_COUNT };
+/* Voice sections a singer can be placed in (derived from voice pitch by
+ * default, editable in the studio's CHOIR tab). */
+enum { SECTION_SOPRANO, SECTION_ALTO, SECTION_TENOR, SECTION_BASS,
+       SECTION_COUNT };
 
 /* The player's song book: custom songs written in the Music Studio,
  * persisted in the save file through the save extension chunk 'SONG'
@@ -63,13 +75,22 @@ typedef struct DoomoSong {
 #define SONG_BOOK_SIZE 6
 extern DoomoSong doomo_song_book[SONG_BOOK_SIZE];
 
-/* ---- player (song_player.c) ---------------------------------------------
+/* CHOIR SINGING: the consoles have 4 tone channels, so a choir is rendered
+ * as: the line's lead voice (rotating through the singers assigned to the
+ * line) sings each syllable via audio_voice_char, and when 2+ singers are
+ * assigned, harmony/chorus doubling is added on the harmony track (thirds /
+ * fifths by section) plus a slight voice-pitch spread per syllable, so the
+ * more singers on a line, the bigger and richer it sounds. Visually every
+ * assigned singer opens their mouth and bops on each syllable.
+ *
+ * ---- player (song_player.c) ---------------------------------------------
  * Drives the 4 tone channels via plat_tone at 30 Hz with sub-tick timing
  * accumulation; pauses the background music (audio_music(SONG_NONE)) while
  * playing and restores it on stop. Sings lyrics: each lead-track note onset
  * consumes the next syllable of the current lyric line and calls
  * audio_voice_char() with the singer's voice sliders. */
-void song_play(const DoomoSong *s, int singer_resident_id);
+/* singer_override: -1 = use the song's choir, else a single resident id. */
+void song_play(const DoomoSong *s, int singer_override);
 void song_stop(void);
 int  song_playing(void);
 void song_tick(void);                 /* call once per frame while playing */
@@ -78,6 +99,8 @@ int  song_pos_order(void);
 int  song_pos_step(void);
 int  song_pos_line(void);              /* current lyric line index        */
 int  song_pos_syllable(void);          /* syllable index within the line  */
+uint32_t song_pos_singers(void);       /* bitmask of choir members singing now */
+int  song_singer_count(const DoomoSong *s);
 /* Helpers. */
 void song_clear(DoomoSong *s);         /* empty valid song, sane defaults */
 int  song_syllables(const char *line, uint8_t *starts, int max); /* split */

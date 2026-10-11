@@ -44,6 +44,9 @@ extern const DoomoScene SCENE_STORY;        /* overworld exploration       */
 extern const DoomoScene SCENE_QUESTLOG;
 extern const DoomoScene SCENE_CUTSCENE;     /* arg = cutscene id           */
 extern const DoomoScene SCENE_CREDITS;
+/* minigames (Fun Fair, mg_*.c; arg: see core/src/mg.h) */
+extern const DoomoScene SCENE_MG_CATCH, SCENE_MG_WHACK, SCENE_MG_DODGE,
+       SCENE_MG_GALLERY, SCENE_MG_DERBY, SCENE_MG_MEMORY, SCENE_MG_WHEEL;
 
 /* Registry (scene.c, foundation): every scene above, NULL-terminated. */
 extern const DoomoScene *const doomo_all_scenes[];

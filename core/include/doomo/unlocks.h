@@ -83,6 +83,7 @@ extern const DoomoUnlock doomo_unlocks_freeplay[];
 extern const DoomoUnlock doomo_unlocks_art[];
 extern const DoomoUnlock doomo_unlocks_portrait[];
 extern const DoomoUnlock doomo_unlocks_roster[];
+extern const DoomoUnlock doomo_unlocks_minigames[];   /* 864..895 (Fun Fair) */
 
 /* Game modes gated by UL_CAT_MODE. */
 enum { MODE_ARENA, MODE_BOSS_RUSH, MODE_HELLVILE_VISITS, MODE_TAMA_ONLY,
@@ -111,6 +112,10 @@ enum { PROG_CITIZENS_CREATED, PROG_EXORCISMS_WON, PROG_EXORCISMS_FAILED,
        PROG_BABIES, PROG_GHOSTS_RAISED, PROG_PET_EVOLUTIONS, PROG_GIFTS_GIVEN,
        PROG_MEALS_SERVED, PROG_SECRETS_FOUND, PROG_HEADSHOTS,
        PROG_CROSS_BORDER_FRIENDS, PROG_MONEY_EARNED, PROG_ARENA_WAVES,
+       /* minigames (Fun Fair): best scores, and the in-game day + 1 of the
+        * last Wheel of Fate spin (0 = never) */
+       PROG_HS_CATCH, PROG_HS_WHACK, PROG_HS_DODGE, PROG_HS_GALLERY,
+       PROG_HS_DERBY, PROG_HS_MEMORY, PROG_FAIR_WHEEL_DAY,
        PROG_COUNT };
 void progress_add(int counter, int amount);   /* also checks unlocks */
 uint32_t progress_get(int counter);
