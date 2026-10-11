@@ -37,7 +37,7 @@ static const uint8_t BELLYM[5] = { PAL_RAMP(RAMP_PEACH, 2), PAL_RAMP(RAMP_PEACH,
 #define TONGUE  PAL_RAMP(RAMP_FLESH, 4)
 
 enum { V_FRONT, V_SIDE, V_BACK, V_BACK_LOOK };
-enum { E_GRIN, E_WINK, E_SHOCK, E_SMUG, E_SUCK, E_YELP, E_LOVE };
+enum { E_GRIN, E_WINK, E_SHOCK, E_SMUG, E_SUCK, E_YELP, E_LOVE, E_BLUSH };
 enum { P_STAND, P_SNACK, P_SUCK_IN, P_SPRING, P_WIGGLE, P_UNBUCKLE,
        P_CROP, P_INFLATED, P_MIRROR };
 
@@ -168,6 +168,15 @@ static void face(int cx, int cy, int s, int expr, int dir) {
         int by = ey - ry - 2;
         if (expr == E_SHOCK || expr == E_YELP) { tk_line(x - 3 * s, by - 2, x + 3 * s, by - 2, LINE); tk_line(x - 3 * s, by - 3, x + 3 * s, by - 3, LINE); }
         else { tk_line(x - 3 * s * side, by + 2, x + 3 * s * side, by - 1, LINE); tk_line(x - 3 * s * side, by + 3, x + 3 * s * side, by, LINE); }
+    }
+    if (expr == E_BLUSH) {
+        /* big blush patches, eyes bulging one more than the other, tiny "o" mouth */
+        tk_ellipse(cx - 7 * s, cy + 2 * s, 4 * s, 2 * s, PAL_RAMP(RAMP_CANDY, 6));
+        tk_ellipse(cx + 7 * s, cy + 2 * s, 4 * s, 2 * s, PAL_RAMP(RAMP_CANDY, 6));
+        for (int i = 0; i < 3; i++) { tk_line(cx - 9 * s + i * 2, cy + s, cx - 8 * s + i * 2, cy + 3 * s, PAL_RAMP(RAMP_BLOOD, 7)); tk_line(cx + 5 * s + i * 2, cy + s, cx + 6 * s + i * 2, cy + 3 * s, PAL_RAMP(RAMP_BLOOD, 7)); }
+        tk_ellipse(cx + 4 * s, cy - 2 * s, 4 * s, 4 * s, LINE); tk_ellipse(cx + 4 * s, cy - 2 * s, 4 * s - 1, 4 * s - 1, EYE_W); tk_circle(cx + 4 * s, cy - 2 * s, 1, PUPIL);
+        tk_ellipse(cx, cy + 5 * s, 2, 2, LINE); tk_ellipse(cx, cy + 5 * s, 1, 1, MOUTH);
+        return;
     }
     /* snout + mouth */
     int my = cy + 4 * s;
@@ -509,7 +518,43 @@ static void storyboard(const char *out) {
     tk_ellipse(120, 36, 2, 3, PAL_RAMP(RAMP_SKY, 6)); tk_px(120, 33, PAL_RAMP(RAMP_SKY, 6));
     tk_text_outline(150, 40, "*squeak*", PAL_UI_CREAM, LINE, 1);
     tk_text_outline(8, 140, "\"she'll hold.\"", PAL_UI_CREAM, LINE, 1);
-    frame("CLOSE-UP: hands on, hose going in behind the cheek");
+    frame("CLOSE-UP: hands on, hose going in at the cleft");
+
+    /* 8. THE REACTION CUT: his face as it goes in, blushing hard */
+    hall();
+    grumbleguts(120, 196, 2, V_FRONT, P_STAND, E_BLUSH);         /* 2x: head fills the frame */
+    tk_rect(0, 118, TW, 42, PAL_RAMP(RAMP_STONE, 2));
+    tk_text_outline(8, 124, "*gurgle?*", PAL_UI_CREAM, LINE, 1);
+    tk_text_outline(150, 124, "...oh.", PAL_UI_CREAM, LINE, 1);
+    frame("REACTION CUT: eyes bulge one at a time, blush");
+
+    /* 9. THE CENSOR STICKER: the board's sticker slaps on, a corner peels as the cheek wobbles */
+    tk_vgrad(0, 0, TW, TH, bg, 3);
+    tk_rect(0, 14, TW, 12, LEATHER); tk_frame(0, 14, TW, 12, LINE); studs(12, 19, TW - 12, 19, 9);
+    blob(84, 104, 70, 64, SKINM); blob(176, 104, 70, 64, SKINM);
+    tk_line(130, 44, 130, 160, LINE); tk_line(131, 44, 131, 160, SKINM[1]);
+    for (int i = 0; i < 6; i++) tk_line(0, 136 + i, 100, 116 + i, PAL_RAMP(RAMP_SICK, 4 - (i == 0 || i == 5 ? 2 : 0)));
+    tk_rect(96, 88, 72, 44, PAL_UI_CREAM); tk_frame(96, 88, 72, 44, LINE);
+    tk_rect(96, 88, 72, 10, PAL_UI_RED); tk_text(99, 90, "HELLVILE PARK", PAL_WHITE, 1);
+    tk_text(100, 102, "BOARD OF", PAL_BLACK, 1); tk_text(100, 110, "DECENCY", PAL_BLACK, 1); tk_text(100, 120, "(approved)", PAL_GRAY_D, 1);
+    tk_tri(160, 124, 168, 132, 160, 132, PAL_RAMP(RAMP_PEACH, 6));                     /* peeling corner */
+    tk_tri(160, 124, 168, 124, 168, 132, PAL_UI_CREAM); tk_line(160, 124, 168, 132, LINE);
+    for (int i = 0; i < 3; i++) { tk_line(176, 70 + i * 5, 190, 66 + i * 5, PAL_UI_CREAM); }   /* wobble */
+    tk_text_outline(8, 140, "*wobble*", PAL_UI_CREAM, LINE, 1);
+    frame("CENSOR STICKER: slaps on, corner peels");
+
+    /* 10. CUTAWAY: cartoon X-ray of the belly filling like a thermometer */
+    hall();
+    grumbleguts(120, 118, 1, V_SIDE, P_STAND, E_BLUSH);
+    tk_ring(126, 80, 22, PAL_UI_CREAM); tk_ring(126, 80, 21, PAL_UI_CREAM);                /* x-ray circle */
+    tk_circle(126, 80, 20, PAL_RAMP(RAMP_STEEL, 2));
+    tk_ellipse(126, 82, 15, 14, PAL_RAMP(RAMP_STEEL, 4));                                   /* stomach outline */
+    tk_ellipse(126, 88, 13, 8, PAL_RAMP(RAMP_SICK, 5));                                     /* air level rising */
+    for (int i = 0; i < 5; i++) tk_ring(118 + (i * 7) % 16, 84 - (i * 5) % 12, 1, PAL_WHITE); /* bubbles */
+    tk_line(126, 96, 126, 118, PAL_RAMP(RAMP_SICK, 4)); tk_line(127, 96, 127, 118, PAL_RAMP(RAMP_SICK, 2)); /* hose from below */
+    tk_rect(150, 62, 6, 36, PAL_RAMP(RAMP_STONE, 1)); tk_rect(151, 80, 4, 17, PAL_UI_RED); tk_text(158, 62, "FULL", PAL_UI_CREAM, 1); /* thermometer */
+    tk_text_outline(8, 124, "X-RAY: 60% air, 40% bagel", PAL_UI_CREAM, LINE, 1);
+    frame("CUTAWAY: thermometer belly");
     save_frames(out, "gg_closeup");
 }
 
