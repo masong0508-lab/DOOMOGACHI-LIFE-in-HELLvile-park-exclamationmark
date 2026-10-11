@@ -28,7 +28,8 @@
  *   audio [X LABEL]     print the audio peak-to-peak since audio-reset
  *   expect-audio MIN [LABEL]  fail unless peak-to-peak >= MIN (16-bit)
  *   fps [LABEL]         print logic ticks/s and drawn frames/s since the
- *                       previous "fps" (extension)
+ *                       previous "fps", and the average / worst CPU work
+ *                       of a drawn tick in ms (extension)
  *   profile N           sample the PC over N instructions and print the
  *                       hottest functions (needs --nm, see below)
  *   save N / load N / expect-save N / verify N / save-must-fail N
@@ -39,6 +40,8 @@
  *                       random custom citizens, 2048 relationships)
  *   town-crc            game ROM: log + remember a CRC of the saved state
  *   expect-town-crc     fail unless the state's CRC equals the remembered
+ *   scene NAME [ARG] / push NAME [ARG]
+ *                       game ROM: scene_set / scene_push by name (mailbox)
  *   post CMD ARG        post mailbox command CMD (hcmd.c numbers) without
  *                       waiting, e.g. to "profile" a save while it runs
  * Buttons: A B L R START SELECT UP DOWN LEFT RIGHT, X (=SELECT+A),
@@ -160,6 +163,8 @@ static void run_frame(void);
 #define HC_TOWN_FILL 4
 #define HC_TOWN_CRC 5
 #define HC_VERIFY 6
+#define HC_SCENE 7
+#define HC_PUSH 8
 static int hcmd(uint32_t cmd, uint32_t arg, uint32_t *result)
 {
     int n;
@@ -458,12 +463,20 @@ static int run_script(const char *path)
              * "fps" (or the start) */
             static uint32_t t0, v0, d0;
             uint32_t t = ticks(), v = video_frames, d = drawn();
+            uint32_t ws = core->busRead32(core, MAILBOX_ADDR + 32);
+            uint32_t wn = core->busRead32(core, MAILBOX_ADDR + 36);
+            uint32_t wm = core->busRead32(core, MAILBOX_ADDR + 40);
+            static uint32_t ws0, wn0;
             if (v > v0)
-                printf("harness: fps %s%s%.1f logic ticks/s, %.1f drawn frames/s "
-                       "(%u ticks, %u video frames)\n", rest ? rest : "", rest ? ": " : "",
+                printf("harness: fps %s%s%.1f logic ticks/s, %.1f drawn frames/s, "
+                       "work avg %.1f ms max %.1f ms (%u ticks, %u video frames)\n",
+                       rest ? rest : "", rest ? ": " : "",
                        (t - t0) * 60.0 / (v - v0), (d - d0) * 60.0 / (v - v0),
+                       wn > wn0 ? (ws - ws0) / 16777.216 / (wn - wn0) : 0.0, wm / 16777.216,
                        (unsigned)(t - t0), (unsigned)(v - v0));
             t0 = t; v0 = v; d0 = d;
+            core->busWrite32(core, MAILBOX_ADDR + 40, 0);
+            ws0 = ws; wn0 = wn;
         } else if (!strcmp(argv[0], "profile") && argc >= 2) {
             if (!nsyms) fprintf(stderr, "harness: profile needs --nm FILE\n");
             else profile((uint32_t)atoi(argv[1]), argc >= 3 ? argv[2] : NULL);
@@ -509,6 +522,18 @@ static int run_script(const char *path)
             else if ((r != 0) != want) {
                 fprintf(stderr, "harness: %s:%d %s %s %s\n", path, lineno, argv[0], argv[1],
                         want ? "failed" : "succeeded");
+                failed = 1;
+            }
+        } else if ((!strcmp(argv[0], "scene") || !strcmp(argv[0], "push")) && argc >= 2) {
+            /* game ROM: scene_set / scene_push by name, like the native runner */
+            uint32_t r = 0;
+            int i;
+            for (i = 0; i < 20; i++)
+                core->busWrite8(core, MAILBOX_ADDR + 44 + (uint32_t)i,
+                                (uint8_t)(i < 19 && i < (int)strlen(argv[1]) ? argv[1][i] : 0));
+            if (!hcmd(argv[0][0] == 's' ? HC_SCENE : HC_PUSH,
+                      argc >= 3 ? (uint32_t)atoi(argv[2]) : 0, &r) || !r) {
+                fprintf(stderr, "harness: %s:%d %s %s failed\n", path, lineno, argv[0], argv[1]);
                 failed = 1;
             }
         } else if (!strcmp(argv[0], "post") && argc >= 3) {

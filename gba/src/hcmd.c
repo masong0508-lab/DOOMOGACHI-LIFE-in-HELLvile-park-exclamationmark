@@ -103,6 +103,23 @@ void gba_harness_cmd(void)
         town_fill(arg);
         r = 1;
         break;
+    case GBA_HC_SCENE:
+    case GBA_HC_PUSH: {
+        /* scene NAME [ARG] / push NAME [ARG], like the native runner's */
+        char nm[sizeof(gba_mailbox.name)];
+        const DoomoScene *s;
+        int i;
+        for (i = 0; i < (int)sizeof(nm) - 1 && gba_mailbox.name[i]; i++) nm[i] = gba_mailbox.name[i];
+        nm[i] = 0;
+        s = scene_by_name(nm);
+        if (s) {
+            if (cmd == GBA_HC_SCENE) scene_set(s, (int)arg);
+            else scene_push(s, (int)arg);
+            r = 1;
+        } else {
+            gba_logf("hcmd: unknown scene %s", nm);
+        }
+        break; }
     case GBA_HC_TOWN_CRC:
         r = town_crc();
         gba_logf("hcmd: town crc %x", r);

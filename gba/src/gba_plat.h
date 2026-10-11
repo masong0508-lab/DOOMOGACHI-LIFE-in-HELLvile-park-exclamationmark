@@ -33,10 +33,15 @@ typedef struct GbaMailbox {
      * cmd; the ROM runs it between two logic ticks, writes result and
      * clears cmd */
     uint32_t cmd, arg, result, cycles;
+    /* profiling (harness "fps"): CPU cycles of the logic ticks' work
+     * (plat_begin_frame .. plat_end_frame, before the vblank wait) of the
+     * drawn ticks: sum, count, worst; the harness reads and resets them */
+    uint32_t work_sum, work_n, work_max;
+    char name[20];                       /* GBA_HC_SCENE / _PUSH argument   */
 } GbaMailbox;
 extern volatile GbaMailbox gba_mailbox;
 enum { GBA_HC_NONE, GBA_HC_SAVE, GBA_HC_LOAD, GBA_HC_EXISTS, GBA_HC_TOWN_FILL,
-       GBA_HC_TOWN_CRC, GBA_HC_VERIFY };
+       GBA_HC_TOWN_CRC, GBA_HC_VERIFY, GBA_HC_SCENE, GBA_HC_PUSH };
 void gba_harness_cmd(void);              /* hcmd.c */
 void gba_irq_init(void) IWRAM_CALL;          /* irq.iwram.c */
 /* Cycle counter: timers 2+3 cascaded at 16.78 MHz. */

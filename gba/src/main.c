@@ -25,6 +25,7 @@ int gba_nodraw;
 __attribute__((section(".mailbox"), used)) volatile GbaMailbox gba_mailbox;
 
 static uint32_t last_flip_vbl;
+static uint32_t work_c0;            /* gba_cycles() at plat_begin_frame */
 static int      skipped_in_row;
 static uint32_t logic_base_vbl;     /* vblank count at logic tick 0 */
 
@@ -156,6 +157,7 @@ void plat_begin_frame(void)
     /* Catch up when the logic has fallen more than one tick behind the
      * 30 Hz schedule, but never skip two frames in a row (>= 15 fps). */
     uint32_t due = (gba_vblanks - logic_base_vbl) >> 1;
+    work_c0 = gba_cycles();
     if (due > gba_frames + 6) {
         /* way behind (loading, saving): forget the debt */
         logic_base_vbl = gba_vblanks - gba_frames * 2;
@@ -190,6 +192,10 @@ void plat_end_frame(void)
     }
     gba_mailbox.ticks = gba_frames;
     if (!gba_nodraw) {
+        uint32_t w = gba_cycles() - work_c0;
+        gba_mailbox.work_sum += w;
+        gba_mailbox.work_n++;
+        if (w > gba_mailbox.work_max) gba_mailbox.work_max = w;
         video_flip();
         gba_mailbox.drawn++;
     }
