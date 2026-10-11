@@ -52,16 +52,19 @@ void r3_camera(int32_t x, int32_t y, int32_t z, int ang, int pitch_a,
     sa = isin(c->ang); ca = icos(c->ang);
     sp = isin(pitch_a); cp = icos(pitch_a);
     c->sa = sa; c->ca = ca;
-    /* rows: right, down, forward (see r3d.h), scaled by R3_SCALE */
-    c->m.m[0][0] = (int16_t)(-sa * R3_SCALE);
-    c->m.m[0][1] = (int16_t)(ca * R3_SCALE);
+    c->sp = sp; c->cp = cp;
+    /* rows: right, down, forward (see r3d.h), scaled by R3_SCALE_Q12 */
+#define SC(v) ((int16_t)(((v) * R3_SCALE_Q12) >> 12))
+    c->m.m[0][0] = SC(-sa);
+    c->m.m[0][1] = SC(ca);
     c->m.m[0][2] = 0;
-    c->m.m[1][0] = (int16_t)(((ca * sp) >> 12) * R3_SCALE);
-    c->m.m[1][1] = (int16_t)(((sa * sp) >> 12) * R3_SCALE);
-    c->m.m[1][2] = (int16_t)(-cp * R3_SCALE);
-    c->m.m[2][0] = (int16_t)(((ca * cp) >> 12) * R3_SCALE);
-    c->m.m[2][1] = (int16_t)(((sa * cp) >> 12) * R3_SCALE);
-    c->m.m[2][2] = (int16_t)(sp * R3_SCALE);
+    c->m.m[1][0] = SC((ca * sp) >> 12);
+    c->m.m[1][1] = SC((sa * sp) >> 12);
+    c->m.m[1][2] = SC(-cp);
+    c->m.m[2][0] = SC((ca * cp) >> 12);
+    c->m.m[2][1] = SC((sa * cp) >> 12);
+    c->m.m[2][2] = SC(sp);
+#undef SC
     for (i = 0; i < 3; i++)
         c->m.t[i] = -((c->m.m[i][0] * fx + c->m.m[i][1] * fy + c->m.m[i][2] * fz) >> 24);
     c->vx = vx; c->vy = vy; c->vw = vw; c->vh = vh;
@@ -73,7 +76,19 @@ void r3_camera(int32_t x, int32_t y, int32_t z, int ang, int pitch_a,
     gte_SetGeomOffset(c->cx, c->cy);
     gte_SetGeomScreen(c->H);
 
-    c->far_z = far_world * R3_SCALE;
+    {
+        /* horizontal fov = 2 atan(vw/2 / H) */
+        int lo = 0, hi = 1024, half = vw / 2;
+        while (hi - lo > 2) {
+            int mid = (lo + hi) >> 1;
+            if (isin(mid) * c->H >= icos(mid) * half) hi = mid; else lo = mid;
+        }
+        c->hfov_a = hi * 2;
+    }
+    /* SZ must stay above H/2 for the GTE divide (else it saturates) */
+    c->near_z = c->H / 2 + 6;
+    c->clip_z = c->near_z + 2 * R3_W2C(1) + 4;
+    c->far_z = R3_W2C(far_world);
     if (c->far_z > 65000) c->far_z = 65000;
     for (s = 0; (c->far_z >> s) >= OT_LEN - 24; s++)
         ;
@@ -81,10 +96,10 @@ void r3_camera(int32_t x, int32_t y, int32_t z, int ang, int pitch_a,
     for (s = 0; (c->far_z >> s) >= 255; s++)
         ;
     c->fog_shift = s;
-    if (c->fog_near == fog_near_world * R3_SCALE && c->fog_far == c->far_z &&
+    if (c->fog_near == R3_W2C(fog_near_world) && c->fog_far == c->far_z &&
         c->fog[255] == 0 && c->fog_rgb == fog_rgb)
         return;     /* fog table still valid */
-    c->fog_near = fog_near_world * R3_SCALE;
+    c->fog_near = R3_W2C(fog_near_world);
     c->fog_far = c->far_z;
     c->fog_rgb = fog_rgb;
     for (i = 0; i < 256; i++) {
@@ -198,6 +213,28 @@ static inline void emit_gt4(const R3V *a, const R3V *b, const R3V *c, const R3V 
     p[12] = uvq(d) + tuv;
     link_prim(p, 12, ot_index(a->sz + b->sz + c->sz + d->sz, bias));
     g_r3stats.polys++;
+}
+
+/* same as emit_gt4 but sorted at camera depth zsort */
+static void __attribute__((noinline)) emit_gt4_at(const R3V *a, const R3V *b, const R3V *c,
+                                                  const R3V *d, const TexRef *t, int flags,
+                                                  int32_t zsort, int32_t zmax)
+{
+    uint32_t *p;
+    int otz = (int)(zsort >> g_cam.ot_shift);
+    if (otz > OT_LEN - 2) otz = OT_LEN - 2;
+    p = (uint32_t *)g_prim_ptr;
+    emit_gt4(a, b, c, d, t, flags, 0, zmax);
+    if ((uint8_t *)p == g_prim_ptr)
+        return;
+    /* move it from its average-depth bucket to the requested one */
+    {
+        uint32_t *o = g_cam.ot + ot_index(a->sz + b->sz + c->sz + d->sz, 0);
+        *o = (*o & 0xff000000u) | (p[0] & 0x00ffffffu);
+    }
+    link_prim(p, 12, otz);
+    g_r3stats.polys--;
+    g_r3stats.backing++;
 }
 
 static void emit_gt3(const R3V *a, const R3V *b, const R3V *c, const TexRef *t,
@@ -316,48 +353,11 @@ static inline int judge(int minx, int maxx, int miny, int maxy, int32_t zmin, in
     return big ? -1 : 0;
 }
 
-static void quad_rec(R3V *a, R3V *b, R3V *c, R3V *d, const TexRef *t, int flags,
-                     int depth, int bias)
+/* recursive part: split into 4 and re-test the children */
+static void __attribute__((noinline)) quad_split(R3V *a, R3V *b, R3V *c, R3V *d,
+                                                 const TexRef *t, int flags, int depth, int bias)
 {
-    int32_t zmin = a->sz, zmax = a->sz;
     R3V m01, m02, m13, m23, mc;
-    int can_sub = depth < R3_MAXDEPTH && !(flags & R3F_NOSUB);
-#define ZMM(v) do { if ((v)->sz < zmin) zmin = (v)->sz; if ((v)->sz > zmax) zmax = (v)->sz; } while (0)
-    ZMM(b); ZMM(c); ZMM(d);
-#undef ZMM
-    if (zmax < R3_CLIPZ || zmin > g_cam.far_z)
-        return;
-    if (zmin < R3_NEAR && !(flags & R3F_FRONT)) {
-        /* crosses the near plane: clip first, subdivide the pieces */
-        R3V *ring[4];
-        ring[0] = a; ring[1] = b; ring[2] = d; ring[3] = c;
-        clip_poly(ring, 4, t, flags, depth, bias);
-        return;
-    }
-    {
-        int x0 = SX(a), x1 = SX(b), x2 = SX(c), x3 = SX(d);
-        int y0 = SY(a), y1 = SY(b), y2 = SY(c), y3 = SY(d);
-        int minx = x0, maxx = x0, miny = y0, maxy = y0, j;
-        if (x1 < minx) minx = x1;
-        if (x1 > maxx) maxx = x1;
-        if (x2 < minx) minx = x2;
-        if (x2 > maxx) maxx = x2;
-        if (x3 < minx) minx = x3;
-        if (x3 > maxx) maxx = x3;
-        if (y1 < miny) miny = y1;
-        if (y1 > maxy) maxy = y1;
-        if (y2 < miny) miny = y2;
-        if (y2 > maxy) maxy = y2;
-        if (y3 < miny) miny = y3;
-        if (y3 > maxy) maxy = y3;
-        j = judge(minx, maxx, miny, maxy, zmin, zmax, can_sub, depth);
-        if (j < 0)
-            return;
-        if (j == 0) {
-            emit_gt4(a, b, c, d, t, flags, bias, zmax);
-            return;
-        }
-    }
     g_r3stats.subdiv++;
     vmid(&m01, a, b);
     vmid(&m02, a, c);
@@ -373,6 +373,49 @@ static void quad_rec(R3V *a, R3V *b, R3V *c, R3V *d, const TexRef *t, int flags,
     quad_rec(&m01, b, &mc, &m13, t, flags, depth + 1, bias);
     quad_rec(&m02, &mc, c, &m23, t, flags, depth + 1, bias);
     quad_rec(&mc, &m13, &m23, d, t, flags, depth + 1, bias);
+}
+
+/* leaf test: cull / draw / split. Kept free of big locals so the common
+ * path (draw or cull without splitting) has a small stack frame. */
+static void quad_rec(R3V *a, R3V *b, R3V *c, R3V *d, const TexRef *t, int flags,
+                     int depth, int bias)
+{
+    int32_t zmin = a->sz, zmax = a->sz, z;
+    int minx, maxx, miny, maxy, v, j;
+    z = b->sz; if (z < zmin) zmin = z; if (z > zmax) zmax = z;
+    z = c->sz; if (z < zmin) zmin = z; if (z > zmax) zmax = z;
+    z = d->sz; if (z < zmin) zmin = z; if (z > zmax) zmax = z;
+    if (zmax < R3_CLIPZ || zmin > g_cam.far_z)
+        return;
+    if (zmin < R3_NEAR && !(flags & R3F_FRONT)) {
+        /* crosses the near plane: clip first, subdivide the pieces */
+        R3V *ring[4];
+        ring[0] = a; ring[1] = b; ring[2] = d; ring[3] = c;
+        clip_poly(ring, 4, t, flags, depth, bias);
+        return;
+    }
+    minx = maxx = SX(a);
+    v = SX(b); if (v < minx) minx = v; if (v > maxx) maxx = v;
+    v = SX(c); if (v < minx) minx = v; if (v > maxx) maxx = v;
+    v = SX(d); if (v < minx) minx = v; if (v > maxx) maxx = v;
+    miny = maxy = SY(a);
+    v = SY(b); if (v < miny) miny = v; if (v > maxy) maxy = v;
+    v = SY(c); if (v < miny) miny = v; if (v > maxy) maxy = v;
+    v = SY(d); if (v < miny) miny = v; if (v > maxy) maxy = v;
+    j = judge(minx, maxx, miny, maxy, zmin, zmax,
+              depth < R3_MAXDEPTH && !(flags & R3F_NOSUB), depth);
+    if (j == 0) {
+        emit_gt4(a, b, c, d, t, flags, bias, zmax);
+    } else if (j > 0) {
+        /* Crack filler: the unsplit quad, drawn first (behind its own
+         * pieces). Its edges are exactly the neighbours' edges, so the
+         * T-junction slivers between split and unsplit faces show the
+         * same texture instead of the background. */
+        if (depth == 0 && !(flags & R3F_SEMI) && minx > -1000 && maxx < 1000 &&
+            miny > -1000 && maxy < 1000)
+            emit_gt4_at(a, b, c, d, t, flags, zmax + (zmax >> 4) + 8, zmax);
+        quad_split(a, b, c, d, t, flags, depth, bias);
+    }
 }
 
 static void tri_rec(R3V *a, R3V *b, R3V *c, const TexRef *t, int flags, int depth, int bias)
@@ -489,7 +532,7 @@ void r3_billboard(const DoomoBillboard *bb, int32_t bx, int32_t by, int32_t bz,
 {
     const DoomoImage *img = bb->img;
     R3Cam *c = &g_cam;
-    int scale, w, h, rx, ry, cxr, cyr, czr, ntx, nty, tx, ty;
+    int scale, w, h, rx, ry, ux, uy, uz, cxr, cyr, czr, ntx, nty, tx, ty;
     int32_t sz_feet, sxy;
     int flip = (bb->flags & BB_FLIPX) ? 1 : 0;
     int semi = ((bb->flags & BB_TRANSLUCENT) || (extra_flags & R3F_SEMI)) ? 1 : 0;
@@ -515,9 +558,18 @@ void r3_billboard(const DoomoBillboard *bb, int32_t bx, int32_t by, int32_t bz,
     if (otz < 1) otz = 1;
     if (otz > OT_LEN - 2) otz = OT_LEN - 2;
     col = (extra_flags & R3F_NOFOG) ? col : r3_fogged(col, sz_feet);
-    /* camera right vector (4.12) */
+    /* camera right vector (4.12); "up" is world up, or the camera's up
+     * vector for camera-facing sprites (tilted overworld camera) */
     rx = -c->sa;
     ry = c->ca;
+    if (extra_flags & R3F_FACECAM) {
+        ux = (-c->ca * c->sp) >> 12;
+        uy = (-c->sa * c->sp) >> 12;
+        uz = c->cp;
+    } else {
+        ux = uy = 0;
+        uz = 4096;
+    }
     ntx = (img->w + IMG_TILE - 1) / IMG_TILE;
     nty = (img->h + IMG_TILE - 1) / IMG_TILE;
     for (ty = 0; ty < nty; ty++)
@@ -538,12 +590,18 @@ void r3_billboard(const DoomoBillboard *bb, int32_t bx, int32_t by, int32_t bz,
                 l = w / 2 - (((px0 + tw) * scale) >> 8);
                 rr = w / 2 - ((px0 * scale) >> 8);
             }
-            top = czr + h - ((py0 * scale) >> 8);
-            bot = czr + h - (((py0 + th) * scale) >> 8);
-            q[0].x = (int16_t)(cxr + ((rx * l) >> 12)); q[0].y = (int16_t)(cyr + ((ry * l) >> 12)); q[0].z = (int16_t)top;
-            q[1].x = (int16_t)(cxr + ((rx * rr) >> 12)); q[1].y = (int16_t)(cyr + ((ry * rr) >> 12)); q[1].z = (int16_t)top;
-            q[2].x = q[0].x; q[2].y = q[0].y; q[2].z = (int16_t)bot;
-            q[3].x = q[1].x; q[3].y = q[1].y; q[3].z = (int16_t)bot;
+            top = h - ((py0 * scale) >> 8);          /* above the feet */
+            bot = h - (((py0 + th) * scale) >> 8);
+            {
+                int tx_ = (ux * top) >> 12, ty_ = (uy * top) >> 12, tz_ = czr + ((uz * top) >> 12);
+                int bx_ = (ux * bot) >> 12, by_ = (uy * bot) >> 12, bz_ = czr + ((uz * bot) >> 12);
+                int lx = cxr + ((rx * l) >> 12), ly = cyr + ((ry * l) >> 12);
+                int rx2 = cxr + ((rx * rr) >> 12), ry2 = cyr + ((ry * rr) >> 12);
+                q[0].x = (int16_t)(lx + tx_);  q[0].y = (int16_t)(ly + ty_);  q[0].z = (int16_t)tz_;
+                q[1].x = (int16_t)(rx2 + tx_); q[1].y = (int16_t)(ry2 + ty_); q[1].z = (int16_t)tz_;
+                q[2].x = (int16_t)(lx + bx_);  q[2].y = (int16_t)(ly + by_);  q[2].z = (int16_t)bz_;
+                q[3].x = (int16_t)(rx2 + bx_); q[3].y = (int16_t)(ry2 + by_); q[3].z = (int16_t)bz_;
+            }
             xf3(&q[0], &q[1], &q[2]);
             xf1(&q[3]);
             for (i = 0; i < 4; i++)
@@ -644,16 +702,25 @@ void r3_shadow(int32_t bx, int32_t by, int32_t bz, int radius)
 static void sky_strip(int x0, int x1, int y0, int y1, const TexRef *t, int u0, int u1,
                       uint32_t col)
 {
-    POLY_FT4 *p = (POLY_FT4 *)gfx_alloc(sizeof(POLY_FT4));
-    if (!p)
-        return;
-    setPolyFT4(p);
-    ((uint32_t *)&p->r0)[0] = col | ((uint32_t)p->code << 24);
-    setXY4(p, x0, y0, x1, y0, x0, y1, x1, y1);
-    setUV4(p, u0, t->v, u1, t->v, u0, t->v + SKY_H - 1, u1, t->v + SKY_H - 1);
-    p->tpage = t->tpage;
-    p->clut = t->clut;
-    addPrim(g_cam.ot + OT_LEN - 1, p);
+    /* split vertically: the GPU drops polygons taller than 511 pixels */
+    int k, parts = 4;
+    for (k = 0; k < parts; k++) {
+        int ya = y0 + ((y1 - y0) * k) / parts, yb = y0 + ((y1 - y0) * (k + 1)) / parts;
+        int va = t->v + (SKY_H * k) / parts, vb = t->v + (SKY_H * (k + 1)) / parts - 1;
+        POLY_FT4 *p;
+        if (yb < g_cam.vy || ya >= g_cam.vy + g_cam.vh)
+            continue;
+        p = (POLY_FT4 *)gfx_alloc(sizeof(POLY_FT4));
+        if (!p)
+            return;
+        setPolyFT4(p);
+        ((uint32_t *)&p->r0)[0] = col | ((uint32_t)p->code << 24);
+        setXY4(p, x0, ya, x1, ya, x0, yb, x1, yb);
+        setUV4(p, u0, va, u1, va, u0, vb, u1, vb);
+        p->tpage = t->tpage;
+        p->clut = t->clut;
+        addPrim(g_cam.ot + OT_LEN - 1, p);
+    }
 }
 
 static void sky_fill(int x0, int y0, int x1, int y1, uint32_t rgb)
@@ -683,7 +750,7 @@ void r3_sky(int sky_id, uint16_t time, int bright)
         return;
     pix = core_sky_pixels(sky_id, time);
     /* horizontal: texels across the viewport for this projection */
-    span = (c->vw * 64 * 160) / (c->H * 320);      /* 64 texels at 90 deg */
+    span = (c->hfov_a * SKY_W) >> 12;              /* 64 texels at 90 deg */
     if (span < 8) span = 8;
     if (span > 255) span = 255;
     ucenter = (c->ang * 256) >> 12;

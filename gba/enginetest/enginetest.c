@@ -19,7 +19,6 @@
 #include "enginetest.h"
 
 void doomo_palette_fallback(void);
-void et_bench(void);
 extern uint32_t r3d_dbg[4];
 
 /* ------------------------------------------------------------------------ */
@@ -42,7 +41,7 @@ static const Key tour[] = {
     { 124, 60, 4096, 0, 50, CAM_FIRST_PERSON, "hall_door" },
     { 152, 60, 4096 - 300, 0, 40, CAM_FIRST_PERSON, "hall" },
     { 156, 48, 4096 - 400, 0, 30, CAM_FIRST_PERSON, 0 },
-    { 160, 36, 3072, 220, 40, CAM_FIRST_PERSON, "skylight" },
+    { 160, 46, 3072, 220, 40, CAM_FIRST_PERSON, "skylight" },
     { 164, 24, 4096, 0, 30, CAM_FIRST_PERSON, 0 },
     { 186, 22, 4096, 0, 25, CAM_FIRST_PERSON, "stairs" },
     { 224, 24, 4096 + 300, -40, 45, CAM_FIRST_PERSON, 0 },
@@ -252,25 +251,27 @@ static int build_sprites(int with_player)
 
 static void third_person_camera(DoomoView3D *v)
 {
-    /* over the shoulder: back 76 units, right 14, up 18; pulled in when
+    /* behind and above: back 136 units, right 8, up 34, tilted down so
+     * the player stands in the lower middle of the view; pulled in when
      * the line from the player's head hits geometry */
     int32_t fx = fx_cos(pangle), fy = fx_sin(pangle);
     int32_t hx = px, hy = py, hz = pz + eye_off;
-    int32_t bx = -FIXMUL(fx, 76 << 16) - FIXMUL(fy, 14 << 16);
-    int32_t by = -FIXMUL(fy, 76 << 16) + FIXMUL(fx, 14 << 16);
-    int32_t cz = hz + (18 << 16);
+    int32_t bx = -FIXMUL(fx, 136 << 16) - FIXMUL(fy, 8 << 16);
+    int32_t by = -FIXMUL(fy, 136 << 16) + FIXMUL(fx, 8 << 16);
+    int32_t cz = hz + (34 << 16);
     int s, best = 0;
     for (s = 1; s <= 16; s++) {
         int32_t tx = hx + bx / 16 * s, ty = hy + by / 16 * s;
         int32_t tz = hz + (cz - hz) / 16 * s;
         if (solid_at(tx + (fx > 0 ? -(8 << 16) : (8 << 16)), ty, tz) ||
-            solid_at(tx, ty, tz)) break;
+            solid_at(tx, ty, tz) || solid_at(tx, ty, tz + (6 << 16))) break;
         best = s;
     }
     if (best > 1) best--;
     v->x = hx + bx / 16 * best;
     v->y = hy + by / 16 * best;
     v->z = hz + (cz - hz) / 16 * best;
+    v->pitch = (int16_t)DOOMO_CLAMP(v->pitch - 40, -256, 256);
     v->camera = CAM_THIRD_PERSON;
 }
 
@@ -365,7 +366,7 @@ void enginetest_main(void)
     sprites_init();
     video_load_palette();
     gba_log("ENGINE TEST: boot");
-    et_bench();
+    et_div_test();
     if (save_test) et_save_test();
     load_own_map();
     px = (int32_t)tour[0].x8 << 19;
@@ -381,7 +382,7 @@ void enginetest_main(void)
         uint32_t k = gba_read_pad() & ~DOOMO_INPUT_SYNTH_XY;
         static uint32_t prevk;
         DoomoView3D v;
-        int n;
+        int n, i;
         ticks++;
         plat_begin_frame();
         doomo_map.time++;
@@ -456,12 +457,22 @@ void enginetest_main(void)
             ov.cy = (int32_t)(6 * 64 + (int)ow_t * 2) << 16;
             ov.vx = 0; ov.vy = 0; ov.vw = SCREEN_W; ov.vh = SCREEN_H;
             n = build_sprites(1);
+            for (i = 0; i < n; i++) bb[i].scale = 256;    /* overworld: 1 texel = 1 px */
             ov.sprites = bb;
             ov.sprite_count = n;
             ov.daylight = 15;
             ov.time = (uint16_t)ticks;
-            plat_overworld(&ov);
-            if (!gba_nodraw) draw_hud();
+            {
+                uint32_t t0 = gba_cycles();
+                plat_overworld(&ov);
+                if (!gba_nodraw) {
+                    uint32_t dt = gba_cycles() - t0;
+                    r3d_acc += dt;
+                    r3d_n++;
+                    if (dt > r3d_max) r3d_max = dt;
+                    draw_hud();
+                }
+            }
         } else {
             memset(&v, 0, sizeof(v));
             v.map = &doomo_map;

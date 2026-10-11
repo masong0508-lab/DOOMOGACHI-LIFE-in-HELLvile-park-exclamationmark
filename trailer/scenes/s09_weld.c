@@ -395,20 +395,62 @@ static void flames(float x, float y, int f, float s) {
     }
 }
 
+/* Rivet's big ringed raccoon tail, curling up behind the bench on the left
+ * so the audience can SEE it catch fire (it used to hide behind the gun). */
+static void tail_point(int f, float t, float *x, float *y) {
+    float wag = f >= 41 ? sinf(f * 0.45f) * 5 : sinf(f * 0.18f) * 4;   /* faster once ablaze: oblivious joy */
+    float bx = 92, by = BENCH_Y + 4, cx = 50, cy = 104, tx = 64 + wag, ty = 60;
+    float u = 1 - t;
+    *x = u * u * bx + 2 * u * t * cx + t * t * tx;
+    *y = u * u * by + 2 * u * t * cy + t * t * ty;
+}
+static void rivet_tail(int f) {
+    const int N = 16;
+    int fire = f >= 41;
+    Sh red = { PAL_PAINT(PAINT_CHERRY, 0), PAL_PAINT(PAINT_CHERRY, 0), PAL_PAINT(PAINT_CHERRY, 1), PAL_PAINT(PAINT_CHERRY, 2), 0 };
+    Sh ring = { PAL_PAINT(PAINT_JET, 0), PAL_PAINT(PAINT_JET, 1), PAL_PAINT(PAINT_CHARCOAL, 1), PAL_PAINT(PAINT_CHARCOAL, 2), 0 };
+    Sh singe = { PAL_PAINT(PAINT_JET, 0), PAL_PAINT(PAINT_JET, 0), PAL_PAINT(PAINT_JET, 1), PAL_PAINT(PAINT_CHARCOAL, 1), 0 };
+    /* two passes: one shared coloured outline, then the fluffy fill, so the
+     * rings read as soft bands of fur instead of segments */
+    for (int pass = 0; pass < 2; pass++)
+        for (int i = 0; i <= N; i++) {
+            float t = i / (float)N, x, y;
+            tail_point(f, t, &x, &y);
+            float r = 4.5f + sinf(t * 3.14159f) * 4.5f - t * 1.0f;    /* fat and fluffy in the middle */
+            Sh s = ((i / 3) & 1) ? ring : red;
+            if (fire && t > 0.78f) s = singe;
+            if (pass == 0) {
+                disc(x, y, r + 1.0f, ((i / 3) & 1) ? PAL_PAINT(PAINT_JET, 0) : PAL_PAINT(PAINT_CHERRY, 0));
+                /* fur tufts poking out of the silhouette */
+                if (i % 2 == 0 && i < N) disc(x - r * 0.95f, y + 1.5f, 1.6f, s.o);
+                continue;
+            }
+            Sh t2 = s; t2.o = 0;
+            ball(x, y, r, r * 0.92f, t2);
+            if (i % 2 == 0 && i < N) disc(x - r * 0.95f, y + 1.5f, 0.9f, s.b);
+        }
+}
 static void rivet(int f, float wx, float wy, int arc) {
     const int X = 120, YF = 132;
     int up = f >= 54;                  /* mask flipped up */
     int fire = f >= 41;
     int expr = up ? TKE_HAPPY : TKE_NORMAL, mouth = up ? TKM_OPEN : TKM_FLAT;
+    rivet_tail(f);
     layer_begin();
     tk_chibi(X, YF, &TK_RIVET, 3, expr, mouth, f + 11, 0);
     layer_end(LAYER_A);
     layer_draw(LAYER_A, 0, 0, 0, 0, 1, 1, 0, 0, BENCH_Y);
-    if (fire) {   /* the tail, merrily ablaze, poking up behind the bench */
-        flames(X + 40, BENCH_Y - 2, f, 1.7f);
-        for (int i = 0; i < 3; i++) {
-            float k = fmodf(f * 0.04f + i * 0.33f, 1.0f);
-            haze(X + 40 + sinf(k * 6 + i) * 4, BENCH_Y - 20 - k * 50, 3 + k * 6, 2 + k * 4, L_DIM);
+    if (fire) {   /* the tail tip, merrily ablaze */
+        float tx, ty;
+        tail_point(f, 1.0f, &tx, &ty);
+        int age = f - 41;
+        float s = age < 4 ? 1.4f + age * 0.4f : 3.0f;
+        light_pool(tx, ty - 6, 34, 30, L_LAVA, 2, 1.6f);
+        flames(tx, ty + 2, f, s);
+        flames(tx - 3, ty + 6, f + 7, s * 0.6f);
+        for (int i = 0; i < 4; i++) {
+            float k = fmodf(f * 0.035f + i * 0.25f, 1.0f);
+            haze(tx + sinf(k * 6 + i) * 5 + k * 10, ty - 26 - k * 40, 3 + k * 7, 2 + k * 5, L_DIM);
         }
     }
     /* the welding mask: a flat shield over the face (ears + fluff stay out) */
@@ -553,8 +595,9 @@ static void shot_workshop(int f) {
     }
     /* the fateful spark: arcs from the scope weld onto Rivet's tail */
     if (f >= 37 && f < 42) {
-        float k = (f - 37) / 5.0f;
-        float x = gx + 5 + (156 - gx - 5) * k, y = gy - 7 - sinf(k * 3.14159f) * 20 + k * 10;
+        float k = (f - 37) / 5.0f, tx, ty;
+        tail_point(41, 1.0f, &tx, &ty);
+        float x = gx + 5 + (tx - gx - 5) * k, y = gy - 7 + (ty - gy + 7) * k - sinf(k * 3.14159f) * 24;
         tk_rect((int)x, (int)y, 2, 2, PAL_RAMP(RAMP_CANDY, 7));
         tk_px((int)x - 1, (int)y + 1, PAL_RAMP(RAMP_LAVA, 5));
     }

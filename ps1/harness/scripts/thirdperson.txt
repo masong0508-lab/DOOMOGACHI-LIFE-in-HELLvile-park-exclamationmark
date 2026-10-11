@@ -1,0 +1,11 @@
+# Engine test: third-person parts of the tour (3D player model)
+wait 480
+shot tp_courtyard
+wait 60
+shot tp_courtyard2
+wait 60
+shot tp_corridor
+wait 240
+shot tp_hell
+wait 70
+shot tp_lift

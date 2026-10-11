@@ -120,6 +120,10 @@ void tk_post_shake(int dx, int dy);          /* shift whole frame       */
 void tk_post_glitch(int seed, int strength); /* row tearing + colour noise */
 void tk_post_scanlines(void);                /* subtle LCD lines        */
 void tk_post_fade(int amount);               /* 0..16 to black          */
+/* Cartoon iris wipe: everything outside a circle (or a heart if heart != 0)
+ * of radius r around (cx, cy) becomes `color`, with an optional 1-2 px rim
+ * (rim = 0 for none). r <= 0 fills the whole frame. */
+void tk_post_iris(float cx, float cy, float r, int heart, uint8_t color, uint8_t rim);
 /* particles: deterministic confetti / gibs / sparkles / hearts burst at
  * (x,y) that started `age` frames ago. */
 void tk_confetti(int x, int y, int age, uint32_t seed);

@@ -252,13 +252,21 @@ void ui_round_rect(int x, int y, int w, int h, int r, uint8_t c)
 
 /* ---- shaded shapes from a coverage mask -------------------------------- */
 #define MASK_MAX 72
-static uint8_t mask[MASK_MAX * MASK_MAX];
+static uint8_t mask[(MASK_MAX * MASK_MAX + 7) / 8];     /* 1 bit per pixel */
 static int mw, mh;
 
 static int m_in(int x, int y)
 {
+    int i;
     if (x < 0 || y < 0 || x >= mw || y >= mh) return 0;
-    return mask[y * mw + x];
+    i = y * mw + x;
+    return (mask[i >> 3] >> (i & 7)) & 1;
+}
+
+static void m_set(int x, int y, int on)
+{
+    int i = y * mw + x;
+    if (on) mask[i >> 3] |= (uint8_t)(1 << (i & 7));
 }
 
 /* pal: outline, shadow, base, light, glint */
@@ -314,7 +322,7 @@ static int mask_begin(int w, int h)
     if (w > MASK_MAX) w = MASK_MAX;
     if (h > MASK_MAX) h = MASK_MAX;
     mw = w; mh = h;
-    memset(mask, 0, (size_t)(w * h));
+    memset(mask, 0, (size_t)((w * h + 7) / 8));
     return 1;
 }
 
@@ -351,7 +359,7 @@ void ui_heart_squash(int cx, int cy, int size, int sx256, int sy256, uint8_t fil
     mask_begin(2 * hw + 1, 2 * hh + 1);
     for (y = 0; y < mh; y++)
         for (x = 0; x < mw; x++)
-            mask[y * mw + x] = (uint8_t)heart_in((x - hw) * 2 * s / hw, (y - hh) * 2 * s / hh, s);
+            m_set(x, y, heart_in((x - hw) * 2 * s / hw, (y - hh) * 2 * s / hh, s));
     ramp5(fill, pal);
     shade_mask(cx - hw, cy - hh, pal, s >= 8 ? 2 : 1);
     /* two glossy glints on the left lobe */
@@ -412,7 +420,7 @@ void ui_star(int cx, int cy, int r, uint8_t fill)
     }
     for (y = 0; y < mh; y++) {
         for (x = 0; x < mw; x++) {
-            int32_t px = ((x - s) << 8), py = ((y - s) << 8) + 64;
+            int32_t px = (x - s) * 256, py = (y - s) * 256 + 64;
             int inside = 0, j;
             for (i = 0, j = 9; i < 10; j = i++) {
                 if (((vy[i] > py) != (vy[j] > py)) &&
@@ -420,7 +428,7 @@ void ui_star(int cx, int cy, int r, uint8_t fill)
                                     (vy[j] - vy[i])) + vx[i]))
                     inside = !inside;
             }
-            mask[y * mw + x] = (uint8_t)inside;
+            m_set(x, y, inside);
         }
     }
     ramp5(fill, pal);

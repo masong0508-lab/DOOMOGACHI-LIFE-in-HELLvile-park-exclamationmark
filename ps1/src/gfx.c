@@ -45,7 +45,8 @@ uint16_t  g_pal15[256];
 uint8_t  *g_prim_ptr, *g_prim_end;   /* prim allocator (inlined by r3d) */
 #define s_ptr g_prim_ptr
 #define s_end g_prim_end
-static uint32_t *s_tail;          /* last node of the draw chain      */
+uint32_t *g_chain_tail;           /* last node of the draw chain      */
+#define s_tail g_chain_tail
 static uint32_t *s_up_tail;       /* last node of the upload chain    */
 static int       s_views;
 static uint32_t *s_view_ot;
@@ -124,6 +125,7 @@ uint32_t gfx_prims_used(void) { return s_prims; }
 void gfx_chain(void *prim)
 {
     uint32_t *p = (uint32_t *)prim;
+    gfx2d_flush();
     TAG_LINK(s_tail, p);
     s_tail = p;
     s_prims++;
@@ -131,7 +133,9 @@ void gfx_chain(void *prim)
 
 void gfx_tpage(uint16_t tpage)
 {
-    DR_TPAGE *t = (DR_TPAGE *)gfx_alloc(sizeof(DR_TPAGE));
+    DR_TPAGE *t;
+    gfx2d_flush();
+    t = (DR_TPAGE *)gfx_alloc(sizeof(DR_TPAGE));
     if (!t) return;
     setDrawTPage(t, 1, 1, tpage);
     gfx_chain(t);
@@ -152,6 +156,7 @@ void gfx_begin(void)
     setDrawTPage((DR_TPAGE *)f->head, 1, 1, getTPage(0, 0, 0, 0));
     termPrim((DR_TPAGE *)f->head);
     s_tail = f->head;
+    gfx2d_reset();
     f->flush[0] = 0x01ffffffu;          /* len 1 */
     f->flush[1] = 0x01000000u;          /* GP0(01h) clear texture cache */
 }
@@ -162,6 +167,7 @@ uint32_t *gfx_ot_begin(int vx, int vy, int vw, int vh)
     int fx, fy;
     uint32_t *ot;
     DR_AREA *a;
+    gfx2d_flush();
     if (s_views >= OT_VIEWS || s_view_ot)
         return NULL;
     s_view_idx = s_views++;
@@ -248,7 +254,7 @@ void gfx_upload_now(int x, int y, int w, int h, const void *data)
 {
     /* LoadImage needs a word-aligned source and an even pixel count
      * (every boot-time upload has an even width) */
-    static uint32_t tmp[4096];
+    static uint32_t tmp[1024];
     RECT r;
     const uint8_t *src = (const uint8_t *)data;
     int rows_per = (int)(sizeof(tmp) / 2) / w;
@@ -270,6 +276,7 @@ void gfx_end(void)
 {
     FrameBuf *f = &s_fb[g_cur];
     uint32_t vb;
+    gfx2d_flush();
     termPrim((DR_TPAGE *)s_tail);
     /* uploads -> flush -> draw chain */
     TAG_LINK(s_up_tail, f->flush);

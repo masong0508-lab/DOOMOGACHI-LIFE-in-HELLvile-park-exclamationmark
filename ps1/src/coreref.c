@@ -36,6 +36,7 @@ extern void combat_build_view(DoomoView3D *v) WEAKFN;
 extern DoomoPlayerState doomo_player WEAKDATA;
 extern const int8_t *audio_sfx_pcm(int sfx, uint32_t *len, uint32_t *rate) WEAKFN;
 extern const uint16_t doomo_palette[256] WEAKDATA;
+extern int opt_get(int opt) WEAKFN;
 extern int map_floor_z(const DoomoMap *m, int cx, int cy) WEAKFN;
 extern int map_ceil_z(const DoomoMap *m, int cx, int cy) WEAKFN;
 
@@ -160,4 +161,9 @@ int core_ceil_z(const DoomoMap *m, int cx, int cy)
     if (PRESENT(map_ceil_z))
         return map_ceil_z(m, cx, cy);
     return map_cell(m, cx, cy)->ceil_h * DOOMO_HEIGHT_STEP;
+}
+
+int core_opt(int opt, int def)
+{
+    return PRESENT(opt_get) ? opt_get(opt) : def;
 }

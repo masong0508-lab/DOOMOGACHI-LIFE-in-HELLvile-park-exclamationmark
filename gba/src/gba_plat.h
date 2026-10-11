@@ -47,6 +47,17 @@ void video_init(void);
 void video_load_palette(void);
 void video_flip(void);                   /* wait for vblank pacing + flip */
 
+/* ---- shared big buffer (bigbuf.c) -------------------------------------- */
+/* The save scratch handed to the core (>= DOOMO_SAVE_SCRATCH_MIN) and,
+ * between saves, the platform's rebuildable caches (offsets below). */
+#define GBA_BIG_SIZE   (88u * 1024u)
+#define GBA_BIG_OW     0u               /* overworld lit tiles  < 20 KB */
+#define GBA_BIG_CLIPS  (20u * 1024u)    /* r3d clip checkpoints < 8 KB  */
+#define GBA_BIG_ROOF   (28u * 1024u)    /* r3d roof table         4 KB  */
+#define GBA_BIG_CMT    (32u * 1024u)    /* r3d tinted colormap    4 KB  */
+#define GBA_BIG_SPR    (36u * 1024u)    /* r3d sprite order       1 KB  */
+extern uint8_t gba_big[];
+
 /* ---- 3D (r3d*.c) --------------------------------------------------------- */
 void r3d_init(void);
 typedef struct R3DStats {

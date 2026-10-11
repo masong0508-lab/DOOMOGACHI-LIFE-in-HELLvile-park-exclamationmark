@@ -682,7 +682,7 @@ static void closeup(int f, const TkChibi *c) {
         int e = f - F_EYE;
         static const float OP[5] = { 0.3f, 1.35f, 0.85f, 1.1f, 1.0f };
         open = e < 5 ? OP[e] : 1.0f;
-        if (f >= 134 && f < 137) open = 0;              /* ...it blinks. alone. */
+        if (f >= 145 && f < 148) open = 0;              /* ...inside the iris, it blinks. alone. */
     }
     if (f >= F_EYE) third_eye(120, 152 + zy, 4, f, c->eyes, c->skin, open);
     if (f >= F_EYE && f < F_EYE + 14) tk_sparkles(120, 40, f - F_EYE, 99, 30);
@@ -696,6 +696,12 @@ void scene_s05_creator(int f, int n) {
         closeup(f, &kv);
         if (f >= F_CAP) bcap(146, "Yes, three eyes.", PAL_WHITE, PAL_UI_PINK_D, 2, f - F_CAP);
         if (f < F_ZOOM + 2) tk_post_flash(PAL_WHITE, 10 - (f - F_ZOOM) * 5);
+        /* director: iris-out on the third eye, which blinks alone inside it */
+        if (f >= 139) {
+            int a = f - 139;
+            float r = a < 5 ? 250.0f + (17.0f - 250.0f) * tk_ease(a / 5.0f) : (f < 149 ? 17.0f : 0.0f);
+            tk_post_iris(120, 49, r, 0, PAL_BLACK, PAL_UI_PINK_D);
+        }
         return;
     }
     backdrop(f);
@@ -739,5 +745,6 @@ void scene_s05_creator_audio(double t0, double dur) {
     tk_sfx(t0 + F_EYE * fr, SFX_POP, 1.0f);
     tk_sfx(t0 + (F_EYE + 1) * fr, SFX_SPARKLE, 0.6f);
     tk_sfx(t0 + (F_CAP + 2) * fr, SFX_FANFARE, 0.4f);
-    tk_note(t0 + 134 * fr, 0.05, 91, TKV_SINE, 0.25f);         /* the lone blink: plink */
+    tk_note(t0 + 145 * fr, 0.05, 91, TKV_SINE, 0.25f);         /* the lone blink: plink */
+    tk_slide(t0 + 139 * fr, 0.16, 96, 72, TKV_SINE, 0.12f);    /* iris: shwip */
 }

@@ -28,9 +28,14 @@ core/src/sprites.c   sprite_image / sprite_frames / sprite_flags (lookups only)
 `core/src/palette.c` (+ fixmath/rng, unused). It is integer-only and
 seeded: no floats, no libm, no time, no `rand()`, so `art_data.c` is
 byte-identical on every machine. It validates as it goes and exits non-zero
-on errors: every `TEX_*`, `SKY_*` and `SPR_*` id must be defined exactly
-once, frame counts must fit the header limits, and no texture or sky may
-contain index 0.
+on errors, so `make gen` / `check-gen` catch broken art: every `TEX_*`,
+`SKY_*` and `SPR_*` id must be defined exactly once, frame counts must fit
+the header limits, no texture or sky may contain index 0, the colormap
+must be identity at level 15, black at level 0, never touch index 0 and
+never get brighter at a lower level, every demon must have 8 frames,
+every sprite frame must be non-empty and centred (even width), ground
+sprites must stand on their bottom row in frame 0, and demon corpses
+(frame 7) must lie on the ground.
 
 Contact sheets written by `--sheet`:
 
@@ -169,13 +174,13 @@ that completes one full turn over the loop).
 | FLESH_WALL | wet muscle lumps, purple raised veins, pustules | 1 |
 | BONE_WALL | ossuary: rows of skulls between stacked femurs | 1 |
 | BLOOD_BRICK | dark red bricks, stains, glossy blood drips | 1 |
-| LAVA | molten swirling currents, cooling crust islands, bubbles that pop | 4 |
+| LAVA | cooled crust plates split by breathing, glowing cracks over molten swirling pools; bubbles that pop | 4 |
 | RUST_METAL | riveted steel panels eaten by rust, rust tears, scratches | 1 |
 | TECH_PANEL | vent, green terminal, status lights, pipes, hazard strip | 1 |
 | SKULL_MOSAIC | tesserae skull with ember eyes on a blood-red field, gold corners | 1 |
 | DEMON_EYES | flesh wall with seven staring eyes; FLASH frame: half blink, the rest dart sideways | 2 |
 | CHAINS | three hanging chains on cracked dark stone | 1 |
-| VAPE_CLOUD_WALL | billowing violet vapour puffs circling, magenta rims, glitter | 4 |
+| VAPE_CLOUD_WALL | dark billowing violet vapour puffs circling, magenta rims, glitter, two sly faces lurking in the haze | 4 |
 | HELL_ROCK | knobbly red-brown rock with glowing lava cracks | 1 |
 | GORE_FLOOR | meaty floor, glossy blood pools, guts, bone shards, teeth | 1 |
 | METAL_FLOOR | diamond plate with panel seams and rivets | 1 |
@@ -280,8 +285,8 @@ const.
 |---|---|---|
 | Textures | 60 (47 + animation frames) | 245,760 |
 | Skies | 5 | 122,880 |
-| Sprites | 194 | ~230,500 |
-| **Total pixel data** | | **~599,100** (< 600 KB) |
+| Sprites | 194 | 230,462 |
+| **Total pixel data** | | **599,102** (< 600 KB) |
 
 `art_data.c` itself is ~2.2 MB of decimal text. Keep the total pixel data
 under 600 KB (the whole PS1 executable is loaded into its 2 MB of RAM).

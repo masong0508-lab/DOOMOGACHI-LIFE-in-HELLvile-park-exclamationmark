@@ -1,0 +1,9 @@
+# save1.txt - flash save self test, first run (fresh save file): hold
+# SELECT through boot (the ROM samples it after init) so the ENGINE_TEST
+# ROM runs et_save_test().
+down SELECT
+frames 60
+release
+wait 10
+expect-log SAVETEST: chip
+expect-log SAVETEST: write ok

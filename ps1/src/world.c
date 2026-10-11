@@ -22,6 +22,7 @@ static uint8_t  s_w, s_h;
 static uint16_t s_last_time;
 static int      s_row;
 int             g_world_sky_top;
+int16_t         g_world_wtop[DOOMO_MAP_MAX_W * DOOMO_MAP_MAX_H];
 uint32_t        g_world_corner[GW * GH];
 
 static uint32_t cell_glow(const DoomoCell *c, int *add)
@@ -83,10 +84,14 @@ static void sky_top(void)
     for (i = 0; i < n; i++) {
         const DoomoCell *c = &m->cells[i];
         int v;
-        if (c->wall)
-            continue;
-        v = c->ceil_tex == DOOMO_TEX_SKY ? c->floor_h * DOOMO_HEIGHT_STEP + 160
-                                         : c->ceil_h * DOOMO_HEIGHT_STEP;
+        if (c->wall) {
+            v = c->ceil_h > c->floor_h ? c->ceil_h * DOOMO_HEIGHT_STEP
+                                       : c->floor_h * DOOMO_HEIGHT_STEP + 256;
+            g_world_wtop[i] = (int16_t)v;
+        } else {
+            v = c->ceil_tex == DOOMO_TEX_SKY ? c->floor_h * DOOMO_HEIGHT_STEP + 256
+                                             : c->ceil_h * DOOMO_HEIGHT_STEP;
+        }
         if (v > top)
             top = v;
     }

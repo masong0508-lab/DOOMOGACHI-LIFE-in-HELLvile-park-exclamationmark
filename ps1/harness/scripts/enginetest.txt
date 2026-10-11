@@ -1,6 +1,6 @@
 # Engine test walk-through (build with -DDOOMO_ENGINE_TEST=ON).
 # The tour is deterministic per rendered frame; shots are taken on the way.
-wait 150
+wait 10
 fps tour
 wait 30
 shot et_000_hall

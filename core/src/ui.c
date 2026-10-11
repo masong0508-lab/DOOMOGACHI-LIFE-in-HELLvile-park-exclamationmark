@@ -63,6 +63,15 @@ void ui_window(int x, int y, int w, int h, int style)
     plat_rect(x + r + 4 + DOOMO_MAX(w / 4, 4), y + 2, 2, 1, st->gloss);
     /* inner rim shadow on the right edge */
     plat_rect(x + w - 2, y + r + 1, 1, DOOMO_MAX(h - 2 * r - 2, 0), st->fill_lo);
+    /* a glint that slides along the glossy band every few seconds */
+    if (opt_get(OPT_UI_BOUNCE) && w > 24) {
+        int span = w - 2 * r - 8, pos = (frame_t() * 4 + x * 13 + y * 7) % (span + 240);
+        if (pos < span) {
+            plat_rect(x + r + 2 + pos, y + 2, 3, 1, PAL_WHITE);
+            plat_rect(x + r + 1 + pos, y + 3, 2, 1, PAL_WHITE);
+            plat_rect(x + r + pos, y + 4, 1, 1, st->gloss);
+        }
+    }
 }
 
 int ui_window_pop(int x, int y, int w, int h, int style, int ticks)
@@ -83,21 +92,73 @@ int ui_window_pop(int x, int y, int w, int h, int style, int ticks)
 
 /* ====================================================================== */
 /* text                                                                     */
-void ui_text(int x, int y, const char *s, uint8_t color)
+/* Button icons (ICON_BTN_A / ICON_BTN_B) are drawn as little coloured
+ * button caps with a white letter instead of the 1-colour font glyph. */
+#define CAP_ADV 8
+static void button_cap(int x, int y, int which)
 {
-    int fs;
-    if (!s) return;
-    fs = opt_get(OPT_FONT_STYLE);
-    if (fs == 2) plat_text(x + 1, y + 1, s, ui_darker(ui_darker(color)) == color ?
-                            PAL_GRAY : ui_lighter(ui_lighter(color)));
+    static const char *const la[5] = { ".#.", "#.#", "###", "#.#", "#.#" };
+    static const char *const lb[5] = { "##.", "#.#", "##.", "#.#", "##." };
+    const char *const *l = which == ICON_BTN_A ? la : lb;
+    uint8_t fill = which == ICON_BTN_A ? PAL_PAINT(PAINT_ROSE, 1) : PAL_PAINT(PAINT_SKY, 0);
+    int r, c;
+    ui_fill_circle(x + 3, y + 3, 3, ui_darker(ui_darker(fill)));
+    ui_fill_circle(x + 3, y + 3, 2, fill);
+    plat_rect(x + 2, y + 1, 1, 1, ui_lighter(fill));
+    for (r = 0; r < 5; r++)
+        for (c = 0; c < 3; c++)
+            if (l[r][c] == '#') plat_rect(x + 2 + c, y + 1 + r, 1, 1, PAL_WHITE);
+}
+
+static void text_run(int x, int y, const char *s, uint8_t color, int fs)
+{
+    if (fs == 2) plat_text(x + 1, y + 1, s, ui_lighter(ui_lighter(color)));
     plat_text(x, y, s, color);
     if (fs == 1) plat_text(x + 1, y, s, color);
+}
+
+void ui_text(int x, int y, const char *s, uint8_t color)
+{
+    char run[128];
+    int n = 0, cx = x, rx = x, fs;
+    if (!s) return;
+    fs = opt_get(OPT_FONT_STYLE);
+    for (;; s++) {
+        unsigned char c = (unsigned char)*s;
+        if (c == 0 || c == '\n' || c == ICON_BTN_A || c == ICON_BTN_B || n == 127) {
+            if (n) { run[n] = 0; text_run(rx, y, run, color, fs); n = 0; }
+            if (c == 0) break;
+            if (c == '\n') { cx = x; y += FONT_LINE; rx = cx; continue; }
+            if (c == ICON_BTN_A || c == ICON_BTN_B) {
+                button_cap(cx, y, c);
+                cx += CAP_ADV;
+                rx = cx;
+                continue;
+            }
+            rx = cx;                          /* run buffer full: flush and go on */
+        }
+        run[n++] = (char)c;
+        cx += FONT_ADVANCE;
+    }
+}
+
+int ui_text_width(const char *s)
+{
+    int best = 0, cur = 0;
+    if (!s) return 0;
+    for (; *s; s++) {
+        unsigned char c = (unsigned char)*s;
+        if (c == '\n') { if (cur > best) best = cur; cur = 0; continue; }
+        cur += (c == ICON_BTN_A || c == ICON_BTN_B) ? CAP_ADV : FONT_ADVANCE;
+    }
+    if (cur > best) best = cur;
+    return best ? best - 1 : 0;
 }
 
 void ui_text_shadow(int x, int y, const char *s, uint8_t color, uint8_t shadow)
 {
     plat_text(x + 1, y + 1, s, shadow);
-    plat_text(x, y, s, color);
+    ui_text(x, y, s, color);
 }
 
 void ui_text_outline(int x, int y, const char *s, uint8_t color, uint8_t outline)
@@ -118,7 +179,7 @@ void ui_text_center(int cx, int y, const char *s, uint8_t color)
         int n = 0;
         while (s[n] && s[n] != '\n' && n < 63) { line[n] = s[n]; n++; }
         line[n] = 0;
-        ui_text(cx - font_text_width(line) / 2, y, line, color);
+        ui_text(cx - ui_text_width(line) / 2, y, line, color);
         y += FONT_LINE;
         s += n;
         if (*s == '\n') s++;
@@ -484,8 +545,8 @@ void ui_list_draw(const UiList *l, int x, int y, int w, int style)
 
 /* ====================================================================== */
 /* paint picker                                                             */
-#define SW_W 12
-#define SW_H 11
+#define SW_W UI_SWATCH_W
+#define SW_H UI_SWATCH_H
 
 int ui_paint_picker_update(uint8_t *paint, int cols)
 {
@@ -595,7 +656,7 @@ void ui_toast_draw(void)
     if (toast_n == 0) return;
     t = toast_t++;
     st = ui_style(WIN_CREAM);
-    w = DOOMO_MIN(font_text_width(toast_msg[0]) + 22, sw - 8);
+    w = DOOMO_MIN(ui_text_width(toast_msg[0]) + 22, sw - 8);
     xf = sw - w - 4;
     if (t < TOAST_IN) {
         d = TOAST_IN - t;
@@ -646,7 +707,7 @@ void ui_portrait(int x, int y, int resident_id, int scale, int expression)
 void ui_title(int cx, int y, const char *s, int style)
 {
     const UiStyle *st = ui_style(style);
-    int tw = font_text_width(s), w = tw + 18, x = cx - w / 2;
+    int tw = ui_text_width(s), w = tw + 18, x = cx - w / 2;
     int t = frame_t();
     ui_drop_shadow(x + 1, y + 2, w, 13, 4);
     ui_pill(x, y, w, 13, st->title_bg, st->outline, ui_lighter(st->title_bg));
@@ -659,7 +720,7 @@ void ui_hint(const char *s, int style)
 {
     const UiStyle *st = ui_style(style);
     int sw = plat_screen_w(), sh = plat_screen_h();
-    int w = font_text_width(s) + 12, x = (sw - w) / 2, y = sh - 13;
+    int w = ui_text_width(s) + 12, x = (sw - w) / 2, y = sh - 13;
     ui_pill(x, y, w, 12, st->title_bg, st->outline, ui_lighter(st->title_bg));
     ui_text(x + 6, y + 2, s, st->title);
 }
@@ -667,7 +728,7 @@ void ui_hint(const char *s, int style)
 void ui_button(int x, int y, int w, const char *label, int selected, int style)
 {
     const UiStyle *st = ui_style(style);
-    int tw = font_text_width(label);
+    int tw = ui_text_width(label);
     int b = selected ? (ui_wave(frame_t(), 20, 1) > 0) : 0;
     y -= b;
     if (selected) {
@@ -679,4 +740,44 @@ void ui_button(int x, int y, int w, const char *label, int selected, int style)
         ui_pill(x, y, w, 14, st->fill_hi, st->outline, PAL_WHITE);
         ui_text(x + (w - tw) / 2, y + 3, label, st->text);
     }
+}
+
+void ui_value_row(int x, int y, int w, const char *label, const char *value,
+                  int selected)
+{
+    const UiStyle *st = ui_style(ui_cur_style);
+    int vw = ui_text_width(value), right = x + w;
+    int b = selected ? (ui_wave(frame_t(), 16, 1) > 0) : 0;
+    if (selected) {
+        ui_pill(x - 2, y - 2, w + 4, FONT_LINE + 3, st->accent_d,
+                ui_darker(st->accent_d), ui_lighter(st->accent_d));
+        ui_cursor(x - 12, y);
+    }
+    ui_text(x + 2, y, label, selected ? st->text : st->text_dim);
+    if (selected) {
+        plat_text(right - vw - 19 - b, y, STR_ICON_ARROW_L, st->accent);
+        plat_text(right - 8 + b, y, STR_ICON_ARROW_R, st->accent);
+    }
+    ui_text(right - vw - 11, y, value, selected ? st->accent : st->text);
+}
+
+int ui_tabs(int x, int y, const char *const *names, int count, int sel, int style)
+{
+    const UiStyle *st = ui_style(style);
+    int i, cx = x, t = frame_t();
+    for (i = 0; i < count; i++) {
+        int tw = ui_text_width(names[i]) + 10;
+        if (i == sel) {
+            int b = ui_wave(t, 20, 1) > 0;
+            ui_drop_shadow(cx + 1, y + 1 - b, tw, 13, 4);
+            ui_pill(cx, y - 2 - b, tw, 13, st->accent, ui_darker(ui_darker(st->accent)),
+                    ui_lighter(st->accent));
+            ui_text_shadow(cx + 5, y + 1 - b, names[i], PAL_WHITE, ui_darker(st->accent));
+        } else {
+            ui_pill(cx, y, tw, 11, st->fill_lo, st->outline, st->fill_hi);
+            ui_text(cx + 5, y + 2, names[i], st->text_dim);
+        }
+        cx += tw + 2;
+    }
+    return cx - x - 2;
 }

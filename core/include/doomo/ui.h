@@ -43,6 +43,9 @@ void ui_list_draw(const UiList *l, int x, int y, int w, int style);
 
 /* Modal scenes (push themselves; callbacks run after they pop). */
 void ui_confirm(const char *question, void (*done)(int yes));
+/* On-screen keyboard (D-pad grid: upper / lower / symbols pages). maxlen
+ * is the size of buf in bytes INCLUDING the NUL (DOOMO_NAME_LEN for
+ * resident names). buf is only written when the player confirms. */
 void ui_text_entry(const char *prompt, char *buf, int maxlen,
                    void (*done)(int ok));
 /* Typewriter dialogue box with speaker portrait + voice babble.
@@ -116,11 +119,14 @@ void ui_heart_flat(int cx, int cy, int size, uint8_t c);
 void ui_star(int cx, int cy, int r, uint8_t fill);
 /* Twinkling 4-point sparkle; phase 0..15 drives its size. */
 void ui_sparkle(int cx, int cy, int phase, uint8_t c);
-/* Animated pastel backdrop behind menus: soft stripes + drifting hearts,
- * stars and dots (style picks the palette: WIN_CUTE / MINT / HELL ...). */
+/* Animated backdrop behind menus: soft gradient bands, drifting polka
+ * dots, rising hearts and stars, twinkles (style picks the palette:
+ * WIN_CUTE / MINT / CREAM / HELL / LCD / DARK). Call it first. */
 void ui_backdrop(int style, uint32_t t);
 
 /* ---- text extras ------------------------------------------------------- */
+/* Width of ui_text() output (button icons are drawn as 7 px caps). */
+int  ui_text_width(const char *s);
 void ui_text_shadow(int x, int y, const char *s, uint8_t color, uint8_t shadow);
 void ui_text_outline(int x, int y, const char *s, uint8_t color, uint8_t outline);
 /* Big text (integer scale 2..4) with outline + drop shadow, for titles. */
@@ -131,17 +137,29 @@ int  ui_text_big_width(const char *s, int scale);
  * (typewriter); returns lines. */
 int  ui_text_wrap_n(int x, int y, int w, const char *s, uint8_t color,
                     int chars);
+/* Bytes of s consumed by its first `lines` wrapped lines at width w
+ * (paging long texts). */
+int  ui_wrap_skip(const char *s, int w, int lines);
 /* "[A] Select  [B] Back" hint pill at the bottom edge of the screen. */
 void ui_hint(const char *s, int style);
 /* Title plate (pill with outline) centred at cx. */
 void ui_title(int cx, int y, const char *s, int style);
 /* Pill-shaped button; selected ones bounce and glow. */
 void ui_button(int x, int y, int w, const char *label, int selected, int style);
+/* "Label        < Value >" row for option / creator screens; the
+ * selected row gets a pill, the cursor and bouncing arrows. */
+void ui_value_row(int x, int y, int w, const char *label, const char *value,
+                  int selected);
+/* A row of tab pills (pages, creator categories). The selected tab is
+ * raised and bounces. Returns the total width drawn. */
+int  ui_tabs(int x, int y, const char *const *names, int count, int sel, int style);
 /* Up/down scroll arrows (bouncing) at x, y_top / y_bottom. */
 void ui_scroll_arrows(int x, int y_top, int y_bottom, int up, int down);
 
-/* ---- list extras ------------------------------------------------------- */
-#define UI_LIST_ROW_H 12
+/* ---- list / picker metrics --------------------------------------------- */
+#define UI_LIST_ROW_H 12      /* list height = visible * UI_LIST_ROW_H       */
+#define UI_SWATCH_W 12        /* paint picker cell: grid = cols * W ...      */
+#define UI_SWATCH_H 11        /* ... by ceil(32 / cols) * H                  */
 /* Optional per-item lock test used by ui_list_draw (locked rows are drawn
  * greyed with a padlock); NULL = none. */
 extern int (*ui_list_locked_fn)(int index);

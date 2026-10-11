@@ -7,6 +7,11 @@
  * strong definitions replace these at link time (objects are linked
  * directly, never through archives - see core/sources.mk).
  *
+ * Not stubbed on purpose: art's *internal* generated tables
+ * (doomo_art_tex/_tex_pix/_sky/_sky_pix/_spr/_frames ...). They only exist
+ * to back art's own textures.c/sprites.c, ship together with them, and a
+ * zero-filled placeholder would turn a clear link error into a crash.
+ *
  * Each stub function calls plat_log("STUB: <name>") once and returns a
  * safe default. Placeholder art is const (ROM on GBA). Stub scenes draw a
  * cute "UNDER CONSTRUCTION" card; the stub title screen is a launcher for
@@ -876,7 +881,8 @@ static void stub_scene_draw(void)
     if (ui_window_pop(x, y, ww, wh, WIN_CREAM, t)) {
         const UiStyle *st = ui_style(WIN_CREAM);
         ui_title(w / 2, y - 6, "UNDER CONSTRUCTION", WIN_MINT);
-        ui_text_center(w / 2, y + 16, s ? s->name : "?", st->accent_d);
+        ui_text_outline(w / 2 - font_text_width(s ? s->name : "?") / 2, y + 13,
+                        s ? s->name : "?", st->accent, PAL_WHITE);
         ui_text_wrap(x + 10, y + 30, ww - 20,
                      "Tiny builder critters are still hammering this screen "
                      "together. Come back soon!", st->text, 1);
@@ -897,7 +903,8 @@ static const char *stub_title_item(int index, char *buf)
 {
     int i, n = 0;
     for (i = 0; doomo_all_scenes[i]; i++) {
-        if (doomo_all_scenes[i] == &SCENE_TITLE || doomo_all_scenes[i] == &SCENE_BOOT)
+        if (doomo_all_scenes[i] == &SCENE_TITLE || doomo_all_scenes[i] == &SCENE_BOOT ||
+            doomo_all_scenes[i]->overlay)
             continue;
         if (n++ == index) {
             doomo_snprintf(buf, 48, "%s", doomo_all_scenes[i]->name);
@@ -910,7 +917,8 @@ static const DoomoScene *stub_title_scene(int index)
 {
     int i, n = 0;
     for (i = 0; doomo_all_scenes[i]; i++) {
-        if (doomo_all_scenes[i] == &SCENE_TITLE || doomo_all_scenes[i] == &SCENE_BOOT)
+        if (doomo_all_scenes[i] == &SCENE_TITLE || doomo_all_scenes[i] == &SCENE_BOOT ||
+            doomo_all_scenes[i]->overlay)
             continue;
         if (n++ == index) return doomo_all_scenes[i];
     }
@@ -921,7 +929,8 @@ static void stub_title_enter(int arg)
     int i, n = 0;
     stub_scene_enter(arg);
     for (i = 0; doomo_all_scenes[i]; i++)
-        if (doomo_all_scenes[i] != &SCENE_TITLE && doomo_all_scenes[i] != &SCENE_BOOT) n++;
+        if (doomo_all_scenes[i] != &SCENE_TITLE && doomo_all_scenes[i] != &SCENE_BOOT &&
+            !doomo_all_scenes[i]->overlay) n++;
     memset(&stub_title_list, 0, sizeof(stub_title_list));
     stub_title_list.item_fn = stub_title_item;
     stub_title_list.count = n;
@@ -944,8 +953,9 @@ static void stub_title_draw(void)
     const char *l1 = "DOOMOGACHI";
     ui_backdrop(WIN_CUTE, (uint32_t)t);
     ui_text_big((w - ui_text_big_width(l1, scale)) / 2, ty, l1, scale,
-                PAL_WHITE, PAL_UI_PINK_D);
-    ui_text_center(w / 2, ty + 8 * scale + 4, "LIFE in HELLvile Park!", PAL_UI_PINK_D);
+                PAL_PAINT(PAINT_BUBBLEGUM, 1), PAL_RAMP(RAMP_PASTEL_PINK, 1));
+    ui_text_outline(w / 2 - font_text_width("LIFE in HELLvile Park!") / 2, ty + 8 * scale + 5,
+                    "LIFE in HELLvile Park!", PAL_RAMP(RAMP_PASTEL_PINK, 1), PAL_WHITE);
     ui_heart(w / 2 - ui_text_big_width(l1, scale) / 2 - 10, ty + 4 * scale, 4 + (t / 8) % 2,
              PAL_PAINT(PAINT_ROSE, 1));
     ui_window(w / 2 - lw / 2, h - lh - 18, lw, lh, WIN_CUTE);

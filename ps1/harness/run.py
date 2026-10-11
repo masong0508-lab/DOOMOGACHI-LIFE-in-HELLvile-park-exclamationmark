@@ -2,19 +2,29 @@
 """run.py - run the PS1 build headless in PCSX-Redux with scripted input.
 
 Takes a script in the SAME format as the core native runner
-(core/build/runner --script FILE):
+(core/build/runner --script FILE). Times are GAME FRAMES (30 Hz logic
+ticks), counted with the game's own frame counter, so a script drives the
+PS1 build through exactly the same game states as the native runner even
+when a scene renders below 30 fps:
 
     # comment
-    wait 30            30 logic ticks (1 tick = 1/30 s = 2 NTSC vsyncs)
-    press A            tap a button (held ~2 ticks, then released)
-    hold RIGHT 20      hold for 20 ticks, then release
-    release A          release a button held with "down"
-    down A             press and keep holding (PS1 harness extension)
+    wait 30            run 30 game frames
+    press A [B ..]     hold for 1 frame, then 1 frame released
+    hold RIGHT 20      hold for 20 frames, then release
+    down A / up A      press and keep holding / release one button
+    release [A]        release one / every button
     shot name          screenshot -> OUT/name.png
-    vram name          full 1024x512 VRAM dump -> OUT/name_vram.png (extension)
-    fps name / fpsend name   measure the presented frame rate (extension)
-    type "text"        (native-runner only: ignored with a warning)
-    expect-scene NAME  (native-runner only: ignored with a warning)
+    scene NAME [ARG]   scene_set()   } run inside the game between two
+    push NAME [ARG]    scene_push()  } frames through the g_hcmd mailbox
+    expect-scene NAME  fail unless the top scene is NAME   (src/hcmd.c),
+    save N / load N / expect-save N  save_game() / load_game() / save_exists()
+    type "text"        feed the open text entry, 1 char/frame (\n = OK)
+    log TEXT           print TEXT on the game's TTY
+    no-stubs           fail if a core "STUB:" was logged before this line
+  PS1 extensions:
+    vram name          full 1024x512 VRAM dump -> OUT/name_vram.png
+    fps name / fpsend name   measure the presented frame rate
+    expect-log TEXT    fail unless TEXT appears in the TTY log
 
 Buttons: A B X Y L R L2 R2 START SELECT UP DOWN LEFT RIGHT
 (PS1: Cross Circle Square Triangle L1 R1 L2 R2 Start Select D-pad).
@@ -30,6 +40,7 @@ options:
   --timeout SEC     wall-clock limit for the emulator (default 300)
   --hang VSYNCS     vsyncs without a new frame = hang (default 900)
   --expect TEXT     fail unless TEXT appears in the TTY log (repeatable)
+  --assert-no-stubs fail if any core stub ran (like the native runner)
   --emu PATH        pcsx-redux binary (default /opt/ps1emu/pcsx-redux)
   --bios PATH       BIOS image (default /opt/ps1emu/openbios.bin)
 
@@ -103,50 +114,107 @@ def convert_vram(path, png_path):
     write_png(png_path, 1024, 512, bgr555_to_rgb(data, 1024, 512))
 
 
-def compile_script(lines):
-    """native-runner script -> low-level harness commands"""
-    cmds, warnings = [], []
-    for ln, line in enumerate(lines, 1):
-        line = line.split("#", 1)[0].strip()
-        if not line:
+def split_words(line):
+    """the native runner's tokenizer: words, "quoted strings" with \\n \\b
+    \\t escapes, '#' at the start of a word starts a comment"""
+    words, i, n = [], 0, len(line)
+    while i < n:
+        while i < n and line[i].isspace():
+            i += 1
+        if i >= n or line[i] == "#":
+            break
+        if line[i] == '"':
+            i += 1
+            w = []
+            while i < n and line[i] != '"':
+                if line[i] == "\\" and i + 1 < n:
+                    c = line[i + 1]
+                    w.append({"n": "\n", "b": "\b", "t": "\t"}.get(c, c))
+                    i += 2
+                else:
+                    w.append(line[i])
+                    i += 1
+            i += 1
+            words.append("".join(w))
             continue
-        parts = line.split()
+        j = i
+        while j < n and not line[j].isspace():
+            j += 1
+        words.append(line[i:j])
+        i = j
+    return words
+
+
+def hcmd(name, iarg=0, text=""):
+    return "hcmd %s %d %s" % (name, iarg, text.encode("latin-1").hex())
+
+
+def compile_script(lines, boot_frames=2):
+    """native-runner script -> low-level harness commands. The script starts
+    once the game's main loop is running (the PS1 boot shows a splash while
+    the BIOS reads the memory cards), so timings match the native runner.
+    Returns (commands, warnings, expected TTY texts)."""
+    cmds, warnings, expect = ["waitframe %d" % boot_frames], [], []
+    for ln, line in enumerate(lines, 1):
+        parts = split_words(line)
+        if not parts:
+            continue
         op = parts[0].lower()
+        arg = parts[1] if len(parts) > 1 else ""
 
         def btn(i=1):
-            name = parts[i].upper()
+            name = parts[i].upper() if i < len(parts) else ""
             if name not in BUTTONS:
-                raise SystemExit("line %d: unknown button %s" % (ln, parts[i]))
+                raise SystemExit("line %d: unknown button %s" % (ln, name))
             return BUTTONS[name]
+
+        def num(i, default):
+            return int(parts[i]) if i < len(parts) else default
         if op == "wait":
-            cmds.append("wait %d" % (int(parts[1]) * VSYNC_PER_TICK))
+            cmds.append("waitf %d" % num(1, 1))
         elif op == "press":
-            n = int(parts[2]) if len(parts) > 2 else 1
-            for _ in range(n):
-                cmds += ["down " + btn(), "wait %d" % (2 * VSYNC_PER_TICK),
-                         "up " + btn(), "wait %d" % (2 * VSYNC_PER_TICK)]
+            # native: press BTN [BTN..] = hold for 1 frame, then 1 frame up
+            names = [btn(i) for i in range(1, len(parts))]
+            cmds += ["down " + b for b in names]
+            cmds.append("waitf 1")
+            cmds += ["up " + b for b in names]
+            cmds.append("waitf 1")
         elif op == "hold":
-            ticks = int(parts[2]) if len(parts) > 2 else 1
-            cmds += ["down " + btn(), "wait %d" % (ticks * VSYNC_PER_TICK), "up " + btn()]
+            cmds += ["down " + btn(), "waitf %d" % num(2, 1), "up " + btn()]
         elif op == "down":
             cmds.append("down " + btn())
-        elif op in ("release", "up"):
+        elif op == "up":
             cmds.append("up " + btn())
+        elif op == "release":
+            if len(parts) > 1:
+                cmds.append("up " + btn())
+            else:
+                cmds += ["up " + b for b in sorted(set(BUTTONS.values()))]
         elif op == "shot":
-            cmds.append("shot " + parts[1])
-        elif op == "vram":
-            cmds.append("vram " + parts[1])
-        elif op == "fps":
-            cmds.append("fps " + parts[1])
-        elif op == "fpsend":
-            cmds.append("fpsend " + parts[1])
-        elif op in ("type", "expect-scene"):
-            warnings.append("line %d: '%s' is native-runner only, ignored" % (ln, op))
+            cmds.append("shot " + (arg or "shot"))
+        elif op in ("vram", "fps", "fpsend"):
+            cmds.append("%s %s" % (op, arg))
+        elif op in ("scene", "push"):
+            cmds.append(hcmd(op, num(2, 0), arg))
+        elif op == "expect-scene":
+            cmds.append(hcmd(op, 0, arg))
+        elif op in ("save", "load", "expect-save"):
+            cmds.append(hcmd(op, num(1, 1)))
+        elif op == "type":
+            if len(arg) > 63:
+                raise SystemExit("line %d: type text longer than 63 chars" % ln)
+            cmds.append(hcmd(op, 0, arg))
+        elif op == "log":
+            cmds.append(hcmd(op, 0, " ".join(parts[1:])[:63]))
+        elif op == "no-stubs":
+            cmds.append("mark no-stubs line %d" % ln)
+        elif op == "expect-log":
+            expect.append(" ".join(parts[1:]))
         else:
             raise SystemExit("line %d: unknown command %s" % (ln, op))
-    cmds.append("wait 2")
+    cmds.append("waitf 1")
     cmds.append("quit")
-    return cmds, warnings
+    return cmds, warnings, expect
 
 
 def find_symbol(map_path, name):
@@ -172,6 +240,7 @@ def main():
     ap.add_argument("--timeout", type=int, default=300)
     ap.add_argument("--hang", type=int, default=900)
     ap.add_argument("--expect", action="append", default=[])
+    ap.add_argument("--assert-no-stubs", action="store_true")
     ap.add_argument("--emu", default="/opt/ps1emu/pcsx-redux")
     ap.add_argument("--bios", default="/opt/ps1emu/openbios.bin")
     a = ap.parse_args()
@@ -183,7 +252,7 @@ def main():
     for f in os.listdir(out):
         if f.endswith((".raw", ".png", ".vram", ".txt", ".log")):
             os.remove(os.path.join(out, f))
-    cmds, warnings = compile_script(open(a.script).read().splitlines())
+    cmds, warnings, script_expect = compile_script(open(a.script).read().splitlines())
     for w in warnings:
         print("run.py: warning:", w)
     cmd_path = os.path.join(out, "harness_cmds.lst")
@@ -192,7 +261,8 @@ def main():
 
     image = os.path.abspath(a.exe or a.cue)
     map_path = a.map or os.path.join(os.path.dirname(image), "doomogachi.map")
-    frame_addr = find_symbol(map_path, "g_frame")
+    frame_addr = find_symbol(map_path, "g_loop_frames") or find_symbol(map_path, "g_frame")
+    hcmd_addr = find_symbol(map_path, "g_hcmd")
     card1 = os.path.abspath(a.card or os.path.join(out, "card1.mcd"))
     card2 = os.path.join(out, "card2.mcd")
     if not a.keep_card and os.path.exists(card1) and not a.card:
@@ -200,7 +270,7 @@ def main():
 
     env = dict(os.environ)
     env.update(HARNESS_CMDS=cmd_path, HARNESS_OUT=out, HARNESS_FRAME="%x" % frame_addr,
-               HARNESS_HANG=str(a.hang))
+               HARNESS_HCMD="%x" % hcmd_addr, HARNESS_HANG=str(a.hang))
     argv = ["xvfb-run", "-a", a.emu, "-cli", "-stdout", "-run", "-bios", a.bios,
             "-memcard1", card1, "-memcard2", card2]
     argv += ["-exe", image] if a.exe else ["-iso", image]
@@ -241,10 +311,18 @@ def main():
                 "Exception", "assert"):
         if pat in tty_text:
             fails.append("TTY contains '%s'" % pat)
-    for e in a.expect:
+    for e in a.expect + script_expect:
         if e not in tty_text:
             fails.append("expected TTY text not found: %s" % e)
+    for m in re.findall(r"HARNESS: FAIL: (.*)", tty_text):
+        fails.append(m.strip())
     stubs = sorted(set(re.findall(r"STUB: (\S+)", tty_text)))
+    for m in re.finditer(r"HARNESS: mark no-stubs (line \d+)", tty_text):
+        early = sorted(set(re.findall(r"STUB: (\S+)", tty_text[:m.start()])))
+        if early:
+            fails.append("no-stubs at %s: stubs ran: %s" % (m.group(1), ", ".join(early)))
+    if a.assert_no_stubs and stubs:
+        fails.append("stubs ran (--assert-no-stubs): " + ", ".join(stubs))
     fps = re.findall(r"HARNESS: fps (\S+) ([0-9.]+)", tty_text)
     perf = re.findall(r"perf: .*", tty_text)
 

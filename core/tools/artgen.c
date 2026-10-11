@@ -222,6 +222,46 @@ static void gen_sprites(void)
         }
 }
 
+/* ---- contract validation (always on; make gen / check-gen fail on it) ----- */
+static void validate(void)
+{
+    int i, lv, k, f;
+    char buf[64];
+    /* colormap: identity at 15, black at 0, index 0 fixed, never brighter
+     * at a lower level; tint 0 identity, index 0 fixed */
+    for (i = 0; i < 256; i++) {
+        if (art_colormap[15][i] != i) fail("colormap level 15 not identity", "palette");
+        if (art_colormap[0][i] != (i ? PAL_BLACK : 0)) fail("colormap level 0 not black", "palette");
+        for (lv = 0; lv < DOOMO_LIGHT_LEVELS; lv++) {
+            if ((art_colormap[lv][i] == 0) != (i == 0)) fail("colormap touches index 0", "palette");
+            if (lv && art_luma(art_colormap[lv - 1][i]) > art_luma(art_colormap[lv][i]))
+                fail("colormap not monotonic", "palette");
+        }
+        for (k = 0; k < TINT_COUNT; k++)
+            if ((art_tintmap[k][i] == 0) != (i == 0)) fail("tintmap touches index 0", "palette");
+        if (art_tintmap[TINT_NONE][i] != i) fail("TINT_NONE not identity", "palette");
+    }
+    /* sprites: centred (even width), non-empty, tight; resting frames sit
+     * on their bottom row */
+    for (k = 1; k < SPR_COUNT; k++) {
+        if (!spr_out[k].defined) continue;
+        if (k <= SPR_LORD_VAPULA && spr_out[k].frames != DFRAME_COUNT) fail("demon must have 8 frames", spr_out[k].name);
+        for (f = 0; f < spr_out[k].frames; f++) {
+            const ArtFrame *a = &frames[spr_out[k].first + f];
+            int x, y, any = 0, bottom = 0;
+            if (a->w & 1) fail("sprite frame has odd width (not centred)", spr_out[k].name);
+            for (y = 0; y < a->h; y++)
+                for (x = 0; x < a->w; x++)
+                    if (a->pix[y * a->w + x]) { any = 1; if (y == a->h - 1) bottom = 1; }
+            sprintf(buf, "%s frame %d", spr_out[k].name, f);
+            if (!any) fail("empty sprite frame", buf);
+            if (!(spr_out[k].flags & (SPRF_CENTERED | SPRF_FLOATS)) && f == 0 && !bottom)
+                fail("ground sprite does not touch the ground", buf);
+            if (k <= SPR_LORD_VAPULA && f == DFRAME_DEATH3 && !bottom) fail("demon corpse floats", buf);
+        }
+    }
+}
+
 /* ---- C writer ------------------------------------------------------------- */
 static void put_bytes(FILE *f, const uint8_t *p, int n)
 {
@@ -664,6 +704,7 @@ int main(int argc, char **argv)
     gen_textures();
     gen_skies();
     gen_sprites();
+    validate();
     if (verbose) stats();
     if (errors) {
         fprintf(stderr, "artgen: %d error(s)\n", errors);

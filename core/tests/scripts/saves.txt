@@ -1,0 +1,11 @@
+# Save / load through the platform's save files.
+wait 5
+scene UI_GALLERY
+wait 5
+save 1
+expect-save 1
+load 1
+save 0
+expect-save 0
+wait 5
+expect-scene UI_GALLERY

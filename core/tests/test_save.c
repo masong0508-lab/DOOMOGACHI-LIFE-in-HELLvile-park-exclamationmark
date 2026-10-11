@@ -250,6 +250,10 @@ TEST(save_info_header)
     CHECK(save_game(0));
     CHECK(save_peek(0, &info));
     CHECK_EQ(info.chapter, 3);
+    CHECK(save_verify(0));
+    plat_save_erase(1);
+    CHECK(!save_peek(1, &info));
+    CHECK(!save_verify(1));
     CHECK_EQ(save_slot_max(0), DOOMO_SAVE_SLOT0_MAX);
     CHECK_EQ(save_slot_max(1), DOOMO_SAVE_SLOT1_MAX);
     CHECK_EQ(save_slot_max(2), 0);

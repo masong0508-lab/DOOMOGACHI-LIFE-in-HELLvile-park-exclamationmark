@@ -895,8 +895,14 @@ int load_game(int slot)
 
 int save_peek(int slot, DoomoSaveInfo *out)
 {
+    uint8_t hdr[HDR];
     uint8_t *buf = NULL;
-    uint32_t size;
+    uint32_t size = 0;
+    if (!save_slot_max(slot)) return 0;
+    /* cheap path: just the header, no scratch buffer, no CRC */
+    if (plat_save_read(slot, hdr, HDR, &size) && size == HDR)
+        return save_info_from(hdr, HDR, out);
+    /* platforms that cannot read part of a save: read and verify it all */
     if (!read_slot(slot, &buf, &size)) return 0;
     if (!check_image(buf, size)) return 0;
     return save_info_from(buf, size, out);
@@ -905,4 +911,13 @@ int save_peek(int slot, DoomoSaveInfo *out)
 int save_exists(int slot)
 {
     return save_peek(slot, NULL);
+}
+
+/* A full check of a slot (CRC included) without loading it. */
+int save_verify(int slot)
+{
+    uint8_t *buf = NULL;
+    uint32_t size;
+    if (!read_slot(slot, &buf, &size)) return 0;
+    return check_image(buf, size);
 }

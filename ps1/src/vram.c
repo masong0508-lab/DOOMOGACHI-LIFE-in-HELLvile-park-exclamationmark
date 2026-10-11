@@ -33,13 +33,15 @@ static void wslot_ref(int s)
     r->ok = 1;
 }
 
-static void wslot_upload(int s, const uint8_t *pix)
+static int wslot_upload(int s, const uint8_t *pix)
 {
     int page = s >> 4, cell = s & 15;
     int x = VR_WTEX_X + page * 128 + (cell & 3) * 32;
     int y = (cell >> 2) * 64;
-    gfx_upload_strided(x, y, 32, 64, pix, 64);
+    if (!gfx_upload_strided(x, y, 32, 64, pix, 64))
+        return 0;
     s_upbytes += 4096;
+    return 1;
 }
 
 const TexRef *vram_wtex(int tex_id, uint16_t time)
@@ -72,8 +74,11 @@ const TexRef *vram_wtex(int tex_id, uint16_t time)
         if (gfx_free_bytes() < 6000)
             return NULL;
         s = best;
+        if (!wslot_upload(s, pix)) {
+            s_wslot[s].key = NULL;
+            return NULL;
+        }
         s_wslot[s].key = pix;
-        wslot_upload(s, pix);
     }
     s_wslot[s].used = s_vframe;
     s_wmemo[tex_id].key = pix;
@@ -109,7 +114,12 @@ typedef struct Entry {
 static Page   s_page[IMG_PAGES];
 static Entry  s_hash[HASH_SIZE];
 static int    s_hash_used;
-static uint8_t s_stage[(IMG_TILE + 2) * (IMG_TILE + 2)];
+/* tile staging buffer; also the scratch copy for hash_rebuild() */
+static union {
+    uint8_t stage[(IMG_TILE + 2) * (IMG_TILE + 2)];
+    Entry   tmp[HASH_SIZE];
+} s_scr;
+#define s_stage s_scr.stage
 
 static uint32_t hash2(uint32_t a, uint32_t b)
 {
@@ -127,9 +137,9 @@ static void page_reset(Page *p)
 
 static void hash_rebuild(void)
 {
-    static Entry tmp[HASH_SIZE];
+    Entry *tmp = s_scr.tmp;
     int i;
-    memcpy(tmp, s_hash, sizeof(tmp));
+    memcpy(tmp, s_hash, sizeof(s_hash));
     memset(s_hash, 0, sizeof(s_hash));
     s_hash_used = 0;
     for (i = 0; i < HASH_SIZE; i++) {
@@ -263,8 +273,11 @@ int vram_image(const DoomoImage *img, int tx, int ty, TexRef *out)
                     d[col] = src[sx - col];
             }
         }
-        gfx_upload_strided(s_page[pg].vx + (u >> 1), VR_IMG_Y + v,
-                           sw >> 1, th + 1, s_stage, sw);
+        if (!gfx_upload_strided(s_page[pg].vx + (u >> 1), VR_IMG_Y + v,
+                                sw >> 1, th + 1, s_stage, sw)) {
+            e->state = 2;          /* tombstone: retry next time */
+            return 0;
+        }
         s_upbytes += (uint32_t)(sw * (th + 1));
     }
 hit:
@@ -319,8 +332,11 @@ int vram_sky(int sky_id, uint16_t time, TexRef *left, TexRef *right)
     if (p != s_sky_ptr) {
         if (gfx_free_bytes() < SKY_W * SKY_H + 4096)
             return 0;
-        gfx_upload_strided(VR_SKY_X, VR_SKY_Y, 64, SKY_H, p, SKY_W);
-        gfx_upload_strided(VR_SKY_X, VR_SKY_Y + SKY_H, 64, SKY_H, p + 128, SKY_W);
+        if (!gfx_upload_strided(VR_SKY_X, VR_SKY_Y, 64, SKY_H, p, SKY_W) ||
+            !gfx_upload_strided(VR_SKY_X, VR_SKY_Y + SKY_H, 64, SKY_H, p + 128, SKY_W)) {
+            s_sky_ptr = NULL;
+            return 0;
+        }
         s_upbytes += SKY_W * SKY_H;
         s_sky_ptr = p;
     }

@@ -8,7 +8,6 @@
 #include "doomo/roster.h"
 #include "doomo/rng.h"
 #include "doomo/portrait.h"
-#include "doomo/sim.h"
 #include "doomo/ui.h"
 
 DoomoTown doomo_town;

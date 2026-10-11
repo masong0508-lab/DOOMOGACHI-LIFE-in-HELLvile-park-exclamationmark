@@ -1009,6 +1009,8 @@ void scene_s03_hahaland(int f, int n) {
     if (f >= 50 && f < 96) bcap(24, "Population: 500\nvery nice people", PAL_WHITE, oc, 2, (f - 50) * 2);
     if (f >= 105) bcap(146, "(and 500 not-so-nice\npeople next door)", PAL_WHITE, PAL_RAMP(RAMP_VAPE, 1), 1, (f - 105) * 2);
     if (f >= F_STOP && f < F_STOP + 3) tk_post_shake(f == F_STOP + 1 ? -2 : 1, 0);
+    /* director: heart iris opens (continues s02's iris-out) */
+    if (f < 7) tk_post_iris(120, 84, 8.0f + 260.0f * tk_ease(f / 7.0f) * tk_ease(f / 7.0f), 1, PAL_BLACK, PAL_UI_PINK_D);
 }
 
 void scene_s03_hahaland_audio(double t0, double dur) {

@@ -49,7 +49,7 @@
 /* ---- frame / display list (gfx.c) ----------------------------------------- */
 #define OT_LEN        1536   /* depth slots per 3D view                     */
 #define OT_VIEWS      2      /* 3D views per frame (view3d / overworld)     */
-#define PRIM_BYTES    (150 * 1024)
+#define PRIM_BYTES    (100 * 1024)
 
 typedef struct GfxPerf {
     uint32_t cpu_us;              /* begin_frame .. end_frame (CPU)       */
@@ -62,6 +62,8 @@ extern GfxPerf g_perf;
 
 extern int      g_cur;            /* buffer being built                  */
 extern uint32_t g_frame;          /* frames presented                    */
+extern volatile uint32_t g_loop_frames; /* game loop iterations (harness) */
+void hcmd_poll(void);                   /* harness mailbox, between frames */
 extern uint32_t g_rgb[256];       /* palette -> 0x00BBGGRR for prims      */
 extern uint16_t g_pal15[256];     /* palette -> VRAM 15-bit (STP set)     */
 
@@ -114,10 +116,23 @@ uint32_t vram_uploads(void);             /* bytes uploaded this frame  */
 
 /* ---- 2D layer (gfx2d.c) ---------------------------------------------------- */
 void gfx2d_init(void);
+/* plat_rect() batches runs of rects (merging adjacent spans, turning 50%
+ * checker rows into one blended tile); anything else that appends to the
+ * display list must flush the pending run first (gfx.c does). */
+void gfx2d_flush(void);
+void gfx2d_reset(void);
+extern uint32_t *g_chain_tail;
+/* append prim p (len words after the tag) to the draw chain, no flush */
+static inline void gfx_link_raw(uint32_t *p, uint32_t len)
+{
+    *g_chain_tail = (*g_chain_tail & 0xff000000u) | ((uint32_t)p & 0x00ffffffu);
+    p[0] = len << 24;
+    g_chain_tail = p;
+}
 
 /* ---- 3D (r3d.c, view3d.c, overworld.c, model.c) ---------------------------- */
 typedef struct R3Stats {
-    uint16_t cells, faces, polys, subdiv, clipped, sprites, culled;
+    uint16_t cells, faces, polys, subdiv, clipped, sprites, culled, backing;
     uint32_t cpu_us, t_setup, t_vis, t_cells;
 } R3Stats;
 extern R3Stats g_r3stats;
@@ -143,6 +158,7 @@ DoomoPlayerState *core_player(void);
 void core_palette_init(void);
 const int8_t *core_sfx_pcm(int sfx, uint32_t *len, uint32_t *rate);
 const uint16_t *core_palette(void);
+int  core_opt(int opt, int def);                 /* opt_get() or default */
 int  core_floor_z(const DoomoMap *m, int cx, int cy);   /* incl. door/lift anim */
 int  core_ceil_z(const DoomoMap *m, int cx, int cy);
 

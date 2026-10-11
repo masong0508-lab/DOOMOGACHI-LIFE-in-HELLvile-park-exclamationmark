@@ -33,7 +33,7 @@
 typedef int32_t fix16;              /* 16.16 */
 #define FIX_ONE        ((fix16)0x10000)
 #define FIX_HALF       ((fix16)0x8000)
-#define INT2FIX(i)     ((fix16)((i) << 16))
+#define INT2FIX(i)     ((fix16)((i) * 65536))   /* safe for negatives */
 #define FIX2INT(f)     ((int32_t)((f) >> 16))
 #define FIXMUL(a, b)   ((fix16)(((int64_t)(a) * (int64_t)(b)) >> 16))
 #define FIXDIV(a, b)   ((fix16)((((int64_t)(a)) << 16) / (b)))

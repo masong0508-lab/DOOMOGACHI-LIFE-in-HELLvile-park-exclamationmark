@@ -20,10 +20,16 @@ $(BUILD)/trailer: $(SRCS) tk.h timeline.h $(BUILD)/pal.h
 $(BUILD)/trailer.wav: $(BUILD)/trailer
 	$(BUILD)/trailer --wav $@
 
-$(BUILD)/trailer.mp4: $(BUILD)/trailer $(BUILD)/trailer.wav
+# mastered soundtrack: 48 kHz stereo, +5 dB into a -1 dBFS limiter (about -16 LUFS,
+# true peak about -1.6 dBFS; the raw synth mix sits at -21 LUFS)
+$(BUILD)/trailer_master.wav: $(BUILD)/trailer.wav
+	$(FFMPEG) -y -loglevel error -i $< \
+	  -af "aresample=48000,volume=5dB,alimiter=limit=0.89:attack=3:release=60:level=disabled" -ac 2 $@
+
+$(BUILD)/trailer.mp4: $(BUILD)/trailer $(BUILD)/trailer_master.wav
 	$(BUILD)/trailer --raw | $(FFMPEG) -y -loglevel error -f rawvideo -pix_fmt rgb24 -s 240x160 -r 30 -i - \
-	  -i $(BUILD)/trailer.wav -vf scale=960:640:flags=neighbor -c:v libx264 -crf 16 -preset slow \
-	  -pix_fmt yuv420p -c:a aac -b:a 160k -shortest -movflags +faststart $@
+	  -i $(BUILD)/trailer_master.wav -vf scale=960:640:flags=neighbor -c:v libx264 -crf 16 -preset slow \
+	  -tune animation -pix_fmt yuv420p -c:a aac -b:a 192k -ar 48000 -shortest -movflags +faststart $@
 
 $(BUILD)/trailer.gif: $(BUILD)/trailer
 	$(BUILD)/trailer --raw | $(FFMPEG) -y -loglevel error -f rawvideo -pix_fmt rgb24 -s 240x160 -r 30 -i - \

@@ -3,8 +3,8 @@
  * World space: x east, y south, z up, 1 unit = 1 map unit (a cell is 64).
  * Vertices are fed to the GTE RELATIVE to the integer camera position, so
  * they always fit the GTE's 16-bit inputs. The rotation matrix maps world to
- * camera space (x right, y down, z forward) scaled by R3_SCALE, so that the
- * near plane (R3_NEAR camera units) stays above the GTE's H/2 projection
+ * camera space (x right, y down, z forward) scaled by ~7.9 (R3_SCALE_Q12), so
+ * the near plane (R3_NEAR camera units) stays above the GTE's H/2 projection
  * limit while being only ~12 world units in front of the eye.
  *
  * Pipeline per quad (r3_quad): RTPT/RTPS -> near/far/frustum tests ->
@@ -18,9 +18,14 @@
 
 #include "ps1.h"
 
-#define R3_SCALE     7
-#define R3_NEAR      (12 * R3_SCALE)      /* > H/2 = 80                 */
-#define R3_CLIPZ     (14 * R3_SCALE)      /* clip plane (rounding slack) */
+/* camera units per world unit, 4.12 fixed: 7.886 (matrix entries stay
+ * below the GTE's 1.3.12 limit of 7.999) */
+#define R3_SCALE_Q12 32300
+#define R3_W2C(w)    ((int32_t)(((int32_t)(w) * R3_SCALE_Q12) >> 12))
+/* near plane: just above the GTE's H/2 projection limit; clip plane a
+ * little further (clip points are rounded to integer world units) */
+#define R3_NEAR      (g_cam.near_z)
+#define R3_CLIPZ     (g_cam.clip_z)
 #define R3_MAXDEPTH  3                    /* 8x8 pieces max per quad      */
 
 /* A pipeline vertex. The first 8 bytes are SVECTOR-compatible (u,v sit in
@@ -38,7 +43,10 @@ typedef struct R3Cam {
     int32_t  wx, wy, wz;   /* exact eye position, 16.16                     */
     int      ang, pitch;   /* yaw 0..4095, pitch in 4096-units             */
     int      sa, ca;       /* yaw sin/cos 4.12                              */
-    MATRIX   m;            /* world -> camera (x R3_SCALE)                  */
+    int      sp, cp;       /* pitch sin/cos 4.12                            */
+    MATRIX   m;            /* world -> camera (x 7.886)                      */
+    int32_t  near_z, clip_z;  /* camera units                                 */
+    int      hfov_a;          /* horizontal field of view, 4096-units          */
     int      vx, vy, vw, vh;
     int      cx, cy, H;    /* projection centre / distance                   */
     uint32_t *ot;
@@ -64,7 +72,8 @@ void r3_end(void);
 
 /* Textured, gouraud quad in Z order (0 TL, 1 TR, 2 BL, 3 BR). The vertices
  * may be modified (they are transformed in place). flags: R3F_*. */
-enum { R3F_SEMI = 1, R3F_NOFOG = 2, R3F_NOSUB = 4, R3F_FRONT = 8 /* internal */ };
+enum { R3F_SEMI = 1, R3F_NOFOG = 2, R3F_NOSUB = 4, R3F_FRONT = 8 /* internal */,
+       R3F_FACECAM = 16 /* billboards: lean with the camera (overworld) */ };
 void r3_quad(R3V *q, const TexRef *t, int flags, int ot_bias);
 /* Flat/gouraud untextured triangle + quad (models). */
 void r3_tri_g(R3V *a, R3V *b, R3V *c, int ot_bias);

@@ -113,7 +113,7 @@ TEST(relationships_basic)
     CHECK_EQ(rel_kind(9, 4), REL_BEST_FRIEND);
     rel_adjust(4, 9, 100);
     CHECK_EQ(rel_value(4, 9), 100);
-    rel_adjust(4, 9, -170);
+    rel_adjust(4, 9, -160);
     CHECK_EQ(rel_kind(4, 9), REL_RIVAL);
     rel_adjust(4, 9, -100);
     CHECK_EQ(rel_value(4, 9), -100);
@@ -138,8 +138,10 @@ TEST(relationships_basic)
     rel_adjust(4, 2, 60);
     n = rel_list(4, ids, 8);
     CHECK_EQ(n, 4);
-    CHECK_EQ(ids[0], 2);
-    CHECK_EQ(ids[n - 1], 1);
+    CHECK_EQ(ids[0], 2);                         /* 60 */
+    CHECK_EQ(ids[1], DOOMO_PLAYER_ID);           /* 20 */
+    CHECK_EQ(ids[2], 1);                         /* -20 */
+    CHECK_EQ(ids[3], 9);                         /* -50 (married, but grumpy) */
     n = rel_list(4, ids, 2);
     CHECK_EQ(n, 2);
     CHECK_EQ(ids[0], 2);

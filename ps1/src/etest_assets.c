@@ -287,51 +287,63 @@ static void gen_texture(uint8_t *t, int id, int frame)
         }
 }
 
+/* Generated fallback textures live in a small LRU cache (the core's art
+ * module normally provides every texture, so this is only exercised in
+ * bring-up builds without the core, or for an id the art module lacks). */
 #define ANIM_FRAMES 4
-static uint8_t s_tex[TEX_COUNT][4096];
-static uint8_t s_anim[4][ANIM_FRAMES][4096];
-static uint8_t s_tex_done[TEX_COUNT];
-static uint8_t s_anim_done[4];
+#ifdef DOOMO_HAVE_CORE
+#define FB_SLOTS 4
+#else
+#define FB_SLOTS 60      /* bring-up build: every texture + animation frames */
+#endif
+static uint8_t  s_fbtex[FB_SLOTS][4096];
+static uint16_t s_fbkey[FB_SLOTS];          /* id * 8 + frame + 1, 0 = free */
+static uint32_t s_fbuse[FB_SLOTS], s_fbclock;
 
 static int anim_index(int id)
 {
     switch (id) {
-    case TEX_WATER: return 0;
-    case TEX_LAVA: return 1;
-    case TEX_SLIME: return 2;
-    case TEX_TECH_PANEL: return 3;
-    default: return -1;
+    case TEX_WATER: case TEX_LAVA: case TEX_SLIME: case TEX_TECH_PANEL: return 1;
+    default: return 0;
     }
 }
 
 const uint8_t *etest_texture(int tex_id, uint16_t time)
 {
-    int a;
+    int frame = 0, i, best = 0;
+    uint16_t key;
     if (tex_id <= 0 || tex_id >= TEX_COUNT)
         tex_id = TEX_PASTEL_BRICK;
-    a = anim_index(tex_id);
-    if (a >= 0) {
-        int f;
-        if (!s_anim_done[a]) {
-            for (f = 0; f < ANIM_FRAMES; f++)
-                gen_texture(s_anim[a][f], tex_id, f);
-            s_anim_done[a] = 1;
+    if (anim_index(tex_id))
+        frame = (time >> 3) % ANIM_FRAMES;
+    key = (uint16_t)(tex_id * 8 + frame + 1);
+    s_fbclock++;
+    for (i = 0; i < FB_SLOTS; i++) {
+        if (s_fbkey[i] == key) {
+            s_fbuse[i] = s_fbclock;
+            return s_fbtex[i];
         }
-        return s_anim[a][(time >> 3) % ANIM_FRAMES];
+        if (s_fbuse[i] < s_fbuse[best])
+            best = i;
     }
-    if (!s_tex_done[tex_id]) {
-        gen_texture(s_tex[tex_id], tex_id, 0);
-        s_tex_done[tex_id] = 1;
-    }
-    return s_tex[tex_id];
+    gen_texture(s_fbtex[best], tex_id, frame);
+    s_fbkey[best] = key;
+    s_fbuse[best] = s_fbclock;
+    return s_fbtex[best];
 }
 
 /* ---- sky ---------------------------------------------------------------------- */
+#ifndef DOOMO_HAVE_CORE
 static uint8_t s_sky[SKY_W * SKY_H];
 static int s_sky_done;
+#endif
 
 const uint8_t *etest_sky(uint16_t time)
 {
+#ifdef DOOMO_HAVE_CORE
+    (void)time;
+    return NULL;            /* the art module provides the skies */
+#else
     int x, y;
     (void)time;
     if (s_sky_done)
@@ -351,6 +363,7 @@ const uint8_t *etest_sky(uint16_t time)
         }
     s_sky_done = 1;
     return s_sky;
+#endif
 }
 
 /* ---- critter sprites -------------------------------------------------------- */

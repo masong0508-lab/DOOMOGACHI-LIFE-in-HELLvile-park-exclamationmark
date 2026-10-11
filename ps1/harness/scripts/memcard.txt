@@ -1,0 +1,9 @@
+# Engine test: memory card self test (SELECT + START): write / read back /
+# grow (temp file + rename) / second slot / erase. run.py --expect checks
+# "memcard selftest: PASS"; memcard_check.py then inspects the card image.
+wait 5
+down SELECT
+press START
+release SELECT
+wait 30
+shot memcard_done

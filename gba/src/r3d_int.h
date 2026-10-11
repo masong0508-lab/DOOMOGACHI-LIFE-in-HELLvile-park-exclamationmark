@@ -15,7 +15,7 @@
 #define R3D_MAXCOLS   120          /* 2-pixel-wide columns              */
 #define R3D_MAXROWS   160
 #define R3D_MAXCP     14           /* sprite clip checkpoints / column  */
-#define R3D_KROWS     288          /* |row - horizon| range of rowK      */
+#define R3D_KROWS     256          /* |row - horizon| range of rowK      */
 #define R3D_FADE_N    128          /* fade buckets of 32 world units     */
 #define R3D_MAXTEX    64
 #define R3D_MAXDIST   40           /* max ray length in cells            */
@@ -62,11 +62,16 @@ typedef struct R3DFrame {
     uint16_t nplanes, nspans;
     uint16_t cp_over, plane_over;
     uint32_t dbg_steps, dbg_facepx, dbg_skypx, dbg_flatpx;
+    int32_t amb;                   /* light of cells whose light is 0     */
+    int32_t sky_dv, sky_ya, sky_yb;  /* sky rows per screen row (16.16), rows */
 } R3DFrame;
 
 extern R3DFrame r3f;
 extern uint8_t  r3d_cmap[16 * 256];        /* IWRAM */
-extern int32_t  r3d_rowk[R3D_KROWS];       /* proj / (m + 0.5), 16.16 */
+/* proj / (m + 0.5), 16.16, with 4 guard entries on each side (the flat
+ * loop may read a few rows past the end of a run) */
+extern int32_t  r3d_rowk_buf[R3D_KROWS + 8];
+#define r3d_rowk (r3d_rowk_buf + 4)
 extern uint8_t  r3d_fade[R3D_FADE_N];
 extern int32_t  r3d_colt[R3D_MAXCOLS];     /* camera-plane t per column, 16.16 */
 extern int16_t  r3d_colang[R3D_MAXCOLS];   /* angle offset per column */
@@ -74,7 +79,8 @@ extern uint8_t  r3d_dither[R3D_MAXCOLS];   /* 0..15 ordered dither by column */
 extern const uint8_t *r3d_texc[R3D_MAXTEX]; /* per-frame texture cache (IWRAM) */
 extern uint8_t r3d_avgc[R3D_MAXTEX];        /* texture average colours (IWRAM) */
 
-extern R3DClip  r3d_clips[R3D_MAXCOLS][R3D_MAXCP];
+/* per-column clip checkpoints, inside gba_big (bigbuf.c) */
+#define r3d_clips ((R3DClip (*)[R3D_MAXCP])(gba_big + GBA_BIG_CLIPS))
 extern uint8_t  r3d_nclips[R3D_MAXCOLS];
 
 extern const int32_t  gba_sin16[5120];
@@ -90,7 +96,8 @@ int r3d_cell_ceil(int cx, int cy, const DoomoCell *c) ROM_CALL;
 /* hand-written ARM pixel loops (r3d_loops.s, IWRAM; call from IWRAM only) */
 void r3d_face_loop(uint16_t *p, int n, const uint8_t *texcol, int32_t v,
                    int32_t dv, const uint8_t *cm);
-void r3d_sky_loop(uint16_t *p, int n, const uint8_t *col, int v2, const uint8_t *cm);
+void r3d_sky_loop(uint16_t *p, int n, const uint8_t *col, int32_t v16, int32_t dv16,
+                  const uint8_t *cm);
 void r3d_span_loop(uint16_t *dst, int n, uint32_t pos, uint32_t step,
                    const uint8_t *tex, const uint8_t *cm);
 void r3d_fill_loop(uint16_t *p, int n, uint32_t c2, int stride_bytes);
@@ -125,9 +132,40 @@ typedef struct R3DWalk {
 } R3DWalk;
 int r3d_walk(R3DWalk *w);          /* 0 = cell differs, 1 = left map, 2 = far */
 
+/* Everything a column needs between walker calls (r3d.iwram.c). Kept in
+ * memory and handed around by pointer; the layout is shared with the
+ * assembly fast path r3d_boundary_fast() (offsets checked in r3d.c). */
+typedef struct ColState {
+    R3DWalk wk;                     /*   0: first (r3d_walk layout)        */
+    int32_t rdx, rdy, stx, sty;     /*  68: ray direction / step signs     */
+    int32_t fz4, cz4;               /*  84: region floor / ceiling, 1/16 u */
+    int32_t ftex, ctex, light, sky; /*  92                                 */
+    int32_t ytop, ybot;             /* 108: open window                    */
+    int32_t c, ncp;                 /* 116                                 */
+    uint16_t *col;                  /* 124                                 */
+    const uint8_t *cm;              /* 128: colormap base (tint dither)    */
+    R3DClip *cps;                   /* 132                                 */
+    /* frame constants for the assembly */
+    int32_t ez4, hor12r;            /* 136: eye z, (hor << 12) + 0x800     */
+    int32_t proj;                   /* 144                                 */
+    int32_t early_top4;             /* 148: sky early-out height or MIN    */
+    int32_t ex, ey;                 /* 152                                 */
+    int32_t hor;                    /* 160                                 */
+    uint32_t invproj;               /* 164                                 */
+    int32_t ez;                     /* 168                                 */
+    uint32_t d16, k8;               /* 172: scratch                        */
+    int32_t amb;                    /* 180: light for cells with light 0   */
+} ColState;
+/* one column boundary in ARM assembly (everything but door / lift cells
+ * and roofed cells seen from under the sky, which boundary() in C does).
+ * Returns 0 continue, 1 column done, 2 not handled. */
+int r3d_boundary_asm(ColState *s, int res);
+/* sky background rows [y0, y1) of column c (r3d.iwram.c) */
+void r3d_draw_sky(uint16_t *p, int c, int y0, int y1, const uint8_t *cm);
+
 /* roof height (x 8 units) of each open roofed cell seen from the sky
  * (max explicit top of its solid neighbours), 127 = none (r3d.c) */
-extern int8_t r3d_roof[DOOMO_MAP_MAX_W * DOOMO_MAP_MAX_H];
+#define r3d_roof ((int8_t *)(gba_big + GBA_BIG_ROOF))
 
 /* ARM / IWRAM entry points (r3d.iwram.c) */
 void r3d_columns(void) IWRAM_CALL;

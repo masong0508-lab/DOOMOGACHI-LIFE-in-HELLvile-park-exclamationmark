@@ -928,6 +928,14 @@ void scene_s06_life(int f, int n) {
     if (f >= 114) bcap(146, "Ignore that one.", PAL_WHITE, PAL_RAMP(RAMP_VAPE, 1), 2, f - 114);
     /* the POW rattles the camera */
     if (f >= 30 && f < 33) tk_post_shake((f & 1) ? 2 : -2, 1);
+    /* director: iris in from s05's iris-out ... and iris-out on the starer, who
+     * keeps slowly waving inside it */
+    if (f < 6) tk_post_iris(120, 80, 6.0f + 250.0f * tk_ease(f / 6.0f) * tk_ease(f / 6.0f), 0, PAL_BLACK, PAL_UI_PINK_D);
+    if (f >= 140) {
+        int a = f - 140;
+        float r = a < 5 ? 250.0f + (24.0f - 250.0f) * tk_ease(a / 5.0f) : (f < 149 ? 24.0f : 0.0f);
+        tk_post_iris(RXR + 48, floor_top(0) + RH - 5 - 36, r, 0, PAL_BLACK, PAL_RAMP(RAMP_VAPE, 1));
+    }
 }
 
 void scene_s06_life_audio(double t0, double dur) {
@@ -951,4 +959,5 @@ void scene_s06_life_audio(double t0, double dur) {
     tk_sfx(t0 + 98 * fr, SFX_WHOOSH, 0.3f);                   /* tilt */
     /* the starer: nothing. no sound at all (the music should duck here)... then one tiny squeak as he waves */
     tk_sfx(t0 + 136 * fr, SFX_SQUEAK, 0.25f);
+    tk_slide(t0 + 140 * fr, 0.16, 96, 72, TKV_SINE, 0.1f);     /* iris: shwip */
 }

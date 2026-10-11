@@ -82,7 +82,7 @@ static void face(int x, int64_t z_top, int64_t z_bot, int64_t d, int tex, int u,
     const uint8_t *tp = tex_of(tex);
     const uint8_t *cm = doomo_colormap[fade(light, d)];
     uint8_t flat = tp ? 0 : texture_avg(tex);
-    if (z_top >= ((int64_t)SKY_Z << 16)) ys = ytop;
+    if (z_top >= ((int64_t)SKY_Z * 65536)) ys = ytop;
     if (ys < ytop) ys = ytop;
     if (ye > ybot) ye = ybot;
     for (y = ys; y <= ye; y++) {
@@ -154,14 +154,14 @@ static void cast_column(int x, int64_t dirx, int64_t diry, int64_t plx, int64_t 
     int64_t deltax = rdx ? ((int64_t)1 << 32) / (rdx < 0 ? -rdx : rdx) : ((int64_t)1 << 40);
     int64_t deltay = rdy ? ((int64_t)1 << 32) / (rdy < 0 ? -rdy : rdy) : ((int64_t)1 << 40);
     int stepx = rdx < 0 ? -1 : 1, stepy = rdy < 0 ? -1 : 1;
-    int64_t sidex = rdx < 0 ? (((posx - ((int64_t)mx << 16)) * deltax) >> 16)
-                            : (((((int64_t)(mx + 1)) << 16) - posx) * deltax >> 16);
-    int64_t sidey = rdy < 0 ? (((posy - ((int64_t)my << 16)) * deltay) >> 16)
-                            : (((((int64_t)(my + 1)) << 16) - posy) * deltay >> 16);
+    int64_t sidex = rdx < 0 ? (((posx - ((int64_t)mx * 65536)) * deltax) >> 16)
+                            : ((((int64_t)(mx + 1) * 65536) - posx) * deltax >> 16);
+    int64_t sidey = rdy < 0 ? (((posy - ((int64_t)my * 65536)) * deltay) >> 16)
+                            : ((((int64_t)(my + 1) * 65536) - posy) * deltay >> 16);
     int ytop = vy0, ybot = vy0 + vh0 - 1, step;
     const DoomoCell *cur = map_cell_safe(M, mx, my);
-    int64_t cur_f = (int64_t)map_floor_z(M, mx, my) << 16;
-    int64_t cur_c = (int64_t)map_ceil_z(M, mx, my) << 16;
+    int64_t cur_f = (int64_t)map_floor_z(M, mx, my) * 65536;
+    int64_t cur_c = (int64_t)map_ceil_z(M, mx, my) * 65536;
     int cur_sky = cur->ceil_tex == DOOMO_TEX_SKY;
     int cur_ftex = cur->floor_tex, cur_ctex = cur->ceil_tex, cur_light = light_at(cur);
     int64_t d0 = (int64_t)1 << 16;
@@ -190,8 +190,8 @@ static void cast_column(int x, int64_t dirx, int64_t diry, int64_t plx, int64_t 
             int64_t top;
             int lit = cur_light - side;
             if (cur_sky) {
-                top = n->ceil_h > n->floor_h ? ((int64_t)map_ceil_z(M, nmx, nmy) << 16)
-                                             : cur_f + ((int64_t)256 << 16);
+                top = n->ceil_h > n->floor_h ? ((int64_t)map_ceil_z(M, nmx, nmy) * 65536)
+                                             : cur_f + ((int64_t)256 * 65536);
             } else {
                 top = cur_c;
             }
@@ -210,10 +210,10 @@ static void cast_column(int x, int64_t dirx, int64_t diry, int64_t plx, int64_t 
             cur_light = light_at(n);
             cur_sky = 1;
         } else {
-            int64_t nf = (int64_t)map_floor_z(M, nmx, nmy) << 16;
-            int64_t nc = (int64_t)map_ceil_z(M, nmx, nmy) << 16;
+            int64_t nf = (int64_t)map_floor_z(M, nmx, nmy) * 65536;
+            int64_t nc = (int64_t)map_ceil_z(M, nmx, nmy) * 65536;
             int nsky = n->ceil_tex == DOOMO_TEX_SKY;
-            int64_t open_top = cur_sky ? ((int64_t)SKY_Z << 16) : cur_c;
+            int64_t open_top = cur_sky ? ((int64_t)SKY_Z * 65536) : cur_c;
             int64_t new_top = nsky ? open_top : (nc < open_top ? nc : open_top);
             int64_t new_bot = nf > cur_f ? nf : cur_f;
             int lit = cur_light - side;
@@ -222,7 +222,7 @@ static void cast_column(int x, int64_t dirx, int64_t diry, int64_t plx, int64_t 
             {
                 int nb = proj_y(new_bot, d1) - 1;
                 if (nb < ybot) ybot = nb;
-                if (new_top < ((int64_t)SKY_Z << 16)) {
+                if (new_top < ((int64_t)SKY_Z * 65536)) {
                     int nt = proj_y(new_top, d1);
                     if (nt > ytop) ytop = nt;
                 }
@@ -239,7 +239,7 @@ static void cast_column(int x, int64_t dirx, int64_t diry, int64_t plx, int64_t 
         my = nmy;
         d0 = d1;
         push_clip(x, d1, ytop, ybot);
-        if (ytop > ybot || d1 > ((int64_t)MAX_DIST_UNITS << 16)) break;
+        if (ytop > ybot || d1 > ((int64_t)MAX_DIST_UNITS * 65536)) break;
     }
     if (ytop <= ybot) {
         if (cur_sky) sky_column(x, rdx, rdy, ytop, ybot);
@@ -276,7 +276,7 @@ static void draw_sprite(int idx, int64_t dirx, int64_t diry)
     rx = (int64_t)b->x - camx;
     ry = (int64_t)b->y - camy;
     depth = (rx * dirx + ry * diry) >> 16;                 /* fix16 units */
-    if (depth < ((int64_t)NEAR_UNITS << 16)) return;
+    if (depth < ((int64_t)NEAR_UNITS * 65536)) return;
     lat = (rx * -diry + ry * dirx) >> 16;
     wwu = (int64_t)img->w * (b->scale ? b->scale : 256) * 256;   /* fix16 */
     hwu = (int64_t)img->h * (b->scale ? b->scale : 256) * 256;
@@ -292,7 +292,7 @@ static void draw_sprite(int idx, int64_t dirx, int64_t diry)
     }
     lvl = (b->flags & BB_FULLBRIGHT) ? 15 : DOOMO_CLAMP(fade(base_light, depth) + b->light, 1, 15);
     translucent = (b->flags & BB_TRANSLUCENT) ||
-                  (idx == V->player_sprite && depth < ((int64_t)40 << 16));
+                  (idx == V->player_sprite && depth < ((int64_t)40 * 65536));
     if (b->flags & BB_SHADOW) {
         int fy = proj_y(b->z, depth), half = sw / 3;
         for (sx = cx - half; sx <= cx + half; sx++) {
@@ -349,7 +349,7 @@ void plat_view3d(const DoomoView3D *v)
     horizon = vy0 + vh0 / 2 + (int)((int64_t)v->pitch * focal * 84 / (256 * 100));
     camx = v->x;
     camy = v->y;
-    eye = (int64_t)v->z + ((int64_t)v->bob << 16);
+    eye = (int64_t)v->z + ((int64_t)v->bob * 65536);
 
     for (x = 0; x < vw0; x++) cast_column(x, dirx, diry, plx, ply);
 

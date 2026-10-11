@@ -31,6 +31,10 @@ void plat_end_frame(void)
 
 uint32_t plat_ticks(void) { return g_frame; }
 
+/* frames run by the game loop (core or engine test) since boot; the test
+ * harness uses it as heartbeat and boot sync */
+volatile uint32_t g_loop_frames;
+
 uint32_t plat_entropy(void)
 {
     uint32_t v = (uint32_t)VSync(-1) * 2654435761u;
@@ -58,38 +62,79 @@ void dbg(const char *fmt, ...)
     printf("%s", buf);
 }
 
+/* A cute splash while the BIOS reads the memory card directories (the
+ * BIOS card driver needs a few seconds for both slots). */
+static void boot_splash(void)
+{
+    const DoomoImage *egg = core_sprite_image(SPR_EGG, 0);
+    int f;
+    for (f = 0; f < 2; f++) {       /* both buffers, so it stays up */
+        plat_begin_frame();
+        plat_clear(PAL_UI_PINK);
+        plat_rect(0, 150, SCR_W, 90, PAL_UI_PINK_D);
+        plat_rect(0, 148, SCR_W, 2, PAL_UI_CREAM);
+        if (egg && egg->w <= 64 && egg->h <= 64)
+            plat_image(SCR_W / 2 - egg->w, 140 - egg->h * 2, egg, 2, IMG_SHADOW, 0);
+        plat_text(SCR_W / 2 - 16 * 6 / 2, 32, "DOOMOGACHI LIFE", PAL_UI_PINK_D);
+        plat_text(SCR_W / 2 - 17 * 6 / 2, 44, "in HELLvile Park!", PAL_UI_PURPLE);
+        plat_text(SCR_W / 2 - 25 * 6 / 2, 196, "Checking MEMORY CARD " STR_ICON_HEART "...", PAL_UI_CREAM);
+        plat_end_frame();
+    }
+    DrawSync(0);
+}
+
 static void plat_init_hw(void)
 {
     pad_init();          /* BIOS pad + card drivers before the SDK IRQ hook */
     memcard_early();
     gfx_init();
-    dbg("ps1: gfx ok\n");
-    memcard_init();
-    dbg("ps1: card ok\n");
     InitGeom();
     timer_init();
     vram_init();
-    dbg("ps1: vram ok\n");
+    boot_splash();
+    memcard_init();      /* blocks ~2-3 s (BIOS _bu_init) */
     audio_hw_init();
-    dbg("ps1: spu ok\n");
-
+    dbg("ps1: hardware ready (%s)\n", plat_name());
 }
 
 int main(void)
 {
     plat_init_hw();
     dbg("DOOMOGACHI PS1: boot (core game %s)\n", core_has_game() ? "linked" : "missing");
-#ifdef DOOMO_ENGINE_TEST
-    etest_run();
+#if defined(DOOMO_ENGINE_TEST) || !defined(DOOMO_HAVE_CORE)
+    etest_run();        /* engine showcase / platform bring-up */
+#else
+    if (!core_has_game()) {
+        for (;;) {      /* should never happen: the core is linked */
+            plat_begin_frame();
+            plat_clear(PAL_UI_RED_D);
+            plat_text(40, 110, "DOOMOGACHI: core not linked", PAL_WHITE);
+            plat_end_frame();
+        }
+    }
 #endif
-    if (!core_has_game())
-        etest_run();
     core_doomo_init();
     for (;;) {
-        uint32_t b = pad_read();
+        uint32_t b;
+        hcmd_poll();
+        b = pad_read();
         plat_begin_frame();
         core_doomo_frame(b);
         plat_end_frame();
+        g_loop_frames++;
+        if ((g_frame % 150) == 0) {
+            extern uint32_t g_rect_calls, g_rect_prims;
+            dbg("perf: frame=%u fps=%d.%d cpu=%uus gpuwait=%uus prims=%u/%uB rects=%u->%u "
+                "3d=%uus polys=%d upload=%uB\n",
+                (unsigned)g_frame, (int)(g_perf.fps_x10 / 10), (int)(g_perf.fps_x10 % 10),
+                (unsigned)g_perf.cpu_us, (unsigned)g_perf.sync_us, (unsigned)g_perf.prims,
+                (unsigned)g_perf.prim_bytes, (unsigned)g_rect_calls, (unsigned)g_rect_prims,
+                (unsigned)g_r3stats.cpu_us, g_r3stats.polys, (unsigned)vram_uploads());
+        }
+        {
+            extern uint32_t g_rect_calls, g_rect_prims;
+            g_rect_calls = g_rect_prims = 0;
+        }
     }
     return 0;
 }

@@ -38,16 +38,16 @@ void test_reset(void);
 
 #define CHECK(cond) do { if (!(cond)) { \
         test_fail(__FILE__, __LINE__, "CHECK(" #cond ")"); return; } } while (0)
-#define CHECK_MSG(cond, ...) do { if (!(cond)) { char m_[256]; \
+#define CHECK_MSG(cond, ...) do { if (!(cond)) { char m_[1024]; \
         snprintf(m_, sizeof(m_), __VA_ARGS__); \
         test_fail(__FILE__, __LINE__, m_); return; } } while (0)
 #define CHECK_EQ(a, b) do { long long a_ = (long long)(a), b_ = (long long)(b); \
-        if (a_ != b_) { char m_[256]; \
+        if (a_ != b_) { char m_[1024]; \
             snprintf(m_, sizeof(m_), "%s == %s  (%lld != %lld)", #a, #b, a_, b_); \
             test_fail(__FILE__, __LINE__, m_); return; } } while (0)
 #define CHECK_EQ_U(a, b) do { unsigned long long a_ = (unsigned long long)(a), \
         b_ = (unsigned long long)(b); \
-        if (a_ != b_) { char m_[256]; \
+        if (a_ != b_) { char m_[1024]; \
             snprintf(m_, sizeof(m_), "%s == %s  (0x%llX != 0x%llX)", #a, #b, a_, b_); \
             test_fail(__FILE__, __LINE__, m_); return; } } while (0)
 #define CHECK_STR(a, b) do { const char *a_ = (a), *b_ = (b); \

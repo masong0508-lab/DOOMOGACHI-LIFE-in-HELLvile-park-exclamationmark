@@ -1,0 +1,39 @@
+# enginetest.txt - the ENGINE_TEST ROM's scripted tour (make -C gba test-et).
+# The ROM drives the camera itself and logs "ET phase: <name>" / "ET fps=".
+# Ticks are 30 Hz logic ticks (the harness reads them from the ROM).
+wait 40
+expect-log ENGINE TEST: boot
+expect-log ET divtest ok
+shot et01_courtyard_fp
+wait 60
+shot et02_courtyard_blocks
+wait 80
+shot et03_path_tower
+wait 60
+shot et04_hall_door
+wait 60
+shot et05_hall_stairs
+wait 50
+shot et06_look_up_skylight
+wait 70
+shot et07_stairs_step_faces
+wait 60
+shot et08_mezzanine_look_down
+wait 60
+shot et09_third_person
+wait 50
+shot et10_third_person_hall
+wait 70
+shot et11_low_corridor
+wait 60
+shot et12_hell_room_sprites
+wait 80
+shot et13_hell_third_person
+wait 60
+shot et14_hell_third_person_b
+wait 30
+shot et15_overworld
+wait 60
+shot et16_overworld_scroll
+expect-log ET phase: overworld
+expect-log ET fps=

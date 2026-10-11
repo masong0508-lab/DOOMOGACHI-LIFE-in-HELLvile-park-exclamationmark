@@ -17,12 +17,12 @@ static void grass_base(ArtImg *im, uint32_t seed, int ticks)
     int x, y, i, n, xs[96], ys[96];
     for (y = 0; y < 64; y++)
         for (x = 0; x < 64; x++) {
-            int v = art_fbm(x, y, 32, 3, 64, seed);
+            int v = art_fbm(x, y, 16, 3, 64, seed);
             int w = art_noise(x, y, 8, 64, seed + 9);
             uint8_t c = RP(RAMP_GRASS, 4);
-            if (v > 136) c = RP(RAMP_GRASS, 5);
-            if (v > 136 && v < 142 && w > 128) c = RP(RAMP_GRASS, 4);
-            if (v < 88) c = RP(RAMP_GRASS, 3);
+            if (v > 140) c = RP(RAMP_GRASS, 5);
+            if (v > 140 && v < 146 && w > 128) c = RP(RAMP_GRASS, 4);
+            if (v < 92) c = RP(RAMP_GRASS, 3);
             PX(x, y, c);
         }
     /* little grass ticks: dark 'v' with a light tip, in the local tone */
@@ -191,7 +191,7 @@ static void t_water(ArtImg *im, int f, int n)
     int x, y, ph = tx_phase(f, n);
     for (y = 0; y < 64; y++)
         for (x = 0; x < 64; x++) {
-            int deep = art_fbm(x, y, 32, 2, 64, 0x3A7Fu);
+            int deep = art_fbm(x, y, 16, 2, 64, 0x3A7Fu);
             int brk = art_noise(x, y, 8, 64, 0x3A81u);
             /* wavy horizontal ripples, displaced sideways over time */
             int a = y * ART_TURN / 8 + art_sin(x * ART_TURN / 32 + ph) / 3 +

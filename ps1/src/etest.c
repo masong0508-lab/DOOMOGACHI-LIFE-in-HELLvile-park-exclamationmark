@@ -20,6 +20,7 @@
 #include <psxgpu.h>
 #include <psxgte.h>
 #include "r3d.h"
+#include "world.h"
 
 #define C64 DOOMO_CELL_UNITS
 #define FX(v) ((int32_t)((v) * 65536))
@@ -115,6 +116,55 @@ void etest_build_map(DoomoMap *m)
     m->cells[0 * 32 + 19].wall = TEX_SHOP_FRONT;
 }
 
+/* ---- the built-in cutesy town (overworld test) ------------------------------ */
+static DoomoMap s_town;
+
+static void house(DoomoMap *m, int x0, int y0, int x1, int y1, int wall, int roof, int h)
+{
+    fill(m, x0, y0, x1, y1, wall, roof, DOOMO_TEX_SKY, 0, h, 12, 0);
+}
+
+static void build_town(DoomoMap *m)
+{
+    int x, y;
+    memset(m, 0, sizeof(*m));
+    m->w = 40;
+    m->h = 32;
+    m->kind = MAP_OVERWORLD;
+    m->sky = SKY_PASTEL_DAY;
+    m->ambient = 13;
+    fill(m, 0, 0, 39, 31, 0, TEX_GRASS, DOOMO_TEX_SKY, 0, 0, 13, 0);
+    /* flower meadows */
+    for (y = 0; y < 32; y++)
+        for (x = 0; x < 40; x++)
+            if (((x * 7 + y * 13) % 11) == 0)
+                m->cells[y * 40 + x].floor_tex = TEX_FLOWERS;
+    /* paths and the plaza */
+    fill(m, 0, 15, 39, 16, 0, TEX_PATH, DOOMO_TEX_SKY, 0, 0, 13, 0);
+    fill(m, 19, 0, 20, 31, 0, TEX_PATH, DOOMO_TEX_SKY, 0, 0, 13, 0);
+    fill(m, 16, 12, 23, 19, 0, TEX_COBBLE, DOOMO_TEX_SKY, 0, 0, 14, 0);
+    /* cottages, shop, cafe, church (blocks with roofs) */
+    house(m, 10, 9, 13, 11, TEX_PASTEL_BRICK, TEX_ROOF_TILES, 7);
+    house(m, 25, 9, 28, 11, TEX_WOOD_WALL, TEX_ROOF_TILES, 6);
+    house(m, 11, 19, 14, 21, TEX_SHOP_FRONT, TEX_ROOF_TILES, 8);
+    house(m, 25, 19, 29, 21, TEX_CAFE_FRONT, TEX_CANDY_STRIPE, 7);
+    house(m, 17, 3, 22, 6, TEX_CHURCH_WALL, TEX_ROOF_TILES, 12);
+    house(m, 31, 4, 35, 7, TEX_APARTMENT_FRONT, TEX_ROOF_TILES, 14);
+    /* hedges and fences */
+    fill(m, 8, 13, 14, 13, TEX_HEDGE, TEX_HEDGE, DOOMO_TEX_SKY, 0, 3, 13, 0);
+    fill(m, 25, 13, 31, 13, TEX_PICKET_FENCE, 0, DOOMO_TEX_SKY, 0, 2, 13, 0);
+    fill(m, 8, 18, 8, 23, TEX_HEDGE, TEX_HEDGE, DOOMO_TEX_SKY, 0, 3, 13, 0);
+    /* a pond and a stepped flower hill */
+    fill(m, 30, 23, 35, 27, 0, TEX_WATER, DOOMO_TEX_SKY, -2, 0, 13, CELL_WATER);
+    fill(m, 2, 2, 8, 7, 0, TEX_GRASS, DOOMO_TEX_SKY, 2, 0, 13, 0);
+    fill(m, 3, 3, 7, 6, 0, TEX_FLOWERS, DOOMO_TEX_SKY, 4, 0, 13, 0);
+    fill(m, 4, 4, 6, 5, 0, TEX_GRASS, DOOMO_TEX_SKY, 6, 0, 13, 0);
+    /* street lamps glow at night */
+    m->cells[14 * 40 + 18].light = 15;
+    m->cells[17 * 40 + 21].light = 15;
+    m->cells[17 * 40 + 15].light = 15;
+}
+
 /* ---- scene setup -------------------------------------------------------------- */
 typedef struct Key {
     int16_t t;              /* frame */
@@ -145,7 +195,7 @@ static const Key k_tour[] = {
 };
 #define TOUR_LEN ((int)(sizeof(k_tour) / sizeof(k_tour[0])))
 #define TOUR_END 990
-#define OW_FRAMES 240
+#define OW_FRAMES 450
 
 static int lerpi(int a, int b, int t, int n) { return a + (b - a) * t / n; }
 static int lerpa(int a, int b, int t, int n)
@@ -279,10 +329,37 @@ static void place_things(const DoomoMap *m, int t)
     }
 }
 
-/* ---- the run loop ------------------------------------------------------------- */
-enum { SC_TOUR, SC_OVERWORLD, SC_COUNT };
+static void place_town(int t)
+{
+    static const int16_t trees[][2] = {
+        {6, 10}, {3, 12}, {5, 20}, {2, 26}, {9, 28}, {24, 26}, {36, 12}, {37, 18},
+        {33, 15}, {15, 25}, {28, 2}, {12, 4}, {38, 28}, {22, 9}, {16, 9} };
+    static const int16_t lamps[][2] = { {18, 14}, {21, 17}, {15, 17} };
+    int i;
+    s_nbb = 0;
+    for (i = 0; i < (int)(sizeof(trees) / sizeof(trees[0])); i++)
+        add_bb(trees[i][0] * 64 + 32, trees[i][1] * 64 + 32, 0, spr(SPR_TREE, 0, 0), 300, BB_SHADOW, 0);
+    for (i = 0; i < 3; i++)
+        add_bb(lamps[i][0] * 64 + 32, lamps[i][1] * 64 + 32, 0, spr(SPR_LAMP, 0, 1), 256, 0, 6);
+    add_bb(19 * 64 + 64, 15 * 64 + 64, 0, spr(SPR_FOUNTAIN, (t >> 3) & 3, 1), 300, BB_SHADOW, 0);
+    add_bb(13 * 64 + 20, 15 * 64 + 10, 0, spr(SPR_BENCH, 0, 2), 256, BB_SHADOW, 0);
+    add_bb(24 * 64 + 40, 12 * 64 + 40, 0, spr(SPR_MAILBOX, 0, 2), 256, BB_SHADOW, 0);
+    add_bb(5 * 64, 4 * 64 + 32, 48, spr(SPR_FLOWER_BED, 0, 0), 256, 0, 0);
+    /* residents strolling along the paths */
+    for (i = 0; i < 6; i++) {
+        int ph = (t * 3 + i * 300) % 1600;
+        int x, y;
+        if (i & 1) { x = ph + 64; y = 15 * 64 + 40 + (i * 9) % 30; }
+        else { x = 19 * 64 + 40 + (i * 7) % 30; y = (ph * 2) % 2000 + 32; }
+        add_bb(x, y, 0, spr(i % 3 == 0 ? SPR_PET : i % 3 == 1 ? SPR_EGG : SPR_CANDY, (t >> 3) & 1, i),
+               256 + 64, BB_SHADOW | ((i & 1) ? BB_FLIPX : 0), 0);
+    }
+}
 
-static const DoomoMap *s_cur_map;
+/* ---- the run loop ------------------------------------------------------------- */
+enum { SC_TOUR, SC_OVERWORLD, SC_MODEL, SC_COUNT };
+
+static const DoomoMap *s_cur_map, *s_ow_map = &s_town;
 static int s_scene, s_manual, s_hud = 1;
 static int32_t s_mx, s_my;
 static int s_ma, s_mp, s_mcam;
@@ -366,86 +443,138 @@ static void view_fp_tp(const DoomoMap *m, int32_t x, int32_t y, int ang, int pit
     }
 }
 
-static void view_overworld(const DoomoMap *m, int t)
+/* overworld: a stroll around the town; daylight runs noon -> dusk ->
+ * night -> dawn over the scene */
+static void view_overworld(const DoomoMap *m, int t, int scene_t)
 {
     DoomoOverworldView ov;
+    int a = (scene_t * 6) & 4095;
     memset(&ov, 0, sizeof(ov));
     ov.map = m;
-    ov.cx = FX(m->w * 32 + (isin((t * 8) & 4095) * (m->w * 20)) / 4096);
-    ov.cy = FX(m->h * 32 + (icos((t * 8) & 4095) * (m->h * 16)) / 4096);
+    ov.cx = FX(m->w * 32 + (icos(a) * (m->w * 14)) / 4096);
+    ov.cy = FX(m->h * 32 + (isin(a) * (m->h * 12)) / 4096);
     ov.vx = 0; ov.vy = 0; ov.vw = SCR_W; ov.vh = SCR_H;
-    place_things(m, t);
+    if (m == &s_town)
+        place_town(t);
+    else
+        place_things(m, t);
     ov.sprites = s_bb;
     ov.sprite_count = s_nbb;
-    ov.daylight = 15;
+    {
+        int d = scene_t % OW_FRAMES;          /* 15 .. 0 .. 15 */
+        d = d < OW_FRAMES / 2 ? 15 - (d * 30) / OW_FRAMES : ((d - OW_FRAMES / 2) * 30) / OW_FRAMES;
+        if (d < 0) d = 0;
+        if (d > 15) d = 15;
+        ov.daylight = (uint8_t)d;
+    }
     ov.time = (uint16_t)t;
     plat_overworld(&ov);
 }
 
+/* model showcase: orbit the third-person 3D citizen in the courtyard */
+static void view_model(int t, int scene_t)
+{
+    DoomoView3D v;
+    DoomoBillboard *p;
+    int orbit = (scene_t * 10) & 4095, run = (scene_t / 90) & 1;
+    int32_t px = FX(17 * 64), py = FX(2 * 64 + 40);
+    int dist = 64 + ((isin((scene_t * 7) & 4095) * 16) >> 12);
+    memset(&v, 0, sizeof(v));
+    v.map = &s_et;
+    s_nbb = 0;
+    if (run) {
+        /* jog on a small circle so the run cycle plays */
+        px += (icos((scene_t * 40) & 4095) * 24) << 4;
+        py += (isin((scene_t * 40) & 4095) * 24) << 4;
+    }
+    p = &s_bb[s_nbb++];
+    p->x = px; p->y = py; p->z = 0;
+    p->img = spr(SPR_PET, 0, 0); p->scale = 256; p->flags = BB_SHADOW; p->light = 0;
+    v.player_sprite = 0;
+    v.sprites = s_bb;
+    v.sprite_count = s_nbb;
+    v.camera = CAM_THIRD_PERSON;
+    v.angle = (int16_t)((orbit + 2048) & 4095);           /* look at the model */
+    v.pitch = -40;
+    v.x = px + ((icos(orbit) * dist) << 4);
+    v.y = py + ((isin(orbit) * dist) << 4);
+    v.z = FX(34);
+    v.vw = SCR_W; v.vh = SCR_H;
+    v.time = (uint16_t)t;
+    plat_view3d(&v);
+}
+
+/* Memory card self test (SELECT + START in the engine test, or at boot of
+ * the engine test when the harness asks for it): save, read back, grow a
+ * slot (new bigger file, swapped in by rename), erase. Prints PASS/FAIL. */
+static uint8_t s_mc_buf[48 * 1024];
+static uint8_t s_mc_rd[48 * 1024];
+
+static int mc_fill_check(uint32_t seed, uint32_t n, int check)
+{
+    uint32_t i, x = seed;
+    for (i = 0; i < n; i++) {
+        x = x * 1664525u + 1013904223u;
+        if (check) {
+            if (s_mc_rd[i] != (uint8_t)(x >> 24))
+                return 0;
+        } else {
+            s_mc_buf[i] = (uint8_t)(x >> 24);
+        }
+    }
+    return 1;
+}
+
+static void memcard_selftest(void)
+{
+    uint32_t sz = 0;
+    int ok = 1, r;
+    dbg("memcard selftest: start\n");
+    plat_save_erase(0);
+    plat_save_erase(1);
+    mc_fill_check(1, 5000, 0);
+    r = plat_save_write(0, s_mc_buf, 5000);
+    dbg("memcard selftest: write slot0 5000B -> %d\n", r);
+    ok &= r;
+    memset(s_mc_rd, 0, sizeof(s_mc_rd));
+    r = plat_save_read(0, s_mc_rd, sizeof(s_mc_rd), &sz);
+    dbg("memcard selftest: read slot0 -> %d size %u\n", r, (unsigned)sz);
+    ok &= r && sz == 5000 && mc_fill_check(1, 5000, 1);
+    /* grow slot 0 past its block count: temp file + rename */
+    mc_fill_check(2, 20000, 0);
+    r = plat_save_write(0, s_mc_buf, 20000);
+    dbg("memcard selftest: grow slot0 20000B -> %d\n", r);
+    ok &= r;
+    memset(s_mc_rd, 0, sizeof(s_mc_rd));
+    r = plat_save_read(0, s_mc_rd, sizeof(s_mc_rd), &sz);
+    ok &= r && sz == 20000 && mc_fill_check(2, 20000, 1);
+    dbg("memcard selftest: read grown slot0 -> %d size %u\n", r, (unsigned)sz);
+    /* slot 1, an odd size */
+    mc_fill_check(3, 33333, 0);
+    r = plat_save_write(1, s_mc_buf, 33333);
+    ok &= r;
+    memset(s_mc_rd, 0, sizeof(s_mc_rd));
+    r = plat_save_read(1, s_mc_rd, sizeof(s_mc_rd), &sz);
+    ok &= r && sz == 33333 && mc_fill_check(3, 33333, 1);
+    dbg("memcard selftest: slot1 33333B -> %d size %u\n", r, (unsigned)sz);
+    /* erase slot 1, reading it must fail now */
+    r = plat_save_erase(1);
+    dbg("memcard selftest: erase slot1 -> %d\n", r);
+    ok &= !plat_save_read(1, s_mc_rd, sizeof(s_mc_rd), &sz);
+    /* leave a save in slot 0 for the emulator's card manager */
+    dbg("memcard selftest: %s\n", ok ? "PASS" : "FAIL");
+}
+
+/* quick CPU benchmark of the pipeline pieces, printed to the TTY */
 static void bench(void)
 {
-    volatile int sink = 0;
-    uint32_t t0, t1;
-    int i;
-    R3V q[4];
-    const TexRef *tr;
-    t0 = timer_us();
-    for (i = 0; i < 100000; i++)
-        sink += i;
-    t1 = timer_us();
-    dbg("bench: 100k loop %uus\n", (unsigned)(t1 - t0));
+    void r3_bench(void);
     plat_begin_frame();
     r3_camera(FX(100), FX(100), FX(40), 0, 0, 0, 0, 320, 240, 160, 1600, 300, 0);
     r3_begin();
-    { void r3_bench(void); r3_bench(); }
-    t0 = timer_us();
-    for (i = 0; i < 100; i++)
-        tr = vram_wtex(TEX_GRASS, 0);
-    t1 = timer_us();
-    dbg("bench: 100 vram_wtex %uus\n", (unsigned)(t1 - t0));
-    t0 = timer_us();
-    for (i = 0; i < 100; i++) {
-        q[0].x = 100; q[0].y = -32; q[0].z = 20; q[0].u = 0; q[0].v = 0; q[0].c = 0x808080;
-        q[1].x = 100; q[1].y = 32; q[1].z = 20; q[1].u = 64; q[1].v = 0; q[1].c = 0x808080;
-        q[2].x = 100; q[2].y = -32; q[2].z = -40; q[2].u = 0; q[2].v = 64; q[2].c = 0x808080;
-        q[3].x = 100; q[3].y = 32; q[3].z = -40; q[3].u = 64; q[3].v = 64; q[3].c = 0x808080;
-        r3_quad(q, tr, R3F_NOSUB, 0);
-    }
-    t1 = timer_us();
-    dbg("bench: 100 r3_quad (no subdiv) %uus polys=%d\n", (unsigned)(t1 - t0), g_r3stats.polys);
-    t0 = timer_us();
-    for (i = 0; i < 100; i++) {
-        q[0].x = 100; q[0].y = -32; q[0].z = 20; q[0].u = 0; q[0].v = 0; q[0].c = 0x808080;
-        q[1].x = 100; q[1].y = 32; q[1].z = 20; q[1].u = 64; q[1].v = 0; q[1].c = 0x808080;
-        q[2].x = 100; q[2].y = -32; q[2].z = -40; q[2].u = 0; q[2].v = 64; q[2].c = 0x808080;
-        q[3].x = 100; q[3].y = 32; q[3].z = -40; q[3].u = 64; q[3].v = 64; q[3].c = 0x808080;
-        r3_quad(q, tr, 0, 0);
-    }
-    t1 = timer_us();
-    dbg("bench: 100 r3_quad (subdiv) %uus polys=%d\n", (unsigned)(t1 - t0), g_r3stats.polys);
+    r3_bench();
     r3_end();
     plat_end_frame();
-    (void)sink;
-    {
-        int k;
-        etest_build_map(&s_et);
-        for (k = 0; k < 2; k++) {
-            DoomoView3D v;
-            memset(&v, 0, sizeof(v));
-            v.map = &s_et; v.x = FX(2 * 64 + 32); v.y = FX(1 * 64 + 40); v.z = FX(40);
-            v.angle = 700; v.vw = 320; v.vh = 240; v.player_sprite = -1;
-            plat_begin_frame();
-            t0 = timer_us();
-            for (i = 0; i < 5; i++) {
-                plat_view3d(&v);
-                gfx_begin();
-            }
-            t1 = timer_us();
-            plat_end_frame();
-            dbg("bench: knob %d: 5 views %uus (polys %d faces %d cells %d)\n", k,
-                (unsigned)(t1 - t0), g_r3stats.polys, g_r3stats.faces, g_r3stats.cells);
-        }
-    }
 }
 
 void etest_run(void)
@@ -456,18 +585,28 @@ void etest_run(void)
     core_palette_init();
     bench();
     etest_build_map(&s_et);
+    build_town(&s_town);
     s_mapsel = core_has_maps() ? 1 : 0;
     s_cur_map = pick_map(s_mapsel);
     for (;;) {
-        uint32_t b = pad_read(), pressed = b & ~prev;
+        uint32_t b, pressed;
+        hcmd_poll();
+        b = pad_read();
+        pressed = b & ~prev;
         prev = b;
         if (pressed)
             s_manual = 1;
+        if ((b & BTN_SELECT) && (pressed & BTN_START)) {
+            memcard_selftest();
+            pressed = 0;
+            prev = b;
+        }
         if (pressed & BTN_START) {
             s_scene = (s_scene + 1) % SC_COUNT;
             if (s_scene == SC_TOUR) {
                 s_mapsel = (s_mapsel + 1) % 3;
                 s_cur_map = pick_map(s_mapsel);
+                world_invalidate();
             }
             scene_t = 0;
         }
@@ -494,6 +633,10 @@ void etest_run(void)
                     s_scene = SC_OVERWORLD;
                     scene_t = -1;
                 }
+                if (s_cur_map != &s_et && scene_t >= 900) {
+                    s_scene = SC_OVERWORLD;
+                    scene_t = -1;
+                }
             } else {
                 int sp = (b & BTN_B) ? 6 : 3;
                 if (b & BTN_LEFT)  s_ma = (s_ma - 48) & 4095;
@@ -508,15 +651,32 @@ void etest_run(void)
             view_fp_tp(s_cur_map, s_mx, s_my, s_ma, s_mp, s_mcam ? CAM_THIRD_PERSON : CAM_FIRST_PERSON,
                        (int)t);
             hud(s_mcam ? "3RD PERSON" : "1ST PERSON", (int)t);
-        } else {
-            view_overworld(s_cur_map, (int)t);
-            hud("OVERWORLD", (int)t);
-            if (!s_manual && scene_t >= OW_FRAMES) {
+        } else if (s_scene == SC_MODEL) {
+            view_model((int)t, scene_t);
+            hud("3D CITIZEN", (int)t);
+            if (!s_manual && scene_t >= 360) {
                 s_scene = SC_TOUR;
                 scene_t = -1;
+                s_cur_map = pick_map(s_mapsel);
+                world_invalidate();
+            }
+        } else {
+            if (scene_t == 0) {
+                s_ow_map = &s_town;
+                if (core_map_load(MAPID_HAHALAND))
+                    s_ow_map = core_map();
+                world_invalidate();
+            }
+            view_overworld(s_ow_map, (int)t, scene_t);
+            hud("OVERWORLD", (int)t);
+            if (!s_manual && scene_t >= OW_FRAMES) {
+                s_scene = SC_MODEL;
+                scene_t = -1;
+                world_invalidate();
             }
         }
         plat_end_frame();
+        g_loop_frames++;
         t++;
         scene_t++;
     }

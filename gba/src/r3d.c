@@ -24,12 +24,13 @@
 #include "doomo/palette.h"
 #include "doomo/textures.h"
 #include "doomo/map.h"
+#include "doomo/town.h"
 
 R3DStats r3d_stats;
 uint32_t r3d_dbg[4];
 extern const uint8_t gba_missing_tex[64 * 64];
 
-static EWRAM_BSS uint8_t cm_tinted[16 * 256];
+#define cm_tinted (gba_big + GBA_BIG_CMT)
 static int cache_vw = -1, cache_vh = -1;
 static int cache_amb = -1;
 static int cache_tint = -1;
@@ -95,11 +96,16 @@ int r3d_cell_ceil(int cx, int cy, const DoomoCell *c)
 }
 
 /* ------------------------------------------------------------------------- */
-static void setup_viewport(int vw, int vh)
+static int cache_fov = -1;
+
+static void setup_viewport(int vw, int vh, int fov)
 {
+    /* OPT_FOV 0/1/2: tan(fov/2) = 0.55 / 0.66 / 0.79 (same as the native
+     * reference renderer) */
+    static const int32_t plane[3] = { 36000, 43250, 52000 };
     int c, m;
     int ncol = vw >> 1;
-    int proj = (vw * 3) / 5;               /* ~80 degree horizontal FOV */
+    int proj = (int)(((int32_t)(vw >> 1) << 16) / plane[fov < 0 || fov > 2 ? 1 : fov]);
     if (proj < 16) proj = 16;
     r3f.proj = proj;
     r3f.invproj = 0xFFFFFFFFu / (uint32_t)proj;
@@ -117,22 +123,25 @@ static void setup_viewport(int vw, int vh)
     }
     for (m = 0; m < R3D_KROWS; m++)
         r3d_rowk[m] = (int32_t)(((uint32_t)proj << 17) / (uint32_t)(2 * m + 1));
+    for (m = 1; m <= 4; m++) {
+        r3d_rowk[-m] = r3d_rowk[0];
+        r3d_rowk[R3D_KROWS - 1 + m] = r3d_rowk[R3D_KROWS - 1];
+    }
     cache_vw = vw;
     cache_vh = vh;
+    cache_fov = fov;
 }
 
 static void setup_fade(int amb)
 {
-    /* Distance fade: bright (cute) maps fade late and gently, dark (hell)
-     * maps early and hard. One bucket = 32 world units. */
+    /* Distance fade (reference semantics): one light level per 128 world
+     * units. One bucket = 32 units. */
     int b;
-    int near = 96 + amb * 24;
-    int per = 72 + amb * 14;               /* world units per light level */
     for (b = 0; b < R3D_FADE_N; b++) {
-        int d = b * 32;
-        int f = d > near ? (d - near) / per : 0;
+        int f = b >> 2;
         r3d_fade[b] = (uint8_t)(f > 15 ? 15 : f);
     }
+    r3f.amb = amb ? amb : 12;              /* light of cells with light 0 */
     cache_amb = amb;
 }
 
@@ -163,6 +172,17 @@ static void setup_colormaps(int tint, int level)
 }
 
 DOOMO_STATIC_ASSERT((offsetof(DoomoMap, cells) & 3) == 0, cells_word_aligned);
+/* layouts shared with r3d_loops.s */
+DOOMO_STATIC_ASSERT(offsetof(R3DWalk, side) == 64, walk_layout);
+DOOMO_STATIC_ASSERT(offsetof(ColState, rdx) == 68 && offsetof(ColState, fz4) == 84 &&
+                    offsetof(ColState, ftex) == 92 && offsetof(ColState, ytop) == 108 &&
+                    offsetof(ColState, col) == 124 && offsetof(ColState, cps) == 132 &&
+                    offsetof(ColState, ez4) == 136 && offsetof(ColState, early_top4) == 148 &&
+                    offsetof(ColState, ex) == 152 && offsetof(ColState, ez) == 168 &&
+                    offsetof(ColState, d16) == 172, colstate_layout);
+DOOMO_STATIC_ASSERT(offsetof(R3DFlat, avg) == 56, flat_layout);
+DOOMO_STATIC_ASSERT(offsetof(ColState, amb) == 180, colstate_amb);
+DOOMO_STATIC_ASSERT(sizeof(R3DClip) == 4, clip_layout);
 DOOMO_STATIC_ASSERT(sizeof(DoomoCell) == 8, cell_is_8_bytes);
 
 static void setup_map(const DoomoMap *m)
@@ -197,7 +217,9 @@ static void setup_map(const DoomoMap *m)
             r3d_roof[y * m->w + x] = (int8_t)roof;
         }
     }
-    r3f.maxtop4 = (top * 8 + 32) << 4;
+    /* walls without an explicit top are 256 units above the floor they
+     * are seen from (reference semantics) */
+    r3f.maxtop4 = (top * 8 + 256 + 32) << 4;
     cache_mapdef = m->def;
     cache_mw = m->w;
     cache_mh = m->h;
@@ -207,7 +229,7 @@ static void setup_map(const DoomoMap *m)
 /* ------------------------------------------------------------------------- */
 typedef struct SprOrder { int32_t depth; int16_t idx; } SprOrder;
 #define R3D_MAXSPR 128
-static EWRAM_BSS SprOrder spr_order[R3D_MAXSPR];
+#define spr_order ((SprOrder *)(gba_big + GBA_BIG_SPR))
 
 static void draw_sprites(const DoomoView3D *v)
 {
@@ -221,9 +243,8 @@ static void draw_sprites(const DoomoView3D *v)
         dx = b->x - r3f.ex;
         dy = b->y - r3f.ey;
         depth = (int32_t)(((int64_t)dx * r3f.fx + (int64_t)dy * r3f.fy) >> 16);
-        if (depth < (6 << 16)) continue;                 /* behind / at the eye */
+        if (depth < (4 << 16)) continue;                 /* behind / at the eye */
         if (depth > (R3D_MAXDIST * 64) << 16) continue;
-        if (i == v->player_sprite && depth < (12 << 16)) continue;
         spr_order[n].depth = depth;
         spr_order[n].idx = (int16_t)i;
         n++;
@@ -266,14 +287,16 @@ static void draw_sprites(const DoomoView3D *v)
         if (b->flags & BB_FULLBRIGHT) {
             level = 15;
         } else {
-            int cx = b->x >> 22, cy = b->y >> 22, l = r3f.map->ambient;
+            int cx = b->x >> 22, cy = b->y >> 22, l = 0;
             uint32_t bk = (uint32_t)depth >> 21;
             if ((unsigned)cx < (unsigned)r3f.mw && (unsigned)cy < (unsigned)r3f.mh)
                 l = r3f.cells[cy * r3f.mw + cx].light;
+            if (!l) l = r3f.amb;
             level = l - r3d_fade[bk < R3D_FADE_N ? bk : R3D_FADE_N - 1];
+            if (level < 1) level = 1;
+            level += b->light;
         }
-        level += b->light;
-        s.level = (uint8_t)(level < 0 ? 0 : (level > 15 ? 15 : level));
+        s.level = (uint8_t)(level < 1 ? 1 : (level > 15 ? 15 : level));
         s.flags = b->flags;
         s.trans = (b->flags & BB_TRANSLUCENT) ||
                   (i >= 0 && spr_order[i].idx == v->player_sprite && depth < (40 << 16));
@@ -301,6 +324,19 @@ static void draw_sprites(const DoomoView3D *v)
 }
 
 /* ------------------------------------------------------------------------- */
+DOOMO_STATIC_ASSERT(R3D_MAXCOLS * R3D_MAXCP * sizeof(R3DClip) <= GBA_BIG_ROOF - GBA_BIG_CLIPS,
+                    clips_fit);
+DOOMO_STATIC_ASSERT(DOOMO_MAP_MAX_W * DOOMO_MAP_MAX_H <= GBA_BIG_CMT - GBA_BIG_ROOF, roof_fits);
+DOOMO_STATIC_ASSERT(R3D_MAXSPR * sizeof(SprOrder) <= 1024, sprorder_fits);
+
+/* the shared buffer was lent to the save code: rebuild what lives there */
+void r3d_invalidate(void)
+{
+    cache_mapdef = 0;
+    cache_tint = -1;
+    frame_no = 0;
+}
+
 void r3d_init(void)
 {
     memset(&r3f, 0, sizeof(r3f));
@@ -327,7 +363,10 @@ void plat_view3d(const DoomoView3D *v)
     if (vx + vw > SCREEN_W) vw = SCREEN_W - vx;
     if (vy + vh > SCREEN_H) vh = SCREEN_H - vy;
     if (vw < 8 || vh < 8) return;
-    if (vw != cache_vw || vh != cache_vh) setup_viewport(vw, vh);
+    {
+        int fov = opt_get(OPT_FOV);
+        if (vw != cache_vw || vh != cache_vh || fov != cache_fov) setup_viewport(vw, vh, fov);
+    }
     r3f.dst = gba_back + vy * (SCREEN_W / 2) + (vx >> 1);
 
     /* camera */
@@ -343,17 +382,23 @@ void plat_view3d(const DoomoView3D *v)
     r3f.ez = v->z + ((int32_t)v->bob << 16);
     r3f.ez4 = r3f.ez >> 12;
     {
-        /* look up/down: y-shearing. pitch 256 = 40 degrees (455 units) */
+        /* look up/down: y-shearing, pitch * focal * 0.84 / 256 rows */
         int p = v->pitch;
-        int pa, off, lim = R3D_KROWS - vh / 2 - 8;
+        int off, lim = R3D_KROWS - vh / 2 - 8;
         if (p > 256) p = 256;
         if (p < -256) p = -256;
-        pa = (p * 455) / 256;
-        off = (int)(((int64_t)r3f.proj * isin(pa)) / icos(pa));
+        off = (p * r3f.proj * 84) / (256 * 100);
         if (off > lim) off = lim;
         if (off < -lim) off = -lim;
         r3f.hor = vh / 2 + off;
         r3f.hor12 = r3f.hor << 12;
+        /* sky: 88 rows over 3/4 of the view height above the horizon */
+        {
+            int span = vh * 3 / 4;
+            r3f.sky_dv = (88 << 16) / (span ? span : 1);
+            r3f.sky_ya = r3f.hor - span;                   /* row 0 there */
+            r3f.sky_yb = r3f.hor + (int)(((8 << 16) + r3f.sky_dv - 1) / r3f.sky_dv);
+        }
     }
 
     /* map */

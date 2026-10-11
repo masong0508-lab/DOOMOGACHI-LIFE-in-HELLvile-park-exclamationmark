@@ -6,19 +6,21 @@
  *           pews, a teddy on the altar. The pink party bunny from the vape
  *           shop floats over the aisle, possessed, twitching, leaking vape.
  *           Father Fuzz aims a spray bottle of holy water (like you'd use on
- *           a cat). pssht. pssht. "THE POWER OF CUDDLES COMPELS YOU!"
- * f 60- 91  close-up, rosette bokeh. Silence. Drip. Drip. The demon inside,
- *           tiny and deadpan: "ow. my everything."
+ *           a cat). pssht. pssht. It hisses like a cat. "hss!"
+ *           GBA dialogue box: "THE POWER OF CUDDLES COMPELS YOU!"
+ * f 60- 91  extreme close-up (size 4), rosette bokeh. Silence. Drip. Drip.
+ *           The demon inside, tiny and deadpan: "ow. my everything."
  * f 92-135  EXORCISM FAILED x1 (stamp slam, sad kazoo). Attempt 2: Fuzz
- *           hugs its (floating) legs - hearts - x2. Attempt 3: the whole
- *           bucket. SPLASH. The bunny shakes itself dry like a wet dog,
- *           soaking Fuzz. x3. wah wah wahhh.
+ *           leaps up and hugs it, feet dangling - hearts, "squeeze" - x2.
+ *           Attempt 3: the whole bucket. SPLASH. The bunny shakes itself dry
+ *           like a wet dog, soaking Fuzz. x3. wah wah wahhh.
  * f136-155  The candles go out. "SOUL LOST." - and the little ghost really
  *           is lost: it looks left, looks right, checks a map (upside down)
  *           and wanders off the wrong way.
  * f156-224  "Lay to Rest?" [YES] [NO] "(only after 3 failed exorcisms.)"
  *           ...a suspicious extra row slides in. The cursor sneaks down.
- *           MONSTER MODE: ON. Everything turns red. Fuzz screams.
+ *           MONSTER MODE: ON. Everything turns red. Fuzz (peeking from behind
+ *           the menu) screams.
  *           "(or turn on MONSTER MODE, you monster.)"
  */
 #include "tk.h"
@@ -958,41 +960,40 @@ static void closeup(int f) {
         uint8_t r, g, b;
         int pi = PAL_PAINT(P[i % 6], 1);
         r = TK_PAL[pi][0]; g = TK_PAL[pi][1]; b = TK_PAL[pi][2];
-        tint_ellipse(bx, by, 12, 12, cmap(r, g, b, 12), 0.3f, 14);
-        tint_ellipse(bx - 3, by - 3, 4, 4, cmap(255, 255, 255, 5), 0.5f, 10);
+        tint_ellipse(bx, by, 12, 12, cmap(r, g, b, 11), 0.12f, 16);
+        tint_ellipse(bx - 3, by - 3, 4, 4, cmap(255, 255, 255, 4), 0.2f, 16);
     }
-    tint_ellipse(66 - a * 0.15f, 46, 14, 14, cmap(200, 230, 255, 9), 0.4f, 12);
+    tint_ellipse(66 - a * 0.15f, 46, 14, 14, cmap(200, 230, 255, 8), 0.15f, 16);
     for (int i = 0; i < 5; i++) {                       /* candle bokeh */
         float bx = 20 + i * 52 + (i & 1) * 9 - a * 0.25f, by = 132 - (i & 1) * 18;
         float fl = (tk_hash((uint32_t)(f / 3 + i * 5)) % 3) * 0.7f;
-        tint_ellipse(bx, by, 9 + fl, 9 + fl, cmap(255, 200, 120, 9), 0.4f, 13);
-        tint_ellipse(bx, by, 3, 3, cmap(255, 250, 220, 12), 0.5f, 16);
+        tint_ellipse(bx, by, 9 + fl, 9 + fl, cmap(255, 200, 120, 8), 0.15f, 16);
+        tint_ellipse(bx, by, 3, 3, cmap(255, 250, 220, 12), 0.3f, 16);
     }
     /* possession aura */
-    float bx = 118 - a * 0.1f, yf = 178 + 2.5f * sinf(f * 0.11f);
-    tint_ellipse(bx, yf - 62, 62 + 3 * sinf(f * 0.2f), 64, cmap(150, 40, 200, 7), 0.6f, 12);
-    tk_chibi((int)bx, (int)yf, &BUN, 3, TKE_POSSESSED, TKM_FLAT, f + 30, 0);
+    float bx = 114 - a * 0.1f, yf = 182 + 2.5f * sinf(f * 0.11f);
+    tint_ellipse(bx, yf - 84, 70 + 3 * sinf(f * 0.2f), 76, cmap(150, 40, 200, 6), 0.4f, 16);
+    tk_chibi((int)bx, (int)yf, &BUN, 4, TKE_POSSESSED, TKM_FLAT, f + 30, 0);
     /* soaked: wet shine streaks + drips + sizzle */
-    float hx = CX(bx, 3, 12), hy = CY(yf, 3, 12.2f);
-    for (int k = 0; k < 3; k++) tk_line((int)hx - 18 + k * 5, (int)hy - 14 + k, (int)hx - 15 + k * 5, (int)hy - 17 + k, PAL_WHITE);
+    float hx = CX(bx, 4, 12), hy = CY(yf, 4, 12.2f);
+    for (int k = 0; k < 3; k++) tk_line((int)hx - 24 + k * 6, (int)hy - 18 + k, (int)hx - 20 + k * 6, (int)hy - 22 + k, PAL_WHITE);
     for (int k = 0; k < 3; k++) {
-        static const float DX[3] = { -9, 2, 14 };
+        static const float DX[3] = { -12, 3, 18 };
         int ph = (a + k * 9) % 20;
-        float dx = hx + DX[k], dy = hy + 24 + (k == 1 ? 3 : 0) + (ph > 8 ? (ph - 8) * (ph - 8) * 0.35f : 0);
+        float dx = hx + DX[k], dy = hy + 32 + (k == 1 ? 4 : 0) + (ph > 8 ? (ph - 8) * (ph - 8) * 0.35f : 0);
         float r = ph < 8 ? 0.6f + ph * 0.12f : 1.6f;
         mk_drop(dx, dy, r);
         static const uint8_t WD[4] = { PAL_RAMP(RAMP_SKY, 5), PAL_RAMP(RAMP_SKY, 6), PAL_RAMP(RAMP_SKY, 7), PAL_WHITE };
         pillow(WD, PAL_PAINT(PAINT_COBALT, 1), 1.0f, 0.3f);
     }
-    steam(hx - 8, hy - 26, a % 21, 7);
-    steam(hx + 10, hy - 30, (a + 10) % 21, 8);
+    steam(hx - 10, hy - 36, a % 21, 7);
+    steam(hx + 14, hy - 40, (a + 10) % 21, 8);
     /* "ow. my everything." - tiny, deadpan */
     if (f >= F_OW) {
-        small_bubble(146, 92, 92, 26, 150, 116, PAL_RAMP(RAMP_VAPE, 1), PAL_RAMP(RAMP_VAPE, 0));
-        tk_text(153, 96, "ow.", PAL_RAMP(RAMP_VAPE, 6), 1);
-        tk_text(153, 106, "my everything.", PAL_RAMP(RAMP_VAPE, 6), 1);
+        small_bubble(146, 100, 92, 26, 152, 124, PAL_RAMP(RAMP_VAPE, 1), PAL_RAMP(RAMP_VAPE, 0));
+        tk_text(153, 104, "ow.", PAL_RAMP(RAMP_VAPE, 6), 1);
+        tk_text(153, 114, "my everything.", PAL_RAMP(RAMP_VAPE, 6), 1);
     }
-    tk_post_scanlines();
 }
 
 /* ---- the main draw ------------------------------------------------------------- */
@@ -1012,6 +1013,10 @@ void scene_s11_exorcism(int f, int n) {
     if (f >= F_SPLASH + 1 && f < F_FAIL3) shx = ((f - F_SPLASH) & 1) ? 3.0f : -3.0f;     /* dog-shake */
     int bmouth = TKM_FLAT;
     if (f >= F_FAIL3 && f < F_LOST) bmouth = TKM_FANGS;                                   /* smug */
+    static const int SPRH[4] = { 14, 24, 36, 46 };
+    int hiss = 0;
+    for (int k = 0; k < 4; k++) if (f >= SPRH[k] + 5 && f < SPRH[k] + 10) hiss = f - SPRH[k] - 5 + 1;
+    if (hiss) bmouth = TKM_FANGS;                       /* sprayed like a cat: it hisses like a cat */
     float floor_by = GROUND;
     float hgt = floor_by - byf;
     tint_ellipse(bx, floor_by, 15 - hgt * 0.2f, 3, cmap(60, 10, 80, 7), 0.5f, 16);
@@ -1047,7 +1052,7 @@ void scene_s11_exorcism(int f, int n) {
         fexpr = f < F_SPLASH ? TKE_ANGRY : TKE_SAD;
         fmouth = f < F_SPLASH ? TKM_FLAT : TKM_FROWN;
     } else if (f >= F_LOST) {
-        fx = 100 - camx;
+        fx = f < F_MENU ? 100 - camx : 24;       /* steps aside for the menu, peeks from behind it */
         fexpr = f >= F_FLIP ? TKE_SHOCK : TKE_SAD;
         fmouth = f >= F_FLIP ? TKM_SCREAM : TKM_FROWN;
     }
@@ -1055,6 +1060,7 @@ void scene_s11_exorcism(int f, int n) {
     /* draw order: while hugging, Fuzz is behind the bunny with his paws around it */
     if (!hugging) tk_chibi((int)(bx + shx), (int)byf, &BUN, 2, TKE_POSSESSED, bmouth, f, 0);
     tk_chibi((int)fx, (int)fyf, &TK_FUZZ, 2, fexpr, fmouth, f + 17, fflip);
+    if (hiss) tk_text_outline((int)bx + 16, (int)byf - 62 - hiss, "hss!", PAL_RAMP(RAMP_VAPE, 7), PAL_RAMP(RAMP_VAPE, 0), 1);
     /* the clerical collar */
     tk_rect((int)CX(fx, 2, 11), (int)CY(fyf, 2, 20.2f), 4, 2, PAL_WHITE);
     tk_px((int)CX(fx, 2, 11) + 3, (int)CY(fyf, 2, 20.2f) + 1, PAL_GRAY_L);
@@ -1141,19 +1147,19 @@ void scene_s11_exorcism(int f, int n) {
         tint_rect(0, 0, TW, TH, cmap(60, 30, 120, 6), 6);
         if (f < F_MENU + 8) {
             /* the soul pops out, looks around, consults the map, wanders off the wrong way */
-            float sx = bx, sy = byf - 50 - tk_ease(la / 10.0f) * 16;
+            float sx = bx, sy = byf - 34 - tk_ease(la / 10.0f) * 12;
             int look = 0, map = la >= 12;
             if (la >= 6 && la < 9) look = -2;
             else if (la >= 9 && la < 12) look = 2;
-            if (la >= 14) { sx -= (la - 14) * (la - 14) * 0.5f; sy += sinf(la * 0.4f) * 2; look = -2; }
+            if (la >= 13) { sx -= (la - 13) * (la - 13) * 1.1f; sy += sinf(la * 0.4f) * 2; look = -2; }
             if (la >= 2) soul(sx, sy, f, look, map);
-            if (la >= 6 && la < 16) tk_text_outline((int)sx + 10, (int)sy - 30 - ((la / 3) & 1), "?", PAL_WHITE, PAL_RAMP(RAMP_VAPE, 1), 2);
+            if (la >= 6 && la < 18) tk_text_outline((int)sx + 10, (int)sy - 34 - ((la / 3) & 1), "?", PAL_WHITE, PAL_RAMP(RAMP_VAPE, 1), 2);
         }
         static const uint8_t SR[4] = { PAL_RAMP(RAMP_STONE, 4), PAL_RAMP(RAMP_STONE, 6), PAL_RAMP(RAMP_STONE, 7), PAL_WHITE };
         if (f < F_MENU) {
             static const float SL[] = { 0.3f, 1.3f, 0.92f, 1.05f, 1.0f };
             float s = la < 5 ? SL[la] : 1.0f;
-            puffy_text("SOUL LOST.", 3, 2, 1, 120, 40, s, s, 0, SR, PAL_RAMP(RAMP_VAPE, 0), 2, 0, 2.5f);
+            puffy_text("SOUL LOST.", 3, 2, 1, 120, 128, s, s, 0, SR, PAL_RAMP(RAMP_VAPE, 0), 2, 0, 2.5f);
         }
     }
 
@@ -1162,7 +1168,8 @@ void scene_s11_exorcism(int f, int n) {
         int ma = f - F_MENU;
         int on = f >= F_FLIP;
         if (on) {
-            tk_post_hellify(f < F_FLIP + 2 ? 16 : 7);
+            tk_post_hellify(16);
+            if (f >= F_FLIP + 2) tk_post_darken(11);
         }
         static const float SC[] = { 0.15f, 0.55f, 1.12f, 0.95f, 1.03f, 1.0f };
         float s = ma < 6 ? SC[ma] : 1.0f;
@@ -1247,8 +1254,8 @@ void scene_s11_exorcism_audio(double t0, double dur) {
     double fr = 1.0 / TK_FPS;
     /* organ */
     tk_sfx(t0, SFX_CHOIR, 0.55f);
-    tk_note(t0, 1.6, 41, TKV_TRI, 0.3f);
-    tk_note(t0, 1.6, 48, TKV_TRI, 0.22f);
+    tk_note(t0, 1.6, 40, TKV_TRI, 0.3f);
+    tk_note(t0, 1.6, 47, TKV_TRI, 0.22f);
     /* Fuzz yells: GBA text blips */
     for (int i = 0; i < 12; i++) tk_note(t0 + (F_SHOUT + i * 2) * fr, 0.035, 72 + ((i * 5) % 7), TKV_SQ25, 0.16f);
     /* pssht pssht pssht pssht + sizzle */

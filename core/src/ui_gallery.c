@@ -5,12 +5,13 @@
  */
 #include "ui_internal.h"
 
-enum { PG_WINDOWS, PG_METERS, PG_LIST, PG_PAINT, PG_FONT, PG_MODALS, PG_BACKDROPS,
-       PG_COUNT };
+enum { PG_WINDOWS, PG_METERS, PG_LIST, PG_PAINT, PG_OPTIONS, PG_FONT, PG_MODALS,
+       PG_BACKDROPS, PG_COUNT };
 static const char *const page_names[PG_COUNT] = {
-    "Windows", "Text & meters", "List", "Paint picker", "Font & icons",
-    "Modals", "Backdrops"
+    "Windows", "Text & meters", "List", "Paint picker", "Tabs & options",
+    "Font & icons", "Modals", "Backdrops"
 };
+static int g_tab, g_opt_sel;
 
 static int g_page, g_page_t, g_slider_sel, g_btn_sel, g_backdrop;
 static uint8_t g_slider[3] = { 9, 4, 12 };
@@ -131,6 +132,19 @@ static void gallery_update(void)
     case PG_MODALS:
         if (ui_list_update(&g_modals) == UI_SELECT) run_modal(g_modals.sel);
         break;
+    case PG_OPTIONS: {
+        static const int opts[5] = { OPT_GORE, OPT_WINDOW_SKIN, OPT_CURSOR, OPT_TEXT_SPEED,
+                                     OPT_UI_BOUNCE };
+        if (btn_repeat(BTN_UP)) g_opt_sel = (g_opt_sel + 4) % 5;
+        if (btn_repeat(BTN_DOWN)) g_opt_sel = (g_opt_sel + 1) % 5;
+        if (btn_repeat(BTN_LEFT | BTN_RIGHT)) {
+            int o = opts[g_opt_sel], n = doomo_option_info[o].count;
+            int v = (opt_get(o) + (btn_repeat(BTN_LEFT) ? n - 1 : 1)) % n;
+            opt_set(o, v);
+            audio_sfx(SFX_CURSOR);
+        }
+        if (btn_pressed(BTN_SELECT)) g_tab = (g_tab + 1) % 4;
+        break; }
     case PG_BACKDROPS:
         if (btn_pressed(BTN_UP | BTN_DOWN | BTN_A)) g_backdrop = (g_backdrop + 1) % 6;
         break;
@@ -166,10 +180,12 @@ static void draw_meters(int w, int h)
     int i;
     ui_window(x, y, ww, hh, WIN_CREAM);
     st = ui_style(WIN_CREAM);
-    ui_text_wrap(x + 8, y + 7, ww - 16,
-                 "Mochi Pudding is a Sweet Sunbeam who loves Cupcakes and is "
-                 "scared of Thunder.", st->text, 1);
-    by = y + 7 + 2 * FONT_LINE + 6;
+    {
+        static const char *const blurb = "Mochi is a Sweet Sunbeam who loves "
+                                         "Cupcakes and fears Thunder.";
+        int lines = ui_text_wrap(x + 8, y + 7, ww - 16, blurb, st->text, 1);
+        by = y + 7 + lines * FONT_LINE + 4;
+    }
     plat_text(x + 8, by, "\x92", PAL_PAINT(PAINT_TANGERINE, 1));
     ui_bar(x + 18, by, ww / 2 - 26, 7, 72, 100, PAL_PAINT(PAINT_BUBBLEGUM, 1));
     plat_text(x + ww / 2, by, "\x80", PAL_PAINT(PAINT_ROSE, 1));
@@ -220,6 +236,24 @@ static void draw_paint(int w, int h)
     }
 }
 
+static void draw_options(int w, int h)
+{
+    static const char *const tabs[4] = { "Face", "Hair", "Outfit", "Extras" };
+    static const int opts[5] = { OPT_GORE, OPT_WINDOW_SKIN, OPT_CURSOR, OPT_TEXT_SPEED,
+                                 OPT_UI_BOUNCE };
+    int x = 8, y = 26, ww = w - 16, hh = h - 44, i;
+    if (!ui_window_pop(x, y + 6, ww, hh - 6, WIN_CUTE, g_page_t)) return;
+    ui_tabs(x + 8, y, tabs, 4, g_tab, WIN_CUTE);
+    for (i = 0; i < 5; i++) {
+        const DoomoOptionInfo *o = &doomo_option_info[opts[i]];
+        int v = opt_get(opts[i]);
+        char num[8];
+        const char *val = o->values ? o->values[v] : num;
+        if (!o->values) doomo_snprintf(num, sizeof(num), "%d", v);
+        ui_value_row(x + 18, y + 20 + i * 14, ww - 30, o->name, val, i == g_opt_sel);
+    }
+}
+
 static void draw_font(int w, int h)
 {
     const UiStyle *st;
@@ -259,6 +293,7 @@ static void gallery_draw(void)
     case PG_METERS: draw_meters(w, h); break;
     case PG_LIST: draw_list(w, h); break;
     case PG_PAINT: draw_paint(w, h); break;
+    case PG_OPTIONS: draw_options(w, h); break;
     case PG_FONT: draw_font(w, h); break;
     case PG_MODALS: draw_modals(w, h); break;
     default: {

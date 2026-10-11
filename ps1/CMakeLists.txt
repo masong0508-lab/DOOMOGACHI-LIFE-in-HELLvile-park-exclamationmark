@@ -61,6 +61,9 @@ target_compile_options(${DOOMO_EXE_NAME} PRIVATE -O2 -Wall -Wextra)
 if(DOOMO_ENGINE_TEST)
 	target_compile_definitions(${DOOMO_EXE_NAME} PRIVATE DOOMO_ENGINE_TEST=1)
 endif()
+if(DOOMO_CORE)
+	target_compile_definitions(${DOOMO_EXE_NAME} PRIVATE DOOMO_HAVE_CORE=1)
+endif()
 if(DOOMO_PAL)
 	target_compile_definitions(${DOOMO_EXE_NAME} PRIVATE DOOMO_PAL=1)
 endif()
@@ -73,6 +76,10 @@ set_source_files_properties(${PS1_SRCS} PROPERTIES
 set_source_files_properties(${CORE_SRCS} PROPERTIES
 	COMPILE_OPTIONS "-std=c99")
 
+# objdump next to the SDK's nm (for the R3000 ISA check)
+string(REGEX REPLACE "nm$" "objdump" TOOLCHAIN_OBJDUMP "${TOOLCHAIN_NM}")
+string(REGEX REPLACE "nm\\.exe$" "objdump.exe" TOOLCHAIN_OBJDUMP "${TOOLCHAIN_OBJDUMP}")
+
 # ELF -> PS-X EXE (see tools/elf2exe.py for why not the SDK's elf2x).
 add_custom_command(
 	TARGET ${DOOMO_EXE_NAME} POST_BUILD
@@ -81,6 +88,8 @@ add_custom_command(
 	        ${CMAKE_CURRENT_BINARY_DIR}/${DOOMO_EXE_NAME}.exe
 	COMMAND ${TOOLCHAIN_NM} -f posix -l -n $<TARGET_FILE:${DOOMO_EXE_NAME}>
 	        > ${CMAKE_CURRENT_BINARY_DIR}/${DOOMO_EXE_NAME}.map
+	COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/check_isa.py
+	        ${TOOLCHAIN_OBJDUMP} $<TARGET_FILE:${DOOMO_EXE_NAME}>
 	BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/${DOOMO_EXE_NAME}.exe
 	           ${CMAKE_CURRENT_BINARY_DIR}/${DOOMO_EXE_NAME}.map
 	VERBATIM

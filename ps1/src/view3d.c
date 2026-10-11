@@ -138,42 +138,29 @@ static void hface(int x0, int y0, int z, int texid, uint32_t c00, uint32_t c10,
     r3_quad(q, t, 0, 0);
 }
 
-/* texture for faces under a lowered ceiling / doors */
+/* texture for faces under a lowered ceiling (doors, lintels, facades):
+ * the neighbour's ceil_tex, like the reference raycaster */
 static int upper_tex(const DoomoCell *n)
 {
-    if (n->flags & CELL_DOOR) {
-        if (n->ceil_tex == TEX_DOOR_CUTE || n->ceil_tex == TEX_DOOR_HELL)
-            return n->ceil_tex;
-        return n->floor_tex >= TEX_FLESH_WALL ? TEX_DOOR_HELL : TEX_DOOR_CUTE;
-    }
     return is_sky(n) ? n->floor_tex : n->ceil_tex;
-}
-
-/* facade above a roofed neighbour seen from an open-sky cell: borrow the
- * texture of a solid block next to it if there is one */
-static int facade_tex(int nx, int ny, const DoomoCell *n)
-{
-    static const int8_t d[4][2] = { {0, -1}, {1, 0}, {0, 1}, {-1, 0} };
-    int i;
-    for (i = 0; i < 4; i++) {
-        int x = nx + d[i][0], y = ny + d[i][1];
-        if (in_map(x, y) && cellp(x, y)->wall)
-            return cellp(x, y)->wall;
-    }
-    return upper_tex(n);
 }
 
 static void edge(int nx, int ny, int ax, int ay, int bx, int by,
                  uint32_t cl, uint32_t cr, int fz, int cz, int sky)
 {
     const DoomoCell *n;
-    int top = sky ? g_world_sky_top : cz;
     if (!in_map(nx, ny)) {
-        vface(ax, ay, bx, by, fz, top, 1, cl, cr, 0);
+        /* outside the map: solid, as tall as the sky allows */
+        vface(ax, ay, bx, by, fz, sky ? g_world_sky_top : cz, 1, cl, cr, 0);
         return;
     }
     n = cellp(nx, ny);
     if (n->wall) {
+        /* under a roof the wall closes the room; in open air the block is
+         * as tall as its ceil_h (else 256 above our floor) */
+        int top = cz;
+        if (sky)
+            top = n->ceil_h > n->floor_h ? n->ceil_h * DOOMO_HEIGHT_STEP : fz + 256;
         vface(ax, ay, bx, by, fz, top, n->wall, cl, cr, 0);
         return;
     }
@@ -190,9 +177,9 @@ static void edge(int nx, int ny, int ax, int ay, int bx, int by,
             if (ncz < cz)
                 vface(ax, ay, bx, by, ncz > fz ? ncz : fz, cz, upper_tex(n), cl, cr,
                       (n->flags & CELL_DOOR) ? 1 : 0);
-        } else {
-            vface(ax, ay, bx, by, ncz > fz ? ncz : fz, g_world_sky_top,
-                  facade_tex(nx, ny, n), cl, cr, 0);
+        } else if (ncz < g_world_sky_top) {
+            /* facade above a roofed opening seen from the open air */
+            vface(ax, ay, bx, by, ncz > fz ? ncz : fz, g_world_sky_top, upper_tex(n), cl, cr, 0);
         }
     }
 }
@@ -205,10 +192,11 @@ static void emit_cell(int cx, int cy)
     uint32_t c00, c10, c01, c11;
     g_r3stats.cells++;
     if (c->wall) {
-        /* roof cap of a solid block, only visible from above */
-        if (ez > g_world_sky_top) {
-            uint32_t k = col_scale(world_corner(cx, cy), 230);
-            hface(rx, ry, g_world_sky_top, c->wall, k, k, k, k);
+        /* roof of a block standing in open air, visible from above */
+        int top = g_world_wtop[cy * s_map->w + cx];
+        if (ez > top) {
+            uint32_t k = world_corner(cx, cy);
+            hface(rx, ry, top, c->floor_tex ? c->floor_tex : c->wall, k, k, k, k);
         }
         return;
     }
@@ -264,9 +252,12 @@ static int door_closed(int cx, int cy)
 
 /* DDA from (x,y) (16.16 world) along angle a; marks visited cells until a
  * solid cell (marked too: its roof may be visible) or maxcells. */
+static int s_eye_z;
+
 static void cast(int32_t x, int32_t y, int a, int maxcells)
 {
     const DoomoCell *cells = s_map->cells;
+    int open_air = 0;
     int w = s_map->w, h = s_map->h;
     int32_t dx = icos(a), dy = isin(a);          /* 4.12 */
     int32_t px = x >> 6, py = y >> 6;            /* 16.16 in cell units */
@@ -280,6 +271,8 @@ static void cast(int32_t x, int32_t y, int a, int maxcells)
     int32_t sdy = ((dy < 0 ? fy : 0x10000 - fy) >> 4) * (ddy >> 12);
     int32_t lim = (int32_t)maxcells << 16;
     int i = my * w + mx;
+    if ((unsigned)mx < (unsigned)w && (unsigned)my < (unsigned)h)
+        open_air = cells[i].ceil_tex == DOOMO_TEX_SKY;
     for (;;) {
         if (sdx < sdy) {
             if (sdx > lim) break;
@@ -298,25 +291,33 @@ static void cast(int32_t x, int32_t y, int a, int maxcells)
             s_vis[i] = s_stamp;
             s_vlist[s_nvis++] = (uint16_t)i;
         }
-        if (cells[i].wall || ((cells[i].flags & CELL_DOOR) && door_closed(mx, my)))
-            break;
+        if (cells[i].wall) {
+            /* a block in the open air lower than the eye: look over it */
+            if (!open_air || g_world_wtop[i] >= s_eye_z)
+                break;
+        } else {
+            if ((cells[i].flags & CELL_DOOR) && door_closed(mx, my))
+                break;
+            open_air = cells[i].ceil_tex == DOOMO_TEX_SKY;
+        }
     }
 }
 
-static void visibility(int32_t ex, int32_t ey, int ang, int pitch_a, int32_t fx, int32_t fy)
+static void visibility(int32_t ex, int32_t ey, int ang, int pitch_a, int32_t fx, int32_t fy,
+                       int th, int tv)
 {
     int i, dx, dy, half, cx, cy, n;
     int sp = isin(pitch_a < 0 ? -pitch_a : pitch_a), cp = icos(pitch_a);
     /* horizontal half-angle of the frustum projected on the ground:
-     * atan(tan(h) / (cos p - tan(v) sin|p|)), tan(h)=1, tan(v)=0.75 */
-    int f = cp - ((sp * 3) >> 2);                  /* 4.12 */
-    if (f < 400) {
+     * atan(tan(h) / (cos p - tan(v) sin|p|)); th, tv = tan(h), tan(v) 4.12 */
+    int f = cp - ((sp * tv) >> 12);                /* 4.12 */
+    if (f < 300) {
         half = 2048;
     } else {
-        int lo = 512, hi = 1024;
+        int lo = 0, hi = 1024;
         while (hi - lo > 4) {
             int mid = (lo + hi) >> 1;
-            if (isin(mid) * f >= icos(mid) * 4096) hi = mid; else lo = mid;
+            if (isin(mid) * f >= icos(mid) * th) hi = mid; else lo = mid;
         }
         half = hi + 40;
     }
@@ -334,6 +335,7 @@ static void visibility(int32_t ex, int32_t ey, int ang, int pitch_a, int32_t fx,
     if (n > NRAYS * 4) n = NRAYS * 4;
     if (!in_map(ex >> 22, ey >> 22))
         return;
+    if (n < 8) n = 8;
     for (i = 0; i <= n; i++) {
         int a = ang - half + (2 * half * i) / n;
         cast(ex, ey, a & 4095, VIEW_DIST);
@@ -363,7 +365,7 @@ static uint32_t sprite_light(const DoomoBillboard *b, int *visible)
 /* ---- entry ---------------------------------------------------------------------- */
 void plat_view3d(const DoomoView3D *v)
 {
-    int i, pitch_a, fogn;
+    int i, pitch_a, fogn, th, tv;
     int32_t ez, pfx = 0, pfy = 0;
     uint32_t t0 = timer_us();
     if (!v || !v->map || !v->map->w || !v->map->h)
@@ -378,14 +380,23 @@ void plat_view3d(const DoomoView3D *v)
     world_sync(s_map);
     r3_stats_reset();
 
-    /* camera: pitch is a real rotation (+-256 -> +-40 degrees) */
+    /* camera: pitch is a real rotation (+-256 -> +-40 degrees); the field
+     * of view follows OPT_FOV like the reference renderer:
+     * tan(fov/2) = 0.55 / 0.66 / 0.79 */
     pitch_a = (v->pitch * 455) / 256;
     if (pitch_a > 470) pitch_a = 470;
     if (pitch_a < -470) pitch_a = -470;
     ez = v->z + ((int32_t)v->bob << 16);
+    s_eye_z = ez >> 16;
     fogn = s_map->kind == MAP_OVERWORLD ? 10 * CELL : 4 * CELL;
-    r3_camera(v->x, v->y, ez, v->angle, pitch_a, v->vx, v->vy, v->vw, v->vh, v->vw / 2,
-              VIEW_DIST * CELL, fogn, 0);
+    {
+        static const uint16_t k_tan[3] = { 2253, 2703, 3236 };     /* 4.12 */
+        int fov = core_opt(OPT_FOV, 1);
+        th = k_tan[fov < 0 || fov > 2 ? 1 : fov];
+        tv = (th * v->vh) / (v->vw ? v->vw : 1);
+        r3_camera(v->x, v->y, ez, v->angle, pitch_a, v->vx, v->vy, v->vw, v->vh,
+                  ((v->vw / 2) << 12) / th, VIEW_DIST * CELL, fogn, 0);
+    }
     if (!r3_begin())
         return;
 
@@ -396,7 +407,7 @@ void plat_view3d(const DoomoView3D *v)
     }
     s_nvis = 0;
     g_r3stats.t_setup = timer_us() - t0;
-    visibility(v->x, v->y, v->angle, pitch_a, pfx, pfy);
+    visibility(v->x, v->y, v->angle, pitch_a, pfx, pfy, th, tv);
     g_r3stats.t_vis = timer_us() - t0;
     s_any_sky = 0;
     {
@@ -427,9 +438,16 @@ void plat_view3d(const DoomoView3D *v)
         if (i == v->player_sprite && v->camera == CAM_THIRD_PERSON &&
             model_player_draw(v, b, col))
             continue;
-        if (b->img)
-            r3_billboard(b, b->x, b->y, b->z, (b->flags & BB_FULLBRIGHT) ? 0x808080 : col,
-                         (b->flags & BB_FULLBRIGHT) ? R3F_NOFOG : 0);
+        if (b->img) {
+            int fl = (b->flags & BB_FULLBRIGHT) ? R3F_NOFOG : 0;
+            if (i == v->player_sprite) {
+                /* never hide the view: see-through when the camera is close */
+                int32_t dx = (b->x - v->x) >> 16, dy = (b->y - v->y) >> 16;
+                if (dx * dx + dy * dy < 40 * 40)
+                    fl |= R3F_SEMI;
+            }
+            r3_billboard(b, b->x, b->y, b->z, (b->flags & BB_FULLBRIGHT) ? 0x808080 : col, fl);
+        }
     }
     r3_end();
 

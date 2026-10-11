@@ -7,7 +7,7 @@
 
 static void dim_below(void)
 {
-    plat_shade_rect(0, 0, plat_screen_w(), plat_screen_h(), 9);
+    plat_shade_rect(0, 0, plat_screen_w(), plat_screen_h(), 11);
 }
 
 /* ====================================================================== */
@@ -64,8 +64,9 @@ static void confirm_draw(void)
     {
         const UiStyle *st = ui_style(WIN_CUTE);
         int bw = 56, gap = 18, bx = sw / 2 - bw - gap / 2;
-        ui_heart(x + 10, y + 10, 4, PAL_PAINT(PAINT_ROSE, 1));
-        ui_text_wrap(x + 12, y + 10 + 2, w - 26, cf_question, st->text, 1);
+        ui_heart(x + 4, y + 3, 4, PAL_PAINT(PAINT_ROSE, 1));
+        ui_sparkle(x + w - 7, y + 6, (t / 3) & 15, PAL_UI_GOLD);
+        ui_text_wrap(x + 12, y + 11, w - 24, cf_question, st->text, 1);
         ui_button(bx, y + h - 22, bw, "Yes", cf_sel == 0, WIN_CUTE);
         ui_button(bx + bw + gap, y + h - 22, bw, "No", cf_sel == 1, WIN_CUTE);
     }
@@ -234,7 +235,7 @@ static void te_draw(void)
         }
     }
     doomo_snprintf(counter, sizeof(counter), "%d/%d", te_len, te_cap - 1);
-    ui_text(fx + fw - 4 - font_text_width(counter), fy + 4, counter, st->text_dim);
+    ui_text(fx + fw - 4 - ui_text_width(counter), fy + 4, counter, st->text_dim);
 
     /* page tabs */
     for (c = 0; c < 3; c++) {

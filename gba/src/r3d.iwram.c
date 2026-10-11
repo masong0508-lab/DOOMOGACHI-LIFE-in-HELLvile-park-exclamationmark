@@ -28,10 +28,11 @@
  *   translucency, light and drop shadows.
  */
 #include "r3d_int.h"
+#include "doomo/palette.h"
 
 R3DFrame r3f;
 uint8_t  r3d_cmap[16 * 256];
-int32_t  r3d_rowk[R3D_KROWS];
+int32_t  r3d_rowk_buf[R3D_KROWS + 8];
 uint8_t  r3d_fade[R3D_FADE_N];
 int32_t  r3d_colt[R3D_MAXCOLS];
 int16_t  r3d_colang[R3D_MAXCOLS];
@@ -40,8 +41,6 @@ const uint8_t *r3d_texc[R3D_MAXTEX];
 uint8_t  r3d_avgc[R3D_MAXTEX];
 
 /* big per-frame buffers live in EWRAM */
-EWRAM_BSS R3DClip  r3d_clips[R3D_MAXCOLS][R3D_MAXCP];
-EWRAM_BSS int8_t   r3d_roof[DOOMO_MAP_MAX_W * DOOMO_MAP_MAX_H];
 uint8_t  r3d_nclips[R3D_MAXCOLS];
 
 #define LINE 120                         /* halfwords per screen row */
@@ -66,7 +65,7 @@ static inline const uint8_t *light_cm(const uint8_t *cm, int light, uint32_t d16
 {
     uint32_t b = d16 >> 21;
     int l = light - r3d_fade[b < R3D_FADE_N ? b : R3D_FADE_N - 1];
-    if (l < 0) l = 0;
+    if (l < 1) l = 1;
     if (l > 15) l = 15;
     return cm + (l << 8);
 }
@@ -94,33 +93,35 @@ static void fill_col(uint16_t *p, int y0, int y1, uint32_t c)
     r3d_fill_loop(p + y0 * LINE, y1 - y0, c | (c << 8), LINE * 2);
 }
 
-/* sky background: rows [y0, y1) of column c. Sky row = 95 - (hor - r)/2,
- * clamped: rows above the sky's top repeat row 0, rows below the horizon
- * repeat row 95. */
-static void draw_sky(uint16_t *p, int c, int y0, int y1, const uint8_t *cm)
+/* sky background: rows [y0, y1) of column c. As in the reference
+ * renderer the sky's row 88 sits on the horizon and its top 3/4 of the
+ * view height above it (row = 88 - (hor - y) * 88 / (vh * 3 / 4)),
+ * clamped: higher rows repeat row 0, rows below the horizon row 95. */
+void r3d_draw_sky(uint16_t *p, int c, int y0, int y1, const uint8_t *cm)
 {
     const uint8_t *col;
     const uint8_t *map = cm == r3d_cmap ? 0 : cm + (15 << 8);
-    int r, a, b, hor2;
+    int r, ya, yb;
+    int32_t dv = r3f.sky_dv, v;
     if (y1 <= y0) return;
     r3f.dbg_skypx += (uint32_t)(y1 - y0);
     col = r3f.sky + (((r3f.skyang + r3d_colang[c]) >> 4) & 255);
     p += y0 * LINE;
     r = y0;
-    /* v2 = 2 * sky row = 191 - (hor - r) = r + 191 - hor */
-    hor2 = 191 - r3f.hor;
-    a = -hor2;                  /* first row with v2 >= 0 */
-    b = 192 - hor2;             /* first row with v2 > 191 */
-    if (r < a) {
-        int n = (a < y1 ? a : y1) - r;
+    ya = r3f.sky_ya;            /* first row with row >= 0  */
+    yb = r3f.sky_yb;            /* first row with row > 95  */
+    if (r < ya) {
+        int n = (ya < y1 ? ya : y1) - r;
         uint32_t c0 = map ? map[col[0]] : col[0];
         r3d_fill_loop(p, n, c0 | (c0 << 8), LINE * 2);
         p += n * LINE;
         r += n;
     }
-    if (r < y1 && r < b) {
-        int n = (b < y1 ? b : y1) - r;
-        r3d_sky_loop(p, n, col, r + hor2, map);
+    if (r < y1 && r < yb) {
+        int n = (yb < y1 ? yb : y1) - r;
+        v = (88 << 16) - (r3f.hor - r) * dv;
+        if (v < 0) v = 0;
+        r3d_sky_loop(p, n, col, v, dv, map);
         p += n * LINE;
         r += n;
     }
@@ -130,45 +131,57 @@ static void draw_sky(uint16_t *p, int c, int y0, int y1, const uint8_t *cm)
     }
 }
 
+/* the end of a ray: sky under the open sky, the darkest stone indoors */
+static void ray_end(uint16_t *p, int c, int y0, int y1, const uint8_t *cm, int sky)
+{
+    if (y1 <= y0) return;
+    if (sky) r3d_draw_sky(p, c, y0, y1, cm);
+    else {
+        uint32_t k = PAL_RAMP(RAMP_STONE, 0);
+        k = cm[(15 << 8) + k];
+        r3d_fill_loop(p + y0 * LINE, y1 - y0, k | (k << 8), LINE * 2);
+    }
+}
+
 /* ------------------------------------------------------------------------ */
 /* floors and ceilings: cast down the column                                 */
 
-/* rows [y0, y1) of a horizontal surface at height z4 (1/16 units) */
-static void flat(uint16_t *col, const uint8_t *cm, int32_t rdx, int32_t rdy,
+/* per-column template for r3d_flat_loop(): frame / column constants are
+ * filled once per column, flat() only sets what changes per run */
+R3DFlat FL;
+
+/* rows [y0, y1) of a horizontal surface at height z4 (1/16 units).
+ * rdx/rdy: the column's ray (FL.u0/v0/cm/fade/far preset per column). */
+static void flat(uint16_t *col, int32_t rdx, int32_t rdy,
                  int32_t z4, int tex, int light, int y0, int y1)
 {
-    R3DFlat fl;
+    R3DFlat *const fl = &FL;
     int32_t hd4 = r3f.ez4 - z4;
     int m0;
+    uint32_t a;
     if (y1 <= y0 || hd4 == 0) return;
     r3f.dbg_flatpx += (uint32_t)(y1 - y0);
     if (hd4 > 0) {                              /* floor: below the eye */
         m0 = y0 - r3f.hor;
-        fl.kdir = 4;
+        fl->kdir = 4;
     } else {                                    /* ceiling: above the eye */
         m0 = r3f.hor - 1 - y0;
-        fl.kdir = -4;
+        fl->kdir = -4;
         hd4 = -hd4;
     }
-    if (hd4 > 0x3FFF) hd4 = 0x3FFF;             /* 1024 units */
-    if (m0 < 0) m0 = 0;
-    if (m0 >= R3D_KROWS) m0 = R3D_KROWS - 1;
-    fl.p = col + y0 * LINE;
-    fl.n = y1 - y0;
-    fl.kp = &r3d_rowk[m0];
-    fl.u0 = (uint32_t)r3f.ex << 10;
-    fl.v0 = (uint32_t)r3f.ey << 10;
-    fl.A = (int32_t)(((int64_t)rdx * hd4) >> 10);
-    fl.B = (int32_t)(((int64_t)rdy * hd4) >> 10);
-    fl.tex = tex_get(tex);
-    fl.cm = cm;
-    fl.L = light;
-    fl.hd = (hd4 >> 4) + 1;
-    fl.fade = r3d_fade;
-    fl.far = 1400u << 8;
-    fl.avg = r3d_avgc[tex & (R3D_MAXTEX - 1)];
-    if (!fl.avg) fl.avg = r3d_texavg(tex);
-    r3d_flat_loop(&fl);
+    if (hd4 > 0x3FFF) hd4 = 0x3FFF;             /* 1024 units: no overflow */
+    if ((unsigned)m0 >= R3D_KROWS) m0 = m0 < 0 ? 0 : R3D_KROWS - 1;
+    fl->p = col + y0 * LINE;
+    fl->n = y1 - y0;
+    fl->kp = &r3d_rowk[m0];
+    fl->A = (rdx * hd4) >> 10;                  /* |rdx| < 2^17, hd4 < 2^14 */
+    fl->B = (rdy * hd4) >> 10;
+    fl->tex = tex_get(tex);
+    fl->L = light;
+    fl->hd = (hd4 >> 4) + 1;
+    a = r3d_avgc[tex & (R3D_MAXTEX - 1)];
+    fl->avg = a ? a : r3d_texavg(tex);
+    r3d_flat_loop(fl);
 }
 
 /* ------------------------------------------------------------------------ */
@@ -192,37 +205,22 @@ static inline uint32_t mul16u(uint32_t a, uint32_t b)
 
 #define CW1_DYN  ((uint32_t)(CELL_DOOR | CELL_LIFT) << 16)
 
-/* Everything a column needs between walker calls. Kept in memory (IWRAM)
- * and handed around by pointer: the per-boundary code touches only what
- * it uses instead of shuffling 30 live variables through registers. */
-typedef struct ColState {
-    R3DWalk wk;                     /* first: r3d_walk() uses its layout  */
-    int32_t rdx, rdy, stx, sty;     /* ray direction / step signs         */
-    int32_t fz4, cz4;               /* region floor / ceiling, 1/16 units */
-    int32_t ftex, ctex, light, sky;
-    int32_t ytop, ybot;             /* open window                        */
-    int32_t c, ncp;
-    uint16_t *col;
-    const uint8_t *cm;              /* column colormap base (tint dither) */
-    R3DClip *cps;
-} ColState;
+ColState CS;
 
-static ColState CS;
-
-static void face(ColState *s, int y0, int y1, int tex, uint32_t d16)
+/* textured face of the boundary at d16: rows [y0, y1), light `lit` */
+static void face(ColState *s, int y0, int y1, int tex, int lit, uint32_t d16)
 {
     int u;
     if (s->wk.side == 0) {
-        int32_t hit = r3f.ey + (int32_t)(((int64_t)s->rdy * (int32_t)d16) >> 16);
+        int32_t hit = s->ey + (int32_t)(((int64_t)s->rdy * (int32_t)d16) >> 16);
         u = (hit >> 16) & 63;
         if (s->stx < 0) u = 63 - u;
     } else {
-        int32_t hit = r3f.ex + (int32_t)(((int64_t)s->rdx * (int32_t)d16) >> 16);
+        int32_t hit = s->ex + (int32_t)(((int64_t)s->rdx * (int32_t)d16) >> 16);
         u = (hit >> 16) & 63;
         if (s->sty > 0) u = 63 - u;
     }
-    draw_face(s->col, y0, y1, tex_get(tex) + u, d16,
-              light_cm(s->cm, s->light - s->wk.side, d16));
+    draw_face(s->col, y0, y1, tex_get(tex) + u, d16, light_cm(s->cm, lit, d16));
 }
 
 /* close the region's floor run at row edge yf */
@@ -230,7 +228,7 @@ static inline void close_floor(ColState *s, int yf)
 {
     if (s->fz4 < r3f.ez4 && yf < s->ybot) {
         int tp = yf > s->ytop ? yf : s->ytop;
-        flat(s->col, s->cm, s->rdx, s->rdy, s->fz4, s->ftex, s->light, tp, s->ybot);
+        flat(s->col, s->rdx, s->rdy, s->fz4, s->ftex, s->light, tp, s->ybot);
         s->ybot = tp;
     }
 }
@@ -239,7 +237,7 @@ static inline void close_ceil(ColState *s, int yc)
 {
     if (s->cz4 > r3f.ez4 && yc > s->ytop) {
         int bt = yc < s->ybot ? yc : s->ybot;
-        flat(s->col, s->cm, s->rdx, s->rdy, s->cz4, s->ctex, s->light, s->ytop, bt);
+        flat(s->col, s->rdx, s->rdy, s->cz4, s->ctex, s->light, s->ytop, bt);
         s->ytop = bt;
     }
 }
@@ -248,18 +246,22 @@ static inline void sky_to(ColState *s, int y)
 {
     if (y > s->ytop) {
         int bt = y < s->ybot ? y : s->ybot;
-        draw_sky(s->col, s->c, s->ytop, bt, s->cm);
+        r3d_draw_sky(s->col, s->c, s->ytop, bt, s->cm);
         s->ytop = bt;
     }
 }
 
 /* One boundary where the next cell differs from the region (res 0) or
- * the map ends (res 1). Returns 1 when the column is finished. */
+ * the map ends (res 1). Returns 1 when the column is finished. This is
+ * the reference for r3d_boundary_asm() and also handles what the
+ * assembly leaves out (door / lift cells, roofed cells seen from under
+ * the sky). Semantics: core/native/README.md (plat_view3d). */
 static int __attribute__((noinline)) boundary(ColState *s, int res)
 {
     const uint32_t d16 = s->wk.d << 6;
     const int32_t k8 = r3d_k8(d16);
     const int otop = s->ytop, obot = s->ybot;
+    const int lit = s->light - s->wk.side;      /* walls: y-sides darker */
     uint32_t w0, w1;
     int done = 0;
     if (res == 0) { w0 = s->wk.w0; w1 = s->wk.w1; }
@@ -270,6 +272,7 @@ static int __attribute__((noinline)) boundary(ColState *s, int res)
         int32_t nfz4, ncz4;
         int nftex = (w0 >> 8) & 0xFF, nctex = (w0 >> 16) & 0xFF;
         int nl = (w1 >> 8) & 0xFF, nsky = nctex == DOOMO_TEX_SKY;
+        if (!nl) nl = s->amb;
         if (w1 & CW1_DYN) {
             int w = r3f.mw, h = r3f.mh;
             int mx = s->stx > 0 ? w - 1 - s->wk.cx : s->wk.cx;
@@ -287,68 +290,76 @@ static int __attribute__((noinline)) boundary(ColState *s, int res)
             close_floor(s, rowof(s->fz4, k8));
         if (!s->sky && (nsky || ncz4 != s->cz4 || nctex != s->ctex || nl != s->light))
             close_ceil(s, rowof(s->cz4, k8));
-        /* riser: the next floor is higher */
+        /* lower step face: the next floor is higher (one level darker) */
         if (nfz4 > s->fz4 && s->ytop < s->ybot) {
             int yr = rowof(nfz4, k8), yf = rowof(s->fz4, k8);
             int y0 = yr > s->ytop ? yr : s->ytop;
             int y1 = yf < s->ybot ? yf : s->ybot;
-            if (y0 < y1) face(s, y0, y1, nftex, d16);
+            if (y0 < y1) face(s, y0, y1, nftex, lit - 1, d16);
             if (y0 < s->ybot) s->ybot = y0;
         }
         if (s->ytop < s->ybot) {
             if (s->sky && !nsky) {
                 /* a roofed cell seen from under the sky: sky above its
-                 * roof, the lintel (or door) below */
-                int32_t top4 = s->cz4;
+                 * roof, the lintel (or door) below. The roof is the
+                 * tallest explicit top of its solid neighbours, else as
+                 * tall as a default wall under the sky (floor + 256). */
                 int roof = r3d_roof[s->wk.idx8 >> 3];
-                if (roof != 127 && ((int32_t)roof << 7) < top4) top4 = (int32_t)roof << 7;
+                int32_t top4 = roof != 127 ? (int32_t)roof << 7 : s->fz4 + (256 << 4);
                 if (top4 < ncz4) top4 = ncz4;
                 sky_to(s, rowof(top4, k8));
                 if (ncz4 < top4 && s->ytop < s->ybot) {
                     int yu = rowof(ncz4, k8);
                     int y1 = yu < s->ybot ? yu : s->ybot;
-                    if (s->ytop < y1) { face(s, s->ytop, y1, nctex, d16); s->ytop = y1; }
+                    if (s->ytop < y1) { face(s, s->ytop, y1, nctex, lit - 1, d16); s->ytop = y1; }
                 }
-            } else if (ncz4 < s->cz4 && !s->sky) {
-                /* upper face: the next ceiling is lower */
+            } else if (ncz4 < s->cz4 && !s->sky && !nsky) {
+                /* upper step face: the next ceiling is lower */
                 int yu = rowof(ncz4, k8);
                 int y1 = yu < s->ybot ? yu : s->ybot;
                 if (s->ytop < y1) {
-                    face(s, s->ytop, y1, nsky ? s->ctex : nctex, d16);
+                    face(s, s->ytop, y1, nctex, lit - 1, d16);
                     s->ytop = y1;
                 }
             }
         }
         s->fz4 = nfz4; s->cz4 = ncz4;
-        s->ftex = nftex; s->ctex = nctex; s->light = nl; s->sky = nsky;
+        s->ftex = nftex; s->ctex = nctex; s->light = nl;
+        /* a roofed region stays roofed until a sky cell is entered */
+        s->sky = nsky;
     } else {
         /* ---- solid cell (or outside the map) ---- */
         int wtex = w0 & 0xFF;
         int fh = (int8_t)(w0 >> 24), ch = (int8_t)(w1 & 0xFF);
-        int32_t top4 = (res == 0 && ch > fh) ? (int32_t)ch << 7 : s->cz4;
+        int32_t top4;
         close_floor(s, rowof(s->fz4, k8));
-        if (res == 0 && (s->sky || top4 < s->cz4)) {
-            /* a block of height top4: draw its side, walk over its top */
-            int nl = (w1 >> 8) & 0xFF;
-            if (!s->sky && nl != s->light) close_ceil(s, rowof(s->cz4, k8));
+        if (s->sky) {
+            /* under the sky: as tall as its ceil_h, else 256 units */
+            top4 = (res == 0 && ch > fh) ? (int32_t)ch << 7 : s->fz4 + (256 << 4);
             if (top4 > s->fz4) {
                 int yt = rowof(top4, k8), yf = rowof(s->fz4, k8);
                 int y0 = yt > s->ytop ? yt : s->ytop;
                 int y1 = yf < s->ybot ? yf : s->ybot;
-                if (y0 < y1) face(s, y0, y1, wtex, d16);
+                if (y0 < y1) face(s, y0, y1, wtex, lit, d16);
                 if (y0 < s->ybot) s->ybot = y0;
             }
-            s->fz4 = top4;
-            s->ftex = ((w0 >> 8) & 0xFF) ? (int)((w0 >> 8) & 0xFF) : wtex;
-            s->light = nl;
-            /* consecutive identical blocks (thick walls) walk fast */
-            s->wk.c0 = w0;
-            s->wk.c1 = w1 & ~CW1_DYN;
+            if (res) {
+                /* the map's edge: the sky above, column done */
+                sky_to(s, s->ybot);
+                done = 1;
+            } else {
+                /* walk across its roof */
+                int nl = (w1 >> 8) & 0xFF;
+                s->fz4 = top4;
+                s->ftex = ((w0 >> 8) & 0xFF) ? (int)((w0 >> 8) & 0xFF) : wtex;
+                s->light = nl ? nl : s->amb;
+                s->wk.c0 = w0;                   /* identical blocks walk fast */
+                s->wk.c1 = w1 & ~CW1_DYN;
+            }
         } else {
-            /* full wall up to the ceiling (or the sky height) */
-            if (!s->sky) close_ceil(s, rowof(s->cz4, k8));
-            else sky_to(s, rowof(s->cz4, k8));
-            if (s->ytop < s->ybot) face(s, s->ytop, s->ybot, wtex, d16);
+            /* under a roof: a wall up to the ceiling closes the column */
+            close_ceil(s, rowof(s->cz4, k8));
+            if (s->ytop < s->ybot) face(s, s->ytop, s->ybot, wtex, lit, d16);
             s->ytop = s->ybot;
             done = 1;
         }
@@ -365,7 +376,7 @@ static int __attribute__((noinline)) boundary(ColState *s, int res)
     if (done || s->ytop >= s->ybot) return 1;
     /* early out under the sky: the open rows are all above anything
      * that can still come (the map's tallest top) */
-    if (s->sky && r3f.maxtop4 > r3f.ez4 && s->ybot <= rowof(r3f.maxtop4, k8))
+    if (s->sky && s->early_top4 != (int32_t)0x80000000 && s->ybot <= rowof(s->early_top4, k8))
         return 1;
     return 0;
 }
@@ -400,6 +411,21 @@ static void column(int c)
     rdy = f->fy + (int32_t)(((int64_t)f->ry * t) >> 16);
     s->rdx = rdx;
     s->rdy = rdy;
+    s->ez4 = f->ez4;
+    s->hor12r = f->hor12 + 0x800;
+    s->proj = f->proj;
+    s->early_top4 = f->maxtop4 > f->ez4 ? f->maxtop4 : (int32_t)0x80000000;
+    s->ex = f->ex;
+    s->ey = f->ey;
+    s->hor = f->hor;
+    s->invproj = f->invproj;
+    s->ez = f->ez;
+    s->amb = f->amb;
+    FL.cm = s->cm;
+    FL.u0 = (uint32_t)f->ex << 10;
+    FL.v0 = (uint32_t)f->ey << 10;
+    FL.fade = r3d_fade;
+    FL.far = 1400u << 8;
     s->wk.ddx = dir_recip(rdx);
     s->wk.ddy = dir_recip(rdy);
     if (rdx < 0) { s->stx = -1; s->wk.sdx = mul16u((uint32_t)px & 0xFFFF, s->wk.ddx); s->wk.cx = mx; }
@@ -424,6 +450,7 @@ static void column(int c)
         s->ftex = (w0 >> 8) & 0xFF;
         s->ctex = (w0 >> 16) & 0xFF;
         s->light = (w1 >> 8) & 0xFF;
+        if (!s->light) s->light = f->amb;
         s->sky = s->ctex == DOOMO_TEX_SKY;
         s->wk.c0 = ((w1 & CW1_DYN) || (w0 & 0xFF)) ? 0xFFFFFFFFu : w0;
         s->wk.c1 = w1;
@@ -438,10 +465,15 @@ static void column(int c)
             break;
         }
         f->dbg_steps++;
+        {
+            int r = r3d_boundary_asm(s, res);
+            if (r == 1) break;
+            if (r == 0) continue;
+        }
         if (boundary(s, res)) break;
     }
-    /* whatever is still open shows the sky (or the void) */
-    if (s->ytop < s->ybot) draw_sky(s->col, c, s->ytop, s->ybot, s->cm);
+    /* whatever is still open shows the sky, or dark fog indoors */
+    ray_end(s->col, c, s->ytop, s->ybot, s->cm, s->sky);
     r3d_nclips[c] = (uint8_t)s->ncp;
 }
 

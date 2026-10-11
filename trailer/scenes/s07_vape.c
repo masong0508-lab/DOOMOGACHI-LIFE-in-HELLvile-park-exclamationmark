@@ -713,11 +713,11 @@ static void shot_vex(int t) {
     int dt = t - 2;
     float up = tk_bounce(dt / 9.0f);
     layer_begin();
-    tk_dialog("VEX", "Try Brimstone Blast. It's organic.", dt - 3, TKW_CUTE);
-    if (t >= 30) {   /* the fine print */
-        int a = t - 30;
+    tk_dialog("VEX", "Try Brimstone Blast. It's organic.", (dt - 3) * 3 / 2, TKW_CUTE);   /* director: typed faster so the fine print gets read */
+    if (t >= 22) {   /* the fine print */
+        int a = t - 22;
         const char *fp = "*may contain souls";
-        char buf[32]; int n = a * 2; if (n > 18) n = 18;
+        char buf[32]; int n = a * 3; if (n > 18) n = 18;
         memcpy(buf, fp, (size_t)n); buf[n] = 0;
         tk_text(12, TH - 46 + 22, buf, PAL_UI_PINK_D, 1);
     }
@@ -960,12 +960,12 @@ void scene_s07_vape_audio(double t0, double dur) {
     /* Vex: smooth, low babble while the text types */
     {
         static const int m[] = { 50, 53, 48, 55, 52, 50, 57, 48, 53, 50, 47, 45 };
-        for (int i = 0; i < 12; i++) tk_note(AT(CUT_B + 5 + i * 2), 0.055, m[i], TKV_SQ12, 0.18f);
+        for (int i = 0; i < 12; i++) tk_note(AT(CUT_B + 5 + i * 1.4), 0.05, m[i], TKV_SQ12, 0.18f);
     }
     tk_sfx(AT(CUT_B + 30), SFX_SPARKLE, 0.45f);        /* the wink */
     tk_note(AT(CUT_B + 30), 0.3, 96, TKV_SINE, 0.15f);
     tk_sfx(AT(CUT_B + 34), SFX_WHOOSH, 0.4f);          /* pen slides */
-    tk_note(AT(CUT_B + 31), 0.04, 96, TKV_SQ25, 0.1f);  /* fine print blip */
+    tk_note(AT(CUT_B + 22), 0.04, 96, TKV_SQ25, 0.1f);  /* fine print blip */
     tk_sfx(AT(CUT_B + 47), SFX_SELECT, 0.3f);          /* snatched  */
     /* inhale ... hold ... FWOOMP */
     tk_slide(AT(CUT_C + 3), 0.34, 50, 88, TKV_NOISE, 0.3f);

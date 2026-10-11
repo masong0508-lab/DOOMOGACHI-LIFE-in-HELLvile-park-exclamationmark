@@ -878,6 +878,13 @@ void scene_s02_title(int f, int n) {
     if (f >= F_SPLAT && f < F_SPLAT + 3) tk_post_shake((f & 1) ? 3 : -3, (f & 1) ? -2 : 2);
     if (f >= 19 && f < 21) tk_post_shake(0, f == 19 ? 2 : -1);
     if (f < 4) tk_post_flash(PAL_WHITE, 16 - f * 4);
+    /* director: cartoon heart iris-out that lands right on the "nothing to see
+     * here" sticker, holds a beat, then closes (s03 irises back open) */
+    if (f >= 111) {
+        int a = f - 111;
+        float r = a < 5 ? 260.0f + (26.0f - 260.0f) * tk_ease(a / 5.0f) : (f < 119 ? 26.0f : 0.0f);
+        tk_post_iris(200, 128, r, 1, PAL_BLACK, PAL_UI_PINK_D);
+    }
 }
 
 void scene_s02_title_audio(double t0, double dur) {
@@ -906,4 +913,5 @@ void scene_s02_title_audio(double t0, double dur) {
     /* whistle: innocent little tune */
     static const int W[5] = { 84, 88, 91, 88, 93 };
     for (int i = 0; i < 5; i++) tk_slide(t0 + (F_WHISTLE + i * 2.4) * fr, 0.075, W[i] - 1, W[i], TKV_SINE, 0.2f);
+    tk_slide(t0 + 111 * fr, 0.16, 96, 72, TKV_SINE, 0.12f);          /* iris: shwip */
 }

@@ -10,24 +10,88 @@
 int plat_screen_w(void) { return SCR_W; }
 int plat_screen_h(void) { return SCR_H; }
 
+/* ---- rect batching ----------------------------------------------------------
+ * The core draws its cutesy UI with thousands of plat_rect spans per frame
+ * (shaded shapes row by row, 50% checker seams, polka dots). Each call
+ * becomes one GPU prim, so consecutive rects are merged here:
+ *   - a rect directly below / right of the previous one, same colour and
+ *     same width / height, extends the previous TILE in place
+ *   - a row of single pixels with stride 2 (a checker seam) is collected
+ *     and drawn as ONE 50% semi-transparent tile, which is what the
+ *     checker is meant to look like
+ * Nothing else is ever drawn between the merged pieces, so the result is
+ * identical in painter's order. */
+enum { RUN_NONE, RUN_TILE, RUN_DOTS };
+static struct {
+    int kind;
+    uint32_t *prim;
+    int x, y, w, h, n;
+    int nx, ny;            /* next x of a dot run / next y of a tile run */
+    int c;                 /* -1 = none */
+} s_run = { 0, 0, 0, 0, 0, 0, 0, 0, 0, -1 };
+uint32_t g_rect_calls, g_rect_prims;
+
+void gfx2d_reset(void) { s_run.kind = RUN_NONE; s_run.c = -1; }
+
+static uint32_t *emit_tile(int x, int y, int w, int h, uint32_t rgb, int semi)
+{
+    uint32_t *p = (uint32_t *)g_prim_ptr;
+    if (g_prim_ptr + 16 > g_prim_end)
+        return NULL;
+    g_prim_ptr += 16;
+    p[1] = rgb | (semi ? 0x62000000u : 0x60000000u);
+    p[2] = ((uint32_t)y << 16) | (uint32_t)x;
+    p[3] = ((uint32_t)h << 16) | (uint32_t)w;
+    gfx_link_raw(p, 3);
+    g_rect_prims++;
+    return p;
+}
+
+static void emit_dot(int x, int y, uint32_t rgb)
+{
+    uint32_t *p = (uint32_t *)g_prim_ptr;
+    if (g_prim_ptr + 12 > g_prim_end)
+        return;
+    g_prim_ptr += 12;
+    p[1] = rgb | 0x68000000u;           /* TILE_1 */
+    p[2] = ((uint32_t)y << 16) | (uint32_t)x;
+    gfx_link_raw(p, 2);
+    g_rect_prims++;
+}
+
+void gfx2d_flush(void)
+{
+    if (s_run.kind == RUN_DOTS) {
+        int k = s_run.kind;
+        s_run.kind = RUN_NONE;      /* gfx_tpage() below flushes again */
+        if (s_run.n >= 4) {
+            DR_TPAGE *t = (DR_TPAGE *)gfx_alloc(sizeof(DR_TPAGE));
+            if (t) {
+                setDrawTPage(t, 1, 1, getTPage(0, 0, 0, 0));   /* 50/50 */
+                gfx_link_raw((uint32_t *)t, 1);
+            }
+            emit_tile(s_run.x, s_run.y, s_run.n * 2 - 1, 1, g_rgb[s_run.c], 1);
+        } else {
+            int i;
+            for (i = 0; i < s_run.n; i++)
+                emit_dot(s_run.x + i * 2, s_run.y, g_rgb[s_run.c]);
+        }
+        (void)k;
+    }
+    s_run.kind = RUN_NONE;
+    s_run.c = -1;
+}
+
 static void tile(int x, int y, int w, int h, uint32_t rgb, int semi)
 {
-    TILE *t;
     if (x < 0) { w += x; x = 0; }
     if (y < 0) { h += y; y = 0; }
     if (x + w > SCR_W) w = SCR_W - x;
     if (y + h > SCR_H) h = SCR_H - y;
     if (w <= 0 || h <= 0)
         return;
-    t = (TILE *)gfx_alloc(sizeof(TILE));
-    if (!t)
-        return;
-    setTile(t);
-    setColor0(t, rgb);
-    setSemiTrans(t, semi);
-    setXY0(t, x, y);
-    setWH(t, w, h);
-    gfx_chain(t);
+    gfx2d_flush();
+    emit_tile(x, y, w, h, rgb, semi);
 }
 
 void plat_clear(uint8_t color)
@@ -37,7 +101,58 @@ void plat_clear(uint8_t color)
 
 void plat_rect(int x, int y, int w, int h, uint8_t color)
 {
-    tile(x, y, w, h, g_rgb[color], 0);
+    /* fast paths first: continuing the current run needs no clipping
+     * beyond the screen-edge test */
+    if (color == s_run.c) {
+        if (s_run.kind == RUN_DOTS) {
+            if (y == s_run.y && x == s_run.nx && (w | h) == 1 && (unsigned)x < SCR_W) {
+                s_run.n++;
+                s_run.nx += 2;
+                return;
+            }
+        } else if (s_run.kind == RUN_TILE) {
+            if (x == s_run.x && w == s_run.w && y == s_run.ny && (unsigned)(y + h) <= SCR_H &&
+                y >= 0) {
+                s_run.h += h;
+                s_run.ny += h;
+                s_run.prim[3] = ((uint32_t)s_run.h << 16) | (uint32_t)s_run.w;
+                return;
+            }
+        }
+    }
+    if (x < 0) { w += x; x = 0; }
+    if (y < 0) { h += y; y = 0; }
+    if (x + w > SCR_W) w = SCR_W - x;
+    if (y + h > SCR_H) h = SCR_H - y;
+    if (w <= 0 || h <= 0)
+        return;
+    if (s_run.c == color) {
+        if (s_run.kind == RUN_TILE) {
+            if (y == s_run.y && h == s_run.h && x == s_run.x + s_run.w) {
+                s_run.w += w;                       /* grow rightward */
+                s_run.prim[3] = ((uint32_t)s_run.h << 16) | (uint32_t)s_run.w;
+                return;
+            }
+        } else if (s_run.kind == RUN_DOTS && w == 1 && h == 1 && y == s_run.y &&
+                   s_run.n == 1 && x == s_run.x + 1) {
+            /* two adjacent pixels: it is a span after all */
+            s_run.kind = RUN_NONE;
+            x = s_run.x;
+            w = 2;
+        }
+    }
+    gfx2d_flush();
+    if (w == 1 && h == 1) {
+        s_run.kind = RUN_DOTS;
+        s_run.x = x; s_run.y = y; s_run.n = 1; s_run.nx = x + 2; s_run.c = color;
+        return;
+    }
+    s_run.prim = emit_tile(x, y, w, h, g_rgb[color], 0);
+    if (s_run.prim) {
+        s_run.kind = RUN_TILE;
+        s_run.x = x; s_run.y = y; s_run.w = w; s_run.h = h; s_run.ny = y + h;
+        s_run.c = color;
+    }
 }
 
 void plat_shade_rect(int x, int y, int w, int h, int level)
@@ -109,6 +224,7 @@ void plat_line(int x0, int y0, int x1, int y1, uint8_t color)
 
 void plat_text(int x, int y, const char *s, uint8_t color)
 {
+
     int x0 = x;
     uint16_t clut = vram_font_clut(color);
     int started = 0;
@@ -207,6 +323,7 @@ static void image_pass(int x, int y, const DoomoImage *img, int scale, int flip,
 void plat_image(int x, int y, const DoomoImage *img, int scale, int flags,
                 uint8_t color)
 {
+
     int flip;
     if (!img || !img->pix || !img->w || !img->h)
         return;

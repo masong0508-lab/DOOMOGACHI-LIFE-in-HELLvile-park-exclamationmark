@@ -11,9 +11,10 @@
  *   frames 5..   payload (save.c's stream), zero padded to 128 bytes
  *
  * The BIOS cannot resize a file, so a save that needs more blocks than the
- * existing file has is written to a temporary file first; only once that
- * succeeded is the old file erased and the new one renamed - an old save is
- * never destroyed by a failed write. Every error (no card, unformatted,
+ * existing file has is written as a second copy (BASLUS-DOOMO<n>B) first;
+ * only once that succeeded is the old file erased - an old save is never
+ * destroyed by a failed write (unless the card is too full for two copies,
+ * then the old save is replaced). All transfers are whole 8 KB blocks. Every error (no card, unformatted,
  * card full, I/O error) returns 0 to the core, which shows a message.
  */
 #include <string.h>
@@ -33,7 +34,6 @@
 #define HDR_BYTES  (HDR_FRAMES * FRAME)
 #define INFO_MAGIC 0x53504d44u   /* "DMPS" */
 
-int bios_rename(const char *from, const char *to);
 
 static int s_card_ok;
 
@@ -53,11 +53,7 @@ void memcard_early(void)
 
 void memcard_init(void)
 {
-    int i;
     ChangeClearPAD(0);   /* leave the vblank IRQ acknowledge to psxgpu */
-    for (i = 0; i < 4; i++)
-        VSync(0);
-    dbg("card: bu_init\n");
     _bu_init();
     s_card_ok = 1;
 }
@@ -208,11 +204,11 @@ static uint32_t crc32(const uint8_t *p, uint32_t n)
     return ~c;
 }
 
-static void slot_name(char *out, int slot, int tmp)
+static void slot_name(char *out, int slot, int alt)
 {
     strcpy(out, "bu00:BASLUS-DOOMO0");
     out[17] = (char)('0' + (slot & 1));
-    if (tmp) { out[18] = 'T'; out[19] = 0; }
+    if (alt) { out[18] = 'B'; out[19] = 0; }
 }
 
 /* size in bytes of an existing file, or -1 */
@@ -225,45 +221,74 @@ static int file_size(const char *path)
 }
 
 static uint8_t s_hdr[HDR_BYTES] __attribute__((aligned(4)));
-static uint8_t s_tail[FRAME] __attribute__((aligned(4)));
+/* Card I/O is done in whole, block-aligned 8 KB chunks: some BIOSes
+ * (OpenBIOS, used by emulators) mis-handle a transfer that starts in the
+ * middle of a block and crosses into the next one (it writes to the
+ * physically adjacent block instead of following the file's block chain). */
+static uint8_t s_blk[BLOCK] __attribute__((aligned(4)));
 
-static int write_file(const char *path, const uint8_t *data, uint32_t size)
+/* the file image byte at offset o is header (o < HDR_BYTES) or payload */
+static void stage_block(int k, const uint8_t *data, uint32_t size)
 {
-    int fd = open(path, O_WRONLY_);
-    uint32_t body = size & ~(uint32_t)(FRAME - 1);
-    int ok = 1;
+    uint32_t o0 = (uint32_t)k * BLOCK, o1 = o0 + BLOCK, h, d0, d1;
+    memset(s_blk, 0, BLOCK);
+    if (o0 < HDR_BYTES) {
+        h = HDR_BYTES - o0 < BLOCK ? HDR_BYTES - o0 : BLOCK;
+        memcpy(s_blk, s_hdr + o0, h);
+    }
+    d0 = o0 > HDR_BYTES ? o0 - HDR_BYTES : 0;           /* payload range */
+    d1 = o1 - HDR_BYTES;
+    if (d1 > size) d1 = size;
+    if (d1 > d0)
+        memcpy(s_blk + (d0 + HDR_BYTES - o0), data + d0, d1 - d0);
+}
+
+static int write_file(const char *path, const uint8_t *data, uint32_t size, int blocks)
+{
+    int fd = open(path, O_WRONLY_), k, ok = 1;
     if (fd < 0)
         return 0;
-    if (write(fd, s_hdr, HDR_BYTES) != HDR_BYTES)
-        ok = 0;
-    if (ok && body) {
-        if (((uintptr_t)data & 3) == 0) {
-            if (write(fd, data, body) != (int)body)
-                ok = 0;
-        } else {
-            uint32_t o;
-            for (o = 0; ok && o < body; o += FRAME) {
-                memcpy(s_tail, data + o, FRAME);
-                if (write(fd, s_tail, FRAME) != FRAME)
-                    ok = 0;
-            }
-        }
-    }
-    if (ok && size > body) {
-        memset(s_tail, 0, FRAME);
-        memcpy(s_tail, data + body, size - body);
-        if (write(fd, s_tail, FRAME) != FRAME)
+    for (k = 0; ok && k < blocks; k++) {
+        stage_block(k, data, size);
+        if (write(fd, s_blk, BLOCK) != BLOCK)
             ok = 0;
     }
     close(fd);
     return ok;
 }
 
+/* blocks used by all files on the card (directory walk) */
+static int used_blocks(void)
+{
+    struct DIRENTRY e;
+    int used = 0;
+    if (firstfile("bu00:*", &e)) {
+        do {
+            used += (e.size + BLOCK - 1) / BLOCK;
+        } while (nextfile(&e));
+    }
+    return used;
+}
+
+static int create_file(const char *path, int blocks)
+{
+    int fd = open(path, O_CREAT_ | (blocks << 16));
+    if (fd < 0)
+        return 0;
+    close(fd);
+    return 1;
+}
+
+/* A save lives in bu00:BASLUS-DOOMO<slot> or, after it had to grow,
+ * bu00:BASLUS-DOOMO<slot>B (the BIOS cannot resize files and its rename is
+ * not reliable on every BIOS). The newest valid copy wins on load; the old
+ * copy is only erased after the new one was written completely. */
 static int save_write(int slot, const void *data, uint32_t size)
 {
-    char name[24], tmp[24];
+    char name[24], alt[24];
+    const char *cur, *other;
     uint32_t total, crc;
-    int blocks, have;
+    int blocks, have_n, have_a, have, used, ok;
     if (slot < 0 || slot > 1 || !data || !s_card_ok)
         return 0;
     if (size > (slot ? DOOMO_SAVE_SLOT1_MAX : DOOMO_SAVE_SLOT0_MAX))
@@ -273,74 +298,83 @@ static int save_write(int slot, const void *data, uint32_t size)
     crc = crc32((const uint8_t *)data, size);
     build_header(s_hdr, slot, size, crc, blocks);
     slot_name(name, slot, 0);
-    slot_name(tmp, slot, 1);
-    have = file_size(name);
+    slot_name(alt, slot, 1);
+    have_n = file_size(name);
+    have_a = file_size(alt);
+    /* the copy currently in use (if both exist, rewrite the bigger one) */
+    if (have_a > have_n) { cur = alt; other = name; have = have_a; }
+    else { cur = name; other = alt; have = have_n; }
     if (have >= blocks * BLOCK) {
-        int ok = write_file(name, (const uint8_t *)data, size);
-        dbg("memcard: wrote %s (%u bytes, %d blocks, in place) -> %d\n", name,
-            (unsigned)size, have / BLOCK, ok);
+        ok = write_file(cur, (const uint8_t *)data, size, have / BLOCK);
+        if (ok && file_size(other) >= 0)
+            erase(other);
+        dbg("memcard: wrote %s (%u bytes, in place) -> %d\n", cur, (unsigned)size, ok);
         return ok;
     }
-    /* needs a (bigger) new file: write a temp file, then swap */
-    if (file_size(tmp) >= 0)
-        erase(tmp);
-    {
-        int fd = open(tmp, O_CREAT_ | (blocks << 16));
-        if (fd < 0) {
-            dbg("memcard: cannot create %s (%d blocks): no card / card full\n", tmp, blocks);
+    used = used_blocks();
+    if (used + blocks <= 15) {
+        /* room for a second copy: write it, then drop the old one */
+        if (file_size(other) >= 0) {
+            erase(other);
+            used = used_blocks();
+        }
+        if (!create_file(other, blocks)) {
+            dbg("memcard: cannot create %s (%d blocks)\n", other, blocks);
             return 0;
         }
-        close(fd);
+        ok = write_file(other, (const uint8_t *)data, size, blocks);
+        if (!ok) {
+            erase(other);
+            dbg("memcard: write error on %s\n", other);
+            return 0;
+        }
+        if (have >= 0)
+            erase(cur);
+        dbg("memcard: wrote %s (%u bytes, %d blocks, new file)\n", other, (unsigned)size, blocks);
+        return 1;
     }
-    if (!write_file(tmp, (const uint8_t *)data, size)) {
-        erase(tmp);
-        dbg("memcard: write error on %s\n", tmp);
-        return 0;
+    if (have >= 0 && used - (have + BLOCK - 1) / BLOCK + blocks <= 15) {
+        /* only fits by replacing the old save */
+        erase(cur);
+        if (!create_file(cur, blocks) || !write_file(cur, (const uint8_t *)data, size, blocks)) {
+            dbg("memcard: replacing %s failed\n", cur);
+            return 0;
+        }
+        dbg("memcard: wrote %s (%u bytes, %d blocks, replaced)\n", cur, (unsigned)size, blocks);
+        return 1;
     }
-    if (have >= 0)
-        erase(name);
-    if (!bios_rename(tmp, name)) {
-        /* BIOS rename returns 1 on success; on failure keep the temp file
-         * (plat_save_read falls back to it) */
-        dbg("memcard: rename %s -> %s failed\n", tmp, name);
-    }
-    dbg("memcard: wrote %s (%u bytes, %d blocks)\n", name, (unsigned)size, blocks);
-    return 1;
+    dbg("memcard: card full (%d of 15 blocks used, need %d)\n", used, blocks);
+    return 0;
 }
 
 static int read_file(const char *path, void *data, uint32_t cap, uint32_t *out_size)
 {
-    int fd = open(path, O_RDONLY_);
-    uint32_t v[4], size, body;
+    int fd = open(path, O_RDONLY_), k;
+    uint32_t v[4], size = 0, o = 0;
     int ok = 0;
     if (fd < 0)
         return 0;
-    if (read(fd, s_hdr, HDR_BYTES) != HDR_BYTES)
-        goto done;
-    memcpy(v, s_hdr + FRAME * 4, sizeof(v));
-    if (s_hdr[0] != 'S' || s_hdr[1] != 'C' || v[0] != INFO_MAGIC)
-        goto done;
-    size = v[1];
-    if (size > cap || size > DOOMO_SAVE_SLOT1_MAX)
-        goto done;
-    body = size & ~(uint32_t)(FRAME - 1);
-    if (body) {
-        if (((uintptr_t)data & 3) == 0) {
-            if (read(fd, data, body) != (int)body)
-                goto done;
-        } else {
-            uint32_t o;
-            for (o = 0; o < body; o += FRAME) {
-                if (read(fd, s_tail, FRAME) != FRAME)
-                    goto done;
-                memcpy((uint8_t *)data + o, s_tail, FRAME);
-            }
-        }
-    }
-    if (size > body) {
-        if (read(fd, s_tail, FRAME) != FRAME)
+    for (k = 0; ; k++) {
+        uint32_t o0 = (uint32_t)k * BLOCK, from, n;
+        if (read(fd, s_blk, BLOCK) != BLOCK)
             goto done;
-        memcpy((uint8_t *)data + body, s_tail, size - body);
+        if (k == 0) {
+            memcpy(s_hdr, s_blk, HDR_BYTES);
+            memcpy(v, s_hdr + FRAME * 4, sizeof(v));
+            if (s_hdr[0] != 'S' || s_hdr[1] != 'C' || v[0] != INFO_MAGIC)
+                goto done;
+            size = v[1];
+            if (size > cap || size > DOOMO_SAVE_SLOT1_MAX)
+                goto done;
+        }
+        /* payload bytes contained in this block */
+        from = o0 < HDR_BYTES ? HDR_BYTES - o0 : 0;
+        n = BLOCK - from;
+        if (n > size - o) n = size - o;
+        memcpy((uint8_t *)data + o, s_blk + from, n);
+        o += n;
+        if (o >= size)
+            break;
     }
     if (crc32((const uint8_t *)data, size) != v[2]) {
         dbg("memcard: CRC mismatch in %s\n", path);
@@ -359,10 +393,10 @@ static int save_read(int slot, void *data, uint32_t cap, uint32_t *size)
     uint32_t sz = 0;
     if (slot < 0 || slot > 1 || !data || !s_card_ok)
         return 0;
-    slot_name(name, slot, 0);
+    /* normally only one of the two names exists (see save_write) */
+    slot_name(name, slot, 1);
     if (!read_file(name, data, cap, &sz)) {
-        /* an interrupted swap leaves the new save in the temp file */
-        slot_name(name, slot, 1);
+        slot_name(name, slot, 0);
         if (!read_file(name, data, cap, &sz))
             return 0;
     }
@@ -374,23 +408,32 @@ static int save_read(int slot, void *data, uint32_t cap, uint32_t *size)
 static int save_erase(int slot)
 {
     char name[24];
-    int ok = 0;
+    int k, existed = 0;
     if (slot < 0 || slot > 1 || !s_card_ok)
         return 0;
-    slot_name(name, slot, 0);
-    if (file_size(name) >= 0)
-        ok = erase(name) ? 1 : 0;
-    slot_name(name, slot, 1);
-    if (file_size(name) >= 0)
-        erase(name);
-    return ok;
+    for (k = 0; k < 2; k++) {
+        slot_name(name, slot, k);
+        if (file_size(name) >= 0) {
+            existed = 1;
+            erase(name);
+            if (file_size(name) >= 0)
+                return 0;       /* still there: I/O error */
+        }
+    }
+    return existed;
 }
 
+/* A card inserted (or swapped) after boot is only seen once the BIOS has
+ * re-read its directory: if a save fails, re-scan once and retry. */
 int plat_save_write(int slot, const void *data, uint32_t size)
 {
     int r;
     bios_io_begin();
     r = save_write(slot, data, size);
+    if (!r) {
+        _bu_init();
+        r = save_write(slot, data, size);
+    }
     bios_io_end();
     return r;
 }
@@ -399,7 +442,7 @@ int plat_save_read(int slot, void *data, uint32_t cap, uint32_t *size)
 {
     int r;
     bios_io_begin();
-    r = save_read(slot, data, cap, size);
+    r = save_read(slot, data, cap, size);    /* no re-scan: a missing save is normal */
     bios_io_end();
     return r;
 }

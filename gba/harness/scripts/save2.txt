@@ -1,0 +1,8 @@
+# save2.txt - second run with the save file written by save1.txt: the data
+# must have persisted across the "power cycle".
+down SELECT
+frames 60
+release
+wait 10
+expect-log SAVETEST: persisted ok
+expect-log SAVETEST: write ok

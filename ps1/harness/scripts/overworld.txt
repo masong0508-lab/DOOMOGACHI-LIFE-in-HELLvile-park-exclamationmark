@@ -1,0 +1,14 @@
+# Engine test: skip the first-person tour (START) and shoot the 3D overworld
+# through a day/night cycle.
+wait 10
+press START
+wait 40
+shot ow_noon
+wait 60
+shot ow_afternoon
+wait 60
+shot ow_dusk
+wait 50
+shot ow_night
+wait 90
+shot ow_dawn

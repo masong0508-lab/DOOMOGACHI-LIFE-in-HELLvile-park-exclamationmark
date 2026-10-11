@@ -76,8 +76,8 @@ TEST(fixmath_sin_cos_accuracy)
         CHECK_EQ(fx_sin(a), -fx_sin(4096 - a));        /* odd */
         CHECK_EQ(fx_sin(a), fx_cos(a - 1024));
     }
-    /* spot checks against libm-free known values (sin 30 = 0.5) */
-    CHECK(fx_sin(4096 / 12) >= 32768 - 2 && fx_sin(4096 / 12) <= 32768 + 2);
+    /* sin 45 deg = 0.70711 */
+    CHECK(fx_sin(512) >= 46340 && fx_sin(512) <= 46342);
 }
 
 TEST(fixmath_atan2)
@@ -112,9 +112,11 @@ TEST(fixmath_isqrt_dist_recip)
     CHECK_EQ(fx_dist(INT2FIX(3), INT2FIX(4)), INT2FIX(5));
     CHECK_EQ(fx_dist(INT2FIX(-30000), INT2FIX(0)), INT2FIX(30000));
     {
-        fix16 d = fx_dist(INT2FIX(32000), INT2FIX(32000));
-        /* 45254.83 */
-        CHECK(d >= INT2FIX(45254) && d <= INT2FIX(45255));
+        fix16 d = fx_dist(INT2FIX(20000), INT2FIX(-20000));
+        /* 28284.27 */
+        CHECK(d >= INT2FIX(28284) && d <= INT2FIX(28285));
+        /* results beyond 16.16 range clamp instead of wrapping */
+        CHECK_EQ(fx_dist(INT2FIX(32000), INT2FIX(32000)), 0x7FFFFFFF);
     }
     CHECK_EQ(fx_recip(FIX_ONE), FIX_ONE);
     CHECK_EQ(fx_recip(INT2FIX(2)), FIX_HALF);

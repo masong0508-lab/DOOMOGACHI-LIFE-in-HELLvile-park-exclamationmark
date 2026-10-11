@@ -14,7 +14,7 @@
 #include "enginetest.h"
 
 #define TEST_N 30000u
-static EWRAM_BSS uint8_t buf[TEST_N];
+static uint8_t *buf;            /* the platform's save scratch (bigbuf.c) */
 
 static uint8_t pat(uint32_t gen, int slot, uint32_t i)
 {
@@ -44,8 +44,10 @@ static int check(uint32_t gen, int slot)
 
 void et_save_test(void)
 {
-    uint32_t size = 0, gen = 0;
+    uint32_t size = 0, gen = 0, cap = 0;
     int slot, ok = 1;
+    buf = (uint8_t *)plat_save_scratch(&cap);
+    if (cap < TEST_N) { gba_log("SAVETEST: FAIL scratch too small"); return; }
     gba_logf("SAVETEST: chip %s %dKB", flash_chip_name(), flash_detected());
     if (!flash_detected()) { gba_log("SAVETEST: FAIL no flash chip"); return; }
     /* previous run? */

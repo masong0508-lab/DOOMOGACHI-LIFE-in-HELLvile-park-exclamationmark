@@ -1,0 +1,20 @@
+# smoke.txt - the game ROM: boot, title, a few presses, no crash / hang
+# (make -C gba test-game). Screenshots go to gba/build/shots/game.
+wait 30
+expect-log doomo: init
+shot game01_boot
+wait 60
+shot game02_title
+press START
+wait 30
+shot game03_after_start
+press A
+wait 30
+shot game04_after_a
+press B
+wait 20
+press DOWN
+wait 10
+press A
+wait 30
+shot game05_menu

@@ -15,8 +15,6 @@ void ui_cursor_glyph(int x, int y, int kind, uint8_t fill);
 void ui_pill(int x, int y, int w, int h, uint8_t fill, uint8_t outline, uint8_t hi);
 /* Inset of a rounded corner of radius r at row i from the edge. */
 int  ui_corner_inset(int r, int i);
-/* Bytes of s consumed by its first `lines` wrapped lines at width w. */
-int  ui_wrap_skip(const char *s, int w, int lines);
 /* Shaded drop shadow under a rounded rect. */
 void ui_drop_shadow(int x, int y, int w, int h, int r);
 

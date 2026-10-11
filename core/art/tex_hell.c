@@ -186,31 +186,36 @@ static void t_lava(ArtImg *im, int f, int n)
             ArtCell c;
             int v = art_fbm(x, y, 32, 3, 64, 0x1A7Au);
             int sw = art_sin(x * ART_TURN / 32 + art_sin(y * ART_TURN / 64 + ph) / 2 + v * 24 + ph);
-            int edge, crust_r;
+            int edge, crack;
             uint8_t col;
-            /* molten base with swirling bright and dark currents */
-            col = RP(RAMP_LAVA, 4);
-            if (sw > 2600) col = RP(RAMP_LAVA, 5);
-            if (sw > 3800) col = RP(RAMP_LAVA, 6);
-            if (sw > 4040 && v > 120) col = RP(RAMP_LAVA, 7);
-            if (sw < -3000) col = RP(RAMP_LAVA, 3);
-            /* cooling crust islands with glowing rims */
-            art_worley_j(x, y, 4, 64, 0x1A7Bu, 12, &c);
+            art_worley_j(x, y, 5, 64, 0x1A7Bu, 13, &c);
             edge = c.d2 - c.d1;
-            crust_r = 6 * 16 + (art_sin(ph + (int)(c.id & 4095u)) * 20) / Q12;
-            if ((c.id & 3u) != 0 && c.d1 < crust_r && edge > 24) {
+            /* cracks between crust plates breathe with the loop */
+            crack = 20 + (art_sin(ph + (int)(c.id & 4095u)) * 8) / Q12;
+            if ((c.id % 5u) < 2 || edge < crack) {
+                /* molten: open pools and the glowing cracks */
+                col = RP(RAMP_LAVA, 4);
+                if (sw > 2600) col = RP(RAMP_LAVA, 5);
+                if (sw > 3800) col = RP(RAMP_LAVA, 6);
+                if (sw > 4040 && v > 120) col = RP(RAMP_LAVA, 7);
+                if (sw < -3000) col = RP(RAMP_LAVA, 3);
+                if ((c.id % 5u) >= 2 && edge < crack / 2) col = RP(RAMP_LAVA, 6);
+            } else if (edge < crack + 14) {
+                col = RP(RAMP_LAVA, 2);                         /* hot rim */
+            } else {
+                /* cooled crust plate, lit from the top-left */
                 int dx = x - c.fx, dy = y - c.fy;
-                int s = (c.d1 > crust_r - 22) ? 3 : ((dx + dy < -3) ? 2 : ((dx + dy > 3) ? 0 : 1));
-                col = s == 3 ? RP(RAMP_LAVA, 2) : RP(RAMP_BLOOD, s);
-                if (s == 2 && dx + dy < -6) col = RP(RAMP_WOOD, 3);
-                if (s < 3 && (art_hash((uint32_t)x, (uint32_t)y, 0x1A7Cu) % 11u) == 0) col = RP(RAMP_LAVA, 3);
+                int s = (dx + dy < -3) ? 2 : ((dx + dy > 4) ? 0 : 1);
+                col = RP(RAMP_BLOOD, s);
+                if (s == 2 && edge > crack + 40 && dx + dy < -6) col = RP(RAMP_WOOD, 2);
+                if ((art_hash((uint32_t)x, (uint32_t)y, 0x1A7Cu) % 13u) == 0) col = RP(RAMP_LAVA, 3);
             }
             PX(x, y, col);
         }
-    /* bubbles: grow over the loop, pop on the last frame */
+    /* bubbles in the molten pools: grow over the loop, pop on the last frame */
     {
         int i;
-        for (i = 0; i < 5; i++) {
+        for (i = 0; i < 6; i++) {
             uint32_t h = art_hash((uint32_t)i, 0u, 0x1A7Du);
             int bx = (int)(h % 64u), by = (int)((h >> 8) % 64u);
             int st = art_wrap(f + (int)((h >> 16) % 4u), 4);
@@ -519,12 +524,12 @@ static void t_vape_cloud_wall(ArtImg *im, int f, int n)
 {
     int i, k, ph = tx_phase(f, n);
     int px[24], py[24], pr[24], ord[24];
-    ArtMat m = art_mat5(RP(RAMP_VAPE, 2), RP(RAMP_VAPE, 3), RP(RAMP_VAPE, 4), RP(RAMP_VAPE, 5), RP(RAMP_VAPE, 6));
+    ArtMat m = art_mat5(RP(RAMP_VAPE, 1), RP(RAMP_VAPE, 2), RP(RAMP_VAPE, 3), RP(RAMP_VAPE, 4), RP(RAMP_VAPE, 5));
     int x, y;
     for (y = 0; y < 64; y++)
         for (x = 0; x < 64; x++) {
             int sw = art_sin(x * ART_TURN / 32 + y * ART_TURN / 64 + art_noise(x, y, 16, 64, 0x7A9Eu) * 16 - ph);
-            PX(x, y, RP(RAMP_VAPE, sw > 3000 ? 2 : 1));
+            PX(x, y, RP(RAMP_VAPE, sw > 3000 ? 1 : 0));
         }
     k = tx_scatter(20, 64, 64, 0x7A9Fu, px, py);
     for (i = 0; i < k; i++) {
@@ -546,6 +551,15 @@ static void t_vape_cloud_wall(ArtImg *im, int f, int n)
         /* magenta glow on the lower rim of some puffs */
         if (q % 3 == 0)
             for (x = -pr[q] / 2; x <= pr[q] / 2; x++) PX(px[q] + x, py[q] + pr[q] * 8 / 10, PP(PAINT_MAGENTA, 0));
+    }
+    /* two sly faces drift in the vapour (glowing slit eyes + grin) */
+    for (i = 0; i < 2; i++) {
+        int fx = 16 + i * 32 + (art_cos(ph + i * 2048) * 2) / Q12, fy = 20 + i * 26 + (art_sin(ph + i * 2048) * 2) / Q12;
+        uint8_t eye = (f + i) % 4 == 3 ? RP(RAMP_VAPE, 3) : PP(PAINT_MAGENTA, 2);
+        PX(fx - 4, fy, eye); PX(fx - 3, fy, eye); PX(fx - 3, fy + 1, PP(PAINT_MAGENTA, 0));
+        PX(fx + 3, fy, eye); PX(fx + 4, fy, eye); PX(fx + 3, fy + 1, PP(PAINT_MAGENTA, 0));
+        for (x = -3; x <= 3; x++) PX(fx + x, fy + 4 + (art_abs(x) == 3 ? -1 : 0), RP(RAMP_VAPE, 0));
+        PX(fx - 1, fy + 5, RP(RAMP_BONE, 6)); PX(fx + 1, fy + 5, RP(RAMP_BONE, 6));
     }
     /* glitter */
     for (i = 0; i < 6; i++) {

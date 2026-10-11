@@ -100,7 +100,7 @@ TEST(scene_stack)
     scene_push(&scene_b, 0);
     scene_set(&scene_a, 1);                     /* leaves everything */
     CHECK_EQ(scene_depth(), 1);
-    CHECK_EQ(leave_count, 4);
+    CHECK_EQ(leave_count, 3);
     CHECK(scene_by_name("UI_GALLERY") == &SCENE_UI_GALLERY);
     CHECK(scene_by_name("SCENE_TITLE") == &SCENE_TITLE);
     CHECK(scene_by_name("NOPE") == NULL);
@@ -117,7 +117,7 @@ TEST(scene_stack)
 TEST(snprintf_formats)
 {
     char b[64];
-    CHECK_EQ(doomo_snprintf(b, sizeof(b), "%d|%i|%u", -42, 7, 3000000000u), 18);
+    CHECK_EQ(doomo_snprintf(b, sizeof(b), "%d|%i|%u", -42, 7, 3000000000u), 16);
     CHECK_STR(b, "-42|7|3000000000");
     doomo_snprintf(b, sizeof(b), "%3d|%-3d|%03d|%02d", 5, 5, 5, 123);
     CHECK_STR(b, "  5|5  |005|123");
@@ -141,8 +141,10 @@ TEST(text_measure_and_wrap)
     CHECK_EQ(font_text_width("a"), 5);
     CHECK_EQ(font_text_width("abc"), 17);
     CHECK_EQ(font_text_width("ab\nabcd"), 23);
-    CHECK_EQ(ui_text_wrap(0, 0, 60, "hello world", 1, 0), 1);       /* 10 cols */
-    CHECK_EQ(ui_text_wrap(0, 0, 60, "hello lovely world", 1, 0), 2);
+    CHECK_EQ(ui_text_wrap(0, 0, 60, "hello world", 1, 0), 2);       /* 10 cols */
+    CHECK_EQ(ui_text_wrap(0, 0, 66, "hello world", 1, 0), 1);
+    CHECK_EQ(ui_text_wrap(0, 0, 80, "hello lovely world", 1, 0), 2);
+    CHECK_EQ(ui_wrap_skip("hello lovely world", 80, 1), 13);
     CHECK_EQ(ui_text_wrap(0, 0, 60, "a\nb\nc", 1, 0), 3);
     CHECK_EQ(ui_text_wrap(0, 0, 30, "abcdefghijkl", 1, 0), 3);      /* hard break */
     CHECK_EQ(ui_text_wrap(0, 0, 60, "", 1, 0), 0);

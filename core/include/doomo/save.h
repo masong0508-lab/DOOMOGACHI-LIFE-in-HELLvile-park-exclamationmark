@@ -51,8 +51,11 @@ typedef struct DoomoSaveInfo {
     uint32_t size;          /* bytes on the medium                      */
     char     player[DOOMO_NAME_LEN];
 } DoomoSaveInfo;
-/* Read just the header of a slot. 1 if a valid save exists. */
+/* Read just the 48-byte header of a slot (cheap enough for menus: no
+ * scratch buffer, no CRC). 1 if a save with a valid header exists. */
 int  save_peek(int slot, DoomoSaveInfo *out);
+/* Full integrity check of a slot (reads it all, verifies the CRC). */
+int  save_verify(int slot);
 /* Parse the header of an in-memory save (no CRC check of the body). */
 int  save_info_from(const uint8_t *buf, uint32_t size, DoomoSaveInfo *out);
 /* Bytes produced by the last save_serialize()/save_game(), and a short

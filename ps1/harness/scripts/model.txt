@@ -1,0 +1,17 @@
+# Engine test: the third-person 3D citizen (orbit camera), standing then
+# jogging. START twice: tour -> overworld -> model showcase.
+wait 5
+press START
+press START
+wait 20
+shot model_front
+wait 25
+shot model_side
+wait 25
+shot model_back
+wait 30
+shot model_run1
+wait 20
+shot model_run2
+wait 20
+shot model_run3

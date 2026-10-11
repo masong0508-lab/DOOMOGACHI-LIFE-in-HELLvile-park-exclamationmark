@@ -342,8 +342,27 @@ void tk_post_shake(int dx, int dy) {
     memcpy(tmp, tk_fb, sizeof tmp);
     for (int y = 0; y < TH; y++)
         for (int x = 0; x < TW; x++) {
+            /* clamp to the edge instead of exposing black bars */
             int sx = x - dx, sy = y - dy;
-            tk_fb[y][x] = (sx >= 0 && sx < TW && sy >= 0 && sy < TH) ? tmp[sy][sx] : PAL_BLACK;
+            sx = sx < 0 ? 0 : sx >= TW ? TW - 1 : sx;
+            sy = sy < 0 ? 0 : sy >= TH ? TH - 1 : sy;
+            tk_fb[y][x] = tmp[sy][sx];
+        }
+}
+static int iris_in(float dx, float dy, float r, int heart) {
+    if (r <= 0) return 0;
+    float x = dx / r, y = dy / r;
+    if (!heart) return x * x + y * y <= 1.0f;
+    x *= 1.05f; y = -y * 1.05f + 0.15f;            /* heart: y up, nudged to centre it */
+    float a = x * x + y * y - 1.0f;
+    return a * a * a - x * x * y * y * y <= 0.0f;
+}
+void tk_post_iris(float cx, float cy, float r, int heart, uint8_t color, uint8_t rim) {
+    for (int y = 0; y < TH; y++)
+        for (int x = 0; x < TW; x++) {
+            float dx = x + 0.5f - cx, dy = y + 0.5f - cy;
+            if (iris_in(dx, dy, r, heart)) continue;
+            tk_fb[y][x] = (rim && r > 0 && iris_in(dx, dy, r + 2.0f, heart)) ? rim : color;
         }
 }
 void tk_post_glitch(int seed, int strength) {

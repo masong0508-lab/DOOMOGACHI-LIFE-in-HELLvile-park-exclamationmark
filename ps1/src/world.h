@@ -6,7 +6,10 @@
 
 #define WORLD_GW (DOOMO_MAP_MAX_W + 1)
 
-extern int      g_world_sky_top;              /* wall top next to sky cells */
+extern int      g_world_sky_top;              /* highest roof/ceiling + margin */
+/* height of a solid block standing in open air (reference semantics:
+ * its ceil_h when above its floor_h, else floor + 256) */
+extern int16_t  g_world_wtop[DOOMO_MAP_MAX_W * DOOMO_MAP_MAX_H];
 extern uint32_t g_world_corner[WORLD_GW * (DOOMO_MAP_MAX_H + 1)];
 
 void world_sync(const DoomoMap *m);           /* once per frame per view */
