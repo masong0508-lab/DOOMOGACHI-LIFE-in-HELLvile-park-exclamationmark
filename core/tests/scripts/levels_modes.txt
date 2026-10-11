@@ -1,0 +1,52 @@
+# Hell Breach play modes (levels expansion), launched directly with
+# BREACH arg = level | mode << 8: a Time Trial of the Sugar Rush Sewers
+# (gold time on the intro card, the big clock with GOLD PACE), a
+# Cute-Only Run of the Plushie Factory (Rivet lends a cute weapon, the
+# CUTE ONLY pill; Y weapon switches to brutal ones are refused) and a
+# Brutal-Only Run of Graveyard Shift; then the pause menu's Restart.
+scene TITLE
+wait 2
+push BREACH 258
+expect-scene BREACH
+wait 40
+shot timetrial_intro
+press A
+wait 40
+shot timetrial_clock
+hold UP 30
+shot timetrial_run
+scene TITLE
+wait 2
+push BREACH 515
+expect-scene BREACH
+wait 40
+shot cute_intro
+press A
+wait 30
+shot cute_play
+press Y
+wait 20
+shot cute_refused
+scene TITLE
+wait 2
+push BREACH 772
+expect-scene BREACH
+wait 40
+shot brutal_intro
+press A
+wait 30
+shot brutal_play
+press START
+wait 12
+press DOWN
+press DOWN
+press DOWN
+wait 4
+shot brutal_pause_restart
+press A
+wait 20
+expect-scene BREACH
+shot brutal_restarted
+scene TITLE
+wait 2
+expect-scene TITLE

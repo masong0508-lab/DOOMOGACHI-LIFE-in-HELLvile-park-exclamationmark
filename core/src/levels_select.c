@@ -255,7 +255,7 @@ static void ls_draw(void)
 {
     const LevelInfo *L = &lv_info[ls.sel];
     int sw = plat_screen_w(), sh = plat_screen_h(), big = lvd_big(), style = theme_style();
-    int px = big ? 12 : 10, py = big ? 22 : 19, pw = sw - px * 2, ph = big ? 108 : 56;
+    int px = big ? 12 : 10, py = big ? 22 : 19, pw = sw - px * 2, ph = big ? 108 : 54;
     int unl = lv_unlocked(ls.sel), ty, k;
     char buf[64], tb[12];
     ui_backdrop(style, ls.t);
@@ -273,9 +273,9 @@ static void ls_draw(void)
                             ui_style(style)->fill_hi);
     if (!unl) {
         plat_shade_rect(px, py, pw, ph, 9);
-        ui_text_big(sw / 2 - ui_text_big_width(STR_ICON_X, 3) / 2, py + ph / 2 - 16, STR_ICON_X, 3, PAL_GRAY_L, PAL_BLACK);
+        lvd_padlock(sw / 2, py + ph / 2 - (big ? 8 : 6), big ? 2 : 1, ls.t);
         doomo_snprintf(buf, sizeof(buf), "Clear %s first", lv_info[DOOMO_MAX(lv_prereq_of(ls.sel), 0)].title);
-        ui_text_outline(sw / 2 - ui_text_width(buf) / 2, py + ph / 2 + 12, buf, PAL_WHITE, PAL_BLACK);
+        ui_text_outline(sw / 2 - ui_text_width(buf) / 2, py + ph / 2 + (big ? 16 : 10), buf, PAL_WHITE, PAL_BLACK);
     } else if (ls.mode == LVM_TIME_TRIAL && lv_rank(ls.sel) == RANK_NONE) {
         plat_shade_rect(px, py + ph - 14, pw, 14, 6);
         ui_text_center(sw / 2, py + ph - 11, "Clear it once to race the clock", PAL_WHITE);
@@ -285,18 +285,26 @@ static void ls_draw(void)
         int tw = ui_text_width(L->tag) + 10;
         ui_round_rect(px + 4, py + 4, tw, 11, 5, L->accent);
         ui_text(px + 9, py + 6, L->tag, PAL_WHITE);
-        if (unl) lvd_rank_stamp(px + pw - (big ? 18 : 14), py + (big ? 18 : 14), lv_rank(ls.sel), 40 + ls.t, 0);
+        if (unl && lv_rank(ls.sel) != RANK_NONE)
+            lvd_rank_stamp(px + pw - (big ? 18 : 14), py + (big ? 18 : 14), lv_rank(ls.sel), 40 + ls.t, 0);
+        else if (unl) {
+            /* never cleared: a bouncy NEW! tag */
+            int nw = ui_text_width("NEW!") + 10, nx = px + pw - nw - 4, ny = py + 4 + ui_wave(ls.t, 20, 1);
+            ui_round_rect(nx + 1, ny + 1, nw, 11, 5, PAL_BLACK);
+            ui_round_rect(nx, ny, nw, 11, 5, (ls.t & 16) ? PAL_UI_GOLD : PAL_WHITE);
+            ui_text(nx + 5, ny + 2, "NEW!", PAL_UI_RED_D);
+        }
     }
     draw_pips(py + ph + (big ? 15 : 10), big);
     /* title + blurb + numbers */
-    ty = py + ph + (big ? 30 : 19);
+    ty = py + ph + (big ? 30 : 20);
     if (big && ui_text_big_width(L->title, 2) < sw - 20)
         ui_text_big(sw / 2 - ui_text_big_width(L->title, 2) / 2, ty, L->title, 2, PAL_WHITE, ui_style(style)->outline);
     else
         ui_text_outline(sw / 2 - ui_text_width(L->title) / 2, ty, L->title, PAL_WHITE, ui_style(style)->outline);
     ty += big ? 20 : 11;
     ui_text_wrap(8, ty, sw - 16, L->blurb, ui_style(style)->text, 1);
-    ty += big ? 20 : 18;
+    ty += big ? 21 : 21;
     if (ls.mode == LVM_TIME_TRIAL) {
         lvd_time(tb, sizeof(tb), L->dev);
         doomo_snprintf(buf, sizeof(buf), STR_ICON_BOLT " Gold time %s   %s", tb, lv_gold(ls.sel) ? STR_ICON_STAR " GOLD!" : "no medal yet");
@@ -306,11 +314,14 @@ static void ls_draw(void)
                        ls.mode == LVM_CUTE_ONLY ? STR_ICON_HEART "cute only" :
                        ls.mode == LVM_BRUTAL_ONLY ? STR_ICON_SKULL "brutal only" : "");
     }
+    /* the numbers on a dark card in the theme's own outline colour */
+    ui_round_rect(4, ty - 2, sw - 8, L->boss != LB_NONE ? 22 : 12, 4, ui_style(style)->outline);
+    plat_rect(8, ty - 2, sw - 16, 1, ui_lighter(ui_style(style)->outline));
     ui_text_outline(8, ty, buf, PAL_UI_GOLD, PAL_BLACK);
     if (L->boss != LB_NONE) {
         const LevelBoss *b = &lv_boss[L->boss];
         doomo_snprintf(buf, sizeof(buf), STR_ICON_SKULL " %s", unl ? b->name : "???");
-        ui_text_outline(8, ty + 10, buf, PAL_UI_RED, PAL_BLACK);
+        ui_text_outline(8, ty + 10, buf, PAL_RAMP(RAMP_LAVA, 7), PAL_BLACK);
         if (big && unl) lvd_demon(sw - 34, sh - 18, b->spr, ls.t, 1, 1);
     }
     if (ls.msg_t) {

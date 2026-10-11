@@ -13,6 +13,7 @@ static uint8_t g_sil;               /* silhouette colour, 0 = normal      */
 static int     g_dir;               /* +1 faces right, -1 left            */
 static int     g_cx;                /* mirror axis                        */
 static int     g_lod;               /* 1 = small: fewer spans (grids, lists) */
+static uint8_t g_icon;              /* FDRAW_ICON: nothing outside the body  */
 
 static uint8_t C(uint8_t c) { return g_sil ? g_sil : c; }
 static uint8_t dk(uint8_t c) { return ui_darker(c); }
@@ -315,6 +316,7 @@ static void extras(const FishInfo *f, int bdx, int cy, int rx, int ry, int r, in
     uint16_t e = f->extras;
     int k;
     if (g_sil) return;
+    if (g_icon) e &= (uint16_t)~(FF_VAPE | FF_BUBBLE | FF_CHAIN | FF_GLOW);
     if ((e & FF_BLUSH) && !g_lod) {
         int x = fx_(headx - 1), y = cy + ry / 5 + 2;
         plat_checker(x - DOOMO_MAX(1, r / 9), y, DOOMO_MAX(2, r / 5), 2, PAL_PAINT(PAINT_ROSE, 2));
@@ -506,7 +508,7 @@ static void draw_eel(const FishInfo *f, int cx, int cy, int r, int t, int fight)
     mouth(f, hx + rad0 + 1, hy + rad0 / 2, r / 2, t, fight);
     if (f->extras & FF_BLUSH && !g_sil)
         plat_checker(fx_(hx) - 1, hy + rad0 / 2, 3, 2, PAL_PAINT(PAINT_ROSE, 2));
-    if (f->extras & FF_GLOW && !g_sil) {
+    if (f->extras & FF_GLOW && !g_sil && !g_icon) {
         ui_sparkle(fx_(hx - r), cy - r / 3, (t / 2) & 15, lt(f->fin));
         ui_sparkle(fx_(hx - r / 2), cy + r / 3, (t / 2 + 7) & 15, PAL_RAMP(RAMP_LAVA, 7));
     }
@@ -523,6 +525,8 @@ void fish_draw(int sp, int cx, int cy, int r, int t, int flags, uint8_t sil)
     g_dir = (flags & FDRAW_FLIP) ? -1 : 1;
     g_cx = cx;
     g_lod = r < 15;
+    g_icon = (flags & FDRAW_ICON) != 0;
+    if (g_icon && f->shape == FSH_LONG) r = DOOMO_MAX(3, r * 3 / 4);   /* eels: fit the box */
     spd = fight ? 4 : (f->style == FSTY_SLEEPY ? 1 : 2);
     switch (f->shape) {
     case FSH_BOOT: draw_boot(f, cx, cy, r, t); g_sil = 0; return;

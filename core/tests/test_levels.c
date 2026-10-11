@@ -202,7 +202,10 @@ TEST(levels_render_fp_tp_both_sizes)
                 if (spot == 0) combat_start(lv_info[lv].map);
                 else combat_start_at(lv_info[lv].map, CGOAL_EXIT, bx, by + 3, 3072);
                 lv_runtime_begin(lv);
+                lv_runtime_pre();
                 combat_tick();
+                lv_runtime_post();
+                lv_run.intro_t = 0;                        /* the HUD, not the intro card */
                 for (cam = 0; cam < 2; cam++) {
                     DoomoView3D v;
                     char name[48];
@@ -427,6 +430,50 @@ TEST(levels_select_and_breach_scenes)
     scene_set(&SCENE_TITLE, 0);
 }
 
+/* a well-played island: every rank colour, gold medals, all modes open */
+TEST(levels_select_ranked_screens)
+{
+    static const uint8_t ranks[LV_COUNT] = { RANK_S, RANK_A, RANK_S, RANK_B, RANK_C, RANK_A, RANK_NONE };
+    int i, res;
+    for (i = 0; i < LV_COUNT; i++) if (ranks[i]) lv_set_rank(i, ranks[i]);
+    unlock_grant(LVU_GOLD0 + LV_VAPE_CELLAR);
+    unlock_grant(LVU_GOLD0 + LV_SEWERS);
+    unlock_grant(LVU_TIME_TRIAL);
+    unlock_grant(LVU_CHALLENGES);
+    CHECK(lv_unlocked(LV_UNDERBELLY) && lv_cleared_count() == 6);
+    for (res = 0; res < 2; res++) {
+        char name[40];
+        nat_w = res ? 320 : 240;
+        nat_h = res ? 240 : 160;
+        scene_set(&SCENE_TITLE, 0);
+        scene_push(&SCENE_LEVEL_SELECT, LVM_NORMAL);
+        for (i = 0; i < 30; i++) frame(0);
+        CHECK(scene_top() == &SCENE_LEVEL_SELECT);
+        snprintf(name, sizeof(name), "select_ranked_%dx%d", nat_w, nat_h);   /* the first uncleared one */
+        shot(name);
+        frame(BTN_LEFT); frame(0);
+        frame(BTN_LEFT); frame(0);
+        frame(BTN_LEFT); frame(0);
+        frame(BTN_LEFT); frame(0);                                          /* the S-rank sewers */
+        frame(BTN_R); frame(0);                                             /* -> Time Trial */
+        for (i = 0; i < 20; i++) frame(0);
+        snprintf(name, sizeof(name), "select_timetrial_%dx%d", nat_w, nat_h);
+        shot(name);
+        frame(BTN_R); frame(0);                                             /* -> Cute-Only */
+        for (i = 0; i < 20; i++) frame(0);
+        snprintf(name, sizeof(name), "select_cute_%dx%d", nat_w, nat_h);
+        shot(name);
+        frame(BTN_R); frame(0);                                             /* -> Brutal-Only */
+        for (i = 0; i < 20; i++) frame(0);
+        snprintf(name, sizeof(name), "select_brutal_%dx%d", nat_w, nat_h);
+        shot(name);
+        frame(BTN_B); frame(0);
+        CHECK(scene_top() == &SCENE_TITLE);
+    }
+    nat_w = 240;
+    nat_h = 160;
+}
+
 TEST(levels_breach_clear_grades_and_unlocks)
 {
     int i;
@@ -471,7 +518,7 @@ TEST(levels_arena_modes_run)
     }
     combat_autopilot(0);
     CHECK_MSG(saw_shop, "horde only reached wave %d", lv_horde_best());
-    for (i = 0; i < 4; i++) frame(0);
+    for (i = 0; i < 24; i++) frame(0);                       /* the window pops in */
     shot("horde_shop");
     frame(BTN_A); frame(0);                                  /* candy heart (if affordable) */
     frame(BTN_B); frame(0);                                  /* next wave */

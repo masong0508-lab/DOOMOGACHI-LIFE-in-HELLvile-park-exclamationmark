@@ -649,3 +649,49 @@ TEST(fishcook_draw_both_resolutions)
         nat_init(&o);
     }
 }
+
+/* Both scenes keep their state + particles in the shared scene scratch
+ * (no .bss): when another scene took the scratch they come back on the
+ * pier / at the recipe book, and the particle calls never write into a
+ * block that belongs to someone else. */
+TEST(fishcook_state_lives_in_scene_scratch)
+{
+    static const uint32_t other = SAVE_EXT_TAG('T', 'E', 'S', 'T');
+    uint8_t *blk;
+    int i;
+    doomo_town.minute = 12 * 60;
+    scene_set(&SCENE_FISHING, FISH_ARG_AUTOPLAY | FISH_ARG_FORCE(FISH_HONEY_BASS));
+    CHECK(fc_scratch_mine());
+    for (i = 0; i < 40 && fish_scene_state() != 5; i++) tick_scene(1);
+    CHECK(fish_scene_state() > 0);
+    /* someone else claims the block (a pushed scene would) */
+    blk = (uint8_t *)scene_scratch(other, 2048);
+    CHECK(blk != NULL);
+    memset(blk, 0xA5, 2048);
+    CHECK(!fc_scratch_mine());
+    CHECK_EQ(fish_scene_state(), -1);
+    fc_fx(FCX_SPARK, 10, 10, 0, 0, PAL_WHITE, 10);
+    fc_popup(10, 10, "nope", PAL_WHITE);
+    fc_fx_update();
+    fc_fx_clear();
+    CHECK_EQ(fc_fx_live(), 0);
+    scene_draw();                                   /* draws nothing, no crash */
+    for (i = 0; i < 2048; i++) if (blk[i] != 0xA5) break;
+    CHECK_EQ(i, 2048);                              /* untouched              */
+    /* the lake takes it back and starts over on the pier */
+    tick_scene(1);
+    CHECK(fc_scratch_mine());
+    CHECK(fish_scene_state() == 0 || fish_scene_state() == 1);
+    /* same for the kitchen */
+    unlock_all_recipes();
+    scene_set(&SCENE_COOKING, COOK_ARG_AUTOPLAY | COOK_ARG_STOCK | COOK_ARG_RECIPE(2));
+    for (i = 0; i < 60; i++) tick_scene(1);
+    CHECK(cook_scene_state() >= 2);                 /* cooking                */
+    scene_scratch(other, 64);
+    CHECK_EQ(cook_scene_state(), -1);
+    tick_scene(1);
+    CHECK(fc_scratch_mine());
+    CHECK_EQ(cook_scene_state(), 0);                /* CS_BOOK                */
+    scene_set(&SCENE_FISHING, 0);
+    scene_pop();
+}

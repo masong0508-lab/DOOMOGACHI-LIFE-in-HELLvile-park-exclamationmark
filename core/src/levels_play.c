@@ -267,7 +267,8 @@ static void hud_extras(void)
         int sc = 2, w;
         uint8_t col = secs <= L->dev ? PAL_UI_GOLD : secs <= L->par ? PAL_WHITE : PAL_UI_RED;
         int cs = (int)(combat_stats()->ticks % DOOMO_TICK_HZ) * 10 / DOOMO_TICK_HZ;
-        int y = lv_run.bar >= 0 ? 24 : 6;               /* under the boss bar */
+        /* under the boss bar, or beside / below the map title while it shows */
+        int y = lv_run.bar >= 0 ? lvd_bar_y() + 11 : (!lvd_big() && combat_stats()->ticks < 150) ? 24 : 6;
         doomo_snprintf(buf, sizeof(buf), "%d:%02d.%d", secs / 60, secs % 60, cs);
         w = ui_text_big_width(buf, sc);
         ui_text_big(sw / 2 - w / 2, y, buf, sc, col, PAL_BLACK);
@@ -278,14 +279,27 @@ static void hud_extras(void)
         ui_text_outline(sw / 2 - ui_text_width(buf) / 2, sh - 12, buf, secs <= lv_info[br.level].par ? PAL_WHITE : PAL_GRAY_L, PAL_BLACK);
     }
     if (br_challenge()) {
-        const char *s = br.mode == LVM_CUTE_ONLY ? STR_ICON_HEART " CUTE ONLY" : STR_ICON_SKULL " BRUTAL ONLY";
-        int w = ui_text_width(s) + 10, x = sw / 2 - w / 2, y = sh - 26;
-        ui_round_rect(x, y, w, 11, 5, br.mode == LVM_CUTE_ONLY ? PAL_UI_PINK : PAL_UI_RED_D);
-        ui_text(x + 5, y + 2, s, PAL_WHITE);
+        uint8_t c = br.mode == LVM_CUTE_ONLY ? PAL_UI_PINK : PAL_UI_RED_D;
+        const char *icon = br.mode == LVM_CUTE_ONLY ? STR_ICON_HEART : STR_ICON_SKULL;
+        if (lvd_big()) {
+            const char *s = br.mode == LVM_CUTE_ONLY ? STR_ICON_HEART " CUTE ONLY" : STR_ICON_SKULL " BRUTAL ONLY";
+            int w = ui_text_width(s) + 10, x = sw / 2 - w / 2, y = sh - 26;
+            ui_round_rect(x, y, w, 11, 5, c);
+            ui_text(x + 5, y + 2, s, PAL_WHITE);
+        } else {
+            /* the HUD badges leave no room here: a round rule badge by the clock */
+            int x, y = sh - 9 + ui_wave(br.t, 30, 1);
+            lvd_time(buf, sizeof(buf), secs);
+            x = sw / 2 - ui_text_width(buf) / 2 - 9;
+            ui_fill_circle(x, y, 6, PAL_BLACK);
+            ui_fill_circle(x, y, 5, c);
+            ui_text(x - ui_text_width(icon) / 2, y - 3, icon, PAL_WHITE);
+        }
     }
     if (br.demo && (br.t & 16)) {
-        ui_round_rect(sw / 2 - 30, sh - 26, 60, 12, 5, PAL_BLACK);
-        ui_text(sw / 2 - ui_text_width("DEMO") / 2, sh - 24, "DEMO", PAL_UI_GOLD);
+        int y = lvd_big() ? sh - 26 : (lv_run.bar >= 0 ? 24 : 26);      /* clear of the HUD badges */
+        ui_round_rect(sw / 2 - 30, y, 60, 12, 5, PAL_BLACK);
+        ui_text(sw / 2 - ui_text_width("DEMO") / 2, y + 2, "DEMO", PAL_UI_GOLD);
     }
 }
 
@@ -301,7 +315,16 @@ static void pause_draw(void)
     for (i = 0; i < BP_COUNT; i++) {
         const char *label = names[i];
         if (i == BP_WEAPON) {
-            weld_name(combat_weapon(), buf, 22);
+            int k;
+            weld_name(combat_weapon(), buf, sizeof(buf));
+            if (ui_text_width(buf) > w - 40) {
+                /* too long for the button: trim it with an ellipsis */
+                for (k = (int)strlen(buf); k > 3 && ui_text_width(buf) > w - 40; k--) {
+                    buf[k - 3] = '.';
+                    buf[k - 2] = '.';
+                    buf[k - 1] = 0;
+                }
+            }
             label = buf;
         } else if (i == BP_CAMERA) {
             label = doomo_player.camera == CAM_FIRST_PERSON ? "Camera: 1st person" : "Camera: 3rd person";
@@ -346,7 +369,8 @@ static void done_draw(void)
     ui_text_big(sw / 2 - ui_text_big_width("CLEARED!", 2) / 2, y - 20 + ui_wave(t, 30, 2), "CLEARED!", 2,
                 style == WIN_HELL ? PAL_RAMP(RAMP_LAVA, 7) : PAL_UI_GOLD, style == WIN_HELL ? PAL_RAMP(RAMP_BLOOD, 0) : PAL_UI_PINK_D);
     if (!ui_window_pop(x, y, w, h, style, t)) return;
-    ui_text_center(sw / 2, y + 5, L->title, ui_style(style)->title);
+    ui_text_center(sw / 2, y + 5, L->title, ui_style(style)->text);
+    plat_rect(x + 12, y + 14, w - 24, 1, ui_style(style)->fill_lo);
     lvd_time(tb, sizeof(tb), secs);
     lvd_time(pb, sizeof(pb), br.mode == LVM_TIME_TRIAL ? L->dev : L->par);
     doomo_snprintf(v, sizeof(v), "%s / %s", tb, pb);
@@ -361,11 +385,11 @@ static void done_draw(void)
     }
     /* the stamp slams in */
     if (t > 82) {
-        int cx = x + w - (big ? 40 : 31), cy = y + (big ? 56 : 44);
-        ui_text_center(cx, cy - (big ? 36 : 24), "RANK", ui_style(style)->text_dim);
+        int cx = x + w - (big ? 40 : 31), cy = y + (big ? 58 : 50);
+        ui_text_center(cx, cy - (big ? 38 : 33), "RANK", ui_style(style)->text_dim);
         lvd_rank_stamp(cx, cy, br.sc.rank, t - 82, 1);
         if ((br.news & LVR_NEW_RANK) && t > 96 && !(br.news & LVR_FIRST_CLEAR))
-            ui_text_center(cx, cy + (big ? 28 : 16), "NEW BEST!", (t & 8) ? PAL_UI_GOLD : PAL_WHITE);
+            ui_text_center(cx, cy + (big ? 28 : 25), "NEW BEST!", (t & 8) ? PAL_UI_GOLD : PAL_WHITE);
     }
     if (t > 100) {
         const char *msg = br.demo ? "Demo run - nothing recorded" :

@@ -240,6 +240,19 @@ enum { FEAT_FAV_SERVED = 1, FEAT_FULL_HOUSE = 2 };
 /* Grant every unlock whose condition holds now (code-granted ones). */
 void fc_check_unlocks(void);
 
+/* ---- per-scene state (fishcook.c) -------------------------------------------
+ * Nothing of a running scene lives in .bss (GBA EWRAM is nearly full):
+ * the particle pool and the scene's own state share the scene scratch
+ * (scene.h) under one tag. A scene claims it in enter() (zeroed state of
+ * `size` bytes after the pool) and checks fc_scratch_mine() where it may
+ * resume after another scene used the scratch. The particle functions do
+ * nothing while the scratch belongs to someone else. */
+#define FC_SCRATCH_TAG   SAVE_EXT_TAG('F', 'C', 'O', 'K')
+#define FC_FX_POOL_BYTES 1024u      /* the particle pool, at the start     */
+#define FC_STATE_MAX     (DOOMO_SCENE_SCRATCH - FC_FX_POOL_BYTES)
+void *fc_scratch_claim(uint32_t size);   /* the zeroed scene state         */
+int   fc_scratch_mine(void);
+
 /* ---- shared juice (fishcook.c): one particle pool for both scenes ---------- */
 enum { FCX_SPARK, FCX_DROP, FCX_STEAM, FCX_HEART, FCX_STAR, FCX_COIN,
        FCX_CRUMB, FCX_BUBBLE, FCX_EMBER, FCX_SMOKE, FCX_CONFETTI, FCX_RING };
@@ -270,7 +283,8 @@ void fc_shadow(int cx, int cy, int rx);
 void fc_grade_stamp(int cx, int cy, int grade, int t);
 
 /* ---- fish drawing (fish_gfx.c) -------------------------------------------- */
-enum { FDRAW_FLIP = 1, FDRAW_FIGHT = 2, FDRAW_SILHOUETTE = 4, FDRAW_HAPPY = 8 };
+enum { FDRAW_FLIP = 1, FDRAW_FIGHT = 2, FDRAW_SILHOUETTE = 4, FDRAW_HAPPY = 8,
+       FDRAW_ICON = 16 /* list icon: eels shorter, no smoke / bubbles / sparkles */ };
 /* Species sp centred at cx,cy facing right; r = half length in px. */
 void fish_draw(int sp, int cx, int cy, int r, int t, int flags, uint8_t sil);
 /* Half length (px) to draw a size at in a card of max half length rmax. */

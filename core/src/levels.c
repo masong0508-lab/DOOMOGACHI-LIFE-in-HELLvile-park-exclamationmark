@@ -644,12 +644,24 @@ void lv_runtime_view(DoomoView3D *v)
 
 void lv_runtime_hud(void)
 {
-    int saved = combat_s.boss, show = lv_run.bar >= 0 && track_awake(&lv_run.track[lv_run.bar]);
-    if (show) combat_s.boss = -1;                     /* hide the stock bar */
+    int saved = combat_s.boss, bar = lv_run.bar, i, hide = 0;
+    if (lv_run.intro_t > 10 && lv_run.intro_boss != LB_NONE) {
+        /* the letterboxed intro card is a cinematic moment: no HUD under it */
+        lvd_boss_intro(lv_run.intro_boss, 80 - lv_run.intro_t);
+        return;
+    }
+    /* our bar for the variant on the bar (or any awake one, before the
+     * runtime picked it); the stock bar never shows a variant's base name */
+    if (bar < 0 || !track_awake(&lv_run.track[bar]))
+        for (bar = -1, i = 0; i < LV_TRACK && bar < 0; i++)
+            if (track_awake(&lv_run.track[i])) bar = i;
+    for (i = 0; i < LV_TRACK; i++)
+        if (lv_run.track[i].actor >= 0 && lv_run.track[i].actor == saved) hide = 1;
+    if (bar >= 0 || hide) combat_s.boss = -1;
     combat_draw_hud();
     combat_s.boss = saved;
-    if (show) {
-        const LvTrack *t = &lv_run.track[lv_run.bar];
+    if (bar >= 0) {
+        const LvTrack *t = &lv_run.track[bar];
         lvd_boss_bar(t->boss, doomo_actors[t->actor].hp, t->hp_max, doomo_map.time);
     }
     if (lv_run.intro_t && lv_run.intro_boss != LB_NONE) lvd_boss_intro(lv_run.intro_boss, 80 - lv_run.intro_t);

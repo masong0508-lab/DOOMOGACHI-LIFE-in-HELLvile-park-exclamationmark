@@ -65,6 +65,8 @@ void *scene_scratch_block(void) __attribute__((const));
  *   MGAM  mg.c, mg_fx.c     the running minigame's state + effects
  *   WGAM  weld_game.c       the welding minigame's trails
  *   FP..  fp_island.c, fp_roster.c, fp_unlocks.c   free play lists
+ *   FCOK  fishcook.c, fish_scene.c, cook_scene.c   fishing / cooking state
+ *                           + their particle pool (fishcook_int.h)
  * A scene that keeps its own state here must not call anything that
  * claims it for another owner (e.g. weld_view_image()). */
 

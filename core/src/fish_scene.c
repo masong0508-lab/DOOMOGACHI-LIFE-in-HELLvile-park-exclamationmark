@@ -17,7 +17,8 @@
  * Args (fishcook_int.h): FISH_ARG_DEX / COOLER open those pages,
  * FISH_ARG_AUTOPLAY lets a bot fish, FISH_ARG_NIGHT sets the clock to
  * 23:00, FISH_ARG_FORCE(sp) makes every bite species sp (screenshots).
- * State: one static struct (~100 bytes) + the shared particle pool. */
+ * State: FishState in the scene scratch (with the shared particle pool),
+ * so the lake costs no .bss while you're elsewhere. */
 #include "fishcook_int.h"
 
 enum { FS_IDLE, FS_CHARGE, FS_CAST, FS_WAIT, FS_BITE, FS_REEL, FS_LANDED,
@@ -30,7 +31,7 @@ enum { FISH_REST, FISH_RUN };
 #define T_ZONE_HI  760
 #define T_BREAK    1000
 
-static struct {
+typedef struct {
     uint8_t  st, prev, autoplay, opened, force, perfect, menu_sel, card_sel;
     uint8_t  sp, fstate, jump, exhausted, flags, nibbles, shake, landed_flags;
     int16_t  t, power, pdir, wait, nib_t, fish_t, size, value;
@@ -38,11 +39,17 @@ static struct {
     int16_t  dist, dist0, tension, stamina, zone_ticks, dex_sel, dex_top, cool_sel;
     int16_t  catches;                 /* this visit                         */
     uint32_t bot_now, bot_prev;
-    uint8_t  music;
     const char *msg;                  /* lost / info banner                 */
-} F;
+    LakeView v;
+} FishState;
+DOOMO_STATIC_ASSERT(sizeof(FishState) <= FC_STATE_MAX, fish_state_fits_scratch);
 
-static LakeView V;
+/* The state lives in the scene scratch (fc_scratch_claim); fs points at
+ * it while the scene runs. Only the music to restore stays in .bss. */
+static FishState *fs;
+static uint8_t fish_music;
+#define F (*fs)
+#define V (fs->v)
 
 /* ---- input (the pad, or the bot) ------------------------------------------- */
 static int down(uint32_t b) { return F.autoplay ? (F.bot_now & b) != 0 : btn_down(b); }
@@ -212,9 +219,17 @@ static void reel_tick(void)
 }
 
 /* ---- scene ---------------------------------------------------------------------- */
+/* (Re)claim the scratch: a fresh state on the pier. */
+static int fish_claim(void)
+{
+    fs = (FishState *)fc_scratch_claim(sizeof(FishState));
+    return fs != NULL;
+}
+
 static void fish_enter(int arg)
 {
-    memset(&F, 0, sizeof(F));
+    fish_music = (uint8_t)audio_music_current();
+    if (!fish_claim()) return;
     F.autoplay = (arg & FISH_ARG_AUTOPLAY) != 0;
     F.force = (uint8_t)((arg >> 8) & 0xFF);
     if (F.force > FISH_COUNT) F.force = 0;
@@ -237,14 +252,24 @@ static void fish_enter(int arg)
     if (F.opened == FISH_ARG_DEX) go(FS_DEX);
     else if (F.opened == FISH_ARG_COOLER) go(FS_COOLER);
     else go(FS_IDLE);
-    F.music = (uint8_t)audio_music_current();
     lake_layout(&V);
     audio_music(V.night ? SONG_HAHALAND_NIGHT : SONG_HAHALAND_DAY);
 }
 
 static void fish_leave(void)
 {
-    audio_music(F.music);
+    audio_music(fish_music);
+}
+
+/* Another scene used the scratch while this one was underneath: start
+ * over on the pier (fish on the line are lost, the cooler is saved). */
+static int fish_resume(void)
+{
+    if (fs && fc_scratch_mine()) return 1;
+    if (!fish_claim()) return 0;
+    go(FS_IDLE);
+    lake_layout(&V);
+    return 1;
 }
 
 static void leave_scene(void)
@@ -310,6 +335,7 @@ static int cooler_list(uint8_t *out)
 
 static void fish_update(void)
 {
+    if (!fish_resume()) return;
     F.bot_prev = F.bot_now;
     F.bot_now = F.autoplay ? bot() : 0;
     F.t++;
@@ -542,7 +568,7 @@ static void draw_card(void)
     const FishInfo *f = &fish_info[F.sp];
     int w = DOOMO_MIN(V.w - 12, fc_big() ? 280 : 228), h = fc_big() ? 176 : 132;
     int x = (V.w - w) / 2, y = fc_big() ? 22 : 6, t = F.t;
-    int pw = fc_big() ? 120 : 92, ph = fc_big() ? 96 : 70, px = x + 8, py = y + 22;
+    int pw = fc_big() ? 120 : 92, ph = fc_big() ? 96 : 62, px = x + 8, py = y + 22;
     int rx = px + pw + 8, ry = py, r, k;
     char buf[40];
     static const char *const opts[3] = { "Keep", "Sell", "Release" };
@@ -635,8 +661,8 @@ static void aquarium(int warm)
 static void draw_dex(void)
 {
     const UiStyle *st = ui_style(WIN_MINT);
-    int big = fc_big(), cols = 6, cw = (V.w - 16) / cols, chh = big ? 36 : 26;
-    int rows = big ? 4 : 3, gy = 20, top, i, sel = F.dex_sel, t = F.t;
+    int big = fc_big(), cols = 6, cw = (V.w - 16) / cols, chh = big ? 36 : 24;
+    int rows = big ? 4 : 3, gy = big ? 20 : 18, top, i, sel = F.dex_sel, t = F.t;
     int py = gy + rows * chh + 2, ph = V.h - py - 16;
     char buf[48];
     const FishInfo *f = &fish_info[sel];
@@ -694,7 +720,8 @@ static void draw_dex(void)
 static void draw_cooler(void)
 {
     uint8_t list[FISH_COUNT];
-    int n = cooler_list(list), w = V.w - 16, x = 8, y = 20, rowh = 15;
+    int big = fc_big(), n = cooler_list(list), w = V.w - 16, x = 8, y = 20, rowh = big ? 18 : 15;
+    int ir = big ? 9 : 7, tx = x + (big ? 50 : 44);
     int vis = (V.h - y - 34) / rowh, top = 0, i, t = F.t;
     char buf[48];
     aquarium(1);
@@ -712,13 +739,13 @@ static void draw_cooler(void)
         const FishInfo *f = &fish_info[sp];
         if (s) {
             fc_pill(x + 8, ry, w - 12, rowh - 1, PAL_RAMP(RAMP_PASTEL_PINK, 6));
-            ui_cursor(x, ry + 3);
+            ui_cursor(x, ry + rowh / 2 - 4);
         }
-        fish_draw(sp, x + 30, ry + 7, 7, s ? t : 0, 0, 0);
-        ui_text(x + 42, ry + 3, f->name, PAL_RAMP(RAMP_WOOD, 1));
+        fish_draw(sp, x + (big ? 32 : 28), ry + rowh / 2, ir, s ? t : 0, FDRAW_ICON, 0);
+        ui_text(tx, ry + rowh / 2 - 4, f->name, PAL_RAMP(RAMP_WOOD, 1));
         doomo_snprintf(buf, sizeof(buf), "x%d  " STR_ICON_COIN "%d", fc.cooler[sp],
                        fish_value(sp, (f->size_min + f->size_max) / 2));
-        ui_text(x + w - 8 - ui_text_width(buf), ry + 3, buf, PAL_RAMP(RAMP_WOOD, 2));
+        ui_text(x + w - 8 - ui_text_width(buf), ry + rowh / 2 - 4, buf, PAL_RAMP(RAMP_WOOD, 2));
     }
     ui_hint(STR_ICON_A " Sell 1  R Sell all  " STR_ICON_B " Back", WIN_CREAM);
 }
@@ -726,8 +753,10 @@ static void draw_cooler(void)
 static void fish_draw_scene(void)
 {
     int t = F.t, ox = 0, oy = 0, pose = 0, bend = 0, k;
-    int ax = V.pier_x1 - 40, ay = V.pier_y - 47;
-    if (plat_draw_skipped()) return;
+    int ax, ay;
+    if (plat_draw_skipped() || !fs || !fc_scratch_mine()) return;
+    ax = V.pier_x1 - 40;
+    ay = V.pier_y - 47;
     if (F.st == FS_DEX) { draw_dex(); fc_fx_draw(0, 0); return; }
     if (F.st == FS_COOLER) { draw_cooler(); fc_fx_draw(0, 0); return; }
     if (F.shake) { ox = ui_wave(t * 9, 6, 2); oy = ui_wave(t * 7, 5, 1); }
@@ -856,12 +885,13 @@ const DoomoScene SCENE_FISHING = {
 };
 
 /* ---- test hooks ------------------------------------------------------------------ */
-int fish_scene_state(void) { return F.st; }
-int fish_scene_species(void) { return F.sp; }
-int fish_scene_catches(void) { return F.catches; }
+static int live(void) { return fs && fc_scratch_mine(); }
+int fish_scene_state(void) { return live() ? F.st : -1; }
+int fish_scene_species(void) { return live() ? F.sp : -1; }
+int fish_scene_catches(void) { return live() ? F.catches : 0; }
 void fish_scene_reel_info(int *dist, int *tension, int *stamina)
 {
-    if (dist) *dist = F.dist;
-    if (tension) *tension = F.tension;
-    if (stamina) *stamina = F.stamina;
+    if (dist) *dist = live() ? F.dist : 0;
+    if (tension) *tension = live() ? F.tension : 0;
+    if (stamina) *stamina = live() ? F.stamina : 0;
 }

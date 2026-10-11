@@ -50,7 +50,7 @@ void lvd_banner(int cy, const char *kicker, const char *title, int t, int hell)
     int bh = sc * 8 + 14, by = cy - bh / 2;
     uint8_t band = hell ? PAL_UI_RED_D : PAL_UI_PINK_D, band_hi = hell ? PAL_UI_RED : PAL_UI_PINK;
     if (plat_draw_skipped()) return;
-    if (tw > sw - 8) { sc = 2; tw = ui_text_big_width(title, sc); }
+    if (tw > sw - 32) { sc = 2; tw = ui_text_big_width(title, sc); }     /* room for the sparkles */
     plat_shade_rect(0, by - 2, sw, bh + 4, 4);
     plat_rect(-slide, by, sw, bh, band);
     plat_rect(-slide, by + 2, sw, 2, band_hi);
@@ -81,6 +81,31 @@ void lvd_demon(int x, int y, int spr, int t, int scale, int flip)
     plat_image(x - img->w * scale / 2, y - img->h * scale + bob, img, scale, IMG_SHADOW | (flip ? IMG_FLIPX : 0), 0);
 }
 
+void lvd_padlock(int cx, int cy, int k, int t)
+{
+    /* a chunky toy padlock: rounded gold body, steel shackle, heart keyhole;
+     * it wobbles now and then ("nope!") */
+    int wob = ((t / 4) % 24) < 3 ? (((t / 4) & 1) ? k : -k) : 0, x = cx + wob, i;
+    uint8_t steel = PAL_GRAY_L, steel_d = PAL_GRAY_D, body = PAL_UI_GOLD, body_d = ui_darker(PAL_UI_GOLD);
+    if (plat_draw_skipped()) return;
+    if (k < 1) k = 1;
+    ui_fill_ellipse(cx, cy + 10 * k, 8 * k, 2 * k, PAL_BLACK);            /* contact shadow */
+    for (i = 0; i < 2; i++) {                                              /* outline pass, then fill */
+        int o = i ? 0 : 1;
+        uint8_t c = i ? steel : steel_d;
+        plat_rect(x - 6 * k - o, cy - 9 * k - o, 2 * k + 2 * o, 7 * k + o, c);
+        plat_rect(x + 4 * k - o, cy - 9 * k - o, 2 * k + 2 * o, 7 * k + o, c);
+        ui_round_rect(x - 6 * k - o, cy - 12 * k - o, 12 * k + 2 * o, 4 * k + 2 * o, 2 * k, c);
+    }
+    plat_rect(x - 5 * k, cy - 11 * k, 1 * k, 8 * k, PAL_WHITE);               /* shine on the shackle */
+    ui_round_rect(x - 8 * k - 1, cy - 3 * k - 1, 16 * k + 2, 12 * k + 2, 3 * k, body_d);
+    ui_round_rect(x - 8 * k, cy - 3 * k, 16 * k, 12 * k, 3 * k, body);
+    plat_rect(x - 7 * k, cy - 2 * k, 14 * k, k, ui_lighter(body));           /* top highlight */
+    plat_rect(x - 7 * k, cy + 7 * k, 14 * k, k, body_d);                     /* bottom shade */
+    ui_heart_flat(x, cy + 2 * k, DOOMO_MAX(2, 1 + k), PAL_UI_RED_D);          /* heart keyhole */
+    plat_rect(x - (k + 1) / 2, cy + 3 * k, k, 3 * k, PAL_UI_RED_D);
+}
+
 void lvd_boss_intro(int boss, int t)
 {
     const LevelBoss *b;
@@ -95,8 +120,8 @@ void lvd_boss_intro(int boss, int t)
     if (t > 72 && (t & 1)) return;
     cy = sh / 3;
     sc = lvd_big() ? 3 : 2;
-    if (ui_text_big_width(b->name, sc) > sw - 10) sc = 2;
-    if (ui_text_big_width(b->name, sc) > sw - 10) sc = 1;
+    if (ui_text_big_width(b->name, sc) > sw - 24) sc = 2;
+    if (ui_text_big_width(b->name, sc) > sw - 16) sc = 1;
     lvd_banner(cy, "MINI-BOSS!", "", t, 1);
     if (sc > 1) ui_text_big(sw / 2 - ui_text_big_width(b->name, sc) / 2, cy - sc * 4 + 2, b->name, sc,
                             PAL_RAMP(RAMP_LAVA, 7), PAL_RAMP(RAMP_BLOOD, 0));
@@ -110,10 +135,16 @@ void lvd_boss_intro(int boss, int t)
     }
 }
 
+int lvd_bar_y(void)
+{
+    /* below the map title + objective while the stock HUD shows them */
+    return combat_stats()->ticks < 150 ? 32 : 13;
+}
+
 void lvd_boss_bar(int boss, int hp, int hp_max, int t)
 {
     const LevelBoss *b;
-    int sw = plat_screen_w(), w = sw - (lvd_big() ? 96 : 64), x = (sw - w) / 2, y = 13, fill;
+    int sw = plat_screen_w(), w = sw - (lvd_big() ? 96 : 64), x = (sw - w) / 2, y = lvd_bar_y(), fill;
     if (plat_draw_skipped() || boss < 0 || boss >= LB_COUNT) return;
     b = &lv_boss[boss];
     if (hp < 0) hp = 0;

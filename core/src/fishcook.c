@@ -194,18 +194,45 @@ typedef struct {
     uint8_t t, color;
     char    text[14];
 } FcPop;
-static FcFx fx[FC_FX_MAX];
-static FcPop pops[FC_POP_MAX];
+/* Both live at the start of the scene scratch (FC_SCRATCH_TAG), followed
+ * by the running scene's state: no .bss while neither scene runs. */
+typedef struct {
+    FcFx  fx[FC_FX_MAX];
+    FcPop pops[FC_POP_MAX];
+} FcFxPool;
+DOOMO_STATIC_ASSERT(sizeof(FcFxPool) <= FC_FX_POOL_BYTES, fc_fx_pool_fits);
+
+int fc_scratch_mine(void) { return scene_scratch_mine(FC_SCRATCH_TAG); }
+
+void *fc_scratch_claim(uint32_t size)
+{
+    uint8_t *b;
+    if (size > FC_STATE_MAX) return NULL;
+    b = (uint8_t *)scene_scratch(FC_SCRATCH_TAG, FC_FX_POOL_BYTES + size);
+    if (!b) return NULL;
+    memset(b, 0, FC_FX_POOL_BYTES + size);
+    return b + FC_FX_POOL_BYTES;
+}
+
+/* The pool, or NULL while the scratch is someone else's. */
+static FcFxPool *pool(void)
+{
+    return fc_scratch_mine() ? (FcFxPool *)scene_scratch_block() : NULL;
+}
 
 void fc_fx_clear(void)
 {
-    memset(fx, 0, sizeof(fx));
-    memset(pops, 0, sizeof(pops));
+    FcFxPool *p = pool();
+    if (p) memset(p, 0, sizeof(*p));
 }
 
 void fc_fx(int kind, int x, int y, int vx16, int vy16, uint8_t color, int life)
 {
+    FcFxPool *p = pool();
+    FcFx *fx;
     int i, best = 0;
+    if (!p) return;
+    fx = p->fx;
     for (i = 0; i < FC_FX_MAX; i++) {
         if (!fx[i].life) { best = i; break; }
         if (fx[i].life < fx[best].life) best = i;
@@ -232,7 +259,11 @@ void fc_burst(int kind, int x, int y, int n, int speed16, uint8_t color)
 
 void fc_popup(int x, int y, const char *text, uint8_t color)
 {
+    FcFxPool *p = pool();
+    FcPop *pops;
     int i, best = 0;
+    if (!p) return;
+    pops = p->pops;
     for (i = 0; i < FC_POP_MAX; i++) {
         if (!pops[i].t) { best = i; break; }
         if (pops[i].t > pops[best].t) best = i;
@@ -247,9 +278,11 @@ void fc_popup(int x, int y, const char *text, uint8_t color)
 
 void fc_fx_update(void)
 {
+    FcFxPool *p = pool();
     int i;
+    if (!p) return;
     for (i = 0; i < FC_FX_MAX; i++) {
-        FcFx *f = &fx[i];
+        FcFx *f = &p->fx[i];
         if (!f->life) continue;
         f->life--;
         f->x = (int16_t)(f->x + f->vx);
@@ -270,22 +303,25 @@ void fc_fx_update(void)
         }
     }
     for (i = 0; i < FC_POP_MAX; i++)
-        if (pops[i].t && ++pops[i].t > 40) pops[i].t = 0;
+        if (p->pops[i].t && ++p->pops[i].t > 40) p->pops[i].t = 0;
 }
 
 int fc_fx_live(void)
 {
+    FcFxPool *p = pool();
     int i, n = 0;
-    for (i = 0; i < FC_FX_MAX; i++) n += fx[i].life != 0;
+    if (!p) return 0;
+    for (i = 0; i < FC_FX_MAX; i++) n += p->fx[i].life != 0;
     return n;
 }
 
 void fc_fx_draw(int ox, int oy)
 {
+    FcFxPool *p = pool();
     int i;
-    if (plat_draw_skipped()) return;
+    if (plat_draw_skipped() || !p) return;
     for (i = 0; i < FC_FX_MAX; i++) {
-        const FcFx *f = &fx[i];
+        const FcFx *f = &p->fx[i];
         int x, y, age;
         if (!f->life) continue;
         x = f->x / 16 + ox;
@@ -333,13 +369,13 @@ void fc_fx_draw(int ox, int oy)
         }
     }
     for (i = 0; i < FC_POP_MAX; i++) {
-        const FcPop *p = &pops[i];
+        const FcPop *q = &p->pops[i];
         int rise, s;
-        if (!p->t) continue;
-        rise = p->t < 10 ? p->t * 2 : 20 + (p->t - 10) / 3;
-        s = ui_pop_scale(p->t);
-        if (s < 200 && p->t < 4) continue;
-        fc_textc(p->x + ox, p->y - rise + oy, p->text, p->color);
+        if (!q->t) continue;
+        rise = q->t < 10 ? q->t * 2 : 20 + (q->t - 10) / 3;
+        s = ui_pop_scale(q->t);
+        if (s < 200 && q->t < 4) continue;
+        fc_textc(q->x + ox, q->y - rise + oy, q->text, q->color);
     }
 }
 

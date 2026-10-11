@@ -468,6 +468,8 @@ static void hud(void)
     int sw = plat_screen_w(), sh = plat_screen_h();
     char buf[40], tb[12];
     int y = sh / 2 - 50;
+    /* the intro banners (the mode's and a mini-boss's) own the screen */
+    if (am.state == AMS_INTRO || lv_run.intro_t > 10) return;
     if (am.mode == AM_BOSS_RUSH) {
         doomo_snprintf(buf, sizeof(buf), "ROUND %d/%d", DOOMO_MIN(am.round + 1, RUSH_ROUNDS), RUSH_ROUNDS);
         ui_text_outline(sw - ui_text_width(buf) - 4, y, buf, PAL_RAMP(RAMP_BONE, 7), PAL_RAMP(RAMP_BLOOD, 0));
@@ -483,15 +485,17 @@ static void hud(void)
                                        (am.t & 4) ? PAL_UI_GOLD : PAL_WHITE, PAL_BLACK);
     } else {
         int left = am.state == AMS_FIGHT ? (int)(MAYHEM_TICKS - (combat_st.ticks - am.start_tick)) / DOOMO_TICK_HZ : 180;
-        int w = lvd_big() ? 120 : 90, x = sw / 2 - w / 2, ty = lv_run.bar >= 0 ? 24 : 4, by = ty + 19;
+        /* below the boss bar / the map title while either shows */
+        int w = lvd_big() ? 120 : 90, x = sw / 2 - w / 2, ty = lv_run.bar >= 0 ? lvd_bar_y() + 11 : combat_st.ticks < 150 ? 24 : 4;
+        int by = ty + 19;
         lvd_time(tb, sizeof(tb), DOOMO_MAX(left, 0));
         ui_text_big(sw / 2 - ui_text_big_width(tb, 2) / 2, ty, tb, 2, left <= 10 && (am.t & 4) ? PAL_UI_RED : PAL_WHITE, PAL_BLACK);
         ui_round_rect(x - 1, by - 1, w + 2, 8, 3, PAL_BLACK);
         ui_bar(x, by, w, 6, am.berserk_t ? am.berserk_t : am.meter, am.berserk_t ? BERSERK_TICKS : METER_FULL,
                am.berserk_t ? ((am.t & 2) ? PAL_UI_RED : PAL_UI_GOLD) : PAL_UI_PURPLE);
         ui_text_outline(x - ui_text_width(STR_ICON_SKULL) - 3, by - 1, STR_ICON_SKULL, PAL_UI_RED, PAL_BLACK);
-        doomo_snprintf(buf, sizeof(buf), "%d", (int)combat_st.score);
-        ui_text_outline(sw - ui_text_width(buf) - 4, y, buf, PAL_UI_GOLD, PAL_BLACK);
+        doomo_snprintf(buf, sizeof(buf), STR_ICON_SKULL "%d", combat_st.kills);
+        ui_text_outline(sw - ui_text_width(buf) - 4, y, buf, PAL_RAMP(RAMP_BONE, 7), PAL_RAMP(RAMP_BLOOD, 0));
         if (am.berserk_t) ui_text_outline(sw / 2 - ui_text_width("BERSERK x2") / 2, by + 10, "BERSERK x2",
                                           (am.t & 4) ? PAL_UI_RED : PAL_UI_GOLD, PAL_BLACK);
     }
@@ -500,8 +504,8 @@ static void hud(void)
 static void shop_draw(void)
 {
     int sw = plat_screen_w(), sh = plat_screen_h(), big = lvd_big();
-    int w = big ? 240 : 212, row = big ? 17 : 15, h = SHOP_COUNT * row + (big ? 52 : 44);
-    int x = sw / 2 - w / 2, y = sh / 2 - h / 2 + 4, i;
+    int w = big ? 240 : 212, row = big ? 17 : 14, h = SHOP_COUNT * row + (big ? 52 : 42);
+    int x = sw / 2 - w / 2, y = sh / 2 - h / 2 + (big ? 4 : -1), i;
     char buf[40];
     plat_shade_rect(0, 0, sw, sh, 6);
     if (!ui_window_pop(x, y, w, h, WIN_CREAM, am.t)) return;
@@ -518,7 +522,7 @@ static void shop_draw(void)
             if (!owned && coins() < shop_cost[i]) plat_shade_rect(x + 8, ry, w - 16, row - 3, 3);
         }
     }
-    ui_text_wrap(x + 8, y + h - (big ? 22 : 20), w - 16, shop_descs[am.sel], ui_style(WIN_CREAM)->text_dim, 1);
+    ui_text_wrap(x + 8, y + h - 21, w - 16, shop_descs[am.sel], ui_style(WIN_CREAM)->text_dim, 1);
     ui_hint(STR_ICON_A " Buy  " STR_ICON_B " Next wave", WIN_CREAM);
 }
 
@@ -544,7 +548,8 @@ static void results_draw(void)
     ui_text_big(sw / 2 - ui_text_big_width(title, 2) / 2, y - 22 + ui_wave(am.t, 30, 2), title, 2,
                 won ? PAL_UI_GOLD : PAL_UI_RED, won ? PAL_UI_PINK_D : PAL_RAMP(RAMP_BLOOD, 0));
     if (!ui_window_pop(x, y, w, h, style, am.t)) return;
-    ui_text_center(sw / 2, y + 5, mode_titles[am.mode], ui_style(style)->title);
+    ui_text_center(sw / 2, y + 5, mode_titles[am.mode], ui_style(style)->text);
+    plat_rect(x + 12, y + 14, w - 24, 1, ui_style(style)->fill_lo);
     lvd_time(tb, sizeof(tb), secs);
     if (am.mode == AM_BOSS_RUSH) {
         doomo_snprintf(buf, sizeof(buf), "%d / %d", am.round, RUSH_ROUNDS);
@@ -588,8 +593,10 @@ static void am_draw(void)
     if (am.fury_t && v.tint_level < 2) { v.tint = TINT_GOLD; v.tint_level = 2; }
     plat_view3d(&v);
     if (plat_draw_skipped()) return;
-    lv_runtime_hud();
-    hud();
+    if (am.state == AMS_INTRO || am.state == AMS_FIGHT || am.state == AMS_BREAK) {
+        lv_runtime_hud();
+        hud();
+    }
     switch (am.state) {
     case AMS_INTRO:
         lvd_banner(sh / 3, am.mode == AM_MAYHEM ? "180 SECONDS OF" : "THE ARENA PRESENTS", mode_titles[am.mode], am.t, 1);

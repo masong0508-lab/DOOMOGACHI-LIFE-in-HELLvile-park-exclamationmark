@@ -193,8 +193,13 @@ void lvd_time(char *buf, int cap, int seconds);
 void lvd_banner(int cy, const char *kicker, const char *title, int t, int hell);
 /* A demon's portrait (its walk frame) at x,y (feet at y), bobbing. */
 void lvd_demon(int x, int y, int spr, int t, int scale, int flip);
+/* A wobbly toy padlock (locked levels), k = pixel scale 1..3. */
+void lvd_padlock(int cx, int cy, int k, int t);
 /* Mini-boss intro card over the 3D view. */
 void lvd_boss_intro(int boss, int t);
+/* Top of our boss bar (its name sits 10 px above); HUD bits that go
+ * under it start at lvd_bar_y() + 11. */
+int  lvd_bar_y(void);
 /* Our boss bar (variant name + HP). */
 void lvd_boss_bar(int boss, int hp, int hp_max, int t);
 
