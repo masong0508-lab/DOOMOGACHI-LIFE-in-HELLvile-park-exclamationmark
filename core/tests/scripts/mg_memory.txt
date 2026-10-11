@@ -1,0 +1,20 @@
+# Fun Fair: MEMORY MATCH (minigames). On the premade island the cards are
+# citizens' portraits; an empty island deals treats and imps.
+push MG_MEMORY 65
+expect-scene MG_MEMORY
+wait 24
+shot title
+press B
+wait 2
+push MG_MEMORY 113
+wait 100
+shot cards
+wait 30
+shot flipped
+wait 300
+shot pairs
+wait 600
+shot results
+push MG_MEMORY 51
+wait 200
+shot hellfire

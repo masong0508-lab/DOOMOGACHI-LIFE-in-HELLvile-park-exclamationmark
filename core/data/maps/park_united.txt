@@ -1,0 +1,374 @@
+# park_united.txt - Hellvile Park - United (owner: story)
+# The ending: the Wall is down and both sides of Hellvile Park comingle
+# in one giant festival. Hillvile meadow west, Hellvile's goth garden
+# east, the river and the Wall's rubble between them, the Unity Stage
+# north (built from Wall bricks), food stalls from both sides, and the
+# parade road along the south (the credits march along row 48).
+# Authored for the story overworld: see story.h for the door tags
+# (64 + PLACE_*) and walk-on event tags (128..). THING_NPC marks a
+# wander spot for ambient citizens (arg = zone), SPAWNER a demon nest.
+
+map park_united
+title "Hellvile Park - United"
+kind overworld
+sky SUNSET
+music FESTIVAL
+ambient 13
+
+cell . floor=GRASS ceil=sky
+cell , floor=FLOWERS ceil=sky
+cell i floor=INFECTED_GRASS ceil=sky
+cell ; floor=SLIME ceil=sky
+cell : floor=PATH ceil=sky
+cell k floor=HELL_ROCK ceil=sky
+cell = floor=COBBLE ceil=sky
+cell c floor=CARPET ceil=sky
+cell P floor=PENTAGRAM_FLOOR ceil=sky light=13
+cell ~ floor=WATER ceil=sky flags=water fh=-2
+cell b floor=WOOD_FLOOR ceil=sky
+cell r floor=BONE_WALL ceil=sky   # rubble of the old Wall (walkable)
+cell T wall=TREE floor=TREE ch=12
+cell H wall=HEDGE floor=HEDGE ch=3
+cell Z wall=RUST_METAL floor=CHAINS ch=6   # a stub of the old Wall
+cell F wall=PICKET_FENCE floor=WOOD_FLOOR ch=2
+cell X wall=CANDY_STRIPE floor=CANDY_STRIPE ch=10   # the Unity Stage
+cell C wall=CAFE_FRONT floor=ROOF_TILES ch=10
+cell S wall=SHOP_FRONT floor=SKULL_MOSAIC ch=10
+cell O wall=CLOUD_PUFF floor=CLOUD_PUFF ch=8
+cell U wall=VAPE_CLOUD_WALL floor=VAPE_CLOUD_WALL ch=8
+cell 0 wall=CAFE_FRONT floor=ROOF_TILES ch=10 tag=89   # door: STALLS
+cell 1 wall=SHOP_FRONT floor=SKULL_MOSAIC ch=10 tag=89   # door: STALLS
+cell 2 wall=CANDY_STRIPE floor=CANDY_STRIPE ch=10 tag=88   # door: STAGE
+cell 3 wall=DOOR_CUTE floor=CHAINS ch=6 tag=78   # door: WALL_GATE (to the towns)
+cell s floor=CARPET ceil=sky flags=trigger tag=132 light=14   # in front of the stage
+cell ! floor=GRASS ceil=sky flags=trigger tag=135   # secret sparkle 0
+cell $ floor=GRASS ceil=sky flags=trigger tag=136   # secret sparkle 1
+cell % floor=GRASS ceil=sky flags=trigger tag=137   # secret sparkle 2
+cell & floor=GRASS ceil=sky flags=trigger tag=138   # secret sparkle 3
+cell * floor=GRASS ceil=sky flags=trigger tag=139   # secret sparkle 4
+
+grid
+TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT
+TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT
+TT!.............................iiiiiiiiiiiiiiiiiiiiiiiiiiiii$TT
+TT..HHHHHHH...........UUOOOOOOOOOOOOOOOOUUiiiiiiiiiiiFFFFFFFiiTT
+TT..H,,,,,H...........UUOOOOOOOOOOOOOOOOUUiiiiiiiiiiiF;;;;;FiiTT
+TT..H,,,,,H...........XXXXXXXXXXXXXXXXXXXXiiiiiiiiiiiF;;;;;FiiTT
+TT..HHHHHHH...........XXXXXXXXXXXXXXXXXXXXiiiiiiiiiiiFFFFFFFiiTT
+TT....................XXXXXXXX2222XXXXXXXXiiiiiiiiiiiiiiiiiiiiTT
+TT............::......cccccccccccccccccccciiiiiikkiiiiiiiiiiiiTT
+TT............::......ccsssssssssssssssscciiiiiikkiiiiiiiiiiiiTT
+TT............::......cccccccccccccccccccciiiiiikkiiiiiiiiiiiiTT
+TT............::................iriiiiiiiiiiiiiikkiiiiiiiiiiiiTT
+TT............::..............~~iriiiiiiiiiiiiiikkiiiiiiiiiiiiTT
+TT::::::::::::::::::::::::::::~~irkkkkkkkkkkkkkkkkkkkkkkkkkkkkTT
+TT::::::::::::::::::::::::::::~~iZkkkkkkkkkkkkkkkkkkkkkkkkkkkkTT
+TT............::..............~~iZiiiiiiiiiiiiiikkiiiiiiiiiiiiTT
+TT.CCC.CCC....::..CCC.CCC.....~~iriiSSSiSSSiiiiikkiiSSSiSSSiiiTT
+TT.C0C.C0C....::..C0C.C0C.....bbiriiS1SiS1SiiiiikkiiS1SiS1SiiiTT
+TT............::..............bbiriiiiiiiiiiiiiikkiiiiiiiiiiiiTT
+TT............::..............~~iriiiiiiiiiiiiiikkiiiiiiiiiiiiTT
+TT............::..............~~iriiiiiiiiiiiiiikkiiiiiiiiiiiiTT
+TT............::..............~~iZiiiiiiiiiiiiiikkiiiiiiiiiiiiTT
+TT............::..............~~iZiiiiiiiiiiiiiikkiiiiiiiiiiiiTT
+TT............::..............~~iriiiiiiiiiiiiiikkiiiiiiiiiiiiTT
+TT::::::::::::::::::::::::::::~~i3kkkkkkkkkkkkkkkkkkkkkkkkkkkkTT
+TT............::..............~~iriiiiiiiiiiiiiikkiiiiiiiiiiiiTT
+TT............::..............~~iriiiiiiiiiiiiiikkiiiiiiiiiiiiTT
+TT.,,,,,,,,,,.::..............~~iriiiiiiiiiiiiiikki;;;;;;;;iiiTT
+TT.,,,,,,,,,,.::....ccc.......~~iZiiiiccciiiiiiikki;;;;;;;;iiiTT
+TT.,,,,,,,,,,.::....ccc.......~~iZiiiiccciiiiiiikki;;;;;;;;iiiTT
+TT.,,,,,,,,,,.::..............bbiriiiiiiiiiiiiiikki;;;;;;;;iiiTT
+TT.,,,,,,,,,,.::..............bbiriiiiiiiiiiiiiikki;;;;;;;;iiiTT
+TT.,,,,,,,,,,.::..............~~iriiiiiiiiiiiiiikki;;;;;;;;iiiTT
+TT.,,,,,,,,,,.::..............~~iriiiiiiiiiiiiiikki;;;;;;;;iiiTT
+TT............::.,,,,,,,,,,,..~~iriiiPPPPPPPPPiikkiiiiiiiiiiiiTT
+TT............::.,,,,,,,,,,,..~~iZiiiPPPPPPPPPiikkiiiiiiiiiiiiTT
+TT............::.,,,,,,,,,,,..~~iZiiiPPPPPPPPPiikkiiiiiiiiiiiiTT
+TT............::.,,,,,,,,,,,..~~iriiiPPPPPPPPPiikkiiiiiiiiiiiiTT
+TT............::.,,,,,,,,,,,..~~iriiiPPPPPPPPPiikkiiiiiiiiiiiiTT
+TT............::.,,,,,,,,,,,..~~iriiiPPPPPPPPPiikkiiiiiiiiiiiiTT
+TT..ccc.......::.,,,,,,,,,,,..~~iriiiPPPPPPPPPiikkiiiiiiiiiiiiTT
+TT..ccc.......::..............~~iriiiPPPPPPPPPiikkiiiiiiiiiiiiTT
+TT.......ccc..::..............~~iZiiiiiiiiiiiiiikkiiiiiiiiiiiiTT
+TT.......ccc..::........ccc...~~iZiiiiiiiiiiiiiikkiiiiiccciiiiTT
+TT............::........ccc...~~iriiiiiiiiccciiikkiiiiiccciiiiTT
+TT............::..............~~iriiiiiiiiccciiikkiiiiiiiiiiiiTT
+TT............::..............~~iriiiiiiiiiiiiiikkiiiiiiiiiiiiTT
+TT============================bbbb============================TT
+TT============================bbbb============================TT
+TT............................~~iZiiiiiiiiiiiiiiiiiiiiiiiiiiiiTT
+TT............................~~iZiiiiiiiiiiiiiiiiiiiiiiiiiiiiTT
+TT............................~~iriiiiiiiiiiiiiiiiiiiiiiiiiiiiTT
+TT%.........................&.~~iriiiiiiiiiiiiiiiiiiiiiiiiiii*TT
+TT............................~~iriiiiiiiiiiiiiiiiiiiiiiiiiiiiTT
+TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT
+TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT
+end
+
+floorh
+
+
+
+
+
+
+
+
+......................11111111111111111111
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+end
+
+light
+
+
+
+
+
+
+
+
+
+
+.......................eee............eee
+...ddd.ddd.ddd.ddd.ddd.efe.ddd.ddd.dddefed.ddd.ddd.ddd.ddd.ddd
+...ded.ded.ded.ded.ded.eee.ded.ded.dedeeed.ded.ded.ded.ded.ded
+...ddd.ddd.ddd.ddd.ddd.ddd.ddd.ddd.ddd.ddd.ddd.ddd.ddd.ddd.ddd
+
+
+
+
+
+............eee..................................eee
+............efe..................................efe
+............eee..................................eee
+
+
+............................eee...eee
+............................efe...efe
+............................eee...eee
+
+
+
+
+
+
+
+
+............eee..................................eee
+............efe..................................efe
+............eee..................................eee
+
+
+
+
+
+
+
+...ddd.ddd.ddd.ddd.ddd.ddd.ddd.ddd.ddd.ddd.ddd.ddd.ddd.ddd.ddd
+...ded.ded.ded.ded.ded.ded.ded.ded.ded.ded.ded.ded.ded.ded.ded
+...ddd.ddd.ddd.ddd.ddd.ddd.ddd.ddd.ddd.ddd.ddd.ddd.ddd.ddd.ddd
+
+
+
+
+
+
+
+
+end
+
+thing 16 30 PROP_FOUNTAIN
+thing 4 12 PROP_LAMP
+thing 4 46 PROP_LAMP
+thing 8 12 PROP_LAMP
+thing 8 46 PROP_LAMP
+thing 12 12 PROP_LAMP
+thing 12 46 PROP_LAMP
+thing 16 12 PROP_LAMP
+thing 16 46 PROP_LAMP
+thing 20 12 PROP_LAMP
+thing 20 46 PROP_LAMP
+thing 24 12 PROP_LAMP
+thing 24 46 PROP_LAMP
+thing 28 12 PROP_LAMP
+thing 28 46 PROP_LAMP
+thing 32 12 PROP_LAMP
+thing 32 46 PROP_LAMP
+thing 36 12 PROP_LAMP
+thing 36 46 PROP_LAMP
+thing 40 12 PROP_LAMP
+thing 40 46 PROP_LAMP
+thing 44 12 PROP_LAMP
+thing 44 46 PROP_LAMP
+thing 48 12 PROP_LAMP
+thing 48 46 PROP_LAMP
+thing 52 12 PROP_LAMP
+thing 52 46 PROP_LAMP
+thing 56 12 PROP_LAMP
+thing 56 46 PROP_LAMP
+thing 60 12 PROP_LAMP
+thing 60 46 PROP_LAMP
+thing 13 20 PROP_LAMP
+thing 13 36 PROP_LAMP
+thing 50 20 PROP_TORCH
+thing 50 36 PROP_TORCH
+thing 24 11 PROP_LAMP
+thing 39 11 PROP_TORCH
+thing 29 25 PROP_LAMP
+thing 35 25 PROP_TORCH
+thing 5 21 PROP_BENCH
+thing 10 21 PROP_BENCH
+thing 20 21 PROP_BENCH
+thing 25 21 PROP_BENCH
+thing 38 21 PROP_BENCH
+thing 43 21 PROP_BENCH
+thing 54 21 PROP_BENCH
+thing 58 21 PROP_BENCH
+thing 8 44 PROP_BENCH
+thing 22 45 PROP_BENCH
+thing 40 45 PROP_BENCH
+thing 56 45 PROP_BENCH
+thing 4 29 PROP_FLOWERS
+thing 8 31 PROP_FLOWERS
+thing 11 28 PROP_FLOWERS
+thing 19 36 PROP_FLOWERS
+thing 24 38 PROP_FLOWERS
+thing 52 29 PROP_FLOWERS
+thing 56 31 PROP_FLOWERS
+thing 39 36 PROP_SKULLS
+thing 43 39 PROP_SKULLS
+thing 54 39 PROP_SKULLS
+thing 16 11 PROP_SIGN
+thing 47 11 PROP_SIGN
+thing 18 2 PROP_TREE
+thing 25 2 PROP_TREE
+thing 37 2 PROP_TREE
+thing 56 2 PROP_TREE
+thing 15 4 PROP_TREE
+thing 21 5 PROP_TREE
+thing 43 5 PROP_TREE
+thing 14 6 PROP_TREE
+thing 59 11 PROP_TREE
+thing 4 15 PROP_TREE
+thing 7 15 PROP_TREE
+thing 16 15 PROP_TREE
+thing 25 15 PROP_TREE
+thing 36 15 PROP_TREE
+thing 56 15 PROP_TREE
+thing 12 16 PROP_TREE
+thing 29 16 PROP_TREE
+thing 46 16 PROP_TREE
+thing 10 17 PROP_TREE
+thing 60 17 PROP_TREE
+thing 35 18 PROP_TREE
+thing 47 18 PROP_TREE
+thing 3 19 PROP_TREE
+thing 22 19 PROP_TREE
+thing 6 20 PROP_TREE
+thing 47 20 PROP_TREE
+thing 52 20 PROP_TREE
+thing 2 21 PROP_TREE
+thing 16 21 PROP_TREE
+thing 22 22 PROP_TREE
+thing 46 22 PROP_TREE
+thing 50 22 PROP_TREE
+thing 8 23 PROP_TREE
+thing 19 23 PROP_TREE
+thing 25 23 PROP_TREE
+thing 35 23 PROP_TREE
+thing 44 25 PROP_TREE
+thing 9 26 PROP_TREE
+thing 36 26 PROP_TREE
+thing 41 26 PROP_TREE
+thing 5 15 NPC arg=0
+thing 11 15 NPC arg=0
+thing 20 15 NPC arg=0
+thing 25 15 NPC arg=0
+thing 6 26 NPC arg=0
+thing 10 35 NPC arg=0
+thing 20 31 NPC arg=0
+thing 24 26 NPC arg=0
+thing 6 42 NPC arg=0
+thing 12 44 NPC arg=0
+thing 20 42 NPC arg=0
+thing 26 45 NPC arg=0
+thing 18 22 NPC arg=0
+thing 8 22 NPC arg=0
+thing 4 37 NPC arg=0
+thing 27 34 NPC arg=0
+thing 37 15 NPC arg=1
+thing 44 15 NPC arg=1
+thing 53 15 NPC arg=1
+thing 59 15 NPC arg=1
+thing 38 26 NPC arg=1
+thing 45 30 NPC arg=1
+thing 55 26 NPC arg=1
+thing 59 34 NPC arg=1
+thing 41 42 NPC arg=1
+thing 52 42 NPC arg=1
+thing 58 43 NPC arg=1
+thing 44 22 NPC arg=1
+thing 56 22 NPC arg=1
+thing 36 32 NPC arg=1
+thing 46 37 NPC arg=1
+thing 60 40 NPC arg=1
+thing 25 10 NPC arg=2
+thing 28 10 NPC arg=2
+thing 35 10 NPC arg=2
+thing 38 10 NPC arg=2
+thing 31 11 NPC arg=2
+thing 33 11 NPC arg=2
+thing 23 9 NPC arg=2
+thing 40 9 NPC arg=2
+thing 28 20 NPC arg=3
+thing 35 20 NPC arg=3
+thing 28 38 NPC arg=3
+thing 35 38 NPC arg=3
+thing 16 26 PLAYER_START angle=270

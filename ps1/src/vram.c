@@ -38,7 +38,7 @@ static int wslot_upload(int s, const uint8_t *pix)
     int page = s >> 4, cell = s & 15;
     int x = VR_WTEX_X + page * 128 + (cell & 3) * 32;
     int y = (cell >> 2) * 64;
-    if (!gfx_upload_strided(x, y, 32, 64, pix, 64))
+    if (!gfx_upload_strided(x, y, 32, 64, packart_resolve(pix), 64))
         return 0;
     s_upbytes += 4096;
     return 1;
@@ -260,9 +260,10 @@ int vram_image(const DoomoImage *img, int tx, int ty, TexRef *out)
     {
         /* stage: (tw+2) x (th+1), transparent border right/bottom/left */
         int sw = (tw + 2 + 1) & ~1;
+        const uint8_t *pix = packart_resolve(img->pix);   /* a texture image? */
         memset(s_stage, 0, (size_t)sw * (th + 1));
         for (row = 0; row < th; row++) {
-            const uint8_t *src = img->pix + (size_t)(y0 + row) * img->w;
+            const uint8_t *src = pix + (size_t)(y0 + row) * img->w;
             uint8_t *d = s_stage + row * sw + 1;
             if (!flip) {
                 memcpy(d, src + x0, (size_t)tw);
@@ -330,10 +331,22 @@ int vram_sky(int sky_id, uint16_t time, TexRef *left, TexRef *right)
     if (!p)
         return 0;
     if (p != s_sky_ptr) {
-        if (gfx_free_bytes() < SKY_W * SKY_H + 4096)
+        const uint8_t *src = p;
+        if (packart_is_sky(p)) {
+            /* packed: decode into the frame's display list memory first
+             * (the upload packets then copy it, so it needs twice the room) */
+            uint8_t *tmp;
+            if (gfx_free_bytes() < 2 * SKY_W * SKY_H + 4096)
+                return 0;
+            tmp = (uint8_t *)gfx_alloc(SKY_W * SKY_H);
+            if (!tmp || !packart_sky_decode(p, tmp))
+                return 0;
+            src = tmp;
+        } else if (gfx_free_bytes() < SKY_W * SKY_H + 4096) {
             return 0;
-        if (!gfx_upload_strided(VR_SKY_X, VR_SKY_Y, 64, SKY_H, p, SKY_W) ||
-            !gfx_upload_strided(VR_SKY_X, VR_SKY_Y + SKY_H, 64, SKY_H, p + 128, SKY_W)) {
+        }
+        if (!gfx_upload_strided(VR_SKY_X, VR_SKY_Y, 64, SKY_H, src, SKY_W) ||
+            !gfx_upload_strided(VR_SKY_X, VR_SKY_Y + SKY_H, 64, SKY_H, src + 128, SKY_W)) {
             s_sky_ptr = NULL;
             return 0;
         }

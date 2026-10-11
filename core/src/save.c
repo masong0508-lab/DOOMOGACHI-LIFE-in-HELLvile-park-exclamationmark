@@ -31,8 +31,14 @@
  * that validates the whole stream, and only then the real decode into
  * doomo_town (which is therefore never left half-loaded).
  *
- * Memory: when plat_save_scratch() offers room for the whole slot, the
- * image is built / read in that buffer (one encode pass). Otherwise (the
+ * Extension chunks (save_ext.h) follow the town data inside the same
+ * compressed body: modules only register a DoomoSaveExt (see write_exts).
+ *
+ * Memory: the codec has no static buffers. Its LZ window, match heads and
+ * the staging area for extension chunks are the last DOOMO_SAVE_WORK_SIZE
+ * bytes of plat_save_scratch() (save.h); the front part holds the image
+ * or the stream window. When the front offers room for the whole slot, the
+ * image is built / read there (one encode pass). Otherwise (the
  * GBA: EWRAM is too precious for an 88 KB buffer) the save is STREAMED
  * through the platform (platform.h, plat_save_stream_* / plat_save_read_at)
  * in chunks of the scratch buffer:
@@ -212,12 +218,28 @@ static struct {
     uint32_t ld_n, ld_pos, ld_out, ld_lit, ld_match, ld_dist;
     uint32_t ld_wbase, ld_wlen, ld_wcap;
     int ld_err, ld_slot;
+    /* the work area (save.h: the tail of plat_save_scratch(), bound by
+     * work_bind() before every encode / decode) */
+    uint8_t *ring;          /* LZ_RING bytes: the LZ window              */
+    uint16_t *head;         /* LZ_HASH match heads                       */
+    uint8_t *lit;           /* 128: the pending literal run              */
+    uint8_t *stage;         /* DOOMO_SAVE_EXT_MAX: one extension chunk   */
+    int ext_err;
 } Z = { 0, 0, 0, NULL, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, NULL, NULL,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1 };
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, NULL, NULL, NULL, NULL, 0 };
 
-static uint8_t lz_ring[LZ_RING];
-static uint16_t lz_head[LZ_HASH];
-static uint8_t lz_lit[128];
+#define lz_ring Z.ring
+#define lz_head Z.head
+#define lz_lit  Z.lit
+DOOMO_STATIC_ASSERT(LZ_RING + LZ_HASH * 2u + 128u <= DOOMO_SAVE_CODEC_SIZE, sv_codec_fits);
+
+static void work_bind(uint8_t *w)
+{
+    Z.ring = w;
+    Z.head = (uint16_t *)(void *)(w + LZ_RING);
+    Z.lit = w + LZ_RING + LZ_HASH * 2u;
+    Z.stage = w + DOOMO_SAVE_CODEC_SIZE;
+}
 
 /* output sink. SK_MEM: the image in memory (counts past its capacity so
  * callers learn the size); SK_COUNT: nothing kept, size + running CRC;
@@ -264,7 +286,7 @@ static void sk_write(const uint8_t *p, uint32_t n)
 
 static void lz_reset(void)
 {
-    memset(lz_head, 0, sizeof(lz_head));
+    memset(lz_head, 0, LZ_HASH * sizeof(uint16_t));
     Z.lz_nlit = Z.lz_in = Z.lz_proc = 0;
 }
 
@@ -460,6 +482,13 @@ static uint32_t r8(void) { return rbits(8); }
 static uint32_t r16(void) { return rbits(16); }
 static uint32_t r32(void) { uint32_t lo = rbits(16); return lo | (rbits(16) << 16); }
 static void rraw(uint8_t *p, int n) { int i; for (i = 0; i < n; i++) p[i] = (uint8_t)r8(); }
+/* rraw into p, or (p == NULL: dry run) just consume the bytes */
+static void rraw_or_skip(uint8_t *p, int n)
+{
+    int i;
+    if (p) rraw(p, n);
+    else for (i = 0; i < n; i++) r8();
+}
 static uint32_t rvar(void)
 {
     uint32_t v = 0;
@@ -818,21 +847,15 @@ static int read_town(int apply)
         if (id >= DOOMO_MAX_ITEMS) return 0;
         if (apply) t->items[id] = (uint8_t)c;
     }
-    {
-        static DoomoWeapon wtmp[DOOMO_MAX_WEAPONS];
-        rraw(apply ? (uint8_t *)t->weapons : (uint8_t *)wtmp, (int)sizeof(t->weapons));
-    }
+    rraw_or_skip(apply ? (uint8_t *)t->weapons : NULL, (int)sizeof(t->weapons));
     {
         DoomoPet pet;
-        static DoomoStoryState st;
+        DoomoStoryState st;
         read_pet(apply ? &t->pet : &pet);
         read_story(apply ? &t->story : &st);
     }
-    {
-        static uint8_t junk[DOOMO_UNLOCK_BITS / 8];
-        rraw(apply ? t->opt : junk, DOOMO_OPT_BYTES);
-        rraw(apply ? t->unlocks : junk, DOOMO_UNLOCK_BITS / 8);
-    }
+    rraw_or_skip(apply ? t->opt : NULL, DOOMO_OPT_BYTES);
+    rraw_or_skip(apply ? t->unlocks : NULL, DOOMO_UNLOCK_BITS / 8);
     for (i = 0; i < 32; i++) {
         uint32_t v = r32();
         if (apply) t->progress[i] = v;
@@ -909,6 +932,108 @@ static int read_town(int apply)
 }
 
 /* ====================================================================== */
+/* extension chunks (save_ext.h)                                            */
+/* After the town data (byte aligned): every registered chunk as
+ * [tag u32][version u16][len u32][len bytes]; the header's raw stream size
+ * says where they end. write() / read() see the chunk in the staging area
+ * of the work area (save.h), so no module needs a buffer of its own, and
+ * the bytes are produced twice when a save streams (they must not change
+ * between the two passes - the stream is checked against pass 1). */
+static void write_exts(void)
+{
+    int i, n = save_ext_count();
+    for (i = 0; i < n; i++) {
+        const DoomoSaveExt *e = save_ext_at(i);
+        uint32_t len;
+        if (!e || !e->write) continue;
+        len = e->size ? e->size() : DOOMO_SAVE_EXT_MAX;
+        if (len > DOOMO_SAVE_EXT_MAX) { Z.ext_err = 1; continue; }
+        len = e->write(Z.stage, len);
+        if (len > DOOMO_SAVE_EXT_MAX) { Z.ext_err = 1; continue; }
+        w32(e->tag);
+        w16(e->version);
+        w32(len);
+        wraw(Z.stage, (int)len);
+    }
+}
+
+static const DoomoSaveExt *ext_by_tag(uint32_t tag, int *index)
+{
+    int i, n = save_ext_count();
+    for (i = 0; i < n; i++) {
+        const DoomoSaveExt *e = save_ext_at(i);
+        if (e && e->tag == tag) { *index = i; return e; }
+    }
+    return NULL;
+}
+
+/* the chunks after the town data, up to raw stream byte `raw`. Unknown
+ * tags are skipped; known ones are handed to read() on the applying pass
+ * (a chunk read() rejects is reset() instead - it never fails the load);
+ * registered chunks the save does not have are reset(). 0 = malformed. */
+static int read_exts(uint32_t raw, int apply)
+{
+    uint32_t seen = 0;
+    int i, n = save_ext_count();
+    while (!Z.ld_err && Z.ld_out < raw) {
+        uint32_t tag, ver, len;
+        int idx = 0;
+        const DoomoSaveExt *e;
+        if (raw - Z.ld_out < 10) return 0;
+        tag = r32();
+        ver = r16();
+        len = r32();
+        if (Z.ld_err || len > raw - Z.ld_out) return 0;
+        e = ext_by_tag(tag, &idx);
+        if (apply && e && e->read && len <= DOOMO_SAVE_EXT_MAX) {
+            rraw(Z.stage, (int)len);
+            if (Z.ld_err) return 0;
+            if (!e->read(Z.stage, len, (uint16_t)ver) && e->reset) e->reset();
+            if (idx < 32) seen |= 1u << idx;
+        } else {
+            rraw_or_skip(NULL, (int)len);
+        }
+    }
+    if (apply)
+        for (i = 0; i < n && i < 32; i++) {
+            const DoomoSaveExt *e = save_ext_at(i);
+            if (!(seen & (1u << i)) && e && e->reset) e->reset();
+        }
+    return !Z.ld_err && Z.ld_out == raw;
+}
+
+/* ====================================================================== */
+/* the work area                                                            */
+/* The scratch buffer split as save.h describes: binds the codec to its
+ * last DOOMO_SAVE_WORK_SIZE bytes and returns the front part (its size in
+ * *cap), or NULL when the platform offers too little. */
+static uint8_t *scratch_front(uint32_t *cap)
+{
+    uint32_t c = 0, front;
+    uint8_t *s = (uint8_t *)plat_save_scratch(&c);
+    *cap = 0;
+    if (!s || c < DOOMO_SAVE_STREAM_MIN) return NULL;
+    front = c - DOOMO_SAVE_WORK_SIZE;
+    front -= (uint32_t)((uintptr_t)(s + front) & 3u);   /* align the work area */
+    work_bind(s + front);
+    *cap = front;
+    return s;
+}
+
+/* bind the work area for a caller-supplied image buffer (save_serialize /
+ * save_deserialize); 0 if there is none or it overlaps the buffer */
+static int work_for(const uint8_t *buf, uint32_t len)
+{
+    uint32_t cap;
+    uintptr_t b0, b1, w0, w1;
+    if (!scratch_front(&cap)) return 0;
+    if (!buf) return 1;
+    b0 = (uintptr_t)buf; b1 = b0 + len;
+    w0 = (uintptr_t)Z.ring; w1 = w0 + DOOMO_SAVE_WORK_SIZE;
+    return b1 <= w0 || b0 >= w1;
+}
+
+/* ====================================================================== */
 /* public API                                                               */
 static uint32_t last_size;
 static char last_error[64];
@@ -936,7 +1061,9 @@ static uint32_t encode(void)
     Z.sk_crc = 0xFFFFFFFFu;
     lz_reset();
     Z.bw_acc = 0; Z.bw_n = 0;
+    Z.ext_err = 0;
     write_town();
+    write_exts();
     lz_finish();
     return Z.sk_n;
 }
@@ -969,7 +1096,22 @@ static void too_big(uint32_t total, uint32_t cap)
                    (unsigned)((total + 1023) / 1024), (unsigned)(cap / 1024));
 }
 
-uint32_t save_serialize(uint8_t *buf, uint32_t cap)
+static int ext_too_big(void)
+{
+    if (!Z.ext_err) return 0;
+    doomo_snprintf(last_error, sizeof(last_error), "Save extension over %u KB",
+                   (unsigned)(DOOMO_SAVE_EXT_MAX / 1024));
+    return 1;
+}
+
+static int no_memory(void)
+{
+    doomo_snprintf(last_error, sizeof(last_error), "No memory to save");
+    return 0;
+}
+
+/* the whole image into buf (the work area is bound) */
+static uint32_t serialize_into(uint8_t *buf, uint32_t cap)
 {
     uint32_t total;
     last_error[0] = 0;
@@ -978,6 +1120,7 @@ uint32_t save_serialize(uint8_t *buf, uint32_t cap)
     Z.sk_cap = (buf && cap > HDR) ? cap - HDR : 0;
     total = HDR + encode();
     last_size = total;
+    if (ext_too_big()) return 0;
     if (!buf || total > cap) {
         too_big(total, cap);
         return 0;
@@ -985,6 +1128,12 @@ uint32_t save_serialize(uint8_t *buf, uint32_t cap)
     make_header(buf, total, Z.lz_in);
     put32(buf + 12, save_crc32(buf + 16, total - 16));
     return total;
+}
+
+uint32_t save_serialize(uint8_t *buf, uint32_t cap)
+{
+    if (!work_for(buf, cap)) return (uint32_t)no_memory();
+    return serialize_into(buf, cap);
 }
 
 int save_info_from(const uint8_t *buf, uint32_t size, DoomoSaveInfo *out)
@@ -1035,7 +1184,7 @@ static int decode(const uint8_t *h, const uint8_t *body, int apply)
     int ok;
     ld_reset(body, total - HDR);
     Z.br_acc = 0; Z.br_n = 0;
-    ok = read_town(apply);
+    ok = read_town(apply) && read_exts(raw, apply);
     return ok && !Z.ld_err && Z.ld_out == raw && Z.ld_pos == total - HDR;
 }
 
@@ -1059,12 +1208,19 @@ static int load_decoded(const uint8_t *h, const uint8_t *body)
     return 1;
 }
 
-int save_deserialize(const uint8_t *buf, uint32_t size)
+/* the whole image in memory (the work area is bound) */
+static int deserialize_from(const uint8_t *buf, uint32_t size)
 {
     last_error[0] = 0;
     if (!check_image(buf, size)) return 0;
     Z.ld_slot = -1;
     return load_decoded(buf, buf + HDR);
+}
+
+int save_deserialize(const uint8_t *buf, uint32_t size)
+{
+    if (!work_for(buf, size)) return no_memory();
+    return deserialize_from(buf, size);
 }
 
 /* Streamed save (platform.h): pass 1 sizes the save and checksums the
@@ -1084,21 +1240,23 @@ static int save_stream(int slot, uint8_t *chunk, uint32_t chunk_cap, uint32_t to
     Z.sk_cap = chunk_cap;
     encode();
     sk_flush();
-    ok = !Z.sk_err && Z.sk_n == n && (Z.sk_crc ^ 0xFFFFFFFFu) == body_crc && Z.lz_in == raw;
+    ok = !Z.sk_err && !Z.ext_err && Z.sk_n == n && (Z.sk_crc ^ 0xFFFFFFFFu) == body_crc &&
+         Z.lz_in == raw;
     return plat_save_stream_end(ok) && ok;
 }
 
 int save_game(int slot)
 {
     uint32_t cap = 0, max = save_slot_max(slot), n, total, body_crc;
-    uint8_t *buf = (uint8_t *)plat_save_scratch(&cap);
+    uint8_t *buf;
     last_error[0] = 0;
     if (!max) { doomo_snprintf(last_error, sizeof(last_error), "No such save slot"); return 0; }
-    if (!buf || cap < HDR) { doomo_snprintf(last_error, sizeof(last_error), "No memory to save"); return 0; }
+    buf = scratch_front(&cap);
+    if (!buf || cap < HDR) return no_memory();
     if (cap >= max) {
-        /* the whole image fits the scratch buffer: build it there */
-        n = save_serialize(buf, max);
-        if (!n) { too_big(last_size, max); return 0; }
+        /* the whole image fits in front of the work area: build it there */
+        n = serialize_into(buf, max);
+        if (!n) { if (!Z.ext_err) too_big(last_size, max); return 0; }
         if (!plat_save_write(slot, buf, n)) {
             doomo_snprintf(last_error, sizeof(last_error), "Couldn't write save slot %d", slot);
             return 0;
@@ -1110,10 +1268,11 @@ int save_game(int slot)
     total = HDR + encode();
     body_crc = Z.sk_crc ^ 0xFFFFFFFFu;
     last_size = total;
+    if (ext_too_big()) return 0;
     if (total > max) { too_big(total, max); return 0; }
     if (total <= cap) {
         /* it fits after all: in memory (works without streaming support) */
-        n = save_serialize(buf, cap);
+        n = serialize_into(buf, cap);
         if (!n || !plat_save_write(slot, buf, n)) {
             doomo_snprintf(last_error, sizeof(last_error), "Couldn't write save slot %d", slot);
             return 0;
@@ -1130,7 +1289,7 @@ int save_game(int slot)
 static int read_slot(int slot, uint8_t **out, uint32_t *size)
 {
     uint32_t cap = 0;
-    uint8_t *buf = (uint8_t *)plat_save_scratch(&cap);
+    uint8_t *buf = scratch_front(&cap);
     *size = 0;
     if (!buf || !save_slot_max(slot)) return 0;
     if (!plat_save_read(slot, buf, cap, size) || *size < HDR) return 0;
@@ -1181,7 +1340,7 @@ static uint8_t *stream_window(int slot, uint32_t *cap)
 {
     uint8_t probe[4];
     uint32_t size = 0;
-    uint8_t *buf = (uint8_t *)plat_save_scratch(cap);
+    uint8_t *buf = scratch_front(cap);
     if (!buf || *cap < 64 || *cap >= save_slot_max(slot)) return NULL;
     if (!plat_save_read_at(slot, 0, probe, sizeof(probe), &size)) return NULL;
     return buf;
@@ -1212,7 +1371,7 @@ int load_game(int slot)
         doomo_snprintf(last_error, sizeof(last_error), "No save in slot %d", slot);
         return 0;
     }
-    return save_deserialize(buf, size);
+    return deserialize_from(buf, size);
 }
 
 int save_peek(int slot, DoomoSaveInfo *out)

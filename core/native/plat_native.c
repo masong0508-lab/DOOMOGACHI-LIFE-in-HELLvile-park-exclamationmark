@@ -209,16 +209,19 @@ int plat_save_read(int slot, void *data, uint32_t cap, uint32_t *size)
     return n > 0;
 }
 
-/* Scratch buffer (platform.h). nat_save_stream > 0 shrinks it to that
- * many bytes, so save_game()/load_game() take the streaming path below,
- * like the GBA (tests, runner --save-stream N). */
+/* Scratch buffer (platform.h). nat_save_stream > 0 shrinks it to a
+ * stream window of that many bytes (plus the codec's work area, save.h),
+ * so save_game()/load_game() take the streaming path below, like the GBA
+ * (tests, runner --save-stream N). */
 int nat_save_stream;
 
 void *plat_save_scratch(uint32_t *cap)
 {
-    static uint8_t buf[DOOMO_SAVE_SCRATCH_MIN];
-    if (cap) *cap = nat_save_stream > 0 ? (uint32_t)DOOMO_MIN(nat_save_stream, (int)sizeof(buf))
-                                         : (uint32_t)sizeof(buf);
+    static uint8_t buf[DOOMO_SAVE_SCRATCH_MIN] __attribute__((aligned(8)));
+    if (cap) *cap = nat_save_stream > 0
+                        ? (uint32_t)DOOMO_MIN(nat_save_stream + (int)DOOMO_SAVE_WORK_SIZE,
+                                              (int)sizeof(buf))
+                        : (uint32_t)sizeof(buf);
     return buf;
 }
 

@@ -1,0 +1,26 @@
+# Fun Fair: VAPE CLOUD DODGE (minigames).
+push MG_DODGE 1
+expect-scene MG_DODGE
+wait 24
+shot title
+press A
+wait 60
+down B
+down LEFT
+wait 20
+shot focus
+release
+press START
+press DOWN
+press A
+wait 4
+push MG_DODGE 49
+wait 400
+shot play
+wait 500
+shot play_late
+wait 1500
+shot results
+push MG_DODGE 51
+wait 300
+shot hellfire_play

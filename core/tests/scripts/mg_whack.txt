@@ -1,0 +1,28 @@
+# Fun Fair: WHACK-AN-IMP (minigames).
+push MG_WHACK 1
+expect-scene MG_WHACK
+wait 24
+shot title
+press A
+wait 50
+hold UP 10
+down LEFT
+down UP
+press A
+release
+wait 4
+shot manual_bonk
+press START
+wait 10
+shot paused
+press START
+press B
+wait 4
+push MG_WHACK 49
+wait 300
+shot play
+wait 1600
+shot results
+push MG_WHACK 51
+wait 300
+shot hellfire_play

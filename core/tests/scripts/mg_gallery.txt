@@ -1,0 +1,28 @@
+# Fun Fair: BUBBLE BLASTER GALLERY (minigames). arg 113 = autostart +
+# autoplay + Sweet on the premade island (cardboard citizens = chibis).
+push MG_GALLERY 65
+expect-scene MG_GALLERY
+wait 24
+shot title
+press A
+wait 60
+press R
+hold A 4
+wait 6
+shot plush
+press R
+hold A 4
+wait 3
+shot confetti
+press START
+press DOWN
+press A
+wait 4
+push MG_GALLERY 113
+wait 300
+shot play
+wait 1600
+shot results
+push MG_GALLERY 51
+wait 300
+shot hellfire_play

@@ -45,6 +45,16 @@ extern int map_ceil_z(const DoomoMap *m, int cx, int cy) WEAKFN;
 #define PRESENT(sym) ({ const void *p_ = (const void *)&(sym); \
                         __asm__("" : "+r"(p_)); p_ != NULL; })
 
+/* The engine test's own assets (etest_assets.c) are the fallback only in
+ * the engine-test and bring-up builds. The game disc links the whole core
+ * (whose art accessors never return NULL), so it leaves them out: that
+ * keeps ~34 KB of fallback textures, font and buffers out of its RAM. */
+#if defined(DOOMO_ENGINE_TEST) || !defined(DOOMO_HAVE_CORE)
+#define ET_FALLBACK(x) (x)
+#else
+#define ET_FALLBACK(x) NULL
+#endif
+
 int core_has_game(void) { return PRESENT(doomo_init) && PRESENT(doomo_frame); }
 void core_doomo_init(void) { if (PRESENT(doomo_init)) doomo_init(); }
 void core_doomo_frame(uint32_t b) { if (PRESENT(doomo_frame)) doomo_frame(b); }
@@ -54,7 +64,7 @@ const uint8_t *core_texture_pixels(int tex_id, uint16_t time)
     const uint8_t *p = NULL;
     if (PRESENT(texture_pixels))
         p = texture_pixels(tex_id, time);
-    return p ? p : etest_texture(tex_id, time);
+    return p ? p : ET_FALLBACK(etest_texture(tex_id, time));
 }
 
 const uint8_t *core_sky_pixels(int sky_id, uint16_t time)
@@ -62,7 +72,7 @@ const uint8_t *core_sky_pixels(int sky_id, uint16_t time)
     const uint8_t *p = NULL;
     if (PRESENT(sky_pixels))
         p = sky_pixels(sky_id, time);
-    return p ? p : etest_sky(time);
+    return p ? p : ET_FALLBACK(etest_sky(time));
 }
 
 const DoomoImage *core_sprite_image(int spr, int frame)
@@ -72,14 +82,18 @@ const DoomoImage *core_sprite_image(int spr, int frame)
         p = sprite_image(spr, frame);
     if (p && p->pix && p->w && p->h)
         return p;
-    return etest_sprite(spr, frame);
+    return ET_FALLBACK(etest_sprite(spr, frame));
 }
 
 const uint8_t (*core_font(void))[5]
 {
+#if defined(DOOMO_ENGINE_TEST) || !defined(DOOMO_HAVE_CORE)
     if (PRESENT(doomo_font))
         return doomo_font;
     return etest_font;
+#else
+    return doomo_font;
+#endif
 }
 
 int core_has_maps(void)
@@ -153,7 +167,11 @@ const int8_t *core_sfx_pcm(int sfx, uint32_t *len, uint32_t *rate)
 
 const uint16_t *core_palette(void)
 {
+#if defined(DOOMO_ENGINE_TEST) || !defined(DOOMO_HAVE_CORE)
     return PRESENT(doomo_palette) ? doomo_palette : etest_palette();
+#else
+    return doomo_palette;
+#endif
 }
 
 int core_floor_z(const DoomoMap *m, int cx, int cy)

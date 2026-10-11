@@ -762,7 +762,11 @@ void r3_sky(int sky_id, uint16_t time, int bright)
     y_top = y_bottom - sky_px_h;
     /* fills above and below with the edge rows' colours */
     if (pix) {
-        uint8_t topc = pix[(SKY_W / 2)], botc = pix[(SKY_H - 1) * SKY_W + SKY_W / 2];
+        uint8_t topc, botc;
+        if (!packart_sky_edges(pix, &topc, &botc)) {
+            topc = pix[(SKY_W / 2)];
+            botc = pix[(SKY_H - 1) * SKY_W + SKY_W / 2];
+        }
         uint32_t tr = g_rgb[topc], br = g_rgb[botc];
         sky_fill(c->vx, c->vy, c->vx + c->vw, y_top + 1, tr);
         sky_fill(c->vx, y_bottom - 1, c->vx + c->vw, c->vy + c->vh, br);

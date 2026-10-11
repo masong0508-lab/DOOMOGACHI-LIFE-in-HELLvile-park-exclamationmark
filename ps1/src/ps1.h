@@ -49,7 +49,11 @@
 /* ---- frame / display list (gfx.c) ----------------------------------------- */
 #define OT_LEN        1536   /* depth slots per 3D view                     */
 #define OT_VIEWS      2      /* 3D views per frame (view3d / overworld)     */
-#define PRIM_BYTES    (100 * 1024)
+/* Display-list bytes per frame. The idle buffer is also the save scratch
+ * (gfx.c plat_save_scratch): it must hold DOOMO_SAVE_SCRATCH_MIN (save.h:
+ * a whole slot plus the codec's work area, 102.25 KB) so saves never
+ * stream on the PS1; frames themselves have needed at most ~36 KB. */
+#define PRIM_BYTES    (103 * 1024)
 
 typedef struct GfxPerf {
     uint32_t cpu_us;              /* begin_frame .. end_frame (CPU)       */
@@ -166,6 +170,19 @@ const uint16_t *core_palette(void);
 int  core_opt(int opt, int def);                 /* opt_get() or default */
 int  core_floor_z(const DoomoMap *m, int cx, int cy);   /* incl. door/lift anim */
 int  core_ceil_z(const DoomoMap *m, int cx, int cy);
+
+/* ---- packed art (packart.c, tools/packart.py) ------------------------------ */
+/* The core's texture and sky frames are LZ-compressed in RAM; the pointers
+ * texture_pixels() / sky_pixels() return are virtual and never read
+ * directly. packart_resolve(p): readable pixels for p (a texture pointer
+ * is decoded into a one-frame buffer, valid until the next call; any other
+ * pointer is returned as is). packart_sky_decode(p, dst): a whole sky
+ * frame into dst (SKY_W * SKY_H bytes), 0 if p is not a packed sky. */
+int  packart_is_tex(const uint8_t *p);
+int  packart_is_sky(const uint8_t *p);
+const uint8_t *packart_resolve(const uint8_t *p);
+int  packart_sky_decode(const uint8_t *p, uint8_t *dst);
+int  packart_sky_edges(const uint8_t *p, uint8_t *top, uint8_t *bottom);
 
 /* ---- engine test / fallback assets (etest*.c) ------------------------------- */
 const uint8_t *etest_texture(int tex_id, uint16_t time);

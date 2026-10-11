@@ -83,7 +83,9 @@ extern const DoomoUnlock doomo_unlocks_freeplay[];
 extern const DoomoUnlock doomo_unlocks_art[];
 extern const DoomoUnlock doomo_unlocks_portrait[];
 extern const DoomoUnlock doomo_unlocks_roster[];
-extern const DoomoUnlock doomo_unlocks_minigames[];   /* 864..895 (Fun Fair) */
+extern const DoomoUnlock doomo_unlocks_minigames[];   /* 832..863 (Fun Fair) */
+extern const DoomoUnlock doomo_unlocks_concert[];     /* 896..959 (Concert Hall + Dreams) */
+extern const DoomoUnlock doomo_unlocks_studio[];      /* 240..255 (Music Studio) */
 
 /* Game modes gated by UL_CAT_MODE. */
 enum { MODE_ARENA, MODE_BOSS_RUSH, MODE_HELLVILE_VISITS, MODE_TAMA_ONLY,
@@ -116,6 +118,8 @@ enum { PROG_CITIZENS_CREATED, PROG_EXORCISMS_WON, PROG_EXORCISMS_FAILED,
         * last Wheel of Fate spin (0 = never) */
        PROG_HS_CATCH, PROG_HS_WHACK, PROG_HS_DODGE, PROG_HS_GALLERY,
        PROG_HS_DERBY, PROG_HS_MEMORY, PROG_FAIR_WHEEL_DAY,
+       /* concert hall: shows put on; the Hit Parade (2 packed singles each) */
+       PROG_CONCERTS, PROG_HIT_SINGLES, PROG_HIT_SINGLES2,
        PROG_COUNT };
 void progress_add(int counter, int amount);   /* also checks unlocks */
 uint32_t progress_get(int counter);

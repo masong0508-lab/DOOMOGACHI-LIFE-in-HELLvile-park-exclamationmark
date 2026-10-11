@@ -61,5 +61,6 @@ extern const DoomoActivity *const doomo_activities_concert;
 extern const DoomoActivity *const doomo_activities_collections;
 extern const DoomoActivity *const doomo_activities_combat;
 extern const DoomoActivity *const doomo_activities_extra;
+extern const DoomoActivity *const doomo_activities_studio;   /* Music Studio */
 
 #endif

@@ -100,10 +100,15 @@ static void plat_init_hw(void)
 int main(void)
 {
     plat_init_hw();
-    dbg("DOOMOGACHI PS1: boot (core game %s)\n", core_has_game() ? "linked" : "missing");
 #if defined(DOOMO_ENGINE_TEST) || !defined(DOOMO_HAVE_CORE)
-    etest_run();        /* engine showcase / platform bring-up */
+    dbg("DOOMOGACHI PS1: boot (engine test)\n");
+    /* Engine showcase / platform bring-up. It never returns, and the game
+     * loop below is compiled out so --gc-sections drops the game's scenes
+     * (the engine test only keeps the core pieces it uses: maps, art,
+     * combat, the roster's looks) - that keeps its disc inside 2 MB. */
+    etest_run();
 #else
+    dbg("DOOMOGACHI PS1: boot (core game %s)\n", core_has_game() ? "linked" : "missing");
     if (!core_has_game()) {
         for (;;) {      /* should never happen: the core is linked */
             plat_begin_frame();
@@ -112,7 +117,6 @@ int main(void)
             plat_end_frame();
         }
     }
-#endif
     core_doomo_init();
     for (;;) {
         uint32_t b;
@@ -136,5 +140,6 @@ int main(void)
             g_rect_calls = g_rect_prims = 0;
         }
     }
+#endif
     return 0;
 }

@@ -1,0 +1,347 @@
+# hellvile.txt - Hellvile (owner: story)
+# The bad side of Hellvile Park: a spooky-cute goth town built on the
+# sealed hell gate. Arrive through the Wall gate (west). The Pits
+# apartments, Anvil's Forge, Mother Nox's chapel, the imp market, the
+# ruined vape factory, the gate, the Arena and the Lake of Fire.
+# Authored for the story overworld: see story.h for the door tags
+# (64 + PLACE_*) and walk-on event tags (128..). THING_NPC marks a
+# wander spot for ambient citizens (arg = zone), SPAWNER a demon nest.
+
+map hellvile
+title "Hellvile"
+kind overworld
+sky NIGHT_STARS
+music HELLVILE
+ambient 11
+
+cell . floor=INFECTED_GRASS ceil=sky
+cell , floor=SLIME ceil=sky
+cell : floor=HELL_ROCK ceil=sky
+cell = floor=SKULL_MOSAIC ceil=sky
+cell m floor=METAL_FLOOR ceil=sky
+cell n floor=GRATE ceil=sky
+cell P floor=PENTAGRAM_FLOOR ceil=sky light=13
+cell ~ floor=LAVA ceil=sky flags=lava fh=-2 light=14
+cell b floor=BONE_WALL ceil=sky
+cell T wall=TREE floor=INFECTED_GRASS ch=12
+cell Z wall=RUST_METAL floor=CHAINS ch=40
+cell # wall=BONE_WALL floor=SKULL_MOSAIC ch=12
+cell B wall=BLOOD_BRICK floor=SKULL_MOSAIC ch=14
+cell A wall=APARTMENT_FRONT floor=SKULL_MOSAIC ch=24
+cell W wall=WORKSHOP_FRONT floor=RUST_METAL ch=12
+cell K wall=BONE_WALL floor=ROOF_TILES ch=20
+cell G wall=STAINED_GLASS floor=ROOF_TILES ch=20
+cell R wall=RUST_METAL floor=TECH_PANEL ch=18
+cell Y wall=TECH_PANEL floor=GRATE ch=22
+cell D wall=DOOR_HELL floor=SKULL_MOSAIC ch=12
+cell E wall=DEMON_EYES floor=FLESH_WALL ch=8
+cell c wall=CANDY_STRIPE floor=CHAINS ch=6
+cell r wall=CHAINS floor=CHAINS ch=4
+cell v wall=VAPE_CLOUD_WALL floor=VAPE_CLOUD_WALL ch=30
+cell 0 wall=DOOR_HELL floor=SKULL_MOSAIC ch=24 tag=80   # door: HELL_PITS
+cell 1 wall=DOOR_HELL floor=RUST_METAL ch=12 tag=81   # door: FORGE
+cell 2 wall=DOOR_CUTE floor=ROOF_TILES ch=20 tag=84   # door: CHAPEL
+cell 3 wall=CANDY_STRIPE floor=CHAINS ch=6 tag=87   # door: MARKET
+cell 4 wall=DOOR_HELL floor=TECH_PANEL ch=18 tag=85   # door: FACTORY
+cell 5 wall=DOOR_HELL floor=SKULL_MOSAIC ch=14 tag=83   # door: ARENA
+cell 6 wall=BONE_WALL floor=BONE_WALL ch=3 tag=86   # door: HELL_PIER
+cell 7 wall=DOOR_CUTE floor=CHAINS ch=40 tag=78   # door: WALL_GATE
+cell S floor=PENTAGRAM_FLOOR ceil=sky flags=trigger tag=133 light=15   # the sealed hell gate
+cell ! floor=INFECTED_GRASS ceil=sky flags=trigger tag=135   # secret sparkle 0
+cell $ floor=INFECTED_GRASS ceil=sky flags=trigger tag=136   # secret sparkle 1
+cell % floor=INFECTED_GRASS ceil=sky flags=trigger tag=137   # secret sparkle 2
+cell & floor=INFECTED_GRASS ceil=sky flags=trigger tag=138   # secret sparkle 3
+cell * floor=INFECTED_GRASS ceil=sky flags=trigger tag=139   # secret sparkle 4
+
+grid
+ZZTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT
+ZZTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT
+ZZ.......................*....................................TT
+ZZ.KKKKKKKK...AAAAAAAAAAA...WWWWWW......YYYYYYYYYYYYYYYYYYY...TT
+ZZ.KKKKKKKK...AAAAAAAAAAA...WWWWWW......YYYYYYYYYYYYYYYYYYY...TT
+ZZ.KKKKKKKK...AAAAAAAAAAA...WWWWWW......RRRRRRRRRRRRRRRRRRR...TT
+ZZ.KKKKKKKK...AAAAAAAAAAA...WWWWWW......RRRRYYYRRRRRRRRRRRR...TT
+ZZ.KKKKKKKK...AAAAAAAAAAA...WW1WWW......RRRRYYYRRRRRRRRRRRR...TT
+ZZ.KKKKKKKK...AAAAA0AAAAA...mmmmmm......RRRRYYYRRRRRRRRRRRR...TT
+ZZ.GGG22GGG...===========...mmmmmm......RRRRYYYRRRRRRRRRRRR...TT
+ZZ...::::.....===========...mmmmmm......RRRRYYYRRRRRRRRRRRR...TT
+ZZ...::::.....===========...............RRRRYYYRR4RRRRRRRRR...TT
+ZZ...::::...::::::::::::::::::::::::::::nnnnnnnnnnnnnnnnnnn...TT
+ZZ...::::...::::::::::::::::::::::::::::nnnnnnnnnnnnnnnnnnn...TT
+ZZ...::::...::............::............nnnnnnnnnnnnnnnnnnn.$.TT
+ZZ...::::...::ccc.ccc.ccc.::...................mmmmm..........TT
+ZZ...::::...::ccc.c3c.ccc.::...................mmmmm..........TT
+ZZ...::::...::::::::::::::::...................mmmmm..........TT
+ZZ...::::...::::::::::::::::...................mmmmm..........TT
+ZZ...::::...::............::...................mmmmm..........TT
+ZZ==========::............::......~~~~~~~~~~~~~~~::BBBBBBBBBB.TT
+ZZ==========::..,,,,......::......~~~~~~~~~~~~~~~::BBBBBBBBBB.TT
+ZZ==:::::::=::..,,,,......::......~~PPPPPPPPPPP~~::BBBBBBBBBB.TT
+ZZ==:::::::=::..,,,,......::......~~PEPPPPPPPEP~~::BBBBBBBBBB.TT
+ZZ==:::::::=::..,,,,......::......~~PPPPPPPPPPP~~::BBBBBBBBBB.TT
+ZZ==:::::::=::............::......~~PPPPPPPPPPP~~::BBBBBBBBBB.TT
+77==:::::::=::............::......~~PPPPSSSPPPP~~::BBBBBBBBBB.TT
+77==:::::::=::::::::::::::::::::::bbPPPPSSSPPPP~~::BBBBBBBBBB.TT
+77==:::::::=::::::::::::::::::::::bbPPPPSSSPPPP~~::BBBBBBBBBB.TT
+ZZ==:::::::=::............::......~~PPPPPPPPPPP~~::BBBBBBBBBB.TT
+ZZ==:::::::=::............::......~~PPPPPPPPPPP~~::BBBB55BBBB.TT
+ZZ==:::::::=::............::,,,,..~~PEPPPPPPPEP~~::::::::::::.TT
+ZZ==:::::::=::............::,,,,..~~PPPPPPPPPPP~~::::::::::::.TT
+ZZ==========::............::,,,,..~~~~~~bbb~~~~~~::...........TT
+ZZ==========::............::,,,,..~~~~~~bbb~~~~~~::...........TT
+ZZ!.........::............::.....................::...........TT
+ZZrrrrrrrrrr::............::.....................::...........TT
+ZZ.###.###..::............::.....................::...........TT
+ZZ.###.###..::............::.....................::...........TT
+ZZ.#D#.#D#..::::::::::::::::::::::::::::::::::::::::::::......TT
+ZZ..........::::::::::::::::::::::::::::::::::::::::::::......TT
+ZZ............:::::::::::::::::::::::::::::::::::::::&........TT
+ZZ............:::::::::::::::::::::::::::::::::::::::..vvvvvv.TT
+ZZ.###.###....~~~~~~~~~~~~~~~bb~~~~~~~~~~~~~~~~~~~~~~..vvvvvv.TT
+ZZ.###.###....~~~~~~~~~~~~~~~bb~~~~~~~~~~~~~~~~~~~~~~..vvvvvv.TT
+ZZ.#D#.#D#....~~~~~~~~~~~~~~~bb~~~~~~~~~~~~~~~~~~~~~~..vvvvvv.TT
+ZZ............~~~~~~~~~~~~~~~bb~~~~~~~~~~~~~~~~~~~~~~..vvvvvv.TT
+ZZ............~~~~~~~~~~~~~~~bb~~~~~~~~~~~~~~~~~~~~~~..vvvvvv.TT
+ZZ............~~~~~~~~~~~~~~~bb~~~~~~~~~~~~~~~~~~~~~~..vvvvvv.TT
+ZZ............~~~~~~~~~~~~~~~bb~~~~~~~~~~~~~~~~~~~~~~..vvvvvv.TT
+ZZ............~~~~~~~~~~~~~~~66~~~~~~~~~~~~~~~~~~~~~~..vvvvvv.TT
+ZZ............~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~..vvvvvv.TT
+ZZ...........%................................................TT
+ZZ............................................................TT
+ZZTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT
+ZZTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT
+end
+
+floorh
+
+
+..3333333333
+..3333333333
+..3333333333
+..3333333333
+..3333333333
+..3333333333
+..3333333333
+..3333333333
+..3331111333
+.....1111
+........................................2222222222222222222
+........................................2222222222222222222
+........................................2222222222222222222
+...............................................11111
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+end
+
+light
+
+
+
+
+
+
+
+
+
+
+..............eee.......eee
+..............efe.......efe
+..............eee.......eee
+
+
+
+
+
+
+
+..eee.....eee
+..efe.....efe
+..eee.....eee
+
+
+.............eee........eee.....eee
+.............efe........efe.....efe
+.............eee........eee.....eee
+
+
+
+
+..eee.....eee......................................eee
+..efe.....efe......................................efe
+..eee.....eee.......................eee.......eee..eee
+....................................efe.......efe
+....................................eee.......eee
+............eee...........eee
+............efe...........efe
+............eee...........eee
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+end
+
+thing 3 21 PROP_TORCH
+thing 11 21 PROP_TORCH
+thing 3 33 PROP_TORCH
+thing 11 33 PROP_TORCH
+thing 14 26 PROP_TORCH
+thing 25 26 PROP_TORCH
+thing 25 11 PROP_TORCH
+thing 15 11 PROP_TORCH
+thing 33 26 PROP_TORCH
+thing 47 35 PROP_TORCH
+thing 37 35 PROP_TORCH
+thing 13 38 PROP_TORCH
+thing 27 38 PROP_TORCH
+thing 52 33 PROP_TORCH
+thing 5 21 PROP_SKULLS
+thing 9 33 PROP_SKULLS
+thing 15 25 PROP_SKULLS
+thing 23 22 PROP_SKULLS
+thing 32 37 PROP_SKULLS
+thing 38 38 PROP_SKULLS
+thing 34 9 PROP_BARREL
+thing 39 13 PROP_BARREL
+thing 52 16 PROP_BARREL
+thing 46 16 PROP_BARREL
+thing 58 13 PROP_BARREL
+thing 8 22 PROP_BENCH
+thing 8 32 PROP_BENCH
+thing 20 26 PROP_BENCH
+thing 30 38 PROP_BENCH
+thing 13 26 PROP_SIGN
+thing 31 11 PROP_SIGN
+thing 20 10 PROP_MAILBOX
+thing 39 24 VAPE_PORTAL
+thing 43 30 VAPE_PORTAL
+thing 38 29 VAPE_PORTAL
+thing 4 40 PROP_SKULLS
+thing 8 40 PROP_SIGN
+thing 4 46 PROP_SKULLS
+thing 8 46 PROP_SIGN
+thing 10 49 PROP_SKULLS
+thing 5 50 PROP_SKULLS
+thing 12 2 PROP_TREE
+thing 17 2 PROP_TREE
+thing 30 2 PROP_TREE
+thing 49 2 PROP_TREE
+thing 56 2 PROP_TREE
+thing 27 3 PROP_TREE
+thing 34 3 PROP_TREE
+thing 37 3 PROP_TREE
+thing 13 4 PROP_TREE
+thing 2 5 PROP_TREE
+thing 37 7 PROP_TREE
+thing 12 8 PROP_TREE
+thing 60 8 PROP_TREE
+thing 36 9 PROP_TREE
+thing 4 10 PROP_TREE
+thing 35 10 PROP_TREE
+thing 60 10 PROP_TREE
+thing 12 11 PROP_TREE
+thing 28 11 PROP_TREE
+thing 60 13 PROP_TREE
+thing 2 14 PROP_TREE
+thing 61 14 PROP_TREE
+thing 31 15 PROP_TREE
+thing 42 15 PROP_TREE
+thing 57 15 PROP_TREE
+thing 17 16 PROP_TREE
+thing 43 16 PROP_TREE
+thing 29 17 PROP_TREE
+thing 60 17 PROP_TREE
+thing 11 18 PROP_TREE
+thing 44 18 PROP_TREE
+thing 56 18 PROP_TREE
+thing 59 18 PROP_TREE
+thing 17 19 PROP_TREE
+thing 25 19 PROP_TREE
+thing 60 19 PROP_TREE
+thing 15 20 PROP_TREE
+thing 18 20 PROP_TREE
+thing 28 22 PROP_TREE
+thing 32 23 PROP_TREE
+thing 23 29 PROP_TREE
+thing 25 30 PROP_TREE
+thing 22 31 PROP_TREE
+thing 21 32 PROP_TREE
+thing 61 32 PROP_TREE
+thing 6 24 NPC arg=0
+thing 9 29 NPC arg=0
+thing 4 31 NPC arg=0
+thing 10 23 NPC arg=0
+thing 16 10 NPC arg=1
+thing 22 10 NPC arg=1
+thing 19 12 NPC arg=1
+thing 30 9 NPC arg=2
+thing 32 9 NPC arg=2
+thing 15 17 NPC arg=3
+thing 21 17 NPC arg=3
+thing 24 18 NPC arg=3
+thing 42 13 NPC arg=4
+thing 52 13 NPC arg=4
+thing 49 17 NPC arg=4
+thing 30 27 NPC arg=5
+thing 20 28 NPC arg=5
+thing 27 33 NPC arg=5
+thing 33 39 NPC arg=5
+thing 18 41 NPC arg=6
+thing 40 41 NPC arg=6
+thing 48 41 NPC arg=6
+thing 6 13 NPC arg=7
+thing 7 16 NPC arg=7
+thing 50 34 NPC arg=8
+thing 57 33 NPC arg=8
+thing 6 41 NPC arg=9
+thing 10 47 NPC arg=9
+thing 3 27 PLAYER_START angle=0

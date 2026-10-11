@@ -9,6 +9,7 @@
 #include "doomo/rng.h"
 #include "doomo/portrait.h"
 #include "doomo/ui.h"
+#include "doomo/save_ext.h"
 
 DoomoTown doomo_town;
 
@@ -512,4 +513,5 @@ void town_new(int mode, uint32_t seed, int population)
             town_random_record(seed, i, &doomo_town.res[i]);
         random_edges(seed);
     }
+    save_ext_reset_all();       /* save_ext.h: module data back to defaults */
 }

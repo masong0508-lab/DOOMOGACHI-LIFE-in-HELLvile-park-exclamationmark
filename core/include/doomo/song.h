@@ -59,7 +59,12 @@ typedef struct DoomoSong {
                                            the full choir); 0 = singer[0] */
     uint8_t  choir_layout;              /* CHOIR_* stage arrangement */
     uint32_t seed;                      /* generator seed (0 = hand made) */
-} DoomoSong;                            /* ~870 bytes */
+    /* ---- studio additions (append only) ---- */
+    uint8_t  section[(SONG_SINGERS + 1) / 2]; /* nibble i = singer[i]'s voice
+                                           section + 1 (SECTION_*), 0 = auto
+                                           (from the voice pitch); use
+                                           song_singer_section()          */
+} DoomoSong;                            /* 892 bytes */
 
 /* Stage arrangements for the choir (risers, semicircle, ...). */
 enum { CHOIR_RISERS, CHOIR_SEMICIRCLE, CHOIR_SECTIONS, CHOIR_PYRAMID,
@@ -105,5 +110,94 @@ int  song_singer_count(const DoomoSong *s);
 void song_clear(DoomoSong *s);         /* empty valid song, sane defaults */
 int  song_syllables(const char *line, uint8_t *starts, int max); /* split */
 int  song_scale_snap(const DoomoSong *s, int midi);              /* nearest in key/scale */
+
+/* ======================================================================
+ * studio additions (owner: studio; additive)
+ * ======================================================================
+ *
+ * LYRIC LINES. Lyric line SONG_LINE_OF(p) is sung over order position p
+ * (positions 8..15 repeat lines 0..7). An empty line = an instrumental
+ * pass. Each lead-track (track 0) note onset of that pass sings the next
+ * syllable of the line (song_syllables: vowel groups, '-' forces a split);
+ * spare syllables are dropped, spare onsets are played but not sung.
+ *
+ * TIMING. Steps are 16ths: a straight step lasts 450 / bpm ticks (30 Hz),
+ * kept exactly with an integer accumulator. With swing w (0..8) even steps
+ * last (1 + w/16) and odd steps (1 - w/16) of that. Step 0 sounds at
+ * song_play(); every song_tick() advances one tick.
+ *
+ * DRUMS. On the drum track (track 3) wave[3] holds the drum kit (SONG_KIT_*)
+ * instead of a WAVE_* - SONG_KIT_CLASSIC equals WAVE_NOISE so songs that
+ * just set WAVE_NOISE get the classic kit. Each SONG_DRUM_* is a short
+ * swept noise or pitched (periodic noise) blip on tone channel 3.
+ *
+ * CHANNELS. 0 = lead, 1 = harmony (+ the voice babble channel, which
+ * wins while a blip sounds), 2 = bass, 3 = drums. Volumes follow
+ * OPT_MUSIC_VOL. */
+enum { SONG_KIT_TOY, SONG_KIT_BONES, SONG_KIT_808, SONG_KIT_PLUSH,
+       SONG_KIT_FORGE, SONG_KIT_CLASSIC, SONG_KIT_COUNT };
+#define SONG_LINE_OF(order_pos) ((order_pos) % SONG_LYRIC_LINES)
+#define SONG_WAVES 6            /* == WAVE_COUNT (platform.h)         */
+#define SONG_NOTE_MIN 24        /* lowest note the editor offers (C1)  */
+#define SONG_NOTE_MAX 108       /* highest (C8)                        */
+
+/* Start playing at order position `order_pos`, step `step` (editor "play
+ * from cursor", singer previews). song_play(s, o) == song_play_at(s, o, 0, 0). */
+void song_play_at(const DoomoSong *s, int singer_override, int order_pos, int step);
+/* Editor: loop one pattern from `step` (sings the line of the first order
+ * position that uses the pattern, if any). */
+void song_play_pattern(const DoomoSong *s, int pattern, int step);
+/* Editor: a short preview blip of one cell value on its track's channel
+ * (keyboard feedback). Needs song_tick() calls to end; ignored while a
+ * song plays. */
+void song_preview(const DoomoSong *s, int track, int cell);
+/* Choir index (0..24) of the rotating lead voice of the syllable sounding
+ * now, -1 if none. */
+int  song_pos_lead(void);
+/* Ticks since the last beat (quarter note) started; 0 on the beat. */
+int  song_beat_age(void);
+/* Ticks since playback started. */
+uint32_t song_pos_ticks(void);
+/* Resolved singer mask of a lyric line (line_singers, 0 = singer[0];
+ * only valid choir slots). */
+uint32_t song_line_mask(const DoomoSong *s, int line);
+/* Number of lead-track note onsets in a pattern (lyrics fit). */
+int  song_lead_onsets(const DoomoSong *s, int pattern);
+/* Voice section of choir slot i (explicit, else from the voice pitch). */
+int  song_singer_section(const DoomoSong *s, int i);
+void song_set_section(DoomoSong *s, int i, int section);   /* -1 = auto */
+int  song_section_of_voice(const uint8_t *voice);          /* SECTION_* */
+/* Choir slot i's resident id, or -1 (empty slot / bad id). */
+int  song_singer_id(const DoomoSong *s, int i);
+/* Exact ticks of one pass through the order list. */
+uint32_t song_length_ticks(const DoomoSong *s);
+/* "C#4" style name of a MIDI note (buf >= 5 bytes). */
+void song_note_name(int midi, char *buf);
+uint16_t song_note_hz(int midi);
+/* Shift a note by `steps` scale degrees in the song's key/scale. */
+int  song_scale_shift(const DoomoSong *s, int midi, int steps);
+/* Clamp every field into range (after loading / copying foreign songs).
+ * Returns the number of fixed fields. */
+int  song_sanitize(DoomoSong *s);
+/* SONG BOOK helpers (song_book.c). The book is saved in the 'SONG' save
+ * extension chunk together with the studio's stats. */
+int  song_book_free_slot(void);                 /* first empty slot, -1 if full */
+int  song_book_store(const DoomoSong *s);       /* copy into a free slot (-1 full) */
+/* Open the Music Studio (scene_push SCENE_STUDIO) on a copy of `s` - the
+ * Concert Hall's "Edit in Studio". The player saves it to the book from
+ * the studio's FILE tab. */
+void studio_edit(const DoomoSong *s);
+/* Concert Hall hand-off for the studio's PERFORM tab: the concert module
+ * may define this (strong) to put `s` on its big stage (push SCENE_CONCERT
+ * and return 1). The studio's weak default returns 0 = no hand-off, the
+ * studio performs the song on its own stage. */
+int  concert_stage_song(const DoomoSong *s);
+extern const char *const doomo_song_scale_names[SONG_SCALE_COUNT];
+extern const char *const doomo_song_drum_names[SONG_DRUM_COUNT];
+extern const char *const doomo_song_kit_names[SONG_KIT_COUNT];
+extern const char *const doomo_song_wave_names[SONG_WAVES];
+extern const char *const doomo_song_key_names[12];
+extern const char *const doomo_choir_layout_names[CHOIR_LAYOUT_COUNT];
+extern const char *const doomo_section_names[SECTION_COUNT];
 
 #endif

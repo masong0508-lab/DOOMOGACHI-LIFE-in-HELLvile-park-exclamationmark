@@ -430,3 +430,119 @@ TEST(save_streamed_limits_and_failures)
     CHECK(!save_exists(0));
     nat_save_stream = 0;
 }
+
+/* ---- extension chunks (save_ext.h) and the work area (save.h) ------------ */
+/* the tests-only registry slot: a chunk of ext_len bytes of ext_data */
+static uint8_t ext_data[3000];
+static uint32_t ext_len, ext_size_override;
+static int ext_resets, ext_reads, ext_reject;
+static uint32_t t_ext_size(void) { return ext_size_override ? ext_size_override : ext_len; }
+static uint32_t t_ext_write(uint8_t *dst, uint32_t cap)
+{
+    memcpy(dst, ext_data, ext_len < cap ? ext_len : cap);
+    return ext_len;
+}
+static int t_ext_read(const uint8_t *src, uint32_t len, uint16_t version)
+{
+    ext_reads++;
+    if (ext_reject || version != 3 || len > sizeof(ext_data)) return 0;
+    memcpy(ext_data, src, len);
+    ext_len = len;
+    return 1;
+}
+static void t_ext_reset(void)
+{
+    ext_resets++;
+    ext_len = 0;
+    memset(ext_data, 0, sizeof(ext_data));
+}
+static DoomoSaveExt t_ext = { SAVE_EXT_TAG('T', 'E', 'S', 'T'), 3, t_ext_size, t_ext_write,
+                              t_ext_read, t_ext_reset };
+const DoomoSaveExt *const doomo_save_ext_test = &t_ext;
+
+static void ext_fill(uint32_t seed, uint32_t n)
+{
+    DoomoRng r;
+    uint32_t i;
+    rng_seed(&r, seed);
+    for (i = 0; i < n; i++) ext_data[i] = (uint8_t)(i < n / 2 ? rng_next(&r) : i / 7);
+    ext_len = n;
+}
+
+TEST(save_extension_chunks_round_trip)
+{
+    static uint8_t keep[sizeof(ext_data)];
+    static const int windows[] = { 0, 64, 4096 };
+    uint32_t n;
+    int k;
+    town_new(TOWN_FREEPLAY, 5, TOWN_POP_RANDOM);
+    CHECK_EQ(ext_len, 0u);                          /* town_new reset it */
+    ext_fill(99, sizeof(ext_data));
+    memcpy(keep, ext_data, sizeof(keep));
+    /* in memory */
+    n = save_serialize(image, sizeof(image));
+    CHECK(n > 0);
+    t_ext_reset();
+    CHECK(save_deserialize(image, n));
+    CHECK_EQ(ext_len, (uint32_t)sizeof(ext_data));
+    CHECK(memcmp(ext_data, keep, sizeof(keep)) == 0);
+    /* whole-image and streamed slot saves agree, and load it back */
+    for (k = 0; k < 3; k++) {
+        nat_save_stream = windows[k];
+        CHECK(save_game(1));
+        t_ext_reset();
+        CHECK(load_game(1));
+        CHECK_EQ(ext_len, (uint32_t)sizeof(ext_data));
+        CHECK(memcmp(ext_data, keep, sizeof(keep)) == 0);
+    }
+    nat_save_stream = 0;
+    /* a save without the chunk (here: another tag) resets the extension,
+     * and the unknown chunk is skipped */
+    t_ext.tag = SAVE_EXT_TAG('T', 'E', 'S', '2');
+    ext_resets = ext_reads = 0;
+    CHECK(save_deserialize(image, n));
+    CHECK_EQ(ext_reads, 0);
+    CHECK_EQ(ext_resets, 1);
+    CHECK_EQ(ext_len, 0u);
+    t_ext.tag = SAVE_EXT_TAG('T', 'E', 'S', 'T');
+    /* a chunk read() rejects is reset; the town still loads */
+    ext_reject = 1;
+    ext_resets = 0;
+    CHECK(save_deserialize(image, n));
+    CHECK_EQ(ext_resets, 1);
+    ext_reject = 0;
+    /* a chunk bigger than the staging area fails the save cleanly */
+    ext_fill(7, 100);
+    CHECK(save_game(0));
+    ext_size_override = DOOMO_SAVE_EXT_MAX + 1;
+    CHECK(!save_game(0));
+    CHECK(strstr(save_last_error(), "extension") != NULL);
+    nat_save_stream = 512;
+    CHECK(!save_game(0));
+    nat_save_stream = 0;
+    ext_size_override = 0;
+    ext_len = 0;
+    CHECK(load_game(0));
+    CHECK_EQ(ext_len, 100u);
+    t_ext_reset();
+}
+
+TEST(save_work_area_is_the_scratch_tail)
+{
+    uint32_t cap = 0, n;
+    uint8_t *s = (uint8_t *)plat_save_scratch(&cap);
+    CHECK(cap >= DOOMO_SAVE_SCRATCH_MIN);
+    town_new(TOWN_STORY, 1, TOWN_POP_PREMADE);
+    /* an image buffer overlapping the work area is refused ... */
+    CHECK_EQ(save_serialize(s, cap), 0u);
+    CHECK_EQ(save_deserialize(s, cap), 0);
+    /* ... the front part is fine */
+    n = save_serialize(s, cap - DOOMO_SAVE_WORK_SIZE);
+    CHECK(n > 0);
+    CHECK(save_deserialize(s, n));
+    /* the smallest scratch a streaming platform may offer still works */
+    nat_save_stream = 64;
+    CHECK(save_game(0));
+    CHECK(load_game(0));
+    nat_save_stream = 0;
+}

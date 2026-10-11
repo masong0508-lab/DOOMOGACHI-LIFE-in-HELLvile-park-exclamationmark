@@ -18,7 +18,9 @@
 #define DOOMO_SAVE_MAGIC   0x4F4F4D44u  /* "DMOO" */
 #define DOOMO_SAVE_VERSION 1
 
-/* Serialise doomo_town into buf. Returns bytes written or 0 if cap too small. */
+/* Serialise doomo_town into buf. Returns bytes written or 0 if cap too small.
+ * (The codec's work area is the tail of plat_save_scratch(), so buf must
+ * not overlap it.) */
 uint32_t save_serialize(uint8_t *buf, uint32_t cap);
 /* Load into doomo_town. Returns 1 on success, 0 on bad magic/version/CRC
  * (doomo_town untouched on failure). Sanitises every resident. */
@@ -33,13 +35,28 @@ int load_game(int slot);
 int save_exists(int slot);
 
 /* ---- foundation additions ------------------------------------------------ */
-/* plat_save_scratch() (platform.h) with at least this much holds a whole
- * save image: a slot-sized buffer is all save/load ever need. */
-#define DOOMO_SAVE_SCRATCH_MIN DOOMO_SAVE_SLOT1_MAX
+/* The codec keeps NO static buffers: everything it needs lives in
+ * plat_save_scratch() (platform.h) for the duration of one call:
+ *
+ *   [ save image or stream window ...... | ext staging | LZ codec ]
+ *                                         \____ DOOMO_SAVE_WORK_SIZE ___/
+ *
+ * The last DOOMO_SAVE_WORK_SIZE bytes hold the LZ window, its match heads
+ * and literal run (DOOMO_SAVE_CODEC_SIZE) and the staging area for one
+ * extension chunk (save_ext.h: write() / read() see at most
+ * DOOMO_SAVE_EXT_MAX contiguous bytes; a bigger chunk fails the save). */
+#define DOOMO_SAVE_CODEC_SIZE  6400u
+#define DOOMO_SAVE_EXT_MAX     8192u
+#define DOOMO_SAVE_WORK_SIZE   (DOOMO_SAVE_CODEC_SIZE + DOOMO_SAVE_EXT_MAX)
+/* plat_save_scratch() with at least this much holds a whole save image
+ * in front of the work area: a slot plus the work area is all save/load
+ * ever need. */
+#define DOOMO_SAVE_SCRATCH_MIN (DOOMO_SAVE_SLOT1_MAX + DOOMO_SAVE_WORK_SIZE)
 /* With less, the platform streams saves (plat_save_stream_*,
- * plat_save_read_at) and the scratch buffer is only the chunk / read
- * window; it must hold at least this much (bigger chunks = fewer calls). */
-#define DOOMO_SAVE_STREAM_MIN 64u
+ * plat_save_read_at) and the front part is only the chunk / read window;
+ * the scratch must hold at least this much (bigger windows = fewer
+ * calls). */
+#define DOOMO_SAVE_STREAM_MIN  (DOOMO_SAVE_WORK_SIZE + 64u)
 #define DOOMO_SAVE_HEADER_SIZE 48
 uint32_t save_slot_max(int slot);       /* DOOMO_SAVE_SLOT0_MAX / SLOT1_MAX */
 

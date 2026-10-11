@@ -24,6 +24,7 @@ project(
 option(DOOMO_ENGINE_TEST "Boot into the 3D engine test / benchmark" OFF)
 option(DOOMO_PAL         "Use PAL video timing"                     OFF)
 option(DOOMO_CORE        "Link the portable core (OFF = platform bring-up with fallback assets)" ON)
+option(DOOMO_PACK_ART    "Link the core's textures and skies LZ-compressed (tools/packart.py)" ON)
 set(DOOMO_EXE_NAME "doomogachi" CACHE STRING "Output executable base name")
 
 find_package(Python3 COMPONENTS Interpreter REQUIRED)
@@ -46,7 +47,32 @@ list(SORT PS1_SRCS)
 list(LENGTH CORE_SRCS _ncore)
 message(STATUS "doomogachi: ${_ncore} core sources")
 
+# Packed art (tools/packart.py, src/packart.c): the core's world textures
+# and skies (360 KB of pixels only this platform reads) are linked
+# LZ-compressed (~80 KB). art_data.c is compiled without those two arrays,
+# whose symbols become virtual addresses (--defsym below, outside RAM).
+set(DOOMO_PACKED_ART OFF)
+if(DOOMO_PACK_ART AND DOOMO_CORE AND EXISTS ${CORE_DIR}/gen/art_data.c)
+	set(DOOMO_PACKED_ART ON)
+	list(FILTER CORE_SRCS EXCLUDE REGEX "/gen/art_data\\.c$")
+	set(_pack_out ${CMAKE_CURRENT_BINARY_DIR}/packed)
+	add_custom_command(
+		OUTPUT  ${_pack_out}/art_data_ps1.c ${_pack_out}/packed_art.c
+		COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/packart.py
+		        ${CORE_DIR}/gen/art_data.c ${_pack_out}
+		DEPENDS ${CORE_DIR}/gen/art_data.c ${CMAKE_CURRENT_SOURCE_DIR}/tools/packart.py
+		COMMENT "Packing textures and skies (tools/packart.py)"
+		VERBATIM)
+	list(APPEND CORE_SRCS ${_pack_out}/art_data_ps1.c ${_pack_out}/packed_art.c)
+endif()
+
 add_executable(${DOOMO_EXE_NAME} ${PS1_SRCS} ${CORE_SRCS})
+if(DOOMO_PACKED_ART)
+	target_compile_definitions(${DOOMO_EXE_NAME} PRIVATE DOOMO_PACKED_ART=1)
+	target_link_options(${DOOMO_EXE_NAME} PRIVATE
+		-Wl,--defsym=doomo_art_tex_pix=0x01000000
+		-Wl,--defsym=doomo_art_sky_pix=0x01800000)
+endif()
 set_target_properties(${DOOMO_EXE_NAME} PROPERTIES
 	PSN00BSDK_TARGET_TYPE EXECUTABLE_GPREL)
 target_link_libraries(${DOOMO_EXE_NAME} PRIVATE ${PSN00BSDK_EXECUTABLE_LINK_LIBRARIES})
@@ -73,8 +99,18 @@ endif()
 # the disc build).
 set_source_files_properties(${PS1_SRCS} PROPERTIES
 	COMPILE_OPTIONS "-std=gnu99;-Werror;-fno-strict-aliasing")
+# The whole EXE (code, art, roster, BSS) must fit in 2 MB of RAM, so the
+# core is compiled for size (-Os: ~120 KB smaller than -O2) except the
+# files that run every frame, which keep -O2 (DOOMO_CORE_HOT; measured
+# with the harness, docs/PS1.md section 3).
+set(DOOMO_CORE_HOT ui_raster ui ui_draw font fixmath map actor combat rng
+	CACHE STRING "core/src files (no extension) compiled -O2 instead of -Os")
 set_source_files_properties(${CORE_SRCS} PROPERTIES
-	COMPILE_OPTIONS "-std=c99")
+	COMPILE_OPTIONS "-std=c99;-Os")
+foreach(_hot ${DOOMO_CORE_HOT})
+	set_source_files_properties(${CORE_DIR}/src/${_hot}.c PROPERTIES
+		COMPILE_OPTIONS "-std=c99;-O2")
+endforeach()
 
 # objdump next to the SDK's nm (for the R3000 ISA check)
 string(REGEX REPLACE "nm$" "objdump" TOOLCHAIN_OBJDUMP "${TOOLCHAIN_NM}")

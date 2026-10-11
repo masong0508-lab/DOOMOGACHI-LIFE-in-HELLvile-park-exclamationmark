@@ -1,0 +1,32 @@
+# Fun Fair: CUPCAKE CATCH (minigames). Title card + tiers, then the bot
+# plays a whole Sweet round (arg 49 = autostart + autoplay + Sweet).
+push MG_CATCH 1
+expect-scene MG_CATCH
+wait 24
+shot title
+press RIGHT
+wait 2
+press RIGHT
+wait 10
+shot title_hellfire
+press B
+wait 2
+push MG_CATCH 49
+wait 30
+shot ready
+wait 260
+shot play
+wait 500
+shot play_late
+wait 1600
+shot results
+expect-scene MG_CATCH
+press A
+press A
+wait 4
+press RIGHT
+press A
+wait 4
+push MG_CATCH 51
+wait 400
+shot hellfire_play

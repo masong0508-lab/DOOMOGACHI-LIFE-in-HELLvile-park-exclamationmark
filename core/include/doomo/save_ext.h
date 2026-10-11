@@ -28,6 +28,8 @@ typedef struct DoomoSaveExt {
 /* Registry: weak NULL defaults in save_ext.c; modules define strong ones. */
 extern const DoomoSaveExt *const doomo_save_ext_studio;
 extern const DoomoSaveExt *const doomo_save_ext_extra;
+/* (foundation) a slot for core/tests only - never define it in a module */
+extern const DoomoSaveExt *const doomo_save_ext_test;
 int save_ext_count(void);
 const DoomoSaveExt *save_ext_at(int i);
 void save_ext_reset_all(void);   /* called by town_new() */

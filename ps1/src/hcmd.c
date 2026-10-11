@@ -80,6 +80,7 @@ static void reply(int ok, const char *a, const char *b)
     g_hcmd.ack = g_hcmd.req;
 }
 
+#if !defined(DOOMO_ENGINE_TEST) && defined(DOOMO_HAVE_CORE)
 static const char *top_name(void)
 {
     const DoomoScene *t = HAVE(scene_top) ? scene_top() : NULL;
@@ -91,12 +92,25 @@ static const char *save_err(void)
     const char *e = HAVE(save_last_error) ? save_last_error() : NULL;
     return e ? e : "?";
 }
+#endif
 
 static void run(void)
 {
     const char *c = g_hcmd.cmd, *a = g_hcmd.arg;
     int n = g_hcmd.iarg;
 
+#if defined(DOOMO_ENGINE_TEST) || !defined(DOOMO_HAVE_CORE)
+    /* The engine test's scripts only use the lockstep and `log`: no
+     * references to the game's scenes or saves here, so --gc-sections can
+     * drop them from the engine-test disc. */
+    (void)a; (void)n;
+    if (!strcmp(c, "log")) {
+        dbg("log: %s\n", g_hcmd.arg);
+        reply(1, NULL, NULL);
+    } else {
+        reply(0, "not in the engine test:", c);
+    }
+#else
     if (!strcmp(c, "scene") || !strcmp(c, "push")) {
         const DoomoScene *s = HAVE(scene_by_name) ? scene_by_name(a) : NULL;
         if (!s || !HAVE(scene_set) || !HAVE(scene_push)) {
@@ -128,6 +142,7 @@ static void run(void)
     } else {
         reply(0, "unknown command", c);
     }
+#endif
 }
 
 static void serve(void)

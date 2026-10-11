@@ -31,6 +31,11 @@ extern const DoomoScene SCENE_SAVELOAD;
 /* creator (arg = resident id to edit, or -1 new Hillvile, -2 new Hellvile,
  * -3 story protagonist) */
 extern const DoomoScene SCENE_CREATOR;
+/* (creator, additive) Resident id the last creator session wrote
+ * (DOOMO_PLAYER_ID for the protagonist), -1 if it was cancelled; and a
+ * citizen's nickname set in the creator ("" if none). */
+int creator_last_result(void);
+const char *creator_nickname(int id);
 /* life */
 extern const DoomoScene SCENE_EXORCISM;     /* arg = resident id           */
 extern const DoomoScene SCENE_PET;          /* tamagotchi LCD screen       */
@@ -47,6 +52,13 @@ extern const DoomoScene SCENE_CREDITS;
 /* minigames (Fun Fair, mg_*.c; arg: see core/src/mg.h) */
 extern const DoomoScene SCENE_MG_CATCH, SCENE_MG_WHACK, SCENE_MG_DODGE,
        SCENE_MG_GALLERY, SCENE_MG_DERBY, SCENE_MG_MEMORY, SCENE_MG_WHEEL;
+
+/* concert hall + dreams (concert*.c, dream*.c; args: core/src/concert_int.h) */
+extern const DoomoScene SCENE_CONCERT, SCENE_DREAM;
+
+/* music studio (studio*.c; arg: song book page 0..5, -1 = resume the
+ * working song, -2 = a new song; studio_edit() in song.h opens a copy) */
+extern const DoomoScene SCENE_STUDIO;
 
 /* Registry (scene.c, foundation): every scene above, NULL-terminated. */
 extern const DoomoScene *const doomo_all_scenes[];

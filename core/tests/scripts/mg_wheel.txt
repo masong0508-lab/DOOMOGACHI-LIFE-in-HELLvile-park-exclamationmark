@@ -1,0 +1,23 @@
+# Fun Fair: the WHEEL OF FATE (minigames): one spin per in-game day.
+push MG_WHEEL 64
+expect-scene MG_WHEEL
+wait 30
+shot intro
+press A
+wait 10
+down A
+wait 20
+shot charge
+up A
+wait 40
+shot spin
+wait 400
+shot result
+press A
+wait 10
+shot come_back_tomorrow
+press A
+wait 4
+push MG_WHEEL 0
+wait 20
+shot already_spun

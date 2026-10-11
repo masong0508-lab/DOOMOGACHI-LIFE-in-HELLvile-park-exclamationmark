@@ -1,0 +1,21 @@
+# Fun Fair: DOOMOGACHI DERBY (minigames).
+push MG_DERBY 1
+expect-scene MG_DERBY
+wait 24
+shot title
+press B
+wait 2
+push MG_DERBY 49
+wait 40
+shot ready
+wait 200
+shot race
+wait 400
+shot race_mid
+wait 700
+shot finish
+wait 200
+shot results
+push MG_DERBY 51
+wait 400
+shot hellfire_race

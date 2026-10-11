@@ -1,0 +1,482 @@
+# hahaland_invaded.txt - HaHaland - Invaded (owner: story)
+# Chapter 3: the same town after the vape gate erupted. Same layout as
+# hahaland.txt, rotted textures, lava cracks, portals and fires. Demon
+# nests are SPAWNER things (arg = nest 0..3): the story spawns the
+# demons when you walk into a nest (SCENE_COMBAT on this map).
+# Authored for the story overworld: see story.h for the door tags
+# (64 + PLACE_*) and walk-on event tags (128..). THING_NPC marks a
+# wander spot for ambient citizens (arg = zone), SPAWNER a demon nest.
+
+map hahaland_invaded
+title "HaHaland - Invaded"
+kind overworld
+sky HELL
+music INVASION
+ambient 10
+
+cell . floor=INFECTED_GRASS ceil=sky
+cell , floor=GORE_FLOOR ceil=sky
+cell : floor=HELL_ROCK ceil=sky
+cell = floor=BLOOD_BRICK ceil=sky
+cell s floor=SAND ceil=sky
+cell ~ floor=LAVA flags=lava fh=-2 light=13 ceil=sky
+cell b floor=METAL_FLOOR ceil=sky
+cell p floor=GRATE ceil=sky
+cell t floor=METAL_FLOOR ceil=sky
+cell T wall=TREE floor=INFECTED_GRASS ch=12
+cell H wall=FLESH_WALL floor=FLESH_WALL ch=3
+cell F wall=BONE_WALL floor=BONE_WALL ch=2
+cell # wall=BLOOD_BRICK floor=SKULL_MOSAIC ch=12
+cell W wall=FLESH_WALL floor=SKULL_MOSAIC ch=12
+cell d wall=DOOR_HELL floor=SKULL_MOSAIC ch=12
+cell S wall=SHOP_FRONT floor=GORE_FLOOR ch=12
+cell C wall=CAFE_FRONT floor=GORE_FLOOR ch=12
+cell K wall=CHURCH_WALL floor=ROOF_TILES ch=20
+cell G wall=STAINED_GLASS floor=ROOF_TILES ch=20
+cell A wall=APARTMENT_FRONT floor=GORE_FLOOR ch=24
+cell R wall=WORKSHOP_FRONT floor=RUST_METAL ch=12
+cell V wall=VAPE_CLOUD_WALL floor=VAPE_CLOUD_WALL ch=60
+cell X wall=SKULL_MOSAIC floor=CHAINS ch=10
+cell h wall=PASTEL_BRICK floor=GORE_FLOOR ch=12
+cell M wall=DEMON_EYES floor=FLESH_WALL ch=16
+cell L wall=BONE_WALL floor=SKULL_MOSAIC ch=14
+cell U wall=BLOOD_BRICK floor=PENTAGRAM_FLOOR ch=16
+cell Z wall=RUST_METAL floor=CHAINS ch=40
+cell f wall=VAPE_CLOUD_WALL floor=VAPE_CLOUD_WALL ch=24
+cell 0 wall=DOOR_HELL floor=ROOF_TILES ch=12 tag=65   # door: HOME
+cell 1 wall=DOOR_HELL floor=CANDY_STRIPE ch=16 tag=66   # door: TOWN_HALL
+cell 2 wall=DOOR_HELL floor=ROOF_TILES ch=12 tag=67   # door: CAFE
+cell 3 wall=DOOR_HELL floor=ROOF_TILES ch=12 tag=68   # door: SHOP
+cell 4 wall=DOOR_CUTE floor=ROOF_TILES ch=20 tag=69   # door: CHURCH
+cell 5 wall=DOOR_HELL floor=CLOUD_PUFF ch=12 tag=70   # door: HOSPITAL
+cell 6 wall=DOOR_HELL floor=RUST_METAL ch=12 tag=71   # door: WORKSHOP
+cell 7 wall=DOOR_HELL floor=ROOF_TILES ch=24 tag=72   # door: APARTMENTS
+cell 8 wall=DOOR_HELL floor=CLOUD_PUFF ch=16 tag=73   # door: CONCERT_HALL
+cell 9 wall=DOOR_HELL floor=ROOF_TILES ch=14 tag=74   # door: LIBRARY
+cell j wall=DOOR_HELL floor=CANDY_STRIPE ch=10 tag=75   # door: FUN_FAIR
+cell v wall=DOOR_HELL floor=VAPE_CLOUD_WALL ch=60 tag=76   # door: VAPE_SHOP
+cell q wall=WOOD_WALL floor=WOOD_FLOOR ch=3 tag=77   # door: PIER
+cell g wall=DOOR_HELL floor=CHAINS ch=40 tag=78   # door: WALL_GATE
+cell y wall=BONE_WALL floor=BONE_WALL ch=3 tag=79   # door: GRAVEYARD
+cell B floor=SAND ceil=sky flags=trigger tag=128   # Mr. Flops washed up here
+cell O floor=INFECTED_GRASS ceil=sky flags=trigger tag=129   # the purple fog by the Wall
+cell Q floor=GRATE ceil=sky flags=trigger tag=131   # Cloud Nine Spire
+cell ! floor=INFECTED_GRASS ceil=sky flags=trigger tag=135   # secret sparkle 0
+cell $ floor=INFECTED_GRASS ceil=sky flags=trigger tag=136   # secret sparkle 1
+cell % floor=SAND ceil=sky flags=trigger tag=137   # secret sparkle 2
+cell & floor=SAND ceil=sky flags=trigger tag=138   # secret sparkle 3
+cell * floor=INFECTED_GRASS ceil=sky flags=trigger tag=139   # secret sparkle 4
+cell x floor=LAVA ceil=sky flags=lava fh=-1 light=14   # lava crack
+cell P floor=PENTAGRAM_FLOOR ceil=sky light=12   # scorched summoning circle
+
+grid
+TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTZZffffff
+TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTZZffffff
+TT..................:::.,,========,,.AAAAAAAAA*.~~......ZZffffff
+TT.####.WWWW..####..:::.,,UUUUUUUU,,.AAAAAAAAA..~~......ZZffffff
+TT.####FWWWWF.####..:::.,,UUUUUUUU,,.AAAAAAAAA..~~......ZZffffff
+TT.####FWWWWF.####..:::.==UUUUUUUU==.AAAAAAAAA..~~......ZZffffff
+TT.#0##FWdWWF.#d##..:::===UUU11UUU==.AAAAAAAAA..~~.RRRR.ZZffffff
+TT..................:::=============.AAAA7AAAA..~~.RRRR.ZZffffff
+TT:::::::::::::::::::::.========================~~.RRRR.ZZffffff
+TT:::::::::::::::::::::.HHHHH==HHHHH============~~.R6RR.ZZffffff
+TT........::........:::......==.....============~~..:...ZZffffff
+TT.WWWW...::.####,,,::==========================~~..:...ZZffffff
+TT.WWWW,,.::.####,,,..=CCCCCC===========SSSSSS==~~..:..OZZffffff
+TT.WWWW,,.::.####,,,..=CCCCCC===========SSSSSS==~~..:..OZZffffff
+TT.WdWW,,.::.#d##,,,..=CCCCCC===========SSSSSS==~~..:..OZZffffff
+TT!.......::..........=CC2CCC===========SS3SSS==~~..:..OZZffffff
+TTHHHHHHHH::HHHHHHHH..=tttttt=================..~~..:..OZZffffff
+TT....................=tttttt==,,,,,,,========..~~..:..OZZffffff
+TT.....................========,=====,========..bb:::..OZZffffff
+TT.KKKKKKKK...hhhhhh...========,=====,========..bb:::..OZZffffff
+TT.KKKKKKKK...hhhhhh...========,=====,========..~~..:..OZZffffff
+TT.KKKKKKKK...hhhhhh...========,=====,========..~~..:..OZZffffff
+TT.KKKKKKKK...hh5hhh...========,=====,========..~~..:..OZZffffff
+TT.KKKKKKKK.....:......========,,,,,,,========..~~..:..OZZffffff
+TT.KKKKKKKK:::::::::::.=======================..~~..:..OZZffffff
+TT.KGGGGGGK:::::::::::.=======================..~~..:..OZZffffff
+TT.GGG44GGG............=======================..~~..:xxOZZffffff
+TT...::::.xx...........=======================..~~..:x.OZZffffff
+TT...::::...x....................::xx.xx..x.x...~~x.:..OZZffffff
+TT.....:x...x.x..................::.....xxxxx...~~..:..OZZffffff
+TTFFFFFyFFFFFxx.......MMMMMMMM...::...LLLLLLL,,x~~..:..Oggffffff
+TTF.........F..x......MMMMMMMM...::...LLLLLLL,,x~~..:..Oggffffff
+TTF.........F.........MMMMMMMM...::...LLLLLLL,x.~~..:..OZZffffff
+TTF.........F..x...x.xMMMMMMMM...::...LLLLLLL,,.~~.VVVV.ZZffffff
+TTF.........F..xxxx.x.MMM88MMM...::...LLL9LLL...~~.VVVV.ZZffffff
+TTF.........Fxx..........::......::......:......~~.VVVV.ZZffffff
+TTF........xFx...........::......::......:......~~.VvVV.ZZffffff
+TTFFFFFFFFFFF............::......::......:......~~..:Q..ZZffffff
+TT.......................::......::......:......~~..:..OZZffffff
+TT.XXXX..XXXX..XXXX......::......::xxx..x:......~~..:..OZZffffff
+TT.XXXX..XXXX..XXXX:::::::::::::::::::::::::::::bb:::..OZZffffff
+TT.XjXX..XdXX..XdXX:::::::::::::::::::::::::::::bb:::..OZZffffff
+TT::::::::::::::::::..........x.x::.........x...~~..:..OZZffffff
+TT.pppppppppppppppp..............::..........xx.~~..:..OZZffffff
+TT.pppppppppppppppp......~~~~~~..::..,,,,,,,,xxx~~..:..OZZffffff
+TT.pppppppppppppppp......~~~~~~..::..,,,,,,,,...~~..:..OZZffffff
+TT.pppppppppppppppp......~~~~~~..::..,,,,,,,,...~~..:..OZZffffff
+TTxpppppppppppppppp......~~~~~~..::.........PPP.~~..:..OZZffffff
+TT.pppppppppppppppp..,,,,........::.........PPP.~~..:..OZZffffff
+TT.pppppppppppppppp..,,,,........::.........PPP.~~..:..OZZffffff
+TT.pppppppppppppppp..,,,,........::...........$.~~..:..OZZffffff
+TT...............................::.............~~..:...ZZffffff
+ssssssssssssssssssssssssssssssssssssssssssssssss~~ssssssZZffffff
+sssssssssssssssssssPPPssssssssssssssssssssssssss~~ssssssZZffffff
+sssssssssssssssssssPPPssssssssssssssssssssssssss~~ssssssZZffffff
+ssssssssssssBssssssPPPssssssssssssssssssssssssss~~ssssssZZffffff
+s%ssssssssssssssssssssssssssssssssssssssssssssss~~sssss&ZZffffff
+ssssssssssssssssssssssssssssssssssssssbbssssssss~~ssssssZZffffff
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~bb~~~~~~~~~~~~~~~~ZZffffff
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~bb~~~~~~~~~~~~~~~~ZZffffff
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~bb~~~~~~~~~~~~~~~~ZZffffff
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~bb~~~~~~~~~~~~~~~~ZZffffff
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~qq~~~~~~~~~~~~~~~~ZZffffff
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ZZffffff
+end
+
+floorh
+
+
+..444444444444444444....444444444444
+..444444444444444444....444444444444
+..444444444444444444....444444444444
+..444444444444444444....444444444444
+..4444444444444444442..2444444444444
+..4444444444444444442..2444444444444
+..444444444444444444....444444444444
+..444444444444444444....444444444444
+..444444444444444444.........22
+..444444444444444444
+..444444444444444444
+..444444444444444444
+..444444444444444444
+..444444444444444444
+..444444444444444444
+..........22
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+.........................AAAAAA
+.........................AAAAAA
+.........................AAAAAA
+.........................AAAAAA
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+end
+
+light
+
+
+
+..................ddd
+..................ded
+..................ddd
+........................ddd......ddd
+........................ded......ded
+......ddd....ddd........ddd..eee.ddd
+......ded....ded.............efe
+......ddd....ddd.............eee.......eee
+.............................ddd.....ddefe.........eee
+.............................ded.....deeee.........efe
+.............................ddd.....ddd...........eee
+
+
+.....................................................ddd
+.......................eee.................eee.......ded
+......................defe.................efed......ddd
+......................deee.ddd.............eeed
+......................ddd..ded..............ddd
+...........................ddd
+...................eee
+...................efe
+...................eee
+......................ddd...................ddd
+......................ded...ddd......ddd....ded
+...ddd..ddd...........dddeeeded......ded....ddd
+...ded..ded..............efeddd......ddd
+...ddd..ddd..............eee...dddddd..............eee
+...............................dedded..............efe
+...............................dddddd..............eee
+
+....ddd
+....ded........................dddddd
+....ddd........................dedded
+...............................ddddddddd
+.....................................ded............ddd
+.....................................ddd............ded
+....................................................ddd
+
+.......ddd...ddd.....................................ddd
+.......ded...ded.....................................ded
+.......ddd...ddd.....................................ddd
+...............................dddddd
+...............................dedded
+...............................dddddd
+............................................ddd
+............................................ded
+...............................dddddd.......ddd
+...............................dedded
+...........eee......ddd........dddeee
+...........efe......ded...........efe
+...........eee......ddd...........eee
+
+.......................................ddd
+.......................................ded
+.......................................ddd
+
+
+
+
+
+
+end
+
+thing 34 20 PROP_FOUNTAIN
+thing 31 17 PROP_FLOWERS
+thing 37 17 PROP_FLOWERS
+thing 31 23 PROP_FLOWERS
+thing 37 23 PROP_FLOWERS
+thing 23 19 PROP_LAMP
+thing 45 19 PROP_LAMP
+thing 23 26 PROP_LAMP
+thing 45 26 PROP_LAMP
+thing 30 12 PROP_LAMP
+thing 38 12 PROP_LAMP
+thing 29 27 PROP_LAMP
+thing 38 27 PROP_LAMP
+thing 27 21 PROP_BENCH
+thing 41 21 PROP_BENCH
+thing 34 25 PROP_BENCH
+thing 36 27 PROP_SIGN
+thing 27 16 PROP_SIGN
+thing 44 16 PROP_SIGN
+thing 5 7 PROP_MAILBOX
+thing 10 7 PROP_MAILBOX
+thing 16 7 PROP_MAILBOX
+thing 5 15 PROP_MAILBOX
+thing 15 15 PROP_MAILBOX
+thing 3 7 PROP_FLOWERS
+thing 13 7 PROP_FLOWERS
+thing 18 7 PROP_FLOWERS
+thing 2 12 PROP_FLOWERS
+thing 18 13 PROP_FLOWERS
+thing 7 9 PROP_LAMP
+thing 14 9 PROP_LAMP
+thing 19 4 PROP_LAMP
+thing 25 7 PROP_LAMP
+thing 34 7 PROP_LAMP
+thing 28 8 PROP_SIGN
+thing 24 3 PROP_TREE
+thing 35 3 PROP_TREE
+thing 4 28 PROP_LAMP
+thing 9 28 PROP_LAMP
+thing 4 32 PROP_SKULLS
+thing 6 32 PROP_SKULLS
+thing 9 32 PROP_SKULLS
+thing 4 35 PROP_SKULLS
+thing 6 35 PROP_SKULLS
+thing 9 35 PROP_SKULLS
+thing 11 33 PROP_FLOWERS
+thing 13 23 PROP_SIGN
+thing 7 44 PROP_BENCH
+thing 12 44 PROP_FLOWERS
+thing 16 48 PROP_FLOWERS
+thing 5 49 PROP_FLOWERS
+thing 8 42 PROP_LAMP
+thing 14 42 PROP_LAMP
+thing 32 30 PROP_LAMP
+thing 35 30 PROP_LAMP
+thing 32 35 PROP_LAMP
+thing 35 35 PROP_LAMP
+thing 32 45 PROP_LAMP
+thing 35 45 PROP_LAMP
+thing 32 50 PROP_LAMP
+thing 35 50 PROP_LAMP
+thing 28 41 PROP_BENCH
+thing 39 39 PROP_BENCH
+thing 31 49 PROP_BENCH
+thing 37 49 PROP_BENCH
+thing 24 35 PROP_SIGN
+thing 42 35 PROP_SIGN
+thing 31 45 PROP_SIGN
+thing 54 11 PROP_SIGN
+thing 51 37 PROP_SIGN
+thing 54 17 PROP_LAMP
+thing 54 42 PROP_LAMP
+thing 6 53 PROP_BENCH
+thing 22 53 PROP_BENCH
+thing 44 53 PROP_BENCH
+thing 37 56 PROP_SIGN
+thing 40 56 PROP_LAMP
+thing 23 28 PROP_TREE
+thing 26 28 PROP_TREE
+thing 28 28 PROP_TREE
+thing 30 28 PROP_TREE
+thing 43 28 PROP_TREE
+thing 27 29 PROP_TREE
+thing 37 31 PROP_TREE
+thing 32 32 PROP_TREE
+thing 45 32 PROP_TREE
+thing 31 33 PROP_TREE
+thing 47 34 PROP_TREE
+thing 30 35 PROP_TREE
+thing 20 36 PROP_TREE
+thing 40 36 PROP_TREE
+thing 47 36 PROP_TREE
+thing 24 37 PROP_TREE
+thing 23 38 PROP_TREE
+thing 21 39 PROP_TREE
+thing 25 42 PROP_TREE
+thing 28 43 PROP_TREE
+thing 20 45 PROP_TREE
+thing 22 45 PROP_TREE
+thing 36 46 PROP_TREE
+thing 40 46 PROP_TREE
+thing 46 46 PROP_TREE
+thing 38 47 PROP_TREE
+thing 42 47 PROP_TREE
+thing 20 48 PROP_TREE
+thing 32 48 PROP_TREE
+thing 43 48 PROP_TREE
+thing 45 48 PROP_TREE
+thing 40 49 PROP_TREE
+thing 42 49 PROP_TREE
+thing 46 49 PROP_TREE
+thing 38 50 PROP_TREE
+thing 44 50 PROP_TREE
+thing 47 50 PROP_TREE
+thing 13 17 PROP_TREE
+thing 19 18 PROP_TREE
+thing 20 22 PROP_TREE
+thing 21 23 PROP_TREE
+thing 17 26 PROP_TREE
+thing 20 26 PROP_TREE
+thing 13 28 PROP_TREE
+thing 19 28 PROP_TREE
+thing 15 30 PROP_TREE
+thing 18 32 PROP_TREE
+thing 15 35 PROP_TREE
+thing 15 37 PROP_TREE
+thing 21 37 PROP_TREE
+thing 51 2 PROP_TREE
+thing 53 5 PROP_TREE
+thing 55 5 PROP_TREE
+thing 55 10 PROP_TREE
+thing 51 14 PROP_TREE
+thing 53 14 PROP_TREE
+thing 54 15 PROP_TREE
+thing 50 21 PROP_TREE
+thing 53 22 PROP_TREE
+thing 54 23 PROP_TREE
+thing 51 25 PROP_TREE
+thing 51 28 PROP_TREE
+thing 51 30 PROP_TREE
+thing 50 38 PROP_TREE
+thing 51 39 PROP_TREE
+thing 53 39 PROP_TREE
+thing 51 43 PROP_TREE
+thing 54 44 PROP_TREE
+thing 53 47 PROP_TREE
+thing 51 49 PROP_TREE
+thing 27 19 NPC arg=0
+thing 31 24 NPC arg=0
+thing 38 18 NPC arg=0
+thing 42 22 NPC arg=0
+thing 25 24 NPC arg=0
+thing 39 25 NPC arg=0
+thing 30 14 NPC arg=0
+thing 44 25 NPC arg=0
+thing 24 37 NPC arg=1
+thing 30 37 NPC arg=1
+thing 37 36 NPC arg=1
+thing 44 38 NPC arg=1
+thing 22 45 NPC arg=1
+thing 36 47 NPC arg=1
+thing 42 47 NPC arg=1
+thing 32 43 NPC arg=1
+thing 8 54 NPC arg=2
+thing 18 54 NPC arg=2
+thing 26 55 NPC arg=2
+thing 42 54 NPC arg=2
+thing 30 53 NPC arg=2
+thing 8 10 NPC arg=3
+thing 15 10 NPC arg=3
+thing 9 15 NPC arg=3
+thing 17 15 NPC arg=3
+thing 11 28 NPC arg=4
+thing 5 29 NPC arg=4
+thing 7 46 NPC arg=5
+thing 13 49 NPC arg=5
+thing 16 45 NPC arg=5
+thing 53 22 NPC arg=6
+thing 53 46 NPC arg=6
+thing 27 8 NPC arg=7
+thing 32 8 NPC arg=7
+thing 39 9 NPC arg=8
+thing 44 9 NPC arg=8
+thing 34 26 PLAYER_START angle=270
+thing 30 21 SPAWNER arg=0
+thing 20 54 SPAWNER arg=1
+thing 36 38 SPAWNER arg=2
+thing 7 33 SPAWNER arg=3
+thing 21 52 VAPE_PORTAL
+thing 45 48 VAPE_PORTAL
+thing 38 37 VAPE_PORTAL
+thing 5 34 VAPE_PORTAL
+thing 28 20 VAPE_PORTAL
+thing 53 38 VAPE_PORTAL
+thing 24 18 PROP_TORCH
+thing 44 18 PROP_TORCH
+thing 26 28 PROP_TORCH
+thing 20 23 PROP_TORCH
+thing 52 12 PROP_TORCH
+thing 52 30 PROP_TORCH
+thing 35 52 PROP_TORCH
+thing 12 52 PROP_TORCH
+thing 30 9 PROP_TORCH
+thing 40 11 PROP_TORCH
+thing 24 23 PROP_BARREL
+thing 43 24 PROP_BARREL
+thing 16 27 PROP_BARREL
+thing 25 49 PROP_SKULLS
+thing 46 36 PROP_SKULLS
+thing 51 47 PROP_SKULLS
