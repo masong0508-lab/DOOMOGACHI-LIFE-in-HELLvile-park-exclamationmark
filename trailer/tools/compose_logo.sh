@@ -17,6 +17,6 @@ ffmpeg -v error -y \
 [1:v]scale=1920:1080:flags=lanczos,cas=0.2,setsar=1,format=yuv420p[b];\
 [a][b]concat=n=2:v=1:a=0,fade=t=out:st=$fade_st:d=0.6[v];\
 [2:a]afftdn=nf=-30,volume=12dB,afade=t=out:st=$fade_st:d=0.6,aresample=48000[au]" \
-  -map "[v]" -map "[au]" -r 30 -c:v libx264 -crf 14 -preset slow -tune film \
+  -map "[v]" -map "[au]" -r 30 -c:v libx264 -crf 18 -preset slow -tune film \
   -c:a aac -b:a 192k -ac 2 -movflags +faststart "$out"
 echo "wrote $out ($total s)"
