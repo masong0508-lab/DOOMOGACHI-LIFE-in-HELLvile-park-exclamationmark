@@ -1,0 +1,12 @@
+build/
+*/build/
+*.o
+*.elf
+*.map
+*.sav
+*.mcd
+/core/build/
+/gba/build/
+/ps1/build/
+/screenshots/
+__pycache__/
