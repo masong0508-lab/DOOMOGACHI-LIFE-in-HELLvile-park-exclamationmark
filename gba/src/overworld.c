@@ -40,7 +40,7 @@ typedef struct OwTile {
 
 /* the cache lives in the shared buffer (bigbuf.c) */
 #define cache ((OwTile (*)[CACHE_WAYS])(gba_big + GBA_BIG_OW))
-DOOMO_STATIC_ASSERT(sizeof(OwTile) * CACHE_SETS * CACHE_WAYS <= GBA_BIG_CLIPS - GBA_BIG_OW,
+DOOMO_STATIC_ASSERT(GBA_BIG_OW + sizeof(OwTile) * CACHE_SETS * CACHE_WAYS <= GBA_BIG_SIZE,
                     ow_cache_fits);
 static uint32_t cache_tick;
 static uint32_t tint_state;      /* changes invalidate by key        */
@@ -216,6 +216,7 @@ void plat_overworld(const DoomoOverworldView *v)
     const DoomoMap *m;
     int tx0, ty0, tx1, ty1, tx, ty, i, n, si;
     if (gba_nodraw || !v) return;
+    gba_big_claim(GBA_BIG_BY_OW);
     m = v->map;
     owf.ox = v->vw > 0 ? v->vx : 0;
     owf.oy = v->vh > 0 ? v->vy : 0;

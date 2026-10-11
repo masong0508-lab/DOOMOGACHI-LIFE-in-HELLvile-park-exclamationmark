@@ -29,8 +29,15 @@ typedef struct GbaMailbox {
     uint32_t ticks;                      /* doomo_frame() calls (30 Hz)    */
     uint32_t drawn;                      /* frames actually presented      */
     uint32_t fps10;                      /* engine test: fps x 10          */
+    /* harness commands (game ROM, hcmd.c): the harness writes arg, then
+     * cmd; the ROM runs it between two logic ticks, writes result and
+     * clears cmd */
+    uint32_t cmd, arg, result, cycles;
 } GbaMailbox;
 extern volatile GbaMailbox gba_mailbox;
+enum { GBA_HC_NONE, GBA_HC_SAVE, GBA_HC_LOAD, GBA_HC_EXISTS, GBA_HC_TOWN_FILL,
+       GBA_HC_TOWN_CRC, GBA_HC_VERIFY };
+void gba_harness_cmd(void);              /* hcmd.c */
 void gba_irq_init(void) IWRAM_CALL;          /* irq.iwram.c */
 /* Cycle counter: timers 2+3 cascaded at 16.78 MHz. */
 static inline uint32_t gba_cycles(void) {
@@ -51,13 +58,19 @@ void video_flip(void);                   /* wait for vblank pacing + flip */
 /* ---- shared big buffer (bigbuf.c) -------------------------------------- */
 /* The save scratch handed to the core (>= DOOMO_SAVE_SCRATCH_MIN) and,
  * between saves, the platform's rebuildable caches (offsets below). */
-#define GBA_BIG_SIZE   (88u * 1024u)
-#define GBA_BIG_OW     0u               /* overworld lit tiles  < 20 KB */
-#define GBA_BIG_CLIPS  (20u * 1024u)    /* r3d clip checkpoints < 8 KB  */
-#define GBA_BIG_ROOF   (28u * 1024u)    /* r3d roof table         4 KB  */
-#define GBA_BIG_CMT    (32u * 1024u)    /* free (end of the roof table) */
-#define GBA_BIG_SPR    (36u * 1024u)    /* r3d sprite order       1 KB  */
+/* gba_big (bigbuf.c): one 17 KB EWRAM block used in turn by the
+ * overworld's tile cache, the raycaster's buffers and the save code's
+ * stream window; whoever uses it claims it first, which invalidates the
+ * previous owner's cache. */
+#define GBA_BIG_SIZE   (17u * 1024u)
+#define GBA_BIG_OW     0u               /* overworld lit tiles  < 17 KB */
+#define GBA_BIG_CLIPS  0u               /* r3d clip checkpoints < 8 KB  */
+#define GBA_BIG_ROOF   (8u * 1024u)     /* r3d roof table         4 KB  */
+#define GBA_BIG_CMT    (12u * 1024u)    /* (end of the roof table)      */
+#define GBA_BIG_SPR    (12u * 1024u)    /* r3d sprite order       1 KB  */
 extern uint8_t gba_big[];
+enum { GBA_BIG_FREE, GBA_BIG_BY_OW, GBA_BIG_BY_R3D, GBA_BIG_BY_SAVE };
+void gba_big_claim(int who);
 
 /* ---- 3D (r3d*.c) --------------------------------------------------------- */
 void r3d_init(void);

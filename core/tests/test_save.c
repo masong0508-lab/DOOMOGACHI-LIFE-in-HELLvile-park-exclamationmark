@@ -291,3 +291,142 @@ TEST(save_crc32_known_vector)
     CHECK_EQ_U(save_crc32((const uint8_t *)"123456789", 9), 0xCBF43926u);
     CHECK_EQ_U(save_crc32((const uint8_t *)"", 0), 0u);
 }
+
+/* ---- streaming saves (the GBA's path, platform.h) ------------------------ */
+static uint8_t file_a[DOOMO_SAVE_SLOT1_MAX], file_b[DOOMO_SAVE_SLOT1_MAX];
+
+static uint32_t slot_bytes(int slot, uint8_t *buf)
+{
+    uint32_t size = 0;
+    if (!plat_save_read(slot, buf, DOOMO_SAVE_SLOT1_MAX, &size)) return 0;
+    return size;
+}
+
+/* save the current town in `slot` with the whole-image path and streamed
+ * with each chunk size: the files must be byte-identical, and the
+ * streamed load must restore the town exactly */
+static int stream_matches(int slot, const char *what)
+{
+    static const int chunks[] = { 64, 100, 1000, 4096, 20480 };
+    char why[128];
+    uint32_t na, nb;
+    int k;
+    DoomoTown keep;
+    resident_sanitize(&doomo_town.player);
+    rel_normalize();
+    keep = doomo_town;
+    nat_save_stream = 0;
+    if (!save_game(slot)) { fprintf(stderr, "    %s: save failed\n", what); return 0; }
+    na = slot_bytes(slot, file_a);
+    for (k = 0; k < (int)(sizeof(chunks) / sizeof(chunks[0])); k++) {
+        nat_save_stream = chunks[k];
+        plat_save_erase(slot);
+        nat_stream_writes = nat_stream_reads = 0;
+        if (!save_game(slot)) {
+            fprintf(stderr, "    %s: streamed save (%d) failed: %s\n", what, chunks[k], save_last_error());
+            goto fail;
+        }
+        nb = slot_bytes(slot, file_b);
+        if (nb != na || memcmp(file_a, file_b, na) != 0) {
+            fprintf(stderr, "    %s: streamed file (%d) differs (%u vs %u bytes)\n", what, chunks[k], nb, na);
+            goto fail;
+        }
+        if (na > (uint32_t)chunks[k] && nat_stream_writes < 2) {
+            fprintf(stderr, "    %s: did not stream (%u writes)\n", what, nat_stream_writes);
+            goto fail;
+        }
+        if (!save_verify(slot) || !save_exists(slot)) {
+            fprintf(stderr, "    %s: streamed verify failed\n", what);
+            goto fail;
+        }
+        memset(&doomo_town, 0x5A, sizeof(doomo_town));
+        if (!load_game(slot)) {
+            fprintf(stderr, "    %s: streamed load (%d) failed: %s\n", what, chunks[k], save_last_error());
+            goto fail;
+        }
+        if (!towns_equal(&keep, &doomo_town, why, sizeof(why))) {
+            fprintf(stderr, "    %s: streamed load (%d) mismatch: %s\n", what, chunks[k], why);
+            goto fail;
+        }
+        doomo_town = keep;
+    }
+    nat_save_stream = 0;
+    printf("      %-34s %6u bytes streamed identically\n", what, na);
+    return 1;
+fail:
+    nat_save_stream = 0;
+    doomo_town = keep;
+    return 0;
+}
+
+TEST(save_streamed_identical_and_round_trips)
+{
+    town_new(TOWN_FREEPLAY, 1, TOWN_POP_EMPTY);
+    CHECK(stream_matches(0, "empty island"));
+    town_new(TOWN_STORY, 5, TOWN_POP_PREMADE);
+    scribble_misc(11);
+    CHECK(stream_matches(0, "story, premade"));
+    town_new(TOWN_FREEPLAY, 31337, TOWN_POP_RANDOM);
+    CHECK(stream_matches(1, "random island"));
+    fill_random_custom(4242, 1);
+    CHECK(stream_matches(1, "1000 random custom + 2048 edges"));
+}
+
+TEST(save_streamed_limits_and_failures)
+{
+    uint32_t keep_size, now;
+    DoomoTown big;
+    /* a story save in slot 0 to protect */
+    town_new(TOWN_STORY, 1, TOWN_POP_PREMADE);
+    nat_save_stream = 512;
+    CHECK(save_game(0));
+    keep_size = slot_bytes(0, file_a);
+    CHECK(keep_size > 0);
+    /* too big for slot 0: refused before anything is written */
+    fill_random_custom(77, 1);
+    big = doomo_town;
+    nat_stream_writes = 0;
+    CHECK(!save_game(0));
+    CHECK(strstr(save_last_error(), "too big") != NULL);
+    CHECK_EQ(nat_stream_writes, 0);
+    now = slot_bytes(0, file_b);
+    CHECK_EQ(now, keep_size);
+    CHECK(memcmp(file_a, file_b, keep_size) == 0);
+    /* a write failing half-way reports an error and never leaves a valid
+     * but wrong save (natively the old one survives) */
+    CHECK(save_game(1));
+    town_new(TOWN_FREEPLAY, 3, TOWN_POP_RANDOM);
+    nat_stream_fail_at = 5;
+    CHECK(!save_game(1));
+    nat_stream_fail_at = 0;
+    CHECK(save_verify(1));
+    memset(&doomo_town, 0, sizeof(doomo_town));
+    CHECK(load_game(1));
+    {
+        char why[128];
+        CHECK_MSG(towns_equal(&big, &doomo_town, why, sizeof(why)), "%s", why);
+    }
+    /* a damaged byte anywhere is caught by the streamed CRC pass, and the
+     * town stays untouched */
+    {
+        uint32_t n = slot_bytes(1, file_a), i;
+        town_new(TOWN_FREEPLAY, 9, TOWN_POP_RANDOM);
+        snapshot = doomo_town;
+        for (i = 0; i < n; i += n / 13 + 1) {
+            file_a[i] ^= 0x04;
+            CHECK(plat_save_write(1, file_a, n));
+            CHECK_MSG(!load_game(1), "streamed load accepted corruption at %u", i);
+            CHECK(!save_verify(1));
+            file_a[i] ^= 0x04;
+        }
+        CHECK(plat_save_write(1, file_a, n - 7));          /* truncated */
+        CHECK(!load_game(1));
+        CHECK(memcmp(&snapshot, &doomo_town, sizeof(snapshot)) == 0);
+        CHECK(plat_save_write(1, file_a, n));
+        CHECK(load_game(1));
+    }
+    plat_save_erase(0);
+    CHECK(!load_game(0));
+    CHECK(!save_exists(0));
+    nat_save_stream = 0;
+}

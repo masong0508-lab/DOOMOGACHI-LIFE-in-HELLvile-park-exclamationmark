@@ -12,6 +12,15 @@
  * serialise), then erases and programs only the 4 KB sectors the data
  * needs, verifying every byte. Capacity per slot is therefore the slot
  * size minus 12 bytes. On a 64 KB chip slot 1 shrinks to what fits.
+ *
+ * The core streams its saves (platform.h): plat_save_scratch() (bigbuf.c)
+ * offers only 17 KB, less than a slot, so save_game() sizes the save
+ * first, then calls plat_save_stream_begin(size) / _write(chunk)... /
+ * _end(commit) with the same steps as plat_save_write: begin erases the
+ * trailer sector, each 4 KB sector is erased when the stream first enters
+ * it and programmed (and verified) as the bytes arrive, and end writes
+ * the trailer. load_game() reads through plat_save_read_at(). No RAM copy
+ * of the save exists at any time.
  */
 #include "gba_plat.h"
 #include "flash_int.h"
@@ -178,6 +187,83 @@ int plat_save_write(int slot, const void *data, uint32_t size)
         uint32_t chk;
         if (!read_trailer(off, len, &chk) || chk != size) return 0;
     }
+    return 1;
+}
+
+/* ---- streaming (platform.h) -------------------------------------------- */
+static struct {
+    int active, ok;
+    uint32_t off, len, size, pos;
+} ws;
+
+int plat_save_stream_begin(int slot, uint32_t size)
+{
+    uint32_t off, len;
+    ws.active = 0;
+    if (size == 0 || !slot_region(slot, &off, &len)) return 0;
+    if (size > len - TRAILER) {
+        gba_logf("save: slot %d: %u bytes do not fit (%u max)", slot, size, len - TRAILER);
+        return 0;
+    }
+    /* invalidate first: from here on the slot reads as empty until _end */
+    if (!erase_sector(off + len - SECTOR)) { gba_log("save: erase failed"); return 0; }
+    ws.active = 1;
+    ws.ok = 1;
+    ws.off = off;
+    ws.len = len;
+    ws.size = size;
+    ws.pos = 0;
+    return 1;
+}
+
+int plat_save_stream_write(const void *data, uint32_t n)
+{
+    const uint8_t *src = (const uint8_t *)data;
+    if (!ws.active || !ws.ok || ws.pos + n > ws.size) { ws.ok = 0; return 0; }
+    while (n) {
+        uint32_t addr = ws.off + ws.pos, in = addr & (SECTOR - 1);
+        uint32_t k = SECTOR - in < n ? SECTOR - in : n;
+        /* entering a sector: erase it (the trailer sector already is) */
+        if (in == 0 && addr != ws.off + ws.len - SECTOR && !erase_sector(addr)) {
+            gba_log("save: erase failed");
+            ws.ok = 0;
+            return 0;
+        }
+        if (!program(addr, src, k)) {
+            gba_logf("save: program/verify failed at 0x%x", addr);
+            ws.ok = 0;
+            return 0;
+        }
+        ws.pos += k; src += k; n -= k;
+    }
+    return 1;
+}
+
+int plat_save_stream_end(int commit)
+{
+    uint8_t t[TRAILER];
+    uint32_t size = ws.size, chk;
+    int ok = ws.active && ws.ok && commit && ws.pos == ws.size;
+    ws.active = 0;
+    if (!ok) return 0;                   /* the trailer stays erased: no save */
+    t[0] = 'D'; t[1] = 'M'; t[2] = 'S'; t[3] = 'V';
+    t[4] = (uint8_t)size; t[5] = (uint8_t)(size >> 8);
+    t[6] = (uint8_t)(size >> 16); t[7] = (uint8_t)(size >> 24);
+    t[8] = (uint8_t)~size; t[9] = (uint8_t)(~size >> 8);
+    t[10] = (uint8_t)(~size >> 16); t[11] = (uint8_t)(~size >> 24);
+    if (!program(ws.off + ws.len - TRAILER, t, TRAILER)) { gba_log("save: trailer failed"); return 0; }
+    return read_trailer(ws.off, ws.len, &chk) && chk == size;
+}
+
+int plat_save_read_at(int slot, uint32_t offset, void *data, uint32_t n, uint32_t *size)
+{
+    uint32_t off, len, s;
+    if (size) *size = 0;
+    if (!data || !slot_region(slot, &off, &len)) return 0;
+    if (!read_trailer(off, len, &s)) return 0;
+    if (size) *size = s;
+    if (offset > s || n > s - offset) return 0;
+    read_bytes(off + offset, (uint8_t *)data, n);
     return 1;
 }
 

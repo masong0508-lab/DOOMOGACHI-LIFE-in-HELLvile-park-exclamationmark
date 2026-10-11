@@ -2,7 +2,7 @@
  * input file and writes PNG screenshots (owner: foundation).
  *
  *   runner [--script FILE] [--shots DIR] [--w 240 --h 160] [--frames N]
- *          [--saves DIR] [--seed N] [--zoom N] [--gba-input]
+ *          [--saves DIR] [--seed N] [--zoom N] [--gba-input] [--save-stream N]
  *          [--assert-no-stubs] [--quiet] [--verbose]
  *
  * Script lines (one command per line, '#' starts a comment):
@@ -208,7 +208,7 @@ static void usage(void)
 {
     fprintf(stderr,
             "usage: runner [--script FILE] [--shots DIR] [--w N --h N] [--frames N]\n"
-            "              [--saves DIR] [--seed N] [--zoom N] [--gba-input]\n"
+            "              [--saves DIR] [--seed N] [--zoom N] [--gba-input] [--save-stream N]\n"
             "              [--assert-no-stubs] [--quiet] [--verbose]\n");
 }
 
@@ -228,6 +228,7 @@ int main(int argc, char **argv)
         else if (strcmp(a, "--h") == 0 && val) { o.h = atoi(val); i++; }
         else if (strcmp(a, "--frames") == 0 && val) { frames = atoi(val); i++; }
         else if (strcmp(a, "--saves") == 0 && val) { o.save_dir = val; i++; }
+        else if (strcmp(a, "--save-stream") == 0 && val) { nat_save_stream = atoi(val); i++; }
         else if (strcmp(a, "--seed") == 0 && val) { o.seed = (uint32_t)strtoul(val, NULL, 0); i++; }
         else if (strcmp(a, "--zoom") == 0 && val) { zoom = atoi(val); i++; }
         else if (strcmp(a, "--gba-input") == 0) gba_input = 1;

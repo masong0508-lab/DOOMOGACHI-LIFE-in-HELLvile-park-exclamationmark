@@ -1,0 +1,14 @@
+# coresave2.txt - second run with the save file of coresave1.txt: slot 1
+# must load back the same worst-case island after the "power cycle".
+wait 40
+expect-save 1
+verify 1
+load 1
+town-crc
+town-fill 4242
+expect-town-crc
+# and it can be written again in place
+save 1
+load 1
+expect-town-crc
+wait 10

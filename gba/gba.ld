@@ -86,7 +86,7 @@ SECTIONS
 
     /* ---- EWRAM: everything else ------------------------------------- */
     /* Test-harness mailbox, fixed at 0x02000000 (gba/harness reads the
-     * logic tick counter from here). 16 bytes. */
+     * logic tick counter from here and posts commands). 32 bytes. */
     .mailbox (NOLOAD) : {
         KEEP(*(.mailbox))
         . = ALIGN(16);

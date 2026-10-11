@@ -612,6 +612,8 @@ static void day_rollover(void)
 {
     int i, month, dom;
     progress_add(PROG_DAYS_LIVED, 1);
+    /* jobs are looked up again lazily (a slot may hold a new citizen) */
+    memset(sim_s.job, 0, sizeof(sim_s.job));
     sim_date(&month, &dom);
     /* birthdays! */
     for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) {
@@ -666,9 +668,15 @@ static int speed_q(void)
     return spd[DOOMO_CLAMP(s, 0, 3)];
 }
 
+/* (Re)initialise when the town under us was replaced (town_new without a
+ * sim_init, or time running backwards after a load). */
 void sim_ensure_init(void)
 {
-    if (!sim_s.inited) sim_init();
+    if (!sim_s.inited || sim_s.town_seed != doomo_town.seed ||
+        sim_s.town_pop != doomo_town.population || sim_s.town_mode != doomo_town.mode ||
+        doomo_town.day < sim_s.day_seen)
+        sim_init();
+    sim_s.day_seen = doomo_town.day;
 }
 
 void sim_init(void)
@@ -677,6 +685,10 @@ void sim_init(void)
     uint16_t now16;
     memset(&sim_s, 0, sizeof(sim_s));
     sim_s.inited = 1;
+    sim_s.town_seed = doomo_town.seed;
+    sim_s.town_pop = doomo_town.population;
+    sim_s.town_mode = doomo_town.mode;
+    sim_s.day_seen = doomo_town.day;
     sim_s.night = (uint8_t)town_is_night();
     rng_seed(&sim_s.rng, doomo_town.seed ^ 0x5113A11Eu ^ (doomo_town.day * 2654435761u) ^
                              doomo_town.minute);
@@ -695,6 +707,12 @@ void sim_init(void)
         sim_mood_of(i);
     }
     sim_events_reset();
+    {
+        int pop = town_count(-1);
+        if (pop == 0) sim_newsf("Welcome to your island! It's quiet... make some citizens!");
+        else if (doomo_town.day == 0) sim_newsf("Welcome to Hellvile Park! Population: %d.", pop);
+        else sim_newsf("Welcome back! Day %d in Hellvile Park.", (int)doomo_town.day + 1);
+    }
 }
 
 void sim_tick(void)

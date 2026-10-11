@@ -138,15 +138,37 @@ void plat_sample(int sfx_id, uint8_t vol);
 int plat_save_write(int slot, const void *data, uint32_t size);
 int plat_save_read(int slot, void *data, uint32_t cap, uint32_t *size);
 int plat_save_erase(int slot);
-/* Big temporary buffer for save_game()/load_game() (foundation, additive):
- * returns memory of at least DOOMO_SAVE_SCRATCH_MIN bytes (save.h) and
- * stores its size in *cap. It is only used for the duration of one
- * save/load call, so a RAM-starved platform may hand out memory that is
- * otherwise busy (e.g. GBA: OBJ VRAM + the back page while a "Saving..."
- * screen is shown). The core has a weak default (a static buffer in
+/* Temporary buffer for save_game()/load_game() (foundation, additive):
+ * returns byte-addressable memory and stores its size in *cap. It is only
+ * used for the duration of one save/load call, so a platform may hand out
+ * memory that is otherwise busy (PS1: the idle display list; GBA: the
+ * renderer caches). With at least DOOMO_SAVE_SCRATCH_MIN bytes (save.h)
+ * the whole save image is built / read in it. A RAM-starved platform may
+ * offer less (>= DOOMO_SAVE_STREAM_MIN) and implement the streaming calls
+ * below instead: the core then streams the save through the buffer in
+ * chunks. The core has a weak default (a static buffer in
  * core/src/save_scratch.c); platforms that override it should link with
  * --gc-sections (and -fdata-sections) so the default buffer is dropped. */
 void *plat_save_scratch(uint32_t *cap);
+/* Streaming saves (foundation, additive; only needed by platforms whose
+ * plat_save_scratch() is smaller than a slot - the core falls back to
+ * plat_save_write / plat_save_read otherwise). Weak defaults
+ * (core/src/save_scratch.c) return 0 = not supported.
+ *   plat_save_stream_begin(slot, size)  start replacing the slot with a
+ *                         save of exactly `size` bytes (it fits the slot)
+ *   plat_save_stream_write(data, n)     the next n bytes, in order
+ *   plat_save_stream_end(commit)        commit = 1: all `size` bytes were
+ *                         written, make them the slot's save (1 = written
+ *                         and verified); commit = 0: abandon. Like
+ *                         plat_save_write, a failed or abandoned write may
+ *                         leave the slot empty, never half-valid.
+ *   plat_save_read_at(slot, off, data, n, size)  n bytes from offset off
+ *                         of the slot's save (off + n <= its size);
+ *                         *size = the save's total size. 0 = no save. */
+int plat_save_stream_begin(int slot, uint32_t size);
+int plat_save_stream_write(const void *data, uint32_t n);
+int plat_save_stream_end(int commit);
+int plat_save_read_at(int slot, uint32_t offset, void *data, uint32_t n, uint32_t *size);
 
 /* ---- misc ----------------------------------------------------------------- */
 uint32_t plat_entropy(void);           /* any varying value for seeding  */

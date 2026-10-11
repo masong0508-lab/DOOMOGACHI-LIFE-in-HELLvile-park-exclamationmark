@@ -332,7 +332,7 @@ void sim_news_push(const char *msg)
     char *d;
     int i;
     if (!msg || !msg[0]) return;
-    if (!sim_s.inited) sim_init();
+    sim_ensure_init();
     sim_s.news_head = (uint8_t)((sim_s.news_head + NEWS_MAX - 1) % NEWS_MAX);
     d = sim_s.news[sim_s.news_head];
     for (i = 0; i < NEWS_LEN - 1 && msg[i]; i++) d[i] = msg[i];

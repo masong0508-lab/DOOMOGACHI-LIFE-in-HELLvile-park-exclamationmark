@@ -25,16 +25,21 @@ uint32_t save_serialize(uint8_t *buf, uint32_t cap);
 int      save_deserialize(const uint8_t *buf, uint32_t size);
 uint32_t save_crc32(const uint8_t *buf, uint32_t size);
 
-/* High level: serialise + plat_save_write / plat_save_read + deserialise.
- * Uses a static scratch buffer. */
+/* High level: serialise + plat_save_write / plat_save_read + deserialise,
+ * in plat_save_scratch() - or streamed through the platform in chunks
+ * when that buffer is smaller than the slot (platform.h). */
 int save_game(int slot);
 int load_game(int slot);
 int save_exists(int slot);
 
 /* ---- foundation additions ------------------------------------------------ */
-/* plat_save_scratch() must provide at least this much (platform.h). The
- * codec streams, so a slot-sized buffer is all save/load ever need. */
+/* plat_save_scratch() (platform.h) with at least this much holds a whole
+ * save image: a slot-sized buffer is all save/load ever need. */
 #define DOOMO_SAVE_SCRATCH_MIN DOOMO_SAVE_SLOT1_MAX
+/* With less, the platform streams saves (plat_save_stream_*,
+ * plat_save_read_at) and the scratch buffer is only the chunk / read
+ * window; it must hold at least this much (bigger chunks = fewer calls). */
+#define DOOMO_SAVE_STREAM_MIN 64u
 #define DOOMO_SAVE_HEADER_SIZE 48
 uint32_t save_slot_max(int slot);       /* DOOMO_SAVE_SLOT0_MAX / SLOT1_MAX */
 

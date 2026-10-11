@@ -31,6 +31,8 @@ enum { TR_NONE, TR_ANGRY, TR_SAD, TR_LOVESICK, TR_ECSTATIC, TR_SCARED,
 typedef struct SimState {
     DoomoRng  rng;
     uint8_t   inited;
+    uint8_t   town_pop, town_mode;           /* the town we were set up for   */
+    uint32_t  town_seed, day_seen;
     uint16_t  acc;                       /* clock accumulator (1/4 ticks)  */
     uint16_t  cursor;                    /* resident round robin           */
     uint16_t  edge_cursor;               /* edge round robin               */
@@ -83,9 +85,6 @@ const char *sim_venue_name(int act);     /* "the park"                     */
 void sim_social_init(void);              /* rebuild taken / crush bitsets  */
 void sim_edges_step(int max_visits);
 void sim_venue_meet(int id, DoomoResident *r, int minutes);
-int  sim_confess(int from, int to, int bonus);
-int  sim_propose(int from, int to, int bonus);
-void sim_breakup(int a, int b, int quiet);
 void sim_taken_update(int id);
 void sim_edge_remove(int index);         /* keeps the list sorted          */
 

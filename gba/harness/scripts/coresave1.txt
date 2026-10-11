@@ -1,0 +1,27 @@
+# coresave1.txt - the core's streamed saves on the 128 KB flash, first
+# run (fresh save file). make -C gba test-coresave runs coresave2.txt next
+# with the same --save file. Commands: see harness.c (mailbox, src/hcmd.c).
+wait 40
+expect-log doomo: init
+# the codec's worst case: ~58 KB, slot 1 only (crosses the 64 KB bank)
+town-fill 4242
+town-crc
+save 1
+expect-save 1
+verify 1
+# too big for the 40 KB story slot: refused, nothing written
+save-must-fail 0
+# a typical story island (premade citizens, lived in) in slot 0
+town-fill 0x80000001
+town-crc
+save 0
+town-fill 7
+load 0
+expect-town-crc
+# and the big one back from slot 1
+town-fill 4242
+town-crc
+town-fill 7
+load 1
+expect-town-crc
+wait 10

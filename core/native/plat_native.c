@@ -209,6 +209,79 @@ int plat_save_read(int slot, void *data, uint32_t cap, uint32_t *size)
     return n > 0;
 }
 
+/* Scratch buffer (platform.h). nat_save_stream > 0 shrinks it to that
+ * many bytes, so save_game()/load_game() take the streaming path below,
+ * like the GBA (tests, runner --save-stream N). */
+int nat_save_stream;
+
+void *plat_save_scratch(uint32_t *cap)
+{
+    static uint8_t buf[DOOMO_SAVE_SCRATCH_MIN];
+    if (cap) *cap = nat_save_stream > 0 ? (uint32_t)DOOMO_MIN(nat_save_stream, (int)sizeof(buf))
+                                         : (uint32_t)sizeof(buf);
+    return buf;
+}
+
+/* streaming saves: written to slotN.sav.tmp, renamed over the slot on commit */
+static FILE *ws_f;
+static char ws_path[600], ws_tmp[620];
+static uint32_t ws_size, ws_n;
+uint32_t nat_stream_writes, nat_stream_reads;
+
+int plat_save_stream_begin(int slot, uint32_t size)
+{
+    if (slot < 0 || slot > 1 || ws_f || size == 0) return 0;
+    slot_path(slot, ws_path, sizeof(ws_path));
+    snprintf(ws_tmp, sizeof(ws_tmp), "%s.tmp", ws_path);
+    ws_f = fopen(ws_tmp, "wb");
+    ws_size = size;
+    ws_n = 0;
+    return ws_f != NULL;
+}
+
+int nat_stream_fail_at;                 /* tests: the Nth write fails (1-based) */
+
+int plat_save_stream_write(const void *data, uint32_t n)
+{
+    if (!ws_f || ws_n + n > ws_size) return 0;
+    if (nat_stream_fail_at > 0 && --nat_stream_fail_at == 0) return 0;
+    if (fwrite(data, 1, n, ws_f) != n) return 0;
+    ws_n += n;
+    nat_stream_writes++;
+    return 1;
+}
+
+int plat_save_stream_end(int commit)
+{
+    int ok;
+    if (!ws_f) return 0;
+    ok = fclose(ws_f) == 0;
+    ws_f = NULL;
+    if (commit && ok && ws_n == ws_size && rename(ws_tmp, ws_path) == 0) return 1;
+    remove(ws_tmp);
+    return 0;
+}
+
+int plat_save_read_at(int slot, uint32_t offset, void *data, uint32_t n, uint32_t *size)
+{
+    char path[600];
+    FILE *f;
+    long sz;
+    int ok;
+    if (size) *size = 0;
+    if (slot < 0 || slot > 1) return 0;
+    slot_path(slot, path, sizeof(path));
+    f = fopen(path, "rb");
+    if (!f) return 0;
+    if (fseek(f, 0, SEEK_END) != 0 || (sz = ftell(f)) <= 0) { fclose(f); return 0; }
+    if (size) *size = (uint32_t)sz;
+    ok = (uint64_t)offset + n <= (uint64_t)sz && fseek(f, (long)offset, SEEK_SET) == 0 &&
+         fread(data, 1, n, f) == n;
+    fclose(f);
+    nat_stream_reads++;
+    return ok;
+}
+
 int plat_save_erase(int slot)
 {
     char path[600];

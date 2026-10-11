@@ -24,21 +24,22 @@ DoomoActor doomo_actors[ACTOR_MAX];
 static uint8_t  ai_move[ACTOR_MAX];     /* ticks to keep the current move dir */
 static int16_t  ai_dir[ACTOR_MAX];      /* current move direction (angle)      */
 static uint8_t  ai_flash[ACTOR_MAX];    /* hit flash ticks                     */
+static uint8_t  ai_los[ACTOR_MAX];      /* cached line of sight to the target  */
 static int      corpse_count;
 
-#define GRAVITY_FX   ((fix16)(1.15 * 65536))   /* constant folded by the compiler */
+#define GRAVITY_FX   ((fix16)75366)          /* 1.15 world units / tick^2 */
 
 /* ---- tables --------------------------------------------------------------- */
 const DemonInfo combat_demon_info[THING_LORD_VAPULA - THING_IMPLING + 1] = {
     /* name, blurb, spr, hp, r, h, scale, speed, ai, pain, mdmg, mrange, pk, sdmg, sspd, scool, burst, mass, score, sight */
     { "Impling", "A plush little devil who throws hot fireballs and hugs with claws.",
-      SPR_IMPLING, 60, 16, 50, 310, 24, AI_SKIRMISH, 200, 10, 56, PK_FIREBALL, 12, 14, 45, 1, 50, 10, 20 },
+      SPR_IMPLING, 60, 16, 50, 310, 24, AI_SKIRMISH, 200, 9, 56, PK_FIREBALL, 10, 14, 45, 1, 50, 10, 20 },
     { "Vape Wraith", "A ghost made of Brimstone Blast flavour. Floats, spits vape bolts.",
       SPR_VAPE_WRAITH, 110, 18, 56, 330, 32, AI_FLYER, 140, 12, 56, PK_VAPE_BOLT, 10, 16, 50, 3, 40, 25, 22 },
     { "Puff Demon", "A floating cyclops puffball. Slow, sturdy, bites hard.",
       SPR_PUFF_DEMON, 200, 26, 50, 340, 19, AI_FLYER, 128, 15, 64, PK_VAPE_BOLT, 16, 13, 55, 1, 120, 40, 22 },
     { "Hellhound Pup", "Too fast, too floofy. Sprints and lunges.",
-      SPR_HELLHOUND_PUP, 100, 18, 44, 300, 44, AI_CHARGER, 180, 15, 56, PK_NONE, 0, 0, 40, 1, 90, 20, 20 },
+      SPR_HELLHOUND_PUP, 100, 18, 44, 300, 44, AI_CHARGER, 180, 12, 56, PK_NONE, 0, 0, 40, 1, 90, 20, 20 },
     { "Bone Jester", "Juggles homing orbs and dodges like it rehearsed.",
       SPR_BONE_JESTER, 180, 16, 64, 310, 32, AI_SKIRMISH, 100, 20, 60, PK_ORB, 18, 12, 60, 1, 100, 50, 24 },
     { "Slime Belcher", "Burps arcing slime globs. Squishy, smelly, persistent.",
@@ -187,6 +188,7 @@ void actors_clear(void)
     memset(doomo_actors, 0, sizeof(doomo_actors));
     memset(ai_move, 0, sizeof(ai_move));
     memset(ai_flash, 0, sizeof(ai_flash));
+    memset(ai_los, 0, sizeof(ai_los));
     corpse_count = 0;
 }
 
@@ -276,7 +278,7 @@ int actor_spawn_demon(int type, fix16 x, fix16 y, int appear, int tflags, int ar
     a->x = x; a->y = y;
     fl = cw_floor(FIX2INT(x) / CELLU, FIX2INT(y) / CELLU);
     a->z = INT2FIX(fl);
-    if (di->ai == AI_FLYER || di->ai == AI_DIVER) {
+    if (di->ai == AI_FLYER || di->ai == AI_DIVER || di->ai == AI_BOSS) {
         a->flags |= AF_FLYING;
         a->z = INT2FIX(fl + 24);
     }
@@ -302,6 +304,7 @@ int actor_spawn_demon(int type, fix16 x, fix16 y, int appear, int tflags, int ar
     a->angle = (int16_t)rng_range(&doomo_rng, 4096);
     a->anim = (uint16_t)rng_range(&doomo_rng, 64);
     a->target = NO_TARGET;
+    combat_st.kills_total++;
     if (tflags & THF_DORMANT) {
         a->state = AST_DORMANT;
         a->flags &= (uint8_t)~(AF_SOLID | AF_SHOOTABLE);
@@ -543,7 +546,8 @@ static void demon_fire(int idx, int pk, int dmg, int speed, int spread)
     if (pk == PK_SLIME || pk == PK_GRENADE) {
         /* lob: aim the arc so it lands near the target */
         fix16 t = FIXDIV(dist, INT2FIX(speed));
-        slope = FIXDIV(INT2FIX(tz - z0), dist) + FIXMUL(t, (fix16)(GRAVITY_FX * 12 / 16)) / (2 * speed);
+        fix16 g = GRAVITY_FX * combat_proj_info[pk].gravity / 16;
+        slope = FIXDIV(INT2FIX(tz - z0), dist) + FIXMUL(t, g) / (2 * speed);
     }
     if (combat_difficulty() >= DIFF_NIGHTMARE) speed = speed * 6 / 5;
     actor_projectile(pk, idx, a->x + FIXMUL(fx_cos(ang), INT2FIX(a->radius)),
@@ -584,6 +588,22 @@ static void boss_think(int idx)
         combat_shake(12);
         combat_toast(phase == 1 ? "Vapula: \"You dare?! Breathe deep!\"" :
                                   "Vapula: \"ENOUGH! THE NINTH CLOUD RISES!\"");
+        /* the cloud coughs up supplies (a fair fight) */
+        for (k = 0; k < 4; k++) {
+            static const uint8_t drops[4] = { THING_AMMO_BULLETS, THING_AMMO_SHELLS, THING_CANDY, THING_HEALTH_BIG };
+            int ang = k * 1024 + 512 + a->anim * 13;
+            fix16 sx = a->x + FIXMUL(fx_cos(ang), INT2FIX(200));
+            fix16 sy = a->y + FIXMUL(fx_sin(ang), INT2FIX(200));
+            DoomoThing t;
+            int p;
+            memset(&t, 0, sizeof(t));
+            t.x = (uint8_t)(FIX2INT(sx) / CELLU);
+            t.y = (uint8_t)(FIX2INT(sy) / CELLU);
+            t.type = drops[k];
+            if (cw_solid(t.x, t.y) || (map_cell_safe(&doomo_map, t.x, t.y)->flags & CELL_LAVA)) continue;
+            p = actor_spawn_thing(&t, 0);
+            if (p >= 0) actor_fx(SPR_SPARKLE, doomo_actors[p].x, doomo_actors[p].y, doomo_actors[p].z + INT2FIX(12), 3);
+        }
         /* summon helpers around the arena */
         for (k = 0; k < 2 + phase; k++) {
             int ang = k * 4096 / (2 + phase) + a->anim * 8;
@@ -864,9 +884,9 @@ static void demon_think(int idx)
     {
         int frozen = (a->status_fx & (ST_FROZEN | ST_DAZZLED)) != 0;
         int in_melee = dist < INT2FIX(di->melee_range + a->radius);
-        int los = think ? can_see_target(idx) : (a->aux & 0);
-        static uint8_t los_cache[ACTOR_MAX];
-        if (think) los_cache[idx] = (uint8_t)los; else los = los_cache[idx];
+        int los;
+        if (think) ai_los[idx] = (uint8_t)can_see_target(idx);
+        los = ai_los[idx];
         if (!frozen && a->cooldown == 0) {
             if (in_melee && di->melee_dmg && (dist < INT2FIX(di->melee_range + a->radius - 4) || !di->pk)) {
                 a->state = AST_MELEE;
@@ -1007,7 +1027,8 @@ static int projectile_hits_actor(int idx, fix16 nx, fix16 ny, int nz)
         fix16 rr, ddx, ddy;
         int oz;
         if (k == idx || !(o->flags & AF_SHOOTABLE) || o->hp <= 0) continue;
-        if (p->owner != PLAYER_OWNER && k == p->owner) continue;
+        if (p->owner != PLAYER_OWNER && (k == p->owner ||
+            (p->owner < ACTOR_MAX && doomo_actors[p->owner].type == o->type))) continue;
         if (p->frame == k + 1) continue;                    /* just pierced it */
         rr = INT2FIX(o->radius + p->radius);
         ddx = o->x - nx; ddy = o->y - ny;
@@ -1029,6 +1050,7 @@ static void projectile_tick(int idx)
     a->anim++;
     a->timer++;
     if (a->timer > 140 || (a->aux == PK_FLAME && a->timer > 14) ||
+        (a->aux == PK_GRENADE && a->timer > 60) ||
         ((a->aux == PK_GLITTER || a->aux == PK_WATER) && a->owner == PLAYER_OWNER &&
          combat_ws.behaviour == WB_STREAM && a->timer > 16)) {
         if (a->aux == PK_BUBBLE || a->aux == PK_STICKER || a->arg) projectile_explode(idx, 0);

@@ -15,10 +15,10 @@ const uint8_t doomo_exorcism_items[EXI_COUNT] = {
 
 const char *const doomo_exorcism_item_help[EXI_COUNT] = {
     "+3 holy water flasks",
-    "Calms the beat (wider timing)",
-    "Demon needs one fewer splash",
+    "Wider prayer timing",
+    "One less splash needed",
     "Big holy power boost",
-    "Salt circle slows the demon",
+    "Slows the demon down",
     "Reveals an extra clue"
 };
 

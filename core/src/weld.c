@@ -182,7 +182,12 @@ static void apply_core(Work *k, const FrameBase *f, int core)
 {
     int melee = k->beh == WB_MELEE;
     int stream = f->beh == WB_STREAM;
-    if (core == f->core) return;                       /* the natural core */
+    if (core == f->core) {                             /* the natural core */
+        /* the frame's numbers already fit it; only the blessing remains */
+        if (core == WCORE_HOLY_WATER) { k->fx |= WFX_HOLY; k->holy += 16; }
+        if (core == WCORE_LOVE) { k->fx |= WFX_CHARM | WFX_HOLY; k->holy += 4; }
+        return;
+    }
     if (melee) {
         /* melee weapons only take the element of the core */
         switch (core) {
@@ -550,6 +555,11 @@ void weld_stats(const DoomoWeapon *w, DoomoWeaponStats *out)
     out->speed = (int16_t)(out->pkind ? DOOMO_CLAMP(k.speed, 6, 60) : 0);
     out->range = (uint8_t)(k.beh == WB_MELEE ? 1 : DOOMO_CLAMP(k.range, 3, 64));
     out->mag_size = (uint8_t)(k.ammo == NOAMMO ? 0 : DOOMO_CLAMP(k.mag, 0, 250));
+    if (out->mag_size) {
+        /* a magazine holds whole shots: at least one, no orphan rounds */
+        int m = out->mag_size < out->ammo_use ? out->ammo_use : out->mag_size;
+        out->mag_size = (uint8_t)(m / out->ammo_use * out->ammo_use);
+    }
     out->reload = (uint8_t)(out->mag_size ? DOOMO_CLAMP(k.reload, 8, 200) : 0);
     out->recoil = (uint8_t)DOOMO_CLAMP(k.recoil, 0, 60);
     out->zoom = (uint8_t)DOOMO_CLAMP(k.zoom, 0, 3);

@@ -31,6 +31,16 @@
  *                       previous "fps" (extension)
  *   profile N           sample the PC over N instructions and print the
  *                       hottest functions (needs --nm, see below)
+ *   save N / load N / expect-save N / verify N / save-must-fail N
+ *                       the core's save_game / load_game / save_exists /
+ *                       save_verify run inside the game ROM (mailbox
+ *                       command, src/hcmd.c), like the native runner's
+ *   town-fill SEED      game ROM: a worst-case free-play island (1000
+ *                       random custom citizens, 2048 relationships)
+ *   town-crc            game ROM: log + remember a CRC of the saved state
+ *   expect-town-crc     fail unless the state's CRC equals the remembered
+ *   post CMD ARG        post mailbox command CMD (hcmd.c numbers) without
+ *                       waiting, e.g. to "profile" a save while it runs
  * Buttons: A B L R START SELECT UP DOWN LEFT RIGHT, X (=SELECT+A),
  * Y (=SELECT+B).
  *
@@ -140,6 +150,35 @@ static uint32_t drawn(void)
 
 static uint32_t video_frames;
 static uint32_t keys;
+static void run_frame(void);
+
+/* mailbox command (game ROM, gba/src/hcmd.c): post, run frames until the
+ * ROM clears it; 0 if it never answered */
+#define HC_SAVE 1
+#define HC_LOAD 2
+#define HC_EXISTS 3
+#define HC_TOWN_FILL 4
+#define HC_TOWN_CRC 5
+#define HC_VERIFY 6
+static int hcmd(uint32_t cmd, uint32_t arg, uint32_t *result)
+{
+    int n;
+    if (core->busRead32(core, MAILBOX_ADDR) != MAILBOX_MAGIC) return 0;
+    core->busWrite32(core, MAILBOX_ADDR + 20, arg);
+    core->busWrite32(core, MAILBOX_ADDR + 16, cmd);
+    for (n = 0; n < 60 * 60 && !failed; n++) {
+        run_frame();
+        if (core->busRead32(core, MAILBOX_ADDR + 16) == 0) {
+            uint32_t cyc = core->busRead32(core, MAILBOX_ADDR + 28);
+            *result = core->busRead32(core, MAILBOX_ADDR + 24);
+            printf("harness: command %u(%u) -> 0x%x in %.1f ms\n", (unsigned)cmd, (unsigned)arg,
+                   (unsigned)*result, cyc / 16777.216);
+            return 1;
+        }
+    }
+    fprintf(stderr, "harness: command %u not answered (not the game ROM?)\n", (unsigned)cmd);
+    return 0;
+}
 
 /* audio: drained every frame; peak-to-peak since "audio-reset" (the
  * output has a DC offset, silence is a flat line) */
@@ -457,6 +496,36 @@ static int run_script(const char *path)
                             path, lineno, argv[1], last_scene);
                     failed = 1;
                 }
+            }
+        } else if ((!strcmp(argv[0], "save") || !strcmp(argv[0], "load") ||
+                    !strcmp(argv[0], "expect-save") || !strcmp(argv[0], "verify") ||
+                    !strcmp(argv[0], "save-must-fail")) && argc >= 2) {
+            static uint32_t r;
+            uint32_t c = !strcmp(argv[0], "load") ? HC_LOAD
+                       : !strcmp(argv[0], "expect-save") ? HC_EXISTS
+                       : !strcmp(argv[0], "verify") ? HC_VERIFY : HC_SAVE;
+            int want = strcmp(argv[0], "save-must-fail") != 0;
+            if (!hcmd(c, (uint32_t)atoi(argv[1]), &r)) failed = 1;
+            else if ((r != 0) != want) {
+                fprintf(stderr, "harness: %s:%d %s %s %s\n", path, lineno, argv[0], argv[1],
+                        want ? "failed" : "succeeded");
+                failed = 1;
+            }
+        } else if (!strcmp(argv[0], "post") && argc >= 3) {
+            core->busWrite32(core, MAILBOX_ADDR + 20, (uint32_t)atoi(argv[2]));
+            core->busWrite32(core, MAILBOX_ADDR + 16, (uint32_t)atoi(argv[1]));
+        } else if (!strcmp(argv[0], "town-fill") && argc >= 2) {
+            uint32_t r;
+            if (!hcmd(HC_TOWN_FILL, (uint32_t)strtoul(argv[1], NULL, 0), &r)) failed = 1;
+        } else if (!strcmp(argv[0], "town-crc") || !strcmp(argv[0], "expect-town-crc")) {
+            static uint32_t remembered;
+            uint32_t r;
+            if (!hcmd(HC_TOWN_CRC, 0, &r)) failed = 1;
+            else if (!strcmp(argv[0], "town-crc")) remembered = r;
+            else if (r != remembered) {
+                fprintf(stderr, "harness: %s:%d town crc 0x%x, expected 0x%x\n", path, lineno,
+                        (unsigned)r, (unsigned)remembered);
+                failed = 1;
             }
         } else if (!strcmp(argv[0], "type")) {
             fprintf(stderr, "harness: %s:%d 'type' is not supported on GBA (skipped)\n",

@@ -965,10 +965,10 @@ static void exo_draw(void)
         break;
     }
     case ST_RESULT: {
-        int hy = fy - (big ? 30 : 30);
+        int hy = fy - (big ? 40 : 30);
         int expr = X.success ? EXPR_HAPPY : EXPR_POSSESSED;
         int tries = X.practice ? 3 : exorcism_tries_left(X.host);
-        draw_host_at(w / 2, hy, big ? 2 : 1, expr, t, &hw, &hh);
+        draw_host_at(w / 2, hy, 1, expr, t, &hw, &hh);
         exo_candles(w / 2, hy + hh / 2 + 4, tries, 3, t, big);
         if (X.success) {
             exo_fuzz(fuzz_x, fuzz_foot, t, EXPR_HAPPY);
@@ -1010,7 +1010,7 @@ static void exo_draw(void)
     }
     case ST_LOST: {
         int hy = fy - (big ? 48 : 34), lv;
-        draw_host_at(w / 2, hy, big ? 2 : 1, EXPR_SAD, t, &hw, &hh);
+        draw_host_at(w / 2, hy, 1, EXPR_SAD, t, &hw, &hh);
         exo_candles(w / 2, hy + hh / 2 + 4, 0, 3, t, big);
         lv = X.st_t < 30 ? 14 - X.st_t / 4 : 7;
         plat_shade_rect(0, 0, w, h, DOOMO_MAX(lv, 7));

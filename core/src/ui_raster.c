@@ -161,11 +161,9 @@ int ur_cache_end(void)
 }
 
 /* every rect of a shape goes through here (direct draw or recording) */
-static int em_level = -1;              /* >= 0: plat_shade_rect level      */
 static void out_rect(int x, int y, int w, int h, uint8_t c)
 {
     if (rec_e) rec_add(x, y, w, h, c);
-    else if (em_level >= 0) plat_shade_rect(x, y, w, h, em_level);
     else plat_rect(x, y, w, h, c);
 }
 
@@ -223,20 +221,12 @@ void ur_begin(void)
 {
     em_nopen = em_ncur = 0;
     em_cur_y = em_open_y = -0x4000;
-    em_level = -1;
-}
-
-void ur_begin_shade(int level)
-{
-    ur_begin();
-    em_level = level;
 }
 
 void ur_end(void)
 {
     em_finish_row();
     em_flush_open();
-    em_level = -1;
 }
 
 /* Add the run [x, x + w) of row y. Rows must come in increasing order and
@@ -1003,9 +993,10 @@ static void text_grow(const TextBlock *tb, int q, uint32_t *o)
 {
     int rel = q - 1, line, r, i, s = tb->scale;
     memset(o, 0, sizeof(uint32_t) * TW);
-    if (rel < 0 || rel >= tb->nlines * 8 * s) return;
-    line = rel / (8 * s);
-    r = (rel - line * 8 * s) / s;
+    if (rel < 0) return;
+    line = rel / (FONT_LINE * s);                  /* lines are FONT_LINE apart */
+    r = (rel - line * FONT_LINE * s) / s;          /* glyph row; 8.. = gap     */
+    if (line >= tb->nlines || r >= 8) return;
     for (i = 0; i < tb->len[line]; i++) {
         unsigned ch = (unsigned char)tb->line[line][i];
         int col, x0 = 1 + i * FONT_ADVANCE * s;
@@ -1073,8 +1064,8 @@ static void text_emit(const TextBlock *tb, const uint8_t col[4])
         tw_up1(t1, dil, nw);
         tw_dn1(t2, dil, nw);
         tw_up1(shd, gs, nw);
-        if (rel >= 0 && rel < tb->nlines * 8 * s) {
-            int in_line = rel % (8 * s), r = in_line / s;
+        if (rel >= 0) {
+            int in_line = rel % (FONT_LINE * s), r = in_line / s;
             is_top = r < 3 && in_line - r * s < top_h;
         }
         for (k = 0; k < nw; k++) {
@@ -1146,7 +1137,7 @@ int ur_text_big(int x, int y, const char *s, int scale, uint8_t color, uint8_t o
     tb.x = x;
     tb.y = y;
     tb.bw = maxlen * FONT_ADVANCE * scale + 3;
-    tb.bh = tb.nlines * 8 * scale + 4;
+    tb.bh = (tb.nlines - 1) * FONT_LINE * scale + 8 * scale + 4;
     tb.nw = (tb.bw + 31) >> 5;
     if (tb.nw > TW) return 0;
     col[0] = ui_lighter(color);

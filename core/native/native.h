@@ -24,6 +24,12 @@ void nat_init(const NatOptions *o);
 /* "STUB:" lines logged so far (unique names). */
 int  nat_stub_count(void);
 const char *nat_stub_name(int i);
+/* > 0: plat_save_scratch() offers only this many bytes, so saves stream
+ * through plat_save_stream_* / plat_save_read_at (the GBA's way); 0: the
+ * whole-image path. Counters of streamed chunks (tests). */
+extern int nat_save_stream;
+extern uint32_t nat_stream_writes, nat_stream_reads;
+extern int nat_stream_fail_at;          /* > 0: that stream write fails  */
 /* audio call counters (tests) */
 extern uint32_t nat_tone_calls, nat_sample_calls;
 extern int nat_last_sample;

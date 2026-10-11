@@ -43,7 +43,6 @@ void ui_glyph7(int x, int y, const char *const rows[7], const uint8_t pal[5]);
  * identical runs of consecutive rows are merged into one plat_rect. */
 #define UR_MASK_MAX 72
 void ur_begin(void);
-void ur_begin_shade(int level);         /* runs become plat_shade_rect   */
 void ur_run(int y, int x, int w, uint8_t c);
 void ur_end(void);
 /* plat_rect, or recorded while a shape is being cached */

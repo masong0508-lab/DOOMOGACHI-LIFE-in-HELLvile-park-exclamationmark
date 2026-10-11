@@ -202,6 +202,8 @@ void combat_on_kill(int idx, int by_player, int headshot);
 int  combat_difficulty(void);
 void combat_shake(int amount);
 
+int  combat_set_result_quit(void);               /* result -2 unless already set */
+
 /* ---- autopilot (combat_bot.c) ---- */
 extern void (*combat_bot_fn)(CombatCtl *ctl);
 
@@ -209,5 +211,6 @@ extern void (*combat_bot_fn)(CombatCtl *ctl);
 void combat_hud_project(fix16 x, fix16 y, fix16 z, int *sx, int *sy, int *visible);
 void combat_hud_reset(void);
 int  combat_hud_style(void);                    /* 0 cute .. 256 hell */
+void combat_hud_set_view(const DoomoView3D *v);
 
 #endif

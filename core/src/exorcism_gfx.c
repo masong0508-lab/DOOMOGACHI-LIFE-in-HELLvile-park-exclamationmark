@@ -54,28 +54,46 @@ uint8_t exo_col(int which, int dread)
 
 /* ---------------------------------------------------------------------- */
 /* the church                                                               */
+/* the drape's width at row y: tied back in the middle, flaring below */
+static int drape_w(int w, int h, int y)
+{
+    int k = y * 16 / (h > 0 ? h : 1);
+    return w - (k > 4 && k < 11 ? (5 - (k - 8 < 0 ? 8 - k : k - 8)) * w / 12 : 0);
+}
+
 static void curtain(int x0, int w, int h, int left, int dread, uint32_t t)
 {
-    /* velvet drapes with folds that sway a little */
+    /* velvet drapes: vertical folds, drawn as a few tall strips per fold
+     * (cheap on the GBA) with a slow sway on the lower half */
     uint8_t c0 = dread < 8 ? PAL_PAINT(PAINT_ROSE, 0) : PAL_PAINT(PAINT_BLOOD, 0);
     uint8_t c1 = dread < 8 ? PAL_PAINT(PAINT_ROSE, 1) : PAL_PAINT(PAINT_BLOOD, 1);
     uint8_t c2 = dread < 8 ? PAL_PAINT(PAINT_ROSE, 2) : PAL_PAINT(PAINT_CHERRY, 0);
-    int y, x;
-    for (y = 0; y < h; y++) {
-        /* the drape is tied back: it narrows toward the middle, flares at the bottom */
-        int k = y * 16 / (h > 0 ? h : 1);
-        int ww = w - (k > 4 && k < 11 ? (5 - (k - 8 < 0 ? 8 - k : k - 8)) * w / 12 : 0);
-        int sway = ui_wave((int)t + y, 90, 1) * (y > h / 2);
-        int xs = left ? x0 : x0 + w - ww;
-        for (x = 0; x < ww; x += 4) {
-            int f = ((x + y / 6 + (left ? 0 : 2)) >> 2) & 1;
-            plat_rect(xs + x + sway, y, DOOMO_MIN(4, ww - x), 1, f ? c1 : c0);
+    int fx, y0;
+    int sway = ui_wave((int)t, 90, 1);
+    for (fx = 0; fx < w; fx += 4) {
+        /* rows where this fold is covered: everything except the tied band */
+        int y, start = -1;
+        for (y = 0; y <= h; y++) {
+            int vis = y < h && drape_w(w, h, y) > fx;
+            if (vis && start < 0) start = y;
+            if ((!vis || y == h) && start >= 0) {
+                int len = y - start, half = start < h / 2 ? DOOMO_MIN(len, h / 2 - start) : 0;
+                int xs = left ? x0 + fx : x0 + w - fx - 4, f = ((fx >> 2) & 1);
+                if (half > 0) plat_rect(xs, start, 4, half, f ? c1 : c0);
+                if (len - half > 0) plat_rect(xs + sway, start + half, 4, len - half, f ? c1 : c0);
+                start = -1;
+            }
         }
-        plat_rect(xs + sway + (left ? ww - 1 : 0), y, 1, 1, c2);
+    }
+    /* a soft highlight down the inner edge */
+    for (y0 = 0; y0 < h; y0 += 2) {
+        int ww = drape_w(w, h, y0);
+        plat_rect(left ? x0 + ww - 1 + (y0 > h / 2 ? sway : 0) : x0 + w - ww + (y0 > h / 2 ? sway : 0),
+                  y0, 1, 2, c2);
     }
     /* golden tie-back rope */
     {
-        int ty = h * 8 / 16, tx = left ? x0 + w / 2 : x0 + w / 2;
+        int ty = h * 8 / 16, tx = x0 + w / 2;
         ui_fill_ellipse(tx, ty, 3, 2, PAL_UI_GOLD);
         plat_rect(tx - 1, ty - 1, 2, 1, PAL_RAMP(RAMP_CANDY, 7));
     }

@@ -270,8 +270,10 @@ thing 26 34 IMPLING angle=0
 thing 42 33 IMPLING angle=180
 thing 34 26 IMPLING tflags=dormant arg=31
 thing 38 26 IMPLING tflags=dormant arg=31
-thing 36 33 HELLHOUND_PUP tflags=dormant,not_easy arg=31
+thing 36 33 HELLHOUND_PUP tflags=dormant,hard arg=31
 thing 24 25 AMMO_SHELLS
+thing 37 17 HEALTH_BIG
+thing 36 18 AMMO_SHELLS
 thing 41 32 HEALTH_SMALL
 thing 29 34 CANDY
 thing 43 25 VAPE_PORTAL

@@ -98,7 +98,7 @@ CORE_OBJS := $(call core_obj,$(CORE_SRCS))
 # over the core's weak stubs, and the core's strong definitions win over both.
 ALL_OBJS  := $(GBA_OBJS) $(CORE_OBJS)
 
-.PHONY: all rom engine-test engine-test-nocore harness test test-et test-game test-save clean sizes
+.PHONY: all rom engine-test engine-test-nocore harness test test-et test-game test-save test-coresave clean sizes
 .DEFAULT_GOAL := all
 
 all: rom
@@ -159,6 +159,7 @@ test:
 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile test-et
 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile test-save
 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile test-game
+	@$(MAKE) --no-print-directory -f $(GBA)/Makefile test-coresave
 
 test-et: harness
 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile engine-test
@@ -179,6 +180,15 @@ test-game: harness
 	@mkdir -p $(SHOTS)/game
 	$(HARNESS) $(BUILD)/doomogachi.gba --script $(GBA)/harness/scripts/smoke.txt \
 	    --shots $(SHOTS)/game
+
+# the core's streamed save_game / load_game on flash, across two runs
+test-coresave: harness
+	@$(MAKE) --no-print-directory -f $(GBA)/Makefile rom ENGINE_TEST=0
+	@rm -f $(BUILD)/coresave.sav
+	$(HARNESS) $(BUILD)/doomogachi.gba --script $(GBA)/harness/scripts/coresave1.txt \
+	    --save $(BUILD)/coresave.sav --quiet
+	$(HARNESS) $(BUILD)/doomogachi.gba --script $(GBA)/harness/scripts/coresave2.txt \
+	    --save $(BUILD)/coresave.sav --quiet
 
 sizes: $(ELF)
 	$(SIZE) -A $(ELF)

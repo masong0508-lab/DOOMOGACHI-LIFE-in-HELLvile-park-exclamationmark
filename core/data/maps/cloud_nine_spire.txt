@@ -2,8 +2,8 @@
 # Vex's vape tower, a ziggurat of rings that climb into the vape storm:
 #   cloud plaza (0) -> cloud bridge over the lava moat -> ring 1 terrace (2)
 #   (west: open ledge, east: a roofed tunnel with a crouch crawl) -> lift in
-#   the north tower wall -> ring 2 (10): a long cloud bridge over the west
-#   chasm, the blue key on a cloud island, the blue door -> the summit lift
+#   the north tower wall -> ring 2 (10): cloud bridges over the west and east
+#   chasms, the blue key on a cloud island, the blue door -> the summit lift
 #   -> Lord Vapula's open-sky summit (20) with corner daises, pillars and a
 #   lava pit. Killing Vapula opens the exit alcove on the north edge.
 # Legend and overlays: see README.md. Compiled by tools/mapc.py.
@@ -24,7 +24,7 @@ cell X wall=EXIT_SIGN ch=30
 cell c floor=CLOUD_PUFF ceil=sky fh=0 light=13
 cell p floor=CLOUD_PUFF ceil=sky fh=2 light=14
 cell b floor=CLOUD_PUFF ceil=sky fh=0 light=14
-cell ~ floor=LAVA ceil=sky fh=-4 light=15 flags=lava
+cell ~ floor=LAVA ceil=sky fh=-3 light=15 flags=lava
 # ---- ring 1 ----
 cell w floor=COBBLE ceil=sky fh=2 light=12
 cell l floor=TILE_FLOOR ceil=sky fh=7 light=13
@@ -72,9 +72,9 @@ Qcccccc~~~wwwwS~b~TsssssssssssssssssssTmmmStttt~~~ccccccQ
 Qcccccc~~~llwwS~b~TsssssPsssssssPsssssTmmmStttt~~~ccccccQ
 Qcccccc~~~llwwS~b~TsssssssssssssssssssTmmmStttt~~~ccccccQ
 Qcccccc~~~llwwS~b~Tsssssss~~~~~sssssssTmmmSnnnn~~~ccccccQ
-Qcccccc~~~llwwS~b~Tsssssss~vvv~sssssssTQQQSnnnn~~~ccccccQ
-Qcccccc~~~llwwS~b~Tsssssss~vvv~sssssssTQQQSnnnn~~~ccccccQ
-Qcccccc~~~llwwS~b~Tsssssss~vvv~sssssssTQQQSnnnn~~~ccccccQ
+Qcccccc~~~llwwS~b~Tsssssss~vvv~sssssssT~b~Snnnn~~~ccccccQ
+Qcccccc~~~llwwS~b~Tsssssss~vvv~sssssssT~b~Snnnn~~~ccccccQ
+Qcccccc~~~llwwS~b~Tsssssss~vvv~sssssssT~b~Snnnn~~~ccccccQ
 Qcccccc~~~llwwS~b~Tsssssss~~~~~sssssssTmmmSnnnn~~~ccccccQ
 Qcccccc~~~llwwS~b~TsssssssssssssssssssTmmmStttt~~~ccccccQ
 Qcccccc~~~llwwS~b~TsssssPsssssssPsssssTmmmStttt~~~ccccccQ
@@ -133,9 +133,9 @@ floorh
 ...............4a4
 ...............4a4
 ...............4a4........hhhhh
-............4..4a4........h...h
-............4..4a4........h...h
-............4..4a4........h...h
+............4..4a4........h...h........4a4
+............4..4a4........h...h........4a4
+............4..4a4........h...h........4a4
 ...............4a4........hhhhh
 ...............4a4
 ...............4a4
@@ -333,6 +333,14 @@ thing 20 20 HEALTH_BIG
 thing 36 20 AMMO_ROCKETS
 thing 20 36 AMMO_CELLS
 thing 36 36 ARMOR
+thing 21 20 AMMO_BULLETS
+thing 35 20 AMMO_SHELLS
+thing 21 36 CANDY
+thing 35 36 AMMO_BULLETS
+thing 20 21 AMMO_SHELLS
+thing 36 21 CANDY
+thing 20 35 HEALTH_SMALL
+thing 36 35 HEALTH_SMALL
 thing 21 21 PROP_TORCH
 thing 35 21 PROP_TORCH
 thing 21 35 PROP_TORCH

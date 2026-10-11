@@ -25,12 +25,24 @@
  *
  * Compression: LZ77 with a 4 KB window. Control byte c < 0x80: c+1
  * literal bytes follow; c >= 0x80: copy (c & 0x7F) + 3 bytes from
- * distance d (u16 LE that follows). Encoder and decoder both stream, so
- * the only big buffer needed is the save image itself.
+ * distance d (u16 LE that follows). Encoder and decoder both stream.
  *
  * Loading verifies magic, version and CRC, then decodes twice: a dry run
  * that validates the whole stream, and only then the real decode into
  * doomo_town (which is therefore never left half-loaded).
+ *
+ * Memory: when plat_save_scratch() offers room for the whole slot, the
+ * image is built / read in that buffer (one encode pass). Otherwise (the
+ * GBA: EWRAM is too precious for an 88 KB buffer) the save is STREAMED
+ * through the platform (platform.h, plat_save_stream_* / plat_save_read_at)
+ * in chunks of the scratch buffer:
+ *   saving   pass 1 encodes into nothing, counting the size and the body's
+ *            CRC; the header is then complete (its CRC is combined from
+ *            the header's and the body's with crc32_combine); pass 2
+ *            encodes again (the same bytes) and streams header + body.
+ *   loading  one pass checks the CRC, then the two decodes pull the body
+ *            through a window that is refilled with plat_save_read_at.
+ * Either way the bytes on the medium are identical.
  */
 #include "doomo/doomo.h"
 
@@ -74,21 +86,103 @@ DOOMO_STATIC_ASSERT(DOOMO_MAX_EDGES < 65536 && DOOMO_MAX_RESIDENTS <= 1024, sv_s
 
 /* ====================================================================== */
 /* CRC-32 (IEEE, reflected), nibble table                                   */
+/* byte-wise table (1 KB, ROM): one lookup per byte */
+static const uint32_t crc_tab[256] = {
+    0x00000000u, 0x77073096u, 0xEE0E612Cu, 0x990951BAu, 0x076DC419u, 0x706AF48Fu,
+    0xE963A535u, 0x9E6495A3u, 0x0EDB8832u, 0x79DCB8A4u, 0xE0D5E91Eu, 0x97D2D988u,
+    0x09B64C2Bu, 0x7EB17CBDu, 0xE7B82D07u, 0x90BF1D91u, 0x1DB71064u, 0x6AB020F2u,
+    0xF3B97148u, 0x84BE41DEu, 0x1ADAD47Du, 0x6DDDE4EBu, 0xF4D4B551u, 0x83D385C7u,
+    0x136C9856u, 0x646BA8C0u, 0xFD62F97Au, 0x8A65C9ECu, 0x14015C4Fu, 0x63066CD9u,
+    0xFA0F3D63u, 0x8D080DF5u, 0x3B6E20C8u, 0x4C69105Eu, 0xD56041E4u, 0xA2677172u,
+    0x3C03E4D1u, 0x4B04D447u, 0xD20D85FDu, 0xA50AB56Bu, 0x35B5A8FAu, 0x42B2986Cu,
+    0xDBBBC9D6u, 0xACBCF940u, 0x32D86CE3u, 0x45DF5C75u, 0xDCD60DCFu, 0xABD13D59u,
+    0x26D930ACu, 0x51DE003Au, 0xC8D75180u, 0xBFD06116u, 0x21B4F4B5u, 0x56B3C423u,
+    0xCFBA9599u, 0xB8BDA50Fu, 0x2802B89Eu, 0x5F058808u, 0xC60CD9B2u, 0xB10BE924u,
+    0x2F6F7C87u, 0x58684C11u, 0xC1611DABu, 0xB6662D3Du, 0x76DC4190u, 0x01DB7106u,
+    0x98D220BCu, 0xEFD5102Au, 0x71B18589u, 0x06B6B51Fu, 0x9FBFE4A5u, 0xE8B8D433u,
+    0x7807C9A2u, 0x0F00F934u, 0x9609A88Eu, 0xE10E9818u, 0x7F6A0DBBu, 0x086D3D2Du,
+    0x91646C97u, 0xE6635C01u, 0x6B6B51F4u, 0x1C6C6162u, 0x856530D8u, 0xF262004Eu,
+    0x6C0695EDu, 0x1B01A57Bu, 0x8208F4C1u, 0xF50FC457u, 0x65B0D9C6u, 0x12B7E950u,
+    0x8BBEB8EAu, 0xFCB9887Cu, 0x62DD1DDFu, 0x15DA2D49u, 0x8CD37CF3u, 0xFBD44C65u,
+    0x4DB26158u, 0x3AB551CEu, 0xA3BC0074u, 0xD4BB30E2u, 0x4ADFA541u, 0x3DD895D7u,
+    0xA4D1C46Du, 0xD3D6F4FBu, 0x4369E96Au, 0x346ED9FCu, 0xAD678846u, 0xDA60B8D0u,
+    0x44042D73u, 0x33031DE5u, 0xAA0A4C5Fu, 0xDD0D7CC9u, 0x5005713Cu, 0x270241AAu,
+    0xBE0B1010u, 0xC90C2086u, 0x5768B525u, 0x206F85B3u, 0xB966D409u, 0xCE61E49Fu,
+    0x5EDEF90Eu, 0x29D9C998u, 0xB0D09822u, 0xC7D7A8B4u, 0x59B33D17u, 0x2EB40D81u,
+    0xB7BD5C3Bu, 0xC0BA6CADu, 0xEDB88320u, 0x9ABFB3B6u, 0x03B6E20Cu, 0x74B1D29Au,
+    0xEAD54739u, 0x9DD277AFu, 0x04DB2615u, 0x73DC1683u, 0xE3630B12u, 0x94643B84u,
+    0x0D6D6A3Eu, 0x7A6A5AA8u, 0xE40ECF0Bu, 0x9309FF9Du, 0x0A00AE27u, 0x7D079EB1u,
+    0xF00F9344u, 0x8708A3D2u, 0x1E01F268u, 0x6906C2FEu, 0xF762575Du, 0x806567CBu,
+    0x196C3671u, 0x6E6B06E7u, 0xFED41B76u, 0x89D32BE0u, 0x10DA7A5Au, 0x67DD4ACCu,
+    0xF9B9DF6Fu, 0x8EBEEFF9u, 0x17B7BE43u, 0x60B08ED5u, 0xD6D6A3E8u, 0xA1D1937Eu,
+    0x38D8C2C4u, 0x4FDFF252u, 0xD1BB67F1u, 0xA6BC5767u, 0x3FB506DDu, 0x48B2364Bu,
+    0xD80D2BDAu, 0xAF0A1B4Cu, 0x36034AF6u, 0x41047A60u, 0xDF60EFC3u, 0xA867DF55u,
+    0x316E8EEFu, 0x4669BE79u, 0xCB61B38Cu, 0xBC66831Au, 0x256FD2A0u, 0x5268E236u,
+    0xCC0C7795u, 0xBB0B4703u, 0x220216B9u, 0x5505262Fu, 0xC5BA3BBEu, 0xB2BD0B28u,
+    0x2BB45A92u, 0x5CB36A04u, 0xC2D7FFA7u, 0xB5D0CF31u, 0x2CD99E8Bu, 0x5BDEAE1Du,
+    0x9B64C2B0u, 0xEC63F226u, 0x756AA39Cu, 0x026D930Au, 0x9C0906A9u, 0xEB0E363Fu,
+    0x72076785u, 0x05005713u, 0x95BF4A82u, 0xE2B87A14u, 0x7BB12BAEu, 0x0CB61B38u,
+    0x92D28E9Bu, 0xE5D5BE0Du, 0x7CDCEFB7u, 0x0BDBDF21u, 0x86D3D2D4u, 0xF1D4E242u,
+    0x68DDB3F8u, 0x1FDA836Eu, 0x81BE16CDu, 0xF6B9265Bu, 0x6FB077E1u, 0x18B74777u,
+    0x88085AE6u, 0xFF0F6A70u, 0x66063BCAu, 0x11010B5Cu, 0x8F659EFFu, 0xF862AE69u,
+    0x616BFFD3u, 0x166CCF45u, 0xA00AE278u, 0xD70DD2EEu, 0x4E048354u, 0x3903B3C2u,
+    0xA7672661u, 0xD06016F7u, 0x4969474Du, 0x3E6E77DBu, 0xAED16A4Au, 0xD9D65ADCu,
+    0x40DF0B66u, 0x37D83BF0u, 0xA9BCAE53u, 0xDEBB9EC5u, 0x47B2CF7Fu, 0x30B5FFE9u,
+    0xBDBDF21Cu, 0xCABAC28Au, 0x53B39330u, 0x24B4A3A6u, 0xBAD03605u, 0xCDD70693u,
+    0x54DE5729u, 0x23D967BFu, 0xB3667A2Eu, 0xC4614AB8u, 0x5D681B02u, 0x2A6F2B94u,
+    0xB40BBE37u, 0xC30C8EA1u, 0x5A05DF1Bu, 0x2D02EF8Du
+};
+#define CRC_BYTE(c, b) (((c) >> 8) ^ crc_tab[((c) ^ (b)) & 0xFFu])
+
+/* running state: start at 0xFFFFFFFF, finish with ^ 0xFFFFFFFF */
+static uint32_t crc_update(uint32_t c, const uint8_t *buf, uint32_t size)
+{
+    uint32_t i;
+    for (i = 0; i < size; i++) c = CRC_BYTE(c, buf[i]);
+    return c;
+}
+
 uint32_t save_crc32(const uint8_t *buf, uint32_t size)
 {
-    static const uint32_t tab[16] = {
-        0x00000000u, 0x1DB71064u, 0x3B6E20C8u, 0x26D930ACu, 0x76DC4190u,
-        0x6B6B51F4u, 0x4DB26158u, 0x5005713Cu, 0xEDB88320u, 0xF00F9344u,
-        0xD6D6A3E8u, 0xCB61B38Cu, 0x9B64C2B0u, 0x86D3D2D4u, 0xA00AE278u,
-        0xBDBDF21Cu
-    };
-    uint32_t c = 0xFFFFFFFFu, i;
-    for (i = 0; i < size; i++) {
-        c ^= buf[i];
-        c = (c >> 4) ^ tab[c & 15];
-        c = (c >> 4) ^ tab[c & 15];
+    return crc_update(0xFFFFFFFFu, buf, size) ^ 0xFFFFFFFFu;
+}
+
+/* CRC of A followed by B from crc(A), crc(B) and len(B) (zlib's
+ * crc32_combine: append len(B) zero bytes to A in GF(2), by squaring) */
+static uint32_t gf2_times(const uint32_t *mat, uint32_t vec)
+{
+    uint32_t sum = 0;
+    for (; vec; vec >>= 1, mat++)
+        if (vec & 1) sum ^= *mat;
+    return sum;
+}
+
+static void gf2_square(uint32_t *sq, const uint32_t *mat)
+{
+    int n;
+    for (n = 0; n < 32; n++) sq[n] = gf2_times(mat, mat[n]);
+}
+
+static uint32_t crc32_combine(uint32_t crc1, uint32_t crc2, uint32_t len2)
+{
+    uint32_t even[32], odd[32], row = 1;
+    int n;
+    if (len2 == 0) return crc1;
+    odd[0] = 0xEDB88320u;                   /* one zero bit */
+    for (n = 1; n < 32; n++) { odd[n] = row; row <<= 1; }
+    gf2_square(even, odd);                  /* two zero bits */
+    gf2_square(odd, even);                  /* four */
+    for (;;) {
+        gf2_square(even, odd);
+        if (len2 & 1) crc1 = gf2_times(even, crc1);
+        len2 >>= 1;
+        if (!len2) break;
+        gf2_square(odd, even);
+        if (len2 & 1) crc1 = gf2_times(odd, crc1);
+        len2 >>= 1;
+        if (!len2) break;
     }
-    return c ^ 0xFFFFFFFFu;
+    return crc1 ^ crc2;
 }
 
 /* ====================================================================== */
@@ -99,28 +193,82 @@ uint32_t save_crc32(const uint8_t *buf, uint32_t size)
 #define LZ_MAXLEN 130u
 #define LZ_HASH 1024u
 
+/* The codec's hot scalar state in one struct: THUMB code from the GBA
+ * cartridge reaches it through one base address instead of one literal
+ * per variable (each global costs a ROM literal load + an EWRAM access). */
+static struct {
+    /* LZ encoder */
+    uint32_t lz_nlit, lz_in, lz_proc;
+    /* output sink */
+    uint8_t *sk_buf;
+    uint32_t sk_cap, sk_n, sk_fill, sk_crc;
+    int sk_mode, sk_err;
+    /* bit writer / reader */
+    uint32_t bw_acc, br_acc;
+    int bw_n, br_n;
+    /* decoder */
+    const uint8_t *ld_src;
+    uint8_t *ld_wbuf;
+    uint32_t ld_n, ld_pos, ld_out, ld_lit, ld_match, ld_dist;
+    uint32_t ld_wbase, ld_wlen, ld_wcap;
+    int ld_err, ld_slot;
+} Z = { 0, 0, 0, NULL, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, NULL, NULL,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1 };
+
 static uint8_t lz_ring[LZ_RING];
 static uint16_t lz_head[LZ_HASH];
 static uint8_t lz_lit[128];
-static uint32_t lz_nlit, lz_in, lz_proc;
 
-/* output sink (counts past its capacity so callers learn the size) */
-static uint8_t *sk_buf;
-static uint32_t sk_cap, sk_n;
+/* output sink. SK_MEM: the image in memory (counts past its capacity so
+ * callers learn the size); SK_COUNT: nothing kept, size + running CRC;
+ * SK_STREAM: chunks of Z.sk_cap bytes go to plat_save_stream_write(). */
+enum { SK_MEM, SK_COUNT, SK_STREAM };
 
-static void sk_put(uint8_t b)
+static void sk_flush(void)
 {
-    if (sk_n < sk_cap) sk_buf[sk_n] = b;
-    sk_n++;
+    if (Z.sk_fill && !Z.sk_err && !plat_save_stream_write(Z.sk_buf, Z.sk_fill)) Z.sk_err = 1;
+    Z.sk_fill = 0;
+}
+
+static inline void sk_put(uint8_t b)
+{
+    if (Z.sk_mode == SK_MEM) {
+        if (Z.sk_n < Z.sk_cap) Z.sk_buf[Z.sk_n] = b;
+    } else {
+        Z.sk_crc = CRC_BYTE(Z.sk_crc, b);
+        if (Z.sk_mode == SK_STREAM) {
+            Z.sk_buf[Z.sk_fill++] = b;
+            if (Z.sk_fill == Z.sk_cap) sk_flush();
+        }
+    }
+    Z.sk_n++;
+}
+
+/* n bytes at once (literal runs) */
+static void sk_write(const uint8_t *p, uint32_t n)
+{
+    uint32_t i;
+    if (Z.sk_mode == SK_MEM) {
+        if (Z.sk_n < Z.sk_cap) memcpy(Z.sk_buf + Z.sk_n, p, Z.sk_cap - Z.sk_n < n ? Z.sk_cap - Z.sk_n : n);
+        Z.sk_n += n;
+        return;
+    }
+    Z.sk_crc = crc_update(Z.sk_crc, p, n);
+    Z.sk_n += n;
+    if (Z.sk_mode == SK_STREAM)
+        for (i = 0; i < n; i++) {
+            Z.sk_buf[Z.sk_fill++] = p[i];
+            if (Z.sk_fill == Z.sk_cap) sk_flush();
+        }
 }
 
 static void lz_reset(void)
 {
     memset(lz_head, 0, sizeof(lz_head));
-    lz_nlit = lz_in = lz_proc = 0;
+    Z.lz_nlit = Z.lz_in = Z.lz_proc = 0;
 }
 
-static uint32_t lz_hash3(uint32_t p)
+static inline uint32_t lz_hash3(uint32_t p)
 {
     uint32_t v = ((uint32_t)lz_ring[p & LZ_MASK] << 16) |
                  ((uint32_t)lz_ring[(p + 1) & LZ_MASK] << 8) | lz_ring[(p + 2) & LZ_MASK];
@@ -129,16 +277,15 @@ static uint32_t lz_hash3(uint32_t p)
 
 static void lz_flush_lits(void)
 {
-    uint32_t i;
-    if (!lz_nlit) return;
-    sk_put((uint8_t)(lz_nlit - 1));
-    for (i = 0; i < lz_nlit; i++) sk_put(lz_lit[i]);
-    lz_nlit = 0;
+    if (!Z.lz_nlit) return;
+    sk_put((uint8_t)(Z.lz_nlit - 1));
+    sk_write(lz_lit, Z.lz_nlit);
+    Z.lz_nlit = 0;
 }
 
 static void lz_step(void)
 {
-    uint32_t p = lz_proc, avail = lz_in - p, best = 0, boff = 0;
+    uint32_t p = Z.lz_proc, avail = Z.lz_in - p, best = 0, boff = 0;
     if (avail >= 3) {
         uint32_t h = lz_hash3(p);
         uint16_t stored = lz_head[h];
@@ -159,90 +306,130 @@ static void lz_step(void)
         sk_put((uint8_t)(boff & 0xFF));
         sk_put((uint8_t)(boff >> 8));
         for (k = 1; k < best; k++)
-            if (lz_in - (p + k) >= 3) lz_head[lz_hash3(p + k)] = (uint16_t)(p + k + 1);
-        lz_proc += best;
+            if (Z.lz_in - (p + k) >= 3) lz_head[lz_hash3(p + k)] = (uint16_t)(p + k + 1);
+        Z.lz_proc += best;
     } else {
-        lz_lit[lz_nlit++] = lz_ring[p & LZ_MASK];
-        if (lz_nlit == 128) lz_flush_lits();
-        lz_proc++;
+        lz_lit[Z.lz_nlit++] = lz_ring[p & LZ_MASK];
+        if (Z.lz_nlit == 128) lz_flush_lits();
+        Z.lz_proc++;
     }
 }
 
-static void lz_push(uint8_t b)
+static inline void lz_push(uint8_t b)
 {
-    lz_ring[lz_in & LZ_MASK] = b;
-    lz_in++;
-    while (lz_in - lz_proc >= LZ_MAXLEN) lz_step();
+    lz_ring[Z.lz_in & LZ_MASK] = b;
+    Z.lz_in++;
+    while (Z.lz_in - Z.lz_proc >= LZ_MAXLEN) lz_step();
 }
 
 static void lz_finish(void)
 {
-    while (lz_proc < lz_in) lz_step();
+    while (Z.lz_proc < Z.lz_in) lz_step();
     lz_flush_lits();
 }
 
-/* decoder (pull) */
-static const uint8_t *ld_src;
-static uint32_t ld_n, ld_pos, ld_out, ld_lit, ld_match, ld_dist;
-static int ld_err;
+/* decoder (pull). The compressed body (Z.ld_n bytes) is read through a
+ * window: body bytes [Z.ld_wbase, Z.ld_wbase + Z.ld_wlen) at Z.ld_src. In memory
+ * the window is the whole body; when streaming it is refilled from slot
+ * Z.ld_slot with plat_save_read_at(). */
 
 static void ld_reset(const uint8_t *src, uint32_t n)
 {
-    ld_src = src; ld_n = n; ld_pos = 0; ld_out = 0;
-    ld_lit = ld_match = ld_dist = 0;
-    ld_err = 0;
+    Z.ld_src = src; Z.ld_n = n; Z.ld_pos = 0; Z.ld_out = 0;
+    Z.ld_lit = Z.ld_match = Z.ld_dist = 0;
+    Z.ld_err = 0;
+    Z.ld_wbase = 0;
+    Z.ld_wlen = src ? n : 0;
 }
 
-static uint8_t ld_get(void)
+/* the window ran out: read the next piece of the body (streamed loads) */
+static int ld_refill(void)
+{
+    uint32_t k = Z.ld_n - Z.ld_pos, size = 0;
+    if (Z.ld_slot < 0 || !Z.ld_wbuf) return 0;
+    if (k > Z.ld_wcap) k = Z.ld_wcap;
+    if (!plat_save_read_at(Z.ld_slot, DOOMO_SAVE_HEADER_SIZE + Z.ld_pos, Z.ld_wbuf, k, &size))
+        return 0;
+    Z.ld_src = Z.ld_wbuf;
+    Z.ld_wbase = Z.ld_pos;
+    Z.ld_wlen = k;
+    return 1;
+}
+
+static inline int ld_byte(uint8_t *b)
+{
+    if (Z.ld_pos >= Z.ld_n) return 0;
+    if (Z.ld_pos - Z.ld_wbase >= Z.ld_wlen && !ld_refill()) return 0;
+    *b = Z.ld_src[Z.ld_pos - Z.ld_wbase];
+    Z.ld_pos++;
+    return 1;
+}
+
+static uint8_t ld_get_slow(void)
 {
     uint8_t b;
-    if (ld_err) return 0;
-    if (!ld_lit && !ld_match) {
-        uint8_t c;
-        if (ld_pos >= ld_n) { ld_err = 1; return 0; }
-        c = ld_src[ld_pos++];
+    if (Z.ld_err) return 0;
+    if (!Z.ld_lit && !Z.ld_match) {
+        uint8_t c, d0, d1;
+        if (!ld_byte(&c)) { Z.ld_err = 1; return 0; }
         if (c < 0x80) {
-            ld_lit = (uint32_t)c + 1;
+            Z.ld_lit = (uint32_t)c + 1;
         } else {
-            if (ld_pos + 2 > ld_n) { ld_err = 1; return 0; }
-            ld_match = (uint32_t)(c & 0x7F) + 3;
-            ld_dist = ld_src[ld_pos] | ((uint32_t)ld_src[ld_pos + 1] << 8);
-            ld_pos += 2;
-            if (ld_dist == 0 || ld_dist > ld_out || ld_dist > LZ_MAXOFF) { ld_err = 1; return 0; }
+            if (!ld_byte(&d0) || !ld_byte(&d1)) { Z.ld_err = 1; return 0; }
+            Z.ld_match = (uint32_t)(c & 0x7F) + 3;
+            Z.ld_dist = d0 | ((uint32_t)d1 << 8);
+            if (Z.ld_dist == 0 || Z.ld_dist > Z.ld_out || Z.ld_dist > LZ_MAXOFF) { Z.ld_err = 1; return 0; }
         }
     }
-    if (ld_lit) {
-        if (ld_pos >= ld_n) { ld_err = 1; return 0; }
-        b = ld_src[ld_pos++];
-        ld_lit--;
+    if (Z.ld_lit) {
+        if (!ld_byte(&b)) { Z.ld_err = 1; return 0; }
+        Z.ld_lit--;
     } else {
-        b = lz_ring[(ld_out - ld_dist) & LZ_MASK];
-        ld_match--;
+        b = lz_ring[(Z.ld_out - Z.ld_dist) & LZ_MASK];
+        Z.ld_match--;
     }
-    lz_ring[ld_out & LZ_MASK] = b;
-    ld_out++;
+    lz_ring[Z.ld_out & LZ_MASK] = b;
+    Z.ld_out++;
+    return b;
+}
+
+/* the common cases inline: inside a literal run (window permitting) or a
+ * match; everything else (control bytes, refills, errors) is slow */
+static inline uint8_t ld_get(void)
+{
+    uint8_t b;
+    if (Z.ld_lit && Z.ld_pos < Z.ld_n && Z.ld_pos - Z.ld_wbase < Z.ld_wlen) {
+        b = Z.ld_src[Z.ld_pos - Z.ld_wbase];
+        Z.ld_pos++;
+        Z.ld_lit--;
+    } else if (Z.ld_match && !Z.ld_err) {
+        b = lz_ring[(Z.ld_out - Z.ld_dist) & LZ_MASK];
+        Z.ld_match--;
+    } else {
+        return ld_get_slow();
+    }
+    lz_ring[Z.ld_out & LZ_MASK] = b;
+    Z.ld_out++;
     return b;
 }
 
 /* ====================================================================== */
 /* bit stream                                                               */
-static uint32_t bw_acc;
-static int bw_n;
 
 static void wbits(uint32_t v, int n)
 {
     if (n < 32) v &= (1u << n) - 1u;
-    bw_acc |= v << bw_n;
-    bw_n += n;
-    while (bw_n >= 8) {
-        lz_push((uint8_t)bw_acc);
-        bw_acc >>= 8;
-        bw_n -= 8;
+    Z.bw_acc |= v << Z.bw_n;
+    Z.bw_n += n;
+    while (Z.bw_n >= 8) {
+        lz_push((uint8_t)Z.bw_acc);
+        Z.bw_acc >>= 8;
+        Z.bw_n -= 8;
     }
 }
 static void walign(void)
 {
-    if (bw_n) { lz_push((uint8_t)bw_acc); bw_acc = 0; bw_n = 0; }
+    if (Z.bw_n) { lz_push((uint8_t)Z.bw_acc); Z.bw_acc = 0; Z.bw_n = 0; }
 }
 static void w8(uint32_t v) { wbits(v, 8); }
 static void w16(uint32_t v) { wbits(v, 16); }
@@ -255,22 +442,20 @@ static void wvar(uint32_t v)
     wbits(v, 5);
 }
 
-static uint32_t br_acc;
-static int br_n;
 
 static uint32_t rbits(int n)
 {
     uint32_t v;
-    while (br_n < n) {
-        br_acc |= (uint32_t)ld_get() << br_n;
-        br_n += 8;
+    while (Z.br_n < n) {
+        Z.br_acc |= (uint32_t)ld_get() << Z.br_n;
+        Z.br_n += 8;
     }
-    v = n < 32 ? br_acc & ((1u << n) - 1u) : br_acc;
-    br_acc = n < 32 ? br_acc >> n : 0;
-    br_n -= n;
+    v = n < 32 ? Z.br_acc & ((1u << n) - 1u) : Z.br_acc;
+    Z.br_acc = n < 32 ? Z.br_acc >> n : 0;
+    Z.br_n -= n;
     return v;
 }
-static void ralign(void) { br_acc = 0; br_n = 0; }
+static void ralign(void) { Z.br_acc = 0; Z.br_n = 0; }
 static uint32_t r8(void) { return rbits(8); }
 static uint32_t r16(void) { return rbits(16); }
 static uint32_t r32(void) { uint32_t lo = rbits(16); return lo | (rbits(16) << 16); }
@@ -350,10 +535,14 @@ static void field_set(DoomoResident *r, int i, uint32_t v)
     ((uint8_t *)r)[rfields[i].off] = (uint8_t)v;
 }
 
-static int field_eq(const DoomoResident *a, const DoomoResident *b, int i)
+/* field_get(a, i) == field_get(b, i), raw bytes first (the only mapped
+ * value is hair_highlight's "no colour") */
+static inline int field_eq(const DoomoResident *a, const DoomoResident *b, int i)
 {
+    uint8_t off = rfields[i].off;
     if (rfields[i].bits == NAME_FIELD) return memcmp(a->name, b->name, DOOMO_NAME_LEN) == 0;
-    return field_get(a, i) == field_get(b, i);
+    if (((const uint8_t *)a)[off] == ((const uint8_t *)b)[off]) return 1;
+    return off == LO(hair_highlight) && field_get(a, i) == field_get(b, i);
 }
 
 static int field_cost(const DoomoResident *r, int i)
@@ -377,7 +566,7 @@ static void field_read(DoomoResident *r, int i)
     if (rfields[i].bits == NAME_FIELD) {
         int n = (int)rbits(4), k;
         memset(r->name, 0, DOOMO_NAME_LEN);
-        if (n > DOOMO_NAME_LEN - 1) { n = DOOMO_NAME_LEN - 1; ld_err = 1; }
+        if (n > DOOMO_NAME_LEN - 1) { n = DOOMO_NAME_LEN - 1; Z.ld_err = 1; }
         for (k = 0; k < n; k++) r->name[k] = (char)rbits(7);
     } else {
         field_set(r, i, rbits(rfields[i].bits));
@@ -397,15 +586,19 @@ static void read_full(DoomoResident *r)
     for (i = 0; i < NFIELDS; i++) field_read(r, i);
 }
 
-/* cost in bits of a delta record (without the tag) */
-static int delta_cost(const DoomoResident *r, const DoomoResident *base)
+/* The fields of r that differ from base (fm[g] bit k = field 8g + k) and
+ * the cost in bits of the delta record (without the tag). */
+static int delta_masks(const DoomoResident *r, const DoomoResident *base, uint8_t fm[NGROUPS])
 {
     int g, i, bits = NGROUPS;
     for (g = 0; g < NGROUPS; g++) {
-        int used = 0;
+        fm[g] = 0;
         for (i = g * 8; i < g * 8 + 8 && i < NFIELDS; i++)
-            if (!field_eq(r, base, i)) { used = 1; bits += field_cost(r, i); }
-        if (used) bits += 8;
+            if (!field_eq(r, base, i)) {
+                fm[g] |= (uint8_t)(1 << (i - g * 8));
+                bits += field_cost(r, i);
+            }
+        if (fm[g]) bits += 8;
     }
     return bits;
 }
@@ -417,17 +610,12 @@ static int full_cost(const DoomoResident *r)
     return bits;
 }
 
-static void write_delta(const DoomoResident *r, const DoomoResident *base)
+static void write_delta(const DoomoResident *r, const uint8_t fm[NGROUPS])
 {
     int g, i;
     uint32_t gmask = 0;
-    uint8_t fm[NGROUPS];
-    for (g = 0; g < NGROUPS; g++) {
-        fm[g] = 0;
-        for (i = g * 8; i < g * 8 + 8 && i < NFIELDS; i++)
-            if (!field_eq(r, base, i)) fm[g] |= (uint8_t)(1 << (i - g * 8));
+    for (g = 0; g < NGROUPS; g++)
         if (fm[g]) gmask |= 1u << g;
-    }
     wbits(gmask, NGROUPS);
     for (g = 0; g < NGROUPS; g++) {
         if (!fm[g]) continue;
@@ -508,6 +696,7 @@ static void write_town(void)
 {
     const DoomoTown *t = &doomo_town;
     DoomoResident cur, base;
+    uint8_t fm[NGROUPS];
     int i, n;
 
     w8(SEC_MAGIC);
@@ -581,9 +770,9 @@ static void write_town(void)
             i += run;
             continue;
         }
-        if (has_base && delta_cost(&cur, &base) < full_cost(&cur)) {
+        if (has_base && delta_masks(&cur, &base, fm) < full_cost(&cur)) {
             wbits(2, 2);
-            write_delta(&cur, &base);
+            write_delta(&cur, fm);
         } else {
             wbits(3, 2);
             write_full(&cur);
@@ -687,7 +876,7 @@ static int read_town(int apply)
     i = 0;
     while (i < DOOMO_MAX_RESIDENTS) {
         uint32_t tag = rbits(2);
-        if (ld_err) return 0;
+        if (Z.ld_err) return 0;
         if (tag == 0 || tag == 1) {
             int run = (int)rbits(10) + 1, k;
             if (i + run > DOOMO_MAX_RESIDENTS) return 0;
@@ -716,7 +905,7 @@ static int read_town(int apply)
     }
     if (r16() != END_MAGIC) return 0;
     ralign();
-    return !ld_err;
+    return !Z.ld_err;
 }
 
 /* ====================================================================== */
@@ -739,41 +928,61 @@ static void put32(uint8_t *p, uint32_t v) { put16(p, v); put16(p + 2, v >> 16); 
 static uint32_t get16(const uint8_t *p) { return p[0] | ((uint32_t)p[1] << 8); }
 static uint32_t get32(const uint8_t *p) { return get16(p) | (get16(p + 2) << 16); }
 
+/* encode doomo_town into the current sink; returns the body size */
+static uint32_t encode(void)
+{
+    Z.sk_n = 0;
+    Z.sk_fill = 0;
+    Z.sk_crc = 0xFFFFFFFFu;
+    lz_reset();
+    Z.bw_acc = 0; Z.bw_n = 0;
+    write_town();
+    lz_finish();
+    return Z.sk_n;
+}
+
+/* everything of the 48-byte header but the CRC (bytes 12..15) */
+static void make_header(uint8_t *h, uint32_t total, uint32_t raw)
+{
+    int i;
+    memset(h, 0, HDR);
+    put32(h + 0, DOOMO_SAVE_MAGIC);
+    put16(h + 4, DOOMO_SAVE_VERSION);
+    put16(h + 6, HDR);
+    put32(h + 8, total);
+    put32(h + 16, raw);
+    h[20] = doomo_town.mode;
+    h[21] = doomo_town.story.chapter;
+    h[22] = doomo_town.population;
+    h[23] = doomo_town.weekday;
+    put16(h + 24, (uint32_t)town_count(-1));
+    put16(h + 26, doomo_town.minute);
+    put32(h + 28, doomo_town.day);
+    put32(h + 32, doomo_town.money);
+    for (i = 0; i < DOOMO_NAME_LEN - 1 && doomo_town.player.name[i]; i++)
+        h[36 + i] = (uint8_t)doomo_town.player.name[i];
+}
+
+static void too_big(uint32_t total, uint32_t cap)
+{
+    doomo_snprintf(last_error, sizeof(last_error), "Island too big: %u KB > %u KB",
+                   (unsigned)((total + 1023) / 1024), (unsigned)(cap / 1024));
+}
+
 uint32_t save_serialize(uint8_t *buf, uint32_t cap)
 {
     uint32_t total;
-    int i;
     last_error[0] = 0;
-    sk_buf = buf ? buf + HDR : NULL;
-    sk_cap = (buf && cap > HDR) ? cap - HDR : 0;
-    sk_n = 0;
-    lz_reset();
-    bw_acc = 0; bw_n = 0;
-    write_town();
-    lz_finish();
-    total = HDR + sk_n;
+    Z.sk_mode = SK_MEM;
+    Z.sk_buf = buf ? buf + HDR : NULL;
+    Z.sk_cap = (buf && cap > HDR) ? cap - HDR : 0;
+    total = HDR + encode();
     last_size = total;
     if (!buf || total > cap) {
-        doomo_snprintf(last_error, sizeof(last_error), "Island too big: %u KB > %u KB",
-                       (unsigned)((total + 1023) / 1024), (unsigned)(cap / 1024));
+        too_big(total, cap);
         return 0;
     }
-    memset(buf, 0, HDR);
-    put32(buf + 0, DOOMO_SAVE_MAGIC);
-    put16(buf + 4, DOOMO_SAVE_VERSION);
-    put16(buf + 6, HDR);
-    put32(buf + 8, total);
-    put32(buf + 16, lz_in);
-    buf[20] = doomo_town.mode;
-    buf[21] = doomo_town.story.chapter;
-    buf[22] = doomo_town.population;
-    buf[23] = doomo_town.weekday;
-    put16(buf + 24, (uint32_t)town_count(-1));
-    put16(buf + 26, doomo_town.minute);
-    put32(buf + 28, doomo_town.day);
-    put32(buf + 32, doomo_town.money);
-    for (i = 0; i < DOOMO_NAME_LEN - 1 && doomo_town.player.name[i]; i++)
-        buf[36 + i] = (uint8_t)doomo_town.player.name[i];
+    make_header(buf, total, Z.lz_in);
     put32(buf + 12, save_crc32(buf + 16, total - 16));
     return total;
 }
@@ -818,26 +1027,27 @@ static int check_image(const uint8_t *buf, uint32_t size)
     return 1;
 }
 
-static int decode(const uint8_t *buf, int apply)
+/* decode the body described by header h: from memory (body != NULL) or
+ * streamed from Z.ld_slot */
+static int decode(const uint8_t *h, const uint8_t *body, int apply)
 {
-    uint32_t total = get32(buf + 8), raw = get32(buf + 16);
+    uint32_t total = get32(h + 8), raw = get32(h + 16);
     int ok;
-    ld_reset(buf + HDR, total - HDR);
-    br_acc = 0; br_n = 0;
+    ld_reset(body, total - HDR);
+    Z.br_acc = 0; Z.br_n = 0;
     ok = read_town(apply);
-    return ok && !ld_err && ld_out == raw && ld_pos == total - HDR;
+    return ok && !Z.ld_err && Z.ld_out == raw && Z.ld_pos == total - HDR;
 }
 
-int save_deserialize(const uint8_t *buf, uint32_t size)
+/* both decodes + the fix-ups after a load */
+static int load_decoded(const uint8_t *h, const uint8_t *body)
 {
     int i;
-    last_error[0] = 0;
-    if (!check_image(buf, size)) return 0;
-    if (!decode(buf, 0)) {
+    if (!decode(h, body, 0)) {
         doomo_snprintf(last_error, sizeof(last_error), "Save data is malformed");
         return 0;
     }
-    decode(buf, 1);
+    decode(h, body, 1);
     for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) {
         if (doomo_town.res[i].status != RES_EMPTY) resident_sanitize(&doomo_town.res[i]);
         portrait_invalidate(i);
@@ -845,25 +1055,72 @@ int save_deserialize(const uint8_t *buf, uint32_t size)
     resident_sanitize(&doomo_town.player);
     portrait_invalidate(DOOMO_PLAYER_ID);
     rel_normalize();
-    last_size = get32(buf + 8);
+    last_size = get32(h + 8);
     return 1;
+}
+
+int save_deserialize(const uint8_t *buf, uint32_t size)
+{
+    last_error[0] = 0;
+    if (!check_image(buf, size)) return 0;
+    Z.ld_slot = -1;
+    return load_decoded(buf, buf + HDR);
+}
+
+/* Streamed save (platform.h): pass 1 sizes the save and checksums the
+ * body, pass 2 streams the same bytes in chunks of the scratch buffer. */
+static int save_stream(int slot, uint8_t *chunk, uint32_t chunk_cap, uint32_t total,
+                       uint32_t body_crc)
+{
+    uint8_t hdr[HDR];
+    uint32_t n = total - HDR, raw = Z.lz_in;
+    int ok;
+    make_header(hdr, total, raw);
+    put32(hdr + 12, crc32_combine(save_crc32(hdr + 16, HDR - 16), body_crc, n));
+    if (!plat_save_stream_begin(slot, total)) return 0;
+    Z.sk_err = !plat_save_stream_write(hdr, HDR);
+    Z.sk_mode = SK_STREAM;
+    Z.sk_buf = chunk;
+    Z.sk_cap = chunk_cap;
+    encode();
+    sk_flush();
+    ok = !Z.sk_err && Z.sk_n == n && (Z.sk_crc ^ 0xFFFFFFFFu) == body_crc && Z.lz_in == raw;
+    return plat_save_stream_end(ok) && ok;
 }
 
 int save_game(int slot)
 {
-    uint32_t cap = 0, max = save_slot_max(slot), n;
+    uint32_t cap = 0, max = save_slot_max(slot), n, total, body_crc;
     uint8_t *buf = (uint8_t *)plat_save_scratch(&cap);
     last_error[0] = 0;
     if (!max) { doomo_snprintf(last_error, sizeof(last_error), "No such save slot"); return 0; }
     if (!buf || cap < HDR) { doomo_snprintf(last_error, sizeof(last_error), "No memory to save"); return 0; }
-    if (cap < max) max = cap;
-    n = save_serialize(buf, max);
-    if (!n) {
-        doomo_snprintf(last_error, sizeof(last_error), "Island too big: %u KB > %u KB",
-                       (unsigned)((last_size + 1023) / 1024), (unsigned)(max / 1024));
-        return 0;
+    if (cap >= max) {
+        /* the whole image fits the scratch buffer: build it there */
+        n = save_serialize(buf, max);
+        if (!n) { too_big(last_size, max); return 0; }
+        if (!plat_save_write(slot, buf, n)) {
+            doomo_snprintf(last_error, sizeof(last_error), "Couldn't write save slot %d", slot);
+            return 0;
+        }
+        return 1;
     }
-    if (!plat_save_write(slot, buf, n)) {
+    /* pass 1: how big is it? */
+    Z.sk_mode = SK_COUNT;
+    total = HDR + encode();
+    body_crc = Z.sk_crc ^ 0xFFFFFFFFu;
+    last_size = total;
+    if (total > max) { too_big(total, max); return 0; }
+    if (total <= cap) {
+        /* it fits after all: in memory (works without streaming support) */
+        n = save_serialize(buf, cap);
+        if (!n || !plat_save_write(slot, buf, n)) {
+            doomo_snprintf(last_error, sizeof(last_error), "Couldn't write save slot %d", slot);
+            return 0;
+        }
+        return 1;
+    }
+    if (!save_stream(slot, buf, cap, total, body_crc)) {
         doomo_snprintf(last_error, sizeof(last_error), "Couldn't write save slot %d", slot);
         return 0;
     }
@@ -881,11 +1138,76 @@ static int read_slot(int slot, uint8_t **out, uint32_t *size)
     return 1;
 }
 
+/* Streamed load: the header, a CRC pass over the slot, then the decodes
+ * read the body through the scratch buffer (window). 1 = verified;
+ * *hdr holds the header. */
+static int stream_check(int slot, uint8_t *win, uint32_t wcap, uint8_t *hdr)
+{
+    uint32_t size = 0, total, pos, c;
+    if (!plat_save_read_at(slot, 0, hdr, HDR, &size)) {
+        doomo_snprintf(last_error, sizeof(last_error), "No save in slot %d", slot);
+        return 0;
+    }
+    if (!save_info_from(hdr, HDR, NULL)) {
+        doomo_snprintf(last_error, sizeof(last_error), "Not a save file");
+        return 0;
+    }
+    total = get32(hdr + 8);
+    if (total < HDR || total > size) {
+        doomo_snprintf(last_error, sizeof(last_error), "Save is truncated");
+        return 0;
+    }
+    c = crc_update(0xFFFFFFFFu, hdr + 16, HDR - 16);
+    for (pos = HDR; pos < total;) {
+        uint32_t k = total - pos < wcap ? total - pos : wcap, got = 0;
+        if (!plat_save_read_at(slot, pos, win, k, &got)) {
+            doomo_snprintf(last_error, sizeof(last_error), "Save is truncated");
+            return 0;
+        }
+        c = crc_update(c, win, k);
+        pos += k;
+    }
+    if ((c ^ 0xFFFFFFFFu) != get32(hdr + 12)) {
+        doomo_snprintf(last_error, sizeof(last_error), "Save is damaged (bad CRC)");
+        return 0;
+    }
+    return 1;
+}
+
+/* The scratch buffer when it is too small for slot `slot` and the
+ * platform reads saves piecewise (plat_save_read_at); NULL otherwise -
+ * then the whole-image path runs (and reports a missing save itself). */
+static uint8_t *stream_window(int slot, uint32_t *cap)
+{
+    uint8_t probe[4];
+    uint32_t size = 0;
+    uint8_t *buf = (uint8_t *)plat_save_scratch(cap);
+    if (!buf || *cap < 64 || *cap >= save_slot_max(slot)) return NULL;
+    if (!plat_save_read_at(slot, 0, probe, sizeof(probe), &size)) return NULL;
+    return buf;
+}
+
 int load_game(int slot)
 {
-    uint8_t *buf = NULL;
-    uint32_t size;
+    uint8_t *buf = NULL, hdr[HDR];
+    uint32_t size, cap = 0;
     last_error[0] = 0;
+    if (!save_slot_max(slot)) {
+        doomo_snprintf(last_error, sizeof(last_error), "No save in slot %d", slot);
+        return 0;
+    }
+    buf = stream_window(slot, &cap);
+    if (buf) {
+        int ok;
+        if (!stream_check(slot, buf, cap, hdr)) return 0;
+        Z.ld_slot = slot;
+        Z.ld_wbuf = buf;
+        Z.ld_wcap = cap;
+        ok = load_decoded(hdr, NULL);
+        Z.ld_slot = -1;
+        Z.ld_wbuf = NULL;
+        return ok;
+    }
     if (!read_slot(slot, &buf, &size)) {
         doomo_snprintf(last_error, sizeof(last_error), "No save in slot %d", slot);
         return 0;
@@ -916,8 +1238,11 @@ int save_exists(int slot)
 /* A full check of a slot (CRC included) without loading it. */
 int save_verify(int slot)
 {
-    uint8_t *buf = NULL;
-    uint32_t size;
+    uint8_t *buf = NULL, hdr[HDR];
+    uint32_t size, cap = 0;
+    if (!save_slot_max(slot)) return 0;
+    buf = stream_window(slot, &cap);
+    if (buf) return stream_check(slot, buf, cap, hdr);
     if (!read_slot(slot, &buf, &size)) return 0;
     return check_image(buf, size);
 }

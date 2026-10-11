@@ -1,6 +1,7 @@
-/* sim.h - the life simulation (owner: life). Runs all 500 residents
- * cheaply: residents are updated in round-robin batches each tick so the
- * cost per tick is bounded on GBA. */
+/* sim.h - the life simulation (owner: life). Runs all 1000 residents
+ * (500 Hillvile + 500 Hellvile) cheaply: residents are updated in
+ * round-robin batches each tick so the cost per tick is bounded on GBA.
+ * See "life additions" at the end for the clock, budgets and helpers. */
 #ifndef DOOMO_SIM_H
 #define DOOMO_SIM_H
 
@@ -136,6 +137,12 @@ int  sim_partner_of(int id);              /* dating / married partner, -1 */
 /* Ask a dating resident to propose to their partner right now (player
  * advice); returns the reaction. */
 const char *sim_advise_propose(int id, int encourage);
+/* Romance events, also for story scripts: a confession (bonus adds to
+ * the success chance in percent; returns 1 if they start dating), a
+ * proposal (1 if they marry) and a breakup (quiet = no news). */
+int  sim_confess(int from, int to, int bonus);
+int  sim_propose(int from, int to, int bonus);
+void sim_breakup(int a, int b, int quiet);
 /* Talk a resident through a rocky relationship (PROB_BREAKUP advice):
  * encourage = 1 "work it out", 0 "let them go" (breaks up). */
 const char *sim_advise_breakup(int id, int encourage);

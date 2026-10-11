@@ -271,6 +271,7 @@ int sim_make_baby(int pa, int pb)
     doomo_town.res[slot] = baby;
     sim_s.stamp[slot] = (uint16_t)sim_now();
     sim_s.transient[slot] = 0;
+    sim_s.job[slot] = 0xFF;                         /* babies don't work */
     doomo_town.res[slot].activity = ACT_HOME;
     rel_set_kind(pa, slot, REL_FAMILY);
     rel_adjust(pa, slot, 85);

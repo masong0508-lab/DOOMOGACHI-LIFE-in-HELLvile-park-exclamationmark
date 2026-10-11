@@ -255,7 +255,9 @@ int main(void)
     doomo_init();
     gba_pacing_reset();
     for (;;) {
-        uint32_t b = read_pad();
+        uint32_t b;
+        if (gba_mailbox.cmd) gba_harness_cmd();
+        b = read_pad();
         plat_begin_frame();
         doomo_frame(b);
         plat_end_frame();

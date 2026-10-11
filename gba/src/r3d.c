@@ -314,9 +314,10 @@ static void draw_sprites(const DoomoView3D *v)
 DOOMO_STATIC_ASSERT(R3D_MAXCOLS * R3D_MAXCP * sizeof(R3DClip) <= GBA_BIG_ROOF - GBA_BIG_CLIPS,
                     clips_fit);
 DOOMO_STATIC_ASSERT(DOOMO_MAP_MAX_W * DOOMO_MAP_MAX_H <= GBA_BIG_CMT - GBA_BIG_ROOF, roof_fits);
-DOOMO_STATIC_ASSERT(R3D_MAXSPR * sizeof(SprOrder) <= 1024, sprorder_fits);
+DOOMO_STATIC_ASSERT(GBA_BIG_SPR + R3D_MAXSPR * sizeof(SprOrder) <= GBA_BIG_SIZE, sprorder_fits);
 
-/* the shared buffer was lent to the save code: rebuild what lives there */
+/* the shared buffer was used by the overworld or the save code: rebuild
+ * what lives there */
 void r3d_invalidate(void)
 {
     cache_mapdef = 0;
@@ -399,6 +400,7 @@ void plat_view3d(const DoomoView3D *v)
     int a;
     const DoomoMap *m;
     if (gba_nodraw || !v || !v->map) return;
+    gba_big_claim(GBA_BIG_BY_R3D);
     t0 = gba_cycles();
     m = v->map;
 
