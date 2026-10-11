@@ -30,5 +30,7 @@
 #include "story.h"
 #include "audio.h"
 #include "activities.h"
+#include "song.h"
+#include "save_ext.h"
 #include "game.h"
 #endif
