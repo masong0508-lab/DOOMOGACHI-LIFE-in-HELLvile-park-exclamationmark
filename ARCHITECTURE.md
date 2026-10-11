@@ -70,8 +70,8 @@ docs/                    design, building, modding the roster
 
 | Owner | Headers | Implementation |
 |---|---|---|
-| foundation | types, fixmath, rng, palette, font, catalog, resident, items, town, unlocks, save, input, scene, scenes, ui, game, platform*, doomo | fixmath.c rng.c palette.c font.c catalog.c resident.c items.c town.c unlocks.c save.c input.c scene.c ui*.c game.c stubs.c; core/native/*, core/Makefile, core/sources.mk, core/tests/ framework |
-| art | textures, sprites | core/art/*, core/tools/artgen*, core/gen/art_data.c, textures.c, sprites.c |
+| foundation | types, fixmath, rng, font, catalog, resident, items, town, unlocks, save, input, scene, scenes, ui, game, platform*, doomo | fixmath.c rng.c font.c catalog.c resident.c items.c town.c unlocks.c save.c input.c scene.c ui*.c game.c stubs.c; core/native/*, core/Makefile, core/sources.mk, core/tests/ framework |
+| art | palette, textures, sprites | palette.c (the 256 colours, colormaps, tintmaps), core/art/*, core/tools/artgen*, core/gen/art_data.c, textures.c, sprites.c |
 | roster | roster | core/data/roster/*, tools/roster_build.py, core/gen/roster_data.c, roster.c |
 | portrait | portrait | portrait*.c (portraits, chibi bodies, figures, fighter sprites) |
 | life | sim, exorcism, pet | sim*.c, exorcism*.c, pet*.c (SCENE_EXORCISM, SCENE_PET) |
