@@ -7,12 +7,6 @@
 #define FRONT_VIEW (phs.h->yaw < 3)
 #define BACK_VIEW  (phs.h->yaw >= 3)
 
-static void both(void (*fn)(PCtx *), PCtx *c)
-{
-    for (phs.s = -1; phs.s <= 1; phs.s += 2) fn(c);
-    phs.s = 1;
-}
-
 /* clip to rows above/below a head-space y (pixels) */
 static void clip_above(int ny) { pc_clip(0, 0, pcv.w, (hy(ny) + 8) >> 4); }
 static void clip_below(int ny) { pc_clip(0, (hy(ny) + 8) >> 4, pcv.w, pcv.h); }
@@ -61,11 +55,6 @@ static void cap(int top_clip, int grow)
     clip_above(top_clip);
     hE(0, -10, 256 + grow, 256 + grow / 2);
     pc_noclip();
-}
-
-static void spike(int ax, int ay, int bx, int by, int tx, int ty)
-{
-    hT(ax, ay, bx, by, tx, ty);
 }
 
 /* radial spike at angle a (0..255 turns), from radius r0 to r1 */

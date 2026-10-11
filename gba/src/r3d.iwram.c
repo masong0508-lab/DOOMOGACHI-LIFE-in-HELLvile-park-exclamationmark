@@ -552,49 +552,45 @@ void r3d_draw_sprite(const R3DSprite *s)
     }
 
     vr0 = (int32_t)(((int64_t)(((r0 << 12) + 0x800) - s->ytop12) * s->step16) >> 12);
-    for (c = c0; c < f->ncol; c++) {
-        int32_t cx12 = (c * 2 + 1) << 12;
-        int32_t u16;
-        int u, top, bot, ya, yb, y;
-        int32_t v;
-        const uint8_t *src;
-        const uint8_t *cm;
-        uint16_t *p;
-        if (cx12 >= x1) break;
-        u16 = (int32_t)(((int64_t)(cx12 - x0) * s->step16) >> 12);
-        u = u16 >> 16;
-        if (u >= iw) u = iw - 1;
-        if (u < 0) u = 0;
-        if (s->flags & BB_FLIPX) u = iw - 1 - u;
-        clip_at(c, d8, &top, &bot);
-        ya = r0 > top ? r0 : top;
-        yb = r1 < bot ? r1 : bot;
-        if (ya >= yb) continue;
-        {
-            uint32_t d = r3d_dither[c];
-            if (f->frame & 1) d ^= 8;
-            cm = (f->cmt && d < f->tint_thresh) ? f->cmt : f->cm;
-        }
-        cm += s->level << 8;
-        src = pix + u;
-        v = vr0 + (int32_t)((ya - r0) * (int32_t)s->step16);
-        p = f->dst + ya * LINE + c;
-        if (s->trans) {
-            for (y = ya; y < yb; y++, p += LINE, v += (int32_t)s->step16) {
-                int tv = v >> 16;
-                uint32_t t;
-                if (((y + c + (int)f->frame) & 1)) continue;
-                if (tv >= ih) break;
-                t = src[tv * iw];
-                if (t) { t = cm[t]; *p = (uint16_t)(t | (t << 8)); }
+    /* rows whose texture row rounds past the image's last row: drop */
+    while (r1 > r0 && (uint32_t)(vr0 + (r1 - 1 - r0) * (int32_t)s->step16) >> 16 >= (uint32_t)ih)
+        r1--;
+    {
+        const uint32_t dvb = s->step16 * (uint32_t)iw;
+        for (c = c0; c < f->ncol; c++) {
+            int32_t cx12 = (c * 2 + 1) << 12;
+            int32_t u16;
+            int u, top, bot, ya, yb;
+            uint32_t vb;
+            const uint8_t *cm;
+            uint16_t *p;
+            if (cx12 >= x1) break;
+            u16 = (int32_t)(((int64_t)(cx12 - x0) * s->step16) >> 12);
+            u = u16 >> 16;
+            if (u >= iw) u = iw - 1;
+            if (u < 0) u = 0;
+            if (s->flags & BB_FLIPX) u = iw - 1 - u;
+            clip_at(c, d8, &top, &bot);
+            ya = r0 > top ? r0 : top;
+            yb = r1 < bot ? r1 : bot;
+            if (ya >= yb) continue;
+            {
+                uint32_t d = r3d_dither[c];
+                if (f->frame & 1) d ^= 8;
+                cm = (f->cmt && d < f->tint_thresh) ? f->cmt : f->cm;
             }
-        } else {
-            for (y = ya; y < yb; y++, p += LINE, v += (int32_t)s->step16) {
-                int tv = v >> 16;
-                uint32_t t;
-                if (tv >= ih) break;
-                t = src[tv * iw];
-                if (t) { t = cm[t]; *p = (uint16_t)(t | (t << 8)); }
+            cm += s->level << 8;
+            if (s->trans) {
+                /* every other pixel, checkerboard alternating per frame */
+                ya += (ya + c + (int)f->frame) & 1;
+                if (ya >= yb) continue;
+                vb = (uint32_t)(vr0 + (ya - r0) * (int32_t)s->step16) * (uint32_t)iw;
+                p = f->dst + ya * LINE + c;
+                r3d_sprite_loop(p, (yb - ya + 1) >> 1, pix + u, vb, dvb * 2, cm, LINE * 4);
+            } else {
+                vb = (uint32_t)(vr0 + (ya - r0) * (int32_t)s->step16) * (uint32_t)iw;
+                p = f->dst + ya * LINE + c;
+                r3d_sprite_loop(p, yb - ya, pix + u, vb, dvb, cm, LINE * 2);
             }
         }
     }

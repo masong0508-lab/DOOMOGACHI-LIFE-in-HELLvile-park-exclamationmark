@@ -103,6 +103,7 @@ void plat_rect(int x, int y, int w, int h, uint8_t color)
 {
     /* fast paths first: continuing the current run needs no clipping
      * beyond the screen-edge test */
+    g_rect_calls++;
     if (color == s_run.c) {
         if (s_run.kind == RUN_DOTS) {
             if (y == s_run.y && x == s_run.nx && (w | h) == 1 && (unsigned)x < SCR_W) {

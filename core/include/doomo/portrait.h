@@ -1,13 +1,20 @@
 /* portrait.h - procedural pixel art for residents (owner: portrait).
  *
- * ART DIRECTION: extremely cutesy - think tamagotchi / Tomodachi Life on a
- * GBA. Huge heads, tiny bodies, chunky 1px dark outlines, big shiny eyes,
- * blush, pastel shading. Demonic parts (horns, wings, fangs) are drawn
- * *adorable*. Only POSSESSED / SOUL_LOST residents look properly creepy
- * (hollow red eyes, veins, dripping, glitchy aura) - that contrast is the
- * whole joke.
+ * ART DIRECTION: premium, lively, vaguely furry plush critter-folk -
+ * tamagotchi / Tomodachi Life charm at late-GBA quality. Huge heads, tiny
+ * round plush bodies, fluffy fur tufts, expressive animal ears and tails,
+ * little muzzles and button noses, paw hands, big glossy two-highlight
+ * eyes, blush, soft 3-4 tone hue-shifted shading with coloured selective
+ * outlines. Demonic parts (horns, wings, fangs) are drawn *adorable*. Only
+ * POSSESSED / SOUL_LOST residents look properly creepy (hollow red eyes,
+ * veins, drippy black tears, glitch + smoke aura, drained colour) - that
+ * contrast is the whole joke. GHOST residents are pale translucent cyan
+ * with a wispy tail; DEAD ones get X eyes.
  *
- * Every catalog option must visibly change the result.
+ * Every catalog option of every list visibly changes the result (the
+ * portrait test checks it). Everything is drawn at runtime from the look:
+ * integer-only, no allocation, bounded cost (a bust is roughly 20-60k
+ * pixel visits). See docs/PORTRAIT.md.
  */
 #ifndef DOOMO_PORTRAIT_H
 #define DOOMO_PORTRAIT_H
@@ -26,7 +33,8 @@ enum { EXPR_NEUTRAL, EXPR_HAPPY, EXPR_SAD, EXPR_ANGRY, EXPR_LOVE,
 
 /* Render a bust portrait (head + shoulders + accessories + aura) into
  * out[PORTRAIT_W*PORTRAIT_H]. `status` (RES_*) switches possessed/ghost
- * looks. `anim` is a tick counter for blinking / aura animation. */
+ * looks. `anim` is a tick counter for blinking / aura animation (blink,
+ * breathing, ear twitch, tail wag, particles; EXPR_TALK flaps the mouth). */
 void portrait_render(const DoomoLook *l, int status, int expr, int anim,
                      uint8_t *out);
 /* Full-body chibi for the overworld/apartments: dir 0=down,1=left,2=right,
@@ -41,8 +49,15 @@ void figure_render(const DoomoLook *l, int status, int expr, int anim,
                    uint8_t *out);
 
 /* Cached DoomoImages for residents (keeps uid stable until the look,
- * status or expression changes). Small LRU cache; pointers stay valid
- * until the next call that evicts them (at least 8 live entries). */
+ * status, expression or animation phase changes - i.e. until the pixels
+ * change). Small LRU cache: one 18 KB pool shared by all four kinds
+ * (portrait 7 blocks, figure 10, fighter 4, chibi 1 block of 384 bytes);
+ * pointers stay valid until a later call evicts them. It holds at least 6
+ * portraits, 12 fighters or 48 chibis at once, so draw an image right
+ * after asking for it. The cached portrait / figure animate by themselves
+ * (blink, breathing, aura) from doomo_frame_count(), staggered per
+ * resident, and re-render at most a few times per tick (others reuse the
+ * nearest cached phase). An empty slot gives a lavender "?" silhouette. */
 const DoomoImage *portrait_image(int resident_id, int expr);
 const DoomoImage *bodyspr_image(int resident_id, int dir, int frame);
 const DoomoImage *figure_image(const DoomoLook *l, int status, int expr);
@@ -56,5 +71,14 @@ const DoomoImage *figure_image(const DoomoLook *l, int status, int expr);
 const DoomoImage *fighter_image(int resident_id, int view, int anim,
                                 int weapon_frame);
 void portrait_invalidate(int resident_id);   /* after editing a look */
+
+/* ---- portrait additions (tools, tests, previews) ----------------------- */
+/* Uncached fighter render (same as fighter_image's pixels). */
+void fighter_render(const DoomoLook *l, int status, int view, int anim,
+                    int weapon_frame, uint8_t *out);
+/* Pixel visits of the last render (cost check in tests / tools). */
+uint32_t portrait_last_ops(void);
+/* Drop every cached image (tests). */
+void portrait_cache_reset(void);
 
 #endif

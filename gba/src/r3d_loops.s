@@ -969,3 +969,31 @@ r3d_boundary_asm:
     bx      lr
     .pool
     .size   r3d_boundary_asm, . - r3d_boundary_asm
+
+@ ---------------------------------------------------------------------------
+@ void r3d_sprite_loop(uint16_t *p, int n, const uint8_t *src, uint32_t vb,
+@                      uint32_t dvb, const uint8_t *cm, int stride)
+@ One sprite column: n > 0 rows from p (stride bytes apart: 240, or 480
+@ for the translucent checkerboard). src = image + u; vb / dvb = texture
+@ row * image width in 16.16 (so texel = src[vb >> 16]); index 0 is
+@ transparent, everything else goes through the colormap row cm.
+    .global r3d_sprite_loop
+    .type   r3d_sprite_loop, %function
+r3d_sprite_loop:
+    stmfd   sp!, {r4-r7}
+    ldr     r4, [sp, #16]               @ dvb
+    ldr     r5, [sp, #20]               @ cm
+    ldr     r6, [sp, #24]               @ stride
+1:  mov     r7, r3, lsr #16
+    ldrb    r7, [r2, r7]
+    add     r3, r3, r4
+    cmp     r7, #0
+    ldrneb  r7, [r5, r7]
+    orrne   r7, r7, r7, lsl #8
+    strneh  r7, [r0]
+    add     r0, r0, r6
+    subs    r1, r1, #1
+    bne     1b
+    ldmfd   sp!, {r4-r7}
+    bx      lr
+    .size   r3d_sprite_loop, . - r3d_sprite_loop

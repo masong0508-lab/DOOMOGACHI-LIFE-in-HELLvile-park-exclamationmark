@@ -182,6 +182,8 @@ typedef struct R3DSprite {
     int32_t  shadow_hh;            /* shadow ellipse half height, pixels  */
 } R3DSprite;
 void r3d_draw_sprite(const R3DSprite *s) IWRAM_CALL;
+void r3d_sprite_loop(uint16_t *p, int n, const uint8_t *src, uint32_t vb, uint32_t dvb,
+                     const uint8_t *cm, int stride) IWRAM_CALL;
 
 static inline int32_t r3d_k8(uint32_t d16)
 {
