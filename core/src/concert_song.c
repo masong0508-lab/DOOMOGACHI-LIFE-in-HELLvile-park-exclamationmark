@@ -625,6 +625,42 @@ static int drum_at(const ConcertGenre *g, int sec, int bar, int st)
     return 0;
 }
 
+/* Tune a copy of a voice so its babble blip for `vowel` lands on the
+ * melody note (in the octave nearest the singer's own pitch): the PITCH
+ * slider is searched through audio_voice_freq, then ACCENT fine-tunes.
+ * ~100 cheap calls, once per syllable. Intonation off: singers hold the
+ * tune; `spread` detunes choir voices a hair so a crowd sounds like one. */
+static void tune_voice(uint8_t *v, int midi, char vowel, int spread)
+{
+    int nat = 45 + v[VOICE_PITCH] * 36 / 31, target = midi, p, k, bp = 0, ba = 0, hz;
+    uint32_t best = 0xFFFFFFFFu;
+    while (target < nat - 6) target += 12;
+    while (target > nat + 6) target -= 12;
+    target = DOOMO_CLAMP(target, 45, 81);
+    hz = concert_note_hz(target);
+    v[VOICE_INTONATION] = 0;
+    v[VOICE_ACCENT] = 0;
+    for (p = 0; p < 32; p += 1) {
+        int f;
+        uint32_t d;
+        v[VOICE_PITCH] = (uint8_t)p;
+        f = audio_voice_freq(v, vowel);
+        d = (uint32_t)(f > hz ? f - hz : hz - f);
+        if (d < best) { best = d; bp = p; }
+    }
+    best = 0xFFFFFFFFu;
+    v[VOICE_PITCH] = (uint8_t)bp;
+    for (k = 0; k < 32; k += 2) {
+        int f;
+        uint32_t d;
+        v[VOICE_ACCENT] = (uint8_t)k;
+        f = audio_voice_freq(v, vowel);
+        d = (uint32_t)(f > hz ? f - hz : hz - f);
+        if (d < best) { best = d; ba = k; }
+    }
+    v[VOICE_ACCENT] = (uint8_t)DOOMO_CLAMP(ba + spread, 0, 31);
+}
+
 /* the singer's voice for this syllable: rotate through the line's singers,
  * with a little pitch spread so a crowd of voices sounds like a crowd */
 static const uint8_t *syllable_voice(ConcertPlayer *p, uint32_t mask, uint8_t *tmp)
@@ -645,10 +681,6 @@ static const uint8_t *syllable_voice(ConcertPlayer *p, uint32_t mask, uint8_t *t
     r = town_res(c->ids[k]);
     if (!r) return NULL;
     memcpy(tmp, r->voice, VOICE_COUNT);
-    if (cnt > 1) {
-        int sp = (int)((p->ticks + k * 5) % 5) - 2;
-        tmp[VOICE_PITCH] = (uint8_t)DOOMO_CLAMP(tmp[VOICE_PITCH] + sp, 0, 31);
-    }
     return tmp;
 }
 
@@ -783,6 +815,7 @@ static int step_event(ConcertPlayer *p)
                 /* the syllable's vowel colours the sung tone */
                 {
                     int base = g->lead_wave, j = p->syl_start[syl0];
+                    char vowel;
                     const uint8_t *lv = lead_voice(p);
                     if (lv) {
                         int q = lv[VOICE_QUALITY];
@@ -790,10 +823,15 @@ static int step_event(ConcertPlayer *p)
                         else if (q > 26) base = WAVE_PULSE12;
                     }
                     while (ln[j] && ln[j] != ' ' && !strchr("aeiouyAEIOUY", ln[j])) j++;
-                    p->lead_wave = (uint8_t)vowel_wave(base, ln[j] ? ln[j] : 'a');
+                    vowel = (char)((ln[j] && ln[j] != ' ' ? ln[j] : 'a') | 0x20);
+                    p->lead_wave = (uint8_t)vowel_wave(base, vowel);
+                    /* the citizen sings the tune with their own babble voice */
+                    if (voice && opt_get(OPT_VOICE_BABBLE)) {
+                        int n = concert_mask_count(p->singing);
+                        tune_voice(vtmp, v, vowel, n > 1 ? (int)((p->ticks + (uint32_t)p->voice_k * 7) % 5) - 2 : 0);
+                        audio_voice_char(vtmp, vowel);
+                    }
                 }
-                if (voice && opt_get(OPT_VOICE_BABBLE))
-                    audio_voice_char(voice, ln[p->syl_start[syl0]]);
                 /* choir harmony: a third below the tune */
                 if (concert_mask_count(p->singing) >= 2) {
                     d = midi_deg(s, g->scale, v);
@@ -951,6 +989,33 @@ void concert_restore_music(void)
         audio_music(town_is_night() ? SONG_HAHALAND_NIGHT : SONG_HAHALAND_DAY);
 }
 
+/* "Give me cupcakes! / But the dark? Eek!" - or as much of the second line
+ * as fits after the first (27 chars), whole words only. */
+static void merge_lines(const char *a, const char *b, char *out)
+{
+    int la = (int)strlen(a), lb = (int)strlen(b), n, k;
+    const int cap = SONG_LYRIC_LEN - 1;
+    if (la > cap) la = cap;
+    memcpy(out, a, (size_t)la);
+    n = la;
+    if (la + 1 + lb <= cap) {
+        out[n++] = ' ';
+        memcpy(out + n, b, (size_t)lb);
+        n += lb;
+    } else {
+        /* the words of b that fit */
+        int last = 0;
+        for (k = 0; k < lb && n + 1 + k < cap; k++) if (b[k] == ' ') last = k;
+        if (k == lb) last = lb;
+        if (last > 0 && n + 1 + last <= cap) {
+            out[n++] = ' ';
+            memcpy(out + n, b, (size_t)last);
+            n += last;
+        }
+    }
+    out[n] = 0;
+}
+
 /* ====================================================================== */
 /* the Music Studio export                                                  */
 void concert_song_export(const ConcertSong *s, const ConcertCast *c, DoomoSong *out)
@@ -999,12 +1064,19 @@ void concert_song_export(const ConcertSong *s, const ConcertCast *c, DoomoSong *
             out->notes[p][3][st] = drum_map[drum_at(g, sec, bar, sb)];
         }
     }
-    for (i = 0; i < SONG_LYRIC_LINES && i < CONCERT_LINES; i++)
-        memcpy(out->lyrics[i], s->lines[i], SONG_LYRIC_LEN - 1);
+    /* The studio sings one lyric line per order position (2 bars) and we
+     * sing one per bar: two of our lines share a studio line (verse 1,
+     * chorus, verse 2, chorus). */
+    {
+        static const uint8_t pair[SONG_LYRIC_LINES] = { 0, 2, 4, 6, 8, 10, 4, 6 };
+        for (i = 0; i < SONG_LYRIC_LINES; i++) {
+            int a = pair[i];
+            merge_lines(s->lines[a], s->lines[a + 1], out->lyrics[i]);
+            out->line_singers[i] = c ? (c->line_mask[a] | c->line_mask[a + 1]) : 1u;
+        }
+    }
     for (i = 0; i < SONG_SINGERS; i++)
         out->singer[i] = (uint16_t)(c && i < c->n ? c->ids[i] : (i == 0 ? s->singer : SONG_NO_SINGER));
-    for (i = 0; i < SONG_LYRIC_LINES; i++)
-        out->line_singers[i] = c ? c->line_mask[i] : 1u;
     out->choir_layout = (uint8_t)(c ? c->layout : CHOIR_RISERS);
     out->seed = s->seed;
 }

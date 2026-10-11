@@ -80,7 +80,7 @@ static const SideQuest quests[] = {
       70, ITEM_PUDDING, 1, USTORY_REWARD_FIRST + 3,
       "Dearie, I've lost my reading glasses! Last I saw them I was napping at the beach. Or was it 1974?",
       "Find Oma Fluff's glasses (beach)",
-      "Oh! I can see you now! You're lovely. Have a pudding, and my spare scarf." },
+      "Oh! I can see you now! You're lovely. Have a pudding, and my old pearl earrings." },
     { "Sandcastle Contest", 112, 1, 5, HH, 36, 53, SQ_PHOTO, 0, -1, 1, HH, 38, 61,
       50, ITEM_NONE, 0, USTORY_REWARD_FIRST + 14,
       "Duuude. I need a photo from the very end of the pier for the surf club wall. Gnarly view out there!",

@@ -103,7 +103,7 @@ set_source_files_properties(${PS1_SRCS} PROPERTIES
 # core is compiled for size (-Os: ~120 KB smaller than -O2) except the
 # files that run every frame, which keep -O2 (DOOMO_CORE_HOT; measured
 # with the harness, docs/PS1.md section 3).
-set(DOOMO_CORE_HOT ui_raster ui ui_draw font fixmath map actor combat rng
+set(DOOMO_CORE_HOT ui_raster ui ui_draw font fixmath map actor combat rng pet_gfx pet_scene
 	CACHE STRING "core/src files (no extension) compiled -O2 instead of -Os")
 set_source_files_properties(${CORE_SRCS} PROPERTIES
 	COMPILE_OPTIONS "-std=c99;-Os")

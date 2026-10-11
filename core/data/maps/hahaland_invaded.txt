@@ -29,6 +29,7 @@ cell F wall=BONE_WALL floor=BONE_WALL ch=2
 cell # wall=BLOOD_BRICK floor=SKULL_MOSAIC ch=12
 cell W wall=FLESH_WALL floor=SKULL_MOSAIC ch=12
 cell d wall=DOOR_HELL floor=SKULL_MOSAIC ch=12
+cell e wall=DOOR_HELL floor=SKULL_MOSAIC ch=12
 cell S wall=SHOP_FRONT floor=GORE_FLOOR ch=12
 cell C wall=CAFE_FRONT floor=GORE_FLOOR ch=12
 cell K wall=CHURCH_WALL floor=ROOF_TILES ch=20
@@ -46,13 +47,13 @@ cell f wall=VAPE_CLOUD_WALL floor=VAPE_CLOUD_WALL ch=24
 cell 0 wall=DOOR_HELL floor=ROOF_TILES ch=12 tag=65   # door: HOME
 cell 1 wall=DOOR_HELL floor=CANDY_STRIPE ch=16 tag=66   # door: TOWN_HALL
 cell 2 wall=DOOR_HELL floor=ROOF_TILES ch=12 tag=67   # door: CAFE
-cell 3 wall=DOOR_HELL floor=ROOF_TILES ch=12 tag=68   # door: SHOP
+cell 3 wall=DOOR_HELL floor=GORE_FLOOR ch=12 tag=68   # door: SHOP
 cell 4 wall=DOOR_CUTE floor=ROOF_TILES ch=20 tag=69   # door: CHURCH
 cell 5 wall=DOOR_HELL floor=CLOUD_PUFF ch=12 tag=70   # door: HOSPITAL
 cell 6 wall=DOOR_HELL floor=RUST_METAL ch=12 tag=71   # door: WORKSHOP
 cell 7 wall=DOOR_HELL floor=ROOF_TILES ch=24 tag=72   # door: APARTMENTS
 cell 8 wall=DOOR_HELL floor=CLOUD_PUFF ch=16 tag=73   # door: CONCERT_HALL
-cell 9 wall=DOOR_HELL floor=ROOF_TILES ch=14 tag=74   # door: LIBRARY
+cell 9 wall=DOOR_HELL floor=SKULL_MOSAIC ch=14 tag=74   # door: LIBRARY
 cell j wall=DOOR_HELL floor=CANDY_STRIPE ch=10 tag=75   # door: FUN_FAIR
 cell v wall=DOOR_HELL floor=VAPE_CLOUD_WALL ch=60 tag=76   # door: VAPE_SHOP
 cell q wall=WOOD_WALL floor=WOOD_FLOOR ch=3 tag=77   # door: PIER
@@ -76,7 +77,7 @@ TT..................:::.,,========,,.AAAAAAAAA*.~~......ZZffffff
 TT.####.WWWW..####..:::.,,UUUUUUUU,,.AAAAAAAAA..~~......ZZffffff
 TT.####FWWWWF.####..:::.,,UUUUUUUU,,.AAAAAAAAA..~~......ZZffffff
 TT.####FWWWWF.####..:::.==UUUUUUUU==.AAAAAAAAA..~~......ZZffffff
-TT.#0##FWdWWF.#d##..:::===UUU11UUU==.AAAAAAAAA..~~.RRRR.ZZffffff
+TT.#0##FWeWWF.#d##..:::===UUU11UUU==.AAAAAAAAA..~~.RRRR.ZZffffff
 TT..................:::=============.AAAA7AAAA..~~.RRRR.ZZffffff
 TT:::::::::::::::::::::.========================~~.RRRR.ZZffffff
 TT:::::::::::::::::::::.HHHHH==HHHHH============~~.R6RR.ZZffffff
@@ -84,7 +85,7 @@ TT........::........:::......==.....============~~..:...ZZffffff
 TT.WWWW...::.####,,,::==========================~~..:...ZZffffff
 TT.WWWW,,.::.####,,,..=CCCCCC===========SSSSSS==~~..:..OZZffffff
 TT.WWWW,,.::.####,,,..=CCCCCC===========SSSSSS==~~..:..OZZffffff
-TT.WdWW,,.::.#d##,,,..=CCCCCC===========SSSSSS==~~..:..OZZffffff
+TT.WeWW,,.::.#d##,,,..=CCCCCC===========SSSSSS==~~..:..OZZffffff
 TT!.......::..........=CC2CCC===========SS3SSS==~~..:..OZZffffff
 TTHHHHHHHH::HHHHHHHH..=tttttt=================..~~..:..OZZffffff
 TT....................=tttttt==,,,,,,,========..~~..:..OZZffffff

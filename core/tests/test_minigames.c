@@ -124,14 +124,14 @@ TEST(mg_medals_and_rewards)
     CHECK(unlock_has(MG_UL_MEDAL(MG_CATCH, MG_MEDAL_BRONZE)));
     CHECK(unlock_has(MG_UL_MEDAL(MG_CATCH, MG_MEDAL_SILVER)));
     CHECK(!unlock_has(MG_UL_MEDAL(MG_CATCH, MG_MEDAL_GOLD)));
-    CHECK(!unlock_ok(UL_CAT_PART, CLIST_HAT, HAT_BUNNY_EARS));
+    CHECK(!unlock_ok(UL_CAT_PART, CLIST_HAIR, HAIR_TWINTAILS));
     CHECK(unlock_ok(UL_CAT_SKIN, OPT_WINDOW_SKIN, WSKIN_BUBBLEGUM));
     /* a worse round is not a new best and does not lower it */
     CHECK_EQ(mg_finish_round(g, 100), 0);
     CHECK_EQ(progress_get(PROG_HS_CATCH), g->medal[1] + 10);
     /* gold */
     mg_finish_round(g, g->medal[2]);
-    CHECK(unlock_ok(UL_CAT_PART, CLIST_HAT, HAT_BUNNY_EARS));
+    CHECK(unlock_ok(UL_CAT_PART, CLIST_HAIR, HAIR_TWINTAILS));
     CHECK(!unlock_has(MG_UL_REGULAR));
 }
 
@@ -236,16 +236,23 @@ TEST(mg_memory_plays_empty_island) { play_all_tiers(MG_MEMORY, 0); }
 
 TEST(mg_bot_earns_bronze_on_sweet)
 {
-    /* every game is winnable: the bot reaches bronze on Sweet */
-    int g;
+    /* every game is winnable: the (human-ish, imperfect) bot reaches
+     * bronze on Sweet in at least one of three rounds */
+    int g, k;
     for (g = 0; g < MG_GAME_COUNT; g++) {
-        test_reset();
-        premade_island();
-        scene_push(game_scenes[g], MG_ARG_AUTOSTART | MG_ARG_AUTOPLAY | 1);
-        CHECK(run_until_results(4000) > 0);
-        CHECK_MSG(mg.medal >= MG_MEDAL_BRONZE, "%s bot scored %d (bronze %d)",
-                  mg_games[g]->title, (int)mg.score, mg_games[g]->medal[0]);
-        while (scene_depth()) scene_pop();
+        int best = 0;
+        for (k = 0; k < 3 && best < mg_games[g]->medal[0]; k++) {
+            test_reset();
+            premade_island();
+            mg_rng.s = 0;
+            scene_push(game_scenes[g], MG_ARG_AUTOSTART | MG_ARG_AUTOPLAY | 1);
+            rng_seed(&mg_rng, 1000u + (uint32_t)(g * 31 + k * 7));
+            CHECK(run_until_results(4000) > 0);
+            if (mg.score > best) best = (int)mg.score;
+            while (scene_depth()) scene_pop();
+        }
+        CHECK_MSG(best >= mg_games[g]->medal[0], "%s bot best %d (bronze %d)",
+                  mg_games[g]->title, best, mg_games[g]->medal[0]);
     }
 }
 

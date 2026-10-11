@@ -1,0 +1,99 @@
+# SCENE_STUDIO (studio): the Music Studio. The demo arg -107 moves the
+# premade citizens in and loads the "Park United!" template (a 25-voice
+# choir of both districts). Every tab, a note edit with hold-A, the pattern
+# loop, the lyric fit view, the choir quick fill + citizen picker, a stage
+# show with karaoke and the bows, saving into the song book, templates.
+scene TITLE
+wait 2
+push STUDIO -107
+wait 20
+expect-scene STUDIO
+shot song
+press START
+wait 45
+shot song_play
+press START
+press R
+wait 12
+shot notes
+press DOWN
+press DOWN
+down A
+wait 2
+press UP
+wait 4
+shot notes_edit
+release
+wait 4
+press START
+wait 40
+shot notes_play
+press START
+down SELECT
+press R
+release
+wait 12
+shot order
+down SELECT
+press R
+release
+wait 12
+press DOWN
+wait 4
+shot lyrics
+down SELECT
+press R
+release
+wait 12
+shot choir
+press SELECT
+wait 16
+shot choir_fill
+press B
+wait 4
+press A
+wait 14
+shot choir_member
+press DOWN
+press A
+wait 14
+shot picker
+press B
+wait 4
+press R
+wait 12
+shot stage
+press A
+wait 20
+shot show_curtain
+wait 100
+shot show_sing
+wait 140
+shot show_choir
+wait 860
+shot bows
+press A
+wait 6
+expect-scene STUDIO
+press R
+wait 12
+press A
+wait 14
+press A
+wait 10
+shot file
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press A
+wait 14
+shot templates
+press B
+wait 4
+press B
+wait 14
+shot leave

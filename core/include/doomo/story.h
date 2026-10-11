@@ -126,7 +126,7 @@ int  story_target(int *map_id, int *cell_x, int *cell_y);
 enum { SIDE_LOCKED, SIDE_OFFERED, SIDE_ACTIVE, SIDE_READY, SIDE_DONE };
 enum { SQ_FETCH, SQ_DELIVER, SQ_FIND, SQ_PET, SQ_PHOTO, SQ_MATCH, SQ_HUNT,
        SQ_EXORCISE, SQ_RECONCILE, SQ_VISIT, SQ_KIND_COUNT };
-#define STORY_SIDE_MAX 48
+#define STORY_SIDE_MAX 50
 int  story_side_count(void);
 const char *story_side_title(int q);
 int  story_side_kind(int q);
@@ -191,14 +191,15 @@ int  story_hellvile_friends(void);
  *   32..47   chapter 3 demon nests cleared (bits 32..39) and the possessed
  *            citizens exorcised during the invasion (40..43)
  *   48..63   "met" markers for the story cast and tutorials shown
- *   64..159  side quests, 2 bits each (48 quests): 0 offered/locked,
+ *   64..163  side quests, 2 bits each (50 quests): 0 offered/locked,
  *            1 active, 2 ready to hand in, 3 done
- *   160..191 secret sparkles found in the overworld maps (one per secret)
- *   192..223 places visited (PLACE_*) for the "explorer" unlock
- *   224..255 reserved
+ *   164..195 secret sparkles found in the overworld maps (one per secret:
+ *            HaHaland 0..7, Hellvile 16..23, the united park 24..31)
+ *   196..227 places visited (PLACE_*) for the "explorer" unlock
+ *   228..255 reserved
  * quest = BEAT_*, quest_step = a small counter of the current beat. */
 #define STORY_FLAG_SIDE_FIRST   64
-#define STORY_FLAG_SECRET_FIRST 160
-#define STORY_FLAG_PLACE_FIRST  192
+#define STORY_FLAG_SECRET_FIRST 164
+#define STORY_FLAG_PLACE_FIRST  196
 
 #endif

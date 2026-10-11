@@ -36,6 +36,9 @@
 #define CONCERT_ARG_PARADE (-5000)
 #define CONCERT_ARG_BAND   (-6000)
 #define CONCERT_ARG_CHOIR  (-7000)
+/* The Music Studio's PERFORM tab hands its song over with
+ * concert_stage_song() (song.h), which pushes SCENE_CONCERT with this. */
+#define CONCERT_ARG_STUDIO (-8000)
 /* SCENE_DREAM: arg >= 0 is the sleeper; -1 - id = debug sleeper (premade
  * island if empty); DREAM_ARG_NIGHTMARE - id forces the nightmare. */
 #define DREAM_ARG_NIGHTMARE (-3000)

@@ -28,6 +28,10 @@ extern const DoomoScene SCENE_GRAVEYARD;
 extern const DoomoScene SCENE_NEWS;
 extern const DoomoScene SCENE_OPTIONS;
 extern const DoomoScene SCENE_SAVELOAD;
+/* (freeplay, additive) the Unlocks gallery (every unlock, owned or locked
+ * with its hint), the Jukebox (songs + sound test) and the citizen picker
+ * (the roster browser in picking mode, see core/src/fp_int.h fp_pick). */
+extern const DoomoScene SCENE_UNLOCKS, SCENE_JUKEBOX, SCENE_PICKER;
 /* creator (arg = resident id to edit, or -1 new Hillvile, -2 new Hellvile,
  * -3 story protagonist) */
 extern const DoomoScene SCENE_CREATOR;

@@ -66,6 +66,7 @@ reports the frame rate. See docs/PS1.md section 10.
 | `src/main.c` | boot, main loop (30 Hz), log, ticks, entropy |
 | `src/gfx.c`, `src/gfx2d.c` | display lists, double buffering, the 2D layer |
 | `src/vram.c` | texture / image / CLUT caches in VRAM |
+| `src/packart.c`, `tools/packart.py` | the core's textures and skies, linked LZ-compressed (RAM) and decoded on a VRAM cache miss |
 | `src/r3d.c`, `src/r3d.h` | GTE pipeline: subdivision, clipping, fog, sky, billboards |
 | `src/view3d.c`, `src/world.c` | `plat_view3d()`: the map as 3D polygons |
 | `src/overworld.c` | `plat_overworld()`: 3D town terrain |
@@ -77,5 +78,5 @@ reports the frame rate. See docs/PS1.md section 10.
 | `src/coreref.c` | weak references to optional core symbols |
 | `src/libgcc_r3000.c` | 64-bit integer helpers without MIPS32 instructions |
 | `src/etest*.c` | engine-test mode: showcase maps, tour, self tests |
-| `tools/` | `elf2exe.py` (PS-X EXE), `check_isa.py` (R3000 check) |
+| `tools/` | `elf2exe.py` (PS-X EXE), `check_isa.py` (R3000 check), `packart.py` (packed art) |
 | `harness/` | `run.py` + `harness.lua` (PCSX-Redux), scripts, card / ADPCM checks |

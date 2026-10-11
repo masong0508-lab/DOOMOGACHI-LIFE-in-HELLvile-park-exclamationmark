@@ -10,7 +10,7 @@ press UP
 hold RIGHT 60
 wait 5
 shot setup_choir_25
-press UP
+press DOWN
 press RIGHT
 press RIGHT
 wait 4
@@ -27,7 +27,8 @@ shot chorus_everyone
 wait 400
 shot verse2
 press START
-wait 10
+wait 20
+press LEFT
 press A
 wait 100
 shot results

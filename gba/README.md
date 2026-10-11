@@ -28,7 +28,7 @@ Layout:
 | `src/audio.c`, `src/irq.iwram.c` | PSG tones, DirectSound sample mixer (VBlank IRQ) |
 | `src/save_flash.c`, `src/flash.iwram.c` | 128 KB flash saves |
 | `src/div.s`, `src/mem.s` | IWRAM integer division, `memcpy` / `memset` |
-| `src/bigbuf.c` | the shared 88 KB EWRAM buffer, `plat_save_scratch()` |
+| `src/bigbuf.c` | the shared 17 KB EWRAM buffer (renderer caches, the core's save window: `plat_save_scratch()`) |
 | `enginetest/` | ENGINE_TEST=1 tour, showcase map, save / division self-tests |
 | `harness/` | headless libmgba runner (`build/harness`), test scripts |
 | `tools/` | `gbafix.py` (header), `mktables.py` (tables), `memreport.py` (RAM budget) |

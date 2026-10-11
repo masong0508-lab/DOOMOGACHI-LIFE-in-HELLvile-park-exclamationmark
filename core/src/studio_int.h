@@ -71,7 +71,7 @@ int  studio_template_ok(int t);
 void studio_check_unlocks(void);
 
 /* ---- the scene state ---------------------------------------------------------- */
-#define STUDIO_UNDO_BYTES 896
+#define STUDIO_UNDO_BYTES 768
 #define STUDIO_CROWD 12
 
 typedef void (*StudioPopDone)(int choice);   /* -1 = cancelled */
@@ -118,11 +118,11 @@ typedef struct Studio {
     uint16_t pop_t;
     uint32_t pop_lock;
     const char *pop_title;
-    const char *pop_items[10];
+    const char *pop_items[8];
     StudioPopDone pop_done;
     /* toast-ish message bubble */
     uint16_t msg_t;
-    char     msg[40];
+    char     msg[32];
     /* text entry */
     char     edit[SONG_LYRIC_LEN];
     int8_t   edit_line;         /* -1 = title                                */

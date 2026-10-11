@@ -28,6 +28,9 @@ typedef struct DoomoSaveExt {
 /* Registry: weak NULL defaults in save_ext.c; modules define strong ones. */
 extern const DoomoSaveExt *const doomo_save_ext_studio;
 extern const DoomoSaveExt *const doomo_save_ext_extra;
+/* (freeplay, additive) the free play island's own chunk 'FPLY' (island
+ * name, rent day, graveyard flowers; core/src/fp_common.c) */
+extern const DoomoSaveExt *const doomo_save_ext_freeplay;
 /* (foundation) a slot for core/tests only - never define it in a module */
 extern const DoomoSaveExt *const doomo_save_ext_test;
 int save_ext_count(void);

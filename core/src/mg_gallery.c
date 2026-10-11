@@ -341,7 +341,7 @@ static void gl_draw(void)
     int W = mg_w(), H = mg_h(), t = mg.play_t + mg.t, r, i, ox = mg.ox, oy = mg.oy;
     int rt = rail_top();
     /* booth: back wall and a striped awning */
-    plat_rect(0, 0, W, H, mg.hell ? PAL_RAMP(RAMP_BLOOD, 1) : PAL_PAINT(PAINT_NAVY, 2));
+    plat_rect(0, rt - 4, W, H - rt, mg.hell ? PAL_RAMP(RAMP_BLOOD, 1) : PAL_PAINT(PAINT_NAVY, 2));
     for (i = 0; i < 16; i++) {
         uint32_t h = doomo_hash32((uint32_t)i * 9973u);
         int ph = (int)((t / 2 + (h >> 20)) & 31);
@@ -443,7 +443,8 @@ static uint32_t gl_bot(void)
     if (tx > cx + 2) b |= BTN_RIGHT;
     if (ty < cy - 2) b |= BTN_UP;
     if (ty > cy + 2) b |= BTN_DOWN;
-    if ((tx - cx) * (tx - cx) + (ty - cy) * (ty - cy) < 36) b |= BTN_A;
+    if ((tx - cx) * (tx - cx) + (ty - cy) * (ty - cy) < 36 && mg_rand(100) < 35) b |= BTN_A;
+    else if (mg_rand(100) < 3) b |= BTN_A;                      /* a jumpy shot */
     if (mg.play_t % 240 == 120) b |= BTN_R;
     return b;
 }

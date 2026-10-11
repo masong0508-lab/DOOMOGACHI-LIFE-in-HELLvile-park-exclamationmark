@@ -256,7 +256,17 @@ void tab_song_draw(StRect r)
             int t = (row - SR_WAVE0) / 2;
             plat_rect(r.x + 4, y + 1, 2, 8, st_track_color(t, 1));
         }
-        ui_value_row(r.x + 8, y, lw - 14, lab, val, sel);
+        if (row == SR_TITLE) {
+            /* the title is typed, not cycled: no arrows */
+            if (sel) {
+                ui_round_rect(r.x + 7, y - 2, lw - 12, 12, 4, st->accent);
+                ui_cursor(r.x + 1, y);
+            }
+            ui_text(r.x + 12, y, lab, sel ? PAL_WHITE : st->text);
+            ui_text(r.x + lw - 10 - ui_text_width(val), y, val, sel ? PAL_WHITE : st->text);
+        } else {
+            ui_value_row(r.x + 8, y, lw - 14, lab, val, sel);
+        }
         /* locked sounds are greyed with a cross */
         if ((row == SR_WAVE0 || row == SR_WAVE1 || row == SR_WAVE2) &&
             !studio_wave_ok(SS->wave[(row - SR_WAVE0) / 2]))
@@ -286,6 +296,31 @@ void tab_song_draw(StRect r)
             int n = song_singer_count(SS);
             doomo_snprintf(val, sizeof(val), STR_ICON_NOTE "%d singer%s", n, n == 1 ? "" : "s");
             ui_text_center(rcx, y + 31, val, st->text_dim);
+        }
+        /* the four instruments: wave shape + a level that dances */
+        if (y + 44 + 4 * 11 < r.y + r.h) {
+            int k, my = y + 44;
+            for (k = 0; k < SONG_TRACKS; k++) {
+                int lvl = SS->vol[k] * 30 / 15, x0 = cx + 8, wx = x0 + 22, j;
+                int jig = playing ? ui_wave(t * (3 + k) + k * 17, 20, 4) : 0;
+                plat_rect(x0, my + k * 11 + 1, 3, 7, st_track_color(k, 1));
+                /* wave shape icon */
+                for (j = 0; j < 12; j++) {
+                    int wv = k == 3 ? SONG_WAVES - 1 : SS->wave[k], yy;
+                    switch (wv) {
+                    case WAVE_TRIANGLE: yy = (j % 6 < 3 ? j % 6 : 6 - j % 6) * 2; break;
+                    case WAVE_SAW: yy = 6 - (j % 4) * 2; break;
+                    case WAVE_NOISE: yy = (int)(doomo_hash32((uint32_t)(j + t / 4)) % 7); break;
+                    case WAVE_PULSE12: yy = (j % 6) == 0 ? 0 : 6; break;
+                    case WAVE_PULSE25: yy = (j % 6) < 2 ? 0 : 6; break;
+                    default: yy = (j % 6) < 3 ? 0 : 6; break;
+                    }
+                    plat_rect(x0 + 5 + j, my + k * 11 + 1 + yy, 1, 1, st_track_color(k, 0));
+                }
+                ui_round_rect(wx, my + k * 11 + 2, 30, 5, 2, ui_style(WIN_MINT)->fill_lo);
+                if (lvl) ui_round_rect(wx, my + k * 11 + 2, DOOMO_CLAMP(lvl + jig, 3, 30), 5, 2, st_track_color(k, 1));
+                ui_text(wx + 34, my + k * 11, track_names[k], st->text_dim);
+            }
         }
         if (playing) {
             int k;
@@ -636,7 +671,7 @@ static void order_tools(int c)
 void tab_order_update(void)
 {
     DoomoSong *s = SS;
-    int n = s->order_len, vis = (st_content().h - 40) / 12;
+    int n = s->order_len, vis = (st_content().h - 40) / (st_wide() ? 15 : 12);
     if (studio.osel >= n) studio.osel = (uint8_t)(n - 1);
     if (btn_pressed(BTN_A)) studio.a_edit = 0;
     if (btn_down(BTN_A)) {
@@ -677,13 +712,13 @@ void tab_order_draw(StRect r)
 {
     const UiStyle *st = ui_style(WIN_CREAM);
     const DoomoSong *s = SS;
-    int vis = (r.h - 40) / 12, i, n = s->order_len, po = song_playing() ? song_pos_order() : -1;
+    int rh = st_wide() ? 15 : 12, vis = (r.h - 40) / rh, i, n = s->order_len, po = song_playing() ? song_pos_order() : -1;
     char buf[40];
     uint32_t len = song_length_ticks(s) / DOOMO_TICK_HZ;
     if (vis < 3) vis = 3;
     st_panel(r.x, r.y, r.w, r.h, WIN_CREAM);
     for (i = 0; i < vis && studio.otop + i < n; i++) {
-        int pos = studio.otop + i, y = r.y + 5 + i * 12, p = s->order[pos] & 3, sel = pos == studio.osel;
+        int pos = studio.otop + i, y = r.y + 5 + i * rh + (rh - 12) / 2, p = s->order[pos] & 3, sel = pos == studio.osel;
         const char *ly = s->lyrics[SONG_LINE_OF(pos)];
         char pl[2] = { (char)('A' + p), 0 };
         if (sel) {
@@ -702,27 +737,31 @@ void tab_order_draw(StRect r)
             ui_text(r.x + 62, y + 1, "~ instrumental ~", sel ? ui_lighter(st->accent) : st->text_dim);
         }
     }
-    ui_scroll_arrows(r.x + r.w - 10, r.y + 3, r.y + 5 + vis * 12 - 6, studio.otop > 0,
+    ui_scroll_arrows(r.x + r.w - 10, r.y + 3, r.y + 5 + vis * rh - 6, studio.otop > 0,
                      studio.otop + vis < n);
     /* the timeline: one block per pass, the playhead walks it */
     {
-        int ty = r.y + r.h - 30, tw = r.w - 16, bw = tw / SONG_ORDER_MAX, x0 = r.x + 8;
+        int bh = st_wide() ? 16 : 10, ty = r.y + r.h - 20 - bh, tw = r.w - 16, bw = tw / SONG_ORDER_MAX, x0 = r.x + 8;
         for (i = 0; i < SONG_ORDER_MAX; i++) {
             int x = x0 + i * bw;
             if (i < n) {
                 int p = s->order[i] & 3, lift = (i == po) ? 2 : 0;
-                ui_round_rect(x, ty - lift, bw - 1, 10, 2, st_pattern_color(p, i == studio.osel ? 0 : 1));
-                if (s->lyrics[SONG_LINE_OF(i)][0]) plat_rect(x + 2, ty + 7 - lift, bw - 5, 1, PAL_WHITE);
+                ui_round_rect(x, ty - lift, bw - 1, bh, 2, st_pattern_color(p, i == studio.osel ? 0 : 1));
+                if (bh > 12) {
+                    char pl[2] = { (char)('A' + p), 0 };
+                    ui_text(x + bw / 2 - 3, ty + 2 - lift, pl, PAL_WHITE);
+                }
+                if (s->lyrics[SONG_LINE_OF(i)][0]) plat_rect(x + 2, ty + bh - 3 - lift, bw - 5, 1, PAL_WHITE);
             } else {
-                plat_rect(x + bw / 2 - 1, ty + 4, 2, 2, st->fill_hi);
+                plat_rect(x + bw / 2 - 1, ty + bh / 2 - 1, 2, 2, st->fill_hi);
             }
         }
         if (po >= 0) {
             int px = x0 + po * bw + (song_pos_step() * (bw - 1)) / SONG_STEPS;
-            plat_rect(px, ty - 3, 1, 15, PAL_PAINT(PAINT_ROSE, 0));
+            plat_rect(px, ty - 3, 1, bh + 5, PAL_PAINT(PAINT_ROSE, 0));
         }
         doomo_snprintf(buf, sizeof(buf), "%d passes  %u:%02u  %s", n, (unsigned)(len / 60),
                        (unsigned)(len % 60), (s->flags & SONGF_LOOP) ? "(loops)" : "");
-        ui_text(x0, ty + 13, buf, st->text_dim);
+        ui_text(x0, ty + bh + 3, buf, st->text_dim);
     }
 }

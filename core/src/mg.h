@@ -59,24 +59,24 @@ enum { MG_MEDAL_NONE, MG_MEDAL_BRONZE, MG_MEDAL_SILVER, MG_MEDAL_GOLD };
 
 /* Medal scores (bronze, silver, gold) - shared by the games and the
  * automatic unlock rules in unlocks_minigames.c. */
-#define MG_CATCH_B    800
-#define MG_CATCH_S   2000
-#define MG_CATCH_G   4000
-#define MG_WHACK_B   1000
-#define MG_WHACK_S   3000
-#define MG_WHACK_G   6000
+#define MG_CATCH_B    600
+#define MG_CATCH_S   1800
+#define MG_CATCH_G   3600
+#define MG_WHACK_B   1200
+#define MG_WHACK_S   3500
+#define MG_WHACK_G   7500
 #define MG_DODGE_B    600
 #define MG_DODGE_S   1500
 #define MG_DODGE_G   3000
-#define MG_GALLERY_B 1500
-#define MG_GALLERY_S 4000
-#define MG_GALLERY_G 8000
+#define MG_GALLERY_B 2000
+#define MG_GALLERY_S 5500
+#define MG_GALLERY_G 10000
 #define MG_DERBY_B   1000
 #define MG_DERBY_S   2000
 #define MG_DERBY_G   3000
 #define MG_MEMORY_B   700
-#define MG_MEMORY_S  1600
-#define MG_MEMORY_G  3000
+#define MG_MEMORY_S  1700
+#define MG_MEMORY_G  2800
 
 typedef struct MgGame {
     const char *title;          /* "CUPCAKE CATCH" (big title text)      */

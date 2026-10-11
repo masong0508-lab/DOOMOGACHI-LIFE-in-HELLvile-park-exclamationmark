@@ -36,7 +36,12 @@ enum {
 DOOMO_STATIC_ASSERT(TEX_COUNT <= 64, textures_fit);
 
 /* Animated textures (water, lava, slime, portal) return a different frame
- * pointer depending on `time` (ticks). */
+ * pointer depending on `time` (ticks).
+ * (perf pass) Core code may hand these pixel pointers (and sky_pixels(),
+ * texture_image()->pix) to plat_* calls but must NOT read through them:
+ * the PS1 keeps textures and skies compressed and these are virtual
+ * addresses there (ARCHITECTURE.md, "PS1 RAM"). Use texture_avg() /
+ * sky_horizon() for colours. */
 const uint8_t *texture_pixels(int tex_id, uint16_t time); /* 64*64 row-major */
 const DoomoImage *texture_image(int tex_id, uint16_t time);
 int  texture_is_animated(int tex_id);

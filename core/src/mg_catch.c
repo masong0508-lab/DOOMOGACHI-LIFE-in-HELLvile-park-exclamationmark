@@ -354,21 +354,30 @@ static void ct_art(int cx, int cy, int t)
 
 static uint32_t ct_bot(void)
 {
-    int i, px = S->px16 / 16, best = -1, by = basket_y(), target = px, danger = 0;
+    /* plan by arrival time: the reachable treat that lands first (stars
+     * first), then steer clear of bagels and imps about to land */
+    int i, px = S->px16 / 16, by = basket_y(), bw = basket_w(), target = px, best_t = 9999;
+    int speed = mg_big() ? 3 : 2;
     for (i = 0; i < CT_ITEMS; i++) {
         const CItem *c = &S->it[i];
-        int y = c->y16 / 16;
-        if (!c->live || y > by) continue;
-        if (c->kind >= K_BAGEL) {
-            if (y > by - 60 && c->x > px - 22 && c->x < px + 22) danger = c->x < px ? 1 : -1;
-            continue;
-        }
-        if (best < 0 || y > S->it[best].y16 / 16) best = i;
+        int y = c->y16 / 16, ticks, dist;
+        if (!c->live || y > by || c->kind >= K_BAGEL) continue;
+        ticks = (by - y) * 16 / (c->vy16 > 0 ? c->vy16 : 1);
+        dist = c->x > px ? c->x - px : px - c->x;
+        if (dist - bw / 2 > ticks * speed) continue;            /* out of reach */
+        if (c->kind == K_STAR) ticks -= 20;
+        if (ticks < best_t) { best_t = ticks; target = c->x; }
     }
-    if (best >= 0) target = S->it[best].x;
-    if (danger) target = px + danger * 30;
-    if (target < px - 3) return BTN_LEFT;
-    if (target > px + 3) return BTN_RIGHT;
+    for (i = 0; i < CT_ITEMS; i++) {
+        const CItem *c = &S->it[i];
+        int y = c->y16 / 16, ticks;
+        if (!c->live || c->kind < K_BAGEL || y > by) continue;
+        ticks = (by - y) * 16 / (c->vy16 > 0 ? c->vy16 : 1);
+        if (ticks < 28 && c->x > target - bw / 2 - 10 && c->x < target + bw / 2 + 10)
+            target = c->x < px ? c->x + bw / 2 + 14 : c->x - bw / 2 - 14;
+    }
+    if (target < px - 2) return BTN_LEFT;
+    if (target > px + 2) return BTN_RIGHT;
     return 0;
 }
 

@@ -154,11 +154,13 @@ void tab_file_update(void)
     if (studio.fsel < SONG_BOOK_SIZE) {
         static const char *const full_items[4] = { "Save here", "Open", "Favorite " STR_ICON_HEART, "Delete" };
         static const char *const empty_items[1] = { "Save here" };
-        static char title[24];
+        static const char *const titles[SONG_BOOK_SIZE] = { "Page 1", "Page 2", "Page 3",
+                                                           "Page 4", "Page 5", "Page 6" };
         pending_slot = studio.fsel;
-        doomo_snprintf(title, sizeof(title), "Page %d", studio.fsel + 1);
-        if (doomo_song_book[studio.fsel].flags & SONGF_VALID) st_popup(title, full_items, 4, 0, slot_menu);
-        else st_popup(title, empty_items, 1, 0, slot_menu);
+        if (doomo_song_book[studio.fsel].flags & SONGF_VALID)
+            st_popup(titles[studio.fsel], full_items, 4, 0, slot_menu);
+        else
+            st_popup(titles[studio.fsel], empty_items, 1, 0, slot_menu);
         return;
     }
     switch (studio.fsel) {

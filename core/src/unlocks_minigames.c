@@ -35,7 +35,7 @@ const DoomoUnlock doomo_unlocks_minigames[] = {
     SKIN(843, OPT_TITLE_THEME, 1, "Starry Night Title", "Memory Match: silver medal", PROG_HS_MEMORY, MG_MEMORY_S),
     /* ---- gold: creator parts (ones no other table locks and no creator
      * preset uses) ---- */
-    PART(844, CLIST_HAT, HAT_BUNNY_EARS, "Bunny Ears", "Cupcake Catch: gold medal", PROG_HS_CATCH, MG_CATCH_G),
+    PART(844, CLIST_HAIR, HAIR_TWINTAILS, "Sprinkle Twintails", "Cupcake Catch: gold medal", PROG_HS_CATCH, MG_CATCH_G),
     PART(845, CLIST_HORNS, HORNS_ANTLERS, "Trophy Antlers", "Whack-an-Imp: gold medal", PROG_HS_WHACK, MG_WHACK_G),
     PART(846, CLIST_ACC, ACC_MASK, "Vapeproof Mask", "Vape Cloud Dodge: gold medal", PROG_HS_DODGE, MG_DODGE_G),
     PART(847, CLIST_ACC, ACC_EYEPATCH, "Sharpshooter Eyepatch", "Bubble Blaster: gold medal", PROG_HS_GALLERY, MG_GALLERY_G),

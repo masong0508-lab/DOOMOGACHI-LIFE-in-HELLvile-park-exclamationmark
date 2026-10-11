@@ -19,8 +19,8 @@
  *     u8 part mask, per line: u32 line_singers
  *     u8 choir layout, u32 seed
  *     u8 1 + 13 section bytes, or u8 0 (all automatic)
- * A town that never used the studio writes 3 bytes. A full book of busy
- * songs stays well under DOOMO_SAVE_EXT_MAX (worst case ~5.4 KB).
+ * A town that never used the studio writes 14 bytes. A full book of busy
+ * songs stays well under DOOMO_SAVE_EXT_MAX (worst case ~5.3 KB).
  */
 #include "studio_int.h"
 

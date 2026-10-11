@@ -22,7 +22,7 @@ enum { WH_INTRO, WH_READY, WH_CHARGE, WH_SPIN, WH_RESULT, WH_DONE };
 
 typedef struct Wheel {
     int32_t ang16, vel16;          /* angle in 1/16 of DOOMO_ANG units */
-    uint8_t st, power, wedge, last_peg, flap, autoplay, force, curse;
+    uint8_t st, power, wedge, last_peg, flap, autoplay, force, curse, prev_song;
     uint16_t t;
     int16_t money_delta;
 } Wheel;
@@ -126,6 +126,7 @@ static void wh_enter(int arg)
     S->st = (mg_wheel_ready() || S->force) ? WH_INTRO : WH_DONE;
     S->ang16 = (int32_t)(doomo_hash32(doomo_frame_count()) & 0xFFFF);
     S->wedge = 0xFF;
+    S->prev_song = (uint8_t)audio_music_current();
     audio_music(SONG_FESTIVAL);
 }
 
@@ -263,8 +264,7 @@ static void wheel(int t)
     ui_fill_circle(cx + 2, cy + 3, R + 6, PAL_RAMP(RAMP_STONE, 0));
     ui_fill_circle(cx, cy, R + 6, PAL_RAMP(RAMP_CANDY, 2));
     ui_fill_circle(cx, cy, R + 4, PAL_UI_GOLD);
-    ui_fill_circle(cx, cy, R + 1, PAL_RAMP(RAMP_WOOD, 1));
-    pie(cx, cy, R, rot);
+    pie(cx, cy, R + 1, rot);
     for (k = 0; k < 20; k++) {
         int a = (rot / 2 + k * 4096 / 20) & DOOMO_ANG_MASK;
         int lit = ((k + t / 4) % 4) == 0 || S->st == WH_RESULT;
@@ -378,6 +378,7 @@ static void wh_draw(void)
 static void wh_leave(void)
 {
     mg_fx_clear();
+    audio_music(S->prev_song);
 }
 
 const DoomoScene SCENE_MG_WHEEL = { "MG_WHEEL", wh_enter, wh_leave, wh_update, wh_draw, 0 };

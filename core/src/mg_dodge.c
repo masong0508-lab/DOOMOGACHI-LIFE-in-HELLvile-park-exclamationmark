@@ -384,13 +384,17 @@ static void dg_draw(void)
             plat_rect(x - b->r + 1, y - b->r + 1, 1, 1, PAL_WHITE);
         }
     }
-    if (S->taunt_t) {
+    if (S->taunt_t) {                            /* a speech bubble right of his crown */
         const char *s = taunts[S->taunt];
-        int w = ui_text_width(s) + 8, x = mg_w() / 2 + (mg_big() ? 30 : 22), y = top_y() + 2;
-        if (x + w > mg_w() - 2) x = mg_w() - 2 - w;
-        ui_round_rect(x, y, w, 12, 5, PAL_RAMP(RAMP_VAPE, 1));
-        ui_round_rect(x + 1, y + 1, w - 2, 10, 4, PAL_WHITE);
-        ui_text(x + 4, y + 2, s, PAL_RAMP(RAMP_VAPE, 2));
+        int x = mg_w() / 2 + (mg_big() ? 40 : 32), y = top_y() + (mg_big() ? 16 : 12);
+        int w = DOOMO_MIN(mg_w() - 4 - x, ui_text_width(s) + 10);
+        int lines = ui_text_wrap(x + 5, y + 3, w - 10, s, PAL_RAMP(RAMP_VAPE, 2), 0), k;
+        int h = lines * FONT_LINE + 5, pop = ui_pop_scale(60 - S->taunt_t);
+        if (pop < 200) h = h * pop / 256;
+        ui_round_rect(x, y, w, h, 5, PAL_RAMP(RAMP_VAPE, 1));
+        ui_round_rect(x + 1, y + 1, w - 2, h - 2, 4, PAL_WHITE);
+        for (k = 0; k < 4; k++) plat_rect(x - 4 + k, y + 6 + k, 5 - k, 1, k ? PAL_WHITE : PAL_RAMP(RAMP_VAPE, 1));
+        if (pop >= 200) ui_text_wrap(x + 5, y + 3, w - 10, s, PAL_RAMP(RAMP_VAPE, 2), 1);
     }
 }
 

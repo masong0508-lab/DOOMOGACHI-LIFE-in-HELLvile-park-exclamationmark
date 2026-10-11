@@ -153,7 +153,7 @@ void tab_lyrics_update(void)
     if (btn_repeat(BTN_LEFT)) cycle_part(studio.lsel, -1);
     if (btn_repeat(BTN_RIGHT)) cycle_part(studio.lsel, 1);
     if (btn_pressed(BTN_A)) {
-        static char prompt[32];
+        char prompt[32];                     /* ui_text_entry copies it */
         int on, sy;
         line_fit(SS, studio.lsel, &on, &sy);
         if (on >= 0) doomo_snprintf(prompt, sizeof(prompt), "Line %d (%d notes)", studio.lsel + 1, on);
@@ -221,8 +221,8 @@ void tab_lyrics_draw(StRect r)
             draw_syllables(r.x + 35, y + (rowh - 9) / 2, s->lyrics[i], st->text,
                            PAL_PAINT(PAINT_GRAPE, 0), maxch, pl == i ? song_pos_syllable() : -1);
         } else {
-            ui_text(r.x + 35, y + (rowh - 9) / 2, pos >= 0 ? (on > 0 ? "~ write me! ~" : "~ instrumental ~")
-                                                           : "~ not in song ~", st->text_dim);
+            ui_text(r.x + 35, y + (rowh - 9) / 2, pos >= 0 ? "~ instrumental ~" : "~ not in the song ~",
+                    st->text_dim);
         }
         /* fit badge */
         if (s->lyrics[i][0] && sung && on >= 0) {
@@ -270,6 +270,17 @@ void tab_lyrics_draw(StRect r)
                     syl++;
                 } else if (lead[k] == SONG_HOLD) {
                     plat_rect(x, ky + 3, sx, 3, PAL_PAINT(PAINT_ROSE, 2));
+                }
+            }
+            /* who sings it (room permitting) */
+            if (dh >= 70) {
+                uint32_t m = song_line_mask(s, line), sing = song_pos_line() == line ? song_pos_singers() : 0;
+                int k2, cxp = gx + 4, bob;
+                for (k2 = 0; k2 < SONG_SINGERS && cxp < gx + gw - 16; k2++) {
+                    if (!((m >> k2) & 1)) continue;
+                    bob = ((sing >> k2) & 1) ? ((studio.t >> 2) & 1) : 0;
+                    st_chibi(song_singer_id(s, k2), cxp, dy + dh - 28 - bob, 0, 0, 0, 0);
+                    cxp += 18;
                 }
             }
             if (syl < nsy && dh >= 34) {
@@ -444,18 +455,10 @@ void tab_choir_update(void)
         if (btn_pressed(BTN_START) && song_singer_id(SS, studio.csel) >= 0) cycle_section(studio.csel);
     }
     if (studio_sel_tap) {
-        static char friends[28];
-        static const char *items[8];
-        int a = studio.csel < SONG_SINGERS ? song_singer_id(SS, studio.csel) : -1;
-        doomo_snprintf(friends, sizeof(friends), "Friends of %s", st_name(a >= 0 ? a : DOOMO_PLAYER_ID));
-        items[0] = friends;
-        items[1] = "Hillvile choir";
-        items[2] = "Hellvile choir";
-        items[3] = "Both districts!";
-        items[4] = "Random 25";
-        items[5] = "Share out parts";
-        items[6] = "Sort by section";
-        items[7] = "Clear the choir";
+        static const char *const items[8] = { "Friends of this singer", "Hillvile choir",
+                                               "Hellvile choir", "Both districts!", "Random 25",
+                                               "Share out parts", "Sort by section",
+                                               "Clear the choir" };
         st_popup("Quick fill", items, 8, 0, fill_menu);
     }
 }

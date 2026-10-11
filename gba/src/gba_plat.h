@@ -56,8 +56,6 @@ void video_load_palette(void);
 void video_flip(void);                   /* wait for vblank pacing + flip */
 
 /* ---- shared big buffer (bigbuf.c) -------------------------------------- */
-/* The save scratch handed to the core (>= DOOMO_SAVE_SCRATCH_MIN) and,
- * between saves, the platform's rebuildable caches (offsets below). */
 /* gba_big (bigbuf.c): one 17 KB EWRAM block used in turn by the
  * overworld's tile cache, the raycaster's buffers and the save code's
  * stream window; whoever uses it claims it first, which invalidates the

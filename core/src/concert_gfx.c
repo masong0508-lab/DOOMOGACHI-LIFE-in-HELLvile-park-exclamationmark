@@ -254,7 +254,7 @@ static void draw_show(const StageView *v, const Wall *W)
         int cs = W->h / 4, nx = W->w / cs + 1, ny = 4;
         for (k = 0; k < ny; k++)
             for (i = 0; i < nx; i++) {
-                uint32_t r = hash2((uint32_t)(i + k * 17), (uint32_t)(t / 8));
+                uint32_t r = hash2((uint32_t)(i + k * 17), (uint32_t)(t / (opt_get(OPT_REDUCE_FLASH) ? 48 : 8)));
                 uint8_t c = (r & 3) == 0 ? c0 : (r & 3) == 1 ? c1 : (r & 3) == 2 ? c2 : bg;
                 wall_rect(W, W->x + i * cs + 1, W->y + k * cs + 1, cs - 2, cs - 2, c);
             }
@@ -491,7 +491,7 @@ static void draw_floor(const StageView *v, const StageLayout *L, const StagePal 
         int cs = depth / 2;
         for (y = 0; y < 2; y++)
             for (x = 0; x * cs < L->w + cs; x++) {
-                uint32_t r = hash2((uint32_t)(x + y * 40), v->t / 8);
+                uint32_t r = hash2((uint32_t)(x + y * 40), v->t / (opt_get(OPT_REDUCE_FLASH) ? 48u : 8u));
                 uint8_t c = (r & 3) == 0 ? PAL_PAINT(PAINT_MAGENTA, 2) : (r & 3) == 1 ? PAL_PAINT(PAINT_CYAN, 2) :
                             (r & 3) == 2 ? PAL_PAINT(PAINT_LEMON, 2) : p->floor1;
                 plat_rect(x * cs + (y ? cs / 2 : 0) - cs / 2, L->floor_y + y * cs + 1, cs - 1, cs - 1, c);
@@ -758,6 +758,18 @@ void concert_draw_performers(const StageView *v, const StageLayout *L)
             plat_rect(x - 3 * sc, f - 9 * sc, 6 * sc, 1, PAL_PAINT(PAINT_WHITE, 2));
             if (sing && ((v->t / 6 + (uint32_t)i) % 5) == 0)
                 concert_note_glyph(x + 4 * sc, f - 26 * sc - (int)(v->t % 6), PAL_PAINT(g->c1, 2));
+        }
+        if (c->layout == CHOIR_SECTIONS) {
+            /* little signs on the stage lip: who sings which part */
+            static const char *const sec_names[SECTION_COUNT] = { "Soprano", "Alto", "Tenor", "Bass" };
+            for (i = 0; i < SECTION_COUNT; i++) {
+                int sx = L->w * (2 * i + 1) / 8, tw = ui_text_width(sec_names[i]), on = 0, j;
+                for (j = 0; j < c->n; j++) if (c->section[j] == i && ((v->singing >> j) & 1)) on = 1;
+                ui_round_rect(sx - tw / 2 - 3, L->floor_y + (L->big ? 9 : 6), tw + 6, 10, 4,
+                              on ? PAL_PAINT(g->c1, 1) : PAL_RAMP(RAMP_STONE, 1));
+                ui_text(sx - tw / 2, L->floor_y + (L->big ? 10 : 7), sec_names[i],
+                        on ? PAL_WHITE : PAL_RAMP(RAMP_STONE, 5));
+            }
         }
         if (v->singing & 1) mic_stand(cx + 10, feet, feet - (L->big ? 30 : 20), steel);
         return;

@@ -36,6 +36,9 @@ static struct {
     int popup_t, popup_kind;
     int cheer_cool;
     int last_line;
+    int studio;                 /* performing a Music Studio song         */
+    char parade_title[CONCERT_SINGLES][CONCERT_TITLE_LEN];   /* chart cache */
+    uint8_t slot_of[SONG_SINGERS];   /* studio choir slot -> cast index    */
     char band[32];
     ConcertSong song;
     ConcertCast cast;
@@ -47,6 +50,21 @@ static struct {
 static const char *const mode_names[CMODE_COUNT] = { "Solo", "Band", "Choir" };
 static const char *const layout_names[CHOIR_LAYOUT_COUNT] = { "Risers", "Semicircle", "Sections",
                                                               "Pyramid" };
+
+/* The Music Studio's song while it performs on our stage (it lives in the
+ * studio's state, which stays put under us on the scene stack). */
+static const DoomoSong *studio_song;
+
+int concert_stage_song(const DoomoSong *s)
+{
+    int i, any = 0;
+    if (!s || !(s->flags & SONGF_VALID)) return 0;
+    for (i = 0; i < SONG_SINGERS; i++) if (song_singer_id(s, i) >= 0) any = 1;
+    if (!any) return 0;                          /* nobody to sing it */
+    studio_song = s;
+    scene_push(&SCENE_CONCERT, CONCERT_ARG_STUDIO);
+    return 1;
+}
 
 /* ====================================================================== */
 /* helpers                                                                  */
@@ -99,10 +117,27 @@ static int row_visible(int r)
     return 1;
 }
 
+static void parade_refresh(void);
+
 static void goto_state(int s)
 {
     C.state = s;
     C.st_t = 0;
+    if (s == CS_PARADE) parade_refresh();
+}
+
+/* the chart's titles (composing a song is too slow to do every frame) */
+static void parade_refresh(void)
+{
+    int i;
+    for (i = 0; i < CONCERT_SINGLES; i++) {
+        ConcertSingle sg;
+        C.parade_title[i][0] = 0;
+        if (concert_single_get(i, &sg)) {
+            concert_song_make(&C.song, sg.singer, sg.genre, sg.take);
+            memcpy(C.parade_title[i], C.song.title, CONCERT_TITLE_LEN);
+        }
+    }
 }
 
 static void leave(void)
@@ -183,11 +218,50 @@ static void setup_defaults(int lead, int mode)
     prep_view();
 }
 
+static void stage_begin(void);
+
 static void start_show(void)
 {
     C.stage = C.stage_sel >= 0 ? C.stage_sel : auto_stage();
     recompose();
     recast();
+    stage_begin();
+}
+
+/* a Music Studio song: its choir, title and genre on our stage */
+static void start_studio_show(void)
+{
+    const DoomoSong *s = studio_song;
+    int i;
+    memset(&C.cast, 0, sizeof(C.cast));
+    for (i = 0; i < BAND_COUNT; i++) C.cast.band[i] = CONCERT_NOBODY;
+    for (i = 0; i < SONG_SINGERS; i++) {
+        int id = song_singer_id(s, i);
+        C.slot_of[i] = 0xFF;
+        C.cast.ids[i] = CONCERT_NOBODY;
+        if (id < 0) continue;
+        C.slot_of[i] = C.cast.n;
+        C.cast.section[C.cast.n] = (uint8_t)song_singer_section(s, i);
+        C.cast.ids[C.cast.n++] = (uint16_t)id;
+    }
+    C.cast.mode = (uint8_t)(C.cast.n > 1 ? CMODE_CHOIR : CMODE_SOLO);
+    C.cast.layout = (uint8_t)(s->choir_layout % CHOIR_LAYOUT_COUNT);
+    C.mode = C.cast.mode;
+    C.lead = C.cast.ids[0];
+    C.genre = s->genre % MUSIC_COUNT;
+    memset(&C.song, 0, sizeof(C.song));
+    memcpy(C.song.title, s->title, CONCERT_TITLE_LEN - 1);
+    C.song.edgy = (uint8_t)((s->flags & SONGF_HELLISH) ? 1 : 0);
+    C.song.bpm = s->bpm;
+    C.song.genre = (uint8_t)C.genre;
+    C.song.seed = s->seed ^ 0x5EEDu;
+    C.studio = 1;
+    C.stage = auto_stage();
+    stage_begin();
+}
+
+static void stage_begin(void)
+{
     memset(&C.v, 0, sizeof(C.v));
     C.v.cast = &C.cast;
     C.v.genre = C.genre;
@@ -212,6 +286,11 @@ static void concert_enter(int arg)
         goto_state(CS_PARADE);
         return;
     }
+    if (arg == CONCERT_ARG_STUDIO) {
+        if (studio_song) { start_studio_show(); return; }
+        goto_state(CS_PARADE);
+        return;
+    }
     if (arg <= CONCERT_ARG_CHOIR) { mode = CMODE_CHOIR; id = concert_demo_resident(CONCERT_ARG_CHOIR - arg); }
     else if (arg <= CONCERT_ARG_BAND) { mode = CMODE_BAND; id = concert_demo_resident(CONCERT_ARG_BAND - arg); }
     else if (arg < 0) id = concert_demo_resident(-1 - arg);
@@ -228,6 +307,13 @@ static void concert_enter(int arg)
 
 static void concert_leave(void)
 {
+    if (C.studio) {
+        /* back to the studio, which keeps the background music paused */
+        song_stop();
+        studio_song = NULL;
+        concert_play_silence();
+        return;
+    }
     concert_play_silence();
     if (C.prev_song > SONG_NONE) audio_music(C.prev_song);
     else concert_restore_music();
@@ -394,13 +480,24 @@ static void setup_update(void)
 static void sync_view(int ev)
 {
     StageView *v = &C.v;
+    int calm = opt_get(OPT_REDUCE_FLASH);          /* no strobing lamps */
     v->t = C.t;
     if (ev & PEV_BEAT) v->beat = 0; else v->beat++;
-    if (ev & PEV_KICK) v->kick = 6; else if (v->kick) v->kick--;
-    if (ev & PEV_SNARE) v->snare = 6; else if (v->snare) v->snare--;
+    if ((ev & PEV_KICK) && !calm) v->kick = 6; else if (v->kick) v->kick--;
+    if ((ev & PEV_SNARE) && !calm) v->snare = 6; else if (v->snare) v->snare--;
     if (ev & PEV_ONSET) v->onset = 6; else if (v->onset) v->onset--;
-    v->sec = C.pl.song ? concert_play_section(&C.pl) : SEC_END;
-    v->singing = C.pl.line >= 0 ? C.pl.singing : 0;
+    if (C.studio) {
+        uint32_t m = song_pos_singers(), out = 0;
+        int i;
+        for (i = 0; i < SONG_SINGERS; i++)
+            if ((m >> i) & 1u && C.slot_of[i] != 0xFF) out |= 1u << C.slot_of[i];
+        if (!m && song_pos_line() >= 0 && song_playing()) out = 1u;
+        v->singing = out;
+        v->sec = !song_playing() ? SEC_END : concert_mask_count(out) > 1 ? SEC_CHORUS1 : SEC_VERSE1;
+    } else {
+        v->sec = C.pl.song ? concert_play_section(&C.pl) : SEC_END;
+        v->singing = C.pl.line >= 0 ? C.pl.singing : 0;
+    }
     v->hype = C.hype;
     if (v->pyro) v->pyro--;
     if (v->cheer) v->cheer--;
@@ -414,7 +511,13 @@ static void cheer(void)
     /* how far from the nearest beat (in 1/256 ticks)? */
     int step_in_beat = C.pl.step == 0xFFFF ? 0 : C.pl.step & 3;
     int pos = step_in_beat * C.pl.step_len + C.pl.phase, beat = C.pl.step_len * 4;
-    int d = pos < beat / 2 ? pos : beat - pos;
+    int d;
+    if (C.studio) {
+        beat = 256 * 1800 / (C.song.bpm ? C.song.bpm : 120);
+        pos = 256 * DOOMO_MIN(song_beat_age(), 200);
+        if (pos > beat) pos = beat;
+    }
+    d = pos < beat / 2 ? pos : beat - pos;
     if (C.cheer_cool > 0) return;
     C.cheer_cool = 4;
     C.v.cheer = 10;
@@ -444,6 +547,7 @@ static void cheer(void)
 static void confirm_stop(int yes)
 {
     if (yes) {
+        if (C.studio) song_stop();
         concert_play_silence();
         C.pl.song = NULL;
         goto_state(CS_BOW);
@@ -457,10 +561,18 @@ static void show_update(int encore)
     if (C.popup_t) C.popup_t--;
     if (C.v.curtain > 0) C.v.curtain = DOOMO_MAX(0, C.v.curtain - 16);
     if (C.v.lights < 16) C.v.lights++;
-    ev = concert_play_tick(&C.pl);
+    if (C.studio) {
+        song_tick();
+        ev = song_beat_age() == 0 ? PEV_BEAT | PEV_KICK : 0;
+        if (song_pos_line() != C.last_line && song_pos_line() >= 0) ev |= PEV_BAR;
+        if (!song_playing()) ev |= PEV_END;
+    } else {
+        ev = concert_play_tick(&C.pl);
+    }
     sync_view(ev);
-    if ((ev & PEV_BAR) && C.pl.line >= 0 && C.pl.line != C.last_line) {
-        C.last_line = C.pl.line;
+    if ((ev & PEV_BAR) && (C.studio ? song_pos_line() : C.pl.line) >= 0 &&
+        (C.studio ? song_pos_line() : C.pl.line) != C.last_line) {
+        C.last_line = C.studio ? song_pos_line() : C.pl.line;
         C.hype = DOOMO_MIN(100, C.hype + 1 + (C.mode == CMODE_CHOIR ? 1 : 0));
     }
     if ((ev & PEV_BAR) && !(C.st_t & 63) && C.hype > 10) C.hype--;   /* hype fades */
@@ -471,7 +583,7 @@ static void show_update(int encore)
         return;
     }
     if (ev & PEV_END) {
-        if (!encore && C.hype >= 55) {
+        if (!encore && C.hype >= 55 && !C.studio) {
             goto_state(CS_ENCORE_ASK);
             audio_sfx(SFX_HAPPY);
         } else {
@@ -516,6 +628,7 @@ static void parade_update(void)
     if (btn_pressed(BTN_SELECT) || btn_pressed(BTN_X)) {
         concert_single_remove(C.parade_sel);
         if (C.parade_sel >= concert_single_count()) C.parade_sel = 0;
+        parade_refresh();
         audio_sfx(SFX_CANCEL);
         ui_toast("Dropped off the chart.");
         return;
@@ -552,7 +665,8 @@ static void concert_update(void)
         if (C.st_t == 62) audio_sfx(SFX_HAPPY);
         if (btn_pressed(BTN_A) && C.st_t < 60) C.st_t = 60;
         if (C.st_t >= INTRO_TICKS) {
-            concert_play_start(&C.pl, &C.song, &C.cast, 0);
+            if (C.studio) song_play(studio_song, -1);
+            else concert_play_start(&C.pl, &C.song, &C.cast, 0);
             goto_state(CS_SHOW);
         }
         break;
@@ -581,6 +695,13 @@ static void concert_update(void)
         if (C.st_t == 2) audio_sfx(SFX_CONFETTI);
         if (C.st_t >= BOW_TICKS || (btn_pressed(BTN_A) && C.st_t > 10)) {
             C.v.curtain = 256;
+            if (C.studio) {
+                /* a studio session: take a bow, then back to the studio */
+                DoomoResident *r = town_res(C.lead);
+                if (r) r->stat[STAT_HAPPY] = (uint8_t)DOOMO_MIN(100, r->stat[STAT_HAPPY] + 5);
+                leave();
+                return;
+            }
             apply_results();
             C.res_sel = RES_SINGLE;
             goto_state(CS_RESULTS);
@@ -729,7 +850,8 @@ static void draw_bill(const StageLayout *L)
     ui_text_center(L->w / 2, y + 8, STR_ICON_STAR " TONIGHT ONLY " STR_ICON_STAR, ink);
     nw = ui_text_big_width(concert_name(C.lead), 2);
     ui_text_big(L->w / 2 - nw / 2, y + 19, concert_name(C.lead), 2, gold, ink);
-    if (C.mode == CMODE_BAND) doomo_snprintf(buf, sizeof(buf), "with %s!", C.band);
+    if (C.studio) doomo_snprintf(buf, sizeof(buf), "fresh from the Music Studio!");
+    else if (C.mode == CMODE_BAND) doomo_snprintf(buf, sizeof(buf), "with %s!", C.band);
     else if (C.mode == CMODE_CHOIR) doomo_snprintf(buf, sizeof(buf), "and a choir of %d voices!", C.cast.n);
     else doomo_snprintf(buf, sizeof(buf), "live and solo!");
     ui_text_center(L->w / 2, y + 40, buf, st->text);
@@ -753,7 +875,14 @@ static void draw_hud(const StageLayout *L)
     ui_heart(x + 4, y + 3, 3 + (C.v.kick > 3), PAL_PAINT(PAINT_BUBBLEGUM, 1));
     ui_bar(x + 10, y + 1, w, 5, C.hype, 100, C.hype >= 75 ? PAL_PAINT(PAINT_LEMON, 2) : PAL_PAINT(PAINT_BUBBLEGUM, 2));
     /* progress */
-    plat_rect(0, L->truss_h - 2, L->w * concert_play_progress(&C.pl) / 255, 1, PAL_PAINT(PAINT_LEMON, 2));
+    {
+        int prog = concert_play_progress(&C.pl);
+        if (C.studio && studio_song) {
+            uint32_t len = song_length_ticks(studio_song);
+            prog = len ? (int)(DOOMO_MIN(song_pos_ticks(), len) * 255u / len) : 0;
+        }
+        plat_rect(0, L->truss_h - 2, L->w * prog / 255, 1, PAL_PAINT(PAINT_LEMON, 2));
+    }
     /* combo */
     if (C.combo >= 3) {
         doomo_snprintf(buf, sizeof(buf), "x%d", C.combo);
@@ -781,6 +910,22 @@ static void draw_hud(const StageLayout *L)
 static void draw_karaoke(const StageLayout *L)
 {
     const ConcertPlayer *p = &C.pl;
+    if (C.studio) {
+        int line = song_pos_line(), syl = song_pos_syllable();
+        if (line >= 0 && line < SONG_LYRIC_LINES && studio_song && studio_song->lyrics[line][0]) {
+            const char *ln = studio_song->lyrics[line];
+            uint8_t st[CONCERT_SYL_MAX + 1];
+            int n = song_syllables(ln, st, CONCERT_SYL_MAX), lit, ball;
+            if (syl < 0) syl = -1;
+            lit = syl + 1 >= n ? (int)strlen(ln) : st[syl + 1];
+            ball = syl >= 0 && syl < n ? st[syl] : -1;
+            if (syl < 0) lit = 0;
+            concert_draw_lyric(L, ln, lit, ball, C.song.edgy, C.t);
+        } else if (song_playing()) {
+            concert_draw_lyric(L, "~ " STR_ICON_NOTE " ~", 5, -1, C.song.edgy, C.t);
+        }
+        return;
+    }
     if (p->song && p->line >= 0) {
         const char *ln = C.song.lines[(int)p->line];
         int lit = p->sung >= p->line_syl ? (int)strlen(ln) : p->syl_start[p->sung];
@@ -847,7 +992,7 @@ static void results_draw(const StageLayout *L)
     ui_text(x + 10, y + (big ? 84 : 77), buf, st->text);
     {
         static const char *const labels[RES_COUNT] = { "Save Single", "Edit in Studio", "Again", "Done" };
-        int bw = big ? 58 : 50, gap = big ? 4 : 3, bx = x + (w - (bw * 2 + gap)) / 2, by = y + h - (big ? 40 : 34);
+        int bw = big ? 112 : 96, gap = big ? 8 : 6, bx = x + (w - (bw * 2 + gap)) / 2 + 4, by = y + h - (big ? 40 : 34);
         for (i = 0; i < RES_COUNT; i++) {
             const char *lab = labels[i];
             if (i == RES_SINGLE && C.saved) lab = "Saved!";
@@ -859,39 +1004,41 @@ static void results_draw(const StageLayout *L)
 
 static void parade_draw(void)
 {
-    int big = H() >= 200, n = concert_single_count(), i, rowh = big ? 40 : 30, y0 = big ? 34 : 24;
-    int x = big ? 16 : 6, w = W() - 2 * x;
+    int big = H() >= 200, n = concert_single_count(), i, rowh = big ? 40 : 28, y0 = big ? 32 : 22;
+    int x = big ? 16 : 8, w = W() - 2 * x;
     char buf[64];
     ui_backdrop(WIN_DARK, C.t);
     ui_title(W() / 2, big ? 8 : 4, STR_ICON_STAR " HIT PARADE " STR_ICON_STAR, WIN_CUTE);
-    if (!n) {
-        ui_window(x + 10, H() / 2 - 26, w - 20, 48, WIN_CUTE);
-        ui_text_center(W() / 2, H() / 2 - 18, "No hits yet!", ui_style_text(WIN_CUTE));
-        ui_text_wrap(x + 18, H() / 2 - 6, w - 36,
-                     "Put on a concert, then save the song as a single.", ui_style(WIN_CUTE)->text_dim, 1);
-        ui_hint(STR_ICON_B " Back", WIN_CUTE);
-        return;
-    }
-    for (i = 0; i < n; i++) {
+    for (i = 0; i < CONCERT_SINGLES; i++) {
         ConcertSingle s;
-        ConcertSong song;
-        const DoomoImage *img;
-        int y = y0 + i * (rowh + 4), sel = i == C.parade_sel;
-        if (!concert_single_get(i, &s)) continue;
-        concert_song_make(&song, s.singer, s.genre, s.take);
-        ui_window(x + (sel ? 0 : 6), y, w - (sel ? 0 : 12), rowh, sel ? WIN_CUTE : WIN_CREAM);
-        doomo_snprintf(buf, sizeof(buf), "#%d", i + 1);
-        ui_text_big(x + 8, y + rowh / 2 - 7, buf, 2, i == 0 ? PAL_PAINT(PAINT_HONEY, 2) : PAL_WHITE,
-                    PAL_PAINT(PAINT_CHERRY, 0));
-        img = bodyspr_image(s.singer, 0, 0);
-        if (img) plat_image(x + 44, y + rowh - img->h - 3 + (sel && (C.t / 8) & 1 ? -1 : 0), img, 1, IMG_SHADOW, 0);
-        doomo_snprintf(buf, sizeof(buf), "\"%s\"", song.title);
-        ui_text(x + 66, y + 5, buf, ui_style_text(WIN_CUTE));
-        doomo_snprintf(buf, sizeof(buf), "%s - %s", concert_name(s.singer), doomo_music_names[s.genre]);
-        ui_text(x + 66, y + 15, buf, ui_style(WIN_CUTE)->text_dim);
-        if (sel) ui_cursor(x - 2, y + rowh / 2 - 4);
+        int y = y0 + i * (rowh + (big ? 6 : 3)), sel = i == C.parade_sel && n > 0;
+        int bx = x + (sel ? 0 : 6), bw = w - (sel ? 0 : 12);
+        if (!concert_single_get(i, &s)) {
+            /* an empty spot on the chart */
+            ui_window(bx, y, bw, rowh, WIN_DARK);
+            doomo_snprintf(buf, sizeof(buf), "#%d", i + 1);
+            ui_text_big(bx + 8, y + rowh / 2 - 7, buf, 2, PAL_GRAY, PAL_GRAY_D);
+            ui_text(bx + 50, y + rowh / 2 - 4, i == 0 ? "No hits yet! Put on a concert" : "Your next hit goes here?",
+                    PAL_GRAY_L);
+            continue;
+        }
+        {
+            const DoomoImage *img;
+            ui_window(bx, y, bw, rowh, sel ? WIN_CUTE : WIN_CREAM);
+            doomo_snprintf(buf, sizeof(buf), "#%d", i + 1);
+            ui_text_big(bx + 8, y + rowh / 2 - 7, buf, 2, i == 0 ? PAL_PAINT(PAINT_HONEY, 2) : PAL_WHITE,
+                        PAL_PAINT(PAINT_CHERRY, 0));
+            img = bodyspr_image(s.singer, 0, 0);
+            if (img) plat_image(bx + 40, y + rowh - img->h - 2 + (sel && (C.t / 8) & 1 ? -1 : 0), img, 1, IMG_SHADOW, 0);
+            doomo_snprintf(buf, sizeof(buf), "\"%s\"", C.parade_title[i]);
+            ui_text(bx + 62, y + (big ? 8 : 4), buf, ui_style_text(WIN_CUTE));
+            doomo_snprintf(buf, sizeof(buf), "%s - %s", concert_name(s.singer), doomo_music_names[s.genre]);
+            ui_text(bx + 62, y + (big ? 20 : 15), buf, ui_style(WIN_CUTE)->text_dim);
+            if (i == 0) ui_sparkle(bx + bw - 10, y + 6, (int)(C.t / 2) & 15, PAL_PAINT(PAINT_LEMON, 2));
+            if (sel) ui_cursor(x - 2, y + rowh / 2 - 4);
+        }
     }
-    ui_hint(STR_ICON_A " Play  SELECT Remove  " STR_ICON_B " Back", WIN_CUTE);
+    ui_hint(n ? STR_ICON_A " Play  SELECT Remove  " STR_ICON_B " Back" : STR_ICON_B " Back", WIN_CUTE);
 }
 
 static void stage_draw(void)
@@ -913,7 +1060,8 @@ static void stage_draw(void)
         int y = L.h / 3;
         ui_text_big(L.w / 2 - ui_text_big_width("ENCORE!", 3) / 2, y + ui_wave((int)C.t, 16, 3), "ENCORE!", 3,
                     PAL_PAINT(PAINT_LEMON, 2), PAL_PAINT(PAINT_CHERRY, 0));
-        ui_text_center(L.w / 2, y + 30, "The crowd wants more!", PAL_WHITE);
+        ui_text_outline(L.w / 2 - ui_text_width("The crowd wants more!") / 2, y + 30, "The crowd wants more!",
+                        PAL_WHITE, PAL_PAINT(PAINT_CHERRY, 0));
         ui_hint(STR_ICON_A " Encore!  " STR_ICON_B " Take a bow", WIN_CUTE);
     }
     if (C.state == CS_BOW) {

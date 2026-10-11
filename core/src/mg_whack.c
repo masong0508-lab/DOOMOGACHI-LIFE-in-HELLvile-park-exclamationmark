@@ -275,7 +275,8 @@ static void wh_draw(void)
     /* mowed grass bands, one per row of holes */
     for (i = 0; i < 4; i++) {
         int y0 = i == 0 ? ft : ft + 6 + i * dy - dy / 4;
-        plat_rect(0, y0 + oy, W, H - y0, band_col(i == 0 ? 0 : i - 1));
+        int y1 = i == 3 ? H + 8 : ft + 6 + (i + 1) * dy - dy / 4;
+        plat_rect(0, y0 + oy, W, y1 - y0, band_col(i == 0 ? 0 : i - 1));
     }
     plat_rect(0, ft + oy, W, 2, mg.hell ? PAL_RAMP(RAMP_LAVA, 3) : PAL_RAMP(RAMP_GRASS, 7));
     /* flowers (or bones and embers) between the holes */
@@ -356,7 +357,8 @@ static uint32_t wh_bot(void)
     for (i = 0; i < 9; i++) {
         const WHole *h = &S->hole[i];
         int v;
-        if (h->kind == C_FUZZ || (h->st != H_UP && !(h->st == H_RISE && h->t >= 3))) continue;
+        /* a human-ish reaction time: only critters that have been up a while */
+        if (h->kind == C_FUZZ || h->st != H_UP || h->t < 7 + (i * 3 + mg.play_t / 64) % 6) continue;
         v = h->kind == C_GOLD ? 5 : h->kind == C_WRAITH ? 3 : 2;
         if (v > bestv) { bestv = v; best = i; }
     }
@@ -365,7 +367,7 @@ static uint32_t wh_bot(void)
     if (best % 3 == 2) b |= BTN_RIGHT;
     if (best / 3 == 0) b |= BTN_UP;
     if (best / 3 == 2) b |= BTN_DOWN;
-    if (!(mg.bot_now & BTN_A) && S->aim == best) b |= BTN_A;
+    if (!(mg.bot_now & BTN_A) && S->aim == best && mg_rand(100) < 70) b |= BTN_A;
     return b;
 }
 

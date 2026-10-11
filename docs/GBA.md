@@ -119,6 +119,7 @@ while the ROM boots runs the flash save self-test first.
 | IRQ stack | `0x03007FA0` down | 672 B | the master IRQ handler (`crt0.s`) |
 | main stack | `0x03007D00` down | >= 6 KB reserved (linker `ASSERT`) | system mode |
 | VRAM page 0/1 | `0x06000000` / `0x0600A000` | 2 x 37.5 KB | Mode 4 double buffer |
+| VRAM gaps | `0x06009600` / `0x06013600` | 2 x 2.5 KB | the 3D view's 16 colormap rows + tint map (behind the two Mode 4 pages; byte reads as fast as IWRAM) |
 | VRAM OBJ area | `0x06014000` | 16 KB | 3D texture cache: 4 textures (unused by the display: no hardware sprites) |
 | palette | `0x05000000` | 512 B | BG + OBJ palettes = `doomo_palette` |
 | flash | `0x0E000000` | 128 KB in 2 banks | saves |
@@ -135,44 +136,57 @@ to count logic ticks and frame rates.
 
 ### RAM usage (measured, `tools/memreport.py`)
 
-Game ROM (`build/doomogachi.gba`, core as of this writing):
+Every build prints this report; the linker script `ASSERT`s the limits.
+Game ROM (`build/doomogachi.gba`) with the foundation, art, roster,
+portrait, life (sim / exorcism / pet) and action (map / actors / combat /
+weld) modules linked:
 
 ```
-ROM    783,004 bytes
-IWRAM    5,404 / 32,768   (code+data 4,432, bss 972)     26.0 KB left for the stack
-EWRAM  242,264 / 262,144  (.data 68, .bss 242,176)       19.4 KB free
-  109,524  doomo_town        core (town.o)
-   90,112  gba_big           platform: save scratch / 3D / overworld buffer
-   18,432  pool              core (portrait.o)
-    4,468  pcv               core (portrait_gfx.o)
-    4,096  doomo_colormap    core (palette.o)
-    3,040  dq                core (ui_dialog.o)
+ROM   1,436,540 bytes
+IWRAM    24,848 / 32,768  (code+data 20,980, bss 3,868)  7.0 KB left for the stack
+EWRAM   254,984 / 262,144 (.data 248, .bss 254,704)      7.0 KB free
+  109,524  doomo_town      core (town.o)
+   32,780  doomo_map       core (map.o, the live map)
+   18,432  pool            core (portrait.o)
+   17,408  gba_big         platform: renderer caches / save window (bigbuf.c)
+   12,288  view_pix        core (weld_gfx.o)
+    7,084  sim_s           core (sim.o)
+    6,144  doomo_actors    core (actor.o)
+    4,480  pcv             core (portrait_gfx.o)
+    4,096  sc_pool         core (ui_raster.o: the UI shape cache)
+    4,096  img_pix         core (pet_gfx.o)
+    4,096  doomo_colormap  core (palette.o)
 ```
 
-The game ROM does not call `plat_view3d()` yet, so the 3D renderer is
-garbage-collected there. With it linked (engine-test ROM):
+How EWRAM got here:
 
-```
-ROM    813,768 bytes
-IWRAM   25,060 / 32,768   (code+data 16,892, bss 8,164)  6.8 KB left for the stack
-EWRAM  245,096 / 262,144                                  16.6 KB free
-```
+| state | EWRAM free | what changed |
+|-------|-----------:|--------------|
+| foundation + platforms | 19.4 KB | `gba_big` was the 88 KB save scratch (`DOOMO_SAVE_SCRATCH_MIN`) |
+| streaming saves (perf pass) | ~90 KB | `gba_big` 88 KB -> 17 KB: saves stream through it (section 8) |
+| life + action modules landed | 0.3 KB | live map 32.8 KB, weld view 14.8, sim 7.1, actors 6.8, pet 5.3, combat 4.9, portrait growth, ... |
+| save codec without static buffers | 7.0 KB | `save.o` 7,022 -> 196 bytes: its LZ window / match heads now live in the scratch (ARCHITECTURE.md) |
+
+The engine-test ROM (no game scenes): ROM 867,176 bytes, IWRAM 21,032
+(10.7 KB for the stack), EWRAM 173,120 (89 KB free).
 
 Measured main-stack high-water marks (the boot code paints the free IWRAM
 and `gba_stack_used()` scans it): 660 bytes in the game's boot / title /
-UI gallery, 936 - 1,024 bytes in the 3D tour and overworld. The game ROM logs
+UI gallery (1,568 with the span rasteriser's row buffers), 936 - 1,024
+bytes in the 3D tour and overworld. The game ROM logs
 `GBA: main stack high-water N bytes` whenever the mark grows by 256 bytes.
 
-`gba_big` (88 KB, `src/bigbuf.c`) is one shared EWRAM buffer:
+`gba_big` (17 KB, `src/bigbuf.c`) is one shared EWRAM buffer; whoever
+uses it claims it first (`gba_big_claim()`), which invalidates the
+previous owner's cache (it is rebuilt in a frame):
 
 | offset | user |
 |--------|------|
-| 0 - 20 KB | overworld lit-tile cache (64 tiles of 16x16) |
-| 20 - 28 KB | 3D: per-column clip checkpoints for sprites |
-| 28 - 32 KB | 3D: roof heights per map cell |
-| 32 - 36 KB | free |
-| 36 KB - | 3D: sprite sort order |
-| whole | `plat_save_scratch()` (the core needs `DOOMO_SAVE_SCRATCH_MIN` = 88 KB); calling it invalidates the renderer caches |
+| 0 - 17 KB | overworld lit-tile cache (64 tiles of 16x16) |
+| 0 - 8 KB | 3D: per-column clip checkpoints for sprites |
+| 8 - 12 KB | 3D: roof heights per map cell |
+| 12 - 13 KB | 3D: sprite sort order |
+| whole | `plat_save_scratch()`: the core's save window (2.75 KB) + its codec work area (`DOOMO_SAVE_WORK_SIZE`, 14.25 KB); less than a slot, so the core streams (section 8) |
 
 ---------------------------------------------------------------------------
 
@@ -192,7 +206,10 @@ would otherwise turn the read-modify-write into a byte store).
 * `plat_image`: 8bpp, index 0 transparent, integer scale 1..4, flip,
   silhouette and drop-shadow; opaque pixel pairs are written without
   reading.
-* `plat_shade_rect`: through `doomo_colormap[level]`.
+* `plat_shade_rect`: through `doomo_colormap[level]` (copied to the IWRAM
+  stack for areas of 256 pixels or more).
+* `plat_checker`: 50% checkerboard rows (the UI's soft band seams) as
+  word masks, one call instead of one `plat_rect` per pixel.
 * `plat_line`: Bresenham, horizontal / vertical runs use the rect path.
 * Colour index 0 is "transparent" in images; as a fill colour it is
   replaced by `PAL_BLACK`.
@@ -264,7 +281,8 @@ How it works:
   fade, `b->light`), view tint. Billboards closer than 4 units are skipped;
   the third-person player sprite (`player_sprite`) becomes translucent
   under 40 units, so it never blocks the camera.
-* **Colour**: 16 light levels of `doomo_colormap` (copied to IWRAM). The
+* **Colour**: 16 light levels of `doomo_colormap` (copied into the VRAM
+  gaps behind the Mode 4 pages, as fast as IWRAM for byte reads). The
   view tint (`tint` / `tint_level`) is a pass after the sprites: level/16
   of the pixels go through `doomo_tintmap[tint]` in a 4x4 ordered dither
   (on the 2-pixel columns), like the reference. It costs about 1 ms per
@@ -315,14 +333,38 @@ between 15 and 20 fps (17 - 19 average); the rest run at 20 - 29 fps.
 Use the harness profiler (`profile N` with `--nm`) to see where the
 cycles go.
 
-2D UI: the platform side (`plat_rect` / `plat_text` / `plat_image`) is
-ARM code in IWRAM, but the core's UI shape rasterisers (the boot heart's
-coverage mask: `m_in` / `shade_mask` / `ui_heart_squash`, `ui_star`,
-`ui_backdrop`) do per-pixel work with divisions in THUMB code; on the
-GBA the boot animation draws at about 3 fps and the title / UI gallery at
-5 - 6 fps (measured with the harness `fps` command), and since at most
-every other logic tick skips its drawing, the 30 Hz logic slows to 6 - 10
-ticks per second there. Those are core-side costs.
+2D UI: the core's UI kit used to rasterise its shapes per pixel in THUMB
+code (the boot heart's coverage mask, `ui_star`, `ui_backdrop`, rounded
+windows), with divisions per pixel and thousands of tiny `plat_rect`
+calls; the boot animation drew at about 3 fps and the 30 Hz logic slowed
+to 6 - 10 ticks per second. The perf pass rewrote it as span rasterising
+(`core/src/ui_raster.c`: integer scanline maths, runs merged across rows,
+a cache of the rect lists of shapes redrawn every frame, `plat_checker`
+for dithered seams) with pixel-identical output (every frame of the
+native runner's boot / UI gallery / saves / playthrough scripts compared
+at 240x160 and 320x240: 0 differing pixels; `plat_rect` calls per frame
+2,180 -> 524 on average). Harness `fps` command on the game ROM
+(`logic` = ticks per second, `drawn` = presented frames per second):
+
+| screen | before: logic / drawn | after: logic / drawn |
+|--------|----------------------:|---------------------:|
+| boot heart drop | 6.3 / 3.2 | 29.3 / 29.3 |
+| boot name | 5.6 / 2.8 | 29.8 / 29.8 |
+| boot wipe | 4.7 / 2.8 | 27.3 / 25.9 |
+| title (stub) | 10.1 / 5.5 | 30.0 / 30.0 |
+| UI gallery 1 windows | 10.3 / 5.9 | 30.0 / 30.0 |
+| UI gallery 2 meters | 11.5 / 6.8 | 30.0 / 30.0 |
+| UI gallery 3 list | 12.6 / 8.3 | 30.0 / 30.0 |
+| UI gallery 4 paint | 12.5 / 7.6 | 30.0 / 29.5 |
+| UI gallery 5 options | 12.8 / 7.6 | 30.0 / 30.0 |
+| UI gallery 6 font | 12.5 / 7.6 | 30.0 / 30.0 |
+| UI gallery 7 modals | 14.1 / 9.0 | 30.2 / 30.2 |
+| confirm modal | 10.6 / 6.4 | 29.5 / 26.8 |
+| keyboard (text entry) | 7.9 / 5.1 | 29.8 / 22.3 |
+| dialogue (typing) | 10.1 / 5.7 | 30.0 / 23.4 |
+| dialogue choice | 11.5 / 7.3 | 30.0 / 28.2 |
+| UI gallery 8 backdrops | 10.9 / 6.0 | 30.5 / 26.2 |
+| UI gallery 8 hell backdrop | 11.4 / 7.0 | 30.0 / 29.2 |
 
 ---------------------------------------------------------------------------
 
@@ -393,7 +435,20 @@ ARM in IWRAM, interrupts off while the chip is in command mode).
   timeout; Macronix chips get the extra reset command after a timeout.
 * `plat_save_read` copies `min(size, cap)` bytes and reports the copied
   size; `plat_save_erase` erases the trailer sector (the slot reads as
-  empty). `plat_save_scratch()` hands the core the 88 KB `gba_big`.
+  empty).
+* **Streaming** (platform.h): `plat_save_scratch()` hands the core the
+  17 KB `gba_big` (claiming it from the renderer caches), less than a
+  slot, so no RAM copy of a save ever exists. `save_game()` sizes and
+  checksums the save in a first encode pass, then streams the same bytes:
+  `plat_save_stream_begin(slot, size)` erases the trailer sector,
+  `plat_save_stream_write()` erases each 4 KB sector when the stream
+  enters it and programs (and verifies) the bytes as they arrive, and
+  `plat_save_stream_end(1)` writes the trailer - the same steps and the
+  same bytes on the chip as `plat_save_write`. Loads read through
+  `plat_save_read_at()` (random access, so a window refill costs only the
+  flash read). `make -C gba test-coresave` saves and reloads the codec's
+  worst case (1000 random custom citizens, 58.6 KB, slot 1 across the
+  bank boundary) and a story island, across two harness runs.
 
 ---------------------------------------------------------------------------
 
@@ -433,6 +488,7 @@ gba/build/harness ROM.gba [--script FILE] [--shots DIR] [--save FILE]
 | `test-et` | engine-test ROM, `scripts/enginetest.txt`: boot, division self-test, DirectSound + PSG audio, 16 screenshots (courtyard, blocks, path/tower, hall door, stairs, skylight look-up, step faces, mezzanine look-down, third person x2, low corridor, hell room sprites, hell third person x2, overworld x2), frame-rate log lines |
 | `test-save` | engine-test ROM twice with the same `--save` file and SELECT held at boot: first run "no previous data / write ok", second run "persisted ok" (both 30 KB slots verified byte for byte, slot 1 erased and rewritten) |
 | `test-game` | game ROM, `scripts/smoke.txt`: boot, title, START, menu presses, screenshots in `build/shots/game` |
+| `test-coresave` | game ROM, `scripts/coresave1.txt` then `coresave2.txt` with the same `--save` file: the core's streamed saves (worst-case island in slot 1, a too-big save refused in slot 0, a story island in slot 0), loads checked by town CRC, then persistence across a reboot |
 
 ---------------------------------------------------------------------------
 
@@ -470,4 +526,8 @@ in flux.
 * Blocks: `wall != 0` with `ceil_h > floor_h` are blocks of that height
   under the sky (walls otherwise).
 * Keep big core tables `const` (ROM); every byte of `.bss` is EWRAM and
-  EWRAM is nearly full (see the RAM table).
+  EWRAM is nearly full (see the RAM table). Transient buffers belong on
+  the stack or in a shared buffer; saves need none (the codec works in
+  `plat_save_scratch()`, extension chunks are staged there too).
+* Draw UI shapes with the `ui_*` primitives (spans, cached rect lists),
+  never pixel by pixel: every `plat_rect` is a THUMB -> ARM call.

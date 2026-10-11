@@ -17,7 +17,7 @@ ambient 11
 cell . floor=INFECTED_GRASS ceil=sky
 cell , floor=SLIME ceil=sky
 cell : floor=HELL_ROCK ceil=sky
-cell = floor=SKULL_MOSAIC ceil=sky
+cell = floor=METAL_FLOOR ceil=sky
 cell m floor=METAL_FLOOR ceil=sky
 cell n floor=GRATE ceil=sky
 cell P floor=PENTAGRAM_FLOOR ceil=sky light=13
@@ -25,25 +25,25 @@ cell ~ floor=LAVA ceil=sky flags=lava fh=-2 light=14
 cell b floor=BONE_WALL ceil=sky
 cell T wall=TREE floor=INFECTED_GRASS ch=12
 cell Z wall=RUST_METAL floor=CHAINS ch=40
-cell # wall=BONE_WALL floor=SKULL_MOSAIC ch=12
-cell B wall=BLOOD_BRICK floor=SKULL_MOSAIC ch=14
-cell A wall=APARTMENT_FRONT floor=SKULL_MOSAIC ch=24
+cell # wall=BONE_WALL floor=BONE_WALL ch=12
+cell B wall=BLOOD_BRICK floor=BLOOD_BRICK ch=14
+cell A wall=APARTMENT_FRONT floor=BONE_WALL ch=24
 cell W wall=WORKSHOP_FRONT floor=RUST_METAL ch=12
 cell K wall=BONE_WALL floor=ROOF_TILES ch=20
 cell G wall=STAINED_GLASS floor=ROOF_TILES ch=20
 cell R wall=RUST_METAL floor=TECH_PANEL ch=18
 cell Y wall=TECH_PANEL floor=GRATE ch=22
-cell D wall=DOOR_HELL floor=SKULL_MOSAIC ch=12
+cell D wall=DOOR_HELL floor=BONE_WALL ch=12
 cell E wall=DEMON_EYES floor=FLESH_WALL ch=8
 cell c wall=CANDY_STRIPE floor=CHAINS ch=6
 cell r wall=CHAINS floor=CHAINS ch=4
 cell v wall=VAPE_CLOUD_WALL floor=VAPE_CLOUD_WALL ch=30
-cell 0 wall=DOOR_HELL floor=SKULL_MOSAIC ch=24 tag=80   # door: HELL_PITS
+cell 0 wall=DOOR_HELL floor=BONE_WALL ch=24 tag=80   # door: HELL_PITS
 cell 1 wall=DOOR_HELL floor=RUST_METAL ch=12 tag=81   # door: FORGE
 cell 2 wall=DOOR_CUTE floor=ROOF_TILES ch=20 tag=84   # door: CHAPEL
 cell 3 wall=CANDY_STRIPE floor=CHAINS ch=6 tag=87   # door: MARKET
 cell 4 wall=DOOR_HELL floor=TECH_PANEL ch=18 tag=85   # door: FACTORY
-cell 5 wall=DOOR_HELL floor=SKULL_MOSAIC ch=14 tag=83   # door: ARENA
+cell 5 wall=DOOR_HELL floor=BLOOD_BRICK ch=14 tag=83   # door: ARENA
 cell 6 wall=BONE_WALL floor=BONE_WALL ch=3 tag=86   # door: HELL_PIER
 cell 7 wall=DOOR_CUTE floor=CHAINS ch=40 tag=78   # door: WALL_GATE
 cell S floor=PENTAGRAM_FLOOR ceil=sky flags=trigger tag=133 light=15   # the sealed hell gate

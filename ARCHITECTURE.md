@@ -41,12 +41,17 @@ docs/                    design, building, modding the roster
 2. **Deterministic.** Anything generated from a seed uses a local `DoomoRng`.
    The native, GBA and PS1 builds must produce identical results
    (`resident_fingerprint` parity test).
-3. **Memory budget (GBA).** IWRAM 32 KB is for the stack and hot renderer
-   code only. Big state (`doomo_town` ~110 KB, `doomo_map` 32 KB, caches)
-   lives in `.bss`, which the GBA linker script places in **EWRAM**
-   (256 KB). Total core `.bss` + `.data` must stay **under 200 KB**. Large
-   constant data (textures, sprites, roster, maps) must be `const`, so it
-   stays in ROM. Never generate big art at runtime.
+3. **Memory budget (GBA + PS1).** IWRAM 32 KB is for the stack and hot
+   renderer code only. Big state (`doomo_town` ~110 KB, `doomo_map` 32 KB,
+   caches) lives in `.bss`, which the GBA linker script places in
+   **EWRAM** (256 KB, shared with the platform). Total core `.bss` +
+   `.data` must stay **under 200 KB**, and every KB counts (see "Memory and
+   performance" below for the current tables). Large constant data
+   (textures, sprites, roster, maps) must be `const`, so it stays in ROM.
+   Never generate big art at runtime. Transient buffers that only one
+   call needs belong on the stack or in an existing shared buffer, not in
+   `.bss`. On the PS1 the WHOLE EXE (code, const data and `.bss`) must fit
+   in 2 MB of RAM.
 4. **Per-tick cost is bounded.** One `doomo_frame()` runs at 30 Hz. On GBA
    the core logic gets about 6 ms of that, and the renderer gets the rest.
    Simulate the 1000 residents in round-robin batches. Never loop over
@@ -121,6 +126,70 @@ an optional `plat_view3d`/`plat_overworld` first, then 2D via `plat_*`.
 The platform presents in `plat_end_frame`. The GBA waits for 2 vblanks,
 or renders 3D at whatever rate it manages and repeats the logic tick. The
 PS1 waits for 2 vblanks (NTSC) and double-buffers.
+
+## Memory and performance (perf pass)
+
+**GBA EWRAM** (`gba/tools/memreport.py` prints it on every build; the
+linker script asserts the limits). The game ROM had ~20 KB free when the
+life / action modules were about to land; the 88 KB save buffer was then
+replaced by streaming saves (below), which freed 71 KB - and the modules
+that landed since (live map 32.8 KB, weld view 14.8 KB, sim 7 KB, actors
+6.8 KB, combat 4.9 KB, pet 5.3 KB, ...) used it, as planned. The save
+codec now keeps no static buffers either (+6.8 KB). docs/GBA.md section 3
+has the full table. Rules of thumb for new modules: no per-module copies
+of big data, scene-local state as small as the scene needs, nothing in
+`.bss` that could be `const`.
+
+**Saves** (`save.h`, `platform.h`). The codec (`save.c`) owns no buffers:
+`plat_save_scratch()` is split into
+
+```
+[ save image or stream window .......... | ext staging | LZ codec ]
+                                          \_____ DOOMO_SAVE_WORK_SIZE ____/
+```
+
+With at least `DOOMO_SAVE_SCRATCH_MIN` bytes (PS1: the idle display list,
+native) the whole image is built / read in the front part. With less
+(GBA: the 17 KB `gba_big`, shared with the renderer caches) the platform
+implements `plat_save_stream_begin/_write/_end` and `plat_save_read_at`
+and the save is streamed: pass 1 sizes and checksums it, pass 2 streams
+the same bytes; loads read the body through the window. The bytes on the
+medium are identical either way (tests check every window size from 64
+bytes up). Extension chunks (`save_ext.h`, e.g. the studio's song book)
+are written after the town data inside the same compressed stream; their
+`write()` / `read()` see one chunk of at most `DOOMO_SAVE_EXT_MAX` bytes
+in the staging area, so modules need no buffers of their own.
+
+**2D UI cost.** Every `plat_rect` has a fixed cost on the consoles (GBA:
+a THUMB -> ARM call plus clipping and odd-pixel read-modify-writes; PS1:
+one GPU primitive plus batching), and the core runs in THUMB from the
+cartridge on the GBA. `ui_raster.c` therefore turns every UI shape into
+horizontal spans with integer scanline maths (no per-pixel division, no
+64-bit arithmetic), merges equal runs of consecutive rows into one rect,
+and caches the rect lists of shapes that are redrawn every frame (hearts,
+stars, cursors, big titles). Use the `ui_*` primitives instead of drawing
+shapes pixel by pixel, and test `plat_draw_skipped()` before expensive
+drawing (the GBA skips the drawing of catch-up ticks). Measured: UI
+screens went from 3 - 9 fps to 26 - 30 fps on the GBA and from 13 - 30 to
+30 fps on the PS1, pixel-identical (docs/GBA.md section 4, docs/PS1.md
+section 12).
+
+**Weak defaults of registries.** A weak *constant* default such as
+`__attribute__((weak)) const T *const x = 0;` is folded by GCC into the
+file that defines it, so that file never sees a module's strong
+definition. Registries (`activities.c`, `save_ext.c`) read such slots
+through a `volatile` lvalue; do the same for any new one.
+
+**PS1 RAM.** The EXE is loaded whole into 2 MB. To make room
+(docs/PS1.md section 3): cold core code is compiled `-Os` (the per-frame
+files stay `-O2`), the engine-test fallback assets are only linked into
+the engine-test disc (which in turn drops the game's scenes), and the
+world textures and skies (360 KB of pixels) are linked LZ-compressed and
+decoded only when the VRAM caches miss. **Contract consequence:** on the
+PS1 the pointers returned by `texture_pixels()`, `sky_pixels()` and
+`texture_image()->pix` are virtual - core code may pass them to `plat_*`
+calls but must never read pixels through them (use `texture_avg()` /
+`sky_horizon()` for colours).
 
 ## Art direction (all teams)
 

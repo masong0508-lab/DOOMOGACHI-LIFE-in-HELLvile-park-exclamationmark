@@ -155,23 +155,61 @@ is still opaque, and index 0 maps to 0x0000 (transparent) in the CLUTs.
 | range | what |
 |-------|------|
 | `0x80000000-0x8000FFFF` | BIOS / kernel |
-| `0x80010000-...` | the EXE: code, read-only art (`core/gen`), data |
-| after it | BSS: two display-list buffers (2 x 100 KB prims + 2 ordering tables of 1536 entries per view), core state (`doomo_town` 107 KB, `doomo_map` 32 KB), caches |
+| `0x80010000-...` | the EXE: code, read-only data (art, roster, maps), data |
+| after it | BSS: two display-list buffers (2 x 103 KB prims + 2 ordering tables of 1536 entries per view), core state (`doomo_town` 107 KB, `doomo_map` 32 KB), caches |
 | `...-0x801FFFF0` | stack (grows down) |
 
-At the time of writing the game EXE is 918 KB + 476 KB BSS (ends at
-`0x8016c180`, 591 KB left below the stack top). The 3D engine is not in it
-yet: no core module calls `plat_view3d()`/`plat_overworld()` so far, and
-`--gc-sections` drops the engine, `doomo_map` and the sky art (~350 KB
-together). The engine-test build, which has all of it, ends at
-`0x801c3ec0` (240 KB left). The build prints these numbers (`elf2exe:
-...`) and fails if less than 64 KB would be left for the stack.
+Everything - code, const data and BSS - is loaded into these 2 MB, and
+`tools/elf2exe.py` refuses an image that leaves less than 64 KB for the
+stack. The build prints the numbers (`elf2exe: ... ends 0x..., N KB
+left below the stack top`). Three measures keep the discs inside:
 
-`plat_save_scratch()` (the 88 KB buffer `save_game()`/`load_game()` need)
-is the idle half of the display-list memory: after `DrawSync()` the prim
-buffer of the previous frame is unused until the current frame is
-presented, and a save or load runs inside one frame. The core's static
-default buffer is dropped by `--gc-sections`.
+* **Packed art** (`tools/packart.py`, `src/packart.c`, option
+  `DOOMO_PACK_ART`, default ON): the core's 60 world-texture frames and 5
+  sky frames (360 KB of 8bpp pixels that only this platform reads, to
+  fill its VRAM caches) are linked LZ-compressed (80 KB), every frame on
+  its own. `core/gen/art_data.c` is compiled without those two arrays and
+  `doomo_art_tex_pix` / `doomo_art_sky_pix` are defined as virtual
+  addresses (`--defsym`, outside RAM): the core's `textures.c` keeps
+  computing frame pointers from them, `vram.c` / `r3d.c` map such a
+  pointer back to its frame and decode it on a cache miss (a texture
+  frame into a 4 KB buffer, a sky frame into the frame's display-list
+  memory). After the first frames of a scene everything is in VRAM and
+  the cost is zero; the engine tour's frames are identical to an unpacked
+  build (only the HUD's CPU-time digits differ). Core code must never
+  read through texture / sky pixel pointers (ARCHITECTURE.md, textures.h).
+* **-Os for cold core code**: the core is compiled for size except the
+  files that run every frame (`DOOMO_CORE_HOT`: the UI rasteriser, fixed
+  point, map, actors, combat, pet drawing), which keep -O2 - about 120 KB
+  less code at the same frame times (harness: UI, combat, workshop,
+  exorcism unchanged; the pet scene needed its two files back at -O2).
+* **The engine-test disc leaves the game out and vice versa**: the
+  engine-test build compiles out the game loop and the harness's scene /
+  save commands, so `--gc-sections` drops the game's scenes; the game
+  disc does not link the engine test's fallback assets (`etest_assets.c`,
+  only reachable when a core accessor returns NULL, which the full core
+  never does).
+
+Measured (all core modules up to the life / action / save-extension
+work; the disc used to overflow):
+
+| build | before | after |
+|-------|--------|-------|
+| game disc | ends `0x80226864`: does not fit (-202 KB) | ends `0x801c4d60`: 236 KB left below the stack top (172 KB above the 64 KB stack reserve) |
+| engine-test disc | ends `0x8023f190`: does not fit | ends `0x80136d3c`: 804 KB left |
+
+The biggest remaining consumers of the game disc: art other than
+textures / skies 247 KB (sprites 225 KB - the core reads sprite pixels,
+so they stay unpacked), the display lists 206 KB + OTs 24 KB, roster
+164 KB, `doomo_town` 107 KB, core code ~540 KB.
+
+`plat_save_scratch()` is the idle half of the display-list memory: after
+`DrawSync()` the prim buffer of the previous frame is unused until the
+current frame is presented, and a save or load runs inside one frame.
+`PRIM_BYTES` (103 KB) is sized for `DOOMO_SAVE_SCRATCH_MIN` (save.h: a
+whole slot plus the codec's work area), so the PS1 never needs the
+streaming save path; a frame itself has needed at most ~36 KB so far.
+The core's static default buffer is dropped by `--gc-sections`.
 
 ### SPU RAM (512 KB)
 
@@ -448,13 +486,17 @@ limit anywhere). 30 fps is the cap (30 Hz logic).
 | third person (3D model) | 30 | 3D 13-22 ms | 240-470 polys |
 | overworld, 296 cells | 29.5-30 | 3D 20-22 ms | 290-316 polys, 12-14 sprites |
 | 3D citizen close-up | 24-30 | 3D 17-28 ms | 370-550 polys |
-| title (core 2D UI) | 20.6 | CPU 49 ms | 4,475 `plat_rect` -> 1,840 prims |
-| UI gallery pages | 18-25 | CPU 39-55 ms | 3,000-4,500 `plat_rect` |
+| boot animation (core 2D UI) | 30.2 (was 13.5) | CPU 11.8 ms (was 48.8 ms) | 885 `plat_rect` (was 4,459) |
+| title (core 2D UI) | 30.2 (was 20.5) | | |
+| UI gallery pages 1-8 | 30.2 (was 18.2-29.8) | CPU 7-11 ms (was 31-55 ms) | 530-800 `plat_rect` (was 2,300-4,500) |
 
-The 2D screens are CPU bound in the core's own drawing code: on the title,
-with `plat_rect` reduced to a no-op the frame still costs 28.5 ms, i.e.
-more than half of the CPU time is spent generating the spans before they
-reach the platform.
+The 2D screens used to be CPU bound in the core's own drawing code (per
+pixel shape rasterising, thousands of tiny `plat_rect` calls); the perf
+pass rewrote the UI kit as span rasterising (`core/src/ui_raster.c`,
+pixel-identical output), see ARCHITECTURE.md. Other core scenes measured
+with the core scripts: combat 25 fps (3D 27 ms), workshop 30, pet 23
+(CPU 43 ms), exorcism 19-27 (CPU 33-58 ms): the last two are bound by
+those modules' own drawing.
 
 ## 13. Notes for the core
 
@@ -467,3 +509,8 @@ reach the platform.
   a "Saving..." banner is shown by the platform.
 * `plat_save_scratch()` returns the idle display-list buffer (section 3):
   valid only until the end of the current frame, as `platform.h` allows.
+* Texture and sky pixels are not CPU readable here (packed, section 3):
+  pass `texture_pixels()` / `sky_pixels()` / `texture_image()` results to
+  `plat_*` only; use `texture_avg()` / `sky_horizon()` for colours.
+* RAM is shared by code, const data and state: prefer small tables,
+  share buffers, and keep scene state small.

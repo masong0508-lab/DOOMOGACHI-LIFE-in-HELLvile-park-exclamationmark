@@ -482,6 +482,7 @@ typedef struct { char n[DOOMO_NAME_LEN], b[DOOMO_NAME_LEN], l[DOOMO_NAME_LEN];
 static int expand(char *out, int cap, const char *tpl, const Muse *m)
 {
     int n = 0;
+    memset(out, 0, (size_t)cap);
     while (*tpl) {
         const char *sub = NULL;
         if (tpl[0] == '{' && tpl[1] && tpl[2] == '}') {
@@ -592,6 +593,7 @@ static void pick_line(char *out, const char *const *tpl, int n, const Muse *m, D
                       uint32_t *used)
 {
     int tries, k = rng_range(r, n);
+    memset(out, 0, SONG_LYRIC_LEN);
     for (tries = 0; tries < n; tries++, k = (k + 1) % n) {
         if (*used & (1u << k)) continue;
         if (expand(out, SONG_LYRIC_LEN, tpl[k], m)) { *used |= 1u << k; return; }
@@ -1001,6 +1003,7 @@ void studio_inspire(DoomoSong *s, int muse, int genre, uint32_t seed)
         studio_auto_parts(s);
     }
     if (muse >= DOOMO_DISTRICT_SIZE && muse < DOOMO_MAX_RESIDENTS) s->flags |= SONGF_HELLISH;
+    song_sanitize(s);
 }
 
 /* ====================================================================== */
@@ -1027,33 +1030,33 @@ static const Template templates[STUDIO_TEMPLATES] = {
         "beep beep, I love you", "pixel heart is full", "beep beep, I love you", "", "" } },
     { "Plushie Lullaby", "Soft and sleepy, for tucking in", 4, 5, 72, 0, TC_BAND,
       CHOIR_SEMICIRCLE, 0xFFFF, 31, 5, { 0, 0, 1, 0, 1 },
-      { "Hush now, little plush", "the stars are fluffy too", "sleep tight, sleep tight",
+      { "Hush now, little plushie", "the stars are fluffy too", "sleep tight, sleep tight",
         "the moon is a pillow", "sleep tight, sleep tight", "", "", "" } },
     { "Mosh Pit Picnic", "Fast hardcore punk, bring a blanket", 13, 4, 184, 0, TC_BAND,
       CHOIR_RISERS, 0xFFFF, 47, 6, { 0, 1, 0, 1, 2, 1 },
       { "Ants in my sandwich", "mosh pit picnic!", "spill the lemonade", "mosh pit picnic!",
         "jump in the potato salad", "mosh pit picnic!", "", "" } },
-    { "Doom of Cupcakes", "Slow doom metal about dessert", 14, 4, 66, 0, TC_BAND, CHOIR_RISERS,
+    { "Doom Cupcakes", "Slow doom metal about dessert", 14, 4, 66, 0, TC_BAND, CHOIR_RISERS,
       0xFFFF, 66, 6, { 3, 0, 1, 0, 1, 1 },
-      { "", "The frosting is black", "doom of cupcakes", "the sprinkles scream",
+      { "", "The frosting is black", "doom of cupcakes", "the sprinkles all scream",
         "doom of cupcakes", "doom of cupcakes!", "", "" } },
     { "Organ of Gloom", "Gothic organ for candlelit nights", 12, 9, 124, 0, TC_BAND,
       CHOIR_SECTIONS, 0xFFFF, 13, 7, { 3, 0, 0, 1, 2, 1, 3 },
-      { "", "Candles in the attic", "bats knit me a scarf", "gloom, sweet gloom",
-        "my heart is a cobweb", "gloom, sweet gloom", "", "" } },
+      { "", "Candles in the attic", "the bats knit me a scarf", "gloom, sweet sweet gloom",
+        "my heart is a cobweb", "gloom, sweet sweet gloom", "", "" } },
     { "Hellvile Flow", "A laid-back hip-hop beat", 1, 2, 86, 1, TC_BAND, CHOIR_RISERS,
       0xFFFF, 86, 8, { 3, 0, 0, 1, 0, 1, 2, 1 },
-      { "", "Yo, it's the Hellvile crew", "imps on the corner", "flow, flow, Hellvile flow",
-        "brimstone bagels hot", "flow, flow, Hellvile flow", "drop the beat, drop it",
+      { "", "Yo, it's the Hellvile crew", "imps chill on the corner", "flow, flow, Hellvile flow",
+        "brimstone bagels so hot", "flow, flow, Hellvile flow", "drop the beat, drop it",
         "flow, flow, Hellvile flow" } },
     { "Park United!", "Festival anthem: both districts sing", 7, 7, 110, 0, TC_PARK,
       CHOIR_SEMICIRCLE, 0xFFFF, 777, 8, { 3, 0, 0, 1, 0, 1, 2, 1 },
-      { "", "Hillvile on the left side", "Hellvile on the right", "tear the wall down, sing!",
-        "imps and bunnies dance", "tear the wall down, sing!", "one park, one big heart",
+      { "", "Hillvile on the left side", "Hellvile on the right side", "tear the wall down, sing!",
+        "imps and bunnies all dance", "tear the wall down, sing!", "one park, one big heart",
         "tear the wall down, sing!" } },
     { "Hymn of Cuddles", "For the Church of St. Cuddles", 10, 0, 76, 0, TC_CHURCH,
       CHOIR_SECTIONS, 0xFFFF, 316, 6, { 0, 1, 0, 1, 2, 1 },
-      { "Blessed be the fluff", "hallelujah, hugs!", "holy water, warm milk",
+      { "Blessed be the fluffy paws", "hallelujah, hugs!", "holy water, warm milk",
         "hallelujah, hugs!", "keep the demons cozy", "hallelujah, hugs!", "", "" } },
     { "Yo Ho Hellvile", "A sea shanty for the Lake of Fire", 9, 2, 102, 0, TC_BAND,
       CHOIR_RISERS, UL_STUDIO_TPL_SHANTY, 99, 6, { 0, 1, 0, 1, 2, 1 },
@@ -1065,17 +1068,17 @@ static const Template templates[STUDIO_TEMPLATES] = {
         "drive into the dark", "drive into the dark", "", "" } },
     { "Cat Cafe Jazz", "Swingy jazz with a latte", 5, 5, 112, 0, TC_BAND, CHOIR_SEMICIRCLE,
       UL_STUDIO_TPL_JAZZ, 451, 6, { 0, 1, 0, 1, 2, 1 },
-      { "Purring by the window", "scoobie doo, meow", "foam art of a fish",
+      { "Purring by the window", "scoobie doo, meow", "foam art of a fishy",
         "scoobie doo, meow", "the piano has fleas", "scoobie doo, meow", "", "" } },
     { "Disco Inferno", "Four on the floor, in Hellvile", 8, 9, 120, 1, TC_BAND, CHOIR_RISERS,
       UL_STUDIO_TPL_DISCO, 1977, 8, { 3, 0, 0, 1, 0, 1, 2, 1 },
-      { "", "The dance floor is lava", "glitter on my horns", "burn baby, boogie!",
-        "imps in platform shoes", "burn baby, boogie!", "spin me round, demon",
+      { "", "The dance floor is lava", "glitter on both my horns", "burn baby, boogie!",
+        "imps in their platform shoes", "burn baby, boogie!", "spin me round, demon",
         "burn baby, boogie!" } },
     { "Forge of Clank", "Industrial anvils and chains", 15, 4, 134, 1, TC_BAND, CHOIR_PYRAMID,
       UL_STUDIO_TPL_FORGE, 1313, 6, { 3, 0, 1, 0, 1, 1 },
-      { "", "Hammer on the anvil", "clank clank clank!", "Rivet welds a heart",
-        "clank clank clank!", "clank clank clank!", "", "" } },
+      { "", "Hammer on the anvil", "clank clank clank clank!", "Rivet welds a big heart",
+        "clank clank clank clank!", "clank clank clank clank!", "", "" } },
 };
 
 const char *studio_template_name(int t) { return (t >= 0 && t < STUDIO_TEMPLATES) ? templates[t].name : ""; }
@@ -1158,4 +1161,5 @@ void studio_template_load(DoomoSong *s, int t)
         s->line_singers[4] = hill | hell;
         s->line_singers[6] = hell ? hell : 0;
     }
+    song_sanitize(s);
 }

@@ -628,7 +628,7 @@ void dream_draw_bedroom(int id, const DreamCast *c, int expr, uint32_t t, int sh
     uint8_t wall2 = edgy ? PAL_RAMP(RAMP_VAPE, 2) : PAL_RAMP(RAMP_SKY, 2);
     uint8_t quilt = PAL_PAINT(c->color, 1), quilt_d = PAL_PAINT(c->color, 0), quilt_l = PAL_PAINT(c->color, 2);
     int bx = sw * 58 / 100, bw = big ? 150 : 112, by = fy - (big ? 30 : 22);
-    int sx = shake ? (int)(t & 1) * 2 - 1 : 0;
+    int sx = shake && opt_get(OPT_SCREEN_SHAKE) ? (int)(t & 1) * 2 - 1 : 0;
     /* walls: wallpaper stripes with little stars / skulls */
     plat_rect(0, 0, sw, fy, wall);
     for (x = 8; x < sw; x += 16) plat_rect(x, 0, 4, fy, wall2);
@@ -729,10 +729,16 @@ void dream_draw_bubble_in(int id, int t, int total, uint32_t clock)
             ui_fill_circle(hx + 8 + k * 9, hy - k * 10, 2 + k * 2, PAL_PAINT(PAINT_WHITE, 2));
     }
     if (t > 18) {
-        int p = (t - 18) * 256 / (total - 18), r = 10 + (sw + sh) * p / 256;
+        int p = (t - 18) * 256 / (total - 18), r = 8 + (sw + sh) * p / 256 * p / 256;
         int cx = hx + 40 + (sw / 2 - hx - 40) * p / 256, cy = hy - 34 + (sh / 2 - hy + 34) * p / 256;
         ui_fill_circle(cx, cy, r + 2, PAL_RAMP(RAMP_VAPE, 4));
-        ui_fill_circle(cx, cy, r, PAL_RAMP(RAMP_PASTEL_PINK, 6));
+        ui_fill_circle(cx, cy, r, PAL_RAMP(RAMP_PASTEL_PINK, 7));
+        /* a glimpse of the dream inside */
+        if (r > 16) {
+            ui_fill_ellipse(cx - r / 3, cy + r / 4, r / 3, r / 8 + 1, PAL_PAINT(PAINT_WHITE, 2));
+            ui_fill_ellipse(cx + r / 3, cy - r / 4, r / 4, r / 10 + 1, PAL_PAINT(PAINT_WHITE, 2));
+            ui_fill_circle(cx - r / 3, cy - r / 3, r / 10 + 1, PAL_RAMP(RAMP_VAPE, 6));
+        }
         for (k = 0; k < 6; k++)
             ui_sparkle(cx + (int)((fx_cos(k * 682 + t * 40) * r) >> 17), cy + (int)((fx_sin(k * 682 + t * 40) * r) >> 17),
                        (int)(clock / 2 + (uint32_t)k * 3) & 15, PAL_WHITE);
@@ -786,7 +792,7 @@ void dream_draw_vignette(int v, const DreamCast *c, int t, int creep, int nightm
     int ground = sh - (big ? 46 : 36);                 /* above the caption */
     int sc = big ? 2 : 1;
     uint32_t tt = (uint32_t)t;
-    int shake = nightmare && creep >= 12 ? (int)(tt & 2) - 1 : 0;
+    int shake = nightmare && creep >= 12 && opt_get(OPT_SCREEN_SHAKE) ? (int)(tt & 2) - 1 : 0;
     /* most dreams stand on a surreal checkerboard floor */
     if ((0xB38Bu >> v) & 1u)    /* vignettes 0,1,3,7,8,9,12,13,15 */
         dream_floor(ground - (big ? 16 : 12), creep, nightmare, tt, PAL_PAINT(c->color, 2), PAL_PAINT(PAINT_WHITE, 2));

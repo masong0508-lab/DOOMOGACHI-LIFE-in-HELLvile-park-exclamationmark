@@ -13,7 +13,7 @@ release
 wait 4
 shot manual_bonk
 press START
-wait 10
+wait 18
 shot paused
 press START
 press B

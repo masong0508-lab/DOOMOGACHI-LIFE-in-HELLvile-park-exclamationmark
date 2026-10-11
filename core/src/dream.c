@@ -431,7 +431,7 @@ static void dream_draw(void)
                 ui_sparkle(sw / 2 + (int)((fx_cos(k * 512 + D.st_t * 90) * r) >> 16),
                            sh / 2 + (int)((fx_sin(k * 512 + D.st_t * 90) * r) >> 17), (D.st_t + k) & 15,
                            PAL_PAINT(PAINT_LEMON, 2));
-        } else {
+        } else if (D.state == DS_DREAM) {
             caption_box(D.cap, D.split, t, creep, nm, 0);
         }
         /* dream journal badge */

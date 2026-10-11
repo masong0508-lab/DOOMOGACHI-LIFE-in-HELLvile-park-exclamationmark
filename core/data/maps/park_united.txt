@@ -21,7 +21,7 @@ cell i floor=INFECTED_GRASS ceil=sky
 cell ; floor=SLIME ceil=sky
 cell : floor=PATH ceil=sky
 cell k floor=HELL_ROCK ceil=sky
-cell = floor=COBBLE ceil=sky
+cell = floor=TILE_FLOOR ceil=sky
 cell c floor=CARPET ceil=sky
 cell P floor=PENTAGRAM_FLOOR ceil=sky light=13
 cell ~ floor=WATER ceil=sky flags=water fh=-2
@@ -33,11 +33,11 @@ cell Z wall=RUST_METAL floor=CHAINS ch=6   # a stub of the old Wall
 cell F wall=PICKET_FENCE floor=WOOD_FLOOR ch=2
 cell X wall=CANDY_STRIPE floor=CANDY_STRIPE ch=10   # the Unity Stage
 cell C wall=CAFE_FRONT floor=ROOF_TILES ch=10
-cell S wall=SHOP_FRONT floor=SKULL_MOSAIC ch=10
+cell S wall=SHOP_FRONT floor=CANDY_STRIPE ch=10
 cell O wall=CLOUD_PUFF floor=CLOUD_PUFF ch=8
 cell U wall=VAPE_CLOUD_WALL floor=VAPE_CLOUD_WALL ch=8
 cell 0 wall=CAFE_FRONT floor=ROOF_TILES ch=10 tag=89   # door: STALLS
-cell 1 wall=SHOP_FRONT floor=SKULL_MOSAIC ch=10 tag=89   # door: STALLS
+cell 1 wall=SHOP_FRONT floor=CANDY_STRIPE ch=10 tag=89   # door: STALLS
 cell 2 wall=CANDY_STRIPE floor=CANDY_STRIPE ch=10 tag=88   # door: STAGE
 cell 3 wall=DOOR_CUTE floor=CHAINS ch=6 tag=78   # door: WALL_GATE (to the towns)
 cell s floor=CARPET ceil=sky flags=trigger tag=132 light=14   # in front of the stage

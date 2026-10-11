@@ -137,8 +137,11 @@ press A
 wait 7
 shot chorus
 press B
-wait 10
+wait 20
+expect-scene CONFIRM
 shot stop_confirm
+press LEFT
 press A
 wait 100
+expect-scene CONCERT
 shot results

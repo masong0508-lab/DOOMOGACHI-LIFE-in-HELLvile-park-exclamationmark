@@ -165,7 +165,7 @@ typedef struct { int x, y, w, floor; } StageBox;
 static int row_sp(const StageBox *b, int inrow)
 {
     int sp = b->w >= 280 ? 26 : 19;
-    if (inrow > 1) sp = DOOMO_MIN(sp, (b->w - 16) / (inrow - 1));
+    if (inrow > 1) sp = DOOMO_MIN(sp, (b->w - 24) / (inrow - 1));
     return sp;
 }
 
@@ -253,7 +253,9 @@ static void draw_wall(int sw, int top, int floor, int t, int beat)
         for (x = 10; x < sw - 6; x += 16) {
             int d = (x > sw / 2 ? x - sw / 2 : sw / 2 - x) / 16 + (y - top) / 14;
             int lit = ((t / 4 - d) & 7) == 0 || (beat && d < 3);
-            ui_heart_flat(x, y, 3, lit ? PAL_PAINT(PAINT_BUBBLEGUM, 2) : PAL_RAMP(RAMP_VAPE, 3));
+            /* only the lit LEDs are hearts: the rest are cheap dots (GBA) */
+            if (lit) ui_heart_flat(x, y, 3, PAL_PAINT(PAINT_BUBBLEGUM, 2));
+            else { plat_rect(x - 2, y - 1, 2, 2, PAL_RAMP(RAMP_VAPE, 3)); plat_rect(x + 1, y - 1, 2, 2, PAL_RAMP(RAMP_VAPE, 3)); plat_rect(x - 1, y + 1, 3, 1, PAL_RAMP(RAMP_VAPE, 3)); }
         }
 }
 
@@ -498,13 +500,23 @@ void tab_stage_draw(StRect r)
                 PAL_PAINT(PAINT_LEMON, 2), PAL_PAINT(PAINT_BLOOD, 0));
     for (i = 0; i < SONG_SINGERS; i++)
         if (song_singer_id(SS, i) >= 0) { slots[n] = (uint8_t)i; secs[n] = (uint8_t)song_singer_section(SS, i); n++; }
-    doomo_snprintf(buf, sizeof(buf), "%s  " STR_ICON_HEART "  %d singer%s  " STR_ICON_HEART "  %s",
-                   doomo_music_names[SS->genre % MUSIC_COUNT], n, n == 1 ? "" : "s",
-                   doomo_choir_layout_names[SS->choir_layout % CHOIR_LAYOUT_COUNT]);
+    if (wide)
+        doomo_snprintf(buf, sizeof(buf), "%s  " STR_ICON_HEART "  %d singer%s  " STR_ICON_HEART "  %s",
+                       doomo_music_names[SS->genre % MUSIC_COUNT], n, n == 1 ? "" : "s",
+                       doomo_choir_layout_names[SS->choir_layout % CHOIR_LAYOUT_COUNT]);
+    else
+        doomo_snprintf(buf, sizeof(buf), "%d singer%s " STR_ICON_HEART " %s", n, n == 1 ? "" : "s",
+                       doomo_choir_layout_names[SS->choir_layout % CHOIR_LAYOUT_COUNT]);
     ui_text_center(r.x + r.w / 2, r.y + 30, buf, PAL_PAINT(PAINT_LAVENDER, 2));
-    /* the line-up */
-    b.x = r.x + 10; b.w = r.w - 20; b.floor = r.y + r.h - (wide ? 34 : 26); b.y = r.y + 40;
-    plat_rect(r.x + 8, b.floor, r.w - 16, 3, PAL_RAMP(RAMP_WOOD, 5));
+    /* the line-up on a little stage between two curtains */
+    b.x = r.x + 18; b.w = r.w - 36; b.floor = r.y + r.h - (wide ? 40 : 28); b.y = r.y + 40;
+    plat_rect(r.x + 8, b.floor, r.w - 16, r.y + r.h - 9 - b.floor, PAL_RAMP(RAMP_WOOD, 4));
+    plat_rect(r.x + 8, b.floor, r.w - 16, 1, PAL_RAMP(RAMP_WOOD, 6));
+    for (i = 0; i < 3; i++) {
+        plat_rect(r.x + 8 + i * 4, r.y + 9, 4, b.floor - r.y - 9, PAL_PAINT(PAINT_BLOOD, (i & 1) ? 0 : 1));
+        plat_rect(r.x + r.w - 12 - i * 4, r.y + 9, 4, b.floor - r.y - 9, PAL_PAINT(PAINT_BLOOD, (i & 1) ? 0 : 1));
+    }
+    spot(r.x + r.w / 2 + ui_wave(t, 120, r.w / 5), r.x + r.w / 2, r.y + 36, b.floor, PAL_PAINT(PAINT_LEMON, 2));
     for (k = 0; k < n; k++) {
         int x, y;
         place(SS->choir_layout, k, n, &b, secs, &x, &y);
@@ -514,7 +526,7 @@ void tab_stage_draw(StRect r)
     if (!n) ui_text_center(r.x + r.w / 2, b.floor - 20, "No singers yet: an instrumental!", PAL_GRAY_L);
     {
         int pulse = ui_wave(t, 30, 1);
-        ui_button(r.x + r.w / 2 - 50, r.y + r.h - 22 - pulse, 100, STR_ICON_A " Raise the curtain!", 1, WIN_CUTE);
+        ui_button(r.x + r.w / 2 - 60, r.y + r.h - 23 - pulse, 120, STR_ICON_A " Raise the curtain!", 1, WIN_CUTE);
     }
     if (studio_stats.performed) {
         doomo_snprintf(buf, sizeof(buf), "Shows: %d  Best choir: %d", studio_stats.performed,

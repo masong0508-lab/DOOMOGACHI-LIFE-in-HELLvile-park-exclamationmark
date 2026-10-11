@@ -199,11 +199,15 @@ TEST(concert_export_to_song_format)
                 if (t == 3) CHECK(v < SONG_DRUM_COUNT);
                 else CHECK(v < 128);
             }
-    for (i = 0; i < SONG_LYRIC_LINES; i++) CHECK_STR(d.lyrics[i], s.lines[i]);
+    for (i = 0; i < SONG_LYRIC_LINES; i++) {
+        static const uint8_t pair[SONG_LYRIC_LINES] = { 0, 2, 4, 6, 8, 10, 4, 6 };
+        CHECK(strlen(d.lyrics[i]) <= SONG_LYRIC_LEN - 1);
+        CHECK(strncmp(d.lyrics[i], s.lines[pair[i]], strlen(s.lines[pair[i]])) == 0);
+        CHECK_EQ_U(d.line_singers[i], c.line_mask[pair[i]] | c.line_mask[pair[i] + 1]);
+    }
     CHECK_EQ(d.singer[0], 77);
     CHECK_EQ(d.singer[11], c.ids[11]);
     CHECK_EQ(d.singer[12], SONG_NO_SINGER);
-    CHECK_EQ_U(d.line_singers[4], c.line_mask[4]);
     CHECK_EQ(d.choir_layout, CHOIR_PYRAMID);
     CHECK_EQ_U(d.seed, s.seed);
     /* the tune survives: the chorus' first note is the lead track's */
@@ -361,6 +365,16 @@ TEST(concert_scene_full_show)
     tap(BTN_A);                                    /* Save Single */
     CHECK_EQ(concert_single_count(), 1);
     CHECK(unlock_has(UL_PART_SPARKLE_EYES));
+    /* Edit in Studio: the song goes into the song book, the studio opens */
+    if (scene_by_name("STUDIO")) {
+        int slot = song_book_free_slot();
+        tap(BTN_RIGHT);
+        tap(BTN_A);
+        CHECK(scene_top() == scene_by_name("STUDIO"));
+        CHECK(slot >= 0 && (doomo_song_book[slot].flags & SONGF_VALID));
+        CHECK(doomo_song_book[slot].singer[0] == 42);
+        CHECK(doomo_song_book[slot].lyrics[0][0] != 0);
+    }
 }
 
 TEST(concert_scene_parade_and_empty)
@@ -407,6 +421,41 @@ TEST(dream_scene_nightmare_choices)
     CHECK_EQ(r->stat[STAT_ENERGY], 70);
     CHECK_EQ(r->stat[STAT_CORRUPTION], 10);
     CHECK(unlock_has(UL_PART_MESSY_HAIR));
+}
+
+/* the Music Studio's PERFORM tab puts its song on our stage */
+TEST(concert_studio_handoff)
+{
+    static ConcertSong cs;
+    static ConcertCast cc;
+    static DoomoSong d;
+    const char *dir = getenv("DOOMO_SHEETS");
+    int i, res;
+    premade_island();
+    concert_song_make(&cs, 77, 10, 0);
+    concert_cast_make(&cc, 77, CMODE_CHOIR, 9, CHOIR_SEMICIRCLE);
+    concert_song_export(&cs, &cc, &d);
+    for (res = 0; res < (dir ? 2 : 1); res++) {
+        if (dir) { nat_w = res ? 320 : 240; nat_h = res ? 240 : 160; portrait_cache_reset(); }
+        scene_set(&SCENE_DREAM, -2);
+        run(0, 3);
+        CHECK(concert_stage_song(&d));
+        CHECK(scene_top() == &SCENE_CONCERT);
+        run(0, 400);
+        CHECK(scene_top() == &SCENE_CONCERT);
+        CHECK(song_playing());
+        if (dir) {
+            char path[256];
+            snprintf(path, sizeof(path), "%s/studio_show_%dx%d.png", dir, nat_w, nat_h);
+            nat_png_write(path, nat_fb, nat_w, nat_h, 2);
+        }
+        for (i = 0; i < 6000 && scene_top() == &SCENE_CONCERT; i++) run(0, 1);
+        CHECK(scene_top() == &SCENE_DREAM);         /* back where we came from */
+        CHECK(!song_playing());
+    }
+    nat_w = 240; nat_h = 160;
+    d.flags = 0;
+    CHECK(!concert_stage_song(&d));                 /* not a valid song */
 }
 
 /* DOOMO_LYRICS=1 tests/ concert_lyrics_dump: print a few songs */

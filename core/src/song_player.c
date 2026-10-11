@@ -318,6 +318,18 @@ static int blend2(char a, char b)
     return 0;
 }
 
+/* Two vowels that are sung apart: pi-a-no, li-on, ne-on, du-al (but not
+ * na-tion, spe-cial, peo-ple, guard, quick). i is the second vowel. */
+static int hiatus(const char *w, int i, int ws)
+{
+    char a = lc(w[i - 1]), b = lc(w[i]), p = i - 2 >= ws ? lc(w[i - 2]) : 0;
+    if (a == 'i' && (b == 'a' || b == 'o' || b == 'u'))
+        return p && p != 'c' && p != 't' && p != 's' && p != 'g' && p != 'x';
+    if (a == 'e' && b == 'o') return p != 'p' && p != 'g';
+    if (a == 'u' && (b == 'a' || b == 'o')) return p && p != 'q' && p != 'g';
+    return 0;
+}
+
 /* Syllables of one word [ws, we): appends starts (the first `max`), returns
  * the new count. */
 #define PUT(x) do { if (n < max) starts[n] = (uint8_t)(x); n++; } while (0)
@@ -332,7 +344,8 @@ static int word_syllables(const char *w, int ws, int we, uint8_t *starts, int n,
     for (i = ws; i < we && ng < 16;) {
         if (vowel_at(w, i, ws)) {
             gs[ng] = i;
-            while (i < we && vowel_at(w, i, ws)) i++;
+            i++;
+            while (i < we && vowel_at(w, i, ws) && !hiatus(w, i, ws)) i++;
             ge[ng++] = i;
         } else {
             i++;
@@ -342,14 +355,16 @@ static int word_syllables(const char *w, int ws, int we, uint8_t *starts, int n,
         char last = lc(w[we - 1]);
         int gl = ng - 1, len = ge[gl] - gs[gl];
         /* silent final e (cake, fire) - but not consonant + "le" (bubble) */
-        if (last == 'e' && len == 1 && gs[gl] == we - 1 && gs[gl] - 1 > ge[gl - 1]) {
+        if (last == 'e' && len == 1 && gs[gl] == we - 1 && gs[gl] > ge[gl - 1]) {
             int le = lc(w[we - 2]) == 'l' && !vowel_at(w, we - 3, ws) && lc(w[we - 3]) != 'l';
             if (!le) ng--;
         } else if (len == 1 && gs[gl] == we - 2 && lc(w[gs[gl]]) == 'e' &&
                    gs[gl] - 1 >= ge[gl - 1]) {
             /* -es / -ed endings are usually silent (cakes, loved) */
             char end = lc(w[we - 1]), pre = lc(w[we - 3]);
-            if (end == 'd' && pre != 't' && pre != 'd') ng--;
+            int cle = pre == 'l' && we - 4 >= ws && !vowel_at(w, we - 4, ws) && lc(w[we - 4]) != 'l';
+            if (cle) { /* bubbles, candles, bubbled: the -le is sung */ }
+            else if (end == 'd' && pre != 't' && pre != 'd') ng--;
             else if (end == 's' && pre != 's' && pre != 'x' && pre != 'z' && pre != 'c' &&
                      pre != 'g' && !(pre == 'h' && (lc(w[we - 4]) == 'c' || lc(w[we - 4]) == 's')))
                 ng--;

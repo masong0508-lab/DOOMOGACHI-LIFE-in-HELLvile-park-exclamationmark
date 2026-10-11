@@ -117,15 +117,15 @@ static void resolve(void)
         a->st = b->st = CS_MATCHED;
         a->t = b->t = 0;
         mg_combo_hit(x, y);
-        mg_add_score(50, x, y - 10);
+        mg_add_score(80, x, y - 10);
         mg_burst(MGFX_HEART, card_x(S->first), card_y(S->first), 5, 30, PAL_PAINT(PAINT_ROSE, 2));
         mg_burst(MGFX_HEART, card_x(S->second), card_y(S->second), 5, 30, PAL_PAINT(PAINT_ROSE, 2));
         audio_sfx(SFX_LOVE);
         if (--S->pairs_left == 0) {
-            int bonus = mg.time_left / 30 * 10;
+            int bonus = mg.time_left / 30 * (10 + mg.tier * 5);
             mg_add_raw(bonus, mg_w() / 2, mg_h() / 2);
             if (!S->misses) {
-                mg_add_raw(500, mg_w() / 2, mg_h() / 2 + 12);
+                mg_add_raw(500 + mg.tier * 250, mg_w() / 2, mg_h() / 2 + 12);
                 mg_popup(mg_w() / 2, mg_h() / 2 - 14, "PERFECT RECALL!", 0, PAL_UI_GOLD);
                 mg_trophy(MG_UL_RECALL);
             }
@@ -263,7 +263,8 @@ static void matched(int i, int x, int y, int w, int h, int t)
     ui_fill_ellipse(x, y + h / 2 - 5, w / 3, 2, mg.hell ? PAL_RAMP(RAMP_BLOOD, 2) : PAL_PAINT(PAINT_MINT, 1));
     if (m->face >= 0) {
         const DoomoImage *img = bodyspr_image(m->face, 0, (t / 10 + i) & 1);
-        if (img) plat_image(x - img->w / 2, y + h / 2 - 4 - img->h + hop, img, 1, 0, 0);
+        int sc = h >= 52 ? 2 : 1;                    /* big cards: a big chibi */
+        if (img) plat_image(x - img->w * sc / 2, y + h / 2 - 4 - img->h * sc + hop, img, sc, 0, 0);
     } else {
         fallback_face(m->face, x, y + hop, mg_big() ? 9 : 8, t);
     }
@@ -275,13 +276,18 @@ static void mm_draw(void)
     int W = mg_w(), H = mg_h(), t = mg.play_t + mg.t, i, cw = cell_w(), ch = cell_h();
     int w = cw - 4, h = ch - 4, ox = mg.ox, oy = mg.oy;
     /* Madame Moth's velvet table with a fringe */
-    plat_rect(0, 0, W, H, mg.hell ? PAL_RAMP(RAMP_BLOOD, 0) : PAL_PAINT(PAINT_NAVY, 1));
     {
         int tx = W / 2 - S->cols * cw / 2 - 5, ty = card_y(0) - ch / 2 - 5, tw = S->cols * cw + 10, th = S->rows * ch + 10;
-        ui_round_rect(tx + ox, ty + 2 + oy, tw, th, 8, PAL_RAMP(RAMP_STONE, 0));
+        uint8_t bg = mg.hell ? PAL_RAMP(RAMP_BLOOD, 0) : PAL_PAINT(PAINT_NAVY, 1);
+        /* the room only around the table (no overdraw under it) */
+        plat_rect(0, 0, W, ty + oy + 8, bg);
+        plat_rect(0, ty + th + oy - 8, W, H - (ty + th + oy - 8), bg);
+        plat_rect(0, ty + oy + 8, tx + ox + 8, th - 16, bg);
+        plat_rect(tx + tw + ox - 8, ty + oy + 8, W - (tx + tw + ox - 8), th - 16, bg);
+        plat_rect(tx + 8 + ox, ty + th + oy, tw - 16, 2, PAL_RAMP(RAMP_STONE, 0));
         ui_round_rect(tx + ox, ty + oy, tw, th, 8, mg.hell ? PAL_RAMP(RAMP_BLOOD, 2) : PAL_PAINT(PAINT_GRAPE, 0));
         ui_round_rect(tx + 2 + ox, ty + 2 + oy, tw - 4, th - 4, 7, mg.hell ? PAL_RAMP(RAMP_BLOOD, 1) : PAL_PAINT(PAINT_VAPE_PURPLE, 0));
-        for (i = tx + 4; i < tx + tw - 4; i += 4) plat_rect(i + ox, ty + th + oy, 2, 3 + ((i / 4) & 1), PAL_UI_GOLD);
+        for (i = tx + 4; i < tx + tw - 4; i += 4) plat_rect(i + ox, ty + th + oy + 2, 2, 3 + ((i / 4) & 1), PAL_UI_GOLD);
     }
     for (i = 0; i < 10; i++) {                   /* floating moth-dust and stars */
         uint32_t hs = doomo_hash32((uint32_t)i * 6151u + 1u);

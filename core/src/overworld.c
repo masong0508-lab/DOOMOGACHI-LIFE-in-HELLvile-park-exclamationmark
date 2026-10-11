@@ -297,8 +297,10 @@ static int auto_events(void)
         return 0;
     }
     if (b >= BEAT_C1_PIP && b <= BEAT_C1_FRIENDS && pet_exists() && !story_flag(SF_PET_HINT)) {
+        char buf[48];
         story_set_flag(SF_PET_HINT, 1);
-        ui_toast(STR_ICON_HEART " @E follows you around!");
+        story_fmt(buf, sizeof(buf), STR_ICON_HEART " @E follows you around!");
+        ui_toast(buf);
         return 0;
     }
     if (b == BEAT_C3_NESTS && !story_flag(SF_INVASION_HINT) && ow.t > 30) {
@@ -681,8 +683,6 @@ static void build_billboards(void)
         frame = sprite_frames(spr) > 1 ? (int)((t / 5 + (uint32_t)i) % (uint32_t)sprite_frames(spr)) : 0;
         add_bb(x, y + 8 * OWQ, z, sprite_image(spr, frame), fl, 0);
     }
-    /* secret sparkles (twinkle now and then) */
-    for (cy = 0; cy < doomo_map.h && !ow.visit; cy++) { (void)cy; break; }
     ownpc_add_billboards(vx0, vy0, vx1, vy1);
     /* side quest spots */
     if (!ow.visit) {

@@ -272,7 +272,7 @@ void st_popup(const char *title, const char *const *items, int n, uint32_t lock,
               StudioPopDone done)
 {
     int i;
-    n = DOOMO_CLAMP(n, 1, 10);
+    n = DOOMO_CLAMP(n, 1, 8);
     studio.pop_title = title;
     for (i = 0; i < n; i++) studio.pop_items[i] = items[i];
     studio.pop_n = (uint8_t)n;
@@ -392,9 +392,11 @@ static const char *district_of(int id)
 
 void st_picker_draw(void)
 {
+    static const uint8_t sec_paint[SECTION_COUNT] = { PAINT_ROSE, PAINT_PEACH, PAINT_MINT, PAINT_SKY };
+    static const char sec_letter[SECTION_COUNT] = { 'S', 'A', 'T', 'B' };
     int sw = plat_screen_w(), sh = plat_screen_h(), wide = st_wide();
-    int rows = wide ? 9 : 5, w = wide ? 250 : 220, h = rows * 18 + 26, x = (sw - w) / 2, y = (sh - h) / 2;
-    int ids[9], i, mid = rows / 2, id;
+    int rows = wide ? 7 : 4, rh = 24, w = wide ? 250 : 220, h = rows * rh + 22, x = (sw - w) / 2, y = (sh - h) / 2 + 2;
+    int ids[7], i, mid = rows / 2, id, lw = w - 62;
     const UiStyle *st = ui_style(WIN_CREAM);
     plat_shade_rect(0, 0, sw, sh, 9);
     if (!ui_window_pop(x, y, w, h, WIN_CREAM, pk.t)) return;
@@ -403,30 +405,35 @@ void st_picker_draw(void)
     for (i = mid - 1; i >= 0; i--) ids[i] = next_alive(ids[i + 1], -1);
     for (i = mid + 1; i < rows; i++) ids[i] = next_alive(ids[i - 1], 1);
     for (i = 0; i < rows; i++) {
-        int yy = y + 14 + i * 18, sel = i == mid;
+        int yy = y + 10 + i * rh, sel = i == mid;
         const DoomoResident *r;
+        char sl[2] = { 0, 0 };
         id = ids[i];
         r = town_res(id);
         if (sel) {
-            ui_round_rect(x + 5, yy - 1, w - 64, 18, 4, st->accent);
-            ui_cursor(x + 7, yy + 5);
+            ui_round_rect(x + 5, yy, lw, rh - 1, 4, st->accent);
+            ui_cursor(x + 6, yy + 8);
         }
-        st_chibi(id, x + 18, yy - 5, 0, sel ? (int)(studio.t / 8) & 3 : 0, 0, 0);
-        ui_text(x + 38, yy + 1, st_name(id), sel ? PAL_WHITE : st->text);
+        st_chibi(id, x + 16, yy, 0, sel ? (int)(studio.t / 8) & 3 : 0, 0, 0);
+        ui_text(x + 36, yy + 3, st_name(id), sel ? PAL_WHITE : st->text);
+        ui_text(x + 36, yy + 12, district_of(id), sel ? ui_lighter(st->accent) : st->text_dim);
         if (r) {
             int sec = song_section_of_voice(r->voice);
-            ui_text(x + 38, yy + 9 - 1, district_of(id), sel ? ui_lighter(st->accent) : st->text_dim);
-            ui_text(x + w - 92, yy + 1, doomo_section_names[sec], sel ? PAL_WHITE : st->text_dim);
+            sl[0] = sec_letter[sec];
+            ui_round_rect(x + lw - 6, yy + 6, 9, 11, 3, PAL_PAINT(sec_paint[sec], 0));
+            ui_text(x + lw - 4, yy + 7, sl, PAL_WHITE);
+            if (wide) ui_text(x + lw - 12 - ui_text_width(doomo_section_names[sec]), yy + 7,
+                              doomo_section_names[sec], sel ? PAL_WHITE : st->text_dim);
         }
     }
     /* the chosen one, big */
     {
         const DoomoImage *img = portrait_image(studio.pick_id, EXPR_HAPPY);
-        int px = x + w - 54, py = y + h / 2 - 28 + ui_wave((int)studio.t, 40, 1);
+        int px = x + w - 52, py = y + h / 2 - 28 + ui_wave((int)studio.t, 40, 1);
         ui_round_rect(px - 2, py - 2, 52, 60, 6, st->fill_hi);
         if (img) plat_image(px, py, img, 1, 0, 0);
     }
-    ui_scroll_arrows(x + w / 2 - 30, y + 8, y + h - 6, 1, 1);
+    ui_scroll_arrows(x + lw / 2, y + 6, y + h - 6, 1, 1);
 }
 
 /* ====================================================================== */

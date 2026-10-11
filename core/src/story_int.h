@@ -136,6 +136,14 @@ enum { NPCF_FIXED = 1,     /* does not wander                            */
        NPCF_READY = 8,     /* side quest ready to hand in (heart)        */
        NPCF_DEMON = 16 };  /* id is a THING_* demon (invasion nests)     */
 int  script_cast(int map_id, StoryNpcSpot *out, int max);
+/* The overworld walked into chapter 3 demon nest `nest`. */
+void script_nest_encounter(int nest);
+/* Small talk finished (FRIENDS / WEIRD / PRISONERS / FESTIVAL counters). */
+void script_ambient_talked(int id, int new_friend);
+/* Price of an item in the story's mini shops. */
+int  story_item_price(int item);
+/* Add a billboard to the overworld's list (overworld.c). */
+void ow_add_billboard(int32_t x, int32_t y, int z, const DoomoImage *img, int flags, int light);
 
 /* ---- side quests (story_side.c) -------------------------------------------- */
 int  side_npc(int id);                    /* 1 if a side quest used the talk */
