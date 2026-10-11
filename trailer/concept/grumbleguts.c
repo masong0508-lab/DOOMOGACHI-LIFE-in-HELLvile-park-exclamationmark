@@ -390,8 +390,8 @@ static void frame(const char *title) {
     memcpy(frames[nframes++], rgb, sizeof rgb);
 }
 static void save_frames(const char *dir, const char *name) {
-    int cols = 3, rows = (nframes + 2) / 3, S = 2, W = TW * cols, H = TH * rows;
-    static uint8_t big[TW * 3 * 2 * TH * 2 * 2 * 3];
+    int cols = nframes < 3 ? nframes : 3, rows = (nframes + 2) / 3, S = nframes == 1 ? 4 : 2, W = TW * cols, H = TH * rows;
+    static uint8_t big[TW * 4 * TH * 4 * 3 * 2];
     char path[512];
     for (int y = 0; y < H * S; y++)
         for (int x = 0; x < W * S; x++) {
@@ -480,6 +480,34 @@ static void storyboard(const char *out) {
     bubble(60, 110, 82, "...that's hot."); tk_text_outline(150, 112, "(instantly mobbed)", PAL_UI_CREAM, LINE, 1);
     frame("POP (cute setting) + THE LAST LINE");
     save_frames(out, "gg_storyboard");
+
+    /* 7. CLOSE-UP: hands on the butt during the climb */
+    static const uint8_t bg[3] = { PAL_RAMP(RAMP_VAPE, 1), PAL_RAMP(RAMP_LAVA, 1), PAL_RAMP(RAMP_STONE, 3) };
+    tk_vgrad(0, 0, TW, TH, bg, 3);
+    /* belt edge across the top, then two enormous cheeks filling the frame */
+    tk_rect(0, 14, TW, 12, LEATHER); tk_frame(0, 14, TW, 12, LINE); studs(12, 19, TW - 12, 19, 9);
+    blob(84, 104, 70, 64, SKINM);
+    blob(176, 104, 70, 64, SKINM);
+    tk_line(130, 44, 130, 160, LINE); tk_line(131, 44, 131, 160, SKINM[1]);             /* cleft */
+    /* the hose disappears behind the near cheek (nothing anatomical shown) */
+    for (int i = 0; i < 6; i++) { tk_line(0, 128 + i, 60, 118 + i, PAL_RAMP(RAMP_SICK, 4 - (i == 0 || i == 5 ? 2 : 0))); }
+    tk_ellipse(60, 121, 4, 5, PAL_RAMP(RAMP_SICK, 2));
+    /* the culprit's two hands braced on the cheeks, cheeks squashing under them */
+    for (int h = 0; h < 2; h++) {
+        int hx = h ? 150 : 94, hy = h ? 96 : 92;
+        blob(hx, hy, 15, 11, (const uint8_t[]){ PAL_RAMP(RAMP_PEACH, 2), PAL_RAMP(RAMP_PEACH, 3), PAL_RAMP(RAMP_PEACH, 5), PAL_RAMP(RAMP_PEACH, 6), PAL_RAMP(RAMP_PEACH, 7) });
+        for (int f = 0; f < 4; f++) { tk_ellipse(hx - 12 + f * 8, hy - 11 - (f == 1 || f == 2 ? 3 : 0), 3, 7, PAL_RAMP(RAMP_PEACH, 5)); tk_ring(hx - 12 + f * 8, hy - 11 - (f == 1 || f == 2 ? 3 : 0), 3, LINE); }
+        tk_ellipse(hx + (h ? -16 : 16), hy + 2, 4, 6, PAL_RAMP(RAMP_PEACH, 5)); tk_ring(hx + (h ? -16 : 16), hy + 2, 4, LINE); /* thumb */
+        /* squash creases radiating from under the palm */
+        for (int c = 0; c < 4; c++) tk_line(hx - 18 + c * 12, hy + 14, hx - 22 + c * 14, hy + 26, SKINM[1]);
+    }
+    /* effort: motion lines, one bead of sweat, a squeak */
+    for (int i = 0; i < 3; i++) { tk_line(20, 60 + i * 6, 40, 56 + i * 6, PAL_UI_CREAM); tk_line(200, 60 + i * 6, 220, 56 + i * 6, PAL_UI_CREAM); }
+    tk_ellipse(120, 36, 2, 3, PAL_RAMP(RAMP_SKY, 6)); tk_px(120, 33, PAL_RAMP(RAMP_SKY, 6));
+    tk_text_outline(150, 40, "*squeak*", PAL_UI_CREAM, LINE, 1);
+    tk_text_outline(8, 140, "\"she'll hold.\"", PAL_UI_CREAM, LINE, 1);
+    frame("CLOSE-UP: hands on, hose going in behind the cheek");
+    save_frames(out, "gg_closeup");
 }
 
 int main(int argc, char **argv) {
