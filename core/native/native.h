@@ -35,6 +35,10 @@ extern int nat_stream_fail_at;          /* > 0: that stream write fails  */
 extern uint32_t nat_tone_calls, nat_sample_calls;
 extern int nat_last_sample;
 
+/* draw-call counters (runner "stats"): calls since start, per primitive */
+enum { NC_RECT, NC_TEXT, NC_IMAGE, NC_CHECKER, NC_SHADE, NC_LINE, NC_CLEAR, NC_VIEW, NC_N };
+extern uint32_t nat_calls[NC_N];
+
 /* PNG writer: 8bpp indexed image -> indexed PNG with the master palette,
  * optionally zoomed by an integer factor. Returns 1 on success. */
 int nat_png_write(const char *path, const uint8_t *pix, int w, int h, int zoom);

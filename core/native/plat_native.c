@@ -45,8 +45,11 @@ int plat_screen_h(void) { return nat_h; }
 void plat_begin_frame(void) { }
 void plat_end_frame(void) { ticks++; }
 
+uint32_t nat_calls[NC_N];
+
 void plat_clear(uint8_t color)
 {
+    nat_calls[NC_CLEAR]++;
     memset(nat_fb, color, (size_t)(nat_w * nat_h));
 }
 
@@ -61,6 +64,7 @@ static int clip(int *x, int *y, int *w, int *h)
 
 void plat_rect(int x, int y, int w, int h, uint8_t color)
 {
+    nat_calls[NC_RECT]++;
     int j;
     if (!clip(&x, &y, &w, &h)) return;
     for (j = 0; j < h; j++) memset(&nat_fb[(y + j) * nat_w + x], color, (size_t)w);
@@ -68,6 +72,7 @@ void plat_rect(int x, int y, int w, int h, uint8_t color)
 
 void plat_shade_rect(int x, int y, int w, int h, int level)
 {
+    nat_calls[NC_SHADE]++;
     int i, j;
     const uint8_t *map;
     level = DOOMO_CLAMP(level, 0, DOOMO_LIGHT_LEVELS - 1);
@@ -81,6 +86,7 @@ void plat_shade_rect(int x, int y, int w, int h, int level)
 
 void plat_checker(int x, int y, int w, int h, uint8_t color)
 {
+    nat_calls[NC_CHECKER]++;
     int i, j;
     for (j = 0; j < h; j++)
         for (i = j & 1; i < w; i += 2) nat_px(x + i, y + j, color);
@@ -88,6 +94,7 @@ void plat_checker(int x, int y, int w, int h, uint8_t color)
 
 void plat_line(int x0, int y0, int x1, int y1, uint8_t color)
 {
+    nat_calls[NC_LINE]++;
     int dx = x1 > x0 ? x1 - x0 : x0 - x1, sx = x0 < x1 ? 1 : -1;
     int dy = y1 > y0 ? y0 - y1 : y1 - y0, sy = y0 < y1 ? 1 : -1;
     int err = dx + dy, n = 0;
@@ -104,6 +111,7 @@ void plat_line(int x0, int y0, int x1, int y1, uint8_t color)
 
 void plat_text(int x, int y, const char *s, uint8_t color)
 {
+    nat_calls[NC_TEXT]++;
     int cx = x;
     if (!s) return;
     for (; *s; s++) {
@@ -125,6 +133,7 @@ void plat_text(int x, int y, const char *s, uint8_t color)
 void plat_image(int x, int y, const DoomoImage *img, int scale, int flags,
                 uint8_t color)
 {
+    nat_calls[NC_IMAGE]++;
     int ix, iy, w, h;
     if (!img || !img->pix || !img->w || !img->h) return;
     scale = DOOMO_CLAMP(scale, 1, 4);

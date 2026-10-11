@@ -39,6 +39,30 @@ static int failures;
 static const char *script_name = "(no script)";
 static int line_no;
 
+/* ui_raster.c (ui_internal.h): the UI shape cache's counters */
+void ur_cache_stats(int *used, int *entries, uint32_t *hits, uint32_t *misses,
+                    uint32_t *resets);
+
+/* "stats LABEL": draw calls per frame and UI shape cache activity since
+ * the previous "stats" (perf work: what a screen asks of the platform) */
+static void stats(const char *label)
+{
+    static uint32_t c0[NC_N], t0, h0, m0, r0;
+    static const char *const nm[NC_N] = { "rect", "text", "image", "checker", "shade",
+                                          "line", "clear", "view" };
+    uint32_t t = plat_ticks(), n = t - t0 ? t - t0 : 1, hits, misses, resets;
+    int used, ents, i;
+    ur_cache_stats(&used, &ents, &hits, &misses, &resets);
+    printf("stats %s: %u frames, per frame:", label, (unsigned)(t - t0));
+    for (i = 0; i < NC_N; i++) {
+        if (nat_calls[i] - c0[i]) printf(" %s %.1f", nm[i], (double)(nat_calls[i] - c0[i]) / n);
+        c0[i] = nat_calls[i];
+    }
+    printf(" | shape cache %d rects %d entries, hits %.1f misses %.1f resets %.2f\n", used, ents,
+           (double)(hits - h0) / n, (double)(misses - m0) / n, (double)(resets - r0) / n);
+    t0 = t; h0 = hits; m0 = misses; r0 = resets;
+}
+
 static void step(int n)
 {
     while (n-- > 0) {
@@ -197,6 +221,8 @@ static void run_line(char *line)
         printf("log:");
         for (i = 1; i < argc; i++) printf(" %s", argv[i]);
         printf("\n");
+    } else if (strcmp(cmd, "stats") == 0) {
+        stats(argc > 1 ? argv[1] : "");
     } else if (strcmp(cmd, "no-stubs") == 0) {
         if (stub_check("so far")) failures++;
     } else {
