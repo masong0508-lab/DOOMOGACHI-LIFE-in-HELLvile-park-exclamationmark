@@ -78,25 +78,32 @@ and a huge citizen creator. The full design is in
 <sub>Frames from the 78-second teaser trailer. The trailer is pixel animation drawn with the game's real palette; it is <b>not</b> captured gameplay.</sub>
 </div>
 
-## Status: in development
+## Status: playable alpha
 
-The project is honest about where it is. The engines, data and build
-pipeline are real and tested; most of the game's scenes are still being
-written.
+Everything below is in the GBA ROM and the PS1 disc that CI builds, and is
+covered by native unit tests, scripted playthroughs and headless emulator
+runs on both consoles.
 
 | Part | Status |
 |---|---|
-| Shared C99 core: scenes, UI toolkit, input, options, unlocks, town state, saves (CRC-checked) | **done**, native unit tests + scripted playthroughs |
-| Art pipeline: 256-colour palette, procedural textures, skies and sprites (all `const`, in ROM) | **done** |
-| The 1000 premade citizens (`core/data/roster/`, about 1500 relationships) | **done** |
-| Resident renderer: portraits, chibis, creator figures, third-person fighters | finishing now |
-| **GBA platform**: Mode 4, height raycaster (3D floors and ceilings, stairs, look up and down, lifts, doors, first and third person), 3D overworld, PSG + DirectSound audio, 128 KB flash saves | **done**, tested headless in mGBA |
-| **PS1 platform**: GTE polygon 3D engine, 3D overworld, low-poly 3D citizens, SPU ADPCM audio, memory card saves | **done**, tested headless in PCSX-Redux |
-| Life sim (needs, social life, possession, exorcism, Doomogachi) | in progress |
-| Shooter (maps, demons, combat, welding) | in progress |
-| Story mode (4 chapters, overworld maps, music) | in progress |
-| Citizen creator, Free Play scenes | in progress |
+| Shared C99 core: scenes, UI toolkit, input, options, unlocks, town state, CRC-checked saves | **done** |
+| Art pipeline: 256-colour palette, procedural textures, skies, sprites, portraits, chibis, creator figures, third-person fighters | **done** |
+| The 1000 premade citizens (500 Hillvile, 500 Hellvile, about 1500 relationships) | **done** |
+| **GBA**: Mode 4, height raycaster (3D floors/ceilings, stairs, lifts, doors, look up/down, first and third person), 3D overworld, PSG + DirectSound audio, 128 KB flash saves | **done** |
+| **PS1**: GTE polygon 3D engine, 3D overworld, low-poly citizens, SPU ADPCM audio, memory card saves, scene code streamed as CD overlays | **done** |
+| Life sim: needs, social life, romance, possession, exorcism, Doomogachi pet, graveyard, Monster Mode | **done** |
+| Shooter: 7 Hell Breach levels, 11 demon types, bosses, welding (39 frames, cute and brutal), arena modes | **done** |
+| Story mode: 4 chapters, overworld maps, cutscenes, 40+ side quests, credits parade | **done** |
+| Citizen creator and Free Play (title, island hub, apartments, roster, care, shop, news, options, unlocks) | **done** |
+| Fun Fair minigames, Concert Hall + choirs, Music Studio (lyrics + music editor, 25 singers), dreams, Library, fishing, cooking | **done** |
 | Teaser trailer (`trailer/`) | **done** |
+
+Performance (docs/GBA.md, docs/PS1.md): PS1 2D screens run at 29-30 fps
+after the speed pass, 3D at 28-30; GBA 3D at 19-29 fps, GBA title screen
+still 12-14 fps (next target). Designed but not yet built: see
+[docs/design/ROADMAP.md](docs/design/ROADMAP.md) (deep face/body
+customization and 150+ options, deeper story with the dream house and
+comic-timing engine, dynamic chiptune music with record scratches).
 
 **What you can play today:**
 
