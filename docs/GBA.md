@@ -250,6 +250,30 @@ would otherwise turn the read-modify-write into a byte store).
 All primitives clip against the screen and do nothing during the skipped
 catch-up ticks (`gba_nodraw`, see pacing).
 
+### Speed pass 2: measured (libmgba, `harness fps` / `profile`)
+
+The game ROM's title screen, which the user reported as very slow,
+measured with `gba/build/harness --script` (`fps` prints logic ticks/s,
+drawn frames/s and the CPU work per drawn tick):
+
+| scene | drawn fps | work / tick | hot spots (profile) |
+|-------|-----------|-------------|---------------------|
+| title, logo drop | 19-21 | 39 ms | |
+| title, idle | 13-14 | 55-57 ms | `vid_blit` 11%, chibi re-render (`capsule_plain`, `pc_finish_lines`, `sh_span`) 22%, `vid_rect_narrow` 9%, `vid_text` 8% (outline text = 5 passes), `gba_udivmod` 4% |
+| title, menu open | 11-12 | 62-66 ms | + `roster_find` 6% (now cached per parade turn) |
+
+The GBA title is not the shape-cache overflow the PS1 had (its scale-3
+letters fit the 640-rect pool, which is kept at that size for EWRAM's
+sake); it is bound by the two animated chibis (one sliced render step
+per tick, ~10 ms), the figure blits and ~1,000 small rects per frame.
+Candidates, by payoff: a run-list blit for cached figures (skip
+transparent runs instead of testing pixels), a `plat_text` outline pass
+drawn once from a dilated glyph mask, caching the static sky / hills
+layer and DMA-ing it, and replacing the `%` / `/` in the per-frame title
+maths with shifts and tables. The harness now also parses the core's
+`scene: set / push NAME` log lines, so `expect-scene` works in game-ROM
+scripts.
+
 ### Frame pacing
 
 The core logic runs at 30 Hz (`plat_begin_frame` / `plat_end_frame`, one

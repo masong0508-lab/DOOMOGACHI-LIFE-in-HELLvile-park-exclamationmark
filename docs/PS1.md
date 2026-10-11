@@ -552,6 +552,65 @@ with the core scripts: combat 25 fps (3D 27 ms), workshop 30, pet 23
 (CPU 43 ms), exorcism 19-27 (CPU 33-58 ms): the last two are bound by
 those modules' own drawing.
 
+### Speed pass 2 (game disc, PCSX-Redux, no overclock)
+
+The title screen had regressed to **11.6 fps** (CPU 81 ms): its ten
+scale-4 logo letters alone are ~700 rects, so the UI shape cache (sized
+for the GBA's 240x160 title, 640 rects) overflowed and was reset every
+frame, re-rasterising every big glyph twice per frame (`text_emit` was 60%
+of the frame). The cache is now 4096 rects / 160 entries on the PS1 and
+native builds (16 KB; the GBA keeps 640), and the title no longer runs
+`roster_find()` twice per frame for the waving pair. Measured with the
+harness `fps` command over 60-120 frames per scene (`prof` samples the PC
+once per vsync; `harness/prof.py` tabulates them):
+
+| scene | before | after | notes |
+|-------|--------|-------|-------|
+| title, logo drop | 14.9 | **29.5** | |
+| title, idle | 11.6 | **29.2** | CPU 81 ms -> ~25 ms |
+| title, menu open | 11.9 | **28.6** | |
+| new island | 22.5 | | 910 rects, 43 shade rects / frame |
+| island hub | 22.0 | | 2,030 rects; `rect_slow` + `plat_rect` 25% |
+| island hub, town hall menu | 16.2 | | + chibi re-renders (`pc_*` 15%) |
+| apartments / roster / resident / shop / news / options | 30 | 30 | idle 50-80% of the frame |
+| creator | 25.7 | | 2,730 rects |
+| library, gallery, bestiary | 29.5-30 | | |
+| minigame gallery (play) | 29.9 | | 2,390 rects, `fx_isqrt` 10% |
+| whack | 29.2 | | |
+| studio | 30 | | |
+| concert (band) | 19.9 | | 4,600 rects + 247 `plat_checker` rows + 100 lines; display list 48 KB of 56 KB |
+| pet | 30 | | |
+| dialogue | 20.2 | | chibi re-renders + hearts / ellipses |
+| exorcism | 25.2 | | |
+| dream | 30 | | |
+| combat FP / TP (cellar) | 30 / 28.6 | | 3D 9-27 ms |
+| Demon Arena | 29.5 | 28.6 | sky now drawn (below) |
+| Hell Breach levels 2-6, FP | 28.8-29.8 | 28.4 | |
+| story overworld | 29.3 | | |
+
+Where the remaining 2D time goes (profiles of the slow scenes, all CPU
+bound, GPU wait 0): the platform's per-rect cost (`rect_slow`,
+`plat_rect`, `gfx2d_flush`: 15-40% of a frame at 2,000-4,600 rects),
+`fx_isqrt` from `ui_fill_ellipse` / `nested_bands` (4-14%: the bit-serial
+square root per ellipse row), chibi / portrait re-renders for animation
+phases (`pc_capsule`, `sh_span`, `pc_finish_lines`, `scan_transitions`:
+up to 30% in the concert and dialogue - the 18 KB portrait pool holds ~4
+figures, fewer than the phases cycling on screen), and `plat_checker`
+(one `DR_TPAGE` + one semi-transparent TILE per row). Next steps, in
+order of payoff: image-backed shape cache entries on the PS1 (a cached
+shape drawn two frames running becomes ONE `SPRT` from the VRAM image
+cache instead of tens of TILEs), a bigger portrait pool here, an
+incremental ellipse rasteriser, and whole-rect checker tiles.
+
+**Outdoor skies were black in every 3D view** on the game disc (Demon
+Arena, the Hell Breach levels). The packed sky is decoded into the frame's
+display-list memory and uploaded from there, 52 KB in all; `r3_sky()` runs
+after the cells' polygons, by which point less than that is free, so the
+upload failed silently every frame. `view3d.c` now fetches the sky
+(`vram_sky`) at the top of `plat_view3d()`, while the list is empty, once
+a map has shown sky cells; the upload then happens once per sky frame as
+designed (verified with a harness screenshot of the arena).
+
 ## 13. Notes for the core
 
 * The 2D layer is fastest with few, large rectangles: one `plat_rect` per
