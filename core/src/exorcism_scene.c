@@ -677,7 +677,7 @@ static void draw_tools(uint32_t t)
     int x = W() - w - (BIG() ? 14 : 4), y = BIG() ? 18 : 4, i;
     char buf[48];
     if (!ui_window_pop(x, y, w, h, WIN_CREAM, (int)X.st_t)) return;
-    ui_text(x + 8, y + 5, "Ritual tools", ui_style(WIN_CREAM)->title);
+    ui_text(x + 8, y + 4, STR_ICON_CROSS " Ritual tools", PAL_UI_PINK_D);
     for (i = 0; i <= EXI_COUNT; i++) {
         int ry = y + 18 + i * rowh, sel = X.sel == i;
         if (sel) {
@@ -965,7 +965,7 @@ static void exo_draw(void)
         break;
     }
     case ST_RESULT: {
-        int hy = fy - (big ? 48 : 34);
+        int hy = fy - (big ? 30 : 30);
         int expr = X.success ? EXPR_HAPPY : EXPR_POSSESSED;
         int tries = X.practice ? 3 : exorcism_tries_left(X.host);
         draw_host_at(w / 2, hy, big ? 2 : 1, expr, t, &hw, &hh);
@@ -993,7 +993,7 @@ static void exo_draw(void)
         }
         {
             char s[64];
-            doomo_snprintf(s, sizeof(s), "Prayer %d%%  Water %d%%  Name %s  Odds %d%%",
+            doomo_snprintf(s, sizeof(s), "Prayer %d%%  Water %d%%  Name %s  Chance %d%%",
                            X.rhythm, X.water, X.name_ok ? STR_ICON_CHECK : STR_ICON_X, X.chance);
             if (!big) doomo_snprintf(s, sizeof(s), "Pray %d%% Water %d%% Name %s",
                                      X.rhythm, X.water, X.name_ok ? STR_ICON_CHECK : STR_ICON_X);
