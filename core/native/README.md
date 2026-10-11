@@ -74,7 +74,12 @@ draws the same maps as GTE polygons.
   roof it closes the column. Under open sky the block is as tall as its
   `ceil_h` (if above its `floor_h`, else 256 units), and the ray continues
   across its roof (texture `floor_tex`, else `wall`), so taller buildings
-  behind it stay visible. Cells outside the map are solid.
+  behind it stay visible. Cells outside the map are solid (256 units
+  under the sky, with the sky above them: the ray ends there).
+* A roofed open cell entered from under the sky draws its `ceil_tex` as a
+  face from its ceiling up to its roof - the tallest `ceil_h` of its solid
+  4-neighbours (if above their `floor_h`), else 256 units above the floor
+  it is seen from - and the sky above the roof (as the GBA renderer).
 * Light: the cell's `light` (0 = map ambient) minus 1 level per 128 world
   units of distance (minimum 1), x-side faces 1 darker, through
   `doomo_colormap`. Texture `v` is anchored to world height (walls line up),

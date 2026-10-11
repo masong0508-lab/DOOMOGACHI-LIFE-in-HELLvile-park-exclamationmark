@@ -1,9 +1,9 @@
 # The Demon Arena - free play survival (owner: action).
 # A hellish colosseum under the open sky: stands around the edge (stairs
-# down on all four sides, a roofed gallery in the north with goodies), the
-# sand floor with cover pillars and low walls, a lava ring around a raised
-# island (armor) reached by four grate bridges. The arena waves spawn at
-# the four corner portals and the THING_SPAWNER marks.
+# down on all four sides, a pillared, roofed gallery in the north with
+# goodies), the sand floor with cover pillars and low walls, a lava ring
+# around a raised island (armor) reached by four grate bridges. The arena
+# waves spawn at the four corner portals and the THING_SPAWNER marks.
 # Legend and overlays: see README.md. Compiled by tools/mapc.py.
 map arena
 title "The Demon Arena"
@@ -23,11 +23,12 @@ cell = floor=GRATE ceil=sky fh=0 light=13
 cell i floor=PENTAGRAM_FLOOR ceil=sky fh=1 light=14
 cell O floor=VAPE_CLOUD_WALL ceil=sky fh=4 light=15 flags=portal
 cell g floor=METAL_FLOOR ceil=RUST_METAL fh=4 ch=11 light=9
+cell p wall=BONE_WALL ch=12      # gallery pillars (their tops are its roof)
 
 grid
 QQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQ
 QrrrrrrrrgggggggggggggggrrrrrrrrQ
-QrOrrrrrrgggggggggggggggrrrrrrOrQ
+QrOrrrrrrpgpgpgpgpgpgpgprrrrrrOrQ
 QrrrrrrrrrrrrrrsssrrrrrrrrrrrrrrQ
 Qrrr...........sss...........rrrQ
 Qrrr...........sss...........rrrQ

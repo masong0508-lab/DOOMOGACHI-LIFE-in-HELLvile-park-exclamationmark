@@ -53,7 +53,6 @@ typedef struct R3DFrame {
     uint8_t  pad0;
     const uint8_t *sky;            /* 256 x 96                           */
     int32_t skyang;
-    const uint8_t *cm;             /* the 16 light levels (IWRAM copy)   */
     uint32_t frame;
     /* stats */
     uint16_t nplanes, nspans;
@@ -64,7 +63,18 @@ typedef struct R3DFrame {
 } R3DFrame;
 
 extern R3DFrame r3f;
-extern uint8_t  r3d_cmap[16 * 256];        /* IWRAM */
+/* The colormap's 16 light levels (rows of 256 bytes: texel -> colour),
+ * copied into the two 2.5 KB VRAM gaps the mode 4 pages leave unused
+ * (rows 0-9 at 0x06009600, rows 10-15 at 0x06013600): a CPU byte read
+ * from VRAM costs what one from IWRAM does, and IWRAM keeps the 4 KB.
+ * r3d_cmrow[level] is the row; a pointer to this table is what the
+ * column / flat / face code calls "cm". */
+#define R3D_CM_GAP_A  ((uint8_t *)0x06009600)
+#define R3D_CM_GAP_B  ((uint8_t *)0x06013600)
+/* the view tint's 256-byte map follows rows 10-15 in the second gap */
+#define R3D_TINT_LUT  ((uint8_t *)0x06013C00)
+typedef const uint8_t *const *R3DRows;
+extern const uint8_t *r3d_cmrow[16];
 /* proj / (m + 0.5), 16.16, with 4 guard entries on each side (the flat
  * loop may read a few rows past the end of a run) */
 extern int32_t  r3d_rowk_buf[R3D_KROWS + 8];
@@ -96,8 +106,6 @@ void r3d_face_loop(uint16_t *p, int n, const uint8_t *texcol, int32_t v,
                    int32_t dv, const uint8_t *cm);
 void r3d_sky_loop(uint16_t *p, int n, const uint8_t *col, int32_t v16, int32_t dv16,
                   const uint8_t *cm);
-void r3d_span_loop(uint16_t *dst, int n, uint32_t pos, uint32_t step,
-                   const uint8_t *tex, const uint8_t *cm);
 void r3d_fill_loop(uint16_t *p, int n, uint32_t c2, int stride_bytes);
 
 /* floor / ceiling column cast (layout fixed by r3d_loops.s) */
@@ -109,7 +117,7 @@ typedef struct R3DFlat {
     uint32_t u0, v0;               /* eye x / y, 26 fractional bits       */
     int32_t  A, B;                 /* rdx * hd, rdy * hd, 10 frac bits    */
     const uint8_t *tex;
-    const uint8_t *cm;             /* 16 x 256 colormap (maybe tinted)    */
+    R3DRows  cm;                   /* colormap rows (r3d_cmrow)           */
     int32_t  L, hd;                /* sector light, |eye - plane| units   */
     const uint8_t *fade;
     uint32_t far;                  /* distance for average colour, 24.8   */
@@ -140,7 +148,7 @@ typedef struct ColState {
     int32_t ytop, ybot;             /* 108: open window                    */
     int32_t c, ncp;                 /* 116                                 */
     uint16_t *col;                  /* 124                                 */
-    const uint8_t *cm;              /* 128: colormap base (tint dither)    */
+    R3DRows cm;                     /* 128: colormap rows (r3d_cmrow)      */
     R3DClip *cps;                   /* 132                                 */
     /* frame constants for the assembly */
     int32_t ez4, hor12r;            /* 136: eye z, (hor << 12) + 0x800     */
@@ -159,7 +167,7 @@ typedef struct ColState {
 /* 1 = column done, 2 = max distance, 3 / 4 = run boundary() with res 0 / 1 */
 int r3d_column_asm(ColState *s);
 /* sky background rows [y0, y1) of column c (r3d.iwram.c) */
-void r3d_draw_sky(uint16_t *p, int c, int y0, int y1, const uint8_t *cm);
+void r3d_draw_sky(uint16_t *p, int c, int y0, int y1, R3DRows cm);
 
 /* roof height (x 8 units) of each open roofed cell seen from the sky
  * (max explicit top of its solid neighbours), 127 = none (r3d.c) */

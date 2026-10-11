@@ -1,0 +1,52 @@
+# SCENE_COMBAT (action): the Vape Cellar in first person - walk, strafe,
+# fire, a door; then third person (SELECT), the pause menu, the weapon
+# list; then Cloud Nine Spire's open sky.
+scene TITLE
+wait 2
+push COMBAT 3
+wait 20
+shot cellar_intro
+wait 50
+shot cellar_start
+hold RIGHT 6
+hold UP 30
+shot cellar_walk
+press A
+wait 1
+shot cellar_fire
+wait 12
+hold L 10
+shot cellar_strafe
+press SELECT
+wait 16
+shot cellar_tp
+hold UP 30
+hold LEFT 8
+shot cellar_tp_walk
+press START
+wait 14
+shot pause_menu
+press DOWN
+press A
+wait 8
+shot weapon_list
+press B
+wait 4
+press START
+wait 8
+expect-scene COMBAT
+press START
+press UP
+press A
+wait 4
+press LEFT
+press A
+wait 6
+push COMBAT 4
+wait 75
+shot spire_start
+press SELECT
+wait 20
+shot spire_tp
+hold UP 40
+shot spire_tp_walk

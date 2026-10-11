@@ -62,7 +62,7 @@ static Mover *find_mover(const DoomoMap *m, int cx, int cy)
 
 const DoomoCell *map_cell_safe(const DoomoMap *m, int cx, int cy)
 {
-    static const DoomoCell solid = { 1, 1, 1, 0, 16, 8, 0, 0 };
+    static const DoomoCell solid = { 1, 1, 1, 0, 0, 8, 0, 0 };
     if (!m || cx < 0 || cy < 0 || cx >= m->w || cy >= m->h) return &solid;
     return &m->cells[cy * m->w + cx];
 }

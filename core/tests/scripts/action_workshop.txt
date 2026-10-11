@@ -1,0 +1,57 @@
+# SCENE_WORKSHOP + SCENE_WELD_GAME (action): weld the starter pistol in the
+# minigame and find it in the armory, then pick parts with the live
+# preview and stat bars, a random design and the armory list.
+scene TITLE
+wait 2
+push WORKSHOP
+wait 20
+shot workshop
+press A
+press A
+wait 20
+shot confirm
+press LEFT
+press A
+wait 20
+expect-scene WELD_GAME
+shot weld_intro
+press A
+wait 30
+down A
+wait 40
+shot weld_pass
+hold UP 6
+wait 60
+hold DOWN 8
+wait 80
+shot weld_bead
+wait 300
+shot weld_pass2
+wait 600
+release
+wait 50
+shot weld_result
+press A
+wait 20
+expect-scene WORKSHOP
+shot welded
+press L
+wait 4
+press DOWN
+press RIGHT
+press RIGHT
+press RIGHT
+wait 6
+shot frame_pick
+press DOWN
+press DOWN
+press RIGHT
+press RIGHT
+wait 4
+shot core_pick
+press X
+wait 30
+shot random_design
+press R
+wait 10
+shot armory

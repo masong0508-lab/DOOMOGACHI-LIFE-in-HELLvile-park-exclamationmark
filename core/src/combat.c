@@ -32,7 +32,7 @@ static int msg_cool;
 #define GRAVITY      ((fix16)75366)          /* 1.15 units / tick^2 */
 #define JUMP_VZ      ((fix16)(8 * 65536 + 13107))   /* 8.2 */
 #define STAND_EYE    DOOMO_EYE_HEIGHT
-#define TP_TILT      28                      /* third person looks a bit down */
+#define TP_TILT      36                      /* third person looks a bit down */
 #define CROUCH_EYE   22
 
 static const int16_t ammo_max_tab[AMMO_COUNT] = { 400, 100, 600, 50, 400, 400, 500 };
@@ -1511,7 +1511,7 @@ static void update_camera(void)
     /* desired point: behind + over the shoulder + a little up */
     want_x = px + FIXMUL(bx, INT2FIX(dist)) + FIXMUL(rx, INT2FIX(22));
     want_y = py + FIXMUL(by, INT2FIX(dist)) + FIXMUL(ry, INT2FIX(22));
-    want_z = headz + INT2FIX(22) - FIXMUL(pitch_slope(doomo_player.pitch), INT2FIX(dist)) / 2;
+    want_z = headz + INT2FIX(12) - FIXMUL(pitch_slope(doomo_player.pitch), INT2FIX(dist)) / 2;
     dx = want_x - px; dy = want_y - py;
     len = fx_dist(dx, dy);
     if (len < INT2FIX(1)) len = INT2FIX(1);

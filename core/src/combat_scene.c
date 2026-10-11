@@ -37,6 +37,23 @@ static void leave_scene(void)
     else scene_set(&SCENE_TITLE, 0);
 }
 
+/* Cut a string to `maxw` pixels (ends with ".." when cut). */
+static void fit_text(char *s, int maxw)
+{
+    int n = (int)strlen(s);
+    if (n < 3 || ui_text_width(s) <= maxw) return;
+    n -= 2;
+    for (;;) {
+        int k = n;
+        while (k > 0 && s[k - 1] == ' ') k--;
+        s[k] = '.';
+        s[k + 1] = '.';
+        s[k + 2] = 0;
+        if (ui_text_width(s) <= maxw || n == 0) return;
+        n--;
+    }
+}
+
 /* ---- pause menu --------------------------------------------------------- */
 enum { PM_RESUME, PM_WEAPON, PM_CAMERA, PM_SHOULDER, PM_CONTROLS, PM_INVERT, PM_AIM,
        PM_CROSSHAIR, PM_HUD, PM_GORE, PM_QUIT, PM_COUNT };
@@ -109,20 +126,28 @@ static void pause_draw(void)
 {
     int sw = plat_screen_w(), sh = plat_screen_h();
     int w = sw > 260 ? 220 : 200, rows = sh > 200 ? PM_COUNT : 9;
-    int h = rows * 11 + 28, x = sw / 2 - w / 2, y = sh / 2 - h / 2, i, top;
+    int h = rows * 11 + 38, x = sw / 2 - w / 2, y = sh / 2 - h / 2, i, top, ry;
     char buf[40];
     int style = style_now();
     plat_shade_rect(0, 0, sw, sh, 7);
     if (!ui_window_pop(x, y, w, h, style, cs_t)) return;
     ui_title(sw / 2, y - 6, "PAUSED", style);
     top = cs_sel - rows + 1 > 0 ? cs_sel - rows + 1 : 0;
+    ry = y + 10;
     for (i = 0; i < rows && top + i < PM_COUNT; i++) {
         int k = top + i;
         const char *val = pm_value(k, buf);
-        if (k == PM_RESUME || k == PM_QUIT) {
-            ui_button(x + 10, y + 12 + i * 11, w - 20, pm_names[k], k == cs_sel, style);
+        if (val && val != buf) {                /* cut long weapon names */
+            doomo_snprintf(buf, sizeof(buf), "%s", val);
+            val = buf;
+        }
+        if (val) fit_text(buf, w - 12 - ui_text_width(pm_names[k]) - 14);
+        if (k == PM_RESUME || k == PM_QUIT) {          /* 14 px pills */
+            ui_button(x + 10, ry + 1, w - 20, pm_names[k], k == cs_sel, style);
+            ry += 16;
         } else {
-            ui_value_row(x + 6, y + 12 + i * 11, w - 12, pm_names[k], val, k == cs_sel);
+            ui_value_row(x + 6, ry, w - 12, pm_names[k], val, k == cs_sel);
+            ry += 11;
         }
     }
     ui_scroll_arrows(x + w - 8, y + 8, y + h - 10, top > 0, top + rows < PM_COUNT);
@@ -182,6 +207,7 @@ static void weapons_draw(void)
         }
         plat_image(x + 16, ry, weld_icon_image(wp), 1, 0, 0);
         weld_name(wp, buf, sizeof(buf));
+        fit_text(buf, w - 44 - 12);
         ui_text(x + 44, ry + 1, buf, sel ? PAL_WHITE : ui_style_text(style));
         doomo_snprintf(buf, sizeof(buf), "%s %s%s", doomo_wclass_names[st.wclass],
                        st.ammo_type == 0xFF ? "melee" : doomo_ammo_names[st.ammo_type],

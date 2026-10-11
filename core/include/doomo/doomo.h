@@ -29,5 +29,6 @@
 #include "actor.h"
 #include "story.h"
 #include "audio.h"
+#include "activities.h"
 #include "game.h"
 #endif

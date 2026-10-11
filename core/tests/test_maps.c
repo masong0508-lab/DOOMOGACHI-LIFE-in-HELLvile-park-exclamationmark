@@ -272,9 +272,13 @@ TEST(map_previews_render)
         combat_start(ids[m]);
         combat_tick();
         for (k = 0; k < 2; k++) {
+            int i, holes = 0;
             doomo_player.camera = (uint8_t)k;
             combat_build_view(&v);
+            plat_clear(PAL_UI_RED);
             plat_view3d(&v);
+            for (i = 0; i < nat_w * nat_h; i++) holes += nat_fb[i] == PAL_UI_RED;
+            CHECK_MSG(holes < nat_w, "map %d %s view left %d pixels unpainted", ids[m], k ? "tp" : "fp", holes);
             combat_draw_hud();
             snprintf(path, sizeof(path), "%s/map_%d_%s.png", test_tmp_dir, ids[m], k ? "tp" : "fp");
             nat_png_write(path, nat_fb, nat_w, nat_h, 2);

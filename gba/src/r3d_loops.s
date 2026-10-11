@@ -8,44 +8,51 @@
     .arm
     .align 2
 
+@ FACEBODY: the textured vertical span loop shared by r3d_face_loop and the
+@ column pass's faces. In: r0 p, r1 n > 0, r2 texcol, r3 v, r4 dv, r5 cm,
+@ r7 = 0xFC0; trashes r1, r3, r6, r12, advances r0. Unrolled 8 times; the
+@ first round enters part-way (a computed jump skips (8 - n % 8) % 8 pixels).
+    .macro FACEPX
+    and     r6, r7, r3, lsr #10
+    add     r3, r3, r4
+    ldrb    r6, [r2, r6]
+    ldrb    r6, [r5, r6]
+    orr     r6, r6, r6, lsl #8
+    strh    r6, [r0], #240
+    .endm
+    .macro FACEBODY
+    and     r12, r1, #7
+    rsb     r12, r12, #8
+    and     r12, r12, #7                @ pixels skipped in the first round
+    add     r1, r1, r12
+    add     r12, r12, r12, lsl #1
+    add     pc, pc, r12, lsl #3         @ 6 instructions (24 bytes) per pixel
+    nop
+1:  FACEPX
+    FACEPX
+    FACEPX
+    FACEPX
+    FACEPX
+    FACEPX
+    FACEPX
+    FACEPX
+    subs    r1, r1, #8
+    bne     1b
+    .endm
+
 @ void r3d_face_loop(uint16_t *p, int n, const uint8_t *texcol, int32_t v,
 @                    int32_t dv, const uint8_t *cm)
 @ Textured vertical span: n > 0 rows starting at p (stride 240 bytes).
 @ v / dv: texture row in 16.16 (wraps at 64). texcol = texture + u.
+@ Shares the column pass's face loop (.Lba_face_body, same saved registers).
     .global r3d_face_loop
     .type   r3d_face_loop, %function
 r3d_face_loop:
-    stmfd   sp!, {r4-r8}
-    ldr     r4, [sp, #20]               @ dv
-    ldr     r5, [sp, #24]               @ cm
+    stmfd   sp!, {r4-r9, lr}
+    ldr     r4, [sp, #28]               @ dv
+    ldr     r5, [sp, #32]               @ cm
     mov     r7, #0xFC0                  @ 63 << 6
-    tst     r1, #1
-    beq     2f
-    @ odd count: one pixel first
-    and     r6, r7, r3, lsr #10
-    ldrb    r6, [r2, r6]
-    add     r3, r3, r4
-    ldrb    r6, [r5, r6]
-    subs    r1, r1, #1
-    orr     r6, r6, r6, lsl #8
-    strh    r6, [r0], #240
-    beq     9f
-2:  and     r6, r7, r3, lsr #10
-    add     r3, r3, r4
-    and     r8, r7, r3, lsr #10
-    add     r3, r3, r4
-    ldrb    r6, [r2, r6]
-    ldrb    r8, [r2, r8]
-    ldrb    r6, [r5, r6]
-    ldrb    r8, [r5, r8]
-    orr     r6, r6, r6, lsl #8
-    orr     r8, r8, r8, lsl #8
-    strh    r6, [r0], #240
-    strh    r8, [r0], #240
-    subs    r1, r1, #2
-    bne     2b
-9:  ldmfd   sp!, {r4-r8}
-    bx      lr
+    b       .Lba_face_body
     .size   r3d_face_loop, . - r3d_face_loop
 
 @ void r3d_sky_loop(uint16_t *p, int n, const uint8_t *col, int32_t v16,
@@ -82,61 +89,6 @@ r3d_sky_loop:
     bx      lr
     .size   r3d_sky_loop, . - r3d_sky_loop
 
-@ void r3d_span_loop(uint16_t *dst, int n, uint32_t pos, uint32_t step,
-@                    const uint8_t *tex, const uint8_t *cm)
-@ Floor / ceiling span along a screen row: n > 0 pixels (halfwords).
-@ pos / step pack u and v (Doom style): u = bits 26-31 (frac 16-25),
-@ v = bits 10-15 (frac 0-9); texel = tex[v * 64 + u].
-    .global r3d_span_loop
-    .type   r3d_span_loop, %function
-r3d_span_loop:
-    stmfd   sp!, {r4-r9}
-    ldr     r4, [sp, #24]               @ tex
-    ldr     r5, [sp, #28]               @ cm
-    mov     r9, #0xFC0
-    tst     r0, #2
-    beq     2f
-    @ dst not word aligned: one pixel first
-    and     r6, r9, r2, lsr #4
-    orr     r6, r6, r2, lsr #26
-    ldrb    r6, [r4, r6]
-    add     r2, r2, r3
-    ldrb    r6, [r5, r6]
-    subs    r1, r1, #1
-    orr     r6, r6, r6, lsl #8
-    strh    r6, [r0], #2
-    beq     9f
-2:  subs    r1, r1, #2
-    blt     8f
-3:  and     r6, r9, r2, lsr #4
-    orr     r6, r6, r2, lsr #26
-    add     r2, r2, r3
-    and     r7, r9, r2, lsr #4
-    orr     r7, r7, r2, lsr #26
-    add     r2, r2, r3
-    ldrb    r6, [r4, r6]
-    ldrb    r7, [r4, r7]
-    ldrb    r6, [r5, r6]
-    ldrb    r7, [r5, r7]
-    orr     r6, r6, r6, lsl #8
-    orr     r7, r7, r7, lsl #8
-    orr     r6, r6, r7, lsl #16
-    str     r6, [r0], #4
-    subs    r1, r1, #2
-    bge     3b
-8:  adds    r1, r1, #2
-    beq     9f
-    @ one pixel left
-    and     r6, r9, r2, lsr #4
-    orr     r6, r6, r2, lsr #26
-    ldrb    r6, [r4, r6]
-    ldrb    r6, [r5, r6]
-    orr     r6, r6, r6, lsl #8
-    strh    r6, [r0], #2
-9:  ldmfd   sp!, {r4-r9}
-    bx      lr
-    .size   r3d_span_loop, . - r3d_span_loop
-
 @ void r3d_fill_loop(uint16_t *p, int n, uint32_t c2, int stride_bytes)
 @ Solid halfword column / row fill.
     .global r3d_fill_loop
@@ -169,6 +121,8 @@ r3d_fill_loop:
 @ row, r1 / r9 du / dv, lr scratch (FL reloaded at each light refresh).
 @ The K table has guard entries on both sides (one block may read up to
 @ 4 rows past the end of the run).
+    .equ FLL_U0,    16
+    .equ FLL_V0,    20
     .equ FLL_CM,    36
     .equ FLL_L,     40
     .equ FLL_HD,    44
@@ -177,22 +131,22 @@ r3d_fill_loop:
     .equ FLL_AVG,   56
     .macro FLATLOOP kstep, name
 \name\()_group:
+    @ distance light of the current row (and the far test)
     ldr     lr, =FL
+    add     r1, lr, #FLL_L
+    ldmia   r1, {r1, r3, r11}           @ L, hd, fade
     ldr     r10, [r2]                   @ K of the current row
-    ldr     r11, [lr, #FLL_HD]
-    mov     r1, r10, lsr #8
-    mul     r3, r1, r11                 @ D, 8 frac bits
-    mov     r1, r3, lsr #13             @ 32-unit buckets
-    cmp     r1, #127
-    movhi   r1, #127
-    ldr     r11, [lr, #FLL_FADE]
-    ldrb    r1, [r11, r1]
-    ldr     r11, [lr, #FLL_L]
-    sub     r1, r11, r1
+    mov     r9, r10, lsr #8
+    mul     r3, r9, r3                  @ D = (K >> 8) * hd, 8 frac bits
+    mov     r9, r3, lsr #13             @ 32-unit buckets
+    cmp     r9, #127
+    movhi   r9, #127
+    ldrb    r9, [r11, r9]
+    ldr     r11, [lr, #FLL_CM]
+    sub     r1, r1, r9
     cmp     r1, #1
     movlt   r1, #1
-    ldr     r11, [lr, #FLL_CM]
-    add     r11, r11, r1, lsl #8        @ lit colormap row
+    ldr     r11, [r11, r1, lsl #2]      @ lit colormap row
     ldr     r1, [lr, #FLL_FAR]
     cmp     r3, r1
     bhi     \name\()_far
@@ -202,14 +156,13 @@ r3d_fill_loop:
     @ single rows until the count is a multiple of 4
     tst     r12, #3
     beq     \name\()_blk
-    mov     lr, r10, lsr #26
-    mov     lr, lr, lsl #6
-    add     lr, lr, r3, lsr #26
-    ldrb    lr, [r8, lr]
+    and     lr, r10, #0xFC000000
+    orr     lr, lr, r3, lsr #6
+    ldrb    lr, [r8, lr, lsr #20]
     ldr     r9, [r2, #\kstep]!
     ldrb    lr, [r11, lr]
     mla     r3, r9, r6, r4
-    mla     r10, r7, r9, r5
+    mla     r10, r9, r7, r5
     orr     lr, lr, lr, lsl #8
     strh    lr, [r0], #240
     subs    r12, r12, #1
@@ -221,27 +174,21 @@ r3d_fill_loop:
     @ 4 rows: exact at both ends, linear in between
     ldr     r9, [r2, #4*\kstep]!
     mla     r1, r9, r6, r4
-    mla     r9, r7, r9, r5
+    mla     lr, r9, r7, r5
     sub     r1, r1, r3
     mov     r1, r1, asr #2              @ du
-    sub     r9, r9, r10
+    sub     r9, lr, r10
     mov     r9, r9, asr #2              @ dv
-    .rept 4
-    mov     lr, r10, lsr #26
-    mov     lr, lr, lsl #6
-    add     lr, lr, r3, lsr #26
-    ldrb    lr, [r8, lr]
-    add     r3, r3, r1
-    add     r10, r10, r9
-    ldrb    lr, [r11, lr]
-    orr     lr, lr, lr, lsl #8
-    strh    lr, [r0], #240
-    .endr
+    FLATPX
+    FLATPX
+    FLATPX
+    FLATPX
     subs    r12, r12, #4
-    beq     .Lfl_done
-    tst     r12, #12
+    tstne   r12, #12
     bne     \name\()_blk
-    b       \name\()_group
+    cmp     r12, #0
+    bne     \name\()_group
+    b       .Lfl_done
 \name\()_far:
     ldr     r3, [lr, #FLL_AVG]          @ average texel
     ldrb    r3, [r11, r3]
@@ -255,6 +202,18 @@ r3d_fill_loop:
     bne     \name\()_farpx
     b       \name\()_group
     .endm
+    @ one row: texel = tex[(v >> 26) * 64 + (u >> 26)], built as
+    @ ((v & 0xFC000000) | (u >> 6)) >> 20 in the load's address
+    .macro FLATPX
+    and     lr, r10, #0xFC000000
+    orr     lr, lr, r3, lsr #6
+    ldrb    lr, [r8, lr, lsr #20]
+    add     r3, r3, r1
+    add     r10, r10, r9
+    ldrb    lr, [r11, lr]
+    orr     lr, lr, lr, lsl #8
+    strh    lr, [r0], #240
+    .endm
 
     .global r3d_flat_loop
     .type   r3d_flat_loop, %function
@@ -263,9 +222,11 @@ r3d_flat_loop:
     ldmia   r0, {r0-r8}                 @ p n kp kdir u0 v0 A B tex
     mov     r12, r1
     cmp     r3, #0
-    blt     .Lfl_ceil
+    blt     .Lfl_ceiling_group
+    @ the column pass enters the two loops below directly with
+    @ {r4-r11, lr} pushed and r0 p, r12 n, r2 kp, r4 u0, r5 v0, r6 A,
+    @ r7 B, r8 tex in registers (FL holds L, hd, fade, cm, far, avg)
     FLATLOOP 4, .Lfl_floor
-.Lfl_ceil:
     FLATLOOP -4, .Lfl_ceiling
 .Lfl_done:
     ldmfd   sp!, {r4-r11, lr}
@@ -344,6 +305,23 @@ r3d_flat_loop:
     .equ MAXCP,     14
     .equ TEX_SKY,   255
 
+@ CPSTORE: push the clip checkpoint (d8, ytop = r2, ybot = r3) as one word.
+@ The window rows are inside [0, vh] and d8 < 20480 (d < maxd), so the
+@ fields need no clamping. Trashes r0, r1, r12.
+    .macro CPSTORE
+    ldr     r0, [r11, #CS_NCP]
+    ldr     r1, [r11, #CS_CPS]
+    cmp     r0, #MAXCP
+    addlt   r12, r0, #1
+    strlt   r12, [r11, #CS_NCP]
+    movge   r0, #MAXCP - 1
+    ldr     r12, [r11, #CS_D16]
+    mov     r12, r12, lsr #13           @ d8
+    orr     r12, r12, r2, lsl #16       @ top
+    orr     r12, r12, r3, lsl #24       @ bot
+    str     r12, [r1, r0, lsl #2]
+    .endm
+
     .global r3d_column_asm
     .type   r3d_column_asm, %function
 r3d_column_asm:
@@ -352,11 +330,11 @@ r3d_column_asm:
     str     r0, [sp, #12]
     ldr     r12, [r0, #48]
     str     r12, [sp, #16]              @ maxd
+    mov     r11, r0
 
-    @ ======== walk ========
-.Lc_walk:
-    ldr     r0, [sp, #12]
-    ldmia   r0, {r0-r11}                @ sdx sdy ddx ddy cx cy idx8 ix8 iy8 cells c0 c1
+    @ ======== walk (r11 = s) ========
+.Lc_walk_s:
+    ldmia   r11, {r0-r11}               @ sdx sdy ddx ddy cx cy idx8 ix8 iy8 cells c0 c1
 .Lw_loop:
     cmp     r0, r1
     bhs     .Lw_y
@@ -448,19 +426,15 @@ r3d_column_asm:
     ldr     r0, [r11, #CS_SKY]
     cmp     r0, #0
     beq     1f
-    mov     r1, r4, lsr #16
-    and     r1, r1, #0xFF
-    cmp     r1, #TEX_SKY
+    and     r1, r4, #0xFF0000
+    cmp     r1, #(TEX_SKY << 16)
     bne     .Lba_slow
 1:
-    @ ---- scale at this boundary
-    ldr     r0, [r11, #CS_D]
-    mov     r0, r0, lsl #6
+    @ ---- scale at this boundary (r10 = d < maxd = 40 cells, so the
+    @ table index d16 >> 13 is below 20480)
+    mov     r0, r10, lsl #6
     str     r0, [r11, #CS_D16]
     mov     r1, r0, lsr #13
-    ldr     r2, =32767
-    cmp     r1, r2
-    movhi   r1, r2
     ldr     r2, =gba_recip8
     ldr     r1, [r2, r1, lsl #2]
     ldr     r2, [r11, #CS_PROJ]
@@ -469,8 +443,7 @@ r3d_column_asm:
     ldr     r8, [r11, #CS_EZ4]          @ r8 = ez4
     ldr     r0, [r11, #CS_YTOP]
     ldr     r1, [r11, #CS_YBOT]
-    mov     r2, #0
-    stmia   sp, {r0, r1, r2}
+    stmia   sp, {r0, r1}                @ the window before this boundary
     tst     r4, #0xFF
     bne     .Lba_solid
 
@@ -682,10 +655,15 @@ ba_solid:                              @ (named for the profiler)
     ldr     r3, [r11, #CS_LIGHT]
     bl      .Lba_face
 .Lba_mark_done:
-    ldr     r1, [r11, #CS_YBOT]
-    str     r1, [r11, #CS_YTOP]
-    mov     r0, #1
-    str     r0, [sp, #8]                @ done
+    ldr     r3, [r11, #CS_YBOT]
+    str     r3, [r11, #CS_YTOP]
+    mov     r2, r3
+    ldmia   sp, {r0, r1}
+    cmp     r2, r0
+    cmpeq   r3, r1
+    beq     .Lba_done
+    CPSTORE
+    b       .Lba_done
 
     @ ======== checkpoint + end tests ========
 .Lba_checkpoint:
@@ -696,48 +674,21 @@ ba_checkpoint:                              @ (named for the profiler)
     cmp     r2, r0
     cmpeq   r3, r1
     beq     4f
-    ldr     r0, [r11, #CS_NCP]
-    ldr     r1, [r11, #CS_CPS]
-    cmp     r0, #MAXCP
-    addlt   r12, r0, #1
-    strlt   r12, [r11, #CS_NCP]
-    movge   r0, #MAXCP - 1
-    add     r1, r1, r0, lsl #2
-    ldr     r12, [r11, #CS_D16]
-    mov     r12, r12, lsr #13           @ d8
-    cmp     r12, #0x10000
-    movhs   r12, #0xFF00
-    orrhs   r12, r12, #0xFF
-    strh    r12, [r1]
-    cmp     r2, #255
-    movgt   r12, #255
-    movle   r12, r2
-    cmp     r12, #0
-    movlt   r12, #0
-    strb    r12, [r1, #2]
-    cmp     r3, #255
-    movgt   r12, #255
-    movle   r12, r3
-    cmp     r12, #0
-    movlt   r12, #0
-    strb    r12, [r1, #3]
-4:  ldr     r0, [sp, #8]
-    cmp     r0, #0
-    bne     .Lba_done
-    cmp     r2, r3
+    CPSTORE
+4:  cmp     r2, r3
     bge     .Lba_done
     @ under the sky: done when the open rows are above the tallest top
     ldr     r0, [r11, #CS_SKY]
     cmp     r0, #0
-    beq     .Lba_cont
+    beq     .Lc_walk_s
     ldr     r0, [r11, #CS_ETOP]
     cmp     r0, #0x80000000
-    beq     .Lba_cont
-    bl      .Lba_rowof
-    cmp     r3, r0
-    ble     .Lba_done
-.Lba_cont:
-    b       .Lc_walk
+    beq     .Lc_walk_s
+    sub     r0, r8, r0
+    ldr     r12, [r11, #CS_HOR12R]
+    mla     r0, r10, r0, r12
+    cmp     r3, r0, asr #12             @ ybot > rowof(early_top4): go on
+    bgt     .Lc_walk_s
 .Lba_done:
     mov     r0, #1
     b       .Lc_exit
@@ -763,21 +714,20 @@ ba_close_floor:                              @ (named for the profiler)
     ldr     r0, [r11, #CS_FZ4]
     cmp     r0, r8
     bxge    lr                          @ eye at / below the floor: invisible
-    stmfd   sp!, {r4, lr}
-    bl      .Lba_rowof                  @ yf
+    sub     r1, r8, r0
+    ldr     r2, [r11, #CS_HOR12R]
     ldr     r12, [r11, #CS_YBOT]
-    cmp     r0, r12
-    bge     1f
-    ldr     r3, [r11, #CS_YTOP]
-    cmp     r0, r3
-    movge   r3, r0                      @ y0 = tp = max(yf, ytop)
+    mla     r3, r10, r1, r2
+    mov     r3, r3, asr #12             @ yf = rowof(fz4)
+    cmp     r3, r12
+    bxge    lr
+    ldr     r1, [r11, #CS_YTOP]
+    cmp     r3, r1
+    movlt   r3, r1                      @ tp = max(yf, ytop)
     str     r3, [r11, #CS_YBOT]
-    ldr     r0, [r11, #CS_FZ4]
     ldr     r1, [r11, #CS_FTEX]
     ldr     r2, [r11, #CS_LIGHT]
-    bl      .Lba_flat                   @ rows [tp, old ybot)
-1:  ldmfd   sp!, {r4, lr}
-    bx      lr
+    b       .Lba_flat                   @ rows [tp, old ybot)
 
 @ ---- close the region's ceiling run (keeps r4-r11)
 .Lba_close_ceil:
@@ -785,85 +735,103 @@ ba_close_ceil:                              @ (named for the profiler)
     ldr     r0, [r11, #CS_CZ4]
     cmp     r0, r8
     bxle    lr
-    stmfd   sp!, {r4, lr}
-    bl      .Lba_rowof                  @ yc
+    sub     r1, r8, r0
+    ldr     r2, [r11, #CS_HOR12R]
     ldr     r3, [r11, #CS_YTOP]
-    cmp     r0, r3
-    ble     1f
-    ldr     r12, [r11, #CS_YBOT]
-    cmp     r0, r12
-    movgt   r0, r12                     @ bt = min(yc, ybot)
-    mov     r12, r0
+    mla     r12, r10, r1, r2
+    mov     r12, r12, asr #12           @ yc = rowof(cz4)
+    cmp     r12, r3
+    bxle    lr
+    ldr     r1, [r11, #CS_YBOT]
+    cmp     r12, r1
+    movgt   r12, r1                     @ bt = min(yc, ybot)
     str     r12, [r11, #CS_YTOP]
-    ldr     r0, [r11, #CS_CZ4]
     ldr     r1, [r11, #CS_CTEX]
     ldr     r2, [r11, #CS_LIGHT]
-    bl      .Lba_flat                   @ rows [old ytop, bt)
-1:  ldmfd   sp!, {r4, lr}
-    bx      lr
+    b       .Lba_flat                   @ rows [old ytop, bt)
 
-@ ---- flat: r0 = z4, r1 = tex, r2 = light, r3 = y0, r12 = y1 (keeps r4-r11)
+@ ---- flat: r0 = z4, r1 = tex, r2 = light, r3 = y0, r12 = y1 (keeps r4-r11).
+@ Sets up the registers of r3d_flat_loop's floor / ceiling loop and enters
+@ it (its exit pops what is pushed here and returns to the caller).
 .Lba_flat:
 ba_flat:                              @ (named for the profiler)
     cmp     r3, r12
     bxge    lr
-    stmfd   sp!, {r4-r7, lr}
+    stmfd   sp!, {r4-r11, lr}
+    and     r1, r1, #63                 @ texture id
+    ldr     r6, =r3d_texc
+    ldr     r6, [r6, r1, lsl #2]        @ pixels (per-frame cache)
+    ldr     r7, =r3d_avgc
+    ldrb    r7, [r7, r1]                @ average texel
+    cmp     r6, #0
+    cmpne   r7, #0
+    bleq    .Lfl_texslow
     ldr     lr, =FL
-    sub     r4, r12, r3
-    str     r4, [lr, #FL_N]
-    ldr     r6, =r3d_texpix             @ pixels per texture (VRAM cache)
-    and     r7, r1, #63
-    add     r6, r6, r7, lsl #1
-    ldrh    r7, [r6]
-    add     r7, r7, r4
-    strh    r7, [r6]
-    ldr     r4, [r11, #CS_COL]
-    add     r4, r4, r3, lsl #8
-    sub     r4, r4, r3, lsl #4          @ col + y0 * 240
-    str     r4, [lr, #FL_P]
-    str     r2, [lr, #FL_L]
-    subs    r5, r8, r0                  @ hd4 = ez4 - z4
+    str     r2, [lr, #FLL_L]
+    str     r7, [lr, #FLL_AVG]
+    sub     r12, r12, r3                @ n
+    ldr     r7, =r3d_texpix             @ pixels per texture (VRAM cache)
+    add     r7, r7, r1, lsl #1
+    ldrh    r2, [r7]
+    add     r2, r2, r12
+    strh    r2, [r7]
     ldr     r4, [r11, #CS_HOR]
-    movgt   r6, #4                      @ floor
-    subgt   r4, r3, r4                  @ m0 = y0 - hor
-    mvnle   r6, #3                      @ ceiling: kdir = -4
+    ldr     r2, [r11, #CS_COL]
+    ldr     r7, [r11, #CS_RDY]
+    ldr     r11, [r11, #CS_RDX]
+    add     r2, r2, r3, lsl #8
+    sub     r2, r2, r3, lsl #4          @ p = col + y0 * 240
+    subs    r5, r8, r0                  @ hd4 = ez4 - z4 (never 0 here)
+    mov     r8, r6                      @ tex
+    mov     r0, r2
     suble   r4, r4, r3
-    suble   r4, r4, #1                  @ m0 = hor - 1 - y0
+    suble   r4, r4, #1                  @ ceiling: m0 = hor - 1 - y0
     rsble   r5, r5, #0
-    str     r6, [lr, #FL_KDIR]
+    subgt   r4, r3, r4                  @ floor: m0 = y0 - hor
+    movle   r3, #1
+    movgt   r3, #0
     cmp     r4, #0
     movlt   r4, #0
     cmp     r4, #255
     movgt   r4, #255
-    ldr     r6, =r3d_rowk_buf + 16
-    add     r4, r6, r4, lsl #2
-    str     r4, [lr, #FL_KP]
+    ldr     r2, =r3d_rowk_buf + 16
+    add     r2, r2, r4, lsl #2          @ kp = &r3d_rowk[m0]
     cmp     r5, #0x4000
     movge   r5, #0x4000
-    subge   r5, r5, #1
-    ldr     r6, [r11, #CS_RDX]
-    mul     r7, r5, r6
-    mov     r7, r7, asr #10
-    str     r7, [lr, #FL_A]
-    ldr     r6, [r11, #CS_RDY]
-    mul     r7, r5, r6
-    mov     r7, r7, asr #10
-    str     r7, [lr, #FL_B]
-    mov     r7, r5, asr #4
-    add     r7, r7, #1
-    str     r7, [lr, #FL_HD]
-    mov     r4, r1                      @ texture id
+    subge   r5, r5, #1                  @ hd4 <= 0x3FFF
+    mul     r6, r11, r5
+    mov     r6, r6, asr #10             @ A = rdx * hd4 >> 10
+    mul     r1, r7, r5
+    mov     r7, r1, asr #10             @ B = rdy * hd4 >> 10
+    mov     r1, r5, asr #4
+    add     r1, r1, #1
+    str     r1, [lr, #FLL_HD]
+    ldr     r4, [lr, #FLL_U0]
+    ldr     r5, [lr, #FLL_V0]
+    cmp     r3, #0
+    beq     .Lfl_floor_group
+    b       .Lfl_ceiling_group
+
+@ r1 = texture id, r6 = r3d_texc[id], r7 = r3d_avgc[id] (one of them 0):
+@ resolve both through the THUMB helpers (keeps r0-r5, r8-r12)
+.Lfl_texslow:
+    stmfd   sp!, {r0-r3, r12, lr}
+    cmp     r6, #0
+    bne     1f
     mov     r0, r1
-    bl      .Lba_texof
-    ldr     lr, =FL
-    str     r0, [lr, #FL_TEX]
-    mov     r0, r4
-    bl      .Lba_avgof
-    ldr     lr, =FL
-    str     r0, [lr, #FL_AVG]
-    mov     r0, lr
-    bl      r3d_flat_loop
-    ldmfd   sp!, {r4-r7, lr}
+    ldr     r12, =r3d_texture
+    mov     lr, pc
+    bx      r12
+    mov     r6, r0
+    ldr     r1, [sp, #4]
+1:  cmp     r7, #0
+    bne     2f
+    mov     r0, r1
+    ldr     r12, =r3d_texavg
+    mov     lr, pc
+    bx      r12
+    mov     r7, r0
+2:  ldmfd   sp!, {r0-r3, r12, lr}
     bx      lr
 
 @ ---- face: r0 = y0, r1 = y1 (y0 < y1), r2 = tex id, r3 = light (keeps r4-r11)
@@ -871,18 +839,21 @@ ba_flat:                              @ (named for the profiler)
 ba_face:                              @ (named for the profiler)
     stmfd   sp!, {r4-r9, lr}
     mov     r4, r0                      @ y0
-    mov     r5, r1                      @ y1
+    sub     r5, r1, r0                  @ n
     mov     r9, r3                      @ light
+    and     r0, r2, #63
     ldr     r6, =r3d_texpix             @ pixels per texture (VRAM cache)
-    and     r7, r2, #63
-    add     r6, r6, r7, lsl #1
+    add     r6, r6, r0, lsl #1
     ldrh    r7, [r6]
-    add     r7, r7, r1
-    sub     r7, r7, r0
+    add     r7, r7, r5
     strh    r7, [r6]
-    mov     r0, r2
+    ldr     r6, =r3d_texc
+    ldr     r6, [r6, r0, lsl #2]
+    cmp     r6, #0
+    bne     1f
     bl      .Lba_texof
     mov     r6, r0                      @ texture
+1:
     @ u = hit coordinate along the boundary
     ldr     r2, [r11, #CS_D16]
     ldr     r3, [r11, #CS_SIDE]
@@ -916,7 +887,7 @@ ba_face:                              @ (named for the profiler)
     cmp     r9, #15
     movgt   r9, #15
     ldr     r0, [r11, #CS_CM]
-    add     r9, r0, r9, lsl #8
+    ldr     r9, [r0, r9, lsl #2]        @ colormap row
     @ dv = d16 / proj, v = ((y0 - hor) * 2 + 1) * (dv / 2) - ez
     ldr     r0, [r11, #CS_INVPROJ]
     umull   r1, r7, r2, r0              @ r7 = dv
@@ -928,14 +899,16 @@ ba_face:                              @ (named for the profiler)
     mul     r3, r2, r1
     ldr     r2, [r11, #CS_EZ]
     sub     r3, r3, r2                  @ v
-    stmfd   sp!, {r7, r9}               @ args 5, 6: dv, cm
     ldr     r0, [r11, #CS_COL]
     add     r0, r0, r4, lsl #8
     sub     r0, r0, r4, lsl #4          @ p = col + y0 * 240
-    sub     r1, r5, r4                  @ n
-    mov     r2, r6
-    bl      r3d_face_loop
-    add     sp, sp, #8
+    mov     r1, r5                      @ n
+    mov     r2, r6                      @ texcol
+    mov     r4, r7                      @ dv
+    mov     r5, r9                      @ cm
+    mov     r7, #0xFC0
+.Lba_face_body:                         @ r3d_face_loop enters here
+    FACEBODY
     ldmfd   sp!, {r4-r9, lr}
     bx      lr
 
@@ -970,25 +943,22 @@ ba_texof:                              @ (named for the profiler)
     ldmfd   sp!, {r1-r3, lr}
     bx      lr
 
-@ r0 = texture id -> r0 = average texel (r3d_avgc cache, else r3d_texavg()).
-.Lba_avgof:
-ba_avgof:                              @ (named for the profiler)
-    and     r0, r0, #63
-    ldr     r12, =r3d_avgc
-    ldrb    r12, [r12, r0]
-    cmp     r12, #0
-    movne   r0, r12
-    bxne    lr
-    stmfd   sp!, {r1-r3, lr}
-    ldr     r12, =r3d_texavg
-    mov     lr, pc
-    bx      r12
-    ldmfd   sp!, {r1-r3, lr}
-    bx      lr
     .pool
     .size   r3d_column_asm, . - r3d_column_asm
 
 @ ---------------------------------------------------------------------------
+@ one sprite row: texel = src[(v >> 16) * iw], 0 = transparent
+    .macro SPRPX
+    mov     r7, r3, lsr #16
+    mul     r7, r8, r7                  @ row * iw (Rs = row: 1-cycle multiply)
+    add     r3, r3, r4
+    ldrb    r7, [r2, r7]
+    add     r0, r0, r6
+    cmp     r7, #0
+    ldrneb  r7, [r5, r7]
+    orrne   r7, r7, r7, lsl #8
+    strneh  r7, [r0, -r6]
+    .endm
 @ void r3d_sprite_loop(uint16_t *p, int n, const uint8_t *src, uint32_t v,
 @                      uint32_t dv, const uint8_t *cm, int stride, int iw)
 @ One sprite column: n > 0 rows from p (stride bytes apart: 240, or 480
@@ -1005,15 +975,7 @@ r3d_sprite_loop:
     ldr     r8, [sp, #32]               @ iw
     cmp     r4, #0x10000
     blo     .Lsm_texel                  @ magnified: runs of equal texels
-1:  mov     r7, r3, lsr #16
-    mul     r7, r8, r7                  @ row * iw (Rs = row: 1-cycle multiply)
-    add     r3, r3, r4
-    ldrb    r7, [r2, r7]
-    add     r0, r0, r6
-    cmp     r7, #0
-    ldrneb  r7, [r5, r7]
-    orrne   r7, r7, r7, lsl #8
-    strneh  r7, [r0, -r6]
+1:  SPRPX
     subs    r1, r1, #1
     bne     1b
 .Lsm_done:

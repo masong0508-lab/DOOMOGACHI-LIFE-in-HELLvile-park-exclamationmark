@@ -134,6 +134,23 @@ static void sky_column(int x, int64_t rdx, int64_t rdy, int ytop, int ybot)
     }
 }
 
+/* (action, additive) The roof of a roofed open cell seen from under the
+ * sky, as the GBA renderer: the tallest explicit top of its solid
+ * neighbours (a doorway in a house), else 127 = none. */
+static int roof_of(int cx, int cy)
+{
+    static const int8_t nb[4][2] = { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } };
+    int k, roof = 127;
+    for (k = 0; k < 4; k++) {
+        int nx = cx + nb[k][0], ny = cy + nb[k][1];
+        const DoomoCell *o;
+        if (nx < 0 || ny < 0 || nx >= M->w || ny >= M->h) continue;
+        o = &M->cells[ny * M->w + nx];
+        if (o->wall && o->ceil_h > o->floor_h && (roof == 127 || o->ceil_h > roof)) roof = o->ceil_h;
+    }
+    return roof;
+}
+
 static void push_clip(int x, int64_t d, int ytop, int ybot)
 {
     if (nclips[x] < CLIP_MAX) {
@@ -197,6 +214,13 @@ static void cast_column(int x, int64_t dirx, int64_t diry, int64_t plx, int64_t 
             }
             face(x, top, cur_f, d1, n->wall, u, lit, ytop, ybot);
             if (!cur_sky || nmx < 0 || nmy < 0 || nmx >= M->w || nmy >= M->h) {
+                if (cur_sky) {
+                    /* the map's edge under the open sky: the sky above it
+                     * (action, additive: as the GBA renderer does) */
+                    int ny = proj_y(top, d1) - 1;
+                    if (ny < ybot) ybot = ny;
+                    if (ytop <= ybot) sky_column(x, rdx, rdy, ytop, ybot);
+                }
                 ytop = ybot + 1;
                 push_clip(x, d1, ytop, ybot);
                 break;
@@ -218,7 +242,23 @@ static void cast_column(int x, int64_t dirx, int64_t diry, int64_t plx, int64_t 
             int64_t new_bot = nf > cur_f ? nf : cur_f;
             int lit = cur_light - side;
             if (nf > cur_f) face(x, nf, cur_f, d1, n->floor_tex, u, lit - 1, ytop, ybot);
-            if (!nsky && nc < open_top) face(x, open_top, nc, d1, n->ceil_tex, u, lit - 1, ytop, ybot);
+            if (!nsky && nc < open_top) {
+                int64_t ftop = open_top;
+                if (cur_sky) {
+                    /* (action, additive) a roofed cell seen from under the
+                     * sky: sky above its roof, the lintel below; the roof
+                     * is roof_of() or 256 units above the floor it is
+                     * seen from (as the GBA renderer) */
+                    int roof = roof_of(nmx, nmy), ys;
+                    ftop = roof != 127 ? (int64_t)roof * DOOMO_HEIGHT_STEP * 65536
+                                       : cur_f + ((int64_t)256 * 65536);
+                    if (ftop < nc) ftop = nc;
+                    ys = proj_y(ftop, d1);
+                    if (ys > ybot + 1) ys = ybot + 1;
+                    if (ys > ytop) { sky_column(x, rdx, rdy, ytop, ys - 1); ytop = ys; }
+                }
+                face(x, ftop, nc, d1, n->ceil_tex, u, lit - 1, ytop, ybot);
+            }
             {
                 int nb = proj_y(new_bot, d1) - 1;
                 if (nb < ybot) ybot = nb;

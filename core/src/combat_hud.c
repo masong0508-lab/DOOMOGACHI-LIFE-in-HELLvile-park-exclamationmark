@@ -362,8 +362,10 @@ static void weapon_view(void)
     int bob = combat_px.bob_amp;
     if (doomo_player.hp <= 0 && combat_px.dead_t > 10) return;
     if (combat_px.zoom_t > 160 && combat_ws.zoom >= 2) return;           /* behind the scope */
+    /* idle + fire stay in the 2-slot sprite cache while auto-firing (the
+     * kick offsets below animate the recovery), so the GBA never
+     * recomposes a sprite per shot */
     if (combat_px.flash > 1) frame = 1;
-    else if (combat_px.flash == 1) frame = 2;
     if (combat_px.reload_t && combat_ws.reload) {
         int prog = combat_ws.reload - combat_px.reload_t;
         if (prog > 4 && combat_px.reload_t > 4) frame = 3;

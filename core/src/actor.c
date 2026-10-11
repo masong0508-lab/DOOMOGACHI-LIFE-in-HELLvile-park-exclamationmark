@@ -1325,14 +1325,12 @@ int actor_damage(int idx, int dmg, int src, int angle, int knock, int fx, int he
         a->vx += FIXMUL(fx_cos(angle), k);
         a->vy += FIXMUL(fx_sin(angle), k);
     }
+    if (a->state == AST_IDLE) demon_wake(idx);
     /* infighting: hurt by another demon -> go after it */
     if (src >= 0 && src < ACTOR_MAX && src != idx && IS_DEMON(doomo_actors[src].type) &&
         doomo_actors[src].type != a->type && !(a->status_fx & ST_CHARMED)) {
         a->target = (int16_t)src;
         a->status_fx |= ST_ANGRY;
-    }
-    if (a->state == AST_IDLE || a->state == AST_DORMANT) {
-        if (a->state == AST_IDLE) demon_wake(idx);
     }
     if (a->hp <= 0) {
         overkill = -a->hp >= di->hp / 2 + 10 || dmg >= 120;
@@ -1403,7 +1401,9 @@ int actor_demons_alive(void)
     int i, n = 0;
     for (i = 0; i < ACTOR_MAX; i++) {
         const DoomoActor *a = &doomo_actors[i];
-        if ((a->flags & AF_USED) && IS_DEMON(a->type) && a->hp > 0 && a->state < AST_DYING)
+        /* appearing and phase-changing demons count; dormant ones wait */
+        if ((a->flags & AF_USED) && IS_DEMON(a->type) && a->hp > 0 && a->state != AST_DYING &&
+            a->state != AST_DEAD && a->state != AST_DORMANT)
             n++;
     }
     return n;

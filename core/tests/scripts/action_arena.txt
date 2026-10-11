@@ -1,0 +1,27 @@
+# SCENE_ARENA (action): the wave intro, a fight in the colosseum, the pause
+# menu and giving up for the rewards screen.
+scene TITLE
+wait 2
+push ARENA
+wait 30
+shot arena_intro
+wait 90
+shot wave_one
+hold RIGHT 10
+down A
+wait 30
+shot arena_fight
+release
+press SELECT
+wait 20
+shot arena_tp
+press START
+wait 6
+shot arena_pause
+press DOWN
+press DOWN
+press A
+wait 70
+shot arena_over
+press A
+wait 6

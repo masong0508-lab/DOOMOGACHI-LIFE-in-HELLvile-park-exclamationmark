@@ -82,6 +82,13 @@ Maps are at most 64 x 64 cells; every row must have the same width.
   units) and you can see over it to taller things behind — towers, fences,
   hedges, houses. On the overworld a wall is a raised block with a front
   face; `floor=` on a wall cell is its roof texture.
+* A **roofed cell seen from under the sky** (a doorway, a gallery, a
+  tunnel mouth) is drawn as a block from its ceiling up to its *roof*:
+  the tallest `ch` of the wall cells next to it, else 256 units above the
+  floor it is seen from, with the sky above. So frame roofed areas that
+  open onto the sky with walls (door posts, pillars) whose `ch` is the
+  roof height you want, or the edge reads as a tall slab. The map's outer
+  border needs no care: beyond it the sky shows.
 * The overworld shows `floor_tex` as the tile, pits (`fh < 0`) darker,
   raised floors as lifted blocks, cells with `light >= 13` glow at night.
 

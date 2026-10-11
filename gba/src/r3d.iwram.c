@@ -31,7 +31,7 @@
 #include "doomo/palette.h"
 
 R3DFrame r3f;
-uint8_t  r3d_cmap[16 * 256];
+const uint8_t *r3d_cmrow[16];
 int32_t  r3d_rowk_buf[R3D_KROWS + 8];
 uint8_t  r3d_fade[R3D_FADE_N];
 int32_t  r3d_colt[R3D_MAXCOLS];
@@ -67,13 +67,13 @@ static inline int rowof(int32_t z4, int32_t k8)
     return (r3f.hor12 + dz * k8 + 0x800) >> 12;
 }
 
-static inline const uint8_t *light_cm(const uint8_t *cm, int light, uint32_t d16)
+static inline const uint8_t *light_cm(R3DRows cm, int light, uint32_t d16)
 {
     uint32_t b = d16 >> 21;
     int l = light - r3d_fade[b < R3D_FADE_N ? b : R3D_FADE_N - 1];
     if (l < 1) l = 1;
     if (l > 15) l = 15;
-    return cm + (l << 8);
+    return cm[l];
 }
 
 /* ------------------------------------------------------------------------ */
@@ -102,11 +102,13 @@ static void fill_col(uint16_t *p, int y0, int y1, uint32_t c)
 /* sky background: rows [y0, y1) of column c. As in the reference
  * renderer the sky's row 88 sits on the horizon and its top 3/4 of the
  * view height above it (row = 88 - (hor - y) * 88 / (vh * 3 / 4)),
- * clamped: higher rows repeat row 0, rows below the horizon row 95. */
-void r3d_draw_sky(uint16_t *p, int c, int y0, int y1, const uint8_t *cm)
+ * clamped: higher rows repeat row 0, rows below the horizon row 95. The
+ * sky is not colour-mapped (view tints are a pass of their own). */
+void r3d_draw_sky(uint16_t *p, int c, int y0, int y1, R3DRows cm)
 {
     const uint8_t *col;
-    const uint8_t *map = cm == r3d_cmap ? 0 : cm + (15 << 8);
+    const uint8_t *const map = 0;
+    (void)cm;
     int r, ya, yb;
     int32_t dv = r3f.sky_dv, v;
     if (y1 <= y0) return;
@@ -138,13 +140,13 @@ void r3d_draw_sky(uint16_t *p, int c, int y0, int y1, const uint8_t *cm)
 }
 
 /* the end of a ray: sky under the open sky, the darkest stone indoors */
-static void ray_end(uint16_t *p, int c, int y0, int y1, const uint8_t *cm, int sky)
+static void ray_end(uint16_t *p, int c, int y0, int y1, R3DRows cm, int sky)
 {
     if (y1 <= y0) return;
     if (sky) r3d_draw_sky(p, c, y0, y1, cm);
     else {
         uint32_t k = PAL_RAMP(RAMP_STONE, 0);
-        k = cm[(15 << 8) + k];
+        k = cm[15][k];
         r3d_fill_loop(p + y0 * LINE, y1 - y0, k | (k << 8), LINE * 2);
     }
 }
@@ -406,9 +408,9 @@ static void column(int c)
     s->ybot = f->vh;
     s->ncp = 0;
     s->cps = r3d_clips[c];
-    s->cm = f->cm;
+    s->cm = r3d_cmrow;
     if ((unsigned)mx >= (unsigned)w || (unsigned)my >= (unsigned)h) {
-        fill_col(s->col, 0, f->vh, f->cm[15 * 256 + 1]);
+        fill_col(s->col, 0, f->vh, r3d_cmrow[15][1]);
         r3d_nclips[c] = 0;
         return;
     }
@@ -491,6 +493,9 @@ void r3d_columns(void)
 /* ------------------------------------------------------------------------ */
 /* sprites                                                                    */
 
+/* the window of column c at depth d8: the last checkpoint with d8 <= d8,
+ * else the whole view. A checkpoint is read as one word (d8 | top << 16 |
+ * bot << 24, little-endian R3DClip; EWRAM). */
 static void clip_at(int c, uint32_t d8, int *top, int *bot)
 {
     const R3DClip *k = r3d_clips[c];
@@ -527,7 +532,7 @@ void r3d_draw_sprite(const R3DSprite *s)
         int32_t hw12 = (s->w12 * 3) >> 3;
         int sy = (s->shadow_y12 + 0x800) >> 12;
         int hh = s->shadow_hh;
-        const uint8_t *dk = f->cm + (8 << 8);
+        const uint8_t *dk = r3d_cmrow[8];
         int cs = (cx12 - hw12 - 0x1000 + 0x1FFF) >> 13, ce = (cx12 + hw12 - 0x1000) >> 13;
         if (cs < 0) cs = 0;
         if (ce >= f->ncol) ce = f->ncol - 1;
@@ -578,7 +583,7 @@ void r3d_draw_sprite(const R3DSprite *s)
             ya = r0 > top ? r0 : top;
             yb = r1 < bot ? r1 : bot;
             if (ya >= yb) continue;
-            cm = f->cm + (s->level << 8);
+            cm = r3d_cmrow[s->level];
             if (s->trans) {
                 /* every other pixel, checkerboard alternating per frame */
                 ya += (ya + c + (int)f->frame) & 1;
@@ -599,7 +604,6 @@ void r3d_draw_sprite(const R3DSprite *s)
 /* view tint (damage / holy flash, vape haze): level/16 of the pixels go
  * through the tint map, 4x4 ordered dither (reference semantics) over the
  * 2-pixel columns, after the sprites */
-static uint8_t tint_lut[256];          /* IWRAM copy of the tint map */
 
 void r3d_tint_pass(const uint8_t *tm, int level)
 {
@@ -607,6 +611,13 @@ void r3d_tint_pass(const uint8_t *tm, int level)
     uint8_t thr[16];
     int i;
     for (i = 0; i < 16; i++) thr[i] = bayer[i] < level;
-    memcpy(tint_lut, tm, sizeof(tint_lut));
-    r3d_tint_rows(r3f.dst, r3f.ncol, r3f.vh, tint_lut, thr);
+    /* a VRAM copy of the tint map (reads as fast as IWRAM; VRAM takes
+     * halfword / word writes only) */
+    if (((uintptr_t)tm & 3) == 0) {
+        dma3_copy32(R3D_TINT_LUT, tm, 256 / 4);
+    } else {
+        volatile uint16_t *d = (volatile uint16_t *)R3D_TINT_LUT;
+        for (i = 0; i < 128; i++) d[i] = (uint16_t)(tm[2 * i] | (tm[2 * i + 1] << 8));
+    }
+    r3d_tint_rows(r3f.dst, r3f.ncol, r3f.vh, R3D_TINT_LUT, thr);
 }

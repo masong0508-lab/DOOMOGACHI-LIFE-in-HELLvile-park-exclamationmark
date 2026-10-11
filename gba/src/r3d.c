@@ -151,11 +151,23 @@ static void setup_colormaps(void)
     for (i = 0; i < 16; i++) sig = sig * 31u + doomo_colormap[i][(i * 37 + 11) & 255] +
                                      doomo_colormap[7][i * 16 + 3];
     sig ^= doomo_colormap[0][200] * 7u;
-    if (sig != cm_sig || cache_vw < 0) {
-        memcpy(r3d_cmap, doomo_colormap, sizeof(r3d_cmap));
+    if (sig != cm_sig || !r3d_cmrow[0]) {
+        /* rows 0-9 fill the gap after page 0, rows 10-15 the one after
+         * page 1 (VRAM takes halfword / word writes only) */
+        for (i = 0; i < 16; i++) {
+            uint8_t *dst = i < 10 ? R3D_CM_GAP_A + i * 256 : R3D_CM_GAP_B + (i - 10) * 256;
+            const uint8_t *src = doomo_colormap[i];
+            if (((uintptr_t)src & 3) == 0) {
+                dma3_copy32(dst, src, 256 / 4);
+            } else {
+                volatile uint16_t *d = (volatile uint16_t *)dst;
+                int k;
+                for (k = 0; k < 128; k++) d[k] = (uint16_t)(src[2 * k] | (src[2 * k + 1] << 8));
+            }
+            r3d_cmrow[i] = dst;
+        }
         cm_sig = sig;
     }
-    r3f.cm = r3d_cmap;
 }
 
 DOOMO_STATIC_ASSERT((offsetof(DoomoMap, cells) & 3) == 0, cells_word_aligned);
