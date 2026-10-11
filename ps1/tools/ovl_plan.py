@@ -218,13 +218,17 @@ def main(argv):
         return seen
 
     def closure(start, follow_scene_ptrs):
+        # A scene struct's code pointers are not followed (scene.c loads the
+        # scene's group before calling them); its data (the name string,
+        # read by scene_by_name() at any time) is.
         seen = set(start)
         todo = list(start)
         while todo:
             n = todo.pop()
-            if n in scene_secs and not follow_scene_ptrs:
-                continue
+            cut = n in scene_secs and not follow_scene_ptrs
             for t, _ in edges.get(n, ()):
+                if cut and is_code(t):
+                    continue
                 if t not in seen:
                     seen.add(t)
                     todo.append(t)
@@ -248,7 +252,7 @@ def main(argv):
         for s in scene_live:
             g = grp(s)
             for t, _ in edges.get(s, ()):
-                if t in resident:
+                if t in resident or not is_code(t):
                     continue
                 if g is None:
                     clash.add(t)

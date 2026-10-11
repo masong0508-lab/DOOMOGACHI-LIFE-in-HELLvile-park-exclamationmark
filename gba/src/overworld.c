@@ -44,9 +44,10 @@ DOOMO_STATIC_ASSERT(GBA_BIG_OW + sizeof(OwTile) * CACHE_SETS * CACHE_WAYS <= GBA
                     ow_cache_fits);
 static uint32_t cache_tick;
 static uint32_t tint_state;      /* changes invalidate by key        */
-/* this frame's texture pixels per id (animated textures change frame) */
-static const uint8_t *frame_tex[256];
-static uint8_t frame_tex_ok[256];
+/* this frame's texture pixels per id (animated textures change frame);
+ * ids >= TEX_COUNT (textures.h: <= 64) fall back to TEX_GRASS below */
+static const uint8_t *frame_tex[TEX_COUNT];
+static uint8_t frame_tex_ok[TEX_COUNT];
 
 const uint8_t ow_bayer[16] = { 0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5 };
 
@@ -79,7 +80,7 @@ static const OwTile *lit_cached(int tex, int lvl, int front)
     uint32_t set, key;
     OwTile *t, *victim;
     int w, x, y;
-    if (tex <= 0 || tex >= 255) tex = TEX_GRASS;
+    if (tex <= 0 || tex >= TEX_COUNT) tex = TEX_GRASS;
     if (lvl < 0) lvl = 0;
     if (lvl > 15) lvl = 15;
     if (!frame_tex_ok[tex]) {
