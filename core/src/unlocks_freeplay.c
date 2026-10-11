@@ -1,20 +1,18 @@
 /* unlocks_freeplay.c - the free play unlockables (ids 736..831, owner:
  * freeplay).
  *
- *   740..764  island achievements (UL_CAT_MISC, list 'F'), granted from
+ *   740..764  island achievements (UL_CAT_MISC, list 0x50), granted from
  *             code by the free play screens via fp_achieve()
  *   770..787  creator parts: most come bundled with an achievement (see
  *             bonus[] below), two follow PROG_* counters
- *   790..791  paints
  *   795..800  shop stock (UL_CAT_ITEM: the shop only sells them once owned)
  *   805       a window skin
  */
 #include "fp_int.h"
 
-#define FPL 'F'
+#define FPL 0x50          /* UL_CAT_MISC list id of the island trophies ('P') */
 #define ACH(id, idx, name, how) { id, UL_CAT_MISC, FPL, idx, name, how, 0, 0 }
 #define PART(id, list, idx, name, how, prog, need) { id, UL_CAT_PART, list, idx, name, how, prog, need }
-#define PAINT(id, idx, name, how, prog, need) { id, UL_CAT_PAINT, 0, idx, name, how, prog, need }
 #define ITEM(id, idx, name, how, prog, need) { id, UL_CAT_ITEM, 0, idx, name, how, prog, need }
 #define SKIN(id, opt, val, name, how, prog, need) { id, UL_CAT_SKIN, opt, val, name, how, prog, need }
 
@@ -72,10 +70,6 @@ const DoomoUnlock doomo_unlocks_freeplay[] = {
     /* ---- creator parts from island life ---- */
     PART(UP_CAP, CLIST_HAT, HAT_CAP, "Baseball Cap", "Live on your island for a day", PROG_DAYS_LIVED, 1),
     PART(UP_EARRINGS, CLIST_ACC, ACC_EARRINGS, "Coin Earrings", "Earn 1,000 H$", PROG_MONEY_EARNED, 1000),
-
-    /* ---- paints ---- */
-    PAINT(790, PAINT_CARAMEL, "Caramel Paint", "Serve 25 meals", PROG_MEALS_SERVED, 25),
-    PAINT(791, PAINT_TEAL, "Teal Paint", "Make 30 friendships", PROG_FRIENDSHIPS, 30),
 
     /* ---- shop stock ---- */
     ITEM(795, ITEM_VIDEO_GAME, "Video Game", "Earn 1,500 H$", PROG_MONEY_EARNED, 1500),

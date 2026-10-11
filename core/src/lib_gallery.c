@@ -52,6 +52,8 @@ int lib_gallery_pct(void)
         n++;
         if (!is_demon_spr(s) || library_seen(THING_IMPLING + s - SPR_IMPLING)) have++;
     }
+    lib_have = (int16_t)have;
+    lib_total = (int16_t)n;
     return lib_pct(have, n);
 }
 
@@ -128,19 +130,37 @@ static void gal_update(void)
 }
 
 /* ---- drawing -------------------------------------------------------------------- */
-/* An ornate gold frame around (x, y, w, h). */
-static void gold_frame(int x, int y, int w, int h)
+/* An ornate gold frame around (x, y, w, h); with fill = 0 only the ring is
+ * drawn (the picture under it stays). */
+static void gold_frame_ex(int x, int y, int w, int h, int fill)
 {
-    ui_round_rect(x - 5, y - 5, w + 10, h + 10, 3, PAL_RAMP(RAMP_CANDY, 1));
-    ui_round_rect(x - 4, y - 4, w + 8, h + 8, 2, PAL_UI_GOLD);
+    if (fill) {
+        ui_round_rect(x - 5, y - 5, w + 10, h + 10, 3, PAL_RAMP(RAMP_CANDY, 1));
+        ui_round_rect(x - 4, y - 4, w + 8, h + 8, 2, PAL_UI_GOLD);
+        plat_rect(x - 2, y - 2, w + 4, h + 4, PAL_RAMP(RAMP_CANDY, 2));
+        plat_rect(x - 1, y - 1, w + 2, h + 2, PAL_RAMP(RAMP_WOOD, 1));
+    } else {
+        plat_rect(x - 5, y - 5, w + 10, 5, PAL_RAMP(RAMP_CANDY, 1));
+        plat_rect(x - 5, y + h, w + 10, 5, PAL_RAMP(RAMP_CANDY, 1));
+        plat_rect(x - 5, y, 5, h, PAL_RAMP(RAMP_CANDY, 1));
+        plat_rect(x + w, y, 5, h, PAL_RAMP(RAMP_CANDY, 1));
+        plat_rect(x - 4, y - 4, w + 8, 3, PAL_UI_GOLD);
+        plat_rect(x - 4, y + h + 1, w + 8, 3, PAL_UI_GOLD);
+        plat_rect(x - 4, y - 1, 3, h + 2, PAL_UI_GOLD);
+        plat_rect(x + w + 1, y - 1, 3, h + 2, PAL_UI_GOLD);
+        plat_rect(x - 1, y - 1, w + 2, 1, PAL_RAMP(RAMP_WOOD, 1));
+        plat_rect(x - 1, y + h, w + 2, 1, PAL_RAMP(RAMP_WOOD, 1));
+        plat_rect(x - 1, y, 1, h, PAL_RAMP(RAMP_WOOD, 1));
+        plat_rect(x + w, y, 1, h, PAL_RAMP(RAMP_WOOD, 1));
+    }
     plat_rect(x - 3, y - 4, w + 6, 1, PAL_RAMP(RAMP_CANDY, 7));
-    plat_rect(x - 2, y - 2, w + 4, h + 4, PAL_RAMP(RAMP_CANDY, 2));
-    plat_rect(x - 1, y - 1, w + 2, h + 2, PAL_RAMP(RAMP_WOOD, 1));
     ui_fill_circle(x - 4, y - 4, 2, PAL_RAMP(RAMP_CANDY, 7));
     ui_fill_circle(x + w + 3, y - 4, 2, PAL_RAMP(RAMP_CANDY, 7));
     ui_fill_circle(x - 4, y + h + 3, 2, PAL_RAMP(RAMP_CANDY, 6));
     ui_fill_circle(x + w + 3, y + h + 3, 2, PAL_RAMP(RAMP_CANDY, 6));
 }
+
+static void gold_frame(int x, int y, int w, int h) { gold_frame_ex(x, y, w, h, 1); }
 
 static void plaque(int cx, int y, const char *s)
 {
@@ -232,9 +252,9 @@ static void sky_room(int sw, int y, int h)
     im.uid = G.sky_uid[s];
     if (im.pix) plat_image(vx - pan, vy, &im, 1, 0, 0);
     /* hide what pans out past the frame (only on narrow screens) */
-    if (vx > 4) plat_rect(0, vy, vx - 4, SKY_H, PAL_RAMP(RAMP_PASTEL_PINK, 6));
-    if (vx + vw + 4 < sw) plat_rect(vx + vw + 4, vy, sw - vx - vw - 4, SKY_H, PAL_RAMP(RAMP_PASTEL_PINK, 6));
-    gold_frame(vx, vy, vw, SKY_H);
+    if (vx > 5) plat_rect(0, vy, vx - 5, SKY_H, PAL_RAMP(RAMP_PASTEL_PINK, 6));
+    if (vx + vw + 5 < sw) plat_rect(vx + vw + 5, vy, sw - vx - vw - 5, SKY_H, PAL_RAMP(RAMP_PASTEL_PINK, 6));
+    gold_frame_ex(vx, vy, vw, SKY_H, 0);
     plaque(sw / 2, vy + SKY_H + 6, sky_names[s]);
     {
         int ty = vy + SKY_H + 20;
@@ -328,9 +348,9 @@ static void detail(int sw, int sh)
         gold_frame(fx, fy, tw, 64 * s);
         for (k = 0; k < n && img; k++) plat_image(fx + k * 64 * s, fy, img, s, 0, 0);
         plaque(x + w / 2, fy + 64 * s + 7, pretty(texture_name(id), buf, sizeof(buf)));
-        doomo_snprintf(buf, sizeof(buf), "%s tile, %s%s", id >= TEX_FLESH_WALL && id <= TEX_SLIME ? "Hell" : "Cute",
-                       n > 1 ? "shown 3 times: seamless!" : "64x64, at 2x",
-                       texture_is_animated(id) ? " Animated." : "");
+        doomo_snprintf(buf, sizeof(buf), "%s tile %s%s", id >= TEX_FLESH_WALL && id <= TEX_SLIME ? "Hell" : "Cute",
+                       n > 1 ? "x3: seamless!" : "64x64 at 2x.",
+                       texture_is_animated(id) ? " Animated!" : "");
         ui_text_center(x + w / 2, fy + 64 * s + 22, buf, st->text_dim);
         {
             int sx = x + w / 2 - 12;

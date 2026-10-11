@@ -161,6 +161,8 @@ int lib_weapons_pct(void)
         }
     }
     pct = lib_pct(have, n);
+    lib_have = (int16_t)have;
+    lib_total = (int16_t)n;
     if (pct >= 100) unlock_grant(LIB_UL_GUN_NERD);
     return pct;
 }

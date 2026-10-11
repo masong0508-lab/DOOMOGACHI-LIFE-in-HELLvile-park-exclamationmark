@@ -218,5 +218,9 @@ extern const DoomoScene SCENE_UNLOCKS, SCENE_PICKER;
 
 /* Shared static scratch for building one-off strings. */
 extern char fp_tmp[128];
+/* Id lists of the roster / picker and the unlocks gallery live in the
+ * shared scene scratch (scene.h): each re-claims and rebuilds its list
+ * when it comes back on top. */
+#define FP_IDS_MAX 1024
 
 #endif

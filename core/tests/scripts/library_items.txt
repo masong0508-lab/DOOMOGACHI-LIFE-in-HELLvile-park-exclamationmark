@@ -1,0 +1,34 @@
+# assert-no-stubs
+# SCENE_LIB_ITEMS (library): the Food & Item Dex - items by shelf, effect
+# chips, love / hate counts, Quillby's notes and the Tastes shelf.
+scene LIB_ITEMS 256
+expect-scene LIB_ITEMS
+wait 20
+shot all
+press A
+wait 20
+shot cupcake
+press B
+press R
+press R
+press R
+press R
+wait 12
+shot exorcism
+press A
+wait 20
+shot holy_water
+press B
+press L
+press L
+press L
+press L
+press L
+wait 12
+shot tastes_loved
+press SELECT
+wait 12
+shot tastes_hated
+press A
+wait 20
+shot taste_page

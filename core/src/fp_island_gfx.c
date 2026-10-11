@@ -19,16 +19,24 @@
 
 /* ====================================================================== */
 /* geometry                                                                 */
-static FpMap M;
-static int16_t coast_l[260], coast_r[260];   /* per map row, screen x       */
-static int16_t river_c[260];                 /* river centre per map row    */
-static int geo_w, geo_h;
+static FpIslandGeo *G;                       /* in the island's scene scratch */
+#define M       (G->map)
+#define coast_l (G->coast_l)
+#define coast_r (G->coast_r)
+#define river_c (G->river_c)
 static int g_tint, g_t;
 
-const FpMap *fp_map(void) { return &M; }
+static void build_geometry(void);
+static void use_geo(void)
+{
+    G = fp_island_geo();
+    if (G->geo_w != fp_sw() || G->geo_h != fp_sh() || M.h == 0) build_geometry();
+}
 
-int fp_mx(int u) { return M.x + u * M.w / 256; }
-int fp_my(int u) { return M.y + u * M.h / 256; }
+const FpMap *fp_map(void) { use_geo(); return &M; }
+
+int fp_mx(int u) { use_geo(); return M.x + u * M.w / 256; }
+int fp_my(int u) { use_geo(); return M.y + u * M.h / 256; }
 
 static int isqrt_i(int v) { return v <= 0 ? 0 : (int)fx_isqrt((uint32_t)v); }
 
@@ -39,9 +47,9 @@ static void build_geometry(void)
     M.y = 16;
     M.w = sw;
     M.h = sh - 16 - 14;
-    if (M.h > 258) M.h = 258;
-    geo_w = sw;
-    geo_h = sh;
+    if (M.h > FP_GEO_ROWS - 2) M.h = FP_GEO_ROWS - 2;
+    G->geo_w = (int16_t)sw;
+    G->geo_h = (int16_t)sh;
     for (row = 0; row < M.h; row++) {
         /* superellipse |x/a|^4 + |y/b|^4 <= 1 with a little coastal wobble */
         int cy = M.h / 2, b = M.h / 2 - 3, a = M.w / 2 - 5;
@@ -61,15 +69,14 @@ static void build_geometry(void)
     }
 }
 
-void fp_island_geometry(void)
-{
-    if (geo_w != fp_sw() || geo_h != fp_sh() || M.h == 0) build_geometry();
-}
+void fp_island_geometry(void) { use_geo(); }
 
 /* Is the screen point on land, and on which side (0 hill, 1 hell)? */
 int fp_island_side_at(int x, int y)
 {
-    int row = y - M.y;
+    int row;
+    use_geo();
+    row = y - M.y;
     if (row < 0 || row >= M.h || coast_l[row] < 0) return -1;
     if (x < coast_l[row] || x > coast_r[row]) return -1;
     return x > river_c[row] + 5 ? 1 : 0;
@@ -131,6 +138,14 @@ static void shadow(int cx, int y, int rx)
     }
 }
 
+/* golden hour (dawn / dusk): the land keeps its candy colours, the sea
+ * blushes peach and pink */
+static int golden_hour(void)
+{
+    int h = town_hour();
+    return !town_is_night() && (h >= 18 || h < 7);
+}
+
 static int night_lit(int salt)
 {
     if (!g_tint) return 0;
@@ -173,10 +188,13 @@ static void draw_sea(void)
     int bands = 4, bh = (M.h + bands - 1) / bands;
     static const uint8_t day[4] = { PAL_RAMP(RAMP_SKY, 6), PAL_RAMP(RAMP_MINT, 6),
                                     PAL_RAMP(RAMP_MINT, 5), PAL_RAMP(RAMP_SKY, 5) };
+    static const uint8_t dusk[4] = { PAL_RAMP(RAMP_PEACH, 6), PAL_RAMP(RAMP_PASTEL_PINK, 6),
+                                     PAL_RAMP(RAMP_PASTEL_PINK, 5), PAL_RAMP(RAMP_VAPE, 5) };
+    const uint8_t *band = golden_hour() ? dusk : day;
     for (i = 0; i < bands; i++) {
         int y = M.y + i * bh;
-        R(M.x, y, M.w, DOOMO_MIN(bh, M.y + M.h - y), day[i]);
-        if (i) plat_checker(M.x, y, M.w, 1, tc(day[i - 1]));
+        R(M.x, y, M.w, DOOMO_MIN(bh, M.y + M.h - y), band[i]);
+        if (i) plat_checker(M.x, y, M.w, 1, tc(band[i - 1]));
     }
     /* wave glints drifting along */
     for (i = 0; i < 18; i++) {
@@ -188,8 +206,8 @@ static void draw_sea(void)
         if (fp_island_side_at(x, y) >= 0 || fp_island_side_at(x + 6, y) >= 0) continue;
         if (ph < 40) {
             int w = ph < 20 ? 2 + ph / 5 : 6 - (ph - 20) / 5;
-            RG(x, y, w, 1, night ? PAL_RAMP(RAMP_SKY, 4) : PAL_WHITE);
-            if (w > 3) R(x + 1, y + 1, w - 2, 1, PAL_RAMP(RAMP_SKY, 7));
+            RG(x, y, w, 1, night ? PAL_RAMP(RAMP_SKY, 4) : golden_hour() ? PAL_RAMP(RAMP_CANDY, 7) : PAL_WHITE);
+            if (w > 3) R(x + 1, y + 1, w - 2, 1, golden_hour() ? PAL_RAMP(RAMP_LAVA, 7) : PAL_RAMP(RAMP_SKY, 7));
         }
     }
     if (night) {
@@ -1015,11 +1033,9 @@ static void draw_weather(int wx)
 /* entry point                                                              */
 int fp_island_tint(void)
 {
-    int h = town_hour();
-    if (town_is_night()) return TINT_NIGHT;
-    if (h >= 18 || h < 7) return TINT_GOLD;
-    return TINT_NONE;
+    return town_is_night() ? TINT_NIGHT : TINT_NONE;
 }
+
 
 void fp_island_draw_map(const FpLocDraw *locs, int n, int sel)
 {

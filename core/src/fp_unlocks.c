@@ -18,22 +18,33 @@ static const char *const tab_names[TAB_N] = {
 
 static struct {
     int tab, sel, top, t;
-    uint16_t idx[1024];
     int n, owned;
 } U;
 
 static int tab_cat(int tab) { return tab - 1; }
+
+/* the index list lives in the shared scene scratch (scene.h) */
+#define UNLOCKS_TAG SAVE_EXT_TAG('F', 'P', 'U', 'L')
+static uint16_t *fp_ids;
+static void build(void);
+static void ensure(void)
+{
+    if (!fp_ids || !scene_scratch_mine(UNLOCKS_TAG)) {
+        fp_ids = (uint16_t *)scene_scratch(UNLOCKS_TAG, FP_IDS_MAX * sizeof(uint16_t));
+        build();
+    }
+}
 
 static void build(void)
 {
     int i, total = unlock_count();
     U.n = 0;
     U.owned = 0;
-    for (i = 0; i < total && U.n < 1024; i++) {
+    for (i = 0; i < total && U.n < FP_IDS_MAX; i++) {
         const DoomoUnlock *u = unlock_at(i);
         if (!u || !u->name) continue;
         if (U.tab != TAB_ALL && u->cat != tab_cat(U.tab)) continue;
-        U.idx[U.n++] = (uint16_t)i;
+        fp_ids[U.n++] = (uint16_t)i;
         if (unlock_has(u->id)) U.owned++;
     }
     if (U.tab == TAB_PROGRESS) U.n = PROG_COUNT;
@@ -44,7 +55,8 @@ static void un_enter(int arg)
 {
     (void)arg;
     memset(&U, 0, sizeof(U));
-    build();
+    fp_ids = NULL;
+    ensure();
     fp_achieve(UL_FP_BOOKWORM);
 }
 
@@ -57,6 +69,7 @@ static void un_update(void)
 {
     int c = cols(), vis = U.tab == TAB_PROGRESS ? prog_vis() : rows();
     U.t++;
+    ensure();
     if (fp_is_freeplay()) fp_live(); else fp_fx_tick();
     if (btn_pressed(BTN_L | BTN_R)) {
         U.tab = (U.tab + (btn_pressed(BTN_L) ? TAB_N - 1 : 1)) % TAB_N;
@@ -124,7 +137,7 @@ static uint8_t cat_color(int cat)
 static void tile(int x, int y, int s, const DoomoUnlock *u, int sel)
 {
     int own = unlock_has(u->id), t = U.t;
-    uint8_t c = own ? cat_color(u->cat) : PAL_RAMP(RAMP_STONE, 4);
+    uint8_t c = own ? cat_color(u->cat) : ui_darker(ui_darker(cat_color(u->cat)));
     char g[2] = { 0, 0 };
     int b = sel ? (ui_wave(t, 20, 1) > 0) : 0;
     y -= b;
@@ -139,7 +152,8 @@ static void tile(int x, int y, int s, const DoomoUnlock *u, int sel)
         g[0] = (char)cat_icon(u);
         plat_text(x + (s - 2) / 2 - 2, y + (s - 2) / 2 - 4, g, PAL_WHITE);
     } else {
-        plat_text(x + (s - 2) / 2 - 2, y + (s - 2) / 2 - 4, "?", PAL_RAMP(RAMP_STONE, 2));
+        plat_checker(x + 1, y + 1, s - 4, s - 4, ui_darker(c));
+        plat_text(x + (s - 2) / 2 - 2, y + (s - 2) / 2 - 4, "?", ui_lighter(ui_lighter(c)));
     }
     if (sel) {
         ui_frame(x - 2, y - 2, s + 2, s + 2, (t / 6) & 1 ? PAL_UI_GOLD : PAL_WHITE);
@@ -171,6 +185,7 @@ static void un_draw(void)
     const UiStyle *st = ui_style(WIN_CUTE);
     int gx = (sw - c * s) / 2, gy = 44, total = unlock_count(), own_all = unlock_owned_count();
     char buf[64];
+    ensure();
     ui_backdrop(WIN_CUTE, (uint32_t)fp_t());
     doomo_snprintf(buf, sizeof(buf), "Unlocks  %d / %d", own_all, total);
     ui_title(sw / 2, 3, buf, WIN_CUTE);
@@ -195,7 +210,7 @@ static void un_draw(void)
         int k = U.top * c + i;
         const DoomoUnlock *u;
         if (k >= U.n) break;
-        u = unlock_at(U.idx[k]);
+        u = unlock_at(fp_ids[k]);
         if (u) tile(gx + (i % c) * s, gy + (i / c) * s, s, u, k == U.sel);
     }
     if ((U.n + c - 1) / c > r)
@@ -205,7 +220,7 @@ static void un_draw(void)
         int cy = gy + r * s + 6, ch = sh - cy - 16;
         ui_window(6, cy, sw - 12, ch, WIN_CREAM);
         if (U.n) {
-            const DoomoUnlock *u = unlock_at(U.idx[U.sel]);
+            const DoomoUnlock *u = unlock_at(fp_ids[U.sel]);
             const UiStyle *cs = ui_style(WIN_CREAM);
             if (u) {
                 int own = unlock_has(u->id);

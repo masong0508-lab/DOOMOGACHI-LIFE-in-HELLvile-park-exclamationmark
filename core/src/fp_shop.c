@@ -34,11 +34,15 @@ static int sells(int kind, int item)
     if (it->price == 0 || it->category == ICAT_KEY) return 0;
     switch (kind) {
     case FP_SHOP_ARG_BLACK_MARKET:
+        /* the edgy stuff only: no holy water, no fluffy sweets */
         if (it->category == ICAT_EXORCISM) return 0;
-        if (item == ITEM_ANGEL_CAKE || item == ITEM_FLOWERS || item == ITEM_LOVE_LETTER ||
-            item == ITEM_PLUSHIE || item == ITEM_RING || item == ITEM_SALAD || item == ITEM_SOAP)
+        switch (item) {
+        case ITEM_ANGEL_CAKE: case ITEM_FLOWERS: case ITEM_LOVE_LETTER: case ITEM_PLUSHIE:
+        case ITEM_RING: case ITEM_SALAD: case ITEM_SOAP: case ITEM_CUPCAKE: case ITEM_ONIGIRI:
+        case ITEM_PUDDING: case ITEM_MILK: case ITEM_PERFUME: case ITEM_MEDICINE:
             return 0;
-        return 1;
+        default: return 1;
+        }
     case FP_SHOP_ARG_CAFE:
         return it->category == ICAT_FOOD;
     default:
@@ -250,12 +254,6 @@ static void shop_draw(void)
     ui_backdrop(bm ? WIN_HELL : style == WIN_MINT ? WIN_MINT : WIN_CUTE, (uint32_t)fp_t());
     ui_title(sw / 2 - (big ? 40 : 24), 3, title, style);
     fp_money_pill(sw - 4, 4, 1);
-    /* tabs */
-    {
-        const char *names[SHOP_TABS_MAX];
-        for (i = 0; i < S.ntabs; i++) names[i] = S.tabs[i].name;
-        ui_tabs(lx + 2, 21, names, S.ntabs, S.tab, style);
-    }
     /* shelf */
     ui_window(lx - 2, ly - 4, lw + 4, vis * 12 + 8, style);
     for (i = 0; i < vis && S.top + i < S.nstock; i++) {
@@ -312,6 +310,12 @@ static void shop_draw(void)
                 }
             }
         }
+    }
+    /* tabs (on top of both windows) */
+    {
+        const char *names[SHOP_TABS_MAX];
+        for (i = 0; i < S.ntabs; i++) names[i] = S.tabs[i].name;
+        ui_tabs(lx + 2, 21, names, S.ntabs, S.tab, style);
     }
     if (!big && S.nstock && !S.locked[S.sel])
         ui_text_wrap(lx + 2, ly + vis * 12 + 6, lw, doomo_items[S.stock[S.sel]].desc, PAL_WHITE, 0);

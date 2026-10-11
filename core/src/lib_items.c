@@ -102,6 +102,8 @@ int lib_items_pct(void)
         }
     }
     if (foods > 0 && food_have == foods) unlock_grant(LIB_UL_GOURMET);
+    lib_have = (int16_t)have;
+    lib_total = (int16_t)n;
     return lib_pct(have, n);
 }
 
@@ -170,6 +172,7 @@ static void items_enter(int arg)
     lib_wing_enter(LIB_WING_ITEMS, arg);
     if (lib_b.tab >= SH_COUNT) lib_b.tab = 0;
     tally();
+    I.club_for = 0;
     rebuild();
     items_pct = (uint8_t)lib_items_pct();
 }
@@ -249,7 +252,7 @@ static void pedestal(int cx, int cy, int it, int big)
     ui_sparkle(cx + r, cy - r - bob, (lib_b.t / 3) & 15, PAL_WHITE);
 }
 
-static int effect_chips(int x, int y, int w, int it)
+static int effect_chips(int x, int y, int w, int bottom, int it)
 {
     static const char *const nm[7] = { "Food", "Joy", "Clean", "Energy", "Health", "Sanity", "Corrupt" };
     const DoomoItemInfo *in = &doomo_items[it];
@@ -267,6 +270,7 @@ static int effect_chips(int x, int y, int w, int it)
         doomo_snprintf(b, sizeof(b), "%s%c%d", nm[k], v[k] > 0 ? '+' : '-', v[k] > 0 ? v[k] : -v[k]);
         cw = ui_text_width(b) + 6;
         if (cx + cw > x + w) { cx = x; cy += 11; }
+        if (cy + 10 > bottom) break;
         ui_round_rect(cx, cy, cw, 10, 3, c);
         ui_text(cx + 3, cy + 1, b, PAL_WHITE);
         cx += cw + 2;
@@ -278,11 +282,39 @@ static int effect_chips(int x, int y, int w, int it)
         doomo_snprintf(b, sizeof(b), "Holy %d", in->holy);
         cw = ui_text_width(b) + 6;
         if (cx + cw > x + w) { cx = x; cy += 11; }
+        if (cy + 10 > bottom) return cy;
         ui_round_rect(cx, cy, cw, 10, 3, PAL_UI_GOLD);
         ui_text(cx + 3, cy + 1, b, PAL_PAINT(PAINT_RUST, 0));
         any = 1;
     }
     return any ? cy + 11 : y;
+}
+
+/* Up to four citizens who love food f (scanned once per page). */
+static void fan_club(int f)
+{
+    int id;
+    if (I.club_for == f + 1) return;
+    I.club_for = (int16_t)(f + 1);
+    I.club_n = 0;
+    for (id = 0; id < DOOMO_MAX_RESIDENTS && I.club_n < 4; id++) {
+        const DoomoResident *r = &doomo_town.res[id];
+        if (r->status != RES_EMPTY && r->status != RES_DEAD && r->like_food % FOOD_COUNT == f)
+            I.club[I.club_n++] = (int16_t)id;
+    }
+}
+
+static int club_lines(int x, int y, int w, int bottom, int f, const UiStyle *st)
+{
+    char buf[96];
+    int i, n = 0;
+    fan_club(f);
+    if (!I.club_n || y + 2 * FONT_LINE > bottom) return y;
+    n = doomo_snprintf(buf, sizeof(buf), "Fan club: ");
+    for (i = 0; i < I.club_n && n < (int)sizeof(buf) - 16; i++)
+        n += doomo_snprintf(buf + n, (int)sizeof(buf) - n, "%s%s", i ? ", " : "", doomo_town.res[I.club[i]].name);
+    if (I.love[f] > I.club_n) doomo_snprintf(buf + n, (int)sizeof(buf) - n, " +%d", I.love[f] - I.club_n);
+    return y + FONT_LINE * ui_text_wrap(x, y, w, buf, st->text_dim, 1);
 }
 
 static void taste_panel(int x, int y, int w, int h, int f, int detail)
@@ -305,14 +337,13 @@ static void taste_panel(int x, int y, int w, int h, int f, int detail)
     ly += 10;
     if (I.fan[f] >= 0) {
         doomo_snprintf(buf, sizeof(buf), "Biggest fan: %s", doomo_town.res[I.fan[f]].name);
-        ui_text_wrap(x, ly, w, buf, st->text, 1);
-        ly += 2 * FONT_LINE;
+        ly += FONT_LINE * ui_text_wrap(x, ly, w, buf, st->text, 1);
     }
+    if (detail) ly = club_lines(x, ly, w, y + h - FONT_LINE, f, st);
     if (ly + FONT_LINE <= y + h)
         ui_text_wrap(x, ly, w, f < ITEM_HOUSE_KEY && food_of(f + ITEM_CUPCAKE) == f ?
                      "On the menu at Brimstone Bites." : "Only found in dreams and daydreams.",
                      st->text_dim, 1);
-    (void)detail;
 }
 
 static void preview(int x, int y, int w, int h)
@@ -335,7 +366,7 @@ static void preview(int x, int y, int w, int h)
     }
     ty += 10;
     ty += FONT_LINE * ui_text_wrap(x + 6, ty, w - 12, in->desc, st->text, 1);
-    ty = effect_chips(x + 6, ty + 2, w - 12, it);
+    ty = effect_chips(x + 6, ty + 2, w - 12, y + h - 4, it);
     f = food_of(it);
     if (f >= 0 && ty + FONT_LINE <= y + h - 4) {
         doomo_snprintf(buf, sizeof(buf), STR_ICON_HEART "%d  " STR_ICON_FROWN "%d", I.love[f], I.hate[f]);
@@ -375,13 +406,14 @@ static void detail(int sw, int sh)
         }
         ty += 12;
         ty += FONT_LINE * ui_text_wrap(rx, ty, rw, in->desc, st->text, 1);
-        ty = effect_chips(rx, ty + 2, rw, it) + 2;
+        ty = effect_chips(rx, ty + 2, rw, y + h - 4, it) + 2;
         if (f >= 0) {
-            doomo_snprintf(buf, sizeof(buf), STR_ICON_HEART " Loved by %d  " STR_ICON_FROWN " hated by %d",
+            doomo_snprintf(buf, sizeof(buf), STR_ICON_HEART " %d love it  " STR_ICON_FROWN " %d hate it",
                            I.love[f], I.hate[f]);
             ui_text(rx, ty, lib_fit(buf, rw, buf, sizeof(buf)), st->text);
             ty += FONT_LINE;
-            if (I.fan[f] >= 0) {
+            if (big) ty = club_lines(rx, ty, rw, y + h - 3 * FONT_LINE, f, st);
+            else if (I.fan[f] >= 0) {
                 doomo_snprintf(buf, sizeof(buf), "Biggest fan: %s", doomo_town.res[I.fan[f]].name);
                 ui_text(rx, ty, buf, st->text_dim);
                 ty += FONT_LINE;

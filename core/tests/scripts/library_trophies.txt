@@ -1,0 +1,26 @@
+# assert-no-stubs
+# SCENE_LIB_TROPHIES (library): the Trophy Wall - every unlock with its
+# hint and progress, the filters and the Stats page.
+scene LIB_TROPHIES 256
+expect-scene LIB_TROPHIES
+wait 20
+shot all
+press DOWN
+press DOWN
+wait 10
+shot ghost
+press A
+wait 30
+shot ghost_page
+press B
+press SELECT
+press SELECT
+press SELECT
+wait 10
+shot almost_there
+press L
+wait 10
+shot stats
+press A
+wait 16
+shot stats_page

@@ -228,14 +228,18 @@ static void draw_window(const ALayout *L, int x, int y, int id, int sel)
     {
         int lit = !night || (home && act != ACT_SLEEPING);
         int dark = night && !lit;
-        plat_rect(x, y, w, h, dark ? ui_darker(ui_darker(wall1)) : wall0);
-        plat_rect(x, y + h - 6, w, 6, dark ? PAL_RAMP(RAMP_STONE, 1) : wall1);
-        plat_checker(x, y + h - 7, w, 1, dark ? PAL_RAMP(RAMP_STONE, 1) : wall1);
-        if (!dark) {
-            plat_rect(x + 1, y + 1, w - 2, 1, PAL_WHITE);
-            /* tiny polka hearts on the wallpaper */
-            plat_rect(x + 3, y + 5, 1, 1, wall1);
-            plat_rect(x + w - 4, y + 9, 1, 1, wall1);
+        plat_rect(x, y, w, h, wall0);
+        plat_rect(x, y + h - 6, w, 6, wall1);
+        plat_checker(x, y + h - 7, w, 1, wall1);
+        plat_rect(x + 1, y + 1, w - 2, 1, PAL_WHITE);
+        /* tiny polka hearts on the wallpaper */
+        plat_rect(x + 3, y + 5, 1, 1, wall1);
+        plat_rect(x + w - 4, y + 9, 1, 1, wall1);
+        if (dark) plat_shade_rect(x, y, w, h, 5);           /* lights out */
+        else if (night) {
+            /* a warm lamp glow in lit rooms at night */
+            plat_rect(x + w / 2 - 2, y + 1, 5, 2, PAL_RAMP(RAMP_CANDY, 7));
+            plat_rect(x + w / 2 - 1, y + 3, 3, 1, PAL_RAMP(RAMP_CANDY, 6));
         }
         if (st == RES_POSSESSED && (t / 4 + id) % 6 < 3) plat_shade_rect(x, y, w, h, 9);
     }

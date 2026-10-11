@@ -588,26 +588,30 @@ static void dream_floor(int y0, int creep, int nightmare, uint32_t t, uint8_t c0
 
 void dream_draw_frame(int creep, int nightmare, uint32_t t)
 {
-    int sw = SW(), sh = SH(), x, r = BIG() ? 13 : 10;
+    int sw = SW(), sh = SH(), x, r = BIG() ? 12 : 8, step = r * 12 / 5, band = r / 2;
     uint8_t c = creep < 8 ? PAL_PAINT(PAINT_WHITE, 2) : creep < 13 ? PAL_RAMP(RAMP_VAPE, 6) :
                 nightmare ? PAL_RAMP(RAMP_BLOOD, 2) : PAL_RAMP(RAMP_VAPE, 2);
     uint8_t ol = creep < 8 ? PAL_RAMP(RAMP_VAPE, 5) : creep < 13 ? PAL_RAMP(RAMP_VAPE, 3) :
                  nightmare ? PAL_RAMP(RAMP_BLOOD, 0) : PAL_RAMP(RAMP_VAPE, 0);
-    /* a puffy thought-bubble rim: outline pass, then fill pass */
+    /* a puffy thought-bubble rim: straight bands + a few bumps, outline
+     * pass then fill pass (~70 circles: cheap enough for the GBA) */
     int pass;
     for (pass = 0; pass < 2; pass++) {
         uint8_t col = pass ? c : ol;
-        int grow = pass ? 0 : 1;
-        /* bumps every ~1.6 radii: few circles (cheap on the GBA) */
-        for (x = -r / 2; x < sw + r; x += r + r * 3 / 5) {
+        int g = pass ? 0 : 1;
+        plat_rect(0, 0, sw, band + g, col);
+        plat_rect(0, sh - band - g, sw, band + g, col);
+        plat_rect(0, 0, band + g, sh, col);
+        plat_rect(sw - band - g, 0, band + g, sh, col);
+        for (x = step / 2 - r; x < sw + r; x += step) {
             int w1 = ui_wave((int)t + x, 50, 2);
-            ui_fill_circle(x, -4 + w1, r + grow, col);
-            ui_fill_circle(x + r / 2, sh + 3 - w1, r + grow, col);
+            ui_fill_circle(x, band - 2 + w1, r / 2 + 2 + g, col);
+            ui_fill_circle(x + step / 2, sh - band + 1 - w1, r / 2 + 2 + g, col);
         }
-        for (x = r; x < sh - r / 2; x += r + r * 3 / 5) {
+        for (x = step; x < sh - step / 2; x += step) {
             int w1 = ui_wave((int)t + x * 2, 60, 2);
-            ui_fill_circle(-5 + w1, x, r + grow, col);
-            ui_fill_circle(sw + 4 - w1, x + r / 2, r + grow, col);
+            ui_fill_circle(band - 2 + w1, x, r / 2 + 2 + g, col);
+            ui_fill_circle(sw - band + 1 - w1, x + step / 2, r / 2 + 2 + g, col);
         }
     }
     if (creep >= 13) {

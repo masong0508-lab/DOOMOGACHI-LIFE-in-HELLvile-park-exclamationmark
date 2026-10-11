@@ -102,10 +102,17 @@ static void continue_free(void)
 
 static void cycle_theme(int d)
 {
-    int v = theme(), i;
+    int v = theme(), i, old = v;
     for (i = 0; i < THEME_N; i++) {
         v = (v + THEME_N + d) % THEME_N;
         if (theme_ok(v)) break;
+    }
+    if (v == old) {
+        const DoomoUnlock *u = unlock_find(UL_CAT_SKIN, OPT_TITLE_THEME, (old + 1) % THEME_N);
+        audio_sfx(SFX_ERROR);
+        doomo_snprintf(fp_tmp, sizeof(fp_tmp), "More themes: %s", u && u->how ? u->how : "keep playing!");
+        ui_toast(fp_tmp);
+        return;
     }
     opt_set(OPT_TITLE_THEME, v);
     audio_sfx(SFX_SPARKLE);

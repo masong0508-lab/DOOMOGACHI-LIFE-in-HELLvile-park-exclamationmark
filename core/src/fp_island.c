@@ -93,13 +93,20 @@ typedef struct {
     const char *desc;
 } Entry;
 
+/* the hub's big state lives in the shared scene scratch (scene.h) */
+typedef struct {
+    FpIslandGeo geo;
+    Entry ent[MENU_MAX];
+} IslScratch;
+static IslScratch *isp;
+
 static struct {
     int sel;
     uint8_t menu_open;
     const Loc *mloc;
     int menu_t;
-    Entry ent[MENU_MAX];
     int nent, esel, etop;
+    uint8_t menu_dirty;
     uint8_t prob[FP_LOC_MAX];
     uint16_t here[ACT_COUNT], here_acc[ACT_COUNT];
     int scan;
@@ -110,6 +117,24 @@ static struct {
     char namebuf[FP_ISLAND_NAME_LEN];
     char petname[8];
 } I;
+
+static void build_menu(const Loc *L);
+static void isl_ready(void);
+
+/* (Re)claim the scratch; after another scene took it the geometry is
+ * rebuilt by the gfx module and an open menu is rebuilt here. */
+static IslScratch *isl(void)
+{
+    if (!isp || !scene_scratch_mine(FP_ISLAND_TAG)) {
+        isp = (IslScratch *)scene_scratch(FP_ISLAND_TAG, sizeof(IslScratch));
+        memset(isp, 0, sizeof(*isp));
+        I.nent = 0;
+        I.menu_dirty = 1;
+    }
+    return isp;
+}
+
+FpIslandGeo *fp_island_geo(void) { return &isl()->geo; }
 
 static int loc_index_of(int kind)
 {
@@ -124,7 +149,7 @@ static Entry *add(int code, int icon, const char *label, const char *desc)
 {
     Entry *e;
     if (I.nent >= MENU_MAX) return NULL;
-    e = &I.ent[I.nent++];
+    e = &isl()->ent[I.nent++];
     memset(e, 0, sizeof(*e));
     e->code = (uint8_t)code;
     e->icon = (uint8_t)icon;
@@ -626,6 +651,8 @@ static void island_enter(int arg)
 {
     int keep = I.sel;
     memset(&I, 0, sizeof(I));
+    isp = NULL;
+    isl_ready();
     I.sel = (keep > 0 && keep < NLOCS) ? keep : loc_index_of(LOC_TOWN_HALL);
     fp_island_geometry();
     full_scan();
@@ -687,13 +714,28 @@ static void menu_update(void)
     if (btn_repeat(BTN_DOWN)) { I.esel = (I.esel + 1) % I.nent; audio_sfx(SFX_CURSOR); }
     if (I.esel < I.etop) I.etop = I.esel;
     if (I.esel >= I.etop + vis) I.etop = I.esel - vis + 1;
-    if (btn_pressed(BTN_A)) { run_entry(&I.ent[I.esel]); return; }
+    if (btn_pressed(BTN_A)) { run_entry(&isl()->ent[I.esel]); return; }
     if (btn_pressed(BTN_B)) { I.menu_open = 0; audio_sfx(SFX_CANCEL); }
+}
+
+/* Make sure the scratch is ours and an open menu has its entries. */
+static void isl_ready(void)
+{
+    isl();
+    if (I.menu_dirty) {
+        I.menu_dirty = 0;
+        if (I.menu_open && I.mloc) {
+            int s = I.esel;
+            build_menu(I.mloc);
+            I.esel = DOOMO_MIN(s, I.nent - 1);
+        }
+    }
 }
 
 static void island_update(void)
 {
     int old = I.sel;
+    isl_ready();
     fp_live();
     if (I.wait) { after_wait(); if (I.wait) return; }
     scan_crowds();
@@ -824,7 +866,7 @@ static void draw_menu(void)
     {
         int ly = y + (has_host ? 25 : 12);
         for (i = 0; i < vis && I.etop + i < I.nent; i++) {
-            const Entry *e = &I.ent[I.etop + i];
+            const Entry *e = &isl()->ent[I.etop + i];
             int ry = ly + i * 11, sel = I.etop + i == I.esel;
             uint8_t tc = e->enabled ? st->text : st->text_dim;
             if (sel) {
@@ -846,7 +888,7 @@ static void draw_menu(void)
     }
     /* the selected entry's description (or why it's locked) */
     {
-        const Entry *e = &I.ent[I.esel];
+        const Entry *e = &isl()->ent[I.esel];
         const char *d = e->desc;
         uint8_t c = st->text_dim;
         if (!e->enabled && e->code == E_ACTIVITY) { d = fp_activity_reason(e->act); c = PAL_UI_RED; }
@@ -865,6 +907,7 @@ static void island_draw(void)
 {
     FpLocDraw ld[FP_LOC_MAX];
     int i, sw = fp_sw(), sh = fp_sh(), style = WIN_CUTE;
+    isl_ready();
     for (i = 0; i < NLOCS; i++) {
         loc_screen(i, &ld[i].x, &ld[i].y);
         ld[i].kind = locs[i].kind;
@@ -906,10 +949,10 @@ const DoomoScene SCENE_ISLAND = { "ISLAND", island_enter, NULL, island_update, i
 int fp_island_select_kind(int kind) { I.sel = loc_index_of(kind); return I.sel; }
 int fp_island_menu_open(void) { return I.menu_open; }
 int fp_island_menu_count(void) { return I.nent; }
-const char *fp_island_menu_label(int i) { return (i >= 0 && i < I.nent) ? I.ent[i].label : ""; }
+const char *fp_island_menu_label(int i) { return (i >= 0 && i < I.nent) ? isl()->ent[i].label : ""; }
 int fp_island_menu_select(const char *label)
 {
     int i;
-    for (i = 0; i < I.nent; i++) if (strcmp(I.ent[i].label, label) == 0) { I.esel = i; return 1; }
+    for (i = 0; i < I.nent; i++) if (strcmp(isl()->ent[i].label, label) == 0) { I.esel = i; return 1; }
     return 0;
 }

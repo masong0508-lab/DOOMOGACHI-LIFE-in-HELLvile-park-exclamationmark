@@ -28,7 +28,9 @@ int lib_trophies_pct(void)
 {
     int owned = unlock_owned_count();
     if (owned >= 100) unlock_grant(LIB_UL_POLISHER);
-    return lib_pct(unlock_owned_count(), unlock_count());
+    lib_have = (int16_t)unlock_owned_count();
+    lib_total = (int16_t)unlock_count();
+    return lib_pct(lib_have, lib_total);
 }
 
 static int stats_tab(void) { return lib_b.tab == TAB_STATS; }

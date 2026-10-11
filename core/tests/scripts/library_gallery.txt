@@ -1,0 +1,46 @@
+# assert-no-stubs
+# SCENE_LIB_GALLERY (library): textures in gold frames (tiled detail),
+# the sky panoramas, sprites with their frame strip, and the palette.
+scene LIB_GALLERY 256
+expect-scene LIB_GALLERY
+wait 20
+shot textures
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+wait 16
+shot water
+press A
+wait 24
+shot water_tiled
+press B
+press R
+wait 30
+shot sky_day
+press DOWN
+press DOWN
+press DOWN
+wait 40
+shot sky_hell
+press R
+wait 20
+shot sprites
+press A
+wait 24
+shot sprite_page
+press SELECT
+press DOWN
+press DOWN
+wait 6
+shot sprite_paused
+press B
+press R
+wait 10
+press DOWN
+press DOWN
+press RIGHT
+press RIGHT
+wait 10
+shot palette

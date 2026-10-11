@@ -208,7 +208,7 @@ static void sl_draw(void)
                       act_ok(L.slot, i) ? (i == ACT_ERASE ? WIN_HELL : WIN_CUTE) : WIN_CREAM);
     }
     if (L.msg_t) {
-        int my = sh - 30;
+        int my = big ? sh - 30 : 16;
         fp_pill(8, my, sw - 16, 13, L.msg_bad ? PAL_UI_RED : st->fill_hi, st->outline, PAL_WHITE);
         fp_marquee(14, my + 3, sw - 28, L.msg, L.msg_bad ? PAL_WHITE : st->text, 150 - L.msg_t);
     }

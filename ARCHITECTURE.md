@@ -135,11 +135,29 @@ life / action modules were about to land; the 88 KB save buffer was then
 replaced by streaming saves (below), which freed 71 KB - and the modules
 that landed since (live map 32.8 KB, weld view 14.8 KB, sim 7 KB, actors
 6.8 KB, combat 4.9 KB, pet 5.3 KB, ...) used it, as planned. The save
-codec now keeps no static buffers either (+6.8 KB) and the UI rasteriser's
-lookup tables are `const` (+1.1 KB): 8.1 KB free with those modules
-linked. docs/GBA.md section 3 has the full table. Rules of thumb for new modules: no per-module copies
-of big data, scene-local state as small as the scene needs, nothing in
-`.bss` that could be `const`.
+codec now keeps no static buffers either (+6.8 KB), the UI rasteriser's
+lookup tables are `const` (+1.1 KB), `doomo_colormap` / `doomo_tintmap`
+point at the generated ROM tables instead of RAM copies (+5.6 KB) and the
+UI shape cache is smaller (+1.7 KB): 15.2 KB free with those modules
+linked. docs/GBA.md section 3 has the full table. Rules of thumb for new
+modules: no per-module copies of big data, scene-local state as small as
+the scene needs, nothing in `.bss` that could be `const`.
+
+**Scene scratch** (`scene.h`). The modules that landed after the perf
+pass (creator 6.3 KB, studio song book 5.4 KB + studio 1.9 KB, story
+overworld 4.2 + fx 3.3 + NPCs 3.0 KB, free play ~7.6 KB, library 2.1 KB,
+minigames 2.6 KB, concert 1.1 KB, ...) add ~43 KB of `.bss`, and the GBA
+game ROM then no longer links (EWRAM over by ~27 KB at the time of
+writing). Almost all of it is state that only matters while its own scene
+runs. `scene_scratch(owner, size)` hands out ONE shared 12 KB block
+(`DOOMO_SCENE_SCRATCH`) to the scene that claims it: claim and initialise
+it in `enter()`, check `scene_scratch_mine(owner)` where the scene can
+resume after a pushed scene, and rebuild if another owner took it.
+Rendered previews, editor state, per-scene caches and overworld effect
+pools are the natural users; modals drawn over another scene must not
+claim it. It costs nothing until a scene uses it (`--gc-sections`).
+Whatever must survive between scenes belongs in the town (saved) or in a
+`save_ext.h` chunk, not in a static.
 
 **Saves** (`save.h`, `platform.h`). The codec (`save.c`) owns no buffers:
 `plat_save_scratch()` is split into

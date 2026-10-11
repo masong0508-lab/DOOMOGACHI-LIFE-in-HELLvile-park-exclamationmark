@@ -1,0 +1,40 @@
+# assert-no-stubs
+# SCENE_LIBRARY (library): Quillby's Grand Library. 256 = LIB_ARG_DEMO
+# (premade citizens on an empty island, locked books open for a look).
+# Browse the shelf of seven books, read one, come back, and leave.
+scene LIBRARY 256
+expect-scene LIBRARY
+wait 40
+shot lobby
+press RIGHT
+wait 12
+shot lobby_almanac
+press RIGHT
+press RIGHT
+press RIGHT
+press RIGHT
+press RIGHT
+wait 20
+shot lobby_gallery
+press A
+wait 10
+expect-scene LIB_GALLERY
+press B
+wait 10
+expect-scene LIBRARY
+press LEFT
+press LEFT
+wait 160
+shot lobby_quip
+scene LIBRARY 0
+wait 8
+press RIGHT
+press RIGHT
+press RIGHT
+press RIGHT
+press RIGHT
+wait 4
+press A
+wait 6
+expect-scene LIBRARY
+shot lobby_locked

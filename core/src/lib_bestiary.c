@@ -146,7 +146,9 @@ static void rebuild(void)
 
 int lib_bestiary_pct(void)
 {
-    return lib_pct(library_seen_count(), N_DEMONS);
+    lib_have = (int16_t)library_seen_count();
+    lib_total = N_DEMONS;
+    return lib_pct(lib_have, lib_total);
 }
 
 static void best_enter(int arg)
@@ -201,7 +203,7 @@ static void row(int i, int x, int y, int w, int sel)
 }
 
 /* Gore / death effect over a dying demon. */
-static void death_fx(int cx, int cy, int k, int brutal)
+static void death_fx(int cx, int cy, int k, int brutal, int s)
 {
     int spr, f;
     const DoomoImage *img;
@@ -210,10 +212,10 @@ static void death_fx(int cx, int cy, int k, int brutal)
     if (brutal) spr = (k & 4) ? SPR_GIBS : SPR_BLOOD_SPRAY;
     else spr = (k & 4) ? SPR_HEARTS : SPR_CONFETTI;
     img = sprite_image(spr, f);
-    if (img) plat_image(cx - img->w / 2, cy - img->h / 2, img, 1, 0, 0);
+    if (img) plat_image(cx - img->w * s / 2, cy - img->h * s / 2, img, s, 0, 0);
     if (!brutal) {
         img = sprite_image(SPR_STUFFING, f);
-        if (img) plat_image(cx - img->w / 2 + 6, cy - img->h / 2 + 4, img, 1, 0, 0);
+        if (img) plat_image(cx - img->w * s / 2 + 6 * s, cy - img->h * s / 2 + 4 * s, img, s, 0, 0);
     }
 }
 
@@ -257,7 +259,7 @@ static const char *draw_demon(int t, int cx, int ground, int anim, int mode, int
     if (flash) plat_image(cx - img->w * scale / 2 + shake, ground - img->h * scale - lift, img, scale,
                           IMG_SILHOUETTE, PAL_WHITE);
     else plat_image(cx - img->w * scale / 2 + shake, ground - img->h * scale - lift, img, scale, 0, 0);
-    if (mode == 1 && phase >= 96) death_fx(cx, ground - 18 * scale, (phase - 96) / 3, brutal);
+    if (mode == 1 && phase >= 96) death_fx(cx, ground - 18 * scale, (phase - 96) / 3, brutal, scale);
     return label;
 }
 
@@ -278,7 +280,7 @@ static void preview(int x, int y, int w, int h)
     ui_text(x + 6, y + 13, lib_fit(sn ? bl->nick : "Not yet sighted", w - 12, buf, sizeof(buf)), st->text_dim);
     /* little stage: a dark arch with a spotlight */
     {
-        int sx = x + 6, sy = y + 24, sw2 = w - 12, sh2 = h - 50;
+        int sx = x + 6, sy = y + 24, sw2 = w - 12, sh2 = h - 56;
         ui_round_rect(sx, sy, sw2, sh2, 4, PAL_RAMP(RAMP_BLOOD, 0));
         ui_round_rect(sx + 1, sy + 1, sw2 - 2, sh2 - 2, 3, PAL_RAMP(RAMP_STONE, 1));
         ui_fill_ellipse(sx + sw2 / 2, sy + sh2 - 6, sw2 / 3, 4, PAL_RAMP(RAMP_STONE, 2));
@@ -289,13 +291,13 @@ static void preview(int x, int y, int w, int h)
         if (!sn) ui_text_big(cx - 5, sy + 6 + ui_wave(lib_b.t, 30, 2), "?", 2, PAL_WHITE, PAL_RAMP(RAMP_STONE, 0));
     }
     if (sn) {
-        ui_text(x + 6, y + h - 22, "Threat", st->text_dim);
-        skulls(x + 46, y + h - 22, bl->threat, 5);
+        ui_text(x + 6, y + h - 29, "Threat", st->text_dim);
+        skulls(x + 46, y + h - 29, bl->threat, 5);
     } else {
-        ui_text(x + 6, y + h - 22, "Threat  ?????", st->text_dim);
+        ui_text(x + 6, y + h - 29, "Threat  ?????", st->text_dim);
     }
-    if (slain(t)) lib_stamp(x + w / 2, y + h - 9, "SLAIN", PAL_PAINT(PAINT_BLOOD, 1));
-    else if (sn) lib_stamp(x + w / 2, y + h - 9, "AT LARGE", PAL_PAINT(PAINT_COBALT, 1));
+    if (slain(t)) lib_stamp(x + w / 2, y + h - 11, "SLAIN", PAL_PAINT(PAINT_BLOOD, 1));
+    else if (sn) lib_stamp(x + w / 2, y + h - 11, "AT LARGE", PAL_PAINT(PAINT_COBALT, 1));
 }
 
 static void detail(int sw, int sh)

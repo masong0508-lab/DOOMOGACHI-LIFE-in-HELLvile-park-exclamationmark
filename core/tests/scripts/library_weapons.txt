@@ -1,0 +1,39 @@
+# assert-no-stubs
+# SCENE_LIB_WEAPONS (library): Rivet's blueprints. Frames list, the plan
+# and in-paw views, cute vs brutal welds, part comparisons, locked parts.
+scene LIB_WEAPONS 256
+expect-scene LIB_WEAPONS
+wait 30
+shot frames
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+wait 20
+shot smg
+press A
+wait 20
+shot smg_plan
+press R
+wait 14
+shot smg_paw
+press SELECT
+wait 12
+shot smg_brutal
+press B
+press R
+press R
+wait 20
+shot cores
+press A
+wait 20
+shot core_page
+press B
+press START
+press SELECT
+press SELECT
+wait 12
+shot locked_cute
+press A
+wait 20
+shot locked_page

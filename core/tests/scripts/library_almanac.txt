@@ -1,0 +1,57 @@
+# assert-no-stubs
+# SCENE_LIB_ALMANAC (library): all 1000 citizens. Shelves (L/R), sort
+# (SELECT), letter search (START), the profile / likes / bonds pages and a
+# Hellvile record.
+scene LIB_ALMANAC 256
+expect-scene LIB_ALMANAC
+wait 10
+shot list
+press DOWN
+wait 12
+shot list_portrait
+press A
+wait 20
+shot profile
+press R
+wait 12
+shot likes
+press R
+wait 12
+shot bonds
+press SELECT
+wait 30
+shot face
+press RIGHT
+wait 20
+shot next_citizen
+press B
+press R
+press R
+press R
+wait 20
+shot cast
+press A
+wait 24
+shot cast_profile
+press B
+press L
+wait 20
+shot hellvile
+press A
+wait 24
+shot hellvile_profile
+press B
+press SELECT
+wait 12
+shot by_name
+press START
+wait 14
+shot letter_picker
+press RIGHT
+press RIGHT
+press RIGHT
+press DOWN
+wait 4
+press A
+wait 16
+shot letter_k

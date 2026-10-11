@@ -142,9 +142,9 @@ portrait, life (sim / exorcism / pet) and action (map / actors / combat /
 weld) modules linked:
 
 ```
-ROM   1,437,200 bytes
-IWRAM    24,848 / 32,768  (code+data 20,980, bss 3,868)  7.0 KB left for the stack
-EWRAM   253,888 / 262,144 (.data 248, .bss 253,608)      8.1 KB free
+ROM   1,436,940 bytes
+IWRAM    24,852 / 32,768  (code+data 20,984, bss 3,868)  7.0 KB left for the stack
+EWRAM   246,536 / 262,144 (.data 256, .bss 246,248)      15.2 KB free
   109,524  doomo_town      core (town.o)
    32,780  doomo_map       core (map.o, the live map)
    18,432  pool            core (portrait.o)
@@ -153,9 +153,10 @@ EWRAM   253,888 / 262,144 (.data 248, .bss 253,608)      8.1 KB free
     7,084  sim_s           core (sim.o)
     6,144  doomo_actors    core (actor.o)
     4,480  pcv             core (portrait_gfx.o)
-    4,096  sc_pool         core (ui_raster.o: the UI shape cache)
     4,096  img_pix         core (pet_gfx.o)
-    4,096  doomo_colormap  core (palette.o)
+    3,040  dq              core (ui_dialog.o)
+    2,688  spr_img         core (sprites.o)
+    2,560  sc_pool         core (ui_raster.o: the UI shape cache)
 ```
 
 How EWRAM got here:
@@ -167,9 +168,20 @@ How EWRAM got here:
 | life + action modules landed | 0.3 KB | live map 32.8 KB, weld view 14.8, sim 7.1, actors 6.8, pet 5.3, combat 4.9, portrait growth, ... |
 | save codec without static buffers | 7.0 KB | `save.o` 7,022 -> 196 bytes: its LZ window / match heads now live in the scratch (ARCHITECTURE.md) |
 | UI rasteriser tables `const` | 8.1 KB | corner / circle / band tables of `ui_raster.c` moved to ROM (1.1 KB) |
+| colormap / tint map in ROM | 13.6 KB | `doomo_colormap` / `doomo_tintmap` are pointers to the generated `const` tables (palette.h); only the no-art fallback builds RAM copies (5.6 KB) |
+| smaller UI shape cache | 15.2 KB | `sc_pool` 1,024 -> 640 rects, 48 -> 40 entries (1.7 KB); the UI gallery / dialog fps are unchanged |
 
-The engine-test ROM (no game scenes): ROM 867,176 bytes, IWRAM 21,032
-(10.7 KB for the stack), EWRAM 173,120 (89 KB free).
+The engine-test ROM (no game scenes): ROM 867,272 bytes, IWRAM 21,032
+(10.7 KB for the stack), EWRAM 173,128 (86.9 KB free).
+
+Modules landing after the perf pass (creator, studio song book, story
+overworld, free play, library, minigames, concert) add about 43 KB of
+`.bss` to the game ROM, which no longer fits as it stands (the link
+fails with EWRAM over by ~27 KB at the time of writing). Most of that is
+per-scene state that is dead while another scene runs: put it in the
+shared `scene_scratch()` block (scene.h, 12 KB, ARCHITECTURE.md
+"Memory and performance") or in `gba_big`, rather than in a static
+each.
 
 Measured main-stack high-water marks (the boot code paints the free IWRAM
 and `gba_stack_used()` scans it): 660 bytes in the game's boot / title /
@@ -306,31 +318,39 @@ Everything per pixel is ARM code in IWRAM. Notable tricks:
   (`src/div.s`, `src/mem.s`), checked at engine-test boot
   (`ET divtest ok`);
 * 64-bit multiplies in the THUMB setup code go through an ARM `smull`
-  helper instead of libgcc's `__muldi3`.
+  helper instead of libgcc's `__muldi3`;
+* (perf pass) the wall and floor / ceiling pixel loops are unrolled 8
+  times with a computed entry (no per-pixel count test), the colormap's
+  16 light rows and the tint map sit in the two VRAM gaps behind the Mode
+  4 pages (byte reads as fast as IWRAM; it was a 4 KB IWRAM copy), and a
+  sprite clip checkpoint is read as one word. The output is bit-identical
+  (frame CRCs of the whole tour compared): about 10% less time per frame.
 
 Measured in mGBA 0.10.2 with `make -C gba test-et` (full screen
 240x160, `r3d` = time inside `plat_view3d`, `fps` = drawn frames per
 second including the HUD and the tour logic):
 
-| phase | fps | r3d avg | notes |
-|-------|-----|---------|-------|
-| courtyard (outdoor, sky, hedges, house, tower) | 17.9 | 49.1 ms | |
-| path | 18.5 - 19.7 | 43.2 - 48.2 ms | sprites 4 - 7 ms |
-| hall door / hall (stairs, pillars) | 20.2 - 26.1 | 32.7 - 38.2 ms | |
-| skylight (look up 220) | 22.2 | 37.6 ms | |
-| stairs (step faces) | 18.4 | 47.2 ms | |
-| mezzanine (look down) | 22.0 | 36.9 ms | |
-| third person | 17.6 - 18.7 | 43.0 - 49.4 ms | player + prop sprites 9 - 10 ms |
-| low corridor | 19.0 | 43.8 ms | |
-| hell room (dark, demons, red tint level 4) | 20.7 | 40.1 ms | tint pass about 4 ms |
-| hell third person | 17.2 - 29.1 | 27.9 - 46.9 ms | |
-| overworld (`plat_overworld`) | 21.5 | 37.1 ms | |
+| phase | fps | r3d avg | before the perf pass | notes |
+|-------|-----|---------|----------------------|-------|
+| courtyard (outdoor, sky, hedges, house, tower) | 19.4 | 43.9 ms | 17.9 fps, 49.1 ms | |
+| path | 19.9 - 20.2 | 38.9 - 42.9 ms | 18.5 - 19.7, 43.2 - 48.2 ms | sprites 4 - 7 ms |
+| hall door / hall (stairs, pillars) | 22.6 - 27.8 | 29.3 - 34.8 ms | 20.2 - 26.1, 32.7 - 38.2 ms | |
+| skylight (look up 220) | 25.1 | 34.5 ms | 22.2, 37.6 ms | |
+| stairs (step faces) | 19.9 | 41.9 ms | 18.4, 47.2 ms | |
+| mezzanine (look down) | 24.4 | 33.4 ms | 22.0, 36.9 ms | |
+| third person | 19.2 - 20.3 | 39.0 - 44.6 ms | 17.6 - 18.7, 43.0 - 49.4 ms | player + prop sprites 9 - 10 ms |
+| low corridor | 19.9 | 39.8 ms | 19.0, 43.8 ms | |
+| hell room (dark, demons, red tint level 4) | 21.7 | 36.3 ms | 20.7, 40.1 ms | tint pass about 4 ms |
+| hell third person | 20.2 - 29.3 | 25.4 - 42.2 ms | 17.2 - 29.1, 27.9 - 46.9 ms | |
+| overworld (`plat_overworld`) | 21.7 | 36.2 ms | 21.5, 37.1 ms | |
 
 Frames are presented at a vblank: a whole frame (render + HUD + logic)
 under 33 ms shows at 30 fps, under 50 ms at 20 fps, longer at 15 fps
 (the pacing never drops below that, the logic stays at 30 Hz). The
-heaviest showcase scenes sit just above the 50 ms line, so they alternate
-between 15 and 20 fps (17 - 19 average); the rest run at 20 - 29 fps.
+heaviest showcase scenes (courtyard, the third-person views, stairs,
+corridor) now sit right at the 50 ms line: most frames show at 20 fps,
+the occasional slow one at 15 (19.2 - 19.9 average); the rest run at 20 -
+29 fps.
 Use the harness profiler (`profile N` with `--nm`) to see where the
 cycles go.
 
@@ -350,8 +370,8 @@ at 240x160 and 320x240: 0 differing pixels; `plat_rect` calls per frame
 | screen | before: logic / drawn | after: logic / drawn |
 |--------|----------------------:|---------------------:|
 | boot heart drop | 6.3 / 3.2 | 29.3 / 29.3 |
-| boot name | 5.6 / 2.8 | 29.8 / 29.8 |
-| boot wipe | 4.7 / 2.8 | 27.3 / 25.9 |
+| boot name | 5.6 / 2.8 | 29.8 / 29.4 |
+| boot wipe | 4.7 / 2.8 | 28.6 / 25.9 |
 | title (stub) | 10.1 / 5.5 | 30.0 / 30.0 |
 | UI gallery 1 windows | 10.3 / 5.9 | 30.0 / 30.0 |
 | UI gallery 2 meters | 11.5 / 6.8 | 30.0 / 30.0 |
@@ -362,9 +382,9 @@ at 240x160 and 320x240: 0 differing pixels; `plat_rect` calls per frame
 | UI gallery 7 modals | 14.1 / 9.0 | 30.2 / 30.2 |
 | confirm modal | 10.6 / 6.4 | 29.5 / 26.8 |
 | keyboard (text entry) | 7.9 / 5.1 | 29.8 / 22.3 |
-| dialogue (typing) | 10.1 / 5.7 | 30.0 / 23.4 |
-| dialogue choice | 11.5 / 7.3 | 30.0 / 28.2 |
-| UI gallery 8 backdrops | 10.9 / 6.0 | 30.5 / 26.2 |
+| dialogue (typing) | 10.1 / 5.7 | 30.2 / 24.0 |
+| dialogue choice | 11.5 / 7.3 | 30.2 / 28.6 |
+| UI gallery 8 backdrops | 10.9 / 6.0 | 30.5 / 25.7 |
 | UI gallery 8 hell backdrop | 11.4 / 7.0 | 30.0 / 29.2 |
 
 ---------------------------------------------------------------------------

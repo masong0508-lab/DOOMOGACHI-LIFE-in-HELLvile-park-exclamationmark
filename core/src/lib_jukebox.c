@@ -52,6 +52,8 @@ int lib_jukebox_pct(void)
         n++;
         if (doomo_town.mode != TOWN_STORY || unlock_ok(UL_CAT_GALLERY, GAL_JUKEBOX, s)) have++;
     }
+    lib_have = (int16_t)have;
+    lib_total = (int16_t)n;
     return lib_pct(have, n);
 }
 

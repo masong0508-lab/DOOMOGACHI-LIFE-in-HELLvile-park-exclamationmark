@@ -93,7 +93,16 @@ int lib_almanac_pct(void)
     int pop = town_count(-1), known = lib_almanac_known();
     if (known >= 100) unlock_grant(LIB_UL_HISTORIAN);
     if (known >= 500) unlock_grant(LIB_UL_KNOW_IT_ALL);
+    lib_have = (int16_t)known;
+    lib_total = (int16_t)pop;
     return lib_pct(known, pop);
+}
+
+/* What the pages show as known: the real rule, or in LIB_ARG_DEMO (the
+ * runner's look-around mode) two citizens out of three. */
+static int shown_known(int id)
+{
+    return lib_known(id) || (lib_b.demo && id % 3 != 0);
 }
 
 static const char *job_of(int id)
@@ -293,7 +302,7 @@ static void alm_update(void)
     case LIBE_OPEN: case LIBE_FLIP: {
         const DoomoResident *r = res(A.idx[lib_b.sel]);
         A.expr = EXPR_HAPPY;
-        if (r && lib_known(A.idx[lib_b.sel]) && r->status == RES_ALIVE) audio_sfx(SFX_HAPPY);
+        if (r && shown_known(A.idx[lib_b.sel]) && r->status == RES_ALIVE) audio_sfx(SFX_HAPPY);
         break; }
     case LIBE_TOGGLE: {
         static const uint8_t exprs[] = { EXPR_HAPPY, EXPR_TALK, EXPR_LOVE, EXPR_SHOCK,
@@ -323,7 +332,7 @@ static void row(int i, int x, int y, int w, int sel)
     case RES_DEAD:      g = STR_ICON_CROSS; gc = PAL_GRAY; nc = st->text_dim; break;
     case RES_GHOST:     g = STR_ICON_GHOST; gc = PAL_PAINT(PAINT_TEAL, 1); break;
     default:
-        if (lib_known(id)) { g = STR_ICON_HEART; gc = PAL_PAINT(PAINT_ROSE, 1); }
+        if (shown_known(id)) { g = STR_ICON_HEART; gc = PAL_PAINT(PAINT_ROSE, 1); }
         else { g = "\x8D"; gc = st->text_dim; }
         break;
     }
@@ -364,7 +373,7 @@ static void preview(int x, int y, int w, int h)
     py = y + 5;
     if (portrait_ready()) {
         int expr = r->status == RES_POSSESSED || r->status == RES_SOUL_LOST ? EXPR_POSSESSED :
-                   r->status == RES_DEAD ? EXPR_DEAD : lib_known(id) ? EXPR_HAPPY : EXPR_NEUTRAL;
+                   r->status == RES_DEAD ? EXPR_DEAD : shown_known(id) ? EXPR_HAPPY : EXPR_NEUTRAL;
         ui_portrait(px, py, id, 1, expr);
     } else {
         ui_round_rect(px, py, 54, 62, 4, st->outline);
@@ -425,9 +434,10 @@ static int page_profile(int id, int x, int y, int w, int bottom, const UiStyle *
     ly += FONT_LINE;
     if (lib_big()) {
         int k;
+        static const char *const axis[PERS_COUNT] = { "Pace", "Speech", "Emote", "Chill", "Quirk" };
         for (k = 0; k < PERS_COUNT; k++) {
             int bx = x + (k % 2) * (w / 2), by = ly + 2 + (k / 2) * FONT_LINE;
-            ui_text(bx, by, doomo_persona_axis_names[k], st->text_dim);
+            ui_text(bx, by, axis[k], st->text_dim);
             bar5(bx + w / 2 - 46, by + 2, r->persona[k], PAL_PAINT(PAINT_TEAL, 1));
         }
         ly += 3 * FONT_LINE + 4;
@@ -523,7 +533,7 @@ static void detail(int sw, int sh)
     char buf[48];
     uint8_t sc = 0;
     if (!r || !lib_detail_window(x, y, w, h, style) || plat_draw_skipped()) return;
-    known = lib_known(id);
+    known = shown_known(id);
     /* figure on a little rug */
     ui_fill_ellipse(fx + 24 * fs + 2, y + h - 14, 24 * fs, 5, hell ? PAL_RAMP(RAMP_BLOOD, 2) : PAL_RAMP(RAMP_MINT, 4));
     ui_fill_ellipse(fx + 24 * fs + 2, y + h - 15, 21 * fs, 3, hell ? PAL_RAMP(RAMP_BLOOD, 3) : PAL_RAMP(RAMP_MINT, 5));

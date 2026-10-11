@@ -1,0 +1,32 @@
+# assert-no-stubs
+# SCENE_LIB_JUKEBOX (library): play songs on the record player (level
+# meters, dancing Doomogachi), then the sound test with waveforms.
+scene LIB_JUKEBOX 256
+expect-scene LIB_JUKEBOX
+wait 20
+shot songs
+press A
+wait 45
+shot playing
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press A
+wait 70
+shot hellvile_after_dark
+press R
+wait 10
+shot sound_fx
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+wait 6
+press A
+wait 8
+shot sfx_playing

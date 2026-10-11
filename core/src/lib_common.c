@@ -16,6 +16,7 @@ DOOMO_STATIC_ASSERT(LIB_UL_VISITED(LIB_WING_COUNT - 1) == LIB_UL_LAST, lib_visit
 
 LibBrowse   lib_b;
 LibWingData lib_w;
+int16_t     lib_have, lib_total;
 
 #define QUILLBY_ID 123
 
@@ -202,7 +203,12 @@ void lib_wing_enter(int wing, int arg)
     lib_b.tab = (uint8_t)LIB_ARG_TAB(arg);
     lib_b.vis = 8;
     if (lib_b.demo) lib_demo_island();
-    if (wing >= 0 && wing < LIB_WING_COUNT) lib_bit_set(LIB_UL_VISITED(wing));
+    if (wing >= 0 && wing < LIB_WING_COUNT) {
+        int w, all = 1;
+        lib_bit_set(LIB_UL_VISITED(wing));
+        for (w = 0; w < LIB_WING_COUNT; w++) all &= library_wing_visited(w);
+        if (all) unlock_grant(LIB_UL_BOOKWORM);
+    }
     if (wing == LIB_WING_BESTIARY) sync_sightings();
     audio_sfx(SFX_SELECT);
     input_eat();
@@ -549,6 +555,7 @@ void lib_text_block(int x, int y, int w, int lines, const char *s, uint8_t color
 static struct {
     uint8_t  sel;
     uint8_t  pct[LIB_WING_COUNT];
+    int16_t  have_n[LIB_WING_COUNT], total_n[LIB_WING_COUNT];
     uint8_t  total;
     uint8_t  prev_song;
     uint8_t  quip;
@@ -594,7 +601,11 @@ static void lobby_refresh(void)
 {
     int w, tot = 0;
     for (w = 0; w < LIB_WING_COUNT; w++) {
-        int p = library_wing_pct(w);
+        int p;
+        lib_have = lib_total = 0;
+        p = library_wing_pct(w);
+        lob.have_n[w] = lib_have;
+        lob.total_n[w] = lib_total;
         lob.pct[w] = (uint8_t)DOOMO_CLAMP(p, 0, 100);
         tot += lob.pct[w];
     }
@@ -915,8 +926,18 @@ static void lobby_draw(void)
         plat_rect(x - 1, y + 11, 3, 1, st->fill_hi);
         ui_text_shadow(x + 6, y + 4, lib_wings[w_sel].name, st->accent, st->fill_lo);
         if (!open) lib_padlock(x + 10 + ui_text_width(lib_wings[w_sel].name), y + 4, st->accent);
-        doomo_snprintf(line, sizeof(line), "%d%%", lob.pct[w_sel]);
-        ui_text(x + w - 8 - ui_text_width(line), y + 4, line, st->text_dim);
+        {
+            static const char *const what[LIB_WING_COUNT] = {
+                "seen", "known", "parts", "in bag", "won", "songs", "exhibits"
+            };
+            if (lob.total_n[w_sel] > 0 && big)
+                doomo_snprintf(line, sizeof(line), "%d/%d %s", lob.have_n[w_sel], lob.total_n[w_sel], what[w_sel]);
+            else if (lob.total_n[w_sel] > 0)
+                doomo_snprintf(line, sizeof(line), "%d/%d", lob.have_n[w_sel], lob.total_n[w_sel]);
+            else
+                doomo_snprintf(line, sizeof(line), "%d%%", lob.pct[w_sel]);
+            ui_text(x + w - 8 - ui_text_width(line), y + 4, line, st->text_dim);
+        }
         ui_text_wrap(x + 6, y + 15, w - 12, lobby_quip(status), ink, 1);
         ui_bar(x + 6, y + h - 10, w - 12, 6, lob.pct[w_sel], 100,
                lob.pct[w_sel] >= 100 ? PAL_UI_GOLD : PAL_PAINT(lib_wings[w_sel].paint, 1));

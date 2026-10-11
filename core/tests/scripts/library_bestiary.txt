@@ -1,0 +1,45 @@
+# assert-no-stubs
+# SCENE_LIB_BESTIARY (library): the demon list with a live preview, the
+# specimen-jar detail page (walk, attack, ouch, death loop), the cute /
+# brutal gore toggle, the three sub pages, page turns and the filters.
+scene LIB_BESTIARY 256
+expect-scene LIB_BESTIARY
+wait 20
+shot list
+press DOWN
+wait 16
+shot list_unknown
+press DOWN
+press A
+wait 30
+shot jar_walk
+wait 52
+shot jar_attack
+wait 40
+shot jar_death_cute
+press SELECT
+wait 150
+shot jar_death_brutal
+press R
+wait 10
+shot weakness
+press R
+wait 10
+shot stats
+press RIGHT
+wait 4
+shot page_turn
+wait 20
+shot next_page
+press B
+press L
+wait 10
+shot boss_shelf
+press A
+wait 40
+shot boss
+press B
+press R
+press SELECT
+wait 10
+shot filter_sighted

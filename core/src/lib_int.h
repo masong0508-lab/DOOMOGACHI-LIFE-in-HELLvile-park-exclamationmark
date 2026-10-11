@@ -60,6 +60,9 @@ typedef union LibWingData {
         uint16_t love[FOOD_COUNT], hate[FOOD_COUNT];
         uint8_t  idx[FOOD_COUNT + 16];
         int16_t  fan[FOOD_COUNT];             /* biggest fan of each food   */
+        int16_t  club[4];                     /* fan club of the open food  */
+        int16_t  club_for;                    /* food + 1 (0 = none)        */
+        uint8_t  club_n;
     } item;
     struct {                                  /* Weapon Catalog             */
         uint8_t  idx[64];
@@ -104,7 +107,9 @@ typedef struct LibWingInfo {
 } LibWingInfo;
 extern const LibWingInfo lib_wings[LIB_WING_COUNT];
 
-/* Per-wing completion (each wing's own file). */
+/* Per-wing completion (each wing's own file). Each also leaves its raw
+ * numbers in lib_have / lib_total ("4 of 11 sighted" in the lobby). */
+extern int16_t lib_have, lib_total;
 int lib_bestiary_pct(void);
 int lib_almanac_pct(void);
 int lib_weapons_pct(void);

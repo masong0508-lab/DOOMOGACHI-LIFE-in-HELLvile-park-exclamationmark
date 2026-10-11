@@ -49,7 +49,10 @@ typedef struct {
 
 static RosterState st_browse, st_pick;
 static RosterState *rs;
-static uint16_t ids[DOOMO_MAX_RESIDENTS];
+/* the id list lives in the shared scene scratch (scene.h) */
+#define ROSTER_TAG SAVE_EXT_TAG('F', 'P', 'R', 'O')
+#define PICKER_TAG SAVE_EXT_TAG('F', 'P', 'P', 'K')
+static uint16_t *ids;
 static int n_ids;
 static const RosterState *built_for;
 static int pick_act = -1;
@@ -188,11 +191,19 @@ static void clamp_view(const Layout *L)
 /* scene glue                                                               */
 static void use_state(void)
 {
+    uint32_t tag;
     rs = scene_top() == &SCENE_PICKER ? &st_pick : &st_browse;
+    tag = rs == &st_pick ? PICKER_TAG : ROSTER_TAG;
+    if (!ids || !scene_scratch_mine(tag)) {
+        ids = (uint16_t *)scene_scratch(tag, DOOMO_MAX_RESIDENTS * sizeof(uint16_t));
+        n_ids = 0;
+        built_for = NULL;              /* rebuilt below / on the next update */
+    }
 }
 
 static void enter_common(RosterState *s)
 {
+    use_state();
     rs = s;
     s->filter_open = 0;
     s->stable = 0;
@@ -505,6 +516,7 @@ static void roster_draw(void)
     char buf[48];
     use_state();
     layout(&L);
+    if (built_for != rs) { rebuild(rs); clamp_view(&L); }
     ui_backdrop(rs->district == 2 ? WIN_DARK : WIN_CUTE, (uint32_t)t);
     if (rs->district == 2) style = WIN_DARK;
     st = ui_style(style);
