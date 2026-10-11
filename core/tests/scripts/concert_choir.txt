@@ -1,0 +1,33 @@
+# SCENE_CONCERT (concert): Father Fuzz conducts a choir of 25 singing a
+# Hymn - risers, then the four voice sections; solo, duet, section and
+# full-choir lines with the karaoke badge showing who sings.
+scene CONCERT -7077
+wait 20
+expect-scene CONCERT
+press UP
+press UP
+press UP
+hold RIGHT 60
+wait 5
+shot setup_choir_25
+press UP
+press RIGHT
+press RIGHT
+wait 4
+shot setup_sections
+press A
+wait 110
+shot curtain_up
+wait 320
+shot verse_solo
+wait 330
+shot verse_section
+wait 330
+shot chorus_everyone
+wait 400
+shot verse2
+press START
+wait 10
+press A
+wait 100
+shot results

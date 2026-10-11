@@ -1,0 +1,28 @@
+# SCENE_DREAM (concert): peek into Nana Puddin's dream - the night
+# bedroom, the thought bubble, three vignettes going from cute to creepy,
+# and back to the bedroom.
+scene DREAM -2
+wait 20
+expect-scene DREAM
+shot bedroom
+press A
+wait 30
+shot bubble
+wait 40
+shot dream1_cute
+wait 110
+shot dream1_twist
+wait 60
+wait 40
+shot dream2_cute
+wait 120
+shot dream2_twist
+wait 50
+wait 40
+shot dream3_cute
+wait 120
+shot dream3_twist
+wait 60
+shot after
+press A
+wait 10
