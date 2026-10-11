@@ -30,7 +30,6 @@ uint32_t r3d_dbg[4];
 extern const uint8_t gba_missing_tex[64 * 64];
 
 static EWRAM_BSS uint8_t cm_tinted[16 * 256];
-static uint8_t texavg_cache[R3D_MAXTEX];
 static int cache_vw = -1, cache_vh = -1;
 static int cache_amb = -1;
 static int cache_tint = -1;
@@ -70,7 +69,7 @@ uint8_t r3d_texavg(int id)
 {
     uint8_t a;
     id &= R3D_MAXTEX - 1;
-    a = texavg_cache[id];
+    a = r3d_avgc[id];
     if (!a) {
         a = texture_avg(id);
         if (!a) {
@@ -78,7 +77,7 @@ uint8_t r3d_texavg(int id)
             const uint8_t *t = r3d_texc[id] ? r3d_texc[id] : r3d_texture(id);
             a = t[32 * 64 + 32] ? t[32 * 64 + 32] : 4;
         }
-        texavg_cache[id] = a;
+        r3d_avgc[id] = a;
     }
     return a;
 }
@@ -202,7 +201,7 @@ static void setup_map(const DoomoMap *m)
     cache_mapdef = m->def;
     cache_mw = m->w;
     cache_mh = m->h;
-    memset(texavg_cache, 0, sizeof(texavg_cache));
+    memset(r3d_avgc, 0, sizeof(r3d_avgc));
 }
 
 /* ------------------------------------------------------------------------- */

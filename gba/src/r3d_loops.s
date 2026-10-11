@@ -57,27 +57,51 @@ r3d_face_loop:
     .type   r3d_sky_loop, %function
 r3d_sky_loop:
     stmfd   sp!, {r4-r6}
-    ldr     r4, [sp, #12]               @ cm
+    ldr     r4, [sp, #12]               @ cm (0 = none)
+    tst     r3, #1
+    beq     2f
+    @ odd v2: the second row of a sky texel first
+    mov     r5, r3, lsr #1
+    ldrb    r5, [r2, r5, lsl #8]
+    cmp     r4, #0
+    ldrneb  r5, [r4, r5]
+    add     r3, r3, #1
+    orr     r5, r5, r5, lsl #8
+    strh    r5, [r0], #240
+    subs    r1, r1, #1
+    beq     9f
+2:  subs    r1, r1, #2
+    blt     8f
     cmp     r4, #0
     beq     5f
-1:  mov     r5, r3, lsr #1
+3:  mov     r5, r3, lsr #1
     ldrb    r5, [r2, r5, lsl #8]
-    add     r3, r3, #1
+    add     r3, r3, #2
     ldrb    r5, [r4, r5]
-    subs    r1, r1, #1
+    subs    r1, r1, #2
     orr     r5, r5, r5, lsl #8
     strh    r5, [r0], #240
-    bne     1b
-    ldmfd   sp!, {r4-r6}
-    bx      lr
+    strh    r5, [r0], #240
+    bge     3b
+    b       8f
 5:  mov     r5, r3, lsr #1
     ldrb    r5, [r2, r5, lsl #8]
-    add     r3, r3, #1
-    subs    r1, r1, #1
+    add     r3, r3, #2
+    subs    r1, r1, #2
     orr     r5, r5, r5, lsl #8
     strh    r5, [r0], #240
-    bne     5b
-    ldmfd   sp!, {r4-r6}
+    strh    r5, [r0], #240
+    bge     5b
+8:  adds    r1, r1, #2
+    beq     9f
+    @ one row left
+    mov     r5, r3, lsr #1
+    ldrb    r5, [r2, r5, lsl #8]
+    cmp     r4, #0
+    ldrneb  r5, [r4, r5]
+    orr     r5, r5, r5, lsl #8
+    strh    r5, [r0], #240
+9:  ldmfd   sp!, {r4-r6}
     bx      lr
     .size   r3d_sky_loop, . - r3d_sky_loop
 
@@ -251,8 +275,8 @@ r3d_walk:
 @ 240 bytes). Per row: K = *kp (16.16 proj/(m+.5)), kp += +-4 (floors walk
 @ the table up, ceilings down); u = u0 + K*A, v = v0 + K*B with 26
 @ fractional bits, so the top 6 bits are the texel (wraps mod 64 for
-@ free); texel = tex[v_int * 64 + u_int]. Every 4 rows the distance
-@ light is refreshed: D = (K >> 8) * hd (8 frac bits), level = L -
+@ free); texel = tex[v_int * 64 + u_int]. The distance
+@ light is refreshed (every 8 rows): D = (K >> 8) * hd (8 frac bits), level = L -
 @ fade[D >> 13], and rows beyond `far` (same units) use the texture's
 @ average colour (no far-away shimmer).
 @ R3DFlat: 0 p, 4 n, 8 kp, 12 kdir (+4 / -4), 16 u0, 20 v0, 24 A, 28 B,
@@ -289,7 +313,7 @@ r3d_walk:
     orr     r3, r3, r3, lsl #8
     strh    r3, [r0], #240
     beq     .Lfl_done
-    tst     r1, #3
+    tst     r1, #7
     bne     \name\()_px
     b       \name\()_group
 \name\()_far:
@@ -301,7 +325,7 @@ r3d_walk:
     add     r2, r2, #\kstep
     subs    r1, r1, #1
     beq     .Lfl_done
-    tst     r1, #3
+    tst     r1, #7
     bne     \name\()_farpx
     b       \name\()_group
     .endm

@@ -72,6 +72,7 @@ extern int32_t  r3d_colt[R3D_MAXCOLS];     /* camera-plane t per column, 16.16 *
 extern int16_t  r3d_colang[R3D_MAXCOLS];   /* angle offset per column */
 extern uint8_t  r3d_dither[R3D_MAXCOLS];   /* 0..15 ordered dither by column */
 extern const uint8_t *r3d_texc[R3D_MAXTEX]; /* per-frame texture cache (IWRAM) */
+extern uint8_t r3d_avgc[R3D_MAXTEX];        /* texture average colours (IWRAM) */
 
 extern R3DClip  r3d_clips[R3D_MAXCOLS][R3D_MAXCP];
 extern uint8_t  r3d_nclips[R3D_MAXCOLS];

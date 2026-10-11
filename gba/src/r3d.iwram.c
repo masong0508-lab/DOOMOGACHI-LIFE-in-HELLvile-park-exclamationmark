@@ -37,6 +37,7 @@ int32_t  r3d_colt[R3D_MAXCOLS];
 int16_t  r3d_colang[R3D_MAXCOLS];
 uint8_t  r3d_dither[R3D_MAXCOLS];
 const uint8_t *r3d_texc[R3D_MAXTEX];
+uint8_t  r3d_avgc[R3D_MAXTEX];
 
 /* big per-frame buffers live in EWRAM */
 EWRAM_BSS R3DClip  r3d_clips[R3D_MAXCOLS][R3D_MAXCP];
@@ -165,7 +166,8 @@ static void flat(uint16_t *col, const uint8_t *cm, int32_t rdx, int32_t rdy,
     fl.hd = (hd4 >> 4) + 1;
     fl.fade = r3d_fade;
     fl.far = 1400u << 8;
-    fl.avg = r3d_texavg(tex);
+    fl.avg = r3d_avgc[tex & (R3D_MAXTEX - 1)];
+    if (!fl.avg) fl.avg = r3d_texavg(tex);
     r3d_flat_loop(&fl);
 }
 
