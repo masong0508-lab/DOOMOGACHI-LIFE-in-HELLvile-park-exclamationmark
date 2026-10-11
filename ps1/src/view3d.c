@@ -34,6 +34,8 @@ static uint16_t s_vis[MAXCELLS];          /* == s_stamp: visible this frame */
 static uint16_t s_vlist[MAXCELLS];
 static int      s_nvis;
 static int      s_any_sky;
+static int      s_sky_seen;            /* this map showed sky cells (prefetch) */
+static const DoomoMapDef *s_map_def;
 static uint16_t s_time;
 static const TexRef *s_tref[64];
 static uint16_t s_tstamp[64];
@@ -370,6 +372,10 @@ void plat_view3d(const DoomoView3D *v)
     uint32_t t0 = timer_us();
     if (!v || !v->map || !v->map->w || !v->map->h)
         return;
+    if (s_map != v->map || s_map_def != v->map->def) {
+        s_map_def = v->map->def;
+        s_sky_seen = 0;
+    }
     s_map = v->map;
     s_time = v->time;
     if (++s_stamp == 0) {
@@ -399,6 +405,15 @@ void plat_view3d(const DoomoView3D *v)
     }
     if (!r3_begin())
         return;
+    /* The packed sky is decoded into this frame's display-list memory and
+     * uploaded from there (52 KB in all): that only fits while the list is
+     * still empty, so fetch it HERE, before the geometry. Done after the
+     * cells (where r3_sky draws it) the upload failed every frame and
+     * every outdoor view had a black sky. */
+    if (s_sky_seen) {
+        TexRef a, b;
+        vram_sky(s_map->sky, v->time, &a, &b);
+    }
 
     if (v->camera == CAM_THIRD_PERSON && v->player_sprite >= 0 &&
         v->player_sprite < v->sprite_count) {
@@ -418,8 +433,10 @@ void plat_view3d(const DoomoView3D *v)
         }
     }
     g_r3stats.t_cells = timer_us() - t0;
-    if (s_any_sky)
+    if (s_any_sky) {
+        s_sky_seen = 1;
         r3_sky(s_map->sky, v->time, 128);
+    }
 
     /* billboards */
     for (i = 0; i < v->sprite_count; i++) {

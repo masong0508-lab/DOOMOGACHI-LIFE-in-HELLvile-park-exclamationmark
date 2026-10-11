@@ -85,11 +85,23 @@ static void ut_rect(int x, int y, int w, int h, uint8_t c)
 
 /* ====================================================================== */
 /* shape cache                                                              */
+#if defined(DOOMO_PLATFORM_GBA)
 #define SC_POOL 640                    /* rects, 4 bytes each (2.5 KB): the
                                           UI gallery's busiest pages run as
-                                          fast with 512 as with 1024        */
+                                          fast with 512 as with 1024; the
+                                          240x160 title fits too            */
 #define SC_ENT  40
 #define SC_HASH 128                    /* open-addressed index of entries   */
+#else
+/* PS1 / native (320x240): the title's ten scale-4 logo letters alone are
+ * ~700 rects, so the GBA-sized pool overflowed and was reset EVERY frame,
+ * which re-rasterised every big glyph twice per frame (the PS1 title ran
+ * at 11.6 fps, 60% of its 81 ms in text_emit). 16 KB of RAM is cheap
+ * there. */
+#define SC_POOL 4096
+#define SC_ENT  160
+#define SC_HASH 256
+#endif
 #define SC_PAL  8
 /* packed rect: x 8 bits | w 8 | y 7 | h 6 | colour index 3 */
 typedef uint32_t SRect;

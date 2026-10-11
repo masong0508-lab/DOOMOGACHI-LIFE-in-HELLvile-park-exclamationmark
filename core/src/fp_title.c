@@ -424,8 +424,17 @@ static void draw_figures(void)
     int sw = fp_sw(), sh = fp_sh(), k, t = T.t, big = fp_big();
     if (!T.started && t < 50) return;
     for (k = 0; k < 2; k++) {
-        int id = roster_find(parade[(T.parade_k + k) % NPARADE]);
+        /* roster_find() is a name search over the whole roster: look the
+         * pair up once per parade turn, not twice per frame */
+        static int pid[2], pk = -1;
         const DoomoResident *p;
+        int id;
+        if (pk != T.parade_k) {
+            pid[0] = roster_find(parade[T.parade_k % NPARADE]);
+            pid[1] = roster_find(parade[(T.parade_k + 1) % NPARADE]);
+            pk = T.parade_k;
+        }
+        id = pid[k];
         int x = k ? sw - FIGURE_W - (big ? 18 : 2) : (big ? 18 : 2);
         int y = sh - FIGURE_H - (big ? 14 : 4) + (ui_wave(t + k * 30, 50, 2) > 0);
         int hop = ((t + k * 40) % 120) < 10 ? -((t + k * 40) % 120) * (10 - (t + k * 40) % 120) / 6 : 0;
