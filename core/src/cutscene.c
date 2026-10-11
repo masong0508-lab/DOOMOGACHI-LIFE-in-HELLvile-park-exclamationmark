@@ -78,7 +78,7 @@ static int panel_count(void)
 
 static void cs_end(void)
 {
-    if (cut >= 0 && cut < CUT_COUNT) unlock_grant(USTORY_CUT_FIRST + cut);
+    if (cut > CUT_CHAPTER4 && cut < CUT_COUNT) story_unlock_quiet(USTORY_CUT_FIRST + cut);
     if (scene_depth() > 1) scene_pop();
     else scene_set(&SCENE_STORY, STORY_ARG_CONTINUE);
 }
@@ -160,6 +160,29 @@ static void cloud(int cx, int cy, int r, uint8_t c, int checker)
     }
 }
 
+/* A soft cartoon cloud: coloured outline, 3-tone body, glossy top puffs,
+ * gently breathing. r ~ half the width. */
+static void puff_cloud(int cx, int cy, int r, int ramp, int bright, uint32_t t)
+{
+    static const int8_t px[6] = { -10, -5, 1, 7, 11, 0 }, py[6] = { 3, -3, -5, -2, 3, 4 };
+    static const uint8_t pr[6] = { 6, 8, 9, 7, 5, 7 };
+    uint8_t dark = PAL_RAMP(ramp, DOOMO_CLAMP(bright - 3, 0, 7));
+    uint8_t mid = PAL_RAMP(ramp, DOOMO_CLAMP(bright - 1, 0, 7));
+    uint8_t base = PAL_RAMP(ramp, DOOMO_CLAMP(bright, 0, 7));
+    uint8_t light = PAL_RAMP(ramp, DOOMO_CLAMP(bright + 2, 0, 7));
+    int i, w = ui_wave((int)t, 48, 1);
+    for (i = 0; i < 6; i++)
+        ui_fill_circle(cx + px[i] * r / 10, cy + py[i] * r / 10 + (i & 1 ? w : -w), pr[i] * r / 10 + 1, dark);
+    for (i = 0; i < 6; i++)
+        ui_fill_circle(cx + px[i] * r / 10, cy + py[i] * r / 10 + (i & 1 ? w : -w), pr[i] * r / 10, mid);
+    for (i = 0; i < 5; i++)
+        ui_fill_circle(cx + px[i] * r / 10 - r / 12, cy + py[i] * r / 10 - r / 10 + (i & 1 ? w : -w),
+                       pr[i] * r / 10 * 3 / 4, base);
+    for (i = 1; i < 4; i++)
+        ui_fill_circle(cx + px[i] * r / 10 - r / 6, cy + py[i] * r / 10 - r / 4 + (i & 1 ? w : -w),
+                       DOOMO_MAX(1, pr[i] * r / 30), light);
+}
+
 static void caption(void)
 {
     const Panel *p = &scripts[cut][panel];
@@ -189,9 +212,9 @@ static void draw_card(int ch)
     int style = styles[(ch - 1) & 3];
     ui_backdrop(style, ct);
     if (ch == 2) {
-        for (i = 0; i < 6; i++)
-            cloud((int)((i * 53 + ct / 2) % (uint32_t)(sw + 60)) - 30, sh - 20 - (i % 3) * 18,
-                  14 + (i % 3) * 4, PAL_RAMP(RAMP_VAPE, 4 + (i & 1)), 1);
+        for (i = 0; i < 5; i++)
+            puff_cloud((int)((i * 67 + ct / 2) % (uint32_t)(sw + 80)) - 40, sh - 14 - (i % 3) * 16,
+                       14 + (i % 3) * 5, RAMP_VAPE, 4 + (i & 1), ct + (uint32_t)i * 9);
     }
     if (ch == 3) {
         for (i = 0; i < 18; i++) {
@@ -315,10 +338,10 @@ static void draw_fog(void)
     int sw = plat_screen_w(), sh = plat_screen_h(), i;
     sky_bands(PAL_RAMP(RAMP_VAPE, 0), PAL_RAMP(RAMP_VAPE, 1), PAL_RAMP(RAMP_VAPE, 2), sh);
     draw_wall_row(sh / 3, sh / 2, sw);
-    for (i = 0; i < 10; i++) {
-        int x = (int)((i * 61 + ct * (1 + i % 2)) % (uint32_t)(sw + 60)) - 30;
-        cloud(x, sh / 3 - 6 + (i % 4) * 14 + ui_wave((int)ct + i * 9, 60, 3), 16 + (i % 3) * 5,
-              PAL_RAMP(RAMP_VAPE, 4 + (i % 3)), 1);
+    for (i = 0; i < 7; i++) {
+        int x = (int)((i * 71 + ct * (1 + i % 2) / 2) % (uint32_t)(sw + 80)) - 40;
+        puff_cloud(x, sh / 3 - 4 + (i % 4) * 16 + ui_wave((int)ct + i * 9, 60, 3), 14 + (i % 3) * 5,
+                   RAMP_VAPE, 4 + (i % 3), ct + (uint32_t)i * 7);
     }
     if (panel >= 1) {
         int blink = ((ct / 50) % 4) == 3 && (ct % 50) < 5;
@@ -346,10 +369,19 @@ static void draw_eruption(void)
     else if (phase == 1) sky_bands(PAL_RAMP(RAMP_VAPE, 4), PAL_RAMP(RAMP_VAPE, 3), PAL_RAMP(RAMP_PASTEL_PINK, 4), sh);
     else sky_bands(PAL_RAMP(RAMP_BLOOD, 1), PAL_RAMP(RAMP_BLOOD, 3), PAL_RAMP(RAMP_LAVA, 4), sh);
     /* the swelling cloud */
-    r = 12 + (int)(phase * 18) + (int)DOOMO_MIN(pt, 60u) / 3;
-    for (i = 0; i < 5; i++)
-        ui_fill_circle(sw / 2 + shake + (i - 2) * r / 2, sh / 3 + ui_wave((int)ct + i * 13, 30, 2) - (i & 1) * r / 3,
-                       r - (i == 2 ? 0 : r / 4), PAL_RAMP(RAMP_VAPE, phase >= 2 ? 2 + (i & 1) : 4 + (i & 1)));
+    r = 18 + (int)(phase * 22) + (int)DOOMO_MIN(pt, 60u) / 2;
+    puff_cloud(sw / 2 + shake, sh / 3 + 4, r, RAMP_VAPE, phase >= 2 ? 3 : 5, ct);
+    if (phase >= 1) {
+        puff_cloud(sw / 2 - r + shake, sh / 3 + 16, r / 2, RAMP_VAPE, phase >= 2 ? 2 : 4, ct + 20);
+        puff_cloud(sw / 2 + r + shake, sh / 3 + 14, r / 2, RAMP_VAPE, phase >= 2 ? 2 : 4, ct + 40);
+    }
+    if (phase >= 2) {
+        /* the cloud's grin */
+        int k;
+        for (k = -4; k <= 4; k++) plat_rect(sw / 2 + shake + k * r / 10, sh / 3 + 6 + (k * k) / 3, r / 10 + 1, 2, PAL_RAMP(RAMP_LAVA, 6));
+        ui_fill_circle(sw / 2 + shake - r / 4, sh / 3 - r / 5, 3, PAL_RAMP(RAMP_LAVA, 7));
+        ui_fill_circle(sw / 2 + shake + r / 4, sh / 3 - r / 5, 3, PAL_RAMP(RAMP_LAVA, 7));
+    }
     if (phase >= 2) {
         for (i = 0; i < 4; i++) {
             int lx = (int)((i * 83 + ct * 5) % (uint32_t)sw);
@@ -386,10 +418,14 @@ static void draw_vapula(void)
     }
     if (panel == 1) {
         for (i = 0; i < 8; i++) {
-            int a = i * 512 + (int)pt * 30, rr = (int)pt;
-            cloud(sw / 2 + FIX2INT(fx_cos(a) * rr), sh / 2 - 10 + FIX2INT(fx_sin(a) * rr) / 2, 6, PAL_RAMP(RAMP_VAPE, 6), 1);
+            int a = i * 512 + (int)pt * 12, rr = (int)DOOMO_MIN(pt * 2, 90u);
+            puff_cloud(sw / 2 + FIX2INT(fx_cos(a) * rr), sh / 2 - 10 + FIX2INT(fx_sin(a) * rr) / 2,
+                       6 + (int)(pt / 20), RAMP_VAPE, 5, pt + (uint32_t)i * 5);
         }
     }
+    if (panel == 0)
+        for (i = 0; i < 3; i++)
+            puff_cloud(30 + i * (sw - 60) / 2, 24 + (i & 1) * 12, 16, RAMP_VAPE, 3, ct + (uint32_t)i * 13);
     if (panel == 2) {
         const DoomoImage *small = sprite_image(SPR_LORD_VAPULA, DFRAME_WALK0);
         if (small) plat_image(sw / 2 - small->w / 2, sh / 2 - small->h / 2, small, 1, 0, 0);
@@ -408,19 +444,34 @@ static void draw_wall_falls(void)
     plat_rect(sw / 2, 0, sw - sw / 2, gy, PAL_RAMP(RAMP_VAPE, 3));
     plat_rect(0, gy, sw / 2, sh - gy, PAL_RAMP(RAMP_GRASS, 5));
     plat_rect(sw / 2, gy, sw - sw / 2, sh - gy, PAL_RAMP(RAMP_GRASS, 3));
-    /* bricks of the Wall falling */
-    for (j = 0; j < 6; j++)
-        for (i = 0; i < 3; i++) {
-            int bx = sw / 2 - 18 + i * 12, by0 = gy - 12 * (j + 1);
-            int delay = (5 - j) * 10 + i * 4, ft = (int)ct - delay;
-            int by = by0, dx = 0;
-            if (ft > 0) { by = by0 + ft * ft / 10; dx = (i - 1) * ft; }
-            if (by > gy - 4) by = gy - 4 - (i + j) % 3 * 2;
-            ui_round_rect(bx + dx, by, 11, 11, 2, PAL_RAMP(RAMP_STEEL, 2 + (i + j) % 3));
-            plat_rect(bx + dx + 1, by + 1, 9, 1, PAL_RAMP(RAMP_STEEL, 6));
-        }
-    if (ct > 30 && ct < 90)
-        for (i = 0; i < 6; i++) cloud(sw / 2 - 30 + i * 12, gy - 6, 6 + (int)(ct % 5), PAL_RAMP(RAMP_STONE, 6), 1);
+    /* the Wall: a tall rusty brick wall that holds, shudders, then topples */
+    {
+        int rows = (gy - 6) / 10, cols = 5, bw = 12, bh = 10, x0 = sw / 2 - cols * bw / 2;
+        int fall0 = 40;
+        for (j = 0; j < rows; j++)
+            for (i = 0; i < cols; i++) {
+                int off = (j & 1) ? bw / 2 : 0;
+                int bx = x0 + i * bw - off, by = gy - (j + 1) * bh, dx = 0;
+                int delay = fall0 + (rows - 1 - j) * 3 + ((i * 7 + j * 3) % 5) * 2;
+                int ft = (int)ct - delay;
+                uint8_t c = PAL_RAMP(RAMP_STEEL, 2 + (i + j) % 3);
+                if (i == 0 && off) { bx += off; }
+                if ((int)ct < fall0 && (ct & 2) && ct > 20) dx = ((i + j) & 1) ? 1 : -1;   /* shudder */
+                if (ft > 0) {
+                    int land = gy - 4 - ((i * 5 + j * 3) % 4) * 3;
+                    by += ft * ft / 6;
+                    dx = (i - cols / 2) * ft * 2 / 3 + ((j & 1) ? ft / 3 : -ft / 3);
+                    if (by > land) by = land;
+                }
+                plat_rect(bx + dx, by, bw - 1, bh - 1, PAL_RAMP(RAMP_STEEL, 1));
+                plat_rect(bx + dx + 1, by + 1, bw - 3, bh - 3, c);
+                plat_rect(bx + dx + 1, by + 1, bw - 3, 1, PAL_RAMP(RAMP_STEEL, 6));
+                if (((i + j) % 3) == 0) plat_rect(bx + dx + 3, by + 4, 3, 2, PAL_RAMP(RAMP_WOOD, 2));   /* rust */
+            }
+        if (ct > (uint32_t)fall0 && ct < (uint32_t)fall0 + 70)
+            for (i = 0; i < 5; i++)
+                puff_cloud(sw / 2 - 48 + i * 24, gy - 8 - (int)((ct - (uint32_t)fall0) / 6), 9 + i % 2 * 3, RAMP_STONE, 5, ct + (uint32_t)i * 11);
+    }
     /* both sides run together */
     if (panel >= 1) {
         static const int16_t left[4] = { ID_MAYOR, ID_PIP, ID_NANA, ID_FUZZ };

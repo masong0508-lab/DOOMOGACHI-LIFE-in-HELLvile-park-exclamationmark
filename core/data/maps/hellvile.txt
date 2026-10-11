@@ -14,7 +14,7 @@ sky NIGHT_STARS
 music HELLVILE
 ambient 11
 
-cell . floor=INFECTED_GRASS ceil=sky
+cell . floor=GRASS ceil=sky
 cell , floor=SLIME ceil=sky
 cell : floor=HELL_ROCK ceil=sky
 cell = floor=METAL_FLOOR ceil=sky
@@ -23,7 +23,7 @@ cell n floor=GRATE ceil=sky
 cell P floor=PENTAGRAM_FLOOR ceil=sky light=13
 cell ~ floor=LAVA ceil=sky flags=lava fh=-2 light=14
 cell b floor=BONE_WALL ceil=sky
-cell T wall=TREE floor=INFECTED_GRASS ch=12
+cell T wall=TREE floor=TREE ch=12
 cell Z wall=RUST_METAL floor=CHAINS ch=40
 cell # wall=BONE_WALL floor=BONE_WALL ch=12
 cell B wall=BLOOD_BRICK floor=BLOOD_BRICK ch=14
@@ -47,11 +47,11 @@ cell 5 wall=DOOR_HELL floor=BLOOD_BRICK ch=14 tag=83   # door: ARENA
 cell 6 wall=BONE_WALL floor=BONE_WALL ch=3 tag=86   # door: HELL_PIER
 cell 7 wall=DOOR_CUTE floor=CHAINS ch=40 tag=78   # door: WALL_GATE
 cell S floor=PENTAGRAM_FLOOR ceil=sky flags=trigger tag=133 light=15   # the sealed hell gate
-cell ! floor=INFECTED_GRASS ceil=sky flags=trigger tag=135   # secret sparkle 0
-cell $ floor=INFECTED_GRASS ceil=sky flags=trigger tag=136   # secret sparkle 1
-cell % floor=INFECTED_GRASS ceil=sky flags=trigger tag=137   # secret sparkle 2
-cell & floor=INFECTED_GRASS ceil=sky flags=trigger tag=138   # secret sparkle 3
-cell * floor=INFECTED_GRASS ceil=sky flags=trigger tag=139   # secret sparkle 4
+cell ! floor=GRASS ceil=sky flags=trigger tag=135   # secret sparkle 0
+cell $ floor=GRASS ceil=sky flags=trigger tag=136   # secret sparkle 1
+cell % floor=GRASS ceil=sky flags=trigger tag=137   # secret sparkle 2
+cell & floor=GRASS ceil=sky flags=trigger tag=138   # secret sparkle 3
+cell * floor=GRASS ceil=sky flags=trigger tag=139   # secret sparkle 4
 
 grid
 ZZTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT
@@ -80,9 +80,9 @@ ZZ==:::::::=::..,,,,......::......~~PPPPPPPPPPP~~::BBBBBBBBBB.TT
 ZZ==:::::::=::..,,,,......::......~~PEPPPPPPPEP~~::BBBBBBBBBB.TT
 ZZ==:::::::=::..,,,,......::......~~PPPPPPPPPPP~~::BBBBBBBBBB.TT
 ZZ==:::::::=::............::......~~PPPPPPPPPPP~~::BBBBBBBBBB.TT
-77==:::::::=::............::......~~PPPPSSSPPPP~~::BBBBBBBBBB.TT
-77==:::::::=::::::::::::::::::::::bbPPPPSSSPPPP~~::BBBBBBBBBB.TT
-77==:::::::=::::::::::::::::::::::bbPPPPSSSPPPP~~::BBBBBBBBBB.TT
+Z7==:::::::=::............::......~~PPPPSSSPPPP~~::BBBBBBBBBB.TT
+Z7==:::::::=::::::::::::::::::::::bbPPPPSSSPPPP~~::BBBBBBBBBB.TT
+Z7==:::::::=::::::::::::::::::::::bbPPPPSSSPPPP~~::BBBBBBBBBB.TT
 ZZ==:::::::=::............::......~~PPPPPPPPPPP~~::BBBBBBBBBB.TT
 ZZ==:::::::=::............::......~~PPPPPPPPPPP~~::BBBB55BBBB.TT
 ZZ==:::::::=::............::,,,,..~~PEPPPPPPPEP~~::::::::::::.TT

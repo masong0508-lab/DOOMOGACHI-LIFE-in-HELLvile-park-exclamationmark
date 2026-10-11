@@ -9,7 +9,7 @@
  * who passed away march too, translucent, in loving memory. Hold A to fast
  * forward, START skips to the end card.
  */
-#include "story_int.h"
+#include "overworld_int.h"
 
 #define RANKS 500
 #define RANK_TICKS 11                 /* a new pair every 11 ticks          */
@@ -17,13 +17,14 @@
 #define ROAD_Y (47 * DOOMO_CELL_UNITS + 40)
 #define START_X (2 * DOOMO_CELL_UNITS)
 #define END_X (62 * DOOMO_CELL_UNITS)
-#define CR_BB 72
+#define CR_BB OW_BB_MAX
 
 static uint32_t ct;                   /* parade ticks                      */
 static uint32_t draw_t;
 static uint8_t ended, end_t;
-static DoomoBillboard bb[CR_BB];
-static int nbb;
+/* the overworld's billboard array is free while the parade runs */
+#define bb ow_bb
+#define nbb ow_bb_count
 static int16_t ticker_rank;
 
 typedef struct { const char *head; const char *lines; } CreditCard;

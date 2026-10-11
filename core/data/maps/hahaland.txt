@@ -100,8 +100,8 @@ TT.GGG44GGG............=======================..~~..:..OZZffffff
 TT...::::..............=======================..~~..:..OZZffffff
 TT...::::........................::.............~~..:..OZZffffff
 TT.....:.........................::.............~~..:..OZZffffff
-TTFFFFFyFFFFF.........MMMMMMMM...::...LLLLLLL,,.~~..:..Oggffffff
-TTF.........F.........MMMMMMMM...::...LLLLLLL,,.~~..:..Oggffffff
+TTFFFFFyFFFFF.........MMMMMMMM...::...LLLLLLL,,.~~..:..OgZffffff
+TTF.........F.........MMMMMMMM...::...LLLLLLL,,.~~..:..OgZffffff
 TTF.........F.........MMMMMMMM...::...LLLLLLL,,.~~..:..OZZffffff
 TTF.........F.........MMMMMMMM...::...LLLLLLL,,.~~.VVVV.ZZffffff
 TTF.........F.........MMM88MMM...::...LLL9LLL...~~.VVVV.ZZffffff

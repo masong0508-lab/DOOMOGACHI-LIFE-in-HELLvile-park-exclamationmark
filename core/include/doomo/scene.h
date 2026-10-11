@@ -25,4 +25,21 @@ void scene_draw(void);
 /* Ticks since the top scene was entered. */
 uint32_t scene_ticks(void);
 
+/* ---- shared scene scratch (perf pass, additive) --------------------------
+ * On the GBA every byte of .bss is EWRAM, and most scenes' big buffers
+ * (rendered images, editor state, per-scene caches) are only needed while
+ * that scene runs. Instead of a static buffer each, a scene can take this
+ * ONE shared block: scene_scratch(owner, size) returns it (NULL if size >
+ * DOOMO_SCENE_SCRATCH), and from then on it belongs to `owner` (any
+ * unique tag, e.g. SAVE_EXT_TAG('W','E','L','D')) until another owner
+ * claims it - which may happen whenever another scene runs (a pushed
+ * scene, a scene_set). So: claim it in enter() and initialise it; check
+ * scene_scratch_mine(owner) wherever the scene may resume (after a pushed
+ * scene returns) and re-claim + rebuild when it is gone. Ideal for caches
+ * that can be rebuilt; modals that draw over a scene must not claim it.
+ * Unused, it costs nothing (--gc-sections drops the block). */
+#define DOOMO_SCENE_SCRATCH (12u * 1024u)
+void *scene_scratch(uint32_t owner, uint32_t size);
+int   scene_scratch_mine(uint32_t owner);
+
 #endif

@@ -1,0 +1,63 @@
+# Story cutscenes (story): every vignette and chapter card, plus the credits
+# parade of all 1000 citizens (run from a story town so everyone exists).
+scene STORY 101
+wait 5
+push CUTSCENE 1
+wait 40
+shot card2
+scene CUTSCENE 2
+wait 30
+shot card3
+scene CUTSCENE 3
+wait 50
+shot card4
+scene CUTSCENE 10
+wait 40
+shot home
+press A
+wait 60
+shot home_hatch
+scene CUTSCENE 5
+wait 40
+press A
+wait 50
+shot fog
+scene CUTSCENE 6
+wait 30
+press A
+press A
+wait 30
+shot eruption
+press A
+wait 20
+shot eruption_demons
+scene CUTSCENE 7
+wait 60
+press A
+wait 40
+shot vapula
+scene STORY 124
+wait 10
+push CUTSCENE 8
+wait 30
+shot wall_standing
+wait 30
+press A
+press A
+wait 60
+shot wall_falls
+scene CUTSCENE 9
+wait 50
+shot freeplay
+scene STORY 126
+wait 10
+push CREDITS
+wait 120
+shot credits_start
+wait 300
+shot credits_parade
+hold A 300
+shot credits_later
+press START
+wait 40
+shot credits_end

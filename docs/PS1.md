@@ -195,8 +195,8 @@ work; the disc used to overflow):
 
 | build | before | after |
 |-------|--------|-------|
-| game disc | ends `0x80226864`: does not fit (-202 KB) | ends `0x801c4d60`: 236 KB left below the stack top (172 KB above the 64 KB stack reserve) |
-| engine-test disc | ends `0x8023f190`: does not fit | ends `0x80136d3c`: 804 KB left |
+| game disc | ends `0x80226864`: 218 KB over the limit (64 KB stack reserve) | ends `0x801c4a08`: 173 KB under the limit (237 KB below the stack top) |
+| engine-test disc | ends `0x8023f190`: 316 KB over the limit | ends `0x80136d3c`: 741 KB under the limit |
 
 The biggest remaining consumers of the game disc: art other than
 textures / skies 247 KB (sprites 225 KB - the core reads sprite pixels,

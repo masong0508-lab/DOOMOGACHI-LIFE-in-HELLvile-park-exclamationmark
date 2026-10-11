@@ -39,8 +39,10 @@ __attribute__((weak)) void plat_checker(int x, int y, int w, int h, uint8_t colo
 
 /* ====================================================================== */
 /* shape cache                                                              */
-#define SC_POOL 1024                   /* rects, 4 bytes each              */
-#define SC_ENT  48
+#define SC_POOL 640                    /* rects, 4 bytes each (2.5 KB): the
+                                          UI gallery's busiest pages run as
+                                          fast with 512 as with 1024        */
+#define SC_ENT  40
 #define SC_HASH 128                    /* open-addressed index of entries   */
 #define SC_PAL  8
 /* packed rect: x 8 bits | w 8 | y 7 | h 6 | colour index 3 */
@@ -160,6 +162,14 @@ int ur_cache_end(void)
     return 1;
 }
 
+/* An emitter that skips rows outside the screen calls this: a recorded
+ * shape that lost rows would come back cut when replayed elsewhere, so
+ * such a shape is drawn directly instead (ur_cache_end returns 0). */
+static void rec_clipped(void)
+{
+    if (rec_e && !rec_fail) rec_fail = 2;
+}
+
 /* every rect of a shape goes through here (direct draw or recording) */
 static void out_rect(int x, int y, int w, int h, uint8_t c)
 {
@@ -254,10 +264,29 @@ static const uint8_t debruijn[32] = {
 };
 #define LOWBIT(v) (debruijn[(((v) & (0u - (v))) * 0x077CB531u) >> 27])
 
-/* Rounded-corner insets, cached per radius (ui_corner_inset semantics). */
+/* Rounded-corner insets per radius (ui_corner_inset semantics), const so
+ * they cost ROM, not RAM: corner_inset_calc(r, i) for r <= CI_MAX
+ * (generated with it; test_ui_raster.c checks every entry). */
 #define CI_MAX 16
-static uint8_t ci_tab[CI_MAX + 1][CI_MAX];
-static uint32_t ci_have;
+static const uint8_t ci_tab[CI_MAX + 1][CI_MAX] = {
+    { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+    { 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+    { 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+    { 3, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+    { 4, 2, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+    { 2, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+    { 3, 2, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+    { 4, 3, 2, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+    { 5, 3, 2, 2, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+    { 5, 4, 3, 2, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0 },
+    { 6, 4, 3, 2, 2, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0 },
+    { 7, 5, 4, 3, 2, 2, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0 },
+    { 8, 6, 5, 4, 3, 2, 2, 1, 1, 1, 1, 0, 0, 0, 0, 0 },
+    { 8, 7, 5, 4, 3, 3, 2, 1, 1, 1, 1, 1, 0, 0, 0, 0 },
+    { 9, 7, 6, 5, 4, 3, 2, 2, 1, 1, 1, 1, 1, 0, 0, 0 },
+    { 10, 8, 6, 5, 4, 3, 3, 2, 2, 1, 1, 1, 1, 1, 0, 0 },
+    { 11, 9, 7, 6, 5, 4, 3, 3, 2, 2, 1, 1, 1, 1, 1, 0 },
+};
 
 static int corner_inset_calc(int r, int i)
 {
@@ -275,30 +304,42 @@ static int corner_inset_calc(int r, int i)
 int ui_corner_inset(int r, int i)
 {
     if (r <= 0 || i < 0 || i >= r) return 0;
-    if (r <= CI_MAX) {
-        if (!(ci_have & (1u << r))) {
-            int k;
-            for (k = 0; k < r; k++) ci_tab[r][k] = (uint8_t)corner_inset_calc(r, k);
-            ci_have |= 1u << r;
-        }
-        return ci_tab[r][i];
-    }
+    if (r <= CI_MAX) return ci_tab[r][i];
     return corner_inset_calc(r, i);
 }
 
-/* Half-widths of filled circles (ui_fill_ellipse with rx == ry), cached. */
+/* Half-widths of filled circles (ui_fill_ellipse with rx == ry):
+ * circ_tab[r][y] = isqrt((r*r - y*y) * 4 + 2r) / 2 for y <= r (const,
+ * generated; test_ui_raster.c checks it). */
 #define CIRC_MAX 15
-static uint8_t circ_tab[CIRC_MAX + 1][CIRC_MAX + 1];
-static uint16_t circ_have;
+static const uint8_t circ_tab[CIRC_MAX + 1][CIRC_MAX + 1] = {
+    { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+    { 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+    { 2, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+    { 3, 3, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+    { 4, 4, 3, 3, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+    { 5, 5, 4, 4, 3, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+    { 6, 6, 5, 5, 4, 3, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+    { 7, 7, 6, 6, 6, 5, 4, 1, 0, 0, 0, 0, 0, 0, 0, 0 },
+    { 8, 8, 8, 7, 7, 6, 5, 4, 2, 0, 0, 0, 0, 0, 0, 0 },
+    { 9, 9, 9, 8, 8, 7, 7, 6, 4, 2, 0, 0, 0, 0, 0, 0 },
+    { 10, 10, 10, 9, 9, 8, 8, 7, 6, 4, 2, 0, 0, 0, 0, 0 },
+    { 11, 11, 11, 10, 10, 10, 9, 8, 7, 6, 5, 2, 0, 0, 0, 0 },
+    { 12, 12, 12, 11, 11, 11, 10, 10, 9, 8, 7, 5, 2, 0, 0, 0 },
+    { 13, 13, 13, 12, 12, 12, 11, 11, 10, 9, 8, 7, 5, 2, 0, 0 },
+    { 14, 14, 14, 13, 13, 13, 12, 12, 11, 11, 10, 9, 7, 5, 2, 0 },
+    { 15, 15, 15, 14, 14, 14, 14, 13, 12, 12, 11, 10, 9, 7, 6, 2 },
+};
+
+int ui_circle_dx(int r, int y)
+{
+    if (r < 0 || y < 0 || y > r) return 0;
+    if (r <= CIRC_MAX) return circ_tab[r][y];
+    return (int)(fx_isqrt((uint32_t)((r * r - y * y) * 4 + r * 2)) / 2);
+}
 
 static const uint8_t *circle_dx(int r)
 {
-    if (!(circ_have & (1u << r))) {
-        int y;
-        for (y = 0; y <= r; y++)
-            circ_tab[r][y] = (uint8_t)(fx_isqrt((uint32_t)((r * r - y * y) * 4 + r * 2)) / 2);
-        circ_have = (uint16_t)(circ_have | (1u << r));
-    }
     return circ_tab[r];
 }
 
@@ -374,7 +415,7 @@ void ui_fill_circle(int cx, int cy, int r, uint8_t c)
  * top corner wins where the two overlap, like the original row loop). */
 static int corner(int r, int i)
 {
-    if (r <= CI_MAX && (ci_have >> r) & 1) return ci_tab[r][i];
+    if (r <= CI_MAX) return ci_tab[r][i];
     return ui_corner_inset(r, i);
 }
 
@@ -404,24 +445,60 @@ static void rr_bands(int x, int y, int w, int h, int r,
 
 static void band_shade(int x, int y, int w, int h, int l) { plat_shade_rect(x, y, w, h, l); }
 
-/* The top corner of radius r as bands of rows with equal inset, cached:
- * rg_len[r][k] rows with inset rg_in[r][k], k < rg_n[r]. */
-static uint8_t rg_n[CI_MAX + 1], rg_len[CI_MAX + 1][CI_MAX], rg_in[CI_MAX + 1][CI_MAX];
+/* The top corner of radius r as bands of rows with equal inset (const,
+ * generated from ci_tab; test_ui_raster.c checks them): rg_len[r][k] rows
+ * with inset rg_in[r][k], k < rg_n[r]. */
+static const uint8_t rg_n[CI_MAX + 1] = { 0, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 8, 8, 9, 9, 10 };
+static const uint8_t rg_len[CI_MAX + 1][CI_MAX] = {
+    { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+    { 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+    { 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+    { 1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+    { 1, 1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+    { 1, 3, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+    { 1, 1, 3, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+    { 1, 1, 1, 3, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+    { 1, 1, 2, 3, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+    { 1, 1, 1, 1, 4, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+    { 1, 1, 1, 2, 4, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+    { 1, 1, 1, 1, 2, 4, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+    { 1, 1, 1, 1, 1, 2, 4, 1, 0, 0, 0, 0, 0, 0, 0, 0 },
+    { 1, 1, 1, 1, 2, 1, 5, 1, 0, 0, 0, 0, 0, 0, 0, 0 },
+    { 1, 1, 1, 1, 1, 1, 2, 5, 1, 0, 0, 0, 0, 0, 0, 0 },
+    { 1, 1, 1, 1, 1, 2, 2, 5, 1, 0, 0, 0, 0, 0, 0, 0 },
+    { 1, 1, 1, 1, 1, 1, 2, 2, 5, 1, 0, 0, 0, 0, 0, 0 },
+};
+static const uint8_t rg_in[CI_MAX + 1][CI_MAX] = {
+    { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+    { 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+    { 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+    { 3, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+    { 4, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+    { 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+    { 3, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+    { 4, 3, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+    { 5, 3, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+    { 5, 4, 3, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+    { 6, 4, 3, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+    { 7, 5, 4, 3, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+    { 8, 6, 5, 4, 3, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+    { 8, 7, 5, 4, 3, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+    { 9, 7, 6, 5, 4, 3, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0 },
+    { 10, 8, 6, 5, 4, 3, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0 },
+    { 11, 9, 7, 6, 5, 4, 3, 2, 1, 0, 0, 0, 0, 0, 0, 0 },
+};
 
 static int corner_bands(int r)
 {
-    if (!rg_n[r]) {
-        int i = 0, n = 0;
-        while (i < r) {
-            int in = ui_corner_inset(r, i), j = i + 1;
-            while (j < r && ui_corner_inset(r, j) == in) j++;
-            rg_len[r][n] = (uint8_t)(j - i);
-            rg_in[r][n] = (uint8_t)in;
-            n++;
-            i = j;
-        }
-        rg_n[r] = (uint8_t)n;
-    }
+    return rg_n[r];
+}
+
+/* (tests) the band tables of radius r <= 16 */
+int ui_corner_bands(int r, const uint8_t **len, const uint8_t **in)
+{
+    if (r < 0 || r > CI_MAX) return -1;
+    if (len) *len = rg_len[r];
+    if (in) *in = rg_in[r];
     return rg_n[r];
 }
 
@@ -1055,7 +1132,7 @@ static void text_emit(const TextBlock *tb, const uint8_t col[4])
         int rel = q - 1, is_top = 0, run_x = 0, run_c = -1;
         uint32_t any = 0;
         text_grow(tb, q + 1, gd);
-        if (oy + q < 0 || oy + q >= sh) continue;
+        if (oy + q < 0 || oy + q >= sh) { rec_clipped(); continue; }
         for (k = 0; k < nw; k++) {
             dil[k] = gu[k] | g[k] | gd[k];
             any |= dil[k] | gs[k];

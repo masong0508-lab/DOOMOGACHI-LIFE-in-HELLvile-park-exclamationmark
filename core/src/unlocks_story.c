@@ -1,8 +1,10 @@
 /* unlocks_story.c - the story module's unlockables (owner: story), ids
  * 608..735: modes the ending opens, every song for the jukebox, every
- * cutscene for the gallery, chapter / collection achievements and the
- * creator parts and window skin that side quests reward. All are granted
- * by code (unlock_grant) as the story is played.
+ * cutscene for the gallery, chapter / collection achievements, the
+ * keepsake badges side quests reward and Mr. Flops' bunny-ears hat. All
+ * are granted by code (unlock_grant) as the story is played. (Side quest
+ * rewards are badges, not creator parts: the creator's species presets
+ * use almost every part, and those must stay unlocked.)
  */
 #include "story_int.h"
 
@@ -11,6 +13,7 @@
 #define CUTU(c, name, how) { (uint16_t)(USTORY_CUT_FIRST + (c)), UL_CAT_GALLERY, GAL_CUTSCENES, c, name, how, 0, 0 }
 #define MISC(id, k, name, how) { id, UL_CAT_MISC, 83, k, name, how, 0, 0 }
 #define PART(k, list, idx, name, how) { (uint16_t)(USTORY_REWARD_FIRST + (k)), UL_CAT_PART, list, idx, name, how, 0, 0 }
+#define BADGE(k, name, how) { (uint16_t)(USTORY_REWARD_FIRST + (k)), UL_CAT_MISC, 83, (uint16_t)(20 + (k)), name, how, 0, 0 }
 
 const DoomoUnlock doomo_unlocks_story[] = {
     MODE(USTORY_UNITED_PARK, MODE_UNITED_PARK, "United Park", "Finish Story Mode"),
@@ -37,10 +40,6 @@ const DoomoUnlock doomo_unlocks_story[] = {
     SONGU(SONG_VAPE_LOUNGE, "Cloud Nine Lounge"),
     SONGU(SONG_OMINOUS, "The Wall"),
 
-    CUTU(CUT_CHAPTER1, "Chapter 1 Card", "Start Story Mode"),
-    CUTU(CUT_CHAPTER2, "Chapter 2 Card", "Reach Chapter 2"),
-    CUTU(CUT_CHAPTER3, "Chapter 3 Card", "Reach Chapter 3"),
-    CUTU(CUT_CHAPTER4, "Chapter 4 Card", "Reach Chapter 4"),
     CUTU(CUT_ARRIVAL, "Arrival in HaHaland", "Start Story Mode"),
     CUTU(CUT_FOG, "The Purple Fog", "Investigate the Wall"),
     CUTU(CUT_ERUPTION, "The Gate Erupts", "Clear the Vape Cellar"),
@@ -61,24 +60,24 @@ const DoomoUnlock doomo_unlocks_story[] = {
     MISC(USTORY_BRUTAL_START, 9, "Boomstick", "Choose the brutal starter weapon"),
     MISC(USTORY_CUTE_START, 10, "Bubble Trouble", "Choose the cute starter weapon"),
 
-    PART(0, CLIST_HAT, HAT_TOP_HAT, "Mayor's Top Hat", "Side quest: Knightly Hearts"),
-    PART(1, CLIST_ACC, ACC_SCARF, "Lovebird Scarf", "Side quest: Mail Mix-Up"),
-    PART(2, CLIST_WINGS, WINGS_BUTTERFLY, "Knitted Butterfly Wings", "Side quest: Coffee for Bluebell"),
-    PART(3, CLIST_ACC, ACC_EARRINGS, "Oma's Pearl Earrings", "Side quest: Grandma's Glasses"),
-    PART(4, CLIST_PATTERN, PATTERN_PLAID, "Cosy Plaid", "Side quest: Bedtime Stories"),
-    PART(5, CLIST_HAIR, HAIR_WILD, "Hero Hair", "Side quest: Fire Drill"),
-    PART(6, CLIST_TOP, TOP_CLOAK, "Hero's Cloak", "Side quest: Graveyard Shift"),
-    PART(7, CLIST_MARK, MARK_STITCHES, "Patched-Up Stitches", "Side quest: Nervous Nellie"),
-    PART(8, CLIST_ACC, ACC_SUNGLASSES, "Cloud Shades", "Side quest: Smoke Signals"),
-    PART(9, CLIST_WINGS, WINGS_TINY_BAT, "Squeak's Bat Wings", "Side quest: Squeak the Bat"),
-    PART(10, CLIST_MARK, MARK_EYELINER, "Goth Eyeliner", "Side quest: The Florist's Apprentice"),
-    PART(11, CLIST_TAIL, TAIL_FEATHER_FAN, "Lucky Feather Tail", "Side quest: Spire Scout"),
-    PART(12, CLIST_SHOES, SHOES_COMBAT, "Champ Boots", "Side quest: Echo of the Duke"),
-    PART(13, CLIST_HAT, HAT_BERET, "Artist's Beret", "Side quest: Wall Art"),
-    PART(14, CLIST_ACC, ACC_BACKPACK, "Sandy Backpack", "Side quest: Sandcastle Contest"),
-    PART(15, CLIST_HAT, HAT_BUNNY_EARS, "Mr. Flops Ears", "Side quest: Pip's Bravery Badge or Frog Wedding"),
-    { USTORY_REWARD_FIRST + 16, UL_CAT_SKIN, OPT_WINDOW_SKIN, WSKIN_LAVENDER, "Lavender Windows",
-      "Finish Chapter 4 of Story Mode", 0, 0 },
+    /* side quest keepsakes (badges), and one hat */
+    BADGE(0, "Cupid's Arrow Pin", "Side quest: Knightly Hearts"),
+    BADGE(1, "Lovebird Stamp", "Side quest: Mail Mix-Up"),
+    BADGE(2, "Tulip Pin", "Side quest: Coffee for Bluebell"),
+    BADGE(3, "Oma's Cake Locket", "Side quest: Grandma's Glasses"),
+    BADGE(4, "Bookworm Bookmark", "Side quest: Bedtime Stories"),
+    BADGE(5, "Honorary Firefighter", "Side quest: Fire Drill"),
+    BADGE(6, "Spider Swatter Medal", "Side quest: Graveyard Shift"),
+    BADGE(7, "Golden Hug Token", "Side quest: Nervous Nellie"),
+    BADGE(8, "Storm Chaser", "Side quest: Smoke Signals"),
+    BADGE(9, "Bat Buddy", "Side quest: Squeak the Bat"),
+    BADGE(10, "Flower Friend Ribbon", "Side quest: The Florist's Apprentice"),
+    BADGE(11, "Sky Scout Wings", "Side quest: Spire Scout"),
+    BADGE(12, "Champion's Buckle", "Side quest: Echo of the Duke"),
+    BADGE(13, "Wall Artist Ribbon", "Side quest: Wall Art"),
+    BADGE(14, "Surf Club Member", "Side quest: Sandcastle Contest"),
+    PART(15, CLIST_HAT, HAT_BUNNY_EARS, "Mr. Flops Ears", "Side quest: Pip's Bravery Badge"),
+    BADGE(16, "Wedding Planner Pin", "Side quest: Frog Wedding"),
 
     { 0, 0, 0, 0, NULL, NULL, 0, 0 }
 };

@@ -86,6 +86,7 @@ extern const DoomoUnlock doomo_unlocks_roster[];
 extern const DoomoUnlock doomo_unlocks_minigames[];   /* 832..863 (Fun Fair) */
 extern const DoomoUnlock doomo_unlocks_concert[];     /* 896..959 (Concert Hall + Dreams) */
 extern const DoomoUnlock doomo_unlocks_studio[];      /* 240..255 (Music Studio) */
+extern const DoomoUnlock doomo_unlocks_library[];     /* 384..415 (Grand Library; life's unused tail) */
 
 /* Game modes gated by UL_CAT_MODE. */
 enum { MODE_ARENA, MODE_BOSS_RUSH, MODE_HELLVILE_VISITS, MODE_TAMA_ONLY,

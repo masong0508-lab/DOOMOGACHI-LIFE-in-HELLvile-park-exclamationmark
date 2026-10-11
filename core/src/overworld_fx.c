@@ -147,7 +147,8 @@ int owfx_daylight(void)
     static const uint8_t by_hour[24] = { 4, 4, 4, 4, 4, 6, 9, 12, 15, 15, 15, 15, 15, 15, 15, 15, 15, 14, 12, 10, 8, 6, 5, 4 };
     d = by_hour[h % 24];
     if (ow.map == MAPID_HAHALAND_INVADED) d = 11;
-    if (ow.map == MAPID_HELLVILE && d > 11) d = 11;
+    if (ow.map == MAPID_HELLVILE && d > 13) d = 13;
+    if (ow.map == MAPID_HELLVILE && d < 7) d = 7;
     return d;
 }
 
@@ -368,16 +369,24 @@ static void pill(int x, int y, int w, int h, int style)
 static void draw_objective(int style)
 {
     const char *o = ow.visit ? "Free stroll - enjoy the town!" : story_objective();
-    char buf[80];
-    int sw = plat_screen_w(), maxw = sw - 88, w, x = 3, y = 3;
+    char buf[96];
+    int sw = plat_screen_w(), maxw = sw - 92, w, x = 3, y = 3, lines;
     const UiStyle *st = ui_style(style);
     uint32_t t = doomo_frame_count();
     if (!o || !o[0]) return;
-    fit(buf, o, sizeof(buf), maxw);
-    w = ui_text_width(buf) + 20;
-    pill(x, y, w, 13, style);
+    doomo_snprintf(buf, sizeof(buf), "%s", o);
+    if (ui_text_width(buf) <= maxw) {
+        lines = 1;
+        w = ui_text_width(buf) + 20;
+    } else {
+        lines = ui_text_wrap(0, 0, maxw, buf, 0, 0);
+        if (lines > 2) { fit(buf, o, sizeof(buf), maxw * 2 - 12); lines = 2; }
+        w = maxw + 20;
+    }
+    pill(x, y, w, lines * FONT_LINE + 4, style);
     ui_star(x + 8, y + 6 + ui_wave((int)t, 40, 1), 4, ow.visit ? PAL_UI_MINT : PAL_UI_GOLD);
-    ui_text(x + 15, y + 3, buf, st->text);
+    if (lines == 1) ui_text(x + 15, y + 3, buf, st->text);
+    else ui_text_wrap(x + 15, y + 3, maxw, buf, st->text, 1);
 }
 
 static void draw_clock(int style)
@@ -510,22 +519,40 @@ void owfx_draw_hud(void)
 }
 
 /* ---- the mini-map ------------------------------------------------------------------------ */
-static uint8_t mm_pix[DOOMO_MAP_MAX_W * DOOMO_MAP_MAX_H];
+/* 2x2 cells per pixel: 1 KB of RAM, drawn at 2x so it keeps its size. */
+#define MM_W (DOOMO_MAP_MAX_W / 2)
+#define MM_H (DOOMO_MAP_MAX_H / 2)
+static uint8_t mm_pix[MM_W * MM_H];
 static DoomoImage mm_img;
 static int8_t mm_map = -1;
 
+static int mm_rank(const DoomoCell *c)
+{
+    if (c->tag >= STORY_TAG_DOOR && c->tag < STORY_TAG_DOOR + PLACE_COUNT) return 4;
+    if (c->flags & (CELL_WATER | CELL_LAVA)) return 3;
+    if (c->wall) return 2;
+    if (c->floor_tex == TEX_PATH || c->floor_tex == TEX_TILE_FLOOR || c->floor_tex == TEX_HELL_ROCK) return 1;
+    return 0;
+}
+
 static void mm_build(void)
 {
-    int x, y, w = doomo_map.w, h = doomo_map.h;
+    int x, y, w = (doomo_map.w + 1) / 2, h = (doomo_map.h + 1) / 2;
     for (y = 0; y < h; y++)
         for (x = 0; x < w; x++) {
-            const DoomoCell *c = map_cell(&doomo_map, x, y);
+            const DoomoCell *best = map_cell_safe(&doomo_map, x * 2, y * 2);
+            int k, br = mm_rank(best);
             uint8_t col;
-            if (c->tag >= STORY_TAG_DOOR && c->tag < STORY_TAG_DOOR + PLACE_COUNT) col = PAL_UI_GOLD;
-            else if (c->wall) col = palette_darker(texture_avg(c->floor_tex ? c->floor_tex : c->wall));
+            for (k = 1; k < 4; k++) {
+                const DoomoCell *c = map_cell_safe(&doomo_map, x * 2 + (k & 1), y * 2 + (k >> 1));
+                int r = mm_rank(c);
+                if (r > br) { br = r; best = c; }
+            }
+            if (br == 4) col = PAL_UI_GOLD;
+            else if (best->wall) col = palette_darker(texture_avg(best->floor_tex ? best->floor_tex : best->wall));
             else {
-                col = texture_avg(c->floor_tex);
-                if (c->floor_h > 0) col = palette_lighter(col);
+                col = texture_avg(best->floor_tex);
+                if (best->floor_h > 0) col = palette_lighter(col);
             }
             mm_pix[y * w + x] = col ? col : PAL_GRAY_D;
         }
@@ -542,9 +569,9 @@ void owfx_minimap(int x, int y, int s, int map_id)
     uint32_t t = doomo_frame_count();
     const UiStyle *st = ui_style(hud_style());
     (void)map_id;
-    if (mm_map != map_current_id() || mm_img.w != doomo_map.w) mm_build();
+    if (mm_map != map_current_id() || mm_img.w != (doomo_map.w + 1) / 2) mm_build();
     ui_round_rect(x - 3, y - 3, doomo_map.w * s + 6, doomo_map.h * s + 6, 3, st->outline);
-    plat_image(x, y, &mm_img, s, 0, 0);
+    plat_image(x, y, &mm_img, s * 2, 0, 0);
     /* citizens */
     for (k = 0; k < ow_npc_count; k++) {
         int nx = ow_npcs[k].x / OW_CELL, ny = ow_npcs[k].y / OW_CELL;

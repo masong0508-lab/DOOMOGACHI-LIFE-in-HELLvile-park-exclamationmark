@@ -158,8 +158,9 @@ const char *const doomo_tint_names[TINT_COUNT] = {
     "None", "Red", "Gold", "Green", "Purple", "Night"
 };
 
-uint8_t doomo_colormap[DOOMO_LIGHT_LEVELS][256];
-uint8_t doomo_tintmap[TINT_COUNT][256];
+/* the generated tables themselves (ROM on the GBA): no 5.6 KB RAM copy */
+const uint8_t (*doomo_colormap)[256] = doomo_art_colormap;
+const uint8_t (*doomo_tintmap)[256] = doomo_art_tintmap;
 
 void palette_rgb(uint8_t index, uint8_t *r, uint8_t *g, uint8_t *b)
 {
@@ -226,6 +227,6 @@ uint8_t palette_shade(uint8_t index, int light)
 
 void palette_init(void)
 {
-    memcpy(doomo_colormap, doomo_art_colormap, sizeof(doomo_colormap));
-    memcpy(doomo_tintmap, doomo_art_tintmap, sizeof(doomo_tintmap));
+    doomo_colormap = doomo_art_colormap;
+    doomo_tintmap = doomo_art_tintmap;
 }

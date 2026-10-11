@@ -350,7 +350,6 @@ void fp_set_flowers(int id, int n)
 
 /* ====================================================================== */
 /* the living island                                                          */
-static void fx_step(void);
 static uint8_t autosave_bound;          /* this island owns slot 1 */
 
 void fp_autosave_bind(int on) { autosave_bound = (uint8_t)on; }
@@ -367,7 +366,7 @@ void fp_live(void)
             else ui_toast("Autosave failed!");
         }
     }
-    fx_step();
+    fp_fx_tick();
 }
 
 void fp_new_island(int population, uint32_t seed)
@@ -788,7 +787,7 @@ void fp_fx_burst(int x, int y, int kind, int n)
     }
 }
 
-static void fx_step(void)
+void fp_fx_tick(void)
 {
     int i;
     for (i = 0; i < FX_N; i++) {
@@ -859,6 +858,39 @@ void fp_fx_draw(void)
             break;
         }
     }
+}
+
+/* ====================================================================== */
+/* the graveyard rite: raise a departed citizen as a friendly ghost          */
+const char *fp_ghost_rite_blocker(int id)
+{
+    const DoomoResident *r = fp_res(id);
+    if (!r || r->status != RES_DEAD) return "Only the departed can be raised.";
+    if (!town_is_night()) return "The veil is too thick by day. Come back after 9 PM...";
+    if (!opt_get(OPT_CHEAT_INFINITE_CANDY) &&
+        (inv_count(ITEM_HYMN_BOOK) <= 0 || inv_count(ITEM_SAGE_BUNDLE) <= 0))
+        return "The rite needs a Hymn Book and a Sage Bundle.";
+    return "";
+}
+
+int fp_ghost_rite(int id)
+{
+    const char *why = fp_ghost_rite_blocker(id);
+    if (why[0]) {
+        audio_sfx(SFX_ERROR);
+        ui_say(-1, why);
+        return 0;
+    }
+    if (!opt_get(OPT_CHEAT_INFINITE_CANDY)) {
+        inv_take(ITEM_HYMN_BOOK, 1);
+        inv_take(ITEM_SAGE_BUNDLE, 1);
+    }
+    if (!sim_raise_ghost(id)) return 0;
+    fp_achieve(UL_FP_GHOST_RITE);
+    audio_sfx(SFX_HOLY);
+    ui_say(-1, "You chant the old lullaby, the sage smoke curls into a little heart...");
+    ui_say(id, "Ooooo... I'm BACK! Everything is so floaty! Thank you!");
+    return 1;
 }
 
 /* ====================================================================== */

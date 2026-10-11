@@ -38,24 +38,27 @@ void doomo_palette_fallback(void)
         { 180, 80, 255 }, { 40, 50, 140 }
     };
     static uint8_t pr[256], pg[256], pb[256];
+    static uint8_t cm[DOOMO_LIGHT_LEVELS][256], tm[TINT_COUNT][256];
     int lv, i;
     for (i = 0; i < 256; i++) palette_rgb((uint8_t)i, &pr[i], &pg[i], &pb[i]);
     for (i = 0; i < 256; i++) {
         int r = pr[i], g = pg[i], b = pb[i];
         for (lv = 0; lv < DOOMO_LIGHT_LEVELS; lv++) {
-            if (i == 0) { doomo_colormap[lv][i] = 0; continue; }
-            if (lv == DOOMO_LIGHT_LEVELS - 1) { doomo_colormap[lv][i] = (uint8_t)i; continue; }
-            if (lv == 0) { doomo_colormap[lv][i] = PAL_BLACK; continue; }
-            doomo_colormap[lv][i] = nearest_fast(pr, pg, pb, r * (lv + 1) / 16,
-                                                 g * (lv + 1) / 16, b * (lv + 1) / 16);
+            if (i == 0) { cm[lv][i] = 0; continue; }
+            if (lv == DOOMO_LIGHT_LEVELS - 1) { cm[lv][i] = (uint8_t)i; continue; }
+            if (lv == 0) { cm[lv][i] = PAL_BLACK; continue; }
+            cm[lv][i] = nearest_fast(pr, pg, pb, r * (lv + 1) / 16,
+                                     g * (lv + 1) / 16, b * (lv + 1) / 16);
         }
         for (lv = 0; lv < TINT_COUNT; lv++) {
-            if (i == 0 || lv == TINT_NONE) { doomo_tintmap[lv][i] = (uint8_t)i; continue; }
-            doomo_tintmap[lv][i] = nearest_fast(pr, pg, pb, (r + tint_rgb[lv][0]) / 2,
-                                                (g + tint_rgb[lv][1]) / 2,
-                                                (b + tint_rgb[lv][2]) / 2);
+            if (i == 0 || lv == TINT_NONE) { tm[lv][i] = (uint8_t)i; continue; }
+            tm[lv][i] = nearest_fast(pr, pg, pb, (r + tint_rgb[lv][0]) / 2,
+                                     (g + tint_rgb[lv][1]) / 2,
+                                     (b + tint_rgb[lv][2]) / 2);
         }
     }
+    doomo_colormap = (const uint8_t (*)[256])cm;   /* palette.h: RAM tables */
+    doomo_tintmap = (const uint8_t (*)[256])tm;
 }
 
 /* ------------------------------------------------------------------------ */

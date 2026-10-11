@@ -82,12 +82,12 @@ WEAK const char *const doomo_ramp_names[PAL_RAMP_COUNT] = {
 WEAK const char *const doomo_tint_names[TINT_COUNT] = {
     "None", "Red", "Gold", "Green", "Purple", "Night"
 };
-WEAK uint8_t doomo_colormap[DOOMO_LIGHT_LEVELS][256];
-WEAK uint8_t doomo_tintmap[TINT_COUNT][256];
 /* All-zero placeholders for the generated tables; doomo_init() notices the
- * broken identity row and calls doomo_palette_fallback(). */
+ * broken identity row (a bring-up build calls doomo_palette_fallback()). */
 WEAK const uint8_t doomo_art_colormap[DOOMO_LIGHT_LEVELS][256];
 WEAK const uint8_t doomo_art_tintmap[TINT_COUNT][256];
+WEAK const uint8_t (*doomo_colormap)[256] = doomo_art_colormap;
+WEAK const uint8_t (*doomo_tintmap)[256] = doomo_art_tintmap;
 WEAK const uint8_t doomo_art_darker[256];
 WEAK const uint8_t doomo_art_lighter[256];
 
@@ -143,29 +143,34 @@ WEAK void palette_init(void)
     doomo_palette_fallback();
 }
 
-/* Not weak: foundation's runtime fallback for missing generated tables. */
+/* Not weak: foundation's runtime fallback for missing generated tables:
+ * builds them in RAM and points doomo_colormap / doomo_tintmap there.
+ * Nothing in the game references it (the art is generated), so linkers
+ * with --gc-sections drop it and its 5.6 KB of tables. */
 void doomo_palette_fallback(void)
 {
     static const uint8_t tint_rgb[TINT_COUNT][3] = {
         { 0, 0, 0 }, { 255, 40, 40 }, { 255, 220, 80 }, { 80, 255, 80 },
         { 180, 80, 255 }, { 40, 50, 140 }
     };
+    static uint8_t cm[DOOMO_LIGHT_LEVELS][256], tm[TINT_COUNT][256];
     int lv, i;
     for (i = 0; i < 256; i++) {
         uint8_t r, g, b;
         palette_rgb((uint8_t)i, &r, &g, &b);
         for (lv = 0; lv < DOOMO_LIGHT_LEVELS; lv++) {
-            if (i == 0) { doomo_colormap[lv][i] = 0; continue; }
-            if (lv == DOOMO_LIGHT_LEVELS - 1) { doomo_colormap[lv][i] = (uint8_t)i; continue; }
-            doomo_colormap[lv][i] = palette_nearest(r * lv / 15, g * lv / 15, b * lv / 15);
+            if (i == 0) { cm[lv][i] = 0; continue; }
+            if (lv == DOOMO_LIGHT_LEVELS - 1) { cm[lv][i] = (uint8_t)i; continue; }
+            cm[lv][i] = palette_nearest(r * lv / 15, g * lv / 15, b * lv / 15);
         }
         for (lv = 0; lv < TINT_COUNT; lv++) {
-            if (i == 0 || lv == TINT_NONE) { doomo_tintmap[lv][i] = (uint8_t)i; continue; }
-            doomo_tintmap[lv][i] = palette_nearest((r + tint_rgb[lv][0]) / 2,
-                                                   (g + tint_rgb[lv][1]) / 2,
-                                                   (b + tint_rgb[lv][2]) / 2);
+            if (i == 0 || lv == TINT_NONE) { tm[lv][i] = (uint8_t)i; continue; }
+            tm[lv][i] = palette_nearest((r + tint_rgb[lv][0]) / 2, (g + tint_rgb[lv][1]) / 2,
+                                        (b + tint_rgb[lv][2]) / 2);
         }
     }
+    doomo_colormap = (const uint8_t (*)[256])cm;
+    doomo_tintmap = (const uint8_t (*)[256])tm;
 }
 
 /* ======================================================================

@@ -1,0 +1,20 @@
+# Story chapter 3 (story): the invaded town's demon nests drop you into
+# combat on the same map (first person, then third person), and Cloud
+# Nine Spire waits by the Wall.
+scene STORY 219
+wait 3
+shot nest_overworld
+wait 30
+shot nest_close
+# walk up into the nest
+hold UP 8
+wait 30
+shot encounter
+expect-scene COMBAT
+hold UP 20
+press A
+wait 6
+shot encounter_fire
+press SELECT
+wait 20
+shot encounter_tp

@@ -1280,7 +1280,7 @@ static Target target_of(int b)
 {
     Target t = { -1, MAPID_HAHALAND, 0, 0 };
     switch (b) {
-    case BEAT_C1_ARRIVE: case BEAT_C1_MAYOR: t.id = ID_MAYOR; t.x = 31; t.y = 25; break;
+    case BEAT_C1_ARRIVE: case BEAT_C1_MAYOR: t.id = ID_MAYOR; t.x = 33; t.y = 25; break;
     case BEAT_C1_KEY: t.id = ID_NANA; t.x = 25; t.y = 17; break;
     case BEAT_C1_HOME: t.x = 4; t.y = 7; break;
     case BEAT_C1_PIP: case BEAT_C1_BUNNY_RETURN: t.id = ID_PIP; t.x = 10; t.y = 47; break;
@@ -1362,7 +1362,7 @@ int script_cast(int map, StoryNpcSpot *out, int max)
 #define MAINF(who) ((t.id == (who)) ? NPCF_MAIN | NPCF_FIXED : NPCF_FIXED)
     if (map == MAPID_HAHALAND) {
         /* the Mayor */
-        if (b <= BEAT_C1_MAYOR) n = add(out, n, max, ID_MAYOR, 31, 25, 0, MAINF(ID_MAYOR));
+        if (b <= BEAT_C1_MAYOR) n = add(out, n, max, ID_MAYOR, 33, 25, 0, MAINF(ID_MAYOR));
         else if (b == BEAT_C2_SCREAM || b == BEAT_C2_EXORCISE) n = add(out, n, max, ID_MAYOR, 35, 25, 2, NPCF_FIXED);
         else if (b == BEAT_C4_GATE || (b == BEAT_C4_MAYOR && !has(SF_C4_MAYOR_CAME))) n = add(out, n, max, ID_MAYOR, 54, 30, 1, MAINF(ID_MAYOR));
         else if (b < BEAT_C3_ERUPTION || b >= BEAT_DONE) n = add(out, n, max, ID_MAYOR, 29, 8, 0, NPCF_FIXED);
@@ -1444,6 +1444,7 @@ void script_debug_setup(int b)
 {
     int i;
     DoomoStoryState *s = &doomo_town.story;
+    s->quest = (uint8_t)b;                 /* targets below are the new beat's */
     if (b >= BEAT_C1_HOME) { flag(SF_KEY_GIVEN); flag(SF_EGG_GIVEN); }
     if (b >= BEAT_C1_HATCH) { flag(SF_HOME_SEEN); ensure_pet(); inv_take(ITEM_DOOMOGACHI_EGG, 1); }
     if (b == BEAT_C1_BUNNY_RETURN) { flag(SF_BUNNY_FOUND); if (!inv_count(ITEM_LOST_BUNNY)) inv_add(ITEM_LOST_BUNNY, 1); }

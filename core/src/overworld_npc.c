@@ -50,12 +50,26 @@ static int prop_radius(int type)
     }
 }
 
+/* Where demon nest `nest` sits on the invaded map. Read from the map
+ * definition itself, so it works before (or without) loading that map. */
 int ow_nest_cell(int nest, int *cx, int *cy)
 {
-    if (nest < 0 || nest >= STORY_NESTS || !nest_at[nest].ok) return 0;
-    if (cx) *cx = nest_at[nest].x;
-    if (cy) *cy = nest_at[nest].y;
-    return 1;
+    const DoomoMapDef *d = doomo_maps[MAPID_HAHALAND_INVADED];
+    int i;
+    if (nest < 0 || nest >= STORY_NESTS) return 0;
+    if (nest_at[nest].ok) {
+        if (cx) *cx = nest_at[nest].x;
+        if (cy) *cy = nest_at[nest].y;
+        return 1;
+    }
+    if (!d || !d->things) return 0;
+    for (i = 0; i < d->thing_count; i++)
+        if (d->things[i].type == THING_SPAWNER && d->things[i].arg == nest) {
+            if (cx) *cx = d->things[i].x;
+            if (cy) *cy = d->things[i].y;
+            return 1;
+        }
+    return 0;
 }
 
 static int secret_base(void)

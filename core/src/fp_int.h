@@ -17,7 +17,7 @@
  *   fp_news.c     SCENE_NEWS
  *   fp_options.c  SCENE_OPTIONS
  *   fp_saveload.c SCENE_SAVELOAD
- *   fp_unlocks.c  SCENE_UNLOCKS (gallery of every unlock) + SCENE_JUKEBOX
+ *   fp_unlocks.c  SCENE_UNLOCKS (gallery of every unlock + progress)
  *   unlocks_freeplay.c  the free play unlockables (ids 736..831)
  */
 #ifndef DOOMO_FP_INT_H
@@ -131,11 +131,18 @@ void fp_ticker(int y, int style);
 /* Wavy "loading" dots. */
 void fp_dots(int x, int y, uint8_t c);
 
+/* ---- the graveyard rite -------------------------------------------------- */
+/* Why the ghost rite can't happen now ("" = it can): night, Hymn Book +
+ * Sage Bundle. fp_ghost_rite() performs it (dialogue + achievement). */
+const char *fp_ghost_rite_blocker(int id);
+int  fp_ghost_rite(int id);
+
 /* ---- particles ------------------------------------------------------------ */
 enum { FX_HEART, FX_STAR, FX_SPARK, FX_NOTE, FX_STINK, FX_TEAR, FX_CONFETTI,
        FX_PETAL, FX_SKULL, FX_BUBBLE, FX_COIN };
 void fp_fx_burst(int x, int y, int kind, int n);
 void fp_fx_clear(void);
+void fp_fx_tick(void);          /* step every particle (fp_live does it) */
 void fp_fx_draw(void);           /* draw (and step) every live particle */
 
 /* ---- citizen picker ---------------------------------------------------- */
@@ -178,8 +185,36 @@ void fp_goto_island(int arg);
 /* Open the resident screen. */
 void fp_open_resident(int id);
 
+/* ---- the resident screen's actions (fp_resident.c) ----------------------- */
+enum { FPA_HELP, FPA_FEED, FPA_GIFT, FPA_CLEAN, FPA_PLAY, FPA_TALK, FPA_HEAL, FPA_COMFORT,
+       FPA_INTRODUCE, FPA_ADVICE, FPA_EDIT, FPA_FAV, FPA_EXORCISE, FPA_FLOWERS, FPA_GHOST,
+       FPA_GRAVE, FPA_HOME, FPA_REST, FPA_CREATE, FPA_COUNT };
+/* test hooks: the actions offered for the open resident */
+int  fp_resident_action_count(void);
+int  fp_resident_has_action(int a);
+int  fp_resident_select(int a);           /* move the cursor to it (Care tab) */
+int  fp_resident_id(void);
+int  fp_resident_in_farewell(void);
+
+/* ---- free play unlock ids (unlocks_freeplay.c, range 736..831) ---------- */
+enum {
+    UL_FP_FIRST_ACH = 740,      /* code-granted achievements (UL_CAT_MISC) */
+    UL_FP_LANDLORD = UL_FP_FIRST_ACH, UL_FP_NAMER, UL_FP_FIRST_CITIZEN, UL_FP_PICNIC,
+    UL_FP_SHOPAHOLIC, UL_FP_BLACK_MARKET, UL_FP_GARDENER, UL_FP_NIGHT_OWL, UL_FP_BOOKWORM,
+    UL_FP_FAV_FOOD, UL_FP_HEALER, UL_FP_MATCHMAKER, UL_FP_FULL_HOUSE_HILL, UL_FP_FULL_HOUSE_HELL,
+    UL_FP_GHOST_RITE, UL_FP_HELPER, UL_FP_HELPER_BIG, UL_FP_COLLECTOR, UL_FP_EMPTY_START,
+    UL_FP_PREMADE_START, UL_FP_RANDOM_START, UL_FP_FAVOURITES, UL_FP_SEARCHER,
+    UL_FP_HATED_FOOD, UL_FP_HOUSEWARMING,
+    UL_FP_LAST_ACH
+};
+DOOMO_STATIC_ASSERT(UL_FP_LAST_ACH <= 770, fp_achievements_fit);
+/* Grant an achievement (toast) and the creator part that comes with it. */
+void fp_achieve(int ul);
+/* Island-state achievements (full districts, favourites, hoards...). */
+void fp_check_island_achievements(void);
+
 /* Extra scenes (also declared in scenes.h). */
-extern const DoomoScene SCENE_UNLOCKS, SCENE_JUKEBOX, SCENE_PICKER;
+extern const DoomoScene SCENE_UNLOCKS, SCENE_PICKER;
 
 /* Shared static scratch for building one-off strings. */
 extern char fp_tmp[128];

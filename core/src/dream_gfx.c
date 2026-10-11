@@ -598,12 +598,13 @@ void dream_draw_frame(int creep, int nightmare, uint32_t t)
     for (pass = 0; pass < 2; pass++) {
         uint8_t col = pass ? c : ol;
         int grow = pass ? 0 : 1;
-        for (x = -r; x < sw + r; x += r + 4) {
+        /* bumps every ~1.6 radii: few circles (cheap on the GBA) */
+        for (x = -r / 2; x < sw + r; x += r + r * 3 / 5) {
             int w1 = ui_wave((int)t + x, 50, 2);
             ui_fill_circle(x, -4 + w1, r + grow, col);
             ui_fill_circle(x + r / 2, sh + 3 - w1, r + grow, col);
         }
-        for (x = 0; x < sh; x += r + 4) {
+        for (x = r; x < sh - r / 2; x += r + r * 3 / 5) {
             int w1 = ui_wave((int)t + x * 2, 60, 2);
             ui_fill_circle(-5 + w1, x, r + grow, col);
             ui_fill_circle(sw + 4 - w1, x + r / 2, r + grow, col);

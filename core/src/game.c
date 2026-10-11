@@ -25,13 +25,13 @@ void doomo_init(void)
 {
     plat_log("doomo: init");
     palette_init();
-    /* The light colormaps come from generated art tables; if those are
-     * still placeholders, build them at runtime so shading works. */
+    /* The light colormaps are the generated art tables (palette.h). A
+     * build without them shades wrongly; it says so (the runtime builder,
+     * doomo_palette_fallback(), is only linked by bring-up builds, so its
+     * 5.6 KB of RAM tables stay out of the game). */
     if (doomo_colormap[DOOMO_LIGHT_LEVELS - 1][PAL_WHITE] != PAL_WHITE ||
-        doomo_colormap[DOOMO_LIGHT_LEVELS / 2][PAL_WHITE] == 0) {
-        plat_log("STUB: doomo_art_colormap (runtime palette fallback)");
-        doomo_palette_fallback();
-    }
+        doomo_colormap[DOOMO_LIGHT_LEVELS / 2][PAL_WHITE] == 0)
+        plat_log("STUB: doomo_art_colormap (generated art tables missing)");
     textures_init();
     sprites_init();
     audio_init();

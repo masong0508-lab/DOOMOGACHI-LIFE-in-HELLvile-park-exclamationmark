@@ -198,7 +198,7 @@ static void draw_friends(int x, int y, int w, int h, int style)
     const UiStyle *st = ui_style(style);
     int i, cols = w >= 260 ? 6 : 4, cw = w / cols, rows = (12 + cols - 1) / cols;
     char buf[48];
-    doomo_snprintf(buf, sizeof(buf), STR_ICON_HEART " Friends: %d in Hillvile, %d in Hellvile",
+    doomo_snprintf(buf, sizeof(buf), STR_ICON_HEART " Hillvile %d  " STR_ICON_HEART " Hellvile %d",
                    story_friend_count(0), story_friend_count(1));
     ui_text(x, y, buf, st->text);
     for (i = 0; i < 12; i++) {

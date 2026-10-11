@@ -101,16 +101,16 @@ TT.GGG44GGG............=======================..~~..:xxOZZffffff
 TT...::::.xx...........=======================..~~..:x.OZZffffff
 TT...::::...x....................::xx.xx..x.x...~~x.:..OZZffffff
 TT.....:x...x.x..................::.....xxxxx...~~..:..OZZffffff
-TTFFFFFyFFFFFxx.......MMMMMMMM...::...LLLLLLL,,x~~..:..Oggffffff
-TTF.........F..x......MMMMMMMM...::...LLLLLLL,,x~~..:..Oggffffff
+TTFFFFFyFFFFFxx.......MMMMMMMM...::...LLLLLLL,,x~~..:..OgZffffff
+TTF.........F..x......MMMMMMMM...::...LLLLLLL,,x~~..:..OgZffffff
 TTF.........F.........MMMMMMMM...::...LLLLLLL,x.~~..:..OZZffffff
-TTF.........F..x...x.xMMMMMMMM...::...LLLLLLL,,.~~.VVVV.ZZffffff
-TTF.........F..xxxx.x.MMM88MMM...::...LLL9LLL...~~.VVVV.ZZffffff
+TTF.........F......x.xMMMMMMMM...::...LLLLLLL,,.~~.VVVV.ZZffffff
+TTF.........F.....x.x.MMM88MMM...::...LLL9LLL...~~.VVVV.ZZffffff
 TTF.........Fxx..........::......::......:......~~.VVVV.ZZffffff
 TTF........xFx...........::......::......:......~~.VvVV.ZZffffff
 TTFFFFFFFFFFF............::......::......:......~~..:Q..ZZffffff
 TT.......................::......::......:......~~..:..OZZffffff
-TT.XXXX..XXXX..XXXX......::......::xxx..x:......~~..:..OZZffffff
+TT.XXXX..XXXX..XXXX......::......::.....x:......~~..:..OZZffffff
 TT.XXXX..XXXX..XXXX:::::::::::::::::::::::::::::bb:::..OZZffffff
 TT.XjXX..XdXX..XdXX:::::::::::::::::::::::::::::bb:::..OZZffffff
 TT::::::::::::::::::..........x.x::.........x...~~..:..OZZffffff
@@ -238,9 +238,9 @@ light
 ...............................dedded..............efe
 ...............................dddddd..............eee
 
-....ddd
-....ded........................dddddd
-....ddd........................dedded
+.............ddd
+.............ded...............dddddd
+.............ddd...............dedded
 ...............................ddddddddd
 .....................................ded............ddd
 .....................................ddd............ded
@@ -458,11 +458,11 @@ thing 34 26 PLAYER_START angle=270
 thing 30 21 SPAWNER arg=0
 thing 20 54 SPAWNER arg=1
 thing 36 38 SPAWNER arg=2
-thing 7 33 SPAWNER arg=3
+thing 16 33 SPAWNER arg=3
 thing 21 52 VAPE_PORTAL
 thing 45 48 VAPE_PORTAL
 thing 38 37 VAPE_PORTAL
-thing 5 34 VAPE_PORTAL
+thing 14 34 VAPE_PORTAL
 thing 28 20 VAPE_PORTAL
 thing 53 38 VAPE_PORTAL
 thing 24 18 PROP_TORCH

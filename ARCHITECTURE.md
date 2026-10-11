@@ -135,8 +135,9 @@ life / action modules were about to land; the 88 KB save buffer was then
 replaced by streaming saves (below), which freed 71 KB - and the modules
 that landed since (live map 32.8 KB, weld view 14.8 KB, sim 7 KB, actors
 6.8 KB, combat 4.9 KB, pet 5.3 KB, ...) used it, as planned. The save
-codec now keeps no static buffers either (+6.8 KB). docs/GBA.md section 3
-has the full table. Rules of thumb for new modules: no per-module copies
+codec now keeps no static buffers either (+6.8 KB) and the UI rasteriser's
+lookup tables are `const` (+1.1 KB): 8.1 KB free with those modules
+linked. docs/GBA.md section 3 has the full table. Rules of thumb for new modules: no per-module copies
 of big data, scene-local state as small as the scene needs, nothing in
 `.bss` that could be `const`.
 

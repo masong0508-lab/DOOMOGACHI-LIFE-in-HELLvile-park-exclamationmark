@@ -6,6 +6,7 @@
  * The plot itself is in story_script.c.
  */
 #include "story_int.h"
+#include "combat_int.h"     /* AF_USED (read only: actor slots) */
 
 StoryPending story_pending;
 int16_t story_fmt_target = -1;
@@ -73,6 +74,15 @@ int story_beat_chapter(int beat)
 
 int story_map(void) { return doomo_town.story.map; }
 
+/* Own an unlock without the "NEW UNLOCK!" toast (jukebox songs and
+ * gallery cutscenes arrive in batches; one summary toast is enough). */
+int story_unlock_quiet(int id)
+{
+    if (id < 0 || id >= DOOMO_UNLOCK_BITS || !unlock_by_id(id) || unlock_has(id)) return 0;
+    doomo_town.unlocks[id >> 3] |= (uint8_t)(1u << (id & 7));
+    return 1;
+}
+
 static void chapter_unlocks(int finished)
 {
     /* songs heard in each chapter go to the jukebox */
@@ -83,11 +93,16 @@ static void chapter_unlocks(int finished)
         { SONG_HELLVILE, SONG_FESTIVAL, SONG_CREDITS, 0, 0, 0 },
         { 0, 0, 0, 0, 0, 0 }
     };
-    int i;
+    int i, n = 0;
     if (finished < 1 || finished > 4) return;
     for (i = 0; i < 6; i++)
-        if (songs[finished - 1][i]) unlock_grant(USTORY_SONG_FIRST + songs[finished - 1][i] - 1);
+        if (songs[finished - 1][i]) n += story_unlock_quiet(USTORY_SONG_FIRST + songs[finished - 1][i] - 1);
     unlock_grant(USTORY_CH1_DONE + finished - 1);
+    if (n) {
+        char buf[40];
+        doomo_snprintf(buf, sizeof(buf), STR_ICON_NOTE " %d new songs in the jukebox!", n);
+        ui_toast(buf);
+    }
 }
 
 void story_set_beat(int beat)
@@ -382,8 +397,7 @@ void story_push_scene(const DoomoScene *s, int arg, int pend, int ctx, int extra
 {
     set_pending(pend, ctx, arg, extra);
     ow_sync_to_save();
-    if (autowin && (pend == PEND_PET || pend == PEND_WORKSHOP || pend == PEND_EXO_PRACTICE ||
-                    pend == PEND_OTHER)) {
+    if (autowin && (pend == PEND_PET || pend == PEND_WORKSHOP || pend == PEND_EXO_PRACTICE)) {
         if (pend == PEND_PET && !pet_exists()) pet_new("Doomo");
         dispatch_result();
         return;
@@ -407,6 +421,37 @@ static int spot_open(int cx, int cy)
     return !c->wall && !(c->flags & (CELL_WATER | CELL_LAVA));
 }
 
+/* The overworld maps are dressed with more props (trees, lamps, benches)
+ * than the combat actor pool holds, which would leave no room for the
+ * encounter's demons and their effects. Keep the props nearest the fight
+ * and drop the far ones (out in the fog anyway). Bounded: one pass of at
+ * most ACTOR_MAX x ACTOR_MAX steps, once per encounter. */
+#define STORY_KEEP_PROPS 72
+static void make_room_for_demons(int cx, int cy)
+{
+    int i, n = 0;
+    for (i = 0; i < ACTOR_MAX; i++) {
+        const DoomoActor *a = &doomo_actors[i];
+        if ((a->flags & AF_USED) && a->type >= THING_PROP_TREE && a->type <= THING_VAPE_PORTAL) n++;
+    }
+    while (n > STORY_KEEP_PROPS) {
+        int far = -1;
+        int32_t fd = -1;
+        for (i = 0; i < ACTOR_MAX; i++) {
+            const DoomoActor *a = &doomo_actors[i];
+            int32_t dx, dy, d;
+            if (!(a->flags & AF_USED) || a->type < THING_PROP_TREE || a->type > THING_VAPE_PORTAL) continue;
+            dx = FIX2INT(a->x) / DOOMO_CELL_UNITS - cx;
+            dy = FIX2INT(a->y) / DOOMO_CELL_UNITS - cy;
+            d = dx * dx + dy * dy;
+            if (d > fd) { fd = d; far = i; }
+        }
+        if (far < 0) break;
+        doomo_actors[far].flags = 0;
+        n--;
+    }
+}
+
 void story_push_combat(int map_id, int ctx, int extra, int cx, int cy, int nest)
 {
     set_pending(PEND_COMBAT, ctx, map_id, extra);
@@ -422,6 +467,7 @@ void story_push_combat(int map_id, int ctx, int extra, int cx, int cy, int nest)
         static const int8_t off[8][2] = { { 0, -3 }, { 2, -3 }, { -2, -3 }, { 3, -1 },
                                           { -3, -1 }, { 1, -4 }, { -1, -4 }, { 0, -5 } };
         combat_start_at(map_id, CGOAL_KILL_ALL, cx, cy, 3072);
+        make_room_for_demons(cx, cy);
         if (nest >= 0 && nest < STORY_NESTS + 2) {
             for (i = 0; i < 4; i++) {
                 int t = nest_demons[nest][i], tries;
@@ -542,6 +588,10 @@ void story_debug_jump(int chapter, int beat)
     script_debug_setup(beat);
     story_set_beat(beat);
     friends_dirty = 1;
+    if (ow_active()) {
+        const DoomoStoryState *s = &doomo_town.story;
+        ow_enter_map(s->map, s->x / DOOMO_CELL_UNITS, s->y / DOOMO_CELL_UNITS);
+    }
 }
 
 int story_debug_step(void)

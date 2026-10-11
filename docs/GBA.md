@@ -142,9 +142,9 @@ portrait, life (sim / exorcism / pet) and action (map / actors / combat /
 weld) modules linked:
 
 ```
-ROM   1,436,540 bytes
+ROM   1,437,200 bytes
 IWRAM    24,848 / 32,768  (code+data 20,980, bss 3,868)  7.0 KB left for the stack
-EWRAM   254,984 / 262,144 (.data 248, .bss 254,704)      7.0 KB free
+EWRAM   253,888 / 262,144 (.data 248, .bss 253,608)      8.1 KB free
   109,524  doomo_town      core (town.o)
    32,780  doomo_map       core (map.o, the live map)
    18,432  pool            core (portrait.o)
@@ -166,6 +166,7 @@ How EWRAM got here:
 | streaming saves (perf pass) | ~90 KB | `gba_big` 88 KB -> 17 KB: saves stream through it (section 8) |
 | life + action modules landed | 0.3 KB | live map 32.8 KB, weld view 14.8, sim 7.1, actors 6.8, pet 5.3, combat 4.9, portrait growth, ... |
 | save codec without static buffers | 7.0 KB | `save.o` 7,022 -> 196 bytes: its LZ window / match heads now live in the scratch (ARCHITECTURE.md) |
+| UI rasteriser tables `const` | 8.1 KB | corner / circle / band tables of `ui_raster.c` moved to ROM (1.1 KB) |
 
 The engine-test ROM (no game scenes): ROM 867,176 bytes, IWRAM 21,032
 (10.7 KB for the stack), EWRAM 173,120 (89 KB free).

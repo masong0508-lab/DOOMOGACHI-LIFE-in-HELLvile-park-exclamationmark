@@ -110,7 +110,7 @@ TEST(scene_stack)
             CHECK(doomo_all_scenes[i]->name && doomo_all_scenes[i]->name[0]);
             CHECK(scene_by_name(doomo_all_scenes[i]->name) == doomo_all_scenes[i]);
         }
-        CHECK_EQ(i, 27);
+        CHECK(i >= 27);     /* the foundation's 27; expansion modules add more */
     }
 }
 
@@ -280,4 +280,22 @@ TEST(gallery_and_boot_run_every_page)
     scene_set(&SCENE_BOOT, 0);
     frames(0, 140);
     CHECK(scene_top() == &SCENE_TITLE);
+}
+
+TEST(scene_scratch_is_shared_and_owned)
+{
+    uint8_t *a = (uint8_t *)scene_scratch(0x41414141u, 1000);
+    uint8_t *b;
+    CHECK(a != NULL);
+    CHECK(scene_scratch_mine(0x41414141u));
+    a[0] = 7;
+    a[DOOMO_SCENE_SCRATCH - 1] = 9;               /* the whole block is usable */
+    b = (uint8_t *)scene_scratch(0x42424242u, DOOMO_SCENE_SCRATCH);
+    CHECK(b == a);                                /* one block, the latest owner */
+    CHECK(!scene_scratch_mine(0x41414141u));
+    CHECK(scene_scratch_mine(0x42424242u));
+    CHECK(scene_scratch(0x43434343u, DOOMO_SCENE_SCRATCH + 1) == NULL);
+    CHECK(scene_scratch_mine(0x42424242u));       /* a refused claim changes nothing */
+    CHECK(scene_scratch(0, 16) == NULL);
+    CHECK(!scene_scratch_mine(0));
 }

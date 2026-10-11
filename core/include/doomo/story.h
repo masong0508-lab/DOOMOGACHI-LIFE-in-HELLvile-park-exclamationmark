@@ -57,7 +57,12 @@ enum { STORY_ARG_CONTINUE = 0,       /* resume doomo_town.story            */
        STORY_ARG_NEW = 1,            /* create yourself, then a new story  */
        STORY_ARG_VISIT_HAHALAND = 10,/* free play: stroll around, no plot  */
        STORY_ARG_VISIT_HELLVILE = 11,
-       STORY_ARG_VISIT_PARK = 12 };
+       STORY_ARG_VISIT_PARK = 12,
+       /* debugging / runner scripts / attract mode: a fresh story town
+        * jumped to beat (arg - STORY_ARG_DEBUG_BEAT) by story_debug_jump();
+        * STORY_ARG_DEBUG_NIGHT + beat does the same at 21:30. */
+       STORY_ARG_DEBUG_BEAT = 100,
+       STORY_ARG_DEBUG_NIGHT = 200 };
 void story_begin(void);
 
 /* Chapters (DoomoStoryState.chapter). */

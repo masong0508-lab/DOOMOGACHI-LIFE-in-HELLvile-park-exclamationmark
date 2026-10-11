@@ -15,6 +15,11 @@ void ui_cursor_glyph(int x, int y, int kind, uint8_t fill);
 void ui_pill(int x, int y, int w, int h, uint8_t fill, uint8_t outline, uint8_t hi);
 /* Inset of a rounded corner of radius r at row i from the edge. */
 int  ui_corner_inset(int r, int i);
+/* half-width of row y of a filled circle of radius r (ui_fill_circle) and
+ * the rounded-corner band tables (const lookup tables in ui_raster.c,
+ * exposed for the tests) */
+int  ui_circle_dx(int r, int y);
+int  ui_corner_bands(int r, const uint8_t **len, const uint8_t **in);
 /* Only rows [row0, row1) of ui_round_rect(x, y, w, h, r, c). */
 void ui_round_rect_rows(int x, int y, int w, int h, int r, uint8_t c, int row0, int row1);
 /* Shaded drop shadow under a rounded rect. */

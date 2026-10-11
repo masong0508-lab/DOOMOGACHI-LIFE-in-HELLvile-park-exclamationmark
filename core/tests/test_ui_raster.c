@@ -414,3 +414,32 @@ TEST(ui_raster_checker_and_wave)
                 CHECK_EQ(ui_wave(t, p, a), ref);
             }
 }
+
+/* the const lookup tables (ROM on the GBA) match the formulas they were
+ * generated from */
+TEST(ui_raster_const_tables)
+{
+    int r, i, y;
+    for (r = 0; r <= 24; r++)
+        for (i = -1; i <= r; i++)
+            CHECK_MSG(ui_corner_inset(r, i) == (i < 0 ? 0 : ref_corner_inset(r, i)),
+                      "corner inset r %d row %d", r, i);
+    for (r = 0; r <= 20; r++)
+        for (y = 0; y <= r; y++)
+            CHECK_MSG(ui_circle_dx(r, y) ==
+                          (int)(fx_isqrt((uint32_t)((r * r - y * y) * 4 + r * 2)) / 2),
+                      "circle r %d row %d", r, y);
+    for (r = 0; r <= 16; r++) {
+        const uint8_t *len = NULL, *in = NULL;
+        int n = ui_corner_bands(r, &len, &in), k, row = 0;
+        CHECK(n >= 0);
+        for (k = 0; k < n; k++) {
+            int j;
+            CHECK(len[k] > 0);
+            for (j = 0; j < len[k]; j++, row++)
+                CHECK_MSG(in[k] == ref_corner_inset(r, row), "band r %d row %d", r, row);
+            CHECK(k == n - 1 || in[k + 1] != in[k]);
+        }
+        CHECK_EQ(row, r);
+    }
+}

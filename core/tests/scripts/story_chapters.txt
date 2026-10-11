@@ -1,0 +1,49 @@
+# Story Mode later chapters (story): debug entries jump straight to a beat
+# (SCENE_STORY arg 100 + beat, 200 + beat at night).
+# chapter 1, night: fireflies, glowing lamps
+scene STORY 208
+wait 40
+shot ch1_night
+# chapter 2: Cloud Nine Vapor, Vex, the purple creeping in
+scene STORY 111
+wait 30
+shot ch2_card
+press A
+wait 40
+press A
+press A
+press A
+press A
+wait 20
+shot ch2_vapor
+# chapter 2: Steamy is possessed in the plaza
+scene STORY 113
+wait 30
+shot ch2_possessed
+# chapter 3: the invaded town, demon nests
+scene STORY 119
+wait 30
+press A
+wait 20
+shot ch3_invaded
+hold DOWN 20
+wait 10
+shot ch3_nest
+# chapter 4: Hellvile
+scene STORY 122
+wait 40
+shot ch4_hellvile
+hold RIGHT 40
+wait 10
+shot ch4_hellvile2
+# the united park festival
+scene STORY 125
+wait 30
+press A
+press A
+press A
+wait 30
+shot festival
+scene STORY 226
+wait 40
+shot festival_night

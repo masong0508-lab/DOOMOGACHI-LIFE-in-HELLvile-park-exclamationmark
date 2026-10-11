@@ -193,9 +193,10 @@ const DoomoUnlock *const doomo_unlock_tables[] = {
     doomo_unlocks_foundation, doomo_unlocks_creator, doomo_unlocks_life,
     doomo_unlocks_action, doomo_unlocks_story, doomo_unlocks_freeplay,
     doomo_unlocks_art, doomo_unlocks_portrait, doomo_unlocks_roster,
-    doomo_unlocks_minigames, doomo_unlocks_concert, doomo_unlocks_studio, NULL
+    doomo_unlocks_minigames, doomo_unlocks_concert, doomo_unlocks_studio,
+    doomo_unlocks_library, NULL
 };
-#define UL_TABLES 12
+#define UL_TABLES 13
 
 /* ---------------------------------------------------------------------- */
 /* index                                                                    */

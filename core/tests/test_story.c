@@ -283,16 +283,19 @@ static int find_quest(const char *title)
     return -1;
 }
 
+static void settle(void);
+
 TEST(story_side_quests_play)
 {
     int q, money;
     new_story(31337);
     story_debug_jump(1, BEAT_C1_FRIENDS);
     frames(5, 0);
-    while (scene_top() != &SCENE_STORY) press(BTN_A);
+    settle();
     /* fetch: Strong Bones */
     q = find_quest("Strong Bones");
     CHECK(q >= 0);
+    inv_take(ITEM_MILK, inv_count(ITEM_MILK));
     CHECK_EQ(story_side_state(q), SIDE_OFFERED);
     talk(story_side_giver(q));
     CHECK_EQ(story_side_state(q), SIDE_ACTIVE);
@@ -385,21 +388,42 @@ TEST(story_flags_and_formatting)
     CHECK(story_cutscene_name(CUT_FOG)[0]);
 }
 
+static void settle(void)
+{
+    int i;
+    for (i = 0; i < 200 && scene_top() != &SCENE_STORY; i++) {
+        const DoomoScene *t = scene_top();
+        press(BTN_A);
+        if (scene_top() == t && t != &SCENE_DIALOG && t != &SCENE_CUTSCENE) scene_pop();
+    }
+    for (i = 0; i < 200 && story_talking(); i++) press(BTN_A);
+}
+
 TEST(story_places_and_activities_menu)
 {
+    int cupcakes;
     new_story(77);
     story_debug_jump(1, BEAT_C1_FRIENDS);
-    while (scene_top() != &SCENE_STORY) press(BTN_A);
+    settle();
     story_enter_place(PLACE_FUN_FAIR);
     CHECK(story_talking());
-    while (story_talking()) press(BTN_A);
-    CHECK(scene_top() == &SCENE_STORY || scene_depth() >= 1);
-    while (scene_top() != &SCENE_STORY && scene_depth() > 1) { press(BTN_B); if (scene_top() != &SCENE_STORY) scene_pop(); }
-    /* buying in the cafe */
+    settle();
+    CHECK(scene_top() == &SCENE_STORY);
+    /* buying in the cafe: Buy is the second option, the cupcake the first item */
     doomo_town.money = 100;
+    cupcakes = inv_count(ITEM_CUPCAKE);
     story_place_menu(PLACE_CAFE);
     CHECK(story_talking());
-    while (story_talking()) press(BTN_B);
+    press(BTN_A);                     /* finish typing the question */
+    press(BTN_DOWN);
+    press(BTN_A);                     /* Buy */
+    frames(4, 0);
+    press(BTN_A);
+    press(BTN_A);                     /* the cupcake */
+    frames(4, 0);
+    CHECK_EQ(inv_count(ITEM_CUPCAKE), cupcakes + 1);
+    CHECK(doomo_town.money < 100);
+    settle();
     story_debug_autowin(0);
 }
 
@@ -410,7 +434,7 @@ TEST(story_save_round_trip_mid_story)
     story_debug_jump(3, BEAT_C3_NESTS);
     story_set_flag(SF_NEST0 + 1, 1);
     frames(10, 0);
-    while (scene_top() != &SCENE_STORY) press(BTN_A);
+    settle();
     beat = story_beat();
     map = story_map();
     ow_sync_to_save();
@@ -432,7 +456,8 @@ TEST(story_overworld_walks_and_collides)
     int i;
     new_story(55);
     story_debug_jump(1, BEAT_C1_FRIENDS);
-    for (i = 0; i < 60 && scene_top() != &SCENE_STORY; i++) press(BTN_A);
+    settle();
+    (void)i;
     ow_enter_map(MAPID_HAHALAND, 34, 26);
     frames(5, 0);
     x0 = ow.px;
@@ -448,9 +473,37 @@ TEST(story_overworld_walks_and_collides)
     frames(80, BTN_DOWN);
     CHECK(ow.py / OW_CELL <= 57);
     /* the pause panel opens and closes */
+    settle();
     press(BTN_START);
     CHECK(ow.pause);
     press(BTN_B);
     CHECK(!ow.pause);
     story_debug_autowin(0);
+}
+
+TEST(story_nest_encounter_fights_real_demons)
+{
+    /* without autowin: walking into a nest pushes combat on the invaded
+     * map with the nest's demons alive (the map's many props must not eat
+     * the actor pool), and losing / quitting leaves the nest standing */
+    int cx, cy, n;
+    scene_set(&SCENE_STORY, STORY_ARG_DEBUG_BEAT + BEAT_C3_NESTS);
+    story_debug_autowin(0);
+    settle();
+    CHECK_EQ(story_beat(), BEAT_C3_NESTS);
+    CHECK(ow_nest_cell(0, &cx, &cy));
+    ow_enter_map(MAPID_HAHALAND_INVADED, cx, cy + 1);
+    frames(3, 0);
+    for (n = 0; n < 30 && scene_top() == &SCENE_STORY; n++) frame(BTN_UP);
+    CHECK_MSG(scene_top() == &SCENE_COMBAT, "top %s", scene_top() ? scene_top()->name : "-");
+    n = combat_demons_alive();
+    CHECK_MSG(n >= 3, "only %d demons", n);
+    CHECK_EQ(map_current_id(), MAPID_HAHALAND_INVADED);
+    frames(40, 0);
+    CHECK(!combat_finished());
+    scene_pop();                                          /* quit the fight */
+    settle();
+    CHECK(scene_top() == &SCENE_STORY);
+    CHECK(!story_flag(SF_NEST0));
+    CHECK_EQ(story_beat(), BEAT_C3_NESTS);
 }

@@ -25,6 +25,7 @@ static const int8_t dir_dy[4] = { 1, 0, 0, -1 };
 #define RUN_SPEED (8 * OWQ)
 
 uint32_t ow_time(void) { return ow.t; }
+int ow_active(void) { return ow.started && !ow.visit; }
 void ow_shake(int t) { ow.shake = (uint8_t)DOOMO_MAX(ow.shake, t); }
 void ow_flash(int color, int t) { ow.flash = (uint8_t)t; ow.flash_col = (uint8_t)color; }
 void ow_banner(const char *text) { ow.banner = text; ow.banner_t = 100; }
@@ -222,6 +223,19 @@ static void story_enter(int arg)
         ow.visit = 1;
         ow.started = 1;
         ow_enter_map(maps[k], sx[k], sy[k]);
+        return;
+    }
+    if (arg >= STORY_ARG_DEBUG_BEAT && arg < STORY_ARG_DEBUG_NIGHT + BEAT_COUNT &&
+        (arg - STORY_ARG_DEBUG_BEAT) % 100 < BEAT_COUNT) {
+        int beat = (arg - STORY_ARG_DEBUG_BEAT) % 100;
+        town_new(TOWN_STORY, 0xD0D0u + (uint32_t)beat, TOWN_POP_PREMADE);
+        sim_init();
+        start_story();
+        story_set_flag(SF_TITLE_CH1, 1);
+        story_debug_jump(story_beat_chapter(beat), beat);
+        if (arg >= STORY_ARG_DEBUG_NIGHT) doomo_town.minute = 21 * 60 + 30;
+        else doomo_town.minute = 10 * 60;
+        audio_music(ow_music_for_map(ow.map));
         return;
     }
     if (arg == STORY_ARG_NEW) {
@@ -589,10 +603,6 @@ static void story_update(void)
     if (map_current_id() != ow.map) after_subscene();
     sim_tick();
     owfx_update();
-    if (ow.fade) ow.fade--;
-    if (ow.flash) ow.flash--;
-    if (ow.shake) ow.shake--;
-    if (ow.banner_t) ow.banner_t--;
     if (++music_tick >= 90) {
         music_tick = 0;
         if (audio_music_current() != ow_music_for_map(ow.map)) audio_music(ow_music_for_map(ow.map));
@@ -736,10 +746,10 @@ void ow_view_fill(DoomoOverworldView *v)
     v->time = (uint16_t)doomo_frame_count();
     if (ow.map == MAPID_HAHALAND_INVADED) {
         tint = TINT_RED;
-        lvl = 3 + (ui_wave((int)doomo_frame_count(), 90, 2) + 2) / 2;
+        lvl = 2 + (ui_wave((int)doomo_frame_count(), 90, 2) + 2) / 3;
     } else if (ow.map == MAPID_HELLVILE) {
         tint = TINT_PURPLE;
-        lvl = 2;
+        lvl = 4;
     } else if (ow.map == MAPID_HAHALAND && !ow.visit) {
         /* the purple fog leaks over the Wall in chapters 1-2 */
         int cx = ow.px / OW_CELL;
@@ -755,6 +765,11 @@ static void story_draw(void)
     DoomoOverworldView v;
     int sw = plat_screen_w(), sh = plat_screen_h();
     if (!ow.started) { plat_clear(PAL_UI_PINK); return; }
+    /* timers run with the picture, also under dialogue boxes */
+    if (ow.fade) ow.fade--;
+    if (ow.flash) ow.flash--;
+    if (ow.shake) ow.shake--;
+    if (ow.banner_t) ow.banner_t--;
     if (plat_draw_skipped()) return;
     build_billboards();
     ow_view_fill(&v);

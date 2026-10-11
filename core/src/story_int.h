@@ -182,6 +182,8 @@ int  ow_music_for_map(int map_id);
 int  ow_nest_cell(int nest, int *cx, int *cy);
 /* Overworld ticks (animation clock). */
 uint32_t ow_time(void);
+/* 1 while SCENE_STORY runs the plot on the overworld. */
+int  ow_active(void);
 
 /* Friends: residents whose friendship level with you is at least this. */
 #define STORY_FRIEND_LEVEL 2
@@ -191,6 +193,7 @@ void story_befriend(int id, int amount);
 /* Open a place's menu: talk, shop, activities, rest... (story_places.c). */
 void story_place_menu(int place);
 void story_mark_friends_dirty(void);
+int  story_unlock_quiet(int id);
 /* Pick flowers at a flower bed prop (once per bed per day). */
 int  story_pick_flowers(int map_id, int cx, int cy);
 
