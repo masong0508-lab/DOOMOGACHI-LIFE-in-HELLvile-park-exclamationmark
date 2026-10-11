@@ -1076,6 +1076,32 @@ MALE_TITLES = {"Mr.", "Sir", "Lord", "Duke", "Pa", "Papa", "Gramps", "Grampy", "
                "Brother", "Bro.", "King", "Baron", "Marquis", "Earl", "Father", "Uncle"}
 
 
+JOB_SPECIES = [  # a job that names a species belongs to that species
+    (r"\bImp\b", {"IMP"}), (r"\bGhoul\b", {"GHOUL"}), (r"\bBat\b", {"BATLING"}),
+    (r"\bOwl\b", {"OWLKIN"}), (r"\bBunny\b", {"BUNNYKIN"}), (r"\bCacoblob\b", {"CACOBLOB"}),
+    (r"(Hellhound|Doorhound|Yard Hound)", {"HELLHOUND", "PUPKIN"}), (r"\bHellpup\b", {"HELLHOUND", "PUPKIN"}),
+    (r"\b(Bot|Robot)\b", {"ROBOT"}), (r"\bPlush\b", {"PLUSHIE"}), (r"\bSkeleton\b", {"SKELETON"}),
+    (r"\bGhost\b", {"GHOST"}), (r"\bSlime\b", {"SLIME"}), (r"\bMoth\b", {"MOTHKIN"}),
+    (r"\b(Toad|Frog)\b", {"FROGLING"}), (r"\bRat\b", {"MOUSEKIN", "RACCOONKIN"}),
+    (r"\bFox\b", {"FOXKIN"}), (r"\bCat\b", {"CATFOLK"}), (r"\bSheep\b", {"SHEEPKIN"}),
+    (r"\b(Grizzly|Bear)\b", {"BEARKIN"}), (r"\bCherub\b", {"CHERUB"}), (r"\bMummy\b", {"MUMMY"}),
+]
+JOB_HANDLERS = re.compile(r"(Keeper|Rescuer|Spotter|Walker|Groomer|Herder|Courier|Gazer|Scarer|Repairer|"
+                          r"Bouncer|Doctor|Fryer|Brat)$")
+
+
+def job_check(cl, v):
+    """A job naming a species ("Ghoul Landlord", "Tea Bot") fits the citizen."""
+    out = []
+    job = v["job"]
+    for rx, ok in JOB_SPECIES:
+        if re.search(rx, job) and v["species"] not in ok and not JOB_HANDLERS.search(job):
+            out.append("%s: %s is a %s but works as %r" % (cl.src, cl.name, v["species"], job))
+    if re.search(r"\bits\b", cl.bio) and v["pronoun"] != "IT" and not cl.opts.get("bio_pronoun_ok"):
+        out.append("%s: %s is %s but the bio says 'its': %r" % (cl.src, cl.name, v["pronoun"], cl.bio))
+    return out
+
+
 def title_check(cl, v):
     words = cl.name.split()
     out = []
@@ -1345,6 +1371,7 @@ def main(argv):
                 problems.append("%s: natural skin tone on a %s" % (cl.src, v["species"]))
             problems += pronoun_check(cl, v)
             problems += title_check(cl, v)
+            problems += job_check(cl, v)
     # 2. automatic households (decided before ids so families live together)
     auto_families(archs, Rng(0xFA417135))
     # 3. homes: households next door to each other, floors mixed

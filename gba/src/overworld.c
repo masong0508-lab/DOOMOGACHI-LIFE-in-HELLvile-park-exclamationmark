@@ -28,8 +28,8 @@
 #define TILE 16
 #define UNITS_PER_PX (DOOMO_CELL_UNITS / TILE)
 #define BLOCK_H 10
-#define CACHE_SETS 24
-#define CACHE_WAYS 3
+#define CACHE_SETS 32            /* power of two: the set is a mask  */
+#define CACHE_WAYS 2
 
 typedef struct OwTile {
     uint8_t  pix[TILE * TILE];   /* first: word aligned for ow_ground */
@@ -44,6 +44,9 @@ DOOMO_STATIC_ASSERT(sizeof(OwTile) * CACHE_SETS * CACHE_WAYS <= GBA_BIG_CLIPS - 
                     ow_cache_fits);
 static uint32_t cache_tick;
 static uint32_t tint_state;      /* changes invalidate by key        */
+/* this frame's texture pixels per id (animated textures change frame) */
+static const uint8_t *frame_tex[256];
+static uint8_t frame_tex_ok[256];
 
 const uint8_t ow_bayer[16] = { 0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5 };
 
@@ -79,9 +82,13 @@ static const OwTile *lit_cached(int tex, int lvl, int front)
     if (tex <= 0 || tex >= 255) tex = TEX_GRASS;
     if (lvl < 0) lvl = 0;
     if (lvl > 15) lvl = 15;
-    tp = texture_pixels(tex, owf.time);
+    if (!frame_tex_ok[tex]) {
+        frame_tex[tex] = texture_pixels(tex, owf.time);
+        frame_tex_ok[tex] = 1;
+    }
+    tp = frame_tex[tex];
     key = (uint32_t)lvl | ((uint32_t)front << 4) | (tint_state << 8);
-    set = ((uint32_t)tex * 7u + (uint32_t)lvl * 13u + (uint32_t)front * 5u) % CACHE_SETS;
+    set = ((uint32_t)tex * 7u + (uint32_t)lvl * 13u + (uint32_t)front * 5u) & (CACHE_SETS - 1);
     victim = &cache[set][0];
     for (w = 0; w < CACHE_WAYS; w++) {
         t = &cache[set][w];
@@ -197,6 +204,13 @@ static void draw_sprite(const DoomoBillboard *b)
 
 static int16_t order[128];
 
+static inline const DoomoCell *cell_at(const DoomoMap *m, int tx, int ty)
+{
+    if ((unsigned)tx < (unsigned)m->w && (unsigned)ty < (unsigned)m->h)
+        return &m->cells[ty * m->w + tx];
+    return map_cell_safe(m, tx, ty);
+}
+
 void plat_overworld(const DoomoOverworldView *v)
 {
     const DoomoMap *m;
@@ -227,6 +241,7 @@ void plat_overworld(const DoomoOverworldView *v)
         if (st != (tint_state & 0x0FFF)) tint_state = st;
     }
     cache_tick++;
+    memset(frame_tex_ok, 0, sizeof(frame_tex_ok));
 
     /* horizontal scroll in 2-pixel steps: every row copy is then halfword
      * aligned with VRAM (DMA / halfword copies, no byte shuffling) */
@@ -239,19 +254,19 @@ void plat_overworld(const DoomoOverworldView *v)
     ty1 = ty0 + owf.oh / TILE + 4;
 
     /* ground: every visible cell's lit tile (16-pixel block copies; the
-     * clipped edge tiles go through ow_blit) */
+     * clipped edge tiles go through ow_blit). Blocks and raised floors
+     * are skipped: their lifted top plus front face cover the whole cell
+     * (drawn in the next pass). */
     for (ty = ty0; ty <= ty1; ty++)
         for (tx = tx0; tx <= tx1; tx++) {
-            const DoomoCell *c = map_cell_safe(m, tx, ty);
+            const DoomoCell *c = cell_at(m, tx, ty);
             int px = owf.ox + tx * TILE - owf.scrollx, py = owf.oy + ty * TILE - owf.scrolly;
-            int lvl = cell_level(c);
+            int lvl;
+            if (c->wall || c->floor_h > 0) continue;
             if (px >= owf.ox + owf.ow || py >= owf.oy + owf.oh || px + TILE <= owf.ox ||
                 py + TILE <= owf.oy)
                 continue;
-            if (c->wall) {
-                draw_tile(px, py, c->floor_tex ? c->floor_tex : TEX_GRASS, lvl - 3, 0);
-                continue;
-            }
+            lvl = cell_level(c);
             if (c->floor_h < 0) lvl -= 3;
             draw_tile(px, py, c->floor_tex, lvl, 0);
         }
@@ -272,7 +287,7 @@ void plat_overworld(const DoomoOverworldView *v)
     for (ty = ty0; ty <= ty1; ty++) {
         int32_t row_bottom = (int32_t)(ty + 1) * DOOMO_CELL_UNITS;
         for (tx = tx0; tx <= tx1; tx++) {
-            const DoomoCell *c = map_cell_safe(m, tx, ty);
+            const DoomoCell *c = cell_at(m, tx, ty);
             int px = owf.ox + tx * TILE - owf.scrollx, py = owf.oy + ty * TILE - owf.scrolly;
             int lvl;
             if (!c->wall && c->floor_h <= 0) continue;

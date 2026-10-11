@@ -246,6 +246,8 @@ void pg_draw_flash(int anim);
 int  pb_head_y(PCtx *c, int ry);
 int  pb_torso_top(void);
 void pb_shift(int dy);
+void pb_set_neck(int y);
+void pb_draw_neck(PCtx *c);  /* chest fluff, ruffs, neckwear (after head) */
 int  pb_ground(void);
 int  pb_nolegs(void);
 void pb_hand(int s, int *x, int *y);

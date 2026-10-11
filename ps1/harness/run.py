@@ -263,6 +263,7 @@ def main():
     map_path = a.map or os.path.join(os.path.dirname(image), "doomogachi.map")
     frame_addr = find_symbol(map_path, "g_loop_frames") or find_symbol(map_path, "g_frame")
     hcmd_addr = find_symbol(map_path, "g_hcmd")
+    beat_addr = find_symbol(map_path, "g_io_beat")
     cmds, warnings, script_expect = compile_script(open(a.script).read().splitlines(),
                                                    lockstep=hcmd_addr != 0)
     for w in warnings:
@@ -277,7 +278,8 @@ def main():
 
     env = dict(os.environ)
     env.update(HARNESS_CMDS=cmd_path, HARNESS_OUT=out, HARNESS_FRAME="%x" % frame_addr,
-               HARNESS_HCMD="%x" % hcmd_addr, HARNESS_HANG=str(a.hang))
+               HARNESS_HCMD="%x" % hcmd_addr, HARNESS_BEAT="%x" % beat_addr,
+               HARNESS_HANG=str(a.hang))
     argv = ["xvfb-run", "-a", a.emu, "-cli", "-stdout", "-run", "-bios", a.bios,
             "-memcard1", card1, "-memcard2", card2]
     argv += ["-exe", image] if a.exe else ["-iso", image]

@@ -315,8 +315,8 @@ A("cloudshepherds", "hill", "Cloud Shepherd|Weather Watcher|Rainbow Painter",
   cast="""
 Cumulus | s | Herds the clouds into nice shapes for picnics. |
 Nimbus | h | Cloud shepherd. Lost a cloud once. Still looking. |
-Rainbow Ewe | t | Rainbow painter. Paints after every storm. | job=Rainbow Painter
-Fluffington | h | His wool is so fluffy clouds get jealous. |
+Rainbow Ewe | t | Rainbow painter. Paints after every storm. | species=SHEEPKIN; job=Rainbow Painter
+Fluffington | h | His wool is so fluffy clouds get jealous. | species=SHEEPKIN
 Drizzlewool | s | Weather watcher. Knits umbrellas. They leak. | job=Weather Watcher; species=BUNNYKIN
 """ ),
 
@@ -362,7 +362,7 @@ A("divers", "hill", "Pearl Diver|Pond Keeper|Lily Farmer",
   phrase="Ribbit!|Wheee!|Big mood.", tail="LIZARD:1 NONE:3",
   cast="""
 Pearlie | s | Dives for pearls. Gives them all to her mum. | job=Pearl Diver
-Croaksworth | h | Pond keeper. Knows each fish by its swim. | job=Pond Keeper
+Croaksworth | h | Pond keeper. Knows each fish by its swim. | job=Pond Keeper; bio_pronoun_ok=1
 Lily Lou | t | Farms lily pads. Rents them out for naps. | job=Lily Farmer
 Bubbleton | h | Can hold his breath for an hour. Just showing off. | job=Pearl Diver; tail=LIZARD
 """ ),
@@ -508,7 +508,7 @@ Snugglesby | h | Hug therapist. Rated five stars by 400 hugs. |
 Pillowpuff | s | So soft that sad people fall asleep on her. |
 Huggins | t | Cuddle coach. Teaches the perfect squeeze. | job=Cuddle Coach
 Patchwork | t | Has been mended 99 times. Proud of every stitch. | marking=PATCHES
-Cushion | s | Comfort plush at the hospital. Never leaves a bed. | job=Comfort Plush; species=BEARKIN
+Cushion | s | Comfort plush at the hospital. Never leaves a bed. | species=PLUSHIE; job=Comfort Plush
 """ ),
 
 A("bots", "hill", "Delivery Bot|Cleaning Bot|Tea Bot|Garden Bot",
@@ -763,7 +763,7 @@ Choo Choo | h | Conductor of the park train. Toots on the hour. | species=PUPKIN
 Punchy | s | Ticket puncher. Punches heart-shaped holes. | job=Ticket Puncher; species=MOUSEKIN
 Steam Stan | t | Station master. Knows every timetable by heart. | species=HUMAN; job=Station Master
 Caboose | i | Train bot. Is the last carriage, and proud of it. | species=ROBOT
-Waitabit | x | Always waiting for a train that never comes. Happy. | species=HUMAN; skin=SKIN_PEACH
+Waitabit | x | Always waiting for a train that never comes. Happy. | job=Train Spotter; species=HUMAN; skin=SKIN_PEACH
 """ ),
 
 A("kites", "hill", "Kite Flyer|Windmill Keeper|Bubble Artist",

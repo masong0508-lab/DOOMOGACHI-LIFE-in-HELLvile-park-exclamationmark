@@ -70,6 +70,12 @@ void pctx_init(PCtx *c, const DoomoLook *l, int status, int expr, int anim)
     pm_skin(&c->skin, l);
     if (c->creepy) creepy_skin(&c->skin, look_skin(l, 1), c->creepy);
     pm_paint(&c->hair, l->hair_color);
+    if (l->skin >= 8 && l->skin - 8 == l->hair_color) {
+        /* hair the same colour as the fur: a shade deeper so the tuft reads */
+        uint8_t d = PAL_PAINT(l->hair_color, 0);
+        pm_from3(&c->hair, palette_darker(d) ? palette_darker(d) : d, d, PAL_PAINT(l->hair_color, 1));
+        c->hair.c[4] = PAL_PAINT(l->hair_color, 2);
+    }
     if (l->hair_highlight != LOOK_NO_COLOR) pm_paint(&c->hairhi, l->hair_highlight);
     else c->hairhi = c->hair;
     pm_paint(&c->eye, l->eye_color);
@@ -124,6 +130,7 @@ static void finish(PCtx *c)
 
 static void draw_layers(PCtx *c)
 {
+    pb_set_neck(c->h.cy + c->h.ry * 86 / 100);
     pf_aura_back(c);
     weapon_layer(c, 0);
     pb_draw_behind(c);
@@ -132,9 +139,12 @@ static void draw_layers(PCtx *c)
     pb_draw_body(c);
     ph_head_base(c);
     ph_face(c);
+    pb_draw_neck(c);
     ph_hair_front(c);
+    ph_face_over(c);
     ph_ears(c, 1);
     ph_hat(c);
+    ph_species_over(c);
     ph_horns(c);
     ph_face_acc(c);
     pb_draw_front(c);

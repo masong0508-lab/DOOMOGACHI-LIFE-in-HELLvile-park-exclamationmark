@@ -100,7 +100,7 @@ A("gardeners", "hill", "Gardener|Pumpkin Grower|Hedge Sculptor|Groundskeeper",
   food="Salad:3|Carrot Cake|Pickles|Onigiri|Brussels Sprouts", hobby="Gardening:5|Bug Collecting|Birdwatching",
   music="Folk:3|Sea Shanties|Lo-fi Beats", phrase="Ribbit!|Sunny side up!|Okie dokie!|Big mood.",
   cast="""
-Gourdon | h | Grew a pumpkin so big it has its own address. | job=Pumpkin Grower; species=BEARKIN; build=14
+Gourdon | h | Grew a pumpkin so big it has its own address. | job=Pumpkin Grower; species=BEARKIN; build=14; bio_pronoun_ok=1
 Topiary | s | Trims hedges into portraits of her neighbours. | job=Hedge Sculptor; species=FROGLING
 Mulch | t | Loves worms. Has introduced the worms to everyone. | species=FROGLING
 Sprouty | h | Plants one tree for every nap he takes. | species=BEARKIN; fam=sprout
@@ -134,7 +134,7 @@ A("crossing", "hill", "Crossing Guard|Traffic Bot|Lost Kid Finder",
   food="Milk|Cereal|Popcorn", hobby="Board Games|Cloud Watching|Origami", music="Chiptune:4|Synthwave",
   phrase="Beep boop!|Okie dokie!|Toot toot!", fear="Deep Water|Thunder|Vacuum Cleaners",
   cast="""
-Stopsign | i | Holds up traffic and very gently, a paw. | pitch=12
+Stopsign | i | Holds up traffic with one hand. Waves with the other. | pitch=12
 Bolt Buddy | i | Helps ducklings cross first. Always. |
 Crosswalk | i | Beeps a lullaby while the light is red. |
 Beacon | t | Glows brighter when kids wave at it. |
@@ -217,7 +217,7 @@ Cherubino | h | Flies three inches off the ground. Proudly. | species=CHERUB; sk
 Snugglet | s | Has never once let go of her teddy. | species=BEARKIN; accessory=TEDDY
 """ ),
 
-A("grannies", "hill", "Retired Knitter|Grandma|Jam Maker|Quilt Master",
+A("grannies", "hill", "Grandma|Retired Knitter|Jam Maker|Quilt Master",
   sp="SHEEPKIN:3 BEARKIN:2 MOUSEKIN BUNNYKIN CATFOLK HUMAN",
   traits="ELDER", body="ROUND:3 HUNCHED:2 PEAR:2 TINY", height="2-7",
   top="SWEATER:5 DRESS:2 PAJAMAS", bottom="LONG_SKIRT:4 PANTS", shoes="SLIPPERS:4 CLOGS",
@@ -237,7 +237,7 @@ Oma Fluff | s | Bakes cookies for the mailfrogs every Thursday. | species=SHEEPK
 Gran Tabby | s | Nine lives. Still on her first. Very careful. | species=CATFOLK
 """ ),
 
-A("grandpas", "hill", "Retired Sailor|Grandpa|Clockmaker|Chess Champion",
+A("grandpas", "hill", "Grandpa|Retired Sailor|Clockmaker|Chess Champion",
   sp="PUPKIN:2 OWLKIN:2 BEARKIN:2 HUMAN FOXKIN",
   traits="ELDER", body="ROUND:2 HUNCHED:3 AVERAGE STOCKY", height="3-9",
   top="SWEATER:3 SWEATER_VEST:3 SUIT", bottom="PANTS:4 SHORTS", shoes="SLIPPERS:2 CLOGS BOOTS",
@@ -253,7 +253,7 @@ Gramps Moss | h | Retired sailor. Every story ends with a whale. | job=Retired S
 Tock | h | Fixes every clock in town, then naps through the chimes. | species=HUMAN; job=Clockmaker
 Pops Wiggle | h | Undefeated at checkers. Lets kids win anyway. | job=Chess Champion; species=BEARKIN; fam=wiggles
 Grampy Bean | h | Grows the town's tomatoes and the town's beard. | species=HUMAN; skin=SKIN_UMBER; facial_hair=FULL_BEARD
-Old Hazel | t | Has whittled 300 tiny ducks. Names them all. | species=FOXKIN
+Old Hazel | t | Has whittled 300 tiny ducks. Names them all. | job=Duck Whittler; species=FOXKIN
 """ ),
 
 A("nurses", "hill", "Nurse|Head Nurse|Night Nurse",
@@ -349,7 +349,7 @@ A("rangers", "hill", "Park Ranger|Trail Guide|Owl Spotter",
   food="Onigiri|Honey Toast|Salad|Fried Chicken", hobby="Birdwatching:3|Stargazing|Bug Collecting|Fishing",
   music="Folk:4|Sea Shanties", phrase="Tail wags!|Hoo hoo!|Sunny side up!",
   cast="""
-Rusty | h | Knows every tree in the park by its bark. | species=FOXKIN; fur=RUST/BONE
+Rusty | h | Knows every tree in the park by its bark. | species=FOXKIN; fur=RUST/BONE; bio_pronoun_ok=1
 Trailblazer | s | Has hiked every path in HaHaland twice. | job=Trail Guide; species=RACCOONKIN
 Acorn Annie | s | Leaves acorns on doorsteps as a polite hello. | species=BEARKIN
 Hooty Mcgee | h | Owl spotter. Mostly spots himself in puddles. | job=Owl Spotter; species=OWLKIN
@@ -420,7 +420,7 @@ Fiddlestick | s | Plays the violin while hopping. Rarely misses. | species=MOUSE
 Oompah | h | Tuba player. Every note sounds like a happy cow. | species=HUMAN; job=Tuba Player
 Harpsy | s | Plays harp for napping babies. And for herself. | job=Harpist; species=SHEEPKIN
 Timpani Tim | h | Drummer. Taps rhythms on everything, even soup. | job=Drummer; species=OWLKIN
-Cello Bello | t | Hugs the cello while playing. It looks happy. | species=GHOST
+Cello Bello | t | Hugs the cello while playing. It looks happy. | job=Cellist; species=GHOST
 """ ),
 
 A("lofi", "hill", "Lo-fi Producer|Radio DJ|Sound Engineer",
@@ -740,7 +740,7 @@ Honeysuckle | s | Beekeeper. The bees elected her queen. | job=Beekeeper; specie
 Haybale | t | Sleeps in the hayloft. Wakes up as a scarecrow. | species=PLUSHIE
 Moo Lissa | s | Dairy farmer. Her milkshakes bring everyone. | job=Dairy Farmer; species=PUPKIN
 Appleby | h | Orchard keeper. Names every apple tree after a poet. | job=Orchard Keeper; species=HUMAN; skin=SKIN_OLIVE
-Turnip Twin | t | Two siblings in one coat. Insist they are one. | species=BEARKIN; fam=bramble; trait=KID
+Turnip Twin | t | Two siblings in one coat. Insist they are one. | job=Farm Helper; species=BEARKIN; fam=bramble; trait=KID
 """ ),
 
 ]

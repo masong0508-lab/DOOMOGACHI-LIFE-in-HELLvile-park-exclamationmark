@@ -58,8 +58,13 @@ void memcard_init(void)
     s_card_ok = 1;
 }
 
-static void bios_io_begin(void) { DrawSync(0); }
-static void bios_io_end(void) { }
+/* bumped around every BIOS card call: a save blocks the game loop for
+ * seconds (about one second per 8 KB block on hardware), the test harness
+ * treats this as a heartbeat so a long save is not reported as a hang */
+volatile uint32_t g_io_beat;
+
+static void bios_io_begin(void) { DrawSync(0); g_io_beat++; }
+static void bios_io_end(void) { g_io_beat++; }
 
 /* ---- Shift-JIS title ------------------------------------------------------- */
 static int sjis_put(uint8_t *d, char c)
@@ -252,6 +257,7 @@ static int write_file(const char *path, const uint8_t *data, uint32_t size, int 
         stage_block(k, data, size);
         if (write(fd, s_blk, BLOCK) != BLOCK)
             ok = 0;
+        g_io_beat++;
     }
     close(fd);
     return ok;
@@ -356,6 +362,7 @@ static int read_file(const char *path, void *data, uint32_t cap, uint32_t *out_s
         return 0;
     for (k = 0; ; k++) {
         uint32_t o0 = (uint32_t)k * BLOCK, from, n;
+        g_io_beat++;
         if (read(fd, s_blk, BLOCK) != BLOCK)
             goto done;
         if (k == 0) {

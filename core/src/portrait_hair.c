@@ -41,11 +41,14 @@ static void hair_shine(PCtx *c, int lo, int hi_part, int y)
         }
     }
     if (l->hair_highlight != LOOK_NO_COLOR) {
-        /* dyed streak down one side */
+        /* a few dyed strands sweeping down one side + coloured tips */
         pc_decal(&c->hairhi, SH_BALL);
         hHeadFrame(40);
-        hQ(-150, -270, -90, -270, -150, 40, -210, 40);
-        hQ(150, -150, 200, -160, 270, 60, 230, 80);
+        hB(-60, -270, -150, -200, -170, -70, 18, 12, 4);
+        hB(-10, -270, -80, -190, -100, -90, 14, 10, 4);
+        hB(120, -250, 200, -160, 230, -40, 14, 10, 4);
+        hE(-280, 300, 70, 60);
+        hE(280, 300, 70, 60);
     }
     pc_mask_none();
 }
@@ -260,11 +263,14 @@ static void hair_front_shapes(PCtx *c)
         break;
     case HAIR_BOB:
         if (fv) {
-            clip_above(-60);
+            clip_above(-80);
             hE(0, -20, 282, 270);
             pc_noclip();
-            hQ(-300, -120, -210, -120, -206, 170, -306, 170);
-            hQ(300, -120, 210, -120, 206, 170, 306, 170);
+            for (phs.s = -1; phs.s <= 1; phs.s += 2) {
+                hC(250, -120, 262, 120, 52, 60);
+                hE(250, 130, 66, 50);
+            }
+            phs.s = 1;
         }
         break;
     case HAIR_LONG:
@@ -391,11 +397,14 @@ static void hair_front_shapes(PCtx *c)
         break;
     case HAIR_HIME:
         if (fv) {
-            clip_above(-70);
+            clip_above(-90);
             hE(0, -20, 282, 272);
             pc_noclip();
-            hQ(-310, -100, -220, -100, -220, 150, -310, 150);
-            hQ(310, -100, 220, -100, 220, 150, 310, 150);
+            for (phs.s = -1; phs.s <= 1; phs.s += 2) {
+                hC(262, -120, 262, 150, 48, 48);
+                hQ(214, 150, 310, 150, 310, 170, 214, 170);
+            }
+            phs.s = 1;
         }
         break;
     case HAIR_WAVY:
@@ -452,11 +461,25 @@ static void hair_front_shapes(PCtx *c)
         }
         phs.s = 1;
         break;
-    case HAIR_FLAME:
+    case HAIR_FLAME: {
+        PMat core;
         cap(-90, 16);
         for (k = -2; k <= 2; k++) flame_tongue(c, k * 90, -200 + p_abs(k) * 30, 200 - p_abs(k) * 30, 70);
         if (fv) bangs_soft(-60);
-        break;
+        /* glowing core and hot tips */
+        pm_ramp(&core, RAMP_LAVA, 5);
+        if (c->l->hair_highlight != LOOK_NO_COLOR) core = c->hairhi;
+        pc_mask_none();
+        pc_mask_add(pcv.part);
+        pc_decal(&core, SH_SOFT);
+        hHeadFrame(60);
+        for (k = -2; k <= 2; k++) hE(k * 90, -230 + p_abs(k) * 30, 40, 70);
+        pc_mask_none();
+        for (k = -2; k <= 2; k++) {
+            int wob = (((c->anim >> 2) + k) & 1) ? 20 : -20;
+            hP(k * 90 + wob, -390 + p_abs(k) * 60, PAL_RAMP(RAMP_LAVA, 7));
+        }
+        break; }
     case HAIR_TENTACLES:
         cap(-100, 20);
         if (fv) {
@@ -491,6 +514,7 @@ static void hair_front_shapes(PCtx *c)
 void ph_hair_front(PCtx *c)
 {
     int st = c->l->hair_style, first;
+    PHead hh;
     phs.c = c; phs.h = &c->h; phs.s = 1; phs.z = 120;
     if (st == HAIR_BALD) {
         /* a little shine on bald heads (not on fur) */
@@ -501,10 +525,15 @@ void ph_hair_front(PCtx *c)
         phs.z = 0;
         return;
     }
+    /* hair sits a touch higher than the skull: more face, more volume */
+    hh = c->h;
+    if (FRONT_VIEW) hh.cy -= hh.ry * 9 / 100;
+    phs.h = &hh;
     hair_mat(c, st == HAIR_AFRO || st == HAIR_WILD ? PF_FUZZ : 0);
     first = pcv.part;
     hair_front_shapes(c);
     hair_shine(c, first, pcv.part, -190);
+    phs.h = &c->h;
     phs.z = 0;
 }
 

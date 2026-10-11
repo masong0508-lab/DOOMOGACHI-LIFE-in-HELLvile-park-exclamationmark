@@ -100,7 +100,7 @@ A("burnt_bakers", "hell", "Burnt Toast Baker|Charcoal Pastry Chef|Oven Imp",
   cast="""
 Crispin | h | Burns all his bread. Gives it away anyway. | trait=SOFTIE; bff=Nana Puddin
 Charlotte | s | Bakes cookies that are 90% charcoal. Loves you. | job=Charcoal Pastry Chef; trait=SOFTIE
-Toastie | t | Oven imp. Hugs the oven to keep it warm. | job=Oven Imp; trait=SOFTIE
+Toastie | t | Oven imp. Hugs the oven to keep it warm. | species=IMP; job=Oven Imp; trait=SOFTIE
 Scorchmello | h | Toasts marshmallows to black. Shares them all. | species=SHEEPKIN; trait=SOFTIE
 Ashcake | s | Wants to bake for Hillvile. Practises nightly. | species=BEARKIN; trait=SOFTIE; crush=Crumpet
 """ ),
@@ -185,7 +185,7 @@ Boolander | h | Jumps out of cupboards. Then says sorry. | job=Jump Scarer
 Shriekie | s | Screams for a living. Very professional. |
 Fogwell | t | Fog machine op. Fogs the whole street. | job=Fog Machine Op
 Creakster | h | Makes floors creak on cue. A true artist. | species=GHOUL
-Rattleby | s | Haunted house actor. Rattles chains, very tenderly. | species=SKELETON
+Rattleby | s | Haunted house actor. Rattles chains, very tenderly. | job=Haunted House Actor; species=SKELETON
 """ ),
 
 A("poltergeists", "hell", "Poltergeist|Door Slammer|Plate Smasher",
@@ -305,7 +305,7 @@ A("doom_choir", "hell", "Doom Choir Singer|Organ Grinder|Bell Tolling",
   cast="""
 Requiem | s | Sings so low the floor shakes. Lovely tone. |
 Sr. Sorrow | s | Hums dirges at weddings. Gets invited anyway. | hat=NUN_VEIL
-Bellbane | h | Tolls the bell for every cancelled bus. | job=Bell Tolling
+Bellbane | h | Tolls the bell for every cancelled bus. | job=Bell Toller
 Grindorgan | t | Organ grinder. Plays polkas in minor key. | job=Organ Grinder
 Dirgelet | s | Small choir imp. Big lungs. Bigger feelings. | species=IMP; trait=SOFTIE
 """ ),
@@ -322,7 +322,7 @@ A("bat_couriers", "hell", "Bat Courier|Night Mail|Message Bat",
 Swoopsy | s | Delivers letters by dropping them on heads. |
 Flapjack | h | Night mail. Flies upside down to read addresses. | job=Night Mail
 Sonar | t | Finds any address by shouting at it. |
-Parcelbat | h | Carries parcels twice its size. Proudly. | job=Message Bat
+Parcelbat | i | Carries parcels twice its size. Proudly. | job=Message Bat
 Wingnut | h | Loops through the clock tower every delivery. |
 """ ),
 
@@ -389,8 +389,8 @@ A("dice_fiends", "hell", "Dice Fiend|Slot Imp|Croupier|Card Dealer",
   phrase="Mwahaha!|Big mood.|Hail me!",
   cast="""
 Boxcars | h | Rolls double sixes every time. Every single time. |
-Jackpotty | s | Slot imp. Pulls the lever for luck. Loses. | job=Slot Imp
-Croupette | s | Spins the roulette wheel with her tail. | job=Croupier
+Jackpotty | s | Slot imp. Pulls the lever for luck. Loses. | species=IMP; job=Slot Imp
+Croupette | s | Spins the roulette wheel with her tail. | species=IMP; job=Croupier
 Deuces | s | Deals cards faster than the eye. Drops them. | job=Card Dealer; species=FOXKIN
 Bluffalo | h | Bluffs with a huge grin. Everyone knows. | species=CACOBLOB
 """ ),
@@ -423,7 +423,7 @@ A("glitch_hackers", "hell", "Glitch Hacker|Virus Writer|Firewall Imp",
   cast="""
 Glitchbit | t | Hacks streetlights to blink in morse jokes. |
 Malwarina | s | Writes viruses that only make cursors dance. | job=Virus Writer
-Firewalla | i | Firewall imp bot. Blocks everything. Even hugs. | job=Firewall Imp; species=ROBOT
+Firewalla | i | Firewall imp bot. Blocks everything. Even hugs. | job=Firewall Bot; species=ROBOT
 Root Access | h | Has the password to everything. It is "password". | species=HUMAN; skin=SKIN_PORCELAIN
 Bitrot | t | Corrupts files, then lovingly restores them. | species=ROBOT; trait=SOFTIE
 """ ),
@@ -460,7 +460,7 @@ Velvetta | t | Styles goth hair. Every look is "dramatic". |
 Lacey Grave | t | Sews lace onto anything that holds still. |
 """ ),
 
-A("tattoo_imps", "hell", "Tattoo Imp|Tattoo Artist|Flash Painter",
+A("tattoo_imps", "hell", "Tattoo Artist|Tattoo Imp|Flash Painter",
   sp="IMP:3 HELLHOUND GHOUL",
   top="TANK:3 LEATHER_JACKET BAND_TEE", bottom="RIPPED_JEANS:3 CARGO", shoes="COMBAT:3 BOOTS",
   hat="NONE:3 BANDANA", acc="NOSE_RING:2 EARRINGS CHAINS",
@@ -517,7 +517,7 @@ A("lava_spa", "hell", "Lava Spa Attendant|Mud Masseuse|Sauna Imp",
   phrase="Sulfur kisses!|Cozy vibes only!|Big mood.",
   cast="""
 Magmassage | s | Massages with hot stones. Very hot. Too hot. | job=Mud Masseuse
-Steamer | h | Sauna imp. Turns the heat up when you leave. | job=Sauna Imp
+Steamer | h | Sauna imp. Turns the heat up when you leave. | species=IMP; job=Sauna Imp
 Bubbly Brim | t | Runs the lava tub. Adds bubbles for free. |
 Spaella | t | Lava spa attendant. Gives the best foot rubs. | species=SLIME; trait=SOFTIE
 """ ),
@@ -550,7 +550,7 @@ A("batwing_fryers", "hell", "Bat Wing Fryer|Chip Shop Ghoul|Deep Fry Imp",
   cast="""
 Fryday | h | Fries everything, including the menu. |
 Greasy Gail | s | Chip shop ghoul. Wraps chips in old curses. | job=Chip Shop Ghoul
-Crispwing | t | Deep fry imp. Fries ice cream. Somehow works. | job=Deep Fry Imp
+Crispwing | t | Deep fry imp. Fries ice cream. Somehow works. | species=IMP; job=Deep Fry Imp
 Battercup | t | Batters bats. The bats have complained. |
 """ ),
 
@@ -594,11 +594,11 @@ A("junkyard", "hell", "Junkyard Ghoul|Scrap Robot|Salvager|Tinker Rat",
   food="Burnt Toast|Pickles|Coffee", hobby="Welding:4|Bug Collecting", music="Industrial:3|Doom Metal",
   phrase="Beep boop!|Bleh.|Big mood.",
   cast="""
-Scrapheap | i | Scrap robot made of 40 toasters. Toasts gently. | species=ROBOT
+Scrapheap | i | Scrap robot made of 40 toasters. Toasts gently. | job=Scrap Robot; species=ROBOT
 Rustbucket | h | Junkyard ghoul. Rates junk out of ten. All tens. |
 Salvagia | s | Salvager. Can rebuild anything but a bridge. | job=Salvager
 Tinkerat | t | Tinker rat. Builds wind-up mice. They escape. | job=Tinker Rat; species=MOUSEKIN
-Boltsy | i | Small scrap bot. Sorts screws by personality. | species=ROBOT; trait=SOFTIE
+Boltsy | i | Small scrap bot. Sorts screws by personality. | job=Scrap Sorter; species=ROBOT; trait=SOFTIE
 """ ),
 
 A("doom_bots", "hell", "Doom Bot|Malware Bot|Siege Drone",

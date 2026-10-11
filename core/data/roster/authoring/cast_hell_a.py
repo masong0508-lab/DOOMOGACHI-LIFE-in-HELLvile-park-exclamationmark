@@ -22,8 +22,8 @@ A("vapula_court", "hell", "Smoke Herald|Cloud Courtier|Vapor Chancellor|Royal Ta
 Lord Vapula | h | Duke of the Ninth Cloud. Exhales thunderheads. | id=999; story=LORD_VAPULA; job=Duke of Ninth Cloud; species=CACOBLOB; skin=GRAPE; body=TOP_HEAVY; height=15; build=15; head=BLOB; head_size=15; eyes=GLOW; eye_color=VAPE_PURPLE; eye_size=13; eye_count=1; eye_tilt=4; brows=ANGRY; brow_height=4; nose=NONE; mouth=SHARK; mouth_size=12; fangs=3; hair=BALD; hair_color=JET; highlight=NONE; facial_hair=NONE; ears=NONE; horns=CROWN_SPIKES; horn_color=LEMON; horn_size=14; tail=TENTACLE; wings=DRAGON; halo=FLAME_RING; marking=CRACKS; marking_color=VAPE_PURPLE; cheeks=SCAR; top=CLOAK; top_color=VAPE_PURPLE; pattern=FLAMES; pattern_color=MAGENTA; bottom=ROBE; bottom_color=JET; shoes=BARE; shoes_color=JET; hat=CROWN; hat_color=LEMON; accessory=CAPE; accessory_color=JET; aura=SMOKE; birthday=SEP-09; food=Soul Soup; hates=Angel Cake; hobby=Tarot Reading; music=Doom Metal; color=VAPE_PURPLE; fear=Hugs; phrase=Hail me!; movement=4; speech=15; expression=12; attitude=1; quirk=14; romance=NONE; activity=HOME; corruption=96; happy=50; sanity=45; pitch=0; speed=6; quality=31; intonation=26; accent=20; trait=LOYALIST,VAPER
 Hazey | t | Announces Vapula's arrival with a foghorn. | job=Smoke Herald; species=IMP
 Chancellor | h | Counts every puff of vapor in the Ninth Cloud. | job=Vapor Chancellor; species=GHOUL; fhair=GOATEE
-Lady Smog | s | Wears a gown woven entirely from smog. | species=CACOBLOB; hat=CROWN
-Coughlotte | s | Coughs politely, constantly, in perfect rhythm. | species=BATLING
+Lady Smog | s | Wears a gown woven entirely from smog. | job=Cloud Courtier; species=CACOBLOB; hat=CROWN
+Coughlotte | s | Coughs politely, constantly, in perfect rhythm. | job=Cloud Courtier; species=BATLING
 Tastebud | t | Tastes Vapula's soup for curses. Has hiccups. | job=Royal Taster; species=IMP; trait=SOFTIE,LOYALIST
 """ ),
 
@@ -76,7 +76,7 @@ A("vape_lab", "hell", "Flavor Chemist|Cloud Engineer|Lab Imp",
 Dr. Fumes | h | Invented Unholy Grape. Regrets nothing, mostly. | species=GHOUL
 Beakerella | s | Measures nothing. Pours everything. Boom. | species=IMP
 Condenser | i | Cloud engineer bot. Pressurises the big tanks. | job=Cloud Engineer; species=ROBOT
-Squeakvent | t | Lab imp who sniffs every new flavour first. | job=Lab Imp; species=MOUSEKIN
+Squeakvent | t | Lab imp who sniffs every new flavour first. | job=Lab Rat; species=MOUSEKIN
 Ventra | s | Secretly swaps the flavours for plain water. | species=IMP; trait=SOFTIE,VAPER
 """ ),
 
@@ -95,7 +95,7 @@ Ledgerella | s | Balances books with one claw, eats with the other. |
 Auditrix | t | Audits your soul for missing receipts. | job=Auditor
 Debitt | h | Owes everyone money. Is the bank. |
 Pennyworm | t | Bookkeeper. Keeps books. Never returns them. | job=Bookkeeper
-Fiscalo | h | Rounds every number down, except his own. | species=GHOUL
+Fiscalo | h | Rounds every number down, except his own. | job=Ghoul Accountant; species=GHOUL
 Spreadsheet | s | Dreams in columns. Secretly sneaks tips to waiters. | trait=SOFTIE
 Comma Krak | t | Has never used a decimal correctly. Proudly. |
 """ ),
@@ -126,7 +126,7 @@ A("skeleton_clerks", "hell", "Skeleton Clerk|Form Stamper|Permit Denier|Archivis
   food="Bone Broth:3|Milk|Black Licorice", hobby="Board Games|Skull Collecting|Reading", music="Industrial|Classical",
   phrase="Rattle rattle!|No thank you!|Bleh.",
   cast="""
-Form 27B | t | Stamps "DENIED" on every form. Including its own. | job=Form Stamper
+Form 27B | t | Stamps "DENIED" on every form. Including its own. | job=Form Stamper; bio_pronoun_ok=1
 Ribsley | h | Takes coffee breaks that last a century. |
 Femura | s | Files paperwork in alphabetical order by smell. | job=Archivist of Dread
 Clavicle | h | Has asked for a promotion since 1802. |
@@ -348,7 +348,7 @@ A("bone_jesters", "hell", "Bone Jester|Heckler|Prank Caller",
   food="Popcorn|Candy Eyeballs|Bone Broth", hobby="Pranks:5|Karaoke", music="Disco|Hardcore Punk|Chiptune",
   phrase="Rattle rattle!|Mwahaha!|Hehehe~",
   cast="""
-Funny Bone | h | Jester. Every joke ends with his jaw falling off. | eyes=X
+Funny Bone | h | Jester. Every joke ends with his jaw falling off. | species=SKELETON; eyes=X
 Heckla | s | Heckles performers. Then claps the loudest. | job=Heckler; eyes=CROSS
 Ringring | t | Prank caller. "Is your fridge running?" Daily. | job=Prank Caller
 Knick Knack | h | Plays his own bones like a xylophone. Off-key. |
@@ -365,7 +365,7 @@ A("hell_chefs", "hell", "Brimstone Cook|Hot Sauce Chef|Grill Imp",
   phrase="Sulfur kisses!|Mwahaha!|Feed me souls.",
   cast="""
 Chef Scorch | h | His hot sauce melted a spoon. He was thrilled. |
-Sizzlefang | s | Grills meat with her breath. Saves on gas. | job=Grill Imp
+Sizzlefang | s | Grills meat with her breath. Saves on gas. | species=IMP; job=Grill Imp
 Ghostpepper | t | Hot sauce chef. Rates sauces in screams. | job=Hot Sauce Chef; species=GHOUL
 Lavalina | s | Bakes lava cakes with real lava. Warns no one. |
 Charbroil | h | Burns everything. Calls it "the Hellvile way". | species=HELLHOUND
@@ -435,10 +435,10 @@ A("tickle_fiends", "hell", "Tickle Fiend|Wedgie Specialist|Noogie Master",
 Ticklefang | t | Tickles until you laugh. Then a bit more. |
 Wedgina | s | Wedgie specialist. Certified, framed on the wall. | job=Wedgie Specialist
 Noogles | h | Noogie master. Gentle noogies only, he insists. | job=Noogie Master
-Gigglefiend | t | Cannot stop laughing at its own pranks. | species=BATLING
+Gigglefiend | i | Cannot stop laughing at its own pranks. | species=BATLING
 """ ),
 
-A("dmv", "hell", "DMV Ghoul|Queue Manager|Number Caller",
+A("dmv", "hell", "DMV Clerk|Queue Manager|Number Caller",
   sp="GHOUL:3 SKELETON:2 MUMMY",
   top="SWEATER_VEST:3 SWEATER", bottom="PANTS:3 SKIRT", shoes="SNEAKERS CLOGS",
   hat="NONE:4", acc="GLASSES:3 NONE",

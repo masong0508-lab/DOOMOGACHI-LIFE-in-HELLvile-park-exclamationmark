@@ -80,7 +80,7 @@ Spearmint | s | Polishes her spear with mint for fresh breath. |
 Bunkerton | h | Lives in a bunker. Comes out for parades. | species=GHOUL
 """ ),
 
-A("hell_nobles", "hell", "Hell Baroness|Duke of Smog|Marquis of Mire|Viscount",
+A("hell_nobles", "hell", "Hell Noble|Hell Baroness|Duke of Smog|Marquis of Mire",
   sp="IMP:2 CACOBLOB GHOUL BATLING",
   traits="LOYALIST", top="SUIT:2 DRESS:2 CLOAK", bottom="PANTS:2 LONG_SKIRT", shoes="HEELS:2 BOOTS",
   hat="CROWN:3 TIARA TOP_HAT", acc="CAPE:3 MONOCLE",
@@ -92,8 +92,8 @@ A("hell_nobles", "hell", "Hell Baroness|Duke of Smog|Marquis of Mire|Viscount",
 Lady Bile | s | Owns half of Hellvile. Wants the other half. | job=Hell Baroness
 Duke Smog | h | Duke of Smog. Wears a monocle on each eye. | job=Duke of Smog
 Marquis | h | Lives in a swamp castle. Smells royal. | job=Marquis of Mire
-Viscountess | s | Never touches the ground. Carried everywhere. | job=Viscount; species=BATLING
-Lord Lurk | h | Lurks at parties. Is the party. | species=CACOBLOB
+Viscountess | s | Never touches the ground. Carried everywhere. | job=Viscountess; species=BATLING
+Lord Lurk | h | Lurks at parties. Is the party. | job=Hell Noble; species=CACOBLOB
 """ ),
 
 A("telemarketers", "hell", "Telemarketer Imp|Cold Caller|Survey Demon",
@@ -109,7 +109,7 @@ Callbacky | h | Calls during dinner. Every dinner. Everyone's. |
 Holdmusic | s | Puts you on hold, then sings the hold music. | job=Cold Caller
 Survia | t | Survey demon. "On a scale of one to doom..." | job=Survey Demon
 Dialtone | t | Hangs up first. Every time. Proudly. |
-Ringaling | s | Has called every phone in Hillvile. Twice. | species=BATLING
+Ringaling | s | Has called every phone in Hillvile. Twice. | job=Telemarketer; species=BATLING
 """ ),
 
 A("parking", "hell", "Parking Warden|Tow Truck Imp|Ticket Writer",
@@ -122,7 +122,7 @@ A("parking", "hell", "Parking Warden|Tow Truck Imp|Ticket Writer",
   phrase="Go to heck!|Rude!|No thank you!",
   cast="""
 Ticketina | s | Writes parking tickets for parked clouds. | job=Ticket Writer
-Towzer | h | Tows anything. Towed a house once. | job=Tow Truck Imp
+Towzer | h | Tows anything. Towed a house once. | species=IMP; job=Tow Truck Imp
 Meterman | t | Feeds the meters with other people's coins. |
 Conehat | x | Wears a traffic cone. Directs traffic wrongly. | hat=TRAFFIC_CONE
 """ ),
@@ -140,7 +140,7 @@ A("bullies", "hell", "Schoolyard Bully|Lunch Money Imp|Spitball Ace",
   cast="""
 Knucklehead | h | Pushes kids in puddles. Then fishes them out. | job=Schoolyard Bully; trait=SOFTIE
 Spitwad | t | Spitball ace. Never misses. Always apologises. | job=Spitball Ace
-Lunchbox | h | Takes lunch money. Buys everyone ice cream. | job=Lunch Money Imp
+Lunchbox | h | Takes lunch money. Buys everyone ice cream. | species=IMP; job=Lunch Money Imp
 Wanda Wedge | s | Gives wedgies. Gets them back. Fair is fair. |
 Noogie Noel | t | Hides homework, then helps you find it. | species=RACCOONKIN
 """ ),
@@ -162,7 +162,7 @@ Kickflop | h | Fails every trick. Gets up laughing. | species=CATFOLK; trait=SOF
 Bailey Bail | s | Bails so well it counts as a trick. | species=HELLHOUND
 """ ),
 
-A("hell_parents", "hell", "Stay-home Ghoul|Night Shift Worker|Crypt Keeper|Imp Student",
+A("hell_parents", "hell", "Homemaker|Night Shift Worker|Crypt Keeper|Student",
   sp="GHOUL:2 IMP:2 SKELETON BATLING HELLHOUND",
   top="SWEATER:2 HOODIE TSHIRT DRESS", bottom="PANTS:2 SKIRT SWEATS", shoes="SLIPPERS:3 BOOTS",
   hat="NONE:5", acc="NONE:4 GLASSES",
@@ -171,16 +171,16 @@ A("hell_parents", "hell", "Stay-home Ghoul|Night Shift Worker|Crypt Keeper|Imp S
   food="Soul Soup|Spaghetti|Bone Broth|Pizza|Curry", hobby="Knitting|Board Games|Gardening|Video Games",
   music="Goth Rock|Jazz|Classical|Folk",
   cast="""
-Mama Morgue | s | Runs a tidy crypt. Ten coffins, all made. | fam=morgue; wed=Papa Morgue
-Papa Morgue | h | Tells the worst dad jokes in all of Hellvile. | fam=morgue
-Morguelet | t | Wants to be a Hillvile florist. Keeps it secret. | job=Imp Student; fam=morgue; trait=KID,SOFTIE
+Mama Morgue | s | Runs a tidy crypt. Ten coffins, all made. | species=GHOUL; job=Stay-home Ghoul; fam=morgue; wed=Papa Morgue
+Papa Morgue | h | Tells the worst dad jokes in all of Hellvile. | species=GHOUL; fam=morgue
+Morguelet | t | Wants to be a Hillvile florist. Keeps it secret. | species=GHOUL; job=Student; fam=morgue; trait=KID,SOFTIE
 Ma Gloom | s | Works nights at the gate. Packs everyone lunch. | job=Night Shift Worker; fam=gloomwood; wed=Pa Gloom; trait=SOFTIE
 Pa Gloom | h | Crypt keeper. Keeps the crypt and the snacks. | job=Crypt Keeper; fam=gloomwood
-Wisp | t | Floats around the house making ghost noises. | job=Imp Student; fam=gloomwood; trait=KID; species=BATLING
+Wisp | t | Floats around the house making ghost noises. | species=IMP; job=Student; fam=gloomwood; trait=KID
 Auntie Ash | s | Visits every weekend, unannounced, with stew. | fam=gloomwood; species=HELLHOUND
-Bonesworth | h | Retired bone setter. Sets bones, sets tables. | job=Retiree; trait=ELDER; species=SKELETON; fam=bones
-Little Ulna | s | Collects other people's lost teeth. Polite. | job=Imp Student; trait=KID; species=SKELETON; fam=bones
-Gristlegran | h | Cooks for the whole crypt block on Sundays. | trait=ELDER,SOFTIE; fam=bones
+Bonesworth | h | Retired bone setter. Sets bones, sets tables. | species=SKELETON; job=Retiree; trait=ELDER; fam=bones
+Little Ulna | s | Collects other people's lost teeth. Polite. | job=Student; trait=KID; species=SKELETON; fam=bones
+Gristlegran | s | Cooks for the whole crypt block on Sundays. | species=SKELETON; trait=ELDER,SOFTIE; fam=bones
 """ ),
 
 A("thorn_farmers", "hell", "Thorn Farmer|Pepper Grower|Nightshade Picker",
@@ -298,7 +298,7 @@ Shriekra | s | Shriek vocalist. Gargles lava to warm up. | job=Shriek Vocalist
 Bassment | t | Bassist. Lives in a basement. Plays in it too. | job=Bassist
 Blastbeat | h | Drums so fast his arms are a blur. Literally. | job=Doom Drummer; species=SKELETON
 Headbang | x | Headbangs so hard the skull came loose. Twice. | species=SKELETON
-Moshpit | s | Starts a mosh pit at every lullaby recital. | species=HELLHOUND
+Moshpit | s | Starts a mosh pit at every lullaby recital. | job=Roadie; species=HELLHOUND
 """ ),
 
 A("punk_band", "hell", "Punk Guitarist|Zine Screamer|Safety Pin Smith",
@@ -330,8 +330,8 @@ A("shock_radio", "hell", "Shock Jock|Radio Imp|Static Ghost",
   cast="""
 DJ Doomsday | h | Shock jock. Predicts the end of the world daily. |
 Static | t | Static ghost. Lives between radio stations. | job=Static Ghost; species=GHOST
-Feedbacka | s | Radio imp. Screeches the weather report. | job=Radio Imp
-Callerline | s | Takes listener calls. Every caller is her mum. |
+Feedbacka | s | Radio imp. Screeches the weather report. | species=IMP; job=Radio Imp
+Callerline | s | Takes listener calls. Every caller is her mum. | job=Radio Host
 """ ),
 
 A("graffiti", "hell", "Graffiti Imp|Wall Tagger|Stencil Artist",
@@ -348,7 +348,7 @@ Spraycan | h | Tags every wall with a tiny smiling skull. |
 Tagalong | s | Wall tagger. Signs her name in bubble letters. | job=Wall Tagger
 Stencilla | t | Stencil artist. Paints hearts on the Wall at night. | job=Stencil Artist; trait=SOFTIE
 Drippy | h | Paints drippy letters. Also drips. |
-Muralfang | h | Painted a 100-foot dragon. Mostly tail. | species=RACCOONKIN
+Muralfang | h | Painted a 100-foot dragon. Mostly tail. | job=Muralist; species=RACCOONKIN
 """ ),
 
 A("guard_dogs", "hell", "Guard Dog|Yard Hound|Fence Patroller",
@@ -414,7 +414,7 @@ Scalpelia | s | Hell surgeon. Stitches in cursive. Elegant. | job=Hell Surgeon
 Bloodbank | h | Blood bank bat. Very strict about withdrawals. | job=Blood Bank Bat; species=BATLING
 Setbone | t | Bone setter. Sets bones in festive shapes. | job=Bone Setter; species=SKELETON
 Plaguey | s | Plague doctor. Beak mask, kind eyes. | job=Plague Doctor; species=HUMAN; skin=SKIN_FAIR; accessory=MASK; trait=SOFTIE
-Dr. Gurney | h | Wheels patients around for fun. Gets reported. |
+Dr. Gurney | h | Wheels patients around for fun. Gets reported. | job=Orderly
 """ ),
 
 A("sin_bin", "hell", "Sin Bin Janitor|Brimstone Sweeper|Ash Collector",

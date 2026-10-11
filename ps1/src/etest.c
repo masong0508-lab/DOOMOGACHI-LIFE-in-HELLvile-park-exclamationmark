@@ -506,9 +506,15 @@ static void view_model(int t, int scene_t)
 
 /* Memory card self test (SELECT + START in the engine test, or at boot of
  * the engine test when the harness asks for it): save, read back, grow a
- * slot (new bigger file, swapped in by rename), erase. Prints PASS/FAIL. */
-static uint8_t s_mc_buf[48 * 1024];
-static uint8_t s_mc_rd[48 * 1024];
+ * slot (second file, the old one erased), erase. Prints PASS/FAIL. With
+ * the core linked the buffers live in the core's save scratch. */
+#define MC_TEST_MAX (36 * 1024)
+#ifdef DOOMO_HAVE_CORE
+static uint8_t *s_mc_buf, *s_mc_rd;
+#else
+static uint8_t s_mc_buf[MC_TEST_MAX];
+static uint8_t s_mc_rd[MC_TEST_MAX];
+#endif
 
 static int mc_fill_check(uint32_t seed, uint32_t n, int check)
 {
@@ -529,6 +535,17 @@ static void memcard_selftest(void)
 {
     uint32_t sz = 0;
     int ok = 1, r;
+#ifdef DOOMO_HAVE_CORE
+    {
+        uint32_t cap = 0;
+        s_mc_buf = plat_save_scratch(&cap);
+        s_mc_rd = s_mc_buf + MC_TEST_MAX;
+        if (!s_mc_buf || cap < 2 * MC_TEST_MAX) {
+            dbg("memcard selftest: FAIL (scratch %u bytes)\n", (unsigned)cap);
+            return;
+        }
+    }
+#endif
     dbg("memcard selftest: start\n");
     plat_save_erase(0);
     plat_save_erase(1);
@@ -536,8 +553,8 @@ static void memcard_selftest(void)
     r = plat_save_write(0, s_mc_buf, 5000);
     dbg("memcard selftest: write slot0 5000B -> %d\n", r);
     ok &= r;
-    memset(s_mc_rd, 0, sizeof(s_mc_rd));
-    r = plat_save_read(0, s_mc_rd, sizeof(s_mc_rd), &sz);
+    memset(s_mc_rd, 0, MC_TEST_MAX);
+    r = plat_save_read(0, s_mc_rd, MC_TEST_MAX, &sz);
     dbg("memcard selftest: read slot0 -> %d size %u\n", r, (unsigned)sz);
     ok &= r && sz == 5000 && mc_fill_check(1, 5000, 1);
     /* grow slot 0 past its block count: temp file + rename */
@@ -545,22 +562,22 @@ static void memcard_selftest(void)
     r = plat_save_write(0, s_mc_buf, 20000);
     dbg("memcard selftest: grow slot0 20000B -> %d\n", r);
     ok &= r;
-    memset(s_mc_rd, 0, sizeof(s_mc_rd));
-    r = plat_save_read(0, s_mc_rd, sizeof(s_mc_rd), &sz);
+    memset(s_mc_rd, 0, MC_TEST_MAX);
+    r = plat_save_read(0, s_mc_rd, MC_TEST_MAX, &sz);
     ok &= r && sz == 20000 && mc_fill_check(2, 20000, 1);
     dbg("memcard selftest: read grown slot0 -> %d size %u\n", r, (unsigned)sz);
     /* slot 1, an odd size */
     mc_fill_check(3, 33333, 0);
     r = plat_save_write(1, s_mc_buf, 33333);
     ok &= r;
-    memset(s_mc_rd, 0, sizeof(s_mc_rd));
-    r = plat_save_read(1, s_mc_rd, sizeof(s_mc_rd), &sz);
+    memset(s_mc_rd, 0, MC_TEST_MAX);
+    r = plat_save_read(1, s_mc_rd, MC_TEST_MAX, &sz);
     ok &= r && sz == 33333 && mc_fill_check(3, 33333, 1);
     dbg("memcard selftest: slot1 33333B -> %d size %u\n", r, (unsigned)sz);
     /* erase slot 1, reading it must fail now */
     r = plat_save_erase(1);
     dbg("memcard selftest: erase slot1 -> %d\n", r);
-    ok &= !plat_save_read(1, s_mc_rd, sizeof(s_mc_rd), &sz);
+    ok &= !plat_save_read(1, s_mc_rd, MC_TEST_MAX, &sz);
     /* leave a save in slot 0 for the emulator's card manager */
     dbg("memcard selftest: %s\n", ok ? "PASS" : "FAIL");
 }

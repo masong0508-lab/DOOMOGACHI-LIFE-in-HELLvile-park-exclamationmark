@@ -7,6 +7,7 @@
 --   HARNESS_FRAME  address (hex) of the game loop counter g_loop_frames:
 --                  heartbeat (hang detection), frame rate, legacy sync
 --   HARNESS_HCMD   address (hex) of the g_hcmd mailbox (src/hcmd.c), 0 = none
+--   HARNESS_BEAT   address (hex) of g_io_beat (memory card I/O heartbeat)
 --   HARNESS_HANG   vsyncs without a new frame before declaring a hang
 --
 -- LOCKSTEP (builds with the g_hcmd mailbox, i.e. all current builds): the
@@ -37,6 +38,7 @@ local out = os.getenv('HARNESS_OUT') or '.'
 local cmdfile = os.getenv('HARNESS_CMDS')
 local frame_addr = tonumber(os.getenv('HARNESS_FRAME') or '0', 16) or 0
 local hcmd_addr = tonumber(os.getenv('HARNESS_HCMD') or '0', 16) or 0
+local beat_addr = tonumber(os.getenv('HARNESS_BEAT') or '0', 16) or 0
 local hang_limit = tonumber(os.getenv('HARNESS_HANG') or '900')
 
 local cmds = {}
@@ -206,9 +208,12 @@ local function step()
   return false
 end
 
+local last_beat = -1
 local function hang_check(f)
-  if f ~= last_frame then
+  local beat = beat_addr ~= 0 and ffi.cast('uint32_t*', ram(beat_addr))[0] or 0
+  if f ~= last_frame or beat ~= last_beat then
     last_frame = f
+    last_beat = beat
     last_change = vsyncs
     return false
   end

@@ -18,6 +18,7 @@ typedef struct PBody {
     int tailx, taily, tails;/* tail anchor + side (+1 right, -1 left)   */
     int wingx, wingy;       /* right wing anchor (mirrored for left)    */
     int neckx, necky;
+    int neck;               /* chin line y (set once the head is placed) */
     int nolegs;             /* slime / ghost / cacoblob                 */
     int belly;              /* belly bulge (Q4)                         */
     int hunch;
@@ -121,6 +122,13 @@ void pb_layout(PCtx *c, int vk, int byaw, int step, int anim)
         break;
     }
     if (byaw == 2) { B.sw = B.sw * 80 / 100; B.hw = B.hw * 80 / 100; }
+    if (l->species == SPECIES_CACOBLOB && vk != VK_PORTRAIT) {
+        /* a tiny floating body under the big ball of a head */
+        B.sw = B.sw * 62 / 100; B.hw = B.hw * 62 / 100;
+        B.ty += (B.by - B.ty) * 30 / 100;
+        B.arm_r = B.arm_r * 70 / 100;
+        B.paw_r = B.paw_r * 75 / 100;
+    }
     B.belly = bm[5] * B.sw / 100;
     /* anchors */
     for (s = 0; s < 2; s++) {
@@ -133,8 +141,8 @@ void pb_layout(PCtx *c, int vk, int byaw, int step, int anim)
         B.ftx[s] = B.hpx[s];
         B.fty[s] = B.ground - (vk == VK_CHIBI ? 8 : PX(1) + 8);
         if (vk == VK_PORTRAIT) {
-            B.hdx[s] = B.cx + sg * PX(5);
-            B.hdy[s] = PX(54);
+            B.hdx[s] = B.cx + sg * PX(8);
+            B.hdy[s] = PX(55);
         } else {
             B.hdx[s] = B.cx + sg * (B.sw + (vk == VK_CHIBI ? 4 : 12));
             B.hdy[s] = B.ty + (B.by - B.ty) * 78 / 100;
@@ -162,10 +170,11 @@ void pb_layout(PCtx *c, int vk, int byaw, int step, int anim)
     B.tails = 1;
     B.tailx = B.cx + B.hw * 60 / 100;
     B.taily = B.by - (vk == VK_CHIBI ? 16 : PX(3));
-    if (vk == VK_PORTRAIT) { B.tailx = PX(37); B.taily = PX(57); }
+    if (vk == VK_PORTRAIT) { B.tailx = PX(35); B.taily = PX(52); B.unit = PX(14); }
+    if (vk == VK_FIGURE) B.unit = PX(15);
     if (byaw == 2) { B.tailx = B.cx + B.hw * 80 / 100; }
     B.wingx = B.cx + B.sw * 45 / 100;
-    B.wingy = B.ty + (vk == VK_CHIBI ? 16 : PX(3));
+    B.wingy = B.ty + (vk == VK_CHIBI ? 16 : (vk == VK_PORTRAIT ? -PX(1) : PX(3)));
     B.neckx = B.cx;
     B.necky = B.ty;
     c->bx = B.cx; c->by = (B.ty + B.by) / 2;
@@ -181,6 +190,15 @@ int pb_head_y(PCtx *c, int ry)
 }
 
 int pb_torso_top(void) { return B.ty; }
+void pb_set_neck(int y) { B.neck = y; }
+
+/* the part of the torso that is not hidden behind the head */
+static void vis_area(int *ty, int *H)
+{
+    int t = DOOMO_MAX(B.ty, B.neck - 8);
+    *ty = t;
+    *H = B.view == VK_PORTRAIT ? PX(15) : DOOMO_MAX(B.by - t, 16);
+}
 
 void pb_shift(int dy)
 {
@@ -572,6 +590,9 @@ static void chest_fluff(PCtx *c)
     int y = B.ty + (B.view == VK_CHIBI ? 8 : PX(1)), w = B.sw * 45 / 100;
     if (!c->critter && l->species != SPECIES_MOTHKIN) return;
     if (B.lod == LOD_TINY || B.yaw >= 3) return;
+    if (l->top == TOP_HOODIE || l->top == TOP_SPACESUIT || l->top == TOP_HAZMAT ||
+        l->top == TOP_PLATE_ARMOR || l->top == TOP_SWEATER || l->accessory == ACC_SCARF) return;
+    y = DOOMO_MAX(B.ty, B.neck - 24);
     if (l->marking == MARK_FUR_BELLY || l->marking == MARK_FUR_MUZZLE) pm_paint(&m, l->marking_color);
     else pm_from3(&m, c->skin.c[2], c->skin.c[3], c->skin.c[4]);
     pc_part(&m, SH_SOFT, PF_FUZZ | PF_NOCAST);
@@ -584,8 +605,8 @@ static void chest_fluff(PCtx *c)
 static void mothkin_ruff(PCtx *c)
 {
     PMat m;
-    int k, y = B.ty + PX(1), w = B.sw * 85 / 100;
-    if (c->l->species != SPECIES_MOTHKIN) return;
+    int k, y = DOOMO_MAX(B.ty + PX(1), B.neck - 8), w = B.sw * 85 / 100;
+    if (c->l->species != SPECIES_MOTHKIN || B.yaw >= 3) return;
     pm_paint(&m, PAINT_WHITE);
     if (c->l->marking_color != PAINT_WHITE && c->l->marking >= MARK_FUR_MUZZLE) pm_paint(&m, c->l->marking_color);
     pc_part(&m, SH_SOFT, PF_FUZZ);
@@ -599,9 +620,11 @@ static void top_details(PCtx *c, const PMat *m, int first)
 {
     const DoomoLook *l = c->l;
     int t = l->top, k;
-    int cx = B.cx, ty = B.ty, H = B.by - B.ty;
+    int cx = B.cx, ty, H;
     int big = B.lod == LOD_BIG, tiny = B.lod == LOD_TINY;
-    int nx = cx >> 4, ny = ty >> 4;
+    int nx, ny;
+    vis_area(&ty, &H);
+    nx = cx >> 4; ny = ty >> 4;
     PMat w, d, acc;
     pm_paint(&w, PAINT_WHITE);
     pm_from3(&d, m->c[0], m->c[1], m->c[2]);
@@ -1391,7 +1414,7 @@ void pb_draw_wings(PCtx *c, int front)
     if (front != back_view) return;
     WU = B.unit;
     WY = B.wingy;
-    if (B.view == VK_PORTRAIT) WU = PX(16);
+    if (B.view == VK_PORTRAIT) WU = PX(19);
     for (WS = -1; WS <= 1; WS += 2) {
         if (c->byaw == 2 && WS < 0) continue;
         WX = B.cx + WS * B.sw * 40 / 100;
@@ -1406,9 +1429,11 @@ static void neck_acc(PCtx *c)
 {
     const DoomoLook *l = c->l;
     int st = l->accessory, k;
-    int cx = B.cx, ty = B.ty, H = B.by - B.ty;
+    int cx = B.cx, ty, H;
     int tiny = B.lod == LOD_TINY;
     PMat m = c->acc, gold, dk;
+    vis_area(&ty, &H);
+    ty -= tiny ? 0 : 8;
     pm_paint(&gold, PAINT_LEMON);
     pm_flat(&dk, PAL_PAINT(PAINT_JET, 1));
     if (B.yaw >= 3 && st != ACC_SCARF && st != ACC_CHAINS) return;
@@ -1473,8 +1498,8 @@ static void neck_acc(PCtx *c)
     case ACC_TEDDY: {
         /* a little plush bear hugged in the paws */
         PMat t;
-        int x = cx, y = B.view == VK_PORTRAIT ? PX(50) : ty + H * 55 / 100;
-        int r = B.view == VK_PORTRAIT ? PX(5) : (tiny ? 24 : B.sw * 45 / 100);
+        int x = cx, y = B.view == VK_PORTRAIT ? PX(50) : ty + H * 50 / 100;
+        int r = B.view == VK_PORTRAIT ? PX(8) : (tiny ? 28 : B.sw * 70 / 100);
         pm_paint(&t, l->accessory_color);
         pc_part(&t, SH_SOFT, PF_FUZZ);
         pc_ellipse(x - r * 6 / 10, y - r * 8 / 10, r * 3 / 10, r * 3 / 10);
@@ -1569,19 +1594,25 @@ void pb_draw_body(PCtx *c)
             }
         }
     }
-    chest_fluff(c);
-    mothkin_ruff(c);
-    neck_acc(c);
     if (B.view == VK_PORTRAIT) {
         if (l->accessory != ACC_TEDDY) {
             paw(c, B.hdx[0], B.hdy[0], B.paw_r);
             paw(c, B.hdx[1], B.hdy[1], B.paw_r);
-        } else {
-            paw(c, B.hdx[0] - PX(3), B.hdy[0] - PX(1), B.paw_r);
-            paw(c, B.hdx[1] + PX(3), B.hdy[1] - PX(1), B.paw_r);
         }
     }
     if (far) arm(c, 0, 0);
+}
+
+/* in front of the chin: chest fluff, collar ruff, neckwear, a hugged teddy */
+void pb_draw_neck(PCtx *c)
+{
+    chest_fluff(c);
+    mothkin_ruff(c);
+    neck_acc(c);
+    if (B.view == VK_PORTRAIT && c->l->accessory == ACC_TEDDY) {
+        paw(c, B.hdx[0] - PX(4), B.hdy[0] - PX(1), B.paw_r);
+        paw(c, B.hdx[1] + PX(4), B.hdy[1] - PX(1), B.paw_r);
+    }
 }
 
 void pb_draw_front(PCtx *c)
