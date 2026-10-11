@@ -48,7 +48,7 @@ L2, R2, START, SELECT; D-pad or the left analog stick.
 ```sh
 cmake --build --preset ps1 --target harness             # disc boot, smoke, core scripts
 cmake --build --preset ps1-enginetest --target harness  # engine tour, card + audio self tests
-python3 harness/run.py --exe build/doomogachi.exe \
+python3 harness/run.py --exe build/doomogachi.exe --cue build/doomogachi.cue \
     --script ../core/tests/scripts/ui_gallery.txt --out /tmp/shots
 ```
 
@@ -66,7 +66,8 @@ reports the frame rate. See docs/PS1.md section 10.
 | `src/main.c` | boot, main loop (30 Hz), log, ticks, entropy |
 | `src/gfx.c`, `src/gfx2d.c` | display lists, double buffering, the 2D layer |
 | `src/vram.c` | texture / image / CLUT caches in VRAM |
-| `src/packart.c`, `tools/packart.py` | the core's textures and skies, linked LZ-compressed (RAM) and decoded on a VRAM cache miss |
+| `src/packart.c`, `tools/packart.py`, `tools/packmaps.py` | the core's textures, skies, sprites and map cells, linked LZ-compressed (RAM) and decoded on a VRAM cache miss / map load |
+| `src/overlay.c`, `tools/ovl_plan.py`, `tools/ovl_pack.py` | game disc: scene code + const data as overlays read from `OVL.BIN` into one RAM slot (docs/PS1.md section 3) |
 | `src/r3d.c`, `src/r3d.h` | GTE pipeline: subdivision, clipping, fog, sky, billboards |
 | `src/view3d.c`, `src/world.c` | `plat_view3d()`: the map as 3D polygons |
 | `src/overworld.c` | `plat_overworld()`: 3D town terrain |

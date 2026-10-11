@@ -146,10 +146,11 @@ the scene needs, nothing in `.bss` that could be `const`.
 **Scene scratch** (`scene.h`). The modules that landed after the perf
 pass (creator 6.3 KB, studio song book 5.4 KB + studio 1.9 KB, story
 overworld 4.2 + fx 3.3 + NPCs 3.0 KB, free play ~7.6 KB, library 2.1 KB,
-minigames 2.6 KB, concert 1.1 KB, ...) add ~43 KB of `.bss`, and the GBA
-game ROM then no longer links (EWRAM over by ~27 KB at the time of
-writing). Almost all of it is state that only matters while its own scene
-runs. `scene_scratch(owner, size)` hands out ONE shared 12 KB block
+minigames 2.6 KB, concert 1.1 KB, ...) add ~43 KB of `.bss`, which the
+GBA game ROM cannot hold (EWRAM was over by ~27 KB). Almost all of it is
+state that only matters while its own scene runs. With everything in the
+scratch the game ROM links with 7.5 KB of EWRAM free and the full 6 KB
+IWRAM stack (docs/GBA.md section 3). `scene_scratch(owner, size)` hands out ONE shared 12 KB block
 (`DOOMO_SCENE_SCRATCH`) to the scene that claims it: claim and initialise
 it in `enter()`, check `scene_scratch_mine(owner)` where the scene can
 resume after a pushed scene, and rebuild if another owner took it.
@@ -201,14 +202,28 @@ through a `volatile` lvalue; do the same for any new one.
 
 **PS1 RAM.** The EXE is loaded whole into 2 MB. To make room
 (docs/PS1.md section 3): cold core code is compiled `-Os` (the per-frame
-files stay `-O2`), the engine-test fallback assets are only linked into
-the engine-test disc (which in turn drops the game's scenes), and the
-world textures and skies (360 KB of pixels) are linked LZ-compressed and
-decoded only when the VRAM caches miss. **Contract consequence:** on the
-PS1 the pointers returned by `texture_pixels()`, `sky_pixels()` and
-`texture_image()->pix` are virtual - core code may pass them to `plat_*`
+files stay `-O2`); the world textures, skies and sprites (585 KB of
+pixels) and the maps' cell grids (266 KB) are linked LZ-compressed and
+decoded only when a VRAM cache misses or a map loads; the engine-test
+fallback assets are only linked into the engine-test disc (which in turn
+drops the game's scenes); and on the game disc the **scene code is an
+overlay**: `ps1/tools/ovl_plan.py` reads the relocations of every object
+and moves each scene module's code and const data that only that scene's
+entry points can reach into a group read from the disc (`OVL.BIN`) into
+one 108 KB slot when a scene of the group starts (~780 KB in 15 groups).
+**Contract consequences:** on the PS1 the pointers returned by
+`texture_pixels()`, `sky_pixels()`, `texture_image()->pix` and
+`sprite_image()->pix` are virtual - core code may pass them to `plat_*`
 calls but must never read pixels through them (use `texture_avg()` /
-`sky_horizon()` for colours).
+`sky_horizon()` for colours); `DoomoMapDef.cells` is read only by
+`map_load()` (through `map_def_cells()`, map.h); scene functions are
+called only by `scene.c` (which brackets every call with
+`plat_scene_code()`, scene.h); and a resident module must not keep a
+pointer to a scene module's const data (a string, a table, a callback)
+after that scene has gone - copy it, as `ui_say()` / `ui_confirm()` do.
+Whatever ovl_plan.py cannot prove is only reached through a scene's entry
+points (a function whose address is taken, anything two scenes use)
+simply stays resident.
 
 ## Art direction (all teams)
 

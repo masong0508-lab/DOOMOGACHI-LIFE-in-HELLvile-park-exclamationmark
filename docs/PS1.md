@@ -155,61 +155,115 @@ is still opaque, and index 0 maps to 0x0000 (transparent) in the CLUTs.
 | range | what |
 |-------|------|
 | `0x80000000-0x8000FFFF` | BIOS / kernel |
-| `0x80010000-...` | the EXE: code, read-only data (art, roster, maps), data |
-| after it | BSS: two display-list buffers (2 x 103 KB prims + 2 ordering tables of 1536 entries per view), core state (`doomo_town` 107 KB, `doomo_map` 32 KB), caches |
+| `0x80010000-...` | the EXE: resident code, read-only data (art, roster, packed textures / sprites / map cells), data |
+| after it | BSS: the two display lists (2 x 56 KB prims + 2 OTs of 1536 entries per view), core state (`doomo_town` 107 KB, `doomo_map` 32 KB), caches |
+| after the BSS (game disc) | the **scene overlay slot** (108 KB): the code + const data of the scene that runs, read from `OVL.BIN` |
 | `...-0x801FFFF0` | stack (grows down) |
 
 Everything - code, const data and BSS - is loaded into these 2 MB, and
 `tools/elf2exe.py` refuses an image that leaves less than 64 KB for the
 stack. The build prints the numbers (`elf2exe: ... ends 0x..., N KB
-left below the stack top`). Three measures keep the discs inside:
+left below the stack top`). With every module of the game landed the
+disc no longer fitted (`0x802ec0b4`, 1.1 MB over the limit), so:
 
+* **Scene overlays** (game disc only; `tools/ovl_plan.py`,
+  `tools/ovl_pack.py`, `src/overlay.c`, option `DOOMO_OVERLAYS`). Most of
+  the game's code only runs while its own scene is on screen. The build
+  compiles everything into an object library first; `ovl_plan.py` then
+  reads the relocations of all objects (`-ffunction-sections
+  -fdata-sections`) and decides, section by section, what may leave RAM:
+  - candidates are the `.text.*` / `.rodata.*` sections of the scene
+    modules (15 groups: combat + levels, concert, creator, dream,
+    exorcism, fishing + cooking, free play screens, island, library,
+    minigames, pet, story overworld + cutscenes, studio, workshop, UI
+    gallery); `.data` / `.bss` always stay resident;
+  - a section is RESIDENT if resident code or data can reach it, if its
+    address escapes into memory from code (a callback that resident code
+    may call later), or if two groups reach it. The only edges not
+    followed are the four function pointers of a `const DoomoScene`
+    (`SCENE_*`): the core's `scene.c` calls those through
+    `plat_scene_code()` (`scene.h`), which loads the scene's group first;
+  - it writes the linker script (every group is an output section of one
+    `OVERLAY` at the slot, `NOCROSSREFS`) and the scene -> group table.
+
+  `ovl_pack.py` writes the groups' bytes to `OVL.BIN` on the disc
+  (`elf2exe.py` leaves them out of the EXE; their RAM slot counts). At
+  boot `overlay_init()` initialises the CD and reads its header; a scene
+  of another group costs one CD read (~0.3 s for 70 KB at 2x). When a
+  scene switches scenes from inside its own update (enter / leave run
+  inside the call), the caller's group is read back before the call
+  returns, so the caller's code is always there: a switch from one
+  overlaid scene to another costs three reads. The scene's code is the
+  only thing that may live in the slot: anything a resident module keeps
+  a pointer to across scenes must be in a resident module. The harness's
+  `--exe` runs need the disc too (`--exe ... --cue ...`).
 * **Packed art** (`tools/packart.py`, `src/packart.c`, option
-  `DOOMO_PACK_ART`, default ON): the core's 60 world-texture frames and 5
-  sky frames (360 KB of 8bpp pixels that only this platform reads, to
-  fill its VRAM caches) are linked LZ-compressed (80 KB), every frame on
-  its own. `core/gen/art_data.c` is compiled without those two arrays and
-  `doomo_art_tex_pix` / `doomo_art_sky_pix` are defined as virtual
-  addresses (`--defsym`, outside RAM): the core's `textures.c` keeps
-  computing frame pointers from them, `vram.c` / `r3d.c` map such a
-  pointer back to its frame and decode it on a cache miss (a texture
-  frame into a 4 KB buffer, a sky frame into the frame's display-list
-  memory). After the first frames of a scene everything is in VRAM and
-  the cost is zero; the engine tour's frames are identical to an unpacked
-  build (only the HUD's CPU-time digits differ). Core code must never
-  read through texture / sky pixel pointers (ARCHITECTURE.md, textures.h).
+  `DOOMO_PACK_ART`, default ON): the core's 60 world-texture frames, 5
+  sky frames and 194 sprite frames (585 KB of 8bpp pixels that only this
+  platform reads, to fill its VRAM caches) are linked LZ-compressed
+  (195 KB), every frame on its own. `core/gen/art_data.c` is compiled
+  without those arrays and `doomo_art_tex_pix` / `doomo_art_sky_pix` /
+  `doomo_art_spr_pix_v` are defined as virtual addresses (`--defsym`,
+  outside RAM): the core keeps computing frame pointers from them,
+  `vram.c` / `r3d.c` map such a pointer (interior pointers of cropped
+  sprite images included) back to its frame and decode it on a cache
+  miss (a texture or sprite frame into a small buffer, a sky frame into
+  the frame's display-list memory). After the first frames of a scene
+  everything is in VRAM and the cost is zero. Core code must never read
+  through texture / sky / sprite pixel pointers (ARCHITECTURE.md,
+  textures.h, sprites.h).
+* **Packed map cells** (`tools/packmaps.py`): the 12 maps' cell grids
+  (266 KB) are linked LZ-compressed (14 KB); `map_def_cells()` (map.h,
+  overridden in `src/packart.c`) decodes a map straight into the live map
+  when `map_load()` runs - nothing else in the core reads
+  `DoomoMapDef.cells`.
 * **-Os for cold core code**: the core is compiled for size except the
   files that run every frame (`DOOMO_CORE_HOT`: the UI rasteriser, fixed
-  point, map, actors, combat, pet drawing), which keep -O2 - about 120 KB
-  less code at the same frame times (harness: UI, combat, workshop,
-  exorcism unchanged; the pet scene needed its two files back at -O2).
+  point, map, actors, combat, pet drawing), which keep -O2.
+* **Smaller display lists**: 56 KB per frame instead of 103 KB (frames
+  have needed at most ~40 KB; a packed sky's first upload needs 52 KB at
+  the start of a 3D view). Both lists together are the save scratch
+  (section 9), so saves still never stream on the PS1.
 * **The engine-test disc leaves the game out and vice versa**: the
   engine-test build compiles out the game loop and the harness's scene /
-  save commands, so `--gc-sections` drops the game's scenes; the game
-  disc does not link the engine test's fallback assets (`etest_assets.c`,
-  only reachable when a core accessor returns NULL, which the full core
-  never does).
+  save commands, so `--gc-sections` drops the game's scenes (no overlays
+  needed there); the game disc does not link the engine test's fallback
+  assets (`etest_assets.c`).
 
-Measured (all core modules up to the life / action / save-extension
-work; the disc used to overflow):
+Measured (all core modules, fishing / cooking and Hell Breach included):
 
-| build | before | after |
-|-------|--------|-------|
-| game disc | ends `0x80226864`: 218 KB over the limit (64 KB stack reserve) | ends `0x801c2b50`: 181 KB under the limit (245 KB below the stack top) |
-| engine-test disc | ends `0x8023f190`: 316 KB over the limit | ends `0x80135724`: 746 KB under the limit (810 KB below the stack top) |
+| build | before this pass | after |
+|-------|------------------|-------|
+| game disc | ends `0x802ec0b4`: 1.1 MB over the limit | EXE 1,224 KB + BSS 511 KB + overlay slot 108 KB, ends `0x801dd310`: **139 KB below the stack top** (75 KB more than the 64 KB stack reserve); `OVL.BIN` 778 KB in 15 groups |
+| engine-test disc | ends `0x80178b1c`, 541 KB below the stack top | ends `0x801088d0`, 989 KB below the stack top |
 
-The biggest remaining consumers of the game disc: art other than
-textures / skies 247 KB (sprites 225 KB - the core reads sprite pixels,
-so they stay unpacked), the display lists 206 KB + OTs 24 KB, roster
-164 KB, `doomo_town` 107 KB, core code ~540 KB.
+| overlay group | KB | | overlay group | KB |
+|---|---:|---|---|---:|
+| combat (combat, actors, arena, levels, weapon view) | 109 | | island | 40 |
+| fishing + cooking | 88 | | dream | 37 |
+| minigames | 86 | | exorcism | 28 |
+| free play screens | 70 | | pet | 21 |
+| library | 63 | | workshop + welding game | 14 |
+| concert | 51 | | UI gallery | 4 |
+| creator | 50 | | | |
+| story overworld, cutscenes, credits | 48 | | resident code + const data | 1,097 |
+| studio | 44 | | | |
 
-`plat_save_scratch()` is the idle half of the display-list memory: after
-`DrawSync()` the prim buffer of the previous frame is unused until the
-current frame is presented, and a save or load runs inside one frame.
-`PRIM_BYTES` (103 KB) is sized for `DOOMO_SAVE_SCRATCH_MIN` (save.h: a
-whole slot plus the codec's work area), so the PS1 never needs the
-streaming save path; a frame itself has needed at most ~36 KB so far.
-The core's static default buffer is dropped by `--gc-sections`.
+The biggest remaining consumers of RAM: resident core code (portraits,
+UI, sim, story engine, ...) ~700 KB, `doomo_town` 107 KB, the display
+lists 112 KB + OTs 24 KB, the roster 164 KB, packed art 195 KB, the
+overlay slot 108 KB.
+
+`plat_save_scratch()` is the display-list memory of both frames (one
+contiguous 112 KB block): after `DrawSync()` the previous frame's list is
+unused until the current frame is presented, and the current frame's list
+is empty while the core runs its update (where saves and loads happen;
+one call, inside one frame). If something was already drawn this frame,
+`plat_save_scratch()` draws that much right away (queued VRAM uploads are
+not lost) and starts the list over. 112 KB holds `DOOMO_SAVE_SCRATCH_MIN`
+(save.h: a whole slot plus the codec's work area), so the PS1 never needs
+the streaming save path. The core's static default buffer is dropped by
+`--gc-sections`.
 
 ### SPU RAM (512 KB)
 
@@ -410,8 +464,8 @@ PCSX-Redux (`-cli`, under `xvfb-run`, always with a wall-clock timeout) and
 drives it with `harness/harness.lua`.
 
 ```sh
-python3 ps1/harness/run.py --exe ps1/build/doomogachi.exe \
-    --script core/tests/scripts/ui_gallery.txt --out /tmp/shots
+python3 ps1/harness/run.py --exe ps1/build/doomogachi.exe --cue ps1/build/doomogachi.cue \
+    --script core/tests/scripts/ui_gallery.txt --out /tmp/shots   # game EXE: needs the disc (OVL.BIN)
 python3 ps1/harness/run.py --cue ps1/build/doomogachi.cue \
     --script ps1/harness/scripts/game_smoke.txt --out /tmp/smoke --expect "memcard: wrote"
 cmake --build --preset ps1 --target harness             # the whole game suite
@@ -507,10 +561,17 @@ those modules' own drawing.
 * `plat_shade_rect` is a blend approximation on the PS1 (see section 4).
 * `save_game()` blocks for about a second per 8 KB block on a PS1 (BIOS);
   a "Saving..." banner is shown by the platform.
-* `plat_save_scratch()` returns the idle display-list buffer (section 3):
-  valid only until the end of the current frame, as `platform.h` allows.
-* Texture and sky pixels are not CPU readable here (packed, section 3):
-  pass `texture_pixels()` / `sky_pixels()` / `texture_image()` results to
-  `plat_*` only; use `texture_avg()` / `sky_horizon()` for colours.
+* `plat_save_scratch()` returns both display-list buffers (section 3):
+  valid only until the end of the current frame, as `platform.h` allows;
+  take it from update(), not halfway through draw().
+* Scene code runs from an overlay slot (section 3): never call a scene's
+  functions except through scene.c, and do not leave pointers to a
+  scene module's const data (strings, tables, callbacks) in a resident
+  module's state after the scene has gone.
+* Texture, sky and sprite pixels are not CPU readable here (packed,
+  section 3): pass `texture_pixels()` / `sky_pixels()` / `texture_image()`
+  / `sprite_image()` results to `plat_*` only; use `texture_avg()` /
+  `sky_horizon()` for colours. Map cells are read only through
+  `map_load()`.
 * RAM is shared by code, const data and state: prefer small tables,
   share buffers, and keep scene state small.

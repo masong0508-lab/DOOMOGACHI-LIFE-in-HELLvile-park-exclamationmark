@@ -55,6 +55,7 @@ static int       s_views;
 static uint32_t *s_view_ot;
 static int       s_view_idx;
 static int       s_first = 1;
+static int       s_open;          /* between gfx_begin and gfx_end     */
 static uint32_t  s_prims;
 static uint32_t  s_vb_last;
 static int       s_pal_phase;
@@ -149,6 +150,7 @@ void gfx_begin(void)
 {
     FrameBuf *f = &s_fb[g_cur];
     s_t_begin = timer_us();
+    s_open = 1;
     s_ptr = f->prim;
     s_end = f->prim + PRIM_BYTES;
     s_views = 0;
@@ -364,7 +366,9 @@ void *plat_save_scratch(uint32_t *cap)
 {
     FrameBuf *f = &s_fb[g_cur];
     DrawSync(0);
-    if (s_ptr != f->prim || s_up_tail != f->up_head || s_tail != f->head) {
+    /* outside a frame (the harness's commands run before gfx_begin) both
+     * halves are idle; inside one, only if nothing was drawn yet */
+    if (s_open && (s_ptr != f->prim || s_up_tail != f->up_head || s_tail != f->head)) {
         gfx2d_flush();
         termPrim((DR_TPAGE *)s_tail);
         TAG_LINK(s_up_tail, f->flush);
@@ -430,4 +434,5 @@ void gfx_end(void)
     }
     g_cur ^= 1;
     g_frame++;
+    s_open = 0;
 }

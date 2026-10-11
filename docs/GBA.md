@@ -137,27 +137,49 @@ to count logic ticks and frame rates.
 ### RAM usage (measured, `tools/memreport.py`)
 
 Every build prints this report; the linker script `ASSERT`s the limits.
-Game ROM (`build/doomogachi.gba`) with the foundation, art, roster,
-portrait, life (sim / exorcism / pet) and action (map / actors / combat /
-weld) modules linked:
+Game ROM (`build/doomogachi.gba`) with every core module linked (story,
+free play, creator, studio, concert, dreams, library, minigames, fishing
+/ cooking, Hell Breach levels):
 
 ```
-ROM   1,436,940 bytes
-IWRAM    24,852 / 32,768  (code+data 20,984, bss 3,868)  7.0 KB left for the stack
-EWRAM   246,536 / 262,144 (.data 256, .bss 246,248)      15.2 KB free
+ROM   2,428,644 bytes
+IWRAM    25,540 / 32,768  (code+data 21,672, bss 3,868)  6,460 bytes left for the 6 KB main stack
+EWRAM   254,464 / 262,144 (.data 304, .bss 254,128)      7.5 KB free
   109,524  doomo_town      core (town.o)
    32,780  doomo_map       core (map.o, the live map)
    18,432  pool            core (portrait.o)
    17,408  gba_big         platform: renderer caches / save window (bigbuf.c)
-   12,288  view_pix        core (weld_gfx.o)
+   12,288  block           core (scene_scratch.o: the shared scene scratch)
     7,084  sim_s           core (sim.o)
     6,144  doomo_actors    core (actor.o)
+    5,352  doomo_song_book core (song_book.o, saved)
     4,480  pcv             core (portrait_gfx.o)
-    4,096  img_pix         core (pet_gfx.o)
+    4,096  first_dir/queue/target_bits  core (combat_bot.o, the autopilot's BFS)
     3,040  dq              core (ui_dialog.o)
-    2,688  spr_img         core (sprites.o)
     2,560  sc_pool         core (ui_raster.o: the UI shape cache)
+    2,400  frame_bb        core (scene_scratch.o: the per-frame billboards)
 ```
+
+IWRAM: the link failed with code eating 1.2 KB into the 6 KB main stack
+once the portrait renderer's hot loops (`P_FAST`, portrait_int.h) moved to
+IWRAM. `finish_marked()` (1.3 KB, it only visits the few boundary pixels
+`scan_transitions()` marked) is THUMB in ROM again, and the boot-only
+`mixer_init()` / `gba_irq_init()` of `irq.iwram.c` stay in ROM
+(`ROM_COLD`, gba_hw.h: `.text.rom` is placed in ROM before the IWRAM
+rule): 6,460 bytes are left for the 6 KB stack (+316). The measured
+main-stack high-water mark of the harness runs is 1,744 bytes.
+
+EWRAM: the game ROM links with 7.5 KB free (the CI run before this pass
+was 33 KB over: the modules that landed since keep their per-scene state
+in the scene scratch). The remaining big items are save-persistent
+(`doomo_town`, the song book), the live map / actors, the sim and the
+portrait cache, which every screen with citizens needs; the next
+candidates, if a module needs room, are the combat autopilot's BFS
+buffers (4 KB, only used while it plans; they would have to share a
+buffer with something that is idle during combat updates), the dialogue
+queue (3 KB: 8 entries x 380 bytes, the choice options could share one
+pool) and the overworld's per-frame texture table (already cut to
+`TEX_COUNT` entries, -1 KB).
 
 How EWRAM got here:
 
@@ -171,17 +193,15 @@ How EWRAM got here:
 | colormap / tint map in ROM | 13.6 KB | `doomo_colormap` / `doomo_tintmap` are pointers to the generated `const` tables (palette.h); only the no-art fallback builds RAM copies (5.6 KB) |
 | smaller UI shape cache | 15.2 KB | `sc_pool` 1,024 -> 640 rects, 48 -> 40 entries (1.7 KB); the UI gallery / dialog fps are unchanged |
 
-The engine-test ROM (no game scenes): ROM 867,272 bytes, IWRAM 21,032
-(10.7 KB for the stack), EWRAM 173,128 (86.9 KB free).
+The engine-test ROM (no game scenes): ROM 1,146,352 bytes, IWRAM 20,800
+(10.9 KB for the stack), EWRAM 168,608 (91.3 KB free).
 
 Modules landing after the perf pass (creator, studio song book, story
-overworld, free play, library, minigames, concert) add about 43 KB of
-`.bss` to the game ROM, which no longer fits as it stands (the link
-fails with EWRAM over by ~27 KB at the time of writing). Most of that is
-per-scene state that is dead while another scene runs: put it in the
-shared `scene_scratch()` block (scene.h, 12 KB, ARCHITECTURE.md
-"Memory and performance") or in `gba_big`, rather than in a static
-each.
+overworld, free play, library, minigames, concert, fishing / cooking,
+levels) added about 75 KB of `.bss`; most of it is per-scene state that is
+dead while another scene runs, so it lives in the shared `scene_scratch()`
+block (scene.h, 12 KB, ARCHITECTURE.md "Memory and performance") or in
+`gba_big`, rather than in a static each. New modules: do the same.
 
 Measured main-stack high-water marks (the boot code paints the free IWRAM
 and `gba_stack_used()` scans it): 660 bytes in the game's boot / title /

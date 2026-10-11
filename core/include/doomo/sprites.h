@@ -32,6 +32,9 @@ enum {
 
 #define SPR_MAX_FRAMES 8
 /* frame is clamped to the sprite's frame count. */
+/* (PS1 note) the PS1 keeps sprite pixels LZ-packed: there img->pix is a
+ * virtual address (ARCHITECTURE.md, "PS1 RAM"). Hand sprite images to
+ * plat_* calls only; never read their pixels. */
 const DoomoImage *sprite_image(int spr_id, int frame);
 int  sprite_frames(int spr_id);
 void sprites_init(void);
