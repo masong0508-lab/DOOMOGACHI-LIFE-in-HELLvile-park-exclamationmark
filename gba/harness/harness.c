@@ -112,9 +112,17 @@ static void on_log(struct mLogger *logger, int category, enum mLogLevel level,
         log_append(msg);
         if (!quiet) printf("%s\n", msg);
         if (strncmp(msg, "scene: ", 7) == 0) {
-            size_t n = strcspn(msg + 7, " \r\n");
+            /* "scene: set NAME" / "scene: push NAME" / "scene: pop NAME"
+             * (scene.c): the name is the last word */
+            const char *p = msg + 7;
+            size_t n;
+            if (!strncmp(p, "set ", 4)) p += 4;
+            else if (!strncmp(p, "push ", 5)) p += 5;
+            else if (!strncmp(p, "pop ", 4)) p = NULL;    /* names the scene that left */
+            if (!p) return;
+            n = strcspn(p, " \r\n");
             if (n >= sizeof(last_scene)) n = sizeof(last_scene) - 1;
-            memcpy(last_scene, msg + 7, n);
+            memcpy(last_scene, p, n);
             last_scene[n] = 0;
         }
         if (fail_on_stub && strncmp(msg, "STUB:", 5) == 0) {
