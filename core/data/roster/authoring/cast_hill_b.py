@@ -14,7 +14,7 @@ A("ranch", "hill", "Ranch Hand|Rodeo Clown|Horse Whisperer",
   phrase="Toot toot!|Tail wags!|Okie dokie!|Yippee!", pet="45",
   cast="""
 Lasso Lou | h | Can lasso a cloud. Mostly lets them go. | species=PUPKIN
-Dusty Spurs | s | Yodels at sunrise to wake the rooster up. | species=FOXKIN
+Dusty Spurs | s | Yodels at sunrise to wake the rooster up. | species=HUMAN
 Buckaroo | t | Rodeo clown. Has never been bucked, only hugged. | job=Rodeo Clown; species=BEARKIN; marking=CLOWN; marking_color=CHERRY
 Whinny | s | Horse whisperer. The horses whisper back. | job=Horse Whisperer; species=HUMAN; skin=SKIN_TAN
 Tex Mex | h | Brings salsa to every party, invited or not. | species=FOXKIN; fur=RUST/BONE
@@ -32,11 +32,11 @@ A("circus", "hill", "Clown|Juggler|Acrobat|Ringmaster",
   phrase="Hehehe~|Wheee!|Toot toot!|Wiggle wiggle!",
   cast="""
 Giggles | s | Honks her nose to say hello. And goodbye. | species=HUMAN; skin=SKIN_FAIR; nose=CLOWN
-Juggles | h | Juggles eggs. Makes a great omelette after. | job=Juggler; species=PUPKIN
+Juggles | h | Juggles eggs. Makes a great omelette after. | species=HUMAN; job=Juggler
 Tumbleweed | t | Acrobat who cartwheels to the shop. | job=Acrobat; species=BUNNYKIN
-Ringmaster | h | Ringmaster. Introduces people like circus acts. | job=Ringmaster; species=BEARKIN; hat=TOP_HAT
+Ringmaster | h | Ringmaster. Introduces people like circus acts. | species=HUMAN; job=Ringmaster; hat=TOP_HAT
 Squeaker | s | Squeaky shoes, squeaky nose, squeaky laugh. | species=PLUSHIE
-Bozzlebee | x | Fits 20 friends in one tiny car. Somehow. | species=HUMAN; skin=SKIN_EBONY
+Bozzlebee | h | Fits 20 friends in one tiny car. Somehow. | species=HUMAN; skin=SKIN_EBONY
 """ ),
 
 A("magicians", "hill", "Stage Magician|Card Trickster|Escape Artist",
@@ -50,7 +50,7 @@ A("magicians", "hill", "Stage Magician|Card Trickster|Escape Artist",
   cast="""
 Abraca | s | Pulls rabbits out of hats. The rabbits are friends. | species=RACCOONKIN
 Prestochi | h | Makes coins vanish. Has never found them again. | species=FOXKIN
-Hocus | t | Can make any frown disappear. | job=Card Trickster; species=CATFOLK
+Hocus | t | Can make any frown disappear. | species=HUMAN; job=Card Trickster
 Houdina | s | Escape artist. Escaped a hug once. Regrets it. | job=Escape Artist; species=HUMAN; skin=SKIN_OLIVE
 Fezworth | h | Wears a fez. Says it holds all his secrets. | species=FOXKIN; hat=FEZ
 """ ),
@@ -66,9 +66,9 @@ A("fortune", "hill", "Fortune Teller|Tarot Reader|Tea Leaf Reader",
   phrase="Oh my stars!|Sparkle on!|Big mood.",
   cast="""
 Madame Moth | s | Sees your future. It has snacks in it. | species=MOTHKIN
-Crystalla | t | Owns 30 crystal balls. Uses them as paperweights. | species=CATFOLK
+Crystalla | t | Owns 30 crystal balls. Uses them as paperweights. | species=HUMAN
 Tea Leaf | h | Reads tea leaves. They usually say "more tea". | job=Tea Leaf Reader; species=HUMAN; skin=SKIN_BROWN
-Omenia | x | Predicted the rain. Predicted it again. | species=MOTHKIN; marking=THIRD_EYE
+Omenia | t | Predicted the rain. Predicted it again. | species=GHOST; marking=THIRD_EYE
 """ ),
 
 A("sweetgoths", "hill", "Goth Poet|Candle Shop Owner|Cemetery Gardener|Bat Rescuer",
@@ -121,10 +121,10 @@ A("gamers", "hill", "Game Tester|Speedrunner|Streamer|Arcade Owner",
   cast="""
 Pixel Pup | h | Beat every game in town. Then the town itself. | species=FOXKIN
 Zoomzoom | t | Speedruns breakfast in under four seconds. | job=Speedrunner; species=MOUSEKIN; movement=15
-Lagspike | s | Streamer. Her chat is mostly her grandma. | job=Streamer; species=CATFOLK
-Joystick | h | Arcade owner. Lets kids play free on rainy days. | job=Arcade Owner; species=RACCOONKIN
+Lagspike | s | Streamer. Her chat is mostly her grandma. | species=HUMAN; job=Streamer
+Joystick | h | Arcade owner. Lets kids play free on rainy days. | species=HUMAN; job=Arcade Owner
 Glitchy | i | Game tester bot. Finds every bug, keeps them as pets. | species=ROBOT; aura=GLITCH
-Respawn | x | Falls asleep mid-game. Always respawns smiling. | species=HUMAN; skin=SKIN_OLIVE
+Respawn | t | Falls asleep mid-game. Always respawns smiling. | species=HUMAN; skin=SKIN_OLIVE
 """ ),
 
 A("news", "hill", "News Anchor|Reporter|Weather Bunny|Camera Op",
@@ -139,7 +139,7 @@ A("news", "hill", "News Anchor|Reporter|Weather Bunny|Camera Op",
 Headline | s | News anchor. Reads bad news in a soothing voice. | species=FOXKIN
 Scoop Scoot | h | Reporter. Has interviewed every pigeon in town. | job=Reporter; species=OWLKIN
 Drizzle | t | Weather bunny. Is always, somehow, right. | job=Weather Bunny; species=BUNNYKIN
-Zoom Lens | h | Camera op. Films everything sideways, on purpose. | job=Camera Op; species=CATFOLK
+Zoom Lens | h | Camera op. Films everything sideways, on purpose. | species=ROBOT; job=Camera Op
 Breaking | s | Breaks news gently, with cookies. | job=Reporter; species=HUMAN; skin=SKIN_UMBER
 """ ),
 
@@ -153,10 +153,10 @@ A("bankers", "hill", "Piggy Banker|Coin Counter|Tax Helper",
   phrase="Okie dokie!|Oh my stars!|No thank you!", fear="Tax Season:3|Being Alone",
   cast="""
 Penny Oink | s | Piggy banker. Saves every penny and every smile. | skin=SKIN_PEACH
-Nickelby | h | Counts coins so fast they hum. | job=Coin Counter; species=MOUSEKIN
+Nickelby | h | Counts coins so fast they hum. | species=ROBOT; job=Coin Counter
 Ledger Lee | t | Tax helper. Makes tax season a party with snacks. | job=Tax Helper; skin=SKIN_TAN
-Dimes | h | Lends money to anyone with a good joke. | species=BEARKIN
-Mintworth | s | Keeps the vault tidy and the lollipops stocked. | skin=SKIN_BROWN
+Dimes | h | Lends money to anyone with a good joke. | species=HUMAN
+Mintworth | s | Keeps the vault tidy and the lollipops stocked. | species=HUMAN; skin=SKIN_BROWN
 """ ),
 
 A("judges", "hill", "Judge|Lawyer|Pie Judge",
@@ -202,7 +202,7 @@ A("daycare", "hill", "Daycare Worker|Babysitter|Storyteller",
   cast="""
 Miss Lulla | s | Can get any baby to nap in under a minute. | species=SHEEPKIN
 Teddy Ted | h | Babysitter. Reads stories in seven silly voices. | job=Babysitter; species=BEARKIN
-Tuck-In | t | Tucks in children, plants and grumpy old men. | species=BUNNYKIN
+Tuck-In | t | Tucks in children, plants and grumpy old men. | species=PLUSHIE
 Fleecy | s | Storyteller with a story for every scraped knee. | job=Storyteller; species=SHEEPKIN
 """ ),
 
@@ -233,7 +233,7 @@ A("balloonists", "hill", "Balloonist|Pilot|Kite Pilot",
   food="Pancakes|Coffee|Popcorn", hobby="Cloud Watching:4|Birdwatching", music="Jazz|Synthwave|Folk",
   phrase="Wheee!|Sunny side up!|Oh my stars!", fear="Thunder|Heights",
   cast="""
-Skye High | s | Balloonist. Waves at every rooftop she passes. | species=FOXKIN
+Skye High | s | Balloonist. Waves at every rooftop she passes. | species=HUMAN
 Aviator Al | h | Flies a tiny plane that is mostly a bicycle. | job=Pilot; species=MOUSEKIN
 Updraft | t | Has never come down for lunch. Eats in the air. | species=OWLKIN
 Zephyrine | s | Kite pilot. Her kite has been airborne for a year. | job=Kite Pilot; species=HUMAN; skin=SKIN_PEACH
@@ -243,7 +243,7 @@ A("sailors", "hill", "Sailor|Lighthouse Keeper|Ferry Captain",
   sp="CATFOLK:2 PUPKIN:2 BEARKIN",
   top="SWEATER:3 TSHIRT:2", bottom="PANTS:3 SHORTS", shoes="BOOTS:3 BARE",
   hat="BEANIE:3 CAP:2", acc="NONE:2 SCARF",
-  pat="STRIPES:5 SOLID", scheme="NAVY/WHITE/CHERRY WHITE/NAVY/CHERRY SKY/NAVY/WHITE",
+  pat="STRIPES:5 SOLID", scheme="WHITE/NAVY/TEAL NAVY/WHITE/CHERRY WHITE/NAVY/CHERRY SKY/NAVY/WHITE",
   pers="4-10 3-10 6-13 9-15 3-10", act="BEACH:4",
   food="Sushi|Fried Chicken|Onigiri|Takoyaki", hobby="Fishing:4|Singing", music="Sea Shanties:6",
   phrase="Toot toot!|Okie dokie!|Tail wags!|Big mood.",
@@ -252,7 +252,7 @@ Barnacle | h | Has sailed around the pond 1,000 times. | species=PUPKIN
 Lighthouse | s | Keeps the lighthouse lit with fairy lights. | job=Lighthouse Keeper; species=CATFOLK
 Skipjack | t | Ferry captain. Sings a shanty for each stop. | job=Ferry Captain; species=BEARKIN
 Salty | h | Is not salty at all. Very sweet, actually. | species=CATFOLK
-Anchovy | s | Ties knots so good they become art. | species=PUPKIN
+Anchovy | s | Ties knots so good they become art. | species=HUMAN
 """ ),
 
 A("knights", "hill", "Royal Guard|Knight|Squire|Jousting Coach",
@@ -281,8 +281,8 @@ A("royalty", "hill", "Princess|Duke of Daisies|Royal Baker|Court Jester",
   phrase="Oh my stars!|Sparkle on!|Smooch!",
   cast="""
 Pomelina | s | Princess of HaHaland. Rules mostly with stickers. | species=BUNNYKIN; hat=TIARA
-Duke Daisy | h | Duke of Daisies. Owns zero castles, many daisies. | job=Duke of Daisies; species=FOXKIN; hat=CROWN
-Lady Tiara | t | Wears her tiara to the gym. Lifts. | species=CATFOLK
+Duke Daisy | h | Duke of Daisies. Owns zero castles, many daisies. | species=HUMAN; job=Duke of Daisies; hat=CROWN
+Lady Tiara | s | Wears her tiara to the gym. Lifts. | species=CATFOLK
 Jestina | s | Court jester. Her jokes are 90% puns by weight. | job=Court Jester; species=HUMAN; skin=SKIN_OLIVE; hat=PARTY
 Crumbelina | s | Royal baker. Makes crowns from shortbread. | job=Royal Baker; species=CHERUB; skin=SKIN_PEACH
 """ ),
@@ -301,7 +301,7 @@ Cupidoo | h | Shoots heart-shaped suction darts. Mostly misses. |
 Valentina | s | Matchmaker. Has made 300 couples and 2 enemies. | job=Matchmaker
 Smoochy | t | Delivers love letters. Blushes reading the address. |
 Amorette | s | Writes love letters for the shy. Signs them "you". | job=Love Letter Writer
-Lovebird | x | Owlkin cupid. Hoots when love is near. | species=OWLKIN; wings=ANGEL; halo=STARS
+Lovebird | s | Owlkin cupid. Hoots when love is near. | species=OWLKIN; wings=ANGEL; halo=STARS
 """ ),
 
 A("cloudshepherds", "hill", "Cloud Shepherd|Weather Watcher|Rainbow Painter",
@@ -445,7 +445,7 @@ Hashtag | s | Posts a selfie with every snack. Then eats it. | species=CATFOLK
 Unboxie | t | Unboxes gifts on stream. Keeps the boxes. | job=Unboxing Star; species=FOXKIN
 Snaxson | h | Snack reviewer. Rated 9,000 snacks a ten. | job=Snack Reviewer; species=BUNNYKIN
 Trendsetter | s | Wore socks with sandals. Now everybody does. | species=HUMAN; skin=SKIN_EBONY
-Likey | x | Likes everything. Literally. Says "like" a lot. | species=CATFOLK
+Likey | h | Likes everything. Literally. Says "like" a lot. | species=CATFOLK
 """ ),
 
 A("comedians", "hill", "Comedian|Pun Writer|Mime",
@@ -476,7 +476,7 @@ A("theatre", "hill", "Actor|Stagehand|Playwright|Costume Maker",
 Drama Llama | s | Gasps at everything. Even good news. | species=CATFOLK
 Encore | h | Takes a bow after ordering lunch. | species=FOXKIN
 Backstage | t | Stagehand. Can move a castle set in eight seconds. | job=Stagehand; species=MOUSEKIN
-Soliloquy | s | Playwright. Her plays all end with a group hug. | job=Playwright; species=OWLKIN
+Soliloquy | s | Playwright. Her plays all end with a group hug. | species=GHOST; job=Playwright
 Sequin | h | Costume maker. Has sewn 10,000 sequins this week. | job=Costume Maker; species=HUMAN; skin=SKIN_BROWN
 """ ),
 
@@ -489,10 +489,10 @@ A("puppeteers", "hill", "Puppeteer|Sock Puppet Maker|Shadow Puppeteer",
   food="Popcorn|Cupcakes|Gumdrops", hobby="Plush Making|Cosplay|Origami", music="Folk|Bubblegum Pop",
   phrase="Wiggle wiggle!|Hehehe~|Boop!",
   cast="""
-Sockrates | h | Sock puppet philosopher. The sock does the talking. | job=Sock Puppet Maker; species=MOUSEKIN
+Sockrates | h | Sock puppet philosopher. The sock does the talking. | species=HUMAN; job=Sock Puppet Maker
 Marionetta | s | Puppeteer. Her strings never tangle. Her hair does. | species=HUMAN; skin=SKIN_FAIR
 Shadowpaw | t | Makes shadow bunnies on walls at bedtime. | job=Shadow Puppeteer; species=BEARKIN
-Mr. Mitten | i | A puppet that walked off its hand and got a job. | species=PLUSHIE
+Mitts | i | A puppet that walked off its hand and got a job. | species=PLUSHIE
 """ ),
 
 A("hugtherapy", "hill", "Hug Therapist|Comfort Plush|Cuddle Coach",
@@ -507,7 +507,7 @@ A("hugtherapy", "hill", "Hug Therapist|Comfort Plush|Cuddle Coach",
 Snugglesby | h | Hug therapist. Rated five stars by 400 hugs. |
 Pillowpuff | s | So soft that sad people fall asleep on her. |
 Huggins | t | Cuddle coach. Teaches the perfect squeeze. | job=Cuddle Coach
-Patchwork | x | Has been mended 99 times. Proud of every stitch. | marking=PATCHES
+Patchwork | t | Has been mended 99 times. Proud of every stitch. | marking=PATCHES
 Cushion | s | Comfort plush at the hospital. Never leaves a bed. | job=Comfort Plush; species=BEARKIN
 """ ),
 
@@ -570,9 +570,9 @@ A("buskers", "hill", "Busker|Bagpiper|Accordionist|Ukulele Player",
   phrase="Toot toot!|Wiggle wiggle!|Yippee!",
   cast="""
 Bagpipe Bo | h | Bagpiper. Neighbours wear earmuffs with love. | job=Bagpiper; species=BEARKIN; bottom=KILT
-Squeezebox | s | Accordionist. Plays polkas for passing ducks. | job=Accordionist; species=FOXKIN
+Squeezebox | s | Accordionist. Plays polkas for passing ducks. | species=HUMAN; job=Accordionist
 Uke Ukulele | t | Knows four chords and 4,000 songs. | job=Ukulele Player; species=RACCOONKIN
-Harmonica | x | Busks for buttons. Has the best button collection. | species=HUMAN; skin=SKIN_UMBER
+Harmonica | t | Busks for buttons. Has the best button collection. | species=HUMAN; skin=SKIN_UMBER
 Strummy | s | Plays under the big oak every afternoon. | species=CATFOLK
 """ ),
 
@@ -587,9 +587,9 @@ A("cheer", "hill", "Cheer Captain|Cheerleader|Mascot",
   cast="""
 Rah Rah | s | Cheer captain. Cheers for people doing chores. | job=Cheer Captain; species=BUNNYKIN
 Pom Pom | t | Shakes pom-poms even when sitting still. | species=PUPKIN
-Go Team Gus | h | Spells out every word with his arms. G-O. | species=FOXKIN
-Hooray Hana | s | Can do 30 backflips. Prefers 3 and a nap. | species=CATFOLK
-Mascotty | x | The town mascot in a giant head. Nobody knows who. | job=Mascot; species=BUNNYKIN; hat=BUNNY_EARS
+Go Team Gus | h | Spells out every word with his arms. G-O. | species=HUMAN
+Hooray Hana | s | Can do 30 backflips. Prefers 3 and a nap. | species=HUMAN
+Mascotty | s | The town mascot in a giant head. Nobody knows who. | job=Mascot; species=BUNNYKIN; hat=BUNNY_EARS
 """ ),
 
 A("nappers", "hill", "Professional Napper|Hammock Tester|Pillow Fluffer",
@@ -618,7 +618,7 @@ A("picnic", "hill", "Picnic Planner|Blanket Folder|Sandwich Artist",
   food="Onigiri|Salad|Pickles|Carrot Cake", hobby="Cloud Watching|Gardening|Board Games", music="Folk|City Pop",
   phrase="Sunny side up!|Yummy yummy!|Let's be friends!",
   cast="""
-Basketina | s | Picnic planner. Packs exactly enough for everyone. | species=BUNNYKIN
+Basketina | s | Picnic planner. Packs exactly enough for everyone. | species=HUMAN
 Gingham | h | Folds blankets into perfect squares. And swans. | job=Blanket Folder; species=MOUSEKIN
 Sandwichy | t | Sandwich artist. Cuts every crust into a heart. | job=Sandwich Artist; species=BEARKIN
 Lemonade | s | Sells lemonade for a smile. Takes no coins. | species=PUPKIN
@@ -668,10 +668,10 @@ A("cosplayers", "hill", "Cosplayer|Prop Maker|Con Organizer",
   phrase="Nyaa~|Sparkle on!|Slay!",
   cast="""
 Kawaii Kat | s | Wears cat ears over her cat ears. Double cat. | species=CATFOLK; hat=CAT_EARS
-Mecha Mo | t | Built a robot suit from cereal boxes. It flies. | job=Prop Maker; top=ARMOR
+Mecha Mo | t | Built a robot suit from cereal boxes. It flies. | species=HUMAN; job=Prop Maker; top=ARMOR
 Bunbun | s | Bunny-ear cosplayer. Hops to stay in character. | hat=BUNNY_EARS; skin=SKIN_PORCELAIN
 Drakey | h | Dresses as a dragon with a lizard tail. Roars nicely. | tail=LIZARD; horns=SPIRAL; skin=SKIN_TAN
-Con Queen | x | Con organizer. Runs a con for every hobby. | job=Con Organizer; skin=SKIN_OLIVE
+Con Queen | s | Con organizer. Runs a con for every hobby. | job=Con Organizer; skin=SKIN_OLIVE
 """ ),
 
 A("halorepair", "hill", "Halo Repairer|Wing Mender|Star Polisher",
@@ -683,10 +683,10 @@ A("halorepair", "hill", "Halo Repairer|Wing Mender|Star Polisher",
   food="Angel Cake:3|Honey Toast", hobby="Welding|Origami|Cloud Watching", music="Hymns|Classical|Lo-fi Beats",
   phrase="Sparkle on!|Oh my stars!|Okie dokie!",
   cast="""
-Haloise | s | Fixes bent halos. Polishes them till they ding. | job=Halo Repairer
+Haloise | s | Fixes bent halos. Polishes them till they ding. | species=CHERUB; job=Halo Repairer
 Feathers | h | Wing mender. Has a feather for every occasion. | job=Wing Mender
 Starbright | t | Star polisher. Climbs up at night with a cloth. | job=Star Polisher; trait=NIGHT_OWL
-Gleam | x | Polishes the church bells and the sunbeams. | species=MOTHKIN; wings=BUTTERFLY
+Gleam | t | Polishes the church bells and the sunbeams. | species=MOTHKIN; wings=BUTTERFLY
 """ ),
 
 A("brimstonebites", "hill", "Line Cook|Head Chef|Dishwasher|Waiter",
@@ -715,7 +715,7 @@ A("wallwatch", "hill", "Wall Watcher|Gatekeeper|Border Baker",
   phrase="Okie dokie!|Hoo hoo!|Tail wags!", fear="Ghosts|The Dark|Holy Water",
   cast="""
 Lookout Lou | h | Watches the Wall. Waves at Hellvile kids over it. | species=PUPKIN
-Gatekeep | s | Gatekeeper. Has never opened the gate. Polishes it. | job=Gatekeeper; species=BEARKIN
+Gatekeep | s | Gatekeeper. Has never opened the gate. Polishes it. | species=ROBOT; job=Gatekeeper
 Peekster | t | Peeks over the Wall with a periscope. Finds it rude. | species=OWLKIN
 Bordercake | s | Throws cupcakes over the Wall. Some come back. | job=Border Baker; species=PUPKIN
 """ ),
@@ -731,7 +731,7 @@ A("bathhouse", "hill", "Bath House Keeper|Towel Folder|Soap Maker",
   cast="""
 Steamy | s | Runs the bath house. Every tub has a rubber duck. | job=Bath House Keeper; species=FROGLING
 Towelette | t | Folds towels into animals. Has a towel zoo. | job=Towel Folder; species=SHEEPKIN
-Lather | h | Soap maker. His soaps smell like rainbows. | job=Soap Maker; species=CATFOLK
+Lather | h | Soap maker. His soaps smell like rainbows. | species=HUMAN; job=Soap Maker
 Bubbletub | s | Takes three baths a day. Reviews each one. | species=BUNNYKIN
 """ ),
 
@@ -744,8 +744,8 @@ A("mascots", "hill", "Town Mascot|Parade Float Driver|Balloon Twister",
   food="Cotton Candy|Popcorn|Ice Cream", hobby="Dancing|Bubble Blowing|Pranks", music="Bubblegum Pop|Disco",
   phrase="Yippee!|Wheee!|Boop!",
   cast="""
-Hugsley | i | Town mascot. Gets hugged 1,000 times a day. | job=Town Mascot
-Twisty | s | Balloon twister. Can make a balloon you. | job=Balloon Twister
+Hugsley | i | Town mascot. Gets hugged 1,000 times a day. | species=PLUSHIE; job=Town Mascot
+Twisty | s | Balloon twister. Can make a balloon you. | species=PLUSHIE; job=Balloon Twister
 Floaty | h | Drives the parade float. It is very slow. | job=Parade Float Driver
 Jumbo | t | So big and soft they double as a bouncy castle. | species=BEARKIN; build=15; body=ROUND
 """ ),
@@ -761,7 +761,7 @@ A("trains", "hill", "Train Conductor|Ticket Puncher|Station Master",
   cast="""
 Choo Choo | h | Conductor of the park train. Toots on the hour. | species=PUPKIN
 Punchy | s | Ticket puncher. Punches heart-shaped holes. | job=Ticket Puncher; species=MOUSEKIN
-Steam Stan | t | Station master. Knows every timetable by heart. | job=Station Master; species=BEARKIN
+Steam Stan | t | Station master. Knows every timetable by heart. | species=HUMAN; job=Station Master
 Caboose | i | Train bot. Is the last carriage, and proud of it. | species=ROBOT
 Waitabit | x | Always waiting for a train that never comes. Happy. | species=HUMAN; skin=SKIN_PEACH
 """ ),
@@ -791,7 +791,7 @@ A("carnival", "hill", "Carnival Game Host|Ferris Wheel Op|Fortune Machine",
   phrase="Toot toot!|Yippee!|Hehehe~",
   cast="""
 Ringtoss | h | Carnival host. Everybody wins a goldfish. | species=RACCOONKIN
-Ferris | s | Ferris wheel op. Stops at the top for kisses. | job=Ferris Wheel Op; species=FOXKIN
+Ferris | s | Ferris wheel op. Stops at the top for kisses. | species=HUMAN; job=Ferris Wheel Op
 Fortunabot | i | Fortune machine bot. Every fortune says "hug". | job=Fortune Machine; species=ROBOT
 Whackamole | t | Plays whack-a-mole. Apologises to every mole. | species=PUPKIN
 """ ),
@@ -805,7 +805,7 @@ A("weddings", "hill", "Wedding Planner|Cake Architect|Ring Bearer",
   food="Angel Cake:3|Macarons|Cupcakes", hobby="Dancing|Painting|Origami", music="Classical|Bubblegum Pop|Jazz",
   phrase="Smooch!|Oh my stars!|Hug o'clock!",
   cast="""
-Bridget | s | Wedding planner. Has cried at 300 weddings. | species=CATFOLK
+Bridget | s | Wedding planner. Has cried at 300 weddings. | species=HUMAN
 Tiers | h | Cake architect. Built a cake with an elevator. | job=Cake Architect; species=SHEEPKIN
 Ringlet | t | Ring bearer for hire. Has never lost a ring. | job=Ring Bearer; species=BUNNYKIN; trait=KID
 Confetti | s | Throws confetti at every couple she sees. | species=HUMAN; skin=SKIN_FAIR
@@ -823,7 +823,7 @@ A("bedtime", "hill", "Bedtime Reader|Lullaby Singer|Dream Catcher",
 Story Owl | h | Reads bedtime stories to the whole street at once. | species=OWLKIN
 Lullabelle | s | Sings lullabies that make thunderstorms nap. | job=Lullaby Singer; species=SHEEPKIN
 Dreamweave | t | Catches bad dreams in a net. Swaps them for good. | job=Dream Catcher; species=MOTHKIN
-Nightnight | h | Says goodnight to every star. It takes hours. | species=BEARKIN
+Nightnight | h | Says goodnight to every star. It takes hours. | species=HUMAN
 """ ),
 
 A("lostfound", "hill", "Lost and Found Clerk|Sock Matcher|Key Keeper",

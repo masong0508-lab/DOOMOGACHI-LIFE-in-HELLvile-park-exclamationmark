@@ -60,26 +60,41 @@ void vid_shade(int x0, int y0, int x1, int y1, const uint8_t *cm)
     }
 }
 
-/* one glyph row: bit c of m = pixel (x + c), x may be odd, all on screen */
-static inline void glyph_row(uint16_t *row, int x, uint32_t m, uint32_t c2, uint32_t color)
+/* the font, transposed: rows[ch][r] bit c = pixel (c, r) (video.c builds
+ * it at init; IWRAM: read 8 times per glyph) */
+uint8_t gba_font_rows[FONT_LAST - FONT_FIRST + 1][8];
+
+/* nibble -> byte mask: bit i set = byte i of a word */
+static const uint32_t nibmask[16] = {
+    0x00000000, 0x000000FF, 0x0000FF00, 0x0000FFFF,
+    0x00FF0000, 0x00FF00FF, 0x00FFFF00, 0x00FFFFFF,
+    0xFF000000, 0xFF0000FF, 0xFF00FF00, 0xFF00FFFF,
+    0xFFFF0000, 0xFFFF00FF, 0xFFFFFF00, 0xFFFFFFFF,
+};
+
+/* a whole glyph on screen at (x, y): each row's 5 pixels land in at most
+ * two aligned words, written with a word read-modify-write (VRAM takes
+ * 32-bit accesses) */
+static inline void glyph(const uint8_t *g, int x, int y, uint32_t c4)
 {
-    uint16_t *p = row + (x >> 1);
-    m <<= (x & 1);
-    while (m) {
-        switch (m & 3) {
-        case 3: *p = (uint16_t)c2; break;
-        case 1: put_lo(p, color); break;
-        case 2: put_hi(p, color); break;
-        default: break;
-        }
-        m >>= 2;
-        p++;
+    typedef volatile uint32_t vu32_t;
+    vu32_t *w = (vu32_t *)((uint8_t *)gba_back + y * SCREEN_W + (x & ~3));
+    const int sh = x & 3;
+    int r;
+    for (r = 0; r < 8; r++, w += SCREEN_W / 4) {
+        uint32_t m = (uint32_t)g[r] << sh, k;
+        if (!m) continue;
+        k = nibmask[m & 15];
+        if (k == 0xFFFFFFFFu) w[0] = c4;
+        else if (k) w[0] = (w[0] & ~k) | (c4 & k);
+        k = nibmask[m >> 4];
+        if (k) w[1] = (w[1] & ~k) | (c4 & k);
     }
 }
 
 void vid_text(int x, int y, const char *s, uint32_t color)
 {
-    const uint32_t c2 = color | (color << 8);
+    const uint32_t c4 = color * 0x01010101u;
     int cx = x, cy = y;
     for (; *s; s++) {
         unsigned ch = (unsigned char)*s;
@@ -89,9 +104,7 @@ void vid_text(int x, int y, const char *s, uint32_t color)
             const uint8_t *g = gba_font_rows[ch - FONT_FIRST];
             int r;
             if (cx >= 0 && cx + 5 <= SCREEN_W && cy >= 0 && cy + 8 <= SCREEN_H) {
-                uint16_t *row = gba_back + cy * LINE;
-                for (r = 0; r < 8; r++, row += LINE)
-                    if (g[r]) glyph_row(row, cx, g[r], c2, color);
+                glyph(g, cx, cy, c4);
             } else {
                 for (r = 0; r < 8; r++) {
                     int py = cy + r, c;

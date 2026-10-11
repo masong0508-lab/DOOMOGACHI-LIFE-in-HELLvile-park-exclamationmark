@@ -98,7 +98,14 @@ def bgr555_to_rgb(data, w, h):
 
 def convert_shot(raw_path, txt_path, png_path):
     data = open(raw_path, "rb").read()
-    w, h = [int(x) for x in open(txt_path).read().split()[:2]]
+    info = open(txt_path).read().split()
+    if info and info[0] == "vram":          # lockstep shot: crop the frame
+        x, y, w, h = [int(v) for v in info[1:5]]
+        rows = b"".join(data[((y + r) * 1024 + x) * 2:((y + r) * 1024 + x + w) * 2]
+                        for r in range(h))
+        write_png(png_path, w, h, bgr555_to_rgb(rows, w, h))
+        return True
+    w, h = [int(x) for x in info[:2]]
     if w <= 0 or h <= 0:
         return False
     if len(data) >= w * h * 3 and len(data) < w * h * 2 * 1.4:
@@ -149,12 +156,13 @@ def hcmd(name, iarg=0, text=""):
     return "hcmd %s %d %s" % (name, iarg, text.encode("latin-1").hex())
 
 
-def compile_script(lines, boot_frames=2):
-    """native-runner script -> low-level harness commands. The script starts
-    once the game's main loop is running (the PS1 boot shows a splash while
-    the BIOS reads the memory cards), so timings match the native runner.
+def compile_script(lines, lockstep=True):
+    """native-runner script -> low-level harness commands. With lockstep
+    (builds with the g_hcmd mailbox) frame 0 is the top of the game loop
+    right after doomo_init(), exactly like the native runner; without it
+    the script starts at loop frame 2 (after the memory card boot splash).
     Returns (commands, warnings, expected TTY texts)."""
-    cmds, warnings, expect = ["waitframe %d" % boot_frames], [], []
+    cmds, warnings, expect = ([] if lockstep else ["waitframe 2"]), [], []
     for ln, line in enumerate(lines, 1):
         parts = split_words(line)
         if not parts:
@@ -201,9 +209,8 @@ def compile_script(lines, boot_frames=2):
         elif op in ("save", "load", "expect-save"):
             cmds.append(hcmd(op, num(1, 1)))
         elif op == "type":
-            if len(arg) > 63:
-                raise SystemExit("line %d: type text longer than 63 chars" % ln)
-            cmds.append(hcmd(op, 0, arg))
+            for ch in arg:          # native: feed one char, run one frame
+                cmds += [hcmd(op, 0, ch), "waitf 1"]
         elif op == "log":
             cmds.append(hcmd(op, 0, " ".join(parts[1:])[:63]))
         elif op == "no-stubs":
@@ -252,17 +259,17 @@ def main():
     for f in os.listdir(out):
         if f.endswith((".raw", ".png", ".vram", ".txt", ".log")):
             os.remove(os.path.join(out, f))
-    cmds, warnings, script_expect = compile_script(open(a.script).read().splitlines())
+    image = os.path.abspath(a.exe or a.cue)
+    map_path = a.map or os.path.join(os.path.dirname(image), "doomogachi.map")
+    frame_addr = find_symbol(map_path, "g_loop_frames") or find_symbol(map_path, "g_frame")
+    hcmd_addr = find_symbol(map_path, "g_hcmd")
+    cmds, warnings, script_expect = compile_script(open(a.script).read().splitlines(),
+                                                   lockstep=hcmd_addr != 0)
     for w in warnings:
         print("run.py: warning:", w)
     cmd_path = os.path.join(out, "harness_cmds.lst")
     with open(cmd_path, "w") as f:
         f.write("\n".join(cmds) + "\n")
-
-    image = os.path.abspath(a.exe or a.cue)
-    map_path = a.map or os.path.join(os.path.dirname(image), "doomogachi.map")
-    frame_addr = find_symbol(map_path, "g_loop_frames") or find_symbol(map_path, "g_frame")
-    hcmd_addr = find_symbol(map_path, "g_hcmd")
     card1 = os.path.abspath(a.card or os.path.join(out, "card1.mcd"))
     card2 = os.path.join(out, "card2.mcd")
     if not a.keep_card and os.path.exists(card1) and not a.card:
@@ -288,8 +295,9 @@ def main():
 
     shots = 0
     for f in sorted(os.listdir(out)):
-        if f.endswith(".raw"):
-            base = f[:-4]
+        if f.endswith(".raw") or (f.endswith(".vram") and
+                                  os.path.exists(os.path.join(out, f[:-5] + ".txt"))):
+            base = f[:f.rindex(".")]
             txt = os.path.join(out, base + ".txt")
             if os.path.exists(txt) and convert_shot(os.path.join(out, f), txt,
                                                     os.path.join(out, base + ".png")):

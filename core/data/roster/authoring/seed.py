@@ -24,6 +24,8 @@ WARNING: --write regenerates the .txt files from scratch, so hand edits made
 directly to them are lost. Once a roster ships, edit the .txt files instead.
 """
 import os
+import sys
+sys.dont_write_bytecode = True
 import re
 import sys
 
@@ -192,7 +194,8 @@ DEFAULTS = {
         head="ROUND:12 MOCHI:8 OVAL:5 BEAN:4 HEART:3 PEAR:2 STAR:1",
         eyes="ROUND:14 ANIME:12 DOT:10 HAPPY_ARC:8 SPARKLE:8 LASHES:8 WIDE:6 SLEEPY:4 "
              "STAR:3 HEART:3 DROOPY:4 CAT:3",
-        eye_col="HONEY LEMON SKY MINT CHOCOLATE JET COBALT FOREST LAVENDER ROSE TEAL CARAMEL",
+        eye_col="HONEY:3 LEMON:2 SKY:3 MINT:2 CHOCOLATE:3 JET:2 COBALT:2 FOREST:2 LAVENDER:2 ROSE:2 "
+                "TEAL:2 CARAMEL:2 BUBBLEGUM PEACH NAVY GRAPE CHARTREUSE TANGERINE CYAN LIME",
         brows="NONE:10 THIN:10 DOTS:6 RAISED:4 WORRIED:3 ARCHED:3 THICK:2",
         nose="DOT:8 BUTTON:8 ROUND:5 POINTY:3 NONE:2 WIDE:2",
         mouth="SMILE:14 OPEN:6 GRIN:5 O:4 BIG_GRIN:4 POUT:3 TONGUE:3 WAVY:2 LIPSTICK:2",
@@ -200,11 +203,11 @@ DEFAULTS = {
         hair="SHORT:10 MESSY:8 BOB:8 CURLY:6 PIGTAILS:5 TWINTAILS:5 BUN:5 PONYTAIL:6 ODANGO:3 "
              "WAVY:5 HIME:3 LONG:6 BOWL:3 AFRO:3 BRAIDS:3 CROWN_BRAID:2 POMPADOUR:2 BUZZ:2 LOCS:3",
         hair_col="CHOCOLATE:3 CARAMEL:3 HONEY:3 JET:2 LEMON:2 RUST:2 SILVER WHITE CHARCOAL "
-                 "BUBBLEGUM:2 LAVENDER:2 SKY:2 MINT:2 PEACH:2 ROSE:2 FUR:6 FUR2:2",
+                 "BUBBLEGUM:2 LAVENDER:2 SKY:2 MINT:2 PEACH:2 ROSE:2 COBALT NAVY TEAL FUR:6 FUR2:2",
         hl="NONE:78 BUBBLEGUM:3 LAVENDER:3 SKY:3 MINT:3 PEACH:3 LEMON:3 ROSE:2 WHITE:2",
         fhair="NONE:96 STUBBLE MUSTACHE GOATEE FULL_BEARD",
         horns="NONE", wings="NONE", halo="NONE",
-        mark="FUR:75 NONE:15 CHEEK_HEARTS:4 STAR_FRECKLES:4 SPOTS:2",
+        mark="FUR:75 NONE:15 CHEEK_HEARTS:4 STAR_FRECKLES:4 SPOTS:2 STRIPES:2",
         cheeks="BLUSH:75 FRECKLES:15 DIMPLES:15 SPARKLES:8 BEAUTY_MARK:4",
         top="TSHIRT:10 HOODIE:8 SWEATER:8 DRESS:7 OVERALLS:6 SWEATER_VEST:4 PAJAMAS:2 "
             "KIMONO:2 CROP_TOP:3 TANK:2",
@@ -242,7 +245,8 @@ DEFAULTS = {
         head="ROUND:6 OVAL:6 TRIANGLE:4 SQUARE:3 DIAMOND:3 BEAN:3 MOCHI:3 PEAR:2",
         eyes="ANGRY:10 SLEEPY:8 GOAT:7 DEMON_SLIT:8 SQUINT:7 GLOW:6 ROUND:6 ANIME:5 CAT:5 "
              "LASHES:4 DROOPY:4 HOLLOW:2 VOID:2 X:1 SPIRAL:1 CROSS:1",
-        eye_col="CHERRY HELLFIRE LEMON SLIME VAPE_PURPLE MAGENTA ECTOPLASM BLOOD JET",
+        eye_col="CHERRY:3 HELLFIRE:3 LEMON:3 SLIME:2 VAPE_PURPLE:2 MAGENTA:2 ECTOPLASM:2 BLOOD:2 JET:2 "
+                "RUST BONE SILVER WHITE CHARCOAL GRAPE TANGERINE",
         brows="ANGRY:10 THICK:6 ARCHED:6 NONE:5 SCARRED:4 UNIBROW:3 FLAT:4 BUSHY:3",
         nose="DOT:6 POINTY:6 HOOK:4 BUTTON:4 NONE:4 LONG:2 WIDE:2 PIG:2 ROUND:2",
         mouth="SMIRK:10 TEETH:6 SHARK:6 FANGY:8 GRIN:6 FLAT:6 FROWN:4 TONGUE:4 STITCHED:3 "
@@ -300,8 +304,8 @@ ARCH_KEYS = set(DEFAULTS["hill"]) | {
 
 # record keys a cast line may override directly
 RECORD_KEYS = set(SCHEMA.all_keys())
-REL_OPTS = {"fam", "wed", "date", "bff", "friend", "rival", "nem", "ex", "crush"}
-OTHER_OPTS = {"id", "job", "trait", "scheme", "fur", "skin_pool", "flag"}
+REL_OPTS = {"fam", "wed", "date", "bff", "friend", "rival", "nem", "ex", "crush", "sib"}
+OTHER_OPTS = {"id", "job", "trait", "scheme", "fur", "skin_pool", "flag", "bio_pronoun_ok"}
 OPT_ALIAS = {"acc": "accessory", "mark": "marking", "fhair": "facial_hair", "pat": "pattern",
              "hl": "highlight", "acc_color": "accessory_color", "mark_color": "marking_color"}
 
@@ -382,6 +386,12 @@ def make_citizen(cl, idx_in_arch):
     v["height"] = rng.between(lo, hi)
     lo, hi = rng_range(vocab(arch, "build"))
     v["build"] = rng.between(lo, hi)
+    if v["body"] in ("NOODLE", "LANKY") or sp in ("SKELETON",):
+        v["build"] = rng.between(0, 5)
+    elif v["body"] in ("ROUND", "TOP_HEAVY", "PEAR", "BUFF"):
+        v["build"] = min(15, v["build"] + rng.between(1, 4))
+    if v["body"] == "LANKY" and not kid:
+        v["height"] = min(15, v["height"] + rng.between(1, 3))
     if sp == "SKELETON":
         v["head"] = "SKULL"
     elif sp == "CACOBLOB":
@@ -497,11 +507,18 @@ def make_citizen(cl, idx_in_arch):
             horns = rng.choice(["DEVIL", "RAM", "ONI", "GOAT", "BROKEN"] if hell
                                else ["UNICORN", "ANTLERS", "NUBS", "SPIRAL"])
     v["horns"] = horns
+    hornless = horns == "NONE"
     v["horn_color"] = pick(rng, arch, "horn_col") if arch.get("horn_col") else \
         rng.choice(["BONE", "JET", "CHERRY", "CHARCOAL", "BLOOD", "GRAPE"] if hell else
                    ["BONE", "HONEY", "LAVENDER", "BUBBLEGUM", "WHITE", "LEMON"])
     lo, hi = rng_range(arch.get("horn_size") or "4-12")
     v["horn_size"] = rng.between(lo, hi)
+    if not hornless and not arch.get("horn_col"):
+        v["horn_color"] = rng.choice(
+            ["BONE", "BONE", "JET", "CHERRY", "CHARCOAL", "BLOOD", "GRAPE", "HELLFIRE", "RUST",
+             "CHOCOLATE", "SILVER"] if hell else
+            ["BONE", "BONE", "HONEY", "LAVENDER", "BUBBLEGUM", "WHITE", "LEMON", "MINT", "SKY",
+             "PEACH", "ROSE", "CARAMEL"])
     if sp in TAILS:
         v["tail"] = TAILS[sp]
     elif arch.get("tail"):
@@ -704,6 +721,8 @@ def make_citizen(cl, idx_in_arch):
     v["corruption"] = max(0, min(96, corr))
     if "SOFTIE" in traits:
         v["happy"] = max(v["happy"], rng.between(60, 80))
+        if "BLUSH" not in v["cheeks"] and rng.chance(60):
+            v["cheeks"] = v["cheeks"] + ["BLUSH"]   # a subtle tell: softies blush
 
     # ---- identity ------------------------------------------------------------------
     v["pronoun"] = cl.pronoun
@@ -719,7 +738,7 @@ def make_citizen(cl, idx_in_arch):
     v["flags"] = flags
     v["traits"] = sorted(traits, key=rb.TRAIT_NAMES.index)
     v["activity"] = pick(rng, arch, "act")
-    v["job"] = arch["jobs"][idx_in_arch % len(arch["jobs"])]
+    v["job"] = arch["jobs"][0]          # the archetype's main job unless job= says otherwise
     v["bio"] = cl.bio
 
     # ---- hand-varied overrides ------------------------------------------------------
@@ -741,6 +760,8 @@ def make_citizen(cl, idx_in_arch):
     if "story" in v and "STORY_NPC" not in v["flags"]:
         v["flags"] = v["flags"] + ["STORY_NPC"]
     v["mood"] = "HAPPY" if v["happy"] >= 75 else "OK"
+    if v["horns"] == "NONE" and "horn_color" not in o:
+        v["horn_color"] = v["hair_color"]
     if v["highlight"] == v["hair_color"]:
         v["highlight"] = "NONE"
     return v
@@ -834,6 +855,9 @@ def build_edges(cits, by_name, arch_members, rng):
             for y in range(x + 1, len(m)):
                 g.add(m[x], m[y], "FAMILY", "families")
     # 3. the rest of the hand-written links
+    for i in sorted(cits):
+        for j in names(i, "sib"):
+            g.add(i, j, "FAMILY", "families")
     for i in sorted(cits):
         for j in names(i, "bff"):
             g.add(i, j, "BEST_FRIEND", "friends")
@@ -1039,6 +1063,115 @@ def load_archetypes():
     return archs
 
 
+HE_WORDS = re.compile(r"\b(he|him|his|himself)\b", re.I)
+SHE_WORDS = re.compile(r"\b(she|her|hers|herself)\b", re.I)
+XE_WORDS = re.compile(r"\b(xe|xem|xyr|xemself)\b", re.I)
+PRONOUN_OK = set()   # "Name" whose bio deliberately talks about someone else
+
+
+FEMALE_TITLES = {"Miss", "Ms.", "Mrs.", "Madame", "Mme.", "Lady", "Dame", "Sr.", "Sister", "Ma",
+                 "Mama", "Mother", "Granny", "Gran", "Nana", "Oma", "Auntie", "Princess", "Duchess",
+                 "Countess", "Baroness", "Queen", "Viscountess", "Mistress"}
+MALE_TITLES = {"Mr.", "Sir", "Lord", "Duke", "Pa", "Papa", "Gramps", "Grampy", "Grandpa", "Pops",
+               "Brother", "Bro.", "King", "Baron", "Marquis", "Earl", "Father", "Uncle"}
+
+
+def title_check(cl, v):
+    words = cl.name.split()
+    out = []
+    if any(w in FEMALE_TITLES for w in words) and v["pronoun"] != "SHE":
+        out.append("%s: %s has a she/her title but is %s" % (cl.src, cl.name, v["pronoun"]))
+    if any(w in MALE_TITLES for w in words) and v["pronoun"] != "HE":
+        out.append("%s: %s has a he/him title but is %s" % (cl.src, cl.name, v["pronoun"]))
+    return out
+
+
+def pronoun_check(cl, v):
+    """Bio pronouns must match the citizen's own pronoun (bios are written
+    about the citizen)."""
+    if cl.name in PRONOUN_OK or cl.opts.get("bio_pronoun_ok"):
+        return []
+    out = []
+    for rx, want in ((HE_WORDS, "HE"), (SHE_WORDS, "SHE"), (XE_WORDS, "XE")):
+        if rx.search(cl.bio) and v["pronoun"] != want:
+            out.append("%s: %s is %s but the bio says %r" % (cl.src, cl.name, v["pronoun"], cl.bio))
+    return out
+
+
+def auto_families(archs, rng):
+    """Give households to people who do not have one yet:
+    * a kid gets one or two grown-ups of their own species (two grown-ups
+      who can love each other are married, otherwise they are exes who
+      co-parent);
+    * an elder moves in with a grown-up of their own species (grandparent);
+    * same-species coworkers are now and then siblings."""
+    tagged = set()
+    for a in archs:
+        for cl in a["cast"]:
+            if cl.opts.get("fam") or cl.opts.get("wed"):
+                tagged.add(cl.name)
+    n = 0
+    for side in ("hill", "hell"):
+        cast = [cl for a in archs if a["side"] == side for cl in a["cast"]]
+        free = {}
+        for cl in cast:
+            t = cl.v["traits"]
+            if cl.name in tagged or "KID" in t or "ELDER" in t or "id" in cl.opts:
+                continue
+            free.setdefault(cl.v["species"], []).append(cl)
+        for sp in free:
+            rng.shuffle(free[sp])
+
+        def take(sp):
+            lst = free.get(sp) or []
+            return lst.pop() if lst else None
+
+        def tag(cl, t):
+            cl.opts["fam"] = (cl.opts["fam"] + "," + t) if cl.opts.get("fam") else t
+            tagged.add(cl.name)
+
+        for cl in cast:
+            if "KID" not in cl.v["traits"] or cl.name in tagged:
+                continue
+            p1 = take(cl.v["species"])
+            if not p1:
+                continue
+            n += 1
+            t = "auto%d" % n
+            tag(cl, t)
+            tag(p1, t)
+            if rng.chance(70):
+                p2 = take(cl.v["species"])
+                if p2:
+                    tag(p2, t)
+                    if accepts(p1.v, p2.v) and accepts(p2.v, p1.v):
+                        p1.opts["wed"] = p2.name
+                    else:
+                        p1.opts["ex"] = p2.name
+        for cl in cast:
+            if "ELDER" not in cl.v["traits"] or cl.name in tagged:
+                continue
+            kid = take(cl.v["species"])
+            if not kid:
+                continue
+            n += 1
+            t = "auto%d" % n
+            tag(cl, t)
+            tag(kid, t)
+    # siblings in the same trade
+    for a in archs:
+        by_sp = {}
+        for cl in a["cast"]:
+            if "id" not in cl.opts:
+                by_sp.setdefault(cl.v["species"], []).append(cl)
+        for sp, lst in sorted(by_sp.items()):
+            if len(lst) >= 2 and rng.chance(30):
+                x, y = lst[0], lst[1]
+                if "KID" in x.v["traits"] or "KID" in y.v["traits"]:
+                    continue
+                x.opts["sib"] = ((x.opts.get("sib") + ",") if x.opts.get("sib") else "") + y.name
+
+
 def assign_ids(archs, rng):
     problems = []
     lines = {"hill": [], "hell": []}
@@ -1189,31 +1322,40 @@ def main(argv):
         problems += validate_arch(a)
     hill = [a for a in archs if a["side"] == "hill"]
     hell = [a for a in archs if a["side"] == "hell"]
-    rng = Rng(0xD00D5EED)
-    ids, p = assign_ids(archs, rng)
+    # 1. every citizen's record (independent of where they live)
+    seen = {}
+    for a in archs:
+        for idx, cl in enumerate(a["cast"]):
+            if cl.name.lower() in seen:
+                problems.append("duplicate name %s (%s and %s)" % (cl.name, cl.src, seen[cl.name.lower()]))
+            seen[cl.name.lower()] = cl.src
+            v = make_citizen(cl, idx)
+            v["name"] = cl.name
+            v["_opts"] = cl.opts
+            v["_arch"] = a["key"]
+            v["_side"] = a["side"]
+            cl.v = v
+            if len(cl.name) > 11:
+                problems.append("%s: name %r is %d chars" % (cl.src, cl.name, len(cl.name)))
+            if len(cl.bio) > 60:
+                problems.append("%s: bio is %d chars: %r" % (cl.src, len(cl.bio), cl.bio))
+            if len(v["job"]) > 20:
+                problems.append("%s: job %r is %d chars" % (cl.src, v["job"], len(v["job"])))
+            if v["skin"].startswith("SKIN_") and v["species"] not in ("HUMAN", "CHERUB"):
+                problems.append("%s: natural skin tone on a %s" % (cl.src, v["species"]))
+            problems += pronoun_check(cl, v)
+            problems += title_check(cl, v)
+    # 2. automatic households (decided before ids so families live together)
+    auto_families(archs, Rng(0xFA417135))
+    # 3. homes: households next door to each other, floors mixed
+    ids, p = assign_ids(archs, Rng(0xD00D5EED))
     problems += p
     cits = {}
     arch_members = {}
-    seen = {}
     for i in sorted(ids):
         cl = ids[i]
-        if cl.name.lower() in seen:
-            problems.append("duplicate name %s (%s and %s)" % (cl.name, cl.src, seen[cl.name.lower()]))
-        seen[cl.name.lower()] = cl.src
-        idx = cl.arch["cast"].index(cl)
-        v = make_citizen(cl, idx)
-        v["name"] = cl.name
-        v["_opts"] = cl.opts
-        v["_arch"] = cl.arch["key"]
-        v["_side"] = cl.arch["side"]
-        cits[i] = v
+        cits[i] = cl.v
         arch_members.setdefault(cl.arch["key"], []).append(i)
-        if len(cl.name) > 11:
-            problems.append("%s: name %r is %d chars" % (cl.src, cl.name, len(cl.name)))
-        if len(cl.bio) > 60:
-            problems.append("%s: bio is %d chars: %r" % (cl.src, len(cl.bio), cl.bio))
-        if len(v["job"]) > 20:
-            problems.append("%s: job %r is %d chars" % (cl.src, v["job"], len(v["job"])))
     by_name = {c["name"].lower(): i for i, c in cits.items()}
     g = build_edges(cits, by_name, arch_members, Rng(0x5EED0ED6))
 

@@ -1,0 +1,2117 @@
+# core/data/roster/hellvile_600.txt - Hellvile (the bad side), citizens 600..699
+#
+# THE 1000 PREMADE CITIZENS of Hellvile Park. This text is the source of
+# truth: tools/roster_build.py validates it and compiles it into
+# core/gen/roster_data.c (make -C core gen). Format: docs/ROSTER.md.
+#
+#   [id] Name             11 characters max, unique
+#   job: ...              20 characters max
+#   bio: ...              60 characters max, unique
+#   key=value ...         enum values are the catalog.h names without their
+#                         prefix (species=CATFOLK means SPECIES_CATFOLK);
+#                         colours are paint names (PAINT_*), natural skin
+#                         tones are SKIN_*; food/hobby/music/fear/phrase are
+#                         the exact catalog.c strings in quotes.
+#
+# Lines starting with '#' are comments ('# archetype:' notes which
+# family of citizens a record was designed from).
+
+[600] Scraps
+# archetype: raccoon_bandits (Hellvile)
+job: Trash Bandit
+bio: Saves the best trash for hungry kittens.
+traits=SOFTIE,NIGHT_OWL flags=HELLBORN
+pronoun=HE romance=ANY birthday=FEB-09
+species=RACCOONKIN body=AVERAGE height=3 build=10 skin=CHARCOAL head=OVAL head_size=13
+eyes=DEMON_SLIT eye_color=VAPE_PURPLE eye_size=7 eye_spacing=8 eye_height=9 eye_tilt=10 eye_count=2
+brows=ANGRY brow_height=6 nose=BUTTON nose_size=4 mouth=TEETH mouth_size=10 fangs=2 cheeks=NONE
+hair=EMO_FRINGE hair_color=CHARCOAL highlight=NONE facial_hair=NONE
+ears=RACCOON horns=NONE horn_color=CHARCOAL horn_size=12 tail=RACCOON_RINGED wings=NONE halo=NONE
+marking=CRACKS marking_color=CHARCOAL aura=NONE
+top=HOODIE top_color=NAVY pattern=STRIPES pattern_color=LEMON bottom=SWEATS bottom_color=CHARCOAL
+shoes=SNEAKERS shoes_color=CHARCOAL hat=BEANIE hat_color=LEMON accessory=BACKPACK accessory_color=CHARCOAL
+movement=14 speech=12 expression=7 attitude=7 quirk=12
+pitch=23 speed=22 quality=16 intonation=25 accent=25
+food="Burnt Toast" hates="Brussels Sprouts" hobby="Pranks" music="Chiptune" color=NAVY fear="Sunlight"
+phrase="Hehehe~"
+hunger=60 happy=79 hygiene=76 energy=46 health=85 sanity=80 corruption=21 social=66
+mood=HAPPY activity=WANDERING
+
+[601] Needlepoint
+# archetype: tattoo_imps (Hellvile)
+job: Tattoo Artist
+bio: Tattoo artist. Steadiest claw in Hellvile.
+flags=HELLBORN
+pronoun=SHE romance=ANY birthday=FEB-23
+species=GHOUL body=NOODLE height=6 build=2 skin=TEAL head=OVAL head_size=9
+eyes=DEMON_SLIT eye_color=MAGENTA eye_size=10 eye_spacing=5 eye_height=10 eye_tilt=6 eye_count=2
+brows=ANGRY brow_height=8 nose=HOOK nose_size=8 mouth=SMIRK mouth_size=6 fangs=3 cheeks=BLUSH
+hair=FLAME hair_color=TEAL highlight=NONE facial_hair=NONE
+ears=ELF horns=DEVIL horn_color=SILVER horn_size=6 tail=NONE wings=NONE halo=NONE
+marking=TRIBAL marking_color=BLOOD aura=NONE
+top=TANK top_color=BLOOD pattern=SOLID pattern_color=LEMON bottom=RIPPED_JEANS bottom_color=JET
+shoes=COMBAT shoes_color=BLOOD hat=NONE hat_color=BLOOD accessory=NOSE_RING accessory_color=JET
+movement=5 speech=10 expression=12 attitude=9 quirk=7
+pitch=9 speed=13 quality=22 intonation=17 accent=12
+food="Eyeball Jelly" hates="Cotton Candy" hobby="Seances" music="Hardcore Punk" color=BLOOD fear="Sunlight"
+phrase="Mwahaha!"
+hunger=87 happy=54 hygiene=44 energy=100 health=91 sanity=56 corruption=41 social=52
+mood=OK activity=SHOP
+
+[602] Ticklebone
+# archetype: bone_jesters (Hellvile)
+job: Bone Jester
+bio: Tickles people with a feather. Unhinged.
+flags=HELLBORN
+pronoun=HE romance=ANY birthday=JUN-02
+species=IMP body=TINY height=7 build=8 skin=BLOOD head=DIAMOND head_size=12
+eyes=CROSS eye_color=SILVER eye_size=11 eye_spacing=7 eye_height=8 eye_tilt=6 eye_count=2
+brows=FLAT brow_height=6 nose=SKULL nose_size=8 mouth=FLAT mouth_size=7 fangs=3 cheeks=NONE
+hair=BALD hair_color=MAGENTA highlight=NONE facial_hair=NONE
+ears=POINTY horns=DEVIL horn_color=HELLFIRE horn_size=4 tail=DEVIL wings=TINY_BAT halo=NONE
+marking=NONE marking_color=LEMON aura=NONE
+top=TSHIRT top_color=BLOOD pattern=STRIPES pattern_color=JET bottom=KILT bottom_color=LEMON
+shoes=SNEAKERS shoes_color=LEMON hat=PARTY hat_color=JET accessory=BOWTIE accessory_color=JET
+movement=10 speech=15 expression=13 attitude=12 quirk=14
+pitch=1 speed=4 quality=21 intonation=1 accent=9
+food="Popcorn" hates="Mochi" hobby="Poetry" music="Chiptune" color=BLOOD fear="Clowns"
+phrase="Rattle rattle!"
+hunger=60 happy=81 hygiene=65 energy=99 health=96 sanity=55 corruption=76 social=32
+mood=HAPPY activity=CONCERT
+
+[603] Kickflop
+# archetype: skate_punks (Hellvile)
+job: Skate Punk
+bio: Fails every trick. Gets up laughing.
+traits=SOFTIE flags=HELLBORN
+pronoun=HE romance=ANY birthday=MAR-21
+species=CATFOLK body=NOODLE height=9 build=5 skin=JET head=DIAMOND head_size=14
+eyes=DROOPY eye_color=HELLFIRE eye_size=12 eye_spacing=6 eye_height=8 eye_tilt=9 eye_count=2
+brows=FLAT brow_height=5 nose=CAT nose_size=8 mouth=CAT mouth_size=7 fangs=0 cheeks=BANDAGE,SCAR,BLUSH
+hair=SPIKY hair_color=JET highlight=NONE facial_hair=NONE
+ears=CAT horns=NONE horn_color=JET horn_size=6 tail=CAT wings=NONE halo=NONE
+marking=TEARS marking_color=LIME aura=NONE
+top=BAND_TEE top_color=JET pattern=SOLID pattern_color=WHITE bottom=RIPPED_JEANS bottom_color=LIME
+shoes=SNEAKERS shoes_color=WHITE hat=BEANIE hat_color=WHITE accessory=NONE accessory_color=WHITE
+movement=14 speech=12 expression=8 attitude=10 quirk=13
+pitch=11 speed=15 quality=11 intonation=7 accent=12
+food="Sulfur Soda" hates="Bubble Tea" hobby="Skateboarding" music="Hardcore Punk" color=JET fear="Exorcisms"
+phrase="As if!"
+hunger=85 happy=78 hygiene=55 energy=50 health=84 sanity=57 corruption=18 social=59
+mood=HAPPY activity=PARK
+
+[604] Grumplet
+# archetype: goth_gremlins (Hellvile)
+job: Goth Gremlin
+bio: Rated every sunset one star.
+flags=HELLBORN
+pronoun=HE romance=ANY birthday=JUL-25
+species=IMP body=TINY height=3 build=10 skin=CHERRY head=OVAL head_size=10
+eyes=ANGRY eye_color=MAGENTA eye_size=11 eye_spacing=9 eye_height=9 eye_tilt=8 eye_count=2
+brows=NONE brow_height=6 nose=HOOK nose_size=10 mouth=TONGUE mouth_size=10 fangs=2 cheeks=NONE
+hair=BALD hair_color=CHARCOAL highlight=NONE facial_hair=NONE
+ears=POINTY horns=DEVIL horn_color=SILVER horn_size=7 tail=DEVIL wings=NONE halo=NONE
+marking=TEARS marking_color=MAGENTA aura=NONE
+top=CLOAK top_color=CHARCOAL pattern=SKULLS pattern_color=BONE bottom=SKIRT bottom_color=MAGENTA
+shoes=PLATFORM shoes_color=BONE hat=WITCH hat_color=BONE accessory=SKULL_NECKLACE accessory_color=BONE
+movement=2 speech=8 expression=4 attitude=5 quirk=10
+pitch=26 speed=28 quality=23 intonation=26 accent=8
+food="Black Licorice" hates="Cereal" hobby="Poetry" music="Synthwave" color=CHARCOAL fear="Public Speaking"
+phrase="Gloom on!"
+hunger=56 happy=79 hygiene=66 energy=68 health=91 sanity=89 corruption=67 social=80
+mood=HAPPY activity=WANDERING
+
+[605] Pokefork
+# archetype: imp_brats (Hellvile)
+job: Imp Brat
+bio: Pokes people with a foam pitchfork, then giggles.
+traits=KID flags=HELLBORN
+pronoun=SHE romance=NONE birthday=APR-23
+species=IMP body=TINY height=2 build=3 skin=GRAPE head=ROUND head_size=15
+eyes=SPARKLE eye_color=HELLFIRE eye_size=12 eye_spacing=9 eye_height=9 eye_tilt=5 eye_count=2
+brows=THICK brow_height=9 nose=POINTY nose_size=9 mouth=SMIRK mouth_size=4 fangs=2 cheeks=BLUSH,SCAR
+hair=BALD hair_color=WHITE highlight=NONE facial_hair=NONE
+ears=POINTY horns=NUBS horn_color=BONE horn_size=7 tail=DEVIL wings=NONE halo=NONE
+marking=NONE marking_color=LIME aura=FLAMES
+top=OVERALLS top_color=MAGENTA pattern=SOLID pattern_color=WHITE bottom=SHORTS bottom_color=LIME
+shoes=HOOVES shoes_color=LIME hat=NONE hat_color=WHITE accessory=NONE accessory_color=WHITE
+movement=14 speech=13 expression=14 attitude=9 quirk=15
+pitch=26 speed=31 quality=21 intonation=11 accent=21
+food="Worm Gummies" hates="Cotton Candy" hobby="Pranks" music="Bubblegum Pop" color=ROSE fear="Bath Time"
+phrase="Hail me!"
+hunger=63 happy=52 hygiene=46 energy=99 health=82 sanity=79 corruption=68 social=33
+mood=OK activity=PARK
+
+[606] Watchtower
+# archetype: gate_guards (Hellvile)
+job: Watchtower Imp
+bio: Watches Hillvile through a spyglass. Jealous.
+flags=HELLBORN
+pronoun=SHE romance=ANY birthday=JAN-09
+species=IMP body=AVERAGE height=9 build=5 skin=HELLFIRE head=ROUND head_size=12
+eyes=SLEEPY eye_color=LEMON eye_size=13 eye_spacing=7 eye_height=8 eye_tilt=11 eye_count=2
+brows=ARCHED brow_height=6 nose=POINTY nose_size=6 mouth=TEETH mouth_size=9 fangs=1 cheeks=BLUSH
+hair=BALD hair_color=JET highlight=NONE facial_hair=NONE
+ears=POINTY horns=DEVIL_TALL horn_color=CHARCOAL horn_size=10 tail=DEVIL wings=NONE halo=NONE
+marking=NONE marking_color=BLOOD aura=NONE
+top=ARMOR top_color=CHARCOAL pattern=CAMO pattern_color=BONE bottom=CARGO bottom_color=BLOOD
+shoes=COMBAT shoes_color=BLOOD hat=MARINE_HELMET hat_color=BONE accessory=NONE accessory_color=BLOOD
+movement=4 speech=9 expression=4 attitude=8 quirk=7
+pitch=12 speed=22 quality=17 intonation=2 accent=16
+food="Bone Broth" hates="Milk" hobby="Napping" music="Hardcore Punk" color=CHARCOAL fear="Clowns"
+phrase="No thank you!"
+hunger=55 happy=77 hygiene=67 energy=74 health=96 sanity=90 corruption=76 social=73
+mood=HAPPY activity=WANDERING
+
+[607] Ninjette
+# archetype: shadow_ninjas (Hellvile)
+job: Night Thief
+bio: Can vanish. Cannot reappear on time.
+traits=NIGHT_OWL flags=HELLBORN
+pronoun=THEY romance=SHE birthday=JAN-24
+species=BATLING body=ROUND height=5 build=15 skin=LAVENDER head=ROUND head_size=12
+eyes=GOAT eye_color=HELLFIRE eye_size=12 eye_spacing=7 eye_height=7 eye_tilt=5 eye_count=2
+brows=BUSHY brow_height=8 nose=HOOK nose_size=5 mouth=SMIRK mouth_size=9 fangs=1 cheeks=BLUSH
+hair=SIDE_SHAVE hair_color=LAVENDER highlight=NONE facial_hair=NONE
+ears=BAT horns=NONE horn_color=LAVENDER horn_size=5 tail=NONE wings=TINY_BAT halo=NONE
+marking=NONE marking_color=JET aura=SMOKE
+top=HOODIE top_color=CHARCOAL pattern=SOLID pattern_color=SILVER bottom=PANTS bottom_color=JET
+shoes=BARE shoes_color=SILVER hat=BANDANA hat_color=SILVER accessory=MASK accessory_color=SILVER
+movement=14 speech=3 expression=1 attitude=3 quirk=8
+pitch=18 speed=19 quality=27 intonation=10 accent=18
+food="Bat Wing Chips" hates="Brussels Sprouts" hobby="Pranks" music="Industrial" color=LAVENDER fear="Holy Water"
+phrase="Stay cursed."
+hunger=89 happy=50 hygiene=56 energy=47 health=85 sanity=48 corruption=70 social=64
+mood=OK activity=WANDERING
+
+[608] Mama Morgue
+# archetype: hell_parents (Hellvile)
+job: Stay-home Ghoul
+bio: Runs a tidy crypt. Ten coffins, all made.
+flags=HELLBORN
+pronoun=SHE romance=ANY birthday=MAY-03
+species=HELLHOUND body=STOCKY height=3 build=10 skin=RUST head=BEAN head_size=12
+eyes=CAT eye_color=TANGERINE eye_size=8 eye_spacing=8 eye_height=10 eye_tilt=11 eye_count=2
+brows=ANGRY brow_height=5 nose=BUTTON nose_size=10 mouth=FLAT mouth_size=6 fangs=0 cheeks=BLUSH,BANDAGE
+hair=EMO_FRINGE hair_color=RUST highlight=NONE facial_hair=NONE
+ears=DOG horns=NONE horn_color=RUST horn_size=8 tail=SPIKED wings=NONE halo=NONE
+marking=NONE marking_color=LAVENDER aura=NONE
+top=HOODIE top_color=JET pattern=PLAID pattern_color=WHITE bottom=SWEATS bottom_color=LAVENDER
+shoes=BOOTS shoes_color=LAVENDER hat=NONE hat_color=JET accessory=NONE accessory_color=LAVENDER
+movement=8 speech=6 expression=11 attitude=10 quirk=12
+pitch=13 speed=9 quality=3 intonation=14 accent=23
+food="Curry" hates="Bubble Tea" hobby="Board Games" music="Chiptune" color=CHARCOAL fear="Holy Water"
+phrase="Ugh, mortals."
+hunger=82 happy=77 hygiene=78 energy=47 health=90 sanity=59 corruption=76 social=54
+mood=HAPPY activity=HOME
+
+[609] Papa Morgue
+# archetype: hell_parents (Hellvile)
+job: Stay-home Ghoul
+bio: Tells the worst dad jokes in all of Hellvile.
+flags=HELLBORN
+pronoun=HE romance=ANY birthday=JUL-18
+species=BATLING body=HUNCHED height=8 build=11 skin=GRAPE head=OVAL head_size=14
+eyes=ANIME eye_color=SILVER eye_size=11 eye_spacing=6 eye_height=10 eye_tilt=7 eye_count=2
+brows=NONE brow_height=9 nose=POINTY nose_size=9 mouth=FLAT mouth_size=10 fangs=1 cheeks=BEAUTY_MARK
+hair=SIDE_SHAVE hair_color=GRAPE highlight=NONE facial_hair=NONE
+ears=BAT horns=NONE horn_color=GRAPE horn_size=8 tail=NONE wings=BAT halo=NONE
+marking=NONE marking_color=LAVENDER aura=NONE
+top=DRESS top_color=JET pattern=SOLID pattern_color=WHITE bottom=SWEATS bottom_color=LAVENDER
+shoes=SLIPPERS shoes_color=LAVENDER hat=NONE hat_color=JET accessory=GLASSES accessory_color=JET
+movement=4 speech=12 expression=10 attitude=8 quirk=12
+pitch=25 speed=3 quality=9 intonation=3 accent=8
+food="Bone Broth" hates="Carrot Cake" hobby="Knitting" music="Folk" color=CARAMEL fear="Church Bells"
+phrase="Doom and gloom!"
+hunger=58 happy=43 hygiene=52 energy=83 health=95 sanity=61 corruption=59 social=56
+mood=OK activity=HOME
+
+[610] Morguelet
+# archetype: hell_parents (Hellvile)
+job: Imp Student
+bio: Wants to be a Hillvile florist. Keeps it secret.
+traits=SOFTIE,KID flags=HELLBORN
+pronoun=THEY romance=NONE birthday=NOV-03
+species=SKELETON body=NOODLE height=3 build=5 skin=BONE head=SKULL head_size=11
+eyes=HOLLOW eye_color=ECTOPLASM eye_size=15 eye_spacing=8 eye_height=7 eye_tilt=5 eye_count=2
+brows=SCARRED brow_height=10 nose=SKULL nose_size=10 mouth=SHARK mouth_size=7 fangs=0 cheeks=BLUSH
+hair=BALD hair_color=VAPE_PURPLE highlight=NONE facial_hair=NONE
+ears=NONE horns=NONE horn_color=VAPE_PURPLE horn_size=8 tail=SKELETAL wings=NONE halo=NONE
+marking=NONE marking_color=ROSE aura=NONE
+top=SWEATER top_color=FOREST pattern=SOLID pattern_color=BONE bottom=SWEATS bottom_color=ROSE
+shoes=SLIPPERS shoes_color=ROSE hat=NONE hat_color=FOREST accessory=NONE accessory_color=BONE
+movement=6 speech=6 expression=4 attitude=11 quirk=8
+pitch=28 speed=21 quality=24 intonation=30 accent=8
+food="Bone Broth" hates="Macarons" hobby="Board Games" music="Goth Rock" color=FOREST fear="Exorcisms"
+phrase="Rude!"
+hunger=82 happy=61 hygiene=47 energy=97 health=96 sanity=83 corruption=31 social=33
+mood=OK activity=HOME
+
+[611] Fluffbite
+# archetype: killer_bunnies (Hellvile)
+job: Killer Bunny
+bio: Looks fluffy. Bites. Then looks fluffy again.
+flags=HELLBORN
+pronoun=SHE romance=ANY birthday=JUN-16
+species=BUNNYKIN body=LANKY height=12 build=2 skin=JET head=BEAN head_size=12
+eyes=GLOW eye_color=BLOOD eye_size=8 eye_spacing=10 eye_height=10 eye_tilt=9 eye_count=2
+brows=SCARRED brow_height=5 nose=BUTTON nose_size=6 mouth=FANGY mouth_size=9 fangs=3 cheeks=NONE
+hair=SIDE_SHAVE hair_color=VAPE_PURPLE highlight=NONE facial_hair=NONE
+ears=BUNNY horns=NONE horn_color=VAPE_PURPLE horn_size=6 tail=BUNNY wings=NONE halo=NONE
+marking=CRACKS marking_color=BLOOD aura=NONE
+top=HOODIE top_color=WHITE pattern=SOLID pattern_color=JET bottom=RIPPED_JEANS bottom_color=BLOOD
+shoes=COMBAT shoes_color=WHITE hat=NONE hat_color=WHITE accessory=NONE accessory_color=BLOOD
+movement=15 speech=11 expression=7 attitude=11 quirk=14
+pitch=23 speed=8 quality=28 intonation=31 accent=12
+food="Hell Peppers" hates="Cereal" hobby="Tarot Reading" music="Hardcore Punk" color=WHITE fear="Silence"
+phrase="Rip and tear... gently."
+hunger=55 happy=81 hygiene=54 energy=81 health=85 sanity=62 corruption=60 social=45
+mood=HAPPY activity=WANDERING
+
+[612] Poppit
+# archetype: creepy_clowns (Hellvile)
+job: Balloon Popper
+bio: Balloon popper. Pops balloons, apologises.
+flags=HELLBORN
+pronoun=SHE romance=ANY birthday=NOV-04
+species=HUMAN body=HUNCHED height=3 build=10 skin=SKIN_PORCELAIN head=OVAL head_size=11
+eyes=SPIRAL eye_color=CHERRY eye_size=8 eye_spacing=5 eye_height=8 eye_tilt=7 eye_count=2
+brows=SCARRED brow_height=7 nose=CLOWN nose_size=7 mouth=BIG_GRIN mouth_size=5 fangs=1 cheeks=TEAR_TATTOO
+hair=SPIKY hair_color=CARAMEL highlight=NONE facial_hair=NONE
+ears=NORMAL horns=NONE horn_color=CARAMEL horn_size=12 tail=NONE wings=NONE halo=NONE
+marking=CLOWN marking_color=BLOOD aura=NONE
+top=SUIT top_color=WHITE pattern=POLKA pattern_color=LIME bottom=PANTS bottom_color=LIME
+shoes=PLATFORM shoes_color=WHITE hat=PARTY hat_color=WHITE accessory=BOWTIE accessory_color=WHITE
+movement=9 speech=10 expression=13 attitude=8 quirk=14
+pitch=10 speed=2 quality=16 intonation=29 accent=2
+food="Sulfur Soda" hates="Cotton Candy" hobby="Pranks" music="Disco" color=WHITE fear="Tax Season"
+phrase="Hehehe~"
+hunger=83 happy=61 hygiene=87 energy=53 health=91 sanity=69 corruption=53 social=67
+mood=OK activity=PARK
+
+[613] Sombra
+# archetype: goth_gremlins (Hellvile)
+job: Goth Gremlin
+bio: Sighs dramatically every eleven minutes.
+flags=HELLBORN
+pronoun=SHE romance=ANY birthday=DEC-03
+species=MOTHKIN body=TINY height=8 build=6 skin=LAVENDER head=DIAMOND head_size=10
+eyes=COMPOUND eye_color=ECTOPLASM eye_size=12 eye_spacing=6 eye_height=8 eye_tilt=5 eye_count=2
+brows=ARCHED brow_height=6 nose=ROUND nose_size=9 mouth=DROOL mouth_size=7 fangs=2 cheeks=SCAR
+hair=WILD hair_color=BLOOD highlight=NONE facial_hair=NONE
+ears=NONE horns=ANTENNAE horn_color=BLOOD horn_size=12 tail=NONE wings=BUTTERFLY halo=NONE
+marking=EYELINER marking_color=MAGENTA aura=FLIES
+top=CLOAK top_color=CHARCOAL pattern=STRIPES pattern_color=BONE bottom=SKIRT bottom_color=MAGENTA
+shoes=PLATFORM shoes_color=MAGENTA hat=NONE hat_color=CHARCOAL accessory=SKULL_NECKLACE accessory_color=BONE
+movement=9 speech=7 expression=9 attitude=3 quirk=8
+pitch=9 speed=15 quality=18 intonation=28 accent=3
+food="Ramen" hates="Salad" hobby="Seances" music="Goth Rock" color=BONE fear="Exorcisms"
+phrase="Hiss!"
+hunger=78 happy=53 hygiene=73 energy=81 health=99 sanity=62 corruption=57 social=74
+mood=OK activity=HOME
+
+[614] Bro. Ashe
+# archetype: cultists (Hellvile)
+job: Cultist
+bio: Chants backwards. Gets the words wrong forwards.
+flags=HELLBORN
+pronoun=HE romance=ANY birthday=SEP-26
+species=MOTHKIN body=AVERAGE height=3 build=10 skin=BONE head=ROUND head_size=10
+eyes=HOLLOW eye_color=VAPE_PURPLE eye_size=11 eye_spacing=10 eye_height=6 eye_tilt=7 eye_count=2
+brows=ANGRY brow_height=5 nose=DOT nose_size=6 mouth=FLAT mouth_size=9 fangs=2 cheeks=BLUSH
+hair=SPIKY hair_color=BONE highlight=NONE facial_hair=NONE
+ears=NONE horns=NONE horn_color=BONE horn_size=7 tail=NONE wings=BUTTERFLY halo=THORNS
+marking=NONE marking_color=HELLFIRE aura=NONE
+top=ROBE top_color=JET pattern=SOLID pattern_color=BONE bottom=NONE bottom_color=BLOOD
+shoes=SANDALS shoes_color=BLOOD hat=NONE hat_color=JET accessory=NONE accessory_color=BONE
+movement=4 speech=7 expression=0 attitude=3 quirk=15
+pitch=15 speed=29 quality=21 intonation=11 accent=5
+food="Hell Peppers" hates="Carrot Cake" hobby="Video Games" music="Industrial" color=CHERRY fear="Holy Water"
+phrase="Hail me!"
+hunger=87 happy=82 hygiene=68 energy=95 health=90 sanity=82 corruption=69 social=57
+mood=HAPPY activity=HOME
+
+[615] Gigglefiend
+# archetype: tickle_fiends (Hellvile)
+job: Tickle Fiend
+bio: Cannot stop laughing at its own pranks.
+flags=HELLBORN
+pronoun=THEY romance=ANY birthday=JAN-22
+species=BATLING body=STOCKY height=5 build=9 skin=JET head=SQUARE head_size=11
+eyes=DEMON_SLIT eye_color=VAPE_PURPLE eye_size=9 eye_spacing=8 eye_height=9 eye_tilt=7 eye_count=2
+brows=BUSHY brow_height=9 nose=DOT nose_size=10 mouth=SHARK mouth_size=8 fangs=2 cheeks=NONE
+hair=SIDE_SHAVE hair_color=JET highlight=HELLFIRE facial_hair=NONE
+ears=BAT horns=NONE horn_color=JET horn_size=7 tail=LIZARD wings=BAT halo=NONE
+marking=NONE marking_color=BUBBLEGUM aura=NONE
+top=TSHIRT top_color=BLOOD pattern=POLKA pattern_color=LEMON bottom=PANTS bottom_color=BUBBLEGUM
+shoes=SNEAKERS shoes_color=LEMON hat=NONE hat_color=LEMON accessory=NONE accessory_color=LEMON
+movement=15 speech=11 expression=13 attitude=13 quirk=15
+pitch=26 speed=5 quality=26 intonation=24 accent=22
+food="Candy Eyeballs" hates="Cotton Candy" hobby="Pranks" music="Hardcore Punk" color=TEAL fear="Clowns"
+phrase="I bite. Cutely."
+hunger=81 happy=70 hygiene=62 energy=74 health=80 sanity=58 corruption=78 social=48
+mood=OK activity=WANDERING
+
+[616] Loanie
+# archetype: caco_bookies (Hellvile)
+job: Loan Shark
+bio: Loan shark. Charges in teeth.
+flags=HELLBORN
+pronoun=THEY romance=ANY birthday=NOV-23
+species=CACOBLOB body=TOP_HEAVY height=7 build=11 skin=GRAPE head=BLOB head_size=12
+eyes=LASHES eye_color=HELLFIRE eye_size=11 eye_spacing=10 eye_height=9 eye_tilt=7 eye_count=1
+brows=BUSHY brow_height=8 nose=NONE nose_size=10 mouth=SHARK mouth_size=6 fangs=0 cheeks=NONE
+hair=BALD hair_color=CHARCOAL highlight=NONE facial_hair=NONE
+ears=NONE horns=NONE horn_color=CHARCOAL horn_size=8 tail=NONE wings=NONE halo=NONE
+marking=NONE marking_color=LEMON aura=NONE
+top=SUIT top_color=MAGENTA pattern=PLAID pattern_color=JET bottom=PANTS bottom_color=LEMON
+shoes=BARE shoes_color=JET hat=TOP_HAT hat_color=MAGENTA accessory=SUNGLASSES accessory_color=JET
+movement=7 speech=12 expression=10 attitude=6 quirk=13
+pitch=4 speed=27 quality=22 intonation=6 accent=26
+food="Bat Wing Chips" hates="Macarons" hobby="Pranks" music="Synthwave" color=MAGENTA fear="Clowns"
+phrase="I bite. Cutely."
+hunger=68 happy=59 hygiene=50 energy=99 health=82 sanity=85 corruption=49 social=61
+mood=OK activity=WANDERING
+
+[617] Dr. Meanie
+# archetype: petty_villains (Hellvile)
+job: Petty Villain
+bio: Plans evil schemes. Forgets them at lunch.
+flags=HELLBORN
+pronoun=SHE romance=NONE birthday=APR-07
+species=HUMAN body=STOCKY height=10 build=9 skin=SKIN_FAIR head=OVAL head_size=14
+eyes=SQUINT eye_color=LEMON eye_size=13 eye_spacing=7 eye_height=6 eye_tilt=5 eye_count=3
+brows=THICK brow_height=6 nose=HOOK nose_size=5 mouth=TEETH mouth_size=10 fangs=2 cheeks=NONE
+hair=SPIKY hair_color=WHITE highlight=NONE facial_hair=HANDLEBAR
+ears=ELF horns=NONE horn_color=WHITE horn_size=7 tail=NONE wings=NONE halo=NONE
+marking=NONE marking_color=CHERRY aura=NONE
+top=HOODIE top_color=JET pattern=SOLID pattern_color=WHITE bottom=PANTS bottom_color=CHERRY
+shoes=COMBAT shoes_color=WHITE hat=NONE hat_color=JET accessory=CAPE accessory_color=WHITE
+movement=9 speech=13 expression=14 attitude=9 quirk=12
+pitch=6 speed=21 quality=2 intonation=4 accent=9
+food="Burnt Toast" hates="Macarons" hobby="Poetry" music="Disco" color=WHITE fear="Holy Water"
+phrase="Rude!"
+hunger=75 happy=68 hygiene=66 energy=66 health=85 sanity=76 corruption=43 social=81
+mood=OK activity=WANDERING
+
+[618] Ringring
+# archetype: bone_jesters (Hellvile)
+job: Prank Caller
+bio: Prank caller. "Is your fridge running?" Daily.
+flags=HELLBORN
+pronoun=THEY romance=ANY birthday=DEC-10
+species=SKELETON body=LANKY height=7 build=0 skin=WHITE head=SKULL head_size=11
+eyes=X eye_color=CHARCOAL eye_size=10 eye_spacing=10 eye_height=9 eye_tilt=11 eye_count=2
+brows=ARCHED brow_height=7 nose=SKULL nose_size=4 mouth=SHARK mouth_size=6 fangs=1 cheeks=NONE
+hair=BALD hair_color=CHARCOAL highlight=NONE facial_hair=NONE
+ears=NONE horns=NONE horn_color=CHARCOAL horn_size=5 tail=NONE wings=NONE halo=NONE
+marking=CLOWN marking_color=TANGERINE aura=NONE
+top=SUIT top_color=GRAPE pattern=POLKA pattern_color=BONE bottom=KILT bottom_color=TANGERINE
+shoes=SNEAKERS shoes_color=BONE hat=PARTY hat_color=BONE accessory=BOWTIE accessory_color=BONE
+movement=14 speech=13 expression=14 attitude=11 quirk=13
+pitch=8 speed=2 quality=24 intonation=12 accent=4
+food="Candy Eyeballs" hates="Carrot Cake" hobby="Metal Drumming" music="Hardcore Punk" color=RUST fear="Cute Things"
+phrase="Mwahaha!"
+hunger=73 happy=53 hygiene=66 energy=98 health=100 sanity=73 corruption=43 social=35
+mood=OK activity=CONCERT
+
+[619] Plotsworth
+# archetype: grave_diggers (Hellvile)
+job: Grave Digger
+bio: Plans the cemetery layout like a garden.
+traits=NIGHT_OWL flags=HELLBORN
+pronoun=XE romance=SHE birthday=MAY-25
+species=HELLHOUND body=TINY height=7 build=7 skin=BLOOD head=PEAR head_size=12
+eyes=GOAT eye_color=VAPE_PURPLE eye_size=8 eye_spacing=6 eye_height=9 eye_tilt=9 eye_count=2
+brows=ANGRY brow_height=8 nose=BUTTON nose_size=5 mouth=LIPSTICK mouth_size=7 fangs=3 cheeks=NONE
+hair=SIDE_SHAVE hair_color=WHITE highlight=NONE facial_hair=NONE
+ears=DOG horns=NONE horn_color=WHITE horn_size=8 tail=SPIKED wings=NONE halo=NONE
+marking=SKULL_PAINT marking_color=BONE aura=NONE
+top=SWEATER top_color=CHARCOAL pattern=SOLID pattern_color=FOREST bottom=CARGO bottom_color=BONE
+shoes=BOOTS shoes_color=BONE hat=BEANIE hat_color=CHARCOAL accessory=NONE accessory_color=FOREST
+movement=6 speech=8 expression=3 attitude=5 quirk=10
+pitch=1 speed=22 quality=29 intonation=17 accent=4
+food="Grave Dirt Cake" hates="Cereal" hobby="Poetry" music="Folk" color=CHARCOAL fear="Holy Water"
+phrase="Bleh."
+hunger=66 happy=41 hygiene=82 energy=51 health=82 sanity=58 corruption=82 social=32
+mood=OK activity=WANDERING
+
+[620] Lunchbox
+# archetype: bullies (Hellvile)
+job: Lunch Money Imp
+bio: Takes lunch money. Buys everyone ice cream.
+traits=KID flags=HELLBORN
+pronoun=HE romance=NONE birthday=SEP-11
+species=HELLHOUND body=STOCKY height=2 build=10 skin=CHARCOAL head=ROUND head_size=13
+eyes=GOAT eye_color=WHITE eye_size=12 eye_spacing=9 eye_height=9 eye_tilt=5 eye_count=2
+brows=THICK brow_height=6 nose=BUTTON nose_size=8 mouth=FROWN mouth_size=9 fangs=0 cheeks=BLUSH
+hair=BALD hair_color=GRAPE highlight=NONE facial_hair=NONE
+ears=DOG horns=NONE horn_color=GRAPE horn_size=4 tail=SPIKED wings=NONE halo=NONE
+marking=NONE marking_color=LIME aura=NONE
+top=HOODIE top_color=CHARCOAL pattern=SOLID pattern_color=WHITE bottom=SHORTS bottom_color=LIME
+shoes=SNEAKERS shoes_color=CHARCOAL hat=CAP hat_color=CHARCOAL accessory=NONE accessory_color=WHITE
+movement=10 speech=14 expression=8 attitude=7 quirk=10
+pitch=22 speed=31 quality=6 intonation=28 accent=12
+food="Pizza" hates="Bubble Tea" hobby="Pranks" music="Hardcore Punk" color=CHARCOAL fear="Hugs"
+phrase="Hiss!"
+hunger=56 happy=60 hygiene=66 energy=93 health=98 sanity=67 corruption=51 social=53
+mood=OK activity=PARK
+
+[621] Dustpan Dot
+# archetype: sin_bin (Hellvile)
+job: Sin Bin Janitor
+bio: Has swept the same street for 600 years.
+flags=HELLBORN
+pronoun=SHE romance=ANY birthday=NOV-02
+species=HELLHOUND body=ROUND height=7 build=10 skin=RUST head=MOCHI head_size=14
+eyes=SLEEPY eye_color=CHERRY eye_size=13 eye_spacing=6 eye_height=6 eye_tilt=11 eye_count=2
+brows=THICK brow_height=7 nose=BUTTON nose_size=7 mouth=LIPSTICK mouth_size=9 fangs=0 cheeks=BLUSH,TEAR_TATTOO
+hair=BUZZ hair_color=WHITE highlight=NONE facial_hair=NONE
+ears=DOG horns=NONE horn_color=WHITE horn_size=6 tail=SPIKED wings=NONE halo=NONE
+marking=NONE marking_color=LEMON aura=NONE
+top=OVERALLS top_color=CHARCOAL pattern=SOLID pattern_color=WHITE bottom=CARGO bottom_color=LEMON
+shoes=BARE shoes_color=LEMON hat=CAP hat_color=WHITE accessory=NONE accessory_color=WHITE
+movement=5 speech=6 expression=8 attitude=13 quirk=11
+pitch=12 speed=14 quality=6 intonation=8 accent=12
+food="Popcorn" hates="Bubble Tea" hobby="Seances" music="Industrial" color=CHARCOAL fear="Silence"
+phrase="Ugh, fine."
+hunger=88 happy=45 hygiene=63 energy=78 health=89 sanity=67 corruption=82 social=38
+mood=OK activity=WANDERING
+
+[622] Tastebud
+# archetype: vapula_court (Hellvile)
+job: Royal Taster
+bio: Tastes Vapula's soup for curses. Has hiccups.
+traits=SOFTIE,LOYALIST flags=HELLBORN
+pronoun=THEY romance=ANY birthday=MAR-23
+species=IMP body=TINY height=5 build=7 skin=HELLFIRE head=BEAN head_size=9
+eyes=GLOW eye_color=LEMON eye_size=9 eye_spacing=6 eye_height=7 eye_tilt=11 eye_count=2
+brows=NONE brow_height=8 nose=POINTY nose_size=7 mouth=TEETH mouth_size=6 fangs=2 cheeks=BEAUTY_MARK,BLUSH
+hair=BALD hair_color=VAPE_PURPLE highlight=NONE facial_hair=GOATEE
+ears=POINTY horns=RAM horn_color=JET horn_size=7 tail=DEVIL wings=NONE halo=NONE
+marking=NONE marking_color=VAPE_PURPLE aura=SMOKE
+top=CLOAK top_color=JET pattern=FLAMES pattern_color=LEMON bottom=LONG_SKIRT bottom_color=VAPE_PURPLE
+shoes=BOOTS shoes_color=VAPE_PURPLE hat=CROWN hat_color=JET accessory=CAPE accessory_color=VAPE_PURPLE
+movement=5 speech=12 expression=6 attitude=3 quirk=10
+pitch=9 speed=8 quality=14 intonation=13 accent=13
+food="Sulfur Soda" hates="Mochi" hobby="Board Games" music="Doom Metal" color=VAPE_PURPLE fear="Holy Water"
+phrase="Ugh, mortals."
+hunger=66 happy=75 hygiene=40 energy=86 health=86 sanity=64 corruption=81 social=67
+mood=HAPPY activity=HOME
+
+[623] Wheezle
+# archetype: vape_lords (Hellvile)
+job: Smoke Trickster
+bio: Coughs out little ghosts. Names them. Sad.
+traits=SOFTIE,VAPER flags=HELLBORN
+pronoun=HE romance=SHE birthday=FEB-26
+species=BATLING body=HUNCHED height=12 build=8 skin=JET head=OVAL head_size=13
+eyes=SLEEPY eye_color=GRAPE eye_size=10 eye_spacing=9 eye_height=7 eye_tilt=6 eye_count=2
+brows=SCARRED brow_height=5 nose=DOT nose_size=10 mouth=SMILE mouth_size=10 fangs=2 cheeks=BLUSH
+hair=LIBERTY_SPIKES hair_color=CHARCOAL highlight=NONE facial_hair=NONE
+ears=BAT horns=NONE horn_color=CHARCOAL horn_size=11 tail=NONE wings=BAT halo=NONE
+marking=NONE marking_color=LIME aura=SMOKE
+top=HOODIE top_color=JET pattern=SOLID pattern_color=VAPE_PURPLE bottom=RIPPED_JEANS bottom_color=LIME
+shoes=COMBAT shoes_color=LIME hat=BEANIE hat_color=VAPE_PURPLE accessory=SUNGLASSES accessory_color=VAPE_PURPLE
+movement=5 speech=8 expression=9 attitude=10 quirk=8
+pitch=26 speed=4 quality=31 intonation=8 accent=2
+food="Sulfur Soda" hates="Honey Toast" hobby="Pranks" music="Synthwave" color=ROSE fear="Silence"
+phrase="Whatever."
+hunger=89 happy=75 hygiene=41 energy=97 health=98 sanity=75 corruption=28 social=51
+mood=HAPPY activity=WANDERING
+
+[624] Meterman
+# archetype: parking (Hellvile)
+job: Parking Warden
+bio: Feeds the meters with other people's coins.
+flags=HELLBORN
+pronoun=THEY romance=ANY birthday=JAN-16
+species=IMP body=AVERAGE height=5 build=4 skin=HELLFIRE head=TRIANGLE head_size=11
+eyes=ANGRY eye_color=GRAPE eye_size=12 eye_spacing=8 eye_height=6 eye_tilt=7 eye_count=2
+brows=ANGRY brow_height=8 nose=WIDE nose_size=10 mouth=SMIRK mouth_size=4 fangs=2 cheeks=SCAR
+hair=MULLET hair_color=JET highlight=SLIME facial_hair=NONE
+ears=POINTY horns=DEVIL horn_color=BONE horn_size=5 tail=DEVIL wings=TINY_BAT halo=NONE
+marking=NONE marking_color=JET aura=NONE
+top=SWEATER_VEST top_color=LEMON pattern=STRIPES pattern_color=WHITE bottom=PANTS bottom_color=JET
+shoes=BOOTS shoes_color=WHITE hat=CAP hat_color=LEMON accessory=SUNGLASSES accessory_color=JET
+movement=12 speech=11 expression=6 attitude=4 quirk=9
+pitch=13 speed=21 quality=4 intonation=13 accent=0
+food="Coffee" hates="Milk" hobby="Seances" music="Industrial" color=LEMON fear="Cute Things"
+phrase="No thank you!"
+hunger=66 happy=67 hygiene=50 energy=55 health=91 sanity=70 corruption=43 social=65
+mood=OK activity=WANDERING
+
+[625] Baa-rbara
+# archetype: black_sheep (Hellvile)
+job: Black Sheep
+bio: The black sheep of a very white family. Thrilled.
+flags=HELLBORN
+pronoun=SHE romance=ANY birthday=AUG-02
+species=SHEEPKIN body=LANKY height=10 build=3 skin=CHARCOAL head=ROUND head_size=9
+eyes=SLEEPY eye_color=CHERRY eye_size=13 eye_spacing=10 eye_height=8 eye_tilt=6 eye_count=2
+brows=BUSHY brow_height=10 nose=BUTTON nose_size=9 mouth=FANGY mouth_size=7 fangs=1 cheeks=BLUSH
+hair=CURLY hair_color=CHARCOAL highlight=NONE facial_hair=NONE
+ears=SHEEP horns=NONE horn_color=CHARCOAL horn_size=4 tail=SHEEP_PUFF wings=NONE halo=NONE
+marking=FUR_TIPPED_EARS marking_color=BUBBLEGUM aura=NONE
+top=LEATHER_JACKET top_color=JET pattern=SOLID pattern_color=WHITE bottom=RIPPED_JEANS bottom_color=MAGENTA
+shoes=COMBAT shoes_color=MAGENTA hat=NONE hat_color=JET accessory=CHAINS accessory_color=MAGENTA
+movement=6 speech=10 expression=7 attitude=10 quirk=15
+pitch=27 speed=29 quality=19 intonation=16 accent=23
+food="Black Licorice" hates="Salad" hobby="Pranks" music="Goth Rock" color=JET fear="Exorcisms"
+phrase="Baa-rilliant!"
+hunger=58 happy=80 hygiene=61 energy=70 health=80 sanity=54 corruption=48 social=34
+mood=HAPPY activity=WANDERING
+
+[626] Ratatat
+# archetype: sewer_mice (Hellvile)
+job: Sewer Merchant
+bio: Drums on pipes at night. Neighbours hate it.
+flags=HELLBORN
+pronoun=HE romance=HE birthday=NOV-25
+species=MOUSEKIN body=LANKY height=9 build=0 skin=SILVER head=MOCHI head_size=10
+eyes=DEMON_SLIT eye_color=HELLFIRE eye_size=8 eye_spacing=8 eye_height=6 eye_tilt=7 eye_count=1
+brows=ARCHED brow_height=9 nose=CAT nose_size=8 mouth=TEETH mouth_size=7 fangs=1 cheeks=BLUSH,SCAR
+hair=BUZZ hair_color=WHITE highlight=NONE facial_hair=NONE
+ears=MOUSE horns=NONE horn_color=WHITE horn_size=8 tail=MOUSE wings=NONE halo=NONE
+marking=FUR_BELLY marking_color=WHITE aura=NONE
+top=OVERALLS top_color=FOREST pattern=PLAID pattern_color=LEMON bottom=PANTS bottom_color=CHARCOAL
+shoes=BOOTS shoes_color=LEMON hat=CAP hat_color=LEMON accessory=NONE accessory_color=CHARCOAL
+movement=15 speech=6 expression=8 attitude=8 quirk=13
+pitch=19 speed=12 quality=10 intonation=21 accent=14
+food="Worm Gummies" hates="Honey Toast" hobby="Bug Collecting" music="Sea Shanties" color=FOREST fear="Silence"
+phrase="Squeak squeak!"
+hunger=80 happy=78 hygiene=72 energy=77 health=80 sanity=83 corruption=56 social=67
+mood=HAPPY activity=WANDERING
+
+[627] Salvagia
+# archetype: junkyard (Hellvile)
+job: Salvager
+bio: Salvager. Can rebuild anything but a bridge.
+flags=HELLBORN
+pronoun=SHE romance=ANY birthday=FEB-14
+species=RACCOONKIN body=AVERAGE height=9 build=11 skin=SILVER head=ROUND head_size=9
+eyes=ANGRY eye_color=MAGENTA eye_size=12 eye_spacing=6 eye_height=10 eye_tilt=5 eye_count=2
+brows=THICK brow_height=10 nose=BUTTON nose_size=4 mouth=DROOL mouth_size=10 fangs=2 cheeks=NONE
+hair=BALD hair_color=JET highlight=NONE facial_hair=NONE
+ears=RACCOON horns=NONE horn_color=JET horn_size=5 tail=RACCOON_RINGED wings=NONE halo=NONE
+marking=CRACKS marking_color=RUST aura=NONE
+top=OVERALLS top_color=CHARCOAL pattern=SOLID pattern_color=LIME bottom=NONE bottom_color=RUST
+shoes=BOOTS shoes_color=RUST hat=CAP hat_color=CHARCOAL accessory=GAS_MASK accessory_color=RUST
+movement=4 speech=11 expression=6 attitude=9 quirk=9
+pitch=18 speed=24 quality=9 intonation=11 accent=22
+food="Burnt Toast" hates="Bubble Tea" hobby="Welding" music="Industrial" color=TANGERINE fear="Hugs"
+phrase="Big mood."
+hunger=77 happy=55 hygiene=70 energy=57 health=89 sanity=79 corruption=69 social=77
+mood=OK activity=WORKSHOP
+
+[628] Pickaxe Pam
+# archetype: lava_miners (Hellvile)
+job: Sulfur Digger
+bio: Sulfur digger. Smells like eggs. Proud of it.
+flags=HELLBORN
+pronoun=SHE romance=ANY birthday=APR-10
+species=SKELETON body=STOCKY height=12 build=1 skin=WHITE head=SKULL head_size=8
+eyes=HOLLOW eye_color=BONE eye_size=12 eye_spacing=10 eye_height=6 eye_tilt=5 eye_count=2
+brows=ANGRY brow_height=6 nose=SKULL nose_size=8 mouth=SHARK mouth_size=8 fangs=2 cheeks=SCAR,TEAR_TATTOO
+hair=BALD hair_color=JET highlight=NONE facial_hair=NONE
+ears=NONE horns=NONE horn_color=JET horn_size=5 tail=NONE wings=BAT halo=NONE
+marking=NONE marking_color=CHARCOAL aura=SMOKE
+top=TANK top_color=CHARCOAL pattern=SOLID pattern_color=HONEY bottom=NONE bottom_color=CHARCOAL
+shoes=COMBAT shoes_color=CHARCOAL hat=CAP hat_color=RUST accessory=NONE accessory_color=HONEY
+movement=10 speech=12 expression=6 attitude=7 quirk=5
+pitch=4 speed=17 quality=24 intonation=13 accent=17
+food="Popcorn" hates="Honey Toast" hobby="Pranks" music="Doom Metal" color=CHARCOAL fear="Tax Season"
+phrase="Ugh, fine."
+hunger=58 happy=83 hygiene=42 energy=46 health=100 sanity=87 corruption=43 social=43
+mood=HAPPY activity=WANDERING
+
+[629] Old Bones
+# archetype: fossil_elders (Hellvile)
+job: Fossil Elder
+bio: Has been dead so long he forgot why.
+traits=ELDER flags=HELLBORN
+pronoun=HE romance=NONE birthday=SEP-26
+species=SKELETON body=HUNCHED height=10 build=0 skin=WHITE head=SKULL head_size=11
+eyes=HOLLOW eye_color=CHERRY eye_size=12 eye_spacing=10 eye_height=6 eye_tilt=11 eye_count=2
+brows=BUSHY brow_height=6 nose=SKULL nose_size=4 mouth=TONGUE mouth_size=4 fangs=0 cheeks=NONE
+hair=SLICKED hair_color=HELLFIRE highlight=NONE facial_hair=WIZARD
+ears=NONE horns=NONE horn_color=HELLFIRE horn_size=7 tail=NONE wings=NONE halo=NONE
+marking=STITCHES marking_color=BONE aura=NONE
+top=CLOAK top_color=NAVY pattern=SOLID pattern_color=WHITE bottom=ROBE bottom_color=BONE
+shoes=SLIPPERS shoes_color=WHITE hat=NONE hat_color=WHITE accessory=MONOCLE accessory_color=BONE
+movement=0 speech=5 expression=4 attitude=6 quirk=6
+pitch=11 speed=2 quality=20 intonation=11 accent=4
+food="Bone Broth" hates="Carrot Cake" hobby="Napping" music="Hymns" color=NAVY fear="Tax Season"
+phrase="Stay cursed."
+hunger=79 happy=65 hygiene=60 energy=46 health=85 sanity=54 corruption=71 social=82
+mood=OK activity=HOME
+
+[630] Wakewing
+# archetype: owl_insomniacs (Hellvile)
+job: Insomniac Poet
+bio: Reads to sleepy chicks until dawn. Hoots softly.
+traits=SOFTIE,NIGHT_OWL flags=HELLBORN
+pronoun=XE romance=THEY birthday=APR-02
+species=OWLKIN body=STOCKY height=9 build=10 skin=SILVER head=OVAL head_size=8
+eyes=GLOW eye_color=MAGENTA eye_size=8 eye_spacing=6 eye_height=10 eye_tilt=5 eye_count=2
+brows=ARCHED brow_height=8 nose=NONE nose_size=4 mouth=BEAK mouth_size=10 fangs=0 cheeks=NONE
+hair=BALD hair_color=SILVER highlight=HELLFIRE facial_hair=NONE
+ears=OWL_TUFTS horns=NONE horn_color=SILVER horn_size=6 tail=FEATHER_FAN wings=NONE halo=NONE
+marking=FUR_SOCKS marking_color=WHITE aura=NONE
+top=SWEATER top_color=JET pattern=SOLID pattern_color=WHITE bottom=PANTS bottom_color=JET
+shoes=BOOTS shoes_color=WHITE hat=BEANIE hat_color=WHITE accessory=GLASSES accessory_color=WHITE
+movement=5 speech=6 expression=8 attitude=5 quirk=9
+pitch=16 speed=11 quality=0 intonation=22 accent=6
+food="Spaghetti" hates="Mochi" hobby="Poetry" music="Doom Metal" color=NAVY fear="Hugs"
+phrase="Gloom on!"
+hunger=76 happy=71 hygiene=52 energy=42 health=89 sanity=47 corruption=25 social=72
+mood=OK activity=WANDERING
+
+[631] Loophole
+# archetype: contract_devils (Hellvile)
+job: Contract Devil
+bio: Finds loopholes, then quietly fixes them.
+traits=SOFTIE flags=HELLBORN
+pronoun=XE romance=ANY birthday=SEP-09
+species=IMP body=HUNCHED height=5 build=5 skin=LAVENDER head=TRIANGLE head_size=11
+eyes=DEMON_SLIT eye_color=MAGENTA eye_size=13 eye_spacing=6 eye_height=9 eye_tilt=6 eye_count=2
+brows=ANGRY brow_height=6 nose=HOOK nose_size=4 mouth=FROWN mouth_size=5 fangs=0 cheeks=NONE
+hair=BALD hair_color=CHARCOAL highlight=NONE facial_hair=NONE
+ears=POINTY horns=RAM horn_color=JET horn_size=6 tail=DEVIL wings=TINY_BAT halo=NONE
+marking=NONE marking_color=BLOOD aura=NONE
+top=SUIT top_color=JET pattern=STRIPES pattern_color=SILVER bottom=PANTS bottom_color=BLOOD
+shoes=BOOTS shoes_color=BLOOD hat=NONE hat_color=SILVER accessory=MONOCLE accessory_color=SILVER
+movement=9 speech=9 expression=13 attitude=8 quirk=8
+pitch=28 speed=1 quality=10 intonation=10 accent=5
+food="Blood Oranges" hates="Pudding" hobby="Ghost Hunting" music="Hardcore Punk" color=JET fear="Clowns"
+phrase="Hail me!"
+hunger=60 happy=72 hygiene=73 energy=45 health=92 sanity=77 corruption=29 social=42
+mood=OK activity=SHOP
+
+[632] Wormwood
+# archetype: sour_candy (Hellvile)
+job: Worm Gummy Chef
+bio: Worm gummy chef. Some are real. Ask first.
+flags=HELLBORN
+pronoun=HE romance=THEY birthday=MAY-12
+species=IMP body=BUFF height=7 build=5 skin=ROSE head=OVAL head_size=14
+eyes=CAT eye_color=HELLFIRE eye_size=9 eye_spacing=9 eye_height=8 eye_tilt=6 eye_count=2
+brows=FLAT brow_height=10 nose=PIG nose_size=10 mouth=FANGY mouth_size=9 fangs=1 cheeks=NONE
+hair=BALD hair_color=WHITE highlight=CHERRY facial_hair=NONE
+ears=POINTY horns=NUBS horn_color=BONE horn_size=7 tail=DEVIL wings=TINY_BAT halo=NONE
+marking=EYELINER marking_color=GRAPE aura=NONE
+top=TSHIRT top_color=SLIME pattern=SKULLS pattern_color=WHITE bottom=SKIRT bottom_color=GRAPE
+shoes=PLATFORM shoes_color=GRAPE hat=PARTY hat_color=GRAPE accessory=NONE accessory_color=GRAPE
+movement=15 speech=8 expression=14 attitude=14 quirk=14
+pitch=20 speed=17 quality=27 intonation=1 accent=6
+food="Gumdrops" hates="Carrot Cake" hobby="Pranks" music="Hardcore Punk" color=SLIME fear="Bath Time"
+phrase="Yummy yummy!"
+hunger=77 happy=84 hygiene=90 energy=59 health=83 sanity=62 corruption=51 social=50
+mood=HAPPY activity=SHOP
+
+[633] Kodiak
+# archetype: grizzlies (Hellvile)
+job: Grizzly Enforcer
+bio: Stares at fish for hours. Never catches one.
+flags=HELLBORN
+pronoun=SHE romance=HE birthday=AUG-19
+species=BEARKIN body=BUFF height=9 build=15 skin=CHARCOAL head=DIAMOND head_size=13
+eyes=DEMON_SLIT eye_color=BONE eye_size=7 eye_spacing=9 eye_height=9 eye_tilt=9 eye_count=2
+brows=SCARRED brow_height=10 nose=BUTTON nose_size=7 mouth=SMIRK mouth_size=9 fangs=3 cheeks=BLUSH,BEAUTY_MARK
+hair=SPIKY hair_color=SLIME highlight=NONE facial_hair=NONE
+ears=BEAR horns=NONE horn_color=SLIME horn_size=12 tail=BEAR_NUB wings=NONE halo=NONE
+marking=FUR_TIPPED_EARS marking_color=WHITE aura=NONE
+top=TANK top_color=CHARCOAL pattern=SOLID pattern_color=BONE bottom=PANTS bottom_color=BLOOD
+shoes=BOOTS shoes_color=BONE hat=NONE hat_color=CHARCOAL accessory=SUNGLASSES accessory_color=BLOOD
+movement=8 speech=10 expression=6 attitude=6 quirk=9
+pitch=7 speed=2 quality=24 intonation=22 accent=14
+food="Honey Toast" hates="Milk" hobby="Karaoke" music="Jazz" color=CHARCOAL fear="Holy Water"
+phrase="Go to heck!"
+hunger=59 happy=78 hygiene=49 energy=47 health=81 sanity=52 corruption=36 social=77
+mood=HAPPY activity=WANDERING
+
+[634] Kitty Hex
+# archetype: edgy_teens (Hellvile)
+job: Edgy Teen
+bio: Black cat. Crosses paths on purpose.
+flags=HELLBORN
+pronoun=SHE romance=HE birthday=SEP-15
+species=CATFOLK body=PEAR height=5 build=11 skin=CHARCOAL head=DIAMOND head_size=13
+eyes=CAT eye_color=JET eye_size=8 eye_spacing=5 eye_height=6 eye_tilt=6 eye_count=2
+brows=NONE brow_height=6 nose=CAT nose_size=10 mouth=LIPSTICK mouth_size=5 fangs=2 cheeks=NONE
+hair=EMO_FRINGE hair_color=CHARCOAL highlight=NONE facial_hair=NONE
+ears=CAT horns=NONE horn_color=CHARCOAL horn_size=9 tail=CAT wings=NONE halo=NONE
+marking=FUR_MUZZLE marking_color=WHITE aura=GLITCH
+top=BAND_TEE top_color=JET pattern=SOLID pattern_color=WHITE bottom=RIPPED_JEANS bottom_color=BUBBLEGUM
+shoes=COMBAT shoes_color=WHITE hat=NONE hat_color=WHITE accessory=EARRINGS accessory_color=BUBBLEGUM
+movement=4 speech=15 expression=3 attitude=7 quirk=11
+pitch=16 speed=17 quality=17 intonation=27 accent=0
+food="Sulfur Soda" hates="Cupcakes" hobby="Graffiti" music="Hardcore Punk" color=JET fear="Spiders"
+phrase="I bite. Cutely."
+hunger=59 happy=42 hygiene=45 energy=84 health=95 sanity=76 corruption=59 social=30
+mood=OK activity=WANDERING
+
+[635] Lady Smog
+# archetype: vapula_court (Hellvile)
+job: Smoke Herald
+bio: Wears a gown woven entirely from smog.
+traits=LOYALIST flags=HELLBORN
+pronoun=SHE romance=ANY birthday=NOV-23
+species=CACOBLOB body=LANKY height=6 build=0 skin=MAGENTA head=BLOB head_size=11
+eyes=GLOW eye_color=LEMON eye_size=10 eye_spacing=10 eye_height=10 eye_tilt=9 eye_count=1
+brows=ARCHED brow_height=6 nose=NONE nose_size=5 mouth=TONGUE mouth_size=5 fangs=1 cheeks=NONE
+hair=BALD hair_color=GRAPE highlight=NONE facial_hair=NONE
+ears=NONE horns=NONE horn_color=GRAPE horn_size=12 tail=NONE wings=NONE halo=NONE
+marking=NONE marking_color=LEMON aura=SMOKE
+top=CLOAK top_color=VAPE_PURPLE pattern=SKULLS pattern_color=JET bottom=ROBE bottom_color=LEMON
+shoes=BOOTS shoes_color=JET hat=CROWN hat_color=JET accessory=CAPE accessory_color=JET
+movement=2 speech=12 expression=3 attitude=2 quirk=6
+pitch=19 speed=3 quality=0 intonation=5 accent=20
+food="Grave Dirt Cake" hates="Bubble Tea" hobby="Napping" music="Doom Metal" color=TANGERINE fear="Holy Water"
+phrase="Mwahaha!"
+hunger=86 happy=60 hygiene=81 energy=86 health=89 sanity=58 corruption=81 social=45
+mood=OK activity=HOME
+
+[636] Survia
+# archetype: telemarketers (Hellvile)
+job: Survey Demon
+bio: Survey demon. "On a scale of one to doom..."
+flags=HELLBORN
+pronoun=THEY romance=ANY birthday=SEP-08
+species=IMP body=TOP_HEAVY height=13 build=5 skin=CHERRY head=OVAL head_size=8
+eyes=DEMON_SLIT eye_color=TANGERINE eye_size=13 eye_spacing=9 eye_height=9 eye_tilt=11 eye_count=2
+brows=ANGRY brow_height=6 nose=NONE nose_size=10 mouth=SMILE mouth_size=5 fangs=1 cheeks=NONE
+hair=EMO_FRINGE hair_color=MAGENTA highlight=NONE facial_hair=NONE
+ears=POINTY horns=NUBS horn_color=JET horn_size=11 tail=DEVIL wings=NONE halo=BROKEN
+marking=NONE marking_color=LEMON aura=NONE
+top=SWEATER_VEST top_color=JET pattern=SOLID pattern_color=WHITE bottom=PANTS bottom_color=LEMON
+shoes=SNEAKERS shoes_color=LEMON hat=HEADPHONES hat_color=WHITE accessory=NONE accessory_color=WHITE
+movement=11 speech=5 expression=12 attitude=8 quirk=12
+pitch=31 speed=29 quality=21 intonation=28 accent=31
+food="Popcorn" hates="Pudding" hobby="Board Games" music="City Pop" color=JET fear="Sunlight"
+phrase="Big mood."
+hunger=84 happy=46 hygiene=68 energy=91 health=85 sanity=69 corruption=51 social=83
+mood=OK activity=HOME
+
+[637] Crushbot
+# archetype: doom_bots (Hellvile)
+job: Doom Bot
+bio: Crushes cans for recycling. Very virtuous.
+flags=HELLBORN
+pronoun=IT romance=ANY birthday=NOV-12
+species=ROBOT body=AVERAGE height=4 build=10 skin=SILVER head=SQUARE head_size=13
+eyes=GLOW eye_color=BLOOD eye_size=8 eye_spacing=8 eye_height=6 eye_tilt=6 eye_count=2
+brows=THICK brow_height=6 nose=NONE nose_size=7 mouth=FLAT mouth_size=10 fangs=0 cheeks=BANDAGE
+hair=BALD hair_color=SILVER highlight=NONE facial_hair=FULL_BEARD
+ears=NONE horns=DEVIL horn_color=BLOOD horn_size=4 tail=NONE wings=MECH halo=NONE
+marking=TRIBAL marking_color=BLOOD aura=NONE
+top=NONE top_color=JET pattern=CAMO pattern_color=SILVER bottom=NONE bottom_color=BLOOD
+shoes=BOOTS shoes_color=SILVER hat=HORNED_HELMET hat_color=JET accessory=NONE accessory_color=BLOOD
+movement=9 speech=12 expression=2 attitude=3 quirk=9
+pitch=5 speed=5 quality=11 intonation=2 accent=25
+food="Candy Eyeballs" hates="Cotton Candy" hobby="Welding" music="Industrial" color=RUST fear="Spiders"
+phrase="Hail me!"
+hunger=61 happy=63 hygiene=70 energy=55 health=80 sanity=90 corruption=47 social=39
+mood=OK activity=WANDERING
+
+[638] Sludgy
+# archetype: sludge_plumbers (Hellvile)
+job: Sludge Plumber
+bio: Leaves slime trails. Calls them signatures.
+flags=HELLBORN
+pronoun=SHE romance=HE birthday=JAN-27
+species=SLIME body=HUNCHED height=13 build=10 skin=CHARTREUSE head=BLOB head_size=8
+eyes=ROUND eye_color=LEMON eye_size=7 eye_spacing=6 eye_height=10 eye_tilt=8 eye_count=2
+brows=ANGRY brow_height=7 nose=NONE nose_size=8 mouth=LIPSTICK mouth_size=6 fangs=0 cheeks=BLUSH
+hair=BALD hair_color=CHARTREUSE highlight=NONE facial_hair=NONE
+ears=NONE horns=NONE horn_color=CHARTREUSE horn_size=7 tail=NONE wings=NONE halo=NONE
+marking=STITCHES marking_color=SLIME aura=NONE
+top=OVERALLS top_color=NAVY pattern=SOLID pattern_color=WHITE bottom=NONE bottom_color=SLIME
+shoes=BOOTS shoes_color=SLIME hat=CAP hat_color=SLIME accessory=GAS_MASK accessory_color=WHITE
+movement=8 speech=11 expression=6 attitude=12 quirk=7
+pitch=28 speed=24 quality=9 intonation=17 accent=7
+food="Bone Broth" hates="Cupcakes" hobby="Fishing" music="Sea Shanties" color=NAVY fear="Sunlight"
+phrase="Bleh."
+hunger=77 happy=52 hygiene=23 energy=56 health=97 sanity=62 corruption=58 social=33
+mood=OK activity=WANDERING
+
+[639] Bubbly Brim
+# archetype: lava_spa (Hellvile)
+job: Lava Spa Attendant
+bio: Runs the lava tub. Adds bubbles for free.
+flags=HELLBORN
+pronoun=THEY romance=ANY birthday=OCT-11
+species=SLIME body=AVERAGE height=9 build=7 skin=MAGENTA head=MOCHI head_size=12
+eyes=SQUINT eye_color=CHERRY eye_size=7 eye_spacing=6 eye_height=8 eye_tilt=9 eye_count=2
+brows=SCARRED brow_height=10 nose=NONE nose_size=4 mouth=GRIN mouth_size=10 fangs=0 cheeks=BLUSH
+hair=SLICKED hair_color=GRAPE highlight=NONE facial_hair=STUBBLE
+ears=NONE horns=NONE horn_color=GRAPE horn_size=12 tail=NONE wings=FLY halo=NONE
+marking=CRACKS marking_color=BONE aura=BUBBLES
+top=TANK top_color=HELLFIRE pattern=SOLID pattern_color=WHITE bottom=SHORTS bottom_color=BONE
+shoes=BARE shoes_color=WHITE hat=NONE hat_color=HELLFIRE accessory=NONE accessory_color=WHITE
+movement=4 speech=5 expression=9 attitude=9 quirk=8
+pitch=24 speed=2 quality=28 intonation=7 accent=6
+food="Brimstone Bagels" hates="Mochi" hobby="Yoga" music="Lo-fi Beats" color=CHARTREUSE fear="Spiders"
+phrase="Cozy vibes only!"
+hunger=76 happy=59 hygiene=41 energy=99 health=86 sanity=67 corruption=72 social=54
+mood=OK activity=SHOP
+
+[640] Batty Betty
+# archetype: crypt_grannies (Hellvile)
+job: Crypt Granny
+bio: Hangs upside down to nap. Calls it yoga.
+traits=ELDER flags=HELLBORN
+pronoun=SHE romance=THEY birthday=JAN-05
+species=BATLING body=HUNCHED height=4 build=5 skin=LAVENDER head=OVAL head_size=10
+eyes=SLEEPY eye_color=WHITE eye_size=13 eye_spacing=7 eye_height=8 eye_tilt=11 eye_count=2
+brows=BUSHY brow_height=6 nose=LONG nose_size=6 mouth=FANGY mouth_size=6 fangs=0 cheeks=NONE
+hair=BUN hair_color=WHITE highlight=NONE facial_hair=NONE
+ears=BAT horns=NONE horn_color=WHITE horn_size=8 tail=NONE wings=TINY_BAT halo=NONE
+marking=CRACKS marking_color=BONE aura=GLITCH
+top=SWEATER top_color=GRAPE pattern=PLAID pattern_color=WHITE bottom=LONG_SKIRT bottom_color=BONE
+shoes=SLIPPERS shoes_color=GRAPE hat=NONE hat_color=GRAPE accessory=GLASSES accessory_color=BONE
+movement=2 speech=10 expression=5 attitude=10 quirk=7
+pitch=29 speed=5 quality=29 intonation=28 accent=15
+food="Bone Broth" hates="Pudding" hobby="Knitting" music="Doom Metal" color=GRAPE fear="Tax Season"
+phrase="Stay cursed."
+hunger=65 happy=43 hygiene=75 energy=75 health=83 sanity=50 corruption=46 social=52
+mood=OK activity=HOME
+
+[641] Screamo
+# archetype: punk_band (Hellvile)
+job: Zine Screamer
+bio: Screams lyrics about recycling and kindness.
+traits=SOFTIE flags=HELLBORN
+pronoun=THEY romance=ANY birthday=APR-23
+species=BATLING body=BUFF height=11 build=11 skin=CHARCOAL head=BEAN head_size=10
+eyes=GOAT eye_color=HELLFIRE eye_size=9 eye_spacing=5 eye_height=7 eye_tilt=11 eye_count=3
+brows=ANGRY brow_height=7 nose=WIDE nose_size=5 mouth=DROOL mouth_size=6 fangs=2 cheeks=SCAR
+hair=LIBERTY_SPIKES hair_color=HELLFIRE highlight=NONE facial_hair=NONE
+ears=BAT horns=NONE horn_color=HELLFIRE horn_size=8 tail=NONE wings=BAT halo=NONE
+marking=NONE marking_color=CHERRY aura=NONE
+top=LEATHER_JACKET top_color=CHARCOAL pattern=PLAID pattern_color=LEMON bottom=KILT bottom_color=CHARCOAL
+shoes=COMBAT shoes_color=CHERRY hat=NONE hat_color=LEMON accessory=NOSE_RING accessory_color=LEMON
+movement=15 speech=15 expression=14 attitude=11 quirk=13
+pitch=31 speed=6 quality=22 intonation=26 accent=18
+food="Burnt Toast" hates="Cupcakes" hobby="Skateboarding" music="Hardcore Punk" color=CHARCOAL fear="Public Speaking"
+phrase="Dark and fluffy."
+hunger=61 happy=69 hygiene=49 energy=84 health=80 sanity=77 corruption=31 social=79
+mood=OK activity=CONCERT
+
+[642] Burly Bea
+# archetype: hell_gym (Hellvile)
+job: Gym Brute
+bio: Bear-hugged a boulder. Boulder said ow.
+flags=HELLBORN
+pronoun=SHE romance=HE birthday=MAY-13
+species=BEARKIN body=BUFF height=8 build=15 skin=JET head=MOCHI head_size=12
+eyes=SLEEPY eye_color=LEMON eye_size=12 eye_spacing=6 eye_height=10 eye_tilt=11 eye_count=2
+brows=THICK brow_height=10 nose=BUTTON nose_size=5 mouth=FROWN mouth_size=9 fangs=1 cheeks=SCAR
+hair=LOCS hair_color=CHARCOAL highlight=NONE facial_hair=NONE
+ears=BEAR horns=NONE horn_color=CHARCOAL horn_size=7 tail=BEAR_NUB wings=NONE halo=NONE
+marking=FUR_MUZZLE marking_color=WHITE aura=NONE
+top=TANK top_color=CHARCOAL pattern=SOLID pattern_color=WHITE bottom=SWEATS bottom_color=LIME
+shoes=SNEAKERS shoes_color=WHITE hat=NONE hat_color=CHARCOAL accessory=NONE accessory_color=LIME
+movement=15 speech=10 expression=13 attitude=5 quirk=7
+pitch=13 speed=22 quality=18 intonation=18 accent=19
+food="Meat Slabs" hates="Macarons" hobby="Yoga" music="Doom Metal" color=CHARCOAL fear="Dentists"
+phrase="Big mood."
+hunger=80 happy=78 hygiene=68 energy=92 health=95 sanity=75 corruption=34 social=34
+mood=HAPPY activity=PARK
+
+[643] Chanty
+# archetype: cultists (Hellvile)
+job: Chant Leader
+bio: Leads chants. Mostly about snacks.
+flags=HELLBORN
+pronoun=XE romance=ANY birthday=NOV-08
+species=SKELETON body=HUNCHED height=9 build=2 skin=BONE head=SKULL head_size=14
+eyes=GLOW eye_color=LEMON eye_size=13 eye_spacing=7 eye_height=9 eye_tilt=11 eye_count=2
+brows=UNIBROW brow_height=9 nose=SKULL nose_size=7 mouth=SMIRK mouth_size=7 fangs=0 cheeks=NONE
+hair=MESSY hair_color=GRAPE highlight=VAPE_PURPLE facial_hair=NONE
+ears=NONE horns=NONE horn_color=GRAPE horn_size=5 tail=NONE wings=NONE halo=NONE
+marking=SKULL_PAINT marking_color=HELLFIRE aura=NONE
+top=ROBE top_color=GRAPE pattern=SOLID pattern_color=HELLFIRE bottom=NONE bottom_color=JET
+shoes=SANDALS shoes_color=HELLFIRE hat=NONE hat_color=GRAPE accessory=NONE accessory_color=JET
+movement=6 speech=10 expression=2 attitude=1 quirk=13
+pitch=12 speed=4 quality=27 intonation=4 accent=22
+food="Curry" hates="Carrot Cake" hobby="Singing" music="Hymns" color=SLIME fear="Sunlight"
+phrase="Feed me souls."
+hunger=56 happy=81 hygiene=87 energy=72 health=80 sanity=80 corruption=67 social=79
+mood=HAPPY activity=HOME
+
+[644] Shutterly
+# archetype: dmv (Hellvile)
+job: DMV Ghoul
+bio: Shuts the window the moment you reach it.
+flags=HELLBORN
+pronoun=HE romance=ANY birthday=JUL-26
+species=SKELETON body=NOODLE height=3 build=5 skin=BONE head=SKULL head_size=8
+eyes=SLEEPY eye_color=JET eye_size=10 eye_spacing=10 eye_height=8 eye_tilt=11 eye_count=2
+brows=ANGRY brow_height=8 nose=SKULL nose_size=5 mouth=SMILE mouth_size=4 fangs=3 cheeks=NONE
+hair=BALD hair_color=CHARCOAL highlight=SLIME facial_hair=NONE
+ears=NONE horns=NONE horn_color=CHARCOAL horn_size=9 tail=NONE wings=NONE halo=NONE
+marking=SKULL_PAINT marking_color=BONE aura=NONE
+top=SWEATER top_color=NAVY pattern=SOLID pattern_color=HONEY bottom=PANTS bottom_color=HONEY
+shoes=SNEAKERS shoes_color=BONE hat=NONE hat_color=HONEY accessory=GLASSES accessory_color=BONE
+movement=1 speech=9 expression=2 attitude=8 quirk=9
+pitch=1 speed=19 quality=13 intonation=30 accent=9
+food="Coffee" hates="Cereal" hobby="Napping" music="Industrial" color=NAVY fear="Silence"
+phrase="Ugh, fine."
+hunger=57 happy=64 hygiene=75 energy=43 health=85 sanity=75 corruption=59 social=74
+mood=OK activity=SHOP
+
+[645] Exhaustia
+# archetype: hell_bikers (Hellvile)
+job: Hell Biker
+bio: Smells like oil and roses. Mostly oil.
+flags=HELLBORN
+pronoun=SHE romance=ANY birthday=OCT-03
+species=SKELETON body=NOODLE height=11 build=2 skin=WHITE head=SKULL head_size=9
+eyes=HOLLOW eye_color=HELLFIRE eye_size=11 eye_spacing=9 eye_height=9 eye_tilt=11 eye_count=2
+brows=FLAT brow_height=8 nose=SKULL nose_size=5 mouth=FLAT mouth_size=10 fangs=2 cheeks=BEAUTY_MARK
+hair=BALD hair_color=HELLFIRE highlight=NONE facial_hair=NONE
+ears=NONE horns=NONE horn_color=HELLFIRE horn_size=4 tail=NONE wings=NONE halo=NONE
+marking=NONE marking_color=BLOOD aura=FLAMES
+top=TANK top_color=CHARCOAL pattern=FLAMES pattern_color=BONE bottom=RIPPED_JEANS bottom_color=BLOOD
+shoes=BOOTS shoes_color=BLOOD hat=BANDANA hat_color=BONE accessory=CHAINS accessory_color=BLOOD
+movement=10 speech=14 expression=4 attitude=6 quirk=9
+pitch=9 speed=9 quality=6 intonation=16 accent=10
+food="Hell Peppers" hates="Bubble Tea" hobby="Ghost Hunting" music="Hardcore Punk" color=HELLFIRE fear="Spiders"
+phrase="Rip and tear... gently."
+hunger=90 happy=45 hygiene=56 energy=74 health=93 sanity=86 corruption=59 social=44
+mood=OK activity=WANDERING
+
+[646] Debitt
+# archetype: imp_accountants (Hellvile)
+job: Imp Accountant
+bio: Owes everyone money. Is the bank.
+flags=HELLBORN
+pronoun=HE romance=ANY birthday=FEB-17
+species=IMP body=AVERAGE height=7 build=12 skin=BUBBLEGUM head=ROUND head_size=11
+eyes=SQUINT eye_color=MAGENTA eye_size=8 eye_spacing=10 eye_height=7 eye_tilt=5 eye_count=2
+brows=ANGRY brow_height=10 nose=POINTY nose_size=10 mouth=FLAT mouth_size=9 fangs=1 cheeks=NONE
+hair=SPIKY hair_color=MAGENTA highlight=NONE facial_hair=NONE
+ears=POINTY horns=NUBS horn_color=GRAPE horn_size=6 tail=DEVIL wings=NONE halo=NONE
+marking=NONE marking_color=CHERRY aura=NONE
+top=SUIT top_color=CHARCOAL pattern=SOLID pattern_color=WHITE bottom=PANTS bottom_color=CHARCOAL
+shoes=HEELS shoes_color=CHERRY hat=NONE hat_color=CHARCOAL accessory=MONOCLE accessory_color=WHITE
+movement=10 speech=13 expression=1 attitude=3 quirk=5
+pitch=29 speed=0 quality=24 intonation=11 accent=20
+food="Coffee" hates="Milk" hobby="Reading" music="Chiptune" color=MAGENTA fear="Church Bells"
+phrase="No thank you!"
+hunger=57 happy=74 hygiene=83 energy=81 health=81 sanity=54 corruption=57 social=35
+mood=OK activity=SHOP
+
+[647] Drippy
+# archetype: graffiti (Hellvile)
+job: Graffiti Imp
+bio: Paints drippy letters. Also drips.
+traits=NIGHT_OWL flags=HELLBORN
+pronoun=HE romance=ANY birthday=APR-18
+species=IMP body=HUNCHED height=4 build=6 skin=CHERRY head=BEAN head_size=14
+eyes=SLEEPY eye_color=BONE eye_size=12 eye_spacing=5 eye_height=9 eye_tilt=5 eye_count=2
+brows=UNIBROW brow_height=6 nose=DOT nose_size=7 mouth=FROWN mouth_size=5 fangs=3 cheeks=SCAR,BANDAGE
+hair=BUZZ hair_color=WHITE highlight=NONE facial_hair=NONE
+ears=POINTY horns=DEVIL_TALL horn_color=CHARCOAL horn_size=8 tail=NONE wings=NONE halo=NONE
+marking=TEARS marking_color=MAGENTA aura=NONE
+top=HOODIE top_color=NAVY pattern=SOLID pattern_color=LIME bottom=CARGO bottom_color=MAGENTA
+shoes=SNEAKERS shoes_color=LIME hat=BEANIE hat_color=NAVY accessory=MASK accessory_color=MAGENTA
+movement=14 speech=10 expression=13 attitude=8 quirk=15
+pitch=30 speed=1 quality=12 intonation=22 accent=6
+food="Pizza" hates="Brussels Sprouts" hobby="Painting" music="Hardcore Punk" color=NAVY fear="Exorcisms"
+phrase="Big mood."
+hunger=81 happy=75 hygiene=85 energy=63 health=87 sanity=84 corruption=66 social=76
+mood=HAPPY activity=WANDERING
+
+[648] Bonebeard
+# archetype: sulfur_pirates (Hellvile)
+job: Sulfur Pirate
+bio: Skeleton pirate with a beard of seaweed.
+flags=HELLBORN
+pronoun=HE romance=SHE birthday=DEC-26
+species=SKELETON body=PEAR height=4 build=3 skin=WHITE head=SKULL head_size=8
+eyes=HOLLOW eye_color=BLOOD eye_size=7 eye_spacing=10 eye_height=9 eye_tilt=8 eye_count=2
+brows=NONE brow_height=6 nose=SKULL nose_size=10 mouth=TONGUE mouth_size=9 fangs=1 cheeks=NONE
+hair=BALD hair_color=HELLFIRE highlight=NONE facial_hair=FULL_BEARD
+ears=NONE horns=NONE horn_color=HELLFIRE horn_size=10 tail=NONE wings=NONE halo=NONE
+marking=NONE marking_color=BLOOD aura=FLAMES
+top=TSHIRT top_color=NAVY pattern=STRIPES pattern_color=BONE bottom=SHORTS bottom_color=BLOOD
+shoes=BOOTS shoes_color=BONE hat=BANDANA hat_color=NAVY accessory=EYEPATCH accessory_color=BLOOD
+movement=12 speech=9 expression=11 attitude=8 quirk=10
+pitch=2 speed=4 quality=12 intonation=7 accent=0
+food="Blood Oranges" hates="Angel Cake" hobby="Fishing" music="Hardcore Punk" color=NAVY fear="Tax Season"
+phrase="Mwahaha!"
+hunger=64 happy=64 hygiene=54 energy=58 health=100 sanity=67 corruption=74 social=75
+mood=OK activity=BEACH
+
+[649] Wrenchley
+# archetype: gate_laborers (Hellvile)
+job: Gate Laborer
+bio: Grumbles at everything. Shares his lunch anyway.
+flags=HELLBORN
+pronoun=HE romance=ANY birthday=APR-26
+species=GHOUL body=NOODLE height=8 build=0 skin=SILVER head=OVAL head_size=8
+eyes=ANIME eye_color=GRAPE eye_size=8 eye_spacing=8 eye_height=6 eye_tilt=9 eye_count=2
+brows=THICK brow_height=7 nose=ROUND nose_size=4 mouth=SMILE mouth_size=5 fangs=1 cheeks=NONE
+hair=LOCS hair_color=MAGENTA highlight=NONE facial_hair=NONE
+ears=POINTY horns=NONE horn_color=MAGENTA horn_size=9 tail=CAT wings=NONE halo=NONE
+marking=NONE marking_color=GRAPE aura=NONE
+top=OVERALLS top_color=JET pattern=SOLID pattern_color=BONE bottom=CARGO bottom_color=GRAPE
+shoes=BOOTS shoes_color=GRAPE hat=NONE hat_color=BONE accessory=CHAINS accessory_color=BONE
+movement=5 speech=4 expression=7 attitude=11 quirk=9
+pitch=13 speed=10 quality=29 intonation=9 accent=18
+food="Hell Peppers" hates="Salad" hobby="Graffiti" music="Hardcore Punk" color=MAGENTA fear="Being Alone"
+phrase="Dark and fluffy."
+hunger=89 happy=35 hygiene=90 energy=41 health=91 sanity=70 corruption=61 social=85
+mood=OK activity=WORKSHOP
+
+[650] Nightshade
+# archetype: thorn_farmers (Hellvile)
+job: Nightshade Picker
+bio: Nightshade picker. Wears thick gloves. Smart.
+flags=HELLBORN
+pronoun=THEY romance=ANY birthday=DEC-16
+species=FROGLING body=TOP_HEAVY height=6 build=8 skin=FOREST head=TRIANGLE head_size=12
+eyes=SQUINT eye_color=VAPE_PURPLE eye_size=12 eye_spacing=6 eye_height=10 eye_tilt=7 eye_count=2
+brows=ANGRY brow_height=10 nose=NONE nose_size=6 mouth=SHARK mouth_size=4 fangs=2 cheeks=BEAUTY_MARK
+hair=BALD hair_color=CHARCOAL highlight=NONE facial_hair=NONE
+ears=NONE horns=NONE horn_color=CHARCOAL horn_size=4 tail=NONE wings=NONE halo=NONE
+marking=SCALES marking_color=BLOOD aura=NONE
+top=OVERALLS top_color=FOREST pattern=PLAID pattern_color=BONE bottom=CARGO bottom_color=BLOOD
+shoes=BOOTS shoes_color=BONE hat=BUCKET hat_color=BONE accessory=NONE accessory_color=BLOOD
+movement=7 speech=12 expression=9 attitude=9 quirk=5
+pitch=8 speed=17 quality=21 intonation=27 accent=28
+food="Tacos" hates="Salad" hobby="Gardening" music="Folk" color=CHARCOAL fear="Bath Time"
+phrase="Stay cursed."
+hunger=60 happy=40 hygiene=66 energy=64 health=88 sanity=66 corruption=39 social=42
+mood=OK activity=PARK
+
+[651] Steamer
+# archetype: lava_spa (Hellvile)
+job: Sauna Imp
+bio: Sauna imp. Turns the heat up when you leave.
+flags=HELLBORN
+pronoun=HE romance=ANY birthday=AUG-07
+species=SLIME body=TOP_HEAVY height=12 build=12 skin=MAGENTA head=BLOB head_size=11
+eyes=GOAT eye_color=HELLFIRE eye_size=11 eye_spacing=9 eye_height=9 eye_tilt=6 eye_count=2
+brows=ANGRY brow_height=7 nose=NONE nose_size=8 mouth=SMILE mouth_size=4 fangs=1 cheeks=BLUSH
+hair=SLIME_DRIP hair_color=MAGENTA highlight=NONE facial_hair=NONE
+ears=NONE horns=NONE horn_color=MAGENTA horn_size=5 tail=NONE wings=NONE halo=THORNS
+marking=NONE marking_color=PEACH aura=SMOKE
+top=KIMONO top_color=BLOOD pattern=SOLID pattern_color=WHITE bottom=NONE bottom_color=PEACH
+shoes=BARE shoes_color=WHITE hat=NONE hat_color=WHITE accessory=NONE accessory_color=WHITE
+movement=2 speech=7 expression=11 attitude=9 quirk=6
+pitch=1 speed=22 quality=12 intonation=25 accent=22
+food="Fried Chicken" hates="Milk" hobby="Napping" music="Hardcore Punk" color=CHARCOAL fear="Church Bells"
+phrase="Whatever."
+hunger=83 happy=65 hygiene=77 energy=96 health=100 sanity=80 corruption=61 social=48
+mood=OK activity=SHOP
+
+[652] Doomscroll
+# archetype: doom_influencers (Hellvile)
+job: Doom Influencer
+bio: Rates sunsets one star. 2 million followers.
+flags=HELLBORN
+pronoun=SHE romance=ANY birthday=JUN-03
+species=BATLING body=PEAR height=5 build=8 skin=LAVENDER head=MOCHI head_size=14
+eyes=HOLLOW eye_color=MAGENTA eye_size=12 eye_spacing=7 eye_height=8 eye_tilt=9 eye_count=2
+brows=NONE brow_height=7 nose=NONE nose_size=5 mouth=TEETH mouth_size=5 fangs=0 cheeks=NONE
+hair=BALD hair_color=GRAPE highlight=NONE facial_hair=NONE
+ears=BAT horns=NONE horn_color=GRAPE horn_size=5 tail=NONE wings=TINY_BAT halo=NONE
+marking=NONE marking_color=BUBBLEGUM aura=NONE
+top=LEATHER_JACKET top_color=BLOOD pattern=SOLID pattern_color=JET bottom=SKIRT bottom_color=BUBBLEGUM
+shoes=PLATFORM shoes_color=JET hat=NONE hat_color=BLOOD accessory=SUNGLASSES accessory_color=JET
+movement=10 speech=11 expression=14 attitude=11 quirk=9
+pitch=18 speed=31 quality=17 intonation=25 accent=7
+food="Bat Wing Chips" hates="Milk" hobby="Karaoke" music="Goth Rock" color=BLOOD fear="Holy Water"
+phrase="Stay cursed."
+hunger=72 happy=75 hygiene=69 energy=78 health=86 sanity=74 corruption=51 social=76
+mood=HAPPY activity=WANDERING
+
+[653] Ticklefang
+# archetype: tickle_fiends (Hellvile)
+job: Tickle Fiend
+bio: Tickles until you laugh. Then a bit more.
+flags=HELLBORN
+pronoun=THEY romance=ANY birthday=FEB-19
+species=IMP body=STOCKY height=4 build=12 skin=BLOOD head=MOCHI head_size=8
+eyes=HOLLOW eye_color=CHERRY eye_size=8 eye_spacing=5 eye_height=10 eye_tilt=11 eye_count=3
+brows=ANGRY brow_height=9 nose=POINTY nose_size=5 mouth=GRIN mouth_size=4 fangs=1 cheeks=NONE
+hair=EMO_FRINGE hair_color=VAPE_PURPLE highlight=NONE facial_hair=NONE
+ears=POINTY horns=RAM horn_color=JET horn_size=5 tail=DEVIL wings=TINY_BAT halo=NONE
+marking=NONE marking_color=LIME aura=NONE
+top=TSHIRT top_color=MAGENTA pattern=POLKA pattern_color=WHITE bottom=PANTS bottom_color=LIME
+shoes=SNEAKERS shoes_color=LIME hat=NONE hat_color=MAGENTA accessory=NONE accessory_color=WHITE
+movement=13 speech=10 expression=15 attitude=14 quirk=14
+pitch=18 speed=18 quality=10 intonation=17 accent=18
+food="Worm Gummies" hates="Mochi" hobby="Pranks" music="Bubblegum Pop" color=VAPE_PURPLE fear="Cute Things"
+phrase="I bite. Cutely."
+hunger=82 happy=62 hygiene=40 energy=58 health=87 sanity=49 corruption=74 social=80
+mood=OK activity=WANDERING
+
+[654] Tibia Tess
+# archetype: skeleton_clerks (Hellvile)
+job: Permit Denier
+bio: Denies permits for fun. Approved one for a nest.
+traits=SOFTIE flags=HELLBORN
+pronoun=SHE romance=ANY birthday=JAN-27
+species=SKELETON body=HUNCHED height=5 build=0 skin=SILVER head=SKULL head_size=11
+eyes=SQUINT eye_color=TANGERINE eye_size=11 eye_spacing=9 eye_height=10 eye_tilt=11 eye_count=2
+brows=ARCHED brow_height=10 nose=SKULL nose_size=7 mouth=GRIN mouth_size=9 fangs=1 cheeks=SCAR,BLUSH
+hair=BALD hair_color=VAPE_PURPLE highlight=NONE facial_hair=NONE
+ears=NONE horns=NONE horn_color=VAPE_PURPLE horn_size=6 tail=NONE wings=NONE halo=NONE
+marking=NONE marking_color=BONE aura=NONE
+top=SWEATER_VEST top_color=CHARCOAL pattern=PLAID pattern_color=CHERRY bottom=PANTS bottom_color=BONE
+shoes=SNEAKERS shoes_color=CHERRY hat=NONE hat_color=CHARCOAL accessory=BOWTIE accessory_color=BONE
+movement=3 speech=11 expression=2 attitude=5 quirk=4
+pitch=10 speed=1 quality=8 intonation=7 accent=10
+food="Bone Broth" hates="Pudding" hobby="Board Games" music="Industrial" color=BONE fear="Church Bells"
+phrase="Rattle rattle!"
+hunger=69 happy=68 hygiene=54 energy=75 health=80 sanity=66 corruption=36 social=69
+mood=OK activity=SHOP
+
+[655] Mossmouth
+# archetype: thorn_farmers (Hellvile)
+job: Thorn Farmer
+bio: Swamp farmer. Grows lilies for the Hillvile pond.
+traits=SOFTIE flags=HELLBORN
+pronoun=THEY romance=ANY birthday=AUG-28
+species=FROGLING body=AVERAGE height=8 build=5 skin=TEAL head=OVAL head_size=12
+eyes=ANGRY eye_color=LEMON eye_size=11 eye_spacing=8 eye_height=6 eye_tilt=10 eye_count=2
+brows=NONE brow_height=8 nose=NONE nose_size=9 mouth=FLAT mouth_size=5 fangs=0 cheeks=BLUSH
+hair=BALD hair_color=JET highlight=NONE facial_hair=NONE
+ears=NONE horns=NONE horn_color=JET horn_size=10 tail=TENTACLE wings=NONE halo=NONE
+marking=NONE marking_color=LIME aura=NONE
+top=TANK top_color=RUST pattern=SOLID pattern_color=BONE bottom=CARGO bottom_color=LIME
+shoes=BOOTS shoes_color=BONE hat=BUCKET hat_color=RUST accessory=NONE accessory_color=BONE
+movement=7 speech=9 expression=2 attitude=13 quirk=10
+pitch=5 speed=31 quality=21 intonation=26 accent=12
+food="Hell Peppers" hates="Cupcakes" hobby="Gardening" music="Folk" color=RUST fear="Bath Time"
+phrase="No thank you!"
+hunger=82 happy=78 hygiene=83 energy=47 health=86 sanity=80 corruption=30 social=38
+mood=HAPPY activity=PARK
+
+[656] Safetypin
+# archetype: punk_band (Hellvile)
+job: Safety Pin Smith
+bio: Safety pin smith. Holds the band together.
+flags=HELLBORN
+pronoun=THEY romance=ANY birthday=OCT-28
+species=BATLING body=AVERAGE height=10 build=5 skin=LAVENDER head=PEAR head_size=14
+eyes=ANGRY eye_color=BLOOD eye_size=13 eye_spacing=7 eye_height=9 eye_tilt=10 eye_count=2
+brows=SCARRED brow_height=9 nose=WIDE nose_size=6 mouth=SMIRK mouth_size=10 fangs=0 cheeks=NONE
+hair=LIBERTY_SPIKES hair_color=HELLFIRE highlight=VAPE_PURPLE facial_hair=NONE
+ears=BAT horns=NONE horn_color=HELLFIRE horn_size=4 tail=NONE wings=TINY_BAT halo=NONE
+marking=NONE marking_color=CYAN aura=NONE
+top=BAND_TEE top_color=JET pattern=PLAID pattern_color=MAGENTA bottom=RIPPED_JEANS bottom_color=CYAN
+shoes=COMBAT shoes_color=JET hat=NONE hat_color=JET accessory=NOSE_RING accessory_color=CYAN
+movement=12 speech=15 expression=15 attitude=6 quirk=12
+pitch=29 speed=27 quality=14 intonation=6 accent=6
+food="Pizza" hates="Cotton Candy" hobby="Graffiti" music="Hardcore Punk" color=JET fear="Sunlight"
+phrase="Whatever."
+hunger=87 happy=47 hygiene=83 energy=49 health=84 sanity=78 corruption=43 social=74
+mood=OK activity=WANDERING
+
+[657] Brimhelm
+# archetype: vapor_knights (Hellvile)
+job: Vapor Knight
+bio: Polishes her horned helmet every hour.
+traits=LOYALIST flags=HELLBORN
+pronoun=SHE romance=ANY birthday=MAY-16
+species=IMP body=BUFF height=13 build=9 skin=GRAPE head=BEAN head_size=8
+eyes=ANGRY eye_color=LEMON eye_size=9 eye_spacing=5 eye_height=6 eye_tilt=9 eye_count=2
+brows=SCARRED brow_height=7 nose=ROUND nose_size=6 mouth=FANGY mouth_size=10 fangs=0 cheeks=TEAR_TATTOO
+hair=BALD hair_color=HELLFIRE highlight=NONE facial_hair=NONE
+ears=POINTY horns=NUBS horn_color=RUST horn_size=8 tail=DEVIL wings=BAT halo=NONE
+marking=NONE marking_color=VAPE_PURPLE aura=SMOKE
+top=PLATE_ARMOR top_color=JET pattern=SOLID pattern_color=SILVER bottom=NONE bottom_color=VAPE_PURPLE
+shoes=BOOTS shoes_color=VAPE_PURPLE hat=HORNED_HELMET hat_color=SILVER accessory=CAPE accessory_color=SILVER
+movement=6 speech=10 expression=7 attitude=1 quirk=12
+pitch=23 speed=4 quality=19 intonation=10 accent=28
+food="Sulfur Soda" hates="Brussels Sprouts" hobby="Pranks" music="Doom Metal" color=JET fear="Church Bells"
+phrase="Rip and tear... gently."
+hunger=90 happy=70 hygiene=84 energy=92 health=99 sanity=52 corruption=90 social=63
+mood=OK activity=WANDERING
+
+[658] Gravelrash
+# archetype: hell_bikers (Hellvile)
+job: Hell Biker
+bio: Has fallen off every bike in Hellvile.
+flags=HELLBORN
+pronoun=THEY romance=NONE birthday=MAR-12
+species=BEARKIN body=AVERAGE height=12 build=5 skin=CHOCOLATE head=DIAMOND head_size=10
+eyes=DEMON_SLIT eye_color=SLIME eye_size=8 eye_spacing=5 eye_height=9 eye_tilt=6 eye_count=2
+brows=UNIBROW brow_height=6 nose=BUTTON nose_size=8 mouth=GRIN mouth_size=4 fangs=0 cheeks=NONE
+hair=BALD hair_color=HELLFIRE highlight=NONE facial_hair=NONE
+ears=BEAR horns=NONE horn_color=HELLFIRE horn_size=8 tail=BEAR_NUB wings=NONE halo=NONE
+marking=EYELINER marking_color=RUST aura=NONE
+top=LEATHER_JACKET top_color=JET pattern=SOLID pattern_color=LEMON bottom=RIPPED_JEANS bottom_color=RUST
+shoes=BOOTS shoes_color=LEMON hat=BANDANA hat_color=RUST accessory=SUNGLASSES accessory_color=RUST
+movement=7 speech=12 expression=8 attitude=6 quirk=13
+pitch=1 speed=3 quality=1 intonation=14 accent=9
+food="Coffee" hates="Angel Cake" hobby="Welding" music="Doom Metal" color=JET fear="Hugs"
+phrase="Go to heck!"
+hunger=58 happy=82 hygiene=46 energy=73 health=95 sanity=73 corruption=67 social=82
+mood=HAPPY activity=WANDERING
+
+[659] Lord Lurk
+# archetype: hell_nobles (Hellvile)
+job: Hell Baroness
+bio: Lurks at parties. Is the party.
+traits=LOYALIST flags=HELLBORN
+pronoun=HE romance=HE birthday=APR-23
+species=CACOBLOB body=PEAR height=4 build=8 skin=CHERRY head=BLOB head_size=13
+eyes=GLOW eye_color=CHERRY eye_size=12 eye_spacing=5 eye_height=10 eye_tilt=9 eye_count=1
+brows=ANGRY brow_height=8 nose=NONE nose_size=7 mouth=LIPSTICK mouth_size=4 fangs=1 cheeks=NONE
+hair=BALD hair_color=BLOOD highlight=NONE facial_hair=MUSTACHE
+ears=NONE horns=DEVIL horn_color=CHERRY horn_size=10 tail=NONE wings=NONE halo=NONE
+marking=NONE marking_color=LEMON aura=NONE
+top=SUIT top_color=GRAPE pattern=SOLID pattern_color=BLOOD bottom=PANTS bottom_color=LEMON
+shoes=HEELS shoes_color=BLOOD hat=CROWN hat_color=BLOOD accessory=MONOCLE accessory_color=BLOOD
+movement=4 speech=11 expression=6 attitude=2 quirk=12
+pitch=20 speed=14 quality=18 intonation=23 accent=26
+food="Blood Oranges" hates="Brussels Sprouts" hobby="Tarot Reading" music="Classical" color=GRAPE fear="Popping Balloons"
+phrase="Ugh, mortals."
+hunger=62 happy=42 hygiene=76 energy=45 health=99 sanity=54 corruption=86 social=32
+mood=OK activity=HOME
+
+[660] Anvil
+# archetype: rivet_family (Hellvile)
+job: Blacksmith
+bio: Rivet's mum. Still sets a place for her at dinner.
+traits=SOFTIE flags=HELLBORN
+pronoun=SHE romance=ANY birthday=JUN-24
+species=IMP body=ROUND height=7 build=14 skin=HELLFIRE head=ROUND head_size=8
+eyes=CAT eye_color=ECTOPLASM eye_size=7 eye_spacing=9 eye_height=10 eye_tilt=10 eye_count=2
+brows=ANGRY brow_height=10 nose=DOT nose_size=8 mouth=TEETH mouth_size=10 fangs=1 cheeks=BLUSH
+hair=BALD hair_color=CHARCOAL highlight=NONE facial_hair=NONE
+ears=POINTY horns=NUBS horn_color=BONE horn_size=4 tail=DEVIL wings=NONE halo=NONE
+marking=SKULL_PAINT marking_color=HELLFIRE aura=NONE
+top=TANK top_color=CHARCOAL pattern=SOLID pattern_color=SILVER bottom=NONE bottom_color=HELLFIRE
+shoes=COMBAT shoes_color=HELLFIRE hat=BANDANA hat_color=SILVER accessory=NONE accessory_color=HELLFIRE
+movement=11 speech=15 expression=10 attitude=5 quirk=7
+pitch=6 speed=29 quality=8 intonation=11 accent=4
+food="Hell Peppers" hates="Bubble Tea" hobby="Welding" music="Doom Metal" color=LAVENDER fear="Popping Balloons"
+phrase="Fluff yeah!"
+hunger=77 happy=73 hygiene=77 energy=48 health=100 sanity=49 corruption=27 social=74
+mood=OK activity=WORKSHOP
+
+[661] Sprocket
+# archetype: rivet_family (Hellvile)
+job: Gear Cutter
+bio: Rivet's dad. Pretends not to read her letters.
+flags=HELLBORN
+pronoun=HE romance=ANY birthday=SEP-03
+species=IMP body=HUNCHED height=4 build=12 skin=TANGERINE head=ROUND head_size=14
+eyes=DEMON_SLIT eye_color=RUST eye_size=12 eye_spacing=8 eye_height=10 eye_tilt=11 eye_count=2
+brows=THICK brow_height=8 nose=HOOK nose_size=6 mouth=GRIN mouth_size=6 fangs=0 cheeks=BANDAGE
+hair=SLICKED hair_color=BLOOD highlight=NONE facial_hair=NONE
+ears=POINTY horns=NUBS horn_color=BONE horn_size=10 tail=DEVIL wings=NONE halo=NONE
+marking=NONE marking_color=NAVY aura=NONE
+top=OVERALLS top_color=RUST pattern=SOLID pattern_color=LEMON bottom=NONE bottom_color=NAVY
+shoes=COMBAT shoes_color=NAVY hat=BANDANA hat_color=RUST accessory=NONE accessory_color=LEMON
+movement=6 speech=12 expression=7 attitude=11 quirk=8
+pitch=31 speed=26 quality=12 intonation=0 accent=22
+food="Brimstone Bagels" hates="Angel Cake" hobby="Ghost Hunting" music="Folk" color=RUST fear="Church Bells"
+phrase="Rip and tear... gently."
+hunger=60 happy=61 hygiene=87 energy=52 health=100 sanity=69 corruption=54 social=61
+mood=OK activity=WORKSHOP
+
+[662] Bolt
+# archetype: rivet_family (Hellvile)
+job: Imp Student
+bio: Rivet's little sibling. Wants to weld like her.
+traits=KID flags=HELLBORN
+pronoun=THEY romance=NONE birthday=MAY-11
+species=IMP body=AVERAGE height=2 build=4 skin=TANGERINE head=ROUND head_size=15
+eyes=ROUND eye_color=WHITE eye_size=15 eye_spacing=8 eye_height=10 eye_tilt=8 eye_count=2
+brows=ANGRY brow_height=8 nose=NONE nose_size=7 mouth=FLAT mouth_size=6 fangs=0 cheeks=SCAR
+hair=BALD hair_color=TANGERINE highlight=WHITE facial_hair=NONE
+ears=POINTY horns=RAM horn_color=BONE horn_size=6 tail=NONE wings=NONE halo=NONE
+marking=NONE marking_color=NAVY aura=NONE
+top=OVERALLS top_color=RUST pattern=SOLID pattern_color=LEMON bottom=NONE bottom_color=NAVY
+shoes=COMBAT shoes_color=NAVY hat=BANDANA hat_color=LEMON accessory=GAS_MASK accessory_color=NAVY
+movement=11 speech=14 expression=7 attitude=9 quirk=7
+pitch=27 speed=25 quality=9 intonation=26 accent=19
+food="Meat Slabs" hates="Milk" hobby="Welding" music="Industrial" color=RUST fear="Public Speaking"
+phrase="Fluff yeah!"
+hunger=57 happy=42 hygiene=41 energy=89 health=94 sanity=73 corruption=62 social=34
+mood=OK activity=HOME
+
+[663] Nana Clank
+# archetype: rivet_family (Hellvile)
+job: Retired Riveter
+bio: Taught Rivet to weld. Brags about her to everyone.
+traits=ELDER flags=HELLBORN
+pronoun=SHE romance=HE birthday=DEC-27
+species=IMP body=TINY height=4 build=4 skin=TANGERINE head=OVAL head_size=14
+eyes=ROUND eye_color=JET eye_size=8 eye_spacing=7 eye_height=9 eye_tilt=5 eye_count=2
+brows=ANGRY brow_height=5 nose=POINTY nose_size=6 mouth=STITCHED mouth_size=10 fangs=3 cheeks=BANDAGE,TEAR_TATTOO
+hair=BALD hair_color=JET highlight=NONE facial_hair=NONE
+ears=POINTY horns=NUBS horn_color=CHOCOLATE horn_size=5 tail=DEVIL wings=NONE halo=NONE
+marking=NONE marking_color=TANGERINE aura=NONE
+top=OVERALLS top_color=NAVY pattern=SOLID pattern_color=LEMON bottom=NONE bottom_color=TANGERINE
+shoes=BOOTS shoes_color=LEMON hat=BANDANA hat_color=NAVY accessory=GAS_MASK accessory_color=TANGERINE
+movement=7 speech=15 expression=12 attitude=9 quirk=8
+pitch=8 speed=9 quality=27 intonation=20 accent=24
+food="Hell Peppers" hates="Bubble Tea" hobby="Welding" music="Doom Metal" color=NAVY fear="Holy Water"
+phrase="Big mood."
+hunger=62 happy=47 hygiene=42 energy=66 health=86 sanity=67 corruption=48 social=77
+mood=OK activity=WORKSHOP
+
+[664] Wobblewisp
+# archetype: poltergeists (Hellvile)
+job: Poltergeist
+bio: Moves your keys two inches to the left.
+traits=NIGHT_OWL flags=HELLBORN
+pronoun=HE romance=ANY birthday=JUN-19
+species=GHOST body=AVERAGE height=7 build=12 skin=ECTOPLASM head=SQUARE head_size=9
+eyes=GLOW eye_color=GRAPE eye_size=13 eye_spacing=10 eye_height=9 eye_tilt=8 eye_count=2
+brows=THICK brow_height=9 nose=NONE nose_size=5 mouth=GRIN mouth_size=7 fangs=1 cheeks=NONE
+hair=TWINTAILS hair_color=WHITE highlight=NONE facial_hair=NONE
+ears=NONE horns=NONE horn_color=WHITE horn_size=12 tail=NONE wings=NONE halo=NONE
+marking=NONE marking_color=ECTOPLASM aura=NONE
+top=NONE top_color=GRAPE pattern=SOLID pattern_color=WHITE bottom=NONE bottom_color=ECTOPLASM
+shoes=BARE shoes_color=ECTOPLASM hat=NONE hat_color=WHITE accessory=CHAINS accessory_color=ECTOPLASM
+movement=13 speech=15 expression=11 attitude=10 quirk=14
+pitch=24 speed=0 quality=24 intonation=22 accent=29
+food="Lava Cake" hates="Bubble Tea" hobby="Pranks" music="Hardcore Punk" color=WHITE fear="Bath Time"
+phrase="Boo!"
+hunger=61 happy=80 hygiene=81 energy=61 health=89 sanity=85 corruption=62 social=42
+mood=HAPPY activity=WANDERING
+
+[665] Fangela
+# archetype: hellhound_bouncers (Hellvile)
+job: Hellhound Bouncer
+bio: Checks IDs by sniffing them.
+flags=HELLBORN
+pronoun=SHE romance=ANY birthday=MAY-01
+species=HELLHOUND body=BUFF height=11 build=15 skin=BLOOD head=ROUND head_size=11
+eyes=SLEEPY eye_color=BLOOD eye_size=13 eye_spacing=6 eye_height=10 eye_tilt=10 eye_count=2
+brows=UNIBROW brow_height=5 nose=BUTTON nose_size=9 mouth=SHARK mouth_size=6 fangs=3 cheeks=NONE
+hair=EMO_FRINGE hair_color=WHITE highlight=VAPE_PURPLE facial_hair=NONE
+ears=DOG horns=BULL horn_color=BONE horn_size=4 tail=FLAME wings=NONE halo=NONE
+marking=NONE marking_color=HELLFIRE aura=NONE
+top=TANK top_color=JET pattern=SOLID pattern_color=SILVER bottom=RIPPED_JEANS bottom_color=HELLFIRE
+shoes=CLAWS shoes_color=HELLFIRE hat=CAP hat_color=SILVER accessory=SUNGLASSES accessory_color=SILVER
+movement=4 speech=15 expression=5 attitude=3 quirk=5
+pitch=10 speed=6 quality=29 intonation=10 accent=23
+food="Hell Peppers" hates="Honey Toast" hobby="Board Games" music="Doom Metal" color=MINT fear="Exorcisms"
+phrase="Ugh, mortals."
+hunger=59 happy=60 hygiene=84 energy=52 health=90 sanity=47 corruption=73 social=72
+mood=OK activity=WANDERING
+
+[666] Vex
+# archetype: cloud_nine (Hellvile)
+job: Cloud Nine Owner
+bio: Owns Cloud Nine Vapor. Smiles too wide, too long.
+story=VEX traits=VAPER,LOYALIST,INFILTRATOR flags=HELLBORN,STORY_NPC
+pronoun=HE romance=ANY birthday=JUN-06
+species=FOXKIN body=LANKY height=10 build=5 skin=RUST head=TRIANGLE head_size=11
+eyes=LASHES eye_color=VAPE_PURPLE eye_size=10 eye_spacing=8 eye_height=6 eye_tilt=6 eye_count=2
+brows=ARCHED brow_height=8 nose=CAT nose_size=5 mouth=SMIRK mouth_size=8 fangs=2 cheeks=BEAUTY_MARK
+hair=SLICKED hair_color=JET highlight=VAPE_PURPLE facial_hair=NONE
+ears=FOX horns=DEVIL horn_color=JET horn_size=4 tail=FOX wings=NONE halo=NONE
+marking=FUR_TIPPED_EARS marking_color=JET aura=SMOKE
+top=SUIT top_color=VAPE_PURPLE pattern=STRIPES pattern_color=MAGENTA bottom=PANTS bottom_color=JET
+shoes=PLATFORM shoes_color=JET hat=NONE hat_color=VAPE_PURPLE accessory=SUNGLASSES accessory_color=MAGENTA
+movement=12 speech=7 expression=14 attitude=5 quirk=13
+pitch=18 speed=18 quality=27 intonation=13 accent=21
+food="Cotton Candy" hates="Angel Cake" hobby="Pranks" music="Synthwave" color=VAPE_PURPLE fear="Exorcisms"
+phrase="Sulfur kisses!"
+hunger=88 happy=88 hygiene=65 energy=80 health=98 sanity=40 corruption=92 social=50
+mood=HAPPY activity=SHOP
+
+[667] Taxfang
+# archetype: imp_accountants (Hellvile)
+job: Tax Imp
+bio: Charges interest on high-fives. Compounding.
+flags=HELLBORN
+pronoun=HE romance=ANY birthday=NOV-10
+species=IMP body=TINY height=5 build=5 skin=CHERRY head=MOCHI head_size=10
+eyes=SQUINT eye_color=CHARCOAL eye_size=11 eye_spacing=9 eye_height=8 eye_tilt=6 eye_count=2
+brows=NONE brow_height=10 nose=WIDE nose_size=8 mouth=LIPSTICK mouth_size=7 fangs=0 cheeks=BEAUTY_MARK
+hair=MULLET hair_color=CHERRY highlight=NONE facial_hair=NONE
+ears=POINTY horns=DEVIL_TALL horn_color=HELLFIRE horn_size=10 tail=DEVIL wings=TINY_BAT halo=NONE
+marking=NONE marking_color=CHERRY aura=NONE
+top=SWEATER_VEST top_color=CHARCOAL pattern=STRIPES pattern_color=WHITE bottom=PANTS bottom_color=WHITE
+shoes=HEELS shoes_color=WHITE hat=NONE hat_color=CHARCOAL accessory=GLASSES accessory_color=CHERRY
+movement=6 speech=10 expression=1 attitude=1 quirk=8
+pitch=16 speed=22 quality=29 intonation=29 accent=26
+food="Black Licorice" hates="Salad" hobby="Reading" music="Goth Rock" color=CHARCOAL fear="Cute Things"
+phrase="No thank you!"
+hunger=63 happy=66 hygiene=40 energy=57 health=89 sanity=83 corruption=77 social=61
+mood=OK activity=HOME
+
+[668] Swabbie
+# archetype: sulfur_pirates (Hellvile)
+job: Deckhand
+bio: Deckhand. Mops the deck in lava.
+flags=HELLBORN
+pronoun=THEY romance=NONE birthday=MAY-14
+species=SKELETON body=BUFF height=5 build=2 skin=WHITE head=SKULL head_size=13
+eyes=GOAT eye_color=MAGENTA eye_size=12 eye_spacing=7 eye_height=7 eye_tilt=8 eye_count=2
+brows=ARCHED brow_height=8 nose=SKULL nose_size=6 mouth=FANGY mouth_size=10 fangs=2 cheeks=NONE
+hair=BALD hair_color=CHERRY highlight=NONE facial_hair=FULL_BEARD
+ears=NONE horns=NONE horn_color=CHERRY horn_size=12 tail=NONE wings=NONE halo=NONE
+marking=TRIBAL marking_color=BONE aura=FLAMES
+top=LEATHER_JACKET top_color=BLOOD pattern=SOLID pattern_color=LEMON bottom=PANTS bottom_color=BONE
+shoes=BOOTS shoes_color=LEMON hat=BANDANA hat_color=LEMON accessory=EYEPATCH accessory_color=BONE
+movement=8 speech=15 expression=13 attitude=12 quirk=8
+pitch=11 speed=15 quality=18 intonation=15 accent=7
+food="Spaghetti" hates="Brussels Sprouts" hobby="Tarot Reading" music="Sea Shanties" color=BLOOD fear="Spiders"
+phrase="Hail me!"
+hunger=86 happy=79 hygiene=49 energy=85 health=93 sanity=88 corruption=45 social=45
+mood=HAPPY activity=WANDERING
+
+[669] Nurse Leech
+# archetype: night_nurses (Hellvile)
+job: Leech Doctor
+bio: Prescribes leeches for everything. Even sadness.
+traits=NIGHT_OWL flags=HELLBORN
+pronoun=SHE romance=ANY birthday=MAY-12
+species=BATLING body=HUNCHED height=13 build=4 skin=LAVENDER head=ROUND head_size=14
+eyes=SQUINT eye_color=JET eye_size=12 eye_spacing=7 eye_height=7 eye_tilt=10 eye_count=2
+brows=ANGRY brow_height=9 nose=ROUND nose_size=5 mouth=TEETH mouth_size=7 fangs=0 cheeks=NONE
+hair=BALD hair_color=BLOOD highlight=NONE facial_hair=NONE
+ears=BAT horns=DEVIL horn_color=GRAPE horn_size=11 tail=TENTACLE wings=TINY_BAT halo=NONE
+marking=NONE marking_color=SLIME aura=NONE
+top=NURSE top_color=BONE pattern=SOLID pattern_color=JET bottom=NONE bottom_color=SLIME
+shoes=HEELS shoes_color=JET hat=NONE hat_color=JET accessory=NONE accessory_color=SLIME
+movement=2 speech=6 expression=5 attitude=8 quirk=8
+pitch=23 speed=19 quality=3 intonation=14 accent=23
+food="Eyeball Jelly" hates="Brussels Sprouts" hobby="Bug Collecting" music="Goth Rock" color=BONE fear="Spiders"
+phrase="Stay cursed."
+hunger=69 happy=40 hygiene=74 energy=70 health=99 sanity=78 corruption=57 social=54
+mood=OK activity=HOSPITAL
+
+[670] Mauler
+# archetype: grizzlies (Hellvile)
+job: Grizzly Enforcer
+bio: Big, scary, collects tiny porcelain kittens.
+traits=SOFTIE flags=HELLBORN
+pronoun=HE romance=ANY birthday=MAY-16
+species=BEARKIN body=BUFF height=14 build=15 skin=CHARCOAL head=MOCHI head_size=9
+eyes=SPIRAL eye_color=HELLFIRE eye_size=13 eye_spacing=6 eye_height=8 eye_tilt=11 eye_count=2
+brows=NONE brow_height=8 nose=BUTTON nose_size=6 mouth=FLAT mouth_size=5 fangs=2 cheeks=BLUSH,TEAR_TATTOO
+hair=BALD hair_color=JET highlight=NONE facial_hair=NONE
+ears=BEAR horns=NONE horn_color=JET horn_size=7 tail=BEAR_NUB wings=NONE halo=NONE
+marking=FUR_SOCKS marking_color=WHITE aura=NONE
+top=SUIT top_color=JET pattern=SOLID pattern_color=WHITE bottom=PANTS bottom_color=HONEY
+shoes=BOOTS shoes_color=WHITE hat=TOP_HAT hat_color=WHITE accessory=SUNGLASSES accessory_color=WHITE
+movement=9 speech=11 expression=3 attitude=7 quirk=12
+pitch=7 speed=17 quality=3 intonation=18 accent=6
+food="Honey Toast" hates="Angel Cake" hobby="Seances" music="Goth Rock" color=JET fear="Cute Things"
+phrase="As if!"
+hunger=80 happy=80 hygiene=80 energy=93 health=95 sanity=70 corruption=30 social=75
+mood=HAPPY activity=WANDERING
+
+[671] Blastbeat
+# archetype: doom_band (Hellvile)
+job: Doom Drummer
+bio: Drums so fast his arms are a blur. Literally.
+flags=HELLBORN
+pronoun=HE romance=ANY birthday=JAN-04
+species=SKELETON body=BUFF height=6 build=5 skin=WHITE head=SKULL head_size=14
+eyes=ANGRY eye_color=LEMON eye_size=7 eye_spacing=5 eye_height=7 eye_tilt=10 eye_count=2
+brows=SCARRED brow_height=5 nose=SKULL nose_size=7 mouth=TEETH mouth_size=9 fangs=1 cheeks=TEAR_TATTOO
+hair=BALD hair_color=CHERRY highlight=NONE facial_hair=NONE
+ears=NONE horns=NONE horn_color=CHERRY horn_size=6 tail=NONE wings=NONE halo=NONE
+marking=NONE marking_color=SLIME aura=NONE
+top=BAND_TEE top_color=CHARCOAL pattern=SKULLS pattern_color=BONE bottom=RIPPED_JEANS bottom_color=SLIME
+shoes=PLATFORM shoes_color=SLIME hat=NONE hat_color=CHARCOAL accessory=CHAINS accessory_color=CHARCOAL
+movement=11 speech=9 expression=10 attitude=6 quirk=12
+pitch=11 speed=5 quality=17 intonation=29 accent=12
+food="Hell Peppers" hates="Carrot Cake" hobby="Tarot Reading" music="Doom Metal" color=LAVENDER fear="Tax Season"
+phrase="Doom and gloom!"
+hunger=71 happy=84 hygiene=52 energy=46 health=99 sanity=69 corruption=71 social=62
+mood=HAPPY activity=CONCERT
+
+[672] Spraycan
+# archetype: graffiti (Hellvile)
+job: Graffiti Imp
+bio: Tags every wall with a tiny smiling skull.
+traits=NIGHT_OWL flags=HELLBORN
+pronoun=HE romance=ANY birthday=MAY-22
+species=IMP body=BUFF height=4 build=4 skin=TANGERINE head=ROUND head_size=12
+eyes=DROOPY eye_color=HELLFIRE eye_size=11 eye_spacing=6 eye_height=9 eye_tilt=8 eye_count=2
+brows=ANGRY brow_height=6 nose=WIDE nose_size=7 mouth=FLAT mouth_size=5 fangs=1 cheeks=NONE
+hair=BALD hair_color=MAGENTA highlight=ECTOPLASM facial_hair=NONE
+ears=POINTY horns=DEVIL horn_color=RUST horn_size=6 tail=DEVIL wings=BAT halo=NONE
+marking=NONE marking_color=LIME aura=NONE
+top=HOODIE top_color=MAGENTA pattern=SOLID pattern_color=LIME bottom=CARGO bottom_color=LIME
+shoes=SNEAKERS shoes_color=MAGENTA hat=BEANIE hat_color=MAGENTA accessory=MASK accessory_color=MAGENTA
+movement=12 speech=12 expression=14 attitude=10 quirk=10
+pitch=10 speed=17 quality=18 intonation=27 accent=25
+food="Sulfur Soda" hates="Carrot Cake" hobby="Graffiti" music="Hardcore Punk" color=MAGENTA fear="Clowns"
+phrase="Big mood."
+hunger=69 happy=57 hygiene=60 energy=65 health=87 sanity=58 corruption=59 social=35
+mood=OK activity=WANDERING
+
+[673] Mothilda
+# archetype: moth_goths (Hellvile)
+job: Lamp Stalker
+bio: Huge wings, tiny voice. Whispers threats.
+traits=NIGHT_OWL flags=HELLBORN
+pronoun=SHE romance=SHE birthday=JUN-05
+species=MOTHKIN body=TINY height=3 build=11 skin=JET head=TRIANGLE head_size=8
+eyes=COMPOUND eye_color=ECTOPLASM eye_size=11 eye_spacing=7 eye_height=9 eye_tilt=6 eye_count=3
+brows=SCARRED brow_height=7 nose=POINTY nose_size=10 mouth=LIPSTICK mouth_size=4 fangs=0 cheeks=NONE
+hair=BALD hair_color=JET highlight=NONE facial_hair=NONE
+ears=NONE horns=ANTENNAE horn_color=BLOOD horn_size=5 tail=NONE wings=BUTTERFLY halo=NONE
+marking=NONE marking_color=BONE aura=NONE
+top=CLOAK top_color=GRAPE pattern=SOLID pattern_color=HELLFIRE bottom=PANTS bottom_color=BONE
+shoes=BOOTS shoes_color=HELLFIRE hat=NONE hat_color=GRAPE accessory=SCARF accessory_color=BONE
+movement=5 speech=5 expression=9 attitude=7 quirk=10
+pitch=31 speed=17 quality=20 intonation=24 accent=25
+food="Candy Eyeballs" hates="Angel Cake" hobby="Board Games" music="Lo-fi Beats" color=GRAPE fear="Bath Time"
+phrase="Gloom on!"
+hunger=81 happy=83 hygiene=47 energy=44 health=82 sanity=61 corruption=53 social=60
+mood=HAPPY activity=WANDERING
+
+[674] Flexo
+# archetype: hell_gym (Hellvile)
+job: Gym Brute
+bio: Flexes at their reflection. Reflection flexes back.
+flags=HELLBORN
+pronoun=THEY romance=ANY birthday=SEP-26
+species=BEARKIN body=TOP_HEAVY height=14 build=14 skin=JET head=OVAL head_size=8
+eyes=SQUINT eye_color=LEMON eye_size=12 eye_spacing=6 eye_height=7 eye_tilt=6 eye_count=2
+brows=NONE brow_height=10 nose=BUTTON nose_size=5 mouth=LIPSTICK mouth_size=10 fangs=0 cheeks=NONE
+hair=LIBERTY_SPIKES hair_color=HELLFIRE highlight=NONE facial_hair=NONE
+ears=BEAR horns=NONE horn_color=HELLFIRE horn_size=11 tail=BEAR_NUB wings=NONE halo=NONE
+marking=NONE marking_color=JET aura=NONE
+top=TANK top_color=BLOOD pattern=SOLID pattern_color=WHITE bottom=SWEATS bottom_color=JET
+shoes=SNEAKERS shoes_color=WHITE hat=BANDANA hat_color=WHITE accessory=NONE accessory_color=WHITE
+movement=12 speech=12 expression=12 attitude=9 quirk=11
+pitch=8 speed=10 quality=9 intonation=31 accent=29
+food="Meat Slabs" hates="Mochi" hobby="Yoga" music="Doom Metal" color=BLOOD fear="Dentists"
+phrase="Ugh, mortals."
+hunger=72 happy=76 hygiene=90 energy=91 health=93 sanity=70 corruption=54 social=79
+mood=HAPPY activity=PARK
+
+[675] Vesper
+# archetype: cultists (Hellvile)
+job: Cultist
+bio: Wears thorns as a hat. Says it is cosy.
+flags=HELLBORN
+pronoun=HE romance=ANY birthday=DEC-10
+species=GHOUL body=LANKY height=14 build=0 skin=LIME head=OVAL head_size=10
+eyes=SPIRAL eye_color=SLIME eye_size=11 eye_spacing=5 eye_height=9 eye_tilt=8 eye_count=2
+brows=THICK brow_height=10 nose=HOOK nose_size=5 mouth=FROWN mouth_size=7 fangs=3 cheeks=NONE
+hair=BALD hair_color=LIME highlight=NONE facial_hair=NONE
+ears=POINTY horns=NONE horn_color=LIME horn_size=5 tail=CAT wings=NONE halo=THORNS
+marking=SKULL_PAINT marking_color=HELLFIRE aura=FLIES
+top=ROBE top_color=GRAPE pattern=SOLID pattern_color=HELLFIRE bottom=ROBE bottom_color=JET
+shoes=BOOTS shoes_color=JET hat=NONE hat_color=HELLFIRE accessory=NONE accessory_color=JET
+movement=1 speech=10 expression=6 attitude=4 quirk=11
+pitch=16 speed=20 quality=10 intonation=7 accent=29
+food="Soul Soup" hates="Brussels Sprouts" hobby="Tarot Reading" music="Hymns" color=COBALT fear="Exorcisms"
+phrase="Hail me!"
+hunger=66 happy=66 hygiene=70 energy=79 health=97 sanity=78 corruption=52 social=53
+mood=OK activity=HOME
+
+[676] Splicey
+# archetype: mad_science (Hellvile)
+job: Gene Splicer
+bio: Gene splicer. Made a frog with a moustache.
+flags=HELLBORN
+pronoun=SHE romance=ANY birthday=NOV-05
+species=MOUSEKIN body=STOCKY height=8 build=10 skin=WHITE head=ROUND head_size=12
+eyes=GLOW eye_color=SILVER eye_size=10 eye_spacing=7 eye_height=9 eye_tilt=8 eye_count=2
+brows=NONE brow_height=9 nose=CAT nose_size=5 mouth=FANGY mouth_size=10 fangs=1 cheeks=NONE
+hair=WILD hair_color=VAPE_PURPLE highlight=NONE facial_hair=NONE
+ears=MOUSE horns=NONE horn_color=VAPE_PURPLE horn_size=4 tail=MOUSE wings=NONE halo=NONE
+marking=FUR_SOCKS marking_color=BUBBLEGUM aura=NONE
+top=LAB_COAT top_color=WHITE pattern=SOLID pattern_color=BLOOD bottom=CARGO bottom_color=WHITE
+shoes=BOOTS shoes_color=BLOOD hat=NONE hat_color=WHITE accessory=GLASSES accessory_color=CYAN
+movement=12 speech=8 expression=15 attitude=7 quirk=13
+pitch=18 speed=10 quality=11 intonation=22 accent=9
+food="Eyeball Jelly" hates="Pudding" hobby="Video Games" music="Industrial" color=VAPE_PURPLE fear="Dentists"
+phrase="Yikes."
+hunger=77 happy=48 hygiene=46 energy=48 health=97 sanity=66 corruption=60 social=72
+mood=OK activity=HOME
+
+[677] Scallywag
+# archetype: sulfur_pirates (Hellvile)
+job: Sulfur Pirate
+bio: Steals treasure. Mostly bottle caps.
+flags=HELLBORN
+pronoun=SHE romance=ANY birthday=OCT-08
+species=IMP body=LANKY height=13 build=5 skin=CHERRY head=DIAMOND head_size=13
+eyes=DEMON_SLIT eye_color=CHERRY eye_size=7 eye_spacing=10 eye_height=8 eye_tilt=8 eye_count=2
+brows=ANGRY brow_height=5 nose=ROUND nose_size=9 mouth=TEETH mouth_size=6 fangs=2 cheeks=NONE
+hair=MESSY hair_color=WHITE highlight=NONE facial_hair=FULL_BEARD
+ears=POINTY horns=NUBS horn_color=CHARCOAL horn_size=6 tail=DEVIL wings=NONE halo=FLAME_RING
+marking=NONE marking_color=BONE aura=SMOKE
+top=TSHIRT top_color=BLOOD pattern=STRIPES pattern_color=LEMON bottom=PANTS bottom_color=BONE
+shoes=BOOTS shoes_color=BONE hat=BANDANA hat_color=LEMON accessory=EYEPATCH accessory_color=LEMON
+movement=13 speech=12 expression=15 attitude=9 quirk=10
+pitch=10 speed=26 quality=25 intonation=23 accent=11
+food="Sulfur Soda" hates="Macarons" hobby="Singing" music="Sea Shanties" color=BLOOD fear="Spiders"
+phrase="Bleh."
+hunger=79 happy=73 hygiene=42 energy=54 health=83 sanity=73 corruption=72 social=55
+mood=OK activity=BEACH
+
+[678] Overdue
+# archetype: rent_collect (Hellvile)
+job: Rent Collector
+bio: Late fees for being early. Somehow.
+flags=HELLBORN
+pronoun=HE romance=ANY birthday=JAN-01
+species=GHOUL body=ROUND height=6 build=9 skin=MINT head=TRIANGLE head_size=14
+eyes=ANIME eye_color=CHERRY eye_size=8 eye_spacing=8 eye_height=9 eye_tilt=10 eye_count=2
+brows=ANGRY brow_height=7 nose=HOOK nose_size=6 mouth=SMIRK mouth_size=8 fangs=1 cheeks=BANDAGE
+hair=BALD hair_color=GRAPE highlight=NONE facial_hair=NONE
+ears=ELF horns=NONE horn_color=GRAPE horn_size=4 tail=NONE wings=NONE halo=NONE
+marking=NONE marking_color=CHERRY aura=FLIES
+top=SUIT top_color=CHARCOAL pattern=SOLID pattern_color=SILVER bottom=PANTS bottom_color=CHERRY
+shoes=BOOTS shoes_color=SILVER hat=NONE hat_color=SILVER accessory=SUNGLASSES accessory_color=SILVER
+movement=8 speech=13 expression=9 attitude=4 quirk=11
+pitch=17 speed=18 quality=7 intonation=19 accent=17
+food="Coffee" hates="Honey Toast" hobby="Pranks" music="Industrial" color=MAGENTA fear="Spiders"
+phrase="Go to heck!"
+hunger=55 happy=84 hygiene=87 energy=86 health=95 sanity=68 corruption=77 social=83
+mood=HAPPY activity=WANDERING
+
+[679] Evicta
+# archetype: ghoul_landlords (Hellvile)
+job: Ghoul Landlord
+bio: Has never fixed a leak. Calls it a water feature.
+flags=HELLBORN
+pronoun=SHE romance=ANY birthday=DEC-05
+species=GHOUL body=LANKY height=12 build=0 skin=SILVER head=BEAN head_size=12
+eyes=LASHES eye_color=TANGERINE eye_size=9 eye_spacing=7 eye_height=9 eye_tilt=10 eye_count=2
+brows=NONE brow_height=9 nose=DOT nose_size=8 mouth=SMIRK mouth_size=6 fangs=3 cheeks=NONE
+hair=WILD hair_color=MAGENTA highlight=NONE facial_hair=NONE
+ears=POINTY horns=NONE horn_color=MAGENTA horn_size=11 tail=NONE wings=NONE halo=NONE
+marking=NONE marking_color=ECTOPLASM aura=NONE
+top=CLOAK top_color=JET pattern=STRIPES pattern_color=SILVER bottom=PANTS bottom_color=ECTOPLASM
+shoes=BOOTS shoes_color=ECTOPLASM hat=TOP_HAT hat_color=SILVER accessory=MONOCLE accessory_color=SILVER
+movement=5 speech=12 expression=8 attitude=5 quirk=11
+pitch=22 speed=5 quality=11 intonation=0 accent=25
+food="Grave Dirt Cake" hates="Mochi" hobby="Skull Collecting" music="Classical" color=JET fear="Hugs"
+phrase="Ugh, mortals."
+hunger=70 happy=41 hygiene=56 energy=89 health=84 sanity=87 corruption=51 social=85
+mood=OK activity=HOME
+
+[680] Ploddy
+# archetype: gate_laborers (Hellvile)
+job: Cloud Hauler
+bio: Hauls clouds all night. Hums lullabies to them.
+traits=SOFTIE flags=HELLBORN
+pronoun=THEY romance=ANY birthday=DEC-06
+species=RACCOONKIN body=STOCKY height=3 build=10 skin=SILVER head=SQUARE head_size=9
+eyes=SLEEPY eye_color=MAGENTA eye_size=12 eye_spacing=10 eye_height=7 eye_tilt=11 eye_count=3
+brows=ARCHED brow_height=5 nose=BUTTON nose_size=4 mouth=GRIN mouth_size=10 fangs=1 cheeks=BANDAGE,BLUSH
+hair=SLICKED hair_color=JET highlight=NONE facial_hair=NONE
+ears=RACCOON horns=NONE horn_color=JET horn_size=9 tail=RACCOON_RINGED wings=NONE halo=NONE
+marking=FUR_MASK marking_color=CHARCOAL aura=NONE
+top=OVERALLS top_color=CHARCOAL pattern=SOLID pattern_color=BONE bottom=CARGO bottom_color=VAPE_PURPLE
+shoes=BARE shoes_color=VAPE_PURPLE hat=CAP hat_color=CHARCOAL accessory=NONE accessory_color=BONE
+movement=6 speech=8 expression=4 attitude=9 quirk=2
+pitch=4 speed=15 quality=11 intonation=6 accent=27
+food="Bone Broth" hates="Angel Cake" hobby="Metal Drumming" music="Sea Shanties" color=CHARCOAL fear="Silence"
+phrase="Big mood."
+hunger=80 happy=73 hygiene=60 energy=55 health=80 sanity=58 corruption=31 social=61
+mood=OK activity=HOME
+
+[681] Swoleguard
+# archetype: hell_gym (Hellvile)
+job: Gym Brute
+bio: Lifts cars to impress nobody in particular.
+flags=HELLBORN
+pronoun=HE romance=ANY birthday=MAY-17
+species=HUMAN body=BUFF height=8 build=15 skin=SKIN_TAN head=TRIANGLE head_size=9
+eyes=SQUINT eye_color=JET eye_size=11 eye_spacing=9 eye_height=6 eye_tilt=9 eye_count=2
+brows=UNIBROW brow_height=10 nose=HOOK nose_size=10 mouth=SHARK mouth_size=4 fangs=2 cheeks=NONE
+hair=BUZZ hair_color=CARAMEL highlight=SLIME facial_hair=MUSTACHE
+ears=NORMAL horns=NONE horn_color=CARAMEL horn_size=10 tail=NONE wings=BAT halo=NONE
+marking=NONE marking_color=JET aura=NONE
+top=CROP_TOP top_color=BLOOD pattern=SOLID pattern_color=WHITE bottom=SWEATS bottom_color=JET
+shoes=SNEAKERS shoes_color=JET hat=CAP hat_color=WHITE accessory=NONE accessory_color=JET
+movement=15 speech=10 expression=13 attitude=4 quirk=9
+pitch=13 speed=24 quality=7 intonation=28 accent=8
+food="Milk" hates="Macarons" hobby="Napping" music="Doom Metal" color=BLOOD fear="Spiders"
+phrase="Big mood."
+hunger=67 happy=69 hygiene=84 energy=57 health=97 sanity=59 corruption=50 social=56
+mood=OK activity=PARK
+
+[682] Comma Krak
+# archetype: imp_accountants (Hellvile)
+job: Imp Accountant
+bio: Has never used a decimal correctly. Proudly.
+flags=HELLBORN
+pronoun=THEY romance=ANY birthday=SEP-09
+species=IMP body=AVERAGE height=10 build=12 skin=MAGENTA head=BEAN head_size=10
+eyes=GOAT eye_color=WHITE eye_size=12 eye_spacing=8 eye_height=7 eye_tilt=8 eye_count=2
+brows=ANGRY brow_height=6 nose=POINTY nose_size=10 mouth=TONGUE mouth_size=7 fangs=1 cheeks=TEAR_TATTOO
+hair=BALD hair_color=CHARCOAL highlight=NONE facial_hair=NONE
+ears=POINTY horns=NUBS horn_color=BLOOD horn_size=11 tail=DEVIL wings=NONE halo=NONE
+marking=NONE marking_color=HELLFIRE aura=NONE
+top=SUIT top_color=JET pattern=STRIPES pattern_color=BONE bottom=PANTS bottom_color=HELLFIRE
+shoes=BOOTS shoes_color=BONE hat=NONE hat_color=BONE accessory=MONOCLE accessory_color=BONE
+movement=11 speech=14 expression=2 attitude=3 quirk=5
+pitch=7 speed=3 quality=15 intonation=4 accent=15
+food="Fried Chicken" hates="Pudding" hobby="Board Games" music="Hymns" color=JET fear="Dentists"
+phrase="Feed me souls."
+hunger=55 happy=47 hygiene=69 energy=92 health=85 sanity=80 corruption=55 social=82
+mood=OK activity=SHOP
+
+[683] Lacey Grave
+# archetype: goth_stylists (Hellvile)
+job: Goth Stylist
+bio: Sews lace onto anything that holds still.
+flags=HELLBORN
+pronoun=THEY romance=ANY birthday=MAR-28
+species=IMP body=ROUND height=7 build=9 skin=LAVENDER head=PEAR head_size=10
+eyes=GOAT eye_color=BLOOD eye_size=13 eye_spacing=6 eye_height=6 eye_tilt=9 eye_count=2
+brows=SCARRED brow_height=9 nose=DOT nose_size=9 mouth=TEETH mouth_size=4 fangs=2 cheeks=NONE
+hair=LONG hair_color=VAPE_PURPLE highlight=NONE facial_hair=CHOPS
+ears=POINTY horns=DEVIL horn_color=CHERRY horn_size=9 tail=DEVIL wings=TINY_BAT halo=NONE
+marking=EYELINER marking_color=BLOOD aura=NONE
+top=SUIT top_color=JET pattern=PLAID pattern_color=SILVER bottom=SKIRT bottom_color=BLOOD
+shoes=PLATFORM shoes_color=SILVER hat=WITCH hat_color=SILVER accessory=SKULL_NECKLACE accessory_color=BLOOD
+movement=10 speech=13 expression=12 attitude=9 quirk=14
+pitch=25 speed=28 quality=20 intonation=14 accent=7
+food="Black Licorice" hates="Milk" hobby="Cosplay" music="Goth Rock" color=JET fear="Cute Things"
+phrase="Dark and fluffy."
+hunger=90 happy=66 hygiene=71 energy=67 health=96 sanity=77 corruption=75 social=53
+mood=OK activity=SHOP
+
+[684] Blazeguard
+# archetype: vapor_knights (Hellvile)
+job: Vapor Knight
+bio: Guards Vapula's door. Nobody knocks.
+traits=LOYALIST flags=HELLBORN
+pronoun=HE romance=ANY birthday=JUN-27
+species=HELLHOUND body=BUFF height=14 build=6 skin=CHARCOAL head=ROUND head_size=8
+eyes=GLOW eye_color=LEMON eye_size=13 eye_spacing=5 eye_height=10 eye_tilt=7 eye_count=2
+brows=UNIBROW brow_height=5 nose=BUTTON nose_size=9 mouth=LIPSTICK mouth_size=6 fangs=0 cheeks=NONE
+hair=LIBERTY_SPIKES hair_color=SLIME highlight=ECTOPLASM facial_hair=NONE
+ears=DOG horns=DEVIL horn_color=CHERRY horn_size=12 tail=SPIKED wings=FLAME halo=NONE
+marking=NONE marking_color=HELLFIRE aura=FLAMES
+top=PLATE_ARMOR top_color=CHARCOAL pattern=FLAMES pattern_color=SILVER bottom=NONE bottom_color=CHARCOAL
+shoes=BOOTS shoes_color=SILVER hat=HORNED_HELMET hat_color=CHARCOAL accessory=NONE accessory_color=HELLFIRE
+movement=9 speech=13 expression=3 attitude=1 quirk=11
+pitch=8 speed=7 quality=28 intonation=2 accent=31
+food="Soul Soup" hates="Angel Cake" hobby="Welding" music="Doom Metal" color=CHARCOAL fear="Exorcisms"
+phrase="Rip and tear... gently."
+hunger=72 happy=44 hygiene=65 energy=77 health=81 sanity=56 corruption=94 social=75
+mood=OK activity=WANDERING
+
+[685] Parcelbat
+# archetype: bat_couriers (Hellvile)
+job: Message Bat
+bio: Carries parcels twice its size. Proudly.
+traits=NIGHT_OWL flags=HELLBORN
+pronoun=HE romance=SHE birthday=OCT-18
+species=BATLING body=NOODLE height=12 build=5 skin=JET head=ROUND head_size=12
+eyes=HOLLOW eye_color=LEMON eye_size=7 eye_spacing=10 eye_height=7 eye_tilt=8 eye_count=2
+brows=FLAT brow_height=8 nose=DOT nose_size=4 mouth=SHARK mouth_size=9 fangs=1 cheeks=NONE
+hair=LONG hair_color=CHARCOAL highlight=NONE facial_hair=NONE
+ears=BAT horns=NONE horn_color=CHARCOAL horn_size=6 tail=NONE wings=NONE halo=NONE
+marking=SKULL_PAINT marking_color=LIME aura=NONE
+top=TSHIRT top_color=JET pattern=SOLID pattern_color=WHITE bottom=SHORTS bottom_color=LIME
+shoes=SNEAKERS shoes_color=JET hat=CAP hat_color=JET accessory=BACKPACK accessory_color=LIME
+movement=15 speech=7 expression=7 attitude=12 quirk=8
+pitch=22 speed=11 quality=9 intonation=16 accent=27
+food="Blood Oranges" hates="Cereal" hobby="Bug Collecting" music="Synthwave" color=JET fear="Church Bells"
+phrase="Big mood."
+hunger=86 happy=78 hygiene=50 energy=42 health=92 sanity=50 corruption=52 social=57
+mood=HAPPY activity=WANDERING
+
+[686] Crispin
+# archetype: burnt_bakers (Hellvile)
+job: Burnt Toast Baker
+bio: Burns all his bread. Gives it away anyway.
+traits=SOFTIE flags=HELLBORN
+pronoun=HE romance=THEY birthday=SEP-22
+species=HELLHOUND body=STOCKY height=4 build=8 skin=CHARCOAL head=OVAL head_size=13
+eyes=HOLLOW eye_color=GRAPE eye_size=13 eye_spacing=9 eye_height=7 eye_tilt=9 eye_count=2
+brows=ARCHED brow_height=5 nose=BUTTON nose_size=7 mouth=GRIN mouth_size=7 fangs=2 cheeks=FRECKLES
+hair=BALD hair_color=JET highlight=NONE facial_hair=NONE
+ears=DOG horns=BROKEN horn_color=RUST horn_size=9 tail=SPIKED wings=NONE halo=NONE
+marking=NONE marking_color=ROSE aura=NONE
+top=TSHIRT top_color=JET pattern=SOLID pattern_color=WHITE bottom=PANTS bottom_color=ROSE
+shoes=BOOTS shoes_color=JET hat=CHEF hat_color=JET accessory=NONE accessory_color=JET
+movement=6 speech=3 expression=11 attitude=7 quirk=11
+pitch=2 speed=22 quality=21 intonation=11 accent=22
+food="Burnt Toast" hates="Cotton Candy" hobby="Pranks" music="Synthwave" color=JET fear="Spiders"
+phrase="Bleh."
+hunger=78 happy=62 hygiene=62 energy=84 health=84 sanity=62 corruption=31 social=37
+mood=OK activity=CAFE
+
+[687] Swoopsy
+# archetype: bat_couriers (Hellvile)
+job: Bat Courier
+bio: Delivers letters by dropping them on heads.
+traits=NIGHT_OWL flags=HELLBORN
+pronoun=SHE romance=ANY birthday=DEC-04
+species=BATLING body=AVERAGE height=5 build=4 skin=JET head=OVAL head_size=12
+eyes=ANGRY eye_color=VAPE_PURPLE eye_size=11 eye_spacing=7 eye_height=6 eye_tilt=6 eye_count=2
+brows=ARCHED brow_height=9 nose=HOOK nose_size=6 mouth=SMIRK mouth_size=5 fangs=1 cheeks=BLUSH
+hair=BALD hair_color=VAPE_PURPLE highlight=HELLFIRE facial_hair=NONE
+ears=BAT horns=NONE horn_color=VAPE_PURPLE horn_size=5 tail=NONE wings=BAT halo=NONE
+marking=NONE marking_color=LIME aura=NONE
+top=HOODIE top_color=JET pattern=STRIPES pattern_color=WHITE bottom=SHORTS bottom_color=LIME
+shoes=BARE shoes_color=WHITE hat=CAP hat_color=LIME accessory=BACKPACK accessory_color=WHITE
+movement=13 speech=11 expression=10 attitude=13 quirk=8
+pitch=19 speed=29 quality=20 intonation=23 accent=8
+food="Lava Cake" hates="Milk" hobby="Skull Collecting" music="Chiptune" color=MAGENTA fear="Spiders"
+phrase="Nom nom nom!"
+hunger=62 happy=62 hygiene=41 energy=42 health=91 sanity=56 corruption=71 social=78
+mood=OK activity=WANDERING
+
+[688] Malwarina
+# archetype: glitch_hackers (Hellvile)
+job: Virus Writer
+bio: Writes viruses that only make cursors dance.
+traits=NIGHT_OWL flags=HELLBORN
+pronoun=SHE romance=ANY birthday=DEC-05
+species=ROBOT body=LANKY height=9 build=3 skin=SILVER head=SQUARE head_size=13
+eyes=SQUINT eye_color=JET eye_size=13 eye_spacing=10 eye_height=8 eye_tilt=9 eye_count=2
+brows=BUSHY brow_height=7 nose=NONE nose_size=10 mouth=STITCHED mouth_size=5 fangs=0 cheeks=NONE
+hair=BALD hair_color=GRAPE highlight=NONE facial_hair=NONE
+ears=NONE horns=NONE horn_color=GRAPE horn_size=4 tail=CAT wings=NONE halo=NONE
+marking=EYELINER marking_color=CYAN aura=NONE
+top=HOODIE top_color=NAVY pattern=SOLID pattern_color=LIME bottom=SWEATS bottom_color=CYAN
+shoes=SNEAKERS shoes_color=CYAN hat=NONE hat_color=NAVY accessory=GLASSES accessory_color=LIME
+movement=7 speech=13 expression=5 attitude=8 quirk=10
+pitch=16 speed=26 quality=10 intonation=3 accent=6
+food="Coffee" hates="Macarons" hobby="Video Games" music="Hardcore Punk" color=NAVY fear="Clowns"
+phrase="The void says hi."
+hunger=67 happy=59 hygiene=89 energy=55 health=86 sanity=85 corruption=71 social=46
+mood=OK activity=HOME
+
+[689] Mortimer
+# archetype: undertakers (Hellvile)
+job: Undertaker
+bio: Undertaker. Measures everyone, just in case.
+flags=HELLBORN
+pronoun=HE romance=SHE birthday=JUL-22
+species=HUMAN body=BUFF height=7 build=15 skin=SKIN_FAIR head=OVAL head_size=12
+eyes=ANGRY eye_color=CHERRY eye_size=12 eye_spacing=10 eye_height=9 eye_tilt=11 eye_count=2
+brows=ANGRY brow_height=8 nose=POINTY nose_size=6 mouth=SMIRK mouth_size=8 fangs=3 cheeks=NONE
+hair=MESSY hair_color=GRAPE highlight=NONE facial_hair=STUBBLE
+ears=ELF horns=NONE horn_color=GRAPE horn_size=8 tail=NONE wings=NONE halo=NONE
+marking=NONE marking_color=WHITE aura=NONE
+top=SUIT top_color=JET pattern=SOLID pattern_color=GRAPE bottom=PANTS bottom_color=WHITE
+shoes=HEELS shoes_color=WHITE hat=TOP_HAT hat_color=JET accessory=NONE accessory_color=GRAPE
+movement=1 speech=5 expression=3 attitude=5 quirk=5
+pitch=20 speed=20 quality=21 intonation=14 accent=16
+food="Bone Broth" hates="Salad" hobby="Reading" music="Hymns" color=LAVENDER fear="Sunlight"
+phrase="Doom and gloom!"
+hunger=70 happy=50 hygiene=51 energy=64 health=98 sanity=45 corruption=50 social=73
+mood=OK activity=CHURCH
+
+[690] Scaldie
+# archetype: cafe_inferno (Hellvile)
+job: Cafe Inferno Cook
+bio: Serves everything scalding hot. On purpose.
+flags=HELLBORN
+pronoun=SHE romance=ANY birthday=JAN-04
+species=IMP body=ROUND height=3 build=15 skin=GRAPE head=ROUND head_size=10
+eyes=ANGRY eye_color=CHERRY eye_size=8 eye_spacing=7 eye_height=9 eye_tilt=8 eye_count=2
+brows=ARCHED brow_height=10 nose=POINTY nose_size=4 mouth=SHARK mouth_size=4 fangs=2 cheeks=NONE
+hair=LIBERTY_SPIKES hair_color=GRAPE highlight=NONE facial_hair=NONE
+ears=POINTY horns=DEVIL horn_color=CHOCOLATE horn_size=5 tail=DEVIL wings=NONE halo=NONE
+marking=NONE marking_color=BONE aura=NONE
+top=TSHIRT top_color=BLOOD pattern=SOLID pattern_color=JET bottom=SKIRT bottom_color=BONE
+shoes=PLATFORM shoes_color=BONE hat=BANDANA hat_color=BLOOD accessory=BOWTIE accessory_color=JET
+movement=10 speech=9 expression=6 attitude=11 quirk=9
+pitch=7 speed=8 quality=18 intonation=13 accent=25
+food="Sulfur Soda" hates="Salad" hobby="Baking" music="Goth Rock" color=RUST fear="Tax Season"
+phrase="Bleh."
+hunger=79 happy=83 hygiene=69 energy=67 health=94 sanity=71 corruption=51 social=78
+mood=HAPPY activity=CAFE
+
+[691] Croupette
+# archetype: dice_fiends (Hellvile)
+job: Croupier
+bio: Spins the roulette wheel with her tail.
+flags=HELLBORN
+pronoun=SHE romance=SHE birthday=NOV-26
+species=GHOUL body=AVERAGE height=11 build=8 skin=LIME head=PEAR head_size=10
+eyes=CAT eye_color=RUST eye_size=10 eye_spacing=8 eye_height=7 eye_tilt=7 eye_count=2
+brows=ANGRY brow_height=9 nose=PIG nose_size=7 mouth=TEETH mouth_size=7 fangs=1 cheeks=BLUSH,TEAR_TATTOO
+hair=SLICKED hair_color=CHARCOAL highlight=ECTOPLASM facial_hair=NONE
+ears=POINTY horns=NONE horn_color=CHARCOAL horn_size=8 tail=NONE wings=NONE halo=NONE
+marking=NONE marking_color=FOREST aura=NONE
+top=SUIT top_color=BLOOD pattern=SOLID pattern_color=WHITE bottom=PANTS bottom_color=FOREST
+shoes=BOOTS shoes_color=WHITE hat=NONE hat_color=WHITE accessory=BOWTIE accessory_color=WHITE
+movement=12 speech=10 expression=8 attitude=9 quirk=12
+pitch=28 speed=22 quality=26 intonation=14 accent=3
+food="Lava Cake" hates="Bubble Tea" hobby="Board Games" music="Hymns" color=MINT fear="Hugs"
+phrase="Hail me!"
+hunger=62 happy=51 hygiene=66 energy=58 health=85 sanity=59 corruption=73 social=34
+mood=OK activity=WANDERING
+
+[692] Gelatina
+# archetype: slime_gang (Hellvile)
+job: Slime Gangster
+bio: Secretly runs a jelly bakery for orphan blobs.
+traits=SOFTIE flags=HELLBORN
+pronoun=SHE romance=ANY birthday=OCT-14
+species=SLIME body=TOP_HEAVY height=5 build=13 skin=CYAN head=BLOB head_size=14
+eyes=DEMON_SLIT eye_color=MAGENTA eye_size=10 eye_spacing=8 eye_height=8 eye_tilt=9 eye_count=2
+brows=ARCHED brow_height=10 nose=NONE nose_size=9 mouth=TEETH mouth_size=10 fangs=1 cheeks=BLUSH
+hair=BALD hair_color=JET highlight=NONE facial_hair=NONE
+ears=NONE horns=NONE horn_color=JET horn_size=8 tail=NONE wings=NONE halo=NONE
+marking=NONE marking_color=SLIME aura=NONE
+top=SUIT top_color=JET pattern=FLAMES pattern_color=SILVER bottom=PANTS bottom_color=SLIME
+shoes=BARE shoes_color=SILVER hat=TOP_HAT hat_color=JET accessory=SUNGLASSES accessory_color=SLIME
+movement=5 speech=15 expression=5 attitude=8 quirk=6
+pitch=14 speed=17 quality=10 intonation=9 accent=6
+food="Lava Cake" hates="Cupcakes" hobby="Pranks" music="Goth Rock" color=JET fear="Silence"
+phrase="Big mood."
+hunger=82 happy=74 hygiene=60 energy=78 health=92 sanity=80 corruption=23 social=61
+mood=OK activity=WANDERING
+
+[693] Hookah Hex
+# archetype: vape_lords (Hellvile)
+job: Vape Lord
+bio: Vapes in a rocking chair. Rocks out.
+traits=VAPER flags=HELLBORN
+pronoun=HE romance=ANY birthday=JUN-17
+species=IMP body=STOCKY height=9 build=4 skin=ROSE head=OVAL head_size=11
+eyes=SLEEPY eye_color=CHERRY eye_size=11 eye_spacing=10 eye_height=10 eye_tilt=7 eye_count=2
+brows=FLAT brow_height=10 nose=WIDE nose_size=5 mouth=FLAT mouth_size=9 fangs=3 cheeks=BLUSH
+hair=BALD hair_color=LIME highlight=NONE facial_hair=CHOPS
+ears=POINTY horns=RAM horn_color=BONE horn_size=6 tail=DEVIL wings=NONE halo=NONE
+marking=NONE marking_color=VAPE_PURPLE aura=SMOKE
+top=HOODIE top_color=CHARCOAL pattern=CAMO pattern_color=LIME bottom=CARGO bottom_color=VAPE_PURPLE
+shoes=SNEAKERS shoes_color=LIME hat=BEANIE hat_color=CHARCOAL accessory=SUNGLASSES accessory_color=LIME
+movement=4 speech=11 expression=11 attitude=8 quirk=8
+pitch=20 speed=8 quality=13 intonation=10 accent=31
+food="Popcorn" hates="Honey Toast" hobby="Pranks" music="Synthwave" color=CHARCOAL fear="Popping Balloons"
+phrase="Whatever."
+hunger=89 happy=60 hygiene=67 energy=78 health=86 sanity=77 corruption=72 social=82
+mood=OK activity=WANDERING
+
+[694] Marquis
+# archetype: hell_nobles (Hellvile)
+job: Marquis of Mire
+bio: Lives in a swamp castle. Smells royal.
+traits=LOYALIST flags=HELLBORN
+pronoun=HE romance=HE birthday=OCT-11
+species=IMP body=HUNCHED height=9 build=10 skin=BLOOD head=BEAN head_size=12
+eyes=GLOW eye_color=SLIME eye_size=9 eye_spacing=7 eye_height=6 eye_tilt=6 eye_count=2
+brows=NONE brow_height=10 nose=DOT nose_size=5 mouth=SHARK mouth_size=5 fangs=1 cheeks=NONE
+hair=BALD hair_color=HELLFIRE highlight=NONE facial_hair=NONE
+ears=POINTY horns=DEVIL horn_color=CHARCOAL horn_size=4 tail=DEVIL wings=NONE halo=NONE
+marking=NONE marking_color=LEMON aura=NONE
+top=SUIT top_color=JET pattern=SOLID pattern_color=MAGENTA bottom=PANTS bottom_color=JET
+shoes=HEELS shoes_color=MAGENTA hat=TIARA hat_color=JET accessory=MONOCLE accessory_color=LEMON
+movement=4 speech=11 expression=6 attitude=0 quirk=11
+pitch=21 speed=18 quality=0 intonation=8 accent=22
+food="Blood Oranges" hates="Macarons" hobby="Painting" music="Classical" color=CARAMEL fear="Silence"
+phrase="No thank you!"
+hunger=76 happy=55 hygiene=53 energy=71 health=92 sanity=85 corruption=84 social=80
+mood=OK activity=HOME
+
+[695] Drillsby
+# archetype: hell_dentists (Hellvile)
+job: Fang Dentist
+bio: Fang dentist. Sharpens fangs. Brightens smiles.
+flags=HELLBORN
+pronoun=HE romance=NONE birthday=JUL-02
+species=IMP body=LANKY height=15 build=0 skin=BUBBLEGUM head=TRIANGLE head_size=8
+eyes=ANGRY eye_color=VAPE_PURPLE eye_size=11 eye_spacing=10 eye_height=9 eye_tilt=8 eye_count=2
+brows=NONE brow_height=10 nose=DOT nose_size=8 mouth=LIPSTICK mouth_size=7 fangs=0 cheeks=NONE
+hair=BALD hair_color=BLOOD highlight=NONE facial_hair=NONE
+ears=POINTY horns=NUBS horn_color=SILVER horn_size=8 tail=DEVIL wings=NONE halo=NONE
+marking=EYELINER marking_color=SLIME aura=NONE
+top=LAB_COAT top_color=WHITE pattern=SOLID pattern_color=JET bottom=PANTS bottom_color=SLIME
+shoes=CLOGS shoes_color=JET hat=NONE hat_color=JET accessory=GLASSES accessory_color=SLIME
+movement=12 speech=12 expression=11 attitude=6 quirk=9
+pitch=4 speed=3 quality=23 intonation=20 accent=3
+food="Gumdrops" hates="Cupcakes" hobby="Skull Collecting" music="Industrial" color=WHITE fear="Tax Season"
+phrase="Mwahaha!"
+hunger=82 happy=81 hygiene=70 energy=51 health=85 sanity=77 corruption=77 social=48
+mood=HAPPY activity=HOSPITAL
+
+[696] Cheddarlock
+# archetype: sewer_mice (Hellvile)
+job: Cheese Smuggler
+bio: Smuggles cheese across the Wall. Mostly brie.
+flags=HELLBORN
+pronoun=HE romance=ANY birthday=JUL-02
+species=MOUSEKIN body=ROUND height=12 build=8 skin=CHARCOAL head=BEAN head_size=10
+eyes=CAT eye_color=VAPE_PURPLE eye_size=13 eye_spacing=6 eye_height=9 eye_tilt=7 eye_count=2
+brows=NONE brow_height=9 nose=CAT nose_size=5 mouth=SMIRK mouth_size=10 fangs=2 cheeks=BLUSH
+hair=SIDE_SHAVE hair_color=VAPE_PURPLE highlight=NONE facial_hair=NONE
+ears=MOUSE horns=NONE horn_color=VAPE_PURPLE horn_size=5 tail=MOUSE wings=NONE halo=NONE
+marking=FUR_MUZZLE marking_color=SILVER aura=NONE
+top=OVERALLS top_color=CHARCOAL pattern=SOLID pattern_color=LIME bottom=CARGO bottom_color=HONEY
+shoes=BOOTS shoes_color=HONEY hat=BEANIE hat_color=CHARCOAL accessory=BACKPACK accessory_color=LIME
+movement=11 speech=10 expression=11 attitude=12 quirk=8
+pitch=21 speed=17 quality=0 intonation=6 accent=26
+food="Bone Broth" hates="Angel Cake" hobby="Bug Collecting" music="Sea Shanties" color=CHARCOAL fear="Popping Balloons"
+phrase="Gloom on!"
+hunger=57 happy=47 hygiene=63 energy=70 health=95 sanity=87 corruption=44 social=82
+mood=OK activity=WANDERING
+
+[697] Smokeblind
+# archetype: shadow_ninjas (Hellvile)
+job: Smoke Bomber
+bio: Throws smoke bombs, then coughs a lot.
+traits=NIGHT_OWL flags=HELLBORN
+pronoun=HE romance=SHE birthday=FEB-17
+species=BATLING body=STOCKY height=12 build=4 skin=VAPE_PURPLE head=ROUND head_size=12
+eyes=DEMON_SLIT eye_color=CHERRY eye_size=7 eye_spacing=10 eye_height=10 eye_tilt=5 eye_count=2
+brows=UNIBROW brow_height=7 nose=POINTY nose_size=4 mouth=TONGUE mouth_size=5 fangs=2 cheeks=NONE
+hair=LOCS hair_color=WHITE highlight=NONE facial_hair=NONE
+ears=BAT horns=NONE horn_color=WHITE horn_size=6 tail=NONE wings=TINY_BAT halo=NONE
+marking=NONE marking_color=JET aura=NONE
+top=KIMONO top_color=CHARCOAL pattern=SOLID pattern_color=SILVER bottom=PANTS bottom_color=JET
+shoes=BARE shoes_color=JET hat=BANDANA hat_color=JET accessory=MASK accessory_color=SILVER
+movement=15 speech=5 expression=2 attitude=3 quirk=13
+pitch=18 speed=8 quality=21 intonation=30 accent=8
+food="Bat Wing Chips" hates="Cereal" hobby="Origami" music="Synthwave" color=MAGENTA fear="Clowns"
+phrase="Stay cursed."
+hunger=80 happy=84 hygiene=89 energy=67 health=88 sanity=90 corruption=54 social=52
+mood=HAPPY activity=WANDERING
+
+[698] Rattleby
+# archetype: scare_actors (Hellvile)
+job: Jump Scarer
+bio: Haunted house actor. Rattles chains, very tenderly.
+traits=NIGHT_OWL flags=HELLBORN
+pronoun=SHE romance=ANY birthday=MAR-08
+species=SKELETON body=TOP_HEAVY height=11 build=3 skin=SILVER head=SKULL head_size=8
+eyes=VOID eye_color=VAPE_PURPLE eye_size=7 eye_spacing=6 eye_height=10 eye_tilt=7 eye_count=2
+brows=UNIBROW brow_height=5 nose=SKULL nose_size=10 mouth=OPEN mouth_size=9 fangs=1 cheeks=NONE
+hair=BALD hair_color=MAGENTA highlight=NONE facial_hair=NONE
+ears=NONE horns=NONE horn_color=MAGENTA horn_size=7 tail=NONE wings=DRAGON halo=BROKEN
+marking=NONE marking_color=WHITE aura=NONE
+top=CLOAK top_color=GRAPE pattern=SOLID pattern_color=SLIME bottom=NONE bottom_color=WHITE
+shoes=BARE shoes_color=WHITE hat=NONE hat_color=GRAPE accessory=NONE accessory_color=SLIME
+movement=12 speech=10 expression=15 attitude=11 quirk=12
+pitch=0 speed=20 quality=8 intonation=26 accent=17
+food="Popcorn" hates="Mochi" hobby="Bug Collecting" music="Goth Rock" color=LAVENDER fear="Silence"
+phrase="Ugh, mortals."
+hunger=72 happy=57 hygiene=46 energy=49 health=80 sanity=86 corruption=47 social=60
+mood=OK activity=WANDERING
+
+[699] Greasy Gail
+# archetype: batwing_fryers (Hellvile)
+job: Chip Shop Ghoul
+bio: Chip shop ghoul. Wraps chips in old curses.
+flags=HELLBORN
+pronoun=SHE romance=ANY birthday=MAR-04
+species=GHOUL body=PEAR height=10 build=6 skin=MINT head=ROUND head_size=8
+eyes=GOAT eye_color=SLIME eye_size=8 eye_spacing=8 eye_height=7 eye_tilt=10 eye_count=2
+brows=BUSHY brow_height=9 nose=POINTY nose_size=6 mouth=SMIRK mouth_size=4 fangs=0 cheeks=NONE
+hair=MOHAWK hair_color=BLOOD highlight=NONE facial_hair=NONE
+ears=ELF horns=NONE horn_color=BLOOD horn_size=11 tail=NONE wings=NONE halo=NONE
+marking=NONE marking_color=TANGERINE aura=NONE
+top=TSHIRT top_color=CHARCOAL pattern=SOLID pattern_color=WHITE bottom=PANTS bottom_color=WHITE
+shoes=CLOGS shoes_color=TANGERINE hat=CAP hat_color=WHITE accessory=NONE accessory_color=WHITE
+movement=9 speech=10 expression=8 attitude=8 quirk=12
+pitch=2 speed=30 quality=3 intonation=30 accent=20
+food="Fried Chicken" hates="Pudding" hobby="Board Games" music="Hardcore Punk" color=CHARCOAL fear="Spiders"
+phrase="Nom nom nom!"
+hunger=71 happy=40 hygiene=52 energy=74 health=81 sanity=58 corruption=71 social=62
+mood=OK activity=CAFE

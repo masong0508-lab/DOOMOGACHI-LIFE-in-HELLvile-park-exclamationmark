@@ -9,7 +9,10 @@ bin="$1"; out="$2"; gif="${3:-}"
 logo="$here/assets/dippinn_logo.mp4"
 tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
 
-"$bin" --wav "$tmp/trailer.wav"
+"$bin" --wav "$tmp/raw.wav"
+# master the synth mix the same way the Makefile does (+5 dB into a -1 dBFS limiter, ~-16 LUFS)
+ffmpeg -v error -y -i "$tmp/raw.wav" \
+  -af "aresample=48000,volume=5dB,alimiter=limit=0.89:attack=3:release=60:level=disabled" -ac 2 "$tmp/trailer.wav"
 # 1) the pixel trailer at 1080p (30 fps, 48 kHz stereo)
 "$bin" --raw | ffmpeg -v error -y -f rawvideo -pix_fmt rgb24 -s 240x160 -r 30 -i - -i "$tmp/trailer.wav" \
   -vf "scale=1440:960:flags=neighbor,pad=1920:1080:240:60:black,format=yuv420p" \
@@ -17,7 +20,7 @@ tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
 # 2) logo first, then the trailer
 ffmpeg -v error -y -i "$logo" -i "$tmp/body.mp4" -filter_complex \
   "[0:v]fps=30,scale=1920:1080,setsar=1,format=yuv420p[v0];[1:v]setsar=1,format=yuv420p[v1];\
-   [0:a]aresample=48000,aformat=channel_layouts=stereo[a0];[1:a]aresample=48000,aformat=channel_layouts=stereo[a1];\
+   [0:a]aresample=48000,loudnorm=I=-21:TP=-2:LRA=11,aresample=48000,aformat=channel_layouts=stereo[a0];[1:a]aresample=48000,aformat=channel_layouts=stereo[a1];\
    [v0][a0][v1][a1]concat=n=2:v=1:a=1[v][a]" \
   -map "[v]" -map "[a]" -c:v libx264 -crf 17 -preset slow -c:a aac -b:a 192k -movflags +faststart "$out"
 # 3) optional GIF: logo letterboxed into 480x320, then the trailer at 2x

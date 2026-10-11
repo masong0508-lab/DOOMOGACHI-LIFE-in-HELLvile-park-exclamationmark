@@ -1193,15 +1193,14 @@ void ph_hat(PCtx *c)
  * ==================================================================== */
 static void eye_pos(PCtx *c, int s, int *X, int *Y)
 {
-    const DoomoLook *l = c->l;
-    int ex = 60 + l->eye_spacing * 6, ey = -14 + l->eye_height * 6;
-    if (l->eye_count == 1) ex = 0;
-    ph_proj(phs.h, s * ex, ey, 1, X, Y);
+    ph_eye_geom(c, c->l->eye_count == 1 ? 0 : s, X, Y, NULL, NULL);
 }
 
 static int eye_r(PCtx *c)
 {
-    return c->h.ry * (17 + c->l->eye_size * 15 / 10) / 100;
+    int x, y, r;
+    ph_eye_geom(c, 1, &x, &y, NULL, &r);
+    return r;
 }
 
 void ph_face_acc(PCtx *c)

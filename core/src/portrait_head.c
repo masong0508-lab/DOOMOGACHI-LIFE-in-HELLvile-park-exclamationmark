@@ -127,7 +127,7 @@ static void face_layout(PCtx *c)
     int big = h->lod == LOD_BIG;
     F.ex = 60 + l->eye_spacing * 6;                          /* 24%..59% */
     F.ey = -14 + l->eye_height * 6;                          /* -5%..+30% */
-    F.ery = h->ry * (17 + l->eye_size * 15 / 10) / 100;      /* 17%..39% */
+    F.ery = h->ry * (20 + l->eye_size * 16 / 10) / 100;      /* 20%..44% */
     F.erx = F.ery * 80 / 100;
     if (l->eye_count == 1) { F.erx = F.erx * 5 / 4; F.ery = F.ery * 5 / 4; }
     if (!big) {
@@ -141,6 +141,19 @@ static void face_layout(PCtx *c)
     if (F.mw < 16) F.mw = 16;
     F.muzzle = species_muzzle(l->species);
     if (F.my > 200) F.my = 200;
+}
+
+/* eye centre (Q4) and radii for side s (-1 / +1; 0 = single eye) */
+int ph_eye_geom(PCtx *c, int s, int *X, int *Y, int *erx, int *ery)
+{
+    const DoomoLook *l = c->l;
+    int ex = l->eye_count == 1 ? 0 : 60 + l->eye_spacing * 6;
+    int ey = -14 + l->eye_height * 6;
+    int ry = c->h.ry * (20 + l->eye_size * 16 / 10) / 100;
+    if (l->eye_count == 1) ry = ry * 5 / 4;
+    if (ery) *ery = ry;
+    if (erx) *erx = ry * 80 / 100;
+    return ph_proj(&c->h, s * ex, ey, 1, X, Y);
 }
 
 /* face point -> Q4 with yaw; returns visibility (<= 0 hidden) */
@@ -247,25 +260,80 @@ static void head_shape(PCtx *c)
     }
 }
 
-/* fur tufts poking out of the cheeks (part of the head silhouette) */
+/* fur tufts / cheek shapes that extend the head silhouette (same part) */
+static void tri_tuft(int bx, int by, int len, int drop, int w)
+{
+    hT(bx - 30, by - w, bx - 30, by + w, bx + len, by + drop);
+}
+
 static void cheek_tufts(PCtx *c, int big)
 {
     int sp = c->l->species;
-    int n = 2, y0 = 80, len = 70;
-    if (sp == SPECIES_FOXKIN || sp == SPECIES_RACCOONKIN) { n = 3; len = 92; y0 = 60; }
-    else if (sp == SPECIES_CATFOLK || sp == SPECIES_HELLHOUND || sp == SPECIES_BATLING) n = 2;
-    else if (sp == SPECIES_IMP) { n = 1; len = 70; y0 = 70; }
-    else if (sp == SPECIES_SHEEPKIN || sp == SPECIES_OWLKIN || sp == SPECIES_BEARKIN ||
-             sp == SPECIES_PUPKIN || sp == SPECIES_MOUSEKIN || sp == SPECIES_BUNNYKIN) n = 2;
-    if (!big && n > 2) n = 2;
     for (phs.s = -1; phs.s <= 1; phs.s += 2) {
-        int k;
-        for (k = 0; k < n; k++) {
-            int y = y0 + k * 56;
-            int bx = 218 - k * 26 - (y > 140 ? (y - 140) : 0);
-            int tip = bx + len - k * 14;
-            hT(bx - 70, y - 44, bx - 60, y + 42, tip, y + 16 + k * 10);
+        switch (sp) {
+        case SPECIES_CATFOLK: case SPECIES_BATLING:
+            tri_tuft(222, 70, 96, 20, 40);
+            tri_tuft(200, 130, 86, 40, 36);
+            if (big) tri_tuft(170, 180, 60, 50, 30);
+            break;
+        case SPECIES_HELLHOUND:
+            tri_tuft(222, 50, 110, -20, 44);
+            tri_tuft(205, 120, 100, 20, 40);
+            break;
+        case SPECIES_IMP:
+            tri_tuft(226, 80, 120, -30, 26);
+            break;
+        case SPECIES_BEARKIN:
+            hE(196, 110, 84, 80);
+            break;
+        case SPECIES_PUPKIN:
+            hE(160, 168, 100, 80);
+            tri_tuft(230, 40, 60, 30, 34);
+            break;
+        case SPECIES_BUNNYKIN:
+            hE(196, 104, 92, 84);
+            hE(146, 172, 92, 76);
+            break;
+        case SPECIES_OWLKIN:
+            tri_tuft(220, 60, 80, 50, 34);
+            tri_tuft(190, 130, 70, 60, 30);
+            break;
+        case SPECIES_MOUSEKIN:
+            hE(170, 140, 96, 80);
+            break;
+        case SPECIES_MOTHKIN:
+            tri_tuft(225, 40, 70, -10, 30);
+            tri_tuft(215, 100, 74, 10, 32);
+            tri_tuft(190, 160, 64, 30, 30);
+            break;
+        default:
+            break;
         }
+    }
+    phs.s = 1;
+}
+
+/* big fluffy cheek ruffs (fox, raccoon) - their own lighter part */
+static void cheek_ruffs(PCtx *c)
+{
+    PMat m;
+    int sp = c->l->species;
+    if (sp != SPECIES_FOXKIN && sp != SPECIES_RACCOONKIN) return;
+    if (sp == SPECIES_FOXKIN) {
+        pm_paint(&m, PAINT_WHITE);
+        if (c->l->marking >= MARK_FUR_MUZZLE) pm_paint(&m, c->l->marking_color);
+    } else {
+        pm_from3(&m, c->skin.c[2], c->skin.c[3], c->skin.c[4]);
+        if (c->l->marking >= MARK_FUR_MUZZLE) pm_paint(&m, c->l->marking_color);
+    }
+    pc_part(&m, SH_SOFT, PF_FUZZ);
+    hHeadFrame(30);
+    for (phs.s = -1; phs.s <= 1; phs.s += 2) {
+        hE(176, 130, 96, 90);
+        hT(150, 40, 230, 90, 330, 60);
+        hT(170, 100, 240, 160, 340, 170);
+        hT(150, 170, 220, 220, 290, 270);
+        hT(80, 190, 160, 230, 150, 300);
     }
     phs.s = 1;
 }
@@ -283,132 +351,265 @@ static int has_hair_cover(int style)
            style != HAIR_MOHAWK && style != HAIR_SIDE_SHAVE;
 }
 
-/* species decorations that live on the head after the base fill */
+static void eye_ring(PCtx *c, uint8_t col, int grow_x, int grow_y, int dy)
+{
+    PMat r;
+    int X, Y, v, erx, ery;
+    pm_flat(&r, col);
+    pc_decal(&r, SH_FLAT);
+    for (phs.s = -1; phs.s <= 1; phs.s += 2) {
+        int s = c->l->eye_count == 1 ? 0 : phs.s;
+        v = ph_eye_geom(c, s, &X, &Y, &erx, &ery);
+        if (v > 40) pc_ellipse(X, Y + dy, fshort(erx + grow_x, v), ery + grow_y);
+        if (!s) break;
+    }
+    phs.s = 1;
+}
+
+/* species decorations on the face (before the eyes) */
 static void species_head(PCtx *c, int big)
 {
     const DoomoLook *l = c->l;
-    int sp = l->species;
+    int sp = l->species, X, Y, v, k;
     PMat m;
-    uint8_t ink = face_ink(c);
     switch (sp) {
-    case SPECIES_SKELETON:
-        /* cheekbone shading + jaw seam */
-        pc_decal(&c->skin, SH_FLAT);
-        if (big) {
-            for (phs.s = -1; phs.s <= 1; phs.s += 2) {
-                hL(150, 120, 200, 80, c->skin.c[1]);
-                hL(60, 196, 150, 160, c->skin.c[1]);
-            }
-            phs.s = 1;
-            hL(-60, 200, 60, 200, c->skin.c[1]);
+    case SPECIES_SKELETON: {
+        /* dark sockets, nasal cavity, a row of teeth, cheekbones */
+        eye_ring(c, PAL_PAINT(PAINT_CHARCOAL, 0), hr(56), hry(40), 6);
+        v = fpt(0, F.ny + 10, &X, &Y);
+        if (v > 0) {
+            pm_flat(&m, PAL_PAINT(PAINT_CHARCOAL, 0));
+            pc_decal(&m, SH_FLAT);
+            pc_tri(X - hr(40), Y - hry(20), X + hr(40), Y - hry(20), X, Y + hry(36));
         }
-        break;
-    case SPECIES_SLIME:
-        /* inner bubbles + a big glossy streak */
-        pm_flat(&m, c->skin.c[4]);
-        pc_decal(&m, SH_FLAT);
-        hE(-120, -150, 40, 30);
-        hE(150, 40, 22, 22);
-        hE(110, 110, 14, 14);
-        pm_flat(&m, PAL_WHITE);
-        pc_decal(&m, SH_FLAT);
-        hC(-170, -110, -110, -190, 10, 10);
-        break;
-    case SPECIES_ROBOT:
-        /* panel seam, rivets and a visor glare */
-        pc_decal(&c->skin, SH_FLAT);
-        hL(-230, -110, 230, -110, c->skin.c[0]);
+        v = fpt(0, F.my + 26, &X, &Y);
+        if (v > 0) {
+            int w = hr(90) >> 4;
+            pm_flat(&m, PAL_WHITE);
+            pc_decal(&m, SH_FLAT);
+            pc_rrect(X, Y, hr(96), hry(30), 12);
+            for (k = -w; k <= w; k += 2) pc_px((X >> 4) + k, Y >> 4, PAL_GRAY);
+            pc_line((X >> 4) - w - 1, (Y + hry(30)) >> 4, (X >> 4) + w + 1, (Y + hry(30)) >> 4, PAL_GRAY_D);
+        }
         if (big) {
-            hL(-230, -96, 230, -96, c->skin.c[3]);
-            for (phs.s = -1; phs.s <= 1; phs.s += 2) {
-                hP(200, -170, c->skin.c[0]);
-                hP(196, -186, c->skin.c[4]);
-                hP(214, 120, c->skin.c[0]);
-            }
+            for (phs.s = -1; phs.s <= 1; phs.s += 2) hL(140, 160, 210, 110, c->skin.c[1]);
             phs.s = 1;
         }
-        break;
-    case SPECIES_PLUSHIE:
-        /* stitched seam down the crown */
-        if (!has_hair_cover(l->hair_style) || l->hair_style == HAIR_BUZZ) {
-            int y;
-            for (y = -250; y < -60; y += 44) hL(0, y, 0, y + 20, c->skin.c[0]);
-        }
-        /* a little fabric tag on the side */
-        break;
-    case SPECIES_MUMMY: {
-        int k;
-        pm_paint(&m, PAINT_BONE);
-        pc_decal(&m, SH_FLAT);
-        for (k = 0; k < 3; k++) {
-            int y = -210 + k * 72;
-            int y2 = y + 40 + (k & 1) * 30;
-            if (y > F.ey * 1 - 90 && y < F.ey + 50) continue;
-            hQ(-260, y, 260, y2, 260, y2 + 34, -260, y + 34);
-        }
-        hQ(-260, 150, 260, 120, 260, 154, -260, 184);
-        pc_decal(&m, SH_FLAT);
-        hL(-200, -178, 200, -156, m.c[1]);
-        hL(-200, 182, 200, 152, m.c[1]);
-        break; }
-    case SPECIES_FROGLING: {
-        /* pale throat */
-        PMat t;
-        pm_flat(&t, c->skin.c[3]);
-        pc_decal(&t, SH_FLAT);
-        hE(0, 200, 150, 60);
         break; }
     case SPECIES_GHOUL:
-        /* sunken eye rings */
-        pc_decal(&c->skin, SH_FLAT);
-        if (F.erx > 0 && phs.h->yaw < 3) {
-            for (phs.s = -1; phs.s <= 1; phs.s += 2) {
-                int X, Y, v = fpt(phs.s * F.ex, F.ey + 30, &X, &Y);
-                if (v > 0 && l->eye_count != 1) {
-                    PMat r;
-                    pm_flat(&r, c->skin.c[1]);
-                    pc_decal(&r, SH_FLAT);
-                    pc_ellipse(X, Y + 10, fshort(F.erx + 20, v), F.ery + 14);
-                }
-            }
-            phs.s = 1;
-        }
-        break;
-    case SPECIES_RACCOONKIN:
-        /* forehead stripe */
-        pm_flat(&m, c->skin.c[0]);
-        pc_decal(&m, SH_FLAT);
-        hT(-40, -250, 40, -250, 0, -110);
-        break;
-    case SPECIES_OWLKIN: {
-        /* feather chevrons on the forehead */
+        eye_ring(c, c->skin.c[0], hr(40), hry(30), 12);
         if (big) {
-            hL(-60, -190, 0, -160, c->skin.c[1]);
-            hL(0, -160, 60, -190, c->skin.c[1]);
-            hL(-40, -130, 0, -110, c->skin.c[1]);
-            hL(0, -110, 40, -130, c->skin.c[1]);
-        }
-        break; }
-    case SPECIES_CHERUB:
-        /* one perfect curl on the forehead */
-        if (!has_hair_cover(l->hair_style)) {
-            pc_decal(&c->hair, SH_BALL);
-            hC(0, -246, 30, -200, 26, 18);
-            hP(10, -224, c->hair.c[1]);
+            fpt(150, 140, &X, &Y);
+            pc_line((X >> 4) - 2, (Y >> 4) - 2, (X >> 4) + 2, (Y >> 4) + 2, PAL_RAMP(RAMP_FLESH, 2));
+            for (k = -1; k <= 1; k++) pc_px((X >> 4) + k * 2 + 1, (Y >> 4) + k * 2 - 1, PAL_RAMP(RAMP_FLESH, 1));
+            for (phs.s = -1; phs.s <= 1; phs.s += 2) hL(200, 60, 170, 170, c->skin.c[1]);
+            phs.s = 1;
         }
         break;
     case SPECIES_IMP:
-        /* widow's peak shading */
-        pm_flat(&m, c->skin.c[1]);
-        pc_decal(&m, SH_FLAT);
-        hT(-60, -250, 60, -250, 0, -170);
+        for (phs.s = -1; phs.s <= 1; phs.s += 2) {
+            hL(150, 120, 190, 90, c->skin.c[0]);
+            if (big) hL(170, 140, 210, 110, c->skin.c[0]);
+        }
+        phs.s = 1;
         break;
+    case SPECIES_RACCOONKIN: {
+        PMat dk;
+        pm_from3(&dk, PAL_PAINT(PAINT_CHARCOAL, 0), PAL_PAINT(PAINT_CHARCOAL, 1), PAL_PAINT(PAINT_CHARCOAL, 2));
+        pc_decal(&dk, SH_SOFT);
+        for (phs.s = -1; phs.s <= 1; phs.s += 2) {
+            int s = l->eye_count == 1 ? 0 : phs.s, erx, ery;
+            v = ph_eye_geom(c, s, &X, &Y, &erx, &ery);
+            if (v > 40) pc_ellipse(X + phs.s * hr(30), Y + 10, fshort(erx + hr(70), v), ery + hry(36));
+        }
+        phs.s = 1;
+        break; }
+    case SPECIES_PUPKIN: {
+        int erx, ery;
+        v = ph_eye_geom(c, l->eye_count == 1 ? 0 : -1, &X, &Y, &erx, &ery);
+        if (v > 40) {
+            pm_from3(&m, c->skin.c[0], c->skin.c[1], c->skin.c[2]);
+            pc_decal(&m, SH_SOFT);
+            pc_ellipse(X - 8, Y - 6, fshort(erx + hr(54), v), ery + hry(46));
+        }
+        break; }
+    case SPECIES_FROGLING:
+        /* wide frog grin + pink cheek circles */
+        v = fpt(0, F.my - 6, &X, &Y);
+        if (v > 0) {
+            int w = hr(190) >> 4;
+            for (k = -w; k <= w; k++) {
+                int d = (k * k * 3) / (w * w + 1);
+                pc_px((X >> 4) + k, (Y >> 4) - d + 1, face_ink(c));
+            }
+        }
+        for (phs.s = -1; phs.s <= 1; phs.s += 2) {
+            pm_ramp(&m, RAMP_PASTEL_PINK, 5);
+            pc_decal(&m, SH_FLAT);
+            v = fpt(phs.s * 200, F.my - 40, &X, &Y);
+            if (v > 30) pc_ellipse(X, Y, hr(34), hry(30));
+        }
+        phs.s = 1;
+        /* pale throat */
+        pm_flat(&m, c->skin.c[3]);
+        pc_decal(&m, SH_FLAT);
+        hE(0, 220, 150, 50);
+        break;
+    case SPECIES_SLIME:
+        pm_flat(&m, c->skin.c[4]);
+        pc_decal(&m, SH_FLAT);
+        hE(-120, -150, 40, 30);
+        hE(160, 40, 22, 22);
+        hE(120, 110, 14, 14);
+        hE(-170, 120, 18, 18);
+        pm_flat(&m, PAL_WHITE);
+        pc_decal(&m, SH_FLAT);
+        hC(-180, -100, -120, -190, 12, 10);
+        hP(150, 30, PAL_WHITE);
+        break;
+    case SPECIES_ROBOT:
+        pc_decal(&c->skin, SH_FLAT);
+        hL(-230, -110, 230, -110, c->skin.c[0]);
+        if (big) hL(-230, -96, 230, -96, c->skin.c[3]);
+        hL(-200, 200, 200, 200, c->skin.c[1]);
+        break;
+    case SPECIES_PLUSHIE:
+        /* seam down the face and an X stitch on a cheek */
+        for (k = 0; k < 5; k++) {
+            int y = -150 + k * 50;
+            if (y > F.ey - 60 && y < F.ey + 60) continue;
+            hL(0, y, 0, y + 20, c->skin.c[0]);
+        }
+        fpt(170, 120, &X, &Y);
+        pc_line((X >> 4) - 1, (Y >> 4) - 1, (X >> 4) + 1, (Y >> 4) + 1, c->skin.c[0]);
+        pc_line((X >> 4) - 1, (Y >> 4) + 1, (X >> 4) + 1, (Y >> 4) - 1, c->skin.c[0]);
+        break;
+    case SPECIES_OWLKIN:
+        if (big) {
+            hL(-60, -190, 0, -160, c->skin.c[1]);
+            hL(0, -160, 60, -190, c->skin.c[1]);
+        }
+        break;
+    case SPECIES_BATLING:
+        break;
+    case SPECIES_CACOBLOB: {
+        /* the big pale lower lip of a cute cacodemon */
+        pm_from3(&m, c->skin.c[2], c->skin.c[3], c->skin.c[4]);
+        pc_decal(&m, SH_SOFT);
+        hE(0, 200, 170, 70);
+        break; }
+    default:
+        break;
+    }
+}
+
+/* species bits that sit over hair and hats (antennae, wool, wraps...) */
+void ph_species_over(PCtx *c)
+{
+    const DoomoLook *l = c->l;
+    int sp = l->species, k;
+    PMat m;
+    phs.c = c; phs.h = &c->h; phs.s = 1; phs.z = 0;
+    switch (sp) {
+    case SPECIES_MOTHKIN: {
+        PMat f;
+        pm_from3(&f, c->skin.c[0], c->skin.c[1], c->skin.c[2]);
+        for (phs.s = -1; phs.s <= 1; phs.s += 2) {
+            pc_part(&f, SH_BALL, 0);
+            hB(50, -200, 80, -360, 190, -420, 12, 10, 4);
+            for (k = 0; k < 3; k++) hT(90 + k * 34, -320 - k * 30, 100 + k * 34, -300 - k * 30, 40 + k * 40, -270 - k * 34);
+        }
+        phs.s = 1;
+        break; }
+    case SPECIES_FROGLING:
+        pc_part(&c->skin, SH_BALL, 0);
+        hHeadFrame(0);
+        for (phs.s = -1; phs.s <= 1; phs.s += 2) {
+            hE(150, -220, 96, 84);
+            hP(120, -250, c->skin.c[4]);
+        }
+        phs.s = 1;
+        break;
+    case SPECIES_ROBOT: {
+        PMat st, bulb;
+        pm_ramp(&st, RAMP_STEEL, 4);
+        pm_paint(&bulb, PAINT_CHERRY);
+        pc_part(&st, SH_GLOSS, 0);
+        hC(0, -230, 20, -400, 12, 10);
+        pc_part(&bulb, SH_GLOSS, 0);
+        hE(20, -420, 40, 40);
+        if (l->ears == EARS_NONE || l->ears == EARS_NORMAL) {
+            pc_part(&st, SH_GLOSS, 0);
+            for (phs.s = -1; phs.s <= 1; phs.s += 2) pc_rrect(hx(262), hy(20), hr(40), hry(70), hr(20));
+            phs.s = 1;
+        }
+        break; }
+    case SPECIES_CHERUB: {
+        pc_part(&c->hair, SH_BALL, 0);
+        hHeadFrame(40);
+        hC(-10, -250, 30, -300, 26, 22);
+        hC(30, -300, 70, -270, 22, 18);
+        hC(70, -270, 40, -240, 18, 14);
+        break; }
+    case SPECIES_CACOBLOB:
+        pc_part(&c->skin, SH_BALL, 0);
+        hHeadFrame(0);
+        hT(-150, -180, -70, -220, -150, -330);
+        hT(-40, -240, 40, -240, 0, -370);
+        hT(70, -220, 150, -180, 150, -330);
+        break;
+    case SPECIES_MUMMY: {
+        PMat w;
+        pm_paint(&w, PAINT_BONE);
+        if (l->skin == 8 + PAINT_BONE) pm_paint(&w, PAINT_WHITE);
+        pc_part(&w, SH_SOFT, 0);
+        hHeadFrame(30);
+        {
+            int et = F.ey - F.ery * 256 / phs.h->ry - 24, eb = F.ey + F.ery * 256 / phs.h->ry + 24;
+            hQ(-280, et - 170, 280, et - 120, 280, et - 70, -280, et - 120);
+            hQ(-280, et - 60, 280, et - 30, 280, et, -280, et - 30);
+            hQ(-280, eb + 40, 280, eb, 280, eb + 50, -280, eb + 90);
+            pc_decal(&w, SH_FLAT);
+            hL(-200, et - 130, 200, et - 95, w.c[1]);
+            hL(-200, eb + 60, 200, eb + 30, w.c[1]);
+        }
+        pc_part(&w, SH_SOFT, 0);
+        hT(230, -150, 380, -60, 330, -20);
+        break; }
+    case SPECIES_SHEEPKIN: {
+        PMat wool;
+        pm_from3(&wool, c->skin.c[2], c->skin.c[3], c->skin.c[4]);
+        if (l->marking >= MARK_FUR_MUZZLE) pm_paint(&wool, l->marking_color);
+        if (l->hair_style != HAIR_BALD) pm_from3(&wool, c->hair.c[2], c->hair.c[3], c->hair.c[4]);
+        pc_part(&wool, SH_SOFT, PF_FUZZ);
+        hHeadFrame(60);
+        for (k = 0; k < 9; k++) {
+            int a = 120 + k * 15;
+            hE(p_cos(a) * 250 / 256, -30 + p_sin(a) * 240 / 256, 76, 70);
+        }
+        break; }
+    case SPECIES_PLUSHIE: {
+        PMat tag, red;
+        pm_paint(&tag, PAINT_WHITE);
+        pm_paint(&red, PAINT_CHERRY);
+        pc_part(&tag, SH_FLAT, 0);
+        pc_rrect(hx(286), hy(60), hr(34), hry(46), 8);
+        pc_decal(&red, SH_FLAT);
+        hL(270, 40, 300, 40, red.c[1]);
+        break; }
     case SPECIES_GHOST:
+        pc_part(&c->skin, SH_SOFT, 0);
+        hHeadFrame(0);
+        hB(-40, -230, 20, -330, 100, -300, 40, 14, 4);
+        break;
+    case SPECIES_HELLHOUND:
+        hP(-60, -150, PAL_RAMP(RAMP_LAVA, 6));
+        hP(60, -150, PAL_RAMP(RAMP_LAVA, 6));
         break;
     default:
         break;
     }
-    (void)ink;
+    (void)m;
 }
 
 /* muzzle / facial disc / snout (critter faces) */
@@ -502,14 +703,34 @@ static void eye_glint(int ex, int ey, int erx, int ery, int big)
 /* the default glossy critter eye */
 static void eye_glossy(PCtx *c, int ex, int ey, int erx, int ery, int shear, int big, int pupil)
 {
-    PMat dark;
+    PMat dark, ring;
+    int gx, gy;
+    /* soft dark rim, iris gradient, big pupil, bright lower iris, glints */
+    if (big) {
+        pm_flat(&ring, F.lid);
+        pc_decal(&ring, SH_FLAT);
+        pc_ellipse_sh(ex, ey, erx + 10, ery + 8, shear);
+    }
     pc_decal(&c->eye, SH_VGRAD);
-    pc_ellipse_sh(ex, ey, erx, ery, shear);
+    pc_ellipse_sh(ex, ey + 2, erx, ery, shear);
     pm_flat(&dark, PAL_PAINT(PAINT_JET, 1));
     pc_decal(&dark, SH_FLAT);
-    if (pupil) pc_ellipse_sh(ex, ey + ery / 10, erx * pupil / 100, ery * pupil / 100 + 4, shear);
-    lid_arc(ex, ey, erx, ery, shear, F.lid, big && ery >= 44 ? 2 : 1);
-    eye_glint(ex, ey, erx, ery, big);
+    if (pupil) pc_ellipse_sh(ex, ey - ery / 10, erx * pupil / 100 + 2, ery * (pupil + 10) / 100 + 2, shear);
+    if (big && ery >= 48) {
+        /* lighter crescent at the bottom of the iris */
+        int x, xa = (ex - erx / 2) >> 4, xb = (ex + erx / 2) >> 4, yb = (ey + ery - 10) >> 4;
+        for (x = xa; x <= xb; x++) pc_px(x, yb + ((x - xa) * (shear) >> 9), c->eye.c[4]);
+    }
+    lid_arc(ex, ey, erx + 6, ery + 4, shear, F.lid, big && ery >= 40 ? 2 : 1);
+    /* glints: a big one top-left, a small one bottom-right */
+    gx = (ex - erx * 38 / 100) >> 4;
+    gy = (ey - ery * 42 / 100) >> 4;
+    pc_px(gx, gy, PAL_WHITE);
+    if (big) {
+        if (erx >= 40) { pc_px(gx + 1, gy, PAL_WHITE); pc_px(gx, gy + 1, PAL_WHITE); }
+        if (erx >= 60) pc_px(gx + 1, gy + 1, PAL_WHITE);
+        if (ery >= 44) pc_px((ex + erx * 36 / 100) >> 4, (ey + ery * 30 / 100) >> 4, PAL_WHITE);
+    }
 }
 
 static void eye_closed(int ex, int ey, int erx, int happy, uint8_t col)
@@ -844,9 +1065,51 @@ static void eyes(PCtx *c)
         }
         phs.s = 1;
     }
-    if (n == 3) {
-        v = fpt(0, F.ey - (ery * 256 / phs.h->ry) - 90, &X, &Y);
-        if (v > 0) one_eye(c, st, X, Y, fshort(erx * 3 / 4, v), ery * 3 / 4, 0, 1);
+}
+
+/* forehead features drawn over the hair: the third eye, forehead marks */
+void ph_face_over(PCtx *c)
+{
+    const DoomoLook *l = c->l;
+    int X, Y, v, k, big;
+    PMat m;
+    phs.c = c; phs.h = &c->h; phs.s = 1; phs.z = 0;
+    if (c->h.yaw >= 3) return;
+    big = c->h.lod == LOD_BIG;
+    face_layout(c);
+    F.lid = face_ink(c);
+    if (l->eye_count == 3) {
+        int st = l->eye_style % EYE_COUNT;
+        v = fpt(0, F.by - 40, &X, &Y);
+        if (v > 0) one_eye(c, st, X, Y, fshort(F.erx * 3 / 4, v), F.ery * 3 / 4, 0, 1);
+    }
+    pm_paint(&m, l->marking_color);
+    if (l->marking == MARK_THIRD_EYE) {
+        PMat w;
+        int ey = F.by - (l->eye_count == 3 ? 150 : 50);
+        v = fpt(0, ey, &X, &Y);
+        if (v > 0) {
+            pm_flat(&w, PAL_WHITE);
+            pc_decal(&w, SH_FLAT);
+            pc_ellipse(X, Y, F.erx * 2 / 3 + 12, F.ery / 2 + 8);
+            pc_decal(&m, SH_FLAT);
+            pc_ellipse(X, Y, F.erx / 3 + 8, F.ery / 3 + 8);
+            pc_px(X >> 4, Y >> 4, PAL_PAINT(PAINT_JET, 1));
+            pc_line((X - F.erx * 2 / 3 - 8) >> 4, (Y - F.ery / 2 - 4) >> 4, (X + F.erx * 2 / 3 + 8) >> 4, (Y - F.ery / 2 - 4) >> 4, m.c[0]);
+            pc_px((X - F.erx * 2 / 3 - 8) >> 4, Y >> 4, m.c[0]);
+            pc_px((X + F.erx * 2 / 3 + 8) >> 4, Y >> 4, m.c[0]);
+        }
+    } else if (l->marking == MARK_PENTAGRAM) {
+        static const int8_t px5[5] = { 0, 10, 6, -6, -10 };
+        static const int8_t py5[5] = { -10, -3, 8, 8, -3 };
+        int cx, cy, r = big ? 5 : 2;
+        v = fpt(0, F.by - 70, &X, &Y);
+        cx = X >> 4; cy = Y >> 4;
+        for (k = 0; k < 5; k++) {
+            int a = (k + 2) % 5;
+            pc_line(cx + px5[k] * r / 10, cy + py5[k] * r / 10, cx + px5[a] * r / 10, cy + py5[a] * r / 10, m.c[1]);
+        }
+        if (big) pc_px(cx, cy, m.c[3]);
     }
 }
 
@@ -945,10 +1208,25 @@ static void nose(PCtx *c)
     int ny = F.ny;
     if (F.muzzle != MZ_NONE) ny = F.my - 70;
     v = fpt(0, ny, &X, &Y);
-    if (v <= 0 || st == NOSE_NONE) return;
+    if (v <= 0) return;
     cx = X >> 4; cy = Y >> 4;
-    r = hr(sz * 5);          /* Q4 radius */
+    r = hr(sz * 3);          /* Q4 radius */
     if (!big) r = r * 3 / 4;
+    if (big && l->species == SPECIES_BATLING) {
+        /* upturned pug snout pad with a little nose-leaf */
+        pm_from3(&m, c->skin.c[1], c->skin.c[2], c->skin.c[3]);
+        pc_part(&m, SH_SOFT, PF_NOCAST);
+        pc_ellipse(X, Y + 8, hr(70), hry(46));
+        pc_tri(X - hr(26), Y - hry(20), X + hr(26), Y - hry(20), X, Y - hry(90));
+        pc_px(cx - 2, cy + 1, c->skin.c[0]);
+        pc_px(cx + 2, cy + 1, c->skin.c[0]);
+    }
+    if (big && l->species == SPECIES_OWLKIN && l->mouth_style != MOUTH_BEAK) {
+        pm_paint(&m, PAINT_HONEY);
+        pc_part(&m, SH_BALL, 0);
+        pc_tri(X - hr(30), Y - hry(30), X + hr(30), Y - hry(30), X, Y + hry(40));
+    }
+    if (st == NOSE_NONE) return;
     if (phs.h->lod == LOD_TINY) {
         if (st == NOSE_CLOWN || st == NOSE_PIG || st == NOSE_LONG || st == NOSE_CAT || st == NOSE_BUTTON)
             pc_px(cx, cy, st == NOSE_CLOWN ? PAL_PAINT(PAINT_CHERRY, 1) :
@@ -965,8 +1243,8 @@ static void nose(PCtx *c)
                  c->critter ? PAL_PAINT(PAINT_JET, 1) : c->skin.c[1],
                  c->critter ? PAL_PAINT(PAINT_JET, 2) : c->skin.c[2]);
         pc_decal(&m, SH_GLOSS);
-        pc_ellipse(X, Y, r + 8, r * 3 / 4 + 6);
-        pc_px((X - r / 3) >> 4, (Y - r / 3) >> 4, c->critter ? PAL_GRAY : c->skin.c[4]);
+        pc_ellipse(X, Y, r + 10, r * 3 / 4 + 6);
+        pc_px((X - r / 3 - 4) >> 4, (Y - r / 3) >> 4, c->critter ? PAL_GRAY_L : c->skin.c[4]);
         break;
     case NOSE_POINTY:
         pc_line(cx, cy - (sz >> 2), cx + 1 + (sz >> 3), cy + 1, c->skin.c[0]);
@@ -1007,7 +1285,7 @@ static void nose(PCtx *c)
     case NOSE_CAT:
         pm_ramp(&m, RAMP_PASTEL_PINK, 4);
         pc_decal(&m, SH_FLAT);
-        pc_tri(X - r - 10, Y - r / 2 - 6, X + r + 10, Y - r / 2 - 6, X, Y + r / 2 + 6);
+        pc_tri(X - r - 6, Y - r / 2 - 4, X + r + 6, Y - r / 2 - 4, X, Y + r / 2 + 6);
         pc_px(cx, cy + (r >> 4) + 1, ink);
         pc_px(cx - 1, (Y - r / 2) >> 4, m.c[4]);
         break;
@@ -1239,8 +1517,19 @@ static void mouth(PCtx *c)
     }
     if (l->fangs && st != MOUTH_BEAK && st != MOUTH_FANGY && st != MOUTH_VOID)
         fangs(c, cx, cy, w * 2, l->fangs);
-    if (st == MOUTH_CAT && big && (c->l->species == SPECIES_BUNNYKIN || c->l->species == SPECIES_MOUSEKIN)) {
-        pc_px(cx, cy + 1, TEETH); pc_px(cx + 1, cy + 1, TEETH);
+    if (big && st != MOUTH_OPEN && st != MOUTH_O && st != MOUTH_BIG_GRIN && st != MOUTH_VOID &&
+        st != MOUTH_BEAK && !c->creepy) {
+        int sp = c->l->species;
+        if (sp == SPECIES_BUNNYKIN || sp == SPECIES_MOUSEKIN) {
+            /* buck teeth */
+            pc_px(cx - 1, cy + 1, TEETH); pc_px(cx, cy + 1, TEETH);
+            pc_px(cx - 1, cy + 2, PAL_GRAY_L); pc_px(cx, cy + 2, TEETH);
+            pc_px(cx - 2, cy + 1, ink); pc_px(cx + 1, cy + 1, ink);
+        } else if (sp == SPECIES_PUPKIN && st != MOUTH_TONGUE) {
+            /* tongue blep */
+            pc_px(cx + 1, cy + 1, TONGUE); pc_px(cx + 2, cy + 1, TONGUE);
+            pc_px(cx + 1, cy + 2, PAL_RAMP(RAMP_PASTEL_PINK, 3)); pc_px(cx + 2, cy + 2, TONGUE);
+        }
     }
 }
 
@@ -1336,7 +1625,7 @@ static void markings(PCtx *c, int big)
 {
     const DoomoLook *l = c->l;
     PMat m;
-    int X, Y, v, k;
+    int X, Y, k;
     int mk = l->marking;
     if (mk == MARK_NONE || phs.h->yaw >= 3) return;
     pm_paint(&m, l->marking_color);
@@ -1354,9 +1643,9 @@ static void markings(PCtx *c, int big)
         hT(-30, -256, 30, -256, 0, -170);
         break;
     case MARK_SPOTS:
-        pc_decal(&m, SH_FLAT);
-        hE(-170, -120, 36, 34); hE(150, -170, 28, 26); hE(190, 60, 30, 30);
-        hE(-200, 90, 24, 24); hE(40, -220, 22, 20);
+        pc_decal(&m, SH_SOFT);
+        hE(-196, 30, 40, 38); hE(206, -20, 30, 30); hE(190, 120, 36, 34);
+        hE(-170, 150, 26, 26); hE(-226, -70, 24, 24); hE(150, -150, 26, 24);
         break;
     case MARK_TRIBAL:
         for (phs.s = -1; phs.s <= 1; phs.s += 2) {
@@ -1393,7 +1682,7 @@ static void markings(PCtx *c, int big)
         phs.s = 1;
         break;
     case MARK_STITCHES:
-        fpt(80, -60, &X, &Y);
+        fpt(-150, 110, &X, &Y);
         pc_line((X >> 4) - 4, (Y >> 4) + 6, (X >> 4) + 4, (Y >> 4) - 2, m.c[0]);
         for (k = -3; k <= 3; k += 2) {
             int sx = (X >> 4) + k, sy = (Y >> 4) + 2 - k;
@@ -1401,7 +1690,7 @@ static void markings(PCtx *c, int big)
         }
         break;
     case MARK_CRACKS:
-        fpt(-90, -200, &X, &Y);
+        fpt(-200, -40, &X, &Y);
         pc_line(X >> 4, Y >> 4, (X >> 4) + 2, (Y >> 4) + 4, m.c[0]);
         pc_line((X >> 4) + 2, (Y >> 4) + 4, (X >> 4) + 1, (Y >> 4) + 8, m.c[0]);
         pc_line((X >> 4) + 2, (Y >> 4) + 4, (X >> 4) + 5, (Y >> 4) + 6, m.c[0]);
@@ -1443,30 +1732,6 @@ static void markings(PCtx *c, int big)
         }
         phs.s = 1;
         break;
-    case MARK_THIRD_EYE: {
-        int ey = F.ey - (F.ery * 256 / phs.h->ry) - 100;
-        PMat w;
-        v = fpt(0, ey, &X, &Y);
-        if (v <= 0) break;
-        pm_flat(&w, PAL_WHITE);
-        pc_decal(&w, SH_FLAT);
-        pc_ellipse_sh(X, Y, F.erx * 2 / 3 + 10, F.ery / 2 + 6, 0);
-        pc_decal(&m, SH_FLAT);
-        pc_ellipse(X, Y, F.erx / 3 + 8, F.ery / 3 + 6);
-        pc_px(X >> 4, Y >> 4, PAL_PAINT(PAINT_JET, 1));
-        pc_line((X - F.erx * 2 / 3) >> 4, (Y - F.ery / 2) >> 4, (X + F.erx * 2 / 3) >> 4, (Y - F.ery / 2) >> 4, m.c[0]);
-        break; }
-    case MARK_PENTAGRAM: {
-        int cx, cy, r = big ? 4 : 2;
-        static const int8_t px5[5] = { 0, 10, 6, -6, -10 };
-        static const int8_t py5[5] = { -10, -3, 8, 8, -3 };
-        v = fpt(0, -170, &X, &Y);
-        cx = X >> 4; cy = Y >> 4;
-        for (k = 0; k < 5; k++) {
-            int a = (k + 2) % 5;
-            pc_line(cx + px5[k] * r / 10, cy + py5[k] * r / 10, cx + px5[a] * r / 10, cy + py5[a] * r / 10, m.c[1]);
-        }
-        break; }
     case MARK_TEARS:
         for (phs.s = -1; phs.s <= 1; phs.s += 2) {
             fpt(phs.s * F.ex, F.ey, &X, &Y);
@@ -1510,15 +1775,8 @@ static void markings(PCtx *c, int big)
         hE(0, F.my + 30, 120, 80);
         break;
     case MARK_FUR_BELLY:
-        /* chest is on the body; a pale chin echo on the face */
-        pc_decal(&m, SH_SOFT);
-        hE(0, 236, 110, 50);
-        break;
     case MARK_FUR_SOCKS:
-        /* paws are on the body; a little pale brow spot on the face */
-        pc_decal(&m, SH_SOFT);
-        hE(-F.ex, F.by - 30, 34, 22);
-        hE(F.ex, F.by - 30, 34, 22);
+        /* chest fluff / belly and paws live on the body */
         break;
     case MARK_FUR_MASK:
         pc_decal(&m, SH_SOFT);
@@ -1553,9 +1811,7 @@ static void markings(PCtx *c, int big)
         hE(-200, 120, 70, 60);
         break; }
     case MARK_FUR_TIPPED_EARS:
-        /* ear tips are drawn with the ears; mark the crown too */
-        pc_decal(&m, SH_FLAT);
-        hE(0, -238, 70, 30);
+        /* drawn with the ears */
         break;
     default:
         break;
@@ -1649,7 +1905,7 @@ void ph_head_base(PCtx *c)
     phs.c = c; phs.h = h; phs.s = 1; phs.z = 0;
     face_layout(c);
     F.lid = face_ink(c);
-    if (c->critter) flags |= PF_FUZZ;
+    if (c->critter || sp == SPECIES_MOTHKIN) flags |= PF_FUZZ;
     if (sp == SPECIES_SLIME || sp == SPECIES_ROBOT) shade = SH_GLOSS;
     if (sp == SPECIES_PLUSHIE || sp == SPECIES_SHEEPKIN || sp == SPECIES_GHOST) shade = SH_SOFT;
     pc_part(&c->skin, shade, flags);
@@ -1658,23 +1914,19 @@ void ph_head_base(PCtx *c)
     /* fur silhouette extras on the same part */
     if (h->yaw < 4) {
         hHeadFrame(0);
-        if (c->critter || sp == SPECIES_IMP) cheek_tufts(c, big);
+        cheek_tufts(c, big);
         if (sp == SPECIES_SLIME) {
             /* drips off the chin */
-            hC(-120, 200, -120, 290, 34, 30);
-            hC(90, 220, 90, 270, 26, 22);
+            hC(-120, 200, -120, 300, 34, 30);
+            hC(90, 220, 90, 280, 26, 22);
+            hC(190, 150, 200, 210, 22, 18);
         }
-        if (sp == SPECIES_FROGLING) {
-            /* eye bumps */
-            hE(-F.ex, -200, 110, 90);
-            hE(F.ex, -200, 110, 90);
-        }
-        if (sp == SPECIES_GHOST) hT(-60, -230, 60, -230, 30, -330);
-        if (sp == SPECIES_IMP) hT(-50, 220, 50, 220, 0, 300);
+        if (sp == SPECIES_IMP) hT(-50, 220, 50, 220, 0, 310);
         if ((c->critter || sp == SPECIES_MOTHKIN) && !has_hair_cover(l->hair_style) &&
             l->hair_style != HAIR_MOHAWK)
             crown_tuft();
     }
+    if (h->yaw < 3) cheek_ruffs(c);
 }
 
 void ph_face(PCtx *c)
@@ -1683,10 +1935,10 @@ void ph_face(PCtx *c)
     int big = h->lod == LOD_BIG;
     const DoomoLook *l = c->l;
     phs.c = c; phs.h = h; phs.s = 1; phs.z = 0;
-    species_head(c, big);
     if (h->yaw >= 3) return;
     muzzle(c);
     markings(c, big);
+    species_head(c, big);
     blush(c, big);
     eyes(c);
     brows(c);

@@ -16,8 +16,8 @@ A("mummies", "hell", "Tomb Realtor|Curse Notary|Bandage Merchant",
 Pharaohnie | s | Tomb realtor. "Cosy, dark, eternal. Must see." | job=Tomb Realtor; hat=CROWN
 Unwrapt | h | Unravels when nervous. Is always nervous. |
 Cursula | s | Curse notary. Stamps curses with a scarab. | job=Curse Notary
-Wrappy | t | Sells bandages. Uses most of the stock himself. | job=Bandage Merchant
-Sarcophagus | x | Naps in a box for 3,000 years at a time. |
+Wrappy | h | Sells bandages. Uses most of the stock himself. | job=Bandage Merchant
+Sarcophagus | t | Naps in a box for 3,000 years at a time. |
 """ ),
 
 A("night_nurses", "hell", "Night Nurse|Leech Doctor|Stitcher",
@@ -51,7 +51,7 @@ Splicey | s | Gene splicer. Made a frog with a moustache. | job=Gene Splicer
 Igorina | t | Lab assistant. Pulls the big lever on cue. | job=Lab Assistant; body=HUNCHED
 Zappo | i | Death ray tech bot. The ray makes popcorn. | job=Death Ray Tech; species=ROBOT
 Prof. Ick | h | Studies slime. Is slowly becoming slime. | species=GHOUL
-Mousetrap | x | Builds mazes for mice. The mice win. | species=MOUSEKIN
+Mousetrap | t | Builds mazes for mice. The mice win. | species=MOUSEKIN
 """ ),
 
 A("sludge_plumbers", "hell", "Sludge Plumber|Drain Diver|Pipe Fitter",
@@ -67,7 +67,7 @@ A("sludge_plumbers", "hell", "Sludge Plumber|Drain Diver|Pipe Fitter",
 Plungerella | s | Unclogs drains by climbing into them. |
 Drainy | h | Drain diver. Found a whole sofa once. | job=Drain Diver
 Gunkface | t | Pipe fitter. Fits into the pipes, mostly. | job=Pipe Fitter
-Sludgy | x | Leaves slime trails. Calls them signatures. |
+Sludgy | s | Leaves slime trails. Calls them signatures. |
 Bog Bert | h | Swamp toad plumber. Croaks at clogs. | species=FROGLING
 """ ),
 
@@ -119,7 +119,7 @@ Hexagonia | s | Casts hexes in perfect six-sided shapes. |
 Cauldra | s | Potion brewer. Her potions all taste of pear. | job=Potion Brewer
 Broomella | t | Broom mechanic. Tunes brooms for speed. | job=Broom Mechanic
 Wartsworth | h | Toad keeper. Kisses toads. Hoping. | job=Toad Keeper
-Newtlie | x | Turns people into newts, then back, if asked. |
+Newtlie | h | Turns people into newts, then back, if asked. |
 Grizelda | s | Brews soup for sick neighbours. Calls it a hex. | trait=SOFTIE; species=HUMAN; skin=SKIN_OLIVE
 """ ),
 
@@ -136,7 +136,7 @@ A("fake_psychics", "hell", "Fake Psychic|Spirit Board Seller|Curse Remover",
 Mme. Fraud | s | Sees your future. Charges extra if it is good. |
 Planchette | t | Sells spirit boards that only ever spell "lol". | job=Spirit Board Seller
 Curselift | h | Curse remover. Removes curses he put on you. | job=Curse Remover
-Phantasma | x | Pretends to be a ghost. Is, in fact, a ghost. | species=GHOST
+Phantasma | t | Pretends to be a ghost. Is, in fact, a ghost. | species=GHOST
 """ ),
 
 A("grave_diggers", "hell", "Grave Digger|Tombstone Carver|Crypt Sweeper",
@@ -167,7 +167,7 @@ A("undertakers", "hell", "Undertaker|Coffin Maker|Eulogist",
 Mortimer | h | Undertaker. Measures everyone, just in case. |
 Coffinella | s | Coffin maker. Lines every coffin with velvet. | job=Coffin Maker
 Eulogia | t | Eulogist. Makes every funeral sound like a party. | job=Eulogist
-Mr. Solemn | x | Has not smiled in 200 years. Close, once. | species=HUMAN; skin=SKIN_PORCELAIN; mouth=FLAT
+Mr. Solemn | h | Has not smiled in 200 years. Close, once. | species=HUMAN; skin=SKIN_PORCELAIN; mouth=FLAT
 """ ),
 
 A("scare_actors", "hell", "Jump Scarer|Haunted House Actor|Fog Machine Op",
@@ -185,7 +185,7 @@ Boolander | h | Jumps out of cupboards. Then says sorry. | job=Jump Scarer
 Shriekie | s | Screams for a living. Very professional. |
 Fogwell | t | Fog machine op. Fogs the whole street. | job=Fog Machine Op
 Creakster | h | Makes floors creak on cue. A true artist. | species=GHOUL
-Rattleby | x | Haunted house actor. Rattles chains, very tenderly. | species=SKELETON
+Rattleby | s | Haunted house actor. Rattles chains, very tenderly. | species=SKELETON
 """ ),
 
 A("poltergeists", "hell", "Poltergeist|Door Slammer|Plate Smasher",
@@ -202,7 +202,7 @@ A("poltergeists", "hell", "Poltergeist|Door Slammer|Plate Smasher",
 Slamdoor | h | Slams doors. Has never once closed one gently. | job=Door Slammer
 Smashley | s | Breaks plates. Glues them back. Breaks them again. | job=Plate Smasher
 Flickers | t | Turns lights on and off. And on. And off. |
-Wobblewisp | x | Moves your keys two inches to the left. |
+Wobblewisp | h | Moves your keys two inches to the left. |
 Rattlecup | s | Rattles teacups at midnight. Leaves biscuits. | trait=SOFTIE
 """ ),
 
@@ -218,7 +218,7 @@ A("soul_brokers", "hell", "Soul Broker|Debt Imp|Bargain Demon",
 Soulsworth | h | Trades souls for snacks. Bad exchange rate. |
 Bargainia | s | "Sign here for eternal glory." It is a coupon. | job=Bargain Demon
 Dealbreaker | t | Breaks every deal. Twice. | species=CACOBLOB
-Pennysoul | x | Buys souls, keeps them in jars, waters them. | trait=SOFTIE
+Pennysoul | t | Buys souls, keeps them in jars, waters them. | trait=SOFTIE
 """ ),
 
 A("hellpups", "hell", "Hellpup|Puppy Student|Fetch Champion",
@@ -234,9 +234,9 @@ A("hellpups", "hell", "Hellpup|Puppy Student|Fetch Champion",
   fear="Bath Time|Vacuum Cleaners|Thunder",
   cast="""
 Nibbler | h | Chews shoes. Only left ones. | fam=growl
-Sparky Jr | t | Breathes tiny flames when he hiccups. Many hiccups. | fam=growl
+Sparky Jr | h | Breathes tiny flames when he hiccups. Many hiccups. | fam=growl
 Puplet | s | Wags so hard her whole body wags. |
-Grrrtrude | s | Growls at the mailman. Then licks him. | species=PUPKIN
+Grrrtrude | s | Growls at the mailman. Then licks him. | species=PUPKIN; bio_pronoun_ok=1
 Cindy Chew | t | Fetch champion. Fetches things nobody threw. | job=Fetch Champion
 Biscuitfang | h | Bites, then cries because he bit. | trait=SOFTIE
 """ ),
@@ -273,7 +273,7 @@ A("crypt_grannies", "hell", "Crypt Granny|Curse Knitter|Bone Soup Cook",
 Granny Grit | s | Knits curses into scarves. They itch forever. | job=Curse Knitter
 Mother Rot | s | Cooks bone soup for every new ghost in town. | job=Bone Soup Cook; trait=SOFTIE
 Nana Necro | s | Raises the dead. Mostly for bingo night. |
-Grandmummy | t | Wraps presents in her own bandages. | species=MUMMY
+Grandmummy | s | Wraps presents in her own bandages. | species=MUMMY
 Batty Betty | s | Hangs upside down to nap. Calls it yoga. | species=BATLING
 """ ),
 
@@ -290,8 +290,8 @@ A("fossil_elders", "hell", "Fossil Elder|Bone Historian|Retired Reaper",
 Old Bones | h | Has been dead so long he forgot why. |
 Grimgramps | h | Retired reaper. Still carries the scythe for walks. | job=Retired Reaper; facial_hair=WIZARD
 Ossia | s | Bone historian. Can date any bone by licking it. | job=Bone Historian
-Rickets | t | Creaks when he walks. Uses it as music. |
-Marrowmere | x | Sits on the same bench for a century. Waves. | trait=SOFTIE
+Rickets | h | Creaks when he walks. Uses it as music. |
+Marrowmere | t | Sits on the same bench for a century. Waves. | trait=SOFTIE
 """ ),
 
 A("doom_choir", "hell", "Doom Choir Singer|Organ Grinder|Bell Tolling",
@@ -307,7 +307,7 @@ Requiem | s | Sings so low the floor shakes. Lovely tone. |
 Sr. Sorrow | s | Hums dirges at weddings. Gets invited anyway. | hat=NUN_VEIL
 Bellbane | h | Tolls the bell for every cancelled bus. | job=Bell Tolling
 Grindorgan | t | Organ grinder. Plays polkas in minor key. | job=Organ Grinder
-Dirgelet | x | Small choir imp. Big lungs. Bigger feelings. | species=IMP; trait=SOFTIE
+Dirgelet | s | Small choir imp. Big lungs. Bigger feelings. | species=IMP; trait=SOFTIE
 """ ),
 
 A("bat_couriers", "hell", "Bat Courier|Night Mail|Message Bat",
@@ -322,7 +322,7 @@ A("bat_couriers", "hell", "Bat Courier|Night Mail|Message Bat",
 Swoopsy | s | Delivers letters by dropping them on heads. |
 Flapjack | h | Night mail. Flies upside down to read addresses. | job=Night Mail
 Sonar | t | Finds any address by shouting at it. |
-Parcelbat | x | Carries parcels twice its size. Proudly. | job=Message Bat
+Parcelbat | h | Carries parcels twice its size. Proudly. | job=Message Bat
 Wingnut | h | Loops through the clock tower every delivery. |
 """ ),
 
@@ -341,7 +341,7 @@ Chopperella | s | Mechanic. Fixes bikes and broken hearts. | job=Chopper Mechani
 Gravelrash | t | Has fallen off every bike in Hellvile. |
 Skidmark | h | Road captain. Leads the ride. Gets lost. | job=Road Captain
 Exhaustia | s | Smells like oil and roses. Mostly oil. |
-Grizzlebolt | x | Bear biker with a sidecar for his teddy. | species=BEARKIN
+Grizzlebolt | h | Bear biker with a sidecar for his teddy. | species=BEARKIN
 """ ),
 
 A("sulfur_pirates", "hell", "Sulfur Pirate|Lava Boat Captain|Deckhand|Parrot Keeper",
@@ -375,7 +375,7 @@ A("shadow_ninjas", "hell", "Shadow Ninja|Smoke Bomber|Night Thief",
 Shadowstep | t | Appears behind you. Always says "boo", softly. |
 Smokeblind | h | Throws smoke bombs, then coughs a lot. | job=Smoke Bomber
 Hushpaw | s | Sneaks into houses to leave anonymous gifts. | species=CATFOLK; trait=SOFTIE
-Ninjette | x | Can vanish. Cannot reappear on time. | job=Night Thief
+Ninjette | t | Can vanish. Cannot reappear on time. | job=Night Thief
 """ ),
 
 A("dice_fiends", "hell", "Dice Fiend|Slot Imp|Croupier|Card Dealer",
@@ -390,8 +390,8 @@ A("dice_fiends", "hell", "Dice Fiend|Slot Imp|Croupier|Card Dealer",
   cast="""
 Boxcars | h | Rolls double sixes every time. Every single time. |
 Jackpotty | s | Slot imp. Pulls the lever for luck. Loses. | job=Slot Imp
-Croupette | t | Spins the roulette wheel with her tail. | job=Croupier
-Deuces | x | Deals cards faster than the eye. Drops them. | job=Card Dealer; species=FOXKIN
+Croupette | s | Spins the roulette wheel with her tail. | job=Croupier
+Deuces | s | Deals cards faster than the eye. Drops them. | job=Card Dealer; species=FOXKIN
 Bluffalo | h | Bluffs with a huge grin. Everyone knows. | species=CACOBLOB
 """ ),
 
@@ -408,7 +408,7 @@ A("arcade_goblins", "hell", "Arcade Goblin|High Score Hoarder|Claw Machine Champ
 Highscore | h | Owns every high score. Initials always "BUM". | job=High Score Hoarder
 Clawdia | s | Claw machine champ. Wins every plush. Keeps them. | job=Claw Machine Champ; trait=SOFTIE
 Buttonmash | t | Button masher. Has broken 30 joysticks. |
-Pixelfang | x | Never blinks while gaming. Eyes are square now. |
+Pixelfang | h | Never blinks while gaming. Eyes are square now. |
 Tokenrat | h | Hoards tokens in his cheeks. | species=RACCOONKIN
 """ ),
 
@@ -425,7 +425,7 @@ Glitchbit | t | Hacks streetlights to blink in morse jokes. |
 Malwarina | s | Writes viruses that only make cursors dance. | job=Virus Writer
 Firewalla | i | Firewall imp bot. Blocks everything. Even hugs. | job=Firewall Imp; species=ROBOT
 Root Access | h | Has the password to everything. It is "password". | species=HUMAN; skin=SKIN_PORCELAIN
-Bitrot | x | Corrupts files, then lovingly restores them. | species=ROBOT; trait=SOFTIE
+Bitrot | t | Corrupts files, then lovingly restores them. | species=ROBOT; trait=SOFTIE
 """ ),
 
 A("doom_influencers", "hell", "Doom Influencer|Hate Reviewer|Gloom Vlogger",
@@ -440,7 +440,7 @@ A("doom_influencers", "hell", "Doom Influencer|Hate Reviewer|Gloom Vlogger",
   cast="""
 Doomscroll | s | Rates sunsets one star. 2 million followers. |
 Grumblogger | h | Reviews restaurants by yelling at the menu. | job=Hate Reviewer
-Vlogoth | t | Vlogs her gloom. Ends with a sparkly outro. | job=Gloom Vlogger
+Vlogoth | s | Vlogs her gloom. Ends with a sparkly outro. | job=Gloom Vlogger
 Unfollow | x | Unfollows everyone hourly. Refollows at night. |
 """ ),
 
@@ -457,7 +457,7 @@ A("goth_stylists", "hell", "Goth Stylist|Spike Tailor|Corset Maker",
 Corsetta | s | Corset maker. Laces so tight you float. | job=Corset Maker
 Spikeworth | h | Spike tailor. Adds spikes to baby clothes. Cute. | job=Spike Tailor
 Velvetta | t | Styles goth hair. Every look is "dramatic". |
-Lacey Grave | x | Sews lace onto anything that holds still. |
+Lacey Grave | t | Sews lace onto anything that holds still. |
 """ ),
 
 A("tattoo_imps", "hell", "Tattoo Imp|Tattoo Artist|Flash Painter",
@@ -474,7 +474,7 @@ Inkfang | h | Tattoos tiny hearts on big tough demons. | trait=SOFTIE
 Needlepoint | s | Tattoo artist. Steadiest claw in Hellvile. | job=Tattoo Artist
 Flashfire | t | Paints flash art of skulls wearing bows. | job=Flash Painter
 Tribalina | s | Covered in tribal ink. Each line is a story. | species=HELLHOUND
-Mama Ink | x | Has tattooed half of Hellvile. Kept score. | species=GHOUL
+Mama Ink | s | Has tattooed half of Hellvile. Kept score. | species=GHOUL
 """ ),
 
 A("piercers", "hell", "Piercer|Horn Jeweller",
@@ -503,7 +503,7 @@ A("horn_polishers", "hell", "Horn Polisher|Hoof Trimmer|Tail Groomer",
 Shinehorn | h | Polishes horns until you can see your sins. |
 Hoofsworth | s | Hoof trimmer. Hums while she files. | job=Hoof Trimmer; shoes=HOOVES
 Tailory | t | Tail groomer. Fluffs tails. Even scaly ones. | job=Tail Groomer; trait=SOFTIE
-Oni Onie | x | Polishes oni horns. Has oni horns. Polishes own. | horns=ONI
+Oni Onie | h | Polishes oni horns. Has oni horns. Polishes own. | horns=ONI
 """ ),
 
 A("lava_spa", "hell", "Lava Spa Attendant|Mud Masseuse|Sauna Imp",
@@ -519,7 +519,7 @@ A("lava_spa", "hell", "Lava Spa Attendant|Mud Masseuse|Sauna Imp",
 Magmassage | s | Massages with hot stones. Very hot. Too hot. | job=Mud Masseuse
 Steamer | h | Sauna imp. Turns the heat up when you leave. | job=Sauna Imp
 Bubbly Brim | t | Runs the lava tub. Adds bubbles for free. |
-Spaella | x | Lava spa attendant. Gives the best foot rubs. | species=SLIME; trait=SOFTIE
+Spaella | t | Lava spa attendant. Gives the best foot rubs. | species=SLIME; trait=SOFTIE
 """ ),
 
 A("cafe_inferno", "hell", "Cafe Inferno Cook|Grim Barista|Sulfur Soda Jerk",
@@ -551,7 +551,7 @@ A("batwing_fryers", "hell", "Bat Wing Fryer|Chip Shop Ghoul|Deep Fry Imp",
 Fryday | h | Fries everything, including the menu. |
 Greasy Gail | s | Chip shop ghoul. Wraps chips in old curses. | job=Chip Shop Ghoul
 Crispwing | t | Deep fry imp. Fries ice cream. Somehow works. | job=Deep Fry Imp
-Battercup | x | Batters bats. The bats have complained. |
+Battercup | t | Batters bats. The bats have complained. |
 """ ),
 
 A("sour_candy", "hell", "Sour Candy Maker|Worm Gummy Chef|Jawbreaker Smith",
@@ -566,7 +566,7 @@ A("sour_candy", "hell", "Sour Candy Maker|Worm Gummy Chef|Jawbreaker Smith",
 Sourpuss | s | Makes candy so sour your ears fold. |
 Wormwood | h | Worm gummy chef. Some are real. Ask first. | job=Worm Gummy Chef
 Jawbreaker | t | Makes jawbreakers. Has broken several jaws. | job=Jawbreaker Smith
-Fizzbitter | x | Pop rocks inventor. Pops constantly. | species=SLIME
+Fizzbitter | s | Pop rocks inventor. Pops constantly. | species=SLIME
 """ ),
 
 A("butchers", "hell", "Meat Slab Butcher|Sausage Maker|Cleaver Twirler",
@@ -581,7 +581,7 @@ A("butchers", "hell", "Meat Slab Butcher|Sausage Maker|Cleaver Twirler",
 Slabsworth | h | Butcher. Cuts meat into heart shapes for dates. | trait=SOFTIE
 Sausagina | s | Sausage maker. Every link has a name. | job=Sausage Maker
 Cleaverly | t | Twirls cleavers. Has all fingers. Somehow. | job=Cleaver Twirler
-Brisket | x | Smokes brisket for 40 hours. Sits with it. | species=GHOUL
+Brisket | h | Smokes brisket for 40 hours. Sits with it. | species=GHOUL
 """ ),
 
 A("junkyard", "hell", "Junkyard Ghoul|Scrap Robot|Salvager|Tinker Rat",
@@ -630,7 +630,7 @@ A("moth_goths", "hell", "Lamp Stalker|Moth Poet|Candle Thief",
 Lampwick | h | Stalks lamps. Hugs every lightbulb he meets. | job=Lamp Stalker
 Flutterdusk | s | Moth poet. Every poem is about a porch light. | job=Moth Poet
 Candlenab | t | Steals candles. Lights them for lost ghosts. | job=Candle Thief; trait=SOFTIE
-Dustwing | x | Leaves powder on everything. Calls it glitter. |
+Dustwing | t | Leaves powder on everything. Calls it glitter. |
 Mothilda | s | Huge wings, tiny voice. Whispers threats. |
 """ ),
 
@@ -663,7 +663,7 @@ A("black_sheep", "hell", "Black Sheep|Wool Rustler|Baa-d Influence",
 Baa-rbara | s | The black sheep of a very white family. Thrilled. |
 Ramsey | h | Rams doors open. Has not tried a handle. |
 Woolrustle | t | Rustles wool from clouds. Knits jumpers. | job=Wool Rustler
-Lamblet | x | Baa-d influence. Talks lambs into staying up late. | job=Baa-d Influence
+Lamblet | t | Baa-d influence. Talks lambs into staying up late. | job=Baa-d Influence
 Fleecebane | s | Shears her own wool into spikes. Very fluffy spikes. |
 """ ),
 
@@ -681,7 +681,7 @@ Ursa Major | s | Den boss. Runs the honey racket with a velvet paw. | job=Den Bo
 Growlston | h | Enforcer. Enforces nap time across Hellvile. |
 Honeygrab | t | Smuggles honey over the Wall in a hollow log. | job=Honey Smuggler
 Mauler | h | Big, scary, collects tiny porcelain kittens. | trait=SOFTIE
-Kodiak | x | Stares at fish for hours. Never catches one. |
+Kodiak | s | Stares at fish for hours. Never catches one. |
 """ ),
 
 A("killer_bunnies", "hell", "Killer Bunny|Carrot Bandit|Hop Fighter",
@@ -699,7 +699,7 @@ Fluffbite | s | Looks fluffy. Bites. Then looks fluffy again. |
 Carrotslash | h | Carrot bandit. Steals carrots, leaves receipts. | job=Carrot Bandit
 Hopkick | t | Hop fighter. Kicks with both feet. Twice. | job=Hop Fighter
 Thumpkin | h | Thumps the ground until the neighbours move. |
-Bunbun Bane | x | Wears a tiny eyepatch. Has both eyes. Style. | accessory=EYEPATCH
+Bunbun Bane | h | Wears a tiny eyepatch. Has both eyes. Style. | accessory=EYEPATCH
 """ ),
 
 A("toads", "hell", "Toad Bookmaker|Swamp Crooner|Fly Trader",
@@ -707,7 +707,7 @@ A("toads", "hell", "Toad Bookmaker|Swamp Crooner|Fly Trader",
   skin="FOREST TEAL CHARTREUSE CHARCOAL",
   top="SUIT TANK TSHIRT", bottom="PANTS SHORTS NONE", shoes="BARE:3",
   hat="TOP_HAT CAP NONE", acc="NONE:2 SUNGLASSES",
-  pat="SOLID:3 STRIPES", scheme="FOREST/LEMON/JET TEAL/BLOOD/BONE CHARCOAL/LIME/LEMON",
+  pat="SOLID:3 STRIPES", scheme="TEAL/CHARTREUSE/CARAMEL FOREST/LEMON/JET TEAL/BLOOD/BONE CHARCOAL/LIME/LEMON",
   aura="FLIES:2 NONE:2", pers="2-8 6-12 4-11 6-13 6-13", act="BEACH:2 WANDERING",
   food="Worm Gummies|Pickles|Bat Wing Chips", hobby="Singing|Fishing|Board Games", music="Jazz:3|Sea Shanties",
   phrase="Ribbit!|Bleh.|Big mood.",
@@ -715,7 +715,7 @@ A("toads", "hell", "Toad Bookmaker|Swamp Crooner|Fly Trader",
 Croakley | h | Toad bookmaker. Takes bets on fly races. | job=Toad Bookmaker
 Warty | s | Swamp crooner. Sings love songs to the moon. | job=Swamp Crooner; trait=SOFTIE
 Flytrader | t | Trades flies. The currency of the swamp. | job=Fly Trader
-Bogsworth | x | Sits on a log. Judges everyone. Silently. |
+Bogsworth | t | Sits on a log. Judges everyone. Silently. |
 """ ),
 
 ]

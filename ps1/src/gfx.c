@@ -272,6 +272,9 @@ void gfx_upload_now(int x, int y, int w, int h, const void *data)
     }
 }
 
+/* framebuffer row the newest frame is being drawn into (harness shots) */
+uint16_t g_last_draw_y;
+
 void gfx_end(void)
 {
     FrameBuf *f = &s_fb[g_cur];
@@ -313,6 +316,7 @@ void gfx_end(void)
     /* show what the GPU just finished, draw the new list into the other */
     PutDispEnv(&s_fb[g_cur ^ 1].disp);
     DrawOTagEnv(f->up_head, &f->draw);
+    g_last_draw_y = (uint16_t)f->draw.clip.y;
     if (s_first) {
         s_first = 0;
         SetDispMask(1);

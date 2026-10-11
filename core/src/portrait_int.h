@@ -210,6 +210,9 @@ void hHeadFrame(int grow);
 int  ph_is_critter(int species);
 void ph_head_base(PCtx *c);      /* head silhouette (+ fur tufts)            */
 void ph_face(PCtx *c);           /* species marks, eyes, brows, nose, mouth  */
+int  ph_eye_geom(PCtx *c, int s, int *X, int *Y, int *erx, int *ery);
+void ph_species_over(PCtx *c);   /* species bits drawn over hair / hats      */
+void ph_face_over(PCtx *c);      /* third eye + forehead marks over the hair */
 /* hair, ears, horns, hats, face accessories, halo (portrait_hair.c) */
 void ph_hair_back(PCtx *c);      /* long hair behind the head                */
 void ph_hair_front(PCtx *c);     /* cap + bangs in front of the head         */

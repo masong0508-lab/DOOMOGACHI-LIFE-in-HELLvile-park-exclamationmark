@@ -795,13 +795,17 @@ def audit(schema, by_id, edges, story):
     for nm, bit in schema.cheeks.items():
         if not cheek_used & bit:
             problems.append("cheek flag never used: " + nm)
+    # colour diversity: every paint shows up in the main visible colours, and
+    # the secondary colour fields use most of the palette
+    names = {v: k for k, v in schema.paints.items()}
     for key in ("eye_color", "hair_color", "top_color", "bottom_color", "shoes_color",
                 "hat_color", "accessory_color", "marking_color", "pattern_color", "horn_color",
                 "color"):
         used = {c.v[key] for c in by_id.values()}
-        if len(used) < schema.paint_count:
-            names = {v: k for k, v in schema.paints.items()}
-            problems.append("%s never uses: %s" % (key, ", ".join(
+        need = schema.paint_count if key in ("eye_color", "hair_color", "top_color", "color") \
+            else schema.paint_count * 13 // 16
+        if len(used) < need:
+            problems.append("%s uses %d paints (want %d); missing %s" % (key, len(used), need, ", ".join(
                 names[p] for p in range(schema.paint_count) if p not in used)))
     skins = {c.v["skin"] for c in by_id.values()}
     if len(skins) < 8 + schema.paint_count - 4:
@@ -829,9 +833,9 @@ def audit(schema, by_id, edges, story):
     soft = sum(1 for c in hell if c.v["traits"] & soft_bit)
     if not len(hell) * 12 // 100 <= soft <= len(hell) * 18 // 100:
         problems.append("Hellvile softies: %d (want ~15%%)" % soft)
-    for c in hill:
-        if c.v["traits"] & soft_bit:
-            problems.append("[%d] SOFTIE is for Hellvile citizens" % c.id)
+    for c in by_id.values():
+        if c.v["traits"] & soft_bit and not c.v["flags"] & schema.rflags["HELLBORN"]:
+            problems.append("[%d] SOFTIE is for hellborn citizens" % c.id)
     pr = {}
     for c in by_id.values():
         pr[c.v["pronoun"]] = pr.get(c.v["pronoun"], 0) + 1

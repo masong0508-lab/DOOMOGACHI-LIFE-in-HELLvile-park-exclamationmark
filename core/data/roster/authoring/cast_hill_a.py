@@ -16,9 +16,9 @@ A("town_hall", "hill", "Town Clerk|Deputy Mayor|Stamp Keeper|Parade Planner",
 Mayor Giggs | h | Laughs at his own speeches. So does everyone else. | id=0; story=MAYOR; job=Mayor of Hillvile; trait=HOLY; species=CHERUB; body=ROUND; height=4; build=13; skin=SKIN_PEACH; head=MOCHI; head_size=14; eyes=HAPPY_ARC; eye_color=SKY; eye_count=2; brows=RAISED; mouth=BIG_GRIN; nose=BUTTON; hair=POMPADOUR; hair_color=LEMON; highlight=WHITE; facial_hair=HANDLEBAR; wings=ANGEL; halo=HALO; horns=NONE; marking=CHEEK_HEARTS; marking_color=ROSE; cheeks=BLUSH,DIMPLES; top=SUIT; top_color=SKY; pattern=STRIPES; pattern_color=WHITE; bottom=PANTS; bottom_color=NAVY; shoes=SNEAKERS; shoes_color=WHITE; hat=TOP_HAT; hat_color=LEMON; accessory=BOWTIE; accessory_color=ROSE; aura=SPARKLES; birthday=APR-01; food=Cupcakes; hates=Brussels Sprouts; hobby=Karaoke; music=Bubblegum Pop; color=LEMON; fear=Public Speaking; phrase=Oh my stars!; movement=9; speech=3; expression=15; attitude=14; quirk=9; romance=ANY; activity=PARK; corruption=0; happy=96
 Featherly | s | Has stamped 40,000 forms. Loved every single one. | job=Stamp Keeper; species=OWLKIN; acc=GLASSES; bff=Mayor Giggs
 Ribbonetta | s | Cuts every ribbon in town, even the ones on gifts. | job=Ribbon Cutter
-Bixby Maple | h | Deputy Mayor. Practises the Mayor's laugh nightly. | job=Deputy Mayor; species=PUPKIN
-Parfait | t | Plans parades for things like Tuesday. | job=Parade Planner; species=SHEEPKIN; hat=PARTY
-Tallyho | h | Counts the town's hugs for the annual census. | job=Census Taker; species=BEARKIN
+Bixby Maple | h | Deputy Mayor. Practises the Mayor's laugh nightly. | species=HUMAN; job=Deputy Mayor
+Parfait | t | Plans parades for things like Tuesday. | species=CHERUB; job=Parade Planner; hat=PARTY
+Tallyho | h | Counts the town's hugs for the annual census. | species=HUMAN; job=Census Taker
 """ ),
 
 A("bakery", "hill", "Baker|Pastry Chef|Bread Apprentice|Cake Decorator",
@@ -36,7 +36,7 @@ Muffin | s | Bakes muffins shaped like everyone in town. | job=Muffin Artist; sp
 Crumpet | h | Kneads dough to the beat of old lullabies. | species=BEARKIN; wed=Muffin; fam=bunbury
 Bunbury Jr | t | Sneaks raisins. Leaves frosting fingerprints. | job=Bread Apprentice; trait=KID; species=BUNNYKIN; fam=bunbury; hat=NONE
 Scone | h | Can tell the oven temperature by sniffing it. | species=MOUSEKIN
-Fondant | s | Pipes tiny roses onto every cake. Even the meat pies. | job=Cake Decorator; species=SHEEPKIN
+Fondant | s | Pipes tiny roses onto every cake. Even the meat pies. | species=HUMAN; job=Cake Decorator
 Sourdoe | x | Talks to xyr sourdough starter. It talks back, xe says. | job=Bread Whisperer; species=PUPKIN
 """ ),
 
@@ -44,17 +44,17 @@ A("cafe", "hill", "Barista|Waiter|Latte Artist|Cafe Manager",
   sp="CATFOLK:4 FOXKIN:3 RACCOONKIN MOUSEKIN HUMAN",
   top="MAID:2 SWEATER:2 TSHIRT:2 SWEATER_VEST:2 CROP_TOP", bottom="SKIRT:2 PANTS:2 SHORTS",
   shoes="SNEAKERS:2 SLIPPERS CLOGS", hat="NONE:5 BERET:2 BANDANA", acc="BOWTIE:3 NONE:3 EARRINGS",
-  pat="SOLID:3 STRIPES PLAID", scheme="CHOCOLATE/CARAMEL/WHITE MINT/CHOCOLATE/PEACH ROSE/CHOCOLATE/LEMON CARAMEL/TEAL/WHITE",
+  pat="SOLID:3 STRIPES PLAID", scheme="MINT/CHOCOLATE/CARAMEL CHOCOLATE/CARAMEL/WHITE MINT/CHOCOLATE/PEACH ROSE/CHOCOLATE/LEMON CARAMEL/TEAL/WHITE",
   pers="9-15 1-7 7-14 8-15 2-9", act="CAFE:4 HOME",
   food="Coffee:4|Macarons|Pancakes|Bubble Tea|Waffles", hobby="Painting|Karaoke|Board Games|Reading",
   music="Lo-fi Beats:3|Jazz:2|City Pop", phrase="Purr-fect!|Okie dokie!|Yummy yummy!|Nyaa~",
   cast="""
 Mocha Latte | s | Draws a different cat in every latte foam. | job=Latte Artist; species=CATFOLK
-Espresso | h | Talks fast. Walks fast. Has never once sat down. | movement=15
+Espresso | h | Talks fast. Walks fast. Has never once sat down. | species=ROBOT; movement=15
 Cardamom | t | Remembers everyone's order and their birthday. | job=Cafe Manager; species=FOXKIN
 Biscotto | h | Dunks everything. Even things that should not be dunked. | species=RACCOONKIN
 Frappella | s | Sings the menu as an opera every morning. | species=CATFOLK
-Cortado | h | Rates every bean out of ten. Gives everything a ten. | species=MOUSEKIN
+Cortado | h | Rates every bean out of ten. Gives everything a ten. | species=HUMAN
 """ ),
 
 A("candy", "hill", "Candy Maker|Gumdrop Taster|Taffy Puller|Lollipop Artist",
@@ -66,11 +66,11 @@ A("candy", "hill", "Candy Maker|Gumdrop Taster|Taffy Puller|Lollipop Artist",
   food="Gumdrops:3|Cotton Candy:3|Macarons|Donuts|Ice Cream|Candy Eyeballs", hobby="Baking|Bubble Blowing|Dancing",
   music="Bubblegum Pop:4|Disco|Chiptune", phrase="Yippee!|Wheee!|Sparkle on!|Yummy yummy!", cheeks="BLUSH:90 SPARKLES:30",
   cast="""
-Gumball | h | Has a sweet tooth. Also a sour one. | species=MOUSEKIN
+Gumball | h | Has a sweet tooth. Also a sour one. | species=SLIME
 Taffeta | s | Pulls taffy into ribbons longer than the street. | job=Taffy Puller
 Jellybean | t | Sorts jellybeans by mood. Blue ones are shy. | species=PLUSHIE
 Sprinklepop | s | Sneezes glitter. Doctors say it is fine. | job=Lollipop Artist; aura=SPARKLES
-Rocky Road | h | Tried to make a candy house. Ate the door. | species=BUNNYKIN
+Rocky Road | h | Tried to make a candy house. Ate the door. | species=SLIME
 """ ),
 
 A("florist", "hill", "Florist|Seed Seller|Bouquet Artist",
@@ -85,17 +85,17 @@ A("florist", "hill", "Florist|Seed Seller|Bouquet Artist",
   cast="""
 Petunia | s | Names every flower. Has 3,112 flower friends. | species=BUNNYKIN; bff=Marigold
 Marigold | s | Grows marigolds the size of dinner plates. | species=SHEEPKIN
-Bouquet | t | Makes a bouquet for anyone who looks a bit sad. | job=Bouquet Artist; species=MOTHKIN
+Bouquet | t | Makes a bouquet for anyone who looks a bit sad. | species=CHERUB; job=Bouquet Artist
 Larkspur | h | Sells seeds. Gives most of them away for free. | job=Seed Seller; species=FOXKIN
 Bluebell | s | Presses flowers in every book she borrows. | species=BUNNYKIN
-Sweetpea | x | Whispers encouragement to slow-growing tulips. | species=MOTHKIN
+Sweetpea | t | Whispers encouragement to slow-growing tulips. | species=MOTHKIN
 """ ),
 
 A("gardeners", "hill", "Gardener|Pumpkin Grower|Hedge Sculptor|Groundskeeper",
   sp="FROGLING:3 BEARKIN:3 RACCOONKIN MOUSEKIN HUMAN",
   top="OVERALLS:5 TSHIRT:2 TANK", bottom="SHORTS:2 PANTS:2 CARGO",
   shoes="BOOTS:4 BARE:2 CLOGS", hat="BUCKET:3 CAP:2 NONE:2 COWBOY", acc="NONE:4 SCARF",
-  pat="SOLID:3 PLAID:2", scheme="FOREST/HONEY/WHITE LIME/CHOCOLATE/LEMON TEAL/CARAMEL/PEACH CHARTREUSE/FOREST/HONEY",
+  pat="SOLID:3 PLAID:2", scheme="LIME/FOREST/CHARTREUSE FOREST/HONEY/WHITE LIME/CHOCOLATE/LEMON TEAL/CARAMEL/PEACH CHARTREUSE/FOREST/HONEY",
   pers="1-7 2-8 4-11 10-15 0-8", act="PARK:4 HOME",
   food="Salad:3|Carrot Cake|Pickles|Onigiri|Brussels Sprouts", hobby="Gardening:5|Bug Collecting|Birdwatching",
   music="Folk:3|Sea Shanties|Lo-fi Beats", phrase="Ribbit!|Sunny side up!|Okie dokie!|Big mood.",
@@ -105,7 +105,7 @@ Topiary | s | Trims hedges into portraits of her neighbours. | job=Hedge Sculpto
 Mulch | t | Loves worms. Has introduced the worms to everyone. | species=FROGLING
 Sprouty | h | Plants one tree for every nap he takes. | species=BEARKIN; fam=sprout
 Clover Moss | s | Finds a four-leaf clover every single morning. | species=MOUSEKIN; fam=sprout
-Thatch | h | Groundskeeper of Hellvile Park. Rakes leaves into hearts. | job=Groundskeeper; species=RACCOONKIN
+Thatch | h | Groundskeeper of Hellvile Park. Rakes leaves into hearts. | species=HUMAN; job=Groundskeeper
 """ ),
 
 A("mail", "hill", "Mail Carrier|Parcel Sorter|Postmaster",
@@ -121,7 +121,7 @@ Hopscotch | h | Delivers mail by hopping. Has never missed a hop. | species=FROG
 Lilypad Lou | s | Knows every address by heart and every pet by name. | species=FROGLING
 Stampton | t | Licks stamps with great ceremony. | job=Parcel Sorter; species=FROGLING
 Ribbitson | h | Postmaster. Wears a different cap for each weekday. | job=Postmaster; species=FROGLING; facial_hair=MUSTACHE
-Envelopa | s | Writes back to letters addressed to nobody. | species=PUPKIN
+Envelopa | s | Writes back to letters addressed to nobody. | species=HUMAN
 """ ),
 
 A("crossing", "hill", "Crossing Guard|Traffic Bot|Lost Kid Finder",
@@ -154,7 +154,7 @@ Shushana | s | Shushes so softly that the books lean in to listen. | species=GHO
 Dewey | h | Has read every book twice. Once while alive. | species=GHOST
 Wispy Pages | t | Floats up to the top shelves so you do not have to. | species=GHOST
 Inkwell | s | Mends torn books with ghostly thread. | job=Book Mender; species=MOTHKIN
-Footnote | h | Archives the town gossip for future historians. | job=Archivist; species=OWLKIN
+Footnote | h | Archives the town gossip for future historians. | species=GHOST; job=Archivist
 Boo Radish | x | Haunts the cookbook aisle. Smells of soup. | species=GHOST
 """ ),
 
@@ -171,7 +171,7 @@ Prof. Hoot | h | Gives gold stars for effort, and silver ones for naps. | job=He
 Miss Tuttle | s | Teaches maths using cupcakes as units. | species=SHEEPKIN
 Mr. Thistle | h | Field trip enthusiast. Has lost zero kids, mostly. | species=BEARKIN
 Sonata | t | Music teacher. Tunes the school piano by ear. | job=Music Teacher; species=OWLKIN
-Crayon Fern | s | Art teacher. Every wall in her house is a mural. | job=Art Teacher; species=FOXKIN
+Crayon Fern | s | Art teacher. Every wall in her house is a mural. | species=HUMAN; job=Art Teacher
 Owlbert | h | Teaches night classes in astronomy and owl jokes. | species=OWLKIN; trait=NIGHT_OWL
 """ ),
 
@@ -230,7 +230,7 @@ A("grannies", "hill", "Retired Knitter|Grandma|Jam Maker|Quilt Master",
   fear="Thunder|Vacuum Cleaners|Being Alone|Needles",
   cast="""
 Granny Purl | s | Has knitted a scarf for every citizen. Starting on 500. | job=Retired Knitter
-Nana Jam | s | Makes jam from fruits nobody else can find. | job=Jam Maker; species=BEARKIN
+Nana Jam | s | Makes jam from fruits nobody else can find. | species=HUMAN; job=Jam Maker
 Mabel Quilt | s | Her quilts are so warm they count as a hug. | job=Quilt Master; wed=Gramps Moss
 Gran Toffee | s | Remembers when Hellvile Park was one big meadow. | species=MOUSEKIN
 Oma Fluff | s | Bakes cookies for the mailfrogs every Thursday. | species=SHEEPKIN; bff=Hopscotch
@@ -250,7 +250,7 @@ A("grandpas", "hill", "Retired Sailor|Grandpa|Clockmaker|Chess Champion",
   music="Jazz:2|Sea Shanties:2|Classical|Folk", phrase="Oh my stars!|Bless your heart!|Okie dokie!|Big mood.",
   cast="""
 Gramps Moss | h | Retired sailor. Every story ends with a whale. | job=Retired Sailor; species=PUPKIN
-Tock | h | Fixes every clock in town, then naps through the chimes. | job=Clockmaker; species=OWLKIN
+Tock | h | Fixes every clock in town, then naps through the chimes. | species=HUMAN; job=Clockmaker
 Pops Wiggle | h | Undefeated at checkers. Lets kids win anyway. | job=Chess Champion; species=BEARKIN; fam=wiggles
 Grampy Bean | h | Grows the town's tomatoes and the town's beard. | species=HUMAN; skin=SKIN_UMBER; facial_hair=FULL_BEARD
 Old Hazel | t | Has whittled 300 tiny ducks. Names them all. | species=FOXKIN
@@ -267,7 +267,7 @@ A("nurses", "hill", "Nurse|Head Nurse|Night Nurse",
   fear="Spiders|The Dark",
   cast="""
 Nurse Fluff | s | Prescribes naps. They are very effective. | job=Head Nurse; species=BUNNYKIN
-Boo-Boo Bea | t | Has a sticker for every boo-boo. Even emotional ones. | species=SHEEPKIN
+Boo-Boo Bea | t | Has a sticker for every boo-boo. Even emotional ones. | species=PLUSHIE
 Patch Plum | s | Takes temperatures with a gentle paw on the brow. | species=PUPKIN
 Midnight | h | Night nurse. Hums to the sleepless. | job=Night Nurse; species=CATFOLK; trait=NIGHT_OWL
 Tender Tuft | s | Has never been afraid of anything except needles. | species=BUNNYKIN; fear=Needles
@@ -282,9 +282,9 @@ A("hospital", "hill", "Doctor|Dentist|Pharmacist|Surgeon",
   food="Salad|Coffee:2|Sushi|Bubble Tea", hobby="Reading|Board Games|Yoga|Gardening",
   music="Classical:3|Jazz", phrase="Okie dokie!|Bless your heart!|Oh my stars!",
   cast="""
-Dr. Bloom | s | Ghoul doctor. Calm, gentle and fond of cold hands. | id=111; story=DR_BLOOM; job=Doctor; species=GHOUL; skin=MINT; body=LANKY; height=11; build=5; head=OVAL; eyes=SLEEPY; eye_color=ROSE; brows=THIN; nose=DOT; mouth=SMILE; fangs=1; hair=BOB; hair_color=ROSE; highlight=WHITE; ears=ELF; marking=STITCHES; marking_color=ROSE; cheeks=BLUSH; top=LAB_COAT; top_color=WHITE; pattern=SOLID; bottom=LONG_SKIRT; bottom_color=TEAL; shoes=CLOGS; shoes_color=MINT; hat=NONE; accessory=GLASSES; accessory_color=TEAL; aura=NONE; birthday=OCT-31; food=Bone Broth; hates=Hell Peppers; hobby=Gardening; music=Classical; color=ROSE; fear=Sunlight; phrase=Bless your heart!; movement=5; speech=3; expression=6; attitude=10; quirk=6; activity=HOSPITAL; corruption=12; romance=ANY
+Dr. Bloom | s | Ghoul doctor. Calm, gentle and fond of cold hands. | id=111; story=DR_BLOOM; job=Doctor; species=GHOUL; skin=MINT; body=LANKY; height=11; build=5; head=OVAL; eyes=SLEEPY; eye_color=ROSE; brows=THIN; nose=DOT; mouth=SMILE; fangs=1; hair=BOB; hair_color=ROSE; highlight=WHITE; ears=ELF; marking=STITCHES; marking_color=ROSE; cheeks=BLUSH; top=LAB_COAT; top_color=WHITE; pattern=SOLID; bottom=LONG_SKIRT; bottom_color=TEAL; shoes=CLOGS; shoes_color=MINT; hat=NONE; accessory=GLASSES; accessory_color=TEAL; aura=NONE; birthday=OCT-28; food=Bone Broth; hates=Hell Peppers; hobby=Gardening; music=Classical; color=ROSE; fear=Sunlight; phrase=Bless your heart!; movement=5; speech=3; expression=6; attitude=10; quirk=6; activity=HOSPITAL; corruption=12; romance=ANY
 Dr. Molar | h | Dentist. Hands out toothbrushes as party favours. | job=Dentist; species=MOUSEKIN
-Pillsby | t | Pharmacist. Labels every bottle with a smiley face. | job=Pharmacist; species=OWLKIN
+Pillsby | t | Pharmacist. Labels every bottle with a smiley face. | species=ROBOT; job=Pharmacist
 Dr. Fennec | s | Surgeon with steady paws and terrible puns. | job=Surgeon; species=FOXKIN; fur=HONEY/WHITE
 Dr. Hollow | h | Ghoul physician. Faints at the sight of blood. | species=GHOUL; skin=ECTOPLASM
 """ ),
@@ -298,8 +298,8 @@ A("choir", "hill", "Choir Singer|Choir Director|Organist",
   food="Angel Cake:4|Milk|Pudding|Macarons", hobby="Singing:6|Cloud Watching", music="Hymns:6|Classical:2",
   phrase="Bless your heart!|Sparkle on!|Oh my stars!|Hug o'clock!",
   cast="""
-Seraphina | s | Hits notes so high only dogs and angels hear them. | job=Choir Director
-Hallelujah | h | Sings even when asked not to. Especially then. |
+Seraphina | s | Hits notes so high only dogs and angels hear them. | species=CHERUB; job=Choir Director
+Hallelujah | h | Sings even when asked not to. Especially then. | species=CHERUB
 Bellwether | s | Rings the church bells with her whole body. | job=Bell Ringer; species=SHEEPKIN
 Cantor Coo | t | Organist. Plays hymns at the speed of disco. | job=Organist; species=OWLKIN; music=Disco
 Angelo | h | The tiniest cherub with the biggest voice. | body=TINY; height=1
@@ -318,9 +318,9 @@ A("church", "hill", "Priest|Nun|Altar Server|Exorcist",
 Father Fuzz | h | Plushie priest of St. Cuddles. Banishes demons with hugs. | id=77; story=FATHER_FUZZ; job=Priest; species=PLUSHIE; skin=CARAMEL; ears=BEAR; tail=BEAR_NUB; body=ROUND; height=6; build=13; head=ROUND; head_size=13; eyes=BUTTON; eye_color=JET; brows=THICK; nose=BUTTON; mouth=STITCHED; hair=BALD; hair_color=CARAMEL; highlight=NONE; facial_hair=NONE; marking=PATCHES; marking_color=PEACH; cheeks=BLUSH; top=PRIEST; top_color=JET; pattern=SOLID; pattern_color=WHITE; bottom=ROBE; bottom_color=JET; shoes=SANDALS; shoes_color=CHOCOLATE; hat=NONE; accessory=ROSARY; accessory_color=LEMON; aura=SPARKLES; halo=NONE; birthday=DEC-25; food=Angel Cake; hates=Sulfur Soda; hobby=Plush Making; music=Hymns; color=LEMON; fear=Exorcisms; phrase=Hug o'clock!; movement=4; speech=2; expression=9; attitude=11; quirk=5; romance=NONE; activity=CHURCH; corruption=0
 Sr. Snugs | s | Nun with a black belt in tickling. | job=Nun; species=SHEEPKIN; hat=NUN_VEIL
 Sr. Mercy | s | Blesses the soup, the spoons and the soup again. | job=Nun; species=BUNNYKIN; hat=NUN_VEIL
-Brother Bun | h | Lights 100 candles before breakfast. | job=Altar Server; species=BUNNYKIN
+Brother Bun | h | Lights 100 candles before breakfast. | species=HUMAN; job=Altar Server
 Wafer | t | Altar server. Has dropped the holy water only twice. | job=Altar Server; species=CHERUB; trait=KID
-Sr. Lumen | x | Studies old exorcism scrolls. Hums while reading. | job=Exorcist; species=HUMAN; skin=SKIN_OLIVE; hat=NUN_VEIL
+Sr. Lumen | s | Studies old exorcism scrolls. Hums while reading. | job=Exorcist; species=HUMAN; skin=SKIN_OLIVE; hat=NUN_VEIL
 """ ),
 
 A("firefighters", "hill", "Firefighter|Fire Chief|Rescue Swimmer",
@@ -334,7 +334,7 @@ A("firefighters", "hill", "Firefighter|Fire Chief|Rescue Swimmer",
   pet="30",
   cast="""
 Chief Spark | h | Fire chief. Rescues cats, kites and feelings. | job=Fire Chief; species=PUPKIN
-Hosey | s | Waters every flowerbed on the way back from a fire. | species=BEARKIN
+Hosey | s | Waters every flowerbed on the way back from a fire. | species=ROBOT
 Ladder Lou | t | Climbs things just to see if anyone needs help. | species=FOXKIN
 Sooty Bun | h | Gives fire safety talks with puppets. | species=BEARKIN
 Splash | s | Rescue swimmer. Does backstrokes in the fountain. | job=Rescue Swimmer; species=PUPKIN
@@ -344,7 +344,7 @@ A("rangers", "hill", "Park Ranger|Trail Guide|Owl Spotter",
   sp="FOXKIN:3 RACCOONKIN:2 BEARKIN OWLKIN",
   top="SWEATER_VEST:2 TSHIRT:2 OVERALLS", bottom="CARGO:4 SHORTS:2", shoes="BOOTS:5",
   hat="COWBOY:2 CAP:2 BUCKET:2", acc="BACKPACK:3 NONE:2",
-  pat="SOLID:3 CAMO:2 PLAID", scheme="FOREST/CARAMEL/HONEY CHARTREUSE/CHOCOLATE/WHITE TEAL/HONEY/BONE",
+  pat="SOLID:3 CAMO:2 PLAID", scheme="FOREST/CARAMEL/RUST FOREST/CARAMEL/HONEY CHARTREUSE/CHOCOLATE/WHITE TEAL/HONEY/BONE",
   pers="6-12 2-8 4-11 8-15 1-8", act="PARK:5",
   food="Onigiri|Honey Toast|Salad|Fried Chicken", hobby="Birdwatching:3|Stargazing|Bug Collecting|Fishing",
   music="Folk:4|Sea Shanties", phrase="Tail wags!|Hoo hoo!|Sunny side up!",
@@ -398,7 +398,7 @@ A("idols", "hill", "Pop Idol|Backup Dancer|Idol Manager",
   food="Bubble Tea:3|Macarons|Cotton Candy|Mochi", hobby="Singing:4|Dancing:4|Cosplay", music="Bubblegum Pop:6|City Pop:2|Disco",
   phrase="Sparkle on!|Slay!|Smooch!|Yippee!|Teehee!", fear="Public Speaking|Silence|Popping Balloons",
   cast="""
-Starla | s | Pop idol. Waves at her fans and at clouds, equally. | species=CATFOLK
+Starla | s | Pop idol. Waves at her fans and at clouds, equally. | species=HUMAN
 Mochi Mochi | s | Her one hit song is just the word "mochi". | species=BUNNYKIN
 Glitterbun | t | Backup dancer who keeps accidentally becoming the lead. | job=Backup Dancer; species=BUNNYKIN
 Fox Trotter | h | Taught the whole town to dance. Some refused. | job=Backup Dancer; species=FOXKIN
@@ -417,10 +417,10 @@ A("orchestra", "hill", "Violinist|Tuba Player|Conductor|Harpist|Drummer",
   cast="""
 Maestro Mew | h | Conducts with his tail. The orchestra follows. | job=Conductor; species=CATFOLK
 Fiddlestick | s | Plays the violin while hopping. Rarely misses. | species=MOUSEKIN
-Oompah | h | Tuba player. Every note sounds like a happy cow. | job=Tuba Player; species=BEARKIN
+Oompah | h | Tuba player. Every note sounds like a happy cow. | species=HUMAN; job=Tuba Player
 Harpsy | s | Plays harp for napping babies. And for herself. | job=Harpist; species=SHEEPKIN
 Timpani Tim | h | Drummer. Taps rhythms on everything, even soup. | job=Drummer; species=OWLKIN
-Cello Bello | t | Hugs the cello while playing. It looks happy. | species=MOUSEKIN
+Cello Bello | t | Hugs the cello while playing. It looks happy. | species=GHOST
 """ ),
 
 A("lofi", "hill", "Lo-fi Producer|Radio DJ|Sound Engineer",
@@ -434,8 +434,8 @@ A("lofi", "hill", "Lo-fi Producer|Radio DJ|Sound Engineer",
   cast="""
 Chillwave | h | Makes beats from rain sounds and kettle whistles. | species=RACCOONKIN
 DJ Purrple | s | Hosts the late-night radio show "Purrs and Pianos". | job=Radio DJ; species=CATFOLK
-Vinyl Vale | t | Owns 2,000 records. Plays the same one daily. | species=FOXKIN
-Reverb | h | Sound engineer. Can hear a pin drop in Hellvile. | job=Sound Engineer; species=RACCOONKIN
+Vinyl Vale | t | Owns 2,000 records. Plays the same one daily. | species=HUMAN
+Reverb | h | Sound engineer. Can hear a pin drop in Hellvile. | species=ROBOT; job=Sound Engineer
 Snoozy | s | Records her own snores and sells them as ASMR. | species=CATFOLK
 """ ),
 
@@ -450,7 +450,7 @@ A("painters", "hill", "Painter|Muralist|Sculptor|Illustrator",
   cast="""
 Gouache | s | Paints portraits of strangers and gives them away. | species=FOXKIN
 Muralina | t | Covered the Wall in murals. Hellvile copies them. | job=Muralist; species=MOTHKIN
-Chisel | h | Sculpts the clouds' shapes in marshmallow. | job=Sculptor; species=CATFOLK
+Chisel | h | Sculpts the clouds' shapes in marshmallow. | species=HUMAN; job=Sculptor
 Doodlebug | s | Illustrates bedtime stories. Every hero is a bug. | job=Illustrator; species=BUNNYKIN
 Paintpaw | h | Has paint on every paw. Calls it a style. | species=FOXKIN
 Sunset Sam | h | Paints only sunsets. 4,000 so far. | species=HUMAN; skin=SKIN_FAIR
@@ -466,8 +466,8 @@ A("crafters", "hill", "Plush Maker|Potter|Candle Maker|Weaver",
   music="Folk:3|Lullabies|Lo-fi Beats", phrase="So fluffy!|Cuddle puddle!|Snuggle up!",
   cast="""
 Stitchwick | h | Sews new plushies from old socks. Nobody knows whose. | job=Plush Maker; species=PLUSHIE
-Clayton | h | Makes mugs shaped like his friends' faces. | job=Potter; species=BEARKIN
-Waxie | s | Candle maker. Her candles smell like hugs. | job=Candle Maker; species=SHEEPKIN
+Clayton | h | Makes mugs shaped like his friends' faces. | species=HUMAN; job=Potter
+Waxie | s | Candle maker. Her candles smell like hugs. | species=HUMAN; job=Candle Maker
 Loomie | t | Weaves rugs from rainbow yarn and old songs. | job=Weaver; species=MOUSEKIN
 Fluffernut | s | A plushie who makes plushies. Very meta. | job=Plush Maker; species=PLUSHIE
 """ ),
@@ -482,7 +482,7 @@ A("tailors", "hill", "Tailor|Fashion Designer|Hat Maker",
   music="City Pop|Jazz|Disco|Classical", phrase="Slay!|Purr-fect!|Sparkle on!|Rude!",
   cast="""
 Mme. Velvet | s | Measures you with one glance. Never wrong. | species=CATFOLK
-Hemsley | h | Has sewn 40 suits for a single sock puppet. | species=MOUSEKIN
+Hemsley | h | Has sewn 40 suits for a single sock puppet. | species=HUMAN
 Couture Kit | t | Fashion designer. Sees a dress in every cloud. | job=Fashion Designer; species=FOXKIN
 Millie Moo | s | Makes hats for ears of every shape and size. | job=Hat Maker; species=HUMAN; skin=SKIN_EBONY; hat=FEZ
 Tweedle | h | Wears plaid on plaid on plaid. Somehow works. | species=CATFOLK; pattern=PLAID
@@ -516,8 +516,8 @@ A("scientists", "hill", "Scientist|Inventor|Chemist|Robot Doctor",
 Prof. Fizz | h | Invented the self-buttering toast. Twice. | job=Inventor; species=MOUSEKIN; eyes=SPIRAL
 Flaskia | s | Chemist. Every experiment ends in bubbles. | job=Chemist; species=MOUSEKIN; aura=BUBBLES
 Cogwheel | i | Robot doctor. Fixes robots and pep talks. | job=Robot Doctor; species=ROBOT; wings=MECH
-Eureka | t | Shouts "eureka" after every sneeze. | species=RACCOONKIN
-Dr. Quark | x | Studies tiny things, like ants and quarks. | species=OWLKIN
+Eureka | t | Shouts "eureka" after every sneeze. | species=HUMAN
+Dr. Quark | s | Studies tiny things, like ants and quarks. | species=ROBOT
 Gadget Gus | h | Built a robot to hold his umbrella. | species=HUMAN; skin=SKIN_TAN
 """ ),
 
@@ -549,8 +549,8 @@ A("builders", "hill", "Carpenter|Builder|Bridge Engineer|Roofer",
   cast="""
 Hammerbelle | s | Built half the houses in Hillvile. And all the birdhouses. | species=BEARKIN
 Plank | h | Carpenter. Sands every edge until it is huggable. | species=BEARKIN; fam=plank
-Rafters | t | Roofer. Has seen every chimney's secret. | job=Roofer; species=RACCOONKIN
-Archie Beam | h | Bridge engineer. Built a bridge for a snail. | job=Bridge Engineer; species=PUPKIN
+Rafters | t | Roofer. Has seen every chimney's secret. | species=HUMAN; job=Roofer
+Archie Beam | h | Bridge engineer. Built a bridge for a snail. | species=HUMAN; job=Bridge Engineer
 Shingle | s | Hums while hammering. In perfect time. | species=BEARKIN; fam=plank
 """ ),
 
@@ -563,9 +563,9 @@ A("workshop", "hill", "Welder|Welding Apprentice|Gunsmith|Blacksmith",
   food="Fried Chicken|Coffee|Pizza|Hell Peppers", hobby="Welding:6|Video Games", music="Doom Metal|Industrial|Synthwave|Chiptune",
   phrase="Fluff yeah!|Okie dokie!|Big mood.|Rip and tear... gently.", romance="ANY",
   cast="""
-Rivet | s | Imp welder who fled Hellvile. Hugs like a vice. | id=13; story=RIVET; job=Head Welder; species=IMP; skin=TANGERINE; flag=HELLBORN; trait=SOFTIE; body=STOCKY; height=5; build=10; head=ROUND; head_size=12; eyes=ROUND; eye_color=LEMON; eye_size=11; brows=THICK; nose=DOT; mouth=GRIN; fangs=1; hair=SIDE_SHAVE; hair_color=JET; highlight=HELLFIRE; horns=NUBS; horn_color=CHARCOAL; horn_size=6; tail=DEVIL; wings=NONE; halo=NONE; marking=NONE; marking_color=CHARCOAL; cheeks=BLUSH,BANDAGE,FRECKLES; top=OVERALLS; top_color=NAVY; pattern=SOLID; pattern_color=TANGERINE; bottom=NONE; bottom_color=NAVY; shoes=COMBAT; shoes_color=CHARCOAL; hat=BANDANA; hat_color=TANGERINE; accessory=GAS_MASK; accessory_color=CHARCOAL; aura=NONE; birthday=JUL-04; food=Hell Peppers; hates=Salad; hobby=Welding; music=Doom Metal; color=TANGERINE; fear=Being Alone; phrase=Rip and tear... gently.; movement=11; speech=11; expression=10; attitude=9; quirk=10; romance=ANY; activity=WORKSHOP; corruption=22
+Rivet | s | Imp welder who fled Hellvile. Hugs like a vice. | id=13; story=RIVET; fam=rivetfam; job=Head Welder; species=IMP; skin=TANGERINE; flag=HELLBORN; trait=SOFTIE; body=STOCKY; height=5; build=10; head=ROUND; head_size=12; eyes=ROUND; eye_color=LEMON; eye_size=11; brows=THICK; nose=DOT; mouth=GRIN; fangs=1; hair=SIDE_SHAVE; hair_color=JET; highlight=HELLFIRE; horns=NUBS; horn_color=CHARCOAL; horn_size=6; tail=DEVIL; wings=NONE; halo=NONE; marking=NONE; marking_color=CHARCOAL; cheeks=BLUSH,BANDAGE,FRECKLES; top=OVERALLS; top_color=NAVY; pattern=SOLID; pattern_color=TANGERINE; bottom=NONE; bottom_color=NAVY; shoes=COMBAT; shoes_color=CHARCOAL; hat=BANDANA; hat_color=TANGERINE; accessory=GAS_MASK; accessory_color=CHARCOAL; aura=NONE; birthday=JUL-04; food=Hell Peppers; hates=Salad; hobby=Welding; music=Doom Metal; color=TANGERINE; fear=Being Alone; phrase=Rip and tear... gently.; movement=11; speech=11; expression=10; attitude=9; quirk=10; romance=ANY; activity=WORKSHOP; corruption=22
 Sparkplug | h | Rivet's apprentice. Has singed eyebrows, permanently. | job=Welding Apprentice; species=RACCOONKIN; bff=Rivet
-Anvilla | s | Blacksmith. Forges bells, swords and cookie cutters. | job=Blacksmith; species=BEARKIN
+Anvilla | s | Blacksmith. Forges bells, swords and cookie cutters. | species=HUMAN; job=Blacksmith
 Gunther | i | Gunsmith bot. Polishes every barrel till it sings. | job=Gunsmith; species=ROBOT; wings=MECH
 Torchy | t | Welds tiny sculptures from bottle caps. | job=Welding Apprentice; species=PUPKIN
 """ ),
@@ -580,9 +580,9 @@ A("shopkeepers", "hill", "Shopkeeper|Cashier|Stock Clerk|Grocer",
   music="City Pop:2|Bubblegum Pop|Jazz", phrase="Okie dokie!|Yummy yummy!|Squeak squeak!",
   cast="""
 Twopence | h | Runs the general store. Gives change in candy. | job=Shopkeeper; species=MOUSEKIN
-Scanna | s | Cashier who beeps along with the scanner. | job=Cashier; species=CATFOLK
-Shelfie | t | Stacks cans into towers that never fall. | job=Stock Clerk; species=RACCOONKIN
-Gerty Grape | s | Knows exactly when every melon is ripe. | job=Grocer; species=BUNNYKIN
+Scanna | s | Cashier who beeps along with the scanner. | species=ROBOT; job=Cashier
+Shelfie | t | Stacks cans into towers that never fall. | species=ROBOT; job=Stock Clerk
+Gerty Grape | s | Knows exactly when every melon is ripe. | species=HUMAN; job=Grocer
 Bargain Bun | h | Puts everything on sale, all the time. | species=BUNNYKIN
 Coupon Kay | s | Has coupons for things that do not exist yet. | species=HUMAN; skin=SKIN_OLIVE
 """ ),
@@ -596,9 +596,9 @@ A("toyshop", "hill", "Toymaker|Toy Tester|Kite Maker",
   food="Gumdrops|Cotton Candy|Popcorn|Pancakes", hobby="Plush Making|Origami|Board Games|Video Games",
   music="Chiptune|Bubblegum Pop|Folk", phrase="Wheee!|Toot toot!|Wiggle wiggle!",
   cast="""
-Tinker Toby | h | Toymaker. Every toy he makes winks at you. | species=MOUSEKIN
+Tinker Toby | h | Toymaker. Every toy he makes winks at you. | species=HUMAN
 Windup Wren | s | Tests toys by playing with them for a very long time. | job=Toy Tester; species=PLUSHIE
-Kitey | t | Kite maker. Her kites have names and opinions. | job=Kite Maker; species=FOXKIN
+Kitey | s | Kite maker. Her kites have names and opinions. | job=Kite Maker; species=FOXKIN
 Yoyolanda | s | Can yo-yo with both paws while juggling. | species=BEARKIN
 """ ),
 
@@ -613,8 +613,8 @@ A("bookshop", "hill", "Bookseller|Poet|Novelist|Calligrapher",
   cast="""
 Quillby | h | Bookseller. Recommends books by smelling you. | species=OWLKIN
 Sonnet | s | Writes a poem for every rainy day. 900 so far. | job=Poet; species=MOTHKIN
-Plot Twist | t | Novelist. Every chapter ends with a cliffhanger. | job=Novelist; species=FOXKIN
-Inkblot | h | Calligrapher. Signs his name in 40 fonts. | job=Calligrapher; species=MOUSEKIN
+Plot Twist | t | Novelist. Every chapter ends with a cliffhanger. | species=HUMAN; job=Novelist
+Inkblot | h | Calligrapher. Signs his name in 40 fonts. | species=GHOST; job=Calligrapher
 Verse Vera | s | Reads poetry to the ducks at sunrise. | job=Poet; species=HUMAN; skin=SKIN_PORCELAIN
 """ ),
 
@@ -628,7 +628,7 @@ A("teahouse", "hill", "Tea Master|Tea Sommelier|Dumpling Chef",
   music="Classical|Lo-fi Beats|Folk", phrase="Cozy vibes only!|Mochi mochi!|Purr-fect!",
   cast="""
 Matcha Mimi | s | Whisks tea so gently the foam forms hearts. | job=Tea Master; species=CATFOLK
-Oolong | h | Can name any tea by the sound it makes poured. | job=Tea Sommelier; species=FOXKIN
+Oolong | h | Can name any tea by the sound it makes poured. | species=HUMAN; job=Tea Sommelier
 Bao Bao | t | Dumpling chef. Pinches 12 pleats, always. | job=Dumpling Chef; species=RACCOONKIN
 Sencha Sue | s | Serves tea to sad people for free. | species=SHEEPKIN
 Earl Grey | h | Sips tea with his pinky out and his tail up. | job=Tea Sommelier; species=CATFOLK; fur=SILVER/WHITE
@@ -643,9 +643,9 @@ A("noodles", "hill", "Ramen Chef|Noodle Puller|Takoyaki Cook",
   food="Ramen:4|Takoyaki:2|Dumplings|Curry", hobby="Karaoke|Board Games|Fishing", music="City Pop:3|Jazz|Folk",
   phrase="Nom nom nom!|Yummy yummy!|Tail wags!",
   cast="""
-Udon Ollie | h | Pulls noodles so long they reach the next street. | job=Noodle Puller; species=PUPKIN
+Udon Ollie | h | Pulls noodles so long they reach the next street. | species=HUMAN; job=Noodle Puller
 Ramenda | s | Her broth recipe is a secret even from her. | species=PUPKIN
-Taco Yaki | t | Flips takoyaki with a toothpick and a flourish. | job=Takoyaki Cook; species=FOXKIN
+Taco Yaki | t | Flips takoyaki with a toothpick and a flourish. | species=HUMAN; job=Takoyaki Cook
 Slurpington | h | Rates noodles by slurp volume. | species=BEARKIN
 """ ),
 
@@ -660,7 +660,7 @@ A("icecream", "hill", "Ice Cream Seller|Sundae Artist|Popsicle Maker",
   cast="""
 Scoops | h | Drives the ice cream truck. Plays the jingle himself. | species=SHEEPKIN
 Sprinkla | s | Makes sundaes taller than she is. | job=Sundae Artist; species=BUNNYKIN
-Brainfreeze | t | Popsicle maker. Freezes anything. Asks first. | job=Popsicle Maker; species=MOUSEKIN
+Brainfreeze | t | Popsicle maker. Freezes anything. Asks first. | species=SLIME; job=Popsicle Maker
 Neapolitan | s | Has three favourite flavours. Cannot choose. | species=PUPKIN
 """ ),
 
@@ -675,7 +675,7 @@ A("boba", "hill", "Boba Barista|Smoothie Mixer",
   cast="""
 Tapioca | s | Counts the pearls in every cup. Exactly 47. | species=CATFOLK
 Taro Tim | h | Makes purple drinks only. Purple is a lifestyle. | species=BUNNYKIN
-Slushie | t | Smoothie mixer who blends while dancing. | job=Smoothie Mixer; species=FOXKIN
+Slushie | t | Smoothie mixer who blends while dancing. | species=SLIME; job=Smoothie Mixer
 Lychee Lu | s | Draws cat faces on every lid. | species=MOUSEKIN
 """ ),
 
@@ -703,10 +703,10 @@ A("skaters", "hill", "Roller Derby Star|Skate Coach|Skater",
   food="Pizza|Tacos|Ice Cream|Popcorn", hobby="Skateboarding:6|Video Games", music="Hardcore Punk|Disco|Synthwave|City Pop",
   phrase="Wheee!|Slay!|Fluff yeah!|Big mood.", cheeks="BLUSH:60 BANDAGE:40 FRECKLES:20",
   cast="""
-Rolla Rita | s | Roller derby star. Bumps you, then says sorry. | species=FOXKIN
+Rolla Rita | s | Roller derby star. Bumps you, then says sorry. | species=HUMAN
 Kickflip | h | Can kickflip over a sleeping cat. Has not tried. | job=Skater; species=CATFOLK
 Grindella | t | Skate coach. Teaches falling before skating. | job=Skate Coach; species=RACCOONKIN
-Wheelie | h | Skates to work, to dinner and in his dreams. | job=Skater; species=BUNNYKIN
+Wheelie | h | Skates to work, to dinner and in his dreams. | species=ROBOT; job=Skater
 Derby Dot | s | Has more bandages than stickers. Proud of both. | species=HUMAN; skin=SKIN_BROWN
 """ ),
 
@@ -720,7 +720,7 @@ A("ballet", "hill", "Ballet Dancer|Dance Teacher|Tap Dancer",
   phrase="Teehee!|Sparkle on!|Oh my stars!",
   cast="""
 Pirouette | s | Spins so fast she once drilled into the floor. | species=BUNNYKIN
-Mr. Plie | h | Dance teacher. Counts to eight in his sleep. | job=Dance Teacher; species=CATFOLK
+Mr. Plie | h | Dance teacher. Counts to eight in his sleep. | species=HUMAN; job=Dance Teacher
 Tippy Toes | t | Walks on tiptoes everywhere. Even upstairs. | species=MOUSEKIN
 Arabesque | s | Balances on one paw while reading. | species=SHEEPKIN
 Clickety | h | Tap dancer. His shoes are louder than thunder. | job=Tap Dancer; species=CHERUB; shoes=HEELS
@@ -737,7 +737,7 @@ A("farmers", "hill", "Farmer|Beekeeper|Dairy Farmer|Orchard Keeper",
   cast="""
 Farmer Bram | h | Talks to his carrots. They grow out of politeness. | species=BEARKIN; fam=bramble
 Honeysuckle | s | Beekeeper. The bees elected her queen. | job=Beekeeper; species=BEARKIN; fam=bramble
-Haybale | t | Sleeps in the hayloft. Wakes up as a scarecrow. | species=SHEEPKIN
+Haybale | t | Sleeps in the hayloft. Wakes up as a scarecrow. | species=PLUSHIE
 Moo Lissa | s | Dairy farmer. Her milkshakes bring everyone. | job=Dairy Farmer; species=PUPKIN
 Appleby | h | Orchard keeper. Names every apple tree after a poet. | job=Orchard Keeper; species=HUMAN; skin=SKIN_OLIVE
 Turnip Twin | t | Two siblings in one coat. Insist they are one. | species=BEARKIN; fam=bramble; trait=KID

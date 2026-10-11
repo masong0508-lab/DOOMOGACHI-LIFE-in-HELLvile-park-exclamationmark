@@ -1,0 +1,2117 @@
+# core/data/roster/hillvile_400.txt - Hillvile (the good side), citizens 400..499
+#
+# THE 1000 PREMADE CITIZENS of Hellvile Park. This text is the source of
+# truth: tools/roster_build.py validates it and compiles it into
+# core/gen/roster_data.c (make -C core gen). Format: docs/ROSTER.md.
+#
+#   [id] Name             11 characters max, unique
+#   job: ...              20 characters max
+#   bio: ...              60 characters max, unique
+#   key=value ...         enum values are the catalog.h names without their
+#                         prefix (species=CATFOLK means SPECIES_CATFOLK);
+#                         colours are paint names (PAINT_*), natural skin
+#                         tones are SKIN_*; food/hobby/music/fear/phrase are
+#                         the exact catalog.c strings in quotes.
+#
+# Lines starting with '#' are comments ('# archetype:' notes which
+# family of citizens a record was designed from).
+
+[400] Espresso
+# archetype: cafe (Hillvile)
+job: Barista
+bio: Talks fast. Walks fast. Has never once sat down.
+flags=NONE
+pronoun=HE romance=ANY birthday=FEB-02
+species=ROBOT body=ROUND height=3 build=9 skin=COBALT head=SQUARE head_size=8
+eyes=ANIME eye_color=HONEY eye_size=13 eye_spacing=5 eye_height=8 eye_tilt=8 eye_count=2
+brows=ARCHED brow_height=9 nose=NONE nose_size=4 mouth=O mouth_size=10 fangs=0 cheeks=BLUSH
+hair=BALD hair_color=NAVY highlight=WHITE facial_hair=NONE
+ears=NONE horns=ANTENNAE horn_color=BONE horn_size=4 tail=NONE wings=NONE halo=NONE
+marking=NONE marking_color=CARAMEL aura=NONE
+top=MAID top_color=CHOCOLATE pattern=STRIPES pattern_color=WHITE bottom=SKIRT bottom_color=CARAMEL
+shoes=SNEAKERS shoes_color=CARAMEL hat=NONE hat_color=WHITE accessory=EARRINGS accessory_color=WHITE
+movement=15 speech=2 expression=14 attitude=10 quirk=5
+pitch=31 speed=13 quality=6 intonation=20 accent=13
+food="Macarons" hates="Brussels Sprouts" hobby="Karaoke" music="Jazz" color=ECTOPLASM fear="The Dark"
+phrase="Purr-fect!"
+hunger=63 happy=67 hygiene=75 energy=80 health=96 sanity=73 corruption=7 social=53
+mood=OK activity=CAFE
+
+[401] Rimshot
+# archetype: emoteens (Hillvile)
+job: Garage Drummer
+bio: Garage drummer. Practises softly so as not to wake babies.
+flags=NONE
+pronoun=THEY romance=ANY birthday=JUN-02
+species=FOXKIN body=AVERAGE height=3 build=12 skin=RUST head=ROUND head_size=14
+eyes=WIDE eye_color=FOREST eye_size=10 eye_spacing=6 eye_height=10 eye_tilt=9 eye_count=2
+brows=THIN brow_height=7 nose=CAT nose_size=5 mouth=SMILE mouth_size=10 fangs=0 cheeks=BLUSH
+hair=SIDE_SHAVE hair_color=COBALT highlight=LAVENDER facial_hair=NONE
+ears=FOX horns=NONE horn_color=COBALT horn_size=9 tail=FOX wings=NONE halo=NONE
+marking=EYELINER marking_color=ROSE aura=NONE
+top=BAND_TEE top_color=NAVY pattern=SOLID pattern_color=LEMON bottom=RIPPED_JEANS bottom_color=ROSE
+shoes=SNEAKERS shoes_color=ROSE hat=NONE hat_color=NAVY accessory=CHAINS accessory_color=ROSE
+movement=2 speech=7 expression=2 attitude=13 quirk=6
+pitch=19 speed=23 quality=0 intonation=20 accent=6
+food="Mochi" hates="Hell Peppers" hobby="Cloud Watching" music="Lo-fi Beats" color=CHERRY fear="Being Alone"
+phrase="Whatever."
+hunger=63 happy=94 hygiene=88 energy=79 health=96 sanity=95 corruption=10 social=94
+mood=HAPPY activity=CONCERT
+
+[402] Sir Cuddle
+# archetype: knights (Hillvile)
+job: Royal Guard
+bio: Royal guard. Guards the castle and everyone's naps.
+flags=NONE
+pronoun=HE romance=ANY birthday=JUN-09
+species=BEARKIN body=STOCKY height=9 build=9 skin=HONEY head=MOCHI head_size=13
+eyes=DROOPY eye_color=SKY eye_size=13 eye_spacing=7 eye_height=9 eye_tilt=8 eye_count=2
+brows=THICK brow_height=5 nose=BUTTON nose_size=9 mouth=SMILE mouth_size=9 fangs=0 cheeks=BLUSH,FRECKLES
+hair=BALD hair_color=PEACH highlight=NONE facial_hair=NONE
+ears=BEAR horns=NONE horn_color=PEACH horn_size=7 tail=BEAR_NUB wings=NONE halo=NONE
+marking=NONE marking_color=BUBBLEGUM aura=HEARTS
+top=ARMOR top_color=SILVER pattern=SOLID pattern_color=WHITE bottom=NONE bottom_color=BUBBLEGUM
+shoes=BOOTS shoes_color=WHITE hat=NONE hat_color=BUBBLEGUM accessory=CAPE accessory_color=WHITE
+movement=9 speech=5 expression=6 attitude=8 quirk=6
+pitch=11 speed=2 quality=20 intonation=21 accent=12
+food="Meat Slabs" hates="Bone Broth" hobby="Poetry" music="Folk" color=BONE fear="Being Alone"
+phrase="Fluff yeah!"
+hunger=76 happy=78 hygiene=90 energy=91 health=86 sanity=90 corruption=3 social=57
+mood=HAPPY activity=PARK
+
+[403] Ferris
+# archetype: carnival (Hillvile)
+job: Ferris Wheel Op
+bio: Ferris wheel op. Stops at the top for kisses.
+flags=NONE
+pronoun=SHE romance=ANY birthday=MAR-17
+species=HUMAN body=TINY height=6 build=12 skin=SKIN_BROWN head=HEART head_size=8
+eyes=ROUND eye_color=LAVENDER eye_size=7 eye_spacing=9 eye_height=8 eye_tilt=7 eye_count=2
+brows=RAISED brow_height=7 nose=NONE nose_size=9 mouth=SMILE mouth_size=4 fangs=0 cheeks=BLUSH
+hair=ODANGO hair_color=HONEY highlight=NONE facial_hair=NONE
+ears=NORMAL horns=NONE horn_color=HONEY horn_size=8 tail=NONE wings=NONE halo=NONE
+marking=NONE marking_color=CYAN aura=NONE
+top=SUIT top_color=MAGENTA pattern=STRIPES pattern_color=LEMON bottom=SHORTS bottom_color=CYAN
+shoes=SNEAKERS shoes_color=CYAN hat=TOP_HAT hat_color=LEMON accessory=BOWTIE accessory_color=LEMON
+movement=15 speech=5 expression=11 attitude=14 quirk=8
+pitch=8 speed=14 quality=3 intonation=5 accent=16
+food="Donuts" hates="Eyeball Jelly" hobby="Board Games" music="Disco" color=VAPE_PURPLE fear="Ghosts"
+phrase="Toot toot!"
+hunger=91 happy=83 hygiene=70 energy=75 health=95 sanity=93 corruption=8 social=66
+mood=HAPPY activity=PARK
+
+[404] Lantern Lyn
+# archetype: lamplighters (Hillvile)
+job: Night Watch
+bio: Night watch. Keeps watch with cocoa and a blanket.
+traits=NIGHT_OWL flags=NONE
+pronoun=SHE romance=ANY birthday=FEB-18
+species=MOTHKIN body=ROUND height=5 build=11 skin=SKY head=OVAL head_size=9
+eyes=COMPOUND eye_color=TEAL eye_size=9 eye_spacing=6 eye_height=8 eye_tilt=8 eye_count=2
+brows=NONE brow_height=8 nose=DOT nose_size=4 mouth=LIPSTICK mouth_size=7 fangs=0 cheeks=BLUSH,DIMPLES
+hair=LONG hair_color=CARAMEL highlight=MINT facial_hair=NONE
+ears=NONE horns=ANTENNAE horn_color=PEACH horn_size=8 tail=NONE wings=BUTTERFLY halo=NONE
+marking=SPOTS marking_color=HONEY aura=NONE
+top=CLOAK top_color=TEAL pattern=POLKA pattern_color=WHITE bottom=LONG_SKIRT bottom_color=HONEY
+shoes=BOOTS shoes_color=HONEY hat=NONE hat_color=TEAL accessory=NONE accessory_color=WHITE
+movement=3 speech=3 expression=7 attitude=12 quirk=8
+pitch=21 speed=16 quality=28 intonation=30 accent=2
+food="Honey Toast" hates="Bone Broth" hobby="Stargazing" music="Chiptune" color=CHARTREUSE fear="Being Alone"
+phrase="Sparkle on!"
+hunger=79 happy=85 hygiene=80 energy=41 health=93 sanity=92 corruption=11 social=52
+mood=HAPPY activity=WANDERING
+
+[405] Batsy
+# archetype: sweetgoths (Hillvile)
+job: Bat Rescuer
+bio: Rescues lost bats. Knits them tiny sweaters.
+traits=NIGHT_OWL flags=NONE
+pronoun=SHE romance=ANY birthday=NOV-26
+species=BATLING body=AVERAGE height=10 build=7 skin=JET head=BEAN head_size=14
+eyes=ROUND eye_color=TEAL eye_size=10 eye_spacing=6 eye_height=8 eye_tilt=8 eye_count=2
+brows=DOTS brow_height=6 nose=WIDE nose_size=8 mouth=SMILE mouth_size=7 fangs=0 cheeks=BLUSH
+hair=BALD hair_color=LAVENDER highlight=NONE facial_hair=NONE
+ears=BAT horns=NONE horn_color=LAVENDER horn_size=4 tail=NONE wings=TINY_BAT halo=NONE
+marking=NONE marking_color=ROSE aura=NONE
+top=DRESS top_color=GRAPE pattern=HEARTS pattern_color=WHITE bottom=LONG_SKIRT bottom_color=ROSE
+shoes=BOOTS shoes_color=WHITE hat=NONE hat_color=GRAPE accessory=NONE accessory_color=WHITE
+movement=2 speech=2 expression=2 attitude=12 quirk=9
+pitch=18 speed=8 quality=0 intonation=1 accent=14
+food="Pudding" hates="Sushi" hobby="Knitting" music="Classical" color=GRAPE fear="Bath Time"
+phrase="Boo!"
+hunger=60 happy=78 hygiene=67 energy=55 health=99 sanity=79 corruption=19 social=88
+mood=HAPPY activity=HOME
+
+[406] Dewey
+# archetype: library (Hillvile)
+job: Ghost Librarian
+bio: Has read every book twice. Once while alive.
+traits=NIGHT_OWL flags=NONE
+pronoun=HE romance=ANY birthday=MAY-16
+species=GHOST body=PEAR height=3 build=10 skin=MINT head=ROUND head_size=14
+eyes=SLEEPY eye_color=COBALT eye_size=11 eye_spacing=6 eye_height=9 eye_tilt=7 eye_count=2
+brows=THIN brow_height=5 nose=NONE nose_size=6 mouth=OPEN mouth_size=5 fangs=0 cheeks=BLUSH,FRECKLES,DIMPLES
+hair=BALD hair_color=COBALT highlight=SKY facial_hair=NONE
+ears=NONE horns=NONE horn_color=COBALT horn_size=9 tail=NONE wings=NONE halo=NONE
+marking=NONE marking_color=NAVY aura=NONE
+top=SWEATER top_color=LAVENDER pattern=PLAID pattern_color=WHITE bottom=LONG_SKIRT bottom_color=NAVY
+shoes=BARE shoes_color=NAVY hat=NONE hat_color=NAVY accessory=GLASSES accessory_color=WHITE
+movement=2 speech=0 expression=3 attitude=6 quirk=6
+pitch=19 speed=18 quality=5 intonation=22 accent=22
+food="Pudding" hates="Brussels Sprouts" hobby="Origami" music="Jazz" color=COBALT fear="Bath Time"
+phrase="Hoo hoo!"
+hunger=89 happy=77 hygiene=62 energy=40 health=89 sanity=90 corruption=14 social=86
+mood=HAPPY activity=HOME
+
+[407] Lady Tiara
+# archetype: royalty (Hillvile)
+job: Princess
+bio: Wears her tiara to the gym. Lifts.
+flags=NONE
+pronoun=SHE romance=NONE birthday=NOV-07
+species=CATFOLK body=TINY height=11 build=5 skin=BUBBLEGUM head=HEART head_size=13
+eyes=LASHES eye_color=SKY eye_size=9 eye_spacing=7 eye_height=9 eye_tilt=9 eye_count=2
+brows=RAISED brow_height=5 nose=CAT nose_size=10 mouth=SMILE mouth_size=9 fangs=0 cheeks=BLUSH
+hair=BALD hair_color=LAVENDER highlight=NONE facial_hair=NONE
+ears=CAT horns=NONE horn_color=LAVENDER horn_size=11 tail=CAT wings=NONE halo=NONE
+marking=NONE marking_color=LEMON aura=SPARKLES
+top=DRESS top_color=LAVENDER pattern=SOLID pattern_color=WHITE bottom=LONG_SKIRT bottom_color=LEMON
+shoes=HEELS shoes_color=WHITE hat=TIARA hat_color=LAVENDER accessory=EARRINGS accessory_color=LEMON
+movement=9 speech=1 expression=9 attitude=12 quirk=8
+pitch=6 speed=3 quality=26 intonation=15 accent=14
+food="Honey Toast" hates="Bone Broth" hobby="Singing" music="Classical" color=LAVENDER fear="Vacuum Cleaners"
+phrase="Sparkle on!"
+hunger=74 happy=70 hygiene=77 energy=56 health=97 sanity=98 corruption=8 social=52
+mood=OK activity=HOME
+
+[408] Splash
+# archetype: firefighters (Hillvile)
+job: Rescue Swimmer
+bio: Rescue swimmer. Does backstrokes in the fountain.
+flags=HAS_PET
+pronoun=SHE romance=HE birthday=AUG-07
+species=PUPKIN body=STOCKY height=12 build=13 skin=CHOCOLATE head=ROUND head_size=14
+eyes=WIDE eye_color=ROSE eye_size=11 eye_spacing=5 eye_height=6 eye_tilt=8 eye_count=2
+brows=NONE brow_height=6 nose=BUTTON nose_size=4 mouth=SMILE mouth_size=6 fangs=0 cheeks=BLUSH,FRECKLES,SPARKLES
+hair=BALD hair_color=HONEY highlight=MINT facial_hair=NONE
+ears=FLOPPY_PUP horns=NONE horn_color=HONEY horn_size=11 tail=PUP_WAGGY wings=NONE halo=NONE
+marking=FUR_TIPPED_EARS marking_color=HONEY aura=BUBBLES
+top=OVERALLS top_color=WHITE pattern=STRIPES pattern_color=LEMON bottom=CARGO bottom_color=LEMON
+shoes=BOOTS shoes_color=LEMON hat=CAP hat_color=WHITE accessory=NONE accessory_color=LEMON
+movement=11 speech=7 expression=11 attitude=12 quirk=6
+pitch=14 speed=29 quality=2 intonation=28 accent=30
+food="Fried Chicken" hates="Sushi" hobby="Knitting" music="Disco" color=WHITE fear="Spiders"
+phrase="Okie dokie!"
+hunger=68 happy=62 hygiene=91 energy=75 health=92 sanity=95 corruption=5 social=77
+mood=OK activity=HOME
+
+[409] Loomie
+# archetype: crafters (Hillvile)
+job: Weaver
+bio: Weaves rugs from rainbow yarn and old songs.
+flags=NONE
+pronoun=THEY romance=SHE birthday=APR-02
+species=MOUSEKIN body=TINY height=4 build=9 skin=PEACH head=ROUND head_size=10
+eyes=HEART eye_color=CARAMEL eye_size=7 eye_spacing=8 eye_height=7 eye_tilt=7 eye_count=2
+brows=THIN brow_height=8 nose=CAT nose_size=4 mouth=BIG_GRIN mouth_size=6 fangs=0 cheeks=BLUSH
+hair=BALD hair_color=CHOCOLATE highlight=NONE facial_hair=NONE
+ears=MOUSE horns=NONE horn_color=CHOCOLATE horn_size=9 tail=MOUSE wings=NONE halo=NONE
+marking=FUR_SOCKS marking_color=WHITE aura=BUBBLES
+top=SWEATER top_color=CARAMEL pattern=POLKA pattern_color=WHITE bottom=PANTS bottom_color=SKY
+shoes=SLIPPERS shoes_color=SKY hat=NONE hat_color=SKY accessory=NONE accessory_color=WHITE
+movement=5 speech=2 expression=12 attitude=15 quirk=9
+pitch=20 speed=27 quality=31 intonation=8 accent=3
+food="Pudding" hates="Curry" hobby="Knitting" music="Lullabies" color=CARAMEL fear="Bath Time"
+phrase="Cuddle puddle!"
+hunger=75 happy=72 hygiene=69 energy=56 health=86 sanity=97 corruption=8 social=71
+mood=OK activity=HOME
+
+[410] Chanterelle
+# archetype: foragers (Hillvile)
+job: Forager
+bio: Knows which mushrooms are tasty and which are rude.
+flags=NONE
+pronoun=SHE romance=ANY birthday=MAR-03
+species=FOXKIN body=AVERAGE height=8 build=8 skin=LAVENDER head=MOCHI head_size=8
+eyes=ROUND eye_color=LEMON eye_size=13 eye_spacing=10 eye_height=8 eye_tilt=8 eye_count=2
+brows=DOTS brow_height=10 nose=CAT nose_size=7 mouth=POUT mouth_size=7 fangs=0 cheeks=NONE
+hair=BALD hair_color=LEMON highlight=SKY facial_hair=NONE
+ears=FOX horns=NONE horn_color=LEMON horn_size=11 tail=FOX wings=NONE halo=NONE
+marking=STAR_FRECKLES marking_color=CHERRY aura=NONE
+top=OVERALLS top_color=FOREST pattern=SOLID pattern_color=WHITE bottom=SHORTS bottom_color=FOREST
+shoes=BOOTS shoes_color=WHITE hat=BEANIE hat_color=FOREST accessory=BACKPACK accessory_color=WHITE
+movement=6 speech=1 expression=7 attitude=14 quirk=8
+pitch=0 speed=27 quality=27 intonation=23 accent=19
+food="Pickles" hates="Hell Peppers" hobby="Bug Collecting" music="Folk" color=PEACH fear="Ghosts"
+phrase="Hehehe~"
+hunger=84 happy=71 hygiene=76 energy=55 health=92 sanity=77 corruption=12 social=65
+mood=OK activity=PARK
+
+[411] Couture Kit
+# archetype: tailors (Hillvile)
+job: Fashion Designer
+bio: Fashion designer. Sees a dress in every cloud.
+flags=NONE
+pronoun=THEY romance=THEY birthday=SEP-25
+species=FOXKIN body=TINY height=9 build=6 skin=LAVENDER head=OVAL head_size=10
+eyes=HAPPY_ARC eye_color=LAVENDER eye_size=9 eye_spacing=6 eye_height=10 eye_tilt=7 eye_count=2
+brows=THIN brow_height=8 nose=CAT nose_size=9 mouth=CAT mouth_size=10 fangs=0 cheeks=SPARKLES
+hair=BALD hair_color=LAVENDER highlight=NONE facial_hair=NONE
+ears=FOX horns=NONE horn_color=LAVENDER horn_size=7 tail=FOX wings=NONE halo=NONE
+marking=FUR_TIPPED_EARS marking_color=WHITE aura=NONE
+top=SUIT top_color=ROSE pattern=POLKA pattern_color=WHITE bottom=KILT bottom_color=CHARCOAL
+shoes=PLATFORM shoes_color=CHARCOAL hat=TOP_HAT hat_color=CHARCOAL accessory=SCARF accessory_color=WHITE
+movement=7 speech=7 expression=8 attitude=11 quirk=10
+pitch=16 speed=4 quality=25 intonation=11 accent=8
+food="Sushi" hates="Grave Dirt Cake" hobby="Cosplay" music="Jazz" color=ROSE fear="Being Alone"
+phrase="Purr-fect!"
+hunger=65 happy=77 hygiene=84 energy=71 health=96 sanity=100 corruption=5 social=72
+mood=HAPPY activity=SHOP
+
+[412] Hammerbelle
+# archetype: builders (Hillvile)
+job: Carpenter
+bio: Built half the houses in Hillvile. And all the birdhouses.
+flags=NONE
+pronoun=SHE romance=HE birthday=FEB-02
+species=BEARKIN body=BUFF height=12 build=6 skin=WHITE head=MOCHI head_size=13
+eyes=SPARKLE eye_color=TEAL eye_size=7 eye_spacing=9 eye_height=10 eye_tilt=8 eye_count=2
+brows=THIN brow_height=9 nose=BUTTON nose_size=9 mouth=SMILE mouth_size=5 fangs=0 cheeks=NONE
+hair=BOWL hair_color=BUBBLEGUM highlight=NONE facial_hair=NONE
+ears=BEAR horns=NONE horn_color=BUBBLEGUM horn_size=8 tail=BEAR_NUB wings=NONE halo=NONE
+marking=FUR_BELLY marking_color=SILVER aura=NONE
+top=TSHIRT top_color=TANGERINE pattern=SOLID pattern_color=LEMON bottom=CARGO bottom_color=NAVY
+shoes=BOOTS shoes_color=NAVY hat=TRAFFIC_CONE hat_color=LEMON accessory=NONE accessory_color=LEMON
+movement=8 speech=9 expression=4 attitude=9 quirk=3
+pitch=13 speed=0 quality=17 intonation=19 accent=27
+food="Fried Chicken" hates="Pickles" hobby="Welding" music="Hymns" color=TANGERINE fear="Vacuum Cleaners"
+phrase="Paws up!"
+hunger=89 happy=73 hygiene=84 energy=67 health=92 sanity=95 corruption=3 social=76
+mood=OK activity=WANDERING
+
+[413] Zoey Zoo
+# archetype: vets (Hillvile)
+job: Zookeeper
+bio: Zookeeper at the petting zoo. Pets everything.
+flags=HAS_PET
+pronoun=SHE romance=ANY birthday=FEB-16
+species=HUMAN body=TINY height=12 build=11 skin=SKIN_BROWN head=STAR head_size=14
+eyes=ROUND eye_color=MINT eye_size=10 eye_spacing=10 eye_height=7 eye_tilt=8 eye_count=2
+brows=DOTS brow_height=7 nose=WIDE nose_size=6 mouth=OPEN mouth_size=5 fangs=0 cheeks=NONE
+hair=ODANGO hair_color=WHITE highlight=NONE facial_hair=NONE
+ears=NORMAL horns=NONE horn_color=WHITE horn_size=7 tail=NONE wings=ANGEL halo=NONE
+marking=NONE marking_color=PEACH aura=NONE
+top=LAB_COAT top_color=TEAL pattern=SOLID pattern_color=WHITE bottom=CARGO bottom_color=WHITE
+shoes=BOOTS shoes_color=PEACH hat=NONE hat_color=WHITE accessory=NONE accessory_color=PEACH
+movement=10 speech=1 expression=13 attitude=15 quirk=4
+pitch=17 speed=15 quality=24 intonation=20 accent=1
+food="Milk" hates="Black Licorice" hobby="Karaoke" music="Folk" color=TEAL fear="Ghosts"
+phrase="Tail wags!"
+hunger=92 happy=76 hygiene=75 energy=56 health=85 sanity=73 corruption=4 social=65
+mood=HAPPY activity=HOSPITAL
+
+[414] Capt. Whisk
+# archetype: fishers (Hillvile)
+job: Fisher
+bio: Catches fish, names them, lets them go.
+flags=NONE
+pronoun=HE romance=ANY birthday=FEB-03
+species=CATFOLK body=ROUND height=5 build=10 skin=TANGERINE head=ROUND head_size=10
+eyes=CAT eye_color=CHOCOLATE eye_size=9 eye_spacing=8 eye_height=6 eye_tilt=9 eye_count=2
+brows=NONE brow_height=8 nose=CAT nose_size=4 mouth=CAT mouth_size=5 fangs=0 cheeks=BLUSH
+hair=SHORT hair_color=MINT highlight=NONE facial_hair=CHOPS
+ears=CAT horns=NONE horn_color=MINT horn_size=10 tail=CAT wings=NONE halo=NONE
+marking=FUR_SOCKS marking_color=WHITE aura=NONE
+top=SWEATER top_color=SKY pattern=SOLID pattern_color=TANGERINE bottom=NONE bottom_color=TANGERINE
+shoes=BOOTS shoes_color=NAVY hat=BEANIE hat_color=TANGERINE accessory=NONE accessory_color=TANGERINE
+movement=6 speech=3 expression=9 attitude=15 quirk=6
+pitch=4 speed=0 quality=29 intonation=2 accent=12
+food="Sushi" hates="Worm Gummies" hobby="Fishing" music="Sea Shanties" color=SKY fear="Thunder"
+phrase="Purr-fect!"
+hunger=70 happy=96 hygiene=94 energy=67 health=90 sanity=100 corruption=4 social=94
+mood=HAPPY activity=BEACH
+
+[415] Mochi Mochi
+# archetype: idols (Hillvile)
+job: Pop Idol
+bio: Her one hit song is just the word "mochi".
+flags=NONE
+pronoun=SHE romance=SHE birthday=MAY-28
+species=BUNNYKIN body=TINY height=7 build=7 skin=LAVENDER head=STAR head_size=14
+eyes=SPARKLE eye_color=TANGERINE eye_size=8 eye_spacing=10 eye_height=9 eye_tilt=8 eye_count=2
+brows=THICK brow_height=8 nose=BUTTON nose_size=4 mouth=OPEN mouth_size=9 fangs=1 cheeks=BLUSH
+hair=BUN hair_color=CHOCOLATE highlight=ROSE facial_hair=NONE
+ears=BUNNY horns=NONE horn_color=CHOCOLATE horn_size=7 tail=BUNNY wings=NONE halo=NONE
+marking=FUR_TIPPED_EARS marking_color=WHITE aura=SPARKLES
+top=CROP_TOP top_color=CYAN pattern=HEARTS pattern_color=WHITE bottom=TUTU bottom_color=MAGENTA
+shoes=PLATFORM shoes_color=WHITE hat=HEADPHONES hat_color=WHITE accessory=EARRINGS accessory_color=MAGENTA
+movement=14 speech=8 expression=14 attitude=13 quirk=8
+pitch=23 speed=6 quality=1 intonation=1 accent=29
+food="Cotton Candy" hates="Eyeball Jelly" hobby="Singing" music="Bubblegum Pop" color=CYAN fear="Public Speaking"
+phrase="Yippee!"
+hunger=83 happy=71 hygiene=91 energy=83 health=93 sanity=76 corruption=9 social=49
+mood=OK activity=CONCERT
+
+[416] Dimes
+# archetype: bankers (Hillvile)
+job: Piggy Banker
+bio: Lends money to anyone with a good joke.
+flags=NONE
+pronoun=HE romance=NONE birthday=FEB-05
+species=HUMAN body=ROUND height=3 build=14 skin=SKIN_PEACH head=ROUND head_size=8
+eyes=HAPPY_ARC eye_color=CHARTREUSE eye_size=11 eye_spacing=5 eye_height=10 eye_tilt=7 eye_count=2
+brows=RAISED brow_height=5 nose=PIG nose_size=9 mouth=O mouth_size=7 fangs=1 cheeks=NONE
+hair=BOB hair_color=LEMON highlight=NONE facial_hair=NONE
+ears=NORMAL horns=NONE horn_color=LEMON horn_size=8 tail=NONE wings=NONE halo=NONE
+marking=NONE marking_color=NAVY aura=NONE
+top=SWEATER_VEST top_color=BUBBLEGUM pattern=STRIPES pattern_color=LEMON bottom=PANTS bottom_color=NAVY
+shoes=HEELS shoes_color=BUBBLEGUM hat=NONE hat_color=LEMON accessory=MONOCLE accessory_color=LEMON
+movement=5 speech=5 expression=5 attitude=4 quirk=3
+pitch=4 speed=26 quality=18 intonation=28 accent=7
+food="Dumplings" hates="Sushi" hobby="Board Games" music="Jazz" color=LEMON fear="Needles"
+phrase="Oh my stars!"
+hunger=64 happy=68 hygiene=90 energy=99 health=89 sanity=77 corruption=8 social=64
+mood=OK activity=SHOP
+
+[417] Sprinklepop
+# archetype: candy (Hillvile)
+job: Lollipop Artist
+bio: Sneezes glitter. Doctors say it is fine.
+flags=NONE
+pronoun=SHE romance=ANY birthday=FEB-01
+species=BUNNYKIN body=AVERAGE height=7 build=10 skin=HONEY head=HEART head_size=11
+eyes=ROUND eye_color=TEAL eye_size=13 eye_spacing=8 eye_height=6 eye_tilt=8 eye_count=2
+brows=THIN brow_height=8 nose=BUTTON nose_size=8 mouth=OPEN mouth_size=7 fangs=0 cheeks=BLUSH,SPARKLES
+hair=BOWL hair_color=MINT highlight=PEACH facial_hair=NONE
+ears=BUNNY horns=NONE horn_color=MINT horn_size=8 tail=BUNNY wings=NONE halo=NONE
+marking=FUR_MUZZLE marking_color=WHITE aura=SPARKLES
+top=TSHIRT top_color=MAGENTA pattern=STRIPES pattern_color=CYAN bottom=SKIRT bottom_color=LEMON
+shoes=ROLLERSKATES shoes_color=CYAN hat=NONE hat_color=CYAN accessory=BOWTIE accessory_color=CYAN
+movement=14 speech=5 expression=15 attitude=15 quirk=8
+pitch=21 speed=19 quality=28 intonation=30 accent=29
+food="Gumdrops" hates="Brussels Sprouts" hobby="Bubble Blowing" music="Jazz" color=MAGENTA fear="Bees"
+phrase="Yummy yummy!"
+hunger=81 happy=85 hygiene=93 energy=66 health=98 sanity=99 corruption=1 social=55
+mood=HAPPY activity=SHOP
+
+[418] Dr. Quark
+# archetype: scientists (Hillvile)
+job: Scientist
+bio: Studies tiny things, like ants and quarks.
+flags=NONE
+pronoun=SHE romance=ANY birthday=NOV-16
+species=ROBOT body=ROUND height=8 build=15 skin=MINT head=SQUARE head_size=8
+eyes=WIDE eye_color=TEAL eye_size=8 eye_spacing=8 eye_height=10 eye_tilt=9 eye_count=2
+brows=THIN brow_height=8 nose=NONE nose_size=4 mouth=GRIN mouth_size=9 fangs=0 cheeks=BLUSH
+hair=BALD hair_color=CARAMEL highlight=NONE facial_hair=NONE
+ears=NONE horns=NONE horn_color=CARAMEL horn_size=10 tail=NONE wings=NONE halo=NONE
+marking=NONE marking_color=CYAN aura=NONE
+top=LAB_COAT top_color=WHITE pattern=SOLID pattern_color=LEMON bottom=PANTS bottom_color=CYAN
+shoes=SNEAKERS shoes_color=CYAN hat=NONE hat_color=WHITE accessory=GLASSES accessory_color=LEMON
+movement=7 speech=6 expression=11 attitude=5 quirk=14
+pitch=22 speed=7 quality=19 intonation=10 accent=26
+food="Coffee" hates="Black Licorice" hobby="Bug Collecting" music="Chiptune" color=WHITE fear="Thunder"
+phrase="Beep boop!"
+hunger=70 happy=71 hygiene=83 energy=73 health=97 sanity=88 corruption=9 social=57
+mood=OK activity=HOME
+
+[419] Punderful
+# archetype: comedians (Hillvile)
+job: Pun Writer
+bio: Pun writer. Every sentence is a groan in disguise.
+flags=NONE
+pronoun=HE romance=ANY birthday=MAY-01
+species=PUPKIN body=AVERAGE height=9 build=12 skin=PEACH head=OVAL head_size=9
+eyes=LASHES eye_color=BUBBLEGUM eye_size=12 eye_spacing=8 eye_height=8 eye_tilt=8 eye_count=2
+brows=DOTS brow_height=10 nose=BUTTON nose_size=5 mouth=SMILE mouth_size=10 fangs=0 cheeks=BLUSH
+hair=LONG hair_color=HONEY highlight=NONE facial_hair=NONE
+ears=FLOPPY_PUP horns=NONE horn_color=HONEY horn_size=5 tail=PUP_WAGGY wings=NONE halo=NONE
+marking=FUR_SOCKS marking_color=WHITE aura=NONE
+top=SWEATER top_color=SKY pattern=POLKA pattern_color=WHITE bottom=PANTS bottom_color=CHERRY
+shoes=SNEAKERS shoes_color=WHITE hat=NONE hat_color=WHITE accessory=BOWTIE accessory_color=WHITE
+movement=14 speech=11 expression=13 attitude=14 quirk=14
+pitch=25 speed=25 quality=29 intonation=22 accent=12
+food="Popcorn" hates="Sushi" hobby="Pranks" music="Disco" color=SKY fear="Thunder"
+phrase="No thank you!"
+hunger=75 happy=84 hygiene=71 energy=65 health=99 sanity=92 corruption=4 social=71
+mood=HAPPY activity=CONCERT
+
+[420] Kitey
+# archetype: toyshop (Hillvile)
+job: Kite Maker
+bio: Kite maker. Her kites have names and opinions.
+flags=NONE
+pronoun=SHE romance=ANY birthday=FEB-01
+species=FOXKIN body=ROUND height=10 build=13 skin=TANGERINE head=PEAR head_size=13
+eyes=LASHES eye_color=FOREST eye_size=11 eye_spacing=9 eye_height=8 eye_tilt=7 eye_count=2
+brows=NONE brow_height=6 nose=CAT nose_size=7 mouth=CAT mouth_size=5 fangs=0 cheeks=BLUSH
+hair=POMPADOUR hair_color=SKY highlight=NONE facial_hair=NONE
+ears=FOX horns=NONE horn_color=SKY horn_size=6 tail=FOX wings=NONE halo=NONE
+marking=STAR_FRECKLES marking_color=LIME aura=NONE
+top=OVERALLS top_color=GRAPE pattern=POLKA pattern_color=LEMON bottom=PANTS bottom_color=LIME
+shoes=SLIPPERS shoes_color=LEMON hat=PROPELLER hat_color=LEMON accessory=GLASSES accessory_color=LIME
+movement=12 speech=1 expression=13 attitude=15 quirk=12
+pitch=16 speed=23 quality=16 intonation=9 accent=6
+food="Pancakes" hates="Hell Peppers" hobby="Origami" music="Folk" color=GRAPE fear="Deep Water"
+phrase="Toot toot!"
+hunger=74 happy=86 hygiene=95 energy=80 health=90 sanity=96 corruption=13 social=54
+mood=HAPPY activity=SHOP
+
+[421] Squishy
+# archetype: slimes (Hillvile)
+job: Window Washer
+bio: Window washer. Leaves a little smiley in the glass.
+flags=NONE
+pronoun=SHE romance=ANY birthday=DEC-02
+species=SLIME body=AVERAGE height=3 build=5 skin=BUBBLEGUM head=BLOB head_size=10
+eyes=ROUND eye_color=COBALT eye_size=8 eye_spacing=8 eye_height=8 eye_tilt=9 eye_count=2
+brows=DOTS brow_height=10 nose=NONE nose_size=9 mouth=SMILE mouth_size=8 fangs=0 cheeks=BLUSH
+hair=BALD hair_color=NAVY highlight=NONE facial_hair=NONE
+ears=NONE horns=NONE horn_color=NAVY horn_size=10 tail=NONE wings=NONE halo=NONE
+marking=NONE marking_color=LEMON aura=BUBBLES
+top=OVERALLS top_color=CYAN pattern=SOLID pattern_color=WHITE bottom=NONE bottom_color=LEMON
+shoes=BARE shoes_color=WHITE hat=NONE hat_color=CYAN accessory=NONE accessory_color=WHITE
+movement=6 speech=5 expression=13 attitude=13 quirk=8
+pitch=23 speed=8 quality=20 intonation=1 accent=5
+food="Salad" hates="Black Licorice" hobby="Bubble Blowing" music="City Pop" color=CYAN fear="Spiders"
+phrase="Hehehe~"
+hunger=73 happy=78 hygiene=87 energy=87 health=98 sanity=96 corruption=11 social=82
+mood=HAPPY activity=WANDERING
+
+[422] Sonnet
+# archetype: bookshop (Hillvile)
+job: Poet
+bio: Writes a poem for every rainy day. 900 so far.
+flags=NONE
+pronoun=SHE romance=ANY birthday=APR-11
+species=MOTHKIN body=ROUND height=10 build=10 skin=BONE head=MOCHI head_size=14
+eyes=DOT eye_color=CARAMEL eye_size=7 eye_spacing=5 eye_height=10 eye_tilt=7 eye_count=2
+brows=NONE brow_height=6 nose=BUTTON nose_size=10 mouth=O mouth_size=5 fangs=0 cheeks=BLUSH
+hair=BALD hair_color=TEAL highlight=NONE facial_hair=NONE
+ears=NONE horns=ANTENNAE horn_color=WHITE horn_size=5 tail=NONE wings=BUTTERFLY halo=NONE
+marking=NONE marking_color=SKY aura=HEARTS
+top=KIMONO top_color=SKY pattern=SOLID pattern_color=BONE bottom=PANTS bottom_color=SKY
+shoes=BOOTS shoes_color=BONE hat=BERET hat_color=BONE accessory=SCARF accessory_color=SKY
+movement=3 speech=2 expression=7 attitude=9 quirk=10
+pitch=0 speed=3 quality=28 intonation=3 accent=10
+food="Melon Bread" hates="Brussels Sprouts" hobby="Board Games" music="Classical" color=TEAL fear="Being Alone"
+phrase="Cozy vibes only!"
+hunger=72 happy=94 hygiene=77 energy=99 health=99 sanity=86 corruption=11 social=92
+mood=HAPPY activity=SHOP
+
+[423] Fortunabot
+# archetype: carnival (Hillvile)
+job: Fortune Machine
+bio: Fortune machine bot. Every fortune says "hug".
+flags=NONE
+pronoun=IT romance=ANY birthday=DEC-13
+species=ROBOT body=TOP_HEAVY height=11 build=6 skin=LEMON head=DIAMOND head_size=11
+eyes=SPARKLE eye_color=HONEY eye_size=11 eye_spacing=5 eye_height=8 eye_tilt=7 eye_count=2
+brows=NONE brow_height=10 nose=NONE nose_size=9 mouth=POUT mouth_size=9 fangs=0 cheeks=BLUSH,FRECKLES,DIMPLES
+hair=BALD hair_color=CHOCOLATE highlight=NONE facial_hair=NONE
+ears=NONE horns=ANTENNAE horn_color=WHITE horn_size=10 tail=NONE wings=NONE halo=NONE
+marking=NONE marking_color=CHERRY aura=NONE
+top=TSHIRT top_color=COBALT pattern=STRIPES pattern_color=LEMON bottom=SHORTS bottom_color=CHERRY
+shoes=SNEAKERS shoes_color=CHERRY hat=CAP hat_color=LEMON accessory=BOWTIE accessory_color=LEMON
+movement=14 speech=5 expression=15 attitude=15 quirk=10
+pitch=7 speed=5 quality=8 intonation=25 accent=8
+food="Cotton Candy" hates="Sulfur Soda" hobby="Video Games" music="Lo-fi Beats" color=CHOCOLATE fear="Mirrors"
+phrase="Hehehe~"
+hunger=74 happy=63 hygiene=87 energy=78 health=93 sanity=94 corruption=10 social=70
+mood=OK activity=PARK
+
+[424] Wisp Willow
+# archetype: goodghosts (Hillvile)
+job: Night Nanny
+bio: Floats through walls to deliver soup to the sick.
+traits=NIGHT_OWL flags=NONE
+pronoun=SHE romance=ANY birthday=AUG-24
+species=GHOST body=LANKY height=14 build=0 skin=MINT head=MOCHI head_size=13
+eyes=VOID eye_color=HONEY eye_size=9 eye_spacing=10 eye_height=7 eye_tilt=8 eye_count=2
+brows=DOTS brow_height=7 nose=NONE nose_size=4 mouth=WAVY mouth_size=8 fangs=0 cheeks=BLUSH
+hair=BALD hair_color=CARAMEL highlight=PEACH facial_hair=NONE
+ears=NONE horns=NONE horn_color=CARAMEL horn_size=7 tail=NONE wings=NONE halo=NONE
+marking=NONE marking_color=LAVENDER aura=NONE
+top=NONE top_color=WHITE pattern=SOLID pattern_color=SKY bottom=NONE bottom_color=LAVENDER
+shoes=BARE shoes_color=WHITE hat=FLOWER_CROWN hat_color=SKY accessory=NONE accessory_color=SKY
+movement=7 speech=3 expression=12 attitude=11 quirk=7
+pitch=20 speed=24 quality=25 intonation=23 accent=18
+food="Angel Cake" hates="Worm Gummies" hobby="Knitting" music="Lullabies" color=WHITE fear="Deep Water"
+phrase="Hellooo!"
+hunger=92 happy=65 hygiene=79 energy=47 health=100 sanity=89 corruption=17 social=57
+mood=OK activity=WANDERING
+
+[425] Trekkie
+# archetype: hikers (Hillvile)
+job: Hiker
+bio: Has worn out 40 pairs of boots. Keeps them all.
+flags=NONE
+pronoun=HE romance=ANY birthday=FEB-19
+species=FOXKIN body=TINY height=8 build=12 skin=WHITE head=ROUND head_size=8
+eyes=CAT eye_color=JET eye_size=10 eye_spacing=10 eye_height=7 eye_tilt=7 eye_count=2
+brows=THIN brow_height=9 nose=CAT nose_size=7 mouth=CAT mouth_size=8 fangs=0 cheeks=BLUSH,FRECKLES
+hair=BOB hair_color=NAVY highlight=NONE facial_hair=NONE
+ears=FOX horns=NONE horn_color=NAVY horn_size=10 tail=FOX wings=NONE halo=NONE
+marking=FUR_MUZZLE marking_color=SILVER aura=NONE
+top=SWEATER top_color=NAVY pattern=SOLID pattern_color=WHITE bottom=CARGO bottom_color=LIME
+shoes=BOOTS shoes_color=LIME hat=BEANIE hat_color=NAVY accessory=BACKPACK accessory_color=WHITE
+movement=14 speech=2 expression=11 attitude=15 quirk=5
+pitch=12 speed=31 quality=21 intonation=21 accent=24
+food="Popcorn" hates="Burnt Toast" hobby="Stargazing" music="Folk" color=CHERRY fear="Public Speaking"
+phrase="Yippee!"
+hunger=83 happy=65 hygiene=87 energy=93 health=85 sanity=86 corruption=8 social=77
+mood=OK activity=WANDERING
+
+[426] Hooray Hana
+# archetype: cheer (Hillvile)
+job: Cheer Captain
+bio: Can do 30 backflips. Prefers 3 and a nap.
+flags=NONE
+pronoun=SHE romance=SHE birthday=JUN-27
+species=HUMAN body=STOCKY height=12 build=11 skin=SKIN_PORCELAIN head=MOCHI head_size=8
+eyes=ROUND eye_color=TANGERINE eye_size=9 eye_spacing=5 eye_height=9 eye_tilt=9 eye_count=2
+brows=RAISED brow_height=5 nose=DOT nose_size=8 mouth=SMILE mouth_size=5 fangs=1 cheeks=NONE
+hair=PIGTAILS hair_color=CARAMEL highlight=NONE facial_hair=NONE
+ears=NORMAL horns=NONE horn_color=CARAMEL horn_size=9 tail=NONE wings=NONE halo=NONE
+marking=NONE marking_color=WHITE aura=NONE
+top=CROP_TOP top_color=CHERRY pattern=STRIPES pattern_color=LEMON bottom=SKIRT bottom_color=WHITE
+shoes=SNEAKERS shoes_color=WHITE hat=NONE hat_color=CHERRY accessory=EARRINGS accessory_color=WHITE
+movement=13 speech=5 expression=14 attitude=12 quirk=7
+pitch=30 speed=23 quality=7 intonation=6 accent=3
+food="Ice Cream" hates="Brussels Sprouts" hobby="Dancing" music="Bubblegum Pop" color=CHERRY fear="Deep Water"
+phrase="Paws up!"
+hunger=91 happy=90 hygiene=94 energy=82 health=99 sanity=80 corruption=5 social=82
+mood=HAPPY activity=PARK
+
+[427] Smoochy
+# archetype: cupids (Hillvile)
+job: Cupid Courier
+bio: Delivers love letters. Blushes reading the address.
+flags=NONE
+pronoun=THEY romance=THEY birthday=MAY-19
+species=CHERUB body=LANKY height=14 build=3 skin=SKIN_PEACH head=BEAN head_size=10
+eyes=HEART eye_color=ROSE eye_size=8 eye_spacing=10 eye_height=7 eye_tilt=8 eye_count=2
+brows=NONE brow_height=10 nose=DOT nose_size=8 mouth=O mouth_size=5 fangs=0 cheeks=BLUSH,SPARKLES
+hair=SHORT hair_color=CARAMEL highlight=NONE facial_hair=NONE
+ears=NORMAL horns=NONE horn_color=CARAMEL horn_size=9 tail=NONE wings=ANGEL halo=HALO
+marking=NONE marking_color=WHITE aura=NONE
+top=ROBE top_color=BUBBLEGUM pattern=SOLID pattern_color=ROSE bottom=SHORTS bottom_color=WHITE
+shoes=BARE shoes_color=ROSE hat=FLOWER_CROWN hat_color=BUBBLEGUM accessory=NONE accessory_color=WHITE
+movement=12 speech=5 expression=11 attitude=13 quirk=11
+pitch=29 speed=3 quality=20 intonation=6 accent=23
+food="Macarons" hates="Sushi" hobby="Cosplay" music="Bubblegum Pop" color=BUBBLEGUM fear="Mirrors"
+phrase="Hehehe~"
+hunger=66 happy=94 hygiene=69 energy=65 health=90 sanity=72 corruption=0 social=92
+mood=HAPPY activity=WANDERING
+
+[428] Bordercake
+# archetype: wallwatch (Hillvile)
+job: Border Baker
+bio: Throws cupcakes over the Wall. Some come back.
+flags=NONE
+pronoun=SHE romance=ANY birthday=AUG-21
+species=PUPKIN body=PEAR height=12 build=6 skin=SILVER head=MOCHI head_size=12
+eyes=ANIME eye_color=FOREST eye_size=11 eye_spacing=7 eye_height=6 eye_tilt=7 eye_count=2
+brows=ARCHED brow_height=9 nose=BUTTON nose_size=6 mouth=SMILE mouth_size=7 fangs=0 cheeks=BLUSH
+hair=BALD hair_color=COBALT highlight=NONE facial_hair=NONE
+ears=FLOPPY_PUP horns=NONE horn_color=COBALT horn_size=12 tail=PUP_WAGGY wings=NONE halo=NONE
+marking=FUR_BELLY marking_color=WHITE aura=BUBBLES
+top=ARMOR top_color=FOREST pattern=STRIPES pattern_color=WHITE bottom=CARGO bottom_color=HONEY
+shoes=BOOTS shoes_color=WHITE hat=NONE hat_color=WHITE accessory=NONE accessory_color=WHITE
+movement=6 speech=2 expression=5 attitude=7 quirk=4
+pitch=8 speed=5 quality=15 intonation=24 accent=27
+food="Coffee" hates="Worm Gummies" hobby="Knitting" music="Classical" color=COBALT fear="The Dark"
+phrase="Okie dokie!"
+hunger=68 happy=93 hygiene=69 energy=68 health=91 sanity=95 corruption=8 social=82
+mood=HAPPY activity=WANDERING
+
+[429] Zzzabel
+# archetype: nappers (Hillvile)
+job: Professional Napper
+bio: Talks in her sleep. Gives great advice that way.
+flags=NONE
+pronoun=SHE romance=ANY birthday=JUN-20
+species=SHEEPKIN body=ROUND height=3 build=10 skin=BONE head=MOCHI head_size=11
+eyes=SLEEPY eye_color=HONEY eye_size=11 eye_spacing=5 eye_height=7 eye_tilt=7 eye_count=2
+brows=RAISED brow_height=6 nose=BUTTON nose_size=8 mouth=OPEN mouth_size=5 fangs=0 cheeks=BLUSH
+hair=CURLY hair_color=CHARCOAL highlight=NONE facial_hair=NONE
+ears=SHEEP horns=NONE horn_color=CHARCOAL horn_size=5 tail=SHEEP_PUFF wings=NONE halo=NONE
+marking=FUR_MUZZLE marking_color=CHOCOLATE aura=NONE
+top=PAJAMAS top_color=LAVENDER pattern=SOLID pattern_color=WHITE bottom=NONE bottom_color=SKY
+shoes=SLIPPERS shoes_color=WHITE hat=NONE hat_color=LAVENDER accessory=TEDDY accessory_color=SKY
+movement=0 speech=1 expression=2 attitude=15 quirk=2
+pitch=19 speed=31 quality=11 intonation=25 accent=16
+food="Milk" hates="Bone Broth" hobby="Napping" music="Lullabies" color=LAVENDER fear="Spiders"
+phrase="Big mood."
+hunger=71 happy=62 hygiene=95 energy=49 health=90 sanity=75 corruption=2 social=76
+mood=OK activity=HOME
+
+[430] Ladder Lou
+# archetype: firefighters (Hillvile)
+job: Firefighter
+bio: Climbs things just to see if anyone needs help.
+flags=NONE
+pronoun=THEY romance=ANY birthday=DEC-24
+species=FOXKIN body=STOCKY height=11 build=9 skin=WHITE head=ROUND head_size=10
+eyes=DOT eye_color=HONEY eye_size=9 eye_spacing=6 eye_height=10 eye_tilt=9 eye_count=2
+brows=THIN brow_height=5 nose=CAT nose_size=10 mouth=CAT mouth_size=10 fangs=0 cheeks=BLUSH
+hair=PONYTAIL hair_color=PEACH highlight=NONE facial_hair=NONE
+ears=FOX horns=NONE horn_color=PEACH horn_size=8 tail=FOX wings=NONE halo=NONE
+marking=FUR_MUZZLE marking_color=SILVER aura=NONE
+top=OVERALLS top_color=CHERRY pattern=STRIPES pattern_color=WHITE bottom=CARGO bottom_color=WHITE
+shoes=BOOTS shoes_color=LEMON hat=NONE hat_color=CHERRY accessory=SCARF accessory_color=WHITE
+movement=11 speech=7 expression=10 attitude=9 quirk=3
+pitch=6 speed=27 quality=2 intonation=15 accent=7
+food="Fried Chicken" hates="Curry" hobby="Board Games" music="City Pop" color=CHERRY fear="Deep Water"
+phrase="Mochi mochi!"
+hunger=66 happy=87 hygiene=90 energy=100 health=89 sanity=97 corruption=5 social=77
+mood=HAPPY activity=PARK
+
+[431] Whackamole
+# archetype: carnival (Hillvile)
+job: Carnival Game Host
+bio: Plays whack-a-mole. Apologises to every mole.
+flags=NONE
+pronoun=THEY romance=ANY birthday=MAY-09
+species=PUPKIN body=AVERAGE height=12 build=10 skin=HONEY head=BEAN head_size=12
+eyes=DOT eye_color=FOREST eye_size=8 eye_spacing=5 eye_height=10 eye_tilt=7 eye_count=2
+brows=NONE brow_height=6 nose=BUTTON nose_size=4 mouth=GRIN mouth_size=4 fangs=0 cheeks=SPARKLES
+hair=BALD hair_color=CARAMEL highlight=NONE facial_hair=NONE
+ears=FLOPPY_PUP horns=NONE horn_color=CARAMEL horn_size=4 tail=PUP_WAGGY wings=NONE halo=NONE
+marking=FUR_SOCKS marking_color=WHITE aura=SPARKLES
+top=SUIT top_color=MAGENTA pattern=STRIPES pattern_color=LEMON bottom=PANTS bottom_color=CYAN
+shoes=SNEAKERS shoes_color=CYAN hat=PARTY hat_color=MAGENTA accessory=BOWTIE accessory_color=LEMON
+movement=9 speech=6 expression=15 attitude=11 quirk=8
+pitch=13 speed=10 quality=13 intonation=22 accent=25
+food="Macarons" hates="Coffee" hobby="Board Games" music="Disco" color=MAGENTA fear="Spiders"
+phrase="Toot toot!"
+hunger=90 happy=83 hygiene=75 energy=74 health=100 sanity=83 corruption=1 social=76
+mood=HAPPY activity=PARK
+
+[432] Truffletuft
+# archetype: foragers (Hillvile)
+job: Mushroom Hunter
+bio: Sniffs out truffles. Shares them with everyone.
+flags=NONE
+pronoun=HE romance=SHE birthday=JUN-20
+species=RACCOONKIN body=ROUND height=11 build=15 skin=CHARCOAL head=ROUND head_size=13
+eyes=DOT eye_color=LEMON eye_size=7 eye_spacing=9 eye_height=7 eye_tilt=7 eye_count=2
+brows=RAISED brow_height=7 nose=BUTTON nose_size=8 mouth=TONGUE mouth_size=6 fangs=0 cheeks=BLUSH
+hair=POMPADOUR hair_color=BUBBLEGUM highlight=NONE facial_hair=NONE
+ears=RACCOON horns=NONE horn_color=BUBBLEGUM horn_size=8 tail=RACCOON_RINGED wings=NONE halo=NONE
+marking=NONE marking_color=RUST aura=NONE
+top=OVERALLS top_color=TEAL pattern=SOLID pattern_color=BONE bottom=SHORTS bottom_color=BONE
+shoes=BARE shoes_color=RUST hat=NONE hat_color=BONE accessory=NONE accessory_color=TEAL
+movement=4 speech=4 expression=5 attitude=9 quirk=11
+pitch=11 speed=28 quality=4 intonation=22 accent=29
+food="Honey Toast" hates="Eyeball Jelly" hobby="Bug Collecting" music="Folk" color=TEAL fear="Heights"
+phrase="Okie dokie!"
+hunger=61 happy=80 hygiene=64 energy=56 health=99 sanity=98 corruption=12 social=51
+mood=HAPPY activity=PARK
+
+[433] Dusty Spurs
+# archetype: ranch (Hillvile)
+job: Ranch Hand
+bio: Yodels at sunrise to wake the rooster up.
+flags=HAS_PET
+pronoun=SHE romance=ANY birthday=MAY-13
+species=HUMAN body=STOCKY height=7 build=6 skin=SKIN_PEACH head=MOCHI head_size=9
+eyes=HAPPY_ARC eye_color=TEAL eye_size=7 eye_spacing=6 eye_height=6 eye_tilt=7 eye_count=2
+brows=THIN brow_height=6 nose=BUTTON nose_size=4 mouth=O mouth_size=6 fangs=0 cheeks=NONE
+hair=BALD hair_color=CHOCOLATE highlight=LEMON facial_hair=NONE
+ears=ELF horns=NONE horn_color=CHOCOLATE horn_size=4 tail=NONE wings=NONE halo=NONE
+marking=NONE marking_color=NAVY aura=NONE
+top=TSHIRT top_color=CARAMEL pattern=PLAID pattern_color=WHITE bottom=PANTS bottom_color=NAVY
+shoes=BOOTS shoes_color=NAVY hat=COWBOY hat_color=WHITE accessory=NONE accessory_color=NAVY
+movement=8 speech=11 expression=10 attitude=11 quirk=10
+pitch=29 speed=17 quality=31 intonation=28 accent=20
+food="Tacos" hates="Brussels Sprouts" hobby="Board Games" music="Folk" color=CARAMEL fear="Vacuum Cleaners"
+phrase="Yippee!"
+hunger=76 happy=85 hygiene=83 energy=61 health=94 sanity=76 corruption=9 social=93
+mood=HAPPY activity=WANDERING
+
+[434] Flashbulb
+# archetype: photographers (Hillvile)
+job: Selfie Coach
+bio: Selfie coach. Knows your good side. Both of them.
+flags=NONE
+pronoun=SHE romance=SHE birthday=OCT-16
+species=HUMAN body=TINY height=12 build=5 skin=SKIN_FAIR head=BEAN head_size=12
+eyes=ANIME eye_color=MINT eye_size=9 eye_spacing=5 eye_height=9 eye_tilt=8 eye_count=2
+brows=RAISED brow_height=9 nose=ROUND nose_size=9 mouth=OPEN mouth_size=7 fangs=0 cheeks=BLUSH
+hair=MESSY hair_color=CARAMEL highlight=NONE facial_hair=NONE
+ears=NORMAL horns=NONE horn_color=CARAMEL horn_size=11 tail=NONE wings=NONE halo=NONE
+marking=SPOTS marking_color=MINT aura=NONE
+top=SWEATER_VEST top_color=GRAPE pattern=SOLID pattern_color=LEMON bottom=PANTS bottom_color=GRAPE
+shoes=SNEAKERS shoes_color=MINT hat=BERET hat_color=GRAPE accessory=BACKPACK accessory_color=MINT
+movement=10 speech=6 expression=9 attitude=15 quirk=8
+pitch=31 speed=23 quality=14 intonation=30 accent=26
+food="Macarons" hates="Sulfur Soda" hobby="Karaoke" music="Lo-fi Beats" color=BLOOD fear="Being Alone"
+phrase="Teehee!"
+hunger=75 happy=93 hygiene=97 energy=55 health=92 sanity=75 corruption=2 social=78
+mood=HAPPY activity=PARK
+
+[435] Cumulus
+# archetype: cloudshepherds (Hillvile)
+job: Cloud Shepherd
+bio: Herds the clouds into nice shapes for picnics.
+flags=NONE
+pronoun=SHE romance=ANY birthday=MAY-08
+species=SHEEPKIN body=PEAR height=8 build=11 skin=LAVENDER head=BEAN head_size=12
+eyes=ANIME eye_color=JET eye_size=9 eye_spacing=5 eye_height=7 eye_tilt=9 eye_count=2
+brows=RAISED brow_height=5 nose=BUTTON nose_size=7 mouth=SMILE mouth_size=9 fangs=0 cheeks=BLUSH
+hair=LONG hair_color=JET highlight=NONE facial_hair=NONE
+ears=SHEEP horns=NONE horn_color=JET horn_size=10 tail=SHEEP_PUFF wings=NONE halo=NONE
+marking=STAR_FRECKLES marking_color=SKY aura=NONE
+top=DRESS top_color=MINT pattern=SOLID pattern_color=PEACH bottom=SKIRT bottom_color=SKY
+shoes=BOOTS shoes_color=PEACH hat=NONE hat_color=PEACH accessory=SCARF accessory_color=SKY
+movement=1 speech=2 expression=11 attitude=12 quirk=7
+pitch=3 speed=12 quality=1 intonation=11 accent=5
+food="Milk" hates="Sulfur Soda" hobby="Cloud Watching" music="Folk" color=MINT fear="Heights"
+phrase="Sunny side up!"
+hunger=91 happy=70 hygiene=69 energy=84 health=99 sanity=89 corruption=9 social=53
+mood=OK activity=PARK
+
+[436] Cryptkin
+# archetype: sweetgoths (Hillvile)
+job: Cemetery Gardener
+bio: Tends the cemetery flowers. Talks to every grave.
+traits=NIGHT_OWL flags=NONE
+pronoun=HE romance=ANY birthday=APR-21
+species=HUMAN body=AVERAGE height=7 build=6 skin=SKIN_PORCELAIN head=ROUND head_size=14
+eyes=HAPPY_ARC eye_color=CHOCOLATE eye_size=9 eye_spacing=7 eye_height=7 eye_tilt=7 eye_count=2
+brows=THIN brow_height=8 nose=ROUND nose_size=7 mouth=LIPSTICK mouth_size=7 fangs=0 cheeks=BLUSH
+hair=EMO_FRINGE hair_color=GRAPE highlight=ROSE facial_hair=NONE
+ears=NORMAL horns=NONE horn_color=GRAPE horn_size=5 tail=NONE wings=NONE halo=NONE
+marking=EYELINER marking_color=GRAPE aura=NONE
+top=HOODIE top_color=CHARCOAL pattern=SKULLS pattern_color=BUBBLEGUM bottom=LEGGINGS bottom_color=LAVENDER
+shoes=PLATFORM shoes_color=LAVENDER hat=NONE hat_color=BUBBLEGUM accessory=SKULL_NECKLACE accessory_color=LAVENDER
+movement=6 speech=4 expression=4 attitude=14 quirk=9
+pitch=5 speed=30 quality=3 intonation=1 accent=29
+food="Macarons" hates="Brussels Sprouts" hobby="Poetry" music="Goth Rock" color=ECTOPLASM fear="Silence"
+phrase="Gloom on!"
+hunger=67 happy=62 hygiene=67 energy=51 health=98 sanity=81 corruption=10 social=58
+mood=OK activity=PARK
+
+[437] Elixa
+# archetype: wizards (Hillvile)
+job: Alchemist
+bio: Alchemist. Turns lead into lemonade.
+traits=ELDER flags=NONE
+pronoun=SHE romance=ANY birthday=JUN-06
+species=HUMAN body=STOCKY height=4 build=12 skin=SKIN_BROWN head=PEAR head_size=9
+eyes=ROUND eye_color=LEMON eye_size=8 eye_spacing=9 eye_height=7 eye_tilt=8 eye_count=2
+brows=DOTS brow_height=5 nose=WIDE nose_size=10 mouth=OPEN mouth_size=6 fangs=0 cheeks=BLUSH
+hair=MESSY hair_color=CARAMEL highlight=NONE facial_hair=WIZARD
+ears=NORMAL horns=UNICORN horn_color=CARAMEL horn_size=4 tail=NONE wings=NONE halo=NONE
+marking=NONE marking_color=LEMON aura=NONE
+top=ROBE top_color=GRAPE pattern=SOLID pattern_color=SILVER bottom=NONE bottom_color=LEMON
+shoes=SANDALS shoes_color=LEMON hat=WITCH hat_color=GRAPE accessory=NONE accessory_color=LEMON
+movement=2 speech=4 expression=8 attitude=10 quirk=11
+pitch=24 speed=7 quality=29 intonation=19 accent=5
+food="Pudding" hates="Burnt Toast" hobby="Stargazing" music="Folk" color=JET fear="Dentists"
+phrase="Sparkle on!"
+hunger=77 happy=83 hygiene=79 energy=71 health=91 sanity=76 corruption=2 social=94
+mood=HAPPY activity=HOME
+
+[438] Tutti
+# archetype: museum (Hillvile)
+job: Museum Guide
+bio: Mummy museum guide. Gives tours of her own tomb.
+flags=NONE
+pronoun=SHE romance=ANY birthday=SEP-09
+species=MUMMY body=AVERAGE height=3 build=6 skin=CARAMEL head=HEART head_size=8
+eyes=WIDE eye_color=LEMON eye_size=11 eye_spacing=7 eye_height=8 eye_tilt=9 eye_count=2
+brows=THIN brow_height=5 nose=POINTY nose_size=4 mouth=O mouth_size=10 fangs=0 cheeks=NONE
+hair=BALD hair_color=CARAMEL highlight=NONE facial_hair=NONE
+ears=NORMAL horns=NONE horn_color=CARAMEL horn_size=6 tail=NONE wings=NONE halo=NONE
+marking=NONE marking_color=LEMON aura=NONE
+top=SWEATER_VEST top_color=CHOCOLATE pattern=SOLID pattern_color=BONE bottom=PANTS bottom_color=LEMON
+shoes=CLOGS shoes_color=BONE hat=FEZ hat_color=CHOCOLATE accessory=BANDAGES accessory_color=BONE
+movement=3 speech=4 expression=5 attitude=12 quirk=3
+pitch=13 speed=20 quality=9 intonation=24 accent=1
+food="Dumplings" hates="Bone Broth" hobby="Reading" music="Folk" color=HELLFIRE fear="Deep Water"
+phrase="Okie dokie!"
+hunger=86 happy=81 hygiene=88 energy=78 health=97 sanity=95 corruption=19 social=79
+mood=HAPPY activity=SHOP
+
+[439] Jiggles
+# archetype: slimes (Hillvile)
+job: Bubble Bath Tester
+bio: Bubble bath tester. Has a five-bubble rating system.
+flags=NONE
+pronoun=THEY romance=ANY birthday=JUL-10
+species=SLIME body=AVERAGE height=3 build=10 skin=SLIME head=MOCHI head_size=13
+eyes=DOT eye_color=TANGERINE eye_size=9 eye_spacing=5 eye_height=10 eye_tilt=8 eye_count=2
+brows=NONE brow_height=7 nose=NONE nose_size=8 mouth=SMILE mouth_size=5 fangs=0 cheeks=BLUSH
+hair=SLIME_DRIP hair_color=LEMON highlight=NONE facial_hair=NONE
+ears=NONE horns=NONE horn_color=LEMON horn_size=7 tail=NONE wings=NONE halo=NONE
+marking=NONE marking_color=SKY aura=NONE
+top=NONE top_color=MINT pattern=SOLID pattern_color=WHITE bottom=NONE bottom_color=SKY
+shoes=BARE shoes_color=SKY hat=NONE hat_color=MINT accessory=NONE accessory_color=WHITE
+movement=4 speech=2 expression=6 attitude=14 quirk=11
+pitch=27 speed=24 quality=20 intonation=31 accent=7
+food="Pudding" hates="Burnt Toast" hobby="Bubble Blowing" music="Disco" color=MINT fear="Bees"
+phrase="Wiggle wiggle!"
+hunger=73 happy=89 hygiene=78 energy=80 health=97 sanity=95 corruption=10 social=88
+mood=HAPPY activity=WANDERING
+
+[440] Patchwork
+# archetype: hugtherapy (Hillvile)
+job: Hug Therapist
+bio: Has been mended 99 times. Proud of every stitch.
+flags=NONE
+pronoun=THEY romance=ANY birthday=APR-06
+species=PLUSHIE body=ROUND height=6 build=15 skin=LAVENDER head=ROUND head_size=9
+eyes=STAR eye_color=CYAN eye_size=10 eye_spacing=5 eye_height=7 eye_tilt=8 eye_count=2
+brows=RAISED brow_height=5 nose=DOT nose_size=5 mouth=SMILE mouth_size=10 fangs=0 cheeks=NONE
+hair=BUZZ hair_color=ROSE highlight=NONE facial_hair=NONE
+ears=BEAR horns=NONE horn_color=ROSE horn_size=8 tail=NONE wings=NONE halo=NONE
+marking=PATCHES marking_color=ROSE aura=HEARTS
+top=PAJAMAS top_color=PEACH pattern=HEARTS pattern_color=WHITE bottom=SWEATS bottom_color=ROSE
+shoes=SLIPPERS shoes_color=ROSE hat=NONE hat_color=WHITE accessory=NONE accessory_color=WHITE
+movement=6 speech=3 expression=9 attitude=13 quirk=6
+pitch=29 speed=0 quality=3 intonation=2 accent=8
+food="Pudding" hates="Sushi" hobby="Plush Making" music="Lo-fi Beats" color=PEACH fear="Mirrors"
+phrase="Cuddle puddle!"
+hunger=63 happy=94 hygiene=100 energy=84 health=90 sanity=86 corruption=6 social=48
+mood=HAPPY activity=HOSPITAL
+
+[441] Bubbletub
+# archetype: bathhouse (Hillvile)
+job: Bath House Keeper
+bio: Takes three baths a day. Reviews each one.
+flags=NONE
+pronoun=SHE romance=ANY birthday=JUN-03
+species=BUNNYKIN body=ROUND height=5 build=12 skin=BUBBLEGUM head=OVAL head_size=10
+eyes=ROUND eye_color=FOREST eye_size=12 eye_spacing=8 eye_height=8 eye_tilt=9 eye_count=2
+brows=NONE brow_height=8 nose=BUTTON nose_size=10 mouth=CAT mouth_size=8 fangs=0 cheeks=BLUSH,DIMPLES
+hair=WAVY hair_color=PEACH highlight=NONE facial_hair=NONE
+ears=BUNNY horns=NUBS horn_color=LEMON horn_size=7 tail=BUNNY wings=NONE halo=NONE
+marking=FUR_BELLY marking_color=WHITE aura=NONE
+top=KIMONO top_color=TEAL pattern=SOLID pattern_color=PEACH bottom=NONE bottom_color=WHITE
+shoes=SANDALS shoes_color=WHITE hat=NONE hat_color=PEACH accessory=NONE accessory_color=WHITE
+movement=7 speech=4 expression=11 attitude=12 quirk=6
+pitch=25 speed=13 quality=30 intonation=16 accent=17
+food="Pudding" hates="Brussels Sprouts" hobby="Reading" music="Lo-fi Beats" color=TEAL fear="Silence"
+phrase="So fluffy!"
+hunger=62 happy=93 hygiene=95 energy=73 health=93 sanity=76 corruption=9 social=73
+mood=HAPPY activity=SHOP
+
+[442] Sr. Lumen
+# archetype: church (Hillvile)
+job: Exorcist
+bio: Studies old exorcism scrolls. Hums while reading.
+traits=HOLY flags=NONE
+pronoun=SHE romance=ANY birthday=AUG-24
+species=HUMAN body=AVERAGE height=10 build=7 skin=SKIN_OLIVE head=ROUND head_size=9
+eyes=LASHES eye_color=LEMON eye_size=12 eye_spacing=5 eye_height=9 eye_tilt=9 eye_count=2
+brows=THIN brow_height=8 nose=WIDE nose_size=10 mouth=SMILE mouth_size=10 fangs=1 cheeks=NONE
+hair=SHORT hair_color=HONEY highlight=SKY facial_hair=NONE
+ears=NORMAL horns=NONE horn_color=HONEY horn_size=12 tail=NONE wings=NONE halo=NONE
+marking=NONE marking_color=WHITE aura=NONE
+top=ROBE top_color=NAVY pattern=SOLID pattern_color=LEMON bottom=NONE bottom_color=WHITE
+shoes=SANDALS shoes_color=LEMON hat=NUN_VEIL hat_color=NAVY accessory=ROSARY accessory_color=LEMON
+movement=2 speech=1 expression=4 attitude=6 quirk=3
+pitch=26 speed=25 quality=24 intonation=16 accent=6
+food="Angel Cake" hates="Sulfur Soda" hobby="Reading" music="Classical" color=JET fear="The Dark"
+phrase="Hug o'clock!"
+hunger=90 happy=70 hygiene=69 energy=61 health=92 sanity=88 corruption=3 social=61
+mood=OK activity=CHURCH
+
+[443] Haybale
+# archetype: farmers (Hillvile)
+job: Farmer
+bio: Sleeps in the hayloft. Wakes up as a scarecrow.
+flags=NONE
+pronoun=THEY romance=THEY birthday=OCT-16
+species=PLUSHIE body=PEAR height=5 build=11 skin=SKY head=ROUND head_size=8
+eyes=STAR eye_color=HONEY eye_size=9 eye_spacing=7 eye_height=10 eye_tilt=8 eye_count=3
+brows=ARCHED brow_height=8 nose=DOT nose_size=8 mouth=OPEN mouth_size=8 fangs=0 cheeks=BLUSH
+hair=BALD hair_color=JET highlight=NONE facial_hair=NONE
+ears=CAT horns=NONE horn_color=JET horn_size=5 tail=BEAR_NUB wings=NONE halo=NONE
+marking=NONE marking_color=CHOCOLATE aura=BUBBLES
+top=OVERALLS top_color=SKY pattern=SOLID pattern_color=LEMON bottom=SHORTS bottom_color=CHOCOLATE
+shoes=BOOTS shoes_color=LEMON hat=BUCKET hat_color=SKY accessory=NONE accessory_color=SKY
+movement=6 speech=8 expression=7 attitude=9 quirk=4
+pitch=30 speed=6 quality=23 intonation=20 accent=9
+food="Pickles" hates="Bone Broth" hobby="Cloud Watching" music="Folk" color=SKY fear="Silence"
+phrase="Toot toot!"
+hunger=71 happy=65 hygiene=97 energy=73 health=87 sanity=77 corruption=2 social=87
+mood=OK activity=SHOP
+
+[444] Mr. Thistle
+# archetype: teachers (Hillvile)
+job: Teacher
+bio: Field trip enthusiast. Has lost zero kids, mostly.
+flags=NONE
+pronoun=HE romance=ANY birthday=OCT-24
+species=BEARKIN body=AVERAGE height=8 build=10 skin=PEACH head=OVAL head_size=10
+eyes=LASHES eye_color=LAVENDER eye_size=12 eye_spacing=6 eye_height=8 eye_tilt=7 eye_count=2
+brows=NONE brow_height=8 nose=BUTTON nose_size=10 mouth=WAVY mouth_size=5 fangs=0 cheeks=BLUSH
+hair=POMPADOUR hair_color=PEACH highlight=NONE facial_hair=NONE
+ears=BEAR horns=NONE horn_color=PEACH horn_size=10 tail=BEAR_NUB wings=NONE halo=NONE
+marking=FUR_TIPPED_EARS marking_color=WHITE aura=NONE
+top=DRESS top_color=TEAL pattern=SOLID pattern_color=WHITE bottom=LONG_SKIRT bottom_color=PEACH
+shoes=CLOGS shoes_color=WHITE hat=NONE hat_color=WHITE accessory=SCARF accessory_color=PEACH
+movement=9 speech=3 expression=12 attitude=13 quirk=1
+pitch=0 speed=25 quality=28 intonation=30 accent=31
+food="Curry" hates="Bone Broth" hobby="Stargazing" music="Folk" color=TEAL fear="Popping Balloons"
+phrase="Oh my stars!"
+hunger=60 happy=63 hygiene=75 energy=73 health=91 sanity=84 corruption=9 social=69
+mood=OK activity=PARK
+
+[445] Old Valour
+# archetype: heroes (Hillvile)
+job: Retired Hero
+bio: Retired hero. Tells the same dragon story kindly.
+traits=ELDER flags=NONE
+pronoun=THEY romance=ANY birthday=FEB-17
+species=BEARKIN body=STOCKY height=7 build=5 skin=CARAMEL head=MOCHI head_size=14
+eyes=SLEEPY eye_color=SKY eye_size=10 eye_spacing=6 eye_height=10 eye_tilt=7 eye_count=2
+brows=RAISED brow_height=10 nose=BUTTON nose_size=9 mouth=GRIN mouth_size=9 fangs=0 cheeks=NONE
+hair=PIGTAILS hair_color=RUST highlight=NONE facial_hair=FULL_BEARD
+ears=BEAR horns=NONE horn_color=RUST horn_size=11 tail=BEAR_NUB wings=NONE halo=NONE
+marking=NONE marking_color=FOREST aura=NONE
+top=SWEATER top_color=RUST pattern=CAMO pattern_color=BONE bottom=CARGO bottom_color=FOREST
+shoes=COMBAT shoes_color=BONE hat=MARINE_HELMET hat_color=RUST accessory=EYEPATCH accessory_color=FOREST
+movement=2 speech=7 expression=6 attitude=9 quirk=8
+pitch=6 speed=8 quality=23 intonation=22 accent=31
+food="Hell Peppers" hates="Black Licorice" hobby="Fishing" music="Doom Metal" color=RUST fear="Bees"
+phrase="Rip and tear... gently."
+hunger=64 happy=75 hygiene=64 energy=59 health=96 sanity=94 corruption=10 social=80
+mood=HAPPY activity=PARK
+
+[446] Cortado
+# archetype: cafe (Hillvile)
+job: Barista
+bio: Rates every bean out of ten. Gives everything a ten.
+flags=NONE
+pronoun=HE romance=ANY birthday=OCT-23
+species=HUMAN body=AVERAGE height=12 build=7 skin=SKIN_EBONY head=ROUND head_size=8
+eyes=LASHES eye_color=JET eye_size=7 eye_spacing=9 eye_height=9 eye_tilt=8 eye_count=2
+brows=WORRIED brow_height=7 nose=NONE nose_size=6 mouth=LIPSTICK mouth_size=9 fangs=0 cheeks=BLUSH
+hair=BOB hair_color=PEACH highlight=NONE facial_hair=NONE
+ears=NORMAL horns=NONE horn_color=PEACH horn_size=7 tail=NONE wings=NONE halo=NONE
+marking=NONE marking_color=CHOCOLATE aura=NONE
+top=MAID top_color=MINT pattern=PLAID pattern_color=CARAMEL bottom=PANTS bottom_color=CHOCOLATE
+shoes=SNEAKERS shoes_color=CARAMEL hat=NONE hat_color=CARAMEL accessory=BOWTIE accessory_color=CARAMEL
+movement=15 speech=7 expression=7 attitude=12 quirk=2
+pitch=14 speed=10 quality=6 intonation=6 accent=16
+food="Waffles" hates="Bone Broth" hobby="Painting" music="Lo-fi Beats" color=MINT fear="Public Speaking"
+phrase="Hug o'clock!"
+hunger=75 happy=67 hygiene=70 energy=83 health=89 sanity=82 corruption=4 social=75
+mood=OK activity=CAFE
+
+[447] Grindella
+# archetype: skaters (Hillvile)
+job: Skate Coach
+bio: Skate coach. Teaches falling before skating.
+flags=NONE
+pronoun=THEY romance=NONE birthday=APR-13
+species=RACCOONKIN body=ROUND height=3 build=10 skin=CHARCOAL head=HEART head_size=12
+eyes=HEART eye_color=LEMON eye_size=11 eye_spacing=9 eye_height=10 eye_tilt=7 eye_count=2
+brows=ARCHED brow_height=6 nose=BUTTON nose_size=5 mouth=O mouth_size=7 fangs=1 cheeks=BLUSH,BANDAGE
+hair=BALD hair_color=HONEY highlight=NONE facial_hair=GOATEE
+ears=RACCOON horns=NONE horn_color=HONEY horn_size=5 tail=RACCOON_RINGED wings=NONE halo=NONE
+marking=FUR_MASK marking_color=WHITE aura=NONE
+top=CROP_TOP top_color=TANGERINE pattern=STRIPES pattern_color=WHITE bottom=SHORTS bottom_color=COBALT
+shoes=ROLLERSKATES shoes_color=COBALT hat=CAP hat_color=WHITE accessory=BACKPACK accessory_color=WHITE
+movement=15 speech=4 expression=9 attitude=13 quirk=9
+pitch=18 speed=10 quality=31 intonation=18 accent=30
+food="Tacos" hates="Burnt Toast" hobby="Skateboarding" music="Lo-fi Beats" color=TANGERINE fear="Vacuum Cleaners"
+phrase="Snuggle up!"
+hunger=74 happy=68 hygiene=62 energy=57 health=93 sanity=94 corruption=10 social=52
+mood=OK activity=PARK
+
+[448] Sourdoe
+# archetype: bakery (Hillvile)
+job: Bread Whisperer
+bio: Talks to xyr sourdough starter. It talks back, xe says.
+flags=NONE
+pronoun=XE romance=ANY birthday=DEC-15
+species=PUPKIN body=ROUND height=7 build=11 skin=PEACH head=MOCHI head_size=14
+eyes=SPARKLE eye_color=TEAL eye_size=9 eye_spacing=10 eye_height=10 eye_tilt=8 eye_count=2
+brows=NONE brow_height=9 nose=BUTTON nose_size=6 mouth=LIPSTICK mouth_size=9 fangs=0 cheeks=NONE
+hair=BALD hair_color=SILVER highlight=NONE facial_hair=NONE
+ears=FLOPPY_PUP horns=NONE horn_color=SILVER horn_size=12 tail=PUP_WAGGY wings=NONE halo=NONE
+marking=FUR_MUZZLE marking_color=WHITE aura=NONE
+top=SWEATER top_color=PEACH pattern=SOLID pattern_color=HONEY bottom=SKIRT bottom_color=WHITE
+shoes=CLOGS shoes_color=WHITE hat=CHEF hat_color=PEACH accessory=NONE accessory_color=WHITE
+movement=5 speech=3 expression=11 attitude=11 quirk=0
+pitch=2 speed=28 quality=29 intonation=22 accent=21
+food="Pancakes" hates="Pickles" hobby="Baking" music="City Pop" color=PEACH fear="The Dark"
+phrase="Wiggle wiggle!"
+hunger=79 happy=65 hygiene=96 energy=73 health=90 sanity=74 corruption=1 social=87
+mood=OK activity=CAFE
+
+[449] Mr. Plie
+# archetype: ballet (Hillvile)
+job: Dance Teacher
+bio: Dance teacher. Counts to eight in his sleep.
+flags=NONE
+pronoun=HE romance=ANY birthday=MAR-28
+species=HUMAN body=LANKY height=8 build=4 skin=SKIN_BROWN head=ROUND head_size=8
+eyes=WIDE eye_color=COBALT eye_size=8 eye_spacing=10 eye_height=9 eye_tilt=9 eye_count=2
+brows=DOTS brow_height=6 nose=ROUND nose_size=4 mouth=O mouth_size=9 fangs=0 cheeks=BLUSH
+hair=LOCS hair_color=MINT highlight=NONE facial_hair=MUSTACHE
+ears=NORMAL horns=NONE horn_color=MINT horn_size=12 tail=NONE wings=NONE halo=NONE
+marking=NONE marking_color=WHITE aura=NONE
+top=DRESS top_color=PEACH pattern=HEARTS pattern_color=LEMON bottom=TUTU bottom_color=WHITE
+shoes=SLIPPERS shoes_color=LEMON hat=NONE hat_color=LEMON accessory=EARRINGS accessory_color=WHITE
+movement=11 speech=4 expression=11 attitude=13 quirk=4
+pitch=29 speed=23 quality=4 intonation=24 accent=5
+food="Fried Chicken" hates="Grave Dirt Cake" hobby="Dancing" music="Classical" color=PEACH fear="Dentists"
+phrase="Sparkle on!"
+hunger=72 happy=85 hygiene=79 energy=66 health=95 sanity=83 corruption=10 social=66
+mood=HAPPY activity=CONCERT
+
+[450] Grampy Bean
+# archetype: grandpas (Hillvile)
+job: Retired Sailor
+bio: Grows the town's tomatoes and the town's beard.
+traits=ELDER flags=NONE
+pronoun=HE romance=ANY birthday=MAY-04
+species=HUMAN body=AVERAGE height=6 build=12 skin=SKIN_UMBER head=ROUND head_size=13
+eyes=DROOPY eye_color=CARAMEL eye_size=9 eye_spacing=8 eye_height=6 eye_tilt=8 eye_count=1
+brows=NONE brow_height=9 nose=NONE nose_size=5 mouth=GRIN mouth_size=6 fangs=0 cheeks=BLUSH
+hair=BALD hair_color=SILVER highlight=SKY facial_hair=FULL_BEARD
+ears=NORMAL horns=NONE horn_color=SILVER horn_size=5 tail=NONE wings=NONE halo=NONE
+marking=NONE marking_color=BONE aura=NONE
+top=SWEATER_VEST top_color=FOREST pattern=PLAID pattern_color=HONEY bottom=PANTS bottom_color=BONE
+shoes=SLIPPERS shoes_color=BONE hat=NONE hat_color=HONEY accessory=BOWTIE accessory_color=BONE
+movement=4 speech=7 expression=6 attitude=8 quirk=7
+pitch=21 speed=6 quality=24 intonation=22 accent=25
+food="Coffee" hates="Grave Dirt Cake" hobby="Fishing" music="Classical" color=BLOOD fear="Bath Time"
+phrase="Big mood."
+hunger=88 happy=70 hygiene=79 energy=62 health=90 sanity=97 corruption=10 social=58
+mood=OK activity=HOME
+
+[451] Rafters
+# archetype: builders (Hillvile)
+job: Roofer
+bio: Roofer. Has seen every chimney's secret.
+flags=NONE
+pronoun=THEY romance=ANY birthday=JUL-05
+species=HUMAN body=ROUND height=4 build=6 skin=SKIN_PEACH head=MOCHI head_size=10
+eyes=LASHES eye_color=JET eye_size=12 eye_spacing=5 eye_height=7 eye_tilt=9 eye_count=2
+brows=THIN brow_height=8 nose=DOT nose_size=4 mouth=BIG_GRIN mouth_size=6 fangs=0 cheeks=NONE
+hair=BRAIDS hair_color=CARAMEL highlight=NONE facial_hair=NONE
+ears=NORMAL horns=NONE horn_color=CARAMEL horn_size=7 tail=NONE wings=NONE halo=NONE
+marking=NONE marking_color=CHOCOLATE aura=NONE
+top=TANK top_color=LEMON pattern=PLAID pattern_color=WHITE bottom=CARGO bottom_color=CHOCOLATE
+shoes=BOOTS shoes_color=WHITE hat=TRAFFIC_CONE hat_color=LEMON accessory=NONE accessory_color=WHITE
+movement=11 speech=8 expression=10 attitude=12 quirk=2
+pitch=3 speed=25 quality=15 intonation=7 accent=18
+food="Curry" hates="Black Licorice" hobby="Fishing" music="Disco" color=BUBBLEGUM fear="Thunder"
+phrase="Okie dokie!"
+hunger=92 happy=62 hygiene=66 energy=92 health=98 sanity=97 corruption=8 social=59
+mood=OK activity=WORKSHOP
+
+[452] Feathers
+# archetype: halorepair (Hillvile)
+job: Wing Mender
+bio: Wing mender. Has a feather for every occasion.
+flags=NONE
+pronoun=HE romance=ANY birthday=AUG-13
+species=MOTHKIN body=STOCKY height=7 build=10 skin=LEMON head=ROUND head_size=8
+eyes=SPARKLE eye_color=CARAMEL eye_size=9 eye_spacing=6 eye_height=6 eye_tilt=8 eye_count=2
+brows=NONE brow_height=7 nose=ROUND nose_size=10 mouth=GRIN mouth_size=10 fangs=0 cheeks=NONE
+hair=CROWN_BRAID hair_color=SKY highlight=NONE facial_hair=NONE
+ears=NONE horns=NONE horn_color=SKY horn_size=8 tail=NONE wings=BUTTERFLY halo=HALO
+marking=NONE marking_color=LEMON aura=NONE
+top=OVERALLS top_color=WHITE pattern=SOLID pattern_color=SKY bottom=NONE bottom_color=LEMON
+shoes=SANDALS shoes_color=SKY hat=NONE hat_color=WHITE accessory=GLASSES accessory_color=LEMON
+movement=7 speech=3 expression=8 attitude=9 quirk=5
+pitch=17 speed=26 quality=12 intonation=20 accent=14
+food="Angel Cake" hates="Bone Broth" hobby="Karaoke" music="Hymns" color=NAVY fear="Needles"
+phrase="Mochi mochi!"
+hunger=88 happy=78 hygiene=72 energy=69 health=90 sanity=95 corruption=13 social=74
+mood=HAPPY activity=HOME
+
+[453] Gerty Grape
+# archetype: shopkeepers (Hillvile)
+job: Grocer
+bio: Knows exactly when every melon is ripe.
+flags=NONE
+pronoun=SHE romance=ANY birthday=OCT-19
+species=HUMAN body=AVERAGE height=9 build=6 skin=SKIN_UMBER head=PEAR head_size=13
+eyes=DROOPY eye_color=GRAPE eye_size=7 eye_spacing=5 eye_height=10 eye_tilt=8 eye_count=2
+brows=ARCHED brow_height=9 nose=ROUND nose_size=6 mouth=SMILE mouth_size=4 fangs=1 cheeks=BLUSH,DIMPLES
+hair=LONG hair_color=COBALT highlight=BUBBLEGUM facial_hair=NONE
+ears=NORMAL horns=ANTLERS horn_color=PEACH horn_size=8 tail=NONE wings=NONE halo=NONE
+marking=NONE marking_color=NAVY aura=NONE
+top=SWEATER_VEST top_color=ROSE pattern=STRIPES pattern_color=LEMON bottom=PANTS bottom_color=NAVY
+shoes=SNEAKERS shoes_color=LEMON hat=CAP hat_color=LEMON accessory=NONE accessory_color=LEMON
+movement=8 speech=4 expression=6 attitude=10 quirk=3
+pitch=7 speed=1 quality=30 intonation=4 accent=25
+food="Cereal" hates="Curry" hobby="Reading" music="City Pop" color=ROSE fear="Popping Balloons"
+phrase="Squeak squeak!"
+hunger=62 happy=78 hygiene=97 energy=82 health=89 sanity=95 corruption=9 social=82
+mood=HAPPY activity=SHOP
+
+[454] Verse Vera
+# archetype: bookshop (Hillvile)
+job: Poet
+bio: Reads poetry to the ducks at sunrise.
+flags=NONE
+pronoun=SHE romance=NONE birthday=JUN-23
+species=HUMAN body=PEAR height=10 build=14 skin=SKIN_PORCELAIN head=ROUND head_size=12
+eyes=HAPPY_ARC eye_color=HONEY eye_size=11 eye_spacing=5 eye_height=7 eye_tilt=8 eye_count=2
+brows=NONE brow_height=6 nose=BUTTON nose_size=8 mouth=GRIN mouth_size=5 fangs=0 cheeks=NONE
+hair=WAVY hair_color=ROSE highlight=NONE facial_hair=NONE
+ears=NORMAL horns=NONE horn_color=ROSE horn_size=7 tail=NONE wings=NONE halo=NONE
+marking=NONE marking_color=BONE aura=NONE
+top=SWEATER_VEST top_color=FOREST pattern=PLAID pattern_color=HONEY bottom=PANTS bottom_color=BONE
+shoes=BOOTS shoes_color=BONE hat=NONE hat_color=BONE accessory=GLASSES accessory_color=BONE
+movement=2 speech=1 expression=5 attitude=8 quirk=8
+pitch=5 speed=16 quality=15 intonation=2 accent=4
+food="Cotton Candy" hates="Coffee" hobby="Origami" music="Bubblegum Pop" color=FOREST fear="Heights"
+phrase="Cozy vibes only!"
+hunger=73 happy=75 hygiene=76 energy=58 health=98 sanity=83 corruption=8 social=77
+mood=HAPPY activity=HOME
+
+[455] Lovebird
+# archetype: cupids (Hillvile)
+job: Cupid Courier
+bio: Owlkin cupid. Hoots when love is near.
+flags=NONE
+pronoun=SHE romance=ANY birthday=MAR-26
+species=OWLKIN body=AVERAGE height=8 build=10 skin=SILVER head=MOCHI head_size=10
+eyes=SPARKLE eye_color=CHOCOLATE eye_size=10 eye_spacing=5 eye_height=8 eye_tilt=7 eye_count=2
+brows=ARCHED brow_height=8 nose=NONE nose_size=10 mouth=BEAK mouth_size=8 fangs=0 cheeks=BLUSH
+hair=BALD hair_color=ROSE highlight=NONE facial_hair=NONE
+ears=OWL_TUFTS horns=NONE horn_color=ROSE horn_size=11 tail=FEATHER_FAN wings=ANGEL halo=STARS
+marking=FUR_SOCKS marking_color=WHITE aura=HEARTS
+top=DRESS top_color=BUBBLEGUM pattern=HEARTS pattern_color=ROSE bottom=SHORTS bottom_color=WHITE
+shoes=SANDALS shoes_color=WHITE hat=NONE hat_color=ROSE accessory=NONE accessory_color=WHITE
+movement=11 speech=6 expression=15 attitude=11 quirk=12
+pitch=4 speed=18 quality=17 intonation=13 accent=7
+food="Macarons" hates="Eyeball Jelly" hobby="Singing" music="Chiptune" color=BUBBLEGUM fear="Spiders"
+phrase="Hug o'clock!"
+hunger=78 happy=65 hygiene=64 energy=91 health=86 sanity=77 corruption=8 social=86
+mood=OK activity=WANDERING
+
+[456] Bao Bao
+# archetype: teahouse (Hillvile)
+job: Dumpling Chef
+bio: Dumpling chef. Pinches 12 pleats, always.
+flags=NONE
+pronoun=THEY romance=ANY birthday=OCT-13
+species=RACCOONKIN body=AVERAGE height=10 build=9 skin=CARAMEL head=ROUND head_size=12
+eyes=LASHES eye_color=SKY eye_size=8 eye_spacing=8 eye_height=8 eye_tilt=7 eye_count=2
+brows=THIN brow_height=6 nose=BUTTON nose_size=4 mouth=GRIN mouth_size=8 fangs=0 cheeks=NONE
+hair=BALD hair_color=LEMON highlight=NONE facial_hair=NONE
+ears=RACCOON horns=NONE horn_color=LEMON horn_size=7 tail=RACCOON_RINGED wings=NONE halo=NONE
+marking=FUR_MASK marking_color=CHOCOLATE aura=NONE
+top=KIMONO top_color=LAVENDER pattern=SOLID pattern_color=MINT bottom=NONE bottom_color=LEMON
+shoes=SANDALS shoes_color=LEMON hat=NONE hat_color=LAVENDER accessory=NONE accessory_color=LEMON
+movement=0 speech=2 expression=5 attitude=15 quirk=1
+pitch=20 speed=30 quality=23 intonation=12 accent=27
+food="Carrot Cake" hates="Curry" hobby="Poetry" music="Lo-fi Beats" color=LAVENDER fear="Ghosts"
+phrase="Purr-fect!"
+hunger=72 happy=70 hygiene=88 energy=85 health=85 sanity=92 corruption=8 social=60
+mood=OK activity=CAFE
+
+[457] Drama Llama
+# archetype: theatre (Hillvile)
+job: Actor
+bio: Gasps at everything. Even good news.
+flags=NONE
+pronoun=SHE romance=ANY birthday=JUL-06
+species=CATFOLK body=TINY height=10 build=7 skin=CARAMEL head=ROUND head_size=12
+eyes=ANIME eye_color=COBALT eye_size=9 eye_spacing=10 eye_height=7 eye_tilt=8 eye_count=2
+brows=THIN brow_height=10 nose=CAT nose_size=8 mouth=BIG_GRIN mouth_size=9 fangs=1 cheeks=BLUSH
+hair=MESSY hair_color=CARAMEL highlight=NONE facial_hair=NONE
+ears=CAT horns=NONE horn_color=CARAMEL horn_size=9 tail=CAT wings=NONE halo=NONE
+marking=CHEEK_HEARTS marking_color=LEMON aura=NONE
+top=SUIT top_color=CHERRY pattern=SOLID pattern_color=JET bottom=LONG_SKIRT bottom_color=LEMON
+shoes=BOOTS shoes_color=LEMON hat=TOP_HAT hat_color=JET accessory=CAPE accessory_color=JET
+movement=6 speech=6 expression=14 attitude=10 quirk=8
+pitch=10 speed=21 quality=10 intonation=29 accent=23
+food="Macarons" hates="Worm Gummies" hobby="Singing" music="Classical" color=CHERRY fear="Clowns"
+phrase="Sparkle on!"
+hunger=66 happy=82 hygiene=82 energy=71 health=91 sanity=80 corruption=5 social=72
+mood=HAPPY activity=CONCERT
+
+[458] Choo Choo
+# archetype: trains (Hillvile)
+job: Train Conductor
+bio: Conductor of the park train. Toots on the hour.
+flags=NONE
+pronoun=HE romance=ANY birthday=JUL-27
+species=PUPKIN body=ROUND height=12 build=15 skin=PEACH head=ROUND head_size=11
+eyes=LASHES eye_color=LIME eye_size=12 eye_spacing=5 eye_height=7 eye_tilt=9 eye_count=2
+brows=DOTS brow_height=9 nose=BUTTON nose_size=5 mouth=BIG_GRIN mouth_size=6 fangs=0 cheeks=BLUSH
+hair=BALD hair_color=MINT highlight=NONE facial_hair=NONE
+ears=FLOPPY_PUP horns=NONE horn_color=MINT horn_size=6 tail=PUP_WAGGY wings=NONE halo=NONE
+marking=FUR_MUZZLE marking_color=WHITE aura=NONE
+top=SWEATER_VEST top_color=FOREST pattern=STRIPES pattern_color=WHITE bottom=PANTS bottom_color=LEMON
+shoes=BOOTS shoes_color=WHITE hat=TOP_HAT hat_color=LEMON accessory=BOWTIE accessory_color=LEMON
+movement=8 speech=2 expression=8 attitude=7 quirk=3
+pitch=27 speed=25 quality=25 intonation=15 accent=18
+food="Tacos" hates="Hell Peppers" hobby="Reading" music="Folk" color=FOREST fear="Mirrors"
+phrase="Okie dokie!"
+hunger=79 happy=63 hygiene=88 energy=63 health=92 sanity=90 corruption=6 social=60
+mood=OK activity=WANDERING
+
+[459] Summit
+# archetype: hikers (Hillvile)
+job: Mountain Guide
+bio: Mountain guide. Has climbed every hill twice.
+flags=NONE
+pronoun=THEY romance=ANY birthday=OCT-10
+species=BEARKIN body=TINY height=10 build=6 skin=MINT head=ROUND head_size=8
+eyes=DROOPY eye_color=MINT eye_size=9 eye_spacing=7 eye_height=8 eye_tilt=9 eye_count=2
+brows=DOTS brow_height=5 nose=BUTTON nose_size=9 mouth=OPEN mouth_size=6 fangs=0 cheeks=BLUSH,DIMPLES
+hair=SHORT hair_color=JET highlight=NONE facial_hair=NONE
+ears=BEAR horns=NONE horn_color=JET horn_size=10 tail=BEAR_NUB wings=NONE halo=NONE
+marking=SPOTS marking_color=LIME aura=NONE
+top=SWEATER top_color=NAVY pattern=SOLID pattern_color=WHITE bottom=CARGO bottom_color=LIME
+shoes=BOOTS shoes_color=WHITE hat=CAP hat_color=WHITE accessory=BACKPACK accessory_color=LIME
+movement=10 speech=8 expression=12 attitude=13 quirk=7
+pitch=6 speed=28 quality=9 intonation=29 accent=11
+food="Honey Toast" hates="Sushi" hobby="Fishing" music="Folk" color=NAVY fear="Heights"
+phrase="Ugh, fine."
+hunger=72 happy=86 hygiene=72 energy=75 health=96 sanity=88 corruption=2 social=90
+mood=HAPPY activity=WANDERING
+
+[460] Footnote
+# archetype: library (Hillvile)
+job: Archivist
+bio: Archives the town gossip for future historians.
+traits=NIGHT_OWL flags=NONE
+pronoun=HE romance=ANY birthday=FEB-17
+species=GHOST body=PEAR height=7 build=9 skin=LAVENDER head=MOCHI head_size=13
+eyes=DOT eye_color=GRAPE eye_size=8 eye_spacing=7 eye_height=10 eye_tilt=8 eye_count=2
+brows=DOTS brow_height=5 nose=NONE nose_size=6 mouth=SMILE mouth_size=6 fangs=0 cheeks=BLUSH
+hair=BALD hair_color=MINT highlight=NONE facial_hair=NONE
+ears=NONE horns=NONE horn_color=MINT horn_size=12 tail=NONE wings=NONE halo=NONE
+marking=NONE marking_color=TEAL aura=NONE
+top=SWEATER_VEST top_color=MINT pattern=SOLID pattern_color=WHITE bottom=NONE bottom_color=TEAL
+shoes=BARE shoes_color=WHITE hat=NONE hat_color=MINT accessory=GLASSES accessory_color=WHITE
+movement=3 speech=1 expression=6 attitude=7 quirk=8
+pitch=16 speed=2 quality=21 intonation=18 accent=26
+food="Angel Cake" hates="Sulfur Soda" hobby="Reading" music="Lo-fi Beats" color=MINT fear="Dentists"
+phrase="Ribbit!"
+hunger=76 happy=82 hygiene=92 energy=46 health=88 sanity=94 corruption=10 social=86
+mood=HAPPY activity=SHOP
+
+[461] Dustin
+# archetype: bots (Hillvile)
+job: Cleaning Bot
+bio: Cleaning bot. Hoovers up crumbs and sadness.
+flags=NONE
+pronoun=IT romance=ANY birthday=JUN-28
+species=ROBOT body=ROUND height=4 build=9 skin=LEMON head=SQUARE head_size=8
+eyes=GLOW eye_color=LEMON eye_size=11 eye_spacing=8 eye_height=8 eye_tilt=8 eye_count=2
+brows=ARCHED brow_height=9 nose=NONE nose_size=7 mouth=TONGUE mouth_size=9 fangs=0 cheeks=BLUSH,DIMPLES
+hair=WAVY hair_color=LEMON highlight=NONE facial_hair=NONE
+ears=NONE horns=ANTENNAE horn_color=BONE horn_size=11 tail=NONE wings=MECH halo=NONE
+marking=NONE marking_color=SILVER aura=NONE
+top=OVERALLS top_color=LEMON pattern=STRIPES pattern_color=SKY bottom=PANTS bottom_color=SILVER
+shoes=SNEAKERS shoes_color=SKY hat=NONE hat_color=LEMON accessory=BOWTIE accessory_color=SKY
+movement=7 speech=3 expression=5 attitude=8 quirk=10
+pitch=18 speed=28 quality=2 intonation=21 accent=10
+food="Cereal" hates="Black Licorice" hobby="Gardening" music="Synthwave" color=LEMON fear="Dentists"
+phrase="Okie dokie!"
+hunger=69 happy=65 hygiene=92 energy=99 health=98 sanity=96 corruption=8 social=78
+mood=OK activity=WANDERING
+
+[462] Crosswalk
+# archetype: crossing (Hillvile)
+job: Crossing Guard
+bio: Beeps a lullaby while the light is red.
+flags=NONE
+pronoun=IT romance=HE birthday=SEP-18
+species=ROBOT body=ROUND height=10 build=13 skin=WHITE head=DIAMOND head_size=8
+eyes=DOT eye_color=LEMON eye_size=9 eye_spacing=6 eye_height=8 eye_tilt=9 eye_count=2
+brows=ARCHED brow_height=8 nose=NONE nose_size=10 mouth=GRIN mouth_size=7 fangs=0 cheeks=BLUSH
+hair=BALD hair_color=BUBBLEGUM highlight=NONE facial_hair=NONE
+ears=NONE horns=ANTENNAE horn_color=LEMON horn_size=9 tail=NONE wings=NONE halo=NONE
+marking=NONE marking_color=LEMON aura=NONE
+top=TSHIRT top_color=LIME pattern=STRIPES pattern_color=SKY bottom=NONE bottom_color=LEMON
+shoes=BOOTS shoes_color=LEMON hat=TRAFFIC_CONE hat_color=LIME accessory=NONE accessory_color=SKY
+movement=4 speech=2 expression=6 attitude=4 quirk=3
+pitch=15 speed=2 quality=2 intonation=8 accent=13
+food="Popcorn" hates="Bone Broth" hobby="Origami" music="Chiptune" color=BUBBLEGUM fear="Thunder"
+phrase="Okie dokie!"
+hunger=89 happy=84 hygiene=81 energy=95 health=94 sanity=99 corruption=5 social=72
+mood=HAPPY activity=WANDERING
+
+[463] Slushie
+# archetype: boba (Hillvile)
+job: Smoothie Mixer
+bio: Smoothie mixer who blends while dancing.
+flags=NONE
+pronoun=THEY romance=ANY birthday=OCT-18
+species=SLIME body=TINY height=12 build=12 skin=MINT head=BLOB head_size=8
+eyes=HEART eye_color=FOREST eye_size=10 eye_spacing=6 eye_height=10 eye_tilt=7 eye_count=2
+brows=DOTS brow_height=5 nose=NONE nose_size=8 mouth=SMILE mouth_size=8 fangs=0 cheeks=BLUSH
+hair=BALD hair_color=BUBBLEGUM highlight=NONE facial_hair=NONE
+ears=NONE horns=NONE horn_color=BUBBLEGUM horn_size=12 tail=NONE wings=BUTTERFLY halo=NONE
+marking=NONE marking_color=MINT aura=NONE
+top=CROP_TOP top_color=CARAMEL pattern=POLKA pattern_color=WHITE bottom=SKIRT bottom_color=MINT
+shoes=PLATFORM shoes_color=MINT hat=NONE hat_color=CARAMEL accessory=NONE accessory_color=MINT
+movement=9 speech=7 expression=11 attitude=10 quirk=11
+pitch=23 speed=17 quality=18 intonation=18 accent=6
+food="Bubble Tea" hates="Hell Peppers" hobby="Video Games" music="Bubblegum Pop" color=LEMON fear="Heights"
+phrase="Teehee!"
+hunger=84 happy=93 hygiene=83 energy=66 health=93 sanity=81 corruption=16 social=66
+mood=HAPPY activity=CAFE
+
+[464] Jellybean
+# archetype: candy (Hillvile)
+job: Candy Maker
+bio: Sorts jellybeans by mood. Blue ones are shy.
+flags=NONE
+pronoun=THEY romance=ANY birthday=DEC-13
+species=PLUSHIE body=PEAR height=10 build=12 skin=CARAMEL head=HEART head_size=10
+eyes=ANIME eye_color=NAVY eye_size=13 eye_spacing=9 eye_height=10 eye_tilt=7 eye_count=2
+brows=NONE brow_height=7 nose=BUTTON nose_size=8 mouth=STITCHED mouth_size=4 fangs=0 cheeks=BLUSH
+hair=LOCS hair_color=TEAL highlight=NONE facial_hair=NONE
+ears=BEAR horns=NONE horn_color=TEAL horn_size=4 tail=BUNNY wings=NONE halo=NONE
+marking=STITCHES marking_color=BUBBLEGUM aura=NONE
+top=TSHIRT top_color=CYAN pattern=STRIPES pattern_color=WHITE bottom=TUTU bottom_color=BUBBLEGUM
+shoes=SNEAKERS shoes_color=WHITE hat=PARTY hat_color=WHITE accessory=NONE accessory_color=WHITE
+movement=13 speech=5 expression=13 attitude=10 quirk=8
+pitch=31 speed=9 quality=22 intonation=1 accent=27
+food="Coffee" hates="Sulfur Soda" hobby="Video Games" music="Lo-fi Beats" color=CYAN fear="The Dark"
+phrase="Sparkle on!"
+hunger=71 happy=83 hygiene=99 energy=79 health=88 sanity=93 corruption=7 social=63
+mood=HAPPY activity=HOME
+
+[465] Glowbug
+# archetype: lamplighters (Hillvile)
+job: Firefly Herder
+bio: Herds fireflies into star shapes on festival nights.
+traits=NIGHT_OWL flags=NONE
+pronoun=THEY romance=THEY birthday=SEP-12
+species=MOTHKIN body=AVERAGE height=10 build=7 skin=PEACH head=MOCHI head_size=10
+eyes=COMPOUND eye_color=SKY eye_size=12 eye_spacing=8 eye_height=8 eye_tilt=9 eye_count=2
+brows=NONE brow_height=6 nose=ROUND nose_size=8 mouth=SMILE mouth_size=8 fangs=0 cheeks=NONE
+hair=PONYTAIL hair_color=BUBBLEGUM highlight=NONE facial_hair=NONE
+ears=NONE horns=ANTENNAE horn_color=ROSE horn_size=6 tail=NONE wings=BUTTERFLY halo=NONE
+marking=NONE marking_color=LEMON aura=SPARKLES
+top=CLOAK top_color=GRAPE pattern=POLKA pattern_color=PEACH bottom=LONG_SKIRT bottom_color=LEMON
+shoes=BOOTS shoes_color=PEACH hat=NONE hat_color=LEMON accessory=SCARF accessory_color=GRAPE
+movement=7 speech=3 expression=9 attitude=12 quirk=9
+pitch=10 speed=8 quality=1 intonation=20 accent=23
+food="Pudding" hates="Sulfur Soda" hobby="Stargazing" music="Lo-fi Beats" color=GRAPE fear="Silence"
+phrase="Hoo hoo!"
+hunger=74 happy=88 hygiene=73 energy=51 health=96 sanity=77 corruption=8 social=53
+mood=HAPPY activity=WANDERING
+
+[466] Oma Fluff
+# archetype: grannies (Hillvile)
+job: Retired Knitter
+bio: Bakes cookies for the mailfrogs every Thursday.
+traits=ELDER flags=NONE
+pronoun=SHE romance=ANY birthday=APR-04
+species=SHEEPKIN body=ROUND height=4 build=12 skin=BONE head=MOCHI head_size=13
+eyes=HAPPY_ARC eye_color=TEAL eye_size=8 eye_spacing=6 eye_height=9 eye_tilt=7 eye_count=2
+brows=NONE brow_height=7 nose=BUTTON nose_size=8 mouth=O mouth_size=4 fangs=0 cheeks=FRECKLES,DIMPLES,SPARKLES
+hair=CURLY hair_color=WHITE highlight=NONE facial_hair=NONE
+ears=SHEEP horns=NONE horn_color=WHITE horn_size=11 tail=SHEEP_PUFF wings=NONE halo=NONE
+marking=FUR_BELLY marking_color=CHOCOLATE aura=NONE
+top=SWEATER top_color=ROSE pattern=HEARTS pattern_color=LEMON bottom=PANTS bottom_color=ROSE
+shoes=SLIPPERS shoes_color=LEMON hat=FLOWER_CROWN hat_color=LEMON accessory=SCARF accessory_color=LEMON
+movement=3 speech=1 expression=6 attitude=15 quirk=5
+pitch=18 speed=4 quality=14 intonation=10 accent=12
+food="Honey Toast" hates="Black Licorice" hobby="Plush Making" music="Lullabies" color=FOREST fear="Thunder"
+phrase="Cuddle puddle!"
+hunger=77 happy=63 hygiene=99 energy=68 health=92 sanity=84 corruption=4 social=80
+mood=OK activity=HOME
+
+[467] Tiers
+# archetype: weddings (Hillvile)
+job: Cake Architect
+bio: Cake architect. Built a cake with an elevator.
+flags=NONE
+pronoun=HE romance=ANY birthday=NOV-09
+species=SHEEPKIN body=LANKY height=15 build=0 skin=WHITE head=MOCHI head_size=9
+eyes=HAPPY_ARC eye_color=GRAPE eye_size=8 eye_spacing=7 eye_height=10 eye_tilt=9 eye_count=2
+brows=NONE brow_height=5 nose=BUTTON nose_size=6 mouth=OPEN mouth_size=5 fangs=0 cheeks=BLUSH,FRECKLES,SPARKLES
+hair=BALD hair_color=RUST highlight=MINT facial_hair=NONE
+ears=SHEEP horns=NONE horn_color=RUST horn_size=5 tail=SHEEP_PUFF wings=NONE halo=NONE
+marking=FUR_SOCKS marking_color=BONE aura=NONE
+top=DRESS top_color=PEACH pattern=SOLID pattern_color=LAVENDER bottom=PANTS bottom_color=WHITE
+shoes=HEELS shoes_color=LAVENDER hat=FLOWER_CROWN hat_color=LAVENDER accessory=BOWTIE accessory_color=LAVENDER
+movement=10 speech=1 expression=12 attitude=9 quirk=2
+pitch=21 speed=22 quality=5 intonation=22 accent=7
+food="Angel Cake" hates="Grave Dirt Cake" hobby="Origami" music="Classical" color=RUST fear="Vacuum Cleaners"
+phrase="Oh my stars!"
+hunger=75 happy=62 hygiene=64 energy=99 health=92 sanity=97 corruption=5 social=94
+mood=OK activity=SHOP
+
+[468] Biscotto
+# archetype: cafe (Hillvile)
+job: Barista
+bio: Dunks everything. Even things that should not be dunked.
+flags=NONE
+pronoun=HE romance=ANY birthday=OCT-06
+species=RACCOONKIN body=PEAR height=8 build=12 skin=LAVENDER head=HEART head_size=9
+eyes=ANIME eye_color=ROSE eye_size=8 eye_spacing=10 eye_height=10 eye_tilt=7 eye_count=2
+brows=RAISED brow_height=8 nose=BUTTON nose_size=7 mouth=WAVY mouth_size=5 fangs=1 cheeks=BLUSH
+hair=BALD hair_color=GRAPE highlight=NONE facial_hair=NONE
+ears=RACCOON horns=NONE horn_color=GRAPE horn_size=5 tail=RACCOON_RINGED wings=NONE halo=NONE
+marking=FUR_MASK marking_color=GRAPE aura=NONE
+top=SWEATER_VEST top_color=CHOCOLATE pattern=STRIPES pattern_color=WHITE bottom=PANTS bottom_color=CARAMEL
+shoes=CLOGS shoes_color=WHITE hat=NONE hat_color=WHITE accessory=NONE accessory_color=CARAMEL
+movement=13 speech=2 expression=13 attitude=8 quirk=8
+pitch=31 speed=25 quality=13 intonation=24 accent=15
+food="Bubble Tea" hates="Black Licorice" hobby="Stargazing" music="Jazz" color=CYAN fear="Thunder"
+phrase="Nyaa~"
+hunger=83 happy=96 hygiene=86 energy=97 health=86 sanity=76 corruption=7 social=45
+mood=HAPPY activity=CAFE
+
+[469] Tapioca
+# archetype: boba (Hillvile)
+job: Boba Barista
+bio: Counts the pearls in every cup. Exactly 47.
+flags=NONE
+pronoun=SHE romance=NONE birthday=APR-12
+species=CATFOLK body=AVERAGE height=7 build=7 skin=CHARCOAL head=ROUND head_size=10
+eyes=HAPPY_ARC eye_color=BUBBLEGUM eye_size=7 eye_spacing=7 eye_height=6 eye_tilt=8 eye_count=2
+brows=NONE brow_height=8 nose=CAT nose_size=10 mouth=SMILE mouth_size=8 fangs=0 cheeks=NONE
+hair=TWINTAILS hair_color=HONEY highlight=NONE facial_hair=NONE
+ears=CAT horns=NONE horn_color=HONEY horn_size=5 tail=CAT wings=NONE halo=NONE
+marking=FUR_BELLY marking_color=WHITE aura=NONE
+top=CROP_TOP top_color=LAVENDER pattern=POLKA pattern_color=WHITE bottom=SHORTS bottom_color=PEACH
+shoes=PLATFORM shoes_color=WHITE hat=NONE hat_color=WHITE accessory=EARRINGS accessory_color=PEACH
+movement=11 speech=3 expression=14 attitude=10 quirk=9
+pitch=16 speed=18 quality=7 intonation=3 accent=17
+food="Donuts" hates="Brussels Sprouts" hobby="Karaoke" music="Lo-fi Beats" color=LAVENDER fear="Thunder"
+phrase="Blep!"
+hunger=64 happy=82 hygiene=85 energy=74 health=87 sanity=90 corruption=7 social=90
+mood=HAPPY activity=CAFE
+
+[470] Wobblina
+# archetype: slimes (Hillvile)
+job: Jelly Chef
+bio: Jelly chef. All her desserts wave at you.
+flags=NONE
+pronoun=SHE romance=ANY birthday=DEC-09
+species=SLIME body=PEAR height=7 build=8 skin=BUBBLEGUM head=MOCHI head_size=14
+eyes=DOT eye_color=CYAN eye_size=7 eye_spacing=9 eye_height=8 eye_tilt=8 eye_count=2
+brows=WORRIED brow_height=5 nose=NONE nose_size=8 mouth=TONGUE mouth_size=6 fangs=0 cheeks=BLUSH,DIMPLES
+hair=BALD hair_color=ROSE highlight=NONE facial_hair=NONE
+ears=NONE horns=NONE horn_color=ROSE horn_size=12 tail=NONE wings=NONE halo=NONE
+marking=NONE marking_color=SKY aura=NONE
+top=NONE top_color=MINT pattern=SOLID pattern_color=WHITE bottom=NONE bottom_color=SKY
+shoes=BARE shoes_color=SKY hat=NONE hat_color=WHITE accessory=NONE accessory_color=WHITE
+movement=7 speech=1 expression=9 attitude=15 quirk=7
+pitch=30 speed=3 quality=25 intonation=13 accent=8
+food="Gumdrops" hates="Sushi" hobby="Reading" music="Lo-fi Beats" color=ROSE fear="Needles"
+phrase="Blep!"
+hunger=74 happy=91 hygiene=99 energy=83 health=98 sanity=97 corruption=17 social=59
+mood=HAPPY activity=WANDERING
+
+[471] Merlinnie
+# archetype: wizards (Hillvile)
+job: Wizard
+bio: Wizard. His spells mostly make flowers.
+traits=ELDER flags=NONE
+pronoun=HE romance=HE birthday=FEB-06
+species=HUMAN body=ROUND height=9 build=13 skin=SKIN_FAIR head=OVAL head_size=11
+eyes=LASHES eye_color=ROSE eye_size=13 eye_spacing=5 eye_height=8 eye_tilt=7 eye_count=2
+brows=NONE brow_height=9 nose=ROUND nose_size=5 mouth=GRIN mouth_size=4 fangs=0 cheeks=BLUSH
+hair=PONYTAIL hair_color=ROSE highlight=NONE facial_hair=WIZARD
+ears=NORMAL horns=NONE horn_color=ROSE horn_size=6 tail=NONE wings=NONE halo=NONE
+marking=STAR_FRECKLES marking_color=LAVENDER aura=SPARKLES
+top=CLOAK top_color=TEAL pattern=SOLID pattern_color=WHITE bottom=ROBE bottom_color=LAVENDER
+shoes=SLIPPERS shoes_color=LAVENDER hat=WITCH hat_color=WHITE accessory=GLASSES accessory_color=LAVENDER
+movement=3 speech=6 expression=11 attitude=8 quirk=10
+pitch=9 speed=4 quality=23 intonation=22 accent=25
+food="Pudding" hates="Sushi" hobby="Stargazing" music="Classical" color=ROSE fear="Being Alone"
+phrase="Oh my stars!"
+hunger=78 happy=75 hygiene=83 energy=74 health=95 sanity=96 corruption=3 social=71
+mood=HAPPY activity=HOME
+
+[472] Steam Stan
+# archetype: trains (Hillvile)
+job: Station Master
+bio: Station master. Knows every timetable by heart.
+flags=NONE
+pronoun=THEY romance=ANY birthday=JAN-21
+species=HUMAN body=TINY height=12 build=5 skin=SKIN_TAN head=BEAN head_size=13
+eyes=SPARKLE eye_color=LAVENDER eye_size=12 eye_spacing=6 eye_height=9 eye_tilt=8 eye_count=2
+brows=THICK brow_height=6 nose=DOT nose_size=10 mouth=POUT mouth_size=4 fangs=0 cheeks=BLUSH
+hair=CURLY hair_color=CARAMEL highlight=MINT facial_hair=NONE
+ears=NORMAL horns=NONE horn_color=CARAMEL horn_size=5 tail=NONE wings=NONE halo=NONE
+marking=NONE marking_color=NAVY aura=NONE
+top=SUIT top_color=CHERRY pattern=STRIPES pattern_color=LEMON bottom=PANTS bottom_color=NAVY
+shoes=BOOTS shoes_color=NAVY hat=CAP hat_color=NAVY accessory=NONE accessory_color=LEMON
+movement=9 speech=3 expression=13 attitude=6 quirk=2
+pitch=0 speed=8 quality=20 intonation=4 accent=12
+food="Coffee" hates="Worm Gummies" hobby="Reading" music="Disco" color=SLIME fear="Dentists"
+phrase="Okie dokie!"
+hunger=79 happy=77 hygiene=81 energy=63 health=85 sanity=97 corruption=6 social=59
+mood=HAPPY activity=WANDERING
+
+[473] Trailblazer
+# archetype: rangers (Hillvile)
+job: Trail Guide
+bio: Has hiked every path in HaHaland twice.
+flags=NONE
+pronoun=SHE romance=ANY birthday=MAY-01
+species=RACCOONKIN body=PEAR height=7 build=9 skin=CARAMEL head=ROUND head_size=9
+eyes=HAPPY_ARC eye_color=LEMON eye_size=8 eye_spacing=8 eye_height=10 eye_tilt=9 eye_count=2
+brows=RAISED brow_height=10 nose=BUTTON nose_size=8 mouth=SMILE mouth_size=10 fangs=0 cheeks=BLUSH,FRECKLES,DIMPLES,BEAUTY_MARK
+hair=TWINTAILS hair_color=CHOCOLATE highlight=NONE facial_hair=NONE
+ears=RACCOON horns=NONE horn_color=CHOCOLATE horn_size=12 tail=RACCOON_RINGED wings=NONE halo=NONE
+marking=FUR_MASK marking_color=CHOCOLATE aura=NONE
+top=TSHIRT top_color=FOREST pattern=PLAID pattern_color=RUST bottom=SHORTS bottom_color=CARAMEL
+shoes=BOOTS shoes_color=RUST hat=COWBOY hat_color=FOREST accessory=NONE accessory_color=RUST
+movement=7 speech=5 expression=7 attitude=14 quirk=1
+pitch=31 speed=13 quality=28 intonation=25 accent=27
+food="Cotton Candy" hates="Grave Dirt Cake" hobby="Stargazing" music="Folk" color=CARAMEL fear="Public Speaking"
+phrase="Hoo hoo!"
+hunger=75 happy=79 hygiene=62 energy=63 health=86 sanity=88 corruption=9 social=87
+mood=HAPPY activity=PARK
+
+[474] Gumball
+# archetype: candy (Hillvile)
+job: Candy Maker
+bio: Has a sweet tooth. Also a sour one.
+flags=NONE
+pronoun=HE romance=ANY birthday=MAR-09
+species=SLIME body=TINY height=10 build=12 skin=LEMON head=MOCHI head_size=8
+eyes=STAR eye_color=ROSE eye_size=10 eye_spacing=7 eye_height=10 eye_tilt=9 eye_count=2
+brows=WORRIED brow_height=8 nose=NONE nose_size=7 mouth=SMILE mouth_size=5 fangs=0 cheeks=BLUSH
+hair=BALD hair_color=LEMON highlight=NONE facial_hair=NONE
+ears=NONE horns=NONE horn_color=LEMON horn_size=11 tail=NONE wings=NONE halo=NONE
+marking=NONE marking_color=BUBBLEGUM aura=NONE
+top=TSHIRT top_color=LIME pattern=POLKA pattern_color=LEMON bottom=SKIRT bottom_color=BUBBLEGUM
+shoes=ROLLERSKATES shoes_color=LEMON hat=PARTY hat_color=LIME accessory=NONE accessory_color=LEMON
+movement=15 speech=7 expression=10 attitude=11 quirk=7
+pitch=5 speed=27 quality=16 intonation=4 accent=31
+food="Ice Cream" hates="Worm Gummies" hobby="Pottery" music="Bubblegum Pop" color=VAPE_PURPLE fear="Spiders"
+phrase="Sparkle on!"
+hunger=73 happy=64 hygiene=100 energy=94 health=98 sanity=81 corruption=15 social=70
+mood=OK activity=HOME
+
+[475] Tipsy Toes
+# archetype: brimstonebites (Hillvile)
+job: Waiter
+bio: Waiter. Has never dropped a plate. Or a smile.
+flags=NONE
+pronoun=SHE romance=ANY birthday=DEC-04
+species=CATFOLK body=AVERAGE height=9 build=12 skin=CHARCOAL head=MOCHI head_size=8
+eyes=WIDE eye_color=BUBBLEGUM eye_size=9 eye_spacing=5 eye_height=8 eye_tilt=7 eye_count=2
+brows=NONE brow_height=10 nose=CAT nose_size=9 mouth=CAT mouth_size=10 fangs=0 cheeks=BLUSH,SPARKLES
+hair=AFRO hair_color=CHOCOLATE highlight=NONE facial_hair=NONE
+ears=CAT horns=NONE horn_color=CHOCOLATE horn_size=6 tail=CAT wings=NONE halo=NONE
+marking=FUR_BELLY marking_color=WHITE aura=NONE
+top=TSHIRT top_color=HONEY pattern=SOLID pattern_color=WHITE bottom=PANTS bottom_color=CHERRY
+shoes=CLOGS shoes_color=CHERRY hat=CHEF hat_color=WHITE accessory=NONE accessory_color=HONEY
+movement=13 speech=11 expression=11 attitude=8 quirk=11
+pitch=24 speed=3 quality=2 intonation=31 accent=15
+food="Curry" hates="Pickles" hobby="Baking" music="Disco" color=CHOCOLATE fear="Public Speaking"
+phrase="Nom nom nom!"
+hunger=61 happy=71 hygiene=89 energy=77 health=87 sanity=82 corruption=10 social=71
+mood=OK activity=CAFE
+
+[476] Fluffernut
+# archetype: crafters (Hillvile)
+job: Plush Maker
+bio: A plushie who makes plushies. Very meta.
+flags=NONE
+pronoun=SHE romance=ANY birthday=FEB-07
+species=PLUSHIE body=TOP_HEAVY height=8 build=14 skin=BUBBLEGUM head=MOCHI head_size=9
+eyes=ANIME eye_color=LEMON eye_size=12 eye_spacing=8 eye_height=6 eye_tilt=9 eye_count=2
+brows=THICK brow_height=7 nose=BUTTON nose_size=6 mouth=POUT mouth_size=4 fangs=0 cheeks=BLUSH
+hair=BALD hair_color=PEACH highlight=ROSE facial_hair=NONE
+ears=MOUSE horns=NONE horn_color=PEACH horn_size=4 tail=NONE wings=NONE halo=NONE
+marking=STITCHES marking_color=MINT aura=NONE
+top=SWEATER top_color=ROSE pattern=HEARTS pattern_color=LEMON bottom=PANTS bottom_color=MINT
+shoes=SLIPPERS shoes_color=MINT hat=NONE hat_color=LEMON accessory=TEDDY accessory_color=LEMON
+movement=3 speech=5 expression=11 attitude=14 quirk=9
+pitch=31 speed=15 quality=17 intonation=27 accent=3
+food="Honey Toast" hates="Burnt Toast" hobby="Plush Making" music="Folk" color=ROSE fear="Being Alone"
+phrase="Snuggle up!"
+hunger=72 happy=79 hygiene=85 energy=75 health=91 sanity=88 corruption=3 social=68
+mood=HAPPY activity=SHOP
+
+[477] Encore
+# archetype: theatre (Hillvile)
+job: Actor
+bio: Takes a bow after ordering lunch.
+flags=NONE
+pronoun=HE romance=ANY birthday=MAR-22
+species=FOXKIN body=PEAR height=3 build=10 skin=LAVENDER head=MOCHI head_size=8
+eyes=HEART eye_color=CHOCOLATE eye_size=10 eye_spacing=5 eye_height=6 eye_tilt=9 eye_count=2
+brows=NONE brow_height=9 nose=CAT nose_size=10 mouth=OPEN mouth_size=6 fangs=1 cheeks=BLUSH,DIMPLES,SPARKLES
+hair=BALD hair_color=LAVENDER highlight=NONE facial_hair=NONE
+ears=FOX horns=NONE horn_color=LAVENDER horn_size=12 tail=FOX wings=NONE halo=NONE
+marking=FUR_MUZZLE marking_color=WHITE aura=SPARKLES
+top=DRESS top_color=NAVY pattern=STRIPES pattern_color=LEMON bottom=LONG_SKIRT bottom_color=NAVY
+shoes=BOOTS shoes_color=ROSE hat=NONE hat_color=LEMON accessory=NONE accessory_color=LEMON
+movement=6 speech=2 expression=14 attitude=7 quirk=10
+pitch=19 speed=14 quality=18 intonation=14 accent=5
+food="Spaghetti" hates="Brussels Sprouts" hobby="Cosplay" music="Disco" color=MINT fear="Vacuum Cleaners"
+phrase="Sparkle on!"
+hunger=87 happy=75 hygiene=71 energy=66 health=88 sanity=74 corruption=13 social=76
+mood=HAPPY activity=CONCERT
+
+[478] Plot Twist
+# archetype: bookshop (Hillvile)
+job: Novelist
+bio: Novelist. Every chapter ends with a cliffhanger.
+flags=NONE
+pronoun=THEY romance=HE birthday=JUL-10
+species=HUMAN body=AVERAGE height=5 build=8 skin=SKIN_UMBER head=ROUND head_size=8
+eyes=DROOPY eye_color=FOREST eye_size=10 eye_spacing=9 eye_height=9 eye_tilt=8 eye_count=2
+brows=WORRIED brow_height=6 nose=DOT nose_size=8 mouth=SMILE mouth_size=10 fangs=0 cheeks=BLUSH,DIMPLES
+hair=CURLY hair_color=PEACH highlight=NONE facial_hair=NONE
+ears=NORMAL horns=NONE horn_color=PEACH horn_size=8 tail=NONE wings=NONE halo=NONE
+marking=NONE marking_color=PEACH aura=NONE
+top=SWEATER_VEST top_color=GRAPE pattern=PLAID pattern_color=WHITE bottom=LONG_SKIRT bottom_color=PEACH
+shoes=CLOGS shoes_color=GRAPE hat=NONE hat_color=GRAPE accessory=GLASSES accessory_color=PEACH
+movement=2 speech=5 expression=6 attitude=11 quirk=10
+pitch=23 speed=6 quality=12 intonation=4 accent=28
+food="Angel Cake" hates="Grave Dirt Cake" hobby="Poetry" music="Folk" color=COBALT fear="Bees"
+phrase="Hoo hoo!"
+hunger=83 happy=66 hygiene=70 energy=83 health=92 sanity=90 corruption=3 social=72
+mood=OK activity=SHOP
+
+[479] Velvetine
+# archetype: sweetgoths (Hillvile)
+job: Candle Shop Owner
+bio: Sells candles that smell like rainy graveyards.
+traits=NIGHT_OWL flags=NONE
+pronoun=SHE romance=ANY birthday=SEP-28
+species=BATLING body=ROUND height=3 build=15 skin=GRAPE head=ROUND head_size=8
+eyes=SPARKLE eye_color=TEAL eye_size=12 eye_spacing=7 eye_height=6 eye_tilt=8 eye_count=3
+brows=NONE brow_height=10 nose=ROUND nose_size=10 mouth=OPEN mouth_size=6 fangs=0 cheeks=NONE
+hair=EMO_FRINGE hair_color=JET highlight=NONE facial_hair=NONE
+ears=BAT horns=NONE horn_color=JET horn_size=9 tail=DEVIL wings=TINY_BAT halo=NONE
+marking=CHEEK_HEARTS marking_color=JET aura=NONE
+top=CLOAK top_color=GRAPE pattern=SKULLS pattern_color=WHITE bottom=SKIRT bottom_color=ROSE
+shoes=BOOTS shoes_color=ROSE hat=BEANIE hat_color=GRAPE accessory=SKULL_NECKLACE accessory_color=WHITE
+movement=6 speech=1 expression=7 attitude=14 quirk=8
+pitch=18 speed=5 quality=26 intonation=7 accent=19
+food="Black Licorice" hates="Sushi" hobby="Seances" music="Goth Rock" color=GRAPE fear="Sunlight"
+phrase="Gloom on!"
+hunger=62 happy=83 hygiene=63 energy=43 health=88 sanity=86 corruption=19 social=89
+mood=HAPPY activity=HOME
+
+[480] Lily Lou
+# archetype: divers (Hillvile)
+job: Lily Farmer
+bio: Farms lily pads. Rents them out for naps.
+flags=NONE
+pronoun=THEY romance=ANY birthday=MAR-16
+species=FROGLING body=PEAR height=12 build=15 skin=MINT head=ROUND head_size=11
+eyes=ROUND eye_color=BUBBLEGUM eye_size=10 eye_spacing=8 eye_height=8 eye_tilt=9 eye_count=2
+brows=DOTS brow_height=10 nose=NONE nose_size=5 mouth=SMILE mouth_size=9 fangs=0 cheeks=NONE
+hair=POMPADOUR hair_color=TEAL highlight=NONE facial_hair=NONE
+ears=NONE horns=NONE horn_color=TEAL horn_size=10 tail=NONE wings=NONE halo=NONE
+marking=STAR_FRECKLES marking_color=LEMON aura=NONE
+top=TANK top_color=TEAL pattern=SOLID pattern_color=WHITE bottom=SHORTS bottom_color=LEMON
+shoes=BARE shoes_color=LEMON hat=NONE hat_color=WHITE accessory=GLASSES accessory_color=LEMON
+movement=10 speech=3 expression=5 attitude=15 quirk=4
+pitch=20 speed=28 quality=8 intonation=24 accent=20
+food="Onigiri" hates="Eyeball Jelly" hobby="Napping" music="Lo-fi Beats" color=TEAL fear="Vacuum Cleaners"
+phrase="Big mood."
+hunger=68 happy=90 hygiene=81 energy=74 health=94 sanity=84 corruption=4 social=81
+mood=HAPPY activity=BEACH
+
+[481] Chief Spark
+# archetype: firefighters (Hillvile)
+job: Fire Chief
+bio: Fire chief. Rescues cats, kites and feelings.
+flags=NONE
+pronoun=HE romance=ANY birthday=FEB-27
+species=PUPKIN body=STOCKY height=13 build=13 skin=JET head=HEART head_size=13
+eyes=HAPPY_ARC eye_color=CHOCOLATE eye_size=8 eye_spacing=8 eye_height=9 eye_tilt=8 eye_count=2
+brows=THIN brow_height=5 nose=BUTTON nose_size=10 mouth=GRIN mouth_size=8 fangs=0 cheeks=BLUSH,FRECKLES
+hair=BALD hair_color=MINT highlight=NONE facial_hair=NONE
+ears=FLOPPY_PUP horns=NONE horn_color=MINT horn_size=11 tail=PUP_WAGGY wings=NONE halo=NONE
+marking=FUR_BELLY marking_color=CARAMEL aura=NONE
+top=TSHIRT top_color=CHERRY pattern=SOLID pattern_color=WHITE bottom=PANTS bottom_color=LEMON
+shoes=BOOTS shoes_color=WHITE hat=CAP hat_color=WHITE accessory=SCARF accessory_color=WHITE
+movement=11 speech=2 expression=9 attitude=15 quirk=3
+pitch=18 speed=12 quality=5 intonation=17 accent=10
+food="Pizza" hates="Eyeball Jelly" hobby="Yoga" music="City Pop" color=JET fear="Thunder"
+phrase="Fluff yeah!"
+hunger=74 happy=81 hygiene=88 energy=87 health=94 sanity=72 corruption=9 social=79
+mood=HAPPY activity=HOME
+
+[482] Fluffington
+# archetype: cloudshepherds (Hillvile)
+job: Cloud Shepherd
+bio: His wool is so fluffy clouds get jealous.
+flags=NONE
+pronoun=HE romance=ANY birthday=DEC-16
+species=BUNNYKIN body=STOCKY height=6 build=5 skin=CARAMEL head=ROUND head_size=14
+eyes=ANIME eye_color=CYAN eye_size=12 eye_spacing=5 eye_height=6 eye_tilt=7 eye_count=2
+brows=NONE brow_height=10 nose=BUTTON nose_size=10 mouth=SMILE mouth_size=4 fangs=0 cheeks=BLUSH
+hair=HIME hair_color=COBALT highlight=NONE facial_hair=NONE
+ears=BUNNY horns=NONE horn_color=COBALT horn_size=6 tail=BUNNY wings=NONE halo=NONE
+marking=FUR_MUZZLE marking_color=WHITE aura=NONE
+top=SWEATER top_color=LAVENDER pattern=SOLID pattern_color=WHITE bottom=SHORTS bottom_color=SKY
+shoes=BOOTS shoes_color=SKY hat=NONE hat_color=LAVENDER accessory=SCARF accessory_color=WHITE
+movement=1 speech=0 expression=10 attitude=12 quirk=6
+pitch=24 speed=7 quality=30 intonation=3 accent=2
+food="Spaghetti" hates="Black Licorice" hobby="Cloud Watching" music="Folk" color=SKY fear="Bath Time"
+phrase="Purr-fect!"
+hunger=63 happy=62 hygiene=95 energy=94 health=87 sanity=96 corruption=5 social=71
+mood=OK activity=PARK
+
+[483] Rolla Rita
+# archetype: skaters (Hillvile)
+job: Roller Derby Star
+bio: Roller derby star. Bumps you, then says sorry.
+flags=NONE
+pronoun=SHE romance=ANY birthday=AUG-07
+species=HUMAN body=LANKY height=8 build=4 skin=SKIN_BROWN head=MOCHI head_size=8
+eyes=ROUND eye_color=HONEY eye_size=12 eye_spacing=9 eye_height=6 eye_tilt=7 eye_count=2
+brows=THICK brow_height=7 nose=NONE nose_size=10 mouth=OPEN mouth_size=10 fangs=0 cheeks=BLUSH,BANDAGE,FRECKLES
+hair=PONYTAIL hair_color=RUST highlight=LEMON facial_hair=NONE
+ears=NORMAL horns=NONE horn_color=RUST horn_size=12 tail=NONE wings=NONE halo=NONE
+marking=NONE marking_color=GRAPE aura=NONE
+top=TSHIRT top_color=LIME pattern=FLAMES pattern_color=WHITE bottom=SHORTS bottom_color=GRAPE
+shoes=SNEAKERS shoes_color=GRAPE hat=CAP hat_color=LIME accessory=NONE accessory_color=GRAPE
+movement=12 speech=10 expression=12 attitude=14 quirk=8
+pitch=14 speed=9 quality=6 intonation=17 accent=22
+food="Popcorn" hates="Worm Gummies" hobby="Skateboarding" music="Disco" color=BUBBLEGUM fear="Vacuum Cleaners"
+phrase="Slay!"
+hunger=61 happy=95 hygiene=66 energy=88 health=92 sanity=86 corruption=5 social=82
+mood=HAPPY activity=PARK
+
+[484] Barkley
+# archetype: vets (Hillvile)
+job: Dog Walker
+bio: Throws balls for dogs. Fetches them himself.
+flags=HAS_PET
+pronoun=HE romance=ANY birthday=APR-17
+species=PUPKIN body=ROUND height=11 build=13 skin=PEACH head=MOCHI head_size=14
+eyes=HAPPY_ARC eye_color=CHOCOLATE eye_size=11 eye_spacing=7 eye_height=9 eye_tilt=9 eye_count=2
+brows=THIN brow_height=10 nose=BUTTON nose_size=10 mouth=TONGUE mouth_size=9 fangs=0 cheeks=BLUSH,FRECKLES
+hair=BOB hair_color=PEACH highlight=NONE facial_hair=NONE
+ears=FLOPPY_PUP horns=NONE horn_color=PEACH horn_size=5 tail=PUP_WAGGY wings=NONE halo=NONE
+marking=STAR_FRECKLES marking_color=HONEY aura=NONE
+top=LAB_COAT top_color=SKY pattern=SOLID pattern_color=WHITE bottom=PANTS bottom_color=HONEY
+shoes=BOOTS shoes_color=WHITE hat=NONE hat_color=SKY accessory=SCARF accessory_color=SKY
+movement=13 speech=6 expression=13 attitude=10 quirk=2
+pitch=25 speed=13 quality=29 intonation=2 accent=6
+food="Carrot Cake" hates="Pickles" hobby="Dancing" music="City Pop" color=SKY fear="Public Speaking"
+phrase="Tail wags!"
+hunger=71 happy=69 hygiene=92 energy=86 health=97 sanity=97 corruption=9 social=55
+mood=OK activity=PARK
+
+[485] Mintworth
+# archetype: bankers (Hillvile)
+job: Piggy Banker
+bio: Keeps the vault tidy and the lollipops stocked.
+flags=NONE
+pronoun=SHE romance=ANY birthday=NOV-28
+species=HUMAN body=ROUND height=5 build=13 skin=SKIN_BROWN head=STAR head_size=12
+eyes=DROOPY eye_color=JET eye_size=12 eye_spacing=9 eye_height=7 eye_tilt=9 eye_count=2
+brows=DOTS brow_height=5 nose=PIG nose_size=7 mouth=POUT mouth_size=8 fangs=0 cheeks=BLUSH
+hair=AFRO hair_color=JET highlight=NONE facial_hair=NONE
+ears=NORMAL horns=NONE horn_color=JET horn_size=9 tail=NONE wings=NONE halo=NONE
+marking=CHEEK_HEARTS marking_color=NAVY aura=NONE
+top=SUIT top_color=BUBBLEGUM pattern=STRIPES pattern_color=LEMON bottom=PANTS bottom_color=NAVY
+shoes=BOOTS shoes_color=NAVY hat=NONE hat_color=BUBBLEGUM accessory=MONOCLE accessory_color=LEMON
+movement=7 speech=2 expression=6 attitude=7 quirk=7
+pitch=27 speed=9 quality=20 intonation=24 accent=15
+food="Coffee" hates="Worm Gummies" hobby="Board Games" music="Disco" color=JET fear="Thunder"
+phrase="No thank you!"
+hunger=69 happy=82 hygiene=99 energy=100 health=93 sanity=74 corruption=5 social=47
+mood=HAPPY activity=SHOP
+
+[486] Sequin
+# archetype: theatre (Hillvile)
+job: Costume Maker
+bio: Costume maker. Has sewn 10,000 sequins this week.
+flags=NONE
+pronoun=HE romance=ANY birthday=JAN-01
+species=HUMAN body=PEAR height=6 build=7 skin=SKIN_BROWN head=BEAN head_size=11
+eyes=LASHES eye_color=LAVENDER eye_size=10 eye_spacing=10 eye_height=9 eye_tilt=7 eye_count=2
+brows=THIN brow_height=9 nose=DOT nose_size=6 mouth=GRIN mouth_size=5 fangs=0 cheeks=BLUSH,DIMPLES
+hair=SHORT hair_color=CHOCOLATE highlight=NONE facial_hair=NONE
+ears=NORMAL horns=ANTLERS horn_color=BONE horn_size=7 tail=NONE wings=NONE halo=NONE
+marking=NONE marking_color=LEMON aura=NONE
+top=KIMONO top_color=GRAPE pattern=SOLID pattern_color=WHITE bottom=PANTS bottom_color=LEMON
+shoes=BOOTS shoes_color=WHITE hat=BERET hat_color=WHITE accessory=CAPE accessory_color=WHITE
+movement=8 speech=5 expression=14 attitude=8 quirk=12
+pitch=21 speed=16 quality=14 intonation=29 accent=3
+food="Coffee" hates="Worm Gummies" hobby="Singing" music="Classical" color=JET fear="Vacuum Cleaners"
+phrase="Oh my stars!"
+hunger=84 happy=83 hygiene=83 energy=61 health=88 sanity=78 corruption=4 social=81
+mood=HAPPY activity=CONCERT
+
+[487] Frappella
+# archetype: cafe (Hillvile)
+job: Barista
+bio: Sings the menu as an opera every morning.
+flags=NONE
+pronoun=SHE romance=ANY birthday=DEC-01
+species=CATFOLK body=PEAR height=7 build=15 skin=PEACH head=ROUND head_size=14
+eyes=ANIME eye_color=CHOCOLATE eye_size=12 eye_spacing=10 eye_height=9 eye_tilt=8 eye_count=2
+brows=DOTS brow_height=9 nose=CAT nose_size=7 mouth=OPEN mouth_size=7 fangs=0 cheeks=BLUSH
+hair=BALD hair_color=WHITE highlight=NONE facial_hair=NONE
+ears=CAT horns=NONE horn_color=WHITE horn_size=4 tail=CAT wings=NONE halo=NONE
+marking=FUR_BELLY marking_color=WHITE aura=NONE
+top=SWEATER top_color=CHOCOLATE pattern=PLAID pattern_color=WHITE bottom=SKIRT bottom_color=CARAMEL
+shoes=SLIPPERS shoes_color=WHITE hat=NONE hat_color=CHOCOLATE accessory=NONE accessory_color=WHITE
+movement=12 speech=3 expression=8 attitude=8 quirk=5
+pitch=7 speed=19 quality=1 intonation=28 accent=16
+food="Waffles" hates="Burnt Toast" hobby="Pottery" music="Lo-fi Beats" color=WHITE fear="Public Speaking"
+phrase="Purr-fect!"
+hunger=70 happy=86 hygiene=97 energy=90 health=87 sanity=92 corruption=8 social=50
+mood=HAPPY activity=CAFE
+
+[488] Wafer
+# archetype: church (Hillvile)
+job: Altar Server
+bio: Altar server. Has dropped the holy water only twice.
+traits=KID,HOLY flags=NONE
+pronoun=THEY romance=NONE birthday=JUN-24
+species=CHERUB body=AVERAGE height=1 build=8 skin=SKIN_TAN head=MOCHI head_size=12
+eyes=STAR eye_color=LEMON eye_size=13 eye_spacing=8 eye_height=6 eye_tilt=7 eye_count=2
+brows=NONE brow_height=10 nose=DOT nose_size=5 mouth=OPEN mouth_size=4 fangs=0 cheeks=BLUSH
+hair=TWINTAILS hair_color=LEMON highlight=NONE facial_hair=NONE
+ears=NORMAL horns=NONE horn_color=LEMON horn_size=9 tail=NONE wings=ANGEL halo=HALO
+marking=NONE marking_color=WHITE aura=NONE
+top=PRIEST top_color=JET pattern=SOLID pattern_color=LEMON bottom=NONE bottom_color=WHITE
+shoes=SANDALS shoes_color=LEMON hat=NUN_VEIL hat_color=LEMON accessory=CROSS_NECKLACE accessory_color=LEMON
+movement=6 speech=4 expression=10 attitude=12 quirk=5
+pitch=28 speed=16 quality=18 intonation=9 accent=22
+food="Angel Cake" hates="Pickles" hobby="Singing" music="Synthwave" color=LEMON fear="Ghosts"
+phrase="Cuddle puddle!"
+hunger=63 happy=93 hygiene=81 energy=86 health=88 sanity=83 corruption=1 social=76
+mood=HAPPY activity=CHURCH
+
+[489] Starbright
+# archetype: halorepair (Hillvile)
+job: Star Polisher
+bio: Star polisher. Climbs up at night with a cloth.
+traits=NIGHT_OWL flags=NONE
+pronoun=THEY romance=THEY birthday=SEP-16
+species=CHERUB body=PEAR height=8 build=15 skin=SKIN_TAN head=OVAL head_size=13
+eyes=SLEEPY eye_color=BUBBLEGUM eye_size=9 eye_spacing=8 eye_height=9 eye_tilt=7 eye_count=2
+brows=WORRIED brow_height=9 nose=POINTY nose_size=4 mouth=O mouth_size=6 fangs=0 cheeks=BLUSH,FRECKLES
+hair=CURLY hair_color=HONEY highlight=NONE facial_hair=NONE
+ears=NORMAL horns=NONE horn_color=HONEY horn_size=8 tail=NONE wings=ANGEL halo=HALO
+marking=NONE marking_color=LEMON aura=NONE
+top=OVERALLS top_color=SKY pattern=SOLID pattern_color=LEMON bottom=SHORTS bottom_color=LEMON
+shoes=SANDALS shoes_color=LEMON hat=NONE hat_color=WHITE accessory=NONE accessory_color=LEMON
+movement=9 speech=0 expression=12 attitude=12 quirk=7
+pitch=20 speed=25 quality=1 intonation=7 accent=31
+food="Honey Toast" hates="Brussels Sprouts" hobby="Cloud Watching" music="Chiptune" color=SKY fear="Silence"
+phrase="Oh my stars!"
+hunger=90 happy=65 hygiene=62 energy=61 health=88 sanity=72 corruption=7 social=93
+mood=OK activity=WORKSHOP
+
+[490] Doodlebug
+# archetype: painters (Hillvile)
+job: Illustrator
+bio: Illustrates bedtime stories. Every hero is a bug.
+flags=NONE
+pronoun=SHE romance=SHE birthday=APR-13
+species=BUNNYKIN body=AVERAGE height=4 build=7 skin=PEACH head=BEAN head_size=12
+eyes=ANIME eye_color=MINT eye_size=7 eye_spacing=9 eye_height=8 eye_tilt=9 eye_count=2
+brows=RAISED brow_height=9 nose=BUTTON nose_size=9 mouth=POUT mouth_size=6 fangs=0 cheeks=BLUSH
+hair=BALD hair_color=MINT highlight=NONE facial_hair=NONE
+ears=BUNNY horns=NONE horn_color=MINT horn_size=5 tail=BUNNY wings=NONE halo=NONE
+marking=STAR_FRECKLES marking_color=COBALT aura=BUBBLES
+top=TSHIRT top_color=LEMON pattern=SOLID pattern_color=ROSE bottom=SKIRT bottom_color=LEMON
+shoes=SANDALS shoes_color=ROSE hat=BERET hat_color=ROSE accessory=GLASSES accessory_color=COBALT
+movement=4 speech=2 expression=13 attitude=10 quirk=13
+pitch=24 speed=24 quality=6 intonation=7 accent=17
+food="Macarons" hates="Brussels Sprouts" hobby="Singing" music="Bubblegum Pop" color=LEMON fear="Public Speaking"
+phrase="Sparkle on!"
+hunger=92 happy=88 hygiene=98 energy=64 health=87 sanity=92 corruption=1 social=70
+mood=HAPPY activity=PARK
+
+[491] Fossil Fay
+# archetype: museum (Hillvile)
+job: Fossil Expert
+bio: Fossil expert. Dug up a dinosaur. It was a chair.
+flags=NONE
+pronoun=SHE romance=ANY birthday=JUN-26
+species=MOUSEKIN body=PEAR height=5 build=10 skin=PEACH head=MOCHI head_size=14
+eyes=SLEEPY eye_color=TEAL eye_size=11 eye_spacing=6 eye_height=6 eye_tilt=8 eye_count=2
+brows=THIN brow_height=10 nose=CAT nose_size=4 mouth=SMILE mouth_size=4 fangs=0 cheeks=BLUSH
+hair=SHORT hair_color=CHOCOLATE highlight=NONE facial_hair=NONE
+ears=MOUSE horns=NONE horn_color=CHOCOLATE horn_size=8 tail=MOUSE wings=NONE halo=NONE
+marking=FUR_BELLY marking_color=WHITE aura=NONE
+top=SWEATER_VEST top_color=CHOCOLATE pattern=SOLID pattern_color=BONE bottom=PANTS bottom_color=LEMON
+shoes=CLOGS shoes_color=BONE hat=NONE hat_color=CHOCOLATE accessory=BOWTIE accessory_color=LEMON
+movement=1 speech=4 expression=8 attitude=11 quirk=9
+pitch=27 speed=12 quality=23 intonation=26 accent=14
+food="Coffee" hates="Curry" hobby="Reading" music="Classical" color=CHOCOLATE fear="Being Alone"
+phrase="Bun-believable!"
+hunger=82 happy=85 hygiene=68 energy=94 health=91 sanity=99 corruption=8 social=75
+mood=HAPPY activity=HOME
+
+[492] Gourdon
+# archetype: gardeners (Hillvile)
+job: Pumpkin Grower
+bio: Grew a pumpkin so big it has its own address.
+flags=NONE
+pronoun=HE romance=ANY birthday=JAN-24
+species=BEARKIN body=AVERAGE height=4 build=14 skin=JET head=OVAL head_size=12
+eyes=SPARKLE eye_color=BUBBLEGUM eye_size=13 eye_spacing=7 eye_height=7 eye_tilt=9 eye_count=2
+brows=NONE brow_height=8 nose=BUTTON nose_size=10 mouth=TONGUE mouth_size=5 fangs=0 cheeks=BLUSH,DIMPLES,BEAUTY_MARK
+hair=BRAIDS hair_color=HONEY highlight=BUBBLEGUM facial_hair=NONE
+ears=BEAR horns=NONE horn_color=HONEY horn_size=12 tail=BEAR_NUB wings=NONE halo=NONE
+marking=FUR_BELLY marking_color=WHITE aura=NONE
+top=OVERALLS top_color=FOREST pattern=SOLID pattern_color=WHITE bottom=PANTS bottom_color=HONEY
+shoes=BOOTS shoes_color=HONEY hat=BUCKET hat_color=FOREST accessory=NONE accessory_color=WHITE
+movement=4 speech=3 expression=11 attitude=13 quirk=1
+pitch=0 speed=0 quality=17 intonation=31 accent=1
+food="Brussels Sprouts" hates="Coffee" hobby="Gardening" music="Lo-fi Beats" color=FOREST fear="Heights"
+phrase="Sunny side up!"
+hunger=65 happy=94 hygiene=97 energy=88 health=93 sanity=98 corruption=8 social=52
+mood=HAPPY activity=PARK
+
+[493] Gran Tabby
+# archetype: grannies (Hillvile)
+job: Retired Knitter
+bio: Nine lives. Still on her first. Very careful.
+traits=ELDER flags=NONE
+pronoun=SHE romance=ANY birthday=NOV-24
+species=CATFOLK body=ROUND height=4 build=8 skin=JET head=MOCHI head_size=10
+eyes=SLEEPY eye_color=CHOCOLATE eye_size=12 eye_spacing=6 eye_height=9 eye_tilt=8 eye_count=2
+brows=NONE brow_height=5 nose=CAT nose_size=6 mouth=TONGUE mouth_size=8 fangs=0 cheeks=NONE
+hair=BUN hair_color=WHITE highlight=PEACH facial_hair=NONE
+ears=CAT horns=NONE horn_color=WHITE horn_size=12 tail=CAT wings=NONE halo=NONE
+marking=FUR_MUZZLE marking_color=WHITE aura=NONE
+top=SWEATER top_color=ROSE pattern=PLAID pattern_color=LEMON bottom=LONG_SKIRT bottom_color=LAVENDER
+shoes=SLIPPERS shoes_color=LEMON hat=NONE hat_color=ROSE accessory=GLASSES accessory_color=LEMON
+movement=1 speech=1 expression=6 attitude=12 quirk=6
+pitch=10 speed=3 quality=21 intonation=7 accent=30
+food="Honey Toast" hates="Sushi" hobby="Bubble Blowing" music="Hymns" color=ROSE fear="Ghosts"
+phrase="Ugh, fine."
+hunger=90 happy=72 hygiene=71 energy=71 health=90 sanity=84 corruption=7 social=70
+mood=OK activity=HOME
+
+[494] Midnight
+# archetype: nurses (Hillvile)
+job: Night Nurse
+bio: Night nurse. Hums to the sleepless.
+traits=NIGHT_OWL flags=NONE
+pronoun=HE romance=ANY birthday=AUG-10
+species=CATFOLK body=LANKY height=6 build=1 skin=HONEY head=HEART head_size=9
+eyes=HAPPY_ARC eye_color=JET eye_size=11 eye_spacing=8 eye_height=7 eye_tilt=7 eye_count=2
+brows=WORRIED brow_height=10 nose=CAT nose_size=7 mouth=CAT mouth_size=9 fangs=0 cheeks=BLUSH,DIMPLES
+hair=WAVY hair_color=SKY highlight=NONE facial_hair=NONE
+ears=CAT horns=NONE horn_color=SKY horn_size=8 tail=CAT wings=NONE halo=NONE
+marking=FUR_BELLY marking_color=WHITE aura=NONE
+top=NURSE top_color=MINT pattern=SOLID pattern_color=ROSE bottom=NONE bottom_color=ROSE
+shoes=SNEAKERS shoes_color=WHITE hat=NONE hat_color=WHITE accessory=NONE accessory_color=WHITE
+movement=10 speech=3 expression=8 attitude=9 quirk=5
+pitch=26 speed=5 quality=17 intonation=27 accent=15
+food="Pudding" hates="Sushi" hobby="Knitting" music="Classical" color=SKY fear="Spiders"
+phrase="Hug o'clock!"
+hunger=79 happy=80 hygiene=77 energy=53 health=90 sanity=76 corruption=5 social=90
+mood=HAPPY activity=HOSPITAL
+
+[495] Bitty Boo
+# archetype: toddlers (Hillvile)
+job: Toddler
+bio: Says one word, "boop", with forty meanings.
+traits=KID flags=NONE
+pronoun=THEY romance=NONE birthday=AUG-10
+species=SHEEPKIN body=TINY height=3 build=9 skin=BONE head=MOCHI head_size=11
+eyes=WIDE eye_color=COBALT eye_size=11 eye_spacing=5 eye_height=9 eye_tilt=9 eye_count=2
+brows=THIN brow_height=5 nose=BUTTON nose_size=4 mouth=SMILE mouth_size=10 fangs=0 cheeks=BLUSH,FRECKLES
+hair=AFRO hair_color=SKY highlight=NONE facial_hair=NONE
+ears=SHEEP horns=NONE horn_color=SKY horn_size=7 tail=SHEEP_PUFF wings=NONE halo=NONE
+marking=CHEEK_HEARTS marking_color=WHITE aura=SPARKLES
+top=OVERALLS top_color=BUBBLEGUM pattern=POLKA pattern_color=LEMON bottom=NONE bottom_color=WHITE
+shoes=SLIPPERS shoes_color=WHITE hat=BUNNY_EARS hat_color=BUBBLEGUM accessory=TEDDY accessory_color=LEMON
+movement=9 speech=4 expression=13 attitude=13 quirk=11
+pitch=22 speed=21 quality=26 intonation=27 accent=1
+food="Pudding" hates="Bone Broth" hobby="Napping" music="Lullabies" color=BUBBLEGUM fear="Thunder"
+phrase="Boop!"
+hunger=92 happy=71 hygiene=66 energy=82 health=91 sanity=83 corruption=1 social=76
+mood=OK activity=HOME
+
+[496] Wobbles
+# archetype: toddlers (Hillvile)
+job: Toddler
+bio: Just learned to walk. Will not stop walking.
+traits=KID flags=NONE
+pronoun=HE romance=NONE birthday=JAN-11
+species=PUPKIN body=TINY height=2 build=13 skin=JET head=ROUND head_size=15
+eyes=ROUND eye_color=NAVY eye_size=13 eye_spacing=8 eye_height=8 eye_tilt=9 eye_count=2
+brows=THICK brow_height=6 nose=BUTTON nose_size=5 mouth=LIPSTICK mouth_size=9 fangs=0 cheeks=NONE
+hair=PIGTAILS hair_color=CHOCOLATE highlight=NONE facial_hair=NONE
+ears=FLOPPY_PUP horns=NONE horn_color=CHOCOLATE horn_size=9 tail=PUP_WAGGY wings=NONE halo=NONE
+marking=FUR_SOCKS marking_color=CARAMEL aura=NONE
+top=PAJAMAS top_color=BUBBLEGUM pattern=POLKA pattern_color=LEMON bottom=NONE bottom_color=WHITE
+shoes=SLIPPERS shoes_color=LEMON hat=NONE hat_color=BUBBLEGUM accessory=PACIFIER accessory_color=LEMON
+movement=8 speech=1 expression=12 attitude=15 quirk=12
+pitch=23 speed=23 quality=28 intonation=26 accent=18
+food="Cereal" hates="Black Licorice" hobby="Cloud Watching" music="Lullabies" color=SILVER fear="Bath Time"
+phrase="Mochi mochi!"
+hunger=76 happy=92 hygiene=77 energy=90 health=93 sanity=92 corruption=6 social=62
+mood=HAPPY activity=HOME
+
+[497] Snaxson
+# archetype: influencers (Hillvile)
+job: Snack Reviewer
+bio: Snack reviewer. Rated 9,000 snacks a ten.
+flags=NONE
+pronoun=HE romance=ANY birthday=JAN-28
+species=BUNNYKIN body=TINY height=6 build=8 skin=LAVENDER head=HEART head_size=14
+eyes=HAPPY_ARC eye_color=HONEY eye_size=9 eye_spacing=6 eye_height=8 eye_tilt=7 eye_count=2
+brows=WORRIED brow_height=7 nose=BUTTON nose_size=4 mouth=SMILE mouth_size=6 fangs=0 cheeks=BLUSH,DIMPLES
+hair=POMPADOUR hair_color=LEMON highlight=NONE facial_hair=NONE
+ears=BUNNY horns=NONE horn_color=LEMON horn_size=8 tail=BUNNY wings=NONE halo=NONE
+marking=STRIPES marking_color=LAVENDER aura=NONE
+top=HOODIE top_color=LAVENDER pattern=SOLID pattern_color=WHITE bottom=SHORTS bottom_color=LAVENDER
+shoes=HEELS shoes_color=WHITE hat=CAT_EARS hat_color=WHITE accessory=SUNGLASSES accessory_color=BUBBLEGUM
+movement=14 speech=4 expression=14 attitude=12 quirk=8
+pitch=22 speed=27 quality=3 intonation=16 accent=4
+food="Bubble Tea" hates="Coffee" hobby="Karaoke" music="Lo-fi Beats" color=LAVENDER fear="Bees"
+phrase="Slay!"
+hunger=68 happy=76 hygiene=65 energy=94 health=97 sanity=100 corruption=7 social=55
+mood=HAPPY activity=WANDERING
+
+[498] Lunette
+# archetype: astronomers (Hillvile)
+job: Astronomer
+bio: Sleeps all day, counts meteors all night.
+traits=NIGHT_OWL flags=NONE
+pronoun=THEY romance=THEY birthday=NOV-01
+species=MOTHKIN body=AVERAGE height=7 build=5 skin=LEMON head=MOCHI head_size=10
+eyes=SPARKLE eye_color=JET eye_size=9 eye_spacing=7 eye_height=8 eye_tilt=7 eye_count=2
+brows=THIN brow_height=10 nose=ROUND nose_size=9 mouth=OPEN mouth_size=10 fangs=0 cheeks=BLUSH,DIMPLES
+hair=BRAIDS hair_color=MINT highlight=NONE facial_hair=NONE
+ears=NONE horns=ANTENNAE horn_color=CARAMEL horn_size=12 tail=NONE wings=BUTTERFLY halo=NONE
+marking=NONE marking_color=LEMON aura=NONE
+top=LAB_COAT top_color=COBALT pattern=SOLID pattern_color=LAVENDER bottom=NONE bottom_color=LEMON
+shoes=BOOTS shoes_color=LEMON hat=NONE hat_color=LAVENDER accessory=NONE accessory_color=LAVENDER
+movement=7 speech=1 expression=8 attitude=12 quirk=5
+pitch=22 speed=1 quality=26 intonation=21 accent=28
+food="Cereal" hates="Sulfur Soda" hobby="Gardening" music="Lo-fi Beats" color=COBALT fear="Bath Time"
+phrase="Hoo hoo!"
+hunger=64 happy=90 hygiene=74 energy=60 health=97 sanity=81 corruption=9 social=68
+mood=HAPPY activity=PARK
+
+[499] Pixel Pup
+# archetype: gamers (Hillvile)
+job: Game Tester
+bio: Beat every game in town. Then the town itself.
+traits=NIGHT_OWL flags=NONE
+pronoun=HE romance=ANY birthday=MAR-14
+species=FOXKIN body=AVERAGE height=4 build=10 skin=HONEY head=MOCHI head_size=9
+eyes=DOT eye_color=TEAL eye_size=9 eye_spacing=5 eye_height=10 eye_tilt=7 eye_count=2
+brows=THICK brow_height=9 nose=CAT nose_size=10 mouth=GRIN mouth_size=7 fangs=0 cheeks=BLUSH,BEAUTY_MARK
+hair=BUN hair_color=SKY highlight=NONE facial_hair=NONE
+ears=FOX horns=NONE horn_color=SKY horn_size=8 tail=FOX wings=ANGEL halo=NONE
+marking=FUR_BELLY marking_color=WHITE aura=NONE
+top=TSHIRT top_color=COBALT pattern=SOLID pattern_color=BUBBLEGUM bottom=SWEATS bottom_color=LEMON
+shoes=SNEAKERS shoes_color=LEMON hat=NONE hat_color=BUBBLEGUM accessory=GLASSES accessory_color=BUBBLEGUM
+movement=10 speech=6 expression=10 attitude=11 quirk=9
+pitch=13 speed=13 quality=30 intonation=10 accent=21
+food="Gumdrops" hates="Bone Broth" hobby="Gardening" music="Chiptune" color=SILVER fear="Mirrors"
+phrase="Big mood."
+hunger=63 happy=94 hygiene=96 energy=66 health=95 sanity=77 corruption=6 social=65
+mood=HAPPY activity=HOME

@@ -15,7 +15,6 @@
 #include "doomo/font.h"
 
 uint16_t *gba_back = (uint16_t *)VRAM_PAGE1;
-EWRAM_BSS uint8_t gba_font_rows[FONT_LAST - FONT_FIRST + 1][8];
 
 void video_load_palette(void)
 {

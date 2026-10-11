@@ -236,10 +236,8 @@ static void sweat(int x, int y)
 
 static void eye_px(PCtx *c, int s, int *x, int *y)
 {
-    const DoomoLook *l = c->l;
-    int ex = l->eye_count == 1 ? 0 : 60 + l->eye_spacing * 6, ey = -14 + l->eye_height * 6;
-    int X, Y, ery = c->h.ry * (17 + l->eye_size * 15 / 10) / 100;
-    ph_proj(&c->h, s * ex, ey, 1, &X, &Y);
+    int X, Y, ery;
+    ph_eye_geom(c, c->l->eye_count == 1 ? 0 : s, &X, &Y, NULL, &ery);
     *x = X >> 4;
     *y = (Y + ery) >> 4;
 }

@@ -21,8 +21,8 @@ Hazel Nut | s | Works from home in pyjamas. Very productive. | job=Remote Worker
 Walnut | h | Fixes everything with tape. It mostly holds. | species=CATFOLK; fam=nutley
 Peanutella | s | Spreads joy and hazelnut spread equally. | job=Student; species=CATFOLK; fam=nutley; trait=KID
 Biscuit Bo | h | Retired. Spends his days rating park benches. | job=Retiree; species=PUPKIN; trait=ELDER
-Cosy Clem | t | Owns 41 blankets. Lends them to cold neighbours. | species=MOUSEKIN
-Domino | x | Lines up dominoes across the living room. | job=Remote Worker; species=HUMAN; skin=SKIN_BROWN
+Cosy Clem | t | Owns 41 blankets. Lends them to cold neighbours. | species=PLUSHIE
+Domino | t | Lines up dominoes across the living room. | job=Remote Worker; species=HUMAN; skin=SKIN_BROWN
 """ ),
 
 A("teens", "hill", "High Schooler|Part-timer|Paper Delivery",
@@ -38,7 +38,7 @@ A("teens", "hill", "High Schooler|Part-timer|Paper Delivery",
 Scrunchie | s | Has a scrunchie for every day of the year. | species=FOXKIN
 Skipper | h | Delivers newspapers by skateboard, mostly on time. | job=Paper Delivery; species=PUPKIN
 Teacup Tia | s | Part-timer at the tea house. Spills, then laughs. | job=Part-timer; species=CATFOLK; bff=Matcha Mimi
-Homework | t | Always says "I'll do it tomorrow". Never does. | species=RACCOONKIN
+Homework | t | Always says "I'll do it tomorrow". Never does. | species=HUMAN
 Juniper Jay | h | Writes love songs about the girl next door. | species=FOXKIN
 Freckles | s | Counts her freckles each summer. 312 and rising. | species=BUNNYKIN; cheeks=FRECKLES,BLUSH
 Grindpaw | h | Skates everywhere. Has never owned a car. | species=HUMAN; skin=SKIN_TAN; shoes=ROLLERSKATES

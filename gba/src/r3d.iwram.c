@@ -38,6 +38,12 @@ int32_t  r3d_colt[R3D_MAXCOLS];
 int16_t  r3d_colang[R3D_MAXCOLS];
 uint8_t  r3d_dither[R3D_MAXCOLS];
 const uint8_t *r3d_texc[R3D_MAXTEX];
+uint16_t r3d_texpix[R3D_MAXTEX];
+
+int64_t r3d_smull(int32_t a, int32_t b)
+{
+    return (int64_t)a * b;
+}
 uint8_t  r3d_avgc[R3D_MAXTEX];
 
 /* big per-frame buffers live in EWRAM */
@@ -151,7 +157,8 @@ static void ray_end(uint16_t *p, int c, int y0, int y1, const uint8_t *cm, int s
 R3DFlat FL;
 
 /* rows [y0, y1) of a horizontal surface at height z4 (1/16 units).
- * rdx/rdy: the column's ray (FL.u0/v0/cm/fade/far preset per column). */
+ * rdx/rdy: the column's ray (FL.u0/v0/fade/far are preset per frame,
+ * FL.cm per column). */
 static void flat(uint16_t *col, int32_t rdx, int32_t rdy,
                  int32_t z4, int tex, int light, int y0, int y1)
 {
@@ -176,6 +183,7 @@ static void flat(uint16_t *col, int32_t rdx, int32_t rdy,
     fl->kp = &r3d_rowk[m0];
     fl->A = (rdx * hd4) >> 10;                  /* |rdx| < 2^17, hd4 < 2^14 */
     fl->B = (rdy * hd4) >> 10;
+    r3d_texpix[tex & (R3D_MAXTEX - 1)] += (uint16_t)(y1 - y0);
     fl->tex = tex_get(tex);
     fl->L = light;
     fl->hd = (hd4 >> 4) + 1;
@@ -220,6 +228,7 @@ static void face(ColState *s, int y0, int y1, int tex, int lit, uint32_t d16)
         u = (hit >> 16) & 63;
         if (s->sty > 0) u = 63 - u;
     }
+    r3d_texpix[tex & (R3D_MAXTEX - 1)] += (uint16_t)(y1 - y0);
     draw_face(s->col, y0, y1, tex_get(tex) + u, d16, light_cm(s->cm, lit, d16));
 }
 
@@ -253,7 +262,7 @@ static inline void sky_to(ColState *s, int y)
 
 /* One boundary where the next cell differs from the region (res 0) or
  * the map ends (res 1). Returns 1 when the column is finished. This is
- * the reference for r3d_boundary_asm() and also handles what the
+ * the reference for r3d_column_asm() and also handles what the
  * assembly leaves out (door / lift cells, roofed cells seen from under
  * the sky). Semantics: core/native/README.md (plat_view3d). */
 static int __attribute__((noinline)) boundary(ColState *s, int res)
@@ -411,21 +420,7 @@ static void column(int c)
     rdy = f->fy + (int32_t)(((int64_t)f->ry * t) >> 16);
     s->rdx = rdx;
     s->rdy = rdy;
-    s->ez4 = f->ez4;
-    s->hor12r = f->hor12 + 0x800;
-    s->proj = f->proj;
-    s->early_top4 = f->maxtop4 > f->ez4 ? f->maxtop4 : (int32_t)0x80000000;
-    s->ex = f->ex;
-    s->ey = f->ey;
-    s->hor = f->hor;
-    s->invproj = f->invproj;
-    s->ez = f->ez;
-    s->amb = f->amb;
     FL.cm = s->cm;
-    FL.u0 = (uint32_t)f->ex << 10;
-    FL.v0 = (uint32_t)f->ey << 10;
-    FL.fade = r3d_fade;
-    FL.far = 1400u << 8;
     s->wk.ddx = dir_recip(rdx);
     s->wk.ddy = dir_recip(rdy);
     if (rdx < 0) { s->stx = -1; s->wk.sdx = mul16u((uint32_t)px & 0xFFFF, s->wk.ddx); s->wk.cx = mx; }
@@ -435,8 +430,6 @@ static void column(int c)
     s->wk.idx8 = (my * w + mx) * 8;
     s->wk.ix8 = s->stx * 8;
     s->wk.iy8 = s->sty * w * 8;
-    s->wk.cells = (const uint32_t *)f->cells;
-    s->wk.maxd = f->maxd;
     {
         const uint32_t *wp = (const uint32_t *)((const uint8_t *)s->wk.cells + s->wk.idx8);
         uint32_t w0 = wp[0], w1 = wp[1];
@@ -457,20 +450,16 @@ static void column(int c)
     }
 
     for (;;) {
-        int res = r3d_walk(&s->wk);
-        if (res == 2) {
+        int r = r3d_column_asm(s);
+        if (r == 1) break;
+        if (r == 2) {
             /* far end: floor and ceiling run to the horizon */
             close_floor(s, f->hor);
             if (!s->sky) close_ceil(s, f->hor);
             break;
         }
         f->dbg_steps++;
-        {
-            int r = r3d_boundary_asm(s, res);
-            if (r == 1) break;
-            if (r == 0) continue;
-        }
-        if (boundary(s, res)) break;
+        if (boundary(s, r - 3)) break;
     }
     /* whatever is still open shows the sky, or dark fog indoors */
     ray_end(s->col, c, s->ytop, s->ybot, s->cm, s->sky);
@@ -479,8 +468,27 @@ static void column(int c)
 
 void r3d_columns(void)
 {
-    int c, n = r3f.ncol;
-    r3f.dbg_steps = r3f.dbg_facepx = r3f.dbg_skypx = r3f.dbg_flatpx = 0;
+    R3DFrame *const f = &r3f;
+    ColState *const s = &CS;
+    int c, n = f->ncol;
+    f->dbg_steps = f->dbg_facepx = f->dbg_skypx = f->dbg_flatpx = 0;
+    /* per-frame constants of the column state (read-only in the pass) */
+    s->ez4 = f->ez4;
+    s->hor12r = f->hor12 + 0x800;
+    s->proj = f->proj;
+    s->early_top4 = f->maxtop4 > f->ez4 ? f->maxtop4 : (int32_t)0x80000000;
+    s->ex = f->ex;
+    s->ey = f->ey;
+    s->hor = f->hor;
+    s->invproj = f->invproj;
+    s->ez = f->ez;
+    s->amb = f->amb;
+    s->wk.cells = (const uint32_t *)f->cells;
+    s->wk.maxd = f->maxd;
+    FL.u0 = (uint32_t)f->ex << 10;
+    FL.v0 = (uint32_t)f->ey << 10;
+    FL.fade = r3d_fade;
+    FL.far = 1400u << 8;
     for (c = 0; c < n; c++) column(c);
 }
 
@@ -556,12 +564,12 @@ void r3d_draw_sprite(const R3DSprite *s)
     while (r1 > r0 && (uint32_t)(vr0 + (r1 - 1 - r0) * (int32_t)s->step16) >> 16 >= (uint32_t)ih)
         r1--;
     {
-        const uint32_t dvb = s->step16 * (uint32_t)iw;
+        const uint32_t dv = s->step16;
         for (c = c0; c < f->ncol; c++) {
             int32_t cx12 = (c * 2 + 1) << 12;
             int32_t u16;
             int u, top, bot, ya, yb;
-            uint32_t vb;
+            uint32_t v;
             const uint8_t *cm;
             uint16_t *p;
             if (cx12 >= x1) break;
@@ -584,13 +592,13 @@ void r3d_draw_sprite(const R3DSprite *s)
                 /* every other pixel, checkerboard alternating per frame */
                 ya += (ya + c + (int)f->frame) & 1;
                 if (ya >= yb) continue;
-                vb = (uint32_t)(vr0 + (ya - r0) * (int32_t)s->step16) * (uint32_t)iw;
+                v = (uint32_t)(vr0 + (ya - r0) * (int32_t)dv);
                 p = f->dst + ya * LINE + c;
-                r3d_sprite_loop(p, (yb - ya + 1) >> 1, pix + u, vb, dvb * 2, cm, LINE * 4);
+                r3d_sprite_loop(p, (yb - ya + 1) >> 1, pix + u, v, dv * 2, cm, LINE * 4, iw);
             } else {
-                vb = (uint32_t)(vr0 + (ya - r0) * (int32_t)s->step16) * (uint32_t)iw;
+                v = (uint32_t)(vr0 + (ya - r0) * (int32_t)dv);
                 p = f->dst + ya * LINE + c;
-                r3d_sprite_loop(p, yb - ya, pix + u, vb, dvb, cm, LINE * 2);
+                r3d_sprite_loop(p, yb - ya, pix + u, v, dv, cm, LINE * 2, iw);
             }
         }
     }

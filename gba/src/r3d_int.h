@@ -77,6 +77,7 @@ extern int32_t  r3d_colt[R3D_MAXCOLS];     /* camera-plane t per column, 16.16 *
 extern int16_t  r3d_colang[R3D_MAXCOLS];   /* angle offset per column */
 extern uint8_t  r3d_dither[R3D_MAXCOLS];   /* 0..15 ordered dither by column */
 extern const uint8_t *r3d_texc[R3D_MAXTEX]; /* per-frame texture cache (IWRAM) */
+extern uint16_t r3d_texpix[R3D_MAXTEX];      /* pixels drawn per texture this frame */
 extern uint8_t r3d_avgc[R3D_MAXTEX];        /* texture average colours (IWRAM) */
 
 /* per-column clip checkpoints, inside gba_big (bigbuf.c) */
@@ -119,7 +120,7 @@ typedef struct R3DFlat {
 } R3DFlat;
 void r3d_flat_loop(R3DFlat *f);
 
-/* DDA state for r3d_walk() (layout fixed by r3d_loops.s) */
+/* DDA state of r3d_column_asm() (layout fixed by r3d_loops.s) */
 typedef struct R3DWalk {
     uint32_t sdx, sdy, ddx, ddy;   /* 16.16 cells                         */
     int32_t  cx, cy;               /* steps left before leaving the map   */
@@ -130,13 +131,12 @@ typedef struct R3DWalk {
     uint32_t d, w0, w1;            /* out: boundary distance, next cell   */
     int32_t  side;                 /* out: 0 = x step, 1 = y step         */
 } R3DWalk;
-int r3d_walk(R3DWalk *w);          /* 0 = cell differs, 1 = left map, 2 = far */
 
 /* Everything a column needs between walker calls (r3d.iwram.c). Kept in
  * memory and handed around by pointer; the layout is shared with the
  * assembly fast path r3d_boundary_fast() (offsets checked in r3d.c). */
 typedef struct ColState {
-    R3DWalk wk;                     /*   0: first (r3d_walk layout)        */
+    R3DWalk wk;                     /*   0: first (R3DWalk layout)          */
     int32_t rdx, rdy, stx, sty;     /*  68: ray direction / step signs     */
     int32_t fz4, cz4;               /*  84: region floor / ceiling, 1/16 u */
     int32_t ftex, ctex, light, sky; /*  92                                 */
@@ -159,7 +159,8 @@ typedef struct ColState {
 /* one column boundary in ARM assembly (everything but door / lift cells
  * and roofed cells seen from under the sky, which boundary() in C does).
  * Returns 0 continue, 1 column done, 2 not handled. */
-int r3d_boundary_asm(ColState *s, int res);
+/* 1 = column done, 2 = max distance, 3 / 4 = run boundary() with res 0 / 1 */
+int r3d_column_asm(ColState *s);
 /* sky background rows [y0, y1) of column c (r3d.iwram.c) */
 void r3d_draw_sky(uint16_t *p, int c, int y0, int y1, const uint8_t *cm);
 
@@ -182,8 +183,13 @@ typedef struct R3DSprite {
     int32_t  shadow_hh;            /* shadow ellipse half height, pixels  */
 } R3DSprite;
 void r3d_draw_sprite(const R3DSprite *s) IWRAM_CALL;
-void r3d_sprite_loop(uint16_t *p, int n, const uint8_t *src, uint32_t vb, uint32_t dvb,
-                     const uint8_t *cm, int stride) IWRAM_CALL;
+void r3d_sprite_loop(uint16_t *p, int n, const uint8_t *src, uint32_t v, uint32_t dv,
+                     const uint8_t *cm, int stride, int iw) IWRAM_CALL;
+
+/* 32 x 32 -> 64-bit signed multiply: ARM smull in IWRAM (THUMB code
+ * would call libgcc's generic __muldi3, ~10x slower) */
+int64_t r3d_smull(int32_t a, int32_t b) IWRAM_CALL;
+#define R3D_MULSHR(a, b, s) ((int32_t)(r3d_smull((int32_t)(a), (int32_t)(b)) >> (s)))
 
 static inline int32_t r3d_k8(uint32_t d16)
 {

@@ -64,6 +64,7 @@ extern int      g_cur;            /* buffer being built                  */
 extern uint32_t g_frame;          /* frames presented                    */
 extern volatile uint32_t g_loop_frames; /* game loop iterations (harness) */
 void hcmd_poll(void);                   /* harness mailbox, between frames */
+extern uint16_t g_last_draw_y;          /* VRAM y of the newest frame */
 extern uint32_t g_rgb[256];       /* palette -> 0x00BBGGRR for prims      */
 extern uint16_t g_pal15[256];     /* palette -> VRAM 15-bit (STP set)     */
 

@@ -148,104 +148,6 @@ r3d_fill_loop:
     bx      lr
     .size   r3d_fill_loop, . - r3d_fill_loop
 
-@ int r3d_walk(R3DWalk *w)
-@ DDA fast path: step the ray through the grid until the next cell's raw
-@ 8 bytes differ from the region's (wall/textures/floor_h, ceil_h/light,
-@ or a door/lift flag), the ray leaves the map, or reaches max distance.
-@ R3DWalk layout (r3d_int.h): 0 sdx, 4 sdy, 8 ddx, 12 ddy, 16 cx, 20 cy,
-@ 24 idx8, 28 ix8, 32 iy8, 36 cells, 40 c0, 44 c1, 48 maxd,
-@ out: 52 d, 56 w0, 60 w1, 64 side.
-@ Returns 0 = next cell differs, 1 = left the map, 2 = max distance.
-    .global r3d_walk
-    .type   r3d_walk, %function
-r3d_walk:
-    stmfd   sp!, {r4-r11, lr}
-    ldr     r12, [r0, #48]
-    stmfd   sp!, {r0, r12}              @ [sp] = w, [sp, #4] = maxd
-    ldmia   r0, {r0-r11}
-.Lw_loop:
-    cmp     r0, r1
-    bhs     .Lw_y
-    @ ---- x step
-    ldr     r12, [sp, #4]
-    cmp     r0, r12
-    bhs     .Lw_far_x
-    subs    r4, r4, #1
-    bmi     .Lw_out_x
-    add     r6, r6, r7
-    add     r12, r9, r6
-    add     r0, r0, r2
-    ldmia   r12, {r12, lr}
-    cmp     r12, r10
-    bne     .Lw_diff_x
-    eor     r12, lr, r11
-    movs    r12, r12, lsl #14           @ ceil_h, light, door/lift flags
-    beq     .Lw_loop
-    mov     r12, r10
-.Lw_diff_x:
-    sub     r10, r0, r2                 @ d = boundary distance
-    mov     r11, #0
-    b       .Lw_ret_diff
-.Lw_y:
-    ldr     r12, [sp, #4]
-    cmp     r1, r12
-    bhs     .Lw_far_y
-    subs    r5, r5, #1
-    bmi     .Lw_out_y
-    add     r6, r6, r8
-    add     r12, r9, r6
-    add     r1, r1, r3
-    ldmia   r12, {r12, lr}
-    cmp     r12, r10
-    bne     .Lw_diff_y
-    eor     r12, lr, r11
-    movs    r12, r12, lsl #14
-    beq     .Lw_loop
-    mov     r12, r10
-.Lw_diff_y:
-    sub     r10, r1, r3
-    mov     r11, #1
-.Lw_ret_diff:
-    ldr     r9, [sp]
-    stmia   r9, {r0-r6}
-    add     r9, r9, #52
-    stmia   r9, {r10, r12, lr}          @ d, w0, w1
-    str     r11, [r9, #12]              @ side
-    mov     r0, #0
-    add     sp, sp, #8
-    ldmfd   sp!, {r4-r11, lr}
-    bx      lr
-.Lw_far_x:
-    mov     r10, r0
-    mov     r11, #0
-    mov     r12, #2
-    b       .Lw_ret
-.Lw_far_y:
-    mov     r10, r1
-    mov     r11, #1
-    mov     r12, #2
-    b       .Lw_ret
-.Lw_out_x:
-    mov     r4, #0
-    mov     r10, r0
-    mov     r11, #0
-    mov     r12, #1
-    b       .Lw_ret
-.Lw_out_y:
-    mov     r5, #0
-    mov     r10, r1
-    mov     r11, #1
-    mov     r12, #1
-.Lw_ret:
-    ldr     r9, [sp]
-    stmia   r9, {r0-r6}
-    str     r10, [r9, #52]
-    str     r11, [r9, #64]
-    mov     r0, r12
-    add     sp, sp, #8
-    ldmfd   sp!, {r4-r11, lr}
-    bx      lr
-    .size   r3d_walk, . - r3d_walk
 
 @ void r3d_flat_loop(R3DFlat *f)
 @ Floor / ceiling cast down one column: f->n > 0 rows from f->p (stride
@@ -372,18 +274,28 @@ r3d_flat_loop:
     .size   r3d_flat_loop, . - r3d_flat_loop
 
 @ ---------------------------------------------------------------------------
-@ int r3d_boundary_asm(ColState *s, int res)
-@ One boundary of the column pass, in assembly (the C boundary() in
-@ r3d.iwram.c is the reference and handles what is left: door / lift
-@ cells and roofed cells seen from under the sky). res 0 = the next cell
-@ (wk.w0 / wk.w1) differs from the region, res 1 = the ray left the map.
+@ int r3d_column_asm(ColState *s)
+@ The column pass in assembly: walks the ray through the grid (DDA) and
+@ handles each boundary, until the column is finished or something needs
+@ the C reference (boundary() in r3d.iwram.c, which handles door / lift
+@ cells and roofed cells seen from under the sky).
+@ Walk: step the ray until the next cell's raw 8 bytes differ from the
+@ region's (wall / textures / floor_h, ceil_h / light / door-lift flags),
+@ the ray leaves the map, or reaches the max distance. R3DWalk layout
+@ (r3d_int.h): 0 sdx, 4 sdy, 8 ddx, 12 ddy, 16 cx, 20 cy, 24 idx8, 28 ix8,
+@ 32 iy8, 36 cells, 40 c0, 44 c1, 48 maxd; out: 52 d, 56 w0, 60 w1, 64 side.
+@ Boundary (res 0 = the next cell differs, res 1 = the ray left the map):
 @   open next cell : close the floor run and/or the ceiling run when their
 @                    properties change, riser, upper face, take it over
 @   solid with a top lower than the ceiling (or under the sky) : a block,
 @                    draw its side and walk over its top
 @   solid otherwise (or outside) : ceiling / sky, wall face, column done
 @ then push a clip checkpoint if the window changed and test for the end.
-@ Returns 0 = keep walking, 1 = column finished, 2 = not handled.
+@ Returns 1 = column finished, 2 = max distance reached (the caller runs
+@ the floor / ceiling to the horizon), 3 / 4 = boundary with res 0 / 1
+@ not handled here (the caller runs the C boundary(), then calls again).
+@ Stack frame: [sp] old ytop, [sp+4] old ybot, [sp+8] done, [sp+12] s,
+@ [sp+16] maxd.
     .equ CS_D,      52
     .equ CS_W0,     56
     .equ CS_W1,     60
@@ -432,18 +344,102 @@ r3d_flat_loop:
     .equ MAXCP,     14
     .equ TEX_SKY,   255
 
-    .global r3d_boundary_asm
-    .type   r3d_boundary_asm, %function
-r3d_boundary_asm:
+    .global r3d_column_asm
+    .type   r3d_column_asm, %function
+r3d_column_asm:
     stmfd   sp!, {r4-r11, lr}
-    sub     sp, sp, #12                 @ [sp] old ytop, [sp+4] old ybot, [sp+8] done
-    mov     r11, r0
-    cmp     r1, #0
-    movne   r4, #1                      @ outside the map: solid, texture 1
-    movne   r5, #0
-    ldreq   r4, [r11, #CS_W0]
-    ldreq   r5, [r11, #CS_W1]
-    mov     r9, r1                      @ r9 = res
+    sub     sp, sp, #20
+    str     r0, [sp, #12]
+    ldr     r12, [r0, #48]
+    str     r12, [sp, #16]              @ maxd
+
+    @ ======== walk ========
+.Lc_walk:
+    ldr     r0, [sp, #12]
+    ldmia   r0, {r0-r11}                @ sdx sdy ddx ddy cx cy idx8 ix8 iy8 cells c0 c1
+.Lw_loop:
+    cmp     r0, r1
+    bhs     .Lw_y
+    @ ---- x step
+    subs    r4, r4, #1
+    bmi     .Lw_out_x
+    add     r6, r6, r7
+    add     r12, r9, r6
+    add     r0, r0, r2
+    ldmia   r12, {r12, lr}
+    cmp     r12, r10
+    bne     .Lw_diff_x
+    eor     r12, lr, r11
+    movs    r12, r12, lsl #14           @ ceil_h, light, door / lift flags
+    beq     .Lw_loop
+    mov     r12, r10
+.Lw_diff_x:
+    sub     r10, r0, r2                 @ d = boundary distance
+    mov     r11, #0
+    b       .Lw_diff
+.Lw_y:
+    subs    r5, r5, #1
+    bmi     .Lw_out_y
+    add     r6, r6, r8
+    add     r12, r9, r6
+    add     r1, r1, r3
+    ldmia   r12, {r12, lr}
+    cmp     r12, r10
+    bne     .Lw_diff_y
+    eor     r12, lr, r11
+    movs    r12, r12, lsl #14
+    beq     .Lw_loop
+    mov     r12, r10
+.Lw_diff_y:
+    sub     r10, r1, r3
+    mov     r11, #1
+.Lw_diff:
+    @ the max distance is only checked here and at the map's edge: the
+    @ identical cells walked past it change nothing
+    ldr     r9, [sp, #16]
+    cmp     r10, r9
+    bhs     .Lw_far
+    ldr     r9, [sp, #12]
+    stmia   r9, {r0-r6}
+    add     r9, r9, #52
+    stmia   r9, {r10, r12, lr}          @ d, w0, w1
+    str     r11, [r9, #12]              @ side
+    sub     r11, r9, #52                @ r11 = s
+    mov     r4, r12                     @ next cell
+    mov     r5, lr
+    mov     r9, #0                      @ res 0
+    b       .Lc_bnd
+.Lw_out_x:
+    mov     r4, #0
+    mov     r10, r0
+    mov     r11, #0
+    b       .Lw_out
+.Lw_out_y:
+    mov     r5, #0
+    mov     r10, r1
+    mov     r11, #1
+.Lw_out:
+    ldr     r9, [sp, #16]
+    cmp     r10, r9
+    bhs     .Lw_far
+    ldr     r9, [sp, #12]
+    stmia   r9, {r0-r6}
+    str     r10, [r9, #52]
+    str     r11, [r9, #64]
+    mov     r11, r9
+    mov     r4, #1                      @ outside the map: solid, texture 1
+    mov     r5, #0
+    mov     r9, #1                      @ res 1
+    b       .Lc_bnd
+.Lw_far:
+    @ max distance: d is not needed (the caller closes to the horizon)
+    ldr     r9, [sp, #12]
+    stmia   r9, {r0-r6}
+    mov     r0, #2
+    b       .Lc_exit
+
+    @ ======== boundary: r11 = s, r4 / r5 = next cell, r9 = res ========
+.Lc_bnd:
     tst     r5, #0x30000                @ door / lift -> C
     bne     .Lba_slow
     tst     r4, #0xFF
@@ -609,6 +605,7 @@ r3d_boundary_asm:
 
     @ ======== solid next cell (or outside) ========
 .Lba_solid:
+ba_solid:                              @ (named for the profiler)
     bl      .Lba_close_floor
     ldr     r0, [r11, #CS_SKY]
     cmp     r0, #0
@@ -692,6 +689,7 @@ r3d_boundary_asm:
 
     @ ======== checkpoint + end tests ========
 .Lba_checkpoint:
+ba_checkpoint:                              @ (named for the profiler)
     ldr     r2, [r11, #CS_YTOP]
     ldr     r3, [r11, #CS_YBOT]
     ldmia   sp, {r0, r1}
@@ -739,20 +737,20 @@ r3d_boundary_asm:
     cmp     r3, r0
     ble     .Lba_done
 .Lba_cont:
-    mov     r0, #0
-    b       .Lba_ret
+    b       .Lc_walk
 .Lba_done:
     mov     r0, #1
-    b       .Lba_ret
+    b       .Lc_exit
 .Lba_slow:
-    mov     r0, #2
-.Lba_ret:
-    add     sp, sp, #12
+    add     r0, r9, #3                  @ 3 / 4: the C boundary, res 0 / 1
+.Lc_exit:
+    add     sp, sp, #20
     ldmfd   sp!, {r4-r11, lr}
     bx      lr
 
 @ ---- r0 = z4 -> r0 = row edge (uses r8 = ez4, r10 = k8); keeps r1-r11
 .Lba_rowof:
+ba_rowof:                              @ (named for the profiler)
     sub     r0, r8, r0
     ldr     r12, [r11, #CS_HOR12R]
     mla     r0, r10, r0, r12
@@ -761,6 +759,7 @@ r3d_boundary_asm:
 
 @ ---- close the region's floor run (keeps r4-r11)
 .Lba_close_floor:
+ba_close_floor:                              @ (named for the profiler)
     ldr     r0, [r11, #CS_FZ4]
     cmp     r0, r8
     bxge    lr                          @ eye at / below the floor: invisible
@@ -782,6 +781,7 @@ r3d_boundary_asm:
 
 @ ---- close the region's ceiling run (keeps r4-r11)
 .Lba_close_ceil:
+ba_close_ceil:                              @ (named for the profiler)
     ldr     r0, [r11, #CS_CZ4]
     cmp     r0, r8
     bxle    lr
@@ -804,12 +804,19 @@ r3d_boundary_asm:
 
 @ ---- flat: r0 = z4, r1 = tex, r2 = light, r3 = y0, r12 = y1 (keeps r4-r11)
 .Lba_flat:
+ba_flat:                              @ (named for the profiler)
     cmp     r3, r12
     bxge    lr
     stmfd   sp!, {r4-r7, lr}
     ldr     lr, =FL
     sub     r4, r12, r3
     str     r4, [lr, #FL_N]
+    ldr     r6, =r3d_texpix             @ pixels per texture (VRAM cache)
+    and     r7, r1, #63
+    add     r6, r6, r7, lsl #1
+    ldrh    r7, [r6]
+    add     r7, r7, r4
+    strh    r7, [r6]
     ldr     r4, [r11, #CS_COL]
     add     r4, r4, r3, lsl #8
     sub     r4, r4, r3, lsl #4          @ col + y0 * 240
@@ -861,10 +868,18 @@ r3d_boundary_asm:
 
 @ ---- face: r0 = y0, r1 = y1 (y0 < y1), r2 = tex id, r3 = light (keeps r4-r11)
 .Lba_face:
+ba_face:                              @ (named for the profiler)
     stmfd   sp!, {r4-r9, lr}
     mov     r4, r0                      @ y0
     mov     r5, r1                      @ y1
     mov     r9, r3                      @ light
+    ldr     r6, =r3d_texpix             @ pixels per texture (VRAM cache)
+    and     r7, r2, #63
+    add     r6, r6, r7, lsl #1
+    ldrh    r7, [r6]
+    add     r7, r7, r1
+    sub     r7, r7, r0
+    strh    r7, [r6]
     mov     r0, r2
     bl      .Lba_texof
     mov     r6, r0                      @ texture
@@ -926,6 +941,7 @@ r3d_boundary_asm:
 
 @ ---- sky: rows [r0, r1) (keeps r4-r11)
 .Lba_sky:
+ba_sky:                              @ (named for the profiler)
     stmfd   sp!, {r4, lr}
     ldr     r12, [r11, #CS_CM]
     str     r12, [sp, #-8]!             @ arg 5 (keeps sp 8-aligned)
@@ -940,6 +956,7 @@ r3d_boundary_asm:
 
 @ r0 = texture id -> r0 = pixels (r3d_texc cache, else r3d_texture()).
 .Lba_texof:
+ba_texof:                              @ (named for the profiler)
     and     r0, r0, #63
     ldr     r12, =r3d_texc
     ldr     r12, [r12, r0, lsl #2]
@@ -955,6 +972,7 @@ r3d_boundary_asm:
 
 @ r0 = texture id -> r0 = average texel (r3d_avgc cache, else r3d_texavg()).
 .Lba_avgof:
+ba_avgof:                              @ (named for the profiler)
     and     r0, r0, #63
     ldr     r12, =r3d_avgc
     ldrb    r12, [r12, r0]
@@ -968,32 +986,34 @@ r3d_boundary_asm:
     ldmfd   sp!, {r1-r3, lr}
     bx      lr
     .pool
-    .size   r3d_boundary_asm, . - r3d_boundary_asm
+    .size   r3d_column_asm, . - r3d_column_asm
 
 @ ---------------------------------------------------------------------------
-@ void r3d_sprite_loop(uint16_t *p, int n, const uint8_t *src, uint32_t vb,
-@                      uint32_t dvb, const uint8_t *cm, int stride)
+@ void r3d_sprite_loop(uint16_t *p, int n, const uint8_t *src, uint32_t v,
+@                      uint32_t dv, const uint8_t *cm, int stride, int iw)
 @ One sprite column: n > 0 rows from p (stride bytes apart: 240, or 480
-@ for the translucent checkerboard). src = image + u; vb / dvb = texture
-@ row * image width in 16.16 (so texel = src[vb >> 16]); index 0 is
-@ transparent, everything else goes through the colormap row cm.
+@ for the translucent checkerboard). src = image + u; v / dv = texture
+@ row in 16.16 (texel = src[(v >> 16) * iw]); index 0 is transparent,
+@ everything else goes through the colormap row cm.
     .global r3d_sprite_loop
     .type   r3d_sprite_loop, %function
 r3d_sprite_loop:
-    stmfd   sp!, {r4-r7}
-    ldr     r4, [sp, #16]               @ dvb
-    ldr     r5, [sp, #20]               @ cm
-    ldr     r6, [sp, #24]               @ stride
+    stmfd   sp!, {r4-r8}
+    ldr     r4, [sp, #20]               @ dv
+    ldr     r5, [sp, #24]               @ cm
+    ldr     r6, [sp, #28]               @ stride
+    ldr     r8, [sp, #32]               @ iw
 1:  mov     r7, r3, lsr #16
-    ldrb    r7, [r2, r7]
+    mul     r7, r8, r7                  @ row * iw (Rs = row: 1-cycle multiply)
     add     r3, r3, r4
+    ldrb    r7, [r2, r7]
+    add     r0, r0, r6
     cmp     r7, #0
     ldrneb  r7, [r5, r7]
     orrne   r7, r7, r7, lsl #8
-    strneh  r7, [r0]
-    add     r0, r0, r6
+    strneh  r7, [r0, -r6]
     subs    r1, r1, #1
     bne     1b
-    ldmfd   sp!, {r4-r7}
+    ldmfd   sp!, {r4-r8}
     bx      lr
     .size   r3d_sprite_loop, . - r3d_sprite_loop

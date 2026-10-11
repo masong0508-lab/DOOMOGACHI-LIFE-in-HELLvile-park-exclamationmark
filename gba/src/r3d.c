@@ -242,7 +242,7 @@ static void draw_sprites(const DoomoView3D *v)
         if (!b->img || !b->img->pix || !b->img->w || !b->img->h) continue;
         dx = b->x - r3f.ex;
         dy = b->y - r3f.ey;
-        depth = (int32_t)(((int64_t)dx * r3f.fx + (int64_t)dy * r3f.fy) >> 16);
+        depth = (int32_t)((r3d_smull(dx, r3f.fx) + r3d_smull(dy, r3f.fy)) >> 16);
         if (depth < (4 << 16)) continue;                 /* behind / at the eye */
         if (depth > (R3D_MAXDIST * 64) << 16) continue;
         spr_order[n].depth = depth;
@@ -262,14 +262,14 @@ static void draw_sprites(const DoomoView3D *v)
         R3DSprite s;
         int32_t depth = spr_order[i].depth;
         int32_t dx = b->x - r3f.ex, dy = b->y - r3f.ey;
-        int32_t lat = (int32_t)(((int64_t)dx * r3f.rx + (int64_t)dy * r3f.ry) >> 16);
+        int32_t lat = (int32_t)((r3d_smull(dx, r3f.rx) + r3d_smull(dy, r3f.ry)) >> 16);
         int32_t k8 = r3d_k8((uint32_t)depth);
         uint32_t scale = b->scale ? b->scale : 256;
         int32_t ww16 = (int32_t)(img->w * scale) << 8;     /* world width 16.16 */
         int32_t wh16 = (int32_t)(img->h * scale) << 8;
-        int32_t sx12 = (r3f.halfw << 12) + (int32_t)(((int64_t)lat * k8) >> 12);
-        int32_t w12 = (int32_t)(((int64_t)ww16 * k8) >> 12);
-        int32_t h12 = (int32_t)(((int64_t)wh16 * k8) >> 12);
+        int32_t sx12 = (r3f.halfw << 12) + R3D_MULSHR(lat, k8, 12);
+        int32_t w12 = R3D_MULSHR(ww16, k8, 12);
+        int32_t h12 = R3D_MULSHR(wh16, k8, 12);
         int level;
         if (w12 < 0x400 || h12 < 0x400) continue;                  /* < 1/4 px */
         if (sx12 + (w12 >> 1) <= 0 || sx12 - (w12 >> 1) >= (r3f.vw << 12)) continue;
@@ -279,7 +279,7 @@ static void draw_sprites(const DoomoView3D *v)
         s.w12 = w12;
         s.h12 = h12;
         s.ytop12 = r3f.hor12 +
-                   (int32_t)(((int64_t)(r3f.ez - (b->z + wh16)) * k8) >> 12);
+                   R3D_MULSHR(r3f.ez - (b->z + wh16), k8, 12);
         {
             uint32_t den = scale * (uint32_t)k8;
             s.step16 = den ? 0xFFFFFFFFu / den : 0x10000u;
@@ -313,8 +313,8 @@ static void draw_sprites(const DoomoView3D *v)
                                  : (int32_t)c->floor_h << 19;
                 if (cf <= b->z) fz = cf;
             }
-            s.shadow_y12 = r3f.hor12 + (int32_t)(((int64_t)(r3f.ez - fz) * k8) >> 12);
-            s.shadow_hh = (int32_t)(((int64_t)hw * ((r3f.ez - fz) >> 8)) / ((depth >> 8) + 1));
+            s.shadow_y12 = r3f.hor12 + R3D_MULSHR(r3f.ez - fz, k8, 12);
+            s.shadow_hh = (int32_t)(r3d_smull(hw, (r3f.ez - fz) >> 8) / ((depth >> 8) + 1));
             if (s.shadow_hh < 1) s.shadow_hh = 1;
             if (s.shadow_hh > 12) s.shadow_hh = 12;
             if (r3f.ez <= fz) s.flags &= (uint8_t)~BB_SHADOW;
@@ -341,6 +341,69 @@ void r3d_init(void)
 {
     memset(&r3f, 0, sizeof(r3f));
     memset(&r3d_stats, 0, sizeof(r3d_stats));
+}
+
+/* ------------------------------------------------------------------------- */
+/* VRAM texture cache. Texels fetched from the cartridge cost 6 cycles,
+ * from VRAM 3: the free OBJ tile VRAM of the bitmap modes (16 KB at
+ * 0x06014000, no hardware sprites are used) holds the 4 textures that
+ * covered the most pixels in the previous frame. The pixel loops only
+ * read it (VRAM ignores byte writes, not byte reads). Animated textures
+ * are re-copied when their frame changes. */
+#define VTEX_SLOTS 4
+#define VTEX_BASE  ((uint8_t *)0x06014000)
+#define VTEX_SIZE  DOOMO_TEX_SIZE_PX
+static uint8_t vtex_id[VTEX_SLOTS];              /* texture id + 1, 0 = free */
+static const uint8_t *vtex_src[VTEX_SLOTS];
+
+static void vtex_update(void)
+{
+    int best[VTEX_SLOTS], i, k, n = 0;
+    /* the most drawn textures of the last frame (at least 256 pixels) */
+    for (k = 0; k < VTEX_SLOTS; k++) best[k] = -1;
+    for (i = 1; i < R3D_MAXTEX; i++) {
+        uint32_t px = r3d_texpix[i];
+        if (px < 256) continue;
+        for (k = 0; k < VTEX_SLOTS; k++) {
+            if (best[k] < 0 || px > r3d_texpix[best[k]]) {
+                int j;
+                for (j = VTEX_SLOTS - 1; j > k; j--) best[j] = best[j - 1];
+                best[k] = i;
+                break;
+            }
+        }
+    }
+    for (k = 0; k < VTEX_SLOTS; k++) if (best[k] >= 0) n++;
+    /* free the slots whose texture dropped out */
+    for (i = 0; i < VTEX_SLOTS; i++) {
+        int keep = 0;
+        for (k = 0; k < n; k++) if (vtex_id[i] == best[k] + 1) keep = 1;
+        if (!keep) vtex_id[i] = 0;
+    }
+    /* place the newcomers */
+    for (k = 0; k < n; k++) {
+        int have = 0;
+        for (i = 0; i < VTEX_SLOTS; i++) if (vtex_id[i] == best[k] + 1) have = 1;
+        if (have) continue;
+        for (i = 0; i < VTEX_SLOTS; i++)
+            if (!vtex_id[i]) { vtex_id[i] = (uint8_t)(best[k] + 1); vtex_src[i] = NULL; break; }
+    }
+    /* copy what changed, point the frame's texture cache at the copies */
+    for (i = 0; i < VTEX_SLOTS; i++) {
+        int id = vtex_id[i] - 1;
+        const uint8_t *src;
+        uint8_t *dst = VTEX_BASE + i * VTEX_SIZE;
+        if (id < 0) continue;
+        src = texture_pixels(id, r3f.time);
+        if (!src) { vtex_id[i] = 0; continue; }
+        if (src != vtex_src[i]) {
+            if (((uintptr_t)src & 3) == 0) dma3_copy32(dst, src, VTEX_SIZE / 4);
+            else { vtex_id[i] = 0; continue; }
+            vtex_src[i] = src;
+        }
+        r3d_texc[id] = dst;
+    }
+    memset(r3d_texpix, 0, sizeof(r3d_texpix));
 }
 
 void plat_view3d(const DoomoView3D *v)
@@ -414,6 +477,7 @@ void plat_view3d(const DoomoView3D *v)
     /* colormaps, textures, sky */
     setup_colormaps(v->tint, v->tint_level);
     memset(r3d_texc, 0, sizeof(r3d_texc));
+    vtex_update();
     r3f.time = v->time;
     r3f.sky = sky_pixels(m->sky, v->time);
     if (!r3f.sky) r3f.sky = gba_missing_tex;

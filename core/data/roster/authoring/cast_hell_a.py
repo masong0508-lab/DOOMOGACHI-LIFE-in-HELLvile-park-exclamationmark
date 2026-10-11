@@ -24,7 +24,7 @@ Hazey | t | Announces Vapula's arrival with a foghorn. | job=Smoke Herald; speci
 Chancellor | h | Counts every puff of vapor in the Ninth Cloud. | job=Vapor Chancellor; species=GHOUL; fhair=GOATEE
 Lady Smog | s | Wears a gown woven entirely from smog. | species=CACOBLOB; hat=CROWN
 Coughlotte | s | Coughs politely, constantly, in perfect rhythm. | species=BATLING
-Tastebud | x | Tastes Vapula's soup for curses. Has hiccups. | job=Royal Taster; species=IMP; trait=SOFTIE,LOYALIST
+Tastebud | t | Tastes Vapula's soup for curses. Has hiccups. | job=Royal Taster; species=IMP; trait=SOFTIE,LOYALIST
 """ ),
 
 A("cloud_nine", "hell", "Vape Clerk|Flavor Barista|Cloud Promoter|Shop Owner",
@@ -43,14 +43,14 @@ Puffina | s | Vape clerk. Blows smoke rings shaped like hearts. | species=BATLIN
 Brimbrew | t | Mixes flavours like Brimstone Blast and Unholy Grape. | job=Flavor Barista; species=IMP
 Hypebat | h | Promoter. Hands out free samples to children. Ugh. | job=Cloud Promoter; species=BATLING
 Mistral | s | Runs the counter. Remembers every customer's weakness. | species=CATFOLK
-Haze | x | Secretly hates the smoke. Waters the shop's plants. | species=FOXKIN; trait=SOFTIE,VAPER
+Haze | s | Secretly hates the smoke. Waters the shop's plants. | species=FOXKIN; trait=SOFTIE,VAPER
 """ ),
 
 A("vape_lords", "hell", "Vape Lord|Cloud Chaser|Smoke Trickster",
   sp="IMP:2 BATLING:2 GHOUL HELLHOUND",
   traits="VAPER", top="HOODIE:3 LEATHER_JACKET:2 TANK", bottom="CARGO:2 RIPPED_JEANS:2 SWEATS", shoes="SNEAKERS:3 COMBAT",
   hat="BEANIE:2 CAP:2 NONE", acc="SUNGLASSES:3 CHAINS NOSE_RING",
-  pat="SOLID:3 FLAMES CAMO", scheme="CHARCOAL/VAPE_PURPLE/LIME JET/MAGENTA/CYAN GRAPE/LIME/WHITE",
+  pat="SOLID:3 FLAMES CAMO", scheme="JET/LIME/VAPE_PURPLE CHARCOAL/VAPE_PURPLE/LIME JET/MAGENTA/CYAN GRAPE/LIME/WHITE",
   aura="SMOKE:5 NONE", pers="3-10 7-14 4-11 6-13 8-15", act="WANDERING:3 HOME",
   eyes="SLEEPY:4 SQUINT:2 GLOW", food="Sulfur Soda|Bat Wing Chips|Pizza|Popcorn", hobby="Video Games|Pranks|Skateboarding",
   music="Synthwave|Industrial|Hardcore Punk", phrase="Big mood.|Whatever.|Bleh.|Doom and gloom!",
@@ -59,7 +59,7 @@ Cloudzilla | h | Blows clouds so big they have their own weather. | species=IMP
 Vapor Vinny | h | Has not seen his own feet since spring. | species=GHOUL
 Puffcake | t | Calls every cloud "a vibe". Every one. | species=BATLING
 Smogette | s | Chases clouds on a skateboard. Catches none. | job=Cloud Chaser; species=HELLHOUND
-Hookah Hex | x | Vapes in a rocking chair. Rocks out. | species=IMP
+Hookah Hex | h | Vapes in a rocking chair. Rocks out. | species=IMP
 Wheezle | h | Coughs out little ghosts. Names them. Sad. | job=Smoke Trickster; species=BATLING; trait=SOFTIE,VAPER
 """ ),
 
@@ -94,7 +94,7 @@ Taxfang | h | Charges interest on high-fives. Compounding. | job=Tax Imp; crush=
 Ledgerella | s | Balances books with one claw, eats with the other. |
 Auditrix | t | Audits your soul for missing receipts. | job=Auditor
 Debitt | h | Owes everyone money. Is the bank. |
-Pennyworm | x | Bookkeeper. Keeps books. Never returns them. | job=Bookkeeper
+Pennyworm | t | Bookkeeper. Keeps books. Never returns them. | job=Bookkeeper
 Fiscalo | h | Rounds every number down, except his own. | species=GHOUL
 Spreadsheet | s | Dreams in columns. Secretly sneaks tips to waiters. | trait=SOFTIE
 Comma Krak | t | Has never used a decimal correctly. Proudly. |
@@ -130,7 +130,7 @@ Form 27B | t | Stamps "DENIED" on every form. Including its own. | job=Form Stam
 Ribsley | h | Takes coffee breaks that last a century. |
 Femura | s | Files paperwork in alphabetical order by smell. | job=Archivist of Dread
 Clavicle | h | Has asked for a promotion since 1802. |
-Patella Pat | x | Rattles while typing. Very loud office. |
+Patella Pat | t | Rattles while typing. Very loud office. |
 Tibia Tess | s | Denies permits for fun. Approved one for a nest. | job=Permit Denier; trait=SOFTIE
 Mandible | h | Clacks his jaw at people who are late. |
 Vertebrian | h | Never bends the rules. Cannot bend at all. |
@@ -149,9 +149,9 @@ A("hellhound_bouncers", "hell", "Hellhound Bouncer|Doorhound|Security Pup",
 Brutus | h | Bouncer. Not on the list? Not getting in. |
 Fangela | s | Checks IDs by sniffing them. | species=HELLHOUND
 Chomper | h | Chews through velvet ropes when bored. |
-Big Snarl | t | Lets in anyone who brings him a squeaky toy. | trait=SOFTIE
+Big Snarl | h | Lets in anyone who brings him a squeaky toy. | trait=SOFTIE
 Muzzle | h | Doorhound. Has growled at the same door for years. | job=Doorhound
-Cerbie | x | Three moods: grumpy, grumpier, nap. | eye_count=3
+Cerbie | s | Three moods: grumpy, grumpier, nap. | eye_count=3
 Ruffjustice | s | Security pup. Takes her job far too seriously. | job=Security Pup
 """ ),
 
@@ -168,7 +168,7 @@ Oddsball | h | Takes bets on everything. Even weather. Loses. |
 Bettsy | s | Odds maker. Says the odds are always in her eye. | job=Odds Maker
 Loanie | t | Loan shark. Charges in teeth. | job=Loan Shark; mouth=SHARK
 Eyeballer | h | Watches the races with one big eye. Blinks rarely. |
-Gamblob | x | Bets on the underdog every time. Cheers loudly. | trait=SOFTIE
+Gamblob | h | Bets on the underdog every time. Cheers loudly. | trait=SOFTIE
 Wagerine | s | Has never lost a bet she was allowed to rig. |
 """ ),
 
@@ -188,7 +188,7 @@ Sulkie | s | Rolls her eyes so hard they once got stuck. | species=BATLING
 Edgelord | t | Wears 14 belts. None hold anything up. | species=GHOUL
 Kitty Hex | s | Black cat. Crosses paths on purpose. | species=CATFOLK
 Spikeback | h | Skate rat. Breaks boards, never bones. | job=Skate Rat; species=RACCOONKIN
-Mallgoth | x | Hangs at the mall fountain. Wishes for coins. | job=Mall Goth; species=HUMAN; skin=SKIN_PORCELAIN
+Mallgoth | t | Hangs at the mall fountain. Wishes for coins. | job=Mall Goth; species=HUMAN; skin=SKIN_PORCELAIN
 Moodring | s | Mood ring always says "dark". Is actually fine. | species=IMP; trait=SOFTIE
 Scowlie | h | Practises scowls in the mirror. Smiles at dogs. | species=BATLING
 """ ),
@@ -224,7 +224,7 @@ A("goth_gremlins", "hell", "Goth Gremlin|Gloom Merchant|Spider Keeper",
 Gloomlet | s | Tiny. Grumpy. Bites ankles, then apologises. |
 Dreadie | h | Sells umbrellas that keep the sun out. | job=Gloom Merchant
 Arachna | t | Spider keeper. Knits each spider a little web. | job=Spider Keeper; trait=SOFTIE
-Murkle | x | Hisses at sunshine and at cheerful songs. |
+Murkle | t | Hisses at sunshine and at cheerful songs. |
 Sombra | s | Sighs dramatically every eleven minutes. | species=MOTHKIN
 Grumplet | h | Rated every sunset one star. |
 """ ),
@@ -244,7 +244,7 @@ Sandwichula | s | Sandwich thief. Leaves a thank-you note. | job=Sandwich Thief
 Cutsworth | t | Line cutter. Cuts lines, then holds the door. | job=Line Cutter; trait=SOFTIE
 Spoilio | h | Spoils the ending of every book. Even cookbooks. | job=Spoiler
 Lady Litter | s | Drops crumbs on purpose. Feeds the pigeons. | species=RACCOONKIN
-Dr. Meanie | x | Plans evil schemes. Forgets them at lunch. | species=HUMAN; skin=SKIN_FAIR
+Dr. Meanie | s | Plans evil schemes. Forgets them at lunch. | species=HUMAN; skin=SKIN_FAIR
 Squeakthief | h | Steals squeakers from dog toys. Hoards them. | species=IMP
 """ ),
 
@@ -263,7 +263,7 @@ Rummage | s | Burgles only spare buttons. Has 9,000. | job=Raccoon Burglar; fam=
 Masky | t | Takes off the mask. Underneath, another mask. | fam=bandit
 Binbin | h | Lookout. Falls asleep on lookout duty. | job=Lookout
 Swipey | s | Fence. Sells stolen spoons back to their owners. | job=Fence
-Scraps | x | Saves the best trash for hungry kittens. | trait=SOFTIE; fam=bandit
+Scraps | h | Saves the best trash for hungry kittens. | trait=SOFTIE; fam=bandit
 """ ),
 
 A("black_cats", "hell", "Bad Luck Charmer|Hex Hissler|Alley Cat",
@@ -281,7 +281,7 @@ Hexley Purr | s | Crosses your path, then crosses it again. | job=Bad Luck Charm
 Moggy | h | Knocks your cup off the table. Watches. |
 Unlucky 13 | t | Thirteen toes. Thirteen siblings. Thirteen naps. |
 Omenia Claw | s | Hisses at mirrors. Breaks seven a year. | job=Hex Hissler
-Smudge | x | Alley cat. Shares her sardines with strays. | job=Alley Cat; trait=SOFTIE
+Smudge | s | Alley cat. Shares her sardines with strays. | job=Alley Cat; trait=SOFTIE
 Salem Snoot | h | Pretends to curse people. Mostly naps. |
 """ ),
 
@@ -318,7 +318,7 @@ Shuffles | s | Card sharp. Every card in the deck is an ace. | job=Card Sharp
 Slickpaw | t | Smiles with all teeth and both eyebrows. |
 Tonic Todd | h | Sells potions that are just juice. Good juice. | job=Snake Oil Seller
 Foxglove | s | Picks your pocket, then returns it, polished. | trait=SOFTIE
-Chameleo | x | Changes the story every time it is told. |
+Chameleo | t | Changes the story every time it is told. |
 """ ),
 
 A("bat_club", "hell", "Nightclub DJ|Bat Bartender|Club Promoter|Dancer",
@@ -334,7 +334,7 @@ DJ Echo | h | Spins records upside down. While hanging. | job=Nightclub DJ
 Batrina | s | Bartender. Mixes drinks that glow in the dark. | job=Bat Bartender
 Nightwing | t | Promoter. Hands out flyers that fly away. | job=Club Promoter
 Flutterby | s | Dancer. Dances with her eyes closed. | job=Dancer
-Squeakbeat | x | Makes beats from bat squeaks. Heavy bass. |
+Squeakbeat | s | Makes beats from bat squeaks. Heavy bass. |
 Wingding | h | Throws parties every night. Cleans up every day. | trait=SOFTIE
 """ ),
 
@@ -352,7 +352,7 @@ Funny Bone | h | Jester. Every joke ends with his jaw falling off. | eyes=X
 Heckla | s | Heckles performers. Then claps the loudest. | job=Heckler; eyes=CROSS
 Ringring | t | Prank caller. "Is your fridge running?" Daily. | job=Prank Caller
 Knick Knack | h | Plays his own bones like a xylophone. Off-key. |
-Ticklebone | x | Tickles people with a feather. Unhinged. | species=IMP
+Ticklebone | h | Tickles people with a feather. Unhinged. | species=IMP
 """ ),
 
 A("hell_chefs", "hell", "Brimstone Cook|Hot Sauce Chef|Grill Imp",
@@ -369,7 +369,7 @@ Sizzlefang | s | Grills meat with her breath. Saves on gas. | job=Grill Imp
 Ghostpepper | t | Hot sauce chef. Rates sauces in screams. | job=Hot Sauce Chef; species=GHOUL
 Lavalina | s | Bakes lava cakes with real lava. Warns no one. |
 Charbroil | h | Burns everything. Calls it "the Hellvile way". | species=HELLHOUND
-Smokehouse | x | Smokes cheese, fish and occasionally eyebrows. |
+Smokehouse | t | Smokes cheese, fish and occasionally eyebrows. |
 """ ),
 
 A("lava_miners", "hell", "Lava Miner|Sulfur Digger|Ember Hauler|Foreman",
@@ -435,7 +435,7 @@ A("tickle_fiends", "hell", "Tickle Fiend|Wedgie Specialist|Noogie Master",
 Ticklefang | t | Tickles until you laugh. Then a bit more. |
 Wedgina | s | Wedgie specialist. Certified, framed on the wall. | job=Wedgie Specialist
 Noogles | h | Noogie master. Gentle noogies only, he insists. | job=Noogie Master
-Gigglefiend | x | Cannot stop laughing at its own pranks. | species=BATLING
+Gigglefiend | t | Cannot stop laughing at its own pranks. | species=BATLING
 """ ),
 
 A("dmv", "hell", "DMV Ghoul|Queue Manager|Number Caller",
@@ -451,7 +451,7 @@ A("dmv", "hell", "DMV Ghoul|Queue Manager|Number Caller",
 Number Nine | t | Calls "number nine". Has called it for 80 years. | job=Number Caller
 Queuella | s | Makes queues out of thin air. A real talent. | job=Queue Manager
 Snailpace | h | Moves at one inch per hour. On a good day. |
-Formalda | x | Stamps forms in triplicate. Loses two. | species=MUMMY
+Formalda | s | Stamps forms in triplicate. Loses two. | species=MUMMY
 Lunchbreak | s | Always on lunch. Since Tuesday. | species=SKELETON
 Shutterly | h | Shuts the window the moment you reach it. | species=SKELETON
 """ ),
@@ -486,7 +486,7 @@ Swoleguard | h | Lifts cars to impress nobody in particular. |
 Proteina | s | Drinks shakes made of other shakes. | job=Protein Demon
 Flexo | t | Flexes at their reflection. Reflection flexes back. |
 Spotter | h | Personal trainer. Shouts, then hugs. | job=Personal Trainer; trait=SOFTIE
-Gainz | x | Counts reps out loud, in a scream. | species=HUMAN; skin=SKIN_UMBER
+Gainz | h | Counts reps out loud, in a scream. | species=HUMAN; skin=SKIN_UMBER
 Burly Bea | s | Bear-hugged a boulder. Boulder said ow. | species=BEARKIN
 """ ),
 

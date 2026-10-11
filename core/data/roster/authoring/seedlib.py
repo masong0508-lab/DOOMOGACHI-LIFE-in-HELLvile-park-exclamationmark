@@ -18,7 +18,7 @@ PRONOUN_CODES = {"s": "SHE", "h": "HE", "t": "THEY", "x": "XE", "i": "IT"}
 
 
 class CastLine:
-    __slots__ = ("name", "pronoun", "bio", "opts", "arch", "src")
+    __slots__ = ("name", "pronoun", "bio", "opts", "arch", "src", "v")
 
     def __init__(self, name, pronoun, bio, opts, src):
         self.name = name
