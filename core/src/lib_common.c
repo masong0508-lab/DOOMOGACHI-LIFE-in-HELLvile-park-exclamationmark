@@ -496,6 +496,22 @@ void lib_icon_chip(int cx, int cy, int r, int icon, uint8_t fill)
     else ui_text_outline(cx - 2, cy - 3, g, PAL_WHITE, ui_darker(ui_darker(fill)));
 }
 
+void lib_dim_for_detail(void)
+{
+    int sw = lib_sw(), sh = lib_sh();
+    if (plat_draw_skipped()) return;
+    /* while the page boings in, dim everything; afterwards only the strips
+     * the page leaves visible (a full-screen shade is costly on the GBA) */
+    if (lib_b.dt < 12 && !lib_b.flip) {
+        plat_shade_rect(0, 0, sw, sh, 9);
+        return;
+    }
+    plat_shade_rect(0, 0, sw, 18, 9);
+    plat_shade_rect(0, sh - 15, sw, 15, 9);
+    plat_shade_rect(0, 18, 4, sh - 33, 9);
+    plat_shade_rect(sw - 4, 18, 4, sh - 33, 9);
+}
+
 int lib_detail_window(int x, int y, int w, int h, int style)
 {
     if (lib_b.flip) {

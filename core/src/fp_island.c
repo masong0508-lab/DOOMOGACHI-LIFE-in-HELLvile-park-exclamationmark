@@ -169,19 +169,29 @@ static void add_here(int act)
     if (e) { e->arg = (int16_t)act; e->enabled = I.here[act % ACT_COUNT] > 0; }
 }
 
-/* every registered activity at this location, available or not */
+/* the activities registered at this location (activities.h): the ones
+ * open right now first, then the locked / night-only ones, greyed with
+ * their hint */
 static void add_activities(int actloc)
 {
-    int i, n = activity_count(), shown = 0;
+    const DoomoActivity *open[16];
+    int i, n = activity_count(), shown = 0, nopen;
     if (actloc == NOLOC) return;
+    nopen = activities_at(actloc, open, 16);
+    for (i = 0; i < nopen; i++) {
+        Entry *e = add(E_ACTIVITY, open[i]->icon, open[i]->name, open[i]->desc);
+        if (!e) break;
+        e->act = open[i];
+        shown++;
+    }
     for (i = 0; i < n; i++) {
         const DoomoActivity *a = activity_at(i);
         Entry *e;
-        if (!a || a->location != actloc || !fp_activity_visible(a)) continue;
+        if (!a || a->location != actloc || !fp_activity_visible(a) || activity_available(a)) continue;
         e = add(E_ACTIVITY, a->icon, a->name, a->desc);
         if (!e) break;
         e->act = a;
-        e->enabled = (uint8_t)activity_available(a);
+        e->enabled = 0;
         shown++;
     }
     if (!shown) add(E_SOON, ICON_SPARK, "Coming soon!", "Something fun is being built here. Check back later!");

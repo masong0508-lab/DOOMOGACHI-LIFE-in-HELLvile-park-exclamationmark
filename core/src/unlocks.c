@@ -27,7 +27,8 @@ const char *const doomo_progress_names[PROG_COUNT] = {
     "Best: Cupcake Catch", "Best: Whack-an-Imp", "Best: Vape Cloud Dodge",
     "Best: Bubble Blaster", "Best: Doomogachi Derby", "Best: Memory Match",
     "Wheel of Fate: last spin day",
-    "Concerts", "Hit Parade (packed)", "Hit Parade 2 (packed)"
+    "Concerts", "Hit Parade (packed)", "Hit Parade 2 (packed)",
+    "Fish caught"
 };
 
 const char *const doomo_unlock_cat_names[10] = {
@@ -194,9 +195,9 @@ const DoomoUnlock *const doomo_unlock_tables[] = {
     doomo_unlocks_action, doomo_unlocks_story, doomo_unlocks_freeplay,
     doomo_unlocks_art, doomo_unlocks_portrait, doomo_unlocks_roster,
     doomo_unlocks_minigames, doomo_unlocks_concert, doomo_unlocks_studio,
-    doomo_unlocks_library, NULL
+    doomo_unlocks_library, doomo_unlocks_fishcook, NULL
 };
-#define UL_TABLES 13
+#define UL_TABLES 14
 
 /* ---------------------------------------------------------------------- */
 /* index                                                                    */

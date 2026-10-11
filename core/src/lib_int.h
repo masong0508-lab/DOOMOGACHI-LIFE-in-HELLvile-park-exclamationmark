@@ -165,6 +165,8 @@ void lib_stamp(int cx, int cy, const char *s, uint8_t color);
 void lib_padlock(int x, int y, uint8_t color);
 /* Detail page window (boings in, page-turn wipe after LEFT/RIGHT).
  * Returns 1 when the contents should be drawn. */
+/* Dim what is behind the detail page (call before lib_detail_window). */
+void lib_dim_for_detail(void);
 int  lib_detail_window(int x, int y, int w, int h, int style);
 /* Call after drawing the detail page contents (page-turn wipe). */
 void lib_detail_end(int x, int y, int w, int h, int style);

@@ -31,6 +31,9 @@ extern const DoomoSaveExt *const doomo_save_ext_extra;
 /* (freeplay, additive) the free play island's own chunk 'FPLY' (island
  * name, rent day, graveyard flowers; core/src/fp_common.c) */
 extern const DoomoSaveExt *const doomo_save_ext_freeplay;
+/* (fishcook, additive) Fishdex records, the cooler, recipe grades, today's
+ * customers: chunk 'FISH' (core/src/fishcook.c) */
+extern const DoomoSaveExt *const doomo_save_ext_fishcook;
 /* (foundation) a slot for core/tests only - never define it in a module */
 extern const DoomoSaveExt *const doomo_save_ext_test;
 int save_ext_count(void);

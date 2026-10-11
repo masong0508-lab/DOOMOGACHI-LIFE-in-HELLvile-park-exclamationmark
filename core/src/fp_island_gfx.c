@@ -7,11 +7,13 @@
  * graveyard with a friendly ghost. Hellvile Park sits in the middle with
  * a fountain on the bridge.
  *
- * Everything is drawn every frame from row spans (no stored bitmap: the
- * island must fit 240x160 and 320x240 and costs no RAM), about 8-10 spans
- * a row plus the buildings. Day / dusk / night re-colour every span
- * through the tint maps; lit windows and lamps are drawn untinted so they
- * glow at night. Nothing is ever still: waves, foam, a turning ferris
+ * Everything is drawn every frame from spans (no stored bitmap: the
+ * island must fit 240x160 and 320x240 and costs no RAM): row spans that
+ * repeat on the next row merge into tall rects and the river + Wall are
+ * one set of rects per straight run, so the whole map is ~2,100 plat_rect
+ * calls at 240x160 (land ~570, buildings ~790). Day / dusk / night
+ * re-colour every span through the tint maps; lit windows and lamps are
+ * drawn untinted so they glow at night. Nothing is ever still: waves, foam, a turning ferris
  * wheel, smoking chimneys, bubbling lava, a floating ghost, tiny citizens
  * strolling the roads.
  */
@@ -59,13 +61,14 @@ static void build_geometry(void)
         if (q > 256) { coast_l[row] = coast_r[row] = -1; river_c[row] = -1; continue; }
         v = (q * q / 256) * (q * q / 256) / 256;    /* (y/b)^4 in 1/256 */
         hw = a * isqrt_i(isqrt_i((256 - v) * 256) * 256) / 256;
-        wob_l = ui_wave(row * 2 + 11, 140, 5) + ui_wave(row * 7, 97, 2) + ui_wave(row * 3, 41, 1);
-        wob_r = ui_wave(row * 2 + 70, 150, 5) + ui_wave(row * 5 + 40, 83, 2) + ui_wave(row * 9 + 5, 37, 1);
+        /* slow waves only: the flanks stay straight for a few rows at a
+         * time, so their spans merge into tall rects (draw_land) */
+        wob_l = ui_wave(row * 2 + 11, 140, 5) + ui_wave(row, 97, 2);
+        wob_r = ui_wave(row * 2 + 70, 150, 5) + ui_wave(row + 40, 83, 2);
         coast_l[row] = (int16_t)(M.x + M.w / 2 - hw + wob_l);
         coast_r[row] = (int16_t)(M.x + M.w / 2 + hw + wob_r);
         if (coast_r[row] - coast_l[row] < 4) { coast_l[row] = coast_r[row] = -1; }
-        river_c[row] = (int16_t)(M.x + M.w / 2 + ui_wave(row * 3 + 20, 140, 4) +
-                                 ui_wave(row, 53, 1));
+        river_c[row] = (int16_t)(M.x + M.w / 2 + ui_wave(row + 20, 140, 4));
     }
 }
 
@@ -220,47 +223,116 @@ static void draw_sea(void)
     }
 }
 
+/* The river and the Wall are vertical: they are drawn as tall rects, one
+ * per run of rows with the same river centre and ground band, so the land
+ * costs ~4 spans a row instead of ~14 (the GBA draws thousands of small
+ * spans a frame slowly). */
+static void draw_river_run(int row0, int row1)
+{
+    int y = M.y + row0, h = row1 - row0, rc = river_c[row0];
+    int rl = rc - 5, wl = rc + 5, row;
+    /* bank + water (rl .. rc + 4) */
+    R(rl, y, 1, h, SAND_D);
+    R(rl + 1, y, 9, h, PAL_RAMP(RAMP_SKY, 5));
+    /* the Wall seen from above: dark outline, lit west face, stony top
+     * with a checker texture */
+    R(wl, y, 6, h, PAL_RAMP(RAMP_STONE, 1));
+    R(wl + 1, y, 1, h, PAL_RAMP(RAMP_STONE, 6));
+    R(wl + 2, y, 3, h, PAL_RAMP(RAMP_STONE, 5));
+    plat_checker(wl + 2 + (row0 & 1), y, 2, h, tc(PAL_RAMP(RAMP_STONE, 4)));
+    /* its shadow on the Hellvile ground (darker shade of each band) */
+    for (row = row0; row < row1;) {
+        int r1 = row + 1;
+        while (r1 < row1 && hell_ground(r1) == hell_ground(row)) r1++;
+        R(wl + 6, M.y + row, 2, r1 - row, ui_darker(hell_ground(row)));
+        row = r1;
+    }
+}
+
+/* Row spans that repeat on the next row (same x, width and colour) grow
+ * into one tall rect instead of one call a row: the coast is nearly
+ * vertical along the island's flanks, so most rows merge. */
+#define VM_SLOTS 6
+typedef struct { int16_t x, y, w, h; uint8_t c; } VSpan;
+static VSpan vm[VM_SLOTS];
+
+static void vm_flush(int i)
+{
+    if (vm[i].h > 0) R(vm[i].x, vm[i].y, vm[i].w, vm[i].h, vm[i].c);
+    vm[i].h = 0;
+}
+
+static void vm_span(int i, int x, int y, int w, uint8_t c)
+{
+    VSpan *v = &vm[i];
+    if (w <= 0) return;
+    if (v->h > 0 && v->x == x && v->w == w && v->c == c && v->y + v->h == y) { v->h++; return; }
+    vm_flush(i);
+    v->x = (int16_t)x;
+    v->y = (int16_t)y;
+    v->w = (int16_t)w;
+    v->h = 1;
+    v->c = c;
+}
+
+static void vm_flush_all(void)
+{
+    int i;
+    for (i = 0; i < VM_SLOTS; i++) vm_flush(i);
+}
+
 static void draw_land(void)
 {
-    int row, t = g_t;
-    /* the cliff under the south rim: the land drawn 3 rows lower first */
+    int row, t = g_t, run0 = -1;
+    /* the cliff under the south rim: the land drawn 3 rows lower first;
+     * only the slivers the land does not cover are drawn */
     for (row = 0; row < M.h; row++) {
-        int src = row - 3, l, r;
+        int src = row - 3, l, r, y = M.y + row;
         if (src < 0 || coast_l[src] < 0) continue;
         l = coast_l[src];
         r = coast_r[src];
-        if (row < M.h && coast_l[row] >= 0 && coast_l[row] <= l && coast_r[row] >= r) continue;
-        R(l, M.y + row, river_c[src] - l, 1, CLIFF);
-        R(river_c[src], M.y + row, r - river_c[src], 1, CLIFF_H);
+        if (coast_l[row] < 0) {
+            vm_span(0, l, y, river_c[src] - l, CLIFF);
+            vm_span(1, river_c[src], y, r - river_c[src], CLIFF_H);
+            continue;
+        }
+        if (coast_l[row] > l) vm_span(0, l, y, coast_l[row] - l, CLIFF);
+        if (coast_r[row] < r) vm_span(1, coast_r[row], y, r - coast_r[row], CLIFF_H);
     }
+    vm_flush_all();
     for (row = 0; row < M.h; row++) {
         int y = M.y + row, l = coast_l[row], r = coast_r[row], rc = river_c[row];
-        int foam = ((row + t / 6) % 9) < 2;
-        int rl, rr, wl;
-        if (l < 0) continue;
-        rl = rc - 5;               /* river left bank */
-        rr = rc + 4;               /* river right edge */
-        wl = rr + 1;               /* the wall starts (5 px + shadow) */
-        /* west sand + meadow */
-        RG(l - 1, y, 1, 1, tc(foam ? PAL_WHITE : PAL_RAMP(RAMP_SKY, 7)));
-        R(l, y, 3, 1, row < M.h / 2 ? SAND_HI : SAND);
-        R(l + 3, y, rl - l - 3, 1, hill_grass(row));
-        /* river (with a bright shimmer line) */
-        R(rl, y, 1, 1, SAND_D);
-        R(rl + 1, y, rr - rl - 1, 1, PAL_RAMP(RAMP_SKY, 5));
-        if (((row + t / 4) % 7) == 0) R(rl + 2 + (row & 1), y, 2, 1, PAL_RAMP(RAMP_SKY, 7));
-        /* the Wall seen from above: outline, lit west face, brick courses
-         * every 3 rows (offset mortar), shadow cast onto Hellvile */
-        R(wl, y, 1, 1, PAL_RAMP(RAMP_STONE, 1));
-        R(wl + 1, y, 1, 1, PAL_RAMP(RAMP_STONE, 6));
-        R(wl + 2, y, 3, 1, (row % 3) == 0 ? PAL_RAMP(RAMP_STONE, 3) : PAL_RAMP(RAMP_STONE, 5));
-        R(wl + 2 + ((row / 3) & 1) * 2, y, 1, 1, PAL_RAMP(RAMP_STONE, 3));
-        R(wl + 5, y, 1, 1, PAL_RAMP(RAMP_STONE, 1));
-        R(wl + 6, y, 2, 1, ui_darker(hell_ground(row)));
-        /* east: Hellvile plum ground + ash shore */
-        R(wl + 8, y, r - 3 - (wl + 8), 1, hell_ground(row));
-        R(r - 3, y, 3, 1, ASH);
-        RG(r, y, 1, 1, tc(foam ? PAL_RAMP(RAMP_SKY, 7) : PAL_WHITE));
+        int rl = rc - 5, wl = rc + 5;
+        if (l < 0) {
+            if (run0 >= 0) { draw_river_run(run0, row); run0 = -1; }
+            continue;
+        }
+        /* west: sand rim + meadow; east: plum ground + ash shore */
+        vm_span(0, l, y, 3, row < M.h / 2 ? SAND_HI : SAND);
+        vm_span(1, l + 3, y, rl - l - 3, hill_grass(row));
+        vm_span(2, wl + 8, y, r - 3 - (wl + 8), hell_ground(row));
+        vm_span(3, r - 3, y, 3, ASH);
+        /* runs of the river + Wall */
+        if (run0 >= 0 && river_c[run0] != rc) {
+            draw_river_run(run0, row);
+            run0 = -1;
+        }
+        if (run0 < 0) run0 = row;
+    }
+    vm_flush_all();
+    if (run0 >= 0) draw_river_run(run0, M.h);
+    /* foam laps at the shore and a shimmer drifts down the river */
+    for (row = (9 - (t / 6) % 9) % 9; row < M.h; row += 9) {
+        int k;
+        for (k = 0; k < 2 && row + k < M.h; k++) {
+            if (coast_l[row + k] < 0) continue;
+            RG(coast_l[row + k] - 1, M.y + row + k, 1, 1, tc(PAL_WHITE));
+            RG(coast_r[row + k], M.y + row + k, 1, 1, tc(PAL_WHITE));
+        }
+    }
+    for (row = (7 - (t / 4) % 7) % 7; row < M.h; row += 7) {
+        if (coast_l[row] < 0) continue;
+        R(river_c[row] - 3 + (row & 1), M.y + row, 2, 1, PAL_RAMP(RAMP_SKY, 7));
     }
     /* soft seams between the meadow bands */
     for (row = 1; row < 6; row++) {

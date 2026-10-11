@@ -720,6 +720,10 @@ static void draw_left(const RLayout *L, const DoomoResident *r, int style)
     if (fp_living_status(r->status)) {
         fp_icon(L->px + 2, y, fp_mood_icon(r->mood), fp_mood_color(r->mood));
         fp_marquee(L->px + 11, y, w - 11, doomo_mood_names[r->mood % MOOD_COUNT], st->text, t);
+        y += FONT_LINE;
+        /* what they're up to right now */
+        fp_icon(L->px + 2, y, fp_activity_icon(r->activity), st->accent);
+        fp_marquee(L->px + 11, y, w - 11, fp_activity_name(r->activity), st->text_dim, t + 40);
     } else {
         fp_icon(L->px + 2, y, fp_status_icon(r->status), fp_status_color(r->status));
         ui_text(L->px + 11, y, fp_status_name(r->status), st->text);

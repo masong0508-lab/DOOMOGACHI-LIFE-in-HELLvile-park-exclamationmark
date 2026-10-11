@@ -1,0 +1,29 @@
+# Free play: an Empty Island - nobody lives here, so after the welcome
+# the creator opens for the very first citizen.
+scene NEW_ISLAND
+wait 20
+shot new_island_cards
+press LEFT
+wait 16
+shot new_island_empty
+press A
+wait 10
+press A
+wait 16
+shot new_island_name_question
+press A
+wait 20
+expect-scene TEXT_ENTRY
+type "Mochi Isle\n"
+wait 20
+expect-scene DIALOG
+press A
+wait 2
+press A
+wait 2
+press A
+wait 2
+press A
+wait 40
+expect-scene CREATOR
+shot empty_island_creator

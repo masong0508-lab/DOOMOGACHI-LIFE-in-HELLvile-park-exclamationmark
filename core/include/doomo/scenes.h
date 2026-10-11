@@ -69,6 +69,10 @@ extern const DoomoScene SCENE_LIBRARY, SCENE_LIB_BESTIARY, SCENE_LIB_ALMANAC,
        SCENE_LIB_WEAPONS, SCENE_LIB_ITEMS, SCENE_LIB_TROPHIES, SCENE_LIB_JUKEBOX,
        SCENE_LIB_GALLERY;
 
+/* Lake of Fire fishing + Brimstone Bites kitchen (fish*.c, cook*.c; args:
+ * core/src/fishcook_int.h) */
+extern const DoomoScene SCENE_FISHING, SCENE_COOKING;
+
 /* Registry (scene.c, foundation): every scene above, NULL-terminated. */
 extern const DoomoScene *const doomo_all_scenes[];
 /* Find a scene by its name ("TITLE"); also accepts "SCENE_TITLE". */

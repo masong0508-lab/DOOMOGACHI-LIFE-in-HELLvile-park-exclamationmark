@@ -382,9 +382,22 @@ static void detail(int sw, int sh)
     char buf[80];
     if (!lib_detail_window(x, y, w, h, WIN_CUTE) || plat_draw_skipped()) return;
     if (tastes()) {
-        int f = I.idx[lib_b.sel];
+        int f = I.idx[lib_b.sel], pw = big ? 90 : 64, it = f + ITEM_CUPCAKE;
         lib_b.scroll_max = 0;
-        taste_panel(x + 8, y + 6, w - 16, h - 12, f, 1);
+        taste_panel(x + 8, y + 6, w - 16 - pw, h - 12, f, 1);
+        if (food_of(it) == f) {
+            pedestal(x + w - pw / 2 - 6, y + h / 2 - 4, it, big);
+        } else {
+            /* a dream food: a thought cloud with a question mark */
+            int cx = x + w - pw / 2 - 6, cy = y + h / 2 - 8, b = ui_wave((int)lib_b.t, 40, 2);
+            ui_fill_ellipse(cx, cy - b, big ? 30 : 22, big ? 18 : 14, PAL_RAMP(RAMP_PASTEL_PINK, 4));
+            ui_fill_ellipse(cx, cy - 1 - b, big ? 28 : 20, big ? 16 : 12, PAL_WHITE);
+            ui_fill_circle(cx - 14, cy + 18 - b, 4, PAL_WHITE);
+            ui_fill_circle(cx - 20, cy + 26 - b, 2, PAL_WHITE);
+            ui_text_big(cx - 5 * (big ? 3 : 2) / 2, cy - 4 * (big ? 3 : 2) - b, "?", big ? 3 : 2,
+                        PAL_PAINT(PAINT_ROSE, 1), PAL_WHITE);
+            ui_text_center(cx, cy + (big ? 24 : 20), "dream food", PAL_RAMP(RAMP_PASTEL_PINK, 2));
+        }
         lib_detail_end(x, y, w, h, WIN_CUTE);
         return;
     }
@@ -449,7 +462,7 @@ static void items_draw(void)
     lib_list(4, y + 1, lw, sh - y - 16, 12, WIN_CUTE, row);
     preview(lw + 8, y + 1, sw - lw - 12, sh - y - 16);
     if (lib_b.detail) {
-        plat_shade_rect(0, 0, sw, sh, 9);
+        lib_dim_for_detail();
         detail(sw, sh);
         lib_hint(STR_ICON_ARROW_L STR_ICON_ARROW_R " next  " STR_ICON_ARROW_U STR_ICON_ARROW_D " note  " STR_ICON_B " close", WIN_CUTE);
     } else {

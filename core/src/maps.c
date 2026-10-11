@@ -17,6 +17,12 @@ extern const DoomoMapDef map_def_vape_cellar WEAKREF;
 extern const DoomoMapDef map_def_cloud_nine_spire WEAKREF;
 extern const DoomoMapDef map_def_arena WEAKREF;
 extern const DoomoMapDef map_def_park_united WEAKREF;
+/* (levels expansion, additive) */
+extern const DoomoMapDef map_def_sugar_rush_sewers WEAKREF;
+extern const DoomoMapDef map_def_plushie_factory WEAKREF;
+extern const DoomoMapDef map_def_graveyard_shift WEAKREF;
+extern const DoomoMapDef map_def_bone_cathedral WEAKREF;
+extern const DoomoMapDef map_def_hellvile_underbelly WEAKREF;
 
 const DoomoMapDef *const doomo_maps[MAPID_COUNT] = {
     &map_def_hahaland,          /* MAPID_HAHALAND          (story)  */
@@ -25,5 +31,10 @@ const DoomoMapDef *const doomo_maps[MAPID_COUNT] = {
     &map_def_vape_cellar,       /* MAPID_VAPE_CELLAR       (action) */
     &map_def_cloud_nine_spire,  /* MAPID_CLOUD_NINE_SPIRE  (action) */
     &map_def_arena,             /* MAPID_ARENA             (action) */
-    &map_def_park_united        /* MAPID_PARK_UNITED       (story)  */
+    &map_def_park_united,       /* MAPID_PARK_UNITED       (story)  */
+    &map_def_sugar_rush_sewers,     /* MAPID_SUGAR_RUSH_SEWERS     (levels) */
+    &map_def_plushie_factory,       /* MAPID_PLUSHIE_FACTORY       (levels) */
+    &map_def_graveyard_shift,       /* MAPID_GRAVEYARD_SHIFT       (levels) */
+    &map_def_bone_cathedral,        /* MAPID_BONE_CATHEDRAL        (levels) */
+    &map_def_hellvile_underbelly    /* MAPID_HELLVILE_UNDERBELLY   (levels) */
 };

@@ -526,9 +526,10 @@ static void roster_draw(void)
     ui_title(sw / 2, 3, buf, style);
     ui_tabs(L.lx + 4, 22, district_names, 3, rs->district, style);
     if (rs->search[0] || rs->status || rs->mood || rs->tag || rs->sort) {
-        doomo_snprintf(buf, sizeof(buf), STR_ICON_STAR "%s", sort_names[rs->sort % SORT_COUNT]);
-        if (!fp_big()) buf[0] = (char)ICON_STAR, buf[1] = 0;
-        fp_tag(L.lx + L.lw - ui_text_width(buf) - 4, 21, buf, PAL_UI_GOLD, PAL_RAMP(RAMP_WOOD, 0));
+        /* a gold tag on the card says filters are on */
+        if (rs->search[0]) doomo_snprintf(buf, sizeof(buf), STR_ICON_STAR "\"%s\"", rs->search);
+        else doomo_snprintf(buf, sizeof(buf), STR_ICON_STAR "%s", sort_names[rs->sort % SORT_COUNT]);
+        fp_tag(L.cx + 2, L.cy - 6, buf, PAL_UI_GOLD, PAL_RAMP(RAMP_WOOD, 0));
     }
     /* list */
     ui_window(L.lx - 2, L.ly - 6, L.lw + 4, L.rows * UI_LIST_ROW_H + 10, style);

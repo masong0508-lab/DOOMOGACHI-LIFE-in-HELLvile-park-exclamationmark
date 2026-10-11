@@ -323,6 +323,20 @@ static void sfx_panel(int x, int y, int w, int h)
     doomo_snprintf(buf, sizeof(buf), "Heard %d of %d", bits_count(J.sfx_played[0]) + bits_count(J.sfx_played[1]),
                    SFX_COUNT - 1);
     if (wy + wh + 4 + FONT_LINE * 2 < y + h) ui_text(x + 6, wy + wh + 4 + FONT_LINE, buf, st->text_dim);
+    /* a little speaker that thumps while the sound plays */
+    if (wy + wh + 4 + FONT_LINE * 2 + 40 < y + h) {
+        int sx = x + w / 2, sy = y + h - 26, pump = flash ? ((J.play_t / 2) & 1) * 2 : 0, r = 10 + pump;
+        ui_round_rect(sx - 18, sy - 18, 36, 38, 4, PAL_RAMP(RAMP_WOOD, 1));
+        ui_round_rect(sx - 17, sy - 17, 34, 36, 3, PAL_RAMP(RAMP_WOOD, 3));
+        ui_fill_circle(sx, sy + 4, r, PAL_GRAY_D);
+        ui_fill_circle(sx, sy + 4, r - 3, PAL_BLACK);
+        ui_fill_circle(sx, sy + 4, 3, PAL_GRAY);
+        ui_fill_circle(sx, sy - 11, 3, PAL_GRAY_D);
+        if (flash) {
+            plat_text(sx + 22, sy - 6 - (J.play_t & 3), STR_ICON_NOTE, PAL_UI_GOLD);
+            plat_text(sx - 28, sy - 2 - ((J.play_t + 2) & 3), STR_ICON_NOTE, PAL_PAINT(PAINT_LIME, 2));
+        }
+    }
     if (flash) {
         int k;
         for (k = 0; k < 3; k++)

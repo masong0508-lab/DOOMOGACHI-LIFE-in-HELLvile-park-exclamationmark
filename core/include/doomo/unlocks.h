@@ -87,6 +87,7 @@ extern const DoomoUnlock doomo_unlocks_minigames[];   /* 832..863 (Fun Fair) */
 extern const DoomoUnlock doomo_unlocks_concert[];     /* 896..959 (Concert Hall + Dreams) */
 extern const DoomoUnlock doomo_unlocks_studio[];      /* 240..255 (Music Studio) */
 extern const DoomoUnlock doomo_unlocks_library[];     /* 384..415 (Grand Library; life's unused tail) */
+extern const DoomoUnlock doomo_unlocks_fishcook[];    /* 960..1023 (Lake of Fire + Brimstone Bites; roster's unused range) */
 
 /* Game modes gated by UL_CAT_MODE. */
 enum { MODE_ARENA, MODE_BOSS_RUSH, MODE_HELLVILE_VISITS, MODE_TAMA_ONLY,
@@ -121,6 +122,7 @@ enum { PROG_CITIZENS_CREATED, PROG_EXORCISMS_WON, PROG_EXORCISMS_FAILED,
        PROG_HS_DERBY, PROG_HS_MEMORY, PROG_FAIR_WHEEL_DAY,
        /* concert hall: shows put on; the Hit Parade (2 packed singles each) */
        PROG_CONCERTS, PROG_HIT_SINGLES, PROG_HIT_SINGLES2,
+       PROG_FISH_CAUGHT,      /* (fishcook) fish landed at the Lake of Fire */
        PROG_COUNT };
 void progress_add(int counter, int amount);   /* also checks unlocks */
 uint32_t progress_get(int counter);

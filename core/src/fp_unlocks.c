@@ -152,8 +152,12 @@ static void tile(int x, int y, int s, const DoomoUnlock *u, int sel)
         g[0] = (char)cat_icon(u);
         plat_text(x + (s - 2) / 2 - 2, y + (s - 2) / 2 - 4, g, PAL_WHITE);
     } else {
+        /* a dim silhouette of what it is, and a tiny padlock */
         plat_checker(x + 1, y + 1, s - 4, s - 4, ui_darker(c));
-        plat_text(x + (s - 2) / 2 - 2, y + (s - 2) / 2 - 4, "?", ui_lighter(ui_lighter(c)));
+        g[0] = (char)cat_icon(u);
+        plat_text(x + (s - 2) / 2 - 2, y + (s - 2) / 2 - 4, g, ui_lighter(c));
+        plat_rect(x + s - 7, y + s - 7, 4, 3, ui_lighter(ui_lighter(c)));
+        plat_rect(x + s - 6, y + s - 9, 2, 2, ui_lighter(ui_lighter(c)));
     }
     if (sel) {
         ui_frame(x - 2, y - 2, s + 2, s + 2, (t / 6) & 1 ? PAL_UI_GOLD : PAL_WHITE);

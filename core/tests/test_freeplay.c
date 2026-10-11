@@ -497,3 +497,39 @@ TEST(freeplay_all_screens_smoke_both_resolutions)
     nat_w = 240;
     nat_h = 160;
 }
+
+/* The hub, the roster and the unlocks gallery keep their big state in the
+ * shared scene scratch: after another scene took it they rebuild. */
+TEST(freeplay_scene_scratch_loss_is_rebuilt)
+{
+    int n, id;
+    premade_island();
+    fp_island_select_kind(LOC_TOWN_HALL);
+    press(BTN_A);
+    CHECK(fp_island_menu_open());
+    n = fp_island_menu_count();
+    CHECK(n > 3);
+    scene_push(&SCENE_UNLOCKS, 0);              /* claims the scratch */
+    frames(0, 3);
+    scene_pop();
+    frames(0, 3);
+    CHECK(top_is(&SCENE_ISLAND));
+    CHECK(fp_island_menu_open());
+    CHECK_EQ(fp_island_menu_count(), n);
+    CHECK(fp_island_menu_select("Town records"));
+    press(BTN_B);
+    /* the roster */
+    scene_push(&SCENE_ROSTER, 0);
+    frames(0, 3);
+    press(BTN_DOWN);
+    press(BTN_DOWN);
+    scene_push(&SCENE_UNLOCKS, 0);
+    frames(0, 3);
+    scene_pop();
+    frames(0, 3);
+    CHECK(top_is(&SCENE_ROSTER));
+    press(BTN_A);
+    CHECK(top_is(&SCENE_RESIDENT));
+    id = fp_resident_id();
+    CHECK(id >= 0 && doomo_town.res[id].status != RES_EMPTY);
+}

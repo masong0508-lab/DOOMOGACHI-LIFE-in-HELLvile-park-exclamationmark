@@ -102,4 +102,5 @@ const DoomoItemInfo doomo_items[ITEM_COUNT] = {
       0, 0, 0, 0, 0, 0, 0, 0, ICON_ARROW_D },
     { "Gate Sigil", "Hums near the Hellvile wall.", 0, ICAT_KEY,
       0, 0, 0, 0, 0, 0, 0, 0, ICON_PENTAGRAM }
+#include "items_ext.c"  /* (fishcook, additive) the appended rows */
 };

@@ -303,7 +303,7 @@ static void tro_draw(void)
     lib_list(4, y + 1, lw, sh - y - 16, 12, WIN_CREAM, row);
     preview(lw + 8, y + 1, sw - lw - 12, sh - y - 16);
     if (lib_b.detail) {
-        plat_shade_rect(0, 0, sw, sh, 9);
+        lib_dim_for_detail();
         detail(sw, sh);
         lib_hint(STR_ICON_ARROW_L STR_ICON_ARROW_R " next  " STR_ICON_B " close", WIN_CREAM);
     } else {

@@ -642,7 +642,7 @@ static void alm_draw(void)
         ui_text_outline(6, y - 13, sb, PAL_WHITE, PAL_RAMP(RAMP_MINT, 2));
     }
     if (lib_b.detail) {
-        plat_shade_rect(0, 0, sw, sh, 9);
+        lib_dim_for_detail();
         detail(sw, sh);
         lib_hint(STR_ICON_ARROW_L STR_ICON_ARROW_R " next  L/R page  SEL face  " STR_ICON_B " close", WIN_MINT);
     } else if (A.picking) {

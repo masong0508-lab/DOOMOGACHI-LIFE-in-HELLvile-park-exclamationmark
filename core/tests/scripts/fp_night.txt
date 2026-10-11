@@ -1,0 +1,55 @@
+# Free play: a Hellvile Park Classic island through the New Island screen.
+scene NEW_ISLAND
+wait 10
+press A
+wait 10
+press A
+wait 10
+press DOWN
+wait 2
+press A
+wait 20
+press A
+wait 2
+press A
+wait 2
+press A
+wait 2
+press A
+wait 10
+expect-scene ISLAND
+# The island lives: Turbo sim speed + 15-minute days until dusk and night.
+push OPTIONS 2
+wait 10
+press RIGHT
+press RIGHT
+wait 2
+press DOWN
+press RIGHT
+press RIGHT
+wait 4
+shot sim_options
+press B
+wait 3300
+expect-scene ISLAND
+shot island_dusk
+wait 700
+shot island_night
+push APARTMENTS 1
+wait 40
+shot pits_night
+press B
+wait 10
+expect-scene ISLAND
+push NEWS 0
+wait 20
+press R
+wait 20
+shot news_help_wanted_night
+press A
+wait 30
+expect-scene RESIDENT
+shot resident_with_problem
+press A
+wait 40
+shot resident_helping

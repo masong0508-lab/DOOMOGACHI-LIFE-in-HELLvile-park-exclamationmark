@@ -1,0 +1,68 @@
+# Free play: a Hellvile Park Classic island through the New Island screen.
+scene NEW_ISLAND
+wait 10
+press A
+wait 10
+press A
+wait 10
+press DOWN
+wait 2
+press A
+wait 20
+press A
+wait 2
+press A
+wait 2
+press A
+wait 2
+press A
+wait 10
+expect-scene ISLAND
+# Monster Mode (typed "I AM A MONSTER" + confirmation), then laying an
+# innocent citizen to rest (typed + confirmed again), the farewell, the
+# graveyard.
+push OPTIONS 0
+wait 20
+expect-scene OPTIONS
+shot options_game
+press DOWN
+wait 4
+press RIGHT
+wait 30
+expect-scene TEXT_ENTRY
+shot monster_mode_words
+type "I AM A MONSTER\n"
+wait 30
+expect-scene CONFIRM
+shot monster_mode_confirm
+press LEFT
+press A
+wait 30
+shot monster_mode_on
+press B
+wait 10
+push RESIDENT 7
+wait 30
+press UP
+wait 10
+shot rest_option
+press A
+wait 30
+expect-scene TEXT_ENTRY
+type "I AM A MONSTER\n"
+wait 30
+expect-scene CONFIRM
+shot rest_confirm
+press LEFT
+press A
+wait 40
+shot farewell_start
+wait 80
+shot farewell
+press A
+wait 40
+expect-scene GRAVEYARD
+shot graveyard
+press A
+wait 60
+shot graveyard_choice

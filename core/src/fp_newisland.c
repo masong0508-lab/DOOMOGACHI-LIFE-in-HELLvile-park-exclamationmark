@@ -207,8 +207,12 @@ static void ni_draw(void)
     {
         int by = y0 + ch + (big ? 14 : 8), bh = sh - by - 16;
         ui_window(6, by, sw - 12, bh, WIN_CREAM);
-        ui_text(14, by + 5, card_titles[N.sel], st->accent);
-        ui_text_wrap(14, by + 5 + FONT_LINE + 1, sw - 28, card_desc[N.sel], ui_style(WIN_CREAM)->text, 1);
+        if (big) {
+            ui_text(14, by + 5, card_titles[N.sel], st->accent);
+            ui_text_wrap(14, by + 5 + FONT_LINE + 1, sw - 28, card_desc[N.sel], ui_style(WIN_CREAM)->text, 1);
+        } else {
+            ui_text_wrap(12, by + 4, sw - 24, card_desc[N.sel], ui_style(WIN_CREAM)->text, 1);
+        }
     }
     ui_hint(N.sel == C_RANDOM ? "\x88\x87 Pick  \x89 Reroll  SEL Seed  " STR_ICON_A " Go!"
                               : "\x88\x87 Pick  " STR_ICON_A " Let's go!  " STR_ICON_B " Back", WIN_CUTE);

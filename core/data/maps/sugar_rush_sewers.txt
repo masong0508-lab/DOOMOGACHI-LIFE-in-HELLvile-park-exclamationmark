@@ -1,0 +1,274 @@
+# Sugar Rush Sewers - Hell Breach 3 (owner: levels expansion).
+# Under Gumdrop Park the storm drains run with strawberry soda... at first.
+#   Gumdrop Park (open sky, hedges, a planter-stair secret garden) -> the
+#   gatehouse stairs down into the Candy Canal (soda channel, grate bridges,
+#   a low candy beam, a secret pantry behind a striped wall) -> the walls
+#   turn to flesh and the soda to slime -> the Sluice House balcony (red
+#   key) -> the sluice lift down into the Gut Sewer (slime channel) -> the
+#   red door -> the Cistern: a deep shaft open to the pink sky, a sludge
+#   pool with an island, a lift to a hidden ledge, and the mini-boss
+#   GUMDROP GUTTERKING (a giant slime belcher). Its death opens the exit
+#   stairs back up to a cute manhole.
+# Built with the levels team's map kit; edit freely. Compiled by tools/mapc.py.
+map sugar_rush_sewers
+title "Sugar Rush Sewers"
+kind dungeon
+sky PASTEL_DAY
+music HELL_BREACH
+ambient 11
+
+cell # wall=PASTEL_BRICK ch=6                                  # outer wall / gatehouse
+cell H wall=HEDGE ch=3                                         # park hedges (see over them)
+cell G wall=PASTEL_BRICK ch=12                                 # gatehouse towers
+cell K wall=CANDY_STRIPE                                       # candy pillars
+cell B wall=PASTEL_BRICK
+cell F wall=FLESH_WALL ch=4
+cell O wall=BONE_WALL
+cell T wall=TECH_PANEL
+cell E wall=EXIT_SIGN ch=8
+cell g floor=GRASS ceil=sky fh=0 light=14
+cell p floor=PATH ceil=sky fh=0 light=14
+cell f floor=FLOWERS ceil=sky fh=1 light=14                    # flower beds (planters)
+cell z floor=FLOWERS ceil=sky fh=8 light=15 flags=secret       # the secret garden on the planters
+cell t floor=PASTEL_BRICK ceil=PASTEL_BRICK fh=0 ch=9 light=13 # gatehouse stairs (heights in overlays)
+cell w floor=TILE_FLOOR ceil=CANDY_STRIPE fh=-6 ch=4 light=12
+cell c floor=WATER ceil=CANDY_STRIPE fh=-8 ch=4 light=12 flags=water # strawberry soda
+cell b floor=GRATE ceil=CANDY_STRIPE fh=-6 ch=4 light=13
+cell d floor=TILE_FLOOR ceil=CANDY_STRIPE fh=-6 ch=2 light=12 flags=door # secret door (striped like the wall)
+cell s floor=CARPET ceil=WALLPAPER_HEARTS fh=-6 ch=2 light=15 flags=secret # the secret pantry
+cell W floor=GORE_FLOOR ceil=FLESH_WALL fh=-6 ch=4 light=9
+cell C floor=SLIME ceil=FLESH_WALL fh=-8 ch=4 light=10 flags=water # the soda turns to slime
+cell v floor=GRATE ceil=FLESH_WALL fh=-6 ch=4 light=10
+cell m floor=METAL_FLOOR ceil=RUST_METAL fh=-6 ch=6 light=11
+cell u floor=METAL_FLOOR ceil=RUST_METAL fh=0 ch=8 light=12    # the balcony
+cell L floor=PENTAGRAM_FLOOR ceil=RUST_METAL fh=-6 ch=6 light=14 flags=lift tag=-16 # sluice lift down
+cell o floor=GORE_FLOOR ceil=FLESH_WALL fh=-16 ch=-8 light=8
+cell S floor=SLIME ceil=FLESH_WALL fh=-18 ch=-8 light=10 flags=water
+cell n floor=GRATE ceil=FLESH_WALL fh=-16 ch=-8 light=9
+cell R floor=METAL_FLOOR ceil=DOOR_HELL fh=-16 ch=-8 light=11 flags=door tag=1 # red door
+cell a floor=HELL_ROCK ceil=FLESH_WALL fh=-16 ch=-8 light=8
+cell j floor=HELL_ROCK ceil=FLESH_WALL fh=-16 ch=-8 light=9 flags=trigger tag=21 # ambush trigger
+cell X wall=FLESH_WALL ch=4                                    # cistern shaft walls (deep pit under the sky)
+cell k floor=GORE_FLOOR ceil=sky fh=-16 light=11
+cell ~ floor=SLIME ceil=sky fh=-18 light=13 flags=water        # sludge pool
+cell i floor=PENTAGRAM_FLOOR ceil=sky fh=-15 light=13          # island
+cell M floor=PENTAGRAM_FLOOR ceil=sky fh=-16 light=14 flags=lift tag=-9
+cell q floor=CLOUD_PUFF ceil=sky fh=-9 light=15 flags=secret   # hidden ledge
+cell x floor=METAL_FLOOR ceil=DOOR_HELL fh=-16 ch=-7 light=12 flags=door tag=20 # opens when the Gutterking dies
+cell r floor=PASTEL_BRICK ceil=CANDY_STRIPE fh=-16 ch=-7 light=13 # exit stairs (overlay heights)
+cell e floor=CLOUD_PUFF ceil=CLOUD_PUFF fh=-8 ch=2 light=15 flags=exit
+
+grid
+###################################TTTTTTTTTTTTT
+#HHHHHHHHHHHHHH#################BBBTuuuuuuuuuuuT
+#HgggggggggHzzH#############BBBBBBBTuuuuuuuuuuuT
+#HgfffgppggHfzH#############BssBBBBTuuuuuuuuuuuT
+#HgfffgppggffHH#############BBsBBBBTuuuuuuuuuuuT
+#HgfffgppggggHH######BBBBBBBBBdBBFFFFFWWFFTTTTuT
+#HgggggppgggggH######wwwwwwwwwwwwWWWWWWWWWmmmmmT
+#HgggggppgggggH######wwwwwwwwwwwwWWWWWWWWWmmmmmT
+#HgpppppppppppH######wwwKwwwwKwwwWOWWWWOWWmmmmmT
+#HgpppppppppppGBBBBBBcccccbbcccccCCCvvCCCCmmmmmT
+#HgggggppgggggtttttttcccccbbcccccCCCvvCCCCmmmmmT
+#HgggggppgggggtttttttcccccbbcccccCCCvvCCCCmmmmmT
+#HgffggppgfffgGBBBBBBcccccbbcccccCCCvvCCCCmmmmmT
+#HgffggppgfffgH######wwwKwwwwKwwwWOWWWWOWWmmmmmT
+#HgffggppgfffgH######wwwwwwwwwwwwWWWWWWWWWmmmmmT
+#HgggggppgggggH######wwwwwwwwwwwwWWWWWWWWWmmmmmT
+#HHHHHHHHHHHHHH######wwwwwwwwwwwwWWWWWWWWWmmLLmT
+#XXXXXXXXXXXXXXXXXXX#BBBBBBBBBBBBFFFFFFFFFTTLLTT
+#XXXXXXXXXXXXXXXXXXX########FFFFFFFFFFFFFFFFooFT
+#XqqXkkkkkkkkkkkkkkX########FooooooooooooooooooT
+#XqMXkkkkkkkkkkkkkkXFFFFFFFFFooooooooooooooooooT
+#XkkkkkkkkkkkkkkkkkajaaaaaaaRoooOoooooOooooooooT
+#XkkkkkkkkkkkkkkkkkajaaaaaaaRooooooooooooooooooT
+#XkkXkkkkkkkkkkkXkkXFFFFFFFFFooooooooooooooooooT
+#Xkkkk~~~~~~~~~kkkkX########FSSSSSnnSSSSSnnSSSST
+#Xkkkk~~~~~~~~~kkkkX########FSSSSSnnSSSSSnnSSSST
+#Xkkkk~~~~~~~~~kkkkX########FooooooooooooooooooT
+#Xkkkk~~~iii~~~kkkkX########FooooooooooooooooooT
+#Xkkkk~~~iii~~~kkkkX########FoooOoooooOoooooOooT
+#Xkkkk~~~iii~~~kkkkX########FooooooooooooooooooT
+#Xkkkk~~~~~~~~~kkkkX########FooooooooooooooooooT
+#Xkkkk~~~~~~~~~kkkkX########FFFFFFFFFFFFFFFFFFFT
+#Xkkkk~~~~~~~~~kkkkX###########################T
+#XkkXkkkkkkkkkkkXkkX###########################T
+#XkkkkkkkkkkkkkkkkkX###########################T
+#XkkkkkkkkkkkkkkkkkX###########################T
+#XkkkkkkkkkkkkkkkkkX###########################T
+#XkkkkkkkkkkkkkkkkkX###########################T
+#XXXXxxXXXXXXXXXXXXX###########################T
+#BBBBrrBBBBBB##################################T
+#BBBBrrBBBBBB##################################T
+#BBBBrrBBBBBB##################################T
+#BBEeeeeEBBBB##################################T
+BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
+end
+
+floorh
+.
+.
+.
+............6
+...........24
+......................................00
+..............................................B
+..............................................D
+.
+.
+...............0ABCDE
+...............0ABCDE
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.....NN
+.....LL
+.....JJ
+end
+
+ceilh
+.
+.
+.
+.
+.
+......................................88
+...............................1..............8
+...............................1..............8
+...............................1
+...............................1
+...............987654..........1
+...............987654..........1
+...............................1
+...............................1
+...............................1
+...............................1
+...............................1
+.
+.
+.............................HFFFFFFFFFFFFFFFFF
+.............................HFFFFFFFFFFFFFFFFF
+.............................HHHHHHHHHHHHHHHHHH
+.............................HHHHHHHHHHHHHHHHHH
+.............................HHHHHHHHHHHHHHHHHH
+.............................HHHHHHHHHHHHHHHHHH
+.............................HHHHHHHHHHHHHHHHHH
+.............................HHHHHHHHHHHHHHHHHH
+.............................HHHHHHHHHHHHHHHHHH
+.............................HHHHHHHHHHHHHHHHHH
+.............................HHHHHHHHHHHHHHHHHH
+.............................HHHHHHHHHHHHHHHHHH
+.
+.
+.
+.
+.
+.
+.
+.
+.....EE
+.....CC
+.....AA
+end
+
+# things: x y TYPE [angle=deg] [arg=n] [tflags=...]
+thing 4 9 PLAYER_START angle=0
+thing 2 2 PROP_TREE
+thing 2 14 PROP_TREE
+thing 9 6 PROP_TREE
+thing 12 10 PROP_TREE
+thing 4 4 PROP_FLOWERS
+thing 11 13 PROP_FLOWERS
+thing 3 13 PROP_FLOWERS
+thing 6 10 PROP_BENCH
+thing 9 7 PROP_LAMP
+thing 9 10 PROP_LAMP
+thing 13 9 PROP_SIGN angle=180
+thing 5 7 PROP_FOUNTAIN
+thing 7 13 HEALTH_SMALL
+thing 11 7 AMMO_BULLETS
+thing 5 12 CANDY
+thing 12 2 HEALTH_BIG
+thing 13 2 CANDY
+thing 11 9 IMPLING angle=180
+thing 8 14 IMPLING angle=270 tflags=not_easy
+thing 23 7 IMPLING angle=180
+thing 25 15 IMPLING angle=180
+thing 30 14 HELLHOUND_PUP angle=180 tflags=not_easy
+thing 28 7 PUFF_DEMON angle=180
+thing 35 15 IMPLING angle=180
+thing 38 7 SLIME_BELCHER angle=180
+thing 40 14 HELLHOUND_PUP angle=180
+thing 33 10 PUFF_DEMON angle=180 tflags=hard
+thing 22 15 AMMO_SHELLS
+thing 27 7 HEALTH_SMALL
+thing 32 15 CANDY
+thing 36 7 HEALTH_SMALL
+thing 40 16 AMMO_BULLETS
+thing 25 6 PROP_LAMP
+thing 30 3 SOUL_ORB
+thing 29 3 CANDY
+thing 41 7 PROP_BARREL
+thing 33 16 PROP_BARREL
+thing 44 9 IMPLING angle=270
+thing 43 13 CYBER_PIGGY angle=180 tflags=not_easy
+thing 37 2 KEY_RED
+thing 40 2 GARGOYLE angle=90
+thing 44 2 AMMO_SHELLS
+thing 42 3 ARMOR
+thing 45 12 HEALTH_SMALL
+thing 42 7 PROP_BARREL
+thing 31 20 SLIME_BELCHER angle=90
+thing 40 27 SLIME_BELCHER angle=180
+thing 36 21 IMPLING angle=180
+thing 30 28 IMPLING angle=0
+thing 43 21 BONE_JESTER angle=180
+thing 36 29 PUFF_DEMON angle=270 tflags=not_easy
+thing 45 29 HEALTH_BIG
+thing 33 29 AMMO_SHELLS
+thing 40 20 AMMO_ROCKETS
+thing 30 21 SCRAP
+thing 37 27 CANDY
+thing 44 22 PROP_SKULLS
+thing 10 28 SLIME_BELCHER angle=90 tflags=boss,kill_event arg=20
+thing 5 27 IMPLING angle=0 tflags=kill_event arg=20
+thing 16 30 IMPLING angle=180 tflags=kill_event arg=20
+thing 4 30 HELLHOUND_PUP tflags=dormant arg=21
+thing 16 26 IMPLING tflags=dormant arg=21
+thing 10 35 PUFF_DEMON tflags=dormant,not_easy arg=21
+thing 2 19 ARMOR
+thing 3 19 AMMO_ROCKETS
+thing 17 20 HEALTH_SMALL
+thing 17 36 HEALTH_BIG
+thing 3 36 AMMO_SHELLS
+thing 13 20 AMMO_CELLS
+thing 10 33 CANDY
+thing 2 22 PROP_BARREL
+thing 18 34 PROP_SKULLS
+thing 5 36 PROP_TORCH
+thing 6 36 PROP_TORCH
+thing 6 41 PROP_SIGN angle=270

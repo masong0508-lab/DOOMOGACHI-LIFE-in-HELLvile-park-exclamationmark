@@ -25,6 +25,14 @@ enum {
     /* story / key items */
     ITEM_HOUSE_KEY, ITEM_DOOMOGACHI_EGG, ITEM_LOST_BUNNY, ITEM_VAPE_PEN,
     ITEM_CELLAR_KEY, ITEM_GATE_SIGIL,
+    /* (fishcook, additive) Brimstone Bites ingredients + dishes; rows in
+     * core/src/items_ext.c. The first four line up with doomo_food_names
+     * 44..47 (item - ITEM_CUPCAKE), so likes/hates work for them. */
+    ITEM_BLOOD_ORANGE, ITEM_PICKLES, ITEM_SPROUTS, ITEM_BONE_BROTH,
+    ITEM_CLOUD_FLOUR, ITEM_PIXIE_SUGAR, ITEM_SPECKLED_EGG, ITEM_CHARRED,
+    ITEM_FISH_RAMEN, ITEM_TEMPURA_ROLL, ITEM_TAKOYAKI, ITEM_PANCAKES,
+    ITEM_LAVA_CAKE, ITEM_CURRY, ITEM_PICKLE_PIZZA, ITEM_GRAVE_CAKE,
+    ITEM_EYEBALL_JELLY, ITEM_SOCK_STEW,
     ITEM_COUNT
 };
 DOOMO_STATIC_ASSERT(ITEM_COUNT <= 64, items_fit_inventory);
