@@ -87,6 +87,13 @@ rom_start:
     ldr     r0, =__bss_start
     ldr     r1, =__bss_end
     bl      clear_words
+    @ paint the free IWRAM below the main stack (high-water mark: main.c)
+    ldr     r0, =__iwram_bss_end
+    sub     r1, sp, #64
+    ldr     r2, =0x5AC35AC3
+4:  cmp     r0, r1
+    strlo   r2, [r0], #4
+    blo     4b
 
     @ master IRQ handler
     ldr     r0, =0x03007FFC

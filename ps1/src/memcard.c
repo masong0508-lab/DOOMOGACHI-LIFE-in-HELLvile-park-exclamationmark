@@ -353,10 +353,14 @@ static int save_write(int slot, const void *data, uint32_t size)
     return 0;
 }
 
+/* Reads the save in `path`. A buffer smaller than the save gets just its
+ * first `cap` bytes (*out_size = cap, no CRC check): the core reads the
+ * 48-byte save header this way for its menus (save_peek), which then
+ * costs one block instead of the whole file. */
 static int read_file(const char *path, void *data, uint32_t cap, uint32_t *out_size)
 {
     int fd = open(path, O_RDONLY_), k;
-    uint32_t v[4], size = 0, o = 0;
+    uint32_t v[4], size = 0, want = 0, o = 0;
     int ok = 0;
     if (fd < 0)
         return 0;
@@ -371,23 +375,26 @@ static int read_file(const char *path, void *data, uint32_t cap, uint32_t *out_s
             if (s_hdr[0] != 'S' || s_hdr[1] != 'C' || v[0] != INFO_MAGIC)
                 goto done;
             size = v[1];
-            if (size > cap || size > DOOMO_SAVE_SLOT1_MAX)
+            if (size > DOOMO_SAVE_SLOT1_MAX)
                 goto done;
+            want = size < cap ? size : cap;
+            if (!want)
+                break;
         }
         /* payload bytes contained in this block */
         from = o0 < HDR_BYTES ? HDR_BYTES - o0 : 0;
         n = BLOCK - from;
-        if (n > size - o) n = size - o;
+        if (n > want - o) n = want - o;
         memcpy((uint8_t *)data + o, s_blk + from, n);
         o += n;
-        if (o >= size)
+        if (o >= want)
             break;
     }
-    if (crc32((const uint8_t *)data, size) != v[2]) {
+    if (want == size && crc32((const uint8_t *)data, size) != v[2]) {
         dbg("memcard: CRC mismatch in %s\n", path);
         goto done;
     }
-    *out_size = size;
+    *out_size = want;
     ok = 1;
 done:
     close(fd);
@@ -435,6 +442,7 @@ static int save_erase(int slot)
 int plat_save_write(int slot, const void *data, uint32_t size)
 {
     int r;
+    gfx_busy_banner("Saving... do not remove MEMORY CARD");
     bios_io_begin();
     r = save_write(slot, data, size);
     if (!r) {
@@ -442,23 +450,28 @@ int plat_save_write(int slot, const void *data, uint32_t size)
         r = save_write(slot, data, size);
     }
     bios_io_end();
+    gfx_busy_end();
     return r;
 }
 
 int plat_save_read(int slot, void *data, uint32_t cap, uint32_t *size)
 {
     int r;
+    gfx_busy_banner(cap > 2048 ? "Loading MEMORY CARD..." : "Checking MEMORY CARD...");
     bios_io_begin();
     r = save_read(slot, data, cap, size);    /* no re-scan: a missing save is normal */
     bios_io_end();
+    gfx_busy_end();
     return r;
 }
 
 int plat_save_erase(int slot)
 {
     int r;
+    gfx_busy_banner("Erasing... do not remove MEMORY CARD");
     bios_io_begin();
     r = save_erase(slot);
     bios_io_end();
+    gfx_busy_end();
     return r;
 }

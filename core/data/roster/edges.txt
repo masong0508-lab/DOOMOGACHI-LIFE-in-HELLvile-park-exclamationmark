@@ -10,1535 +10,1562 @@
 # NEMESIS -100..-70). 'crush: X' marks who is secretly crushing.
 # Names can also be written #id. Keep the total under DOOMO_MAX_EDGES - 400.
 
-# ---- households (FAMILY) (192) -----------------------------------------
-Nana Puddin | Marigold    | FAMILY       |   56
-Gouache     | Paintpaw    | FAMILY       |   87
-Rivet       | Anvil       | FAMILY       |   46
-Rivet       | Sprocket    | FAMILY       |   86
-Rivet       | Bolt        | FAMILY       |   48
-Rivet       | Nana Clank  | FAMILY       |   83
-Gleam       | Feathers    | FAMILY       |   79
-Trekkie     | Switchback  | FAMILY       |   65
-Snugglet    | Wormsby     | FAMILY       |   69
-Snugglet    | Slurpington | FAMILY       |   95
-Tock        | Derby Dot   | FAMILY       |   57
-Capt. Whisk | Gilly       | FAMILY       |   90
-Petunia     | Bluebell    | FAMILY       |   58
-Mocha Latte | Frappella   | FAMILY       |   48
-Pip         | Bubblina    | FAMILY       |   81
-Homework    | Grindpaw    | FAMILY       |   53
-Squirrely   | Captain Paw | FAMILY       |   51
-Prestochi   | Fezworth    | FAMILY       |   88
-Dr. Quark   | Cogwheel    | FAMILY       |   86
-Scrunchie   | Juniper Jay | FAMILY       |   65
-Hazel Nut   | Peanutella  | FAMILY       |   70
-Walnut      | Peanutella  | FAMILY       |   54
-Nana Jam    | Marionetta  | FAMILY       |   76
-Marionetta  | Sockrates   | FAMILY       |   94
-Houdina     | Hocus       | FAMILY       |   79
-Topiary     | Mulch       | FAMILY       |   66
-Kawaii Kai  | Starla      | FAMILY       |   75
-Puddlejump  | Sprinkla    | FAMILY       |   86
-Puddlejump  | Drizzlewool | FAMILY       |   76
-Wafer       | Starbright  | FAMILY       |   62
-Taffeta     | Ringlet     | FAMILY       |   69
-Tidepool    | Campfire    | FAMILY       |   88
-Campfire    | Chuckles    | FAMILY       |   66
-Hemsley     | Millie Moo  | FAMILY       |   72
-Grampy Bean | Rafters     | FAMILY       |   45
-Twinkly     | Clickety    | FAMILY       |   85
-Sockmatch   | Umbrellina  | FAMILY       |   86
-Mimsy       | Flaskia     | FAMILY       |   50
-Mimsy       | Umbrellina  | FAMILY       |   71
-Breaking    | Grizzle Gil | FAMILY       |   62
-Grizzle Gil | Auntie Ammo | FAMILY       |   76
-Sulky Sol   | Badgeworth  | FAMILY       |   88
-Badgeworth  | Keysie      | FAMILY       |   93
-Hashtag     | Likey       | FAMILY       |   87
-Tweedle     | Mme. Velvet | FAMILY       |   88
-Plank       | Shingle     | FAMILY       |   69
-Plank       | Hammerbelle | FAMILY       |   86
-Snoozy      | DJ Purrple  | FAMILY       |   71
-Kaboodle    | Kit Tumble  | FAMILY       |   53
-Ramenda     | Knotty      | FAMILY       |   88
-Knotty      | Saucy       | FAMILY       |   68
-Clayton     | Waxie       | FAMILY       |   78
-Scamper     | Barnacle    | FAMILY       |   63
-Merlinnie   | Steam Stan  | FAMILY       |   82
-Pippa Pop   | Namaste Nya | FAMILY       |   74
-Dandy Lion  | Maestro Mew | FAMILY       |   93
-Dandy Lion  | Mme. Velvet | FAMILY       |   56
-Hammerbelle | Old Valour  | FAMILY       |   84
-Old Hazel   | Headline    | FAMILY       |   86
-Dustin      | Zippy-9     | FAMILY       |   87
-Joystick    | Lagspike    | FAMILY       |   79
-Gloomella   | Cryptkin    | FAMILY       |   48
-Cherubino   | Crumbelina  | FAMILY       |   71
-Hopscotch   | Tadpole     | FAMILY       |   47
-Tadpole     | Croaksworth | FAMILY       |   52
-Mr. Thistle | Granny Purl | FAMILY       |   92
-Button Nose | Patchwork   | FAMILY       |   66
-Muffin      | Bunbury Jr  | FAMILY       |   68
-Crumpet     | Bunbury Jr  | FAMILY       |   79
-Glimmer     | Towelette   | FAMILY       |   94
-Neapolitan  | Sarge Snoot | FAMILY       |   86
-Cryptkin    | Elixa       | FAMILY       |   94
-Oma Fluff   | Sencha Sue  | FAMILY       |   79
-Rocky Road  | Gumball     | FAMILY       |   83
-Pie Justice | Smores      | FAMILY       |   77
-Smores      | Bagpipe Bo  | FAMILY       |   52
-Eureka      | Gadget Gus  | FAMILY       |   66
-Farmer Bram | Honeysuckle | FAMILY       |   77
-Farmer Bram | Turnip Twin | FAMILY       |   79
-Honeysuckle | Turnip Twin | FAMILY       |   50
-Ringmaster  | Auntie Ammo | FAMILY       |   74
-Sprouty     | Clover Moss | FAMILY       |   74
-Curio       | Beardolf    | FAMILY       |   89
-Cubby       | Yoyolanda   | FAMILY       |   90
-Cubby       | Skipjack    | FAMILY       |   80
-Gran Tabby  | Midnight    | FAMILY       |   58
-Bitty Boo   | Wobbles     | FAMILY       |   71
-Brushella   | Trail Mix   | FAMILY       |   94
-Taro Tim    | Trail Mix   | FAMILY       |   89
-Fluffy Fern | Biscuit Bo  | FAMILY       |   66
-Mabel Quilt | Gran Toffee | FAMILY       |   64
-Gramps Moss | Mappie      | FAMILY       |   61
-Gran Toffee | Zoomzoom    | FAMILY       |   69
-Pa Puff     | Puff Jr     | FAMILY       |   51
-Pa Puff     | Puffling    | FAMILY       |   56
-Ma Puff     | Puff Jr     | FAMILY       |   46
-Ma Puff     | Puffling    | FAMILY       |   69
-Puff Jr     | Puffling    | FAMILY       |   52
-Grindorgan  | Sr. Sorrow  | FAMILY       |   78
-Bindle      | Ploddy      | FAMILY       |   94
-Granny Grit | Conehat     | FAMILY       |   90
-Murkle      | Grumplet    | FAMILY       |   55
-Bro. Ashe   | Moonchild   | FAMILY       |   53
-Sentrina    | Spearmint   | FAMILY       |   89
-Pharaohnie  | Unwrapt     | FAMILY       |   93
-Funny Bone  | Old Bones   | FAMILY       |   57
-Nibbler     | Sparky Jr   | FAMILY       |   94
-Ma Gloom    | Wisp        | FAMILY       |   73
-Ma Gloom    | Auntie Ash  | FAMILY       |   61
-Pa Gloom    | Wisp        | FAMILY       |   84
-Pa Gloom    | Auntie Ash  | FAMILY       |   73
-Wisp        | Auntie Ash  | FAMILY       |   77
-Bettsy      | Oddsball    | FAMILY       |   78
-Eulogia     | Coffinella  | FAMILY       |   52
-Capt. Cumul | Ashknight   | FAMILY       |   82
-Gunkface    | Bog Bert    | FAMILY       |   87
-Gearfang    | Weldra      | FAMILY       |   54
-Corsetta    | Lacey Grave | FAMILY       |   77
-Grrrtrude   | Fido Fiend  | FAMILY       |   53
-Grrrtrude   | Fencepost   | FAMILY       |   60
-Fido Fiend  | Yardley     | FAMILY       |   79
-Grimbert    | Moodring    | FAMILY       |   67
-Toothina    | Drillsby    | FAMILY       |   57
-Barnaby     | Polly Gone  | FAMILY       |   68
-Newtlie     | Grizelda    | FAMILY       |   54
-Noogie Noel | Muralfang   | FAMILY       |   71
-Mama Morgue | Morguelet   | FAMILY       |   83
-Papa Morgue | Morguelet   | FAMILY       |   66
-Flutterdusk | Lampwick    | FAMILY       |   88
-Bailey Bail | Ollie Grind | FAMILY       |   90
-Pickaxe Pam | Rickets     | FAMILY       |   60
-Pickaxe Pam | Ember Ed    | FAMILY       |   87
-Wormwood    | Sourpuss    | FAMILY       |   91
-Sutura      | Nurse Leech | FAMILY       |   63
-Cursula     | Grandmummy  | FAMILY       |   63
+# ---- households (FAMILY) (193) -----------------------------------------
+Nana Puddin | Gusty       | FAMILY       |   58
+Umbrellina  | Sockmatch   | FAMILY       |   76
+Rivet       | Anvil       | FAMILY       |   93
+Rivet       | Sprocket    | FAMILY       |   65
+Rivet       | Bolt        | FAMILY       |   95
+Rivet       | Nana Clank  | FAMILY       |   74
+Lagspike    | Joystick    | FAMILY       |   88
+Button Nose | Tuck-In     | FAMILY       |   62
+Button Nose | Hugsley     | FAMILY       |   88
+Keysie      | Finders     | FAMILY       |   72
+Pillowpuff  | Huggins     | FAMILY       |   65
+Oma Fluff   | Rainbow Ewe | FAMILY       |   86
+Judge Hoo   | Gavella     | FAMILY       |   66
+DJ Purrple  | Snoozy      | FAMILY       |   94
+Pip         | Pirouette   | FAMILY       |   69
+Pip         | Pomelina    | FAMILY       |   95
+Twinkly     | Crumbelina  | FAMILY       |   70
+Kaboodle    | Kit Tumble  | FAMILY       |   51
+Prof. Hoot  | Sonata      | FAMILY       |   75
+Paintpaw    | Gouache     | FAMILY       |   82
+Rolla Rita  | Derby Dot   | FAMILY       |   86
+Grampy Bean | Waxie       | FAMILY       |   74
+Grampy Bean | Tock        | FAMILY       |   87
+Waxie       | Clayton     | FAMILY       |   86
+Scrunchie   | Juniper Jay | FAMILY       |   79
+Barkley     | Leashley    | FAMILY       |   89
+Tock        | Chisel      | FAMILY       |   86
+Bolt Buddy  | Stopsign    | FAMILY       |   79
+Hauntessa   | Boolulu     | FAMILY       |   71
+Farmer Bram | Honeysuckle | FAMILY       |   61
+Farmer Bram | Turnip Twin | FAMILY       |   84
+Honeysuckle | Turnip Twin | FAMILY       |   73
+Fezworth    | Prestochi   | FAMILY       |   53
+Bitty Boo   | Wobbles     | FAMILY       |   73
+Snugglet    | Wormsby     | FAMILY       |   88
+Gramps Moss | Torchy      | FAMILY       |   56
+Trekkie     | Switchback  | FAMILY       |   78
+Bixby Maple | Tallyho     | FAMILY       |   88
+Gran Tabby  | Mme. Velvet | FAMILY       |   93
+Cherubino   | Cherie Bomb | FAMILY       |   93
+Headline    | Campfire    | FAMILY       |   68
+Fluffles    | Campfire    | FAMILY       |   77
+Taffeta     | Ringlet     | FAMILY       |   92
+Nurse Fluff | Ringlet     | FAMILY       |   76
+Nurse Fluff | Tender Tuft | FAMILY       |   86
+Cryptkin    | Gloomella   | FAMILY       |   48
+Cubby       | Hammerbelle | FAMILY       |   71
+Cubby       | Kneady Paws | FAMILY       |   90
+Hammerbelle | Plank       | FAMILY       |   87
+Pa Puff     | Puff Jr     | FAMILY       |   86
+Pa Puff     | Puffling    | FAMILY       |   48
+Ma Puff     | Puff Jr     | FAMILY       |   83
+Ma Puff     | Puffling    | FAMILY       |   80
+Puff Jr     | Puffling    | FAMILY       |   69
+Curio       | Beardolf    | FAMILY       |   52
+Oompah      | Auntie Ammo | FAMILY       |   89
+Sulky Sol   | Angstrom    | FAMILY       |   83
+Penny Oink  | Elixa       | FAMILY       |   70
+Mackerel    | Badgeworth  | FAMILY       |   88
+Saucy       | Biscuit Bo  | FAMILY       |   60
+Mochi Mochi | Glitterbun  | FAMILY       |   66
+Old Hazel   | Dr. Fennec  | FAMILY       |   84
+Yoyolanda   | Smores      | FAMILY       |   89
+Buckaroo    | Smores      | FAMILY       |   69
+Brushella   | Trail Mix   | FAMILY       |   63
+Kibble      | Trail Mix   | FAMILY       |   56
+Cumulus     | Glimmer     | FAMILY       |   53
+Plank       | Shingle     | FAMILY       |   46
+Juggles     | Giggles     | FAMILY       |   93
+Tea Leaf    | Crystalla   | FAMILY       |   64
+Scamper     | Lookout Lou | FAMILY       |   69
+Scamper     | Choo Choo   | FAMILY       |   79
+Dusty Spurs | Whinny      | FAMILY       |   79
+Sourdoe     | Sarge Snoot | FAMILY       |   82
+Hazel Nut   | Peanutella  | FAMILY       |   69
+Walnut      | Peanutella  | FAMILY       |   52
+Sprouty     | Clover Moss | FAMILY       |   53
+Frappella   | Pippa Pop   | FAMILY       |   49
+Pippa Pop   | Matcha Mimi | FAMILY       |   70
+Wafer       | Amorette    | FAMILY       |   66
+Kitey       | Captain Paw | FAMILY       |   94
+Dandy Lion  | Mortimew    | FAMILY       |   51
+Dandy Lion  | Salty       | FAMILY       |   62
+Tadpole     | Coral Reef  | FAMILY       |   84
+Tadpole     | Croaksworth | FAMILY       |   78
+Morel       | Bramblekit  | FAMILY       |   55
+Derby Dot   | Merlinnie   | FAMILY       |   47
+Mimsy       | Twopence    | FAMILY       |   76
+Mimsy       | Gingham     | FAMILY       |   74
+Muffin      | Bunbury Jr  | FAMILY       |   77
+Crumpet     | Bunbury Jr  | FAMILY       |   94
+Neapolitan  | Knotty      | FAMILY       |   52
+Leashley    | Knotty      | FAMILY       |   94
+Teddy Ted   | Old Valour  | FAMILY       |   94
+Puddlejump  | Snaxson     | FAMILY       |   67
+Puddlejump  | Bubbletub   | FAMILY       |   60
+Breaking    | Grizzle Gil | FAMILY       |   66
+Scone       | Gran Toffee | FAMILY       |   45
+Granny Purl | Acorn Annie | FAMILY       |   61
+Nana Jam    | Con Queen   | FAMILY       |   57
+Oddsball    | Bettsy      | FAMILY       |   87
+Cauldra     | Wartsworth  | FAMILY       |   54
+Tastebud    | Tantrum     | FAMILY       |   65
+Ledgerella  | Pokefork    | FAMILY       |   50
+Ledgerella  | Taxfang     | FAMILY       |   54
+Pokefork    | Marquis     | FAMILY       |   55
+Hexagonia   | Broomella   | FAMILY       |   77
+Mopsworth   | Gunkle      | FAMILY       |   79
+Creakster   | Boolander   | FAMILY       |   57
+Halt        | Watchtower  | FAMILY       |   67
+Mr. Solemn  | Mortimer    | FAMILY       |   78
+Slamdoor    | Smashley    | FAMILY       |   87
+Ma Gloom    | Wisp        | FAMILY       |   72
+Ma Gloom    | Auntie Ash  | FAMILY       |   53
+Pa Gloom    | Wisp        | FAMILY       |   83
+Pa Gloom    | Auntie Ash  | FAMILY       |   66
+Wisp        | Auntie Ash  | FAMILY       |   70
+Stencilla   | Spraycan    | FAMILY       |   92
 Signhere    | Finesse     | FAMILY       |   57
-Wrenchley   | Drudge      | FAMILY       |   91
-Stencilla   | Spraycan    | FAMILY       |   63
-Gravelrash  | Throttle    | FAMILY       |   50
-Overdue     | Repossessa  | FAMILY       |   72
-Croakley    | Warty       | FAMILY       |   70
-Mandible    | Ossia       | FAMILY       |   52
-Chomper     | Wanda Wedge | FAMILY       |   54
-Skidmark    | Wanda Wedge | FAMILY       |   67
-Greasy Gail | Battercup   | FAMILY       |   80
-Queuella    | Snailpace   | FAMILY       |   58
-Scowlie     | Sulkie      | FAMILY       |   53
-Fluffbite   | Carrotslash | FAMILY       |   92
-Cleaverly   | Sausagina   | FAMILY       |   85
-Highscore   | Spitwad     | FAMILY       |   65
-Spitwad     | Ashpan      | FAMILY       |   50
-Tombstoner  | Mother Rot  | FAMILY       |   75
-Ember Ed    | Marrowmere  | FAMILY       |   93
-Bandito     | Rummage     | FAMILY       |   79
-Bandito     | Masky       | FAMILY       |   67
-Bandito     | Scraps      | FAMILY       |   60
-Rummage     | Masky       | FAMILY       |   49
-Rummage     | Scraps      | FAMILY       |   70
-Masky       | Scraps      | FAMILY       |   70
-Ventra      | Beakerella  | FAMILY       |   85
-Grimgramps  | Binny       | FAMILY       |   71
-Capt. Hooky | Bonebeard   | FAMILY       |   48
-Chef Scorch | Lavalina    | FAMILY       |   62
-Flexo       | Burly Bea   | FAMILY       |   51
-Safetypin   | Screamo     | FAMILY       |   90
-Snitchet    | Scaldie     | FAMILY       |   77
-Shackles    | Grindle     | FAMILY       |   83
-Brimbrew    | Tantrum     | FAMILY       |   46
-Bargainia   | Tantrum     | FAMILY       |   70
-Cerbie      | Cindy Chew  | FAMILY       |   84
-Proteina    | Cindy Chew  | FAMILY       |   78
-Bonesworth  | Little Ulna | FAMILY       |   71
-Bonesworth  | Gristlegran | FAMILY       |   87
-Little Ulna | Gristlegran | FAMILY       |   90
-Anvil       | Bolt        | FAMILY       |   80
-Anvil       | Nana Clank  | FAMILY       |   69
-Sprocket    | Bolt        | FAMILY       |   93
-Sprocket    | Nana Clank  | FAMILY       |   65
-Bolt        | Nana Clank  | FAMILY       |   95
-Stitchella  | Lunchbox    | FAMILY       |   55
-Lunchbox    | Molarbane   | FAMILY       |   91
-Impy        | Gremlina    | FAMILY       |   72
-Batty Betty | Scalpelia   | FAMILY       |   93
-Scalpelia   | Bloodbank   | FAMILY       |   54
-Moodring    | Firecracker | FAMILY       |   93
-Firecracker | Bassment    | FAMILY       |   75
-Nana Necro  | Espressoul  | FAMILY       |   94
-Puplet      | Yardley     | FAMILY       |   70
-Binbin      | Knucklehead | FAMILY       |   72
-Salvagia    | Knucklehead | FAMILY       |   54
-Candlewick  | Pokefork    | FAMILY       |   69
-Pokefork    | Ticketina   | FAMILY       |   75
+Wedgina     | Ticklefang  | FAMILY       |   91
+Moodring    | Grimbert    | FAMILY       |   62
+Puffina     | Hypebat     | FAMILY       |   63
+Mama Morgue | Morguelet   | FAMILY       |   56
+Papa Morgue | Morguelet   | FAMILY       |   46
+Shriekra    | Bassment    | FAMILY       |   94
+Spearmint   | Sentrina    | FAMILY       |   54
+Anvil       | Bolt        | FAMILY       |   87
+Anvil       | Nana Clank  | FAMILY       |   65
+Sprocket    | Bolt        | FAMILY       |   90
+Sprocket    | Nana Clank  | FAMILY       |   58
+Bolt        | Nana Clank  | FAMILY       |   48
+Rattleby    | Grimgramps  | FAMILY       |   93
+Battercup   | Greasy Gail | FAMILY       |   88
+DJ Echo     | Batrina     | FAMILY       |   70
+Repossessa  | Overdue     | FAMILY       |   80
+Rickets     | Headbang    | FAMILY       |   85
+Brushfire   | Ashpan      | FAMILY       |   58
+Burly Bea   | Flexo       | FAMILY       |   85
+Femura      | Ossia       | FAMILY       |   86
+Mme. Fraud  | Curselift   | FAMILY       |   90
+Snailpace   | Queuella    | FAMILY       |   90
+Boltsy      | Scrapheap   | FAMILY       |   59
+Pharaohnie  | Grandmummy  | FAMILY       |   50
+Fiscalo     | Spitwad     | FAMILY       |   80
+Highscore   | Spitwad     | FAMILY       |   54
+Gearfang    | Cindy Chew  | FAMILY       |   46
+Proteina    | Cindy Chew  | FAMILY       |   70
+Muralfang   | Tagalong    | FAMILY       |   53
+Smogette    | Wanda Wedge | FAMILY       |   75
+Plotsworth  | Wanda Wedge | FAMILY       |   94
+Haloh No    | Fallon      | FAMILY       |   68
+Ploddy      | Knucklehead | FAMILY       |   91
+Knucklehead | Tagalong    | FAMILY       |   90
+Wheezle     | Puffcake    | FAMILY       |   45
+Arachna     | Dreadie     | FAMILY       |   52
+Bonesworth  | Little Ulna | FAMILY       |   50
+Bonesworth  | Gristlegran | FAMILY       |   68
+Little Ulna | Gristlegran | FAMILY       |   79
+Clawdia     | Pixelfang   | FAMILY       |   48
+Squidley    | Nyarlo      | FAMILY       |   51
+Candlewick  | Mother Nox  | FAMILY       |   83
+Hookah Hex  | Snitchet    | FAMILY       |   69
+Snitchet    | Dirgelet    | FAMILY       |   75
+Barnaby     | Polly Gone  | FAMILY       |   78
+Mother Rot  | Needlepoint | FAMILY       |   71
+Prongs      | Firecracker | FAMILY       |   72
+Firecracker | Feedbacka   | FAMILY       |   54
+Ticklebone  | Lunchbox    | FAMILY       |   67
+Thornton    | Pepperella  | FAMILY       |   63
+Sandwichula | Granny Grit | FAMILY       |   57
+Magmassage  | Steamer     | FAMILY       |   78
+Marrowmere  | Blastbeat   | FAMILY       |   79
+Lampwick    | Flutterdusk | FAMILY       |   72
+Patella Pat | Old Bones   | FAMILY       |   60
+Binbin      | Noogie Noel | FAMILY       |   63
+Swipey      | Noogie Noel | FAMILY       |   93
+Duke Smog   | Lord Lurk   | FAMILY       |   91
+Sr. Sorrow  | Grindorgan  | FAMILY       |   85
+Nightshift  | Hootsomnia  | FAMILY       |   91
+Midnyx      | Nana Necro  | FAMILY       |   52
+Bandito     | Rummage     | FAMILY       |   71
+Bandito     | Masky       | FAMILY       |   87
+Bandito     | Scraps      | FAMILY       |   90
+Rummage     | Masky       | FAMILY       |   71
+Rummage     | Scraps      | FAMILY       |   77
+Masky       | Scraps      | FAMILY       |   79
+Wingding    | Batty Betty | FAMILY       |   71
+Nibbler     | Sparky Jr   | FAMILY       |   54
+Sweepy      | Shovelle    | FAMILY       |   50
+Grrrtrude   | Yardley     | FAMILY       |   93
+Grrrtrude   | Fencepost   | FAMILY       |   75
+Puplet      | Fido Fiend  | FAMILY       |   77
+Impy        | Gremlina    | FAMILY       |   69
 
-# ---- couples (DATING / MARRIED) (77) ----------------------------------
-Wormsby     | Slurpington | MARRIED      |   83
-Boo Radish  | Teacup Tia  | DATING       |   84
-Capt. Whisk | Squishy     | DATING       |   84
-Tutti       | Tumbleweed  | DATING       |   77
-Gourdon     | Sencha Sue  | MARRIED      |   86
-Gunther     | Tiers       | DATING       |   64
-Hazel Nut   | Walnut      | MARRIED      |   85
-Punderful   | Fox Trotter | MARRIED      |   75
-Summit      | Espresso    | MARRIED      |   72
-Nightnight  | Mitts       | DATING       |   92
-Bellwether  | Ledger Lee  | DATING       |   61
-Drakey      | Peekster    | DATING       |   76
-Sprinkla    | Drizzlewool | MARRIED      |   99
-Tidepool    | Chuckles    | MARRIED      |   86
-Giggles     | Finders     | DATING       |   92
-Flaskia     | Umbrellina  | MARRIED      |   87
-Zephyrine   | Feathers    | MARRIED      |   74
-Sulky Sol   | Keysie      | MARRIED      |   84
-Miss Lulla  | Hocus       | DATING       |   78
-Ramenda     | Saucy       | MARRIED      |   88
-Mackerel    | Velvetine   | MARRIED      |   98
-Maestro Mew | Mme. Velvet | MARRIED      |   74
-Fluffington | Quillby     | MARRIED      |   76
-Sr. Lumen   | Grindpaw    | DATING       |   73
-Joystick    | Coconutty   | DATING       |   56
-Slushie     | Earl Grey   | DATING       |   62
-Gloomella   | Teapot T4   | MARRIED      |   93
-Pillsby     | Torchy      | MARRIED      |   70
-Tipsy Toes  | Rocky Road  | DATING       |   56
-Hopscotch   | Croaksworth | MARRIED      |   95
-Muffin      | Crumpet     | MARRIED      |   80
-Cryptkin    | Hooty Mcgee | MARRIED      |   99
-Wobblina    | Waxie       | DATING       |   63
-Pie Justice | Bagpipe Bo  | MARRIED      |   94
-Farmer Bram | Sooty Bun   | MARRIED      |   74
-Lancelittle | Dr. Whisker | DATING       |   75
-Harmonica   | Bixby Maple | DATING       |   84
-Zoey Zoo    | Jiggles     | DATING       |   55
-Elderberry  | Gumball     | DATING       |   83
-Brushella   | Taro Tim    | MARRIED      |  100
-Mabel Quilt | Gramps Moss | MARRIED      |   92
-Pa Puff     | Ma Puff     | MARRIED      |  100
-Spotter     | DJ Echo     | DATING       |   95
-Crushbot    | Ember Ed    | DATING       |   86
-Ma Gloom    | Pa Gloom    | MARRIED      |   93
-Mama Ink    | DJ Doomsday | MARRIED      |   86
-Callerline  | Lullabane   | DATING       |   59
-Comma Krak  | Polly Gone  | DATING       |   80
-Fido Fiend  | Fencepost   | MARRIED      |   83
-Deuces      | Oni Onie    | DATING       |   58
-Grimbert    | Puffina     | DATING       |   63
-Zappo       | Honeygrab   | DATING       |   69
-Spikeback   | Salem Snoot | MARRIED      |   75
-Mama Morgue | Papa Morgue | MARRIED      |   86
-Flutterdusk | Hexagonia   | DATING       |   62
-Ringaling   | Rattleby    | DATING       |   75
-Pickaxe Pam | Fryday      | MARRIED      |   71
-Loanie      | Fleecebane  | DATING       |   73
-Stencilla   | Sr. Sorrow  | DATING       |   78
-Viscountess | Pennyworm   | MARRIED      |   92
-Croakley    | Finesse     | DATING       |   61
-Droney      | Jackpotty   | DATING       |   93
-Boltsy      | Squidley    | DATING       |   81
-Highscore   | Ashpan      | MARRIED      |   83
-Flapjack    | Gnawbert    | MARRIED      |   87
-Heckla      | Snailpace   | MARRIED      |   89
-Rummage     | Battercup   | DATING       |   80
-Capt. Hooky | Lady Smog   | DATING       |   95
-Cerbie      | Proteina    | MARRIED      |   95
-Funhouse    | Studsley    | DATING       |   58
-Towzer      | Tailory     | MARRIED      |  100
-Anvil       | Sprocket    | MARRIED      |   76
-Stitchella  | Molarbane   | MARRIED      |   74
-Spraycan    | Ruin-3000   | DATING       |   75
-Moodring    | Bassment    | MARRIED      |   82
-Velvetta    | Malbot      | MARRIED      |  100
-Binbin      | Salvagia    | MARRIED      |   74
+# ---- couples (DATING / MARRIED) (73) ----------------------------------
+Tuck-In     | Hugsley     | MARRIED      |   83
+Inkwell     | Spookums    | DATING       |   57
+Hashtag     | Tinker Toby | MARRIED      |   71
+Pirouette   | Pomelina    | MARRIED      |   85
+Sequin      | Lullabelle  | DATING       |   67
+Sprinklr    | Kawaii Kat  | MARRIED      |   78
+Rolla Rita  | Glitterbun  | MARRIED      |   97
+Lilypad Lou | Sonnet      | MARRIED      |   86
+Omelette    | Skipjack    | DATING       |   65
+Chisel      | Seraphina   | MARRIED      |   78
+Hauntessa   | Windy       | MARRIED      |   85
+Wormsby     | Oompah      | DATING       |   81
+Mabel Quilt | Gramps Moss | MARRIED      |   99
+Pixel Pup   | Snoozy      | DATING       |   59
+Unboxie     | Punderful   | MARRIED      |   82
+Mme. Velvet | Jiggles     | MARRIED      |   85
+Hemsley     | Brushella   | DATING       |   92
+Headline    | Fluffles    | MARRIED      |   86
+Harmonica   | Ferris      | MARRIED      |   77
+Pa Puff     | Ma Puff     | MARRIED      |   88
+Udon Ollie  | Chanterelle | DATING       |   60
+Sunset Sam  | Chuckles    | DATING       |   68
+Reverb      | Gerty Grape | DATING       |   86
+Saucy       | Jumbo       | MARRIED      |  100
+Windup Wren | Breaking    | DATING       |   61
+Yoyolanda   | Buckaroo    | MARRIED      |   74
+Larkspur    | Petunia     | DATING       |   56
+Boolulu     | Wispy Pages | DATING       |   95
+Thatch      | Dusty Spurs | DATING       |   89
+Hazel Nut   | Walnut      | MARRIED      |   94
+Wickley     | Towelette   | DATING       |   70
+Sooty Bun   | Giggles     | DATING       |   89
+Frappella   | Matcha Mimi | MARRIED      |   91
+Captain Paw | Tutti       | DATING       |   78
+Scanna      | Cushion     | DATING       |   95
+Mortimew    | Salty       | MARRIED      |  100
+Coral Reef  | Croaksworth | MARRIED      |   92
+Respawn     | Fleecy      | DATING       |   81
+Twopence    | Gingham     | MARRIED      |  100
+Muffin      | Crumpet     | MARRIED      |   93
+Snaxson     | Bubbletub   | MARRIED      |   86
+Femurfly    | Lucinda     | DATING       |   80
+Cherubim    | Muralfang   | DATING       |   93
+Mopsworth   | Rickets     | DATING       |   81
+Whistlewick | Nurse Leech | MARRIED      |   73
+Ma Gloom    | Pa Gloom    | MARRIED      |   83
+Mama Morgue | Papa Morgue | MARRIED      |   89
+Crispwing   | Kickflop    | DATING       |   63
+Shriekra    | Gatebone    | DATING       |   57
+Newtlie     | Buzzlebub   | DATING       |   94
+Anvil       | Sprocket    | MARRIED      |   95
+Grimgramps  | Brushfire   | DATING       |   59
+Setbone     | Slagbear    | DATING       |   77
+Swindlefox  | Ruin-3000   | DATING       |   78
+Gravelrash  | Grindle     | MARRIED      |   96
+Buttonmash  | Grindorgan  | DATING       |   76
+Hypebat     | Grumplet    | DATING       |   61
+Ribsley     | Anarkitty   | MARRIED      |   70
+Ruffjustice | Bandito     | DATING       |   86
+Spraycan    | Sandwichula | DATING       |   94
+Moonchild   | Damp Dorian | DATING       |   77
+Gearfang    | Proteina    | MARRIED      |   74
+Smogette    | Plotsworth  | MARRIED      |   82
+Coughlotte  | Big Snarl   | MARRIED      |   72
+Deuces      | Molarbane   | DATING       |   74
+Beakerella  | Flutterby   | DATING       |   86
+Talonsworth | Loanie      | DATING       |   80
+Crushbot    | Crispin     | MARRIED      |   82
+Foxglove    | Soulsworth  | DATING       |   69
+Drudge      | Nightshift  | MARRIED      |   90
+Wrappy      | Swoopsy     | MARRIED      |   89
+Yardley     | Fencepost   | MARRIED      |   75
+Weary Wil   | Cerbie      | MARRIED      |   77
 
-# ---- exes (32) --------------------------------------------------------
-Splash      | Dr. Whisker | EX           |   -2
-Snugglet    | Lilypad Lou | EX           |    1
-Boo Radish  | Udon Ollie  | EX           |  -10
-Doodlebug   | Sourdoe     | EX           |    8
-Glowbug     | Headline    | EX           |  -10
-Crayon Fern | Spookums    | EX           |    2
-Starla      | Zephyrine   | EX           |    7
-Gizmo Gary  | Midnyte     | EX           |   10
-Barnacle    | Beacon      | EX           |   -2
-Steamy      | Fezworth    | EX           |    5
-Tiers       | Tea Leaf    | EX           |  -15
-Cubby       | Tumbleweed  | EX           |  -22
-Yoyolanda   | Skipjack    | EX           |   11
-Gatebone    | Fizzbitter  | EX           |    1
-Comma Krak  | Skidmark    | EX           |  -15
-Grrrtrude   | Curselift   | EX           |    1
-Thornton    | Bonesworth  | EX           |  -32
-Thornton    | Espressoul  | EX           |  -26
-Poppit      | Ashknight   | EX           |  -15
-Signhere    | Brimhelm    | EX           |    4
-Swatsy      | Bandito     | EX           |  -15
-Mortimer    | Espressoul  | EX           |  -34
-Chomper     | Skidmark    | EX           |  -19
-Drillsby    | Evicta      | EX           |   13
-Foxglove    | Goaliath    | EX           |  -14
-Slickpaw    | Anvil       | EX           |  -20
-Snatchworth | Wagerine    | EX           |  -12
-Wartsworth  | Shutterly   | EX           |   15
-Clawdia     | Bonebeard   | EX           |  -21
-Chef Scorch | Biscuitfang | EX           |  -20
-Brimbrew    | Bargainia   | EX           |  -20
-Candlewick  | Ticketina   | EX           |  -10
+# ---- exes (39) --------------------------------------------------------
+Curlicue    | Taco Yaki   | EX           |    7
+Confetti    | Gunther     | EX           |    7
+Tippy Toes  | Wafer       | EX           |  -19
+Kit Tumble  | Puff Jr     | EX           |   -8
+Crosswalk   | Honeysuckle | EX           |   13
+Smoochy     | Neapolitan  | EX           |    6
+Taffeta     | Nurse Fluff | EX           |   -6
+Cubby       | Topiary     | EX           |   12
+Hammerbelle | Kneady Paws | EX           |   -9
+Puff Jr     | Huggins     | EX           |   -2
+Ringmaster  | Flashbulb   | EX           |  -33
+Dreamweave  | Dr. Molar   | EX           |   10
+Dr. Fennec  | Shakeshot   | EX           |    1
+Brushella   | Kibble      | EX           |  -16
+Lookout Lou | Choo Choo   | EX           |   -4
+Fluffington | Gingham     | EX           |   -5
+Neapolitan  | Leashley    | EX           |  -33
+Ledgerella  | Marquis     | EX           |  -19
+Marquis     | Bog Bert    | EX           |  -20
+Safetypin   | Flutterby   | EX           |   -7
+Moodring    | Cabaretta   | EX           |  -30
+Malbot      | Chomper     | EX           |    9
+Parcelbat   | Wingnut     | EX           |  -29
+Formalda    | Capt. Hooky | EX           |    5
+Drippy      | Firecracker | EX           |  -12
+Fiscalo     | Highscore   | EX           |  -11
+Highscore   | Screamo     | EX           |  -17
+Requiem     | Root Access | EX           |  -33
+Ploddy      | Tagalong    | EX           |    4
+Hushpaw     | Grizelda    | EX           |   11
+Hookah Hex  | Dirgelet    | EX           |  -10
+Prongs      | Feedbacka   | EX           |    1
+Cursula     | Fumebottom  | EX           |  -32
+Salem Snoot | Funny Bone  | EX           |  -25
+Binbin      | Swipey      | EX           |  -14
+Tibia Tess  | Puffcake    | EX           |    9
+Jawbreaker  | Mossmouth   | EX           |  -29
+Masky       | Gainz       | EX           |  -29
+Damp Dorian | Carrotslash | EX           |   13
 
 # ---- friends and best friends (184) ------------------------------------
-Mayor Giggs | Featherly   | BEST_FRIEND  |   91
-Nana Puddin | Crispin     | BEST_FRIEND  |   72
-Gouache     | Teddy Ted   | FRIEND       |   54
-Moo Lissa   | Con Queen   | BEST_FRIEND  |   77
-Dozy Doe    | Tock        | FRIEND       |   31
-Tallyho     | Twinkly     | FRIEND       |   63
-Tallyho     | Button Nose | FRIEND       |   37
-Tuck-In     | Keysie      | FRIEND       |   62
-Marigold    | Petunia     | BEST_FRIEND  |   84
-Grindella   | Zippy-9     | BEST_FRIEND  |   78
-Rivet       | Jellybean   | FRIEND       |   46
+Mayor Giggs | Featherly   | BEST_FRIEND  |   97
+Mayor Giggs | Cello Bello | FRIEND       |   57
+Mayor Giggs | Hocus       | FRIEND       |   56
+Nana Puddin | Pirouette   | FRIEND       |   33
+Nana Puddin | Crispin     | BEST_FRIEND  |   87
+Steamy      | Stitchwick  | BEST_FRIEND  |   73
+Maestro Mew | Sprinklepop | FRIEND       |   41
+Maestro Mew | Sir Cuddle  | FRIEND       |   54
+Bonejangles | Bubbletub   | BEST_FRIEND  |   80
+Umbrellina  | Mochi Mochi | BEST_FRIEND  |   78
+Umbrellina  | Waitabit    | FRIEND       |   38
+Dame Fluff  | Mango Tango | FRIEND       |   61
+Dame Fluff  | Crumpet     | BEST_FRIEND  |   79
+Rivet       | Gusty       | FRIEND       |   52
 Rivet       | Sparkplug   | BEST_FRIEND  |   95
-Coral Reef  | Sr. Mercy   | FRIEND       |   30
-Flashbulb   | Gusty       | FRIEND       |   56
-Omenia      | Zephyrine   | FRIEND       |   57
-Omenia      | Croaksworth | BEST_FRIEND  |   77
-Boo Radish  | Arabesque   | BEST_FRIEND  |   90
-Dr. Hollow  | Sunny Dunes | FRIEND       |   36
-Derby Dot   | Flaskia     | BEST_FRIEND  |   89
-Twopence    | Umbrellina  | FRIEND       |   53
-Ringtoss    | Sockrates   | BEST_FRIEND  |   86
-Nurse Fluff | Cosmo Hoot  | FRIEND       |   57
-Gingham     | Gilly       | BEST_FRIEND  |   76
-Pip         | Scamper     | BEST_FRIEND  |   81
-Pip         | Dozella     | BEST_FRIEND  |   84
-Hugsley     | Wanderlust  | FRIEND       |   36
-Tutti       | Owlbert     | FRIEND       |   56
-Tutti       | Punchy      | FRIEND       |   37
-Gunther     | Lilypad Lou | FRIEND       |   31
-Unboxie     | Pippa Pop   | FRIEND       |   48
-Bramblekit  | Muffin      | BEST_FRIEND  |   95
-Doodlebug   | Towelette   | BEST_FRIEND  |   96
-Shutterbug  | Tiers       | FRIEND       |   33
-Scanna      | Flaskia     | FRIEND       |   36
-Pearlie     | Twisty      | BEST_FRIEND  |   80
-Pearlie     | Gloomella   | FRIEND       |   28
-Punderful   | Hocus       | BEST_FRIEND  |   85
-Matcha Mimi | Teacup Tia  | BEST_FRIEND  |   90
-Con Queen   | Clayton     | FRIEND       |   50
-Sandy Paws  | Drizzlewool | FRIEND       |   41
-Sequin      | Scoops      | FRIEND       |   29
-Bleep       | Lazybones   | FRIEND       |   61
-Drakey      | Joystick    | FRIEND       |   56
-Fondant     | Pillsby     | BEST_FRIEND  |   75
-Ledger Lee  | Plot Twist  | FRIEND       |   63
-Puddlejump  | Fox Trotter | BEST_FRIEND  |   90
-Puddlejump  | Mappie      | BEST_FRIEND  |   80
-Drizzlewool | Headline    | FRIEND       |   62
-Crayon Fern | Joystick    | BEST_FRIEND  |   81
-Crayon Fern | Lumina      | FRIEND       |   48
-Ringlet     | Choo Choo   | FRIEND       |   63
-Sprinklr    | Splashley   | FRIEND       |   62
-Bozzlebee   | Amorette    | FRIEND       |   44
-Squeaker    | Teapot T4   | FRIEND       |   49
-Chuckles    | Waxie       | FRIEND       |   56
-Squeezebox  | Punchy      | FRIEND       |   52
-Larkspur    | Fluffington | BEST_FRIEND  |   90
-Twinkly     | Mochi Mochi | FRIEND       |   36
-Clickety    | Skipper     | FRIEND       |   53
-Switchback  | Grindpaw    | FRIEND       |   50
-Mimsy       | Hallelujah  | FRIEND       |   59
-Mimsy       | Pippa Pop   | BEST_FRIEND  |   95
-Fleecy      | Neapolitan  | BEST_FRIEND  |   96
-Zephyrine   | Anchovy     | FRIEND       |   28
-Hallelujah  | Fossil Fay  | FRIEND       |   49
-Chillwave   | Drama Llama | FRIEND       |   55
-Amorette    | Bagpipe Bo  | BEST_FRIEND  |   77
-Gizmo Gary  | Espresso    | BEST_FRIEND  |   74
-Haloise     | Salty       | FRIEND       |   46
-Archie Beam | Sudsy       | BEST_FRIEND  |   79
-Waitabit    | Bargain Bun | FRIEND       |   57
-Ramenda     | Fossil Fay  | BEST_FRIEND  |   95
-Lily Lou    | Duke Daisy  | FRIEND       |   44
-Abraca      | Lancelittle | FRIEND       |   61
-Prof. Fizz  | Prof. Hoot  | FRIEND       |   64
-Penny Oink  | Bubbletub   | FRIEND       |   63
-Nebula Nell | Sourdoe     | FRIEND       |   52
-Likey       | Tadpole     | BEST_FRIEND  |   82
-Dewey       | Confetti    | FRIEND       |   39
-Dr. Molar   | Wobblina    | FRIEND       |   58
-Dr. Molar   | Skipper     | FRIEND       |   57
-Dame Fluff  | Wobbles     | BEST_FRIEND  |   81
-Joystick    | Bitty Boo   | FRIEND       |   45
-Juggles     | Mecha Mo    | FRIEND       |   50
-Juggles     | Shushana    | FRIEND       |   31
-Thatch      | Ma Puff     | FRIEND       |   50
-Cherubino   | Peekster    | FRIEND       |   29
-Kibble      | Rusty       | FRIEND       |   34
-Cortado     | Patch Plum  | FRIEND       |   44
-Chief Spark | Wobbles     | FRIEND       |   28
-Kneady Paws | Velvetine   | FRIEND       |   47
-Hopscotch   | Oma Fluff   | BEST_FRIEND  |   97
-Button Nose | Wobblina    | FRIEND       |   31
-Pirouette   | Biscotto    | FRIEND       |   44
-Bonejangles | Dimes       | BEST_FRIEND  |   75
-Glimmer     | Morel       | BEST_FRIEND  |   78
-Towelette   | Leashley    | FRIEND       |   50
-Sarge Snoot | Smores      | BEST_FRIEND  |   96
-Sarge Snoot | Sprouty     | FRIEND       |   53
-Choo Choo   | Leashley    | FRIEND       |   47
-Wickley     | Crystalla   | FRIEND       |   41
-Zippy-9     | Seraphina   | BEST_FRIEND  |   74
-Wobblina    | Updraft     | FRIEND       |   43
-Mr. Plie    | Jiggles     | FRIEND       |   30
-Prof. Hoot  | Curio       | FRIEND       |   54
-Zoey Zoo    | Snapshot    | FRIEND       |   61
-Lookout Lou | Sentrina    | BEST_FRIEND  |   90
-Pennysoul   | Ember Ed    | FRIEND       |   60
-Pennysoul   | Coffinella  | FRIEND       |   47
-Conehat     | Graveley    | FRIEND       |   45
-Hexley Purr | Squeakvent  | BEST_FRIEND  |   91
-Hexley Purr | Squidley    | FRIEND       |   35
-Creakster   | Static      | FRIEND       |   47
-Holdmusic   | Noogles     | BEST_FRIEND  |   85
-Torchlight  | Burly Bea   | FRIEND       |   40
-Ribsley     | Prongs      | BEST_FRIEND  |   77
-Vesper      | Swoleguard  | BEST_FRIEND  |   73
-Pharaohnie  | Gloomlet    | FRIEND       |   41
-Smudge      | Rattlecup   | FRIEND       |   53
-Mama Ink    | Curselift   | BEST_FRIEND  |   89
-Bogsworth   | Puffcake    | FRIEND       |   62
-Kitty Hex   | Lavalina    | FRIEND       |   30
-Ratatat     | Grindle     | FRIEND       |   60
-Bubbly Brim | Dr. Gurney  | FRIEND       |   42
-Tokenrat    | Salvagia    | FRIEND       |   39
-Corsetta    | Snatchworth | BEST_FRIEND  |   73
-Fido Fiend  | Screamo     | FRIEND       |   32
-Fido Fiend  | Chanty      | BEST_FRIEND  |   79
-Deuces      | Swipey      | FRIEND       |   55
-Coughlotte  | Clinker     | FRIEND       |   31
-Planchette  | Wedgina     | FRIEND       |   46
-Toothina    | Meterman    | BEST_FRIEND  |   74
-Jawbreaker  | Carrotslash | FRIEND       |   37
-Watchtower  | Knuckles    | BEST_FRIEND  |   82
-Mama Morgue | Molarbane   | FRIEND       |   33
-Poppit      | Snatchworth | FRIEND       |   53
-Brutus      | Honeygrab   | BEST_FRIEND  |   89
-Ringaling   | Puplet      | FRIEND       |   49
-Wheezle     | Lacey Grave | BEST_FRIEND  |   90
-Bailey Bail | Lease Liz   | FRIEND       |   54
-Kickflop    | Rummage     | FRIEND       |   64
-Cheddarlock | Squeakthief | BEST_FRIEND  |   74
-Boxcars     | Weary Wil   | FRIEND       |   32
-Nightshift  | Blazeguard  | FRIEND       |   49
-Nightshift  | Shriekie    | FRIEND       |   44
-Tibia Tess  | Candlewick  | FRIEND       |   56
-Swatsy      | Slagbear    | BEST_FRIEND  |   92
-Swatsy      | Plaguey     | FRIEND       |   37
-Marquis     | Hoodsworth  | BEST_FRIEND  |   94
-Ploddy      | Number Nine | BEST_FRIEND  |   90
-Condenser   | Whiskerton  | FRIEND       |   55
-Parcelbat   | Shinehorn   | FRIEND       |   48
-Smokevelvet | Sonar       | FRIEND       |   47
-Foxglove    | Fizzlebone  | BEST_FRIEND  |   93
-Ticklebone  | Moonchild   | FRIEND       |   53
-Mr. Moldry  | Binbin      | FRIEND       |   30
-Needlepoint | Malbot      | BEST_FRIEND  |   92
-Crispwing   | Batrina     | FRIEND       |   33
-Honeygrab   | Ashcake     | BEST_FRIEND  |   96
-Mother Rot  | Capt. Hooky | FRIEND       |   31
-Dr. Meanie  | Espressoul  | FRIEND       |   52
-Mme. Fraud  | Snitchet    | FRIEND       |   54
-Riffmaw     | Gunkle      | FRIEND       |   63
-Brimhelm    | Knucklehead | FRIEND       |   64
-Maggotina   | Slagbear    | FRIEND       |   44
-Smokehouse  | Mother Nox  | FRIEND       |   52
-Dealbreaker | Exhaustia   | FRIEND       |   55
-Ventra      | Anvil       | FRIEND       |   60
-Sulkie      | Callbacky   | BEST_FRIEND  |   88
-Callbacky   | Inkfang     | BEST_FRIEND  |   88
-Nyarlo      | Spraycan    | FRIEND       |   63
-Gremgrind   | Fumebottom  | FRIEND       |   34
-Flexo       | Gristlegran | FRIEND       |   30
-Swoleguard  | Shinehorn   | FRIEND       |   65
-Snitchet    | DJ Doomsday | FRIEND       |   30
-Brimbrew    | Shriekra    | FRIEND       |   58
-Brimbrew    | Salvagia    | BEST_FRIEND  |   73
-Bonesworth  | Batrina     | FRIEND       |   46
-Cauldra     | Sourpuss    | FRIEND       |   39
-Towzer      | Requiem     | FRIEND       |   45
-Mopsworth   | Brisket     | BEST_FRIEND  |   92
-Rackenstein | Studsley    | FRIEND       |   41
-Carrotslash | Charbroil   | FRIEND       |   36
-Bonebeard   | Pokefork    | FRIEND       |   30
+Lagspike    | Earl Grey   | BEST_FRIEND  |   96
+Story Owl   | Sweetpea    | FRIEND       |   62
+Updraft     | Bramblekit  | FRIEND       |   56
+Tuck-In     | Dr. Molar   | FRIEND       |   50
+Keysie      | Cryptkin    | FRIEND       |   57
+Keysie      | Dozella     | FRIEND       |   56
+Oma Fluff   | Hopscotch   | BEST_FRIEND  |   90
+Rainbow Ewe | Chisel      | BEST_FRIEND  |   75
+DJ Purrple  | Gizmo Gary  | FRIEND       |   57
+Homework    | Doodlebug   | FRIEND       |   64
+Lather      | Pa Puff     | BEST_FRIEND  |   80
+Pip         | Caboose     | BEST_FRIEND  |   80
+Pip         | Scamper     | BEST_FRIEND  |   90
+Nebula Nell | Wickley     | FRIEND       |   47
+Finders     | Jestina     | FRIEND       |   61
+Tumbleweed  | Sunset Sam  | FRIEND       |   48
+Snugglesby  | Moo Lissa   | FRIEND       |   44
+Slushie     | Zen Lily    | BEST_FRIEND  |   74
+Confetti    | Pippa Pop   | BEST_FRIEND  |   90
+Sprinklr    | Larkspur    | FRIEND       |   36
+Sprinklr    | Whackamole  | BEST_FRIEND  |   84
+Prof. Fizz  | Quillby     | FRIEND       |   52
+Hattie Haha | Omelette    | BEST_FRIEND  |   81
+Kaboodle    | Gloop       | FRIEND       |   35
+Lumina      | Marionetta  | FRIEND       |   28
+Sprinklepop | Ferris      | FRIEND       |   48
+Rolla Rita  | Snugglet    | FRIEND       |   61
+Bellwether  | Ribbitson   | BEST_FRIEND  |   88
+Orbit       | Pearlie     | FRIEND       |   60
+Orbit       | Rusty       | BEST_FRIEND  |   94
+Barkley     | Zen Lily    | BEST_FRIEND  |   94
+Drizzlewool | Gourdon     | FRIEND       |   44
+Parfait     | Neapolitan  | FRIEND       |   64
+Tock        | Smores      | BEST_FRIEND  |   93
+Tock        | Nickelby    | FRIEND       |   61
+Chisel      | Sulky Sol   | FRIEND       |   33
+Mascotty    | Whackamole  | FRIEND       |   49
+Boo-Boo Bea | Bouquet     | FRIEND       |   37
+Timpani Tim | Strummy     | BEST_FRIEND  |   82
+Summit      | Kickflip    | FRIEND       |   62
+Quillby     | Gadget Gus  | FRIEND       |   48
+Fezworth    | Ledger Lee  | FRIEND       |   36
+Wobbles     | Marionetta  | FRIEND       |   63
+Wormsby     | Kibble      | FRIEND       |   45
+Wormsby     | Kawaii Kai  | BEST_FRIEND  |   78
+Muralina    | Plank       | FRIEND       |   60
+Pixel Pup   | Tutti       | FRIEND       |   56
+Shadowpaw   | Ringlet     | BEST_FRIEND  |   78
+Gran Tabby  | Taro Tim    | FRIEND       |   46
+Sonata      | Cubby       | BEST_FRIEND  |   72
+Starla      | Batsy       | FRIEND       |   38
+Starla      | Gourdon     | FRIEND       |   62
+Headline    | Anchovy     | FRIEND       |   50
+Lunette     | Walnut      | FRIEND       |   64
+Lunette     | Mr. Thistle | FRIEND       |   49
+Houdina     | Jumbo       | FRIEND       |   55
+Cubby       | Gourdon     | FRIEND       |   30
+Brother Bun | Shakeshot   | FRIEND       |   66
+Aviator Al  | Stopsign    | FRIEND       |   42
+Cortado     | Wickley     | BEST_FRIEND  |   73
+Marigold    | Petunia     | BEST_FRIEND  |   92
+Rafters     | Skipjack    | FRIEND       |   37
+Compass     | Dandy Lion  | FRIEND       |   61
+Hopscotch   | Abraca      | FRIEND       |   64
+Gilly       | Oolong      | FRIEND       |   46
+Barnacle    | Waitabit    | FRIEND       |   30
+Saucy       | Gloop       | FRIEND       |   35
+Biscuit Bo  | Zen Lily    | FRIEND       |   58
+Biscuit Bo  | Backstage   | FRIEND       |   57
+Juniper Jay | Bouquet     | BEST_FRIEND  |   86
+Tender Tuft | Marionetta  | FRIEND       |   47
+Skipjack    | Wheelie     | FRIEND       |   60
+Goober      | Glitchy     | FRIEND       |   50
+Goober      | Shushana    | FRIEND       |   31
+Nightnight  | Dustin      | FRIEND       |   64
+Smores      | Kawaii Kat  | FRIEND       |   45
+Gerty Grape | Sourdoe     | FRIEND       |   55
+Gerty Grape | Oolong      | BEST_FRIEND  |   79
+Sockmatch   | Walnut      | FRIEND       |   44
+Lasso Lou   | Boo Radish  | BEST_FRIEND  |   90
+Brainfreeze | Zen Lily    | FRIEND       |   31
+Tea Leaf    | Con Queen   | BEST_FRIEND  |   85
+Lazybones   | Frappella   | FRIEND       |   44
+Lookout Lou | Sentrina    | BEST_FRIEND  |   80
+Mane Event  | Bargain Bun | BEST_FRIEND  |   94
+Pippa Pop   | Mimsy       | BEST_FRIEND  |   74
+Matcha Mimi | Teacup Tia  | BEST_FRIEND  |   98
+Shakeshot   | Puddlejump  | BEST_FRIEND  |   82
+Coupon Kay  | Mr. Thistle | BEST_FRIEND  |   75
+Backstage   | Breaking    | FRIEND       |   32
+Angelo      | Chef Sizzle | FRIEND       |   38
+Giggles     | Tapioca     | FRIEND       |   34
+Lady Smog   | Boltsy      | BEST_FRIEND  |   80
+Gutterworth | Ticklebone  | FRIEND       |   39
+Wagerine    | Poppit      | FRIEND       |   60
+Scaldie     | Pokey       | FRIEND       |   60
+Velvetta    | Funhouse    | FRIEND       |   44
+Flossie     | Tonic Todd  | FRIEND       |   42
+Sausagina   | Toothina    | BEST_FRIEND  |   92
+Swoleguard  | Sutura      | FRIEND       |   47
+Squeakvent  | Ringring    | BEST_FRIEND  |   79
+Oddsball    | Dr. Meanie  | FRIEND       |   64
+Condenser   | Tokenrat    | BEST_FRIEND  |   92
+Sootkin     | Moonchild   | BEST_FRIEND  |   88
+Survia      | Crispwing   | BEST_FRIEND  |   93
+Survia      | Impy        | FRIEND       |   35
+Cherubim    | Clinker     | BEST_FRIEND  |   73
+Cherubim    | Plaguey     | FRIEND       |   28
+Marquis     | Kickflop    | BEST_FRIEND  |   94
+Seraphail   | Shutterly   | FRIEND       |   64
+Taxfang     | Gristlegran | FRIEND       |   59
+Salvagia    | Bubbly Brim | FRIEND       |   53
+Lucinda     | Charbroil   | FRIEND       |   28
+Stencilla   | Sparky Jr   | FRIEND       |   53
+Charlotte   | Doomscroll  | BEST_FRIEND  |   89
+Signhere    | Rummage     | FRIEND       |   61
+Safetypin   | Dreadie     | BEST_FRIEND  |   94
+Papa Morgue | Queuella    | BEST_FRIEND  |   76
+Vapor Vinny | Candlewick  | FRIEND       |   63
+Newtlie     | Bonesworth  | BEST_FRIEND  |   80
+Anvil       | Smudge      | BEST_FRIEND  |   91
+Bailey Bail | Carrotslash | BEST_FRIEND  |   79
+Gatebone    | Bunbun Bane | FRIEND       |   45
+Drillsby    | Polly Gone  | FRIEND       |   28
+Hoodsworth  | Ramsey      | FRIEND       |   60
+Towzer      | Impy        | FRIEND       |   32
+Burly Bea   | Binbin      | FRIEND       |   66
+Sonar       | Foxglove    | FRIEND       |   58
+Oozo        | Gigglefiend | FRIEND       |   61
+Comma Krak  | Fogwell     | FRIEND       |   55
+Wakewing    | Fizzlebone  | BEST_FRIEND  |   77
+Ashknight   | Dirgelet    | FRIEND       |   30
+Scorchmello | Carrotslash | FRIEND       |   52
+Grandmummy  | Ruffjustice | FRIEND       |   56
+Hoopla      | Spoilio     | FRIEND       |   65
+Maggotina   | Unfollow    | FRIEND       |   42
+Fiscalo     | Gloomlet    | FRIEND       |   59
+Spitwad     | Granny Grit | FRIEND       |   65
+Brimhelm    | Clavicle    | BEST_FRIEND  |   89
+Smokehouse  | Lacey Grave | FRIEND       |   38
+Tagalong    | Scraps      | FRIEND       |   34
+Coughlotte  | Dr. Meanie  | FRIEND       |   54
+Coughlotte  | Shadowstep  | FRIEND       |   54
+Wheezle     | Lady Bile   | FRIEND       |   41
+Wheezle     | Gloomlet    | FRIEND       |   30
+Arachna     | Sarcophagus | FRIEND       |   29
+Finesse     | Smashley    | FRIEND       |   41
+Dealbreaker | Lampwick    | BEST_FRIEND  |   81
+Bonesworth  | Toastie     | BEST_FRIEND  |   76
+Gristlegran | Grrrnest    | FRIEND       |   38
+Gristlegran | Loanie      | BEST_FRIEND  |   72
+Clawdia     | Fogwell     | FRIEND       |   57
+Grindle     | Batrina     | FRIEND       |   36
+Mama Ink    | Grumblogger | BEST_FRIEND  |   76
+Grumplet    | Boxcars     | FRIEND       |   55
+Talonsworth | Dame Scorch | FRIEND       |   42
+Candlewick  | Tombstoner  | FRIEND       |   62
+Heckla      | Knuckles    | FRIEND       |   46
+Barnaby     | Muzzle      | FRIEND       |   54
+Barnaby     | Midnyx      | FRIEND       |   59
+Hazey       | Bloodbank   | BEST_FRIEND  |   74
+Batrina     | Pixelfang   | FRIEND       |   53
+Screamo     | Clausewitz  | FRIEND       |   48
+Magmassage  | Toothina    | FRIEND       |   53
+Spikeworth  | Obsidia     | FRIEND       |   56
+Croakley    | Hootsomnia  | FRIEND       |   46
+Candlenab   | Obsidia     | FRIEND       |   61
+Midnyx      | Batty Betty | BEST_FRIEND  |   87
+Nana Necro  | Zappo       | FRIEND       |   45
 
-# ---- coworkers (same archetype) (630) ----------------------------------
-Mayor Giggs | Tallyho     | FRIEND       |   65
-Tex Mex     | Dusty Spurs | FRIEND       |   47
-Tex Mex     | Whinny      | RIVAL        |  -46
-Gouache     | Doodlebug   | FRIEND       |   66
-Sprinklepop | Taffeta     | FRIEND       |   35
-Moo Lissa   | Haybale     | ACQUAINTANCE |   20
-Dozy Doe    | Namaste Nya | FRIEND       |   64
-Harpsy      | Oompah      | FRIEND       |   61
-Tallyho     | Parfait     | ACQUAINTANCE |   10
-Tuck-In     | Fleecy      | FRIEND       |   29
-Tuck-In     | Teddy Ted   | BEST_FRIEND  |   81
-Hootenanny  | Lantern Lyn | FRIEND       |   59
-Grindella   | Derby Dot   | FRIEND       |   57
-Rivet       | Gunther     | FRIEND       |   46
-Stampton    | Envelopa    | FRIEND       |   44
-Backstage   | Encore      | ACQUAINTANCE |   18
-Coral Reef  | Sandy Paws  | FRIEND       |   54
-Coral Reef  | Sunny Dunes | RIVAL        |  -27
-Flashbulb   | Shakeshot   | BEST_FRIEND  |   86
-Splash      | Hosey       | ACQUAINTANCE |   19
-Gleam       | Starbright  | FRIEND       |   35
-Trekkie     | Summit      | FRIEND       |   40
-Omenia      | Madame Moth | ACQUAINTANCE |   18
-Snugglet    | Peanut      | FRIEND       |   49
-Snugglet    | Wobbles     | BEST_FRIEND  |   91
-Wormsby     | Gilly       | RIVAL        |  -54
-Slurpington | Udon Ollie  | BEST_FRIEND  |   83
-Boo Radish  | Dewey       | RIVAL        |  -35
-Dr. Hollow  | Dr. Bloom   | FRIEND       |   38
-Tock        | Pops Wiggle | FRIEND       |   41
-Derby Dot   | Rolla Rita  | ACQUAINTANCE |    8
-Capt. Whisk | Mackerel    | FRIEND       |   63
-Mane Event  | Fluffy Fern | BEST_FRIEND  |   79
-Mocha Latte | Cardamom    | ACQUAINTANCE |   17
-Rainbow Ewe | Drizzlewool | FRIEND       |   59
-Rainbow Ewe | Cumulus     | BEST_FRIEND  |   81
-Rainbow Ewe | Fluffington | RIVAL        |  -59
-Ringtoss    | Fortunabot  | FRIEND       |   59
-Gingham     | Sandwichy   | RIVAL        |  -34
-Smoochy     | Cupidoo     | FRIEND       |   64
-Pip         | Puddlejump  | ACQUAINTANCE |   19
-Jestina     | Duke Daisy  | FRIEND       |   58
-Homework    | Scrunchie   | FRIEND       |   31
-Verse Vera  | Sonnet      | FRIEND       |   41
-Verse Vera  | Inkblot     | RIVAL        |  -54
-Squirrely   | Dame Fluff  | FRIEND       |   37
-Captain Paw | Grizzle Gil | FRIEND       |   42
-Hugsley     | Twisty      | ACQUAINTANCE |    7
-Lemonade    | Sandwichy   | BEST_FRIEND  |   92
-Gourdon     | Topiary     | FRIEND       |   65
-Prestochi   | Houdina     | ACQUAINTANCE |    9
-Hooray Hana | Pom Pom     | ACQUAINTANCE |    7
-Oompah      | Timpani Tim | FRIEND       |   51
-Oompah      | Fiddlestick | RIVAL        |  -26
-Unboxie     | Hashtag     | FRIEND       |   42
-Bramblekit  | Truffletuft | FRIEND       |   45
-Stitchwick  | Loomie      | FRIEND       |   31
-Stitchwick  | Fluffernut  | RIVAL        |  -60
-Dr. Quark   | Flaskia     | FRIEND       |   61
-Doodlebug   | Paintpaw    | FRIEND       |   46
-Bluebell    | Sweetpea    | BEST_FRIEND  |   73
-Shutterbug  | Shakeshot   | FRIEND       |   35
-Scanna      | Gerty Grape | FRIEND       |   55
-Scanna      | Bargain Bun | RIVAL        |  -27
-Rimshot     | Mopey Mae   | FRIEND       |   52
-Huggins     | Pillowpuff  | FRIEND       |   46
-Huggins     | Cushion     | BEST_FRIEND  |   92
-Brainfreeze | Sprinkla    | FRIEND       |   38
-Punderful   | Chuckles    | FRIEND       |   28
-Matcha Mimi | Bao Bao     | FRIEND       |   55
-Nana Jam    | Granny Purl | FRIEND       |   34
-Marionetta  | Shadowpaw   | BEST_FRIEND  |   78
-Con Queen   | Drakey      | RIVAL        |  -30
-Reverb      | Chillwave   | ACQUAINTANCE |   15
-Reverb      | DJ Purrple  | BEST_FRIEND  |   87
-Lantern Lyn | Glowbug     | ACQUAINTANCE |    6
-Nickelby    | Ledger Lee  | FRIEND       |   61
-Encore      | Sequin      | FRIEND       |   62
-Topiary     | Thatch      | ACQUAINTANCE |    5
-Rolla Rita  | Wheelie     | ACQUAINTANCE |   10
-Summit      | Switchback  | FRIEND       |   45
-Strummy     | Squeezebox  | ACQUAINTANCE |   22
-Goober      | Squishy     | FRIEND       |   55
-Nightnight  | Story Owl   | FRIEND       |   65
-Sandy Paws  | Tidepool    | FRIEND       |   28
-Lather      | Steamy      | ACQUAINTANCE |   22
-Glitchy     | Pixel Pup   | FRIEND       |   39
-Glowbug     | Wickley     | ACQUAINTANCE |   17
-Bellwether  | Hallelujah  | FRIEND       |   60
-Kawaii Kai  | Cherie Bomb | RIVAL        |  -35
-Sockrates   | Shadowpaw   | ACQUAINTANCE |   19
-Sequin      | Soliloquy   | FRIEND       |   35
-Bleep       | Sprinklr    | FRIEND       |   48
-Bleep       | Zippy-9     | RIVAL        |  -26
-Arabesque   | Clickety    | FRIEND       |   31
-Fondant     | Scone       | ACQUAINTANCE |   17
-Scoutmaster | Campfire    | FRIEND       |   54
-Scoutmaster | Smores      | BEST_FRIEND  |   88
-Owlbert     | Crayon Fern | FRIEND       |   62
-Dr. Bloom   | Dr. Molar   | ACQUAINTANCE |   17
-Ledger Lee  | Penny Oink  | ACQUAINTANCE |   18
-Sprinkla    | Neapolitan  | FRIEND       |   44
-Starbright  | Feathers    | ACQUAINTANCE |   13
-Haybale     | Appleby     | ACQUAINTANCE |   11
-Aviator Al  | Zephyrine   | FRIEND       |   47
-Lychee Lu   | Tapioca     | FRIEND       |   43
-Kawaii Kat  | Mecha Mo    | ACQUAINTANCE |    5
-Brother Bun | Sr. Lumen   | FRIEND       |   53
-Brother Bun | Sr. Snugs   | BEST_FRIEND  |   78
-Crayon Fern | Sonata      | FRIEND       |   54
-Cupidoo     | Lovebird    | FRIEND       |   40
-Squishy     | Gloop       | ACQUAINTANCE |    9
-Ringlet     | Bridget     | ACQUAINTANCE |    7
-Sprinklr    | Dustin      | FRIEND       |   41
-Lunette     | Comet Tail  | ACQUAINTANCE |   20
-Bozzlebee   | Squeaker    | FRIEND       |   31
-Sonata      | Miss Tuttle | ACQUAINTANCE |   21
-Pom Pom     | Mascotty    | ACQUAINTANCE |   14
-Pom Pom     | Rah Rah     | RIVAL        |  -43
-Scoop Scoot | Breaking    | ACQUAINTANCE |   13
-Scoop Scoot | Headline    | RIVAL        |  -38
-Squeaker    | Juggles     | RIVAL        |  -61
-Chuckles    | Silent Sid  | ACQUAINTANCE |    9
-Chuckles    | Knock Knock | RIVAL        |  -56
-Spookums    | Peekaboo    | FRIEND       |   65
-Envelopa    | Ribbitson   | ACQUAINTANCE |   21
-Hosey       | Ladder Lou  | FRIEND       |   59
-Hosey       | Chief Spark | RIVAL        |  -46
-Squeezebox  | Uke Ukulele | ACQUAINTANCE |   16
-Breezy      | Mango Tango | FRIEND       |   51
-Breezy      | Seashelly   | RIVAL        |  -33
-Footnote    | Dewey       | FRIEND       |   59
-Hemsley     | Tweedle     | RIVAL        |  -43
-Bridget     | Tiers       | FRIEND       |   32
-Pops Wiggle | Grampy Bean | FRIEND       |   28
-Loomie      | Clayton     | ACQUAINTANCE |   18
-Starla      | Glitterbun  | FRIEND       |   42
-Giggles     | Juggles     | FRIEND       |   61
-Gerty Grape | Coupon Kay  | FRIEND       |   48
-Millie Moo  | Couture Kit | FRIEND       |   28
-Grampy Bean | Old Hazel   | FRIEND       |   59
-Rafters     | Archie Beam | FRIEND       |   54
-Twinkly     | Mimsy       | FRIEND       |   59
-Clickety    | Tippy Toes  | FRIEND       |   39
-Switchback  | Wanderlust  | FRIEND       |   53
-Ladder Lou  | Chief Spark | FRIEND       |   41
-Mimsy       | Kaboodle    | ACQUAINTANCE |    7
-Flaskia     | Prof. Fizz  | FRIEND       |   41
-Umbrellina  | Keysie      | ACQUAINTANCE |    7
-Umbrellina  | Finders     | BEST_FRIEND  |   97
-Breaking    | Zoom Lens   | ACQUAINTANCE |    7
-Grizzle Gil | Old Valour  | FRIEND       |   53
-Ribbonetta  | Featherly   | FRIEND       |   61
-Angstrom    | Sulky Sol   | FRIEND       |   62
-Fleecy      | Miss Lulla  | FRIEND       |   38
-Zephyrine   | Skye High   | ACQUAINTANCE |    5
-Timpani Tim | Maestro Mew | FRIEND       |   46
-Tippy Toes  | Pirouette   | FRIEND       |   29
-Hallelujah  | Angelo      | FRIEND       |   64
-Feathers    | Haloise     | FRIEND       |   31
-Sulky Sol   | Zinester    | FRIEND       |   36
-Badgeworth  | Knotty      | FRIEND       |   60
-Keysie      | Finders     | ACQUAINTANCE |   12
-Lovebird    | Amorette    | FRIEND       |   54
-Paintpaw    | Sunset Sam  | FRIEND       |   49
-Lighthouse  | Barnacle    | FRIEND       |   52
-Peanut      | Cherubino   | FRIEND       |   40
-Amorette    | Valentina   | ACQUAINTANCE |   10
-Gizmo Gary  | Bolt Buddy  | RIVAL        |  -27
-Glitterbun  | Mochi Mochi | FRIEND       |   28
-Acorn Annie | Hooty Mcgee | BEST_FRIEND  |   94
-Miss Lulla  | Teddy Ted   | FRIEND       |   59
-Zoom Lens   | Drizzle     | ACQUAINTANCE |   13
-Gloomdrop   | Mortimew    | FRIEND       |   30
-Gloomdrop   | Cryptkin    | BEST_FRIEND  |   78
-Archie Beam | Plank       | FRIEND       |   58
-Bordercake  | Peekster    | FRIEND       |   66
-Fortunabot  | Ferris      | BEST_FRIEND  |   94
-Shingle     | Hammerbelle | ACQUAINTANCE |    5
-Bubbleton   | Lily Lou    | ACQUAINTANCE |   12
-Waitabit    | Caboose     | FRIEND       |   51
-Kit Tumble  | Scamper     | FRIEND       |   52
-Shadowpaw   | Mitts       | ACQUAINTANCE |    5
-Ramenda     | Udon Ollie  | ACQUAINTANCE |   18
-Pixel Pup   | Joystick    | FRIEND       |   28
-Drizzle     | Headline    | FRIEND       |   60
-Abraca      | Hocus       | FRIEND       |   34
-Windup Wren | Kitey       | FRIEND       |   63
-Windup Wren | Yoyolanda   | BEST_FRIEND  |   91
-Prof. Fizz  | Cogwheel    | FRIEND       |   31
-Prof. Fizz  | Gadget Gus  | BEST_FRIEND  |   83
-Kitey       | Yoyolanda   | FRIEND       |   33
-Mackerel    | Gilly       | FRIEND       |   55
-Pillowpuff  | Cushion     | FRIEND       |   58
-Angelo      | Seraphina   | FRIEND       |   55
-Scamper     | Pippa Pop   | FRIEND       |   36
-Likey       | Snaxson     | FRIEND       |   57
-Bao Bao     | Sencha Sue  | ACQUAINTANCE |   21
-Mascotty    | Rah Rah     | FRIEND       |   60
-Caboose     | Steam Stan  | ACQUAINTANCE |    5
-Tapioca     | Slushie     | FRIEND       |   30
-Duke Daisy  | Crumbelina  | ACQUAINTANCE |   13
-Pinwheel    | Windy       | FRIEND       |   48
-Merlinnie   | Glimmer     | FRIEND       |   61
-Steam Stan  | Choo Choo   | ACQUAINTANCE |   18
-Pippa Pop   | Dandy Lion  | FRIEND       |   57
-Namaste Nya | Zen Lily    | ACQUAINTANCE |   12
-Dewey       | Inkwell     | FRIEND       |   40
+# ---- coworkers (same archetype) (640) ----------------------------------
+Mayor Giggs | Ribbonetta  | ACQUAINTANCE |   21
+Mayor Giggs | Parfait     | BEST_FRIEND  |   95
+Nana Puddin | Fondant     | ACQUAINTANCE |   22
+Steamy      | Bubbletub   | RIVAL        |  -40
 Maestro Mew | Fiddlestick | FRIEND       |   61
-Chanterelle | Morel       | FRIEND       |   36
-Old Valour  | Sarge Snoot | ACQUAINTANCE |    8
-Juniper Jay | Grindpaw    | FRIEND       |   59
-Fluffington | Nimbus      | FRIEND       |   66
-Dr. Molar   | Pillsby     | FRIEND       |   35
-Soliloquy   | Drama Llama | FRIEND       |   41
-Old Hazel   | Gramps Moss | FRIEND       |   55
-Udon Ollie  | Taco Yaki   | FRIEND       |   29
-Dustin      | Teapot T4   | FRIEND       |   65
-Featherly   | Bixby Maple | ACQUAINTANCE |   21
-Sr. Lumen   | Sr. Mercy   | ACQUAINTANCE |   20
-Silent Sid  | Hattie Haha | FRIEND       |   44
-Sunset Sam  | Muralina    | FRIEND       |   39
-Gavella     | Judge Hoo   | BEST_FRIEND  |   72
-Story Owl   | Lullabelle  | FRIEND       |   50
+Umbrellina  | Keysie      | ACQUAINTANCE |   11
+Fiddlestick | Timpani Tim | FRIEND       |   51
+Fiddlestick | Oompah      | RIVAL        |  -26
+Zoomzoom    | Lagspike    | ACQUAINTANCE |   22
+Dame Fluff  | Valkyrie    | FRIEND       |   37
+Lady Tiara  | Pomelina    | FRIEND       |   58
+Glowbug     | Hootenanny  | FRIEND       |   59
+Rivet       | Torchy      | FRIEND       |   56
+Lagspike    | Pixel Pup   | ACQUAINTANCE |    6
+Lagspike    | Respawn     | BEST_FRIEND  |   97
+Story Owl   | Dreamweave  | FRIEND       |   42
+Updraft     | Aviator Al  | FRIEND       |   29
+Tuck-In     | Miss Lulla  | FRIEND       |   29
+Tuck-In     | Fleecy      | BEST_FRIEND  |   81
+Hugsley     | Twisty      | ACQUAINTANCE |    7
+Seashelly   | Mango Tango | FRIEND       |   47
+Seashelly   | Coconutty   | RIVAL        |  -59
+Pillowpuff  | Snugglesby  | FRIEND       |   60
+Pillowpuff  | Patchwork   | BEST_FRIEND  |   84
+Dr. Quark   | Prof. Fizz  | FRIEND       |   61
+Skipper     | Homework    | FRIEND       |   57
+Hootenanny  | Lumina      | ACQUAINTANCE |    6
+Bluebell    | Sweetpea    | FRIEND       |   33
+Plot Twist  | Quillby     | FRIEND       |   56
+Plot Twist  | Verse Vera  | BEST_FRIEND  |   76
+Inkwell     | Shushana    | ACQUAINTANCE |   21
+DJ Purrple  | Vinyl Vale  | FRIEND       |   43
+Dozy Doe    | Namaste Nya | FRIEND       |   55
+Dozy Doe    | Zen Lily    | BEST_FRIEND  |   78
+Haybale     | Farmer Bram | FRIEND       |   32
+Miss Lulla  | Teddy Ted   | FRIEND       |   38
+Grindella   | Rolla Rita  | RIVAL        |  -42
+Gumball     | Jellybean   | FRIEND       |   59
+Squishy     | Wobblina    | FRIEND       |   33
+Homework    | Juniper Jay | RIVAL        |  -51
+Lather      | Towelette   | FRIEND       |   61
+Pip         | Twinkly     | ACQUAINTANCE |   20
+Curlicue    | Fluffy Fern | FRIEND       |   48
+Shutterbug  | Snapshot    | FRIEND       |   55
+Shutterbug  | Shakeshot   | RIVAL        |  -42
+Capt. Whisk | Mackerel    | RIVAL        |  -54
+Hashtag     | Unboxie     | FRIEND       |   42
+Hashtag     | Trendsetter | RIVAL        |  -30
+Nebula Nell | Orbit       | FRIEND       |   45
+Finders     | Sockmatch   | ACQUAINTANCE |    7
+Valentina   | Smoochy     | ACQUAINTANCE |    9
+Valentina   | Cupidoo     | BEST_FRIEND  |   83
+Pirouette   | Tippy Toes  | FRIEND       |   37
+Pirouette   | Arabesque   | BEST_FRIEND  |   91
+Pomelina    | Crumbelina  | ACQUAINTANCE |   13
+Sequin      | Soliloquy   | FRIEND       |   38
+Sequin      | Drama Llama | BEST_FRIEND  |   82
+Drizzle     | Headline    | ACQUAINTANCE |    7
+Drizzle     | Breaking    | BEST_FRIEND  |   75
+Gavella     | Objection   | ACQUAINTANCE |   17
+Gavella     | Pie Justice | RIVAL        |  -44
+Snugglesby  | Huggins     | FRIEND       |   46
+Slushie     | Taro Tim    | FRIEND       |   58
+Confetti    | Ringlet     | FRIEND       |   46
+Splash      | Chief Spark | ACQUAINTANCE |   19
+Squeaker    | Bozzlebee   | FRIEND       |   47
+Zinester    | Sulky Sol   | FRIEND       |   44
+Tippy Toes  | Arabesque   | FRIEND       |   47
+Prof. Fizz  | Cogwheel    | FRIEND       |   41
+Mocha Latte | Cardamom    | ACQUAINTANCE |   21
+Mocha Latte | Cortado     | RIVAL        |  -51
+Hattie Haha | Knock Knock | ACQUAINTANCE |    8
+Twinkly     | Kaboodle    | ACQUAINTANCE |   18
+Crumbelina  | Duke Daisy  | FRIEND       |   31
+Kit Tumble  | Cubby       | FRIEND       |   43
+Lumina      | Lantern Lyn | ACQUAINTANCE |   17
+Father Fuzz | Brother Bun | FRIEND       |   31
+Duke Daisy  | Jestina     | FRIEND       |   41
+Sprinklepop | Rocky Road  | ACQUAINTANCE |   20
+Ribbonetta  | Parfait     | FRIEND       |   60
+Paintpaw    | Chisel      | ACQUAINTANCE |    7
+Rolla Rita  | Kickflip    | FRIEND       |   53
+Waxie       | Loomie      | FRIEND       |   34
+Waxie       | Stitchwick  | RIVAL        |  -45
+Gleam       | Starbright  | BEST_FRIEND  |   98
+Bellwether  | Cantor Coo  | RIVAL        |  -59
+Orbit       | Cosmo Hoot  | ACQUAINTANCE |   17
+Pillowby    | Zzzabel     | FRIEND       |   61
+Barkley     | Fluffles    | FRIEND       |   40
+Lilypad Lou | Hopscotch   | FRIEND       |   51
+Chief Spark | Hosey       | FRIEND       |   59
+Chief Spark | Sooty Bun   | RIVAL        |  -46
+Drizzlewool | Nimbus      | FRIEND       |   28
+Omelette    | Tipsy Toes  | ACQUAINTANCE |   11
+Parfait     | Bixby Maple | FRIEND       |   45
+Cosmo Hoot  | Lunette     | FRIEND       |   43
+Tock        | Gramps Moss | ACQUAINTANCE |   12
+Chisel      | Muralina    | FRIEND       |   55
+Mascotty    | Rah Rah     | FRIEND       |   60
+Millie Moo  | Couture Kit | FRIEND       |   34
+Dr. Bloom   | Pillsby     | ACQUAINTANCE |   18
+Timpani Tim | Harpsy      | FRIEND       |   46
+Vinyl Vale  | Reverb      | FRIEND       |   35
+Mecha Mo    | Drakey      | ACQUAINTANCE |   14
+Smoochy     | Cupidoo     | FRIEND       |   64
+Feathers    | Starbright  | FRIEND       |   30
+Turnip Twin | Appleby     | FRIEND       |   32
+Quillby     | Sonnet      | FRIEND       |   31
+Hosey       | Sooty Bun   | FRIEND       |   41
+Fezworth    | Houdina     | ACQUAINTANCE |    9
+Wobbles     | Snugglet    | FRIEND       |   66
+Taco Yaki   | Ramenda     | FRIEND       |   57
+Snugglet    | Cherubino   | ACQUAINTANCE |   13
+Wormsby     | Gilly       | FRIEND       |   63
+Ramenda     | Slurpington | FRIEND       |   65
+Rocky Road  | Taffeta     | ACQUAINTANCE |    6
+Mabel Quilt | Gran Tabby  | ACQUAINTANCE |   22
+Torchy      | Anvilla     | FRIEND       |   51
+Muralina    | Sunset Sam  | FRIEND       |   47
+Couture Kit | Mme. Velvet | FRIEND       |   49
+Fortunabot  | Ringtoss    | BEST_FRIEND  |   80
+Pixel Pup   | Joystick    | ACQUAINTANCE |   11
+Cogwheel    | Eureka      | FRIEND       |   31
+Cogwheel    | Flaskia     | BEST_FRIEND  |   97
+Mango Tango | Breezy      | FRIEND       |   46
+Mango Tango | Coconutty   | BEST_FRIEND  |   78
+Hallelujah  | Seraphina   | FRIEND       |   53
+Tipsy Toes  | Saucy       | FRIEND       |   54
+Bao Bao     | Earl Grey   | FRIEND       |   33
+Zzzabel     | Dozella     | FRIEND       |   64
+Shadowpaw   | Sockrates   | ACQUAINTANCE |   19
+Truffletuft | Chanterelle | ACQUAINTANCE |   22
+Trekkie     | Wanderlust  | FRIEND       |   40
+Unboxie     | Trendsetter | ACQUAINTANCE |   11
+Bixby Maple | Featherly   | FRIEND       |   47
+Lancelittle | Squirrely   | FRIEND       |   59
+Mme. Velvet | Hemsley     | FRIEND       |   55
+Pops Wiggle | Old Hazel   | FRIEND       |   31
+Hemsley     | Tweedle     | FRIEND       |   47
+Cherubino   | Peanut      | FRIEND       |   48
+Cherie Bomb | Fox Trotter | RIVAL        |  -35
+Sonata      | Crayon Fern | FRIEND       |   66
+Starla      | Mochi Mochi | FRIEND       |   64
+Harpsy      | Oompah      | FRIEND       |   61
+Headline    | Scoop Scoot | ACQUAINTANCE |   13
+Fluffles    | Dr. Whisker | ACQUAINTANCE |   16
+Campfire    | Badgeworth  | FRIEND       |   60
+Campfire    | Knotty      | BEST_FRIEND  |   93
+Sunny Dunes | Splashley   | ACQUAINTANCE |   13
+Earl Grey   | Sencha Sue  | FRIEND       |   44
+Earl Grey   | Matcha Mimi | RIVAL        |  -49
+Bordercake  | Lookout Lou | ACQUAINTANCE |   20
+Bordercake  | Gatekeep    | RIVAL        |  -41
+Cryptkin    | Midnyte     | FRIEND       |   62
+Nimbus      | Cumulus     | ACQUAINTANCE |    9
+Namaste Nya | Kneady Paws | FRIEND       |   39
+Drakey      | Bunbun      | FRIEND       |   58
+Lunette     | Comet Tail  | FRIEND       |   51
+Harmonica   | Bagpipe Bo  | FRIEND       |   32
+Harmonica   | Strummy     | BEST_FRIEND  |   75
+Fondant     | Sourdoe     | ACQUAINTANCE |   16
+Bagpipe Bo  | Strummy     | FRIEND       |   31
+Houdina     | Abraca      | BEST_FRIEND  |   78
+Houdina     | Prestochi   | RIVAL        |  -54
+Cardamom    | Cortado     | ACQUAINTANCE |   18
+Floaty      | Jumbo       | FRIEND       |   49
+Bozzlebee   | Ringmaster  | BEST_FRIEND  |   98
+Archie Beam | Hammerbelle | ACQUAINTANCE |   19
+Archie Beam | Rafters     | BEST_FRIEND  |   76
+Ferris      | Ringtoss    | FRIEND       |   60
+Ferris      | Whackamole  | RIVAL        |  -61
+Loomie      | Clayton     | FRIEND       |   64
+Cubby       | Scamper     | FRIEND       |   52
+Hammerbelle | Rafters     | ACQUAINTANCE |   18
+Brother Bun | Sr. Lumen   | RIVAL        |  -61
+Soliloquy   | Drama Llama | FRIEND       |   33
+Soliloquy   | Encore      | RIVAL        |  -26
+Pearlie     | Croaksworth | ACQUAINTANCE |   12
+Midnyte     | Batsy       | FRIEND       |   28
+Punderful   | Silent Sid  | FRIEND       |   59
+Punderful   | Chuckles    | RIVAL        |  -55
+Madame Moth | Tea Leaf    | ACQUAINTANCE |    7
+Madame Moth | Crystalla   | RIVAL        |  -32
+Aviator Al  | Skye High   | FRIEND       |   53
+Puffling    | Biscuit Bo  | FRIEND       |   51
+Ringmaster  | Juggles     | ACQUAINTANCE |   14
+Dozella     | Lazybones   | ACQUAINTANCE |   10
+Cortado     | Espresso    | FRIEND       |   63
+Cortado     | Frappella   | BEST_FRIEND  |   84
+Strummy     | Squeezebox  | ACQUAINTANCE |   17
+Wanderlust  | Mappie      | FRIEND       |   45
+Curio       | Fossil Fay  | FRIEND       |   50
+Beardolf    | Elixa       | FRIEND       |   29
+Dreamweave  | Lullabelle  | FRIEND       |   33
 Objection   | Pie Justice | FRIEND       |   36
-Joystick    | Respawn     | ACQUAINTANCE |   22
-Chef Sizzle | Tipsy Toes  | FRIEND       |   41
-Juggles     | Ringmaster  | FRIEND       |   62
-Freckles    | Teacup Tia  | FRIEND       |   44
-Pillowby    | Lazybones   | FRIEND       |   61
-Anchovy     | Salty       | FRIEND       |   66
-Anchovy     | Skipjack    | BEST_FRIEND  |   92
-Wheelie     | Kickflip    | ACQUAINTANCE |   19
-Madame Moth | Tea Leaf    | ACQUAINTANCE |    8
-Bolt Buddy  | Stopsign    | ACQUAINTANCE |   18
-Pillsby     | Dr. Fennec  | FRIEND       |   62
-Hattie Haha | Knock Knock | ACQUAINTANCE |   18
-Sandwichy   | Basketina   | FRIEND       |   38
-Thatch      | Sprouty     | FRIEND       |   44
-Thatch      | Mulch       | BEST_FRIEND  |   89
-Scone       | Muffin      | FRIEND       |   43
-Crumbelina  | Lady Tiara  | FRIEND       |   31
-Zen Lily    | Kneady Paws | BEST_FRIEND  |   79
-Kibble      | Barkley     | FRIEND       |   41
-Salty       | Skipjack    | FRIEND       |   36
-Cortado     | Biscotto    | ACQUAINTANCE |   12
-Chief Spark | Sooty Bun   | ACQUAINTANCE |   15
-Bubbletub   | Towelette   | FRIEND       |   56
-Tipsy Toes  | Omelette    | FRIEND       |   53
-Ribbitson   | Lilypad Lou | FRIEND       |   40
-Batsy       | Cryptkin    | FRIEND       |   41
-Lilypad Lou | Hopscotch   | FRIEND       |   52
-Teapot T4   | Zippy-9     | FRIEND       |   35
-Tadpole     | Button Nose | ACQUAINTANCE |   12
-Mr. Thistle | Prof. Hoot  | FRIEND       |   42
-Granny Purl | Oma Fluff   | FRIEND       |   59
-Button Nose | Cubby       | FRIEND       |   44
-Patchwork   | Snugglesby  | FRIEND       |   42
-Uke Ukulele | Bagpipe Bo  | FRIEND       |   33
-Crumpet     | Sourdoe     | BEST_FRIEND  |   90
-Bunbury Jr  | Sourdoe     | FRIEND       |   51
-Skye High   | Updraft     | FRIEND       |   30
-Bonejangles | Curio       | FRIEND       |   50
-Jellybean   | Rocky Road  | FRIEND       |   40
-Mochi Mochi | Cherie Bomb | FRIEND       |   57
-Lazybones   | Zzzabel     | FRIEND       |   64
-Neapolitan  | Scoops      | FRIEND       |   55
-Sarge Snoot | Auntie Ammo | FRIEND       |   38
-Omelette    | Sudsy       | ACQUAINTANCE |   10
-Inkwell     | Shushana    | ACQUAINTANCE |   22
-Choo Choo   | Punchy      | ACQUAINTANCE |    6
-Fluffernut  | Waxie       | ACQUAINTANCE |    5
-Cryptkin    | Midnyte     | FRIEND       |   64
-Elixa       | Beardolf    | FRIEND       |   43
-Wickley     | Lumina      | FRIEND       |   33
-Appleby     | Farmer Bram | FRIEND       |   53
-Sweetpea    | Bouquet     | FRIEND       |   39
-Barkley     | Leashley    | FRIEND       |   63
-Barkley     | Fluffles    | BEST_FRIEND  |   72
-Wobblina    | Jiggles     | FRIEND       |   33
-Mecha Mo    | Bunbun      | ACQUAINTANCE |   17
-Coupon Kay  | Bargain Bun | FRIEND       |   34
-Midnyte     | Velvetine   | FRIEND       |   30
-Buckaroo    | Whinny      | ACQUAINTANCE |    5
-Cogwheel    | Eureka      | ACQUAINTANCE |   13
-Lady Tiara  | Pomelina    | FRIEND       |   41
-Shushana    | Wispy Pages | FRIEND       |   36
-Respawn     | Lagspike    | ACQUAINTANCE |    6
-Rah Rah     | Go Team Gus | ACQUAINTANCE |   20
-Inkblot     | Quillby     | FRIEND       |   41
-Stopsign    | Beacon      | FRIEND       |   62
-Anvilla     | Sparkplug   | BEST_FRIEND  |   93
-Pie Justice | Judge Hoo   | FRIEND       |   34
+Anvilla     | Sparkplug   | FRIEND       |   28
+Caboose     | Punchy      | FRIEND       |   36
+Rafters     | Plank       | ACQUAINTANCE |    5
+Compass     | Rusty       | BEST_FRIEND  |   94
+Hopscotch   | Stampton    | FRIEND       |   46
+Arabesque   | Clickety    | ACQUAINTANCE |    5
+Oompah      | Cello Bello | FRIEND       |   56
+Ringtoss    | Whackamole  | ACQUAINTANCE |   20
+Squeezebox  | Uke Ukulele | ACQUAINTANCE |   19
+Sulky Sol   | Mopey Mae   | ACQUAINTANCE |   13
+Mopey Mae   | Rimshot     | FRIEND       |   36
+Clayton     | Stitchwick  | FRIEND       |   55
+Jiggles     | Goober      | RIVAL        |  -55
+Splashley   | Coral Reef  | FRIEND       |   41
+Gilly       | Mackerel    | FRIEND       |   55
+Sockrates   | Marionetta  | ACQUAINTANCE |    5
+Penny Oink  | Dimes       | FRIEND       |   47
+Elixa       | Glimmer     | FRIEND       |   30
+Huggins     | Patchwork   | FRIEND       |   58
+Dimes       | Ledger Lee  | FRIEND       |   62
+Reverb      | Chillwave   | ACQUAINTANCE |   17
+Barnacle    | Anchovy     | FRIEND       |   52
+Rah Rah     | Hooray Hana | FRIEND       |   64
+Teapot T4   | Bleep       | ACQUAINTANCE |   15
+Mappie      | Switchback  | FRIEND       |   53
+Drama Llama | Backstage   | FRIEND       |   53
+Saucy       | Sudsy       | FRIEND       |   58
+Hooty Mcgee | Rusty       | FRIEND       |   55
+Clickety    | Mr. Plie    | FRIEND       |   30
+Kickflip    | Wheelie     | ACQUAINTANCE |   10
+Seraphina   | Cantor Coo  | ACQUAINTANCE |   20
+Juniper Jay | Teacup Tia  | FRIEND       |   36
+Lullabelle  | Nightnight  | FRIEND       |   46
+Featherly   | Tallyho     | FRIEND       |   51
+Taro Tim    | Lychee Lu   | ACQUAINTANCE |   21
+Mochi Mochi | Kawaii Kai  | FRIEND       |   35
+Dr. Fennec  | Dr. Hollow  | FRIEND       |   36
+Sparkplug   | Gunther     | FRIEND       |   40
+Espresso    | Frappella   | FRIEND       |   38
+Punchy      | Choo Choo   | FRIEND       |   47
+Skye High   | Zephyrine   | ACQUAINTANCE |   10
+Skipjack    | Salty       | FRIEND       |   66
+Skipjack    | Lighthouse  | BEST_FRIEND  |   92
+Dr. Whisker | Kibble      | FRIEND       |   46
+Bunbun      | Kawaii Kat  | FRIEND       |   31
+Snapshot    | Shakeshot   | ACQUAINTANCE |   17
+Snapshot    | Flashbulb   | BEST_FRIEND  |   79
+Bleep       | Zippy-9     | ACQUAINTANCE |   16
+Tiers       | Bridget     | BEST_FRIEND  |   79
+Fluffy Fern | Brushella   | FRIEND       |   32
+Rimshot     | Angstrom    | FRIEND       |   52
+Yoyolanda   | Tinker Toby | ACQUAINTANCE |    6
+Buckaroo    | Tex Mex     | FRIEND       |   28
+Buckaroo    | Dusty Spurs | RIVAL        |  -46
 Smores      | Trail Mix   | FRIEND       |   30
-Sir Cuddle  | Lancelittle | FRIEND       |   59
-Leashley    | Zoey Zoo    | FRIEND       |   28
-Whinny      | Lasso Lou   | FRIEND       |   46
-Jumbo       | Floaty      | FRIEND       |   49
-Ringmaster  | Tumbleweed  | FRIEND       |   44
-Fiddlestick | Cello Bello | FRIEND       |   56
-Dimes       | Mintworth   | FRIEND       |   51
-Lullabelle  | Dreamweave  | ACQUAINTANCE |   22
-Zoey Zoo    | Dr. Whisker | FRIEND       |   61
-Morel       | Elderberry  | BEST_FRIEND  |   77
-DJ Purrple  | Vinyl Vale  | FRIEND       |   65
-Clover Moss | Mulch       | FRIEND       |   59
-Dr. Whisker | Fluffles    | FRIEND       |   32
-Quillby     | Plot Twist  | FRIEND       |   40
-Sr. Mercy   | Sr. Snugs   | ACQUAINTANCE |   20
-Windy       | Gusty       | FRIEND       |   42
-Trailblazer | Hooty Mcgee | FRIEND       |   55
-Hooty Mcgee | Rusty       | ACQUAINTANCE |   17
-Snaxson     | Trendsetter | ACQUAINTANCE |   11
-Zzzabel     | Dozella     | ACQUAINTANCE |   10
-Lagspike    | Zoomzoom    | ACQUAINTANCE |   11
-Yoyolanda   | Tinker Toby | FRIEND       |   36
-Peekster    | Lookout Lou | BEST_FRIEND  |   94
-Hocus       | Fezworth    | ACQUAINTANCE |   19
-Muralina    | Chisel      | FRIEND       |   31
-Sparkplug   | Torchy      | ACQUAINTANCE |   11
-Gran Tabby  | Mabel Quilt | ACQUAINTANCE |   21
-Earl Grey   | Oolong      | FRIEND       |   66
-Espresso    | Frappella   | FRIEND       |   50
-Biscuit Bo  | Pa Puff     | ACQUAINTANCE |   10
-Spotter     | Flexo       | ACQUAINTANCE |   15
-Grindorgan  | Bellbane    | ACQUAINTANCE |   14
-Bindle      | Clinker     | ACQUAINTANCE |    9
-Pennysoul   | Dealbreaker | FRIEND       |   48
-Grizzlebolt | Throttle    | BEST_FRIEND  |   83
-Granny Grit | Grandmummy  | ACQUAINTANCE |   19
-Jellybone   | Glorp       | FRIEND       |   59
-Crushbot    | Dronezilla  | ACQUAINTANCE |   15
-Crushbot    | Ruin-3000   | BEST_FRIEND  |   73
-Form 27B    | Ribsley     | FRIEND       |   36
-Arachna     | Murkle      | ACQUAINTANCE |    6
-Arachna     | Gloomlet    | BEST_FRIEND  |   91
-Murkle      | Dreadie     | FRIEND       |   60
-Hexley Purr | Smudge      | FRIEND       |   56
+Tex Mex     | Lasso Lou   | ACQUAINTANCE |    5
+Batsy       | Gloomella   | RIVAL        |  -56
+Lantern Lyn | Wickley     | FRIEND       |   33
+Miss Tuttle | Mr. Thistle | FRIEND       |   31
+Gerty Grape | Bargain Bun | FRIEND       |   38
+Brushella   | Mane Event  | ACQUAINTANCE |    5
+Kibble      | Leashley    | FRIEND       |   65
+Trail Mix   | Knotty      | FRIEND       |   37
+Rusty       | Acorn Annie | ACQUAINTANCE |   17
+Wisp Willow | Boolulu     | FRIEND       |   52
+Wisp Willow | Peekaboo    | BEST_FRIEND  |   77
+Ledger Lee  | Nickelby    | BEST_FRIEND  |   93
+Cumulus     | Fluffington | FRIEND       |   44
+Glimmer     | Merlinnie   | ACQUAINTANCE |   17
+Tinker Toby | Kitey       | ACQUAINTANCE |    5
+Lasso Lou   | Dusty Spurs | FRIEND       |   46
+Boolulu     | Peekaboo    | FRIEND       |   28
+Cupidoo     | Lovebird    | FRIEND       |   40
+Thatch      | Topiary     | FRIEND       |   59
+Brainfreeze | Neapolitan  | ACQUAINTANCE |   20
+Wheelie     | Derby Dot   | FRIEND       |   36
+Lazybones   | Hammock     | FRIEND       |   63
+Lovebird    | Amorette    | FRIEND       |   54
+Scamper     | Pippa Pop   | FRIEND       |   36
+Lookout Lou | Peekster    | FRIEND       |   40
+Stopsign    | Gizmo Gary  | FRIEND       |   44
+Sr. Snugs   | Sr. Lumen   | FRIEND       |   61
+Bubblina    | Windy       | FRIEND       |   48
+Hocus       | Abraca      | FRIEND       |   34
+Sourdoe     | Muffin      | ACQUAINTANCE |   18
+Sarge Snoot | Captain Paw | ACQUAINTANCE |    8
+Hooray Hana | Go Team Gus | FRIEND       |   55
+Peekster    | Gatekeep    | FRIEND       |   56
+Marionetta  | Mitts       | ACQUAINTANCE |   19
+Peanutella  | Domino      | ACQUAINTANCE |   12
+Eureka      | Gadget Gus  | ACQUAINTANCE |   13
+Scoop Scoot | Zoom Lens   | FRIEND       |   60
+Kawaii Kat  | Con Queen   | ACQUAINTANCE |   18
+Topiary     | Sprouty     | BEST_FRIEND  |   93
+Sr. Lumen   | Wafer       | FRIEND       |   62
+Envelopa    | Ribbitson   | FRIEND       |   52
+Clover Moss | Gourdon     | FRIEND       |   59
+Gloomella   | Mortimew    | ACQUAINTANCE |   21
+Sooty Bun   | Ladder Lou  | ACQUAINTANCE |   15
+Frappella   | Biscotto    | FRIEND       |   65
+Pippa Pop   | Dandy Lion  | FRIEND       |   57
+Matcha Mimi | Oolong      | ACQUAINTANCE |   19
+Teacup Tia  | Grindpaw    | FRIEND       |   29
+Go Team Gus | Pom Pom     | ACQUAINTANCE |   15
+Shushana    | Wispy Pages | FRIEND       |   32
+Petunia     | Bouquet     | FRIEND       |   39
+Trendsetter | Snaxson     | FRIEND       |   51
+Dr. Hollow  | Dr. Molar   | FRIEND       |   42
+Bargain Bun | Coupon Kay  | FRIEND       |   54
+Zippy-9     | Dustin      | FRIEND       |   45
+Coupon Kay  | Scanna      | FRIEND       |   45
+Abraca      | Prestochi   | ACQUAINTANCE |   19
+Wispy Pages | Dewey       | FRIEND       |   66
+Wispy Pages | Footnote    | BEST_FRIEND  |   77
+Wafer       | Sr. Mercy   | FRIEND       |   44
+Captain Paw | Old Valour  | FRIEND       |   38
+Scanna      | Shelfie     | FRIEND       |   46
+Gourdon     | Mulch       | FRIEND       |   48
+Backstage   | Encore      | FRIEND       |   51
+Towelette   | Bubbletub   | FRIEND       |   64
+Mortimew    | Velvetine   | FRIEND       |   47
+Salty       | Lighthouse  | FRIEND       |   36
+Doodlebug   | Gouache     | FRIEND       |   49
+Chanterelle | Morel       | FRIEND       |   60
+Tadpole     | Mimsy       | ACQUAINTANCE |   12
+Coral Reef  | Sandy Paws  | ACQUAINTANCE |    7
+Lemonade    | Basketina   | RIVAL        |  -39
+Shelfie     | Twopence    | FRIEND       |   62
+Elderberry  | Bramblekit  | ACQUAINTANCE |   18
+Cantor Coo  | Angelo      | ACQUAINTANCE |   20
+Kawaii Kai  | Fox Trotter | FRIEND       |   46
+Mimsy       | Puddlejump  | FRIEND       |   44
+Fox Trotter | Glitterbun  | FRIEND       |   36
+Bunbury Jr  | Scone       | ACQUAINTANCE |   18
+Windy       | Pinwheel    | FRIEND       |   42
+Peekaboo    | Spookums    | FRIEND       |   33
+Zoom Lens   | Breaking    | FRIEND       |   37
+Sudsy       | Chef Sizzle | ACQUAINTANCE |   10
+Lychee Lu   | Tapioca     | ACQUAINTANCE |   14
+Gadget Gus  | Flaskia     | ACQUAINTANCE |   21
+Neapolitan  | Sprinkla    | FRIEND       |   38
+Sprinkla    | Scoops      | FRIEND       |   44
+Sonnet      | Verse Vera  | FRIEND       |   44
+Teddy Ted   | Fleecy      | FRIEND       |   59
+Verse Vera  | Inkblot     | FRIEND       |   37
+Breezy      | Coconutty   | FRIEND       |   53
+Scallywag   | Barnaby     | FRIEND       |   30
+Scallywag   | Capt. Hooky | RIVAL        |  -50
+Honkers     | Mr. Jinglez | FRIEND       |   55
+Lady Smog   | Tastebud    | FRIEND       |   48
+Lady Smog   | Hazey       | BEST_FRIEND  |   94
+Igorina     | Dr. Frankly | ACQUAINTANCE |   21
+Gutterworth | Graveley    | ACQUAINTANCE |   10
+Gutterworth | Evicta      | BEST_FRIEND  |   75
+Wagerine    | Oddsball    | FRIEND       |   29
+Rattlecup   | Slamdoor    | FRIEND       |   53
+Meterman    | Towzer      | ACQUAINTANCE |   10
+Vesper      | Hoodsworth  | FRIEND       |   52
+Scaldie     | Grimbrew    | FRIEND       |   35
+Velvetta    | Corsetta    | ACQUAINTANCE |   15
+Velvetta    | Lacey Grave | BEST_FRIEND  |   82
+Flossie     | Drillsby    | ACQUAINTANCE |   15
+Sausagina   | Slabsworth  | FRIEND       |   48
+Fangela     | Brutus      | ACQUAINTANCE |   18
+Fangela     | Cerbie      | RIVAL        |  -32
+Swoleguard  | Burly Bea   | ACQUAINTANCE |   10
+Squeakvent  | Condenser   | FRIEND       |   37
+Oddsball    | Gamblob     | FRIEND       |   61
+Condenser   | Dr. Fumes   | FRIEND       |   29
+Condenser   | Beakerella  | BEST_FRIEND  |   90
+Phantasma   | Mme. Fraud  | FRIEND       |   37
+Survia      | Ringaling   | FRIEND       |   53
+Survia      | Callbacky   | BEST_FRIEND  |   89
+Cauldra     | Hexagonia   | ACQUAINTANCE |    8
+Cauldra     | Newtlie     | RIVAL        |  -43
+Mandible    | Ribsley     | BEST_FRIEND  |   83
+Tastebud    | Coughlotte  | FRIEND       |   33
+Tastebud    | Hazey       | RIVAL        |  -46
+Tantrum     | Pokefork    | FRIEND       |   58
+Spreadsheet | Ledgerella  | ACQUAINTANCE |   18
+Capt. Cumul | Blazeguard  | ACQUAINTANCE |   15
+Ringaling   | Holdmusic   | ACQUAINTANCE |   11
+Gunkface    | Drainy      | FRIEND       |   44
+Ringring    | Heckla      | FRIEND       |   30
+Cherubim    | Seraphail   | ACQUAINTANCE |   16
+Sutura      | Nurse Leech | ACQUAINTANCE |   20
+Bargainia   | Pennysoul   | BEST_FRIEND  |   97
+Corsetta    | Spikeworth  | RIVAL        |  -39
+Mopsworth   | Brushfire   | BEST_FRIEND  |   86
 Creakster   | Shriekie    | FRIEND       |   40
-Holdmusic   | Ringaling   | FRIEND       |   40
-Bro. Ashe   | Vesper      | FRIEND       |   52
-Torchlight  | Cabaretta   | ACQUAINTANCE |   13
-Torchlight  | Smokevelvet | BEST_FRIEND  |   88
-Smokeblind  | Hushpaw     | FRIEND       |   30
-Phantasma   | Planchette  | FRIEND       |   55
-Vesper      | Hoodsworth  | FRIEND       |   55
-Old Bones   | Rickets     | FRIEND       |   56
-Smudge      | Salem Snoot | FRIEND       |   47
-Nibbler     | Grrrtrude   | BEST_FRIEND  |   92
-Sparky Jr   | Grrrtrude   | ACQUAINTANCE |   19
-Slamdoor    | Wobblewisp  | FRIEND       |   65
-Auntie Ash  | Mama Morgue | ACQUAINTANCE |   11
-Auntie Ash  | Little Ulna | BEST_FRIEND  |   77
-Dotted Line | Finesse     | BEST_FRIEND  |   85
-Gatebone    | Watchtower  | FRIEND       |   47
-Mama Ink    | Needlepoint | FRIEND       |   40
-Bogsworth   | Flytrader   | FRIEND       |   43
-Igorina     | Zappo       | FRIEND       |   40
-Grimbrew    | Fizzlebone  | FRIEND       |   57
-Comma Krak  | Ledgerella  | ACQUAINTANCE |   18
-Honkers     | Poppit      | ACQUAINTANCE |   15
-Honkers     | Funhouse    | BEST_FRIEND  |   82
-Croupette   | Deuces      | ACQUAINTANCE |   13
-Bettsy      | Loanie      | FRIEND       |   61
-Kitty Hex   | Grimbert    | FRIEND       |   60
-Ratatat     | Cheddarlock | FRIEND       |   59
+Whistlewick | Goaliath    | ACQUAINTANCE |   18
+Salvagia    | Rustbucket  | FRIEND       |   55
+Moshpit     | Shriekra    | ACQUAINTANCE |    5
+Moshpit     | Bassment    | BEST_FRIEND  |   97
+Mr. Solemn  | Coffinella  | FRIEND       |   36
+Dr. Frankly | Splicey     | FRIEND       |   40
+Dronezilla  | Malbot      | ACQUAINTANCE |   15
+Dronezilla  | Ruin-3000   | BEST_FRIEND  |   73
+Lucinda     | Haloh No    | ACQUAINTANCE |   15
+Holdmusic   | Callbacky   | FRIEND       |   46
+Auntie Ash  | Mama Morgue | ACQUAINTANCE |   15
+Stencilla   | Drippy      | FRIEND       |   56
+Stencilla   | Tagalong    | BEST_FRIEND  |   75
+Charlotte   | Scorchmello | ACQUAINTANCE |   22
+Signhere    | Dotted Line | FRIEND       |   52
+Signhere    | Clausewitz  | BEST_FRIEND  |   97
+Ember Ed    | Cindersmith | RIVAL        |  -57
+Unwrapt     | Pharaohnie  | ACQUAINTANCE |   15
+Safetypin   | Anarkitty   | BEST_FRIEND  |   92
+Cutsworth   | Lady Litter | FRIEND       |   63
+Cutsworth   | Dr. Meanie  | BEST_FRIEND  |   80
+Ticklefang  | Gigglefiend | ACQUAINTANCE |    9
+Pickaxe Pam | Slagbear    | FRIEND       |   50
+Shriekie    | Fogwell     | BEST_FRIEND  |   97
+Moodring    | Spikeback   | FRIEND       |   60
+Morguelet   | Bonesworth  | FRIEND       |   43
+Crispwing   | Battercup   | FRIEND       |   36
+Spikeback   | Grimbert    | FRIEND       |   64
+Shriekra    | Headbang    | FRIEND       |   54
+Hexley Purr | Unlucky 13  | FRIEND       |   43
+Vapor Vinny | Smogette    | ACQUAINTANCE |   12
+Vapor Vinny | Puffcake    | RIVAL        |  -51
+Tonic Todd  | Swindlefox  | FRIEND       |   36
+Spearmint   | Gatebone    | ACQUAINTANCE |   11
+Newtlie     | Wartsworth  | FRIEND       |   54
+Malbot      | Crushbot    | ACQUAINTANCE |    8
+Rattleby    | Boolander   | ACQUAINTANCE |    6
+Grimgramps  | Rickets     | ACQUAINTANCE |   21
+Brutus      | Ruffjustice | ACQUAINTANCE |   19
+Shackles    | Ploddy      | FRIEND       |   58
+DJ Echo     | Squeakbeat  | ACQUAINTANCE |   19
+DJ Echo     | Flutterby   | RIVAL        |  -48
+Parcelbat   | Sonar       | ACQUAINTANCE |   22
+Rustbucket  | Boltsy      | FRIEND       |   37
+Bailey Bail | Kickflop    | FRIEND       |   54
+Gatebone    | Bunkerton   | FRIEND       |   59
+Hoofsworth  | Shinehorn   | FRIEND       |   61
+Droney      | Maggotina   | ACQUAINTANCE |   18
+Droney      | Swatsy      | RIVAL        |  -42
+Shutterly   | Formalda    | ACQUAINTANCE |   19
+Wormwood    | Fizzbitter  | ACQUAINTANCE |    6
+Wartsworth  | Broomella   | FRIEND       |   64
+Callbacky   | Dialtone    | FRIEND       |   44
+Mr. Jinglez | Poppit      | FRIEND       |   56
+Swindlefox  | Foxglove    | FRIEND       |   30
+Formalda    | Snailpace   | ACQUAINTANCE |   11
+Drillsby    | Molarbane   | BEST_FRIEND  |   72
+Hoodsworth  | Moonchild   | FRIEND       |   55
+Headbang    | Bassment    | ACQUAINTANCE |   14
+Jackpotty   | Deuces      | ACQUAINTANCE |   13
+Pipsqueak   | Cheddarlock | FRIEND       |   48
+Baa-rbara   | Ramsey      | FRIEND       |   43
+Blazeguard  | Ashknight   | ACQUAINTANCE |    5
+Towzer      | Conehat     | FRIEND       |   55
+Brushfire   | Gunkle      | FRIEND       |   31
+Smokevelvet | Cabaretta   | ACQUAINTANCE |   12
+Burly Bea   | Proteina    | FRIEND       |   34
+Static      | Feedbacka   | RIVAL        |  -28
+Bogsworth   | Croakley    | ACQUAINTANCE |   20
+Weldra      | Gearfang    | FRIEND       |   44
+Comma Krak  | Auditrix    | FRIEND       |   34
+Gelatina    | Splatz      | FRIEND       |   49
+Gelatina    | Jellybone   | BEST_FRIEND  |   85
+Auditrix    | Pennyworm   | FRIEND       |   40
+Gunkle      | Binny       | FRIEND       |   48
+Dustwing    | Lampwick    | FRIEND       |   66
+Studsley    | Hoopla      | FRIEND       |   48
+Diggsby     | Plotsworth  | FRIEND       |   39
+Wakewing    | Hootsomnia  | RIVAL        |  -32
+Drippy      | Spraycan    | FRIEND       |   50
+Drainy      | Bog Bert    | FRIEND       |   63
+Drainy      | Plungerella | BEST_FRIEND  |   74
+Chef Scorch | Smokehouse  | FRIEND       |   29
+Chef Scorch | Lavalina    | BEST_FRIEND  |   85
+Unlucky 13  | Omenia Claw | FRIEND       |   54
+Snatchworth | Dr. Meanie  | FRIEND       |   32
+Tokenrat    | Clawdia     | BEST_FRIEND  |   72
+Tokenrat    | Pixelfang   | RIVAL        |  -39
+Vex         | Hypebat     | FRIEND       |   59
+Mme. Fraud  | Planchette  | FRIEND       |   55
+Splicey     | Mousetrap   | ACQUAINTANCE |    5
+Scorchmello | Toastie     | ACQUAINTANCE |   16
+Boltsy      | Tinkerat    | ACQUAINTANCE |   17
+Pharaohnie  | Cursula     | ACQUAINTANCE |   20
+Hypebat     | Mistral     | RIVAL        |  -41
+Coffinella  | Mortimer    | FRIEND       |   37
+Hoopla      | Pokey       | BEST_FRIEND  |   94
+Ribsley     | Tibia Tess  | RIVAL        |  -29
+Maggotina   | Buzzlebub   | ACQUAINTANCE |    8
+Fiscalo     | Debitt      | ACQUAINTANCE |   11
+Highscore   | Clawdia     | FRIEND       |   39
+Spitwad     | Wanda Wedge | FRIEND       |   43
+Ruffjustice | Muzzle      | ACQUAINTANCE |    7
+Brimhelm    | Dame Scorch | FRIEND       |   41
+Spraycan    | Muralfang   | FRIEND       |   48
+Wingnut     | Flapjack    | FRIEND       |   56
+Nurse Leech | Stitchella  | FRIEND       |   35
+Slagbear    | Magma Mo    | FRIEND       |   43
+Smokehouse  | Lavalina    | FRIEND       |   46
+Poppit      | Funhouse    | FRIEND       |   42
+Gearfang    | Prongs      | FRIEND       |   66
+Cindy Chew  | Puplet      | BEST_FRIEND  |   93
+Requiem     | Dirgelet    | ACQUAINTANCE |   14
+Coughlotte  | Hazey       | FRIEND       |   55
+Hushpaw     | Smokeblind  | ACQUAINTANCE |   21
+Lavalina    | Ghostpepper | FRIEND       |   40
+Wheezle     | Hookah Hex  | ACQUAINTANCE |   17
+Omenia Claw | Smudge      | FRIEND       |   60
+Arachna     | Grumplet    | FRIEND       |   34
+Spike McGee | Anarkitty   | ACQUAINTANCE |   22
+Spike McGee | Screamo     | RIVAL        |  -34
+Tallyworn   | Grindle     | FRIEND       |   44
+Vertebrian  | Clavicle    | FRIEND       |   57
+Cheddarlock | Gnawbert    | FRIEND       |   42
 Bubbly Brim | Spaella     | FRIEND       |   58
-Bubbly Brim | Magmassage  | BEST_FRIEND  |   81
-Unwrapt     | Cursula     | FRIEND       |   53
-Tokenrat    | Highscore   | FRIEND       |   63
-Tokenrat    | Clawdia     | RIVAL        |  -56
-Capt. Cumul | Dame Scorch | FRIEND       |   37
-Cabaretta   | Smokevelvet | FRIEND       |   43
-Gearfang    | Chainsley   | RIVAL        |  -46
-Corsetta    | Spikeworth  | FRIEND       |   36
-Corsetta    | Velvetta    | BEST_FRIEND  |   89
-Grrrtrude   | Cindy Chew  | FRIEND       |   60
-Fangela     | Brutus      | ACQUAINTANCE |   14
-Deuces      | Boxcars     | FRIEND       |   53
-Lady Bile   | Marquis     | ACQUAINTANCE |   15
-Anarkitty   | Mohawkins   | ACQUAINTANCE |   22
-Firewalla   | Glitchbit   | ACQUAINTANCE |   10
-Firewalla   | Bitrot      | RIVAL        |  -46
-Dr. Fumes   | Condenser   | FRIEND       |   47
-Flytrader   | Croakley    | FRIEND       |   54
-Flutterby   | DJ Echo     | RIVAL        |  -52
-Thornton    | Mossmouth   | FRIEND       |   51
-Scrapheap   | Rustbucket  | RIVAL        |  -44
-Coughlotte  | Tastebud    | FRIEND       |   42
-Glitchbit   | Root Access | ACQUAINTANCE |   20
-Grimbert    | Spikeback   | FRIEND       |   64
-Grimbert    | Edgelord    | BEST_FRIEND  |   94
+Bubbly Brim | Magmassage  | BEST_FRIEND  |   86
+Dr. Fumes   | Beakerella  | FRIEND       |   28
+Dealbreaker | Pennysoul   | ACQUAINTANCE |   21
+Smashley    | Wobblewisp  | FRIEND       |   65
+Tinkerat    | Scrapheap   | FRIEND       |   52
+Stitchella  | Midnyx      | FRIEND       |   37
+Funhouse    | Giggleguts  | ACQUAINTANCE |   18
+Bunkerton   | Watchtower  | FRIEND       |   60
+Graveley    | Lease Liz   | ACQUAINTANCE |   20
+Grimbert    | Mallgoth    | FRIEND       |   65
+Jellybone   | Glorp       | FRIEND       |   53
+Deuces      | Bluffalo    | FRIEND       |   53
+Dr. Meanie  | Spoilio     | FRIEND       |   29
+Spoilio     | Sandwichula | FRIEND       |   57
+Beakerella  | Ventra      | FRIEND       |   59
+Grindle     | Clinker     | ACQUAINTANCE |   14
+Mama Ink    | Needlepoint | FRIEND       |   42
+Eyeballer   | Bettsy      | ACQUAINTANCE |   17
+Binny       | Ashpan      | ACQUAINTANCE |   15
+Fluffbite   | Bunbun Bane | FRIEND       |   33
 Planchette  | Curselift   | ACQUAINTANCE |   17
-Prongs      | Rackenstein | FRIEND       |   60
-Glorp       | Splatz      | FRIEND       |   43
-Hopkick     | Fluffbite   | FRIEND       |   33
-Spikeback   | Mallgoth    | FRIEND       |   65
-Toothina    | Flossie     | FRIEND       |   44
-Barnaby     | Scallywag   | ACQUAINTANCE |    6
-Newtlie     | Broomella   | FRIEND       |   63
-Newtlie     | Hexagonia   | BEST_FRIEND  |   97
-Ticklefang  | Wedgina     | FRIEND       |   33
-Jawbreaker  | Fizzbitter  | BEST_FRIEND  |   97
-Watchtower  | Bunkerton   | ACQUAINTANCE |   10
-Watchtower  | Spearmint   | BEST_FRIEND  |   74
-Flutterdusk | Mothilda    | FRIEND       |   66
-Poppit      | Giggleguts  | ACQUAINTANCE |    6
-Poppit      | Mr. Jinglez | RIVAL        |  -28
-Brutus      | Chomper     | FRIEND       |   60
-Giggleguts  | Funhouse    | ACQUAINTANCE |    8
-Ledgerella  | Taxfang     | FRIEND       |   35
-Dreadie     | Gloomlet    | FRIEND       |   29
-Ringaling   | Dialtone    | FRIEND       |   41
-Plotsworth  | Tombstoner  | FRIEND       |   31
-Plotsworth  | Sweepy      | BEST_FRIEND  |   92
-Wheezle     | Smogette    | ACQUAINTANCE |    8
-Bailey Bail | Rampage     | FRIEND       |   51
-Rampage     | Kickflop    | FRIEND       |   37
-Salem Snoot | Unlucky 13  | FRIEND       |   42
-Salem Snoot | Moggy       | BEST_FRIEND  |   96
-Pickaxe Pam | Magma Mo    | RIVAL        |  -57
-Rickets     | Ossia       | ACQUAINTANCE |    7
-Wakewing    | Nightshift  | RIVAL        |  -52
-Wakewing    | Talonsworth | BEST_FRIEND  |   95
-Loanie      | Eyeballer   | ACQUAINTANCE |   19
-Wormwood    | Fizzbitter  | ACQUAINTANCE |   21
-Knuckles    | Duesy       | RIVAL        |  -50
-Kickflop    | Ollie Grind | FRIEND       |   43
-Lady Litter | Spoilio     | FRIEND       |   32
-Cursula     | Sarcophagus | FRIEND       |   42
-Grandmummy  | Mother Rot  | ACQUAINTANCE |   11
-Smogette    | Hookah Hex  | FRIEND       |   39
-Bellbane    | Requiem     | RIVAL        |  -58
-Cheddarlock | Whiskerton  | FRIEND       |   59
-Signhere    | Loophole    | FRIEND       |   47
-Dialtone    | Callbacky   | FRIEND       |   52
-Dronezilla  | Malbot      | ACQUAINTANCE |    8
-Boxcars     | Bluffalo    | FRIEND       |   28
-Nightshift  | Hootsomnia  | FRIEND       |   38
-Stencilla   | Tagalong    | ACQUAINTANCE |   15
-Tinkerat    | Rustbucket  | FRIEND       |   34
-Tibia Tess  | Femura      | ACQUAINTANCE |   12
-Mossmouth   | Pepperella  | FRIEND       |   46
-Rustbucket  | Boltsy      | FRIEND       |   65
-Broomella   | Hexagonia   | ACQUAINTANCE |   13
-Squeakbeat  | Nightwing   | FRIEND       |   47
-Wobblewisp  | Rattlecup   | FRIEND       |   32
-Femura      | Mandible    | ACQUAINTANCE |   20
-Taxfang     | Spreadsheet | FRIEND       |   34
-Nurse Leech | Midnyx      | ACQUAINTANCE |   20
-Marquis     | Viscountess | FRIEND       |   37
-Spreadsheet | Pennyworm   | FRIEND       |   40
-Flossie     | Drillsby    | ACQUAINTANCE |    9
-Spoilio     | Dr. Meanie  | FRIEND       |   29
-Scorchmello | Charlotte   | FRIEND       |   63
-Overdue     | Duesy       | ACQUAINTANCE |   17
-Eyeballer   | Gamblob     | FRIEND       |   46
-Swoopsy     | Parcelbat   | ACQUAINTANCE |   19
-Condenser   | Squeakvent  | RIVAL        |  -45
-Kodiak      | Honeygrab   | ACQUAINTANCE |    7
-Bog Bert    | Sludgy      | ACQUAINTANCE |    8
-Parcelbat   | Sonar       | RIVAL        |  -48
-Scallywag   | Capt. Hooky | FRIEND       |   46
-Curselift   | Mme. Fraud  | ACQUAINTANCE |   13
-Ghostpepper | Smokehouse  | ACQUAINTANCE |    5
-Ossia       | Marrowmere  | ACQUAINTANCE |   21
-Droney      | Maggotina   | ACQUAINTANCE |    8
-Skidmark    | Chopperella | ACQUAINTANCE |    5
-Wanda Wedge | Spitwad     | ACQUAINTANCE |   18
-Ramsey      | Lamblet     | FRIEND       |   60
-Greasy Gail | Crispwing   | ACQUAINTANCE |    6
-Drillsby    | Molarbane   | FRIEND       |   42
+Queuella    | Lunchbreak  | FRIEND       |   56
+Ramsey      | Fleecebane  | FRIEND       |   30
+Scowlie     | Sulkie      | ACQUAINTANCE |   16
+Clinker     | Drudge      | ACQUAINTANCE |   18
+Fizzbitter  | Jawbreaker  | FRIEND       |   46
+Fizzbitter  | Sourpuss    | RIVAL        |  -47
+Grumplet    | Sombra      | FRIEND       |   36
+Talonsworth | Nightshift  | FRIEND       |   38
+Crushbot    | Ruin-3000   | FRIEND       |   51
+Foxglove    | Slickpaw    | ACQUAINTANCE |   16
+DJ Doomsday | Feedbacka   | FRIEND       |   55
+Heckla      | Ticklebone  | FRIEND       |   55
+Ashpan      | Dustpan Dot | FRIEND       |   39
+Hookah Hex  | Puffcake    | FRIEND       |   39
+Snitchet    | Firecracker | ACQUAINTANCE |   18
+Dirgelet    | Bellbane    | RIVAL        |  -58
+Nightshade  | Thornton    | FRIEND       |   43
+Nightshade  | Mossmouth   | BEST_FRIEND  |   86
+Grrrnest    | Yardley     | FRIEND       |   64
+Sizzlefang  | Charbroil   | FRIEND       |   52
 Spaella     | Magmassage  | FRIEND       |   39
-Boltsy      | Salvagia    | FRIEND       |   58
-Grrrnest    | Yardley     | BEST_FRIEND  |   83
-Lampwick    | Candlenab   | FRIEND       |   56
-Queuella    | Lunchbreak  | ACQUAINTANCE |   19
-Hookah Hex  | Vapor Vinny | FRIEND       |   58
-Wedgina     | Noogles     | FRIEND       |   53
-Drudge      | Tallyworn   | FRIEND       |   58
-Blazeguard  | Brimhelm    | ACQUAINTANCE |   13
-Ollie Grind | Gremgrind   | FRIEND       |   54
-Foxglove    | Slickpaw    | ACQUAINTANCE |   18
-Static      | Feedbacka   | FRIEND       |   31
-Ticklebone  | Heckla      | ACQUAINTANCE |   18
-Ticklebone  | Ringring    | RIVAL        |  -48
-Ticklebone  | Knick Knack | BEST_FRIEND  |   91
-Mr. Moldry  | Graveley    | FRIEND       |   32
-Spikeworth  | Velvetta    | FRIEND       |   44
-Lamblet     | Baa-rbara   | FRIEND       |   60
-Lamblet     | Fleecebane  | RIVAL        |  -60
-Whiskerton  | Pipsqueak   | ACQUAINTANCE |    7
-Cleaverly   | Brisket     | FRIEND       |   32
-Cleaverly   | Slabsworth  | BEST_FRIEND  |   77
-Muzzle      | Cerbie      | ACQUAINTANCE |   19
-Hexagonia   | Wartsworth  | ACQUAINTANCE |   12
-Slickpaw    | Tonic Todd  | RIVAL        |  -61
-Fizzlebone  | Scaldie     | FRIEND       |   58
-Honeygrab   | Growlston   | FRIEND       |   46
-Spitwad     | Lunchbox    | ACQUAINTANCE |    5
-Ashpan      | Binny       | FRIEND       |   37
-Mother Rot  | Batty Betty | ACQUAINTANCE |   17
-Lunchbreak  | Number Nine | ACQUAINTANCE |   11
-Dr. Meanie  | Snatchworth | FRIEND       |   57
-Noogles     | Gigglefiend | FRIEND       |   51
-Nightwing   | Wingding    | FRIEND       |   62
-Mohawkins   | Safetypin   | FRIEND       |   61
-Shriekie    | Rattleby    | BEST_FRIEND  |   97
-Riffmaw     | Blastbeat   | ACQUAINTANCE |    5
-Riffmaw     | Bassment    | BEST_FRIEND  |   97
-Vapor Vinny | Cloudzilla  | FRIEND       |   37
-Brimhelm    | Smogsalot   | ACQUAINTANCE |   12
-Clavicle    | Vertebrian  | FRIEND       |   57
-Voidra      | Glorbex     | BEST_FRIEND  |   91
-Baa-rbara   | Fleecebane  | FRIEND       |   48
-Smokehouse  | Chef Scorch | FRIEND       |   30
-Ember Ed    | Cindersmith | FRIEND       |   50
-Unlucky 13  | Moggy       | FRIEND       |   33
-Fryday      | Battercup   | FRIEND       |   61
-Graveley    | Evicta      | ACQUAINTANCE |    9
-Cindersmith | Slagbear    | FRIEND       |   43
-Finesse     | Clausewitz  | FRIEND       |   59
-Rummage     | Swipey      | BEST_FRIEND  |   92
-Snatchworth | Squeakthief | ACQUAINTANCE |    9
-Dealbreaker | Soulsworth  | BEST_FRIEND  |   79
-Boolander   | Fogwell     | ACQUAINTANCE |    6
-Callbacky   | Survia      | FRIEND       |   57
-Wartsworth  | Cauldra     | FRIEND       |   43
-Gamblob     | Oddsball    | FRIEND       |   37
-Nyarlo      | Glorbex     | FRIEND       |   64
-Squeakthief | Sandwichula | ACQUAINTANCE |   13
-Squeakthief | Cutsworth   | BEST_FRIEND  |   93
-Binny       | Gunkle      | RIVAL        |  -58
-Whistlewick | Goaliath    | FRIEND       |   58
-Goaliath    | Kickskull   | ACQUAINTANCE |   21
-Swindlefox  | Shuffles    | ACQUAINTANCE |    7
-Charlotte   | Ashcake     | FRIEND       |   48
-Moggy       | Omenia Claw | FRIEND       |   46
-Fizzbitter  | Sourpuss    | FRIEND       |   55
-Gloomlet    | Grumplet    | ACQUAINTANCE |   22
-Puffina     | Brimbrew    | FRIEND       |   47
-Squeakvent  | Beakerella  | FRIEND       |   34
-Swoleguard  | Proteina    | ACQUAINTANCE |   11
-Swoleguard  | Gainz       | RIVAL        |  -61
-Dirgelet    | Requiem     | FRIEND       |   54
-Dr. Gurney  | Setbone     | FRIEND       |   29
-Snitchet    | Tantrum     | FRIEND       |   62
-Scaldie     | Espressoul  | FRIEND       |   31
-Gunkle      | Mopsworth   | FRIEND       |   62
-Brimbrew    | Haze        | RIVAL        |  -60
-Bargainia   | Soulsworth  | ACQUAINTANCE |   15
-Tantrum     | Impy        | ACQUAINTANCE |   18
-Feedbacka   | DJ Doomsday | FRIEND       |   51
-Cerbie      | Big Snarl   | ACQUAINTANCE |    7
-Proteina    | Burly Bea   | FRIEND       |   35
-Cindy Chew  | Biscuitfang | FRIEND       |   63
-Shuffles    | Tonic Todd  | FRIEND       |   34
-Chopperella | Exhaustia   | FRIEND       |   45
-Chancellor  | Hazey       | BEST_FRIEND  |   90
-Blastbeat   | Shriekra    | FRIEND       |   54
-Duesy       | Repossessa  | ACQUAINTANCE |   14
-Grindle     | Fumebottom  | FRIEND       |   45
-Midnyx      | Stitchella  | FRIEND       |   35
-Towzer      | Meterman    | FRIEND       |   30
-Sarcophagus | Wrappy      | FRIEND       |   41
-Haze        | Mistral     | ACQUAINTANCE |   14
-Pipsqueak   | Sewerella   | ACQUAINTANCE |   16
-Lord Lurk   | Duke Smog   | FRIEND       |   66
-Pokey       | Hoopla      | FRIEND       |   32
-Mopsworth   | Brushfire   | FRIEND       |   53
-Hootsomnia  | Talonsworth | FRIEND       |   48
-Grumplet    | Sombra      | ACQUAINTANCE |   10
-Ringring    | Knick Knack | ACQUAINTANCE |    5
-Fumebottom  | Gruel Grace | FRIEND       |   62
-Lunchbox    | Knucklehead | FRIEND       |   65
-Haloh No    | Cherubim    | ACQUAINTANCE |   15
-Auditrix    | Fiscalo     | ACQUAINTANCE |   11
-Grumblogger | Vlogoth     | ACQUAINTANCE |   20
-Rackenstein | Chainsley   | FRIEND       |   30
-Evicta      | Lease Liz   | ACQUAINTANCE |   10
-Setbone     | Scalpelia   | FRIEND       |   51
-Setbone     | Bloodbank   | RIVAL        |  -27
-Spearmint   | Halt        | FRIEND       |   48
-Hazey       | Lady Smog   | FRIEND       |   29
-Pepperella  | Nightshade  | FRIEND       |   32
-Brushfire   | Dustpan Dot | ACQUAINTANCE |   15
-Carrotslash | Bunbun Bane | ACQUAINTANCE |   15
-Gruel Grace | Weary Wil   | FRIEND       |   46
-Requiem     | Sr. Sorrow  | ACQUAINTANCE |    8
-Kickskull   | Femurfly    | ACQUAINTANCE |   14
-DJ Echo     | Batrina     | FRIEND       |   63
-Malwarina   | Bitrot      | FRIEND       |   64
-Oddsball    | Wagerine    | FRIEND       |   64
-Chanty      | Moonchild   | FRIEND       |   32
-Slagbear    | Magma Mo    | FRIEND       |   46
-Gremlina    | Firecracker | FRIEND       |   31
-Shriekra    | Bassment    | ACQUAINTANCE |   14
-Vertebrian  | Patella Pat | FRIEND       |   62
-Nightshade  | Bramblefang | FRIEND       |   51
-Tribalina   | Inkfang     | FRIEND       |   34
-Magma Mo    | Obsidia     | FRIEND       |   52
-Oozo        | Gelatina    | ACQUAINTANCE |   19
-Biscuitfang | Puplet      | FRIEND       |   46
-Magmassage  | Steamer     | ACQUAINTANCE |    5
-Brisket     | Slabsworth  | FRIEND       |   31
-Slabsworth  | Sausagina   | ACQUAINTANCE |   17
-Hoopla      | Studsley    | FRIEND       |   53
-Scalpelia   | Plaguey     | FRIEND       |   56
-Sewerella   | Gnawbert    | ACQUAINTANCE |   14
-Exhaustia   | Throttle    | FRIEND       |   41
-Sizzlefang  | Charbroil   | FRIEND       |   58
-Prof. Ick   | Splicey     | FRIEND       |   34
-Snailpace   | Shutterly   | FRIEND       |   56
-Clausewitz  | Notary Nick | FRIEND       |   65
-Mistral     | Hypebat     | FRIEND       |   47
-Meterman    | Ticketina   | FRIEND       |   49
-Splicey     | Mousetrap   | ACQUAINTANCE |   22
-Bassment    | Moshpit     | FRIEND       |   45
-Toastie     | Crispin     | BEST_FRIEND  |   74
-Charbroil   | Lavalina    | FRIEND       |   31
-Plaguey     | Bloodbank   | ACQUAINTANCE |   12
-Burly Bea   | Gainz       | FRIEND       |   43
-Tailory     | Oni Onie    | FRIEND       |   61
-Espressoul  | Wafflewight | ACQUAINTANCE |    8
-Sandwichula | Cutsworth   | FRIEND       |   28
-Bonebeard   | Polly Gone  | ACQUAINTANCE |   21
-Oni Onie    | Shinehorn   | FRIEND       |   39
-Moonchild   | Candlewick  | FRIEND       |   29
-Lady Smog   | Lord Vapula | FRIEND       |   60
-Malbot      | Ruin-3000   | FRIEND       |   51
+Toastie     | Crispin     | FRIEND       |   33
+Mother Rot  | Granny Grit | FRIEND       |   36
+Needlepoint | Flashfire   | FRIEND       |   32
+Prongs      | Rackenstein | BEST_FRIEND  |   95
+Firecracker | Impy        | FRIEND       |   44
+Gnawbert    | Whiskerton  | ACQUAINTANCE |    5
+Drudge      | Bindle      | ACQUAINTANCE |   10
+Hazey       | Chancellor  | ACQUAINTANCE |   17
+Chancellor  | Lord Vapula | FRIEND       |   32
+Anarkitty   | Screamo     | FRIEND       |   61
+Ticklebone  | Knick Knack | FRIEND       |   41
+Lunchbox    | Noogie Noel | BEST_FRIEND  |   74
+Pennysoul   | Soulsworth  | FRIEND       |   55
+Bindle      | Wrenchley   | ACQUAINTANCE |    5
+Thornton    | Mossmouth   | FRIEND       |   32
+Sandwichula | Squeakthief | ACQUAINTANCE |    9
+Watchtower  | Sentrina    | FRIEND       |   35
+Loophole    | Clausewitz  | ACQUAINTANCE |   18
+Swabbie     | Capt. Hooky | FRIEND       |   41
+Buzzlebub   | Swatsy      | FRIEND       |   54
+Cursula     | Wrappy      | FRIEND       |   34
+Root Access | Firewalla   | FRIEND       |   65
+Bassment    | Blastbeat   | FRIEND       |   45
+Marrowmere  | Old Bones   | FRIEND       |   49
+Grizzlebolt | Chopperella | ACQUAINTANCE |    5
+Biscuitfang | Nibbler     | FRIEND       |   40
+Cabaretta   | Torchlight  | FRIEND       |   37
+Cabaretta   | Lullabane   | BEST_FRIEND  |   79
+Goaliath    | Kickskull   | BEST_FRIEND  |   73
+Magma Mo    | Cindersmith | FRIEND       |   46
+Mortimer    | Eulogia     | ACQUAINTANCE |    5
+Shinehorn   | Tailory     | FRIEND       |   39
+Toothina    | Molarbane   | FRIEND       |   45
+Mistral     | Brimbrew    | FRIEND       |   66
+Wrappy      | Sarcophagus | FRIEND       |   64
+Mousetrap   | Prof. Ick   | FRIEND       |   34
+Bluffalo    | Boxcars     | FRIEND       |   28
+Bog Bert    | Plungerella | FRIEND       |   32
+Chopperella | Throttle    | FRIEND       |   30
+Clavicle    | Patella Pat | FRIEND       |   62
+Whiskerton  | Ratatat     | FRIEND       |   29
+Glorbex     | Nyarlo      | FRIEND       |   64
+Ollie Grind | Gremgrind   | FRIEND       |   38
+Torchlight  | Lullabane   | ACQUAINTANCE |   15
+Tailory     | Oni Onie    | FRIEND       |   55
+Bloodbank   | Dr. Gurney  | FRIEND       |   62
+Kodiak      | Growlston   | FRIEND       |   45
+Sombra      | Gloomlet    | ACQUAINTANCE |    9
+Dr. Gurney  | Plaguey     | FRIEND       |   32
+Big Snarl   | Chomper     | FRIEND       |   54
+Big Snarl   | Cerbie      | BEST_FRIEND  |   82
+Duesy       | Overdue     | ACQUAINTANCE |   17
+Brisket     | Cleaverly   | FRIEND       |   51
+Smokeblind  | Shadowstep  | FRIEND       |   53
+Flashfire   | Tribalina   | ACQUAINTANCE |   18
+Gremgrind   | Rampage     | FRIEND       |   57
+Flytrader   | Warty       | FRIEND       |   60
+Chomper     | Cerbie      | ACQUAINTANCE |   19
+Lady Bile   | Viscountess | FRIEND       |   66
+Spotter     | Flexo       | FRIEND       |   51
+Wrenchley   | Gruel Grace | FRIEND       |   32
+Gloomlet    | Dreadie     | FRIEND       |   31
+Capt. Hooky | Polly Gone  | FRIEND       |   64
+Ratatat     | Sewerella   | FRIEND       |   39
+Candlenab   | Flutterdusk | FRIEND       |   56
+Swipey      | Bandito     | ACQUAINTANCE |   17
+Dame Scorch | Smogsalot   | FRIEND       |   63
+Tibia Tess  | Form 27B    | FRIEND       |   53
+Viscountess | Duke Smog   | FRIEND       |   50
+Jawbreaker  | Sourpuss    | ACQUAINTANCE |   17
+Thumpkin    | Carrotslash | ACQUAINTANCE |   15
+Cindersmith | Obsidia     | FRIEND       |   52
+Mr. Moldry  | Evicta      | FRIEND       |   64
+Sr. Sorrow  | Bellbane    | FRIEND       |   54
+Wafflewight | Espressoul  | FRIEND       |   40
+Espressoul  | Fizzlebone  | FRIEND       |   34
+Plungerella | Sludgy      | FRIEND       |   34
+Flexo       | Gainz       | FRIEND       |   56
+Overdue     | Knuckles    | ACQUAINTANCE |   14
+Slickpaw    | Shuffles    | RIVAL        |  -60
+Prof. Ick   | Zappo       | ACQUAINTANCE |   22
+Gruel Grace | Fumebottom  | ACQUAINTANCE |    9
+Grumblogger | Unfollow    | ACQUAINTANCE |   20
+Fumebottom  | Weary Wil   | ACQUAINTANCE |   10
+Skidmark    | Exhaustia   | FRIEND       |   58
+Bellbane    | Grindorgan  | ACQUAINTANCE |    8
+Shuffles    | Chameleo    | FRIEND       |   47
+Edgelord    | Kitty Hex   | ACQUAINTANCE |   12
 
-# ---- next-door neighbours (229) ----------------------------------------
-Sprinklepop | Moo Lissa   | FRIEND       |   53
-Tallyho     | Tuck-In     | ACQUAINTANCE |   12
-Twopence    | Capt. Whisk | ACQUAINTANCE |    8
-Mane Event  | Petunia     | FRIEND       |   54
-Whackamole  | Dusty Spurs | ACQUAINTANCE |    7
-Pip         | Boolulu     | ACQUAINTANCE |   11
-Gourdon     | Gunther     | FRIEND       |   33
-Hooray Hana | Oompah      | ACQUAINTANCE |    6
-Oompah      | Unboxie     | ACQUAINTANCE |    7
-Stitchwick  | Dr. Quark   | ACQUAINTANCE |    8
-Scrunchie   | Hazel Nut   | ACQUAINTANCE |   14
-Doodlebug   | Bluebell    | ACQUAINTANCE |   12
-Scanna      | Pearlie     | ACQUAINTANCE |    8
-Pearlie     | Rimshot     | ACQUAINTANCE |    8
-Punderful   | Father Fuzz | FRIEND       |   66
-Marionetta  | Con Queen   | ACQUAINTANCE |   21
-Twisty      | Lantern Lyn | ACQUAINTANCE |   18
-Lantern Lyn | Houdina     | ACQUAINTANCE |   15
-Houdina     | Nickelby    | ACQUAINTANCE |   12
-Summit      | Strummy     | FRIEND       |   66
-Glowbug     | Bellwether  | ACQUAINTANCE |   13
-Sequin      | Compass     | ACQUAINTANCE |   21
-Fondant     | Truffletuft | FRIEND       |   54
-Owlbert     | Dr. Bloom   | ACQUAINTANCE |   10
-Drizzlewool | Wafer       | FRIEND       |   48
-Haybale     | Aviator Al  | ACQUAINTANCE |   18
-Brother Bun | Crayon Fern | FRIEND       |   31
-Ringlet     | Hammock     | FRIEND       |   42
-Sonata      | Parfait     | FRIEND       |   30
-Parfait     | Pom Pom     | ACQUAINTANCE |   11
-Scoop Scoot | Squeaker    | FRIEND       |   29
-Envelopa    | Gloop       | ACQUAINTANCE |   17
-Gloop       | Hosey       | FRIEND       |   34
-Breezy      | Footnote    | FRIEND       |   42
-Peekaboo    | Ramses Ray  | ACQUAINTANCE |   13
-Bridget     | Pops Wiggle | FRIEND       |   54
-Gerty Grape | Millie Moo  | ACQUAINTANCE |   21
-Grizzle Gil | Ribbonetta  | FRIEND       |   59
-Ribbonetta  | Angstrom    | ACQUAINTANCE |    6
-Keysie      | Chillwave   | ACQUAINTANCE |    7
-Glitterbun  | Mango Tango | ACQUAINTANCE |    9
-Zoom Lens   | Zinester    | FRIEND       |   49
-Haloise     | Archie Beam | FRIEND       |   55
-Archie Beam | Bordercake  | ACQUAINTANCE |   18
-Waitabit    | Snoozy      | ACQUAINTANCE |   21
-Lily Lou    | Abraca      | FRIEND       |   28
-Abraca      | Windup Wren | ACQUAINTANCE |   10
-Prof. Fizz  | Kitey       | ACQUAINTANCE |   14
-Nebula Nell | Scamper     | ACQUAINTANCE |   13
-Mascotty    | Caboose     | ACQUAINTANCE |   16
-Mme. Velvet | Chanterelle | FRIEND       |   53
-Chanterelle | Hammerbelle | FRIEND       |   43
-Juniper Jay | Fluffington | ACQUAINTANCE |   20
-Udon Ollie  | Dustin      | ACQUAINTANCE |   21
-Mortimew    | Seashelly   | ACQUAINTANCE |   18
-Seashelly   | Sr. Lumen   | FRIEND       |   51
-Boo-Boo Bea | Silent Sid  | ACQUAINTANCE |   19
-Grindpaw    | Sunset Sam  | FRIEND       |   50
-Sunset Sam  | Gavella     | FRIEND       |   59
-Gavella     | Story Owl   | FRIEND       |   54
-Chef Sizzle | Juggles     | FRIEND       |   59
-Madame Moth | Teacup Tia  | FRIEND       |   33
-Hattie Haha | Sandwichy   | ACQUAINTANCE |   13
-Scone       | Cherubino   | ACQUAINTANCE |   11
-Salty       | Kickflip    | ACQUAINTANCE |    5
-Cortado     | Chief Spark | ACQUAINTANCE |   11
-Chief Spark | Kneady Paws | ACQUAINTANCE |   19
-Croaksworth | Mr. Thistle | ACQUAINTANCE |    7
-Uke Ukulele | Taco Yaki   | FRIEND       |   51
-Pirouette   | Muffin      | ACQUAINTANCE |   22
-Bunbury Jr  | Tiers       | ACQUAINTANCE |   20
-Skye High   | Domino      | ACQUAINTANCE |   10
-Domino      | Bonejangles | ACQUAINTANCE |   10
-Towelette   | Neapolitan  | FRIEND       |   31
-Teddy Ted   | Drama Llama | ACQUAINTANCE |    9
-Sweetpea    | Dr. Fennec  | FRIEND       |   62
-Midnyte     | Buckaroo    | ACQUAINTANCE |    6
-Updraft     | Shushana    | FRIEND       |   59
-Respawn     | Rocky Road  | ACQUAINTANCE |   10
-Prof. Hoot  | Leashley    | ACQUAINTANCE |    6
-Whinny      | Jumbo       | FRIEND       |   66
-Jumbo       | Tea Leaf    | FRIEND       |   49
-Turnip Twin | Ringmaster  | ACQUAINTANCE |    5
-Skipper     | Fiddlestick | FRIEND       |   61
-Lasso Lou   | Beacon      | FRIEND       |   56
-Splashley   | Lullabelle  | FRIEND       |   52
-Crosswalk   | Harmonica   | ACQUAINTANCE |    5
-Harmonica   | Zoey Zoo    | FRIEND       |   55
-Zoey Zoo    | Cello Bello | FRIEND       |   64
-Clover Moss | Dr. Whisker | ACQUAINTANCE |    5
-Quillby     | Knock Knock | FRIEND       |   32
-Sr. Mercy   | Sooty Bun   | ACQUAINTANCE |   17
-Fox Trotter | Windy       | ACQUAINTANCE |   13
-Windy       | Trailblazer | FRIEND       |   40
-Hooty Mcgee | Snaxson     | FRIEND       |   30
-Bouquet     | Zzzabel     | FRIEND       |   50
-Waxie       | Trendsetter | ACQUAINTANCE |    7
-Skipjack    | Tumbleweed  | ACQUAINTANCE |   15
-Tumbleweed  | Judge Hoo   | ACQUAINTANCE |   12
-Judge Hoo   | Peekster    | ACQUAINTANCE |   11
-Peekster    | Bunbun      | ACQUAINTANCE |   11
-Gumball     | Sparkplug   | FRIEND       |   41
-Sunny Dunes | Fossil Fay  | ACQUAINTANCE |   10
-Tinker Toby | Fluffles    | FRIEND       |   50
-Pomelina    | Valkyrie    | FRIEND       |   50
-Valkyrie    | Lookout Lou | ACQUAINTANCE |   16
-Lookout Lou | Chisel      | FRIEND       |   63
-Chisel      | Fluffy Fern | FRIEND       |   58
-Rusty       | Basketina   | FRIEND       |   32
-Basketina   | Mitts       | ACQUAINTANCE |   18
-Mappie      | Gran Toffee | FRIEND       |   29
-Bixby Maple | Snugglesby  | ACQUAINTANCE |   19
-Thumpkin    | Spotter     | ACQUAINTANCE |   11
-Spotter     | Grindorgan  | FRIEND       |   65
-Grindorgan  | Plungerella | ACQUAINTANCE |   21
-Pennysoul   | Grizzlebolt | FRIEND       |   54
-Flickers    | Crushbot    | FRIEND       |   64
-Flashfire   | Holdmusic   | FRIEND       |   56
-Buttonmash  | Bro. Ashe   | FRIEND       |   39
-Bro. Ashe   | Torchlight  | FRIEND       |   45
-Smokeblind  | Smashley    | FRIEND       |   61
-Smashley    | Sentrina    | FRIEND       |   28
-Phantasma   | Vesper      | FRIEND       |   36
-Pharaohnie  | Funny Bone  | FRIEND       |   55
-Slamdoor    | Damp Dorian | FRIEND       |   29
-Auntie Ash  | Dotted Line | FRIEND       |   50
-Dotted Line | Gatebone    | FRIEND       |   29
-Bogsworth   | Callerline  | ACQUAINTANCE |   21
-Bettsy      | Kitty Hex   | FRIEND       |   61
-Unwrapt     | Eulogia     | ACQUAINTANCE |   22
-Eulogia     | Tokenrat    | ACQUAINTANCE |   21
-Capt. Cumul | Cabaretta   | FRIEND       |   38
-Anarkitty   | Firewalla   | FRIEND       |   42
-Scrapheap   | Coughlotte  | ACQUAINTANCE |   17
-Hopkick     | Spikeback   | FRIEND       |   29
-Newtlie     | Ticklefang  | ACQUAINTANCE |   13
-Morguelet   | Flutterdusk | ACQUAINTANCE |   21
-Sootkin     | Brutus      | FRIEND       |   51
-Plotsworth  | Tastebud    | ACQUAINTANCE |   11
-Wheezle     | Mauler      | ACQUAINTANCE |   22
-Mauler      | Bailey Bail | ACQUAINTANCE |    5
-Wormwood    | Knuckles    | ACQUAINTANCE |   20
-Grandmummy  | Smogette    | ACQUAINTANCE |   16
-Smogette    | Bunkerton   | FRIEND       |   28
-Buzzlebub   | Cheddarlock | ACQUAINTANCE |    5
-Rustbucket  | Broomella   | ACQUAINTANCE |   19
-Loophole    | Squeakbeat  | ACQUAINTANCE |   13
-Squeakbeat  | Wobblewisp  | ACQUAINTANCE |   11
-Femura      | Taxfang     | ACQUAINTANCE |   14
-Taxfang     | Swatsy      | FRIEND       |   30
-Marquis     | Bluffalo    | ACQUAINTANCE |   16
-Mothilda    | Flossie     | FRIEND       |   46
-Scorchmello | Vex         | ACQUAINTANCE |    8
-Vex         | Overdue     | ACQUAINTANCE |   18
-Overdue     | Eyeballer   | FRIEND       |   35
-Condenser   | Kodiak      | FRIEND       |   31
-Kodiak      | Bog Bert    | FRIEND       |   29
-Bog Bert    | Parcelbat   | FRIEND       |   37
-Tagalong    | Mallgoth    | FRIEND       |   61
-Ghostpepper | Hoodsworth  | FRIEND       |   54
-Droney      | Chomper     | ACQUAINTANCE |   16
-Grrrnest    | Lampwick    | ACQUAINTANCE |   11
-Queuella    | Hookah Hex  | ACQUAINTANCE |   15
-Drudge      | Blazeguard  | ACQUAINTANCE |    6
-Foxglove    | Static      | ACQUAINTANCE |   17
-Needlepoint | Scowlie     | ACQUAINTANCE |   11
-Crispwing   | Whiskerton  | ACQUAINTANCE |    9
-Whiskerton  | Cleaverly   | ACQUAINTANCE |   16
-Dr. Meanie  | Flapjack    | FRIEND       |   42
-Nightwing   | Mohawkins   | FRIEND       |   45
-Riffmaw     | Vapor Vinny | FRIEND       |   30
-Voidra      | Baa-rbara   | FRIEND       |   53
-Hoofsworth  | Sweepy      | FRIEND       |   29
-Unlucky 13  | Fryday      | ACQUAINTANCE |   22
-Graveley    | Cindersmith | FRIEND       |   29
-Fleecebane  | Sludgy      | ACQUAINTANCE |   17
-Callbacky   | Wartsworth  | ACQUAINTANCE |    9
-Nyarlo      | Squeakthief | FRIEND       |   64
-Binny       | Fogwell     | ACQUAINTANCE |   12
-Whistlewick | Lucinda     | ACQUAINTANCE |    8
-Goaliath    | Swindlefox  | FRIEND       |   38
-Moggy       | Clawdia     | FRIEND       |   28
-Gloomlet    | Chef Scorch | FRIEND       |   49
-Mother Nox  | Seraphail   | FRIEND       |   34
-Cloudzilla  | Flexo       | ACQUAINTANCE |   18
-Shackles    | Gunkle      | ACQUAINTANCE |   13
-Tantrum     | Feedbacka   | ACQUAINTANCE |   13
-Omenia Claw | Survia      | ACQUAINTANCE |    9
-Survia      | Cerbie      | FRIEND       |   50
-Shuffles    | Funhouse    | ACQUAINTANCE |    7
-Blastbeat   | Duesy       | FRIEND       |   31
-Woolrustle  | Grindle     | ACQUAINTANCE |   14
-Grindle     | Midnyx      | ACQUAINTANCE |    9
-Ursa Major  | Towzer      | ACQUAINTANCE |   17
-Towzer      | Sarcophagus | ACQUAINTANCE |    6
-Wrappy      | Haze        | ACQUAINTANCE |   18
-Haloh No    | Auditrix    | FRIEND       |   34
-Fiscalo     | Grumblogger | FRIEND       |   42
-Spearmint   | Hazey       | ACQUAINTANCE |   22
-Brushfire   | Carrotslash | FRIEND       |   37
-Knick Knack | Number Nine | FRIEND       |   29
-Requiem     | Kickskull   | ACQUAINTANCE |   10
-Malwarina   | Grizelda    | FRIEND       |   28
-Slagbear    | Impy        | FRIEND       |   54
-Shriekra    | Vertebrian  | ACQUAINTANCE |    5
-Nightshade  | Tribalina   | FRIEND       |   49
-Tribalina   | Ashcake     | FRIEND       |   58
-Oozo        | Bunbun Bane | FRIEND       |   29
-Repossessa  | Sonar       | ACQUAINTANCE |   20
-Slabsworth  | Sombra      | FRIEND       |   40
-Hoopla      | Batty Betty | FRIEND       |   65
-Wagerine    | Sourpuss    | FRIEND       |   48
-Obsidia     | Swipey      | ACQUAINTANCE |   19
-Swipey      | Exhaustia   | FRIEND       |   60
-DJ Doomsday | Bramblefang | FRIEND       |   30
-Coffinella  | Clausewitz  | FRIEND       |   45
-Mistral     | Meterman    | FRIEND       |   41
-Charbroil   | Shadowstep  | ACQUAINTANCE |   21
-Beakerella  | Hypebat     | FRIEND       |   64
-Ashknight   | Nana Necro  | FRIEND       |   59
-Espressoul  | Sandwichula | FRIEND       |   55
-Sandwichula | Wingnut     | FRIEND       |   58
-Debitt      | Bloodbank   | ACQUAINTANCE |   16
-Patella Pat | Polly Gone  | ACQUAINTANCE |   11
-Moonchild   | Swabbie     | FRIEND       |   28
-Swabbie     | Squidley    | ACQUAINTANCE |   16
-Yardley     | Binbin      | FRIEND       |   36
-Ruin-3000   | Lavalina    | FRIEND       |   51
-Lavalina    | Tonic Todd  | ACQUAINTANCE |    8
+# ---- next-door neighbours (242) ----------------------------------------
+Nana Puddin | Steamy      | ACQUAINTANCE |    7
+Zoomzoom    | Dame Fluff  | ACQUAINTANCE |   11
+Scoutmaster | Story Owl   | FRIEND       |   29
+Hugsley     | Keysie      | FRIEND       |   33
+Pillowpuff  | Dr. Quark   | ACQUAINTANCE |    6
+Dr. Quark   | Skipper     | ACQUAINTANCE |    7
+Hootenanny  | Oma Fluff   | ACQUAINTANCE |    8
+Rainbow Ewe | Bluebell    | ACQUAINTANCE |   14
+DJ Purrple  | Dozy Doe    | ACQUAINTANCE |   12
+Haybale     | Miss Lulla  | ACQUAINTANCE |    8
+Miss Lulla  | Grindella   | ACQUAINTANCE |    8
+Pip         | Twisty      | FRIEND       |   66
+Jellybean   | Shutterbug  | ACQUAINTANCE |   21
+Capt. Whisk | Hashtag     | ACQUAINTANCE |   18
+Nebula Nell | Finders     | ACQUAINTANCE |   15
+Finders     | Valentina   | ACQUAINTANCE |   12
+Sequin      | Mintworth   | FRIEND       |   66
+Splash      | Squeaker    | ACQUAINTANCE |   13
+Sprinklr    | Zoey Zoo    | ACQUAINTANCE |   21
+Crumbelina  | Kaboodle    | FRIEND       |   54
+Kit Tumble  | Lumina      | ACQUAINTANCE |   10
+Fluffernut  | Sweetpea    | FRIEND       |   48
+Duke Daisy  | Sprinklepop | FRIEND       |   48
+Sprinklepop | Lily Lou    | FRIEND       |   44
+Lily Lou    | Ribbonetta  | ACQUAINTANCE |   18
+Paintpaw    | Valkyrie    | FRIEND       |   31
+Gleam       | Bellwether  | ACQUAINTANCE |   21
+Barkley     | Lilypad Lou | FRIEND       |   30
+Lilypad Lou | Crosswalk   | ACQUAINTANCE |   11
+Drizzlewool | Omelette    | FRIEND       |   29
+Parfait     | Cosmo Hoot  | ACQUAINTANCE |   20
+Cosmo Hoot  | Tock        | ACQUAINTANCE |   11
+Chisel      | Mascotty    | ACQUAINTANCE |    8
+Millie Moo  | Dr. Bloom   | FRIEND       |   42
+Tidepool    | Timpani Tim | ACQUAINTANCE |   13
+Summit      | Mecha Mo    | FRIEND       |   54
+Torchy      | Muralina    | ACQUAINTANCE |   10
+Couture Kit | Fortunabot  | ACQUAINTANCE |   20
+Fortunabot  | Pixel Pup   | FRIEND       |   65
+Truffletuft | Trekkie     | ACQUAINTANCE |    7
+Wobblina    | Cherubino   | ACQUAINTANCE |    9
+Harpsy      | Headline    | FRIEND       |   49
+Campfire    | Joystick    | ACQUAINTANCE |   20
+Ringlet     | Cryptkin    | FRIEND       |   30
+Cryptkin    | Nimbus      | ACQUAINTANCE |   21
+Namaste Nya | Drakey      | ACQUAINTANCE |   14
+Harmonica   | Fondant     | ACQUAINTANCE |   15
+Houdina     | Cardamom    | FRIEND       |   28
+Cardamom    | Floaty      | ACQUAINTANCE |   10
+Bozzlebee   | Starbright  | ACQUAINTANCE |   14
+Kneady Paws | Brother Bun | ACQUAINTANCE |   13
+Crayon Fern | Madame Moth | ACQUAINTANCE |   16
+Wanderlust  | Curio       | FRIEND       |   53
+Dreamweave  | Peanut      | ACQUAINTANCE |   10
+Peanut      | Objection   | ACQUAINTANCE |   20
+Compass     | Patch Plum  | ACQUAINTANCE |   21
+Squeezebox  | Sulky Sol   | ACQUAINTANCE |   18
+Clayton     | Jiggles     | ACQUAINTANCE |   19
+Splashley   | Gilly       | FRIEND       |   50
+Gilly       | Sockrates   | FRIEND       |   59
+Sockrates   | Stampton    | FRIEND       |   54
+Huggins     | Pillsby     | FRIEND       |   59
+Barnacle    | Rah Rah     | FRIEND       |   33
+Mappie      | Drama Llama | ACQUAINTANCE |   13
+Biscuit Bo  | Hooty Mcgee | ACQUAINTANCE |   11
+Hooty Mcgee | Clickety    | FRIEND       |   53
+Juniper Jay | Lullabelle  | ACQUAINTANCE |    5
+Featherly   | Tender Tuft | ACQUAINTANCE |   11
+Tender Tuft | Taro Tim    | ACQUAINTANCE |   19
+Uke Ukulele | Skipjack    | ACQUAINTANCE |   11
+Skipjack    | Dr. Whisker | ACQUAINTANCE |   14
+Nightnight  | Owlbert     | FRIEND       |   51
+Bunbun      | Snapshot    | ACQUAINTANCE |   22
+Tiers       | Fluffy Fern | ACQUAINTANCE |   20
+Windup Wren | Yoyolanda   | ACQUAINTANCE |   10
+Miss Tuttle | Gerty Grape | FRIEND       |   52
+Trail Mix   | Sockmatch   | FRIEND       |   59
+Larkspur    | Cumulus     | ACQUAINTANCE |    9
+Boolulu     | Cupidoo     | FRIEND       |   62
+Lazybones   | Pie Justice | ACQUAINTANCE |    6
+Moo Lissa   | Lovebird    | FRIEND       |   52
+Dusty Spurs | Bubblina    | FRIEND       |   59
+Bubblina    | Nickelby    | ACQUAINTANCE |   10
+Sir Cuddle  | Jumbo       | ACQUAINTANCE |    6
+Mane Event  | Angstrom    | FRIEND       |   66
+Wickley     | Kawaii Kat  | FRIEND       |   49
+Sr. Lumen   | Zen Lily    | ACQUAINTANCE |    5
+Zen Lily    | Glitchy     | FRIEND       |   46
+Glitchy     | Envelopa    | FRIEND       |   61
+Tweedle     | Sprouty     | FRIEND       |   56
+Sooty Bun   | Frappella   | FRIEND       |   52
+Matcha Mimi | Shakeshot   | ACQUAINTANCE |    5
+Shakeshot   | Teacup Tia  | FRIEND       |   55
+Teacup Tia  | Go Team Gus | FRIEND       |   64
+Trendsetter | Mitts       | ACQUAINTANCE |    5
+Dr. Hollow  | Gizmo Gary  | FRIEND       |   32
+Dr. Molar   | Bargain Bun | ACQUAINTANCE |   17
+Crystalla   | Zippy-9     | ACQUAINTANCE |   13
+Fluffington | Coupon Kay  | FRIEND       |   40
+Coupon Kay  | Oolong      | FRIEND       |   30
+Abraca      | Wispy Pages | FRIEND       |   50
+Amorette    | Kitey       | ACQUAINTANCE |    7
+Sr. Mercy   | Backstage   | ACQUAINTANCE |   15
+Backstage   | Beacon      | ACQUAINTANCE |   12
+Beacon      | Comet Tail  | ACQUAINTANCE |   11
+Comet Tail  | Towelette   | ACQUAINTANCE |   11
+Doodlebug   | Gatekeep    | FRIEND       |   41
+Mulch       | Cushion     | ACQUAINTANCE |   10
+Tutti       | Cantor Coo  | ACQUAINTANCE |   19
+Chillwave   | Mimsy       | FRIEND       |   50
+Gingham     | Fox Trotter | FRIEND       |   50
+Fox Trotter | Muffin      | ACQUAINTANCE |   16
+Boo Radish  | Tallyho     | ACQUAINTANCE |   15
+Tallyho     | Peekaboo    | FRIEND       |   32
+Peekaboo    | Ribbitson   | ACQUAINTANCE |   18
+Sonnet      | Waitabit    | ACQUAINTANCE |   19
+Old Valour  | Giggles     | ACQUAINTANCE |   20
+Giggles     | Biscotto    | ACQUAINTANCE |   11
+Biscotto    | Verse Vera  | FRIEND       |   65
+Verse Vera  | Encore      | ACQUAINTANCE |   21
+Gouache     | Gloomdrop   | FRIEND       |   54
+Bubbletub   | Breaking    | FRIEND       |   64
+Scoops      | Zephyrine   | FRIEND       |   45
+Switchback  | Fleecy      | FRIEND       |   61
+Fleecy      | Pinwheel    | FRIEND       |   28
+Pinwheel    | Inkblot     | FRIEND       |   36
+Gloop       | Snoozy      | FRIEND       |   55
+Igorina     | Femurfly    | FRIEND       |   29
+Rattlecup   | Meterman    | FRIEND       |   50
+Meterman    | Inkfang     | FRIEND       |   29
+Scaldie     | Number Nine | ACQUAINTANCE |   21
+Oddsball    | Condenser   | FRIEND       |   61
+Sootkin     | Survia      | ACQUAINTANCE |   22
+Survia      | Cauldra     | ACQUAINTANCE |   21
+Mandible    | Tastebud    | FRIEND       |   38
+Gunkface    | Ringring    | FRIEND       |   50
+Ringring    | Cherubim    | FRIEND       |   36
+Grimbrew    | Ledgerella  | FRIEND       |   42
+Seraphail   | Bargainia   | ACQUAINTANCE |   17
+Moshpit     | Mr. Solemn  | FRIEND       |   29
+Slamdoor    | Lucinda     | ACQUAINTANCE |   13
+Charlotte   | Signhere    | ACQUAINTANCE |   21
+Safetypin   | Cutsworth   | FRIEND       |   51
+Shriekie    | Lady Litter | ACQUAINTANCE |   11
+Moodring    | Mohawkins   | ACQUAINTANCE |   22
+Mohawkins   | Puffina     | ACQUAINTANCE |    5
+Morguelet   | Fryday      | ACQUAINTANCE |   16
+Crispwing   | Spikeback   | ACQUAINTANCE |   20
+Spearmint   | Callerline  | ACQUAINTANCE |   16
+Callerline  | Newtlie     | FRIEND       |   28
+Hoofsworth  | Squeakbeat  | ACQUAINTANCE |   19
+Droney      | Repossessa  | ACQUAINTANCE |   13
+Repossessa  | Shutterly   | ACQUAINTANCE |   11
+Wormwood    | Wartsworth  | ACQUAINTANCE |   14
+Broomella   | Callbacky   | ACQUAINTANCE |    5
+Woolrustle  | Setbone     | ACQUAINTANCE |   16
+Mr. Jinglez | Swindlefox  | FRIEND       |   46
+Hoodsworth  | Rickets     | ACQUAINTANCE |    8
+Headbang    | Jackpotty   | ACQUAINTANCE |   13
+Greasy Gail | Baa-rbara   | FRIEND       |   31
+Baa-rbara   | Blazeguard  | FRIEND       |   29
+Blazeguard  | Gravelrash  | FRIEND       |   37
+Brushfire   | Smokevelvet | FRIEND       |   61
+Bogsworth   | Weldra      | FRIEND       |   54
+Gelatina    | Auditrix    | ACQUAINTANCE |   16
+Pennyworm   | Chef Scorch | ACQUAINTANCE |   11
+Ursa Major  | Snatchworth | ACQUAINTANCE |   15
+Mme. Fraud  | Splicey     | ACQUAINTANCE |   17
+Grandmummy  | Hypebat     | ACQUAINTANCE |    9
+Coffinella  | Hoopla      | ACQUAINTANCE |    9
+Hoopla      | Ribsley     | ACQUAINTANCE |   16
+Wingnut     | Nurse Leech | FRIEND       |   53
+Slagbear    | Smokehouse  | ACQUAINTANCE |   12
+Moonchild   | Poppit      | FRIEND       |   42
+Tagalong    | Coughlotte  | FRIEND       |   53
+Arachna     | Spike McGee | FRIEND       |   29
+Vertebrian  | Splatz      | ACQUAINTANCE |   22
+Finesse     | Cheddarlock | FRIEND       |   29
+Dealbreaker | Bonesworth  | ACQUAINTANCE |    9
+Smashley    | Tinkerat    | ACQUAINTANCE |   17
+Graveley    | Bitrot      | ACQUAINTANCE |    9
+Grimbert    | Jellybone   | FRIEND       |   64
+Deuces      | Dr. Meanie  | ACQUAINTANCE |    6
+Dr. Meanie  | Grizelda    | FRIEND       |   34
+Grizelda    | Spoilio     | ACQUAINTANCE |    8
+Beakerella  | Grindle     | FRIEND       |   38
+Mallgoth    | Eyeballer   | FRIEND       |   28
+Fluffbite   | Planchette  | FRIEND       |   49
+Curselift   | Queuella    | FRIEND       |   34
+Clinker     | Fizzbitter  | ACQUAINTANCE |   18
+Heckla      | Ashpan      | ACQUAINTANCE |   13
+Barnaby     | Ticketina   | ACQUAINTANCE |   13
+Nightshade  | Grrrnest    | ACQUAINTANCE |    9
+Grrrnest    | Bunbun Bane | FRIEND       |   50
+Toastie     | Mother Rot  | ACQUAINTANCE |    7
+Feedbacka   | Gnawbert    | FRIEND       |   31
+Gigglefiend | Drudge      | ACQUAINTANCE |   14
+Drudge      | Hazey       | ACQUAINTANCE |    9
+Kickflop    | Dustpan Dot | ACQUAINTANCE |   17
+Dustpan Dot | Ticklebone  | ACQUAINTANCE |    6
+Screamo     | Muzzle      | ACQUAINTANCE |   18
+Flutterby   | Buzzlebub   | FRIEND       |   38
+Buzzlebub   | Cursula     | FRIEND       |   34
+Bassment    | Marrowmere  | FRIEND       |   42
+Salem Snoot | Cabaretta   | ACQUAINTANCE |   22
+Magma Mo    | Mortimer    | FRIEND       |   37
+Shinehorn   | Toothina    | FRIEND       |   29
+Mistral     | Wrappy      | ACQUAINTANCE |   10
+Chopperella | Crispin     | FRIEND       |   28
+Glorbex     | Ollie Grind | FRIEND       |   54
+Tailory     | Bloodbank   | ACQUAINTANCE |    5
+Bloodbank   | Kodiak      | FRIEND       |   49
+Knick Knack | Sombra      | FRIEND       |   58
+Duesy       | Glorp       | FRIEND       |   29
+Brisket     | Smokeblind  | ACQUAINTANCE |   20
+Flashfire   | Rackenstein | FRIEND       |   47
+Gremgrind   | Flytrader   | FRIEND       |   39
+Wrenchley   | Ruin-3000   | ACQUAINTANCE |   19
+Ruin-3000   | Lacey Grave | FRIEND       |   60
+Sarcophagus | Sentrina    | FRIEND       |   30
+Noogie Noel | Loanie      | FRIEND       |   45
+Dame Scorch | Tibia Tess  | FRIEND       |   41
+Sourpuss    | Growlston   | ACQUAINTANCE |   21
+Batty Betty | Lullabane   | FRIEND       |   55
+Lullabane   | Gainz       | FRIEND       |   58
+Sparky Jr   | Firewalla   | ACQUAINTANCE |   16
+Fallon      | Throttle    | ACQUAINTANCE |   11
+Evicta      | Gruel Grace | FRIEND       |   28
+Shovelle    | Plaguey     | ACQUAINTANCE |   16
+Malwarina   | Grumblogger | FRIEND       |   36
+Grumblogger | Grrrtrude   | FRIEND       |   46
+Fencepost   | Puffcake    | FRIEND       |   46
+Murkle      | Croupette   | FRIEND       |   51
+Croupette   | Scalpelia   | ACQUAINTANCE |    8
+Mauler      | Nyarlo      | FRIEND       |   28
+Cerbie      | Noogles     | FRIEND       |   50
+Polly Gone  | Scrapheap   | ACQUAINTANCE |   10
+Scrapheap   | Obsidia     | FRIEND       |   63
+Grindorgan  | Lunchbreak  | FRIEND       |   31
+Edgelord    | Chameleo    | ACQUAINTANCE |   12
+Doomscroll  | Form 27B    | ACQUAINTANCE |   13
+Debitt      | Glitchbit   | ACQUAINTANCE |   13
 
 # ---- rivals and nemeses (58) ------------------------------------------
-Tex Mex     | Steamy      | RIVAL        |  -62
-Tuck-In     | Zzzabel     | NEMESIS      |  -97
-Smoochy     | Sprouty     | RIVAL        |  -38
-Stitchwick  | Ribbitson   | NEMESIS      |  -91
-Strummy     | Maestro Mew | RIVAL        |  -27
-Sandy Paws  | Scoops      | RIVAL        |  -55
-Glitchy     | Chanterelle | RIVAL        |  -29
-Bleep       | Mr. Thistle | RIVAL        |  -50
-Squishy     | Dustin      | RIVAL        |  -51
-Lunette     | Crystalla   | RIVAL        |  -32
-Breaking    | Gadget Gus  | RIVAL        |  -31
-Amorette    | Likey       | RIVAL        |  -30
-Duke Daisy  | Mortimew    | RIVAL        |  -29
-Mochi Mochi | Cosmo Hoot  | RIVAL        |  -30
-Elixa       | Anvilla     | RIVAL        |  -38
-Mecha Mo    | Nimbus      | RIVAL        |  -49
-Dimes       | Frappella   | NEMESIS      |  -95
-Fox Trotter | Valkyrie    | NEMESIS      |  -75
-Dustwing    | Broomella   | NEMESIS      |  -96
-Gutterworth | Velvetta    | RIVAL        |  -32
-Buttonmash  | Grumplet    | RIVAL        |  -57
-Torchlight  | Scorchmello | RIVAL        |  -58
-Smudge      | Auditrix    | RIVAL        |  -47
-Nibbler     | Bailey Bail | RIVAL        |  -48
-Pa Gloom    | Bubbly Brim | RIVAL        |  -36
-Dotted Line | Ollie Grind | NEMESIS      |  -72
-Mama Ink    | Knucklehead | NEMESIS      |  -75
-Bogsworth   | Hoopla      | RIVAL        |  -58
-Bubbly Brim | Brutus      | RIVAL        |  -39
-Capt. Cumul | Anarkitty   | NEMESIS      |  -99
-Grrrtrude   | Salem Snoot | RIVAL        |  -33
-Flutterby   | Wakewing    | RIVAL        |  -26
-Thornton    | Haze        | RIVAL        |  -26
-Spikeback   | Chameleo    | RIVAL        |  -38
-Barnaby     | Charlotte   | RIVAL        |  -56
-Newtlie     | Glorbex     | NEMESIS      |  -85
-Watchtower  | Spraycan    | RIVAL        |  -43
-Rampage     | Mortimer    | NEMESIS      |  -85
-Wakewing    | Bloodbank   | RIVAL        |  -38
-Loanie      | Chameleo    | RIVAL        |  -29
-Cheddarlock | Femura      | NEMESIS      |  -99
-Gravelrash  | Nana Clank  | RIVAL        |  -48
-Taxfang     | Studsley    | RIVAL        |  -61
-Nurse Leech | Flossie     | RIVAL        |  -49
-Spoilio     | Ruffjustice | NEMESIS      |  -87
-Condenser   | Ruin-3000   | RIVAL        |  -43
-Kodiak      | Puffina     | NEMESIS      |  -76
-Ossia       | Bunbun Bane | RIVAL        |  -40
-Smokevelvet | Wafflewight | RIVAL        |  -36
-Ramsey      | Mother Nox  | RIVAL        |  -35
-Spaella     | Tantrum     | NEMESIS      |  -92
-Lamblet     | Bramblefang | NEMESIS      |  -97
-Slickpaw    | Pennyworm   | RIVAL        |  -29
-Spitwad     | Ninjette    | RIVAL        |  -45
-Grimgramps  | Sizzlefang  | NEMESIS      |  -88
-Lord Lurk   | Hypebat     | RIVAL        |  -48
-Impy        | Splicey     | NEMESIS      |  -96
-Firecracker | Gelatina    | NEMESIS      |  -87
+Bonejangles | Crystalla   | RIVAL        |  -35
+Lady Tiara  | Chillwave   | RIVAL        |  -61
+Skipper     | Angelo      | RIVAL        |  -41
+Plot Twist  | Fezworth    | RIVAL        |  -39
+Plot Twist  | Gerty Grape | RIVAL        |  -46
+Pirouette   | Twopence    | RIVAL        |  -41
+Scrunchie   | Footnote    | RIVAL        |  -54
+Crosswalk   | Tidepool    | RIVAL        |  -42
+Mecha Mo    | Ringtoss    | RIVAL        |  -42
+Sunny Dunes | Trendsetter | RIVAL        |  -26
+Badgeworth  | Punchy      | NEMESIS      |  -84
+Old Hazel   | Anchovy     | NEMESIS      |  -77
+Bunbun      | Sonnet      | NEMESIS      |  -75
+Thatch      | Mane Event  | RIVAL        |  -39
+Zen Lily    | Tutti       | RIVAL        |  -53
+Tadpole     | Flaskia     | RIVAL        |  -58
+Velvetine   | Tallyho     | NEMESIS      |  -80
+Velvetine   | Encore      | RIVAL        |  -50
+Lady Smog   | Soulsworth  | RIVAL        |  -60
+Wagerine    | Wingding    | RIVAL        |  -46
+Meterman    | Shuffles    | NEMESIS      |  -92
+Vesper      | Lacey Grave | RIVAL        |  -59
+Squeakvent  | Ossia       | RIVAL        |  -26
+Ringring    | Ribsley     | RIVAL        |  -58
+Seraphail   | Spotter     | RIVAL        |  -53
+Mopsworth   | Ghostpepper | RIVAL        |  -47
+Creakster   | Noogles     | RIVAL        |  -31
+Ninjette    | Funny Bone  | RIVAL        |  -37
+Whistlewick | Dreadie     | NEMESIS      |  -88
+Auntie Ash  | Sweepy      | NEMESIS      |  -78
+Shriekie    | Snatchworth | RIVAL        |  -27
+Lady Litter | Goaliath    | RIVAL        |  -59
+Crispwing   | Gunkle      | RIVAL        |  -48
+Spearmint   | Wingnut     | NEMESIS      |  -77
+Anvil       | Bubbly Brim | NEMESIS      |  -86
+Squeakbeat  | Cindersmith | RIVAL        |  -31
+Mr. Jinglez | Lunchbreak  | RIVAL        |  -42
+Smokevelvet | Queuella    | NEMESIS      |  -81
+Buttonmash  | Ashcake     | RIVAL        |  -28
+Wakewing    | Fogwell     | RIVAL        |  -46
+Ursa Major  | Haze        | NEMESIS      |  -84
+Wingnut     | Grindorgan  | NEMESIS      | -100
+Gearfang    | Eulogia     | RIVAL        |  -61
+Cindy Chew  | Needlepoint | RIVAL        |  -46
+Smogette    | Sweepy      | NEMESIS      |  -96
+Ploddy      | Kickflop    | RIVAL        |  -33
+Cheddarlock | Cindersmith | RIVAL        |  -43
+Talonsworth | Noogie Noel | NEMESIS      |  -74
+Dirgelet    | Sparky Jr   | RIVAL        |  -62
+Sizzlefang  | Brisket     | RIVAL        |  -57
+Gigglefiend | Funny Bone  | RIVAL        |  -50
+Chancellor  | Bramblefang | RIVAL        |  -46
+Anarkitty   | Flutterdusk | NEMESIS      |  -90
+Kickflop    | Torchlight  | NEMESIS      |  -77
+Bassment    | Doomscroll  | RIVAL        |  -53
+Swipey      | Slickpaw    | RIVAL        |  -32
+Oni Onie    | Carrotslash | NEMESIS      |  -99
+Croupette   | Skidmark    | NEMESIS      |  -80
 
 # ---- secret crushes (29) ----------------------------------------------
-Tuck-In     | Penny Oink  | ACQUAINTANCE |    8 | crush: Penny Oink
-Coral Reef  | Hugsley     | FRIEND       |   59 | crush: Coral Reef
-Hauntessa   | Hammock     | FRIEND       |   50 | crush: Hauntessa
-Oompah      | Tender Tuft | FRIEND       |   36 | crush: Tender Tuft
-Brainfreeze | Tippy Toes  | FRIEND       |   46 | crush: Tippy Toes
-Houdina     | Tweedle     | FRIEND       |   44 | crush: Houdina
-Starbright  | Patch Plum  | ACQUAINTANCE |   10 | crush: Patch Plum
-Taffeta     | Honeysuckle | ACQUAINTANCE |   19 | crush: Honeysuckle
-Fleecy      | Pinwheel    | FRIEND       |   40 | crush: Pinwheel
-Hashtag     | Pillowpuff  | ACQUAINTANCE |   13 | crush: Hashtag, Pillowpuff
-Orbit       | Midnyte     | FRIEND       |   44 | crush: Orbit, Midnyte
-Snoozy      | Yoyolanda   | ACQUAINTANCE |   19 | crush: Snoozy, Yoyolanda
-Penny Oink  | Taxfang     | ACQUAINTANCE |   16 | crush: Taxfang
-Gloomella   | Knock Knock | FRIEND       |   61 | crush: Gloomella, Knock Knock
-Muffin      | Grimbert    | ACQUAINTANCE |   13 | crush: Grimbert
-Crumpet     | Ashcake     | ACQUAINTANCE |   19 | crush: Ashcake
-Bagpipe Bo  | Judge Hoo   | ACQUAINTANCE |   15 | crush: Bagpipe Bo
-Crushbot    | Clawdia     | ACQUAINTANCE |   11 | crush: Crushbot
-Femura      | Proteina    | ACQUAINTANCE |   21 | crush: Proteina
-Taxfang     | Gelatina    | FRIEND       |   52 | crush: Taxfang
-Hoodsworth  | Grrrnest    | ACQUAINTANCE |    8 | crush: Hoodsworth
-Static      | Mme. Fraud  | ACQUAINTANCE |   14 | crush: Static
-Candlenab   | Polly Gone  | ACQUAINTANCE |   11 | crush: Polly Gone
-Riffmaw     | Fogwell     | FRIEND       |   42 | crush: Fogwell
-Feedbacka   | Repossessa  | ACQUAINTANCE |   17 | crush: Feedbacka, Repossessa
-Number Nine | Prof. Ick   | ACQUAINTANCE |    7 | crush: Number Nine, Prof. Ick
-Vertebrian  | Tailory     | FRIEND       |   37 | crush: Tailory
-Ashcake     | Batty Betty | FRIEND       |   52 | crush: Ashcake
-Bonebeard   | Squidley    | FRIEND       |   58 | crush: Squidley
+Dame Fluff  | Auntie Ammo | ACQUAINTANCE |    5 | crush: Dame Fluff
+Finders     | Bellwether  | ACQUAINTANCE |   12 | crush: Finders
+Gavella     | Featherly   | FRIEND       |   46 | crush: Featherly
+Confetti    | Rafters     | FRIEND       |   64 | crush: Confetti
+Sweetpea    | Ramenda     | ACQUAINTANCE |   18 | crush: Sweetpea, Ramenda
+Smoochy     | Backstage   | FRIEND       |   50 | crush: Backstage
+Feathers    | Grizzle Gil | ACQUAINTANCE |   22 | crush: Feathers, Grizzle Gil
+Lancelittle | Mr. Thistle | ACQUAINTANCE |   14 | crush: Lancelittle, Mr. Thistle
+Curio       | Leashley    | FRIEND       |   35 | crush: Curio
+Auntie Ammo | Coral Reef  | ACQUAINTANCE |   13 | crush: Auntie Ammo
+Mopey Mae   | Grimbert    | ACQUAINTANCE |   21 | crush: Grimbert
+Gilly       | Kibble      | ACQUAINTANCE |   11 | crush: Gilly
+Penny Oink  | Taxfang     | ACQUAINTANCE |    8 | crush: Taxfang
+Mackerel    | Fluffy Fern | FRIEND       |   56 | crush: Fluffy Fern
+Pie Justice | Leashley    | FRIEND       |   46 | crush: Leashley
+Topiary     | Dustin      | ACQUAINTANCE |    8 | crush: Topiary, Dustin
+Scone       | Ashcake     | ACQUAINTANCE |   10 | crush: Ashcake
+Sutura      | Gnawbert    | FRIEND       |   46 | crush: Gnawbert
+Mohawkins   | Throttle    | ACQUAINTANCE |   21 | crush: Throttle
+Anvil       | Dr. Gurney  | ACQUAINTANCE |   16 | crush: Dr. Gurney
+Formalda    | Candlenab   | FRIEND       |   41 | crush: Formalda
+Comma Krak  | Splatz      | FRIEND       |   52 | crush: Splatz
+Wakewing    | Ploddy      | ACQUAINTANCE |   11 | crush: Wakewing
+Femura      | Spoilio     | ACQUAINTANCE |    7 | crush: Spoilio
+Tagalong    | Nightshade  | FRIEND       |   38 | crush: Nightshade
+Finesse     | Warty       | ACQUAINTANCE |   12 | crush: Finesse
+Ramsey      | Bramblefang | ACQUAINTANCE |   17 | crush: Ramsey
+Mother Nox  | Weary Wil   | FRIEND       |   34 | crush: Mother Nox
+Tombstoner  | Nightshift  | ACQUAINTANCE |   19 | crush: Tombstoner
 
 # ---- friendships and feuds across the Wall (38) -----------------------
-Petunia     | Eulogia     | RIVAL        |  -37
-Hugsley     | Slamdoor    | RIVAL        |  -46
-Lemonade    | Nyarlo      | RIVAL        |  -52
-Twisty      | Sentrina    | EX           |   12
-Topiary     | Charlotte   | FRIEND       |   49
-Wafer       | Spearmint   | NEMESIS      |  -96
-Campfire    | Throttle    | FRIEND       |   61
-Envelopa    | Dr. Frankly | NEMESIS      |  -88
-Hemsley     | Spike McGee | RIVAL        |  -32
-Giggles     | Rummage     | FRIEND       |   28
-Angstrom    | Oddsball    | EX           |  -33
-Zephyrine   | Gloomlet    | FRIEND       |   43
-Glitterbun  | Moonchild   | FRIEND       |   38
-Drizzle     | Brushfire   | FRIEND       |   39
-Nebula Nell | Snatchworth | EX           |  -10
-Caboose     | Dr. Meanie  | FRIEND       |   64
-Thatch      | Nightshift  | FRIEND       |   33
-Bubbletub   | Patella Pat | FRIEND       |   61
-Batsy       | Vlogoth     | FRIEND       |   46
-Pirouette   | Rustbucket  | FRIEND       |   57
-Tiers       | Charbroil   | RIVAL        |  -27
-Mochi Mochi | Ticketina   | EX           |    5
-Elixa       | Lady Litter | FRIEND       |   56
-Shakeshot   | Callerline  | FRIEND       |   41
-Wickley     | Pennysoul   | FRIEND       |   43
-Sweetpea    | Nibbler     | RIVAL        |  -61
-Midnyte     | Hoodsworth  | FRIEND       |   50
-Rah Rah     | Chanty      | FRIEND       |   40
-Smores      | Ursa Major  | RIVAL        |  -47
-DJ Purrple  | Sewerella   | RIVAL        |  -57
-Sooty Bun   | Ratatat     | FRIEND       |   60
-Sooty Bun   | Lamblet     | NEMESIS      |  -76
-Peekster    | Scorchmello | FRIEND       |   51
-Velvetine   | Moshpit     | EX           |  -13
-Lumina      | Ventra      | FRIEND       |   47
-Tinker Toby | Chopperella | FRIEND       |   37
-Seraphina   | Auntie Ash  | FRIEND       |   59
-Gramps Moss | Callbacky   | FRIEND       |   40
+Tuck-In     | Crushbot    | FRIEND       |   30
+Bluebell    | Funhouse    | RIVAL        |  -62
+Bluebell    | Nibbler     | EX           |  -16
+Miss Lulla  | Heckla      | FRIEND       |   63
+Gumball     | Tailory     | FRIEND       |   54
+Twisty      | Ribsley     | FRIEND       |   28
+Pomelina    | Little Ulna | RIVAL        |  -35
+Confetti    | Mama Ink    | FRIEND       |   39
+Hauntessa   | Hypebat     | EX           |  -23
+Dr. Bloom   | Drainy      | EX           |  -13
+Tidepool    | Ventra      | EX           |   -2
+Mecha Mo    | Grimgramps  | FRIEND       |   41
+Mango Tango | Poppit      | FRIEND       |   43
+Trekkie     | Swoleguard  | EX           |  -33
+Fluffles    | Masky       | FRIEND       |   28
+Appleby     | Spraycan    | FRIEND       |   44
+Objection   | Smokevelvet | NEMESIS      |  -83
+Biscuit Bo  | Drillsby    | FRIEND       |   65
+Kickflip    | Chomper     | RIVAL        |  -46
+Juniper Jay | Survia      | FRIEND       |   43
+Sparkplug   | Broomella   | FRIEND       |   61
+Owlbert     | Ticklefang  | NEMESIS      |  -87
+Larkspur    | Boxcars     | RIVAL        |  -62
+Bubblina    | Grrrtrude   | FRIEND       |   56
+Nickelby    | Condenser   | RIVAL        |  -55
+Hooray Hana | Ashpan      | NEMESIS      |  -84
+Clover Moss | Throttle    | RIVAL        |  -27
+Go Team Gus | Shackles    | FRIEND       |   48
+Oolong      | Igorina     | RIVAL        |  -53
+Oolong      | Headbang    | RIVAL        |  -39
+Abraca      | Signhere    | FRIEND       |   40
+Ramses Ray  | Honeygrab   | FRIEND       |   28
+Cushion     | Snatchworth | FRIEND       |   30
+Crumpet     | Corsetta    | FRIEND       |   47
+Verse Vera  | Tibia Tess  | FRIEND       |   58
+Chef Sizzle | Rattleby    | FRIEND       |   58
+Bubbletub   | Lamblet     | FRIEND       |   30
+Nana Jam    | Scrapheap   | FRIEND       |   39
 
 # ---- cross-border crushes (Hillvile <-> Hellvile) (44) ----------------
-Tuck-In     | Sombra      | ACQUAINTANCE |    8 | crush: Sombra
-Backstage   | Whistlewick | FRIEND       |   41 | crush: Backstage
-Backstage   | Haze        | FRIEND       |   44 | crush: Backstage
-Splash      | Growlston   | ACQUAINTANCE |   20 | crush: Growlston
-Omenia      | Ruffjustice | FRIEND       |   30 | crush: Omenia, Ruffjustice
-Verse Vera  | Eyeballer   | FRIEND       |   53 | crush: Eyeballer
-Stitchwick  | Marrowmere  | ACQUAINTANCE |   20 | crush: Marrowmere
-Stitchwick  | Fryday      | FRIEND       |   29 | crush: Fryday
-Scrunchie   | Muralfang   | FRIEND       |   56 | crush: Scrunchie
-Doodlebug   | Viscountess | ACQUAINTANCE |   16 | crush: Viscountess
-Sonnet      | Bunbun Bane | ACQUAINTANCE |    9 | crush: Sonnet
-Sonata      | Weldra      | ACQUAINTANCE |   19 | crush: Sonata
-Parfait     | Lampwick    | ACQUAINTANCE |   15 | crush: Parfait, Lampwick
-Footnote    | Molarbane   | ACQUAINTANCE |   16 | crush: Footnote
-Fleecy      | Shriekra    | FRIEND       |   40 | crush: Fleecy, Shriekra
-Lovebird    | Flapjack    | ACQUAINTANCE |   10 | crush: Lovebird, Flapjack
-Miss Lulla  | Dr. Frankly | FRIEND       |   42 | crush: Miss Lulla
-Zinester    | Spikeback   | ACQUAINTANCE |   19 | crush: Zinester, Spikeback
-Saucy       | Scalpelia   | FRIEND       |   53 | crush: Saucy
-Nebula Nell | Ruin-3000   | FRIEND       |   64 | crush: Ruin-3000
-Steam Stan  | Tagalong    | ACQUAINTANCE |   16 | crush: Steam Stan
-Tender Tuft | Slickpaw    | FRIEND       |   44 | crush: Tender Tuft
-Freckles    | Wagerine    | ACQUAINTANCE |   10 | crush: Wagerine
-Teacup Tia  | Taxfang     | FRIEND       |   41 | crush: Teacup Tia
-Bolt Buddy  | Nana Necro  | ACQUAINTANCE |    7 | crush: Bolt Buddy
-Ribbitson   | Callerline  | ACQUAINTANCE |   22 | crush: Ribbitson
-Towelette   | Lullabane   | ACQUAINTANCE |    7 | crush: Towelette, Lullabane
-Choo Choo   | Cherubim    | FRIEND       |   38 | crush: Cherubim
-Wickley     | Puffcake    | ACQUAINTANCE |   10 | crush: Puffcake
-Appleby     | Debitt      | FRIEND       |   64 | crush: Debitt
-Sencha Sue  | Towzer      | ACQUAINTANCE |   11 | crush: Sencha Sue
-Biscotto    | Fiscalo     | FRIEND       |   35 | crush: Biscotto
-Sudsy       | Vapor Vinny | ACQUAINTANCE |   19 | crush: Sudsy
-Cosmo Hoot  | Throttle    | FRIEND       |   48 | crush: Cosmo Hoot
-Honeysuckle | Lacey Grave | ACQUAINTANCE |   11 | crush: Honeysuckle, Lacey Grave
-Crosswalk   | Big Snarl   | ACQUAINTANCE |   15 | crush: Big Snarl
-Bouquet     | Kickflop    | ACQUAINTANCE |   16 | crush: Bouquet
-Lagspike    | Nurse Leech | FRIEND       |   36 | crush: Nurse Leech
-Elderberry  | Flossie     | ACQUAINTANCE |   10 | crush: Flossie
-Judge Hoo   | Throttle    | ACQUAINTANCE |   16 | crush: Judge Hoo
-Hocus       | Bramblefang | FRIEND       |   56 | crush: Bramblefang
-Sunny Dunes | Number Nine | ACQUAINTANCE |   17 | crush: Sunny Dunes
-Frappella   | Hopkick     | FRIEND       |   35 | crush: Frappella
-Mappie      | Swatsy      | FRIEND       |   31 | crush: Swatsy
+Maestro Mew | Grandmummy  | FRIEND       |   53 | crush: Maestro Mew, Grandmummy
+Umbrellina  | Bloodbank   | ACQUAINTANCE |    7 | crush: Umbrellina, Bloodbank
+Scoutmaster | Mother Rot  | ACQUAINTANCE |    7 | crush: Scoutmaster
+Scoutmaster | Chopperella | ACQUAINTANCE |    6 | crush: Scoutmaster
+Keysie      | Swipey      | ACQUAINTANCE |   22 | crush: Keysie, Swipey
+Likey       | Splicey     | ACQUAINTANCE |   14 | crush: Splicey
+Pirouette   | Evicta      | ACQUAINTANCE |   18 | crush: Evicta
+Tippy Toes  | Gatebone    | ACQUAINTANCE |   13 | crush: Tippy Toes
+Fezworth    | Fangela     | ACQUAINTANCE |   12 | crush: Fangela
+Rocky Road  | Fencepost   | ACQUAINTANCE |   19 | crush: Rocky Road
+Fortunabot  | Swabbie     | FRIEND       |   63 | crush: Fortunabot
+Hallelujah  | Dustpan Dot | ACQUAINTANCE |    5 | crush: Dustpan Dot
+Bao Bao     | Spearmint   | ACQUAINTANCE |   11 | crush: Bao Bao
+Truffletuft | Ghostpepper | ACQUAINTANCE |   15 | crush: Ghostpepper
+Bixby Maple | Binny       | FRIEND       |   36 | crush: Bixby Maple
+Cherie Bomb | Swabbie     | ACQUAINTANCE |   11 | crush: Cherie Bomb
+Sunny Dunes | Gigglefiend | ACQUAINTANCE |   13 | crush: Sunny Dunes, Gigglefiend
+Archie Beam | Croakley    | ACQUAINTANCE |    9 | crush: Archie Beam
+Loomie      | Hootsomnia  | ACQUAINTANCE |   20 | crush: Hootsomnia
+Madame Moth | Signhere    | FRIEND       |   33 | crush: Signhere
+Cosy Clem   | Hexley Purr | ACQUAINTANCE |   10 | crush: Hexley Purr
+Bleep       | Gruel Grace | ACQUAINTANCE |   21 | crush: Gruel Grace
+Tiers       | Drippy      | ACQUAINTANCE |   12 | crush: Tiers
+Windup Wren | Charlotte   | FRIEND       |   49 | crush: Charlotte
+Cupidoo     | Halt        | ACQUAINTANCE |   13 | crush: Halt
+Moo Lissa   | Hookah Hex  | ACQUAINTANCE |   16 | crush: Moo Lissa
+Moo Lissa   | Exhaustia   | ACQUAINTANCE |   14 | crush: Moo Lissa
+Bubblina    | Marrowmere  | ACQUAINTANCE |   18 | crush: Marrowmere
+Topiary     | Bogsworth   | ACQUAINTANCE |   14 | crush: Topiary
+Sprouty     | Lease Liz   | ACQUAINTANCE |    8 | crush: Lease Liz
+Gloomella   | Kickskull   | FRIEND       |   49 | crush: Gloomella
+Shushana    | Nyarlo      | FRIEND       |   51 | crush: Shushana
+Trendsetter | Crushbot    | FRIEND       |   64 | crush: Trendsetter
+Bargain Bun | Ashknight   | FRIEND       |   60 | crush: Bargain Bun, Ashknight
+Crystalla   | Tailory     | FRIEND       |   59 | crush: Crystalla
+Oolong      | Wobblewisp  | FRIEND       |   48 | crush: Oolong
+Gourdon     | Debitt      | ACQUAINTANCE |   11 | crush: Gourdon, Debitt
+Lemonade    | Chameleo    | FRIEND       |   53 | crush: Lemonade
+Velvetine   | Snatchworth | FRIEND       |   42 | crush: Snatchworth
+Neapolitan  | Shriekie    | FRIEND       |   33 | crush: Neapolitan
+Waitabit    | Jackpotty   | FRIEND       |   56 | crush: Waitabit
+Bubbleton   | Lampwick    | ACQUAINTANCE |   22 | crush: Bubbleton
+Zephyrine   | Knick Knack | ACQUAINTANCE |   15 | crush: Knick Knack
+Switchback  | Wagerine    | FRIEND       |   54 | crush: Switchback

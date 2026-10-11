@@ -40,6 +40,8 @@ static const int16_t body_mod[BODY_COUNT][6] = {
     /* TOP_HEAVY */ { 142, 78, 104, 92, 120, 0 },
 };
 
+static int mag_or1(int m) { return m > 0 ? m : 1; }
+
 static int species_nolegs(int sp)
 {
     return sp == SPECIES_SLIME || sp == SPECIES_GHOST || sp == SPECIES_CACOBLOB;
@@ -56,7 +58,7 @@ void pb_layout(PCtx *c, int vk, int byaw, int step, int anim)
     memset(&B, 0, sizeof(B));
     B.view = vk;
     B.yaw = byaw;
-    B.lod = c->h.lod;
+    B.lod = vk == VK_CHIBI ? LOD_TINY : (vk == VK_FIGHTER ? LOD_MID : LOD_BIG);
     B.nolegs = species_nolegs(l->species) || c->ghost;
     B.hunch = l->body == BODY_HUNCHED;
     c->view_kind = vk;
@@ -77,8 +79,8 @@ void pb_layout(PCtx *c, int vk, int byaw, int step, int anim)
         break;
     case VK_FIGURE:
     default:
-        legs = (PX(5) + height * 6 + (B.nolegs ? 0 : 0)) * bm[3] / 100;
-        H = (PX(13) + height * 5) * bm[2] / 100;
+        legs = (PX(13) + height * 6) * bm[3] / 100;
+        H = (PX(12) + height * 4) * bm[2] / 100;
         B.ground = PX(77);
         B.sw = (PX(8) + build * 4) * bm[0] / 100;
         B.hw = (PX(8) + build * 4) * bm[1] / 100;
@@ -113,21 +115,23 @@ void pb_layout(PCtx *c, int vk, int byaw, int step, int anim)
         B.cx = PX(8);
     common:
         if (B.nolegs) legs = legs / 3;
+        if (!B.nolegs && (l->shoes == SHOES_PLATFORM || l->shoes == SHOES_ROLLERSKATES))
+            B.ground -= vk == VK_CHIBI ? 8 : (vk == VK_FIGHTER ? PX(1) : PX(2));
         B.by = B.ground - legs - (vk == VK_CHIBI ? 8 : 16);
-        if (step && vk != VK_PORTRAIT) B.by -= (vk == VK_CHIBI ? 0 : 8);
-        if (c->breath && vk != VK_CHIBI) B.by -= 0;
+        if ((step == 2 || step == -2) && vk != VK_PORTRAIT) B.by -= 16;
+        else if (step && vk != VK_PORTRAIT) B.by -= (vk == VK_CHIBI ? 0 : 8);
         B.ty = B.by - H + (c->breath ? 8 : 0);
         if (B.hunch) B.ty += H / 8;
-        B.waist = B.by - H * 30 / 100;
+        B.waist = B.by - PCT(H, 30);
         break;
     }
-    if (byaw == 2) { B.sw = B.sw * 80 / 100; B.hw = B.hw * 80 / 100; }
+    if (byaw == 2) { B.sw = PCT(B.sw, 80); B.hw = PCT(B.hw, 80); }
     if (l->species == SPECIES_CACOBLOB && vk != VK_PORTRAIT) {
         /* a tiny floating body under the big ball of a head */
-        B.sw = B.sw * 62 / 100; B.hw = B.hw * 62 / 100;
-        B.ty += (B.by - B.ty) * 30 / 100;
-        B.arm_r = B.arm_r * 70 / 100;
-        B.paw_r = B.paw_r * 75 / 100;
+        B.sw = PCT(B.sw, 62); B.hw = PCT(B.hw, 62);
+        B.ty += PCT((B.by - B.ty), 30);
+        B.arm_r = PCT(B.arm_r, 70);
+        B.paw_r = PCT(B.paw_r, 75);
     }
     B.belly = bm[5] * B.sw / 100;
     /* anchors */
@@ -136,31 +140,40 @@ void pb_layout(PCtx *c, int vk, int byaw, int step, int anim)
         int shoulder_in = vk == VK_CHIBI ? 8 : PX(2);
         B.shx[s] = B.cx + sg * (B.sw - shoulder_in);
         B.shy[s] = B.ty + (vk == VK_CHIBI ? 16 : PX(3));
-        B.hpx[s] = B.cx + sg * (B.hw * 45 / 100);
+        B.hpx[s] = B.cx + sg * (PCT(B.hw, 45));
         B.hpy[s] = B.by - (vk == VK_CHIBI ? 4 : 8);
         B.ftx[s] = B.hpx[s];
-        B.fty[s] = B.ground - (vk == VK_CHIBI ? 8 : PX(1) + 8);
+        B.fty[s] = B.ground - (vk == VK_CHIBI ? 8 : PCT((B.leg_r + 12), 128) - 2);
         if (vk == VK_PORTRAIT) {
             B.hdx[s] = B.cx + sg * PX(8);
             B.hdy[s] = PX(55);
         } else {
             B.hdx[s] = B.cx + sg * (B.sw + (vk == VK_CHIBI ? 4 : 12));
-            B.hdy[s] = B.ty + (B.by - B.ty) * 78 / 100;
+            B.hdy[s] = B.ty + PCT((B.by - B.ty), 78);
         }
     }
     if (byaw == 2) {
-        /* profile: arms and legs swing along x, near limbs on the left */
+        /* profile: arms and legs swing along x, near limbs on the left.
+         * |step| 1 = stride, 2 = passing (one foot tucked up) */
         int stride = (vk == VK_CHIBI ? 24 : (vk == VK_FIGHTER ? 40 : 56));
+        int dir = step < 0 ? -1 : (step > 0 ? 1 : 0), mag = step < 0 ? -step : step;
         B.shx[0] = B.shx[1] = B.cx + (vk == VK_CHIBI ? 0 : 8);
         B.hpx[0] = B.hpx[1] = B.cx;
-        B.ftx[0] = B.cx - step * stride;
-        B.ftx[1] = B.cx + step * stride;
-        B.hdx[0] = B.cx + step * stride;
-        B.hdx[1] = B.cx - step * stride;
-        B.hdy[0] = B.hdy[1] = B.ty + (B.by - B.ty) * 72 / 100;
+        if (mag == 2) {
+            B.ftx[0] = B.cx - dir * stride / 3;
+            B.ftx[1] = B.cx + dir * stride / 3;
+            B.fty[dir < 0 ? 1 : 0] -= vk == VK_CHIBI ? 16 : 40;
+        } else {
+            B.ftx[0] = B.cx - dir * stride;
+            B.ftx[1] = B.cx + dir * stride;
+        }
+        B.hdx[0] = B.cx + dir * stride / mag_or1(mag);
+        B.hdx[1] = B.cx - dir * stride / mag_or1(mag);
+        B.hdy[0] = B.hdy[1] = B.ty + PCT((B.by - B.ty), 72);
     } else if (step && vk != VK_PORTRAIT) {
         /* front / back walk: alternate lifting a foot, swing arms */
-        int lift = vk == VK_CHIBI ? 16 : 24;
+        int mag = step < 0 ? -step : step;
+        int lift = (vk == VK_CHIBI ? 16 : 24) * mag;
         B.fty[step < 0 ? 0 : 1] -= lift;
         B.hdy[step < 0 ? 1 : 0] -= lift / 2;
     }
@@ -168,12 +181,12 @@ void pb_layout(PCtx *c, int vk, int byaw, int step, int anim)
         B.hdy[0] += PX(1); B.hdy[1] += PX(1);
     }
     B.tails = 1;
-    B.tailx = B.cx + B.hw * 60 / 100;
+    B.tailx = B.cx + PCT(B.hw, 60);
     B.taily = B.by - (vk == VK_CHIBI ? 16 : PX(3));
     if (vk == VK_PORTRAIT) { B.tailx = PX(35); B.taily = PX(52); B.unit = PX(14); }
     if (vk == VK_FIGURE) B.unit = PX(15);
-    if (byaw == 2) { B.tailx = B.cx + B.hw * 80 / 100; }
-    B.wingx = B.cx + B.sw * 45 / 100;
+    if (byaw == 2) { B.tailx = B.cx + PCT(B.hw, 80); }
+    B.wingx = B.cx + PCT(B.sw, 45);
     B.wingy = B.ty + (vk == VK_CHIBI ? 16 : (vk == VK_PORTRAIT ? -PX(1) : PX(3)));
     B.neckx = B.cx;
     B.necky = B.ty;
@@ -186,7 +199,7 @@ void pb_layout(PCtx *c, int vk, int byaw, int step, int anim)
 int pb_head_y(PCtx *c, int ry)
 {
     (void)c;
-    return B.ty - ry * 62 / 100 + (B.hunch ? PX(2) : 0);
+    return B.ty - PCT(ry, 62) + (B.hunch ? PX(2) : 0);
 }
 
 int pb_torso_top(void) { return B.ty; }
@@ -281,29 +294,37 @@ static int sleeve_mat(PCtx *c, PMat *m)
 
 /* ---------------------------------------------------------------------- */
 /* legs and feet */
-static void paw_toes(int x, int y, int r, uint8_t col)
-{
-    if (r < 40) return;
-    pc_px((x >> 4) - 1, (y + r / 2) >> 4, col);
-    pc_px((x >> 4) + 1, (y + r / 2) >> 4, col);
-}
 
+/* shoes / paws: x,y = ankle; the sole sits on B.ground (minus any lift) */
 static void foot(PCtx *c, int s, int x, int y)
 {
     const DoomoLook *l = c->l;
-    int sh = l->shoes, r = B.leg_r + 10, k;
+    int sh = l->shoes, r = B.leg_r + 12, k;
     int side = B.yaw == 2 ? -1 : 0;     /* profile: toes point left */
-    int fw = r + (side ? r / 2 : 0), fx = x + side * r / 3;
-    PMat m = c->shoe, sole, w;
+    int fw = PCT(r, 115) + (side ? r / 2 : 0), fx = x + side * r / 3;
+    int fh = PCT(r, 64), fy = y + fh - 6;  /* foot ellipse centre (below the ankle) */
+    int sole = fy + fh;                 /* bottom of the foot */
+    int big = B.lod == LOD_BIG;
+    PMat m = c->shoe, sl, w, dk;
     pm_paint(&w, PAINT_WHITE);
-    pm_from3(&sole, PAL_PAINT(PAINT_WHITE, 0), PAL_PAINT(PAINT_WHITE, 1), PAL_PAINT(PAINT_WHITE, 2));
+    pm_from3(&sl, PAL_PAINT(PAINT_WHITE, 0), PAL_PAINT(PAINT_WHITE, 1), PAL_PAINT(PAINT_WHITE, 2));
+    if (l->shoes_color == PAINT_WHITE) pm_from3(&sl, PAL_PAINT(PAINT_SILVER, 0), PAL_PAINT(PAINT_SILVER, 1), PAL_PAINT(PAINT_SILVER, 2));
+    pm_from3(&dk, m.c[0], m.c[1], m.c[2]);
     if (B.lod == LOD_TINY) {
-        pc_part(sh == SHOES_BARE || sh == SHOES_CLAWS ? &c->skin : &m, SH_BALL, 0);
+        PMat p = c->skin;
+        if (l->marking == MARK_FUR_SOCKS) pm_paint(&p, l->marking_color);
+        pc_part(sh == SHOES_BARE || sh == SHOES_CLAWS || sh == SHOES_SANDALS ? &p : &m, SH_BALL, 0);
         pc_ellipse(fx, y + 4, fw, r * 3 / 4);
-        if (sh == SHOES_ROLLERSKATES) pc_px(fx >> 4, (y >> 4) + 2, PAL_GRAY_D);
-        if (sh == SHOES_SLIPPERS) pc_px((fx >> 4), (y - r) >> 4, m.c[3]);
-        if (sh == SHOES_BOOTS || sh == SHOES_COMBAT) { pc_part(&m, SH_BALL, 0); pc_capsule(x, y - 24, x, y, r - 4, r - 4); }
-        if (sh == SHOES_PLATFORM || sh == SHOES_SNEAKERS) pc_px(fx >> 4, (y + r * 3 / 4) >> 4, PAL_WHITE);
+        switch (sh) {
+        case SHOES_ROLLERSKATES: pc_px(fx >> 4, (y >> 4) + 2, PAL_PAINT(PAINT_LEMON, 1)); break;
+        case SHOES_SLIPPERS: pc_px((fx >> 4), (y - r) >> 4, m.c[3]); break;
+        case SHOES_BOOTS: case SHOES_COMBAT: pc_part(&m, SH_BALL, 0); pc_capsule(x, y - 24, x, y, r - 4, r - 4); break;
+        case SHOES_PLATFORM: case SHOES_SNEAKERS: pc_px(fx >> 4, (y + r * 3 / 4) >> 4, PAL_WHITE); break;
+        case SHOES_CLAWS: pc_px(fx >> 4, (y + r) >> 4, PAL_PAINT(PAINT_BONE, 2)); break;
+        case SHOES_SANDALS: pc_px(fx >> 4, (y + r / 2) >> 4, m.c[1]); break;
+        case SHOES_HOOVES: pc_px(fx >> 4, (y + r / 2) >> 4, PAL_PAINT(PAINT_JET, 1)); break;
+        default: break;
+        }
         return;
     }
     switch (sh) {
@@ -312,107 +333,129 @@ static void foot(PCtx *c, int s, int x, int y)
         PMat p = c->skin;
         if (l->marking == MARK_FUR_SOCKS) pm_paint(&p, l->marking_color);
         pc_part(&p, SH_BALL, c->critter ? PF_FUZZ : 0);
-        pc_ellipse(fx, y + 4, fw, r * 3 / 4 + 4);
-        if (c->critter) paw_toes(fx, y, r, p.c[0]);
+        pc_ellipse(fx, fy, fw, fh + 4);
+        if (c->critter && big) {
+            for (k = -1; k <= 1; k += 2) pc_px((fx >> 4) + k, (sole - 16) >> 4, p.c[0]);
+        }
         break; }
     case SHOES_SNEAKERS:
         pc_part(&m, SH_BALL, 0);
-        pc_ellipse(fx, y, fw, r * 3 / 4);
-        pc_part(&sole, SH_FLAT, 0);
-        pc_rrect(fx, y + r / 2, fw, 14, 8);
-        pc_decal(&w, SH_FLAT);
-        pc_px(x >> 4, (y - r / 4) >> 4, PAL_WHITE);
-        if (r >= 48) pc_px((x >> 4) + 1, (y - r / 4) >> 4, PAL_WHITE);
+        pc_ellipse(fx, fy - 4, fw, fh);
+        pc_part(&sl, SH_FLAT, 0);
+        pc_rrect(fx, sole - 12, fw + 4, 14, 10);
+        pc_decal(&w, SH_SOFT);
+        pc_ellipse(fx + side * r / 2, sole - 26, PCT(fw, 55), 16);
+        if (big) {
+            pc_px((x >> 4) - 1, (fy - fh / 2) >> 4, PAL_WHITE);
+            pc_px((x >> 4) + 1, (fy - fh / 2) >> 4, PAL_WHITE);
+        }
         break;
     case SHOES_BOOTS:
         pc_part(&m, SH_BALL, 0);
-        pc_capsule(x, y - PX(5), x, y, r - 6, r - 2);
-        pc_ellipse(fx, y + 2, fw, r * 3 / 4);
-        pc_decal(&m, SH_FLAT);
-        pc_line((x - r) >> 4, (y - PX(5)) >> 4, (x + r) >> 4, (y - PX(5)) >> 4, m.c[3]);
+        pc_capsule(x, y - PX(5), x, fy, r - 4, r);
+        pc_ellipse(fx, fy, fw, fh);
+        pc_part(&m, SH_SOFT, 0);
+        pc_rrect(x, y - PX(5), r + 8, 20, 10);
+        pc_decal(&dk, SH_FLAT);
+        pc_line((fx - fw + 8) >> 4, (sole - 8) >> 4, (fx + fw - 8) >> 4, (sole - 8) >> 4, m.c[0]);
         break;
-    case SHOES_SANDALS:
-        pc_part(&c->skin, SH_BALL, 0);
-        pc_ellipse(fx, y + 2, fw - 4, r * 3 / 4);
+    case SHOES_SANDALS: {
+        PMat p = c->skin;
+        if (l->marking == MARK_FUR_SOCKS) pm_paint(&p, l->marking_color);
+        pc_part(&p, SH_BALL, c->critter ? PF_FUZZ : 0);
+        pc_ellipse(fx, fy - 4, fw - 8, fh);
         pc_part(&m, SH_FLAT, 0);
-        pc_rrect(fx, y + r / 2 + 4, fw, 12, 6);
+        pc_rrect(fx, sole - 8, fw + 4, 12, 8);
         pc_decal(&m, SH_FLAT);
-        pc_line((x - r / 2) >> 4, (y - 4) >> 4, (x + r / 2) >> 4, (y - 4) >> 4, m.c[1]);
-        break;
+        pc_line((fx - fw + 12) >> 4, (fy - 8) >> 4, (fx + fw - 12) >> 4, (fy - 8) >> 4, m.c[1]);
+        if (big) pc_line((fx - fw + 16) >> 4, (fy + 12) >> 4, (fx + fw - 16) >> 4, (fy + 12) >> 4, m.c[1]);
+        break; }
     case SHOES_HEELS:
         pc_part(&m, SH_GLOSS, 0);
-        pc_ellipse(fx - side * 8, y, fw - 8, r * 2 / 3);
-        pc_capsule(x + (side ? r / 2 : 0), y + 8, x + (side ? r / 2 : 0), y + r, 10, 8);
-        pc_px((x >> 4) - 1, (y - 8) >> 4, m.c[4]);
+        pc_ellipse(fx - side * 8, fy - 8, fw - 12, fh - 8);
+        pc_tri(fx - fw + 12, fy, fx + fw - 12, fy, fx, sole + 4);
+        pc_part(&dk, SH_BALL, 0);
+        pc_capsule(x + (side ? r / 2 : fw / 2), fy, x + (side ? r / 2 : fw / 2), sole, 8, 6);
+        if (!side) pc_capsule(x - fw / 2, fy, x - fw / 2, sole, 8, 6);
         break;
     case SHOES_CLOGS: {
         PMat wood;
         pm_paint(&wood, PAINT_CARAMEL);
         pc_part(&wood, SH_BALL, 0);
-        pc_rrect(fx, y + r / 3, fw + 4, r / 2 + 4, 12);
+        pc_rrect(fx, sole - 16, fw + 10, 22, 14);
         pc_part(&m, SH_BALL, 0);
-        pc_ellipse(fx, y - 4, fw, r * 2 / 3);
+        pc_ellipse(fx, fy - 12, fw, fh - 4);
+        pc_decal(&wood, SH_FLAT);
+        pc_line((fx - fw) >> 4, (sole - 22) >> 4, (fx + fw) >> 4, (sole - 22) >> 4, wood.c[3]);
         break; }
     case SHOES_COMBAT: {
-        PMat dk;
-        pm_from3(&dk, m.c[0], m.c[1], m.c[2]);
+        PMat blk;
+        pm_flat(&blk, PAL_PAINT(PAINT_JET, 1));
         pc_part(&dk, SH_BALL, 0);
-        pc_capsule(x, y - PX(4), x, y, r, r);
-        pc_ellipse(fx, y + 2, fw + 4, r * 3 / 4);
-        pc_part(&sole, SH_FLAT, 0);
-        pm_flat(&sole, PAL_PAINT(PAINT_JET, 1));
-        pc_part(&sole, SH_FLAT, 0);
-        pc_rrect(fx, y + r * 2 / 3, fw + 6, 14, 6);
-        pc_decal(&w, SH_FLAT);
-        for (k = 1; k <= 3; k++) pc_px(x >> 4, (y - k * 18) >> 4, (k & 1) ? PAL_WHITE : PAL_GRAY_L);
+        pc_capsule(x, y - PX(4), x, fy, r, r);
+        pc_ellipse(fx, fy - 4, fw + 6, fh);
+        pc_part(&blk, SH_FLAT, 0);
+        pc_rrect(fx, sole - 10, fw + 10, 18, 6);
+        for (k = 1; k <= 3; k++) pc_px(x >> 4, (fy - k * 20) >> 4, (k & 1) ? PAL_WHITE : PAL_GRAY_L);
         break; }
     case SHOES_SLIPPERS: {
-        PMat p;
-        pm_ramp(&p, RAMP_PASTEL_PINK, 5);
+        PMat pk;
+        pm_ramp(&pk, RAMP_PASTEL_PINK, 5);
         pc_part(&m, SH_SOFT, PF_FUZZ);
-        pc_ellipse(fx, y, fw + 8, r * 3 / 4 + 6);
-        /* bunny-slipper ears */
-        pc_ellipse(fx - r / 2, y - r, 10, r / 2);
-        pc_ellipse(fx + r / 2, y - r, 10, r / 2);
-        pc_decal(&p, SH_FLAT);
-        pc_px((fx >> 4), (y >> 4), PAL_PAINT(PAINT_JET, 1));
-        pc_px((fx >> 4) - 1, (y >> 4) + 1, p.c[2]);
-        pc_px((fx >> 4) + 1, (y >> 4) + 1, p.c[2]);
+        pc_ellipse(fx, fy, fw + 12, fh + 8);
+        pc_ellipse(fx - fw / 2, fy - fh - 8, 12, fh * 2 / 3);
+        pc_ellipse(fx + fw / 2, fy - fh - 8, 12, fh * 2 / 3);
+        pc_decal(&pk, SH_FLAT);
+        pc_px((fx >> 4), (fy >> 4) + 1, pk.c[1]);
+        if (big) {
+            pc_px((fx >> 4) - 2, fy >> 4, PAL_PAINT(PAINT_JET, 1));
+            pc_px((fx >> 4) + 2, fy >> 4, PAL_PAINT(PAINT_JET, 1));
+        }
         break; }
     case SHOES_HOOVES: {
-        PMat hv;
-        pm_from3(&hv, m.c[0], m.c[1], m.c[2]);
-        pc_part(&c->skin, SH_BALL, 0);
-        pc_capsule(x, y - 16, x, y - 4, r - 8, r - 6);
+        PMat hv, fur = c->skin;
+        pm_from3(&hv, PAL_PAINT(PAINT_JET, 0), PAL_PAINT(PAINT_CHARCOAL, 1), PAL_PAINT(PAINT_CHARCOAL, 2));
+        if (l->shoes_color != PAINT_WHITE) pm_from3(&hv, m.c[0], m.c[1], m.c[2]);
         pc_part(&hv, SH_GLOSS, 0);
-        pc_rrect(x, y + 6, r - 4, r / 2 + 2, 10);
+        pc_rrect(fx, fy + 8, fw - 8, fh, 16);
         pc_decal(&hv, SH_FLAT);
-        pc_line(x >> 4, (y - 2) >> 4, x >> 4, (y + r / 2) >> 4, hv.c[0]);
+        pc_line(fx >> 4, (fy + 8) >> 4, fx >> 4, (sole - 4) >> 4, hv.c[0]);
+        pc_part(&fur, SH_SOFT, PF_FUZZ);
+        pc_ellipse(x, fy - 16, fw, 22);
+        pc_tri(x - fw, fy - 16, x - fw / 2, fy - 8, x - fw / 2 - 16, fy + 16);
+        pc_tri(x + fw, fy - 16, x + fw / 2, fy - 8, x + fw / 2 + 16, fy + 16);
         break; }
     case SHOES_ROLLERSKATES: {
         PMat wh;
         pm_paint(&wh, PAINT_LEMON);
         pc_part(&m, SH_BALL, 0);
-        pc_capsule(x, y - PX(3), x, y - 4, r - 4, r - 2);
-        pc_ellipse(fx, y - 2, fw, r * 2 / 3);
+        pc_capsule(x, y - PX(3), x, fy, r - 4, r - 2);
+        pc_ellipse(fx, fy - 6, fw, fh - 4);
+        pc_part(&sl, SH_FLAT, 0);
+        pc_rrect(fx, sole - 12, fw + 2, 10, 6);
         pc_part(&wh, SH_GLOSS, 0);
-        pc_ellipse(fx - r / 2, y + r * 2 / 3, 18, 18);
-        pc_ellipse(fx + r / 2, y + r * 2 / 3, 18, 18);
+        pc_ellipse(fx - fw / 2, sole + 8, 18, 18);
+        pc_ellipse(fx + fw / 2, sole + 8, 18, 18);
         break; }
     case SHOES_PLATFORM:
-        pc_part(&sole, SH_FLAT, 0);
-        pc_rrect(fx, y + r / 2, fw + 4, r / 2 + 8, 8);
+        pc_part(&sl, SH_BALL, 0);
+        pc_rrect(fx, sole - 4, fw + 6, 28, 10);
         pc_part(&m, SH_GLOSS, 0);
-        pc_ellipse(fx, y - 8, fw, r * 2 / 3);
+        pc_ellipse(fx, fy - 24, fw, fh - 4);
+        pc_decal(&sl, SH_FLAT);
+        pc_line((fx - fw) >> 4, (sole - 4) >> 4, (fx + fw) >> 4, (sole - 4) >> 4, sl.c[1]);
         break;
     case SHOES_CLAWS: {
-        PMat cl;
+        PMat cl, p = c->skin;
         pm_paint(&cl, PAINT_BONE);
-        pc_part(&c->skin, SH_BALL, c->critter ? PF_FUZZ : 0);
-        pc_ellipse(fx, y + 2, fw, r * 3 / 4 + 4);
-        pc_part(&cl, SH_BALL, 0);
-        for (k = -1; k <= 1; k++)
-            pc_tri(fx + k * r / 2 - 8, y + r / 2, fx + k * r / 2 + 8, y + r / 2, fx + k * r / 2 + side * 8, y + r + 12);
+        if (l->marking == MARK_FUR_SOCKS) pm_paint(&p, l->marking_color);
+        pc_part(&p, SH_BALL, c->critter ? PF_FUZZ : 0);
+        pc_ellipse(fx, fy - 4, fw, fh + 2);
+        pc_part(&cl, SH_GLOSS, 0);
+        for (k = -1; k <= 1; k++) {
+            int tx = fx + k * fw / 2 + side * 12;
+            pc_tri(tx - 10, sole - 20, tx + 10, sole - 20, tx + side * 10, sole + 6);
+        }
         break; }
     }
     (void)s;
@@ -499,10 +542,10 @@ static void far_leg_profile(PCtx *c)
 static void torso_shape(int grow, int belly)
 {
     int H = B.by - B.ty;
-    int cy1 = B.ty + H * 40 / 100, cy2 = B.ty + H * 66 / 100;
+    int cy1 = B.ty + PCT(H, 40), cy2 = B.ty + PCT(H, 66);
     pc_frame(B.cx, (B.ty + B.by) / 2, DOOMO_MAX(B.sw, B.hw) + grow + 16, H / 2 + grow + 16);
-    pc_ellipse(B.cx, cy1, B.sw + grow, H * 42 / 100 + grow);
-    pc_ellipse(B.cx, cy2, B.hw + grow + belly / 2, H * 36 / 100 + grow + belly / 3);
+    pc_ellipse(B.cx, cy1, B.sw + grow, PCT(H, 42) + grow);
+    pc_ellipse(B.cx, cy2, B.hw + grow + belly / 2, PCT(H, 36) + grow + belly / 3);
     if (B.view == VK_PORTRAIT) {
         pc_rrect(B.cx, B.by, B.sw + grow, H / 2 + grow, B.sw / 2);
     }
@@ -511,8 +554,8 @@ static void torso_shape(int grow, int belly)
 static void long_skirt(PCtx *c, const PMat *m, int to_ground)
 {
     int H = B.by - B.ty;
-    int top = B.waist, bot = to_ground ? B.ground - PX(1) : B.by + (B.ground - B.by) * 55 / 100;
-    int w0 = B.hw, w1 = B.hw + H * 30 / 100;
+    int top = B.waist, bot = to_ground ? B.ground - PX(1) : B.by + PCT((B.ground - B.by), 55);
+    int w0 = B.hw, w1 = B.hw + PCT(H, 30);
     if (B.view == VK_PORTRAIT) return;
     pc_part(m, SH_BALL, 0);
     pc_frame(B.cx, (top + bot) / 2, w1 + 8, (bot - top) / 2 + 8);
@@ -534,8 +577,8 @@ static void bottoms(PCtx *c)
     case BOTTOM_NONE:
         return;
     case BOTTOM_SKIRT: case BOTTOM_KILT: {
-        int top = B.waist, bot = B.by + (B.ground - B.by) * 45 / 100;
-        int w1 = B.hw + H * 24 / 100;
+        int top = B.waist, bot = B.by + PCT((B.ground - B.by), 45);
+        int w1 = B.hw + PCT(H, 24);
         pc_part(&m, SH_BALL, 0);
         if (bt == BOTTOM_KILT) pc_pattern(p_pattern_tiles[PATTERN_PLAID], &c->patm);
         pc_frame(B.cx, (top + bot) / 2, w1 + 8, (bot - top) / 2 + 8);
@@ -557,11 +600,11 @@ static void bottoms(PCtx *c)
         pc_line(B.cx >> 4, B.waist >> 4, B.cx >> 4, (B.ground - 24) >> 4, m.c[1]);
         return;
     case BOTTOM_TUTU: {
-        int k, y = B.waist + H * 12 / 100, w = B.hw + H * 34 / 100;
+        int k, y = B.waist + PCT(H, 12), w = B.hw + PCT(H, 34);
         pc_part(&m, SH_SOFT, PF_FUZZ);
-        pc_frame(B.cx, y, w + 8, H * 16 / 100 + 8);
-        pc_ellipse(B.cx, y, w, H * 15 / 100 + 6);
-        for (k = -3; k <= 3; k++) pc_ellipse(B.cx + k * w / 4, y + H * 12 / 100, w / 5 + 4, H * 9 / 100 + 4);
+        pc_frame(B.cx, y, w + 8, PCT(H, 16) + 8);
+        pc_ellipse(B.cx, y, w, PCT(H, 15) + 6);
+        for (k = -3; k <= 3; k++) pc_ellipse(B.cx + k * w / 4, y + PCT(H, 12), w / 5 + 4, PCT(H, 9) + 4);
         return; }
     default:
         break;
@@ -587,11 +630,11 @@ static void chest_fluff(PCtx *c)
 {
     PMat m;
     const DoomoLook *l = c->l;
-    int y = B.ty + (B.view == VK_CHIBI ? 8 : PX(1)), w = B.sw * 45 / 100;
-    if (!c->critter && l->species != SPECIES_MOTHKIN) return;
+    int y = B.ty + (B.view == VK_CHIBI ? 8 : PX(1)), w = PCT(B.sw, 45);
+    if (!c->critter && l->species != SPECIES_MOTHKIN && l->marking != MARK_FUR_BELLY) return;
     if (B.lod == LOD_TINY || B.yaw >= 3) return;
-    if (l->top == TOP_HOODIE || l->top == TOP_SPACESUIT || l->top == TOP_HAZMAT ||
-        l->top == TOP_PLATE_ARMOR || l->top == TOP_SWEATER || l->accessory == ACC_SCARF) return;
+    if ((l->top == TOP_SPACESUIT || l->top == TOP_HAZMAT || l->top == TOP_PLATE_ARMOR ||
+         l->accessory == ACC_SCARF) && l->marking != MARK_FUR_BELLY) return;
     y = DOOMO_MAX(B.ty, B.neck - 24);
     if (l->marking == MARK_FUR_BELLY || l->marking == MARK_FUR_MUZZLE) pm_paint(&m, l->marking_color);
     else pm_from3(&m, c->skin.c[2], c->skin.c[3], c->skin.c[4]);
@@ -605,7 +648,7 @@ static void chest_fluff(PCtx *c)
 static void mothkin_ruff(PCtx *c)
 {
     PMat m;
-    int k, y = DOOMO_MAX(B.ty + PX(1), B.neck - 8), w = B.sw * 85 / 100;
+    int k, y = DOOMO_MAX(B.ty + PX(1), B.neck - 8), w = PCT(B.sw, 85);
     if (c->l->species != SPECIES_MOTHKIN || B.yaw >= 3) return;
     pm_paint(&m, PAINT_WHITE);
     if (c->l->marking_color != PAINT_WHITE && c->l->marking >= MARK_FUR_MUZZLE) pm_paint(&m, c->l->marking_color);
@@ -616,305 +659,355 @@ static void mothkin_ruff(PCtx *c)
         pc_tri(B.cx + k * w / 4 - w / 6, y + 8, B.cx + k * w / 4 + w / 6, y + 8, B.cx + k * w / 4, y + w / 2 + w / 4 + 8);
 }
 
+/* torso-surface details (buttons, prints, pockets, plates, aprons). Sizes
+ * are fractions of the shoulder half width so they scale to every view. */
+#define SW(n) PCT(B.sw, n)
+static void dot(int x, int y, uint8_t c) { pc_px(x >> 4, y >> 4, c); }
+static void vline(int x, int y0, int y1, uint8_t c) { pc_line(x >> 4, y0 >> 4, x >> 4, y1 >> 4, c); }
+static void seg(int x0, int y0, int x1, int y1, uint8_t c) { pc_line(x0 >> 4, y0 >> 4, x1 >> 4, y1 >> 4, c); }
+
 static void top_details(PCtx *c, const PMat *m, int first)
 {
     const DoomoLook *l = c->l;
     int t = l->top, k;
-    int cx = B.cx, ty, H;
+    int cx = B.cx, ty, H, bot;
     int big = B.lod == LOD_BIG, tiny = B.lod == LOD_TINY;
-    int nx, ny;
+    PMat w, d, acc, gold;
     vis_area(&ty, &H);
-    nx = cx >> 4; ny = ty >> 4;
-    PMat w, d, acc;
+    bot = ty + H;
     pm_paint(&w, PAINT_WHITE);
     pm_from3(&d, m->c[0], m->c[1], m->c[2]);
-    pm_paint(&acc, l->accessory_color);
+    pm_paint(&acc, l->accessory_color == l->top_color ? PAINT_CHERRY : l->accessory_color);
+    pm_paint(&gold, PAINT_LEMON);
     if (B.yaw >= 3) return;
     pc_mask_none();
     pc_mask_range(first, pcv.part);
     switch (t) {
-    case TOP_TSHIRT:
-        if (!tiny) {
-            pc_decal(&d, SH_FLAT);
-            pc_ellipse(cx, ty + 4, B.sw / 3, 18);
-        }
-        break;
-    case TOP_BAND_TEE: {
-        PMat lg;
-        pm_paint(&lg, l->pattern_color == l->top_color ? PAINT_WHITE : l->pattern_color);
-        pc_decal(&d, SH_FLAT);
-        if (!tiny) pc_ellipse(cx, ty + 4, B.sw / 3, 18);
-        pc_decal(&lg, SH_FLAT);
-        {
-            int y = ty + H * 45 / 100;
-            if (B.view == VK_PORTRAIT) y = ty + PX(8);
-            pc_ellipse(cx, y, big ? PX(3) : PX(2), big ? PX(2) + 8 : PX(1) + 8);
-            if (!tiny) {
-                pc_px(nx - 1, y >> 4, PAL_PAINT(PAINT_JET, 1));
-                pc_px(nx + 1, y >> 4, PAL_PAINT(PAINT_JET, 1));
-                if (big) { pc_px(nx, (y >> 4) + 2, PAL_PAINT(PAINT_JET, 1)); pc_px(nx - 1, (y >> 4) + 3, lg.c[1]); pc_px(nx + 1, (y >> 4) + 3, lg.c[1]); }
-            }
-        }
-        break; }
     case TOP_HOODIE:
         if (!tiny) {
-            /* drawstrings + kangaroo pocket */
-            pc_px(nx - 2, ny + 1, PAL_WHITE); pc_px(nx - 2, ny + 2, PAL_WHITE); pc_px(nx - 2, ny + 3, PAL_GRAY_L);
-            pc_px(nx + 2, ny + 1, PAL_WHITE); pc_px(nx + 2, ny + 2, PAL_WHITE); pc_px(nx + 2, ny + 3, PAL_GRAY_L);
+            /* kangaroo pocket */
+            int py = ty + PCT(H, 58), pw = SW(55), ph = DOOMO_MAX(PCT(H, 22), 20);
             pc_decal(&d, SH_FLAT);
-            {
-                int py = B.view == VK_PORTRAIT ? ty + PX(10) : ty + H * 62 / 100;
-                pc_rrect(cx, py, B.sw * 55 / 100, big ? PX(2) + 8 : PX(1) + 8, 16);
-                pc_decal(m, SH_FLAT);
-                pc_rrect(cx, py - 6, B.sw * 55 / 100 - 16, big ? PX(2) - 4 : PX(1), 12);
-            }
+            pc_quad(cx - pw, py + ph, cx + pw, py + ph, cx + pw - ph / 2, py - ph / 2, cx - pw + ph / 2, py - ph / 2);
+            pc_decal(m, SH_SOFT);
+            pc_quad(cx - pw + 12, py + ph - 10, cx + pw - 12, py + ph - 10, cx + pw - ph / 2 - 4, py - ph / 2 + 12,
+                    cx - pw + ph / 2 + 4, py - ph / 2 + 12);
         }
         break;
-    case TOP_TANK:
-        break;
-    case TOP_SWEATER: {
-        int y;
-        pc_decal(&d, SH_FLAT);
-        if (!tiny) pc_rrect(cx, ty + 8, B.sw / 3 + 8, 16, 8);
-        if (big) for (y = ty + PX(4); y < B.by - PX(2); y += PX(3))
-            for (k = -2; k <= 2; k++) pc_px(nx + k * 3, y >> 4, m->c[1]);
+    case TOP_SWEATER: case TOP_SWEATER_VEST: {
+        int y, x, step = big ? PX(2) : PX(3);
+        if (tiny) break;
+        for (y = ty + PX(2) + (t == TOP_SWEATER_VEST ? SW(30) : 0); y < bot - 8; y += step)
+            for (x = cx - SW(80); x <= cx + SW(80); x += PX(2)) {
+                dot(x, y, m->c[1]);
+                dot(x + 16, y + 16, m->c[1]);
+            }
         break; }
     case TOP_SUIT: {
-        PMat tie;
-        pm_paint(&tie, l->accessory_color == l->top_color ? PAINT_CHERRY : l->accessory_color);
-        pc_decal(&w, SH_FLAT);
-        pc_tri(cx - B.sw / 3, ty, cx + B.sw / 3, ty, cx, ty + H * 45 / 100);
-        pc_decal(&tie, SH_FLAT);
+        /* shirt V, tie, lapels, buttons */
+        int vy = ty + PCT(H, 45);
+        pc_decal(&w, SH_SOFT);
+        pc_tri(cx - SW(38), ty, cx + SW(38), ty, cx, vy);
+        pc_decal(&acc, SH_BALL);
         if (!tiny) {
-            pc_tri(cx - 14, ty + 8, cx + 14, ty + 8, cx, ty + 30);
-            pc_quad(cx - 12, ty + 24, cx + 12, ty + 24, cx + 16, ty + H * 40 / 100, cx - 16, ty + H * 40 / 100);
-        } else pc_px(nx, ny + 1, tie.c[2]);
+            pc_tri(cx - SW(10) - 4, ty + 6, cx + SW(10) + 4, ty + 6, cx, ty + SW(14) + 8);
+            pc_quad(cx - SW(8), ty + SW(12), cx + SW(8), ty + SW(12), cx + SW(12), vy + 8, cx - SW(12), vy + 8);
+        } else dot(cx, ty + 16, acc.c[2]);
         pc_decal(&d, SH_FLAT);
-        pc_line(nx - (B.sw >> 6) - 1, ny, nx - 1, (ty + H * 45 / 100) >> 4, m->c[0]);
-        pc_line(nx + (B.sw >> 6) + 1, ny, nx + 1, (ty + H * 45 / 100) >> 4, m->c[0]);
-        if (big) { pc_px(nx, (ty + H * 60 / 100) >> 4, m->c[0]); pc_px(nx, (ty + H * 75 / 100) >> 4, m->c[0]); }
+        seg(cx - SW(40), ty, cx - 8, vy, m->c[0]);
+        seg(cx + SW(40), ty, cx + 8, vy, m->c[0]);
+        if (!tiny) { dot(cx, vy + PX(2), m->c[0]); if (big) dot(cx, vy + PX(5), m->c[0]); }
         break; }
-    case TOP_DRESS: {
-        PMat col;
-        pm_paint(&col, PAINT_WHITE);
-        pc_decal(&col, SH_SOFT);
+    case TOP_BAND_TEE: {
+        /* a little skull print */
+        PMat lg;
+        int y = ty + PCT(H, 45), r = DOOMO_MAX(SW(30), 16);
+        pm_paint(&lg, l->pattern_color == l->top_color ? PAINT_WHITE : l->pattern_color);
+        pc_decal(&lg, SH_SOFT);
+        pc_ellipse(cx, y, r, PCT(r, 85));
+        pc_ellipse(cx, y + r * 7 / 10, r * 6 / 10, r * 4 / 10);
         if (!tiny) {
-            pc_ellipse(cx - B.sw / 4, ty + 6, B.sw / 4 + 4, 22);
-            pc_ellipse(cx + B.sw / 4, ty + 6, B.sw / 4 + 4, 22);
+            uint8_t k2 = PAL_PAINT(PAINT_JET, 1);
+            dot(cx - r / 2, y, k2); dot(cx + r / 2, y, k2);
+            if (big) { dot(cx - r / 2 + 16, y, k2); dot(cx + r / 2 - 16, y, k2); dot(cx, y + r / 2, k2); }
         }
-        pc_decal(&acc, SH_FLAT);
-        if (B.view != VK_PORTRAIT) pc_rrect(cx, B.waist, B.hw, tiny ? 8 : 14, 6);
-        else if (!tiny) { pc_px(nx, ny + 2, acc.c[2]); pc_px(nx - 1, ny + 1, acc.c[2]); pc_px(nx + 1, ny + 1, acc.c[2]); }
         break; }
-    case TOP_ROBE: {
+    case TOP_DRESS: case TOP_MAID: {
+        /* bow / ribbon at the waist (figure) */
+        if (B.view != VK_PORTRAIT) {
+            pc_decal(&acc, SH_BALL);
+            pc_rrect(cx, B.waist, B.hw, tiny ? 8 : 14, 6);
+        }
+        if (t == TOP_MAID) {
+            /* white apron */
+            int ay = ty + PCT(H, 30);
+            pc_decal(&w, SH_SOFT);
+            pc_rrect(cx, (ay + bot) / 2 + 8, SW(48), (bot - ay) / 2, 12);
+            if (big) { dot(cx - SW(48), ay + 8, PAL_GRAY_L); dot(cx + SW(48), ay + 8, PAL_GRAY_L); }
+        }
+        break; }
+    case TOP_ROBE: case TOP_KIMONO: {
         PMat sash;
-        pm_paint(&sash, l->accessory_color);
-        pc_decal(&d, SH_FLAT);
-        pc_tri(cx - B.sw / 3, ty, cx + B.sw / 3, ty, cx, ty + H * 35 / 100);
-        pc_decal(&c->skin, SH_FLAT);
-        if (!tiny) pc_tri(cx - B.sw / 4, ty, cx + B.sw / 4, ty, cx, ty + H * 25 / 100);
-        if (B.view != VK_PORTRAIT) { pc_decal(&sash, SH_FLAT); pc_rrect(cx, B.waist, B.hw + 8, tiny ? 8 : 14, 4); }
+        pm_paint(&sash, t == TOP_KIMONO ? (l->accessory_color == l->top_color ? PAINT_LEMON : l->accessory_color)
+                                        : PAINT_LEMON);
+        pc_decal(&sash, SH_BALL);
+        if (B.view != VK_PORTRAIT) {
+            pc_frame(cx, B.waist, B.hw, 24);
+            pc_rrect(cx, B.waist, B.hw + 8, tiny ? 8 : DOOMO_MAX(PCT(H, 10), 14), 6);
+        } else {
+            pc_frame(cx, bot - PX(3), B.sw, 32);
+            pc_rrect(cx, bot - PX(3), B.sw + 8, PX(2), 6);
+        }
         break; }
     case TOP_ARMOR: {
         PMat steel;
         pm_ramp(&steel, RAMP_STEEL, 5);
         pc_decal(&steel, SH_GLOSS);
-        pc_frame(cx, ty + H / 3, B.sw, H / 3);
-        pc_rrect(cx, ty + H * 32 / 100, B.sw * 70 / 100, H * 22 / 100, 24);
-        pc_decal(&d, SH_FLAT);
-        if (!tiny) pc_line(nx, (ty + H * 15 / 100) >> 4, nx, (ty + H * 50 / 100) >> 4, steel.c[1]);
+        pc_frame(cx, ty + H / 3, B.sw, H / 2);
+        pc_rrect(cx, ty + PCT(H, 34), SW(66), PCT(H, 24), SW(30));
+        if (!tiny) {
+            vline(cx, ty + PCT(H, 14), ty + PCT(H, 54), steel.c[1]);
+            dot(cx - SW(40), ty + PCT(H, 34), steel.c[4]);
+        }
         break; }
     case TOP_LEATHER_JACKET: {
         PMat shirt;
-        pm_paint(&shirt, PAINT_WHITE);
-        if (l->pattern_color != l->top_color) pm_paint(&shirt, l->pattern_color);
+        pm_paint(&shirt, l->pattern_color != l->top_color ? l->pattern_color : PAINT_WHITE);
         pc_decal(&shirt, SH_SOFT);
-        pc_quad(cx - B.sw / 4, ty, cx + B.sw / 4, ty, cx + B.sw / 6, B.by, cx - B.sw / 6, B.by);
+        pc_quad(cx - SW(30), ty, cx + SW(30), ty, cx + SW(22), bot, cx - SW(22), bot);
         pc_decal(&d, SH_FLAT);
+        seg(cx - SW(30), ty, cx - SW(22), bot, m->c[0]);
+        seg(cx + SW(30), ty, cx + SW(22), bot, m->c[0]);
         if (!tiny) {
-            pc_tri(cx - B.sw / 4 - 24, ty, cx - B.sw / 4, ty, cx - B.sw / 4 - 8, ty + H / 4);
-            pc_tri(cx + B.sw / 4 + 24, ty, cx + B.sw / 4, ty, cx + B.sw / 4 + 8, ty + H / 4);
-            pc_px(nx - (B.sw >> 5) - 1, (ty + H / 2) >> 4, PAL_GRAY_L);
-            pc_px(nx + (B.sw >> 5) + 1, (ty + H / 3) >> 4, PAL_GRAY_L);
+            for (k = 1; k <= 3; k++) dot(cx - SW(42), ty + H * k / 5, PAL_GRAY_L);
+            dot(cx + SW(46), ty + H * 2 / 5, m->c[4]);
         }
         break; }
     case TOP_OVERALLS: {
-        PMat shirt, btn;
+        PMat shirt;
         pm_paint(&shirt, PAINT_WHITE);
-        pm_paint(&btn, PAINT_LEMON);
         pc_decal(&shirt, SH_SOFT);
-        pc_clip(0, 0, pcv.w, (ty + H * 32 / 100) >> 4);
+        pc_clip(0, 0, pcv.w, (ty + PCT(H, 30)) >> 4);
         torso_shape(0, 0);
         pc_noclip();
         pc_mask_none();
         pc_mask_range(first, pcv.part);
         pc_decal(m, SH_BALL);
-        pc_rrect(cx, ty + H * 30 / 100, B.sw * 55 / 100, H * 18 / 100, 8);
+        pc_rrect(cx, ty + PCT(H, 34), SW(56), PCT(H, 16), 8);
         pc_decal(&d, SH_FLAT);
-        pc_line((cx - B.sw * 55 / 100) >> 4, ty >> 4, (cx - B.sw * 45 / 100) >> 4, (ty + H * 20 / 100) >> 4, m->c[1]);
-        pc_line((cx + B.sw * 55 / 100) >> 4, ty >> 4, (cx + B.sw * 45 / 100) >> 4, (ty + H * 20 / 100) >> 4, m->c[1]);
+        seg(cx - SW(56), ty, cx - SW(44), ty + PCT(H, 22), m->c[1]);
+        seg(cx + SW(56), ty, cx + SW(44), ty + PCT(H, 22), m->c[1]);
         if (!tiny) {
-            pc_px((cx - B.sw * 40 / 100) >> 4, (ty + H * 22 / 100) >> 4, btn.c[3]);
-            pc_px((cx + B.sw * 40 / 100) >> 4, (ty + H * 22 / 100) >> 4, btn.c[3]);
+            pc_decal(&gold, SH_BALL);
+            pc_ellipse(cx - SW(40), ty + PCT(H, 24), 14, 14);
+            pc_ellipse(cx + SW(40), ty + PCT(H, 24), 14, 14);
         }
-        break; }
-    case TOP_KIMONO: {
-        PMat obi, inner;
-        pm_paint(&obi, l->accessory_color == l->top_color ? PAINT_LEMON : l->accessory_color);
-        pm_paint(&inner, PAINT_WHITE);
-        pc_decal(&inner, SH_FLAT);
-        pc_line(nx - (B.sw >> 6) - 1, ny, nx + 1, (ty + H * 40 / 100) >> 4, PAL_WHITE);
-        pc_decal(&d, SH_FLAT);
-        pc_line(nx - (B.sw >> 6), ny, nx + 2, (ty + H * 42 / 100) >> 4, m->c[0]);
-        pc_line(nx + (B.sw >> 6) + 1, ny, nx + 1, (ty + H * 30 / 100) >> 4, m->c[0]);
-        pc_decal(&obi, SH_BALL);
-        pc_frame(cx, ty + H * 55 / 100, B.sw, H / 6);
-        if (B.view != VK_PORTRAIT) pc_rrect(cx, ty + H * 55 / 100, B.sw + 8, H * 10 / 100 + 6, 6);
-        else pc_rrect(cx, ty + PX(10), B.sw + 8, PX(2), 6);
         break; }
     case TOP_LAB_COAT: {
-        PMat in, pen;
-        in = c->top;
+        PMat in = c->top, pen;
         pm_paint(&pen, PAINT_COBALT);
         pc_decal(&in, SH_BALL);
-        pc_quad(cx - B.sw / 4, ty, cx + B.sw / 4, ty, cx + B.sw / 8, ty + H * 55 / 100, cx - B.sw / 8, ty + H * 55 / 100);
-        pc_decal(&w, SH_FLAT);
-        pc_line(nx - (B.sw >> 6) - 1, ny, nx, (ty + H * 55 / 100) >> 4, w.c[0]);
-        pc_line(nx + (B.sw >> 6) + 1, ny, nx, (ty + H * 55 / 100) >> 4, w.c[0]);
+        pc_quad(cx - SW(30), ty, cx + SW(30), ty, cx + SW(10), ty + PCT(H, 55), cx - SW(10), ty + PCT(H, 55));
+        seg(cx - SW(32), ty, cx, ty + PCT(H, 58), w.c[0]);
+        seg(cx + SW(32), ty, cx, ty + PCT(H, 58), w.c[0]);
+        vline(cx, ty + PCT(H, 58), bot, w.c[0]);
         if (!tiny) {
-            int px = (cx + B.sw / 2) >> 4, py = (ty + H * 35 / 100) >> 4;
-            if (B.view == VK_PORTRAIT) py = (ty >> 4) + 7;
-            pc_line(px - 1, py, px + 2, py, w.c[0]);
-            pc_px(px + 1, py - 1, pen.c[2]); pc_px(px + 1, py - 2, pen.c[3]);
+            int px = cx + SW(56), py = ty + PCT(H, 40);
+            seg(px - 24, py, px + 24, py, w.c[0]);
+            dot(px + 8, py - 16, pen.c[2]);
+            dot(px + 8, py - 32, pen.c[3]);
         }
         break; }
-    case TOP_CROP_TOP:
-        break;
-    case TOP_SWEATER_VEST: {
-        PMat shirt;
-        pm_paint(&shirt, PAINT_WHITE);
-        pc_decal(&shirt, SH_SOFT);
-        pc_tri(cx - B.sw / 3, ty, cx + B.sw / 3, ty, cx, ty + H * 40 / 100);
-        if (!tiny) {
-            pc_decal(&shirt, SH_FLAT);
-            pc_tri(cx - B.sw / 3 - 8, ty - 4, cx - 4, ty + 4, cx - B.sw / 4, ty + 28);
-            pc_tri(cx + B.sw / 3 + 8, ty - 4, cx + 4, ty + 4, cx + B.sw / 4, ty + 28);
-        }
-        if (big) {
-            int y;
-            pc_decal(&d, SH_FLAT);
-            for (y = ty + PX(5); y < B.by - PX(1); y += PX(3))
-                for (k = -2; k <= 2; k++) pc_px(nx + k * 3 + ((y >> 4) & 1), y >> 4, m->c[1]);
-        }
-        break; }
-    case TOP_CLOAK: {
-        PMat clasp;
-        pm_paint(&clasp, PAINT_LEMON);
+    case TOP_CLOAK:
         pc_decal(&d, SH_FLAT);
-        pc_line(nx, ny + 1, nx, (B.by - 4) >> 4, m->c[0]);
-        pc_decal(&clasp, SH_GLOSS);
-        pc_ellipse(cx, ty + 12, tiny ? 10 : 22, tiny ? 10 : 22);
-        break; }
-    case TOP_PRIEST: {
-        pc_decal(&w, SH_FLAT);
-        pc_rrect(cx, ty + 6, tiny ? 8 : 14, tiny ? 8 : 18, 4);
+        vline(cx, ty + 16, bot, m->c[0]);
+        break;
+    case TOP_PRIEST:
         if (!tiny && B.view != VK_PORTRAIT) {
-            int y = ty + H * 50 / 100;
-            pc_line(nx, (y >> 4) - 2, nx, (y >> 4) + 2, PAL_UI_GOLD);
-            pc_line(nx - 1, (y >> 4) - 1, nx + 1, (y >> 4) - 1, PAL_UI_GOLD);
+            int y = ty + PCT(H, 50);
+            vline(cx, y - 32, y + 32, PAL_UI_GOLD);
+            seg(cx - 16, y - 16, cx + 16, y - 16, PAL_UI_GOLD);
         }
-        break; }
+        break;
     case TOP_NURSE: {
-        PMat cr;
-        pm_paint(&cr, PAINT_CHERRY);
-        if (l->top_color != PAINT_WHITE) pm_paint(&cr, l->top_color);
-        {
-            int y = B.view == VK_PORTRAIT ? ty + PX(7) : ty + H * 40 / 100;
-            int x = cx + B.sw / 3, r = big ? 2 : 1;
-            pc_line((x >> 4) - r, y >> 4, (x >> 4) + r, y >> 4, cr.c[1]);
-            pc_line(x >> 4, (y >> 4) - r, x >> 4, (y >> 4) + r, cr.c[1]);
-        }
-        pc_decal(&cr, SH_FLAT);
-        if (!tiny) {
-            pc_line(nx - 2, ny, nx, ny + 2, cr.c[1]);
-            pc_line(nx + 2, ny, nx, ny + 2, cr.c[1]);
-        }
-        break; }
-    case TOP_MAID: {
-        PMat ap;
-        pm_paint(&ap, PAINT_WHITE);
-        pc_decal(&ap, SH_SOFT);
-        pc_rrect(cx, ty + H * 45 / 100, B.sw * 50 / 100, H * 30 / 100, 16);
-        if (!tiny) {
-            pc_ellipse(cx - B.sw / 4, ty + 4, B.sw / 4 + 6, 22);
-            pc_ellipse(cx + B.sw / 4, ty + 4, B.sw / 4 + 6, 22);
-            pc_decal(&d, SH_FLAT);
-            pc_px(nx, ny + 1, PAL_PAINT(PAINT_CHERRY, 1));
-            pc_px(nx - 1, ny + 1, PAL_PAINT(PAINT_CHERRY, 1));
-            pc_px(nx + 1, ny + 1, PAL_PAINT(PAINT_CHERRY, 1));
-        }
+        int y = ty + PCT(H, 38), x = cx + SW(36), r = big ? PX(2) : PX(1);
+        uint8_t cr = l->top_color == PAINT_WHITE ? PAL_PAINT(PAINT_CHERRY, 1) : PAL_PAINT(l->top_color, 1);
+        seg(x - r, y, x + r, y, cr);
+        vline(x, y - r, y + r, cr);
+        if (big) { seg(x - r, y + 16, x + r, y + 16, cr); vline(x + 16, y - r, y + r, cr); }
         break; }
     case TOP_SPACESUIT: {
-        PMat ring, panel;
-        pm_ramp(&ring, RAMP_STEEL, 4);
+        PMat panel;
+        int y = ty + PCT(H, 42);
         pm_ramp(&panel, RAMP_STEEL, 2);
-        pc_decal(&ring, SH_GLOSS);
-        pc_rrect(cx, ty + 4, B.sw * 70 / 100, tiny ? 8 : 20, 12);
         pc_decal(&panel, SH_FLAT);
-        {
-            int y = B.view == VK_PORTRAIT ? ty + PX(8) : ty + H * 45 / 100;
-            pc_rrect(cx, y, B.sw * 35 / 100, tiny ? 10 : PX(2), 8);
-            if (!tiny) {
-                pc_px(nx - 1, y >> 4, PAL_PAINT(PAINT_CHERRY, 2));
-                pc_px(nx, y >> 4, PAL_PAINT(PAINT_LIME, 2));
-                pc_px(nx + 1, y >> 4, PAL_PAINT(l->top_color, 2));
-            }
+        pc_rrect(cx, y, SW(40), DOOMO_MAX(PCT(H, 14), 12), 8);
+        if (!tiny) {
+            dot(cx - SW(20), y, PAL_PAINT(PAINT_CHERRY, 2));
+            dot(cx, y, PAL_PAINT(PAINT_LIME, 2));
+            dot(cx + SW(20), y, PAL_PAINT(l->top_color, 2));
         }
         break; }
     case TOP_PLATE_ARMOR: {
-        PMat trim;
         int y;
+        PMat trim;
         pm_paint(&trim, l->top_color);
-        pc_decal(&trim, SH_FLAT);
-        pc_rrect(cx, ty + 6, B.sw / 2, tiny ? 8 : 16, 6);
-        if (!tiny) for (y = ty + H * 35 / 100; y < B.by; y += H * 20 / 100)
-            pc_line((cx - B.sw * 80 / 100) >> 4, y >> 4, (cx + B.sw * 80 / 100) >> 4, y >> 4, m->c[0]);
-        pc_px(nx, (ty + H * 25 / 100) >> 4, trim.c[3]);
+        if (!tiny) for (y = ty + PCT(H, 30); y < bot; y += DOOMO_MAX(PCT(H, 20), 24))
+            seg(cx - SW(80), y, cx + SW(80), y, m->c[0]);
+        pc_decal(&trim, SH_BALL);
+        pc_ellipse(cx, ty + PCT(H, 22), DOOMO_MAX(SW(18), 12), DOOMO_MAX(SW(18), 12));
         break; }
     case TOP_HAZMAT: {
-        int y = B.view == VK_PORTRAIT ? ty + PX(8) : ty + H * 42 / 100, x = cx;
-        pc_decal(&d, SH_FLAT);
-        if (!tiny) {
-            pc_px((x >> 4), (y >> 4) - 1, PAL_PAINT(PAINT_JET, 1));
-            pc_px((x >> 4) - 1, (y >> 4) + 1, PAL_PAINT(PAINT_JET, 1));
-            pc_px((x >> 4) + 1, (y >> 4) + 1, PAL_PAINT(PAINT_JET, 1));
-            pc_px((x >> 4), (y >> 4), PAL_PAINT(PAINT_JET, 2));
-            if (big) {
-                pc_px((x >> 4), (y >> 4) - 2, PAL_PAINT(PAINT_JET, 1));
-                pc_px((x >> 4) - 2, (y >> 4) + 2, PAL_PAINT(PAINT_JET, 1));
-                pc_px((x >> 4) + 2, (y >> 4) + 2, PAL_PAINT(PAINT_JET, 1));
-            }
+        int y = ty + PCT(H, 40), r = big ? 3 : 2;
+        uint8_t k2 = PAL_PAINT(PAINT_JET, 1);
+        if (tiny) break;
+        dot(cx, y - PX(r) / 2 - 8, k2);
+        dot(cx - PX(r) / 2 - 4, y + PX(r) / 3, k2);
+        dot(cx + PX(r) / 2 + 4, y + PX(r) / 3, k2);
+        dot(cx, y, PAL_PAINT(PAINT_JET, 2));
+        if (big) {
+            dot(cx, y - PX(r) / 2 - 24, k2);
+            dot(cx - PX(r) / 2 - 20, y + PX(r) / 3 + 12, k2);
+            dot(cx + PX(r) / 2 + 20, y + PX(r) / 3 + 12, k2);
         }
-        pc_line((cx - B.sw / 3) >> 4, ny + 1, (cx + B.sw / 3) >> 4, ny + 1, m->c[0]);
         break; }
     case TOP_PAJAMAS: {
-        PMat pip;
-        pm_paint(&pip, PAINT_WHITE);
-        pc_decal(&pip, SH_FLAT);
         if (!tiny) {
-            pc_tri(cx - B.sw / 3 - 8, ty - 4, cx - 4, ty + 4, cx - B.sw / 4, ty + 26);
-            pc_tri(cx + B.sw / 3 + 8, ty - 4, cx + 4, ty + 4, cx + B.sw / 4, ty + 26);
-            for (k = 1; k <= 3; k++) {
-                int y = ty + (B.view == VK_PORTRAIT ? PX(3) * k : H * k * 22 / 100);
-                pc_px(nx, y >> 4, PAL_WHITE);
+            for (k = 1; k <= 3; k++) dot(cx + 12, ty + H * k / 4, PAL_WHITE);
+            vline(cx - 4, ty + 24, bot - 8, m->c[1]);
+            if (l->pattern == PATTERN_SOLID && big) {
+                /* sleepy little stars */
+                dot(cx - SW(50), ty + PCT(H, 40), PAL_UI_GOLD);
+                dot(cx + SW(56), ty + PCT(H, 70), PAL_UI_GOLD);
+                dot(cx - SW(30), ty + PCT(H, 85), PAL_UI_GOLD);
             }
         }
-        pc_line(nx - 1, ny + 2, nx - 1, (B.by - 8) >> 4, m->c[1]);
         break; }
+    case TOP_CROP_TOP:
+        if (!tiny) seg(cx - SW(70), ty + PCT(H, 40), cx + SW(70), ty + PCT(H, 40), m->c[1]);
+        break;
+    case TOP_TSHIRT:
+        if (big && B.view != VK_PORTRAIT) seg(cx - SW(60), bot - 16, cx + SW(60), bot - 16, m->c[1]);
+        break;
     default:
         break;
     }
     pc_mask_none();
+}
+
+/* collars and necklines, drawn after the head so they tuck under the chin */
+static void collar(PCtx *c)
+{
+    const DoomoLook *l = c->l;
+    int t = l->top, cx = B.cx, y = B.neck - 8, tiny = B.lod == LOD_TINY, big = B.lod == LOD_BIG;
+    PMat m, w, d, gold;
+    if (B.yaw >= 3 || t == TOP_NONE) return;
+    top_mat(c, &m);
+    pm_paint(&w, PAINT_WHITE);
+    pm_from3(&d, m.c[0], m.c[1], m.c[2]);
+    pm_paint(&gold, PAINT_LEMON);
+    switch (t) {
+    case TOP_TSHIRT: case TOP_BAND_TEE: case TOP_NURSE:
+        if (tiny) break;
+        pc_part(&d, SH_BALL, 0);
+        pc_clip(0, (y + 4) >> 4, pcv.w, pcv.h);
+        pc_ellipse(cx, y, SW(42), SW(18) + 8);
+        pc_noclip();
+        if (t == TOP_NURSE) {
+            pc_part(&w, SH_SOFT, 0);
+            pc_tri(cx - SW(44), y, cx - 8, y + 4, cx - SW(30), y + SW(26));
+            pc_tri(cx + SW(44), y, cx + 8, y + 4, cx + SW(30), y + SW(26));
+        }
+        break;
+    case TOP_HOODIE: {
+        /* the hood rolled around the neck + drawstrings */
+        pc_part(&m, SH_SOFT, 0);
+        pc_frame(cx, y, SW(80), SW(30));
+        pc_clip(0, (y - 8) >> 4, pcv.w, pcv.h);
+        pc_ellipse(cx - SW(42), y, SW(36), SW(24) + 8);
+        pc_ellipse(cx + SW(42), y, SW(36), SW(24) + 8);
+        pc_noclip();
+        if (!tiny) {
+            int k, len = big ? 4 : 2;
+            for (k = 0; k < len; k++) {
+                pc_px((cx - SW(18)) >> 4, (y >> 4) + 1 + k, k == len - 1 ? PAL_GRAY_L : PAL_WHITE);
+                pc_px((cx + SW(18)) >> 4, (y >> 4) + 1 + k, k == len - 1 ? PAL_GRAY_L : PAL_WHITE);
+            }
+        }
+        break; }
+    case TOP_SWEATER: {
+        int k;
+        pc_part(&d, SH_SOFT, 0);
+        pc_rrect(cx, y + 8, SW(46), tiny ? 12 : SW(16) + 10, 16);
+        if (!tiny) for (k = -2; k <= 2; k++) pc_px((cx + k * SW(18)) >> 4, (y + 8) >> 4, m.c[0]);
+        break; }
+    case TOP_DRESS: case TOP_PAJAMAS: case TOP_SWEATER_VEST: case TOP_MAID: {
+        /* round Peter Pan collar / pointed shirt collar */
+        PMat cl = w;
+        if (t == TOP_PAJAMAS) pm_from3(&cl, m.c[1], m.c[2], m.c[3]);
+        pc_part(&cl, SH_SOFT, 0);
+        if (t == TOP_DRESS || t == TOP_MAID) {
+            pc_ellipse(cx - SW(24), y + 4, SW(26), SW(18) + 6);
+            pc_ellipse(cx + SW(24), y + 4, SW(26), SW(18) + 6);
+            if (t == TOP_DRESS && !tiny) {
+                PMat bow;
+                pm_paint(&bow, l->accessory_color == l->top_color ? PAINT_CHERRY : l->accessory_color);
+                pc_part(&bow, SH_BALL, 0);
+                pc_tri(cx, y + SW(14), cx - SW(22), y + 4, cx - SW(22), y + SW(28));
+                pc_tri(cx, y + SW(14), cx + SW(22), y + 4, cx + SW(22), y + SW(28));
+                pc_ellipse(cx, y + SW(14), 12, 12);
+            }
+        } else {
+            pc_tri(cx - SW(46), y - 4, cx - 8, y + 8, cx - SW(26), y + SW(34));
+            pc_tri(cx + SW(46), y - 4, cx + 8, y + 8, cx + SW(26), y + SW(34));
+        }
+        break; }
+    case TOP_SUIT: case TOP_LAB_COAT: case TOP_LEATHER_JACKET: {
+        /* lapel tips at the collar */
+        PMat lp = t == TOP_LAB_COAT ? w : d;
+        if (tiny) break;
+        pc_part(&lp, SH_BALL, 0);
+        pc_tri(cx - SW(52), y - 4, cx - SW(22), y + 4, cx - SW(40), y + SW(38));
+        pc_tri(cx + SW(52), y - 4, cx + SW(22), y + 4, cx + SW(40), y + SW(38));
+        break; }
+    case TOP_ROBE: case TOP_KIMONO: {
+        /* crossed collar: white inner band + dark outer edge */
+        PMat in = w;
+        if (t == TOP_ROBE) pm_from3(&in, m.c[2], m.c[3], m.c[4]);
+        pc_part(&in, SH_SOFT, 0);
+        pc_quad(cx - SW(40), y - 4, cx - SW(24), y - 4, cx + SW(14), y + SW(52), cx - 4, y + SW(56));
+        pc_part(&d, SH_BALL, 0);
+        pc_quad(cx + SW(40), y - 4, cx + SW(24), y - 4, cx - SW(6), y + SW(40), cx + 8, y + SW(46));
+        break; }
+    case TOP_ARMOR: case TOP_PLATE_ARMOR: {
+        PMat steel;
+        pm_ramp(&steel, RAMP_STEEL, t == TOP_ARMOR ? 4 : 5);
+        pc_part(&steel, SH_GLOSS, 0);
+        pc_rrect(cx, y + 6, SW(46), tiny ? 10 : SW(16) + 8, 12);
+        break; }
+    case TOP_CLOAK:
+        pc_part(&gold, SH_GLOSS, 0);
+        pc_ellipse(cx, y + 12, tiny ? 10 : SW(16) + 6, tiny ? 10 : SW(16) + 6);
+        break;
+    case TOP_PRIEST:
+        pc_part(&d, SH_BALL, 0);
+        pc_rrect(cx, y + 4, SW(40), tiny ? 10 : SW(14) + 8, 10);
+        pc_part(&w, SH_FLAT, 0);
+        pc_rrect(cx, y + 8, tiny ? 8 : SW(10) + 6, tiny ? 8 : SW(10) + 6, 4);
+        break;
+    case TOP_SPACESUIT: {
+        PMat ring;
+        pm_ramp(&ring, RAMP_STEEL, 5);
+        pc_part(&ring, SH_GLOSS, 0);
+        pc_rrect(cx, y + 6, SW(58), tiny ? 12 : SW(18) + 10, 16);
+        break; }
+    case TOP_HAZMAT:
+        pc_part(&d, SH_BALL, 0);
+        pc_rrect(cx, y + 6, SW(52), tiny ? 12 : SW(16) + 10, 16);
+        break;
+    case TOP_OVERALLS: case TOP_TANK: case TOP_CROP_TOP: default:
+        break;
+    }
 }
 
 static void hood_back(PCtx *c)
@@ -926,7 +1019,7 @@ static void hood_back(PCtx *c)
     top_mat(c, &m);
     if (t == TOP_HAZMAT) return;
     pc_part(&m, SH_SOFT, 0);
-    pc_ellipse(B.cx, B.ty + 8, B.sw * 80 / 100, B.view == VK_CHIBI ? 24 : PX(4));
+    pc_ellipse(B.cx, B.ty + 8, PCT(B.sw, 80), B.view == VK_CHIBI ? 24 : PX(4));
 }
 
 static void torso(PCtx *c)
@@ -951,7 +1044,7 @@ static void torso(PCtx *c)
             } else if (sp == SPECIES_GHOST || c->ghost) {
                 int wob = (c->anim >> 3) & 1 ? 16 : -16;
                 pc_bezier(B.cx, B.by - 16, B.cx + B.hw / 2 + wob, B.by + PX(4), B.cx + B.hw + wob, B.ground - PX(4),
-                          B.hw * 70 / 100, 16, 6);
+                          PCT(B.hw, 70), 16, 6);
             }
         } else {
             torso_shape(0, B.belly);
@@ -964,20 +1057,20 @@ static void torso(PCtx *c)
                 int y;
                 pc_decal(&sk, SH_FLAT);
                 for (y = B.ty + PX(3); y < B.by - PX(2); y += PX(2))
-                    pc_line((B.cx - B.sw * 60 / 100) >> 4, y >> 4, (B.cx + B.sw * 60 / 100) >> 4, y >> 4, sk.c[0]);
+                    pc_line((B.cx - PCT(B.sw, 60)) >> 4, y >> 4, (B.cx + PCT(B.sw, 60)) >> 4, y >> 4, sk.c[0]);
                 pc_line(B.cx >> 4, (B.ty >> 4) + 2, B.cx >> 4, (B.by >> 4) - 2, sk.c[1]);
             } else if (sp == SPECIES_ROBOT) {
                 PMat pn;
                 pm_ramp(&pn, RAMP_STEEL, 2);
                 pc_decal(&pn, SH_FLAT);
-                pc_rrect(B.cx, B.ty + H * 45 / 100, B.sw * 45 / 100, H * 20 / 100, 12);
-                pc_px(B.cx >> 4, (B.ty + H * 45 / 100) >> 4, PAL_PAINT(PAINT_LIME, 2));
+                pc_rrect(B.cx, B.ty + PCT(H, 45), PCT(B.sw, 45), PCT(H, 20), 12);
+                pc_px(B.cx >> 4, (B.ty + PCT(H, 45)) >> 4, PAL_PAINT(PAINT_LIME, 2));
             } else if (c->critter || l->marking == MARK_FUR_BELLY || sp == SPECIES_FROGLING) {
                 pc_decal(&bl, SH_SOFT);
-                pc_frame(B.cx, B.ty + H * 62 / 100, B.hw * 60 / 100 + 8, H * 34 / 100 + 8);
-                pc_ellipse(B.cx, B.ty + H * 62 / 100, B.hw * 58 / 100 + B.belly / 3, H * 32 / 100);
+                pc_frame(B.cx, B.ty + PCT(H, 62), PCT(B.hw, 60) + 8, PCT(H, 34) + 8);
+                pc_ellipse(B.cx, B.ty + PCT(H, 62), PCT(B.hw, 58) + B.belly / 3, PCT(H, 32));
             } else if (B.view != VK_PORTRAIT && t != TOP_TANK) {
-                pc_px(B.cx >> 4, (B.ty + H * 70 / 100) >> 4, sk.c[1]);
+                pc_px(B.cx >> 4, (B.ty + PCT(H, 70)) >> 4, sk.c[1]);
             }
             if (sp == SPECIES_PLUSHIE) {
                 int y;
@@ -999,15 +1092,15 @@ static void torso(PCtx *c)
     if (l->pattern != PATTERN_SOLID) pc_pattern(p_pattern_tiles[l->pattern % PATTERN_COUNT], &c->patm);
     if (t == TOP_TANK) {
         /* body in the top colour below the scoop neck */
-        pc_clip(0, (B.ty + H * 22 / 100) >> 4, pcv.w, pcv.h);
+        pc_clip(0, (B.ty + PCT(H, 22)) >> 4, pcv.w, pcv.h);
         torso_shape(2, B.belly);
         pc_noclip();
         pc_pattern(NULL, NULL);
         pc_part(&m, SH_FLAT, 0);
-        pc_capsule(B.cx - B.sw * 50 / 100, B.ty, B.cx - B.sw * 45 / 100, B.ty + H * 25 / 100, 10, 10);
-        pc_capsule(B.cx + B.sw * 50 / 100, B.ty, B.cx + B.sw * 45 / 100, B.ty + H * 25 / 100, 10, 10);
+        pc_capsule(B.cx - PCT(B.sw, 50), B.ty, B.cx - PCT(B.sw, 45), B.ty + PCT(H, 25), 10, 10);
+        pc_capsule(B.cx + PCT(B.sw, 50), B.ty, B.cx + PCT(B.sw, 45), B.ty + PCT(H, 25), 10, 10);
     } else if (t == TOP_CROP_TOP) {
-        pc_clip(0, 0, pcv.w, (B.ty + H * 42 / 100) >> 4);
+        pc_clip(0, 0, pcv.w, (B.ty + PCT(H, 42)) >> 4);
         torso_shape(2, 0);
         pc_noclip();
     } else {
@@ -1029,8 +1122,8 @@ static void torso(PCtx *c)
             pc_part(&m, SH_BALL, 0);
             pc_pattern(p_pattern_tiles[l->pattern % PATTERN_COUNT], &c->patm);
             {
-                int top = B.waist, bot = to_ground ? B.ground - PX(1) : B.by + (B.ground - B.by) * 55 / 100;
-                int w1 = B.hw + H * 30 / 100;
+                int top = B.waist, bot = to_ground ? B.ground - PX(1) : B.by + PCT((B.ground - B.by), 55);
+                int w1 = B.hw + PCT(H, 30);
                 pc_frame(B.cx, (top + bot) / 2, w1 + 8, (bot - top) / 2 + 8);
                 pc_quad(B.cx - B.hw, top, B.cx + B.hw, top, B.cx + w1, bot, B.cx - w1, bot);
                 pc_ellipse(B.cx, bot - 8, w1, 24);
@@ -1093,7 +1186,7 @@ static void arm(PCtx *c, int s, int behind)
             if (l->top == TOP_DRESS || l->top == TOP_MAID)
                 pc_ellipse(x0, y0 + 8, r + 16, r + 12);
             else
-                pc_capsule(x0, y0, x0 + (x1 - x0) * 45 / 100, y0 + (y1 - y0) * 45 / 100, r + 6, r + 6);
+                pc_capsule(x0, y0, x0 + PCT((x1 - x0), 45), y0 + PCT((y1 - y0), 45), r + 6, r + 6);
             pc_pattern(NULL, NULL);
         }
     }
@@ -1140,6 +1233,12 @@ void pb_draw_tail(PCtx *c, int front)
     if (c->byaw == 2) TS = 1;
     if (back_view) { TX = B.cx + (B.view == VK_CHIBI ? 0 : 8); TY = B.by - (B.view == VK_CHIBI ? 8 : PX(2)); }
     if (B.view == VK_PORTRAIT) w = w / 2;
+    if (!back_view && c->byaw != 2 &&
+        (st == TAIL_BEAR_NUB || st == TAIL_BUNNY || st == TAIL_SHEEP_PUFF)) {
+        /* little round tails would hide behind the body: let them peek */
+        TX += B.view == VK_PORTRAIT ? PX(5) : PCT(B.hw, 55);
+        TY -= B.view == VK_PORTRAIT ? PX(1) : 0;
+    }
     pm_paint(&tip, PAINT_WHITE);
     if (l->marking >= MARK_FUR_MUZZLE) pm_paint(&tip, l->marking_color);
     switch (st) {
@@ -1310,12 +1409,12 @@ static void wing_one(PCtx *c, int st, int flap)
         if (st != WINGS_BONE) {
             pc_part(&mem, SH_BALL, 0);
             pc_frame(wx(ex / 2), wy(ey / 2 + 40), wr(ex / 2 + 30), wr(-ey / 2 + 60));
-            pc_tri(wx(0), wy(0), wx(ex), wy(ey), wx(ex * 105 / 100), wy(ey / 3 + 40));
-            pc_tri(wx(0), wy(0), wx(ex * 105 / 100), wy(ey / 3 + 40), wx(ex * 75 / 100), wy(80 * sc / 256));
-            pc_tri(wx(0), wy(0), wx(ex * 75 / 100), wy(80 * sc / 256), wx(ex * 35 / 100), wy(120 * sc / 256));
+            pc_tri(wx(0), wy(0), wx(ex), wy(ey), wx(PCT(ex, 105)), wy(ey / 3 + 40));
+            pc_tri(wx(0), wy(0), wx(PCT(ex, 105)), wy(ey / 3 + 40), wx(PCT(ex, 75)), wy(80 * sc / 256));
+            pc_tri(wx(0), wy(0), wx(PCT(ex, 75)), wy(80 * sc / 256), wx(PCT(ex, 35)), wy(120 * sc / 256));
             /* scallops */
-            pc_ellipse(wx(ex * 90 / 100), wy(ey / 3 + 60), wr(40 * sc / 256), wr(40 * sc / 256));
-            pc_ellipse(wx(ex * 55 / 100), wy(90 * sc / 256), wr(40 * sc / 256), wr(34 * sc / 256));
+            pc_ellipse(wx(PCT(ex, 90)), wy(ey / 3 + 60), wr(40 * sc / 256), wr(40 * sc / 256));
+            pc_ellipse(wx(PCT(ex, 55)), wy(90 * sc / 256), wr(40 * sc / 256), wr(34 * sc / 256));
             if (st == WINGS_DRAGON) {
                 PMat spk;
                 pm_paint(&spk, l->horn_color);
@@ -1327,9 +1426,9 @@ static void wing_one(PCtx *c, int st, int flap)
         pc_part(st == WINGS_BONE ? &bone : &m, SH_BALL, 0);
         pc_capsule(wx(0), wy(0), wx(ex), wy(ey), wr(20 * sc / 256) + 6, wr(14 * sc / 256) + 4);
         if (B.lod != LOD_TINY || st == WINGS_BONE) {
-            pc_capsule(wx(ex), wy(ey), wx(ex * 105 / 100), wy(ey / 3 + 40), wr(10 * sc / 256) + 4, 8);
-            pc_capsule(wx(ex), wy(ey), wx(ex * 75 / 100), wy(80 * sc / 256), wr(10 * sc / 256) + 4, 8);
-            pc_capsule(wx(ex), wy(ey), wx(ex * 35 / 100), wy(120 * sc / 256), wr(10 * sc / 256) + 4, 8);
+            pc_capsule(wx(ex), wy(ey), wx(PCT(ex, 105)), wy(ey / 3 + 40), wr(10 * sc / 256) + 4, 8);
+            pc_capsule(wx(ex), wy(ey), wx(PCT(ex, 75)), wy(80 * sc / 256), wr(10 * sc / 256) + 4, 8);
+            pc_capsule(wx(ex), wy(ey), wx(PCT(ex, 35)), wy(120 * sc / 256), wr(10 * sc / 256) + 4, 8);
         }
         pc_part(st == WINGS_BONE ? &bone : &m, SH_BALL, 0);
         pc_tri(wx(ex - 20), wy(ey), wx(ex + 20), wy(ey), wx(ex + 10), wy(ey - 50));
@@ -1417,7 +1516,7 @@ void pb_draw_wings(PCtx *c, int front)
     if (B.view == VK_PORTRAIT) WU = PX(19);
     for (WS = -1; WS <= 1; WS += 2) {
         if (c->byaw == 2 && WS < 0) continue;
-        WX = B.cx + WS * B.sw * 40 / 100;
+        WX = B.cx + WS * PCT(B.sw, 40);
         if (c->byaw == 2) { WX = B.cx + B.sw / 2; }
         wing_one(c, st, flap);
     }
@@ -1438,40 +1537,48 @@ static void neck_acc(PCtx *c)
     pm_flat(&dk, PAL_PAINT(PAINT_JET, 1));
     if (B.yaw >= 3 && st != ACC_SCARF && st != ACC_CHAINS) return;
     switch (st) {
-    case ACC_BOWTIE:
+    case ACC_BOWTIE: {
+        int bw = tiny ? 24 : SW(34) + 8, bh = tiny ? 16 : SW(22) + 6, y = ty + (tiny ? 8 : 16);
         pc_part(&m, SH_BALL, 0);
-        pc_tri(cx, ty + 12, cx - (tiny ? 24 : PX(3)), ty, cx - (tiny ? 24 : PX(3)), ty + (tiny ? 24 : PX(2)));
-        pc_tri(cx, ty + 12, cx + (tiny ? 24 : PX(3)), ty, cx + (tiny ? 24 : PX(3)), ty + (tiny ? 24 : PX(2)));
-        pc_ellipse(cx, ty + 12, tiny ? 8 : 16, tiny ? 8 : 16);
-        break;
+        pc_tri(cx, y, cx - bw, y - bh, cx - bw, y + bh);
+        pc_tri(cx, y, cx + bw, y - bh, cx + bw, y + bh);
+        pc_part(&m, SH_GLOSS, 0);
+        pc_ellipse(cx, y, tiny ? 8 : 18, tiny ? 8 : 18);
+        break; }
     case ACC_CROSS_NECKLACE: case ACC_SKULL_NECKLACE: case ACC_ROSARY: {
-        int py = ty + (B.view == VK_PORTRAIT ? PX(6) : H * 35 / 100);
-        uint8_t ch = st == ACC_ROSARY ? m.c[2] : gold.c[2];
-        for (k = -4; k <= 4; k++) {
-            int x = cx + k * B.sw / 8, y = ty + 4 + (16 - k * k) * (py - ty - 16) / 16 / 1;
-            if (st == ACC_ROSARY && (k & 1)) pc_px(x >> 4, y >> 4, m.c[3]);
-            else pc_px(x >> 4, y >> 4, ch);
+        int py = ty + (B.view == VK_PORTRAIT ? PX(8) : PCT(H, 40));
+        uint8_t ch = st == ACC_ROSARY ? m.c[2] : gold.c[2], ch2 = st == ACC_ROSARY ? m.c[3] : gold.c[1];
+        for (k = -5; k <= 5; k++) {
+            int x = cx + k * SW(60) / 5, y = ty + 4 + (25 - k * k) * (py - ty - 8) / 25;
+            pc_px(x >> 4, y >> 4, (k & 1) ? ch2 : ch);
+            if (st == ACC_ROSARY && !tiny) pc_px((x >> 4) + 1, y >> 4, m.c[1]);
         }
         if (st == ACC_SKULL_NECKLACE) {
             PMat bone;
             pm_paint(&bone, PAINT_BONE);
             pc_part(&bone, SH_BALL, 0);
-            pc_ellipse(cx, py + 8, tiny ? 12 : 30, tiny ? 10 : 26);
-            if (!tiny) { pc_px((cx >> 4) - 1, (py + 8) >> 4, PAL_PAINT(PAINT_JET, 1)); pc_px((cx >> 4) + 1, (py + 8) >> 4, PAL_PAINT(PAINT_JET, 1)); }
+            pc_ellipse(cx, py + 16, tiny ? 12 : SW(20) + 10, tiny ? 10 : SW(18) + 8);
+            if (!tiny) {
+                pc_px((cx >> 4) - 1, (py + 16) >> 4, PAL_PAINT(PAINT_JET, 1));
+                pc_px((cx >> 4) + 1, (py + 16) >> 4, PAL_PAINT(PAINT_JET, 1));
+                pc_px(cx >> 4, ((py + 16) >> 4) + 2, bone.c[0]);
+            }
         } else {
-            uint8_t cc = st == ACC_ROSARY ? m.c[1] : gold.c[3];
-            pc_line(cx >> 4, (py >> 4), cx >> 4, (py >> 4) + (tiny ? 1 : 3), cc);
-            pc_line((cx >> 4) - 1, (py >> 4) + 1, (cx >> 4) + 1, (py >> 4) + 1, cc);
+            PMat cm = st == ACC_ROSARY ? m : gold;
+            int r = tiny ? 1 : (B.lod == LOD_BIG ? 3 : 2);
+            pc_part(&cm, SH_GLOSS, 0);
+            pc_rect(cx - 10, py, cx + 10, py + PX(r * 2));
+            pc_rect(cx - PX(r) + 2, py + PX(r) - 10, cx + PX(r) - 2, py + PX(r) + 10);
         }
         break; }
     case ACC_SCARF:
         pc_part(&m, SH_SOFT, 0);
-        pc_rrect(cx, ty + 4, B.sw * 80 / 100, tiny ? 12 : PX(2), tiny ? 8 : 24);
+        pc_rrect(cx, ty + 4, PCT(B.sw, 80), tiny ? 12 : PX(2), tiny ? 8 : 24);
         pc_part(&m, SH_SOFT, 0);
-        pc_quad(cx + B.sw / 4, ty + 8, cx + B.sw / 2, ty + 8, cx + B.sw / 2 + 8, ty + H * 55 / 100, cx + B.sw / 4 - 8, ty + H * 55 / 100);
+        pc_quad(cx + B.sw / 4, ty + 8, cx + B.sw / 2, ty + 8, cx + B.sw / 2 + 8, ty + PCT(H, 55), cx + B.sw / 4 - 8, ty + PCT(H, 55));
         if (!tiny) {
             pc_decal(&m, SH_FLAT);
-            pc_line((cx + B.sw / 4) >> 4, (ty + H * 50 / 100) >> 4, (cx + B.sw / 2) >> 4, (ty + H * 50 / 100) >> 4, m.c[0]);
+            pc_line((cx + B.sw / 4) >> 4, (ty + PCT(H, 50)) >> 4, (cx + B.sw / 2) >> 4, (ty + PCT(H, 50)) >> 4, m.c[0]);
         }
         break;
     case ACC_CHAINS: {
@@ -1492,14 +1599,14 @@ static void neck_acc(PCtx *c)
         break; }
     case ACC_BACKPACK: {
         pc_part(&m, SH_BALL, 0);
-        pc_capsule(cx - B.sw * 55 / 100, ty, cx - B.sw * 50 / 100, ty + H * 55 / 100, tiny ? 8 : 14, tiny ? 8 : 14);
-        pc_capsule(cx + B.sw * 55 / 100, ty, cx + B.sw * 50 / 100, ty + H * 55 / 100, tiny ? 8 : 14, tiny ? 8 : 14);
+        pc_capsule(cx - PCT(B.sw, 55), ty, cx - PCT(B.sw, 50), ty + PCT(H, 55), tiny ? 8 : 14, tiny ? 8 : 14);
+        pc_capsule(cx + PCT(B.sw, 55), ty, cx + PCT(B.sw, 50), ty + PCT(H, 55), tiny ? 8 : 14, tiny ? 8 : 14);
         break; }
     case ACC_TEDDY: {
         /* a little plush bear hugged in the paws */
         PMat t;
-        int x = cx, y = B.view == VK_PORTRAIT ? PX(50) : ty + H * 50 / 100;
-        int r = B.view == VK_PORTRAIT ? PX(8) : (tiny ? 28 : B.sw * 70 / 100);
+        int x = cx, y = B.view == VK_PORTRAIT ? PX(50) : ty + PCT(H, 50);
+        int r = B.view == VK_PORTRAIT ? PX(8) : (tiny ? 28 : PCT(B.sw, 70));
         pm_paint(&t, l->accessory_color);
         pc_part(&t, SH_SOFT, PF_FUZZ);
         pc_ellipse(x - r * 6 / 10, y - r * 8 / 10, r * 3 / 10, r * 3 / 10);
@@ -1523,7 +1630,7 @@ static void back_acc(PCtx *c)
     int st = l->accessory;
     PMat m = c->acc;
     if (st == ACC_CAPE) {
-        int bot = B.view == VK_PORTRAIT ? PX(60) : B.by + (B.ground - B.by) * 70 / 100;
+        int bot = B.view == VK_PORTRAIT ? PX(60) : B.by + PCT((B.ground - B.by), 70);
         pc_part(&m, SH_BALL, 0);
         pc_frame(B.cx, (B.ty + bot) / 2, B.sw + PX(3), (bot - B.ty) / 2 + 8);
         pc_quad(B.cx - B.sw - 8, B.ty + 8, B.cx + B.sw + 8, B.ty + 8, B.cx + B.sw + PX(4), bot, B.cx - B.sw - PX(4), bot);
@@ -1535,11 +1642,11 @@ static void back_acc(PCtx *c)
         int H = B.by - B.ty;
         pc_part(&m, SH_BALL, 0);
         if (c->byaw >= 3) {
-            pc_rrect(B.cx, B.ty + H * 45 / 100, B.sw * 75 / 100, H * 38 / 100, 24);
+            pc_rrect(B.cx, B.ty + PCT(H, 45), PCT(B.sw, 75), PCT(H, 38), 24);
             pc_decal(&m, SH_FLAT);
-            pc_rrect(B.cx, B.ty + H * 58 / 100, B.sw * 50 / 100, H * 14 / 100, 12);
+            pc_rrect(B.cx, B.ty + PCT(H, 58), PCT(B.sw, 50), PCT(H, 14), 12);
         } else {
-            pc_rrect(B.cx + (c->byaw == 2 ? B.sw : 0), B.ty + H * 40 / 100, B.sw + 16, H * 38 / 100, 24);
+            pc_rrect(B.cx + (c->byaw == 2 ? B.sw : 0), B.ty + PCT(H, 40), B.sw + 16, PCT(H, 38), 24);
         }
     }
 }
@@ -1606,6 +1713,7 @@ void pb_draw_body(PCtx *c)
 /* in front of the chin: chest fluff, collar ruff, neckwear, a hugged teddy */
 void pb_draw_neck(PCtx *c)
 {
+    collar(c);
     chest_fluff(c);
     mothkin_ruff(c);
     neck_acc(c);

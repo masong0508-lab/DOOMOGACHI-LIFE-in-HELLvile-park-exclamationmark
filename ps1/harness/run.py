@@ -22,6 +22,7 @@ when a scene renders below 30 fps:
     log TEXT           print TEXT on the game's TTY
     no-stubs           fail if a core "STUB:" was logged before this line
   PS1 extensions:
+    dshot name         the video output as displayed (display mode/position)
     vram name          full 1024x512 VRAM dump -> OUT/name_vram.png
     fps name / fpsend name   measure the presented frame rate
     expect-log TEXT    fail unless TEXT appears in the TTY log
@@ -200,7 +201,7 @@ def compile_script(lines, lockstep=True):
                 cmds += ["up " + b for b in sorted(set(BUTTONS.values()))]
         elif op == "shot":
             cmds.append("shot " + (arg or "shot"))
-        elif op in ("vram", "fps", "fpsend"):
+        elif op in ("vram", "fps", "fpsend", "dshot"):
             cmds.append("%s %s" % (op, arg))
         elif op in ("scene", "push"):
             cmds.append(hcmd(op, num(2, 0), arg))

@@ -20,6 +20,8 @@
 --   up BUTTON         release it
 --   shot NAME         the frame just drawn -> OUT/NAME.vram + .txt
 --                     ("vram X Y W H"; run.py crops it to a PNG)
+--   dshot NAME        what the video output shows (display area, one
+--                     frame behind; checks display mode / position)
 --   vram NAME         raw 1024x512 VRAM dump -> OUT/NAME.vram
 --   fps NAME / fpsend NAME   measure the frame rate in between
 --   hcmd CMD IARG HEX game-side command through the mailbox: scene, push,
@@ -111,6 +113,7 @@ local quit_at = nil
 local lock = false        -- lockstep established
 local base = 0            -- lockstep: loop counter the script stands at
 local pending = nil       -- outstanding mailbox request
+local stopped = 0         -- vsyncs the game spent stopped by lockstep
 local wait_left = 0       -- legacy: vsyncs to wait
 local wait_frame = nil    -- legacy: loop counter to wait for
 
@@ -124,8 +127,8 @@ local function finish(code)
   quit_at = vsyncs + 2
 end
 
-local function shot(name)
-  if lock then
+local function shot(name, display)
+  if lock and not display then
     -- the game is stopped right after drawing frame `base`: grab it from
     -- the framebuffer it was drawn into
     save_slice(out .. '/' .. name .. '.vram', PCSX.GPU.getVRAM())
@@ -173,15 +176,19 @@ local function step()
       pad().clearOverride(B[c.arg])
     elseif c.op == 'shot' then
       shot(c.arg)
+    elseif c.op == 'dshot' then
+      shot(c.arg, true)
     elseif c.op == 'vram' then
       save_slice(out .. '/' .. c.arg .. '.vram', PCSX.GPU.getVRAM())
       log('vram ' .. c.arg)
     elseif c.op == 'fps' then
-      fps_start[c.arg] = { v = vsyncs, f = read_frame() }
+      fps_start[c.arg] = { v = vsyncs, f = read_frame(), s = stopped }
     elseif c.op == 'fpsend' then
+      -- vsyncs while the harness held the game (screenshots, commands)
+      -- do not count
       local s = fps_start[c.arg]
       if s then
-        local dv, df = vsyncs - s.v, read_frame() - s.f
+        local dv, df = vsyncs - s.v - (stopped - s.s), read_frame() - s.f
         log(string.format('fps %s %.2f (%d frames / %d vsyncs)', c.arg,
                           dv > 0 and df * 60.0 / dv or 0, df, dv))
       end
@@ -217,7 +224,9 @@ local function hang_check(f)
     last_change = vsyncs
     return false
   end
-  if frame_addr ~= 0 and vsyncs - last_change > hang_limit and not pending then
+  -- (frame 0 = still booting: BIOS, disc, memory card scan; the overall
+  -- run.py --timeout covers a hang there)
+  if frame_addr ~= 0 and f > 0 and vsyncs - last_change > hang_limit and not pending then
     log(string.format('HANG: no new frame for %d vsyncs (frame=%d)', vsyncs - last_change, f))
     local ss = PCSX.GPU.takeScreenShot()
     save_slice(out .. '/hang.raw', ss.data)
@@ -241,7 +250,10 @@ local function on_vsync()
   end
   local f = read_frame()
   -- a stopped game is not hung: only count while it is free running
-  if lock and hu32(H_PAUSED)[0] ~= 0 then last_change = vsyncs end
+  if lock and hu32(H_PAUSED)[0] ~= 0 then
+    last_change = vsyncs
+    stopped = stopped + 1
+  end
   if hang_check(f) then return end
 
   if not lock and hcmd_addr ~= 0 then

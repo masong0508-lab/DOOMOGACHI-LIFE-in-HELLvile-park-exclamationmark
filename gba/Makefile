@@ -82,7 +82,8 @@ ET_SRCS   += $(sort $(wildcard $(GBA)/enginetest/standalone/*.c))
 CORE_SRCS := $(wildcard $(addprefix $(DOOMO_CORE)/src/,palette.c font.c fixmath.c fixmath_table.c))
 endif
 endif
-GEN_TABLES := $(BUILD)/gen/gba_tables.c
+# generated per variant (no races between the ROM builds)
+GEN_TABLES := $(OBJ)/gen/gba_tables.c
 
 # object naming: gba/src/x.c -> OBJ/gba/x.o, core/src/y.c -> OBJ/core/src/y.o
 gba_obj  = $(patsubst $(GBA)/%.c,$(OBJ)/gba/%.o,$(1))
@@ -152,7 +153,12 @@ $(HARNESS): $(GBA)/harness/harness.c $(GBA)/harness/png.c $(GBA)/harness/png.h
 
 # ---- tests ---------------------------------------------------------------------
 SHOTS ?= $(BUILD)/shots
-test: test-et test-save test-game
+# one after the other: test-et and test-save rebuild the same engine-test
+# objects, so they must not run in parallel (each still builds with -j)
+test:
+	@$(MAKE) --no-print-directory -f $(GBA)/Makefile test-et
+	@$(MAKE) --no-print-directory -f $(GBA)/Makefile test-save
+	@$(MAKE) --no-print-directory -f $(GBA)/Makefile test-game
 
 test-et: harness
 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile engine-test

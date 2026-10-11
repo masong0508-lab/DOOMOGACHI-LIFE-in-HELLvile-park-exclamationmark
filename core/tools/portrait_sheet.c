@@ -3,6 +3,7 @@
  * plus the native platform (for the PNG writer).
  *
  *   portrait_sheet --out DIR [--zoom N] [--only NAME] [--stats]
+ *                  [--bust LIST [--fig]]
  *
  * Writes PNG sheets (see docs/PORTRAIT.md):
  *   opt_<list>.png     every option of one catalog list on a fixed citizen
@@ -14,6 +15,8 @@
  *   walk.png           chibi walk cycles, 4 directions x 4 frames
  *   fighter.png, weapons.png   third-person fighter views / anims / guns
  * --stats prints the average and worst pixel-visit cost per render.
+ * --bust LIST writes bust_<LIST>.png: big close-ups of every option of one
+ * list (--fig: full figures instead, fig_<LIST>.png).
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -200,6 +203,42 @@ static void sheet_options(void)
             sh_text(&s, x, y + 137, sn, PAL_GRAY_D);
         }
         sh_save(&s, fname, zoom);
+    }
+}
+
+/* --bust LIST [--fig]: just the portraits (or figures) of one list, 8 per row */
+static void sheet_bust(const char *name, int figure)
+{
+    int li, v;
+    uint8_t por[FIGURE_W * FIGURE_H];
+    for (li = 0; li < (int)(sizeof(lists) / sizeof(lists[0])); li++) {
+        const OptList *o = &lists[li];
+        Sheet s;
+        char fname[64];
+        int per = 8, cw = 50, chh = (figure ? 80 : 56) + 10, w = figure ? FIGURE_W : PORTRAIT_W;
+        int hh = figure ? FIGURE_H : PORTRAIT_H;
+        if (strcmp(o->name, name) != 0) continue;
+        sh_new(&s, 2 + per * cw, 2 + ((o->count + per - 1) / per) * chh, PAL_UI_CREAM);
+        for (v = 0; v < o->count; v++) {
+            DoomoLook l = base_look();
+            int x = 2 + (v % per) * cw, y = 2 + (v / per) * chh;
+            char nm[32], sn[9];
+            set_opt(&l, o, v);
+            if (o->off == (int)offsetof(DoomoLook, pattern)) l.top = TOP_TSHIRT;
+            if (o->off == (int)offsetof(DoomoLook, marking)) l.marking_color = PAINT_CHOCOLATE;
+            if (o->off == (int)offsetof(DoomoLook, accessory)) l.accessory_color = PAINT_COBALT;
+            if (o->off == (int)offsetof(DoomoLook, hat)) l.hat_color = PAINT_LAVENDER;
+            if (o->off == (int)offsetof(DoomoLook, facial_hair)) l.hair_color = PAINT_CHOCOLATE;
+            if (figure) figure_render(&l, RES_ALIVE, EXPR_NEUTRAL, 0, por);
+            else portrait_render(&l, RES_ALIVE, EXPR_NEUTRAL, 0, por);
+            cell_bg(&s, x, y, w, hh, v);
+            sh_blit(&s, x, y, por, w, hh);
+            opt_name(o, v, nm, sizeof(nm));
+            short_name(sn, nm, 8);
+            sh_text(&s, x, y + hh + 1, sn, PAL_GRAY_D);
+        }
+        snprintf(fname, sizeof(fname), "%s_%s.png", figure ? "fig" : "bust", name);
+        sh_save(&s, fname, 4);
     }
 }
 
@@ -460,20 +499,24 @@ static void sheet_closeup(void)
 
 int main(int argc, char **argv)
 {
-    int i, stats = 0;
+    int i, stats = 0, figure = 0;
+    const char *bust = NULL;
     NatOptions o;
     for (i = 1; i < argc; i++) {
         if (!strcmp(argv[i], "--out") && i + 1 < argc) outdir = argv[++i];
         else if (!strcmp(argv[i], "--zoom") && i + 1 < argc) zoom = atoi(argv[++i]);
         else if (!strcmp(argv[i], "--only") && i + 1 < argc) only = argv[++i];
         else if (!strcmp(argv[i], "--stats")) stats = 1;
-        else { fprintf(stderr, "usage: portrait_sheet --out DIR [--zoom N] [--only NAME] [--stats]\n"); return 2; }
+        else if (!strcmp(argv[i], "--bust") && i + 1 < argc) bust = argv[++i];
+        else if (!strcmp(argv[i], "--fig")) figure = 1;
+        else { fprintf(stderr, "usage: portrait_sheet --out DIR [--zoom N] [--only NAME] [--stats] [--bust LIST [--fig]]\n"); return 2; }
     }
     if (zoom < 1) zoom = 1;
     memset(&o, 0, sizeof(o));
-    o.w = 240; o.h = 160; o.quiet = 1; o.save_dir = "/tmp";
+    o.w = 240; o.h = 160; o.quiet = 1; o.save_dir = outdir;
     nat_init(&o);
     palette_init();
+    if (bust) { sheet_bust(bust, figure); return 0; }
     sheet_closeup();
     sheet_options();
     sheet_sliders();

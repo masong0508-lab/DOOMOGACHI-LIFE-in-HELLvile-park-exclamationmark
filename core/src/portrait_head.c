@@ -86,6 +86,8 @@ int ph_is_critter(int sp)
     }
 }
 
+static void brows(PCtx *c);
+
 /* ---- face layout ------------------------------------------------------------------- */
 typedef struct Face {
     int ex, ey;         /* eye centre (normalised; ex = +/- offset)        */
@@ -128,7 +130,7 @@ static void face_layout(PCtx *c)
     F.ex = 60 + l->eye_spacing * 6;                          /* 24%..59% */
     F.ey = -14 + l->eye_height * 6;                          /* -5%..+30% */
     F.ery = h->ry * (20 + l->eye_size * 16 / 10) / 100;      /* 20%..44% */
-    F.erx = F.ery * 80 / 100;
+    F.erx = PCT(F.ery, 80);
     if (l->eye_count == 1) { F.erx = F.erx * 5 / 4; F.ery = F.ery * 5 / 4; }
     if (!big) {
         F.ery = DOOMO_MAX(F.ery, 20);
@@ -137,7 +139,7 @@ static void face_layout(PCtx *c)
     F.by = F.ey - (F.ery * 256 / h->ry) - 26 - l->brow_height * 4;
     F.my = 120 + (l->eye_height > 10 ? (l->eye_height - 10) * 5 : 0);
     F.ny = (F.ey + F.my) / 2 + 12;
-    F.mw = h->rx * (6 + l->mouth_size * 15 / 10) / 100;
+    F.mw = h->rx * (5 + l->mouth_size * 2) / 100;
     if (F.mw < 16) F.mw = 16;
     F.muzzle = species_muzzle(l->species);
     if (F.my > 200) F.my = 200;
@@ -152,7 +154,7 @@ int ph_eye_geom(PCtx *c, int s, int *X, int *Y, int *erx, int *ery)
     int ry = c->h.ry * (20 + l->eye_size * 16 / 10) / 100;
     if (l->eye_count == 1) ry = ry * 5 / 4;
     if (ery) *ery = ry;
-    if (erx) *erx = ry * 80 / 100;
+    if (erx) *erx = PCT(ry, 80);
     return ph_proj(&c->h, s * ex, ey, 1, X, Y);
 }
 
@@ -675,12 +677,11 @@ static void lid_arc(int ex, int ey, int erx, int ery, int shear, uint8_t col, in
     /* upper arc of the eye ellipse */
     int x;
     int xa = (ex - erx + 8) >> 4, xb = (ex + erx - 8) >> 4;
+    int iu = (1 << 16) / DOOMO_MAX(erx, 1);
     for (x = xa; x <= xb; x++) {
         int dx = x * PQ + 8 - ex;
-        int t = 65536 - ((dx * dx) / DOOMO_MAX(erx * erx / 256, 1)) * 256 / 256;
-        int u = (dx << 8) / DOOMO_MAX(erx, 1);
-        int rem = 65536 - u * u, yy;
-        (void)t;
+        int u = (dx * iu) >> 8, rem, yy;
+        rem = 65536 - u * u;
         if (rem < 0) rem = 0;
         yy = ey - ((p_isqrt((uint32_t)rem) * ery) >> 8) + ((dx * shear) >> 8);
         pc_px(x, (yy + 8) >> 4, col);
@@ -690,14 +691,14 @@ static void lid_arc(int ex, int ey, int erx, int ery, int shear, uint8_t col, in
 
 static void eye_glint(int ex, int ey, int erx, int ery, int big)
 {
-    int gx = (ex - erx * 40 / 100) >> 4, gy = (ey - ery * 45 / 100) >> 4;
+    int gx = (ex - PCT(erx, 40)) >> 4, gy = (ey - PCT(ery, 45)) >> 4;
     pc_px(gx, gy, PAL_WHITE);
     if (big && erx >= 40) {
         pc_px(gx + 1, gy, PAL_WHITE);
         pc_px(gx, gy + 1, PAL_WHITE);
         if (erx >= 56) pc_px(gx + 1, gy + 1, PAL_WHITE);
     }
-    if (big && ery >= 40) pc_px((ex + erx * 38 / 100) >> 4, (ey + ery * 42 / 100) >> 4, PAL_WHITE);
+    if (big && ery >= 40) pc_px((ex + PCT(erx, 38)) >> 4, (ey + PCT(ery, 42)) >> 4, PAL_WHITE);
 }
 
 /* the default glossy critter eye */
@@ -723,13 +724,13 @@ static void eye_glossy(PCtx *c, int ex, int ey, int erx, int ery, int shear, int
     }
     lid_arc(ex, ey, erx + 6, ery + 4, shear, F.lid, big && ery >= 40 ? 2 : 1);
     /* glints: a big one top-left, a small one bottom-right */
-    gx = (ex - erx * 38 / 100) >> 4;
-    gy = (ey - ery * 42 / 100) >> 4;
+    gx = (ex - PCT(erx, 38)) >> 4;
+    gy = (ey - PCT(ery, 42)) >> 4;
     pc_px(gx, gy, PAL_WHITE);
     if (big) {
         if (erx >= 40) { pc_px(gx + 1, gy, PAL_WHITE); pc_px(gx, gy + 1, PAL_WHITE); }
         if (erx >= 60) pc_px(gx + 1, gy + 1, PAL_WHITE);
-        if (ery >= 44) pc_px((ex + erx * 36 / 100) >> 4, (ey + ery * 30 / 100) >> 4, PAL_WHITE);
+        if (ery >= 44) pc_px((ex + PCT(erx, 36)) >> 4, (ey + PCT(ery, 30)) >> 4, PAL_WHITE);
     }
 }
 
@@ -857,7 +858,7 @@ static void one_eye(PCtx *c, int st, int ex, int ey, int erx, int ery, int shear
     case EYE_DOT:
         pm_flat(&m, PAL_PAINT(PAINT_JET, 1));
         pc_decal(&m, SH_FLAT);
-        pc_ellipse(ex, ey + ery / 4, erx * 45 / 100 + 6, ery * 55 / 100 + 6);
+        pc_ellipse(ex, ey + ery / 4, PCT(erx, 45) + 6, PCT(ery, 55) + 6);
         pc_px((ex - erx / 5) >> 4, (ey) >> 4, PAL_WHITE);
         break;
     case EYE_ROUND:
@@ -868,10 +869,10 @@ static void one_eye(PCtx *c, int st, int ex, int ey, int erx, int ery, int shear
         pc_decal(&w, SH_FLAT);
         pc_ellipse_sh(ex, ey, erx + 4, ery, shear);
         pc_decal(&c->eye, SH_VGRAD);
-        pc_ellipse_sh(ex + side * 4, ey + ery / 8, erx * 78 / 100, ery * 84 / 100, shear);
+        pc_ellipse_sh(ex + side * 4, ey + ery / 8, PCT(erx, 78), PCT(ery, 84), shear);
         pm_flat(&m, PAL_PAINT(PAINT_JET, 1));
         pc_decal(&m, SH_FLAT);
-        pc_ellipse_sh(ex + side * 4, ey + ery / 6, erx * 36 / 100 + 4, ery * 44 / 100 + 4, shear);
+        pc_ellipse_sh(ex + side * 4, ey + ery / 6, PCT(erx, 36) + 4, PCT(ery, 44) + 4, shear);
         lid_arc(ex, ey - 4, erx + 8, ery + 4, shear, ink, 2);
         pc_px(cx + side * ((erx >> 4) + 1), (ey - ery) >> 4, ink);
         pc_px(cx + side * ((erx >> 4) + 2), ((ey - ery) >> 4) - 1, ink);
@@ -905,20 +906,20 @@ static void one_eye(PCtx *c, int st, int ex, int ey, int erx, int ery, int shear
         break; }
     case EYE_CAT:
         pc_decal(&c->eye, SH_VGRAD);
-        pc_ellipse_sh(ex, ey, erx + 6, ery * 85 / 100, shear - side * 40);
+        pc_ellipse_sh(ex, ey, erx + 6, PCT(ery, 85), shear - side * 40);
         pm_flat(&m, PAL_PAINT(PAINT_JET, 1));
         pc_decal(&m, SH_FLAT);
-        pc_ellipse(ex, ey, DOOMO_MAX(erx / 5, 10), ery * 75 / 100);
-        lid_arc(ex, ey, erx + 6, ery * 85 / 100, shear - side * 40, ink, big ? 2 : 1);
+        pc_ellipse(ex, ey, DOOMO_MAX(erx / 5, 10), PCT(ery, 75));
+        lid_arc(ex, ey, erx + 6, PCT(ery, 85), shear - side * 40, ink, big ? 2 : 1);
         pc_px((ex - erx / 2) >> 4, (ey - ery / 3) >> 4, PAL_WHITE);
         break;
     case EYE_GOAT:
         pc_decal(&c->eye, SH_VGRAD);
-        pc_ellipse_sh(ex, ey, erx + 4, ery * 80 / 100, shear);
+        pc_ellipse_sh(ex, ey, erx + 4, PCT(ery, 80), shear);
         pm_flat(&m, PAL_PAINT(PAINT_JET, 1));
         pc_decal(&m, SH_FLAT);
-        pc_rrect(ex, ey, erx * 70 / 100, DOOMO_MAX(ery / 6, 10), 8);
-        lid_arc(ex, ey, erx + 4, ery * 80 / 100, shear, ink, 1);
+        pc_rrect(ex, ey, PCT(erx, 70), DOOMO_MAX(ery / 6, 10), 8);
+        lid_arc(ex, ey, erx + 4, PCT(ery, 80), shear, ink, 1);
         pc_px((ex - erx / 2) >> 4, (ey - ery / 2) >> 4, PAL_WHITE);
         break;
     case EYE_SPIRAL: {
@@ -984,7 +985,7 @@ static void one_eye(PCtx *c, int st, int ex, int ey, int erx, int ery, int shear
         pc_decal(&w, SH_FLAT);
         pc_ellipse_sh(ex, ey, erx + 8, ery + 6, shear);
         pc_decal(&c->eye, SH_FLAT);
-        pc_ellipse(ex, ey + 4, erx * 38 / 100 + 6, erx * 38 / 100 + 6);
+        pc_ellipse(ex, ey + 4, PCT(erx, 38) + 6, PCT(erx, 38) + 6);
         pc_px(cx, (ey + 4) >> 4, PAL_PAINT(PAINT_JET, 1));
         lid_arc(ex, ey, erx + 8, ery + 6, shear, ink, 1);
         break;
@@ -1004,11 +1005,11 @@ static void one_eye(PCtx *c, int st, int ex, int ey, int erx, int ery, int shear
         pm_paint(&m, c->l->eye_color);
         m.c[1] = m.c[2]; m.c[2] = m.c[3]; m.c[3] = m.c[4];
         pc_decal(&m, SH_VGRAD);
-        pc_ellipse_sh(ex, ey + 4, erx + 6, ery * 80 / 100, shear - side * 60);
+        pc_ellipse_sh(ex, ey + 4, erx + 6, PCT(ery, 80), shear - side * 60);
         pm_flat(&m, PAL_PAINT(PAINT_JET, 1));
         pc_decal(&m, SH_FLAT);
-        pc_ellipse(ex, ey + 4, 10, ery * 70 / 100);
-        lid_arc(ex, ey + 4, erx + 6, ery * 80 / 100, shear - side * 60, PAL_PAINT(PAINT_BLOOD, 0), big ? 2 : 1);
+        pc_ellipse(ex, ey + 4, 10, PCT(ery, 70));
+        lid_arc(ex, ey + 4, erx + 6, PCT(ery, 80), shear - side * 60, PAL_PAINT(PAINT_BLOOD, 0), big ? 2 : 1);
         break;
     case EYE_CROSS: {
         int r = DOOMO_MAX(erx >> 4, 2);
@@ -1078,6 +1079,7 @@ void ph_face_over(PCtx *c)
     big = c->h.lod == LOD_BIG;
     face_layout(c);
     F.lid = face_ink(c);
+    brows(c);
     if (l->eye_count == 3) {
         int st = l->eye_style % EYE_COUNT;
         v = fpt(0, F.by - 40, &X, &Y);
@@ -1114,81 +1116,87 @@ void ph_face_over(PCtx *c)
 }
 
 /* ---- brows --------------------------------------------------------------------------- */
+static PMat BM, BM2;      /* brow materials */
+static void bseg(int x0, int y0, int x1, int y1, int r)
+{
+    pc_decal(&BM, SH_FLAT);
+    pc_capsule(x0, y0, x1, y1, r, r);
+}
+
 static void brows(PCtx *c)
 {
     const DoomoLook *l = c->l;
     int st = l->brow_style, big = phs.h->lod == LOD_BIG;
     uint8_t col = c->hair.c[0], col2 = c->hair.c[1];
-    int X, Y, v, w, k;
-    if (st == BROW_NONE || phs.h->lod == LOD_TINY) {
-        if (phs.h->lod != LOD_TINY || c->expr != EXPR_ANGRY) return;
-    }
+    int X, Y, v, w, r;
+    if (phs.h->lod == LOD_TINY) return;
     if (l->hair_style == HAIR_BALD && c->critter) { col = c->skin.c[0]; col2 = c->skin.c[1]; }
+    if (palette_luma(col) > 150) { col = palette_darker(col); col2 = palette_darker(col2); }
     if (c->creepy) { col = PAL_PAINT(PAINT_JET, 1); col2 = col; }
-    if (c->expr == EXPR_ANGRY) st = st == BROW_NONE ? BROW_ANGRY : (st == BROW_UNIBROW ? st : BROW_ANGRY);
+    if (c->expr == EXPR_ANGRY) st = (st == BROW_UNIBROW) ? st : BROW_ANGRY;
     else if (c->expr == EXPR_SAD || c->expr == EXPR_SICK) st = st == BROW_NONE ? BROW_NONE : BROW_WORRIED;
     else if (c->expr == EXPR_SHOCK) st = st == BROW_NONE ? BROW_NONE : BROW_RAISED;
     if (st == BROW_NONE) return;
-    w = DOOMO_MAX(F.erx >> 4, 2) + (big ? 1 : 0);
+    pm_flat(&BM, col);
+    pm_flat(&BM2, col2);
+    w = F.erx + (big ? 10 : 4);
+    r = big ? 10 : 9;
     if (st == BROW_UNIBROW) {
-        int Xl, Xr, Yl;
+        int Xl, Xr, Yl, Yr;
         fpt(-F.ex, F.by, &Xl, &Yl);
-        fpt(F.ex, F.by, &Xr, &Y);
-        pc_line((Xl >> 4) - w, Yl >> 4, (Xr >> 4) + w, Yl >> 4, col);
-        if (big) pc_line((Xl >> 4) - w + 1, (Yl >> 4) + 1, (Xr >> 4) + w - 1, (Yl >> 4) + 1, col2);
+        fpt(F.ex, F.by, &Xr, &Yr);
+        bseg(Xl - w, Yl + 4, (Xl + Xr) / 2, Yl - 6, r + 3);
+        bseg((Xl + Xr) / 2, Yl - 6, Xr + w, Yr + 4, r + 3);
         return;
     }
     for (phs.s = -1; phs.s <= 1; phs.s += 2) {
-        int s = phs.s, cx, cy, in, out;
+        int s = phs.s, in, out;
         v = fpt(s * F.ex, F.by, &X, &Y);
         if (v <= 40) continue;
-        cx = X >> 4; cy = Y >> 4;
-        in = cx - s * w; out = cx + s * w;
+        w = fshort(F.erx + (big ? 10 : 4), v);
+        in = X - s * w; out = X + s * w;
         switch (st) {
         case BROW_THIN:
-            pc_line(in, cy, out, cy - 1, col);
+            bseg(in, Y + 4, out, Y - 8, r - 1);
             break;
         case BROW_THICK:
-            pc_line(in, cy, out, cy - 1, col);
-            pc_line(in, cy + 1, out, cy, col);
-            pc_line(in + s, cy - 1, out - s, cy - 2, col2);
+            bseg(in, Y + 6, out, Y - 6, r + 7);
+            pc_decal(&BM2, SH_FLAT);
+            pc_capsule(in + s * 8, Y - 4, out - s * 8, Y - 14, 4, 4);
             break;
         case BROW_ANGRY:
-            pc_line(in, cy + 1, out, cy - 2, col);
-            if (big) pc_line(in, cy + 2, out, cy - 1, col);
+            bseg(in, Y + 22, out, Y - 14, r + 2);
             break;
         case BROW_WORRIED:
-            pc_line(in, cy - 2, out, cy + 1, col);
-            if (big) pc_line(in + s, cy - 1, out, cy + 2, col2);
+            bseg(in, Y - 16, out, Y + 14, r + 1);
             break;
         case BROW_ARCHED:
-            pc_line(in, cy, cx, cy - 2, col);
-            pc_line(cx, cy - 2, out, cy, col);
+            bseg(in, Y + 8, X + s * 4, Y - 14, r);
+            bseg(X + s * 4, Y - 14, out, Y + 4, r - 1);
             break;
-        case BROW_BUSHY:
-            for (k = -w; k <= w; k++) {
-                pc_px(cx + k, cy, col); pc_px(cx + k, cy - 1, col);
-                if ((k & 1) == 0) pc_px(cx + k, cy - 2, col2);
-                if (big) pc_px(cx + k, cy + 1, (k & 1) ? col : col2);
-            }
-            break;
+        case BROW_BUSHY: {
+            int k;
+            bseg(in, Y + 4, out, Y - 4, r + 9);
+            pc_decal(&BM2, SH_FLAT);
+            for (k = -2; k <= 2; k++) pc_ellipse(X + k * w / 3, Y - 16 + p_abs(k) * 4, 10, 8);
+            break; }
         case BROW_DOTS:
-            pc_px(cx - s, cy, col); pc_px(cx, cy, col);
-            pc_px(cx - s, cy - 1, col2); pc_px(cx, cy - 1, col);
+            pc_decal(&BM, SH_FLAT);
+            pc_ellipse(X - s * w / 3, Y, r + 10, r + 4);
             break;
-        case BROW_SCARRED:
-            pc_line(in, cy, out, cy - 1, col);
-            pc_line(in, cy + 1, out, cy, col);
-            pc_px(cx, cy, c->skin.c[3]); pc_px(cx, cy + 1, c->skin.c[3]);
-            pc_px(cx + s, cy - 1, c->skin.c[3]);
-            break;
+        case BROW_SCARRED: {
+            PMat sk;
+            bseg(in, Y + 4, out, Y - 6, r + 6);
+            pm_flat(&sk, c->skin.c[3]);
+            pc_decal(&sk, SH_FLAT);
+            pc_capsule(X - 12, Y + 18, X + 12, Y - 18, 6, 6);
+            break; }
         case BROW_FLAT:
-            pc_line(in, cy, out, cy, col);
-            if (big) pc_line(in, cy + 1, out, cy + 1, col2);
+            bseg(in, Y, out, Y, r + 3);
             break;
         case BROW_RAISED:
-            pc_line(in, cy - 1, cx, cy - 3, col);
-            pc_line(cx, cy - 3, out, cy - 2, col);
+            bseg(in, Y - 8, X, Y - 26, r);
+            bseg(X, Y - 26, out, Y - 12, r - 1);
             break;
         default:
             break;
@@ -1210,7 +1218,7 @@ static void nose(PCtx *c)
     v = fpt(0, ny, &X, &Y);
     if (v <= 0) return;
     cx = X >> 4; cy = Y >> 4;
-    r = hr(sz * 3);          /* Q4 radius */
+    r = hr(8 + sz * 5);      /* Q4 radius */
     if (!big) r = r * 3 / 4;
     if (big && l->species == SPECIES_BATLING) {
         /* upturned pug snout pad with a little nose-leaf */
@@ -1285,7 +1293,7 @@ static void nose(PCtx *c)
     case NOSE_CAT:
         pm_ramp(&m, RAMP_PASTEL_PINK, 4);
         pc_decal(&m, SH_FLAT);
-        pc_tri(X - r - 6, Y - r / 2 - 4, X + r + 6, Y - r / 2 - 4, X, Y + r / 2 + 6);
+        pc_tri(X - r - 6, Y - r / 2 - 4 - l->nose_size, X + r + 6, Y - r / 2 - 4 - l->nose_size, X, Y + r / 2 + 6);
         pc_px(cx, cy + (r >> 4) + 1, ink);
         pc_px(cx - 1, (Y - r / 2) >> 4, m.c[4]);
         break;
@@ -1331,17 +1339,41 @@ static void fangs(PCtx *c, int cx, int cy, int w, int n)
     (void)c;
 }
 
+static PMat MM;
+static int MR;
+static void mseg(int x0, int y0, int x1, int y1)
+{
+    pc_decal(&MM, SH_FLAT);
+    pc_capsule(x0, y0, x1, y1, MR, MR);
+}
+
+/* parabola through the corners (X-W, Y), (X+W, Y) and (X, Y+depth) */
+static void mcurve(int X, int Y, int W, int depth)
+{
+    int k, px = 0, py = 0;
+    for (k = 0; k <= 4; k++) {
+        int x = -W + (2 * W * k) / 4;
+        int y = W ? depth - (depth * x / W) * x / W : 0;
+        if (k) mseg(X + px, Y + py, X + x, Y + y);
+        px = x; py = y;
+    }
+}
+
 static void mouth(PCtx *c)
 {
     const DoomoLook *l = c->l;
     int st = l->mouth_style, big = phs.h->lod == LOD_BIG;
-    int X, Y, v, w, cx, cy, k;
+    int X, Y, v, w, W, cx, cy, k;
     uint8_t ink = face_ink(c);
     PMat m;
     v = fpt(0, F.my, &X, &Y);
     if (v <= 0) return;
     w = DOOMO_MAX(fshort(F.mw, v) >> 4, 1);
+    W = DOOMO_MAX(fshort(F.mw, v), 16);
+    Y += (l->mouth_size & 1) * 8;      /* half-pixel nudge: every size step shows */
     cx = X >> 4; cy = Y >> 4;
+    pm_flat(&MM, ink);
+    MR = big ? 9 : 8;
     /* expression overrides */
     if (c->creepy) {
         st = c->creepy > 1 ? MOUTH_VOID : MOUTH_SHARK;
@@ -1355,7 +1387,7 @@ static void mouth(PCtx *c)
     case EXPR_SLEEPY: st = MOUTH_DROOL; break;
     case EXPR_SICK: st = MOUTH_WAVY; break;
     case EXPR_DEAD: st = MOUTH_TONGUE; break;
-    case EXPR_TALK: if (c->anim & 4) st = st == MOUTH_BEAK ? st : MOUTH_O; break;
+    case EXPR_TALK: if (!(c->anim & 4)) st = st == MOUTH_BEAK ? st : MOUTH_O; break;
     default: break;
     }
     if (phs.h->lod == LOD_TINY) {
@@ -1370,7 +1402,7 @@ static void mouth(PCtx *c)
     }
     switch (st) {
     case MOUTH_SMILE:
-        curve(cx, cy - 1, w, 2, ink, 0);
+        mcurve(X, Y - 10, W, W / 3 + 12);
         break;
     case MOUTH_GRIN:
         pm_flat(&m, TEETH);
@@ -1383,10 +1415,10 @@ static void mouth(PCtx *c)
         pc_line(cx - w, cy - 1, cx + w, cy - 1, ink);
         break;
     case MOUTH_FLAT:
-        pc_line(cx - w, cy, cx + w, cy, ink);
+        mseg(X - W, Y, X + W, Y);
         break;
     case MOUTH_FROWN:
-        curve(cx, cy + 1, w, -2, ink, 0);
+        mcurve(X, Y + 12, W, -(W / 3 + 12));
         break;
     case MOUTH_OPEN: {
         int hgt = DOOMO_MAX(w * 2 / 3, 2);
@@ -1401,15 +1433,14 @@ static void mouth(PCtx *c)
         pc_decal(&m, SH_FLAT);
         pc_ellipse(X, Y + PX(hgt) - 12, PX(w) * 2 / 3, PX(1));
         break; }
-    case MOUTH_CAT:
-        /* the little "w" */
-        pc_px(cx, cy - 1, ink);
-        pc_px(cx - 1, cy, ink); pc_px(cx + 1, cy, ink);
-        for (k = 2; k <= w; k++) {
-            pc_px(cx - k, cy - (k == w ? 1 : 0), ink);
-            pc_px(cx + k, cy - (k == w ? 1 : 0), ink);
-        }
-        break;
+    case MOUTH_CAT: {
+        /* the little "w"; bigger mouths are a bit deeper too */
+        int d = 6 + l->mouth_size * 3 / 2;
+        mseg(X - W, Y - 8 - d / 2, X - W / 2, Y + d / 2 + 2);
+        mseg(X - W / 2, Y + d / 2 + 2, X, Y - 6);
+        mseg(X, Y - 6, X + W / 2, Y + d / 2 + 2);
+        mseg(X + W / 2, Y + d / 2 + 2, X + W, Y - 8 - d / 2);
+        break; }
     case MOUTH_TEETH:
         pm_flat(&m, TEETH);
         pc_decal(&m, SH_FLAT);
@@ -1431,7 +1462,7 @@ static void mouth(PCtx *c)
         pc_line(cx - w - 1, cy - 1, cx + w + 1, cy - 1, ink);
         break;
     case MOUTH_TONGUE:
-        curve(cx, cy - 1, w, 1, ink, 0);
+        mcurve(X, Y - 8, W, W / 4 + 8);
         pm_flat(&m, TONGUE);
         pc_decal(&m, SH_FLAT);
         pc_ellipse(X + PX(1), Y + PX(2), PX(1) + 10, PX(2));
@@ -1439,9 +1470,8 @@ static void mouth(PCtx *c)
         pc_px(cx + 1, cy + 2, PAL_RAMP(RAMP_PASTEL_PINK, 3));
         break;
     case MOUTH_SMIRK:
-        pc_line(cx - w, cy, cx + w - 1, cy, ink);
-        pc_px(cx + w, cy - 1, ink);
-        pc_px(cx + w + 1, cy - 2, ink);
+        mseg(X - W, Y + 4, X + W / 2, Y + 4);
+        mseg(X + W / 2, Y + 4, X + W + 10, Y - 16);
         break;
     case MOUTH_POUT:
         pm_ramp(&m, RAMP_PASTEL_PINK, 4);
@@ -1458,11 +1488,12 @@ static void mouth(PCtx *c)
         pc_ellipse(X, Y + 8, PX(w / 2 + 1) - 8, PX(w / 2 + 1));
         break;
     case MOUTH_WAVY:
-        for (k = -w; k <= w; k++) pc_px(cx + k, cy + (((k + w) >> 1) & 1), ink);
+        for (k = 0; k < 4; k++)
+            mseg(X - W + W * k / 2, Y + ((k & 1) ? 10 : -6), X - W + W * (k + 1) / 2, Y + ((k & 1) ? -6 : 10));
         break;
     case MOUTH_STITCHED:
-        pc_line(cx - w, cy, cx + w, cy, ink);
-        for (k = -w + 1; k < w; k += 2) { pc_px(cx + k, cy - 1, ink); pc_px(cx + k, cy + 1, ink); }
+        mseg(X - W, Y, X + W, Y);
+        for (k = -2; k <= 2; k++) mseg(X + k * W / 3 - 4, Y - 18, X + k * W / 3 + 4, Y + 18);
         break;
     case MOUTH_BEAK:
         pm_paint(&m, PAINT_HONEY);
@@ -1471,12 +1502,12 @@ static void mouth(PCtx *c)
         pc_line(cx - w + 1, cy - 1, cx + w - 1, cy - 1, m.c[0]);
         break;
     case MOUTH_FANGY:
-        curve(cx, cy - 1, w, 2, ink, 0);
+        mcurve(X, Y - 10, W, W / 3 + 12);
         pc_px(cx - w / 2, cy + 1, TEETH); pc_px(cx + w / 2, cy + 1, TEETH);
         pc_px(cx - w / 2, cy + 2, TEETH); pc_px(cx + w / 2, cy + 2, TEETH);
         break;
     case MOUTH_DROOL:
-        curve(cx, cy - 1, w, 1, ink, 0);
+        mcurve(X, Y - 8, W, W / 4 + 8);
         pc_px(cx + w - 1, cy + 1, PAL_PAINT(PAINT_CYAN, 2));
         pc_px(cx + w - 1, cy + 2, PAL_PAINT(PAINT_CYAN, 2));
         pc_px(cx + w - 1, cy + 3, PAL_PAINT(PAINT_SKY, 1));
@@ -1590,9 +1621,11 @@ static void blush(PCtx *c, int big)
         }
         if (ch & CHEEK_DIMPLES) {
             int mx, my;
-            fpt(phs.s * (F.mw * 256 / phs.h->rx + 40), F.my - 10, &mx, &my);
-            pc_px(mx >> 4, my >> 4, c->skin.c[1]);
-            pc_px((mx >> 4) + phs.s, (my >> 4) + 1, c->skin.c[0]);
+            PMat dm;
+            fpt(phs.s * (F.mw * 256 / phs.h->rx + 34), F.my + 34, &mx, &my);
+            pm_flat(&dm, c->skin.c[0]);
+            pc_decal(&dm, SH_FLAT);
+            pc_capsule(mx, my - 12, mx + phs.s * 10, my + 10, 10, 10);
         }
         if (ch & CHEEK_SPARKLES) {
             int sx = (X >> 4) + phs.s * 3, sy = (Y >> 4) - 4;
@@ -1941,7 +1974,6 @@ void ph_face(PCtx *c)
     species_head(c, big);
     blush(c, big);
     eyes(c);
-    brows(c);
     nose(c);
     mouth(c);
     if (big || h->lod == LOD_MID) {

@@ -55,8 +55,8 @@ static void hair_shine(PCtx *c, int lo, int hi_part, int y)
 
 static void cap(int top_clip, int grow)
 {
-    clip_above(top_clip);
-    hE(0, -10, 256 + grow, 256 + grow / 2);
+    clip_above(top_clip - 14);
+    hE(0, -6, 254 + grow / 2, 254 + grow / 3);
     pc_noclip();
 }
 
@@ -136,7 +136,7 @@ static void hair_back_shapes(PCtx *c)
     case HAIR_LOCS:
         for (k = -4; k <= 4; k++) {
             int x = k * 68;
-            hC(x, -200, x * 120 / 100, 330 + (k & 1) * 40, 40, 34);
+            hC(x, -200, PCT(x, 120), 330 + (k & 1) * 40, 40, 34);
         }
         break;
     case HAIR_HIME:
@@ -170,7 +170,7 @@ static void hair_back_shapes(PCtx *c)
     case HAIR_TENTACLES:
         for (k = -3; k <= 3; k++) {
             int x = k * 90;
-            hB(x, -150, x * 150 / 100, 120, x * 130 / 100 + (k < 0 ? -40 : 40), 360, 44, 22, 6);
+            hB(x, -150, PCT(x, 150), 120, PCT(x, 130) + (k < 0 ? -40 : 40), 360, 44, 22, 6);
         }
         break;
     case HAIR_SLIME_DRIP:
@@ -527,7 +527,7 @@ void ph_hair_front(PCtx *c)
     }
     /* hair sits a touch higher than the skull: more face, more volume */
     hh = c->h;
-    if (FRONT_VIEW) hh.cy -= hh.ry * 9 / 100;
+    if (FRONT_VIEW) hh.cy -= PCT(hh.ry, 5);
     phs.h = &hh;
     hair_mat(c, st == HAIR_AFRO || st == HAIR_WILD ? PF_FUZZ : 0);
     first = pcv.part;
@@ -570,18 +570,21 @@ static void one_ear(PCtx *c, int st, int front)
         hE(250, 30, 56, 80);
         ear_inner(c, c->skin.c[1]);
         hL(250, 0, 260, 60, c->skin.c[1]);
+        if (tip) { ear_tip(c); hE(260, -40, 60, 40); pc_mask_none(); }
         break;
     case EARS_POINTY:
         if (front) break;
         hT(220, -60, 230, 110, 400 - tw, -150 + tw);
         ear_inner(c, c->skin.c[1]);
         hT(250, -20, 252, 60, 340 - tw, -100 + tw);
+        if (tip) { ear_tip(c); hE(380 - tw, -140 + tw, 60, 50); pc_mask_none(); }
         break;
     case EARS_ELF:
         if (front) break;
         hT(220, -40, 230, 120, 470 - tw, -280 + tw);
         ear_inner(c, c->skin.c[1]);
         hT(250, 0, 252, 80, 400 - tw, -210 + tw);
+        if (tip) { ear_tip(c); hE(450 - tw, -260 + tw, 60, 60); pc_mask_none(); }
         break;
     case EARS_CAT:
         if (front) break;
@@ -618,6 +621,7 @@ static void one_ear(PCtx *c, int st, int front)
         hL(240, -40, 360, -160, c->skin.c[1]);
         hL(240, 30, 360, 0, c->skin.c[1]);
         hL(240, 90, 340, 110, c->skin.c[1]);
+        if (tip) { ear_tip(c); hE(370, -170, 60, 60); pc_mask_none(); }
         break; }
     case EARS_BUNNY: {
         int flop = phs.s > 0 && (c->l->species == SPECIES_BUNNYKIN || 1) ? tw : 0;
@@ -1260,17 +1264,18 @@ void ph_face_acc(PCtx *c)
         pc_line((X + r + 30) >> 4, (Y >> 4) - 1, (X2 - r - 30) >> 4, (Y2 >> 4) - 1, m.c[1]);
         break; }
     case ACC_SUNGLASSES: {
-        int s;
-        for (s = -1; s <= 1; s += 2) {
-            eye_pos(c, s, &X, &Y);
-            pc_part(&dk, SH_FLAT, 0);
-            pc_rrect(X, Y, r + 34, r * 3 / 4 + 20, 24);
-            pc_px((X >> 4) - 1, (Y >> 4) - 1, PAL_GRAY);
-            pc_px((X >> 4) - 2, (Y >> 4), PAL_GRAY_D);
+        int s2;
+        PMat lens;
+        pm_from3(&lens, PAL_PAINT(PAINT_JET, 0), PAL_PAINT(PAINT_JET, 1), PAL_PAINT(PAINT_NAVY, 1));
+        for (s2 = -1; s2 <= 1; s2 += 2) {
+            eye_pos(c, s2, &X, &Y);
+            pc_part(&lens, SH_GLOSS, 0);
+            pc_rrect(X, Y, r * 9 / 10 + 18, r * 2 / 3 + 12, 20);
+            pc_px((X >> 4) - 1, (Y >> 4) - 1, PAL_GRAY_L);
+            pc_px((X >> 4), (Y >> 4) - 2, PAL_GRAY);
         }
         eye_pos(c, -1, &X, &Y); eye_pos(c, 1, &X2, &Y2);
-        pc_line(X >> 4, (Y - r / 2) >> 4, X2 >> 4, (Y2 - r / 2) >> 4, m.c[0]);
-        pc_line((X - r - 40) >> 4, (Y - r / 2) >> 4, (X - r - 60) >> 4, (Y - r / 2 - 10) >> 4, m.c[0]);
+        pc_line((X + r) >> 4, (Y - r / 2) >> 4, (X2 - r) >> 4, (Y2 - r / 2) >> 4, m.c[0]);
         break; }
     case ACC_MONOCLE: {
         int x, y, rr = r + 32;
@@ -1287,8 +1292,8 @@ void ph_face_acc(PCtx *c)
     case ACC_EYEPATCH:
         if (FRONT_VIEW) {
             eye_pos(c, -1, &X, &Y);
-            pc_part(&dk, SH_BALL, 0);
-            pc_ellipse(X, Y, r + 30, r + 24);
+            pc_part(&dk, SH_GLOSS, 0);
+            pc_ellipse(X, Y, r * 4 / 5 + 12, r + 8);
         }
         pc_decal(&dk, SH_FLAT);
         hL(-280, -160, 280, -20, PAL_PAINT(PAINT_JET, 1));

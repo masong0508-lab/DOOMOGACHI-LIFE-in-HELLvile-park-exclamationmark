@@ -365,12 +365,41 @@ static int32_t s_mx, s_my;
 static int s_ma, s_mp, s_mcam;
 static int s_mapsel;            /* 0 built-in, 1 vape cellar, 2 cloud nine */
 
+/* where to stand in a core map: its THING_PLAYER_START, else the map
+ * centre (map units, cell centre) */
+static void map_start(const DoomoMap *m, int16_t *x, int16_t *y)
+{
+    const DoomoMapDef *d = m->def;
+    int i;
+    *x = (int16_t)(m->w * 32);
+    *y = (int16_t)(m->h * 32);
+    if (!d || !d->things)
+        return;
+    for (i = 0; i < d->thing_count; i++) {
+        if (d->things[i].type == THING_PLAYER_START) {
+            *x = (int16_t)(d->things[i].x * 64 + 32);
+            *y = (int16_t)(d->things[i].y * 64 + 32);
+            return;
+        }
+    }
+}
+
 static const DoomoMap *pick_map(int sel)
 {
     static const int ids[3] = { -1, MAPID_VAPE_CELLAR, MAPID_CLOUD_NINE_SPIRE };
+    static int last = -2;
+    const DoomoMap *m = &s_et;
     if (sel > 0 && core_map_load(ids[sel % 3]))
-        return core_map();
-    return &s_et;
+        m = core_map();
+    if (sel != last) {
+        last = sel;
+        if (m == &s_et)
+            dbg("etest: 3D map: built-in showcase%s\n",
+                sel > 0 ? " (core map not provided yet)" : "");
+        else
+            dbg("etest: 3D map: core map %d (%dx%d)\n", ids[sel % 3], m->w, m->h);
+    }
+    return m;
 }
 
 static void hud(const char *mode, int t)
@@ -471,9 +500,23 @@ static void view_overworld(const DoomoMap *m, int t, int scene_t)
     plat_overworld(&ov);
 }
 
-/* model showcase: orbit the third-person 3D citizen in the courtyard */
+/* model showcase: orbit the third-person 3D citizen in the courtyard,
+ * wearing the looks of the story cast from the core roster in turn */
+#define MODEL_FRAMES 480
+#define MODEL_PER_LOOK 120
+static const uint16_t k_cast[] = {
+    ROSTER_ID_PIP, ROSTER_ID_NANA_PUDDING, ROSTER_ID_RIVET, ROSTER_ID_VEX,
+    ROSTER_ID_FATHER_FUZZ, ROSTER_ID_DR_BLOOM, ROSTER_ID_LORD_VAPULA, ROSTER_ID_MAYOR
+};
+
+static const DoomoResident *model_cast(int scene_t)
+{
+    return core_premade(k_cast[(scene_t / MODEL_PER_LOOK) % (int)(sizeof(k_cast) / sizeof(k_cast[0]))]);
+}
+
 static void view_model(int t, int scene_t)
 {
+    const DoomoResident *who = model_cast(scene_t);
     DoomoView3D v;
     DoomoBillboard *p;
     int orbit = (scene_t * 10) & 4095, run = (scene_t / 90) & 1;
@@ -501,7 +544,9 @@ static void view_model(int t, int scene_t)
     v.z = FX(34);
     v.vw = SCR_W; v.vh = SCR_H;
     v.time = (uint16_t)t;
+    model_set_look(who ? &who->look : NULL);
     plat_view3d(&v);
+    model_set_look(NULL);
 }
 
 /* Memory card self test (SELECT + START in the engine test, or at boot of
@@ -566,6 +611,11 @@ static void memcard_selftest(void)
     r = plat_save_read(0, s_mc_rd, MC_TEST_MAX, &sz);
     ok &= r && sz == 20000 && mc_fill_check(2, 20000, 1);
     dbg("memcard selftest: read grown slot0 -> %d size %u\n", r, (unsigned)sz);
+    /* a header peek (the core's save_peek): only the first bytes */
+    memset(s_mc_rd, 0, 64);
+    r = plat_save_read(0, s_mc_rd, 48, &sz);
+    ok &= r && sz == 48 && mc_fill_check(2, 48, 1) && s_mc_rd[48] == 0;
+    dbg("memcard selftest: peek 48 bytes of slot0 -> %d size %u\n", r, (unsigned)sz);
     /* slot 1, an odd size */
     mc_fill_check(3, 33333, 0);
     r = plat_save_write(1, s_mc_buf, 33333);
@@ -598,9 +648,10 @@ void etest_run(void)
 {
     uint32_t t = 0, prev = 0;
     int scene_t = 0;
-    dbg("etest: engine test, core maps %s\n", core_has_maps() ? "available" : "missing");
+    dbg("etest: engine test, core map loader %s\n", core_has_maps() ? "linked" : "missing");
     core_palette_init();
     bench();
+    audio_selftest();
     etest_build_map(&s_et);
     build_town(&s_town);
     s_mapsel = core_has_maps() ? 1 : 0;
@@ -640,8 +691,8 @@ void etest_run(void)
                 if (s_cur_map == &s_et)
                     tour_at(ft, &k);
                 else {
-                    /* core map: slow orbit from its player start */
-                    k.x = (int16_t)(s_cur_map->w * 32); k.y = (int16_t)(s_cur_map->h * 32);
+                    /* core map: slowly look around from its player start */
+                    map_start(s_cur_map, &k.x, &k.y);
                     k.ang = (int16_t)((ft * 6) & 4095); k.pitch = (int16_t)((isin(ft * 20 & 4095) * 120) >> 12);
                     k.cam = (uint8_t)((ft / 300) & 1);
                 }
@@ -669,9 +720,17 @@ void etest_run(void)
                        (int)t);
             hud(s_mcam ? "3RD PERSON" : "1ST PERSON", (int)t);
         } else if (s_scene == SC_MODEL) {
+            const DoomoResident *who = model_cast(scene_t);
             view_model((int)t, scene_t);
             hud("3D CITIZEN", (int)t);
-            if (!s_manual && scene_t >= 360) {
+            if (who) {
+                char name[DOOMO_NAME_LEN + 1];
+                memcpy(name, who->name, DOOMO_NAME_LEN);
+                name[DOOMO_NAME_LEN] = 0;
+                plat_rect(6, SCR_H - 18, (int)strlen(name) * FONT_ADVANCE + 8, 12, PAL_UI_PINK_D);
+                plat_text(10, SCR_H - 16, name, PAL_UI_CREAM);
+            }
+            if (!s_manual && scene_t >= MODEL_FRAMES) {
                 s_scene = SC_TOUR;
                 scene_t = -1;
                 s_cur_map = pick_map(s_mapsel);
@@ -682,6 +741,8 @@ void etest_run(void)
                 s_ow_map = &s_town;
                 if (core_map_load(MAPID_HAHALAND))
                     s_ow_map = core_map();
+                dbg("etest: overworld map: %s\n",
+                    s_ow_map == &s_town ? "built-in town" : "core MAPID_HAHALAND");
                 world_invalidate();
             }
             view_overworld(s_ow_map, (int)t, scene_t);

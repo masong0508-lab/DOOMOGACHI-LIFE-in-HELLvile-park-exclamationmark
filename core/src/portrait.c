@@ -113,8 +113,7 @@ static void weapon_layer(PCtx *c, int front)
 
 static void finish(PCtx *c)
 {
-    pc_contours();
-    pc_outline();
+    pc_finish_lines();
     ph_halo(c);
     pf_status(c);
     pf_expression_fx(c);
@@ -130,7 +129,7 @@ static void finish(PCtx *c)
 
 static void draw_layers(PCtx *c)
 {
-    pb_set_neck(c->h.cy + c->h.ry * 86 / 100);
+    pb_set_neck(c->h.cy + PCT(c->h.ry, 86));
     pf_aura_back(c);
     weapon_layer(c, 0);
     pb_draw_behind(c);
@@ -172,8 +171,8 @@ static void render_portrait_ctx(PCtx *c, uint8_t *out)
     pc_begin(out, PORTRAIT_W, PORTRAIT_H);
     pb_layout(c, VK_PORTRAIT, 0, 0, c->anim);
     rx = PX(14) + l->head_size * 4 + 4;
-    ry = rx * 90 / 100;
-    cy = pb_torso_top() - ry * 84 / 100;
+    ry = PCT(rx, 90);
+    cy = pb_torso_top() - PCT(ry, 84);
     if (l->species == SPECIES_CACOBLOB) cy -= c->breath ? 8 : 0;
     top = cy - ph_top_extent(l) * ry / 256;
     if (top < PX(1)) shift = DOOMO_MIN(PX(1) - top, PX(6));
@@ -208,12 +207,12 @@ static void render_figure_ctx(PCtx *c, uint8_t *out)
     pb_layout(c, VK_FIGURE, 0, 0, c->anim);
     rx = PX(12) + 8 + l->head_size * 5;
     for (k = 0; k < 40; k++) {
-        ry = rx * 90 / 100;
+        ry = PCT(rx, 90);
         cy = pb_head_y(c, ry);
         if (cy - te * ry / 256 >= PX(1) || rx <= PX(10)) break;
         rx -= 4;
     }
-    ry = rx * 90 / 100;
+    ry = PCT(rx, 90);
     cy = pb_head_y(c, ry);
     if (pb_nolegs()) cy += c->breath ? -8 : 0;
     phead_set(&c->h, PX(24), cy, rx, ry, 0, LOD_BIG);
@@ -248,7 +247,7 @@ static void render_body_ctx(PCtx *c, int dir, int frame, uint8_t *out)
     pc_begin(out, BODYSPR_W, BODYSPR_H);
     pb_layout(c, VK_CHIBI, yaw, steps[frame], frame);
     rx = PX(6) + 8 + l->head_size;
-    ry = rx * 88 / 100;
+    ry = PCT(rx, 88);
     cy = pb_head_y(c, ry);
     if (cy - ry < PX(4) && ph_top_extent(l) > 400) cy = DOOMO_MAX(cy, ry + PX(2));
     phead_set(&c->h, PX(8), cy, rx, ry, yaw, LOD_TINY);
@@ -271,7 +270,8 @@ void bodyspr_render(const DoomoLook *l, int status, int dir, int frame, uint8_t 
 /* third-person fighter                                                      */
 static void render_fighter_ctx(PCtx *c, int view, int anim, int wframe, uint8_t *out)
 {
-    static const int8_t steps[4] = { 0, -1, 0, 1 };
+    /* run cycle: left stride, left passing (bob up), right stride, right passing */
+    static const int8_t steps[4] = { -1, -2, 1, 2 };
     const DoomoLook *l = c->l;
     int yaw, rx, ry, cy, step = 0, hx, hy, tt, H;
     view = DOOMO_CLAMP(view, 0, 4);
@@ -285,21 +285,23 @@ static void render_fighter_ctx(PCtx *c, int view, int anim, int wframe, uint8_t 
     else if (anim == 4) c->expr = c->creepy ? c->expr : EXPR_ANGRY;
     pc_begin(out, FIGHTER_W, FIGHTER_H);
     if (anim == 5) {
-        /* dodge roll: a plush ball tumbling */
+        /* dodge roll: a plush ball tumbling, seen from the camera's angle */
         PMat m = c->top;
         int sp = l->top == TOP_NONE ? 1 : 0;
+        int dx = (2 - view) * 2;                 /* rolls toward the facing side */
         pb_layout(c, VK_FIGHTER, yaw, 0, anim);
         if (sp) m = c->skin;
         pc_part(&m, SH_BALL, 0);
         if (l->pattern != PATTERN_SOLID && !sp) pc_pattern(p_pattern_tiles[l->pattern], &c->patm);
-        pc_ellipse(PX(16), PX(37), PX(9), PX(8));
+        pc_ellipse(PX(16 + dx / 2), PX(37), PX(9), PX(8));
         pc_pattern(NULL, NULL);
         pc_part(&c->skin, SH_BALL, c->critter ? PF_FUZZ : 0);
-        pc_ellipse(PX(9), PX(42), PX(3), PX(2) + 8);
-        pc_ellipse(PX(23), PX(42), PX(3), PX(2) + 8);
+        pc_ellipse(PX(9 + dx), PX(42), PX(3), PX(2) + 8);
+        pc_ellipse(PX(23 + dx / 2), PX(42), PX(3), PX(2) + 8);
         rx = PX(8) + l->head_size;
-        ry = rx * 90 / 100;
-        phead_set(&c->h, PX(15), PX(30), rx, ry, yaw > 2 ? 3 : 1, LOD_MID);
+        ry = PCT(rx, 90);
+        phead_set(&c->h, PX(15 - dx), PX(30), rx, ry, yaw, LOD_MID);
+        if (yaw < 4) pb_draw_tail(c, 0);
         ph_hair_back(c);
         ph_ears(c, 0);
         ph_head_base(c);
@@ -312,9 +314,10 @@ static void render_fighter_ctx(PCtx *c, int view, int anim, int wframe, uint8_t 
         finish(c);
         /* motion swoosh */
         for (tt = 0; tt < 6; tt++) {
-            pc_fx(4 + tt, 46 - tt / 2, PAL_WHITE);
-            pc_fx(26 - tt, 25 + tt / 3, PAL_GRAY_L);
+            pc_fx(4 + tt + dx, 46 - tt / 2, PAL_WHITE);
+            pc_fx(26 - tt + dx, 25 + tt / 3, PAL_GRAY_L);
         }
+        if (view == 2) pc_flipx();
         return;
     }
     pb_layout(c, VK_FIGHTER, yaw, step, anim);
@@ -322,18 +325,18 @@ static void render_fighter_ctx(PCtx *c, int view, int anim, int wframe, uint8_t 
     tt = pb_torso_top();
     /* both hands on the weapon */
     switch (view) {
-    case 0: hx = c->bx + PX(5); hy = tt + H * 50 / 100; break;
-    case 1: hx = c->bx - PX(3); hy = tt + H * 55 / 100; break;
-    case 2: hx = c->bx - PX(3); hy = tt + H * 60 / 100; break;
-    case 3: hx = c->bx - PX(2); hy = tt + H * 65 / 100; break;
-    default: hx = c->bx + PX(1); hy = tt + H * 62 / 100; break;
+    case 0: hx = c->bx + PX(5); hy = tt + PCT(H, 50); break;
+    case 1: hx = c->bx - PX(3); hy = tt + PCT(H, 55); break;
+    case 2: hx = c->bx - PX(3); hy = tt + PCT(H, 60); break;
+    case 3: hx = c->bx - PX(2); hy = tt + PCT(H, 65); break;
+    default: hx = c->bx + PX(1); hy = tt + PCT(H, 62); break;
     }
     if (anim == 6) { hx += PX(1); hy -= PX(2); }
     pb_set_hand(0, hx - PX(2), hy + 8);
     pb_set_hand(1, hx + PX(2), hy - 8);
     if (view == 2) { pb_set_hand(0, hx - PX(3), hy); pb_set_hand(1, hx + PX(1), hy + PX(1)); }
     rx = PX(9) + l->head_size * 2;
-    ry = rx * 90 / 100;
+    ry = PCT(rx, 90);
     cy = pb_head_y(c, ry);
     if (anim == 6) cy -= PX(1);
     if (anim == 4) cy += 8;
@@ -353,7 +356,13 @@ static void render_fighter_ctx(PCtx *c, int view, int anim, int wframe, uint8_t 
 #define PC_BLOCK   384
 #define PC_BLOCKS  48
 #define PC_FREE    0xFF
-#define PC_BUDGET  3        /* phase-only re-renders allowed per tick */
+/* phase-only re-renders (blink, breathing, aura frames) allowed per tick;
+ * a GBA bust costs about 0.75M cycles (~45 ms), so one per tick there */
+#if defined(DOOMO_PLATFORM_GBA)
+#define PC_BUDGET  1
+#else
+#define PC_BUDGET  3
+#endif
 
 enum { CK_NONE, CK_PORTRAIT, CK_BODY, CK_FIGURE, CK_FIGHTER };
 
@@ -651,6 +660,7 @@ void fighter_render(const DoomoLook *l, int status, int view, int anim, int weap
 }
 
 uint32_t portrait_last_ops(void) { return pcv.ops; }
+uint32_t portrait_last_prims(void) { return pcv.prims; }
 
 void portrait_cache_reset(void)
 {

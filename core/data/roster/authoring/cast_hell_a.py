@@ -38,7 +38,7 @@ A("cloud_nine", "hell", "Vape Clerk|Flavor Barista|Cloud Promoter|Shop Owner",
   food="Sulfur Soda:3|Cotton Candy|Candy Eyeballs|Bubble Tea", hobby="Karaoke|Cosplay|Pranks|Dancing",
   music="Synthwave:4|City Pop|Industrial", phrase="Sulfur kisses!|Slay!|Big mood.|Hellooo!",
   cast="""
-Vex | h | Owns Cloud Nine Vapor. Smiles too wide, too long. | id=666; story=VEX; job=Cloud Nine Owner; species=FOXKIN; fur=RUST/BONE; body=LANKY; height=10; build=5; head=TRIANGLE; head_size=11; eyes=LASHES; eye_color=VAPE_PURPLE; eye_size=10; eye_tilt=6; eye_count=2; brows=ARCHED; brow_height=8; nose=CAT; nose_size=5; mouth=SMIRK; mouth_size=8; fangs=2; hair=SLICKED; hair_color=JET; highlight=VAPE_PURPLE; facial_hair=NONE; ears=FOX; horns=DEVIL; horn_color=JET; horn_size=4; tail=FOX; wings=NONE; halo=NONE; marking=FUR_TIPPED_EARS; marking_color=JET; cheeks=BEAUTY_MARK; top=SUIT; top_color=VAPE_PURPLE; pattern=STRIPES; pattern_color=MAGENTA; bottom=PANTS; bottom_color=JET; shoes=PLATFORM; shoes_color=JET; hat=NONE; hat_color=VAPE_PURPLE; accessory=SUNGLASSES; accessory_color=MAGENTA; aura=SMOKE; birthday=JUN-06; food=Cotton Candy; hates=Angel Cake; hobby=Pranks; music=Synthwave; color=VAPE_PURPLE; fear=Exorcisms; phrase=Sulfur kisses!; movement=12; speech=7; expression=14; attitude=5; quirk=13; romance=ANY; activity=SHOP; corruption=92; happy=88; trait=VAPER,INFILTRATOR,LOYALIST
+Vex | h | Owns Cloud Nine Vapor. Smiles too wide, too long. | id=666; story=VEX; job=Cloud Nine Owner; species=FOXKIN; fur=RUST/BONE; body=LANKY; height=10; build=5; head=TRIANGLE; head_size=11; eyes=LASHES; eye_color=VAPE_PURPLE; eye_size=10; eye_tilt=6; eye_count=2; brows=ARCHED; brow_height=8; nose=CAT; nose_size=5; mouth=SMIRK; mouth_size=8; fangs=2; hair=SLICKED; hair_color=JET; highlight=VAPE_PURPLE; facial_hair=NONE; ears=FOX; horns=DEVIL; horn_color=JET; horn_size=4; tail=FOX; wings=NONE; halo=NONE; marking=FUR_TIPPED_EARS; marking_color=JET; cheeks=BEAUTY_MARK; top=SUIT; top_color=VAPE_PURPLE; pattern=STRIPES; pattern_color=MAGENTA; bottom=PANTS; bottom_color=JET; shoes=PLATFORM; shoes_color=JET; hat=NONE; hat_color=VAPE_PURPLE; accessory=EARRINGS; accessory_color=MAGENTA; aura=SMOKE; birthday=JUN-06; food=Cotton Candy; hates=Angel Cake; hobby=Pranks; music=Synthwave; color=VAPE_PURPLE; fear=Exorcisms; phrase=Sulfur kisses!; movement=12; speech=7; expression=14; attitude=5; quirk=13; romance=ANY; activity=SHOP; corruption=92; happy=88; trait=VAPER,INFILTRATOR,LOYALIST
 Puffina | s | Vape clerk. Blows smoke rings shaped like hearts. | species=BATLING
 Brimbrew | t | Mixes flavours like Brimstone Blast and Unholy Grape. | job=Flavor Barista; species=IMP
 Hypebat | h | Promoter. Hands out free samples to children. Ugh. | job=Cloud Promoter; species=BATLING
@@ -173,6 +173,7 @@ Wagerine | s | Has never lost a bet she was allowed to rig. |
 """ ),
 
 A("edgy_teens", "hell", "Edgy Teen|Mall Goth|Skate Rat",
+  traits="TEEN",
   sp="IMP:2 BATLING CATFOLK RACCOONKIN GHOUL HUMAN",
   fur_CATFOLK="JET/WHITE CHARCOAL/WHITE", fur_RACCOONKIN="CHARCOAL/WHITE SILVER/CHARCOAL",
   top="BAND_TEE:4 HOODIE:3 CROP_TOP", bottom="RIPPED_JEANS:4 SKIRT LEGGINGS", shoes="PLATFORM:2 COMBAT:2 SNEAKERS",
@@ -183,7 +184,7 @@ A("edgy_teens", "hell", "Edgy Teen|Mall Goth|Skate Rat",
   food="Black Licorice|Bat Wing Chips|Pizza|Sulfur Soda", hobby="Skateboarding|Graffiti|Video Games|Poetry",
   music="Goth Rock:3|Hardcore Punk:3", phrase="Whatever.|Ugh, fine.|As if!|Bleh.|Stay cursed.",
   cast="""
-Grimbert | h | Writes dark poetry. All of it rhymes with "doom". | species=IMP; crush=Muffin
+Grimbert | h | Writes dark poetry. All of it rhymes with "doom". | species=IMP; crush=Mopey Mae
 Sulkie | s | Rolls her eyes so hard they once got stuck. | species=BATLING
 Edgelord | t | Wears 14 belts. None hold anything up. | species=GHOUL
 Kitty Hex | s | Black cat. Crosses paths on purpose. | species=CATFOLK

@@ -60,10 +60,6 @@ void vid_shade(int x0, int y0, int x1, int y1, const uint8_t *cm)
     }
 }
 
-/* the font, transposed: rows[ch][r] bit c = pixel (c, r) (video.c builds
- * it at init; IWRAM: read 8 times per glyph) */
-uint8_t gba_font_rows[FONT_LAST - FONT_FIRST + 1][8];
-
 /* nibble -> byte mask: bit i set = byte i of a word */
 static const uint32_t nibmask[16] = {
     0x00000000, 0x000000FF, 0x0000FF00, 0x0000FFFF,

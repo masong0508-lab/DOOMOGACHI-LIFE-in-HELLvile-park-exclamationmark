@@ -1,17 +1,21 @@
 # Engine test: the third-person 3D citizen (orbit camera), standing then
-# jogging. START twice: tour -> overworld -> model showcase.
+# jogging, wearing the looks of the story cast from the core roster (Pip,
+# Nana Puddin, Rivet, Vex; 120 frames each). START twice: tour ->
+# overworld -> model showcase.
 wait 5
 press START
 press START
 wait 20
-shot model_front
+shot model_1_front
 wait 25
-shot model_side
+shot model_1_side
 wait 25
-shot model_back
+shot model_1_back
+wait 70
+shot model_2_run
 wait 30
-shot model_run1
-wait 20
-shot model_run2
-wait 20
-shot model_run3
+shot model_2_run_b
+wait 100
+shot model_3_stand
+wait 120
+shot model_4_run

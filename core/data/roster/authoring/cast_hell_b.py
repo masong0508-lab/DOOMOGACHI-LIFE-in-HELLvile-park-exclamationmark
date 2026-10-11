@@ -102,7 +102,7 @@ Crispin | h | Burns all his bread. Gives it away anyway. | trait=SOFTIE; bff=Nan
 Charlotte | s | Bakes cookies that are 90% charcoal. Loves you. | job=Charcoal Pastry Chef; trait=SOFTIE
 Toastie | t | Oven imp. Hugs the oven to keep it warm. | species=IMP; job=Oven Imp; trait=SOFTIE
 Scorchmello | h | Toasts marshmallows to black. Shares them all. | species=SHEEPKIN; trait=SOFTIE
-Ashcake | s | Wants to bake for Hillvile. Practises nightly. | species=BEARKIN; trait=SOFTIE; crush=Crumpet
+Ashcake | s | Wants to bake for Hillvile. Practises nightly. | species=BEARKIN; trait=SOFTIE; crush=Scone
 """ ),
 
 A("hex_witches", "hell", "Hex Witch|Potion Brewer|Broom Mechanic|Toad Keeper",

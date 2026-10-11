@@ -91,10 +91,11 @@ def main(argv):
     with open(dst, "wb") as f:
         f.write(hdr)
         f.write(image)
-    print("elf2exe: %s load 0x%08x size %d KB (+bss %d KB, ends 0x%08x), "
-          "entry 0x%08x" % (dst, lo, size // 1024,
-                            ((bss_hi - bss_lo) if bss_lo is not None else 0) // 1024,
-                            end + 0x80000000, e_entry))
+    print("elf2exe: %s load 0x%08x size %d KB (+bss %d KB, ends 0x%08x, %d KB left "
+          "below the stack top), entry 0x%08x" % (
+              dst, lo, size // 1024,
+              ((bss_hi - bss_lo) if bss_lo is not None else 0) // 1024,
+              end + 0x80000000, (0x1FFFF0 - end) // 1024, e_entry))
     return 0
 
 

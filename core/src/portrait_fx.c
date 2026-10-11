@@ -407,8 +407,8 @@ void pf_recolor_ghost(void)
         c = ramp[lum < 50 ? 0 : (lum < 100 ? 1 : (lum < 150 ? 2 : (lum < 190 ? 3 : (lum < 228 ? 4 : 5))))];
         y = i / pcv.w;
         /* fade out toward the bottom: translucent wisp */
-        if (y > h * 78 / 100 && (((i % pcv.w) + y) & 1)) c = 0;
-        else if (y > h * 90 / 100 && ((i % pcv.w) & 1)) c = 0;
+        if (y > PCT(h, 78) && (((i % pcv.w) + y) & 1)) c = 0;
+        else if (y > PCT(h, 90) && ((i % pcv.w) & 1)) c = 0;
         pcv.px[i] = c;
     }
 }

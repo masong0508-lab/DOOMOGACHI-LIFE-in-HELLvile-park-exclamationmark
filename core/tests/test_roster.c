@@ -329,6 +329,13 @@ TEST(roster_edges_are_valid)
             break;
         default: break;
         }
+        if (k == REL_DATING || k == REL_MARRIED || (e->kind & (REL_CRUSH_AB | REL_CRUSH_BA))) {
+            int ta = roster_traits(e->a), tb = roster_traits(e->b);
+            CHECK_MSG(!((ta | tb) & ROSTER_T_KID), "kid romance %s & %s", a->name, b->name);
+            CHECK_MSG(!(ta & ROSTER_T_TEEN) == !(tb & ROSTER_T_TEEN),
+                      "teen/adult romance %s & %s", a->name, b->name);
+            if (k == REL_MARRIED) CHECK(!((ta | tb) & ROSTER_T_TEEN));
+        }
         if (e->kind & REL_CRUSH_AB) CHECK_MSG(accepts(a, b), "%s -> %s", a->name, b->name);
         if (e->kind & REL_CRUSH_BA) CHECK_MSG(accepts(b, a), "%s -> %s", b->name, a->name);
         if ((e->kind & (REL_CRUSH_AB | REL_CRUSH_BA)) &&

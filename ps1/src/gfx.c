@@ -272,6 +272,94 @@ void gfx_upload_now(int x, int y, int w, int h, const void *data)
     }
 }
 
+/* A small "Saving..." banner on the picture on screen while the BIOS
+ * blocks the game loop (memory card I/O runs one sector per vblank, about
+ * a second per 8 KB block), so a long save does not look like a hang.
+ * Drawn straight into the newest finished frame, which is then shown;
+ * gfx_busy_end() puts the pixels under it back (so that frame stays what
+ * the game drew, e.g. for harness screenshots). */
+#define BANNER_MAX 40
+#define BANNER_W (BANNER_MAX * 6 + 12)
+#define BANNER_H 16
+static uint16_t s_banner_save[BANNER_W * BANNER_H];
+static RECT s_banner_rect;
+
+void gfx_busy_banner(const char *msg)
+{
+    static TILE box[2];
+    static SPRT glyph[BANNER_MAX];
+    static DR_TPAGE tp;
+    DRAWENV env;
+    int fb = g_cur ^ 1, n = 0, x, y, w, i;
+    uint16_t clut = vram_font_clut(PAL_UI_CREAM);
+
+    DrawSync(0);                        /* newest frame complete */
+    while (msg[n] && n < BANNER_MAX)
+        n++;
+    w = n * FONT_ADVANCE + 10;
+    x = SCR_W - w - 10;
+    y = SCR_H - 26;
+    setRECT(&s_banner_rect, x - 1, fb * SCR_H + y - 1, w + 2, BANNER_H);
+    StoreImage(&s_banner_rect, (uint32_t *)s_banner_save);
+    DrawSync(0);
+    env = s_fb[fb].draw;
+    env.isbg = 0;
+    env.dtd = 0;
+    PutDrawEnv(&env);
+    setTile(&box[0]);
+    setXY0(&box[0], x - 1, y - 1);
+    setWH(&box[0], w + 2, BANNER_H);
+    setRGB0(&box[0], 255, 168, 208);
+    setTile(&box[1]);
+    setXY0(&box[1], x, y);
+    setWH(&box[1], w, BANNER_H - 2);
+    setRGB0(&box[1], 56, 28, 72);
+    DrawPrim(&box[0]);
+    DrawPrim(&box[1]);
+    setDrawTPage(&tp, 0, 0, vram_font_tpage());
+    DrawPrim(&tp);
+    for (i = 0; i < n; i++) {
+        unsigned c = (uint8_t)msg[i];
+        SPRT *p = &glyph[i];
+        if (c <= ' ' || c > FONT_LAST)
+            continue;
+        c -= FONT_FIRST;
+        setSprt(p);
+        setShadeTex(p, 1);
+        setXY0(p, x + 5 + i * FONT_ADVANCE, y + 3);
+        setUV0(p, (c & 15) * 8, VR_FONT_Y + (c >> 4) * 8);
+        setWH(p, 5, 8);
+        p->clut = clut;
+        DrawPrim(p);
+    }
+    DrawSync(0);
+    PutDispEnv(&s_fb[fb].disp);
+}
+
+void gfx_busy_end(void)
+{
+    if (!s_banner_rect.w)
+        return;
+    LoadImage(&s_banner_rect, (const uint32_t *)s_banner_save);
+    DrawSync(0);
+    s_banner_rect.w = 0;
+}
+
+/* platform.h: the save/load scratch buffer is the idle half of the display
+ * list memory. Once the GPU has finished the previous frame (DrawSync),
+ * the prim buffer it was drawn from is unused until the current frame is
+ * presented, and save_game()/load_game() run inside one frame. This
+ * replaces the core's 88 KB static default (dropped by --gc-sections). */
+typedef char scratch_fits[PRIM_BYTES >= DOOMO_SAVE_SCRATCH_MIN ? 1 : -1];
+
+void *plat_save_scratch(uint32_t *cap)
+{
+    DrawSync(0);
+    if (cap)
+        *cap = PRIM_BYTES;
+    return s_fb[g_cur ^ 1].prim;
+}
+
 /* framebuffer row the newest frame is being drawn into (harness shots) */
 uint16_t g_last_draw_y;
 

@@ -37,6 +37,14 @@
 
 static uint32_t s_wave_addr[WAVE_COUNT][2];   /* [wave][0 long, 1 short] */
 static uint32_t s_silent_addr;
+static uint32_t s_wave_end, s_wave_sum;        /* for audio_selftest()  */
+
+static uint32_t sum_bytes(uint32_t h, const uint8_t *p, size_t n)
+{
+    while (n--)
+        h = (h ^ *p++) * 16777619u;           /* FNV-1a */
+    return h;
+}
 
 typedef struct ToneState {
     uint16_t freq;
@@ -109,6 +117,7 @@ static void build_waves(void)
     memset(adpcm, 0, 16);
     adpcm[1] = 0x07;          /* loop start + end + repeat */
     spu_upload(addr, adpcm, 16);
+    s_wave_sum = sum_bytes(2166136261u, adpcm, 16);
     s_silent_addr = addr;
     addr += 16;
     for (w = 0; w < WAVE_COUNT; w++) {
@@ -135,10 +144,12 @@ static void build_waves(void)
             }
             adpcm[(blocks - 1) * 16 + 1] |= 0x03; /* loop end + repeat */
             spu_upload(addr, adpcm, (size_t)blocks * 16);
+            s_wave_sum = sum_bytes(s_wave_sum, adpcm, (size_t)blocks * 16);
             s_wave_addr[w][v] = addr;
             addr += (uint32_t)blocks * 16;
         }
     }
+    s_wave_end = addr;
 }
 
 /* ---- tone channels --------------------------------------------------------- */
@@ -198,28 +209,18 @@ void plat_tone(int channel, uint16_t freq_hz, uint8_t vol, uint8_t wave)
 }
 
 /* ---- samples ----------------------------------------------------------------- */
-static int convert_sfx(int id)
+/* 8-bit PCM -> ADPCM in SPU RAM at s_sfx_top (one-shot: the last block
+ * ends + mutes the voice). Returns the SPU address or 0 if full. */
+static uint32_t load_pcm8(const int8_t *src, uint32_t len)
 {
     static int16_t pcm[28 * 64];
     static uint8_t adpcm[64 * 16];
-    SfxSlot *s = &s_sfx[id];
-    uint32_t len = 0, rate = 0, done = 0, bytes;
-    const int8_t *src;
-    if (s->state)
-        return s->state == 1;
-    src = core_sfx_pcm(id, &len, &rate);
-    if (!src || !len || !rate) {
-        s->state = 2;
-        return 0;
-    }
+    uint32_t done = 0, addr = s_sfx_top, bytes;
     if (len > 44100u * 3u)
         len = 44100u * 3u;
     bytes = (len + 27) / 28 * 16 + 16;
-    if (s_sfx_top + bytes > SPU_SFX_END) {
-        s->state = 2;
+    if (s_sfx_top + bytes > SPU_SFX_END)
         return 0;
-    }
-    s->addr = s_sfx_top;
     /* chunks of 64 blocks; the encoder state restarts per chunk (filter 0
      * on each chunk's first block), inaudible at these lengths */
     while (done < len) {
@@ -235,10 +236,41 @@ static int convert_sfx(int id)
         s_sfx_top += (uint32_t)blocks * 16;
         done += n;
     }
-    s->pitch = (uint16_t)((rate * 4096u + 22050u) / 44100u);
-    if (s->pitch > 0x3fff) s->pitch = 0x3fff;
+    return addr;
+}
+
+static uint16_t rate_to_pitch(uint32_t rate)
+{
+    uint32_t p = (rate * 4096u + 22050u) / 44100u;
+    return (uint16_t)(p > 0x3fff ? 0x3fff : p);
+}
+
+static int convert_sfx(int id)
+{
+    SfxSlot *s = &s_sfx[id];
+    uint32_t len = 0, rate = 0;
+    const int8_t *src;
+    if (s->state)
+        return s->state == 1;
+    src = core_sfx_pcm(id, &len, &rate);
+    if (!src || !len || !rate || !(s->addr = load_pcm8(src, len))) {
+        s->state = 2;
+        return 0;
+    }
+    s->pitch = rate_to_pitch(rate);
     s->state = 1;
     return 1;
+}
+
+static void key_sample(int ch, uint32_t addr, uint16_t pitch, int amp)
+{
+    SPU_CH_VOL_L(ch) = (uint16_t)amp;
+    SPU_CH_VOL_R(ch) = (uint16_t)amp;
+    SPU_CH_FREQ(ch) = pitch;
+    SPU_CH_ADDR(ch) = getSPUAddr(addr);
+    SPU_CH_ADSR1(ch) = 0x000f;
+    SPU_CH_ADSR2(ch) = 0x0000;
+    SpuSetKey(1, 1u << ch);
 }
 
 void plat_sample(int sfx_id, uint8_t vol)
@@ -263,13 +295,7 @@ void plat_sample(int sfx_id, uint8_t vol)
     s_voice_age[best] = ++s_age;
     if (vol > 15) vol = 15;
     amp = (vol * s_sfx_vol * 0x3800) / (15 * 15);
-    SPU_CH_VOL_L(ch) = (uint16_t)amp;
-    SPU_CH_VOL_R(ch) = (uint16_t)amp;
-    SPU_CH_FREQ(ch) = s_sfx[sfx_id].pitch;
-    SPU_CH_ADDR(ch) = getSPUAddr(s_sfx[sfx_id].addr);
-    SPU_CH_ADSR1(ch) = 0x000f;
-    SPU_CH_ADSR2(ch) = 0x0000;
-    SpuSetKey(1, 1u << ch);
+    key_sample(ch, s_sfx[sfx_id].addr, s_sfx[sfx_id].pitch, amp);
 }
 
 void audio_set_volumes(int music, int sfx)
@@ -305,3 +331,73 @@ void audio_hw_frame(void)
 }
 
 uint32_t audio_spu_used(void) { return s_sfx_top; }
+
+/* ---- self test (engine test build, results on the TTY) ---------------------
+ * 1. SPU RAM readback of the waveform table (DMA upload path)
+ * 2. a tone voice: envelope (ENVX) rises after key-on, falls after release
+ * 3. a synthetic one-shot through the sample converter: sounds, then ends
+ *    (ENDX) on its own
+ * The SPU RAM the test sample takes is given back afterwards. */
+static void wait_vblanks(int n)
+{
+    uint32_t v = (uint32_t)VSync(-1);
+    while ((uint32_t)VSync(-1) - v < (uint32_t)n)
+        ;
+}
+
+int audio_selftest(void)
+{
+    static uint32_t buf[1024];
+    static int8_t chirp[2205];
+    uint32_t a, h = 2166136261u, top0;
+    int ok_ram, ok_tone, ok_smp, env_on, env_off, env_smp, ended, i;
+    if (!s_ready)
+        return 0;
+    /* 1 */
+    for (a = SPU_WAVE_BASE; a < s_wave_end; a += sizeof(buf)) {
+        uint32_t n = s_wave_end - a < sizeof(buf) ? s_wave_end - a : sizeof(buf);
+        SpuSetTransferStartAddr(a);
+        SpuRead(buf, (n + 63) & ~63u);
+        SpuIsTransferCompleted(SPU_TRANSFER_WAIT);
+        h = sum_bytes(h, (const uint8_t *)buf, n);
+    }
+    ok_ram = h == s_wave_sum;
+    dbg("audio selftest: SPU RAM readback %u bytes %s\n", (unsigned)(s_wave_end - SPU_WAVE_BASE),
+        ok_ram ? "ok" : "MISMATCH");
+    /* 2 */
+    plat_tone(0, 440, 15, WAVE_TRIANGLE);
+    wait_vblanks(6);
+    env_on = SPU_CH_ADSR_VOL(0);
+    plat_tone(0, 0, 0, 0);
+    wait_vblanks(30);
+    env_off = SPU_CH_ADSR_VOL(0);
+    ok_tone = env_on > 0x4000 && env_off < env_on / 4;
+    dbg("audio selftest: tone envelope on %04x released %04x %s\n", env_on, env_off,
+        ok_tone ? "ok" : "FAIL");
+    /* 3: 0.2 s chirp at 11025 Hz */
+    for (i = 0; i < (int)sizeof(chirp); i++) {
+        int ph = (i * (40 + i / 16)) & 255;
+        chirp[i] = (int8_t)(ph < 128 ? ph - 64 : 191 - ph);
+    }
+    top0 = s_sfx_top;
+    a = load_pcm8(chirp, sizeof(chirp));
+    ok_smp = a != 0;
+    env_smp = 0;
+    ended = 0;
+    if (a) {
+        key_sample(23, a, rate_to_pitch(11025), 0x2000);
+        wait_vblanks(3);
+        env_smp = SPU_CH_ADSR_VOL(23);
+        ended = (SPU_CHAN_STATUS2 >> 7) & 1;          /* must still play */
+        wait_vblanks(24);                            /* 0.2 s + margin */
+        ended = !ended && ((SPU_CHAN_STATUS2 >> 7) & 1);
+        ok_smp = env_smp > 0x4000 && ended;
+        SPU_CH_VOL_L(23) = 0;
+        SPU_CH_VOL_R(23) = 0;
+    }
+    s_sfx_top = top0;
+    dbg("audio selftest: sample at %05x envelope %04x ended %d %s\n", (unsigned)a, env_smp,
+        ended, ok_smp ? "ok" : "FAIL");
+    dbg("audio selftest: %s\n", ok_ram && ok_tone && ok_smp ? "PASS" : "FAIL");
+    return ok_ram && ok_tone && ok_smp;
+}

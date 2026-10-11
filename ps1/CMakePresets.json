@@ -24,6 +24,13 @@
 			"cacheVariables": { "DOOMO_ENGINE_TEST": "ON" }
 		},
 		{
+			"name":        "ps1-pal",
+			"inherits":    "ps1",
+			"displayName": "PS1 disc, PAL video (50 Hz display, 30 Hz game logic)",
+			"binaryDir":   "${sourceDir}/build-pal",
+			"cacheVariables": { "DOOMO_PAL": "ON" }
+		},
+		{
 			"name":        "ps1-elf",
 			"inherits":    "ps1",
 			"displayName": "PS1 disc using a mipsel-none-elf toolchain",
@@ -33,6 +40,7 @@
 	"buildPresets": [
 		{ "name": "ps1",            "configurePreset": "ps1" },
 		{ "name": "ps1-enginetest", "configurePreset": "ps1-enginetest" },
+		{ "name": "ps1-pal",        "configurePreset": "ps1-pal" },
 		{ "name": "ps1-elf",        "configurePreset": "ps1-elf" }
 	]
 }

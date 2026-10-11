@@ -63,8 +63,11 @@ extern GfxPerf g_perf;
 extern int      g_cur;            /* buffer being built                  */
 extern uint32_t g_frame;          /* frames presented                    */
 extern volatile uint32_t g_loop_frames; /* game loop iterations (harness) */
+void model_set_look(const DoomoLook *l); /* engine test showcase */
 void hcmd_poll(void);                   /* harness mailbox, between frames */
 extern uint16_t g_last_draw_y;          /* VRAM y of the newest frame */
+void gfx_busy_banner(const char *msg);  /* "Saving..." while the BIOS blocks */
+void gfx_busy_end(void);                /* ... and remove it again */
 extern uint32_t g_rgb[256];       /* palette -> 0x00BBGGRR for prims      */
 extern uint16_t g_pal15[256];     /* palette -> VRAM 15-bit (STP set)     */
 
@@ -149,6 +152,7 @@ const uint8_t (*core_font(void))[5];
 int  core_has_maps(void);
 int  core_map_load(int map_id);          /* 1 if loaded into doomo_map */
 DoomoMap *core_map(void);
+const DoomoResident *core_premade(int id);    /* roster citizen or NULL */
 const DoomoResident *core_resident(int id);
 uint8_t core_look_paint(uint8_t paint, int shade);
 uint8_t core_look_skin(const DoomoLook *l, int shade);
@@ -178,6 +182,7 @@ uint32_t pad_read(void);                 /* BTN_* bitmask */
 int      pad_analog(int *lx, int *ly, int *rx, int *ry);
 void     audio_hw_init(void);
 void     audio_hw_frame(void);
+int      audio_selftest(void);       /* SPU checks, PASS/FAIL on the TTY */
 void     memcard_early(void);
 void     memcard_init(void);
 void     timer_init(void);

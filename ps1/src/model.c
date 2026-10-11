@@ -160,15 +160,26 @@ static uint32_t pal_rgb(uint8_t idx) { return g_rgb[idx]; }
 
 static DoomoLook s_default_look;
 static int s_default_ready;
+static const DoomoLook *s_look_override;
+
+/* engine test: show this look instead of the player's (NULL = player) */
+void model_set_look(const DoomoLook *l) { s_look_override = l; }
 
 static const DoomoLook *player_look(void)
 {
     DoomoPlayerState *p = core_player();
+    const DoomoResident *r;
+    if (s_look_override)
+        return s_look_override;
     if (p) {
-        const DoomoResident *r = core_resident(p->resident_id);
-        if (r)
+        r = core_resident(p->resident_id);
+        if (r && r->status != RES_EMPTY)
             return &r->look;
     }
+    /* no town yet (engine test, bring-up): a premade citizen, or our own */
+    r = core_premade(ROSTER_ID_PIP);
+    if (r)
+        return &r->look;
     if (!s_default_ready) {
         memset(&s_default_look, 0, sizeof(s_default_look));
         s_default_look.species = SPECIES_BUNNYKIN;

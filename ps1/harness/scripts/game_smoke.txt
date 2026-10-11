@@ -1,0 +1,34 @@
+# Game build smoke test (ps1 preset): boot splash -> title -> launcher
+# input -> UI gallery -> save / load through the memory card -> back.
+# Same commands as the core native runner (core/tests/scripts); the PS1
+# harness runs them frame-exact (lockstep), so shots can be compared with
+# the native runner's.
+#   python3 harness/run.py --exe build/doomogachi.exe \
+#       --script harness/scripts/game_smoke.txt --out OUT --expect "memcard: wrote"
+wait 30
+shot smoke_01_boot
+wait 120
+expect-scene TITLE
+shot smoke_02_title
+press DOWN
+press DOWN
+wait 4
+shot smoke_03_launcher_cursor
+press UP
+press UP
+wait 2
+scene UI_GALLERY
+wait 25
+shot smoke_04_gallery
+press R
+wait 20
+shot smoke_05_gallery_meters
+save 1
+expect-save 1
+load 1
+wait 10
+expect-scene UI_GALLERY
+shot smoke_06_after_load
+press B
+wait 20
+shot smoke_07_back

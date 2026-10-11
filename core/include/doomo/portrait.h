@@ -13,8 +13,9 @@
  *
  * Every catalog option of every list visibly changes the result (the
  * portrait test checks it). Everything is drawn at runtime from the look:
- * integer-only, no allocation, bounded cost (a bust is roughly 20-60k
- * pixel visits). See docs/PORTRAIT.md.
+ * integer-only, no allocation, bounded cost (a bust is ~5-9k shaded pixel
+ * spans/visits, about 0.8M cycles on the GBA; the caches below hide it).
+ * See docs/PORTRAIT.md.
  */
 #ifndef DOOMO_PORTRAIT_H
 #define DOOMO_PORTRAIT_H

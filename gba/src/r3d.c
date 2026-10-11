@@ -30,10 +30,8 @@ R3DStats r3d_stats;
 uint32_t r3d_dbg[4];
 extern const uint8_t gba_missing_tex[64 * 64];
 
-#define cm_tinted (gba_big + GBA_BIG_CMT)
 static int cache_vw = -1, cache_vh = -1;
 static int cache_amb = -1;
-static int cache_tint = -1;
 static uint32_t cm_sig;
 static const void *cache_mapdef;
 static int cache_mw, cache_mh;
@@ -145,7 +143,7 @@ static void setup_fade(int amb)
     cache_amb = amb;
 }
 
-static void setup_colormaps(int tint, int level)
+static void setup_colormaps(void)
 {
     uint32_t sig = 0;
     int i;
@@ -156,19 +154,8 @@ static void setup_colormaps(int tint, int level)
     if (sig != cm_sig || cache_vw < 0) {
         memcpy(r3d_cmap, doomo_colormap, sizeof(r3d_cmap));
         cm_sig = sig;
-        cache_tint = -1;
     }
     r3f.cm = r3d_cmap;
-    r3f.cmt = 0;
-    r3f.tint_thresh = 0;
-    if (tint <= TINT_NONE || tint >= TINT_COUNT || level <= 0) return;
-    if (cache_tint != tint) {
-        const uint8_t *tm = doomo_tintmap[tint];
-        for (i = 0; i < 16 * 256; i++) cm_tinted[i] = tm[r3d_cmap[i]];
-        cache_tint = tint;
-    }
-    r3f.cmt = cm_tinted;
-    r3f.tint_thresh = level >= 15 ? 16u : (uint32_t)level;
 }
 
 DOOMO_STATIC_ASSERT((offsetof(DoomoMap, cells) & 3) == 0, cells_word_aligned);
@@ -333,7 +320,6 @@ DOOMO_STATIC_ASSERT(R3D_MAXSPR * sizeof(SprOrder) <= 1024, sprorder_fits);
 void r3d_invalidate(void)
 {
     cache_mapdef = 0;
-    cache_tint = -1;
     frame_no = 0;
 }
 
@@ -475,7 +461,7 @@ void plat_view3d(const DoomoView3D *v)
     if (m->ambient != cache_amb) setup_fade(m->ambient);
 
     /* colormaps, textures, sky */
-    setup_colormaps(v->tint, v->tint_level);
+    setup_colormaps();
     memset(r3d_texc, 0, sizeof(r3d_texc));
     vtex_update();
     r3f.time = v->time;
@@ -489,6 +475,8 @@ void plat_view3d(const DoomoView3D *v)
     t1 = gba_cycles();
     t2 = t1;
     draw_sprites(v);
+    if (v->tint > TINT_NONE && v->tint < TINT_COUNT && v->tint_level > 0)
+        r3d_tint_pass(doomo_tintmap[v->tint], v->tint_level > 16 ? 16 : v->tint_level);
     t3 = gba_cycles();
 
     r3d_stats.cycles_cols = t1 - t0;

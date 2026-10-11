@@ -24,6 +24,9 @@
  *   expect-scene NAME   checked against "scene: NAME" log lines if the core
  *                       prints them; otherwise only a warning
  *   type "..."          not supported on GBA (warning)
+ *   audio-reset         start a new audio measurement      (extension)
+ *   audio [X LABEL]     print the audio peak-to-peak since audio-reset
+ *   expect-audio MIN [LABEL]  fail unless peak-to-peak >= MIN (16-bit)
  *   fps [LABEL]         print logic ticks/s and drawn frames/s since the
  *                       previous "fps" (extension)
  *   profile N           sample the PC over N instructions and print the
@@ -45,6 +48,7 @@
 #include <mgba/internal/arm/arm.h>
 #include <mgba/internal/gba/gba.h>
 #include <mgba/internal/gba/savedata.h>
+#include <mgba/core/blip_buf.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -137,11 +141,35 @@ static uint32_t drawn(void)
 static uint32_t video_frames;
 static uint32_t keys;
 
+/* audio: drained every frame; peak-to-peak since "audio-reset" (the
+ * output has a DC offset, silence is a flat line) */
+static int aud_min = 32767, aud_max = -32768;
+static uint32_t aud_samples;
+
+static void drain_audio(void)
+{
+    static short buf[2 * 1024];
+    blip_t *l = core->getAudioChannel(core, 0), *r = core->getAudioChannel(core, 1);
+    int n, i;
+    if (!l || !r) return;
+    while ((n = blip_samples_avail(l)) > 0) {
+        if (n > 1024) n = 1024;
+        blip_read_samples(l, buf, n, 1);
+        blip_read_samples(r, buf + 1, n, 1);
+        for (i = 0; i < 2 * n; i++) {
+            if (buf[i] < aud_min) aud_min = buf[i];
+            if (buf[i] > aud_max) aud_max = buf[i];
+        }
+        aud_samples += (uint32_t)n;
+    }
+}
+
 static void run_frame(void)
 {
     core->setKeys(core, keys);
     core->runFrame(core);
     video_frames++;
+    drain_audio();
 }
 
 /* run until the tick counter advanced by n (hang detection: 20 s) */
@@ -372,6 +400,20 @@ static int run_script(const char *path)
             int i;
             if (argc == 1) keys = 0;
             for (i = 1; i < argc; i++) keys &= ~button_bits(argv[i]);
+        } else if (!strcmp(argv[0], "audio-reset")) {
+            aud_min = 32767; aud_max = -32768; aud_samples = 0;
+        } else if (!strcmp(argv[0], "audio") || !strcmp(argv[0], "expect-audio")) {
+            /* expect-audio MIN [LABEL]: fail unless the output swung by at
+             * least MIN (peak to peak, 16-bit) since audio-reset */
+            int p2p = aud_samples ? aud_max - aud_min : 0;
+            int want = argc >= 2 ? atoi(argv[1]) : 1;
+            printf("harness: audio%s%s: peak-to-peak %d over %u samples\n",
+                   argc >= 3 ? " " : "", argc >= 3 ? argv[2] : "", p2p, (unsigned)aud_samples);
+            if (!strcmp(argv[0], "expect-audio") && p2p < want) {
+                fprintf(stderr, "harness: %s:%d expected audio (peak-to-peak >= %d), got %d\n",
+                        path, lineno, want, p2p);
+                failed = 1;
+            }
         } else if (!strcmp(argv[0], "fps")) {
             /* logic ticks and presented frames per second since the last
              * "fps" (or the start) */
@@ -479,6 +521,8 @@ int main(int argc, char **argv)
     mCoreInitConfig(core, NULL);
     mCoreConfigSetDefaultValue(&core->config, "idleOptimization", "ignore");
     mCoreConfigSetDefaultIntValue(&core->config, "skipBios", 1);
+    mCoreConfigSetDefaultIntValue(&core->config, "volume", 0x100);   /* else muted */
+    mCoreConfigSetDefaultIntValue(&core->config, "mute", 0);
     mCoreLoadConfig(core);
     core->desiredVideoDimensions(core, &w, &h);
     if (w != SCR_W || h != SCR_H) {

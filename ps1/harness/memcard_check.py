@@ -6,9 +6,11 @@ Lists the files in the directory, decodes each save's title frame
 animation frames as one PNG strip (scaled x4) so they can be looked at.
 
 usage: memcard_check.py card.mcd [--icons out.png] [--expect NAME ...]
+(NAME may be a glob: BASLUS-DOOMO1*)
 Exit code 1 if an --expect'ed file is missing or a DOOMOGACHI save header
 is malformed. Stdlib only.
 """
+import fnmatch
 import struct
 import sys
 import zlib
@@ -107,7 +109,7 @@ def main(argv):
                     rgb[o:o + 3] = bytes(c)
         write_png(icons_out, w, h, rgb)
         print("icons -> %s" % icons_out)
-    missing = [e for e in expect if e not in found]
+    missing = [e for e in expect if not any(fnmatch.fnmatchcase(f, e) for f in found)]
     for m in missing:
         print("memcard_check: missing %s" % m)
     return 1 if (missing or bad) else 0

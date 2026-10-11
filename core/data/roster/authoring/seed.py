@@ -331,6 +331,9 @@ def is_crit(sp):
     return sp in CRITTER
 
 
+FACE_COVER = {"SUNGLASSES", "GAS_MASK", "MASK"}
+
+
 def make_citizen(cl, idx_in_arch):
     """Build the record dict (values as names / ints) for one cast line."""
     arch = cl.arch
@@ -628,6 +631,14 @@ def make_citizen(cl, idx_in_arch):
     v["hat"] = pick(rng, arch, "hat")
     v["hat_color"] = colour(s_main if rng.chance(50) else s_ext, 85)
     v["accessory"] = "BANDAGES" if sp == "MUMMY" and rng.chance(80) else pick(rng, arch, "acc")
+    # faces are the heart of the game: hide them (sunglasses, masks) only now
+    # and then, unless the cover-up is the archetype's signature look
+    if v["accessory"] in FACE_COVER and "accessory" not in o:
+        accs = wl(vocab(arch, "acc"))
+        share = sum(w for n, w in accs if n == v["accessory"]) * 100 // max(1, sum(w for _, w in accs))
+        if share < 75 and rng.chance(60):
+            alts = [(n, w) for n, w in accs if n not in FACE_COVER] or [("NONE", 1)]
+            v["accessory"] = rng.wpick(alts)
     v["accessory_color"] = colour(s_acc if rng.chance(50) else s_ext, 85)
     v["aura"] = pick(rng, arch, "aura")
 
@@ -904,9 +915,15 @@ def build_edges(cits, by_name, arch_members, rng):
     def rand_pair(side_a, side_b):
         return rng.choice(by_side[side_a]), rng.choice(by_side[side_b])
 
+    def age_ok(a, b):
+        ta, tb = cits[a]["traits"], cits[b]["traits"]
+        if "KID" in ta or "KID" in tb:
+            return False
+        return ("TEEN" in ta) == ("TEEN" in tb)
+
     def romance_ok(a, b):
         ca, cb = cits[a], cits[b]
-        if "KID" in ca["traits"] or "KID" in cb["traits"]:
+        if not age_ok(a, b):
             return False
         return accepts(ca, cb) and accepts(cb, ca)
 
@@ -930,13 +947,16 @@ def build_edges(cits, by_name, arch_members, rng):
                 continue
             if crush:
                 ca, cb = cits[a], cits[b]
-                if "KID" in ca["traits"] or "KID" in cb["traits"] or not accepts(ca, cb):
+                if not age_ok(a, b) or not accepts(ca, cb) or not single(a):
                     continue
+                both = accepts(cb, ca) and single(b) and rng.chance(25)
                 if g.add(a, b, "ACQUAINTANCE" if rng.chance(60) else "FRIEND", cat,
-                         crush={a} if not (accepts(cb, ca) and rng.chance(25)) else {a, b}):
+                         crush={a, b} if both else {a}):
                     made += 1
                 continue
             if kind in ("MARRIED",) and ("ELDER" in cits[a]["traits"]) != ("ELDER" in cits[b]["traits"]):
+                continue
+            if kind == "MARRIED" and ("TEEN" in cits[a]["traits"] or "TEEN" in cits[b]["traits"]):
                 continue
             if g.add(a, b, kind, cat):
                 made += 1
@@ -1142,7 +1162,7 @@ def auto_families(archs, rng):
         free = {}
         for cl in cast:
             t = cl.v["traits"]
-            if cl.name in tagged or "KID" in t or "ELDER" in t or "id" in cl.opts:
+            if cl.name in tagged or "KID" in t or "ELDER" in t or "TEEN" in t or "id" in cl.opts:
                 continue
             free.setdefault(cl.v["species"], []).append(cl)
         for sp in free:

@@ -5,15 +5,7 @@
 #include "doomo/resident.h"
 
 PCanvas pcv;
-
-/* sqrt(1 - i/64) * 255 */
-static const uint8_t ztab[65] = {
-    255, 253, 251, 249, 247, 245, 243, 241, 239, 236, 234, 232, 230, 228,
-    225, 223, 221, 219, 216, 214, 211, 209, 207, 204, 202, 199, 196, 194,
-    191, 189, 186, 183, 180, 177, 175, 172, 169, 166, 163, 159, 156, 153,
-    150, 146, 143, 139, 135, 131, 128, 123, 119, 115, 110, 106, 101, 96,
-    90, 84, 78, 71, 64, 55, 45, 32, 0
-};
+static int inv20(int r);
 
 /* ---- math --------------------------------------------------------------- */
 int p_abs(int v) { return v < 0 ? -v : v; }
@@ -59,11 +51,23 @@ uint32_t p_hash(uint32_t x)
 }
 
 /* ---- materials ------------------------------------------------------------ */
+static uint8_t lumat[256];
+static uint8_t lumat_ready;
+
+static void luma_init(void)
+{
+    int i;
+    if (lumat_ready) return;
+    for (i = 0; i < 256; i++) lumat[i] = (uint8_t)DOOMO_CLAMP(palette_luma((uint8_t)i), 0, 255);
+    lumat_ready = 1;
+}
+
 uint8_t pm_line_of(uint8_t c)
 {
     int k = 0;
-    c = palette_darker(c);
-    while (palette_luma(c) > 78 && k < 4) { c = palette_darker(c); k++; }
+    luma_init();
+    c = doomo_art_darker[c];
+    while (lumat[c] > 78 && k < 4) { c = doomo_art_darker[c]; k++; }
     return c ? c : PAL_BLACK;
 }
 
@@ -111,6 +115,7 @@ void pm_flat(PMat *m, uint8_t c)
 void pc_begin(uint8_t *out, int w, int h)
 {
     pcv.px = out;
+    pcv.id = pcv.idu.b;
     pcv.w = w;
     pcv.h = h;
     memset(out, 0, (size_t)(w * h));
@@ -122,6 +127,7 @@ void pc_begin(uint8_t *out, int w, int h)
     pcv.masked = 0;
     pcv.bias = 0;
     pcv.ops = 0;
+    pcv.prims = 0;
     pcv.x0 = 0; pcv.y0 = 0; pcv.x1 = w; pcv.y1 = h;
     pcv.pline[0] = 0;
 }
@@ -163,8 +169,8 @@ void pc_frame(int cx, int cy, int rx, int ry)
     pcv.fon = 1;
     pcv.fcx = cx;
     pcv.fcy = cy;
-    pcv.fiu = (1 << 20) / rx;
-    pcv.fiv = (1 << 20) / ry;
+    pcv.fiu = inv20(rx);
+    pcv.fiv = inv20(ry);
 }
 
 void pc_noframe(void) { pcv.fon = 0; }
@@ -200,151 +206,338 @@ void pc_pattern(const uint8_t *tile, const PMat *pm)
     if (pm) pcv.pm = *pm;
 }
 
-/* ---- shading ---------------------------------------------------------------- */
-/* u, v: Q8 normal-ish coordinates (256 = edge of the shape). */
-static int band_of(int u, int v, int x, int y)
+/* sqrt(65536 - k*k): half-width of a unit circle at height k (Q8) */
+static const uint16_t circ[257] = {
+    256, 256, 256, 256, 256, 256, 256, 256, 256, 256, 256, 256, 256, 256,
+    256, 256, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+    254, 254, 254, 254, 254, 254, 254, 254, 253, 253, 253, 253, 253, 253,
+    253, 252, 252, 252, 252, 252, 251, 251, 251, 251, 251, 250, 250, 250,
+    250, 250, 249, 249, 249, 249, 248, 248, 248, 248, 247, 247, 247, 247,
+    246, 246, 246, 245, 245, 245, 244, 244, 244, 244, 243, 243, 243, 242,
+    242, 241, 241, 241, 240, 240, 240, 239, 239, 239, 238, 238, 237, 237,
+    236, 236, 236, 235, 235, 234, 234, 233, 233, 233, 232, 232, 231, 231,
+    230, 230, 229, 229, 228, 228, 227, 227, 226, 226, 225, 225, 224, 223,
+    223, 222, 222, 221, 221, 220, 219, 219, 218, 218, 217, 216, 216, 215,
+    214, 214, 213, 212, 212, 211, 210, 210, 209, 208, 207, 207, 206, 205,
+    204, 204, 203, 202, 201, 201, 200, 199, 198, 197, 197, 196, 195, 194,
+    193, 192, 191, 191, 190, 189, 188, 187, 186, 185, 184, 183, 182, 181,
+    180, 179, 178, 177, 176, 175, 174, 173, 172, 170, 169, 168, 167, 166,
+    165, 163, 162, 161, 160, 159, 157, 156, 155, 153, 152, 151, 149, 148,
+    146, 145, 143, 142, 140, 139, 137, 136, 134, 133, 131, 129, 127, 126,
+    124, 122, 120, 118, 116, 114, 112, 110, 108, 106, 104, 102, 99, 97,
+    94, 92, 89, 86, 83, 81, 77, 74, 71, 67, 63, 59, 55, 50,
+    45, 39, 32, 23, 0
+};
+
+/* 65536 / r (r >= 2), for capsule normals without a division */
+static const uint16_t rcp[512] = {
+    32768, 32768, 32768, 21845, 16384, 13107, 10922, 9362, 8192, 7281, 6553, 5957,
+    5461, 5041, 4681, 4369, 4096, 3855, 3640, 3449, 3276, 3120, 2978, 2849,
+    2730, 2621, 2520, 2427, 2340, 2259, 2184, 2114, 2048, 1985, 1927, 1872,
+    1820, 1771, 1724, 1680, 1638, 1598, 1560, 1524, 1489, 1456, 1424, 1394,
+    1365, 1337, 1310, 1285, 1260, 1236, 1213, 1191, 1170, 1149, 1129, 1110,
+    1092, 1074, 1057, 1040, 1024, 1008, 992, 978, 963, 949, 936, 923,
+    910, 897, 885, 873, 862, 851, 840, 829, 819, 809, 799, 789,
+    780, 771, 762, 753, 744, 736, 728, 720, 712, 704, 697, 689,
+    682, 675, 668, 661, 655, 648, 642, 636, 630, 624, 618, 612,
+    606, 601, 595, 590, 585, 579, 574, 569, 564, 560, 555, 550,
+    546, 541, 537, 532, 528, 524, 520, 516, 512, 508, 504, 500,
+    496, 492, 489, 485, 481, 478, 474, 471, 468, 464, 461, 458,
+    455, 451, 448, 445, 442, 439, 436, 434, 431, 428, 425, 422,
+    420, 417, 414, 412, 409, 407, 404, 402, 399, 397, 394, 392,
+    390, 387, 385, 383, 381, 378, 376, 374, 372, 370, 368, 366,
+    364, 362, 360, 358, 356, 354, 352, 350, 348, 346, 344, 343,
+    341, 339, 337, 336, 334, 332, 330, 329, 327, 326, 324, 322,
+    321, 319, 318, 316, 315, 313, 312, 310, 309, 307, 306, 304,
+    303, 302, 300, 299, 297, 296, 295, 293, 292, 291, 289, 288,
+    287, 286, 284, 283, 282, 281, 280, 278, 277, 276, 275, 274,
+    273, 271, 270, 269, 268, 267, 266, 265, 264, 263, 262, 261,
+    260, 259, 258, 257, 256, 255, 254, 253, 252, 251, 250, 249,
+    248, 247, 246, 245, 244, 243, 242, 241, 240, 240, 239, 238,
+    237, 236, 235, 234, 234, 233, 232, 231, 230, 229, 229, 228,
+    227, 226, 225, 225, 224, 223, 222, 222, 221, 220, 219, 219,
+    218, 217, 217, 216, 215, 214, 214, 213, 212, 212, 211, 210,
+    210, 209, 208, 208, 207, 206, 206, 205, 204, 204, 203, 202,
+    202, 201, 201, 200, 199, 199, 198, 197, 197, 196, 196, 195,
+    195, 194, 193, 193, 192, 192, 191, 191, 190, 189, 189, 188,
+    188, 187, 187, 186, 186, 185, 185, 184, 184, 183, 183, 182,
+    182, 181, 181, 180, 180, 179, 179, 178, 178, 177, 177, 176,
+    176, 175, 175, 174, 174, 173, 173, 172, 172, 172, 171, 171,
+    170, 170, 169, 169, 168, 168, 168, 167, 167, 166, 166, 165,
+    165, 165, 164, 164, 163, 163, 163, 162, 162, 161, 161, 161,
+    160, 160, 159, 159, 159, 158, 158, 157, 157, 157, 156, 156,
+    156, 155, 155, 154, 154, 154, 153, 153, 153, 152, 152, 152,
+    151, 151, 151, 150, 150, 149, 149, 149, 148, 148, 148, 147,
+    147, 147, 146, 146, 146, 145, 145, 145, 144, 144, 144, 144,
+    143, 143, 143, 142, 142, 142, 141, 141, 141, 140, 140, 140,
+    140, 139, 139, 139, 138, 138, 138, 137, 137, 137, 137, 136,
+    136, 136, 135, 135, 135, 135, 134, 134, 134, 134, 133, 133,
+    133, 132, 132, 132, 132, 131, 131, 131, 131, 130, 130, 130,
+    130, 129, 129, 129, 129, 128, 128, 128
+};
+
+
+/* (1 << 20) / r from the reciprocal table (no division for r < 512) */
+static int inv20(int r)
 {
-    int d2, z, dot, h, b;
-    switch (pcv.shade) {
-    case SH_FLAT:
-        return 2;
-    case SH_VGRAD:
-        b = v < -110 ? 1 : (v < 60 ? 2 : 3);
-        return b;
-    case SH_HGRAD:
-        b = v < -60 ? 3 : (v < 110 ? 2 : 1);
-        return b;
-    default:
-        break;
-    }
-    d2 = (u * u + v * v) >> 8;
-    if (d2 > 256) d2 = 256;
-    if (d2 < 0) d2 = 0;
-    z = ztab[d2 >> 2];
-    dot = (-115 * u - 141 * v + 179 * z) >> 8;
-    h = (dot + 256) >> 1;
-    if (pcv.shade == SH_SOFT) h += 18;
-    if (h >= (pcv.shade == SH_GLOSS ? 232 : 247)) b = 4;
-    else if (h >= 192) b = 3;
-    else if (h >= 112) b = 2;
-    else b = 1;
-    /* rim light on the shadow side of the edge */
-    if (b == 1 && d2 > 196 && u + v > 120) b = 2;
-    /* soft fur dither on band boundaries */
-    if ((pcv.flags & PF_FUZZ) && ((x ^ y) & 1)) {
-        if (b == 2 && h >= 184) b = 3;
-        else if (b == 1 && h >= 104) b = 2;
-    }
-    if (pcv.shade == SH_GLOSS && b == 3 && h < 205) b = 2;
-    return b;
+    if (r < 2) r = 2;
+    return r < 512 ? (int)rcp[r] << 4 : (1 << 20) / r;
 }
 
-static void plot(int x, int y, int u, int v)
+/* ---- shader state ------------------------------------------------------------
+ * Every primitive copies the canvas state it needs into a local Sh (the
+ * stack: IWRAM on the GBA) so the inner loops never touch the big global
+ * canvas struct, and spans shade incrementally (adds, a few multiplies).
+ * Shading coordinates u, v are Q8 (256 = the rim of the shape). */
+typedef struct Sh {
+    uint8_t *px, *id;
+    const uint32_t *mask;
+    const uint8_t *pat;
+    int w, x0, y0, x1, y1;
+    int fon, fcx, fcy, fiu, fiv;
+    int bias;
+    uint8_t col[5], pcol[5];
+    uint8_t part, decal, shade, fuzz;
+    const uint8_t *lut;     /* band table of the shading mode */
+} Sh;
+
+static void sh_load(Sh *s)
+{
+    int k;
+    pcv.prims++;
+    s->px = pcv.px;
+    s->id = pcv.id;
+    s->mask = pcv.masked ? pcv.mask : NULL;
+    s->pat = pcv.pat;
+    s->w = pcv.w;
+    s->x0 = pcv.x0; s->y0 = pcv.y0; s->x1 = pcv.x1; s->y1 = pcv.y1;
+    s->fon = pcv.fon; s->fcx = pcv.fcx; s->fcy = pcv.fcy; s->fiu = pcv.fiu; s->fiv = pcv.fiv;
+    s->bias = pcv.bias;
+    if (!pcv.bias) {
+        memcpy(s->col, pcv.m.c, 5);
+        memcpy(s->pcol, pcv.pm.c, 5);
+    } else for (k = 0; k < 5; k++) {
+        int b = DOOMO_CLAMP(k + pcv.bias, 0, 4);
+        s->col[k] = pcv.m.c[b];
+        s->pcol[k] = pcv.pm.c[b];
+    }
+    s->part = pcv.part;
+    s->decal = pcv.decal;
+    s->shade = pcv.shade;
+    s->fuzz = (pcv.flags & PF_FUZZ) != 0;
+    s->lut = pl_bandlut[pcv.shade == SH_GLOSS ? 1 : (pcv.shade == SH_SOFT ? 2 : 0)];
+}
+
+static int lut_index(int q8)
+{
+    int i = (q8 + 256) >> 3;
+    return i < 0 ? 0 : (i > 64 ? 64 : i);
+}
+
+static int grad_band(int shade, int v)
+{
+    if (shade == SH_VGRAD) return v < -110 ? 1 : (v < 60 ? 2 : 3);
+    return v < -60 ? 3 : (v < 110 ? 2 : 1);   /* SH_HGRAD */
+}
+
+/* Fill pixels xa..xb of row y. uq/duq: shading u in Q20 at xa and per
+ * pixel (u = uq >> 12); v: shading v (Q8) of the row. A shading frame, if
+ * set, replaces both. */
+P_FAST static void sh_span(const Sh *s, int y, int xa, int xb, int uq, int duq, int v)
+{
+    uint8_t *p, *q;
+    int x, band = 2, flat;
+    if (y < s->y0 || y >= s->y1) return;
+    if (xa < s->x0) { uq += duq * (s->x0 - xa); xa = s->x0; }
+    if (xb >= s->x1) xb = s->x1 - 1;
+    if (xa > xb) return;
+    if (s->fon) {
+        uq = (xa * PQ + 8 - s->fcx) * s->fiu;
+        duq = PQ * s->fiu;
+        v = ((y * PQ + 8 - s->fcy) * s->fiv) >> 12;
+    }
+    pcv.ops += (uint32_t)(xb - xa + 1);
+    p = s->px + y * s->w;
+    q = s->id + y * s->w;
+    flat = s->shade == SH_FLAT || s->shade == SH_VGRAD || s->shade == SH_HGRAD;
+    if (s->shade == SH_VGRAD) band = v < -110 ? 1 : (v < 60 ? 2 : 3);
+    else if (s->shade == SH_HGRAD) band = v < -60 ? 3 : (v < 110 ? 2 : 1);
+    if (flat && !s->pat && !s->mask) {
+        uint8_t c = s->col[band];
+        if (s->decal) {
+            for (x = xa; x <= xb; x++) p[x] = c;
+        } else {
+            uint8_t part = s->part;
+            for (x = xa; x <= xb; x++) { p[x] = c; q[x] = part; }
+        }
+        return;
+    }
+    {
+        int iv = (v + 256) >> 3;
+        const uint8_t *lut = s->lut + (iv < 0 ? 0 : (iv > 64 ? 64 : iv)) * 65;
+        int sh = s->fuzz ? (((xa ^ y) & 1) << 2) : 0, fz = s->fuzz ? 4 : 0;
+        const uint8_t *col = s->col;
+        uq += 256 << 12;
+        if (!s->pat && !s->mask) {
+            /* the common case: shaded, unmasked, plain */
+            if (s->decal) {
+                for (x = xa; x <= xb; x++, uq += duq, sh ^= fz) {
+                    int iu = uq >> 15;
+                    iu = iu < 0 ? 0 : (iu > 64 ? 64 : iu);
+                    p[x] = col[(lut[iu] >> sh) & 15];
+                }
+            } else {
+                uint8_t part = s->part;
+                for (x = xa; x <= xb; x++, uq += duq, sh ^= fz) {
+                    int iu = uq >> 15;
+                    iu = iu < 0 ? 0 : (iu > 64 ? 64 : iu);
+                    p[x] = col[(lut[iu] >> sh) & 15];
+                    q[x] = part;
+                }
+            }
+            return;
+        }
+        for (x = xa; x <= xb; x++, uq += duq, sh ^= fz) {
+            int b, iu;
+            if (s->mask) {
+                int id = q[x];
+                if (!(s->mask[id >> 5] & (1u << (id & 31)))) continue;
+            }
+            if (flat) b = band;
+            else {
+                iu = uq >> 15;
+                iu = iu < 0 ? 0 : (iu > 64 ? 64 : iu);
+                b = (lut[iu] >> sh) & 15;
+            }
+            if (s->pat) {
+                int t = s->pat[((y & 7) << 3) | (x & 7)];
+                p[x] = t == 1 ? s->pcol[b] : (t == 2 ? s->pcol[b > 0 ? b - 1 : 0] : col[b]);
+            } else {
+                p[x] = col[b];
+            }
+            if (!s->decal) q[x] = s->part;
+        }
+    }
+}
+
+/* single pixel with explicit shading coordinates */
+static void sh_px(const Sh *s, int x, int y, int u, int v)
 {
     int i, b;
-    uint8_t c;
-    if (x < pcv.x0 || y < pcv.y0 || x >= pcv.x1 || y >= pcv.y1) return;
-    i = y * pcv.w + x;
-    pcv.ops++;
-    if (pcv.masked) {
-        int id = pcv.id[i];
-        if (!(pcv.mask[id >> 5] & (1u << (id & 31)))) return;
+    if (x < s->x0 || y < s->y0 || x >= s->x1 || y >= s->y1) return;
+    i = y * s->w + x;
+    if (s->mask) {
+        int id = s->id[i];
+        if (!(s->mask[id >> 5] & (1u << (id & 31)))) return;
     }
-    if (pcv.fon) {
-        u = ((x * PQ + 8 - pcv.fcx) * pcv.fiu) >> 12;
-        v = ((y * PQ + 8 - pcv.fcy) * pcv.fiv) >> 12;
+    if (s->fon) {
+        u = ((x * PQ + 8 - s->fcx) * s->fiu) >> 12;
+        v = ((y * PQ + 8 - s->fcy) * s->fiv) >> 12;
     }
-    b = band_of(u, v, x, y) + pcv.bias;
-    b = DOOMO_CLAMP(b, 0, 4);
-    if (pcv.pat) {
-        int t = pcv.pat[((y & 7) << 3) | (x & 7)];
-        if (t == 1) c = pcv.pm.c[b];
-        else if (t == 2) c = pcv.pm.c[b > 0 ? b - 1 : 0];
-        else c = pcv.m.c[b];
+    if (s->shade == SH_FLAT) b = 2;
+    else if (s->shade == SH_VGRAD || s->shade == SH_HGRAD) b = grad_band(s->shade, v);
+    else b = (s->lut[lut_index(v) * 65 + lut_index(u)] >> ((s->fuzz && ((x ^ y) & 1)) ? 4 : 0)) & 15;
+    if (s->pat) {
+        int t = s->pat[((y & 7) << 3) | (x & 7)];
+        s->px[i] = t == 1 ? s->pcol[b] : (t == 2 ? s->pcol[b > 0 ? b - 1 : 0] : s->col[b]);
     } else {
-        c = pcv.m.c[b];
+        s->px[i] = s->col[b];
     }
-    pcv.px[i] = c;
-    if (!pcv.decal) pcv.id[i] = pcv.part;
+    if (!s->decal) s->id[i] = s->part;
+    pcv.ops++;
 }
 
 /* ---- primitives ----------------------------------------------------------------- */
 void pc_ellipse(int cx, int cy, int rx, int ry)
 {
     int y, ya, yb, iu, iv;
-    if (rx < 2 || ry < 2) { if (rx >= 0 && ry >= 0) plot(cx >> 4, cy >> 4, 0, 0); return; }
-    iu = (1 << 20) / rx;
-    iv = (1 << 20) / ry;
+    Sh S;
+    sh_load(&S);
+    if (rx < 2 || ry < 2) { if (rx >= 0 && ry >= 0) sh_px(&S, cx >> 4, cy >> 4, 0, 0); return; }
+    iu = inv20(rx);
+    iv = inv20(ry);
     ya = (cy - ry) >> 4;
     yb = (cy + ry) >> 4;
-    if (ya < pcv.y0) ya = pcv.y0;
-    if (yb >= pcv.y1) yb = pcv.y1 - 1;
+    if (ya < S.y0) ya = S.y0;
+    if (yb >= S.y1) yb = S.y1 - 1;
     for (y = ya; y <= yb; y++) {
         int dy = y * PQ + 8 - cy;
-        int v = (dy * iv) >> 12, rem, hw, xa, xb, x;
-        if (v <= -256 || v >= 256) continue;
-        rem = 65536 - v * v;
-        hw = (p_isqrt((uint32_t)rem) * rx) >> 8;
+        int v = (dy * iv) >> 12, hw, xa, xb, av = v < 0 ? -v : v;
+        if (av >= 256) continue;
+        hw = (circ[av] * rx) >> 8;
         xa = (cx - hw - 8 + 15) >> 4;
         xb = (cx + hw - 8) >> 4;
-        if (xa < pcv.x0) xa = pcv.x0;
-        if (xb >= pcv.x1) xb = pcv.x1 - 1;
-        for (x = xa; x <= xb; x++)
-            plot(x, y, ((x * PQ + 8 - cx) * iu) >> 12, v);
+        sh_span(&S, y, xa, xb, (xa * PQ + 8 - cx) * iu, PQ * iu, v);
     }
 }
 
 void pc_ellipse_sh(int cx, int cy, int rx, int ry, int shear)
 {
     int x, y, xa, xb, ya, yb, iu, iv, ext;
-    if (rx < 2 || ry < 2) { plot(cx >> 4, cy >> 4, 0, 0); return; }
-    iu = (1 << 20) / rx;
-    iv = (1 << 20) / ry;
+    Sh S;
+    sh_load(&S);
+    if (rx < 2 || ry < 2) { sh_px(&S, cx >> 4, cy >> 4, 0, 0); return; }
+    iu = inv20(rx);
+    iv = inv20(ry);
     ext = (p_abs(shear) * rx) >> 8;
     xa = (cx - rx) >> 4; xb = (cx + rx) >> 4;
     ya = (cy - ry - ext) >> 4; yb = (cy + ry + ext) >> 4;
+    pcv.ops += (uint32_t)((yb - ya + 1) * (xb - xa + 1));
     for (y = ya; y <= yb; y++)
         for (x = xa; x <= xb; x++) {
             int dx = x * PQ + 8 - cx, dy = y * PQ + 8 - cy - ((dx * shear) >> 8);
             int u = (dx * iu) >> 12, v = (dy * iv) >> 12;
-            if (u * u + v * v <= 65536) plot(x, y, u, v);
+            if (u * u + v * v <= 65536) sh_px(&S, x, y, u, v);
         }
 }
 
-static int edge(int ax, int ay, int bx, int by, int px, int py)
+/* x (Q4) of edge (ax,ay)-(bx,by) at height py, as a Q16 stepper */
+typedef struct Edge { int x, dx; } Edge;
+
+static void edge_at(Edge *e, int ax, int ay, int bx, int by, int py)
 {
-    return (bx - ax) * (py - ay) - (by - ay) * (px - ax);
+    int dy = by - ay;
+    e->dx = dy ? ((bx - ax) << 12) / dy * PQ : 0;      /* Q12 per pixel row */
+    e->x = (ax << 12) + (dy ? ((bx - ax) << 12) / dy * (py - ay) : 0);
 }
 
 void pc_tri(int x0, int y0, int x1, int y1, int x2, int y2)
 {
-    int minx, maxx, miny, maxy, x, y, area, fcx, fcy, iu, iv, rx, ry;
-    area = edge(x0, y0, x1, y1, x2, y2);
-    if (area == 0) return;
-    if (area < 0) { int t = x1; x1 = x2; x2 = t; t = y1; y1 = y2; y2 = t; }
-    minx = DOOMO_MIN(x0, DOOMO_MIN(x1, x2)) >> 4;
-    maxx = DOOMO_MAX(x0, DOOMO_MAX(x1, x2)) >> 4;
-    miny = DOOMO_MIN(y0, DOOMO_MIN(y1, y2)) >> 4;
-    maxy = DOOMO_MAX(y0, DOOMO_MAX(y1, y2)) >> 4;
-    if (minx < pcv.x0) minx = pcv.x0;
-    if (miny < pcv.y0) miny = pcv.y0;
-    if (maxx >= pcv.x1) maxx = pcv.x1 - 1;
-    if (maxy >= pcv.y1) maxy = pcv.y1 - 1;
+    int y, ya, yb, fcx, fcy, iu, iv, rx, ry, t;
+    Edge el, es;
+    Sh S;
+    if ((x1 - x0) * (y2 - y0) - (y1 - y0) * (x2 - x0) == 0) return;
+    /* sort by y: (x0,y0) top, (x2,y2) bottom */
+    if (y1 < y0) { t = x0; x0 = x1; x1 = t; t = y0; y0 = y1; y1 = t; }
+    if (y2 < y0) { t = x0; x0 = x2; x2 = t; t = y0; y0 = y2; y2 = t; }
+    if (y2 < y1) { t = x1; x1 = x2; x2 = t; t = y1; y1 = y2; y2 = t; }
+    sh_load(&S);
     /* own shading frame: centroid + half extents */
     fcx = (x0 + x1 + x2) / 3;
     fcy = (y0 + y1 + y2) / 3;
     rx = (DOOMO_MAX(x0, DOOMO_MAX(x1, x2)) - DOOMO_MIN(x0, DOOMO_MIN(x1, x2))) / 2 + 8;
-    ry = (DOOMO_MAX(y0, DOOMO_MAX(y1, y2)) - DOOMO_MIN(y0, DOOMO_MIN(y1, y2))) / 2 + 8;
-    iu = (1 << 20) / rx;
-    iv = (1 << 20) / ry;
-    for (y = miny; y <= maxy; y++) {
-        int py = y * PQ + 8;
-        for (x = minx; x <= maxx; x++) {
-            int px = x * PQ + 8;
-            if (edge(x0, y0, x1, y1, px, py) >= 0 && edge(x1, y1, x2, y2, px, py) >= 0 &&
-                edge(x2, y2, x0, y0, px, py) >= 0)
-                plot(x, y, ((px - fcx) * iu) >> 12, ((py - fcy) * iv) >> 12);
-        }
+    ry = (y2 - y0) / 2 + 8;
+    iu = inv20(rx);
+    iv = inv20(ry);
+    /* rows whose centre lies inside [y0, y2) */
+    ya = (y0 - 8 + 15) >> 4;
+    yb = (y2 - 8 - 1) >> 4;
+    if (ya < S.y0) ya = S.y0;
+    if (yb >= S.y1) yb = S.y1 - 1;
+    if (ya > yb) return;
+    edge_at(&el, x0, y0, x2, y2, ya * PQ + 8);       /* the long edge */
+    for (y = ya; y <= yb; y++) {
+        int py = y * PQ + 8, xl, xr, xa, xb;
+        if (py < y1) edge_at(&es, x0, y0, x1, y1, py);
+        else edge_at(&es, x1, y1, x2, y2, py);
+        xl = el.x >> 12;
+        xr = es.x >> 12;
+        if (xl > xr) { t = xl; xl = xr; xr = t; }
+        xa = (xl - 8 + 15) >> 4;
+        xb = (xr - 8) >> 4;
+        if (xa <= xb)
+            sh_span(&S, y, xa, xb, (xa * PQ + 8 - fcx) * iu, PQ * iu, ((py - fcy) * iv) >> 12);
+        el.x += el.dx;
     }
 }
 
@@ -363,40 +556,119 @@ void pc_quad(int x0, int y0, int x1, int y1, int x2, int y2, int x3, int y3)
     if (!fon) pcv.fon = 0;
 }
 
+/* capsule raster state shared by the plain (IWRAM) and general loops */
+typedef struct Cap {
+    int x0, y0, dx, dy, r0, r1, rmax;
+    int minx, maxx, miny, maxy, step, stepy, Trow, steep, slope;
+} Cap;
+
+/* plain shading (unmasked, unpatterned, no frame): the hot path */
+P_FAST static void capsule_plain(const Sh *S, const Cap *c)
+{
+    int x, y, Trow = c->Trow, dr = c->r1 - c->r0;
+    int flat = S->shade == SH_FLAT || S->shade == SH_VGRAD || S->shade == SH_HGRAD;
+    const uint8_t *lut = S->lut;
+    uint8_t part = S->part;
+    int fz = S->fuzz ? 4 : 0;
+    for (y = c->miny; y <= c->maxy; y++, Trow += c->stepy) {
+        int py = y * PQ + 8 - c->y0, px = c->minx * PQ + 8 - c->x0;
+        int T = Trow, xs = c->minx, in = 0, sh;
+        uint8_t *p = S->px + y * S->w, *q = S->id + y * S->w;
+        int fv = S->fon ? ((y * PQ + 8 - S->fcy) * S->fiv) >> 12 : 0, band = 2;
+        if (S->shade == SH_VGRAD) band = fv < -110 ? 1 : (fv < 60 ? 2 : 3);
+        else if (S->shade == SH_HGRAD) band = fv < -60 ? 3 : (fv < 110 ? 2 : 1);
+        if (c->steep) {
+            int ty = py < 0 ? (c->dy < 0 ? (py < c->dy ? c->dy : py) : 0)
+                            : (c->dy > 0 ? (py > c->dy ? c->dy : py) : 0);
+            int ax = c->x0 + ((ty * c->slope) >> 12) - c->rmax - (c->rmax >> 1) - PQ;
+            if ((ax >> 4) > xs) {
+                int sk = (ax >> 4) - xs;
+                xs += sk;
+                px += sk * PQ;
+                T += sk * c->step;
+            }
+        }
+        sh = ((xs ^ y) & 1) ? fz : 0;
+        for (x = xs; x <= c->maxx; x++, px += PQ, T += c->step, sh ^= fz) {
+            int t = T < 0 ? 0 : (T > 4096 ? 4096 : T);
+            int qx = px - ((c->dx * t) >> 12), qy = py - ((c->dy * t) >> 12);
+            int r = c->r0 + ((dr * t) >> 12);
+            if (qx * qx + qy * qy <= r * r) {
+                int b;
+                if (flat) {
+                    b = band;
+                } else {
+                    int u, v, iu, iv;
+                    if (S->fon) {
+                        u = ((x * PQ + 8 - S->fcx) * S->fiu) >> 12;
+                        v = fv;
+                    } else {
+                        int ir = rcp[r];
+                        u = (qx * ir) >> 8;
+                        v = (qy * ir) >> 8;
+                    }
+                    iu = (u + 256) >> 3; iv = (v + 256) >> 3;
+                    iu = iu < 0 ? 0 : (iu > 64 ? 64 : iu);
+                    iv = iv < 0 ? 0 : (iv > 64 ? 64 : iv);
+                    b = (lut[iv * 65 + iu] >> sh) & 15;
+                }
+                p[x] = S->col[b];
+                if (!S->decal) q[x] = part;
+                in = 1;
+            } else if (in) {
+                break;              /* a capsule row is one contiguous run */
+            }
+        }
+    }
+}
+
 void pc_capsule(int x0, int y0, int x1, int y1, int r0, int r1)
 {
-    int dx = x1 - x0, dy = y1 - y0;
-    int len2 = dx * dx + dy * dy;
-    int inv, minx, maxx, miny, maxy, x, y, rmax;
+    int len2, x, y;
+    Cap c;
+    Sh S;
     if (r0 < 1) r0 = 1;
     if (r1 < 1) r1 = 1;
-    rmax = DOOMO_MAX(r0, r1);
-    minx = (DOOMO_MIN(x0, x1) - rmax) >> 4;
-    maxx = (DOOMO_MAX(x0, x1) + rmax) >> 4;
-    miny = (DOOMO_MIN(y0, y1) - rmax) >> 4;
-    maxy = (DOOMO_MAX(y0, y1) + rmax) >> 4;
-    if (minx < pcv.x0) minx = pcv.x0;
-    if (miny < pcv.y0) miny = pcv.y0;
-    if (maxx >= pcv.x1) maxx = pcv.x1 - 1;
-    if (maxy >= pcv.y1) maxy = pcv.y1 - 1;
-    /* t in Q12 = dot(p - a, d) * inv >> 12 */
-    inv = len2 > 0 ? (int)((1u << 24) / (uint32_t)((len2 + 15) >> 4)) : 0;
-    for (y = miny; y <= maxy; y++) {
-        int py = y * PQ + 8 - y0;
-        for (x = minx; x <= maxx; x++) {
-            int px = x * PQ + 8 - x0;
-            int t = 0, qx, qy, r, d2;
-            if (len2 > 0) {
-                t = (int)(((int64_t)(px * dx + py * dy) * inv) >> 16);
-                t = DOOMO_CLAMP(t, 0, 4096);
-            }
-            qx = px - ((dx * t) >> 12);
-            qy = py - ((dy * t) >> 12);
-            r = r0 + (((r1 - r0) * t) >> 12);
-            d2 = qx * qx + qy * qy;
-            if (d2 <= r * r) {
-                int iu = (1 << 16) / (r > 0 ? r : 1);
-                plot(x, y, (qx * iu) >> 8, (qy * iu) >> 8);
+    if (r0 > 511) r0 = 511;
+    if (r1 > 511) r1 = 511;
+    sh_load(&S);
+    c.x0 = x0; c.y0 = y0; c.dx = x1 - x0; c.dy = y1 - y0; c.r0 = r0; c.r1 = r1;
+    len2 = c.dx * c.dx + c.dy * c.dy;
+    c.rmax = DOOMO_MAX(r0, r1);
+    c.minx = (DOOMO_MIN(x0, x1) - c.rmax) >> 4;
+    c.maxx = (DOOMO_MAX(x0, x1) + c.rmax) >> 4;
+    c.miny = (DOOMO_MIN(y0, y1) - c.rmax) >> 4;
+    c.maxy = (DOOMO_MAX(y0, y1) + c.rmax) >> 4;
+    if (c.minx < S.x0) c.minx = S.x0;
+    if (c.miny < S.y0) c.miny = S.y0;
+    if (c.maxx >= S.x1) c.maxx = S.x1 - 1;
+    if (c.maxy >= S.y1) c.maxy = S.y1 - 1;
+    if (c.minx > c.maxx || c.miny > c.maxy) return;
+    pcv.ops += (uint32_t)((c.maxy - c.miny + 1) * (c.maxx - c.minx + 1)) / 2;
+    c.steep = p_abs(c.dy) > p_abs(c.dx) && p_abs(c.dy) >= PQ;
+    c.slope = c.steep ? (c.dx << 12) / c.dy : 0;
+    /* t (Q12 along the axis) is linear in x and y */
+    if (len2 < 256) len2 = 0;            /* shorter than a pixel: a disc */
+    c.step = len2 ? (c.dx << 16) / len2 : 0;
+    c.stepy = len2 ? (c.dy << 16) / len2 : 0;
+    c.Trow = len2 ? (((c.minx * PQ + 8 - x0) * c.dx + (c.miny * PQ + 8 - y0) * c.dy) << 8) / (len2 >> 4) : 0;
+    if (!S.mask && !S.pat && (!S.fon || (S.shade != SH_VGRAD && S.shade != SH_HGRAD))) {
+        capsule_plain(&S, &c);
+        return;
+    }
+    for (y = c.miny; y <= c.maxy; y++, c.Trow += c.stepy) {
+        int py = y * PQ + 8 - y0, px = c.minx * PQ + 8 - x0;
+        int T = c.Trow, in = 0;
+        for (x = c.minx; x <= c.maxx; x++, px += PQ, T += c.step) {
+            int t = T < 0 ? 0 : (T > 4096 ? 4096 : T);
+            int qx = px - ((c.dx * t) >> 12), qy = py - ((c.dy * t) >> 12);
+            int r = r0 + (((r1 - r0) * t) >> 12);
+            if (qx * qx + qy * qy <= r * r) {
+                int ir = rcp[r];
+                sh_px(&S, x, y, (qx * ir) >> 8, (qy * ir) >> 8);
+                in = 1;
+            } else if (in) {
+                break;
             }
         }
     }
@@ -419,43 +691,43 @@ void pc_bezier(int x0, int y0, int x1, int y1, int x2, int y2, int r0, int r1, i
 void pc_rrect(int cx, int cy, int hw, int hh, int r)
 {
     int y, ya, yb, iu, iv;
+    Sh S;
     if (hw < 4) hw = 4;
     if (hh < 4) hh = 4;
     if (r > hw) r = hw;
     if (r > hh) r = hh;
     if (r < 1) r = 1;
-    iu = (1 << 20) / hw;
-    iv = (1 << 20) / hh;
+    sh_load(&S);
+    iu = inv20(hw);
+    iv = inv20(hh);
     ya = (cy - hh) >> 4;
     yb = (cy + hh) >> 4;
-    if (ya < pcv.y0) ya = pcv.y0;
-    if (yb >= pcv.y1) yb = pcv.y1 - 1;
+    if (ya < S.y0) ya = S.y0;
+    if (yb >= S.y1) yb = S.y1 - 1;
     for (y = ya; y <= yb; y++) {
-        int dy = y * PQ + 8 - cy, ady = p_abs(dy), w, xa, xb, x;
+        int dy = y * PQ + 8 - cy, ady = p_abs(dy), w, xa, xb;
         if (ady > hh) continue;
         if (ady > hh - r) {
-            int k = ady - (hh - r);
-            w = hw - r + p_isqrt((uint32_t)(r * r - k * k));
+            int k = ((ady - (hh - r)) << 8) / r;
+            w = hw - r + ((circ[k > 256 ? 256 : k] * r) >> 8);
         } else {
             w = hw;
         }
         xa = (cx - w - 8 + 15) >> 4;
         xb = (cx + w - 8) >> 4;
-        if (xa < pcv.x0) xa = pcv.x0;
-        if (xb >= pcv.x1) xb = pcv.x1 - 1;
-        for (x = xa; x <= xb; x++)
-            plot(x, y, ((x * PQ + 8 - cx) * iu) >> 12, (dy * iv) >> 12);
+        sh_span(&S, y, xa, xb, (xa * PQ + 8 - cx) * iu, PQ * iu, (dy * iv) >> 12);
     }
 }
 
 void pc_rect(int x0, int y0, int x1, int y1)
 {
-    int x, y, xa = (x0 + 8) >> 4, xb = (x1 - 8) >> 4, ya = (y0 + 8) >> 4, yb = (y1 - 8) >> 4;
+    int y, xa = (x0 + 8) >> 4, xb = (x1 - 8) >> 4, ya = (y0 + 8) >> 4, yb = (y1 - 8) >> 4;
     int cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
-    int iu = (1 << 20) / DOOMO_MAX((x1 - x0) / 2, 8), iv = (1 << 20) / DOOMO_MAX((y1 - y0) / 2, 8);
+    int iu = inv20(DOOMO_MAX((x1 - x0) / 2, 8)), iv = inv20(DOOMO_MAX((y1 - y0) / 2, 8));
+    Sh S;
+    sh_load(&S);
     for (y = ya; y <= yb; y++)
-        for (x = xa; x <= xb; x++)
-            plot(x, y, ((x * PQ + 8 - cx) * iu) >> 12, ((y * PQ + 8 - cy) * iv) >> 12);
+        sh_span(&S, y, xa, xb, (xa * PQ + 8 - cx) * iu, PQ * iu, ((y * PQ + 8 - cy) * iv) >> 12);
 }
 
 /* ---- pixel helpers ------------------------------------------------------------------ */
@@ -521,70 +793,164 @@ void pc_lineq(int x0, int y0, int x1, int y1, uint8_t c)
 void pc_darken_part(int id)
 {
     int i, n = pcv.w * pcv.h;
+    uint8_t *p = pcv.px, *q = pcv.id;
     for (i = 0; i < n; i++)
-        if (pcv.id[i] == id && pcv.px[i]) pcv.px[i] = palette_darker(pcv.px[i]);
+        if (q[i] == id && p[i]) p[i] = doomo_art_darker[p[i]];
 }
 
 /* ---- finishing passes ------------------------------------------------------------ */
-static int solid(int id) { return id > 0 && id < PID_FX; }
 
-void pc_contours(void)
+#define SOLID(id) ((uint8_t)((id) - 1) < (uint8_t)(PID_FX - 1))
+
+/* one bit per pixel: candidates found by scanning id transitions, so the
+ * full neighbour test only runs on the few boundary pixels */
+static uint8_t pmark[PMAXW * PMAXH / 8];
+#define MARK(i)   (pmark[(i) >> 3] |= (uint8_t)(1u << ((i) & 7)))
+
+/* inner contour: where a part sits in front of an older one, the older
+ * pixel gets one (or two) steps darker in its own colour family */
+static inline __attribute__((always_inline)) void contour_px(int i, int x, int y, int w, int h)
 {
-    int x, y, w = pcv.w, h = pcv.h;
+    uint8_t *px = pcv.px, *idb = pcv.id;
+    const uint8_t *pflag = pcv.pflag;
+    int a = idb[i], b = 0, n;
+    if (!SOLID(a) || (pflag[a] & PF_NOCONT)) return;
+    if (y > 0) { n = idb[i - w]; if (SOLID(n) && n > b && !(pflag[n] & PF_NOCAST)) b = n; }
+    if (y < h - 1) { n = idb[i + w]; if (SOLID(n) && n > b && !(pflag[n] & PF_NOCAST)) b = n; }
+    if (x > 0) { n = idb[i - 1]; if (SOLID(n) && n > b && !(pflag[n] & PF_NOCAST)) b = n; }
+    if (x < w - 1) { n = idb[i + 1]; if (SOLID(n) && n > b && !(pflag[n] & PF_NOCAST)) b = n; }
+    if (b > a) {
+        uint8_t c = doomo_art_darker[px[i]];
+        if ((pflag[b] & PF_DARKLINE) || lumat[c] > 150) c = doomo_art_darker[c];
+        px[i] = c;
+    }
+}
+
+
+/* Mark the pixel that may need work at every id change, a word (4
+ * pixels) at a time: the empty side of an empty/solid edge (outline) or
+ * the older (lower id) side of a solid/solid edge (inner contour).
+ * pmark must be cleared by the caller. */
+P_FAST static void scan_transitions(void)
+{
+    int w = pcv.w, h = pcv.h, wq = w >> 2, y, k;
+    const uint32_t *iw = pcv.idu.w;
+    uint8_t *mk = pmark;
     for (y = 0; y < h; y++) {
-        for (x = 0; x < w; x++) {
-            int i = y * w + x, a = pcv.id[i], b = 0, k;
-            int nb[4];
-            if (!solid(a) || (pcv.pflag[a] & PF_NOCONT)) continue;
-            nb[0] = y > 0 ? pcv.id[i - w] : 0;
-            nb[1] = y < h - 1 ? pcv.id[i + w] : 0;
-            nb[2] = x > 0 ? pcv.id[i - 1] : 0;
-            nb[3] = x < w - 1 ? pcv.id[i + 1] : 0;
-            for (k = 0; k < 4; k++)
-                if (solid(nb[k]) && nb[k] > a && !(pcv.pflag[nb[k]] & PF_NOCAST) &&
-                    nb[k] > b) b = nb[k];
-            if (b) {
-                uint8_t c = palette_darker(pcv.px[i]);
-                if ((pcv.pflag[b] & PF_DARKLINE) || palette_luma(c) > 150)
-                    c = palette_darker(c);
-                pcv.px[i] = c;
+        const uint32_t *row = iw + y * wq;
+        for (k = 0; k < wq; k++) {
+            uint32_t a = row[k];
+            uint32_t nxt = k + 1 < wq ? row[k + 1] : a >> 24;
+            uint32_t hd = a ^ ((a >> 8) | (nxt << 24));
+            uint32_t vd = y + 1 < h ? a ^ row[k + wq] : 0;
+            if (hd | vd) {
+                int b, i = y * w + k * 4;
+                for (b = 0; b < 4; b++) {
+                    int p = (int)((a >> (b * 8)) & 0xFF), j, q;
+                    if ((hd >> (b * 8)) & 0xFF) {
+                        q = b < 3 ? (int)((a >> (b * 8 + 8)) & 0xFF) : (int)(nxt & 0xFF);
+                        j = (p == 0 || (q != 0 && p < q)) ? i + b : i + b + 1;
+                        mk[j >> 3] |= (uint8_t)(1u << (j & 7));
+                    }
+                    if ((vd >> (b * 8)) & 0xFF) {
+                        q = (int)((row[k + wq] >> (b * 8)) & 0xFF);
+                        j = (p == 0 || (q != 0 && p < q)) ? i + b : i + b + w;
+                        mk[j >> 3] |= (uint8_t)(1u << (j & 7));
+                    }
+                }
             }
         }
     }
+}
+
+/* silhouette outline in the coloured line of the front-most neighbour */
+static inline __attribute__((always_inline)) void outline_px(int i, int x, int y, int w, int h)
+{
+    uint8_t *px = pcv.px, *idb = pcv.id;
+    const uint8_t *pflag = pcv.pflag, *pline = pcv.pline;
+    int up, dn, lf, rt, best;
+    uint8_t c;
+    if (px[i]) return;
+    up = y > 0 ? idb[i - w] : 0;
+    dn = y < h - 1 ? idb[i + w] : 0;
+    lf = x > 0 ? idb[i - 1] : 0;
+    rt = x < w - 1 ? idb[i + 1] : 0;
+    if (!SOLID(up) || (pflag[up] & PF_NOLINE)) up = 0;
+    if (!SOLID(dn) || (pflag[dn] & PF_NOLINE)) dn = 0;
+    if (!SOLID(lf) || (pflag[lf] & PF_NOLINE)) lf = 0;
+    if (!SOLID(rt) || (pflag[rt] & PF_NOLINE)) rt = 0;
+    best = DOOMO_MAX(DOOMO_MAX(up, dn), DOOMO_MAX(lf, rt));
+    if (!best) return;
+    c = pline[best];
+    if (up && !dn) {
+        /* underneath a shape: darkest (contact shadow) */
+        uint8_t d = doomo_art_darker[c];
+        if (d) c = d;
+    } else if ((dn || rt) && !up && !lf) {
+        /* lit top-left edge: one step lighter */
+        uint8_t lt = doomo_art_lighter[c];
+        if (lt && lumat[lt] < 150) c = lt;
+    }
+    px[i] = c;
+    idb[i] = PID_LINE;
+}
+
+/* contours + silhouette outline: every marked pixel is either solid
+ * (may get an inner contour) or empty (may get an outline) */
+P_FAST static void finish_marked(void)
+{
+    int w = pcv.w, h = pcv.h, bpr = w >> 3, y, k;
+    for (y = 0; y < h; y++) {
+        const uint8_t *mrow = pmark + y * bpr;
+        for (k = 0; k < bpr; k++) {
+            int m = mrow[k], b;
+            if (!m) continue;
+            for (b = 0; b < 8; b++)
+                if (m & (1 << b)) {
+                    int x = k * 8 + b, i = y * w + x;
+                    if (pcv.px[i]) contour_px(i, x, y, w, h);
+                    else outline_px(i, x, y, w, h);
+                }
+        }
+    }
+}
+
+void pc_finish_lines(void)
+{
+    int w = pcv.w, h = pcv.h;
+    luma_init();
+    pcv.ops += (uint32_t)(w * h / 4);
+    memset(pmark, 0, (size_t)((w * h + 7) >> 3));
+    scan_transitions();
+    finish_marked();
+}
+
+void pc_contours(void)
+{
+    int w = pcv.w, h = pcv.h, bpr = w >> 3, y, k;
+    luma_init();
+    memset(pmark, 0, (size_t)((w * h + 7) >> 3));
+    scan_transitions();
+    for (y = 0; y < h; y++)
+        for (k = 0; k < bpr; k++) {
+            int m = pmark[y * bpr + k], b;
+            for (b = 0; m && b < 8; b++)
+                if (m & (1 << b)) contour_px(y * w + k * 8 + b, k * 8 + b, y, w, h);
+        }
 }
 
 void pc_outline(void)
 {
-    int x, y, w = pcv.w, h = pcv.h;
-    for (y = 0; y < h; y++) {
-        for (x = 0; x < w; x++) {
-            int i = y * w + x, up, dn, lf, rt, best = 0;
-            uint8_t c;
-            if (pcv.px[i]) continue;
-            up = y > 0 ? pcv.id[i - w] : 0;
-            dn = y < h - 1 ? pcv.id[i + w] : 0;
-            lf = x > 0 ? pcv.id[i - 1] : 0;
-            rt = x < w - 1 ? pcv.id[i + 1] : 0;
-            if (!solid(up) || (pcv.pflag[up] & PF_NOLINE)) up = 0;
-            if (!solid(dn) || (pcv.pflag[dn] & PF_NOLINE)) dn = 0;
-            if (!solid(lf) || (pcv.pflag[lf] & PF_NOLINE)) lf = 0;
-            if (!solid(rt) || (pcv.pflag[rt] & PF_NOLINE)) rt = 0;
-            best = DOOMO_MAX(DOOMO_MAX(up, dn), DOOMO_MAX(lf, rt));
-            if (!best) continue;
-            c = pcv.pline[best];
-            if (up && !dn) {
-                /* underneath a shape: darkest (contact shadow) */
-                uint8_t d = palette_darker(c);
-                if (d) c = d;
-            } else if ((dn || rt) && !up && !lf) {
-                /* lit top-left edge: one step lighter */
-                uint8_t lt = palette_lighter(c);
-                if (lt && palette_luma(lt) < 150) c = lt;
-            }
-            pcv.px[i] = c;
-            pcv.id[i] = PID_LINE;
+    int w = pcv.w, h = pcv.h, bpr = w >> 3, y, k;
+    luma_init();
+    memset(pmark, 0, (size_t)((w * h + 7) >> 3));
+    scan_transitions();
+    for (y = 0; y < h; y++)
+        for (k = 0; k < bpr; k++) {
+            int m = pmark[y * bpr + k], b;
+            for (b = 0; m && b < 8; b++)
+                if (m & (1 << b)) outline_px(y * w + k * 8 + b, k * 8 + b, y, w, h);
         }
-    }
 }
 
 void pc_flipx(void)

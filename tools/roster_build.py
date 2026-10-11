@@ -36,7 +36,7 @@ MONTHS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN",
 
 # ROSTER_T_* (roster.h) by name
 TRAIT_NAMES = ["SOFTIE", "KID", "ELDER", "VAPER", "HOLY", "LOYALIST",
-               "INFILTRATOR", "NIGHT_OWL"]
+               "INFILTRATOR", "NIGHT_OWL", "TEEN"]
 
 # critter-folk species (the vaguely furry heart of the cast)
 CRITTERS = {"CATFOLK", "FOXKIN", "BUNNYKIN", "BEARKIN", "PUPKIN", "MOUSEKIN",
@@ -742,6 +742,15 @@ def load(strict=False):
             lo, hi = AUTO_BANDS[k]
             if not lo <= e["value"] <= hi:
                 errors.append("%s: %s value should be %d..%d" % (e["where"], k, lo, hi))
+        kid, teen = 1 << TRAIT_NAMES.index("KID"), 1 << TRAIT_NAMES.index("TEEN")
+        if k in ROMANTIC or e["crush"]:
+            ta, tb = ca.v["traits"], cb.v["traits"]
+            if (ta | tb) & kid:
+                errors.append("%s: kids have no romances or crushes" % e["where"])
+            elif bool(ta & teen) != bool(tb & teen):
+                errors.append("%s: teens only date and crush on other teens" % e["where"])
+            if k == "MARRIED" and (ta | tb) & teen:
+                errors.append("%s: teens do not marry" % e["where"])
         if k in ROMANTIC:
             if not (accepts(schema, ca, cb) and accepts(schema, cb, ca)):
                 errors.append("%s: %s couple %s & %s does not match their romance prefs"
@@ -976,7 +985,7 @@ def emit(schema, by_id, edges, story):
         w("    " + ",".join(str(o) for o in jo[k:k + 12]) + ",")
     w("};")
     w("")
-    w("const uint8_t doomo_roster_traits[ROSTER_COUNT] = {")
+    w("const uint16_t doomo_roster_traits[ROSTER_COUNT] = {")
     tr = [by_id[i].v["traits"] for i in range(schema.count)]
     for k in range(0, schema.count, 20):
         w("    " + ",".join(str(t) for t in tr[k:k + 20]) + ",")

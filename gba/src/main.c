@@ -104,6 +104,16 @@ void gba_logf(const char *fmt, ...)
 /* ---------------------------------------------------------------------- */
 /* platform.h misc */
 void plat_log(const char *msg) { gba_log(msg); }
+
+/* main stack high-water mark: crt0 paints the free IWRAM between the
+ * last IWRAM variable and the stack with 0x5AC35AC3 */
+uint32_t gba_stack_used(void)
+{
+    extern uint32_t __iwram_bss_end[], __sp_usr[];
+    const uint32_t *p = __iwram_bss_end;
+    while (p < __sp_usr && *p == 0x5AC35AC3u) p++;
+    return (uint32_t)((uintptr_t)__sp_usr - (uintptr_t)p);
+}
 const char *plat_name(void) { return "GBA"; }
 uint32_t plat_ticks(void) { return gba_frames; }
 
@@ -162,7 +172,15 @@ void plat_begin_frame(void)
 
 void plat_end_frame(void)
 {
+    static uint32_t stack_hw;
     gba_frames++;
+    if ((gba_frames & 127) == 0) {
+        uint32_t u = gba_stack_used();
+        if (u >= stack_hw + 256) {
+            stack_hw = u;
+            gba_logf("GBA: main stack high-water %u bytes", (unsigned)u);
+        }
+    }
     gba_mailbox.ticks = gba_frames;
     if (!gba_nodraw) {
         video_flip();

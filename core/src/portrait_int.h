@@ -26,7 +26,19 @@
 #include "doomo/catalog.h"
 
 #define PQ        16                    /* sub-pixel units per pixel */
+
+/* The few hottest leaf loops run as ARM code from IWRAM on the GBA (the
+ * same convention as gba_hw.h's IWRAM_CODE; about 1.5 KB). Elsewhere this
+ * is a plain function. */
+#if defined(DOOMO_PLATFORM_GBA) && !defined(PORTRAIT_NO_IWRAM)
+#define P_FAST __attribute__((section(".iwram.portrait"), target("arm"), long_call, noinline))
+#else
+#define P_FAST
+#endif
 #define PX(p)     ((p) * PQ)            /* pixels -> Q4               */
+/* x * pct / 100 without a division (Thumb on the GBA has no divide and
+ * no long multiply, so "/ 100" is a library call): Q8 multiply-shift */
+#define PCT(x, pct) (((x) * (((pct) * 256 + 50) / 100)) >> 8)
 #define PMAXW     48
 #define PMAXH     80
 
@@ -66,9 +78,10 @@ enum {
 #define PID_LINE    255     /* outline pixels written by pc_outline()      */
 
 typedef struct PCanvas {
+    union { uint8_t b[PMAXW * PMAXH]; uint32_t w[PMAXW * PMAXH / 4]; } idu;
     uint8_t *px;            /* output colours                              */
+    uint8_t *id;            /* == idu.b: part id per pixel (word aligned)  */
     int w, h;
-    uint8_t id[PMAXW * PMAXH];
     uint8_t part;           /* id of the part being drawn                  */
     uint8_t decal;          /* 1: draw without touching ids                */
     uint8_t shade;          /* SH_*                                        */
@@ -89,6 +102,7 @@ typedef struct PCanvas {
     /* gradient band shift (-2..2) applied to every shaded pixel */
     int bias;
     uint32_t ops;           /* rough pixel-visit counter (perf checks)     */
+    uint32_t prims;         /* primitives drawn (perf checks)              */
 } PCanvas;
 
 extern PCanvas pcv;
@@ -128,6 +142,7 @@ void pc_darken_part(int id);                         /* whole part 1 step */
 
 void pc_contours(void);
 void pc_outline(void);
+void pc_finish_lines(void);   /* contours + outline in one transition scan */
 void pc_flipx(void);
 
 /* ---- math helpers ------------------------------------------------------ */
@@ -137,6 +152,9 @@ int  p_abs(int v);
 int  p_sin(int a);
 int  p_cos(int a);
 uint32_t p_hash(uint32_t x);
+
+/* shade band lookup (portrait_lut.c): [mode][v][u], 65x65, see there */
+extern const uint8_t pl_bandlut[3][65 * 65];
 
 /* ---- pattern tiles (8x8: 0 = base, 1 = pattern colour, 2 = pattern dark) */
 extern const uint8_t p_pattern_tiles[PATTERN_COUNT][64];

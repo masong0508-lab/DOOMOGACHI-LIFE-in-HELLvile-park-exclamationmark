@@ -92,7 +92,8 @@ static uint8_t ramp(int r, int shade)
 }
 
 #define NTEX 64
-static EWRAM_BSS_SA uint8_t texbuf[24][64 * 64];
+#define NSLOTS 18                       /* 72 KB of generated textures */
+static EWRAM_BSS_SA uint8_t texbuf[NSLOTS][64 * 64];
 static int8_t tex_slot[NTEX];
 static uint8_t tex_avg[NTEX];
 static int ntex_used;
@@ -339,7 +340,7 @@ const uint8_t *texture_pixels(int tex_id, uint16_t time)
     if (tex_id < 0 || tex_id >= NTEX) tex_id = 0;
     slot = tex_slot[tex_id];
     if (slot <= 0) {
-        if (ntex_used >= 24) return texbuf[0];
+        if (ntex_used >= NSLOTS) return texbuf[0];
         slot = ++ntex_used;
         make_tex(tex_id, texbuf[slot - 1]);
         tex_slot[tex_id] = (int8_t)slot;

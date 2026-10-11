@@ -406,11 +406,7 @@ static void column(int c)
     s->ybot = f->vh;
     s->ncp = 0;
     s->cps = r3d_clips[c];
-    {
-        uint32_t d = r3d_dither[c];
-        if (f->frame & 1) d ^= 8;
-        s->cm = (f->cmt && d < f->tint_thresh) ? f->cmt : f->cm;
-    }
+    s->cm = f->cm;
     if ((unsigned)mx >= (unsigned)w || (unsigned)my >= (unsigned)h) {
         fill_col(s->col, 0, f->vh, f->cm[15 * 256 + 1]);
         r3d_nclips[c] = 0;
@@ -582,12 +578,7 @@ void r3d_draw_sprite(const R3DSprite *s)
             ya = r0 > top ? r0 : top;
             yb = r1 < bot ? r1 : bot;
             if (ya >= yb) continue;
-            {
-                uint32_t d = r3d_dither[c];
-                if (f->frame & 1) d ^= 8;
-                cm = (f->cmt && d < f->tint_thresh) ? f->cmt : f->cm;
-            }
-            cm += s->level << 8;
+            cm = f->cm + (s->level << 8);
             if (s->trans) {
                 /* every other pixel, checkerboard alternating per frame */
                 ya += (ya + c + (int)f->frame) & 1;
@@ -602,4 +593,20 @@ void r3d_draw_sprite(const R3DSprite *s)
             }
         }
     }
+}
+
+/* ------------------------------------------------------------------------ */
+/* view tint (damage / holy flash, vape haze): level/16 of the pixels go
+ * through the tint map, 4x4 ordered dither (reference semantics) over the
+ * 2-pixel columns, after the sprites */
+static uint8_t tint_lut[256];          /* IWRAM copy of the tint map */
+
+void r3d_tint_pass(const uint8_t *tm, int level)
+{
+    static const uint8_t bayer[16] = { 0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5 };
+    uint8_t thr[16];
+    int i;
+    for (i = 0; i < 16; i++) thr[i] = bayer[i] < level;
+    memcpy(tint_lut, tm, sizeof(tint_lut));
+    r3d_tint_rows(r3f.dst, r3f.ncol, r3f.vh, tint_lut, thr);
 }

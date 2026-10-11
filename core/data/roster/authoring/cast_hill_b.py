@@ -94,6 +94,7 @@ Midnyte | h | Reads ghost stories to the ghosts, who love them. | job=Goth Poet;
 """ ),
 
 A("emoteens", "hill", "Emo Teen|Garage Drummer|Zine Maker",
+  traits="TEEN",
   sp="RACCOONKIN:2 CATFOLK:2 FOXKIN HUMAN",
   top="HOODIE:3 BAND_TEE:3", bottom="RIPPED_JEANS:3 SKIRT LEGGINGS", shoes="SNEAKERS:3 PLATFORM",
   hat="NONE:3 BEANIE:2", acc="NONE:2 CHAINS EARRINGS",

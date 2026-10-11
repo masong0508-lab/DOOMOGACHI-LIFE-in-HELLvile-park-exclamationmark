@@ -36,3 +36,15 @@ int map_ceil_z(const DoomoMap *m, int cx, int cy)
 void map_tick(DoomoMap *m) { if (m) m->time++; }
 void map_load(int map_id) { (void)map_id; }
 void map_use(DoomoMap *m, int cx, int cy) { (void)m; (void)cx; (void)cy; }
+
+/* the rest of the core the platform calls (NOCORE stand-ins) */
+int opt_get(int opt) { (void)opt; return 1; }      /* OPT_FOV: normal */
+const int8_t *audio_sfx_pcm(int sfx, uint32_t *len, uint32_t *rate)
+{
+    static const int8_t blip[16] = { 0, 40, 60, 40, 0, -40, -60, -40,
+                                     0, 20, 30, 20, 0, -20, -30, -20 };
+    (void)sfx;
+    if (len) *len = sizeof(blip);
+    if (rate) *rate = 8000;
+    return blip;
+}

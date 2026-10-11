@@ -1003,6 +1003,8 @@ r3d_sprite_loop:
     ldr     r5, [sp, #24]               @ cm
     ldr     r6, [sp, #28]               @ stride
     ldr     r8, [sp, #32]               @ iw
+    cmp     r4, #0x10000
+    blo     .Lsm_texel                  @ magnified: runs of equal texels
 1:  mov     r7, r3, lsr #16
     mul     r7, r8, r7                  @ row * iw (Rs = row: 1-cycle multiply)
     add     r3, r3, r4
@@ -1014,6 +1016,76 @@ r3d_sprite_loop:
     strneh  r7, [r0, -r6]
     subs    r1, r1, #1
     bne     1b
+.Lsm_done:
     ldmfd   sp!, {r4-r8}
     bx      lr
+    @ magnified (less than a texel per row): fetch and light each texel
+    @ once, then emit (or skip) its rows
+.Lsm_texel:
+    mov     r7, r3, lsr #16
+    mul     r12, r8, r7
+    ldrb    r12, [r2, r12]
+    add     r7, r7, #1
+    mov     r7, r7, lsl #16             @ v of the next texel row
+    cmp     r12, #0
+    beq     .Lsm_skip
+    ldrb    r12, [r5, r12]
+    orr     r12, r12, r12, lsl #8
+.Lsm_put:
+    strh    r12, [r0], r6
+    add     r3, r3, r4
+    subs    r1, r1, #1
+    beq     .Lsm_done
+    cmp     r3, r7
+    blo     .Lsm_put
+    b       .Lsm_texel
+.Lsm_skip:
+    add     r0, r0, r6
+    add     r3, r3, r4
+    subs    r1, r1, #1
+    beq     .Lsm_done
+    cmp     r3, r7
+    blo     .Lsm_skip
+    b       .Lsm_texel
     .size   r3d_sprite_loop, . - r3d_sprite_loop
+
+@ ---------------------------------------------------------------------------
+@ void r3d_tint_rows(uint16_t *row, int ncol, int vh, const uint8_t *tm,
+@                    const uint8_t *thr)
+@ The view tint: for every row y and column c with thr[(y & 3) * 4 + (c & 3)]
+@ set (the 4x4 ordered dither, precomputed per level by the caller as
+@ "tint this one" flags), the halfword pixel goes through tm (both bytes are
+@ equal: 2-pixel columns). row = the viewport's first row (stride 240).
+    .global r3d_tint_rows
+    .type   r3d_tint_rows, %function
+r3d_tint_rows:
+    stmfd   sp!, {r4-r11, lr}
+    ldr     r4, [sp, #36]               @ thr
+    add     r5, r0, r1, lsl #1          @ end of the first row
+    mov     r6, #0                      @ y & 3
+1:  add     r7, r4, r6, lsl #2          @ this row's 4 flags
+    mov     r8, #0                      @ k
+2:  ldrb    r9, [r7, r8]
+    cmp     r9, #0
+    beq     4f
+    add     r10, r0, r8, lsl #1         @ first pixel c = k
+    cmp     r10, r5
+    bhs     4f
+3:  ldrb    r11, [r10]
+    ldrb    r11, [r3, r11]
+    orr     r11, r11, r11, lsl #8
+    strh    r11, [r10], #8              @ next c = c + 4
+    cmp     r10, r5
+    blo     3b
+4:  add     r8, r8, #1
+    cmp     r8, #4
+    blo     2b
+    add     r0, r0, #240
+    add     r5, r5, #240
+    add     r6, r6, #1
+    and     r6, r6, #3
+    subs    r2, r2, #1
+    bne     1b
+    ldmfd   sp!, {r4-r11, lr}
+    bx      lr
+    .size   r3d_tint_rows, . - r3d_tint_rows

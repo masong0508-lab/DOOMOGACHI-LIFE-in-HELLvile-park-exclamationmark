@@ -1,9 +1,18 @@
 # enginetest.txt - the ENGINE_TEST ROM's scripted tour (make -C gba test-et).
 # The ROM drives the camera itself and logs "ET phase: <name>" / "ET fps=".
 # Ticks are 30 Hz logic ticks (the harness reads them from the ROM).
-wait 40
+# audio (ET ticks 1-8: DirectSound samples, 10-18: PSG tones)
+wait 1
+audio-reset
+wait 8
+expect-audio 200 directsound
+audio-reset
+wait 10
+expect-audio 200 psg
+wait 21
 expect-log ENGINE TEST: boot
 expect-log ET divtest ok
+expect-log ET audio: tones
 shot et01_courtyard_fp
 wait 60
 shot et02_courtyard_blocks

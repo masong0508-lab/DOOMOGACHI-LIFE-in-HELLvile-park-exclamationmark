@@ -20,6 +20,7 @@ extern uint32_t gba_keys;                  /* raw KEYINPUT bits (1 = held)  */
 extern int gba_nodraw;
 uint32_t gba_read_pad(void);             /* BTN_* mask incl. SYNTH_XY flag */
 void gba_pacing_reset(void);             /* forget frame debt (after loads) */
+uint32_t gba_stack_used(void);          /* main stack high-water mark, bytes */
 void plat_init_hw(void);
 
 #define GBA_MAILBOX_MAGIC 0x42474D44u    /* "DMGB" */
@@ -54,7 +55,7 @@ void video_flip(void);                   /* wait for vblank pacing + flip */
 #define GBA_BIG_OW     0u               /* overworld lit tiles  < 20 KB */
 #define GBA_BIG_CLIPS  (20u * 1024u)    /* r3d clip checkpoints < 8 KB  */
 #define GBA_BIG_ROOF   (28u * 1024u)    /* r3d roof table         4 KB  */
-#define GBA_BIG_CMT    (32u * 1024u)    /* r3d tinted colormap    4 KB  */
+#define GBA_BIG_CMT    (32u * 1024u)    /* free (end of the roof table) */
 #define GBA_BIG_SPR    (36u * 1024u)    /* r3d sprite order       1 KB  */
 extern uint8_t gba_big[];
 

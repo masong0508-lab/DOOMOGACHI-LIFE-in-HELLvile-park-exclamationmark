@@ -26,6 +26,7 @@ Domino | t | Lines up dominoes across the living room. | job=Remote Worker; spec
 """ ),
 
 A("teens", "hill", "High Schooler|Part-timer|Paper Delivery",
+  traits="TEEN",
   sp="FOXKIN:2 CATFOLK RACCOONKIN PUPKIN BUNNYKIN HUMAN",
   top="HOODIE:3 TSHIRT:2 BAND_TEE CROP_TOP", bottom="SHORTS RIPPED_JEANS:2 SKIRT SWEATS", shoes="SNEAKERS:4 ROLLERSKATES",
   hat="NONE:3 CAP:2 HEADPHONES BEANIE", acc="NONE:2 BACKPACK:3",

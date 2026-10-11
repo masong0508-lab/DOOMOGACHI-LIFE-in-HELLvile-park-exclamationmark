@@ -29,6 +29,7 @@ extern void map_load(int map_id) WEAKFN;
 extern const DoomoMapDef *const doomo_maps[MAPID_COUNT] WEAKDATA;
 extern DoomoMap doomo_map WEAKDATA;
 extern DoomoResident *town_res(int id) WEAKFN;
+extern const DoomoResident *roster_premade(int id) WEAKFN;
 extern uint8_t look_paint(uint8_t paint, int shade) WEAKFN;
 extern uint8_t look_skin(const DoomoLook *l, int shade) WEAKFN;
 extern void combat_start(int map_id) WEAKFN;
@@ -99,6 +100,12 @@ DoomoMap *core_map(void) { return PRESENT(doomo_map) ? &doomo_map : NULL; }
 const DoomoResident *core_resident(int id)
 {
     return PRESENT(town_res) ? town_res(id) : NULL;
+}
+
+const DoomoResident *core_premade(int id)
+{
+    const DoomoResident *r = PRESENT(roster_premade) ? roster_premade(id) : NULL;
+    return r && r->status != RES_EMPTY ? r : NULL;
 }
 
 uint8_t core_look_paint(uint8_t paint, int shade)

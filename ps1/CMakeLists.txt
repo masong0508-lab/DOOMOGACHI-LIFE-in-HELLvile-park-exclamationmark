@@ -116,3 +116,62 @@ add_custom_command(
 add_custom_target(disc ALL DEPENDS
 	${CMAKE_CURRENT_BINARY_DIR}/${DOOMO_EXE_NAME}.bin
 	${CMAKE_CURRENT_BINARY_DIR}/${DOOMO_EXE_NAME}.cue)
+
+# ---- headless tests in PCSX-Redux (ps1/harness, see README.md) ------------
+#   cmake --build --preset ps1 --target harness              game: disc boot +
+#                                       smoke, core boot / UI gallery / saves
+#   cmake --build --preset ps1-enginetest --target harness   engine tour,
+#                                       memory card self test, 3D citizens
+# Screenshots, TTY logs and card images go to <build dir>/shots/<script>/.
+set(DOOMO_EMU  "/opt/ps1emu/pcsx-redux"  CACHE FILEPATH "pcsx-redux binary for the harness")
+set(DOOMO_BIOS "/opt/ps1emu/openbios.bin" CACHE FILEPATH "BIOS image for the harness")
+find_program(DOOMO_HOST_CC NAMES cc gcc clang NO_CMAKE_FIND_ROOT_PATH)
+
+set(_exe   ${CMAKE_CURRENT_BINARY_DIR}/${DOOMO_EXE_NAME}.exe)
+set(_cue   ${CMAKE_CURRENT_BINARY_DIR}/${DOOMO_EXE_NAME}.cue)
+set(_shots ${CMAKE_CURRENT_BINARY_DIR}/shots)
+set(_hs    ${CMAKE_CURRENT_SOURCE_DIR}/harness/scripts)
+set(_run   ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/harness/run.py
+           --emu ${DOOMO_EMU} --bios ${DOOMO_BIOS} --timeout 400)
+if(DOOMO_HOST_CC)
+	set(_adpcm
+		COMMAND ${DOOMO_HOST_CC} -O2 -I${CMAKE_CURRENT_SOURCE_DIR}/src
+		        ${CMAKE_CURRENT_SOURCE_DIR}/harness/adpcm_test.c
+		        ${CMAKE_CURRENT_SOURCE_DIR}/src/adpcm.c -lm
+		        -o ${CMAKE_CURRENT_BINARY_DIR}/adpcm_test
+		COMMAND ${CMAKE_CURRENT_BINARY_DIR}/adpcm_test)
+else()
+	set(_adpcm "")
+endif()
+if(DOOMO_ENGINE_TEST)
+	add_custom_target(harness
+		${_adpcm}
+		COMMAND ${_run} --exe ${_exe} --script ${_hs}/enginetest.txt --out ${_shots}/enginetest
+		        --expect "audio selftest: PASS"
+		COMMAND ${_run} --exe ${_exe} --script ${_hs}/memcard.txt --out ${_shots}/memcard
+		        --expect "memcard selftest: PASS"
+		COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/harness/memcard_check.py
+		        ${_shots}/memcard/card1.mcd --icons ${_shots}/memcard/icons.png
+		        --expect BASLUS-DOOMO0*
+		COMMAND ${_run} --exe ${_exe} --script ${_hs}/model.txt --out ${_shots}/model
+		DEPENDS ${DOOMO_EXE_NAME}
+		COMMENT "PCSX-Redux harness: engine test"
+		VERBATIM USES_TERMINAL)
+else()
+	add_custom_target(harness
+		${_adpcm}
+		COMMAND ${_run} --cue ${_cue} --script ${_hs}/game_smoke.txt --out ${_shots}/game_smoke
+		        --expect "memcard: wrote"
+		COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/harness/memcard_check.py
+		        ${_shots}/game_smoke/card1.mcd --icons ${_shots}/game_smoke/icons.png
+		        --expect BASLUS-DOOMO1*
+		COMMAND ${_run} --exe ${_exe} --script ${CORE_DIR}/tests/scripts/boot.txt
+		        --out ${_shots}/core_boot
+		COMMAND ${_run} --exe ${_exe} --script ${CORE_DIR}/tests/scripts/ui_gallery.txt
+		        --out ${_shots}/core_ui_gallery
+		COMMAND ${_run} --exe ${_exe} --script ${CORE_DIR}/tests/scripts/saves.txt
+		        --out ${_shots}/core_saves
+		DEPENDS disc
+		COMMENT "PCSX-Redux harness: game"
+		VERBATIM USES_TERMINAL)
+endif()

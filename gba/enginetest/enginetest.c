@@ -275,6 +275,26 @@ static void third_person_camera(DoomoView3D *v)
     v->camera = CAM_THIRD_PERSON;
 }
 
+/* audio check at boot (the harness measures the output, enginetest.txt):
+ * ticks 1-8 DirectSound samples only, ticks 10-18 the four PSG channels
+ * (two squares, the wave channel, noise), then silence */
+static void et_audio_tick(uint32_t t)
+{
+    if (t >= 1 && t <= 8) {
+        plat_sample(SFX_BELL, 15);
+        if (t == 1) gba_log("ET audio: samples");
+    } else if (t == 10) {
+        gba_log("ET audio: tones");
+        plat_tone(0, 440, 12, WAVE_PULSE50);
+        plat_tone(1, 660, 10, WAVE_PULSE25);
+        plat_tone(2, 220, 15, WAVE_TRIANGLE);
+        plat_tone(3, 2000, 8, WAVE_NOISE);
+    } else if (t == 19) {
+        int c;
+        for (c = 0; c < 4; c++) plat_tone(c, 0, 0, 0);
+    }
+}
+
 static void draw_hud(void)
 {
     char buf[48];
@@ -314,7 +334,8 @@ static void fps_account(void)
                  r3d_stats.cycles_cols * 10 / 168, r3d_stats.cycles_planes * 10 / 168,
                  r3d_stats.cycles_sprites * 10 / 168, r3d_stats.planes, r3d_stats.spans,
                  r3d_stats.events_overflow, phase);
-        gba_logf("ET dbg steps=%u facepx=%u skypx=%u flatpx=%u", r3d_dbg[0], r3d_dbg[1], r3d_dbg[2], r3d_dbg[3]);
+        gba_logf("ET dbg steps=%u facepx=%u skypx=%u flatpx=%u stack=%u", r3d_dbg[0], r3d_dbg[1],
+                 r3d_dbg[2], r3d_dbg[3], (unsigned)gba_stack_used());
         fps_vbl0 = gba_vblanks;
         fps_drawn0 = gba_mailbox.drawn;
         r3d_acc = r3d_n = r3d_max = 0;
@@ -385,9 +406,19 @@ void enginetest_main(void)
         int n, i;
         ticks++;
         plat_begin_frame();
+        et_audio_tick(ticks);
         doomo_map.time++;
         if (map_is_own) {
-            /* animate the showcase lift: up and down every 8 seconds */
+            /* the showcase lift goes up and down every 8 s, the house door
+             * closes and opens every 4 s (the core's weak map_floor_z /
+             * map_ceil_z read the cell bytes) */
+            DoomoCell *lift = &doomo_map.cells[ET_LIFT_Y * doomo_map.w + ET_LIFT_X];
+            DoomoCell *door = &doomo_map.cells[ET_DOOR_Y * doomo_map.w + ET_DOOR_X];
+            uint32_t ph = ticks % 240u, dp = ticks % 120u;
+            lift->floor_h = (int8_t)(ph < 60 ? 0 : ph < 120 ? (ph - 60) * 8 / 60
+                                     : ph < 180 ? 8 : 8 - (ph - 180) * 8 / 60);
+            door->ceil_h = (int8_t)(dp < 40 ? 11 : dp < 60 ? 11 - (dp - 40) * 11 / 20
+                                    : dp < 100 ? 0 : (dp - 100) * 11 / 20);
         } else {
             map_tick(&doomo_map);
         }
@@ -481,6 +512,10 @@ void enginetest_main(void)
             v.vx = 0; v.vy = 0; v.vw = SCREEN_W; v.vh = SCREEN_H;
             v.time = (uint16_t)ticks;
             v.player_sprite = -1;
+            if (phase && phase[0] == 'h' && phase[1] == 'e') {     /* hell_*: red tint */
+                v.tint = TINT_RED;
+                v.tint_level = 4;
+            }
             if (cam_mode == CAM_THIRD_PERSON) {
                 n = build_sprites(1);
                 v.player_sprite = (int8_t)(n - 1);

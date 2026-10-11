@@ -75,7 +75,9 @@ enum {
     ROSTER_T_HOLY        = 16,  /* church folk: helps with exorcisms        */
     ROSTER_T_LOYALIST    = 32,  /* die-hard Vapula loyalist: hard to redeem */
     ROSTER_T_INFILTRATOR = 64,  /* Hellvile agent working among Hillvile    */
-    ROSTER_T_NIGHT_OWL   = 128  /* keeps night hours (night shift, ghosts)  */
+    ROSTER_T_NIGHT_OWL   = 128, /* keeps night hours (night shift, ghosts)  */
+    ROSTER_T_TEEN        = 256  /* a teenager: romance only with other teens,
+                                   never with adults (KID: no romance at all) */
 };
 /* ROSTER_T_* bits of a premade citizen (0 for bad ids). */
 int roster_traits(int id);
@@ -99,6 +101,6 @@ extern const char     doomo_roster_bio_text[];
 extern const uint16_t doomo_roster_bio_ofs[ROSTER_COUNT];
 extern const char     doomo_roster_job_text[];
 extern const uint16_t doomo_roster_job_ofs[ROSTER_COUNT];
-extern const uint8_t  doomo_roster_traits[ROSTER_COUNT];
+extern const uint16_t doomo_roster_traits[ROSTER_COUNT];
 
 #endif

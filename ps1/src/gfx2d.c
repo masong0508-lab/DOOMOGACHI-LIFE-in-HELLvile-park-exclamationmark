@@ -33,7 +33,8 @@ uint32_t g_rect_calls, g_rect_prims;
 
 void gfx2d_reset(void) { s_run.kind = RUN_NONE; s_run.c = -1; }
 
-static uint32_t *emit_tile(int x, int y, int w, int h, uint32_t rgb, int semi)
+static inline __attribute__((always_inline))
+uint32_t *emit_tile(int x, int y, int w, int h, uint32_t rgb, int semi)
 {
     uint32_t *p = (uint32_t *)g_prim_ptr;
     if (g_prim_ptr + 16 > g_prim_end)
@@ -99,28 +100,11 @@ void plat_clear(uint8_t color)
     tile(0, 0, SCR_W, SCR_H, g_rgb[color], 0);
 }
 
-void plat_rect(int x, int y, int w, int h, uint8_t color)
+/* everything but the run continuations: kept out of plat_rect() so the
+ * common case is a leaf without a stack frame (the core calls this a few
+ * thousand times per frame) */
+static void __attribute__((noinline)) rect_slow(int x, int y, int w, int h, uint8_t color)
 {
-    /* fast paths first: continuing the current run needs no clipping
-     * beyond the screen-edge test */
-    g_rect_calls++;
-    if (color == s_run.c) {
-        if (s_run.kind == RUN_DOTS) {
-            if (y == s_run.y && x == s_run.nx && (w | h) == 1 && (unsigned)x < SCR_W) {
-                s_run.n++;
-                s_run.nx += 2;
-                return;
-            }
-        } else if (s_run.kind == RUN_TILE) {
-            if (x == s_run.x && w == s_run.w && y == s_run.ny && (unsigned)(y + h) <= SCR_H &&
-                y >= 0) {
-                s_run.h += h;
-                s_run.ny += h;
-                s_run.prim[3] = ((uint32_t)s_run.h << 16) | (uint32_t)s_run.w;
-                return;
-            }
-        }
-    }
     if (x < 0) { w += x; x = 0; }
     if (y < 0) { h += y; y = 0; }
     if (x + w > SCR_W) w = SCR_W - x;
@@ -142,7 +126,8 @@ void plat_rect(int x, int y, int w, int h, uint8_t color)
             w = 2;
         }
     }
-    gfx2d_flush();
+    if (s_run.kind == RUN_DOTS)
+        gfx2d_flush();
     if (w == 1 && h == 1) {
         s_run.kind = RUN_DOTS;
         s_run.x = x; s_run.y = y; s_run.n = 1; s_run.nx = x + 2; s_run.c = color;
@@ -153,7 +138,35 @@ void plat_rect(int x, int y, int w, int h, uint8_t color)
         s_run.kind = RUN_TILE;
         s_run.x = x; s_run.y = y; s_run.w = w; s_run.h = h; s_run.ny = y + h;
         s_run.c = color;
+    } else {
+        s_run.kind = RUN_NONE;
+        s_run.c = -1;
     }
+}
+
+void plat_rect(int x, int y, int w, int h, uint8_t color)
+{
+    /* fast paths: continuing the current run needs no clipping beyond the
+     * screen-edge test */
+    g_rect_calls++;
+    if (color == s_run.c) {
+        if (s_run.kind == RUN_DOTS) {
+            if (y == s_run.y && x == s_run.nx && (w | h) == 1 && (unsigned)x < SCR_W) {
+                s_run.n++;
+                s_run.nx += 2;
+                return;
+            }
+        } else if (s_run.kind == RUN_TILE) {
+            if (x == s_run.x && w == s_run.w && y == s_run.ny && (unsigned)(y + h) <= SCR_H &&
+                y >= 0) {
+                s_run.h += h;
+                s_run.ny += h;
+                s_run.prim[3] = ((uint32_t)s_run.h << 16) | (uint32_t)s_run.w;
+                return;
+            }
+        }
+    }
+    rect_slow(x, y, w, h, color);
 }
 
 void plat_shade_rect(int x, int y, int w, int h, int level)
