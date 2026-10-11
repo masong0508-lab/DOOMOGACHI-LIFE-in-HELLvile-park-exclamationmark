@@ -125,6 +125,15 @@ void plat_sample(int sfx_id, uint8_t vol);
 int plat_save_write(int slot, const void *data, uint32_t size);
 int plat_save_read(int slot, void *data, uint32_t cap, uint32_t *size);
 int plat_save_erase(int slot);
+/* Big temporary buffer for save_game()/load_game() (foundation, additive):
+ * returns memory of at least DOOMO_SAVE_SCRATCH_MIN bytes (save.h) and
+ * stores its size in *cap. It is only used for the duration of one
+ * save/load call, so a RAM-starved platform may hand out memory that is
+ * otherwise busy (e.g. GBA: OBJ VRAM + the back page while a "Saving..."
+ * screen is shown). The core has a weak default (a static buffer in
+ * core/src/save_scratch.c); platforms that override it should link with
+ * --gc-sections (and -fdata-sections) so the default buffer is dropped. */
+void *plat_save_scratch(uint32_t *cap);
 
 /* ---- misc ----------------------------------------------------------------- */
 uint32_t plat_entropy(void);           /* any varying value for seeding  */

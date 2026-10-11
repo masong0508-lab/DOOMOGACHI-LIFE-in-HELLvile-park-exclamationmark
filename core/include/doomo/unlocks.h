@@ -45,7 +45,52 @@ typedef struct DoomoUnlock {
     uint16_t    index;     /* option index / mode id / cheat id            */
     const char *name;      /* "Flame Hair"                                 */
     const char *how;       /* "Exorcise 5 citizens"                        */
+    /* (foundation, additive) optional automatic rule: granted as soon as
+     * progress_get(prog) >= need. need == 0: granted by code only
+     * (unlock_grant / unlock_grant_match). */
+    uint8_t     prog;      /* PROG_*                                       */
+    uint32_t    need;
 } DoomoUnlock;
+
+/* Meaning of (list, index) per category:
+ *   UL_CAT_PART         list = CLIST_* (creator lists), index = option
+ *   UL_CAT_WEAPON_PART  list = CLIST_W*,  index = part
+ *   UL_CAT_PAINT        list = 0, index = paint colour 0..31
+ *   UL_CAT_ITEM         list = 0, index = ITEM_* (shop stocks it)
+ *   UL_CAT_MODE         list = 0, index = MODE_* (below)
+ *   UL_CAT_CHEAT        list = 0, index = OPT_CHEAT_* option (town.h)
+ *   UL_CAT_GALLERY      list = GAL_*,  index = entry
+ *   UL_CAT_SKIN         list = OPT_* option, index = that option's value
+ *                       (window skins, title themes, crosshairs, cursors,
+ *                        camera filters, font styles ...)
+ *   UL_CAT_PET          list = 0, index = pet form
+ *   UL_CAT_MISC         free for the owner
+ *
+ * Unlock ids are global bit indices. Each team owns a range so tables
+ * never collide:
+ *   foundation 0..255   creator 256..319   life 320..415
+ *   action 416..607     story 608..735     freeplay 736..831
+ *   art 832..895        portrait 896..959  roster 960..1023
+ *
+ * Per-team tables, each terminated by an entry whose name is NULL.
+ * stubs.c has weak empty ones; define yours (strong) in your own .c. */
+extern const DoomoUnlock doomo_unlocks_foundation[];
+extern const DoomoUnlock doomo_unlocks_creator[];
+extern const DoomoUnlock doomo_unlocks_life[];
+extern const DoomoUnlock doomo_unlocks_action[];
+extern const DoomoUnlock doomo_unlocks_story[];
+extern const DoomoUnlock doomo_unlocks_freeplay[];
+extern const DoomoUnlock doomo_unlocks_art[];
+extern const DoomoUnlock doomo_unlocks_portrait[];
+extern const DoomoUnlock doomo_unlocks_roster[];
+
+/* Game modes gated by UL_CAT_MODE. */
+enum { MODE_ARENA, MODE_BOSS_RUSH, MODE_HELLVILE_VISITS, MODE_TAMA_ONLY,
+       MODE_MONSTER, MODE_UNITED_PARK, MODE_NEW_GAME_PLUS, MODE_JUKEBOX,
+       MODE_GALLERY, MODE_COUNT };
+/* Gallery lists for UL_CAT_GALLERY. */
+enum { GAL_JUKEBOX, GAL_ART, GAL_DEMONS, GAL_PETS, GAL_CUTSCENES,
+       GAL_COUNT };
 
 /* The registry (unlocks.c concatenates per-team tables). */
 extern const DoomoUnlock *const doomo_unlock_tables[];
@@ -69,5 +114,26 @@ enum { PROG_CITIZENS_CREATED, PROG_EXORCISMS_WON, PROG_EXORCISMS_FAILED,
        PROG_COUNT };
 void progress_add(int counter, int amount);   /* also checks unlocks */
 uint32_t progress_get(int counter);
+
+/* ---- foundation additions ------------------------------------------------ */
+/* Unlock entry for (cat, list, index), or NULL. */
+const DoomoUnlock *unlock_find(int cat, int list, int index);
+const DoomoUnlock *unlock_by_id(int id);
+/* 1 if (cat, list, index) has no unlock entry or it is owned. */
+int  unlock_ok(int cat, int list, int index);
+int  unlock_paint_ok(int paint);
+int  unlock_mode_ok(int mode);
+/* Grant the entry matching (cat, list, index); 1 if newly granted. */
+int  unlock_grant_match(int cat, int list, int index);
+/* Re-evaluate every automatic rule (after loading, cheats...). Returns
+ * the number of newly granted unlocks. */
+int  unlock_check_all(void);
+int  unlock_owned_count(void);
+void progress_set(int counter, uint32_t value);  /* also checks unlocks */
+/* Developer/cheat: own everything (no toasts). */
+void unlock_grant_all(void);
+extern const char *const doomo_progress_names[PROG_COUNT];
+extern const char *const doomo_unlock_cat_names[10];
+extern const char *const doomo_mode_names[MODE_COUNT];
 
 #endif

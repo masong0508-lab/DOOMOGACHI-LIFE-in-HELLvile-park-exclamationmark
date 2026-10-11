@@ -31,4 +31,34 @@ int save_game(int slot);
 int load_game(int slot);
 int save_exists(int slot);
 
+/* ---- foundation additions ------------------------------------------------ */
+/* plat_save_scratch() must provide at least this much (platform.h). The
+ * codec streams, so a slot-sized buffer is all save/load ever need. */
+#define DOOMO_SAVE_SCRATCH_MIN DOOMO_SAVE_SLOT1_MAX
+#define DOOMO_SAVE_HEADER_SIZE 48
+uint32_t save_slot_max(int slot);       /* DOOMO_SAVE_SLOT0_MAX / SLOT1_MAX */
+
+/* Summary kept in the uncompressed header, for the save/load screen. */
+typedef struct DoomoSaveInfo {
+    uint8_t  mode;          /* TOWN_FREEPLAY / TOWN_STORY               */
+    uint8_t  chapter;       /* story chapter                            */
+    uint8_t  population;    /* TOWN_POP_*                               */
+    uint8_t  weekday;
+    uint16_t residents;     /* non-empty resident slots                 */
+    uint16_t minute;
+    uint32_t day;
+    uint32_t money;
+    uint32_t size;          /* bytes on the medium                      */
+    char     player[DOOMO_NAME_LEN];
+} DoomoSaveInfo;
+/* Read just the header of a slot. 1 if a valid save exists. */
+int  save_peek(int slot, DoomoSaveInfo *out);
+/* Parse the header of an in-memory save (no CRC check of the body). */
+int  save_info_from(const uint8_t *buf, uint32_t size, DoomoSaveInfo *out);
+/* Bytes produced by the last save_serialize()/save_game(), and a short
+ * human-readable reason for the last failure ("" if none), e.g.
+ * "Island too big: 93 KB > 88 KB". */
+uint32_t    save_last_size(void);
+const char *save_last_error(void);
+
 #endif
