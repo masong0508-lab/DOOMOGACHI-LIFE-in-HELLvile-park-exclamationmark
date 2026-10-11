@@ -128,6 +128,7 @@ void pc_begin(uint8_t *out, int w, int h)
     pcv.bias = 0;
     pcv.ops = 0;
     pcv.prims = 0;
+    pcv.gen++;
     pcv.x0 = 0; pcv.y0 = 0; pcv.x1 = w; pcv.y1 = h;
     pcv.pline[0] = 0;
 }

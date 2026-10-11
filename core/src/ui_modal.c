@@ -5,11 +5,6 @@
  */
 #include "ui_internal.h"
 
-static void dim_below(void)
-{
-    plat_shade_rect(0, 0, plat_screen_w(), plat_screen_h(), 11);
-}
-
 /* ====================================================================== */
 /* confirm                                                                  */
 static char cf_question[160];
@@ -59,7 +54,7 @@ static void confirm_draw(void)
     int lines = ui_text_wrap(0, 0, w - 20, cf_question, 0, 0);
     int h = lines * FONT_LINE + 44, y = (sh - h) / 2 - 4;
     int t = (int)scene_ticks();
-    dim_below();
+    ui_dim_under_window_pop(x, y, w, h, t, 11);       /* = dim_below() */
     if (!ui_window_pop(x, y, w, h, WIN_CUTE, t)) return;
     {
         const UiStyle *st = ui_style(WIN_CUTE);
@@ -215,7 +210,7 @@ static void te_draw(void)
     int r, c, fx, fy, fw;
     char counter[16];
     if (h > sh - 4) { h = sh - 4; y = 2; }
-    dim_below();
+    ui_dim_under_window_pop(x, y, w, h, t, 11);       /* = dim_below() */
     if (!ui_window_pop(x, y, w, h, WIN_CUTE, t)) return;
     st = ui_style(WIN_CUTE);
     ui_title(sw / 2, y - 5, te_prompt, WIN_MINT);

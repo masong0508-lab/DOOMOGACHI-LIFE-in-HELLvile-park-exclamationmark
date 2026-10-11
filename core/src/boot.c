@@ -82,8 +82,6 @@ static void boot_draw(void)
     int cx = sw / 2, rest_y = sh * 2 / 5 - (big ? 6 : 4);
     int hy, hsx = s, hsy = s, i;
 
-    ui_backdrop(WIN_CREAM, (uint32_t)t);
-
     /* ---- heart motion: fall, squash, bounce, settle, breathe ---------- */
     if (t < T_LAND) {
         int f = T_LAND - t;
@@ -105,6 +103,17 @@ static void boot_draw(void)
             hy = rest_y + ui_wave(u, 50, 1);
         }
     }
+    /* late in the iris wipe the heart covers the whole screen: that frame
+     * is one colour, so skip everything underneath (same picture) */
+    if (t >= T_WIPE) {
+        int u = t - T_WIPE;
+        int sz = 4 + u * u * (sw + sh) / 260;
+        if (ui_heart_flat_covers_screen(cx, hy, sz)) {
+            plat_rect(0, 0, sw, sh, PAL_RAMP(RAMP_PASTEL_PINK, 5));
+            return;
+        }
+    }
+    ui_backdrop(WIN_CREAM, (uint32_t)t);
     /* ground shadow */
     {
         int dist = rest_y - hy;

@@ -8,9 +8,12 @@
 
 extern uint8_t gba_font_rows[FONT_LAST - FONT_FIRST + 1][8];   /* bit c = column c */
 
-/* clipped: x0 < x1 <= 240, y0 < y1 <= 160 */
+/* clipped: x0 < x1 <= 240, y0 < y1 <= 160 (vid_rect_full: x0 = 0, x1 = 240) */
+void vid_rect_full(int x0, int y0, int x1, int y1, uint32_t color) IWRAM_CALL;
 void vid_rect(int x0, int y0, int x1, int y1, uint32_t color) IWRAM_CALL;
 void vid_shade(int x0, int y0, int x1, int y1, const uint8_t *cm) IWRAM_CALL;
+/* n >= 1 aligned words of the back page, every byte through lut (asm) */
+void vid_shade_words(uint32_t *p, int n, const uint8_t *lut) IWRAM_CALL;
 /* on screen */
 void vid_pixel(int x, int y, uint32_t color) IWRAM_CALL;
 /* unclipped (clips itself) */

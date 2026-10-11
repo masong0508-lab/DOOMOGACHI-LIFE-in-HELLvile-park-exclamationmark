@@ -226,7 +226,7 @@ static void dlg_draw(void)
         if (r->status == RES_POSSESSED) expr = EXPR_POSSESSED;
         ui_portrait(b.x + 2, b.y - 22 - bob, e->speaker, 1, expr);
         /* name plate */
-        ui_drop_shadow(b.x + 61, b.y - 8, nw, 12, 4);
+        ui_pill_shadow(b.x + 61, b.y - 8, nw, 12, b.x + 60, b.y - 10, nw, 12);
         ui_pill(b.x + 60, b.y - 10, nw, 12, st->title_bg, st->outline, ui_lighter(st->title_bg));
         ui_text_shadow(b.x + 67, b.y - 8, r->name, st->title, st->outline);
     }

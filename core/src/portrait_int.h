@@ -28,7 +28,7 @@
 #define PQ        16                    /* sub-pixel units per pixel */
 
 /* The few hottest leaf loops run as ARM code from IWRAM on the GBA (the
- * same convention as gba_hw.h's IWRAM_CODE; about 1.5 KB). Elsewhere this
+ * same convention as gba_hw.h's IWRAM_CODE; about 3.9 KB). Elsewhere this
  * is a plain function. */
 #if defined(DOOMO_PLATFORM_GBA) && !defined(PORTRAIT_NO_IWRAM)
 #define P_FAST __attribute__((section(".iwram.portrait"), target("arm"), long_call, noinline))
@@ -103,6 +103,8 @@ typedef struct PCanvas {
     int bias;
     uint32_t ops;           /* rough pixel-visit counter (perf checks)     */
     uint32_t prims;         /* primitives drawn (perf checks)              */
+    uint32_t gen;           /* bumped by pc_begin (sliced renders restart  */
+                            /* when someone else used the canvas)          */
 } PCanvas;
 
 extern PCanvas pcv;

@@ -1,0 +1,293 @@
+# The Vape Cellar - Hell Breach 1 (owner: action).
+# The tutorial dungeon under Cloud Nine Vapor: it starts in the cute
+# pastel back room of the shop, goes down the stairs into the cellar
+# (balcony ledge, low beams, crates, a secret door, a crawlspace), through
+# a door into the vape tank hall (lift up to the red key), past the red
+# door and down the flesh stairs into a lava cavern, and ends in the bone
+# arena of the mini-boss vape wraith. Killing its group opens the exit.
+# Legend and overlays: see README.md. Compiled by tools/mapc.py.
+map vape_cellar
+title "The Vape Cellar"
+kind dungeon
+sky HELL
+music HELL_BREACH
+ambient 10
+
+# ---- walls ----
+cell # wall=WALLPAPER_HEARTS
+cell V wall=VAPE_SHOP_FRONT
+cell B wall=PASTEL_BRICK
+cell W wall=WOOD_WALL
+cell T wall=TECH_PANEL
+cell C wall=VAPE_CLOUD_WALL
+cell F wall=FLESH_WALL
+cell R wall=HELL_ROCK
+cell K wall=BONE_WALL
+cell E wall=EXIT_SIGN
+# ---- cute back room ----
+cell . floor=WOOD_FLOOR ceil=CANDY_STRIPE fh=0 ch=14 light=13
+cell r floor=CARPET ceil=CANDY_STRIPE fh=0 ch=14 light=13
+cell c floor=PASTEL_BRICK ceil=CANDY_STRIPE fh=3 ch=14 light=13
+# ---- cellar ----
+cell s floor=WOOD_FLOOR ceil=WOOD_WALL fh=0 ch=11 light=11
+cell , floor=COBBLE ceil=WOOD_FLOOR fh=-6 ch=10 light=10
+cell b floor=WOOD_FLOOR ceil=WOOD_FLOOR fh=-1 ch=8 light=11
+cell k floor=WOOD_WALL ceil=WOOD_FLOOR fh=-4 ch=10 light=10
+cell ? floor=COBBLE ceil=WOOD_WALL fh=-6 ch=2 light=10 flags=door
+cell z floor=CARPET ceil=WOOD_FLOOR fh=-6 ch=2 light=14 flags=secret
+cell l floor=COBBLE ceil=WOOD_FLOOR fh=-6 ch=-2 light=8
+cell p floor=TILE_FLOOR ceil=CANDY_STRIPE fh=-6 ch=2 light=12
+cell D floor=TILE_FLOOR ceil=DOOR_CUTE fh=-6 ch=4 light=11 flags=door
+# ---- vape tank hall ----
+cell m floor=TILE_FLOOR ceil=TECH_PANEL fh=-6 ch=12 light=12
+cell g floor=GRATE ceil=TECH_PANEL fh=0 ch=12 light=12
+cell L floor=PENTAGRAM_FLOOR ceil=TECH_PANEL fh=-6 ch=12 light=13 flags=lift tag=0
+cell ! floor=METAL_FLOOR ceil=DOOR_HELL fh=-6 ch=4 light=11 flags=door tag=1
+# ---- the descent ----
+cell d floor=COBBLE ceil=FLESH_WALL fh=-7 ch=4 light=9
+cell j floor=HELL_ROCK ceil=FLESH_WALL fh=-11 ch=0 light=8
+cell t floor=HELL_ROCK ceil=FLESH_WALL fh=-12 ch=-1 light=8 flags=trigger tag=31
+# ---- the hell cavern ----
+cell h floor=HELL_ROCK ceil=HELL_ROCK fh=-14 ch=4 light=9
+cell ~ floor=LAVA ceil=HELL_ROCK fh=-17 ch=4 light=15 flags=lava
+cell = floor=GRATE ceil=HELL_ROCK fh=-14 ch=4 light=12
+cell o floor=GORE_FLOOR ceil=HELL_ROCK fh=-14 ch=4 light=10
+cell P floor=VAPE_CLOUD_WALL ceil=HELL_ROCK fh=-14 ch=4 light=15 flags=portal
+# ---- the bone arena + exit ----
+cell a floor=GORE_FLOOR ceil=SKULL_MOSAIC fh=-14 ch=4 light=10
+cell u floor=GORE_FLOOR ceil=SKULL_MOSAIC fh=-14 ch=4 light=10 flags=trigger tag=32
+cell q floor=PENTAGRAM_FLOOR ceil=SKULL_MOSAIC fh=-12 ch=10 light=12
+cell x floor=METAL_FLOOR ceil=DOOR_HELL fh=-14 ch=-6 light=12 flags=door tag=20
+cell e floor=TILE_FLOOR ceil=CLOUD_PUFF fh=-14 ch=-6 light=14 flags=exit
+
+grid
+#############RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR
+#####VVVV####RRRRWWWWWWWWWWWWWWVVVVVVVVVVTTTRR
+##..........#RRRRWbbbbbbbbbbbbWmmmmmmmmmmggTRR
+##.cc.......#RRRRWbbbbbbbbbbbbWmmmmmmmmmmggTRR
+##.c.rrrr...#BBBBB,,,,,,,,,,ssWmmmmmmmmmLggTRR
+##...rrrr...ssssss,,,,,,,W,,ssWmmmCCmmmmmggTRR
+##...rrrr...ssssss,,,,,,,W,,ssWmmmCCmmmmmggTRR
+##........c.#BBBBB,,,,,,,,,,ssWmmmmmmmmmmggTRR
+##........c.#RRRRW,,,kk,,,,,,,WmmmmmmmmmmggTRR
+##..........#RRRRW,,,kk,,,,,,,DmmmmmmmmmmggTRR
+#############RRRRW,,,,,,,,,,,,DmmmCCmmmmmggTRR
+RRRRRRRRRRRRRRRRRW,,,,,,,k,,,,WmmmCCmmmmmggTRR
+RRRRRRRRRRRRRRRRRW,,,,,,,,,,,,WmmmmmmmmmmggTRR
+RRRRRRRRRRRRRRRRRWWW?WWWWWWllWWmmmmmmmmmmggTRR
+RRRRRRRRRRRRRRRRRWWzzzWWWWWllWWmmmmmmmmmmggTRR
+RRRRRRRREEEEEERRRWWzzzWWWWWllWWTTTTT!!TTTTTTRR
+RRRRRRRREeeeeERRRWWzzzWWWWWllWWRRRRFddFRRRRRRR
+RRRRRRRREeeeeERRRWWWWWWWWpppppWRRRRFddFRRRRRRR
+RRRRRRRREeeeeERRRWWWWWWWWpppppWRRRRFddFRRRRRRR
+RKKKKKKKEeeeeEKKKWWWWWWWWpppppWRRRRFddFRRRRRRR
+RKKKKKKKEExxEEKKKWWWWWWWWpppppWRRRRFjjFRRRRRRR
+RKaaaaaaaaaaaaaaaaaaWWWWWWWWWWWRRRRFttFRRRRRRR
+RKaaaaaaaaaaaaaaaaaaKKRRRRRRRRRRRRRFjjFRRRRRRR
+RKaaaaaaaaaaaaaaaaaaKKRRRRRRRRRRRRRFjjFRRRRRRR
+RKaaaKaaaaaaaaaaKaaaKKhhhhhhhhhhhhhhhhhhhhhhhR
+RKaaaaaaaaaaaaaaaaaaKKhhhhhhhhhRhhhhhhhhhhhPhR
+RKaaaaaaqqqqqqaaaaaaKKhhhhhhhhhhhhhhhhhhhhhhhR
+RKaaaaaaqqqqqqaaaaaaKKhhhhhhhhhhhhhhhhhhhhhhhR
+RKaaaaaaqqqqqqaaaaaaKK~~~o~~~o~~~==~~~~~~~~~~R
+RKaaaaaaqqqqqqaaaaaaKK~~~~~o~~~~~==~~~~~~~~~~R
+RKaaaaaaqqqqqqaaaaauhhhhhhhhhhhhhhhhhhhhhhhhhR
+RKaaaaaaqqqqqqaaaaauhhhhhhhhhhhhhhhhhhhooooohR
+RKaaaaaaaaaaaaaaaaaaKKhhhhhRhhhhhhhhhhhooooohR
+RKaaaaaaaaaaaaaaaaaaKKhhhhhhRhhhhhhhhhhooooohR
+RKaaaKaaaaaaaaaaKaaaKKhhhhhhhhhhhhhhhhhooooohR
+RKaaaaaaaaaaaaaaaaaaKKhhhhhhhhhhhhhhhhhooooohR
+RKaaaaaaaaaaaaaaaaaaKKhhhhhhhhhhhhhhhhhhhhhhhR
+RKaaaaaaaaaaaaaaaaaaKKRRRRRRRRRRRRRRRRRRRRRRRR
+RKKKKKKKKKKKKKKKKKKKKKRRRRRRRRRRRRRRRRRRRRRRRR
+RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR
+end
+
+# floor heights (steps of 8 units): 0-9 a-z = 0..35, A-Z = -1..-26
+floorh
+.
+.
+.
+.
+............................BB
+............ABCDEF..........CC
+............ABCDEF..........DD
+..........6.................EE
+.
+......................B
+.
+.........................C
+.
+.
+.
+.
+.
+....................................HH
+....................................II
+....................................JJ
+.
+.
+....................................MM
+....................................NN
+.
+.
+.
+.
+..........JJ
+..........JJ
+.
+.......................................KKKKK
+.......................................KKKKK
+.......................................KKKKK
+.......................................KKKKK
+.......................................KKKKK
+.
+.
+.
+.
+end
+
+# ceiling heights (roofed cells) / block tops (walls under the sky)
+ceilh
+.
+.
+.....cccc
+.....cccc
+............................88
+............a98765..........88
+............a98765..........88
+..................444444....88
+.
+.
+.
+.
+...............................3333333333
+...............................3333333333
+...............................3333333333
+.
+.
+....................................33
+....................................22
+....................................11
+.
+..000000000000000000
+..000000000000000000................BB
+..00..............00................CC
+..00..............00................00
+..00..............00................00
+..00..............00
+..00..............00
+..00..............00
+..00..............00
+..00..............00FF
+..00..............00FF
+..00..............00
+..00..............00
+..00..............00
+..00..............00
+..000000000000000000
+..000000000000000000
+.
+.
+end
+
+# light overrides 0-9 a-f (blank = legend)
+light
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+...................eee
+...................eee
+.........eeee......eee
+.........eeee
+.........eeee
+.........eeee
+.
+.
+.
+.
+.
+...........................................f
+........cccccc
+........cccccc
+........cccccc........fffffffffffffffffffffff
+........cccccc........fffffffffffffffffffffff
+........cccccc
+........cccccc
+.
+.
+.
+.
+.
+.
+.
+.
+end
+
+# things: x y TYPE [angle=deg] [arg=n] [tflags=...]
+thing 4 7 PLAYER_START angle=0
+thing 6 8 PROP_SIGN
+thing 2 9 PROP_FLOWERS
+thing 11 2 PROP_LAMP
+thing 9 3 HEALTH_SMALL
+thing 7 5 CANDY
+thing 3 3 AMMO_BULLETS
+thing 22 5 IMPLING angle=180
+thing 26 9 IMPLING angle=180
+thing 19 2 IMPLING angle=270 tflags=not_easy
+thing 28 2 AMMO_SHELLS
+thing 18 10 HEALTH_SMALL
+thing 29 11 PROP_BARREL
+thing 20 15 SOUL_ORB tflags=secret
+thing 19 16 ARMOR
+thing 21 16 HEALTH_BIG
+thing 26 19 AMMO_SHELLS
+thing 28 18 HEALTH_SMALL
+thing 27 20 CANDY
+thing 38 8 PUFF_DEMON angle=180
+thing 32 13 IMPLING angle=0
+thing 39 3 IMPLING angle=180 tflags=not_easy
+thing 42 3 KEY_RED
+thing 42 13 ARMOR
+thing 33 3 AMMO_BULLETS
+thing 36 13 HEALTH_SMALL
+thing 31 2 PROP_BARREL
+thing 30 26 HELLHOUND_PUP angle=90
+thing 40 26 HELLHOUND_PUP angle=90 tflags=not_easy
+thing 35 32 PUFF_DEMON angle=270
+thing 26 34 IMPLING angle=0
+thing 42 33 IMPLING angle=180
+thing 34 26 IMPLING tflags=dormant arg=31
+thing 38 26 IMPLING tflags=dormant arg=31
+thing 36 33 HELLHOUND_PUP tflags=dormant,not_easy arg=31
+thing 24 25 AMMO_SHELLS
+thing 41 32 HEALTH_SMALL
+thing 29 34 CANDY
+thing 43 25 VAPE_PORTAL
+thing 23 35 PROP_SKULLS
+thing 44 36 PROP_TORCH
+thing 22 24 PROP_TORCH
+thing 10 28 VAPE_WRAITH angle=90 tflags=boss,kill_event arg=20
+thing 6 30 IMPLING angle=0 tflags=kill_event arg=20
+thing 14 26 IMPLING angle=180 tflags=kill_event arg=20
+thing 4 22 PUFF_DEMON tflags=dormant,not_easy arg=32
+thing 17 36 PUFF_DEMON tflags=dormant,hard arg=32
+thing 3 36 HEALTH_BIG
+thing 18 22 AMMO_BULLETS
+thing 3 22 CANDY
+thing 8 27 PROP_TORCH
+thing 13 27 PROP_TORCH
+thing 8 30 PROP_TORCH
+thing 13 30 PROP_TORCH
+thing 11 17 PROP_SIGN

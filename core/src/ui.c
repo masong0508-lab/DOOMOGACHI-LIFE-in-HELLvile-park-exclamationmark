@@ -9,27 +9,39 @@ static int frame_t(void) { return (int)doomo_frame_count(); }
 
 /* ====================================================================== */
 /* windows                                                                  */
-void ui_drop_shadow(int x, int y, int w, int h, int r)
+/* Drop shadow (sx, sy, w, h, 4) behind a pill (px, py, pw, ph) that is
+ * drawn right afterwards: only the part the pill leaves visible. */
+void ui_pill_shadow(int sx, int sy, int w, int h, int px, int py, int pw, int ph)
 {
-    int i;
-    for (i = 0; i < h; i++) {
-        int in = 0;
-        if (i < r) in = ui_corner_inset(r, i);
-        else if (i >= h - r) in = ui_corner_inset(r, h - 1 - i);
-        if (w - 2 * in > 0) plat_shade_rect(x + in, y + i, w - 2 * in, 1, 9);
-    }
+    int pr = (pw <= 2 || ph <= 2) ? 0 : DOOMO_MIN(ph / 2, 4);
+    ui_drop_shadow_under(sx, sy, w, h, 4, px, py, pw, ph, pr);
 }
 
-void ui_pill(int x, int y, int w, int h, uint8_t fill, uint8_t outline, uint8_t hi)
+static void pill_draw(int x, int y, int w, int h, uint8_t fill, uint8_t outline, uint8_t hi)
 {
     int r = DOOMO_MIN(h / 2, 4);
-    if (w <= 2 || h <= 2) { plat_rect(x, y, w, h, fill); return; }
     ui_round_rect(x, y, w, h, r, outline);
     ui_round_rect(x + 1, y + 1, w - 2, h - 2, DOOMO_MAX(r - 1, 0), fill);
     if (h >= 6) {
         int in = DOOMO_MAX(r - 1, 1) + 1;
-        plat_rect(x + in, y + 1, w - 2 * in, 1, hi);
+        ur_rect(x + in, y + 1, w - 2 * in, 1, hi);
     }
+}
+
+/* Pills (buttons, list selections, key caps, tabs, hints) are drawn many
+ * times a frame in a few sizes: their rect lists are cached. */
+void ui_pill(int x, int y, int w, int h, uint8_t fill, uint8_t outline, uint8_t hi)
+{
+    uint32_t k0, k1;
+    if (plat_draw_skipped()) return;
+    if (w <= 2 || h <= 2) { plat_rect(x, y, w, h, fill); return; }
+    if (w > 255 || h > 63) { pill_draw(x, y, w, h, fill, outline, hi); return; }
+    k0 = UR_K_PILL | (uint32_t)w << 8 | (uint32_t)h << 16;
+    k1 = (uint32_t)fill | (uint32_t)outline << 8 | (uint32_t)hi << 16;
+    if (ur_cache_draw(k0, k1, 0, x, y)) return;
+    ur_cache_begin(k0, k1, 0, x, y);
+    pill_draw(x, y, w, h, fill, outline, hi);
+    if (!ur_cache_end()) pill_draw(x, y, w, h, fill, outline, hi);
 }
 
 void ui_window(int x, int y, int w, int h, int style)
@@ -40,24 +52,35 @@ void ui_window(int x, int y, int w, int h, int style)
     int band = DOOMO_CLAMP(h / 6, 3, 8);
     int lo = DOOMO_CLAMP(h / 8, 2, 5);
     ui_cur_style = style;
+    if (plat_draw_skipped()) return;
     if (w < 6 || h < 6) {
         plat_rect(x, y, w, h, st->fill);
         return;
     }
-    ui_drop_shadow(x + 2, y + 3, w, h, r);
-    ui_round_rect(x, y, w, h, r, st->outline);
-    /* body: lower band, main fill, then the upper glossy band row by row */
-    ui_round_rect(x + 1, y + 1, w - 2, h - 2, ir, st->fill_lo);
-    ui_round_rect(x + 1, y + 1, w - 2, h - 2 - lo, ir, st->fill);
-    for (i = 0; i < band && i < h - 2; i++) {
-        int in = i < ir ? ui_corner_inset(ir, i) : 0;
-        plat_rect(x + 1 + in, y + 1 + i, w - 2 - 2 * in, 1, st->fill_hi);
+    ui_drop_shadow_under(x + 2, y + 3, w, h, r, x, y, w, h, r);
+    /* Layers: outline round rect, lower band (inner round rect), main fill
+     * (inner round rect lo rows shorter), the upper glossy band. Each layer
+     * is only drawn where the later ones do not cover it - the same
+     * picture with a third of the pixel writes: the outline's straight
+     * middle rows are covered by the lower band but for the two edge
+     * columns, the lower band by the main fill down to the main fill's
+     * bottom corners, and the main fill's top rows by the glossy band. */
+    ui_round_rect_rows(x, y, w, h, r, st->outline, 0, r);
+    ui_round_rect_rows(x, y, w, h, r, st->outline, h - r, h);
+    plat_rect(x, y + r, 1, h - 2 * r, st->outline);
+    plat_rect(x + w - 1, y + r, 1, h - 2 * r, st->outline);
+    ui_round_rect_rows(x + 1, y + 1, w - 2, h - 2, ir, st->fill_lo, h - 2 - lo - ir, h - 2);
+    ui_round_rect_rows(x + 1, y + 1, w - 2, h - 2 - lo, ir, st->fill,
+                       DOOMO_MIN(band, h - 2), h - 2 - lo);
+    for (i = 0; i < band && i < h - 2;) {
+        int in = i < ir ? ui_corner_inset(ir, i) : 0, j = i + 1;
+        while (j < band && j < h - 2 && (j < ir ? ui_corner_inset(ir, j) : 0) == in) j++;
+        plat_rect(x + 1 + in, y + 1 + i, w - 2 - 2 * in, j - i, st->fill_hi);
+        i = j;
     }
     /* soft seams (one row of 50% checker) */
-    for (i = x + 2; i < x + w - 2; i += 2) {
-        plat_rect(i, y + 1 + band, 1, 1, st->fill_hi);
-        plat_rect(i + 1, y + h - 2 - lo, 1, 1, st->fill_lo);
-    }
+    plat_checker(x + 2, y + 1 + band, w - 4, 1, st->fill_hi);
+    plat_checker(x + 3, y + h - 2 - lo, w - 4, 1, st->fill_lo);
     /* glossy streak + sparkle dot along the top */
     plat_rect(x + r + 2, y + 2, DOOMO_MAX(w / 4, 4), 1, st->gloss);
     plat_rect(x + r + 4 + DOOMO_MAX(w / 4, 4), y + 2, 2, 1, st->gloss);
@@ -72,6 +95,28 @@ void ui_window(int x, int y, int w, int h, int style)
             plat_rect(x + r + pos, y + 4, 1, 1, st->gloss);
         }
     }
+}
+
+/* The rect and corner radius of ui_window(x, y, w, h)'s opaque body. */
+static void window_body(int w, int h, int *r)
+{
+    *r = (w < 6 || h < 6) ? 0 : (w >= 24 && h >= 20) ? 4 : 2;
+}
+
+void ui_dim_under_window_pop(int x, int y, int w, int h, int ticks, int level)
+{
+    int s = ui_pop_scale(ticks), r;
+    if (!(s == 256 && ticks >= 0)) {
+        int nw = w * s / 256, nh = h * s / 256;
+        if (nw < 8) nw = 8;
+        if (nh < 8) nh = 8;
+        x += (w - nw) / 2;
+        y += (h - nh) / 2;
+        w = nw;
+        h = nh;
+    }
+    window_body(w, h, &r);
+    ui_shade_screen_under(level, x, y, w, h, r);
 }
 
 int ui_window_pop(int x, int y, int w, int h, int style, int ticks)
@@ -97,6 +142,7 @@ int ui_window_pop(int x, int y, int w, int h, int style, int ticks)
 #define CAP_ADV 8
 static void button_cap(int x, int y, int which)
 {
+    if (plat_draw_skipped()) return;
     static const char *const la[5] = { ".#.", "#.#", "###", "#.#", "#.#" };
     static const char *const lb[5] = { "##.", "#.#", "##.", "#.#", "##." };
     const char *const *l = which == ICON_BTN_A ? la : lb;
@@ -105,9 +151,11 @@ static void button_cap(int x, int y, int which)
     ui_fill_circle(x + 3, y + 3, 3, ui_darker(ui_darker(fill)));
     ui_fill_circle(x + 3, y + 3, 2, fill);
     plat_rect(x + 2, y + 1, 1, 1, ui_lighter(fill));
+    ur_begin();
     for (r = 0; r < 5; r++)
         for (c = 0; c < 3; c++)
-            if (l[r][c] == '#') plat_rect(x + 2 + c, y + 1 + r, 1, 1, PAL_WHITE);
+            if (l[r][c] == '#') ur_run(y + 1 + r, x + 2 + c, 1, PAL_WHITE);
+    ur_end();
 }
 
 static void text_run(int x, int y, const char *s, uint8_t color, int fs)
@@ -121,7 +169,7 @@ void ui_text(int x, int y, const char *s, uint8_t color)
 {
     char run[128];
     int n = 0, cx = x, rx = x, fs;
-    if (!s) return;
+    if (!s || plat_draw_skipped()) return;
     fs = opt_get(OPT_FONT_STYLE);
     for (;; s++) {
         unsigned char c = (unsigned char)*s;
@@ -157,12 +205,14 @@ int ui_text_width(const char *s)
 
 void ui_text_shadow(int x, int y, const char *s, uint8_t color, uint8_t shadow)
 {
+    if (plat_draw_skipped()) return;
     plat_text(x + 1, y + 1, s, shadow);
     ui_text(x, y, s, color);
 }
 
 void ui_text_outline(int x, int y, const char *s, uint8_t color, uint8_t outline)
 {
+    if (plat_draw_skipped()) return;
     int dx, dy;
     for (dy = -1; dy <= 1; dy++)
         for (dx = -1; dx <= 1; dx++)
@@ -206,6 +256,7 @@ static int wrap_core(int x, int y, int w, const char *s, uint8_t color, int draw
     if (!s) return 0;
     if (maxc < 1) maxc = 1;
     if (maxc > 63) maxc = 63;
+    if (draw && plat_draw_skipped()) draw = 0;          /* lines still count */
     while (*p) {
         int n = 0, last_space = -1, len, adv;
         while (p[n] && p[n] != '\n' && n < maxc) {
@@ -299,6 +350,8 @@ void ui_text_big(int x, int y, const char *s, int scale, uint8_t color, uint8_t 
     int dx, dy;
     if (!s) return;
     scale = DOOMO_CLAMP(scale, 1, 4);
+    if (ur_text_big(x, y, s, scale, color, outline)) return;
+    /* too big for the bit-row path: the layers one by one */
     big_glyphs(x + 1, y + 3, s, scale, ui_darker(outline), 0);        /* shadow */
     for (dy = -1; dy <= 1; dy++)
         for (dx = -1; dx <= 1; dx++)
@@ -312,6 +365,7 @@ void ui_text_big(int x, int y, const char *s, int scale, uint8_t color, uint8_t 
 /* meters & sliders                                                         */
 void ui_bar(int x, int y, int w, int h, int value, int max, uint8_t fill)
 {
+    if (plat_draw_skipped()) return;
     int v, fw, r = h >= 6 ? 2 : 1, t = frame_t();
     uint8_t outline = ui_darker(ui_darker(fill));
     uint8_t track = PAL_RAMP(RAMP_STONE, 2);
@@ -342,6 +396,7 @@ void ui_bar(int x, int y, int w, int h, int value, int max, uint8_t fill)
 void ui_slider(int x, int y, int w, const char *label, int value, int max,
                int selected)
 {
+    if (plat_draw_skipped()) return;
     const UiStyle *st = ui_style(ui_cur_style);
     int t = frame_t();
     int lw = DOOMO_MIN(w * 2 / 5, 72);
@@ -373,25 +428,6 @@ void ui_slider(int x, int y, int w, const char *label, int value, int max,
 
 /* ====================================================================== */
 /* cursors                                                                  */
-static void glyph7(int x, int y, const char *const rows[7], const uint8_t pal[5])
-{
-    int r, c;
-    for (r = 0; r < 7; r++) {
-        for (c = 0; c < 7 && rows[r][c]; c++) {
-            uint8_t col;
-            switch (rows[r][c]) {
-            case 'o': col = pal[0]; break;
-            case 's': col = pal[1]; break;
-            case 'b': col = pal[2]; break;
-            case 'l': col = pal[3]; break;
-            case 'w': col = pal[4]; break;
-            default: continue;
-            }
-            plat_rect(x + c, y + r, 1, 1, col);
-        }
-    }
-}
-
 void ui_cursor_glyph(int x, int y, int kind, uint8_t fill)
 {
     uint8_t pal[5];
@@ -405,7 +441,7 @@ void ui_cursor_glyph(int x, int y, int kind, uint8_t fill)
         static const char *const paw[7] = {
             "oo.o.oo", "lbolobl", "obo.obo", ".ooooo.", "olllbbo", "obbbbso", ".ossso."
         };
-        glyph7(x, y, paw, pal);
+        ui_glyph7(x, y, paw, pal);
         break; }
     case 2:     /* star */
         ui_star(x + 3, y + 3, 4, fill);
@@ -417,13 +453,13 @@ void ui_cursor_glyph(int x, int y, int kind, uint8_t fill)
         static const char *const skull[7] = {
             ".ooooo.", "olllbbo", "ooobooo", "ooobooo", "obbobbo", ".obbbo.", ".o.o.o."
         };
-        glyph7(x, y, skull, pal);
+        ui_glyph7(x, y, skull, pal);
         break; }
     case 5: {   /* fang */
         static const char *const fang[7] = {
             "ooooooo", "owwwwso", "owwwwso", ".owwso.", ".owwso.", "..ows..", "...o..."
         };
-        glyph7(x, y, fang, pal);
+        ui_glyph7(x, y, fang, pal);
         break; }
     default:    /* heart */
         ui_heart(x + 3, y + 3, 3, fill);
@@ -433,6 +469,7 @@ void ui_cursor_glyph(int x, int y, int kind, uint8_t fill)
 
 void ui_cursor(int x, int y)
 {
+    if (plat_draw_skipped()) return;
     static const uint8_t cols[6] = {
         PAL_PAINT(PAINT_ROSE, 1), PAL_PAINT(PAINT_CARAMEL, 1), PAL_UI_GOLD,
         PAL_UI_GOLD, PAL_PAINT(PAINT_BONE, 1), PAL_PAINT(PAINT_WHITE, 1)
@@ -445,6 +482,7 @@ void ui_cursor(int x, int y)
 
 void ui_scroll_arrows(int x, int y_top, int y_bottom, int up, int down)
 {
+    if (plat_draw_skipped()) return;
     const UiStyle *st = ui_style(ui_cur_style);
     int b = ui_wave(frame_t(), 24, 1);
     if (up) {
@@ -506,6 +544,7 @@ void ui_list_draw(const UiList *l, int x, int y, int w, int style)
     int maxc = tw / FONT_ADVANCE;
     char buf[48], line[48];
     ui_cur_style = style;
+    if (plat_draw_skipped()) return;
     if (maxc > 47) maxc = 47;
     for (i = 0; i < rows; i++) {
         int idx = l->top + i, ry = y + i * UI_LIST_ROW_H, n;
@@ -580,6 +619,7 @@ int ui_paint_picker_update(uint8_t *paint, int cols)
 
 void ui_paint_picker_draw(int x, int y, uint8_t paint, int cols)
 {
+    if (plat_draw_skipped()) return;
     const UiStyle *st = ui_style(ui_cur_style);
     int i, t = frame_t();
     int sel = paint % PAL_PAINT_COUNT;
@@ -607,7 +647,8 @@ void ui_paint_picker_draw(int x, int y, uint8_t paint, int cols)
         uint8_t d = locked ? PAL_RAMP(RAMP_STONE, 4) : PAL_PAINT(sel, 0);
         uint8_t bb = locked ? PAL_RAMP(RAMP_STONE, 5) : PAL_PAINT(sel, 1);
         uint8_t l = locked ? PAL_RAMP(RAMP_STONE, 6) : PAL_PAINT(sel, 2);
-        ui_drop_shadow(cx + 1, cy + 2, SW_W + 2, SW_H + 2, 3);
+        ui_drop_shadow_under(cx + 1, cy + 2, SW_W + 2, SW_H + 2, 3,
+                             cx - 1, cy - 1, SW_W + 4, SW_H + 4, 3);
         ui_round_rect(cx - 1, cy - 1, SW_W + 4, SW_H + 4, 3, st->outline);
         ui_round_rect(cx, cy, SW_W + 2, SW_H + 2, 3, PAL_WHITE);
         ui_round_rect(cx + 2, cy + 2, SW_W - 2, SW_H - 2, 2, ui_darker(d));
@@ -667,7 +708,7 @@ void ui_toast_draw(void)
         d = t - TOAST_IN - TOAST_SHOW;
         x = xf + d * d * (sw - xf) / (TOAST_OUT * TOAST_OUT);
     }
-    ui_drop_shadow(x + 2, y + 2, w, 15, 4);
+    ui_drop_shadow_under(x + 2, y + 2, w, 15, 4, x, y, w, 15, 4);
     ui_round_rect(x, y, w, 15, 4, PAL_RAMP(RAMP_CANDY, 3));
     ui_round_rect(x + 1, y + 1, w - 2, 13, 3, st->fill_hi);
     plat_rect(x + 3, y + 10, w - 6, 3, st->fill);
@@ -688,13 +729,14 @@ void ui_toast_draw(void)
 /* decorations                                                              */
 void ui_portrait(int x, int y, int resident_id, int scale, int expression)
 {
+    if (plat_draw_skipped()) return;
     const DoomoImage *img = portrait_image(resident_id, expression);
     const UiStyle *st = ui_style(WIN_MINT);
     int w, h;
     if (scale < 1) scale = 1;
     w = (img ? img->w : PORTRAIT_W) * scale + 6;
     h = (img ? img->h : PORTRAIT_H) * scale + 6;
-    ui_drop_shadow(x + 2, y + 2, w, h, 4);
+    ui_drop_shadow_under(x + 2, y + 2, w, h, 4, x, y, w, h, 4);
     ui_round_rect(x, y, w, h, 4, st->outline);
     ui_round_rect(x + 1, y + 1, w - 2, h - 2, 3, st->fill_hi);
     plat_rect(x + 2, y + h * 2 / 3, w - 4, h / 3 - 2, st->fill);
@@ -706,10 +748,11 @@ void ui_portrait(int x, int y, int resident_id, int scale, int expression)
 
 void ui_title(int cx, int y, const char *s, int style)
 {
+    if (plat_draw_skipped()) return;
     const UiStyle *st = ui_style(style);
     int tw = ui_text_width(s), w = tw + 18, x = cx - w / 2;
     int t = frame_t();
-    ui_drop_shadow(x + 1, y + 2, w, 13, 4);
+    ui_pill_shadow(x + 1, y + 2, w, 13, x, y, w, 13);
     ui_pill(x, y, w, 13, st->title_bg, st->outline, ui_lighter(st->title_bg));
     ui_text_shadow(x + 9, y + 3, s, st->title, st->outline);
     ui_sparkle(x + 3, y + 1, (t / 3) & 15, PAL_WHITE);
@@ -718,6 +761,7 @@ void ui_title(int cx, int y, const char *s, int style)
 
 void ui_hint(const char *s, int style)
 {
+    if (plat_draw_skipped()) return;
     const UiStyle *st = ui_style(style);
     int sw = plat_screen_w(), sh = plat_screen_h();
     int w = ui_text_width(s) + 12, x = (sw - w) / 2, y = sh - 13;
@@ -727,12 +771,13 @@ void ui_hint(const char *s, int style)
 
 void ui_button(int x, int y, int w, const char *label, int selected, int style)
 {
+    if (plat_draw_skipped()) return;
     const UiStyle *st = ui_style(style);
     int tw = ui_text_width(label);
     int b = selected ? (ui_wave(frame_t(), 20, 1) > 0) : 0;
     y -= b;
     if (selected) {
-        ui_drop_shadow(x + 1, y + 2 + b, w, 14, 4);
+        ui_pill_shadow(x + 1, y + 2 + b, w, 14, x, y, w, 14);
         ui_pill(x, y, w, 14, st->accent, ui_darker(ui_darker(st->accent)), ui_lighter(st->accent));
         ui_text_shadow(x + (w - tw) / 2, y + 3, label, PAL_WHITE, ui_darker(st->accent));
         ui_cursor(x - 9, y + 3);
@@ -745,6 +790,7 @@ void ui_button(int x, int y, int w, const char *label, int selected, int style)
 void ui_value_row(int x, int y, int w, const char *label, const char *value,
                   int selected)
 {
+    if (plat_draw_skipped()) return;
     const UiStyle *st = ui_style(ui_cur_style);
     int vw = ui_text_width(value), right = x + w;
     int b = selected ? (ui_wave(frame_t(), 16, 1) > 0) : 0;
@@ -769,7 +815,7 @@ int ui_tabs(int x, int y, const char *const *names, int count, int sel, int styl
         int tw = ui_text_width(names[i]) + 10;
         if (i == sel) {
             int b = ui_wave(t, 20, 1) > 0;
-            ui_drop_shadow(cx + 1, y + 1 - b, tw, 13, 4);
+            ui_pill_shadow(cx + 1, y + 1 - b, tw, 13, cx, y - 2 - b, tw, 13);
             ui_pill(cx, y - 2 - b, tw, 13, st->accent, ui_darker(ui_darker(st->accent)),
                     ui_lighter(st->accent));
             ui_text_shadow(cx + 5, y + 1 - b, names[i], PAL_WHITE, ui_darker(st->accent));

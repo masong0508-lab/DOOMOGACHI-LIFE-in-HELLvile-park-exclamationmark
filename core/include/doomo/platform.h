@@ -46,6 +46,19 @@ void plat_text(int x, int y, const char *s, uint8_t color);
 enum { IMG_FLIPX = 1, IMG_SHADOW = 2, IMG_SILHOUETTE = 4 };
 void plat_image(int x, int y, const DoomoImage *img, int scale, int flags,
                 uint8_t color);
+/* 50% checkerboard in `color` (foundation, additive): pixel (x+i, y+j) of
+ * the rect is drawn when i + j is even, the others are left alone. The UI
+ * uses it for the soft one-row seams between colour bands. The core has a
+ * weak default (one plat_rect per pixel, core/src/ui_raster.c), so a
+ * platform only implements it to be faster; it may also draw it as a
+ * true 50% blend of `color` over the rect (PS1). */
+void plat_checker(int x, int y, int w, int h, uint8_t color);
+/* 1 while the frame being built will not be shown (foundation, additive):
+ * the GBA skips the drawing of a catch-up tick when it falls behind (its
+ * plat_* calls then do nothing). The core's pure drawing helpers return
+ * early then, so such ticks cost little. Weak default (core/src/
+ * ui_raster.c): 0, every frame is shown. */
+int  plat_draw_skipped(void);
 
 /* ---- 3D views ------------------------------------------------------------ */
 /* A billboard sprite placed in the world. */

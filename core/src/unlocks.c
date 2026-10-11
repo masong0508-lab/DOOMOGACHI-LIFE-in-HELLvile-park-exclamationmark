@@ -199,6 +199,8 @@ static uint16_t ul_len[UL_TABLES];
 static uint16_t ul_total;
 static int16_t  ul_by_id[DOOMO_UNLOCK_BITS];      /* global index or -1 */
 static uint8_t  ul_part_bits[CLIST_COUNT][8];    /* has an entry (index < 64) */
+static uint8_t  ul_filter[64];                   /* hash of (cat, list, index) */
+#define UL_HASH(c, l, i) ((((unsigned)(c) * 37u + (unsigned)(l)) * 61u + (unsigned)(i)) & 511u)
 
 static void ul_init(void)
 {
@@ -213,6 +215,10 @@ static void ul_init(void)
             if (u[i].id < DOOMO_UNLOCK_BITS) {
                 if (ul_by_id[u[i].id] < 0) ul_by_id[u[i].id] = (int16_t)g;
                 else plat_log("unlocks: duplicate unlock id");
+            }
+            {
+                unsigned hb = UL_HASH(u[i].cat, u[i].list, u[i].index);
+                ul_filter[hb >> 3] |= (uint8_t)(1u << (hb & 7));
             }
             if ((u[i].cat == UL_CAT_PART || u[i].cat == UL_CAT_WEAPON_PART) &&
                 u[i].list < CLIST_COUNT && u[i].index < 64)
@@ -250,16 +256,22 @@ const DoomoUnlock *unlock_by_id(int id)
 
 const DoomoUnlock *unlock_find(int cat, int list, int index)
 {
-    int i, n;
+    int i, t;
     ul_init();
     if ((cat == UL_CAT_PART || cat == UL_CAT_WEAPON_PART) && list >= 0 &&
         list < CLIST_COUNT && index >= 0 && index < 64 &&
         !(ul_part_bits[list][index >> 3] & (1 << (index & 7))))
         return NULL;                       /* fast path: never locked */
-    n = ul_total;
-    for (i = 0; i < n; i++) {
-        const DoomoUnlock *u = unlock_at(i);
-        if (u->cat == cat && u->list == list && u->index == index) return u;
+    {
+        /* no unlock hashes here: never locked (menus ask this per item and
+         * per frame, e.g. the 32 paint swatches) */
+        unsigned hb = UL_HASH(cat, list, index);
+        if (!(ul_filter[hb >> 3] & (1u << (hb & 7)))) return NULL;
+    }
+    for (t = 0; t < UL_TABLES && doomo_unlock_tables[t]; t++) {
+        const DoomoUnlock *u = doomo_unlock_tables[t];
+        for (i = 0; i < ul_len[t]; i++)
+            if (u[i].cat == cat && u[i].list == list && u[i].index == index) return &u[i];
     }
     return NULL;
 }

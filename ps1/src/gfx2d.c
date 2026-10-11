@@ -169,6 +169,43 @@ void plat_rect(int x, int y, int w, int h, uint8_t color)
     rect_slow(x, y, w, h, color);
 }
 
+/* 50% checkerboard (platform.h): each row of 4+ dots is ONE 50% semi-
+ * transparent TILE from its first to its last dot, exactly what a row of
+ * stride-2 single-pixel rects becomes in rect_slow(); shorter rows are
+ * drawn as dots. */
+void plat_checker(int x, int y, int w, int h, uint8_t color)
+{
+    int j;
+    g_rect_calls++;
+    for (j = 0; j < h; j++) {
+        int px = x + (j & 1), last = x + w - 1, yy = y + j, n;
+        if (yy < 0 || yy >= SCR_H)
+            continue;
+        if ((last - px) & 1)
+            last--;                         /* last pixel of this row's dots */
+        if (px < 0)
+            px += (1 - px) & ~1;            /* first on-screen dot (same parity) */
+        if (last > SCR_W - 1)
+            last -= (last - (SCR_W - 1) + 1) & ~1;
+        if (last < px)
+            continue;
+        n = (last - px) / 2 + 1;
+        if (n >= 4) {
+            DR_TPAGE *t;
+            gfx2d_flush();
+            t = (DR_TPAGE *)gfx_alloc(sizeof(DR_TPAGE));
+            if (t) {
+                setDrawTPage(t, 1, 1, getTPage(0, 0, 0, 0));   /* 50/50 */
+                gfx_link_raw((uint32_t *)t, 1);
+            }
+            emit_tile(px, yy, last - px + 1, 1, g_rgb[color], 1);
+        } else {
+            for (; px <= last; px += 2)
+                plat_rect(px, yy, 1, 1, color);
+        }
+    }
+}
+
 void plat_shade_rect(int x, int y, int w, int h, int level)
 {
     /* target: colour * level/15 (doomo_colormap[level]). The GPU has no

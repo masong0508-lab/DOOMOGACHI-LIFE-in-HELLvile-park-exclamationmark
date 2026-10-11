@@ -109,4 +109,68 @@ int  map_ceil_z(const DoomoMap *m, int cx, int cy);
 void map_tick(DoomoMap *m);          /* animate doors & lifts */
 void map_use(DoomoMap *m, int cx, int cy);  /* open door / call lift */
 
+/* ======================================================================
+ * action additions (owner: action; additive)
+ * ==================================================================== */
+
+/* Cell semantics used by the runtime (map.c) and the map compiler
+ * (tools/mapc.py, legend in core/data/maps/README.md):
+ *
+ *  DOOR  floor_h = sill, ceil_h = the OPEN height, ceil_tex = the door
+ *        texture. Doors start closed: the live copy in doomo_map has
+ *        ceil_h == floor_h and map_ceil_z() returns the animated height.
+ *        tag 0        opens when bumped, stays open
+ *        tag 1 / 2    needs the red / blue key (then like tag 0)
+ *        tag 3..15    opens when bumped, closes again after ~4 s
+ *        tag >= 16    remote: opened only by map_event(tag) (triggers,
+ *                     cleared demon groups, bosses)
+ *  LIFT  floor_h = rest height, (int8_t)tag = the other height. Standing
+ *        on it (or map_use) sends it to the other height; it waits ~3 s
+ *        and returns. map_floor_z() returns the animated height.
+ *  TRIGGER  entering the cell fires map_event(tag) once (and story_trigger).
+ *  SECRET   entering counts a secret (once per cell).
+ *  EXIT     entering finishes the level.
+ *  LAVA / WATER / PORTAL  hurt / slow / animated hell portal.
+ */
+#define DOOMO_DOOR_TAG_RED     1
+#define DOOMO_DOOR_TAG_BLUE    2
+#define DOOMO_DOOR_TAG_REMOTE  16     /* tags >= this are remote-only     */
+#define DOOMO_PLAYER_HEIGHT    56     /* standing; crouched: 32           */
+#define DOOMO_CROUCH_HEIGHT    32
+
+/* DoomoThing.flags */
+enum {
+    THF_AMBUSH     = 0x01,  /* deaf: waits until it sees the player       */
+    THF_NOT_EASY   = 0x02,  /* absent on DIFF_PLUSHIE                      */
+    THF_HARD       = 0x04,  /* only on DIFF_NIGHTMARE and above            */
+    THF_DORMANT    = 0x08,  /* appears (vape puff) when event `arg` fires  */
+    THF_BOSS       = 0x10,  /* boss / mini-boss: more HP, boss bar         */
+    THF_KILL_EVENT = 0x20,  /* when every demon of this group is dead, fire
+                               event `arg` (`arg + 1` if also DORMANT)     */
+    THF_SECRET     = 0x40   /* pickup counts as a secret item              */
+};
+
+/* Display title of a map ("The Vape Cellar"), "" if unknown. */
+const char *map_title(int map_id);
+/* The map id currently in doomo_map (-1 if none / custom). */
+int  map_current_id(void);
+/* Load an arbitrary definition (tests, tools). */
+void map_load_def(const DoomoMapDef *d);
+/* Fire a map event: open (or toggle) every remote door whose tag == tag,
+ * start lifts with that tag. Returns how many movers reacted. */
+int  map_event(DoomoMap *m, int tag);
+/* Door state 0 closed .. 256 fully open (-1 if not a door). */
+int  map_door_open(const DoomoMap *m, int cx, int cy);
+/* Bump a door (keys = bitmask 1 red, 2 blue). Returns 1 if it opens or
+ * is open, 0 if it is locked / remote, -1 if not a door. */
+int  map_door_bump(DoomoMap *m, int cx, int cy, int keys);
+/* 1 while a lift is moving or waiting away from its rest height. */
+int  map_lift_busy(const DoomoMap *m, int cx, int cy);
+/* Both heights of a lift cell in world units (lo <= hi); 0 if no lift. */
+int  map_lift_range(const DoomoMap *m, int cx, int cy, int *lo, int *hi);
+/* 1 if a mover (door / lift) changed height this tick at that cell. */
+int  map_mover_moving(const DoomoMap *m, int cx, int cy);
+/* Number of active movers (doors + lifts) in the live map. */
+int  map_mover_count(void);
+
 #endif

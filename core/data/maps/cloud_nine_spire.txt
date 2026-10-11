@@ -1,0 +1,344 @@
+# Cloud Nine Spire - Hell Breach 2 (owner: action).
+# Vex's vape tower, a ziggurat of rings that climb into the vape storm:
+#   cloud plaza (0) -> cloud bridge over the lava moat -> ring 1 terrace (2)
+#   (west: open ledge, east: a roofed tunnel with a crouch crawl) -> lift in
+#   the north tower wall -> ring 2 (10): a long cloud bridge over the west
+#   chasm, the blue key on a cloud island, the blue door -> the summit lift
+#   -> Lord Vapula's open-sky summit (20) with corner daises, pillars and a
+#   lava pit. Killing Vapula opens the exit alcove on the north edge.
+# Legend and overlays: see README.md. Compiled by tools/mapc.py.
+map cloud_nine_spire
+title "Cloud Nine Spire"
+kind dungeon
+sky VAPE_STORM
+music BOSS
+ambient 11
+
+# ---- walls (under the open sky a wall is as tall as its ch) ----
+cell Q wall=VAPE_CLOUD_WALL ch=8
+cell S wall=TECH_PANEL ch=16
+cell T wall=RUST_METAL ch=26
+cell P wall=BONE_WALL ch=32
+cell X wall=EXIT_SIGN ch=30
+# ---- the plaza and the moat ----
+cell c floor=CLOUD_PUFF ceil=sky fh=0 light=13
+cell p floor=CLOUD_PUFF ceil=sky fh=2 light=14
+cell b floor=CLOUD_PUFF ceil=sky fh=0 light=14
+cell ~ floor=LAVA ceil=sky fh=-4 light=15 flags=lava
+# ---- ring 1 ----
+cell w floor=COBBLE ceil=sky fh=2 light=12
+cell l floor=TILE_FLOOR ceil=sky fh=7 light=13
+cell t floor=METAL_FLOOR ceil=TECH_PANEL fh=2 ch=9 light=10
+cell n floor=GRATE ceil=RUST_METAL fh=2 ch=7 light=8
+cell L floor=PENTAGRAM_FLOOR ceil=sky fh=2 light=14 flags=lift tag=10
+# ---- ring 2 ----
+cell m floor=METAL_FLOOR ceil=sky fh=10 light=11
+cell M floor=PENTAGRAM_FLOOR ceil=sky fh=4 light=14 flags=lift tag=10
+cell k floor=CLOUD_PUFF ceil=sky fh=13 light=14
+cell U floor=METAL_FLOOR ceil=DOOR_HELL fh=10 ch=18 light=12 flags=door tag=2
+cell N floor=PENTAGRAM_FLOOR ceil=sky fh=10 light=14 flags=lift tag=20
+# ---- the summit ----
+cell s floor=GORE_FLOOR ceil=sky fh=20 light=12
+cell z floor=PENTAGRAM_FLOOR ceil=sky fh=23 light=13
+cell v floor=LAVA ceil=sky fh=17 light=15 flags=lava,portal
+cell x floor=METAL_FLOOR ceil=DOOR_HELL fh=20 ch=28 light=13 flags=door tag=50
+cell e floor=CLOUD_PUFF ceil=CLOUD_PUFF fh=20 ch=28 light=15 flags=exit
+
+grid
+QQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQ
+QcccccccccccccccccccccccccccccccccccccccccccccccccccccccQ
+QcccccccccccccccccccccccccccccccccccccccccccccccccccccccQ
+QcccccccccccccccccccccccccccccccccccccccccccccccccccccccQ
+QcccccccccccccccccccccccccccccccccccccccccccccccccccccccQ
+QccccpppcccccccccccccccccccccccccccccccccccccccccpppccccQ
+QccccpppcccccccccccccccccccccccccccccccccccccccccpppccccQ
+Qccccppp~~~~~~~~~~~~~~~~~~~bbb~~~~~~~~~~~~~~~~~~~pppccccQ
+Qcccccc~~~~~~~~~~~~~~~~~~~~~b~~~~~~~~~~~~~~~~~~~~~ccccccQ
+Qcccccc~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ccccccQ
+Qcccccc~~~wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww~~~ccccccQ
+Qcccccc~~~wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww~~~ccccccQ
+Qcccccc~~~wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww~~~ccccccQ
+Qcccccc~~~wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwtttt~~~ccccccQ
+Qcccccc~~~wwwwSSSSSSSSLSSSSSSSSSSSSSSSSSSSStttt~~~ccccccQ
+Qcccccc~~~wwwwSmmmmmmmmmmmXeeeXmmmmmmmmmmmStttt~~~ccccccQ
+Qcccccc~~~wwwwSmmmmmmmmmmmXeeeXmmmmmmmmmmmStttt~~~ccccccQ
+Qcccccc~~~wwwwSmmmmmmmmmmmXeeeXmmmmmmmmmmmStttt~~~ccccccQ
+Qcccccc~~~wwwwSmmmTTTTTTTTTTxTTTTTTTTTTmmmStttt~~~ccccccQ
+Qcccccc~~~wwwwSmmmTzzzzssssssssssszzzzTmmmStttt~~~ccccccQ
+Qcccccc~~~wwwwSmmmTzzzzssssssssssszzzzTmmmStttt~~~ccccccQ
+Qcccccc~~~wwwwSmmmTzzzzssssssssssszzzzTmmmStttt~~~ccccccQ
+Qcccccc~~~wwwwS~b~TzzzzssssssssssszzzzTmmmStttt~~~ccccccQ
+Qcccccc~~~wwwwS~b~TsssssssssssssssssssTmmmStttt~~~ccccccQ
+Qcccccc~~~llwwS~b~TsssssPsssssssPsssssTmmmStttt~~~ccccccQ
+Qcccccc~~~llwwS~b~TsssssssssssssssssssTmmmStttt~~~ccccccQ
+Qcccccc~~~llwwS~b~Tsssssss~~~~~sssssssTmmmSnnnn~~~ccccccQ
+Qcccccc~~~llwwS~b~Tsssssss~vvv~sssssssTQQQSnnnn~~~ccccccQ
+Qcccccc~~~llwwS~b~Tsssssss~vvv~sssssssTQQQSnnnn~~~ccccccQ
+Qcccccc~~~llwwS~b~Tsssssss~vvv~sssssssTQQQSnnnn~~~ccccccQ
+Qcccccc~~~llwwS~b~Tsssssss~~~~~sssssssTmmmSnnnn~~~ccccccQ
+Qcccccc~~~llwwS~b~TsssssssssssssssssssTmmmStttt~~~ccccccQ
+Qcccccc~~~llwwS~b~TsssssPsssssssPsssssTmmmStttt~~~ccccccQ
+Qcccccc~~~wwwwSMb~TsssssssssssssssssssTmmmStttt~~~ccccccQ
+Qcccccc~~~wwwwS~b~TzzzzssssssssssszzzzTmmmStttt~~~ccccccQ
+Qcccccc~~~wwwwSmmmTzzzzssssssssssszzzzTmmmStttt~~~ccccccQ
+Qcccccc~~~wwwwSmmmTzzzzssssssssssszzzzTmmmStttt~~~ccccccQ
+Qcccccc~~~wwwwSmmmTzzzzsssssNssssszzzzTmmmStttt~~~ccccccQ
+Qcccccc~~~wwwwSmmmTTTTTTTTTTUTTTTTTTTTTmmmStttt~~~ccccccQ
+Qcccccc~~~wwwwSmkkkmmmmmmmmmmmmmmmmmmmmmmmStttt~~~ccccccQ
+Qcccccc~~~wwwwSmkkkmmmmmmmmmmmmmmmmmmmmmmmStttt~~~ccccccQ
+Qcccccc~~~wwwwSmkkkmmmmmmmmmmmmmmmmmmmmmmmStttt~~~ccccccQ
+Qcccccc~~~wwwwSSSSSSSSSSSSSSSSSSSSSSSSSSSSStttt~~~ccccccQ
+Qcccccc~~~wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwtttt~~~ccccccQ
+Qcccccc~~~wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww~~~ccccccQ
+Qcccccc~~~wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww~~~ccccccQ
+Qcccccc~~~wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww~~~ccccccQ
+Qcccccc~~~~~~~~~~~~~~~~~~~~bbb~~~~~~~~~~~~~~~~~~~~ccccccQ
+Qcccccc~~~~~~~~~~~~~~~~~~~~bbb~~~~~~~~~~~~~~~~~~~~ccccccQ
+Qccccppp~~~~~~~~~~~~~~~~~~~bbb~~~~~~~~~~~~~~~~~~~pppccccQ
+QccccpppcccccccccccccccccccccccccccccccccccccccccpppccccQ
+QccccpppcccccccccccccccccccccccccccccccccccccccccpppccccQ
+QcccccccccccccccccccccccccccccccccccccccccccccccccccccccQ
+QcccccccccccccccccccccccccccccccccccccccccccccccccccccccQ
+QcccccccccccccccccccccccccccccccccccccccccccccccccccccccQ
+QcccccccccccccccccccccccccccccccccccccccccccccccccccccccQ
+QQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQ
+end
+
+# floor heights (steps of 8 units): 0-9 a-z = 0..35, A-Z = -1..-26
+floorh
+.
+.
+.
+.
+.
+.
+......4...........................................4
+.
+............................A
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+...............4a4
+...............4a4
+...............4a4
+...............4a4
+...............4a4........hhhhh
+............4..4a4........h...h
+............4..4a4........h...h
+............4..4a4........h...h
+...............4a4........hhhhh
+...............4a4
+...............4a4
+................a4
+...............4a4
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+......4...........................................4
+.
+.
+.
+.
+.
+.
+end
+
+# ceiling heights (roofed cells) / block tops (walls under the sky)
+ceilh
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.......................................iii
+.......................................iii
+.......................................iii
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+end
+
+# light overrides 0-9 a-f (blank = legend)
+light
+.
+.
+.
+.
+.
+.
+.
+........fffffffffffffffffff...fffffffffffffffffff
+.......fffffffffffffffffffff.fffffffffffffffffffff
+.......fffffffffffffffffffffffffffffffffffffffffff
+.......fff.....................................fff
+.......fff.....................................fff
+.......fff.....................................fff
+.......fff.....................................fff
+.......fff.....................................fff
+.......fff.....................................fff
+.......fff.....................................fff
+.......fff.....................................fff
+.......fff.....................................fff
+.......fff.....................................fff
+.......fff.....................................fff
+.......fff.....................................fff
+.......fff.....f.f.............................fff
+.......fff.....f.f.............................fff
+.......fff.....f.f.............................fff
+.......fff.....f.f.............................fff
+.......fff.....f.f........fffff................fff
+.......fff.....f.f........f...f................fff
+.......fff.....f.f........f...f................fff
+.......fff.....f.f........f...f................fff
+.......fff.....f.f........fffff................fff
+.......fff.....f.f.............................fff
+.......fff.....f.f.............................fff
+.......fff.......f.............................fff
+.......fff.....f.f.............................fff
+.......fff.....................................fff
+.......fff.....................................fff
+.......fff.....................................fff
+.......fff.....................................fff
+.......fff.....................................fff
+.......fff.....................................fff
+.......fff.....................................fff
+.......fff.....................................fff
+.......fff.....................................fff
+.......fff.....................................fff
+.......fff.....................................fff
+.......fff.....................................fff
+.......ffffffffffffffffffff...ffffffffffffffffffff
+.......ffffffffffffffffffff...ffffffffffffffffffff
+........fffffffffffffffffff...fffffffffffffffffff
+.
+.
+.
+.
+.
+.
+.
+end
+
+# things: x y TYPE [angle=deg] [arg=n] [tflags=...]
+thing 28 52 PLAYER_START angle=270
+thing 25 53 PROP_LAMP
+thing 31 53 PROP_LAMP
+thing 28 55 PROP_SIGN
+thing 6 6 HEALTH_SMALL
+thing 50 6 AMMO_SHELLS
+thing 6 50 AMMO_BULLETS
+thing 50 50 CANDY
+thing 10 30 PROP_FOUNTAIN
+thing 52 28 PROP_FOUNTAIN
+thing 22 51 IMPLING angle=0
+thing 35 51 IMPLING angle=180
+thing 40 40 IMPLING angle=270 tflags=not_easy
+thing 28 44 BONE_JESTER angle=270
+thing 16 40 CLOUD_SPIDER angle=0 tflags=not_easy
+thing 17 20 GARGOYLE angle=90
+thing 36 11 GARGOYLE angle=180 tflags=not_easy
+thing 44 36 IMPLING angle=270
+thing 45 20 HELLHOUND_PUP angle=90
+thing 44 28 AMMO_CELLS
+thing 10 25 HEALTH_BIG
+thing 11 31 AMMO_ROCKETS
+thing 10 28 ARMOR tflags=secret
+thing 30 12 CYBER_PIGGY angle=90
+thing 20 12 AMMO_BULLETS
+thing 24 13 HEALTH_SMALL
+thing 22 16 IMPLING angle=180
+thing 15 18 PUFF_DEMON angle=90
+thing 16 28 GARGOYLE angle=90 tflags=hard
+thing 17 40 KEY_BLUE
+thing 15 37 SLIME_BELCHER angle=0
+thing 22 40 BONE_JESTER angle=180 tflags=not_easy
+thing 34 40 BRUTE angle=180
+thing 40 16 ARMOR
+thing 40 20 AMMO_ROCKETS
+thing 40 40 HEALTH_BIG
+thing 40 34 AMMO_CELLS
+thing 40 23 CLOUD_SPIDER angle=90
+thing 25 39 HEALTH_SMALL
+thing 31 40 AMMO_SHELLS
+thing 28 22 LORD_VAPULA angle=90 tflags=boss,kill_event arg=50
+thing 20 20 HEALTH_BIG
+thing 36 20 AMMO_ROCKETS
+thing 20 36 AMMO_CELLS
+thing 36 36 ARMOR
+thing 21 21 PROP_TORCH
+thing 35 21 PROP_TORCH
+thing 21 35 PROP_TORCH
+thing 35 35 PROP_TORCH
+thing 28 16 SOUL_ORB
+thing 3 53 PROP_TREE
+thing 53 53 PROP_TREE
+thing 3 3 PROP_TREE
+thing 53 3 PROP_TREE

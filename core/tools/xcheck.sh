@@ -7,7 +7,12 @@
 CORE=$(cd "$(dirname "$0")/.." && pwd)
 INC="$CORE/include"
 if [ $# -gt 0 ]; then FILES="$*"; else FILES=$(ls "$CORE"/src/*.c "$CORE"/gen/*.c 2>/dev/null | sort); fi
-PSN=/opt/psn00bsdk/include/libpsn00b
+# PSn00bSDK headers for the mipsel check: $PSN00BSDK_INCLUDE, else derived
+# from $PSN00BSDK_LIBS (<prefix>/lib/libpsn00b, the variable the ps1 CMake
+# presets use), else the default /opt/psn00bsdk install.
+if [ -n "$PSN00BSDK_INCLUDE" ]; then PSN=$PSN00BSDK_INCLUDE
+elif [ -n "$PSN00BSDK_LIBS" ]; then PSN=$PSN00BSDK_LIBS/../../include/libpsn00b
+else PSN=/opt/psn00bsdk/include/libpsn00b; fi
 JOBS=$(nproc 2>/dev/null || echo 2)
 TMP=${TMPDIR:-/tmp}/doomo-xcheck.$$
 mkdir -p "$TMP"
@@ -15,7 +20,10 @@ trap 'rm -rf "$TMP"' EXIT
 
 have() { command -v "$1" >/dev/null 2>&1; }
 MIPS_INC=""
-if have mipsel-linux-gnu-gcc; then MIPS_INC=$(mipsel-linux-gnu-gcc -print-file-name=include); fi
+MIPS=""
+if have mipsel-linux-gnu-gcc && [ -f "$PSN/string.h" ]; then
+    MIPS=1; MIPS_INC=$(mipsel-linux-gnu-gcc -print-file-name=include)
+fi
 
 check_one() {
     f="$1"
@@ -30,7 +38,7 @@ check_one() {
             echo "FAIL arm    $f"; cat "$TMP/$b.arm"; ok=0
         fi
     fi
-    if have mipsel-linux-gnu-gcc; then
+    if [ -n "$MIPS" ]; then
         if ! mipsel-linux-gnu-gcc -std=c99 -Wall -Wextra -Werror -O2 -march=r3000 -msoft-float \
                 -G0 -fno-pic -mno-abicalls -ffreestanding -fno-builtin -nostdinc \
                 -I"$PSN" -isystem "$MIPS_INC" -I"$INC" -c "$f" -o /dev/null 2>"$TMP/$b.mips"; then
@@ -64,6 +72,7 @@ for f in $FILES; do
     [ "$rc" = "0" ] || fail=1
 done
 have arm-none-eabi-gcc || echo "WARNING: arm-none-eabi-gcc not found (GBA check skipped)"
-have mipsel-linux-gnu-gcc || echo "WARNING: mipsel-linux-gnu-gcc not found (PS1 check skipped)"
+if ! have mipsel-linux-gnu-gcc; then echo "WARNING: mipsel-linux-gnu-gcc not found (PS1 check skipped)"
+elif [ -z "$MIPS" ]; then echo "WARNING: PSn00bSDK headers not found in $PSN (set PSN00BSDK_LIBS or PSN00BSDK_INCLUDE; PS1 check skipped)"; fi
 if [ $fail -ne 0 ]; then echo "xcheck: FAILED"; exit 1; fi
 echo "xcheck: $n files OK on all compilers"

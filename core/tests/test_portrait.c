@@ -5,7 +5,10 @@
  * - sliders, expressions and statuses change the image;
  * - rendering never writes outside the buffer (canary bytes), even for
  *   garbage looks, and is deterministic;
- * - the cached accessors keep uids stable until the pixels change;
+ * - the cached accessors keep uids stable until the pixels change, and
+ *   the sliced (GBA-style, one layer group per tick) phase re-renders
+ *   only ever show complete, correct frames even when other renders
+ *   share the canvas between slices;
  * - a bust stays cheap (pixel-visit budget).
  */
 #include "test.h"
@@ -431,4 +434,110 @@ TEST(portrait_render_cost_is_bounded)
     }
     /* pixel visits per render (each a handful of integer ops) */
     CHECK_MSG(worst < 12000, "worst render visited %u pixels", (unsigned)worst);
+}
+
+/* Run a resident's animated portrait / figure over `n` ticks on the fake
+ * clock with `steps` layer groups per tick; hash[t] / uid[t] = what was
+ * shown. With `noise`, unrelated direct renders reuse the canvas between
+ * the slices (the job must restart, never show a broken frame). */
+static void run_anim(int id, int figure, int steps, int noise, int n, uint32_t *hash,
+                     uint32_t *uid)
+{
+    static uint8_t junk[FIGURE_W * FIGURE_H];
+    DoomoResident other;
+    int t;
+    resident_generate_hellborn(&other, 4242u);
+    portrait_cache_reset();
+    for (t = 0; t < n; t++) {
+        const DoomoImage *img;
+        portrait_cache_clock((uint32_t)t, steps);
+        if (figure) img = figure_image(&town_res(id)->look, RES_ALIVE, EXPR_LOVE);
+        else img = portrait_image(id, EXPR_LOVE);
+        hash[t] = fnv(img->pix, img->w * img->h, 2166136261u);
+        uid[t] = img->uid;
+        if (noise && t % 3 == 1)
+            portrait_render(&other.look, RES_ALIVE, EXPR_SAD, t, junk);
+        if (noise && t % 7 == 4) (void)bodyspr_image(id, t & 3, (t >> 2) & 3);
+    }
+    portrait_cache_reset();
+}
+
+TEST(portrait_sliced_rerenders_show_only_whole_frames)
+{
+    enum { N = 400 };
+    static uint32_t ha[N], ua[N], hb[N], ub[N];
+    DoomoResident *r;
+    int id, fig;
+    id = town_alloc(DISTRICT_HELLVILE);
+    CHECK(id >= 0);
+    r = town_res(id);
+    resident_generate(r, 31337u);
+    r->status = RES_ALIVE;
+    r->look.aura = AURA_HEARTS;           /* more animation phases */
+    if (!r->look.tail) r->look.tail = 1;
+    portrait_invalidate(id);
+    for (fig = 0; fig < 2; fig++) {
+        int t, k, same = 0, changes = 0, ok = 1, uid_ok = 1;
+        run_anim(id, fig, 99, 0, N, ha, ua);       /* whole renders: the truth */
+        run_anim(id, fig, 1, 1, N, hb, ub);        /* GBA-style slices + noise */
+        for (t = 0; t < N; t++) {
+            int found = 0;
+            for (k = 0; k < N && !found; k++) found = hb[t] == ha[k];
+            if (!found) ok = 0;
+            if (hb[t] == ha[t]) same++;
+            if (t && hb[t] != hb[t - 1]) changes++;
+            if (t && hb[t] != hb[t - 1] && ub[t] == ub[t - 1]) uid_ok = 0;
+        }
+        CHECK_MSG(ok, "%s: a sliced frame matches no whole render", fig ? "figure" : "portrait");
+        CHECK_MSG(uid_ok, "%s: pixels changed but the uid did not",
+                  fig ? "figure" : "portrait");
+        CHECK_MSG(changes >= 20, "%s: only %d frame changes in %d ticks",
+                  fig ? "figure" : "portrait", changes, N);
+        /* the look-ahead keeps it mostly on time despite the noise */
+        CHECK_MSG(same * 10 >= N * 6, "%s: on time in only %d of %d ticks",
+                  fig ? "figure" : "portrait", same, N);
+    }
+    town_free(id);
+}
+
+/* the shade band table is exactly what its documented formula gives */
+extern const uint8_t pl_bandlut[3][65 * 65];
+
+/* n == round(sqrt(r / 64)): (2n-1)^2 / 4 <= r / 64 < (2n+1)^2 / 4 */
+static int round_sqrt_ok(int n, int64_t r)
+{
+    return (n == 0 || (int64_t)16 * (2 * n - 1) * (2 * n - 1) <= r) &&
+           r < (int64_t)16 * (2 * n + 1) * (2 * n + 1);
+}
+
+TEST(portrait_lut_matches_formula)
+{
+    int z[65], k, mode, iu, iv, bad = 0;
+    for (k = 0; k <= 64; k++) {
+        /* round(255 * sqrt(1 - k/64)) = round(sqrt(65025 * (64 - k) / 64)) */
+        int n = 0;
+        while (!round_sqrt_ok(n, (int64_t)65025 * (64 - k)) && n < 300) n++;
+        z[k] = n;
+    }
+    CHECK(z[0] == 255 && z[1] == 253 && z[63] == 32 && z[64] == 0);
+    for (mode = 0; mode < 3; mode++)
+        for (iv = 0; iv < 65; iv++)
+            for (iu = 0; iu < 65; iu++) {
+                int u = iu * 8 - 256, v = iv * 8 - 256, d2, h, b, f;
+                d2 = (u * u + v * v) >> 8;
+                if (d2 > 256) d2 = 256;
+                h = (((-115 * u - 141 * v + 179 * z[d2 >> 2]) >> 8) + 256) >> 1;
+                if (mode == 2) h += 18;
+                b = h >= (mode == 1 ? 232 : 247) ? 4 : h >= 192 ? 3 : h >= 112 ? 2 : 1;
+                if (b == 1 && d2 > 196 && u + v > 120) b = 2;
+                f = b;
+                if (b == 2 && h >= 184) f = 3;
+                else if (b == 1 && h >= 104) f = 2;
+                if (mode == 1 && h < 205) {
+                    if (b == 3) b = 2;
+                    if (f == 3) f = 2;
+                }
+                if (pl_bandlut[mode][iv * 65 + iu] != (uint8_t)(b | (f << 4))) bad++;
+            }
+    CHECK_MSG(bad == 0, "%d shade band entries differ from the formula", bad);
 }

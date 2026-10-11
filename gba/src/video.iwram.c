@@ -32,29 +32,60 @@ void vid_pixel(int x, int y, uint32_t color)
 
 void vid_shade(int x0, int y0, int x1, int y1, const uint8_t *cm)
 {
+    uint32_t lut32[64];                 /* the colormap row, copied to IWRAM */
+    const uint8_t *lut = cm;
     int y;
+    if ((x1 - x0) * (y1 - y0) >= 256) {
+        /* the colormap lives in EWRAM (3 cycles a byte): big areas read
+         * a copy on the IWRAM stack instead */
+        int i;
+        if (((uintptr_t)cm & 3) == 0) {
+            const uint32_t *src = (const uint32_t *)cm;
+            for (i = 0; i < 64; i++) lut32[i] = src[i];
+        } else {
+            for (i = 0; i < 256; i++) ((uint8_t *)lut32)[i] = cm[i];
+        }
+        lut = (const uint8_t *)lut32;
+    }
     for (y = y0; y < y1; y++) {
         uint16_t *row = gba_back + y * LINE;
         int a = x0, b = x1;
         if (a & 1) {
             vu16_t *p = (vu16_t *)(row + (a >> 1));
             uint32_t v = *p;
-            *p = (uint16_t)((v & 0xFF) | (cm[v >> 8] << 8));
+            *p = (uint16_t)((v & 0xFF) | (lut[v >> 8] << 8));
             a++;
         }
         if (b & 1) {
             if (b - 1 >= a) {
                 vu16_t *p = (vu16_t *)(row + (b >> 1));
                 uint32_t v = *p;
-                *p = (uint16_t)((v & 0xFF00) | cm[v & 0xFF]);
+                *p = (uint16_t)((v & 0xFF00) | lut[v & 0xFF]);
             }
             b--;
         }
         {
-            uint16_t *p = row + (a >> 1), *e = row + (b >> 1);
-            while (p < e) {
+            vu16_t *p = (vu16_t *)(row + (a >> 1)), *e = (vu16_t *)(row + (b >> 1));
+            if (p < e && ((uintptr_t)p & 2)) {     /* to a word boundary */
                 uint32_t v = *p;
-                *p++ = (uint16_t)(cm[v & 0xFF] | (cm[v >> 8] << 8));
+                *p++ = (uint16_t)(lut[v & 0xFF] | (lut[v >> 8] << 8));
+            }
+            {
+                uintptr_t wa = (uintptr_t)p, we = (uintptr_t)e & ~(uintptr_t)3;
+                if (we >= wa + 16) {                 /* 4+ words: the asm loop */
+                    vid_shade_words((uint32_t *)wa, (int)((we - wa) >> 2), lut);
+                    p = (vu16_t *)we;
+                }
+            }
+            while (p + 1 < e) {                       /* short spans: halfwords */
+                uint32_t v = p[0], v2 = p[1];
+                p[0] = (uint16_t)(lut[v & 0xFF] | (lut[v >> 8] << 8));
+                p[1] = (uint16_t)(lut[v2 & 0xFF] | (lut[v2 >> 8] << 8));
+                p += 2;
+            }
+            if (p < e) {
+                uint32_t v = *p;
+                *p = (uint16_t)(lut[v & 0xFF] | (lut[v >> 8] << 8));
             }
         }
     }
@@ -160,24 +191,43 @@ void vid_blit(int x, int y, const DoomoImage *img, int scale, int flags, uint32_
 }
 
 /* ---- platform.h entry points (clip, then the loops above) ------------- */
-void plat_rect(int x, int y, int w, int h, uint8_t color)
+/* plat_rect itself is ARM assembly (video_loops.s): the UI calls it a
+ * thousand times a frame, so the clipping is done there and it tail-calls
+ * vid_rect, or this DMA fill for full-width rects. */
+void vid_rect_full(int x0, int y0, int x1, int y1, uint32_t color)
 {
-    int x1 = x + w, y1 = y + h;
-    if (gba_nodraw) return;
+    static volatile uint32_t fill;
+    (void)x0; (void)x1;
+    fill = (color & 0xFF) * 0x01010101u;
+    dma3_fill32(gba_back + y0 * (SCREEN_W / 2), &fill, (uint32_t)(y1 - y0) * SCREEN_W / 4);
+}
+
+/* 50% checkerboard: pixel (x+i, y+j) when i + j is even. Each row's
+ * pixels all sit in the same byte of consecutive halfwords. */
+void plat_checker(int x, int y, int w, int h, uint8_t color)
+{
+    int x1 = x + w, y1 = y + h, yy, par;
+    if (gba_nodraw || w <= 0 || h <= 0) return;
     if (!color) color = PAL_BLACK;
+    par = (x + y) & 1;                         /* drawn: ((px + py) & 1) == par */
     if (x < 0) x = 0;
     if (y < 0) y = 0;
     if (x1 > SCREEN_W) x1 = SCREEN_W;
     if (y1 > SCREEN_H) y1 = SCREEN_H;
     if (x >= x1 || y >= y1) return;
-    if (x == 0 && x1 == SCREEN_W) {
-        static volatile uint32_t fill;
-        fill = color * 0x01010101u;
-        dma3_fill32(gba_back + y * (SCREEN_W / 2), &fill,
-                    (uint32_t)(y1 - y) * SCREEN_W / 4);
-        return;
+    for (yy = y; yy < y1; yy++) {
+        int px = x + (((x + yy) & 1) != par), n;
+        vu16_t *p;
+        if (px >= x1) continue;
+        n = (x1 - px + 1) >> 1;
+        p = (vu16_t *)(gba_back + yy * LINE + (px >> 1));
+        if (px & 1) {
+            const uint32_t c = (uint32_t)color << 8;
+            do { *p = (uint16_t)((*p & 0x00FF) | c); p++; } while (--n);
+        } else {
+            do { *p = (uint16_t)((*p & 0xFF00) | color); p++; } while (--n);
+        }
     }
-    vid_rect(x, y, x1, y1, color);
 }
 
 void plat_shade_rect(int x, int y, int w, int h, int level)

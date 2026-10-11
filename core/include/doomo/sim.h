@@ -77,4 +77,95 @@ int  sim_raise_ghost(int id);            /* graveyard rite -> RES_GHOST    */
 
 int  sim_mood_of(int id);                /* recompute + return MOOD_*      */
 
+/* ======================================================================
+ * life additions (owner: life; additive)
+ * ==================================================================== */
+
+/* Who drives the sim: free play / story scenes call sim_init() once after
+ * town_new() or load_game(), then sim_tick() once per frame while the
+ * world should be alive (sim_tick never draws or plays sounds). The clock
+ * follows OPT_DAY_LENGTH (a game day lasts 24 h / 2 h / 1 h / 30 min /
+ * 15 min of real time) times OPT_SIM_SPEED (x0.5, x1, x2, x4). Night is
+ * 21:00..05:59 (town_is_night). pet_tick_minute() runs once per game
+ * minute from inside the sim.
+ *
+ * Cost: one sim_tick() updates at most SIM_BATCH residents (round robin,
+ * ~32 ticks per full pass over the 1000 slots) and at most SIM_EDGE_BATCH
+ * relationship edges (about one pass over the graph per game hour), all
+ * cheap integer math. Never loops over all residents per tick. */
+#define SIM_BATCH       32
+#define SIM_EDGE_BATCH  32
+
+/* Care actions (sim_feed, sim_gift, sim_heal) take the item from the
+ * inventory themselves (inv_take; OPT_CHEAT_INFINITE_CANDY skips that)
+ * and answer "You don't have any ..." without effect when it is missing.
+ * The reaction strings live in a small rotating static buffer: copy them
+ * if you keep them across two calls. */
+
+/* The named Hellvile citizen (id 500..999) possessing a POSSESSED or
+ * SOUL_LOST resident, or -1. Deterministic for a town seed, the host and
+ * how many exorcisms the host has been through (a new possession may be
+ * a different demon). Prefers a living Hellvile neighbour; on an island
+ * without any it still names a premade Hellvile citizen (roster). */
+int  sim_possessor_of(int id);
+/* Display name of that possessor ("Grimgramps"), "" if none. */
+const char *sim_possessor_name(int id);
+
+/* Calendar: 12 months of 28 days (birthdays use the same calendar); day 0
+ * of a new island is the 1st of April. */
+void sim_date(int *month, int *day_of_month);
+/* Today's concert genre (MUSIC_*): residents who like it flock there. */
+int  sim_concert_genre(void);
+
+/* Problems: a one-line description for thought bubbles / lists, e.g.
+ * "Gus is starving!" (returns buf). */
+const char *sim_problem_text(int index, char *buf, int cap);
+extern const char *const doomo_problem_names[PROB_COUNT];
+/* Reaction line of the last sim_problem_resolve() ("Thank you!"). A
+ * PROB_WANTS_ITEM without the item in the inventory, and a PROB_POSSESSED
+ * whose host is still possessed (push SCENE_EXORCISM), stay open. */
+const char *sim_last_reaction(void);
+/* Raise a problem for a resident (story/tests); returns its index or -1.
+ * One problem per resident; POSSESSED replaces anything else. */
+int  sim_problem_raise(int resident, int kind, int other, int item);
+
+/* Social helpers (also used by the UI to show hearts / warnings). */
+int  sim_compat(int a, int b);            /* -6..+6 personality + likes   */
+int  sim_romance_ok(int from, int to);    /* from could fall for to       */
+int  sim_partner_of(int id);              /* dating / married partner, -1 */
+/* Ask a dating resident to propose to their partner right now (player
+ * advice); returns the reaction. */
+const char *sim_advise_propose(int id, int encourage);
+/* Talk a resident through a rocky relationship (PROB_BREAKUP advice):
+ * encourage = 1 "work it out", 0 "let them go" (breaks up). */
+const char *sim_advise_breakup(int id, int encourage);
+
+/* Possession bookkeeping. */
+int  sim_possessed_count(void);           /* POSSESSED residents now     */
+int  sim_possession_cap(void);            /* max at once (OPT_POSSESSION_RATE) */
+/* Exorcism success/failure hook (exorcism_apply calls it): news, problem
+ * queue, counters. */
+void sim_on_exorcism(int id, int success);
+
+/* Births: a married couple's baby in a free slot of the right district,
+ * look blended from both parents. Returns the new id or -1 (no room).
+ * The sim calls it (rarely) by itself; story / tests may force one. */
+int  sim_make_baby(int parent_a, int parent_b);
+
+/* Fast path for tests / tools: reseed the sim's private RNG (it is
+ * otherwise seeded from the town seed by sim_init). */
+void sim_seed(uint32_t seed);
+/* Work done by the last sim_tick(): resident updates + edge visits +
+ * relationship lookups (for the per-tick cost budget). */
+uint32_t sim_last_tick_ops(void);
+uint32_t sim_max_tick_ops(void);          /* worst tick since sim_init   */
+
+/* Running totals since sim_init (tests, stats screen). */
+typedef struct DoomoSimStats {
+    uint32_t chats, meetings, forgotten, arguments, crushes, confessions, dates, rejections,
+             proposals, marriages, breakups, babies, possessions,
+             nightmares, exorcisms_auto, news, problems, deaths;
+} DoomoSimStats;
+const DoomoSimStats *sim_stats(void);
+
 #endif

@@ -1,0 +1,280 @@
+# CI for DOOMOGACHI LIFE in HELLvile Park! (owner: ci)
+#
+#   core     native unit tests + headless playthrough (also under ASan/UBSan),
+#            -Werror cross-compile of every core source for gcc / arm / mipsel,
+#            generated-file freshness check
+#   gba      the GBA ROM + engine-test ROM, headless mGBA harness (libmgba)
+#   ps1      PSn00bSDK built from source (cached), the PS1 disc + engine-test disc
+#   trailer  the teaser trailer mp4 (manual runs, or when trailer/ changes)
+#
+# Every job uploads what it built: Actions -> this run -> "Artifacts".
+# Tagged releases (v*) are built by release.yml.
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      trailer_1080p:
+        description: Also assemble the 1080p trailer cut with the Dippinn Productions logo (about 3-6 extra minutes)
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || github.ref != format('refs/heads/{0}', github.event.repository.default_branch) }}
+
+env:
+  # PSn00bSDK is built from source at this commit (see docs/BUILDING.md).
+  PSN00BSDK_COMMIT: 5d9aa2d3dfc7d6e51c2eb942ab4cdbae5571a40a
+  DEBIAN_FRONTEND: noninteractive
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  # --------------------------------------------------------------------------
+  core:
+    name: Core (native tests, sanitizers, xcheck, check-gen)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install compilers (host gcc, arm-none-eabi + newlib, mipsel-linux-gnu)
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q --no-install-recommends \
+            gcc make python3 \
+            gcc-arm-none-eabi libnewlib-arm-none-eabi \
+            gcc-mipsel-linux-gnu
+          gcc --version | head -n 1
+          arm-none-eabi-gcc --version | head -n 1
+          mipsel-linux-gnu-gcc --version | head -n 1
+
+      # The mipsel leg of xcheck compiles freestanding against the PSn00bSDK
+      # libc headers; only that header directory is needed, not the SDK build.
+      - name: Fetch PSn00bSDK headers (pinned commit)
+        uses: actions/checkout@v4
+        with:
+          repository: Lameguy64/PSn00bSDK
+          ref: ${{ env.PSN00BSDK_COMMIT }}
+          path: .psn00bsdk-headers
+          sparse-checkout: libpsn00b/include
+          persist-credentials: false
+
+      - name: Unit tests + headless playthrough (240x160 and 320x240)
+        run: make -C core test -j"$(nproc)"
+
+      - name: Unit tests + playthrough under ASan/UBSan (SAN=1)
+        run: |
+          # ASan needs <= 28 bits of mmap ASLR entropy (newer runner kernels default to more).
+          sudo sysctl -w vm.mmap_rnd_bits=28
+          make -C core test SAN=1 BUILD=build-san -j"$(nproc)"
+
+      - name: Cross-compile check (gcc + arm-none-eabi + mipsel, -Werror)
+        env:
+          PSN00BSDK_INCLUDE: ${{ github.workspace }}/.psn00bsdk-headers/libpsn00b/include
+        run: |
+          test -f "$PSN00BSDK_INCLUDE/string.h"
+          sh core/tools/xcheck.sh | tee "$RUNNER_TEMP/xcheck.log"
+          if grep -q '^WARNING' "$RUNNER_TEMP/xcheck.log"; then
+            echo "::error::xcheck skipped a compiler"; exit 1
+          fi
+
+      - name: Generated files are up to date (check-gen)
+        run: make -C core check-gen
+
+      - name: Upload native runner screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: core-native-screenshots
+          path: core/build/shots/
+          retention-days: 14
+          if-no-files-found: ignore
+
+  # --------------------------------------------------------------------------
+  gba:
+    name: GBA ROM + headless mGBA tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install arm-none-eabi + newlib, python3, libmgba
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q --no-install-recommends \
+            gcc make python3 \
+            gcc-arm-none-eabi libnewlib-arm-none-eabi \
+            libmgba-dev
+          arm-none-eabi-gcc --version | head -n 1
+
+      - name: Build the game ROM
+        run: make -C gba -j"$(nproc)"
+
+      - name: Build the engine-test ROM
+        run: make -C gba engine-test -j"$(nproc)"
+
+      # libmgba runs fully headless (no X / audio device needed).
+      - name: Headless harness (engine tour, flash save round trip, game smoke)
+        run: make -C gba test
+
+      - name: Collect ROMs
+        run: |
+          mkdir -p dist
+          cp gba/build/doomogachi.gba dist/doomogachi.gba
+          cp gba/build/doomogachi_et.gba dist/doomogachi-enginetest.gba
+          ls -l dist
+
+      - name: Upload ROMs
+        uses: actions/upload-artifact@v4
+        with:
+          name: doomogachi-gba
+          path: |
+            dist/doomogachi.gba
+            dist/doomogachi-enginetest.gba
+          if-no-files-found: error
+
+      - name: Upload harness screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gba-harness-screenshots
+          path: gba/build/shots/
+          retention-days: 14
+          if-no-files-found: ignore
+
+  # --------------------------------------------------------------------------
+  ps1:
+    name: PS1 disc (PSn00bSDK)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install mipsel-linux-gnu toolchain, CMake, Ninja
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q --no-install-recommends \
+            gcc g++ make python3 cmake ninja-build \
+            gcc-mipsel-linux-gnu g++-mipsel-linux-gnu binutils-mipsel-linux-gnu
+          mipsel-linux-gnu-gcc --version | head -n 1
+          cmake --version | head -n 1
+
+      - name: PSn00bSDK (from source, cached)
+        uses: ./.github/actions/setup-psn00bsdk
+        with:
+          commit: ${{ env.PSN00BSDK_COMMIT }}
+
+      - name: Build the game disc (preset ps1)
+        working-directory: ps1
+        run: |
+          cmake --preset ps1
+          cmake --build --preset ps1
+
+      - name: Build the engine-test disc (preset ps1-enginetest)
+        working-directory: ps1
+        run: |
+          cmake --preset ps1-enginetest
+          cmake --build --preset ps1-enginetest
+
+      - name: Upload the game disc
+        uses: actions/upload-artifact@v4
+        with:
+          name: doomogachi-ps1
+          path: |
+            ps1/build/doomogachi.exe
+            ps1/build/doomogachi.bin
+            ps1/build/doomogachi.cue
+          if-no-files-found: error
+
+      - name: Upload the engine-test disc
+        uses: actions/upload-artifact@v4
+        with:
+          name: doomogachi-ps1-enginetest
+          path: |
+            ps1/build-enginetest/doomogachi.exe
+            ps1/build-enginetest/doomogachi.bin
+            ps1/build-enginetest/doomogachi.cue
+          if-no-files-found: error
+
+  # --------------------------------------------------------------------------
+  # The trailer only re-renders when something it is built from changed (or on
+  # a manual run). Plain git, no third-party path-filter action.
+  changes:
+    name: Detect trailer changes
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      trailer: ${{ steps.diff.outputs.trailer }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Diff against the previous state
+        id: diff
+        env:
+          EVENT: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          base=""
+          case "$EVENT" in
+            pull_request) base="$PR_BASE" ;;
+            push) base="$BEFORE" ;;
+          esac
+          if [ "$EVENT" = workflow_dispatch ]; then
+            reason="manual run"; trailer=true
+          elif [ -z "$base" ] || [ "$base" = 0000000000000000000000000000000000000000 ] \
+               || ! git cat-file -e "${base}^{commit}" 2>/dev/null; then
+            reason="no previous commit to compare with"; trailer=true
+          else
+            changed=$(git diff --name-only "$base" HEAD)
+            if printf '%s\n' "$changed" | grep -Eq '^(trailer/|core/src/palette\.c|core/include/doomo/palette\.h|\.github/workflows/ci\.yml)'; then
+              reason="trailer sources changed"; trailer=true
+            else
+              reason="trailer sources unchanged"; trailer=false
+            fi
+          fi
+          echo "trailer=$trailer ($reason)"
+          echo "trailer=$trailer" >> "$GITHUB_OUTPUT"
+
+  trailer:
+    name: Teaser trailer (mp4)
+    needs: changes
+    if: needs.changes.outputs.trailer == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install ffmpeg, python3
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q --no-install-recommends gcc make python3 ffmpeg
+          ffmpeg -hide_banner -version | head -n 1
+
+      - name: Render the trailer (960x640, H.264 + AAC)
+        run: make -C trailer build/trailer.mp4
+
+      - name: Assemble the 1080p cut with the Dippinn Productions logo
+        if: github.event_name == 'workflow_dispatch' && inputs.trailer_1080p
+        run: bash trailer/assemble.sh trailer/build/trailer trailer/build/trailer_1080p.mp4
+
+      - name: Upload the trailer
+        uses: actions/upload-artifact@v4
+        with:
+          name: doomogachi-trailer
+          path: |
+            trailer/build/trailer.mp4
+            trailer/build/trailer_1080p.mp4
+          if-no-files-found: error

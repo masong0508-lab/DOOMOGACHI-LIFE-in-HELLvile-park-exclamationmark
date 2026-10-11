@@ -56,9 +56,13 @@ void figure_render(const DoomoLook *l, int status, int expr, int anim,
  * pointers stay valid until a later call evicts them. It holds at least 6
  * portraits, 12 fighters or 48 chibis at once, so draw an image right
  * after asking for it. The cached portrait / figure animate by themselves
- * (blink, breathing, aura) from doomo_frame_count(), staggered per
- * resident, and re-render at most a few times per tick (others reuse the
- * nearest cached phase). An empty slot gives a lavender "?" silhouette. */
+ * (blink, breathing, ear twitch, tail wag, aura, mouth flaps) from
+ * doomo_frame_count(), staggered per resident. A new look / expression /
+ * status is drawn at once; a new animation phase is re-drawn in slices
+ * (on the GBA one layer group, <= ~0.23M cycles, per tick, and a few ticks
+ * ahead of time) while the last phase stays on screen, so animating
+ * portraits never stall a frame. An empty slot gives a lavender "?"
+ * silhouette. */
 const DoomoImage *portrait_image(int resident_id, int expr);
 const DoomoImage *bodyspr_image(int resident_id, int dir, int frame);
 const DoomoImage *figure_image(const DoomoLook *l, int status, int expr);
@@ -79,7 +83,11 @@ void fighter_render(const DoomoLook *l, int status, int view, int anim,
                     int weapon_frame, uint8_t *out);
 /* Pixel visits of the last render (cost check in tests / tools). */
 uint32_t portrait_last_ops(void);
-/* Drop every cached image (tests). */
+/* Drop every cached image and return to the real clock (tests). */
 void portrait_cache_reset(void);
+/* Tests / tools: run the cache on a fake clock `tick` (instead of
+ * doomo_frame_count) with `steps` layer groups of phase re-rendering per
+ * tick (0 = the platform default; the GBA uses 1). */
+void portrait_cache_clock(uint32_t tick, int steps);
 
 #endif

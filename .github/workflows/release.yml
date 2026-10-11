@@ -1,0 +1,173 @@
+# Release builds (owner: ci): push a tag like v0.1.0 and this workflow
+# builds and tests the GBA ROM and the PS1 discs, then attaches them to a
+# GitHub Release for that tag (created if it does not exist yet).
+#
+#   git tag v0.1.0 && git push origin v0.1.0
+#
+# Tags with a hyphen (v0.2.0-alpha) are published as pre-releases.
+# Assets use stable names, so .../releases/latest/download/doomogachi.gba
+# always points at the newest ROM.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing tag to (re)build and publish, e.g. v0.1.0
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+env:
+  PSN00BSDK_COMMIT: 5d9aa2d3dfc7d6e51c2eb942ab4cdbae5571a40a
+  DEBIAN_FRONTEND: noninteractive
+  TAG: ${{ inputs.tag || github.ref_name }}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  gba:
+    name: GBA ROM
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+
+      - name: Install arm-none-eabi + newlib, python3, libmgba
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q --no-install-recommends \
+            gcc make python3 gcc-arm-none-eabi libnewlib-arm-none-eabi libmgba-dev
+
+      - name: Build both ROMs
+        run: |
+          make -C gba -j"$(nproc)"
+          make -C gba engine-test -j"$(nproc)"
+
+      - name: Headless harness
+        run: make -C gba test
+
+      - name: Collect
+        run: |
+          mkdir -p dist
+          cp gba/build/doomogachi.gba dist/doomogachi.gba
+          cp gba/build/doomogachi_et.gba dist/doomogachi-enginetest.gba
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-gba
+          path: dist/
+          if-no-files-found: error
+
+  ps1:
+    name: PS1 discs
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+
+      - name: Install mipsel-linux-gnu toolchain, CMake, Ninja
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q --no-install-recommends \
+            gcc g++ make python3 cmake ninja-build zip \
+            gcc-mipsel-linux-gnu g++-mipsel-linux-gnu binutils-mipsel-linux-gnu
+
+      - name: PSn00bSDK (from source, cached)
+        uses: ./.github/actions/setup-psn00bsdk
+        with:
+          commit: ${{ env.PSN00BSDK_COMMIT }}
+
+      - name: Build the discs (NTSC game, PAL game, engine test)
+        working-directory: ps1
+        run: |
+          for preset in ps1 ps1-pal ps1-enginetest; do
+            cmake --preset "$preset"
+            cmake --build --preset "$preset"
+          done
+
+      - name: Zip the discs
+        run: |
+          mkdir -p dist
+          pack() {  # pack BUILD_DIR ZIP_NAME
+            stage="$RUNNER_TEMP/$2"
+            rm -rf "$stage" && mkdir -p "$stage"
+            cp "ps1/$1/doomogachi.bin" "ps1/$1/doomogachi.cue" "ps1/$1/doomogachi.exe" "$stage/"
+            cp ps1/README.md "$stage/README-PS1.md"
+            (cd "$stage" && zip -9 -q "$GITHUB_WORKSPACE/dist/$2.zip" ./*)
+          }
+          pack build            doomogachi-ps1
+          pack build-pal        doomogachi-ps1-pal
+          pack build-enginetest doomogachi-ps1-enginetest
+          ls -l dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-ps1
+          path: dist/
+          if-no-files-found: error
+
+  publish:
+    name: Publish the GitHub Release
+    needs: [gba, ps1]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          path: dist
+          merge-multiple: true
+
+      - name: Checksums and release notes
+        run: |
+          cd dist
+          sha256sum -- * > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+          cat > "$RUNNER_TEMP/notes.md" <<EOF
+          **DOOMOGACHI LIFE in HELLvile Park!** ${TAG}, a Dippinn Productions game.
+
+          | file | what |
+          |---|---|
+          | \`doomogachi.gba\` | Game Boy Advance ROM (128 KB flash save). Play in mGBA or on a flash cart. |
+          | \`doomogachi-ps1.zip\` | PlayStation disc, NTSC (\`.bin/.cue\` + side-loadable \`.exe\`). |
+          | \`doomogachi-ps1-pal.zip\` | PlayStation disc, PAL video. |
+          | \`doomogachi-enginetest.gba\`, \`doomogachi-ps1-enginetest.zip\` | 3D engine showcase builds. |
+          | \`SHA256SUMS.txt\` | checksums |
+
+          Emulators: mGBA (GBA), DuckStation or PCSX-Redux (PS1). The disc is unlicensed: on a real
+          PlayStation it needs a modchip, a softmod (Unirom, tonyhax International, FreePSXBoot) or an ODE.
+          See docs/BUILDING.md in the repository for details.
+          EOF
+
+      - name: Create or update the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          flags=()
+          case "$TAG" in *-*) flags+=(--prerelease) ;; esac
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            echo "Release $TAG exists: replacing its assets"
+          else
+            gh release create "$TAG" --verify-tag "${flags[@]}" \
+              --title "DOOMOGACHI LIFE in HELLvile Park! $TAG" \
+              --notes-file "$RUNNER_TEMP/notes.md"
+          fi
+          gh release upload "$TAG" dist/* --clobber

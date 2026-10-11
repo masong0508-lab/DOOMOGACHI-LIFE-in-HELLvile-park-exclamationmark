@@ -16,3 +16,4 @@ build-*/
 *.ldmap
 gba/*.png
 ps1/*.png
+/dist/

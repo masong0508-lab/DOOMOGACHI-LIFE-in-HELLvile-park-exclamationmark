@@ -174,8 +174,16 @@ uint8_t ui_style_text(int style) { return ui_style(style)->text; }
 /* animation helpers                                                        */
 int ui_wave(int t, int period, int amplitude)
 {
+    /* amplitude * sin(t * 4096 / period), floor(.. >> 16), without 64-bit
+     * maths: t is reduced modulo the period first (same angle), and the
+     * 17-bit sine is split so every product fits in 32 bits (exact for
+     * |amplitude| < 2^22). */
+    int32_t s, a, b;
     if (period <= 0) return 0;
-    return (int)(((int64_t)fx_sin((int)((int64_t)t * DOOMO_ANG_FULL / period)) * amplitude) >> 16);
+    s = fx_sin((t % period) * DOOMO_ANG_FULL / period);
+    a = (s >> 8) * amplitude;               /* (s >> 8) in -256..256       */
+    b = (s & 255) * amplitude;
+    return (int)((a + (b >> 8)) >> 8);
 }
 
 int ui_pop_scale(int ticks)
@@ -189,14 +197,10 @@ int ui_pop_scale(int ticks)
 }
 
 /* ====================================================================== */
-/* primitives                                                               */
-static void hspan(int x0, int x1, int y, uint8_t c)
-{
-    if (x1 >= x0) plat_rect(x0, y, x1 - x0 + 1, 1, c);
-}
-
+/* primitives (circles, rounded rects, hearts, stars: ui_raster.c)          */
 void ui_frame(int x, int y, int w, int h, uint8_t c)
 {
+    if (plat_draw_skipped()) return;
     if (w <= 0 || h <= 0) return;
     plat_rect(x, y, w, 1, c);
     plat_rect(x, y + h - 1, w, 1, c);
@@ -204,243 +208,16 @@ void ui_frame(int x, int y, int w, int h, uint8_t c)
     plat_rect(x + w - 1, y, 1, h, c);
 }
 
-void ui_fill_ellipse(int cx, int cy, int rx, int ry, uint8_t c)
-{
-    int y;
-    if (rx < 0 || ry < 0) return;
-    if (ry == 0) { hspan(cx - rx, cx + rx, cy, c); return; }
-    for (y = -ry; y <= ry; y++) {
-        /* x extent: rx * sqrt(1 - y^2/ry^2), +0.5 ry for rounder pixels */
-        uint32_t t = (uint32_t)((ry * ry - y * y) * 4 + ry * 2);
-        int dx = (int)(fx_isqrt(t * (uint32_t)(rx * rx) / (uint32_t)(ry * ry)) / 2);
-        hspan(cx - dx, cx + dx, cy + y, c);
-    }
-}
-
-void ui_fill_circle(int cx, int cy, int r, uint8_t c)
-{
-    ui_fill_ellipse(cx, cy, r, r, c);
-}
-
-/* Per-row inset of a rounded corner of radius r at row i (0 = top row). */
-int ui_corner_inset(int r, int i)
-{
-    int d, k;
-    if (r <= 0 || i >= r) return 0;
-    if (r == 1) return 1;
-    if (r == 2) return i == 0 ? 2 : 1;
-    if (r == 3) { static const int t[] = { 3, 1, 1 }; return t[i]; }
-    if (r == 4) { static const int t[] = { 4, 2, 1, 1 }; return t[i]; }
-    d = r - i;                       /* distance from the corner centre row */
-    k = (int)fx_isqrt((uint32_t)(r * r - (d - 1) * (d - 1)) * 4u) / 2;
-    return r - k;
-}
-
-void ui_round_rect(int x, int y, int w, int h, int r, uint8_t c)
-{
-    int i;
-    if (w <= 0 || h <= 0) return;
-    if (r > w / 2) r = w / 2;
-    if (r > h / 2) r = h / 2;
-    for (i = 0; i < h; i++) {
-        int in = 0;
-        if (i < r) in = ui_corner_inset(r, i);
-        else if (i >= h - r) in = ui_corner_inset(r, h - 1 - i);
-        hspan(x + in, x + w - 1 - in, y + i, c);
-    }
-}
-
-/* ---- shaded shapes from a coverage mask -------------------------------- */
-#define MASK_MAX 72
-static uint8_t mask[(MASK_MAX * MASK_MAX + 7) / 8];     /* 1 bit per pixel */
-static int mw, mh;
-
-static int m_in(int x, int y)
-{
-    int i;
-    if (x < 0 || y < 0 || x >= mw || y >= mh) return 0;
-    i = y * mw + x;
-    return (mask[i >> 3] >> (i & 7)) & 1;
-}
-
-static void m_set(int x, int y, int on)
-{
-    int i = y * mw + x;
-    if (on) mask[i >> 3] |= (uint8_t)(1 << (i & 7));
-}
-
-/* pal: outline, shadow, base, light, glint */
-static void shade_mask(int ox, int oy, const uint8_t pal[5], int d)
-{
-    int x, y;
-    for (y = 0; y < mh; y++) {
-        int run_x = -1;
-        uint8_t run_c = 0;
-        for (x = 0; x <= mw; x++) {
-            uint8_t c = 0;
-            if (x < mw && m_in(x, y)) {
-                if (!m_in(x - 1, y) || !m_in(x + 1, y) || !m_in(x, y - 1) || !m_in(x, y + 1))
-                    c = pal[0];
-                else if (!m_in(x + d, y + d) || !m_in(x, y + d + 1))
-                    c = pal[1];
-                else if (!m_in(x - d, y - d))
-                    c = pal[3];
-                else
-                    c = pal[2];
-            }
-            if (c != run_c || x == mw) {
-                if (run_c) plat_rect(ox + run_x, oy + y, x - run_x, 1, run_c);
-                run_c = c;
-                run_x = x;
-            }
-        }
-    }
-}
-
-/* Five shades around a fill colour: outline, shadow, base, light, glint. */
-static void ramp5(uint8_t fill, uint8_t pal[5])
-{
-    if (fill >= PAL_RAMP_BASE) {
-        int s = (fill - PAL_RAMP_BASE) & 7, base = fill - s;
-        pal[0] = (uint8_t)(base + DOOMO_MAX(s - 3, 0));
-        pal[1] = (uint8_t)(base + DOOMO_MAX(s - 1, 0));
-        pal[2] = fill;
-        pal[3] = (uint8_t)(base + DOOMO_MIN(s + 1, 7));
-        pal[4] = PAL_WHITE;
-        return;
-    }
-    pal[2] = fill;
-    pal[1] = ui_darker(fill);
-    pal[0] = ui_darker(pal[1]);
-    if (pal[0] == pal[1]) pal[0] = ui_darker(pal[0]);
-    pal[3] = ui_lighter(fill);
-    pal[4] = PAL_WHITE;
-}
-
-static int mask_begin(int w, int h)
-{
-    if (w > MASK_MAX) w = MASK_MAX;
-    if (h > MASK_MAX) h = MASK_MAX;
-    mw = w; mh = h;
-    memset(mask, 0, (size_t)((w * h + 7) / 8));
-    return 1;
-}
-
-/* Heart in a half-pixel grid: two lobes of radius 2*lr centred at
- * (+-(2lr-1), -lr) and a point whose half-width is 1.1 * (bottom - py). */
-static int heart_in(int px, int py, int s)
-{
-    int lr = (s + 1) / 2, bottom = 2 * s - 1;
-    int lx = px + lr * 2 - 1, rx = px - lr * 2 + 1, ly = py + lr;
-    int ax = px < 0 ? -px : px;
-    if (lx * lx + ly * ly <= lr * lr * 4 + 2) return 1;
-    if (rx * rx + ly * ly <= lr * lr * 4 + 2) return 1;
-    return py >= -lr && py <= bottom && ax * 10 <= (bottom - py) * 11;
-}
-
-void ui_heart_squash(int cx, int cy, int size, int sx256, int sy256, uint8_t fill)
-{
-    uint8_t pal[5];
-    int s = DOOMO_CLAMP(size, 2, 32);
-    int hw = s * DOOMO_CLAMP(sx256, 128, 400) / 256, hh = s * DOOMO_CLAMP(sy256, 128, 400) / 256;
-    int x, y, lr = (s + 1) / 2;
-    if (s <= 2) {                          /* tiny: a 5x4 pixel heart */
-        static const char *const tiny[4] = { ".#.#.", "#####", ".###.", "..#.." };
-        ramp5(fill, pal);
-        for (y = 0; y < 4; y++)
-            for (x = 0; x < 5; x++)
-                if (tiny[y][x] == '#')
-                    plat_rect(cx - 2 + x, cy - 2 + y, 1, 1,
-                              (y == 0 || x == 0 || x == 4) ? pal[0] : pal[2]);
-        return;
-    }
-    hw = DOOMO_CLAMP(hw, 2, (MASK_MAX - 1) / 2);
-    hh = DOOMO_CLAMP(hh, 2, (MASK_MAX - 1) / 2);
-    mask_begin(2 * hw + 1, 2 * hh + 1);
-    for (y = 0; y < mh; y++)
-        for (x = 0; x < mw; x++)
-            m_set(x, y, heart_in((x - hw) * 2 * s / hw, (y - hh) * 2 * s / hh, s));
-    ramp5(fill, pal);
-    shade_mask(cx - hw, cy - hh, pal, s >= 8 ? 2 : 1);
-    /* two glossy glints on the left lobe */
-    {
-        int gx = cx - lr * hw / s, gy = cy - lr * hh / s;
-        if (s >= 5) {
-            plat_rect(gx - lr / 3, gy - lr / 4, DOOMO_MAX(1, s / 5), DOOMO_MAX(1, s / 4), pal[4]);
-            plat_rect(gx + lr / 3 + 1, gy - lr / 2, 1, 1, pal[4]);
-        } else {
-            plat_rect(cx - lr, cy - lr / 2 - 1, 1, 1, pal[4]);
-        }
-    }
-}
-
 void ui_heart(int cx, int cy, int size, uint8_t fill)
 {
     ui_heart_squash(cx, cy, size, 256, 256, fill);
-}
-
-/* Flat heart of any size as spans (wipes, silhouettes). */
-void ui_heart_flat(int cx, int cy, int s, uint8_t c)
-{
-    int y, lr, bottom;
-    if (s < 2) s = 2;
-    lr = (s + 1) / 2;
-    bottom = 2 * s - 1;
-    for (y = -s; y <= s; y++) {
-        int py = 2 * y, ly = py + lr, k;
-        int64_t r2 = (int64_t)lr * lr * 4 + 2 - (int64_t)ly * ly;
-        if (r2 >= 0) {
-            int dx = (int)fx_isqrt((uint32_t)DOOMO_MIN(r2, 0x7FFFFFFF));
-            for (k = -1; k <= 1; k += 2) {
-                int c0 = k * (2 * lr - 1);
-                int x0 = (c0 - dx + 1) >> 1, x1 = (c0 + dx) >> 1;
-                if (x1 >= x0) plat_rect(cx + x0, cy + y, x1 - x0 + 1, 1, c);
-            }
-        }
-        if (py >= -lr && py <= bottom) {
-            int half = DOOMO_MIN((bottom - py) * 11 / 10, 2 * s);   /* bbox like ui_heart */
-            int x0 = (-half + 1) >> 1, x1 = half >> 1;
-            if (x1 >= x0) plat_rect(cx + x0, cy + y, x1 - x0 + 1, 1, c);
-        }
-    }
-}
-
-void ui_star(int cx, int cy, int r, uint8_t fill)
-{
-    uint8_t pal[5];
-    int32_t vx[10], vy[10];
-    int i, x, y, s = DOOMO_CLAMP(r, 3, 34);
-    int w = 2 * s + 1;
-    mask_begin(w, w);
-    for (i = 0; i < 10; i++) {
-        int rad = (i & 1) ? s * 2 / 5 + 1 : s;
-        int a = 3072 + i * 4096 / 10;
-        vx[i] = (fx_cos(a) * rad) >> 8;   /* 8 fractional bits */
-        vy[i] = (fx_sin(a) * rad) >> 8;
-    }
-    for (y = 0; y < mh; y++) {
-        for (x = 0; x < mw; x++) {
-            int32_t px = (x - s) * 256, py = (y - s) * 256 + 64;
-            int inside = 0, j;
-            for (i = 0, j = 9; i < 10; j = i++) {
-                if (((vy[i] > py) != (vy[j] > py)) &&
-                    (px < (int32_t)(((int64_t)(vx[j] - vx[i]) * (py - vy[i])) /
-                                    (vy[j] - vy[i])) + vx[i]))
-                    inside = !inside;
-            }
-            m_set(x, y, inside);
-        }
-    }
-    ramp5(fill, pal);
-    shade_mask(cx - s, cy - s, pal, 1);
-    if (s >= 5) plat_rect(cx - s / 4, cy - s / 4, 1, 1, PAL_WHITE);
 }
 
 void ui_sparkle(int cx, int cy, int phase, uint8_t c)
 {
     static const uint8_t sz[16] = { 0, 1, 2, 3, 3, 3, 2, 2, 1, 1, 0, 0, 0, 0, 0, 0 };
     int s = sz[phase & 15];
-    if (s == 0) return;
+    if (s == 0 || plat_draw_skipped()) return;
     plat_rect(cx - s, cy, 2 * s + 1, 1, c);
     plat_rect(cx, cy - s, 1, 2 * s + 1, c);
     if (s >= 2) {
@@ -493,8 +270,7 @@ static void backdrop_colors(int style, Backdrop *b)
 /* Two-colour band seam: one row of 50% checker so gradients look soft. */
 static void seam_row(int y, int w, uint8_t c, int phase)
 {
-    int x;
-    for (x = phase & 1; x < w; x += 2) plat_rect(x, y, 1, 1, c);
+    plat_checker(phase & 1, y, w - (phase & 1), 1, c);
 }
 
 void ui_backdrop(int style, uint32_t t)
@@ -503,6 +279,7 @@ void ui_backdrop(int style, uint32_t t)
     int w = plat_screen_w(), h = plat_screen_h();
     int b1 = h / 3, b2 = h * 2 / 3, x, y, i;
     int cell = 24, off;
+    if (plat_draw_skipped()) return;
     backdrop_colors(style, &b);
     plat_rect(0, 0, w, b1, b.top);
     plat_rect(0, b1, w, b2 - b1, b.mid);
@@ -518,7 +295,11 @@ void ui_backdrop(int style, uint32_t t)
         for (x = -cell; x < w + cell; x += cell) {
             int dx = x + off + ((row & 1) ? cell / 2 : 0);
             int dy = y + off;
-            ui_fill_circle(dx, dy, 2, b.dot);
+            /* ui_fill_circle(dx, dy, 2, b.dot): rows of half-width 1, 2, 2,
+             * 2, 1 = a 3x5 and a 5x3 rect */
+            if (dx < -2 || dy < -2 || dx > w + 1 || dy > h + 1) continue;
+            plat_rect(dx - 1, dy - 2, 3, 5, b.dot);
+            plat_rect(dx - 2, dy - 1, 5, 3, b.dot);
         }
     }
     /* floating hearts and stars: rise slowly with a gentle sway */

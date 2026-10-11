@@ -79,6 +79,13 @@ void plat_shade_rect(int x, int y, int w, int h, int level)
     }
 }
 
+void plat_checker(int x, int y, int w, int h, uint8_t color)
+{
+    int i, j;
+    for (j = 0; j < h; j++)
+        for (i = j & 1; i < w; i += 2) nat_px(x + i, y + j, color);
+}
+
 void plat_line(int x0, int y0, int x1, int y1, uint8_t color)
 {
     int dx = x1 > x0 ? x1 - x0 : x0 - x1, sx = x0 < x1 ? 1 : -1;

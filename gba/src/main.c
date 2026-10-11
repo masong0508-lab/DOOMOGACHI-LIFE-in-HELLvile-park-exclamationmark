@@ -170,6 +170,13 @@ void plat_begin_frame(void)
     }
 }
 
+/* platform.h: a catch-up tick's drawing is skipped (all 2D/3D calls are
+ * no-ops then), so the core may skip its own drawing work too */
+int plat_draw_skipped(void)
+{
+    return gba_nodraw;
+}
+
 void plat_end_frame(void)
 {
     static uint32_t stack_hw;

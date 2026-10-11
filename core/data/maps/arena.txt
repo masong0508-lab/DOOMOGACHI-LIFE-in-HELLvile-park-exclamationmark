@@ -1,0 +1,167 @@
+# The Demon Arena - free play survival (owner: action).
+# A hellish colosseum under the open sky: stands around the edge (stairs
+# down on all four sides, a roofed gallery in the north with goodies), the
+# sand floor with cover pillars and low walls, a lava ring around a raised
+# island (armor) reached by four grate bridges. The arena waves spawn at
+# the four corner portals and the THING_SPAWNER marks.
+# Legend and overlays: see README.md. Compiled by tools/mapc.py.
+map arena
+title "The Demon Arena"
+kind arena
+sky HELL
+music INVASION
+ambient 12
+
+cell Q wall=SKULL_MOSAIC ch=12
+cell P wall=BONE_WALL ch=10
+cell w wall=BLOOD_BRICK ch=2
+cell r floor=HELL_ROCK ceil=sky fh=4 light=11
+cell s floor=BONE_WALL ceil=sky fh=3 light=12
+cell . floor=SAND ceil=sky fh=0 light=13
+cell ~ floor=LAVA ceil=sky fh=-2 light=15 flags=lava
+cell = floor=GRATE ceil=sky fh=0 light=13
+cell i floor=PENTAGRAM_FLOOR ceil=sky fh=1 light=14
+cell O floor=VAPE_CLOUD_WALL ceil=sky fh=4 light=15 flags=portal
+cell g floor=METAL_FLOOR ceil=RUST_METAL fh=4 ch=11 light=9
+
+grid
+QQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQ
+QrrrrrrrrgggggggggggggggrrrrrrrrQ
+QrOrrrrrrgggggggggggggggrrrrrrOrQ
+QrrrrrrrrrrrrrrsssrrrrrrrrrrrrrrQ
+Qrrr...........sss...........rrrQ
+Qrrr...........sss...........rrrQ
+Qrrr.......www.....www.......rrrQ
+Qrrr.........................rrrQ
+Qrrr....P...............P....rrrQ
+Qrrr.........................rrrQ
+Qrrr.........................rrrQ
+Qrrr..w...................w..rrrQ
+Qrrr..w.....~~~~=~~~~.....w..rrrQ
+Qrrr..w.....~~~~=~~~~.....w..rrrQ
+Qrrr........~~~~=~~~~........rrrQ
+Qrrsss......~~~iii~~~......sssrrQ
+Qrrsss......~~~iii~~~......sssrrQ
+Qrrsss......~~~iii~~~......sssrrQ
+Qrrr........~~~~=~~~~........rrrQ
+Qrrr..w.....~~~~=~~~~.....w..rrrQ
+Qrrr..w.....~~~~=~~~~.....w..rrrQ
+Qrrr..w...................w..rrrQ
+Qrrr.........................rrrQ
+Qrrr.........................rrrQ
+Qrrr....P...............P....rrrQ
+Qrrr.........................rrrQ
+Qrrr.......www.....www.......rrrQ
+Qrrr...........sss...........rrrQ
+Qrrr...........sss...........rrrQ
+QrrrrrrrrrrrrrrsssrrrrrrrrrrrrrrQ
+QrOrrrrrrrrrrrrrrrrrrrrrrrrrrrOrQ
+QrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrQ
+QQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQ
+end
+
+# floor heights (steps of 8 units): 0-9 a-z = 0..35, A-Z = -1..-26
+floorh
+.
+.
+.
+.
+...............222
+...............111
+.
+.
+.
+.
+.
+.
+.
+.
+.
+....21.....................12
+....21.....................12
+....21.....................12
+.
+.
+.
+.
+.
+.
+.
+.
+.
+...............111
+...............222
+.
+.
+.
+.
+end
+
+# ceiling heights (roofed cells) / block tops (walls under the sky)
+ceilh
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+end
+
+# things: x y TYPE [angle=deg] [arg=n] [tflags=...]
+thing 16 22 PLAYER_START angle=270
+thing 2 2 VAPE_PORTAL
+thing 30 2 VAPE_PORTAL
+thing 2 30 VAPE_PORTAL
+thing 30 30 VAPE_PORTAL
+thing 4 4 SPAWNER
+thing 28 4 SPAWNER
+thing 4 28 SPAWNER
+thing 28 28 SPAWNER
+thing 16 3 SPAWNER
+thing 16 29 SPAWNER
+thing 3 16 SPAWNER
+thing 29 16 SPAWNER
+thing 16 16 ARMOR
+thing 9 16 HEALTH_SMALL
+thing 23 16 HEALTH_SMALL
+thing 16 9 AMMO_SHELLS
+thing 16 23 AMMO_BULLETS
+thing 10 10 AMMO_CELLS
+thing 22 22 AMMO_ROCKETS
+thing 22 10 CANDY
+thing 10 22 CANDY
+thing 14 1 HEALTH_BIG
+thing 18 1 AMMO_BULLETS
+thing 7 7 PROP_TORCH
+thing 25 7 PROP_TORCH
+thing 7 25 PROP_TORCH
+thing 25 25 PROP_TORCH
+thing 3 9 PROP_SKULLS
+thing 29 23 PROP_SKULLS

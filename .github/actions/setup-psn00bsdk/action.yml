@@ -1,0 +1,98 @@
+# Build PSn00bSDK from source at a pinned commit, cache the install prefix,
+# and export PSN00BSDK_LIBS + PATH for the ps1/ CMake presets.
+#
+# The caller must already have installed the toolchain:
+#   gcc-mipsel-linux-gnu g++-mipsel-linux-gnu binutils-mipsel-linux-gnu
+#   cmake ninja-build (plus the runner's host gcc/g++ for mkpsxiso & co.)
+#
+# The SDK's examples are skipped (-DSKIP_EXAMPLES=ON): its C++ example does
+# not build with the Debian/Ubuntu mipsel-linux-gnu toolchain, and the game
+# does not need them. Owner: ci.
+name: Set up PSn00bSDK
+description: Build (or restore from cache) PSn00bSDK at a pinned commit and export PSN00BSDK_LIBS.
+
+inputs:
+  commit:
+    description: PSn00bSDK commit to build (full 40-character SHA).
+    required: true
+  target:
+    description: GCC target triplet the SDK is built for.
+    required: false
+    default: mipsel-linux-gnu
+
+outputs:
+  prefix:
+    description: Install prefix of the SDK.
+    value: ${{ steps.key.outputs.prefix }}
+  cache-hit:
+    description: "'true' when the SDK was restored from the cache."
+    value: ${{ steps.cache.outputs.cache-hit }}
+
+runs:
+  using: composite
+  steps:
+    - name: Compute the PSn00bSDK cache key
+      id: key
+      shell: bash
+      env:
+        SDK_COMMIT: ${{ inputs.commit }}
+        SDK_TARGET: ${{ inputs.target }}
+      run: |
+        set -euo pipefail
+        gccv=$("${SDK_TARGET}-gcc" -dumpfullversion)
+        hostv=$(g++ -dumpfullversion)
+        cmakev=$(cmake --version | head -n 1 | awk '{print $3}')
+        prefix="$HOME/psn00bsdk"
+        {
+          echo "prefix=$prefix"
+          echo "key=psn00bsdk-v1-${SDK_COMMIT}-${SDK_TARGET}-${ImageOS:-linux}-${RUNNER_ARCH}-gcc${gccv}-host${hostv}-cmake${cmakev}"
+        } >> "$GITHUB_OUTPUT"
+        echo "PSn00bSDK ${SDK_COMMIT} for ${SDK_TARGET} (gcc ${gccv}, host g++ ${hostv}, cmake ${cmakev}) -> ${prefix}"
+
+    - name: Restore the PSn00bSDK install
+      id: cache
+      uses: actions/cache@v4
+      with:
+        path: ${{ steps.key.outputs.prefix }}
+        key: ${{ steps.key.outputs.key }}
+
+    - name: Fetch PSn00bSDK sources (with submodules)
+      if: steps.cache.outputs.cache-hit != 'true'
+      uses: actions/checkout@v4
+      with:
+        repository: Lameguy64/PSn00bSDK
+        ref: ${{ inputs.commit }}
+        path: .psn00bsdk-src
+        submodules: recursive
+        persist-credentials: false
+
+    - name: Build and install PSn00bSDK
+      if: steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      env:
+        SDK_TARGET: ${{ inputs.target }}
+        SDK_PREFIX: ${{ steps.key.outputs.prefix }}
+      run: |
+        set -euo pipefail
+        build="$RUNNER_TEMP/psn00bsdk-build"
+        cmake -S .psn00bsdk-src -B "$build" -G Ninja \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DSKIP_EXAMPLES=ON \
+          -DPSN00BSDK_TARGET="$SDK_TARGET" \
+          -DCMAKE_INSTALL_PREFIX="$SDK_PREFIX"
+        cmake --build "$build"
+        cmake --install "$build"
+        rm -rf .psn00bsdk-src "$build"
+
+    - name: Export PSN00BSDK_LIBS and PATH
+      shell: bash
+      env:
+        SDK_PREFIX: ${{ steps.key.outputs.prefix }}
+      run: |
+        set -euo pipefail
+        test -f "$SDK_PREFIX/lib/libpsn00b/cmake/sdk.cmake"
+        test -x "$SDK_PREFIX/bin/mkpsxiso"
+        echo "PSN00BSDK_LIBS=$SDK_PREFIX/lib/libpsn00b" >> "$GITHUB_ENV"
+        echo "$SDK_PREFIX/bin" >> "$GITHUB_PATH"
+        echo "PSn00bSDK ready in $SDK_PREFIX:"
+        ls "$SDK_PREFIX/bin"

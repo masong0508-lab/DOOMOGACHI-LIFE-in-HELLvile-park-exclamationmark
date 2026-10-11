@@ -57,6 +57,14 @@ typedef struct DoomoActor {
     uint8_t  radius, height; /* world units */
     uint8_t  status_fx;      /* burning / frozen / charmed */
     uint8_t  owner;          /* who fired a projectile */
+    /* ---- action additions ---- */
+    uint8_t  arg;            /* DoomoThing.arg (kill group / spawn tag)   */
+    uint8_t  tflags;         /* THF_* from the map                        */
+    uint8_t  cooldown;       /* attack cooldown / effect speed            */
+    int8_t   strafe;         /* AI strafe direction / bounces left        */
+    uint16_t anim;           /* animation clock                           */
+    uint8_t  spr;            /* sprite (SPR_* or ACTOR_ART_* + 128)       */
+    uint8_t  aux;            /* per-kind scratch (projectile kind, phase) */
 } DoomoActor;
 
 /* Combat session (one Hell Breach level or arena run). */
@@ -86,5 +94,65 @@ int  combat_finished(void);             /* 0 playing, 1 exit, -1 dead */
 void combat_build_view(DoomoView3D *v);
 /* HUD + weapon overlay, drawn with plat_* 2D calls after plat_view3d. */
 void combat_draw_hud(void);
+
+/* ======================================================================
+ * action additions (owner: action; additive)
+ * ==================================================================== */
+
+/* What finishes a combat session (combat_finished() == 1). */
+enum { CGOAL_EXIT,        /* reach a CELL_EXIT cell (Hell Breach levels)  */
+       CGOAL_KILL_ALL,    /* defeat every demon (invasion encounters)     */
+       CGOAL_ENDLESS };   /* never (the arena decides itself)             */
+/* combat_start() picks CGOAL_EXIT for dungeons, KILL_ALL for overworld
+ * maps, ENDLESS for arenas. */
+void combat_start_ex(int map_id, int goal);
+/* Start at a given cell / facing (0..4095) instead of the map's start. */
+void combat_start_at(int map_id, int goal, int cx, int cy, int angle);
+/* Spawn a thing at a cell centre (story encounters, arena waves). With
+ * appear = 1 demons pop out of a vape puff. Returns actor index or -1. */
+int  combat_spawn(int thing_type, int cx, int cy, int appear);
+int  combat_demons_alive(void);
+/* Fire a map event (remote doors, dormant demons). */
+void combat_event(int tag);
+/* The session result after combat_finished() != 0, also kept after the
+ * scene closes: 1 exit/cleared, -1 died, -2 quit. */
+int  combat_last_result(void);
+
+typedef struct DoomoCombatStats {
+    uint16_t kills, kills_total;
+    uint16_t secrets, secrets_total;
+    uint16_t items, items_total;
+    uint16_t shots, hits, headshots;
+    uint16_t damage_taken;
+    uint32_t ticks;
+    uint32_t score;
+    uint16_t best_combo;
+    uint16_t money;          /* H$ earned this session */
+} DoomoCombatStats;
+const DoomoCombatStats *combat_stats(void);
+
+/* Weapons: the armory slot in use (doomo_town.weapons) and switching. */
+const DoomoWeapon *combat_weapon(void);
+void combat_select_weapon(int slot);
+void combat_next_weapon(int dir);
+/* Make sure the armory has something to shoot with (a cute pistol, fists,
+ * a bubble wand). Returns the number of weapons added. */
+int  combat_give_starter_weapons(void);
+/* Default ammo pools for a fresh story / arena run. */
+void combat_refill_ammo(int percent);
+int  combat_ammo(int ammo_type);
+int  combat_ammo_max(int ammo_type);
+void combat_toggle_camera(void);
+
+/* Debug autopilot (tests, attract mode): plays the level by itself -
+ * paths to keys and the exit with a BFS over the grid (step-up, lifts,
+ * doors), aims at and shoots visible demons. */
+void combat_autopilot(int on);
+int  combat_autopilot_on(void);
+
+/* Demon catalogue (names / gallery). */
+const char *combat_demon_name(int thing_type);
+/* One-line description of a demon for galleries. */
+const char *combat_demon_blurb(int thing_type);
 
 #endif

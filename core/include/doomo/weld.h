@@ -96,7 +96,68 @@ typedef struct DoomoWeaponStats {
     uint8_t knockback;
     uint8_t fx;           /* WFX_* */
     uint8_t sfx;          /* SFX_* */
+    /* ---- action additions ---- */
+    uint8_t behaviour;    /* WB_*: how the shot travels                  */
+    uint8_t pkind;        /* PK_*: projectile look + physics (0 hitscan)  */
+    uint8_t wclass;       /* WCLASS_*                                     */
+    uint8_t splash;       /* splash radius in world units / 2 (0 none)    */
+    uint8_t spin_up;      /* ticks to reach the full fire rate (minigun)  */
+    uint8_t charge;       /* hold-to-charge ticks for a full shot (0 none)*/
+    uint8_t burst;        /* shots per trigger pull (1 normal, 3 burst)   */
+    uint8_t crit;         /* headshot multiplier x16 (16 = none)          */
+    uint8_t weight;       /* 0..100 handling: slows walking & aiming      */
+    uint8_t under_every;  /* underbarrel proc: every N shots (0 never)    */
+    uint8_t lifesteal;    /* % of damage dealt returned as health         */
+    uint8_t quiet;        /* 1 = suppressed: does not wake sleeping demons*/
+    uint8_t gore;         /* WSTYLE_* used by OPT_GORE "per weapon"       */
+    uint8_t holy;         /* x16 multiplier vs demons (16 = normal)       */
 } DoomoWeaponStats;
+
+/* How a shot travels (DoomoWeaponStats.behaviour). */
+enum { WB_HITSCAN, WB_PROJECTILE, WB_LOB, WB_FLOAT, WB_STREAM, WB_RAIL,
+       WB_MELEE, WB_COUNT };
+/* Projectile kinds (DoomoWeaponStats.pkind, also used by demons). */
+enum { PK_NONE, PK_FIREBALL, PK_VAPE_BOLT, PK_ORB, PK_SLIME, PK_PLASMA,
+       PK_ROCKET, PK_GRENADE, PK_NAIL, PK_ARROW, PK_BUBBLE, PK_PLUSH,
+       PK_HEART, PK_GLITTER, PK_WATER, PK_STICKER, PK_YARN, PK_SAW,
+       PK_FLAME, PK_BFG, PK_CANDY, PK_HOLY, PK_CONFETTI, PK_ICE, PK_COUNT };
+/* Weapon classes (DoomoWeaponStats.wclass). */
+enum { WCLASS_SIDEARM, WCLASS_AUTO, WCLASS_PRECISION, WCLASS_SHOTGUN,
+       WCLASS_HEAVY, WCLASS_MELEE, WCLASS_CUTE, WCLASS_COUNT };
+extern const char *const doomo_wclass_names[WCLASS_COUNT];
+extern const char *const doomo_ammo_names[AMMO_COUNT];
+extern const char *const doomo_wstyle_names[2];
+
+/* Part lists for menus: count / name of option `index` in a CLIST_W* list
+ * (unlocks.h), "" if out of range. */
+int  weld_part_count(int clist);
+const char *weld_part_name(int clist, int index);
+/* Read / write one part of a weapon by CLIST_W* list id. */
+int  weld_part_get(const DoomoWeapon *w, int clist);
+void weld_part_set(DoomoWeapon *w, int clist, int value);
+/* A sensible weapon of a frame in a style (matching parts, paints). */
+void weld_default(DoomoWeapon *w, int frame, int style);
+/* Weapon level 0..7 from its kill xp. */
+int  weld_level(const DoomoWeapon *w);
+
+/* 0..100 ratings for the workshop stat bars. */
+enum { WRATE_DAMAGE, WRATE_RATE, WRATE_RANGE, WRATE_ACCURACY, WRATE_AMMO,
+       WRATE_RELOAD, WRATE_CONTROL, WRATE_MOBILITY, WRATE_COUNT };
+extern const char *const doomo_wrate_names[WRATE_COUNT];
+void weld_ratings(const DoomoWeaponStats *s, uint8_t out[WRATE_COUNT]);
+/* Damage per second-ish figure (for comparisons / tests). */
+int  weld_dps(const DoomoWeaponStats *s);
+
+/* First-person sprite geometry: size of weld_view_image() frames and the
+ * muzzle / grip points inside them (pixels). */
+#define WELD_VIEW_W 96
+#define WELD_VIEW_H 64
+#define WELD_ICON_W 24
+#define WELD_ICON_H 16
+void weld_view_points(const DoomoWeapon *w, int *muzzle_x, int *muzzle_y,
+                      int *grip_x, int *grip_y);
+/* Drop cached sprites (after editing a weapon in place). */
+void weld_gfx_invalidate(void);
 
 extern const char *const doomo_wframe_names[WFRAME_COUNT];
 extern const char *const doomo_wbarrel_names[WBARREL_COUNT];

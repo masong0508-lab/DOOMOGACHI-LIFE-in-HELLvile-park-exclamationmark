@@ -4,13 +4,15 @@
  * pl_bandlut[mode][v][u] gives the light band (1 shadow .. 4 highlight) of
  * a point of a soft sphere at shading coordinates u, v (-256..256 in steps
  * of 8, Q8; 256 = the rim), lit from the top-left with a cool rim light:
- *   d2 = (u*u + v*v) >> 8 (max 256); z = sqrt(1 - d2/256) * 255 (table)
+ *   d2 = (u*u + v*v) >> 8 (max 256); z = Z[d2 >> 2] with
+ *        Z[k] = round(255 * sqrt(1 - k / 64))
  *   h  = (((-115u - 141v + 179z) >> 8) + 256) >> 1      (+18 for SOFT)
  *   band 4 if h >= 247 (232 for GLOSS), 3 if >= 192, 2 if >= 112, else 1;
  *   band 1 -> 2 on the rim (d2 > 196 && u + v > 120)
  * The high nibble is the band used on odd checker pixels of fuzzy parts
- * (2 -> 3 if h >= 184, 1 -> 2 if h >= 104); GLOSS then turns 3 -> 2 below
- * h 205. test_portrait.c recomputes every entry from this formula.
+ * (2 -> 3 if h >= 184, 1 -> 2 if h >= 104); GLOSS then turns 3 -> 2 in
+ * both nibbles below h 205. test_portrait.c recomputes every entry from
+ * this formula (portrait_lut_matches_formula).
  * Modes: 0 = SH_BALL, 1 = SH_GLOSS, 2 = SH_SOFT.
  */
 #include "portrait_int.h"
