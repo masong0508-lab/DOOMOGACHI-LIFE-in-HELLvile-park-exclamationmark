@@ -215,13 +215,19 @@ static void grumbleguts(int cx, int yf, int s, int view, int pose, int expr) {
     else if (view == V_FRONT) tail(cx + 22 * s, yf - 16 * s, s, 1);
     else tail(cx + 2 * s, yf - 24 * s, s, 1);
 
-    /* ---- legs: short, thick, clawed ---- */
-    for (int side = -1; side <= 1; side += 2) {
-        int lx = cx + side * 9 * s;
-        if (view == V_SIDE) lx = cx + side * 5 * s;
-        blob(lx, yf - 9 * s, 6 * s, 10 * s, SKINM);
-        /* claws */
-        for (int c = -1; c <= 1; c++) tk_tri(lx + c * 3 * s - 2, yf - 2 * s, lx + c * 3 * s + 2, yf - 2 * s, lx + c * 3 * s, yf + 2, HORN);
+    /* ---- legs: hips, thighs and calves that tuck up under the belly ---- */
+    {
+        int hip_y = belly_cy + belly_ry - 6 * s;
+        if (view == V_BACK || view == V_BACK_LOOK) hip_y = body_y + 8 * s;
+        if (view != V_SIDE) blob(cx, hip_y, 17 * s, 7 * s, SKINM);                       /* hips */
+        for (int side = -1; side <= 1; side += 2) {
+            int lx = cx + side * 9 * s;
+            if (view == V_SIDE) lx = cx + side * 5 * s - 2 * s;
+            blob(lx, (hip_y + yf - 8 * s) / 2, 7 * s, (yf - 8 * s - hip_y) / 2 + 4 * s, SKINM); /* thigh */
+            blob(lx + side * s, yf - 7 * s, 6 * s, 7 * s, SKINM);                            /* calf */
+            tk_line(lx - 5 * s, yf - 12 * s, lx + 5 * s, yf - 12 * s, SKINM[1]);             /* knee crease */
+            for (int c = -1; c <= 1; c++) tk_tri(lx + c * 3 * s - 2, yf - 2 * s, lx + c * 3 * s + 2, yf - 2 * s, lx + c * 3 * s, yf + 2, HORN);
+        }
     }
 
     /* ---- body ---- */
@@ -373,7 +379,111 @@ static void backdrop(const char *title) {
     tk_text_outline(4, 3, title, PAL_UI_GOLD, LINE, 1);
 }
 
+/* ---- full-frame storyboard panels ------------------------------------ */
+static uint8_t frames[6][TH][TW][3];
+static int nframes;
+static void frame(const char *title) {
+    static uint8_t rgb[TW * TH * 3];
+    tk_rect(0, 0, TW, 10, PAL_RAMP(RAMP_STONE, 1));
+    tk_text_outline(3, 1, title, PAL_UI_GOLD, LINE, 1);
+    tk_fb_to_rgb(rgb);
+    memcpy(frames[nframes++], rgb, sizeof rgb);
+}
+static void save_frames(const char *dir, const char *name) {
+    int cols = 3, rows = (nframes + 2) / 3, S = 2, W = TW * cols, H = TH * rows;
+    static uint8_t big[TW * 3 * 2 * TH * 2 * 2 * 3];
+    char path[512];
+    for (int y = 0; y < H * S; y++)
+        for (int x = 0; x < W * S; x++) {
+            int fx = x / S, fy = y / S, f = (fy / TH) * cols + fx / TW;
+            const uint8_t *src = f < nframes ? frames[f][fy % TH][fx % TW] : (const uint8_t[]){ 0, 0, 0 };
+            memcpy(&big[(y * W * S + x) * 3], src, 3);
+        }
+    snprintf(path, sizeof path, "%s/%s.png", dir, name);
+    tk_write_png_rgb(path, big, W * S, H * S);
+    printf("wrote %s\n", path);
+    nframes = 0;
+}
+static void hall(void) {
+    static const uint8_t cols[4] = { PAL_RAMP(RAMP_VAPE, 0), PAL_RAMP(RAMP_VAPE, 1), PAL_RAMP(RAMP_LAVA, 1), PAL_RAMP(RAMP_STONE, 3) };
+    tk_vgrad(0, 0, TW, TH, cols, 4);
+    tk_rect(0, 118, TW, 42, PAL_RAMP(RAMP_STONE, 2));              /* park floor */
+    tk_line(0, 118, TW, 118, PAL_RAMP(RAMP_LAVA, 3));
+    for (int i = 0; i < 9; i++) { tk_circle(20 + i * 26, 30 + (i % 3) * 6, 3, PAL_RAMP(RAMP_CANDY, 4)); } /* festival lanterns */
+}
+static void crowd(int y, int n, int flip, int expr) {
+    for (int i = 0; i < n; i++) {
+        TkChibi c = tk_random_citizen(100 + i, i & 1);
+        tk_chibi(14 + i * 30, y, &c, 1, expr, expr == TKE_SHOCK ? TKM_O : TKM_SMILE, i * 7, flip);
+    }
+}
+static void bubble(int x, int y, int w, const char *txt) {
+    tk_rect(x, y, w, 12, PAL_UI_CREAM); tk_frame(x, y, w, 12, LINE);
+    tk_tri(x + 8, y + 12, x + 14, y + 12, x + 10, y + 16, PAL_UI_CREAM);
+    tk_text(x + 3, y + 2, txt, PAL_BLACK, 1);
+}
+static void gas(int x, int y, int r, int cute) {
+    uint8_t g = cute ? PAL_RAMP(RAMP_SICK, 5) : PAL_RAMP(RAMP_SICK, 3);
+    tk_circle(x, y, r, g); tk_circle(x - r, y + 2, r * 2 / 3, g); tk_circle(x + r, y + 2, r * 2 / 3, g);
+    if (cute) { tk_heart(x - 2, y - 2, 2, PAL_RAMP(RAMP_CANDY, 6)); tk_star(x + r / 2, y - r / 2, 2, PAL_WHITE); }
+    else { tk_px(x + 1, y - 1, PAL_BLACK); tk_px(x - r / 2, y + 1, PAL_BLACK); tk_px(x + r / 2 + 1, y + 2, PAL_BLACK); }
+}
+static void storyboard(const char *out) {
+    TkChibi culprit = tk_random_citizen(66, 1);
+    /* 1. the feast: butt to camera, everyone watching */
+    hall(); crowd(156, 8, 0, TKE_NORMAL);
+    tk_rect(60, 96, 120, 8, PAL_RAMP(RAMP_WOOD, 3)); tk_frame(60, 96, 120, 8, LINE);     /* table */
+    for (int i = 0; i < 6; i++) tk_ring(70 + i * 20, 94, 4, PAL_RAMP(RAMP_CANDY, 3));   /* bagels */
+    grumbleguts(120, 118, 1, V_BACK, P_STAND, E_GRIN);
+    tk_rect(150, 14, 84, 7, PAL_RAMP(RAMP_STONE, 1)); tk_rect(151, 15, 70, 5, PAL_UI_RED); tk_text(152, 23, "FULLNESS", PAL_UI_CREAM, 1);
+    bubble(4, 40, 108, "Let him eat?");  tk_text(10, 56, "> yes, let's see", PAL_UI_GOLD, 1); tk_text(10, 64, "  exorcise now!", PAL_UI_CREAM, 1);
+    frame("THE FEAST OF REBUILDING");
+    /* 2. the line */
+    hall(); crowd(156, 8, 0, TKE_NORMAL);
+    grumbleguts(96, 118, 1, V_BACK, P_STAND, E_GRIN);
+    tk_chibi(160, 118, &culprit, 2, TKE_POSSESSED, TKM_CAT, 3, 1);
+    bubble(118, 28, 118, "Look who's full of");  bubble(118, 44, 118, "himself, now?");
+    tk_text_outline(170, 70, "*SCRTCH*", PAL_UI_GOLD, LINE, 1);
+    frame("THE LINE (eyebrow wiggle at YOU)");
+    /* 3. reverse rope climb, hands on */
+    hall(); crowd(156, 8, 0, TKE_SHOCK);
+    grumbleguts(150, 118, 1, V_SIDE, P_STAND, E_SHOCK);
+    tk_chibi(84, 118, &culprit, 2, TKE_ANGRY, TKM_SCREAM, 5, 0);
+    for (int i = 0; i < 14; i++) tk_line(40 + i * 3, 110 - (i % 2) * 3, 43 + i * 3, 110 - ((i + 1) % 2) * 3, PAL_RAMP(RAMP_SICK, 4)); /* hose coil */
+    tk_line(84, 96, 118, 92, PAL_RAMP(RAMP_SICK, 4)); tk_line(84, 97, 118, 93, PAL_RAMP(RAMP_SICK, 2));
+    blob(118, 94, 4, 3, SKINM); blob(116, 102, 4, 3, SKINM);                              /* hands on the cheeks */
+    tk_text_outline(60, 70, "hnnng", PAL_UI_CREAM, LINE, 1); tk_text_outline(30, 112, "surely that's enough?", PAL_UI_CREAM, LINE, 1);
+    frame("REVERSE ROPE CLIMB");
+    /* 4. the slap */
+    hall(); crowd(156, 8, 0, TKE_SHOCK);
+    grumbleguts(120, 118, 1, V_BACK_LOOK, P_STAND, E_YELP);
+    for (int f = 0; f < 4; f++) tk_ellipse(132 + f * 4, 96 - (f == 1 || f == 2 ? 3 : 0), 2, 4, PAL_RAMP(RAMP_PEACH, 6)); /* hand print */
+    tk_ellipse(137, 104, 6, 5, PAL_RAMP(RAMP_PEACH, 6));
+    tk_text_outline(150, 60, "SLAP!", PAL_UI_GOLD, LINE, 2);
+    frame("THE SLAP (then the valve)");
+    /* 5. inflation + gas both ways */
+    hall(); crowd(156, 8, 1, TKE_SHOCK);
+    grumbleguts(120, 118, 1, V_FRONT, P_INFLATED, E_YELP);
+    gas(150, 46, 8, 1); tk_text(158, 36, "BURP", PAL_UI_CREAM, 1);
+    gas(84, 112, 7, 1);  tk_text(50, 104, "BRAAP", PAL_UI_CREAM, 1);
+    tk_rect(190, 90, 10, 10, PAL_RAMP(RAMP_STEEL, 5)); tk_ring(195, 95, 6, PAL_UI_RED);            /* valve */
+    tk_line(166, 100, 190, 96, PAL_RAMP(RAMP_SICK, 4));
+    frame("INFLATION: two false pops, gas both ways");
+    /* 6. the pop (cute) + the last line */
+    hall(); crowd(156, 8, 0, TKE_SHOCK);
+    tk_confetti(120, 70, 12, 9); tk_hearts(120, 60, 10, 4); tk_sparkles(120, 70, 8, 2, 40);
+    for (int i = 0; i < 12; i++) tk_circle(70 + (i * 37) % 100, 50 + (i * 53) % 60, 2, PAL_RAMP(RAMP_BONE, 7)); /* stuffing */
+    tk_ring(120, 34, 10, PAL_UI_GOLD);                                                      /* halo */
+    blob(114, 84, 8, 8, SKINM); blob(128, 84, 8, 8, SKINM); tk_line(121, 78, 121, 92, LINE); /* lone cheeks */
+    tk_line(121, 92, 121, 104, PAL_RAMP(RAMP_STEEL, 6)); tk_text(104, 100, "pfffff", PAL_UI_CREAM, 1);
+    { TkChibi c = tk_random_citizen(103, 1); c.blush = 1; tk_chibi(70, 156, &c, 1, TKE_LOVE, TKM_O, 1, 0); }
+    bubble(60, 110, 82, "...that's hot."); tk_text_outline(150, 112, "(instantly mobbed)", PAL_UI_CREAM, LINE, 1);
+    frame("POP (cute setting) + THE LAST LINE");
+    save_frames(out, "gg_storyboard");
+}
+
 int main(int argc, char **argv) {
+    storyboard(argc > 1 ? argv[1] : ".");
     const char *out = argc > 1 ? argv[1] : ".";
     shot("FRONT", V_FRONT, P_STAND, E_GRIN, "Gut + pecs, X harness");
     shot("SIDE", V_SIDE, P_STAND, E_SMUG, "Belly front, butt back");
