@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+	DOOMOGACHI LIFE in HELLvile Park! - PS1 disc layout (mkpsxiso).
+	Processed by CMake (configure_file): paths are relative to the build dir.
+	No license data is included (boots on emulators, softmods, modchips).
+-->
+<iso_project>
+	<track type="data">
+		<identifiers
+			system        ="PLAYSTATION"
+			volume        ="DOOMOGACHI_LIFE"
+			volume_set    ="DOOMOGACHI_LIFE"
+			publisher     ="HELLVILE_PARK_HOMEBREW"
+			data_preparer ="PSN00BSDK ${PSN00BSDK_VERSION} + MKPSXISO"
+			application   ="PLAYSTATION"
+			copyright     ="README.TXT;1"
+		/>
+		<directory_tree>
+			<file name="SYSTEM.CNF" type="data" source="${PROJECT_SOURCE_DIR}/system.cnf" />
+			<file name="DOOMO.EXE"  type="data" source="${DOOMO_EXE_NAME}.exe" />
+			<file name="README.TXT" type="data" source="${PROJECT_SOURCE_DIR}/README.md" />
+			<dummy sectors="1024"/>
+		</directory_tree>
+	</track>
+</iso_project>

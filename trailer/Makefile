@@ -5,7 +5,7 @@ CC      ?= gcc
 CFLAGS  ?= -O2 -std=c11 -Wall -Wextra -Wno-unused-parameter -I. -I../core/include -I$(BUILD)
 SCENE_SRCS ?= $(wildcard scenes/*.c)
 MUSIC_SRCS ?= $(wildcard music.c)
-SRCS    := tk.c timeline.c main.c $(MUSIC_SRCS) $(SCENE_SRCS)
+SRCS    := tk.c tk_chibi.c timeline.c main.c $(MUSIC_SRCS) $(SCENE_SRCS)
 FFMPEG  ?= ffmpeg
 
 all: $(BUILD)/trailer.mp4 $(BUILD)/trailer.gif

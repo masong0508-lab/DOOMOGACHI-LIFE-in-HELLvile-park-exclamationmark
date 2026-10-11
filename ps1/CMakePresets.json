@@ -1,0 +1,38 @@
+{
+	"version": 3,
+	"cmakeMinimumRequired": { "major": 3, "minor": 21, "patch": 0 },
+	"configurePresets": [
+		{
+			"name":          "ps1",
+			"displayName":   "PS1 disc (PSn00bSDK, release)",
+			"description":   "Needs PSn00bSDK installed (PSN00BSDK_LIBS=/opt/psn00bsdk/lib/libpsn00b) and mipsel-linux-gnu-gcc or mipsel-none-elf-gcc.",
+			"generator":     "Ninja",
+			"toolchainFile": "$env{PSN00BSDK_LIBS}/cmake/sdk.cmake",
+			"binaryDir":     "${sourceDir}/build",
+			"cacheVariables": {
+				"CMAKE_BUILD_TYPE": "Release",
+				"PSN00BSDK_TC":     "",
+				"PSN00BSDK_TARGET": "mipsel-linux-gnu"
+			},
+			"warnings": { "dev": false }
+		},
+		{
+			"name":        "ps1-enginetest",
+			"inherits":    "ps1",
+			"displayName": "PS1 engine test (boots into the 3D showcase)",
+			"binaryDir":   "${sourceDir}/build-enginetest",
+			"cacheVariables": { "DOOMO_ENGINE_TEST": "ON" }
+		},
+		{
+			"name":        "ps1-elf",
+			"inherits":    "ps1",
+			"displayName": "PS1 disc using a mipsel-none-elf toolchain",
+			"cacheVariables": { "PSN00BSDK_TARGET": "mipsel-none-elf" }
+		}
+	],
+	"buildPresets": [
+		{ "name": "ps1",            "configurePreset": "ps1" },
+		{ "name": "ps1-enginetest", "configurePreset": "ps1-enginetest" },
+		{ "name": "ps1-elf",        "configurePreset": "ps1-elf" }
+	]
+}

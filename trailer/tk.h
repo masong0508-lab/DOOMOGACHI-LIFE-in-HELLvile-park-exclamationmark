@@ -74,21 +74,34 @@ enum { TKM_SMILE, TKM_OPEN, TKM_FROWN, TKM_FLAT, TKM_FANGS, TKM_O, TKM_CAT,
        TKM_SCREAM };
 enum { TKH_BALD, TKH_SHORT, TKH_SPIKY, TKH_BOB, TKH_LONG, TKH_TWINTAILS,
        TKH_AFRO, TKH_MOHAWK, TKH_BUN };
+/* Ears (critter-folk). TKEAR_HUMAN = plain round ears. */
+enum { TKEAR_HUMAN, TKEAR_CAT, TKEAR_FOX, TKEAR_BUNNY, TKEAR_BEAR, TKEAR_PUP,
+       TKEAR_MOUSE, TKEAR_SHEEP, TKEAR_OWL, TKEAR_NONE };
+/* Tails: 0 none, 1 devil, then fluffy critter tails. */
+enum { TKT_NONE, TKT_DEVIL, TKT_FOX, TKT_CAT, TKT_BUNNY, TKT_PUP, TKT_RACCOON,
+       TKT_BEAR, TKT_SHEEP };
 typedef struct TkChibi {
-    uint8_t skin;      /* palette index of the base skin colour            */
-    uint8_t hair;      /* palette index of base hair colour                */
+    uint8_t skin;      /* palette index of the base fur / skin colour      */
+    uint8_t hair;      /* palette index of base hair / head-tuft colour    */
     uint8_t outfit;    /* palette index of base outfit colour              */
     uint8_t eyes;      /* palette index of iris colour                     */
     uint8_t hair_style;/* TKH_*                                            */
     uint8_t horns;     /* 0 none, 1 little devil horns, 2 ram horns        */
     uint8_t wings;     /* 0 none, 1 bat, 2 angel                           */
     uint8_t halo;      /* 0/1                                              */
-    uint8_t tail;      /* 0/1 devil tail                                   */
+    uint8_t tail;      /* TKT_* (1 = devil tail, as before)                */
     uint8_t blush;     /* 0/1                                              */
     uint8_t hat;       /* 0 none, 1 party hat, 2 priest hat, 3 marine helm */
+    /* --- critter-folk (vaguely furry) - all optional, 0 = defaults ------ */
+    uint8_t ears;      /* TKEAR_*                                          */
+    uint8_t fur2;      /* muzzle / belly / ear-inner fur colour (0 = auto)  */
+    uint8_t fluff;     /* 1 = fluffy fur tufts on cheeks, head and chest    */
 } TkChibi;
-/* Draw a chibi standing with feet at (x, y_feet). size: 1 = 16x24 sprite,
- * 2 = 32x48, 3 = 48x72. expr TKE_*, mouth TKM_*. bob = walk/idle frame. */
+/* Draw a plush critter citizen standing with feet at (x, y_feet).
+ * size: 1 = ~24x32 px, 2 = ~48x64, 3 = ~72x96 - drawn NATIVELY at that size
+ * (more detail when bigger, not an upscaled sprite). expr TKE_*, mouth TKM_*.
+ * bob = animation clock (pass the frame counter + a per-character offset):
+ * drives breathing, blinking, ear twitches, tail wags and hair bounce. */
 void tk_chibi(int x, int y_feet, const TkChibi *c, int size, int expr,
               int mouth, int bob, int flip);
 /* Some ready-made citizens. */

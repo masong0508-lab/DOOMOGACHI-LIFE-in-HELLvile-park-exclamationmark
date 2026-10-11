@@ -124,10 +124,30 @@ PS1 waits for 2 vblanks (NTSC) and double-buffers.
 
 ## Art direction (all teams)
 
-Everything starts **extremely cutesy**: tamagotchi, Tomodachi Life on a
-GBA. Big heads, round shapes, pastel candy colours, chunky dark outlines,
-sparkles, blush, bouncy animations, LCD-pet screens. HaHaland and the
-Hillvile side of the park are a sugary paradise. That makes the contrast
-land when Hell invades: grotesque Doom-style flesh, bone, blood, lava, rust
-and vape-cloud demons. The `GORE_CUTE` option keeps even the violence
-adorable: confetti, hearts, plush stuffing.
+**Premium, not cheap.** This is pixel art at console resolution, but it
+must never look like cheap pixel art. Aim for the polish of a great
+late-era GBA or PS1 game:
+
+* **Cute, lively, constantly animated.** Nothing is ever static. Idle
+  breathing (1 px squash and stretch), blinking, ear twitches, tail wags,
+  hair and fur bounce, and secondary motion that follows the main motion.
+  Use anticipation and overshoot on every UI pop-in. Sparkles twinkle,
+  windows boing in, cursors bob.
+* **Vaguely furry.** Most citizens are soft, fluffy critter-folk: cat,
+  fox, bunny, bear, pup, mouse, sheep, raccoon and owl folk, plus the
+  spooky species, all plush-toy round. Give them fluffy fur tufts on the
+  outline (cheeks, head top, chest fluff, tail tip), big expressive animal
+  ears, fluffy tails, little muzzles and button noses, and paw-like hands.
+  Keep it wholesome and toy-like (tamagotchi / plush), never realistic.
+* **Rendering quality.** Use 3–4 tone soft shading with hue-shifted
+  shadows and warm highlights, rim light on the fur edge, and
+  **coloured selective outlines** (a dark shade of the local colour; pure
+  black only at the silhouette's bottom or contact points). Use soft
+  dithering only where it reads as fluff. Eyes are big, glossy and
+  two-highlight. Avoid flat single-colour blobs, jaggy diagonals, orphan
+  pixels and noisy dithering.
+* **Contrast.** Everything starts sugary and pastel: HaHaland and the
+  Hillvile side are a plush paradise. That makes the invasion land hard:
+  grotesque Doom-style flesh, bone, blood, lava, rust and vape-cloud
+  demons. The `GORE_CUTE` option keeps even the violence adorable:
+  confetti, hearts, plush stuffing.

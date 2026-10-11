@@ -200,7 +200,16 @@ accessibility.
 | Strafe / lock-on | L / R | L1 / R2-lock, Square roll, Triangle weapon |
 | Look up/down | hold L + D-pad (classic) | L2/R2 or D-pad (modern) |
 
-## 5. Tone
+## 5. Look & feel
+**Premium, not cheap pixel art: cute, lively, constantly animated, and
+vaguely furry.** Most citizens are soft plush critter-folk (cat, fox,
+bunny, bear, pup, mouse, sheep, raccoon and owl folk alongside imps,
+ghosts, skeletons and slimes), with fluffy fur tufts, big expressive ears,
+fluffy tails and paw hands. Everything breathes, blinks, wiggles and
+bounces. Shading is soft multi-tone with coloured outlines and rim light.
+See ARCHITECTURE.md "Art direction" for the rules.
+
+## 6. Tone
 Cute first. The horror and gore are funny *because* the first hour is a
 sugary tamagotchi daydream. Nothing mean-spirited toward real people;
 violence is cartoon game violence against demons. Killing citizens is
