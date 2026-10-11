@@ -901,8 +901,10 @@ static inline __attribute__((always_inline)) void outline_px(int i, int x, int y
 }
 
 /* contours + silhouette outline: every marked pixel is either solid
- * (may get an inner contour) or empty (may get an outline) */
-P_FAST static void finish_marked(void)
+ * (may get an inner contour) or empty (may get an outline). Only the few
+ * marked boundary pixels get here, so this stays THUMB in ROM on the GBA
+ * (as P_FAST it took 1.3 KB of IWRAM from the 6 KB main stack). */
+static void finish_marked(void)
 {
     int w = pcv.w, h = pcv.h, bpr = w >> 3, y, k;
     for (y = 0; y < h; y++) {

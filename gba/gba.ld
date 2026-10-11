@@ -42,6 +42,9 @@ SECTIONS
     } > rom
 
     .text : {
+        /* ROM_COLD (gba_hw.h): cold functions of *.iwram.c files stay
+         * in ROM; listed first so the .iwram rule below never sees them */
+        *(.text.rom .text.rom.*)
         *(EXCLUDE_FILE(*.iwram.o) .text.unlikely EXCLUDE_FILE(*.iwram.o) .text.unlikely.*)
         *(EXCLUDE_FILE(*.iwram.o) .text EXCLUDE_FILE(*.iwram.o) .text.* .gnu.linkonce.t.*)
         *(.glue_7) *(.glue_7t) *(.vfp11_veneer) *(.v4_bx)

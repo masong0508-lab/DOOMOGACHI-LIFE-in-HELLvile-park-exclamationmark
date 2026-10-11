@@ -168,6 +168,11 @@ typedef volatile int16_t  vs16;
  * called from the other region: out of BL range, so call through a register. */
 #define IWRAM_CALL __attribute__((long_call))
 #define ROM_CALL   __attribute__((long_call))
+/* Cold code inside a *.iwram.c file (init routines run once at boot):
+ * stays in ROM (gba.ld places .text.rom.* in ROM before the .iwram rule),
+ * so it does not take IWRAM from the main stack. Callers still use
+ * IWRAM_CALL / long_call prototypes, which reach ROM just as well. */
+#define ROM_COLD   __attribute__((section(".text.rom"), noinline))
 #define IWRAM_DATA __attribute__((section(".iwram_data")))
 #define IWRAM_BSS  __attribute__((section(".iwram_bss")))
 #define EWRAM_BSS  __attribute__((section(".ewram_bss")))

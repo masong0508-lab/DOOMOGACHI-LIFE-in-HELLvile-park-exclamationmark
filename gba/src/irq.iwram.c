@@ -82,7 +82,7 @@ void gba_irq_dispatch(uint32_t flags)
     }
 }
 
-void mixer_init(void)
+ROM_COLD void mixer_init(void)
 {
     int i;
     for (i = 0; i < MIX_VOICES; i++) mix_voice[i].active = 0;
@@ -98,7 +98,7 @@ void mixer_init(void)
     REG_TM0CNT = TM_ENABLE;
 }
 
-void gba_irq_init(void)
+ROM_COLD void gba_irq_init(void)
 {
     REG_IME = 0;
     REG_DISPSTAT = DSTAT_VBL_IRQ;
