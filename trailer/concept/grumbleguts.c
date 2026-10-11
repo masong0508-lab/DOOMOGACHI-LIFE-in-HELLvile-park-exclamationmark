@@ -489,9 +489,12 @@ static void storyboard(const char *out) {
     blob(84, 104, 70, 64, SKINM);
     blob(176, 104, 70, 64, SKINM);
     tk_line(130, 44, 130, 160, LINE); tk_line(131, 44, 131, 160, SKINM[1]);             /* cleft */
-    /* the hose disappears behind the near cheek (nothing anatomical shown) */
-    for (int i = 0; i < 6; i++) { tk_line(0, 128 + i, 60, 118 + i, PAL_RAMP(RAMP_SICK, 4 - (i == 0 || i == 5 ? 2 : 0))); }
-    tk_ellipse(60, 121, 4, 5, PAL_RAMP(RAMP_SICK, 2));
+    /* the hose runs across the near cheek and goes in at the cleft (the crease
+     * is redrawn over its tip, so it simply vanishes into the line) */
+    for (int i = 0; i < 6; i++) tk_line(0, 136 + i, 128, 112 + i, PAL_RAMP(RAMP_SICK, 4 - (i == 0 || i == 5 ? 2 : 0)));
+    tk_ellipse(127, 115, 3, 5, PAL_RAMP(RAMP_SICK, 2));
+    tk_line(130, 44, 130, 160, LINE); tk_line(131, 44, 131, 160, SKINM[1]);
+    for (int i = -4; i <= 4; i++) tk_px(130 + (i < 0 ? -1 : 1), 115 + i, LINE);        /* crease pinches round the hose */
     /* the culprit's two hands braced on the cheeks, cheeks squashing under them */
     for (int h = 0; h < 2; h++) {
         int hx = h ? 150 : 94, hy = h ? 96 : 92;
