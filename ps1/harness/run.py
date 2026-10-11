@@ -25,6 +25,9 @@ when a scene renders below 30 fps:
     dshot name         the video output as displayed (display mode/position)
     vram name          full 1024x512 VRAM dump -> OUT/name_vram.png
     fps name / fpsend name   measure the presented frame rate
+    prof / profend name      sample the CPU's PC (+ ra) once per vsync while
+                    the game runs -> OUT/prof_NAME.txt (harness/prof.py
+                    turns it into a per-function table with the map)
     expect-log TEXT    fail unless TEXT appears in the TTY log
 
 Buttons: A B X Y L R L2 R2 START SELECT UP DOWN LEFT RIGHT
@@ -204,7 +207,7 @@ def compile_script(lines, lockstep=True):
                 cmds += ["up " + b for b in sorted(set(BUTTONS.values()))]
         elif op == "shot":
             cmds.append("shot " + (arg or "shot"))
-        elif op in ("vram", "fps", "fpsend", "dshot"):
+        elif op in ("vram", "fps", "fpsend", "dshot", "prof", "profend"):
             cmds.append("%s %s" % (op, arg))
         elif op in ("scene", "push"):
             cmds.append(hcmd(op, num(2, 0), arg))

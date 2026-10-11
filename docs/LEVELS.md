@@ -81,5 +81,5 @@ and keys). On the PS1 the same scripts run on the game disc:
 ps1/build/doomogachi.cue --script core/tests/scripts/levels_arena.txt --out DIR`.
 
 Budgets: .bss 345 bytes, no .data, 7.7 KB const tables + strings, code
-24 KB (GBA thumb) / 37 KB (PS1 -Os); the five maps are 103 KB of ROM
-data (cells LZ-packed on the PS1).
+25.6 KB (GBA thumb -O2) / 39 KB (PS1 -Os, in the combat overlay group);
+the five maps are 103 KB of ROM data (cells LZ-packed on the PS1).

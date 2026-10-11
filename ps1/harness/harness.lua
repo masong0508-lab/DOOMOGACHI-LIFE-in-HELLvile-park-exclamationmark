@@ -108,6 +108,8 @@ local idx = 1
 local vsyncs = 0
 local last_frame, last_change = -1, 0
 local fps_start = {}
+local prof = nil          -- PC sampler: { [pc] = hits } while profiling
+local prof_n = 0
 local done = false
 local quit_at = nil
 local lock = false        -- lockstep established
@@ -192,6 +194,17 @@ local function step()
         log(string.format('fps %s %.2f (%d frames / %d vsyncs)', c.arg,
                           dv > 0 and df * 60.0 / dv or 0, df, dv))
       end
+    elseif c.op == 'prof' then
+      prof, prof_n = {}, 0
+    elseif c.op == 'profend' then
+      -- one PC (+ return address) sample per vsync while the game ran
+      if prof then
+        local f = io.open(out .. '/prof_' .. c.arg .. '.txt', 'w')
+        for k, v in pairs(prof) do f:write(string.format('%s %d\n', k, v)) end
+        f:close()
+        log(string.format('profile %s: %d samples', c.arg, prof_n))
+      end
+      prof = nil
     elseif c.op == 'mark' then
       log('mark ' .. c.arg)
     elseif c.op == 'hcmd' then
@@ -255,6 +268,12 @@ local function on_vsync()
     stopped = stopped + 1
   end
   if hang_check(f) then return end
+  if prof and not (lock and hu32(H_PAUSED)[0] ~= 0) then
+    local r = PCSX.getRegisters()
+    local key = string.format('%08x %08x', tonumber(r.pc), tonumber(r.GPR.n.ra))
+    prof[key] = (prof[key] or 0) + 1
+    prof_n = prof_n + 1
+  end
 
   if not lock and hcmd_addr ~= 0 then
     -- wait for the exe to be in RAM, then stop the game at the top of its

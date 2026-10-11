@@ -304,7 +304,7 @@ static void ls_draw(void)
         ui_text_outline(sw / 2 - ui_text_width(L->title) / 2, ty, L->title, PAL_WHITE, ui_style(style)->outline);
     ty += big ? 20 : 11;
     ui_text_wrap(8, ty, sw - 16, L->blurb, ui_style(style)->text, 1);
-    ty += big ? 21 : 21;
+    ty += 21;
     if (ls.mode == LVM_TIME_TRIAL) {
         lvd_time(tb, sizeof(tb), L->dev);
         doomo_snprintf(buf, sizeof(buf), STR_ICON_BOLT " Gold time %s   %s", tb, lv_gold(ls.sel) ? STR_ICON_STAR " GOLD!" : "no medal yet");
