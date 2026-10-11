@@ -71,11 +71,45 @@ typedef struct OwState {
 } OwState;
 
 extern OwState ow;
-extern OwNpc ow_npcs[OW_NPC_MAX];
+
+/* (integration, memory budget) The per-map state that is big but can be
+ * rebuilt from the map, the day and the story - the citizens, the props
+ * and the generated bubble / mini-map images (~5.6 KB) - lives in the
+ * shared scene scratch (scene.h, tag OWLD), not in .bss. Any scene the
+ * overworld pushes may take the scratch; ow_scratch_claim() notices that
+ * and the overworld respawns the cast (it did so after every pushed scene
+ * anyway). The per-frame billboard list is the shared doomo_frame_bb. */
+/* overworld_fx.c's generated images: quest markers, emote bubbles and the
+ * mini-map (2x2 cells per pixel, drawn at 2x so it keeps its size) */
+#define OWFX_MK_W 13
+#define OWFX_MK_H 15
+#define OWFX_MK_COUNT 3
+#define OWFX_EM_W 11
+#define OWFX_EM_H 12
+#define OWFX_MM_W (DOOMO_MAP_MAX_W / 2)
+#define OWFX_MM_H (DOOMO_MAP_MAX_H / 2)
+typedef struct OwFxPix {
+    uint8_t mk[OWFX_MK_COUNT][OWFX_MK_W * OWFX_MK_H];
+    uint8_t em[8][OWFX_EM_W * OWFX_EM_H];
+    uint8_t mm[OWFX_MM_W * OWFX_MM_H];
+} OwFxPix;
+typedef struct OwScratch {
+    OwNpc npcs[OW_NPC_MAX];
+    OwProp props[OW_PROP_MAX];
+    OwFxPix fx;
+} OwScratch;
+extern OwScratch *ow_scr;
+#define ow_npcs (ow_scr->npcs)
+#define ow_props (ow_scr->props)
 extern int ow_npc_count;
-extern OwProp ow_props[OW_PROP_MAX];
 extern int ow_prop_count;
-extern DoomoBillboard ow_bb[OW_BB_MAX];
+/* 1 if the scratch is the overworld's (ow_scr valid). */
+int  ow_scratch_mine(void);
+/* Take the scratch for the overworld; returns 1 when it had to be
+ * (re)claimed, i.e. citizens, props and images are gone (counts are 0). */
+int  ow_scratch_claim(void);
+#define ow_bb doomo_frame_bb
+DOOMO_STATIC_ASSERT(OW_BB_MAX <= DOOMO_FRAME_BB_MAX, ow_billboards_fit_frame_bb);
 extern int ow_bb_count;
 
 /* overworld_npc.c */
@@ -94,6 +128,7 @@ int  ow_floor_h(int cx, int cy);
 int  ow_prop_blocks(int32_t x, int32_t y, int r);
 
 /* overworld_fx.c */
+void owfx_scratch_lost(void);              /* images must be made again  */
 void owfx_init(void);
 void owfx_update(void);
 void owfx_draw_world(void);                /* particles, fireworks          */

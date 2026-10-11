@@ -120,7 +120,7 @@ static void juke_enter(int arg)
 
 static void juke_leave(void)
 {
-    audio_music(J.prev_song);
+    if (scene_scratch_mine(LIB_SCRATCH_TAG)) audio_music(J.prev_song);
 }
 
 static void play_selected(void)
@@ -148,6 +148,7 @@ static void play_selected(void)
 
 static void juke_update(void)
 {
+    if (lib_w_lost(1)) return;
     if (J.play_t < 60000) J.play_t++;
     J.spin = (uint8_t)(J.spin + (J.playing ? 1 : 0));
     switch (lib_nav(N_TABS, 0)) {
@@ -347,6 +348,7 @@ static void sfx_panel(int x, int y, int w, int h)
 static void juke_draw(void)
 {
     int sw = lib_sw(), sh = lib_sh(), y, lw;
+    if (lib_w_lost(0)) return;
     lib_chrome(LIB_WING_JUKEBOX, juke_pct);
     if (plat_draw_skipped()) return;
     y = 18;

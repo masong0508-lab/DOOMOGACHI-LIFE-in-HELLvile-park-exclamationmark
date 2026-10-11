@@ -20,7 +20,14 @@ DoomoWeaponStats  combat_ws;
 void (*combat_bot_fn)(CombatCtl *ctl);
 
 #define BB_MAX 120
-static DoomoBillboard bbs[BB_MAX];
+/* (integration, memory budget) the billboard list is rebuilt every frame
+ * and only read inside plat_view3d(): it is the shared doomo_frame_bb
+ * (scene.h), not a 2.4 KB array of its own */
+#define bbs doomo_frame_bb
+DOOMO_STATIC_ASSERT(BB_MAX <= DOOMO_FRAME_BB_MAX, combat_billboards_fit_frame_bb);
+/* one flood-fill stack for both secret-region walks (run at map start,
+ * never at the same time) */
+static uint16_t flood_stack[256];
 static int last_result;
 static int turn_ticks;
 static int select_used;
@@ -207,7 +214,7 @@ void combat_toggle_camera(void)
 static int count_secret_regions(void)
 {
     /* each connected group of CELL_SECRET cells is one secret */
-    static uint16_t stack[256];
+    uint16_t *stack = flood_stack;
     uint8_t seen[DOOMO_MAP_MAX_W * DOOMO_MAP_MAX_H / 8];
     int n = 0, i, w = doomo_map.w, total = doomo_map.w * doomo_map.h;
     memset(seen, 0, sizeof(seen));
@@ -235,7 +242,7 @@ static int count_secret_regions(void)
 
 static void mark_secret_region(int start)
 {
-    static uint16_t stack[256];
+    uint16_t *stack = flood_stack;
     int sp = 0, w = doomo_map.w, total = doomo_map.w * doomo_map.h;
     stack[sp++] = (uint16_t)start;
     while (sp > 0) {

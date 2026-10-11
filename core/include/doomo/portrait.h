@@ -90,4 +90,14 @@ void portrait_cache_reset(void);
  * tick (0 = the platform default; the GBA uses 1). */
 void portrait_cache_clock(uint32_t tick, int steps);
 
+/* (integration, memory budget) Small images of other modules kept in the
+ * portrait cache's block pool (LRU with the portraits) instead of a RAM
+ * cache of their own - e.g. the weld icons (24x16, one block each).
+ * Returns the image for `key` (any hash of what the pixels show), at most
+ * PORTRAIT_POOL_IMAGE_MAX bytes; *fresh = 1 when it was (re)allocated and
+ * the caller must draw its pixels now (cast away the const). Valid until
+ * the pool reuses it: draw it in the same frame. */
+#define PORTRAIT_POOL_IMAGE_MAX (PORTRAIT_W * PORTRAIT_H)
+const DoomoImage *portrait_pool_image(uint32_t key, int w, int h, int *fresh);
+
 #endif

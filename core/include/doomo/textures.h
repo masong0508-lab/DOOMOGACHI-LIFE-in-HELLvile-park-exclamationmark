@@ -87,6 +87,11 @@ extern const DoomoArtAnim doomo_art_tex[TEX_COUNT];
 extern const uint8_t doomo_art_tex_pix[][DOOMO_TEX_SIZE_PX];
 extern const uint16_t doomo_art_tex_frame_total;
 extern const char *const doomo_art_tex_names[TEX_COUNT];
+/* (integration, memory budget) every texture frame as a const image (ROM
+ * on the GBA, no RAM copies); uids are fixed, from the const-image range
+ * below 0x01000000 that doomo_image_new_uid() never hands out */
+#define DOOMO_ART_TEX_UID 0x00B00000u
+extern const DoomoImage doomo_art_tex_img[];
 extern const DoomoArtAnim doomo_art_sky[SKY_COUNT];
 extern const uint8_t doomo_art_sky_pix[][SKY_W * SKY_H];
 

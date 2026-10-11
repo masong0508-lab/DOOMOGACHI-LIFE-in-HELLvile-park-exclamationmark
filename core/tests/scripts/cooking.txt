@@ -1,0 +1,48 @@
+# SCENE_COOKING (fishcook): Granny Hopscotch's kitchen at Brimstone Bites.
+# The recipe book (arg 64 = COOK_ARG_STOCK fills the pantry), then the bot
+# cooks Fluffy Pancakes start to finish (arg 864 = RECIPE(2) | STOCK |
+# AUTOPLAY): CHOP, STIR, FRY and the plate. Pink Cupcakes show the oven
+# (352), Granny's Pudding the simmering pot (608). Last, the counter with
+# today's customers (arg 129 = COUNTER | DEMO): pick a dish, serve it.
+push COOKING 64
+expect-scene COOKING
+wait 20
+shot book
+press RIGHT
+press RIGHT
+wait 14
+shot book_pancakes
+press L
+wait 14
+shot book_locked
+scene COOKING 864
+expect-scene COOKING
+wait 22
+shot step_chop_intro
+wait 70
+shot chop
+wait 168
+shot stir
+wait 220
+shot fry
+wait 220
+shot result
+scene COOKING 352
+wait 470
+shot bake
+scene COOKING 608
+wait 480
+shot simmer
+scene COOKING 129
+expect-scene COOKING
+wait 20
+shot counter
+press A
+wait 16
+shot serve_pick
+press A
+wait 24
+shot served
+wait 70
+expect-scene COOKING
+shot counter_after

@@ -170,6 +170,7 @@ static void best_enter(int arg)
 
 static void best_update(void)
 {
+    if (lib_w_lost(1)) return;
     switch (lib_nav(N_TABS, 3)) {
     case LIBE_TAB: case LIBE_FILTER: rebuild(); break;
     case LIBE_BACK: lib_wing_leave(); break;
@@ -409,6 +410,7 @@ static void best_draw(void)
 {
     int sw = lib_sw(), sh = lib_sh(), y, lw;
     char tabn[24];
+    if (lib_w_lost(0)) return;
     lib_chrome(LIB_WING_BESTIARY, lib_w.best.pct);
     if (plat_draw_skipped()) return;
     y = 18;

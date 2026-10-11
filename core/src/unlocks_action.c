@@ -131,9 +131,11 @@ const DoomoUnlock doomo_unlocks_action[] = {
     GAL(549, 9, "Cloud Spider", "Defeat a Cloud Spider"),
     GAL(550, 10, "Lord Vapula", "Defeat Lord Vapula"),
     /* ---- secret achievements ---- */
-    { 560, UL_CAT_MISC, 0, 0, "Legendary Welder", "Weld a weapon of quality 100", 0, 0 },
-    { 561, UL_CAT_MISC, 0, 1, "Plush Pacifist", "Finish a level with only cute kills", 0, 0 },
-    { 562, UL_CAT_MISC, 0, 2, "Gibbed!", "Gib a demon with a brutal overkill", 0, 0 },
-    { 563, UL_CAT_MISC, 0, 3, "Secret Sniffer", "Find every secret in a level", 0, 0 },
+    /* (integration) list UL_MISC_ACTION (was 0, which life's MISC entries
+     * 353/355/371/372 also use: same (cat, list, index) keys) */
+    { 560, UL_CAT_MISC, UL_MISC_ACTION, 0, "Legendary Welder", "Weld a weapon of quality 100", 0, 0 },
+    { 561, UL_CAT_MISC, UL_MISC_ACTION, 1, "Plush Pacifist", "Finish a level with only cute kills", 0, 0 },
+    { 562, UL_CAT_MISC, UL_MISC_ACTION, 2, "Gibbed!", "Gib a demon with a brutal overkill", 0, 0 },
+    { 563, UL_CAT_MISC, UL_MISC_ACTION, 3, "Secret Sniffer", "Find every secret in a level", 0, 0 },
     { 0, 0, 0, 0, NULL, NULL, 0, 0 }
 };

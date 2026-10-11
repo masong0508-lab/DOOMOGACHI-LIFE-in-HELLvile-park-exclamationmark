@@ -43,7 +43,7 @@ void combat_hud_project(fix16 x, fix16 y, fix16 z, int *sx, int *sy, int *visibl
     int64_t lat = (rx * -diry + ry * dirx) >> 16;
     int focal = focal_px(v);
     int horizon = v->vy + v->vh / 2 + (int)((int64_t)v->pitch * focal * 84 / (256 * 100));
-    int64_t eye = (int64_t)v->z + ((int64_t)v->bob << 16);
+    int64_t eye = (int64_t)v->z + ((int64_t)v->bob * 65536);   /* (integration) bob may be < 0 */
     *visible = 0;
     if (depth < ((int64_t)8 << 16)) return;
     *sx = v->vx + v->vw / 2 + (int)(lat * focal / depth);

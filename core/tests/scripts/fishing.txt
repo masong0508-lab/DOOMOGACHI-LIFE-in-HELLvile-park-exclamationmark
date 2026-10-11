@@ -1,0 +1,58 @@
+# SCENE_FISHING (fishcook): the Lake of Fire. The pier by day, winding up
+# and casting by hand, then the bot fights a forced Plush Koi (arg 1568 =
+# FISH_ARG_FORCE(5) | AUTOPLAY): the reel + tension meter, the catch card.
+# Then the tackle box, the Fishdex and the cooler (arg 128 = DEMO fills
+# them), and a midnight fight with Lord Vapula's Lost Sock (arg 7776 =
+# FORCE(29) | NIGHT | AUTOPLAY).
+push FISHING 0
+expect-scene FISHING
+wait 20
+shot pier_day
+down A
+wait 25
+shot wind_up
+up A
+wait 30
+shot bobber
+release
+scene FISHING 1568
+expect-scene FISHING
+wait 150
+shot reel
+wait 175
+shot catch_card
+wait 80
+scene FISHING 128
+wait 10
+press START
+wait 16
+shot tackle_box
+press A
+wait 10
+shot fishdex
+press RIGHT
+press RIGHT
+press DOWN
+press DOWN
+wait 6
+shot fishdex_more
+press B
+wait 4
+press DOWN
+press A
+wait 8
+shot cooler
+press A
+wait 10
+press B
+wait 4
+press B
+wait 4
+scene FISHING 7776
+expect-scene FISHING
+wait 210
+shot night_reel
+wait 275
+shot sock_card
+wait 90
+shot night_pier

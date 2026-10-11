@@ -14,8 +14,47 @@
 #include "overworld_int.h"
 
 OwState ow;
-DoomoBillboard ow_bb[OW_BB_MAX];
-int ow_bb_count;
+int ow_bb_count;                        /* ow_bb = the shared doomo_frame_bb */
+
+/* ---- the overworld's part of the scene scratch (overworld_int.h) ---------------------- */
+#define OW_SCRATCH_TAG SAVE_EXT_TAG('O', 'W', 'L', 'D')
+OwScratch *ow_scr;
+
+int ow_scratch_mine(void)
+{
+    return ow_scr && scene_scratch_mine(OW_SCRATCH_TAG);
+}
+
+int ow_scratch_claim(void)
+{
+    if (ow_scratch_mine()) return 0;
+    ow_scr = (OwScratch *)scene_scratch(OW_SCRATCH_TAG, (uint32_t)sizeof(OwScratch));
+    memset(ow_scr, 0, sizeof(*ow_scr));
+    ow_npc_count = 0;
+    ow_prop_count = 0;
+    owfx_scratch_lost();
+    return 1;
+}
+
+/* May the overworld write its scratch now? Only while it is the scene
+ * running (or drawing), or when the scratch is still its own: story
+ * callbacks can run under other scenes, whose scratch must stay intact. */
+static int ow_scratch_usable(void)
+{
+    if (ow_scratch_mine()) return 1;
+    if (scene_top() != &SCENE_STORY) return 0;
+    ow_scratch_claim();
+    return 1;
+}
+
+/* Back from a scene that took the scratch: props + cast again. */
+static void ow_scratch_ensure(void)
+{
+    if (ow_scratch_claim() && ow.started && map_current_id() == ow.map) {
+        ownpc_load_props();
+        ownpc_spawn_all();
+    }
+}
 
 static const int8_t dir_dx[4] = { 0, -1, 1, 0 };
 static const int8_t dir_dy[4] = { 1, 0, 0, -1 };
@@ -150,7 +189,7 @@ static void load_map_only(int map_id)
     if (map_id < 0 || map_id >= MAPID_COUNT) map_id = MAPID_HAHALAND;
     ow.map = (uint8_t)map_id;
     map_load(map_id);
-    ownpc_load_props();
+    if (ow_scratch_usable()) ownpc_load_props();   /* else when we resume */
 }
 
 void ow_enter_map(int map_id, int cx, int cy)
@@ -160,7 +199,7 @@ void ow_enter_map(int map_id, int cx, int cy)
     place_player((int32_t)cx * OW_CELL + OW_CELL / 2, (int32_t)cy * OW_CELL + OW_CELL / 2);
     ow.fade = 12;
     ow.region = NULL;
-    ownpc_spawn_all();
+    if (ow_scratch_usable()) ownpc_spawn_all();
     audio_music(ow_music_for_map(ow.map));
     restore_style();
     if (!ow.visit) {
@@ -175,7 +214,7 @@ void ow_enter_map(int map_id, int cx, int cy)
 
 void ow_refresh_cast(void)
 {
-    if (ow.started && map_current_id() == ow.map) ownpc_spawn_all();
+    if (ow.started && map_current_id() == ow.map && ow_scratch_usable()) ownpc_spawn_all();
 }
 
 static void continue_on_saved_map(void)
@@ -195,7 +234,7 @@ static void continue_on_saved_map(void)
         place_player((int32_t)cx * OW_CELL + OW_CELL / 2, (int32_t)cy * OW_CELL + OW_CELL / 2);
     ow.dir = s->facing & 3;
     ow.fade = 15;
-    ownpc_spawn_all();
+    if (ow_scratch_usable()) ownpc_spawn_all();
     audio_music(ow_music_for_map(ow.map));
     restore_style();
 }
@@ -212,6 +251,7 @@ static void start_story(void)
 static void story_enter(int arg)
 {
     memset(&ow, 0, sizeof(ow));
+    ow_scratch_claim();
     ow.near_npc = -1;
     ow.near_prop = -1;
     ow.near_spot = -1;
@@ -281,7 +321,7 @@ static void after_subscene(void)
         ow.px = x;
         ow.py = y;
     }
-    ownpc_spawn_all();
+    if (ow_scratch_usable()) ownpc_spawn_all();
     audio_music(ow_music_for_map(ow.map));
     restore_style();
     ow.fade = 8;
@@ -587,6 +627,7 @@ static int music_tick;
 static void story_update(void)
 {
     ow.t++;
+    ow_scratch_ensure();
     if (story_pending.kind == PEND_CREATOR) {
         const DoomoResident *p = town_res(DOOMO_PLAYER_ID);
         memset(&story_pending, 0, sizeof(story_pending));
@@ -765,6 +806,9 @@ static void story_draw(void)
     DoomoOverworldView v;
     int sw = plat_screen_w(), sh = plat_screen_h();
     if (!ow.started) { plat_clear(PAL_UI_PINK); return; }
+    /* a scene popped this tick may have taken the scratch (before the
+     * draw-skip test, so every platform rebuilds on the same tick) */
+    ow_scratch_ensure();
     /* timers run with the picture, also under dialogue boxes */
     if (ow.fade) ow.fade--;
     if (ow.flash) ow.flash--;

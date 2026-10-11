@@ -281,6 +281,7 @@ static void picker_update(void)
 
 static void alm_update(void)
 {
+    if (lib_w_lost(1)) return;
     if (A.picking) { lib_b.t++; picker_update(); return; }
     switch (lib_nav(SH_COUNT, 3)) {
     case LIBE_TAB: rebuild(); break;
@@ -624,6 +625,7 @@ static void alm_draw(void)
 {
     int sw = lib_sw(), sh = lib_sh(), y, lw;
     char tabn[40];
+    if (lib_w_lost(0)) return;
     lib_chrome(LIB_WING_ALMANAC, alm_pct);
     if (plat_draw_skipped()) return;
     y = 18;

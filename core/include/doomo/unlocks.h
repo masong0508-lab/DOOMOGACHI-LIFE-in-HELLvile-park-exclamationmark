@@ -18,6 +18,7 @@
 #define DOOMO_UNLOCKS_H
 
 #include "types.h"
+#include "unlock_ids.h"
 
 #define DOOMO_UNLOCK_BITS 1024
 
@@ -67,10 +68,9 @@ typedef struct DoomoUnlock {
  *   UL_CAT_MISC         free for the owner
  *
  * Unlock ids are global bit indices. Each team owns a range so tables
- * never collide:
- *   foundation 0..255   creator 256..319   life 320..415
- *   action 416..607     story 608..735     freeplay 736..831
- *   art 832..895        portrait 896..959  roster 960..1023
+ * never collide: the central allocation (ids, UL_CAT_MISC list ids,
+ * PROG_* slots) is doomo/unlock_ids.h, and core/tests/test_integration.c
+ * checks every table against it.
  *
  * Per-team tables, each terminated by an entry whose name is NULL.
  * stubs.c has weak empty ones; define yours (strong) in your own .c. */
@@ -88,6 +88,7 @@ extern const DoomoUnlock doomo_unlocks_concert[];     /* 896..959 (Concert Hall 
 extern const DoomoUnlock doomo_unlocks_studio[];      /* 240..255 (Music Studio) */
 extern const DoomoUnlock doomo_unlocks_library[];     /* 384..415 (Grand Library; life's unused tail) */
 extern const DoomoUnlock doomo_unlocks_fishcook[];    /* 960..1023 (Lake of Fire + Brimstone Bites; roster's unused range) */
+extern const DoomoUnlock doomo_unlocks_levels[];      /* 864..895 (levels + arena modes; reserved, unlock_ids.h) */
 
 /* Game modes gated by UL_CAT_MODE. */
 enum { MODE_ARENA, MODE_BOSS_RUSH, MODE_HELLVILE_VISITS, MODE_TAMA_ONLY,
@@ -123,6 +124,7 @@ enum { PROG_CITIZENS_CREATED, PROG_EXORCISMS_WON, PROG_EXORCISMS_FAILED,
        /* concert hall: shows put on; the Hit Parade (2 packed singles each) */
        PROG_CONCERTS, PROG_HIT_SINGLES, PROG_HIT_SINGLES2,
        PROG_FISH_CAUGHT,      /* (fishcook) fish landed at the Lake of Fire */
+       PROG_BREACH_RANKS,     /* (levels) packed: 3-bit rank per Hell Breach level + best Horde wave << 21 */
        PROG_COUNT };
 void progress_add(int counter, int amount);   /* also checks unlocks */
 uint32_t progress_get(int counter);

@@ -1,0 +1,256 @@
+# Bone Cathedral - Hell Breach 6 (owner: levels expansion).
+# A gothic hell church that goes UP. Mind the organ.
+#   The courtyard under the red sky (bone pillars, the lava font, a hidden
+#   nook behind the east pillars - secret) -> the 40-step-high facade and
+#   its great arch -> the narthex with two spiral stair towers (11 steps around
+#   a pillar each) -> the nave: pews, a carpet aisle and a 320-unit vault;
+#   its crossing is open to the sky over a lava pool -> the galleries along
+#   both sides of the nave (96 units up) -> the west transept and the bell
+#   tower lift (blue key in the bell chamber, a ledge above it - secret) ->
+#   the east transept's bone chapel (a secret door behind the altar) ->
+#   drop back into the nave -> the stairs to the blue door -> the apse,
+#   open to the sky, where a wall of organ pipes up to 280 units tall
+#   plays for BISHOP BONEBOTTOM, THE ORGAN GRINDER (a giant bone jester;
+#   the pipes shoot fire while he lives). His death opens the centre pipes
+#   and the way out.
+# Built with the levels team's map kit; edit freely. Compiled by tools/mapc.py.
+map bone_cathedral
+title "Bone Cathedral"
+kind dungeon
+sky HELL
+music CHURCH
+ambient 9
+
+cell # wall=BONE_WALL ch=12
+cell F wall=BONE_WALL ch=40                                    # the cathedral shell
+cell S wall=STAINED_GLASS ch=40
+cell K wall=SKULL_MOSAIC ch=40
+cell P wall=BONE_WALL ch=8                                     # courtyard pillars
+cell I wall=BONE_WALL                                          # nave pillars / tower cores
+cell o wall=RUST_METAL ch=20                                   # organ pipes (heights in the ceilh overlay)
+cell H wall=HEDGE ch=3
+cell W wall=BONE_WALL ch=56                                    # the two bell-less towers of the facade
+cell Y wall=SKULL_MOSAIC ch=46                                 # facade buttresses
+cell Z wall=BONE_WALL ch=40                                    # the arch posts (their top is the arch's roof)
+cell y floor=HELL_ROCK ceil=sky fh=0 light=11
+cell g floor=GORE_FLOOR ceil=sky fh=0 light=11
+cell ~ floor=LAVA ceil=sky fh=-2 light=15 flags=lava           # the font of the damned
+cell z floor=INFECTED_GRASS ceil=sky fh=1 light=13 flags=secret # hidden nook
+cell D floor=GORE_FLOOR ceil=SKULL_MOSAIC fh=0 ch=14 light=12  # the great arch (open)
+cell n floor=PENTAGRAM_FLOOR ceil=SKULL_MOSAIC fh=0 ch=14 light=11
+cell s floor=BONE_WALL ceil=SKULL_MOSAIC fh=1 ch=22 light=10   # spiral steps (overlay)
+cell v floor=TILE_FLOOR ceil=SKULL_MOSAIC fh=0 ch=40 light=10
+cell c floor=CARPET ceil=SKULL_MOSAIC fh=0 ch=40 light=11      # the aisle
+cell q floor=WOOD_FLOOR ceil=SKULL_MOSAIC fh=1 ch=40 light=10  # pews
+cell G floor=BONE_WALL ceil=SKULL_MOSAIC fh=12 ch=40 light=10  # galleries
+cell x floor=TILE_FLOOR ceil=sky fh=0 light=12                 # the crossing (open sky)
+cell X floor=BONE_WALL ceil=sky fh=12 light=12                 # gallery under the sky
+cell l floor=LAVA ceil=sky fh=-3 light=15 flags=lava
+cell a floor=CARPET ceil=SKULL_MOSAIC fh=2 ch=40 light=12      # apse stairs (overlay)
+cell U floor=CARPET ceil=DOOR_HELL fh=6 ch=16 light=12 flags=door tag=2 # blue door
+cell t floor=TILE_FLOOR ceil=SKULL_MOSAIC fh=12 ch=26 light=11
+cell L floor=PENTAGRAM_FLOOR ceil=sky fh=12 light=14 flags=lift tag=24 # bell tower lift
+cell b floor=WOOD_FLOOR ceil=sky fh=24 light=13                # bell chamber
+cell B floor=WOOD_WALL ceil=sky fh=27 light=15 flags=secret    # above the bells
+cell T wall=BONE_WALL ch=31                                    # bell tower walls
+cell A floor=BONE_WALL ceil=SKULL_MOSAIC fh=13 ch=26 light=13  # bone altar
+cell e floor=TILE_FLOOR ceil=BONE_WALL fh=12 ch=21 light=11 flags=door # secret door behind the altar
+cell r floor=CARPET ceil=STAINED_GLASS fh=12 ch=21 light=15 flags=secret # the reliquary
+cell p floor=GORE_FLOOR ceil=sky fh=6 light=11
+cell k floor=WOOD_FLOOR ceil=sky fh=8 light=13                 # organ console
+cell j floor=GORE_FLOOR ceil=sky fh=6 light=11 flags=trigger tag=21
+cell O floor=GORE_FLOOR ceil=RUST_METAL fh=6 ch=15 light=13 flags=door tag=20 # the centre pipes open
+cell E floor=CLOUD_PUFF ceil=CLOUD_PUFF fh=6 ch=15 light=15 flags=exit
+
+grid
+FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+FFFFFFFFFFFFFFFFFFFFFEEEFFFFFFFFFFFFFFFFFFFFFFFF
+FFFFFFFFFFFFoooooooooOOOoooooooooFFFFFFFFFFFFFFF
+FFFFFFFFFFFFopppppppppppppppppppoFFFFFFFFFFFFFFF
+FFFFFFFFFFFFopppppppppppppppppppoFFFFFFFFFFFFFFF
+FFFFFFFFFFFFoppppppkkkkkkkppppppoFFFFFFFFFFFFFFF
+FFFFFFFFFFFFoppppppkkkkkkkppppppoFFFFFFFFFFFFFFF
+FFFFFFFFFFFFopppppppppppppppppppoFFFFFFFFFFFFFFF
+FFFFFFFFFFFFopppppppppppppppppppoFFFFFFFFFFFFFFF
+FFFFFFFFFFFFopppppppppppppppppppoFFFFFFFFFFFFFFF
+FFFFFFFFFFFFoppppppppjjjppppppppoFFFFFFFFFFFFFFF
+FFFFFFFFFFFFFFFFFFFFFUUUFFFFFFFFFFFFFFFFFFFFFFFF
+FFFFFFFFFFFFFGGGGvvvvaaavvvvGGGGFFFFFFFFFFFFFFFF
+FFFFFFFFFFFFFGGGGvqqqaaaqqqvGGGGFFFFFFFFFFFFFFFF
+FFFFFFFFFFFFFGGGIvvvvcccvvvvIGGGFFFFFFFFFFFFFFFF
+FFFFFFFFFFFFSGGGGvqqqcccqqqvGGGGSFFFFFFFFFFFFFFF
+FFFTTTTTTFFFFGGGGvvvvcccvvvvGGGGFFFFFFFFFFFFFFFF
+FFFTBBbbTtttFGGGGvvvvcccvvvvGGGGFttttttttFFFFFFF
+FFFTbbbbTttttXXXIxxxxxxxxxxxIXXXtttttttttFFFFFFF
+FFFTbbbbTttttXXXXxxlllllllxxXXXXttttttAAtFrrFFFF
+FFFTTLLTTttttXXXXxxlllllllxxXXXXttttttAAtFrrFFFF
+FFFTTLLTTttttXXXXxxlllllllxxXXXXttttttAAterrFFFF
+FFFTTttTTttttXXXXxxlllllllxxXXXXttttttAAtFrrFFFF
+FFFFtttttttttXXXXxxlllllllxxXXXXttttttAAtFrrFFFF
+FFFFtttttttttXXXIxxxxxxxxxxxIXXXtttttttttFFFFFFF
+FFFFttttttttFGGGGvvvvcccvvvvGGGGFttttttttFFFFFFF
+FFFFFFFFFFFFFGGGIvvvvcccvvvvIGGGFFFFFFFFFFFFFFFF
+FFFFFFFFFFFFFGGGGvqqqcccqqqvGGGGFFFFFFFFFFFFFFFF
+FFFFFFFFFFFFSGGGGvvvvcccvvvvGGGGSFFFFFFFFFFFFFFF
+FFFFFFFFFFFFFGGGGvqqqcccqqqvGGGGFFFFFFFFFFFFFFFF
+FFFFFFFFFFFFFGGGIvvvvcccvvvvIGGGFFFFFFFFFFFFFFFF
+FFFFFFFFFFFFFGGGGvqqqcccqqqvGGGGFFFFFFFFFFFFFFFF
+FFFFFFFFFFFFFGGGGvvvvcccvvvvGGGGFFFFFFFFFFFFFFFF
+FFFFFFFFFFFFFGGGGvqqqcccqqqvGGGGFFFFFFFFFFFFFFFF
+FFFFFFFFFFFFFGGGIvvvvcccvvvvIGGGFFFFFFFFFFFFFFFF
+FFFFFFFFFFFFSGGGGvqqqcccqqqvGGGGSFFFFFFFFFFFFFFF
+FFFFFFFFFFFFFGGGGvvvvcccvvvvGGGGFFFFFFFFFFFFFFFF
+FFFFFFFFFFFFFGGGGvqqqcccqqqvGGGGFFFFFFFFFFFFFFFF
+FFFFFFFFFFFFFGGGIvvvvcccvvvvIGGGFFFFFFFFFFFFFFFF
+FFFFFFFFFFFFFGGGGvqqqcccqqqvGGGGFFFFFFFFFFFFFFFF
+FFFFFFFFFFFFFGGGGvvvvcccvvvvGGGGFFFFFFFFFFFFFFFF
+FFFFFFFFFFFFFssssnnnnnnnnnnnssssFFFFFFFFFFFFFFFF
+FFFFFFFFFFFFFsIIInnnnnnnnnnnIIIsFFFFFFFFFFFFFFFF
+FFFFFFFFFFFFFsIIsnnnnnnnnnnnsIIsFFFFFFFFFFFFFFFF
+FFFFFFFFFFFFFssssnnnnnnnnnnnssssFFFFFFFFFFFFFFFF
+FFFFFFFFFFFFWWWWYFSFZDDDZFSFYWWWWFFFFFFFFFFFFFFF
+FyyyyyyyyyyyyyyyygggggggggggyyyyyyyyyyyyyyyyyyyF
+FyyyyPyyyyyyyyPyygggggggggggyyPyyyyyyyyPyPPPPPPF
+FyyyyyyyyyyyyyyyygggggggggggyyyyyyyyyyyyyPzzzzzF
+Fyyyyyyy~~~~yyyyygggggggggggyyyyy~~~~yyyyPzzzzzF
+Fyyyyyyy~~~~yyyyygggggggggggyyyyy~~~~yyyyyzHHHzF
+Fyyyyyyy~~~~yyyyygggggggggggyyyyy~~~~yyyyPzzzzzF
+FyyyyyyyyyyyyyyyygggggggggggyyyyyyyyyyyyyPzzzzzF
+FyyyyPyyyyyyyyPyygggggggggggyyPyyyyyyyyPyyyyyyyF
+FyyyyyyyyyyyyyyyygggggggggggyyyyyyyyyyyyyyyyyyyF
+FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+end
+
+floorh
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.....................444
+.....................222
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.............89ab...........ba98
+.............7.................7
+.............6..1...........1..6
+.............5432...........2345
+end
+
+ceilh
+.
+.
+.............egiloruwfffwurolige
+............g...................g
+............c...................c
+............g...................g
+............c...................c
+............g...................g
+............c...................c
+............g...................g
+............c...................c
+end
+
+# things: x y TYPE [angle=deg] [arg=n] [tflags=...]
+thing 22 52 PLAYER_START angle=270
+thing 16 47 PROP_TORCH
+thing 28 47 PROP_TORCH
+thing 16 53 PROP_TORCH
+thing 28 53 PROP_TORCH
+thing 10 48 PROP_SKULLS
+thing 35 52 PROP_SKULLS
+thing 20 47 PROP_SIGN angle=270
+thing 3 50 HEALTH_SMALL
+thing 25 54 AMMO_SHELLS
+thing 44 49 SOUL_ORB
+thing 45 51 HEALTH_BIG
+thing 9 53 IMPLING angle=0
+thing 36 47 IMPLING angle=180
+thing 31 50 HELLHOUND_PUP angle=180 tflags=not_easy
+thing 19 42 BONE_JESTER angle=90 tflags=not_easy
+thing 26 43 IMPLING angle=180
+thing 18 44 AMMO_BULLETS
+thing 26 41 HEALTH_SMALL
+thing 14 41 CANDY
+thing 30 41 CANDY
+thing 22 34 PUFF_DEMON angle=90
+thing 19 30 IMPLING angle=90
+thing 25 28 IMPLING angle=90
+thing 22 15 BONE_JESTER angle=90
+thing 18 20 VAPE_WRAITH angle=0 tflags=hard
+thing 26 36 HELLHOUND_PUP angle=90
+thing 22 38 AMMO_SHELLS
+thing 17 26 HEALTH_SMALL
+thing 27 26 AMMO_BULLETS
+thing 22 25 CANDY
+thing 17 39 PROP_TORCH
+thing 27 39 PROP_TORCH
+thing 17 17 PROP_TORCH
+thing 27 17 PROP_TORCH
+thing 14 30 GARGOYLE angle=0 tflags=not_easy
+thing 14 27 HEALTH_BIG
+thing 30 27 HEALTH_BIG
+thing 30 22 GARGOYLE angle=180 tflags=ambush
+thing 18 41 ARMOR
+thing 30 34 IMPLING angle=270
+thing 14 14 CYBER_PIGGY angle=90 tflags=hard
+thing 14 36 AMMO_CELLS
+thing 30 14 HEALTH_BIG
+thing 14 22 ARMOR
+thing 30 30 AMMO_SHELLS
+thing 9 23 CLOUD_SPIDER angle=0 tflags=not_easy
+thing 10 18 IMPLING angle=180
+thing 6 18 KEY_BLUE
+thing 4 17 AMMO_ROCKETS
+thing 5 17 SOUL_ORB
+thing 35 21 SLIME_BELCHER angle=0
+thing 36 24 BONE_JESTER angle=180
+thing 43 21 SOUL_ORB
+thing 42 20 ARMOR
+thing 34 18 HEALTH_SMALL
+thing 10 25 AMMO_SHELLS
+thing 38 18 PROP_TORCH
+thing 38 24 PROP_TORCH
+thing 22 5 BONE_JESTER angle=90 tflags=boss,kill_event arg=20
+thing 15 5 IMPLING angle=0 tflags=kill_event arg=20
+thing 29 5 IMPLING angle=180 tflags=kill_event arg=20
+thing 14 9 GARGOYLE tflags=dormant arg=21
+thing 30 9 GARGOYLE tflags=dormant,not_easy arg=21
+thing 14 3 HEALTH_BIG
+thing 30 3 AMMO_ROCKETS
+thing 14 7 AMMO_SHELLS
+thing 30 7 HEALTH_SMALL
+thing 18 9 PROP_TORCH
+thing 26 9 PROP_TORCH

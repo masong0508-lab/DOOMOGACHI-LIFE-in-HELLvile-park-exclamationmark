@@ -120,9 +120,15 @@ typedef struct MgState {
 } MgState;
 extern MgState mg;
 
-/* The shared state arena (one game at a time). */
+/* The shared state arena (one game at a time). (integration, memory
+ * budget) It is the front of the shared scene scratch (scene.h, tag
+ * MGAM), followed by mg_fx.c's particle pool, not a .bss array: claimed
+ * by mg_scratch_claim() when a game opens and when a round starts (the
+ * minigames only open modals over themselves). */
 #define MG_ARENA_BYTES 2048
-extern uint32_t mg_arena[MG_ARENA_BYTES / 4];
+#define MG_FX_BYTES 512
+#define MG_SCRATCH_TAG SAVE_EXT_TAG('M', 'G', 'A', 'M')
+void mg_scratch_claim(void);
 /* The arena as an opaque pointer (keeps the type punning out of sight of
  * the optimiser; `const`: the pointer never changes). */
 void *mg_state(void) __attribute__((const));

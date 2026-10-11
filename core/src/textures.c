@@ -3,15 +3,13 @@
  *
  * All pixels live in const tables in core/gen/art_data.c (ROM on GBA),
  * produced at build time by core/tools/artgen from core/art/ *.c. This
- * file only maps (id, time) to a frame and hands out stable DoomoImage
- * wrappers whose uids come from doomo_image_new_uid() at init, so the PS1
- * can cache uploaded frames by uid.
+ * file only maps (id, time) to a frame and hands out its stable, const
+ * DoomoImage (art_data.c's doomo_art_tex_img, fixed uids), so the PS1 can
+ * cache uploaded frames by uid. (integration, memory budget: the images
+ * used to be RAM copies made at init.)
  */
 #include "doomo/textures.h"
 #include "doomo/palette.h"
-
-static DoomoImage tex_img[DOOMO_TEX_MAX_FRAMES];
-static uint8_t tex_ready;
 
 static int frame_of(const DoomoArtAnim *a, uint16_t time)
 {
@@ -41,14 +39,7 @@ static int valid_tex(int id)
 
 void textures_init(void)
 {
-    int i;
-    for (i = 0; i < (int)doomo_art_tex_frame_total && i < DOOMO_TEX_MAX_FRAMES; i++) {
-        tex_img[i].w = 64;
-        tex_img[i].h = 64;
-        tex_img[i].pix = doomo_art_tex_pix[i];
-        tex_img[i].uid = doomo_image_new_uid();
-    }
-    tex_ready = 1;
+    /* nothing left to set up: the images are const (art_data.c) */
 }
 
 const uint8_t *texture_pixels(int tex_id, uint16_t time)
@@ -62,10 +53,9 @@ const uint8_t *texture_pixels(int tex_id, uint16_t time)
 const DoomoImage *texture_image(int tex_id, uint16_t time)
 {
     const DoomoArtAnim *a;
-    if (!tex_ready) textures_init();
     if (!valid_tex(tex_id)) tex_id = TEX_GRASS;
     a = &doomo_art_tex[tex_id];
-    return &tex_img[a->first + frame_of(a, time)];
+    return &doomo_art_tex_img[a->first + frame_of(a, time)];
 }
 
 int texture_is_animated(int tex_id)

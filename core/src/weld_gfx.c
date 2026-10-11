@@ -17,29 +17,43 @@
  *          rivets, a skull decal and dried blood
  *
  * Frames: 0 idle, 1 fire (kicked back, slide/bolt open), 2 fire2 (smoke),
- * 3 reload (tilted, magazine out). Results are cached in two 96x64 RAM
- * slots (and six 24x16 icon slots) keyed by every part, so the HUD only
- * pays for a composition when you switch weapons.
+ * 3 reload (tilted, magazine out). Results are cached in two 96x64 slots
+ * (in the scene scratch) and 24x16 icons (in the portrait cache's pool)
+ * keyed by every part, so the HUD only pays for a composition when you
+ * switch weapons.
  */
 #include "doomo/weld.h"
 #include "doomo/palette.h"
 #include "doomo/fixmath.h"
 #include "doomo/rng.h"
+#include "doomo/scene.h"
+#include "doomo/portrait.h"
+#include "doomo/save_ext.h"
 
 #define VW WELD_VIEW_W
 #define VH WELD_VIEW_H
 #define IW WELD_ICON_W
 #define IH WELD_ICON_H
 #define VIEW_SLOTS 2
-#define ICON_SLOTS 6
 #define VIEW_WSC 390          /* width scale of the first-person sprite */
 
-static uint8_t   view_pix[VIEW_SLOTS][VW * VH];
+/* (integration, memory budget) The two 96x64 view slots (12 KB) live in
+ * the shared scene scratch (scene.h), not in .bss: they are a cache that
+ * only the scenes showing a first-person weapon need (combat, arena,
+ * workshop, the library's weapon wing), none of which keeps state of its
+ * own there. When another scene took the scratch the slots are simply
+ * composed again. Scenes that keep their own state in the scratch must
+ * not call weld_view_image(). The 24x16 icons stay here. */
+#define WELD_SCRATCH_TAG SAVE_EXT_TAG('W', 'E', 'L', 'D')
+typedef uint8_t ViewPix[VW * VH];
+DOOMO_STATIC_ASSERT(VIEW_SLOTS * VW * VH <= DOOMO_SCENE_SCRATCH, weld_view_fits_scratch);
+static ViewPix   *view_pix;
 static DoomoImage view_img[VIEW_SLOTS];
 static uint32_t  view_key[VIEW_SLOTS], view_used[VIEW_SLOTS];
-static uint8_t   icon_pix[ICON_SLOTS][IW * IH];
-static DoomoImage icon_img[ICON_SLOTS];
-static uint32_t  icon_key[ICON_SLOTS], icon_used[ICON_SLOTS];
+/* (integration, memory budget) the 24x16 icons are one block each of the
+ * portrait cache's pool (portrait_pool_image), LRU with the portraits,
+ * instead of six RAM slots; icon_gen re-keys them after an invalidate */
+static uint32_t  icon_gen;
 static uint32_t  use_clock;
 
 /* ---- materials ---------------------------------------------------------- */
@@ -1322,6 +1336,11 @@ const DoomoImage *weld_view_image(const DoomoWeapon *w, int frame)
     frame = DOOMO_CLAMP(frame, 0, 3);
     key = weapon_key(w, frame);
     use_clock++;
+    if (!view_pix || !scene_scratch_mine(WELD_SCRATCH_TAG)) {
+        /* (re)claim the scene scratch: whatever the slots held is gone */
+        view_pix = (ViewPix *)scene_scratch(WELD_SCRATCH_TAG, (uint32_t)sizeof(ViewPix) * VIEW_SLOTS);
+        memset(view_key, 0, sizeof(view_key));
+    }
     for (i = 0; i < VIEW_SLOTS; i++)
         if (view_key[i] == key) { view_used[i] = use_clock; return &view_img[i]; }
     for (i = 1; i < VIEW_SLOTS; i++) if (view_used[i] < view_used[slot]) slot = i;
@@ -1339,22 +1358,17 @@ const DoomoImage *weld_icon_image(const DoomoWeapon *w)
 {
     static const DoomoWeapon fists = { WFRAME_FISTS, 0, 0, 0, 0, 0, 0, 0, 0, WSTYLE_CUTE,
                                        PAINT_ROSE, PAINT_WHITE, 50, WF_VALID, 0, 0 };
+    static const uint8_t none_pix[4] = { 0, 0, 0, 0 };
+    static const DoomoImage none = { 2, 2, none_pix, 0x00C0FFFEu };
+    const DoomoImage *img;
     uint32_t key;
-    int i, slot = 0;
+    int fresh;
     if (!w) w = &fists;
-    key = weapon_key(w, 7);
-    use_clock++;
-    for (i = 0; i < ICON_SLOTS; i++)
-        if (icon_key[i] == key) { icon_used[i] = use_clock; return &icon_img[i]; }
-    for (i = 1; i < ICON_SLOTS; i++) if (icon_used[i] < icon_used[slot]) slot = i;
-    compose(icon_pix[slot], IW, IH, w, 0, 1);
-    icon_key[slot] = key;
-    icon_used[slot] = use_clock;
-    icon_img[slot].w = IW;
-    icon_img[slot].h = IH;
-    icon_img[slot].pix = icon_pix[slot];
-    icon_img[slot].uid = doomo_image_new_uid();
-    return &icon_img[slot];
+    key = doomo_hash32(weapon_key(w, 7) ^ 0x1C0A0000u ^ icon_gen);
+    img = portrait_pool_image(key, IW, IH, &fresh);
+    if (!img) return &none;                    /* cannot happen (1 block) */
+    if (fresh) compose((uint8_t *)img->pix, IW, IH, w, 0, 1);
+    return img;
 }
 
 void weld_view_points(const DoomoWeapon *w, int *mx, int *my, int *gx, int *gy)
@@ -1382,5 +1396,5 @@ void weld_view_points(const DoomoWeapon *w, int *mx, int *my, int *gx, int *gy)
 void weld_gfx_invalidate(void)
 {
     memset(view_key, 0, sizeof(view_key));
-    memset(icon_key, 0, sizeof(icon_key));
+    icon_gen++;
 }

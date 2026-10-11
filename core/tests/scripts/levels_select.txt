@@ -1,0 +1,53 @@
+# Hell Breach levels (levels expansion): the level select on a fresh island
+# (only the Vape Cellar is open), browsing to locked levels, the mode
+# switch hint, launching the cellar (intro card, play, pause menu, quit)
+# and the autopilot demo (SELECT) that any button stops.
+scene TITLE
+wait 2
+push LEVEL_SELECT 0
+expect-scene LEVEL_SELECT
+wait 24
+shot select_cellar
+press RIGHT
+wait 14
+shot select_spire_locked
+press RIGHT
+wait 14
+shot select_sewers_locked
+press A
+wait 8
+shot select_locked_msg
+press L
+wait 6
+press LEFT
+press LEFT
+wait 14
+expect-scene LEVEL_SELECT
+press A
+wait 2
+expect-scene BREACH
+wait 34
+shot breach_intro
+wait 60
+shot breach_play
+press SELECT
+wait 12
+shot breach_play_tp
+press START
+wait 12
+shot breach_pause
+press UP
+press A
+wait 4
+expect-scene LEVEL_SELECT
+press SELECT
+wait 2
+expect-scene BREACH
+wait 200
+shot breach_demo
+press A
+wait 4
+expect-scene LEVEL_SELECT
+press B
+wait 2
+expect-scene TITLE

@@ -28,7 +28,8 @@ const char *const doomo_progress_names[PROG_COUNT] = {
     "Best: Bubble Blaster", "Best: Doomogachi Derby", "Best: Memory Match",
     "Wheel of Fate: last spin day",
     "Concerts", "Hit Parade (packed)", "Hit Parade 2 (packed)",
-    "Fish caught"
+    "Fish caught",
+    "Hell Breach ranks (packed)"
 };
 
 const char *const doomo_unlock_cat_names[10] = {
@@ -190,14 +191,25 @@ const DoomoUnlock doomo_unlocks_foundation[] = {
     { 0, 0, 0, 0, NULL, NULL, 0, 0 }
 };
 
+/* (integration) one slot per team of doomo/unlock_ids.h; every table has a
+ * weak empty default in stubs.c (never in this file: GCC would fold a weak
+ * constant defined here). Keep the order: test_integration.c maps each
+ * slot to its owner's id range. */
 const DoomoUnlock *const doomo_unlock_tables[] = {
     doomo_unlocks_foundation, doomo_unlocks_creator, doomo_unlocks_life,
     doomo_unlocks_action, doomo_unlocks_story, doomo_unlocks_freeplay,
     doomo_unlocks_art, doomo_unlocks_portrait, doomo_unlocks_roster,
     doomo_unlocks_minigames, doomo_unlocks_concert, doomo_unlocks_studio,
-    doomo_unlocks_library, doomo_unlocks_fishcook, NULL
+    doomo_unlocks_library, doomo_unlocks_fishcook, doomo_unlocks_levels, NULL
 };
-#define UL_TABLES 14
+#define UL_TABLES 15
+/* Registry slots are read through a volatile lvalue, like activities.c /
+ * save_ext.c (ARCHITECTURE.md "Weak defaults of registries"). */
+#define UL_TABLE(t) (((const DoomoUnlock *const volatile *)doomo_unlock_tables)[t])
+
+DOOMO_STATIC_ASSERT(PROG_COUNT <= UL_PROG_SLOTS &&
+                    UL_PROG_SLOTS == sizeof(doomo_town.progress) / sizeof(doomo_town.progress[0]),
+                    progress_counters_fit_the_town);
 
 /* ---------------------------------------------------------------------- */
 /* index                                                                    */
@@ -207,6 +219,10 @@ static uint16_t ul_total;
 static int16_t  ul_by_id[DOOMO_UNLOCK_BITS];      /* global index or -1 */
 static uint8_t  ul_part_bits[CLIST_COUNT][8];    /* has an entry (index < 64) */
 static uint8_t  ul_filter[64];                   /* hash of (cat, list, index) */
+/* (integration) part keys gated by more than one entry ("alternate
+ * routes", unlock_ids.h): owning any of them unlocks the part. */
+static uint8_t  ul_alias[UL_ALIAS_MAX][2];       /* (list, index) */
+static uint8_t  ul_nalias;
 #define UL_HASH(c, l, i) ((((unsigned)(c) * 37u + (unsigned)(l)) * 61u + (unsigned)(i)) & 511u)
 
 static void ul_init(void)
@@ -216,8 +232,9 @@ static void ul_init(void)
     ul_ready = 1;
     for (i = 0; i < DOOMO_UNLOCK_BITS; i++) ul_by_id[i] = -1;
     memset(ul_part_bits, 0, sizeof(ul_part_bits));
-    for (t = 0; t < UL_TABLES && doomo_unlock_tables[t]; t++) {
-        const DoomoUnlock *u = doomo_unlock_tables[t];
+    ul_nalias = 0;
+    for (t = 0; t < UL_TABLES && UL_TABLE(t); t++) {
+        const DoomoUnlock *u = UL_TABLE(t);
         for (i = 0; u[i].name; i++, g++) {
             if (u[i].id < DOOMO_UNLOCK_BITS) {
                 if (ul_by_id[u[i].id] < 0) ul_by_id[u[i].id] = (int16_t)g;
@@ -228,8 +245,16 @@ static void ul_init(void)
                 ul_filter[hb >> 3] |= (uint8_t)(1u << (hb & 7));
             }
             if ((u[i].cat == UL_CAT_PART || u[i].cat == UL_CAT_WEAPON_PART) &&
-                u[i].list < CLIST_COUNT && u[i].index < 64)
-                ul_part_bits[u[i].list][u[i].index >> 3] |= (uint8_t)(1 << (u[i].index & 7));
+                u[i].list < CLIST_COUNT && u[i].index < 64) {
+                uint8_t *pb = &ul_part_bits[u[i].list][u[i].index >> 3];
+                uint8_t m = (uint8_t)(1 << (u[i].index & 7));
+                if ((*pb & m) && ul_nalias < UL_ALIAS_MAX) {   /* 2nd route */
+                    ul_alias[ul_nalias][0] = u[i].list;
+                    ul_alias[ul_nalias][1] = (uint8_t)u[i].index;
+                    ul_nalias++;
+                }
+                *pb |= m;
+            }
         }
         ul_len[t] = (uint16_t)i;
     }
@@ -247,8 +272,8 @@ const DoomoUnlock *unlock_at(int i)
     int t;
     ul_init();
     if (i < 0) return NULL;
-    for (t = 0; t < UL_TABLES && doomo_unlock_tables[t]; t++) {
-        if (i < ul_len[t]) return &doomo_unlock_tables[t][i];
+    for (t = 0; t < UL_TABLES && UL_TABLE(t); t++) {
+        if (i < ul_len[t]) return &UL_TABLE(t)[i];
         i -= ul_len[t];
     }
     return NULL;
@@ -261,9 +286,18 @@ const DoomoUnlock *unlock_by_id(int id)
     return unlock_at(ul_by_id[id]);
 }
 
+static int ul_is_alias(int list, int index)
+{
+    int k;
+    for (k = 0; k < ul_nalias; k++)
+        if (ul_alias[k][0] == list && ul_alias[k][1] == index) return 1;
+    return 0;
+}
+
 const DoomoUnlock *unlock_find(int cat, int list, int index)
 {
-    int i, t;
+    int i, t, alias;
+    const DoomoUnlock *first = NULL;
     ul_init();
     if ((cat == UL_CAT_PART || cat == UL_CAT_WEAPON_PART) && list >= 0 &&
         list < CLIST_COUNT && index >= 0 && index < 64 &&
@@ -275,12 +309,18 @@ const DoomoUnlock *unlock_find(int cat, int list, int index)
         unsigned hb = UL_HASH(cat, list, index);
         if (!(ul_filter[hb >> 3] & (1u << (hb & 7)))) return NULL;
     }
-    for (t = 0; t < UL_TABLES && doomo_unlock_tables[t]; t++) {
-        const DoomoUnlock *u = doomo_unlock_tables[t];
+    /* (integration) with alternate routes, prefer an owned entry so every
+     * caller's `u && !unlock_has(u->id)` honours all of them */
+    alias = (cat == UL_CAT_PART || cat == UL_CAT_WEAPON_PART) && ul_is_alias(list, index);
+    for (t = 0; t < UL_TABLES && UL_TABLE(t); t++) {
+        const DoomoUnlock *u = UL_TABLE(t);
         for (i = 0; i < ul_len[t]; i++)
-            if (u[i].cat == cat && u[i].list == list && u[i].index == index) return &u[i];
+            if (u[i].cat == cat && u[i].list == list && u[i].index == index) {
+                if (!alias || unlock_has(u[i].id)) return &u[i];
+                if (!first) first = &u[i];
+            }
     }
-    return NULL;
+    return first;
 }
 
 int unlock_has(int id)

@@ -14,7 +14,7 @@ map sugar_rush_sewers
 title "Sugar Rush Sewers"
 kind dungeon
 sky PASTEL_DAY
-music HELL_BREACH
+music HAHALAND_DAY
 ambient 11
 
 cell # wall=PASTEL_BRICK ch=6                                  # outer wall / gatehouse
@@ -41,7 +41,7 @@ cell C floor=SLIME ceil=FLESH_WALL fh=-8 ch=4 light=10 flags=water # the soda tu
 cell v floor=GRATE ceil=FLESH_WALL fh=-6 ch=4 light=10
 cell m floor=METAL_FLOOR ceil=RUST_METAL fh=-6 ch=6 light=11
 cell u floor=METAL_FLOOR ceil=RUST_METAL fh=0 ch=8 light=12    # the balcony
-cell L floor=PENTAGRAM_FLOOR ceil=RUST_METAL fh=-6 ch=6 light=14 flags=lift tag=-16 # sluice lift down
+cell L floor=PENTAGRAM_FLOOR ceil=RUST_METAL fh=-16 ch=6 light=14 flags=lift tag=-6 # sluice lift (rests below: drop in, ride up)
 cell o floor=GORE_FLOOR ceil=FLESH_WALL fh=-16 ch=-8 light=8
 cell S floor=SLIME ceil=FLESH_WALL fh=-18 ch=-8 light=10 flags=water
 cell n floor=GRATE ceil=FLESH_WALL fh=-16 ch=-8 light=9
@@ -271,4 +271,4 @@ thing 2 22 PROP_BARREL
 thing 18 34 PROP_SKULLS
 thing 5 36 PROP_TORCH
 thing 6 36 PROP_TORCH
-thing 6 41 PROP_SIGN angle=270
+thing 8 37 PROP_SIGN angle=90

@@ -1,0 +1,244 @@
+# Hellvile Underbelly - Hell Breach 7 (owner: levels expansion).
+# Below the bad side of the park: the undercity that keeps the hell gate
+# sealed - or not.
+#   A Hellvile back alley under the vape storm (shopfronts, puddles, the
+#   vape shop's back room behind its own shop front - secret) -> the stairs
+#   down into the Undercity Market (a cavern of stalls with light wells to
+#   the sky, crate steps to a hidden ledge - secret, and switch B) -> the
+#   Pipe Works over a lava canal (a one-cell beam to a lava island - secret)
+#   -> the Piston Shaft: two lifts in a row climb to the Switch Room
+#   (switch A) and its drop back down -> two switch-locked blast doors ->
+#   the Gate Engine, a hall of gantries, lava gutters and the sealed hell
+#   gate glowing under a light shaft, where GATEKEEPER GRUMBLEGUTS (a giant
+#   brute) keeps the portals open. His death opens the elevator to the
+#   surface (exit).
+# Built with the levels team's map kit; edit freely. Compiled by tools/mapc.py.
+map hellvile_underbelly
+title "Hellvile Underbelly"
+kind dungeon
+sky VAPE_STORM
+music HELLVILE
+ambient 9
+
+cell # wall=HELL_ROCK ch=16
+cell V wall=VAPE_SHOP_FRONT ch=12
+cell Y wall=APARTMENT_FRONT ch=15
+cell J wall=SHOP_FRONT ch=11
+cell R wall=RUST_METAL
+cell T wall=TECH_PANEL
+cell C wall=CHAINS
+cell N wall=SWITCH                                             # pull switches
+cell Q wall=DEMON_EYES
+cell X wall=EXIT_SIGN
+cell a floor=COBBLE ceil=sky fh=0 light=11
+cell p floor=PATH ceil=sky fh=0 light=11
+cell u floor=WATER ceil=sky fh=-1 light=12 flags=water         # puddles
+cell d floor=WOOD_FLOOR ceil=VAPE_SHOP_FRONT fh=0 ch=9 light=11 flags=door # secret door (looks like the shop)
+cell z floor=CARPET ceil=WOOD_WALL fh=0 ch=9 light=14 flags=secret # the vape shop's back room
+cell t floor=METAL_FLOOR ceil=RUST_METAL fh=-2 ch=8 light=10   # stairs down (overlay)
+cell m floor=COBBLE ceil=HELL_ROCK fh=-12 ch=8 light=9
+cell w floor=COBBLE ceil=sky fh=-12 light=12                   # light wells
+cell c floor=WOOD_WALL ceil=HELL_ROCK fh=-10 ch=8 light=10     # crates (overlay)
+cell l floor=CANDY_STRIPE ceil=sky fh=-6 light=14 flags=secret # hidden ledge in a light well
+cell s floor=COBBLE ceil=HELL_ROCK fh=-12 ch=8 light=12 flags=trigger tag=23 # switch B
+cell g floor=GRATE ceil=RUST_METAL fh=-12 ch=4 light=10
+cell ~ floor=LAVA ceil=RUST_METAL fh=-15 ch=4 light=15 flags=lava
+cell b floor=GRATE ceil=RUST_METAL fh=-12 ch=4 light=12        # catwalks
+cell i floor=METAL_FLOOR ceil=RUST_METAL fh=-12 ch=4 light=14 flags=secret # lava island
+cell h floor=GRATE ceil=RUST_METAL fh=-12 ch=14 light=10       # under the drop
+cell P floor=PENTAGRAM_FLOOR ceil=RUST_METAL fh=-12 ch=14 light=14 flags=lift tag=-4 # piston 1
+cell e floor=METAL_FLOOR ceil=RUST_METAL fh=-4 ch=14 light=11
+cell O floor=PENTAGRAM_FLOOR ceil=RUST_METAL fh=-4 ch=14 light=14 flags=lift tag=4 # piston 2
+cell f floor=METAL_FLOOR ceil=TECH_PANEL fh=4 ch=14 light=11   # switch room
+cell k floor=METAL_FLOOR ceil=TECH_PANEL fh=4 ch=14 light=13 flags=trigger tag=22 # switch A
+cell D floor=METAL_FLOOR ceil=DOOR_HELL fh=-12 ch=-3 light=12 flags=door tag=22 # blast door A
+cell E floor=METAL_FLOOR ceil=DOOR_HELL fh=-12 ch=-3 light=12 flags=door tag=23 # blast door B
+cell r floor=METAL_FLOOR ceil=RUST_METAL fh=-12 ch=-3 light=10
+cell n floor=METAL_FLOOR ceil=TECH_PANEL fh=-12 ch=6 light=10
+cell j floor=METAL_FLOOR ceil=TECH_PANEL fh=-12 ch=6 light=10 flags=trigger tag=24
+cell v floor=GRATE ceil=TECH_PANEL fh=-4 ch=6 light=11         # gantry
+cell x floor=GRATE ceil=TECH_PANEL fh=-10 ch=6 light=11        # gantry stairs (overlay)
+cell o floor=LAVA ceil=TECH_PANEL fh=-14 ch=6 light=15 flags=lava # lava gutters
+cell G floor=VAPE_CLOUD_WALL ceil=sky fh=-10 light=15 flags=portal # the hell gate
+cell q floor=PENTAGRAM_FLOOR ceil=sky fh=-12 light=13          # under the light shaft
+cell K floor=METAL_FLOOR ceil=DOOR_HELL fh=-12 ch=-3 light=13 flags=door tag=20 # the elevator
+cell Z floor=CLOUD_PUFF ceil=CLOUD_PUFF fh=-12 ch=-3 light=15 flags=exit
+cell H wall=HELL_ROCK ch=4                                     # light shaft walls
+
+grid
+########################################################
+#YYYYzzzVYJJJJYYYYVVVV#####mmmVVmmmmVVmmmmVVmmmmmmmmlll#
+#YYYYzzzVYJJJJYYYYVVVV#####mmmVVmmmmVVmmmmVVmmmmmmmmlll#
+#YYYYVdVVYJJJJYYYYVVVV#####mmmmmmmmmmmmmmmmmmmmmmmcccmm#
+#aaaaaaaaaaaaaaaaaaaa######mmmmmmmmmmmmmmmmmmmmmmmmmmmm#
+#aaaaaaaaaaauaaaaaaaa######mmmmmmmmmmmmmmmmmmmmmmmmmmmm#
+#aaaaaaaaaaaaaaaaaaaaY#####mmmmmmwwmmmmmmmmmmmmmmmmmmmm#
+#ppppppppppppppppppppttttttmmmmmmwwmmmmmmmmmmmmmmmmmmmm#
+#ppppppppppppppppppppttttttmmmmmmmmmmmmmmmmmmmmmmmmmmmm#
+#aaaaaaaaaaaaaaaaaaaaY#####mmmmmmmmmmmmmmmmmmmmmmmmmmmsN
+#aaauuaaaaaaaaaaaaaaa######mmmmmmmmmYYYYmmmmmmmmmmmmmmsN
+#aaaaaaaaaaaaaaaauaaa######mmmmmmmmmYYYYmmmmmmmmmmmmmmsN
+#aaaaaaaaaaaaaaaaaaaa######mmmmmmmmmmmmmmmmmmmmmmmmmmmm#
+#JJJJYYYY#VVVVJJJJYYYY#####mmmmmmmmmmmmmmmmmmwwmmmmmmmm#
+#JJJJYYYY#VVVVJJJJYYYY#####mmVVmmmmmmmmmmmmmmwwmmmmmmmm#
+#JJJJYYYY#VVVVJJJJYYYY#####mmVVmmmmmmmmmmmmmmmmmmmmmmmm#
+###########################mmmmmmmmmmmmmmmmmmmmmmmmmmmm#
+###########################mmmmmmmmmmmmmmmmmmmmmmmmmmmm#
+###########################mmmmmmmmmmmmmmmmmmmmmmmmmmmm#
+###########################mmmJJmmmmJJmmmmJJmmmmmmmmmmm#
+###########################mmmJJmmmmJJmmmmJJmmmmmmmmmmm#
+#TTTTTTTTTTTTTTTTTTTT######RRRRRRRRRRRRRmmRRRRRRRRRRRRR#
+#TnnnnnnnnnnnnnnnnnnT######gggggggggggggggggggggggggggg#
+#TnvvvvvvvvvvvvvvvvnT######gggggggggggggggggggggggggggg#
+#TnvvvvvvvvvvvvvvvxnT######gggTgggggTgggggggTgggggggggg#
+#TnnnnnnnnnnnnnnnnxnT######gggggggggggggggggggggggggggg#
+#TnnnnnnnnnnnnnnnnxnT######gggggggggggggggggggggggggggg#
+#TnnnnnnnnnnnnnnnnxnT######~~~~~bb~~~~~~b~~~~~~~bb~~~~~#
+#TnnnnnnnCnnnnnCnnxnT######~~~~~bb~~~~~iii~~~~~~bb~~~~~#
+#TnnnnnnnnnnnnnnnnnnTRRRRRR~~~~~bb~~~~~~~~~~~~~~bb~~~~~#
+#TnnnnnnnnnnnnnnnnnjErrrrrDgggggggggggggggggggggggRRRRR#
+#HHHHHHHnnnnnnnnnnnjErrrrrDggggggggggggggggggggggggPeeR#
+#HqqqqqHnnnnnnnnnnnnTRRRRRRgggTgggggggTgggggTgggggRReeR#
+#HGGGqqHnnnnnnnnnnnnT######ggggggggggggggggggghhggRRROR#
+#HGGGqqHnnnnnCnnnnnnT######ggggggggggggggggggghhggRRffR#
+#HGGGqqHnnnnnnnnnnnnT######################RRRffRRRRffRR
+#HGGGqqHnnnnnCnnnnnnT######################RfffffffffffR
+#HGGGqqHnnnnnnnnnnnnT######################RfffffffffffR
+#HqqqqqHnnnnnnnnnnnnT######################NkffffffffffR
+#HHHHHHHnnnnnnnnnnnnT######################RfffffffffffR
+#TnnnnnooonnoooonnnnT######################RfffffffffffR
+#TnnnnnooonnoooonnnnT######################RRRRRRRRRRRRR
+#TnnnnnnnnnnnnnnnnnnT###################################
+#TnnnnnnnnnnnnnnnnnnT###################################
+#TnnnnnnnCnnnnnCnnnnT###################################
+#TnnnnnnnnnnnnnnnnnnT###################################
+#TnnnnnnnnnnnnnnnnnnT###################################
+#TnnnnnnnnnnnnnnnnnnT###################################
+#TTTTTTTTTKKTTTTTTTTT###################################
+#########XZZX###########################################
+#########XZZX###########################################
+########################################################
+end
+
+floorh
+.
+....................................................FFF
+....................................................FFF
+..................................................JHG
+.
+.
+.
+.....................BDFHJL
+.....................BDFHJL
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+..................D
+..................B
+..................D
+..................F
+..................H
+..................J
+end
+
+ceilh
+.
+.
+.
+.
+.
+.
+.
+.....................7531AC
+.....................7531AC
+end
+
+# things: x y TYPE [angle=deg] [arg=n] [tflags=...]
+thing 2 8 PLAYER_START angle=0
+thing 4 5 PROP_LAMP
+thing 12 11 PROP_LAMP
+thing 19 5 PROP_LAMP
+thing 9 11 PROP_BARREL
+thing 10 11 PROP_BARREL
+thing 15 4 PROP_SKULLS
+thing 20 9 PROP_SIGN angle=180
+thing 8 6 PROP_MAILBOX
+thing 6 1 SOUL_ORB
+thing 5 2 AMMO_SHELLS
+thing 7 2 CANDY
+thing 14 9 HEALTH_SMALL
+thing 3 11 AMMO_BULLETS
+thing 11 6 IMPLING angle=180
+thing 16 10 HELLHOUND_PUP angle=180
+thing 18 4 IMPLING angle=180 tflags=not_easy
+thing 31 8 CYBER_PIGGY angle=180 tflags=ambush
+thing 40 15 IMPLING angle=180
+thing 48 6 BONE_JESTER angle=180 tflags=ambush
+thing 28 18 HEALTH_BIG
+thing 18 9 ARMOR
+thing 44 10 PUFF_DEMON angle=180 tflags=not_easy
+thing 52 16 HELLHOUND_PUP angle=180 tflags=not_easy
+thing 35 17 IMPLING angle=90 tflags=hard
+thing 53 1 ARMOR
+thing 54 2 AMMO_ROCKETS
+thing 28 2 HEALTH_SMALL
+thing 41 5 AMMO_SHELLS
+thing 50 19 HEALTH_BIG
+thing 36 13 CANDY
+thing 34 6 SCRAP
+thing 32 4 PROP_LAMP
+thing 38 4 PROP_LAMP
+thing 44 4 PROP_LAMP
+thing 32 17 PROP_LAMP
+thing 38 17 PROP_LAMP
+thing 44 17 PROP_LAMP
+thing 30 25 SLIME_BELCHER angle=0
+thing 45 23 IMPLING angle=180
+thing 36 31 CLOUD_SPIDER angle=0 tflags=not_easy
+thing 50 25 GARGOYLE angle=180
+thing 42 33 IMPLING angle=90
+thing 40 28 ARMOR
+thing 41 28 SOUL_ORB
+thing 28 23 AMMO_CELLS
+thing 53 23 HEALTH_SMALL
+thing 28 33 AMMO_SHELLS
+thing 35 22 CANDY
+thing 34 26 PROP_BARREL
+thing 47 26 PROP_BARREL
+thing 49 38 BRUTE angle=180 tflags=not_easy
+thing 52 39 IMPLING angle=180
+thing 46 37 IMPLING tflags=dormant arg=22
+thing 50 36 HELLHOUND_PUP tflags=dormant arg=22
+thing 53 40 HEALTH_BIG
+thing 45 40 AMMO_ROCKETS
+thing 10 35 BRUTE angle=0 tflags=boss,kill_event arg=20
+thing 8 30 IMPLING angle=0 tflags=kill_event arg=20
+thing 8 44 IMPLING angle=0 tflags=kill_event arg=20
+thing 16 38 CYBER_PIGGY angle=180 tflags=kill_event,hard arg=20
+thing 5 26 IMPLING tflags=dormant arg=24
+thing 15 45 HELLHOUND_PUP tflags=dormant arg=24
+thing 4 24 GARGOYLE angle=0 tflags=not_easy
+thing 3 42 HEALTH_BIG
+thing 17 27 ARMOR
+thing 16 23 HEALTH_BIG
+thing 3 23 AMMO_ROCKETS
+thing 17 46 AMMO_SHELLS
+thing 3 46 HEALTH_SMALL
+thing 12 26 AMMO_CELLS
+thing 17 33 ARMOR
+thing 6 44 CANDY
+thing 6 32 PROP_TORCH
+thing 6 38 PROP_TORCH
+thing 11 47 PROP_SIGN angle=90
+thing 4 35 VAPE_PORTAL

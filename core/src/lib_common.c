@@ -15,8 +15,22 @@ DOOMO_STATIC_ASSERT(LIB_UL_SEEN(THING_LORD_VAPULA) == LIB_UL_JUKEBOX - 1, lib_se
 DOOMO_STATIC_ASSERT(LIB_UL_VISITED(LIB_WING_COUNT - 1) == LIB_UL_LAST, lib_visited_fit);
 
 LibBrowse   lib_b;
-LibWingData lib_w;
+LibWingData *lib_wp;                    /* the scene scratch (lib_int.h) */
+LibWpnData  lib_wpn;
 int16_t     lib_have, lib_total;
+DOOMO_STATIC_ASSERT(sizeof(LibWingData) <= DOOMO_SCENE_SCRATCH, lib_wing_data_fits_the_scratch);
+
+int lib_w_lost(int in_update)
+{
+    if (lib_wp && scene_scratch_mine(LIB_SCRATCH_TAG)) return 0;
+    if (in_update) {
+        plat_log("library: scene scratch lost, closing the wing");
+        lib_wing_leave();
+    } else {
+        plat_clear(PAL_UI_CREAM);
+    }
+    return 1;
+}
 
 #define QUILLBY_ID 123
 
@@ -198,7 +212,12 @@ void lib_demo_island(void)
 void lib_wing_enter(int wing, int arg)
 {
     memset(&lib_b, 0, sizeof(lib_b));
-    memset(&lib_w, 0, sizeof(lib_w));
+    if (wing == LIB_WING_WEAPONS) {
+        memset(&lib_wpn, 0, sizeof(lib_wpn));
+    } else {
+        lib_wp = (LibWingData *)scene_scratch(LIB_SCRATCH_TAG, (uint32_t)sizeof(LibWingData));
+        memset(&lib_w, 0, sizeof(lib_w));
+    }
     lib_b.demo = (arg & LIB_ARG_DEMO) != 0;
     lib_b.tab = (uint8_t)LIB_ARG_TAB(arg);
     lib_b.vis = 8;

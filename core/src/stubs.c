@@ -844,21 +844,33 @@ EMPTY_UNLOCKS(doomo_unlocks_freeplay);
 EMPTY_UNLOCKS(doomo_unlocks_art);
 EMPTY_UNLOCKS(doomo_unlocks_portrait);
 EMPTY_UNLOCKS(doomo_unlocks_roster);
+/* (integration) the expansion teams' tables too, so a module that is not
+ * linked (e.g. still being written) never breaks the link; ranges in
+ * doomo/unlock_ids.h */
+EMPTY_UNLOCKS(doomo_unlocks_minigames);
+EMPTY_UNLOCKS(doomo_unlocks_concert);
+EMPTY_UNLOCKS(doomo_unlocks_studio);
+EMPTY_UNLOCKS(doomo_unlocks_library);
+EMPTY_UNLOCKS(doomo_unlocks_fishcook);
+EMPTY_UNLOCKS(doomo_unlocks_levels);
 
 /* ======================================================================
  * scenes owned by other modules
  * ==================================================================== */
 static void stub_scene_enter(int arg)
 {
-    static uint32_t logged;                 /* one bit per registry slot */
+    /* one bit per registry slot; (integration) was a uint32_t, so the
+     * 33rd+ scenes (minigames, concert, library, fishing...) never logged
+     * "STUB:" and --assert-no-stubs could not catch them */
+    static uint8_t logged[16];
     const DoomoScene *s = scene_top();
     int i;
     (void)arg;
     for (i = 0; doomo_all_scenes[i]; i++) {
         if (doomo_all_scenes[i] == s) {
-            if (i < 32 && !(logged & (1u << i))) {
+            if (i >= (int)sizeof(logged) * 8 || !(logged[i >> 3] & (1u << (i & 7)))) {
                 char buf[48];
-                logged |= 1u << i;
+                if (i < (int)sizeof(logged) * 8) logged[i >> 3] |= (uint8_t)(1u << (i & 7));
                 doomo_snprintf(buf, sizeof(buf), "STUB: SCENE_%s", s->name);
                 plat_log(buf);
             }
@@ -970,6 +982,14 @@ static void stub_title_draw(void)
 
 WEAK const DoomoScene SCENE_TITLE = { "TITLE", stub_title_enter, NULL,
                                       stub_title_update, stub_title_draw, 0 };
+
+/* (integration) 1 if `s` is still one of the weak placeholder scenes (no
+ * module provides it). Tests use it instead of entering every scene. */
+int scene_is_stub(const DoomoScene *s)
+{
+    return s && ((s->enter == stub_scene_enter && s->update == stub_scene_update) ||
+                 s->enter == stub_title_enter);
+}
 STUB_SCENE(SCENE_NEW_ISLAND, "NEW_ISLAND");
 STUB_SCENE(SCENE_ISLAND, "ISLAND");
 STUB_SCENE(SCENE_APARTMENTS, "APARTMENTS");
@@ -991,3 +1011,29 @@ STUB_SCENE(SCENE_STORY, "STORY");
 STUB_SCENE(SCENE_QUESTLOG, "QUESTLOG");
 STUB_SCENE(SCENE_CUTSCENE, "CUTSCENE");
 STUB_SCENE(SCENE_CREDITS, "CREDITS");
+/* (integration) expansion scenes listed in scenes.h / doomo_all_scenes */
+STUB_SCENE(SCENE_UNLOCKS, "UNLOCKS");
+STUB_SCENE(SCENE_PICKER, "PICKER");
+STUB_SCENE(SCENE_MG_CATCH, "MG_CATCH");
+STUB_SCENE(SCENE_MG_WHACK, "MG_WHACK");
+STUB_SCENE(SCENE_MG_DODGE, "MG_DODGE");
+STUB_SCENE(SCENE_MG_GALLERY, "MG_GALLERY");
+STUB_SCENE(SCENE_MG_DERBY, "MG_DERBY");
+STUB_SCENE(SCENE_MG_MEMORY, "MG_MEMORY");
+STUB_SCENE(SCENE_MG_WHEEL, "MG_WHEEL");
+STUB_SCENE(SCENE_CONCERT, "CONCERT");
+STUB_SCENE(SCENE_DREAM, "DREAM");
+STUB_SCENE(SCENE_STUDIO, "STUDIO");
+STUB_SCENE(SCENE_LIBRARY, "LIBRARY");
+STUB_SCENE(SCENE_LIB_BESTIARY, "LIB_BESTIARY");
+STUB_SCENE(SCENE_LIB_ALMANAC, "LIB_ALMANAC");
+STUB_SCENE(SCENE_LIB_WEAPONS, "LIB_WEAPONS");
+STUB_SCENE(SCENE_LIB_ITEMS, "LIB_ITEMS");
+STUB_SCENE(SCENE_LIB_TROPHIES, "LIB_TROPHIES");
+STUB_SCENE(SCENE_LIB_JUKEBOX, "LIB_JUKEBOX");
+STUB_SCENE(SCENE_LIB_GALLERY, "LIB_GALLERY");
+STUB_SCENE(SCENE_FISHING, "FISHING");
+STUB_SCENE(SCENE_COOKING, "COOKING");
+STUB_SCENE(SCENE_LEVEL_SELECT, "LEVEL_SELECT");
+STUB_SCENE(SCENE_BREACH, "BREACH");
+STUB_SCENE(SCENE_ARENA_MODE, "ARENA_MODE");

@@ -88,8 +88,44 @@ int fp_island_side_at(int x, int y)
 /* ====================================================================== */
 /* colour + primitives                                                      */
 static uint8_t tc(uint8_t c) { return g_tint ? doomo_tintmap[g_tint][c] : c; }
-static void R(int x, int y, int w, int h, uint8_t c) { if (w > 0 && h > 0) plat_rect(x, y, w, h, tc(c)); }
-static void RG(int x, int y, int w, int h, uint8_t c) { if (w > 0 && h > 0) plat_rect(x, y, w, h, c); }
+
+/* (integration, perf) The buildings' static parts are pre-rendered once
+ * into sprites in the island's scene scratch (see "building sprites"
+ * below) and drawn with one plat_image each; only their animated parts
+ * are drawn live. g_pass selects which parts a b_*() function draws (both
+ * when not cached, so the drawing order is exactly the original one); a
+ * static part is never drawn after an animated part it overlaps. While a
+ * sprite is rendered, put() writes into it instead of the screen (or only
+ * measures its bounding box when g_off == G_MEASURE). */
+enum { PASS_STATIC = 1, PASS_ANIM = 2, PASS_ALL = 3 };
+static int g_pass = PASS_ALL;
+#define ST (g_pass & PASS_STATIC)
+#define DY (g_pass & PASS_ANIM)
+static uint8_t g_measure_dummy;
+#define G_MEASURE (&g_measure_dummy)
+static uint8_t *g_off;                       /* NULL: draw to the screen */
+static int g_ox, g_oy, g_ow, g_oh, g_bx0, g_by0, g_bx1, g_by1;
+
+static void put(int x, int y, int w, int h, uint8_t c)
+{
+    int j;
+    if (!g_off) { plat_rect(x, y, w, h, c); return; }
+    if (g_off == G_MEASURE) {
+        g_bx0 = DOOMO_MIN(g_bx0, x); g_by0 = DOOMO_MIN(g_by0, y);
+        g_bx1 = DOOMO_MAX(g_bx1, x + w); g_by1 = DOOMO_MAX(g_by1, y + h);
+        return;
+    }
+    x -= g_ox; y -= g_oy;
+    if (x < 0) { w += x; x = 0; }
+    if (y < 0) { h += y; y = 0; }
+    if (x + w > g_ow) w = g_ow - x;
+    if (y + h > g_oh) h = g_oh - y;
+    if (w <= 0 || h <= 0) return;
+    if (!c) c = PAL_BLACK;                   /* 0 is transparent in images */
+    for (j = 0; j < h; j++) memset(g_off + (y + j) * g_ow + x, c, (size_t)w);
+}
+static void R(int x, int y, int w, int h, uint8_t c) { if (w > 0 && h > 0) put(x, y, w, h, tc(c)); }
+static void RG(int x, int y, int w, int h, uint8_t c) { if (w > 0 && h > 0) put(x, y, w, h, c); }
 static void C(int cx, int cy, int r, uint8_t c) { ui_fill_circle(cx, cy, r, tc(c)); }
 static void E(int cx, int cy, int rx, int ry, uint8_t c) { ui_fill_ellipse(cx, cy, rx, ry, tc(c)); }
 
@@ -300,17 +336,40 @@ static void draw_land(void)
         if (coast_r[row] < r) vm_span(1, coast_r[row], y, r - coast_r[row], CLIFF_H);
     }
     vm_flush_all();
+    /* (integration, perf) the meadow and the plum ground run UNDER the
+     * river + Wall, which every row covers from rc - 5 to rc + 13 and
+     * which is drawn after them: their inner ends are then one fixed
+     * column for the whole island, only the coast moves their outer ends,
+     * and they merge into tall rects wherever the coast is straight
+     * (before: a new span whenever the coast OR the river moved). Same
+     * pixels. */
+    {
+        int gx = -0x7FFF, hx = 0x7FFF;
+        for (row = 0; row < M.h; row++) {
+            if (coast_l[row] < 0) continue;
+            gx = DOOMO_MAX(gx, river_c[row] - 5);       /* >= every rl            */
+            hx = DOOMO_MIN(hx, river_c[row] + 13);      /* <= every wl + 8        */
+        }
+        for (row = 0; row < M.h; row++) {
+            int y = M.y + row, l = coast_l[row], r = coast_r[row], rc = river_c[row];
+            if (l < 0) continue;
+            /* only where the old spans [l + 3, rc - 5) / [rc + 13, r - 3)
+             * were drawn; the extra part lies under the river + Wall */
+            if (rc - 5 - (l + 3) > 0) vm_span(1, l + 3, y, DOOMO_MIN(gx, rc + 13) - (l + 3), hill_grass(row));
+            else vm_flush(1);
+            if (r - 3 - (rc + 13) > 0) vm_span(2, DOOMO_MAX(hx, rc - 5), y, r - 3 - DOOMO_MAX(hx, rc - 5), hell_ground(row));
+            else vm_flush(2);
+        }
+        vm_flush_all();
+    }
     for (row = 0; row < M.h; row++) {
         int y = M.y + row, l = coast_l[row], r = coast_r[row], rc = river_c[row];
-        int rl = rc - 5, wl = rc + 5;
         if (l < 0) {
             if (run0 >= 0) { draw_river_run(run0, row); run0 = -1; }
             continue;
         }
-        /* west: sand rim + meadow; east: plum ground + ash shore */
+        /* west: sand rim (+ meadow, above); east: (plum ground +) ash shore */
         vm_span(0, l, y, 3, row < M.h / 2 ? SAND_HI : SAND);
-        vm_span(1, l + 3, y, rl - l - 3, hill_grass(row));
-        vm_span(2, wl + 8, y, r - 3 - (wl + 8), hell_ground(row));
         vm_span(3, r - 3, y, 3, ASH);
         /* runs of the river + Wall */
         if (run0 >= 0 && river_c[run0] != rc) {
@@ -447,10 +506,15 @@ static const Deco decos[] = {
     { 200, 100, D_SKULL_LAMP }, { 134, 222, D_MUSHROOM }, { 236, 128, D_PUMPKIN }, { 166, 228, D_DEAD_TREE }
 };
 
-static void deco_tree(int x, int y, uint8_t leaf_d, uint8_t leaf, uint8_t leaf_l, int sway)
+static void deco_trunk(int x, int y)
 {
     R(x - 1, y - 5, 3, 5, PAL_RAMP(RAMP_WOOD, 3));
     R(x - 1, y - 5, 1, 5, PAL_RAMP(RAMP_WOOD, 5));
+}
+
+static void deco_tree(int x, int y, uint8_t leaf_d, uint8_t leaf, uint8_t leaf_l, int sway)
+{
+    if (ST) deco_trunk(x, y);                /* (in the park's sprite when cached) */
     C(x + sway, y - 9, 5, ui_darker(leaf_d));
     C(x + sway, y - 9, 4, leaf_d);
     C(x - 1 + sway, y - 10, 3, leaf);
@@ -573,24 +637,28 @@ static void b_towers(int x, int y, int hell)
     uint8_t d = hell ? PAL_RAMP(RAMP_VAPE, 2) : PAL_PAINT(PAINT_BUBBLEGUM, 0);
     uint8_t b = hell ? PAL_RAMP(RAMP_VAPE, 3) : PAL_PAINT(PAINT_BUBBLEGUM, 1);
     uint8_t l = hell ? PAL_RAMP(RAMP_VAPE, 5) : PAL_PAINT(PAINT_BUBBLEGUM, 2);
-    box(bx, by, w, h, d, b, l);
-    /* roof trim */
-    R(bx - 1, by - 2, w + 2, 3, hell ? PAL_RAMP(RAMP_STONE, 1) : PAL_PAINT(PAINT_ROSE, 0));
-    R(bx, by - 2, w, 1, hell ? PAL_RAMP(RAMP_STONE, 3) : PAL_PAINT(PAINT_ROSE, 2));
-    for (j = 0; j < 4; j++)
-        for (i = 0; i < 3; i++)
-            win(bx + 3 + i * 5, by + 3 + j * 5, 3, 3, night_lit(x * 31 + i * 7 + j * 13 + hell),
-                hell ? PAL_RAMP(RAMP_STONE, 1) : PAL_PAINT(PAINT_ROSE, 0));
-    /* door */
-    R(x - 2, y - 4, 4, 4, hell ? PAL_RAMP(RAMP_BLOOD, 2) : PAL_RAMP(RAMP_WOOD, 3));
-    R(x - 2, y - 4, 4, 1, hell ? PAL_RAMP(RAMP_BLOOD, 4) : PAL_RAMP(RAMP_WOOD, 5));
+    if (ST) {
+        box(bx, by, w, h, d, b, l);
+        /* roof trim */
+        R(bx - 1, by - 2, w + 2, 3, hell ? PAL_RAMP(RAMP_STONE, 1) : PAL_PAINT(PAINT_ROSE, 0));
+        R(bx, by - 2, w, 1, hell ? PAL_RAMP(RAMP_STONE, 3) : PAL_PAINT(PAINT_ROSE, 2));
+        for (j = 0; j < 4; j++)
+            for (i = 0; i < 3; i++)
+                win(bx + 3 + i * 5, by + 3 + j * 5, 3, 3, night_lit(x * 31 + i * 7 + j * 13 + hell),
+                    hell ? PAL_RAMP(RAMP_STONE, 1) : PAL_PAINT(PAINT_ROSE, 0));
+        /* door */
+        R(x - 2, y - 4, 4, 4, hell ? PAL_RAMP(RAMP_BLOOD, 2) : PAL_RAMP(RAMP_WOOD, 3));
+        R(x - 2, y - 4, 4, 1, hell ? PAL_RAMP(RAMP_BLOOD, 4) : PAL_RAMP(RAMP_WOOD, 5));
+    }
     if (hell) {
         /* little horns and bat wings */
-        R(bx + 1, by - 5, 2, 3, PAL_RAMP(RAMP_BONE, 6));
-        R(bx, by - 6, 1, 2, PAL_RAMP(RAMP_BONE, 7));
-        R(bx + w - 3, by - 5, 2, 3, PAL_RAMP(RAMP_BONE, 6));
-        R(bx + w - 1, by - 6, 1, 2, PAL_RAMP(RAMP_BONE, 7));
-        {
+        if (ST) {
+            R(bx + 1, by - 5, 2, 3, PAL_RAMP(RAMP_BONE, 6));
+            R(bx, by - 6, 1, 2, PAL_RAMP(RAMP_BONE, 7));
+            R(bx + w - 3, by - 5, 2, 3, PAL_RAMP(RAMP_BONE, 6));
+            R(bx + w - 1, by - 6, 1, 2, PAL_RAMP(RAMP_BONE, 7));
+        }
+        if (DY) {
             int f = ui_wave(g_t, 24, 1);
             R(bx - 4, by + 4 + f, 4, 2, PAL_RAMP(RAMP_VAPE, 1));
             R(bx - 5, by + 6 + f, 2, 1, PAL_RAMP(RAMP_VAPE, 1));
@@ -599,11 +667,13 @@ static void b_towers(int x, int y, int hell)
         }
     } else {
         /* a heart sign on the roof + flower boxes */
-        ui_heart(x, by - 5 + (ui_wave(g_t, 40, 1) > 0), 3, tc(PAL_PAINT(PAINT_ROSE, 1)));
-        R(bx + 2, by + 7, 5, 1, PAL_RAMP(RAMP_GRASS, 4));
-        R(bx + 12, by + 12, 5, 1, PAL_RAMP(RAMP_GRASS, 4));
-        R(bx + 3, by + 6, 1, 1, PAL_RAMP(RAMP_PASTEL_PINK, 6));
-        R(bx + 13, by + 11, 1, 1, PAL_RAMP(RAMP_CANDY, 7));
+        if (DY) ui_heart(x, by - 5 + (ui_wave(g_t, 40, 1) > 0), 3, tc(PAL_PAINT(PAINT_ROSE, 1)));
+        if (ST) {
+            R(bx + 2, by + 7, 5, 1, PAL_RAMP(RAMP_GRASS, 4));
+            R(bx + 12, by + 12, 5, 1, PAL_RAMP(RAMP_GRASS, 4));
+            R(bx + 3, by + 6, 1, 1, PAL_RAMP(RAMP_PASTEL_PINK, 6));
+            R(bx + 13, by + 11, 1, 1, PAL_RAMP(RAMP_CANDY, 7));
+        }
     }
 }
 
@@ -611,27 +681,31 @@ static void b_town_hall(int x, int y)
 {
     int w = 26, h = 14, bx = x - w / 2, by = y - h, tw = 10;
     int hr = town_hour() % 12, mn = doomo_town.minute % 60;
-    box(bx, by, w, h, PAL_RAMP(RAMP_PEACH, 5), PAL_RAMP(RAMP_PEACH, 6), PAL_RAMP(RAMP_PEACH, 7));
-    /* columns */
-    R(bx + 3, by + 4, 2, h - 5, PAL_WHITE);
-    R(bx + w - 6, by + 4, 2, h - 5, PAL_WHITE);
-    R(x - 2, y - 6, 4, 6, PAL_RAMP(RAMP_WOOD, 3));
-    /* clock tower */
-    box(x - tw / 2, by - 10, tw, 11, PAL_RAMP(RAMP_PEACH, 5), PAL_RAMP(RAMP_PEACH, 6), PAL_WHITE);
-    roof(x, by - 17, tw + 4, 7, PAL_PAINT(PAINT_SKY, 0), PAL_PAINT(PAINT_SKY, 1), PAL_PAINT(PAINT_SKY, 2));
-    C(x, by - 5, 3, PAL_RAMP(RAMP_STONE, 2));
-    C(x, by - 5, 2, PAL_WHITE);
+    if (ST) {
+        box(bx, by, w, h, PAL_RAMP(RAMP_PEACH, 5), PAL_RAMP(RAMP_PEACH, 6), PAL_RAMP(RAMP_PEACH, 7));
+        /* columns */
+        R(bx + 3, by + 4, 2, h - 5, PAL_WHITE);
+        R(bx + w - 6, by + 4, 2, h - 5, PAL_WHITE);
+        R(x - 2, y - 6, 4, 6, PAL_RAMP(RAMP_WOOD, 3));
+        /* clock tower */
+        box(x - tw / 2, by - 10, tw, 11, PAL_RAMP(RAMP_PEACH, 5), PAL_RAMP(RAMP_PEACH, 6), PAL_WHITE);
+        roof(x, by - 17, tw + 4, 7, PAL_PAINT(PAINT_SKY, 0), PAL_PAINT(PAINT_SKY, 1), PAL_PAINT(PAINT_SKY, 2));
+        C(x, by - 5, 3, PAL_RAMP(RAMP_STONE, 2));
+        C(x, by - 5, 2, PAL_WHITE);
+    }
     /* the hands follow the island clock */
-    {
+    if (DY) {
         int ha = hr * 4096 / 12 + mn * 4096 / 720, ma = mn * 4096 / 60;
         int hx = FIX2INT(fx_sin(ha) * 2), hy = -FIX2INT(fx_cos(ha) * 2);
         int mx = FIX2INT(fx_sin(ma) * 2 + FIX_HALF), my = -FIX2INT(fx_cos(ma) * 2 + FIX_HALF);
         plat_line(x, by - 5, x + hx, by - 5 + hy, tc(PAL_RAMP(RAMP_STONE, 0)));
         plat_line(x, by - 5, x + mx, by - 5 + my, tc(PAL_PAINT(PAINT_CHERRY, 0)));
     }
-    flag(x, by - 24, PAL_PAINT(PAINT_ROSE, 1));
-    win(bx + 7, by + 5, 2, 3, night_lit(77), PAL_RAMP(RAMP_PEACH, 4));
-    win(bx + w - 9, by + 5, 2, 3, night_lit(78), PAL_RAMP(RAMP_PEACH, 4));
+    if (DY) flag(x, by - 24, PAL_PAINT(PAINT_ROSE, 1));
+    if (ST) {
+        win(bx + 7, by + 5, 2, 3, night_lit(77), PAL_RAMP(RAMP_PEACH, 4));
+        win(bx + w - 9, by + 5, 2, 3, night_lit(78), PAL_RAMP(RAMP_PEACH, 4));
+    }
 }
 
 static void awning(int x, int y, int w, uint8_t a, uint8_t b)
@@ -648,25 +722,32 @@ static void b_shop(int x, int y, int black)
     if (black) {
         /* the black market: a patched purple tent with a skull lantern */
         int i;
-        for (i = 0; i < 14; i++) {
-            int rw = 2 + i * 22 / 14;
-            R(x - rw / 2 - 1, by - 2 + i, rw + 2, 1, PAL_RAMP(RAMP_VAPE, 0));
-            R(x - rw / 2, by - 2 + i, rw, 1, (i / 3) & 1 ? PAL_RAMP(RAMP_VAPE, 2) : PAL_RAMP(RAMP_VAPE, 3));
+        if (ST) {
+            for (i = 0; i < 14; i++) {
+                int rw = 2 + i * 22 / 14;
+                R(x - rw / 2 - 1, by - 2 + i, rw + 2, 1, PAL_RAMP(RAMP_VAPE, 0));
+                R(x - rw / 2, by - 2 + i, rw, 1, (i / 3) & 1 ? PAL_RAMP(RAMP_VAPE, 2) : PAL_RAMP(RAMP_VAPE, 3));
+            }
+            R(x - 4, by + 4, 8, 8, PAL_RAMP(RAMP_STONE, 0));
+            R(x - 3, by + 5, 6, 7, PAL_RAMP(RAMP_BLOOD, 1));
+            R(x - 7, by + 6, 3, 3, PAL_PAINT(PAINT_SLIME, 0));
         }
-        R(x - 4, by + 4, 8, 8, PAL_RAMP(RAMP_STONE, 0));
-        R(x - 3, by + 5, 6, 7, PAL_RAMP(RAMP_BLOOD, 1));
-        R(x - 7, by + 6, 3, 3, PAL_PAINT(PAINT_SLIME, 0));
         {
             int fl = (g_t / 5) % 3;
             int lit = g_tint != 0;
-            R(x + 6, by + 1, 1, 3, PAL_RAMP(RAMP_STONE, 1));
-            R(x + 5, by + 4, 3, 3, PAL_RAMP(RAMP_BONE, 6));
-            RG(x + 5, by + 5, 1, 1, lit ? PAL_RAMP(RAMP_MINT, 7 - fl) : PAL_RAMP(RAMP_STONE, 0));
-            RG(x + 7, by + 5, 1, 1, lit ? PAL_RAMP(RAMP_MINT, 7 - fl) : PAL_RAMP(RAMP_STONE, 0));
+            if (ST) {
+                R(x + 6, by + 1, 1, 3, PAL_RAMP(RAMP_STONE, 1));
+                R(x + 5, by + 4, 3, 3, PAL_RAMP(RAMP_BONE, 6));
+            }
+            if (DY) {
+                RG(x + 5, by + 5, 1, 1, lit ? PAL_RAMP(RAMP_MINT, 7 - fl) : PAL_RAMP(RAMP_STONE, 0));
+                RG(x + 7, by + 5, 1, 1, lit ? PAL_RAMP(RAMP_MINT, 7 - fl) : PAL_RAMP(RAMP_STONE, 0));
+            }
         }
-        R(x - 1, by - 5, 2, 3, PAL_RAMP(RAMP_STONE, 1));
+        if (ST) R(x - 1, by - 5, 2, 3, PAL_RAMP(RAMP_STONE, 1));
         return;
     }
+    if (!ST) return;                         /* the shop has no animated parts */
     box(bx, by, w, h, PAL_RAMP(RAMP_PEACH, 5), PAL_UI_CREAM, PAL_WHITE);
     awning(bx - 1, by + 1, w + 2, PAL_PAINT(PAINT_ROSE, 1), PAL_WHITE);
     win(bx + 3, by + 7, 6, 4, night_lit(301), PAL_RAMP(RAMP_PEACH, 4));
@@ -681,6 +762,7 @@ static void b_shop(int x, int y, int black)
 static void b_cafe(int x, int y)
 {
     int w = 20, h = 13, bx = x - w / 2, by = y - h;
+    if (DY && !ST) { chimney_smoke(bx + w - 3, by - 1, PAL_RAMP(RAMP_STONE, 6)); return; }
     box(bx, by, w, h, PAL_RAMP(RAMP_WOOD, 4), PAL_RAMP(RAMP_WOOD, 5), PAL_RAMP(RAMP_WOOD, 6));
     awning(bx - 1, by + 1, w + 2, PAL_PAINT(PAINT_MINT, 1), PAL_WHITE);
     win(bx + 3, by + 6, 5, 4, night_lit(402), PAL_RAMP(RAMP_WOOD, 3));
@@ -697,18 +779,19 @@ static void b_cafe(int x, int y)
     R(x - 3, by - 8, 1, 1, PAL_PAINT(PAINT_LEMON, 1));
     R(x + 2, by - 9, 1, 1, PAL_PAINT(PAINT_SKY, 1));
     R(x + 1, by - 6, 1, 1, PAL_PAINT(PAINT_MINT, 1));
-    chimney_smoke(bx + w - 3, by - 1, PAL_RAMP(RAMP_STONE, 6));
+    if (DY) chimney_smoke(bx + w - 3, by - 1, PAL_RAMP(RAMP_STONE, 6));
 }
 
 static void b_church(int x, int y)
 {
     int w = 16, h = 14, bx = x - w / 2, by = y - h, sw = ui_wave(g_t, 50, 1);
+    if (DY && !ST) { R(x - 1 + sw, by - 11, 3, 3, PAL_UI_GOLD); return; }
     box(bx, by, w, h, PAL_RAMP(RAMP_STONE, 5), PAL_RAMP(RAMP_STONE, 6), PAL_WHITE);
     roof(x, by - 7, w + 4, 8, PAL_PAINT(PAINT_LAVENDER, 0), PAL_PAINT(PAINT_LAVENDER, 1), PAL_PAINT(PAINT_LAVENDER, 2));
     /* steeple with a swinging bell and a plush cross */
     box(x - 3, by - 14, 7, 8, PAL_RAMP(RAMP_STONE, 5), PAL_RAMP(RAMP_STONE, 6), PAL_WHITE);
     roof(x, by - 20, 9, 6, PAL_PAINT(PAINT_LAVENDER, 0), PAL_PAINT(PAINT_LAVENDER, 1), PAL_PAINT(PAINT_LAVENDER, 2));
-    R(x - 1 + sw, by - 11, 3, 3, PAL_UI_GOLD);
+    if (DY) R(x - 1 + sw, by - 11, 3, 3, PAL_UI_GOLD);
     R(x, by - 26, 1, 6, PAL_PAINT(PAINT_BUBBLEGUM, 1));
     R(x - 2, by - 24, 5, 1, PAL_PAINT(PAINT_BUBBLEGUM, 1));
     /* heart rose window + door */
@@ -721,16 +804,20 @@ static void b_hospital(int x, int y)
 {
     int w = 22, h = 15, bx = x - w / 2, by = y - h;
     int pulse = (g_t / 15) % 2;
-    box(bx, by, w, h, PAL_RAMP(RAMP_MINT, 4), PAL_RAMP(RAMP_MINT, 6), PAL_RAMP(RAMP_MINT, 7));
-    R(bx - 1, by - 2, w + 2, 3, PAL_RAMP(RAMP_MINT, 3));
-    win(bx + 3, by + 4, 3, 3, night_lit(501), PAL_RAMP(RAMP_MINT, 3));
-    win(bx + w - 7, by + 4, 3, 3, night_lit(502), PAL_RAMP(RAMP_MINT, 3));
-    win(bx + 3, by + 9, 3, 3, night_lit(503), PAL_RAMP(RAMP_MINT, 3));
-    R(x - 2, y - 6, 4, 6, PAL_RAMP(RAMP_SKY, 4));
-    /* the red cross sign, pulsing softly */
-    R(x - 4, by - 8, 9, 7, PAL_WHITE);
-    R(x - 1, by - 7, 3, 5, pulse ? PAL_UI_RED : PAL_PAINT(PAINT_CHERRY, 1));
-    R(x - 3, by - 6, 7, 3, pulse ? PAL_UI_RED : PAL_PAINT(PAINT_CHERRY, 1));
+    if (ST) {
+        box(bx, by, w, h, PAL_RAMP(RAMP_MINT, 4), PAL_RAMP(RAMP_MINT, 6), PAL_RAMP(RAMP_MINT, 7));
+        R(bx - 1, by - 2, w + 2, 3, PAL_RAMP(RAMP_MINT, 3));
+        win(bx + 3, by + 4, 3, 3, night_lit(501), PAL_RAMP(RAMP_MINT, 3));
+        win(bx + w - 7, by + 4, 3, 3, night_lit(502), PAL_RAMP(RAMP_MINT, 3));
+        win(bx + 3, by + 9, 3, 3, night_lit(503), PAL_RAMP(RAMP_MINT, 3));
+        R(x - 2, y - 6, 4, 6, PAL_RAMP(RAMP_SKY, 4));
+        /* the red cross sign, pulsing softly */
+        R(x - 4, by - 8, 9, 7, PAL_WHITE);
+    }
+    if (DY) {
+        R(x - 1, by - 7, 3, 5, pulse ? PAL_UI_RED : PAL_PAINT(PAINT_CHERRY, 1));
+        R(x - 3, by - 6, 7, 3, pulse ? PAL_UI_RED : PAL_PAINT(PAINT_CHERRY, 1));
+    }
 }
 
 static void b_fair(int x, int y)
@@ -768,6 +855,7 @@ static void b_fair(int x, int y)
 static void b_library(int x, int y)
 {
     int w = 22, h = 14, bx = x - w / 2, by = y - h;
+    if (!ST) return;                         /* no animated parts */
     box(bx, by, w, h, PAL_RAMP(RAMP_WOOD, 2), PAL_RAMP(RAMP_WOOD, 4), PAL_RAMP(RAMP_WOOD, 5));
     roof(x, by - 7, w + 4, 8, PAL_PAINT(PAINT_FOREST, 0), PAL_PAINT(PAINT_FOREST, 1), PAL_PAINT(PAINT_FOREST, 2));
     win(bx + 3, by + 4, 4, 5, night_lit(601), PAL_RAMP(RAMP_WOOD, 1));
@@ -784,17 +872,19 @@ static void b_library(int x, int y)
 static void b_concert(int x, int y)
 {
     int i, by = y - 10;
-    R(x - 13, by, 26, 10, ui_darker(PAL_PAINT(PAINT_LAVENDER, 0)));
-    R(x - 12, by + 1, 24, 9, PAL_PAINT(PAINT_LAVENDER, 1));
-    for (i = 0; i < 4; i++) R(x - 10 + i * 6, by + 3, 3, 7, PAL_PAINT(PAINT_GRAPE, 0));
-    /* dome */
-    E(x, by, 13, 9, PAL_PAINT(PAINT_GRAPE, 0));
-    E(x, by, 12, 8, PAL_PAINT(PAINT_GRAPE, 1));
-    E(x - 3, by - 3, 6, 4, PAL_PAINT(PAINT_GRAPE, 2));
-    R(x - 13, by, 26, 2, PAL_PAINT(PAINT_GRAPE, 0));
-    R(x - 1, by - 12, 2, 4, PAL_UI_GOLD);
+    if (ST) {
+        R(x - 13, by, 26, 10, ui_darker(PAL_PAINT(PAINT_LAVENDER, 0)));
+        R(x - 12, by + 1, 24, 9, PAL_PAINT(PAINT_LAVENDER, 1));
+        for (i = 0; i < 4; i++) R(x - 10 + i * 6, by + 3, 3, 7, PAL_PAINT(PAINT_GRAPE, 0));
+        /* dome */
+        E(x, by, 13, 9, PAL_PAINT(PAINT_GRAPE, 0));
+        E(x, by, 12, 8, PAL_PAINT(PAINT_GRAPE, 1));
+        E(x - 3, by - 3, 6, 4, PAL_PAINT(PAINT_GRAPE, 2));
+        R(x - 13, by, 26, 2, PAL_PAINT(PAINT_GRAPE, 0));
+        R(x - 1, by - 12, 2, 4, PAL_UI_GOLD);
+    }
     /* notes floating up */
-    for (i = 0; i < 2; i++) {
+    for (i = 0; DY && i < 2; i++) {
         int ph = (g_t + i * 30) % 60, nx = x + 6 + i * 4 + ui_wave(ph * 4, 60, 2);
         if (ph < 50) {
             char g[2] = { (char)ICON_NOTE, 0 };
@@ -817,39 +907,47 @@ static void gear(int cx, int cy, int r, int a0, uint8_t c)
 static void b_workshop(int x, int y)
 {
     int w = 22, h = 13, bx = x - w / 2, by = y - h;
-    box(bx, by, w, h, PAL_RAMP(RAMP_STEEL, 3), PAL_RAMP(RAMP_STEEL, 4), PAL_RAMP(RAMP_STEEL, 6));
-    R(bx - 1, by - 2, w + 2, 3, PAL_RAMP(RAMP_WOOD, 2));
-    /* garage door stripes */
-    R(x - 6, y - 8, 12, 8, PAL_RAMP(RAMP_STEEL, 2));
-    R(x - 6, y - 6, 12, 1, PAL_RAMP(RAMP_STEEL, 5));
-    R(x - 6, y - 3, 12, 1, PAL_RAMP(RAMP_STEEL, 5));
-    if ((g_t / 7) % 5 == 0) RG(x - 2 + (g_t % 5), y - 5, 2, 2, PAL_RAMP(RAMP_LAVA, 7));   /* weld sparks */
-    gear(bx + 4, by - 5, 3, g_t * 12, PAL_UI_GOLD);
-    R(bx + w - 5, by - 7, 3, 6, PAL_RAMP(RAMP_STONE, 2));
-    chimney_smoke(bx + w - 4, by - 8, PAL_RAMP(RAMP_STONE, 4));
+    if (ST) {
+        box(bx, by, w, h, PAL_RAMP(RAMP_STEEL, 3), PAL_RAMP(RAMP_STEEL, 4), PAL_RAMP(RAMP_STEEL, 6));
+        R(bx - 1, by - 2, w + 2, 3, PAL_RAMP(RAMP_WOOD, 2));
+        /* garage door stripes */
+        R(x - 6, y - 8, 12, 8, PAL_RAMP(RAMP_STEEL, 2));
+        R(x - 6, y - 6, 12, 1, PAL_RAMP(RAMP_STEEL, 5));
+        R(x - 6, y - 3, 12, 1, PAL_RAMP(RAMP_STEEL, 5));
+    }
+    if (DY) {
+        if ((g_t / 7) % 5 == 0) RG(x - 2 + (g_t % 5), y - 5, 2, 2, PAL_RAMP(RAMP_LAVA, 7));   /* weld sparks */
+        gear(bx + 4, by - 5, 3, g_t * 12, PAL_UI_GOLD);
+    }
+    if (ST) R(bx + w - 5, by - 7, 3, 6, PAL_RAMP(RAMP_STONE, 2));
+    if (DY) chimney_smoke(bx + w - 4, by - 8, PAL_RAMP(RAMP_STONE, 4));
 }
 
 static void b_beach(int x, int y)
 {
     int i;
-    /* sandcastle */
-    R(x + 3, y - 5, 7, 5, PAL_RAMP(RAMP_CANDY, 4));
-    R(x + 3, y - 7, 2, 2, PAL_RAMP(RAMP_CANDY, 4));
-    R(x + 8, y - 7, 2, 2, PAL_RAMP(RAMP_CANDY, 4));
-    R(x + 4, y - 4, 2, 1, PAL_RAMP(RAMP_CANDY, 6));
-    R(x + 6, y - 2, 1, 2, PAL_RAMP(RAMP_PEACH, 4));
-    flag(x + 9, y - 12, PAL_PAINT(PAINT_SKY, 1));
-    /* umbrella */
-    R(x - 5, y - 12, 1, 12, PAL_WHITE);
-    for (i = 0; i < 5; i++) {
-        int rw = 3 + i * 3;
-        R(x - 5 - rw / 2, y - 16 + i, rw, 1, (i & 1) ? PAL_WHITE : PAL_PAINT(PAINT_CHERRY, 1));
+    if (ST) {
+        /* sandcastle */
+        R(x + 3, y - 5, 7, 5, PAL_RAMP(RAMP_CANDY, 4));
+        R(x + 3, y - 7, 2, 2, PAL_RAMP(RAMP_CANDY, 4));
+        R(x + 8, y - 7, 2, 2, PAL_RAMP(RAMP_CANDY, 4));
+        R(x + 4, y - 4, 2, 1, PAL_RAMP(RAMP_CANDY, 6));
+        R(x + 6, y - 2, 1, 2, PAL_RAMP(RAMP_PEACH, 4));
     }
-    /* towel */
-    R(x - 11, y - 3, 7, 3, PAL_PAINT(PAINT_SKY, 1));
-    R(x - 11, y - 2, 7, 1, PAL_WHITE);
+    if (DY) flag(x + 9, y - 12, PAL_PAINT(PAINT_SKY, 1));
+    if (ST) {
+        /* umbrella */
+        R(x - 5, y - 12, 1, 12, PAL_WHITE);
+        for (i = 0; i < 5; i++) {
+            int rw = 3 + i * 3;
+            R(x - 5 - rw / 2, y - 16 + i, rw, 1, (i & 1) ? PAL_WHITE : PAL_PAINT(PAINT_CHERRY, 1));
+        }
+        /* towel */
+        R(x - 11, y - 3, 7, 3, PAL_PAINT(PAINT_SKY, 1));
+        R(x - 11, y - 2, 7, 1, PAL_WHITE);
+    }
     /* a beach ball bouncing */
-    {
+    if (DY) {
         int b = ui_wave(g_t, 30, 3);
         int by = y - 4 - (b > 0 ? b : -b);
         C(x - 13, by, 2, PAL_PAINT(PAINT_LEMON, 1));
@@ -861,17 +959,26 @@ static void b_beach(int x, int y)
 static void b_park(int x, int y)
 {
     int i, t = g_t;
-    /* lawn circle */
-    E(x, y - 4, 14, 6, PAL_RAMP(RAMP_GRASS, 4));
-    E(x, y - 5, 13, 5, PAL_RAMP(RAMP_GRASS, 6));
-    /* the bridge planks over the river */
-    R(x - 6, y - 7, 12, 4, PAL_RAMP(RAMP_WOOD, 4));
-    for (i = 0; i < 12; i += 2) R(x - 6 + i, y - 7, 1, 4, PAL_RAMP(RAMP_WOOD, 2));
-    R(x - 6, y - 7, 12, 1, PAL_RAMP(RAMP_WOOD, 6));
-    /* fountain */
-    E(x, y - 8, 6, 3, PAL_RAMP(RAMP_STONE, 4));
-    E(x, y - 9, 5, 2, PAL_RAMP(RAMP_SKY, 5));
-    R(x - 1, y - 15, 2, 6, PAL_RAMP(RAMP_STONE, 5));
+    if (ST) {
+        /* lawn circle */
+        E(x, y - 4, 14, 6, PAL_RAMP(RAMP_GRASS, 4));
+        E(x, y - 5, 13, 5, PAL_RAMP(RAMP_GRASS, 6));
+        /* the bridge planks over the river */
+        R(x - 6, y - 7, 12, 4, PAL_RAMP(RAMP_WOOD, 4));
+        for (i = 0; i < 12; i += 2) R(x - 6 + i, y - 7, 1, 4, PAL_RAMP(RAMP_WOOD, 2));
+        R(x - 6, y - 7, 12, 1, PAL_RAMP(RAMP_WOOD, 6));
+        /* fountain */
+        E(x, y - 8, 6, 3, PAL_RAMP(RAMP_STONE, 4));
+        E(x, y - 9, 5, 2, PAL_RAMP(RAMP_SKY, 5));
+        R(x - 1, y - 15, 2, 6, PAL_RAMP(RAMP_STONE, 5));
+        if (!DY) {
+            /* the sprite also gets the tree trunks, which deco_tree()
+             * then leaves out (nothing animated overlaps them) */
+            deco_trunk(x - 11, y - 3);
+            deco_trunk(x + 11, y - 3);
+        }
+    }
+    if (!DY) return;
     for (i = 0; i < 6; i++) {
         int ph = (t + i * 5) % 30;
         int dx = (i - 3) * ph / 10, dy = -15 - ph / 2 + ph * ph / 60;
@@ -888,14 +995,18 @@ static void b_park(int x, int y)
 static void b_wall_gate(int x, int y)
 {
     int i, t = g_t;
-    /* a tall chunk of wall with an arched gate */
-    box(x - 12, y - 16, 24, 16, PAL_RAMP(RAMP_STONE, 2), PAL_RAMP(RAMP_STONE, 4), PAL_RAMP(RAMP_STONE, 5));
-    for (i = 0; i < 6; i++) R(x - 12 + i * 4, y - 19, 3, 3, PAL_RAMP(RAMP_STONE, 4));
-    for (i = 0; i < 6; i++) R(x - 12 + i * 4, y - 19, 3, 1, PAL_RAMP(RAMP_STONE, 6));
-    R(x - 5, y - 11, 10, 11, PAL_RAMP(RAMP_STONE, 0));
-    E(x, y - 11, 5, 3, PAL_RAMP(RAMP_STONE, 0));
-    /* the bars, the chains and the big padlock */
-    for (i = 0; i < 4; i++) R(x - 4 + i * 3, y - 12, 1, 12, PAL_RAMP(RAMP_STEEL, 4));
+    if (ST) {
+        /* a tall chunk of wall with an arched gate */
+        box(x - 12, y - 16, 24, 16, PAL_RAMP(RAMP_STONE, 2), PAL_RAMP(RAMP_STONE, 4), PAL_RAMP(RAMP_STONE, 5));
+        for (i = 0; i < 6; i++) R(x - 12 + i * 4, y - 19, 3, 3, PAL_RAMP(RAMP_STONE, 4));
+        for (i = 0; i < 6; i++) R(x - 12 + i * 4, y - 19, 3, 1, PAL_RAMP(RAMP_STONE, 6));
+        R(x - 5, y - 11, 10, 11, PAL_RAMP(RAMP_STONE, 0));
+        E(x, y - 11, 5, 3, PAL_RAMP(RAMP_STONE, 0));
+        /* the bars, the chains and the big padlock */
+        for (i = 0; i < 4; i++) R(x - 4 + i * 3, y - 12, 1, 12, PAL_RAMP(RAMP_STEEL, 4));
+    }
+    /* (the platform draws lines: they and what covers them stay live) */
+    if (!DY) return;
     plat_line(x - 5, y - 9, x + 5, y - 3, tc(PAL_RAMP(RAMP_STEEL, 5)));
     plat_line(x + 5, y - 9, x - 5, y - 3, tc(PAL_RAMP(RAMP_STEEL, 5)));
     R(x - 2, y - 7, 5, 4, PAL_UI_GOLD);
@@ -911,10 +1022,13 @@ static void b_wall_gate(int x, int y)
 static void b_arena(int x, int y, int locked)
 {
     int i;
-    E(x, y - 6, 13, 7, PAL_RAMP(RAMP_BLOOD, 1));
-    E(x, y - 7, 12, 6, PAL_RAMP(RAMP_BONE, 4));
-    E(x, y - 8, 9, 4, PAL_RAMP(RAMP_PEACH, 4));
-    for (i = 0; i < 7; i++) R(x - 11 + i * 4, y - 5, 2, 3, PAL_RAMP(RAMP_BLOOD, 1));
+    if (ST) {
+        E(x, y - 6, 13, 7, PAL_RAMP(RAMP_BLOOD, 1));
+        E(x, y - 7, 12, 6, PAL_RAMP(RAMP_BONE, 4));
+        E(x, y - 8, 9, 4, PAL_RAMP(RAMP_PEACH, 4));
+        for (i = 0; i < 7; i++) R(x - 11 + i * 4, y - 5, 2, 3, PAL_RAMP(RAMP_BLOOD, 1));
+    }
+    if (!DY) return;
     flag(x - 11, y - 18, PAL_PAINT(PAINT_HELLFIRE, 1));
     flag(x + 10, y - 18, PAL_PAINT(PAINT_HELLFIRE, 1));
     if (locked) {
@@ -932,21 +1046,25 @@ static void b_arena(int x, int y, int locked)
 static void b_square(int x, int y)
 {
     int i, t = g_t;
-    /* goth fountain with purple glowing water and green flames */
-    E(x, y - 4, 10, 4, PAL_RAMP(RAMP_STONE, 1));
-    E(x, y - 5, 9, 3, PAL_RAMP(RAMP_STONE, 3));
-    E(x, y - 5, 7, 2, PAL_RAMP(RAMP_VAPE, 5));
-    R(x - 1, y - 13, 3, 8, PAL_RAMP(RAMP_STONE, 2));
-    R(x - 2, y - 15, 5, 3, PAL_RAMP(RAMP_BONE, 6));
-    R(x - 1, y - 14, 1, 1, PAL_RAMP(RAMP_STONE, 0));
-    R(x + 1, y - 14, 1, 1, PAL_RAMP(RAMP_STONE, 0));
+    if (ST) {
+        /* goth fountain with purple glowing water and green flames */
+        E(x, y - 4, 10, 4, PAL_RAMP(RAMP_STONE, 1));
+        E(x, y - 5, 9, 3, PAL_RAMP(RAMP_STONE, 3));
+        E(x, y - 5, 7, 2, PAL_RAMP(RAMP_VAPE, 5));
+        R(x - 1, y - 13, 3, 8, PAL_RAMP(RAMP_STONE, 2));
+        R(x - 2, y - 15, 5, 3, PAL_RAMP(RAMP_BONE, 6));
+        R(x - 1, y - 14, 1, 1, PAL_RAMP(RAMP_STONE, 0));
+        R(x + 1, y - 14, 1, 1, PAL_RAMP(RAMP_STONE, 0));
+    }
     for (i = -1; i <= 1; i += 2) {
         int fx = x + i * 11, fl = ui_wave(t + i * 13, 12, 1);
-        R(fx, y - 9, 1, 9, PAL_RAMP(RAMP_STONE, 1));
-        RG(fx - 1, y - 13 + fl, 3, 3, PAL_PAINT(PAINT_SLIME, 1));
-        RG(fx, y - 15 + fl, 1, 2, PAL_PAINT(PAINT_SLIME, 2));
+        if (ST) R(fx, y - 9, 1, 9, PAL_RAMP(RAMP_STONE, 1));
+        if (DY) {
+            RG(fx - 1, y - 13 + fl, 3, 3, PAL_PAINT(PAINT_SLIME, 1));
+            RG(fx, y - 15 + fl, 1, 2, PAL_PAINT(PAINT_SLIME, 2));
+        }
     }
-    for (i = 0; i < 3; i++) {
+    for (i = 0; DY && i < 3; i++) {
         int ph = (t + i * 20) % 60;
         if (ph < 40) C(x - 4 + i * 4 + ph / 10, y - 16 - ph / 4, 1 + ph / 20, PAL_RAMP(RAMP_VAPE, 6));
     }
@@ -955,9 +1073,13 @@ static void b_square(int x, int y)
 static void b_lake(int x, int y)
 {
     int i, t = g_t;
-    E(x, y - 5, 16, 6, PAL_RAMP(RAMP_STONE, 1));
-    E(x, y - 5, 15, 5, PAL_RAMP(RAMP_LAVA, 3));
-    E(x - 2, y - 6, 11, 3, PAL_RAMP(RAMP_LAVA, 5));
+    if (ST) {
+        E(x, y - 5, 16, 6, PAL_RAMP(RAMP_STONE, 1));
+        E(x, y - 5, 15, 5, PAL_RAMP(RAMP_LAVA, 3));
+        E(x - 2, y - 6, 11, 3, PAL_RAMP(RAMP_LAVA, 5));
+    }
+    /* (the pier is drawn over the lava bubbles: it stays live too) */
+    if (!DY) return;
     for (i = 0; i < 4; i++) {
         int ph = (t / 2 + i * 13) % 26;
         int bx = x - 10 + i * 6, by = y - 5 + (i & 1);
@@ -987,16 +1109,18 @@ static void tomb(int x, int y, uint8_t c)
 static void b_graveyard(int x, int y)
 {
     int i, t = g_t;
-    /* fence */
-    for (i = 0; i < 8; i++) R(x - 13 + i * 4, y - 6, 1, 6, PAL_RAMP(RAMP_STONE, 1));
-    R(x - 13, y - 4, 29, 1, PAL_RAMP(RAMP_STONE, 1));
-    tomb(x - 8, y - 2, PAL_RAMP(RAMP_STONE, 5));
-    tomb(x, y - 4, PAL_RAMP(RAMP_STONE, 6));
-    tomb(x + 8, y - 1, PAL_RAMP(RAMP_STONE, 5));
-    R(x - 5, y - 2, 2, 1, PAL_RAMP(RAMP_PASTEL_PINK, 6));
-    R(x + 4, y - 1, 2, 1, PAL_RAMP(RAMP_CANDY, 7));
+    if (ST) {
+        /* fence */
+        for (i = 0; i < 8; i++) R(x - 13 + i * 4, y - 6, 1, 6, PAL_RAMP(RAMP_STONE, 1));
+        R(x - 13, y - 4, 29, 1, PAL_RAMP(RAMP_STONE, 1));
+        tomb(x - 8, y - 2, PAL_RAMP(RAMP_STONE, 5));
+        tomb(x, y - 4, PAL_RAMP(RAMP_STONE, 6));
+        tomb(x + 8, y - 1, PAL_RAMP(RAMP_STONE, 5));
+        R(x - 5, y - 2, 2, 1, PAL_RAMP(RAMP_PASTEL_PINK, 6));
+        R(x + 4, y - 1, 2, 1, PAL_RAMP(RAMP_CANDY, 7));
+    }
     /* the friendly ghost */
-    {
+    if (DY) {
         int gx = x + 6 + ui_wave(t, 80, 4), gy = y - 15 + ui_wave(t + 20, 50, 2);
         C(gx, gy, 3, PAL_RAMP(RAMP_MINT, 6));
         R(gx - 3, gy, 7, 3, PAL_RAMP(RAMP_MINT, 6));
@@ -1035,7 +1159,74 @@ void fp_island_building(int kind, int x, int y, int locked)
     }
 }
 
-/* ---- walkers: tiny citizens strolling the roads ---------------------------- */
+/* ---- (integration, perf) building sprites ----------------------------------
+ * The static part of every building (all but the flags, smoke, bells,
+ * wheels, ghosts, lines ...) is rendered once into an 8bpp sprite in the
+ * island's scene scratch and drawn with one plat_image: ~790 plat_rect
+ * calls a frame become ~20 images + the animated bits, pixel for pixel
+ * the same picture. The sprites are rebuilt when the screen size, the
+ * tint, the day (lit windows) or a lock changes, and after another scene
+ * took the scratch. Buildings that do not fit stay drawn live. */
+static int cacheable(int kind)
+{
+    /* the fair's wheel, tent and posts overlap each other: all live */
+    return kind < LOC_COUNT && kind != LOC_FUN_FAIR;
+}
+
+static uint32_t bc_key(const FpLocDraw *locs, int n)
+{
+    uint32_t h = 2166136261u;
+    int i;
+#define BC_MIX(v) (h = (h ^ (uint32_t)(v)) * 16777619u)
+    BC_MIX(M.w); BC_MIX(M.h); BC_MIX(g_tint); BC_MIX(g_tint ? doomo_town.day : 0); BC_MIX(n);
+    for (i = 0; i < n; i++) { BC_MIX(locs[i].kind); BC_MIX(locs[i].x); BC_MIX(locs[i].y); BC_MIX(locs[i].locked); }
+#undef BC_MIX
+    return h | 1u;
+}
+
+static void bc_build(FpBCache *bc, const FpLocDraw *locs, int n, uint32_t key)
+{
+    int i, used = 0;
+    memset(bc->spr, 0, sizeof(bc->spr));
+    for (i = 0; i < n && i < FP_LOC_MAX; i++) {
+        const FpLocDraw *l = &locs[i];
+        int x0, y0, x1, y1, ux0, uy0, ux1, uy1, w, h;
+        if (!cacheable(l->kind)) continue;
+        /* measure the static part */
+        g_pass = PASS_STATIC;
+        g_off = G_MEASURE;
+        g_bx0 = g_by0 = 0x7FFF; g_bx1 = g_by1 = -0x7FFF;
+        ui_raster_target(NULL, 0, 0, 0, 0);
+        fp_island_building(l->kind, l->x, l->y, l->locked);
+        x0 = g_bx0; y0 = g_by0; x1 = g_bx1; y1 = g_by1;
+        if (ui_raster_bounds(&ux0, &uy0, &ux1, &uy1)) {
+            x0 = DOOMO_MIN(x0, ux0); y0 = DOOMO_MIN(y0, uy0);
+            x1 = DOOMO_MAX(x1, ux1); y1 = DOOMO_MAX(y1, uy1);
+        }
+        w = x1 - x0;
+        h = y1 - y0;
+        if (w > 0 && h > 0 && w <= 255 && h <= 255 && used + w * h <= FP_BCACHE_BYTES) {
+            uint8_t *pix = bc->pix + used;
+            memset(pix, 0, (size_t)(w * h));
+            g_off = pix;
+            g_ox = x0; g_oy = y0; g_ow = w; g_oh = h;
+            ui_raster_target(pix, x0, y0, w, h);
+            fp_island_building(l->kind, l->x, l->y, l->locked);
+            bc->spr[i].x = (int16_t)x0;
+            bc->spr[i].y = (int16_t)(y0 - l->y);          /* relative to the base */
+            bc->spr[i].img.w = (uint16_t)w;
+            bc->spr[i].img.h = (uint16_t)h;
+            bc->spr[i].img.pix = pix;
+            bc->spr[i].img.uid = doomo_image_new_uid();
+            used += w * h;
+        }
+        ui_raster_target_off();
+        g_off = NULL;
+        g_pass = PASS_ALL;
+    }
+    bc->key = key;
+}
+
 static void draw_walkers(void)
 {
     int i, t = g_t, n = 14;
@@ -1112,6 +1303,7 @@ int fp_island_tint(void)
 void fp_island_draw_map(const FpLocDraw *locs, int n, int sel)
 {
     int i, order[FP_LOC_MAX];
+    FpBCache *bc = fp_island_bcache();
     fp_island_geometry();
     g_t = fp_t();
     g_tint = fp_island_tint();
@@ -1128,6 +1320,12 @@ void fp_island_draw_map(const FpLocDraw *locs, int n, int sel)
         while (j > 0 && locs[order[j - 1]].y > locs[v].y) { order[j] = order[j - 1]; j--; }
         order[j] = v;
     }
+    /* (integration, perf) the static parts come from the sprite cache */
+    {
+        uint32_t key = bc_key(locs, n);
+        if (bc->key != key && !plat_draw_skipped()) bc_build(bc, locs, n, key);
+        if (bc->key != key) bc = NULL;           /* (a skipped frame: draw live) */
+    }
     for (i = 0; i < n; i++) {
         const FpLocDraw *l = &locs[order[i]];
         int b = 0;
@@ -1137,7 +1335,15 @@ void fp_island_draw_map(const FpLocDraw *locs, int n, int sel)
             b = ph < 6 ? ph / 2 : ph < 12 ? (12 - ph) / 2 : 0;
         }
         shadow(l->x, l->y, 11);
-        fp_island_building(l->kind, l->x, l->y - b, l->locked);
+        if (bc && order[i] < FP_LOC_MAX && bc->spr[order[i]].img.pix) {
+            const FpSprite *sp = &bc->spr[order[i]];
+            plat_image(sp->x, l->y - b + sp->y, &sp->img, 1, 0, 0);
+            g_pass = PASS_ANIM;
+            fp_island_building(l->kind, l->x, l->y - b, l->locked);
+            g_pass = PASS_ALL;
+        } else {
+            fp_island_building(l->kind, l->x, l->y - b, l->locked);
+        }
     }
     draw_weather(fp_island_weather());
 }

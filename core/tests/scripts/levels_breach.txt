@@ -1,0 +1,60 @@
+# The five new Hell Breach levels (levels expansion), launched directly:
+# each one's intro card, then a look around at the start in first and
+# third person (SELECT toggles the camera).
+scene TITLE
+wait 2
+push BREACH 2
+expect-scene BREACH
+wait 40
+shot sewers_intro
+press A
+wait 20
+shot sewers_fp
+press SELECT
+hold RIGHT 6
+wait 4
+shot sewers_tp
+scene TITLE
+wait 2
+push BREACH 3
+wait 40
+shot factory_intro
+press A
+wait 20
+shot factory_fp
+press SELECT
+wait 4
+shot factory_tp
+scene TITLE
+wait 2
+push BREACH 4
+wait 40
+shot graveyard_intro
+press A
+wait 20
+shot graveyard_fp
+press SELECT
+wait 4
+shot graveyard_tp
+scene TITLE
+wait 2
+push BREACH 5
+wait 40
+shot cathedral_intro
+press A
+wait 20
+shot cathedral_fp
+press SELECT
+wait 4
+shot cathedral_tp
+scene TITLE
+wait 2
+push BREACH 6
+wait 40
+shot underbelly_intro
+press A
+wait 20
+shot underbelly_fp
+press SELECT
+wait 4
+shot underbelly_tp

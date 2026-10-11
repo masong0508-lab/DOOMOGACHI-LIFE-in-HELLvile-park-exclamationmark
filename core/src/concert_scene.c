@@ -27,7 +27,11 @@ enum { RES_SINGLE, RES_STUDIO, RES_AGAIN, RES_DONE, RES_COUNT };
 #define INTRO_TICKS 96
 #define BOW_TICKS 75
 
-static struct {
+/* (integration, memory budget) the show's state (1 KB) lives in the shared
+ * scene scratch (scene.h, tag CONC) while SCENE_CONCERT runs, not in .bss;
+ * the Music Studio it may open on top keeps nothing there */
+#define CONCERT_SCRATCH_TAG SAVE_EXT_TAG('C', 'O', 'N', 'C')
+typedef struct ConcertState {
     int state, st_t;
     int lead, mode, genre, take, stage_sel, stage, layout, choir_n;
     int row, res_sel, parade_sel, from_parade;
@@ -45,7 +49,10 @@ static struct {
     ConcertPlayer pl;
     StageView v;
     uint32_t t;
-} C;
+} ConcertState;
+DOOMO_STATIC_ASSERT(sizeof(ConcertState) <= DOOMO_SCENE_SCRATCH, concert_state_fits_the_scratch);
+static ConcertState *cs;
+#define C (*cs)
 
 static const char *const mode_names[CMODE_COUNT] = { "Solo", "Band", "Choir" };
 static const char *const layout_names[CHOIR_LAYOUT_COUNT] = { "Risers", "Semicircle", "Sections",
@@ -280,6 +287,7 @@ static void stage_begin(void)
 static void concert_enter(int arg)
 {
     int id = -1, mode = CMODE_SOLO;
+    cs = (ConcertState *)scene_scratch(CONCERT_SCRATCH_TAG, (uint32_t)sizeof(ConcertState));
     memset(&C, 0, sizeof(C));
     C.prev_song = audio_music_current();
     if (arg == CONCERT_ARG_PARADE) {
@@ -307,6 +315,7 @@ static void concert_enter(int arg)
 
 static void concert_leave(void)
 {
+    if (!scene_scratch_mine(CONCERT_SCRATCH_TAG)) { song_stop(); concert_play_silence(); return; }
     if (C.studio) {
         /* back to the studio, which keeps the background music paused */
         song_stop();
@@ -654,6 +663,12 @@ static void parade_update(void)
 
 static void concert_update(void)
 {
+    if (!scene_scratch_mine(CONCERT_SCRATCH_TAG)) {
+        /* cannot happen (the studio keeps nothing in the scratch) */
+        plat_log("concert: scene scratch lost, closing");
+        if (scene_depth() > 1) scene_pop(); else scene_set(&SCENE_TITLE, 0);
+        return;
+    }
     C.t++;
     C.st_t++;
     switch (C.state) {
@@ -1079,6 +1094,7 @@ static void stage_draw(void)
 
 static void concert_draw(void)
 {
+    if (!scene_scratch_mine(CONCERT_SCRATCH_TAG)) { plat_clear(PAL_BLACK); return; }
     switch (C.state) {
     case CS_SETUP: setup_draw(); break;
     case CS_PARADE: parade_draw(); break;

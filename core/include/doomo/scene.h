@@ -41,5 +41,30 @@ uint32_t scene_ticks(void);
 #define DOOMO_SCENE_SCRATCH (12u * 1024u)
 void *scene_scratch(uint32_t owner, uint32_t size);
 int   scene_scratch_mine(uint32_t owner);
+/* (integration) The block itself (a fixed address), without claiming it:
+ * for accessors that must stay `const` (mg_state()). Claim it first. */
+void *scene_scratch_block(void) __attribute__((const));
+/* (integration, memory budget) Who uses the scratch (keep this list
+ * current; tags are SAVE_EXT_TAG()s, ARCHITECTURE.md has the sizes):
+ *   WELD  weld_gfx.c        first-person weapon sprites: combat, arena,
+ *                           workshop, the library's weapon wing
+ *   OWLD  overworld*.c      story overworld citizens, props, bubbles
+ *   CREA  creator*.c        the creator's editor state
+ *   PETS  pet_gfx.c, pet_scene.c   SCENE_PET's LCD sprites
+ *   MGAM  mg.c, mg_fx.c     the running minigame's state + effects
+ *   WGAM  weld_game.c       the welding minigame's trails
+ *   FP..  fp_island.c, fp_roster.c, fp_unlocks.c   free play lists
+ * A scene that keeps its own state here must not call anything that
+ * claims it for another owner (e.g. weld_view_image()). */
+
+/* (integration, memory budget) ONE per-frame billboard list for whichever
+ * scene draws a 3D view or the overworld this frame (combat / arena, the
+ * story overworld, the credits parade, ...). A scene fills it inside its
+ * draw() and hands it straight to plat_view3d() / plat_overworld(), which
+ * read it during the call only, so the scenes can share it instead of
+ * keeping 2.4 KB each. Never keep billboards in it across frames. */
+struct DoomoBillboard;
+#define DOOMO_FRAME_BB_MAX 120
+extern struct DoomoBillboard *const doomo_frame_bb;
 
 #endif

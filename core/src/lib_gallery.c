@@ -101,6 +101,7 @@ static void gal_enter(int arg)
 static void gal_update(void)
 {
     int ev;
+    if (lib_w_lost(1)) return;
     if (room() == ROOM_PAL) {
         int old = G.pal_y * 16 + G.pal_x;
         if (btn_repeat(BTN_LEFT)) G.pal_x = (uint8_t)((G.pal_x + 15) & 15);
@@ -381,6 +382,7 @@ static void detail(int sw, int sh)
 static void gal_draw(void)
 {
     int sw = lib_sw(), sh = lib_sh(), y, lw;
+    if (lib_w_lost(0)) return;
     lib_chrome(LIB_WING_GALLERY, gal_pct);
     if (plat_draw_skipped()) return;
     y = 18;

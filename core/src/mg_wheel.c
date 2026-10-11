@@ -119,7 +119,8 @@ static void wh_enter(int arg)
     memset(&mg, 0, sizeof(mg));
     if ((arg & MG_ARG_DEMO) && town_count(-1) == 0)
         town_new(doomo_town.mode, doomo_town.seed ? doomo_town.seed : 1234u, TOWN_POP_PREMADE);
-    memset(mg_arena, 0, sizeof(mg_arena));
+    mg_scratch_claim();
+    memset(mg_state(), 0, MG_ARENA_BYTES);
     mg_fx_clear();
     S->force = (arg & MG_ARG_AUTOSTART) != 0;
     S->autoplay = (arg & MG_ARG_AUTOPLAY) != 0;
@@ -141,6 +142,11 @@ static int pointer_wedge(void)
 
 static void wh_update(void)
 {
+    if (!scene_scratch_mine(MG_SCRATCH_TAG)) {      /* cannot happen (mg.h) */
+        plat_log("wheel: scene scratch lost, closing");
+        if (scene_depth() > 1) scene_pop(); else scene_set(&SCENE_TITLE, 0);
+        return;
+    }
     S->t++;
     if (mg.shake) { mg.ox = (int8_t)rng_between(&doomo_rng, -2, 2); mg.oy = (int8_t)rng_between(&doomo_rng, -2, 2); mg.shake--; }
     else mg.ox = mg.oy = 0;
@@ -321,7 +327,7 @@ static void tent_bg(int t)
     mg_tent(0, 14, PAL_PAINT(PAINT_GRAPE, 1), PAL_PAINT(PAINT_VAPE_PURPLE, 0), PAL_UI_GOLD, t);
 }
 
-static void wh_draw(void)
+static void wh_draw_body(void)
 {
     int W = mg_w(), H = mg_h(), t = S->t + (int)doomo_frame_count(), big = mg_big();
     int hx = big ? 12 : 6, hy = big ? 40 : 26, bx, bw;
@@ -375,8 +381,15 @@ static void wh_draw(void)
             STR_ICON_A " Spin  " STR_ICON_B " Leave", WIN_CUTE);
 }
 
+static void wh_draw(void)
+{
+    if (!scene_scratch_mine(MG_SCRATCH_TAG)) { plat_clear(PAL_UI_PINK); return; }
+    wh_draw_body();
+}
+
 static void wh_leave(void)
 {
+    if (!scene_scratch_mine(MG_SCRATCH_TAG)) return;
     mg_fx_clear();
     audio_music(S->prev_song);
 }

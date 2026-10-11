@@ -105,6 +105,16 @@ int  ui_wave(int t, int period, int amplitude);
 int  ui_window_pop(int x, int y, int w, int h, int style, int ticks);
 
 /* ---- primitives (pure plat_rect spans, clipped) ------------------------- */
+/* (integration) Offscreen target: while set, the rects of the primitives
+ * below (and of every shape built from them) are written into pix (w x h
+ * 8bpp, its top-left at screen (x0, y0), clipped; colour 0 becomes
+ * PAL_BLACK, as on the GBA) instead of being drawn. pix == NULL only
+ * measures: ui_raster_bounds() then returns their bounding box [x0, x1) x
+ * [y0, y1) (0 if nothing was drawn). Used to pre-render static sprites
+ * (the free play island's buildings) into the scene scratch. */
+void ui_raster_target(uint8_t *pix, int x0, int y0, int w, int h);
+void ui_raster_target_off(void);
+int  ui_raster_bounds(int *x0, int *y0, int *x1, int *y1);
 void ui_fill_circle(int cx, int cy, int r, uint8_t c);
 void ui_fill_ellipse(int cx, int cy, int rx, int ry, uint8_t c);
 void ui_round_rect(int x, int y, int w, int h, int r, uint8_t c);

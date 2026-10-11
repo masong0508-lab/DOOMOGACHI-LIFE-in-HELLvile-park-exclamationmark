@@ -521,14 +521,46 @@ static void lcd_colours(void)
 }
 
 #define IMG_CACHE 4
-static uint8_t img_pix[IMG_CACHE][N * N];
 static DoomoImage img_img[IMG_CACHE];
 static int16_t img_key[IMG_CACHE] = { -999, -999, -999, -999 };
 static uint8_t img_next;
 
+/* (integration, memory budget) The image cache and SCENE_PET's 32x32
+ * canvas (5 KB) live in the shared scene scratch (scene.h, tag PETS), not
+ * in .bss: both are caches that only the pet screen uses (pet_image() is
+ * not drawn anywhere else), remade when another scene took the scratch. */
+#define PET_SCRATCH_TAG SAVE_EXT_TAG('P', 'E', 'T', 'S')
+typedef struct PetScratch {
+    uint8_t img[IMG_CACHE][N * N];
+    uint8_t canvas[N * N];              /* pet_scene.c's render_cached()  */
+} PetScratch;
+static PetScratch *pet_scr;
+static uint8_t canvas_lost;
+
+static PetScratch *pet_scratch(void)
+{
+    int i;
+    if (!pet_scr || !scene_scratch_mine(PET_SCRATCH_TAG)) {
+        pet_scr = (PetScratch *)scene_scratch(PET_SCRATCH_TAG, (uint32_t)sizeof(PetScratch));
+        for (i = 0; i < IMG_CACHE; i++) img_key[i] = -999;
+        canvas_lost = 1;
+    }
+    return pet_scr;
+}
+
+/* SCENE_PET's canvas; *fresh = 1 when what it held is gone. */
+uint8_t *pet_scene_canvas(int *fresh)
+{
+    PetScratch *ps = pet_scratch();
+    *fresh = canvas_lost;
+    canvas_lost = 0;
+    return ps->canvas;
+}
+
 const DoomoImage *pet_form_image(int form, int frame)
 {
     int key = (form + 2) * 16 + (frame & 15), i, k;
+    uint8_t (*img_pix)[N * N] = pet_scratch()->img;
     lcd_colours();
     for (i = 0; i < IMG_CACHE; i++)
         if (img_key[i] == key) return &img_img[i];

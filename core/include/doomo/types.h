@@ -36,7 +36,9 @@ typedef int32_t fix16;              /* 16.16 */
 #define INT2FIX(i)     ((fix16)((i) * 65536))   /* safe for negatives */
 #define FIX2INT(f)     ((int32_t)((f) >> 16))
 #define FIXMUL(a, b)   ((fix16)(((int64_t)(a) * (int64_t)(b)) >> 16))
-#define FIXDIV(a, b)   ((fix16)((((int64_t)(a)) << 16) / (b)))
+/* (integration) "* 65536", not "<< 16": shifting a negative value left is
+ * undefined (UBSan); GCC emits the same shift for both. */
+#define FIXDIV(a, b)   ((fix16)(((int64_t)(a) * 65536) / (b)))
 
 /* Angles: 4096 units per full turn. 0 = +X (east), 1024 = +Y (south,
  * map rows grow downward), 2048 = west, 3072 = north. */

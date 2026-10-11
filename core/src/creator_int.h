@@ -181,9 +181,20 @@ typedef struct CrState {
     int16_t  home_id;               /* slot a new citizen would move into    */
     int16_t  result;                /* id written, -1 cancelled              */
     char     msg[64];               /* move-in caption                       */
+
+    /* dimmed tab icons (creator_draw.c), made on first use each session */
+    uint8_t  icon_pix[CR_TAB_COUNT][CR_ICON_W * CR_ICON_W];
+    DoomoImage icon_img[CR_TAB_COUNT];
 } CrState;
 
-extern CrState cr;
+/* (integration, memory budget) The editor state (~6.4 KB with the undo
+ * timeline and the preview buffer) lives in the shared scene scratch
+ * (scene.h, tag CREA) while SCENE_CREATOR runs, not in .bss: it only means
+ * something during a session, and the creator only opens modals on top of
+ * itself. `cr` reads as before. */
+#define CR_SCRATCH_TAG SAVE_EXT_TAG('C', 'R', 'E', 'A')
+extern CrState *cr_sp;
+#define cr (*cr_sp)
 
 /* ---- creator.c helpers used by the drawing code ---------------------------- */
 const CrRow *cr_cur_row(void);

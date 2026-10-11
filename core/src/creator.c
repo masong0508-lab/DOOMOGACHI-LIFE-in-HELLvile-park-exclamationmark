@@ -18,7 +18,8 @@
  */
 #include "creator_int.h"
 
-CrState cr;
+CrState *cr_sp;                         /* the scene scratch (creator_int.h) */
+DOOMO_STATIC_ASSERT(sizeof(CrState) <= DOOMO_SCENE_SCRATCH, creator_state_fits_the_scratch);
 static int16_t last_result = -1;
 
 /* ====================================================================== */
@@ -72,6 +73,17 @@ const char *creator_nickname(int id)
     for (i = 0; i < CR_NICKS; i++)
         if (nicks[i].id == id && nick_valid(&nicks[i])) return nicks[i].nick;
     return "";
+}
+
+/* (integration) Copy a nickname into a DOOMO_NAME_LEN draft buffer.
+ * creator_nickname() returns the 1-byte "" literal when there is none,
+ * so never read DOOMO_NAME_LEN bytes from it (ASan: global overflow). */
+static void nick_copy(char *dst, const char *src)
+{
+    size_t n = 0;
+    while (n < DOOMO_NAME_LEN && src[n]) n++;
+    memset(dst, 0, DOOMO_NAME_LEN);
+    memcpy(dst, src, n);
 }
 
 /* Store (or with "" clear) the nickname of resident `id` named `name`.
@@ -1656,6 +1668,7 @@ static void cr_enter(int arg)
 {
     DoomoResident *r;
     int i;
+    cr_sp = (CrState *)scene_scratch(CR_SCRATCH_TAG, (uint32_t)sizeof(CrState));
     memset(&cr, 0, sizeof(cr));
     nicks_init();
     cr_layout();
@@ -1677,7 +1690,7 @@ static void cr_enter(int arg)
             make_template(&cr.draft, 0);
             cr.draft.pronoun = PRONOUN_THEY;
         }
-        memcpy(cr.nick, creator_nickname(DOOMO_PLAYER_ID), DOOMO_NAME_LEN);
+        nick_copy(cr.nick, creator_nickname(DOOMO_PLAYER_ID));
     } else if (arg >= 0 && arg < DOOMO_MAX_RESIDENTS) {
         r = town_res(arg);
         cr.target = (int16_t)arg;
@@ -1690,7 +1703,7 @@ static void cr_enter(int arg)
             cr.mode = CR_EDIT;
             cr.draft = *r;
             cr.name_ok = 1;
-            memcpy(cr.nick, creator_nickname(arg), DOOMO_NAME_LEN);
+            nick_copy(cr.nick, creator_nickname(arg));
         }
     } else {
         cr.mode = CR_NEW;
@@ -1717,11 +1730,17 @@ static void cr_enter(int arg)
 
 static void cr_leave(void)
 {
-    cr.talk = NULL;
+    if (scene_scratch_mine(CR_SCRATCH_TAG)) cr.talk = NULL;
 }
 
 static void cr_update(void)
 {
+    if (!scene_scratch_mine(CR_SCRATCH_TAG)) {
+        /* cannot happen: the creator only opens modals over itself */
+        plat_log("creator: scene scratch lost, closing");
+        if (scene_depth() > 1) scene_pop(); else scene_set(&SCENE_TITLE, 0);
+        return;
+    }
     cr.t++;
     cr.tab_t++;
     cr.phase_t++;

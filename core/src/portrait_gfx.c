@@ -498,8 +498,10 @@ typedef struct Edge { int x, dx; } Edge;
 static void edge_at(Edge *e, int ax, int ay, int bx, int by, int py)
 {
     int dy = by - ay;
-    e->dx = dy ? ((bx - ax) << 12) / dy * PQ : 0;      /* Q12 per pixel row */
-    e->x = (ax << 12) + (dy ? ((bx - ax) << 12) / dy * (py - ay) : 0);
+    /* (integration) "* 4096", not "<< 12": the operands can be negative
+     * (UBSan: left shift of negative value); GCC emits the same shift. */
+    e->dx = dy ? ((bx - ax) * 4096) / dy * PQ : 0;     /* Q12 per pixel row */
+    e->x = (ax * 4096) + (dy ? ((bx - ax) * 4096) / dy * (py - ay) : 0);
 }
 
 void pc_tri(int x0, int y0, int x1, int y1, int x2, int y2)
@@ -647,12 +649,14 @@ void pc_capsule(int x0, int y0, int x1, int y1, int r0, int r1)
     if (c.minx > c.maxx || c.miny > c.maxy) return;
     pcv.ops += (uint32_t)((c.maxy - c.miny + 1) * (c.maxx - c.minx + 1)) / 2;
     c.steep = p_abs(c.dy) > p_abs(c.dx) && p_abs(c.dy) >= PQ;
-    c.slope = c.steep ? (c.dx << 12) / c.dy : 0;
+    /* (integration) multiplies instead of left shifts of possibly negative
+     * values (UBSan); identical results and code */
+    c.slope = c.steep ? (c.dx * 4096) / c.dy : 0;
     /* t (Q12 along the axis) is linear in x and y */
     if (len2 < 256) len2 = 0;            /* shorter than a pixel: a disc */
-    c.step = len2 ? (c.dx << 16) / len2 : 0;
-    c.stepy = len2 ? (c.dy << 16) / len2 : 0;
-    c.Trow = len2 ? (((c.minx * PQ + 8 - x0) * c.dx + (c.miny * PQ + 8 - y0) * c.dy) << 8) / (len2 >> 4) : 0;
+    c.step = len2 ? (c.dx * 65536) / len2 : 0;
+    c.stepy = len2 ? (c.dy * 65536) / len2 : 0;
+    c.Trow = len2 ? (((c.minx * PQ + 8 - x0) * c.dx + (c.miny * PQ + 8 - y0) * c.dy) * 256) / (len2 >> 4) : 0;
     if (!S.mask && !S.pat && (!S.fon || (S.shade != SH_VGRAD && S.shade != SH_HGRAD))) {
         capsule_plain(&S, &c);
         return;

@@ -470,7 +470,10 @@ static void draw_icons(void)
 
 /* ---------------------------------------------------------------------- */
 /* drawing: LCD screens                                                     */
-static uint8_t spr[PET_SPR * PET_SPR];
+/* the 32x32 canvas lives in the scene scratch (pet_gfx.c); valid after
+ * render_cached() */
+static uint8_t *spr;
+uint8_t *pet_scene_canvas(int *fresh);
 
 static int pet_frame(uint32_t t)
 {
@@ -495,7 +498,9 @@ static int pet_form_now(void)
  * ticks; rendering every frame would waste the GBA's time) */
 static void render_cached(int form, int frame)
 {
-    int key = (form + 2) * 16 + frame;
+    int key = (form + 2) * 16 + frame, fresh;
+    spr = pet_scene_canvas(&fresh);
+    if (fresh) spr_key = -9999;
     if (key == spr_key) return;
     pet_render(form, frame, spr);
     spr_key = key;

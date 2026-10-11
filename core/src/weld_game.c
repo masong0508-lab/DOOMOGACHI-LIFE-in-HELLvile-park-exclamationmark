@@ -24,11 +24,23 @@ static int seam_x0, seam_x1, seam_cy;
 static int amp1, amp2, fr1, fr2, ph1, ph2;
 static int32_t score_sum, score_n;
 static int streak, best_streak, quality;
-static int8_t  trail_dy[2][TRAIL_MAX];
-static uint8_t trail_heat[2][TRAIL_MAX];
-static uint8_t trail_t[2][TRAIL_MAX];
 typedef struct Spark { int16_t x, y, vx, vy; uint8_t life, kind; } Spark;
-static Spark sparks[SPARKS];
+/* (integration, memory budget) the bead trail and the sparks (2.1 KB) live
+ * in the shared scene scratch (scene.h, tag WGAM) while the minigame runs:
+ * it only opens modals over itself, and the workshop below it just
+ * composes its weapon sprites again afterwards */
+#define WG_SCRATCH_TAG SAVE_EXT_TAG('W', 'G', 'A', 'M')
+typedef struct WgScratch {
+    int8_t  dy[2][TRAIL_MAX];
+    uint8_t heat[2][TRAIL_MAX];
+    uint8_t t[2][TRAIL_MAX];
+    Spark   sparks[SPARKS];
+} WgScratch;
+static WgScratch *wgs;
+#define trail_dy (wgs->dy)
+#define trail_heat (wgs->heat)
+#define trail_t (wgs->t)
+#define sparks (wgs->sparks)
 
 static int seam_y(int x, int pass)
 {
@@ -58,6 +70,7 @@ static void wg_enter(int arg)
     uint32_t h = doomo_hash32((uint32_t)weld_pending.frame * 977u + weld_pending.core * 31u +
                               weld_pending.barrel * 7u + doomo_frame_count());
     int sw = plat_screen_w(), sh = plat_screen_h(), hard;
+    wgs = (WgScratch *)scene_scratch(WG_SCRATCH_TAG, (uint32_t)sizeof(WgScratch));
     wg_practice = arg == 1;
     wg_state = WG_INTRO;
     wg_t = 0;
@@ -106,6 +119,13 @@ static int step_score(int dy, int ht)
 static void wg_update(void)
 {
     int i;
+    if (!scene_scratch_mine(WG_SCRATCH_TAG)) {
+        /* cannot happen (only modals open over it): nothing welded */
+        plat_log("weld game: scene scratch lost, cancelled");
+        weld_game_result = -1;
+        scene_pop();
+        return;
+    }
     wg_t++;
     for (i = 0; i < SPARKS; i++)
         if (sparks[i].life) {
@@ -287,7 +307,9 @@ static void wg_draw(void)
 {
     int sw = plat_screen_w(), sh = plat_screen_h();
     char buf[40];
-    const DoomoImage *icon = weld_icon_image(&weld_pending);
+    const DoomoImage *icon;
+    if (!scene_scratch_mine(WG_SCRATCH_TAG)) { plat_clear(PAL_BLACK); return; }
+    icon = weld_icon_image(&weld_pending);
     ui_backdrop(WIN_DARK, (uint32_t)wg_t);
     plates(sw, sh);
     bead();

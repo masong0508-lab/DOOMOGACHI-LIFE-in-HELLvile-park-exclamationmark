@@ -73,9 +73,17 @@ extern const DoomoScene SCENE_LIBRARY, SCENE_LIB_BESTIARY, SCENE_LIB_ALMANAC,
  * core/src/fishcook_int.h) */
 extern const DoomoScene SCENE_FISHING, SCENE_COOKING;
 
+/* (levels, additive) Hell Breach 3..7 + arena modes (levels*.c,
+ * arena_modes.c; args: core/src/levels_int.h): the level select (arg =
+ * mode | (level + 1) << 4), one level (arg = level | mode << 8 | flags),
+ * Boss Rush / Horde / Monster Mode Mayhem (arg = AM_*) */
+extern const DoomoScene SCENE_LEVEL_SELECT, SCENE_BREACH, SCENE_ARENA_MODE;
+
 /* Registry (scene.c, foundation): every scene above, NULL-terminated. */
 extern const DoomoScene *const doomo_all_scenes[];
 /* Find a scene by its name ("TITLE"); also accepts "SCENE_TITLE". */
 const DoomoScene *scene_by_name(const char *name);
+/* (integration, stubs.c) 1 if the scene is still a weak placeholder. */
+int scene_is_stub(const DoomoScene *s);
 
 #endif

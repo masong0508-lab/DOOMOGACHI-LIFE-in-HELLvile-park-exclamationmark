@@ -32,6 +32,7 @@
 #define FISH_ARG_MODE_MASK 3
 #define FISH_ARG_AUTOPLAY  0x20     /* the bot fishes (tests, screenshots)     */
 #define FISH_ARG_NIGHT     0x40     /* debug: set the clock to 23:00 first     */
+#define FISH_ARG_DEMO      0x80     /* debug: fill the Fishdex + cooler first  */
 #define FISH_ARG_FORCE(sp) (((sp) + 1) << 8)   /* debug: bites are species sp */
 
 #define COOK_ARG_COUNTER   1        /* open at the counter (serve customers)   */
@@ -291,8 +292,9 @@ void lake_draw_ripple(int x, int y, int r, uint8_t c);
 void lake_draw_shadow(int x, int y, int r);
 
 /* ---- kitchen drawing (cook_gfx.c) ------------------------------------------ */
-void kitchen_draw_back(uint32_t t);
+void kitchen_draw_back(uint32_t t, int busy);   /* busy: leave room for gauges */
 void kitchen_draw_counter(int y, uint32_t t);
+void kitchen_steam(int cx, int cy, int t, int n);   /* wisps rising */
 /* Granny Hopscotch, the plush bunny granny chef. mood: 0 calm, 1 talk,
  * 2 cheer, 3 dismay. s = size unit (px per 16). */
 enum { GRAN_CALM, GRAN_TALK, GRAN_CHEER, GRAN_DISMAY };
@@ -303,5 +305,15 @@ void dish_draw(int r, int cx, int cy, int rw, int t, int burnt);
 void dish_draw_item(int item, int cx, int cy, int rw, int t);
 /* An ingredient icon (item or fish) at cx,cy. */
 void ingredient_draw(const CookIng *g, int cx, int cy, int rw, int t);
+
+/* ---- test hooks (fish_scene.c, cook_scene.c) ------------------------------ */
+int fish_scene_state(void);       /* FS_* (fish_scene.c)                    */
+int fish_scene_species(void);
+int fish_scene_catches(void);
+void fish_scene_reel_info(int *dist, int *tension, int *stamina);
+int cook_scene_state(void);       /* CS_* (cook_scene.c)                    */
+int cook_scene_grade(void);
+int cook_scene_score(int step);
+int cook_scene_recipe(void);
 
 #endif

@@ -1,0 +1,240 @@
+# Graveyard Shift - Hell Breach 5 (owner: levels expansion).
+# Night shift at the HaHaland cemetery. Somebody is crying in the garden.
+#   The cemetery gate under the stars (picket fence, rows of tombstones, an
+#   open grave you can climb into - secret) -> two terraces up the hill
+#   (stairs cut into the slope, the sealed mausoleum in the hill face) ->
+#   the hilltop chapel (pews, stained glass, an altar) -> the trapdoor lift
+#   behind the altar drops into the crypts inside the hill (catacombs with
+#   skull niches, a flooded crypt with stepping stones, a crawlspace to a
+#   hidden tomb - secret) -> the ossuary (red key) -> the lift up into the
+#   mausoleum, whose door opens from the inside -> the red garden gate ->
+#   the Widow's sunken garden (hedges, a moonlit pond, gargoyle pedestals)
+#   and the mini-boss THE WEEPING WIDOW (a huge, ghostly vape wraith that
+#   blinks between the graves). Her death unlocks the exit gate.
+# Built with the levels team's map kit; edit freely. Compiled by tools/mapc.py.
+map graveyard_shift
+title "Graveyard Shift"
+kind dungeon
+sky NIGHT_STARS
+music OMINOUS
+ambient 8
+
+cell W wall=CHURCH_WALL ch=4                                   # cemetery wall
+cell P wall=PICKET_FENCE ch=2
+cell T wall=BONE_WALL ch=2                                     # tombstones (see over them)
+cell U wall=SKULL_MOSAIC ch=3                                  # big headstones
+cell R wall=HELL_ROCK floor=INFECTED_GRASS ch=12               # the hill (its top is grass)
+cell C wall=CHURCH_WALL ch=30
+cell S wall=STAINED_GLASS ch=30
+cell A wall=CHURCH_WALL ch=17                                  # mausoleum facade
+cell B wall=BONE_WALL
+cell K wall=SKULL_MOSAIC
+cell H wall=HEDGE ch=2
+cell X wall=EXIT_SIGN ch=8
+cell I wall=HEDGE ch=14                                        # hilltop hedge
+cell g floor=GRASS ceil=sky fh=0 light=9
+cell i floor=INFECTED_GRASS ceil=sky fh=0 light=8
+cell p floor=COBBLE ceil=sky fh=0 light=10                     # paths and stairs (overlay)
+cell o floor=SAND ceil=sky fh=-2 light=9                       # the open grave
+cell O floor=SAND ceil=sky fh=-4 light=11 flags=secret
+cell t floor=GRASS ceil=sky fh=4 light=9                       # terrace 1 (4)
+cell u floor=INFECTED_GRASS ceil=sky fh=8 light=8              # terrace 2 (8)
+cell v floor=INFECTED_GRASS ceil=sky fh=12 light=9             # the hilltop (12)
+cell e floor=COBBLE ceil=sky fh=4 light=9                      # retaining wall tops
+cell c floor=CARPET ceil=WOOD_WALL fh=12 ch=26 light=12
+cell q floor=WOOD_FLOOR ceil=WOOD_WALL fh=13 ch=26 light=11    # pews
+cell a floor=TILE_FLOOR ceil=WOOD_WALL fh=14 ch=26 light=14    # altar
+cell D floor=CARPET ceil=DOOR_CUTE fh=12 ch=21 light=12 flags=door
+cell L floor=PENTAGRAM_FLOOR ceil=WOOD_WALL fh=-8 ch=26 light=13 flags=lift tag=12 # trapdoor lift (rests below: drop in, ride up)
+cell k floor=COBBLE ceil=BONE_WALL fh=-8 ch=0 light=7
+cell w floor=WATER ceil=BONE_WALL fh=-10 ch=0 light=8 flags=water # flooded crypt
+cell s floor=COBBLE ceil=BONE_WALL fh=-8 ch=0 light=9          # stepping stones
+cell n floor=COBBLE ceil=BONE_WALL fh=-8 ch=-4 light=6         # crawlspace (crouch)
+cell Z floor=CARPET ceil=SKULL_MOSAIC fh=-8 ch=0 light=13 flags=secret # hidden tomb
+cell y floor=GORE_FLOOR ceil=SKULL_MOSAIC fh=-8 ch=4 light=9   # ossuary
+cell b floor=BONE_WALL ceil=SKULL_MOSAIC fh=-6 ch=4 light=12   # bone altar
+cell M floor=PENTAGRAM_FLOOR ceil=CHURCH_WALL fh=-8 ch=17 light=12 flags=lift tag=8
+cell m floor=TILE_FLOOR ceil=CHURCH_WALL fh=8 ch=17 light=11   # mausoleum
+cell j floor=TILE_FLOOR ceil=CHURCH_WALL fh=8 ch=17 light=11 flags=trigger tag=23
+cell d floor=TILE_FLOOR ceil=DOOR_HELL fh=8 ch=16 light=11 flags=door tag=23 # opens from inside
+cell G floor=METAL_FLOOR ceil=DOOR_HELL fh=8 ch=16 light=11 flags=door tag=1 # red garden gate
+cell r floor=COBBLE ceil=sky fh=6 light=10                     # garden stairs (overlay)
+cell f floor=FLOWERS ceil=sky fh=0 light=9
+cell h floor=GRASS ceil=sky fh=0 light=10
+cell l floor=GRASS ceil=sky fh=0 light=10 flags=trigger tag=21 # the gargoyles wake
+cell ~ floor=WATER ceil=sky fh=-2 light=13 flags=water         # moonlit pond
+cell z floor=PENTAGRAM_FLOOR ceil=sky fh=0 light=13            # island
+cell Q floor=BONE_WALL ceil=sky fh=3 light=11                  # gargoyle pedestals
+cell x floor=METAL_FLOOR ceil=DOOR_HELL fh=0 ch=9 light=12 flags=door tag=20 # opens when the Widow is gone
+cell E floor=CLOUD_PUFF ceil=CLOUD_PUFF fh=0 ch=9 light=15 flags=exit
+
+grid
+WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
+WvvvvvvvvvvvvvvvvIIRRRRRRRRRRRRRRRRRRWRRRRRRRRRRRRRW
+WvvvvvvvvvvvvvvvvIIRRRRRRRRRRRRRRRRRRWRRRRRRRRRRRRRW
+WvvvCCCCCCCCCCCCCIIRBBBBBBBBwwwwwwwRRWRRRRRRRRRRRRRW
+WvvvCcccaaaaacccCIIRkkkkkkkkkwwwwwwRRWRRRRRRRRRRRRRW
+WvvvCcccaaaaacccCBBRkkKkkKkkkswswwwRRWRRRRRRRRRRRRRW
+WvvvSccccccccccLkkkkkkkkkkkkkwswswwRRWRRRRRRRRRRRRRW
+WvvvCcccccccccccCBBRkkkkkkkkwwwwwswRRWRRRRRRRRRRRRRW
+WvvvCcqqqcccqqqcCIIRkkKkkKkkwswswwwRRWRRRRRRRRRRRRRW
+WvvvScccccccccccSIIRkkkkkkkkwwwwwwwRRWRRRRRRRRRRRRRW
+WvvvCcqqqcccqqqcCIIRkkkkkkkkRRRRkkRRRWRRRRRRRRRRRRRW
+WvvvCcccccccccccCIIRRnRRRRRRByyyyyyyRWRRRRRRRRRRRRRW
+WvvvScqqqcccqqqcSIIRRnRRRRRRByyyyybbRWRRRRRRRRRRRRRW
+WvvvCcccccccccccCIIRZZZRRRRRByyyyybbRWRRRRRRRRRRRRRW
+WvvvCcccccccccccCIIRZZZRRRRRByyyyyyyRWRRRRRRRRRRRRRW
+WvvvCCCCCDDDCCCCCIIRRRRRRRRRByyyyyyyRWRRRRRRRRRRRRRW
+WvvvvvvvvvvvvvvvvIIRRRRRRRRRByMMyyyyRWRRRRRRRRRRRRRW
+WvvvvvvvvvvvvvvvvIIRRRRRRRRRRAjjARRRRWRRRRRRRRRRRRRW
+WeepppeeeeeeeeeeeeeRRRRRRRRRAAddAARRRWRRRRRRRRRRRRRW
+WuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuWhhhhhhhhhhhhhW
+WuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuWhQhhhhhhhhhQhW
+WuuUuuuUuuuUuuuuuuuuuuuuuuuuuuuuuuuuuWhhhhhhhhhhhhhW
+WuuuuuuuuuuuuuuupppuuuTuuTuuuuuuuuTuuGrrrrlhhhhhhhhW
+WuuuuuuuuuuuuuuupppuuuuuuuuuuuuuuuuuuGrrrrlhhhhhhhhW
+WuuuuuuuuuuuuuuupppuuuuuuuuuuuuuuuuuuWhhhhhhhhhhhhhW
+WeeeeeeeeeeeeeeepppeeeeeeeeeeeeeeeeeeWhhhhhhhhhhhhhW
+WttttttttttttttttttttttttttttttttttttWhfffffffffffhW
+WttttttttttttttttttttttttttttttttttttWhfffffffffffhW
+WttTttTttTttTtttppptttTttTttTttTttTttWhhhhhhhhhhhhhW
+WtttttttttttttttpppttttttttttttttttttWhHHHHhhhHHHHhW
+WtttttttttttttttpppttttttttttttttttttWhhhhhhhhhhhhhW
+WeeeeeeeeeeeeeeepppeeeeeeeeeeeeeeeeeeWhhh~~~~~~~hhhW
+WgggggggggggggggpppiiiiiiiiiiiiiiiiiiWhhh~~~~~~~hhhW
+WgggggggggggggggpppiiiiiiiiiiiiiiiiiiWhhh~~zzz~~hhhW
+WgggggggggggggggpppiiiiiiiiiiiiiiiiiiWhhh~~zzz~~hhhW
+WggTgTgTgTgTgTggpppiiTiTiTiTiTiTiTiiiWhhh~~~~~~~hhhW
+WgggggggggggggggpppiiiiiiiiiiiiiiiiiiWhhh~~~~~~~hhhW
+WggggUggUggUggggpppiiiiUiiiiiUiiiUiiiWhhhhhhhhhhhhhW
+WggggggoOgggggggpppiiiiiiiiiiiiiiiiiiWhHHHHhhhHHHHhW
+WggppppppppppppppppppppppppppppppppiiWhhhhhhhhhhhhhW
+WgggggggggggggggpppiiiiiiiiiiiiiiiiiiWhfffffffffffhW
+WggTgTgTgTgTgTggpppiiTiTiTiTiTiTiTiiiWhfffffffffffhW
+WgggggggggggggggpppiiiiiiiiiiiiiiiiiiWhhhhhhhhhhhhhW
+WgggggggggggggggpppiiiiiiiiiiiiiiiiiiWhhhhhhhhhhhhhW
+WPPPPPPPPPPPPPPPpppPPPPPPPPPPPPPPPPPPWhhhhhhhhhhhhhW
+WgggggggggggggggpppggggggggggggggggggWhQhhhhhhhhhQhW
+WgggggggggggggggpppggggggggggggggggggWhhhhhhhhhhhhhW
+WgggggggggggggggpppggggggggggggggggggWWWWWWXxxXWWWWW
+WgggggggggggggggpppggggggggggggggggggWWWWWWXEEXWWWWW
+WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
+end
+
+floorh
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.ccaaaccccccccccccc
+.
+.
+.
+................888...................6420
+................777...................6420
+................666
+.888888888888888555888888888888888888
+.
+.
+................444
+................333
+................222
+................111
+end
+
+# things: x y TYPE [angle=deg] [arg=n] [tflags=...]
+thing 17 47 PLAYER_START angle=270
+thing 15 45 PROP_LAMP
+thing 19 45 PROP_LAMP
+thing 14 46 PROP_SIGN angle=270
+thing 4 46 PROP_TREE
+thing 30 46 PROP_TREE
+thing 10 33 PROP_TREE
+thing 28 33 PROP_TREE
+thing 12 39 PROP_LAMP
+thing 22 39 PROP_LAMP
+thing 9 36 PROP_FLOWERS
+thing 25 42 PROP_FLOWERS
+thing 8 38 SOUL_ORB
+thing 3 47 HEALTH_SMALL
+thing 33 47 AMMO_BULLETS
+thing 26 36 CANDY
+thing 12 42 IMPLING angle=90
+thing 24 36 VAPE_WRAITH angle=90
+thing 30 40 HELLHOUND_PUP angle=180 tflags=not_easy
+thing 6 33 IMPLING angle=0
+thing 8 27 VAPE_WRAITH angle=90
+thing 28 30 IMPLING angle=180
+thing 33 26 BONE_JESTER angle=180 tflags=not_easy
+thing 5 23 GARGOYLE angle=90
+thing 27 20 VAPE_WRAITH angle=90 tflags=hard
+thing 12 24 IMPLING angle=90
+thing 2 27 HEALTH_SMALL
+thing 35 29 AMMO_SHELLS
+thing 20 20 CANDY
+thing 10 20 AMMO_BULLETS
+thing 15 27 PROP_LAMP
+thing 19 21 PROP_LAMP
+thing 2 20 PROP_TREE
+thing 35 23 PROP_SKULLS
+thing 2 2 PROP_TREE
+thing 15 2 PROP_TREE
+thing 2 15 PROP_LAMP
+thing 10 11 VAPE_WRAITH angle=90
+thing 7 5 IMPLING angle=0 tflags=ambush
+thing 14 4 PUFF_DEMON angle=180
+thing 10 4 HEALTH_BIG
+thing 6 13 AMMO_SHELLS
+thing 14 13 CANDY
+thing 8 4 PROP_TORCH
+thing 12 4 PROP_TORCH
+thing 24 7 BONE_JESTER angle=180
+thing 21 4 IMPLING angle=0
+thing 31 7 VAPE_WRAITH angle=180
+thing 26 9 HELLHOUND_PUP angle=180 tflags=not_easy
+thing 32 14 SLIME_BELCHER angle=180
+thing 30 12 IMPLING angle=0
+thing 35 12 KEY_RED
+thing 20 14 ARMOR
+thing 22 13 SOUL_ORB
+thing 27 4 AMMO_SHELLS
+thing 20 9 HEALTH_SMALL
+thing 33 16 HEALTH_BIG
+thing 29 13 AMMO_CELLS
+thing 23 6 PROP_SKULLS
+thing 35 15 PROP_TORCH
+thing 29 15 PROP_TORCH
+thing 44 33 VAPE_WRAITH angle=270 tflags=boss,kill_event arg=20
+thing 39 20 GARGOYLE tflags=dormant arg=21
+thing 49 20 GARGOYLE tflags=dormant arg=21
+thing 39 45 GARGOYLE tflags=dormant,not_easy arg=21
+thing 49 45 GARGOYLE tflags=dormant,hard arg=21
+thing 40 34 VAPE_WRAITH angle=0 tflags=kill_event arg=20
+thing 48 34 VAPE_WRAITH angle=180 tflags=kill_event,not_easy arg=20
+thing 40 24 HEALTH_BIG
+thing 49 24 AMMO_ROCKETS
+thing 40 43 AMMO_SHELLS
+thing 49 43 HEALTH_SMALL
+thing 44 28 CANDY
+thing 44 39 ARMOR
+thing 41 30 PROP_TREE
+thing 47 30 PROP_TREE
+thing 41 37 PROP_TREE
+thing 47 37 PROP_TREE
+thing 43 46 PROP_LAMP
+thing 46 46 PROP_LAMP
+thing 42 31 PROP_FLOWERS

@@ -31,6 +31,18 @@ typedef struct {
 } FpIslandGeo;
 FpIslandGeo *fp_island_geo(void);
 
+/* (integration, perf) Pre-rendered static parts of the buildings, one
+ * sprite per location (fp_island_gfx.c), also in the island's scratch.
+ * key 0 = empty (the scratch is zeroed when it is (re)claimed). */
+#define FP_BCACHE_BYTES 8192
+typedef struct { int16_t x, y; DoomoImage img; } FpSprite;   /* y: from the base */
+typedef struct {
+    uint32_t key;
+    FpSprite spr[FP_LOC_MAX];
+    uint8_t  pix[FP_BCACHE_BYTES];
+} FpBCache;
+FpBCache *fp_island_bcache(void);
+
 enum { WX_CLEAR, WX_RAIN, WX_SNOW, WX_PETALS };
 
 const FpMap *fp_map(void);

@@ -19,8 +19,16 @@ typedef struct MgPop {
     const char *text;
 } MgPop;
 
-static MgFx fx[FX_MAX];
-static MgPop pops[POP_MAX];
+/* (integration, memory budget) the pool sits behind the game's arena in
+ * the scene scratch (mg.h), cleared with every round */
+typedef struct MgFxPool {
+    MgFx fx[FX_MAX];
+    MgPop pops[POP_MAX];
+} MgFxPool;
+DOOMO_STATIC_ASSERT(sizeof(MgFxPool) <= MG_FX_BYTES, mg_fx_pool_fits);
+#define FXP ((MgFxPool *)((uint8_t *)mg_state() + MG_ARENA_BYTES))
+#define fx (FXP->fx)
+#define pops (FXP->pops)
 static uint8_t fx_next;
 
 static const uint8_t confetti_cols[8] = {

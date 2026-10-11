@@ -3,6 +3,7 @@
  * scene_scratch(), so a build where no scene uses it drops the block with
  * --gc-sections. */
 #include "doomo/scene.h"
+#include "doomo/platform.h"
 
 static uint32_t ss_owner;
 
@@ -23,3 +24,12 @@ int scene_scratch_mine(uint32_t owner)
 {
     return owner != 0 && ss_owner == owner;
 }
+
+void *scene_scratch_block(void)
+{
+    return ss_block();
+}
+
+/* The shared per-frame billboard list (scene.h). */
+static DoomoBillboard frame_bb[DOOMO_FRAME_BB_MAX];
+DoomoBillboard *const doomo_frame_bb = frame_bb;

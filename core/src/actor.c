@@ -137,14 +137,16 @@ fix16 cw_trace(fix16 x0, fix16 y0, fix16 z0, fix16 dx, fix16 dy, fix16 slope,
     for (i = 0; i < 160; i++) {
         int64_t dnext = sx < sy ? sx : sy;
         int fl = cw_floor(cx, cy), ce = cw_ceil(cx, cy);
-        int64_t zf = (int64_t)fl << 16, zc = (int64_t)ce << 16;
+        /* (integration) "* 65536" instead of "<< 16" on values that can be
+         * negative (UBSan: left shift of negative value); same code. */
+        int64_t zf = (int64_t)fl * 65536, zc = (int64_t)ce * 65536;
         /* floor / ceiling planes inside this cell */
         if (slope < 0) {
-            int64_t dfl = ((zf - z0) << 16) / slope;          /* both negative -> positive */
+            int64_t dfl = ((zf - z0) * 65536) / slope;        /* both negative -> positive */
             if (z0 + ((slope * d) >> 16) <= zf) { dhit = d; break; }
             if (dfl >= d && dfl < dnext) { dhit = dfl; break; }
         } else if (slope > 0 && ce < SKY_CEIL) {
-            int64_t dce = ((zc - z0) << 16) / slope;
+            int64_t dce = ((zc - z0) * 65536) / slope;
             if (z0 + ((slope * d) >> 16) >= zc) { dhit = d; break; }
             if (dce >= d && dce < dnext) { dhit = dce; break; }
         } else {
@@ -158,7 +160,7 @@ fix16 cw_trace(fix16 x0, fix16 y0, fix16 z0, fix16 dx, fix16 dy, fix16 slope,
         {
             int64_t z = z0 + ((slope * d) >> 16);
             int nf = cw_floor(cx, cy), nc = cw_ceil(cx, cy);
-            if (z < ((int64_t)nf << 16) || (nc < SKY_CEIL && z > ((int64_t)nc << 16))) { dhit = d; break; }
+            if (z < ((int64_t)nf * 65536) || (nc < SKY_CEIL && z > ((int64_t)nc * 65536))) { dhit = d; break; }
         }
     }
     if (dhit > maxd) dhit = maxd;

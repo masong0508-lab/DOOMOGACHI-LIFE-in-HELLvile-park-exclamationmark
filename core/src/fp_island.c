@@ -97,7 +97,9 @@ typedef struct {
 typedef struct {
     FpIslandGeo geo;
     Entry ent[MENU_MAX];
+    FpBCache bc;                 /* (integration, perf) building sprites */
 } IslScratch;
+DOOMO_STATIC_ASSERT(sizeof(IslScratch) <= DOOMO_SCENE_SCRATCH, island_scratch_fits);
 static IslScratch *isp;
 
 static struct {
@@ -135,6 +137,7 @@ static IslScratch *isl(void)
 }
 
 FpIslandGeo *fp_island_geo(void) { return &isl()->geo; }
+FpBCache *fp_island_bcache(void) { return &isl()->bc; }
 
 static int loc_index_of(int kind)
 {

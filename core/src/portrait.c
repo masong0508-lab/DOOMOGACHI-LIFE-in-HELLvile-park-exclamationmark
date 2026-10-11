@@ -414,7 +414,7 @@ static void render_fighter_ctx(PCtx *c, int view, int anim, int wframe, uint8_t 
 #define PC_STALE   4           /* a job nobody asked about for this long    */
                                /* may be dropped for another one            */
 
-enum { CK_NONE, CK_PORTRAIT, CK_BODY, CK_FIGURE, CK_FIGHTER };
+enum { CK_NONE, CK_PORTRAIT, CK_BODY, CK_FIGURE, CK_FIGHTER, CK_FOREIGN };
 
 /* animation phase of a cached portrait / figure */
 typedef struct Phase { int blink, breath, twitch, wag, fx, talk; } Phase;
@@ -828,6 +828,23 @@ const DoomoImage *fighter_image(int resident_id, int view, int anim, int weapon_
     sanitize(&L);
     pctx_init(&c, &L, status == RES_EMPTY ? RES_ALIVE : status, EXPR_NEUTRAL, anim * 8);
     render_fighter_ctx(&c, view, anim, weapon_frame, (uint8_t *)e->img.pix);
+    return &e->img;
+}
+
+/* other modules' small images (portrait.h): rid -2, the size in `look` */
+const DoomoImage *portrait_pool_image(uint32_t key, int w, int h, int *fresh)
+{
+    uint32_t sz = (uint32_t)w | ((uint32_t)h << 16);
+    CacheEnt *e;
+    *fresh = 0;
+    if (w <= 0 || h <= 0 || w * h > PORTRAIT_POOL_IMAGE_MAX) return NULL;
+    cache_init();
+    e = cache_find(CK_FOREIGN, -2, key, sz, 0xFFFFFFFFu);
+    if (e) return &e->img;
+    job_reap();
+    e = cache_alloc(CK_FOREIGN, -2, key, sz, w, h, 0);
+    if (!e) return NULL;
+    *fresh = 1;
     return &e->img;
 }
 

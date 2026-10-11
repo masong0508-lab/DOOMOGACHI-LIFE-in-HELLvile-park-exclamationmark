@@ -38,6 +38,52 @@ __attribute__((weak)) void plat_checker(int x, int y, int w, int h, uint8_t colo
 }
 
 /* ====================================================================== */
+/* (integration) offscreen target / measuring (ui.h ui_raster_target)       */
+static uint8_t *ut_pix;
+static int ut_on, ut_x0, ut_y0, ut_w, ut_h;
+static int ut_bx0, ut_by0, ut_bx1, ut_by1;
+
+void ui_raster_target(uint8_t *pix, int x0, int y0, int w, int h)
+{
+    ut_on = 1;
+    ut_pix = pix;
+    ut_x0 = x0; ut_y0 = y0; ut_w = w; ut_h = h;
+    ut_bx0 = ut_by0 = 0x7FFF;
+    ut_bx1 = ut_by1 = -0x7FFF;
+}
+
+void ui_raster_target_off(void) { ut_on = 0; ut_pix = NULL; }
+
+int ui_raster_bounds(int *x0, int *y0, int *x1, int *y1)
+{
+    *x0 = ut_bx0; *y0 = ut_by0; *x1 = ut_bx1; *y1 = ut_by1;
+    return ut_bx1 > ut_bx0;
+}
+
+static void ut_rect(int x, int y, int w, int h, uint8_t c)
+{
+    int j;
+    if (w <= 0 || h <= 0) return;
+    if (!ut_pix) {                       /* measuring */
+        ut_bx0 = DOOMO_MIN(ut_bx0, x); ut_by0 = DOOMO_MIN(ut_by0, y);
+        ut_bx1 = DOOMO_MAX(ut_bx1, x + w); ut_by1 = DOOMO_MAX(ut_by1, y + h);
+        return;
+    }
+    x -= ut_x0; y -= ut_y0;
+    if (x < 0) { w += x; x = 0; }
+    if (y < 0) { h += y; y = 0; }
+    if (x + w > ut_w) w = ut_w - x;
+    if (y + h > ut_h) h = ut_h - y;
+    if (w <= 0 || h <= 0) return;
+    if (!c) c = PAL_BLACK;               /* index 0 is "transparent" in images */
+    for (j = 0; j < h; j++) memset(ut_pix + (y + j) * ut_w + x, c, (size_t)w);
+}
+
+/* every plat_rect of the rasteriser goes through here */
+#define UR_PLAT_RECT(x, y, w, h, c) \
+    do { if (ut_on) ut_rect(x, y, w, h, c); else plat_rect(x, y, w, h, c); } while (0)
+
+/* ====================================================================== */
 /* shape cache                                                              */
 #define SC_POOL 640                    /* rects, 4 bytes each (2.5 KB): the
                                           UI gallery's busiest pages run as
@@ -100,8 +146,8 @@ static void sc_replay(const SEnt *e, int ax, int ay)
     const SRect *r = &sc_pool[e->start], *end = r + e->n;
     for (; r < end; r++) {
         uint32_t v = *r;
-        plat_rect(ax + (int)(v & 255), ay + (int)((v >> 16) & 127), (int)((v >> 8) & 255),
-                  (int)((v >> 23) & 63), e->pal[v >> 29]);
+        UR_PLAT_RECT(ax + (int)(v & 255), ay + (int)((v >> 16) & 127), (int)((v >> 8) & 255),
+                     (int)((v >> 23) & 63), e->pal[v >> 29]);
     }
 }
 
@@ -174,7 +220,7 @@ static void rec_clipped(void)
 static void out_rect(int x, int y, int w, int h, uint8_t c)
 {
     if (rec_e) rec_add(x, y, w, h, c);
-    else plat_rect(x, y, w, h, c);
+    else UR_PLAT_RECT(x, y, w, h, c);
 }
 
 void ur_rect(int x, int y, int w, int h, uint8_t c)
@@ -355,7 +401,7 @@ static void nested_bands(int cx, int cy, const int *dxs, int ry, uint8_t c)
         int v = dxs[y], y2 = y;
         /* rows |dy| <= y all have half-width >= v; rows beyond y2 ... */
         while (y2 > 0 && dxs[y2 - 1] == v) y2--;
-        plat_rect(cx - v, cy - y, 2 * v + 1, 2 * y + 1, c);
+        UR_PLAT_RECT(cx - v, cy - y, 2 * v + 1, 2 * y + 1, c);
         y = y2 - 1;
     }
 }
@@ -366,7 +412,7 @@ void ui_fill_ellipse(int cx, int cy, int rx, int ry, uint8_t c)
     int y;
     if (plat_draw_skipped()) return;
     if (rx < 0 || ry < 0) return;
-    if (ry == 0) { plat_rect(cx - rx, cy, 2 * rx + 1, 1, c); return; }
+    if (ry == 0) { UR_PLAT_RECT(cx - rx, cy, 2 * rx + 1, 1, c); return; }
     if (rx == ry && ry <= CIRC_MAX) {
         const uint8_t *t = circle_dx(ry);
         for (y = 0; y <= ry; y++) dxs[y] = t[y];
@@ -396,7 +442,7 @@ void ui_fill_ellipse(int cx, int cy, int rx, int ry, uint8_t c)
                 if (cy + y < 0 || cy + y >= sh) dx = -2;     /* off screen */
             }
             if (dx != prev) {
-                if (prev >= 0) plat_rect(cx - prev, cy + y0, 2 * prev + 1, y - y0, c);
+                if (prev >= 0) UR_PLAT_RECT(cx - prev, cy + y0, 2 * prev + 1, y - y0, c);
                 prev = dx;
                 y0 = y;
             }
@@ -555,7 +601,7 @@ void ui_round_rect_rows(int x, int y, int w, int h, int r, uint8_t c, int row0, 
     if (r <= 0) {
         row0 = DOOMO_MAX(row0, 0);
         row1 = DOOMO_MIN(row1, h);
-        if (row0 < row1) plat_rect(x, y + row0, w, row1 - row0, c);
+        if (row0 < row1) UR_PLAT_RECT(x, y + row0, w, row1 - row0, c);
         return;
     }
     rr_rows(x, y, w, h, r, c, row0, row1);

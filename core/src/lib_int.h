@@ -5,7 +5,11 @@
  *
  * MEMORY: one LibBrowse (the open wing's cursor / tab / detail state) and
  * one LibWingData union (only one wing is open at a time: the lobby pushes
- * a wing, a wing never pushes another) - about 2.3 KB of .bss in total.
+ * a wing, a wing never pushes another). (integration, memory budget) The
+ * union (2 KB) lives in the shared scene scratch (scene.h, tag LIBW) while
+ * a wing is open; the Weapon Catalog's small state is a static of its own
+ * (lib_wpn) because that wing shows weld_view_image(), which takes the
+ * scratch for its sprites.
  */
 #ifndef DOOMO_LIB_INT_H
 #define DOOMO_LIB_INT_H
@@ -64,12 +68,6 @@ typedef union LibWingData {
         int16_t  club_for;                    /* food + 1 (0 = none)        */
         uint8_t  club_n;
     } item;
-    struct {                                  /* Weapon Catalog             */
-        uint8_t  idx[64];
-        DoomoWeapon w, base;                  /* preview + its base weapon  */
-        int16_t  w_for;                       /* (list << 8 | index) built  */
-        uint8_t  rate[WRATE_COUNT], base_rate[WRATE_COUNT];
-    } wpn;
     struct {                                  /* Jukebox                    */
         int8_t   lo[LIB_WAVE_COLS], hi[LIB_WAVE_COLS];
         int16_t  wave_for;                    /* sfx the waveform shows     */
@@ -92,7 +90,19 @@ typedef union LibWingData {
         uint8_t  pct;
     } best;
 } LibWingData;
-extern LibWingData lib_w;
+#define LIB_SCRATCH_TAG SAVE_EXT_TAG('L', 'I', 'B', 'W')
+extern LibWingData *lib_wp;
+#define lib_w (*lib_wp)
+/* 1 if the open wing's lib_w was taken by another scene (cannot happen:
+ * wings only open modals); in_update: close the wing. */
+int lib_w_lost(int in_update);
+typedef struct LibWpnData {                   /* Weapon Catalog             */
+    uint8_t  idx[64];
+    DoomoWeapon w, base;                      /* preview + its base weapon  */
+    int16_t  w_for;                           /* (list << 8 | index) built  */
+    uint8_t  rate[WRATE_COUNT], base_rate[WRATE_COUNT];
+} LibWpnData;
+extern LibWpnData lib_wpn;
 
 /* ---- wings ------------------------------------------------------------------ */
 typedef struct LibWingInfo {

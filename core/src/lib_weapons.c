@@ -14,7 +14,7 @@
  */
 #include "lib_int.h"
 
-#define W (lib_w.wpn)
+#define W (lib_wpn)                       /* not in the scratch: lib_int.h */
 #define N_LISTS (CLIST_WCHARM - CLIST_WFRAME + 1)
 
 static const char *const list_names[N_LISTS] = {

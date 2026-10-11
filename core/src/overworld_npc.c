@@ -12,9 +12,8 @@
  */
 #include "overworld_int.h"
 
-OwNpc ow_npcs[OW_NPC_MAX];
+/* ow_npcs / ow_props live in the scene scratch (overworld_int.h) */
 int ow_npc_count;
-OwProp ow_props[OW_PROP_MAX];
 int ow_prop_count;
 
 static DoomoRng nrng;

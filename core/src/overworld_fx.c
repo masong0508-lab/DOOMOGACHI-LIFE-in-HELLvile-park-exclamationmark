@@ -15,16 +15,23 @@
 #include "overworld_int.h"
 
 /* ---- generated bubble images ------------------------------------------------------- */
-#define MK_W 13
-#define MK_H 15
-#define EM_W 11
-#define EM_H 12
+#define MK_W OWFX_MK_W
+#define MK_H OWFX_MK_H
+#define EM_W OWFX_EM_W
+#define EM_H OWFX_EM_H
 enum { MK_MAIN, MK_SIDE, MK_READY, MK_COUNT };
-static uint8_t mk_pix[MK_COUNT][MK_W * MK_H];
+DOOMO_STATIC_ASSERT(MK_COUNT == OWFX_MK_COUNT, owfx_marker_count);
+#define MM_W OWFX_MM_W
+#define MM_H OWFX_MM_H
+/* (integration, memory budget) the pixels live in the overworld's part of
+ * the scene scratch (overworld_int.h) and are made again when it was lost */
+#define mk_pix (ow_scr->fx.mk)
+#define em_pix (ow_scr->fx.em)
+#define mm_pix (ow_scr->fx.mm)
 static DoomoImage mk_img[MK_COUNT];
-static uint8_t em_pix[8][EM_W * EM_H];
 static DoomoImage em_img[8];
 static uint8_t fx_ready;
+static int8_t mm_map = -1;
 
 typedef struct { uint8_t outline, shade, fill, light, glyph; } BubbleCols;
 
@@ -103,6 +110,12 @@ static void make_images(void)
         em_img[i].pix = em_pix[i];
         em_img[i].uid = doomo_image_new_uid();
     }
+}
+
+void owfx_scratch_lost(void)
+{
+    fx_ready = 0;
+    mm_map = -1;
 }
 
 const DoomoImage *owfx_marker(int flags, int t)
@@ -519,12 +532,7 @@ void owfx_draw_hud(void)
 }
 
 /* ---- the mini-map ------------------------------------------------------------------------ */
-/* 2x2 cells per pixel: 1 KB of RAM, drawn at 2x so it keeps its size. */
-#define MM_W (DOOMO_MAP_MAX_W / 2)
-#define MM_H (DOOMO_MAP_MAX_H / 2)
-static uint8_t mm_pix[MM_W * MM_H];
 static DoomoImage mm_img;
-static int8_t mm_map = -1;
 
 static int mm_rank(const DoomoCell *c)
 {
@@ -569,6 +577,9 @@ void owfx_minimap(int x, int y, int s, int map_id)
     uint32_t t = doomo_frame_count();
     const UiStyle *st = ui_style(hud_style());
     (void)map_id;
+    /* the quest log draws this too; it keeps nothing in the scratch, so it
+     * may take it (the overworld rebuilds what it holds when it resumes) */
+    ow_scratch_claim();
     if (mm_map != map_current_id() || mm_img.w != (doomo_map.w + 1) / 2) mm_build();
     ui_round_rect(x - 3, y - 3, doomo_map.w * s + 6, doomo_map.h * s + 6, 3, st->outline);
     plat_image(x, y, &mm_img, s * 2, 0, 0);

@@ -5,9 +5,14 @@
 #include "mg.h"
 
 MgState mg;
-uint32_t mg_arena[MG_ARENA_BYTES / 4];
 DoomoRng mg_rng;
-void *mg_state(void) { return mg_arena; }
+DOOMO_STATIC_ASSERT(MG_ARENA_BYTES + MG_FX_BYTES <= DOOMO_SCENE_SCRATCH, mg_arena_fits_the_scratch);
+void *mg_state(void) { return scene_scratch_block(); }
+
+void mg_scratch_claim(void)
+{
+    scene_scratch(MG_SCRATCH_TAG, MG_ARENA_BYTES + MG_FX_BYTES);
+}
 static uint8_t last_tier[MG_GAME_COUNT];
 static uint8_t prev_song;
 
@@ -184,7 +189,8 @@ static void start_round(void)
 {
     rng_seed(&mg_rng, doomo_hash32(plat_entropy() ^ doomo_frame_count() ^
                                    ((uint32_t)mg.g->id << 24)));
-    memset(mg_arena, 0, sizeof(mg_arena));
+    mg_scratch_claim();
+    memset(mg_state(), 0, MG_ARENA_BYTES);
     mg_fx_clear();
     mg.phase = MGP_READY;
     mg.t = 0;
@@ -220,6 +226,8 @@ void mg_scene_enter(const MgGame *g, int arg)
     mg.autostart = (arg & MG_ARG_AUTOSTART) != 0;
     mg.hell = mg.tier == MG_TIER_HELLFIRE;
     prev_song = (uint8_t)audio_music_current();
+    mg_scratch_claim();
+    memset(mg_state(), 0, MG_ARENA_BYTES);
     mg_fx_clear();
     if (mg.autostart) {
         start_round();
@@ -231,7 +239,7 @@ void mg_scene_enter(const MgGame *g, int arg)
 
 void mg_scene_leave(void)
 {
-    mg_fx_clear();
+    if (scene_scratch_mine(MG_SCRATCH_TAG)) mg_fx_clear();
     audio_music(prev_song);
 }
 
@@ -244,6 +252,15 @@ static void leave(void)
 void mg_scene_update(void)
 {
     const MgGame *g = mg.g;
+    if (!scene_scratch_mine(MG_SCRATCH_TAG)) {
+        /* cannot happen (only modals open over a game): start over */
+        plat_log("minigame: scene scratch lost, back to the title card");
+        mg_scratch_claim();
+        memset(mg_state(), 0, MG_ARENA_BYTES);
+        mg_fx_clear();
+        mg.phase = MGP_TITLE;
+        mg.t = 0;
+    }
     mg.t++;
     if (mg.score_bump) mg.score_bump--;
     if (mg.combo_bump) mg.combo_bump--;
@@ -565,6 +582,7 @@ static void draw_flash(void)
 void mg_scene_draw(void)
 {
     if (plat_draw_skipped()) return;
+    if (!scene_scratch_mine(MG_SCRATCH_TAG)) { plat_clear(PAL_UI_PINK); return; }
     if (mg.phase == MGP_TITLE) {
         draw_title();
         mg_fx_draw();

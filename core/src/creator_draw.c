@@ -177,8 +177,9 @@ static void draw_icon(int x, int y, int tab, int scale, int dim)
 
 /* The dimmed icons of the unselected tabs are blitted from small cached
  * images (one plat_image each instead of ~45 rects). */
-static uint8_t icon_pix[CR_TAB_COUNT][CR_ICON_W * CR_ICON_W];
-static DoomoImage icon_img[CR_TAB_COUNT];
+/* (in the creator's scratch state: zeroed, i.e. made again, per session) */
+#define icon_pix (cr.icon_pix)
+#define icon_img (cr.icon_img)
 
 static const DoomoImage *dim_icon(int tab)
 {
@@ -1243,6 +1244,7 @@ static void draw_hint(void)
 /* ====================================================================== */
 void cr_draw(void)
 {
+    if (!scene_scratch_mine(CR_SCRATCH_TAG)) { plat_clear(PAL_UI_PINK); return; }
     cr_layout();
     if (cr.phase == CRP_MOVEIN) { draw_movein(); return; }
     ui_backdrop(cr_is_hellish() ? WIN_DARK : WIN_CUTE, cr.t);

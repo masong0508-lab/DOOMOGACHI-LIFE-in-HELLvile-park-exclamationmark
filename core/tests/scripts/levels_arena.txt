@@ -1,0 +1,47 @@
+# Arena modes (levels expansion): Boss Rush (intro, round 1: the Cellar
+# Wraith pops out), Horde Mode (intro, wave 1), Monster Mode Mayhem (the
+# 3-minute clock and the monster meter) and the pause menu's give-up into
+# the results screen.
+scene TITLE
+wait 2
+push ARENA_MODE 0
+expect-scene ARENA_MODE
+wait 30
+shot rush_intro
+wait 100
+shot rush_round1
+press SELECT
+wait 30
+shot rush_round1_tp
+press START
+wait 10
+shot rush_pause
+press UP
+press A
+wait 80
+shot rush_over
+press DOWN
+press A
+wait 2
+expect-scene TITLE
+push ARENA_MODE 1
+wait 30
+shot horde_intro
+wait 60
+shot horde_wave1
+wait 90
+shot horde_fight
+press START
+wait 2
+press UP
+press A
+wait 80
+shot horde_over
+press DOWN
+press A
+wait 2
+push ARENA_MODE 2
+wait 30
+shot mayhem_intro
+wait 200
+shot mayhem_chaos

@@ -319,6 +319,12 @@ static void write_c(const char *path)
     fprintf(f, "};\n\nconst char *const doomo_art_tex_names[TEX_COUNT] = {\n    \"none\",\n");
     for (k = 1; k < TEX_COUNT; k++) fprintf(f, "    \"%s\",\n", tex_out[k].name);
     fprintf(f, "};\n\n");
+    /* (integration, memory budget) every frame as a const DoomoImage with a
+     * fixed uid, so texture_image() needs no RAM copies (textures.h) */
+    fprintf(f, "const DoomoImage doomo_art_tex_img[%d] = {\n", tex_nframes);
+    for (k = 0; k < tex_nframes; k++)
+        fprintf(f, "    {64, 64, doomo_art_tex_pix[%d], DOOMO_ART_TEX_UID + %d},\n", k, k);
+    fprintf(f, "};\n\n");
 
     /* skies */
     fprintf(f, "DOOMO_STATIC_ASSERT(%d <= DOOMO_SKY_MAX_FRAMES, art_sky_frames_fit);\n", sky_nframes);
@@ -358,7 +364,8 @@ static void write_c(const char *path)
         int fr;
         for (fr = 0; fr < spr_out[k].frames; fr++) {
             const ArtFrame *a = &frames[spr_out[k].first + fr];
-            fprintf(f, "    {%d, %d, spr_pix + %d},\n", a->w, a->h, off);
+            fprintf(f, "    {%d, %d, spr_pix + %d, DOOMO_ART_SPR_UID + %d},\n", a->w, a->h, off,
+                    spr_out[k].first + fr);
             off += a->w * a->h;
         }
     }
