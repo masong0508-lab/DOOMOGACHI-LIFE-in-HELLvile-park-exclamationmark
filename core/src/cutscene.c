@@ -56,16 +56,16 @@ static const Panel P_freeplay[] = {
 /* Feast of Rebuilding, outcome 1 (Grumbleguts pops). Beats are timed, so the
  * panel's number here is its WHOLE length in ticks (see cs_dur). */
 static const Panel P_feast_pop[] = {
-    { -1, 150, "Hellvile Park, the Feast of Rebuilding. Gatekeeper Grumbleguts eats like every bite is foreplay: slow, loud, licking the fork, winking at everyone. The buffet is LOSING. So is his dignity." },
-    { -1, 140, "Every eye in the park is on one thing, and every course it gets bigger. Father Fuzz is praying. Nana has stopped pretending to fan herself and is just staring." },
-    { -1, 110, "\"Look who's full of himself, now?\" \"Sugar, I was born this way. Wanna see how it fits?\"" },
-    { -1, 210, "An absurdly long hose. \"Is that a hose or are you just happy to see me?\" ...It keeps going. \"Slower, hon. I like to savor it.\" One big SLAP for a job well done." },
-    { -1, 100, "BURP. Wet. Ripe. Not yet. \"Pardon me. I'm a lady.\" (He is not a lady.)" },
-    { -1, 100, "...pfffrrrt. A squelch you feel in your teeth. He rises an inch off the chair. \"Mmm. That one was a love letter.\"" },
-    { -1, 130, "Both at once! He sags, flushed and glistening. \"Ohhh, finally.\" The crowd cheers. Somebody lights a cigarette." },
-    { -1, 170, "The valve wins. The camera cannot look away from the belly. The harness begs for mercy. \"Don't stop,\" he says. Everyone is very uncomfortable." },
-    { -1, 130, "POP! \"Is there dessert?\" The rump tears off round the park like a let-go balloon, farting a sad little song. Plap." },
-    { -1, 110, "\"...that's hot.\" Somebody said it out loud. Father Fuzz is fine. He is FINE." },
+    { -1, 150, "Hellvile Park, the Feast of Rebuilding. Gatekeeper Grumbleguts eats like every bite is foreplay: slow, loud, licking the fork, winking at everyone. He has slipped his number to the waiter, the band and one gazebo." },
+    { -1, 140, "Every eye in the park is on one thing, and every course it gets bigger. His exes Shriekra and Spearmint are both here, both pretending not to look. He blows a kiss to each. Then a third. Nana has stopped fanning herself and is just staring." },
+    { -1, 110, "\"Look who's full of himself, now?\" \"Sugar, I was born this way. Wanna see how it fits? Form a line, loves, there's plenty to go around.\"" },
+    { -1, 210, "An absurdly long hose. \"Is that a hose or are you just happy to see me?\" ...It keeps going. \"Slower, hon. I like to savor it. Who's next?\" One big SLAP for a job well done. Three hands go up." },
+    { -1, 100, "BURP. Wet. Ripe. Not yet. \"Pardon me. I'm a lady.\" (He is not a lady.) He winks at the nearest imp. The imp winks back." },
+    { -1, 100, "...pfffrrrt. A squelch you feel in your teeth. He rises an inch off the chair. \"Mmm. That one was a love letter. Sealed with a kiss. Several kisses.\"" },
+    { -1, 130, "Both at once! He sags, flushed and glistening. \"Ohhh, finally.\" The crowd cheers. Somebody lights a cigarette. Somebody else asks for the afterparty address." },
+    { -1, 170, "The valve wins. The camera cannot look away from the belly. The harness begs for mercy. \"Don't stop,\" he says, to everybody, individually. Everyone is very uncomfortable and also a little interested." },
+    { -1, 130, "POP! \"Is there dessert?\" The rump tears off round the park like a let-go balloon, farting a sad little song, and the crowd gives chase. Plap." },
+    { -1, 110, "\"...that's hot.\" Somebody said it out loud. Then four more people said it. Father Fuzz is fine. He is FINE. He has asked for the number." },
     { -1, 120, NULL },
     { 0, 0, NULL }
 };
