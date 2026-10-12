@@ -106,6 +106,10 @@ static void grumble(int cx, int cy, int extra, int shake, uint32_t ct, int eatin
         plat_line(hx - 10, hy - (wk ? 1 : 3), hx - 4, hy - (wk ? 1 : 3), PAL_BLACK);
     }
     if (flirt) ui_fill_ellipse(hx + 3, hy + 3, 4, 2, PAL_UI_PINK);   /* blush */
+    if (eating) {                                                /* lip bitten, a string of drool sliding off the chin */
+        plat_rect(hx - 9, hy + 6, 2, 2, PAL_WHITE);
+        plat_rect(hx - 11, hy + 8, 1, 3 + (int)((ct / 4) % 7u), PAL_RAMP(RAMP_SKY, 7));
+    }
     if (extra > 30)                                              /* a bead of sweat, sliding */
         ui_fill_ellipse(hx + 11, hy - 8 + (int)((ct * 2) % 16u), 2, 3, PAL_RAMP(RAMP_SKY, 7));
     plat_rect(hx - 12, hy + 4 + (eating ? (int)((ct / 3) & 1) * 2 : 0), 10, 3, PAL_BLACK);
@@ -235,7 +239,7 @@ static int closeup(int panel, uint32_t pt, uint32_t ct)
             ui_fill_circle(bx, by, 1, PAL_RAMP(RAMP_WOOD, 1));
         }
         pit(sw - 52, 56, 26, 1, ct, cute);                                                  /* arm up, pit on show */
-        ui_text_outline(cx - 12, sh - 40, "BUUURP", PAL_UI_GOLD, PAL_BLACK);
+        ui_text_outline(cx - 30, sh - 40, "BUUURP (wet)", PAL_UI_GOLD, PAL_BLACK);
     } else if (panel == 5) {
         /* the gas cloud, extreme close-up: every fly, one bead of sweat */
         plat_rect(0, 0, sw, sh, cute ? PAL_RAMP(RAMP_PASTEL_PINK, 6) : PAL_RAMP(RAMP_SICK, 2));
@@ -569,9 +573,17 @@ void feast_draw(int panel, uint32_t pt, uint32_t ct)
         int s = ui_pop_scale((int)pt - 140);
         if (s > 0) ui_text_big(cx + 40, cy - 52, "SLAP!", 2, PAL_WHITE, PAL_UI_RED_D);
     }
+    if (panel < 3) {                                                     /* a blown kiss, drifting at the crowd */
+        int kx = cx - 28 + (int)(ct % 48u) * 3, ky = cy - 54 - ui_wave((int)ct * 2, 24, 4);
+        ui_heart(kx, ky, 3, PAL_UI_PINK);
+        if ((ct % 48u) < 6) ui_text_outline(cx - 40, cy - 66, "mwah", PAL_UI_PINK, PAL_BLACK);
+    }
+    if (panel == 4 && pt >= 30 && pt < 60) ui_text_outline(cx - 70, cy - 40, "*squelch*", PAL_UI_GOLD, PAL_BLACK);
+    if (panel == 5 && pt >= 40 && pt < 90) ui_text_outline(cx + 40, cy + 54, "*pffrrt*", PAL_UI_GOLD, PAL_BLACK);
+    if (panel == 7 && pt > 60 && pt < 90) ui_text_outline(cx - 40, cy - 90, "don't stop~", PAL_UI_PINK, PAL_BLACK);
     if (panel == 1 && pt >= 40 && pt < 100) ui_text_outline(sw - 150, gy - 96, "*wolf whistle*", PAL_UI_GOLD, PAL_BLACK);
     if (panel == 5 && pt < 40) ui_text_outline(cx - 44, cy - 62, "mmm~", PAL_WHITE, PAL_BLACK);
-    if (panel == 6 && pt >= 50 && pt < 100) ui_text_outline(cx - 48, cy - 74 - (int)(pt - 50) / 4, "ooOOoh~", PAL_UI_PINK, PAL_BLACK);
+    if (panel == 6 && pt >= 50 && pt < 100) ui_text_outline(cx - 48, cy - 74 - (int)(pt - 50) / 4, "ohhh, finally~", PAL_UI_PINK, PAL_BLACK);
     if (panel == 7 && pt > 40) ui_text_outline(cx - 34, cy - 70 - extra / 2, "...gurgle", PAL_WHITE, PAL_BLACK);
     if (panel == 7 && pt > 120) {                                        /* the pressure gauge */
         ui_fill_circle(sw - 30, 44, 12, PAL_WHITE);
