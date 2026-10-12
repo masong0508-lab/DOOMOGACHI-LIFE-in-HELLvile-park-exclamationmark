@@ -7,6 +7,10 @@
  * rump both round and smooth; the hose goes behind the chair and the rest
  * is implied by a squeak and his slowly turning head. CUTE gore setting:
  * confetti, plush stuffing, hearts, a halo. BRUTAL: a red shower and gibs.
+ * HOSE PASS (user): panel 3 smash-cuts to two funny close shots: Grumbleguts
+ * staring dead into the lens, then a straight-on REAR shot (cheeks only,
+ * smooth, a brass inflation valve in the crease) as he yanks the hose off it
+ * in three heaves until it comes loose with a SHLORP (see hose_shot()).
  * Panels (cutscene.c): 0 feast, 1 eyes on him, 2 "Look who's full of
  * himself, now?", 3 the hose, 4 burp (false pop 1), 5 fart (false pop 2),
  * 6 both at once, 7 the valve wins, 8 POP, 9 "...that's hot.", 10 title.
@@ -202,6 +206,127 @@ static void pit(int px, int py, int size, int dir, uint32_t ct, int cute)
 #define CU_GAS_B  94u      /* panel 5 */
 #define CU_BELLY_A 90u
 #define CU_BELLY_B 126u    /* panel 7 */
+#define CU_FACE_A  70u
+#define CU_FACE_B  96u     /* panel 3: deadpan into the lens */
+#define CU_REAR_A  96u
+#define CU_REAR_B  146u    /* panel 3: the rear shot, the yank */
+
+/* panel 3 close shots. face: he looks dead into the lens. rear: straight-on
+ * view from behind (cheeks only), a brass valve in the crease, the hose
+ * hauled on in three heaves until it comes off: SHLORP. */
+static void hose_shot(int face, uint32_t t0)
+{
+    int sw = plat_screen_w(), sh = plat_screen_h(), cx = sw / 2, cy = sh / 2, i, t = (int)t0;
+    int cute = F_CUTE;
+    uint8_t dk = PAL_RAMP(RAMP_BLOOD, 2), md = PAL_UI_RED, lt = PAL_RAMP(RAMP_LAVA, 6);
+    uint8_t hc = PAL_RAMP(RAMP_MINT, 6), hd = PAL_RAMP(RAMP_MINT, 3);
+
+    plat_rect(0, 0, sw, sh, PAL_RAMP(RAMP_SKY, 6));
+    plat_rect(0, sh * 4 / 5, sw, sh - sh * 4 / 5, PAL_RAMP(RAMP_GRASS, 4));
+    if (face) {
+        int hr = sh / 3, s, px;
+        plat_line(cx - hr * 2 / 3, cy - hr * 3 / 4, cx - hr, cy - hr - 14, PAL_RAMP(RAMP_BONE, 6));
+        plat_line(cx - hr * 2 / 3 + 1, cy - hr * 3 / 4, cx - hr + 1, cy - hr - 14, PAL_RAMP(RAMP_BONE, 6));
+        plat_line(cx + hr * 2 / 3, cy - hr * 3 / 4, cx + hr, cy - hr - 14, PAL_RAMP(RAMP_BONE, 6));
+        plat_line(cx + hr * 2 / 3 - 1, cy - hr * 3 / 4, cx + hr - 1, cy - hr - 14, PAL_RAMP(RAMP_BONE, 6));
+        ui_fill_circle(cx, cy, hr + 2, dk);
+        ui_fill_circle(cx, cy, hr, md);
+        for (s = -1; s <= 1; s += 2) {
+            px = cx + s * hr / 3;
+            ui_fill_circle(px, cy - hr / 5, hr / 5 + 2, PAL_WHITE);
+            /* the pupils dart around, then lock onto the lens */
+            ui_fill_circle(px + (t < 14 ? ((t / 5) & 1 ? -3 : 3) : 0), cy - hr / 5, hr / 12 + 1, PAL_BLACK);
+            plat_line(px - hr / 5, cy - hr / 2 + (t < 14 ? 0 : 3), px + hr / 5, cy - hr / 2 + 3, PAL_BLACK);
+            ui_fill_ellipse(px + s * hr / 8, cy + hr / 4, hr / 6, hr / 12, PAL_UI_PINK);     /* blush */
+        }
+        plat_rect(cx - hr / 3, cy + hr / 3, hr * 2 / 3, 3, PAL_BLACK);                        /* flat, deadpan mouth */
+        ui_fill_ellipse(cx + hr * 2 / 3, cy - hr / 3 + (t * 2) % 16, 2, 3, PAL_RAMP(RAMP_SKY, 7));   /* one bead of sweat */
+        ui_text_outline(cx - 18, 8, t < 14 ? "ahem." : "...", PAL_WHITE, PAL_BLACK);
+        if (t >= 14) ui_text_outline(cx - 36, sh - 22, "one sec, hon.", PAL_UI_GOLD, PAL_BLACK);
+        return;
+    }
+    {
+        int rr = sh / 3, cyc = cy - 12, lx = cx - rr * 3 / 4, rx = cx + rr * 3 / 4;
+        int pull, jig = 0, fx, fy, vy;
+        if (t < 10) pull = t / 3;
+        else if (t < 19) pull = 3 + (t - 10);
+        else if (t < 25) pull = 12 - (t - 19) * 2;
+        else if (t < 36) pull = 2 + (t - 25) * 12 / 10;
+        else if (t < 40) pull = 14;
+        else pull = 0;
+        if (t >= 40) jig = ui_wave(t * 5, 10, DOOMO_MAX(7 - (t - 40) / 2, 0));
+        vy = cyc + rr / 3 + pull / 2;
+        /* the two cheeks: pinched toward the crease as it is hauled on */
+        ui_fill_ellipse(lx + pull / 2, cyc + jig, rr + 2 - pull / 2, rr + 2 + pull / 3, dk);
+        ui_fill_ellipse(rx - pull / 2, cyc - jig, rr + 2 - pull / 2, rr + 2 + pull / 3, dk);
+        ui_fill_ellipse(lx + pull / 2, cyc + jig, rr - pull / 2, rr + pull / 3, md);
+        ui_fill_ellipse(rx - pull / 2, cyc - jig, rr - pull / 2, rr + pull / 3, md);
+        ui_fill_circle(lx - rr / 3, cyc - rr / 2 + jig, DOOMO_MAX(rr / 6, 2), lt);
+        ui_fill_circle(rx - rr / 3, cyc - rr / 2 - jig, DOOMO_MAX(rr / 6, 2), lt);
+        plat_line(cx, cyc - rr / 2, cx, vy, dk);
+        plat_line(cx + 1, cyc - rr / 2, cx + 1, vy, dk);
+        /* the brass inflation valve in the crease */
+        plat_rect(cx - 7, vy, 14, 10, PAL_BLACK);
+        plat_rect(cx - 6, vy + 1, 12, 8, PAL_UI_GOLD);
+        plat_rect(cx - 2, vy + 3, 4, 4, t >= 40 ? PAL_BLACK : PAL_RAMP(RAMP_STEEL, 2));
+        if (t < 40) {
+            int mx, my, k;
+            fx = cx + sw / 4 + pull * 2;
+            fy = sh - 30 + pull;
+            mx = (cx + fx) / 2;
+            my = DOOMO_MAX(vy + 5, fy) + 12 - pull;
+            for (k = 0; k < 5; k++) {                       /* the hose, a thick sagging curve */
+                plat_line(cx, vy + 9 + k, mx, my + k, k == 4 ? hd : hc);
+                plat_line(mx, my + k, fx, fy + k - 1, k == 4 ? hd : hc);
+            }
+            for (i = 0; i < 6; i++)                         /* ribbing */
+                plat_rect(cx + (fx - cx) * i / 6, vy + 9 + (my - vy) * (i < 3 ? i : 5 - i) / 3, 2, 4, hd);
+            ui_fill_circle(fx, fy, 11, PAL_BLACK);          /* the fist */
+            ui_fill_circle(fx, fy, 10, md);
+            for (k = -1; k <= 1; k++) plat_line(fx - 6, fy + k * 4, fx + 3, fy + k * 4, dk);
+            for (k = 0; k < 4; k++) {                       /* the forearm, hauling */
+                plat_line(fx + 8, fy + 4 + k, sw, sh + 20 + k - pull, k == 3 ? dk : md);
+            }
+            if (pull > 8)                                   /* tension lines off the valve */
+                for (k = 0; k < 4; k++)
+                    plat_line(cx - 10 - k * 3, vy + 4 + k * 4, cx - 22 - k * 5, vy + 2 + k * 6, PAL_WHITE);
+            if (t >= 10 && t < 19) ui_text_outline(cx - 22, 10, "nnngh!", PAL_WHITE, PAL_BLACK);
+            if (t >= 25) ui_text_outline(cx - 34, 10, "NNNGHHH!!", PAL_UI_GOLD, PAL_BLACK);
+        } else {
+            int s = t - 40;
+            ui_fill_ellipse(cx + s * 3, vy + s, 4 + s * 3, 3 + s * 2, PAL_BLACK);   /* the hose end, at the lens */
+            ui_fill_ellipse(cx + s * 3, vy + s, 3 + s * 3, 2 + s * 2, hc);
+            for (i = 0; i < 4; i++) plat_line(cx - 30 + i * 12, vy - 4 - i * 3, cx - 54 + i * 14, vy - 22 - i * 5, PAL_WHITE);
+            if (s < 24) gas(cx, vy - 4 - s, 5 + s * 2 / 3, !cute);       /* the valve lets go */
+            ui_fill_circle(cx + sw / 4 + s * 7, sh - 30 - s * 4, 10, md);   /* the fist flies off */
+            ui_text_big((sw - ui_text_big_width("SHLORP!", 2)) / 2, 8, "SHLORP!", 2, PAL_UI_GOLD, PAL_RAMP(RAMP_BLOOD, 2));
+        }
+        /* his head glances back over his shoulder, straight at the lens */
+        {
+            int hx = 34, hy = 36, hrr = 15;
+            ui_fill_circle(hx, hy, hrr + 1, dk);
+            ui_fill_circle(hx, hy, hrr, md);
+            plat_line(hx - 10, hy - 10, hx - 15, hy - 24, PAL_RAMP(RAMP_BONE, 6));
+            plat_line(hx + 8, hy - 11, hx + 12, hy - 24, PAL_RAMP(RAMP_BONE, 6));
+            if (t < 40) {
+                ui_fill_circle(hx - 5, hy - 3, 4, PAL_WHITE);
+                ui_fill_circle(hx + 5, hy - 3, 4, PAL_WHITE);
+                plat_rect(hx - 5, hy - 3, 2, 2, PAL_BLACK);
+                plat_rect(hx + 4, hy - 3, 2, 2, PAL_BLACK);
+                plat_rect(hx - 7, hy + 6, 14, 4, PAL_WHITE);                  /* gritted teeth */
+                for (i = 0; i < 4; i++) plat_rect(hx - 4 + i * 4, hy + 6, 1, 4, PAL_BLACK);
+                ui_fill_ellipse(hx + 14, hy - 8 + (t * 2) % 14, 2, 3, PAL_RAMP(RAMP_SKY, 7));
+            } else {
+                plat_line(hx - 8, hy - 3, hx - 2, hy - 5, PAL_BLACK);        /* eyes shut: relief */
+                plat_line(hx + 2, hy - 5, hx + 8, hy - 3, PAL_BLACK);
+                ui_fill_ellipse(hx, hy + 7, 5, 3, PAL_BLACK);
+                ui_fill_ellipse(hx - 9, hy + 3, 4, 2, PAL_UI_PINK);
+                ui_fill_ellipse(hx + 9, hy + 3, 4, 2, PAL_UI_PINK);
+                if (t >= 46) ui_text_outline(hx + 18, hy - 4, "ahhh~", PAL_UI_PINK, PAL_BLACK);
+            }
+        }
+    }
+}
 
 /* returns 1 when it drew a full-screen close-up instead of the scene */
 static int closeup(int panel, uint32_t pt, uint32_t ct)
@@ -213,8 +338,11 @@ static int closeup(int panel, uint32_t pt, uint32_t ct)
     if (panel == 4 && pt >= CU_BURP_A && pt < CU_BURP_B) t0 = pt - CU_BURP_A;
     else if (panel == 5 && pt >= CU_GAS_A && pt < CU_GAS_B) t0 = pt - CU_GAS_A;
     else if (panel == 7 && pt >= CU_BELLY_A && pt < CU_BELLY_B) t0 = pt - CU_BELLY_A;
+    else if (panel == 3 && pt >= CU_FACE_A && pt < CU_FACE_B) t0 = pt - CU_FACE_A;
+    else if (panel == 3 && pt >= CU_REAR_A && pt < CU_REAR_B) t0 = pt - CU_REAR_A;
     else return 0;
     if (t0 < 2) { plat_rect(0, 0, sw, sh, PAL_WHITE); return 1; }      /* the smash cut */
+    if (panel == 3) { hose_shot(pt < CU_REAR_A, t0); return 1; }
 
     if (panel == 4) {
         /* his face mid-burp: huge open mouth, wobbling uvula, bagel bits */
@@ -536,6 +664,7 @@ static void rump_pos(int t, int cx, int cy, int gy, int *x, int *y)
 int feast_front_shot(int panel, uint32_t pt)
 {
     int i;
+    if (panel == 3 && pt >= CU_FACE_A && pt < CU_REAR_B) return 1;      /* the hose close shots too */
     for (i = 0; i < NSHOTS; i++)
         if (shots[i].kind == AN_FRONT && shots[i].panel == panel && pt >= shots[i].a && pt < shots[i].b) return 1;
     return 0;
@@ -552,6 +681,10 @@ void feast_tick(int panel, uint32_t pt)
     case 2: if (pt == 40) audio_sfx(SFX_ERROR); break;                 /* record scratch */
     case 3:
         if (pt == 20 || pt == 70 || pt == 120) audio_sfx(SFX_SQUEAK);
+        if (pt == CU_FACE_A) audio_sfx(SFX_ERROR);                      /* record scratch */
+        if (pt == CU_REAR_A) audio_sfx(SFX_BLIP);
+        if (pt == CU_REAR_A + 12 || pt == CU_REAR_A + 28 || pt == CU_REAR_A + 34) audio_sfx(SFX_SQUEAK);   /* the heaves */
+        if (pt == CU_REAR_A + 40) { audio_sfx(SFX_POOP); audio_sfx(SFX_SPLASH); }                         /* SHLORP */
         if (pt == 150) audio_sfx(SFX_SPLAT);                            /* the SLAP       */
         break;
     case 4: if (pt == CU_BURP_A) { audio_sfx(SFX_ERROR); audio_sfx(SFX_POOP); } break;   /* burp           */

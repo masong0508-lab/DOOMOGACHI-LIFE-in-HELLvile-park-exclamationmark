@@ -217,7 +217,7 @@ static void puff_cloud(int cx, int cy, int r, int ramp, int bright, uint32_t t)
 static void caption(void)
 {
     const Panel *p = &scripts[cut][panel];
-    char buf[200];
+    char buf[280];     /* the Feast captions run to ~245 chars */
     int sw = plat_screen_w(), sh = plat_screen_h(), lines, h, y, style;
     uint32_t chars;
     if (!p->text) return;
