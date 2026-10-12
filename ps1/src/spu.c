@@ -330,6 +330,37 @@ void audio_hw_frame(void)
     convert_sfx(s_bg_next++);
 }
 
+/* The BIOS memory card calls block the game loop for seconds, and the music
+ * only advances from that loop: every tone voice would keep sounding its
+ * last note as a frozen drone (and queued effects would loop on). While the
+ * loop is blocked all voices are keyed off and the master volume is muted;
+ * afterwards the tone voices that were sounding are started again. */
+static ToneState s_tone_saved[TONE_VOICES];
+static int       s_hushed;
+
+void audio_hw_hush(int on)
+{
+    int v;
+    if (!s_ready || on == s_hushed)
+        return;
+    s_hushed = on;
+    if (on) {
+        for (v = 0; v < TONE_VOICES; v++) {
+            s_tone_saved[v] = s_tone[v];
+            s_tone[v].on = 0;
+        }
+        SpuSetKey(0, 0x00ffffffu);            /* all 24 voices off */
+        SPU_MASTER_VOL_L = 0;
+        SPU_MASTER_VOL_R = 0;
+    } else {
+        SPU_MASTER_VOL_L = 0x3fff;
+        SPU_MASTER_VOL_R = 0x3fff;
+        for (v = 0; v < TONE_VOICES; v++)
+            if (s_tone_saved[v].freq && s_tone_saved[v].vol)
+                plat_tone(v, s_tone_saved[v].freq, s_tone_saved[v].vol, s_tone_saved[v].wave);
+    }
+}
+
 uint32_t audio_spu_used(void) { return s_sfx_top; }
 
 /* ---- self test (engine test build, results on the TTY) ---------------------

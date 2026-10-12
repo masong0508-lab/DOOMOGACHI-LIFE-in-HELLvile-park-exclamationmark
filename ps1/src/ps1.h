@@ -74,6 +74,9 @@ void hcmd_poll(void);                   /* harness mailbox, between frames */
 extern uint16_t g_last_draw_y;          /* VRAM y of the newest frame */
 void gfx_busy_banner(const char *msg);  /* "Saving..." while the BIOS blocks */
 void gfx_busy_end(void);                /* ... and remove it again */
+/* full-screen "Saving... / Loading..." screen with a progress bar (done of
+ * total blocks); call again after every block, total 0 = empty bar */
+void gfx_loading_screen(const char *title, const char *detail, int done, int total);
 extern uint32_t g_rgb[256];       /* palette -> 0x00BBGGRR for prims      */
 extern uint16_t g_pal15[256];     /* palette -> VRAM 15-bit (STP set)     */
 
@@ -208,6 +211,7 @@ uint32_t pad_read(void);                 /* BTN_* bitmask */
 int      pad_analog(int *lx, int *ly, int *rx, int *ry);
 void     audio_hw_init(void);
 void     audio_hw_frame(void);
+void     audio_hw_hush(int on);      /* silence the SPU while the BIOS blocks the loop */
 int      audio_selftest(void);       /* SPU checks, PASS/FAIL on the TTY */
 void     memcard_early(void);
 void     memcard_init(void);

@@ -453,6 +453,13 @@ frames 5..   the core's save stream, zero padded
   reads a single block (partial reads are supported). While the BIOS blocks the game loop, a "Saving... do not remove
   MEMORY CARD" banner is drawn over the last frame (and removed again
   afterwards).
+* Saves and loads show a full-screen loading screen (`gfx_loading_screen`)
+  with a progress bar that moves after every 8 KB block; the one-block menu
+  peeks keep the small corner banner. While the BIOS blocks the loop the SPU
+  is silenced (`audio_hw_hush`: all voices keyed off, master volume muted;
+  the sounding tone voices restart afterwards) - otherwise the tone voices
+  sustain their last note as a frozen drone for the whole save. An in-place
+  save writes only the blocks its payload needs, not the whole old file.
 * Boot: the pad and card drivers are started before the SDK's interrupt
   handler is installed, and the directory scan (`_bu_init`, ~3 s for both
   slots) runs behind a pink "Checking MEMORY CARD" splash.

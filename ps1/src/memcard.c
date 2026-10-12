@@ -63,8 +63,51 @@ void memcard_init(void)
  * treats this as a heartbeat so a long save is not reported as a hang */
 volatile uint32_t g_io_beat;
 
-static void bios_io_begin(void) { DrawSync(0); g_io_beat++; }
-static void bios_io_end(void) { g_io_beat++; }
+/* Card I/O blocks the loop, so the music is silenced meanwhile (a frozen
+ * drone otherwise) and big transfers get a full-screen loading screen whose
+ * progress bar moves after every 8 KB block. */
+static void bios_io_begin(void) { DrawSync(0); audio_hw_hush(1); g_io_beat++; }
+static void bios_io_end(void) { audio_hw_hush(0); g_io_beat++; }
+
+static const char *s_ls_title;      /* NULL: no loading screen (small banner) */
+static const char *s_ls_verb;
+
+static char *put_str(char *d, const char *t)
+{
+    while (*t)
+        *d++ = *t++;
+    return d;
+}
+
+static char *put_int(char *d, int v)
+{
+    char t[12];
+    int n = 0;
+    if (v < 0) v = 0;
+    do { t[n++] = (char)('0' + v % 10); v /= 10; } while (v && n < 11);
+    while (n)
+        *d++ = t[--n];
+    return d;
+}
+
+/* done of total blocks finished (total 0: still preparing) */
+static void ls_progress(int done, int total)
+{
+    char buf[48], *d = buf;
+    if (!s_ls_title)
+        return;
+    if (total <= 0) {
+        d = put_str(d, "Getting ready...");
+    } else {
+        d = put_str(d, s_ls_verb);
+        d = put_str(d, " block ");
+        d = put_int(d, done < total ? done + 1 : total);
+        d = put_str(d, " of ");
+        d = put_int(d, total);
+    }
+    *d = 0;
+    gfx_loading_screen(s_ls_title, buf, done, total);
+}
 
 /* ---- Shift-JIS title ------------------------------------------------------- */
 static int sjis_put(uint8_t *d, char c)
@@ -253,11 +296,13 @@ static int write_file(const char *path, const uint8_t *data, uint32_t size, int 
     int fd = open(path, O_WRONLY_), k, ok = 1;
     if (fd < 0)
         return 0;
+    ls_progress(0, blocks);
     for (k = 0; ok && k < blocks; k++) {
         stage_block(k, data, size);
         if (write(fd, s_blk, BLOCK) != BLOCK)
             ok = 0;
         g_io_beat++;
+        ls_progress(k + 1, blocks);
     }
     close(fd);
     return ok;
@@ -311,7 +356,9 @@ static int save_write(int slot, const void *data, uint32_t size)
     if (have_a > have_n) { cur = alt; other = name; have = have_a; }
     else { cur = name; other = alt; have = have_n; }
     if (have >= blocks * BLOCK) {
-        ok = write_file(cur, (const uint8_t *)data, size, have / BLOCK);
+        /* only the blocks this save needs: a file that is bigger than the
+         * payload keeps its stale tail (nothing reads past the payload) */
+        ok = write_file(cur, (const uint8_t *)data, size, blocks);
         if (ok && file_size(other) >= 0)
             erase(other);
         dbg("memcard: wrote %s (%u bytes, in place) -> %d\n", cur, (unsigned)size, ok);
@@ -361,14 +408,25 @@ static int read_file(const char *path, void *data, uint32_t cap, uint32_t *out_s
 {
     int fd = open(path, O_RDONLY_), k;
     uint32_t v[4], size = 0, want = 0, o = 0;
-    int ok = 0;
+    int ok = 0, total_blocks = 0;
     if (fd < 0)
         return 0;
+    ls_progress(0, 0);
     for (k = 0; ; k++) {
         uint32_t o0 = (uint32_t)k * BLOCK, from, n;
         g_io_beat++;
         if (read(fd, s_blk, BLOCK) != BLOCK)
             goto done;
+        if (k == 0 && s_ls_title) {
+            /* the info frame says how many blocks this load will take */
+            uint32_t sz;
+            memcpy(&sz, s_blk + FRAME * 4 + 4, 4);
+            if (s_blk[0] == 'S' && s_blk[1] == 'C' && sz <= DOOMO_SAVE_SLOT1_MAX) {
+                uint32_t w = sz < cap ? sz : cap;
+                total_blocks = (int)((HDR_BYTES + w + BLOCK - 1) / BLOCK);
+            }
+        }
+        ls_progress(k + 1, total_blocks);
         if (k == 0) {
             memcpy(s_hdr, s_blk, HDR_BYTES);
             memcpy(v, s_hdr + FRAME * 4, sizeof(v));
@@ -442,26 +500,37 @@ static int save_erase(int slot)
 int plat_save_write(int slot, const void *data, uint32_t size)
 {
     int r;
-    gfx_busy_banner("Saving... do not remove MEMORY CARD");
     bios_io_begin();
+    s_ls_title = "Saving your game...";
+    s_ls_verb = "Writing";
+    ls_progress(0, 0);
     r = save_write(slot, data, size);
     if (!r) {
+        ls_progress(0, 0);
         _bu_init();
         r = save_write(slot, data, size);
     }
+    s_ls_title = 0;
     bios_io_end();
-    gfx_busy_end();
     return r;
 }
 
 int plat_save_read(int slot, void *data, uint32_t cap, uint32_t *size)
 {
     int r;
-    gfx_busy_banner(cap > 2048 ? "Loading MEMORY CARD..." : "Checking MEMORY CARD...");
+    int big = cap > 2048;        /* a menu peek (one block) keeps the small banner */
+    if (!big)
+        gfx_busy_banner("Checking MEMORY CARD...");
     bios_io_begin();
+    if (big) {
+        s_ls_title = "Loading your game...";
+        s_ls_verb = "Reading";
+    }
     r = save_read(slot, data, cap, size);    /* no re-scan: a missing save is normal */
+    s_ls_title = 0;
     bios_io_end();
-    gfx_busy_end();
+    if (!big)
+        gfx_busy_end();
     return r;
 }
 

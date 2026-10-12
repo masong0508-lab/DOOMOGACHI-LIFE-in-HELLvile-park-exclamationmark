@@ -351,6 +351,88 @@ void gfx_busy_end(void)
     s_banner_rect.w = 0;
 }
 
+/* ---- full-screen loading screen --------------------------------------------
+ * Used for saving and loading the memory card. The BIOS card driver blocks
+ * the game loop for about a second per 8 KB block, so the screen cannot
+ * animate by itself: memcard.c calls gfx_loading_screen() again after every
+ * block, which moves the progress bar. It is drawn straight into the picture
+ * that is on screen (like the small banner above). Nothing has to be put
+ * back afterwards: every game frame is cleared (isbg) and redrawn in full. */
+#define LS_TEXT_MAX 64
+
+static void busy_box(TILE *t, int x, int y, int w, int h, int r, int g, int b)
+{
+    setTile(t);
+    setXY0(t, x, y);
+    setWH(t, w, h);
+    setRGB0(t, r, g, b);
+    DrawPrim(t);
+}
+
+static void busy_puts(int y, const char *msg, uint8_t pal)
+{
+    static SPRT glyph[LS_TEXT_MAX];
+    static DR_TPAGE tp;
+    uint16_t clut = vram_font_clut(pal);
+    int n = 0, x, i;
+
+    while (msg[n] && n < LS_TEXT_MAX)
+        n++;
+    x = (SCR_W - n * FONT_ADVANCE) / 2;
+    DrawSync(0);                        /* the shared prims are free again */
+    setDrawTPage(&tp, 0, 0, vram_font_tpage());
+    DrawPrim(&tp);
+    for (i = 0; i < n; i++) {
+        unsigned c = (uint8_t)msg[i];
+        SPRT *p = &glyph[i];
+        if (c <= ' ' || c > FONT_LAST)
+            continue;
+        c -= FONT_FIRST;
+        setSprt(p);
+        setShadeTex(p, 1);
+        setXY0(p, x + i * FONT_ADVANCE, y);
+        setUV0(p, (c & 15) * 8, VR_FONT_Y + (c >> 4) * 8);
+        setWH(p, 5, 8);
+        p->clut = clut;
+        DrawPrim(p);
+    }
+    DrawSync(0);
+}
+
+void gfx_loading_screen(const char *title, const char *detail, int done, int total)
+{
+    static TILE tl[8];
+    DRAWENV env;
+    const int bx = 60, by = 128, bw = 200, bh = 14;
+    int fb = g_cur ^ 1, fill = 0;
+
+    DrawSync(0);                        /* newest frame complete */
+    env = s_fb[fb].draw;
+    env.isbg = 0;
+    env.dtd = 0;
+    PutDrawEnv(&env);
+    busy_box(&tl[0], 0, 0, SCR_W, SCR_H, 255, 214, 232);        /* pink    */
+    busy_box(&tl[1], 0, 58, SCR_W, 2, 255, 150, 200);           /* stripes */
+    busy_box(&tl[2], 0, 180, SCR_W, 2, 255, 150, 200);
+    busy_box(&tl[3], bx - 2, by - 2, bw + 4, bh + 4, 110, 40, 90);  /* bar  */
+    busy_box(&tl[4], bx, by, bw, bh, 255, 244, 250);
+    if (total > 0) {
+        if (done < 0) done = 0;
+        if (done > total) done = total;
+        fill = bw * done / total;
+    }
+    if (fill > 0)
+        busy_box(&tl[5], bx, by, fill, bh, 255, 90, 160);
+    DrawSync(0);
+    busy_puts(70, "DOOMOGACHI LIFE", PAL_UI_PURPLE);
+    busy_puts(82, "in HELLvile Park!", PAL_UI_PINK_D);
+    busy_puts(104, title, PAL_UI_PURPLE);
+    busy_puts(152, detail, PAL_UI_PURPLE);
+    busy_puts(194, "Do not remove the MEMORY CARD", PAL_UI_RED_D);
+    busy_puts(206, "or switch the power off!", PAL_UI_RED_D);
+    PutDispEnv(&s_fb[fb].disp);
+}
+
 /* platform.h: the save/load scratch buffer is the display-list memory of
  * BOTH frames (s_prim, contiguous). Once the GPU has finished the previous
  * frame (DrawSync), its half is unused until the current frame is
