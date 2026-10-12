@@ -14,7 +14,9 @@
  * Panels (cutscene.c): 0 feast, 1 eyes on him, 2 "Look who's full of
  * himself, now?", 3 the hose, 4 burp (false pop 1), 5 fart (false pop 2),
  * 6 both at once, 7 the valve wins, 8 POP, 9 "...that's hot.", 10 the candlelit
- * afterglow, 11 the slow look into the lens (epilogue()), 12 title.
+ * afterglow, 11 the slow look into the lens (epilogue()),
+ * 12-13 the bike pump: he inflates himself on the spot (pump_scene()), no pop, no
+ * lift-off, 14 title.
  * Three Ren & Stimpy style GROSS-OUT CLOSE-UPS smash-cut in (white flash,
  * hold, record scratch) over panels 4, 5 and 7: the burp, the gas cloud and
  * the straining belly / harness strap (see closeup()). Cartoon only.
@@ -711,7 +713,13 @@ void feast_tick(int panel, uint32_t pt)
     case 11: if (pt == 30) audio_sfx(SFX_LOVE);
              if (pt == 66) audio_sfx(SFX_SPARKLE);                       /* the slow wink  */
              break;
-    case 12: if (pt == 4) audio_sfx(SFX_BELL); break;
+    case 12: if ((pt % 20) == 10) audio_sfx(SFX_SQUEAK);                  /* a stroke of the pump */
+             break;
+    case 13: if ((pt % 24) == 12) audio_sfx(SFX_SQUEAK);
+             if (pt == 108 || pt == 156) audio_sfx(SFX_ERROR);            /* the skin complains */
+             if (pt == 160) audio_sfx(SFX_LOVE);
+             break;
+    case 14: if (pt == 4) audio_sfx(SFX_BELL); break;
     default: break;
     }
 }
@@ -810,6 +818,98 @@ static void epilogue(int panel, uint32_t pt, uint32_t ct)
 }
 
 
+/* ---- the bike pump (panels 12 and 13) -------------------------------------------------
+ * Night park again. A floor pump, a hose that goes round to the rump (brass valve
+ * at the back, cheeks only, profile), and Grumbleguts working the handle himself.
+ * Every stroke adds a notch of belly. Eyes cross, tongue out. He just gets bigger
+ * and stays put: no pop, no lift-off. */
+static void pump_scene(int panel, uint32_t pt, uint32_t ct)
+{
+    int sw = plat_screen_w(), sh = plat_screen_h(), gy = sh * 3 / 4, i, t = (int)pt;
+    int cx = sw / 2 - 20, cy = gy - 56, per = panel == 12 ? 20 : 24, n = t / per, ph = t % per;
+    int maxe = DOOMO_MIN(74, sh / 2 - 46), p, extra, r, shake, rx, ry, rr, ax, ay, px = sw - 22, py = gy - 34;
+    int hx, hy, hy2, mx, my, k;
+    uint8_t hc = PAL_RAMP(RAMP_MINT, 6), hd = PAL_RAMP(RAMP_MINT, 3);
+
+    if (panel == 12) p = n * 6 + (ph >= per / 2 ? DOOMO_MIN((ph - per / 2) * 6 / 4, 6) : 0);
+    else p = 60 + n * 5 + (ph >= per / 2 ? DOOMO_MIN((ph - per / 2) * 5 / 4, 5) : 0);
+    p = DOOMO_MIN(p, 100);
+    extra = 2 + (maxe - 2) * p / 100;
+    r = 34 + extra;
+    shake = ui_wave((int)ct * 5, 10, p / 25);
+    rx = cx + r * 6 / 10 + shake;
+    ry = cy + r / 5;
+    rr = r * 7 / 10;
+    ax = rx + rr - 2;
+    ay = ry;
+
+    /* the night park */
+    plat_rect(0, 0, sw, gy, PAL_RAMP(RAMP_VAPE, 0));
+    plat_rect(0, gy, sw, sh - gy, PAL_RAMP(RAMP_GRASS, 1));
+    ui_fill_circle(sw - 46, 40, 16, PAL_RAMP(RAMP_BONE, 7));
+    ui_fill_circle(sw - 40, 36, 14, PAL_RAMP(RAMP_VAPE, 0));
+    for (i = 0; i < 9; i++) ui_sparkle((i * 47) % sw, 14 + (i * 23) % 50, (int)((ct / 3 + (uint32_t)i * 3) & 15), PAL_WHITE);
+    plat_rect(8, gy - 26, 70, 6, PAL_RAMP(RAMP_WOOD, 3));
+    plat_rect(12, gy - 20, 4, 22, PAL_RAMP(RAMP_WOOD, 1));
+    plat_rect(68, gy - 20, 4, 22, PAL_RAMP(RAMP_WOOD, 1));
+    candles(18, gy - 26, ct);
+    plat_rect(cx - 24, gy - 14, 60, 5, PAL_RAMP(RAMP_WOOD, 3));                             /* his chair */
+    plat_rect(cx - 20, gy - 10, 8, 14, PAL_RAMP(RAMP_WOOD, 1));
+    plat_rect(cx + 22, gy - 10, 8, 14, PAL_RAMP(RAMP_WOOD, 1));
+    if (panel == 12) crowd(sw, gy, 0, ct, 0);                                                /* the stragglers */
+
+    /* the hose, pump to valve, with a bulge running down it after each push */
+    mx = (px + ax) / 2;
+    my = DOOMO_MAX(py, ay) + 14;
+    for (k = 0; k < 5; k++) {
+        plat_line(px, py + k, mx, my + k, k == 4 ? hd : hc);
+        plat_line(mx, my + k, ax, ay + k, k == 4 ? hd : hc);
+    }
+    if (ph >= per / 2) {
+        int u = (ph - per / 2) * 100 / (per / 2), bx, by;
+        if (u < 50) { bx = px + (mx - px) * u / 50; by = py + (my - py) * u / 50; }
+        else { bx = mx + (ax - mx) * (u - 50) / 50; by = my + (ay - my) * (u - 50) / 50; }
+        ui_fill_circle(bx, by + 2, 4, hc);
+    }
+    /* the floor pump: base, barrel, handle going down on the push */
+    hy2 = gy - 34 - 14 + (ph < per / 2 ? ph * 14 / (per / 2) : (per - ph) * 14 / (per / 2));
+    plat_rect(px - 12, gy - 3, 24, 4, PAL_BLACK);
+    plat_rect(px - 5, gy - 34, 10, 32, PAL_RAMP(RAMP_STEEL, 3));
+    plat_rect(px - 5, gy - 34, 3, 32, PAL_RAMP(RAMP_STEEL, 6));
+    plat_rect(px - 1, hy2, 2, gy - 34 - hy2, PAL_RAMP(RAMP_STEEL, 5));
+    plat_rect(px - 10, hy2 - 3, 20, 4, PAL_BLACK);                                           /* T-handle */
+    plat_rect(px - 9, hy2 - 2, 18, 2, PAL_UI_GOLD);
+
+    /* Grumbleguts, then the dumb face over his usual one */
+    grumble(cx, cy, extra, shake, ct, 0);
+    hx = cx + shake - r * 3 / 4;
+    hy = cy - r * 3 / 4 + ui_wave((int)ct * 3 + 2, 14, 1);
+    ui_fill_circle(hx, hy, 14, PAL_UI_RED);
+    ui_fill_circle(hx - 5, hy - 3, 4, PAL_WHITE);
+    ui_fill_circle(hx + 5, hy - 3, 4, PAL_WHITE);
+    plat_rect(hx - 3, hy - 3, 2, 2, PAL_BLACK);                                              /* crossed eyes */
+    plat_rect(hx + 2, hy - 3, 2, 2, PAL_BLACK);
+    plat_rect(hx - 9, hy + 5, 14, 3, PAL_BLACK);                                             /* dopey grin */
+    ui_fill_ellipse(hx - 4, hy + 10 + ui_wave((int)ct * 2, 12, 1), 3, 4, PAL_UI_PINK);       /* tongue out */
+    ui_fill_ellipse(hx + 8, hy + 3, 4, 2, PAL_UI_PINK);
+    if (p > 40) ui_fill_ellipse(hx + 12, hy - 8 + (t * 2) % 16, 2, 3, PAL_RAMP(RAMP_SKY, 7));   /* sweat */
+    /* the arm, working the handle */
+    for (k = 0; k < 3; k++) {
+        plat_line(cx + r / 4, cy - r / 2 + k, (cx + r / 4 + px) / 2, cy - r * 3 / 4 + k, k == 2 ? PAL_RAMP(RAMP_BLOOD, 2) : PAL_UI_RED);
+        plat_line((cx + r / 4 + px) / 2, cy - r * 3 / 4 + k, px, hy2 - 2 + k, k == 2 ? PAL_RAMP(RAMP_BLOOD, 2) : PAL_UI_RED);
+    }
+    /* the brass valve at the back */
+    plat_rect(ax - 2, ay - 4, 8, 9, PAL_BLACK);
+    plat_rect(ax - 1, ay - 3, 6, 7, PAL_UI_GOLD);
+
+    /* sound effects, in letters */
+    if (ph >= per / 2 && ph < per / 2 + 8) ui_text_outline(px - 28, py - 40 - ph, "pff!", PAL_WHITE, PAL_BLACK);
+    if (panel == 12 && p > 20 && (t % 40) > 22 && (t % 40) < 36) ui_text_outline(cx - 56, cy - 72, "mmm~", PAL_UI_PINK, PAL_BLACK);
+    if (panel == 13 && p > 70) ui_text_outline(cx - 60, cy - r - 14, "squeeeeak", PAL_UI_GOLD, PAL_BLACK);
+    if (panel == 13 && t > 130 && t < 168) ui_text_outline(cx - 62, cy + r + 4 < sh - 10 ? cy + r + 4 : sh - 10, "...one more.", PAL_UI_PINK, PAL_BLACK);
+    if (p > 80 && (t % 16) < 8) ui_text_outline(cx + 4, cy + r / 3, "creeak", PAL_WHITE, PAL_BLACK);   /* the chair */
+}
+
 void feast_draw(int panel, uint32_t pt, uint32_t ct)
 {
     int sw = plat_screen_w(), sh = plat_screen_h(), gy = sh * 3 / 4, i;
@@ -817,8 +917,9 @@ void feast_draw(int panel, uint32_t pt, uint32_t ct)
     int cute = F_CUTE;
 
     if (panel == 10 || panel == 11) { epilogue(panel, pt, ct); return; }
+    if (panel == 12 || panel == 13) { pump_scene(panel, pt, ct); return; }
 
-    if (panel == 12) {                                   /* title card, then the memorial */
+    if (panel == 14) {                                   /* title card, then the memorial */
         plat_rect(0, 0, sw, sh, PAL_BLACK);
         if (pt > 10) {
             int sc = sh >= 200 ? 3 : 2;

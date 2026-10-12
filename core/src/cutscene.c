@@ -68,6 +68,8 @@ static const Panel P_feast_pop[] = {
     { -1, 110, "\"...that's hot.\" Somebody says it out loud. Then a lot of them. Father Fuzz is fine. He is FINE. He has asked for the number and is on his knees, officially for prayer." },
     { -1, 180, "Later. Moonlight, candles, the crowd lingering by the empty tables. Grumbleguts is back in one piece, mostly, reclined and glowing, the belly rising and falling in slow, satisfied breaths. Nobody has gone home." },
     { -1, 170, "He finds @P in the crowd and holds the look. \"Don't be shy, sugar.\" Smoke curls from his lips. \"Night's young, and I'm so, so full of ideas. Stay a while.\"" },
+    { -1, 200, "Later still. The crowd has started to drift off, which is when Grumbleguts hauls out a bike pump, a long hose and a look. \"Don't mind me.\" The hose goes round the back. The handle goes up and down. Slowly. Pff." },
+    { -1, 170, "Pff. Pff. Pff. The belly is not so much round as ambitious. His eyes cross. His tongue comes out. He is inflating himself like a dumb balloon and he is HAPPY about it. He does not pop. He does not float. \"...one more.\"" },
     { -1, 120, NULL },
     { 0, 0, NULL }
 };
@@ -147,7 +149,7 @@ static void cs_update(void)
         feast_tick(panel, pt);
         if (panel == 8 && pt == 8) audio_music(SONG_NONE);       /* silence after the pop */
         if (panel == 10 && pt == 2) audio_music(SONG_HAHALAND_NIGHT);   /* the slow, candlelit epilogue */
-        if (panel == 12 && pt == 2) audio_music(SONG_OMINOUS);
+        if (panel == 14 && pt == 2) audio_music(SONG_OMINOUS);
     }
     if (cut == CUT_VAPULA_DOWN && panel == 1 && pt == 10) audio_sfx(SFX_DEMON_DIE);
     if (btn_pressed(BTN_START)) { audio_sfx(SFX_CANCEL); cs_end(); return; }
