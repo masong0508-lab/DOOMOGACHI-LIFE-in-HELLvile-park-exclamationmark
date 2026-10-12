@@ -441,13 +441,20 @@ static int angle_shot(int panel, uint32_t pt, uint32_t ct, int extra)
         plat_rect(0, 0, sw, sh, PAL_RAMP(RAMP_VAPE, 2));
         plat_rect(0, by + R * 3 / 4, sw, sh, PAL_RAMP(RAMP_VAPE, 4));                    /* floor  */
         ui_fill_ellipse(cx, cyc + R / 3, R + 10, R / 6, PAL_RAMP(RAMP_VAPE, 1));          /* shadow */
-        for (j = 0; j < 26; j++)                                                         /* the hose, off to the right */
-            ui_fill_circle(cx + 4 + j * 6, cyc + 6 + j / 3 + ui_wave(j * 20, 80, 2), 3, PAL_RAMP(RAMP_MINT, 3 + (j & 1)));
         ui_fill_circle(cx - R / 2, by + R * 9 / 10, R / 2 + 3, dk);                      /* the two big cheeks */
         ui_fill_circle(cx + R / 2, by + R * 9 / 10, R / 2 + 3, dk);
         ui_fill_circle(cx - R / 2, by + R * 9 / 10, R / 2 + 2, PAL_UI_RED);
         ui_fill_circle(cx + R / 2, by + R * 9 / 10, R / 2 + 2, PAL_UI_RED);
         plat_rect(cx, cyc - R / 4, 1, R / 2, dk);                                        /* the crease */
+        for (j = 26; j >= 0; j--) {                                                      /* the hose: thin and far where it plugs into the X,
+                                                                                          * fatter and lower as it comes toward the camera */
+            int hx2 = cx + 2 + j * (sw / 2 - 8) / 26, hy2 = cyc + 2 + j * j / 30 + ui_wave(j * 24, 96, 2), hr = 2 + j / 6;
+            ui_fill_circle(hx2, hy2 + 1, hr + 1, PAL_RAMP(RAMP_MINT, 1));                 /* its shadow side */
+            ui_fill_circle(hx2, hy2, hr, PAL_RAMP(RAMP_MINT, 3 + (j & 1)));
+            ui_fill_circle(hx2 - hr / 3, hy2 - hr / 3, DOOMO_MAX(hr / 3, 1), PAL_RAMP(RAMP_MINT, 6));
+        }
+        ui_fill_circle(cx + 2, cyc + 2, 4, PAL_RAMP(RAMP_BLOOD, 1));                      /* the hose plugs in right here: collar, then the X */
+        ui_fill_circle(cx + 2, cyc + 2, 3, PAL_UI_GOLD);
         xs = 1 + (int)DOOMO_MIN(t0, 14u) / 2;                                            /* X marks the spot: pops in as the belly shudders */
         if (t0 > 4) {
             for (j = 0; j < 2; j++) {
