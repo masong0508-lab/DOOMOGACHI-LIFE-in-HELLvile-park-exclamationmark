@@ -70,6 +70,12 @@ static const Panel P_feast_pop[] = {
     { -1, 170, "He finds @P in the crowd and holds the look. \"Don't be shy, sugar.\" Smoke curls from his lips. \"Night's young, and I'm so, so full of ideas. Stay a while.\"" },
     { -1, 200, "Later still. The crowd has started to drift off, which is when Grumbleguts hauls out a bike pump, a long hose and a look. \"Don't mind me.\" The hose goes round the back. The handle goes up and down. Slowly. Pff." },
     { -1, 170, "Pff. Pff. Pff. The belly is not so much round as ambitious. His eyes cross. His tongue comes out. He is inflating himself like a dumb balloon and he is HAPPY about it. He does not pop. He does not float. \"...one more.\"" },
+    { -1, 210, "The valve gives a long, wobbling hiss and the whole park goes quiet to listen. He rocks on his heels, moaning through his teeth, thighs trembling. \"Hear how tight that is, sugar?\" Something deep in the belly gurgles back. A wet BLORP climbs his throat." },
+    { -1, 220, "BRRRAAAP. It rolls across the park like a love song for a swamp. A brave imp pokes the belly. It answers with a long wet squelch and a moan. \"Again,\" he pants. \"Harder. Don't be shy, I'm all give.\" The harness creaks. He has never been happier." },
+    { -1, 230, "Out comes a little black book the size of a phone directory. He licks a thumb and flips. \"Shriekra. Spearmint. The waiter, the band, the gazebo...\" Pencil behind the ear. \"Who's next? Don't make me beg. ...Okay, make me.\"" },
+    { -1, 240, "A queue snakes round the park. Somebody is handing out numbers. \"Now serving forty-seven!\" Father Fuzz is third, officially for confession. Shriekra and Spearmint are fighting over who gets him first. \"Plenty to go round, loves. Pace yourselves.\"" },
+    { -1, 240, "The pump gets passed down the line and everybody gets a go. He moans a different name with every stroke and gets all of them wrong. \"Don't stop. Don't you dare stop. Pump me, you beautiful bastards.\" The belly groans. The harness begs for mercy." },
+    { -1, 230, "Dawn. The park is a wreck of bodies, bunting, abandoned shoes and one very smug gazebo. Grumbleguts, flat and glowing, scratches a tally on the fence. Forty-seven. He sighs, spent and shameless. \"...That all? Anyone for brunch?\"" },
     { -1, 120, NULL },
     { 0, 0, NULL }
 };
@@ -149,7 +155,7 @@ static void cs_update(void)
         feast_tick(panel, pt);
         if (panel == 8 && pt == 8) audio_music(SONG_NONE);       /* silence after the pop */
         if (panel == 10 && pt == 2) audio_music(SONG_HAHALAND_NIGHT);   /* the slow, candlelit epilogue */
-        if (panel == 14 && pt == 2) audio_music(SONG_OMINOUS);
+        if (panel == 20 && pt == 2) audio_music(SONG_OMINOUS);
     }
     if (cut == CUT_VAPULA_DOWN && panel == 1 && pt == 10) audio_sfx(SFX_DEMON_DIE);
     if (btn_pressed(BTN_START)) { audio_sfx(SFX_CANCEL); cs_end(); return; }

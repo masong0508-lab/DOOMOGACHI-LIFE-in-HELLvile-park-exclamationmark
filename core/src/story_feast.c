@@ -16,7 +16,8 @@
  * 6 both at once, 7 the valve wins, 8 POP, 9 "...that's hot.", 10 the candlelit
  * afterglow, 11 the slow look into the lens (epilogue()),
  * 12-13 the bike pump: he inflates himself on the spot (pump_scene()), no pop, no
- * lift-off, 14 title.
+ * lift-off, 14-19 the long night: the leak, the burp-and-poke, the little black
+ * book, the queue, the pump passed down the line, dawn (night_scene()), 20 title.
  * Three Ren & Stimpy style GROSS-OUT CLOSE-UPS smash-cut in (white flash,
  * hold, record scratch) over panels 4, 5 and 7: the burp, the gas cloud and
  * the straining belly / harness strap (see closeup()). Cartoon only.
@@ -719,7 +720,33 @@ void feast_tick(int panel, uint32_t pt)
              if (pt == 108 || pt == 156) audio_sfx(SFX_ERROR);            /* the skin complains */
              if (pt == 160) audio_sfx(SFX_LOVE);
              break;
-    case 14: if (pt == 4) audio_sfx(SFX_BELL); break;
+    case 14: if ((pt % 24) == 6) audio_sfx(SFX_SQUEAK);                  /* the harness */
+             if (pt == 20 || pt == 70 || pt == 118) audio_sfx(SFX_POOP);    /* the long hiss */
+             if (pt == 40 || pt == 90) audio_sfx(SFX_BUBBLE);               /* gurgle */
+             if (pt == 180) audio_sfx(SFX_SPLAT);                           /* BLORP */
+             break;
+    case 15: if (pt == 8) audio_sfx(SFX_EAT);                               /* the burp */
+             if ((pt % 40) == 4) audio_sfx(SFX_SQUEAK);                     /* poke, squelch */
+             if ((pt % 40) == 6) audio_sfx(SFX_SPLASH);
+             if (pt == 100 || pt == 170) audio_sfx(SFX_LOVE);
+             break;
+    case 16: if ((pt % 28) == 10) audio_sfx(SFX_BLIP);                      /* a page turns */
+             if (pt == 60 || pt == 130) audio_sfx(SFX_SPARKLE);
+             if (pt == 160) audio_sfx(SFX_LOVE);
+             break;
+    case 17: if ((pt % 70) == 6) audio_sfx(SFX_BELL);                       /* the ticket machine */
+             if (pt == 40 || pt == 110 || pt == 180) audio_sfx(SFX_LOVE);
+             if ((pt % 35) == 20) audio_sfx(SFX_SQUEAK);                    /* the queue shuffles */
+             break;
+    case 18: if ((pt % 20) == 10) audio_sfx(SFX_SQUEAK);                    /* a stroke of the pump */
+             if ((pt % 60) == 30) audio_sfx(SFX_LOVE);
+             if (pt == 150 || pt == 200) audio_sfx(SFX_ERROR);              /* the skin complains */
+             break;
+    case 19: if (pt == 10) audio_sfx(SFX_SPARKLE);
+             if (pt == 70) audio_sfx(SFX_EAT);                              /* a long, satisfied sigh */
+             if (pt == 150) audio_sfx(SFX_HAPPY);
+             break;
+    case 20: if (pt == 4) audio_sfx(SFX_BELL); break;
     default: break;
     }
 }
@@ -910,6 +937,379 @@ static void pump_scene(int panel, uint32_t pt, uint32_t ct)
     if (p > 80 && (t % 16) < 8) ui_text_outline(cx + 4, cy + r / 3, "creeak", PAL_WHITE, PAL_BLACK);   /* the chair */
 }
 
+/* ---- the long night (panels 14-19) ----------------------------------------------------
+ * 14 the leak: past the limit the valve whistles, gas rolls off his side, the belly
+ *    gurgles and a bubble climbs his throat.   15 the burp rolls across the park, an
+ *    imp pokes the belly (squelch, moan), he asks for harder.   16 the little black book:
+ *    names, hearts, a licked thumb.   17 the queue and its ticket machine.   18 the pump
+ *    gets passed down the line, a different name (wrong) every stroke.   19 dawn: heaps
+ *    of sleepers, a tally on the fence, one smug gazebo.
+ * Raunchy cartoon: hearts, sweat, moans in letters, cheeks and bellies only. He is drawn
+ * here as on the concept sheets (trailer/concept/grumbleguts.c, front view): outlined,
+ * five-tone shaded, X harness, studded belt, wings, spiked tail, claws, fanged face with
+ * expressions. Integer maths, stacked ellipses, lines and span triangles only (no
+ * per-pixel work: on the PS1 each plat_rect is a GPU primitive), 320x240 at scale 2,
+ * 240x160 at scale 1; every word is clamped on screen with shout(). */
+enum { GG_GRIN, GG_WINK, GG_SHOCK, GG_SMUG, GG_LOVE, GG_BLUSH };
+
+#define GG_LINE  PAL_RAMP(RAMP_BLOOD, 0)
+#define GG_HORN  PAL_RAMP(RAMP_BONE, 6)
+#define GG_LEATH PAL_RAMP(RAMP_WOOD, 1)
+#define GG_STUD  PAL_RAMP(RAMP_CANDY, 4)
+#define GG_CHAIN PAL_RAMP(RAMP_STEEL, 6)
+
+static void gg_tri(int x0, int y0, int x1, int y1, int x2, int y2, uint8_t c)
+{
+    int px[3], py[3], i, y, ymin, ymax;
+    px[0] = x0; px[1] = x1; px[2] = x2; py[0] = y0; py[1] = y1; py[2] = y2;
+    ymin = DOOMO_MIN(y0, DOOMO_MIN(y1, y2));
+    ymax = DOOMO_MAX(y0, DOOMO_MAX(y1, y2));
+    for (y = ymin; y <= ymax; y++) {
+        int lo = 100000, hi = -100000;
+        for (i = 0; i < 3; i++) {
+            int j = (i + 1) % 3, ya = py[i], yb = py[j], xx;
+            if (ya == yb) {
+                if (ya == y) { lo = DOOMO_MIN(lo, DOOMO_MIN(px[i], px[j])); hi = DOOMO_MAX(hi, DOOMO_MAX(px[i], px[j])); }
+                continue;
+            }
+            if ((y < ya && y < yb) || (y > ya && y > yb)) continue;
+            xx = px[i] + (px[j] - px[i]) * (y - ya) / (yb - ya);
+            lo = DOOMO_MIN(lo, xx);
+            hi = DOOMO_MAX(hi, xx);
+        }
+        if (hi >= lo) plat_rect(lo, y, hi - lo + 1, 1, c);
+    }
+}
+
+/* shaded, outlined blob: five tones lit from the upper left, a rim light and a glint */
+static void gg_blob(int cx, int cy, int rx, int ry, int ramp)
+{
+    int k, sh;
+    rx = DOOMO_MAX(rx, 3);
+    ry = DOOMO_MAX(ry, 3);
+    ui_fill_ellipse(cx, cy, rx + 1, ry + 1, GG_LINE);
+    ui_fill_ellipse(cx, cy, rx, ry, PAL_RAMP(ramp, 2));
+    ui_fill_ellipse(cx + rx / 10, cy + ry / 10, rx - rx / 8, ry - ry / 8, PAL_RAMP(ramp, 7));   /* rim light */
+    ui_fill_ellipse(cx, cy, rx - rx / 7, ry - ry / 7, PAL_RAMP(ramp, 3));
+    for (k = 2; k <= 3; k++) {
+        sh = k - 1;
+        ui_fill_ellipse(cx - rx * sh / 6, cy - ry * sh / 6, DOOMO_MAX(rx - rx * (k + 1) / 7, 1),
+                        DOOMO_MAX(ry - ry * (k + 1) / 7, 1), PAL_RAMP(ramp, k == 2 ? 5 : 6));
+    }
+    ui_fill_ellipse(cx - rx / 2, cy - ry / 2, rx / 5 + 1, ry / 6 + 1, PAL_RAMP(ramp, 7));      /* glint */
+}
+
+static void gg_wing(int x, int y, int s, int dir, int flap)
+{
+    int tip = 17 * s, x1 = x + dir * tip, y1 = y - 8 * s + flap, x2 = x + dir * (tip - 2 * s), y2 = y + 2 * s + flap / 2;
+    int x3 = x + dir * (tip / 2), y3 = y + 3 * s;
+    gg_tri(x, y, x1, y1, x2, y2, GG_LINE);
+    gg_tri(x, y, x2, y2, x3, y3, GG_LINE);
+    gg_tri(x + dir, y, x1 - dir, y1 + 1, x2 - dir, y2 - 1, PAL_RAMP(RAMP_VAPE, 2));
+    gg_tri(x + dir, y, x2 - dir, y2 - 1, x3 - dir, y3 - 1, PAL_RAMP(RAMP_VAPE, 1));
+    plat_line(x, y, x1, y1, PAL_RAMP(RAMP_VAPE, 3));
+    plat_line(x, y, x2, y2, PAL_RAMP(RAMP_VAPE, 3));
+    ui_fill_circle(x1, y1, 1, GG_HORN);
+}
+
+static void gg_tail(int x, int y, int s, int dir, int lag)
+{
+    int i, tx, ty, r;
+    for (i = 0; i < 9; i++) {
+        tx = x + dir * i * 3 * s / 2;
+        ty = y + (i * i) / 3 - i * 2 + lag * i / 9;
+        r = s + 2 - i / 4;
+        ui_fill_circle(tx, ty, r + 1, GG_LINE);
+        ui_fill_circle(tx, ty, r, (i & 1) ? PAL_RAMP(RAMP_BLOOD, 5) : PAL_RAMP(RAMP_BLOOD, 3));
+        if (i % 3 == 1) gg_tri(tx, ty - r, tx - 2, ty - r - 3 * s / 2, tx + 2, ty - r - 3 * s / 2, GG_HORN);
+    }
+    tx = x + dir * 27 * s / 2 * 3 / 3; ty = y + 9;
+    gg_tri(tx - dir * 2, ty - 4 * s / 2 - 1, tx + dir * 5 * s / 2 + dir, ty, tx - dir * 2, ty + 4 * s / 2 + 1, GG_LINE);
+    gg_tri(tx - dir * 2, ty - 4 * s / 2, tx + dir * 5 * s / 2, ty, tx - dir * 2, ty + 4 * s / 2, PAL_RAMP(RAMP_BLOOD, 3));
+}
+
+static void gg_studs(int x0, int y0, int x1, int y1, int n)
+{
+    int i;
+    for (i = 0; i <= n; i++) plat_rect(x0 + (x1 - x0) * i / n, y0 + (y1 - y0) * i / n, 2, 2, GG_STUD);
+}
+
+static void gg_strap(int x0, int y0, int x1, int y1, int w)
+{
+    int k;
+    for (k = -w; k <= w; k++) plat_line(x0 + k, y0, x1 + k, y1, GG_LEATH);
+    plat_line(x0 - w - 1, y0, x1 - w - 1, y1, GG_LINE);
+    plat_line(x0 + w + 1, y0, x1 + w + 1, y1, GG_LINE);
+    gg_studs(x0, y0, x1, y1, 4);
+}
+
+static void gg_face(int cx, int cy, int s, int expr)
+{
+    int ex = 4 * s, ey = cy - 2 * s, side, my = cy + 4 * s, w, i;
+    for (side = -1; side <= 1; side += 2) {
+        int x = cx + side * ex, rx = 3 * s, ry = (expr == GG_SHOCK) ? 3 * s : 2 * s, by;
+        if (expr == GG_WINK && side == 1) {
+            plat_line(x - 2 * s, ey, x + 2 * s, ey + 1, GG_LINE);
+            plat_line(x - 2 * s, ey + 1, x + 2 * s, ey + 2, GG_LINE);
+            continue;
+        }
+        ui_fill_ellipse(x, ey, rx + 1, ry + 1, GG_LINE);
+        ui_fill_ellipse(x, ey, rx, ry, PAL_RAMP(RAMP_LAVA, 4));
+        ui_fill_ellipse(x - 1, ey - 1, rx - 1, ry - 1, PAL_RAMP(RAMP_LAVA, 6));
+        if (expr == GG_LOVE) ui_heart(x - 1, ey - 1, 2, PAL_PAINT(PAINT_CHERRY, 1));
+        else { ui_fill_circle(x + s, ey, expr == GG_SHOCK ? 1 : s + 1, PAL_RAMP(RAMP_STONE, 0)); plat_rect(x + s - 1, ey - 1, 1, 1, PAL_WHITE); }
+        by = ey - ry - 2;                                         /* brow: angry V, raised when shocked */
+        if (expr == GG_SHOCK) { plat_line(x - 3 * s, by - 2, x + 3 * s, by - 2, GG_LINE); plat_line(x - 3 * s, by - 3, x + 3 * s, by - 3, GG_LINE); }
+        else { plat_line(x - 3 * s * side, by + 2, x + 3 * s * side, by - 1, GG_LINE); plat_line(x - 3 * s * side, by + 3, x + 3 * s * side, by, GG_LINE); }
+    }
+    if (expr == GG_BLUSH) {                                       /* strained: big blush, tiny "o" mouth */
+        ui_fill_ellipse(cx - 7 * s, cy + 2 * s, 4 * s, 2 * s, PAL_RAMP(RAMP_CANDY, 6));
+        ui_fill_ellipse(cx + 7 * s, cy + 2 * s, 4 * s, 2 * s, PAL_RAMP(RAMP_CANDY, 6));
+        ui_fill_ellipse(cx, my + s, 3, 3, GG_LINE);
+        ui_fill_ellipse(cx, my + s, 2, 2, PAL_RAMP(RAMP_FLESH, 1));
+        return;
+    }
+    if (expr == GG_SHOCK) {
+        ui_fill_ellipse(cx, my + s, 3 * s, 3 * s + 1, GG_LINE);
+        ui_fill_ellipse(cx, my + s, 3 * s - 1, 3 * s, PAL_RAMP(RAMP_FLESH, 1));
+        ui_fill_ellipse(cx, my + 2 * s + 1, 2 * s, s, PAL_RAMP(RAMP_FLESH, 4));
+        return;
+    }
+    w = (expr == GG_SMUG) ? 6 * s : 8 * s;                        /* the wide grin */
+    ui_fill_ellipse(cx + s, my, w + 1, 3 * s, GG_LINE);
+    ui_fill_ellipse(cx + s, my, w, 3 * s - 1, PAL_RAMP(RAMP_FLESH, 1));
+    ui_fill_ellipse(cx + s, my - 2 * s, w + 1, 2 * s, PAL_RAMP(RAMP_BLOOD, 5));
+    plat_line(cx + s - w - 1, my - s, cx + s + w + 1, my - s, GG_LINE);
+    for (i = -2; i <= 2; i++) {                                   /* fangs */
+        int fx = cx + s + i * w / 2;
+        gg_tri(fx - 2, my - s, fx + 2, my - s, fx, my + s + (i == 0 ? 2 : 0), PAL_RAMP(RAMP_BONE, 7));
+    }
+    ui_fill_ellipse(cx + s, my + 2 * s, w / 2, s, PAL_RAMP(RAMP_FLESH, 4));
+    if (expr == GG_WINK || expr == GG_LOVE) {
+        ui_fill_circle(cx + 6 * s, cy + 2 * s, 2, PAL_PAINT(PAINT_ROSE, 0));
+        ui_fill_circle(cx - 6 * s, cy + 2 * s, 2, PAL_PAINT(PAINT_ROSE, 0));
+    }
+}
+
+/* Grumbleguts, front view, feet at (cx, yf), s = 1 or 2. big = the inflated belly. */
+static void gg_figure(int cx, int yf, int s, int big, int expr, uint32_t ct)
+{
+    int belly_r = (big ? 27 : 18) * s, belly_ry = (big ? 22 : 14) * s;
+    int body_y = yf - 30 * s, chest_top = body_y - 24 * s, chest_bot = body_y - 6 * s;
+    int belly_cy = chest_bot - 2 * s + belly_ry, head_y = yf - 60 * s, wy = body_y - 26 * s;
+    int flap = ui_wave((int)ct * 2, 20, 2 * s), lag = ui_wave((int)ct * 3 + 4, 14, 2 * s);
+    int hip_y = belly_cy + belly_ry - 6 * s, by, ny, side, c, i;
+
+    gg_wing(cx - 14 * s, wy, s, -1, flap);                        /* wings, tail, behind everything */
+    gg_wing(cx + 14 * s, wy, s, 1, flap);
+    gg_tail(cx + 22 * s, yf - 16 * s, s, 1, lag);
+
+    gg_blob(cx, hip_y, 17 * s, 7 * s, RAMP_BLOOD);                /* hips, thighs, calves, claws    */
+    for (side = -1; side <= 1; side += 2) {
+        int lx = cx + side * 9 * s;
+        gg_blob(lx, (hip_y + yf - 8 * s) / 2, 7 * s, (yf - 8 * s - hip_y) / 2 + 4 * s, RAMP_BLOOD);
+        gg_blob(lx + side * s, yf - 7 * s, 6 * s, 7 * s, RAMP_BLOOD);
+        plat_line(lx - 5 * s, yf - 12 * s, lx + 5 * s, yf - 12 * s, PAL_RAMP(RAMP_BLOOD, 3));
+        for (c = -1; c <= 1; c++) gg_tri(lx + c * 3 * s - 2, yf - 2 * s, lx + c * 3 * s + 2, yf - 2 * s, lx + c * 3 * s, yf + 2, GG_HORN);
+    }
+
+    /* chest slab, pecs, belly */
+    gg_tri(cx - 19 * s - 1, chest_top, cx + 19 * s + 1, chest_top, cx + 15 * s + 1, chest_bot + 1, GG_LINE);
+    gg_tri(cx - 19 * s - 1, chest_top, cx + 15 * s + 1, chest_bot + 1, cx - 15 * s - 1, chest_bot + 1, GG_LINE);
+    gg_tri(cx - 19 * s, chest_top, cx + 19 * s, chest_top, cx + 15 * s, chest_bot, PAL_RAMP(RAMP_BLOOD, 5));
+    gg_tri(cx - 19 * s, chest_top, cx + 15 * s, chest_bot, cx - 15 * s, chest_bot, PAL_RAMP(RAMP_BLOOD, 5));
+    gg_tri(cx - 19 * s, chest_top, cx - 19 * s / 3, chest_top, cx - 15 * s, chest_bot, PAL_RAMP(RAMP_BLOOD, 3));
+    gg_tri(cx + 19 * s / 3, chest_top, cx + 19 * s, chest_top, cx + 15 * s, chest_bot, PAL_RAMP(RAMP_BLOOD, 6));
+    gg_blob(cx - 17 * s + 2, chest_top + 3, 7, 6, RAMP_BLOOD);    /* deltoids */
+    gg_blob(cx + 17 * s - 2, chest_top + 3, 7, 6, RAMP_BLOOD);
+    gg_blob(cx - 8 * s, chest_top + 8 * s, 8 * s + 1, 5 * s, RAMP_BLOOD);   /* pecs */
+    gg_blob(cx + 8 * s, chest_top + 8 * s, 8 * s + 1, 5 * s, RAMP_BLOOD);
+    plat_line(cx, chest_top + 8 * s - 5 * s, cx, chest_top + 8 * s + 5 * s, GG_LINE);
+    gg_blob(cx, belly_cy, belly_r, belly_ry, RAMP_PEACH);
+    ui_fill_ellipse(cx, belly_cy + belly_ry / 3, 2, 3, PAL_RAMP(RAMP_PEACH, 3));   /* navel */
+
+    gg_strap(cx - 15 * s, chest_top + 2 * s, cx + 11 * s, chest_bot + 4 * s, s);   /* the X harness */
+    gg_strap(cx + 15 * s, chest_top + 2 * s, cx - 11 * s, chest_bot + 4 * s, s);
+    ui_fill_circle(cx, chest_top + 10 * s, 3 * s, GG_LINE);
+    ui_fill_circle(cx, chest_top + 10 * s, 2 * s, GG_CHAIN);
+    by = belly_cy + belly_ry - 5 * s;                             /* studded belt, brass buckle */
+    plat_rect(cx - belly_r + 2, by, 2 * belly_r - 4, 3 * s, GG_LEATH);
+    ui_frame(cx - belly_r + 2, by, 2 * belly_r - 4, 3 * s, GG_LINE);
+    gg_studs(cx - belly_r + 6, by + s, cx + belly_r - 6, by + s, 7);
+    plat_rect(cx - 2 * s, by, 4 * s, 3 * s, GG_STUD);
+    ui_frame(cx - 2 * s, by, 4 * s, 3 * s, GG_LINE);
+
+    for (side = -1; side <= 1; side += 2) {                       /* arms: bicep, fist, cuff, claws */
+        int ax = cx + side * 22 * s, ay = chest_top + 10 * s, hx = ax + side * 2 * s, hy = ay + 12 * s;
+        gg_blob(ax, ay, 6 * s, 9 * s, RAMP_BLOOD);
+        gg_blob(hx, hy, 5 * s, 5 * s, RAMP_BLOOD);
+        plat_rect(hx - 5 * s, hy - 7 * s, 10 * s, 2 * s, GG_LEATH);
+        gg_studs(hx - 4 * s, hy - 6 * s, hx + 4 * s, hy - 6 * s, 3);
+        for (c = -1; c <= 1; c++) gg_tri(hx + c * 3 * s - 1, hy + 4 * s, hx + c * 3 * s + 1, hy + 4 * s, hx + c * 3 * s, hy + 6 * s + 1, GG_HORN);
+    }
+
+    ny = head_y + 15 * s;                                         /* spiked collar, the gate key */
+    plat_rect(cx - 10 * s, ny, 20 * s, 3 * s, GG_LEATH);
+    ui_frame(cx - 10 * s, ny, 20 * s, 3 * s, GG_LINE);
+    for (i = -3; i <= 3; i++) gg_tri(cx + i * 3 * s - 1, ny, cx + i * 3 * s + 1, ny, cx + i * 3 * s, ny - 3 * s, GG_CHAIN);
+    plat_line(cx, ny + 3 * s, cx, ny + 8 * s, GG_CHAIN);
+    ui_fill_circle(cx, ny + 10 * s, 2, GG_STUD);
+
+    gg_blob(cx, head_y, 14 * s, 13 * s, RAMP_BLOOD);              /* head, ears, horns, goatee, face */
+    for (side = -1; side <= 1; side += 2) {
+        gg_tri(cx + side * 13 * s, head_y, cx + side * 19 * s, head_y - 7 * s, cx + side * 10 * s, head_y - 7 * s, GG_LINE);
+        gg_tri(cx + side * 13 * s, head_y + 1, cx + side * 18 * s, head_y - 6 * s, cx + side * 11 * s, head_y - 6 * s, PAL_RAMP(RAMP_BLOOD, 5));
+        ui_fill_ellipse(cx + side * 9 * s / 2, head_y - 11 * s, 3 * s / 2 + 1, 4 * s + 1, GG_LINE);
+        ui_fill_ellipse(cx + side * 9 * s / 2, head_y - 11 * s, 3 * s / 2, 4 * s, PAL_RAMP(RAMP_BONE, 3));
+        ui_fill_ellipse(cx + side * 9 * s / 2 - side, head_y - 12 * s, s, 3 * s, GG_HORN);
+    }
+    gg_tri(cx - 3 * s, head_y + 11 * s, cx + 3 * s, head_y + 11 * s, cx, head_y + 17 * s, PAL_RAMP(RAMP_VAPE, 1));
+    gg_face(cx, head_y, s, expr);
+}
+
+static void shout(int x, int y, const char *s, uint8_t c)
+{
+    int w = ui_text_width(s), hi = plat_screen_w() - w - 2;
+    ui_text_outline(DOOMO_CLAMP(x, 2, DOOMO_MAX(hi, 2)), y, s, c, PAL_BLACK);
+}
+
+static void night_scene(int panel, uint32_t pt, uint32_t ct)
+{
+    static const char *const names[5] = { "Shriekra~", "Spearmint~", "the waiter~", "the band~", "the gazebo~" };
+    static const char *const wrong[4] = { "oh, Gary~", "yes, Mavis~", "...the Gate?", "Steve~~" };
+    static const char *const nums[3] = { "No. 46", "No. 47", "No. 48" };
+    int sw = plat_screen_w(), sh = plat_screen_h(), gy = sh * 3 / 4, i, k, t = (int)pt;
+    int s = sh >= 200 ? 2 : 1, dawn = panel == 19, big = panel == 14 || panel == 15 || panel == 18;
+    int shake = ui_wave((int)ct * 6, 8, (panel == 14 || panel == 18) ? 3 : 1) * (big ? 1 : 0);
+    int cx = sw / 2 + shake, yf = gy - 4;
+    int r = (big ? 27 : 18) * s, ry = (big ? 22 : 14) * s;
+    int cy = yf - 30 * s - 6 * s - 2 * s + ry;                   /* belly centre, as in gg_figure() */
+    int hx = cx, hy = yf - 60 * s, ax = cx + r + 2 * s, ay = cy - 6 * s;
+    int poke = panel == 15 ? ((t % 40) < 10 ? (t % 40) : 0) : 0;
+    int expr = panel == 14 ? GG_BLUSH : panel == 15 ? GG_LOVE : panel == 16 ? GG_SMUG
+             : panel == 17 ? (((t / 40) & 1) ? GG_WINK : GG_GRIN) : panel == 18 ? (((t / 50) & 1) ? GG_LOVE : GG_BLUSH) : GG_SMUG;
+
+    /* the sky (a night park, or the pink morning after), the table, the stragglers */
+    plat_rect(0, 0, sw, gy, dawn ? PAL_RAMP(RAMP_PASTEL_PINK, 5) : PAL_RAMP(RAMP_VAPE, 0));
+    plat_rect(0, gy, sw, sh - gy, PAL_RAMP(RAMP_GRASS, dawn ? 3 : 1));
+    if (dawn) {
+        ui_fill_circle(sw - 110, gy - 6, 22, PAL_UI_GOLD);
+    } else {
+        ui_fill_circle(sw - 46, 40, 16, PAL_RAMP(RAMP_BONE, 7));
+        ui_fill_circle(sw - 40, 36, 14, PAL_RAMP(RAMP_VAPE, 0));
+        for (i = 0; i < 9; i++) ui_sparkle((i * 47) % sw, 14 + (i * 23) % 50, (int)((ct / 3 + (uint32_t)i * 3) & 15), PAL_WHITE);
+    }
+    plat_rect(8, gy - 26, 70, 6, PAL_RAMP(RAMP_WOOD, 3));
+    plat_rect(12, gy - 20, 4, 22, PAL_RAMP(RAMP_WOOD, 1));
+    plat_rect(68, gy - 20, 4, 22, PAL_RAMP(RAMP_WOOD, 1));
+    if (!dawn) candles(18, gy - 26, ct);
+
+    gg_figure(cx, yf, s, big, expr, ct);
+
+    if (panel == 14) {
+        /* the valve whistles at his hip, a rolling train of gas puffs leaves it */
+        for (i = 0; i < 7; i++) {
+            int u = (int)((ct * 2 + (uint32_t)i * 11) % 80u);
+            gas(ax + 8 + u, ay - 4 + ui_wave((int)ct * 4 + i * 7, 12, 5) - u / 8, 4 + u / 14, 0);
+        }
+        plat_rect(ax - 2, ay - 4, 8, 9, PAL_BLACK);
+        plat_rect(ax - 1, ay - 3, 6, 7, PAL_UI_GOLD);                   /* the brass valve */
+        for (i = 0; i < 3; i++) ui_fill_ellipse(cx - r / 3 + i * 14 * s / 2, cy + r / 4 + ui_wave((int)ct * 5 + i * 9, 10, 3), 5, 3, PAL_RAMP(RAMP_LAVA, 6));   /* gurgling */
+        if ((t % 48) > 8 && (t % 48) < 40) shout(ax - 6, ay - 34 - (t % 48) / 4, "hissssss~", PAL_WHITE);
+        if (t > 40 && (t % 56) > 30) shout(cx - r - 20, cy + r / 6, "gurrrgle", PAL_UI_PINK);
+        if (t > 60 && (t % 64) < 28) shout(hx - 60, hy - 6, "mmmh~", PAL_UI_PINK);
+        for (i = 0; i < 3; i++)                                         /* sweat, glistening */
+            ui_fill_circle(hx + 12 * s + i * 4, hy - 4 * s + (int)((ct + (uint32_t)i * 7) % 24u), 1, PAL_RAMP(RAMP_SKY, 7));
+        if (t > 110) {                                                  /* a bubble climbs his throat */
+            int by = hy + 12 * s + (t - 110) * 18 / 80;
+            ui_fill_circle(hx, DOOMO_MIN(by, hy + 18 * s), 3 + (t - 110) / 30, PAL_RAMP(RAMP_SKY, 6));
+        }
+        if (t > 170) shout(hx - 30, hy - 40, "BLORP", PAL_UI_GOLD);
+    } else if (panel == 15) {
+        /* the burp rolls out of his mouth and across the park */
+        for (i = 0; i < 6; i++) {
+            int u = (int)((ct * 3 + (uint32_t)i * 13) % 90u);
+            if (t > 6) gas(hx - 18 * s - u, hy + 8 * s + ui_wave((int)ct * 3 + i * 5, 16, 4), 5 + u / 12, 1);
+        }
+        if (t > 8 && t < 70) shout(hx - 90, hy - 20, "BRRRAAAAP", PAL_UI_GOLD);
+        /* an imp's finger pokes the belly; it ripples and answers */
+        plat_rect(0, gy - 6, 18, 8, PAL_RAMP(RAMP_BLOOD, 2));            /* the brave imp */
+        plat_line(10, cy + r / 4, cx - r + 6 + poke * 2, cy + r / 4, PAL_UI_RED);
+        plat_line(10, cy + r / 4 + 1, cx - r + 6 + poke * 2, cy + r / 4 + 1, PAL_UI_RED);
+        if (poke) {
+            for (i = 1; i < 4; i++) ui_fill_ellipse(cx - r + 8, cy + r / 4, poke * i, 3 + poke, PAL_RAMP(RAMP_PEACH, 3 + i));
+            shout(cx - r - 14, cy + r / 4 - 18, "squelch~", PAL_UI_PINK);
+        }
+        for (i = 0; i < 4; i++)                                          /* the crowd is not subtle */
+            ui_heart(30 + i * 52 + ui_wave((int)ct + i * 11, 30, 4), gy - 70 - (int)((ct + (uint32_t)i * 17) % 40u), 3, PAL_UI_PINK);
+        if (t > 90) shout(hx + 40, hy - 10, "harder~", PAL_UI_PINK);
+    } else if (panel == 16) {
+        /* the little black book: pages flip, names pop out as hearts */
+        int bx = cx - 20 * s, by = cy - 6 * s, flip = (t / 14) & 1;
+        plat_rect(bx, by, 40, 28, PAL_BLACK);
+        plat_rect(bx + 2, by + 2, 17 + flip, 24, PAL_RAMP(RAMP_BONE, 6));
+        plat_rect(bx + 21 + flip, by + 2, 17 - flip, 24, PAL_RAMP(RAMP_BONE, 5));
+        for (k = 0; k < 4; k++) {                                        /* scribbled names */
+            plat_rect(bx + 5, by + 6 + k * 5, 10 + (k * 5 + t / 14) % 7, 1, PAL_BLACK);
+            plat_rect(bx + 24, by + 6 + k * 5, 8 + (k * 3 + t / 14) % 9, 1, PAL_BLACK);
+        }
+        plat_rect(bx + 30, by - 6, 3, 10, PAL_RAMP(RAMP_BLOOD, 3));      /* the pencil */
+        shout(hx - 90, hy - 4, names[(t / 40) % 5], PAL_UI_PINK);
+        for (i = 0; i < 5; i++)
+            ui_heart(bx + 6 + i * 9 + ui_wave((int)ct + i * 7, 12, 3), by - 10 - (int)((ct + (uint32_t)i * 13) % 50u), 2 + (i & 1), PAL_UI_PINK);
+        if (t > 150 && (t % 24) < 12) shout(hx + 40, hy, "mmm~", PAL_UI_PINK);
+    } else if (panel == 17) {
+        /* the queue: figures shuffle forward along the grass, a ticket machine dings */
+        for (i = 0; i < 8; i++) {
+            int px = sw - 14 - i * 20 - (int)(ct / 40u % 2u) * 2, py = gy - 24 + ui_wave((int)ct * 2 + i * 6, 12, 2);
+            ui_fill_circle(px, py - 12, 4, PAL_RAMP(RAMP_PEACH, 5));
+            plat_rect(px - 4, py - 8, 9, 14, PAL_PAINT((i * 7 + 3) % PAL_PAINT_COUNT, 1));
+            if (((i + t / 20) & 3) == 0) ui_heart(px, py - 24 - (int)((ct + (uint32_t)i * 9) % 12u), 2, PAL_UI_PINK);
+        }
+        plat_rect(sw - 62, gy - 58, 50, 22, PAL_BLACK);
+        plat_rect(sw - 60, gy - 56, 46, 18, PAL_RAMP(RAMP_BONE, 6));
+        shout(sw - 58, gy - 54, nums[DOOMO_MIN(t / 70, 2)], PAL_UI_RED);
+        if ((t % 70) > 4 && (t % 70) < 24) shout(sw - 76, gy - 74, "DING!", PAL_UI_GOLD);
+        if (t > 100 && (t % 50) < 25) shout(hx - 90, hy, "next~", PAL_UI_PINK);
+    } else if (panel == 18) {
+        /* the pump goes down the line: a new pair of hands every few strokes */
+        int stroke = ui_wave((int)ct * 5, 20, 6), who = (t / 60) % 4;
+        plat_line(ax + 4, ay, sw - 40, gy - 22, PAL_RAMP(RAMP_MINT, 6));
+        plat_line(ax + 4, ay + 1, sw - 40, gy - 21, PAL_RAMP(RAMP_MINT, 3));
+        plat_rect(sw - 42, gy - 24, 6, 26, PAL_BLACK);
+        plat_rect(sw - 46, gy - 30 + stroke, 14, 3, PAL_BLACK);          /* the handle */
+        ui_fill_circle(sw - 39, gy - 40, 4, PAL_RAMP(RAMP_PEACH, 5));    /* this pair of hands */
+        plat_rect(sw - 44, gy - 36, 10, 8, PAL_PAINT((who * 9 + 5) % PAL_PAINT_COUNT, 1));
+        if ((t % 20) > 10 && (t % 20) < 18) shout(sw - 62, gy - 60, "pff!", PAL_WHITE);
+        if ((t % 60) > 14 && (t % 60) < 52) shout(hx - 100, hy - 6, wrong[who], PAL_UI_PINK);
+        for (i = 0; i < 5; i++)
+            ui_heart(20 + i * 50 + ui_wave((int)ct + i * 11, 26, 5), gy - 90 - (int)((ct + (uint32_t)i * 19) % 50u), 3, PAL_UI_PINK);
+        if (t > 190) shout(hx + 30, hy - 20, "don't stop~", PAL_UI_PINK);
+    } else {
+        /* dawn: heaps of sleepers, bunting, shoes, a tally on the fence, a smug gazebo */
+        plat_rect(4, gy - 46, 74, 5, PAL_RAMP(RAMP_WOOD, 3));
+        plat_rect(4, gy - 46, 3, 46, PAL_RAMP(RAMP_WOOD, 2));
+        plat_rect(75, gy - 46, 3, 46, PAL_RAMP(RAMP_WOOD, 2));
+        for (k = 0; k < DOOMO_MIN(47, t / 4); k++)                       /* forty-seven */
+            plat_rect(7 + (k % 16) * 4, gy - 42 + (k / 16) * 8, 1, 6, PAL_BLACK);
+        for (i = 0; i < 6; i++) {                                        /* the sleepers */
+            int px = sw - 20 - i * 34, py = gy - 22 + (i & 1) * 6;
+            ui_fill_ellipse(px, py, 14, 6, PAL_PAINT((i * 7 + 3) % PAL_PAINT_COUNT, 1));
+            ui_fill_circle(px - 12, py - 2, 4, PAL_RAMP(RAMP_PEACH, 5));
+            plat_rect(px + 14, py - 6 - (i & 1) * 2, 5, 3, PAL_BLACK);   /* an abandoned shoe */
+            if (((ct / 20u) + (uint32_t)i) % 4u == 0) shout(px - 8, py - 20, "zzz", PAL_WHITE);
+        }
+        plat_rect(sw - 60, gy - 36, 44, 4, PAL_RAMP(RAMP_WOOD, 4));      /* the smug gazebo */
+        plat_rect(sw - 54, gy - 42, 32, 6, PAL_RAMP(RAMP_WOOD, 5));
+        plat_rect(sw - 46, gy - 48, 16, 6, PAL_RAMP(RAMP_WOOD, 5));
+        plat_rect(sw - 56, gy - 32, 3, 32, PAL_RAMP(RAMP_WOOD, 2));
+        plat_rect(sw - 23, gy - 32, 3, 32, PAL_RAMP(RAMP_WOOD, 2));
+        ui_heart(sw - 38, gy - 60 - ui_wave((int)ct * 2, 16, 3), 3, PAL_UI_PINK);
+        if (t > 60) shout(hx - 60, hy, "mmm.", PAL_UI_PINK);
+        if (t > 160 && (t % 40) < 20) shout(hx - 90, hy - 16, "...brunch?", PAL_UI_GOLD);
+    }
+}
+
 void feast_draw(int panel, uint32_t pt, uint32_t ct)
 {
     int sw = plat_screen_w(), sh = plat_screen_h(), gy = sh * 3 / 4, i;
@@ -918,8 +1318,9 @@ void feast_draw(int panel, uint32_t pt, uint32_t ct)
 
     if (panel == 10 || panel == 11) { epilogue(panel, pt, ct); return; }
     if (panel == 12 || panel == 13) { pump_scene(panel, pt, ct); return; }
+    if (panel >= 14 && panel <= 19) { night_scene(panel, pt, ct); return; }
 
-    if (panel == 14) {                                   /* title card, then the memorial */
+    if (panel == 20) {                                   /* title card, then the memorial */
         plat_rect(0, 0, sw, sh, PAL_BLACK);
         if (pt > 10) {
             int sc = sh >= 200 ? 3 : 2;
