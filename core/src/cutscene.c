@@ -221,6 +221,7 @@ static void caption(void)
     int sw = plat_screen_w(), sh = plat_screen_h(), lines, h, y, style;
     uint32_t chars;
     if (!p->text) return;
+    if (cut == CUT_FEAST_POP && feast_front_shot(panel, pt)) return;     /* the front shot needs the whole screen */
     style = (cut == CUT_ERUPTION && panel >= 2) || cut == CUT_FOG ? WIN_DARK : WIN_CREAM;
     story_fmt(buf, sizeof(buf), p->text);
     lines = ui_text_wrap(0, 0, sw - 32, buf, 0, 0);

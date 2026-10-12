@@ -112,6 +112,7 @@ void story_fmt(char *out, int cap, const char *tmpl);
 /* story_feast.c: CUT_FEAST_POP's picture and sound (called by cutscene.c) */
 void feast_tick(int panel, uint32_t pt);
 void feast_draw(int panel, uint32_t pt, uint32_t ct);
+int  feast_front_shot(int panel, uint32_t pt);
 extern int16_t story_fmt_target;                     /* @T / @D subject  */
 /* 1 while a conversation the story started is still running. */
 int  story_talking(void);

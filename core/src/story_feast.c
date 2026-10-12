@@ -307,9 +307,11 @@ static int closeup(int panel, uint32_t pt, uint32_t ct)
  * Hard cuts (whip-flash, letterbox bars, a "CAM" tag) between angles while he
  * swells: panel 6 gets a crowd reaction cutaway, panel 7 (the valve) cycles
  * low angle -> push-in -> overhead -> (belly close-up) -> from behind the crowd. */
-enum { AN_LOW, AN_PUSH, AN_TOP, AN_BEHIND, AN_REACT };
+enum { AN_LOW, AN_PUSH, AN_TOP, AN_BEHIND, AN_REACT, AN_FRONT };
 typedef struct { uint8_t panel, a, b, kind; const char *name; } AngleShot;
 static const AngleShot shots[] = {
+    { 5, 40,  62, AN_FRONT,  "CAM 6  FRONT" },
+    { 6, 50,  70, AN_FRONT,  "CAM 6  FRONT" },
     { 6, 70, 104, AN_REACT,  "CAM 3  REACTION" },
     { 7, 20,  44, AN_LOW,    "CAM 2  LOW ANGLE" },
     { 7, 44,  68, AN_PUSH,   "CAM 1  PUSH IN" },
@@ -336,6 +338,8 @@ static void crowd_big(int sw, int gy, uint32_t ct, uint32_t t0, int scale, int c
         if (cheer && ((t0 / 4 + (uint32_t)i) & 3) == 0) ui_sparkle(sw / 2 - 60 + i * 40, gy - 90 - (i & 1) * 12, (int)((t0 + (uint32_t)i * 3) & 15), PAL_UI_GOLD);
     }
 }
+
+static int cute_shot(void) { return F_CUTE; }
 
 /* returns 1 when it drew a whole angle shot instead of the wide shot */
 static int angle_shot(int panel, uint32_t pt, uint32_t ct, int extra)
@@ -430,6 +434,70 @@ static int angle_shot(int panel, uint32_t pt, uint32_t ct, int extra)
         }
         break;
     }
+    case AN_FRONT: {                                     /* straight on: the big smooth belly shudders, an X shows between the cheeks */
+        int R = DOOMO_MIN(sh / 4 + extra / 4, sh * 36 / 100), by = mid + 2, cyc = by + R + R / 6, j, xs, amp = 1 + (int)DOOMO_MIN(t0, 16u) / 4;
+        int sx = ui_wave((int)ct * 9, 6, amp), pulse = ui_wave((int)ct * 9 + 2, 6, amp);
+        uint8_t dk = PAL_RAMP(RAMP_BLOOD, 2), pur = PAL_RAMP(RAMP_VAPE, 6), gas_c = cute_shot() ? PAL_RAMP(RAMP_VAPE, 7) : PAL_RAMP(RAMP_SICK, 6);
+        plat_rect(0, 0, sw, sh, PAL_RAMP(RAMP_VAPE, 2));
+        plat_rect(0, by + R * 3 / 4, sw, sh, PAL_RAMP(RAMP_VAPE, 4));                    /* floor  */
+        ui_fill_ellipse(cx, cyc + R / 3, R + 10, R / 6, PAL_RAMP(RAMP_VAPE, 1));          /* shadow */
+        for (j = 0; j < 26; j++)                                                         /* the hose, off to the right */
+            ui_fill_circle(cx + 4 + j * 6, cyc + 6 + j / 3 + ui_wave(j * 20, 80, 2), 3, PAL_RAMP(RAMP_MINT, 3 + (j & 1)));
+        ui_fill_circle(cx - R / 2, by + R * 9 / 10, R / 2 + 3, dk);                      /* the two big cheeks */
+        ui_fill_circle(cx + R / 2, by + R * 9 / 10, R / 2 + 3, dk);
+        ui_fill_circle(cx - R / 2, by + R * 9 / 10, R / 2 + 2, PAL_UI_RED);
+        ui_fill_circle(cx + R / 2, by + R * 9 / 10, R / 2 + 2, PAL_UI_RED);
+        plat_rect(cx, cyc - R / 4, 1, R / 2, dk);                                        /* the crease */
+        xs = 1 + (int)DOOMO_MIN(t0, 14u) / 2;                                            /* X marks the spot: pops in as the belly shudders */
+        if (t0 > 4) {
+            for (j = 0; j < 2; j++) {
+                plat_line(cx - xs + j, cyc - xs, cx + xs + j, cyc + xs, PAL_BLACK);
+                plat_line(cx + xs + j, cyc - xs, cx - xs + j, cyc + xs, PAL_BLACK);
+            }
+            ui_sparkle(cx + xs + 5, cyc - xs - 3, (int)((ct / 2) & 15), PAL_WHITE);
+            ui_heart(cx - xs - 7, cyc - xs, 2, PAL_UI_PINK);
+        }
+        for (j = -1; j <= 1; j += 2) {                                                   /* spiky shoulders + fists */
+            int shx = cx + j * (R + R / 4), shy = by - R / 3, fx = cx + j * (R + R / 3), fy = by + R / 3, q;
+            ui_fill_circle(shx, shy, R / 3 + 1, dk);
+            ui_fill_circle(shx, shy, R / 3, PAL_UI_RED);
+            plat_line(shx, shy - R / 3, shx + j * R / 3, shy - R * 2 / 3, pur);
+            plat_line(shx + 1, shy - R / 3, shx + j * R / 3 + 1, shy - R * 2 / 3, pur);
+            ui_fill_circle(fx, fy, R / 4 + 1, dk);
+            ui_fill_circle(fx, fy, R / 4, PAL_UI_RED);
+            for (q = -1; q <= 1; q++) ui_fill_circle(fx + q * R / 8, fy - R / 4, 2, PAL_RAMP(RAMP_BONE, 6));   /* knuckle studs */
+        }
+        ui_fill_circle(cx, by - R, R / 2 + 1, dk);                                       /* head, crown, gem */
+        ui_fill_circle(cx, by - R, R / 2, PAL_UI_RED);
+        plat_line(cx - R / 4, by - R - R / 2 + 2, cx - R / 4 - 3, by - R - R / 2 - 8, PAL_RAMP(RAMP_BONE, 6));
+        plat_line(cx + R / 4, by - R - R / 2 + 2, cx + R / 4 + 3, by - R - R / 2 - 8, PAL_RAMP(RAMP_BONE, 6));
+        plat_rect(cx - R / 3, by - R - R / 3, R * 2 / 3, 4, PAL_UI_GOLD);
+        ui_fill_circle(cx, by - R - R / 3 + 2, 4, PAL_UI_GOLD);
+        ui_fill_circle(cx, by - R - R / 3 + 2, 3, PAL_RAMP(RAMP_GRASS, 6));
+        ui_fill_circle(cx - R / 2, by - R - R / 4, 2, PAL_RAMP(RAMP_SKY, 7));
+        ui_fill_circle(cx + R / 2, by - R - R / 4, 2, PAL_RAMP(RAMP_SKY, 7));
+        ui_fill_ellipse(cx + sx, by, R + 1 + pulse, R + 1 - pulse, PAL_RAMP(RAMP_FLESH, 4));   /* THE belly: huge, smooth, shuddering */
+        ui_fill_ellipse(cx + sx, by, R + pulse, R - pulse, PAL_RAMP(RAMP_FLESH, 7));
+        ui_fill_circle(cx + sx - R / 3, by - R / 3, R / 5, PAL_RAMP(RAMP_BONE, 7));
+        if ((ct & 1u) != 0)                                                              /* shudder marks */
+            for (j = 0; j < 3; j++) {
+                plat_line(cx - R - 10 - j * 4, by - 8 + j * 8, cx - R - 15 - j * 4, by - 4 + j * 8, PAL_WHITE);
+                plat_line(cx + R + 10 + j * 4, by - 8 + j * 8, cx + R + 15 + j * 4, by - 4 + j * 8, PAL_WHITE);
+            }
+        for (j = 0; j < 9; j++) {                                                        /* puffs spraying out of the crease */
+            int a = 2300 + j * 190, d = 8 + (int)t0 * (3 + j % 3), pr = 2 + j % 3;
+            ui_fill_circle(cx + FIX2INT(fx_cos(a) * d), cyc + FIX2INT(fx_sin(a) * d) / 2, pr, gas_c);
+            ui_fill_circle(cx + FIX2INT(fx_cos(a) * d) - 1, cyc + FIX2INT(fx_sin(a) * d) / 2 - 1, 1, PAL_WHITE);
+        }
+        if (t0 < 10)                                                                     /* speed lines on the first beat */
+            for (j = 0; j < 10; j++) {
+                int a = j * 410;
+                plat_line(cx + FIX2INT(fx_cos(a) * (R + 24)), by + FIX2INT(fx_sin(a) * (R + 24)) / 2,
+                          cx + FIX2INT(fx_cos(a) * 220), by + FIX2INT(fx_sin(a) * 220) / 2, PAL_WHITE);
+            }
+        ui_text_outline(cx + R + 8, by + R / 2, shots[k].panel == 5 ? "TOOT" : "BRRRT!", PAL_UI_GOLD, PAL_BLACK);
+        break;
+    }
     default:                                             /* cutaway: the crowd, thinking it's over */
         plat_rect(0, 0, sw, sh, PAL_RAMP(RAMP_PASTEL_PINK, 6));
         bunting(sw);
@@ -455,6 +523,15 @@ static void rump_pos(int t, int cx, int cy, int gy, int *x, int *y)
     *x = cx + 10 + ui_wave(f * 3, 56, 70 - f / 2);
     *y = cy - 40 + f * 2 / 3 + ui_wave(f * 5 + 14, 36, 26 - f / 5);
     if (*y > gy - 12) *y = gy - 12;
+}
+
+/* 1 while the full-screen front fart shot is up: cutscene.c hides the caption so the X shows */
+int feast_front_shot(int panel, uint32_t pt)
+{
+    int i;
+    for (i = 0; i < NSHOTS; i++)
+        if (shots[i].kind == AN_FRONT && shots[i].panel == panel && pt >= shots[i].a && pt < shots[i].b) return 1;
+    return 0;
 }
 
 void feast_tick(int panel, uint32_t pt)
