@@ -557,12 +557,12 @@ static void music_tick(void)
 /* Grumbleguts' fight barks: Hazbin-style teasing about the body and the gate,
  * then, when he is nearly beaten, the antihero's soft spot for his friends */
 static const char *const gg_barks[6] = {
-    "Eyes up here, hon. ...No, stay down there.",
-    "Like what you see? Everybody does.",
+    "Mmm, rough player. My favourite kind.",
+    "Take your time. I last all night, hon.",
+    "Go on, touch the gate. It likes that.",
+    "You're sweating. Let me help with that.",
     "Careful, I clench harder than the gate.",
-    "That all you got? Don't be shy, go deeper.",
-    "Flex first, shoot second, sugar.",
-    "This belly has more curves than the map."
+    "Don't stop now, sugar. I'm almost there."
 };
 
 static void gg_bark(const LvTrack *t)
