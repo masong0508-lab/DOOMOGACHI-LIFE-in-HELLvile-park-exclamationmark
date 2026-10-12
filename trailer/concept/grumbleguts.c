@@ -593,7 +593,7 @@ int main(int argc, char **argv) {
         grumbleguts(60, 150, 1, V_FRONT, P_STAND, E_WINK);          /* head in the card, body under the label */
         tk_rect(4, 96, PW - 8, 60, PAL_UI_CREAM);
         tk_text(10, 100, "GRUMBLEGUTS", PAL_UI_RED, 1);
-        tk_text_wrap(10, 110, PW - 20, "Keeper of the Sealed Gate. Also of a very large seat.", PAL_BLACK, 18);
+        tk_text_wrap(10, 110, PW - 20, "Keeper of the Gate. Open late. Tips encouraged.", PAL_BLACK, 18);
         panel();
     }
     save(out, "gg_feast");

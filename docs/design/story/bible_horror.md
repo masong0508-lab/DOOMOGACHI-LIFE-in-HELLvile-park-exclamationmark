@@ -674,7 +674,7 @@ Mother Nox in her chapel kitchen; the potluck is on. She recognises the Mayor, `
 **Purpose:** the pet's arc, at the bottom of Hellvile.
 
 * Into the Underbelly (**Breach 7**, the Hellvile Underbelly level, story-entered). The beeps get closer.
-* Gatekeeper Grumbleguts blocks the way. **He doesn't fight; he's scared.** "There's a THING down there. It beeps."
+* Gatekeeper Grumbleguts blocks the way, leaning on the gate like it owes him a drink. Hell's biggest flirt: pet names, bedroom eyes, "come up and see my gate sometime." **Under the swagger he's scared.** "There's a THING down there. It beeps." He covers it with a wink, then (edgy antihero) puts his belly between the player and the dark and walks them down himself.
 * At the bottom: @E, horned, huge, a **swollen purple silhouette**. The Mayor's fear is still inside it, and the fear talks in the Mayor's voice.
 * **The boss is not a fight. It's a pet-care minigame under fire.** Feed, cuddle and play while the fear lashes out. Each care action shrinks it. Each fear attack is an "it's fine" pellet you have to dodge.
 * At the critical moment the Mayor steps in front of you (he followed you down) and says it out loud, **for the third time, in the right way**:
