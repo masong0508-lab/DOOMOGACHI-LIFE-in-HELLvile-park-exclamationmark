@@ -56,16 +56,16 @@ static const Panel P_freeplay[] = {
 /* Feast of Rebuilding, outcome 1 (Grumbleguts pops). Beats are timed, so the
  * panel's number here is its WHOLE length in ticks (see cs_dur). */
 static const Panel P_feast_pop[] = {
-    { -1, 150, "Hellvile Park, the Feast of Rebuilding. Gatekeeper Grumbleguts eats with his back to everyone, winking at all of them, and the buffet is losing." },
-    { -1, 140, "Every eye in the park is on one thing. Every course, it gets bigger." },
-    { -1, 110, "\"Look who's full of himself, now?\"" },
-    { -1, 210, "An absurdly long hose. Surely that's enough. ...It keeps going. Hand over hand, and one big SLAP for a job well done." },
-    { -1, 100, "BURP. Not yet." },
-    { -1, 100, "...pfffrrrt. He rises an inch off the chair. Almost." },
-    { -1, 130, "Both at once! He sags. The crowd cheers. It's over!" },
-    { -1, 170, "The valve wins. The camera cannot look away from the belly." },
-    { -1, 130, "POP! ...A last gurgle. \"Is there dessert?\"" },
-    { -1, 110, "\"...that's hot.\"" },
+    { -1, 150, "Hellvile Park, the Feast of Rebuilding. Gatekeeper Grumbleguts eats like he's being paid in compliments: slow, loud, winking at everyone, and the buffet is LOSING." },
+    { -1, 140, "Every eye in the park is on one thing, and every course it gets bigger. Father Fuzz is praying. Nana is fanning herself with a pie." },
+    { -1, 110, "\"Look who's full of himself, now?\" \"Sugar, I was born this way.\"" },
+    { -1, 210, "An absurdly long hose. \"Is that a hose or are you just happy to see me?\" Surely that's enough. ...It keeps going. Hand over hand, and one big SLAP for a job well done." },
+    { -1, 100, "BURP. Not yet. \"Pardon me. I'm a lady.\" (He is not a lady.)" },
+    { -1, 100, "...pfffrrrt. He rises an inch off the chair. \"Mmm. That one was a love letter.\" Almost." },
+    { -1, 130, "Both at once! He sags, flushed and gleaming. The crowd cheers. \"Was it good for you?\" It's over!" },
+    { -1, 170, "The valve wins. The camera cannot look away from the belly. The harness begs for mercy. He does not." },
+    { -1, 130, "POP! \"Is there dessert?\" The rump tears off round the park like a let-go balloon. Pbbbt. Plap." },
+    { -1, 110, "\"...that's hot.\" Somebody said it out loud." },
     { -1, 120, NULL },
     { 0, 0, NULL }
 };
