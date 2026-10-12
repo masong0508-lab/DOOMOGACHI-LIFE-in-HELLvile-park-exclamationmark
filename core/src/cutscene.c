@@ -56,16 +56,16 @@ static const Panel P_freeplay[] = {
 /* Feast of Rebuilding, outcome 1 (Grumbleguts pops). Beats are timed, so the
  * panel's number here is its WHOLE length in ticks (see cs_dur). */
 static const Panel P_feast_pop[] = {
-    { -1, 150, "Hellvile Park, the Feast of Rebuilding. Gatekeeper Grumbleguts eats like every bite is foreplay: slow, deliberate, tongue along the fork, eyes on whoever is watching. He has slipped his number to the waiter, the band and one gazebo." },
-    { -1, 140, "Every eye in the park is on one thing, and every course it grows heavier. Shriekra and Spearmint, his exes, are both here, both looking away, both failing. He holds each gaze a beat too long." },
-    { -1, 110, "\"Look who's full of himself, now?\" He leans back, slow. \"Born this way, sugar. Come closer and I'll show you how it fits. Form a line, loves, there's plenty to go around.\"" },
-    { -1, 210, "A hose, impossibly long, pulled taut and slick in his grip. \"Is that a hose or are you just glad to see me?\" ...It keeps going. \"Slower, hon. I like to savor it.\" One slow, heavy SLAP. Three hands go up." },
-    { -1, 100, "A low, wet belch rolls out of him and he does not apologize. \"Pardon me.\" His eyes find the nearest imp and stay there. The imp winks back." },
-    { -1, 100, "...pfffrrrt. A deep squelch he plainly enjoys. He rises an inch off the chair, lips parted. \"Mmm. That one was a love letter.\"" },
-    { -1, 130, "Both at once. He sags, flushed and glistening, a long shudder through the belly. \"Ohhh, finally.\" The crowd goes quiet, then cheers. Somebody lights a cigarette. Somebody asks where the afterparty is." },
-    { -1, 170, "The valve strains. The camera cannot look away from the belly. The harness groans. \"Don't stop,\" he breathes, to no one and to everyone. The whole park is hot and very still." },
-    { -1, 130, "POP. Heat and pressure let go all at once. \"Is there dessert?\" The rump tears off round the park, trailing a low, shameless sigh of a fart. Plap." },
-    { -1, 110, "\"...that's hot.\" Somebody says it out loud. Then more of them. Father Fuzz is fine. He is FINE. He has not blinked in a minute." },
+    { -1, 150, "Hellvile Park, the Feast of Rebuilding. Gatekeeper Grumbleguts eats like he's fucking the food: slow, loud, tongue down the fork, moaning around every bite. He has slipped his number to the waiter, the band and one gazebo." },
+    { -1, 140, "Every eye in the park is on one thing, and every course it gets heavier. His exes Shriekra and Spearmint are both here, both pretending not to look, both remembering exactly how it felt. He licks his lips at each. Nana drops the fan and the act." },
+    { -1, 110, "\"Look who's full of himself, now?\" He leans back, thighs wide. \"Born this way, sugar. Come closer and I'll show you how it fits. Form a line, loves, there's plenty to go around.\"" },
+    { -1, 210, "A hose, impossibly long, thick and slick, pulled taut in his fist. \"Is that a hose or are you just glad to see me?\" ...It keeps going. \"Slower, hon. I wanna feel every inch.\" One wet, heavy SLAP. Three hands go up." },
+    { -1, 100, "He holds the belch like a moan and does not apologize. \"Pardon me.\" His eyes find the nearest imp and stay there. The imp winks back. He licks his teeth. The imp stops being subtle." },
+    { -1, 100, "...pfffrrrt. Loud, wet and he moans like it felt good, because it did. He rises off the chair, lips parted. \"Mmm. That one was a love letter. Sealed with a kiss. Several kisses.\"" },
+    { -1, 130, "Both ends at once. He sags, sweating and glistening, a long shuddering groan rolling through the belly. \"Ohhh, fuck, finally.\" The crowd squirms, then cheers. Somebody lights a cigarette. Somebody asks where the afterparty is." },
+    { -1, 170, "The valve strains. The camera cannot look away from the belly. The harness groans. \"Don't stop,\" he pants, to everybody, individually. Half the park is pretending not to want a pressurized demon, and losing." },
+    { -1, 130, "POP. Heat and pressure let go all at once. \"Is there dessert?\" The rump tears off round the park, trailing a long, shameless fart, half the crowd chasing it. Plap." },
+    { -1, 110, "\"...that's hot.\" Somebody says it out loud. Then a lot of them. Father Fuzz is fine. He is FINE. He has asked for the number and is on his knees, officially for prayer." },
     { -1, 120, NULL },
     { 0, 0, NULL }
 };
