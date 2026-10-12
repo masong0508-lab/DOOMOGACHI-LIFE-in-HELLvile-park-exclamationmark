@@ -664,10 +664,101 @@ static void rump_pos(int t, int cx, int cy, int gy, int *x, int *y)
     if (*y > gy - 12) *y = gy - 12;
 }
 
+/* ---- the long night (panels 14-19): shot list and spring physics ---------------------
+ * Jiggle is a stateless closed-form damped spring, so every frame is a pure function of
+ * the panel tick (no per-frame state, replays and rewinds identically on every port):
+ *     offset(t) = sum over the last few kicks of  amp * e^(-dt/tau) * cos(2*pi*dt/period)
+ * Kicks land on a per-panel cadence (a slap, a pump stroke, a hiss pulse); belly, cheeks,
+ * chest and tail ring on their own periods and lag the kick by a few ticks, so the body
+ * ripples instead of bobbing. Integer maths only. */
+enum { GG_V_FRONT, GG_V_SIDE, GG_V_BACK, GG_V_LOOK };      /* LOOK = rear, glancing back */
+
+typedef struct { uint8_t panel; uint16_t a, b; uint8_t view; } GgCut;
+static const GgCut gg_cuts[] = {
+    { 14,  30,  84, GG_V_BACK }, { 14, 118, 160, GG_V_SIDE }, { 14, 176, 210, GG_V_LOOK },
+    { 15,  22,  70, GG_V_SIDE }, { 15, 104, 168, GG_V_BACK },
+    { 16,  34,  92, GG_V_BACK }, { 16, 146, 202, GG_V_LOOK },
+    { 17,  22,  84, GG_V_BACK }, { 17, 118, 160, GG_V_SIDE }, { 17, 172, 236, GG_V_LOOK },
+    { 18,  18,  78, GG_V_BACK }, { 18, 108, 150, GG_V_SIDE }, { 18, 160, 236, GG_V_BACK },
+    { 19,  14,  76, GG_V_LOOK }
+};
+
+static const GgCut *gg_cut_at(int panel, uint32_t pt)
+{
+    unsigned i;
+    if (panel < 14 || panel > 19) return 0;
+    for (i = 0; i < sizeof gg_cuts / sizeof gg_cuts[0]; i++)
+        if (gg_cuts[i].panel == panel && pt >= gg_cuts[i].a && pt < gg_cuts[i].b) return &gg_cuts[i];
+    return 0;
+}
+
+/* ticks between kicks: the panels get quicker as the night goes on */
+static int gg_every(int panel)
+{
+    static const uint8_t ev[6] = { 16, 14, 18, 12, 10, 28 };
+    return (panel >= 14 && panel <= 19) ? ev[panel - 14] : 16;
+}
+
+/* one kick, dt ticks after it landed */
+static int gg_ring(int dt, int amp, int period, int tau)
+{
+    int k, d = 4096;
+    if (dt < 0 || dt > tau * 4 || amp == 0) return 0;
+    for (k = 0; k < dt; k++) d = d * (tau - 1) / tau;
+    return ui_wave(dt + period / 4, period, amp) * d / 4096;
+}
+
+/* a train of kicks every `every` ticks starting at `phase`; the last three still ring.
+ * parity 0/1 = the kicks that land on this side hit full strength, the others only
+ * ring a quarter (a slap on one cheek barely shakes the other); -1 = all full. */
+static int gg_spring(int t, int every, int phase, int amp, int period, int tau, int parity)
+{
+    int n, j, sum = 0, kt = t - phase;
+    if (kt < 0 || every <= 0) return 0;
+    n = kt / every;
+    for (j = 0; j < 3 && n - j >= 0; j++) {
+        int idx = n - j, a = amp * (6 + (idx * 5) % 5) / 8;           /* every kick a little different */
+        if (parity >= 0 && (idx & 1) != parity) a /= 4;
+        sum += gg_ring(kt - idx * every, a, period, tau);
+    }
+    return sum;
+}
+
+typedef struct {
+    int bob, chest, tail, flap;          /* whole body, pecs, tail whip, wing beat             */
+    int belly_x, belly_y;                /* belly lags the kick: forward-back and up-down       */
+    int lx, ly, rx, ry;                  /* left / right cheek: in-out, up-down                 */
+} GgMo;
+
+static void gg_motion(GgMo *m, int panel, int t, uint32_t ct, int s, const GgCut *cut)
+{
+    int every = gg_every(panel), phase = cut ? cut->a + 4 : 0;
+    int amp = (panel == 17 ? 4 : panel == 18 ? 5 : panel == 19 ? 2 : 3) * s;
+    int k = (int)ct;
+    m->bob     = gg_spring(t, every, phase, amp / 2 + 1, 12, 10, -1) + ui_wave(k * 3, 24, 1);
+    m->chest   = gg_spring(t, every, phase + 1, amp / 2 + 1, 14, 9, -1);
+    m->tail    = gg_spring(t, every, phase + 3, amp * 3, 18, 14, -1) + ui_wave(k * 5, 16, s * 2);
+    m->flap    = ui_wave(k * 4, 14, 3 * s) + gg_spring(t, every, phase, amp * 2, 10, 8, -1);
+    m->belly_x = gg_spring(t, every, phase + 2, amp, 16, 14, -1);
+    m->belly_y = gg_spring(t, every, phase + 3, amp * 3 / 2, 14, 12, -1);
+    m->lx = gg_spring(t, every, phase + 1, amp, 12, 8, 0);
+    m->ly = gg_spring(t, every, phase + 2, amp * 2, 16, 10, 0);
+    m->rx = gg_spring(t, every, phase + 1, amp, 12, 8, 1);
+    m->ry = gg_spring(t, every, phase + 2, amp * 2, 16, 10, 1);
+    if (!cut) {                                                  /* front shots: both cheeks rock together, a beat apart */
+        m->lx = m->ly = m->rx = m->ry = 0;
+        m->ly = gg_spring(t, every, 0, amp * 2, 15, 10, -1);
+        m->ry = gg_spring(t, every, 2, amp * 2, 17, 10, -1);
+        m->lx = m->ly / 3;
+        m->rx = -m->ry / 3;
+    }
+}
+
 /* 1 while the full-screen front fart shot is up: cutscene.c hides the caption so the X shows */
 int feast_front_shot(int panel, uint32_t pt)
 {
     int i;
+    if (gg_cut_at(panel, pt)) return 1;                                  /* the night's rump-cam / profile cut-ins */
     if (panel == 3 && pt >= CU_FACE_A && pt < CU_REAR_B) return 1;      /* the hose close shots too */
     for (i = 0; i < NSHOTS; i++)
         if (shots[i].kind == AN_FRONT && shots[i].panel == panel && pt >= shots[i].a && pt < shots[i].b) return 1;
@@ -677,6 +768,14 @@ int feast_front_shot(int panel, uint32_t pt)
 void feast_tick(int panel, uint32_t pt)
 {
     if (angle_start(panel, pt)) audio_sfx(SFX_BLIP);                  /* a cut */
+    {   const GgCut *gc = gg_cut_at(panel, pt);                       /* the night's cut-ins */
+        if (gc && pt == gc->a) audio_sfx(SFX_BLIP);
+        if (gc && panel != 14 && pt >= (uint32_t)gc->a + 4 && ((pt - gc->a - 4) % (uint32_t)gg_every(panel)) == 0) {
+            audio_sfx(SFX_SPLAT);                                      /* the smack... */
+            audio_sfx(SFX_SQUEAK);                                     /* ...and the wobble that follows */
+        }
+        if (gc && panel == 14 && ((pt - gc->a) % (uint32_t)gg_every(panel)) == 6) audio_sfx(SFX_POOP);   /* the pulses */
+    }
     switch (panel) {
     case 0: if ((pt % 24) == 6) audio_sfx(SFX_EAT);
             if (pt == 50 || pt == 110) audio_sfx(SFX_SPARKLE);         /* the wink       */
@@ -1091,27 +1190,62 @@ static void gg_face(int cx, int cy, int s, int expr)
     }
 }
 
-/* Grumbleguts, front view, feet at (cx, yf), s = 1 or 2. big = the inflated belly. */
-static void gg_figure(int cx, int yf, int s, int big, int expr, uint32_t ct)
+/* horns, ears, goatee: shared by the front and rear heads. side = -1/+1 */
+static void gg_horns(int cx, int head_y, int s)
 {
-    int belly_r = (big ? 27 : 18) * s, belly_ry = (big ? 22 : 14) * s;
-    int body_y = yf - 30 * s, chest_top = body_y - 24 * s, chest_bot = body_y - 6 * s;
-    int belly_cy = chest_bot - 2 * s + belly_ry, head_y = yf - 60 * s, wy = body_y - 26 * s;
-    int flap = ui_wave((int)ct * 2, 20, 2 * s), lag = ui_wave((int)ct * 3 + 4, 14, 2 * s);
-    int hip_y = belly_cy + belly_ry - 6 * s, by, ny, side, c, i;
-
-    gg_wing(cx - 14 * s, wy, s, -1, flap);                        /* wings, tail, behind everything */
-    gg_wing(cx + 14 * s, wy, s, 1, flap);
-    gg_tail(cx + 22 * s, yf - 16 * s, s, 1, lag);
-
-    gg_blob(cx, hip_y, 17 * s, 7 * s, RAMP_BLOOD);                /* hips, thighs, calves, claws    */
+    int side;
     for (side = -1; side <= 1; side += 2) {
-        int lx = cx + side * 9 * s;
+        gg_tri(cx + side * 13 * s, head_y, cx + side * 19 * s, head_y - 7 * s, cx + side * 10 * s, head_y - 7 * s, GG_LINE);
+        gg_tri(cx + side * 13 * s, head_y + 1, cx + side * 18 * s, head_y - 6 * s, cx + side * 11 * s, head_y - 6 * s, PAL_RAMP(RAMP_BLOOD, 5));
+        ui_fill_ellipse(cx + side * 9 * s / 2, head_y - 11 * s, 3 * s / 2 + 1, 4 * s + 1, GG_LINE);
+        ui_fill_ellipse(cx + side * 9 * s / 2, head_y - 11 * s, 3 * s / 2, 4 * s, PAL_RAMP(RAMP_BONE, 3));
+        ui_fill_ellipse(cx + side * 9 * s / 2 - side, head_y - 12 * s, s, 3 * s, GG_HORN);
+    }
+}
+
+/* the legs, shared by every view: hips, thighs, calves, claws */
+static void gg_legs(int cx, int yf, int s, int hip_y, int dx)
+{
+    int side, c;
+    for (side = -1; side <= 1; side += 2) {
+        int lx = cx + side * dx;
         gg_blob(lx, (hip_y + yf - 8 * s) / 2, 7 * s, (yf - 8 * s - hip_y) / 2 + 4 * s, RAMP_BLOOD);
         gg_blob(lx + side * s, yf - 7 * s, 6 * s, 7 * s, RAMP_BLOOD);
         plat_line(lx - 5 * s, yf - 12 * s, lx + 5 * s, yf - 12 * s, PAL_RAMP(RAMP_BLOOD, 3));
         for (c = -1; c <= 1; c++) gg_tri(lx + c * 3 * s - 2, yf - 2 * s, lx + c * 3 * s + 2, yf - 2 * s, lx + c * 3 * s, yf + 2, GG_HORN);
     }
+}
+
+static void gg_arms(int cx, int top, int s, int dx, int swing)
+{
+    int side, c;
+    for (side = -1; side <= 1; side += 2) {
+        int ax = cx + side * dx, ay = top + 10 * s, hx = ax + side * 2 * s + swing * side, hy = ay + 12 * s;
+        gg_blob(ax, ay, 6 * s, 9 * s, RAMP_BLOOD);
+        gg_blob(hx, hy, 5 * s, 5 * s, RAMP_BLOOD);
+        plat_rect(hx - 5 * s, hy - 7 * s, 10 * s, 2 * s, GG_LEATH);
+        gg_studs(hx - 4 * s, hy - 6 * s, hx + 4 * s, hy - 6 * s, 3);
+        for (c = -1; c <= 1; c++) gg_tri(hx + c * 3 * s - 1, hy + 4 * s, hx + c * 3 * s + 1, hy + 4 * s, hx + c * 3 * s, hy + 6 * s + 1, GG_HORN);
+    }
+}
+
+/* Grumbleguts, FRONT view, feet at (cx, yf), s = 1 or 2. big = the inflated belly. m = the
+ * springs: the belly and cheeks lag the beat, the pecs bounce, the wings and tail whip. */
+static void gg_figure(int cx, int yf, int s, int big, int expr, const GgMo *m)
+{
+    int belly_r = (big ? 27 : 18) * s, belly_ry = (big ? 22 : 14) * s;
+    int body_y = yf - 30 * s, chest_top = body_y - 24 * s + m->bob, chest_bot = body_y - 6 * s + m->bob;
+    int belly_cy = chest_bot - 2 * s + belly_ry + m->belly_y, head_y = yf - 60 * s + m->bob * 2 / 3, wy = body_y - 26 * s + m->bob;
+    int brx = belly_r - m->belly_y / 3, bry = belly_ry + m->belly_y / 3;
+    int hip_y = belly_cy + belly_ry - 6 * s - m->belly_y, by, ny, i;
+
+    gg_wing(cx - 14 * s, wy, s, -1, m->flap);                     /* wings, tail, behind everything */
+    gg_wing(cx + 14 * s, wy, s, 1, m->flap);
+    gg_tail(cx + 22 * s, yf - 16 * s, s, 1, m->tail);
+
+    gg_legs(cx, yf, s, hip_y, 9 * s);
+    gg_blob(cx - 8 * s + m->lx, hip_y + m->ly, 9 * s, 7 * s - m->ly / 4, RAMP_BLOOD);    /* the two hip cheeks, ringing a beat apart */
+    gg_blob(cx + 8 * s + m->rx, hip_y + m->ry, 9 * s, 7 * s - m->ry / 4, RAMP_BLOOD);
 
     /* chest slab, pecs, belly */
     gg_tri(cx - 19 * s - 1, chest_top, cx + 19 * s + 1, chest_top, cx + 15 * s + 1, chest_bot + 1, GG_LINE);
@@ -1122,31 +1256,24 @@ static void gg_figure(int cx, int yf, int s, int big, int expr, uint32_t ct)
     gg_tri(cx + 19 * s / 3, chest_top, cx + 19 * s, chest_top, cx + 15 * s, chest_bot, PAL_RAMP(RAMP_BLOOD, 6));
     gg_blob(cx - 17 * s + 2, chest_top + 3, 7, 6, RAMP_BLOOD);    /* deltoids */
     gg_blob(cx + 17 * s - 2, chest_top + 3, 7, 6, RAMP_BLOOD);
-    gg_blob(cx - 8 * s, chest_top + 8 * s, 8 * s + 1, 5 * s, RAMP_BLOOD);   /* pecs */
-    gg_blob(cx + 8 * s, chest_top + 8 * s, 8 * s + 1, 5 * s, RAMP_BLOOD);
+    gg_blob(cx - 8 * s, chest_top + 8 * s + m->chest, 8 * s + 1, 5 * s, RAMP_BLOOD);   /* pecs bounce a beat after the kick */
+    gg_blob(cx + 8 * s, chest_top + 8 * s - m->chest / 2, 8 * s + 1, 5 * s, RAMP_BLOOD);
     plat_line(cx, chest_top + 8 * s - 5 * s, cx, chest_top + 8 * s + 5 * s, GG_LINE);
-    gg_blob(cx, belly_cy, belly_r, belly_ry, RAMP_PEACH);
-    ui_fill_ellipse(cx, belly_cy + belly_ry / 3, 2, 3, PAL_RAMP(RAMP_PEACH, 3));   /* navel */
+    gg_blob(cx + m->belly_x, belly_cy, brx, bry, RAMP_PEACH);
+    ui_fill_ellipse(cx + m->belly_x, belly_cy + bry / 3, 2, 3, PAL_RAMP(RAMP_PEACH, 3));   /* navel */
 
     gg_strap(cx - 15 * s, chest_top + 2 * s, cx + 11 * s, chest_bot + 4 * s, s);   /* the X harness */
     gg_strap(cx + 15 * s, chest_top + 2 * s, cx - 11 * s, chest_bot + 4 * s, s);
     ui_fill_circle(cx, chest_top + 10 * s, 3 * s, GG_LINE);
     ui_fill_circle(cx, chest_top + 10 * s, 2 * s, GG_CHAIN);
-    by = belly_cy + belly_ry - 5 * s;                             /* studded belt, brass buckle */
-    plat_rect(cx - belly_r + 2, by, 2 * belly_r - 4, 3 * s, GG_LEATH);
-    ui_frame(cx - belly_r + 2, by, 2 * belly_r - 4, 3 * s, GG_LINE);
-    gg_studs(cx - belly_r + 6, by + s, cx + belly_r - 6, by + s, 7);
-    plat_rect(cx - 2 * s, by, 4 * s, 3 * s, GG_STUD);
-    ui_frame(cx - 2 * s, by, 4 * s, 3 * s, GG_LINE);
+    by = belly_cy + bry - 5 * s;                                  /* studded belt, brass buckle, rides the belly */
+    plat_rect(cx - brx + 2 + m->belly_x, by, 2 * brx - 4, 3 * s, GG_LEATH);
+    ui_frame(cx - brx + 2 + m->belly_x, by, 2 * brx - 4, 3 * s, GG_LINE);
+    gg_studs(cx - brx + 6 + m->belly_x, by + s, cx + brx - 6 + m->belly_x, by + s, 7);
+    plat_rect(cx - 2 * s + m->belly_x, by, 4 * s, 3 * s, GG_STUD);
+    ui_frame(cx - 2 * s + m->belly_x, by, 4 * s, 3 * s, GG_LINE);
 
-    for (side = -1; side <= 1; side += 2) {                       /* arms: bicep, fist, cuff, claws */
-        int ax = cx + side * 22 * s, ay = chest_top + 10 * s, hx = ax + side * 2 * s, hy = ay + 12 * s;
-        gg_blob(ax, ay, 6 * s, 9 * s, RAMP_BLOOD);
-        gg_blob(hx, hy, 5 * s, 5 * s, RAMP_BLOOD);
-        plat_rect(hx - 5 * s, hy - 7 * s, 10 * s, 2 * s, GG_LEATH);
-        gg_studs(hx - 4 * s, hy - 6 * s, hx + 4 * s, hy - 6 * s, 3);
-        for (c = -1; c <= 1; c++) gg_tri(hx + c * 3 * s - 1, hy + 4 * s, hx + c * 3 * s + 1, hy + 4 * s, hx + c * 3 * s, hy + 6 * s + 1, GG_HORN);
-    }
+    gg_arms(cx, chest_top, s, 22 * s, m->chest / 2);
 
     ny = head_y + 15 * s;                                         /* spiked collar, the gate key */
     plat_rect(cx - 10 * s, ny, 20 * s, 3 * s, GG_LEATH);
@@ -1156,21 +1283,319 @@ static void gg_figure(int cx, int yf, int s, int big, int expr, uint32_t ct)
     ui_fill_circle(cx, ny + 10 * s, 2, GG_STUD);
 
     gg_blob(cx, head_y, 14 * s, 13 * s, RAMP_BLOOD);              /* head, ears, horns, goatee, face */
-    for (side = -1; side <= 1; side += 2) {
-        gg_tri(cx + side * 13 * s, head_y, cx + side * 19 * s, head_y - 7 * s, cx + side * 10 * s, head_y - 7 * s, GG_LINE);
-        gg_tri(cx + side * 13 * s, head_y + 1, cx + side * 18 * s, head_y - 6 * s, cx + side * 11 * s, head_y - 6 * s, PAL_RAMP(RAMP_BLOOD, 5));
-        ui_fill_ellipse(cx + side * 9 * s / 2, head_y - 11 * s, 3 * s / 2 + 1, 4 * s + 1, GG_LINE);
-        ui_fill_ellipse(cx + side * 9 * s / 2, head_y - 11 * s, 3 * s / 2, 4 * s, PAL_RAMP(RAMP_BONE, 3));
-        ui_fill_ellipse(cx + side * 9 * s / 2 - side, head_y - 12 * s, s, 3 * s, GG_HORN);
-    }
+    gg_horns(cx, head_y, s);
     gg_tri(cx - 3 * s, head_y + 11 * s, cx + 3 * s, head_y + 11 * s, cx, head_y + 17 * s, PAL_RAMP(RAMP_VAPE, 1));
     gg_face(cx, head_y, s, expr);
+}
+
+/* Grumbleguts from BEHIND: the camera sits on his rump. The cheeks are two big springy
+ * blobs that each take a slap and ring on their own (m->l*, m->r*); the leather G-string
+ * strap and studded waistband stay put while the skin wobbles around them. look = he
+ * glances back over his shoulder at the lens (wink, smirk). Cartoon only. */
+static void gg_rear(int cx, int yf, int s, int big, int expr, const GgMo *m, int look)
+{
+    int body_y = yf - 30 * s + m->bob, chest_top = body_y - 24 * s, chest_bot = body_y - 6 * s + 4 * s;
+    int head_y = yf - 60 * s + m->bob * 2 / 3, wy = body_y - 26 * s;
+    int r = (big ? 21 : 15) * s, by = body_y + 4 * s, cyc = by + r / 2;
+    int lcx = cx - r * 7 / 10 + m->lx, rcx = cx + r * 7 / 10 + m->rx;
+    int lcy = cyc + m->ly, rcy = cyc + m->ry;
+    int ny = head_y + 15 * s, i;
+
+    gg_wing(cx - 10 * s, wy, s, -1, m->flap);
+    gg_wing(cx + 10 * s, wy, s, 1, m->flap);
+    gg_tail(cx + 2 * s, yf - 24 * s, s, 1, m->tail);
+    gg_legs(cx, yf, s, body_y + 8 * s, 9 * s);
+
+    gg_blob(lcx, lcy, r * 19 / 20 + (m->ly > 0 ? m->ly / 3 : 0), r - m->ly / 4, RAMP_BLOOD);          /* THE CHEEKS: a slap squashes, then rings */
+    gg_blob(rcx, rcy, r * 19 / 20 + (m->ry > 0 ? m->ry / 3 : 0), r - m->ry / 4, RAMP_BLOOD);
+    plat_line(cx, by - 2, cx, cyc + r - 2 * s, GG_LINE);                                    /* the crease, held in by... */
+    plat_line(cx + 1, by - 2, cx + 1, cyc + r - 2 * s, GG_LINE);
+    gg_tri(cx - 4 * s, by, cx + 4 * s, by, cx, by + 11 * s, GG_LINE);                      /* ...a studded leather strap */
+    gg_tri(cx - 4 * s + 2, by + 1, cx + 4 * s - 2, by + 1, cx, by + 10 * s, GG_LEATH);
+    gg_studs(cx - s, by + 3 * s, cx - s, by + 8 * s, 2);
+
+    gg_tri(cx - 19 * s - 1, chest_top, cx + 19 * s + 1, chest_top, cx + 13 * s + 1, chest_bot, GG_LINE);   /* back */
+    gg_tri(cx - 19 * s - 1, chest_top, cx + 13 * s + 1, chest_bot, cx - 13 * s - 1, chest_bot, GG_LINE);
+    gg_tri(cx - 19 * s, chest_top, cx + 19 * s, chest_top, cx + 13 * s, chest_bot, PAL_RAMP(RAMP_BLOOD, 5));
+    gg_tri(cx - 19 * s, chest_top, cx + 13 * s, chest_bot, cx - 13 * s, chest_bot, PAL_RAMP(RAMP_BLOOD, 5));
+    gg_blob(cx - 10 * s, chest_top + 9 * s + m->chest, 8 * s, 6 * s, RAMP_BLOOD);          /* shoulder blades */
+    gg_blob(cx + 10 * s, chest_top + 9 * s - m->chest / 2, 8 * s, 6 * s, RAMP_BLOOD);
+    plat_line(cx, chest_top + 4 * s, cx, chest_bot, PAL_RAMP(RAMP_BLOOD, 3));               /* spine */
+    gg_strap(cx - 15 * s, chest_top + 2 * s, cx + 10 * s, chest_bot + 2 * s, s);
+    gg_strap(cx + 15 * s, chest_top + 2 * s, cx - 10 * s, chest_bot + 2 * s, s);
+    plat_rect(cx - 17 * s, by - 2 * s, 34 * s, 3 * s, GG_LEATH);                           /* waistband, sits above the cheeks */
+    ui_frame(cx - 17 * s, by - 2 * s, 34 * s, 3 * s, GG_LINE);
+    gg_studs(cx - 14 * s, by - s, cx + 14 * s, by - s, 7);
+
+    gg_arms(cx, chest_top, s, 22 * s, m->chest);
+
+    plat_rect(cx - 10 * s, ny, 20 * s, 3 * s, GG_LEATH);                                    /* collar from behind */
+    ui_frame(cx - 10 * s, ny, 20 * s, 3 * s, GG_LINE);
+    for (i = -3; i <= 3; i++) gg_tri(cx + i * 3 * s - 1, ny, cx + i * 3 * s + 1, ny, cx + i * 3 * s, ny - 3 * s, GG_CHAIN);
+
+    gg_blob(cx, head_y, 14 * s, 13 * s, RAMP_BLOOD);
+    gg_horns(cx, head_y, s);
+    if (look) {                                                   /* a glance back over the shoulder */
+        int fx = cx + 8 * s, ex = fx + 2 * s;
+        ui_fill_ellipse(fx, head_y + s, 8 * s + 1, 11 * s + 1, GG_LINE);
+        ui_fill_ellipse(fx, head_y + s, 8 * s, 11 * s, PAL_RAMP(RAMP_BLOOD, 5));
+        if (expr == GG_WINK || expr == GG_LOVE) {
+            plat_line(ex - 3 * s, head_y - 2 * s, ex + 3 * s, head_y - 2 * s + 1, GG_LINE);
+            plat_line(ex - 3 * s, head_y - 2 * s + 1, ex + 3 * s, head_y - 2 * s + 2, GG_LINE);
+        } else {
+            ui_fill_ellipse(ex, head_y - 2 * s, 3 * s + 1, 2 * s + 1, GG_LINE);
+            ui_fill_ellipse(ex, head_y - 2 * s, 3 * s, 2 * s, PAL_RAMP(RAMP_LAVA, 5));
+            ui_fill_circle(ex - s, head_y - 2 * s, s + 1, PAL_RAMP(RAMP_STONE, 0));
+        }
+        plat_line(ex - 4 * s, head_y - 6 * s + 2, ex + 4 * s, head_y - 6 * s - 1, GG_LINE);     /* a cocked brow */
+        plat_line(ex - 4 * s, head_y - 6 * s + 3, ex + 4 * s, head_y - 6 * s, GG_LINE);
+        ui_fill_ellipse(fx + s, head_y + 6 * s, 6 * s + 1, 3 * s + 1, GG_LINE);               /* the smirk, fangs and all */
+        ui_fill_ellipse(fx + s, head_y + 6 * s, 6 * s, 3 * s, PAL_RAMP(RAMP_FLESH, 1));
+        ui_fill_ellipse(fx + s, head_y + 4 * s, 6 * s + 1, 2 * s, PAL_RAMP(RAMP_BLOOD, 5));
+        for (i = -1; i <= 1; i += 2) gg_tri(fx + s + i * 3 * s - 2, head_y + 4 * s, fx + s + i * 3 * s + 2, head_y + 4 * s, fx + s + i * 3 * s, head_y + 7 * s, PAL_RAMP(RAMP_BONE, 7));
+        ui_fill_ellipse(ex + 4 * s, head_y + 3 * s, 3 * s, 2 * s, PAL_RAMP(RAMP_CANDY, 6));      /* blush */
+    }
+}
+
+/* Grumbleguts in PROFILE, facing right (dir = 1) or left (dir = -1): the belly out front
+ * rides the beat (m->belly_x / belly_y), the rump behind it rings on its own (m->ly). The
+ * geometry is mirrored by dir so the overlays sit on the same body parts either way. */
+static void gg_profile(int cx, int yf, int s, int big, int expr, const GgMo *m, int dir)
+{
+    int belly_r = (big ? 27 : 18) * s, belly_ry = (big ? 22 : 14) * s, butt_r = (big ? 19 : 13) * s;
+    int body_y = yf - 30 * s + m->bob, chest_top = body_y - 24 * s, chest_bot = body_y - 6 * s, wy = body_y - 26 * s;
+    int belly_cy = chest_bot - 2 * s + belly_ry + m->belly_y / 2, head_y = yf - 60 * s + m->bob * 2 / 3;
+    int bx = cx + dir * (6 * s + m->belly_x * 2), butx = cx - dir * (10 * s) - dir * m->lx;
+    int buty = body_y + 4 * s + m->ly, hx = cx + dir * 4 * s, by, side, c, i, ex, ey, mx, my;
+
+    gg_wing(cx - dir * 6 * s, wy, s, -dir, m->flap);
+    gg_tail(cx - dir * 14 * s, yf - 22 * s, s, -dir, m->tail);
+
+    for (side = -1; side <= 1; side += 2) {                       /* two legs, one a stride ahead */
+        int lx = cx + side * 5 * s - 2 * s * dir + (side == dir ? 2 * s : 0);
+        gg_blob(lx, (body_y + 8 * s + yf - 8 * s) / 2, 7 * s, (yf - 8 * s - body_y - 8 * s) / 2 + 4 * s, RAMP_BLOOD);
+        gg_blob(lx + dir * s, yf - 7 * s, 6 * s, 7 * s, RAMP_BLOOD);
+        for (c = -1; c <= 1; c++) gg_tri(lx + c * 3 * s - 2, yf - 2 * s, lx + c * 3 * s + 2, yf - 2 * s, lx + c * 3 * s, yf + 2, GG_HORN);
+    }
+    gg_blob(butx, buty + butt_r / 2 - s, butt_r + m->ly / 3, butt_r - 2 * s - m->ly / 4, RAMP_BLOOD);   /* the rump behind, wobbling on its own */
+    plat_line(butx + dir * butt_r / 3, body_y + s, butx + dir * butt_r / 3, buty + butt_r - 2 * s, GG_LINE);
+    gg_blob(cx + dir * 2 * s, (chest_top + chest_bot) / 2 + m->chest, 12 * s, 13 * s, RAMP_BLOOD);       /* chest, leaning in */
+    gg_blob(cx + dir * 9 * s, chest_top + 8 * s + m->chest, 8 * s, 5 * s, RAMP_BLOOD);                  /* pec */
+    gg_blob(bx, belly_cy, belly_r - 2 * s - m->belly_y / 3, belly_ry + m->belly_y / 3, RAMP_PEACH);     /* the belly, out front */
+    ui_fill_ellipse(bx + dir * (belly_r - 5 * s), belly_cy + 2 * s, 2, 2, PAL_RAMP(RAMP_PEACH, 3));      /* navel in profile */
+    gg_strap(cx - dir * 4 * s, chest_top + 2 * s, cx + dir * 10 * s, chest_bot + 2 * s, s);
+    by = belly_cy + belly_ry - 5 * s;                             /* the belt runs belly to rump */
+    {
+        int ax = DOOMO_MIN(butx - dir * butt_r, bx + dir * (belly_r - 2 * s)), bx2 = DOOMO_MAX(butx - dir * butt_r, bx + dir * (belly_r - 2 * s));
+        plat_rect(ax + 2, by, bx2 - ax - 4, 3 * s, GG_LEATH);
+        ui_frame(ax + 2, by, bx2 - ax - 4, 3 * s, GG_LINE);
+        gg_studs(ax + 6, by + s, bx2 - 6, by + s, 6);
+    }
+
+    {   /* the near arm, hanging forward */
+        int ax = cx + dir * 8 * s, ay = chest_top + 10 * s + m->chest, fx = ax + dir * 3 * s, fy = ay + 12 * s;
+        gg_blob(ax, ay, 6 * s, 9 * s, RAMP_BLOOD);
+        gg_blob(fx, fy, 5 * s, 5 * s, RAMP_BLOOD);
+        plat_rect(fx - 5 * s, fy - 7 * s, 10 * s, 2 * s, GG_LEATH);
+        for (c = -1; c <= 1; c++) gg_tri(fx + c * 3 * s - 1, fy + 4 * s, fx + c * 3 * s + 1, fy + 4 * s, fx + c * 3 * s, fy + 6 * s + 1, GG_HORN);
+    }
+
+    plat_rect(hx - 6 * s, head_y + 14 * s, 12 * s, 3 * s, GG_LEATH);                       /* collar */
+    for (i = -2; i <= 2; i++) gg_tri(hx + i * 3 * s - 1, head_y + 14 * s, hx + i * 3 * s + 1, head_y + 14 * s, hx + i * 3 * s, head_y + 11 * s, GG_CHAIN);
+    gg_blob(hx, head_y, 13 * s, 12 * s, RAMP_BLOOD);                                       /* head */
+    gg_blob(hx + dir * 9 * s, head_y + 4 * s, 7 * s, 6 * s, RAMP_BLOOD);                   /* muzzle */
+    gg_tri(hx - dir * 4 * s, head_y - 8 * s, hx - dir * 14 * s, head_y - 20 * s, hx + dir * 2 * s, head_y - 10 * s, GG_LINE);   /* horn, swept back */
+    gg_tri(hx - dir * 4 * s, head_y - 8 * s, hx - dir * 13 * s, head_y - 19 * s, hx + dir * 1 * s, head_y - 10 * s, GG_HORN);
+    gg_tri(hx - dir * 12 * s, head_y - s, hx - dir * 19 * s, head_y - 6 * s, hx - dir * 9 * s, head_y - 7 * s, GG_LINE);       /* ear */
+    ex = hx + dir * 7 * s; ey = head_y - 2 * s;
+    if (expr == GG_WINK || expr == GG_LOVE) {
+        plat_line(ex - 2 * s, ey, ex + 2 * s, ey + 1, GG_LINE);
+        plat_line(ex - 2 * s, ey + 1, ex + 2 * s, ey + 2, GG_LINE);
+    } else {
+        ui_fill_ellipse(ex, ey, 3 * s + 1, 2 * s + 1, GG_LINE);
+        ui_fill_ellipse(ex, ey, 3 * s, 2 * s, PAL_RAMP(RAMP_LAVA, 5));
+        ui_fill_circle(ex + dir * s, ey, s + 1, PAL_RAMP(RAMP_STONE, 0));
+    }
+    plat_line(ex - 3 * s, ey - 4 * s + 2, ex + 3 * s, ey - 4 * s - 1, GG_LINE);              /* brow */
+    plat_line(ex - 3 * s, ey - 4 * s + 3, ex + 3 * s, ey - 4 * s, GG_LINE);
+    mx = hx + dir * 11 * s; my = head_y + 6 * s;
+    ui_fill_ellipse(mx - dir * s, my, 6 * s + 1, 3 * s + 1, GG_LINE);                       /* the grin, fangs out */
+    ui_fill_ellipse(mx - dir * s, my, 6 * s, 3 * s, PAL_RAMP(RAMP_FLESH, expr == GG_BLUSH ? 1 : 2));
+    for (i = -1; i <= 1; i++) gg_tri(mx - dir * s + i * 3 * s - 2, my - 2 * s, mx - dir * s + i * 3 * s + 2, my - 2 * s, mx - dir * s + i * 3 * s, my + s, PAL_RAMP(RAMP_BONE, 7));
+    ui_fill_ellipse(hx + dir * 3 * s, head_y + 4 * s, 3 * s, 2 * s, PAL_RAMP(RAMP_CANDY, 6));   /* blush */
+    gg_tri(mx - 3 * s, my + 3 * s, mx + 3 * s, my + 3 * s, mx, my + 9 * s, PAL_RAMP(RAMP_VAPE, 1));   /* goatee */
 }
 
 static void shout(int x, int y, const char *s, uint8_t c)
 {
     int w = ui_text_width(s), hi = plat_screen_w() - w - 2;
     ui_text_outline(DOOMO_CLAMP(x, 2, DOOMO_MAX(hi, 2)), y, s, c, PAL_BLACK);
+}
+
+/* a hand (an imp's, a guest's) coming in to slap or boop. fingers point toward dir */
+static void gg_hand(int x, int y, int s, int dir, uint8_t col, uint8_t cuff)
+{
+    int i;
+    plat_rect(DOOMO_MIN(x - dir * 14 * s, x - dir * 5 * s), y - 3 * s, 9 * s, 6 * s, cuff);
+    ui_fill_ellipse(x, y, 5 * s + 1, 4 * s + 1, GG_LINE);
+    ui_fill_ellipse(x, y, 5 * s, 4 * s, col);
+    for (i = 0; i < 4; i++) {
+        int fy = y - 3 * s + i * 2 * s;
+        ui_fill_ellipse(x + dir * 5 * s, fy, 3 * s + 1, s + 1, GG_LINE);
+        ui_fill_ellipse(x + dir * 5 * s, fy, 3 * s, s, col);
+    }
+}
+
+/* comic impact star */
+static void gg_burst(int x, int y, int r, uint8_t c)
+{
+    static const int8_t dx[8] = { 1, 1, 0, -1, -1, -1, 0, 1 }, dy[8] = { 0, 1, 1, 1, 0, -1, -1, -1 };
+    int i;
+    for (i = 0; i < 8; i++) {
+        int d = (i & 1) ? r * 7 / 10 : r;
+        plat_line(x + dx[i] * d / 2, y + dy[i] * d / 2, x + dx[i] * d, y + dy[i] * d, c);
+        plat_line(x + dx[i] * d / 2 + 1, y + dy[i] * d / 2, x + dx[i] * d + 1, y + dy[i] * d, c);
+    }
+}
+
+/* the full-screen cut-ins (see gg_cuts): a spotlight, a hard cut, and the camera goes
+ * where the night wants it: onto his rump (BACK / LOOK) or square on the belly (SIDE).
+ * Every slap or boop lands on the same tick the springs are kicked (gg_motion), so the
+ * hand, the SMACK!, the flush on the skin and the ripple all agree. */
+static void gg_cut_shot(int panel, uint32_t pt, uint32_t ct, const GgCut *cut)
+{
+    static const char *const smack[4] = { "SMACK!", "WHAP!", "CLAP!", "SPLAT~" };
+    static const char *const back_say[6] = { "hnnnf~", "oooh~", "page one~", "next~", "don't stop~", "mmm~" };
+    static const char *const look_say[6] = { "...see something?", "like the view?", "Shriekra~", "front of the line~", "your turn~", "brunch?" };
+    int sw = plat_screen_w(), sh = plat_screen_h(), t = (int)pt, k = t - cut->a, i;
+    int s0 = sh >= 200 ? 2 : 1, s = s0 + 1, dawn = panel == 19;
+    int big = panel == 14 || panel == 15 || panel == 18, rear = cut->view == GG_V_BACK || cut->view == GG_V_LOOK;
+    int every = gg_every(panel), h0 = cut->a + 4, nn, np, dtn, dtp, handed;
+    int expr = (rear && cut->view == GG_V_LOOK) ? ((t / 24) & 1 ? GG_WINK : GG_SMUG)
+             : panel == 14 ? GG_BLUSH : panel == 15 ? GG_LOVE : panel == 18 ? (((t / 20) & 1) ? GG_LOVE : GG_BLUSH) : (((t / 16) & 1) ? GG_WINK : GG_GRIN);
+    int cx = sw / 2 + ui_wave((int)ct * 7, 14, rear ? (panel >= 17 ? s : s / 2 + 1) : 0), yf, cheeky = sh * 72 / 100;
+    int r = (big ? 21 : 15) * s;
+    GgMo m;
+
+    if (rear) yf = cheeky + 26 * s - r / 2; else yf = sh - 30;
+    gg_motion(&m, panel, t, ct, s, cut);
+
+    /* hard cut: two white frames, then the lit stage */
+    if (k < 2) { plat_rect(0, 0, sw, sh, PAL_WHITE); return; }
+    plat_rect(0, 0, sw, sh, dawn ? PAL_RAMP(RAMP_PASTEL_PINK, 5) : PAL_RAMP(RAMP_VAPE, 0));
+    for (i = 3; i >= 1; i--)
+        ui_fill_ellipse(sw / 2, sh * 55 / 100, sw * (2 + i) / 8, sh * (2 + i) / 6, dawn ? PAL_RAMP(RAMP_PASTEL_PINK, 5 + (3 - i) / 2 + 1) : PAL_RAMP(RAMP_VAPE, 4 - i));
+    plat_rect(0, yf - 8, sw, sh - yf + 8, PAL_RAMP(RAMP_GRASS, dawn ? 3 : 1));
+    for (i = 0; i < 10; i++) ui_sparkle((i * 53 + 20) % sw, 8 + (i * 29) % (sh / 3), (int)((ct / 2 + (uint32_t)i * 3) & 15), dawn ? PAL_UI_GOLD : PAL_WHITE);
+
+    /* which hit is coming up, and which one has just landed */
+    nn = t <= h0 ? 0 : (t - h0 + every - 1) / every;
+    dtn = h0 + nn * every - t;
+    np = t >= h0 ? (t - h0) / every : -1;
+    dtp = np >= 0 ? t - (h0 + np * every) : 99;
+    handed = rear && panel != 14;                            /* the valve panel has no slapper: the pulses do it */
+
+    if (rear) {
+        int lcx = cx - r * 7 / 10 + m.lx, rcx = cx + r * 7 / 10 + m.rx, cyc = yf - 26 * s + r / 2;
+        int hit, hs, hx, hy, vy;
+        gg_rear(cx, yf, s, big, expr, &m, cut->view == GG_V_LOOK);
+        vy = cyc - r / 2 + 9 * s;
+        if (panel == 14) {                                   /* the valve in the crease, and the hiss that comes out of it */
+            plat_rect(cx - 6, vy, 12, 9, PAL_BLACK);
+            plat_rect(cx - 5, vy + 1, 10, 7, PAL_UI_GOLD);
+            for (i = 0; i < 5; i++) {
+                int u = (int)((ct * 3 + (uint32_t)i * 9) % 60u);
+                gas(cx + u * (i & 1 ? 1 : -1) / 2, vy + 8 + u / 2 + ui_wave((int)ct * 5 + i * 7, 10, 3), 3 + u / 12, 0);
+            }
+            if ((t % 22) < 12) shout(cx - 34, vy + 24 * s, "hissssss~", PAL_WHITE);
+        }
+        /* the slap: a hand sweeps in, lands on a cheek, rings it */
+        if (handed) {
+            for (hit = 0; hit < 2; hit++) {
+                int n = hit ? np : nn, d = hit ? dtp : dtn;
+                if (n < 0 || d > 5) continue;
+                hs = (n & 1) ? 1 : -1;
+                hx = (hs < 0 ? lcx : rcx) + hs * (r / 4 + d * 11 * s / 2);
+                hy = (hs < 0 ? cyc + m.ly : cyc + m.ry) - r / 4 - (hit ? d * 2 : 0);
+                gg_hand(hx, hy, s, -hs, PAL_RAMP(RAMP_PEACH, 4 + (n % 3)), PAL_PAINT((n * 7 + 3) % PAL_PAINT_COUNT, 1));
+            }
+        }
+        if (np >= 0 && handed) {
+            hs = (np & 1) ? 1 : -1;
+            hx = hs < 0 ? lcx : rcx;
+            hy = (hs < 0 ? cyc + m.ly : cyc + m.ry) - r / 4;
+            if (dtp < every - 2) {                           /* the flush: a pink print that cools off */
+                uint8_t pc = dtp < 18 ? PAL_RAMP(RAMP_CANDY, 6) : PAL_RAMP(RAMP_CANDY, 4);
+                ui_fill_ellipse(hx - hs * r / 5, hy, 4 * s, 3 * s, pc);
+                for (i = 0; i < 3; i++) ui_fill_ellipse(hx - hs * (r / 5 + 5 * s), hy - 3 * s + i * 3 * s, 3 * s, s, pc);
+            }
+            if (dtp < 7) {
+                gg_burst(hx + hs * r / 3, hy, 8 * s + (6 - dtp) * 2, dtp < 3 ? PAL_WHITE : PAL_UI_GOLD);
+                if (sh >= 200) ui_text_big(DOOMO_CLAMP(hx - 30, 4, sw - 100), hy - r - 6 * s - dtp, smack[np & 3], 2, PAL_WHITE, PAL_UI_RED_D);
+                else shout(hx - 20, hy - r - 6, smack[np & 3], PAL_WHITE);
+            }
+            for (i = 0; i < 3; i++)                          /* hearts pop off every hit */
+                if (dtp < 22) ui_heart(hx + (i - 1) * 12 * s + hs * 6, hy - r / 2 - dtp * 3 - i * 5 * s, 2 + (i & 1), PAL_UI_PINK);
+        }
+        for (i = 0; i < 2; i++) {                            /* shimmy lines hugging a ringing cheek */
+            int cyl = i ? m.ry : m.ly, cxx = i ? rcx + r + 2 : lcx - r - 2, sg = i ? 1 : -1, j;
+            if (cyl > 2 || cyl < -2) for (j = 0; j < 3; j++)
+                plat_line(cxx + sg * 2, cyc + (i ? m.ry : m.ly) - 8 * s + j * 6 * s, cxx + sg * (6 + j * 3), cyc + (i ? m.ry : m.ly) - 8 * s + j * 6 * s, PAL_WHITE);
+        }
+        ui_sparkle(lcx - r / 2, cyc - r / 2 + m.ly, (int)((ct / 2) & 15), PAL_WHITE);              /* glistening */
+        ui_sparkle(rcx + r / 2, cyc - r / 2 + m.ry, (int)((ct / 2 + 7) & 15), PAL_WHITE);
+        if (cut->view == GG_V_LOOK) {
+            if (((t / 26) & 1)) shout(cx + 26 * s, yf - 56 * s, look_say[panel - 14], PAL_UI_PINK);
+        } else if ((t % 30) < 18 && panel != 14) {
+            shout(cx - 70, yf - 62 * s - 8, back_say[panel - 14], PAL_UI_PINK);
+        }
+        if (panel == 14 && cut->view == GG_V_LOOK && t > 190) shout(cx - 24, cheeky - r - 10 * s, "BLORP", PAL_UI_GOLD);
+        if (panel == 18 && ((t / 30) & 1)) shout(4, 6, "Mavis~", PAL_UI_PINK);
+        if (panel == 18 && !((t / 30) & 1)) shout(4, 6, "Gary~?", PAL_UI_PINK);
+    } else {
+        /* PROFILE: belly out front, a hand booping it, the whole body ringing */
+        int dir = 1, belly_r = (big ? 27 : 18) * s, belly_ry = (big ? 22 : 14) * s;
+        int body_y = yf - 30 * s + m.bob, bcy = body_y - 6 * s - 2 * s + belly_ry + m.belly_y / 2;
+        int fx = cx + dir * (6 * s + m.belly_x * 2) + dir * (belly_r - 2 * s), hx = cx + 4 * s + 11 * s, hy = yf - 60 * s - 3 * s;
+        gg_profile(cx, yf, s, big, expr, &m, dir);
+        if (np >= 0 && dtp < 12)                             /* ripple rings run out from every hit */
+            for (i = 1; i <= 3; i++)
+                if (dtp > i) ui_fill_ellipse(fx - dir * (dtp + i * 3), bcy, 1 + i, 4 * s + i * 2, PAL_RAMP(RAMP_PEACH, 4 + (i & 1)));
+        if (panel == 15 || panel == 17) {                    /* an imp / a ticket-holder boops the belly */
+            for (i = 0; i < 2; i++) {
+                int n = i ? np : nn, d = i ? dtp : dtn;
+                if (n < 0 || d > 5) continue;
+                gg_hand(fx + dir * (6 * s + d * 12 * s / 2), bcy + (n & 1 ? -s : s) * 3, s, -dir, PAL_RAMP(RAMP_PEACH, 4 + (n % 3)), PAL_PAINT((n * 7 + 3) % PAL_PAINT_COUNT, 1));
+            }
+            if (np >= 0 && dtp < 8) shout(fx - 30, bcy - belly_ry - 14 - dtp, (np & 1) ? "squelch~" : "boop!", PAL_UI_GOLD);
+        }
+        if (panel == 15) {                                   /* BRRRAAAP: it leaves his mouth and crosses the park */
+            for (i = 0; i < 6; i++) {
+                int u = (int)((ct * 4 + (uint32_t)i * 13) % 90u);
+                gas(hx + 14 * s + u, hy + 10 * s + ui_wave((int)ct * 3 + i * 5, 16, 4), 5 + u / 12, 1);
+            }
+            if (k > 4) shout(hx + 10 * s, hy - 24, "BRRRAAAAP", PAL_UI_GOLD);
+        }
+        if (panel == 14) {                                   /* the valve whistles at his hip */
+            for (i = 0; i < 6; i++) {
+                int u = (int)((ct * 3 + (uint32_t)i * 11) % 70u);
+                gas(fx - 10 * s + u, bcy - 6 * s - u / 4 + ui_wave((int)ct * 4 + i * 7, 12, 4), 4 + u / 14, 0);
+            }
+            plat_rect(fx - 6, bcy - 10, 8, 9, PAL_BLACK);
+            plat_rect(fx - 5, bcy - 9, 6, 7, PAL_UI_GOLD);
+            shout(cx - 30 * s, hy - 26, "gurrrgle~", PAL_UI_PINK);
+        }
+        if (panel == 18) {                                   /* the pump: a hose from the valve, the handle hammering */
+            int stroke = ui_wave((int)ct * 6, 12, 5);
+            plat_line(fx - 2, bcy, sw - 30, yf - 20, PAL_RAMP(RAMP_MINT, 6));
+            plat_line(fx - 2, bcy + 1, sw - 30, yf - 19, PAL_RAMP(RAMP_MINT, 3));
+            plat_rect(sw - 34, yf - 22, 6, 24, PAL_BLACK);
+            plat_rect(sw - 40, yf - 28 + stroke, 14, 3, PAL_BLACK);
+            if ((t % 10) > 4) shout(sw - 70, yf - 54, "pff!", PAL_WHITE);
+        }
+        for (i = 0; i < 3; i++) ui_heart(cx - 30 * s + i * 30 * s + ui_wave((int)ct * 2 + i * 9, 20, 4), yf - 100 * s / 2 - (int)((ct * 2 + (uint32_t)i * 17) % 40u), 3, PAL_UI_PINK);
+        if ((t % 34) < 16) shout(hx - 26 * s, hy - 14 * s, panel == 17 ? "next~" : panel == 18 ? "harder~" : "mmh~", PAL_UI_PINK);
+    }
 }
 
 static void night_scene(int panel, uint32_t pt, uint32_t ct)
@@ -1181,13 +1606,18 @@ static void night_scene(int panel, uint32_t pt, uint32_t ct)
     int sw = plat_screen_w(), sh = plat_screen_h(), gy = sh * 3 / 4, i, k, t = (int)pt;
     int s = sh >= 200 ? 2 : 1, dawn = panel == 19, big = panel == 14 || panel == 15 || panel == 18;
     int shake = ui_wave((int)ct * 6, 8, (panel == 14 || panel == 18) ? 3 : 1) * (big ? 1 : 0);
-    int cx = sw / 2 + shake, yf = gy - 4;
+    int cx = sw / 2 + shake + ui_wave((int)ct * 5, 10, panel >= 17 && panel <= 18 ? 2 : 1), yf = gy - 4;
     int r = (big ? 27 : 18) * s, ry = (big ? 22 : 14) * s;
     int cy = yf - 30 * s - 6 * s - 2 * s + ry;                   /* belly centre, as in gg_figure() */
     int hx = cx, hy = yf - 60 * s, ax = cx + r + 2 * s, ay = cy - 6 * s;
-    int poke = panel == 15 ? ((t % 40) < 10 ? (t % 40) : 0) : 0;
+    int poke = panel == 15 ? ((t % 28) < 10 ? (t % 28) : 0) : 0;
+    const GgCut *cut = gg_cut_at(panel, pt);
+    GgMo mo;
     int expr = panel == 14 ? GG_BLUSH : panel == 15 ? GG_LOVE : panel == 16 ? GG_SMUG
              : panel == 17 ? (((t / 40) & 1) ? GG_WINK : GG_GRIN) : panel == 18 ? (((t / 50) & 1) ? GG_LOVE : GG_BLUSH) : GG_SMUG;
+
+    if (cut) { gg_cut_shot(panel, pt, ct, cut); return; }       /* rump-cam / profile cut-in */
+    gg_motion(&mo, panel, t, ct, s, 0);
 
     /* the sky (a night park, or the pink morning after), the table, the stragglers */
     plat_rect(0, 0, sw, gy, dawn ? PAL_RAMP(RAMP_PASTEL_PINK, 5) : PAL_RAMP(RAMP_VAPE, 0));
@@ -1204,20 +1634,28 @@ static void night_scene(int panel, uint32_t pt, uint32_t ct)
     plat_rect(68, gy - 20, 4, 22, PAL_RAMP(RAMP_WOOD, 1));
     if (!dawn) candles(18, gy - 26, ct);
 
-    gg_figure(cx, yf, s, big, expr, ct);
+    gg_figure(cx, yf, s, big, expr, &mo);
+    {   /* every beat throws sweat and a heart, and a speed arc shows which way the hips went */
+        int kt = t % gg_every(panel);
+        if (kt < 7) {
+            ui_heart(cx + 22 * s + kt * 3, yf - 62 * s - kt * 3, 2 + (kt < 3), PAL_UI_PINK);
+            ui_fill_circle(cx - 20 * s - kt * 2, yf - 52 * s + kt, 1, PAL_RAMP(RAMP_SKY, 7));
+            if (kt < 3) { plat_line(cx - 30 * s, yf - 24 * s, cx - 36 * s, yf - 24 * s, PAL_WHITE); plat_line(cx + 30 * s, yf - 24 * s, cx + 36 * s, yf - 24 * s, PAL_WHITE); }
+        }
+    }
 
     if (panel == 14) {
         /* the valve whistles at his hip, a rolling train of gas puffs leaves it */
         for (i = 0; i < 7; i++) {
-            int u = (int)((ct * 2 + (uint32_t)i * 11) % 80u);
+            int u = (int)((ct * 3 + (uint32_t)i * 11) % 80u);
             gas(ax + 8 + u, ay - 4 + ui_wave((int)ct * 4 + i * 7, 12, 5) - u / 8, 4 + u / 14, 0);
         }
         plat_rect(ax - 2, ay - 4, 8, 9, PAL_BLACK);
         plat_rect(ax - 1, ay - 3, 6, 7, PAL_UI_GOLD);                   /* the brass valve */
         for (i = 0; i < 3; i++) ui_fill_ellipse(cx - r / 3 + i * 14 * s / 2, cy + r / 4 + ui_wave((int)ct * 5 + i * 9, 10, 3), 5, 3, PAL_RAMP(RAMP_LAVA, 6));   /* gurgling */
-        if ((t % 48) > 8 && (t % 48) < 40) shout(ax - 6, ay - 34 - (t % 48) / 4, "hissssss~", PAL_WHITE);
-        if (t > 40 && (t % 56) > 30) shout(cx - r - 20, cy + r / 6, "gurrrgle", PAL_UI_PINK);
-        if (t > 60 && (t % 64) < 28) shout(hx - 60, hy - 6, "mmmh~", PAL_UI_PINK);
+        if ((t % 32) > 4 && (t % 32) < 26) shout(ax - 6, ay - 34 - (t % 32) / 3, "hissssss~", PAL_WHITE);
+        if (t > 30 && (t % 36) > 18) shout(cx - r - 20, cy + r / 6, "gurrrgle", PAL_UI_PINK);
+        if (t > 40 && (t % 40) < 20) shout(hx - 60, hy - 6, "mmmh~", PAL_UI_PINK);
         for (i = 0; i < 3; i++)                                         /* sweat, glistening */
             ui_fill_circle(hx + 12 * s + i * 4, hy - 4 * s + (int)((ct + (uint32_t)i * 7) % 24u), 1, PAL_RAMP(RAMP_SKY, 7));
         if (t > 110) {                                                  /* a bubble climbs his throat */
@@ -1228,7 +1666,7 @@ static void night_scene(int panel, uint32_t pt, uint32_t ct)
     } else if (panel == 15) {
         /* the burp rolls out of his mouth and across the park */
         for (i = 0; i < 6; i++) {
-            int u = (int)((ct * 3 + (uint32_t)i * 13) % 90u);
+            int u = (int)((ct * 4 + (uint32_t)i * 13) % 90u);
             if (t > 6) gas(hx - 18 * s - u, hy + 8 * s + ui_wave((int)ct * 3 + i * 5, 16, 4), 5 + u / 12, 1);
         }
         if (t > 8 && t < 70) shout(hx - 90, hy - 20, "BRRRAAAAP", PAL_UI_GOLD);
@@ -1242,7 +1680,7 @@ static void night_scene(int panel, uint32_t pt, uint32_t ct)
         }
         for (i = 0; i < 4; i++)                                          /* the crowd is not subtle */
             ui_heart(30 + i * 52 + ui_wave((int)ct + i * 11, 30, 4), gy - 70 - (int)((ct + (uint32_t)i * 17) % 40u), 3, PAL_UI_PINK);
-        if (t > 90) shout(hx + 40, hy - 10, "harder~", PAL_UI_PINK);
+        if (t > 80 && (t % 30) < 16) shout(hx + 40, hy - 10, "harder~", PAL_UI_PINK);
     } else if (panel == 16) {
         /* the little black book: pages flip, names pop out as hearts */
         int bx = cx - 20 * s, by = cy - 6 * s, flip = (t / 14) & 1;
@@ -1257,7 +1695,7 @@ static void night_scene(int panel, uint32_t pt, uint32_t ct)
         shout(hx - 90, hy - 4, names[(t / 40) % 5], PAL_UI_PINK);
         for (i = 0; i < 5; i++)
             ui_heart(bx + 6 + i * 9 + ui_wave((int)ct + i * 7, 12, 3), by - 10 - (int)((ct + (uint32_t)i * 13) % 50u), 2 + (i & 1), PAL_UI_PINK);
-        if (t > 150 && (t % 24) < 12) shout(hx + 40, hy, "mmm~", PAL_UI_PINK);
+        if (t > 110 && (t % 18) < 9) shout(hx + 40, hy, "mmm~", PAL_UI_PINK);
     } else if (panel == 17) {
         /* the queue: figures shuffle forward along the grass, a ticket machine dings */
         for (i = 0; i < 8; i++) {
@@ -1273,7 +1711,7 @@ static void night_scene(int panel, uint32_t pt, uint32_t ct)
         if (t > 100 && (t % 50) < 25) shout(hx - 90, hy, "next~", PAL_UI_PINK);
     } else if (panel == 18) {
         /* the pump goes down the line: a new pair of hands every few strokes */
-        int stroke = ui_wave((int)ct * 5, 20, 6), who = (t / 60) % 4;
+        int stroke = ui_wave((int)ct * 7, 20, 6), who = (t / 40) % 4;
         plat_line(ax + 4, ay, sw - 40, gy - 22, PAL_RAMP(RAMP_MINT, 6));
         plat_line(ax + 4, ay + 1, sw - 40, gy - 21, PAL_RAMP(RAMP_MINT, 3));
         plat_rect(sw - 42, gy - 24, 6, 26, PAL_BLACK);
@@ -1281,7 +1719,7 @@ static void night_scene(int panel, uint32_t pt, uint32_t ct)
         ui_fill_circle(sw - 39, gy - 40, 4, PAL_RAMP(RAMP_PEACH, 5));    /* this pair of hands */
         plat_rect(sw - 44, gy - 36, 10, 8, PAL_PAINT((who * 9 + 5) % PAL_PAINT_COUNT, 1));
         if ((t % 20) > 10 && (t % 20) < 18) shout(sw - 62, gy - 60, "pff!", PAL_WHITE);
-        if ((t % 60) > 14 && (t % 60) < 52) shout(hx - 100, hy - 6, wrong[who], PAL_UI_PINK);
+        if ((t % 40) > 8 && (t % 40) < 34) shout(hx - 100, hy - 6, wrong[who], PAL_UI_PINK);
         for (i = 0; i < 5; i++)
             ui_heart(20 + i * 50 + ui_wave((int)ct + i * 11, 26, 5), gy - 90 - (int)((ct + (uint32_t)i * 19) % 50u), 3, PAL_UI_PINK);
         if (t > 190) shout(hx + 30, hy - 20, "don't stop~", PAL_UI_PINK);
