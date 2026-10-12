@@ -349,7 +349,9 @@ void audio_hw_hush(int on)
             s_tone_saved[v] = s_tone[v];
             s_tone[v].on = 0;
         }
-        SpuSetKey(0, 0x00ffffffu);            /* all 24 voices off */
+        for (v = 0; v < 24; v++)              /* all 24 voices off (one at a time:
+                                               * the SDK macro rejects a constant mask) */
+            SpuSetKey(0, 1u << v);
         SPU_MASTER_VOL_L = 0;
         SPU_MASTER_VOL_R = 0;
     } else {
