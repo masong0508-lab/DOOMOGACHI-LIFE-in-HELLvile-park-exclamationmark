@@ -222,11 +222,18 @@ static void pit(int px, int py, int size, int dir, uint32_t ct, int cute)
 #define CU_REAR_A  138u
 #define CU_REAR_B  188u    /* panel 3: the rear shot, the yank */
 
+/* PS1 build? (plat_name() is "PS1"; "GBA" and "NATIVE" keep the valve detail) */
+static int on_ps1(void)
+{
+    const char *n = plat_name();
+    return n && n[0] == 'P' && n[1] == 'S';
+}
+
 /* panel 3, second rear camera: the culprit works the hose in like a reverse
  * rope climb, hand over hand, one palm braced on a cheek. Cheeks only; the
  * brass valve in the crease is all that is shown down there and the hose
- * plugs into it. Three beats (rule of three): four pulls, a pause with a
- * sweaty "surely that's enough?", then it keeps going, faster, past any
+ * plugs into it (GBA/native; the PS1 version leaves the valve out). Three
+ * beats (rule of three): four pulls, a pause with a sweaty "surely that's enough?", then it keeps going, faster, past any
  * sensible length. The ribs on the hose march toward the valve and a foot
  * counter climbs. t0 runs 0 .. CU_PUSH_B - CU_PUSH_A - 1. */
 static int push_pulls(int t)
@@ -262,10 +269,13 @@ static void push_shot(uint32_t t0)
     ui_fill_circle(rx - rr / 3, cyc - rr / 2 - jig, DOOMO_MAX(rr / 6, 2), lt);
     plat_line(cx, cyc - rr / 2, cx, vy, dk);
     plat_line(cx + 1, cyc - rr / 2, cx + 1, vy, dk);
-    /* the brass valve in the crease: the only thing shown down there */
-    plat_rect(cx - 7, vy, 14, 10, PAL_BLACK);
-    plat_rect(cx - 6, vy + 1, 12, 8, PAL_UI_GOLD);
-    plat_rect(cx - 2, vy + 3, 4, 4, PAL_RAMP(RAMP_STEEL, 2));
+    /* the brass valve in the crease: the only thing shown down there (GBA/native).
+     * PS1: no valve detail, the hose just disappears into the crease */
+    if (!on_ps1()) {
+        plat_rect(cx - 7, vy, 14, 10, PAL_BLACK);
+        plat_rect(cx - 6, vy + 1, 12, 8, PAL_UI_GOLD);
+        plat_rect(cx - 2, vy + 3, 4, 4, PAL_RAMP(RAMP_STEEL, 2));
+    }
 
     /* one palm braced flat on the near cheek for leverage, dimpling it */
     ui_fill_ellipse(lx - 4 + sq, cyc - rr / 3, 13, 10, PAL_BLACK);
