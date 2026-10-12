@@ -107,6 +107,12 @@ D-pad walk/turn, L/R strafe, hold A + UP/DOWN to look up/down, B jump,
 SELECT toggles first/third person, START resumes the tour. Holding SELECT
 while the ROM boots runs the flash save self-test first.
 
+Debug cutscene viewer (game ROM): hold SELECT while powering on and a list
+of every story cutscene (including "What an Ass") replaces the normal boot.
+UP/DOWN pick, L/R jump 5, A plays, START inside a cutscene skips back to
+the list. Code: `gba/src/cutview.c`; `make CUTVIEW=0` compiles it out. The
+PS1 build has the same viewer (`ps1/src/cutview.c`, hold SELECT at boot).
+
 ---------------------------------------------------------------------------
 
 ## 3. Hardware usage and memory map

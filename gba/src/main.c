@@ -259,6 +259,9 @@ int main(void)
     enginetest_main();
 #else
     doomo_init();
+    /* debug mode: hold SELECT while powering on -> cutscene viewer (cutview.c) */
+    if (read_pad() & BTN_SELECT)
+        cutview_enter();
     gba_pacing_reset();
     for (;;) {
         uint32_t b;

@@ -61,6 +61,11 @@ DEFS    := -DDOOMO_PLATFORM_GBA=1
 ifeq ($(ENGINE_TEST),1)
 DEFS    += -DENGINE_TEST=1
 endif
+# debug cutscene viewer (hold SELECT at power-on); `make CUTVIEW=0` compiles it out
+CUTVIEW ?= 1
+ifeq ($(CUTVIEW),1)
+DEFS    += -DDOOMO_CUTSCENE_VIEWER=1
+endif
 GBA_CFLAGS  := $(ARCH) $(COMMON) $(DEFS) -Werror
 # Core code must also be warning-free (ARCHITECTURE.md), but a warning in
 # a module that is still landing must not stop the ROM from building.

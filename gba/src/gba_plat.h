@@ -19,6 +19,7 @@ extern uint32_t gba_keys;                  /* raw KEYINPUT bits (1 = held)  */
  * return immediately when set. */
 extern int gba_nodraw;
 uint32_t gba_read_pad(void);             /* BTN_* mask incl. SYNTH_XY flag */
+void cutview_enter(void);                 /* debug cutscene viewer (cutview.c) */
 void gba_pacing_reset(void);             /* forget frame debt (after loads) */
 uint32_t gba_stack_used(void);          /* main stack high-water mark, bytes */
 void plat_init_hw(void);
