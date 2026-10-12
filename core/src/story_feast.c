@@ -110,6 +110,52 @@ static void crowd(int sw, int gy, int panel, uint32_t ct, int turned)
 }
 
 
+
+/* A raised arm with a big tuft of armpit hair: coarse strands, a few curly
+ * long ones, sweat drips and stink lines (hearts and sparkles on CUTE, sulphur
+ * and a fly on BRUTAL). (px,py) is the pit; the arm goes up and to the right
+ * when dir > 0, up and to the left when dir < 0. */
+static void pit(int px, int py, int size, int dir, uint32_t ct, int cute)
+{
+    int i, j;
+    for (i = 0; i <= 8; i++) {                                   /* the upper arm */
+        int ax = px + dir * i * size / 5, ay = py - i * size / 4;
+        ui_fill_circle(ax, ay, size / 2 + 3 - i / 4, PAL_RAMP(RAMP_BLOOD, 2));
+    }
+    for (i = 0; i <= 8; i++) {
+        int ax = px + dir * i * size / 5, ay = py - i * size / 4;
+        ui_fill_circle(ax, ay, size / 2 + 1 - i / 4, PAL_UI_RED);
+    }
+    ui_fill_ellipse(px, py + 3, size / 2, size / 4, PAL_RAMP(RAMP_BLOOD, 1));    /* the shadowed crease */
+    for (j = 0; j < 16; j++) {                                   /* the hair, thick and shaggy */
+        int a = 1000 + j * 72, len = size + (j * 7 % 5) * 3 + (j & 1 ? 4 : 0);
+        int ex = px + FIX2INT(fx_cos(a) * len), ey = py + FIX2INT(fx_sin(a) * len) / 2 + 4;
+        uint8_t hc = (j & 1) ? PAL_BLACK : PAL_RAMP(RAMP_WOOD, 1);
+        plat_line(px, py, ex, ey, hc);
+        plat_line(px + 1, py, ex + 1, ey, hc);
+        if ((j % 3) == 0) {                                      /* a curl at the end of the longer ones */
+            plat_line(ex, ey, ex + (j & 2 ? 4 : -4), ey + 3, hc);
+            plat_rect(ex + (j & 2 ? 4 : -5), ey + 3, 2, 2, hc);
+        }
+    }
+    {                                                            /* sweat drips off the hair */
+        int d = (int)(ct % 24u);
+        ui_fill_ellipse(px - size / 2, py + size / 2 + 4 + d, 2, 3, PAL_RAMP(RAMP_SKY, 7));
+        ui_fill_ellipse(px + size / 3, py + size / 2 + 2 + (d + 12) % 24, 2, 3, PAL_RAMP(RAMP_SKY, 7));
+    }
+    for (i = 0; i < 3; i++) {                                    /* the smell, rising */
+        int sx = px - size / 2 + i * size / 2, sy = py + size + 12 - (int)((ct * 2 + (uint32_t)i * 9) % 30u);
+        if (cute) { if (i & 1) ui_heart(sx, sy, 2, PAL_UI_PINK); else ui_sparkle(sx, sy, (int)((ct / 2 + (uint32_t)i) & 15), PAL_WHITE); }
+        else { plat_line(sx, sy, sx + ui_wave((int)ct + i * 5, 8, 3), sy + 8, PAL_RAMP(RAMP_SICK, 5)); }
+    }
+    if (!cute) {                                                 /* one fly, circling */
+        int fx = px + FIX2INT(fx_cos((int)ct * 90) * 20), fy = py + size + FIX2INT(fx_sin((int)ct * 90) * 10);
+        plat_rect(fx, fy, 3, 2, PAL_BLACK);
+        plat_rect(fx - 1, fy - 2, 2, 2, PAL_WHITE);
+        plat_rect(fx + 2, fy - 2, 2, 2, PAL_WHITE);
+    }
+}
+
 /* ---- gross-out close-ups: smash cut + hold + record scratch ------------------ */
 #define CU_BURP_A 30u
 #define CU_BURP_B 64u      /* panel 4 */
@@ -153,6 +199,7 @@ static int closeup(int panel, uint32_t pt, uint32_t ct)
             ui_fill_circle(bx, by, 4, PAL_RAMP(RAMP_WOOD, 6));
             ui_fill_circle(bx, by, 1, PAL_RAMP(RAMP_WOOD, 1));
         }
+        pit(sw - 52, 56, 26, 1, ct, cute);                                                  /* arm up, pit on show */
         ui_text_outline(cx - 12, sh - 40, "BUUURP", PAL_UI_GOLD, PAL_BLACK);
     } else if (panel == 5) {
         /* the gas cloud, extreme close-up: every fly, one bead of sweat */
@@ -190,6 +237,7 @@ static int closeup(int panel, uint32_t pt, uint32_t ct)
             plat_line(vx + 14 + p, vy + 24, vx + 6, vy + 46, PAL_RAMP(RAMP_VAPE, 2));
             plat_line(vx + 14 + p, vy + 24, vx + 28, vy + 38, PAL_RAMP(RAMP_VAPE, 2));
         }
+        pit(46, 64, 28, -1, ct, cute);                                                       /* a flexed arm: armpit hair */
         plat_rect(cx - gap, 0, gap * 2, sh, PAL_BLACK);                                      /* the seam */
         for (i = 0; i < sh; i += 10)                                                         /* cross-stitches */
             if ((i / 10) >= (int)t0 / 6) {                                                   /* popped from the top down */
