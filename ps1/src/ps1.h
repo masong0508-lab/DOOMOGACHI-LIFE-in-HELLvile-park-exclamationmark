@@ -71,6 +71,7 @@ extern uint32_t g_frame;          /* frames presented                    */
 extern volatile uint32_t g_loop_frames; /* game loop iterations (harness) */
 void model_set_look(const DoomoLook *l); /* engine test showcase */
 void hcmd_poll(void);                   /* harness mailbox, between frames */
+void cutview_enter(void);               /* debug cutscene viewer (cutview.c) */
 extern uint16_t g_last_draw_y;          /* VRAM y of the newest frame */
 void gfx_busy_banner(const char *msg);  /* "Saving..." while the BIOS blocks */
 void gfx_busy_end(void);                /* ... and remove it again */

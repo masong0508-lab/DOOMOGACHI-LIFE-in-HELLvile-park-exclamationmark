@@ -119,6 +119,9 @@ int main(void)
         }
     }
     core_doomo_init();
+    /* debug mode: hold SELECT during boot -> cutscene viewer (cutview.c) */
+    if (pad_read() & BTN_SELECT)
+        cutview_enter();
     for (;;) {
         uint32_t b;
         hcmd_poll();
