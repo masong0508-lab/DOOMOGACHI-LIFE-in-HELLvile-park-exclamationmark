@@ -53,14 +53,32 @@ static const Panel P_freeplay[] = {
     { 0, 0, NULL }
 };
 
+/* Feast of Rebuilding, outcome 1 (Grumbleguts pops). Beats are timed, so the
+ * panel's number here is its WHOLE length in ticks (see cs_dur). */
+static const Panel P_feast_pop[] = {
+    { -1, 150, "Hellvile Park, the Feast of Rebuilding. Gatekeeper Grumbleguts eats with his back to everyone, and the buffet is losing." },
+    { -1, 140, "Every eye in the park is on one thing. Every course, it gets bigger." },
+    { -1, 110, "\"Look who's full of himself, now?\"" },
+    { -1, 210, "An absurdly long hose. Surely that's enough. ...It keeps going. Hand over hand, and one big SLAP for a job well done." },
+    { -1, 100, "BURP. Not yet." },
+    { -1, 100, "...pfffrrrt. He rises an inch off the chair. Almost." },
+    { -1, 130, "Both at once! He sags. The crowd cheers. It's over!" },
+    { -1, 170, "The valve wins." },
+    { -1, 130, "POP! ...A last gurgle. \"Is there dessert?\"" },
+    { -1, 110, "\"...that's hot.\"" },
+    { -1, 120, NULL },
+    { 0, 0, NULL }
+};
+
 static const Panel *const scripts[CUT_COUNT] = {
-    P_ch1, P_ch1, P_ch1, P_ch1, P_arrival, P_fog, P_eruption, P_vapula, P_wall, P_freeplay, P_home
+    P_ch1, P_ch1, P_ch1, P_ch1, P_arrival, P_fog, P_eruption, P_vapula, P_wall, P_freeplay, P_home,
+    P_feast_pop
 };
 
 static const char *const cut_names[CUT_COUNT] = {
     "Chapter 1", "Chapter 2", "Chapter 3", "Chapter 4", "Arrival in HaHaland",
     "The Purple Fog", "The Gate Erupts", "Vapula Deflates", "The Wall Falls",
-    "Free Play", "Home Sweet Home"
+    "Free Play", "Home Sweet Home", "What an Ass"
 };
 
 const char *story_cutscene_name(int c) { return (c >= 0 && c < CUT_COUNT) ? cut_names[c] : ""; }
@@ -74,6 +92,13 @@ static int panel_count(void)
     int n = 0;
     while (scripts[cut][n].min_t) n++;
     return n;
+}
+
+/* ticks a panel stays up: the usual cutscenes hold min_t + 200, the Feast's
+ * comic beats are timed exactly (min_t is the whole length) */
+static uint32_t cs_dur(void)
+{
+    return (uint32_t)scripts[cut][panel].min_t + (cut == CUT_FEAST_POP ? 0u : 200u);
 }
 
 static void cs_end(void)
@@ -101,6 +126,7 @@ static void cs_enter(int arg)
     case CUT_VAPULA_DOWN: audio_music(SONG_VICTORY); break;
     case CUT_WALL_FALLS: audio_music(SONG_FESTIVAL); break;
     case CUT_FREEPLAY: audio_music(SONG_CREDITS); break;
+    case CUT_FEAST_POP: audio_music(SONG_FESTIVAL); break;
     default: break;
     }
 }
@@ -115,12 +141,17 @@ static void cs_update(void)
     if (cut == CUT_WALL_FALLS && panel == 0 && (pt % 16) == 8) audio_sfx(SFX_EXPLODE);
     if (cut == CUT_HOME && panel == 1 && (pt % 30) == 10) audio_sfx(SFX_EGG_CRACK);
     if (cut == CUT_FOG && panel == 2 && pt == 4) audio_sfx(SFX_POSSESS);
+    if (cut == CUT_FEAST_POP) {
+        feast_tick(panel, pt);
+        if (panel == 8 && pt == 8) audio_music(SONG_NONE);       /* silence after the pop */
+        if (panel == 10 && pt == 2) audio_music(SONG_OMINOUS);
+    }
     if (cut == CUT_VAPULA_DOWN && panel == 1 && pt == 10) audio_sfx(SFX_DEMON_DIE);
     if (btn_pressed(BTN_START)) { audio_sfx(SFX_CANCEL); cs_end(); return; }
     if ((btn_pressed(BTN_A) || btn_pressed(BTN_B)) && pt >= 12) {
-        pt = scripts[cut][panel].min_t + 200;     /* fall through below */
+        pt = cs_dur();                            /* fall through below */
     }
-    if (pt >= (uint32_t)scripts[cut][panel].min_t + 150 + 50) {
+    if (pt >= cs_dur()) {
         panel++;
         pt = 0;
         audio_sfx(SFX_BLIP);
@@ -521,6 +552,7 @@ static void cs_draw(void)
     case CUT_VAPULA_DOWN: draw_vapula(); break;
     case CUT_WALL_FALLS: draw_wall_falls(); break;
     case CUT_FREEPLAY: draw_freeplay(); break;
+    case CUT_FEAST_POP: feast_draw(panel, pt, ct); break;
     default: plat_clear(PAL_BLACK); break;
     }
     caption();

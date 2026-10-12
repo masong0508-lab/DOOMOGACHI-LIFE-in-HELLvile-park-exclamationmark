@@ -20,10 +20,10 @@
 static const char *const k_names[] = {
     "Chapter 1", "Chapter 2", "Chapter 3", "Chapter 4", "Arrival in HaHaland",
     "The Purple Fog", "The Gate Erupts", "Vapula Deflates", "The Wall Falls",
-    "Free Play", "Home Sweet Home"
+    "Free Play", "Home Sweet Home", "What an Ass (Feast: pop)"
 };
 #define NCUT ((int)(sizeof k_names / sizeof k_names[0]))
-_Static_assert(CUT_COUNT == 11, "cutview.c: update k_names for the new CUT_* ids");
+_Static_assert(CUT_COUNT == 12, "cutview.c: update k_names for the new CUT_* ids");
 
 static int s_sel;
 static int s_played;

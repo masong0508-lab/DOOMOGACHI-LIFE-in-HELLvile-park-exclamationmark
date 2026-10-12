@@ -47,6 +47,7 @@ const DoomoUnlock doomo_unlocks_story[] = {
     CUTU(CUT_WALL_FALLS, "The Wall Falls", "Bring both towns together"),
     CUTU(CUT_FREEPLAY, "Happily Ever After", "Finish Story Mode"),
     CUTU(CUT_HOME, "Home Sweet Home", "Move into your cottage"),
+    CUTU(CUT_FEAST_POP, "What an Ass", "Let the Feast of Rebuilding go too far"),
 
     MISC(USTORY_CH1_DONE, 0, "Welcome Home", "Finish Chapter 1"),
     MISC(USTORY_CH2_DONE, 1, "Vapor Buster", "Finish Chapter 2"),

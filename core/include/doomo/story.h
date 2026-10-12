@@ -98,7 +98,9 @@ int  story_beat_chapter(int beat);
  * continues the plot. */
 enum { CUT_CHAPTER1, CUT_CHAPTER2, CUT_CHAPTER3, CUT_CHAPTER4,
        CUT_ARRIVAL, CUT_FOG, CUT_ERUPTION, CUT_VAPULA_DOWN, CUT_WALL_FALLS,
-       CUT_FREEPLAY, CUT_HOME, CUT_COUNT };
+       CUT_FREEPLAY, CUT_HOME,
+       CUT_FEAST_POP,       /* Feast of Rebuilding: "What an Ass" (Grumbleguts pops) */
+       CUT_COUNT };
 const char *story_cutscene_name(int cut);
 
 /* The overworld map the story is on (MAPID_*), and teleporting. */

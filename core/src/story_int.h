@@ -109,6 +109,9 @@ void story_say_then(void (*done)(void));            /* after the queue   */
 void story_choice(int who, const char *q, const char *const *opts, int n,
                   void (*done)(int));
 void story_fmt(char *out, int cap, const char *tmpl);
+/* story_feast.c: CUT_FEAST_POP's picture and sound (called by cutscene.c) */
+void feast_tick(int panel, uint32_t pt);
+void feast_draw(int panel, uint32_t pt, uint32_t ct);
 extern int16_t story_fmt_target;                     /* @T / @D subject  */
 /* 1 while a conversation the story started is still running. */
 int  story_talking(void);
@@ -209,7 +212,7 @@ void story_reward(int money, int item, int count, int unlock_id);
 enum {
     USTORY_UNITED_PARK = 608, USTORY_HELLVILE_VISITS, USTORY_NEW_GAME_PLUS,
     USTORY_SONG_FIRST = 611,            /* + SONG_* - 1 (19 songs)          */
-    USTORY_CUT_FIRST = 632,             /* + CUT_* (11 cutscenes)           */
+    USTORY_CUT_FIRST = 632,             /* + CUT_* (12 cutscenes)           */
     USTORY_CH1_DONE = 644, USTORY_CH2_DONE, USTORY_CH3_DONE, USTORY_CH4_DONE,
     USTORY_ALL_SIDE, USTORY_EXPLORER, USTORY_SECRETS, USTORY_PACIFIST,
     USTORY_FRIEND_OF_ALL, USTORY_BRUTAL_START, USTORY_CUTE_START,
