@@ -10,6 +10,9 @@
  * Panels (cutscene.c): 0 feast, 1 eyes on him, 2 "Look who's full of
  * himself, now?", 3 the hose, 4 burp (false pop 1), 5 fart (false pop 2),
  * 6 both at once, 7 the valve wins, 8 POP, 9 "...that's hot.", 10 title.
+ * Three Ren & Stimpy style GROSS-OUT CLOSE-UPS smash-cut in (white flash,
+ * hold, record scratch) over panels 4, 5 and 7: the burp, the gas cloud and
+ * the straining belly / harness strap (see closeup()). Cartoon only.
  */
 #include "story_int.h"
 
@@ -103,6 +106,104 @@ static void crowd(int sw, int gy, int panel, uint32_t ct, int turned)
     }
 }
 
+
+/* ---- gross-out close-ups: smash cut + hold + record scratch ------------------ */
+#define CU_BURP_A 30u
+#define CU_BURP_B 64u      /* panel 4 */
+#define CU_GAS_A  62u
+#define CU_GAS_B  94u      /* panel 5 */
+#define CU_BELLY_A 90u
+#define CU_BELLY_B 126u    /* panel 7 */
+
+/* returns 1 when it drew a full-screen close-up instead of the scene */
+static int closeup(int panel, uint32_t pt, uint32_t ct)
+{
+    int sw = plat_screen_w(), sh = plat_screen_h(), cx = sw / 2, cy = sh / 2, i;
+    int cute = F_CUTE;
+    uint32_t t0;
+
+    if (panel == 4 && pt >= CU_BURP_A && pt < CU_BURP_B) t0 = pt - CU_BURP_A;
+    else if (panel == 5 && pt >= CU_GAS_A && pt < CU_GAS_B) t0 = pt - CU_GAS_A;
+    else if (panel == 7 && pt >= CU_BELLY_A && pt < CU_BELLY_B) t0 = pt - CU_BELLY_A;
+    else return 0;
+    if (t0 < 2) { plat_rect(0, 0, sw, sh, PAL_WHITE); return 1; }      /* the smash cut */
+
+    if (panel == 4) {
+        /* his face mid-burp: huge open mouth, wobbling uvula, bagel bits */
+        int mw = sw / 3 + (int)DOOMO_MIN(t0, 10u), mh = sh / 4 + (int)DOOMO_MIN(t0, 10u) / 2;
+        int w = ui_wave((int)ct, 6, 3);
+        plat_rect(0, 0, sw, sh, PAL_UI_RED);
+        ui_fill_circle(cx - sw / 3, cy - sh / 5, sh / 6, PAL_RAMP(RAMP_BLOOD, 2));          /* puffed cheeks */
+        ui_fill_circle(cx + sw / 3, cy - sh / 5, sh / 6, PAL_RAMP(RAMP_BLOOD, 2));
+        ui_fill_ellipse(cx, cy, mw + 3, mh + 3, PAL_BLACK);
+        ui_fill_ellipse(cx, cy, mw, mh, PAL_RAMP(RAMP_BLOOD, 0));
+        ui_fill_ellipse(cx, cy + mh * 2 / 3, mw * 2 / 3, mh / 3, PAL_RAMP(RAMP_FLESH, 5));  /* tongue */
+        for (i = -3; i <= 3; i++) {                                                          /* fangs */
+            int fx = cx + i * mw / 4;
+            plat_rect(fx - 2, cy - mh + 4 + (i * i) / 3, 5, 9 + (i & 1) * 6, PAL_WHITE);
+        }
+        plat_rect(cx - 2, cy - mh + 8, 5, mh / 2 + w, PAL_RAMP(RAMP_FLESH, 6));              /* uvula wobbling */
+        ui_fill_circle(cx, cy - mh + 8 + mh / 2 + w, 5, PAL_RAMP(RAMP_FLESH, 7));
+        for (i = 0; i < 9; i++) {                                                            /* bagel bits */
+            int a = i * 227 + 100, rr = (int)t0 * (3 + i % 4) + mh / 2;
+            int bx = cx + FIX2INT(fx_cos(a) * rr), by = cy + FIX2INT(fx_sin(a) * rr) / 2 + (int)t0 * (int)t0 / 30;
+            ui_fill_circle(bx, by, 4, PAL_RAMP(RAMP_WOOD, 6));
+            ui_fill_circle(bx, by, 1, PAL_RAMP(RAMP_WOOD, 1));
+        }
+        ui_text_outline(cx - 12, sh - 40, "BUUURP", PAL_UI_GOLD, PAL_BLACK);
+    } else if (panel == 5) {
+        /* the gas cloud, extreme close-up: every fly, one bead of sweat */
+        plat_rect(0, 0, sw, sh, cute ? PAL_RAMP(RAMP_PASTEL_PINK, 6) : PAL_RAMP(RAMP_SICK, 2));
+        for (i = 0; i < 7; i++) {
+            int bx = cx - sw / 3 + i * sw / 9 + ui_wave((int)ct + i * 7, 30, 4);
+            int by = cy - 6 + (i % 3) * 10 - ui_wave((int)ct + i * 5, 24, 4);
+            ui_fill_circle(bx, by, sh / 6 + (i & 1) * 6, cute ? PAL_RAMP(RAMP_MINT, 5) : PAL_RAMP(RAMP_SICK, 6));
+            ui_fill_circle(bx - 6, by - 8, sh / 12, cute ? PAL_RAMP(RAMP_MINT, 7) : PAL_RAMP(RAMP_SICK, 7));
+        }
+        for (i = 0; i < 16; i++) {
+            int a = i * 163 + (int)ct * (4 + i % 3), rr = 36 + (i * 11) % 60;
+            int fx = cx + FIX2INT(fx_cos(a) * rr), fy = cy + FIX2INT(fx_sin(a) * rr) / 2;
+            if (cute) ui_sparkle(fx, fy, (int)((ct / 2 + (uint32_t)i) & 15), PAL_WHITE);
+            else {                                                       /* a fly, wings and all */
+                plat_rect(fx, fy, 3, 2, PAL_BLACK);
+                plat_rect(fx - 1, fy - 2, 2, 2, PAL_WHITE);
+                plat_rect(fx + 2, fy - 2, 2, 2, PAL_WHITE);
+            }
+        }
+        if (cute) for (i = 0; i < 4; i++) ui_heart(cx - 40 + i * 28, cy - 20 + (i & 1) * 22, 5, PAL_UI_PINK);
+        ui_fill_circle(sw - 34, sh - 34, 20, PAL_RAMP(RAMP_FLESH, 6));                      /* the culprit's nose */
+        ui_fill_ellipse(sw - 34, sh - 36 + (int)DOOMO_MIN(t0, 24u) / 4, 3, 5, PAL_RAMP(RAMP_SKY, 7));   /* sweat bead */
+        plat_rect(sw - 35, sh - 40 + (int)DOOMO_MIN(t0, 24u) / 4, 1, 2, PAL_WHITE);
+    } else {
+        /* the belly skin stretched tight: veins, a stitch-seam about to give,
+         * and the harness strap going fibre by fibre */
+        int gap = 1 + (int)t0 / 4, snap = (int)t0 * 14 / 36;
+        plat_rect(0, 0, sw, sh, PAL_RAMP(RAMP_FLESH, 3));
+        ui_fill_ellipse(cx, cy, sw / 2 + 8, sh / 2 + 6, PAL_UI_RED);
+        ui_fill_ellipse(cx - 20, cy - 18, sw / 4, sh / 6, PAL_RAMP(RAMP_LAVA, 6));          /* shine */
+        for (i = 0; i < 9; i++) {                                                            /* veins, pulsing */
+            int vx = 20 + i * (sw - 40) / 8, vy = 14 + ((i * 37) % 50), p = ui_wave((int)ct + i * 6, 14, 1);
+            plat_line(vx, vy, vx + 14 + p, vy + 24, PAL_RAMP(RAMP_VAPE, 2));
+            plat_line(vx + 14 + p, vy + 24, vx + 6, vy + 46, PAL_RAMP(RAMP_VAPE, 2));
+            plat_line(vx + 14 + p, vy + 24, vx + 28, vy + 38, PAL_RAMP(RAMP_VAPE, 2));
+        }
+        plat_rect(cx - gap, 0, gap * 2, sh, PAL_BLACK);                                      /* the seam */
+        for (i = 0; i < sh; i += 10)                                                         /* cross-stitches */
+            if ((i / 10) >= (int)t0 / 6) {                                                   /* popped from the top down */
+                plat_line(cx - gap - 6, i, cx + gap + 6, i + 8, PAL_RAMP(RAMP_BONE, 5));
+                plat_line(cx - gap - 6, i + 8, cx + gap + 6, i, PAL_RAMP(RAMP_BONE, 5));
+            }
+        plat_rect(0, cy + 24, sw, 22, PAL_BLACK);                                            /* the strap */
+        for (i = 0; i < 14; i++) {                                                           /* its fibres */
+            int fy = cy + 25 + i * 21 / 14, broke = i < snap;
+            plat_rect(0, fy, broke ? cx - 30 - i : sw, 1, PAL_RAMP(RAMP_STEEL, 2 + (i & 3)));
+            if (broke) plat_rect(cx + 30 + i * 2, fy + ((int)ct & 1) * 2, sw - cx - 30 - i * 2, 1, PAL_RAMP(RAMP_STEEL, 2 + (i & 3)));
+        }
+        if (t0 > 20) ui_text_outline(cx - 14, 6, "creeeak", PAL_WHITE, PAL_BLACK);
+    }
+    return 1;
+}
+
 void feast_tick(int panel, uint32_t pt)
 {
     switch (panel) {
@@ -112,10 +213,15 @@ void feast_tick(int panel, uint32_t pt)
         if (pt == 20 || pt == 70 || pt == 120) audio_sfx(SFX_SQUEAK);
         if (pt == 150) audio_sfx(SFX_SPLAT);                            /* the SLAP       */
         break;
-    case 4: if (pt == 30) audio_sfx(SFX_POOP); break;                  /* burp           */
-    case 5: if (pt == 40) audio_sfx(SFX_POOP); break;
+    case 4: if (pt == CU_BURP_A) { audio_sfx(SFX_ERROR); audio_sfx(SFX_POOP); } break;   /* burp           */
+    case 5: if (pt == 40) audio_sfx(SFX_POOP);
+            if (pt == CU_GAS_A) audio_sfx(SFX_ERROR);
+            break;
     case 6: if (pt == 50) { audio_sfx(SFX_POOP); audio_sfx(SFX_SPLASH); } break;
-    case 7: if ((pt % 30) == 0) audio_sfx(SFX_SQUEAK); break;
+    case 7: if ((pt % 30) == 0) audio_sfx(SFX_SQUEAK);
+            if (pt == CU_BELLY_A) audio_sfx(SFX_ERROR);
+            if (pt > CU_BELLY_A && pt < CU_BELLY_B && (pt % 6) == 0) audio_sfx(SFX_SQUEAK);
+            break;
     case 8: if (pt == 4) { audio_sfx(SFX_EXPLODE); audio_sfx(F_CUTE ? SFX_CONFETTI : SFX_SPLAT); }
             if (pt == 70) audio_sfx(SFX_EAT);                          /* last gurgle    */
             break;
@@ -148,6 +254,8 @@ void feast_draw(int panel, uint32_t pt, uint32_t ct)
         }
         return;
     }
+
+    if (closeup(panel, pt, ct)) return;                  /* smash-cut gross-out close-ups */
 
     /* park: bunting, sky, grass, buffet table */
     plat_rect(0, 0, sw, gy, PAL_RAMP(RAMP_SKY, 6));
