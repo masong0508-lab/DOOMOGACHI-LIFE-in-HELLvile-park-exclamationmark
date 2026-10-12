@@ -554,6 +554,27 @@ static void music_tick(void)
     }
 }
 
+/* Grumbleguts' fight barks: Hazbin-style teasing about the body and the gate,
+ * then, when he is nearly beaten, the antihero's soft spot for his friends */
+static const char *const gg_barks[6] = {
+    "Eyes up here, hon. ...No, stay down there.",
+    "Like what you see? Everybody does.",
+    "Careful, I clench harder than the gate.",
+    "That all you got? Don't be shy, go deeper.",
+    "Flex first, shoot second, sugar.",
+    "This belly has more curves than the map."
+};
+
+static void gg_bark(const LvTrack *t)
+{
+    const DoomoActor *a = &doomo_actors[t->actor];
+    if (a->hp < t->hp_max / 4) {
+        if (t->t % 400 == 0) combat_toast("Stay behind me, friends. Don't tell anyone.");
+    } else if (t->t % 400 == 200) {
+        combat_toast(gg_barks[(t->t / 400) % 6]);
+    }
+}
+
 void lv_runtime_post(void)
 {
     int i;
@@ -584,6 +605,7 @@ void lv_runtime_post(void)
         if ((b->flags & LBF_BLINK) && t->t % 150 == 75) blink(t);
         if ((b->flags & LBF_ORGAN) && t->t % 75 == 40) organ_fire(t);
         if ((b->flags & LBF_PORTALS) && t->t % 180 == 90) portal_spawn(b);
+        if (t->boss == LB_GRUMBLEGUTS) gg_bark(t);
     }
     music_tick();
 }
