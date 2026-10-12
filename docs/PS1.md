@@ -641,3 +641,10 @@ designed (verified with a harness screenshot of the arena).
   `map_load()`.
 * RAM is shared by code, const data and state: prefer small tables,
   share buffers, and keep scene state small.
+* Platform-specific cutscene detail: the Feast of Rebuilding "rear push"
+  close shot (`push_shot()` in `core/src/story_feast.c`, panel 3) checks
+  `plat_name()` through `on_ps1()`. On the PS1 the brass valve in the crease
+  is left out and the hose simply disappears into it, which saves three
+  `plat_rect` calls per frame on the 2D layer. GBA and native builds keep
+  the valve. The close shot is otherwise identical on all platforms, and
+  any new detail added to it should follow the same pattern.
