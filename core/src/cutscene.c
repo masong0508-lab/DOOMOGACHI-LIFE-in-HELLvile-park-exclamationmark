@@ -56,11 +56,11 @@ static const Panel P_freeplay[] = {
 /* Feast of Rebuilding, outcome 1 (Grumbleguts pops). Beats are timed, so the
  * panel's number here is its WHOLE length in ticks (see cs_dur). */
 static const Panel P_feast_pop[] = {
-    { -1, 150, "Hellvile Park, the Feast of Rebuilding. Gatekeeper Grumbleguts eats like every bite is foreplay: slow, deliberate, tongue along the fork, eyes on whoever is watching. Everyone is watching." },
+    { -1, 150, "Hellvile Park, the Feast of Rebuilding. Gatekeeper Grumbleguts eats like every bite is foreplay: slow, deliberate, tongue along the fork, eyes on whoever is watching. He has slipped his number to the waiter, the band and one gazebo." },
     { -1, 140, "Every eye in the park is on one thing, and every course it grows heavier. Shriekra and Spearmint, his exes, are both here, both looking away, both failing. He holds each gaze a beat too long." },
-    { -1, 110, "\"Look who's full of himself, now?\" He leans back, slow. \"Born this way, sugar. Come closer and I'll show you how it fits.\"" },
-    { -1, 210, "A hose, impossibly long, pulled taut and slick in his grip. \"Is that a hose or are you just glad to see me?\" ...It keeps going. \"Slower, hon. I like to savor it.\" One slow, heavy SLAP. Nobody breathes." },
-    { -1, 100, "A low, wet belch rolls out of him and he does not apologize. \"Pardon me.\" His eyes find the nearest imp and stay there. The imp does not look away." },
+    { -1, 110, "\"Look who's full of himself, now?\" He leans back, slow. \"Born this way, sugar. Come closer and I'll show you how it fits. Form a line, loves, there's plenty to go around.\"" },
+    { -1, 210, "A hose, impossibly long, pulled taut and slick in his grip. \"Is that a hose or are you just glad to see me?\" ...It keeps going. \"Slower, hon. I like to savor it.\" One slow, heavy SLAP. Three hands go up." },
+    { -1, 100, "A low, wet belch rolls out of him and he does not apologize. \"Pardon me.\" His eyes find the nearest imp and stay there. The imp winks back." },
     { -1, 100, "...pfffrrrt. A deep squelch he plainly enjoys. He rises an inch off the chair, lips parted. \"Mmm. That one was a love letter.\"" },
     { -1, 130, "Both at once. He sags, flushed and glistening, a long shudder through the belly. \"Ohhh, finally.\" The crowd goes quiet, then cheers. Somebody lights a cigarette. Somebody asks where the afterparty is." },
     { -1, 170, "The valve strains. The camera cannot look away from the belly. The harness groans. \"Don't stop,\" he breathes, to no one and to everyone. The whole park is hot and very still." },
