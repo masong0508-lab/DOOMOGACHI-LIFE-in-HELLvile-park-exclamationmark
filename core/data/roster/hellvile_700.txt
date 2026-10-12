@@ -625,26 +625,26 @@ phrase="Spooky time!"
 hunger=57 happy=61 hygiene=75 energy=88 health=81 sanity=56 corruption=53 social=31
 mood=OK activity=WANDERING
 
-[729] Bunkerton
+[729] Grumbleguts
 # archetype: gate_guards (Hellvile)
-job: Gate Guard
-bio: Lives in a bunker. Comes out for parades.
-flags=HELLBORN
-pronoun=HE romance=ANY birthday=JAN-23
-species=GHOUL body=STOCKY height=10 build=4 skin=LAVENDER head=OVAL head_size=11
-eyes=ANGRY eye_color=CHERRY eye_size=13 eye_spacing=7 eye_height=7 eye_tilt=9 eye_count=2
-brows=NONE brow_height=5 nose=PIG nose_size=6 mouth=SMIRK mouth_size=4 fangs=2 cheeks=SCAR
-hair=BALD hair_color=BLOOD highlight=MAGENTA facial_hair=NONE
-ears=ELF horns=NONE horn_color=BLOOD horn_size=8 tail=NONE wings=BAT halo=NONE
-marking=NONE marking_color=RUST aura=NONE
-top=ARMOR top_color=JET pattern=CAMO pattern_color=BONE bottom=PANTS bottom_color=BONE
-shoes=COMBAT shoes_color=BONE hat=MARINE_HELMET hat_color=BONE accessory=NONE accessory_color=JET
-movement=7 speech=11 expression=5 attitude=6 quirk=8
-pitch=0 speed=21 quality=2 intonation=25 accent=31
-food="Ramen" hates="Cupcakes" hobby="Graffiti" music="Industrial" color=JET fear="Church Bells"
-phrase="The void says hi."
-hunger=87 happy=40 hygiene=46 energy=81 health=84 sanity=73 corruption=50 social=66
-mood=OK activity=WANDERING
+job: Gatekeeper
+bio: Keeps the gate and a little black book. Open late.
+flags=HELLBORN traits=NIGHT_OWL
+pronoun=HE romance=ANY birthday=FEB-14
+species=IMP body=ROUND height=11 build=14 skin=CHERRY head=OVAL head_size=11
+eyes=LASHES eye_color=LEMON eye_size=12 eye_spacing=8 eye_height=7 eye_tilt=6 eye_count=2
+brows=ARCHED brow_height=8 nose=PIG nose_size=7 mouth=BIG_GRIN mouth_size=12 fangs=3 cheeks=BLUSH,BEAUTY_MARK
+hair=BALD hair_color=JET highlight=NONE facial_hair=NONE
+ears=ELF horns=DEVIL_TALL horn_color=JET horn_size=11 tail=SPIKED wings=BAT halo=NONE
+marking=NONE marking_color=JET aura=HEARTS
+top=CROP_TOP top_color=JET pattern=SOLID pattern_color=BUBBLEGUM bottom=SHORTS bottom_color=JET
+shoes=HOOVES shoes_color=JET hat=NONE hat_color=JET accessory=CHAINS accessory_color=SILVER
+movement=9 speech=15 expression=15 attitude=14 quirk=13
+pitch=6 speed=12 quality=14 intonation=22 accent=4
+food="Brimstone Bagels" hates="Cupcakes" hobby="Dancing" music="Disco" color=CHERRY fear="Being Alone"
+phrase="Sulfur kisses!"
+hunger=40 happy=88 hygiene=70 energy=90 health=95 sanity=78 corruption=45 social=99
+mood=HAPPY activity=WANDERING
 
 [730] Graveley
 # archetype: ghoul_landlords (Hellvile)

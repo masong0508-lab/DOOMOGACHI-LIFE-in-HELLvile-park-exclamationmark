@@ -120,7 +120,10 @@ int sim_confess(int from, int to, int bonus)
         sim_stat_add(a, STAT_HAPPY, 25);
         sim_stat_add(b, STAT_HAPPY, 20);
         sim_s.stats.dates++;
-        if (cross(from, to))
+        if (from == ROSTER_ID_GRUMBLEGUTS || to == ROSTER_ID_GRUMBLEGUTS)
+            sim_newsf("%s is dating Grumbleguts. Gate's shut. Don't knock.",
+                      from == ROSTER_ID_GRUMBLEGUTS ? b->name : a->name);
+        else if (cross(from, to))
             sim_newsf("Love over the wall! %s and %s are dating!", a->name, b->name);
         else
             sim_newsf("%s confessed to %s... and it's a YES! New couple!", a->name, b->name);
@@ -158,7 +161,10 @@ int sim_propose(int from, int to, int bonus)
         sim_set_transient(to, TR_ECSTATIC, 15);
         sim_s.stats.marriages++;
         progress_add(PROG_MARRIAGES, 1);
-        if (cross(from, to))
+        if (from == ROSTER_ID_GRUMBLEGUTS || to == ROSTER_ID_GRUMBLEGUTS)
+            sim_newsf("%s wed Grumbleguts! Suite closed till Monday.",
+                      from == ROSTER_ID_GRUMBLEGUTS ? b->name : a->name);
+        else if (cross(from, to))
             sim_newsf("WEDDING BELLS across the wall: %s + %s!", a->name, b->name);
         else
             sim_newsf("%s proposed to %s - and they said YES! Wedding!", a->name, b->name);

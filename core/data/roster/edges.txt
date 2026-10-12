@@ -938,7 +938,7 @@ DJ Echo     | Flutterby   | RIVAL        |  -48
 Parcelbat   | Sonar       | ACQUAINTANCE |   22
 Rustbucket  | Boltsy      | FRIEND       |   37
 Bailey Bail | Kickflop    | FRIEND       |   54
-Gatebone    | Bunkerton   | FRIEND       |   59
+Gatebone    | Grumbleguts | FRIEND       |   59
 Hoofsworth  | Shinehorn   | FRIEND       |   61
 Droney      | Maggotina   | ACQUAINTANCE |   18
 Droney      | Swatsy      | RIVAL        |  -42
@@ -1025,7 +1025,7 @@ Smashley    | Wobblewisp  | FRIEND       |   65
 Tinkerat    | Scrapheap   | FRIEND       |   52
 Stitchella  | Midnyx      | FRIEND       |   37
 Funhouse    | Giggleguts  | ACQUAINTANCE |   18
-Bunkerton   | Watchtower  | FRIEND       |   60
+Grumbleguts | Watchtower  | FRIEND       |   60
 Graveley    | Lease Liz   | ACQUAINTANCE |   20
 Grimbert    | Mallgoth    | FRIEND       |   65
 Jellybone   | Glorp       | FRIEND       |   53
@@ -1569,3 +1569,8 @@ Waitabit    | Jackpotty   | FRIEND       |   56 | crush: Waitabit
 Bubbleton   | Lampwick    | ACQUAINTANCE |   22 | crush: Bubbleton
 Zephyrine   | Knick Knack | ACQUAINTANCE |   15 | crush: Knick Knack
 Switchback  | Wagerine    | FRIEND       |   54 | crush: Switchback
+
+# ---- Grumbleguts: hell's biggest flirt (exes, a hopeless crush on the Gate) --
+Grumbleguts | Shriekra    | EX           |  -12
+Grumbleguts | Spearmint   | EX           |   -6
+Grumbleguts | Gatekeep    | ACQUAINTANCE |    4 | crush: Gatekeep

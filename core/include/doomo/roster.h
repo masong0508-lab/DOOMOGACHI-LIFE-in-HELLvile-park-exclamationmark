@@ -62,6 +62,7 @@ extern const uint16_t doomo_story_npc[NPC_COUNT];
 #define ROSTER_ID_DR_BLOOM      111  /* "Dr. Bloom"  ghoul doctor           */
 #define ROSTER_ID_VEX           666  /* "Vex"  Cloud Nine Vapor, Hellvile    */
 #define ROSTER_ID_LORD_VAPULA   999  /* "Lord Vapula"  Duke of the Ninth Cloud */
+#define ROSTER_ID_GRUMBLEGUTS   729  /* "Grumbleguts"  imp gatekeeper, an adult who can date and marry */
 
 /* Authored character traits that the story and life sim can use. They are
  * not stored in DoomoResident (and so not in saves): they describe who a
