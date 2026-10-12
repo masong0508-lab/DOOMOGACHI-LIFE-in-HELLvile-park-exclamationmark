@@ -13,7 +13,8 @@
  * in three heaves until it comes loose with a SHLORP (see hose_shot()).
  * Panels (cutscene.c): 0 feast, 1 eyes on him, 2 "Look who's full of
  * himself, now?", 3 the hose, 4 burp (false pop 1), 5 fart (false pop 2),
- * 6 both at once, 7 the valve wins, 8 POP, 9 "...that's hot.", 10 title.
+ * 6 both at once, 7 the valve wins, 8 POP, 9 "...that's hot.", 10 the candlelit
+ * afterglow, 11 the slow look into the lens (epilogue()), 12 title.
  * Three Ren & Stimpy style GROSS-OUT CLOSE-UPS smash-cut in (white flash,
  * hold, record scratch) over panels 4, 5 and 7: the burp, the gas cloud and
  * the straining belly / harness strap (see closeup()). Cartoon only.
@@ -704,10 +705,110 @@ void feast_tick(int panel, uint32_t pt)
             if (pt == 100) audio_sfx(SFX_EAT);                         /* last gurgle    */
             break;
     case 9: if (pt == 24) audio_sfx(SFX_ERROR); if (pt == 30) audio_sfx(SFX_SPLAT); break;
-    case 10: if (pt == 4) audio_sfx(SFX_BELL); break;
+    case 10: if (pt == 20 || pt == 100) audio_sfx(SFX_LOVE);
+             if (pt == 60) audio_sfx(SFX_SPARKLE);
+             break;
+    case 11: if (pt == 30) audio_sfx(SFX_LOVE);
+             if (pt == 66) audio_sfx(SFX_SPARKLE);                       /* the slow wink  */
+             break;
+    case 12: if (pt == 4) audio_sfx(SFX_BELL); break;
     default: break;
     }
 }
+
+/* ---- epilogue: candlelit, slow, sultry (panels 10 and 11) -------------------------
+ * Night in the park, a lit-up table, a drifting thread of smoke, the crowd still
+ * there and still swooning. Then a close-up: half-lidded, one slow wink, smoke
+ * breathed across the lens, an iris closing. Cartoon only, nothing below the
+ * shoulders in the close-up. */
+static void candles(int x, int y, uint32_t ct)
+{
+    int i;
+    for (i = 0; i < 3; i++) {
+        int cx = x + i * 12, h = 8 + (i & 1) * 4, fl = ui_wave((int)ct * 3 + i * 5, 9, 1);
+        ui_fill_circle(cx + 2, y - h - 8, 8, PAL_RAMP(RAMP_LAVA, 1));                       /* glow */
+        plat_rect(cx, y - h, 4, h, PAL_RAMP(RAMP_BONE, 6));
+        ui_fill_ellipse(cx + 2 + fl, y - h - 3, 2, 3, PAL_UI_GOLD);
+    }
+}
+
+static void smoke(int x, int y, int rise, uint32_t ct)
+{
+    int i;
+    for (i = 0; i < 6; i++) {
+        int yy = y - (int)((ct * 2 + (uint32_t)i * 14) % (uint32_t)rise);
+        ui_fill_circle(x + ui_wave((int)ct + i * 9, 24, 5 + i), yy, 2 + i / 2, PAL_RAMP(RAMP_STONE, 6));
+    }
+}
+
+static void epilogue(int panel, uint32_t pt, uint32_t ct)
+{
+    int sw = plat_screen_w(), sh = plat_screen_h(), gy = sh * 3 / 4, i, t = (int)pt;
+    int cx = sw / 2 - 20, cy = gy - 56;
+    uint8_t dk = PAL_RAMP(RAMP_BLOOD, 2), md = PAL_UI_RED, lt = PAL_RAMP(RAMP_LAVA, 6);
+
+    if (panel == 10) {
+        plat_rect(0, 0, sw, gy, PAL_RAMP(RAMP_VAPE, 0));
+        plat_rect(0, gy, sw, sh - gy, PAL_RAMP(RAMP_GRASS, 1));
+        ui_fill_circle(sw - 46, 40, 16, PAL_RAMP(RAMP_BONE, 7));                           /* moon */
+        ui_fill_circle(sw - 40, 36, 14, PAL_RAMP(RAMP_VAPE, 0));
+        for (i = 0; i < 9; i++) ui_sparkle((i * 47) % sw, 14 + (i * 23) % 50, (int)((ct / 3 + (uint32_t)i * 3) & 15), PAL_WHITE);
+        plat_rect(8, gy - 26, 70, 6, PAL_RAMP(RAMP_WOOD, 3));                               /* the table, lit */
+        plat_rect(12, gy - 20, 4, 22, PAL_RAMP(RAMP_WOOD, 1));
+        plat_rect(68, gy - 20, 4, 22, PAL_RAMP(RAMP_WOOD, 1));
+        candles(18, gy - 26, ct);
+        plat_rect(cx - 24, gy - 14, 60, 5, PAL_RAMP(RAMP_WOOD, 3));                         /* his chair */
+        plat_rect(cx - 20, gy - 10, 8, 14, PAL_RAMP(RAMP_WOOD, 1));
+        plat_rect(cx + 22, gy - 10, 8, 14, PAL_RAMP(RAMP_WOOD, 1));
+        grumble(cx, cy, 2 + ui_wave((int)ct, 60, 2), ui_wave((int)ct, 64, 2), ct, 1);       /* slow breathing, slow sway */
+        plat_rect(cx - 36, cy - 38, 8, 2, PAL_RAMP(RAMP_BONE, 6));                          /* the cigarette */
+        plat_rect(cx - 37, cy - 38, 2, 2, PAL_UI_GOLD);
+        smoke(cx - 38, cy - 40, 50, ct);
+        crowd(sw, gy, 1, ct, 0);
+        if (t > 20 && t < 110) ui_text_outline(cx - 56, cy - 70 - t / 8, "mmm~", PAL_UI_PINK, PAL_BLACK);
+        for (i = 0; i < 3; i++) ui_heart(cx + 50 + i * 20, cy - 20 - (int)((ct + (uint32_t)i * 17) % 40u), 3, PAL_UI_PINK);
+        return;
+    }
+    /* panel 11: the close-up, lit by candle glow, straight into the lens */
+    {
+        int hr = sh / 3 + (int)DOOMO_MIN(pt / 4, 16u), wk = t >= 60 && t < 78;
+        int lid = t < 60 ? hr / 6 : (wk ? hr / 5 : hr / 7);
+        plat_rect(0, 0, sw, sh, PAL_RAMP(RAMP_BLOOD, 0));
+        ui_fill_circle(cx + 20, cy, hr + 30, PAL_RAMP(RAMP_LAVA, 0));                     /* warm glow */
+        plat_line(cx + 20 - hr * 2 / 3, cy - hr * 3 / 4, cx + 20 - hr, cy - hr - 14, PAL_RAMP(RAMP_BONE, 6));
+        plat_line(cx + 20 + hr * 2 / 3, cy - hr * 3 / 4, cx + 20 + hr, cy - hr - 14, PAL_RAMP(RAMP_BONE, 6));
+        ui_fill_circle(cx + 20, cy, hr + 2, dk);
+        ui_fill_circle(cx + 20, cy, hr, md);
+        ui_fill_circle(cx + 20 - hr / 3, cy - hr / 2, hr / 8, lt);
+        for (i = -1; i <= 1; i += 2) {
+            int px = cx + 20 + i * hr / 3, py = cy - hr / 5;
+            if (wk && i < 0) {                                                            /* the slow wink */
+                plat_line(px - hr / 5, py, px + hr / 5, py + 2, PAL_BLACK);
+                plat_line(px - hr / 5, py + 1, px + hr / 5, py + 3, PAL_BLACK);
+            } else {
+                ui_fill_ellipse(px, py, hr / 5 + 2, hr / 7 + 1, PAL_WHITE);
+                ui_fill_circle(px, py + 1, hr / 12 + 1, PAL_BLACK);
+                plat_rect(px - hr / 5 - 2, py - hr / 7 - 2, hr * 2 / 5 + 5, lid, md);     /* heavy lids */
+                plat_line(px - hr / 5 - 2, py - hr / 7 - 2 + lid, px + hr / 5 + 2, py - hr / 7 - 2 + lid, PAL_BLACK);
+            }
+            ui_fill_ellipse(px + i * hr / 8, py + hr / 3, hr / 6, hr / 12, PAL_UI_PINK);   /* blush */
+        }
+        ui_fill_ellipse(cx + 20, cy + hr / 3 + 3, hr / 5 + (t > 90 ? 3 : 0), 3 + (t > 90 ? 3 : 0), PAL_BLACK);   /* soft, parted lips */
+        plat_rect(cx + 20 - hr / 6, cy + hr / 3, hr / 3, 2, PAL_UI_PINK);
+        if (t > 90) for (i = 0; i < 7; i++) {                                              /* the exhale, over the lens */
+            int s = t - 90, k = i * 13;
+            ui_fill_circle(cx + 20 + ui_wave(s * 3 + k, 40, 20 + i * 6), cy + hr / 3 - s * (i + 2) / 3, 6 + s / 3 + i, PAL_RAMP(RAMP_STONE, 5 + (i & 1)));
+        }
+        for (i = 0; i < 3; i++) ui_heart(cx - 40 + i * 70, cy - hr - 6 + (int)((ct + (uint32_t)i * 13) % 20u), 4, PAL_UI_PINK);
+        if (t > 30 && t < 150) ui_text_outline(cx - 6, 8, "stay a while~", PAL_UI_PINK, PAL_BLACK);
+        if (t > 130) {                                                                     /* iris-out: bars close */
+            int bar = (t - 130) * sh / 80;
+            plat_rect(0, 0, sw, DOOMO_MIN(bar, sh / 2), PAL_BLACK);
+            plat_rect(0, sh - DOOMO_MIN(bar, sh / 2), sw, DOOMO_MIN(bar, sh / 2), PAL_BLACK);
+        }
+    }
+}
+
 
 void feast_draw(int panel, uint32_t pt, uint32_t ct)
 {
@@ -715,7 +816,9 @@ void feast_draw(int panel, uint32_t pt, uint32_t ct)
     int cx = sw / 2 - 20, cy = gy - 56, extra = inflate(panel, pt), shake = 0;
     int cute = F_CUTE;
 
-    if (panel == 10) {                                   /* title card, then the memorial */
+    if (panel == 10 || panel == 11) { epilogue(panel, pt, ct); return; }
+
+    if (panel == 12) {                                   /* title card, then the memorial */
         plat_rect(0, 0, sw, sh, PAL_BLACK);
         if (pt > 10) {
             int sc = sh >= 200 ? 3 : 2;
