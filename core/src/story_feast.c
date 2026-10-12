@@ -13,6 +13,9 @@
  * Three Ren & Stimpy style GROSS-OUT CLOSE-UPS smash-cut in (white flash,
  * hold, record scratch) over panels 4, 5 and 7: the burp, the gas cloud and
  * the straining belly / harness strap (see closeup()). Cartoon only.
+ * And the camera will not look away from the swelling belly: angle shots
+ * (low angle, push-in, overhead, from behind the crowd, a crowd reaction
+ * cutaway) cut in during panels 6 and 7 (see angle_shot()).
  */
 #include "story_int.h"
 
@@ -204,8 +207,154 @@ static int closeup(int panel, uint32_t pt, uint32_t ct)
     return 1;
 }
 
+
+/* ---- camera angle shots on the swelling belly ---------------------------------------
+ * Hard cuts (whip-flash, letterbox bars, a "CAM" tag) between angles while he
+ * swells: panel 6 gets a crowd reaction cutaway, panel 7 (the valve) cycles
+ * low angle -> push-in -> overhead -> (belly close-up) -> from behind the crowd. */
+enum { AN_LOW, AN_PUSH, AN_TOP, AN_BEHIND, AN_REACT };
+typedef struct { uint8_t panel, a, b, kind; const char *name; } AngleShot;
+static const AngleShot shots[] = {
+    { 6, 70, 104, AN_REACT,  "CAM 3  REACTION" },
+    { 7, 20,  44, AN_LOW,    "CAM 2  LOW ANGLE" },
+    { 7, 44,  68, AN_PUSH,   "CAM 1  PUSH IN" },
+    { 7, 68,  90, AN_TOP,    "CAM 4  OVERHEAD" },
+    { 7, 126, 150, AN_BEHIND, "CAM 5  BEHIND THE CROWD" }
+};
+#define NSHOTS ((int)(sizeof shots / sizeof shots[0]))
+
+static int angle_start(int panel, uint32_t pt)     /* a cut happens this tick */
+{
+    int i;
+    for (i = 0; i < NSHOTS; i++)
+        if (shots[i].panel == panel && (pt == shots[i].a || pt == shots[i].b)) return 1;
+    return 0;
+}
+
+static void crowd_big(int sw, int gy, uint32_t ct, uint32_t t0, int scale, int cheer)
+{
+    int i;
+    for (i = 0; i < 4; i++) {
+        const DoomoImage *b = bodyspr_image(crowd_ids[i], 2, (int)((ct / 5 + (uint32_t)i) & 3));
+        int hop = cheer ? ui_wave((int)ct * 2 + i * 11, 8, 6) : 0;
+        if (b) plat_image(sw / 2 - 2 * 28 * scale + i * 28 * scale + 4, gy - b->h * scale + 6 - (hop < 0 ? -hop : hop), b, scale, IMG_SHADOW, 0);
+        if (cheer && ((t0 / 4 + (uint32_t)i) & 3) == 0) ui_sparkle(sw / 2 - 60 + i * 40, gy - 90 - (i & 1) * 12, (int)((t0 + (uint32_t)i * 3) & 15), PAL_UI_GOLD);
+    }
+}
+
+/* returns 1 when it drew a whole angle shot instead of the wide shot */
+static int angle_shot(int panel, uint32_t pt, uint32_t ct, int extra)
+{
+    int sw = plat_screen_w(), sh = plat_screen_h(), cx = sw / 2, i, k = -1, mid;
+    uint32_t t0 = 0;
+    for (i = 0; i < NSHOTS; i++)
+        if (shots[i].panel == panel && pt >= shots[i].a && pt < shots[i].b) { k = i; t0 = pt - shots[i].a; }
+    if (k < 0) return 0;
+    if (t0 < 2) { plat_rect(0, 0, sw, sh, PAL_WHITE); return 1; }       /* whip cut */
+    mid = sh / 2;
+
+    switch (shots[k].kind) {
+    case AN_LOW:                                         /* from the grass, looking up: the belly looms */
+        plat_rect(0, 0, sw, sh, PAL_RAMP(RAMP_SKY, 6));
+        bunting(sw);
+        plat_rect(0, sh - 44, sw, 44, PAL_RAMP(RAMP_GRASS, 4));
+        grumble(cx + 6, mid + 10, extra + 34 + (int)t0 / 3, 0, ct, 0);
+        for (i = 0; i < 7; i++) {                         /* tiny awed crowd at the bottom edge */
+            int hx = 26 + i * (sw - 52) / 6;
+            ui_fill_circle(hx, sh - 22, 7, PAL_PAINT((i * 5 + 2) & 31, 1));
+            plat_rect(hx - 6, sh - 16, 12, 6, PAL_PAINT((i * 5 + 2) & 31, 0));
+            plat_rect(hx - 3, sh - 25, 2, 2, PAL_WHITE);
+            plat_rect(hx + 2, sh - 25, 2, 2, PAL_WHITE);
+        }
+        break;
+    case AN_PUSH: {                                      /* dolly in on the straining belly */
+        int r = (int)t0 * 3;
+        plat_rect(0, 0, sw, sh, PAL_RAMP(RAMP_SKY, 6));
+        plat_rect(0, sh - 50, sw, 50, PAL_RAMP(RAMP_GRASS, 4));
+        for (i = 0; i < 10; i++) {                        /* speed lines rushing past the edges */
+            int y = (i * 53 + (int)ct * 9) % sh;
+            plat_rect(0, y, 14 + r / 6, 1, PAL_WHITE);
+            plat_rect(sw - 14 - r / 6, (y + 70) % sh, 14 + r / 6, 1, PAL_WHITE);
+        }
+        grumble(cx + 10 - r / 4, mid + 24, extra + 8 + r / 2, ((int)ct & 1) ? 1 : -1, ct, 0);
+        break;
+    }
+    case AN_TOP: {                                       /* straight down: a ring of guests round a round gut */
+        int ocx = cx - 24, ocy = mid, r = 22 + extra * 3 / 5, a, hr = r + 34;
+        plat_rect(0, 0, sw, sh, PAL_RAMP(RAMP_GRASS, 4));
+        plat_rect(8, sh - 40, 54, 22, PAL_RAMP(RAMP_WOOD, 4));                          /* buffet table, from above */
+        ui_fill_circle(ocx, ocy, r + 8, PAL_RAMP(RAMP_WOOD, 3));                        /* the chair under him */
+        for (i = 0; i < 14; i++) {                                                      /* crowd: heads + shoulders */
+            a = i * 292 + 60;
+            ui_fill_ellipse(ocx + FIX2INT(fx_cos(a) * (hr + 8)), ocy + FIX2INT(fx_sin(a) * (hr + 8)) * 3 / 4, 9, 6, PAL_PAINT((i * 5 + 1) & 31, 0));
+            ui_fill_circle(ocx + FIX2INT(fx_cos(a) * hr), ocy + FIX2INT(fx_sin(a) * hr) * 3 / 4, 6, PAL_PAINT((i * 5 + 1) & 31, 1));
+        }
+        ui_fill_circle(ocx + r * 9 / 10, ocy - r / 3, r / 2 + 1, PAL_RAMP(RAMP_BLOOD, 2));      /* rump (top view) */
+        ui_fill_circle(ocx + r * 9 / 10, ocy + r / 3, r / 2 + 1, PAL_RAMP(RAMP_BLOOD, 2));
+        ui_fill_circle(ocx + r * 9 / 10, ocy - r / 3, r / 2, PAL_UI_RED);
+        ui_fill_circle(ocx + r * 9 / 10, ocy + r / 3, r / 2, PAL_UI_RED);
+        ui_fill_circle(ocx, ocy, r + 1, PAL_RAMP(RAMP_BLOOD, 2));                        /* belly */
+        ui_fill_circle(ocx, ocy, r, PAL_UI_RED);
+        ui_fill_circle(ocx - r / 3, ocy - r / 3, r / 5, PAL_RAMP(RAMP_LAVA, 6));
+        plat_line(ocx - r, ocy - r / 3, ocx + r, ocy + r / 3, PAL_BLACK);                /* harness */
+        ui_fill_circle(ocx - r - 8, ocy, 10, PAL_UI_RED);                                /* head, horns out */
+        plat_line(ocx - r - 8, ocy - 9, ocx - r - 14, ocy - 20, PAL_RAMP(RAMP_BONE, 6));
+        plat_line(ocx - r - 8, ocy + 9, ocx - r - 14, ocy + 20, PAL_RAMP(RAMP_BONE, 6));
+        {   /* the valve being cranked, and the culprit, from above */
+            int vx = ocx + r + 28, vy = ocy + r / 2, an = (int)ct * 48;
+            ui_fill_circle(vx, vy, 4, PAL_RAMP(RAMP_STEEL, 3));
+            plat_line(vx, vy, vx + FIX2INT(fx_cos(an) * 14), vy + FIX2INT(fx_sin(an) * 14), PAL_RAMP(RAMP_STEEL, 6));
+            plat_line(vx, vy, vx - FIX2INT(fx_cos(an) * 14), vy - FIX2INT(fx_sin(an) * 14), PAL_RAMP(RAMP_STEEL, 6));
+            ui_fill_circle(vx + 20, vy + 10, 7, PAL_PAINT(9, 1));
+        }
+        break;
+    }
+    case AN_BEHIND: {                                    /* low, from behind the crowd: backs of heads, the rump huge */
+        int rr = 28 + extra / 2, by = mid + 8;
+        plat_rect(0, 0, sw, sh, PAL_RAMP(RAMP_SKY, 6));
+        bunting(sw);
+        plat_rect(0, sh * 2 / 3, sw, sh / 3, PAL_RAMP(RAMP_GRASS, 4));
+        ui_fill_circle(cx - rr * 2 / 3, by, rr + 1, PAL_RAMP(RAMP_BLOOD, 2));            /* two smooth cheeks */
+        ui_fill_circle(cx + rr * 2 / 3, by, rr + 1, PAL_RAMP(RAMP_BLOOD, 2));
+        ui_fill_circle(cx - rr * 2 / 3, by, rr, PAL_UI_RED);
+        ui_fill_circle(cx + rr * 2 / 3, by, rr, PAL_UI_RED);
+        plat_rect(cx, by - rr / 2, 1, rr + rr / 2, PAL_RAMP(RAMP_BLOOD, 2));
+        plat_rect(cx - rr * 3 / 2, by - rr - 6, rr * 3, 5, PAL_BLACK);                   /* studded belt + back harness */
+        for (i = -4; i <= 4; i++) plat_rect(cx + i * rr / 3, by - rr - 5, 2, 2, PAL_UI_GOLD);
+        plat_line(cx - rr, by - rr - 40, cx + rr / 2, by - rr - 6, PAL_BLACK);
+        plat_line(cx + rr, by - rr - 40, cx - rr / 2, by - rr - 6, PAL_BLACK);
+        ui_fill_circle(cx, by - rr - 50, 13, PAL_UI_RED);                                /* head, from behind: horns up */
+        plat_line(cx - 8, by - rr - 58, cx - 13, by - rr - 72, PAL_RAMP(RAMP_BONE, 6));
+        plat_line(cx + 8, by - rr - 58, cx + 13, by - rr - 72, PAL_RAMP(RAMP_BONE, 6));
+        plat_line(cx + rr * 2, by + rr / 2, cx + rr * 2 + 26, by + rr / 2 - 14 + ui_wave((int)ct, 20, 4), PAL_RAMP(RAMP_BLOOD, 3));   /* tail */
+        for (i = 0; i < 6; i++) {                         /* foreground: the crowd's backs, every head turned his way */
+            int hx = 22 + i * (sw - 44) / 5, hy = sh - 36 - (i & 1) * 8;
+            ui_fill_circle(hx, hy, 15, PAL_BLACK);
+            ui_fill_ellipse(hx, hy + 24, 24, 16, PAL_BLACK);
+            if (((t0 / 5 + (uint32_t)i) & 3) == 0) ui_text_outline(hx - 3, hy - 32, "!", PAL_UI_GOLD, PAL_BLACK);
+        }
+        break;
+    }
+    default:                                             /* cutaway: the crowd, thinking it's over */
+        plat_rect(0, 0, sw, sh, PAL_RAMP(RAMP_PASTEL_PINK, 6));
+        bunting(sw);
+        plat_rect(0, sh * 3 / 4, sw, sh / 4, PAL_RAMP(RAMP_GRASS, 4));
+        crowd_big(sw, sh * 3 / 4 + 20, ct, t0, 2, 1);
+        for (i = 0; i < 5; i++) ui_heart(36 + i * 56, 40 + (i & 1) * 18 - ui_wave((int)ct + i * 7, 20, 4), 4, PAL_UI_PINK);
+        ui_text_outline(sw / 2 - 18, 24, "YAAAY!", PAL_UI_GOLD, PAL_BLACK);
+        break;
+    }
+    /* letterbox bars + camera tag */
+    plat_rect(0, 0, sw, 12, PAL_BLACK);
+    plat_rect(0, sh - 12, sw, 12, PAL_BLACK);
+    plat_text(14, 2, shots[k].name, PAL_WHITE);
+    if ((ct / 12) & 1) ui_fill_circle(7, 6, 3, PAL_UI_RED);
+    return 1;
+}
+
 void feast_tick(int panel, uint32_t pt)
 {
+    if (angle_start(panel, pt)) audio_sfx(SFX_BLIP);                  /* a cut */
     switch (panel) {
     case 0: if ((pt % 24) == 6) audio_sfx(SFX_EAT); break;
     case 2: if (pt == 40) audio_sfx(SFX_ERROR); break;                 /* record scratch */
@@ -256,6 +405,7 @@ void feast_draw(int panel, uint32_t pt, uint32_t ct)
     }
 
     if (closeup(panel, pt, ct)) return;                  /* smash-cut gross-out close-ups */
+    if (angle_shot(panel, pt, ct, extra)) return;        /* camera angles on the swelling belly */
 
     /* park: bunting, sky, grass, buffet table */
     plat_rect(0, 0, sw, gy, PAL_RAMP(RAMP_SKY, 6));

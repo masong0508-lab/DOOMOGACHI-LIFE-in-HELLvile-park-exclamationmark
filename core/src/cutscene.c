@@ -63,7 +63,7 @@ static const Panel P_feast_pop[] = {
     { -1, 100, "BURP. Not yet." },
     { -1, 100, "...pfffrrrt. He rises an inch off the chair. Almost." },
     { -1, 130, "Both at once! He sags. The crowd cheers. It's over!" },
-    { -1, 170, "The valve wins." },
+    { -1, 170, "The valve wins. The camera cannot look away from the belly." },
     { -1, 130, "POP! ...A last gurgle. \"Is there dessert?\"" },
     { -1, 110, "\"...that's hot.\"" },
     { -1, 120, NULL },
