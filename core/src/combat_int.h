@@ -196,6 +196,7 @@ int  actor_demon_frame(const DoomoActor *a);
 const DoomoImage *actor_image(const DoomoActor *a, int *flags, int *scale, int *zoff);
 
 /* ---- player hooks (combat.c) ---- */
+int  combat_feel(void);          /* 0 classic, 1 punchy, 2 brutal (0 off PS1) */
 void combat_hurt_player(int dmg, int src_angle, int knock, int src);
 void combat_player_eye(fix16 *x, fix16 *y, int *z);
 int  combat_player_z(void);

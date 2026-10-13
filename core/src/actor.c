@@ -1225,6 +1225,7 @@ int combat_gore_style(void)
     int g = opt_get(OPT_GORE);
     if (opt_get(OPT_CHEAT_CONFETTI) || opt_get(OPT_CHEAT_CUTE_DEMONS)) return WSTYLE_CUTE;
     if (opt_get(OPT_BLOOD_COLOR) >= 2) return WSTYLE_CUTE;            /* rainbow / confetti */
+    if (combat_feel() > 1) return WSTYLE_BRUTAL;            /* Brutal combat feel = brutal gore */
     if (g == GORE_CUTE) return WSTYLE_CUTE;
     if (g == GORE_BRUTAL) return WSTYLE_BRUTAL;
     return combat_ws.gore;
@@ -1258,6 +1259,7 @@ void actor_gore(int idx, int overkill)
         int green = opt_get(OPT_BLOOD_COLOR) == 1;
         actor_fx(green ? ART_BASE + ART_SPLAT_GREEN : SPR_BLOOD_SPRAY, a->x, a->y, cz, 3);
         n = overkill ? 7 : 3;
+        if (combat_feel() > 1) { n = overkill ? 12 : 5; combat_shake(overkill ? 5 : 2); }
         for (k = 0; k < n; k++) {
             int ang = rng_range(&doomo_rng, 4096);
             int sp = 1 + rng_range(&doomo_rng, overkill ? 5 : 3);
@@ -1335,7 +1337,7 @@ int actor_damage(int idx, int dmg, int src, int angle, int knock, int fx, int he
         a->status_fx |= ST_ANGRY;
     }
     if (a->hp <= 0) {
-        overkill = -a->hp >= di->hp / 2 + 10 || dmg >= 120;
+        overkill = -a->hp >= (combat_feel() > 1 ? di->hp / 3 : di->hp / 2 + 10) || dmg >= 120;
         a->state = AST_DYING;
         a->timer = 0;
         a->flags &= (uint8_t)~(AF_SOLID | AF_SHOOTABLE);

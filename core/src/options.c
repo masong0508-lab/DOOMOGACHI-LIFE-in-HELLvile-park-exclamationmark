@@ -53,6 +53,7 @@ static const char *const v_cursor[] = { "Heart", "Paw", "Star", "Sparkle",
 static const char *const v_filter[] = { "None", "Storybook", "VHS",
                                         "Game Pal", "Sepia", "Nightvision" };
 static const char *const v_bounce[] = { "Off", "Subtle", "Boingy" };
+static const char *const v_feel[] = { "Classic", "Punchy", "Brutal" };
 
 #define OPT(n, vals, d, pg) { n, (uint8_t)DOOMO_COUNTOF(vals), d, vals, pg }
 #define OPTN(n, cnt, d, pg) { n, cnt, d, NULL, pg }
@@ -114,7 +115,8 @@ const DoomoOptionInfo doomo_option_info[OPT_COUNT] = {
     /* OPT_CHEAT_RICH */      OPT("Bottomless wallet", v_off_on, 0, OPTPAGE_CHEATS),
     /* OPT_CHEAT_DISCO */     OPT("Disco lights", v_off_on, 0, OPTPAGE_CHEATS),
     /* OPT_CHEAT_TINY_DEMONS */ OPT("Tiny demons", v_off_on, 0, OPTPAGE_CHEATS),
-    /* OPT_CHEAT_ALL_GHOSTS */ OPT("Everyone's a ghost", v_off_on, 0, OPTPAGE_CHEATS)
+    /* OPT_CHEAT_ALL_GHOSTS */ OPT("Everyone's a ghost", v_off_on, 0, OPTPAGE_CHEATS),
+    /* OPT_COMBAT_FEEL */     OPT("Combat feel", v_feel, 2, OPTPAGE_SHOOTER)
 };
 
 int opt_get(int opt)

@@ -69,7 +69,8 @@ static const char *const opt_help[OPT_COUNT] = {
     /* RICH */ "Spending never empties your wallet.",
     /* DISCO */ "Disco lights everywhere.",
     /* TINY_DEMONS */ "Demons shrink to pocket size.",
-    /* ALL_GHOSTS */ "Every citizen looks like a ghost."
+    /* ALL_GHOSTS */ "Every citizen looks like a ghost.",
+    /* COMBAT_FEEL */ "PS1: Punchy = heavy recoil, shake, snappy moves. Brutal adds gore, gibs and hit-stop."
 };
 
 static struct {

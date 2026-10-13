@@ -47,6 +47,7 @@ static const int16_t ammo_start_tab[AMMO_COUNT] = { 80, 16, 80, 4, 100, 60, 120 
 
 /* ---- small helpers ------------------------------------------------------------- */
 int combat_difficulty(void) { return opt_get(OPT_DIFFICULTY); }
+int combat_feel(void) { return input_feel() ? opt_get(OPT_COMBAT_FEEL) : 0; }
 
 void combat_shake(int amount)
 {
@@ -473,6 +474,10 @@ void combat_on_kill(int idx, int by_player, int headshot)
     if (headshot && by_player) { progress_add(PROG_HEADSHOTS, 1); combat_st.headshots++; }
     unlock_grant(540 + (a->type - THING_IMPLING));
     combat_px.hitstop = (a->flags & AF_BOSS) ? 8 : 2;
+    if (combat_feel() && by_player) {                     /* kills land with weight */
+        combat_px.hitstop = (a->flags & AF_BOSS) ? 10 : headshot ? 4 : 3;
+        combat_shake(headshot ? 6 : 3);
+    }
     if (by_player) {
         combat_px.hit_kill = 10;
         if (weapon_valid(doomo_player.weapon_slot)) {
@@ -771,6 +776,7 @@ static void player_hit_actor(int k, int dmg, int ang, int knock, int fx, fix16 h
     DoomoActor *o = &doomo_actors[k];
     int died, before = o->hp;
     int is_demon = IS_DEMON(o->type);
+    if (combat_feel() && is_demon) knock = knock * (combat_feel() + 2) / 2 + 2 * combat_feel();   /* shove them back */
     died = actor_damage(k, dmg, PLAYER_OWNER, ang, knock, fx, head);
     if (!is_demon) return;
     combat_st.hits++;
@@ -781,6 +787,9 @@ static void player_hit_actor(int k, int dmg, int ang, int knock, int fx, fix16 h
         int style = combat_gore_style();
         if (style == WSTYLE_CUTE) actor_fx(rng_chance(&doomo_rng, 50) ? SPR_SPARKLE : SPR_HEARTS, hx, hy, hz, 2);
         else actor_fx(opt_get(OPT_BLOOD_COLOR) == 1 ? ART_BASE + ART_SPLAT_GREEN : SPR_BLOOD_SPRAY, hx, hy, hz, 2);
+        if (combat_feel() > 1 && style != WSTYLE_CUTE)       /* a second spray and a chunk */
+            actor_gib(opt_get(OPT_BLOOD_COLOR) == 1 ? ART_BASE + ART_SLIME : SPR_GIBS, hx, hy, hz,
+                      FIXMUL(fx_cos(ang), INT2FIX(2)), FIXMUL(fx_sin(ang), INT2FIX(2)), INT2FIX(3));
     }
 }
 
@@ -933,6 +942,16 @@ static void fire_weapon(int charge_mul16)
         combat_px.kick = 16 * DOOMO_MIN(s->recoil / 2 + 3, 14);
         doomo_player.recoil = (int16_t)DOOMO_MIN(doomo_player.recoil + s->recoil / 2 + 1, 48);
         if (s->recoil >= 18) combat_shake(s->recoil / 6);
+        if (combat_feel()) {
+            /* Brutal-Doom punch: the gun bucks, the view jolts, the muzzle blazes */
+            int f = combat_feel();
+            combat_px.flash = f > 1 ? 5 : 4;
+            combat_px.kick = 16 * DOOMO_MIN((s->recoil / 2 + 4) * (f + 1) / 2, 20);
+            doomo_player.recoil = (int16_t)DOOMO_MIN(doomo_player.recoil + (s->recoil / 2 + 2) * (f + 1) / 2, 72);
+            combat_shake(DOOMO_MAX(1 + s->damage / 12, s->recoil / 4) * f / 2 + 1);
+            if (s->pellets > 3 || s->recoil >= 24)     /* shotguns / cannons shove the view sideways */
+                doomo_player.angle = (int16_t)((doomo_player.angle + rng_between(&doomo_rng, -24, 24) * f) & DOOMO_ANG_MASK);
+        }
     } else {
         combat_px.kick = 16 * 10;
     }
@@ -1418,6 +1437,7 @@ static void player_tick(const CombatCtl *c)
     fwdx = fx_cos(doomo_player.angle);
     fwdy = fx_sin(doomo_player.angle);
     speed = WALK_SPEED;
+    if (combat_feel()) speed = speed * 5 / 4;                  /* Doom runs fast */
     doomo_player.sprint = (uint8_t)(c->sprint && c->move > 0 && !doomo_player.crouch && combat_px.zoom_t < 64);
     if (doomo_player.sprint) speed = speed * 8 / 5;
     if (doomo_player.crouch) speed /= 2;
@@ -1452,6 +1472,7 @@ static void player_tick(const CombatCtl *c)
         combat_px.vy = wishy;
     } else {
         accel = doomo_player.on_ground ? INT2FIX(1) + INT2FIX(1) * 6 / 10 : INT2FIX(1) * 45 / 100;
+        if (combat_feel() && doomo_player.on_ground) accel = accel * 3 / 2;     /* snappy starts */
         if (moving) {
             fix16 ddx = wishx - combat_px.vx, ddy = wishy - combat_px.vy;
             fix16 dl = fx_dist(ddx, ddy);
@@ -1459,8 +1480,9 @@ static void player_tick(const CombatCtl *c)
             combat_px.vx += ddx;
             combat_px.vy += ddy;
         } else if (doomo_player.on_ground) {
-            combat_px.vx = combat_px.vx * 9 / 16;
-            combat_px.vy = combat_px.vy * 9 / 16;
+            int fr = combat_feel() ? 7 : 9;                 /* ...and quick stops */
+            combat_px.vx = combat_px.vx * fr / 16;
+            combat_px.vy = combat_px.vy * fr / 16;
         } else {
             combat_px.vx = combat_px.vx * 31 / 32;
             combat_px.vy = combat_px.vy * 31 / 32;
