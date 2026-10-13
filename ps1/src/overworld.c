@@ -36,6 +36,8 @@ static uint32_t s_day;             /* daylight colour multiplier 0x00BBGGRR (128
 static int      s_night;           /* 0..15, for lamp glow */
 static int32_t  s_camx, s_camy;    /* smoothed focus, 16.16 */
 static int      s_have_cam;
+static int32_t  s_prevx, s_prevy;  /* last focus, for the look-ahead */
+static int32_t  s_leadx, s_leady;  /* smoothed look-ahead, 16.16 */
 static uint16_t s_stamp = 1;
 static uint16_t s_tstamp[64];
 static const TexRef *s_tref[64];
@@ -277,11 +279,27 @@ void plat_overworld(const DoomoOverworldView *v)
         (v->cy - s_camy) > (4 * CELL << 16) || (s_camy - v->cy) > (4 * CELL << 16)) {
         s_camx = v->cx;
         s_camy = v->cy;
+        s_prevx = v->cx;
+        s_prevy = v->cy;
+        s_leadx = s_leady = 0;
         s_have_cam = 1;
     } else {
-        s_camx += (v->cx - s_camx) >> 2;
-        s_camy += (v->cy - s_camy) >> 2;
+        /* look-ahead: lead the camera along the walking direction (about
+         * 12 frames of motion, at most 1.25 cells), smoothed so starts and
+         * stops glide instead of jerking */
+        int32_t lim = (5 * CELL << 16) / 4;
+        int32_t tx = (v->cx - s_prevx) * 12, ty = (v->cy - s_prevy) * 12;
+        if (tx > lim) tx = lim;
+        if (tx < -lim) tx = -lim;
+        if (ty > lim) ty = lim;
+        if (ty < -lim) ty = -lim;
+        s_leadx += (tx - s_leadx) >> 3;
+        s_leady += (ty - s_leady) >> 3;
+        s_camx += ((v->cx + s_leadx) - s_camx) >> 2;
+        s_camy += ((v->cy + s_leady) - s_camy) >> 2;
     }
+    s_prevx = v->cx;
+    s_prevy = v->cy;
     fx = s_camx; fy = s_camy;
     ccx = fx >> 22; ccy = fy >> 22;
     /* camera south of the focus, above it, looking north and down */

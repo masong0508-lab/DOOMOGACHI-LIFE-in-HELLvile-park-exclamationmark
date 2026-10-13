@@ -1684,6 +1684,24 @@ static void update_camera(void)
     fix16 rx = -fx_sin(ang) * side, ry = fx_cos(ang) * side;   /* right shoulder */
     fix16 dx, dy, d, want_x, want_y, want_z, len;
     if (combat_px.zoom_t > 128) dist = 56;
+    if (input_feel()) {
+        /* living camera: it trails back while you run forward, drops in
+         * tight when you aim, swings out on a dodge-roll and gets jolted
+         * by recoil - and eases between them instead of snapping */
+        fix16 fv = FIXMUL(combat_px.vx, fx_cos(ang)) + FIXMUL(combat_px.vy, fx_sin(ang));
+        int fvi = FIX2INT(fv);
+        if (combat_px.zoom_t <= 128) {
+            dist += DOOMO_CLAMP(fvi, -4, 14) * 2;
+            if (doomo_player.roll_timer) dist += 24;
+            dist -= DOOMO_MIN(combat_px.kick / 40, 8);
+        }
+        if (!combat_px.cam_ok) combat_px.cam_dist = dist;
+        else {
+            int gap = dist - combat_px.cam_dist;
+            combat_px.cam_dist += gap / 4 + (gap > 0 ? 1 : gap < 0 ? -1 : 0);
+        }
+        dist = combat_px.cam_dist;
+    }
     /* desired point: behind + over the shoulder + a little up */
     want_x = px + FIXMUL(bx, INT2FIX(dist)) + FIXMUL(rx, INT2FIX(22));
     want_y = py + FIXMUL(by, INT2FIX(dist)) + FIXMUL(ry, INT2FIX(22));

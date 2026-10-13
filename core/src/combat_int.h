@@ -116,6 +116,7 @@ typedef struct PlayerX {
     int     turn_vel;        /* smoothed turn rate (feel) */
     int     cam_x, cam_y, cam_z;   /* third-person camera (fix16) */
     int     cam_ok;
+    int     cam_dist;        /* eased third-person camera distance (feel) */
     int     lock_ui;         /* lock-on reticle animation */
     int     zoom_t;          /* ADS zoom 0..256 */
     int     ads;             /* aiming down sights */

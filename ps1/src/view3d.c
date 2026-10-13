@@ -25,7 +25,21 @@
 
 #define CELL      DOOMO_CELL_UNITS
 #define MAXCELLS  (DOOMO_MAP_MAX_W * DOOMO_MAP_MAX_H)
-#define VIEW_DIST 18             /* cells */
+#define VIEW_DIST 18             /* cells (maximum) */
+#define VIEW_DIST_MIN 11         /* adaptive floor: fog has already faded to near black there */
+/* Adaptive view distance: when the previous frames' CPU time crowds the
+ * 33 ms budget the view shrinks one cell (every 4 frames); with headroom it
+ * grows back. The fog table is scaled to the current distance, so the cut
+ * hides in the fade instead of popping. */
+static int s_view_dist = VIEW_DIST;
+static int s_view_tick;
+static void adapt_view_dist(void)
+{
+    if (++s_view_tick < 4) return;
+    s_view_tick = 0;
+    if (g_perf.cpu_us > 29000 && s_view_dist > VIEW_DIST_MIN) s_view_dist--;
+    else if (g_perf.cpu_us < 21000 && s_view_dist < VIEW_DIST) s_view_dist++;
+}
 #define NRAYS     36             /* rays per 45 degrees of fan */
 
 static const DoomoMap *s_map;
@@ -340,7 +354,7 @@ static void visibility(int32_t ex, int32_t ey, int ang, int pitch_a, int32_t fx,
     if (n < 8) n = 8;
     for (i = 0; i <= n; i++) {
         int a = ang - half + (2 * half * i) / n;
-        cast(ex, ey, a & 4095, VIEW_DIST);
+        cast(ex, ey, a & 4095, s_view_dist);
     }
 }
 
@@ -385,6 +399,7 @@ void plat_view3d(const DoomoView3D *v)
     }
     world_sync(s_map);
     r3_stats_reset();
+    adapt_view_dist();
 
     /* camera: pitch is a real rotation (+-256 -> +-40 degrees); the field
      * of view follows OPT_FOV like the reference renderer:
@@ -401,7 +416,7 @@ void plat_view3d(const DoomoView3D *v)
         th = k_tan[fov < 0 || fov > 2 ? 1 : fov];
         tv = (th * v->vh) / (v->vw ? v->vw : 1);
         r3_camera(v->x, v->y, ez, v->angle, pitch_a, v->vx, v->vy, v->vw, v->vh,
-                  ((v->vw / 2) << 12) / th, VIEW_DIST * CELL, fogn, 0);
+                  ((v->vw / 2) << 12) / th, s_view_dist * CELL, fogn, 0);
     }
     if (!r3_begin())
         return;
