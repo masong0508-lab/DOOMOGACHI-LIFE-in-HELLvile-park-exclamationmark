@@ -176,6 +176,7 @@ const DoomoUnlock doomo_unlocks_foundation[] = {
     SKIN(171, OPT_TITLE_THEME, 3, "Hellvile Sunset Title", "Defeat 25 demons", PROG_DEMONS_KILLED, 25),
     SKIN(172, OPT_TITLE_THEME, 4, "Vape Apocalypse Title", "Defeat 250 demons", PROG_DEMONS_KILLED, 250),
     SKIN(173, OPT_TITLE_THEME, 5, "United Park Title", "See the story's ending", 0, 0),
+    SKIN(174, OPT_GORE, GORE_MIXED, "Cute + Gore Mix", "See the story's ending", 0, 0),
     /* cursors */
     SKIN(180, OPT_CURSOR, 4, "Skull Cursor", "Defeat 40 demons", PROG_DEMONS_KILLED, 40),
     SKIN(181, OPT_CURSOR, 5, "Fang Cursor", "Win 12 exorcisms", PROG_EXORCISMS_WON, 12),

@@ -125,7 +125,7 @@ enum { OPTPAGE_GAME, OPTPAGE_SHOOTER, OPTPAGE_SIM, OPTPAGE_AUDIO,
        OPTPAGE_DISPLAY, OPTPAGE_ACCESS, OPTPAGE_CHEATS, OPTPAGE_COUNT };
 extern const char *const doomo_option_page_names[OPTPAGE_COUNT];
 /* Value constants for a few options other modules branch on. */
-enum { GORE_CUTE, GORE_BRUTAL, GORE_PER_WEAPON };
+enum { GORE_CUTE, GORE_BRUTAL, GORE_PER_WEAPON, GORE_MIXED };   /* MIXED: unlocked by finishing the story */
 enum { DIFF_PLUSHIE, DIFF_NORMAL, DIFF_NIGHTMARE, DIFF_ULTRA_HELLVILE };
 enum { CONTROLS_CLASSIC, CONTROLS_MODERN, CONTROLS_DUAL_STICK };
 #define DOOMO_OPT_BYTES 64

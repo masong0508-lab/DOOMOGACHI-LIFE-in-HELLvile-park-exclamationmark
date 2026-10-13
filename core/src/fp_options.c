@@ -13,7 +13,7 @@
 #define ROWS_MAX 24
 
 static const char *const opt_help[OPT_COUNT] = {
-    /* GORE */ "Cute: confetti, hearts, plush stuffing. Brutal: full Doom.",
+    /* GORE */ "Cute: confetti, hearts, plush stuffing. Brutal: full Doom. Cute + Gore (after the ending): both at once.",
     /* MONSTER */ "Lets you kill off ANY citizen. Everyone will remember.",
     /* DIFFICULTY */ "How mean the demons are. Plushie is extra gentle.",
     /* MUSIC_VOL */ "Volume of the chiptune soundtrack.",

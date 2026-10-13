@@ -192,6 +192,7 @@ int  actor_demons_alive(void);
 int  actor_kill_group_alive(int arg);
 void actor_gore(int idx, int overkill);
 int  combat_gore_style(void);                    /* WSTYLE_* for the current kill */
+int  combat_gore_mixed(void);                    /* 1 = cute fx AND gore together */
 int  actor_demon_frame(const DoomoActor *a);
 const DoomoImage *actor_image(const DoomoActor *a, int *flags, int *scale, int *zoff);
 

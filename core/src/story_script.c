@@ -1131,6 +1131,7 @@ void script_resume(const StoryPending *p, int result)
             unlock_grant(USTORY_UNITED_PARK);
             unlock_grant(USTORY_NEW_GAME_PLUS);
             unlock_grant(173);                    /* foundation: United Park title theme */
+            unlock_grant(174);                    /* foundation: Cute + Gore gore mode */
             story_push_cutscene(CUT_FREEPLAY, CTX_BEAT, BEAT_DONE);
         }
         break;

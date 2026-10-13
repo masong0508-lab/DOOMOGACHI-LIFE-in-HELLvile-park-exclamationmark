@@ -1225,10 +1225,17 @@ int combat_gore_style(void)
     int g = opt_get(OPT_GORE);
     if (opt_get(OPT_CHEAT_CONFETTI) || opt_get(OPT_CHEAT_CUTE_DEMONS)) return WSTYLE_CUTE;
     if (opt_get(OPT_BLOOD_COLOR) >= 2) return WSTYLE_CUTE;            /* rainbow / confetti */
+    if (g == GORE_MIXED) return WSTYLE_BRUTAL;               /* + the cute fx, see combat_gore_mixed() */
     if (combat_feel() > 1) return WSTYLE_BRUTAL;            /* Brutal combat feel = brutal gore */
     if (g == GORE_CUTE) return WSTYLE_CUTE;
     if (g == GORE_BRUTAL) return WSTYLE_BRUTAL;
     return combat_ws.gore;
+}
+
+/* "Cute + Gore": every kill / hit throws the cute confetti AND the blood. */
+int combat_gore_mixed(void)
+{
+    return opt_get(OPT_GORE) == GORE_MIXED && combat_gore_style() != WSTYLE_CUTE;
 }
 
 void actor_gore(int idx, int overkill)
@@ -1238,10 +1245,12 @@ void actor_gore(int idx, int overkill)
     int amount = 1 + opt_get(OPT_CONFETTI_AMOUNT);       /* 1..3 */
     fix16 cz = a->z + INT2FIX(a->height / 2);
     int k, n;
-    if (style == WSTYLE_CUTE) {
+    int mixed = combat_gore_mixed();
+    if (style == WSTYLE_CUTE || mixed) {
         actor_fx(SPR_CONFETTI, a->x, a->y, cz, 3);
         actor_fx(SPR_HEARTS, a->x, a->y, a->z + INT2FIX(a->height * 3 / 4), 4);
         n = (overkill ? 4 : 2) * amount;
+        if (mixed) n = n / 2 + 1;                           /* share the effect pool with the gibs */
         for (k = 0; k < n; k++) {
             int ang = rng_range(&doomo_rng, 4096);
             int sp = 1 + rng_range(&doomo_rng, 3);
@@ -1251,11 +1260,12 @@ void actor_gore(int idx, int overkill)
         }
         if (amount >= 3) actor_fx(SPR_SPARKLE, a->x, a->y, cz + INT2FIX(8), 3);
         audio_sfx(SFX_CONFETTI);
-        if (overkill) {
+        if (overkill && !mixed) {
             a->spr = SPR_CORPSE_CUTE;
             audio_sfx(SFX_SQUEAK);
         }
-    } else {
+    }
+    if (style != WSTYLE_CUTE) {
         int green = opt_get(OPT_BLOOD_COLOR) == 1;
         actor_fx(green ? ART_BASE + ART_SPLAT_GREEN : SPR_BLOOD_SPRAY, a->x, a->y, cz, 3);
         n = overkill ? 7 : 3;

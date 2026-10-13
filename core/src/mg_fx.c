@@ -94,7 +94,7 @@ void mg_confetti_rain(int n)
 
 void mg_splat(int x, int y, int n)
 {
-    if (mg.hell && opt_get(OPT_GORE) == GORE_BRUTAL) {
+    if (mg.hell && (opt_get(OPT_GORE) == GORE_BRUTAL || opt_get(OPT_GORE) == GORE_MIXED)) {
         int i;
         for (i = 0; i < n; i++)
             mg_fx(MGFX_DROP, x, y, rng_between(&doomo_rng, -28, 28), rng_between(&doomo_rng, -40, -6),

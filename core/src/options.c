@@ -10,7 +10,7 @@ const char *const doomo_option_page_names[OPTPAGE_COUNT] = {
 };
 
 static const char *const v_off_on[] = { "Off", "On" };
-static const char *const v_gore[] = { "Cute", "Brutal", "Per weapon" };
+static const char *const v_gore[] = { "Cute", "Brutal", "Per weapon", "Cute + Gore" };
 static const char *const v_monster[] = { "Off", "ON (monster!)" };
 static const char *const v_diff[] = { "Plushie", "Normal", "Nightmare",
                                       "Ultra-Hellvile" };

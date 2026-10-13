@@ -785,8 +785,9 @@ static void player_hit_actor(int k, int dmg, int ang, int knock, int fx, fix16 h
     if (head) combat_px.hit_head = 8;
     if (!died) {
         int style = combat_gore_style();
-        if (style == WSTYLE_CUTE) actor_fx(rng_chance(&doomo_rng, 50) ? SPR_SPARKLE : SPR_HEARTS, hx, hy, hz, 2);
-        else actor_fx(opt_get(OPT_BLOOD_COLOR) == 1 ? ART_BASE + ART_SPLAT_GREEN : SPR_BLOOD_SPRAY, hx, hy, hz, 2);
+        if (style == WSTYLE_CUTE || combat_gore_mixed())
+            actor_fx(rng_chance(&doomo_rng, 50) ? SPR_SPARKLE : SPR_HEARTS, hx, hy, hz, 2);
+        if (style != WSTYLE_CUTE) actor_fx(opt_get(OPT_BLOOD_COLOR) == 1 ? ART_BASE + ART_SPLAT_GREEN : SPR_BLOOD_SPRAY, hx, hy, hz, 2);
         if (combat_feel() > 1 && style != WSTYLE_CUTE)       /* a second spray and a chunk */
             actor_gib(opt_get(OPT_BLOOD_COLOR) == 1 ? ART_BASE + ART_SLIME : SPR_GIBS, hx, hy, hz,
                       FIXMUL(fx_cos(ang), INT2FIX(2)), FIXMUL(fx_sin(ang), INT2FIX(2)), INT2FIX(3));
