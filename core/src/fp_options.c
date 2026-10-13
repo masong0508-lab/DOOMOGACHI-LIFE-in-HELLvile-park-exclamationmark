@@ -25,7 +25,7 @@ static const char *const opt_help[OPT_COUNT] = {
     /* DAY_LENGTH */ "How long one island day lasts in real time.",
     /* AUTOSAVE */ "Save the free play island automatically.",
     /* CAMERA */ "Default camera in the shooter (SELECT toggles).",
-    /* CONTROLS */ "Classic: L + D-pad looks. Modern: twin-stick feel.",
+    /* CONTROLS */ "Classic: L + D-pad looks. Modern: L/R strafe. Dual stick: left stick moves, right stick looks (DualShock).",
     /* INVERT */ "Invert looking up and down.",
     /* LOOK_SPEED */ "How fast you turn and look around.",
     /* AIM_ASSIST */ "Gentle help keeping demons in your sights.",

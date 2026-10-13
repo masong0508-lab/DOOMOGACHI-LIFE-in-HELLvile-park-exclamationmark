@@ -17,6 +17,7 @@ void pad_init(void)
 }
 
 static int s_lx = 128, s_ly = 128, s_rx = 128, s_ry = 128, s_analog;
+static uint32_t s_stick_mask;
 
 int pad_analog(int *lx, int *ly, int *rx, int *ry)
 {
@@ -24,12 +25,17 @@ int pad_analog(int *lx, int *ly, int *rx, int *ry)
     return s_analog;
 }
 
+/* BTN_ bits the last pad_read() synthesised from the left stick. */
+uint32_t pad_stick_mask(void) { return s_stick_mask; }
+
 uint32_t pad_read(void)
 {
     const PADTYPE *p = (const PADTYPE *)s_padbuf[0];
     uint32_t out = 0;
     uint16_t b;
     s_analog = 0;
+    s_stick_mask = 0;
+    s_lx = s_ly = s_rx = s_ry = 128;
     if (p->stat == 0 && (p->type == PAD_ID_DIGITAL || p->type == PAD_ID_ANALOG ||
                          p->type == PAD_ID_ANALOG_STICK)) {
         b = (uint16_t)~p->btn;
@@ -50,10 +56,11 @@ uint32_t pad_read(void)
         if (p->type == PAD_ID_ANALOG || p->type == PAD_ID_ANALOG_STICK) {
             s_analog = 1;
             s_lx = p->ls_x; s_ly = p->ls_y; s_rx = p->rs_x; s_ry = p->rs_y;
-            if (s_lx < 128 - 48) out |= BTN_LEFT;
-            if (s_lx > 128 + 48) out |= BTN_RIGHT;
-            if (s_ly < 128 - 48) out |= BTN_UP;
-            if (s_ly > 128 + 48) out |= BTN_DOWN;
+            if (s_lx < 128 - 48) s_stick_mask |= BTN_LEFT;
+            if (s_lx > 128 + 48) s_stick_mask |= BTN_RIGHT;
+            if (s_ly < 128 - 48) s_stick_mask |= BTN_UP;
+            if (s_ly > 128 + 48) s_stick_mask |= BTN_DOWN;
+            out |= s_stick_mask;
         }
     }
     return out;

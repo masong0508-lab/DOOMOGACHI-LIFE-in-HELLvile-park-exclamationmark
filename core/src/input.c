@@ -77,6 +77,24 @@ void input_eat(void)
     memset(held, 0, sizeof(held));
 }
 
+static int a_present, a_lx, a_ly, a_rx, a_ry, feel_on;
+static uint32_t a_mask;
+
+void input_set_analog(int present, int lx, int ly, int rx, int ry, uint32_t stick_mask)
+{
+    a_present = present; a_lx = lx; a_ly = ly; a_rx = rx; a_ry = ry; a_mask = stick_mask;
+}
+
+int input_analog(int *lx, int *ly, int *rx, int *ry)
+{
+    *lx = a_lx; *ly = a_ly; *rx = a_rx; *ry = a_ry;
+    return a_present;
+}
+
+uint32_t input_stick_mask(void) { return a_present ? a_mask : 0; }
+void input_set_feel(int on) { feel_on = on; }
+int  input_feel(void) { return feel_on; }
+
 /* For tests: forget all state. */
 void input_reset(void)
 {

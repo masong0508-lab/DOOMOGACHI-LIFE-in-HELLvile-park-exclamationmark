@@ -364,6 +364,14 @@ void combat_start_at(int map_id, int goal, int cx, int cy, int angle)
     combat_hud_reset();
     if (d) audio_music(d->music);
     last_result = 0;
+    memset(&combat_ctl, 0, sizeof(combat_ctl));
+    combat_px.turn_vel = 0;
+    combat_px.fire_buf = 0;
+    if (opt_get(OPT_CONTROL_SCHEME) == CONTROLS_DUAL_STICK) {
+        int a, b, c2, d2;
+        if (!input_analog(&a, &b, &c2, &d2))
+            combat_toast("Dual stick needs an analog pad - press ANALOG");
+    }
 }
 
 void combat_start_ex(int map_id, int goal) { combat_start_at(map_id, goal, -1, -1, 0); }
@@ -515,40 +523,138 @@ void combat_on_kill(int idx, int by_player, int headshot)
 }
 
 /* ---- controls -------------------------------------------------------------------------- */
+/* Radial dead zone + rescale: raw pad axes (-128..127) -> -256..256. */
+#define STICK_DEAD 22
+static void stick_vec(int x, int y, int *ox, int *oy)
+{
+    int m = (int)fx_dist(INT2FIX(x), INT2FIX(y)) >> 16;
+    *ox = *oy = 0;
+    if (m <= STICK_DEAD) return;
+    {
+        int out = (m - STICK_DEAD) * 256 / (125 - STICK_DEAD);      /* 0..256 */
+        if (out > 256) out = 256;
+        *ox = x * out / m;
+        *oy = y * out / m;
+        *ox = DOOMO_CLAMP(*ox, -256, 256);
+        *oy = DOOMO_CLAMP(*oy, -256, 256);
+    }
+}
+
+/* Response curve: fine control near the centre, full speed at the rim. */
+static int stick_curve(int v)
+{
+    int a = v < 0 ? -v : v;
+    int c = (a * a / 256 * 2 + a) / 3;
+    return v < 0 ? -c : c;
+}
+
+/* Turn rate easing for the D-pad (feel): ramps up and glides to a stop
+ * instead of snapping between three fixed speeds. */
+static int ease_turn(int target)
+{
+    int v = combat_px.turn_vel;
+    int gap = target - v;
+    if (target == 0) v = v * 5 / 8;                   /* release: glide out */
+    else v += gap / 3 + (gap > 0 ? 1 : gap < 0 ? -1 : 0);
+    if (v > -2 && v < 2 && target == 0) v = 0;
+    combat_px.turn_vel = v;
+    return v;
+}
+
 static void read_controls(CombatCtl *c)
 {
-    int classic = opt_get(OPT_CONTROL_SCHEME) == CONTROLS_CLASSIC;
+    int scheme = opt_get(OPT_CONTROL_SCHEME);
+    int classic = scheme == CONTROLS_CLASSIC;
     int speed = opt_get(OPT_LOOK_SPEED);                /* 0..9 */
     int inv = opt_get(OPT_INVERT_LOOK) ? -1 : 1;
-    int lmod = classic && btn_down(BTN_L);
-    int left = btn_down(BTN_LEFT), right = btn_down(BTN_RIGHT);
+    int feel = input_feel();
+    int lax, lay, rax, ray, have;
+    int slx = 0, sly = 0, srx = 0, sry = 0;             /* dead-zoned sticks */
+    uint32_t smask = input_stick_mask();
+    int lmod, left, right, up, down;
     int maxturn = 44 + speed * 9, look = 6 + speed;
+    int dual;
     memset(c, 0, sizeof(*c));
-    if (btn_down(BTN_UP)) c->move = 1;
-    if (btn_down(BTN_DOWN)) c->move = -1;
-    if (lmod) {
+    have = input_analog(&lax, &lay, &rax, &ray);
+    dual = scheme == CONTROLS_DUAL_STICK && have;       /* no sticks: behaves like Modern */
+    if (have) {
+        stick_vec(lax, lay, &slx, &sly);
+        stick_vec(rax, ray, &srx, &sry);
+    }
+    /* D-pad only: the pad driver also mirrors the left stick into the
+     * D-pad bits (menus need that) - strip those here, the analog value
+     * is used instead. */
+#define DP(b) (btn_down(b) && !(smask & (b)))
+    left = DP(BTN_LEFT); right = DP(BTN_RIGHT); up = DP(BTN_UP); down = DP(BTN_DOWN);
+    if (!have) { left = btn_down(BTN_LEFT); right = btn_down(BTN_RIGHT); up = btn_down(BTN_UP); down = btn_down(BTN_DOWN); }
+#undef DP
+    lmod = classic && btn_down(BTN_L);
+    if (up) c->move = 1;
+    if (down) c->move = -1;
+    if (dual) {
+        /* dual stick: left stick = move + strafe, right stick = turn + look.
+         * D-pad up/down walk, left/right strafe. */
+        c->strafe = (int8_t)(right - left);
+        if (sly || slx) {
+            c->fmove = (int16_t)(-stick_curve(sly));
+            c->fstrafe = (int16_t)stick_curve(slx);
+            c->move = (int8_t)(sly < -64 ? 1 : sly > 64 ? -1 : c->move);
+            c->strafe = (int8_t)(slx < -64 ? -1 : slx > 64 ? 1 : c->strafe);
+        }
+        if (srx) {
+            c->turn = (int16_t)(stick_curve(srx) * (maxturn * 6 / 5) / 256);
+            if (feel) {                 /* ease the stick so flicks do not whip the view */
+                combat_px.turn_vel += (c->turn - combat_px.turn_vel) / 2;
+                c->turn = (int16_t)combat_px.turn_vel;
+            }
+        } else {
+            combat_px.turn_vel = 0;
+        }
+        if (sry) c->look = (int16_t)(-stick_curve(sry) * look * 2 / 256 * inv);
+    } else if (lmod) {
         /* classic: hold L = strafe with left/right, look with up/down */
         c->strafe = (int8_t)(right - left);
-        c->look = (int16_t)((btn_down(BTN_UP) - btn_down(BTN_DOWN)) * look * 2 * inv);
+        c->look = (int16_t)((up - down) * look * 2 * inv);
         c->move = 0;
+        if (slx) c->fstrafe = (int16_t)stick_curve(slx), c->strafe = (int8_t)(slx < 0 ? -1 : 1);
+        if (sly) c->look = (int16_t)(-stick_curve(sly) * look * 2 / 256 * inv);
     } else {
         int dir = right - left;
-        if (dir) {
+        if (slx && have) {
+            /* analog turn straight off the stick (modern / classic) */
+            c->turn = (int16_t)(stick_curve(slx) * maxturn / 256);
+            combat_px.turn_vel = c->turn;
+            turn_ticks = 0;
+        } else if (dir) {
             int t = ++turn_ticks;
-            int sp = t < 4 ? maxturn / 3 : t < 8 ? maxturn * 2 / 3 : maxturn;
-            c->turn = (int16_t)(dir * sp);
+            if (feel) {
+                c->turn = (int16_t)ease_turn(dir * maxturn);
+            } else {
+                int sp = t < 4 ? maxturn / 3 : t < 8 ? maxturn * 2 / 3 : maxturn;
+                c->turn = (int16_t)(dir * sp);
+            }
         } else {
             turn_ticks = 0;
+            if (feel) c->turn = (int16_t)ease_turn(0);
+        }
+        if (sly && have) {
+            c->fmove = (int16_t)(-stick_curve(sly));
+            c->move = (int8_t)(sly < 0 ? 1 : -1);
         }
         if (!classic) {
             if (btn_down(BTN_L) && !btn_down(BTN_R)) c->strafe = -1;
             if (btn_down(BTN_R) && !btn_down(BTN_L)) c->strafe = 1;
         }
     }
-    if (btn_down(BTN_L2)) c->look = (int16_t)(-look * 2 * inv);
-    if (btn_down(BTN_R2)) c->look = (int16_t)(look * 2 * inv);
-    /* aim / lock-on: classic R, modern L+R together; PS1 also R2 */
-    if (classic) {
+    if (!dual) {
+        if (btn_down(BTN_L2)) c->look = (int16_t)(-look * 2 * inv);
+        if (btn_down(BTN_R2)) c->look = (int16_t)(look * 2 * inv);
+    }
+    /* aim / lock-on: classic R, modern L+R together; dual stick L2 (or L1+R1) */
+    if (dual) {
+        c->lock = (uint8_t)btn_down(BTN_L2);
+        c->lock_pressed = (uint8_t)btn_pressed(BTN_L2);
+    } else if (classic) {
         c->lock = (uint8_t)btn_down(BTN_R);
         c->lock_pressed = (uint8_t)btn_pressed(BTN_R);
     } else {
@@ -556,27 +662,38 @@ static void read_controls(CombatCtl *c)
         c->lock_pressed = (uint8_t)(c->lock && (btn_pressed(BTN_L) || btn_pressed(BTN_R)));
         if (c->lock) c->strafe = 0;
     }
-    c->fire = (uint8_t)btn_down(BTN_A);
-    c->fire_pressed = (uint8_t)btn_pressed(BTN_A);
-    c->fire_released = (uint8_t)btn_released(BTN_A);
+    if (dual) {
+        /* trigger fingers: R2 / R1 / Cross all shoot */
+        uint32_t f = BTN_A | BTN_R | BTN_R2;
+        c->fire = (uint8_t)btn_down(f);
+        c->fire_pressed = (uint8_t)btn_pressed(f);
+        c->fire_released = (uint8_t)(btn_released(f) && !btn_down(f));
+    } else {
+        c->fire = (uint8_t)btn_down(BTN_A);
+        c->fire_pressed = (uint8_t)btn_pressed(BTN_A);
+        c->fire_released = (uint8_t)btn_released(BTN_A);
+    }
     if (btn_pressed(BTN_B)) {
-        if (btn_down(BTN_DOWN)) c->crouch_toggle = 1;
+        if (down) c->crouch_toggle = 1;
         else c->jump = 1;
     }
-    c->sprint = (uint8_t)(btn_down(BTN_B) && !btn_down(BTN_DOWN));
+    c->sprint = (uint8_t)(btn_down(BTN_B) && !down);
     if (btn_pressed(BTN_X)) { c->roll = 1; c->roll_dir = 0; select_used = 1; }
+    if (dual && btn_pressed(BTN_L)) { c->roll = 1; c->roll_dir = 0; select_used = 1; }
     if (btn_pressed(BTN_Y)) { c->next_weapon = 1; select_used = 1; }
     /* double-tap a strafe direction / back = dodge-roll */
     {
         int tap = 0;
-        if (classic) {
+        if (dual) {
+            /* no L/R taps here: Square / L1 roll toward the stick instead */
+        } else if (classic) {
             if (lmod && btn_pressed(BTN_LEFT)) tap = 1;
             if (lmod && btn_pressed(BTN_RIGHT)) tap = 2;
         } else {
             if (btn_pressed(BTN_L) && !btn_down(BTN_R)) tap = 1;
             if (btn_pressed(BTN_R) && !btn_down(BTN_L)) tap = 2;
         }
-        if (btn_pressed(BTN_DOWN) && !lmod) tap = 3;
+        if (btn_pressed(BTN_DOWN) && !(smask & BTN_DOWN) && !lmod && !dual) tap = 3;
         if (tap) {
             if (combat_px.tap_dir == tap && combat_px.tap_t > 0) {
                 c->roll = 1;
@@ -903,6 +1020,12 @@ static void weapon_tick(const CombatCtl *c)
 {
     const DoomoWeaponStats *s = &combat_ws;
     int slot = doomo_player.weapon_slot;
+    int feel = input_feel();
+    /* trigger buffer (feel): a press just before the gun is ready still fires */
+    if (feel) {
+        if (c->fire_pressed) combat_px.fire_buf = 6;
+        else if (combat_px.fire_buf > 0) combat_px.fire_buf--;
+    }
     /* switching: lower, swap, raise */
     if (combat_px.switch_to >= 0) {
         combat_px.raise += 48;
@@ -974,12 +1097,14 @@ static void weapon_tick(const CombatCtl *c)
         }
         return;
     }
-    if (doomo_player.refire == 0 && (c->fire_pressed || (c->fire && (s->auto_fire || s->behaviour == WB_MELEE)))) {
+    if (doomo_player.refire == 0 && (c->fire_pressed || (feel && combat_px.fire_buf > 0) ||
+                                     (c->fire && (s->auto_fire || s->behaviour == WB_MELEE)))) {
         int refire = s->refire;
         if (s->spin_up) {
             if (combat_px.spin < 96) return;                          /* still spinning up */
             refire = refire + (256 - combat_px.spin) / 64;
         }
+        combat_px.fire_buf = 0;
         fire_weapon(16);
         if (s->burst > 1) { combat_px.burst_left = s->burst - 1; combat_px.burst_t = 2; }
         doomo_player.refire = (uint16_t)refire;
@@ -1215,7 +1340,7 @@ static void update_lock(const CombatCtl *c)
 static void player_tick(const CombatCtl *c)
 {
     fix16 wishx = 0, wishy = 0, speed, accel, fwdx, fwdy;
-    int fl, ce, h, z, eye, look_level, i;
+    int fl, ce, h, z, eye, look_level, i, moving;
     if (doomo_player.hp <= 0) { player_dead_tick(); return; }
     if (c->camera) combat_toggle_camera();
     if (c->next_weapon) combat_next_weapon(1);
@@ -1231,6 +1356,16 @@ static void player_tick(const CombatCtl *c)
         int turn = c->turn;
         if (combat_px.zoom_t > 128) turn /= 3;                      /* steady aim when scoped */
         else if (combat_ws.weight > 70) turn = turn * 4 / 5;
+        /* aim friction (feel): the view slows as the reticle crosses a demon,
+         * so the stick can settle on a target instead of skating past it */
+        if (turn && input_feel() && doomo_player.lock_target < 0 && opt_get(OPT_AIM_ASSIST) > 0) {
+            fix16 ex, ey;
+            int ez;
+            combat_player_eye(&ex, &ey, &ez);
+            if (find_target(ex, ey, ez, doomo_player.angle, 50 + opt_get(OPT_AIM_ASSIST) * 24,
+                            DOOMO_MIN(combat_ws.range, 24) * CELLU) >= 0)
+                turn = turn * 11 / 20;
+        }
         if (doomo_player.lock_target >= 0 && turn) { /* turning breaks a hold lock */ }
         doomo_player.angle = (int16_t)((doomo_player.angle + turn) & DOOMO_ANG_MASK);
     }
@@ -1292,7 +1427,18 @@ static void player_tick(const CombatCtl *c)
         const DoomoCell *cc = map_cell_safe(&doomo_map, FIX2INT(doomo_player.x) / CELLU, FIX2INT(doomo_player.y) / CELLU);
         if (cc->flags & CELL_WATER) speed = speed * 3 / 5;
     }
-    if (c->move || c->strafe) {
+    moving = c->move || c->strafe || c->fmove || c->fstrafe;
+    if (c->fmove || c->fstrafe) {
+        /* analog stick: speed scales with how far it is pushed */
+        int fm = c->fmove, fs = c->fstrafe;
+        int m = (int)(fx_dist(INT2FIX(fm), INT2FIX(fs)) >> 16);
+        fix16 mx, my;
+        if (m > 256) { fm = fm * 256 / m; fs = fs * 256 / m; }
+        mx = (fwdx * fm - fwdy * fs) / 256;
+        my = (fwdy * fm + fwdx * fs) / 256;
+        wishx = FIXMUL(mx, speed);
+        wishy = FIXMUL(my, speed);
+    } else if (c->move || c->strafe) {
         fix16 mx = fwdx * c->move - fwdy * c->strafe;
         fix16 my = fwdy * c->move + fwdx * c->strafe;
         if (c->move && c->strafe) { mx = mx * 181 / 256; my = my * 181 / 256; }
@@ -1306,7 +1452,7 @@ static void player_tick(const CombatCtl *c)
         combat_px.vy = wishy;
     } else {
         accel = doomo_player.on_ground ? INT2FIX(1) + INT2FIX(1) * 6 / 10 : INT2FIX(1) * 45 / 100;
-        if (c->move || c->strafe) {
+        if (moving) {
             fix16 ddx = wishx - combat_px.vx, ddy = wishy - combat_px.vy;
             fix16 dl = fx_dist(ddx, ddy);
             if (dl > accel) { ddx = FIXMUL(FIXDIV(ddx, dl), accel); ddy = FIXMUL(FIXDIV(ddy, dl), accel); }

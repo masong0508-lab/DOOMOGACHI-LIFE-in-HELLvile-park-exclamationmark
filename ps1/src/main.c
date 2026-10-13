@@ -119,6 +119,7 @@ int main(void)
         }
     }
     core_doomo_init();
+    core_input_feel(1);      /* eased turning, trigger buffer, aim friction */
     /* debug mode: hold SELECT during boot -> cutscene viewer (cutview.c) */
     if (pad_read() & BTN_SELECT)
         cutview_enter();
@@ -126,6 +127,11 @@ int main(void)
         uint32_t b;
         hcmd_poll();
         b = pad_read();
+        {
+            int lx, ly, rx, ry;
+            int an = pad_analog(&lx, &ly, &rx, &ry);
+            core_input_analog(an, lx, ly, rx, ry, pad_stick_mask());
+        }
         plat_begin_frame();
         core_doomo_frame(b);
         plat_end_frame();

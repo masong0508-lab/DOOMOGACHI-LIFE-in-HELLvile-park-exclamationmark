@@ -78,6 +78,7 @@ extern const ProjInfo combat_proj_info[PK_COUNT];
 /* Controls for one tick (from the pad or the autopilot). */
 typedef struct CombatCtl {
     int8_t  move, strafe;    /* -1..1 */
+    int16_t fmove, fstrafe;  /* analog -256..256 (0 = use move / strafe) */
     int16_t turn;            /* angle units this tick (signed) */
     int16_t look;            /* pitch units this tick (signed) */
     uint8_t fire, fire_pressed, fire_released;
@@ -111,6 +112,8 @@ typedef struct PlayerX {
     int     lava_t;
     int     dead_t;
     int     tap_dir, tap_t;  /* double-tap detection */
+    int     fire_buf;        /* buffered trigger press (feel) */
+    int     turn_vel;        /* smoothed turn rate (feel) */
     int     cam_x, cam_y, cam_z;   /* third-person camera (fix16) */
     int     cam_ok;
     int     lock_ui;         /* lock-on reticle animation */

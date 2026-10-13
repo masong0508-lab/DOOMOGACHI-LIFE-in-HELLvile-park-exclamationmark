@@ -20,7 +20,7 @@ static const char *const v_day_len[] = { "Real time", "2 hours", "1 hour",
                                          "30 minutes", "15 minutes" };
 static const char *const v_autosave[] = { "Off", "Every day", "Every hour" };
 static const char *const v_camera[] = { "First person", "Third person" };
-static const char *const v_scheme[] = { "Classic", "Modern" };
+static const char *const v_scheme[] = { "Classic", "Modern", "Dual stick" };
 static const char *const v_level4[] = { "Off", "Low", "Medium", "High" };
 static const char *const v_lock[] = { "Hold", "Toggle" };
 static const char *const v_cross[] = { "Dot", "Cross", "Circle", "Heart",

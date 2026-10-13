@@ -155,6 +155,8 @@ extern R3Stats g_r3stats;
 int  core_has_game(void);
 void core_doomo_init(void);
 void core_doomo_frame(uint32_t buttons);
+void core_input_analog(int present, int lx, int ly, int rx, int ry, uint32_t mask);
+void core_input_feel(int on);
 const uint8_t *core_texture_pixels(int tex_id, uint16_t time);
 const uint8_t *core_sky_pixels(int sky_id, uint16_t time);
 const DoomoImage *core_sprite_image(int spr, int frame);
@@ -210,6 +212,7 @@ const uint16_t *etest_palette(void);
 void     pad_init(void);
 uint32_t pad_read(void);                 /* BTN_* bitmask */
 int      pad_analog(int *lx, int *ly, int *rx, int *ry);
+uint32_t pad_stick_mask(void);           /* BTN_ bits mirrored from the left stick */
 void     audio_hw_init(void);
 void     audio_hw_frame(void);
 void     audio_hw_hush(int on);      /* silence the SPU while the BIOS blocks the loop */

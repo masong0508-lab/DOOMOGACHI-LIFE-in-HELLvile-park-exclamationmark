@@ -30,6 +30,20 @@ uint32_t btn_held_ticks(uint32_t b); /* how long the (first) button is held */
  * held afterwards are ignored until they are released. */
 void input_eat(void);
 
+/* ---- analog sticks (PS1 DualShock) ----------------------------------------
+ * Platforms with analog sticks call input_set_analog() before doomo_frame().
+ * Axes are -128..127 (0 = centred, +x right, +y DOWN like the pad reports).
+ * stick_mask = the BTN_ bits the platform synthesised from the left stick
+ * (so the shooter can tell stick from D-pad). Platforms that never call it
+ * (GBA, native) keep the exact old digital behaviour. */
+void input_set_analog(int present, int lx, int ly, int rx, int ry, uint32_t stick_mask);
+int  input_analog(int *lx, int *ly, int *rx, int *ry);   /* 1 = analog pad present */
+uint32_t input_stick_mask(void);
+/* "Smooth feel": eased turning, fire buffering, aim friction. Off by default;
+ * the PS1 port turns it on. */
+void input_set_feel(int on);
+int  input_feel(void);
+
 /* ---- foundation additions ---- */
 void input_reset(void);              /* forget all state (tests, boot)   */
 

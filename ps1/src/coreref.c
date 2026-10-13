@@ -18,6 +18,8 @@
 
 extern void doomo_init(void) WEAKFN;
 extern void doomo_frame(uint32_t buttons) WEAKFN;
+extern void input_set_analog(int present, int lx, int ly, int rx, int ry, uint32_t stick_mask) WEAKFN;
+extern void input_set_feel(int on) WEAKFN;
 extern const uint8_t *texture_pixels(int tex_id, uint16_t time) WEAKFN;
 extern const uint8_t *sky_pixels(int sky_id, uint16_t time) WEAKFN;
 extern const DoomoImage *sprite_image(int spr_id, int frame) WEAKFN;
@@ -58,6 +60,11 @@ extern int map_ceil_z(const DoomoMap *m, int cx, int cy) WEAKFN;
 int core_has_game(void) { return PRESENT(doomo_init) && PRESENT(doomo_frame); }
 void core_doomo_init(void) { if (PRESENT(doomo_init)) doomo_init(); }
 void core_doomo_frame(uint32_t b) { if (PRESENT(doomo_frame)) doomo_frame(b); }
+void core_input_analog(int present, int lx, int ly, int rx, int ry, uint32_t mask)
+{
+    if (PRESENT(input_set_analog)) input_set_analog(present, lx, ly, rx, ry, mask);
+}
+void core_input_feel(int on) { if (PRESENT(input_set_feel)) input_set_feel(on); }
 
 const uint8_t *core_texture_pixels(int tex_id, uint16_t time)
 {
