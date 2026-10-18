@@ -16,6 +16,7 @@ __attribute__((weak)) const DoomoActivity *const doomo_activities_collections = 
 __attribute__((weak)) const DoomoActivity *const doomo_activities_combat = 0;
 __attribute__((weak)) const DoomoActivity *const doomo_activities_extra = 0;
 __attribute__((weak)) const DoomoActivity *const doomo_activities_studio = 0;
+__attribute__((weak)) const DoomoActivity *const doomo_activities_home = 0;     /* S0 */
 
 /* The defaults above are weak CONSTANTS: without the volatile read GCC
  * folds their value (0) into this file and never sees a module's strong
@@ -30,10 +31,11 @@ static const DoomoActivity *table(int t) {
     case 3: return ACT_TABLE(doomo_activities_combat);
     case 4: return ACT_TABLE(doomo_activities_extra);
     case 5: return ACT_TABLE(doomo_activities_studio);
+    case 6: return ACT_TABLE(doomo_activities_home);       /* S0 */
     default: return 0;
     }
 }
-#define ACT_TABLES 6
+#define ACT_TABLES 7
 
 int activity_count(void) {
     int n = 0, t;

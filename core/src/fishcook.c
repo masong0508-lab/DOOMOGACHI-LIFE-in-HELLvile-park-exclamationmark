@@ -116,7 +116,7 @@ static int fcx_read(const uint8_t *src, uint32_t len, uint16_t version)
 }
 
 static const DoomoSaveExt fc_ext = {
-    SAVE_EXT_TAG('F', 'I', 'S', 'H'), 1, fcx_size, fcx_write, fcx_read, fcx_reset
+    SAVE_EXT_TAG('F', 'I', 'S', 'H'), 1, fcx_size, fcx_write, fcx_read, fcx_reset, 0 /* max_size (S0) */
 };
 const DoomoSaveExt *const doomo_save_ext_fishcook = &fc_ext;
 

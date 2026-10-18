@@ -262,6 +262,6 @@ static int ext_read(const uint8_t *src, uint32_t len, uint16_t version)
 }
 
 static const DoomoSaveExt song_ext = {
-    SAVE_EXT_TAG('S', 'O', 'N', 'G'), 1, ext_size, ext_write, ext_read, ext_reset
+    SAVE_EXT_TAG('S', 'O', 'N', 'G'), 1, ext_size, ext_write, ext_read, ext_reset, 0 /* max_size (S0) */
 };
 const DoomoSaveExt *const doomo_save_ext_studio = &song_ext;

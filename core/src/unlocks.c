@@ -201,9 +201,11 @@ const DoomoUnlock *const doomo_unlock_tables[] = {
     doomo_unlocks_action, doomo_unlocks_story, doomo_unlocks_freeplay,
     doomo_unlocks_art, doomo_unlocks_portrait, doomo_unlocks_roster,
     doomo_unlocks_minigames, doomo_unlocks_concert, doomo_unlocks_studio,
-    doomo_unlocks_library, doomo_unlocks_fishcook, doomo_unlocks_levels, NULL
+    doomo_unlocks_library, doomo_unlocks_fishcook, doomo_unlocks_levels,
+    doomo_unlocks_home,          /* S0: slot 15, 564..595 (SPEC R7) */
+    NULL
 };
-#define UL_TABLES 15
+#define UL_TABLES 16
 /* Registry slots are read through a volatile lvalue, like activities.c /
  * save_ext.c (ARCHITECTURE.md "Weak defaults of registries"). */
 #define UL_TABLE(t) (((const DoomoUnlock *const volatile *)doomo_unlock_tables)[t])

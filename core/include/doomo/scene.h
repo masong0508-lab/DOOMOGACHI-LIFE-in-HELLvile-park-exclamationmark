@@ -69,6 +69,13 @@ void *scene_scratch_block(void) __attribute__((const));
  *                           + their particle pool (fishcook_int.h)
  *   GGFX  grumbleguts_gfx.c  the story cutscenes' cached Grumbleguts layers
  *                           (story_feast.c) and the lantern string
+ *   HOME  home*.c           (S0 list, SPEC sec.4) the house editor state, the
+ *                           visit room, the defence; its tail is the PS1
+ *                           vertex cache (DoomoRoomView.plat_cache)
+ *   OWLD ext                (S0 list, SPEC R17) the 512 B ow_scratch_ext()
+ *                           area of OwScratch: scripted overworld scenes (the
+ *                           Feast guests, the Say It walk). A cache: rebuilt
+ *                           from STRY whenever another owner took the block
  * A scene that keeps its own state here must not call anything that
  * claims it for another owner (e.g. weld_view_image()). */
 

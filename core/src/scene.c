@@ -59,6 +59,9 @@ const DoomoScene *const doomo_all_scenes[] = {
     &SCENE_LIB_ITEMS, &SCENE_LIB_TROPHIES, &SCENE_LIB_JUKEBOX, &SCENE_LIB_GALLERY,
     &SCENE_FISHING, &SCENE_COOKING,
     &SCENE_LEVEL_SELECT, &SCENE_BREACH, &SCENE_ARENA_MODE,
+    /* --- S0: story + house scenes (SPEC sec.4, C14) --- */
+    &SCENE_HOME, &SCENE_HOME_MART, &SCENE_STORY_MG, &SCENE_STORY_TIMING,
+    /* --- end S0 --- */
     NULL
 };
 

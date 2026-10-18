@@ -166,7 +166,7 @@ static int nickext_read(const uint8_t *src, uint32_t len, uint16_t version)
 
 static const DoomoSaveExt nick_ext = {
     SAVE_EXT_TAG('N', 'I', 'C', 'K'), 1,
-    nickext_size, nickext_write, nickext_read, nicks_reset
+    nickext_size, nickext_write, nickext_read, nicks_reset, 0 /* max_size (S0) */
 };
 const DoomoSaveExt *const doomo_save_ext_extra = &nick_ext;
 

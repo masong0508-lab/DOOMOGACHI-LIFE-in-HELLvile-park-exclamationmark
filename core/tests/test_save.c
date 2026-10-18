@@ -457,7 +457,7 @@ static void t_ext_reset(void)
     memset(ext_data, 0, sizeof(ext_data));
 }
 static DoomoSaveExt t_ext = { SAVE_EXT_TAG('T', 'E', 'S', 'T'), 3, t_ext_size, t_ext_write,
-                              t_ext_read, t_ext_reset };
+                              t_ext_read, t_ext_reset, 0 /* max_size (S0) */ };
 const DoomoSaveExt *const doomo_save_ext_test = &t_ext;
 
 static void ext_fill(uint32_t seed, uint32_t n)

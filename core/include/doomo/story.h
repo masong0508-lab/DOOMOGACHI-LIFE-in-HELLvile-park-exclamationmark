@@ -29,6 +29,7 @@
 #define DOOMO_STORY_H
 
 #include "types.h"
+#include "save_ext.h"
 
 int  story_flag(int f);
 void story_set_flag(int f, int on);
@@ -89,6 +90,26 @@ enum {
     BEAT_DONE,
     BEAT_COUNT
 };
+/* --- S0: the story SPEC's beats (docs/design/story/SPEC.md sec.4, C14) ---
+ * 38 ids appended after the legacy ones (P0, 27 episodes, 8 specials, E1,
+ * E2). They are ids, not an order: the story order is S2's table. The 28
+ * legacy BEAT_C* ids alias onto episodes (S2) and are never reordered.
+ * BEAT_COUNT stays the legacy count (the old tables are sized by it) until
+ * S2 moves those tables to BEAT_ALL_COUNT. */
+enum {
+    BEAT_P0 = BEAT_COUNT,                         /* the crayon prologue      */
+    BEAT_EP1_1, BEAT_EP1_2, BEAT_EP1_3, BEAT_EP1_4, BEAT_EP1_5, BEAT_EP1_6,
+    BEAT_EP2_1, BEAT_EP2_2, BEAT_EP2_3, BEAT_EP2_4, BEAT_EP2_5, BEAT_EP2_6, BEAT_EP2_7,
+    BEAT_EP3_1, BEAT_EP3_2, BEAT_EP3_3, BEAT_EP3_4, BEAT_EP3_5, BEAT_EP3_6, BEAT_EP3_7,
+    BEAT_EP4_1, BEAT_EP4_2, BEAT_EP4_3, BEAT_EP4_4, BEAT_EP4_5, BEAT_EP4_6, BEAT_EP4_7,
+    BEAT_F1, BEAT_F2, BEAT_F3, BEAT_F4,           /* flashbacks               */
+    BEAT_D1, BEAT_D2,                             /* dreams                   */
+    BEAT_INT1, BEAT_INT3,                         /* interludes I and III     */
+    BEAT_E1, BEAT_E2,                             /* epilogue                 */
+    BEAT_ALL_COUNT
+};
+#define BEAT_NEW_COUNT (BEAT_ALL_COUNT - BEAT_P0)  /* 38 */
+/* --- end S0 --- */
 int  story_beat(void);
 const char *story_beat_name(int beat);           /* "C1_MAYOR" (tests)   */
 int  story_beat_chapter(int beat);
@@ -101,6 +122,14 @@ enum { CUT_CHAPTER1, CUT_CHAPTER2, CUT_CHAPTER3, CUT_CHAPTER4,
        CUT_FREEPLAY, CUT_HOME,
        CUT_FEAST_POP,       /* Feast of Rebuilding: "What an Ass" (Grumbleguts pops) */
        CUT_COUNT };
+/* --- S0: the story SPEC's cutscenes (SPEC sec.4) --- appended after
+ * CUT_FEAST_POP. CUT_COUNT stays 12 (the old tables, the gallery's CUTU()
+ * and the platforms' cutview.c are sized by it); the new ids unlock through
+ * UL_STORY_CUT2(c) (unlock_ids.h), never CUTU() (which would land on 644). */
+enum { CUT_P0 = CUT_COUNT, CUT_BOTTLE, CUT_F1, CUT_F2, CUT_F3, CUT_F4,
+       CUT_INT3_KNOCKS, CUT_SUMMIT, CUT_SAYIT, CUT_FEAST_SAVE, CUT_E1, CUT_BALLOON,
+       CUT_ALL_COUNT };
+/* --- end S0 --- */
 const char *story_cutscene_name(int cut);
 
 /* The overworld map the story is on (MAPID_*), and teleporting. */
@@ -208,5 +237,86 @@ int  story_hellvile_friends(void);
 #define STORY_FLAG_SIDE_FIRST   64
 #define STORY_FLAG_SECRET_FIRST 164
 #define STORY_FLAG_PLACE_FIRST  196
+
+/* --- S0: the story SPEC's flags, STRY and hooks (SPEC sec.4, SF sec.17, R22, C13) ---
+ *
+ * The reserved bits 228..255 become the hot one-shots resident code reads
+ * every frame or at scene entry (SF sec.17.1). 253..255 stay spare. */
+enum {
+    SF_ASKED_OTHER_SIDE = 228, SF_VISITED_GRAVE, SF_PET_NUBS, SF_PET_HORNS,
+    SF_PET_HALO, SF_HATTIE_LOST, SF_GRAMPY_LOST, SF_SMOG_LOST, SF_SMOG_NEAR_MISS,
+    SF_TALLY_THAT_WAS_ME, SF_GRUMBLE_DEAD, SF_GRUMBLE_NO_RITE, SF_GRUMBLE_FRIENDLY,
+    SF_HOUSE_PLATED, SF_HOUSE_TURRET, SF_HOUSE_HELD, SF_HOUSE_WALL_GONE,
+    SF_WISP_AWAKE, SF_FOUNTAIN_TWOWAY, SF_MASCOTTY_HEAD_OFF, SF_FEAST_DONE,
+    SF_SUITCASE_OPEN, SF_SIGN_1000, SF_BOTTLE_SEEN, SF_NGPLUS,
+    SF_SPARE_253                     /* 253..255 spare */
+};
+/* The spare "met"/nest/possessed bits (SF sec.17.1): 36..39, 42..47, 48..55 and
+ * 58..63 (24 bits; 56/57 are Tallyworn and Mother Nox). They hold the
+ * Interlude III knocks (8) and the wrongness W1..W16 "noticed" bits (16).
+ * 36..39 and 42..43 are only safe if no map prop sets them (nest props
+ * extra < 4, possessed props extra < 2): S2's test checks it (SPEC C19). */
+#define STORY_KNOCKS 8
+#define STORY_WRONGS 16
+#define SF_KNOCK(k)  ((k) < 4 ? 36 + (k) : (k) < 6 ? 42 + ((k) - 4) : 62 + ((k) - 6)) /* k 0..7 */
+#define SF_WRONG(w)  ((w) < 4 ? 44 + (w) : (w) < 12 ? 48 + ((w) - 4) : 58 + ((w) - 12)) /* w 0..15 */
+
+/* 'STRY' v1: the story's second save chunk, exactly 96 B (SF sec.17.2 with
+ * C9's LATER queue in the 16 spare bytes; no spare left: the next field
+ * needs STRY v2). home_phase is the single source of the house phase.
+ * The live copy is story_stry() (stry_save.c, S2). Field order keeps every
+ * u16 aligned; the layout is the save format, never reorder. */
+typedef struct DoomoStryLater {
+    uint16_t script;         /* callback script id, 0 = empty slot              */
+    uint16_t due;            /* game-minute it fires, low 16 bits               */
+} DoomoStryLater;
+typedef struct DoomoStry {
+    uint8_t  ver;            /*  0 chunk version (1)                            */
+    uint8_t  home_phase;     /*  1 HP_* (home.h)                                */
+    uint8_t  episode_done[5];/*  2 36+2 episode/special bits                    */
+    uint8_t  branch;         /*  7 wisp_answer 2 | sayit_line 2 | feast 2 | puff 1 | brutal 1 */
+    uint8_t  side2[30];      /*  8 118 mission rows x 2 bits                    */
+    uint8_t  knocks;         /* 38 knocks received 0..8                         */
+    uint8_t  nests;          /* 39 nests 4 | Night Raids won 3 | hidden fifth 1 */
+    uint8_t  clues;          /* 40 Ch2 clue board 5 | rites attempted 3         */
+    uint8_t  feast_seed;     /* 41 the culprit draw seed                        */
+    uint8_t  wrong[2];       /* 42 W1..W16 noticed (NG+ subtitle copy)          */
+    uint8_t  sayit_said[12]; /* 44 96 bits: pool and cast lines said            */
+    uint8_t  heights[4];     /* 56 door-frame marks: Wisp, Pip, pet, Wisp's old (px) */
+    uint16_t fountain_q8;    /* 60 the giggle's lateness, frames Q8             */
+    uint16_t feast_clues;    /* 62 12 clue bits + 4 confirm bits                */
+    uint16_t grumble;        /* 64 dishes fed 4 | pacifist 1 | exes met 3 | 8 spare (C13) */
+    uint16_t tally_days;     /* 66 Tallyworn's board                            */
+    uint8_t  feast_meter;    /* 68 0..9                                         */
+    uint8_t  hee_count;      /* 69 S198's counter                               */
+    uint8_t  pet_form;       /* 70 nubs/horns/halo/glow/nap-on-command/bonnet   */
+    uint8_t  ngplus;         /* 71 runs 2 | subtitles 1 | Feast re-drawn 1      */
+    uint8_t  gag_cool[8];    /* 72 spawner cooldowns in minutes                 */
+    DoomoStryLater later[4]; /* 80 pending "Later" callbacks (C9, C14)          */
+} DoomoStry;                 /* 96 */
+DOOMO_STATIC_ASSERT(sizeof(DoomoStry) == 96, doomo_stry_is_96_bytes);
+#define STRY_CHUNK_TAG     SAVE_EXT_TAG('S', 'T', 'R', 'Y')
+#define STRY_CHUNK_VERSION 1
+DoomoStry *story_stry(void);         /* the live copy                       */
+int  story_episode_done(int beat);   /* BEAT_P0.. done bit                   */
+
+/* Grumbleguts (roster resident 729) is a real citizen (C13): friendship,
+ * romance, death and burial go through the sim. STRY.grumble keeps only the
+ * story-only state these getters read (story_grumble.c, S5). */
+int  story_grumble_dishes(void);     /* dishes fed 0..15                     */
+int  story_grumble_pacifist(void);
+int  story_grumble_exes_met(void);   /* 0..7                                 */
+int  story_grumble_dead(void);       /* SF_GRUMBLE_DEAD                      */
+int  story_grumble_no_rite(void);    /* SF_GRUMBLE_NO_RITE                   */
+/* The graveyard's rite blocker clause (C13): 1 if `resident_id` may not be
+ * raised by the ghost rite because of the story. */
+int  story_rite_blocker(int resident_id);
+/* Authored possessors (S3, exorcism.c): the true-name id that overrides
+ * sim_soul.c's pick for `resident_id`, or -1. */
+int  story_possessor_override(int resident_id);
+/* Hooks the customisation spec re-targets (C10; S2). 256 = 1.0. */
+int  story_pacing_scale(void);
+int  story_encounter_rate(void);
+/* --- end S0 --- */
 
 #endif

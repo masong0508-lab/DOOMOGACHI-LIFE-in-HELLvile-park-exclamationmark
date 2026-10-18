@@ -51,6 +51,26 @@ const AudioInst audio_insts[] = {
 const int audio_inst_count = (int)(sizeof(audio_insts) / sizeof(audio_insts[0]));
 
 /* ---- the songs ------------------------------------------------------------- */
+/* --- S0: the story SPEC's 9 songs (R16, C15) ---
+ * Each song is four channel strings defined by its owner in its own
+ * core/src/mml_<name>.c (strong). Until then core/src/stubs.c gives weak
+ * silent placeholders. Incomplete arrays: their addresses are constants,
+ * legal in this const initializer. Nobody edits these rows after S0. */
+#define SONG_EXT(n) extern const char doomo_mml_##n##_0[], doomo_mml_##n##_1[], \
+    doomo_mml_##n##_2[], doomo_mml_##n##_3[]
+SONG_EXT(mingle);
+SONG_EXT(wall_lullaby);
+SONG_EXT(two_choirs);
+SONG_EXT(boat_floats);
+SONG_EXT(thirteen_bells);
+SONG_EXT(hell_lullaby);
+SONG_EXT(double_act);
+SONG_EXT(heehee_jingle);
+SONG_EXT(number_ten);
+#define SONG_ROW(n, title) { title, ASONG_LOOP, { doomo_mml_##n##_0, doomo_mml_##n##_1, \
+    doomo_mml_##n##_2, doomo_mml_##n##_3 } }
+/* --- end S0 --- */
+
 const AudioSong audio_songs[SONG_COUNT] = {
     /* SONG_NONE */
     { "Silence", 0, { NULL, NULL, NULL, NULL } },
@@ -298,4 +318,15 @@ const AudioSong audio_songs[SONG_COUNT] = {
       /*ch2*/ "@12 o5 v7 [r4 b8 r8 a+8 r8 r4 | r4 e8 r8 f8 r8 r4 |]4",
       /*ch3*/ "v8 [K4 K8 r8 r2]8" } },
     /*END*/
+    /* --- S0: SONG_MINGLE .. SONG_NUMBER_TEN (R16) --- */
+    SONG_ROW(mingle, "Mingle"),
+    SONG_ROW(wall_lullaby, "Lullaby for the Wall"),
+    SONG_ROW(two_choirs, "Two Choirs"),
+    SONG_ROW(boat_floats, "Boat Floats"),
+    SONG_ROW(thirteen_bells, "Thirteen Bells"),
+    SONG_ROW(hell_lullaby, "Hellvile Lullaby"),
+    SONG_ROW(double_act, "Double Act"),
+    SONG_ROW(heehee_jingle, "Hee. Hee."),
+    SONG_ROW(number_ten, "Number Ten"),
+    /* --- end S0 --- */
 };

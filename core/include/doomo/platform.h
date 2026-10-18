@@ -177,6 +177,83 @@ int plat_save_stream_write(const void *data, uint32_t n);
 int plat_save_stream_end(int commit);
 int plat_save_read_at(int slot, uint32_t offset, void *data, uint32_t n, uint32_t *size);
 
+/* ---- S0: comic post-FX and squash (docs/design/story/SPEC.md sec.4, R12) -----
+ * Maintainer: S1 (add-only). Weak software defaults: core/src/plat_weak_fx.c;
+ * GBA (gba/src/postfx.c, obj.c) and PS1 (ps1/src/postfx.c, xform.c)
+ * override them. camfx.h drives these; nothing else should call them.
+ *
+ * Scaled blit about an anchor: (ax, ay) is the image's bottom-centre (the
+ * feet / contact point). sx/sy Q8.8 (256 = 1.0), negative sx = flip. flags
+ * and color as plat_image. GBA: affine OBJ for hero actors (SPEC C7.4-6),
+ * PS1: one POLY_FT4. The software default draws at the nearest integer
+ * scale through plat_image (scale 1 when there is no hardware path). */
+void plat_image_xform(int ax, int ay, const DoomoImage *img, int sx_q8, int sy_q8,
+                      int flags, uint8_t color);
+/* Full-screen post effects, applied to the frame being built (camfx_apply).
+ *   offset: GBA REG_BG2X/Y at flip; PS1 E5 draw offset (a second E5 before
+ *           the HUD). Default: no-op (software paths use camfx_offset()).
+ *   scale:  GBA BG2PA/PD about (cx, cy); PS1 GTE H. Default: no-op.
+ *   blend:  colour over the frame at level16 (0 none .. 16 solid); GBA BLDY
+ *           or palette lerp, PS1 ABR TILE. Default: rect / checker / shade.
+ *   iris:   everything outside the circle (heart: a heart) of radius r at
+ *           (cx, cy) goes black, with a 1 px `rim` colour (0 = none). r < 0
+ *           = off. Default: software row spans. */
+void plat_post_offset(int dx, int dy);
+void plat_post_scale(int sx_q8, int sy_q8, int cx, int cy);
+void plat_post_blend(uint8_t color, int level16);
+void plat_post_iris(int cx, int cy, int r, int heart, uint8_t rim);
+/* Palette lerp toward PAL_SEPIA/CRAYON/HELLIFY/LILAC (camfx.h) at level16;
+ * GBA: palette DMA at vblank; PS1: a CLUT swap. Default: no-op. */
+void plat_pal_lerp(int pal_id, int level16);
+
+/* ---- S0: the dream house's room renderer (HF sec.9.1, SPEC R12, C7, C9) ------
+ * Maintainer: H1 (add-only). GBA: gba/src/room.c (H2), PS1: ps1/src/room.c
+ * (H3), native: core/src/room_ref.c (H4, the reference renderer). Until
+ * those land plat_room is a weak stub (core/src/stubs.c). */
+enum { RO_GHOST = 1, RO_INVALID = 2, RO_FULLBRIGHT = 4, RO_SEMI = 8, RO_SELECTED = 16 };
+enum { RA_PLAYER = 0x80 };            /* DoomoRoomActor.flags, with BB_* */
+typedef struct DoomoRoomObj {         /* render-ready; the core fills it per frame */
+    uint16_t furn;                    /* 0..FURN_MAX-1                              */
+    uint8_t  x, y, z;                 /* tile, tile, height px                      */
+    uint8_t  rot_anim;                /* bits 0-1 rot 0..3, bits 2-4 anim frame/state */
+    uint8_t  paint_a, paint_b;        /* PAINT_* or 0xFF                             */
+    int8_t   sq_x, sq_y;              /* squash -64..63 (/128): DROP, ripple, wobble */
+    int8_t   jitter;                  /* possessed shake amplitude                   */
+    uint8_t  flags;                   /* RO_*                                        */
+} DoomoRoomObj;                       /* 12 B */
+#define RO_ROT(o)  ((o)->rot_anim & 3)
+#define RO_ANIM(o) (((o)->rot_anim >> 2) & 7)
+#define RO_ROT_ANIM(rot, anim) ((uint8_t)(((rot) & 3) | (((anim) & 7) << 2)))
+typedef struct DoomoRoomActor {
+    const DoomoImage *img;            /* chibi (GBA, native) / figure (PS1)         */
+    fix16   x, y;                     /* tile space 16.16                            */
+    int16_t z;
+    int16_t sx, sy;                   /* Q8.8 squash (PS1, native; GBA ignores)      */
+    uint8_t flags;                    /* BB_FLIPX, BB_TRANSLUCENT, BB_SHADOW, RA_PLAYER */
+} DoomoRoomActor;
+enum { ROOMK_WALLS, ROOMK_GARDEN, ROOMK_OPEN };   /* DoomoRoomView.room_kind */
+typedef struct DoomoRoomView {
+    uint8_t  w, d, wallpaper, floor, wall_paint, floor_paint, ceiling, room_kind;
+    const DoomoRoomObj *objs; int nobj;
+    const DoomoRoomActor *actors; int nact;
+    uint16_t gen;                     /* bump on any layout/paint change (GBA cache key) */
+    int16_t  yaw;                     /* 0..4095; GBA snaps to 4 views, PS1 orbits       */
+    uint8_t  zoom;                    /* 0 overview, 1 close                             */
+    int16_t  punch_q8;                /* 256 = none                                      */
+    int8_t   pan_x, pan_y;            /* tiles*16                                        */
+    uint8_t  daylight, tint, tint_level, weather;
+    int8_t   cursor_x, cursor_y;      /* -1 = hidden (GBA: OBJ)                          */
+    uint8_t  sel_mask[16];            /* multi-select rubber band, 1 bit per tile row    */
+    uint16_t time;
+    int16_t  vx, vy, vw, vh;          /* viewport                                        */
+    void    *plat_cache; uint32_t plat_cache_cap;  /* scene scratch tail the platform may
+                                         use (PS1 vertex cache, C9/C17); GBA gets 0     */
+} DoomoRoomView;
+void plat_room(const DoomoRoomView *v);
+/* An opaque HUD bar the room renderer may skip under (C7.3). Default no-op. */
+void plat_room_ui_opaque(int x, int y, int w, int h);
+/* --- end S0 --- */
+
 /* ---- misc ----------------------------------------------------------------- */
 uint32_t plat_entropy(void);           /* any varying value for seeding  */
 uint32_t plat_ticks(void);             /* monotonically increasing frames */

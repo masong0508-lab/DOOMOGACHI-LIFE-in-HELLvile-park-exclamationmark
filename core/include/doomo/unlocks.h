@@ -89,6 +89,7 @@ extern const DoomoUnlock doomo_unlocks_studio[];      /* 240..255 (Music Studio)
 extern const DoomoUnlock doomo_unlocks_library[];     /* 384..415 (Grand Library; life's unused tail) */
 extern const DoomoUnlock doomo_unlocks_fishcook[];    /* 960..1023 (Lake of Fire + Brimstone Bites; roster's unused range) */
 extern const DoomoUnlock doomo_unlocks_levels[];      /* 864..895 (levels + arena modes; reserved, unlock_ids.h) */
+extern const DoomoUnlock doomo_unlocks_home[];        /* 564..595 (S0: the dream house, unlocks_home.c, H1) */
 
 /* Game modes gated by UL_CAT_MODE. */
 enum { MODE_ARENA, MODE_BOSS_RUSH, MODE_HELLVILE_VISITS, MODE_TAMA_ONLY,

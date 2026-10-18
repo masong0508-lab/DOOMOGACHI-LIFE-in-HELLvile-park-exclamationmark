@@ -3,7 +3,7 @@
 #include <sys/stat.h>
 #include "test.h"
 
-#define MAX_TESTS 512
+#define MAX_TESTS 1024    /* S0 (SPEC R21): ~110 story/house tests + customisation */
 
 typedef struct { const char *name, *file; TestFn fn; } TestEntry;
 static TestEntry tests[MAX_TESTS];
@@ -32,6 +32,10 @@ void test_fail(const char *file, int line, const char *msg)
 }
 
 int test_failed_now(void) { return cur_failed; }
+
+/* (S0) the registry's cap and fill, for test_contracts.c (SPEC R21) */
+int test_registry_cap(void) { return MAX_TESTS; }
+int test_registry_count(void) { return ntests; }
 
 void test_reset(void)
 {

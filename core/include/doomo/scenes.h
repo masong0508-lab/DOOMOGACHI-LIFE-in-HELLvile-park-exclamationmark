@@ -79,6 +79,22 @@ extern const DoomoScene SCENE_FISHING, SCENE_COOKING;
  * Boss Rush / Horde / Monster Mode Mayhem (arg = AM_*) */
 extern const DoomoScene SCENE_LEVEL_SELECT, SCENE_BREACH, SCENE_ARENA_MODE;
 
+/* --- S0: story + dream house scenes (docs/design/story/SPEC.md sec.4, C14;
+ * maintainer after S0: I9, add-only) ---
+ * SCENE_HOME        the house: Live / Build / Photo, visits, the haunting,
+ *                   Hold the Door (home_draw.c, H4; arg encoding: home.h
+ *                   HOME_ARG_*: -(1 + HOME_*) own home, 2 + id visit,
+ *                   0x4000 | HSM_* story modes; 0 and 1 are refused)
+ * SCENE_HOME_MART   HomeMart and the Black Market (home_mart.c, H4; arg 0
+ *                   HomeMart, 1 Black Market)
+ * SCENE_STORY_MG    a story side minigame (story_verbs.c shell, S2; arg = a
+ *                   story_mg registry id, story_vm.h)
+ * SCENE_STORY_TIMING the comic-timing press minigame (story_timing.c, S2;
+ *                   arg = pattern | skin << 8)
+ * The result of each is read by the story VM after the pop. */
+extern const DoomoScene SCENE_HOME, SCENE_HOME_MART, SCENE_STORY_MG, SCENE_STORY_TIMING;
+/* --- end S0 --- */
+
 /* Registry (scene.c, foundation): every scene above, NULL-terminated. */
 extern const DoomoScene *const doomo_all_scenes[];
 /* Find a scene by its name ("TITLE"); also accepts "SCENE_TITLE". */

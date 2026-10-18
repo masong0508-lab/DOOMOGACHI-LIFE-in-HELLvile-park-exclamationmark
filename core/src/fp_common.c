@@ -320,7 +320,7 @@ static int fpx_read(const uint8_t *src, uint32_t len, uint16_t version)
 static void fpx_reset(void) { memset(&fpx, 0, sizeof(fpx)); }
 
 static const DoomoSaveExt fp_ext = {
-    SAVE_EXT_TAG('F', 'P', 'L', 'Y'), 1, fpx_size, fpx_write, fpx_read, fpx_reset
+    SAVE_EXT_TAG('F', 'P', 'L', 'Y'), 1, fpx_size, fpx_write, fpx_read, fpx_reset, 0 /* max_size (S0) */
 };
 const DoomoSaveExt *const doomo_save_ext_freeplay = &fp_ext;
 

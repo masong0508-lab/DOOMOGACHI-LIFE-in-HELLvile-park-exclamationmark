@@ -853,6 +853,7 @@ EMPTY_UNLOCKS(doomo_unlocks_studio);
 EMPTY_UNLOCKS(doomo_unlocks_library);
 EMPTY_UNLOCKS(doomo_unlocks_fishcook);
 EMPTY_UNLOCKS(doomo_unlocks_levels);
+EMPTY_UNLOCKS(doomo_unlocks_home);      /* S0: the dream house (H1) */
 
 /* ======================================================================
  * scenes owned by other modules
@@ -1037,3 +1038,263 @@ STUB_SCENE(SCENE_COOKING, "COOKING");
 STUB_SCENE(SCENE_LEVEL_SELECT, "LEVEL_SELECT");
 STUB_SCENE(SCENE_BREACH, "BREACH");
 STUB_SCENE(SCENE_ARENA_MODE, "ARENA_MODE");
+
+/* ======================================================================
+ * --- S0: story, comic timing and dream house contracts ---------------
+ * (docs/design/story/SPEC.md sec.4; append-only block, one per spec). Weak
+ * placeholders for every symbol the S0 headers declare, so the game links
+ * while S1/S2/S3/S5/H1/H4 land. Each logs "STUB: <name>" once and returns
+ * a neutral value; nothing in the shipped game calls them before their
+ * owner lands. I9 deletes the ones that have strong definitions.
+ * ==================================================================== */
+#include "doomo/tween.h"
+#include "doomo/beat.h"
+#include "doomo/camfx.h"
+#include "doomo/story_vm.h"
+#include "doomo/txt.h"
+#include "doomo/home.h"
+#include "doomo/house_api.h"
+
+/* ---- tween.h (S1: tween.c, tween_tables.c) ---- */
+WEAK fix16 tw_t(int age, int dur)
+{
+    STUB("tw_t");
+    if (dur <= 0 || age >= dur) return FIX_ONE;
+    return age <= 0 ? 0 : (fix16)(((int64_t)age << 16) / dur);
+}
+WEAK fix16 tw_smooth(fix16 t) { STUB("tw_smooth"); return t; }
+WEAK fix16 tw_in2(fix16 t) { STUB("tw_in2"); return t; }
+WEAK fix16 tw_out2(fix16 t) { STUB("tw_out2"); return t; }
+WEAK fix16 tw_back(fix16 t, fix16 s) { (void)s; STUB("tw_back"); return t; }
+WEAK fix16 tw_bounce(fix16 t) { STUB("tw_bounce"); return t; }
+WEAK int tw_lerp(int a, int b, fix16 t)
+{
+    STUB("tw_lerp");
+    return a + (int)(((int64_t)(b - a) * t) >> 16);
+}
+WEAK int tw_tab(const TwTab *t, int age)
+{
+    STUB("tw_tab");
+    if (!t || !t->v || !t->n) return 0;
+    return t->v[age < 0 ? 0 : age >= t->n ? t->n - 1 : age];
+}
+WEAK TwSquash tw_squash(const TwTab *sx, const TwTab *sy, const TwTab *dy, int age, int amount256)
+{
+    TwSquash q;
+    (void)sx; (void)sy; (void)dy; (void)age; (void)amount256;
+    STUB("tw_squash");
+    q.sx = 256; q.sy = 256; q.dy = 0;
+    return q;
+}
+WEAK const TwTab *tw_table(int id) { (void)id; STUB("tw_table"); return NULL; }
+#define EMPTY_TWTAB(n) WEAK const TwTab n = { NULL, 0 }
+EMPTY_TWTAB(TW_POP_BUBBLE); EMPTY_TWTAB(TW_POP_LETTER); EMPTY_TWTAB(TW_POP_SOUL);
+EMPTY_TWTAB(TW_POP_LOCKUP); EMPTY_TWTAB(TW_POP_EYE); EMPTY_TWTAB(TW_POP_MENU);
+EMPTY_TWTAB(TW_POP_BLOB); EMPTY_TWTAB(TW_POP_BURST);
+EMPTY_TWTAB(TW_SLAM_STAMP); EMPTY_TWTAB(TW_SLAM_COUNTER); EMPTY_TWTAB(TW_SLAM_STICKER);
+EMPTY_TWTAB(TW_SLAM_STICK2);
+EMPTY_TWTAB(TW_DROP_TITLE_SX); EMPTY_TWTAB(TW_DROP_TITLE_SY); EMPTY_TWTAB(TW_DROP_TITLE_DY);
+EMPTY_TWTAB(TW_DROP_LET_SX); EMPTY_TWTAB(TW_DROP_LET_SY); EMPTY_TWTAB(TW_DROP_LET_DY);
+EMPTY_TWTAB(TW_DROP_SOFT_SX); EMPTY_TWTAB(TW_DROP_SOFT_SY); EMPTY_TWTAB(TW_DROP_SOFT_DY);
+EMPTY_TWTAB(TW_HEART_LAND_SQ); EMPTY_TWTAB(TW_DEVICE_DY); EMPTY_TWTAB(TW_SIGN_DY);
+EMPTY_TWTAB(TW_CLUNK); EMPTY_TWTAB(TW_CLAP); EMPTY_TWTAB(TW_WINDOW_BOING_DY);
+EMPTY_TWTAB(TW_BRAKE_DX); EMPTY_TWTAB(TW_ZOOM_WOBBLE_DY);
+EMPTY_TWTAB(TW_HOP1); EMPTY_TWTAB(TW_HOP2); EMPTY_TWTAB(TW_TAG_DY); EMPTY_TWTAB(TW_DEADPAN_DY);
+WEAK void tw_spring_init(TwSpring *s, int preset, int32_t pos_q4)
+{
+    (void)preset;
+    STUB("tw_spring_init");
+    if (s) { memset(s, 0, sizeof(*s)); s->e = 0; s->target = pos_q4; }
+}
+WEAK void tw_spring_target(TwSpring *s, int32_t target_q4)
+{
+    STUB("tw_spring_target");
+    if (s) s->target = target_q4;
+}
+WEAK void tw_spring_punch(TwSpring *s, int32_t d_q4) { (void)s; (void)d_q4; STUB("tw_spring_punch"); }
+WEAK void tw_spring_shove(TwSpring *s, int32_t dv_q4) { (void)s; (void)dv_q4; STUB("tw_spring_shove"); }
+WEAK int32_t tw_spring_step(TwSpring *s) { STUB("tw_spring_step"); return s ? s->target : 0; }
+
+/* ---- beat.h (S1: beat.c) ---- */
+WEAK void beat_start(const BeatScript *s) { (void)s; STUB("beat_start"); }
+WEAK int  beat_tick(void) { STUB("beat_tick"); return BT_DONE; }
+WEAK const BeatEv *beat_ext_event(void) { STUB("beat_ext_event"); return NULL; }
+WEAK int  beat_running(void) { return 0; }
+WEAK int  beat_age(int label) { (void)label; STUB("beat_age"); return -1; }
+WEAK int  beat_clock(int actor) { (void)actor; STUB("beat_clock"); return (int)plat_ticks(); }
+WEAK void beat_skip(void) { STUB("beat_skip"); }
+WEAK void beat_press_a(void) { STUB("beat_press_a"); }
+WEAK void beat_set_actor_clock(int actor, int mode) { (void)actor; (void)mode; STUB("beat_set_actor_clock"); }
+
+/* ---- camfx.h (S1: camfx.c) ---- */
+WEAK void camfx_reset(void) { STUB("camfx_reset"); }
+WEAK void camfx_shake(int profile) { (void)profile; STUB("camfx_shake"); }
+WEAK void camfx_punch(int dx, int dy) { (void)dx; (void)dy; STUB("camfx_punch"); }
+WEAK void camfx_zoom_snap(int scale_q8, int frames) { (void)scale_q8; (void)frames; STUB("camfx_zoom_snap"); }
+WEAK void camfx_flash(uint8_t color, int level16, int frames)
+{
+    (void)color; (void)level16; (void)frames;
+    STUB("camfx_flash");
+}
+WEAK void camfx_fade(int level16) { (void)level16; STUB("camfx_fade"); }
+WEAK void camfx_iris(int cx, int cy, int r, int heart, uint8_t rim)
+{
+    (void)cx; (void)cy; (void)r; (void)heart; (void)rim;
+    STUB("camfx_iris");
+}
+WEAK void camfx_iris_off(void) { STUB("camfx_iris_off"); }
+WEAK void camfx_pal_lerp(int pal_id, int level16) { (void)pal_id; (void)level16; STUB("camfx_pal_lerp"); }
+WEAK void camfx_tick(void) { }
+WEAK void camfx_offset(int *dx, int *dy) { if (dx) *dx = 0; if (dy) *dy = 0; }
+WEAK void camfx_apply(void) { }
+
+/* ---- story_vm.h (S2: scriptvm.c) ---- */
+WEAK void vm_start(int script_id) { (void)script_id; STUB("vm_start"); }
+WEAK int  vm_tick(void) { return VM_IDLE; }
+WEAK void vm_resume(int result) { (void)result; STUB("vm_resume"); }
+WEAK const StoryOp *vm_ext_op(void) { return NULL; }
+WEAK int  vm_running(void) { return 0; }
+WEAK int  vm_var(int i) { (void)i; STUB("vm_var"); return 0; }
+WEAK void vm_set_var(int i, int v) { (void)i; (void)v; STUB("vm_set_var"); }
+WEAK uint32_t story_rng(uint32_t ctx)
+{
+    uint32_t x = doomo_town.seed ^ (ctx * 0x9E3779B9u) ^ 0x5EED5EEDu;
+    STUB("story_rng");
+    x ^= x << 13; x ^= x >> 17; x ^= x << 5;
+    return x;
+}
+WEAK uint32_t story_fingerprint(void) { STUB("story_fingerprint"); return 0; }
+
+/* The story_mg registry (C14): weak NULL tables (story_mg_a.c S4,
+ * story_mg_b.c S5) and its reader. The reader is a functional default
+ * (S2 may keep it); the tables are read through a volatile pointer because
+ * GCC would otherwise fold this file's weak NULL constants. */
+WEAK const StoryMgEntry *const doomo_story_mg_a = 0;
+WEAK const StoryMgEntry *const doomo_story_mg_b = 0;
+#define MG_TABLE(p) (*(const StoryMgEntry *const volatile *)&(p))
+static const StoryMgEntry *story_mg_table(int t)
+{
+    return t == 0 ? MG_TABLE(doomo_story_mg_a) : t == 1 ? MG_TABLE(doomo_story_mg_b) : NULL;
+}
+WEAK int story_mg_count(void)
+{
+    int t, n = 0;
+    for (t = 0; t < 2; t++) {
+        const StoryMgEntry *e = story_mg_table(t);
+        while (e && e->name) { n++; e++; }
+    }
+    return n;
+}
+WEAK const StoryMgEntry *story_mg_at(int i)
+{
+    int t;
+    if (i < 0) return NULL;
+    for (t = 0; t < 2; t++) {
+        const StoryMgEntry *e = story_mg_table(t);
+        for (; e && e->name; e++) if (i-- == 0) return e;
+    }
+    return NULL;
+}
+WEAK const StoryMgEntry *story_mg_find(int id)
+{
+    int i, n = story_mg_count();
+    for (i = 0; i < n; i++) {
+        const StoryMgEntry *e = story_mg_at(i);
+        if (e && e->id == id) return e;
+    }
+    return NULL;
+}
+
+/* ---- txt.h (S2: txt.c) ---- */
+WEAK int txt_get(uint16_t id, char *out, int cap)
+{
+    (void)id;
+    STUB("txt_get");
+    if (out && cap > 0) out[0] = 0;
+    return -1;
+}
+WEAK int txt_pack_load(int pack) { (void)pack; STUB("txt_pack_load"); return 0; }
+WEAK int txt_pack_is_live(int pack) { (void)pack; return 0; }
+WEAK void txt_stash(int slot, uint16_t id) { (void)slot; (void)id; STUB("txt_stash"); }
+WEAK const char *txt_stash_get(int slot) { (void)slot; STUB("txt_stash_get"); return ""; }
+
+/* ---- furn.h (H4: core/gen/furn_data.c) ---- */
+WEAK const DoomoFurn doomo_furn[1] = { { NULL, NULL, 0, 0xFFFF, 0xFFFF, 0, 0, 0, 0,
+                                          0, 0, 0, 0xFF, 0xFF, 0, 0, 0, 0xFF, 0, 0,
+                                          THEME_NONE, 0, 0, 0, 0 } };
+WEAK const uint16_t doomo_furn_count = 0;
+
+/* ---- house_api.h (H1: house_api.c) ---- */
+WEAK int  home_grade(int room) { (void)room; STUB("home_grade"); return HG_NONE; }
+WEAK int  home_stat(int stat) { (void)stat; STUB("home_stat"); return 0; }
+WEAK int  home_grant(int furn) { (void)furn; STUB("home_grant"); return 0; }
+WEAK int  home_has(int furn) { (void)furn; STUB("home_has"); return 0; }
+WEAK int  home_place_gift(int furn) { (void)furn; STUB("home_place_gift"); return 0; }
+WEAK void home_remove_only(int on) { (void)on; STUB("home_remove_only"); }
+WEAK int  home_goal_check(int goal) { (void)goal; STUB("home_goal_check"); return 0; }
+WEAK int  home_decorate_for(int layout, int tol) { (void)layout; (void)tol; STUB("home_decorate_for"); return 0; }
+WEAK void home_haunt_step(int night) { (void)night; STUB("home_haunt_step"); }
+WEAK int  home_defend_result(void) { STUB("home_defend_result"); return 0; }
+WEAK int  home_rivet_visits(void) { STUB("home_rivet_visits"); return 0; }
+WEAK int  home_days_since_fire(void) { STUB("home_days_since_fire"); return 0; }
+WEAK void home_set_phase(int phase) { (void)phase; STUB("home_set_phase"); }
+WEAK int  home_phase(void) { STUB("home_phase"); return HP_COSY; }
+WEAK int  home_prop_gag(int gag) { (void)gag; STUB("home_prop_gag"); return 0; }
+WEAK int  home_moved_in(void) { STUB("home_moved_in"); return 0; }
+
+/* ---- platform.h: the room renderer (H2/H3; native reference room_ref.c,
+ * H4, replaces this stub - delete it then) ---- */
+WEAK void plat_room(const DoomoRoomView *v) { (void)v; STUB("plat_room"); }
+
+/* ---- audio.h hooks (S1: audio_fx.c) ---- */
+WEAK void audio_music_mute(int frames) { (void)frames; STUB("audio_music_mute"); }
+WEAK void audio_music_duck(int gain_q8, int frames) { (void)gain_q8; (void)frames; STUB("audio_music_duck"); }
+WEAK void audio_tapestop(int frames) { (void)frames; STUB("audio_tapestop"); }
+WEAK void audio_music_resume_on_beat(void) { STUB("audio_music_resume_on_beat"); }
+WEAK void audio_music_dual(int song_a, int song_b)
+{
+    (void)song_b;
+    STUB("audio_music_dual");
+    audio_music(song_a);
+}
+WEAK void audio_sfx_pitch(int sfx, int semis) { (void)semis; STUB("audio_sfx_pitch"); audio_sfx(sfx); }
+WEAK void audio_sfx_synth(int sfx) { (void)sfx; STUB("audio_sfx_synth"); }
+WEAK const uint8_t *audio_voice_preset(int preset) { (void)preset; STUB("audio_voice_preset"); return NULL; }
+
+/* The 9 new songs' MML (R16, C15): silent placeholders, four channels each
+ * (16 quiet eighths on the lead so the sequencer, the jukebox and the song
+ * tests treat them as real songs). Owners define core/src/mml_<name>.c. */
+#define SONG_STUB(n) \
+    WEAK const char doomo_mml_##n##_0[] = "t120 v0 l8 [c]16"; \
+    WEAK const char doomo_mml_##n##_1[] = ""; \
+    WEAK const char doomo_mml_##n##_2[] = ""; \
+    WEAK const char doomo_mml_##n##_3[] = ""
+SONG_STUB(mingle); SONG_STUB(wall_lullaby); SONG_STUB(two_choirs);
+SONG_STUB(boat_floats); SONG_STUB(thirteen_bells); SONG_STUB(hell_lullaby);
+SONG_STUB(double_act); SONG_STUB(heehee_jingle); SONG_STUB(number_ten);
+
+/* ---- story.h additions (S2 stry_save.c, S3 exorcism.c, S5 story_grumble.c) ---- */
+WEAK DoomoStry *story_stry(void)
+{
+    static DoomoStry zero;
+    STUB("story_stry");
+    return &zero;
+}
+WEAK int story_episode_done(int beat) { (void)beat; STUB("story_episode_done"); return 0; }
+WEAK int story_grumble_dishes(void) { STUB("story_grumble_dishes"); return 0; }
+WEAK int story_grumble_pacifist(void) { STUB("story_grumble_pacifist"); return 0; }
+WEAK int story_grumble_exes_met(void) { STUB("story_grumble_exes_met"); return 0; }
+WEAK int story_grumble_dead(void) { STUB("story_grumble_dead"); return story_flag(SF_GRUMBLE_DEAD); }
+WEAK int story_grumble_no_rite(void) { STUB("story_grumble_no_rite"); return story_flag(SF_GRUMBLE_NO_RITE); }
+WEAK int story_rite_blocker(int resident_id) { (void)resident_id; return 0; }
+WEAK int story_possessor_override(int resident_id) { (void)resident_id; return -1; }
+WEAK int story_pacing_scale(void) { return 256; }
+WEAK int story_encounter_rate(void) { return 256; }
+
+/* ---- scenes.h (H4: home_draw.c, home_mart.c; S2: story_verbs.c,
+ * story_timing.c) ---- */
+STUB_SCENE(SCENE_HOME, "HOME");
+STUB_SCENE(SCENE_HOME_MART, "HOME_MART");
+STUB_SCENE(SCENE_STORY_MG, "STORY_MG");
+STUB_SCENE(SCENE_STORY_TIMING, "STORY_TIMING");
+/* --- end S0 --- */

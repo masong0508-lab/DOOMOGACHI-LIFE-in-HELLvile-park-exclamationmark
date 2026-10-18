@@ -34,6 +34,7 @@ static const struct { const char *team; int first, last; } slot_range[] = {
     { "library",    UL_IDS_LIBRARY_FIRST,    UL_IDS_LIBRARY_LAST },
     { "fishcook",   UL_IDS_FISHCOOK_FIRST,   UL_IDS_FISHCOOK_LAST },
     { "levels",     UL_IDS_LEVELS_FIRST,     UL_IDS_LEVELS_LAST },
+    { "home",       UL_IDS_HOME_FIRST,       UL_IDS_HOME_LAST },    /* S0 (SPEC R7) */
 };
 #define SLOTS ((int)(sizeof(slot_range) / sizeof(slot_range[0])))
 
@@ -51,6 +52,7 @@ static int misc_list_ok(int slot, int list)
     case 12: return list == UL_MISC_LIBRARY;
     case 13: return list == 0xC0 || list == 0xC1 || list == 0xF1 || list == 0xF2;
     case 14: return list == UL_MISC_LEVELS;
+    case 15: return list == UL_MISC_HOME;          /* S0 */
     default: return 0;
     }
 }
@@ -78,7 +80,7 @@ TEST(integ_unlock_ids_unique_across_all_tables)
 {
     static int16_t owner[DOOMO_UNLOCK_BITS];
     int t, i, total = 0;
-    CHECK_EQ(SLOTS, 15);
+    CHECK_EQ(SLOTS, 16);
     for (i = 0; i < DOOMO_UNLOCK_BITS; i++) owner[i] = -1;
     for (t = 0; doomo_unlock_tables[t]; t++) {
         const DoomoUnlock *u = doomo_unlock_tables[t];
@@ -298,6 +300,10 @@ TEST(integ_finished_scenes_are_not_stubs)
         /* still being written by other teams */
         if (s == &SCENE_FISHING || s == &SCENE_COOKING || s == &SCENE_LEVEL_SELECT ||
             s == &SCENE_BREACH || s == &SCENE_ARENA_MODE) continue;
+        /* --- S0: declared by the story/house SPEC; H4 / S2 write them --- */
+        if (s == &SCENE_HOME || s == &SCENE_HOME_MART || s == &SCENE_STORY_MG ||
+            s == &SCENE_STORY_TIMING) continue;
+        /* --- end S0 --- */
         CHECK_MSG(!scene_is_stub(s), "SCENE_%s is still the weak stub", s->name);
     }
 }

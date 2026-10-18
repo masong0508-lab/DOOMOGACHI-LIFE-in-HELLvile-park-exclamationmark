@@ -62,5 +62,8 @@ extern const DoomoActivity *const doomo_activities_collections;
 extern const DoomoActivity *const doomo_activities_combat;
 extern const DoomoActivity *const doomo_activities_extra;
 extern const DoomoActivity *const doomo_activities_studio;   /* Music Studio */
+/* (S0, SPEC sec.4) the dream house: "Decorate my home", "Visit a neighbour",
+ * "HomeMart" (home_mart.c, H4) */
+extern const DoomoActivity *const doomo_activities_home;
 
 #endif

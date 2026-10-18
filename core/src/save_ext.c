@@ -6,6 +6,10 @@ __attribute__((weak)) const DoomoSaveExt *const doomo_save_ext_extra = 0;
 __attribute__((weak)) const DoomoSaveExt *const doomo_save_ext_test = 0;
 __attribute__((weak)) const DoomoSaveExt *const doomo_save_ext_freeplay = 0;
 __attribute__((weak)) const DoomoSaveExt *const doomo_save_ext_fishcook = 0;
+/* --- S0: story + house chunks (SPEC R14) --- */
+__attribute__((weak)) const DoomoSaveExt *const doomo_save_ext_home = 0;
+__attribute__((weak)) const DoomoSaveExt *const doomo_save_ext_story2 = 0;
+/* --- end S0 --- */
 
 /* The defaults above are weak CONSTANTS: without the volatile read GCC
  * folds their value (0) into this file and never sees a module's strong
@@ -19,19 +23,21 @@ static const DoomoSaveExt *slot(int i) {
     case 2: return EXT_SLOT(doomo_save_ext_test);
     case 3: return EXT_SLOT(doomo_save_ext_freeplay);
     case 4: return EXT_SLOT(doomo_save_ext_fishcook);
+    case 5: return EXT_SLOT(doomo_save_ext_home);      /* S0 */
+    case 6: return EXT_SLOT(doomo_save_ext_story2);    /* S0 */
     default: return 0;
     }
 }
 
 int save_ext_count(void) {
     int i, n = 0;
-    for (i = 0; i < 5; i++) if (slot(i)) n++;
+    for (i = 0; i < SAVE_EXT_SLOTS; i++) if (slot(i)) n++;
     return n;
 }
 
 const DoomoSaveExt *save_ext_at(int i) {
     int k;
-    for (k = 0; k < 5; k++) {
+    for (k = 0; k < SAVE_EXT_SLOTS; k++) {
         const DoomoSaveExt *e = slot(k);
         if (!e) continue;
         if (i-- == 0) return e;
