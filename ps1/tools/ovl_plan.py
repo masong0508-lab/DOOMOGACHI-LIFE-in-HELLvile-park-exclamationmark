@@ -66,6 +66,34 @@ GROUPS = [
 ]
 OVL_KINDS = (".text", ".rodata")
 
+# Callbacks that never escape their group: functions whose address is taken
+# only to be called back SYNCHRONOUSLY by code of the same file, before that
+# code returns (a draw function handed to a cache builder, a per-item hook
+# of a loop), and never stored where resident code could call it later.
+# Every entry is reviewed by hand; the planner still checks that each taker
+# of the address is in the function's own group, and anything a resident
+# taker reaches stays resident through the normal closure, so a wrong entry
+# can only cost RAM, never put a live callback into an unloaded slot -
+# except for the one thing the planner cannot see: a pointer passed on to
+# resident code and stored. Do not list a function whose pointer goes to a
+# ui_* / scene / save callback, a registry or any variable.
+#   object base -> function names
+LOCAL_CALLBACKS = {
+    # grumbleguts_gfx.c: fig_fn goes to gg_build / gg_blit (the layer cache
+    # renders it at once); hang_direct / hang_blit go to lantern_string,
+    # which calls them per lantern. All three in the cutscene group.
+    "grumbleguts_gfx": ("fig_fn", "hang_direct", "hang_blit"),
+    # story_feast.c: lantern_fn goes to gg_cache_image (renders at once).
+    "story_feast": ("lantern_fn",),
+    # the Library wings: row goes to lib_list(), which draws the visible
+    # rows with it and returns (lib_common.c).
+    "lib_almanac": ("row",), "lib_bestiary": ("row",), "lib_gallery": ("row",),
+    "lib_items": ("row",), "lib_jukebox": ("row",), "lib_trophies": ("row",),
+    "lib_weapons": ("row",),
+    # fp_roster.c: cmp_res is the comparator of fp_sort_u16() (a shell sort).
+    "fp_roster": ("cmp_res",),
+}
+
 
 def run(cmd):
     return subprocess.run(cmd, check=True, capture_output=True, text=True).stdout
@@ -209,12 +237,25 @@ def main(argv):
     # escaping addresses: a code section takes the address of a function
     # (HI16/LO16, not a jal) -> that function may be called by anyone later
     escaped = set()
+    takers = collections.defaultdict(set)
     for src, lst in edges.items():
         if not is_code(src):
             continue
         for tgt, typ in lst:
             if typ in ("R_MIPS_HI16", "R_MIPS_LO16", "R_MIPS_32") and is_code(tgt):
                 escaped.add(tgt)
+                takers[tgt].add(src)
+    # LOCAL_CALLBACKS (above): not escaped when every taker is in their group
+    for f in sorted(escaped):
+        o = objs[f[0]]
+        names = LOCAL_CALLBACKS.get(base(o.path), ())
+        if not names or f[1] not in tuple(".text." + n for n in names):
+            continue
+        g = group_of(o.path)
+        if g and all(group_of(objs[t[0]].path) == g and t[1].startswith(OVL_KINDS) for t in takers[f]):
+            escaped.discard(f)
+        else:
+            print("ovl_plan: %s:%s is taken outside its group; it stays resident" % (base(o.path), f[1]))
 
 
     def closure_all(start):
