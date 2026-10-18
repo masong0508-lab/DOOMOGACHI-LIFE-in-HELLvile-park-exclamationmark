@@ -10,7 +10,7 @@
 #   desc "Description (<= 40)"
 #   foot W D H       footprint in tiles (1..4) and height in px/4
 #   flags F|F        FF_*: WALL RUG SURFACE SMALL LIGHT ANIM HELL BILLBOARD
-#   flags2 F|F       PORTAL CURSED NO_SQUASH UNSELLABLE GIFT STARTER
+#   flags2 F|F       PORTAL CURSED NO_SQUASH UNSELLABLE GIFT STARTER FIXED
 #   fi X             what Live mode does: NONE SIT SLEEP EAT COOK PLAY WATCH
 #                    MUSIC READ BATHE PRAY SUMMON EXAMINE TURRET
 #   role X           FR_* the rules know it as (BED SEAT TABLE LAMP CANDLE ...)
@@ -692,11 +692,11 @@
   paints CARAMEL FIXED  score 3 2 0  theme WORKSHOP
 [welded_plate] WALL 0 "Welded Plate"
   desc "A battle scar. Kept."
-  foot 1 1 6  flags WALL  flags2 UNSELLABLE  role PLATE
+  foot 1 1 6  flags WALL  role PLATE
   paints SILVER RUST  score 0 1 0  theme WORKSHOP
 [heart_wallpaper_eye] WALL 0 "Wallpaper Eye"
   desc "One heart is an eye. It blinks."
-  foot 1 1 3  flags WALL|ANIM  flags2 CURSED|UNSELLABLE
+  foot 1 1 3  flags WALL|ANIM  flags2 CURSED|UNSELLABLE|FIXED
   paints BUBBLEGUM FIXED  score 0 7 0  theme PASTEL
 [counter_board] WALL 80 "Counter Board"
   desc "Counts something. Nobody says what."

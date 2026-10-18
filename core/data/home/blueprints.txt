@@ -1,0 +1,214 @@
+# core/data/home/blueprints.txt - the 12 ROM blueprints (owner: H1; HF sec.2.3):
+# one per theme, "Nana's Starter" and Ch3's "Shelter". furngen (H4) joins
+# them into core/gen/furn_data.c (doomo_home_blueprints[]).
+#
+# Applying one puts the room's own pieces back in storage, paints the walls
+# in the blueprint's theme and places every piece you own; the rest stay as
+# grey ghosts with a "Buy at HomeMart" hint, so a blueprint doubles as a
+# shopping list. Two more slots are saved in HOME (the player's own).
+#
+#   [bp key] ROOM "Name (<= 20)"      ROOM: LIVING BEDROOM KITCHEN CELLAR
+#                                     GARDEN ANNEX TOWERS_7B PITS_FLAT PARK_PLOT
+#     theme THEME_ID                  (optional) the walls and floor
+#     piece KEY X Y F                 a catalog.txt key at tile (X, Y), facing
+#                                     F: S (+y), E (+x), N, W. Wall pieces: S on
+#                                     wall A (Y = 0), E on wall B (X = 0)
+#     small KEY X Y F SUB             a small on the surface at (X, Y), at
+#                                     half-tile SUB 0..3 (bit 0 +x, bit 1 +y)
+#     paints A B                      (optional, after a piece) PAINT_* or DEFAULT
+#
+# tests: every ROM blueprint applies in its own room with nothing blocked.
+
+[bp nanas_starter] LIVING "Nana's Starter"
+  theme COTTAGE
+  piece nanas_rug 2 3 S
+  piece picnic_crate 2 3 S
+  piece wooden_chair 3 3 W
+  piece single_bed 5 2 S
+  piece nightstand 5 1 S
+  piece honey_lamp 3 1 S
+  piece egg_nest 4 4 S
+  piece potted_fern 0 5 E
+  piece welcome_mat 4 1 S
+  piece heart_poster 0 3 E
+  piece cherry_clock 2 0 S
+  small jellybean_jar 2 3 S 0
+
+[bp pastel_parlour] LIVING "Pastel Parlour"
+  theme PASTEL
+  piece daisy_rug 2 2 S
+  piece marshmallow_sofa 2 0 S
+  piece teacup_table 2 2 S
+  piece bubble_chair 2 3 N
+  piece bunny_beanbag 3 2 W
+  piece cupcake_lamp 5 0 S
+  piece candy_cane_shelf 0 0 E
+  piece plush_ottoman 4 4 S
+  piece rainbow_bookcase 5 3 W
+  piece macaron_stool 4 2 S
+  piece heart_mirror 3 0 S
+  piece cloud_shelf 5 0 S
+  piece heart_poster 0 3 E
+  small sprinkle_vase 2 2 S 0
+
+[bp cloud_nap] BEDROOM "Cloud Nine Nap"
+  theme CLOUD
+  piece cloud_rug 1 3 S
+  piece cloud_bed 2 3 S
+  piece nightstand 3 3 S
+  piece pastel_wardrobe 0 0 E
+  piece plush_ottoman 1 1 S
+  piece bubble_chair 4 2 W
+  piece cream_dresser 5 0 S
+  piece toy_chest 5 4 W
+  piece cloud_shelf 2 0 S
+  piece heart_poster 0 4 E
+  small moon_lamp 3 3 S 0
+  small ghost_plush 2 3 S 1
+
+[bp candy_kitchen] KITCHEN "Candy Kitchen"
+  theme CANDY
+  piece strawberry_fridge 0 0 E
+  piece kitchen_counter 1 0 S
+  piece kitchen_counter 3 0 S
+  piece cottage_stove 4 0 S
+  piece candy_stripe_rug 3 3 S
+  piece pine_table 3 3 S
+  piece wooden_chair 3 4 N
+  piece wooden_chair 4 4 N
+  piece macaron_stool 5 3 W
+  piece milk_crate_icebox 7 2 W
+  piece bagel_mountain 7 4 W
+  piece spice_rack 5 0 S
+  piece cherry_clock 0 3 E
+  small cake_stand 1 0 S 0
+  small jellybean_jar 3 3 S 0
+
+[bp cottage_kitchen] KITCHEN "Cottage Kitchen"
+  theme COTTAGE
+  piece cottage_stove 1 0 S
+  piece kitchen_counter 3 0 S
+  piece kitchen_counter 4 0 S
+  piece pickle_barrel 0 2 E
+  piece checker_rug 3 2 S
+  piece pine_table 3 3 S
+  piece wooden_chair 3 4 N
+  piece wooden_chair 4 4 N
+  piece wooden_chair 5 3 W
+  piece cloud_flour 7 0 S
+  piece fish_smoker 7 3 W
+  piece nanas_recipe_board 0 1 E
+  piece spice_rack 5 0 S
+  small kettle 1 0 S 0
+  small melon_bread_tray 3 0 S 0
+  small cake_stand 3 3 S 0
+
+[bp midnight_goth] BEDROOM "Midnight Goth"
+  theme GOTH
+  piece bone_rug 3 1 S
+  piece coffin_bed 2 3 S
+  piece tombstone_table 3 3 S
+  piece candelabra 1 3 S
+  piece gothic_wardrobe 0 0 E
+  piece velvet_chaise 2 0 S
+  piece raven_perch 5 0 S
+  piece goth_armchair 5 3 W
+  piece cobweb_curtains 0 4 E
+  piece following_portrait 3 0 S
+  piece bat_mobile 1 0 S
+  piece black_cat_clock 0 0 E
+  small snoozula_pillow 2 3 S 0
+  small crystal_ball 3 3 S 0
+
+[bp bone_parlour] LIVING "Bone Parlour"
+  theme BONE
+  piece bone_rug 2 3 S
+  piece tombstone_table 3 3 S
+  piece goth_armchair 2 3 E
+  piece bone_bookcase 0 0 E
+  piece velvet_chaise 2 0 S
+  piece iron_bed 5 2 S
+  piece candelabra 5 1 S
+  piece skull_pile 5 5 W
+  piece bone_chandelier 2 0 S
+  piece black_cat_clock 0 3 E
+  small skull_planter 3 3 S 0
+
+[bp lava_lounge] CELLAR "Lava Lounge"
+  theme LAVA
+  piece lava_crack_rug 3 3 S
+  piece lava_table 3 3 S
+  piece hell_couch 3 1 S
+  piece imp_stool 2 3 E
+  piece imp_stool 5 3 W
+  piece lava_lamp 5 1 S
+  piece ember_brazier 0 4 E
+  piece cauldron 7 5 W
+  piece vapor_tank 7 0 S
+  piece skull_pile 0 7 E
+  piece hellsteel_shelving 0 0 E
+  piece chained_chandelier 4 0 S
+  piece smog_curtains 0 2 E
+  small sulphur_candle 3 3 S 0
+
+[bp vapor_den] PITS_FLAT "Vapor Den"
+  theme VAPOR
+  piece lava_crack_rug 2 2 S
+  piece cloud_nine_vend 0 0 E
+  piece vapor_tank 5 0 S
+  piece contract_desk 2 0 S
+  piece imp_stool 2 1 N
+  piece hell_couch 1 5 S
+  piece lava_lamp 3 5 S
+  piece hellsteel_shelving 5 3 W
+  piece skull_pile 5 5 W
+  piece neon_its_fine 1 0 S
+  piece mirror_of_vanity 0 4 E
+
+[bp picnic_garden] GARDEN "Picnic Garden"
+  theme PICNIC
+  piece picnic_blanket 3 2 S
+  piece picnic_set 3 2 S
+  piece garden_bench 0 2 E
+  piece swing_chair 7 0 S
+  piece flower_bed_pink 0 0 E
+  piece flower_bed_yellow 1 0 S
+  piece flower_bed_blue 2 0 S
+  piece sunflower 0 5 E
+  piece bird_bath 6 3 W
+  piece garden_gnome 7 5 W
+  piece tomato_pot 5 0 S
+  piece hedge_bush 7 2 W
+  piece picket_fence 4 0 S
+  piece picket_fence 5 0 S
+  piece picket_fence 6 0 S
+  piece picket_fence 0 4 E
+  small cake_stand 3 2 S 0
+
+[bp workshop] ANNEX "Rivet's Workshop"
+  theme WORKSHOP
+  piece rivets_oil_rag 3 1 S
+  piece tool_bench 0 0 E
+  piece wooden_chair 1 1 W
+  piece welding_rig 5 0 S
+  piece forklift_pallet 2 3 S
+  piece tube_tv 5 3 W
+  piece weather_vane 5 5 W
+  piece gear_clock 2 0 S
+  piece neon_its_fine 0 0 S
+  small record_player 0 0 E 0
+  small desk_computer 0 1 E 0
+  small game_console 2 3 S 0
+
+[bp shelter] LIVING "Shelter"
+  piece welded_plate 1 0 S
+  piece welded_plate 0 4 E
+  piece toaster_turret 1 0 S
+  piece cream_dresser 3 0 S
+  piece pastel_wardrobe 5 0 S
+  piece rainbow_bookcase 5 1 W
+  piece marshmallow_sofa 2 3 S
+  piece single_bed 5 3 S
+  piece honey_lamp 3 5 S
+  piece toy_chest 0 5 E
+  piece cupcake_lamp 4 3 S

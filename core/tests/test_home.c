@@ -189,25 +189,27 @@ TEST(home_save_roundtrip)
                 HOME_SZ_OWNED + HOME_SZ_SEEN_NEW + HOME_SZ_GIFTS + HOME_SZ_VISITED + HOME_SZ_HAUNT +
                 HOME_BLUEPRINTS * HOME_SZ_ROOM_HEADER + HOME_SZ_PHOTOS + HOME_SZ_WANTS +
                 HOME_SZ_VISITOR_LOG + HOME_SZ_DECORATE_FOR + HOME_SZ_PENDING_GAG + HOME_SZ_CACHE);
-    /* every room full, every byte busy: the M1 worst case is the v2 worst
-     * case minus the blueprints' objects (H1 M3 adds them, same format) */
-    for (r = 0; r < HOME_ROOM_COUNT; r++) {
-        home_unlock_room(r);
-        s->room[r].nobj = HOME_OBJ_MAX;
+    /* every room and both saved blueprints full, every photo taken: the v2
+     * worst case, exactly */
+    for (r = 0; r < HOME_ROOM_COUNT + HOME_BLUEPRINTS; r++) {
+        HomeRoom *rm = r < HOME_ROOM_COUNT ? &s->room[r] : &s->bp[r - HOME_ROOM_COUNT];
+        if (r < HOME_ROOM_COUNT) home_unlock_room(r);
+        rm->nobj = HOME_OBJ_MAX;
         for (i = 0; i < HOME_OBJ_MAX; i++) {
-            s->room[r].obj[i].w0 = HO_W0((r * 40 + i) % FURN_MAX, i & 3, i & 1);
-            s->room[r].obj[i].pos = (uint8_t)(i * 37);
-            s->room[r].obj[i].z = (uint8_t)i;
-            s->room[r].obj[i].pa = (uint8_t)(i * 3);
-            s->room[r].obj[i].pb = (uint8_t)(i * 5);
+            rm->obj[i].w0 = HO_W0((r * 40 + i) % FURN_MAX, i & 3, i & 1);
+            rm->obj[i].pos = (uint8_t)(i * 37);
+            rm->obj[i].z = (uint8_t)i;
+            rm->obj[i].pa = (uint8_t)(i * 3);
+            rm->obj[i].pb = (uint8_t)(i * 5);
         }
     }
     memset(s->owned, 0xFF, sizeof(s->owned));
     memset(s->visited, 0xA5, sizeof(s->visited));
+    memset(s->photo, 0x5A, sizeof(s->photo));
     s->gag[3] = 0x1234;
     s->days_since_fire = 999;
     CHECK(chunk_roundtrip(buf, &n));
-    CHECK_EQ(n, HOME_CHUNK_WORST - HOME_BLUEPRINTS * HOME_OBJ_MAX * HOME_SZ_OBJ);
+    CHECK_EQ(n, HOME_CHUNK_WORST);
     CHECK(n <= (int)home_ext.max_size && home_ext.max_size == HOME_CHUNK_WORST);
     /* malformed input is refused and leaves a clean house */
     CHECK(!home_chunk_read(buf, 50, HOME_CHUNK_VERSION));
@@ -443,4 +445,305 @@ TEST(home_catalog_valid)
     }
     CHECK(door >= 1 && window >= 1 && hearth >= 1 && starters >= 2);
     CHECK_EQ(home_furn_by_role(FR_DOOR), 0);     /* the first door is the default */
+}
+
+/* ---- H1 M3: themes, blueprints, photos, groups, half tiles, the haunting ------------ */
+#include "../gen/furn_ids.h"
+
+static void own_set(const DoomoHomeSet *b)
+{
+    int k;
+    for (k = 0; k < b->n; k++) home_grant(doomo_home_pieces[b->first + k].furn);
+}
+
+TEST(home_blueprints_apply)
+{
+    static HomeEdit e;
+    HomePlan plan;
+    int b, k, nrom = doomo_home_blueprint_count;
+    CHECK_EQ(nrom, 12);
+    CHECK_EQ(home_blueprint_count(), 14);
+    for (b = 0; b < nrom; b++) {
+        const DoomoHomeSet *bp = &doomo_home_blueprints[b];
+        test_reset();
+        home_reset();
+        home_move_in();
+        home_unlock_room(bp->room);
+        own_set(bp);
+        home_edit_begin(&e, bp->room);
+        home_edit_blueprint(&e, b, &plan);
+        CHECK_MSG(plan.blocked == 0 && plan.missing == 0, "%s: %d blocked, %d missing (ghost %s at %d,%d)",
+                  bp->name, plan.blocked, plan.missing, plan.nghost ? doomo_furn[plan.ghost[0].furn].name : "-",
+                  plan.nghost ? plan.ghost[0].x : -1, plan.nghost ? plan.ghost[0].y : -1);
+        CHECK_EQ(plan.placed, bp->n);
+        CHECK(e.undo_n == 0);                 /* a fresh start */
+        if (bp->theme != THEME_NONE) CHECK_EQ(e.room.wallpaper, doomo_home_themes[bp->theme].wallpaper);
+        /* owning nothing: every piece becomes a ghost on the shopping list */
+        home_reset();
+        home_move_in();
+        home_unlock_room(bp->room);
+        for (k = 0; k < FURN_MAX; k++) home_state()->owned[k >> 1] = 0;
+        home_edit_begin(&e, bp->room);
+        home_edit_blueprint(&e, b, &plan);
+        CHECK_EQ(plan.placed, 0);
+        CHECK_EQ(plan.missing, bp->n);
+        CHECK_EQ(plan.nghost, bp->n);
+        CHECK(plan.ghost[0].status == HPS_MISSING);
+    }
+    CHECK(unlock_has(HUL_BLUEPRINT));
+    /* a saved slot round-trips a room */
+    test_reset();
+    home_reset();
+    home_move_in();
+    own_set(&doomo_home_blueprints[1]);
+    own_set(&doomo_home_blueprints[1]);
+    home_edit_begin(&e, HOME_ROOM_LIVING);
+    home_edit_blueprint(&e, 1, &plan);
+    CHECK(home_blueprint_save(0, &e.room));
+    CHECK(home_blueprint_name(nrom) != NULL);
+    CHECK(home_blueprint_name(nrom + 1) == NULL);
+    home_edit_begin(&e, HOME_ROOM_LIVING);
+    CHECK_EQ(home_edit_blueprint(&e, nrom, &plan), doomo_home_blueprints[1].n);
+    CHECK_EQ(plan.missing + plan.blocked, 0);
+    CHECK_EQ(home_edit_blueprint(&e, nrom + 1, &plan), 0);     /* empty slot */
+}
+
+TEST(home_themes_undo)
+{
+    static HomeEdit e;
+    HomeRoom before;
+    int i, t, idx;
+    test_reset();
+    home_reset();
+    home_move_in();
+    for (t = 0; t < THEME_COUNT; t++) CHECK(doomo_home_themes[t].name && doomo_home_themes[t].name[0]);
+    home_grant(FURN_CUPCAKE_LAMP);
+    home_grant(FURN_BUNNY_BEANBAG);
+    home_edit_begin(&e, HOME_ROOM_LIVING);
+    CHECK(home_edit_place(&e, FURN_CUPCAKE_LAMP, 3, 3, 0, -1, -1) >= 0);
+    idx = home_edit_place(&e, FURN_BUNNY_BEANBAG, 4, 4, 0, PAINT_CHERRY, -1);
+    CHECK(idx >= 0);
+    before = e.room;
+    CHECK(home_edit_theme(&e, THEME_GOTH));
+    CHECK_EQ(e.room.wallpaper, doomo_home_themes[THEME_GOTH].wallpaper);
+    CHECK_EQ(e.room.wall_paint, doomo_home_themes[THEME_GOTH].wall_paint);
+    CHECK_EQ(home_state()->theme, THEME_GOTH);
+    /* the beanbag's slot A was the player's: kept; its slot B was free: themed */
+    CHECK_EQ(e.room.obj[idx].pa & 0x1F, PAINT_CHERRY);
+    CHECK_EQ(e.room.obj[idx].pb & 0x1F, doomo_home_themes[THEME_GOTH].paint_b);
+    CHECK_EQ(e.room.obj[idx - 1].pa & 0x1F, doomo_home_themes[THEME_GOTH].paint_a);
+    CHECK(home_edit_undo(&e));            /* one step */
+    CHECK(memcmp(&before, &e.room, sizeof(before)) == 0);
+    /* a recolour and a wallpaper change undo too */
+    CHECK(home_edit_paint(&e, idx, PAINT_LIME, PAINT_SKY));
+    CHECK(home_edit_walls(&e, 5, 2, PAINT_GRAPE, -1));
+    CHECK(home_edit_undo(&e) && home_edit_undo(&e));
+    CHECK(memcmp(&before, &e.room, sizeof(before)) == 0);
+    for (i = 0; i < e.room.nobj; i++) CHECK(home_obj_is_fixed(&e.room, i) || i >= 4);
+}
+
+TEST(home_photo_recipe)
+{
+    static HomeEdit e;
+    HomePhoto p, q;
+    uint8_t buf[8];
+    uint16_t h0;
+    int i;
+    test_reset();
+    home_reset();
+    home_move_in();
+    memset(&p, 0, sizeof(p));
+    p.place = 999; p.view = 3; p.zoom = 1; p.filter = 7; p.daylight = 5;
+    p.sticker[0] = 1; p.sx[0] = 15; p.sy[0] = 7;
+    p.sticker[1] = 2; p.sx[1] = 3; p.sy[1] = 1;
+    p.sticker[2] = 3; p.sx[2] = 0; p.sy[2] = 4;
+    p.hash = 0xBEEF;
+    home_photo_pack(&p, buf);
+    CHECK(home_photo_unpack(buf, &q));
+    CHECK(memcmp(&p, &q, sizeof(p)) == 0);
+    p.place = HOME_PHOTO_OWN + HOME_ROOM_PARK_PLOT;
+    home_photo_pack(&p, buf);
+    CHECK(home_photo_unpack(buf, &q) && q.place == HOME_PHOTO_OWN + HOME_ROOM_PARK_PLOT);
+    memset(buf, 0, sizeof(buf));
+    CHECK(!home_photo_unpack(buf, &q));
+    /* the layout hash moves with the layout */
+    home_grant(FURN_TEACUP_TABLE);
+    home_edit_begin(&e, HOME_ROOM_LIVING);
+    h0 = home_room_hash(&e.room);
+    CHECK(home_edit_place(&e, FURN_TEACUP_TABLE, 3, 3, 0, -1, -1) >= 0);
+    CHECK(home_room_hash(&e.room) != h0);
+    home_edit_undo(&e);
+    CHECK_EQ(home_room_hash(&e.room), h0);
+    /* 16 slots, then full; the 10th photo is a trophy */
+    for (i = 0; i < HOME_PHOTOS; i++) { p.hash = (uint16_t)i; CHECK_EQ(home_photo_add(&p), i); }
+    CHECK_EQ(home_photo_add(&p), -1);
+    CHECK_EQ(home_photo_count(), 16);
+    CHECK(unlock_has(HUL_PHOTOS_10));
+    home_photo_delete(5);
+    CHECK(!home_photo_get(5, &q));
+    CHECK(home_photo_get(6, &q) && q.hash == 6);
+    CHECK_EQ(home_photo_add(&p), 5);
+}
+
+TEST(home_groups_and_half_tiles)
+{
+    static HomeEdit e;
+    static HomeClip c;
+    HomeRoom before;
+    uint8_t sel[HOME_SEL_MAX];
+    int n, tbl, v1, v2, i;
+    test_reset();
+    home_reset();
+    home_move_in();
+    for (i = 0; i < 3; i++) { home_grant(FURN_PINE_TABLE); home_grant(FURN_JELLYBEAN_JAR); home_grant(FURN_WOODEN_CHAIR); }
+    home_edit_begin(&e, HOME_ROOM_LIVING);
+    tbl = home_edit_place(&e, FURN_PINE_TABLE, 2, 3, 0, -1, -1);       /* 2x1: (2,3) (3,3) */
+    CHECK(tbl >= 0);
+    /* half tiles: two jars on one tile at different sub-positions */
+    v1 = home_edit_place_sub(&e, FURN_JELLYBEAN_JAR, 2, 3, 0, 0, -1, -1);
+    v2 = home_edit_place_sub(&e, FURN_JELLYBEAN_JAR, 2, 3, 0, 3, -1, -1);
+    CHECK(v1 >= 0 && v2 >= 0);
+    CHECK_EQ(HO_SUB(&e.room.obj[v2]), 3);
+    CHECK_EQ(home_edit_place_sub(&e, FURN_JELLYBEAN_JAR, 2, 3, 0, 3, -1, -1), -HPR_OCCUPIED);
+    CHECK(home_edit_place(&e, FURN_WOODEN_CHAIR, 2, 4, 2, -1, -1) >= 0);
+    before = e.room;
+    /* the band takes the table and both jars (and the chair) */
+    n = home_edit_select(&e, 2, 3, 3, 4, sel, HOME_SEL_MAX);
+    CHECK_EQ(n, 4);
+    CHECK_EQ(sel[0], tbl);
+    CHECK(home_edit_group_move(&e, sel, n, 1, 0) == n);
+    CHECK_EQ(HO_X(&e.room.obj[tbl]), 3);
+    CHECK_EQ(HO_X(&e.room.obj[v2]), 3);
+    CHECK_EQ(HO_SUB(&e.room.obj[v2]), 3);
+    CHECK(HO_ONSURF(&e.room.obj[v1]));
+    CHECK(home_edit_group_move(&e, sel, n, 5, 0) < 0);                 /* off the grid */
+    CHECK(home_edit_undo(&e));                                         /* one step */
+    CHECK(memcmp(&before, &e.room, sizeof(before)) == 0);
+    /* a quarter turn about the band's centre */
+    CHECK(home_edit_group_rotate(&e, sel, n, 1) == n);
+    CHECK_EQ(HO_ROT(&e.room.obj[tbl]), 1);
+    CHECK(home_edit_undo(&e));
+    CHECK(memcmp(&before, &e.room, sizeof(before)) == 0);
+    /* copy, paste (only the spares you own), delete to storage */
+    CHECK_EQ(home_edit_copy(&e, sel, n, &c), n);
+    CHECK_EQ(home_edit_paste(&e, &c, 2, 0), 3);            /* one jar short: 3 owned, 2 placed */
+    CHECK(home_edit_undo(&e));
+    CHECK(memcmp(&before, &e.room, sizeof(before)) == 0);
+    CHECK_EQ(home_edit_group_remove(&e, sel, n), n);
+    CHECK_EQ(e.room.nobj, before.nobj - n);
+    CHECK(home_edit_undo(&e));
+    CHECK(memcmp(&before, &e.room, sizeof(before)) == 0);
+    /* the sub-position survives the chunk */
+    home_room_store(HOME_ROOM_LIVING, &e.room);
+    {
+        static uint8_t buf[DOOMO_SAVE_EXT_MAX];
+        uint32_t len = home_chunk_write(buf, sizeof(buf));
+        home_reset();
+        CHECK(home_chunk_read(buf, len, HOME_CHUNK_VERSION));
+        CHECK_EQ(HO_SUB(&home_state()->room[HOME_ROOM_LIVING].obj[v2]), 3);
+    }
+}
+
+TEST(home_haunting_three_nights)
+{
+    static HomeEdit e, b;
+    int crate, lamp, bed, r, i, eye = -1, penta = 0;
+    test_reset();
+    home_reset();
+    home_move_in();
+    home_unlock_room(HOME_ROOM_BEDROOM);
+    home_grant(FURN_CUPCAKE_LAMP);
+    home_grant(FURN_MARSHMALLOW_SOFA);
+    home_grant(FURN_SINGLE_BED);
+    home_edit_begin(&e, HOME_ROOM_LIVING);
+    crate = home_edit_place(&e, FURN_PICNIC_CRATE, 3, 3, 0, -1, -1);
+    lamp = home_edit_place(&e, FURN_CUPCAKE_LAMP, 5, 5, 0, -1, -1);
+    CHECK(crate >= 0 && lamp >= 0);
+    CHECK(home_edit_place(&e, FURN_MARSHMALLOW_SOFA, 2, 5, 0, -1, -1) >= 0);
+    home_room_store(HOME_ROOM_LIVING, &e.room);
+    home_edit_begin(&b, HOME_ROOM_BEDROOM);
+    bed = home_edit_place(&b, FURN_SINGLE_BED, 3, 3, 0, -1, -1);
+    CHECK(bed >= 0);
+    home_room_store(HOME_ROOM_BEDROOM, &b.room);
+    /* night 1: the crate is one tile to the left in the morning */
+    home_haunt_step(1);
+    home_edit_begin(&e, HOME_ROOM_LIVING);
+    r = home_haunt_apply(&e.room, HOME_ROOM_LIVING);
+    CHECK(r & HHA_CRATE);
+    CHECK_EQ(HO_X(&e.room.obj[crate]), 2);
+    CHECK_EQ(home_haunt_apply(&e.room, HOME_ROOM_LIVING), 0);       /* once */
+    /* night 2: the lamp is off; one heart is an eye, and it stays */
+    home_haunt_step(2);
+    r = home_haunt_apply(&e.room, HOME_ROOM_LIVING);
+    CHECK((r & HHA_LAMP) && (r & HHA_EYE));
+    CHECK(e.room.obj[lamp].pa & HOS_OFF);
+    for (i = 0; i < e.room.nobj; i++) if (HO_FURN(&e.room.obj[i]) == FURN_HEART_WALLPAPER_EYE) eye = i;
+    CHECK(eye >= 0);
+    CHECK(home_obj_is_fixed(&e.room, eye));
+    CHECK_EQ(home_edit_pickup(&e, eye), -HPR_FIXED);
+    CHECK(home_haunt_eye_blinks());
+    CHECK_EQ(home_fit(&e.room, HOME_ROOM_LIVING, FURN_HEART_WALLPAPER_EYE, 2, 0, 0, -1, NULL), HPR_FIXED);
+    /* night 3: two pieces move toward the hatch; the rug is under the bed */
+    home_haunt_step(3);
+    {
+        HomeRoom before = e.room;
+        int moved = 0;
+        r = home_haunt_apply(&e.room, HOME_ROOM_LIVING);
+        CHECK(r & HHA_PENTA);
+        for (i = 0; i < before.nobj; i++) moved += before.obj[i].pos != e.room.obj[i].pos;
+        CHECK(moved >= 1 && moved <= 3);   /* two pieces (and a small riding one) */
+    }
+    for (i = 0; i < home_state()->room[HOME_ROOM_BEDROOM].nobj; i++)
+        if (HO_FURN(&home_state()->room[HOME_ROOM_BEDROOM].obj[i]) == FURN_PENTAGRAM_RUG) penta = 1;
+    CHECK(penta);
+    CHECK(home_owned(FURN_PENTAGRAM_RUG) >= 1);
+    CHECK_EQ(home_state()->haunt[HH_APPLIED], 3);
+    /* the eye survives the save */
+    home_room_store(HOME_ROOM_LIVING, &e.room);
+    {
+        static uint8_t buf[DOOMO_SAVE_EXT_MAX];
+        uint32_t len = home_chunk_write(buf, sizeof(buf));
+        home_reset();
+        CHECK(home_chunk_read(buf, len, HOME_CHUNK_VERSION));
+        CHECK(home_state()->haunt[HH_FLAGS] & HHF_EYE);
+        CHECK_EQ(HO_FURN(&home_state()->room[HOME_ROOM_LIVING].obj[eye]), FURN_HEART_WALLPAPER_EYE);
+    }
+    /* LIT ends it: a night after that changes nothing, the eye stops blinking */
+    home_state()->cache[HC_STAMPS + HOME_ROOM_LIVING] |= HOME_STAMP(HG_LIT);
+    CHECK(!home_haunt_eye_blinks());
+    home_edit_begin(&e, HOME_ROOM_LIVING);
+    CHECK_EQ(home_haunt_3am(&e.room, HOME_ROOM_LIVING), -1);
+}
+
+TEST(home_decorate_for_layouts)
+{
+    static HomeEdit e;
+    const DoomoHomeSet *l = home_layout_find(1);
+    int k, p_full, p_half;
+    test_reset();
+    home_reset();
+    home_move_in();
+    CHECK(l != NULL);
+    CHECK_EQ(l->room, HOME_ROOM_ANNEX);
+    CHECK(home_layout_find(15) == NULL);
+    home_unlock_room(HOME_ROOM_ANNEX);
+    for (k = 0; k < l->n; k++) {
+        const DoomoHomePiece *q = &doomo_home_pieces[l->first + k];
+        home_grant(q->furn & HOME_PIECE_ROLE ? FURN_CUPCAKE_LAMP : q->furn);
+    }
+    home_edit_begin(&e, HOME_ROOM_ANNEX);
+    CHECK_EQ(home_layout_progress(&e.room, 1, -1), 0);
+    for (k = 0; k < l->n; k++) {
+        const DoomoHomePiece *q = &doomo_home_pieces[l->first + k];
+        int furn = q->furn & HOME_PIECE_ROLE ? FURN_CUPCAKE_LAMP : q->furn;
+        home_edit_place(&e, furn, q->x, q->y, q->rot, -1, -1);
+        if (k == 2) {
+            p_half = home_layout_progress(&e.room, 1, -1);
+            CHECK(p_half > 0 && p_half < 8);
+        }
+    }
+    p_full = home_layout_progress(&e.room, 1, -1);
+    CHECK_EQ(p_full, 8);
+    CHECK_EQ(home_decorate_for(1, 1), 8);           /* house_api serves the cache */
+    CHECK_EQ(home_decorate_for(2, 1), 0);
 }
