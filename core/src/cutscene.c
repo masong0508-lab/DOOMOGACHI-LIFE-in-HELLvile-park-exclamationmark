@@ -207,11 +207,16 @@ int cutscene_script(int c, BeatScript *out)
 }
 
 static int cut, panel, cap = -1;
+int cutscene_showcase_script(int k, BeatScript *out);
+static int showcase_arg(int arg);
 static uint32_t ct, pt;            /* ticks in cutscene / in the current shot */
 static uint16_t shot_t0, cap_t0;   /* beat_now() when the shot / caption began */
 
 static void cs_end(void)
 {
+    if (showcase_arg(-1)) {                      /* the timing showcase just holds its last frame */
+        return;
+    }
     if (cut > CUT_CHAPTER4 && cut < CUT_COUNT) story_unlock_quiet(USTORY_CUT_FIRST + cut);
     if (scene_depth() > 1) scene_pop();
     else scene_set(&SCENE_STORY, STORY_ARG_CONTINUE);
@@ -220,6 +225,7 @@ static void cs_end(void)
 static void cs_enter(int arg)
 {
     BeatScript s;
+    if (showcase_arg(arg)) return;
     cut = (arg >= 0 && arg < CUT_COUNT) ? arg : CUT_CHAPTER1;
     panel = 0;
     cap = -1;
@@ -264,7 +270,7 @@ static void cs_update(void)
         if (r == BT_EXT) cs_event(beat_ext_event());
     } while (r == BT_EXT && guard-- > 0);
     pt = (uint32_t)(uint16_t)(beat_now() - shot_t0);
-    if (cut == CUT_FEAST_POP) feast_tick(panel, pt);
+    if (cut == CUT_FEAST_POP && !showcase_arg(-1)) feast_tick(panel, pt);
     if (r == BT_DONE) cs_end();
 }
 
@@ -724,9 +730,249 @@ static void draw_freeplay(void)
     if (ct > 30) ui_title(sw / 2, sh / 2 - 6, "...of the beginning!", WIN_CUTE);
 }
 
+/* ---- the timing showcase (S1: runner timing_showcase.txt) -------------------------
+ * SCENE_CUTSCENE arg CUT_SHOWCASE_ARG + k replays three of the trailer's
+ * gags in-engine, on beat scripts and the shared tween tables, so their
+ * frames can be held against the trailer's (trailer/scenes/s04, s12, s14):
+ *   0  s04 the pet turn: "beep.", a 4-frame hell insert, "beep." again with
+ *      horns (the one persistent change), "...it's fine." (the button)
+ *   1  s12 the census: 1000 / 500 / 500 / 1 slams (rule of three), and one
+ *      critter pops out of the top like a cork: "(cozy.)"
+ *   2  s14 the handheld DROP: squash on landing, the power-on ping, then a
+ *      deadpan silence and its button */
+#define CUT_SHOWCASE_ARG 256
+enum { L_SC1 = 1, L_SC2, L_SC3, L_SC4, L_SC5 };
+static const BeatEv B_sc_pet[] = {
+    MUSIC(0, 0, SONG_PET), EV(0, 0, BOP_SHOT, 0, 0),
+    EV(40, 0, BOP_LABEL, L_SC1, 0),
+    EV(128, 0, BOP_LABEL, L_PUNCH, 0),
+    SFX(1, L_SC1, SFX_BEEP), EV(1, L_SC1, BOP_MUSIC_DUCK, 13, 140),
+    /* the whiplash: 4 frames of hell (mutes itself), back to cute with horns */
+    EV(0, L_PUNCH, BOP_INSERT, 1, 4), EV(0, L_PUNCH, BOP_PAL_LERP, PAL_HELLIFY, 16),
+    SFX(0, L_PUNCH, SFX_GLITCH), EV(4, L_PUNCH, BOP_PAL_LERP, PAL_HELLIFY, 0),
+    SFX(7, L_PUNCH, SFX_BEEP),
+    EV(19, L_PUNCH, BOP_LABEL, L_BUTTON, 0), SFX(19, L_PUNCH, SFX_TIK),
+    EV(60, L_PUNCH, BOP_END, 0, 0)
+};
+static const BeatEv B_sc_census[] = {
+    MUSIC(0, 0, SONG_FESTIVAL), EV(0, 0, BOP_SHOT, 1, 0),
+    EV(22, 0, BOP_LABEL, L_SC1, 0), EV(46, 0, BOP_LABEL, L_SC2, 0),
+    EV(68, 0, BOP_LABEL, L_SC3, 0), EV(90, 0, BOP_LABEL, L_SC4, 0),
+    EV(104, 0, BOP_LABEL, L_PUNCH, 0),
+    SFX(0, L_SC1, SFX_THUD), EV(0, L_SC1, BOP_SHAKE, SHK_STAMP, 0),
+    SFX(0, L_SC2, SFX_THUD), EV(0, L_SC2, BOP_SHAKE, SHK_STAMP, 0),
+    SFX(0, L_SC3, SFX_THUD), EV(0, L_SC3, BOP_SHAKE, SHK_STAMP3, 0),
+    SFX(0, L_SC4, SFX_THUD), EV(0, L_SC4, BOP_SHAKE, SHK_SLAM, 0), EV(0, L_SC4, BOP_MUSIC_DUCK, 14, 140),
+    SFX(0, L_PUNCH, SFX_POP2), EV(13, L_PUNCH, BOP_LABEL, L_BUTTON, 0), SFX(13, L_PUNCH, SFX_TINK),
+    EV(46, L_PUNCH, BOP_END, 0, 0)
+};
+static const BeatEv B_sc_drop[] = {
+    EV(0, 0, BOP_SHOT, 2, 0), SFX(0, 0, SFX_WHOOSH),
+    EV(8, 0, BOP_LABEL, L_SC1, 0), EV(20, 0, BOP_LABEL, L_SC2, 0),
+    EV(74, 0, BOP_LABEL, L_PUNCH, 0),
+    SFX(0, L_SC1, SFX_THUD), EV(0, L_SC1, BOP_SHAKE, SHK_TAP, 0),
+    SFX(0, L_SC2, SFX_TINK), MUSIC(0, L_SC2, SONG_TITLE),
+    EV(0, L_PUNCH, BOP_MUSIC_MUTE, 40, 0), EV(0, L_PUNCH, BOP_NOBUTTON, 0, 0),
+    EV(21, L_PUNCH, BOP_LABEL, L_BUTTON, 0),
+    EV(50, L_PUNCH, BOP_END, 0, 0)
+};
+static const BeatEv *const sc_ev[3] = { B_sc_pet, B_sc_census, B_sc_drop };
+static const uint16_t sc_n[3] = {
+    (uint16_t)(sizeof(B_sc_pet) / sizeof(B_sc_pet[0])), (uint16_t)(sizeof(B_sc_census) / sizeof(B_sc_census[0])),
+    (uint16_t)(sizeof(B_sc_drop) / sizeof(B_sc_drop[0]))
+};
+static int showcase = -1;
+
+int cutscene_showcase_script(int k, BeatScript *out)
+{
+    if (k < 0 || k >= 3 || !out) return 0;
+    out->ev = sc_ev[k];
+    out->n = sc_n[k];
+    out->nlabels = BEAT_LABEL_MAX;
+    return 1;
+}
+
+static void speech(int x, int y, const char *s, int age)
+{
+    int sc = tw_tab(&TW_POP_BUBBLE, age), w = ui_text_width(s) + 10, h = 13;
+    int ww = w * sc / 256, hh = h * sc / 256;
+    if (age < 0 || ww < 4) return;
+    ui_round_rect(x - ww / 2 - 1, y - hh / 2 - 1, ww + 2, hh + 2, 4, PAL_BLACK);
+    ui_round_rect(x - ww / 2, y - hh / 2, ww, hh, 4, PAL_WHITE);
+    plat_rect(x - ww / 2 - 4, y + 2, 4, 2, PAL_WHITE);
+    if (age >= 2) ui_text(x - w / 2 + 5, y - 4, s, PAL_BLACK);
+}
+
+static void draw_sc_pet(void)
+{
+    int sw = plat_screen_w(), sh = plat_screen_h(), cx = sw / 2, cy = sh / 2 + 6;
+    int ins = beat_age(L_PUNCH), horns = ins >= 6;
+    const DoomoImage *pet = sprite_image(SPR_PET, (int)(ct / 8) & 3);
+    if (ins >= 0 && ins < 4) {                       /* the insert: the screen is hell */
+        int i;
+        plat_clear(PAL_RAMP(RAMP_BLOOD, 0));
+        for (i = 0; i < 5; i++) {
+            int a0 = i * 3277, a1 = ((i + 2) % 5) * 3277;
+            plat_line(cx + FIX2INT(fx_sin(a0) * 40), cy - FIX2INT(fx_cos(a0) * 40),
+                      cx + FIX2INT(fx_sin(a1) * 40), cy - FIX2INT(fx_cos(a1) * 40), PAL_UI_RED);
+        }
+        ui_fill_circle(cx - 8, cy - 6, 3, PAL_UI_RED);
+        ui_fill_circle(cx + 8, cy - 6, 3, PAL_UI_RED);
+        return;
+    }
+    ui_backdrop(WIN_CUTE, ct);
+    /* the keychain egg: a glossy plastic shell around the LCD */
+    gg_ellipse(cx, cy, 52, 46, PAL_RAMP(RAMP_PASTEL_PINK, 2));
+    gg_ellipse(cx, cy, 50, 44, PAL_RAMP(RAMP_PASTEL_PINK, 5));
+    gg_ellipse(cx - 16, cy - 22, 14, 8, PAL_RAMP(RAMP_PASTEL_PINK, 7));
+    ui_round_rect(cx - 30, cy - 24, 60, 40, 5, PAL_RAMP(RAMP_STONE, 1));
+    ui_round_rect(cx - 28, cy - 22, 56, 36, 4, PAL_RAMP(RAMP_GRASS, 6));
+    if (pet) {
+        int dy = tw_tab(&TW_DEVICE_DY, (int)ct % 40), ps = 2;
+        int px = cx - pet->w * ps / 2, py = cy - 4 - pet->h * ps / 2 + dy / 2;
+        plat_image(px, py, pet, ps, 0, 0);
+        if (horns) {                                 /* the persistent change: tiny horns */
+            int k, hx[2] = { cx - pet->w * ps / 4, cx + pet->w * ps / 4 - 1 };
+            for (k = 0; k < 2; k++) {
+                plat_rect(hx[k] - 1, py + 1, 3, 2, PAL_RAMP(RAMP_BLOOD, 2));
+                plat_rect(hx[k], py - 2, 2, 3, PAL_RAMP(RAMP_BLOOD, 3));
+                plat_rect(hx[k] + (k ? 1 : 0), py - 4, 1, 2, PAL_RAMP(RAMP_BLOOD, 4));
+            }
+        }
+    }
+    {
+        static const uint8_t btn[3] = { 0, 1, 2 };
+        int i;
+        for (i = 0; i < 3; i++)
+            ui_fill_circle(cx - 14 + i * 14, cy + 26 + (i == 1), 5,
+                           btn[i] == 0 ? PAL_RAMP(RAMP_PASTEL_PINK, 3) : btn[i] == 1 ? PAL_RAMP(RAMP_MINT, 4) : PAL_RAMP(RAMP_SKY, 4));
+    }
+    if (beat_age(L_SC1) >= 0 && ins < 0 && beat_age(L_SC1) < 60) speech(cx + 54, cy - 30, "beep.", beat_age(L_SC1));
+    if (ins >= 7) speech(cx + 54, cy - 30, "beep.", ins - 7);
+    if (beat_age(L_BUTTON) >= 0) {                   /* deadpan: it appears, no pop */
+        int dy = tw_tab(&TW_DEADPAN_DY, beat_age(L_BUTTON));
+        ui_text_outline(cx - 40, 10 + dy, "...it's fine.", PAL_WHITE, PAL_RAMP(RAMP_PASTEL_PINK, 1));
+    }
+}
+
+static void critter(int x, int y, uint8_t c, int hop, int bad)
+{
+    ui_fill_circle(x, y - hop, 3, c);
+    plat_rect(x - 3, y - hop - 4, 1, 2, c);
+    plat_rect(x + 2, y - hop - 4, 1, 2, c);
+    plat_rect(x - 1, y - hop - 1, 1, 1, bad ? PAL_UI_RED : PAL_BLACK);
+    plat_rect(x + 1, y - hop - 1, 1, 1, bad ? PAL_UI_RED : PAL_BLACK);
+}
+
+static void slam_text(int cx, int y, const char *s, int age, uint8_t col, uint8_t out)
+{
+    int sc = tw_tab(&TW_SLAM_COUNTER, age), big = plat_screen_h() >= 200 ? 3 : 2;
+    int w = ui_text_big_width(s, big);
+    if (age < 0) return;
+    y -= (sc - 256) / 16;
+    ui_text_big(cx - w / 2 - (sc - 256) / 20, y, s, big, col, out);
+}
+
+static void draw_sc_census(void)
+{
+    int sw = plat_screen_w(), sh = plat_screen_h(), x, y, i = 0, gy = sh / 3;
+    int good = beat_age(L_SC2), bad = beat_age(L_SC3), park = beat_age(L_SC4), cork = beat_age(L_PUNCH);
+    int squeeze = park >= 0 ? DOOMO_MIN(park, 12) : 0;
+    plat_rect(0, 0, sw / 2, sh, bad >= 0 && good < 0 ? PAL_RAMP(RAMP_SKY, 3) : PAL_RAMP(RAMP_SKY, 6));
+    plat_rect(sw / 2, 0, sw - sw / 2, sh, PAL_RAMP(RAMP_BLOOD, bad >= 0 ? 2 : 1));
+    for (y = gy; y < sh - 6; y += 8)
+        for (x = 6 + squeeze; x < sw - 6 - squeeze; x += 8, i++) {
+            int left = x < sw / 2, hop = 0, ph = (int)(doomo_hash32((uint32_t)i) & 63);
+            uint8_t c = left ? PAL_PAINT(ph & 31, 2) : PAL_RAMP(RAMP_BLOOD, 4 + (ph & 3));
+            int a1 = beat_age(L_SC1);
+            if (a1 >= 0 && a1 - (x + y) / 16 >= 0 && a1 - (x + y) / 16 < 6) hop = 2;     /* counted: everyone hops */
+            if (good >= 0 && bad < 0 && left) hop = (ui_wave(good * 3 - x / 3, 30, 3) > 1) ? 2 : 0;   /* the wave */
+            if (bad >= 0 && park < 0 && !left) hop = (ui_wave((int)ct * 2 + ph * 9, 40, 1) > 0);
+            critter(x, y + 4, c, hop, !left);
+        }
+    if (park >= 0) {                                 /* the picket fence squeezes in */
+        for (x = squeeze; x < sw - squeeze; x += 6) plat_rect(x, gy - 10, 3, 10, PAL_WHITE);
+        plat_rect(squeeze, gy - 6, sw - 2 * squeeze, 2, PAL_WHITE);
+    }
+    if (cork >= 0) {                                 /* the cork pops out of the top */
+        int py = gy - 8 - DOOMO_MIN(cork, 6) * 3 + (cork > 6 ? DOOMO_MIN(cork - 6, 4) : 0);
+        int r = 5 * tw_tab(&TW_POP_BLOB, cork) / 256;
+        ui_fill_circle(sw / 2, py, r + 1, PAL_UI_PINK_D);                   /* the cork: one bunny */
+        ui_fill_circle(sw / 2, py, r, PAL_UI_PINK);
+        plat_rect(sw / 2 - 3, py - r - 5, 2, 5, PAL_UI_PINK);
+        plat_rect(sw / 2 + 2, py - r - 5, 2, 5, PAL_UI_PINK);
+        plat_rect(sw / 2 - 2, py - 1, 1, 2, PAL_BLACK);
+        plat_rect(sw / 2 + 2, py - 1, 1, 2, PAL_BLACK);
+        if (cork < 10) ui_text_outline(sw / 2 + 10, py - 4, "pop!", PAL_WHITE, PAL_BLACK);
+    }
+    if (beat_age(L_SC1) < 0) {                       /* the counter rolls up */
+        char n[8];
+        doomo_snprintf(n, sizeof n, "%d", (int)DOOMO_MIN(1000u, ct * 1000u / 22u));
+        slam_text(sw / 2, 12, n, 99, PAL_UI_GOLD, PAL_BLACK);
+    } else if (good < 0) slam_text(sw / 2, 12, "1000 CITIZENS.", beat_age(L_SC1), PAL_UI_GOLD, PAL_BLACK);
+    else if (bad < 0) slam_text(sw / 2, 12, "500 GOOD.", good, PAL_UI_PINK, PAL_WHITE);
+    else if (park < 0) slam_text(sw / 2, 12, "500 BAD.", bad, PAL_UI_RED, PAL_BLACK);
+    else slam_text(sw / 2, 12, "1 PARK.", park, PAL_UI_MINT, PAL_BLACK);
+    if (beat_age(L_BUTTON) >= 0)
+        ui_text_outline(sw / 2 + 30, (sh >= 200 ? 46 : 34) + tw_tab(&TW_TAG_DY, beat_age(L_BUTTON)), "(cozy.)", PAL_WHITE, PAL_BLACK);
+}
+
+static void draw_sc_drop(void)
+{
+    int sw = plat_screen_w(), sh = plat_screen_h(), cx = sw / 2, floor = sh * 3 / 4, i;
+    int land = beat_age(L_SC1), on = beat_age(L_SC2), dead = beat_age(L_PUNCH);
+    int w = 76, h = 40, x, y, sx = 256, sy = 256, dy = 0;
+    sky_bands(PAL_RAMP(RAMP_VAPE, 1), PAL_RAMP(RAMP_VAPE, 2), PAL_RAMP(RAMP_VAPE, 3), floor);
+    plat_rect(0, floor, sw, sh - floor, PAL_RAMP(RAMP_VAPE, 1));
+    plat_checker(cx - 60, 0, 120, floor, PAL_RAMP(RAMP_VAPE, 4));          /* the spotlight */
+    for (i = 0; i < 6; i++)
+        ui_sparkle((int)((i * 53 + 20) % (uint32_t)sw), 12 + (i * 17) % 50, (int)((ct / 2 + (uint32_t)i * 5) & 15), PAL_WHITE);
+    if (land < 0) y = floor - h - 8 - (8 - (int)ct) * (8 - (int)ct) * 2;   /* falling: in2 */
+    else {
+        sx = tw_tab(&TW_DROP_SOFT_SX, land);
+        sy = tw_tab(&TW_DROP_SOFT_SY, land);
+        dy = tw_tab(&TW_DROP_SOFT_DY, land);
+        sx = 256 + (sx - 256) * tw_bounce_amount() / 256;
+        sy = 256 + (sy - 256) * tw_bounce_amount() / 256;
+        y = floor - h - 8;
+    }
+    w = w * sx / 256;
+    h = h * sy / 256;
+    y = floor - 8 - h + dy;
+    x = cx - w / 2;
+    gg_ellipse(cx, floor - 6, w / 2 + 4, 3, PAL_RAMP(RAMP_VAPE, 0));        /* contact shadow */
+    ui_round_rect(x - 1, y - 1, w + 2, h + 2, 9, PAL_RAMP(RAMP_VAPE, 0));
+    ui_round_rect(x, y, w, h, 8, PAL_RAMP(RAMP_VAPE, 5));
+    plat_rect(x + 8, y + 2, w - 16, 2, PAL_RAMP(RAMP_VAPE, 7));
+    ui_round_rect(x + w / 4, y + h / 6, w / 2, h * 2 / 3, 2, PAL_RAMP(RAMP_STONE, 0));
+    if (on >= 0) {
+        if (on < 3) plat_rect(x + w / 4, y + h / 2, w / 2, 1, PAL_WHITE);      /* the CRT line */
+        else {
+            ui_round_rect(x + w / 4 + 1, y + h / 6 + 1, w / 2 - 2, h * 2 / 3 - 2, 2, PAL_RAMP(RAMP_PASTEL_PINK, 6));
+            ui_text(x + w / 4 + 3, y + h / 6 + 3, "DOOMO", PAL_UI_RED_D);
+            if ((ct / 15) & 1) ui_text(x + w / 4 + 3, y + h / 6 + 13, "START", PAL_UI_PINK_D);
+        }
+    }
+    ui_fill_circle(x + 9, y + h / 2, 4, PAL_RAMP(RAMP_STONE, 1));
+    ui_fill_circle(x + w - 10, y + h / 2 - 3, 3, PAL_RAMP(RAMP_PASTEL_PINK, 3));
+    ui_fill_circle(x + w - 15, y + h / 2 + 3, 3, PAL_RAMP(RAMP_PASTEL_PINK, 3));
+    if (on >= 6 && dead < 0) ui_title(cx, 14, "Coming to GBA", WIN_CUTE);
+    if (dead >= 0) {                                  /* deadpan: it just appears */
+        ui_text_outline(cx - 56, sh - 26, "Yes, the actual handheld.", PAL_WHITE, PAL_BLACK);
+        if (beat_age(L_BUTTON) >= 0) ui_text_outline(cx - 30, sh - 15, "The purple one.", PAL_WHITE, PAL_BLACK);
+    }
+}
+
 static void cs_draw(void)
 {
     if (plat_draw_skipped()) return;
+    if (showcase_arg(-1)) {
+        if (showcase == 0) draw_sc_pet();
+        else if (showcase == 1) draw_sc_census();
+        else draw_sc_drop();
+        camfx_apply();
+        return;
+    }
     switch (cut) {
     case CUT_CHAPTER1: case CUT_CHAPTER2: case CUT_CHAPTER3: case CUT_CHAPTER4:
         draw_card(cut - CUT_CHAPTER1 + 1);
@@ -748,3 +994,21 @@ static void cs_draw(void)
 const DoomoScene SCENE_CUTSCENE = {
     "CUTSCENE", cs_enter, NULL, cs_update, cs_draw, 0
 };
+
+/* arg >= 0: set up showcase arg if it is one (1); arg -1: 1 while one runs */
+static int showcase_arg(int arg)
+{
+    BeatScript s;
+    if (arg < 0) return showcase >= 0;
+    showcase = -1;
+    if (arg < CUT_SHOWCASE_ARG || arg >= CUT_SHOWCASE_ARG + 3) return 0;
+    showcase = arg - CUT_SHOWCASE_ARG;
+    cut = CUT_CHAPTER1;
+    panel = 0;
+    cap = -1;
+    ct = pt = 0;
+    camfx_reset();
+    cutscene_showcase_script(showcase, &s);
+    beat_start(&s);
+    return 1;
+}

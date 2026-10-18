@@ -273,6 +273,27 @@ TEST(beat_every_cutscene_is_a_valid_script)
     }
 }
 
+int cutscene_showcase_script(int k, BeatScript *out);
+
+TEST(beat_timing_showcase_scripts_are_valid_and_land_the_punch)
+{
+    int k;
+    for (k = 0; k < 3; k++) {
+        BeatScript s;
+        uint16_t i;
+        int punch = 0, button = 0;
+        CHECK(cutscene_showcase_script(k, &s));
+        CHECK(beat_script_valid(&s));
+        for (i = 0; i < s.n; i++) {
+            if (s.ev[i].op == BOP_LABEL && s.ev[i].a == L_PUNCH) punch = 1;
+            /* the button sits 12-25 frames after the punch (SPEC sec.10 lint) */
+            if (s.ev[i].op == BOP_LABEL && s.ev[i].a == L_BUTTON && s.ev[i].anchor == L_PUNCH)
+                button = s.ev[i].at >= 12 && s.ev[i].at <= 25;
+        }
+        CHECK(punch && button);
+    }
+}
+
 TEST(beat_cutscenes_play_by_themselves_and_start_skips)
 {
     int c, f;

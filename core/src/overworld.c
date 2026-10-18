@@ -12,6 +12,9 @@
  * SELECT toggles the mini-map.
  */
 #include "overworld_int.h"
+#include "audio_int.h"
+#include "doomo/camfx.h"
+#include "doomo/txt.h"
 
 OwState ow;
 int ow_bb_count;                        /* ow_bb = the shared doomo_frame_bb */
@@ -33,6 +36,10 @@ int ow_scratch_claim(void)
     ow_npc_count = 0;
     ow_prop_count = 0;
     owfx_scratch_lost();
+    ownpc_acts_reset();                     /* --- S1 M5: script slots, camera, spawner --- */
+    ow_scr->cam.mode = CAM_FOLLOW;
+    tw_spring_init(&ow_scr->cam.brake, TW_BRAKE, 0);
+    ow_spawn_reset();
     return 1;
 }
 
@@ -55,6 +62,9 @@ static void ow_scratch_ensure(void)
         ownpc_spawn_all();
     }
 }
+
+/* R17: the script extension area (Feast guests, the Say It walk). */
+void *ow_scratch_ext(void) { return ow_scratch_mine() ? ow_scr->ext : NULL; }
 
 static const int8_t dir_dx[4] = { 0, -1, 1, 0 };
 static const int8_t dir_dy[4] = { 1, 0, 0, -1 };
@@ -192,15 +202,35 @@ static void load_map_only(int map_id)
     if (ow_scratch_usable()) ownpc_load_props();   /* else when we resume */
 }
 
+/* --- S1 M5: the border record scratch (CT sec.6.3): Hillvile -> Hellvile is a
+ * tape-stop (5 f), 14 frames of silence, then the Hellvile theme on the
+ * downbeat, with the camera braking. --- */
+static uint8_t border_t;                 /* frames until the theme comes in */
+
+static int side_of(int map)
+{
+    return map == MAPID_HELLVILE ? 2 : (map == MAPID_HAHALAND || map == MAPID_HAHALAND_INVADED) ? 1 : 0;
+}
+
 void ow_enter_map(int map_id, int cx, int cy)
 {
+    int crossing = ow.started && side_of(ow.map) == 1 && side_of(map_id) == 2;
     load_map_only(map_id);
     if (!find_open_near(&cx, &cy)) { cx = doomo_map.w / 2; cy = doomo_map.h / 2; }
     place_player((int32_t)cx * OW_CELL + OW_CELL / 2, (int32_t)cy * OW_CELL + OW_CELL / 2);
     ow.fade = 12;
     ow.region = NULL;
     if (ow_scratch_usable()) ownpc_spawn_all();
-    audio_music(ow_music_for_map(ow.map));
+    if (crossing) {
+        audio_sfx_synth(SFX_SCRATCH);
+        audio_tapestop(5);
+        border_t = 5 + 14;
+        ow_cam(CAM_BRAKE, 8);
+        ow_spawn_quiet(300);
+    } else {
+        border_t = 0;
+        audio_music(ow_music_for_map(ow.map));
+    }
     restore_style();
     if (!ow.visit) {
         doomo_town.story.map = (uint8_t)ow.map;
@@ -251,6 +281,8 @@ static void start_story(void)
 static void story_enter(int arg)
 {
     memset(&ow, 0, sizeof(ow));
+    camfx_reset();                                 /* --- S1 M5 --- */
+    border_t = 0;
     ow_scratch_claim();
     ow.near_npc = -1;
     ow.near_prop = -1;
@@ -551,9 +583,69 @@ static void press_a(void)
     if (ow.near_prop >= 0) { interact_prop(ow.near_prop); return; }
 }
 
+/* ---- S1 M5: the camera field (pan, creep, brake; zoom through camfx) ---- */
+void ow_cam(int mode, int arg)
+{
+    OwCam *c;
+    if (!ow_scratch_mine()) return;
+    c = &ow_scr->cam;
+    switch (mode) {
+    case CAM_PAN_TO:
+        c->mode = CAM_PAN_TO;
+        c->pan_t = 0;
+        c->fx = ow.camx; c->fy = ow.camy;
+        c->tx = (int32_t)(arg & 0xFF) * OW_CELL + OW_CELL / 2;
+        c->ty = (int32_t)((arg >> 8) & 0xFF) * OW_CELL + OW_CELL / 2;
+        break;
+    case CAM_FOLLOW:
+        c->mode = CAM_FOLLOW;
+        c->creep_q8 = 0;
+        c->creep = 0;
+        break;
+    case CAM_BRAKE:
+        camfx_shake(SHK_BRAKE);
+        tw_spring_punch(&c->brake, (int32_t)(arg ? arg : 6) * 16);
+        break;
+    case CAM_CREEP: c->creep_q8 = (int16_t)arg; break;
+    case CAM_ZOOM:
+        if (arg == 256 || arg <= 0) camfx_zoom_snap(256, 0);
+        else { camfx_zoom_snap(arg, RUNG_R13); camfx_flash(PAL_WHITE, 10, 2); audio_sfx_synth(SFX_WHOOSH); }
+        break;
+    case CAM_RESET:
+    default:
+        c->mode = CAM_FOLLOW;
+        c->creep_q8 = 0;
+        c->creep = 0;
+        tw_spring_init(&c->brake, TW_BRAKE, 0);
+        camfx_zoom_snap(256, 0);
+        break;
+    }
+}
+
+void ow_cam_offset(int32_t *dx, int32_t *dy)
+{
+    *dx = *dy = 0;
+    if (!ow_scratch_mine()) return;
+    *dx = ow_scr->cam.brake.e * (OWQ / 16) + (ow_scr->cam.creep >> 8) * OWQ;
+}
+
 static void camera_update(void)
 {
     int32_t tx = ow.px, ty = ow.py - 8 * OWQ;
+    if (ow_scratch_mine()) {
+        OwCam *c = &ow_scr->cam;
+        tw_spring_step(&c->brake);
+        c->creep += c->creep_q8;
+        if (c->mode == CAM_PAN_TO) {
+            /* a comic camera sits, then moves quickly: 12 frames of smoothstep */
+            fix16 k;
+            if (c->pan_t < 12) c->pan_t++;
+            k = tw_smooth(tw_t(c->pan_t, 12));
+            ow.camx = tw_lerp(c->fx, c->tx, k);
+            ow.camy = tw_lerp(c->fy, c->ty, k);
+            return;
+        }
+    }
     int32_t maxx = (int32_t)doomo_map.w * OW_CELL, maxy = (int32_t)doomo_map.h * OW_CELL;
     int32_t hw = (int32_t)plat_screen_w() * 4 * OWQ / 2, hh = (int32_t)plat_screen_h() * 4 * OWQ / 2;
     ow.camx += (tx - ow.camx) / 4;
@@ -627,6 +719,7 @@ static int music_tick;
 static void story_update(void)
 {
     ow.t++;
+    camfx_tick();                                  /* --- S1 M5 --- */
     ow_scratch_ensure();
     if (story_pending.kind == PEND_CREATOR) {
         const DoomoResident *p = town_res(DOOMO_PLAYER_ID);
@@ -644,10 +737,12 @@ static void story_update(void)
     if (map_current_id() != ow.map) after_subscene();
     sim_tick();
     owfx_update();
-    if (++music_tick >= 90) {
+    if (border_t && --border_t == 0) audio_music(ow_music_for_map(ow.map));   /* on the downbeat */
+    if (++music_tick >= 90 && !border_t && !audio_fx_music_gated()) {
         music_tick = 0;
         if (audio_music_current() != ow_music_for_map(ow.map)) audio_music(ow_music_for_map(ow.map));
     }
+    if (ow_beat_live()) ow_beat_step();            /* --- S1 M5: the overworld hosts a beat --- */
     if (!ow.visit && auto_events()) return;
     if (ow.pause) { pause_update(); return; }
     if (btn_pressed(BTN_START)) {
@@ -662,8 +757,13 @@ static void story_update(void)
     if (scene_top() != &SCENE_STORY) return;       /* a door opened a scene */
     pet_update();
     ownpc_update();
+    ownpc_acts_update();                           /* --- S1 M5 --- */
     camera_update();
     find_interactables();
+    if (!ow.visit) {
+        ownpc_double_take_check();
+        ow_spawn_update();
+    }
     if (btn_pressed(BTN_A)) { press_a(); return; }
     /* chapter 3: walking into a demon nest */
     if (!ow.visit && ow.map == MAPID_HAHALAND_INVADED && story_beat() == BEAT_C3_NESTS && !story_talking()) {
@@ -775,8 +875,12 @@ void ow_view_fill(DoomoOverworldView *v)
     int b = story_beat(), lvl = 0, tint = TINT_NONE;
     memset(v, 0, sizeof(*v));
     v->map = &doomo_map;
-    v->cx = INT2FIX((ow.camx + view_shake(0)) / OWQ);
-    v->cy = INT2FIX((ow.camy + view_shake(1)) / OWQ);
+    {
+        int32_t ox, oy;
+        ow_cam_offset(&ox, &oy);                   /* --- S1 M5: brake + creep --- */
+        v->cx = INT2FIX((ow.camx + ox + view_shake(0)) / OWQ);
+        v->cy = INT2FIX((ow.camy + oy + view_shake(1)) / OWQ);
+    }
     v->vx = 0;
     v->vy = 0;
     v->vw = (int16_t)plat_screen_w();
@@ -814,11 +918,14 @@ static void story_draw(void)
     if (ow.flash) ow.flash--;
     if (ow.shake) ow.shake--;
     if (ow.banner_t) ow.banner_t--;
+    if (!ow.visit && ui_dialog_active()) ow_spawn_under_dialog();   /* --- S1 M5: "beep." --- */
     if (plat_draw_skipped()) return;
     build_billboards();
     ow_view_fill(&v);
     plat_overworld(&v);
     owfx_draw_world();
+    if (!ow.visit) ow_spawn_draw();                /* --- S1 M5 --- */
+    camfx_apply();                                 /* --- S1 M5: the world shakes, the HUD does not (PS1) --- */
     owfx_draw_hud();
     if (ow.pause) owfx_draw_pause();
     if (ow.flash) plat_checker(0, 0, sw, sh, ow.flash_col);
@@ -828,3 +935,55 @@ static void story_draw(void)
 const DoomoScene SCENE_STORY = {
     "STORY", story_enter, story_leave, story_update, story_draw, 0
 };
+
+/* ---- S1 M5: the overworld as a beat host (SPEC C6). The scheduler is
+ * resident; the host kinds come back here: NPC / ACT acts, CAM moves, the
+ * SAY / CAPTION lines (decoded from the packs into the dialogue queue) and
+ * the iris around the player. ------------------------------------------------ */
+static uint8_t ow_beat_on;
+
+void ow_run_beat(const BeatScript *s)
+{
+    beat_start(s);
+    ow_beat_on = beat_running() ? 1 : 0;
+    ow_spawn_quiet(150);
+}
+
+int ow_beat_live(void) { return ow_beat_on; }
+
+static void ow_beat_event(const BeatEv *e)
+{
+    char line[200];
+    switch (e->op) {
+    case BOP_NPC: ownpc_act(e->a, e->b & 0xFF, (e->b >> 8) & 0xFF); break;
+    case BOP_ACT: ownpc_act(e->a, e->b, 0); break;
+    case BOP_CAM: ow_cam(e->a, e->b); break;
+    case BOP_SAY: case BOP_CAPTION:
+        if (txt_get((uint16_t)e->b, line, (int)sizeof(line)) >= 0)
+            ui_say_ex(e->op == BOP_SAY ? e->a : -1, EXPR_NEUTRAL, 0, line);
+        break;
+    case BOP_IRIS_OUT: case BOP_IRIS_IN: {
+        int sx, sy;
+        owfx_world_to_screen(ow.px, ow.py, &sx, &sy);
+        if (e->op == BOP_IRIS_OUT) camfx_iris_out(sx, sy - 12, 18 + ((e->b >> 7) & 63) * 2, (e->b >> 6) & 1, e->b & 63);
+        else camfx_iris_in(sx, sy - 12, 18, (e->b >> 6) & 1, e->b & 63);
+        break; }
+    case BOP_EXPR: case BOP_POP: case BOP_SHOT: case BOP_CUT: case BOP_INSERT: case BOP_TWITCH:
+    case BOP_TINT: case BOP_HEADTURN:
+        if (e->op == BOP_HEADTURN) ownpc_act(e->a, NACT_HEAD_TURN, e->b);
+        if (e->op == BOP_TWITCH) ownpc_act(e->a, e->b ? NACT_TWITCH : NACT_THAW, 0);
+        break;
+    default: break;
+    }
+}
+
+void ow_beat_step(void)
+{
+    int r, guard = 32;
+    if (btn_pressed(BTN_A)) beat_press_a();
+    do {
+        r = beat_tick();
+        if (r == BT_EXT) ow_beat_event(beat_ext_event());
+    } while (r == BT_EXT && guard-- > 0);
+    if (r == BT_DONE) { ow_beat_on = 0; ow_spawn_quiet(300); }
+}

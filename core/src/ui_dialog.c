@@ -89,6 +89,7 @@ static uint8_t d_insert, d_insert_t;
 static uint16_t d_rev[HOP_RING];       /* d_line_t when glyph i appeared     */
 static uint8_t d_pill_seen;            /* the pill has popped in this run    */
 static uint32_t d_pill_draws;          /* tests                              */
+static uint16_t d_serial;              /* bumps with every line shown        */
 
 void ui_dialog_style(int style) { d_style = style; }
 int ui_dialog_active(void) { return d_open; }
@@ -103,12 +104,13 @@ static void copy_str(char *dst, const char *src, int cap)
 }
 
 /* ---- parsing the beat codes ------------------------------------------- */
-static int match(const char *s, const char *kw)
-{
-    int n = 0;
-    while (kw[n]) { if (s[n] != kw[n]) return 0; n++; }
-    return n;
-}
+/* {keyword}: op and argument; a keyword ending in ' ' takes a number */
+static const struct { char kw[7]; uint8_t op, arg; } code_kw[] = {
+    { "p ", C_PAUSE, 0 }, { "...", C_PAUSE, RUNG_R13 }, { "..", C_PAUSE, RUNG_R8 },
+    { ".", C_PAUSE, RUNG_R5 }, { "d", C_DEAD, 0 }, { "!", C_STING, 0 }, { "big", C_BIG, 0 },
+    { "/", C_ENDBIG, 0 }, { "w", C_WAVE, 0 }, { "r", C_SCRATCH, 0 }, { "punch", 0, 1 },
+    { "cut ", C_CUT, 0 }
+};
 
 static void add_code(DlgEntry *e, int pos, int op, int arg)
 {
@@ -119,51 +121,36 @@ static void add_code(DlgEntry *e, int pos, int op, int arg)
     e->ncode++;
 }
 
+/* A {code} at src: add it, return the characters it spans (0 = not one). */
+static int parse_code(DlgEntry *e, const char *src, int pos)
+{
+    unsigned k;
+    for (k = 0; k < sizeof(code_kw) / sizeof(code_kw[0]); k++) {
+        const char *q = src + 1, *w = code_kw[k].kw;
+        int arg = code_kw[k].arg;
+        while (*w && *q == *w) { q++; w++; }
+        if (*w) continue;
+        if (q[-1] == ' ') for (arg = 0; *q >= '0' && *q <= '9'; q++) arg = arg * 10 + (*q - '0');
+        if (*q != '}') continue;
+        if (code_kw[k].op) add_code(e, pos, code_kw[k].op, arg);
+        else e->eflags |= EF_PUNCH;
+        return (int)(q - src) + 1;
+    }
+    return 0;
+}
+
 /* Copy src into e->text, stripping {codes}. story: '/' is a line break,
  * '//' a page break. */
 static void parse_text(DlgEntry *e, const char *src, int story)
 {
-    int o = 0;
+    int o = 0, n;
     if (!src) src = "";
     while (*src && o < DLG_TEXT - 1) {
-        if (*src == '{') {
-            const char *q = src + 1;
-            int n, arg = 0, op = 0;
-            if ((n = match(q, "p ")) != 0) {
-                q += n;
-                while (*q >= '0' && *q <= '9') arg = arg * 10 + (*q++ - '0');
-                op = C_PAUSE;
-            } else if ((n = match(q, "...}")) != 0) { op = C_PAUSE; arg = RUNG_R13; q += n - 1; }
-            else if ((n = match(q, "..}")) != 0) { op = C_PAUSE; arg = RUNG_R8; q += n - 1; }
-            else if ((n = match(q, ".}")) != 0) { op = C_PAUSE; arg = RUNG_R5; q += n - 1; }
-            else if ((n = match(q, "d}")) != 0) { op = C_DEAD; q += n - 1; }
-            else if ((n = match(q, "!}")) != 0) { op = C_STING; q += n - 1; }
-            else if ((n = match(q, "big}")) != 0) { op = C_BIG; q += n - 1; }
-            else if ((n = match(q, "/}")) != 0) { op = C_ENDBIG; q += n - 1; }
-            else if ((n = match(q, "w}")) != 0) { op = C_WAVE; q += n - 1; }
-            else if ((n = match(q, "r}")) != 0) { op = C_SCRATCH; q += n - 1; }
-            else if ((n = match(q, "punch}")) != 0) { e->eflags |= EF_PUNCH; op = -1; q += n - 1; }
-            else if ((n = match(q, "cut ")) != 0) {
-                q += n;
-                while (*q >= '0' && *q <= '9') arg = arg * 10 + (*q++ - '0');
-                op = C_CUT;
-            }
-            if (op && *q == '}') {
-                if (op > 0) add_code(e, o, op, arg);
-                src = q + 1;
-                continue;
-            }
-        }
+        if (*src == '{' && (n = parse_code(e, src, o)) != 0) { src += n; continue; }
         if (story && *src == '/') {
-            if (src[1] == '/') {
-                while (o > 0 && e->text[o - 1] == ' ') o--;
-                add_code(e, o, C_PAGE, 0);
-                src += 2;
-                while (*src == ' ') src++;
-                continue;
-            }
             while (o > 0 && e->text[o - 1] == ' ') o--;
-            e->text[o++] = '\n';
+            if (src[1] == '/') { add_code(e, o, C_PAGE, 0); src++; }
+            else e->text[o++] = '\n';
             src++;
             while (*src == ' ') src++;
             continue;
@@ -324,6 +311,7 @@ static void advance(int choice)
     reset_page(0);
     if (d_dead) audio_music_duck(256, 0);
     d_dead = 0;
+    d_serial++;
     if (dq_n == 0) scene_pop();
     if (done.kind == DK_CHOICE && done.choice_done) done.choice_done(choice);
     if (done.say_done) done.say_done();
@@ -506,94 +494,56 @@ static void dlg_update(void)
 }
 
 /* ---- drawing ------------------------------------------------------------ */
-/* The portrait frame (as ui_portrait) with the image squashed (Q8) and
- * nudged; the image goes through plat_image_xform only while it squashes. */
+/* The portrait: ui_portrait's frame and image, the image squashed (Q8,
+ * anchored at its feet) through plat_image_xform while it squashes. */
 static void dlg_portrait(int x, int y, int id, int expr, int sx, int sy)
 {
-    const DoomoImage *img = portrait_image(id, expr);
-    const UiStyle *st = ui_style(WIN_MINT);
-    int w = (img ? img->w : PORTRAIT_W) + 6, h = (img ? img->h : PORTRAIT_H) + 6;
-    ui_drop_shadow_under(x + 2, y + 2, w, h, 4, x, y, w, h, 4);
-    ui_round_rect(x, y, w, h, 4, st->outline);
-    ui_round_rect(x + 1, y + 1, w - 2, h - 2, 3, st->fill_hi);
-    plat_rect(x + 2, y + h * 2 / 3, w - 4, h / 3 - 2, st->fill);
-    ui_heart(x + w - 8, y + 8, 2, PAL_RAMP(RAMP_MINT, 5));
-    ui_heart(x + 7, y + h / 2, 2, PAL_RAMP(RAMP_MINT, 5));
+    const DoomoImage *img;
+    ui_portrait(x, y, id, 1, expr);
+    if (sx == 256 && sy == 256) return;
+    img = portrait_image(id, expr);
     if (!img) return;
-    if (sx == 256 && sy == 256) plat_image(x + 3, y + 3, img, 1, 0, 0);
-    else plat_image_xform(x + 3 + img->w / 2, y + 3 + img->h, img, sx, sy, 0, 0);
+    plat_rect(x + 3, y + 3, img->w, img->h, ui_style(WIN_MINT)->fill_hi);
+    plat_image_xform(x + 3 + img->w / 2, y + 3 + img->h, img, sx, sy, 0, 0);
 }
 
-/* GURGLE's secondary slot: the belly itself, a round red tum with a
- * stitched smile that wobbles when it talks. */
-static void dlg_belly(int cx, int cy, int talking, int t)
+/* Glyph g's vertical offset (the hop, the wave, the {big} pop) and colour. */
+static int glyph_dy(int g, int shown, uint8_t *c, uint8_t accent)
 {
-    int wob = talking ? ((t >> 1) & 1) : 0;
-    ui_fill_circle(cx, cy, 11, PAL_RAMP(RAMP_BLOOD, 1));
-    ui_fill_ellipse(cx, cy, 10, 10 - wob, PAL_RAMP(RAMP_BLOOD, 4));
-    ui_fill_ellipse(cx - 3, cy - 4, 4, 3, PAL_RAMP(RAMP_BLOOD, 6));
-    plat_rect(cx - 5, cy + 2 + wob, 11, 1, PAL_RAMP(RAMP_BLOOD, 0));
-    if (talking && (t & 2)) ui_fill_ellipse(cx, cy + 4, 3, 2, PAL_RAMP(RAMP_BLOOD, 0));
-    plat_rect(cx, cy - 1, 1, 1, PAL_RAMP(RAMP_BLOOD, 0));
+    int dy = 0, age = d_line_t - d_rev[g & (HOP_RING - 1)];
+    int fresh = !d_dead && g >= shown - HOP_RING && age >= 0 && age < 6;
+    if (fresh) dy = tw_tab(&TW_HOP1, age) * tw_bounce_amount() / 256;
+    if (d_wave_from != 0xFF && g >= d_wave_from) dy += ui_wave(d_line_t + g * 3, 16, 1);
+    if (d_big_from != 0xFF && g >= d_big_from && g < d_big_to) {
+        dy -= (tw_tab(&TW_POP_BUBBLE, fresh ? age : 9) - 256) / 24;
+        *c = accent;
+    }
+    return dy;
 }
 
-/* Text of the page: settled glyphs in one call, the hopping / waving /
- * popping ones one by one. */
+/* The page, line by line (ui.c's wrap), in runs of glyphs that share an
+ * offset and a colour: settled text is one ui_text per line. */
 static void dlg_text(const DlgEntry *e, const DlgBox *b, int by, uint8_t col, uint8_t accent)
 {
     const char *p = e->text + d_page;
-    int shown = d_shown / 2, amount = tw_bounce_amount(), settled = shown, i;
-    int lx[64], ly[64], line = 0, col_i = 0, maxc = b->tw / FONT_ADVANCE, n = 0;
-    char one[2];
-    if (!d_dead) {
-        int k = shown - 1;
-        while (k >= 0 && shown - k <= HOP_RING && d_line_t - d_rev[k & (HOP_RING - 1)] < 6) k--;
-        settled = k + 1;
-    }
-    if (d_wave_from != 0xFF) settled = DOOMO_MIN(settled, d_wave_from);
-    if (d_big_from != 0xFF) settled = DOOMO_MIN(settled, d_big_from);
-    ui_text_wrap_n(b->tx, by, b->tw, p, col, settled);
-    if (settled >= shown) return;
-    /* lay the page out like ui_text_wrap does (fixed advance) */
-    if (maxc > 63) maxc = 63;
-    {
-        const char *q = p;
-        int base = 0;
-        while (*q && line < b->lines + 1 && base < shown) {
-            int m = 0, last_space = -1, ln, adv;
-            while (q[m] && q[m] != '\n' && m < maxc) { if (q[m] == ' ') last_space = m; m++; }
-            if (q[m] == 0 || q[m] == '\n') { ln = m; adv = m + (q[m] == '\n'); }
-            else if (q[m] == ' ') { ln = m; adv = m + 1; }
-            else if (last_space > 0) { ln = last_space; adv = last_space + 1; }
-            else { ln = m; adv = m; }
-            for (col_i = 0; col_i < adv && base + col_i < shown; col_i++) {
-                int gi = base + col_i;
-                if (gi < settled || col_i >= ln) continue;
-                if (n >= 64) break;
-                lx[n] = (gi << 8) | col_i;
-                ly[n] = line;
-                n++;
-            }
-            base += adv;
-            q += adv;
-            line++;
+    char run[64];
+    int shown = d_shown / 2, pos = 0, l;
+    for (l = 0; l < b->lines + 1 && pos < shown && p[pos]; l++) {
+        int adv = ui_wrap_skip(p + pos, b->tw, 1), n = adv, k = 0;
+        if (adv <= 0) break;
+        while (n > 0 && (p[pos + n - 1] == ' ' || p[pos + n - 1] == '\n')) n--;
+        if (n > shown - pos) n = shown - pos;
+        if (n > 63) n = 63;
+        while (k < n) {
+            uint8_t c = col, c2;
+            int dy = glyph_dy(pos + k, shown, &c, accent), j = k + 1;
+            while (j < n && (c2 = col, glyph_dy(pos + j, shown, &c2, accent) == dy) && c2 == c) j++;
+            memcpy(run, p + pos + k, (size_t)(j - k));
+            run[j - k] = 0;
+            ui_text(b->tx + k * FONT_ADVANCE, by + l * FONT_LINE + dy, run, c);
+            k = j;
         }
-    }
-    one[1] = 0;
-    for (i = 0; i < n; i++) {
-        int gi = lx[i] >> 8, c = lx[i] & 255, dy = 0;
-        int age = d_line_t - d_rev[gi & (HOP_RING - 1)];
-        uint8_t cc = col;
-        one[0] = p[gi];
-        if (one[0] == ' ' || one[0] == '\n') continue;
-        if (!d_dead && age >= 0 && age < 6) dy = tw_tab(&TW_HOP1, age) * amount / 256;
-        if (d_wave_from != 0xFF && gi >= d_wave_from) dy += ui_wave(d_line_t * 1 + gi * 3, 16, 1);
-        if (d_big_from != 0xFF && gi >= d_big_from && gi < d_big_to) {
-            int s = tw_tab(&TW_POP_BUBBLE, age);
-            dy -= (s - 256) / 24;
-            cc = accent;
-        }
-        ui_text(b->tx + c * FONT_ADVANCE, by + ly[i] * FONT_LINE + dy, one, cc);
+        pos += adv;
     }
 }
 
@@ -628,7 +578,7 @@ static void dlg_draw(void)
         int nw = font_text_width(r->name) + 14;
         if (r->status == RES_POSSESSED) {
             expr = EXPR_POSSESSED;
-            if (!d_dead && fx_sin(d_line_t * 4430) > 0x8000) px += 1;     /* TWITCH: ears at ~1.7 rad/f */
+            if (!d_dead && (d_line_t % 7) < 3) px += 1;                 /* TWITCH */
         }
         if (d_page == 0 && d_line_t < 2 && !(e->eflags & EF_LEGACY)) { sx = 271; sy = 241; }  /* talk bob */
         if ((e->flags & DL_SHOUT) && d_page == 0) {
@@ -639,7 +589,10 @@ static void dlg_draw(void)
         sx = 256 + (sx - 256) * tw_bounce_amount() / 256;
         sy = 256 + (sy - 256) * tw_bounce_amount() / 256;
         dlg_portrait(px, b.y - 22 - bob, e->speaker, expr, sx, sy);
-        if (e->flags & DL_GURGLE) dlg_belly(b.x + 50, b.y + 8, talking, d_line_t);
+        if (e->flags & DL_GURGLE) {                    /* GURGLE's slot: the belly talks */
+            ui_fill_circle(b.x + 50, b.y + 8, 9, PAL_RAMP(RAMP_BLOOD, 4));
+            ui_fill_ellipse(b.x + 50, b.y + 11, 4, talking && (d_line_t & 2) ? 2 : 1, PAL_RAMP(RAMP_BLOOD, 0));
+        }
         if (d_bang >= 0) {
             int s = tw_tab(&TW_POP_BUBBLE, d_bang);
             ui_text_outline(b.x + 26, b.y - 34 - (s - 256) / 16, "!", PAL_UI_GOLD, PAL_BLACK);
@@ -700,6 +653,16 @@ int ui_dialog_insert(int *age)
     return d_insert;
 }
 
+int ui_dialog_top(UiDialogTop *o)
+{
+    if (!d_open || !dq_n) return 0;
+    o->flags = dq[0].flags;
+    o->shown = d_shown / 2;
+    o->serial = (uint16_t)(d_serial + d_page);
+    return 1;
+}
+
+#if !defined(DOOMO_PLATFORM_GBA) && !defined(DOOMO_PLATFORM_PS1)
 void ui_dialog_debug(UiDialogDebug *o)
 {
     memset(o, 0, sizeof(*o));
@@ -714,5 +677,6 @@ void ui_dialog_debug(UiDialogDebug *o)
     o->flags = dq[0].flags;
     o->expr = dq[0].expr;
 }
+#endif
 
 const DoomoScene SCENE_DIALOG = { "DIALOG", dlg_enter, dlg_leave, dlg_update, dlg_draw, 1 };

@@ -1,0 +1,40 @@
+# assert-no-stubs
+# The comic-timing showcase (S1, SPEC sec.7 S1): three of the trailer's
+# gags replayed in-engine on beat scripts and the shared tween tables, with
+# shots on the trailer's key frames (trailer/scenes s04, s12, s14). Compare
+# them by eye with a trailer build: make -C trailer; build/trailer --png s04 134 x.png
+scene CUTSCENE 256
+wait 44
+shot pet_beep
+wait 86
+shot pet_insert
+wait 6
+shot pet_horns_beep
+wait 14
+shot pet_its_fine
+scene CUTSCENE 257
+wait 12
+shot census_count
+wait 14
+shot census_1000
+wait 24
+shot census_good
+wait 22
+shot census_bad
+wait 22
+shot census_park
+wait 16
+shot census_cork
+wait 14
+shot census_cozy
+scene CUTSCENE 258
+wait 5
+shot drop_fall
+wait 4
+shot drop_squash
+wait 18
+shot drop_on
+wait 54
+shot drop_deadpan
+wait 22
+shot drop_button

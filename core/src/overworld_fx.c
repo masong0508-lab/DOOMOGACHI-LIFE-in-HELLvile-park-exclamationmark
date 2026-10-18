@@ -81,10 +81,11 @@ static void make_images(void)
         { PAL_RAMP(RAMP_MINT, 1), PAL_RAMP(RAMP_MINT, 4), PAL_RAMP(RAMP_MINT, 5), PAL_RAMP(RAMP_MINT, 7), PAL_WHITE }
     };
     static const int mglyph[MK_COUNT] = { '!', '?', ICON_CHECK };
-    static const int eglyph[8] = { 0, '.', ICON_HEART, ICON_NOTE, ICON_ZZZ, ICON_DROP, ICON_SKULL, 0 };
+    /* --- S1 M5: slot 7 is the double-take "!" (EMO_BANG) --- */
+    static const int eglyph[8] = { 0, '.', ICON_HEART, ICON_NOTE, ICON_ZZZ, ICON_DROP, ICON_SKULL, '!' };
     static const uint8_t ecol[8] = {
         0, PAL_GRAY_D, PAL_PAINT(PAINT_CHERRY, 1), PAL_PAINT(PAINT_COBALT, 1), PAL_PAINT(PAINT_SKY, 0),
-        PAL_PAINT(PAINT_CYAN, 0), PAL_PAINT(PAINT_VAPE_PURPLE, 0), 0
+        PAL_PAINT(PAINT_CYAN, 0), PAL_PAINT(PAINT_VAPE_PURPLE, 0), PAL_UI_RED
     };
     BubbleCols eb = { PAL_RAMP(RAMP_STONE, 3), PAL_RAMP(RAMP_STONE, 6), PAL_WHITE, PAL_WHITE, 0 };
     int i;
@@ -97,7 +98,7 @@ static void make_images(void)
         mk_img[i].pix = mk_pix[i];
         mk_img[i].uid = doomo_image_new_uid();
     }
-    for (i = 1; i < 7; i++) {
+    for (i = 1; i < 8; i++) {                                    /* S1: + EMO_BANG */
         bubble(em_pix[i], EM_W, EM_H, 5, &eb, 1);
         if (i == EMO_TALK) {
             int k;
@@ -130,7 +131,7 @@ const DoomoImage *owfx_marker(int flags, int t)
 const DoomoImage *owfx_emote(int e)
 {
     if (!fx_ready) { make_images(); fx_ready = 1; }
-    if (e <= EMO_NONE || e > EMO_SKULL) return NULL;
+    if (e <= EMO_NONE || e > EMO_BANG) return NULL;      /* S1: + EMO_BANG */
     return &em_img[e];
 }
 

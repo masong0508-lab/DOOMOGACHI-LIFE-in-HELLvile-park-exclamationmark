@@ -189,6 +189,10 @@ int  ui_dialog_active(void);          /* SCENE_DIALOG is open            */
 void ui_say_ex(int speaker, int expr, int flags, const char *text);
 int  ui_dialog_queued(void);
 int  ui_dialog_insert(int *age);
+/* The top line: its DL_* flags, glyphs shown and a serial that changes
+ * with every line (the spawner's pet "beep." on a sincere line). 0 if none. */
+typedef struct UiDialogTop { int flags, shown; uint16_t serial; } UiDialogTop;
+int  ui_dialog_top(UiDialogTop *out);
 /* Dialogue box style (default WIN_CUTE; HELL after the invasion). */
 void ui_dialog_style(int style);
 /* Pending toasts (for tests). */

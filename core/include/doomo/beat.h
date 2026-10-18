@@ -103,6 +103,28 @@ void beat_set_actor_clock(int actor, int mode);
  * forever): the cutscene panels' "A or after a while". */
 #define BEAT_WAIT_A_B(min, auto_frames) ((int16_t)(uint16_t)(((min) & 127) | (((auto_frames) & 511) << 7)))
 int beat_script_valid(const BeatScript *s);
+
+/* Overworld NPC acts (BOP_NPC / the VM's OP_NPC: b = act | arg << 8;
+ * SF sec.15.8, CT sec.6.3). The host is overworld_npc.c (ownpc_act). Stored
+ * in scripts: append only.
+ *   WALK_TO   arg = cell x | y << 8 (OP_NPC: the low byte is x, DATA y)
+ *   HOP       a TW_HOP2 hop          TURN    arg = dir 0 down 1 left 2 right 3 up
+ *   FACE      arg = resident id (0 = the player)
+ *   EMOTE     arg = EMO_* (a popping bubble for ~2 s)
+ *   FLEE      arg = dir: the 2a + 0.35a^2 run, staggered by id % 7, sweating
+ *   FREEZE / THAW / PANIC / STILL / TWITCH: the actor's clock (BCLK_*)
+ *   HEAD_TURN arg = brad (256 = 1/16 turn) | frames << 8 (the 180-degree creak)
+ *   RIPPLE    arg = radius in cells: neighbours bang "!" in a chain, 3 f apart
+ *   DOUBLE_TAKE: stop R3, head turn 2 f, "!" bang, emote pop, tik */
+enum { NACT_WALK_TO, NACT_HOP, NACT_TURN, NACT_FACE, NACT_EMOTE, NACT_FLEE,
+       NACT_FREEZE, NACT_THAW, NACT_PANIC, NACT_STILL, NACT_TWITCH,
+       NACT_HEAD_TURN, NACT_RIPPLE, NACT_DOUBLE_TAKE, NACT_COUNT };
+/* Overworld camera modes (BOP_CAM a / OP_CAM a; overworld.c ow_cam).
+ *   PAN_TO arg = cell x | y << 8: sit, then move quickly (12 f smoothstep)
+ *   FOLLOW back to the player   BRAKE arg = overshoot px (TW_BRAKE + SHK_BRAKE)
+ *   CREEP arg = Q8 px per frame (dread)   ZOOM arg = Q8.8 (snap, under a flash)
+ *   RESET all of it off */
+enum { CAM_PAN_TO, CAM_FOLLOW, CAM_BRAKE, CAM_CREEP, CAM_ZOOM, CAM_RESET, CAM_COUNT };
 int beat_now(void);
 uint32_t beat_debug_work(void);
 
