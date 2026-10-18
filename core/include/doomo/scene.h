@@ -67,6 +67,8 @@ void *scene_scratch_block(void) __attribute__((const));
  *   FP..  fp_island.c, fp_roster.c, fp_unlocks.c   free play lists
  *   FCOK  fishcook.c, fish_scene.c, cook_scene.c   fishing / cooking state
  *                           + their particle pool (fishcook_int.h)
+ *   GGFX  grumbleguts_gfx.c  the story cutscenes' cached Grumbleguts layers
+ *                           (story_feast.c) and the lantern string
  * A scene that keeps its own state here must not call anything that
  * claims it for another owner (e.g. weld_view_image()). */
 

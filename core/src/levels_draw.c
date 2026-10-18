@@ -6,6 +6,7 @@
  * GBA's skipped catch-up frames.
  */
 #include "levels_int.h"
+#include "grumbleguts_gfx.h"
 
 int lvd_big(void) { return plat_screen_h() >= 200; }
 
@@ -106,6 +107,32 @@ void lvd_padlock(int cx, int cy, int k, int t)
     plat_rect(x - (k + 1) / 2, cy + 3 * k, k, 3 * k, PAL_UI_RED_D);
 }
 
+/* the mini-boss waiting at the end: Gatekeeper Grumbleguts is drawn as
+ * himself (the concept-sheet figure, grumbleguts_gfx.c), the others as
+ * their sprite */
+void lvd_boss_figure(int boss, int x, int y, int t, int scale, int flip)
+{
+    GgParams p;
+    if (boss < 0 || boss >= LB_COUNT) return;
+#if defined(DOOMO_PLATFORM_PS1)
+    /* the PS1 keeps the renderer in the cutscene overlay (a reference from
+     * the combat group would make its ~20 KB resident, docs/PS1.md 3) */
+    if (1) { lvd_demon(x, y, lv_boss[boss].spr, t, scale, flip); return; }
+#endif
+    if (boss != LB_GRUMBLEGUTS) { lvd_demon(x, y, lv_boss[boss].spr, t, scale, flip); return; }
+    gg_params_init(&p);
+    p.dir = flip ? -1 : 1;
+    p.bob = ui_wave(t * 3, 24, 1);
+    p.flap = ui_wave(t * 4, 14, 3 * scale);
+    p.tail = ui_wave(t * 5, 16, 2 * scale);
+    p.belly_y = ui_wave(t * 3, 24, scale);
+    p.blink = (t % 97) < 4;
+    p.seams = lvd_big();
+    gg_set_quality(lvd_big());
+    gg_ellipse(x, y + 1, 22 * scale, 2 + scale, PAL_BLACK);                   /* contact shadow */
+    gg_draw(x, y, scale, GGV_FRONT, GGP_STAND, ((t / 40) & 3) == 1 ? GGE_WINK : GGE_SMUG, &p);
+}
+
 void lvd_boss_intro(int boss, int t)
 {
     const LevelBoss *b;
@@ -133,6 +160,21 @@ void lvd_boss_intro(int boss, int t)
         ui_round_rect(x, y, w, 13, 6, PAL_WHITE);
         ui_text(x + 7, y + 3, b->taunt, PAL_UI_RED_D);
     }
+#if !defined(DOOMO_PLATFORM_PS1)
+    if (boss == LB_GRUMBLEGUTS && t > 6) {
+        /* and the man himself leans into the card from the right: head and
+         * shoulders, a slow wink (cheap: the head alone, three tones) */
+        int s = lvd_big() ? 2 : 1, slide = t < 16 ? (16 - t) * (16 - t) * s / 2 : 0;
+        GgParams p;
+        gg_params_init(&p);
+        p.layers = GGL_HEAD | GGL_FACE;
+        p.bob = ui_wave(t * 3, 30, s);
+        p.blink = (t % 50) < 3;
+        gg_set_quality(lvd_big());
+        gg_draw(sw - 26 * s + slide, sh - bar + 44 * s + 2 * s, s, GGV_FRONT, GGP_STAND,
+                t < 40 ? GGE_SULTRY : t < 56 ? GGE_WINK : GGE_GRIN, &p);
+    }
+#endif
 }
 
 int lvd_bar_y(void)

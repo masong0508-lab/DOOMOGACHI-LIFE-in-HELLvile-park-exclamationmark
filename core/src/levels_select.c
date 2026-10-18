@@ -322,7 +322,7 @@ static void ls_draw(void)
         const LevelBoss *b = &lv_boss[L->boss];
         doomo_snprintf(buf, sizeof(buf), STR_ICON_SKULL " %s", unl ? b->name : "???");
         ui_text_outline(8, ty + 10, buf, PAL_RAMP(RAMP_LAVA, 7), PAL_BLACK);
-        if (big && unl) lvd_demon(sw - 34, sh - 18, b->spr, ls.t, 1, 1);
+        if (big && unl) lvd_boss_figure(L->boss, sw - 34, sh - 18, ls.t, 1, 1);
     }
     if (ls.msg_t) {
         int w = ui_text_width(ls.msg) + 14, x = sw / 2 - w / 2, y = py + ph / 2 - 6;

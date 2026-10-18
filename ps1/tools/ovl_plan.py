@@ -54,7 +54,11 @@ GROUPS = [
     ("workshop", r"workshop$|weld_game$"),
     ("island",   r"fp_island(_gfx)?$"),
     ("freeplay", r"fp_(apartments|graveyard|newisland|news|options|resident|roster|saveload|shop|title|unlocks)$"),
-    ("story",    r"story(_\w+)?$|overworld(_\w+)?$|cutscene$|credits$"),
+    # the story's cutscenes with their Grumbleguts renderer are a group of
+    # their own: story.c only pushes SCENE_CUTSCENE (a scene edge), so the
+    # story group stays under the slot with them out
+    ("cutscene", r"cutscene$|story_feast$|grumbleguts_gfx$"),
+    ("story",    r"story(_\w+)?$|overworld(_\w+)?$|credits$"),
     ("gallery",  r"ui_gallery$"),
 ]
 OVL_KINDS = (".text", ".rodata")

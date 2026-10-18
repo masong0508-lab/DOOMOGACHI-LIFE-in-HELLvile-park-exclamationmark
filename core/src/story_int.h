@@ -113,6 +113,8 @@ void story_fmt(char *out, int cap, const char *tmpl);
 void feast_tick(int panel, uint32_t pt);
 void feast_draw(int panel, uint32_t pt, uint32_t ct);
 int  feast_front_shot(int panel, uint32_t pt);
+/* cutscene.c: screen y of the top of the current caption box (sh if none) */
+int  cutscene_caption_y(void);
 extern int16_t story_fmt_target;                     /* @T / @D subject  */
 /* 1 while a conversation the story started is still running. */
 int  story_talking(void);

@@ -6,6 +6,7 @@
  * SCENE_STORY continues the plot.
  */
 #include "story_int.h"
+#include "grumbleguts_gfx.h"
 
 typedef struct { int16_t who; uint16_t min_t; const char *text; } Panel;
 
@@ -225,6 +226,22 @@ static void puff_cloud(int cx, int cy, int r, int ramp, int bright, uint32_t t)
                        DOOMO_MAX(1, pr[i] * r / 30), light);
 }
 
+/* top edge of this panel's caption box (the pictures compose above it) */
+int cutscene_caption_y(void)
+{
+    static int for_cut = -1, for_panel = -1, for_w, cap_y;
+    const Panel *p = &scripts[cut][panel];
+    char buf[280];
+    int sw = plat_screen_w(), sh = plat_screen_h(), lines;
+    if (!p->text) return sh;
+    if (for_cut == cut && for_panel == panel && for_w == sw) return cap_y;   /* measured once per panel */
+    story_fmt(buf, sizeof(buf), p->text);
+    lines = ui_text_wrap(0, 0, sw - 32, buf, 0, 0);
+    for_cut = cut; for_panel = panel; for_w = sw;
+    cap_y = sh - (lines * FONT_LINE + 12) - 6;
+    return cap_y;
+}
+
 static void caption(void)
 {
     const Panel *p = &scripts[cut][panel];
@@ -332,6 +349,16 @@ static void draw_arrival(void)
     ui_fill_circle(bx + 14, by + 26, 2, PAL_GRAY_L);
     ui_fill_circle(bx + 46, by + 26, 2, PAL_GRAY_L);
     ui_heart(bx + 52, by + 18, 3, PAL_UI_RED);
+    /* the bus stop: a candy-striped pole and a round sign */
+    plat_rect(sw / 6 + 2, sh * 3 / 4 - 40, 3, 44, PAL_RAMP(RAMP_PASTEL_PINK, 3));
+    for (i = 0; i < 5; i++) plat_rect(sw / 6 + 2, sh * 3 / 4 - 40 + i * 9, 3, 4, PAL_WHITE);
+    gg_ellipse(sw / 6 + 3, sh * 3 / 4 - 44, 9, 9, PAL_RAMP(RAMP_PASTEL_PINK, 3));
+    gg_ellipse(sw / 6 + 3, sh * 3 / 4 - 44, 7, 7, PAL_UI_CREAM);
+    ui_heart(sw / 6 + 3, sh * 3 / 4 - 44, 3, PAL_UI_PINK);
+    if (panel >= 1) {                                    /* the welcome committee waits by the sign */
+        static const int16_t hosts[2] = { ID_MAYOR, ID_NANA };
+        gg_crowd(hosts, 2, sw / 6 + 18, sh * 3 / 4 + 4, 18, 0, 1, panel >= 2 ? GG_CROWD_CHEER : GG_CROWD_SWOON, ct);
+    }
     if (bx >= sw / 2 - 30 && panel >= 1) {
         int hop = ui_wave((int)pt, 20, 3);
         draw_player_figure(bx + 64, sh * 3 / 4 - FIGURE_H + 10 - (hop < 0 ? -hop : hop), EXPR_HAPPY);
@@ -401,6 +428,17 @@ static void draw_fog(void)
         ui_text_outline(sw / 2 - 30 + ui_wave((int)ct, 20, 4), sh / 3 - 18, hee[(ct / 15) % 3],
                         PAL_RAMP(RAMP_VAPE, 7), PAL_RAMP(RAMP_VAPE, 0));
     }
+    /* Hillvile Lane below the Wall: a street lamp, the neighbours, you */
+    plat_rect(0, sh * 5 / 6, sw, sh / 6, PAL_RAMP(RAMP_VAPE, 1));
+    plat_checker(0, sh * 5 / 6, sw, 2, PAL_RAMP(RAMP_VAPE, 2));
+    plat_checker(sw - 40, sh * 5 / 6 - 50, 32, 30, PAL_RAMP(RAMP_CANDY, 2));           /* the lamp's glow */
+    plat_rect(sw - 25, sh * 5 / 6 - 40, 3, 42, PAL_RAMP(RAMP_STEEL, 2));
+    gg_ellipse(sw - 24, sh * 5 / 6 - 42, 5, 4, PAL_RAMP(RAMP_CANDY, 6));
+    {
+        static const int16_t folk[2] = { ID_PIP, ID_NANA };
+        gg_crowd(folk, 2, sw - 70, sh * 5 / 6 + 6, 22, 3, 1, panel >= 1 ? GG_CROWD_SHOCK : GG_CROWD_CALM, ct);
+    }
+    draw_player_figure(sw / 6 - 10, sh * 5 / 6 - FIGURE_H + 14, panel >= 2 ? EXPR_SHOCK : EXPR_NEUTRAL);
 }
 
 static void draw_eruption(void)
@@ -443,41 +481,60 @@ static void draw_eruption(void)
             if (d) plat_image(x - d->w / 2, y, d, 1, IMG_SILHOUETTE, PAL_BLACK);
         }
         ui_text_big((sw - ui_text_big_width("!!!", 3)) / 2 + shake, 18, "!!!", 3, PAL_UI_RED, PAL_BLACK);
+        {   /* the citizens scatter */
+            static const int16_t folk[4] = { ID_MAYOR, ID_PIP, ID_NANA, ID_FUZZ };
+            gg_crowd(folk, 4, sw / 2 - 60 - (int)DOOMO_MIN(pt, 60u), sh * 3 / 4 + 10, 30, 1, 1, GG_CROWD_CHEER, ct);
+        }
     }
+    if (phase < 3) draw_player_figure(sw / 6 - 10, sh * 3 / 4 - FIGURE_H + 14 + shake, phase >= 2 ? EXPR_SHOCK : EXPR_NEUTRAL);
 }
 
 static void draw_vapula(void)
 {
-    int sw = plat_screen_w(), sh = plat_screen_h(), i, scale, frame;
+    static const int16_t folk[6] = { ID_MAYOR, ID_NANA, ID_PIP, ID_FUZZ, ID_SOOTKIN, ID_RIVET };
+    int sw = plat_screen_w(), sh = plat_screen_h(), i, scale, frame, big = sh >= 200, gy = sh * 3 / 4 + 6;
     const DoomoImage *v;
-    if (panel < 2) sky_bands(PAL_RAMP(RAMP_VAPE, 2), PAL_RAMP(RAMP_VAPE, 3), PAL_RAMP(RAMP_VAPE, 4), sh);
-    else { sky_bands(PAL_RAMP(RAMP_SKY, 6), PAL_RAMP(RAMP_PASTEL_PINK, 7), PAL_RAMP(RAMP_CANDY, 7), sh); }
-    scale = panel == 0 ? 2 : 1;
+    if (panel < 2) sky_bands(PAL_RAMP(RAMP_VAPE, 1), PAL_RAMP(RAMP_VAPE, 2), PAL_RAMP(RAMP_VAPE, 4), sh);
+    else sky_bands(PAL_RAMP(RAMP_SKY, 6), PAL_RAMP(RAMP_PASTEL_PINK, 7), PAL_RAMP(RAMP_CANDY, 7), sh);
+    /* the top of the spire, where it happened */
+    plat_rect(0, gy, sw, sh - gy, panel < 2 ? PAL_RAMP(RAMP_STONE, 2) : PAL_RAMP(RAMP_STONE, 4));
+    plat_checker(0, gy, sw, 2, panel < 2 ? PAL_RAMP(RAMP_VAPE, 3) : PAL_RAMP(RAMP_PASTEL_PINK, 6));
+    for (i = 0; i < sw; i += 24) plat_rect(i + 4, gy - 6, 12, 6, panel < 2 ? PAL_RAMP(RAMP_STONE, 1) : PAL_RAMP(RAMP_STONE, 3));   /* battlements */
+    scale = big ? 4 : 3;
     frame = panel == 0 ? DFRAME_PAIN : panel == 1 ? DFRAME_DEATH0 + (int)DOOMO_MIN(pt / 12, 3u) : DFRAME_DEATH3;
+    if (panel == 1) scale = DOOMO_MAX(scale - (int)DOOMO_MIN(pt / 24, 2u), 1);          /* the Duke lets his air out */
     v = sprite_image(SPR_LORD_VAPULA, frame);
     if (v && panel < 2) {
         int sx = panel == 0 ? ((int)(ct * 3) % 5) - 2 : 0;
-        plat_image(sw / 2 - v->w * scale / 2 + sx, sh / 2 - v->h * scale / 2 - 10, v, scale, 0, 0);
+        gg_ellipse(sw / 2, gy - 1, v->w * scale / 3, 2 + scale, PAL_RAMP(RAMP_STONE, 0));
+        plat_image(sw / 2 - v->w * scale / 2 + sx, gy - v->h * scale - 2, v, scale, 0, 0);
     }
     if (panel == 1) {
-        for (i = 0; i < 8; i++) {
+        for (i = 0; i < 8; i++) {                                                          /* Pfffffff: the vapour leaves him */
             int a = i * 512 + (int)pt * 12, rr = (int)DOOMO_MIN(pt * 2, 90u);
             puff_cloud(sw / 2 + FIX2INT(fx_cos(a) * rr), sh / 2 - 10 + FIX2INT(fx_sin(a) * rr) / 2,
                        6 + (int)(pt / 20), RAMP_VAPE, 5, pt + (uint32_t)i * 5);
         }
+        if (pt > 10 && pt < 60) ui_text_outline(sw / 2 + 24, sh / 3, "pfffffff", PAL_RAMP(RAMP_VAPE, 7), PAL_RAMP(RAMP_VAPE, 0));
+        if (pt >= 60) ui_text_outline(sw / 2 + 24, sh / 3 + 8, "*squeak*", PAL_UI_PINK, PAL_RAMP(RAMP_VAPE, 0));
     }
-    if (panel == 0)
-        for (i = 0; i < 3; i++)
-            puff_cloud(30 + i * (sw - 60) / 2, 24 + (i & 1) * 12, 16, RAMP_VAPE, 3, ct + (uint32_t)i * 13);
+    if (panel == 0) {
+        for (i = 0; i < 3; i++) puff_cloud(30 + i * (sw - 60) / 2, 24 + (i & 1) * 12, 16, RAMP_VAPE, 3, ct + (uint32_t)i * 13);
+        if ((ct / 20) & 1) ui_text_outline(sw / 2 + 30, sh / 4, "*wheeze*", PAL_RAMP(RAMP_VAPE, 7), PAL_RAMP(RAMP_VAPE, 0));
+    }
     if (panel == 2) {
         const DoomoImage *small = sprite_image(SPR_LORD_VAPULA, DFRAME_WALK0);
-        if (small) plat_image(sw / 2 - small->w / 2, sh / 2 - small->h / 2, small, 1, 0, 0);
+        if (small) plat_image(sw / 2 - small->w / 2, gy - small->h, small, 1, 0, 0);       /* a sad little plush */
+        gg_crowd(folk, 3, sw / 2 - 90, gy + 4, 26, 2, 1, GG_CROWD_CHEER, ct);
+        gg_crowd(folk + 3, 3, sw / 2 + 40, gy + 4, 26, 1, 1, GG_CROWD_CHEER, ct);
         for (i = 0; i < 24; i++) {
             int x = (int)((i * 37 + pt * (1 + i % 3)) % (uint32_t)sw);
             int y = (int)((pt * (2 + (uint32_t)i % 3) + (uint32_t)i * 13) % (uint32_t)sh);
             plat_rect(x, y, 2, 2, PAL_PAINT(i & 31, 2));
         }
+        for (i = 0; i < 4; i++) ui_heart(40 + i * (sw - 80) / 3, sh / 3 - (int)((pt * 2 + (uint32_t)i * 11) % 40u), 3, PAL_UI_PINK);
     }
+    draw_player_figure(sw / 6 - 10, gy - FIGURE_H + 8, panel == 2 ? EXPR_HAPPY : EXPR_SHOCK);
 }
 
 static void draw_wall_falls(void)
@@ -534,9 +591,22 @@ static void draw_wall_falls(void)
 
 static void draw_freeplay(void)
 {
-    int sw = plat_screen_w(), sh = plat_screen_h(), i, s;
-    ui_backdrop(WIN_CUTE, ct);
-    plat_checker(sw / 2, 0, sw - sw / 2, sh, PAL_RAMP(RAMP_VAPE, 3));
+    static const int16_t left[4] = { ID_MAYOR, ID_PIP, ID_NANA, ID_FUZZ };
+    static const int16_t right[4] = { ID_MOTHER_NOX, ID_SOOTKIN, ID_ANVIL, ID_RIVET };
+    int sw = plat_screen_w(), sh = plat_screen_h(), i, s, gy = sh * 3 / 4;
+    sky_bands(PAL_RAMP(RAMP_SKY, 6), PAL_RAMP(RAMP_PASTEL_PINK, 7), PAL_RAMP(RAMP_CANDY, 7), gy);
+    plat_checker(sw / 2, 0, sw - sw / 2, gy, PAL_RAMP(RAMP_VAPE, 3));
+    draw_hills(sw, sh, PAL_RAMP(RAMP_GRASS, 6), PAL_RAMP(RAMP_GRASS, 5));
+    plat_rect(0, gy, sw, sh - gy, PAL_RAMP(RAMP_GRASS, 5));
+    plat_checker(0, gy, sw, 2, PAL_RAMP(RAMP_GRASS, 6));
+    for (i = 0; i < 5; i++) {                                                             /* what is left of the Wall */
+        gg_ellipse(sw / 2 - 20 + i * 10, gy + 2 + (i & 1) * 3, 7, 4, PAL_RAMP(RAMP_STEEL, 1));
+        gg_ellipse(sw / 2 - 20 + i * 10, gy + 1 + (i & 1) * 3, 6, 3, PAL_RAMP(RAMP_STEEL, 3));
+    }
+    gg_lanterns(4, ct);
+    gg_crowd(left, 4, sw / 2 - 86, gy + 10, 20, 2, 1, GG_CROWD_CHEER, ct);               /* both sides, together */
+    gg_crowd(right, 4, sw / 2 + 26, gy + 10, 20, 1, 1, GG_CROWD_SWOON, ct + 9);
+    draw_player_figure(sw / 2 - FIGURE_W / 2, gy - FIGURE_H + 14 - (ui_wave((int)ct, 20, 3) < 0 ? -ui_wave((int)ct, 20, 3) : ui_wave((int)ct, 20, 3)), EXPR_HAPPY);
     for (i = 0; i < 4; i++) {
         int fx = (int)((i * 67 + 30) % (uint32_t)sw), fy = 26 + (i * 19) % 40, t2 = (int)((ct + (uint32_t)i * 17) % 50u);
         int k;

@@ -246,10 +246,11 @@ static void intro_draw(void)
         }
         if (lv_info[br.level].boss != LB_NONE && lvd_big()) {
             /* the mini-boss waiting at the end, in the corner */
-            const LevelBoss *b = &lv_boss[lv_info[br.level].boss];
+            int boss = lv_info[br.level].boss;
+            const LevelBoss *b = &lv_boss[boss];
             const DoomoImage *img = sprite_image(b->spr, 0);
-            int h = img ? img->h : 40, x = sw - 44;
-            lvd_demon(x, sh - 18, b->spr, t, 1, 1);
+            int h = boss == LB_GRUMBLEGUTS ? 66 : img ? img->h : 40, x = sw - 44;
+            lvd_boss_figure(boss, x, sh - 18, t, 1, 1);
             ui_text_outline(x - ui_text_width("waiting:") / 2, sh - 30 - h, "waiting:", PAL_GRAY_L, PAL_BLACK);
         }
     }

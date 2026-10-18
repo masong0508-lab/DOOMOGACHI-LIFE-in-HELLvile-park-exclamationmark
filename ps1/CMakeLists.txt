@@ -141,6 +141,7 @@ foreach(_t doomo_objs ${DOOMO_EXE_NAME})
 	target_include_directories(${_t} PRIVATE
 		${CORE_DIR}/include ${CMAKE_CURRENT_SOURCE_DIR}/src)
 	target_compile_options(${_t} PRIVATE -O2 -Wall -Wextra)
+	target_compile_definitions(${_t} PRIVATE DOOMO_PLATFORM_PS1=1)
 	if(DOOMO_ENGINE_TEST)
 		target_compile_definitions(${_t} PRIVATE DOOMO_ENGINE_TEST=1)
 	endif()

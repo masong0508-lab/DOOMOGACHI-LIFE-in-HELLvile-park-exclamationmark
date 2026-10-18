@@ -248,8 +248,9 @@ Measured (all core modules, fishing / cooking and Hell Breach included):
 | library | 63 | | workshop + welding game | 14 |
 | concert | 51 | | UI gallery | 4 |
 | creator | 50 | | | |
-| story overworld, cutscenes, credits | 48 | | resident code + const data | 1,097 |
+| cutscenes (cutscene.c, story_feast.c, grumbleguts_gfx.c) | 69 | | resident code + const data | 1,097 |
 | studio | 44 | | | |
+| story overworld, credits | 37 | | | |
 
 The biggest remaining consumers of RAM: resident core code (portraits,
 UI, sim, story engine, ...) ~700 KB, `doomo_town` 107 KB, the display

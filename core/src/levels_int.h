@@ -197,6 +197,9 @@ void lvd_demon(int x, int y, int spr, int t, int scale, int flip);
 void lvd_padlock(int cx, int cy, int k, int t);
 /* Mini-boss intro card over the 3D view. */
 void lvd_boss_intro(int boss, int t);
+/* the boss's own picture (Grumbleguts as the concept figure, feet at (x, y);
+ * the others via lvd_demon) */
+void lvd_boss_figure(int boss, int x, int y, int t, int scale, int flip);
 /* Top of our boss bar (its name sits 10 px above); HUD bits that go
  * under it start at lvd_bar_y() + 11. */
 int  lvd_bar_y(void);
