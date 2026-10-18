@@ -219,6 +219,77 @@ void home_score_room(const HomeRoom *r, int room, unsigned ctx, HomeScore *out);
 /* The grade a stamp bitmask shows (highest HG_*). */
 int  home_stamps_grade(unsigned stamps);
 
+/* ---- story_rng contexts of the house (SPEC C18: unique, documented) --------- */
+#define HOME_CTX_DEFEND 0x484F4D01u      /* "HOM" 1: the defence waves             */
+#define HOME_CTX_VISIT  0x484F4D02u      /* 2: generated rooms (home_visit.c)      */
+#define HOME_CTX_WANTS  0x484F4D03u      /* 3: the weekly room wants               */
+#define HOME_CTX_MART   0x484F4D04u      /* 4: HomeMart's daily stock and deal     */
+#define HOME_CTX_HAUNT  0x484F4D05u      /* 5: the Ch2 haunting's picks            */
+
+/* ---- home_defend.c: Hold the Door (H1 M2; HF sec.10.3, SPEC R11) ------------
+ * The state lives in the scene scratch (SCENE_HOME); the scene draws it. */
+#define HOME_DEFEND_WAVES 4
+#define HD_DEMONS 16
+enum { HDK_IMP, HDK_BRUTE };
+enum { HDS_NONE, HDS_WALK, HDS_HIT, HDS_STARE, HDS_INSIDE, HDS_FLEE, HDS_DEAD, HDS_GONE };
+enum { HDL_DOOR, HDL_WIN0, HDL_WIN1, HDL_COUNT };     /* lanes: the door, the window slots */
+enum { HDP_READY, HDP_WAVE, HDP_QUIET, HDP_DAWN, HDP_DONE };
+enum { HDG_PIP, HDG_LULLA, HDG_NANA, HDG_KEVIN, HDG_MAYOR, HDG_COUNT };
+enum { HDA_REPAIR, HDA_REWIND, HDA_COMFORT, HDA_PLATE };
+/* what happened on the last tick (the scene's sounds, shakes and pops) */
+enum { HDE_WAVE = 1u << 0, HDE_DOOR_HIT = 1u << 1, HDE_RIMSHOT = 1u << 2, HDE_SHOT = 1u << 3,
+       HDE_KILL = 1u << 4, HDE_PLATE_HIT = 1u << 5, HDE_PLATE_FALL = 1u << 6,
+       HDE_WINDOW_BREAK = 1u << 7, HDE_DOOR_BREAK = 1u << 8, HDE_ENTER = 1u << 9,
+       HDE_SCARE = 1u << 10, HDE_FLEE = 1u << 11, HDE_DECOY = 1u << 12, HDE_ALARM = 1u << 13,
+       HDE_CHIMNEY = 1u << 14, HDE_THAW = 1u << 15, HDE_DAWN = 1u << 16, HDE_REPAIR = 1u << 17,
+       HDE_REWIND = 1u << 18, HDE_COMFORT = 1u << 19, HDE_PLATE_BACK = 1u << 20 };
+typedef struct HomeDemon {
+    uint8_t kind, state, lane, hp, nerve, timer, hops, tx, ty;   /* tx, ty: indoors tile */
+    int16_t dist;                    /* px outside the wall along the lane, 0 = at it   */
+} HomeDemon;
+typedef struct HomeGuest {
+    uint8_t x, y, present, safe, calm, fled, flinch;
+} HomeGuest;
+typedef struct HomeDefend {
+    uint8_t  table, nwaves, wave, phase, room, w, d, nwin;
+    uint16_t t, wave_t, phase_t, freeze;
+    int16_t  door_hp, door_max;
+    uint8_t  barricade, door_broken, lanes, held;
+    uint8_t  lane_wall[HDL_COUNT], lane_x[HDL_COUNT], lane_y[HDL_COUNT];
+    uint8_t  plate_hp[2], plated, plate_down, broken;  /* bits per window slot      */
+    int8_t   turret, mayor_win, target;
+    uint8_t  turret_x, turret_y, ammo, fire_cd, busy, busy_act;
+    uint8_t  spawned, brutes_spawned, killed, decoy_used, alarm, alarm_t, chimney, panic;
+    uint16_t door_hits, shots;
+    uint32_t ev;                     /* HDE_* of the last tick                         */
+    DoomoRng rng;
+    HomeDemon dm[HD_DEMONS];
+    HomeGuest g[HDG_COUNT];
+} HomeDefend;
+extern const int16_t home_defend_guest_id[HDG_COUNT];   /* resident ids (-1: Kevin)  */
+/* Set up `table` (HDT_*; HDT_AUTO asks the story) on room record `r` of
+ * room `room`: lanes, door HP = Barricade, plates, the turret, the guests.
+ * Tests and the Arena's continue may start mid-table by setting d->wave
+ * before the first tick. */
+void home_defend_begin(HomeDefend *d, int table, const HomeRoom *r, int room);
+int  home_defend_tick(HomeDefend *d);        /* 1 while running, 0 once dawn is over */
+int  home_defend_can(const HomeDefend *d, int act, int idx);
+int  home_defend_act(HomeDefend *d, int act, int idx);   /* 1 done                   */
+int  home_defend_action_at(const HomeDefend *d, int x, int y, int *idx); /* HDA_* or -1 */
+int  home_defend_safe(const HomeDefend *d);  /* guests still safe                   */
+void home_defend_finish(HomeDefend *d);      /* the result into HOME                 */
+int  home_defend_table_for_story(void);
+int  home_defend_nwaves(int table);
+int  home_defend_wave_imps(int table, int wave);
+int  home_defend_wave_brutes(int table, int wave);
+int  home_defend_red_sky(int table);
+typedef struct HomeDefendMap {
+    uint8_t w, d, door_x, door_y, nwin, win_x[2], win_y[2];
+    uint8_t barricade, plated, turret_win, nwaves;
+    uint8_t imps[HOME_DEFEND_WAVES], brutes[HOME_DEFEND_WAVES];
+} HomeDefendMap;
+int  home_defend_export(HomeDefendMap *m);   /* the Arena's map of the player's house */
+
 /* ---- H4: room_ref.c (the reference renderer) and home_draw.c ---------------- */
 /* The whole room, full redraw (the weak plat_room() calls it). */
 void room_ref_draw(const DoomoRoomView *v);

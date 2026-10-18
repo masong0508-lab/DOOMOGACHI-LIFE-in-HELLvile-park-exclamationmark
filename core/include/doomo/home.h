@@ -51,6 +51,16 @@ enum { HP_COSY, HP_HAUNTED, HP_BARRICADED, HP_EMPTY, HP_OPEN, HP_DREAM, HP_COUNT
 enum { HSM_TUTORIAL, HSM_GOAL, HSM_HAUNT_NIGHT, HSM_DEFEND, HSM_DECORATE_FOR,
        HSM_OPEN_HOUSE, HSM_PHOTO, HSM_COUNT };
 
+/* ---- H1 additions (add-only) ----------------------------------------------
+ * Hold the Door's wave tables: the b of `home DEFEND b` in a script, and
+ * bits 8-11 of a story-mode arg (HOME_ARG_DEFEND). HDT_AUTO (a bare
+ * HOME_ARG_STORY(HSM_DEFEND)) picks Ep 3.2's wave or the Ep 3.7 siege from
+ * the story, and the Arena in free play (home_defend.c). */
+enum { HDT_AUTO, HDT_TUTORIAL, HDT_SIEGE, HDT_RAID, HDT_ARENA, HDT_COUNT };
+#define HOME_ARG_DEFEND(table)  (HOME_ARG_STORY(HSM_DEFEND) | (((table) & 15) << 8))
+#define HOME_ARG_STORY_MODE(a)  ((a) & 0xFF)
+#define HOME_ARG_STORY_PARAM(a) (((a) >> 8) & 0x3F)
+
 /* ---- the 'HOME' chunk, version 2 (SPEC R9, R10, C9) ----------------------
  * HF sec.9.2's layout with 9 room records, owned[192], seen_new[48], a visitor
  * log, decorate_for progress, a pending-gag queue and cached results that

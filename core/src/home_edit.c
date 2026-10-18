@@ -174,6 +174,30 @@ int home_fit(const HomeRoom *r, int room, int furn, int x, int y, int rot,
         }
         return HPR_SLOT_ONLY;
     }
+    /* Ch3's Shelter pieces (HF sec.10.3): a welded plate snaps over a window
+     * slot that has a window and no plate yet; the toaster turret stands on
+     * the floor tile in front of a window slot */
+    if (f->role == FR_PLATE || f->role == FR_TURRET) {
+        int k, slot = -1;
+        for (k = 0; k < def->nwin; k++) {
+            int wb = def->win_wall[k] == HW_B;
+            int sx = wb ? 0 : def->win_at[k], sy = wb ? def->win_at[k] : 0;
+            if (x == sx && y == sy && (f->role == FR_TURRET || (rot & 1) == wb)) slot = k;
+        }
+        if (slot < 0) return HPR_SLOT_ONLY;
+        if (f->role == FR_PLATE) {
+            int wb = def->win_wall[slot] == HW_B, win = -1;
+            for (i = 0; i < r->nobj; i++) {
+                const DoomoFurn *g = home_furn(HO_FURN(&r->obj[i]));
+                if (i == ignore || !g || r->obj[i].pos != HO_POS(x, y) || (HO_ROT(&r->obj[i]) & 1) != wb) continue;
+                if (g->role == FR_PLATE) return HPR_OCCUPIED;
+                if (g->role == FR_WINDOW) win = i;
+            }
+            if (win < 0) return HPR_SLOT_ONLY;
+            out->z = r->obj[win].z;
+            return HPR_OK;
+        }
+    }
     if (f->flags & FF_WALL) {
         int wb = rot & 1, a0 = wb ? y : x, a1 = a0 + (f->fw ? f->fw : 1);
         int z0 = wall_z_default(f) * 4, z1 = z0 + f->fh * 4;
