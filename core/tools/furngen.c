@@ -76,7 +76,8 @@ static const Name flag_names[] = {
     { NULL, 0 } };
 static const Name flag2_names[] = {
     { "PORTAL", FF_PORTAL }, { "CURSED", FF_CURSED }, { "NO_SQUASH", FF_NO_SQUASH },
-    { "UNSELLABLE", FF_UNSELLABLE }, { "GIFT", FF_GIFT }, { "STARTER", FF_STARTER }, { NULL, 0 } };
+    { "UNSELLABLE", FF_UNSELLABLE }, { "GIFT", FF_GIFT }, { "STARTER", FF_STARTER },
+    { "FIXED", FF_FIXED }, { NULL, 0 } };
 static const Name fi_names[] = {
     { "NONE", FI_NONE }, { "SIT", FI_SIT }, { "SLEEP", FI_SLEEP }, { "EAT", FI_EAT },
     { "COOK", FI_COOK }, { "PLAY", FI_PLAY }, { "WATCH", FI_WATCH }, { "MUSIC", FI_MUSIC },
@@ -285,6 +286,164 @@ static int parse_catalog(const char *text, const char *file)
 #undef NEED_INT
 #undef NEXT
 fail:
+    return fg_errors - e0;
+}
+
+/* ---- the house sets: themes, blueprints, decorate-for layouts (SPEC R19) -----
+ * core/data/home/themes.txt and blueprints.txt (H1), layouts_<owner>.txt (the
+ * content packages). Joined with the catalog by key; every key, role, room
+ * and paint is checked, and every piece must lie inside its room's grid. */
+typedef struct Theme { int has, wp, fl, wpaint, fpaint, pa, pb, ceil, accent; char name[24]; } Theme;
+static Theme themes[THEME_COUNT];
+typedef struct SetPiece { int furn, x, y, rot, pa, pb, sub; } SetPiece;
+#define FG_MAX_SETS 64
+#define FG_MAX_SET_PIECES 40
+typedef struct Set {
+    char key[40], name[32];
+    int room, id, theme, tol, need, n, line;
+    SetPiece p[FG_MAX_SET_PIECES];
+} Set;
+static Set bps[FG_MAX_SETS], lays[FG_MAX_SETS];
+static int nbps, nlays;
+static const Name room_names[] = {
+    { "LIVING", 0 }, { "BEDROOM", 1 }, { "KITCHEN", 2 }, { "CELLAR", 3 }, { "GARDEN", 4 },
+    { "ANNEX", 5 }, { "TOWERS_7B", 6 }, { "PITS_FLAT", 7 }, { "PARK_PLOT", 8 }, { NULL, 0 } };
+/* the rooms' grids (home.c home_room_defs[]): w, d */
+static const int room_wd[9][2] = { { 6, 6 }, { 6, 6 }, { 8, 6 }, { 8, 8 }, { 8, 6 }, { 6, 6 }, { 6, 6 }, { 6, 6 }, { 10, 8 } };
+static const Name facing_names[] = { { "S", 0 }, { "E", 1 }, { "N", 2 }, { "W", 3 }, { NULL, 0 } };
+
+static int paint_or_default(const char *s)
+{
+    if (!strcmp(s, "DEFAULT") || !strcmp(s, "-")) return 0x1F;
+    return name_find(paint_names, s);
+}
+
+static int parse_themes(const char *text, const char *file)
+{
+    Lex L;
+    char tok[128];
+    int q, nl, e0 = fg_errors;
+    Theme *t = NULL;
+    L.src = text; L.pos = 0; L.line = 1; L.file = file;
+#define TNEXT() lex_next(&L, tok, sizeof tok, &q, &nl)
+    while (TNEXT()) {
+        if (!strcmp(tok, "[theme")) {
+            int id;
+            char *end;
+            if (!TNEXT() || !(end = strchr(tok, ']'))) { fg_err(file, L.line, "expected [theme NAME]", tok); break; }
+            *end = 0;
+            if ((id = name_find(theme_names, tok)) < 0) { fg_err(file, L.line, "bad theme", tok); break; }
+            t = &themes[id];
+            if (t->has) { fg_err(file, L.line, "theme defined twice:", tok); break; }
+            memset(t, 0, sizeof(*t));
+            t->has = 1;
+            if (!TNEXT() || !q || strlen(tok) > 20) { fg_err(file, L.line, "expected a quoted name (<= 20)", tok); break; }
+            scopy(t->name, sizeof t->name, tok);
+            continue;
+        }
+        if (!t) { fg_err(file, L.line, "attribute before the first [theme", tok); break; }
+        if (!strcmp(tok, "walls") || !strcmp(tok, "floor")) {
+            int fl = tok[0] == 'f', pat, paint;
+            if (!TNEXT() || !to_int(tok, &pat) || pat < 0 || pat > 31) { fg_err(file, L.line, "pattern 0..31", tok); break; }
+            if (!TNEXT() || (paint = name_find(paint_names, tok)) < 0) { fg_err(file, L.line, "bad paint", tok); break; }
+            if (fl) { t->fl = pat; t->fpaint = paint; } else { t->wp = pat; t->wpaint = paint; }
+        } else if (!strcmp(tok, "paints")) {
+            if (!TNEXT() || (t->pa = name_find(paint_names, tok)) < 0) { fg_err(file, L.line, "bad paint", tok); break; }
+            if (!TNEXT() || (t->pb = name_find(paint_names, tok)) < 0) { fg_err(file, L.line, "bad paint", tok); break; }
+        } else if (!strcmp(tok, "ceiling")) {
+            if (!TNEXT() || !to_int(tok, &t->ceil) || t->ceil < 0 || t->ceil > 7) { fg_err(file, L.line, "ceiling 0..7", tok); break; }
+        } else if (!strcmp(tok, "accent")) {
+            if (!TNEXT() || (t->accent = name_find(paint_names, tok)) < 0) { fg_err(file, L.line, "bad paint", tok); break; }
+        } else {
+            fg_err(file, L.line, "unknown theme attribute", tok);
+            break;
+        }
+    }
+#undef TNEXT
+    return fg_errors - e0;
+}
+
+/* blueprints ([bp key] ROOM "Name") and layouts ([layout ID key] ROOM "Name") */
+static int parse_sets(const char *text, const char *file, int layouts)
+{
+    Lex L;
+    char tok[128];
+    int q, nl, e0 = fg_errors, k;
+    Set *st = NULL;
+    Set *arr = layouts ? lays : bps;
+    int *cnt = layouts ? &nlays : &nbps;
+    L.src = text; L.pos = 0; L.line = 1; L.file = file;
+#define SNEXT() lex_next(&L, tok, sizeof tok, &q, &nl)
+    while (SNEXT()) {
+        if (!strcmp(tok, layouts ? "[layout" : "[bp")) {
+            char *end;
+            if (*cnt >= FG_MAX_SETS) { fg_err(file, L.line, "too many sets", NULL); break; }
+            st = &arr[(*cnt)++];
+            memset(st, 0, sizeof(*st));
+            st->line = L.line;
+            st->theme = 0xFF;
+            st->tol = 1;
+            st->need = -1;
+            if (layouts && (!SNEXT() || !to_int(tok, &st->id) || st->id < 1 || st->id > 15)) { fg_err(file, L.line, "layout id 1..15", tok); break; }
+            if (!SNEXT() || !(end = strchr(tok, ']')) || end == tok) { fg_err(file, L.line, "expected key]", tok); break; }
+            *end = 0;
+            scopy(st->key, sizeof st->key, tok);
+            for (k = 0; k < *cnt - 1; k++) {
+                if (!strcmp(arr[k].key, st->key)) { fg_err(file, L.line, "duplicate set key", st->key); return fg_errors - e0; }
+                if (layouts && arr[k].id == st->id) { fg_err(file, L.line, "duplicate layout id for", st->key); return fg_errors - e0; }
+            }
+            if (!SNEXT() || (st->room = name_find(room_names, tok)) < 0) { fg_err(file, L.line, "bad room", tok); break; }
+            if (!SNEXT() || !q || strlen(tok) > 20 || !tok[0]) { fg_err(file, L.line, "expected a quoted name (<= 20)", tok); break; }
+            scopy(st->name, sizeof st->name, tok);
+            continue;
+        }
+        if (!st) { fg_err(file, L.line, "attribute before the first set", tok); break; }
+        if (!strcmp(tok, "piece") || !strcmp(tok, "any") || !strcmp(tok, "small")) {
+            SetPiece *p;
+            int any = tok[0] == 'a', small = tok[0] == 's', v;
+            if (st->n >= FG_MAX_SET_PIECES) { fg_err(file, L.line, "too many pieces in", st->key); break; }
+            p = &st->p[st->n++];
+            memset(p, 0, sizeof(*p));
+            p->pa = p->pb = 0x1F;
+            if (!SNEXT()) break;
+            if (any) {
+                if (!layouts) { fg_err(file, L.line, "`any` is for layouts only", NULL); break; }
+                if ((v = name_find(role_names, tok)) <= 0) { fg_err(file, L.line, "bad role", tok); break; }
+                p->furn = (int)HOME_PIECE_ROLE | v;
+            } else if ((p->furn = row_find(tok)) < 0) {
+                fg_err(file, L.line, "set piece not in catalog.txt:", tok);
+                break;
+            }
+            if (!SNEXT() || !to_int(tok, &p->x) || !SNEXT() || !to_int(tok, &p->y)) { fg_err(file, L.line, "piece needs X Y", NULL); break; }
+            if (!SNEXT() || (p->rot = name_find(facing_names, tok)) < 0) { fg_err(file, L.line, "facing N E S W", tok); break; }
+            if (small) {
+                if (!SNEXT() || !to_int(tok, &p->sub) || p->sub < 0 || p->sub > 3) { fg_err(file, L.line, "small needs a sub-position 0..3", tok); break; }
+            }
+            if (p->x < 0 || p->y < 0 || p->x >= room_wd[st->room][0] || p->y >= room_wd[st->room][1]) {
+                fg_err(file, L.line, "piece outside its room in", st->key);
+                break;
+            }
+        } else if (!strcmp(tok, "paints")) {
+            SetPiece *p = st->n ? &st->p[st->n - 1] : NULL;
+            if (!p) { fg_err(file, L.line, "paints before a piece", NULL); break; }
+            if (!SNEXT() || (p->pa = paint_or_default(tok)) < 0) { fg_err(file, L.line, "bad paint", tok); break; }
+            if (!SNEXT() || (p->pb = paint_or_default(tok)) < 0) { fg_err(file, L.line, "bad paint", tok); break; }
+        } else if (!strcmp(tok, "theme")) {
+            if (!SNEXT() || (st->theme = name_find(theme_names, tok)) < 0) { fg_err(file, L.line, "bad theme", tok); break; }
+        } else if (!strcmp(tok, "tol")) {
+            if (!SNEXT() || !to_int(tok, &st->tol) || st->tol < 0 || st->tol > 3) { fg_err(file, L.line, "tol 0..3", tok); break; }
+        } else if (!strcmp(tok, "need")) {
+            if (!SNEXT() || !to_int(tok, &st->need) || st->need < 1 || st->need > FG_MAX_SET_PIECES) { fg_err(file, L.line, "bad need", tok); break; }
+        } else {
+            fg_err(file, L.line, "unknown set attribute", tok);
+            break;
+        }
+    }
+#undef SNEXT
+    for (k = 0; k < *cnt; k++) {
+        if (arr[k].need < 0 || arr[k].need > arr[k].n) arr[k].need = arr[k].n;
+        if (!arr[k].n) fg_err(file, arr[k].line, "a set without pieces:", arr[k].key);
+    }
     return fg_errors - e0;
 }
 
@@ -768,6 +927,8 @@ static void upper_key(const char *k, char *out)
     out[i] = 0;
 }
 
+/* one layouts_<owner>.txt per content package (SPEC R19) */
+static const char *layout_files[] = { "s3", "a", "b", NULL };
 static const char *art_files[] = { "pastel", "story", "gothic", "hellish", "plush", "kitchen", "tech",
                                    "garden", "light", "wall", "rug", "trophy", "seasonal", NULL };
 
@@ -806,6 +967,22 @@ int main(int argc, char **argv)
         if (!text) continue;
         parse_art(text, name);
         free(text);
+    }
+    /* the house sets (H1 M3; the layouts of the content packages) */
+    snprintf(path, sizeof path, "%s/core/data/home/themes.txt", repo);
+    if ((text = read_file(path)) != NULL) {
+        parse_themes(text, "home/themes.txt");
+        free(text);
+        for (k = 0; k < THEME_COUNT; k++)
+            if (!themes[k].has) fg_err("home/themes.txt", 0, "missing theme", theme_names[k].n);
+    }
+    snprintf(path, sizeof path, "%s/core/data/home/blueprints.txt", repo);
+    if ((text = read_file(path)) != NULL) { parse_sets(text, "home/blueprints.txt", 0); free(text); }
+    for (k = 0; layout_files[k]; k++) {
+        char name[64];
+        snprintf(path, sizeof path, "%s/core/data/home/layouts_%s.txt", repo, layout_files[k]);
+        snprintf(name, sizeof name, "home/layouts_%s.txt", layout_files[k]);
+        if ((text = read_file(path)) != NULL) { parse_sets(text, name, 1); free(text); }
     }
     for (i = 0; i < nrows; i++)
         if (!arts[i].has) {
@@ -907,6 +1084,45 @@ int main(int argc, char **argv)
         nprims += arts[i].nprim;
     }
     fprintf(o, "};\nconst uint16_t doomo_furn_count = %d;\n", nrows);
+    /* the house sets */
+    fprintf(o, "\nconst DoomoHomeTheme doomo_home_themes[THEME_COUNT] = {\n");
+    for (k = 0; k < THEME_COUNT; k++) {
+        const Theme *t = &themes[k];
+        fprintf(o, "    { ");
+        cstr(o, t->has ? t->name : theme_names[k].n);
+        fprintf(o, ", %d, %d, %d, %d, %d, %d, %d, %d },\n", t->wp, t->fl, t->wpaint, t->fpaint, t->pa, t->pb,
+                t->ceil, t->accent);
+    }
+    fprintf(o, "};\n\nconst DoomoHomePiece doomo_home_pieces[] = {\n");
+    {
+        int np = 0, pass, j;
+        for (pass = 0; pass < 2; pass++) {
+            const Set *arr = pass ? lays : bps;
+            int cnt = pass ? nlays : nbps;
+            for (j = 0; j < cnt; j++)
+                for (k = 0; k < arr[j].n; k++, np++) {
+                    const SetPiece *p = &arr[j].p[k];
+                    fprintf(o, "    { 0x%04X, %d, %d, %d, %d, %d, %d },\n", p->furn, p->x, p->y, p->rot, p->pa, p->pb, p->sub);
+                }
+        }
+        if (!np) fprintf(o, "    { 0, 0, 0, 0, 0, 0, 0 }\n");
+        fprintf(o, "};\n");
+        np = 0;
+        for (pass = 0; pass < 2; pass++) {
+            const Set *arr = pass ? lays : bps;
+            int cnt = pass ? nlays : nbps;
+            fprintf(o, "\nconst DoomoHomeSet doomo_home_%s[] = {\n", pass ? "layouts" : "blueprints");
+            for (j = 0; j < cnt; j++) {
+                fprintf(o, "    { ");
+                cstr(o, arr[j].name);
+                fprintf(o, ", %d, %d, %d, %d, %d, %d, %d },\n", np, arr[j].n, arr[j].room, arr[j].id,
+                        arr[j].theme, arr[j].tol, arr[j].need);
+                np += arr[j].n;
+            }
+            if (!cnt) fprintf(o, "    { 0, 0, 0, 0, 0, 0, 0, 0 }\n");
+            fprintf(o, "};\nconst uint8_t doomo_home_%s_count = %d;\n", pass ? "layout" : "blueprint", cnt);
+        }
+    }
     fclose(o);
 
     /* ---- furn_grant.c ---- */
@@ -927,7 +1143,7 @@ int main(int argc, char **argv)
         int b = 0, j;
         for (j = 0; j < 8; j++) {
             int id = k * 8 + j;
-            if (id < nrows && (rows[id].flags2 & (FF_UNSELLABLE | FF_GIFT | FF_PORTAL))) b |= 1 << j;
+            if (id < nrows && (rows[id].flags2 & (FF_UNSELLABLE | FF_GIFT | FF_PORTAL | FF_FIXED))) b |= 1 << j;
         }
         fprintf(o, " 0x%02X,%s", b, (k % 12) == 11 ? "\n   " : "");
     }

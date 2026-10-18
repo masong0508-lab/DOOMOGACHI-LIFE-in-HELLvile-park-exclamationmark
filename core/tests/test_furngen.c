@@ -196,3 +196,60 @@ TEST(furngen_span_roundtrip_and_placeholder)
     free(im.pix);
     CHECK(ok);
 }
+
+/* (H1 M3 data, H4's joiner) themes, blueprints and layouts are checked by key,
+ * role, room, paint and grid, and the real files parse clean */
+TEST(furngen_house_sets)
+{
+    static const char *const rf[] = { "themes", "blueprints", "layouts_s3", NULL };
+    char path[700];
+    int k;
+    memset(arts, 0, sizeof(arts));
+    fg_errors = 0;
+    CHECK_EQ(parse_catalog("[a_chair] PASTEL 10 \"A Chair\"\n  foot 1 1 4\n", "t"), 0);
+    nbps = nlays = 0;
+    memset(themes, 0, sizeof(themes));
+    CHECK_EQ(parse_themes("[theme PASTEL] \"P\"\n  walls 0 ROSE\n  floor 1 CARAMEL\n  paints ROSE MINT\n"
+                          "  ceiling 2\n  accent LEMON\n", "t"), 0);
+    CHECK(themes[THEME_PASTEL].has && themes[THEME_PASTEL].ceil == 2 && themes[THEME_PASTEL].wpaint == PAINT_ROSE);
+    CHECK(parse_themes("[theme NOPE] \"X\"\n", "t") > 0);
+    CHECK(parse_themes("[theme CLOUD] \"X\"\n  ceiling 9\n", "t") > 0);
+    CHECK_EQ(parse_sets("[bp b1] LIVING \"B\"\n  piece a_chair 2 3 S\n  small a_chair 2 3 E 3\n", "t", 0), 0);
+    CHECK_EQ(nbps, 1);
+    CHECK_EQ(bps[0].n, 2);
+    CHECK_EQ(bps[0].p[1].sub, 3);
+    CHECK_EQ(bps[0].p[1].rot, 1);
+    CHECK(parse_sets("[bp b2] LIVING \"B\"\n  piece no_such 2 3 S\n", "t", 0) > 0);        /* key */
+    CHECK(parse_sets("[bp b3] LIVING \"B\"\n  piece a_chair 6 0 S\n", "t", 0) > 0);        /* off the grid */
+    CHECK(parse_sets("[bp b4] ATTIC \"B\"\n  piece a_chair 1 1 S\n", "t", 0) > 0);         /* room */
+    CHECK(parse_sets("[bp b5] LIVING \"B\"\n  any SEAT 1 1 S\n", "t", 0) > 0);             /* `any`: layouts */
+    CHECK_EQ(parse_sets("[layout 3 l1] ANNEX \"L\"\n  tol 2\n  any SEAT 1 1 S\n  need 1\n", "t", 1), 0);
+    CHECK_EQ(lays[0].id, 3);
+    CHECK(lays[0].p[0].furn == (int)(HOME_PIECE_ROLE | FR_SEAT));
+    CHECK(parse_sets("[layout 3 l2] ANNEX \"L\"\n  piece a_chair 1 1 S\n", "t", 1) > 0);   /* id twice */
+    CHECK(parse_sets("[layout 16 l3] ANNEX \"L\"\n  piece a_chair 1 1 S\n", "t", 1) > 0);  /* id range */
+    /* the real files */
+    CHECK(load_real() == 0);
+    nbps = nlays = 0;
+    memset(themes, 0, sizeof(themes));
+    for (k = 0; rf[k]; k++) {
+        FILE *f;
+        long n;
+        char *text;
+        snprintf(path, sizeof(path), "%s/../../data/home/%s.txt", test_golden_dir, rf[k]);
+        f = fopen(path, "rb");
+        CHECK_MSG(f != NULL, "%s", path);
+        fseek(f, 0, SEEK_END);
+        n = ftell(f);
+        fseek(f, 0, SEEK_SET);
+        text = (char *)malloc((size_t)n + 1);
+        if (fread(text, 1, (size_t)n, f) != (size_t)n) n = 0;
+        text[n] = 0;
+        fclose(f);
+        CHECK_MSG((k == 0 ? parse_themes(text, path) : parse_sets(text, path, k == 2)) == 0, "%s: %s", rf[k], fg_lasterr);
+        free(text);
+    }
+    for (k = 0; k < THEME_COUNT; k++) CHECK(themes[k].has);
+    CHECK_EQ(nbps, (int)doomo_home_blueprint_count);
+    CHECK(nlays >= 1);
+}

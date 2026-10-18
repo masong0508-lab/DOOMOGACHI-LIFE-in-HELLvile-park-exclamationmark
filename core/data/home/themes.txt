@@ -1,0 +1,88 @@
+# core/data/home/themes.txt - the house's 10 themes (owner: H1; HF sec.2.3).
+# furngen (H4) joins this into core/gen/furn_data.c (doomo_home_themes[]).
+#
+# "Apply theme" repaints the walls and the floor, tints the ceiling and
+# recolours every free paint slot (a slot still on its catalog default) to
+# the theme's two paints. It is one undo step.
+#
+#   [theme THEME_ID] "Name (<= 20)"
+#     walls PATTERN PAINT     wallpaper pattern 0..31 and its paint
+#     floor PATTERN PAINT     floor pattern 0..31 and its paint
+#     paints A B              what free paint slots A / B become
+#     ceiling N               ceiling tint 0..7 (the cornice; PS1: the ceiling)
+#     accent PAINT            trims, frames, the HUD's highlight in the room
+#
+# Wallpaper patterns: 0 stripes, 1 dots, 2 wainscot, 3 panels, 4 hearts,
+# 5 harlequin, 6 stone, 7 stars. Floors: 0 checker, 1 planks, 2 tiles,
+# 3 herringbone, 4 grass, 5 flagstone, 6 lava crack, 7 cloud. (The
+# renderers take pattern & 7; the rest of the range is reserved.)
+
+[theme PASTEL] "Pastel"
+  walls 0 BUBBLEGUM
+  floor 1 CARAMEL
+  paints BUBBLEGUM MINT
+  ceiling 0
+  accent LEMON
+
+[theme CLOUD] "Cloud"
+  walls 7 SKY
+  floor 7 WHITE
+  paints WHITE SKY
+  ceiling 1
+  accent LAVENDER
+
+[theme CANDY] "Candy"
+  walls 4 ROSE
+  floor 0 PEACH
+  paints CHERRY LEMON
+  ceiling 2
+  accent MINT
+
+[theme COTTAGE] "Cottage"
+  walls 2 HONEY
+  floor 1 CARAMEL
+  paints HONEY FOREST
+  ceiling 3
+  accent CHERRY
+
+[theme GOTH] "Goth"
+  walls 3 GRAPE
+  floor 3 CHARCOAL
+  paints GRAPE LAVENDER
+  ceiling 4
+  accent BLOOD
+
+[theme BONE] "Bone"
+  walls 6 BONE
+  floor 5 SILVER
+  paints BONE CHARCOAL
+  ceiling 5
+  accent JET
+
+[theme LAVA] "Lava"
+  walls 6 RUST
+  floor 6 CHARCOAL
+  paints HELLFIRE CHARCOAL
+  ceiling 6
+  accent TANGERINE
+
+[theme VAPOR] "Vapor"
+  walls 5 VAPE_PURPLE
+  floor 2 GRAPE
+  paints VAPE_PURPLE CYAN
+  ceiling 7
+  accent MAGENTA
+
+[theme PICNIC] "Picnic"
+  walls 0 LIME
+  floor 4 FOREST
+  paints CHERRY WHITE
+  ceiling 0
+  accent HONEY
+
+[theme WORKSHOP] "Workshop"
+  walls 3 SILVER
+  floor 2 CHARCOAL
+  paints TANGERINE SILVER
+  ceiling 3
+  accent RUST
