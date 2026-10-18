@@ -34,3 +34,70 @@ blob 21 23 2 2 2 1     B
 blob 11 23 2 2 2 1     B
 blob 8 13 2  2 2 1     B
 blob 16 16 2 3 3 1     B
+
+[candy_stripe_rug]
+box  1 2 0   30 12 1   B
+box  2 2 0   4 12 2    A
+box  10 2 0  4 12 2    A
+box  18 2 0  4 12 2    A
+box  26 2 0  4 12 2    A
+
+[bone_rug]
+box  2 2 0   28 28 1   CHARCOAL
+cyl  9 9 0   4 2       A
+cyl  23 9 0  4 2       A
+cyl  9 23 0  4 2       A
+cyl  23 23 0 4 2       A
+box  9 8 0   14 2 2    A
+box  8 9 0   2 14 2    A
+box  22 9 0  2 14 2    A
+box  9 22 0  14 2 2    A
+blob 16 16 1 3 3 2     A
+
+[lava_crack_rug]
+frames 2
+box  1 1 0   30 30 2   A
+box  4 8 1   10 1 2    B glow
+box  13 8 1  1 10 2   B glow
+box  13 17 1 12 1 2   B glow
+box  20 5 1  1 12 2   B glow
+box@0 7 22 1 6 1 2    LEMON glow
+box@1 7 22 1 6 1 2    B glow
+box@0 24 25 1 1 4 2   B glow
+box@1 24 25 1 1 4 2   LEMON glow
+
+[picnic_blanket]
+box  1 1 0   30 30 1   B
+box  1 1 0   7 7 2     A
+box  15 1 0  7 7 2     A
+box  8 8 0   7 7 2     A
+box  22 8 0  7 7 2     A
+box  1 15 0  7 7 2     A
+box  15 15 0 7 7 2     A
+box  8 22 0  7 7 2     A
+box  22 22 0 7 7 2     A
+
+[welcome_mat]
+box  1 3 0   14 10 2   A soft
+box  2 4 1   12 8 1    ~WOOD
+box  4 7 2   3 1 1     CHARCOAL
+box  8 7 2   4 1 1     CHARCOAL
+
+[hell_welcome_mat]
+box  1 3 0   14 10 2   A soft
+box  2 4 1   12 8 1    CHARCOAL
+box  4 7 2   3 1 1     HELLFIRE glow
+box  8 7 2   4 1 1     HELLFIRE glow
+cone 3 5 1   1 2       BONE
+cone 13 11 1 1 2       BONE
+
+[tuck_in_blanket]
+box  1 1 0   14 30 2   A soft
+box  1 1 2   14 4 2    B soft
+box  1 12 1  14 2 2    B soft
+box  1 22 1  14 2 2    B soft
+
+[rivets_oil_rag]
+blob 8 8 0   6 5 1     A soft
+blob 5 6 1   3 2 1     CHARCOAL
+blob 11 10 1 2 2 1     RUST

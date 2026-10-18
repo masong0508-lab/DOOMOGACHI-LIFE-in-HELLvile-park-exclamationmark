@@ -1,0 +1,65 @@
+# core/data/furn/art/light.txt - lamps, candles and lanterns (owner: H4).
+# Format: pastel.txt. A lit lamp draws fullbright: keep its glow parts glow.
+
+[church_candle]
+frames 2
+cyl  8 8 0   3 2       A
+cyl  8 8 2   2 10      A
+cyl  8 8 12  1 1       CHARCOAL
+blob@0 8 8 15 1 1 2    LEMON glow
+blob@1 8 8 15 1 1 3    TANGERINE glow
+blob 6 9 9   1 1 2     A
+
+[paper_lantern]
+box  7 0 14  2 2 2     CHARCOAL
+box  8 1 11  1 1 3     CHARCOAL
+blob 8 3 7   4 3 5     A glow
+box  4 1 9   8 3 1     B
+box  4 1 5   8 3 1     B
+box  6 2 1   4 2 2     CHARCOAL
+
+[lumina_lantern]
+cyl  8 8 0   4 2       ~STEEL
+cyl  8 8 2   1 22      ~STEEL
+box  5 5 24  6 6 10    B
+blob 8 8 29  3 3 4     A glow
+cone 8 8 34  4 4       ~STEEL
+box  7 7 38  2 2 2     ~STEEL
+
+[streetlamp]
+cyl  8 8 0   4 3       A
+cyl  8 8 3   1 44      A
+box  4 7 46  8 2 2     A
+box  4 4 48  8 8 8     A
+blob 8 8 52  3 3 3     B glow
+cone 8 8 56  5 4       A
+blob 8 8 61  1 1 1     B
+
+[starer_light]
+blob 8 8 16  4 4 4     A glow
+blob 8 8 16  6 6 6     WHITE glow
+blob 8 8 8   2 2 1     A glow
+
+[mushroom_lamp]
+cyl  8 8 0   2 10      B
+blob 8 8 12  7 7 5     A glow
+blob 5 7 15  1 1 1     B
+blob 10 10 14 2 2 1    B
+blob 9 5 16  1 1 1     B
+
+[moon_lamp]
+cyl  8 8 0   3 2       B
+blob 8 8 8   5 5 5     A glow
+blob 6 10 10 1 1 1     B
+blob 10 7 9  1 1 1     B
+
+[crystal_chandelier]
+box  7 0 21  2 2 3     A
+cyl  8 3 18  1 4       A
+cyl  8 3 15  6 2       A shiny
+cone 8 3 9   5 6       A shiny
+blob 3 3 13  1 1 2     B glow
+blob 13 3 13 1 1 2     B glow
+blob 8 3 9   1 1 2     B glow
+blob 5 4 11  1 1 1     WHITE glow
+blob 11 4 11 1 1 1     WHITE glow
