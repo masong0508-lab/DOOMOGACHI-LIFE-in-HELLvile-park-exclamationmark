@@ -90,6 +90,13 @@ void audio_seq_init(void);                 /* audio_init, before audio_fx_reset 
 void audio_seq_reset(void);                /* audio_init, after audio_fx_reset: silence */
 void audio_seq_tick(void);                 /* audio_tick, after the voice babble */
 int  audio_seq_song(void);                 /* the song playing now (SONG_NONE: none) */
+/* audio_seq.c: the classic interpreter as T1's reference (MU1 M1; native
+ * tests only, never the game; M5 deletes it). Pure: no gains, no plat_tone. */
+void audio_legacy_start(int song);
+void audio_legacy_dual(int song_a, int song_b);
+void audio_legacy_tick(void);
+void audio_legacy_state(int c, DoomoToneState *out);
+uint32_t audio_legacy_notes(void);
 /* --- end AUD-SPLIT --- */
 
 #endif

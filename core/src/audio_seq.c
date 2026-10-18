@@ -1,16 +1,29 @@
-/* audio_seq.c - the 30 Hz chiptune sequencer and the audio_music*() calls
- * (owner: MU1 = CS's "audio" team; docs/design/music/SPEC.md D13, CF-30).
+/* audio_seq.c - audio_music*() on the music engine, the legacy bridge's
+ * flush, and the classic 30 Hz interpreter as T1's reference (owner: MU1 =
+ * CS's "audio" team; docs/design/music/SPEC.md D13, D15, sec.9.3, 18).
  *
- * AUD-SPLIT: moved verbatim out of audio.c (which keeps the SFX, the voice
- * babble, the tone-channel cache and audio_tick()). Four channels are
- * interpreted from MML strings (the dialect is described in audio_int.h,
- * the songs live in songs.c). Each tick a channel consumes bytes until its
- * next note starts in the future (bounded per tick), then the playing note
- * is shaped (envelope, vibrato, arpeggio, sweep) and sent to plat_tone() -
- * only when something audible changed.
+ * M1. Every call keeps its signature and its timing (CF-18): audio_music()
+ * starts the song's cue NOW (mus_bind_cue: its classic cue, imported by
+ * tools/mmlc.py from the same MML), audio_music_once() plays it once and
+ * restarts the song before it, audio_music_dual() puts one song's lead and
+ * kit over the other's lead and bass. The engine (mus_*.c) writes events
+ * into rings; the driver turns them into DoomoVoice records; on the weak
+ * legacy bridge (all three targets at M1) this file turns voices 0-3 into
+ * plat_tone() calls once per tick - after S1's mute / duck / tape-stop
+ * gains, around the voice babble and the comedy kit - exactly where and how
+ * the interpreter did. test_music_classic.c (T1) proves the result equals
+ * the interpreter tick for tick on all 28 songs.
+ *
+ * The interpreter below (moved here by AUD-SPLIT) only runs as that
+ * reference now: nothing in the game calls it, so the console links drop
+ * it and songs.o with --gc-sections. M5 deletes it.
  */
 #include "audio_int.h"
+#include "mus_int.h"
 
+/* ======================================================================
+ * The classic interpreter (T1's reference; native tests only)
+ * ====================================================================== */
 /* ---- frequency table --------------------------------------------------- */
 /* C4..C5 in Hz * 64 (13 entries: the last one for interpolation). */
 static const uint16_t note_hz64[13] = {
@@ -27,8 +40,8 @@ static uint16_t pitch_hz(int32_t p16)
     if (p16 > 16 * 12 * 9 - 1) p16 = 16 * 12 * 9 - 1;
     semi = p16 >> 4;
     frac = p16 & 15;
-    oct = semi / 12;
-    s = semi % 12;
+    oct = (semi * 5462) >> 16;            /* = semi / 12 for semi < 108, no divide */
+    s = semi - oct * 12;
     a = note_hz64[s];
     b = note_hz64[s + 1];
     f = a + ((b - a) * (uint32_t)frac >> 4);
@@ -83,11 +96,10 @@ typedef struct {
 } Chan;
 
 static Chan ch[AUDIO_CH];
-static int cur_song, prev_song;
-static uint8_t once_mode;
+static int cur_song;
+static uint8_t once_mode;           /* always 0: the reference loops */
 static int32_t rate256 = 1000;   /* 1/256 duration units per tick              */
-static uint32_t song_t, notes_started;
-static uint32_t pos256;            /* S1: song position, 1/256 duration units  */
+static uint32_t notes_started;
 
 static int clamp_i(int v, int lo, int hi) { return v < lo ? lo : v > hi ? hi : v; }
 
@@ -325,37 +337,23 @@ static void chan_shape(Chan *c, int idx)
     v = v * c->vol * master;
     v = (v + 1200) / 2400;
     if (v > 15) v = 15;
-    audio_fx_music(idx, &f, &v);          /* --- S1: mute / duck / tape-stop gain + pitch --- */
+    (void)idx;                            /* the reference: no gains, no plat_tone */
     c->out.freq = v ? f : 0;
     c->out.vol = (uint8_t)v;
     c->out.wave = (uint8_t)w;
-    if (idx == AUDIO_VOICE_CHANNEL && audio_voice_busy()) return;   /* the voice owns it */
-    if (audio_fx_owns(idx)) return;       /* --- S1: a comedy one-shot borrowed it --- */
-    audio_int_send(idx, c->out.freq, c->out.vol, c->out.wave);
 }
 
-/* ---- public: music ------------------------------------------------------- */
-static void start_song(int song)
+/* the reference API (audio_int.h; test_music_classic.c) */
+void audio_legacy_start(int song)
 {
     int i;
     const AudioSong *s;
     memset(ch, 0, sizeof(ch));
     cur_song = song;
-    song_t = 0;
     notes_started = 0;
-    pos256 = 0;                           /* --- S1: the beat grid restarts --- */
-    audio_fx_song_started();
+    once_mode = 0;
     set_tempo(120);
-    if (song <= SONG_NONE || song >= SONG_COUNT) {
-        cur_song = SONG_NONE;
-        for (i = 0; i < AUDIO_CH; i++) {
-            if (i == AUDIO_VOICE_CHANNEL && audio_voice_busy()) continue;
-            if (audio_fx_owns(i)) continue;      /* --- S1 --- */
-            audio_int_unsend(i);
-            audio_int_send(i, 0, 0, WAVE_PULSE50);
-        }
-        return;
-    }
+    if (song <= SONG_NONE || song >= SONG_COUNT) { cur_song = SONG_NONE; return; }
     s = &audio_songs[song];
     for (i = 0; i < AUDIO_CH; i++) {
         Chan *c = &ch[i];
@@ -375,75 +373,50 @@ static void start_song(int song)
     }
 }
 
-/* audio_init() (audio.c): the sequencer part */
-void audio_seq_init(void)
+/* Song a on channels 0 and 2 (and its tempo), song b's lead on channel 1
+ * and b's drums on channel 3 (the interpreter's audio_int_dual). */
+void audio_legacy_dual(int song_a, int song_b)
 {
-    prev_song = SONG_NONE;
-    once_mode = 0;
+    const AudioSong *b;
+    const char *p;
+    audio_legacy_start(song_a);
+    if (cur_song == SONG_NONE || song_b <= SONG_NONE || song_b >= SONG_COUNT) return;
+    b = &audio_songs[song_b];
+    p = b->ch[0];
+    if (p) {                                      /* skip b's tempo: a's wins */
+        while (*p && is_skip(*p)) p++;
+        if (*p == 't') { p++; read_num(&p, 120); }
+    }
+    ch[1].str = ch[1].p = p;
+    ch[1].ended = p == NULL;
+    ch[1].loop_pt = NULL;
+    ch[3].str = ch[3].p = b->ch[3];
+    ch[3].ended = b->ch[3] == NULL;
+    ch[3].loop_pt = NULL;
 }
 
-/* audio_init() (audio.c), after audio_fx_reset(): silence */
-void audio_seq_reset(void)
+void audio_legacy_tick(void)
 {
-    start_song(SONG_NONE);
-}
-
-void audio_music(int song)
-{
-    if (!audio_int_inited()) audio_init();
-    if (song < 0 || song >= SONG_COUNT) song = SONG_NONE;
-    if (song == cur_song && !once_mode) return;
-    once_mode = 0;
-    start_song(song);
-}
-
-void audio_music_once(int song)
-{
-    if (!audio_int_inited()) audio_init();
-    if (song <= SONG_NONE || song >= SONG_COUNT) return;
-    if (!once_mode) prev_song = cur_song;
-    start_song(song);
-    once_mode = 1;
-}
-
-int audio_music_current(void) { return once_mode ? prev_song : cur_song; }
-uint32_t audio_music_ticks(void) { return song_t; }
-uint32_t audio_note_count(void) { return notes_started; }
-int audio_seq_song(void) { return cur_song; }
-
-void audio_channel_state(int c, DoomoToneState *out)
-{
-    if (!out) return;
-    if (c < 0 || c >= AUDIO_CH) { memset(out, 0, sizeof(*out)); return; }
-    *out = ch[c].out;
-}
-
-/* audio_tick() (audio.c), after the voice babble: the music part */
-void audio_seq_tick(void)
-{
-    int i, alive = 0;
-    {   /* --- S1: comic-timing hooks; a quarter note is 48 units --- */
-        uint32_t before = pos256 >> 8;
-        if (cur_song != SONG_NONE) pos256 += (uint32_t)rate256;
-        audio_fx_tick(cur_song == SONG_NONE || before / 48 != (pos256 >> 8) / 48);
-    }   /* --- end S1 --- */
+    int i;
     if (cur_song == SONG_NONE) return;
-    song_t++;
     for (i = 0; i < AUDIO_CH; i++) {
         Chan *c = &ch[i];
         if (!c->ended) {
             c->wait -= rate256;
             chan_advance(c);
         }
-        if (!c->ended || c->on) alive = 1;
         chan_shape(c, i);
     }
-    if (!alive && once_mode) {
-        int back = prev_song;
-        once_mode = 0;
-        start_song(back);
-    }
 }
+
+void audio_legacy_state(int c, DoomoToneState *out)
+{
+    if (!out) return;
+    if (c < 0 || c >= AUDIO_CH) { memset(out, 0, sizeof(*out)); return; }
+    *out = ch[c].out;
+}
+
+uint32_t audio_legacy_notes(void) { return notes_started; }
 
 /* ---- song measuring / validation ------------------------------------------ */
 /* Total units of one pass of a channel (loops expanded). Returns -1 and sets
@@ -495,6 +468,7 @@ static int32_t measure(const char *s, const char **err)
     return total;
 }
 
+static int song_tempo(const AudioSong *s) __attribute__((unused));
 static int song_tempo(const AudioSong *s)
 {
     const char *p = s->ch[0];
@@ -526,24 +500,190 @@ int audio_song_check(int song, const char **err)
     return 1;
 }
 
+/* ======================================================================
+ * audio_music*() on the engine
+ * ====================================================================== */
+static struct {
+    int song, prev;                /* SONG_* playing / to resume after a once     */
+    uint8_t once;
+    int32_t rate256;               /* the song's tempo law (the beat grid)        */
+    uint32_t ticks, pos256;        /* ticks since the start; position, 1/256 units */
+    uint32_t qnext;                /* the next quarter line, units                 */
+    uint32_t notes0;               /* the driver's key-on count at the start     */
+    DoomoToneState out[AUDIO_CH];  /* what the bridge last computed per channel  */
+} E;
+
+static int song_cue(int song) { return mus_bind_cue(song, -1, -1, 0); }
+
+static void start_song(int song, int once)
+{
+    int i;
+    MusCueView cv;
+    E.song = song;
+    E.ticks = 0;
+    E.pos256 = 0;                         /* --- S1: the beat grid restarts --- */
+    E.qnext = 48;
+    audio_fx_song_started();
+    memset(E.out, 0, sizeof(E.out));
+    E.notes0 = mus_drv_keyons();
+    E.rate256 = mus_rate256(120);
+    if (song <= SONG_NONE || song >= SONG_COUNT) {
+        E.song = SONG_NONE;
+        mus_core_start(MC_NONE, 0);
+        for (i = 0; i < AUDIO_CH; i++) {
+            if (i == AUDIO_VOICE_CHANNEL && audio_voice_busy()) continue;
+            if (audio_fx_owns(i)) continue;      /* --- S1 --- */
+            audio_int_unsend(i);
+            audio_int_send(i, 0, 0, WAVE_PULSE50);
+        }
+        return;
+    }
+    if (mus_bank_cue(song_cue(song), &cv)) E.rate256 = mus_rate256(cv.cue->bpm);
+    mus_core_start(song_cue(song), once);
+}
+
+/* audio_init() (audio.c): the sequencer part */
+void audio_seq_init(void)
+{
+    E.prev = SONG_NONE;
+    E.once = 0;
+    mus_core_init();
+}
+
+/* audio_init() (audio.c), after audio_fx_reset(): silence */
+void audio_seq_reset(void)
+{
+    start_song(SONG_NONE, 0);
+}
+
+void audio_music(int song)
+{
+    if (!audio_int_inited()) audio_init();
+    if (song < 0 || song >= SONG_COUNT) song = SONG_NONE;
+    if (song == E.song && !E.once) return;
+    E.once = 0;
+    start_song(song, 0);
+}
+
+void audio_music_once(int song)
+{
+    if (!audio_int_inited()) audio_init();
+    if (song <= SONG_NONE || song >= SONG_COUNT) return;
+    if (!E.once) E.prev = E.song;
+    start_song(song, 1);
+    E.once = 1;
+}
+
+int audio_music_current(void) { return E.once ? E.prev : E.song; }
+uint32_t audio_music_ticks(void) { return E.ticks; }
+uint32_t audio_note_count(void) { return mus_drv_keyons() - E.notes0; }
+int audio_seq_song(void) { return E.song; }
+
+void audio_channel_state(int c, DoomoToneState *out)
+{
+    if (!out) return;
+    if (c < 0 || c >= AUDIO_CH) { memset(out, 0, sizeof(*out)); return; }
+    *out = E.out[c];
+}
+
+static uint8_t legacy_wave(const MusInst *in)
+{
+    switch (in->timbre) {
+    case TIMBRE_PULSE: return (uint8_t)(in->tparam <= 4 ? WAVE_PULSE12 : in->tparam <= 8 ? WAVE_PULSE25 : WAVE_PULSE50);
+    case TIMBRE_TRI: return WAVE_TRIANGLE;
+    case TIMBRE_SAW: return WAVE_SAW;
+    case TIMBRE_NOISE15: case TIMBRE_NOISE7: return WAVE_NOISE;
+    default: return WAVE_PULSE50;
+    }
+}
+
+/* 0..63 -> the classic 0..15 (the inverse of mus_vol63_of15[]) */
+static const uint8_t vol15_of63[64] = {
+    0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 5, 6, 6, 6, 6, 7, 7, 7, 7,
+    8, 8, 8, 8, 9, 9, 9, 9, 10, 10, 10, 10, 10, 11, 11, 11, 11, 12, 12, 12, 12, 13, 13, 13, 13, 14, 14, 14, 14, 15, 15, 15
+};
+
+/* The legacy tone of one driver voice record: Hz (before S1's gains), the
+ * classic 0..15 volume and the wave. The weak bridge (plat_weak_music.c)
+ * calls it once per changed record; bridge_flush() then only applies the
+ * gains each tick. */
+void mus_bridge_tone(const DoomoVoice *dv, DoomoToneState *out)
+{
+    uint16_t f = 0;
+    int v = 0, w = WAVE_PULSE50;
+    if (dv->pitch16) {
+        v = vol15_of63[dv->vol_l & 63];             /* the driver's exact 0..15 */
+        if (dv->inst >= MUS_INST_KIT0) {
+            const MusKitHit *d = &mus_kit_classic[dv->pitch16 & 7];
+            int t = dv->tparam;
+            w = WAVE_NOISE;
+            f = (t >= d->ticks_sweep || d->ticks_sweep == 0) ? d->f1 :
+                (uint16_t)(d->f0 + ((int32_t)d->f1 - d->f0) * t / d->ticks_sweep);
+        } else {
+            w = legacy_wave(MUS_INST(dv->inst));
+            f = audio_int_hz(dv->pitch16);
+        }
+    }
+    out->freq = f;
+    out->vol = (uint8_t)v;
+    out->wave = (uint8_t)w;
+}
+
+/* THE LEGACY BRIDGE, once per tick: voices 0-3 -> plat_tone, through S1's
+ * gains and around the babble and the comedy kit, like the interpreter's
+ * chan_shape() tail. */
+static void bridge_flush(void)
+{
+    int c;
+    for (c = 0; c < AUDIO_CH; c++) {
+        const DoomoToneState *t = &mus_bridge_tones[c];
+        uint16_t f = t->freq;
+        int v = t->vol;
+        DoomoToneState *o = &E.out[c];
+        audio_fx_music(c, &f, &v);        /* --- S1: mute / duck / tape-stop gain + pitch --- */
+        o->freq = v ? f : 0;
+        o->vol = (uint8_t)v;
+        o->wave = t->wave;
+        if (c == AUDIO_VOICE_CHANNEL && audio_voice_busy()) continue;   /* the voice owns it */
+        if (audio_fx_owns(c)) continue;   /* --- S1: a comedy one-shot borrowed it --- */
+        audio_int_send(c, o->freq, o->vol, o->wave);
+    }
+}
+
+/* audio_tick() (audio.c), after the voice babble: the music part */
+void audio_seq_tick(void)
+{
+    {   /* --- S1: comic-timing hooks; a quarter note is 48 units --- */
+        int quarter = E.song == SONG_NONE;
+        if (!quarter) {                   /* a tick moves < 48 units: <= 1 new quarter */
+            E.pos256 += (uint32_t)E.rate256;
+            if ((E.pos256 >> 8) >= E.qnext) { E.qnext += 48; quarter = 1; }
+        }
+        audio_fx_tick(quarter);
+    }   /* --- end S1 --- */
+    music_update();
+    if (E.song == SONG_NONE) return;
+    E.ticks++;
+    if (mus_core_bridge()) bridge_flush();
+    if (mus_core_take_end() && E.once) {
+        int back = E.prev;
+        E.once = 0;
+        start_song(back, 0);
+    }
+}
+
 uint32_t audio_song_length(int song)
 {
-    const AudioSong *s;
-    int32_t len;
-    int bpm, r;
     if (song <= SONG_NONE || song >= SONG_COUNT) return 0;
-    s = &audio_songs[song];
-    len = measure(s->ch[0] ? s->ch[0] : s->ch[3], NULL);
-    if (len <= 0) return 0;
-    bpm = clamp_i(song_tempo(s), 30, 300);
-    r = (bpm * 12288 + 900) / 1800;
-    return (uint32_t)(((int64_t)len * 256 + r - 1) / r);
+    return music_cue_length(song_cue(song));
 }
 
 const char *audio_song_name(int song)
 {
+    const char *n;
     if (song <= SONG_NONE || song >= SONG_COUNT) return "Silence";
-    return audio_songs[song].name;
+    n = music_cue_name(song_cue(song));
+    return n[0] ? n : "Silence";
 }
 
 /* --- S1: comic-timing hooks (audio_fx.c; SPEC sec.6.3 "S1 first") ------------ */
@@ -554,32 +694,19 @@ void audio_int_release(int c)
     if (c < 0 || c >= AUDIO_CH) return;
     audio_int_unsend(c);
     if (c == AUDIO_VOICE_CHANNEL && audio_voice_busy()) return;
-    if (cur_song == SONG_NONE) audio_int_send(c, 0, 0, WAVE_PULSE50);
-    else audio_int_send(c, ch[c].out.freq, ch[c].out.vol, ch[c].out.wave);
+    if (E.song == SONG_NONE) audio_int_send(c, 0, 0, WAVE_PULSE50);
+    else audio_int_send(c, E.out[c].freq, E.out[c].vol, E.out[c].wave);
 }
 
 /* Song a on channels 0 and 2 (and its tempo), song b's lead on channel 1
  * (the harmony pulse) and b's drums on channel 3. */
 void audio_int_dual(int song_a, int song_b)
 {
-    const AudioSong *b;
-    const char *p;
     if (!audio_int_inited()) audio_init();
     if (song_a <= SONG_NONE || song_a >= SONG_COUNT) { audio_music(SONG_NONE); return; }
-    once_mode = 0;
-    start_song(song_a);
+    E.once = 0;
+    start_song(song_a, 0);
     if (song_b <= SONG_NONE || song_b >= SONG_COUNT) return;
-    b = &audio_songs[song_b];
-    p = b->ch[0];
-    if (p) {                                      /* skip b's tempo: a's wins */
-        while (*p && is_skip(*p)) p++;
-        if (*p == 't') { p++; read_num(&p, 120); }
-    }
-    ch[1].str = ch[1].p = p;
-    ch[1].ended = p == NULL;
-    ch[1].loop_pt = NULL;
-    ch[3].str = ch[3].p = b->ch[3];
-    ch[3].ended = b->ch[3] == NULL;
-    ch[3].loop_pt = NULL;
+    mus_core_dual(song_cue(song_a), song_cue(song_b));
 }
 /* --- end S1 --- */
