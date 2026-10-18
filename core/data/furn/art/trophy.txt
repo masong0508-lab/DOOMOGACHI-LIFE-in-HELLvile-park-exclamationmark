@@ -1,0 +1,166 @@
+# core/data/furn/art/trophy.txt - trophies from minigames, levels, fishing,
+# concerts, the arena and the Feast (owner: H4). Format: pastel.txt.
+
+[gold_cupcake]
+cyl  8 8 0   4 2       ~WOOD
+cone 8 8 2   4 4       A shiny
+blob 8 8 7   4 4 3     A shiny
+blob 8 8 10  1 1 1     CHERRY shiny
+
+[whack_head]
+box  2 0 2   12 2 14   ~WOOD
+blob 8 2 10  5 2 5     A
+cone 5 2 14  2 3       A
+cone 11 2 14 2 3       A
+blob 6 4 11  1 1 1     WHITE
+blob 10 4 11 1 1 1     WHITE
+blob 8 4 7   2 1 1     JET
+
+[derby_ribbon]
+blob 8 1 11  4 1 4     A
+blob 8 2 11  2 1 2     LEMON
+box  5 1 0   2 1 7     A
+box  9 1 0   2 1 7     A
+
+[dodge_star]
+cyl  8 8 0   3 2       ~WOOD
+blob 8 8 6   2 2 4     A shiny
+blob 5 8 7   2 1 1     A shiny
+blob 11 8 7  2 1 1     A shiny
+blob 8 8 10  1 1 1     WHITE glow
+
+[wheel_wedge]
+cyl  8 8 0   3 2       ~WOOD
+box  6 7 2   5 2 8     A
+box  7 7 6   2 2 4     LEMON
+blob 8 9 4   1 1 1     WHITE
+
+[memory_heart]
+cyl  8 8 0   3 2       ~WOOD
+blob 6 8 6   3 2 3     A shiny
+blob 10 8 6  3 2 3     A shiny
+cone 8 8 2   4 4       A shiny
+
+[gallery_frame]
+box  1 0 1   14 2 18   A shiny
+box  3 1 3   10 1 14   WHITE
+cyl  8 2 9   4 1       CHERRY
+cyl  8 2 9   2 1       WHITE
+blob 8 3 10  1 1 1     CHERRY
+
+[breach_plaque]
+box  1 0 2   14 2 16   A shiny
+box  3 1 4   10 1 12   B
+box  5 2 8   6 1 1     A
+cone 8 2 12  2 3       A
+blob 8 2 6   1 1 1     A
+
+[fish_trophy]
+frames 2
+box  1 0 2   14 2 14   ~WOOD
+blob 8 2 10  5 2 3     A
+cone@0 2 2 10 2 2     A
+cone@1 3 2 10 2 2     A
+blob 11 3 11 1 1 1     JET
+blob 12 3 9  1 1 1     WHITE
+
+[biggest_catch]
+box  1 0 2   30 2 14   ~WOOD
+blob 16 2 10 10 2 4    A
+cone 4 2 9   3 4       A
+blob 22 3 11 1 1 1     JET
+box  14 3 8  6 1 1     A
+blob 26 3 9  1 1 1     WHITE
+
+[smallest_catch]
+cyl  8 8 0   4 10      SKY shiny
+cyl  8 8 10  4 2       ~WOOD
+blob 8 9 5   2 1 1     A
+blob 9 10 5  1 1 1     JET
+
+[fishdex_plaque]
+box  1 0 1   14 2 18   A
+box  3 1 3   10 1 14   WHITE
+blob 6 2 13  2 1 1     SKY
+blob 10 2 11 2 1 1     TEAL
+blob 6 2 8   2 1 1     CHERRY
+blob 10 2 5  2 1 1     LEMON
+
+[golden_hook]
+cyl  8 8 0   3 2       ~WOOD
+box  8 8 2   1 1 8     A shiny
+blob 8 9 3   2 1 2     A shiny
+blob 9 10 5  1 1 1     A shiny
+
+[gold_record]
+box  1 0 1   14 2 18   ~WOOD
+blob 8 2 10  6 1 6     A shiny
+blob 8 3 10  2 1 2     CHERRY
+blob 8 3 10  1 1 1     JET
+
+[choir_bell]
+frames 2
+cyl  8 8 0   3 1       ~WOOD
+cone@0 8 8 1 4 9      A shiny
+cone@1 9 8 1 4 9      A shiny
+blob 8 8 10  1 1 1     A shiny
+blob@1 3 8 8 1 1 1    WHITE glow
+
+[concert_poster]
+box  1 0 0   14 2 24   HONEY shiny
+box  2 1 1   12 1 22   A
+blob 8 2 13  3 1 4     B
+box  4 2 18  8 1 2     B
+box  4 2 4   8 1 1     WHITE
+blob 6 2 9   1 1 1     WHITE glow
+
+[broken_mic]
+cyl  8 8 0   3 1       ~WOOD
+box  7 7 1   2 2 7     A
+blob 8 8 10  2 2 2     SILVER shiny
+box  9 9 9   2 1 1     JET
+blob 6 9 9   1 1 1     CHERRY
+
+[arena_belt]
+box  1 0 4   30 2 5    B
+blob 16 1 6  6 2 5     A shiny
+blob 16 2 6  3 1 2     B
+blob 7 1 6   2 1 2     A shiny
+blob 25 1 6  2 1 2     A shiny
+
+[boss_rush_skull]
+cyl  8 8 0   4 2       ~WOOD
+blob 8 8 7   4 4 4     A
+blob 6 11 7  1 1 1     JET
+blob 10 11 7 1 1 1     JET
+box  6 11 3  4 1 1     JET
+cone 5 7 10  1 3       ~WOOD
+cone 11 7 10 1 3       ~WOOD
+
+[time_trial_clock]
+cyl  8 8 0   4 1       ~WOOD
+blob 8 8 7   4 2 4     A shiny
+blob 8 10 7  3 1 3     WHITE
+box  8 11 7  1 1 2     JET
+box  8 11 7  2 1 1     JET
+box  8 8 11  1 1 2     A
+
+[big_spoon]
+box  4 6 0   8 4 2     ~WOOD
+box  7 7 2   2 2 22    A shiny
+blob 8 8 30  4 2 6     A shiny
+blob 8 9 30  2 1 4     WHITE
+
+[headstone_mini]
+box  2 4 0   12 8 2    CHARCOAL
+box  3 5 2   10 6 12   A
+blob 8 8 14  5 3 4     A
+box  5 10 9  6 1 1     CHARCOAL
+box  6 10 6  4 1 1     CHARCOAL
+blob 8 10 15 2 1 1     ROSE
+
+[runner_up_ribbon]
+blob 8 1 11  4 1 4     A
+blob 8 2 11  2 1 2     WHITE
+box  5 1 0   2 1 7     A
+box  9 1 0   2 1 7     A

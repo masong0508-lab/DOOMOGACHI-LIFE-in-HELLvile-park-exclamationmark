@@ -558,6 +558,24 @@ done:
     return fg_errors - e0;
 }
 
+/* A paint slot the catalog fixes (paints ... FIXED) cannot be recoloured, so
+ * its marker shades would show for good: the art may not use it. */
+static int check_paint_slots(void)
+{
+    int i, k, e0 = fg_errors;
+    for (i = 0; i < nrows; i++) {
+        if (!arts[i].has) continue;
+        for (k = 0; k < arts[i].nprim; k++) {
+            int m = arts[i].p[k].mat;
+            if ((m == MAT_A && rows[i].pa == 0xFF) || (m == MAT_B && rows[i].pb == 0xFF)) {
+                fg_err(arts[i].file, arts[i].line, "uses a paint slot the catalog fixes:", rows[i].key);
+                break;
+            }
+        }
+    }
+    return fg_errors - e0;
+}
+
 /* A placeholder for a row without art: its footprint as a box. */
 static void art_default(int i)
 {
@@ -937,7 +955,7 @@ int nat_png_encode(const char *path, const uint8_t *pix, int w, int h, const uin
 int main(int argc, char **argv)
 {
     const char *out_root = NULL, *sheet = NULL, *repo = FURNGEN_REPO;
-    int check = 0, strict = 0, i, f, k, ndefault = 0;
+    int check = 0, strict = 0, sheet_order = 0, i, f, k, ndefault = 0;
     char path[1024];
     char *text;
     static Img imgs[FG_MAX][8];
@@ -951,7 +969,8 @@ int main(int argc, char **argv)
         else if (!strcmp(argv[i], "--repo") && i + 1 < argc) repo = argv[++i];
         else if (!strcmp(argv[i], "--check")) check = 1;
         else if (!strcmp(argv[i], "--strict")) strict = 1;
-        else { fprintf(stderr, "usage: furngen [--out-root DIR] [--sheet F.png] [--check] [--strict] [--repo DIR]\n"); return 2; }
+        else if (!strcmp(argv[i], "--sheet-catalog-order")) sheet_order = 1;
+        else { fprintf(stderr, "usage: furngen [--out-root DIR] [--sheet F.png [--sheet-catalog-order]] [--check] [--strict] [--repo DIR]\n"); return 2; }
     }
     if (!out_root && !sheet && !check) out_root = repo;
     snprintf(path, sizeof path, "%s/core/data/furn/catalog.txt", repo);
@@ -984,6 +1003,7 @@ int main(int argc, char **argv)
         snprintf(name, sizeof name, "home/layouts_%s.txt", layout_files[k]);
         if ((text = read_file(path)) != NULL) { parse_sets(text, name, 1); free(text); }
     }
+    check_paint_slots();
     for (i = 0; i < nrows; i++)
         if (!arts[i].has) {
             if (strict) fg_err("catalog.txt", rows[i].line, "no art for", rows[i].key);
@@ -1006,8 +1026,8 @@ int main(int argc, char **argv)
         static int order[FG_MAX];
         int no = 0, j, cols = 12, cw = 72, ch = 88, rowsn, W, H, x, y;
         uint8_t *pix, pal[768];
-        for (j = 0; j < nrows; j++) if (arts[j].has) order[no++] = j;
-        for (j = 0; j < nrows; j++) if (!arts[j].has) order[no++] = j;
+        for (j = 0; j < nrows; j++) if (arts[j].has || sheet_order) order[no++] = j;
+        for (j = 0; j < nrows && !sheet_order; j++) if (!arts[j].has) order[no++] = j;
         rowsn = (nrows + cols - 1) / cols; W = cols * cw; H = rowsn * ch;
         pix = (uint8_t *)calloc((size_t)W * H, 1);
         for (i = 0; i < 256; i++) palette_rgb((uint8_t)i, &pal[i * 3], &pal[i * 3 + 1], &pal[i * 3 + 2]);

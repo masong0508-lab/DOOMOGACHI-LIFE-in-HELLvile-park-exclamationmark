@@ -13,3 +13,172 @@ cyl  8 8 4   5 1       B
 cyl  8 8 5   4 5       A
 cyl  8 8 10  4 1       WHITE
 blob 8 8 12  1 1 1     CHERRY shiny
+
+[brimstone_oven]
+frames 2
+box  1 2 0   14 12 34  A
+box  2 13 5  12 3 16   JET
+box@0 4 16 7  8 1 11   B glow
+box@1 4 16 7  8 1 11   TANGERINE glow
+box  2 13 23 12 2 2    SILVER shiny
+blob 4 14 28 1 1 1     B glow
+blob 8 14 28 1 1 1     B glow
+blob 12 14 28 1 1 1    B glow
+cyl  12 5 34 2 8       CHARCOAL
+cone 4 4 34  2 3       BONE
+
+[cloud_flour]
+blob 5 6 6   4 4 6     A soft
+blob 11 9 5  4 4 5     A soft
+blob 8 12 4  4 3 4     A soft
+box  4 9 6   3 1 3     B
+box  10 12 5 3 1 3     B
+blob 5 6 13  2 2 1     A soft
+
+[pickle_barrel]
+cyl  8 8 0   6 18      A
+cyl  8 8 4   6 1       ~STEEL
+cyl  8 8 13  6 1       ~STEEL
+cyl  8 8 18  5 1       A
+blob 7 8 20  2 1 1     B
+blob 10 9 20 2 1 1     B
+
+[ramen_counter]
+box  1 2 0   30 12 20  A
+box  0 1 20  32 14 3   B
+box  2 13 2  28 1 16   B
+cyl  8 7 23  3 3       WHITE
+cyl  8 7 25  2 1       HONEY
+cyl  22 7 23 3 3       WHITE
+cyl  22 7 25 2 1       HONEY
+box  14 5 23 1 6 1     CHOCOLATE
+
+[takoyaki_griddle]
+frames 2
+box  2 2 0   12 12 12  A
+box  1 1 12  14 14 3   A
+blob 5 5 15  2 2 1     B
+blob 11 5 15 2 2 1     B
+blob 5 11 15 2 2 1     B
+blob 11 11 15 2 2 1    B
+blob 8 8 15  2 2 1     B
+blob@0 8 8 19 1 1 2    WHITE soft
+blob@1 9 7 20 1 1 2    WHITE soft
+
+[spice_rack]
+box  1 0 2   14 3 2    A
+box  1 0 9   14 3 2    A
+box  1 0 2   1 3 13    A
+box  14 0 2  1 3 13    A
+cyl  4 2 4   1 4       B
+cyl  7 2 4   1 4       HONEY
+cyl  10 2 4  1 4       LIME
+cyl  13 2 4  1 4       B
+cyl  4 2 11  1 4       TANGERINE
+cyl  7 2 11  1 4       B
+cyl  10 2 11 1 4       WHITE
+
+[bagel_mountain]
+cyl  8 8 0   6 2       B
+cyl  6 6 2   3 2       A
+cyl  11 7 2  3 2       A
+cyl  7 11 2  3 2       A
+cyl  11 11 2 3 2       A
+cyl  8 9 4   3 2       A
+cyl  9 8 6   3 2       A
+cyl  8 9 8   3 2       A
+cyl  8 8 10  3 2       A
+cyl  8 9 12  2 2       A
+blob 8 8 12  1 1 1     CHOCOLATE
+blob 8 9 14  1 1 1     CHOCOLATE
+blob 6 6 4   1 1 1     CHOCOLATE
+blob 11 11 4 1 1 1     CHOCOLATE
+
+[nanas_recipe_board]
+box  1 0 1   14 2 22   A
+box  2 1 2   12 2 20   ~WOOD
+box  3 2 4   5 1 7     B
+box  9 2 6   4 1 6     B
+box  3 2 13  4 1 6     B
+box  8 2 14  5 1 5     B
+blob 5 3 10  1 1 1     CHERRY
+blob 11 3 11 1 1 1     SKY
+blob 10 3 18 1 1 1     LEMON
+
+[grave_cake_display]
+cyl  8 8 0   6 2       A
+cyl  8 8 2   1 8       A
+cyl  8 8 10  7 1       A shiny
+box  3 5 11  4 3 9     B soft
+blob 5 6 20  2 1 2     B soft
+box  9 8 11  4 3 7     B soft
+blob 11 9 18 2 1 2     B soft
+box  4 8 14  2 1 1     CHARCOAL
+box  10 11 13 2 1 1    CHARCOAL
+blob 8 12 11 1 1 1     CHERRY
+
+[fish_smoker]
+frames 2
+cyl  8 8 0   5 24      A
+cone 8 8 24  5 6       A
+cyl  8 8 30  1 4       A
+box  4 13 8  8 2 10    B
+blob@0 8 8 36 2 2 2    WHITE soft
+blob@1 9 7 38 2 2 3    WHITE soft
+blob@1 7 9 34 1 1 1    WHITE soft
+
+[sock_stew_pot]
+frames 2
+cyl  8 8 0   5 8       A
+cyl  8 8 8   5 1       A
+blob@0 8 8 9 4 4 1     B
+blob@1 8 8 9 4 4 2     B
+box  6 6 9   2 4 5     WHITE
+box  6 6 14  4 2 2     CHERRY
+box  2 7 6   2 2 1     A
+box  12 7 6  2 2 1     A
+
+[cottage_stove]
+box  1 2 0   14 12 30  A
+box  3 13 4  10 2 14   CHARCOAL
+box  4 14 6  8 1 10    JET shiny
+box  3 13 22 10 1 2    SILVER shiny
+cyl  5 6 30  3 1       B
+cyl  11 6 30 3 1       B
+cyl  5 11 30 3 1       CHARCOAL
+cyl  11 11 30 3 1      CHARCOAL
+blob 4 14 26 1 1 1     B
+blob 8 14 26 1 1 1     B
+blob 12 14 26 1 1 1    B
+
+[kitchen_counter]
+box  1 2 0   14 12 29  B
+box  0 1 29  16 14 3   A
+box  2 13 3  12 1 22   B
+box  2 13 14 12 1 1    A
+blob 8 14 22 1 1 1     SILVER shiny
+blob 8 14 10 1 1 1     SILVER shiny
+
+[milk_crate_icebox]
+box  2 2 0   12 12 38  A
+box  2 2 38  12 12 2   B
+box  3 13 3  10 1 16   B
+box  3 13 21 10 1 15   B
+box  11 14 8 1 1 6     SILVER shiny
+box  11 14 26 1 1 6    SILVER shiny
+blob 6 8 42  2 2 2     WHITE
+
+[melon_bread_tray]
+box  2 3 0   12 10 1   SILVER
+blob 5 7 3   3 3 2     A
+blob 11 7 3  3 3 2     A
+blob 8 11 3  3 3 2     A
+box  4 7 4   2 1 1     B
+box  10 7 4  2 1 1     B
+box  7 11 4  2 1 1     B
+
+[lava_cake_mould]
+cyl  8 8 0   5 4       A
+cyl  8 8 4   4 3       A soft
+blob 8 8 8   3 3 2     B glow
+blob 8 11 4  1 1 2     B glow

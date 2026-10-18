@@ -24,3 +24,126 @@ blob 9 11 6  1 1 1     WHITE
 cyl  8 8 0   2 1       ~STONE
 box  7 7 1   2 2 6     SILVER
 blob 8 8 8   1 1 1     SILVER
+
+[vapula_plush]
+frames 2
+blob@0 8 8 2  6 5 2    A soft
+blob@1 8 8 2  6 5 1    A soft
+blob 5 6 3   3 3 2     A soft
+blob 11 7 3  3 3 2     A soft
+cone 8 6 4   3 3       B
+blob 6 12 4  1 1 1     JET
+blob 10 12 4 1 1 1     JET
+
+[widow_plush]
+frames 2
+blob 8 8 4   4 4 4     A soft
+blob 8 9 9   3 3 3     A soft
+cone 8 9 11  4 2       A
+blob 7 12 9  1 1 1     B
+blob 9 12 9  1 1 1     B
+blob@1 7 12 7 1 1 1    SKY glow
+blob@1 9 12 7 1 1 1    SKY glow
+blob 4 8 3   2 1 1     A soft
+blob 12 8 3  2 1 1     A soft
+
+[huggins_spare]
+blob 8 8 5   5 5 5     A soft
+blob 4 7 9   2 2 2     B soft
+blob 12 7 9  2 2 2     B soft
+blob 8 12 6  2 1 1     B soft
+blob 6 12 7  1 1 1     JET
+blob 10 12 7 1 1 1     JET
+blob 8 13 5  1 1 1     JET
+
+[fuzz_plush]
+blob 8 8 4   4 4 4     A soft
+blob 8 8 10  3 3 3     A soft
+blob 5 7 13  1 1 2     A soft
+blob 11 7 13 1 1 2     A soft
+box  6 11 4  4 1 2     B
+blob 7 11 10 1 1 1     JET
+blob 9 11 10 1 1 1     JET
+box  7 12 3  2 1 1     LEMON
+
+[cupcake_plush]
+cone 8 8 0   5 5       B soft
+blob 8 8 6   5 5 3     A soft
+blob 8 8 9   3 3 2     A soft
+blob 8 8 12  1 1 1     CHERRY shiny
+blob 6 12 5  1 1 1     JET
+blob 10 12 5 1 1 1     JET
+
+[grape_cloud_plush]
+blob 8 8 4   5 4 3     A soft
+blob 5 7 7   3 3 3     A soft
+blob 11 8 7  3 3 3     A soft
+blob 8 7 9   3 3 3     B soft
+blob 6 11 6  1 1 1     JET
+blob 10 11 6 1 1 1     JET
+
+[imp_doll]
+blob 8 8 4   3 3 4     A
+blob 8 9 9   3 3 3     A
+cone 6 8 11  1 3       B
+cone 10 8 11 1 3       B
+blob 7 12 9  1 1 1     LEMON
+blob 9 12 9  1 1 1     LEMON
+box  7 12 7  3 1 1     B
+
+[jumbo_dice]
+box  2 2 0   12 12 12  A soft
+blob 8 14 6  1 1 1     B
+blob 5 14 3  1 1 1     B
+blob 11 14 9 1 1 1     B
+blob 14 5 3  1 1 1     B
+blob 14 11 9 1 1 1     B
+blob 5 5 12  1 1 1     B
+blob 11 11 12 1 1 1    B
+blob 8 8 12  1 1 1     B
+
+[toy_train]
+frames 2
+cyl  16 16 0 13 1      ~WOOD
+cyl  16 16 0 11 2      JET
+cyl  16 16 0 10 2      ~WOOD
+box@0 4 13 2 6 5 6     A
+box@0 4 13 8 3 5 2     B
+box@0 21 3 2 6 5 5     B
+box@1 13 3 2 5 6 6     A
+box@1 13 3 8 5 3 2     B
+box@1 22 21 2 5 6 5    B
+cyl@0 6 15 8 1 3       CHARCOAL
+cyl@1 15 4 8 1 3       CHARCOAL
+
+[giant_teddy]
+blob 8 9 9   7 6 9     A soft
+blob 8 9 23  5 5 6     A soft
+blob 4 9 28  2 2 2     A soft
+blob 12 9 28 2 2 2     A soft
+blob 8 13 21 2 1 2     B soft
+blob 6 13 25 1 1 1     JET
+blob 10 13 25 1 1 1    JET
+blob 8 14 22 1 1 1     JET
+blob 3 12 11 2 2 4     A soft
+blob 13 12 11 2 2 4    A soft
+blob 5 13 2  3 3 2     A soft
+blob 11 13 2 3 3 2     A soft
+blob 8 14 11 3 1 4     B soft
+
+[ghost_plush]
+blob 8 8 6   4 4 5     A soft
+blob 5 9 2   2 2 2     A soft
+blob 11 9 2  2 2 2     A soft
+blob 8 9 2   2 2 2     A soft
+blob 7 12 7  1 1 1     B
+blob 9 12 7  1 1 1     B
+
+[dino_plush]
+blob 8 8 5   4 3 4     A soft
+blob 8 11 11 3 3 3     A soft
+blob 8 4 4   2 3 2     A soft
+cone 8 7 8   1 2       B
+cone 8 9 11  1 2       B
+blob 7 14 12 1 1 1     JET
+blob 9 14 12 1 1 1     JET

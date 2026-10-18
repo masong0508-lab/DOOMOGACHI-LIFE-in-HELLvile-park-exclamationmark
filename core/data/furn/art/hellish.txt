@@ -8,3 +8,229 @@ cyl  8 8 6   2 14      A glow
 blob@0 8 8 12 2 2 3    LEMON glow
 blob@1 8 8 16 2 2 3    LEMON glow
 cyl  8 8 20  2 3       B
+
+[brimstone_hearth]
+frames 2
+box  0 0 0   32 11 4   A
+box  2 0 4   28 9 34   A
+box  7 0 4   18 10 24  CHARCOAL
+box  10 3 4  12 8 16   JET
+blob@0 16 9 9  6 2 5   HELLFIRE glow
+blob@1 16 9 10 6 2 6   HELLFIRE glow
+blob@0 11 9 8 3 2 3    LEMON glow
+blob@1 21 9 8 3 2 3    LEMON glow
+blob@0 21 9 7 2 2 2    TANGERINE glow
+blob@1 11 9 7 2 2 2    TANGERINE glow
+box  0 0 38  32 13 4   B
+cone 4 3 42  2 4       BONE
+cone 28 3 42 2 4       BONE
+
+[imp_stool]
+cyl  8 8 0   5 3       B
+blob 8 8 8   6 6 5     A soft
+blob 4 6 14  1 1 3     B
+blob 12 6 14 1 1 3     B
+blob 6 13 9  1 1 1     JET
+blob 10 13 9 1 1 1     JET
+box  6 14 6  4 1 1     B
+
+[chained_chandelier]
+box  7 0 21  2 2 3     A
+box  4 2 12  1 1 9     SILVER
+box  11 2 12 1 1 9     SILVER
+cyl  8 3 10  6 2       A
+cyl  3 3 12  1 4       WHITE
+cyl  8 3 12  1 4       WHITE
+cyl  13 3 12 1 4       WHITE
+blob 3 3 17  1 1 1     B glow
+blob 8 3 17  1 1 1     B glow
+blob 13 3 17 1 1 1     B glow
+
+[vapor_tank]
+frames 2
+cyl  8 8 0   5 4       B
+cyl  8 8 4   5 36      A shiny
+cyl  8 8 40  5 4       B
+cyl  8 8 44  2 4       B
+blob@0 6 11 12 1 1 1   WHITE glow
+blob@0 9 12 24 1 1 1   WHITE glow
+blob@0 7 12 34 1 1 1   WHITE glow
+blob@1 8 12 17 1 1 1   WHITE glow
+blob@1 6 11 29 1 1 1   WHITE glow
+blob@1 10 11 38 1 1 1  WHITE glow
+box  3 12 10 1 2 26    SILVER
+
+[bone_throne]
+box  2 2 0   12 12 12  A
+box  3 3 12  10 10 3   B soft
+box  2 1 12  12 3 30   A
+blob 8 2 44  5 2 5     A
+blob 6 4 45  1 1 1     JET
+blob 10 4 45 1 1 1     JET
+box  7 4 42  2 1 1     JET
+cone 3 2 42  2 10      A
+cone 13 2 42 2 10      A
+box  4 3 18  8 1 20    B soft
+blob 2 8 15  2 6 3     A
+blob 14 8 15 2 6 3     A
+blob 2 14 15 2 2 2     A
+blob 14 14 15 2 2 2    A
+[cloud_nine_vend]
+frames 2
+box  1 2 0   14 12 52  A
+box  3 13 26 10 2 20   CHARCOAL
+box@0 4 14 28 8 1 16   LAVENDER glow
+box@1 4 14 28 8 1 16   MAGENTA glow
+box  3 13 6  10 2 8    JET
+box  12 13 16 2 2 6    SILVER
+blob 8 14 47 4 1 2     B glow
+blob 6 3 54  3 3 2     LAVENDER soft
+blob 10 4 56 2 2 2     LAVENDER soft
+
+[hellsteel_shelving]
+box  1 2 0   2 2 48    A
+box  13 2 0  2 2 48    A
+box  1 12 0  2 2 48    A
+box  13 12 0 2 2 48    A
+box  1 2 4   14 12 2   A shiny
+box  1 2 18  14 12 2   A shiny
+box  1 2 32  14 12 2   A shiny
+box  1 2 46  14 12 2   A shiny
+blob 5 8 22  2 2 2     B
+blob 11 8 36 2 2 2     BONE
+box  8 5 6   5 5 5     B
+box  4 5 34  3 5 6     CHARCOAL
+
+[sulphur_candle]
+frames 2
+cyl  8 8 0   3 7       A
+cyl  8 8 7   1 1       CHARCOAL
+blob@0 8 8 10 1 1 2    LEMON glow
+blob@1 8 8 10 1 1 3    TANGERINE glow
+blob 6 10 5  1 1 2     A
+
+[smog_curtains]
+box  0 0 33  16 3 2    CHARCOAL
+box  1 1 3   5 2 30    A soft
+box  10 1 3  5 2 30    A soft
+cyl  3 2 2   2 2       A soft
+cyl  12 2 2  2 2       A soft
+blob 8 2 30  3 1 2     B soft
+blob 6 2 24  2 1 2     B soft
+blob 10 2 18 2 1 2     B soft
+
+[hell_couch]
+box  2 3 0   28 11 6   A
+box  2 1 6   28 4 14   A soft
+blob 4 8 10  3 6 4     A soft
+blob 28 8 10 3 6 4     A soft
+blob 11 9 8  6 4 2     B soft
+blob 21 9 8  6 4 2     B soft
+cone 3 2 20  2 4       BONE
+cone 29 2 20 2 4       BONE
+box  3 13 0  2 1 2     BONE
+box  27 13 0 2 1 2     BONE
+
+[ember_brazier]
+frames 2
+cyl  8 8 0   2 12      A
+box  4 7 0   8 2 1     A
+box  7 4 0   2 8 1     A
+cyl  8 8 12  6 5       A
+cyl  8 8 16  5 1       CHARCOAL
+blob@0 8 8 18 4 4 2    B glow
+blob@1 8 8 18 4 4 3    B glow
+blob@0 6 9 20 1 1 2    LEMON glow
+blob@1 10 7 21 1 1 2   LEMON glow
+
+[gate_fragment]
+box  1 5 0   14 6 4    A
+box  2 6 4   3 4 36    A
+box  11 6 4  3 4 36    A
+box  2 6 20  12 4 3    A
+cone 3 8 40  2 4       A
+cone 12 8 40 2 4       A
+blob 8 9 30  3 1 3     B glow
+blob 8 9 12  2 1 2     B glow
+
+[nox_desk_lamp]
+cyl  8 8 0   4 2       A
+cyl  8 8 2   1 10      A
+box  7 7 11  2 2 2     B
+box  8 7 12  5 2 2     A
+cone 12 8 4  4 9       A
+blob 12 9 5  3 3 1     B glow
+blob 8 8 13  1 1 1     B
+[torture_rack_bed]
+box  1 1 0   14 30 3   A
+box  1 1 3   2 30 4    A
+box  13 1 3  2 30 4    A
+box  3 2 6   10 28 4   B soft
+blob 8 5 11  4 2 2     WHITE soft
+cyl  2 3 9   2 3       SILVER
+cyl  14 3 9  2 3       SILVER
+box  1 1 3   14 2 14   A
+box  2 1 17  12 2 2    SILVER
+
+[skull_pile]
+blob 5 6 3   3 3 3     BONE
+blob 11 6 3  3 3 3     BONE
+blob 8 11 3  3 3 3     BONE
+blob 8 8 8   3 3 3     BONE
+blob 4 9 4   1 1 1     JET
+blob 10 9 4  1 1 1     JET
+blob 7 14 4  1 1 1     JET
+blob 9 14 4  1 1 1     JET
+blob 7 11 9  1 1 1     JET
+blob 9 11 9  1 1 1     JET
+
+[lava_table]
+frames 2
+cyl  8 8 0   3 14      A
+cyl  8 8 14  7 6       A
+blob@0 6 7 20 3 2 1    B glow
+blob@1 10 9 20 3 2 1   B glow
+box  2 8 19  12 1 1    B glow
+box  8 2 19  1 12 1    B glow
+
+[hell_bed]
+box  1 1 0   14 30 5   A
+box  2 2 5   12 28 4   B soft
+blob 8 5 10  4 2 2     WHITE soft
+box  2 16 9  12 14 2   A soft
+box  1 1 0   14 2 20   A
+cone 3 2 20  2 5       BONE
+cone 13 2 20 2 5       BONE
+blob 8 2 16  3 1 2     B glow
+
+[mirror_of_vanity]
+box  1 0 0   14 2 28   A shiny
+blob 8 1 14  6 1 11    SILVER shiny
+blob 8 2 15  4 1 8     WHITE shiny
+cone 3 1 26  2 3       A
+cone 13 1 26 2 3       A
+blob 8 2 27  2 1 2     B
+
+[cauldron]
+frames 2
+cyl  8 8 2   6 10      A
+blob 8 8 6   7 7 5     A
+cyl  8 8 12  6 2       A
+blob@0 8 8 14 5 5 1    B glow
+blob@1 8 8 14 5 5 2    B glow
+blob@0 6 7 17 1 1 1    B glow
+blob@1 10 9 18 1 1 1   B glow
+box  2 7 0   2 2 2     A
+box  12 7 0  2 2 2     A
+box  7 12 0  2 2 2     A
+
+[contract_desk]
+box  1 1 0   30 14 22  A
+box  2 14 2  12 1 18   B
+box  18 14 2 12 1 18   B
+box  4 3 22  10 8 1    WHITE
+box  5 4 23  8 1 1     CHARCOAL
+box  5 6 23  6 1 1     CHARCOAL
+blob 12 9 23 1 1 1     BLOOD
+cyl  24 6 22 2 6       CHARCOAL
+box  24 6 28 1 1 6     WHITE

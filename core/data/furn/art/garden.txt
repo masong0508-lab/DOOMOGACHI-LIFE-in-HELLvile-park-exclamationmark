@@ -27,3 +27,176 @@ blob 8 11 9  2 2 2     A
 blob 5 6 11  1 1 1     LEMON
 blob 11 7 11 1 1 1     LEMON
 blob 8 11 11 1 1 1     LEMON
+
+[welded_fence]
+box  0 0 4   16 2 3    A
+box  0 0 15  16 2 3    A
+box  1 0 0   2 2 22    B
+box  7 0 0   2 2 22    A
+box  13 0 0  2 2 22    B
+blob 4 1 9   2 1 2     B
+blob 11 1 19 2 1 1     B
+
+[bone_fence]
+box  0 0 6   16 2 2    A
+box  0 0 15  16 2 2    A
+cyl  3 1 0   1 22      A
+cyl  8 1 0   1 22      A
+cyl  13 1 0  1 22      A
+blob 3 1 23  2 1 2     A
+blob 8 1 23  2 1 2     A
+blob 13 1 23 2 1 2     A
+blob 8 2 11  2 1 2     A
+
+[flower_bed_yellow]
+box  1 1 0   14 14 4   ~WOOD
+box  2 2 4   12 12 1   CHOCOLATE
+blob 8 8 6   6 6 3     B soft
+blob 5 6 9   2 2 2     A
+blob 11 7 9  2 2 2     A
+blob 8 11 9  2 2 2     A
+blob 5 6 11  1 1 1     TANGERINE
+blob 11 7 11 1 1 1     TANGERINE
+blob 8 11 11 1 1 1     TANGERINE
+
+[flower_bed_blue]
+box  1 1 0   14 14 4   ~WOOD
+box  2 2 4   12 12 1   CHOCOLATE
+blob 8 8 6   6 6 3     B soft
+blob 5 6 9   2 2 2     A
+blob 11 7 9  2 2 2     A
+blob 8 11 9  2 2 2     A
+blob 5 6 11  1 1 1     WHITE
+blob 11 7 11 1 1 1     WHITE
+blob 8 11 11 1 1 1     WHITE
+
+[tomato_pot]
+cyl  8 8 0   4 6       ~PEACHRAMP
+cyl  8 8 6   4 1       CHOCOLATE
+cyl  8 8 6   1 8       B
+blob 8 8 13  4 4 3     B soft
+blob 6 10 10 2 2 2     A shiny
+blob 10 7 12 2 2 2     A shiny
+blob 9 11 14 1 1 1     A shiny
+
+[sunflower]
+frames 2
+cyl  8 8 0   3 4       ~PEACHRAMP
+cyl  8 8 4   1 38      B
+blob 6 8 18  3 1 1     B
+blob 10 8 28 3 1 1     B
+blob@0 8 9 46 5 2 5    A
+blob@1 9 9 45 5 2 5    A
+blob@0 8 10 46 2 1 2   CHOCOLATE
+blob@1 9 10 45 2 1 2   CHOCOLATE
+
+[swing_chair]
+frames 2
+box  1 7 0   2 2 44    WHITE
+box  13 7 0  2 2 44    WHITE
+box  1 7 42  14 2 2    WHITE
+box  4 8 14  1 1 28    CHARCOAL
+box  11 8 14 1 1 28    CHARCOAL
+box@0 3 4 12  10 9 2   A
+box@1 3 6 12  10 9 2   A
+box@0 3 4 14  10 2 10  A soft
+box@1 3 6 14  10 2 10  A soft
+blob@0 8 9 15 4 3 1   B soft
+blob@1 8 11 15 4 3 1  B soft
+
+[picnic_set]
+box  1 1 0   30 30 1   A
+box  1 1 0   7 7 2     B
+box  15 1 0  7 7 2     B
+box  8 8 0   7 7 2     B
+box  22 8 0  7 7 2     B
+box  1 15 0  7 7 2     B
+box  15 15 0 7 7 2     B
+box  8 22 0  7 7 2     B
+box  22 22 0 7 7 2     B
+box  18 18 2 9 7 6     ~WOOD
+box  20 18 8 1 7 4     ~WOOD
+box  25 18 8 1 7 4     ~WOOD
+blob 8 22 4  3 2 2     CHERRY shiny
+
+[bird_bath]
+frames 2
+cyl  8 8 0   4 2       A
+cyl  8 8 2   2 12      A
+cyl  8 8 14  6 3       A
+cyl  8 8 16  5 1       B shiny
+blob@0 6 7 19 2 1 2    SKY
+blob@1 6 7 19 2 1 1    SKY
+blob@0 5 7 21 1 1 1    LEMON
+blob@1 5 7 20 1 1 1    LEMON
+
+[garden_gnome]
+blob 8 8 4   3 3 4     B
+blob 8 9 9   2 2 2     PEACH
+cone 8 8 11  3 7       A
+blob 8 11 7  2 1 2     WHITE soft
+blob 7 11 9  1 1 1     JET
+blob 9 11 9  1 1 1     JET
+box  6 6 0   4 4 1     CHOCOLATE
+
+[compost_heap]
+frames 2
+box  1 1 0   14 14 6   ~WOOD
+blob 8 8 6   6 6 4     A soft
+blob 6 7 9   3 3 2     B soft
+blob 10 10 9 2 2 2     A soft
+blob@0 5 8 14 1 1 1    JET
+blob@0 11 6 16 1 1 1   JET
+blob@1 6 10 15 1 1 1   JET
+blob@1 10 7 13 1 1 1   JET
+
+[paper_boat_pond]
+frames 2
+cyl  16 16 0 15 1      ~STONE
+cyl  16 16 1 13 1      A shiny
+blob@0 12 14 3 3 2 1   B
+blob@1 14 13 3 3 2 1   B
+cone@0 12 14 3 2 3     B
+cone@1 14 13 3 2 3     B
+blob@0 21 21 3 2 2 1   B
+blob@1 20 22 3 2 2 1   B
+blob 7 23 2  2 2 1     LIME
+
+[balloon_letters]
+frames 2
+box  6 6 0   4 4 2     ~WOOD
+box  8 8 2   1 1 20    WHITE
+box  5 8 2   1 1 24    WHITE
+box  11 8 2  1 1 18    WHITE
+blob@0 5 8 28 3 2 3   A shiny
+blob@1 5 8 29 3 2 3   A shiny
+blob@0 9 8 24 3 2 3   B shiny
+blob@1 9 8 23 3 2 3   B shiny
+blob@0 12 8 20 2 2 3  A shiny
+blob@1 12 8 21 2 2 3  A shiny
+
+[gate_arch]
+box  1 0 0   3 3 52    A
+box  12 0 0  3 3 52    A
+box  1 0 44  14 3 4    A
+cone 2 1 52  2 4       B
+cone 13 1 52 2 4       B
+blob 8 1 40  3 1 3     B glow
+box  5 1 32  6 1 1     A
+box  5 1 36  6 1 1     A
+
+[hedge_bush]
+blob 8 8 9   7 7 9     A soft
+blob 5 6 14  3 3 3     B soft
+blob 11 10 12 3 3 3    B soft
+blob 7 11 16 2 2 2     B soft
+
+[garden_bench]
+box  2 3 0   2 2 9     ~STEEL
+box  28 3 0  2 2 9     ~STEEL
+box  2 11 0  2 2 9     ~STEEL
+box  28 11 0 2 2 9     ~STEEL
+box  1 3 9   30 10 2   A
+box  1 2 11  30 2 10   A
+box  1 2 15  30 1 1    B
+box  1 4 10  30 1 1    B

@@ -1,0 +1,171 @@
+# core/data/furn/art/seasonal.txt - the four seasons' pieces (owner: H4).
+# Format: pastel.txt.
+
+[blossom_branch]
+cyl  8 8 0   3 5       B
+box  8 8 5   1 1 12    CHOCOLATE
+box  9 8 11  4 1 1     CHOCOLATE
+blob 8 8 18  2 2 2     A soft
+blob 12 8 13 2 2 2     A soft
+blob 6 8 14  2 2 2     A soft
+
+[egg_basket]
+cyl  8 8 0   5 4       ~WOOD
+blob 6 7 5   2 2 2     A
+blob 10 8 5  2 2 2     B
+blob 8 10 5  2 2 2     WHITE
+box  3 7 4   1 2 7     ~WOOD
+box  12 7 4  1 2 7     ~WOOD
+box  3 7 10  10 2 1    ~WOOD
+
+[bee_box]
+frames 2
+box  3 3 0   10 10 4   A
+box  3 3 4   10 10 6   B
+box  3 3 10  10 10 6   A
+box  2 2 16  12 12 2   B
+box  7 12 2  2 1 1     JET
+blob@0 5 13 12 1 1 1   LEMON
+blob@1 12 12 14 1 1 1  LEMON
+
+[kite]
+blob 8 1 14  6 1 9     A
+box  8 1 6   1 1 16    B
+box  3 1 14  10 1 1    B
+blob 8 1 4   1 1 1     B
+blob 6 1 2   1 1 1     A
+
+[paddling_pool]
+frames 2
+cyl  16 16 0 14 8      A
+cyl  16 16 1 12 6      SKY shiny
+blob@0 12 12 7 2 2 1   WHITE
+blob@1 20 18 7 2 2 1   WHITE
+blob 22 10 7 2 2 2     LEMON
+cyl  16 16 7 14 1      B
+
+[summer_fan]
+frames 2
+cyl  8 8 0   4 2       A
+cyl  8 8 2   1 16      A
+cyl  8 9 18  1 1       B
+blob 8 10 22 5 1 5     B
+blob@0 8 11 26 1 1 3   A
+blob@0 8 11 18 1 1 3   A
+blob@1 4 11 22 3 1 1   A
+blob@1 12 11 22 3 1 1  A
+blob 8 11 22 1 1 1     A
+
+[sandcastle]
+box  2 2 0   12 12 4   A
+cyl  5 5 4   2 6       A
+cyl  11 5 4  2 6       A
+cyl  5 11 4  2 6       A
+cyl  11 11 4 2 6       A
+box  6 6 4   4 4 4     A
+box  7 12 4  2 1 3     CHOCOLATE
+cone 11 11 10 1 2      CHERRY
+
+[hammock]
+box  1 7 0   2 2 24    ~WOOD
+box  29 7 0  2 2 24    ~WOOD
+blob 16 8 12 13 5 3    A soft
+box  3 8 20  2 1 2     B
+box  27 8 20 2 1 2     B
+blob 16 9 14 9 3 1     B soft
+
+[pumpkin_lantern]
+frames 2
+blob 8 8 6   6 5 5     A
+blob 4 8 6   3 4 4     A
+blob 12 8 6  3 4 4     A
+box  7 7 11  2 2 3     FOREST
+blob@0 6 12 7 1 1 1    LEMON glow
+blob@0 10 12 7 1 1 1   LEMON glow
+blob@1 6 12 7 1 1 1    TANGERINE glow
+blob@1 10 12 7 1 1 1   TANGERINE glow
+box  6 12 3  5 1 1     LEMON glow
+
+[leaf_pile]
+frames 2
+blob 8 8 2   7 6 3     A soft
+blob 5 6 4   3 3 2     B soft
+blob 11 10 4 3 2 2     B soft
+blob@0 9 7 6 2 1 1    A
+blob@1 6 10 6 2 1 1   A
+
+[scarecrow]
+cyl  8 8 0   1 32      ~WOOD
+box  1 7 28  14 2 2    ~WOOD
+box  4 6 20  8 4 14    B soft
+blob 8 8 40  4 4 4     A soft
+cone 8 8 43  6 5       A
+blob 7 11 40 1 1 1     JET
+blob 9 11 40 1 1 1     JET
+blob 1 8 29  2 2 2     A soft
+blob 15 8 29 2 2 2     A soft
+
+[cider_barrel]
+box  1 2 0   14 2 3    ~WOOD
+box  1 12 0  14 2 3    ~WOOD
+cyl  8 8 3   6 14      A
+cyl  8 8 6   6 1       ~STEEL
+cyl  8 8 14  6 1       ~STEEL
+box  7 14 6  2 1 2     B
+cyl  8 8 17  5 1       A
+
+[harvest_wreath]
+blob 8 1 12  6 1 6     A soft
+blob 8 2 12  3 1 3     ~WOOD
+blob 4 2 14  1 1 1     B
+blob 12 2 10 1 1 1     B
+blob 8 2 7   2 1 1     CHERRY
+blob 8 2 17  2 1 1     TANGERINE
+
+[winter_tree]
+frames 2
+box  6 6 0   4 4 4     CHOCOLATE
+cone 8 8 4   7 16      A
+cone 8 8 16  6 14      A
+cone 8 8 28  4 12      A
+blob 8 8 41  2 2 2     LEMON glow
+blob@0 5 11 12 1 1 1   B glow
+blob@0 11 9 22 1 1 1   B glow
+blob@0 7 11 32 1 1 1   SKY glow
+blob@1 5 11 12 1 1 1   SKY glow
+blob@1 11 9 22 1 1 1   SKY glow
+blob@1 7 11 32 1 1 1   B glow
+
+[hearth_stocking]
+box  5 0 6   6 2 10    A
+blob 8 1 5   4 2 3     A
+blob 11 2 4  2 1 2     A
+box  4 0 14  8 2 3     B
+blob 7 2 17  1 1 1     LEMON
+
+[snow_imp]
+blob 8 8 5   6 6 5     A soft
+blob 8 8 15  4 4 4     A soft
+blob 8 8 22  3 3 3     A soft
+cone 6 8 24  1 4       B
+cone 10 8 24 1 4       B
+blob 7 11 23 1 1 1     JET
+blob 9 11 23 1 1 1     JET
+box  7 11 20 2 1 1     TANGERINE
+
+[cocoa_stand]
+box  1 2 0   14 12 18  A
+box  0 1 18  16 14 2   B
+box  2 1 20  1 1 8     A
+box  13 1 20 1 1 8     A
+box  1 1 28  14 4 2    B
+cyl  5 9 20  2 4       WHITE
+cyl  10 9 20 2 4       WHITE
+blob 5 9 25  1 1 1     WHITE soft
+blob 10 9 25 1 1 1     WHITE soft
+
+[wool_rug]
+cyl  16 16 0 14 1      A soft
+cyl  16 16 0 11 2      B soft
+cyl  16 16 0 8 2       A soft
+cyl  16 16 0 4 3       B soft

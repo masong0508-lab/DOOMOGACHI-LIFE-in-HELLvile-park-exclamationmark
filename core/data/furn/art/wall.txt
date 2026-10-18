@@ -49,3 +49,110 @@ blob@1 15 2 5 1 1 1    A glow
 blob@1 19 2 5 1 1 1    B glow
 blob@1 23 2 5 1 1 1    A glow
 blob@1 27 2 5 1 1 1    B glow
+
+[band_poster]
+box  2 0 1   12 1 22   A
+blob 5 1 10  2 1 3     B
+blob 8 1 11  2 1 3     WHITE
+blob 11 1 10 2 1 3     B
+box  3 1 17  10 1 3    B
+box  3 1 3   10 1 2    WHITE
+
+[kids_wall_drawing]
+box  2 0 1   28 1 14   WHITE
+blob 7 1 6   3 1 3     CHERRY
+box  6 1 2   1 1 3     CHERRY
+box  8 1 2   1 1 3     CHERRY
+blob 16 1 7  2 1 2     SKY
+box  16 1 2  1 1 4     SKY
+blob 25 1 10 3 1 3     LEMON glow
+box  20 1 12 2 1 1     LEMON
+blob 12 1 11 1 1 1     LIME
+
+[framed_candid]
+box  1 0 1   14 2 18   A shiny
+box  2 1 2   12 1 16   WHITE
+blob 5 2 8   2 1 3     PEACH
+blob 8 2 9   2 1 3     LAVENDER
+blob 11 2 8  2 1 3     LIME
+box  4 2 13  9 1 1     SKY
+
+[bone_window]
+box  1 0 0   14 4 3    A
+cyl  2 2 0   1 24      A
+cyl  14 2 0  1 24      A
+blob 8 1 24  7 2 2     A
+box  3 0 3   10 2 18   CHARCOAL shiny
+blob 5 2 8   2 1 1     A
+blob 5 2 14  2 1 1     A
+blob 11 2 8  2 1 1     A
+blob 11 2 14 2 1 1     A
+box  7 1 3   2 2 18    A
+
+[boarded_window]
+box  1 0 0   14 4 3    A
+box  1 0 0   2 3 23    A
+box  13 0 0  2 3 23    A
+box  3 0 3   10 1 17   CHARCOAL
+box  2 1 5   12 2 3    A
+box  2 1 11  12 2 3    A
+box  2 1 16  12 2 3    A
+blob 6 3 12  1 1 1     JET
+blob 10 3 12 1 1 1     JET
+box  6 3 8   5 1 1     JET
+
+[welded_plate]
+box  1 0 0   14 4 24   A shiny
+box  1 1 0   14 3 1    B
+box  1 1 23  14 3 1    B
+box  1 1 0   1 3 24    B
+box  14 1 0  1 3 24    B
+blob 3 4 3   1 1 1     B
+blob 13 4 3  1 1 1     B
+blob 3 4 21  1 1 1     B
+blob 13 4 21 1 1 1     B
+
+[heart_wallpaper_eye]
+frames 2
+blob 8 1 6   4 1 4     A
+blob@0 8 2 6 3 1 2    WHITE
+blob@0 8 2 6 1 1 1    JET
+box@1 5 2 6  6 1 1    JET
+
+[counter_board]
+box  1 0 1   14 2 18   A
+box  2 1 3   12 1 12   B
+box  3 2 10  2 1 4     JET
+box  6 2 10  1 1 4     JET
+box  8 2 10  1 1 4     JET
+box  10 2 10 1 1 4     JET
+box  3 2 5   9 1 1     JET
+
+[badge_board]
+box  1 0 1   14 2 18   A
+blob 4 2 14  2 1 2     B
+blob 9 2 15  2 1 2     LEMON
+blob 12 2 10 2 1 2     SKY
+blob 5 2 7   2 1 2     LIME
+blob 10 2 5  2 1 2     B
+
+[tomato_review_board]
+box  1 0 1   14 2 18   ~WOOD
+box  2 1 3   12 1 14   WHITE
+blob 4 2 12  1 1 1     A shiny
+blob 6 2 12  1 1 1     A shiny
+blob 8 2 12  1 1 1     A shiny
+blob 10 2 12 1 1 1     A shiny
+blob 12 2 12 1 1 1     A shiny
+box  3 2 6   10 1 1    CHARCOAL
+box  3 2 8   7 1 1     CHARCOAL
+
+[pink_door_hearts]
+box  1 0 0   14 3 52   B
+box  3 0 0   10 3 48   A
+blob 8 3 36  3 1 3     B
+blob 6 3 39  2 1 2     B
+blob 10 3 39 2 1 2     B
+blob 8 3 18  2 1 2     WHITE
+blob 11 4 24 1 1 1     HONEY shiny
+box  1 0 0   14 5 2    ~WOOD

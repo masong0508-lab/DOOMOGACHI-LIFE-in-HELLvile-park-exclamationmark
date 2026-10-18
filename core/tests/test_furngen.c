@@ -253,3 +253,18 @@ TEST(furngen_house_sets)
     CHECK_EQ(nbps, (int)doomo_home_blueprint_count);
     CHECK(nlays >= 1);
 }
+
+/* (H4 M2) every catalog row is drawn, and no art uses a paint slot the
+ * catalog fixes (its marker shades would show for good) */
+TEST(furngen_all_art_and_paint_slots)
+{
+    int i, e = load_real();
+    CHECK_MSG(e == 0, "the real catalog / art failed to parse (%d errors: %s)", e, fg_lasterr);
+    for (i = 0; i < nrows; i++) CHECK_MSG(arts[i].has, "%s has no art", rows[i].key);
+    CHECK_EQ(check_paint_slots(), 0);
+    memset(arts, 0, sizeof(arts));
+    fg_errors = 0;
+    CHECK_EQ(parse_catalog("[f] PASTEL 1 \"F\"\n  foot 1 1 4\n  paints CHERRY FIXED\n", "t"), 0);
+    CHECK_EQ(parse_art("[f]\nbox 2 2 0 12 12 10 A\nblob 8 8 14 4 4 4 B\n", "t"), 0);
+    CHECK(check_paint_slots() > 0);
+}
