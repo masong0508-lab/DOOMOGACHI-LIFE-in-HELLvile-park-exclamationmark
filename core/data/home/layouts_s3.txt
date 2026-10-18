@@ -1,0 +1,31 @@
+# core/data/home/layouts_s3.txt - decorate-for target layouts of the S3
+# content package (owner: S3; SPEC R19: one layouts_<owner>.txt per content
+# package; joined by furngen into core/gen/furn_data.c once the home group
+# reads layouts). HOME DECORATE_FOR <layout> <tolerance> in a script asks the
+# house how close the player's room is to one of these (home_decorate_for).
+#
+# Format (self-described; '#' comments, blank lines ignored):
+#   [layout ID key] ROOM "Name (<= 20)"
+#     tol N                default tolerance in tiles (0..3) for a match
+#     piece KEY X Y F      a catalog.txt key at tile (X, Y), facing F
+#                          (N E S W); X, Y count from the room's top-left
+#     any ROLE X Y F       any piece with that FR_* role (BED, SEAT, RUG...)
+#     need N               pieces that must match (default: all of them)
+# IDs are saved (4 bits, house_api.c): S3 owns 1..3, S4 4..9, S5 10..15.
+
+# ---- Ep 4.4 "Wisp": a room of his own in the Roof Annex -----------------------
+# story_final.md sec.13 Ep 4.4 / housing_final.md (phase OPEN, the Annex):
+# the Thinking Chair faces the wall (he thinks better facing a wall), the
+# single bed under the window with the candle, a wool rug turned sideways
+# because he likes it that way, his first drawing pinned up, and the height
+# marks on the door frame starting at the bottom.
+[layout 1 wisp_room] ANNEX "Wisp's Room"
+  tol 1
+  piece thinking_chair 1 1 N
+  piece single_bed 4 1 S
+  piece window_candle 5 0 S
+  piece wool_rug 2 3 E
+  piece wisp_drawing_1 2 0 S
+  piece height_marks 0 4 E
+  any LAMP 3 4 S
+  need 5

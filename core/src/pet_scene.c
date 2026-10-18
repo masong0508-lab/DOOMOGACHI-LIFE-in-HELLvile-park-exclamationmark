@@ -16,7 +16,8 @@
 
 enum { IC_FOOD, IC_LIGHTS, IC_PLAY, IC_MED, IC_CLEAN, IC_HEALTH, IC_DISC, IC_ATTN };
 enum { M_MAIN, M_FOOD, M_EAT, M_LIGHTS, M_PLAY, M_MED, M_CLEAN, M_HEALTH, M_DISC,
-       M_EVOLVE, M_DEAD, M_NOPET, M_DEX };
+       M_EVOLVE, M_DEAD, M_NOPET, M_DEX,
+       M_BOSS };                        /* S3: the pet-care boss (Ep 4.5)   */
 
 /* 10x6 icons, bit 9 = leftmost dot */
 static const uint16_t icon_bits[ICONS][6] = {
@@ -49,7 +50,14 @@ static struct {
     int dex_sel;
     char name_buf[8];
     uint8_t ink, mid, bg, shadow, grid, dark, seam;
+    /* --- S3: the pet-care boss: the fear throws, you shield, feed, hold, play --- */
+    int calm, lane, need, need_t, won_t, hits, blocks;
+    int8_t fy[3];                       /* a falling fear per lane, -1 none */
+    /* --- end S3 --- */
 } S;
+int pet_story_marks(void);              /* S3: pet_gfx.c */
+#define PET_ARG_BOSS 1                  /* S3: story_ch34.h */
+#define BOSS_TICKS 900                  /* 30 s, then it is over either way */
 
 static int spr_key = -9999;             /* what spr (below) holds         */
 
@@ -174,6 +182,14 @@ static void pet_enter(int arg)
     S.last_form = pet()->form;
     audio_music(SONG_PET);
     set_mode(pet_exists() ? (pet()->stage == PET_STAGE_DEAD ? M_DEAD : M_MAIN) : M_NOPET);
+    if (arg == PET_ARG_BOSS) {      /* --- S3: an egg or a little ghost holds on too --- */
+        set_mode(M_BOSS);
+        S.calm = 20;
+        S.lane = 1;
+        S.need = -1;
+        S.fy[0] = S.fy[1] = S.fy[2] = -1;
+        audio_music(SONG_BOSS);
+    }                                                                         /* --- end S3 --- */
 }
 
 static void press_fx(int b)
@@ -220,13 +236,13 @@ static void pet_update(void)
     S.mt++;
     for (i = 0; i < 3; i++) if (S.btn_flash[i] > 0) S.btn_flash[i]--;
 
-    if (btn_pressed(BTN_START) && S.mode != M_PLAY) {
+    if (btn_pressed(BTN_START) && S.mode != M_PLAY && S.mode != M_BOSS) {
         audio_sfx(SFX_CANCEL);
         if (scene_depth() > 1) scene_pop(); else scene_set(&SCENE_TITLE, 0);
         return;
     }
     /* evolution / hatching / passing, whatever screen we were on */
-    if (pet_exists() && S.mode != M_EVOLVE && S.mode != M_NOPET &&
+    if (pet_exists() && S.mode != M_EVOLVE && S.mode != M_NOPET && S.mode != M_BOSS &&   /* S3 */
         (p->stage != S.last_stage || p->form != S.last_form)) {
         S.evolve_from = S.last_stage == PET_STAGE_EGG ? -1 : S.last_form;
         if (p->stage == PET_STAGE_DEAD) {
@@ -340,6 +356,37 @@ static void pet_update(void)
             ui_text_entry("A new egg! Name it:", S.name_buf, (int)sizeof(S.name_buf), on_named);
         }
         break;
+    case M_BOSS: {                                         /* --- S3: under fire --- */
+        int k;
+        if (S.won_t) {
+            if (++S.won_t > 75 || (S.won_t > 20 && btn_pressed(BTN_A))) {
+                if (scene_depth() > 1) scene_pop(); else scene_set(&SCENE_TITLE, 0);
+            }
+            break;
+        }
+        if (btn_pressed(BTN_LEFT) && S.lane > 0) { S.lane--; press_fx(0); }
+        if (btn_pressed(BTN_RIGHT) && S.lane < 2) { S.lane++; press_fx(0); }
+        if (S.mt % 40 == 10) {                             /* the fear throws */
+            int l = (int)(doomo_hash32((uint32_t)S.mt * 2654435761u) % 3u);
+            if (S.fy[l] < 0) S.fy[l] = 8;
+        }
+        if ((S.mt & 1) == 0)
+            for (k = 0; k < 3; k++) {
+                if (S.fy[k] < 0) continue;
+                if (++S.fy[k] >= LH - 16) {                /* it reaches the shield row */
+                    S.fy[k] = -1;
+                    if (k == S.lane) { S.blocks++; S.calm += 4; audio_sfx(SFX_BLIP); }
+                    else { S.hits++; S.calm -= 8; audio_sfx(SFX_DEMON_ROAR); }
+                }
+            }
+        if (S.need < 0 && S.mt % 90 == 45) { S.need = (S.mt / 90) % 3; S.need_t = 0; audio_sfx(SFX_BEEP); }
+        if (S.need >= 0) {
+            if (btn_pressed(BTN_A)) { press_fx(1); S.calm += 15; S.need = -1; audio_sfx(SFX_HAPPY); }
+            else if (++S.need_t > 60) { S.calm -= 5; S.need = -1; audio_sfx(SFX_SAD); }
+        }
+        S.calm = DOOMO_CLAMP(S.calm, 0, 100);
+        if (S.calm >= 100 || S.mt >= BOSS_TICKS) { S.won_t = 1; audio_sfx(SFX_EVOLVE); }
+        break; }                                           /* --- end S3 --- */
     case M_DEX:
         if (btn_repeat(BTN_RIGHT)) { S.dex_sel = (S.dex_sel + 1) % PET_FORM_COUNT; press_fx(0); }
         if (btn_repeat(BTN_LEFT)) { S.dex_sel = (S.dex_sel + PET_FORM_COUNT - 1) % PET_FORM_COUNT; press_fx(0); }
@@ -498,7 +545,7 @@ static int pet_form_now(void)
  * ticks; rendering every frame would waste the GBA's time) */
 static void render_cached(int form, int frame)
 {
-    int key = (form + 2) * 16 + frame, fresh;
+    int key = ((form + 2) * 16 + frame) | (pet_story_marks() << 9), fresh;   /* S3: + the marks */
     spr = pet_scene_canvas(&fresh);
     if (fresh) spr_key = -9999;
     if (key == spr_key) return;
@@ -771,6 +818,28 @@ static void draw_dex(uint32_t t)
     }
 }
 
+/* --- S3: the pet-care boss: the fear at the top, its throws in three lanes,
+ * your heart-shield at the bottom, the need the pet calls for, a calm meter --- */
+static void draw_boss(uint32_t t)
+{
+    static const uint8_t fear_bits[6] = { 0x3C, 0x7E, 0xDB, 0xFF, 0xA5, 0x7E };      /* 8 wide */
+    static const uint8_t ball_bits[6] = { 0x18, 0x3C, 0x7E, 0x7E, 0x3C, 0x18 };
+    int k, fx = LW / 2 - 4 + (int)((t / 6) % 5) - 2;
+    lcd_background(0);
+    lcd_bits(fx, 1, fear_bits, 6, 8, 1);
+    if (!S.won_t && (t / 20) & 1) lcd_text(fx + 10, 1, "hee", 2);
+    render_cached(pet_form_now(), S.won_t ? PET_ANIM_HAPPY : S.calm < 40 ? PET_ANIM_ANGRY : PET_ANIM_SAD);
+    lcd_sprite(LW / 2 - PET_SPR / 2, 6, spr, 0, 0);
+    for (k = 0; k < 3; k++)
+        if (S.fy[k] >= 0) lcd_bits(4 + k * 25, S.fy[k], skull_bits, 6, 7, 1);
+    lcd_bits(4 + S.lane * 25, LH - 15, heart_bits, 6, 7, 1);
+    if (S.need >= 0 && ((t / 6) & 1))
+        lcd_bits(LW - 9, 9, S.need == 0 ? meal_bits : S.need == 1 ? heart_bits : ball_bits, 6, 8, 1);
+    draw_gauge(LH - 7, S.calm);
+    if (S.won_t) lcd_text_center(LH / 2 - 4, "beep.", 1);
+}
+/* --- end S3 --- */
+
 static void pet_draw(void)
 {
     uint32_t t = doomo_frame_count();
@@ -797,6 +866,7 @@ static void pet_draw(void)
     case M_HEALTH: draw_health(); break;
     case M_EVOLVE: draw_evolve(t); break;
     case M_DEAD: draw_dead(t); break;
+    case M_BOSS: draw_boss(t); break;                     /* S3 */
     default: draw_main(t); break;
     }
     if (S.mode == M_DEX) { draw_main(t); draw_dex(t); }
@@ -807,7 +877,8 @@ static void pet_draw(void)
         else doomo_snprintf(b, sizeof(b), "%s the %s", p->name, doomo_pet_form_names[p->form]);
         if (big()) ui_title(plat_screen_w() / 2, 2, b, WIN_CUTE);
     }
-    if (big()) ui_hint(S.mode == M_DEX ? STR_ICON_B " Back" :
+    if (big() && S.mode == M_BOSS) ui_hint(STR_ICON_ARROW_L STR_ICON_ARROW_R " Shield  " STR_ICON_A " Feed / hold / play", WIN_CUTE);
+    else if (big()) ui_hint(S.mode == M_DEX ? STR_ICON_B " Back" :
                        STR_ICON_ARROW_L STR_ICON_ARROW_R " Pick  " STR_ICON_A " Use  SELECT Doomodex  START Exit",
                        WIN_CUTE);
 }

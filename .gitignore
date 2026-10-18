@@ -17,3 +17,4 @@ build-*/
 gba/*.png
 ps1/*.png
 /dist/
+.claude/worktrees/

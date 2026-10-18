@@ -106,6 +106,10 @@ def strip_comments(s):
     return re.sub(r"//[^\n]*", " ", s)
 
 
+# (S3) the Chapters 3-4 glue's constants (CB_C34, C34A_*, the cast's ids)
+EXTRA_HEADERS.append(os.path.join(CORE, "src", "story_ch34.h"))
+
+
 def c_eval(expr, syms):
     e = expr.strip()
     if not e:
