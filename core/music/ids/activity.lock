@@ -1,0 +1,3 @@
+# activity.lock - activity cues (owner: MU4c; seeded empty by MU0;
+# docs/design/music/SPEC.md sec.15.5, 16.1). APPEND ONLY. Range MC 112-175.
+#   NAME = id      kind (cue | sting | vinyl | motif | inst)

@@ -1,5 +1,6 @@
-/* audio_int.h - internals shared by audio.c (sequencer) and songs.c (the
- * song book) (owner: story).
+/* audio_int.h - internals shared by audio.c (SFX, babble), audio_seq.c (the
+ * sequencer) and songs.c (the song book) (owner: story; the audio.c /
+ * audio_seq.c parts: MU1, music SPEC CF-30).
  *
  * THE MML DIALECT (one const string per channel, see songs.c):
  *   t<bpm>        tempo (global; put it at the start of channel 0)
@@ -78,5 +79,17 @@ const char *audio_sfx_synth_name(int sfx);
 int  audio_sfx_synth_busy(void);
 int  audio_fx_music_gated(void);           /* 1 while a mute holds the music */
 /* --- end S1 --- */
+
+/* --- AUD-SPLIT (MU1; music SPEC D13): audio.c <-> audio_seq.c --- */
+/* audio.c: the tone-channel cache and init state */
+void audio_int_send(int c, uint16_t f, uint8_t v, uint8_t w);  /* plat_tone if it changes */
+void audio_int_unsend(int c);              /* forget channel c's cached state */
+int  audio_int_inited(void);
+/* audio_seq.c: the sequencer */
+void audio_seq_init(void);                 /* audio_init, before audio_fx_reset */
+void audio_seq_reset(void);                /* audio_init, after audio_fx_reset: silence */
+void audio_seq_tick(void);                 /* audio_tick, after the voice babble */
+int  audio_seq_song(void);                 /* the song playing now (SONG_NONE: none) */
+/* --- end AUD-SPLIT --- */
 
 #endif

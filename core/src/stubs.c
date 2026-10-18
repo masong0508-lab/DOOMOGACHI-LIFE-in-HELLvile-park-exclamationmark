@@ -1310,3 +1310,51 @@ WEAK const uint16_t doomo_furn_iso_count = 0;
 WEAK const DoomoFurnGrant doomo_furn_grants[1] = { { 0, 0, NULL } };
 WEAK const uint8_t doomo_furn_cap1[FURN_MAX / 8] = { 0 };
 /* --- end H1 --- */
+
+/* --- music: MU0's weak placeholders for music.h (docs/design/music/SPEC.md
+ * sec.9.1, 21.2). MU1's mus_*.c replace them milestone by milestone; until
+ * then every call is a safe no-op or a refusal (-1). --- */
+#include "doomo/music.h"
+WEAK void music_set_cue(int cue, int grid) { (void)cue; (void)grid; STUB("music_set_cue"); }
+WEAK void music_set_cue_ex(const MusCueReq *r) { (void)r; STUB("music_set_cue_ex"); }
+WEAK void music_set_cue_dual(int cue_a, int cue_b) { (void)cue_a; (void)cue_b; STUB("music_set_cue_dual"); }
+WEAK int  music_cue(void) { STUB("music_cue"); return MC_NONE; }
+WEAK void music_resume(int cue) { (void)cue; STUB("music_resume"); }
+WEAK void music_set_param(int p, int v) { (void)p; (void)v; STUB("music_set_param"); }
+WEAK void music_set_param_now(int p, int v) { (void)p; (void)v; STUB("music_set_param_now"); }
+WEAK int  music_param(int p) { (void)p; STUB("music_param"); return 0; }
+WEAK void music_pulse_duck(int gain_q8, int ticks) { (void)gain_q8; (void)ticks; STUB("music_pulse_duck"); }
+WEAK int  music_intensity(void) { STUB("music_intensity"); return 0; }
+WEAK int  music_sting(int sting, int grid, int flags) { (void)sting; (void)grid; (void)flags; STUB("music_sting"); return -1; }
+WEAK int  music_sting_at(int sting, uint32_t land_tick, int flags) { (void)sting; (void)land_tick; (void)flags; STUB("music_sting_at"); return -1; }
+WEAK void music_quote(int motif, int prio) { (void)motif; (void)prio; STUB("music_quote"); }
+WEAK int  music_vinyl(int pattern, int grid, int source, int after)
+{ (void)pattern; (void)grid; (void)source; (void)after; STUB("music_vinyl"); return -1; }
+WEAK int  music_vinyl_at(int pattern, uint32_t land_tick, int source, int after)
+{ (void)pattern; (void)land_tick; (void)source; (void)after; STUB("music_vinyl_at"); return -1; }
+WEAK void music_vinyl_live(int16_t speed_q8, uint8_t fader) { (void)speed_q8; (void)fader; STUB("music_vinyl_live"); }
+WEAK void music_resume_on_beat(void) { STUB("music_resume_on_beat"); }
+WEAK void music_sfx_synth(int sfx) { (void)sfx; STUB("music_sfx_synth"); }
+WEAK void music_pos(MusPos *out) { STUB("music_pos"); if (out) memset(out, 0, sizeof(*out)); }
+WEAK int  music_ticks_to(int grid) { (void)grid; STUB("music_ticks_to"); return 0; }
+WEAK int  music_land(int grid, int frames, int max_bend_q8) { (void)grid; (void)max_bend_q8; STUB("music_land"); return frames; }
+WEAK int  music_on_beat(MusBeatFn fn, uint8_t mask) { (void)fn; (void)mask; STUB("music_on_beat"); return -1; }
+WEAK void music_off_beat(int slot) { (void)slot; STUB("music_off_beat"); }
+WEAK int  music_beat_events(MusBeatEv *out, int max) { (void)out; (void)max; STUB("music_beat_events"); return 0; }
+WEAK void music_mute_window(int from, int to) { (void)from; (void)to; STUB("music_mute_window"); }
+WEAK void music_duck_window(int from, int to, int gain_q8) { (void)from; (void)to; (void)gain_q8; STUB("music_duck_window"); }
+WEAK int  music_gated(void) { STUB("music_gated"); return 0; }
+WEAK int  music_resting(void) { STUB("music_resting"); return 0; }
+WEAK uint16_t music_snap_pitch(uint16_t pitch16) { STUB("music_snap_pitch"); return pitch16; }
+WEAK void music_stall(int kind) { (void)kind; STUB("music_stall"); }
+WEAK void music_prefill(int ms) { (void)ms; STUB("music_prefill"); }
+WEAK void music_profile(int scene_class) { (void)scene_class; STUB("music_profile"); }
+WEAK void music_update(void) { STUB("music_update"); }
+WEAK uint32_t music_hash(int cue, int minutes) { (void)cue; (void)minutes; STUB("music_hash"); return 0; }
+WEAK int  mus_bind_cue(int song, int scene, int map, int arg)
+{ (void)song; (void)scene; (void)map; (void)arg; STUB("mus_bind_cue"); return MC_NONE; }
+WEAK int  music_cue_exists(int cue) { (void)cue; STUB("music_cue_exists"); return 0; }
+WEAK uint32_t music_cue_length(int cue) { (void)cue; STUB("music_cue_length"); return 0; }
+WEAK const char *music_cue_name(int cue) { (void)cue; STUB("music_cue_name"); return ""; }
+WEAK void mus_drv_tick(void) { STUB("mus_drv_tick"); }
+/* --- end music --- */

@@ -1,0 +1,3 @@
+# world.lock - world and system cues (owner: MU4a; seeded empty by MU0;
+# docs/design/music/SPEC.md sec.15.1, 16.1). APPEND ONLY. Range MC 1-63.
+#   NAME = id      kind (cue | sting | vinyl | motif | inst)

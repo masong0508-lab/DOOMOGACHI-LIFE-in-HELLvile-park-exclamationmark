@@ -1,0 +1,3 @@
+# sfx.lock - the synth SFX imported as MDK_SFX cues (D14, CF-3; seeded empty
+# by MU0, filled by MU1T/MU4d at M3). APPEND ONLY. Range MC 232-255.
+#   NAME = id      kind (cue | sting | vinyl | motif | inst)

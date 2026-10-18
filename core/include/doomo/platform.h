@@ -136,6 +136,38 @@ void plat_tone(int channel, uint16_t freq_hz, uint8_t vol, uint8_t wave);
  * audio_sfx_pcm(); platforms may pre-convert it at boot. vol 0..15. */
 void plat_sample(int sfx_id, uint8_t vol);
 
+/* --- music: the engine's platform contract (docs/design/music/SPEC.md sec.9.4;
+ * maintainer MU0/MU1, add-only). Weak defaults (core/src/plat_weak_music.c)
+ * are the LEGACY BRIDGE: 4 voices (deck A lead, harm, bass, kit) onto the
+ * plat_tone channels 0-3, with the 240 Hz driver run by the core inside
+ * music_update() (8 mt per tick, 30 Hz control frames: today's sound).
+ * GBA (MU2, M2) and PS1 (MU3, M3) override them and call mus_drv_tick()
+ * from their IRQ (DoomoAudioCaps.flags CAP_DRV_IRQ). Records: mus_data.h.
+ *   plat_audio_caps   tier, soft voices, flags, latency (main thread)
+ *   plat_music_plan   -> mask of the voices the platform renders (main thread;
+ *                     at cue start, stem commits and tier changes)
+ *   plat_voice        one voice changed (from mus_drv, on change only)
+ *   plat_audio_bus    a bus gain (Q8)
+ *   plat_audio_fx     REVERB ECHO FREEZE FADE PROFILE CRACKLE PSG_DUCK
+ *   plat_music_stall  STALL_* (music.h)
+ *   plat_tape_*       TAPE re-render and scrub (M7)
+ *   plat_sample_ex    a sample with pan, priority and pitch */
+#include "mus_data.h"
+#define MUS_MT_PER_TICK 8
+void     plat_audio_caps(DoomoAudioCaps *out);
+uint32_t plat_music_plan(const DoomoVoicePlan *p, int n);   /* -> rendered-voice mask (main thread) */
+void     plat_voice(int voice, const DoomoVoice *v);        /* IRQ, from mus_drv, on change only   */
+void     plat_audio_bus(int bus, uint8_t gain_q8);
+void     plat_audio_fx(int fx, int a, int b);
+void     plat_music_stall(int kind);
+int      plat_tape_begin(uint16_t rate, uint16_t samples);
+void     plat_tape_render(const DoomoVoiceChange *c, int n, uint16_t s_from, uint16_t s_to);
+void     plat_tape_play(int16_t speed_q8, uint16_t pos, uint8_t gain);
+void     plat_tape_end(void);
+void     plat_sample_ex(int sfx, uint8_t vol, int8_t pan, uint8_t prio, int8_t semis);
+void     mus_drv_tick(void);                                /* core; the platform calls it per mt  */
+/* --- end music --- */
+
 /* ---- save ----------------------------------------------------------------- */
 /* Slots: 0 = story, 1 = free play. Data is opaque (save.c serialises),
  * at most DOOMO_SAVE_SLOT0_MAX / DOOMO_SAVE_SLOT1_MAX bytes (save.h).
