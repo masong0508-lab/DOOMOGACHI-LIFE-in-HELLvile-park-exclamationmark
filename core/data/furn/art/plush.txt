@@ -1,0 +1,26 @@
+# core/data/furn/art/plush.txt - plushies and toys (owner: H4). Format:
+# pastel.txt.
+
+[mr_flops_plush]
+blob 8 8 4   3 3 4     A soft
+blob 8 9 10  3 3 3     A soft
+blob 7 8 15  1 1 3     A soft
+blob 9 8 15  1 1 3     A soft
+blob 7 9 15  1 1 2     B
+blob 9 9 15  1 1 2     B
+blob 7 12 10 1 1 1     JET
+blob 9 12 10 1 1 1     JET
+
+[horned_poop_plush]
+blob 8 8 2   4 4 2     A soft
+blob 8 8 5   3 3 2     A soft
+blob 8 8 8   2 2 2     A soft
+cone 6 8 9   1 3       B
+cone 10 8 9  1 3       B
+blob 7 11 6  1 1 1     WHITE
+blob 9 11 6  1 1 1     WHITE
+
+[plain_human]
+cyl  8 8 0   2 1       ~STONE
+box  7 7 1   2 2 6     SILVER
+blob 8 8 8   1 1 1     SILVER

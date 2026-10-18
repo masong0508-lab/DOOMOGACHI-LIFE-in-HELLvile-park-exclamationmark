@@ -116,6 +116,14 @@ $(BUILD)/artgen: $(ARTGEN_SRCS) $(ARTGEN_CORE)
 	$(CC) -std=c99 -Wall -Wextra -Werror -O2 -g -D_POSIX_C_SOURCE=200809L \
 	    -I$(CORE_INC) -I$(CORE)/art -I$(CORE)/tools -o $@ $^
 
+# --- H4: furngen, the dream house's furniture (SPEC R19, C3; HF sec.6.2) ---
+FURNGEN_SRCS := $(CORE)/tools/furngen.c $(CORE)/native/png.c $(CORE)/src/palette.c $(CORE)/gen/art_data.c
+$(BUILD)/furngen: $(FURNGEN_SRCS) $(wildcard $(CORE_INC)/doomo/*.h)
+	@mkdir -p $(dir $@)
+	$(CC) -std=c99 -Wall -Wextra -Werror -O2 -g -D_POSIX_C_SOURCE=200809L \
+	    -DFURNGEN_REPO='"$(ROOT)"' -I$(CORE_INC) -I$(CORE)/native -o $@ $(FURNGEN_SRCS)
+# --- end H4 ---
+
 gen:
 	@set -e; \
 	for g in $(PY_GENS_FIRST); do \
@@ -127,6 +135,10 @@ ifneq ($(strip $(wildcard $(CORE)/tools/artgen*.c)),)
 else
 	@echo "gen: (no core/tools/artgen*.c yet - skipped)"
 endif
+	@# --- H4: furngen (after artgen: it links art_data.c's shade tables) ---
+	@$(MAKE) --no-print-directory -f $(CORE)/Makefile BUILD=$(BUILD) $(BUILD)/furngen
+	@echo "gen: furngen"; mkdir -p "$(GEN_ROOT)/core/gen"; $(BUILD)/furngen --out-root "$(GEN_ROOT)"
+	@# --- end H4 ---
 	@set -e; \
 	for g in $(PY_GENS_REST); do \
 	    echo "gen: $$g"; $(PYTHON) $$g --out-root "$(GEN_ROOT)"; \

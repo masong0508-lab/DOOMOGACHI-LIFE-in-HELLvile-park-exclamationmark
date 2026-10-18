@@ -1,0 +1,29 @@
+# core/data/furn/art/garden.txt - the garden (owner: H4). Format: pastel.txt.
+
+[potted_fern]
+cyl  8 8 0   4 7       B
+cyl  8 8 7   4 1       ~PEACHRAMP
+blob 8 8 13  6 6 5     A soft
+blob 5 6 16  3 3 3     A soft
+blob 11 10 15 3 3 3    A soft
+
+[picket_fence]
+box  0 0 5   16 2 2    A
+box  0 0 12  16 2 2    A
+box  1 0 0   3 2 17    A
+box  6 0 0   3 2 17    A
+box  11 0 0  3 2 17    A
+cone 2 1 17  2 3       A
+cone 7 1 17  2 3       A
+cone 12 1 17 2 3       A
+
+[flower_bed_pink]
+box  1 1 0   14 14 4   ~WOOD
+box  2 2 4   12 12 1   CHOCOLATE
+blob 8 8 6   6 6 3     B soft
+blob 5 6 9   2 2 2     A
+blob 11 7 9  2 2 2     A
+blob 8 11 9  2 2 2     A
+blob 5 6 11  1 1 1     LEMON
+blob 11 7 11 1 1 1     LEMON
+blob 8 11 11 1 1 1     LEMON

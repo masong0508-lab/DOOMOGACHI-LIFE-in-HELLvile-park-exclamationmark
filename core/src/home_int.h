@@ -219,4 +219,18 @@ void home_score_room(const HomeRoom *r, int room, unsigned ctx, HomeScore *out);
 /* The grade a stamp bitmask shows (highest HG_*). */
 int  home_stamps_grade(unsigned stamps);
 
+/* ---- H4: room_ref.c (the reference renderer) and home_draw.c ---------------- */
+/* The whole room, full redraw (the weak plat_room() calls it). */
+void room_ref_draw(const DoomoRoomView *v);
+/* Decode facing `facing` (0 / 1) of animation frame `frame` of `furn` into
+ * buf (cap bytes), recoloured to paints pa / pb (-1 = the markers' own
+ * shades) and lit at level lvl (15 = fullbright). (*ox, *oy) is where the
+ * footprint's back corner lands in the image. 0 = no sprite (the PS1 links
+ * none) or too big for buf. */
+int  room_ref_sprite(int furn, int facing, int frame, int pa, int pb, int lvl,
+                     uint8_t *buf, unsigned cap, DoomoImage *img, int *ox, int *oy);
+/* Fill a render-ready DoomoRoomObj from a room object (catalog paints
+ * resolved, z in px). */
+void home_obj_view(const HomeObj *o, DoomoRoomObj *out);
+
 #endif

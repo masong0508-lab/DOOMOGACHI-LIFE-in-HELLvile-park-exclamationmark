@@ -1,0 +1,99 @@
+# assert-no-stubs
+# SCENE_HOME (H4 M1, HF sec.11.2): the player moves in (the starter kit),
+# the heart iris, the catalog, the held ghost, the soft DROP mid-squash,
+# the squash-flip of a held piece, the nope at an occupied tile, the four
+# views, undo, Live mode and the Score panel.
+scene HOME -1
+wait 3
+shot home_iris
+wait 12
+expect-scene HOME
+shot home_empty
+# the catalog: Single Bed, Picnic Crate, Egg Nest (the starter kit)
+press START
+wait 14
+press A
+wait 14
+press DOWN
+wait 14
+shot home_catalog
+press A
+wait 6
+shot home_held
+press RIGHT
+wait 3
+press A
+wait 3
+shot home_drop_frame3
+wait 20
+shot home_placed
+# the bed: turned while held (the squash-flip), then placed
+press START
+wait 14
+press A
+wait 14
+press A
+wait 6
+press DOWN
+press LEFT
+wait 4
+press R
+wait 2
+shot home_flip_edge
+wait 10
+press A
+wait 24
+shot home_two_pieces
+# the nest onto the crate's tile: nope
+press START
+wait 14
+press A
+wait 14
+press A
+wait 4
+press UP
+press RIGHT
+wait 4
+press A
+wait 2
+shot home_nope
+wait 6
+press B
+wait 6
+# the four views
+press R
+wait 14
+shot home_view1
+press R
+wait 14
+shot home_view2
+press R
+wait 14
+shot home_view3
+press R
+wait 14
+press SELECT
+wait 8
+shot home_undo
+# Live mode
+press START
+wait 14
+press DOWN
+wait 2
+press A
+wait 6
+hold LEFT 8
+wait 4
+shot home_live
+# the Score panel
+press START
+wait 14
+press DOWN
+press DOWN
+wait 2
+press A
+wait 16
+shot home_score
+press B
+wait 6
+expect-scene HOME

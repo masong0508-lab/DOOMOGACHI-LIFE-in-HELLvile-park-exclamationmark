@@ -60,6 +60,9 @@ GROUPS = [
     ("cutscene", r"cutscene$|story_feast$|grumbleguts_gfx$"),
     ("story",    r"story(_\w+)?$|overworld(_\w+)?$|credits$"),
     ("gallery",  r"ui_gallery$"),
+    # --- H4 (for H3, SPEC C3/C6): the dream house; house_api.c stays resident ---
+    ("home",     r"home(_\w+)?$|room_ref$|furn_data$"),
+    # --- end H4 ---
 ]
 OVL_KINDS = (".text", ".rodata")
 
@@ -77,6 +80,10 @@ def base(path):
 
 
 def group_of(path):
+    # --- H4 (for H3, SPEC C3): the generated catalog joins the home group ---
+    if "/core/gen/" in path and base(path) == "furn_data":
+        return "home"
+    # --- end H4 ---
     if "/core/src/" not in path:
         return None                     # platform, generated data, SDK
     b = base(path)

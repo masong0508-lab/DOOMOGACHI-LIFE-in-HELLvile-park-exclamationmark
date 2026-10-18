@@ -1,0 +1,10 @@
+# core/data/furn/art/hellish.txt - the Hellvile pieces (owner: H4). Format:
+# pastel.txt.
+
+[lava_lamp]
+frames 2
+cyl  8 8 0   3 6       B
+cyl  8 8 6   2 14      A glow
+blob@0 8 8 12 2 2 3    LEMON glow
+blob@1 8 8 16 2 2 3    LEMON glow
+cyl  8 8 20  2 3       B

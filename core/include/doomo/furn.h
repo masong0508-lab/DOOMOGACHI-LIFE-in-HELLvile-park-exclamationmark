@@ -90,14 +90,17 @@ enum { FR_NONE, FR_DOOR, FR_WINDOW, FR_HEARTH, FR_BED, FR_SEAT, FR_TABLE,
 enum { FP_BOX, FP_BLOB, FP_CYL, FP_CONE, FP_COUNT };
 enum { FM_A = 0xF0, FM_B = 0xF1 };       /* FurnPrim.mat: paint slot A / B;
                                             otherwise a palette index (base tone) */
-enum { FPS_SOFT = 1, FPS_SHINY = 2, FPS_GLOW = 4, FPS_FLAT = 8 };  /* FurnPrim.style */
+enum { FPS_SOFT = 1, FPS_SHINY = 2 };   /* style bits (kind bits 2-3) */
+#define FURN_PRIM_KIND(p)   ((p)->kind & 3)
+#define FURN_PRIM_STYLE(p)  (((p)->kind >> 2) & 3)
+#define FURN_PRIM_FRAMES(p) ((p)->kind >> 4)  /* 0 = every frame */
 typedef struct DoomoFurnPrim {
-    uint8_t kind;                     /* FP_* (low 4 bits) | frame mask << 4 (0 = all) */
+    uint8_t kind;                     /* bits 0-1 FP_*, 2-3 FPS_*, 4-7 frame mask (0 = all) */
     uint8_t mat;                      /* FM_A / FM_B / palette index                   */
     int8_t  x, y;                     /* box: min corner; others: centre (units)       */
     uint8_t z;                        /* bottom (px)                                   */
-    uint8_t w, d, h;                  /* box: size; blob: radii x2; cyl/cone: diameter,
-                                         -, height                                     */
+    uint8_t w, d, h;                  /* box: size; blob: diameters; cyl/cone: diameter,
+                                         0, height                                     */
 } DoomoFurnPrim;                      /* 8 B */
 extern const DoomoFurnPrim doomo_furn_prims[];
 

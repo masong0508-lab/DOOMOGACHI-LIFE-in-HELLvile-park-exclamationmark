@@ -1,0 +1,36 @@
+# core/data/furn/art/rug.txt - rugs (owner: H4). Format: pastel.txt. Rugs are
+# a few px thick at most: everything else stands on them.
+
+[nanas_rug]
+cyl  16 16 0 15 1      A
+cyl  16 16 0 12 2      B soft
+cyl  16 16 0 8 3       A
+cyl  16 16 0 4 4       B
+
+[checker_rug]
+box  1 1 0   30 30 1   B
+box  1 1 0   8 8 2     A
+box  17 1 0  7 8 2     A
+box  9 9 0   8 8 2     A
+box  24 9 0  7 8 2     A
+box  1 17 0  8 7 2     A
+box  17 17 0 7 7 2     A
+box  9 24 0  8 7 2     A
+box  24 24 0 7 7 2     A
+
+[cloud_rug]
+blob 16 16 0 13 11 2   A soft
+blob 8 10 0  6 6 2     A soft
+blob 24 22 0 6 6 2     A soft
+blob 16 16 1 6 5 2     B soft
+
+[pentagram_rug]
+cyl  16 16 0 14 1      A soft
+cyl  16 16 0 12 2      B
+cyl  16 16 0 11 2      A soft
+blob 16 7 2  2 2 1     B
+blob 24 13 2 2 2 1     B
+blob 21 23 2 2 2 1     B
+blob 11 23 2 2 2 1     B
+blob 8 13 2  2 2 1     B
+blob 16 16 2 3 3 1     B

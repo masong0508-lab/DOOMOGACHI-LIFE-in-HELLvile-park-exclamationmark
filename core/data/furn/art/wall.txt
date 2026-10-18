@@ -1,0 +1,51 @@
+# core/data/furn/art/wall.txt - windows, doors and wall decor (owner: H4).
+# Format: pastel.txt. Wall pieces stay within y 0..3.
+
+[wood_window]
+box  1 0 0   14 4 3    A
+box  1 0 0   2 3 23    A
+box  13 0 0  2 3 23    A
+box  3 0 20  10 3 3    A
+box  3 0 3   10 2 17   B shiny
+box  7 0 3   2 3 17    A
+box  3 0 11  10 3 2    A
+
+[round_window]
+blob 8 1 12  7 2 7     B shiny
+blob 8 2 12  5 2 5     A
+blob 8 3 12  3 1 3     WHITE shiny
+
+[pips_bee_drawing]
+box  2 0 2   12 1 16   WHITE
+blob 8 1 10  3 1 2     LEMON
+box  7 1 9   1 1 3     JET
+box  9 1 9   1 1 3     JET
+blob 7 1 13  2 1 1     SKY
+blob 10 1 13 2 1 1     SKY
+box  7 0 17  3 2 2     PEACH
+
+[heart_poster]
+box  2 0 2   12 1 18   B
+blob 6 1 13  3 1 3     A
+blob 10 1 13 3 1 3     A
+blob 8 1 9   3 1 3     A
+box  3 0 18  2 2 2     LEMON
+box  11 0 18 2 2 2     LEMON
+
+[fairy_lights]
+frames 2
+box  1 1 6   30 1 1    ~STEEL
+blob@0 3 2 5  1 1 1    A glow
+blob@0 7 2 5  1 1 1    B glow
+blob@0 11 2 5 1 1 1    A glow
+blob@0 15 2 5 1 1 1    B glow
+blob@0 19 2 5 1 1 1    A glow
+blob@0 23 2 5 1 1 1    B glow
+blob@0 27 2 5 1 1 1    A glow
+blob@1 3 2 5  1 1 1    B glow
+blob@1 7 2 5  1 1 1    A glow
+blob@1 11 2 5 1 1 1    B glow
+blob@1 15 2 5 1 1 1    A glow
+blob@1 19 2 5 1 1 1    B glow
+blob@1 23 2 5 1 1 1    A glow
+blob@1 27 2 5 1 1 1    B glow

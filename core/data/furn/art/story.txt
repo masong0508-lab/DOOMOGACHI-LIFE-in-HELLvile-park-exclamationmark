@@ -1,0 +1,98 @@
+# core/data/furn/art/story.txt - recipes of the story and gift pieces (owner:
+# H4). Format: pastel.txt.
+
+[picnic_crate]
+box  1 1 0   14 14 18  ~WOOD
+box  1 15 4  14 1 2    CHOCOLATE
+box  1 15 11 14 1 2    CHOCOLATE
+box  15 1 4  1 14 2    CHOCOLATE
+box  15 1 11 1 14 2    CHOCOLATE
+box  0 0 18  16 16 1   CHERRY
+box  2 2 19  4 4 1     WHITE
+box  10 10 19 4 4 1    WHITE
+box  10 2 19 4 4 1     WHITE
+box  2 10 19 4 4 1     WHITE
+
+[egg_nest]
+blob 8 8 3   7 7 3     A soft
+blob 8 8 5   5 5 2     ~WOOD soft
+blob 8 8 9   3 3 5     B shiny
+blob 9 11 9  1 1 1     SKY
+blob 7 10 12 1 1 1     SKY
+
+[fuzz_cushion]
+blob 8 8 3   7 6 3     A soft
+blob 8 14 4  2 1 2     B
+blob 2 8 3   1 1 1     B
+blob 14 8 3  1 1 1     B
+
+[kevins_bust]
+frames 2
+box  5 5 0   6 6 4     ~STONE
+blob 8 8 6   3 3 2     SILVER
+blob 8 8 11  4 4 5     SILVER shiny
+blob 7 12 11 1 1 1     JET
+blob 9 12 11 1 1 1     JET
+blob@0 8 12 14 1 1 1   CHERRY shiny
+box@1 7 12 14 2 1 1    SILVER
+
+[xylophone_table]
+cyl  3 3 0   1 10      A
+cyl  13 3 0  1 10      A
+cyl  3 13 0  1 10      A
+cyl  13 13 0 1 10      A
+box  1 2 10  14 12 2   A
+box  2 3 12  2 10 2    CHERRY
+box  4 4 12  2 8 2     TANGERINE
+box  6 4 12  2 8 2     LEMON
+box  8 5 12  2 6 2     LIME
+box  10 5 12 2 6 2     SKY
+box  12 6 12 2 4 2     GRAPE
+blob 14 13 14 1 1 1    B
+
+[lulla_nightlight]
+frames 2
+cyl  8 8 0   3 2       B
+blob@0 8 8 6  3 3 4    A glow
+blob@1 8 8 6  3 3 4    A
+blob 10 9 8  1 1 1     WHITE glow
+
+[mayor_photo]
+box  3 0 2   10 2 14   A
+box  4 1 3   8 2 12    SKY
+blob 8 2 8   2 1 2     PEACH
+blob 8 2 5   3 1 2     CHERRY
+box  7 2 10  2 1 2     JET
+box  6 2 12  4 1 1     JET
+
+[bloom_thermometer]
+box  6 0 2   4 1 20    A
+box  7 0 4   2 2 16    A shiny
+box  7 1 4   2 2 8     B
+blob 8 1 4   2 1 2     B shiny
+
+[rivet_coat_hook]
+box  2 0 4   12 1 4    SILVER
+box  4 1 3   1 3 1     SILVER shiny
+box  8 1 3   1 3 1     SILVER shiny
+box  12 1 3  1 3 1     SILVER shiny
+blob 8 1 6   4 1 1     ~STEEL
+
+[window_candle]
+frames 2
+cyl  8 8 0   3 2       HONEY
+cyl  8 8 2   2 7       WHITE
+blob@0 8 8 11 1 1 2    LEMON glow
+blob@1 8 8 11 1 1 3    TANGERINE glow
+
+[mr_flops_bed]
+blob 8 8 3   7 6 3     A soft
+blob 8 9 5   5 4 2     B soft
+blob 6 8 7   2 2 1     WHITE soft
+
+[days_since_fire]
+box  1 0 2   14 2 16   A
+box  1 1 14  14 2 4    B
+box  5 1 4   2 2 7     JET
+box  9 1 4   2 2 7     JET
+box  2 1 2   12 1 1    ~WOOD

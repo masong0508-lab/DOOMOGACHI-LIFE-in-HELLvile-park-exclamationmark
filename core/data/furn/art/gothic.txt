@@ -1,0 +1,9 @@
+# core/data/furn/art/gothic.txt - goth-cute (owner: H4). Format: pastel.txt.
+
+[coffin_bed]
+box  2 1 0   12 30 6   A
+box  3 2 6   10 28 2   B soft
+blob 8 4 9   4 2 2     B soft
+box  2 18 6  12 13 3   A
+box  7 21 9  2 7 1     SILVER shiny
+box  5 23 9  6 2 1     SILVER shiny

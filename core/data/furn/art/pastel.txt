@@ -1,0 +1,278 @@
+# core/data/furn/art/pastel.txt - furniture recipes (owner: H4). furngen joins
+# each [key] with its catalog.txt row (H1) and bakes the GBA iso facings; the
+# PS1 builds the same prims live (HF sec.6.2, 7.1).
+#
+# Units: x, y in 1/16 tile (a 1x1 piece spans 0..16), z in pixels. Rot 0:
+# the piece's front faces +y (screen lower left); its back is at y = 0.
+# Wall pieces stand against the y = 0 wall and stay within y 0..3.
+#
+#   box  x y z  w d h      min corner + size
+#   blob x y z  rx ry rz   ellipsoid: centre + radii
+#   cyl  x y z  r h        vertical cylinder: centre x y, bottom z, radius, height
+#   cone x y z  r h        cone: base centre x y, bottom z, radius, height
+#   kind@01 ...            only on animation frames 0 and 1 (`frames N` first)
+#
+# Materials: A / B (the two paint slots, recolourable), a PAINT_* name
+# (fixed; BUBBLEGUM and MINT are reserved for the markers), or ~RAMP (fixed,
+# an environment ramp: ~WOOD ~STONE ~STEEL ~BONERAMP ~LAVA ...).
+# Styles: soft (dithered fluff), shiny (a highlight), glow (lit from inside).
+
+[pink_door]
+box  1 0 0   14 3 52   B
+box  3 0 0   10 3 48   A
+box  4 2 3   8 2 18    A
+box  4 2 26  8 2 18    A
+blob 8 3 39  3 1 3     SKY shiny
+blob 11 4 24 1 1 1     HONEY shiny
+box  1 0 0   14 5 2    ~WOOD
+
+[cottage_hearth]
+box  0 0 0   32 11 5   ~STONE
+box  2 0 5   28 9 33   ~STONE
+box  6 0 5   20 10 22  ~STONE
+box  9 3 5   14 8 16   JET
+blob 16 9 9  5 2 4     HELLFIRE glow
+blob 12 9 8  3 2 3     LEMON glow
+blob 20 9 8  3 2 3     TANGERINE glow
+box  0 0 38  32 13 4   ~WOOD
+box  4 0 42  24 6 3    ~STONE
+cyl  6 8 42  1 4       WHITE
+blob 6 8 47  1 1 1     LEMON glow
+
+[bunny_beanbag]
+blob 8 9 6   7 6 6     A soft
+blob 8 8 3   7 7 3     A soft
+blob 4 5 14  2 2 5     A soft
+blob 12 5 14 2 2 5     A soft
+blob 4 6 15  1 1 3     B
+blob 12 6 15 1 1 3     B
+blob 6 15 8  1 1 1     JET
+blob 10 15 8 1 1 1     JET
+blob 8 15 6  1 1 1     B
+
+[cloud_bed]
+box  1 1 0   14 30 5   ~WOOD
+box  1 2 5   14 29 4   B
+box  1 13 8  14 18 3   A soft
+blob 8 5 10  5 3 2     B soft
+blob 4 2 14  4 2 5     A soft
+blob 8 2 17  5 2 6     A soft
+blob 12 2 14 4 2 5     A soft
+blob 4 30 7  3 2 3     A soft
+blob 12 30 7 3 2 3     A soft
+
+[cupcake_lamp]
+cyl  8 8 0   4 2       SILVER
+cyl  8 8 2   1 12      SILVER
+cyl  8 8 14  5 7       B
+blob 8 8 23  6 6 4     A soft glow
+blob 8 8 28  2 2 2     A glow
+blob 8 8 31  2 2 2     CHERRY shiny
+
+[marshmallow_sofa]
+box  2 3 0   28 11 7   A
+blob 16 4 15 15 3 7    A soft
+blob 9 10 9  7 5 3     A soft
+blob 23 10 9 7 5 3     A soft
+blob 3 9 10  3 6 5     B soft
+blob 29 9 10 3 6 5     B soft
+box  3 12 0  2 2 2     ~WOOD
+box  27 12 0 2 2 2     ~WOOD
+
+[macaron_stool]
+cyl  8 8 0   6 5       A
+cyl  8 8 5   6 3       B soft
+cyl  8 8 8   6 5       A
+blob 8 8 13  5 5 1     A
+
+[candy_cane_shelf]
+box  1 1 0   14 2 44   B
+box  1 1 0   2 13 44   A
+box  13 1 0  2 13 44   A
+box  1 1 0   14 13 2   B
+box  1 1 14  14 13 2   B
+box  1 1 28  14 13 2   B
+box  1 1 42  14 13 2   B
+box  3 4 2   2 8 9     CHERRY
+box  5 4 2   2 8 7     LEMON
+box  8 4 2   3 8 10    SKY
+blob 7 8 18  2 2 3     LAVENDER
+blob 11 8 18 2 2 2     LIME
+box  4 4 30  6 8 4     HONEY
+
+[heart_mirror]
+blob 5 1 14  5 2 6     A
+blob 11 1 14 5 2 6     A
+blob 8 1 8   5 2 6     A
+blob 5 2 14  3 2 4     SILVER shiny
+blob 11 2 14 3 2 4     SILVER shiny
+blob 8 2 9   3 2 4     SILVER shiny
+
+[strawberry_fridge]
+box  1 1 0   14 13 46  A
+blob 8 7 46  7 6 4     A
+blob 8 7 51  4 3 2     B soft
+box  1 14 30 14 1 1    ~BLOODRAMP
+box  12 14 8 1 1 16    SILVER shiny
+box  12 14 34 1 1 8    SILVER shiny
+blob 4 14 40 1 1 1     LEMON
+blob 8 14 22 1 1 1     LEMON
+blob 4 14 14 1 1 1     LEMON
+blob 9 14 6  1 1 1     LEMON
+blob 6 14 36 1 1 1     LEMON
+
+[teacup_table]
+cyl  8 8 0   6 2       B
+cyl  8 8 2   4 6       B
+cyl  8 8 8   7 9       A
+cyl  8 8 15  7 2       B
+blob 15 8 12 2 1 3     A
+
+[bubble_chair]
+cyl  8 8 0   4 1       SILVER
+cyl  8 8 1   1 4       SILVER
+blob 8 8 13  7 7 9     A shiny
+blob 8 11 9  5 4 2     B soft
+blob 8 6 14  4 2 4     B soft
+
+[rainbow_bookcase]
+box  1 1 0   14 2 48   A
+box  1 1 0   2 13 48   A
+box  13 1 0  2 13 48   A
+box  1 1 0   14 13 2   A
+box  1 1 15  14 13 2   A
+box  1 1 31  14 13 2   A
+box  1 1 46  14 13 2   A
+box  3 3 2   2 9 11    CHERRY
+box  5 3 2   2 9 10    TANGERINE
+box  7 3 2   2 9 12    LEMON
+box  9 3 2   2 9 9     LIME
+box  11 3 2  2 9 11    SKY
+box  3 3 17  3 9 12    GRAPE
+box  6 3 17  2 9 10    CHERRY
+box  8 3 17  2 9 13    COBALT
+box  10 3 17 3 9 9     LEMON
+box  3 3 33  2 9 11    LIME
+box  5 3 33  2 9 12    B
+box  9 3 33  4 9 6     HONEY
+
+[pastel_wardrobe]
+box  2 3 0   2 2 3     ~WOOD
+box  12 3 0  2 2 3     ~WOOD
+box  1 2 3   14 12 51  A
+box  0 1 53  16 14 3   B
+box  7 14 6  2 1 44    B
+blob 6 15 28 1 1 1     HONEY shiny
+blob 10 15 28 1 1 1    HONEY shiny
+blob 8 7 58  3 2 2     B soft
+
+[daisy_rug]
+blob 16 7 0  5 4 1     A
+blob 16 25 0 5 4 1     A
+blob 7 16 0  4 5 1     A
+blob 25 16 0 4 5 1     A
+blob 10 10 0 4 4 1     A
+blob 22 22 0 4 4 1     A
+blob 22 10 0 4 4 1     A
+blob 10 22 0 4 4 1     A
+cyl  16 16 0 5 2       B soft
+
+[cloud_shelf]
+box  1 1 0   14 4 2    B
+blob 5 1 6   4 2 4     A soft
+blob 10 1 7  5 2 5     A soft
+blob 8 3 4   2 2 2     LEMON
+
+[jellybean_jar]
+cyl  8 8 0   4 9       A soft
+cyl  8 8 9   4 2       B
+blob 8 8 12  1 1 1     B shiny
+blob 7 12 4  1 1 1     LEMON
+blob 9 12 6  1 1 1     LIME
+
+[sprinkle_vase]
+blob 8 8 5   4 4 5     A shiny
+cyl  8 8 9   2 3       A
+blob 7 8 14  2 2 2     B soft
+blob 10 8 13 1 1 2     LEMON
+blob 6 10 9  1 1 1     B
+
+[plush_ottoman]
+blob 8 8 6   7 7 6     A soft
+blob 8 8 12  2 2 1     B
+box  4 4 0   2 2 2     ~WOOD
+box  10 10 0 2 2 2     ~WOOD
+
+[cherry_clock]
+blob 8 1 8   7 2 7     A
+blob 8 2 8   5 2 5     WHITE
+box  8 3 8   1 1 4     JET
+box  8 3 8   3 1 1     JET
+blob 8 1 15  2 1 2     B
+
+[honey_lamp]
+cyl  8 8 0   4 2       B
+cyl  8 8 2   1 30      B
+cyl  8 8 32  6 11      A glow
+cyl  8 8 43  4 2       A
+blob 8 8 30  2 2 2     LEMON glow
+
+[pine_table]
+box  0 1 16  32 14 4   A
+box  2 2 0   2 2 16    A
+box  28 2 0  2 2 16   A
+box  2 12 0  2 2 16    A
+box  28 12 0 2 2 16    A
+box  8 6 20  16 4 1    B
+
+[wooden_chair]
+box  3 3 0   2 2 10    A
+box  11 3 0  2 2 10    A
+box  3 11 0  2 2 10    A
+box  11 11 0 2 2 10    A
+box  3 3 10  10 10 2   A
+box  4 4 12  8 8 2     B soft
+box  3 3 12  2 2 14    A
+box  11 3 12 2 2 14    A
+box  3 3 20  10 2 5    A
+
+[comfy_armchair]
+box  3 4 0   2 2 2     ~WOOD
+box  11 12 0 2 2 2     ~WOOD
+box  2 3 2   12 11 8   A
+blob 8 9 11  5 4 2     B soft
+blob 8 4 15  6 2 7     A soft
+blob 3 8 11  2 5 4     A soft
+blob 13 8 11 2 5 4     A soft
+
+[single_bed]
+box  1 1 0   14 2 18   ~WOOD
+box  1 29 0  14 2 10   ~WOOD
+box  1 2 0   14 28 5   ~WOOD
+box  1 3 5   14 26 4   B
+box  1 13 8  14 17 2   A soft
+blob 8 6 10  5 3 2     B soft
+
+[nightstand]
+box  2 2 0   12 12 18  A
+box  1 1 18  14 14 2   A
+box  3 14 9  10 1 6    B
+blob 8 15 12 1 1 1     HONEY shiny
+
+[toy_chest]
+box  1 2 0   14 12 14  A
+blob 8 8 14  7 6 3     A
+box  1 13 4  14 1 3    B
+box  7 14 9  2 1 3     HONEY shiny
+blob 4 14 10 1 1 1     B
+blob 12 14 10 1 1 1    B
+
+[cream_dresser]
+box  1 2 0   14 12 34  A
+box  0 1 34  16 14 2   B
+box  2 14 4  12 1 8    B
+box  2 14 14 12 1 8    B
+box  2 14 24 12 1 8    B
+blob 8 15 8  1 1 1     HONEY shiny
+blob 8 15 18 1 1 1     HONEY shiny
+blob 8 15 28 1 1 1     HONEY shiny

@@ -1,0 +1,15 @@
+# core/data/furn/art/kitchen.txt - the kitchen (owner: H4). Format: pastel.txt.
+
+[kettle]
+blob 8 8 4   4 4 4     A shiny
+box  11 8 4  4 1 1     A
+cyl  8 8 8   2 1       A
+blob 8 8 10  1 1 1     B
+box  6 7 9   4 1 1     JET
+
+[cake_stand]
+cyl  8 8 0   2 4       B
+cyl  8 8 4   5 1       B
+cyl  8 8 5   4 5       A
+cyl  8 8 10  4 1       WHITE
+blob 8 8 12  1 1 1     CHERRY shiny

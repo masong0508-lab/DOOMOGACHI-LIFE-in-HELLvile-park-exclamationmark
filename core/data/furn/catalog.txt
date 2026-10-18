@@ -492,7 +492,7 @@
   desc "Every gear turns. Two backwards."
   foot 1 1 6  flags WALL|ANIM
   paints HONEY CHARCOAL  score 2 1 0  theme WORKSHOP
-[neon_its_fine] TECH 300 "Neon "it's fine.""
+[neon_its_fine] TECH 300 "Neon: it's fine."
   desc "Pink neon. It is fine."
   foot 1 1 4  flags WALL|LIGHT|ANIM
   paints BUBBLEGUM FIXED  score 4 2 0  theme WORKSHOP  light 1
@@ -1074,7 +1074,7 @@
   desc "For the Park Plot. Both sides."
   foot 2 1 3  flags2 UNSELLABLE|GIFT  role PLANT
   paints BUBBLEGUM HELLFIRE  score 6 1 2  theme PICNIC  mass 4  giver 525  reward S126
-[rubber_duck_guest] STORY 0 "Rubber Duck "Guest""
+[rubber_duck_guest] STORY 0 "Rubber Duck 'Guest'"
   desc "Squeaks at the Wall."
   foot 1 1 2  flags SMALL  flags2 UNSELLABLE|GIFT  fi PLAY
   paints LEMON FIXED  score 7 0 1  theme PASTEL  giver 2  reward S127

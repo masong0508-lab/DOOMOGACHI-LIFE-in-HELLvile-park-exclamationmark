@@ -1,0 +1,8 @@
+# room_ref.c on the parity layout at 240x160 (core/tests/test_home_render.c):
+# FNV-1a of the frame per view 0..3, then view 0 at night. Regenerate with
+#   $(BUILD)/tests --update-golden room_ref_golden
+0 4395ec11
+1 b8448ace
+2 c75266b3
+3 11a882b3
+4 c5b83c4b
