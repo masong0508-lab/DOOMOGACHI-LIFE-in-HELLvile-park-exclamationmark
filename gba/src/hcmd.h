@@ -13,7 +13,9 @@ enum {
     GBA_HC_FLAG = 10,         /* arg flag id -> story_flag(id)                     */
     GBA_HC_TEXT_ARM = 11,     /* name = needle: watch plat_text for it              */
     GBA_HC_TEXT_HIT = 12,     /* -> 1 if the needle was drawn since the arm         */
-    GBA_HC_STORY_FP = 13      /* -> story_fingerprint()                            */
+    GBA_HC_STORY_FP = 13,     /* -> story_fingerprint()                            */
+    GBA_HC_ROOM_PARITY = 14,  /* arg view | path: -> FNV of the parity frame (room.c) */
+    GBA_HC_ROOM_TEST = 15     /* arg ROOM_TEST_*: the house test layout (room.c)   */
 };
 
 /* "seed N": plat_entropy() returns the pinned value while gba_entropy_pinned

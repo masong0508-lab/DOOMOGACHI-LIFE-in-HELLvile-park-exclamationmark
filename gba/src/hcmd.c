@@ -21,9 +21,15 @@
  *                          searched for it from now on
  *   GBA_HC_TEXT_HIT        1 once the needle was drawn (disarms on a hit)
  *   GBA_HC_STORY_FP        story_fingerprint()
+ * and the house renderer's (H2, room_int.h):
+ *   GBA_HC_ROOM_PARITY a   FNV-1a of the parity room frame (view a & 3,
+ *                          night a & 0x10, path a >> 8); must equal the
+ *                          room_ref golden (core/tests/golden/room_ref.txt)
+ *   GBA_HC_ROOM_TEST m     SCENE_HOME draws test layout m (ROOM_TEST_*)
  */
 #include "gba_plat.h"
 #include "hcmd.h"
+#include "room_int.h"
 #include "doomo/doomo.h"
 #include "doomo/story_vm.h"
 
@@ -182,6 +188,15 @@ void gba_harness_cmd(void)
         r = story_fingerprint();
         gba_logf("hcmd: story-fp %x", r);
         break;
+    /* --- H2: the house renderer (room.c) --- */
+    case GBA_HC_ROOM_PARITY:
+        r = room_hc_parity(arg);
+        break;
+    case GBA_HC_ROOM_TEST:
+        room_hc_test(arg);
+        r = 1;
+        break;
+    /* --- end H2 --- */
     default:
         break;
     }

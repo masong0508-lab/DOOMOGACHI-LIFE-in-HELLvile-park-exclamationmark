@@ -1,0 +1,120 @@
+# home.txt - the dream house renderer on the GBA (H2: gba/src/room.c;
+# docs/design/story/SPEC.md sec.7 H2, C7, C22; make -C gba test-home).
+#
+# 1. Parity: the test_home_render.c layout drawn by plat_room() must hash
+#    to the room_ref golden (core/tests/golden/room_ref.txt, --golden) on
+#    every path: a full recompose, the dirty-rect path (moved / added /
+#    removed items, a squash, a jitter, the cursor, a held ghost, actors
+#    restored to the parity state) and the UI-restore path (a window, text
+#    and a line drawn over the room after plat_room).
+# 2. SCENE_HOME on the game ROM with the house test layouts (room-test: the
+#    GBA keeps no HOME state before G0, so the live scene is otherwise an
+#    empty template room), with the C-G fps gates where this ROM can be
+#    measured against them. Screenshots go to gba/build/shots/home.
+wait 30
+expect-log doomo: init
+room-parity 0x000 0
+room-parity 0x001 1
+room-parity 0x002 2
+room-parity 0x003 3
+room-parity 0x010 4
+room-parity 0x100 0
+room-parity 0x101 1
+room-parity 0x102 2
+room-parity 0x103 3
+room-parity 0x110 4
+room-parity 0x200 0
+room-parity 0x201 1
+room-parity 0x202 2
+room-parity 0x203 3
+room-parity 0x210 4
+
+# --- the live scene: the Living Room template, the player, the cursor ---
+scene HOME -1
+wait 30
+expect-scene HOME
+shot home_plain
+fps
+wait 60
+expect-fps 28 home_plain
+
+# --- home_steady (C-G >= 28): Live mode, 4 chibis (the player + 3
+#     walkers), 3 animated pieces, the parity furniture, HUD only ---
+room-test 1
+press START
+wait 14
+press DOWN
+wait 4
+press A
+wait 30
+fps
+wait 90
+expect-fps 28 home_steady
+shot home_steady
+
+# --- home_modal (C-G >= 18): the Score panel over the room. Measured on
+#     the plain room (the catalog is empty without HOME state); the walkers
+#     keep running under it in home_modal_busy ---
+room-test 0
+wait 20
+press START
+wait 14
+press DOWN
+wait 4
+press DOWN
+wait 4
+press A
+wait 30
+fps
+wait 60
+expect-fps 18 home_modal
+shot home_modal
+room-test 1
+wait 30
+fps
+wait 60
+fps home_modal_busy
+press A
+wait 20
+
+# --- home_rotate (C-G >= 20): back to Build mode, the view brake + a
+#     recompose (one page; the other copies it forward) per turn ---
+press START
+wait 14
+press DOWN
+wait 4
+press A
+wait 30
+fps
+press R
+wait 30
+press R
+wait 30
+expect-fps 20 home_rotate
+shot home_rotated
+
+# --- home_cellar_full (C-G: average >= 24, <= 2 frames below 20): 8x8,
+#     40 pieces, dim light (every piece through the LUT path) ---
+room-test 2
+wait 30
+fps
+wait 90
+expect-fps 24 home_cellar_full
+shot home_cellar
+
+# --- home_defend_w3 (C-G >= 20; not met on this stress layout: 10 citizens
+#     + the player walking every frame through 24 lit pieces, see
+#     docs/GBA.md "The dream house"): recorded, with a regression floor ---
+room-test 3
+wait 30
+fps
+wait 90
+expect-fps 11 home_defend_w3
+shot home_defend
+
+# --- where the time goes (needs --nm) ---
+room-test 1
+wait 30
+profile 1000000
+room-test 0
+wait 10

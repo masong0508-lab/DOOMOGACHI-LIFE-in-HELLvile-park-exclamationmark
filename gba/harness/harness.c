@@ -195,6 +195,27 @@ static void run_frame(void);
 #define HC_TEXT_ARM 11
 #define HC_TEXT_HIT 12
 #define HC_STORY_FP 13
+/* --- H2: the house renderer (gba/src/room_int.h) --- */
+#define HC_ROOM_PARITY 14
+#define HC_ROOM_TEST 15
+static const char *golden_path;            /* --golden FILE (room-parity) */
+
+/* "N HASH" line N of the room_ref golden; 0 if missing */
+static int golden_hash(int index, uint32_t *out)
+{
+    FILE *f = golden_path ? fopen(golden_path, "r") : NULL;
+    char line[128];
+    int found = 0;
+    if (!f) return 0;
+    while (!found && fgets(line, sizeof(line), f)) {
+        int i;
+        unsigned v;
+        if (line[0] != '#' && sscanf(line, "%d %x", &i, &v) == 2 && i == index) { *out = v; found = 1; }
+    }
+    fclose(f);
+    return found;
+}
+/* --- end H2 --- */
 /* the mailbox's 20-byte name argument (scene / push / expect-text) */
 static void mailbox_name(const char *s)
 {
@@ -497,22 +518,31 @@ static int run_script(const char *path)
                         path, lineno, want, p2p);
                 failed = 1;
             }
-        } else if (!strcmp(argv[0], "fps")) {
+        } else if (!strcmp(argv[0], "fps") || (!strcmp(argv[0], "expect-fps") && argc >= 2)) {
             /* logic ticks and presented frames per second since the last
-             * "fps" (or the start) */
+             * "fps" (or the start); expect-fps MIN [LABEL] (H2) also fails
+             * when fewer than MIN frames a second were drawn */
             static uint32_t t0, v0, d0;
             uint32_t t = ticks(), v = video_frames, d = drawn();
             uint32_t ws = core->busRead32(core, MAILBOX_ADDR + 32);
             uint32_t wn = core->busRead32(core, MAILBOX_ADDR + 36);
             uint32_t wm = core->busRead32(core, MAILBOX_ADDR + 40);
             static uint32_t ws0, wn0;
+            int expect = argv[0][0] == 'e';
+            const char *label = expect ? (argc >= 3 ? argv[2] : "") : (rest ? rest : "");
+            double dfps = v > v0 ? (d - d0) * 60.0 / (v - v0) : 0.0;
             if (v > v0)
                 printf("harness: fps %s%s%.1f logic ticks/s, %.1f drawn frames/s, "
                        "work avg %.1f ms max %.1f ms (%u ticks, %u video frames)\n",
-                       rest ? rest : "", rest ? ": " : "",
-                       (t - t0) * 60.0 / (v - v0), (d - d0) * 60.0 / (v - v0),
+                       label, label[0] ? ": " : "",
+                       (t - t0) * 60.0 / (v - v0), dfps,
                        wn > wn0 ? (ws - ws0) / 16777.216 / (wn - wn0) : 0.0, wm / 16777.216,
                        (unsigned)(t - t0), (unsigned)(v - v0));
+            if (expect && dfps < atof(argv[1])) {
+                fprintf(stderr, "harness: %s:%d %s: %.1f drawn frames/s, expected >= %s\n",
+                        path, lineno, label, dfps, argv[1]);
+                failed = 1;
+            }
             t0 = t; v0 = v; d0 = d;
             core->busWrite32(core, MAILBOX_ADDR + 40, 0);
             ws0 = ws; wn0 = wn;
@@ -621,6 +651,31 @@ static int run_script(const char *path)
                     failed = 1;
                 }
             }
+        /* --- H2: the house renderer --- */
+        } else if (!strcmp(argv[0], "room-parity") && argc >= 2) {
+            /* room-parity ARG [INDEX]: the parity frame's FNV (view ARG & 3,
+             * night ARG & 0x10, path ARG >> 8) against line INDEX of the
+             * room_ref golden (--golden FILE) */
+            uint32_t r, want;
+            if (!hcmd(HC_ROOM_PARITY, (uint32_t)strtoul(argv[1], NULL, 0), &r)) failed = 1;
+            else {
+                printf("harness: room-parity %s: fnv %08x\n", argv[1], (unsigned)r);
+                if (argc >= 3) {
+                    if (!golden_hash(atoi(argv[2]), &want)) {
+                        fprintf(stderr, "harness: %s:%d no golden line %s (--golden %s)\n", path,
+                                lineno, argv[2], golden_path ? golden_path : "missing");
+                        failed = 1;
+                    } else if (r != want) {
+                        fprintf(stderr, "harness: %s:%d room-parity %s: %08x, golden %08x\n",
+                                path, lineno, argv[1], (unsigned)r, (unsigned)want);
+                        failed = 1;
+                    }
+                }
+            }
+        } else if (!strcmp(argv[0], "room-test") && argc >= 2) {
+            uint32_t r;
+            if (!hcmd(HC_ROOM_TEST, (uint32_t)strtoul(argv[1], NULL, 0), &r)) failed = 1;
+        /* --- end H2 --- */
         } else if (!strcmp(argv[0], "post") && argc >= 3) {
             core->busWrite32(core, MAILBOX_ADDR + 20, (uint32_t)atoi(argv[2]));
             core->busWrite32(core, MAILBOX_ADDR + 16, (uint32_t)atoi(argv[1]));
@@ -683,6 +738,7 @@ int main(int argc, char **argv)
         else if (!strcmp(argv[i], "--fail-on-stub")) fail_on_stub = 1;
         else if (!strcmp(argv[i], "--quiet")) quiet = 1;
         else if (!strcmp(argv[i], "--nm") && i + 1 < argc) load_nm(argv[++i]);
+        else if (!strcmp(argv[i], "--golden") && i + 1 < argc) golden_path = argv[++i];   /* H2 */
         else if (argv[i][0] != '-' && !rom) rom = argv[i];
         else { fprintf(stderr, "harness: bad argument %s\n", argv[i]); return 2; }
     }
