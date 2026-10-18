@@ -177,16 +177,16 @@ void gg_tri(int x0, int y0, int x1, int y1, int x2, int y2, uint8_t c)
         em_rect(lo, y0, hi - lo + 1, 1, c);
         return;
     }
-    dl = ((int32_t)(x2 - x0) << 16) / (y2 - y0);
-    xl = ((int32_t)x0 << 16) + 0x8000;
-    ds = y1 > y0 ? ((int32_t)(x1 - x0) << 16) / (y1 - y0) : 0;
-    xs = ((int32_t)x0 << 16) + 0x8000;
+    dl = ((int32_t)(x2 - x0) * 65536) / (y2 - y0);
+    xl = ((int32_t)x0 * 65536) + 0x8000;
+    ds = y1 > y0 ? ((int32_t)(x1 - x0) * 65536) / (y1 - y0) : 0;
+    xs = ((int32_t)x0 * 65536) + 0x8000;
     ym = y1;
     for (y = y0; y <= y2; y++) {
         int a, b;
         if (y == y1) {
-            xs = ((int32_t)x1 << 16) + 0x8000;
-            ds = y2 > y1 ? ((int32_t)(x2 - x1) << 16) / (y2 - y1) : 0;
+            xs = ((int32_t)x1 * 65536) + 0x8000;
+            ds = y2 > y1 ? ((int32_t)(x2 - x1) * 65536) / (y2 - y1) : 0;
             if (y1 == y0) { int lo = DOOMO_MIN(x0, x1), hi = DOOMO_MAX(x0, x1); em_rect(lo, y, hi - lo + 1, 1, c); xl += dl; continue; }
         }
         a = (int)(xl >> 16);
