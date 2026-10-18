@@ -91,8 +91,8 @@ int exorcism_authored_row(int resident_id)
         }
         if (exo_slot[i].row < n) return exo_slot[i].row;
     }
-    /* after a reload: in story mode only scripts possess, so a possessed
-     * host of an authored row is that row's */
+    /* after a reload (the slots are not saved): in story mode a possessed
+     * host of an authored row is taken to be that row's (exorcism.h caveat) */
     if (resident_id < 0 || doomo_town.mode != TOWN_STORY) return -1;
     r = town_res(resident_id);
     if (!r || resident_id >= DOOMO_MAX_RESIDENTS || r->status != RES_POSSESSED) return -1;

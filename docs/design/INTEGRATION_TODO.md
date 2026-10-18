@@ -22,3 +22,7 @@
 - Story must link the 3 story levels into level select.
 - Gallery minigame ~2100 plat_rect calls/frame -> measure on hardware (perf agent).
 - PS1 black skies -> sent to perf agent.
+
+## From S3.M1 (2026-10-18)
+- PS1 game disc overflows 2 MB on a clean build since S1.M4 (740ec45): 0x801f28d0 at 007706e, 0x801f3280 with S3.M1 (~12.9 KB over). ~20 KB is core/src/grumbleguts_gfx.c kept resident because the `fig_fn` function pointer escapes; exorcism.c adds ~1.8 KB resident (exo_rows_default 624 B could move out).
+- Authored possessor slots are not saved: after a reload, exorcism_authored_row() guesses a possessed story host's row, and natural sim possessions (sim_possession_cap from Ch2; sim_corrupt_natural doesn't skip RF_STORY_NPC) of Sprinklepop/Hattie/Grampy/Lady Smog are misread as authored (forced fail, SF_*_LOST). Fix in S2: VM re-arms POSSESS on resume or STRY v2 saves the slots; then drop the guess and test possessor_survives_a_reload_in_story_mode.

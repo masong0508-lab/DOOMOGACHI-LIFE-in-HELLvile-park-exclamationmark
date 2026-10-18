@@ -70,9 +70,12 @@ int exorcism_tries_left(int resident_id);
  * run after a save or a loss). The VM's POSSESS op arms a row on a host
  * (exorcism_possess); from then on sim_possessor_of() (through
  * story_possessor_override) and the ritual's clues and names come from
- * the row. In story mode the sim never possesses anyone on its own
- * (sim_soul.c), so a possessed host of a row with no armed slot (after a
- * reload) falls back to that host's first row.
+ * the row. The slots are not saved, so in story mode a possessed host of
+ * a row with no armed slot (after a reload) falls back to that host's
+ * first row. Caveat: from Ch2 the sim's own possessions can also take a
+ * story host (sim_possession_cap), and the guess then reads them as
+ * authored; S2's VM should re-arm on resume (or STRY v2 save the slots)
+ * so the guess can go.
  *
  * The table is generated: core/tools/textpack.py (S2) compiles the
  * `@possessor` blocks of the .dsc packs into core/gen/possess_table.c,
