@@ -3,13 +3,21 @@
 """mmlc.py - the music compiler (owner: MU1T; docs/design/music/SPEC.md
 sec.5, 16, 18).
 
-    python3 tools/mmlc.py [--out-root DIR]
+    python3 tools/mmlc.py [--out-root DIR] [--report FILE] [--dump CUE]
 
-Reads the id locks (core/music/ids/*.lock) and writes
-    core/gen/mus_ids.h    the MC_* / STG_* / VINYL_* / MOTIF_* / INST_* ids
-    core/gen/mus_data.c   doomo_mus_bank[], the bank (mus_data.h formats)
-under DIR (default: the repository root). Deterministic, stdlib only,
-integer only (like sfxgen.py).
+M1: imports the 28 classic songs - core/src/songs.c (/*SONG:X*/ rows), the
+nine core/src/mml_<name>.c story songs (or their silent placeholders in
+core/src/stubs.c) and the 24 instruments - as MCF_EXACT classic cues
+(MDK_LEGACY): 4 literal roles (lead, harmony, bass, kit), nodes of <= 8
+bars cut where no note is held across the line, linear edges. The import
+mirrors the 30 Hz interpreter (audio_seq.c) exactly - tick for tick on the
+legacy bridge, which test_music_classic.c (T1) proves on every song.
+
+Writes, under DIR (default: the repository root):
+    core/gen/mus_ids.h    the MC_* / STG_* / VINYL_* ids (core/music/ids/)
+    core/gen/mus_data.c   doomo_mus_bank[] (formats: core/include/doomo/mus_data.h)
+--report FILE writes the size report (build/mus_report.txt by convention).
+Deterministic, stdlib only, integer only (like sfxgen.py).
 """
 import argparse
 import os
@@ -17,7 +25,6 @@ import re
 import sys
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-IDS_DIR = os.path.join(ROOT, 'core', 'music', 'ids')
 
 # id ranges per lock file (sec.16.1)
 AREAS = {
@@ -30,17 +37,47 @@ AREAS = {
     'sfx':      {'cue': (232, 255)},
 }
 
+WHOLE = 192
+LEN_TAB = [3, 6, 8, 12, 16, 18, 24, 32, 36, 48, 72, 96, 144, 192, 288, 384]
+# tokens (mus_data.h)
+T_NOTE, T_NOTE_L, T_REST, T_TIE, T_HIT = 0x00, 0x60, 0x70, 0x80, 0x90
+T_CMD, T_EXT, T_EXTS, T_HOLD, T_REST_D, T_TIE_D, T_END = 0xC0, 0xE0, 0xF0, 0xF8, 0xF9, 0xFA, 0xFF
+C_DEFLEN, C_VOL, C_INST, C_GATE, C_TRANS, C_BASE = range(6)
+C_CALL, C_RET = 17, 18
+# MusCue / MusRole / MusNode enums
+MCF_LOOP, MCF_ONCE, MCF_EXACT = 1, 2, 4
+MDK_CUE, MDK_STING, MDK_LEGACY, MDK_SFX = range(4)
+MDF_JUKEBOX = 2
+RK_LEAD, RK_HARM, RK_BASS, RK_KIT = 0, 2, 4, 5
+MNP_NO_CHART = 4
+MNF_ANCHOR, MNF_REENTRY = 1, 16
+TIMBRE_PULSE, TIMBRE_SAW, TIMBRE_TRI, TIMBRE_NOISE15 = 0, 2, 4, 15
+MIF_ENV30 = 1
+WAVES = ['WAVE_PULSE12', 'WAVE_PULSE25', 'WAVE_PULSE50', 'WAVE_TRIANGLE', 'WAVE_SAW', 'WAVE_NOISE']
+WAVE_TIMBRE = {0: (TIMBRE_PULSE, 4), 1: (TIMBRE_PULSE, 8), 2: (TIMBRE_PULSE, 16),
+               3: (TIMBRE_TRI, 0), 4: (TIMBRE_SAW, 0), 5: (TIMBRE_NOISE15, 0)}
+ARPS = ['ARP_NONE', 'ARP_MAJOR', 'ARP_MINOR', 'ARP_OCTAVE', 'ARP_POWER', 'ARP_SUS4',
+        'ARP_DIM', 'ARP_MAJ7', 'ARP_TRILL']
+DRUMS = {'K': 1, 'S': 2, 'H': 3, 'O': 4, 'C': 5, 'T': 6, 'P': 7}
+SEMI = {'c': 0, 'd': 2, 'e': 4, 'f': 5, 'g': 7, 'a': 9, 'b': 11}
+DUR_MAX = 2047
+
 
 class MmlcError(Exception):
     pass
 
 
-def read_locks():
-    """-> list of (name, id, kind, area), validated."""
+def warn(msg):
+    sys.stderr.write('mmlc: warning: %s\n' % msg)
+
+
+# ---- id locks -------------------------------------------------------------------
+def read_locks(src):
     out = []
     seen = {}
+    ids_dir = os.path.join(src, 'core', 'music', 'ids')
     for area in sorted(AREAS):
-        path = os.path.join(IDS_DIR, area + '.lock')
+        path = os.path.join(ids_dir, area + '.lock')
         if not os.path.exists(path):
             continue
         with open(path, encoding='ascii') as f:
@@ -71,8 +108,8 @@ def emit_ids(locks):
              '#ifndef DOOMO_MUS_IDS_H', '#define DOOMO_MUS_IDS_H', '',
              '#define MC_NONE 0']
     last_kind = None
-    for name, ident, kind, area in sorted(locks, key=lambda t: ({'cue': 0, 'sting': 1, 'vinyl': 2,
-                                                                 'motif': 3, 'inst': 4}[t[2]], t[1], t[0])):
+    order = {'cue': 0, 'sting': 1, 'vinyl': 2, 'motif': 3, 'inst': 4}
+    for name, ident, kind, area in sorted(locks, key=lambda t: (order[t[2]], t[1], t[0])):
         if kind != last_kind:
             lines.append('/* %s ids */' % kind)
             last_kind = kind
@@ -85,7 +122,892 @@ def emit_ids(locks):
     return '\n'.join(lines)
 
 
-# ---- the bank -------------------------------------------------------------------
+# ---- C source scraping -------------------------------------------------------------
+def strip_comments(text):
+    return re.sub(r'/\*.*?\*/', ' ', text, flags=re.S)
+
+
+STR_RE = re.compile(r'"((?:[^"\\]|\\.)*)"')
+
+
+def c_unescape(s):
+    out = []
+    i = 0
+    while i < len(s):
+        c = s[i]
+        if c == '\\' and i + 1 < len(s):
+            n = s[i + 1]
+            out.append({'n': '\n', 't': '\t', 'r': '\r', '"': '"', '\\': '\\', '0': '\0'}.get(n, n))
+            i += 2
+        else:
+            out.append(c)
+            i += 1
+    return ''.join(out)
+
+
+def concat_strings(chunk):
+    """The value of a C expression made of adjacent string literals."""
+    return ''.join(c_unescape(m.group(1)) for m in STR_RE.finditer(chunk))
+
+
+def read(path):
+    with open(path, encoding='ascii') as f:
+        return f.read()
+
+
+def song_enum(src):
+    text = strip_comments(read(os.path.join(src, 'core', 'include', 'doomo', 'audio.h')))
+    m = re.search(r'enum\s*\{\s*(SONG_NONE\b.*?SONG_COUNT)\s*\}', text, re.S)
+    if not m:
+        raise MmlcError('audio.h: no SONG_* enum')
+    names = [n.strip() for n in m.group(1).split(',')]
+    names = [n for n in names if n]
+    if names[-1] != 'SONG_COUNT':
+        raise MmlcError('audio.h: SONG_COUNT must end the enum')
+    return [n[len('SONG_'):] for n in names[:-1]]          # index = SONG_* value
+
+
+def split_top(chunk):
+    """Split a brace initialiser body at top-level commas."""
+    parts, depth, cur, i, instr = [], 0, [], 0, False
+    while i < len(chunk):
+        c = chunk[i]
+        if instr:
+            cur.append(c)
+            if c == '\\':
+                cur.append(chunk[i + 1])
+                i += 1
+            elif c == '"':
+                instr = False
+        elif c == '"':
+            instr = True
+            cur.append(c)
+        elif c in '{(':
+            depth += 1
+            cur.append(c)
+        elif c in '})':
+            depth -= 1
+            cur.append(c)
+        elif c == ',' and depth == 0:
+            parts.append(''.join(cur).strip())
+            cur = []
+        else:
+            cur.append(c)
+        i += 1
+    if ''.join(cur).strip():
+        parts.append(''.join(cur).strip())
+    return parts
+
+
+def read_instruments(src):
+    text = strip_comments(read(os.path.join(src, 'core', 'src', 'songs.c')))
+    m = re.search(r'const\s+AudioInst\s+audio_insts\s*\[\s*\]\s*=\s*\{(.*?)\n\};', text, re.S)
+    if not m:
+        raise MmlcError('songs.c: no audio_insts[] table')
+    rows = []
+    for rm in re.finditer(r'\{([^{}]*)\}', m.group(1)):
+        f = [x.strip() for x in rm.group(1).split(',')]
+        if len(f) != 12:
+            raise MmlcError('songs.c: an instrument row needs 12 fields: %r' % rm.group(1))
+        def num(x, table=None):
+            if table and x in table:
+                return table.index(x)
+            return int(x, 0)
+        rows.append({'wave': num(f[0], WAVES), 'attack': num(f[1]), 'decay': num(f[2]),
+                     'sustain': num(f[3]), 'release': num(f[4]), 'vib_depth': num(f[5]),
+                     'vib_speed': num(f[6]), 'vib_delay': num(f[7]), 'arp': num(f[8], ARPS),
+                     'sweep': num(f[9]), 'gate': num(f[10]), 'level': num(f[11])})
+    return rows
+
+
+def read_songs(src):
+    """-> list indexed by SONG_* of dicts {name, flags, ch: [str|None]*4}."""
+    enum = song_enum(src)
+    raw = read(os.path.join(src, 'core', 'src', 'songs.c'))
+    songs = [None] * len(enum)
+    songs[0] = {'key': 'NONE', 'name': 'Silence', 'flags': 0, 'ch': [None] * 4}
+    for m in re.finditer(r'/\*SONG:([A-Z0-9_]+)\*/(.*?)/\*END\*/', raw, re.S):
+        key, body = m.group(1), strip_comments(m.group(2))
+        if key not in enum:
+            raise MmlcError('songs.c: /*SONG:%s*/ is not a SONG_* id' % key)
+        b = body.strip()
+        b = b[b.index('{') + 1:b.rindex('}')]
+        parts = split_top(b)
+        if len(parts) != 3:
+            raise MmlcError('songs.c: song %s: expected { name, flags, { ch0..ch3 } }' % key)
+        name = concat_strings(parts[0])
+        flags = 1 if 'ASONG_ONCE' in parts[1] else 0
+        chans = split_top(parts[2].strip()[1:-1])
+        if len(chans) != 4:
+            raise MmlcError('songs.c: song %s needs 4 channels' % key)
+        ch = [None if c.strip() == 'NULL' else concat_strings(c) for c in chans]
+        songs[enum.index(key)] = {'key': key, 'name': name, 'flags': flags, 'ch': ch}
+    # the story songs: SONG_ROW(n, "title") -> core/src/mml_<n>.c or the stubs.c placeholder
+    stubs = read(os.path.join(src, 'core', 'src', 'stubs.c'))
+    sm = re.search(r'#define SONG_STUB\(n\)(.*?)\n(?!.*\\$)', stubs, re.S)
+    stub_ch = []
+    for i in range(4):
+        mm = re.search(r'doomo_mml_##n##_%d\[\]\s*=\s*((?:"(?:[^"\\]|\\.)*"[ \t]*)+)' % i, stubs)
+        if not mm:
+            raise MmlcError('stubs.c: no SONG_STUB placeholder for channel %d' % i)
+        stub_ch.append(concat_strings(mm.group(1)))
+    del sm
+    for m in re.finditer(r'SONG_ROW\(\s*([a-z0-9_]+)\s*,\s*("(?:[^"\\]|\\.)*")\s*\)', strip_comments(raw)):
+        n, title = m.group(1), concat_strings(m.group(2))
+        key = n.upper()
+        if key not in enum:
+            raise MmlcError('songs.c: SONG_ROW(%s) has no SONG_%s' % (n, key))
+        path = os.path.join(src, 'core', 'src', 'mml_%s.c' % n)
+        ch = list(stub_ch)
+        if os.path.exists(path):
+            text = strip_comments(read(path))
+            for i in range(4):
+                mm = re.search(r'doomo_mml_%s_%d\s*\[\s*\]\s*=\s*((?:"(?:[^"\\]|\\.)*"\s*)+);' % (n, i), text)
+                if not mm:
+                    raise MmlcError('mml_%s.c: no doomo_mml_%s_%d[]' % (n, n, i))
+                ch[i] = concat_strings(mm.group(1))
+        songs[enum.index(key)] = {'key': key, 'name': title, 'flags': 0, 'ch': ch}
+    for i, s in enumerate(songs):
+        if s is None:
+            raise MmlcError('no MML for SONG_%s' % enum[i])
+    return songs
+
+
+# ---- the interpreter, mirrored (audio_seq.c chan_advance) ----------------------------
+def clamp(v, lo, hi):
+    return lo if v < lo else hi if v > hi else v
+
+
+class Chan:
+    def __init__(self, s, idx):
+        self.s = s
+        self.p = 0
+        self.loop_pt = None
+        self.deflen = WHOLE // 8
+        self.octave, self.vol, self.inst, self.gate_q, self.trans = 4, 12, (idx if idx < 3 else 0), 0, 0
+        self.loops = []
+        self.ended = s is None
+
+    def ch(self, i=0):
+        j = self.p + i
+        return self.s[j] if j < len(self.s) else '\0'
+
+    def read_num(self, default):
+        n, anyd = 0, False
+        while '0' <= self.ch() <= '9':
+            n = n * 10 + ord(self.ch()) - 48
+            self.p += 1
+            anyd = True
+        return n if anyd else default
+
+    def read_len(self, deflen):
+        n = self.read_num(-1)
+        u = WHOLE // n if n > 0 else deflen
+        if u < 1:
+            u = 1
+        add = u
+        while self.ch() == '.':
+            add //= 2
+            u += add
+            self.p += 1
+        return u
+
+
+def simulate(s, idx, n_passes):
+    """Run one channel through n_passes passes of its string. Returns
+    (items, pass_ends) where items are dicts in play order and pass_ends[k]
+    = (time, item count) at the end of pass k+1. Items:
+      {'k': 'N', 'pos', 'pieces': [units...], 'key'}   a note (+ ties)
+      {'k': 'D', 'pos', 'len', 'hit'}                 a drum
+      {'k': 'R', 'pos', 'len'}                        a rest
+      {'k': 'X', 'pos', 'len'}                        a stray tie
+      {'k': 'I'|'V'|'Q', 'pos', 'v'}                  inst / volume / gate state
+      {'k': 'TEMPO', 'pos', 'v'}                      a 't' command
+    """
+    c = Chan(s, idx)
+    items, pass_ends = [], []
+    t = 0
+    passes_guard = 0
+    if c.ended:
+        return items, pass_ends, c
+    while len(pass_ends) < n_passes and not c.ended:
+        x = c.ch()
+        if x == '\0':
+            passes_guard += 1
+            pass_ends.append((t, len(items)))
+            if passes_guard > 1:
+                c.ended = True
+                break
+            c.p = c.loop_pt if c.loop_pt is not None else 0
+            c.loops = []
+            continue
+        c.p += 1
+        if x in ' |\n\t\r':
+            continue
+        if x in SEMI:
+            k = SEMI[x]
+            if c.ch() in '+#':
+                k += 1
+                c.p += 1
+            elif c.ch() == '-':
+                k -= 1
+                c.p += 1
+            units = c.read_len(c.deflen)
+            pieces = [units]
+            while c.ch() == '^':
+                c.p += 1
+                pieces.append(c.read_len(c.deflen))
+            items.append({'k': 'N', 'pos': t, 'pieces': pieces, 'key': c.octave * 12 + k + c.trans,
+                          'q': c.gate_q, 'inst': c.inst})
+            t += sum(pieces)
+            passes_guard = 0
+            continue
+        if x in DRUMS:
+            units = c.read_len(c.deflen)
+            items.append({'k': 'D', 'pos': t, 'len': units, 'hit': DRUMS[x]})
+            t += units
+            passes_guard = 0
+            continue
+        if x == 'r':
+            units = c.read_len(c.deflen)
+            items.append({'k': 'R', 'pos': t, 'len': units})
+            t += units
+            passes_guard = 0
+        elif x == '^':
+            units = c.read_len(c.deflen)
+            items.append({'k': 'X', 'pos': t, 'len': units})
+            t += units
+        elif x == 't':
+            items.append({'k': 'TEMPO', 'pos': t, 'v': clamp(c.read_num(120), 30, 300)})
+        elif x == 'o':
+            c.octave = clamp(c.read_num(4), 0, 8)
+        elif x == '<':
+            if c.octave > 0:
+                c.octave -= 1
+        elif x == '>':
+            if c.octave < 8:
+                c.octave += 1
+        elif x == 'l':
+            c.deflen = c.read_len(48)
+        elif x == 'v':
+            c.vol = clamp(c.read_num(12), 0, 15)
+            items.append({'k': 'V', 'pos': t, 'v': c.vol})
+        elif x == '@':
+            c.inst = clamp(c.read_num(0), 0, NINST - 1)
+            items.append({'k': 'I', 'pos': t, 'v': c.inst})
+        elif x == 'q':
+            c.gate_q = clamp(c.read_num(0), 0, 8)
+            items.append({'k': 'Q', 'pos': t, 'v': c.gate_q})
+        elif x == 'k':
+            neg = False
+            if c.ch() == '-':
+                neg = True
+                c.p += 1
+            n = c.read_num(0)
+            c.trans = clamp(-n if neg else n, -48, 48)
+        elif x == 'L':
+            c.loop_pt = c.p
+        elif x == '[':
+            if len(c.loops) < 4:
+                c.loops.append([c.p, -1])
+        elif x == ']':
+            n = c.read_num(2)
+            if c.loops:
+                lp = c.loops[-1]
+                if lp[1] < 0:
+                    lp[1] = clamp(n - 1, 0, 100)
+                if lp[1] > 0:
+                    lp[1] -= 1
+                    c.p = lp[0]
+                else:
+                    c.loops.pop()
+        # anything else is ignored at runtime
+    return items, pass_ends, c
+
+
+NINST = 24
+
+
+def rate256(bpm):
+    bpm = clamp(bpm, 30, 300)
+    return (bpm * 12288 + 900) // 1800
+
+
+def note_ticks(units, r):
+    t = (units * 256 + r // 2) // r
+    return t if t >= 1 else 1
+
+
+def song_tempo(ch0):
+    if ch0 is None:
+        return 120
+    i = 0
+    while i < len(ch0) and ch0[i] in ' |\n\t\r':
+        i += 1
+    if i < len(ch0) and ch0[i] == 't':
+        i += 1
+        n, anyd = 0, False
+        while i < len(ch0) and ch0[i].isdigit():
+            n = n * 10 + int(ch0[i])
+            i += 1
+            anyd = True
+        return n if anyd else 120
+    return 120
+
+
+# ---- classic cue import ----------------------------------------------------------------
+def pass_slice(items, ends, k):
+    a = ends[k - 1][1] if k > 0 else 0
+    return items[a:ends[k][1]]
+
+
+def rel(items, base):
+    out = []
+    for it in items:
+        d = dict(it)
+        d['pos'] -= base
+        out.append(d)
+    return out
+
+
+def import_song(sidx, song, insts):
+    """-> classic cue model: {bpm, passes_k, len_pass1, chans: [items...], total}."""
+    key = song['key']
+    bpm = song_tempo(song['ch'][0])
+    sims = []
+    for i in range(4):
+        items, ends, c = simulate(song['ch'][i], i, 4)
+        sims.append((items, ends))
+        for it in items:
+            # a t that sets the song's own tempo again (every loop pass
+            # re-reads ch0's leading t) changes nothing
+            if it['k'] == 'TEMPO' and it['v'] != clamp(bpm, 30, 300):
+                raise MmlcError('song %s: channel %d changes the tempo to %d mid-song (classic cues keep one tempo)' % (key, i, it['v']))
+        for it in items:
+            if it['k'] == 'X':
+                warn('song %s ch%d: a stray tie at %d is approximated' % (key, i, it['pos']))
+    # pass lengths per channel; empty channels have no passes
+    live = [i for i in range(4) if len(sims[i][1]) >= 1 and sims[i][1][0][0] > 0]
+    if not live:
+        raise MmlcError('song %s is empty' % key)
+    for i in range(4):
+        if i not in live:
+            sims[i] = ([], [])
+    def plen(i, k):
+        ends = sims[i][1]
+        return ends[k][0] - (ends[k - 1][0] if k > 0 else 0)
+    for i in live:
+        if len(sims[i][1]) < 4:
+            raise MmlcError('song %s ch%d stops after %d passes' % (key, i, len(sims[i][1])))
+    for k in range(4):
+        lens = set(plen(i, k) for i in live)
+        if len(lens) != 1:
+            raise MmlcError('song %s: channel lengths differ in pass %d: %s' % (key, k + 1, sorted(lens)))
+    # converged: the first k with pass k+1 == pass k on every channel
+    def same(i, k):
+        a = rel(pass_slice(sims[i][0], sims[i][1], k), sims[i][1][k - 1][0] if k > 0 else 0)
+        b = rel(pass_slice(sims[i][0], sims[i][1], k + 1), sims[i][1][k][0])
+        return a == b
+    npass = None
+    for k in range(3):
+        if all(same(i, k) for i in live):
+            npass = k + 1
+            break
+    if npass is None:
+        raise MmlcError('song %s does not settle into a loop within 3 passes' % key)
+    total = sims[live[0]][1][npass - 1][0]
+    len1 = plen(live[0], 0)
+    reentry_pos = sims[live[0]][1][npass - 2][0] if npass > 1 else 0
+    chans = []
+    for i in range(4):
+        if i in live:
+            chans.append([it for it in sims[i][0][:sims[i][1][npass - 1][1]] if it['k'] != 'TEMPO'])
+        else:
+            chans.append(None)
+    return {'key': key, 'name': song['name'], 'once': song['flags'], 'bpm': clamp(bpm, 30, 255),
+            'npass': npass, 'len1': len1, 'total': total, 'reentry_pos': reentry_pos, 'chans': chans}
+
+
+def items_first_timed_before(items, it):
+    """True if `it` comes before any timed item (a leading t)."""
+    for x in items:
+        if x is it:
+            return it
+        if x['k'] in 'NDRX':
+            return None
+    return None
+
+
+def note_groups(chan):
+    """[(start, end)] of every note including its ties (and an X tie that
+    merges into it)."""
+    out = []
+    for it in chan:
+        if it['k'] == 'N':
+            out.append([it['pos'], it['pos'] + sum(it['pieces'])])
+    return out
+
+
+def choose_nodes(cue):
+    """Cut the cue into nodes of whole bars at lines no note crosses."""
+    total, bar = cue['total'], 192
+    meter = 4
+    if total % 192:
+        if total % 144 == 0:
+            bar, meter = 144, 3
+        else:
+            raise MmlcError('song %s: length %d is not a whole number of bars' % (cue['key'], total))
+    hard = {0, total, cue['len1'], cue['reentry_pos']}
+    groups = []
+    for ch in cue['chans']:
+        if ch:
+            groups += note_groups(ch)
+    def ok(b):
+        for (s, e) in groups:
+            if s < b < e:
+                return False
+        return True
+    bounds = [0]
+    s = 0
+    while s < total:
+        nxt = min(h for h in hard if h > s)
+        best = None
+        for nb in list(range(8, 0, -1)) + list(range(9, 17)):
+            b = s + nb * bar
+            if b > nxt:
+                continue
+            if b == nxt or ok(b):
+                best = b
+                break
+        if best is None:
+            if nxt - s <= 16 * bar:
+                best = nxt
+            else:
+                raise MmlcError('song %s: no node boundary within 16 bars of %d (notes held across every bar line)' % (cue['key'], s))
+        bounds.append(best)
+        s = best
+    return bounds, bar, meter
+
+
+def ext_tokens(r):
+    """EXT / EXTS tokens adding r units to the timed token before them."""
+    out = []
+    while r > 0:
+        if r <= 8:
+            out.append(T_EXTS + r - 1)
+            break
+        best = max(i for i in range(len(LEN_TAB)) if LEN_TAB[i] <= r)
+        out.append(T_EXT + best)
+        r -= LEN_TAB[best]
+    return out
+
+
+class Lane:
+    def __init__(self, deflen0, inst0, vol0):
+        self.b = []
+        self.deflen = deflen0
+        self.inst = inst0
+        self.vol = vol0
+        self.q = 0
+        self.base = 0
+
+    def cmd(self, c, v):
+        self.b += [T_CMD + c, v & 0xFF]
+
+    def timed_deflen(self, tok, length):
+        """A token whose length is deflen, lengthened by EXT."""
+        if length < self.deflen:
+            self.cmd(C_DEFLEN, length)
+            self.deflen = length
+        self.b.append(tok)
+        self.b += ext_tokens(length - self.deflen)
+
+    def timed_tab(self, tab_base, deflen_tok, length, extra=None):
+        """NOTE_L / REST / TIE: LEN_TAB head (or the deflen form) + EXT."""
+        if length == self.deflen and deflen_tok is not None:
+            self.b.append(deflen_tok)
+            if extra is not None:
+                pass
+            return
+        best = None
+        for i in range(len(LEN_TAB) - 1, -1, -1):
+            if LEN_TAB[i] <= length:
+                best = i
+                break
+        if best is None:
+            self.timed_deflen(deflen_tok if deflen_tok is not None else T_REST_D, length)
+            return
+        self.b.append(tab_base + best)
+        if extra is not None:
+            self.b.append(extra)
+        self.b += ext_tokens(length - LEN_TAB[best])
+
+
+def encode_lane(cue, ci, items, ns, ne, role, insts, state0):
+    """Encode channel ci's items in [ns, ne) as a lane. state0 = the C
+    state (inst, vol, q) at ns. Returns bytes."""
+    inst0, vol0, q0 = state0
+    timed = [it for it in items if it['k'] in 'NDRX' and ns <= it['pos'] < ne]
+    keys = [it['key'] for it in timed if it['k'] == 'N']
+    hits = [it['len'] for it in timed if it['k'] == 'D']
+    if hits:
+        deflen = min(hits)
+    else:
+        cnt = {}
+        for it in timed:
+            if it['k'] == 'N':
+                cnt[it['pieces'][0]] = cnt.get(it['pieces'][0], 0) + 1
+        deflen = max(sorted(cnt), key=lambda k: cnt[k]) if cnt else 24
+    lane = Lane(24, role['inst'], 48)
+    if deflen != 24 and 1 <= deflen <= 255:
+        lane.cmd(C_DEFLEN, deflen)
+        lane.deflen = deflen
+    if vol0 * 4 != lane.vol:
+        lane.cmd(C_VOL, vol0 * 4)
+        lane.vol = vol0 * 4
+    if inst0 != lane.inst:
+        lane.cmd(C_INST, inst0)
+        lane.inst = inst0
+    if q0:
+        lane.cmd(C_GATE, q0)
+        lane.q = q0
+    if keys:
+        lo, hi = min(keys), max(keys)
+        if lo < 0:
+            warn('song %s ch%d: notes below C0 clamp to C0' % (cue['key'], ci))
+            lo = 0
+        hi = max(hi, 0)
+        base = max(0, hi - 95)
+        if lo < base:
+            raise MmlcError('song %s ch%d: the notes span more than 8 octaves' % (cue['key'], ci))
+        if base:
+            lane.cmd(C_BASE, base)
+            lane.base = base
+    t = ns
+    # a drum / rest / stray tie from the previous node that runs into this one
+    first = None
+    for it in items:
+        if it['k'] in 'NDRX' and it['pos'] < ns and it['pos'] + item_len(it) > ns:
+            first = it
+    if first is not None:
+        if first['k'] == 'N':
+            raise MmlcError('internal: a note crosses node line %d' % ns)
+        hold = min(first['pos'] + item_len(first), ne) - ns
+        lane.timed_deflen(T_HOLD, hold)
+        t += hold
+    prev_g = None   # effective gate of the last note (for stray ties)
+    last_note = None
+    for it in items:
+        if it['pos'] < ns or it['pos'] >= ne:
+            continue
+        k = it['k']
+        if k == 'I':
+            if it['v'] != lane.inst:
+                lane.cmd(C_INST, it['v'])
+                lane.inst = it['v']
+            continue
+        if k == 'V':
+            if it['v'] * 4 != lane.vol:
+                lane.cmd(C_VOL, it['v'] * 4)
+                lane.vol = it['v'] * 4
+            continue
+        if k == 'Q':
+            if it['v'] != lane.q:
+                lane.cmd(C_GATE, it['v'])
+                lane.q = it['v']
+            continue
+        if it['pos'] != t:
+            raise MmlcError('internal: song %s ch%d: lane time %d != item %d' % (cue['key'], ci, t, it['pos']))
+        length = min(item_len(it), ne - it['pos'])
+        if k == 'N':
+            n = clamp(it['key'], 0, 127) - lane.base
+            if it['pieces'][0] == lane.deflen:
+                lane.b.append(T_NOTE + n)
+            else:
+                best = None
+                for i in range(len(LEN_TAB) - 1, -1, -1):
+                    if LEN_TAB[i] <= it['pieces'][0]:
+                        best = i
+                        break
+                if best is None:
+                    lane.cmd(C_DEFLEN, it['pieces'][0])
+                    lane.deflen = it['pieces'][0]
+                    lane.b.append(T_NOTE + n)
+                else:
+                    lane.b += [T_NOTE_L + best, n]
+                    lane.b += ext_tokens(it['pieces'][0] - LEN_TAB[best])
+            for pc in it['pieces'][1:]:
+                lane.timed_tab(T_TIE, T_TIE_D, pc)
+            g = lane.q if lane.q else insts[lane.inst]['gate']
+            prev_g = g
+            last_note = it
+            t += sum(it['pieces'])
+        elif k == 'D':
+            lane.timed_deflen(T_HIT + it['hit'], length)
+            last_note = None
+            t += length
+        elif k == 'R':
+            lane.timed_tab(T_REST, T_REST_D, length)
+            last_note = None
+            t += length
+        elif k == 'X':
+            if last_note is not None and prev_g == 8:
+                lane.timed_tab(T_TIE, T_TIE_D, length)
+            else:
+                lane.timed_deflen(T_HOLD, length)
+            t += length
+    if t != ne:
+        raise MmlcError('internal: song %s ch%d: lane ends at %d, node at %d' % (cue['key'], ci, t, ne))
+    lane.b.append(T_END)
+    return bytes(lane.b)
+
+
+# ---- CALL dedupe (sec.16.2 step 5) ------------------------------------------------
+# A lane is cut into units the runtime decoder treats atomically: a command
+# (2 B), a timed token with its EXT tokens, a note with its pitch, EXTs and
+# every TIE piece. A run of >= 2 units that repeats (in any lane of the
+# node, starting from the same decoder state: deflen, base, gate, inst,
+# vol) becomes a subroutine - CALL off/4 ... RET, one level, 4-aligned in
+# the pack - when that saves bytes. The decoder's state and gate maths see
+# exactly the same token stream either way (T1 holds the result to the
+# interpreter tick for tick).
+LEN_OF = lambda b: LEN_TAB[b & 15]
+
+
+def lane_units(lane):
+    """-> [(bytes, state_before)] for one encoded lane (END excluded)."""
+    st = {'deflen': 24, 'base': 0, 'q': 0, 'inst': None, 'vol': 48}
+    out, i = [], 0
+    b = lane
+    def exts(j):
+        while j < len(b) and (T_EXT <= b[j] < T_HOLD):
+            j += 1
+        return j
+    while i < len(b):
+        x = b[i]
+        key = (st['deflen'], st['base'], st['q'], st['inst'], st['vol'])
+        if T_CMD <= x < T_CMD + 24:
+            c, a = x - T_CMD, b[i + 1]
+            if c == C_DEFLEN: st['deflen'] = a
+            elif c == C_BASE: st['base'] = a
+            elif c == C_GATE: st['q'] = a
+            elif c == C_INST: st['inst'] = a
+            elif c == C_VOL: st['vol'] = a
+            out.append((bytes(b[i:i + 2]), key))
+            i += 2
+            continue
+        if x == T_END:
+            break
+        j = i + 1
+        if T_NOTE_L <= x < T_REST:
+            j += 1                       # the pitch byte
+        j = exts(j)
+        if x < T_REST:                   # a note: its tie pieces too
+            while j < len(b) and (T_TIE <= b[j] < T_HIT or b[j] == T_TIE_D):
+                j = exts(j + 1)
+        out.append((bytes(b[i:j]), key))
+        i = j
+    return out
+
+
+def dedupe_lanes(lanes, max_len=48):
+    """-> (lanes as unit lists with ('CALL', k) markers, [subroutine bytes])"""
+    L = [lane_units(ln) if ln is not None else None for ln in lanes]
+    subs = []
+    while True:
+        best = None
+        for n in range(2, max_len + 1):
+            occ = {}
+            for li, units in enumerate(L):
+                if units is None:
+                    continue
+                for i in range(0, len(units) - n + 1):
+                    seq = units[i:i + n]
+                    if any(isinstance(u[0], tuple) for u in seq):
+                        continue
+                    k = (b''.join(u[0] for u in seq), seq[0][1])
+                    occ.setdefault(k, []).append((li, i))
+            for k, places in occ.items():
+                if len(places) < 2:
+                    continue
+                taken, last = [], {}
+                for (li, i) in places:                 # non-overlapping, left to right
+                    if i >= last.get(li, -1):
+                        taken.append((li, i))
+                        last[li] = i + n
+                if len(taken) < 2:
+                    continue
+                size = len(k[0])
+                saving = len(taken) * size - (len(taken) * 2 + size + 2 + 3)
+                if saving > 0 and (best is None or saving > best[0]):
+                    best = (saving, n, k, taken)
+        if best is None:
+            break
+        saving, n, k, taken = best
+        sid = len(subs)
+        subs.append(k[0])
+        by_lane = {}
+        for (li, i) in taken:
+            by_lane.setdefault(li, []).append(i)
+        for li, starts in by_lane.items():
+            units = L[li]
+            for i in sorted(starts, reverse=True):
+                units[i:i + n] = [(('CALL', sid), units[i][1])]
+    return L, subs
+
+
+def layout_pack(lanes, dedupe=True):
+    """n_lanes, flags, lane_off[4], lanes, subroutines (4-aligned)."""
+    hdr = 2 + 2 * 4
+    if dedupe:
+        L, subs = dedupe_lanes(lanes)
+    else:
+        L, subs = [lane_units(ln) if ln is not None else None for ln in lanes], []
+    # sizes first: a CALL is 2 B
+    lane_bytes = []
+    for units in L:
+        if units is None:
+            lane_bytes.append(None)
+            continue
+        lane_bytes.append(sum(2 if isinstance(u[0], tuple) else len(u[0]) for u in units) + 1)
+    pos = hdr + sum(x for x in lane_bytes if x)
+    sub_off = []
+    for sb in subs:
+        while pos % 4:
+            pos += 1
+        sub_off.append(pos)
+        pos += len(sb) + 2
+    offs, body = [], []
+    at = hdr
+    for units, size in zip(L, lane_bytes):
+        if units is None:
+            offs.append(0)
+            continue
+        offs.append(at)
+        for u in units:
+            if isinstance(u[0], tuple):
+                off = sub_off[u[0][1]]
+                assert off % 4 == 0 and off // 4 < 256
+                body += [T_CMD + C_CALL, off // 4]
+            else:
+                body += list(u[0])
+        body.append(T_END)
+        at = hdr + len(body)
+    for sb, off in zip(subs, sub_off):
+        while hdr + len(body) < off:
+            body.append(0)
+        body += list(sb) + [T_CMD + C_RET, 0]
+    return [4, MNP_NO_CHART] + sum(([o & 0xFF, o >> 8] for o in offs), []) + body
+
+
+def item_len(it):
+    return sum(it['pieces']) if it['k'] == 'N' else it['len']
+
+
+def state_at(items, ns, ci):
+    inst, vol, q = (ci if ci < 3 else 0), 12, 0
+    for it in items:
+        if it['pos'] >= ns:
+            break
+        if it['k'] == 'I':
+            inst = it['v']
+        elif it['k'] == 'V':
+            vol = it['v']
+        elif it['k'] == 'Q':
+            q = it['v']
+    return inst, vol, q
+
+
+def compile_classic(cue, insts, dedupe=True):
+    bounds, bar, meter = choose_nodes(cue)
+    roles = []
+    kinds = [RK_LEAD, RK_HARM, RK_BASS, RK_KIT]
+    for ci in range(4):
+        items = cue['chans'][ci]
+        inst = 0
+        if items:
+            cnt = {}
+            for b in bounds[:-1]:
+                s = state_at(items, b, ci)[0]
+                cnt[s] = cnt.get(s, 0) + 1
+            inst = max(sorted(cnt), key=lambda k: cnt[k])
+        roles.append({'kind': kinds[ci], 'inst': inst})
+    nodes = []
+    for ni in range(len(bounds) - 1):
+        ns, ne = bounds[ni], bounds[ni + 1]
+        lanes = []
+        for ci in range(4):
+            items = cue['chans'][ci]
+            if not items:
+                lanes.append(None)
+                continue
+            lanes.append(encode_lane(cue, ci, items, ns, ne, roles[ci], insts, state_at(items, ns, ci)))
+        pack = layout_pack(lanes, dedupe)
+        if len(pack) > 1024:
+            raise MmlcError('song %s: node %d pack is %d B (> 1,024)' % (cue['key'], ni, len(pack)))
+        flags = 0
+        if ni == 0:
+            flags |= MNF_ANCHOR
+        if ns == cue['reentry_pos'] and cue['npass'] > 1:
+            flags |= MNF_REENTRY
+        nodes.append({'bars': (ne - ns) // bar, 'flags': flags, 'pack': bytes(pack), 'start': ns})
+    pass1_end = max(i for i, n in enumerate(nodes) if n['start'] < cue['len1'])
+    reentry = [i for i, n in enumerate(nodes) if n['start'] == cue['reentry_pos']][0]
+    n = len(nodes)
+    # blob: MusCue | MusRole[4] | MusNode[n] | MusEdge[n] | name (common) | packs
+    edges = []
+    for i in range(n):
+        to = i + 1 if i + 1 < n else reentry
+        edges.append([to, 255, 0, 0])
+    name = cue['name'].encode('ascii') + b'\0'
+    head = 24 + 8 * 4 + 12 * n + 4 * n
+    common_off = head
+    pack_off = common_off + len(name)
+    if pack_off % 2:
+        pack_off += 1
+    blob = []
+    flags = MCF_LOOP | MCF_EXACT
+    cuehdr = [4, n, n, 0, cue['bpm'], 0, meter, 0, 64, 64, 64, 0, reentry, pass1_end, 0, flags,
+              0, 0, 0, 0] + [common_off & 0xFF, common_off >> 8, len(name) & 0xFF, len(name) >> 8]
+    assert len(cuehdr) == 24
+    blob += cuehdr
+    for r in roles:
+        blob += [r['kind'], r['inst'], r['inst'], 0, 3, 0, 0, 0]
+    po = pack_off
+    for i, nd in enumerate(nodes):
+        blob += [nd['bars'], nd['flags'], 0, 255, 0x0D, 0x0D, i, 1, po & 0xFF, po >> 8,
+                 len(nd['pack']) & 0xFF, len(nd['pack']) >> 8]
+        po += len(nd['pack'])
+        if po % 2:
+            po += 1
+    for e in edges:
+        blob += e
+    blob += list(name)
+    while len(blob) < pack_off:
+        blob.append(0)
+    for nd in nodes:
+        blob += list(nd['pack'])
+        if len(blob) % 2:
+            blob.append(0)
+    if len(blob) > 0xFFFF:
+        raise MmlcError('song %s: cue blob too big' % cue['key'])
+    return bytes(blob), {'nodes': len(nodes), 'bars': [nd['bars'] for nd in nodes],
+                         'pack_bytes': sum(len(nd['pack']) for nd in nodes), 'meter': meter,
+                         'npass': cue['npass']}
+
+
+def inst_row(r):
+    tim, tp = WAVE_TIMBRE[r['wave']]
+    sweep = r['sweep'] & 0xFF
+    row = [tim, tim, r['attack'], r['decay'], r['sustain'], r['release'], r['level'], r['gate'],
+           r['vib_depth'], r['vib_speed'], r['vib_delay'], r['arp'], sweep, tp, 0, MIF_ENV30, 0, 0, 0, 0]
+    for v in row:
+        if not 0 <= v <= 255:
+            raise MmlcError('instrument field out of range: %r' % r)
+    return bytes(row)
+
+
+# ---- the bank -----------------------------------------------------------------------
 def u16(v):
     return [v & 0xFF, (v >> 8) & 0xFF]
 
@@ -103,19 +1025,15 @@ def fnv1a(data):
 
 
 def build_bank(cues=(), insts=()):
-    """cues: list of (id, kind, flags, blob bytes) ; insts: list of 20-byte rows."""
+    """cues: list of (id, kind, flags, blob) ; insts: list of 20-byte rows."""
     hdr_size = 52
-    dir_entries = sorted(cues, key=lambda c: (c[1], c[0]))
-    n_cues = sum(1 for c in cues if c[1] != 1)
-    n_stings = sum(1 for c in cues if c[1] == 1)
+    dir_entries = sorted(cues, key=lambda c: (c[1] == MDK_STING, c[0]))   # MC ids, then STG ids
+    n_cues = sum(1 for c in cues if c[1] != MDK_STING)
+    n_stings = sum(1 for c in cues if c[1] == MDK_STING)
     dir_off = hdr_size
     inst_off = dir_off + 8 * len(dir_entries)
-    body = []
     off = inst_off + 20 * len(insts)
-    for row in insts:
-        assert len(row) == 20
-    blobs = []
-    dir_bytes = []
+    blobs, dir_bytes = [], []
     for ident, kind, flags, blob in dir_entries:
         while off % 4:
             blobs.append(0)
@@ -126,15 +1044,15 @@ def build_bank(cues=(), insts=()):
     while off % 4:
         blobs.append(0)
         off += 1
+    body = []
     for row in insts:
+        assert len(row) == 20
         body += list(row)
     rest = dir_bytes + body + blobs
     total = hdr_size + len(rest)
-    misc_off = total
     hdr = (u16(0x534D) + u16(1) + u16(n_cues) + u16(n_stings) + u16(len(insts)) + u16(0) * 7 +
-           u32(dir_off) + u32(inst_off) + u32(total) + u32(total) + u32(misc_off) + u32(total))
-    fnv = fnv1a(rest)
-    hdr += u32(fnv)
+           u32(dir_off) + u32(inst_off) + u32(total) + u32(total) + u32(total) + u32(total))
+    hdr += u32(fnv1a(rest))
     assert len(hdr) == hdr_size
     return bytes(hdr + rest)
 
@@ -153,22 +1071,57 @@ def emit_bank_c(bank, comment_lines=()):
     return '\n'.join(out)
 
 
-def write(out_root, rel, text):
-    path = os.path.join(out_root, rel)
+def write(out_root, rel_path, text):
+    path = os.path.join(out_root, rel_path)
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, 'w', encoding='ascii', newline='\n') as f:
         f.write(text)
 
 
+def build(src):
+    locks = read_locks(src)
+    lockmap = {n: i for (n, i, k, a) in locks if k == 'cue'}
+    insts = read_instruments(src)
+    global NINST
+    NINST = len(insts)
+    songs = read_songs(src)
+    cues, report = [], []
+    mml_bytes = 0
+    for sidx in range(1, len(songs)):
+        song = songs[sidx]
+        name = 'MC_CLASSIC_' + song['key']
+        if name not in lockmap:
+            raise MmlcError('classic.lock has no %s (append it)' % name)
+        cue = import_song(sidx, song, insts)
+        blob, info = compile_classic(cue, insts)
+        cues.append((lockmap[name], MDK_LEGACY, MDF_JUKEBOX, blob))
+        mml_bytes += sum(len(c) for c in song['ch'] if c)
+        report.append('%-28s %3d  bpm %3d  %2d nodes %-28s %5d B (lanes %5d B)  passes %d' % (
+            name, lockmap[name], cue['bpm'], info['nodes'], str(info['bars']), len(blob),
+            info['pack_bytes'], info['npass']))
+    bank = build_bank(cues, [inst_row(r) for r in insts])
+    report.append('')
+    report.append('bank %d B: %d cues, %d instruments; classic MML %d B' % (
+        len(bank), len(cues), len(insts), mml_bytes))
+    return locks, bank, report
+
+
 def main(argv):
     ap = argparse.ArgumentParser(description=__doc__.split('\n')[0])
     ap.add_argument('--out-root', default=ROOT)
+    ap.add_argument('--src-root', default=ROOT)
+    ap.add_argument('--report')
     args = ap.parse_args(argv)
     try:
-        locks = read_locks()
+        locks, bank, report = build(args.src_root)
         write(args.out_root, 'core/gen/mus_ids.h', emit_ids(locks))
-        bank = build_bank()
-        write(args.out_root, 'core/gen/mus_data.c', emit_bank_c(bank, ['(MU0: empty bank)']))
+        write(args.out_root, 'core/gen/mus_data.c',
+              emit_bank_c(bank, ['%d bytes: %s' % (len(bank), report[-1])]))
+        if args.report:
+            d = os.path.dirname(os.path.abspath(args.report))
+            os.makedirs(d, exist_ok=True)
+            with open(args.report, 'w', encoding='ascii', newline='\n') as f:
+                f.write('\n'.join(report) + '\n')
     except MmlcError as e:
         sys.stderr.write('mmlc: error: %s\n' % e)
         return 1

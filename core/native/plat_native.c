@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "native.h"
+#include "plat_music_native.h"     /* --- music: musrender --- */
 
 uint8_t nat_fb[NAT_MAX_W * NAT_MAX_H];
 int nat_w = 240, nat_h = 160;
@@ -43,7 +44,11 @@ const char *nat_stub_name(int i) { return (i >= 0 && i < stub_n) ? stub_names[i]
 int plat_screen_w(void) { return nat_w; }
 int plat_screen_h(void) { return nat_h; }
 void plat_begin_frame(void) { }
-void plat_end_frame(void) { ticks++; }
+void plat_end_frame(void)
+{
+    ticks++;
+    nat_wav_frame();                      /* --- music: musrender (MU1, CF-46) --- */
+}
 
 uint32_t nat_calls[NC_N];
 
@@ -171,12 +176,14 @@ void plat_image(int x, int y, const DoomoImage *img, int scale, int flags,
 void plat_tone(int channel, uint16_t freq_hz, uint8_t vol, uint8_t wave)
 {
     nat_tone_calls++;
+    nat_wav_tone(channel, freq_hz, vol, wave);   /* --- music: musrender --- */
     if (verbose) fprintf(stderr, "[tone] ch%d %uHz vol%u wave%u\n", channel, freq_hz, vol, wave);
 }
 
 void plat_sample(int sfx_id, uint8_t vol)
 {
     nat_sample_calls++;
+    nat_wav_sample(sfx_id, vol);                 /* --- music: musrender --- */
     nat_last_sample = sfx_id;
     if (verbose) fprintf(stderr, "[sfx] %d vol%u\n", sfx_id, vol);
 }

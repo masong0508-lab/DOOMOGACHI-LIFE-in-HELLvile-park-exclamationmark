@@ -10,7 +10,7 @@
  * only naturally aligned u8/u16/u32 fields).
  *
  *   MusBank header (52 B)
- *   directory      MusDirEnt[n_dir], sorted by (kind, id)  (binary search)
+ *   directory      MusDirEnt[n_cues + n_stings]: MC by id, then STG by id
  *   instruments    MusInst[n_inst]
  *   comps, grooves, misc tables (M4)
  *   cue blobs      MusCue | [MusStingHdr] | MusRole[] | MusNode[] | MusEdge[]
@@ -42,9 +42,10 @@ typedef struct MusBank {
              fnv;           /* FNV-1a 32 of bytes [52, total)                    */
 } MusBank;                                                            /* 52 */
 
-/* Directory entry. The directory holds n_cues + n_stings entries sorted
- * by (kind, id) and is binary-searched (MU0 decision: a sparse id space
- * - classic cues live at MC 200.. - costs no empty entries). */
+/* Directory entry. The directory holds n_cues MC entries (kinds CUE,
+ * LEGACY, SFX) sorted by id, then n_stings STG entries sorted by id; it is
+ * binary-searched (MU0 decision: a sparse id space - classic cues live at
+ * MC 200.. - costs no empty entries). */
 enum { MDK_CUE, MDK_STING, MDK_LEGACY, MDK_SFX };           /* MusDirEnt.kind  */
 enum { MDF_HUB = 1, MDF_JUKEBOX = 2, MDF_GEN = 4 };          /* MusDirEnt.flags */
 typedef struct MusDirEnt {
@@ -150,6 +151,8 @@ enum {
     MT_EXT      = 0xE0,   /* E0-EF  + LEN_TAB[i] units to the previous timed token   */
     MT_EXTS     = 0xF0,   /* F0-F7  + (n + 1) units to the previous timed token      */
     MT_HOLD     = 0xF8,   /*        time passes, nothing sounds or stops; deflen      */
+    MT_REST_D   = 0xF9,   /*        a rest of deflen (+ EXT)                          */
+    MT_TIE_D    = 0xFA,   /*        a tie piece of deflen (+ EXT)                     */
     MT_END      = 0xFF
 };
 enum {  /* MT_CMD + c */

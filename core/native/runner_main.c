@@ -3,7 +3,9 @@
  *
  *   runner [--script FILE] [--shots DIR] [--w 240 --h 160] [--frames N]
  *          [--saves DIR] [--seed N] [--zoom N] [--gba-input] [--save-stream N]
- *          [--assert-no-stubs] [--quiet] [--verbose]
+ *          [--assert-no-stubs] [--quiet] [--verbose] [--wav FILE]
+ * --wav FILE records the game's audio (22,050 Hz stereo, musrender: the
+ * music SPEC's listening renders, core/native/plat_music_native.c).
  *
  * Script lines (one command per line, '#' starts a comment):
  *   wait N              run N frames
@@ -35,7 +37,9 @@
 #include <errno.h>
 #include <sys/stat.h>
 #include "native.h"
+#include "plat_music_native.h"            /* music: --wav (musrender) */
 #include "doomo/story_vm.h"           /* S2: story_fingerprint */
+#include "doomo/music.h"              /* music: music-hash */
 #include "../src/ui_internal.h"       /* S2: ui_dialog_debug (expect-text) */
 
 static uint32_t held;
@@ -264,6 +268,28 @@ static void run_line(char *line)
         printf("story-fp: 0x%08x\n", (unsigned)fp);
         if (argc > 1 && (uint32_t)strtoul(argv[1], NULL, 16) != fp) fail("story fingerprint differs from", argv[1]);
     /* --- end S2 --- */
+    /* --- music: render and hash commands (MU1, SPEC sec.16.3, row 39) ---
+     *   music N | music-once N | music-dual A B   audio_music*() by SONG_* number
+     *   mute N | duck Q8 N | tapestop N | resume  S1's comic-timing hooks
+     *   music-hash CUE MIN                         print music_hash() (T2) */
+    } else if (strcmp(cmd, "music") == 0) {
+        audio_music(argc > 1 ? atoi(argv[1]) : SONG_NONE);
+    } else if (strcmp(cmd, "music-once") == 0) {
+        audio_music_once(argc > 1 ? atoi(argv[1]) : SONG_NONE);
+    } else if (strcmp(cmd, "music-dual") == 0) {
+        audio_music_dual(argc > 1 ? atoi(argv[1]) : SONG_NONE, argc > 2 ? atoi(argv[2]) : SONG_NONE);
+    } else if (strcmp(cmd, "mute") == 0) {
+        audio_music_mute(argc > 1 ? atoi(argv[1]) : 0);
+    } else if (strcmp(cmd, "duck") == 0) {
+        audio_music_duck(argc > 1 ? atoi(argv[1]) : 256, argc > 2 ? atoi(argv[2]) : 0);
+    } else if (strcmp(cmd, "tapestop") == 0) {
+        audio_tapestop(argc > 1 ? atoi(argv[1]) : 5);
+    } else if (strcmp(cmd, "resume") == 0) {
+        audio_music_resume_on_beat();
+    } else if (strcmp(cmd, "music-hash") == 0) {
+        int cue = argc > 1 ? atoi(argv[1]) : 0, min = argc > 2 ? atoi(argv[2]) : 2;
+        printf("music-hash %d %d: 0x%08x\n", cue, min, (unsigned)music_hash(cue, min));
+    /* --- end music --- */
     } else {
         fail("unknown command", cmd);
     }
@@ -274,7 +300,7 @@ static void usage(void)
     fprintf(stderr,
             "usage: runner [--script FILE] [--shots DIR] [--w N --h N] [--frames N]\n"
             "              [--saves DIR] [--seed N] [--zoom N] [--gba-input] [--save-stream N]\n"
-            "              [--assert-no-stubs] [--quiet] [--verbose]\n");
+            "              [--assert-no-stubs] [--quiet] [--verbose] [--wav FILE]\n");
 }
 
 int main(int argc, char **argv)
@@ -300,6 +326,12 @@ int main(int argc, char **argv)
         else if (strcmp(a, "--assert-no-stubs") == 0) assert_no_stubs = 1;
         else if (strcmp(a, "--quiet") == 0) o.quiet = 1;
         else if (strcmp(a, "--verbose") == 0) o.verbose = 1;
+        /* --- music: musrender (MU1, SPEC sec.16.2, row 39) --- */
+        else if (strcmp(a, "--wav") == 0 && val) {
+            if (!nat_wav_open(val)) { fprintf(stderr, "runner: cannot write %s\n", val); return 1; }
+            i++;
+        }
+        /* --- end music --- */
         else if (strcmp(a, "--help") == 0 || strcmp(a, "-h") == 0) { usage(); return 0; }
         else { fprintf(stderr, "runner: unknown option %s\n", a); usage(); return 1; }
     }
