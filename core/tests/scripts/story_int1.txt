@@ -1,0 +1,54 @@
+# assert-no-stubs
+# Interlude I "Night Shift" (S2; story_final.md sec.10, ch1/int1.dsc): the
+# debug entry 100 + BEAT_INT1 (162) lands at the end of Ep 1.6 and the
+# interlude starts by itself: the pet scene (autowin is off here, so the
+# pet scene opens; START leaves it), the 4-frame hellify insert, the horn nubs, "beep.",
+# then day 4 and Chapter 2 (card, then Ep 2.1's mornings).
+scene STORY 162
+wait 30
+shot int1_later
+press A
+wait 10
+press A
+wait 30
+shot int1_pet
+press START
+wait 20
+shot int1_back
+press A
+wait 8
+press A
+wait 8
+press A
+wait 8
+press A
+wait 8
+press A
+wait 30
+shot int1_nubs
+press A
+wait 8
+press A
+wait 8
+press A
+wait 8
+press A
+wait 8
+press A
+wait 10
+press A
+wait 10
+press A
+wait 10
+press A
+wait 10
+press A
+wait 10
+press A
+wait 10
+press A
+wait 10
+wait 60
+expect-flag 230
+expect-scene CUTSCENE
+shot int1_ch2

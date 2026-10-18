@@ -9,6 +9,7 @@
  * a friend.
  */
 #include "story_int.h"
+#include "story_ch12.h"
 
 void script_ambient_talked(int id, int new_friend);
 
@@ -195,44 +196,27 @@ const char *story_small_talk(int id, int variant, char *buf, int cap)
 /* ---- the cast's idle chatter ---------------------------------------------------------- */
 typedef struct { int16_t id; uint8_t ch; const char *text; } CastLine;
 static const CastLine cast_lines[] = {
-    { ID_MAYOR, 1, "Hee hee! Isn't HaHaland just the HAPPIEST? Say yes. Please say yes." },
-    { ID_MAYOR, 1, "I practise my speeches on the ducks. They laugh at all the right places." },
-    { ID_MAYOR, 2, "Has anyone seen my cocoa? I need cocoa. Lots and lots of cocoa." },
     { ID_MAYOR, 3, "I'm not scared! I'm hiding BRAVELY. There's a difference!" },
     { ID_MAYOR, 4, "A summit! With Hellvile! I've never summited anything in my life!" },
     { ID_MAYOR, 5, "Oh my stars, look at everyone! Together! I'm crying again! Happy crying!" },
-    { ID_NANA, 1, "Fresh cinnamon swirls, sweet pea! Well, fresh-ish. Fresh in spirit." },
-    { ID_NANA, 1, "Is @E eating well? A growing Doomogachi needs carbs. Lots of carbs." },
-    { ID_NANA, 2, "Folks keep coming in smelling like grape. I don't bake with grape, dearie." },
     { ID_NANA, 3, "If a demon touches my sourdough starter, I will become the demon." },
     { ID_NANA, 4, "I hear Hellvile has a baker who burns everything. I must meet her. For science." },
     { ID_NANA, 5, "Charlotte and I are writing a cookbook! 'Burnt and Sweet'. It'll be a hit." },
-    { ID_PIP, 1, "Mr. Flops says hi! He's shy. He's hiding behind my ear. Well, his ear." },
-    { ID_PIP, 2, "I'm not allowed near the purple shop. Mr. Flops says it smells like lies." },
     { ID_PIP, 3, "Father Fuzz says if we hold hands and hum, the demons can't hear us. Hmmm..." },
     { ID_PIP, 4, "Do kids in Hellvile have plushies? I'm going to bring them ALL plushies." },
     { ID_PIP, 5, "I made a friend from Hellvile! Her name is Morguelet and she likes BUGS too!" },
-    { ID_FUZZ, 1, "Bless you, child. The church doors are always open. Literally. The hinge broke." },
-    { ID_FUZZ, 2, "Keep holy water close and love closer. Both work on demons, oddly." },
     { ID_FUZZ, 3, "We'll keep everyone safe in here. Go on, @P. We'll pray in rhythm for you." },
     { ID_FUZZ, 4, "Every soul over the Wall has a name. Learn them, @P. That is how peace begins." },
     { ID_FUZZ, 5, "Mother Nox and I are co-hosting the potluck. Hymns and bone soup. A fine pair." },
-    { ID_RIVET, 2, "Sparks are just tiny fireworks that bite. Don't be scared of 'em." },
     { ID_RIVET, 3, "Bring me scrap and I'll make your weapon sing. Or scream. Your call." },
     { ID_RIVET, 4, "Mum's forge still smells the same. Hot metal and burnt toast. Home." },
     { ID_RIVET, 5, "Teaching Hellvile kids AND Hillvile kids to weld. Safety goggles for all!" },
-    { ID_BLOOM, 1, "Hello. Sorry about my cold hands. It's a ghoul thing. I'm told it's soothing." },
-    { ID_BLOOM, 2, "Three patients today with purple tongues. I don't like this, @P." },
     { ID_BLOOM, 3, "Bandages, antiseptic, deep breaths. We'll get through this." },
     { ID_BLOOM, 4, "Hellvile's lungs need help after all that vapor. I'm opening a clinic over there." },
     { ID_BLOOM, 5, "Everyone's healthy, happy and dancing. Best day of my afterlife." },
-    { ID_VEX, 2, "Back for more? The first puff was free. The second costs... a little something." },
     { ID_VEX, 4, "...I lost everything. The shop, the Duke, the cloud. And I feel... lighter?" },
     { ID_VEX, 5, "Plain water vapes! No flavour! No demons! ...No customers, either." },
-    { ID_LULLA, 1, "The little ones are napping. Shh! Nap time is sacred time." },
-    { ID_LULLA, 2, "One of the kids found a vape pen at the playground. A VAPE PEN. At a DAYCARE." },
     { ID_LULLA, 5, "Hellvile kids and Hillvile kids in one daycare! The naps are chaos. I love it." },
-    { ID_STEAMY, 2, "The bath house is open again! Steam only. No vapor. NEVER vapor." },
     { ID_STEAMY, 4, "I'm opening a second bath house in Hellvile. Lava-heated! Very eco." },
     { ID_TALLYWORN, 4, "Day one of freedom. Then day two. I'm going to count these days forever." },
     { ID_TALLYWORN, 5, "I stopped counting days. Now I count friends. It's a much bigger number." },
@@ -249,14 +233,17 @@ const char *talk_cast_idle(int id)
 {
     int i, ch = story_chapter(), n = 0, pickn;
     const char *found[8];
+    static char idle[112];                             /* S2: Chapters 1-2 are pack text */
     if (ch == STORY_CH_DONE) ch = 5;
     if (story_map() == MAPID_PARK_UNITED) ch = 5;
+    if (ch <= 2) return ch12_idle(id, ch, idle, (int)sizeof(idle)) ? idle : NULL;
     for (i = 0; i < DOOMO_COUNTOF(cast_lines) && n < 8; i++)
         if (cast_lines[i].id == id && cast_lines[i].ch == ch) found[n++] = cast_lines[i].text;
     if (!n) {
-        /* nearest earlier chapter */
+        /* nearest earlier chapter (S2: Chapters 1-2 from the packs) */
         for (i = 0; i < DOOMO_COUNTOF(cast_lines) && n < 8; i++)
             if (cast_lines[i].id == id && cast_lines[i].ch < ch) found[0] = cast_lines[i].text, n = 1;
+        if (!n) return (ch12_idle(id, 2, idle, (int)sizeof(idle)) || ch12_idle(id, 1, idle, (int)sizeof(idle))) ? idle : NULL;
     }
     if (!n) return NULL;
     pickn = (int)((doomo_town.minute / 7 + doomo_town.day) % (uint32_t)n);
@@ -287,14 +274,18 @@ void talk_ambient(int id)
     DoomoResident *r = town_res(id);
     char a[160], b[160];
     const char *cast;
-    int before, newf = 0, fresh;
+    int before, newf = 0, fresh, castable;
     static uint16_t variant;
     if (!r || r->status == RES_EMPTY || id == DOOMO_PLAYER_ID) return;
     fresh = !talked_recently(id);
     before = r->level;
-    cast = roster_npc_of(id) >= 0 || (r->flags & RF_STORY_NPC) || id == ID_LULLA || id == ID_STEAMY ||
-           id == ID_TALLYWORN || id == ID_MOTHER_NOX || id == ID_SOOTKIN || id == ID_ANVIL ||
-           id == ID_LADY_SMOG || id == ID_HAZE ? talk_cast_idle(id) : NULL;
+    castable = roster_npc_of(id) >= 0 || (r->flags & RF_STORY_NPC) || id == ID_LULLA || id == ID_STEAMY ||
+               id == ID_TALLYWORN || id == ID_MOTHER_NOX || id == ID_SOOTKIN || id == ID_ANVIL ||
+               id == ID_LADY_SMOG || id == ID_HAZE;
+    cast = castable ? talk_cast_idle(id) : NULL;
+    if (!cast && story_chapter() >= 1 && story_chapter() <= STORY_CH2 &&   /* S2: Hattie, Grampy, the mascot */
+        ch12_idle(id, story_chapter(), a, (int)sizeof(a)))
+        cast = a;
     if (cast && r->status != RES_POSSESSED) {
         story_say(id, cast);
     } else {

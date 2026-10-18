@@ -4,19 +4,57 @@
  * too) and reads TEXT.BIN into its window instead (ps1/src/txtload.c). */
 #include "doomo/txt.h"
 
+extern const uint32_t doomo_text_pack_ch1[];
+extern const uint32_t doomo_text_pack_ch2[];
+extern const uint32_t doomo_text_pack_d1[];
+extern const uint32_t doomo_text_pack_ep11[];
+extern const uint32_t doomo_text_pack_ep12[];
+extern const uint32_t doomo_text_pack_ep13[];
+extern const uint32_t doomo_text_pack_ep14[];
+extern const uint32_t doomo_text_pack_ep15[];
+extern const uint32_t doomo_text_pack_ep16[];
+extern const uint32_t doomo_text_pack_ep21[];
+extern const uint32_t doomo_text_pack_ep22[];
+extern const uint32_t doomo_text_pack_ep23[];
+extern const uint32_t doomo_text_pack_ep24[];
+extern const uint32_t doomo_text_pack_ep25[];
+extern const uint32_t doomo_text_pack_ep26[];
+extern const uint32_t doomo_text_pack_ep27[];
+extern const uint32_t doomo_text_pack_f1[];
+extern const uint32_t doomo_text_pack_int1[];
 extern const uint32_t doomo_text_pack_legacy[];
 extern const uint32_t doomo_text_pack_legside[];
+extern const uint32_t doomo_text_pack_p0[];
 extern const uint32_t doomo_text_pack_vmtest[];
 
-static const uint32_t *const packs[3] = {
+static const uint32_t *const packs[22] = {
+    doomo_text_pack_ch1,
+    doomo_text_pack_ch2,
+    doomo_text_pack_d1,
+    doomo_text_pack_ep11,
+    doomo_text_pack_ep12,
+    doomo_text_pack_ep13,
+    doomo_text_pack_ep14,
+    doomo_text_pack_ep15,
+    doomo_text_pack_ep16,
+    doomo_text_pack_ep21,
+    doomo_text_pack_ep22,
+    doomo_text_pack_ep23,
+    doomo_text_pack_ep24,
+    doomo_text_pack_ep25,
+    doomo_text_pack_ep26,
+    doomo_text_pack_ep27,
+    doomo_text_pack_f1,
+    doomo_text_pack_int1,
     doomo_text_pack_legacy,
     doomo_text_pack_legside,
+    doomo_text_pack_p0,
     doomo_text_pack_vmtest,
 };
 
 const uint8_t *txt_plat_pack(int pack)
 {
-    if (pack < 0 || pack >= 3) return 0;
+    if (pack < 0 || pack >= 22) return 0;
     return (const uint8_t *)packs[pack];
 }
 

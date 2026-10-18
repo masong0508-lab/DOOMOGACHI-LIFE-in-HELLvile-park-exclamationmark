@@ -18,6 +18,7 @@
  * with its exact panel lengths until S5 ports it onto stages.
  */
 #include "story_int.h"
+#include "story_ch12.h"          /* S2: the Ch1-2 beat stages (cutscene_ch12.c) */
 #include "grumbleguts_gfx.h"
 #include "doomo/camfx.h"
 #include "doomo/tween.h"
@@ -211,6 +212,7 @@ int cutscene_showcase_script(int k, BeatScript *out);
 static int showcase_arg(int arg);
 static uint32_t ct, pt;            /* ticks in cutscene / in the current shot */
 static uint16_t shot_t0, cap_t0;   /* beat_now() when the shot / caption began */
+static int s2cut;                  /* S2: cutscene_ch12.c draws this one */
 
 static void cs_end(void)
 {
@@ -225,7 +227,15 @@ static void cs_end(void)
 static void cs_enter(int arg)
 {
     BeatScript s;
+    s2cut = 0;
     if (showcase_arg(arg)) return;
+    if (cut12_owns(arg)) {                   /* --- S2: P0, the Bottle, F1, the Ch1-2 vignettes --- */
+        s2cut = 1;
+        cut = CUT_CHAPTER1;
+        cap = -1;
+        cut12_enter(arg);
+        return;
+    }
     cut = (arg >= 0 && arg < CUT_COUNT) ? arg : CUT_CHAPTER1;
     panel = 0;
     cap = -1;
@@ -261,6 +271,7 @@ static void cs_event(const BeatEv *e)
 static void cs_update(void)
 {
     int r, guard = 64;
+    if (s2cut) { if (cut12_update()) cs_end(); return; }   /* S2 */
     camfx_tick();                            /* post-FX clock first */
     ct++;
     if (btn_pressed(BTN_START)) { audio_sfx(SFX_CANCEL); beat_skip(); cs_end(); return; }
@@ -966,6 +977,7 @@ static void draw_sc_drop(void)
 static void cs_draw(void)
 {
     if (plat_draw_skipped()) return;
+    if (s2cut) { cut12_draw(); return; }      /* S2 */
     if (showcase_arg(-1)) {
         if (showcase == 0) draw_sc_pet();
         else if (showcase == 1) draw_sc_census();

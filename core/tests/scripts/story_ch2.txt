@@ -1,0 +1,115 @@
+# assert-no-stubs
+# Story Mode chapter 2 (S2; story_final.md sec.11, core/data/story/ch2/):
+# Ep 2.1's opening, Ep 2.2's clue board, and the chapter's beat stages
+# (core/src/cutscene_ch12.c) pushed straight from their beats: Sprinklepop's
+# rite (CUTV_RITE_FAIL = 289), the Bottle (CUT_BOTTLE = 13), Flashback F1
+# (CUT_F1 = 14) and "The Gate Cracks" (CUTV_GATE_CRACKS = 290).
+# Ep 2.1 "Grand Opening": the mornings start by themselves
+scene STORY 111
+wait 30
+shot ch2_mornings
+press A
+wait 10
+press A
+wait 10
+press A
+wait 20
+# Ep 2.2 "Grape": the clue hunt (stage 1)
+scene STORY 112
+wait 20
+press A
+wait 10
+shot ch2_bloom_target
+# Ep 2.5: THE POWER OF CUDDLES COMPELS YOU
+scene STORY 115
+wait 20
+push CUTSCENE 289
+wait 20
+shot rite_power
+wait 80
+shot rite_fail1
+wait 25
+shot rite_fail3
+wait 25
+shot rite_soul_lost
+wait 25
+shot rite_soul_map
+wait 30
+press A
+wait 20
+# the Bottle
+push CUTSCENE 13
+wait 30
+shot bottle_up
+wait 10
+press A
+wait 30
+shot bottle_close
+wait 90
+shot bottle_iris
+wait 60
+press A
+wait 20
+# Flashback F1, in sepia (the palette lerp: GBA and PS1)
+push CUTSCENE 14
+wait 30
+shot f1_forge
+wait 10
+press A
+wait 30
+shot f1_fountain
+wait 10
+press A
+wait 30
+shot f1_bow
+wait 10
+press A
+wait 20
+shot f1_now
+wait 30
+press A
+wait 20
+# Ep 2.7: The Gate Cracks (Grumbleguts' first scene)
+scene STORY 117
+wait 20
+push CUTSCENE 290
+wait 30
+shot gate_meal
+wait 10
+press A
+wait 30
+shot gate_forklift
+wait 10
+press A
+wait 30
+shot gate_gut
+wait 10
+press A
+wait 35
+shot gate_spring
+wait 30
+press A
+wait 25
+shot gate_belt
+wait 20
+press A
+wait 3
+shot gate_air
+wait 8
+shot gate_flop
+wait 40
+press A
+wait 15
+shot gate_stuck
+wait 50
+press A
+wait 30
+shot gate_appetiser
+wait 10
+press A
+wait 30
+shot gate_vapula
+wait 10
+press A
+wait 30
+shot ch2_after_gate

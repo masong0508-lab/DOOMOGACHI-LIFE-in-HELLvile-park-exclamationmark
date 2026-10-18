@@ -7,9 +7,13 @@
  * line can be decoded from any scene (the overworld, a cutscene, combat's
  * HUD objective, the house) without the story overlay group:
  *
- *   slot E  12 KB  the episode / chapter-common / Feast / legacy pack
+ *   slot E  12 KB  the episode / Feast / legacy pack (and a chapter-common
+ *                  pack too big for slot C)
+ *   slot C   2 KB  the chapter-common pack (objectives, idle lines, the
+ *                  wrongness captions: read while an episode runs, so they
+ *                  must not evict it; S2 content: ch1 1.6 KB, ch2 1.2 KB)
  *   slot S   8 KB  the side pack (until H3's overlay-tail window lands,
- *                  SPEC C5: then it moves into the last 14 KB of the
+ *                  SPEC C5: then S and C move into the last 14 KB of the
  *                  overlay slot and this window shrinks to slot E)
  *   dir    0.5 KB  sector + size of every pack (from txt_dict.c's sizes)
  *
@@ -29,10 +33,11 @@
 #define SECTOR    2048
 #define SLOT_E    (12 * 1024)
 #define SLOT_S    (8 * 1024)
+#define SLOT_C    (2 * 1024)
 #define TXT_MAGIC 0x54584554u           /* "TEXT" */
 
-static uint32_t win_e[SLOT_E / 4], win_s[SLOT_S / 4];
-static int16_t  live[2] = { -1, -1 };    /* pack in slot E / S */
+static uint32_t win_e[SLOT_E / 4], win_s[SLOT_S / 4], win_c[SLOT_C / 4];
+static int16_t  live[3] = { -1, -1, -1 };    /* pack in slot E / S / C */
 static int      s_lba = -1;              /* TEXT.BIN, -1 = not found yet, -2 = missing */
 static uint16_t s_sector[TXT_PACK_MAX];  /* first sector of each pack */
 
@@ -84,6 +89,7 @@ const uint8_t *txt_plat_pack(int pack)
     if (pack < 0) return NULL;
     if (live[0] == pack) return (const uint8_t *)win_e;
     if (live[1] == pack) return (const uint8_t *)win_s;
+    if (live[2] == pack) return (const uint8_t *)win_c;
     return NULL;
 }
 
@@ -94,16 +100,17 @@ int txt_plat_load(int pack)
     if (pack < 0 || pack >= (int)doomo_txt_npacks) return 0;
     if (txt_plat_pack(pack)) return 1;
     if (!find_text_bin()) return 0;
-    s = doomo_txt_pack_kinds[pack] == TXT_KIND_SIDE;
-    cap = s ? SLOT_S : SLOT_E;
     n = (doomo_txt_pack_bytes[pack] + SECTOR - 1) / SECTOR;
+    s = doomo_txt_pack_kinds[pack] == TXT_KIND_SIDE ? 1 :
+        (doomo_txt_pack_kinds[pack] == TXT_KIND_COMMON && n * SECTOR <= SLOT_C) ? 2 : 0;
+    cap = s == 1 ? SLOT_S : s == 2 ? SLOT_C : SLOT_E;
     if (n * SECTOR > cap) {
         dbg("txt: pack %s does not fit its slot\n", doomo_txt_pack_names[pack]);
         return 0;
     }
     t0 = timer_us();
     live[s] = -1;
-    if (!read_sectors(s_lba + s_sector[pack], n, s ? win_s : win_e)) {
+    if (!read_sectors(s_lba + s_sector[pack], n, s == 1 ? win_s : s == 2 ? win_c : win_e)) {
         dbg("txt: read error, pack %s\n", doomo_txt_pack_names[pack]);
         return 0;
     }

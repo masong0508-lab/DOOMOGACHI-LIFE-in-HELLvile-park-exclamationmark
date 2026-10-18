@@ -26,7 +26,10 @@ The timing half (beats, tweens, camera effects, dialogue codes) is
 | `core/src/story_mg.c` | `SCENE_STORY_MG`, the side-minigame shell | `storymg` group |
 | `core/src/story_timing.c` | `SCENE_STORY_TIMING`, the comic-timing press minigame | `storymg` group |
 | `core/src/story_side.c` | the 49 old quests and the walker over the new S100-S217 rows | story group |
-| `core/src/story_script.c` | the legacy port's beat logic (C glue around the `legacy` pack's scripts) | story group |
+| `core/src/story_script.c` | the beat logic for Chapters 3-4 (the legacy port; Ch1-2 delegate to `story_ch12.c`) | story group |
+| `core/src/story_ch12.c`, `story_ch12.h` | Chapters 1-2: the glue between the legacy beat spine and the `ch1/`, `ch2/` packs (cast, doors, talks, objectives, the `CB_C12` actions, the wrongness rows, idle lines) | story group |
+| `core/src/cutscene_ch12.c` | the Ch1-2 beat stages: P0, the Bottle, F1 and the `CUTV_*` vignettes (fog, rite, gate) | cutscene group |
+| `core/src/mml_mingle.c`, `mml_heehee_jingle.c` | `SONG_MINGLE`, `SONG_HEEHEE_JINGLE` | resident (`audio_songs`) |
 | `core/src/dream.c` | `SCENE_DREAM`'s scripted mode (the story's own dreams, D1 / D2) | dream group |
 
 Names follow SPEC R4: resident files never match an overlay group's regex
@@ -273,14 +276,57 @@ letters. No stats change and the dream journal is not written.
   contains it), `expect-flag F [V]`, `story-fp [HEX]`. The GBA / PS1
   harnesses get the same commands from H2 / H3 (SPEC C2).
 
+## Chapters 1-2 (S2 content)
+
+P0, Ep 1.1-1.6, Interlude I, Ep 2.1-2.7, F1, D1 and the Bottle
+(story_final.md §9-11) are VM content in `core/data/story/ch1/` and `ch2/`:
+one episode pack each (`ep11` .. `ep27`, ≤ 2 KB), `p0`, `int1`, `f1`,
+`d1`, and a chapter-common pack per chapter (`ch1`, `ch2`: the HUD
+objectives, the cast's idle lines, the W1-W15 wrongness captions and
+scripts, the `@possessor` / `@armed` rows of TALLYWORN and WHEEZLE). About
+22 KB packed in all.
+
+**The spine.** The 18 legacy beats `BEAT_C1_ARRIVE` .. `BEAT_C2_CELLAR`
+stay the saved spine (old saves and `test_story.c` keep working): each
+holds an episode or two, and `quest_step` is the stage inside the beat.
+`story_set_beat` marks every episode that comes before the beat's episode
+done (`STRY` episode bits), so the debug jumps, the gallery and the
+`expect-flag` checks agree. `story_script.c` hands every Ch1-2 beat to
+`story_ch12.c` at the top of each function (`ch12_beat(b)`), which answers
+from tables: who stands where (`cast_rows`), whose talk runs which script
+(`npc_rows`: a flavour line lets a side quest's business go first; a
+door is its keeper's plot line), what the HUD says, where its arrow
+points, what starts by itself on an idle overworld (`script_auto` from
+`story_vm_pump`: P0 before the first day, the hatching, the thumping, the
+interlude, the Ch2 mornings). Scripts change the state with VM ops and the
+`native CB_C12 C12A_*` actions (`story_ch12.h`).
+
+**The beat stages.** `story_push_cutscene(CUT_P0 | CUT_BOTTLE | CUT_F1 |
+CUTV_FOG | CUTV_RITE_FAIL | CUTV_GATE_CRACKS)` (the `CUTV_*` args
+0x120.. are in `push_args.txt`) opens `SCENE_CUTSCENE`, whose S2 hunk hands
+them to `cutscene_ch12.c`: the beat script comes out of the episode's pack
+(`txt_beat`), the captions are text ids, the host kinds SHOT, CAPTION,
+POP (an object and its `TWT_*` table), INSERT (3-4 frames drawn instead of
+the stage) and IRIS are handled there, and the stage draws from the shot,
+the shot's age, the caption count, the pops and `beat_age(L_PUNCH)`. The
+scenery is tables of prims in stage units (s px, s = 1 or 2) around an
+origin, because on the PS1 the file sits in the cutscene overlay and that
+group is the slot's size class. Grumbleguts is drawn by `grumbleguts_gfx`
+as built (cartoon-modest; his lines are the director's notes').
+
+**The PS1 text window** has a third resident slot for the chapter-common
+pack (2 KB, `txtload.c`): objectives, idle lines and wrongness captions are
+read while an episode runs and must not evict it. A common pack too big
+for it falls back to the episode slot. An episode that `call`s into
+another pack (D1, F1) evicts the episode for that span; the VM reloads it
+on return (`bind`, one ~0.1 s read).
+
 ## The legacy port
 
-The 28 old beats still drive Chapters 1-4: their logic is C glue in
-`story_script.c`, their words are scripts and strings in the `legacy` pack
-(`legacy_ch12.dsc`, and `legacy_ch34.dsc`, which S3 replaces), and the 49
-old side quests' text is the `legside` pack. Each chapter's new content
-replaces its slice (SF §15.12); `test_story.c`'s full playthrough runs on
-the port meanwhile.
+The old beats of Chapters 3-4 still run as C glue in `story_script.c`
+around the `legacy` pack (`legacy_ch34.dsc`, which S3 replaces); the 49 old
+side quests' text is the `legside` pack. `legacy_ch12.dsc` is gone: Ch1-2
+are the packs above.
 
 ## Tests
 
@@ -291,9 +337,17 @@ the port meanwhile.
 gates bite once a chapter has episode packs with declared minutes),
 `test_story.c` (the playthrough, debug jumps to all 66 ids, `STRY` at every
 episode boundary, Go inside, the reload), `test_exorcism_authored.c` (the
-re-arm). Runner: `story_engine.txt` (the timing game, the minigame shell,
-the scripted dream, the Trophies tab, the story checks; both resolutions,
-no stubs).
+re-arm), `test_story_ch12.c` (every beat stage plays to its end and START
+skips it, every Ch1-2 beat has its pack, objective and target, the
+wrongness rows and idle lines decode, the two songs are real). Runner:
+`story_engine.txt` (the timing game, the minigame shell, the scripted
+dream, the Trophies tab, the story checks; both resolutions, no stubs),
+`story_p0.txt` (the prologue, shot by shot), `story_ch1.txt` (P0 skipped,
+the card, the arrival, Ep 1.1, the quest log, the fog), `story_int1.txt`
+(the interlude to the Ch2 card), `story_ch2.txt` (Ep 2.1-2.2 and every Ch2
+stage). GBA: `gba/harness/scripts/story_ch1.txt` (`make -C gba
+test-story`, part of `test`) measures the stages' fps: P0 23-30, the fog
+30, the gate 24 (gate: ≥ 15).
 
 ## Memory
 
@@ -320,3 +374,13 @@ shells are their own `storymg` group (6 KB). Levers, in order: Ch1-2
 content replaces `story_script.c`'s legacy glue (~12 KB) and moves
 `story_talk.c`'s chatter into packs (~11 KB); `credits.c` as its own group
 only frees 3 KB (most of it is shared with the overworld).
+
+**Chapters 1-2 content (S2), measured against 9fd4327.** GBA: ROM +38 KB
+(3,115,480 B), EWRAM 7,104 -> 6,712 B free (the HUD objective 76 B, the
+stage state 164 B, the idle line 112 B; IWRAM unchanged, 6,320 B of
+stack). PS1: 108 -> 103 KB below the stack top (the common slot 2 KB, the
+two songs' MML, the stage and idle buffers); the cutscene group 98,912 ->
+118,444 B (the stages: 20 KB; still under combat's 118,896 B, so the slot
+stays 116 KB); the story group 101,748 -> 104,640 B (`story_ch12.c` 7 KB in,
+`story_script.c` 3 KB out), about 200 B over C5's tail line (slot - 14 KB),
+which only matters once H3's `ovl_tail()` lands.

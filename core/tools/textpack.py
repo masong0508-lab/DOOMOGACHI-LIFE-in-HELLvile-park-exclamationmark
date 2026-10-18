@@ -60,6 +60,9 @@ DICT_MAX = 256
 MAX_CODE_LEN = 16
 TXT_NONE = 0xFFFF
 SECTOR = 2048
+# the authored possessor rows exorcism.c's weak table holds (SPEC S3 M1):
+# possess_table.c defines the strong table once .dsc blocks cover them all
+POSSESS_ROWS_FULL = 12
 
 # the dialogue box (ui_dialog.c): 240x160 -> 3 lines of 28 characters
 BOX_LINES_240, BOX_CHARS_240 = 3, 28
@@ -94,7 +97,8 @@ HEADERS = [
     "story.h", "story_vm.h", "map.h", "palette.h", "txt.h", "scenes.h", "tween.h", "unlocks.h",
     "unlock_ids.h", "home.h", "house_api.h", "exorcism.h",
 ]
-EXTRA_HEADERS = [os.path.join(CORE, "src", "story_int.h"), os.path.join(CORE, "src", "overworld_int.h")]
+EXTRA_HEADERS = [os.path.join(CORE, "src", "story_int.h"), os.path.join(CORE, "src", "overworld_int.h"),
+                 os.path.join(CORE, "src", "story_ch12.h")]
 
 
 def strip_comments(s):
@@ -130,7 +134,7 @@ def load_symbols():
         if not os.path.exists(h):
             continue
         src = strip_comments(open(h).read())
-        for m in re.finditer(r"#define\s+([A-Z_][A-Z0-9_]*)\s+([^\n(][^\n]*)", src):
+        for m in re.finditer(r"#define[ \t]+([A-Z_][A-Z0-9_]*)[ \t]+([^\n(][^\n]*)", src):
             v = c_eval(m.group(2), syms)
             if v is not None:
                 syms[m.group(1)] = v
@@ -162,7 +166,10 @@ WHO_IDS = {"mayor": "ID_MAYOR", "nana": "ID_NANA", "rivet": "ID_RIVET", "pip": "
            "lulla": "ID_LULLA", "hattie": "ID_HATTIE", "grampy": "ID_GRAMPY", "sootkin": "ID_SOOTKIN",
            "anvil": "ID_ANVIL", "smog": "ID_LADY_SMOG", "nox": "ID_MOTHER_NOX",
            "tallyworn": "ID_TALLYWORN", "haze": "ID_HAZE", "grumble": "ROSTER_ID_GRUMBLEGUTS",
-           "fizz": "69"}
+           "fizz": "69",
+           # S2 content (Chapters 1-2): more of the cast by name (roster ids)
+           "sandwichy": "4", "bonejangles": "5", "sprinklepop": "81", "ribbonetta": "83",
+           "mascotty": "106", "cantor": "426"}
 LINE_FLAGS = {"DEADPAN": 1, "PUNCH": 2, "PILL": 4, "SHOUT": 8, "HEART": 16, "GURGLE": 32}
 PEND = {"creator": "PEND_CREATOR", "pet": "PEND_PET", "exo_practice": "PEND_EXO_PRACTICE",
         "exorcism": "PEND_EXORCISM", "workshop": "PEND_WORKSHOP", "combat": "PEND_COMBAT",
@@ -244,7 +251,8 @@ def check_text(s, where, pack):
         die(where, "a line longer than 199 characters does not fit the dialogue entry")
     if not pack.legacy:
         for page in visible(s).split("//"):
-            lines = wrap_lines(page.replace("/", "\n"), BOX_CHARS_240)
+            # ui_dialog.c parse_text: '/' is a line break and eats the spaces around it
+            lines = wrap_lines(re.sub(r" */ *", "\n", page), BOX_CHARS_240)
             if lines > BOX_LINES_240:
                 die(where, "a page needs %d lines at 240x160 (max %d x %d): %r" %
                     (lines, BOX_LINES_240, BOX_CHARS_240, page))
@@ -631,6 +639,8 @@ class Compiler:
                 need(1)
                 cb = self.sym(words[0], where, "CB_")
                 arg = self.arg_value(words[1], where) if len(words) > 1 else 0
+                if len(words) > 2:                 # native CB ACTION PARAM: the param in the high byte
+                    arg = (arg & 0xFF) | ((self.arg_value(words[2], where) & 0xFF) << 8)
                 if not 0 < cb < 256:
                     die(where, "native callback ids are 1..255")
                 ops.append(["OP_NATIVE", cb, arg & 0xFFFF])
@@ -697,9 +707,11 @@ class Compiler:
                 need(2)
                 who = self.who(words[0], where)
                 act = self.sym(words[1], where, "NACT_")
-                arg = int(words[2]) if len(words) > 2 else 0
+                arg = self.arg_value(words[2], where) if len(words) > 2 else 0
                 ops.append(["OP_NPC", W_BIG, act | ((arg & 0xFF) << 8)])
                 ops.append(["OP_DATA", D_WHO, who])
+                if arg & ~0xFF:                    # (S2) the full 16-bit arg: a cell, a resident, brad | frames << 8
+                    ops.append(["OP_DATA", D_ARG, arg & 0xFFFF])
             elif cmd == "cam":
                 need(1)
                 ops.append(["OP_CAM", self.sym(words[0], where, "CAM_"), self.arg_value(words[1], where) if len(words) > 1 else 0])
@@ -709,8 +721,11 @@ class Compiler:
             elif cmd == "home":
                 need(1)
                 sub = self.sym(words[0], where, "HOME_")
-                arg = self.arg_value(words[1], where) if len(words) > 1 else 0
-                ops.append(["OP_HOME", sub, arg & 0xFFFF])
+                if len(words) > 1 and words[1].startswith("furn="):     # (S2) home GRANT|PLACE_GIFT furn=KEY
+                    ops.append(["OP_HOME", sub, ("furn", words[1][5:])])
+                else:
+                    arg = self.arg_value(words[1], where) if len(words) > 1 else 0
+                    ops.append(["OP_HOME", sub, arg & 0xFFFF])
             elif cmd == "quest":
                 need(2)
                 st = {"offered": 1, "active": 2, "done": 3}.get(words[1].lower())
@@ -955,7 +970,7 @@ class Compiler:
                     ev("BOP_NOBUTTON")
                 elif cmd == "npc":
                     who = self.who(w[0], where)
-                    ev("BOP_NPC", who, self.sym(w[1], where, "NACT_") | ((int(w[2]) if len(w) > 2 else 0) << 8))
+                    ev("BOP_NPC", who, self.sym(w[1], where, "NACT_") | ((self.arg_value(w[2], where) & 0xFF if len(w) > 2 else 0) << 8))
                 elif cmd == "cam":
                     ev("BOP_CAM", self.sym(w[0], where, "CAM_"), self.arg_value(w[1], where) if len(w) > 1 else 0)
                 elif cmd == "tint":
@@ -1506,17 +1521,43 @@ def main(argv):
         f.write("};\n")
     with open(os.path.join(gen, "possess_table.c"), "w") as f:
         f.write(head)
-        f.write("/* Authored possessors (the @possessor blocks, in file order: the row index\n"
-                " * is the true-name id the VM's POSSESS op carries; exorcism.h\n"
-                " * DoomoPossessor, S3). With no blocks this file defines no table and\n"
-                " * exorcism.c's weak default rows hold. */\n")
+        f.write("/* Authored possessors (the @possessor blocks, placed by row=N: the row\n"
+                " * index is the true-name id the VM's POSSESS op carries; exorcism.h\n"
+                " * DoomoPossessor, S3). Until the blocks cover every row this file\n"
+                " * defines no table and exorcism.c's weak default rows hold; the blocks\n"
+                " * written so far are doomo_possess_dsc[] (tests). */\n")
         f.write("#include \"doomo/doomo.h\"\n#include \"doomo/exorcism.h\"\n#include \"doomo/story_vm.h\"\n\n")
-        if comp.possessors:
-            f.write("static const DoomoPossessor rows[%d] = {\n" % len(comp.possessors))
-            for where, a, pack in comp.possessors:
-                f.write(possessor_row(comp, where, a))
+        # (S2) rows are placed by row=N (default: the next index in file order).
+        # The table only becomes strong (replacing exorcism.c's weak default
+        # rows) once the blocks cover rows 0..POSSESS_ROWS_FULL-1 without a
+        # gap: until then every package's rows live in the defaults and the
+        # blocks written so far are emitted as doomo_possess_dsc[] for the
+        # test that holds them equal to the default rows (test_story.c).
+        placed = {}
+        nxt = 0
+        for where, a, pack in comp.possessors:
+            r = int(a["row"]) if "row" in a else nxt
+            if r in placed:
+                die(where, "@possessor row=%d defined twice" % r)
+            placed[r] = (where, a)
+            nxt = r + 1
+        order = sorted(placed)
+        full = order and order == list(range(len(order))) and len(order) >= POSSESS_ROWS_FULL
+        if full:
+            f.write("static const DoomoPossessor rows[%d] = {\n" % len(order))
+            for r in order:
+                f.write(possessor_row(comp, placed[r][0], placed[r][1]))
             f.write("};\nconst DoomoPossessor *const doomo_possess_table = rows;\n"
-                    "const uint16_t doomo_possess_count = %d;\n\n" % len(comp.possessors))
+                    "const uint16_t doomo_possess_count = %d;\n\n" % len(order))
+        f.write("/* the @possessor blocks written so far and their rows (S2: tests) */\n")
+        f.write("const DoomoPossessor doomo_possess_dsc[%d] = {\n" % max(1, len(order)))
+        for r in order:
+            f.write(possessor_row(comp, placed[r][0], placed[r][1]))
+        if not order:
+            f.write("    { 0, { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, 0xFFFFu, 0xFFFFu, 0, 0, 0xFF, 0xFF, 0, 0, 0, 0 }\n")
+        f.write("};\nconst uint8_t doomo_possess_dsc_row[%d] = { %s };\n" %
+                (max(1, len(order)), ", ".join(str(r) for r in order) or "0"))
+        f.write("const uint16_t doomo_possess_dsc_count = %d;\n\n" % len(order))
         armed = armed_rows(comp)
         f.write("/* @armed: the beats in which a host's authored possession is the story's\n"
                 " * (story.c story_rearm_possessors re-arms them after a load). */\n")

@@ -1,0 +1,42 @@
+# assert-no-stubs
+# PROLOGUE P0 "The Egg Crossing" (S2; story_final.md sec.9): the crayon
+# cutscene before the first day (CUT_P0, ch1/p0.dsc, core/src/cutscene_ch12.c).
+# A new story plays it by itself; each shot waits for A (accepted 12 frames
+# after the shot's last beat) or moves on alone. Then the Chapter 1 card.
+scene STORY 0
+wait 30
+expect-scene CUTSCENE
+shot p0_potluck
+press A
+wait 45
+shot p0_everybody
+press A
+wait 30
+shot p0_fireworks
+wait 35
+shot p0_slipped
+wait 12
+press A
+wait 30
+shot p0_south
+wait 15
+press A
+wait 30
+shot p0_wall
+wait 10
+press A
+wait 20
+shot p0_boats
+wait 30
+shot p0_cookies
+wait 27
+press A
+wait 20
+shot p0_egg_iris
+wait 20
+shot p0_title
+wait 20
+press A
+wait 30
+expect-scene CUTSCENE
+shot p0_card

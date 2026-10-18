@@ -11,6 +11,7 @@
 #include "doomo/txt.h"
 #include "doomo/house_api.h"
 #include "doomo/unlock_ids.h"
+#include "story_ch12.h"       /* S2: Chapters 1-2 as VM content */
 
 StoryPending story_pending;
 static uint8_t autowin;
@@ -121,6 +122,11 @@ void story_set_beat(int beat)
     s->chapter = (uint8_t)ch;
     s->quest = (uint8_t)beat;
     s->quest_step = 0;
+    {   /* (S2) every episode / special before this beat's episode is done */
+        int o = story_episode_order(beat), e;
+        for (e = BEAT_P0; e < BEAT_ALL_COUNT; e++)
+            if (story_episode_order(e) < o) story_episode_set_done(e, 1);
+    }
     script_enter_beat(beat);
     story_objective_refresh();
 }
@@ -380,7 +386,7 @@ static void host_ext(const StoryOp *o)
     case OP_UNPOSSESS: exorcism_unpossess(who); break;
     case OP_TELEPORT: if (ow_active()) ow_enter_map(o->a, o->b >> 8, o->b & 0xFF); break;
     case OP_CAST: if (ow_active()) ownpc_cast(who, o->b, vm_ext_arg()); break;
-    case OP_NPC: if (ow_active()) ownpc_act(who, o->b & 0xFF, o->b >> 8); break;
+    case OP_NPC: if (ow_active()) ownpc_act(who, o->b & 0xFF, vm_ext_data(VMD_ARG, o->b >> 8)); break;
     case OP_CAM: if (ow_active()) ow_cam(o->a, (int16_t)o->b); break;
     case OP_BEAT: {
         BeatScript bs;
@@ -418,15 +424,19 @@ void story_vm_pump(void)
             vm_cb = 0;
             cb_attach(cb);
             cb_mark(vm_var(0));
-            if (convq_n) {
-                int i;
-                unsigned scr = convq[0].scr;
-                int c = convq[0].cb, a = convq[0].arg;
-                for (i = 1; i < convq_n; i++) convq[i - 1] = convq[i];
-                convq_n--;
-                conv_start(scr, c, a);
-            }
         }
+        if (r == VM_IDLE && convq_n) {      /* (S2) also after a script the overworld started */
+            int i;
+            unsigned scr = convq[0].scr;
+            int c = convq[0].cb, a = convq[0].arg;
+            for (i = 1; i < convq_n; i++) convq[i - 1] = convq[i];
+            convq_n--;
+            conv_start(scr, c, a);
+            return;
+        }
+        if (r == VM_IDLE && !cbq_n && !ui_dialog_active() && story_pending.kind == PEND_NONE &&
+            scene_top() == &SCENE_STORY && ow_active())
+            script_auto();                  /* (S2) a moment that starts by itself */
         return;
     }
 }
@@ -460,10 +470,14 @@ void story_conv(unsigned scr, int cb) { story_conv_arg(scr, cb, 0); }
  * boundary that already has a fade; GBA / native: nothing to do). */
 void story_text_prefetch(void)
 {
-    int p, n = txt_pack_count();
+    int p, n = txt_pack_count(), b = doomo_town.story.quest, ch12 = ch12_beat(b) && doomo_town.story.chapter != STORY_CH_NONE;
     for (p = 0; p < n; p++) {
         int k = txt_pack_kind(p);
-        if (k == TXT_KIND_LEGACY || k == TXT_KIND_SIDE) txt_pack_load(p);
+        if (k == TXT_KIND_SIDE || (k == TXT_KIND_LEGACY && !ch12)) txt_pack_load(p);
+    }
+    if (ch12) {                         /* (S2) the chapter's common pack and the beat's episode */
+        txt_pack_load(story_chapter() >= STORY_CH2 ? PACK_CH2 : PACK_CH1);
+        if (ch12_pack(b) >= 0) txt_pack_load(ch12_pack(b));
     }
 }
 
@@ -538,7 +552,10 @@ void story_push_scene(const DoomoScene *s, int arg, int pend, int ctx, int extra
     set_pending(pend, ctx, arg, extra);
     ow_sync_to_save();
     if (autowin && (pend == PEND_PET || pend == PEND_WORKSHOP || pend == PEND_EXO_PRACTICE ||
-                    pend == PEND_TIMING || pend == PEND_MINIGAME_SIDE)) {
+                    pend == PEND_TIMING || pend == PEND_MINIGAME_SIDE ||
+                    /* a script's house beat, dream or show; "Go inside" still opens the house */
+                    (ctx == CTX_VM && (pend == PEND_HOME || pend == PEND_DREAM ||
+                                       pend == PEND_COOKING || pend == PEND_CONCERT)))) {
         if (pend == PEND_PET && !pet_exists()) pet_new("Doomo");
         dispatch_result();
         return;
@@ -814,6 +831,7 @@ static void debug_jump_episode(int ep)
         if (story_episode_order(b) <= o) legacy = b;
     story_debug_jump(story_beat_chapter(legacy), legacy);
     for (e = BEAT_P0; e < BEAT_ALL_COUNT; e++) story_episode_set_done(e, story_episode_order(e) < o);
+    if (ch12_beat(legacy)) ch12_debug_episode(ep);     /* (S2) the stage inside the beat */
 }
 
 void story_debug_jump(int chapter, int beat)

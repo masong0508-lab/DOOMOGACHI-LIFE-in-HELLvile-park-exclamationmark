@@ -1,0 +1,54 @@
+# story_ch1.txt - Story Mode Chapter 1 on the GBA game ROM (owner: S2;
+# docs/design/story/SPEC.md sec.7 S2, C12): the crayon prologue P0 with its
+# fps, the chapter card and the arrival, Ep 1.1 at the fountain, and Ep 1.6's
+# Peek at the fog (CUTV_FOG); plus the heaviest Ch1-2 stage, "The Gate
+# Cracks" (Grumbleguts). Gates: beat-stage cutscenes >= 15 fps (SPEC C12).
+wait 60
+expect-log doomo: init
+scene STORY 0
+wait 30
+fps start
+wait 120
+shot story01_p0_potluck
+fps P0 potluck
+press A
+wait 90
+shot story02_p0_everybody
+fps P0 bridge
+press A
+wait 60
+shot story03_p0_fireworks
+fps P0 fireworks
+press START
+wait 60
+shot story04_card
+press A
+wait 60
+shot story05_arrival
+press START
+wait 40
+shot story06_overworld
+fps overworld
+scene STORY 110
+wait 40
+push CUTSCENE 288
+wait 20
+fps start
+wait 40
+shot story07_fog_eyes
+fps CUTV_FOG
+wait 46
+shot story08_fog_mayor
+press START
+wait 30
+scene STORY 117
+wait 40
+push CUTSCENE 290
+wait 20
+fps start
+wait 60
+shot story09_gate_meal
+fps CUTV_GATE_CRACKS
+press START
+wait 30
+shot story10_back

@@ -9,6 +9,7 @@ combat       0..12          # MAPID_* (map.h)
 exorcism     0..999         # resident id (scenes.h)
 exo_practice 0              # the plush dummy (exorcism.h)
 cutscene     0..23          # CUT_* incl. the S0 additions (story.h)
+cutscene     0x120..0x12F   # CUTV_*: S2's Ch1-2 vignettes (core/src/story_ch12.h, cutscene_ch12.c)
 pet          0              # scenes.h
 workshop     0              # scenes.h
 creator      -3             # the protagonist (scenes.h)

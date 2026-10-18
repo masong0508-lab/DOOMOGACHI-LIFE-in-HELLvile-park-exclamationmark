@@ -351,6 +351,12 @@ int vm_tick(void)
 {
     int slice = VM_SLICE;
     vm.ext.op = 0;
+    /* (S2) the script's pack left the window (PS1: a cutscene or the HUD read
+     * another pack into the slot): read it back before the next op */
+    if (vm.state != ST_IDLE && !txt_pack_is_live(TXT_PACK(vm.script)) && !bind(vm.script, vm.pc)) {
+        vm_stop();
+        return VM_IDLE;
+    }
     for (;;) {
         const StoryOp *o;
         uint16_t pc, nx;

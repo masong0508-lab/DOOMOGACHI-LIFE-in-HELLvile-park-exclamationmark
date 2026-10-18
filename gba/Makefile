@@ -165,6 +165,7 @@ test:
 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile test-save
 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile test-game
 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile test-coresave
+	@$(MAKE) --no-print-directory -f $(GBA)/Makefile test-story
 
 test-et: harness
 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile engine-test
@@ -194,6 +195,17 @@ test-coresave: harness
 	    --save $(BUILD)/coresave.sav --quiet
 	$(HARNESS) $(BUILD)/doomogachi.gba --script $(GBA)/harness/scripts/coresave2.txt \
 	    --save $(BUILD)/coresave.sav --quiet
+
+# --- S2 (for H2, SPEC sec.12): the story's scripts, every
+# harness/scripts/story_*.txt (Ch1: P0, Ep 1.1, Ep 1.6, cutscene fps) ---
+test-story: harness
+	@$(MAKE) --no-print-directory -f $(GBA)/Makefile rom ENGINE_TEST=0
+	@mkdir -p $(SHOTS)/story
+	@for s in $(GBA)/harness/scripts/story_*.txt; do \
+	    echo "test-story: $$s"; \
+	    $(HARNESS) $(BUILD)/doomogachi.gba --script $$s --shots $(SHOTS)/story --quiet || exit 1; \
+	done
+# --- end S2 ---
 
 sizes: $(ELF)
 	$(SIZE) -A $(ELF)

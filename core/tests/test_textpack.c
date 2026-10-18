@@ -17,8 +17,8 @@ TEST(textpack_decodes_known_lines)
     CHECK_STR(buf, "Say hi to Mayor Giggs by the fountain");
     CHECK(txt_get(TXT_VMT_HELLO, buf, (int)sizeof(buf)) > 0);
     CHECK_STR(buf, "Hello, @P! You have @1 hats.");
-    CHECK(txt_get(TXT_LS_9, buf, (int)sizeof(buf)) > 0);
-    CHECK(strcmp(buf, "\"BACK IN 5 MINUTES - VEX\". The sign has said that for an hour.") == 0);
+    CHECK(txt_get(TXT_VEX_PA1, buf, (int)sizeof(buf)) > 0);           /* ch2/ep27.dsc */
+    CHECK(strcmp(buf, "VEX: Customer satisfaction is our TOP priority!") == 0);
     /* a short buffer truncates, always terminated */
     CHECK_EQ(txt_get(TXT_OBJ_C1_MAYOR, buf, 8), 7);
     CHECK_STR(buf, "Say hi ");
@@ -74,8 +74,14 @@ TEST(story_text_fits_the_box)
                 const char *q = s;
                 while (*q && !(q[0] == '/' && q[1] == '/')) {
                     if (*q == '{') { while (*q && *q != '}') q++; if (*q) q++; continue; }
-                    page[k++] = *q == '/' ? '\n' : *q;
-                    q++;
+                    if (*q == '/') {                       /* as ui_dialog.c: spaces around '/' go */
+                        while (k > 0 && page[k - 1] == ' ') k--;
+                        page[k++] = '\n';
+                        q++;
+                        while (*q == ' ') q++;
+                        continue;
+                    }
+                    page[k++] = *q++;
                 }
                 page[k] = 0;
                 {
@@ -112,7 +118,7 @@ TEST(textpack_stash_keeps_lines_for_a_pushed_scene)
 {
     txt_stash(0, TXT_OBJ_C1_KEY);
     txt_stash(3, TXT_NONE);
-    CHECK_STR(txt_stash_get(0), "Get your house key from Nana at Brimstone Bites");
+    CHECK_STR(txt_stash_get(0), "Your key is with Nana at Brimstone Bites");
     CHECK_STR(txt_stash_get(3), "");
     CHECK_STR(txt_stash_get(9), "");
 }

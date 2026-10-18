@@ -102,12 +102,11 @@ static int chapter_bit(void)
     return 1 << DOOMO_CLAMP(c, 0, 5);
 }
 
-/* Cooldowns in minutes. S2 moves them into STRY.gag_cool[] (saved, SF
- * sec.17.2) when stry_save.c lands; until then they live here. */
-static uint8_t gag_cool[8];
+/* Cooldowns in minutes, saved in STRY.gag_cool[] (SF sec.17.2), so a
+ * reload does not fire everything again (--- S2: moved into STRY --- ). */
 static uint8_t *cool(int gag)
 {
-    return gag > 0 && gag <= 8 ? &gag_cool[gag - 1] : NULL;
+    return gag > 0 && gag <= 8 ? &story_stry()->gag_cool[gag - 1] : NULL;
 }
 static uint8_t pal_frame;                        /* a one-frame palette lerp is up */
 

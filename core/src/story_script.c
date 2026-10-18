@@ -6,8 +6,14 @@
  *
  * Tone: sugar first. Chapter 1 is a pastel daydream, chapter 2 lets the
  * purple in, chapter 3 is Doom, chapter 4 is a hug.
+ *
+ * S2: Chapters 1-2 (BEAT_C1_ARRIVE .. BEAT_C2_CELLAR) are VM scripts in the
+ * ch1/ and ch2/ packs; every per-beat function here hands those beats to
+ * story_ch12.c first (ch12_*). What is left below is Chapters 3-4 (the
+ * legacy port, S3's) and the cumulative state of the debug jumps.
  */
 #include "story_int.h"
+#include "story_ch12.h"       /* S2: Chapters 1-2 are VM content (story_ch12.c) */
 
 #define ME   DOOMO_PLAYER_ID
 #define NAR  (-1)
@@ -79,135 +85,6 @@ static void chapter_card(int ch)
 /* ======================================================================
  * beat transitions
  * ==================================================================== */
-static void to_mayor(void) { beat(BEAT_C1_MAYOR); }
-static void to_key(void) { beat(BEAT_C1_KEY); }
-static void to_pip(void) { beat(BEAT_C1_PIP); }
-static void to_bunny(void) { beat(BEAT_C1_BUNNY); }
-static void to_bunny_return(void) { beat(BEAT_C1_BUNNY_RETURN); }
-static void to_wall(void) { beat(BEAT_C1_WALL); }
-
-static void after_nana_key(void)
-{
-    if (!inv_count(ITEM_HOUSE_KEY)) inv_add(ITEM_HOUSE_KEY, 1);
-    if (!inv_count(ITEM_DOOMOGACHI_EGG) && !pet_exists()) inv_add(ITEM_DOOMOGACHI_EGG, 1);
-    flag(SF_KEY_GIVEN);
-    flag(SF_EGG_GIVEN);
-    story_befriend(ID_NANA, 3);
-    beat(BEAT_C1_HOME);
-}
-
-static void home_hatch(void)
-{
-    story_push_scene(&SCENE_PET, 0, PEND_PET, CTX_BEAT, BEAT_C1_HOME);
-}
-
-static void to_friends(void)
-{
-    inv_take(ITEM_LOST_BUNNY, 1);
-    story_reward(30, ITEM_SKULL_TRINKET, 1, USTORY_NONE);
-    story_befriend(ID_PIP, 4);
-    beat(BEAT_C1_FRIENDS);
-}
-
-static void cupcake_given(void)
-{
-    flag(SF_CUPCAKE_GIVEN);
-    if (!inv_count(ITEM_CUPCAKE)) inv_add(ITEM_CUPCAKE, 1);
-}
-
-static void lulla_done(void)
-{
-    inv_take(ITEM_CUPCAKE, 1);
-    story_befriend(ID_LULLA, 4);
-    story_reward(40, ITEM_NONE, 0, USTORY_NONE);
-    to_wall();
-}
-
-static void to_chapter2(void) { beat(BEAT_C2_VAPOR); }
-
-static void vex_choice(int c)
-{
-    story_befriend(ID_VEX, 1);
-    if (c == 1) {
-        DoomoResident *p = town_res(ME);
-        flag(SF_VAPE_SAMPLE);
-        if (p) p->stat[STAT_CORRUPTION] = (uint8_t)DOOMO_MIN(100, p->stat[STAT_CORRUPTION] + 15);
-        inv_add(ITEM_VAPE_PEN, 1);
-        story_conv(SCR_L_VEX_YES, 0);
-    } else {
-        story_conv(SCR_L_VEX_NO, 0);
-    }
-    beat(BEAT_C2_WEIRD);
-}
-
-static void to_fuzz(void) { beat(BEAT_C2_FUZZ); }
-
-static void practice(void)
-{
-    story_push_exorcism(-1, CTX_BEAT, BEAT_C2_FUZZ);
-}
-
-static void to_exorcise(void) { beat(BEAT_C2_EXORCISE); }
-
-static void exorcise_choice(int c)
-{
-    if (c == 0) story_push_exorcism(ID_STEAMY, CTX_BEAT, BEAT_C2_EXORCISE);
-}
-
-static void to_rivet(void) { beat(BEAT_C2_RIVET); }
-
-static void give_weapon(int brutal)
-{
-    int i, slot = -1;
-    DoomoWeapon w;
-    for (i = 0; i < DOOMO_MAX_WEAPONS; i++)
-        if (!(doomo_town.weapons[i].flags & WF_VALID)) { slot = i; break; }
-    if (slot < 0) slot = DOOMO_MAX_WEAPONS - 1;
-    memset(&w, 0, sizeof(w));
-    weld_default(&w, brutal ? WFRAME_PUMP_SHOTGUN : WFRAME_BUBBLE_WAND,
-                 brutal ? WSTYLE_BRUTAL : WSTYLE_CUTE);
-    w.quality = 72;
-    w.charm = brutal ? WCHARM_SKULL : WCHARM_HEART;
-    w.flags = WF_VALID | WF_FAVORITE;
-    doomo_town.weapons[slot] = w;
-    doomo_town.story.equipped = (uint8_t)slot;
-    progress_add(PROG_WEAPONS_WELDED, 1);
-    weld_gfx_invalidate();
-}
-
-static void after_workshop_c2(void) { story_conv(SCR_L_RIVET_VEX, 0); flag(SF_VEX_GONE); beat(BEAT_C2_CELLAR); }
-
-static void open_workshop_c2(void)
-{
-    story_push_scene(&SCENE_WORKSHOP, 0, PEND_WORKSHOP, CTX_BEAT, BEAT_C2_RIVET);
-}
-
-static void weapon_choice(int c)
-{
-    flag(SF_WEAPON_CHOSEN);
-    story_befriend(ID_RIVET, 4);
-    if (c == 1) {
-        flag(SF_WEAPON_BRUTAL);
-        give_weapon(1);
-        unlock_grant(USTORY_BRUTAL_START);
-        story_conv(SCR_L_RIVET_BRUTAL, CB_OPEN_WORKSHOP_C2);
-    } else {
-        give_weapon(0);
-        unlock_grant(USTORY_CUTE_START);
-        story_conv(SCR_L_RIVET_CUTE, CB_OPEN_WORKSHOP_C2);
-    }
-}
-
-static void cellar_choice(int c)
-{
-    if (c == 0) story_push_combat(MAPID_VAPE_CELLAR, CTX_BEAT, BEAT_C2_CELLAR, -1, -1, -1);
-}
-
-static void erupt(void)
-{
-    story_push_cutscene(CUT_ERUPTION, CTX_BEAT, BEAT_C3_ERUPTION);
-}
-
 static void spire_choice(int c)
 {
     if (c == 0) story_push_combat(MAPID_CLOUD_NINE_SPIRE, CTX_BEAT, BEAT_C3_SPIRE, -1, -1, -1);
@@ -298,63 +175,8 @@ void script_nest_encounter(int nest)
 int script_npc(int id)
 {
     int b = cur();
+    if (ch12_beat(b)) return ch12_npc(id);              /* S2: Chapters 1-2 */
     switch (b) {
-    case BEAT_C1_ARRIVE:
-    case BEAT_C1_MAYOR:
-        if (id == ID_MAYOR) {
-            story_befriend(ID_MAYOR, 3);
-            if (b == BEAT_C1_ARRIVE) beat(BEAT_C1_MAYOR);
-            story_conv(SCR_L_MAYOR_HELLO, CB_TO_KEY);
-            return 1;
-        }
-        break;
-    case BEAT_C1_KEY:
-        if (id == ID_NANA) { story_conv(SCR_L_NANA_KEY, CB_AFTER_NANA_KEY); return 1; }
-        break;
-    case BEAT_C1_PIP:
-        if (id == ID_PIP) { story_conv(SCR_L_PIP_LOST, CB_TO_BUNNY); return 1; }
-        break;
-    case BEAT_C1_BUNNY_RETURN:
-        if (id == ID_PIP) { story_conv(SCR_L_PIP_THANKS, CB_TO_FRIENDS); return 1; }
-        break;
-    case BEAT_C1_CUPCAKE:
-        if (id == ID_NANA && !has(SF_CUPCAKE_GIVEN)) {
-            cupcake_given();
-            story_conv(SCR_L_NANA_CUPCAKE, 0);
-            return 1;
-        }
-        if (id == ID_LULLA && has(SF_CUPCAKE_GIVEN)) {
-            story_conv(SCR_L_LULLA, CB_LULLA_DONE);
-            return 1;
-        }
-        break;
-    case BEAT_C2_VAPOR:
-        if (id == ID_VEX) {
-            story_conv(SCR_L_VEX_HELLO, 0);
-            story_conv(SCR_CH_VEX_CHOICE, CB_VEX_CHOICE);
-            return 1;
-        }
-        break;
-    case BEAT_C2_SCREAM:
-        if (id == ID_STEAMY) { story_fmt_target = ID_STEAMY; story_conv(SCR_L_STEAMY_POSSESSED, CB_TO_FUZZ); return 1; }
-        break;
-    case BEAT_C2_FUZZ:
-        if (id == ID_FUZZ) { story_conv(SCR_L_FUZZ_HELLO, CB_PRACTICE); return 1; }
-        break;
-    case BEAT_C2_EXORCISE:
-        if ((id == ID_STEAMY || id == ID_FUZZ) && possessed(ID_STEAMY)) {
-            story_fmt_target = ID_STEAMY;
-            story_conv_arg(SCR_CH_EXORCISE_CHOICE, CB_EXORCISE_CHOICE, exorcism_odds(ID_STEAMY));
-            return 1;
-        }
-        break;
-    case BEAT_C2_RIVET:
-        if (id == ID_RIVET) {
-            story_conv(SCR_L_RIVET_HELLO, 0);
-            story_conv(SCR_CH_WEAPON_CHOICE, CB_WEAPON_CHOICE);
-            return 1;
-        }
-        break;
     case BEAT_C3_NESTS:
         if ((id == ID_HATTIE || id == ID_GRAMPY) && possessed(id)) {
             story_fmt_target = (int16_t)id;
@@ -426,48 +248,22 @@ int script_npc(int id)
     return 0;
 }
 
+/* What starts by itself on an idle overworld (story.c's pump). */
+int script_auto(void)
+{
+    int b = cur();
+    if (ch12_beat(b)) return ch12_auto();              /* S2: Chapters 1-2 */
+    return 0;
+}
+
 /* ======================================================================
  * script_trigger: walk-on events
  * ==================================================================== */
-static void fog_choice(int c)
-{
-    if (c == 0) story_push_cutscene(CUT_FOG, CTX_BEAT, BEAT_C1_WALL);
-}
-
 int script_trigger(int tag)
 {
     int b = cur();
+    if (ch12_beat(b) && ch12_trigger(tag)) return 1;    /* S2: Chapters 1-2 */
     switch (tag) {
-    case STORY_TAG_EVENT_BEACH:
-        if (b == BEAT_C1_BUNNY && !has(SF_BUNNY_FOUND)) {
-            flag(SF_BUNNY_FOUND);
-            inv_add(ITEM_LOST_BUNNY, 1);
-            audio_sfx(SFX_SQUEAK);
-            story_conv(SCR_L_BUNNY_FOUND, CB_TO_BUNNY_RETURN);
-            return 1;
-        }
-        break;
-    case STORY_TAG_EVENT_FOG:
-        if (b == BEAT_C1_WALL) {
-            story_conv(SCR_CH_FOG_CHOICE, CB_FOG_CHOICE);
-            return 1;
-        }
-        if (b <= BEAT_C1_CUPCAKE && !has(SF_WALL_HINT)) {
-            flag(SF_WALL_HINT);
-            story_say_txt(NAR, TXT_LS_1);
-            return 1;
-        }
-        break;
-    case STORY_TAG_EVENT_CELLAR:
-        if (b == BEAT_C2_CELLAR) {
-            story_conv(SCR_CH_CELLAR_CHOICE, CB_CELLAR_CHOICE);
-            return 1;
-        }
-        if (b >= BEAT_C2_VAPOR && b < BEAT_C2_CELLAR) {
-            story_say_txt(NAR, TXT_LS_2);
-            return 1;
-        }
-        break;
     case STORY_TAG_EVENT_SPIRE:
         if (b == BEAT_C3_SPIRE) {
             story_conv(SCR_L_SPIRE_BASE, 0);
@@ -524,31 +320,9 @@ int script_place(int place)
 {
     int b = cur();
     int map = story_map();
+    if (ch12_beat(b) && ch12_place(place)) return 1;    /* S2: Chapters 1-2 */
     switch (place) {
-    case PLACE_HOME:
-        if (b == BEAT_C1_HOME) {
-            inv_take(ITEM_HOUSE_KEY, 0);
-            if (!has(SF_HOME_SEEN)) {
-                flag(SF_HOME_SEEN);
-                story_push_cutscene(CUT_HOME, CTX_BEAT, BEAT_C1_HOME);
-            } else {
-                story_conv(SCR_L_HOME, CB_HOME_HATCH);
-            }
-            return 1;
-        }
-        if (b < BEAT_C1_HOME) {
-            story_say_txt(NAR, TXT_LS_6);
-            return 1;
-        }
-        break;
-    case PLACE_CAFE:
-        if (b == BEAT_C1_KEY || (b == BEAT_C1_CUPCAKE && !has(SF_CUPCAKE_GIVEN))) return script_npc(ID_NANA);
-        break;
-    case PLACE_CHURCH:
-        if (b == BEAT_C2_FUZZ) return script_npc(ID_FUZZ);
-        break;
     case PLACE_WORKSHOP:
-        if (b == BEAT_C2_RIVET) return script_npc(ID_RIVET);
         if (b == BEAT_C3_NESTS || b == BEAT_C3_SPIRE) {
             if (!has(SF_RIVET_UPGRADE)) return script_npc(ID_RIVET);
             story_push_scene(&SCENE_WORKSHOP, 0, PEND_WORKSHOP, CTX_FREE, 0);
@@ -556,17 +330,7 @@ int script_place(int place)
         }
         break;
     case PLACE_VAPE_SHOP:
-        if (b < BEAT_C2_VAPOR) {
-            story_say_txt(NAR, TXT_LS_7);
-            return 1;
-        }
-        if (b == BEAT_C2_VAPOR) return script_npc(ID_VEX);
         if (b == BEAT_C3_SPIRE) return script_trigger(STORY_TAG_EVENT_SPIRE);
-        if (b > BEAT_C2_VAPOR && b < BEAT_C3_ERUPTION) {
-            story_say_txt(NAR, has(SF_VEX_GONE) ? TXT_LS_8 :
-                      TXT_LS_9);
-            return 1;
-        }
         break;
     case PLACE_WALL_GATE:
         if (b < BEAT_C4_GATE) {
@@ -610,23 +374,12 @@ int script_place(int place)
 /* ======================================================================
  * results of sub-scenes
  * ==================================================================== */
-static void to_hatch_lines(void) { story_conv(SCR_L_HATCHED, CB_TO_PIP); }
-
 void script_resume(const StoryPending *p, int result)
 {
     int b = cur();
+    if (ch12_resume(p, result)) return;                 /* S2: Chapters 1-2 */
     if (p->kind == PEND_CUTSCENE) {
         switch (p->arg) {
-        case CUT_ARRIVAL:
-            if (b == BEAT_C1_ARRIVE) to_mayor();
-            break;
-        case CUT_HOME:
-            story_conv(SCR_L_HOME, CB_HOME_HATCH);
-            break;
-        case CUT_FOG:
-            flag(SF_FOG_SEEN);
-            story_conv(SCR_L_FOG_AFTER, CB_TO_CHAPTER2);
-            break;
         case CUT_ERUPTION:
             beat(BEAT_C3_ERUPTION);
             break;
@@ -640,12 +393,6 @@ void script_resume(const StoryPending *p, int result)
         case CUT_FREEPLAY:
             story_conv(SCR_L_DONE, 0);
             break;
-        case CUT_CHAPTER1:
-            if (b == BEAT_C1_ARRIVE) story_push_cutscene(CUT_ARRIVAL, CTX_BEAT, BEAT_C1_ARRIVE);
-            break;
-        case CUT_CHAPTER2:
-            if (b == BEAT_C2_VAPOR) story_conv(SCR_L_CH2_OPEN, 0);
-            break;
         case CUT_CHAPTER3:
             if (b == BEAT_C3_ERUPTION) { story_conv(SCR_L_INVADED, 0); beat(BEAT_C3_NESTS); }
             break;
@@ -658,36 +405,8 @@ void script_resume(const StoryPending *p, int result)
         return;
     }
     switch (p->kind) {
-    case PEND_PET:
-        if (result > 0) {
-            inv_take(ITEM_DOOMOGACHI_EGG, 1);
-            if (b == BEAT_C1_HOME) { beat(BEAT_C1_HATCH); to_hatch_lines(); }
-        } else {
-            story_say_txt(NAR, TXT_LS_12);
-        }
-        break;
-    case PEND_EXO_PRACTICE:
-        if (b == BEAT_C2_FUZZ) {
-            flag(SF_FUZZ_PRACTICE);
-            story_befriend(ID_FUZZ, 3);
-            story_conv(SCR_L_FUZZ_PRACTISED, CB_TO_EXORCISE);
-        }
-        break;
     case PEND_EXORCISM:
-        if (p->ctx == CTX_BEAT && b == BEAT_C2_EXORCISE) {
-            story_fmt_target = ID_STEAMY;
-            if (result > 0) {
-                flag(SF_STEAMY_SAVED);
-                story_befriend(ID_STEAMY, 4);
-                story_conv(SCR_L_STEAMY_SAVED, CB_TO_RIVET);
-            } else if (result < 0) {
-                flag(SF_STEAMY_LOST);
-                story_conv(SCR_L_STEAMY_LOST, CB_TO_RIVET);
-            } else {
-                int left = exorcism_tries_left(ID_STEAMY);
-                story_say_txt_n(ID_FUZZ, left == 1 ? TXT_LS_TRIES_1 : TXT_LS_TRIES_N, left);
-            }
-        } else if (p->ctx == CTX_C3_EXO) {
+        if (p->ctx == CTX_C3_EXO) {
             story_fmt_target = p->arg;
             if (result != 0) {
                 story_set_flag(SF_C3_EXO0 + (p->extra & 3), 1);
@@ -707,9 +426,6 @@ void script_resume(const StoryPending *p, int result)
             }
         }
         break;
-    case PEND_WORKSHOP:
-        if (p->ctx == CTX_BEAT && b == BEAT_C2_RIVET) after_workshop_c2();
-        break;
     case PEND_COMBAT:
         if (p->ctx == CTX_NEST) {
             if (result > 0) {
@@ -720,9 +436,6 @@ void script_resume(const StoryPending *p, int result)
             } else {
                 story_say_txt(NAR, TXT_LS_15);
             }
-        } else if (p->extra == BEAT_C2_CELLAR && b == BEAT_C2_CELLAR) {
-            if (result > 0) { story_reward(100, ITEM_SCRAP, 3, USTORY_NONE); story_conv(SCR_L_CELLAR_WON, CB_ERUPT); }
-            else story_conv(SCR_L_CELLAR_LOST, 0);
         } else if (p->extra == BEAT_C3_SPIRE && b == BEAT_C3_SPIRE) {
             if (result > 0) { story_reward(300, ITEM_GATE_SIGIL, 1, USTORY_NONE); story_conv(SCR_L_SPIRE_WON, CB_VAPULA_DOWN); }
             else story_say_txt(NAR, TXT_LS_16);
@@ -749,21 +462,8 @@ void script_resume(const StoryPending *p, int result)
  * ==================================================================== */
 void script_enter_beat(int b)
 {
+    if (ch12_beat(b)) ch12_enter_beat(b);              /* S2: Chapters 1-2 */
     switch (b) {
-    case BEAT_C1_FRIENDS:
-        break;
-    case BEAT_C1_WALL:
-        break;
-    case BEAT_C2_VAPOR:
-        chapter_card(2);
-        break;
-    case BEAT_C2_WEIRD:
-        story_set_step(0);
-        break;
-    case BEAT_C2_SCREAM:
-        possess(ID_STEAMY);
-        ow_refresh_cast();
-        break;
     case BEAT_C3_ERUPTION:
         possess(ID_HATTIE);
         possess(ID_GRAMPY);
@@ -795,18 +495,15 @@ void script_enter_beat(int b)
     ow_refresh_cast();
 }
 
-/* Progress counted by the overworld's small talk (FRIENDS, WEIRD,
- * PRISONERS, FESTIVAL). */
+/* Progress counted by the overworld's small talk (PRISONERS, FESTIVAL; S2:
+ * Ep 1.4 and Ep 2.2 replaced the FRIENDS and WEIRD counters with authored
+ * neighbours and clues). */
 void script_ambient_talked(int id, int new_friend)
 {
     int b = cur();
-    if (b == BEAT_C1_FRIENDS && new_friend && !RES_DISTRICT(id)) {
-        story_set_step(story_step() + 1);
-        if (story_step() >= 3) { story_conv(SCR_L_THREE_FRIENDS, 0); beat(BEAT_C1_CUPCAKE); }
-    } else if (b == BEAT_C2_WEIRD) {
-        story_set_step(story_step() + 1);
-        if (story_step() >= 3) { story_conv(SCR_L_SCREAM, 0); beat(BEAT_C2_SCREAM); }
-    } else if (b == BEAT_C4_PRISONERS) {
+    (void)id;
+    (void)new_friend;
+    if (b == BEAT_C4_PRISONERS) {
         if (story_hellvile_friends() >= 5) { story_conv(SCR_L_WORD_SPREADS, 0); beat(BEAT_C4_HELP); }
     } else if (b == BEAT_C4_FESTIVAL) {
         story_set_step(story_step() + 1);
@@ -840,25 +537,8 @@ static const char *obj(unsigned tid, int n0, int n1, int n2, int n3)
 const char *script_objective(void)
 {
     int b = cur();
+    if (ch12_beat(b)) return ch12_objective();         /* S2: Chapters 1-2 */
     switch (b) {
-    case BEAT_C1_ARRIVE:
-    case BEAT_C1_MAYOR: return OBJ(TXT_OBJ_C1_MAYOR);
-    case BEAT_C1_KEY: return OBJ(TXT_OBJ_C1_KEY);
-    case BEAT_C1_HOME: return OBJ(TXT_OBJ_C1_HOME);
-    case BEAT_C1_HATCH: return OBJ(TXT_OBJ_C1_HATCH);
-    case BEAT_C1_PIP: return OBJ(TXT_OBJ_C1_PIP);
-    case BEAT_C1_BUNNY: return OBJ(TXT_OBJ_C1_BUNNY);
-    case BEAT_C1_BUNNY_RETURN: return OBJ(TXT_OBJ_C1_BUNNY_RETURN);
-    case BEAT_C1_FRIENDS: return obj(TXT_OBJ_C1_FRIENDS, story_step(), 0, 0, 0);
-    case BEAT_C1_CUPCAKE: return OBJ(has(SF_CUPCAKE_GIVEN) ? TXT_OBJ_C1_CUPCAKE_LULLA : TXT_OBJ_C1_CUPCAKE_NANA);
-    case BEAT_C1_WALL: return OBJ(TXT_OBJ_C1_WALL);
-    case BEAT_C2_VAPOR: return OBJ(TXT_OBJ_C2_VAPOR);
-    case BEAT_C2_WEIRD: return obj(TXT_OBJ_C2_WEIRD, story_step(), 0, 0, 0);
-    case BEAT_C2_SCREAM: return OBJ(TXT_OBJ_C2_SCREAM);
-    case BEAT_C2_FUZZ: return OBJ(TXT_OBJ_C2_FUZZ);
-    case BEAT_C2_EXORCISE: return OBJ(TXT_OBJ_C2_EXORCISE);
-    case BEAT_C2_RIVET: return OBJ(TXT_OBJ_C2_RIVET);
-    case BEAT_C2_CELLAR: return OBJ(TXT_OBJ_C2_CELLAR);
     case BEAT_C3_ERUPTION: return OBJ(TXT_OBJ_C3_ERUPTION);
     case BEAT_C3_NESTS:
         return obj(TXT_OBJ_C3_NESTS, STORY_NESTS - nests_left(), STORY_NESTS,
@@ -889,22 +569,6 @@ static Target target_of(int b)
 {
     Target t = { -1, MAPID_HAHALAND, 0, 0 };
     switch (b) {
-    case BEAT_C1_ARRIVE: case BEAT_C1_MAYOR: t.id = ID_MAYOR; t.x = 33; t.y = 25; break;
-    case BEAT_C1_KEY: t.id = ID_NANA; t.x = 25; t.y = 17; break;
-    case BEAT_C1_HOME: t.x = 4; t.y = 7; break;
-    case BEAT_C1_PIP: case BEAT_C1_BUNNY_RETURN: t.id = ID_PIP; t.x = 10; t.y = 47; break;
-    case BEAT_C1_BUNNY: t.x = 12; t.y = 55; break;
-    case BEAT_C1_CUPCAKE:
-        if (has(SF_CUPCAKE_GIVEN)) { t.id = ID_LULLA; t.x = 30; t.y = 42; }
-        else { t.id = ID_NANA; t.x = 25; t.y = 17; }
-        break;
-    case BEAT_C1_WALL: t.x = 55; t.y = 24; break;
-    case BEAT_C2_VAPOR: t.id = ID_VEX; t.x = 54; t.y = 37; break;
-    case BEAT_C2_SCREAM: t.id = ID_STEAMY; t.x = 38; t.y = 24; break;
-    case BEAT_C2_FUZZ: t.id = ID_FUZZ; t.x = 7; t.y = 28; break;
-    case BEAT_C2_EXORCISE: t.id = ID_STEAMY; t.x = 38; t.y = 24; break;
-    case BEAT_C2_RIVET: t.id = ID_RIVET; t.x = 53; t.y = 10; break;
-    case BEAT_C2_CELLAR: t.x = 53; t.y = 37; break;
     case BEAT_C3_NESTS: {
         int i;
         t.map = MAPID_HAHALAND_INVADED;
@@ -943,7 +607,9 @@ static Target target_of(int b)
 
 int script_target(int *map_id, int *cx, int *cy)
 {
-    Target t = target_of(cur());
+    Target t;
+    if (ch12_beat(cur())) return ch12_target(map_id, cx, cy);   /* S2: Chapters 1-2 */
+    t = target_of(cur());
     if (map_id) *map_id = t.map == 0xFF ? -1 : t.map;
     if (cx) *cx = t.x;
     if (cy) *cy = t.y;
@@ -968,6 +634,7 @@ int script_cast(int map, StoryNpcSpot *out, int max)
 {
     int b = cur(), n = 0;
     Target t = target_of(b);
+    if (ch12_beat(b)) return ch12_cast(map, out, max);  /* S2: Chapters 1-2 */
 #define MAINF(who) ((t.id == (who)) ? NPCF_MAIN | NPCF_FIXED : NPCF_FIXED)
     if (map == MAPID_HAHALAND) {
         /* the Mayor */
@@ -1046,7 +713,7 @@ static void ensure_pet(void) { if (!pet_exists()) pet_new("Doomo"); }
 
 static void ensure_weapon(void)
 {
-    if (!has(SF_WEAPON_CHOSEN)) { flag(SF_WEAPON_CHOSEN); give_weapon(0); }
+    if (!has(SF_WEAPON_CHOSEN)) { flag(SF_WEAPON_CHOSEN); ch12_give_weapon(0); }
 }
 
 void script_debug_setup(int b)
@@ -1062,7 +729,6 @@ void script_debug_setup(int b)
         if (b >= BEAT_C1_ARRIVE + 0 && story_beat_chapter(b) > i) flag(SF_TITLE_CH1 + i);
     if (b > BEAT_C1_CUPCAKE) flag(SF_CUPCAKE_GIVEN);
     if (b > BEAT_C1_WALL) flag(SF_FOG_SEEN);
-    if (b == BEAT_C2_SCREAM || b == BEAT_C2_FUZZ || b == BEAT_C2_EXORCISE) possess(ID_STEAMY);
     if (b > BEAT_C2_FUZZ) flag(SF_FUZZ_PRACTICE);
     if (b > BEAT_C2_EXORCISE) { unpossess(ID_STEAMY); flag(SF_STEAMY_SAVED); }
     if (b > BEAT_C2_RIVET) { ensure_weapon(); flag(SF_VEX_GONE); }
@@ -1089,6 +755,7 @@ void script_debug_setup(int b)
     }
     if (b >= BEAT_C4_FESTIVAL) { flag(SF_C4_MAYOR_CAME); s->map = MAPID_PARK_UNITED; }
     if (b >= BEAT_DONE) flag(SF_CREDITS_SEEN);
+    ch12_debug_setup(b);                               /* S2: the Ch1-2 content's own state */
     {
         int m, cx, cy;
         script_target(&m, &cx, &cy);
@@ -1115,25 +782,8 @@ static int fresh_citizen(int district)
 int script_debug_step(void)
 {
     int b = cur(), i;
+    if (ch12_beat(b)) return ch12_debug_step();        /* S2: Chapters 1-2 */
     switch (b) {
-    case BEAT_C1_ARRIVE: beat(BEAT_C1_MAYOR); return 1;
-    case BEAT_C1_MAYOR: story_interact_npc(ID_MAYOR); return 1;
-    case BEAT_C1_KEY: story_interact_npc(ID_NANA); return 1;
-    case BEAT_C1_HOME: story_enter_place(PLACE_HOME); return 1;
-    case BEAT_C1_HATCH: beat(BEAT_C1_PIP); return 1;
-    case BEAT_C1_PIP: story_interact_npc(ID_PIP); return 1;
-    case BEAT_C1_BUNNY: story_trigger_ow(STORY_TAG_EVENT_BEACH); return 1;
-    case BEAT_C1_BUNNY_RETURN: story_interact_npc(ID_PIP); return 1;
-    case BEAT_C1_FRIENDS: story_interact_npc(fresh_citizen(0)); return 1;
-    case BEAT_C1_CUPCAKE: story_interact_npc(has(SF_CUPCAKE_GIVEN) ? ID_LULLA : ID_NANA); return 1;
-    case BEAT_C1_WALL: story_trigger_ow(STORY_TAG_EVENT_FOG); return 1;
-    case BEAT_C2_VAPOR: story_interact_npc(ID_VEX); return 1;
-    case BEAT_C2_WEIRD: story_interact_npc(fresh_citizen(0)); return 1;
-    case BEAT_C2_SCREAM: story_interact_npc(ID_STEAMY); return 1;
-    case BEAT_C2_FUZZ: story_interact_npc(ID_FUZZ); return 1;
-    case BEAT_C2_EXORCISE: story_interact_npc(ID_STEAMY); return 1;
-    case BEAT_C2_RIVET: story_interact_npc(ID_RIVET); return 1;
-    case BEAT_C2_CELLAR: story_trigger_ow(STORY_TAG_EVENT_CELLAR); return 1;
     case BEAT_C3_ERUPTION:
         beat(BEAT_C3_NESTS);
         return 1;
@@ -1174,39 +824,20 @@ int script_debug_step(void)
  * ==================================================================== */
 void script_callback(int cb, int choice)
 {
+    if (cb == CB_C12) { ch12_action((uint16_t)choice); return; }   /* S2: a script's native CB_C12 */
     switch (cb) {
-    case CB_AFTER_NANA_KEY: after_nana_key(); break;
     case CB_C3_CHECK: c3_check(); break;
     case CB_C3_EXO_CHOICE: c3_exo_choice(choice); break;
-    case CB_CELLAR_CHOICE: cellar_choice(choice); break;
-    case CB_ERUPT: erupt(); break;
-    case CB_EXORCISE_CHOICE: exorcise_choice(choice); break;
-    case CB_FOG_CHOICE: fog_choice(choice); break;
     case CB_HELP_CHECK: help_check(); break;
-    case CB_HOME_HATCH: home_hatch(); break;
-    case CB_LULLA_DONE: lulla_done(); break;
     case CB_MAYOR_CAME: mayor_came(); break;
-    case CB_OPEN_WORKSHOP_C2: open_workshop_c2(); break;
-    case CB_PRACTICE: practice(); break;
     case CB_SMOG_CHOICE: smog_choice(choice); break;
     case CB_SPIRE_CHOICE: spire_choice(choice); break;
     case CB_STAGE_DONE: stage_done(); break;
     case CB_SUMMIT_DONE: summit_done(); break;
-    case CB_TO_BUNNY: to_bunny(); break;
-    case CB_TO_BUNNY_RETURN: to_bunny_return(); break;
-    case CB_TO_CHAPTER2: to_chapter2(); break;
-    case CB_TO_EXORCISE: to_exorcise(); break;
-    case CB_TO_FRIENDS: to_friends(); break;
-    case CB_TO_FUZZ: to_fuzz(); break;
-    case CB_TO_KEY: to_key(); break;
-    case CB_TO_PIP: to_pip(); break;
-    case CB_TO_RIVET: to_rivet(); break;
     case CB_TRAVEL_FROM_HH: travel_from_hh(choice); break;
     case CB_TRAVEL_FROM_HV: travel_from_hv(choice); break;
     case CB_TRAVEL_FROM_PK: travel_from_pk(choice); break;
     case CB_VAPULA_DOWN: vapula_down(); break;
-    case CB_VEX_CHOICE: vex_choice(choice); break;
-    case CB_WEAPON_CHOICE: weapon_choice(choice); break;
     default: (void)choice; break;
     }
 }
