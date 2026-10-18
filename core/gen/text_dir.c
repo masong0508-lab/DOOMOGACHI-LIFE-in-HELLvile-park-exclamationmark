@@ -20,14 +20,26 @@ extern const uint32_t doomo_text_pack_ep24[];
 extern const uint32_t doomo_text_pack_ep25[];
 extern const uint32_t doomo_text_pack_ep26[];
 extern const uint32_t doomo_text_pack_ep27[];
+extern const uint32_t doomo_text_pack_ep31[];
+extern const uint32_t doomo_text_pack_ep33[];
+extern const uint32_t doomo_text_pack_ep34[];
+extern const uint32_t doomo_text_pack_ep36[];
+extern const uint32_t doomo_text_pack_ep41[];
+extern const uint32_t doomo_text_pack_ep42[];
+extern const uint32_t doomo_text_pack_ep43[];
+extern const uint32_t doomo_text_pack_ep44[];
+extern const uint32_t doomo_text_pack_ep45[];
+extern const uint32_t doomo_text_pack_ep46[];
+extern const uint32_t doomo_text_pack_ep47[];
+extern const uint32_t doomo_text_pack_epi[];
 extern const uint32_t doomo_text_pack_f1[];
 extern const uint32_t doomo_text_pack_int1[];
-extern const uint32_t doomo_text_pack_legacy[];
+extern const uint32_t doomo_text_pack_int3[];
 extern const uint32_t doomo_text_pack_legside[];
 extern const uint32_t doomo_text_pack_p0[];
 extern const uint32_t doomo_text_pack_vmtest[];
 
-static const uint32_t *const packs[22] = {
+static const uint32_t *const packs[34] = {
     doomo_text_pack_ch1,
     doomo_text_pack_ch2,
     doomo_text_pack_d1,
@@ -44,9 +56,21 @@ static const uint32_t *const packs[22] = {
     doomo_text_pack_ep25,
     doomo_text_pack_ep26,
     doomo_text_pack_ep27,
+    doomo_text_pack_ep31,
+    doomo_text_pack_ep33,
+    doomo_text_pack_ep34,
+    doomo_text_pack_ep36,
+    doomo_text_pack_ep41,
+    doomo_text_pack_ep42,
+    doomo_text_pack_ep43,
+    doomo_text_pack_ep44,
+    doomo_text_pack_ep45,
+    doomo_text_pack_ep46,
+    doomo_text_pack_ep47,
+    doomo_text_pack_epi,
     doomo_text_pack_f1,
     doomo_text_pack_int1,
-    doomo_text_pack_legacy,
+    doomo_text_pack_int3,
     doomo_text_pack_legside,
     doomo_text_pack_p0,
     doomo_text_pack_vmtest,
@@ -54,7 +78,7 @@ static const uint32_t *const packs[22] = {
 
 const uint8_t *txt_plat_pack(int pack)
 {
-    if (pack < 0 || pack >= 22) return 0;
+    if (pack < 0 || pack >= 34) return 0;
     return (const uint8_t *)packs[pack];
 }
 

@@ -58,6 +58,11 @@ GROUPS = [
     # their own: story.c only pushes SCENE_CUTSCENE (a scene edge), so the
     # story group stays under the slot with them out
     ("cutscene", r"cutscene(_\w+)?$|story_feast$|grumbleguts_gfx$"),   # S2: cutscene_ch12
+    # --- S3: SCENE_CUTX (the Ch3-4 stages) and the Say It picks: a scene
+    # edge from the story like SCENE_CUTSCENE, but a group of its own so the
+    # cutscene group does not grow (C4); it draws with its own primitives ---
+    ("cutx",     r"cutstage$|story_summit$"),
+    # --- end S3 ---
     # --- S2 (for H3, SPEC C4/C5): the story's minigames (SCENE_STORY_MG, its
     # S4 / S5 registry rows, SCENE_STORY_TIMING) are scene edges from the
     # story, so they are a group of their own and the story group stays in

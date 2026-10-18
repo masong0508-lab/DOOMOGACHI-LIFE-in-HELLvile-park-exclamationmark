@@ -57,6 +57,7 @@ static struct {
     int taunt_t;
     DoomoLook dummy;
     int confetti_t;
+    char typed[16];                     /* S3: EXS_REVERSE, the typed name */
 } X;
 
 /* ---------------------------------------------------------------------- */
@@ -118,6 +119,25 @@ static const DoomoImage *host_image(int expr)
     return portrait_image(X.host, expr);
 }
 
+/* --- S3: the ritual skins of the authored possessors (exorcism.h EXS_*) ---
+ *   PRAYER_TIMING  Hattie / HAZE: the prayer is the timing game (A on the
+ *                  prayer pattern 4-4, 4-2-2, 2-2-2-2) and the demon heckles
+ *   NAME_TOMATO    Grampy / SOOTKIN: the names are tomatoes, one memory each
+ *   TWO_FAITH      Lady Smog / FLUFFY: Fuzz's half forwards, then Nox's half
+ *                  backwards (every prompt means its mirror: A/B, L/R, U/D)
+ *   REVERSE        Sprinklepop: the true name is typed (EXF_TYPE_NAME)
+ *   WISP_PROMPT    a rite-less wisp: one prompt, no water, no name
+ * PRACTICE and STANDARD are the plain rite. */
+static int skin(void)
+{
+    const DoomoPossessor *ap = exorcism_authored(host_ref());
+    return ap ? ap->skin : EXS_STANDARD;
+}
+
+static int mirror_btn(int b) { return b ^ 1; }   /* A<->B, L<->R, U<->D (note_btn order) */
+static int backwards(int i) { return skin() == EXS_TWO_FAITH && i >= X.nnotes / 2; }
+/* --- end S3 --- */
+
 static void taunt(const char *fmt, const char *a)
 {
     doomo_snprintf(X.taunt, sizeof(X.taunt), fmt, a ? a : "");
@@ -177,11 +197,30 @@ static void make_dummy(void)
     X.dummy = r.look;
 }
 
+/* --- S3: the prayer pattern (story_vm.h TPAT_PRAYER), all on A --- */
+static void build_prayer_notes(int wisp)
+{
+    static const uint8_t gaps[9] = { 8, 8, 8, 4, 4, 4, 4, 4, 4 };   /* half-beats: 4-4, 4-2-2, 2-2-2-2 */
+    int i, beat2 = 8;
+    X.nnotes = wisp ? 1 : 10;
+    for (i = 0; i < X.nnotes; i++) {
+        X.notes[i].tick = (int16_t)(beat2 * EXORCISM_TICKS_PER_BEAT / 2);
+        X.notes[i].btn = 0;
+        X.notes[i].judged = 0;
+        beat2 += gaps[i % 9];
+    }
+}
+/* --- end S3 --- */
+
 static void build_notes(void)
 {
     DoomoRng rng;
     int i, beat2 = 8, last = -1, rep = 0;        /* half-beats; 4-beat count-in */
     const DoomoResident *r = town_res(X.host);
+    if (skin() == EXS_PRAYER_TIMING || skin() == EXS_WISP_PROMPT) {      /* S3 */
+        build_prayer_notes(skin() == EXS_WISP_PROMPT);
+        return;
+    }
     rng_seed(&rng, 0xBEA7u ^ (uint32_t)X.host * 7919u ^
                    (r && !X.practice ? (uint32_t)r->exorcism * 131u : 77u));
     X.nnotes = PRAYER_NOTES;
@@ -280,9 +319,43 @@ static void begin_water(void)
 }
 static void cb_water(void) { begin_water(); }
 
+/* --- S3: EXS_REVERSE: the true name is typed, letter by letter --- */
+static void same_name(const char *a, const char *b, int *ok)
+{
+    while (*a && *b) {
+        char x = *a++, y = *b++;
+        if (x >= 'a' && x <= 'z') x = (char)(x - 32);
+        if (y >= 'a' && y <= 'z') y = (char)(y - 32);
+        if (x != y) { *ok = 0; return; }
+    }
+    *ok = !*a && !*b;
+}
+
+static void cb_typed(int done)
+{
+    const DoomoPossessor *ap = exorcism_authored(host_ref());
+    int ok = 0;
+    if (done && ap && ap->name) same_name(X.typed, ap->name, &ok);
+    X.name_ok = ok;
+    X.picked = X.st_t;
+    X.shake = ok ? 6 : 10;
+    audio_sfx(ok ? SFX_DEMON_PAIN : SFX_DEMON_ROAR);
+    taunt(ok ? "...You SPELLED it. Nobody spells it." : "Hee. Hee. Close.", NULL);
+}
+/* --- end S3 --- */
+
 static void begin_name(void)
 {
     goto_state(ST_NAME);
+    if (skin() == EXS_REVERSE) {                                          /* --- S3 --- */
+        X.picked = -1;
+        X.correct = -1;
+        X.near = -1;
+        X.clues = 4;
+        X.typed[0] = 0;
+        ui_text_entry("Type its true name:", X.typed, (int)sizeof(X.typed), cb_typed);
+        return;
+    }                                                                     /* --- end S3 --- */
     exorcism_name_choices(host_ref(), X.choices);
     X.correct = exorcism_name_answer(host_ref());          /* S3: -1 = never offered */
     X.near = -1;
@@ -309,8 +382,23 @@ static void start_ritual(void)
     X.odds = X.practice ? exorcism_odds_with(-1, X.items) : exorcism_odds_with(X.host, X.items);
     goto_state(ST_WAIT);
     audio_sfx(SFX_HOLY);
-    fuzz_say("Phase one: pray with me! Press each button as it reaches the heart. "
-             "Keep to the beat!", NULL, NULL);
+    switch (skin()) {                                                    /* --- S3 --- */
+    case EXS_PRAYER_TIMING:
+        fuzz_say("This one heckles. Pray on the beat with " STR_ICON_A " and don't laugh. "
+                 "Whatever it says, don't laugh.", NULL, NULL);
+        break;
+    case EXS_TWO_FAITH:
+        fuzz_say("My half goes forwards. Mother Nox's half goes backwards: "
+                 "when the prompts turn purple, press the opposite!", NULL, NULL);
+        break;
+    case EXS_WISP_PROMPT:
+        fuzz_say("No rite for a wisp. Just one gentle " STR_ICON_A ", when it reaches the heart.", NULL, NULL);
+        break;
+    default:
+        fuzz_say("Phase one: pray with me! Press each button as it reaches the heart. "
+                 "Keep to the beat!", NULL, NULL);
+        break;
+    }                                                                    /* --- end S3 --- */
     ui_say_done(cb_prayer);
 }
 
@@ -369,7 +457,14 @@ static void update_prayer(void)
     if (X.pt >= 0 && X.pt % EXORCISM_TICKS_PER_BEAT == 0 && X.pt <= last_tick &&
         (X.pt / EXORCISM_TICKS_PER_BEAT) % 4 == 0)
         audio_sfx(SFX_BELL);
-    if (X.pt == 2 * EXORCISM_TICKS_PER_BEAT * 3) random_taunt();
+    if (X.pt == 2 * EXORCISM_TICKS_PER_BEAT * 3 && skin() != EXS_PRAYER_TIMING) random_taunt();
+    if (skin() == EXS_PRAYER_TIMING && X.pt > 0 && X.pt % (EXORCISM_TICKS_PER_BEAT * 5) == 0) {   /* --- S3: heckles --- */
+        static const char *const heckle[6] = { "What's brown and sticky?", "...A stick.", "Hee. Hee.",
+                                               "Knock knock.", "You're off the beat!", "Is this thing on?" };
+        taunt(heckle[(X.pt / (EXORCISM_TICKS_PER_BEAT * 5) - 1) % 6], NULL);
+    }
+    if (skin() == EXS_TWO_FAITH && X.nnotes > 1 && X.pt == X.notes[X.nnotes / 2].tick - TRAVEL)
+        taunt("NOX: Ours goes backwards.", NULL);                                         /* --- end S3 --- */
     /* button presses: the earliest open note in the window */
     for (i = 0; i < 6; i++) {
         int n, best = -1, bd = 999;
@@ -381,7 +476,7 @@ static void update_prayer(void)
             if ((d < 0 ? -d : d) < bd) { bd = d < 0 ? -d : d; best = n; }
         }
         if (best < 0) continue;                     /* a stray press is free */
-        if (X.notes[best].btn != i) judge(best, 3);
+        if ((backwards(best) ? mirror_btn(X.notes[best].btn) : X.notes[best].btn) != i) judge(best, 3);   /* S3 */
         else judge(best, bd <= perfect ? 1 : 2);
     }
     for (i = 0; i < X.nnotes; i++)
@@ -389,6 +484,12 @@ static void update_prayer(void)
     if (X.pt > last_tick + EXORCISM_TICKS_PER_BEAT * 2) {
         X.rhythm = X.score / (X.nnotes > 0 ? X.nnotes : 1);
         goto_state(ST_WAIT);
+        if (skin() == EXS_WISP_PROMPT) {                         /* S3: no water, no name */
+            X.water = 100;
+            X.name_ok = 1;
+            begin_verdict();
+            return;
+        }
         if (X.rhythm >= 85) fuzz_say("Beautiful! Your faith is blinding!", NULL, NULL);
         else if (X.rhythm >= 50) fuzz_say("Good, good! The demon is wobbling!", NULL, NULL);
         else fuzz_say("Oh dear, a bit off-key... but it's rattled!", NULL, NULL);
@@ -490,6 +591,7 @@ static void update_name(void)
         if (X.st_t > X.picked + 50) begin_verdict();
         return;
     }
+    if (skin() == EXS_REVERSE) return;                     /* S3: the text entry answers */
     if (btn_repeat(BTN_LEFT) || btn_repeat(BTN_RIGHT)) { X.sel ^= 1; audio_sfx(SFX_CURSOR); }
     if (btn_repeat(BTN_UP) || btn_repeat(BTN_DOWN)) { X.sel ^= 2; audio_sfx(SFX_CURSOR); }
     if (btn_pressed(BTN_A)) {
@@ -652,6 +754,7 @@ static void draw_lane(uint32_t t)
         if (x > w + r) continue;
         c = n->btn == 0 ? PAL_PAINT(PAINT_ROSE, 1) : n->btn == 1 ? PAL_PAINT(PAINT_MINT, 1)
                                                                 : PAL_PAINT(PAINT_LAVENDER, 1);
+        if (backwards(i)) c = PAL_RAMP(RAMP_VAPE, 2);           /* S3: Nox's half, backwards */
         if (n->judged == 3) { c = PAL_GRAY; y += (-dt) / 2; }
         if (n->judged == 1 || n->judged == 2) {
             ui_sparkle(x, y, (-dt) * 3, PAL_UI_GOLD);
@@ -792,7 +895,8 @@ static void draw_name_ui(uint32_t t)
     bw = (W() - gx - (big ? 12 : 6) - 4) / 2;
     by = hy - (big ? 26 : 20);
     ui_window(px, py, pw, ph, WIN_DARK);
-    ui_text(px + 6, py + 4, STR_ICON_PENTA " Clues about the demon", PAL_UI_GOLD);
+    ui_text(px + 6, py + 4, skin() == EXS_NAME_TOMATO ? STR_ICON_PENTA " Hand him a memory" :   /* S3 */
+                            STR_ICON_PENTA " Clues about the demon", PAL_UI_GOLD);
     for (i = 0; i < 4; i++) {
         int cy = py + 15 + i * (big ? 12 : 10);
         if (i < X.clues) {
@@ -816,11 +920,22 @@ static void draw_name_ui(uint32_t t)
         if (shown && i == X.correct) fill = PAL_UI_MINT_D;
         else if (i == X.near) fill = PAL_GRAY;                             /* S3: worn, not named */
         else if (shown && sel) fill = PAL_UI_RED;
+        if (skin() == EXS_NAME_TOMATO) {                  /* --- S3: a tomato, one memory each --- */
+            int tr = bh / 2 + 1, tx = bx + tr + 2, ty = yy + bh / 2 - lift;
+            uint8_t tc = fill == PAL_UI_MINT_D ? PAL_UI_MINT_D : fill == PAL_UI_RED ? PAL_GRAY : PAL_RAMP(RAMP_BLOOD, 4);
+            ui_fill_circle(tx, ty, tr + 1, PAL_RAMP(RAMP_BLOOD, 1));
+            ui_fill_circle(tx, ty, tr, tc);
+            plat_rect(tx - 2, ty - tr - 1, 5, 2, PAL_RAMP(RAMP_GRASS, 3));
+            plat_rect(tx - 1, ty - 2, 3, 3, PAL_WHITE);                      /* the eye */
+            plat_rect(tx, ty - 1, 1, 1, PAL_BLACK);
+            ui_text(tx + tr + 3, ty - 4, n && n[0] ? n : "???", sel ? PAL_UI_GOLD : PAL_WHITE);
+        } else {                                          /* --- end S3 --- */
         plat_shade_rect(bx + 2, yy + 3, bw, bh, 10);
         ui_round_rect(bx, yy - lift, bw, bh, 6, ui_darker(fill));
         ui_round_rect(bx + 1, yy + 1 - lift, bw - 2, bh - 2, 5, fill);
         plat_rect(bx + 6, yy + 2 - lift, bw - 12, 1, ui_lighter(fill));
         ui_text_center(bx + bw / 2, yy + bh / 2 - 4 - lift, n && n[0] ? n : "???", PAL_WHITE);
+        }
         if (sel && !shown) ui_cursor(bx - 4, yy + bh / 2 - 4);
     }
 }

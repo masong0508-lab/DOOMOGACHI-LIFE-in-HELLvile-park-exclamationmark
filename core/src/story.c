@@ -12,6 +12,7 @@
 #include "doomo/house_api.h"
 #include "doomo/unlock_ids.h"
 #include "story_ch12.h"       /* S2: Chapters 1-2 as VM content */
+#include "story_ch34.h"       /* S3: Chapters 3-4 as VM content */
 
 StoryPending story_pending;
 static uint8_t autowin;
@@ -471,14 +472,16 @@ void story_conv(unsigned scr, int cb) { story_conv_arg(scr, cb, 0); }
 void story_text_prefetch(void)
 {
     int p, n = txt_pack_count(), b = doomo_town.story.quest, ch12 = ch12_beat(b) && doomo_town.story.chapter != STORY_CH_NONE;
+    int ch34 = ch34_beat(b) && doomo_town.story.chapter != STORY_CH_NONE;   /* (S3) */
     for (p = 0; p < n; p++) {
         int k = txt_pack_kind(p);
-        if (k == TXT_KIND_SIDE || (k == TXT_KIND_LEGACY && !ch12)) txt_pack_load(p);
+        if (k == TXT_KIND_SIDE || (k == TXT_KIND_LEGACY && !ch12 && !ch34)) txt_pack_load(p);
     }
     if (ch12) {                         /* (S2) the chapter's common pack and the beat's episode */
         txt_pack_load(story_chapter() >= STORY_CH2 ? PACK_CH2 : PACK_CH1);
         if (ch12_pack(b) >= 0) txt_pack_load(ch12_pack(b));
     }
+    if (ch34 && ch34_pack() >= 0) txt_pack_load(ch34_pack());   /* (S3) the episode's pack */
 }
 
 void story_choice_id(int who, const char *q, const char *const *opts, int n, int cb)
@@ -659,7 +662,7 @@ void story_push_cutscene(int cut, int ctx, int extra)
     if (cut >= CUT_P0 && cut < CUT_ALL_COUNT) story_unlock_quiet(UL_STORY_CUT2(cut));   /* the gallery */
     set_pending(PEND_CUTSCENE, ctx, cut, extra);
     ow_sync_to_save();
-    scene_push(&SCENE_CUTSCENE, cut);
+    scene_push(CUTX_OWNS(cut) ? &SCENE_CUTX : &SCENE_CUTSCENE, cut);   /* (S3) the Ch3-4 stages */
 }
 
 /* ---- events from the overworld ------------------------------------------------------ */
@@ -832,6 +835,7 @@ static void debug_jump_episode(int ep)
     story_debug_jump(story_beat_chapter(legacy), legacy);
     for (e = BEAT_P0; e < BEAT_ALL_COUNT; e++) story_episode_set_done(e, story_episode_order(e) < o);
     if (ch12_beat(legacy)) ch12_debug_episode(ep);     /* (S2) the stage inside the beat */
+    if (ch34_beat(legacy)) ch34_debug_episode(ep);     /* (S3) the episode inside the beat */
 }
 
 void story_debug_jump(int chapter, int beat)

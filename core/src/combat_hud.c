@@ -12,6 +12,7 @@
  * bob, sway, kick, reload dip, muzzle flash.
  */
 #include "combat_int.h"
+#include "doomo/txt.h"      /* S3: the stashed story captions */
 
 static DoomoView3D hud_view;      /* camera of the last built view */
 static int hud_t;
@@ -528,6 +529,29 @@ static void top_left(const HudPal *p)
     }
 }
 
+/* --- S3: the HUD caption slot (SPEC sec.12 C10): in the story's climb of
+ * Cloud Nine Spire the captions stashed before the push (SPEC C5,
+ * story_ch34.c C34A_SPIRE_CAPS) come up one per quarter of the demons
+ * cleared, three seconds each: Vapula talks down the stairs. --- */
+static void story_caption(const HudPal *p)
+{
+    static int8_t shown = -1;
+    static uint8_t left;
+    int q;
+    const char *c;
+    if (doomo_town.mode != TOWN_STORY || combat_s.map_id != MAPID_CLOUD_NINE_SPIRE ||
+        combat_st.kills_total <= 0) { shown = -1; return; }
+    q = DOOMO_MIN(3, combat_st.kills * 4 / combat_st.kills_total);
+    if (q != shown) { shown = (int8_t)q; left = 90; }
+    if (!left) return;
+    left--;
+    c = txt_stash_get(q);
+    if (c && c[0])
+        ui_text_outline(plat_screen_w() / 2 - ui_text_width(c) / 2, plat_screen_h() / 3, c,
+                        PAL_RAMP(RAMP_VAPE, 6), p->text_out);
+}
+/* --- end S3 --- */
+
 static void top_right(const HudPal *p)
 {
     char buf[24];
@@ -640,6 +664,7 @@ void combat_draw_hud(void)
         top_left(&p);
         top_right(&p);
     }
+    story_caption(&p);                           /* S3 */
     toast(&p);
 }
 

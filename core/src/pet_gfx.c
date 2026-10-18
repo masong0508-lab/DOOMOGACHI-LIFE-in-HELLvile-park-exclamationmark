@@ -357,6 +357,24 @@ static void mouth(int x, int y, int kind, int frame)
     }
 }
 
+/* --- S3: the story's marks on any form (SPEC sec.7 S3): STRY.pet_form bit 0
+ * nubs (after Interlude I), bit 1 horns (Ep 3.7, when it breathed in the
+ * fog), bit 2 a halo (it stayed pacifist). Only in story mode. --- */
+int pet_story_marks(void)
+{
+    return doomo_town.mode == TOWN_STORY ? story_stry()->pet_form & 7 : 0;
+}
+
+static void story_marks(const FormDef *f, int cx, int top, int rx, int frame)
+{
+    int m = pet_story_marks(), own = f->ears == EA_HORN_S || f->ears == EA_HORN_L || f->ears == EA_HORN_CURL;
+    int s = rx * 6 / 10;
+    if ((m & 2) && !own) horns(EA_HORN_S, cx, top + 1, rx);
+    else if ((m & 1) && !own) { rect(cx - s, top, 2, 1, 1); rect(cx + s - 1, top, 2, 1, 1); }
+    if ((m & 4) && !(f->flags & F_HALO)) halo(cx, top - 4 + (frame & 1));
+}
+/* --- end S3 --- */
+
 static void draw_form(int form, int frame)
 {
     const FormDef *f = &forms[form];
@@ -436,6 +454,7 @@ static void draw_form(int form, int frame)
     if (f->flags & F_BATWINGS) wings(cx, cy - 2, rx, 1, 1);
     horns(f->ears, cx, top + 1, rx);
     if (f->flags & F_HALO) halo(cx, top - 4 + (frame & 1));
+    story_marks(f, cx, top, rx, frame);                       /* S3 */
     if (f->flags & F_CHERRY) {
         ell(cx + 1, top - 2, 2, 2, 1);
         dot(cx, top - 3, 3);
@@ -559,7 +578,7 @@ uint8_t *pet_scene_canvas(int *fresh)
 
 const DoomoImage *pet_form_image(int form, int frame)
 {
-    int key = (form + 2) * 16 + (frame & 15), i, k;
+    int key = ((form + 2) * 16 + (frame & 15)) | (pet_story_marks() << 9), i, k;   /* S3: + the marks */
     uint8_t (*img_pix)[N * N] = pet_scratch()->img;
     lcd_colours();
     for (i = 0; i < IMG_CACHE; i++)

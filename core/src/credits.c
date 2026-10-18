@@ -10,6 +10,7 @@
  * forward, START skips to the end card.
  */
 #include "overworld_int.h"
+#include "story_ch34.h"   /* S3: the parade's Chapter 3-4 touches (story_sprites.c) */
 
 #define RANKS 500
 #define RANK_TICKS 11                 /* a new pair every 11 ticks          */
@@ -140,7 +141,17 @@ static void build(void)
         int32_t x = rank_x(-1);
         if (x >= vx0 && x <= vx1 && x <= END_X) {
             marcher(DOOMO_PLAYER_ID, x, ROAD_Y, ct);
-            if (pet_exists()) add(x + 26, ROAD_Y + 10, (int)((ct / 3) & 3) * 2, sprite_image(SPR_PET, (int)(ct / 6) & 3), BB_SHADOW);
+            if (pet_exists()) {
+                int hop = (int)((ct / 3) & 3) * 2;
+                const DoomoImage *pet = sprite_image(SPR_PET, (int)(ct / 6) & 3);
+                add(x + 26, ROAD_Y + 10, hop, pet, BB_SHADOW);
+                /* --- S3: the pet marches horned (Ep 3.7), haloed if it stayed pacifist --- */
+                if (pet && story_flag(SF_PET_HORNS))
+                    add(x + 26, ROAD_Y + 9, hop + pet->h - 2, ss_image(SS_IMG_HORNS), 0);
+                if (pet && story_flag(SF_PET_HALO))
+                    add(x + 26, ROAD_Y + 9, hop + pet->h + 4, ss_image(SS_IMG_HALO), BB_FULLBRIGHT);
+                /* --- end S3 --- */
+            }
         }
     }
     /* only the ranks on screen */
@@ -156,18 +167,26 @@ static void build(void)
     }
     /* the cast cheers from the roadside */
     {
-        static const int16_t fans[10] = { ID_MAYOR, ID_MOTHER_NOX, ID_NANA, ID_FUZZ, ID_RIVET,
-                                          ID_ANVIL, ID_PIP, ID_SOOTKIN, ID_VEX, ID_TALLYWORN };
-        for (i = 0; i < 10; i++) {
-            int32_t x = camx - plat_screen_w() * 2 + 40 + i * (plat_screen_w() * 4 - 80) / 9;
+        /* --- S3: Wisp, in a body (Ep 4.4); Grumbleguts at the roadside, unless the Feast
+         * took him (SF_GRUMBLE_DEAD); Vex holds the jar --- */
+        static const int16_t fans[12] = { ID_MAYOR, ID_MOTHER_NOX, ID_NANA, ID_FUZZ, ID_RIVET,
+                                          ID_ANVIL, ID_PIP, ID_SOOTKIN, ID_VEX, ID_TALLYWORN,
+                                          ID_WISP, ROSTER_ID_GRUMBLEGUTS };
+        int nf = story_grumble_dead() ? 11 : 12;
+        for (i = 0; i < nf; i++) {
+            int32_t x = camx - plat_screen_w() * 2 + 40 + i * (plat_screen_w() * 4 - 80) / (nf - 1);
             int jump = (int)(((ct + (uint32_t)i * 9) / 3) % 12);
             jump = jump < 6 ? jump * 3 : (12 - jump) * 3;
             {
                 const DoomoResident *f = town_res(fans[i]);
-                if (f && f->status != RES_EMPTY && f->status != RES_DEAD)
+                if (f && f->status != RES_EMPTY && f->status != RES_DEAD) {
                     add(x, ROAD_Y - 92 - (i & 1) * 20, jump, bodyspr_image(fans[i], 0, 0), BB_SHADOW);
+                    if (fans[i] == ID_VEX)
+                        add(x + 14, ROAD_Y - 90 - (i & 1) * 20, jump + 8, ss_image(SS_IMG_JAR), 0);
+                }
             }
         }
+        /* --- end S3 --- */
     }
 }
 
