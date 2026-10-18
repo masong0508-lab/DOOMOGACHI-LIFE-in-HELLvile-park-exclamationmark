@@ -3,6 +3,9 @@
 # with the same --save file. Commands: see harness.c (mailbox, src/hcmd.c).
 wait 40
 expect-log doomo: init
+# the story runner commands (SPEC R20, hcmd.c): a pinned seed, a story flag
+seed 4242
+expect-flag 0 0
 # the codec's worst case: ~58 KB, slot 1 only (crosses the 64 KB bank)
 town-fill 4242
 town-crc

@@ -12,9 +12,44 @@
  *                          typical story island (1000 premade citizens,
  *                          lived in: ~14 KB)
  *   GBA_HC_TOWN_CRC        CRC-32 of everything a save stores
+ * and the story / house runner commands (SPEC R20, hcmd.h):
+ *   GBA_HC_SEED seed       doomo_town.seed = seed, doomo_rng reseeded and
+ *                          plat_entropy() pinned to seed from now on (the
+ *                          next town_new() is reproducible, as on native)
+ *   GBA_HC_FLAG f          story_flag(f)
+ *   GBA_HC_TEXT_ARM        name = needle (<= 19 chars): plat_text calls are
+ *                          searched for it from now on
+ *   GBA_HC_TEXT_HIT        1 once the needle was drawn (disarms on a hit)
+ *   GBA_HC_STORY_FP        story_fingerprint()
  */
 #include "gba_plat.h"
+#include "hcmd.h"
 #include "doomo/doomo.h"
+#include "doomo/story_vm.h"
+
+/* 28 B of .bss (H2 budget <= 64 B) */
+uint8_t  gba_entropy_pinned;
+uint32_t gba_entropy_pin;
+uint8_t  gba_text_armed;
+static uint8_t text_hit;
+static char text_needle[sizeof(gba_mailbox.name)];
+
+void gba_text_probe(const char *s)
+{
+    const char *a, *b;
+    for (; *s; s++) {
+        for (a = s, b = text_needle; *b && *a == *b; a++, b++) {}
+        if (!*b) { text_hit = 1; gba_text_armed = 0; return; }
+    }
+}
+
+static void mailbox_name(char *nm)
+{
+    int i;
+    for (i = 0; i < (int)sizeof(gba_mailbox.name) - 1 && gba_mailbox.name[i]; i++)
+        nm[i] = gba_mailbox.name[i];
+    nm[i] = 0;
+}
 
 static void town_fill(uint32_t seed)
 {
@@ -108,9 +143,7 @@ void gba_harness_cmd(void)
         /* scene NAME [ARG] / push NAME [ARG], like the native runner's */
         char nm[sizeof(gba_mailbox.name)];
         const DoomoScene *s;
-        int i;
-        for (i = 0; i < (int)sizeof(nm) - 1 && gba_mailbox.name[i]; i++) nm[i] = gba_mailbox.name[i];
-        nm[i] = 0;
+        mailbox_name(nm);
         s = scene_by_name(nm);
         if (s) {
             if (cmd == GBA_HC_SCENE) scene_set(s, (int)arg);
@@ -123,6 +156,31 @@ void gba_harness_cmd(void)
     case GBA_HC_TOWN_CRC:
         r = town_crc();
         gba_logf("hcmd: town crc %x", r);
+        break;
+    case GBA_HC_SEED:
+        doomo_town.seed = arg;
+        rng_seed(&doomo_rng, arg);
+        gba_entropy_pin = arg;
+        gba_entropy_pinned = 1;
+        r = 1;
+        gba_logf("hcmd: seed %u", arg);
+        break;
+    case GBA_HC_FLAG:
+        r = (uint32_t)story_flag((int)arg);
+        break;
+    case GBA_HC_TEXT_ARM:
+        mailbox_name(text_needle);
+        text_hit = 0;
+        gba_text_armed = text_needle[0] != 0;
+        r = gba_text_armed;
+        break;
+    case GBA_HC_TEXT_HIT:
+        r = text_hit;
+        if (r) { text_hit = 0; gba_text_armed = 0; }
+        break;
+    case GBA_HC_STORY_FP:
+        r = story_fingerprint();
+        gba_logf("hcmd: story-fp %x", r);
         break;
     default:
         break;

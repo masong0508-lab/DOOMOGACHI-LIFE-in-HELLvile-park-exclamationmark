@@ -42,6 +42,13 @@
  *   expect-town-crc     fail unless the state's CRC equals the remembered
  *   scene NAME [ARG] / push NAME [ARG]
  *                       game ROM: scene_set / scene_push by name (mailbox)
+ *   seed N              game ROM: doomo_town.seed = N, doomo_rng reseeded,
+ *                       plat_entropy() pinned to N (the next town_new() is
+ *                       reproducible, like the native runner's)
+ *   expect-flag F [V]   fail unless story_flag(F) == V (default 1)
+ *   expect-text TEXT    fail unless TEXT (<= 19 chars) is drawn by plat_text
+ *                       within the next 90 ticks (stops at the first hit)
+ *   story-fp [HEX]      print story_fingerprint(); with HEX, fail unless equal
  *   post CMD ARG        post mailbox command CMD (hcmd.c numbers) without
  *                       waiting, e.g. to "profile" a save while it runs
  * Buttons: A B L R START SELECT UP DOWN LEFT RIGHT, X (=SELECT+A),
@@ -182,6 +189,21 @@ static void run_frame(void);
 #define HC_VERIFY 6
 #define HC_SCENE 7
 #define HC_PUSH 8
+/* gba/src/hcmd.h (story / house runner commands, SPEC R20) */
+#define HC_SEED 9
+#define HC_FLAG 10
+#define HC_TEXT_ARM 11
+#define HC_TEXT_HIT 12
+#define HC_STORY_FP 13
+/* the mailbox's 20-byte name argument (scene / push / expect-text) */
+static void mailbox_name(const char *s)
+{
+    int i, n = (int)strlen(s);
+    for (i = 0; i < 20; i++)
+        core->busWrite8(core, MAILBOX_ADDR + 44 + (uint32_t)i, (uint8_t)(i < 19 && i < n ? s[i] : 0));
+}
+
+static int hcmd_silent;   /* expect-text's per-tick polls print nothing */
 static int hcmd(uint32_t cmd, uint32_t arg, uint32_t *result)
 {
     int n;
@@ -193,7 +215,7 @@ static int hcmd(uint32_t cmd, uint32_t arg, uint32_t *result)
         if (core->busRead32(core, MAILBOX_ADDR + 16) == 0) {
             uint32_t cyc = core->busRead32(core, MAILBOX_ADDR + 28);
             *result = core->busRead32(core, MAILBOX_ADDR + 24);
-            printf("harness: command %u(%u) -> 0x%x in %.1f ms\n", (unsigned)cmd, (unsigned)arg,
+            if (!hcmd_silent) printf("harness: command %u(%u) -> 0x%x in %.1f ms\n", (unsigned)cmd, (unsigned)arg,
                    (unsigned)*result, cyc / 16777.216);
             return 1;
         }
@@ -544,14 +566,60 @@ static int run_script(const char *path)
         } else if ((!strcmp(argv[0], "scene") || !strcmp(argv[0], "push")) && argc >= 2) {
             /* game ROM: scene_set / scene_push by name, like the native runner */
             uint32_t r = 0;
-            int i;
-            for (i = 0; i < 20; i++)
-                core->busWrite8(core, MAILBOX_ADDR + 44 + (uint32_t)i,
-                                (uint8_t)(i < 19 && i < (int)strlen(argv[1]) ? argv[1][i] : 0));
+            mailbox_name(argv[1]);
             if (!hcmd(argv[0][0] == 's' ? HC_SCENE : HC_PUSH,
                       argc >= 3 ? (uint32_t)atoi(argv[2]) : 0, &r) || !r) {
                 fprintf(stderr, "harness: %s:%d %s %s failed\n", path, lineno, argv[0], argv[1]);
                 failed = 1;
+            }
+        } else if (!strcmp(argv[0], "seed") && argc >= 2) {
+            uint32_t r;
+            if (!hcmd(HC_SEED, (uint32_t)strtoul(argv[1], NULL, 0), &r)) failed = 1;
+        } else if (!strcmp(argv[0], "expect-flag") && argc >= 2) {
+            uint32_t r, f = (uint32_t)strtoul(argv[1], NULL, 0);
+            uint32_t want = argc >= 3 ? (uint32_t)strtoul(argv[2], NULL, 0) : 1;
+            if (!hcmd(HC_FLAG, f, &r)) failed = 1;
+            else if ((r != 0) != (want != 0)) {
+                fprintf(stderr, "harness: %s:%d story flag %u is %u, expected %u\n", path,
+                        lineno, (unsigned)f, (unsigned)r, (unsigned)want);
+                failed = 1;
+            }
+        } else if (!strcmp(argv[0], "expect-text") && argc >= 2) {
+            /* the needle is the rest of the line, rebuilt from argv */
+            char want[64] = "";
+            uint32_t r = 0;
+            int i;
+            for (i = 1; i < argc; i++) {
+                if (i > 1) strncat(want, " ", sizeof(want) - strlen(want) - 1);
+                strncat(want, argv[i], sizeof(want) - strlen(want) - 1);
+            }
+            if (strlen(want) > 19)
+                fprintf(stderr, "harness: %s:%d expect-text: only the first 19 chars are "
+                        "matched\n", path, lineno);
+            mailbox_name(want);
+            if (!hcmd(HC_TEXT_ARM, 0, &r) || !r) failed = 1;
+            hcmd_silent = 1;
+            for (i = 0; i < 90 && !failed; i++) {
+                run_ticks(1);
+                if (!hcmd(HC_TEXT_HIT, 0, &r)) failed = 1;
+                else if (r) break;
+            }
+            hcmd_silent = 0;
+            if (!failed && !r) {
+                fprintf(stderr, "harness: %s:%d expected text '%s' on screen\n", path, lineno,
+                        want);
+                failed = 1;
+            }
+        } else if (!strcmp(argv[0], "story-fp")) {
+            uint32_t r;
+            if (!hcmd(HC_STORY_FP, 0, &r)) failed = 1;
+            else {
+                printf("harness: story-fp 0x%08x\n", (unsigned)r);
+                if (argc >= 2 && r != (uint32_t)strtoul(argv[1], NULL, 16)) {
+                    fprintf(stderr, "harness: %s:%d story fingerprint 0x%08x, expected %s\n",
+                            path, lineno, (unsigned)r, argv[1]);
+                    failed = 1;
+                }
             }
         } else if (!strcmp(argv[0], "post") && argc >= 3) {
             core->busWrite32(core, MAILBOX_ADDR + 20, (uint32_t)atoi(argv[2]));

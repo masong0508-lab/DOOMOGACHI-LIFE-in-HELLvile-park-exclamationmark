@@ -11,6 +11,7 @@
  */
 #include "gba_plat.h"
 #include "video_int.h"
+#include "hcmd.h"
 #include "doomo/palette.h"
 #include "doomo/font.h"
 
@@ -167,6 +168,7 @@ void plat_shade_rect(int x, int y, int w, int h, int level)
 
 void plat_text(int x, int y, const char *s, uint8_t color)
 {
+    if (gba_text_armed && s) gba_text_probe(s);   /* harness expect-text */
     if (gba_nodraw || !s) return;
     if (!color) color = PAL_BLACK;
     vid_text(x, y, s, color);
@@ -176,6 +178,7 @@ void plat_text(int x, int y, const char *s, uint8_t color)
  * plat_text passes: 8% of a title frame) */
 void plat_text_outline(int x, int y, const char *s, uint8_t color, uint8_t outline)
 {
+    if (gba_text_armed && s) gba_text_probe(s);   /* harness expect-text */
     if (gba_nodraw || !s) return;
     if (!color) color = PAL_BLACK;
     if (!outline) outline = PAL_BLACK;

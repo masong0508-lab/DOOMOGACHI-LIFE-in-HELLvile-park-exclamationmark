@@ -5,6 +5,8 @@ expect-log doomo: init
 shot game01_boot
 wait 60
 shot game02_title
+# the harness text probe (SPEC R20: expect-text, hcmd.c)
+expect-text PRESS START
 press START
 wait 30
 shot game03_after_start

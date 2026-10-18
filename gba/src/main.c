@@ -12,6 +12,7 @@
  */
 #include <stdarg.h>
 #include "gba_plat.h"
+#include "hcmd.h"
 #include "doomo/game.h"
 #include "doomo/input.h"
 
@@ -121,6 +122,7 @@ uint32_t plat_ticks(void) { return gba_frames; }
 uint32_t plat_entropy(void)
 {
     static uint32_t mix = 0x9E3779B9u;
+    if (gba_entropy_pinned) return gba_entropy_pin;   /* harness "seed N" */
     mix ^= gba_cycles() + (gba_vblanks << 16) + REG_VCOUNT + (gba_keys << 7) +
            gba_frames * 2654435761u;
     mix = (mix << 13) | (mix >> 19);
