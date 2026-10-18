@@ -180,6 +180,15 @@ extern int (*ui_list_locked_fn)(int index);
  * `type` command and by platforms with a keyboard. 0 if none active. */
 int  ui_text_entry_feed(int c);
 int  ui_dialog_active(void);          /* SCENE_DIALOG is open            */
+/* ---- S1 additions (comic-timing dialogue; SPEC sec.7 S1 M3, SF sec.15.6) --
+ * ui_say_ex: a story line with an expression (EXPR_*), DL_* flags (txt.h)
+ * and the beat codes / "/" line and "//" page breaks of ui_dialog.c.
+ * ui_dialog_queued: lines waiting (the VM paces itself on it).
+ * ui_dialog_insert: the {cut N} insert being shown (-1 none) and its age,
+ * for the host scene to draw. */
+void ui_say_ex(int speaker, int expr, int flags, const char *text);
+int  ui_dialog_queued(void);
+int  ui_dialog_insert(int *age);
 /* Dialogue box style (default WIN_CUTE; HELL after the invasion). */
 void ui_dialog_style(int style);
 /* Pending toasts (for tests). */

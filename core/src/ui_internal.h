@@ -72,4 +72,14 @@ int  ui_heart_flat_covers_screen(int cx, int cy, int s);
 /* ui_text_big through bit rows; 0 = too big, draw it the slow way. */
 int  ur_text_big(int x, int y, const char *s, int scale, uint8_t color, uint8_t outline);
 
+/* ---- ui_dialog.c test hooks (S1 M3) ---------------------------------- */
+typedef struct UiDialogDebug {
+    const char *text;          /* the top line, codes stripped           */
+    int shown, page, hold;     /* glyphs shown on the page, page offset  */
+    int deadpan, punch;
+    uint32_t pill_draws;       /* frames the name pill was drawn         */
+    int flags, expr;           /* DL_*, EXPR_*                           */
+} UiDialogDebug;
+void ui_dialog_debug(UiDialogDebug *o);
+
 #endif
