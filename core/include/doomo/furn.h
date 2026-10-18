@@ -31,7 +31,8 @@ enum { FF_PORTAL = 1,       /* a door: fixed slot, re-skin only            */
        FF_CURSED = 2,       /* tape-stops the vamp when it lands           */
        FF_NO_SQUASH = 4,    /* hell props never wobble (SF sec.15.4)          */
        FF_UNSELLABLE = 8,   /* gifts, trophies, story pieces (cap 1)       */
-       FF_GIFT = 16 };      /* placed by a citizen; `giver` is valid       */
+       FF_GIFT = 16,        /* placed by a citizen; `giver` is valid       */
+       FF_STARTER = 32 };   /* (H1) granted when the player moves in       */
 
 /* Interactions (FI_*): what Live mode does with a piece. */
 enum { FI_NONE, FI_SIT, FI_SLEEP, FI_EAT, FI_COOK, FI_PLAY, FI_WATCH, FI_MUSIC,
@@ -59,10 +60,69 @@ typedef struct DoomoFurn {
     uint8_t  nprim;                   /* recipe in doomo_furn_prims[]               */
     uint16_t prim0;
     uint8_t  frames;                  /* GBA animation frames                       */
+    uint8_t  role;                    /* (H1, add-only) FR_*: what the score and the
+                                         placement rules recognise the piece as   */
 } DoomoFurn;
 
 /* Generated tables (furngen, H4). Weak empty defaults: core/src/stubs.c. */
 extern const DoomoFurn doomo_furn[];
 extern const uint16_t  doomo_furn_count;
+
+/* ---- H1 additions (add-only) ------------------------------------------------ */
+
+/* DoomoFurn.role: the pieces the score's feng-shui rules (HF sec.4.2), the
+ * fixed room slots and the defence know by name. Append only. */
+enum { FR_NONE, FR_DOOR, FR_WINDOW, FR_HEARTH, FR_BED, FR_SEAT, FR_TABLE,
+       FR_LAMP, FR_CANDLE, FR_MIRROR, FR_PLUSH, FR_PENTAGRAM, FR_PLAIN_HUMAN,
+       FR_TURRET, FR_PLATE, FR_NEST, FR_FENCE, FR_PLANT, FR_COUNT };
+
+/* Paint slots of DoomoFurn.paint_a / paint_b: 0xFF = fixed colours. The art
+ * marks slot A with PAINT_BUBBLEGUM's 3 shades and slot B with PAINT_MINT's
+ * (HF sec.6.2); the renderers swap those 6 indices (and the two outline
+ * shades below) for the chosen paints. */
+#define FURN_MARK_A     7                /* PAINT_BUBBLEGUM */
+#define FURN_MARK_B     15               /* PAINT_MINT      */
+#define FURN_PAINT_DEFAULT 0x1F          /* HomeObj paint: the catalog default */
+
+/* PS1 / furngen recipe primitives (HF sec.6.2, 7.1): one 8-byte record each,
+ * in units of 1/16 tile (x, y) and pixels (z). doomo_furn[i].prim0 / nprim
+ * index doomo_furn_prims[]. */
+enum { FP_BOX, FP_BLOB, FP_CYL, FP_CONE, FP_COUNT };
+enum { FM_A = 0xF0, FM_B = 0xF1 };       /* FurnPrim.mat: paint slot A / B;
+                                            otherwise a palette index (base tone) */
+enum { FPS_SOFT = 1, FPS_SHINY = 2, FPS_GLOW = 4, FPS_FLAT = 8 };  /* FurnPrim.style */
+typedef struct DoomoFurnPrim {
+    uint8_t kind;                     /* FP_* (low 4 bits) | frame mask << 4 (0 = all) */
+    uint8_t mat;                      /* FM_A / FM_B / palette index                   */
+    int8_t  x, y;                     /* box: min corner; others: centre (units)       */
+    uint8_t z;                        /* bottom (px)                                   */
+    uint8_t w, d, h;                  /* box: size; blob: radii x2; cyl/cone: diameter,
+                                         -, height                                     */
+} DoomoFurnPrim;                      /* 8 B */
+extern const DoomoFurnPrim doomo_furn_prims[];
+
+/* GBA / native iso sprites (furngen -> core/gen/furn_iso.c; the PS1 links an
+ * empty table, SPEC C3). Each facing is span encoded: h u16 row offsets
+ * (relative to `off`), then per row runs of [skip u8][len u8][len pixels],
+ * ended by skip = 0xFF. (ox, oy) is where the footprint's back corner
+ * (tile origin, z = 0) lands in the image. Entry of (furn, frame, facing):
+ * doomo_furn_iso_first[furn] + frame * 2 + facing, facing 0 = rot 0 (front
+ * faces +y), 1 = rot 1 (front faces +x); rot 2 / 3 draw facing 1 / 0
+ * mirrored (IMG_FLIPX). The second table is the cheap box fallback colours. */
+typedef struct DoomoFurnIso {
+    uint8_t  w, h, ox, oy;
+    uint32_t off;                     /* into doomo_furn_iso_data[]                    */
+} DoomoFurnIso;
+extern const DoomoFurnIso doomo_furn_iso[];
+extern const uint16_t     doomo_furn_iso_first[];  /* [doomo_furn_count]          */
+extern const uint8_t      doomo_furn_iso_data[];
+extern const uint16_t     doomo_furn_iso_count;    /* 0 on the PS1                 */
+
+/* Resident grant table (furngen -> core/gen/furn_grant.c, SPEC C3): the
+ * pieces an unlock id grants (trophies), their toast names, and which
+ * pieces are capped at one (trophies, story pieces, gifts). */
+typedef struct DoomoFurnGrant { uint16_t unlock, furn; const char *name; } DoomoFurnGrant;
+extern const DoomoFurnGrant doomo_furn_grants[];   /* terminated by name == NULL  */
+extern const uint8_t        doomo_furn_cap1[FURN_MAX / 8];
 
 #endif

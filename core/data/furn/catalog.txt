@@ -1,0 +1,1372 @@
+# core/data/furn/catalog.txt - the dream house catalog: stats only (owner: H1).
+# The art (prims, facings, frames) lives in core/data/furn/art/*.txt (H4);
+# core/tools/furngen.c joins the two by key into core/gen/furn_data.c,
+# furn_grant.c, furn_iso.c and furn_ids.h (SPEC R19, C3).
+#
+# IDS ARE THE BLOCK ORDER AND ARE SAVED (9 bits): APPEND ONLY, never reorder
+# or delete a block (retire it with `flags2 UNSELLABLE` and price 0 instead).
+#
+# [key] CATEGORY price "Name (<= 20)"
+#   desc "Description (<= 40)"
+#   foot W D H       footprint in tiles (1..4) and height in px/4
+#   flags F|F        FF_*: WALL RUG SURFACE SMALL LIGHT ANIM HELL BILLBOARD
+#   flags2 F|F       PORTAL CURSED NO_SQUASH UNSELLABLE GIFT STARTER
+#   fi X             what Live mode does: NONE SIT SLEEP EAT COOK PLAY WATCH
+#                    MUSIC READ BATHE PRAY SUMMON EXAMINE TURRET
+#   role X           FR_* the rules know it as (BED SEAT TABLE LAMP CANDLE ...)
+#   paints A B       default paints (PAINT_* names) or FIXED
+#   score c s m      cute, spooky, comfy (-10..10)
+#   theme X          THEME_* for Style / Harmony
+#   mass N           barricade HP (0 for wall, rug and small pieces)
+#   need X           resident STAT_* restored by using it
+#   seat N           seat / sleep offset (px)
+#   light N          lamp radius (tiles)
+#   giver N          resident id of a gift's giver
+#   unlock N         unlock id that grants (trophies) or gates it
+#   reward Sxxx      the story_final.md mission that awards it
+
+# ---- PASTEL ------------------------------------------------------
+[pink_door] PASTEL 0 "Pink Front Door"
+  desc "The door. It stays. Re-skin only."
+  foot 1 1 13  flags WALL  flags2 PORTAL|UNSELLABLE  role DOOR
+  paints BUBBLEGUM WHITE  score 2 0 0  theme PASTEL
+[wood_window] PASTEL 0 "Wood Window"
+  desc "Two panes and a little sill."
+  foot 1 1 6  flags WALL  flags2 PORTAL|UNSELLABLE  role WINDOW
+  paints HONEY SKY  score 1 0 1  theme COTTAGE
+[cottage_hearth] PASTEL 0 "Cottage Hearth"
+  desc "The chimney has to breathe."
+  foot 2 1 12  flags SURFACE  flags2 PORTAL|UNSELLABLE  role HEARTH
+  paints FIXED FIXED  score 2 0 6  theme COTTAGE  light 2
+[bunny_beanbag] PASTEL 120 "Bunny Beanbag"
+  desc "Sinks when sat on. Sighs when you leave."
+  foot 1 1 5  flags ANIM  fi SIT  role SEAT
+  paints BUBBLEGUM MINT  score 6 0 7  theme PASTEL  mass 4  need HAPPY  seat 10
+[cloud_bed] PASTEL 380 "Cloud Bed"
+  desc "Sleep on a cloud. It holds. Mostly."
+  foot 1 2 5  flags SURFACE  fi SLEEP  role BED
+  paints SKY WHITE  score 6 0 9  theme CLOUD  mass 16  need ENERGY  seat 12
+[cupcake_lamp] PASTEL 90 "Cupcake Lamp"
+  desc "Frosting glows. Do not lick the bulb."
+  foot 1 1 9  flags LIGHT  role LAMP
+  paints BUBBLEGUM LEMON  score 6 0 2  theme CANDY  mass 2  light 3
+[marshmallow_sofa] PASTEL 420 "Marshmallow Sofa"
+  desc "Squishy. Seats three, or one gatekeeper."
+  foot 2 1 6  flags SURFACE  fi SIT  role SEAT
+  paints WHITE BUBBLEGUM  score 6 0 8  theme CANDY  mass 14  need HAPPY  seat 10
+[macaron_stool] PASTEL 60 "Macaron Stool"
+  desc "A sweet seat. Not for eating."
+  foot 1 1 4  fi SIT  role SEAT
+  paints MINT LAVENDER  score 5 0 3  theme CANDY  mass 5  seat 8
+[candy_cane_shelf] PASTEL 160 "Candy-Cane Shelf"
+  desc "Striped shelves for striped things."
+  foot 1 1 11  flags SURFACE
+  paints CHERRY WHITE  score 5 0 1  theme CANDY  mass 12
+[heart_mirror] PASTEL 140 "Heart Mirror"
+  desc "You look lovely. It says so."
+  foot 1 1 6  flags WALL  fi EXAMINE  role MIRROR
+  paints BUBBLEGUM SILVER  score 6 0 1  theme PASTEL
+[strawberry_fridge] PASTEL 520 "Strawberry Fridge"
+  desc "Seeds on the outside, snacks inside."
+  foot 1 1 13  fi EAT
+  paints CHERRY LIME  score 5 0 2  theme CANDY  mass 18  need HUNGER
+[teacup_table] PASTEL 180 "Teacup Table"
+  desc "A table that is also a teacup. Sip."
+  foot 1 1 5  flags SURFACE  role TABLE
+  paints WHITE BUBBLEGUM  score 5 0 2  theme PASTEL  mass 10
+[bubble_chair] PASTEL 240 "Bubble Chair"
+  desc "A chair in a bubble. Don't pop it."
+  foot 1 1 7  flags ANIM  fi SIT  role SEAT
+  paints SKY WHITE  score 5 0 6  theme CLOUD  mass 6  seat 10
+[rainbow_bookcase] PASTEL 300 "Rainbow Bookcase"
+  desc "Sorted by colour, never by title."
+  foot 1 1 12  flags SURFACE  fi READ
+  paints BUBBLEGUM MINT  score 5 0 2  theme PASTEL  mass 16
+[pastel_wardrobe] PASTEL 460 "Pastel Wardrobe"
+  desc "Big enough to hide in. Others have."
+  foot 1 1 14
+  paints LAVENDER WHITE  score 4 0 2  theme PASTEL  mass 20
+[cloud_shelf] PASTEL 80 "Cloud Shelf"
+  desc "A wall shelf shaped like weather."
+  foot 1 1 3  flags WALL
+  paints WHITE SKY  score 4 0 0  theme CLOUD
+[jellybean_jar] PASTEL 40 "Jellybean Jar"
+  desc "Four hundred beans. You counted."
+  foot 1 1 3  flags SMALL  fi EAT
+  paints BUBBLEGUM MINT  score 5 0 1  theme CANDY
+[sprinkle_vase] PASTEL 50 "Sprinkle Vase"
+  desc "Sprinkles on a vase. Why not."
+  foot 1 1 3  flags SMALL  role PLANT
+  paints BUBBLEGUM LEMON  score 5 0 1  theme CANDY
+[plush_ottoman] PASTEL 110 "Plush Ottoman"
+  desc "For feet. Or for small sitters."
+  foot 1 1 3  fi SIT  role SEAT
+  paints LAVENDER MINT  score 5 0 5  theme PASTEL  mass 5  seat 6
+[cherry_clock] PASTEL 90 "Cherry Clock"
+  desc "Tick. Tock. Cherry."
+  foot 1 1 4  flags WALL
+  paints CHERRY LIME  score 4 0 1  theme CANDY
+[honey_lamp] PASTEL 130 "Honey Lamp"
+  desc "A tall lamp the colour of honey."
+  foot 1 1 12  flags LIGHT  role LAMP
+  paints HONEY CARAMEL  score 4 0 2  theme COTTAGE  mass 3  light 3
+[pine_table] PASTEL 220 "Pine Table"
+  desc "A long table for long dinners."
+  foot 2 1 5  flags SURFACE  fi EAT  role TABLE
+  paints CARAMEL HONEY  score 2 0 3  theme COTTAGE  mass 12
+[wooden_chair] PASTEL 70 "Wooden Chair"
+  desc "Four legs. Usually."
+  foot 1 1 6  fi SIT  role SEAT
+  paints CARAMEL HONEY  score 2 0 4  theme COTTAGE  mass 6  seat 8
+[comfy_armchair] PASTEL 260 "Comfy Armchair"
+  desc "The chair that hugs back."
+  foot 1 1 6  fi SIT  role SEAT
+  paints ROSE CARAMEL  score 4 0 8  theme COTTAGE  mass 10  seat 9
+[single_bed] PASTEL 200 "Single Bed"
+  desc "A bed. Better than a crate."
+  foot 1 2 5  flags SURFACE  flags2 STARTER  fi SLEEP  role BED
+  paints SKY WHITE  score 3 0 7  theme COTTAGE  mass 14  need ENERGY  seat 12
+[nightstand] PASTEL 90 "Nightstand"
+  desc "For a lamp, a glass, a secret."
+  foot 1 1 5  flags SURFACE  role TABLE
+  paints CARAMEL HONEY  score 2 0 1  theme COTTAGE  mass 6
+[toy_chest] PASTEL 150 "Toy Chest"
+  desc "Toys go in. Toys come out at night."
+  foot 1 1 5  flags SURFACE  fi PLAY
+  paints CHERRY HONEY  score 5 0 1  theme PASTEL  mass 8
+[cream_dresser] PASTEL 240 "Cream Dresser"
+  desc "Pick a dresser. Not the cute one. Fine."
+  foot 1 1 9  flags SURFACE
+  paints WHITE BUBBLEGUM  score 4 0 1  theme PASTEL  mass 18
+[bunk_bed] PASTEL 440 "Bunk Bed"
+  desc "Two beds, one ladder, one argument."
+  foot 1 2 12  flags SURFACE  fi SLEEP  role BED
+  paints SKY CARAMEL  score 4 0 7  theme COTTAGE  mass 16  need ENERGY  seat 12
+[rocking_horse] PASTEL 180 "Rocking Horse"
+  desc "It rocks when nobody is looking."
+  foot 1 1 7  flags ANIM  fi PLAY
+  paints BUBBLEGUM HONEY  score 7 1 2  theme PASTEL  mass 4
+[writing_desk] PASTEL 210 "Writing Desk"
+  desc "For letters you may never send."
+  foot 2 1 6  flags SURFACE  fi READ  role TABLE
+  paints CARAMEL HONEY  score 2 0 2  theme COTTAGE  mass 12
+[bath_tub_pink] PASTEL 480 "Pink Clawfoot Tub"
+  desc "Bubbles not included. Bubbles likely."
+  foot 2 1 5  fi BATHE
+  paints BUBBLEGUM WHITE  score 5 0 6  theme PASTEL  mass 14  need HYGIENE
+
+# ---- GOTHIC ------------------------------------------------------
+[coffin_bed] GOTHIC 560 "Coffin Bed"
+  desc "Lid optional. Snoring echoes."
+  foot 1 2 6  flags SURFACE  fi SLEEP  role BED
+  paints JET BLOOD  score 1 6 6  theme GOTH  mass 18  need ENERGY  seat 12
+[bone_chandelier] GOTHIC 380 "Bone Chandelier"
+  desc "Hangs from the ceiling. Rattles in wind."
+  foot 1 1 6  flags WALL|LIGHT  role LAMP
+  paints BONE FIXED  score 1 6 0  theme BONE  light 3
+[candelabra] GOTHIC 160 "Candelabra"
+  desc "Three candles, one mood."
+  foot 1 1 9  flags LIGHT|ANIM  role CANDLE
+  paints BONE FIXED  score 1 4 2  theme GOTH  mass 2  light 2
+[raven_perch] GOTHIC 180 "Raven Perch"
+  desc "The raven says nothing. It knows."
+  foot 1 1 10  flags ANIM
+  paints JET CHARCOAL  score 1 5 0  theme GOTH  mass 2
+[gargoyle_bookend] GOTHIC 90 "Gargoyle Bookend"
+  desc "Holds books. Holds grudges."
+  foot 1 1 3  flags SMALL
+  paints SILVER FIXED  score 1 4 0  theme GOTH
+[velvet_chaise] GOTHIC 520 "Velvet Chaise"
+  desc "Swoon on it. Dramatically."
+  foot 2 1 5  fi SIT  role SEAT
+  paints GRAPE JET  score 2 3 8  theme GOTH  mass 12  seat 8
+[cobweb_curtains] GOTHIC 120 "Cobweb Curtains"
+  desc "Hand-spun. By hands with eight legs."
+  foot 1 1 9  flags WALL
+  paints SILVER FIXED  score 0 5 0  theme GOTH
+[skull_planter] GOTHIC 80 "Skull Planter"
+  desc "The plant is doing great. Unsettling."
+  foot 1 1 3  flags SMALL  role PLANT
+  paints BONE LIME  score 2 4 1  theme BONE
+[iron_bed] GOTHIC 420 "Iron Bed"
+  desc "Wrought, black and creaky."
+  foot 1 2 7  flags SURFACE  fi SLEEP  role BED
+  paints CHARCOAL BLOOD  score 1 3 7  theme GOTH  mass 18  need ENERGY  seat 12
+[tombstone_table] GOTHIC 200 "Tombstone End-Table"
+  desc "Here lies your coffee. RIP."
+  foot 1 1 5  flags SURFACE  role TABLE
+  paints SILVER FIXED  score 1 5 1  theme BONE  mass 10
+[bat_mobile] GOTHIC 110 "Bat Mobile"
+  desc "Little bats in little circles."
+  foot 1 1 4  flags WALL|ANIM
+  paints JET GRAPE  score 3 4 1  theme GOTH
+[stained_window] GOTHIC 300 "Stained-Glass Window"
+  desc "Light comes in coloured and solemn."
+  foot 1 1 6  flags WALL  flags2 PORTAL  role WINDOW
+  paints GRAPE CHERRY  score 2 3 1  theme GOTH
+[following_portrait] GOTHIC 260 "Watching Portrait"
+  desc "Its eyes follow you. It's fine."
+  foot 1 1 7  flags WALL|ANIM
+  paints CHARCOAL BLOOD  score 0 8 0  theme GOTH
+[snoozula_pillow] GOTHIC 120 "Snoozula's Pillow"
+  desc "Count Snoozula's. It snores."
+  foot 1 1 2  flags SMALL|ANIM  role PLUSH
+  paints GRAPE JET  score 5 3 4  theme GOTH
+[gothic_wardrobe] GOTHIC 520 "Gothic Wardrobe"
+  desc "Narnia, but worse."
+  foot 1 1 15
+  paints JET GRAPE  score 0 5 1  theme GOTH  mass 20
+[bone_bookcase] GOTHIC 380 "Bone Bookcase"
+  desc "Spines on the spines."
+  foot 1 1 12  flags SURFACE  fi READ
+  paints BONE CHARCOAL  score 0 5 1  theme BONE  mass 16
+[pipe_organ_mini] GOTHIC 640 "Parlour Organ"
+  desc "Plays itself on Tuesdays."
+  foot 2 1 12  fi MUSIC
+  paints CHOCOLATE BONE  score 1 5 2  theme GOTH  mass 18
+[crystal_ball] GOTHIC 180 "Crystal Ball"
+  desc "It shows you. Watching it."
+  foot 1 1 3  flags SMALL|ANIM  fi EXAMINE
+  paints LAVENDER SILVER  score 2 5 0  theme GOTH
+[black_cat_clock] GOTHIC 130 "Black Cat Clock"
+  desc "Tail ticks, eyes tock."
+  foot 1 1 6  flags WALL|ANIM
+  paints JET LEMON  score 4 3 0  theme GOTH
+[goth_armchair] GOTHIC 300 "Wingback Chair"
+  desc "The back is taller than you."
+  foot 1 1 8  fi SIT  role SEAT
+  paints BLOOD JET  score 1 3 7  theme GOTH  mass 10  seat 9
+
+# ---- HELLISH -----------------------------------------------------
+[pentagram_rug] HELLISH 0 "Pentagram Rug"
+  desc "Plush. Cursed. Vex says it's fine."
+  foot 2 2 0  flags RUG|HELL  flags2 CURSED|UNSELLABLE|GIFT  role PENTAGRAM
+  paints BLOOD JET  score 2 9 1  theme LAVA  giver 666
+[brimstone_hearth] HELLISH 900 "Brimstone Hearth"
+  desc "A fireplace that is mostly fire."
+  foot 2 1 11  flags LIGHT|HELL|ANIM  role LAMP
+  paints RUST HELLFIRE  score 0 6 6  theme LAVA  mass 16  light 3
+[imp_stool] HELLISH 140 "Imp Stool"
+  desc "Sits on an imp. The imp consents."
+  foot 1 1 4  flags HELL  fi SIT  role SEAT
+  paints BLOOD CHARCOAL  score 3 4 3  theme LAVA  mass 5  seat 7
+[chained_chandelier] HELLISH 420 "Chained Chandelier"
+  desc "Chains. Candles. Chains."
+  foot 1 1 6  flags WALL|LIGHT|HELL  role LAMP
+  paints CHARCOAL HELLFIRE  score 0 7 0  theme LAVA  light 3
+[vapor_tank] HELLISH 600 "Vapor Tank"
+  desc "Bubbles purple. Smells of grape."
+  foot 1 1 12  flags HELL|ANIM
+  paints VAPE_PURPLE SILVER  score 0 6 0  theme VAPOR  mass 14
+[bone_throne] HELLISH 1200 "Bone Throne"
+  desc "Comfier than it looks. Barely."
+  foot 1 1 12  flags HELL  fi SIT  role SEAT
+  paints BONE BLOOD  score 0 8 4  theme BONE  mass 16  seat 10
+[cloud_nine_vend] HELLISH 800 "Cloud Nine Vendor"
+  desc "Dispenses regret, grape flavoured."
+  foot 1 1 13  flags HELL|ANIM|LIGHT  fi EAT
+  paints VAPE_PURPLE MAGENTA  score 0 6 0  theme VAPOR  mass 18  light 1
+[hellsteel_shelving] HELLISH 360 "Hellsteel Shelving"
+  desc "Welded, warm to the touch."
+  foot 1 1 12  flags SURFACE|HELL
+  paints CHARCOAL RUST  score 0 5 0  theme LAVA  mass 18
+[sulphur_candle] HELLISH 60 "Sulphur Candle"
+  desc "Burns yellow. Smells of eggs."
+  foot 1 1 3  flags SMALL|LIGHT|HELL|ANIM  role CANDLE
+  paints LEMON FIXED  score 0 4 0  theme LAVA  light 1
+[lava_lamp] HELLISH 300 "Lava Lamp"
+  desc "Actually lava. The pool is red."
+  foot 1 1 6  flags LIGHT|HELL|ANIM  role LAMP
+  paints HELLFIRE RUST  score 2 8 1  theme LAVA  mass 2  light 3
+[smog_curtains] HELLISH 160 "Smog Curtains"
+  desc "Grey, heavy, faintly coughing."
+  foot 1 1 9  flags WALL|HELL
+  paints CHARCOAL VAPE_PURPLE  score 0 5 0  theme VAPOR
+[hell_couch] HELLISH 880 "Hellhide Couch"
+  desc "Leather from something. Don't ask."
+  foot 2 1 6  flags SURFACE|HELL  fi SIT  role SEAT
+  paints BLOOD CHARCOAL  score 0 6 7  theme LAVA  mass 14  seat 10
+[ember_brazier] HELLISH 240 "Ember Brazier"
+  desc "A bowl of coals. Toasty."
+  foot 1 1 6  flags LIGHT|HELL|ANIM  role LAMP
+  paints RUST HELLFIRE  score 0 5 3  theme LAVA  mass 6  light 2
+[gate_fragment] HELLISH 0 "Gate Fragment"
+  desc "A piece of the Gate. It hums."
+  foot 1 1 10  flags HELL  flags2 UNSELLABLE|GIFT  fi EXAMINE
+  paints CHARCOAL HELLFIRE  score 0 8 0  theme LAVA  mass 12  giver 778
+[nox_desk_lamp] HELLISH 0 "Nox's Desk Lamp"
+  desc "A gift from the Hellvile mayor."
+  foot 1 1 6  flags LIGHT|HELL  flags2 UNSELLABLE|GIFT  role LAMP
+  paints JET HELLFIRE  score 1 4 1  theme LAVA  mass 2  light 3  giver 778
+[torture_rack_bed] HELLISH 760 "Rack Bed"
+  desc "Stretches you. Good for the back."
+  foot 1 2 6  flags SURFACE|HELL  fi SLEEP  role BED
+  paints CHOCOLATE BLOOD  score 0 7 4  theme LAVA  mass 16  need ENERGY  seat 12
+[skull_pile] HELLISH 120 "Skull Pile"
+  desc "Decorative. Probably."
+  foot 1 1 4  flags HELL
+  paints BONE FIXED  score 0 7 0  theme BONE  mass 6
+[lava_table] HELLISH 440 "Lava Table"
+  desc "Cooled lava, mostly cooled."
+  foot 1 1 5  flags SURFACE|HELL|ANIM  role TABLE
+  paints RUST HELLFIRE  score 0 5 1  theme LAVA  mass 10
+[hell_bed] HELLISH 980 "Brimstone Bed"
+  desc "Hot water bottle not needed."
+  foot 1 2 6  flags SURFACE|HELL  fi SLEEP  role BED
+  paints BLOOD HELLFIRE  score 0 6 6  theme LAVA  mass 18  need ENERGY  seat 12
+[mirror_of_vanity] HELLISH 500 "Vanity Mirror"
+  desc "Grumbleguts' favourite. He waves at it."
+  foot 1 1 7  flags WALL|HELL  fi EXAMINE  role MIRROR
+  paints HELLFIRE SILVER  score 0 5 0  theme LAVA
+[cauldron] HELLISH 340 "Bubbling Cauldron"
+  desc "Soup? Probably soup."
+  foot 1 1 6  flags HELL|ANIM  fi COOK
+  paints CHARCOAL SLIME  score 0 6 2  theme VAPOR  mass 10  need HUNGER
+[contract_desk] HELLISH 640 "Contract Desk"
+  desc "Sign here. And here. And in blood."
+  foot 2 1 6  flags SURFACE|HELL  fi READ  role TABLE
+  paints CHOCOLATE BLOOD  score 0 6 1  theme LAVA  mass 12
+
+# ---- PLUSH -------------------------------------------------------
+[mr_flops_plush] PLUSH 0 "Mr. Flops"
+  desc "Pip's bunny. Goes home at night."
+  foot 1 1 3  flags SMALL|ANIM  flags2 UNSELLABLE|GIFT  fi PLAY  role PLUSH
+  paints WHITE BUBBLEGUM  score 9 0 4  theme PASTEL  giver 42
+[horned_poop_plush] PLUSH 60 "Horned-Poop Plushie"
+  desc "A gag gift. It has horns now."
+  foot 1 1 3  flags SMALL  fi PLAY  role PLUSH
+  paints CHOCOLATE BLOOD  score 6 3 3  theme PASTEL
+[vapula_plush] PLUSH 0 "Vapula Plush (flat)"
+  desc "Sighs when sat on."
+  foot 1 1 3  flags SMALL|ANIM  flags2 UNSELLABLE  role PLUSH
+  paints VAPE_PURPLE SILVER  score 5 3 3  theme VAPOR
+[widow_plush] PLUSH 0 "Widow's Plushie"
+  desc "Cries at 3 AM. Comforts the pet."
+  foot 1 1 3  flags SMALL|ANIM  flags2 CURSED|UNSELLABLE  role PLUSH
+  paints JET SILVER  score 5 5 3  theme GOTH
+[huggins_spare] PLUSH 90 "Mr. Huggins (spare)"
+  desc "A spare head. For emergencies."
+  foot 1 1 3  flags SMALL  fi PLAY  role PLUSH
+  paints HONEY CHOCOLATE  score 8 1 3  theme PASTEL
+[fuzz_plush] PLUSH 120 "Father Fuzz Plush"
+  desc "Blesses you with soft paws."
+  foot 1 1 3  flags SMALL  fi PLAY  role PLUSH
+  paints WHITE HONEY  score 8 0 3  theme PASTEL
+[cupcake_plush] PLUSH 50 "Cupcake Plush"
+  desc "Smells of vanilla. Forever."
+  foot 1 1 3  flags SMALL  fi PLAY  role PLUSH
+  paints BUBBLEGUM WHITE  score 9 0 3  theme CANDY
+[grape_cloud_plush] PLUSH 70 "Grape Cloud Plush"
+  desc "Cute, until you remember why."
+  foot 1 1 3  flags SMALL  fi PLAY  role PLUSH
+  paints VAPE_PURPLE LAVENDER  score 6 3 2  theme VAPOR
+[plain_human] PLUSH 30 "Plain Human Figurine"
+  desc "It does nothing. It never has."
+  foot 1 1 3  flags SMALL  role PLAIN_HUMAN
+  paints FIXED FIXED  score 0 0 0  theme PASTEL
+[kevins_bust] PLUSH 0 "Kevin's Bust"
+  desc "Only the third eye blinks."
+  foot 1 1 4  flags SMALL|ANIM  flags2 UNSELLABLE|GIFT  fi EXAMINE
+  paints SILVER FIXED  score 3 4 0  theme PASTEL
+[imp_doll] PLUSH 140 "Imp Doll"
+  desc "Always facing you. Always."
+  foot 1 1 3  flags SMALL  flags2 CURSED  role PLUSH
+  paints BLOOD JET  score 4 6 1  theme LAVA
+[jumbo_dice] PLUSH 60 "Jumbo Dice"
+  desc "Roll for initiative. Roll for snacks."
+  foot 1 1 3  fi PLAY
+  paints WHITE CHERRY  score 5 0 1  theme PASTEL  mass 3
+[toy_train] PLUSH 260 "Toy Train Loop"
+  desc "Choo. Choo. Forever."
+  foot 2 2 3  flags ANIM  fi PLAY
+  paints CHERRY SKY  score 7 0 2  theme PASTEL
+[giant_teddy] PLUSH 320 "Giant Teddy"
+  desc "Bigger than you. Hugs harder."
+  foot 1 1 9  fi SIT  role PLUSH
+  paints CARAMEL BUBBLEGUM  score 9 0 7  theme PASTEL  mass 6  seat 6
+[ghost_plush] PLUSH 80 "Ghost Plush"
+  desc "Boo, but soft."
+  foot 1 1 3  flags SMALL  fi PLAY  role PLUSH
+  paints WHITE LAVENDER  score 7 2 3  theme GOTH
+[dino_plush] PLUSH 80 "Dino Plush"
+  desc "Rawr, very quietly."
+  foot 1 1 4  flags SMALL  fi PLAY  role PLUSH
+  paints LIME LEMON  score 8 0 3  theme PASTEL
+
+# ---- KITCHEN -----------------------------------------------------
+[brimstone_oven] KITCHEN 880 "Brimstone Oven"
+  desc "Bakes at 900 degrees. Only."
+  foot 1 1 9  flags SURFACE|HELL|ANIM  fi COOK
+  paints CHARCOAL HELLFIRE  score 0 4 2  theme LAVA  mass 18  need HUNGER
+[cloud_flour] KITCHEN 60 "Cloud Flour Sacks"
+  desc "Flour so light it floats."
+  foot 1 1 4
+  paints WHITE HONEY  score 3 0 1  theme COTTAGE  mass 6
+[pickle_barrel] KITCHEN 120 "Pickle Barrel"
+  desc "Briny. Green. Watching."
+  foot 1 1 5  flags SURFACE  fi EAT
+  paints CARAMEL LIME  score 3 1 1  theme COTTAGE  mass 10
+[ramen_counter] KITCHEN 540 "Ramen Counter"
+  desc "Slurping encouraged."
+  foot 2 1 6  flags SURFACE  fi EAT  role TABLE
+  paints CHERRY CARAMEL  score 4 0 3  theme COTTAGE  mass 14  need HUNGER
+[takoyaki_griddle] KITCHEN 300 "Takoyaki Griddle"
+  desc "Round snacks, round pan."
+  foot 1 1 5  flags SURFACE|ANIM  fi COOK
+  paints CHARCOAL TANGERINE  score 4 0 2  theme COTTAGE  mass 10  need HUNGER
+[kettle] KITCHEN 60 "Kettle"
+  desc "Steams when happy."
+  foot 1 1 3  flags SMALL|ANIM
+  paints SKY WHITE  score 4 0 2  theme COTTAGE
+[spice_rack] KITCHEN 90 "Spice Rack"
+  desc "Twelve jars, eleven labelled."
+  foot 1 1 4  flags WALL
+  paints CARAMEL CHERRY  score 3 0 1  theme COTTAGE
+[cake_stand] KITCHEN 80 "Cake Stand"
+  desc "A cake on a stand. Look, don't touch."
+  foot 1 1 3  flags SMALL  fi EAT
+  paints WHITE BUBBLEGUM  score 6 0 2  theme CANDY
+[bagel_mountain] KITCHEN 200 "Bagel Mountain"
+  desc "One tenth scale. Still too many bagels."
+  foot 1 1 6  fi EAT
+  paints CARAMEL HONEY  score 5 1 2  theme LAVA  mass 6
+[nanas_recipe_board] KITCHEN 120 "Nana's Recipe Board"
+  desc "Recipes in Nana's loopy hand."
+  foot 1 1 6  flags WALL  fi READ
+  paints CARAMEL WHITE  score 5 0 2  theme COTTAGE
+[grave_cake_display] KITCHEN 260 "Grave Cake Display"
+  desc "Cakes shaped like headstones. Yum."
+  foot 1 1 7  flags SURFACE  fi EAT
+  paints SILVER BUBBLEGUM  score 4 3 1  theme BONE  mass 10
+[fish_smoker] KITCHEN 380 "Fish Smoker"
+  desc "Smokes fish. Fish disapprove."
+  foot 1 1 9  flags ANIM  fi COOK
+  paints CHARCOAL SILVER  score 1 2 1  theme COTTAGE  mass 14
+[sock_stew_pot] KITCHEN 90 "Sock Stew Pot"
+  desc "Yes. Socks."
+  foot 1 1 4  flags SMALL|ANIM  fi COOK
+  paints CHARCOAL SLIME  score 2 3 1  theme COTTAGE
+[cottage_stove] KITCHEN 420 "Cottage Stove"
+  desc "Four burners, one that works."
+  foot 1 1 8  flags SURFACE  fi COOK
+  paints WHITE CHERRY  score 3 0 2  theme COTTAGE  mass 16  need HUNGER
+[kitchen_counter] KITCHEN 240 "Kitchen Counter"
+  desc "Room to chop, room to chat."
+  foot 1 1 8  flags SURFACE  fi COOK  role TABLE
+  paints WHITE CARAMEL  score 2 0 1  theme COTTAGE  mass 14
+[milk_crate_icebox] KITCHEN 300 "Ice Box"
+  desc "Keeps milk cold, gossip colder."
+  foot 1 1 10  fi EAT
+  paints SKY WHITE  score 3 0 1  theme COTTAGE  mass 16  need HUNGER
+[melon_bread_tray] KITCHEN 70 "Melon Bread Tray"
+  desc "Nana's melon bread, warm."
+  foot 1 1 3  flags SMALL  fi EAT
+  paints LEMON LIME  score 6 0 2  theme COTTAGE
+[lava_cake_mould] KITCHEN 160 "Lava Cake Mould"
+  desc "Molten in the middle. Very molten."
+  foot 1 1 3  flags SMALL|HELL  fi COOK
+  paints CHOCOLATE HELLFIRE  score 3 3 1  theme LAVA
+
+# ---- TECH --------------------------------------------------------
+[toaster_turret] TECH 0 "Toaster Turret"
+  desc "Fires toast at demons. Rewind often."
+  foot 1 1 6  flags HELL  flags2 UNSELLABLE  fi TURRET  role TURRET
+  paints SILVER CHERRY  score 3 2 0  theme WORKSHOP  mass 8
+[tube_tv] TECH 360 "Tube TV"
+  desc "Flickers. Channels: 2 and static."
+  foot 1 1 7  flags ANIM  fi WATCH
+  paints CARAMEL CHARCOAL  score 3 1 3  theme WORKSHOP  mass 8  need HAPPY
+[jukebox] TECH 1200 "Jukebox"
+  desc "Plays your studio songs."
+  foot 1 1 12  flags ANIM|LIGHT  fi MUSIC
+  paints CHERRY LEMON  score 5 0 2  theme WORKSHOP  mass 14  need HAPPY  light 1
+[game_console] TECH 420 "Console"
+  desc "Two controllers. One works."
+  foot 1 1 3  flags SMALL  fi PLAY
+  paints CHARCOAL SKY  score 4 0 2  theme WORKSHOP  need HAPPY
+[welding_rig] TECH 680 "Welding Rig"
+  desc "Decorative. Sparks every 11 frames."
+  foot 1 1 9  flags ANIM
+  paints SILVER TANGERINE  score 1 2 0  theme WORKSHOP  mass 14
+[gear_clock] TECH 240 "Gear Clock"
+  desc "Every gear turns. Two backwards."
+  foot 1 1 6  flags WALL|ANIM
+  paints HONEY CHARCOAL  score 2 1 0  theme WORKSHOP
+[neon_its_fine] TECH 300 "Neon "it's fine.""
+  desc "Pink neon. It is fine."
+  foot 1 1 4  flags WALL|LIGHT|ANIM
+  paints BUBBLEGUM FIXED  score 4 2 0  theme WORKSHOP  light 1
+[forklift_pallet] TECH 90 "Forklift Pallet"
+  desc "Empty. The next course is coming."
+  foot 2 1 2  flags SURFACE  role TABLE
+  paints CARAMEL FIXED  score 0 0 0  theme WORKSHOP  mass 8
+[weather_vane] TECH 180 "Weather Vane"
+  desc "Points at the Wall. Always."
+  foot 1 1 10  flags ANIM
+  paints SILVER CHARCOAL  score 1 2 0  theme WORKSHOP  mass 2
+[record_player] TECH 260 "Record Player"
+  desc "Vinyl crackle, warm tunes."
+  foot 1 1 3  flags SMALL|ANIM  fi MUSIC
+  paints CARAMEL CHERRY  score 4 0 2  theme WORKSHOP  need HAPPY
+[vapor_detector_mk2] TECH 420 "Vapor Detector Mk II"
+  desc "Sulks. Beeps when it feels like it."
+  foot 1 1 3  flags SMALL|ANIM  fi EXAMINE
+  paints SILVER LIME  score 2 1 0  theme WORKSHOP
+[desk_computer] TECH 640 "Desk Computer"
+  desc "Beige. Whirring. Holds your letters."
+  foot 1 1 4  flags SMALL|ANIM  fi PLAY
+  paints WHITE SKY  score 2 0 1  theme WORKSHOP  need HAPPY
+[tool_bench] TECH 380 "Tool Bench"
+  desc "Vise, hammer, mystery bolt."
+  foot 2 1 6  flags SURFACE  role TABLE
+  paints CARAMEL SILVER  score 1 0 0  theme WORKSHOP  mass 14
+
+# ---- GARDEN ------------------------------------------------------
+[picket_fence] GARDEN 40 "Picket Fence"
+  desc "White pickets. Very proper."
+  foot 1 1 5  flags WALL  role FENCE
+  paints WHITE FIXED  score 3 0 0  theme PICNIC
+[welded_fence] GARDEN 90 "Welded Fence"
+  desc "Rivet's work. Ugly, unbreakable."
+  foot 1 1 6  flags WALL|HELL  role FENCE
+  paints SILVER RUST  score 0 2 0  theme WORKSHOP
+[bone_fence] GARDEN 80 "Bone Fence"
+  desc "Femurs, mostly."
+  foot 1 1 6  flags WALL|HELL  role FENCE
+  paints BONE FIXED  score 0 5 0  theme BONE
+[flower_bed_pink] GARDEN 60 "Flower Bed (pink)"
+  desc "Grows in three stages."
+  foot 1 1 3  role PLANT
+  paints BUBBLEGUM LIME  score 6 0 1  theme PICNIC  mass 2
+[flower_bed_yellow] GARDEN 60 "Flower Bed (yellow)"
+  desc "Grows in three stages."
+  foot 1 1 3  role PLANT
+  paints LEMON LIME  score 6 0 1  theme PICNIC  mass 2
+[flower_bed_blue] GARDEN 60 "Flower Bed (blue)"
+  desc "Grows in three stages."
+  foot 1 1 3  role PLANT
+  paints SKY LIME  score 6 0 1  theme PICNIC  mass 2
+[tomato_pot] GARDEN 50 "Tomato Pot"
+  desc "It hums. Nobody knows why."
+  foot 1 1 4  role PLANT
+  paints CHERRY LIME  score 5 1 1  theme PICNIC  mass 2
+[sunflower] GARDEN 40 "Sunflower"
+  desc "Grows past the fence. Waves."
+  foot 1 1 13  flags ANIM  role PLANT
+  paints LEMON LIME  score 6 0 1  theme PICNIC  mass 1
+[swing_chair] GARDEN 360 "Swing Chair"
+  desc "Swings. Swings back."
+  foot 1 1 11  flags ANIM  fi SIT  role SEAT
+  paints WHITE BUBBLEGUM  score 6 0 6  theme PICNIC  mass 6  seat 8
+[picnic_set] GARDEN 240 "Picnic Set"
+  desc "A blanket, a basket, ants."
+  foot 2 2 2  flags SURFACE  fi EAT  role TABLE
+  paints CHERRY WHITE  score 6 0 4  theme PICNIC  mass 4
+[bird_bath] GARDEN 180 "Bird Bath"
+  desc "Birds bathe. Birds judge."
+  foot 1 1 6  flags ANIM
+  paints SILVER SKY  score 4 0 1  theme PICNIC  mass 6
+[garden_gnome] GARDEN 70 "Garden Gnome"
+  desc "A gnome. Hellvile version has horns."
+  foot 1 1 4
+  paints CHERRY LIME  score 5 2 0  theme PICNIC  mass 2
+[compost_heap] GARDEN 30 "Compost Heap"
+  desc "Flies. Many flies."
+  foot 1 1 4  flags ANIM
+  paints CHOCOLATE LIME  score 0 4 -2  theme PICNIC  mass 4
+[paper_boat_pond] GARDEN 220 "Paper-Boat Pond"
+  desc "A pond for paper boats."
+  foot 2 2 1  flags ANIM
+  paints SKY WHITE  score 6 0 3  theme PICNIC
+[balloon_letters] GARDEN 0 "Balloon Letters"
+  desc "The Ch2 letters, kept."
+  foot 1 1 9  flags ANIM  flags2 UNSELLABLE|GIFT  fi READ
+  paints BUBBLEGUM SKY  score 7 1 2  theme PICNIC
+[gate_arch] GARDEN 0 "Gate Arch"
+  desc "The south opening, onto Hellvile."
+  foot 1 1 13  flags WALL  flags2 UNSELLABLE  role FENCE
+  paints SILVER HELLFIRE  score 2 3 0  theme PICNIC
+[hedge_bush] GARDEN 70 "Hedge Bush"
+  desc "Round, green, suspiciously round."
+  foot 1 1 5  role PLANT
+  paints FOREST LIME  score 4 0 1  theme PICNIC  mass 6
+[garden_bench] GARDEN 200 "Garden Bench"
+  desc "A bench for two and a pigeon."
+  foot 2 1 5  fi SIT  role SEAT
+  paints CARAMEL HONEY  score 4 0 5  theme PICNIC  mass 10  seat 8
+[potted_fern] GARDEN 50 "Potted Fern"
+  desc "Leafy, tolerant of you."
+  foot 1 1 5  role PLANT
+  paints LIME CHOCOLATE  score 4 0 2  theme COTTAGE  mass 3
+
+# ---- LIGHT -------------------------------------------------------
+[lulla_nightlight] LIGHT 0 "Lulla's Nightlight"
+  desc "You can't sleep without it."
+  foot 1 1 3  flags SMALL|LIGHT|ANIM  flags2 UNSELLABLE|GIFT  role LAMP
+  paints LEMON SKY  score 6 0 3  theme CLOUD  light 2  giver 36
+[window_candle] LIGHT 0 "Window Candle"
+  desc "A candle for the window. It can be lit."
+  foot 1 1 3  flags SMALL|LIGHT|ANIM  flags2 UNSELLABLE|GIFT  role CANDLE
+  paints WHITE FIXED  score 4 0 2  theme COTTAGE  light 1  giver 42
+[church_candle] LIGHT 60 "Church Candle"
+  desc "Counts double. Very holy."
+  foot 1 1 4  flags SMALL|LIGHT|ANIM  fi PRAY  role CANDLE
+  paints WHITE FIXED  score 3 0 2  theme COTTAGE  light 1
+[paper_lantern] LIGHT 80 "Paper Lantern"
+  desc "Soft light, fragile soul."
+  foot 1 1 4  flags WALL|LIGHT  role LAMP
+  paints CHERRY LEMON  score 5 0 2  theme PICNIC  light 2
+[lumina_lantern] LIGHT 260 "Lumina's Lantern"
+  desc "Bright and kind."
+  foot 1 1 10  flags LIGHT  role LAMP
+  paints LEMON WHITE  score 5 0 2  theme CLOUD  mass 2  light 4
+[fairy_lights] LIGHT 90 "Fairy Lights"
+  desc "Twinkle, twinkle, wall."
+  foot 2 1 2  flags WALL|LIGHT|ANIM  role LAMP
+  paints LEMON BUBBLEGUM  score 6 0 2  theme PASTEL  light 2
+[streetlamp] LIGHT 300 "Streetlamp"
+  desc "For the garden path."
+  foot 1 1 15  flags LIGHT  role LAMP
+  paints CHARCOAL LEMON  score 2 1 1  theme PICNIC  mass 4  light 4
+[starer_light] LIGHT 0 "Cold Light"
+  desc "No visible source. Post-game."
+  foot 1 1 6  flags LIGHT  flags2 UNSELLABLE  role LAMP
+  paints SKY FIXED  score 0 8 0  theme GOTH  light 3
+[mushroom_lamp] LIGHT 120 "Mushroom Lamp"
+  desc "A glowing toadstool."
+  foot 1 1 5  flags LIGHT  role LAMP
+  paints CHERRY WHITE  score 7 1 2  theme PICNIC  mass 2  light 2
+[moon_lamp] LIGHT 180 "Moon Lamp"
+  desc "A whole moon, small."
+  foot 1 1 4  flags SMALL|LIGHT  role LAMP
+  paints LEMON WHITE  score 6 1 2  theme CLOUD  light 2
+[crystal_chandelier] LIGHT 680 "Crystal Chandelier"
+  desc "Tinkles when you sneeze."
+  foot 1 1 6  flags WALL|LIGHT  role LAMP
+  paints SILVER LEMON  score 5 0 1  theme PASTEL  light 4
+
+# ---- WALL --------------------------------------------------------
+[pips_bee_drawing] WALL 0 "Pip's Bee Drawing"
+  desc "A bee. Or a cloud. A bee."
+  foot 1 1 5  flags WALL  flags2 UNSELLABLE|GIFT  fi EXAMINE
+  paints LEMON FIXED  score 8 0 1  theme PASTEL  giver 42
+[mayor_photo] WALL 0 "Mayor's Framed Photo"
+  desc "The Mayor, framed, by the Mayor."
+  foot 1 1 5  flags WALL  flags2 UNSELLABLE|GIFT  fi EXAMINE
+  paints HONEY FIXED  score 3 1 0  theme PASTEL  giver 0
+[bloom_thermometer] WALL 0 "Bloom's Thermometer"
+  desc "Decorative. She insists."
+  foot 1 1 6  flags WALL  flags2 UNSELLABLE|GIFT  fi EXAMINE
+  paints WHITE CHERRY  score 3 0 0  theme PASTEL  giver 111
+[rivet_coat_hook] WALL 0 "Rivet's Coat Hook"
+  desc "Welded. Don't make it weird."
+  foot 1 1 3  flags WALL  flags2 UNSELLABLE|GIFT
+  paints SILVER FIXED  score 2 0 0  theme WORKSHOP  giver 13
+[heart_poster] WALL 40 "Heart Poster"
+  desc "A big pink heart. Subtle."
+  foot 1 1 5  flags WALL
+  paints BUBBLEGUM WHITE  score 6 0 1  theme PASTEL
+[band_poster] WALL 50 "Band Poster"
+  desc "The Plushie Boys, live."
+  foot 1 1 6  flags WALL
+  paints GRAPE LEMON  score 4 1 1  theme PASTEL
+[kids_wall_drawing] WALL 0 "Kids' Wall Drawing"
+  desc "Crayon on wallpaper. Keep it."
+  foot 2 1 4  flags WALL  flags2 UNSELLABLE  fi EXAMINE
+  paints FIXED FIXED  score 7 0 2  theme PASTEL
+[framed_candid] WALL 60 "Framed Candid"
+  desc "Everyone blinked."
+  foot 1 1 5  flags WALL  fi EXAMINE
+  paints CARAMEL FIXED  score 4 0 1  theme COTTAGE
+[round_window] WALL 180 "Round Window"
+  desc "A porthole onto the street."
+  foot 1 1 6  flags WALL  flags2 PORTAL  role WINDOW
+  paints SKY SILVER  score 3 0 1  theme CLOUD
+[bone_window] WALL 240 "Bone-Rimmed Window"
+  desc "Ribs for a frame."
+  foot 1 1 6  flags WALL|HELL  flags2 PORTAL  role WINDOW
+  paints BONE FIXED  score 1 4 0  theme BONE
+[boarded_window] WALL 0 "Boarded Window"
+  desc "Boarded up, with a smiley."
+  foot 1 1 6  flags WALL  flags2 PORTAL|UNSELLABLE  role WINDOW
+  paints CARAMEL FIXED  score 3 2 0  theme WORKSHOP
+[welded_plate] WALL 0 "Welded Plate"
+  desc "A battle scar. Kept."
+  foot 1 1 6  flags WALL  flags2 UNSELLABLE  role PLATE
+  paints SILVER RUST  score 0 1 0  theme WORKSHOP
+[heart_wallpaper_eye] WALL 0 "Wallpaper Eye"
+  desc "One heart is an eye. It blinks."
+  foot 1 1 3  flags WALL|ANIM  flags2 CURSED|UNSELLABLE
+  paints BUBBLEGUM FIXED  score 0 7 0  theme PASTEL
+[counter_board] WALL 80 "Counter Board"
+  desc "Counts something. Nobody says what."
+  foot 1 1 5  flags WALL
+  paints CHARCOAL WHITE  score 2 1 0  theme WORKSHOP
+[badge_board] WALL 90 "Badge Board"
+  desc "Every badge you never earned."
+  foot 1 1 5  flags WALL
+  paints CARAMEL BUBBLEGUM  score 4 0 0  theme COTTAGE
+[tomato_review_board] WALL 70 "Tomato Review Board"
+  desc "Five stars. Five tomatoes."
+  foot 1 1 5  flags WALL  fi READ
+  paints CHERRY LIME  score 4 0 0  theme PICNIC
+[pink_door_hearts] WALL 200 "Heart Door"
+  desc "The front door, with hearts."
+  foot 1 1 13  flags WALL  flags2 PORTAL  role DOOR
+  paints BUBBLEGUM CHERRY  score 5 0 0  theme PASTEL
+
+# ---- RUG ---------------------------------------------------------
+[nanas_rug] RUG 0 "Nana's Rug"
+  desc "Nana's rug. You can't sleep on a CRATE."
+  foot 2 2 0  flags RUG  flags2 UNSELLABLE|GIFT
+  paints ROSE HONEY  score 6 0 4  theme COTTAGE  giver 1
+[daisy_rug] RUG 90 "Daisy Rug"
+  desc "A daisy the size of a room."
+  foot 2 2 0  flags RUG
+  paints WHITE LEMON  score 6 0 3  theme PASTEL
+[cloud_rug] RUG 110 "Cloud Rug"
+  desc "Fluffy underfoot."
+  foot 2 2 0  flags RUG
+  paints WHITE SKY  score 6 0 4  theme CLOUD
+[candy_stripe_rug] RUG 80 "Candy Stripe Rug"
+  desc "Stripes. Very candy."
+  foot 2 1 0  flags RUG
+  paints CHERRY WHITE  score 5 0 3  theme CANDY
+[checker_rug] RUG 70 "Checker Rug"
+  desc "Black and white, very chess."
+  foot 2 2 0  flags RUG
+  paints CHARCOAL WHITE  score 2 1 2  theme COTTAGE
+[bone_rug] RUG 180 "Bone Rug"
+  desc "A rug of tiny bones. Crunchy."
+  foot 2 2 0  flags RUG|HELL
+  paints BONE FIXED  score 0 5 1  theme BONE
+[lava_crack_rug] RUG 260 "Lava Crack Rug"
+  desc "Glows through the cracks."
+  foot 2 2 0  flags RUG|HELL|ANIM
+  paints CHARCOAL HELLFIRE  score 0 6 2  theme LAVA
+[picnic_blanket] RUG 60 "Picnic Blanket"
+  desc "Red check, crumbs included."
+  foot 2 2 0  flags RUG
+  paints CHERRY WHITE  score 5 0 3  theme PICNIC
+[welcome_mat] RUG 30 "Welcome Mat"
+  desc "'it's fine.'"
+  foot 1 1 0  flags RUG
+  paints CARAMEL FIXED  score 3 0 1  theme COTTAGE
+[hell_welcome_mat] RUG 30 "Hellvile Welcome Mat"
+  desc "'it's fire.'"
+  foot 1 1 0  flags RUG|HELL
+  paints RUST FIXED  score 1 3 1  theme LAVA
+[tuck_in_blanket] RUG 90 "Tuck-In Blanket"
+  desc "A bed topper. Toasty."
+  foot 1 2 0  flags RUG
+  paints LAVENDER WHITE  score 5 0 4  theme PASTEL
+[rivets_oil_rag] RUG 20 "Rivet's Oil Rag"
+  desc "Smells of engines and home."
+  foot 1 1 0  flags RUG
+  paints CHARCOAL FIXED  score 1 0 0  theme WORKSHOP
+
+# ---- TROPHY ------------------------------------------------------
+[gold_cupcake] TROPHY 0 "Golden Cupcake"
+  desc "Cupcake Catch champion."
+  foot 1 1 3  flags SMALL  flags2 UNSELLABLE  fi EXAMINE
+  paints HONEY FIXED  score 5 0 0  theme PASTEL
+[whack_head] TROPHY 0 "Whack-an-Imp Head"
+  desc "Mounted. Father Fuzz approves."
+  foot 1 1 5  flags WALL  flags2 UNSELLABLE  fi EXAMINE
+  paints BLOOD FIXED  score 3 3 0  theme PASTEL
+[derby_ribbon] TROPHY 0 "Derby Ribbon"
+  desc "First place, slug derby."
+  foot 1 1 4  flags WALL  flags2 UNSELLABLE  fi EXAMINE
+  paints SKY FIXED  score 5 0 0  theme PASTEL
+[dodge_star] TROPHY 0 "Dodge Star"
+  desc "You dodged everything."
+  foot 1 1 3  flags SMALL  flags2 UNSELLABLE  fi EXAMINE
+  paints LEMON FIXED  score 5 0 0  theme PASTEL
+[wheel_wedge] TROPHY 0 "Wheel of Fate Wedge"
+  desc "A slice of destiny."
+  foot 1 1 3  flags SMALL  flags2 UNSELLABLE  fi EXAMINE
+  paints CHERRY FIXED  score 4 1 0  theme PASTEL
+[memory_heart] TROPHY 0 "Memory Heart"
+  desc "You remembered. Every card."
+  foot 1 1 3  flags SMALL  flags2 UNSELLABLE  fi EXAMINE
+  paints BUBBLEGUM FIXED  score 6 0 0  theme PASTEL
+[gallery_frame] TROPHY 0 "Gallery Frame"
+  desc "Shooting gallery, perfect score."
+  foot 1 1 5  flags WALL  flags2 UNSELLABLE  fi EXAMINE
+  paints HONEY FIXED  score 3 1 0  theme PASTEL
+[breach_plaque] TROPHY 0 "Breach S-Rank Plaque"
+  desc "One per Hell Breach, ranked S."
+  foot 1 1 5  flags WALL  flags2 UNSELLABLE  fi EXAMINE
+  paints SILVER HELLFIRE  score 1 3 0  theme LAVA
+[fish_trophy] TROPHY 0 "Fish Trophy"
+  desc "Alive. Fine. Humming."
+  foot 1 1 5  flags WALL|ANIM  flags2 UNSELLABLE  fi EXAMINE
+  paints SKY FIXED  score 3 2 0  theme PICNIC
+[biggest_catch] TROPHY 0 "Biggest Catch Mount"
+  desc "It was THIS big."
+  foot 2 1 5  flags WALL  flags2 UNSELLABLE  fi EXAMINE
+  paints TEAL FIXED  score 2 2 0  theme PICNIC
+[smallest_catch] TROPHY 0 "Smallest Catch"
+  desc "In a jar. Waving."
+  foot 1 1 3  flags SMALL  flags2 UNSELLABLE  fi EXAMINE
+  paints SKY FIXED  score 6 0 0  theme PICNIC
+[fishdex_plaque] TROPHY 0 "Fishdex Plaque"
+  desc "Every fish, named."
+  foot 1 1 5  flags WALL  flags2 UNSELLABLE  fi EXAMINE
+  paints CARAMEL FIXED  score 3 0 0  theme PICNIC
+[golden_hook] TROPHY 0 "Golden Hook"
+  desc "Caught the uncatchable."
+  foot 1 1 3  flags SMALL  flags2 UNSELLABLE  fi EXAMINE
+  paints HONEY FIXED  score 3 0 0  theme PICNIC
+[gold_record] TROPHY 0 "Gold Record"
+  desc "Your concert went gold."
+  foot 1 1 5  flags WALL  flags2 UNSELLABLE  fi EXAMINE
+  paints HONEY FIXED  score 4 0 0  theme PASTEL
+[choir_bell] TROPHY 0 "Choir Bell"
+  desc "Rings on its own after shows."
+  foot 1 1 3  flags SMALL|ANIM  flags2 UNSELLABLE  fi EXAMINE
+  paints HONEY FIXED  score 4 1 0  theme PASTEL
+[concert_poster] TROPHY 0 "Concert Poster"
+  desc "Framed. Signed by you."
+  foot 1 1 6  flags WALL  flags2 UNSELLABLE  fi EXAMINE
+  paints GRAPE LEMON  score 4 0 0  theme PASTEL
+[broken_mic] TROPHY 0 "The Broken Mic"
+  desc "You dropped it. On purpose."
+  foot 1 1 3  flags SMALL  flags2 UNSELLABLE  fi EXAMINE
+  paints CHARCOAL FIXED  score 2 1 0  theme PASTEL
+[arena_belt] TROPHY 0 "Arena Belt"
+  desc "Champion of the pit."
+  foot 2 1 3  flags WALL  flags2 UNSELLABLE  fi EXAMINE
+  paints HONEY BLOOD  score 1 3 0  theme LAVA
+[boss_rush_skull] TROPHY 0 "Boss Rush Skull"
+  desc "Every boss, back to back."
+  foot 1 1 3  flags SMALL  flags2 UNSELLABLE  fi EXAMINE
+  paints BONE FIXED  score 0 5 0  theme BONE
+[time_trial_clock] TROPHY 0 "Time Trial Clock"
+  desc "Stopped at your best time."
+  foot 1 1 4  flags SMALL  flags2 UNSELLABLE  fi EXAMINE
+  paints SILVER FIXED  score 2 1 0  theme WORKSHOP
+[big_spoon] TROPHY 0 "Biggest Spoon"
+  desc "The Feast was saved. Mostly."
+  foot 1 1 9  flags2 UNSELLABLE  fi EXAMINE
+  paints SILVER FIXED  score 3 2 0  theme LAVA  mass 4  reward S186
+[headstone_mini] TROPHY 0 "Oversized Headstone"
+  desc "Miniature. 'He was full of himself.'"
+  foot 1 1 5  flags2 UNSELLABLE  fi EXAMINE
+  paints SILVER FIXED  score 0 6 0  theme BONE  mass 6  reward S186
+[runner_up_ribbon] TROPHY 0 "Runner-Up Ribbon"
+  desc "Second is the first loser. Cute though."
+  foot 1 1 4  flags WALL  flags2 UNSELLABLE  fi EXAMINE
+  paints SILVER FIXED  score 5 0 0  theme PASTEL
+
+# ---- SEASONAL ----------------------------------------------------
+[blossom_branch] SEASONAL 70 "Blossom Branch"
+  desc "Spring in a vase."
+  foot 1 1 5  flags SMALL  role PLANT
+  paints BUBBLEGUM CHOCOLATE  score 6 0 1  theme PICNIC
+[egg_basket] SEASONAL 60 "Egg Basket"
+  desc "Painted eggs. One is real."
+  foot 1 1 3  flags SMALL
+  paints LEMON SKY  score 6 0 1  theme PICNIC
+[bee_box] SEASONAL 120 "Bee Box"
+  desc "Buzzing. Friendly. Probably."
+  foot 1 1 5  flags ANIM
+  paints HONEY WHITE  score 4 1 0  theme PICNIC  mass 4
+[kite] SEASONAL 60 "Kite"
+  desc "Waiting for wind."
+  foot 1 1 6  flags WALL
+  paints CHERRY SKY  score 6 0 0  theme PICNIC
+[paddling_pool] SEASONAL 180 "Paddling Pool"
+  desc "Shallow. Splashy."
+  foot 2 2 2  flags ANIM  fi BATHE
+  paints SKY WHITE  score 6 0 3  theme PICNIC
+[summer_fan] SEASONAL 90 "Summer Fan"
+  desc "Spins. Rattles. Cools."
+  foot 1 1 7  flags ANIM
+  paints SKY WHITE  score 3 0 3  theme PICNIC  mass 2
+[sandcastle] SEASONAL 50 "Sandcastle"
+  desc "A castle for crabs."
+  foot 1 1 3
+  paints HONEY FIXED  score 6 0 0  theme PICNIC
+[hammock] SEASONAL 260 "Hammock"
+  desc "Sway. Snooze. Sway."
+  foot 2 1 6  fi SLEEP  role SEAT
+  paints LIME HONEY  score 5 0 7  theme PICNIC  mass 4  seat 8
+[pumpkin_lantern] SEASONAL 80 "Pumpkin Lantern"
+  desc "Grinning, glowing."
+  foot 1 1 4  flags LIGHT|ANIM  role LAMP
+  paints TANGERINE FIXED  score 4 4 1  theme PICNIC  mass 2  light 2
+[leaf_pile] SEASONAL 30 "Leaf Pile"
+  desc "Jump in. Everyone does."
+  foot 1 1 2  flags ANIM  fi PLAY
+  paints TANGERINE RUST  score 5 0 2  theme PICNIC
+[scarecrow] SEASONAL 120 "Scarecrow"
+  desc "Scares crows. Hellvile: scares imps."
+  foot 1 1 13
+  paints HONEY CHERRY  score 2 4 0  theme PICNIC  mass 4
+[cider_barrel] SEASONAL 160 "Cider Barrel"
+  desc "Apple-y, slightly fizzy."
+  foot 1 1 5  flags SURFACE  fi EAT
+  paints CARAMEL CHERRY  score 3 0 2  theme PICNIC  mass 10
+[harvest_wreath] SEASONAL 60 "Harvest Wreath"
+  desc "Wheat, apples, a tiny gourd."
+  foot 1 1 5  flags WALL
+  paints HONEY TANGERINE  score 5 0 1  theme PICNIC
+[winter_tree] SEASONAL 300 "Winter Tree"
+  desc "Decorations stack on it."
+  foot 1 1 14  flags SURFACE|LIGHT|ANIM
+  paints FOREST CHERRY  score 6 0 3  theme COTTAGE  mass 4  light 2
+[hearth_stocking] SEASONAL 40 "Hearth Stocking"
+  desc "Lumpy with gifts."
+  foot 1 1 4  flags WALL
+  paints CHERRY WHITE  score 6 0 1  theme COTTAGE
+[snow_imp] SEASONAL 80 "Snow Imp"
+  desc "A snowman with horns."
+  foot 1 1 7
+  paints WHITE BLOOD  score 5 2 0  theme PICNIC  mass 4
+[cocoa_stand] SEASONAL 240 "Hot Cocoa Stand"
+  desc "Marshmallows by request."
+  foot 1 1 7  flags SURFACE  fi EAT
+  paints CHOCOLATE WHITE  score 5 0 3  theme COTTAGE  mass 10
+[wool_rug] SEASONAL 90 "Wool Rug"
+  desc "Knitted by Nana. Itchy."
+  foot 2 2 0  flags RUG
+  paints CHERRY WHITE  score 5 0 4  theme COTTAGE
+
+# ---- STORY -------------------------------------------------------
+[picnic_crate] STORY 0 "Picnic Crate"
+  desc "The Ch1 crate. It's a table now."
+  foot 1 1 5  flags SURFACE  flags2 UNSELLABLE|STARTER  role TABLE
+  paints CARAMEL FIXED  score 2 0 1  theme COTTAGE  mass 8
+[egg_nest] STORY 0 "Egg Nest"
+  desc "Warm, round, important."
+  foot 1 1 3  flags2 UNSELLABLE|STARTER  role NEST
+  paints HONEY WHITE  score 8 0 3  theme PASTEL
+[fuzz_cushion] STORY 0 "Fuzz's Cushion"
+  desc "Cuddle-proofed by Father Fuzz."
+  foot 1 1 2  flags2 UNSELLABLE|GIFT  fi SIT  role SEAT
+  paints BUBBLEGUM WHITE  score 6 0 5  theme PASTEL  mass 2  seat 4  giver 77
+[xylophone_table] STORY 0 "Xylophone End-Table"
+  desc "Bonejangles' table. Plink."
+  foot 1 1 5  flags SURFACE  flags2 UNSELLABLE|GIFT  fi MUSIC  role TABLE
+  paints BONE CHERRY  score 4 2 1  theme BONE  mass 8  giver 5
+[mr_flops_bed] STORY 0 "Mr. Flops's Bed"
+  desc "A bunny bed. The haunting skips it."
+  foot 1 1 2  flags2 UNSELLABLE|GIFT
+  paints BUBBLEGUM SKY  score 9 0 3  theme PASTEL  giver 42  reward S100
+[wall_watch_badge] STORY 0 "Wall Watch Badge"
+  desc "Pip's night patrol badge."
+  foot 1 1 3  flags WALL  flags2 UNSELLABLE|GIFT  fi EXAMINE
+  paints SILVER FIXED  score 5 0 0  theme PASTEL  giver 42  reward S101
+[flops_the_1st] STORY 0 "Flops the 1st"
+  desc "Blinks every 83 frames."
+  foot 1 1 3  flags SMALL|ANIM  flags2 UNSELLABLE|GIFT  fi PLAY  role PLUSH
+  paints WHITE SKY  score 8 1 3  theme PASTEL  giver 42  reward S102
+[days_since_fire] STORY 0 "Days Since Fire Sign"
+  desc "DAYS SINCE LAST FIRE: 0."
+  foot 1 1 5  flags WALL|ANIM  flags2 UNSELLABLE|GIFT  fi EXAMINE
+  paints WHITE CHERRY  score 3 1 0  theme WORKSHOP  giver 13  reward S103
+[rivets_toolbox] STORY 0 "Rivet's Toolbox"
+  desc "One letter sticks out of it."
+  foot 1 1 3  flags2 UNSELLABLE|GIFT  fi EXAMINE
+  paints CHERRY SILVER  score 2 0 0  theme WORKSHOP  mass 4  giver 13  reward S104
+[forge_iron_bed] STORY 0 "Forge-Iron Bed"
+  desc "Anvil's work. Heavy. Warm."
+  foot 1 2 6  flags SURFACE|HELL  flags2 UNSELLABLE|GIFT  fi SLEEP  role BED
+  paints CHARCOAL RUST  score 1 2 7  theme WORKSHOP  mass 20  need ENERGY  seat 12  giver 595  reward S105
+[anvils_hinge] STORY 0 "Anvil's Hinge"
+  desc "The door squeaks forever. A feature."
+  foot 1 1 3  flags WALL|HELL  flags2 UNSELLABLE|GIFT
+  paints SILVER FIXED  score 1 2 0  theme WORKSHOP  giver 595  reward S202
+[two_spoons] STORY 0 "Two Spoons"
+  desc "The rack's centrepiece."
+  foot 1 1 4  flags WALL  flags2 UNSELLABLE|GIFT  fi EXAMINE
+  paints SILVER FIXED  score 5 0 1  theme COTTAGE  giver 13  reward S203
+[bolts_stool] STORY 0 "Bolt's Stool"
+  desc "Wobbles. Always wobbles."
+  foot 1 1 4  flags HELL  flags2 UNSELLABLE|GIFT  fi SIT  role SEAT
+  paints RUST CHARCOAL  score 5 1 3  theme WORKSHOP  mass 4  seat 7  giver 597  reward S106
+[small_cloud_stone] STORY 0 "Small Cloud Stone"
+  desc "Rains 1 px when the Mayor visits."
+  foot 1 1 3  flags ANIM  flags2 UNSELLABLE|GIFT
+  paints SILVER SKY  score 4 0 1  theme CLOUD  mass 2  giver 0  reward S196
+[framed_speech] STORY 0 "Framed Speech"
+  desc "In that handwriting."
+  foot 1 1 5  flags WALL  flags2 UNSELLABLE|GIFT  fi READ
+  paints HONEY FIXED  score 2 1 0  theme COTTAGE  giver 0  reward S107
+[polish_tin] STORY 0 "Polish Tin"
+  desc "For a shine nobody asked for."
+  foot 1 1 2  flags SMALL  flags2 UNSELLABLE|GIFT
+  paints HONEY FIXED  score 3 0 0  theme COTTAGE  giver 0  reward S197
+[cloud_foam_teacup] STORY 0 "Teacup (cloud foam)"
+  desc "The foam is a little cloud."
+  foot 1 1 2  flags SMALL  flags2 UNSELLABLE|GIFT  fi EAT
+  paints WHITE SKY  score 6 0 1  theme CLOUD  giver 0  reward S198
+[mayoral_sash] STORY 0 "Mayoral Sash"
+  desc "Hee. Hee."
+  foot 1 1 5  flags WALL  flags2 UNSELLABLE|GIFT  fi EXAMINE
+  paints CHERRY HONEY  score 4 1 0  theme PASTEL  giver 0  reward S109
+[cookie_tin] STORY 0 "Cookie Tin"
+  desc "Two-sided. One burnt cookie."
+  foot 1 1 2  flags SMALL  flags2 UNSELLABLE|GIFT  fi EAT
+  paints SKY CHERRY  score 5 1 1  theme COTTAGE  giver 1  reward S199
+[nanas_recipe_card] STORY 0 "Nana's Recipe Card"
+  desc "Melon bread, step by step."
+  foot 1 1 3  flags WALL  flags2 UNSELLABLE|GIFT  fi READ
+  paints WHITE FIXED  score 5 0 1  theme COTTAGE  giver 1  reward S110
+[two_sided_recipe] STORY 0 "Two-Sided Recipe"
+  desc "Bone flour on the back."
+  foot 1 1 3  flags WALL|HELL  flags2 UNSELLABLE|GIFT  fi READ
+  paints WHITE BONE  score 3 2 1  theme COTTAGE  giver 566  reward S112
+[unity_loaf] STORY 0 "Unity Loaf"
+  desc "Under glass. The pet sniffs it."
+  foot 1 1 4  flags SMALL  flags2 UNSELLABLE|GIFT  fi EXAMINE
+  paints CARAMEL SKY  score 5 1 1  theme COTTAGE  giver 669  reward S113
+[bone_lamp] STORY 0 "Bone Lamp"
+  desc "The tenant's lamp. Keep it."
+  foot 1 1 7  flags LIGHT|HELL  flags2 UNSELLABLE|GIFT  role LAMP
+  paints BONE FIXED  score 1 4 1  theme BONE  mass 2  light 3  giver 21  reward S114
+[rattlecup_teacup] STORY 0 "Rattlecup's Teacup"
+  desc "Rattles at midnight."
+  foot 1 1 2  flags SMALL|ANIM  flags2 UNSELLABLE|GIFT  fi EAT
+  paints WHITE ROSE  score 5 2 1  theme COTTAGE  giver 92  reward S115
+[tally_wall] STORY 0 "Tally Wall"
+  desc "The last mark is a heart."
+  foot 2 1 5  flags WALL  flags2 UNSELLABLE|GIFT  fi EXAMINE
+  paints WHITE FIXED  score 2 3 0  theme BONE  giver 21  reward S116
+[huggins_marker] STORY 0 "Huggins 1st's Marker"
+  desc "A tiny grave marker."
+  foot 1 1 2  flags SMALL  flags2 UNSELLABLE|GIFT  fi PRAY
+  paints SILVER FIXED  score 4 2 0  theme BONE  giver 77  reward S117
+[buckwheat_sack] STORY 0 "Buckwheat Sack"
+  desc "For bedtime porridge."
+  foot 1 1 4  flags2 UNSELLABLE|GIFT  fi EAT
+  paints HONEY FIXED  score 3 0 1  theme COTTAGE  mass 4  giver 77  reward S201
+[huggins_choir] STORY 0 "The Huggins Choir"
+  desc "Eight heads. They hum at night."
+  foot 2 1 5  flags WALL|ANIM  flags2 UNSELLABLE|GIFT  fi MUSIC
+  paints HONEY CHOCOLATE  score 6 3 1  theme PASTEL  giver 542  reward S119
+[huggins_9th] STORY 0 "Mr. Huggins the 9th"
+  desc "Hugs the pet when it passes."
+  foot 1 1 4  flags SMALL|ANIM  flags2 UNSELLABLE|GIFT  fi PLAY  role PLUSH
+  paints HONEY BUBBLEGUM  score 9 0 4  theme PASTEL  giver 77  reward S120
+[cursed_coupon] STORY 0 "Cursed Coupon"
+  desc "Expired. Forever."
+  foot 1 1 3  flags WALL  flags2 UNSELLABLE|GIFT
+  paints LEMON FIXED  score 2 3 0  theme PASTEL  giver 97  reward S121
+[mail_sack] STORY 0 "Mail Sack"
+  desc "Letters for everyone."
+  foot 1 1 4  flags2 UNSELLABLE|GIFT  fi READ
+  paints CARAMEL FIXED  score 3 0 1  theme COTTAGE  mass 4  giver 97  reward S122
+[two_way_mailbox] STORY 0 "Two-Way Mailbox"
+  desc "Hellvile mail and the ticker."
+  foot 1 1 9  flags2 UNSELLABLE|GIFT  fi READ
+  paints CHERRY CHARCOAL  score 4 2 0  theme COTTAGE  mass 4  giver 528  reward S123
+[tomato_planter] STORY 0 "Tomato Planter"
+  desc "A tomato every 2 days."
+  foot 1 1 4  flags2 UNSELLABLE|GIFT  fi EAT  role PLANT
+  paints CHERRY LIME  score 5 0 1  theme PICNIC  mass 2  giver 88  reward S124
+[eye_tomato] STORY 0 "Eye Tomato"
+  desc "Blinks."
+  foot 1 1 2  flags SMALL|ANIM  flags2 UNSELLABLE|GIFT
+  paints CHERRY FIXED  score 3 4 0  theme PICNIC  giver 88  reward S125
+[shared_flower_bed] STORY 0 "Shared Flower Bed"
+  desc "For the Park Plot. Both sides."
+  foot 2 1 3  flags2 UNSELLABLE|GIFT  role PLANT
+  paints BUBBLEGUM HELLFIRE  score 6 1 2  theme PICNIC  mass 4  giver 525  reward S126
+[rubber_duck_guest] STORY 0 "Rubber Duck "Guest""
+  desc "Squeaks at the Wall."
+  foot 1 1 2  flags SMALL  flags2 UNSELLABLE|GIFT  fi PLAY
+  paints LEMON FIXED  score 7 0 1  theme PASTEL  giver 2  reward S127
+[facing_duck] STORY 0 "Facing Duck"
+  desc "Faces whatever faced the Wall."
+  foot 1 1 2  flags SMALL|ANIM  flags2 UNSELLABLE|GIFT
+  paints LEMON FIXED  score 5 2 1  theme PASTEL  giver 41  reward S200
+[steamys_tub] STORY 0 "Steamy's Tub"
+  desc "The pet bathes in it."
+  foot 2 1 5  flags ANIM  flags2 UNSELLABLE|GIFT  fi BATHE
+  paints WHITE SKY  score 5 1 6  theme PASTEL  mass 14  need HYGIENE  giver 2  reward S128
+[balloon_you] STORY 0 "Balloon-You"
+  desc "Deflates. Parties re-inflate it."
+  foot 1 1 8  flags ANIM  flags2 UNSELLABLE|GIFT
+  paints BUBBLEGUM FIXED  score 6 1 1  theme PASTEL  giver 81  reward S130
+[translucent_balloon] STORY 0 "Translucent Balloon"
+  desc "You can see through it. Mostly."
+  foot 1 1 8  flags ANIM  flags2 UNSELLABLE|GIFT
+  paints SKY FIXED  score 5 2 1  theme CLOUD  giver 111  reward S131
+[jar_of_sneezes] STORY 0 "Jar of Sneezes"
+  desc "Glows pink."
+  foot 1 1 3  flags SMALL|LIGHT|ANIM  flags2 UNSELLABLE|GIFT  role LAMP
+  paints BUBBLEGUM FIXED  score 5 2 1  theme VAPOR  light 1  giver 707  reward S132
+[heart_balloon] STORY 0 "Heart Balloon"
+  desc "She bounces in with it."
+  foot 1 1 9  flags ANIM  flags2 UNSELLABLE|GIFT
+  paints CHERRY FIXED  score 8 0 2  theme PASTEL  giver 81  reward S133
+[mascotty_postcard] STORY 0 "Mascotty Postcard"
+  desc "The eyes follow you."
+  foot 1 1 3  flags WALL  flags2 UNSELLABLE|GIFT  fi EXAMINE
+  paints BUBBLEGUM FIXED  score 3 4 0  theme PASTEL  giver 20  reward S134
+[hoedown_fiddle] STORY 0 "Hoedown Fiddle"
+  desc "Yee. Haw. Quietly."
+  foot 1 1 5  flags WALL  flags2 UNSELLABLE|GIFT  fi MUSIC
+  paints CARAMEL FIXED  score 4 0 0  theme COTTAGE  giver 26  reward S134
+[vapor_detector] STORY 0 "Vapor Detector Mk I"
+  desc "Beeps at everything. At the pet."
+  foot 1 1 3  flags SMALL|ANIM  flags2 UNSELLABLE|GIFT  fi EXAMINE
+  paints SILVER LIME  score 3 1 0  theme WORKSHOP  giver 69  reward S135
+[washed_cup] STORY 0 "Washed Cup"
+  desc "Clean. Finally."
+  foot 1 1 2  flags SMALL  flags2 UNSELLABLE|GIFT
+  paints WHITE FIXED  score 4 0 1  theme COTTAGE  giver 76  reward S204
+[mascot_head] STORY 0 "The Mascot Head"
+  desc "The eyes don't follow you anymore."
+  foot 1 1 6  flags2 UNSELLABLE|GIFT  fi EXAMINE
+  paints BUBBLEGUM CHOCOLATE  score 5 3 0  theme PASTEL  mass 6  giver 894  reward S136
+[haze_frame] STORY 0 "Plain Water Frame"
+  desc "It appeared on your mailbox."
+  foot 1 1 4  flags WALL  flags2 UNSELLABLE|GIFT  fi EXAMINE
+  paints SKY FIXED  score 3 1 0  theme VAPOR  giver 709  reward S137
+[vex_cushion] STORY 0 "Vex's Cushion"
+  desc "Not a customer."
+  foot 1 1 2  flags HELL  flags2 UNSELLABLE|GIFT  fi SIT  role SEAT
+  paints VAPE_PURPLE BLOOD  score 4 3 4  theme VAPOR  mass 2  seat 4  giver 666  reward S138
+[fresh_air_neon] STORY 0 "Fresh Air Neon"
+  desc "FRESH AIR. In grape."
+  foot 2 1 4  flags WALL|LIGHT|HELL  flags2 UNSELLABLE|GIFT
+  paints VAPE_PURPLE FIXED  score 3 3 0  theme VAPOR  light 1  giver 666  reward S139
+[employee_vex] STORY 0 "Employee of Month"
+  desc "Vex. Third month running."
+  foot 1 1 5  flags WALL  flags2 UNSELLABLE|GIFT  fi EXAMINE
+  paints HONEY FIXED  score 3 2 0  theme VAPOR  giver 709  reward S139
+[bubble_machine] STORY 0 "Bubble Machine"
+  desc "Blows bubbles when music plays."
+  foot 1 1 5  flags ANIM  flags2 UNSELLABLE|GIFT
+  paints SKY BUBBLEGUM  score 7 0 2  theme PASTEL  mass 4  giver 666  reward S140
+[hot_water_bottle] STORY 0 "Hot Water Bottle"
+  desc "The pet sleeps on it."
+  foot 1 1 2  flags SMALL  flags2 UNSELLABLE|GIFT
+  paints CHERRY FIXED  score 6 0 3  theme COTTAGE  giver 111  reward S151
+[blooms_lantern] STORY 0 "Bloom's Lantern"
+  desc "Lit every night after Ep 3.4."
+  foot 1 1 6  flags LIGHT  flags2 UNSELLABLE|GIFT  role LAMP
+  paints WHITE LIME  score 4 1 1  theme CLOUD  mass 2  light 3  giver 111  reward S152
+[blooms_scrubs] STORY 0 "Bloom's Scrubs"
+  desc "Cold hands, warm heart."
+  foot 1 1 6  flags WALL  flags2 UNSELLABLE|GIFT  fi EXAMINE
+  paints MINT FIXED  score 4 0 0  theme CLOUD  giver 730  reward S153
+[mic_stand] STORY 0 "Mic Stand"
+  desc "Is this thing on?"
+  foot 1 1 10  flags2 UNSELLABLE|GIFT  fi MUSIC
+  paints CHARCOAL SILVER  score 3 1 0  theme WORKSHOP  mass 2  giver 71  reward S154
+[hatties_notebook] STORY 0 "Hattie's Notebook"
+  desc "Twelve readable jokes."
+  foot 1 1 2  flags SMALL  flags2 UNSELLABLE|GIFT  fi READ
+  paints LEMON FIXED  score 5 0 1  theme PASTEL  giver 71  reward S155
+[honkers_nose] STORY 0 "Honkers's Nose"
+  desc "Honks when the pet passes."
+  foot 1 1 3  flags SMALL|ANIM  flags2 UNSELLABLE|GIFT  fi PLAY
+  paints CHERRY FIXED  score 7 2 0  theme PASTEL  giver 501  reward S156
+[gold_star] STORY 0 "Gold Star"
+  desc "For napping well."
+  foot 1 1 3  flags WALL  flags2 UNSELLABLE|GIFT  fi EXAMINE
+  paints LEMON FIXED  score 6 0 0  theme PASTEL  giver 36  reward S157
+[crowned_cloud_drawing] STORY 0 "Crowned Cloud Sketch"
+  desc "A cloud wearing a crown. Hm."
+  foot 1 1 5  flags WALL  flags2 UNSELLABLE|GIFT  fi EXAMINE
+  paints FIXED FIXED  score 4 3 0  theme PASTEL  giver 36  reward S158
+[nap_mat] STORY 0 "Nap Mat"
+  desc "The pet uses it."
+  foot 1 2 0  flags RUG  flags2 UNSELLABLE|GIFT  fi SLEEP
+  paints SKY LEMON  score 6 0 5  theme PASTEL  giver 36  reward S159
+[fizz_histogram] STORY 0 "Fizz's Histogram"
+  desc "Beeps per night, charted."
+  foot 1 1 5  flags WALL  flags2 UNSELLABLE|GIFT  fi READ
+  paints WHITE LIME  score 2 1 0  theme WORKSHOP  giver 69  reward S142
+[microscope] STORY 0 "Microscope"
+  desc "The pet looks in it."
+  foot 1 1 4  flags SMALL  flags2 UNSELLABLE|GIFT  fi EXAMINE
+  paints SILVER CHARCOAL  score 3 0 0  theme WORKSHOP  giver 24  reward S161
+[handless_clock] STORY 0 "Handless Clock"
+  desc "Ticks. No hands."
+  foot 1 1 5  flags WALL|ANIM  flags2 UNSELLABLE|GIFT
+  paints CARAMEL FIXED  score 1 4 0  theme COTTAGE  giver 104  reward S163
+[cuckoo_out] STORY 0 "Cuckoo (out)"
+  desc "It is out. It stays out."
+  foot 1 1 6  flags WALL  flags2 UNSELLABLE|GIFT
+  paints CHOCOLATE FIXED  score 3 2 0  theme COTTAGE  giver 104  reward S163
+[clinkers_poem] STORY 0 "Clinker's Poem"
+  desc "Rated. Framed."
+  foot 1 1 4  flags WALL  flags2 UNSELLABLE|GIFT  fi READ
+  paints WHITE FIXED  score 3 1 1  theme COTTAGE  giver 712  reward S164
+[countdown_clock] STORY 0 "Countdown Clock"
+  desc "Day One. Day One. Day One."
+  foot 1 1 9  flags ANIM  flags2 UNSELLABLE|GIFT
+  paints CHOCOLATE HONEY  score 2 3 0  theme COTTAGE  mass 6  giver 104  reward S165
+[wisp_drawing_1] STORY 0 "Wisp's Drawing #1"
+  desc "Placed by: ???"
+  foot 1 1 4  flags WALL  flags2 UNSELLABLE|GIFT  fi EXAMINE
+  paints FIXED FIXED  score 4 4 1  theme PASTEL  giver 563  reward S166
+[daytime_window] STORY 0 "Daytime Window"
+  desc "Always day outside it."
+  foot 1 1 6  flags WALL|LIGHT  flags2 PORTAL|UNSELLABLE|GIFT  role WINDOW
+  paints SKY LEMON  score 5 0 2  theme CLOUD  light 2  giver 563  reward S167
+[height_marks] STORY 0 "Height Marks"
+  desc "Two kids' names and a 1 px dash."
+  foot 1 1 9  flags WALL  flags2 UNSELLABLE|GIFT  fi EXAMINE
+  paints CHOCOLATE FIXED  score 6 0 2  theme COTTAGE  giver 563  reward S205
+[thinking_chair] STORY 0 "The Thinking Chair"
+  desc "Sit. Face the wall. Say one true thing."
+  foot 1 1 7  flags2 UNSELLABLE|GIFT  fi SIT  role SEAT
+  paints CARAMEL LAVENDER  score 3 2 5  theme COTTAGE  mass 8  seat 9  giver 563  reward S168
+[window_candle_out] STORY 0 "Window Candle (out)"
+  desc "Somebody left the light on. Now off."
+  foot 1 1 3  flags SMALL  flags2 UNSELLABLE|GIFT  role CANDLE
+  paints WHITE FIXED  score 2 2 1  theme COTTAGE  giver 563  reward S206
+[vapula_cushion] STORY 0 "Vapula Cushion"
+  desc "Rains gently on nearby plants."
+  foot 1 1 2  flags ANIM  flags2 UNSELLABLE|GIFT  fi SIT  role SEAT
+  paints SILVER VAPE_PURPLE  score 5 2 4  theme VAPOR  mass 2  seat 4  giver 999  reward S169
+[framed_invoice] STORY 0 "Framed Invoice"
+  desc "Small weather, itemised."
+  foot 1 1 4  flags WALL  flags2 UNSELLABLE|GIFT  fi READ
+  paints WHITE FIXED  score 2 2 0  theme VAPOR  giver 999  reward S170
+[vapula_tiny_throne] STORY 0 "Vapula's Tiny Throne"
+  desc "Duke of Nothing. Seats one cloud."
+  foot 1 1 5  flags HELL  flags2 UNSELLABLE|GIFT  fi SIT  role SEAT
+  paints VAPE_PURPLE HONEY  score 6 3 2  theme VAPOR  mass 4  seat 5  giver 999  reward S171
+[little_black_book] STORY 0 "Little Black Book"
+  desc "The size of a phone book. Cursed."
+  foot 1 1 2  flags SMALL|HELL  flags2 CURSED|UNSELLABLE|GIFT  fi READ
+  paints JET HELLFIRE  score 1 5 0  theme LAVA  giver 729  reward S172
+[profile_photo] STORY 0 "Profile Photo"
+  desc "Mid-bite, winking."
+  foot 1 1 5  flags WALL|HELL  flags2 UNSELLABLE|GIFT  fi EXAMINE
+  paints HELLFIRE FIXED  score 2 3 0  theme LAVA  giver 729  reward S173
+[gate_on_a_trolley] STORY 0 "Gate on a Trolley"
+  desc "Creaks when he visits."
+  foot 1 1 11  flags HELL|ANIM  flags2 UNSELLABLE|GIFT
+  paints CHARCOAL HELLFIRE  score 1 5 0  theme LAVA  mass 14  giver 729  reward S174
+[framed_gate_key] STORY 0 "Framed Gate Key"
+  desc "The key. On its chain."
+  foot 1 1 5  flags WALL|HELL  flags2 UNSELLABLE|GIFT  fi EXAMINE
+  paints HONEY CHARCOAL  score 1 3 0  theme LAVA  giver 729  reward S183
+[chefs_hat_xxl] STORY 0 "Chef's Hat (XXL)"
+  desc "Fits one gatekeeper."
+  foot 1 1 4  flags SMALL  flags2 UNSELLABLE|GIFT
+  paints WHITE FIXED  score 5 0 0  theme COTTAGE  giver 128  reward S184
+[big_chair] STORY 0 "The Big Chair"
+  desc "Creaks. Citizens slide off. Fits three."
+  foot 2 2 9  flags HELL|ANIM  flags2 UNSELLABLE|GIFT  fi SIT  role SEAT
+  paints BLOOD HONEY  score 2 3 6  theme LAVA  mass 20  seat 14  giver 729  reward S207
+[very_large_seat] STORY 0 "Very Large Seat"
+  desc "Keeper of a very large seat."
+  foot 2 1 6  flags HELL  flags2 UNSELLABLE|GIFT  fi SIT  role SEAT
+  paints BLOOD CHARCOAL  score 2 3 6  theme LAVA  mass 16  seat 10  giver 729  reward S185
+[spoon_of_rebuilding] STORY 0 "Spoon of Rebuilding"
+  desc "He was right, annoyingly."
+  foot 1 1 8  flags WALL  flags2 UNSELLABLE|GIFT  fi EXAMINE
+  paints SILVER HONEY  score 3 2 0  theme LAVA  giver 729  reward S186
+[hauntessa_duster] STORY 0 "Hauntessa's Duster"
+  desc "Is it haunted? It is."
+  foot 1 1 4  flags SMALL|ANIM  flags2 UNSELLABLE|GIFT
+  paints WHITE GRAPE  score 4 4 0  theme GOTH  giver 109  reward S208
+[wobblewisp_vase] STORY 0 "Wobblewisp's Vase"
+  desc "Moves 2 inches left nightly."
+  foot 1 1 3  flags SMALL  flags2 UNSELLABLE|GIFT  role PLANT
+  paints LAVENDER FIXED  score 4 3 0  theme GOTH  giver 109  reward S209
+[realtors_sign] STORY 0 "Realtor's Sign"
+  desc "'MUST SEE'"
+  foot 1 1 8  flags2 UNSELLABLE|GIFT  fi EXAMINE
+  paints WHITE HONEY  score 2 3 0  theme BONE  mass 2  giver 673  reward S210
+[town_sign_mini] STORY 0 "Town Sign (mini)"
+  desc "Population: everyone."
+  foot 1 1 4  flags2 UNSELLABLE|GIFT  fi EXAMINE
+  paints CARAMEL WHITE  score 4 0 0  theme COTTAGE  mass 2  giver 0  reward S143
+[very_hungry_demon] STORY 0 "Very Hungry Demon"
+  desc "A picture book. Readable."
+  foot 1 1 2  flags SMALL  flags2 UNSELLABLE|GIFT  fi READ
+  paints LIME CHERRY  score 5 1 1  theme PASTEL  giver 16  reward S145
+[mini_whack_an_imp] STORY 0 "Mini Whack-an-Imp"
+  desc "The pet plays it."
+  foot 1 1 5  flags ANIM  flags2 UNSELLABLE|GIFT  fi PLAY
+  paints CHERRY LEMON  score 5 1 1  theme PASTEL  mass 4  need HAPPY  giver 64  reward S146
+[before_board] STORY 0 "Before Board"
+  desc "How it looked. Before."
+  foot 2 1 5  flags WALL  flags2 UNSELLABLE|GIFT  fi EXAMINE
+  paints WHITE FIXED  score 2 2 0  theme COTTAGE  giver 46  reward S147
+[conductors_baton] STORY 0 "Conductor's Baton"
+  desc "Maestro Mew's spare."
+  foot 1 1 2  flags SMALL  flags2 UNSELLABLE|GIFT  fi MUSIC
+  paints WHITE FIXED  score 4 0 0  theme PASTEL  giver 3  reward S148
+[phantasma_portrait] STORY 0 "Phantasma's Portrait"
+  desc "Painted in the Hellvile palette."
+  foot 1 1 6  flags WALL|HELL  flags2 UNSELLABLE|GIFT  fi EXAMINE
+  paints GRAPE FIXED  score 2 4 0  theme GOTH  giver 524  reward S149
+[oven_mitts] STORY 0 "Oven Mitts"
+  desc "Tiny. For a tiny cook."
+  foot 1 1 2  flags SMALL  flags2 UNSELLABLE|GIFT
+  paints CHERRY WHITE  score 7 0 1  theme COTTAGE  giver 530  reward S150
+[tiny_headstone] STORY 0 "Tiny Headstone"
+  desc "Engraves what you type."
+  foot 1 1 3  flags SMALL  flags2 UNSELLABLE|GIFT  fi EXAMINE
+  paints SILVER FIXED  score 2 5 0  theme BONE  giver 555  reward S176
+[grand_flops] STORY 0 "Grand-Flops"
+  desc "Pip visits it."
+  foot 1 1 6  flags2 UNSELLABLE|GIFT  fi SIT  role PLUSH
+  paints WHITE BUBBLEGUM  score 9 0 6  theme PASTEL  mass 4  seat 5  reward S178
+[bone_organ_mini] STORY 0 "Bone Organ (mini)"
+  desc "Two choirs, one tiny organ."
+  foot 1 1 6  flags HELL  flags2 UNSELLABLE|GIFT  fi MUSIC
+  paints BONE CHARCOAL  score 2 4 1  theme BONE  mass 6  giver 766  reward S179
+[candy_floor_tile] STORY 0 "Candy Floor Tile"
+  desc "The pet licks it."
+  foot 1 1 0  flags RUG  flags2 UNSELLABLE|GIFT
+  paints BUBBLEGUM LEMON  score 7 0 1  theme CANDY  giver 1  reward S180
+[both_sides_badge] STORY 0 "Both Sides Badge"
+  desc "The pet wears one too."
+  foot 1 1 3  flags WALL  flags2 UNSELLABLE|GIFT  fi EXAMINE
+  paints SKY HELLFIRE  score 5 1 0  theme PASTEL  giver 15  reward S182
+[sin_bin_planter] STORY 0 "Sin Bin Planter"
+  desc "A flower per honest thing said."
+  foot 1 1 4  flags HELL  flags2 UNSELLABLE|GIFT  role PLANT
+  paints CHARCOAL LIME  score 3 3 1  theme BONE  mass 4  giver 547  reward S187
+[weeping_fish_tank] STORY 0 "Weeping Fish Tank"
+  desc "The fish laugh when music plays."
+  foot 1 1 7  flags ANIM|LIGHT  flags2 UNSELLABLE|GIFT  fi WATCH
+  paints SKY TEAL  score 4 2 2  theme PICNIC  mass 10  light 1  giver 768  reward S191
+[ticket_nine] STORY 0 "Ticket #9"
+  desc "Now serving: ten."
+  foot 1 1 3  flags WALL  flags2 UNSELLABLE|GIFT  fi EXAMINE
+  paints CHERRY FIXED  score 3 1 0  theme LAVA  giver 514  reward S192
+[firefly_jar] STORY 0 "Firefly Jar"
+  desc "A constellation in a jar."
+  foot 1 1 3  flags SMALL|LIGHT|ANIM  flags2 UNSELLABLE|GIFT  role LAMP
+  paints LEMON SKY  score 7 0 2  theme PICNIC  light 2  giver 12  reward S195
+[small_bell] STORY 0 "Small Bell"
+  desc "Rings at 00:00, once, forwards."
+  foot 1 1 3  flags SMALL|ANIM  flags2 UNSELLABLE|GIFT
+  paints HONEY FIXED  score 4 2 0  theme COTTAGE  giver 426  reward S211
+[hug_counter] STORY 0 "Hug Counter"
+  desc "Ticks up every time the pet is held."
+  foot 1 1 4  flags WALL|ANIM  flags2 UNSELLABLE|GIFT
+  paints BUBBLEGUM WHITE  score 7 0 1  theme PASTEL  giver 43  reward S212
+[kevins_hat_stand] STORY 0 "Kevin's Hat Stand"
+  desc "The hat has a hole and a tiny flag."
+  foot 1 1 10  flags2 UNSELLABLE|GIFT
+  paints CHOCOLATE CHERRY  score 3 2 0  theme COTTAGE  mass 2  reward S213
+[eye_chart] STORY 0 "Eye Chart (both)"
+  desc "One eye blinks every 83 frames."
+  foot 1 1 6  flags WALL|ANIM  flags2 UNSELLABLE|GIFT  fi EXAMINE
+  paints WHITE FIXED  score 2 3 0  theme WORKSHOP  giver 522  reward S213
+[cloud_cushion] STORY 0 "Cloud Cushion"
+  desc "Rains a pixel when the song plays."
+  foot 1 1 2  flags ANIM  flags2 UNSELLABLE|GIFT  fi SIT  role SEAT
+  paints WHITE SKY  score 7 0 5  theme CLOUD  mass 2  seat 4  giver 701  reward S214
+[two_brave_kids] STORY 0 "Two Brave Kids"
+  desc "Framed. She's in focus in hers."
+  foot 1 1 5  flags WALL  flags2 UNSELLABLE|GIFT  fi EXAMINE
+  paints HONEY FIXED  score 7 1 2  theme PASTEL  giver 46  reward S215
+[contract_confetti_jar] STORY 0 "Contract Confetti"
+  desc "VOID, in GURGLE's handwriting."
+  foot 1 1 3  flags SMALL  flags2 UNSELLABLE|GIFT
+  paints BUBBLEGUM HELLFIRE  score 5 2 0  theme LAVA  giver 567  reward S217

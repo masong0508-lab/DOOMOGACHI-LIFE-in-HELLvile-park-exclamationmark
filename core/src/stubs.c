@@ -1221,7 +1221,7 @@ WEAK const char *txt_stash_get(int slot) { (void)slot; STUB("txt_stash_get"); re
 /* ---- furn.h (H4: core/gen/furn_data.c) ---- */
 WEAK const DoomoFurn doomo_furn[1] = { { NULL, NULL, 0, 0xFFFF, 0xFFFF, 0, 0, 0, 0,
                                           0, 0, 0, 0xFF, 0xFF, 0, 0, 0, 0xFF, 0, 0,
-                                          THEME_NONE, 0, 0, 0, 0 } };
+                                          THEME_NONE, 0, 0, 0, 0, 0 } };
 WEAK const uint16_t doomo_furn_count = 0;
 
 /* ---- house_api.h (H1: house_api.c) ---- */
@@ -1298,3 +1298,15 @@ STUB_SCENE(SCENE_HOME_MART, "HOME_MART");
 STUB_SCENE(SCENE_STORY_MG, "STORY_MG");
 STUB_SCENE(SCENE_STORY_TIMING, "STORY_TIMING");
 /* --- end S0 --- */
+
+/* --- H1: the dream house's generated tables (furngen, H4: core/gen/
+ * furn_data.c, furn_iso.c, furn_grant.c). Weak empty defaults so the house
+ * code links before (and, for the iso sprites, on the PS1 without) them. --- */
+WEAK const DoomoFurnPrim doomo_furn_prims[1] = { { 0, 0, 0, 0, 0, 0, 0, 0 } };
+WEAK const DoomoFurnIso doomo_furn_iso[1] = { { 0, 0, 0, 0, 0 } };
+WEAK const uint16_t doomo_furn_iso_first[1] = { 0 };
+WEAK const uint8_t doomo_furn_iso_data[1] = { 0xFF };
+WEAK const uint16_t doomo_furn_iso_count = 0;
+WEAK const DoomoFurnGrant doomo_furn_grants[1] = { { 0, 0, NULL } };
+WEAK const uint8_t doomo_furn_cap1[FURN_MAX / 8] = { 0 };
+/* --- end H1 --- */
