@@ -24,6 +24,7 @@
 #include <psxapi.h>
 #include <psxetc.h>
 #include "ps1.h"
+#include "postfx.h"
 
 typedef struct FrameBuf {
     DISPENV  disp;
@@ -31,6 +32,7 @@ typedef struct FrameBuf {
     uint32_t up_head[1];          /* zero-length link node            */
     uint32_t head[2];             /* DR_TPAGE: dither on              */
     uint32_t flush[2];            /* GP0(01h) texture cache flush      */
+    uint32_t ofs[2];              /* GP0(E5h) draw offset (S1 post-FX) */
     uint32_t ot[OT_VIEWS][OT_LEN];
     uint32_t envs[OT_VIEWS][2][4];/* clip in / clip out per view      */
     uint8_t  *prim;               /* its half of s_prim               */
@@ -167,12 +169,38 @@ void gfx_begin(void)
     f->up_head[0] = 0x00ffffffu;        /* len 0 */
     s_up_tail = f->up_head;
     setDrawTPage((DR_TPAGE *)f->head, 1, 1, getTPage(0, 0, 0, 0));
-    termPrim((DR_TPAGE *)f->head);
-    s_tail = f->head;
+    /* S1: head -> ofs (the frame's draw offset, which gfx_post_offset may
+     * move) -> the draw chain */
+    {
+        int fx, fy;
+        gfx_fb_xy(&fx, &fy);
+        f->ofs[0] = 0x01ffffffu;        /* len 1, end */
+        f->ofs[1] = 0xe5000000u | ((uint32_t)(fy & 0x7ff) << 11) | (uint32_t)(fx & 0x7ff);
+        TAG_LINK(f->head, f->ofs);
+    }
+    s_tail = f->ofs;
     g_tpage_cur = getTPage(0, 0, 0, 0);
     gfx2d_reset();
     f->flush[0] = 0x01ffffffu;          /* len 1 */
     f->flush[1] = 0x01000000u;          /* GP0(01h) clear texture cache */
+    postfx_frame_begin();
+}
+
+/* S1 post-FX (postfx.h): everything chained so far shakes by (dx, dy),
+ * everything after this point (the HUD) is drawn at the plain offset. */
+void gfx_post_offset(int dx, int dy)
+{
+    FrameBuf *f = &s_fb[g_cur];
+    uint32_t *e;
+    int fx, fy;
+    if (!s_open) return;
+    gfx_fb_xy(&fx, &fy);
+    f->ofs[1] = 0xe5000000u | ((uint32_t)((fy + dy) & 0x7ff) << 11) | (uint32_t)((fx + dx) & 0x7ff);
+    e = (uint32_t *)gfx_alloc(8);
+    if (!e) return;
+    e[0] = 0x01ffffffu;
+    e[1] = 0xe5000000u | ((uint32_t)(fy & 0x7ff) << 11) | (uint32_t)(fx & 0x7ff);
+    gfx_chain(e);
 }
 
 uint32_t *gfx_ot_begin(int vx, int vy, int vw, int vh)

@@ -13,6 +13,7 @@
 #include <stdarg.h>
 #include "gba_plat.h"
 #include "hcmd.h"
+#include "postfx.h"
 #include "doomo/game.h"
 #include "doomo/input.h"
 
@@ -206,12 +207,14 @@ void plat_end_frame(void)
 void video_flip(void)
 {
     int waited = 0;
+    postfx_pre_flip();          /* S1: squash OBJ checks + OAM (postfx.h) */
     while (gba_vblanks - last_flip_vbl < 2) {
         vblank_intr_wait();
         waited = 1;
     }
     if (!waited && REG_VCOUNT < 160) vblank_intr_wait();
     REG_DISPCNT ^= DCNT_PAGE;
+    postfx_vblank();            /* S1: BG2 affine, BLDY, palette, OAM DMA */
     gba_back = (REG_DISPCNT & DCNT_PAGE) ? (uint16_t *)VRAM_PAGE0
                                          : (uint16_t *)VRAM_PAGE1;
     last_flip_vbl = gba_vblanks;

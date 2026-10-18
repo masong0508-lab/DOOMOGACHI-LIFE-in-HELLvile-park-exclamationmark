@@ -20,6 +20,7 @@
 #include <string.h>
 #include "r3d.h"
 #include "world.h"
+#include "postfx.h"
 
 #define CELL      DOOMO_CELL_UNITS
 #define OW_PITCH  (-660)          /* ~ -58 degrees                           */
@@ -312,7 +313,8 @@ void plat_overworld(const DoomoOverworldView *v)
         ez = ((fz + 8) << 16) + ((isin(-OW_PITCH) * OW_DIST) << 4);
     }
     r3_camera(ex, ey, ez, 3072, OW_PITCH, v->vx, v->vy, v->vw, v->vh,
-              ((v->vw / 2) << 12) / OW_TAN, 40 * CELL, 40 * CELL, 0);
+              ((((v->vw / 2) << 12) / OW_TAN) * postfx_zoom_q8()) >> 8,   /* S1: GTE H zoom */
+              40 * CELL, 40 * CELL, 0);
     if (!r3_begin())
         return;
     /* backdrop: sky colour behind everything (tilted view: horizon at top) */

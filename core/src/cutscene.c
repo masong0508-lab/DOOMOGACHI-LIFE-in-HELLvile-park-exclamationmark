@@ -7,6 +7,9 @@
  */
 #include "story_int.h"
 #include "grumbleguts_gfx.h"
+#include "doomo/camfx.h"
+#include "doomo/tween.h"
+#include "doomo/beat.h"
 
 typedef struct { int16_t who; uint16_t min_t; const char *text; } Panel;
 
@@ -124,6 +127,7 @@ static void cs_enter(int arg)
     cut = (arg >= 0 && arg < CUT_COUNT) ? arg : CUT_CHAPTER1;
     panel = 0;
     ct = pt = 0;
+    camfx_reset();
 
     switch (cut) {
     case CUT_CHAPTER1: audio_music(SONG_TITLE); break;
@@ -145,8 +149,17 @@ static void cs_enter(int arg)
 static void cs_update(void)
 {
     int n = panel_count();
+    camfx_tick();                                 /* S1 M1: post-FX clock first */
     ct++;
     pt++;
+    /* comic post-FX on the existing beats (camfx.h; S1 M4 moves every cut
+     * onto beat scripts) */
+    if (cut == CUT_WALL_FALLS && panel == 0 && ct == 30) camfx_shake(SHK_RUMBLE);
+    if (cut == CUT_WALL_FALLS && panel == 0 && ct == 42) { camfx_shake(SHK_IMPACT); camfx_flash(PAL_WHITE, 8, 2); }
+    if (cut == CUT_ERUPTION && panel == 2 && pt == 20) { camfx_shake(SHK_FWOOMP); camfx_flash(PAL_RAMP(RAMP_LAVA, 6), 8, 3); }
+    if (cut == CUT_ERUPTION && panel == 3 && pt == 2) camfx_shake(SHK_ROAR);
+    if (cut == CUT_FREEPLAY && panel == n - 1 && pt == cs_dur() - 40)
+        camfx_iris_out(plat_screen_w() / 2, plat_screen_h() / 2 - 20, plat_screen_h() / 4, 1, RUNG_R21);
     if (cut == CUT_ERUPTION && panel == 2 && pt == 20) { audio_sfx(SFX_EXPLODE); audio_music(SONG_INVASION); }
     if (cut == CUT_ERUPTION && panel == 3 && pt == 2) audio_sfx(SFX_DEMON_ROAR);
     if (cut == CUT_WALL_FALLS && panel == 0 && (pt % 16) == 8) audio_sfx(SFX_EXPLODE);
@@ -581,8 +594,16 @@ static void draw_wall_falls(void)
             const DoomoImage *a = bodyspr_image(left[i], 2, run ? (int)((ct / 4 + (uint32_t)i) & 3) : 0);
             const DoomoImage *b = bodyspr_image(right[i], 1, run ? (int)((ct / 4 + (uint32_t)i) & 3) : 0);
             int y = gy - 24 + (i & 1) * 10;
-            if (a) plat_image(18 + i * 14 + run, y, a, 1, 0, 0);
-            if (b) plat_image(sw - 34 - i * 14 - run, y, b, 1, 0, 0);
+            if (a && i == 0 && run && run < 80) {     /* the leaders' running bounce (squash) */
+                TwSquash q = tw_squash(&TW_DROP_SOFT_SX, &TW_DROP_SOFT_SY, &TW_DROP_SOFT_DY,
+                                       (int)(ct & 7), tw_bounce_amount());
+                plat_image_xform(18 + run + a->w / 2, y + a->h + q.dy, a, q.sx, q.sy, 0, 0);
+            } else if (a) plat_image(18 + i * 14 + run, y, a, 1, 0, 0);
+            if (b && i == 0 && run && run < 80) {
+                TwSquash q = tw_squash(&TW_DROP_SOFT_SX, &TW_DROP_SOFT_SY, &TW_DROP_SOFT_DY,
+                                       (int)((ct + 4) & 7), tw_bounce_amount());
+                plat_image_xform(sw - 34 - run + b->w / 2, y + b->h + q.dy, b, q.sx, q.sy, 0, 0);
+            } else if (b) plat_image(sw - 34 - i * 14 - run, y, b, 1, 0, 0);
         }
         if (panel >= 2 && pt > 50)
             for (i = 0; i < 6; i++) ui_heart(sw / 2 - 40 + i * 16, gy - 40 - (int)((pt * 2 + (uint32_t)i * 9) % 30u), 4, PAL_UI_PINK);
@@ -637,6 +658,7 @@ static void cs_draw(void)
     case CUT_FEAST_POP: feast_draw(panel, pt, ct); break;
     default: plat_clear(PAL_BLACK); break;
     }
+    camfx_apply();                               /* the picture shakes, the caption does not (PS1) */
     caption();
 }
 

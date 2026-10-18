@@ -12,6 +12,7 @@
 #include "gba_plat.h"
 #include "video_int.h"
 #include "hcmd.h"
+#include "postfx.h"
 #include "doomo/palette.h"
 #include "doomo/font.h"
 
@@ -60,7 +61,8 @@ static void glyph_dilate(const uint8_t *g, uint16_t out[11])
 void video_init(void)
 {
     static const volatile uint32_t zero = 0;
-    REG_DISPCNT = DCNT_MODE4 | DCNT_BG2;     /* showing page 0 */
+    obj_init();                               /* S1: all OBJs hidden first */
+    REG_DISPCNT = DCNT_MODE4 | DCNT_BG2 | DCNT_OBJ | DCNT_OBJ_1D;  /* showing page 0 */
     video_load_palette();
     dma3_fill32((void *)VRAM_PAGE0, &zero, 0x14000 / 4);
     gba_back = (uint16_t *)VRAM_PAGE1;
