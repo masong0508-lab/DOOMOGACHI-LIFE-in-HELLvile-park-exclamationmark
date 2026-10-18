@@ -50,7 +50,7 @@ static struct {
     Throw throws[2];
     int splash_x, splash_y, splash_t, splash_hit;
     /* true name */
-    int choices[4], correct, clues, name_ok, picked;
+    int choices[4], correct, clues, name_ok, picked, near;
     /* verdict */
     int chance, success, fails_before;
     char taunt[72];
@@ -96,10 +96,17 @@ static int host_ref(void) { return X.practice ? -1 - X.host : X.host; }
 
 static const char *demon_name(void)
 {
-    static char buf[DOOMO_NAME_LEN + 2];
-    int ch[4], c = exorcism_name_choices(host_ref(), ch);
-    const DoomoResident *r = town_res(ch[c]);
-    const char *n = (r && r->status != RES_EMPTY) ? r->name : roster_name(ch[c]);
+    static char buf[DOOMO_NAME_LEN + 14];
+    int ch[4], c;
+    const DoomoResident *r;
+    const char *n;
+    /* --- S3: an authored possessor has its true name --- */
+    const DoomoPossessor *ap = exorcism_authored(host_ref());
+    if (ap && ap->name) { doomo_snprintf(buf, sizeof(buf), "%s", ap->name); return buf; }
+    /* --- end S3 --- */
+    c = exorcism_name_choices(host_ref(), ch);
+    r = town_res(ch[c]);
+    n = (r && r->status != RES_EMPTY) ? r->name : roster_name(ch[c]);
     doomo_snprintf(buf, sizeof(buf), "%s", n && n[0] ? n : "Nameless One");
     return buf;
 }
@@ -276,7 +283,9 @@ static void cb_water(void) { begin_water(); }
 static void begin_name(void)
 {
     goto_state(ST_NAME);
-    X.correct = exorcism_name_choices(host_ref(), X.choices);
+    exorcism_name_choices(host_ref(), X.choices);
+    X.correct = exorcism_name_answer(host_ref());          /* S3: -1 = never offered */
+    X.near = -1;
     X.clues = 1 + (X.rhythm >= 50) + (X.rhythm >= 85) + ((X.items & (1u << EXI_HYMN_BOOK)) != 0);
     if (X.clues > 4) X.clues = 4;
     X.picked = -1;
@@ -484,16 +493,29 @@ static void update_name(void)
     if (btn_repeat(BTN_LEFT) || btn_repeat(BTN_RIGHT)) { X.sel ^= 1; audio_sfx(SFX_CURSOR); }
     if (btn_repeat(BTN_UP) || btn_repeat(BTN_DOWN)) { X.sel ^= 2; audio_sfx(SFX_CURSOR); }
     if (btn_pressed(BTN_A)) {
-        X.name_ok = X.sel == X.correct;
+        /* --- S3: the board judges authored picks (near miss, herring) --- */
+        int res = exorcism_name_pick(host_ref(), X.sel);
+        if (res == EXP_NEAR_MISS) {
+            X.near = X.sel;                    /* no strike: pick again */
+            X.shake = 3;
+            audio_sfx(SFX_DEMON_ROAR);
+            taunt("That's what I'm WEARING.", NULL);
+            return;
+        }
+        X.name_ok = res == EXP_RIGHT;
         X.picked = X.st_t;
-        X.shake = 6;
+        X.shake = res == EXP_HERRING ? 10 : 6;
         if (X.name_ok) {
             audio_sfx(SFX_DEMON_PAIN);
             taunt("NOOO! How do you know my NAME?!", NULL);
+        } else if (res == EXP_HERRING) {
+            audio_sfx(SFX_DEMON_ROAR);
+            taunt("Hee. Hee. Wrong ghost.", NULL);
         } else {
             audio_sfx(SFX_DEMON_ROAR);
             taunt("WRONG! Hahahaha!", NULL);
         }
+        /* --- end S3 --- */
     }
 }
 
@@ -545,6 +567,7 @@ static void exo_update(void)
     case ST_VERDICT:
         if (X.st_t == 75) {
             X.success = rng_range(&doomo_rng, 100) < X.chance;
+            if (exorcism_forced_result(host_ref()) >= 0) X.success = exorcism_forced_result(host_ref());   /* S3 */
             if (!X.practice) {
                 X.fails_before = exorcism_fails(X.host);
                 exorcism_apply(X.host, X.success);
@@ -786,11 +809,12 @@ static void draw_name_ui(uint32_t t)
     }
     for (i = 0; i < 4; i++) {
         int bx = gx + (i & 1) * (bw + 4), yy = by + (i >> 1) * (bh + 5);
-        const DoomoResident *r = town_res(X.choices[i]);
-        const char *n = (r && r->status != RES_EMPTY) ? r->name : roster_name(X.choices[i]);
+        char nb[DOOMO_NAME_LEN + 14];
+        const char *n = exorcism_name_text(host_ref(), i, nb, sizeof(nb));   /* S3 */
         int sel = X.sel == i, shown = X.picked >= 0, lift = sel && !shown ? 1 + (int)((t / 8) & 1) : 0;
         uint8_t fill = sel ? PAL_UI_PURPLE : PAL_RAMP(RAMP_VAPE, 2);
         if (shown && i == X.correct) fill = PAL_UI_MINT_D;
+        else if (i == X.near) fill = PAL_GRAY;                             /* S3: worn, not named */
         else if (shown && sel) fill = PAL_UI_RED;
         plat_shade_rect(bx + 2, yy + 3, bw, bh, 10);
         ui_round_rect(bx, yy - lift, bw, bh, 6, ui_darker(fill));

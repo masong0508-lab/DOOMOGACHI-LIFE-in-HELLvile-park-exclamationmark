@@ -62,6 +62,13 @@ int sim_possessor_of(int id)
     int start, i;
     if (!r || id >= DOOMO_MAX_RESIDENTS) return -1;
     if (r->status != RES_POSSESSED && r->status != RES_SOUL_LOST) return -1;
+    /* --- S3: authored possessors override the pick (SPEC sec.6.3; the custom
+     * spec takes this file over with this hunk in place) --- */
+    {
+        int o = story_possessor_override(id);
+        if (o >= 0) return o;
+    }
+    /* --- end S3 --- */
     /* attempts - fails stays the same through one possession (every
      * failure bumps both) and changes after a successful exorcism */
     h = doomo_hash32(doomo_town.seed * 0x2545F491u ^ (uint32_t)id * 0x9E3779B1u ^
