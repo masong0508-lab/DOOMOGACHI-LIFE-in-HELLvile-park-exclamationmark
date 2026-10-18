@@ -60,4 +60,23 @@ typedef struct AudioInst {
 extern const AudioInst audio_insts[];
 extern const int audio_inst_count;
 
+/* --- S1: comic-timing hooks (audio_fx.c <-> audio.c; SPEC sec.6.3) --- */
+/* audio_fx.c, called by audio.c */
+void audio_fx_tick(int on_quarter);        /* once per audio_tick, first    */
+void audio_fx_music(int c, uint16_t *freq, int *vol);  /* the mixer hunk    */
+int  audio_fx_owns(int c);                 /* channel borrowed by a one-shot */
+void audio_fx_song_started(void);
+void audio_fx_synth_step(void);
+void audio_fx_reset(void);                 /* audio_init                     */
+/* audio.c, the S1 hunk, called by audio_fx.c */
+uint16_t audio_int_hz(int32_t p16);        /* 1/16 semitones above C0 -> Hz  */
+void audio_int_release(int c);             /* give a channel back to music  */
+void audio_int_dual(int song_a, int song_b);
+/* tests and tools */
+int  audio_sfx_synth_frames(int sfx);
+const char *audio_sfx_synth_name(int sfx);
+int  audio_sfx_synth_busy(void);
+int  audio_fx_music_gated(void);           /* 1 while a mute holds the music */
+/* --- end S1 --- */
+
 #endif

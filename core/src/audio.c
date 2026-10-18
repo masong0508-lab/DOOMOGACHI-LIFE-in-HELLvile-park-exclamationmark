@@ -85,6 +85,7 @@ static int cur_song, prev_song;
 static uint8_t once_mode;
 static int32_t rate256 = 1000;   /* 1/256 duration units per tick              */
 static uint32_t song_t, notes_started;
+static uint32_t pos256;            /* S1: song position, 1/256 duration units  */
 static uint8_t inited;
 static DoomoToneState sent[AUDIO_CH];
 static uint8_t sent_valid[AUDIO_CH];
@@ -345,10 +346,12 @@ static void chan_shape(Chan *c, int idx)
     v = v * c->vol * master;
     v = (v + 1200) / 2400;
     if (v > 15) v = 15;
+    audio_fx_music(idx, &f, &v);          /* --- S1: mute / duck / tape-stop gain + pitch --- */
     c->out.freq = v ? f : 0;
     c->out.vol = (uint8_t)v;
     c->out.wave = (uint8_t)w;
     if (idx == AUDIO_VOICE_CHANNEL && vb.ticks) return;   /* the voice owns it */
+    if (audio_fx_owns(idx)) return;       /* --- S1: a comedy one-shot borrowed it --- */
     send(idx, c->out.freq, c->out.vol, c->out.wave);
 }
 
@@ -361,11 +364,14 @@ static void start_song(int song)
     cur_song = song;
     song_t = 0;
     notes_started = 0;
+    pos256 = 0;                           /* --- S1: the beat grid restarts --- */
+    audio_fx_song_started();
     set_tempo(120);
     if (song <= SONG_NONE || song >= SONG_COUNT) {
         cur_song = SONG_NONE;
         for (i = 0; i < AUDIO_CH; i++) {
             if (i == AUDIO_VOICE_CHANNEL && vb.ticks) continue;
+            if (audio_fx_owns(i)) continue;      /* --- S1 --- */
             sent_valid[i] = 0;
             send(i, 0, 0, WAVE_PULSE50);
         }
@@ -398,6 +404,7 @@ void audio_init(void)
     prev_song = SONG_NONE;
     once_mode = 0;
     inited = 1;
+    audio_fx_reset();                     /* --- S1 --- */
     start_song(SONG_NONE);
 }
 
@@ -437,6 +444,11 @@ void audio_tick(void)
     int i, alive = 0;
     if (!inited) return;
     voice_tick();
+    {   /* --- S1: comic-timing hooks; a quarter note is 48 units --- */
+        uint32_t before = pos256 >> 8;
+        if (cur_song != SONG_NONE) pos256 += (uint32_t)rate256;
+        audio_fx_tick(cur_song == SONG_NONE || before / 48 != (pos256 >> 8) / 48);
+    }   /* --- end S1 --- */
     if (cur_song == SONG_NONE) return;
     song_t++;
     for (i = 0; i < AUDIO_CH; i++) {
@@ -589,6 +601,7 @@ const int8_t *audio_sfx_pcm(int sfx, uint32_t *len, uint32_t *rate)
 void audio_sfx(int sfx)
 {
     int v;
+    if (sfx >= SFX_SYNTH_FIRST && sfx < SFX_SYNTH_END) { audio_sfx_synth(sfx); return; }  /* --- S1 --- */
     if (sfx <= SFX_NONE || sfx >= SFX_COUNT) return;
     v = opt_get(OPT_SFX_VOL);
     if (v <= 0) return;
@@ -690,3 +703,41 @@ static void voice_tick(void)
     if (cur_song == SONG_NONE) send(AUDIO_VOICE_CHANNEL, 0, 0, WAVE_PULSE50);
     else send(AUDIO_VOICE_CHANNEL, ch[1].out.freq, ch[1].out.vol, ch[1].out.wave);
 }
+
+/* --- S1: comic-timing hooks (audio_fx.c; SPEC sec.6.3 "S1 first") ------------ */
+uint16_t audio_int_hz(int32_t p16) { return pitch_hz(p16); }
+
+void audio_int_release(int c)
+{
+    if (c < 0 || c >= AUDIO_CH) return;
+    sent_valid[c] = 0;
+    if (c == AUDIO_VOICE_CHANNEL && vb.ticks) return;
+    if (cur_song == SONG_NONE) send(c, 0, 0, WAVE_PULSE50);
+    else send(c, ch[c].out.freq, ch[c].out.vol, ch[c].out.wave);
+}
+
+/* Song a on channels 0 and 2 (and its tempo), song b's lead on channel 1
+ * (the harmony pulse) and b's drums on channel 3. */
+void audio_int_dual(int song_a, int song_b)
+{
+    const AudioSong *b;
+    const char *p;
+    if (!inited) audio_init();
+    if (song_a <= SONG_NONE || song_a >= SONG_COUNT) { audio_music(SONG_NONE); return; }
+    once_mode = 0;
+    start_song(song_a);
+    if (song_b <= SONG_NONE || song_b >= SONG_COUNT) return;
+    b = &audio_songs[song_b];
+    p = b->ch[0];
+    if (p) {                                      /* skip b's tempo: a's wins */
+        while (*p && is_skip(*p)) p++;
+        if (*p == 't') { p++; read_num(&p, 120); }
+    }
+    ch[1].str = ch[1].p = p;
+    ch[1].ended = p == NULL;
+    ch[1].loop_pt = NULL;
+    ch[3].str = ch[3].p = b->ch[3];
+    ch[3].ended = b->ch[3] == NULL;
+    ch[3].loop_pt = NULL;
+}
+/* --- end S1 --- */
