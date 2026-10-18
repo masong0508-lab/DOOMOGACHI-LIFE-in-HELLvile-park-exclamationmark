@@ -1,9 +1,21 @@
 /* cutscene.c - SCENE_CUTSCENE (arg = CUT_*): chapter title cards and the
- * story's animated vignettes (owner: story). Each cutscene is a few
- * captioned panels over a little animated picture drawn with the UI
- * primitives, textures, sprites and the citizens' own portraits. A
- * advances (after a moment), START skips. When it ends it pops itself and
- * SCENE_STORY continues the plot.
+ * story's animated vignettes (owner: story; rebuilt on beat.h by S1 M4,
+ * docs/design/story/SPEC.md sec.7 S1, story_final.md sec.15.7,
+ * comic_timing.md sec.6.1).
+ *
+ * A cutscene is a STAGE plus a BeatScript. The stage is the vignette's
+ * drawing code (backdrop, actors, camera), which reads the current shot
+ * (`panel`, switched by BOP_SHOT) and the shot's age (`pt`) for every
+ * entrance, and the camfx state for everything else. The script owns all
+ * timing: shots, captions, music, SFX, shakes, flashes and the iris hang
+ * off its labels, so re-timing a beat drags its sound and shake along
+ * (no frame constants in draw code). Each shot waits for A (after R13-ish
+ * 12 frames) or moves on by itself (BEAT_WAIT_A_B); START skips the whole
+ * cutscene (beat_skip applies the flags only); A never shortens a HOLD
+ * after L_PUNCH (beat.c). The host kinds (SHOT, CAPTION, IRIS) come back
+ * from beat_tick() as BT_EXT and are handled here (SPEC C6).
+ * CUT_FEAST_POP keeps calling feast_tick / feast_draw (story_feast.c)
+ * with its exact panel lengths until S5 ports it onto stages.
  */
 #include "story_int.h"
 #include "grumbleguts_gfx.h"
@@ -11,82 +23,169 @@
 #include "doomo/tween.h"
 #include "doomo/beat.h"
 
-typedef struct { int16_t who; uint16_t min_t; const char *text; } Panel;
-
-/* ---- the scripts --------------------------------------------------------------- */
-static const Panel P_ch1[] = { { -1, 60, NULL }, { 0, 0, NULL } };
-static const Panel P_arrival[] = {
-    { -1, 50, "A sleepy pink bus rolls over the candy-coloured hills..." },
-    { -1, 50, "Welcome to HaHaland: the happiest place on Earth!" },
-    { -1, 50, "Population: 500 lovely citizens. And now, @P!" },
-    { 0, 0, NULL }
+/* ---- captions (one per shot; NULL = none) ---------------------------------------- */
+static const char *const C_none[] = { NULL };
+static const char *const C_arrival[] = {
+    "A sleepy pink bus rolls over the candy-coloured hills...",
+    "Welcome to HaHaland: the happiest place on Earth!",
+    "Population: 500 lovely citizens. And now, @P!"
 };
-static const Panel P_home[] = {
-    { -1, 40, "Home sweet home! Your very own cottage on Hillvile Lane." },
-    { -1, 50, "The Doomogachi egg is wiggling... it's warm... it's HATCHING!" },
-    { 0, 0, NULL }
+static const char *const C_home[] = {
+    "Home sweet home! Your very own cottage on Hillvile Lane.",
+    "The Doomogachi egg is wiggling... it's warm... it's HATCHING!"
 };
-static const Panel P_fog[] = {
-    { -1, 50, "Purple fog pours over the Wall like spilled grape soda." },
-    { -1, 50, "Two little lights blink at you from inside it." },
-    { -1, 60, "\"Hee hee hee... Hillvile... come and PLAY with us...\"" },
-    { 0, 0, NULL }
+static const char *const C_fog[] = {
+    "Purple fog pours over the Wall like spilled grape soda.",
+    "Two little lights blink at you from inside it.",
+    "\"Hee hee hee... Hillvile... come and PLAY with us...\""
 };
-static const Panel P_eruption[] = {
-    { -1, 60, "Somewhere beyond the Wall, an enormous vape cloud starts to swell..." },
-    { -1, 50, "It grows. And grows. It blots out the pink sky..." },
-    { -1, 50, "...and with a sound like the world's biggest cough, it tears the gate WIDE OPEN." },
-    { -1, 70, "THE DEMONS OF HELL ARE HERE." },
-    { 0, 0, NULL }
+static const char *const C_eruption[] = {
+    "Somewhere beyond the Wall, an enormous vape cloud starts to swell...",
+    "It grows. And grows. It blots out the pink sky...",
+    "...and with a sound like the world's biggest cough, it tears the gate WIDE OPEN.",
+    "THE DEMONS OF HELL ARE HERE."
 };
-static const Panel P_vapula[] = {
-    { -1, 50, "Lord Vapula, Duke of the Ninth Cloud, wheezes his last mighty wheeze..." },
-    { -1, 50, "...and deflates. Pfffffffff. With a sad little squeak." },
-    { -1, 50, "The vape cloud dissolves. The sky blushes pink again." },
-    { 0, 0, NULL }
+static const char *const C_vapula[] = {
+    "Lord Vapula, Duke of the Ninth Cloud, wheezes his last mighty wheeze...",
+    "...and deflates. Pfffffffff. With a sad little squeak.",
+    "The vape cloud dissolves. The sky blushes pink again."
 };
-static const Panel P_wall[] = {
-    { -1, 50, "The Wall creaks... groans... and comes tumbling down." },
-    { -1, 50, "For the first time, Hillvile and Hellvile see each other." },
-    { -1, 60, "And then, all at once, everybody runs to say hello." },
-    { 0, 0, NULL }
+static const char *const C_wall[] = {
+    "The Wall creaks... groans... and comes tumbling down.",
+    "For the first time, Hillvile and Hellvile see each other.",
+    "And then, all at once, everybody runs to say hello."
 };
-static const Panel P_freeplay[] = {
-    { -1, 60, "FREE PLAY UNLOCKED! Visit the united park, Hellvile and HaHaland any time." },
-    { -1, 40, "Thank you for playing, @P. Hellvile Park is better with you in it." },
-    { 0, 0, NULL }
+static const char *const C_freeplay[] = {
+    "FREE PLAY UNLOCKED! Visit the united park, Hellvile and HaHaland any time.",
+    "Thank you for playing, @P. Hellvile Park is better with you in it."
 };
-
-/* Feast of Rebuilding, outcome 1 (Grumbleguts pops). Beats are timed, so the
- * panel's number here is its WHOLE length in ticks (see cs_dur). */
-static const Panel P_feast_pop[] = {
-    { -1, 150, "Hellvile Park, the Feast of Rebuilding. Gatekeeper Grumbleguts eats like he's fucking the food: slow, loud, tongue down the fork, moaning around every bite. He has slipped his number to the waiter, the band and one gazebo." },
-    { -1, 140, "Every eye in the park is on one thing, and every course it gets heavier. His exes Shriekra and Spearmint are both here, both pretending not to look, both remembering exactly how it felt. He licks his lips at each. Nana drops the fan and the act." },
-    { -1, 110, "\"Look who's full of himself, now?\" He leans back, thighs wide. \"Born this way, sugar. Come closer and I'll show you how it fits. Form a line, loves, there's plenty to go around.\"" },
-    { -1, 252, "A hose, impossibly long, thick and slick, pulled taut in his fist. \"Is that a hose or are you just glad to see me?\" ...It keeps going. \"Slower, hon. I wanna feel every inch.\" One wet, heavy SLAP. Three hands go up." },
-    { -1, 100, "He holds the belch like a moan and does not apologize. \"Pardon me.\" His eyes find the nearest imp and stay there. The imp winks back. He licks his teeth. The imp stops being subtle." },
-    { -1, 100, "...pfffrrrt. Loud, wet and he moans like it felt good, because it did. He rises off the chair, lips parted. \"Mmm. That one was a love letter. Sealed with a kiss. Several kisses.\"" },
-    { -1, 130, "Both ends at once. He sags, sweating and glistening, a long shuddering groan rolling through the belly. \"Ohhh, fuck, finally.\" The crowd squirms, then cheers. Somebody lights a cigarette. Somebody asks where the afterparty is." },
-    { -1, 170, "The valve strains. The camera cannot look away from the belly. The harness groans. \"Don't stop,\" he pants, to everybody, individually. Half the park is pretending not to want a pressurized demon, and losing." },
-    { -1, 130, "POP. Heat and pressure let go all at once. \"Is there dessert?\" The rump tears off round the park, trailing a long, shameless fart, half the crowd chasing it. Plap." },
-    { -1, 110, "\"...that's hot.\" Somebody says it out loud. Then a lot of them. Father Fuzz is fine. He is FINE. He has asked for the number and is on his knees, officially for prayer." },
-    { -1, 180, "Later. Moonlight, candles, the crowd lingering by the empty tables. Grumbleguts is back in one piece, mostly, reclined and glowing, the belly rising and falling in slow, satisfied breaths. Nobody has gone home." },
-    { -1, 170, "He finds @P in the crowd and holds the look. \"Don't be shy, sugar.\" Smoke curls from his lips. \"Night's young, and I'm so, so full of ideas. Stay a while.\"" },
-    { -1, 200, "Later still. The crowd has started to drift off, which is when Grumbleguts hauls out a bike pump, a long hose and a look. \"Don't mind me.\" The hose goes round the back. The handle goes up and down. Slowly. Pff." },
-    { -1, 170, "Pff. Pff. Pff. The belly is not so much round as ambitious. His eyes cross. His tongue comes out. He is inflating himself like a dumb balloon and he is HAPPY about it. He does not pop. He does not float. \"...one more.\"" },
-    { -1, 210, "The valve gives a long, wobbling hiss and the whole park goes quiet to listen. He rocks on his heels, moaning through his teeth, thighs trembling. \"Hear how tight that is, sugar?\" Something deep in the belly gurgles back. A wet BLORP climbs his throat." },
-    { -1, 220, "BRRRAAAP. It rolls across the park like a love song for a swamp. A brave imp pokes the belly. It answers with a long wet squelch and a moan. \"Again,\" he pants. \"Harder. Don't be shy, I'm all give.\" The harness creaks. He has never been happier." },
-    { -1, 230, "Out comes a little black book the size of a phone directory. He licks a thumb and flips. \"Shriekra. Spearmint. The waiter, the band, the gazebo...\" Pencil behind the ear. \"Who's next? Don't make me beg. ...Okay, make me.\"" },
-    { -1, 240, "A queue snakes round the park. Somebody is handing out numbers. \"Now serving forty-seven!\" Father Fuzz is third, officially for confession. Shriekra and Spearmint are fighting over who gets him first. \"Plenty to go round, loves. Pace yourselves.\"" },
-    { -1, 240, "The pump gets passed down the line and everybody gets a go. He moans a different name with every stroke and gets all of them wrong. \"Don't stop. Don't you dare stop. Pump me, you beautiful bastards.\" The belly groans. The harness begs for mercy." },
-    { -1, 230, "Dawn. The park is a wreck of bodies, bunting, abandoned shoes and one very smug gazebo. Grumbleguts, flat and glowing, scratches a tally on the fence. Forty-seven. He sighs, spent and shameless. \"...That all? Anyone for brunch?\"" },
-    { -1, 120, NULL },
-    { 0, 0, NULL }
+/* The Feast of Rebuilding, outcome 1 ("What an Ass"). Slapstick on his
+ * vanity and his appetite, cartoon-modest (SF sec.3, R15): innuendo at most,
+ * nothing sexual. The panel lengths are story_feast.c's exact timings. */
+static const char *const C_feast[] = {
+    "Hellvile Park, the Feast of Rebuilding. Gatekeeper Grumbleguts eats with his back to the whole park, so everybody gets the full view. He calls it sharing.",
+    "Every eye in the park is on one thing, and every course makes it bigger. His exes Shriekra and Spearmint pretend not to look. Nana fans herself with a menu.",
+    "\"Look who's full of himself, now?\" The guest beside him jerks a thumb at the seat of the problem. Grumbleguts beams. \"Born this way, sugar.\"",
+    "A hose, impossibly long, fed in hand over hand like a rope climb in reverse. \"Surely that's enough?\" ...It is not. It keeps going. A mechanic's pat. One big SLAP. \"She'll hold.\"",
+    "The first false alarm: a burp so big it rattles the bunting. \"Pardon me.\" He does not look sorry. He looks hungry.",
+    "...pfffrrrt. The second false alarm lifts him an inch off the chair. Minty, he insists. Nobody believes him.",
+    "Both ends at once. He sags. The crowd cheers: it's over! ...It is not over. The valve is still turning.",
+    "The valve wins. The belly swells, the straps creak, the chair files a complaint. Every camera in the park finds the same angle. By accident. Again.",
+    "POP. Confetti, stuffing and one very surprised halo. High above the bunting a lone pair of cheeks drifts down like a balloon. \"...Is there dessert?\"",
+    "\"...that's hot,\" says one voice in the silence. Every head turns. The mob is swift, cartoonish and thorough. A single shoe lands in frame.",
+    "Later. Moonlight, candles, the crowd lingering by the empty tables. Grumbleguts is back in one piece, mostly, reclined and glowing, digesting at volume.",
+    "He finds @P in the crowd and holds the look. \"Don't be shy, sugar. There's room at my table. There's always room at my table.\"",
+    "Later still, he hauls out a bike pump. \"For my posture.\" The hose goes round the back. The handle goes up and down. Pff. Pff.",
+    "Pff. Pff. Pff. The belly is not so much round as ambitious. He is inflating himself like a parade balloon and has never been prouder. \"...one more.\"",
+    "The valve gives a long, wobbling hiss and the whole park goes quiet to listen. Something deep in the belly gurgles back. It has opinions.",
+    "BRRRAAAP. It rolls across the park like a tuba falling down the stairs. A brave imp pokes the belly. The belly pokes back.",
+    "Out comes a little black book the size of a phone directory. \"Shriekra. Spearmint. The waiter, the band, the gazebo...\" Every page says NO in a different hand.",
+    "A queue snakes round the park and somebody is handing out numbers. It is the queue for the leftovers. He is at the front of it. Twice.",
+    "The pump gets passed down the line and everybody has a go. He calls every helper by the wrong name and thanks each one warmly.",
+    "Dawn. Bunting, abandoned shoes and one very smug gazebo. Grumbleguts, flat and glowing, scratches a tally on the fence: forty-seven helpings. \"...Brunch?\"",
+    NULL
 };
 
-static const Panel *const scripts[CUT_COUNT] = {
-    P_ch1, P_ch1, P_ch1, P_ch1, P_arrival, P_fog, P_eruption, P_vapula, P_wall, P_freeplay, P_home,
-    P_feast_pop
+/* ---- the beat scripts -------------------------------------------------------------
+ * Shot k hangs off label k (label 0 = the start): SHOT, CAPTION, then a
+ * WAIT_A that fires label k + 1 on A (after 12 frames) or after `dur`.
+ * Effects of shot k are rows anchored to label k; L_PUNCH (30) carries
+ * the punch beat where a cut has one. Rows are sorted by (anchor, at). */
+#define EV(at, anc, op, a, b) { (uint16_t)(at), (uint8_t)(anc), (uint8_t)(op), (int16_t)(a), (int16_t)(b) }
+#define SHOT(k, dur) EV(0, k, BOP_SHOT, k, 0), EV(0, k, BOP_CAPTION, 0, k), \
+                     EV(0, k, BOP_WAIT_A, (k) + 1, BEAT_WAIT_A_B(12, dur))
+#define SHOT_FIXED(k, dur) EV(0, k, BOP_SHOT, k, 0), EV(0, k, BOP_CAPTION, 0, k), \
+                     EV(0, k, BOP_WAIT_A, (k) + 1, BEAT_WAIT_A_B(12, dur))
+#define END_AT(k) EV(0, k, BOP_END, 0, 0)
+#define MUSIC(at, k, s) EV(at, k, BOP_MUSIC, s, 0)
+#define SFX(at, k, s) EV(at, k, BOP_SFX, s, 0)
+
+static const BeatEv B_card1[] = { MUSIC(0, 0, SONG_TITLE), SHOT(0, 260), END_AT(1) };
+static const BeatEv B_card2[] = { MUSIC(0, 0, SONG_VAPE_LOUNGE), SHOT(0, 260), END_AT(1) };
+static const BeatEv B_card3[] = { MUSIC(0, 0, SONG_INVASION), SHOT(0, 260), SFX(2, 0, SFX_THUD), END_AT(1) };
+static const BeatEv B_card4[] = { MUSIC(0, 0, SONG_HELLVILE), SHOT(0, 260), END_AT(1) };
+static const BeatEv B_arrival[] = {
+    MUSIC(0, 0, SONG_HAHALAND_DAY), SHOT(0, 250),
+    SHOT(1, 250), SFX(2, 1, SFX_SPARKLE),
+    SHOT(2, 250), SFX(13, 2, SFX_FANFARE),
+    END_AT(3)
+};
+static const BeatEv B_home[] = {
+    MUSIC(0, 0, SONG_PET), SHOT(0, 240),
+    SHOT(1, 250), SFX(10, 1, SFX_EGG_CRACK), SFX(40, 1, SFX_EGG_CRACK), SFX(70, 1, SFX_EGG_CRACK),
+    SFX(100, 1, SFX_EGG_CRACK), SFX(130, 1, SFX_EGG_CRACK), SFX(160, 1, SFX_EGG_CRACK),
+    SFX(190, 1, SFX_EGG_CRACK), SFX(220, 1, SFX_EGG_CRACK),
+    END_AT(2)
+};
+static const BeatEv B_fog[] = {
+    MUSIC(0, 0, SONG_OMINOUS), SHOT(0, 250),
+    SHOT(1, 250), SFX(3, 1, SFX_TIK),                         /* the two lights blink on */
+    SHOT(2, 260), EV(0, 2, BOP_MUSIC_DUCK, 30, 140), SFX(4, 2, SFX_POSSESS),
+    END_AT(3)
+};
+static const BeatEv B_eruption[] = {
+    MUSIC(0, 0, SONG_OMINOUS), SHOT(0, 260),
+    SHOT(1, 250),
+    SHOT(2, 250), EV(7, 2, BOP_MUSIC_MUTE, 13, 0), EV(20, 2, BOP_LABEL, L_PUNCH, 0),
+    SHOT(3, 270), EV(2, 3, BOP_SHAKE, SHK_ROAR, 0), SFX(2, 3, SFX_DEMON_ROAR),
+    END_AT(4),
+    /* the cough that tears the gate open: silence R13, then the FWOOMP */
+    EV(0, L_PUNCH, BOP_SHAKE, SHK_FWOOMP, 0), EV(0, L_PUNCH, BOP_FLASH, PAL_RAMP(RAMP_LAVA, 6), 8 | (3 << 8)),
+    SFX(0, L_PUNCH, SFX_EXPLODE), MUSIC(0, L_PUNCH, SONG_INVASION), EV(0, L_PUNCH, BOP_NOBUTTON, 0, 0)
+};
+static const BeatEv B_vapula[] = {
+    MUSIC(0, 0, SONG_VICTORY), SHOT(0, 250),
+    SHOT(1, 250), SFX(10, 1, SFX_DEMON_DIE), EV(13, 1, BOP_TAPESTOP, 8, 0), SFX(60, 1, SFX_SQUEAK),
+    EV(60, 1, BOP_LABEL, L_PUNCH, 0),
+    SHOT(2, 250), EV(0, 2, BOP_MUSIC_MUTE, 0, 0), SFX(0, 2, SFX_CONFETTI),
+    END_AT(3),
+    /* *squeak*: the Duke's last breath, then the button R13 later */
+    EV(13, L_PUNCH, BOP_LABEL, L_BUTTON, 0), SFX(13, L_PUNCH, SFX_POP2)
+};
+static const BeatEv B_wall[] = {
+    MUSIC(0, 0, SONG_FESTIVAL), SHOT(0, 250),
+    SFX(8, 0, SFX_EXPLODE), SFX(24, 0, SFX_EXPLODE), EV(30, 0, BOP_SHAKE, SHK_RUMBLE, 0),
+    EV(42, 0, BOP_LABEL, L_PUNCH, 0),
+    SFX(56, 0, SFX_EXPLODE), SFX(72, 0, SFX_EXPLODE), SFX(88, 0, SFX_EXPLODE), SFX(104, 0, SFX_EXPLODE),
+    SFX(120, 0, SFX_EXPLODE), SFX(136, 0, SFX_EXPLODE), SFX(152, 0, SFX_EXPLODE), SFX(168, 0, SFX_EXPLODE),
+    SFX(184, 0, SFX_EXPLODE), SFX(200, 0, SFX_EXPLODE), SFX(216, 0, SFX_EXPLODE), SFX(232, 0, SFX_EXPLODE),
+    SHOT(1, 250),
+    SHOT(2, 260), SFX(50, 2, SFX_HAPPY),
+    END_AT(3),
+    /* the Wall hits the ground: never undercut (SF sec.7) */
+    EV(0, L_PUNCH, BOP_SHAKE, SHK_IMPACT, 0), EV(0, L_PUNCH, BOP_FLASH, PAL_WHITE, 8 | (2 << 8)),
+    SFX(0, L_PUNCH, SFX_EXPLODE), EV(0, L_PUNCH, BOP_NOBUTTON, 0, 0)
+};
+static const BeatEv B_freeplay[] = {
+    MUSIC(0, 0, SONG_CREDITS), SHOT(0, 260),
+    SHOT(1, 240), EV(200, 1, BOP_IRIS_OUT, 0, RUNG_R21 | (1 << 6)), SFX(200, 1, SFX_SHWIP),
+    END_AT(2)
+};
+static const BeatEv B_feast[] = {
+    MUSIC(0, 0, SONG_FESTIVAL),
+    SHOT_FIXED(0, 150), SHOT_FIXED(1, 140), SHOT_FIXED(2, 110), SHOT_FIXED(3, 252),
+    SHOT_FIXED(4, 100), SHOT_FIXED(5, 100), SHOT_FIXED(6, 130), SHOT_FIXED(7, 170),
+    SHOT_FIXED(8, 130), MUSIC(8, 8, SONG_NONE),               /* silence after the pop */
+    SHOT_FIXED(9, 110),
+    SHOT_FIXED(10, 180), MUSIC(2, 10, SONG_HAHALAND_NIGHT),   /* the slow, candlelit epilogue */
+    SHOT_FIXED(11, 170), SHOT_FIXED(12, 200), SHOT_FIXED(13, 170), SHOT_FIXED(14, 210),
+    SHOT_FIXED(15, 220), SHOT_FIXED(16, 230), SHOT_FIXED(17, 240), SHOT_FIXED(18, 240),
+    SHOT_FIXED(19, 230),
+    SHOT_FIXED(20, 120), MUSIC(2, 20, SONG_OMINOUS),
+    END_AT(21)
+};
+
+typedef struct CutDef {
+    const BeatEv *ev; uint16_t n;
+    const char *const *cap; uint8_t ncap;
+    uint8_t dark;                  /* captions in WIN_DARK from this shot on (0xFF never) */
+} CutDef;
+#define CUTDEF(b, c, d) { b, (uint16_t)(sizeof(b) / sizeof(b[0])), c, (uint8_t)(sizeof(c) / sizeof(c[0])), d }
+static const CutDef cuts[CUT_COUNT] = {
+    CUTDEF(B_card1, C_none, 0xFF), CUTDEF(B_card2, C_none, 0xFF), CUTDEF(B_card3, C_none, 0xFF),
+    CUTDEF(B_card4, C_none, 0xFF), CUTDEF(B_arrival, C_arrival, 0xFF), CUTDEF(B_fog, C_fog, 0),
+    CUTDEF(B_eruption, C_eruption, 2), CUTDEF(B_vapula, C_vapula, 0xFF), CUTDEF(B_wall, C_wall, 0xFF),
+    CUTDEF(B_freeplay, C_freeplay, 0xFF), CUTDEF(B_home, C_home, 0xFF), CUTDEF(B_feast, C_feast, 0xFF)
 };
 
 static const char *const cut_names[CUT_COUNT] = {
@@ -97,23 +196,19 @@ static const char *const cut_names[CUT_COUNT] = {
 
 const char *story_cutscene_name(int c) { return (c >= 0 && c < CUT_COUNT) ? cut_names[c] : ""; }
 
-static int cut, panel;
-static uint32_t ct, pt;            /* ticks in cutscene / in panel */
-
-
-static int panel_count(void)
+/* the script of a cutscene (tests: every one must be beat_script_valid) */
+int cutscene_script(int c, BeatScript *out)
 {
-    int n = 0;
-    while (scripts[cut][n].min_t) n++;
-    return n;
+    if (c < 0 || c >= CUT_COUNT || !out) return 0;
+    out->ev = cuts[c].ev;
+    out->n = cuts[c].n;
+    out->nlabels = BEAT_LABEL_MAX;
+    return 1;
 }
 
-/* ticks a panel stays up: the usual cutscenes hold min_t + 200, the Feast's
- * comic beats are timed exactly (min_t is the whole length) */
-static uint32_t cs_dur(void)
-{
-    return (uint32_t)scripts[cut][panel].min_t + (cut == CUT_FEAST_POP ? 0u : 200u);
-}
+static int cut, panel, cap = -1;
+static uint32_t ct, pt;            /* ticks in cutscene / in the current shot */
+static uint16_t shot_t0, cap_t0;   /* beat_now() when the shot / caption began */
 
 static void cs_end(void)
 {
@@ -124,64 +219,53 @@ static void cs_end(void)
 
 static void cs_enter(int arg)
 {
+    BeatScript s;
     cut = (arg >= 0 && arg < CUT_COUNT) ? arg : CUT_CHAPTER1;
     panel = 0;
+    cap = -1;
     ct = pt = 0;
+    shot_t0 = cap_t0 = 0;
     camfx_reset();
+    cutscene_script(cut, &s);
+    beat_start(&s);
+}
 
-    switch (cut) {
-    case CUT_CHAPTER1: audio_music(SONG_TITLE); break;
-    case CUT_CHAPTER2: audio_music(SONG_VAPE_LOUNGE); break;
-    case CUT_CHAPTER3: audio_music(SONG_INVASION); break;
-    case CUT_CHAPTER4: audio_music(SONG_HELLVILE); break;
-    case CUT_ARRIVAL: audio_music(SONG_HAHALAND_DAY); break;
-    case CUT_HOME: audio_music(SONG_PET); break;
-    case CUT_FOG: audio_music(SONG_OMINOUS); break;
-    case CUT_ERUPTION: audio_music(SONG_OMINOUS); break;
-    case CUT_VAPULA_DOWN: audio_music(SONG_VICTORY); break;
-    case CUT_WALL_FALLS: audio_music(SONG_FESTIVAL); break;
-    case CUT_FREEPLAY: audio_music(SONG_CREDITS); break;
-    case CUT_FEAST_POP: audio_music(SONG_FESTIVAL); break;
-    default: break;
+/* the host kinds of beat.h (SPEC C6) */
+static void cs_event(const BeatEv *e)
+{
+    switch (e->op) {
+    case BOP_SHOT:
+        panel = e->a;
+        shot_t0 = (uint16_t)beat_now();
+        pt = 0;
+        if (panel > 0) audio_sfx(SFX_BLIP);
+        break;
+    case BOP_CAPTION:
+        cap = e->b < cuts[cut].ncap && cuts[cut].cap[e->b] ? e->b : -1;
+        cap_t0 = (uint16_t)beat_now();
+        break;
+    case BOP_IRIS_OUT:
+        camfx_iris_out(plat_screen_w() / 2, plat_screen_h() / 2 - 20, plat_screen_h() / 4,
+                       (e->b >> 6) & 1, e->b & 63);
+        break;
+    default: break;                          /* POP / EXPR / ACT: stages to come */
     }
 }
 
 static void cs_update(void)
 {
-    int n = panel_count();
-    camfx_tick();                                 /* S1 M1: post-FX clock first */
+    int r, guard = 64;
+    camfx_tick();                            /* post-FX clock first */
     ct++;
-    pt++;
-    /* comic post-FX on the existing beats (camfx.h; S1 M4 moves every cut
-     * onto beat scripts) */
-    if (cut == CUT_WALL_FALLS && panel == 0 && ct == 30) camfx_shake(SHK_RUMBLE);
-    if (cut == CUT_WALL_FALLS && panel == 0 && ct == 42) { camfx_shake(SHK_IMPACT); camfx_flash(PAL_WHITE, 8, 2); }
-    if (cut == CUT_ERUPTION && panel == 2 && pt == 20) { camfx_shake(SHK_FWOOMP); camfx_flash(PAL_RAMP(RAMP_LAVA, 6), 8, 3); }
-    if (cut == CUT_ERUPTION && panel == 3 && pt == 2) camfx_shake(SHK_ROAR);
-    if (cut == CUT_FREEPLAY && panel == n - 1 && pt == cs_dur() - 40)
-        camfx_iris_out(plat_screen_w() / 2, plat_screen_h() / 2 - 20, plat_screen_h() / 4, 1, RUNG_R21);
-    if (cut == CUT_ERUPTION && panel == 2 && pt == 20) { audio_sfx(SFX_EXPLODE); audio_music(SONG_INVASION); }
-    if (cut == CUT_ERUPTION && panel == 3 && pt == 2) audio_sfx(SFX_DEMON_ROAR);
-    if (cut == CUT_WALL_FALLS && panel == 0 && (pt % 16) == 8) audio_sfx(SFX_EXPLODE);
-    if (cut == CUT_HOME && panel == 1 && (pt % 30) == 10) audio_sfx(SFX_EGG_CRACK);
-    if (cut == CUT_FOG && panel == 2 && pt == 4) audio_sfx(SFX_POSSESS);
-    if (cut == CUT_FEAST_POP) {
-        feast_tick(panel, pt);
-        if (panel == 8 && pt == 8) audio_music(SONG_NONE);       /* silence after the pop */
-        if (panel == 10 && pt == 2) audio_music(SONG_HAHALAND_NIGHT);   /* the slow, candlelit epilogue */
-        if (panel == 20 && pt == 2) audio_music(SONG_OMINOUS);
-    }
-    if (cut == CUT_VAPULA_DOWN && panel == 1 && pt == 10) audio_sfx(SFX_DEMON_DIE);
-    if (btn_pressed(BTN_START)) { audio_sfx(SFX_CANCEL); cs_end(); return; }
-    if ((btn_pressed(BTN_A) || btn_pressed(BTN_B)) && pt >= 12) {
-        pt = cs_dur();                            /* fall through below */
-    }
-    if (pt >= cs_dur()) {
-        panel++;
-        pt = 0;
-        audio_sfx(SFX_BLIP);
-        if (panel >= n) { cs_end(); return; }
-    }
+    if (btn_pressed(BTN_START)) { audio_sfx(SFX_CANCEL); beat_skip(); cs_end(); return; }
+    if (btn_pressed(BTN_A) || btn_pressed(BTN_B)) beat_press_a();
+    do {
+        r = beat_tick();
+        if (r == BT_EXT) cs_event(beat_ext_event());
+    } while (r == BT_EXT && guard-- > 0);
+    pt = (uint32_t)(uint16_t)(beat_now() - shot_t0);
+    if (cut == CUT_FEAST_POP) feast_tick(panel, pt);
+    if (r == BT_DONE) cs_end();
 }
 
 /* ---- drawing helpers ------------------------------------------------------------- */
@@ -239,37 +323,36 @@ static void puff_cloud(int cx, int cy, int r, int ramp, int bright, uint32_t t)
                        DOOMO_MAX(1, pr[i] * r / 30), light);
 }
 
-/* top edge of this panel's caption box (the pictures compose above it) */
+/* top edge of this shot's caption box (the pictures compose above it) */
 int cutscene_caption_y(void)
 {
-    static int for_cut = -1, for_panel = -1, for_w, cap_y;
-    const Panel *p = &scripts[cut][panel];
+    static int for_cut = -1, for_cap = -2, for_w, cap_y;
     char buf[280];
     int sw = plat_screen_w(), sh = plat_screen_h(), lines;
-    if (!p->text) return sh;
-    if (for_cut == cut && for_panel == panel && for_w == sw) return cap_y;   /* measured once per panel */
-    story_fmt(buf, sizeof(buf), p->text);
+    if (cap < 0) return sh;
+    if (for_cut == cut && for_cap == cap && for_w == sw) return cap_y;   /* measured once per caption */
+    story_fmt(buf, sizeof(buf), cuts[cut].cap[cap]);
     lines = ui_text_wrap(0, 0, sw - 32, buf, 0, 0);
-    for_cut = cut; for_panel = panel; for_w = sw;
+    for_cut = cut; for_cap = cap; for_w = sw;
     cap_y = sh - (lines * FONT_LINE + 12) - 6;
     return cap_y;
 }
 
 static void caption(void)
 {
-    const Panel *p = &scripts[cut][panel];
-    char buf[280];     /* the Feast captions run to ~245 chars */
-    int sw = plat_screen_w(), sh = plat_screen_h(), lines, h, y, style;
+    char buf[280];     /* the Feast captions run to ~200 chars */
+    int sw = plat_screen_w(), sh = plat_screen_h(), lines, h, y, style, age;
     uint32_t chars;
-    if (!p->text) return;
+    if (cap < 0) return;
     if (cut == CUT_FEAST_POP && feast_front_shot(panel, pt)) return;     /* the front shot needs the whole screen */
-    style = (cut == CUT_ERUPTION && panel >= 2) || cut == CUT_FOG ? WIN_DARK : WIN_CREAM;
-    story_fmt(buf, sizeof(buf), p->text);
+    style = panel >= cuts[cut].dark ? WIN_DARK : WIN_CREAM;
+    story_fmt(buf, sizeof(buf), cuts[cut].cap[cap]);
     lines = ui_text_wrap(0, 0, sw - 32, buf, 0, 0);
     h = lines * FONT_LINE + 12;
     y = sh - h - 6;
-    if (!ui_window_pop(8, y, sw - 16, h, style, (int)pt)) return;
-    chars = pt * 2;
+    age = (uint16_t)(beat_now() - cap_t0);
+    if (!ui_window_pop(8, y, sw - 16, h, style, age)) return;
+    chars = (uint32_t)age * 2;
     ui_text_wrap_n(16, y + 6, sw - 32, buf, ui_style_text(style), (int)chars);
     if (chars > strlen(buf) && ((ct / 10) & 1))
         plat_text(sw - 22, y + h - 10, STR_ICON_ARROW_D, ui_style(style)->accent);

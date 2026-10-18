@@ -98,6 +98,10 @@ void beat_set_actor_clock(int actor, int mode);
  * (BOP_HITSTOP) freezes the actor clocks only, never the script clock,
  * the camera effects or audio (CT sec.3.15). beat_debug_work(): events
  * and cursors examined since beat_start (the O(events fired) cost test). */
+/* BOP_WAIT_A b: bits 0-6 = min frames before A is accepted, bits 7-15 =
+ * fire by itself after that many frames when nobody presses (0 = wait
+ * forever): the cutscene panels' "A or after a while". */
+#define BEAT_WAIT_A_B(min, auto_frames) ((int16_t)(uint16_t)(((min) & 127) | (((auto_frames) & 511) << 7)))
 int beat_script_valid(const BeatScript *s);
 int beat_now(void);
 uint32_t beat_debug_work(void);

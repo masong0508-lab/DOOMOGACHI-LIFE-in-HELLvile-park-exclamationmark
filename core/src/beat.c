@@ -53,6 +53,7 @@ static struct {
     uint16_t hold_due[TIMERS];          /* pending BOP_HOLD: when its label fires  */
     uint16_t clk[BEAT_ACTORS];
     uint16_t wa_ok;                     /* WAIT_A: first frame A is accepted       */
+    uint16_t wa_due;                    /* WAIT_A: fires by itself then (NEVER)    */
     uint16_t mode;                      /* BCLK_* per actor, 2 bits each           */
     uint8_t  cur_lab[CURSORS];          /* label id, DEAD = free                   */
     uint8_t  hold_lab[TIMERS];          /* label id, DEAD = free                   */
@@ -190,11 +191,13 @@ static int exec(const BeatEv *e)
     switch (e->op) {
     case BOP_END: return -1;
     case BOP_LABEL: label_fire(e->a); return 1;
-    case BOP_WAIT_A:
+    case BOP_WAIT_A: {
+        unsigned b = (uint16_t)e->b, au = (b >> 7) & 511u;
         bt.wa_label = (uint8_t)e->a;
-        bt.wa_ok = (uint16_t)(bt.now + (e->b > 0 ? e->b : 0));
+        bt.wa_ok = (uint16_t)(bt.now + (b & 127u));
+        bt.wa_due = au ? (uint16_t)(bt.now + au) : NEVER;
         SET(F_WA_LIVE);
-        return 1;
+        return 1; }
     case BOP_HOLD:
         for (i = 0; i < TIMERS; i++)
             if (bt.hold_lab[i] == DEAD) {
@@ -251,6 +254,10 @@ static void frame_begin(void)
             CLR(F_WA_LIVE);
             label_fire(bt.wa_label);
         }
+    }
+    if (HAS(F_WA_LIVE) && bt.wa_due != NEVER && (int16_t)(bt.now - bt.wa_due) >= 0) {
+        CLR(F_WA_LIVE);                                   /* nobody pressed: on we go */
+        label_fire(bt.wa_label);
     }
 }
 

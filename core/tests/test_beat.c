@@ -235,3 +235,59 @@ TEST(beat_validates_order_and_camfx_ops)
     camfx_pal_state(&lvl);
     CHECK_EQ(lvl, 16);
 }
+
+/* ---- S1 M4: the cutscenes on beat.h ---------------------------------------- */
+int cutscene_script(int c, BeatScript *out);   /* cutscene.c */
+
+TEST(beat_wait_a_fires_by_itself_after_its_timeout)
+{
+    static const BeatEv ev[] = {
+        { 0, 0, BOP_WAIT_A, 1, BEAT_WAIT_A_B(12, 40) },
+        { 0, 1, BOP_END, 0, 0 },
+    };
+    static const BeatScript s = { ev, 2, 2 };
+    int f = 0;
+    beat_start(&s);
+    while (beat_tick() != BT_DONE && f < 100) f++;
+    CHECK_EQ(f, 40);
+    beat_start(&s);                              /* A after the minimum moves the anchor */
+    for (f = 0; f < 20; f++) beat_tick();
+    beat_press_a();
+    CHECK_EQ(beat_tick(), BT_DONE);
+}
+
+TEST(beat_every_cutscene_is_a_valid_script)
+{
+    int c;
+    for (c = 0; c < CUT_COUNT; c++) {
+        BeatScript s;
+        uint16_t i;
+        int shots = 0, ends = 0;
+        CHECK(cutscene_script(c, &s));
+        CHECK_MSG(beat_script_valid(&s), "cutscene %d is not sorted", c);
+        for (i = 0; i < s.n; i++) {
+            if (s.ev[i].op == BOP_SHOT) shots++;
+            if (s.ev[i].op == BOP_END) ends++;
+        }
+        CHECK_MSG(shots >= 1 && ends == 1, "cutscene %d: %d shots, %d ends", c, shots, ends);
+    }
+}
+
+TEST(beat_cutscenes_play_by_themselves_and_start_skips)
+{
+    int c, f;
+    for (c = 0; c < CUT_COUNT; c++) {
+        test_reset();
+        town_new(TOWN_STORY, 7, TOWN_POP_EMPTY);
+        scene_set(&SCENE_UI_GALLERY, 0);
+        scene_push(&SCENE_CUTSCENE, c);
+        for (f = 0; f < 6000 && scene_top() == &SCENE_CUTSCENE; f++) {
+            plat_begin_frame(); doomo_frame(0); plat_end_frame();
+        }
+        CHECK_MSG(scene_top() != &SCENE_CUTSCENE, "cutscene %d never ends", c);
+        scene_push(&SCENE_CUTSCENE, c);
+        plat_begin_frame(); doomo_frame(0); plat_end_frame();
+        plat_begin_frame(); doomo_frame(BTN_START); plat_end_frame();
+        CHECK_MSG(scene_top() != &SCENE_CUTSCENE, "START does not skip cutscene %d", c);
+    }
+}
