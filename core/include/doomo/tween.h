@@ -76,4 +76,10 @@ void    tw_spring_punch(TwSpring *s, int32_t d_q4);       /* offset that snaps b
 void    tw_spring_shove(TwSpring *s, int32_t dv_q4);      /* velocity impulse          */
 int32_t tw_spring_step(TwSpring *s);                      /* returns position, Q4      */
 
+/* ---- S1 additions (add-only) ---- */
+/* OPT_UI_BOUNCE as tw_squash's amount256: off 0, subtle 128, boingy 256. */
+int tw_bounce_amount(void);
+/* 1 once the spring has settled exactly on its target (e == ep == 0). */
+int tw_spring_resting(const TwSpring *s);
+
 #endif

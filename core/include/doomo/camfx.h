@@ -41,4 +41,35 @@ void camfx_offset(int *dx, int *dy);           /* for software paths            
  * frame by whoever owns the frame, after the scene's draw). */
 void camfx_apply(void);
 
+/* ---- S1 additions (add-only) -----------------------------------------------
+ * Call order: camfx_tick() at the top of update(), effects after it (an
+ * effect started this tick shows its frame 0 in this tick's drawing),
+ * camfx_apply() in draw() after the world (anything drawn after it, such
+ * as a HUD, stays steady on the PS1; the GBA shakes the whole screen). */
+/* [IRIS out h]: close onto (cx, cy) down to radius r over R5, hold `hold`
+ * frames, then to black over R3 (stays black until camfx_iris_off/reset).
+ * [IRIS in]: the reverse, ending with the iris off. heart: a heart shape. */
+void camfx_iris_out(int cx, int cy, int r, int heart, int hold);
+void camfx_iris_in(int cx, int cy, int r, int heart, int hold);
+/* Ramps: the fade / palette lerp moves to level16 over `frames` (0 = now). */
+void camfx_fade_to(int level16, int frames);
+void camfx_pal_lerp_to(int pal_id, int level16, int frames);
+/* Read back what camfx_apply() will send (tests, software paths). */
+int  camfx_fade_level(void);               /* 0..16 this frame                */
+int  camfx_shaking(void);                  /* 1 on a shake profile's frames   */
+int  camfx_flash_level(void);              /* 0..16 after the safety caps     */
+int  camfx_blend(uint8_t *color);          /* flash / pulse / fade level+colour */
+int  camfx_iris_radius(void);              /* -1 = no iris                    */
+int  camfx_zoom(void);                     /* Q8.8, 256 = none                */
+int  camfx_pal_state(int *level16);        /* PAL_* id or PAL_LERP_NONE       */
+/* Row y of an iris (radius r, heart: two lobes over a point at cy + r):
+ * the visible spans as [x0, x1) pairs in out[], 0..2 of them. */
+int  camfx_iris_row(int y, int cx, int cy, int r, int heart, int out[4]);
+/* The raw CT Appendix C sample of a profile's frame f (240x160 pixels). */
+void camfx_shake_sample(int profile, int f, int *x, int *y);
+/* Palette entry i (BGR555) lerped toward pal_id at pal_level, then toward
+ * colour `color` at level16: the one formula every platform's palette path
+ * uses (GBA palette RAM, PS1 CLUT + prim colours). */
+uint16_t camfx_pal_entry(int i, int pal_id, int pal_level, uint8_t color, int level16);
+
 #endif

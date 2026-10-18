@@ -91,4 +91,15 @@ enum { BCLK_NORMAL, BCLK_FROZEN, BCLK_DOUBLE, BCLK_STILL };
 #define BEAT_ACTORS 8
 void beat_set_actor_clock(int actor, int mode);
 
+/* ---- S1 additions (add-only) ----
+ * Scripts must be sorted by (anchor, at): beat_script_valid() checks it
+ * (and anchors < BEAT_LABEL_MAX, ops < BOP_COUNT); the .dsc compiler and
+ * test_beat.c call it. beat_now(): frames since beat_start. A hit-stop
+ * (BOP_HITSTOP) freezes the actor clocks only, never the script clock,
+ * the camera effects or audio (CT sec.3.15). beat_debug_work(): events
+ * and cursors examined since beat_start (the O(events fired) cost test). */
+int beat_script_valid(const BeatScript *s);
+int beat_now(void);
+uint32_t beat_debug_work(void);
+
 #endif
