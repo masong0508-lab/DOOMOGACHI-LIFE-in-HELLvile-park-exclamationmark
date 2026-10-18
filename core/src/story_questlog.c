@@ -1,14 +1,18 @@
 /* story_questlog.c - SCENE_QUESTLOG: the story's notebook (owner: story).
  * Tabs: Story (chapter, objective, the beats so far), Side (every side
  * quest you can see, with its giver, hint and reward state), Items (the
- * inventory), Map (the current overworld, where you are and where to go)
- * and Friends (the cast you've met, friends on both sides). arg = first
- * tab. L/R or LEFT/RIGHT switch tabs, B closes.
+ * inventory), Map (the current overworld, where you are and where to go),
+ * Friends (the cast you've met, friends on both sides) and Trophies (S2,
+ * SPEC R8: the trophy of every finished side mission S100..S217, read from
+ * STRY.side2; trophies are not unlock ids). arg = first tab. L/R or
+ * LEFT/RIGHT switch tabs, B closes.
  */
 #include "overworld_int.h"
 
-enum { QT_STORY, QT_SIDE, QT_ITEMS, QT_MAP, QT_FRIENDS, QT_COUNT };
-static const char *const tab_names[QT_COUNT] = { "Story", "Side", "Items", "Map", "Friends" };
+enum { QT_STORY, QT_SIDE, QT_ITEMS, QT_MAP, QT_FRIENDS, QT_TROPHIES, QT_COUNT };
+static const char *const tab_names[QT_COUNT] = { "Story", "Side", "Items", "Map", "Friends", "Trophies" };
+/* 240 wide: the Trophies tab is its star, so the six tabs fit the window */
+static const char *const tab_names_narrow[QT_COUNT] = { "Story", "Side", "Items", "Map", "Friends", STR_ICON_STAR };
 
 static int tab, sel, top;
 static uint32_t qt;
@@ -16,6 +20,8 @@ static int16_t side_ids[STORY_SIDE_MAX];
 static int nside;
 static uint8_t item_ids[ITEM_COUNT];
 static int nitems;
+static uint8_t trophy_ids[STORY_SIDE2_ROWS];   /* S2: rows of doomo_side_rows */
+static int ntrophies;
 
 static void collect(void)
 {
@@ -31,6 +37,7 @@ static void collect(void)
         if (story_side_state(q) == SIDE_DONE) side_ids[nside++] = (int16_t)q;
     nitems = 0;
     for (i = 1; i < ITEM_COUNT; i++) if (inv_count(i) > 0) item_ids[nitems++] = (uint8_t)i;
+    ntrophies = story_trophies(doomo_side_rows, story_stry()->side2, trophy_ids, STORY_SIDE2_ROWS);
 }
 
 static void ql_enter(int arg)
@@ -46,6 +53,7 @@ static int list_len(void)
     if (tab == QT_SIDE) return nside;
     if (tab == QT_ITEMS) return nitems;
     if (tab == QT_FRIENDS) return 12;
+    if (tab == QT_TROPHIES) return ntrophies;
     return 0;
 }
 
@@ -214,6 +222,41 @@ static void draw_friends(int x, int y, int w, int h, int style)
     }
 }
 
+/* S2 (R8): one row per trophy; the selected one shows its mission */
+static void draw_trophies(int x, int y, int w, int h, int style)
+{
+    const UiStyle *st = ui_style(style);
+    int vis = plat_screen_h() >= 200 ? 9 : 5, i;
+    char buf[64];
+    doomo_snprintf(buf, sizeof(buf), STR_ICON_STAR " %d %s", ntrophies, ntrophies == 1 ? "trophy" : "trophies");
+    ui_text(x, y, buf, st->text);
+    if (!ntrophies) {
+        ui_text_wrap(x, y + 14, w, "No trophies yet. Every side mission you finish puts one on your shelf!",
+                     st->text, 1);
+        return;
+    }
+    y += 12;
+    for (i = top; i < ntrophies && i < top + vis; i++) {
+        const StorySideRow *r = &doomo_side_rows[trophy_ids[i]];
+        int yy = y + (i - top) * 11;
+        if (i == sel) { ui_round_rect(x - 2, yy - 1, w, 10, 3, st->accent); ui_cursor(x - 6, yy + 3); }
+        plat_text(x, yy, STR_ICON_STAR, PAL_UI_GOLD);
+        if (txt_get(r->trophy, buf, (int)sizeof(buf)) < 0) buf[0] = 0;
+        ui_text(x + 9, yy, buf, st->text);
+    }
+    ui_scroll_arrows(x + w - 6, y - 2, y + vis * 11 - 6, top > 0, top + vis < ntrophies);
+    if (sel < ntrophies) {
+        const StorySideRow *r = &doomo_side_rows[trophy_ids[sel]];
+        char t[64];
+        int dy = y + vis * 11 + 4;
+        if (txt_get(r->title, t, (int)sizeof(t)) < 0) t[0] = 0;
+        doomo_snprintf(buf, sizeof(buf), "S%d %s", 100 + r->sid, t);
+        plat_rect(x, dy - 2, w - 4, 1, st->outline);
+        ui_text_wrap(x, dy + 2, w - 4, buf, st->text_dim, 1);
+    }
+    (void)h;
+}
+
 static void ql_draw(void)
 {
     int sw = plat_screen_w(), sh = plat_screen_h(), style = style_now();
@@ -221,13 +264,14 @@ static void ql_draw(void)
     if (plat_draw_skipped()) return;
     ui_backdrop(style, qt);
     if (!ui_window_pop(x, y, w, h, style, (int)qt + 12)) return;
-    ui_tabs(x + 4, y - 14, tab_names, QT_COUNT, tab, style);
+    ui_tabs(x + 4, y - 14, sw >= 300 ? tab_names : tab_names_narrow, QT_COUNT, tab, style);
     switch (tab) {
     case QT_STORY: draw_story(x + 10, y + 8, w - 20, h - 24, style); break;
     case QT_SIDE: draw_side(x + 10, y + 8, w - 20, h - 24, style); break;
     case QT_ITEMS: draw_items(x + 10, y + 8, w - 20, h - 24, style); break;
     case QT_MAP: draw_map(x + 10, y + 6, w - 20, h - 22, style); break;
     case QT_FRIENDS: draw_friends(x + 10, y + 8, w - 20, h - 24, style); break;
+    case QT_TROPHIES: draw_trophies(x + 10, y + 8, w - 20, h - 24, style); break;
     default: break;
     }
     ui_hint(STR_ICON_ARROW_L STR_ICON_ARROW_R " Tabs  " STR_ICON_B " Back", style);

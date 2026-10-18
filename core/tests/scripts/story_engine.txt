@@ -1,0 +1,75 @@
+# assert-no-stubs
+# The story engine (S2): the runner's story checks (seed, expect-flag,
+# expect-text, story-fp), the comic-timing minigame (three perfect rimshots
+# under the laugh track), the side-minigame shell (the built-in text entry),
+# the scripted dream (a forced Peek, floating letters) and the quest log's
+# Trophies tab.
+seed 4242
+scene STORY 108
+wait 60
+expect-scene STORY
+expect-flag 0 1
+expect-flag 3 1
+expect-flag 253 0
+story-fp
+shot overworld
+push STORY_TIMING 259
+wait 20
+shot timing_card
+press A
+wait 40
+shot timing_round
+wait 34
+press A
+wait 10
+shot timing_perfect
+wait 19
+wait 75
+press A
+wait 29
+wait 120
+press A
+wait 45
+shot timing_result
+press A
+wait 4
+expect-scene STORY
+push STORY_MG 65281
+wait 20
+shot mg_card
+press A
+wait 12
+shot mg_entry
+type "\n"
+wait 30
+shot mg_result
+press A
+wait 4
+expect-scene STORY
+push DREAM 16384
+wait 40
+shot dream_peek
+press B
+wait 4
+expect-scene DREAM
+wait 120
+shot dream_letters
+wait 140
+shot dream_vignette
+press A
+wait 60
+press A
+wait 60
+press A
+wait 60
+shot dream_wake
+press A
+wait 6
+expect-scene STORY
+push QUESTLOG 5
+wait 24
+shot questlog_trophies
+press B
+wait 4
+expect-scene STORY
+story-fp

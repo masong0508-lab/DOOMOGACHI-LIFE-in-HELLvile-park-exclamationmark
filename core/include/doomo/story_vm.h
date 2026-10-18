@@ -79,8 +79,31 @@ enum {
     OP_LATER,        /* minutes                script id: schedule a callback (STRY.later) */
     OP_DATA,         /* -                      payload (inline operand of the op before)   */
     OP_TIME,         /* TIME_* (C14)           n                                           */
+    /* ---- S2 additions (append only) ---- */
+    OP_JMP,          /* -                      label: jump                                */
+    OP_NATIVE,       /* callback id (CB_*)     arg: run the host's C glue by id (VM_EXT;
+                        the legacy port's beat logic, story_script.c)                     */
+    OP_STASH,        /* slot (0..3)            text id: decode into the resident caption
+                        stash (txt_stash, SPEC C5) for the scene pushed next              */
     OP_COUNT
 };
+
+/* OP_DATA tags (a): what the inline operand b is for. */
+enum { VMD_CMP,          /* JLT / JGE: the value compared with                     */
+       VMD_LINE,         /* SAY: DL_* flags | EXPR_* << 8                          */
+       VMD_WHO,          /* a 16-bit speaker / resident (VM_WHO_* or an id)        */
+       VMD_OPT,          /* CHOICE: an option's text id                            */
+       VMD_LABEL,        /* CHOICE: an option's jump label (0xFFFF: continue)      */
+       VMD_UNLOCK,       /* REWARD: the unlock id                                  */
+       VMD_ARG,          /* CAST: the extra argument                               */
+       VMD_SCRIPT };     /* (S2) a NATIVE verb's continuation script id            */
+/* OP_SAY a: 0..0xFB a resident id, or one of these. */
+enum { VM_SAY_TARGET = 0xFC,  /* story_fmt_target (the conversation's subject) */
+       VM_SAY_BIG = 0xFD,     /* a VMD_WHO DATA op follows                      */
+       VM_SAY_NAR = 0xFE, VM_SAY_PLAYER = 0xFF };
+/* 16-bit who codes (VMD_WHO): 0..999 residents, DOOMO_PLAYER_ID, and: */
+#define VM_WHO_NAR    0xFFFFu
+#define VM_WHO_TARGET 0xFFFDu
 
 /* OP_TIME a (C14): the .dsc [DAY n] / [NIGHT] codes. */
 enum { TIME_SET_DAY, TIME_SET_NIGHT, TIME_ADVANCE };
@@ -98,6 +121,39 @@ enum { PEND_NONE, PEND_CREATOR, PEND_PET, PEND_EXO_PRACTICE, PEND_EXORCISM,
        PEND_MINIGAME_SIDE, /* SCENE_STORY_MG, arg = a story_mg registry id       */
        PEND_COUNT };
 #endif
+
+/* --- S2: the side-mission verbs (story_verbs.c; docs/STORY_ENGINE.md) ---
+ * `verb KIND [WHO] [cell=x,y] [fragile] then=SCRIPT` in a script: an
+ * OP_NATIVE with id STORY_CB_VERB + kind, b = WHO, a VMD_ARG DATA op (the
+ * cell x | y << 8, VERB_ARG_FRAGILE) and a VMD_SCRIPT DATA op. The verb
+ * runs on the overworld while the VM is free (the plot can still talk);
+ * when it ends, SCRIPT runs with v1 = the result. */
+#define STORY_CB_VERB 160             /* .. 160 + VERB_COUNT - 1 (story.c cb ranges) */
+enum { VERB_ESCORT,      /* WHO follows you to cell; 1 arrived, 0 lost them      */
+       VERB_FIND,        /* walk onto the hidden cell (warmer / colder hints); 1  */
+       VERB_PHOTO,       /* A with WHO in front of you, 2-6 cells: 2 framed, 1 ok */
+       VERB_DELIVER,     /* carry it to WHO (slower; fragile: no running); 2
+                            perfect, 1 delivered with spills                      */
+       VERB_COUNT };
+#define VERB_ARG_FRAGILE 0x8000u      /* VMD_ARG bit for VERB_DELIVER             */
+/* SCENE_STORY_MG built-in games (ids above the S4/S5 registry ids). */
+#define STORY_MG_TEXT_ENTRY 0xFF01u   /* type the stashed answer (stash 1) to the
+                                         stashed prompt (stash 0); 1 right     */
+/* SCENE_STORY_TIMING (story_timing.c): arg = TPAT_* | (TSKIN_* | TIMING_DRIFT)
+ * << 8; result = the rounds landed, 0..3 (the stars). */
+enum { TPAT_THREE,       /* the rule of three: 3-1, 3-1-2, 3-1-2-1               */
+       TPAT_KNOCK,       /* Interlude III's knocks: 2-2-1, 2-1-1, 1-1-2          */
+       TPAT_PRAYER,      /* Hattie / HAZE's prayer: 4-4, 4-2-2, 2-2-2-2          */
+       TPAT_RIMSHOT,     /* ba-dum tss: 2-1, 1-1-1, 3-2-1                        */
+       TPAT_COUNT };
+enum { TSKIN_THUMP, TSKIN_LAUGH, TSKIN_BELL, TSKIN_HEART, TSKIN_COUNT };
+#define TIMING_DRIFT 0x80             /* the metronome drifts (S155): listen, don't count */
+#define TIMING_ARG(pat, skin) ((pat) | ((skin) << 8))
+/* SCENE_DREAM's scripted mode (dream.c): the story's own dreams, D1 / D2.
+ * The script stashes up to 3 captions (and the wake-up line in slot 3). */
+enum { DREAM_SCRIPTED_D1, DREAM_SCRIPTED_D2, DREAM_SCRIPTED_COUNT };
+#define DREAM_ARG_SCRIPTED(n) (0x4000 | (n))
+/* --- end S2 --- */
 
 /* OP_HOME sub-ops (a). b is the argument. */
 enum {
@@ -122,6 +178,9 @@ enum { VM_IDLE = 0,      /* no script running                                   
                             call vm_tick() again                                  */
 
 #define VM_VARS 16
+/* Text in SAY / CHOICE lines may use @P (player), @E (pet), @T (the
+ * target's name), @D (its demon), @V (the flavour of the day), @0..@9 (a
+ * VM var as a number) and @@. */
 void vm_start(int script_id);
 int  vm_tick(void);                  /* VM_*                                    */
 void vm_resume(int result);          /* the pushed scene's result -> var 0       */
@@ -137,6 +196,94 @@ uint32_t story_rng(uint32_t ctx);
 /* A hash of all story state (flags, STRY, VM vars, beat) for cross-platform
  * parity checks (I9). */
 uint32_t story_fingerprint(void);
+
+/* --- S2: the VM's host API, the formatter and the generated tables --- */
+/* vm_start() binds the script; the host's first vm_tick() (in the same
+ * frame) queues its opening SAY lines at once, so a caller's later
+ * ui_say / ui_choice lands after them. */
+void vm_stop(void);
+/* The operands of the last VM_EXT / VM_PUSHED op: its resident (a VMD_WHO
+ * DATA, decoded: -1 narrator) and its VMD_ARG / VMD_UNLOCK operand. */
+int  vm_ext_who(void);
+int  vm_ext_arg(void);
+/* (S2) Any DATA operand of the last VM_EXT / VM_PUSHED op by tag (VMD_*). */
+int  vm_ext_data(int tag, int dflt);
+int  vm_waiting_dialog(void);        /* 1 while the VM waits for the box     */
+/* Format a line (the codes above) into out; vm_fmt_n takes @0..@9 from
+ * nums[] instead of the VM vars. */
+void vm_fmt(char *out, int cap, const char *in);
+void vm_fmt_n(char *out, int cap, const char *in, const int *nums, int n);
+/* The subject of @T / @D (story_fmt_target in the story group). */
+extern int16_t vm_fmt_target;
+/* The resident id a VM who code / OP_SAY byte means (-1 narrator). */
+int  vm_who(unsigned code16);
+/* Scheduled "Later" callbacks (STRY.later, C9/C14): run from the host's
+ * minute tick; returns the script id due now, or 0. */
+int  vm_later_due(void);
+
+/* The side missions S100..S217 (core/gen/side_table.c, from @mission). */
+#define STORY_SIDE2_ROWS 118
+typedef struct StorySideRow {
+    uint8_t  sid;            /* mission number - 100                           */
+    uint8_t  kind;           /* 0 retired / unwritten, 1 live                   */
+    uint8_t  ch_lo, ch_hi;   /* first and last chapter it is offered in         */
+    uint8_t  side;           /* 0 Hillvile, 1 Hellvile, 2 the park, 3 both      */
+    uint8_t  chain;          /* 'A'..'Z', 0 = a stand-alone                     */
+    uint8_t  step;           /* part k of its chain (1..)                       */
+    uint8_t  requires;       /* 1 + the sid it requires, 0 none                 */
+    uint8_t  later_min;      /* the Later callback, minutes after turn-in       */
+    uint8_t  tag;
+    uint16_t giver;          /* resident id                                     */
+    uint16_t verbs;          /* 1 << verb (docs/STORY_ENGINE.md)                */
+    uint16_t reward;         /* H$                                              */
+    uint16_t offer;          /* script id run by the giver (none / offered), 0xFFFF none */
+    uint16_t active;         /* script id run by the giver while active, 0xFFFF none */
+    uint16_t title;          /* text id, 0xFFFF none                            */
+    uint16_t trophy;         /* text id of its trophy (R8), 0xFFFF none          */
+    uint8_t  pack;           /* the pack its scripts live in                    */
+} StorySideRow;
+/* The quest log's Trophies (R8): the rows whose mission is done (STRY.side2
+ * state 3) and that name a trophy, in row order; returns the count. */
+int  story_trophies(const StorySideRow *rows, const uint8_t *side2, uint8_t *out, int max);
+extern const StorySideRow doomo_side_rows[STORY_SIDE2_ROWS];
+/* The side walker (story_side.c): chain gating (step k requires k-1; at
+ * most one part of a chain per chapter; cross-border parts 3+ from Ep 4.1).
+ * Returns 1 if row `sid` may be offered now. */
+int  story_side2_available(int sid);
+int  story_side2_state(int sid);     /* 0 none, 1 offered, 2 active, 3 done (STRY.side2) */
+void story_side2_set_state(int sid, int st);
+/* The pure rule (tests): state = STRY.side2 bits, chapter, ep41 = Ep 4.1 reached. */
+int  story_side2_gate(const StorySideRow *rows, int sid, const uint8_t *side2,
+                      int chapter, int ep41, const uint8_t *done_in_chapter);
+
+/* Authored possessors: core/gen/possess_table.c, from the @possessor
+ * blocks, in exorcism.h's DoomoPossessor format (S3). While no .dsc has
+ * an @possessor block the file defines no table, and exorcism.c's weak
+ * default rows hold.
+ *
+ * The armed slots are not saved (STRY is full), so the story re-arms them
+ * on every resume (story_rearm_possessors, story.c): the @armed rows say in
+ * which beats row `row` is the story's possession of `host` (from..to in
+ * the story order, unless a flag says it is over). A possessed host inside
+ * its window is re-armed; any other possession is the sim's own. */
+typedef struct StoryArmed {
+    uint16_t host;           /* resident id                                       */
+    uint8_t  row;            /* the authored possessor row (exorcism.h)           */
+    uint8_t  from, to;       /* BEAT_* ids, inclusive, in the story order         */
+    uint8_t  pad;
+    uint16_t unless[2];      /* story flags that end the window, 0xFFFF none      */
+} StoryArmed;
+extern const StoryArmed doomo_story_armed[];
+extern const uint16_t doomo_story_armed_count;
+/* 1 if `a` covers story position `beat` with the flags as they are (pure). */
+int  story_armed_window(const StoryArmed *a, int beat);
+/* Clear the armed slots and re-arm every possessed host whose @armed
+ * window covers the current beat (a load, a debug jump, a new game). */
+void story_rearm_possessors(void);
+/* The authored row a story host is possessed by: its first row in the
+ * possessor table that is not a reverse rite, -1 none. */
+int  story_possess_row_of(int host);
+/* --- end S2 --- */
 
 /* ---- story_mg registry (C14) -------------------------------------------
  * Side minigames run in SCENE_STORY_MG (shell: S2, story_verbs.c). Their

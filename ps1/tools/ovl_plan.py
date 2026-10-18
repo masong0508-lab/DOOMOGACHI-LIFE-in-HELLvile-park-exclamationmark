@@ -58,6 +58,12 @@ GROUPS = [
     # their own: story.c only pushes SCENE_CUTSCENE (a scene edge), so the
     # story group stays under the slot with them out
     ("cutscene", r"cutscene$|story_feast$|grumbleguts_gfx$"),
+    # --- S2 (for H3, SPEC C4/C5): the story's minigames (SCENE_STORY_MG, its
+    # S4 / S5 registry rows, SCENE_STORY_TIMING) are scene edges from the
+    # story, so they are a group of their own and the story group stays in
+    # its slot ---
+    ("storymg",  r"story_mg(_\w+)?$|story_timing$"),
+    # --- end S2 ---
     ("story",    r"story(_\w+)?$|overworld(_\w+)?$|credits$"),
     ("gallery",  r"ui_gallery$"),
     # --- H4 (for H3, SPEC C3/C6): the dream house; house_api.c stays resident ---

@@ -9,6 +9,7 @@
  * the full shop / graveyard screens.
  */
 #include "story_int.h"
+#include "doomo/home.h"
 
 static const char *const place_names[PLACE_COUNT] = {
     "", "Your Cottage", "Town Hall", "Brimstone Bites", "HaHa Mart",
@@ -106,7 +107,7 @@ int story_item_price(int item)
 
 /* ---- the menu ----------------------------------------------------------------------- */
 enum { OPT_TALK, OPT_BUY, OPT_ACT, OPT_REST, OPT_WORKSHOP, OPT_SHOPSCREEN, OPT_GRAVE,
-       OPT_HEAL, OPT_LEAVE };
+       OPT_HEAL, OPT_LEAVE, OPT_INSIDE };
 #define MENU_MAX 6
 static const char *menu_txt[MENU_MAX];
 static uint8_t menu_op[MENU_MAX];
@@ -144,7 +145,7 @@ static void show_activities(void)
     }
     for (i = 0; i < act_n; i++) act_txt[i] = acts[i]->name;
     act_txt[act_n] = "Back";
-    story_choice(-1, "What would you like to do?", act_txt, act_n + 1, act_pick);
+    story_choice_id(-1, "What would you like to do?", act_txt, act_n + 1, 128 /* act_pick */);
 }
 
 static void buy_pick(int c);
@@ -170,7 +171,7 @@ static void show_buy(void)
     {
         char q[48];
         doomo_snprintf(q, sizeof(q), "You have %u H$. Buy something?", (unsigned)doomo_town.money);
-        story_choice(keeper_of(menu_place), q, buy_ptr, buy_n, buy_pick);
+        story_choice_id(keeper_of(menu_place), q, buy_ptr, buy_n, 129 /* buy_pick */);
     }
 }
 
@@ -225,6 +226,15 @@ static void heal(void)
     story_say(ID_BLOOM, "There we go. Fully patched, purple-free and fluffy. Cold hands, warm heart!");
 }
 
+/* S2: "Go inside" opens the player's home (SCENE_HOME, home.h HOME_ARG_OWN):
+ * the cottage on Hillvile Lane (Towers 7B and the Pits flat are story
+ * homes that H4's own doors open). */
+static int home_of_place(int p)
+{
+    (void)p;
+    return HOME_COTTAGE;
+}
+
 static void menu_pick(int c)
 {
     int k;
@@ -246,6 +256,9 @@ static void menu_pick(int c)
         break;
     case OPT_GRAVE:
         story_push_scene(&SCENE_GRAVEYARD, 0, PEND_OTHER, CTX_FREE, 0);
+        break;
+    case OPT_INSIDE:                              /* S2: the dream house (H1/H4) */
+        story_push_scene(&SCENE_HOME, HOME_ARG_OWN(home_of_place(menu_place)), PEND_HOME, CTX_FREE, 0);
         break;
     default: break;
     }
@@ -270,6 +283,7 @@ static void open_menu(int p)
     if (p == PLACE_WORKSHOP || p == PLACE_FORGE) {
         if (story_beat() >= BEAT_C2_CELLAR) add_opt("Weld & armory", OPT_WORKSHOP);
     }
+    if (p == PLACE_HOME && story_flag(SF_HOME_SEEN)) add_opt("Go inside", OPT_INSIDE);   /* S2 */
     if (p == PLACE_HOME || p == PLACE_APARTMENTS || p == PLACE_HELL_PITS) add_opt("Rest & save", OPT_REST);
     if (p == PLACE_HOSPITAL) add_opt("Get patched up", OPT_HEAL);
     if (p == PLACE_SHOP) add_opt("Browse every shelf", OPT_SHOPSCREEN);
@@ -282,7 +296,7 @@ static void open_menu(int p)
         return;
     }
     audio_sfx(SFX_DOOR);
-    story_choice(-1, menu_q, menu_txt, menu_n, menu_pick);
+    story_choice_id(-1, menu_q, menu_txt, menu_n, 130 /* menu_pick */);
 }
 
 void story_place_menu(int place)
@@ -400,4 +414,15 @@ const char *story_region_name(int map, int cx, int cy)
         if (r->map == m && cx >= r->x0 && cx <= r->x1 && cy >= r->y0 && cy <= r->y1) return r->name;
     }
     return "";
+}
+
+/* choice callbacks by id (story.c story_poll_callbacks; see story_int.h) */
+void place_callback(int cb, int choice)
+{
+    switch (cb) {
+    case 128: act_pick(choice); break;
+    case 129: buy_pick(choice); break;
+    case 130: menu_pick(choice); break;
+    default: break;
+    }
 }

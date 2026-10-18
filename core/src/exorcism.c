@@ -83,6 +83,9 @@ int exorcism_authored_row(int resident_id)
     unsigned key = exo_host_key(resident_id);
     const DoomoResident *r;
     if (!t || !n) return -1;
+    /* only the story arms a citizen (S2): a slot left over from a story
+     * session never reaches a free-play town */
+    if (resident_id >= 0 && doomo_town.mode != TOWN_STORY) return -1;
     for (i = 0; i < EXO_SLOTS; i++) {
         if (!exo_slot[i].used || exo_slot[i].host != key) continue;
         if (resident_id >= 0) {               /* a stale slot (a new game, a load) */
@@ -91,14 +94,16 @@ int exorcism_authored_row(int resident_id)
         }
         if (exo_slot[i].row < n) return exo_slot[i].row;
     }
-    /* after a reload (the slots are not saved): in story mode a possessed
-     * host of an authored row is taken to be that row's (exorcism.h caveat) */
-    if (resident_id < 0 || doomo_town.mode != TOWN_STORY) return -1;
-    r = town_res(resident_id);
-    if (!r || resident_id >= DOOMO_MAX_RESIDENTS || r->status != RES_POSSESSED) return -1;
-    for (i = 0; i < n; i++)
-        if (t[i].host == key && !(t[i].flags & EXF_UNFAIL)) return i;
+    /* No slot: the sim's own pick. The slots are not saved; the story
+     * re-arms its possessions on every resume (S2: story.c
+     * story_rearm_possessors, from the @armed rows), so a natural possession
+     * of a story host is never read as an authored one. */
     return -1;
+}
+
+void exorcism_slots_clear(void)
+{
+    memset(exo_slot, 0, sizeof(exo_slot));
 }
 
 const DoomoPossessor *exorcism_authored(int resident_id)

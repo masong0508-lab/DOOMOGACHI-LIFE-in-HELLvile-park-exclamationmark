@@ -31,8 +31,6 @@
 #include "overworld_int.h"
 #include "doomo/camfx.h"
 #include "doomo/txt.h"
-#define DOOMO_STORY_PEND_DEFINED       /* story_int.h has the legacy PEND_* (S2 merges them) */
-#include "doomo/story_vm.h"
 
 /* the default gag table (chapter_mask bit c = chapter c, bit 5 = after) */
 static const OwGagRow gag_rows_default[] = {

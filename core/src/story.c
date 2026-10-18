@@ -7,9 +7,12 @@
  */
 #include "story_int.h"
 #include "combat_int.h"     /* AF_USED (read only: actor slots) */
+#include "overworld_int.h"  /* the VM host: ownpc_cast / ownpc_act / ow_cam / ow_run_beat */
+#include "doomo/txt.h"
+#include "doomo/house_api.h"
+#include "doomo/unlock_ids.h"
 
 StoryPending story_pending;
-int16_t story_fmt_target = -1;
 static uint8_t autowin;
 static uint8_t friends_dirty = 1;
 static int16_t friends_cache[2];
@@ -119,6 +122,7 @@ void story_set_beat(int beat)
     s->quest = (uint8_t)beat;
     s->quest_step = 0;
     script_enter_beat(beat);
+    story_objective_refresh();
 }
 
 /* ---- the player & the pet ------------------------------------------------------ */
@@ -178,7 +182,9 @@ void story_new_game(void)
     if (doomo_town.money < DOOMO_START_MONEY) doomo_town.money = DOOMO_START_MONEY;
     memset(&story_pending, 0, sizeof(story_pending));
     friends_dirty = 1;
+    story_rearm_possessors();                    /* no stale slot from another session */
     script_enter_beat(BEAT_C1_ARRIVE);
+    story_objective_refresh();
 }
 
 void story_begin(void)
@@ -246,58 +252,59 @@ void story_reward(int money, int item, int count, int unlock_id)
     audio_sfx(SFX_PICKUP);
 }
 
-/* ---- formatting ------------------------------------------------------------------- */
-static const char *const vape_flavours[] = {
-    "Brimstone Blast", "Unholy Grape", "Cotton Candy Coffin", "Sulfur Sherbet",
-    "Midnight Mango", "Graveyard Gum"
-};
+/* ---- formatting (the resident formatter in scriptvm.c) ---------------------------- */
+void story_fmt(char *out, int cap, const char *t) { vm_fmt(out, cap, t); }
 
-static int append(char *out, int cap, int n, const char *s)
+/* ---- conversations ------------------------------------------------------------------
+ * The plot's lines are VM scripts in the text packs (story_conv); a few
+ * places still format a C string (story_say). After a script, its callback
+ * id (story_script.c CB_*, story_side.c 64.., story_places.c 128..) runs
+ * with the choice in var 0. Callbacks are ids, never function pointers: a
+ * story-group pointer must not reach the resident dialogue queue or VM
+ * (SPEC C6). */
+#define CB_FIFO 4
+static struct { uint8_t id, ready; int8_t choice; } cbq[CB_FIFO];
+static uint8_t cbq_n;
+#define CONV_Q 4
+static struct { uint16_t scr; uint8_t cb; int16_t arg; } convq[CONV_Q];
+static uint8_t convq_n, vm_cb, vm_live;
+static uint16_t later_minute = 0xFFFFu;
+
+static void cb_attach(int id)
 {
-    while (*s && n < cap - 1) out[n++] = *s++;
-    return n;
+    if (!id) return;
+    if (cbq_n >= CB_FIFO) { plat_log("story: callback queue full"); return; }
+    cbq[cbq_n].id = (uint8_t)id;
+    cbq[cbq_n].ready = 0;
+    cbq[cbq_n].choice = 0;
+    cbq_n++;
 }
 
-void story_fmt(char *out, int cap, const char *t)
+static void cb_mark(int choice)
 {
-    int n = 0;
-    const DoomoResident *r;
-    if (cap <= 0) return;
-    if (!t) t = "";
-    while (*t && n < cap - 1) {
-        if (t[0] == '@' && t[1]) {
-            switch (t[1]) {
-            case 'P': n = append(out, cap, n, story_player_name()); break;
-            case 'E': n = append(out, cap, n, story_pet_name()); break;
-            case 'D': {
-                const char *d = story_fmt_target >= 0 ? sim_possessor_name(story_fmt_target) : "";
-                n = append(out, cap, n, (d && d[0]) ? d : "a Hellvile demon");
-                break; }
-            case 'T':
-                r = town_res(story_fmt_target);
-                n = append(out, cap, n, (r && r->name[0]) ? r->name : "them");
-                break;
-            case 'V':
-                n = append(out, cap, n, vape_flavours[doomo_town.day % DOOMO_COUNTOF(vape_flavours)]);
-                break;
-            case '@': out[n++] = '@'; break;
-            default:
-                out[n++] = t[0];
-                if (n < cap - 1) out[n++] = t[1];
-                break;
-            }
-            t += 2;
-            continue;
-        }
-        out[n++] = *t++;
+    int i;
+    for (i = 0; i < cbq_n; i++)
+        if (!cbq[i].ready) { cbq[i].ready = 1; cbq[i].choice = (int8_t)choice; return; }
+}
+
+static void cb_choice_tramp(int c) { cb_mark(c); }
+
+static void cb_run(int id, int c)
+{
+    if (id >= 128) place_callback(id, c);
+    else if (id >= 64) side_callback(id, c);
+    else script_callback(id, c);
+}
+
+void story_poll_callbacks(void)
+{
+    while (cbq_n && cbq[0].ready && !ui_dialog_active()) {
+        int id = cbq[0].id, c = cbq[0].choice, i;
+        for (i = 1; i < cbq_n; i++) cbq[i - 1] = cbq[i];
+        cbq_n--;
+        cb_run(id, c);
     }
-    out[n] = 0;
 }
-
-/* ---- conversations ---------------------------------------------------------------- */
-static const StoryLine *conv;
-static int conv_i;
-static void (*conv_done)(void);
 
 void story_say(int who, const char *text)
 {
@@ -306,37 +313,164 @@ void story_say(int who, const char *text)
     ui_say(who, buf);
 }
 
+void story_say_txt_n(int who, unsigned tid, int n0)
+{
+    char raw[200], buf[200];
+    int n[1];
+    n[0] = n0;
+    if (txt_get((uint16_t)tid, raw, (int)sizeof(raw)) < 0) return;
+    vm_fmt_n(buf, (int)sizeof(buf), raw, n, 1);
+    ui_say(who, buf);
+}
+
+void story_say_txt(int who, unsigned tid) { story_say_txt_n(who, tid, 0); }
+
 void story_say_then(void (*done)(void))
 {
     if (ui_dialog_active()) ui_say_done(done);
     else if (done) done();
 }
 
-static void conv_feed(void)
+/* A VM_PUSHED op: push the scene the script asked for (PEND_* kinds); the
+ * result comes back through story_resume -> dispatch_result -> vm_resume. */
+static void host_push(const StoryOp *o)
 {
-    int n = 0;
-    while (conv && conv[conv_i].text && n < 6) {
-        story_say(conv[conv_i].who, conv[conv_i].text);
-        conv_i++;
-        n++;
+    int arg = (int16_t)o->b;
+    if (o->op == OP_HOME) {
+        int a = o->a == HOME_VISIT ? HOME_ARG_VISIT(arg) : HOME_ARG_STORY(HSM_DEFEND);
+        story_push_scene(&SCENE_HOME, a, PEND_HOME, CTX_VM, o->b);
+        return;
     }
-    if (conv && conv[conv_i].text) {
-        ui_say_done(conv_feed);
-    } else {
-        void (*d)(void) = conv_done;
-        conv = NULL;
-        conv_done = NULL;
-        if (n > 0) { if (d) ui_say_done(d); }
-        else if (d) d();
+    switch (o->a) {
+    case PEND_COMBAT: story_push_combat(arg, CTX_VM, 0, -1, -1, -1); break;
+    case PEND_EXORCISM: story_push_exorcism(arg, CTX_VM, 0); break;
+    case PEND_EXO_PRACTICE: story_push_exorcism(-1, CTX_VM, 0); break;
+    case PEND_CUTSCENE: story_push_cutscene(arg, CTX_VM, 0); break;
+    case PEND_PET: story_push_scene(&SCENE_PET, 0, PEND_PET, CTX_VM, 0); break;
+    case PEND_WORKSHOP: story_push_scene(&SCENE_WORKSHOP, 0, PEND_WORKSHOP, CTX_VM, 0); break;
+    case PEND_CREATOR: story_push_scene(&SCENE_CREATOR, arg, PEND_CREATOR, CTX_VM, 0); break;
+    case PEND_CREDITS: story_push_scene(&SCENE_CREDITS, 0, PEND_CREDITS, CTX_VM, 0); break;
+    case PEND_HOME: story_push_scene(&SCENE_HOME, arg, PEND_HOME, CTX_VM, 0); break;
+    case PEND_COOKING: story_push_scene(&SCENE_COOKING, arg, PEND_COOKING, CTX_VM, 0); break;
+    case PEND_CONCERT: story_push_scene(&SCENE_CONCERT, arg, PEND_CONCERT, CTX_VM, 0); break;
+    case PEND_DREAM: story_push_scene(&SCENE_DREAM, arg, PEND_DREAM, CTX_VM, 0); break;
+    case PEND_TIMING: story_push_scene(&SCENE_STORY_TIMING, (uint16_t)arg, PEND_TIMING, CTX_VM, 0); break;
+    case PEND_MINIGAME_SIDE: story_push_scene(&SCENE_STORY_MG, (uint16_t)arg, PEND_MINIGAME_SIDE, CTX_VM, 0); break;
+    default: vm_resume(1); break;
     }
 }
 
-void story_say_lines(const StoryLine *lines, void (*done)(void))
+/* A VM_EXT op (SPEC C6): the story group's half of the VM. */
+static void host_ext(const StoryOp *o)
 {
-    conv = lines;
-    conv_i = 0;
-    conv_done = done;
-    conv_feed();
+    int who = vm_ext_who();
+    switch (o->op) {
+    case OP_NATIVE:
+        if (o->a >= STORY_CB_VERB && o->a < STORY_CB_VERB + VERB_COUNT)   /* S2: the verbs */
+            story_verb_begin(o->a - STORY_CB_VERB, o->b, vm_ext_arg(), vm_ext_data(VMD_SCRIPT, 0));
+        else
+            cb_run(o->a, (int16_t)o->b);
+        break;
+    case OP_SET_BEAT: story_set_beat(o->b); break;
+    case OP_REWARD:
+        story_reward(o->a * 10, o->b & 0xFF, o->b >> 8, vm_ext_arg() ? vm_ext_arg() : USTORY_NONE);
+        break;
+    case OP_BEFRIEND: story_befriend(who, (int16_t)o->b); break;
+    case OP_POSSESS: exorcism_possess(who, (int16_t)o->b); break;   /* S3: arms the authored row */
+    case OP_UNPOSSESS: exorcism_unpossess(who); break;
+    case OP_TELEPORT: if (ow_active()) ow_enter_map(o->a, o->b >> 8, o->b & 0xFF); break;
+    case OP_CAST: if (ow_active()) ownpc_cast(who, o->b, vm_ext_arg()); break;
+    case OP_NPC: if (ow_active()) ownpc_act(who, o->b & 0xFF, o->b >> 8); break;
+    case OP_CAM: if (ow_active()) ow_cam(o->a, (int16_t)o->b); break;
+    case OP_BEAT: {
+        BeatScript bs;
+        if (ow_active() && txt_beat(o->b, &bs)) ow_run_beat(&bs);
+        break; }
+    default: break;                         /* INSERT / CUT / FREEZE_CAP / TINT: stage hosts */
+    }
+}
+
+static void conv_start(unsigned scr, int cb, int arg)
+{
+    vm_start((int)scr);
+    if (!vm_running()) { cb_attach(cb); cb_mark(0); return; }
+    vm_set_var(1, arg);
+    vm_cb = (uint8_t)cb;
+    vm_live = 1;
+    story_vm_pump();
+}
+
+void story_vm_pump(void)
+{
+    int guard = 64;
+    while (guard-- > 0) {
+        int r = vm_tick();
+        if (r == VM_EXT) { host_ext(vm_ext_op()); continue; }
+        if (r == VM_PUSHED) {
+            const StoryOp *o = vm_ext_op();
+            if (!o) return;                       /* still waiting for the scene */
+            host_push(o);
+            continue;                             /* autowin resumes at once */
+        }
+        if (r == VM_IDLE && vm_live) {
+            int cb = vm_cb;
+            vm_live = 0;
+            vm_cb = 0;
+            cb_attach(cb);
+            cb_mark(vm_var(0));
+            if (convq_n) {
+                int i;
+                unsigned scr = convq[0].scr;
+                int c = convq[0].cb, a = convq[0].arg;
+                for (i = 1; i < convq_n; i++) convq[i - 1] = convq[i];
+                convq_n--;
+                conv_start(scr, c, a);
+            }
+        }
+        return;
+    }
+}
+
+/* Once per game minute on the overworld: a due "Later" callback (C14). */
+void story_vm_minute(void)
+{
+    int s;
+    if (later_minute == doomo_town.minute) return;
+    later_minute = doomo_town.minute;
+    if (vm_running() || convq_n || story_talking()) return;
+    if ((s = vm_later_due()) != 0) story_conv((unsigned)s, 0);
+}
+
+void story_conv_arg(unsigned scr, int cb, int arg)
+{
+    if (vm_running() || convq_n) {
+        if (convq_n >= CONV_Q) { plat_log("story: conversation queue full"); return; }
+        convq[convq_n].scr = (uint16_t)scr;
+        convq[convq_n].cb = (uint8_t)cb;
+        convq[convq_n].arg = (int16_t)arg;
+        convq_n++;
+        return;
+    }
+    conv_start(scr, cb, arg);
+}
+
+void story_conv(unsigned scr, int cb) { story_conv_arg(scr, cb, 0); }
+
+/* Make the story's text live (PS1: CD reads into the resident window, at a
+ * boundary that already has a fade; GBA / native: nothing to do). */
+void story_text_prefetch(void)
+{
+    int p, n = txt_pack_count();
+    for (p = 0; p < n; p++) {
+        int k = txt_pack_kind(p);
+        if (k == TXT_KIND_LEGACY || k == TXT_KIND_SIDE) txt_pack_load(p);
+    }
+}
+
+void story_choice_id(int who, const char *q, const char *const *opts, int n, int cb)
+{
+    cb_attach(cb);
+    story_choice(who, q, opts, n, cb_choice_tramp);
 }
 
 void story_choice(int who, const char *q, const char *const *opts, int n,
@@ -347,7 +481,10 @@ void story_choice(int who, const char *q, const char *const *opts, int n,
     ui_choice(who, buf, opts, n, done);
 }
 
-int story_talking(void) { return ui_dialog_active() || conv != NULL; }
+int story_talking(void)
+{
+    return ui_dialog_active() || vm_running() || convq_n != 0 || cbq_n != 0;
+}
 
 /* ---- sub-scenes --------------------------------------------------------------------- */
 static void set_pending(int kind, int ctx, int arg, int extra)
@@ -370,6 +507,8 @@ static int pending_result(const StoryPending *p)
         if (r->status == RES_POSSESSED) return 0;
         return -1;                                  /* soul lost / laid to rest */
     case PEND_PET: return pet_exists() ? 1 : 0;
+    case PEND_TIMING: return autowin ? 3 : story_timing_result();
+    case PEND_MINIGAME_SIDE: return autowin ? 1 : story_mg_result();
     case PEND_CREATOR: {
         const DoomoResident *pl = town_res(DOOMO_PLAYER_ID);
         return (pl && pl->status != RES_EMPTY && pl->name[0]) ? 1 : 0; }
@@ -383,7 +522,8 @@ static void dispatch_result(void)
     int result = pending_result(&p);
     memset(&story_pending, 0, sizeof(story_pending));
     if (p.kind == PEND_NONE) return;
-    if (p.ctx == CTX_SIDE) side_resume(&p, result);
+    if (p.ctx == CTX_VM) vm_resume(result);
+    else if (p.ctx == CTX_SIDE) side_resume(&p, result);
     else script_resume(&p, result);
 }
 
@@ -397,7 +537,8 @@ void story_push_scene(const DoomoScene *s, int arg, int pend, int ctx, int extra
 {
     set_pending(pend, ctx, arg, extra);
     ow_sync_to_save();
-    if (autowin && (pend == PEND_PET || pend == PEND_WORKSHOP || pend == PEND_EXO_PRACTICE)) {
+    if (autowin && (pend == PEND_PET || pend == PEND_WORKSHOP || pend == PEND_EXO_PRACTICE ||
+                    pend == PEND_TIMING || pend == PEND_MINIGAME_SIDE)) {
         if (pend == PEND_PET && !pet_exists()) pet_new("Doomo");
         dispatch_result();
         return;
@@ -498,6 +639,7 @@ void story_push_exorcism(int resident_id, int ctx, int extra)
 
 void story_push_cutscene(int cut, int ctx, int extra)
 {
+    if (cut >= CUT_P0 && cut < CUT_ALL_COUNT) story_unlock_quiet(UL_STORY_CUT2(cut));   /* the gallery */
     set_pending(PEND_CUTSCENE, ctx, cut, extra);
     ow_sync_to_save();
     scene_push(&SCENE_CUTSCENE, cut);
@@ -514,12 +656,31 @@ void story_interact_npc(int id)
     const DoomoResident *r = town_res(id);
     if (!r || r->status == RES_EMPTY) return;
     story_fmt_target = (int16_t)id;
+    if (story_verbs_npc(id)) return;            /* S2: a delivery */
     if (script_npc(id)) return;
     if (side_npc(id)) return;
     talk_ambient(id);
 }
 
+/* The public entry (story.h) is called from other groups too (combat steps
+ * on trigger cells of the story maps), where it never fires: the overworld
+ * must be on top. It only records the tag, so no edge leads from another
+ * overlay group into the plot (SPEC C6); SCENE_STORY's update runs it. */
+static int16_t pend_trigger = -1;
+
 void story_trigger(int tag)
+{
+    if (overworld_live()) pend_trigger = (int16_t)tag;
+}
+
+void story_trigger_poll(void)
+{
+    int t = pend_trigger;
+    pend_trigger = -1;
+    if (t >= 0) story_trigger_ow(t);
+}
+
+void story_trigger_ow(int tag)
 {
     if (!overworld_live()) return;              /* e.g. fired inside combat */
     if (tag >= STORY_TAG_DOOR && tag < STORY_TAG_DOOR + PLACE_COUNT) {
@@ -559,10 +720,22 @@ void story_enter_place(int place)
     story_place_menu(place);
 }
 
-const char *story_objective(void)
+/* The HUD objective is a resident copy (S2): combat's HUD and the quest log
+ * read it from other overlay groups, so story_objective() must not reach
+ * the plot's code (on the PS1 that pinned the objective tables resident).
+ * The story group refreshes it every SCENE_STORY tick and at every beat. */
+static char objective[96];        /* the longest side hint is < 96 */
+
+const char *story_objective(void) { return objective; }
+
+void story_objective_refresh(void)
 {
-    if (doomo_town.story.chapter == STORY_CH_NONE) return "";
-    return script_objective();
+    const char *v = "";
+    if (doomo_town.story.chapter != STORY_CH_NONE) {
+        v = story_verbs_objective();                          /* a verb is running */
+        if (!v) v = script_objective();
+    }
+    doomo_snprintf(objective, sizeof(objective), "%s", v ? v : "");
 }
 
 int story_target(int *map_id, int *cx, int *cy)
@@ -575,19 +748,86 @@ void story_goto(int map_id, int cx, int cy)
     ow_enter_map(map_id, cx, cy);
 }
 
+/* ---- authored possessions across a reload ---------------------------------------------
+ * exorcism.c's armed slots are not saved (STRY is full). The story knows when
+ * each authored possession is its own: the @armed rows (core/gen/
+ * possess_table.c, from the .dsc packs) give the beats. On every resume the
+ * slots are cleared and a host that is still possessed inside its window is
+ * re-armed with its row; a possession outside every window (the sim's own,
+ * sim_possession_cap from Ch2) keeps the sim's pick. */
+
+/* a beat's position in the story order: the episode, then the legacy beat
+ * inside it (legacy ids increase in story order, test_story_vm.c checks) */
+static int story_pos(int beat)
+{
+    int o = story_episode_order(beat);
+    if (o < 0) return -1;
+    return (o << 5) | (beat < BEAT_COUNT ? beat & 31 : 0);
+}
+
+int story_armed_window(const StoryArmed *a, int beat)
+{
+    int p = story_pos(beat), k;
+    if (!a || a->host >= DOOMO_MAX_RESIDENTS || p < 0) return 0;
+    if (p < story_pos(a->from) || p > story_pos(a->to)) return 0;
+    for (k = 0; k < 2; k++)
+        if (a->unless[k] != 0xFFFFu && story_flag(a->unless[k])) return 0;
+    return 1;
+}
+
+int story_possess_row_of(int host)
+{
+    const DoomoPossessor *const volatile *tp = &doomo_possess_table;
+    const volatile uint16_t *np = &doomo_possess_count;
+    const DoomoPossessor *t = *tp;
+    int i, n = t ? (int)*np : 0;
+    for (i = 0; i < n; i++)
+        if (t[i].host == (unsigned)host && !(t[i].flags & EXF_UNFAIL)) return i;
+    return -1;
+}
+
+void story_rearm_possessors(void)
+{
+    int i, n = doomo_story_armed_count;
+    exorcism_slots_clear();
+    if (doomo_town.mode != TOWN_STORY) return;
+    for (i = 0; i < n; i++) {
+        const StoryArmed *a = &doomo_story_armed[i];
+        const DoomoResident *r = town_res(a->host);
+        if (!r || (r->status != RES_POSSESSED && r->status != RES_SOUL_LOST)) continue;
+        if (!story_armed_window(a, doomo_town.story.quest)) continue;
+        exorcism_possess(a->host, a->row);     /* arms only: the host is not RES_ALIVE */
+    }
+}
+
 /* ---- debug / tests ------------------------------------------------------------------- */
 void story_debug_autowin(int on) { autowin = (uint8_t)(on != 0); }
 int  story_debug_autowin_on(void) { return autowin; }
 
+/* (S2) A new episode / special id: the state of the legacy beat that is in
+ * progress at that point of the story order (the old beats alias onto the
+ * episodes), with every episode before it marked done and none after. */
+static void debug_jump_episode(int ep)
+{
+    int o = story_episode_order(ep), b, legacy = BEAT_C1_ARRIVE, e;
+    for (b = 0; b < BEAT_COUNT; b++)
+        if (story_episode_order(b) <= o) legacy = b;
+    story_debug_jump(story_beat_chapter(legacy), legacy);
+    for (e = BEAT_P0; e < BEAT_ALL_COUNT; e++) story_episode_set_done(e, story_episode_order(e) < o);
+}
+
 void story_debug_jump(int chapter, int beat)
 {
     (void)chapter;
+    if (beat >= BEAT_P0 && beat < BEAT_ALL_COUNT) { debug_jump_episode(beat); return; }
     if (beat < 0 || beat >= BEAT_COUNT) return;
     if (doomo_town.story.chapter == STORY_CH_NONE) story_new_game();
     friends_dirty = 1;
     script_debug_setup(beat);
     story_set_beat(beat);
+    story_rearm_possessors();
     friends_dirty = 1;
+    story_objective_refresh();
     if (ow_active()) {
         const DoomoStoryState *s = &doomo_town.story;
         ow_enter_map(s->map, s->x / DOOMO_CELL_UNITS, s->y / DOOMO_CELL_UNITS);

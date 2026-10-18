@@ -70,12 +70,10 @@ int exorcism_tries_left(int resident_id);
  * run after a save or a loss). The VM's POSSESS op arms a row on a host
  * (exorcism_possess); from then on sim_possessor_of() (through
  * story_possessor_override) and the ritual's clues and names come from
- * the row. The slots are not saved, so in story mode a possessed host of
- * a row with no armed slot (after a reload) falls back to that host's
- * first row. Caveat: from Ch2 the sim's own possessions can also take a
- * story host (sim_possession_cap), and the guess then reads them as
- * authored; S2's VM should re-arm on resume (or STRY v2 save the slots)
- * so the guess can go.
+ * the row. The slots are not saved: the story re-arms them on every
+ * resume (S2: story.c story_rearm_possessors, from the @armed windows of
+ * the .dsc packs), and a possession without an armed slot is the sim's
+ * own pick, also for a story host (sim_possession_cap from Ch2).
  *
  * The table is generated: core/tools/textpack.py (S2) compiles the
  * `@possessor` blocks of the .dsc packs into core/gen/possess_table.c,
@@ -124,10 +122,12 @@ typedef struct DoomoPossessor {
 extern const DoomoPossessor *const doomo_possess_table;
 extern const uint16_t doomo_possess_count;
 
-/* The row the host is possessed by (an armed slot, else the host's first
- * row while it is RES_POSSESSED in story mode), -1 = the sim's own pick.
- * resident_id < 0 is the practice plush (rows with EXO_HOST_PRACTICE). */
+/* The row the host is possessed by (its armed slot; a citizen's only in
+ * story mode), -1 = the sim's own pick. resident_id < 0 is the practice
+ * plush (rows with EXO_HOST_PRACTICE). */
 int  exorcism_authored_row(int resident_id);
+/* Disarm every slot (S2: before the story re-arms them after a load). */
+void exorcism_slots_clear(void);
 const DoomoPossessor *exorcism_authored(int resident_id);   /* NULL = none */
 /* VM POSSESS / UNPOSSESS: arm `row` on the host and possess it (status,
  * corruption); row < 0 possesses with the sim's pick. Unpossess clears

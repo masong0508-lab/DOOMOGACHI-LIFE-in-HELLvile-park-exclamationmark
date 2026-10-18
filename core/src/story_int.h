@@ -8,6 +8,9 @@
 #define DOOMO_STORY_INT_H
 
 #include "doomo/doomo.h"
+#include "doomo/story_vm.h"
+#include "doomo/txt.h"
+#include "../gen/story_ids.h"     /* SCR_* / TXT_* (textpack.py) */
 
 /* ---- story flags 0..63 (the flag map is in story.h) ---------------------- */
 enum {
@@ -72,12 +75,11 @@ enum {
 /* ---- pending sub-scenes ---------------------------------------------------
  * SCENE_STORY pushes another scene (creator, pet, exorcism, workshop,
  * combat, cutscene, credits, shop, activity...) and remembers why; when it
- * is on top again it hands the result to story_resume(). */
-enum { PEND_NONE, PEND_CREATOR, PEND_PET, PEND_EXO_PRACTICE, PEND_EXORCISM,
-       PEND_WORKSHOP, PEND_COMBAT, PEND_CUTSCENE, PEND_CREDITS, PEND_OTHER };
-/* What a pending result is for. */
+ * is on top again it hands the result to story_resume(). The PEND_* kinds
+ * are story_vm.h's. */
+/* What a pending result is for (CTX_VM: a script's PUSH, resumed in the VM). */
 enum { CTX_NONE, CTX_BEAT, CTX_SIDE, CTX_NEST, CTX_C3_EXO, CTX_C4_SMOG,
-       CTX_FREE };
+       CTX_FREE, CTX_VM };
 typedef struct StoryPending {
     uint8_t kind;          /* PEND_* */
     uint8_t ctx;           /* CTX_*  */
@@ -98,12 +100,29 @@ void story_resume(void);
 /* ---- conversations ----------------------------------------------------------
  * Text may contain @P (player name), @E (pet name), @D (the demon
  * possessing the current target), @T (the target's name), @V (Vex's
- * flavour of the day). Speaker -1 = narrator, DOOMO_PLAYER_ID = you. */
-typedef struct StoryLine { int16_t who; const char *text; } StoryLine;
-#define SAY_END { -2, NULL }
-/* Queue a NULL-terminated list of lines (any length); `done` runs after
- * the last one closes. */
-void story_say_lines(const StoryLine *lines, void (*done)(void));
+ * flavour of the day), @0..@9 (numbers). Speaker -1 = narrator,
+ * DOOMO_PLAYER_ID = you. The plot's lines are VM scripts in the text packs:
+ * story_conv(SCR_*, cb) runs one; when it ends (its lines read, its choice
+ * made) callback id cb runs with the choice (var 0). Callbacks are ids
+ * (story_script.c CB_* 1..63, story_side.c 64..127, story_places.c
+ * 128..255), never function pointers (SPEC C6). A conversation started while
+ * another runs waits its turn. */
+void story_conv(unsigned script, int cb);
+void story_conv_arg(unsigned script, int cb, int arg);     /* @1 = arg */
+void story_say_txt(int who, unsigned text_id);             /* one line */
+void story_say_txt_n(int who, unsigned text_id, int n0);   /* @0 = n0  */
+void story_choice_id(int who, const char *q, const char *const *opts, int n, int cb);
+void story_poll_callbacks(void);
+void story_vm_pump(void);                 /* SCENE_STORY's update, every tick */
+void story_text_prefetch(void);           /* SCENE_STORY's enter              */
+/* story_trigger() from the overworld itself (the public one only records
+ * the tag for story_trigger_poll(), see story.c). */
+void story_trigger_ow(int tag);
+void story_trigger_poll(void);
+void story_vm_minute(void);               /* due "Later" callbacks           */
+void script_callback(int cb, int choice);           /* story_script.c */
+void side_callback(int cb, int choice);             /* story_side.c (64..127)    */
+void place_callback(int cb, int choice);            /* story_places.c (128..)    */
 void story_say(int who, const char *text);          /* formatted, queued */
 void story_say_then(void (*done)(void));            /* after the queue   */
 void story_choice(int who, const char *q, const char *const *opts, int n,
@@ -115,9 +134,11 @@ void feast_draw(int panel, uint32_t pt, uint32_t ct);
 int  feast_front_shot(int panel, uint32_t pt);
 /* cutscene.c: screen y of the top of the current caption box (sh if none) */
 int  cutscene_caption_y(void);
-extern int16_t story_fmt_target;                     /* @T / @D subject  */
+#define story_fmt_target vm_fmt_target              /* @T / @D subject (scriptvm.c) */
 /* 1 while a conversation the story started is still running. */
 int  story_talking(void);
+/* (S2) Recompute the resident HUD objective story_objective() returns. */
+void story_objective_refresh(void);
 
 /* ---- beats ------------------------------------------------------------------ */
 void story_set_beat(int beat);                       /* + chapter, music  */
@@ -162,6 +183,30 @@ typedef struct SideSpot { uint8_t x, y, kind, q; } SideSpot;
 int  side_spots(int map_id, SideSpot *out, int max);
 int  side_active_count(void);
 const char *side_objective(void);         /* first active side quest text  */
+int  story_side2_giver_map(int sid);      /* S2: MAPID_* a mission's giver is on */
+
+/* ---- S2: the verbs and the story minigames (story_verbs.c, story_timing.c) ----
+ * A verb runs on the overworld while the VM is free; SCENE_STORY's update
+ * and its player code feed it. */
+void story_verb_begin(int kind, int who, int arg, int then_script);   /* VERB_* */
+int  story_verb_active(void);             /* VERB_* running, -1 none          */
+void story_verb_cancel(void);
+void story_verbs_tick(void);              /* SCENE_STORY's update             */
+void story_verbs_cell(int cx, int cy);    /* the player stepped on a cell     */
+int  story_verbs_press_a(void);           /* 1 if the verb used this A press  */
+int  story_verbs_npc(int id);             /* 1 if talking to id ended a verb  */
+int  story_verbs_walk_q8(void);           /* walking speed (256 = normal)      */
+const char *story_verbs_objective(void);  /* the HUD line while a verb runs, NULL */
+int  story_mg_result(void);               /* SCENE_STORY_MG's last result      */
+int  story_timing_result(void);           /* SCENE_STORY_TIMING's: rounds 0..3  */
+int  story_timing_debug(int *round, int *to_punch);   /* tests: state 0 card .. 3 result */
+/* the rules (pure; tests) */
+enum { ESC_FOLLOW, ESC_WAIT, ESC_FAR, ESC_LOST };
+int  story_escort_judge(int dist_cells, int far_ticks);
+int  story_photo_judge(int px, int py, int facing, int tx, int ty);   /* 0 / 1 / 2 framed */
+int  story_find_heat(int dx, int dy);     /* 0 cold .. 3 hot, 4 found          */
+int  story_timing_judge(int err_frames);  /* 2 perfect, 1 good, 0 miss         */
+int  ow_player_facing(void);              /* overworld.c: 0 down 1 left 2 right 3 up */
 
 /* ---- places (story_places.c) -------------------------------------------- */
 int  place_of_tag(int tag);               /* PLACE_* or 0                    */

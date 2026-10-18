@@ -113,6 +113,24 @@ TEST(story_debug_jump_sets_up_every_beat)
         if (b >= BEAT_C2_CELLAR) CHECK(story_flag(SF_WEAPON_CHOSEN));
         while (scene_depth() > 0) scene_pop();
     }
+    /* S2 (SPEC C14): the 38 new ids (P0, 27 episodes, 8 specials, E1, E2)
+     * set up the legacy beat in progress at that point of the story order,
+     * every episode before them done and none from them on */
+    for (b = BEAT_P0; b < BEAT_ALL_COUNT; b++) {
+        int o = story_episode_order(b), e;
+        test_reset();
+        town_new(TOWN_STORY, 7 + (uint32_t)b, TOWN_POP_PREMADE);
+        sim_init();
+        story_new_game();
+        story_debug_jump(0, b);
+        CHECK_MSG(o >= 0, "beat %d has no place in the story order", b);
+        /* (the prologue has no legacy beat before it: it sets up C1_ARRIVE) */
+        CHECK_MSG(story_episode_order(story_beat()) <= o || b == BEAT_P0, "new beat %d jumped past itself", b);
+        CHECK_MSG(story_objective()[0] != 0, "no objective at new beat %d", b);
+        for (e = BEAT_P0; e < BEAT_ALL_COUNT; e++)
+            CHECK_MSG(story_episode_done(e) == (story_episode_order(e) < o), "beat %d: episode %d done bit", b, e);
+        while (scene_depth() > 0) scene_pop();
+    }
 }
 
 /* ---- map validation ------------------------------------------------------------ */
@@ -427,6 +445,26 @@ TEST(story_places_and_activities_menu)
     story_debug_autowin(0);
 }
 
+/* S2: "Go inside" at PLACE_HOME opens the player's own home (SCENE_HOME) */
+TEST(story_go_inside_opens_the_home)
+{
+    int i;
+    new_story(78);
+    story_debug_jump(1, BEAT_C1_FRIENDS);
+    settle();
+    CHECK(story_flag(SF_HOME_SEEN));
+    story_place_menu(PLACE_HOME);
+    CHECK(story_talking());
+    press(BTN_A);                     /* finish typing the question */
+    press(BTN_A);                     /* Go inside (the first option: nobody to talk to) */
+    for (i = 0; i < 20 && scene_top() != &SCENE_HOME; i++) frame(0);
+    CHECK(scene_top() == &SCENE_HOME);
+    while (scene_top() == &SCENE_HOME && i++ < 60) scene_pop();
+    frames(4, 0);
+    CHECK(scene_top() == &SCENE_STORY);
+    story_debug_autowin(0);
+}
+
 TEST(story_save_round_trip_mid_story)
 {
     int beat, map;
@@ -440,6 +478,7 @@ TEST(story_save_round_trip_mid_story)
     ow_sync_to_save();
     CHECK(save_game(0));
     story_set_beat(BEAT_C1_KEY);
+    exorcism_slots_clear();                         /* a fresh boot: nothing armed */
     CHECK(load_game(0));
     CHECK_EQ(story_beat(), beat);
     CHECK_EQ(story_map(), map);
@@ -447,7 +486,40 @@ TEST(story_save_round_trip_mid_story)
     scene_set(&SCENE_STORY, STORY_ARG_CONTINUE);
     frames(20, 0);
     CHECK_EQ(map_current_id(), MAPID_HAHALAND_INVADED);
+    /* the authored possessors survive the reload (the slots are re-armed on
+     * resume; INTEGRATION_TODO S3.M1): Hattie / HAZE, Grampy / SOOTKIN */
+    CHECK_EQ(town_res(ID_HATTIE)->status, RES_POSSESSED);
+    CHECK_EQ(story_possessor_override(ID_HATTIE), ID_HAZE);
+    CHECK_EQ(story_possessor_override(ID_GRAMPY), ID_SOOTKIN);
     story_debug_autowin(0);
+}
+
+/* SF sec.18.1 story_save_round_trip_mid_story (S2): STRY at every episode
+ * boundary - the chunk is exactly 96 B, size() == the bytes written, and a
+ * full save / load keeps the episode bits, the side rows and the Laters */
+TEST(story_stry_round_trips_at_every_episode_boundary)
+{
+    int b;
+    for (b = BEAT_P0; b < BEAT_ALL_COUNT; b += 3) {
+        DoomoStry before;
+        test_reset();
+        town_new(TOWN_STORY, 40 + (uint32_t)b, TOWN_POP_PREMADE);
+        sim_init();
+        story_new_game();
+        story_debug_jump(0, b);
+        story_side2_set_state(b - BEAT_P0, 2);
+        story_stry()->later[1].script = 77;
+        story_stry()->later[1].due = (uint16_t)b;
+        before = *story_stry();
+        ow_sync_to_save();
+        CHECK(save_game(0));
+        memset(story_stry(), 0, sizeof(DoomoStry));
+        story_set_beat(BEAT_C1_KEY);
+        CHECK(load_game(0));
+        CHECK_MSG(memcmp(&before, story_stry(), sizeof(before)) == 0, "STRY differs after a load at beat %d", b);
+        CHECK_EQ(story_side2_state(b - BEAT_P0), 2);
+        while (scene_depth() > 0) scene_pop();
+    }
 }
 
 TEST(story_overworld_walks_and_collides)

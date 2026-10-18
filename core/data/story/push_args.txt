@@ -1,0 +1,30 @@
+# push_args.txt - the sub-scene args a story script may push (SPEC C12;
+# owner: S2). textpack.py rejects any `push KIND ARG` outside these. Every
+# range uses an encoding the target scene already documents; a new variant
+# of another module's scene is restaged as a story minigame or requested as
+# one hunk from that module's owner first.
+#
+# KIND       ARG (a value or lo..hi)        documented in
+combat       0..12          # MAPID_* (map.h)
+exorcism     0..999         # resident id (scenes.h)
+exo_practice 0              # the plush dummy (exorcism.h)
+cutscene     0..23          # CUT_* incl. the S0 additions (story.h)
+pet          0              # scenes.h
+workshop     0              # scenes.h
+creator      -3             # the protagonist (scenes.h)
+creator      0..999         # edit a citizen (scenes.h)
+credits      0
+home         -4..-1         # HOME_ARG_OWN (home.h)
+home         2..1001        # HOME_ARG_VISIT (home.h)
+home         0x4000..0x40FF # HOME_ARG_STORY (home.h)
+cooking      0..1           # COOK_ARG_COUNTER (fishcook_int.h)
+cooking      0x100..0x3F01  # COOK_ARG_RECIPE(r) [| COUNTER]
+concert      0..999         # the lead singer (concert_int.h)
+concert      -5000          # CONCERT_ARG_PARADE
+concert      -6999..-6000   # CONCERT_ARG_BAND - id
+concert      -7999..-7000   # CONCERT_ARG_CHOIR - id
+dream        0..999         # the dreamer (dream.c)
+dream        0x4000..0x40FF # DREAM_ARG_SCRIPTED(n): S2's scripted dreams (dream.c)
+timing       0..0xFFFF      # pattern | skin << 8 (scenes.h SCENE_STORY_TIMING)
+minigame     0..0xFFFF      # a story_mg registry id (story_vm.h)
+other        0

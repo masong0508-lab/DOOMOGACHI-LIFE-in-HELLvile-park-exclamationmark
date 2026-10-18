@@ -54,4 +54,33 @@ int  txt_pack_is_live(int pack);
 void txt_stash(int slot, uint16_t id);
 const char *txt_stash_get(int slot);
 
+/* --- S2: the pack reader (txt.c) and the platform hook --- */
+/* Pack kinds (the @pack kind=, the PS1 window slot it loads into). */
+enum { TXT_KIND_EPISODE, TXT_KIND_COMMON, TXT_KIND_SIDE, TXT_KIND_FEAST, TXT_KIND_LEGACY };
+/* A live pack's bytes, or NULL. GBA / native: core/gen/text_dir.c points
+ * into ROM; PS1: ps1/src/txtload.c points into its window. */
+const uint8_t *txt_plat_pack(int pack);
+/* Make a pack live on the platform (PS1: a CD read). 1 ok. */
+int  txt_plat_load(int pack);
+/* A script's ops (script id = pack:7 | index:9). NULL if not live. */
+const struct StoryOp *txt_script(uint16_t script_id, int *n_ops);
+/* A beat script out of a pack (BeatScript in beat.h). 1 ok. */
+struct BeatScript;
+int  txt_beat(uint16_t beat_id, struct BeatScript *out);
+/* Pack stats for tests and the lint. */
+int  txt_pack_count(void);
+int  txt_pack_strings(int pack);
+int  txt_pack_scripts(int pack);
+int  txt_pack_beats(int pack);
+int  txt_pack_kind(int pack);
+int  txt_pack_flags(int pack);
+/* The generated directory (core/gen/txt_dict.c). */
+extern const uint16_t doomo_txt_npacks;
+extern const char doomo_txt_pack_names[][9];
+extern const uint8_t doomo_txt_pack_kinds[];
+extern const uint8_t doomo_txt_pack_chapters[];
+extern const uint16_t doomo_txt_pack_minutes[];
+extern const uint16_t doomo_txt_pack_bytes[];
+/* --- end S2 --- */
+
 #endif

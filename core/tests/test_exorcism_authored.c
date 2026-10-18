@@ -4,6 +4,7 @@
  * scripted loss, the reverse rite and the practice rows. */
 #include "test.h"
 #include "../src/sim_int.h"
+#include "../src/story_int.h"     /* SF_C3_EXO0 */
 
 static void story_town(void)
 {
@@ -87,13 +88,50 @@ TEST(possessor_survives_a_reload_in_story_mode)
     exorcism_unpossess(71);
     CHECK_EQ(town_res(71)->status, RES_ALIVE);
     CHECK_EQ(exorcism_authored_row(71), -1);
-    /* a possession found in a save without an armed slot: the host's row */
+    /* a possession without an armed slot is the sim's own pick, also for a
+     * story host in story mode (sim_possession_cap from Ch2): never a guess */
     town_res(71)->status = RES_POSSESSED;
+    CHECK_EQ(exorcism_authored_row(71), -1);
+    CHECK_EQ(story_possessor_override(71), -1);
+    /* a reload inside the story's own window (Hattie, Ch3 nests): the slots
+     * are not saved, the story re-arms them from the @armed rows (S2) */
+    doomo_town.story.quest = BEAT_C3_NESTS;
+    exorcism_slots_clear();
+    story_rearm_possessors();
     CHECK_EQ(exorcism_authored_row(71), row);
     CHECK_EQ(story_possessor_override(71), 709);
-    /* free play never guesses */
+    /* ... but not once the story is past it, or its flag says it is over */
+    doomo_town.story.quest = BEAT_C4_GATE;
+    story_rearm_possessors();
+    CHECK_EQ(exorcism_authored_row(71), -1);
+    doomo_town.story.quest = BEAT_C3_NESTS;
+    story_set_flag(SF_C3_EXO0, 1);
+    story_rearm_possessors();
+    CHECK_EQ(exorcism_authored_row(71), -1);
+    story_set_flag(SF_C3_EXO0, 0);
+    /* a slot left over from a story session never reaches free play */
+    story_rearm_possessors();
+    CHECK_EQ(exorcism_authored_row(71), row);
     doomo_town.mode = TOWN_FREEPLAY;
     CHECK_EQ(exorcism_authored_row(71), -1);
+    /* and free play never re-arms */
+    story_rearm_possessors();
+    doomo_town.mode = TOWN_STORY;
+    CHECK_EQ(exorcism_authored_row(71), -1);
+}
+
+/* every @armed row (S2, the .dsc packs) names the host of its possessor row */
+TEST(story_armed_rows_match_the_possessor_table)
+{
+    int i;
+    CHECK(doomo_story_armed_count >= 4);
+    for (i = 0; i < doomo_story_armed_count; i++) {
+        const StoryArmed *a = &doomo_story_armed[i];
+        CHECK_MSG(a->row < doomo_possess_count, "@armed %d: row %d", i, a->row);
+        CHECK_MSG(doomo_possess_table[a->row].host == a->host, "@armed %d: row %d is not host %d's", i, a->row, a->host);
+        CHECK_MSG(story_possess_row_of(a->host) == a->row, "@armed %d: host %d's first row", i, a->host);
+        CHECK(story_episode_order(a->from) >= 0 && story_episode_order(a->to) >= story_episode_order(a->from));
+    }
 }
 
 TEST(wheezle_is_never_offered_and_lost_by_design)

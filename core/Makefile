@@ -139,6 +139,9 @@ endif
 	@$(MAKE) --no-print-directory -f $(CORE)/Makefile BUILD=$(BUILD) $(BUILD)/furngen
 	@echo "gen: furngen"; mkdir -p "$(GEN_ROOT)/core/gen"; $(BUILD)/furngen --out-root "$(GEN_ROOT)"
 	@# --- end H4 ---
+	@# --- S2: textpack, the story text packs (SPEC sec.5; reads core/data/story/) ---
+	@echo "gen: textpack"; mkdir -p "$(GEN_ROOT)/core/gen"; $(PYTHON) $(CORE)/tools/textpack.py --out-root "$(GEN_ROOT)"
+	@# --- end S2 ---
 	@set -e; \
 	for g in $(PY_GENS_REST); do \
 	    echo "gen: $$g"; $(PYTHON) $$g --out-root "$(GEN_ROOT)"; \

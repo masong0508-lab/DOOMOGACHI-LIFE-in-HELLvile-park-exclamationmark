@@ -19,8 +19,19 @@
  *
  * The plan is deterministic per sleeper + day. Every vignette seen goes in
  * the dream journal (unlock bits), which unlocks creator parts.
+ *
+ * --- S2: the scripted dreams (SPEC sec.7 S2, D1; arg DREAM_ARG_SCRIPTED(n),
+ * story_vm.h) --- the story's own dreams: YOU dream, and the Peek is forced
+ * (no tiptoeing away; it drifts in by itself). The vignettes are the row's,
+ * the captions are the lines the script stashed before the push (txt_stash
+ * 0..2; empty = the vignette's own caption, stash 3 = the wake-up line),
+ * and they arrive as floating letters, one glyph after another rising into
+ * place. No stats change and the journal is not written: it is the plot's.
+ * --- end S2 ---
  */
 #include "concert_int.h"
+#include "doomo/story_vm.h"
+#include "doomo/txt.h"
 
 enum { DS_PEEK, DS_ENTER, DS_DREAM, DS_WIPE, DS_CHOICE, DS_AFTER };
 
@@ -30,6 +41,7 @@ enum { DS_PEEK, DS_ENTER, DS_DREAM, DS_WIPE, DS_CHOICE, DS_AFTER };
 
 static struct {
     int state, st_t, id, nightmare, vi, choice, outcome, prev_song, problem, was_awake;
+    int scripted;                    /* S2: 1 + the scripted dream row, 0 = a Peek */
     uint8_t plan[DREAM_SHOW];
     DreamCast cast;
     char cap[112];
@@ -222,6 +234,15 @@ int dream_journal_count(void)
     return n;
 }
 
+/* --- S2: the scripted dreams (rows: DREAM_SCRIPTED_*; vignette ids as
+ * dream_vignette_names; frames in one table) --- */
+static const struct { uint8_t vig[DREAM_SHOW], nightmare; } scripted_rows[DREAM_SCRIPTED_COUNT] = {
+    { { 4, 7, 14 }, 0 },     /* D1 "Teeth Like Muffins": the Mingle, muffin teeth, the door */
+    { { 2, 6, 12 }, 0 },     /* D2 "The Ninth Cloud" (S3): falling up, the cloud, the mirror */
+};
+static const struct { uint8_t peek_hold, letter_gap, letter_rise; } SD = { 75, 2, 10 };
+/* --- end S2 --- */
+
 /* ====================================================================== */
 /* scene                                                                    */
 static void goto_state(int s) { D.state = s; D.st_t = 0; }
@@ -242,6 +263,16 @@ static void start_vignette(int i)
 {
     D.vi = i;
     D.split = dream_caption(D.plan[i], &D.cast, D.nightmare && i == DREAM_SHOW - 1, D.cap, (int)sizeof(D.cap));
+    if (D.scripted) {                               /* S2: the script's line, if it stashed one */
+        const char *l = txt_stash_get(i);
+        if (l && l[0]) {
+            doomo_snprintf(D.cap, sizeof(D.cap), "%s", l);
+            D.split = (int)strlen(D.cap);
+        }
+        if (D.nightmare && i == DREAM_SHOW - 1) audio_music(SONG_OMINOUS);
+        goto_state(DS_DREAM);
+        return;
+    }
     if (dream_journal_mark(D.plan[i])) {
         int n = dream_journal_count();
         if (n >= 8) unlock_grant(UL_PART_SLEEPY_EYES);
@@ -257,6 +288,17 @@ static void dream_enter(int arg)
     int id, force = 0, p;
     memset(&D, 0, sizeof(D));
     D.prev_song = audio_music_current();
+    if (arg >= DREAM_ARG_SCRIPTED(0) && arg < DREAM_ARG_SCRIPTED(DREAM_SCRIPTED_COUNT)) {   /* S2 */
+        int k = arg - DREAM_ARG_SCRIPTED(0), i;
+        D.scripted = 1 + k;
+        D.id = DOOMO_PLAYER_ID;
+        dream_cast(D.id, &D.cast);
+        for (i = 0; i < DREAM_SHOW; i++) D.plan[i] = scripted_rows[k].vig[i];
+        D.nightmare = scripted_rows[k].nightmare;
+        audio_music(SONG_HAHALAND_NIGHT);
+        goto_state(DS_PEEK);
+        return;
+    }
     if (arg <= DREAM_ARG_NIGHTMARE) { force = 1; id = concert_demo_resident(DREAM_ARG_NIGHTMARE - arg); }
     else if (arg < 0) id = concert_demo_resident(-1 - arg);
     else id = arg;
@@ -286,7 +328,7 @@ static void dream_leave(void)
 
 static void finish(int outcome)
 {
-    DoomoResident *r = town_res(D.id);
+    DoomoResident *r = D.scripted ? NULL : town_res(D.id);   /* S2: the plot's dream changes nothing */
     D.outcome = outcome;
     if (r) {
         if (outcome == 0) {                      /* sweet dreams */
@@ -317,6 +359,13 @@ static void dream_update(void)
     D.st_t++;
     switch (D.state) {
     case DS_PEEK:
+        if (D.scripted) {                         /* S2: a forced Peek */
+            if ((btn_pressed(BTN_A) && D.st_t > 8) || D.st_t >= SD.peek_hold) {
+                audio_sfx(SFX_BUBBLE);
+                goto_state(DS_ENTER);
+            }
+            break;
+        }
         if (btn_pressed(BTN_B)) { audio_sfx(SFX_CANCEL); leave(); return; }
         if (btn_pressed(BTN_A) && D.st_t > 8) {
             audio_sfx(SFX_BUBBLE);
@@ -332,7 +381,7 @@ static void dream_update(void)
         int last = D.vi == DREAM_SHOW - 1;
         if (D.st_t == 1) audio_sfx(SFX_SPARKLE);
         if (D.nightmare && last && D.st_t == 100) { audio_sfx(SFX_DEMON_ROAR); unlock_grant(UL_PART_WAVY_MOUTH); }
-        if (btn_pressed(BTN_B)) { audio_sfx(SFX_CANCEL); finish(0); return; }
+        if (btn_pressed(BTN_B) && !D.scripted) { audio_sfx(SFX_CANCEL); finish(0); return; }
         if ((btn_pressed(BTN_A) && D.st_t > 30) || D.st_t >= VIG_TICKS) {
             if (!last) goto_state(DS_WIPE);
             else if (D.nightmare) {
@@ -395,6 +444,36 @@ static void caption_box(const char *text, int split, int t, int creep, int night
     if (shown >= len && ((t / 10) & 1)) plat_text(x + w - 12, y + h - 10, STR_ICON_ARROW_D, ink);
 }
 
+/* S2: floating letters - each glyph rises into place SD.letter_gap frames
+ * after the one before it, then bobs; wrapped like ui_text_wrap */
+static void floating_caption(const char *text, int t, int creep, int nightmare)
+{
+    int sw = plat_screen_w(), sh = plat_screen_h(), big = sh >= 200;
+    int w = sw - (big ? 40 : 16), x0 = (sw - w) / 2 + 8, lines, y, k = 0, line = 0, off = 0;
+    uint8_t ink = creep >= 12 ? (nightmare ? PAL_RAMP(RAMP_BLOOD, 5) : PAL_WHITE) : PAL_RAMP(RAMP_VAPE, 7);
+    uint8_t ol = PAL_RAMP(RAMP_VAPE, 0);
+    lines = ui_text_wrap(x0, 0, w - 16, text, ink, 0);
+    if (lines < 1) lines = 1;
+    y = sh - lines * FONT_LINE - (big ? 30 : 20);
+    while (text[off] && line < lines) {
+        int n = ui_wrap_skip(text + off, w - 16, 1), i, cx = x0;
+        if (n <= 0) break;
+        for (i = 0; i < n; i++, k++) {
+            char g[2];
+            int age = t - k * SD.letter_gap, dy;
+            if (age < 0) break;
+            dy = age < SD.letter_rise ? (SD.letter_rise - age) * (SD.letter_rise - age) / 4 : 0;
+            dy += ui_wave(t + k * 7, 64, 1);
+            g[0] = text[off + i];
+            g[1] = 0;
+            if (g[0] != ' ' && g[0] != '\n') ui_text_outline(cx, y + line * FONT_LINE + dy, g, ink, ol);
+            cx += FONT_ADVANCE;
+        }
+        off += n;
+        line++;
+    }
+}
+
 static void bedroom(int expr, int shake)
 {
     dream_draw_bedroom(D.id, &D.cast, expr, D.t, shake);
@@ -407,6 +486,10 @@ static void dream_draw(void)
     switch (D.state) {
     case DS_PEEK:
         bedroom(EXPR_SLEEPY, 0);
+        if (D.scripted) {                         /* S2: no choice: you are already falling asleep */
+            floating_caption("You drift off... Zzz...", D.st_t, 0, 0);
+            break;
+        }
         doomo_snprintf(buf, sizeof(buf), D.was_awake ? "%s yawns and drifts off to sleep..."
                                                      : "%s is fast asleep. Zzz...", concert_name(D.id));
         caption_box(buf, (int)strlen(buf), 200, 0, 0, 1);
@@ -432,10 +515,11 @@ static void dream_draw(void)
                            sh / 2 + (int)((fx_sin(k * 512 + D.st_t * 90) * r) >> 17), (D.st_t + k) & 15,
                            PAL_PAINT(PAINT_LEMON, 2));
         } else if (D.state == DS_DREAM) {
-            caption_box(D.cap, D.split, t, creep, nm, 0);
+            if (D.scripted) floating_caption(D.cap, t, creep, nm);    /* S2 */
+            else caption_box(D.cap, D.split, t, creep, nm, 0);
         }
-        /* dream journal badge */
-        {
+        /* dream journal badge (not in the plot's own dreams) */
+        if (!D.scripted) {
             int n = dream_journal_count();
             doomo_snprintf(buf, sizeof(buf), STR_ICON_ZZZ " %d/%d", n, DREAM_VIGNETTES);
             ui_text_outline(sw - ui_text_width(buf) - 6, big ? 8 : 5, buf, PAL_WHITE, PAL_RAMP(RAMP_VAPE, 0));
@@ -465,6 +549,12 @@ static void dream_draw(void)
         int expr = D.outcome == 1 ? EXPR_SHOCK : D.outcome == 2 ? EXPR_SICK : EXPR_SLEEPY;
         if (D.id >= 0) bedroom(expr, D.outcome == 2 && D.st_t < 40);
         else ui_backdrop(WIN_DARK, D.t);
+        if (D.scripted) {                         /* S2: the wake-up line (stash 3) */
+            const char *l = txt_stash_get(3);
+            floating_caption(l && l[0] ? l : "You wake up. The room is very quiet.", D.st_t, 0, 0);
+            ui_hint(STR_ICON_A " Wake up", WIN_DARK);
+            break;
+        }
         doomo_snprintf(buf, sizeof(buf), lines[DOOMO_CLAMP(D.outcome, 0, 3)], concert_name(D.id));
         caption_box(buf, (int)strlen(buf), 200, 0, 0, 1);
         if (D.outcome == 1) {

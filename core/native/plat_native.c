@@ -305,6 +305,9 @@ int plat_save_erase(int slot)
 
 /* ---- misc ----------------------------------------------------------------- */
 uint32_t plat_entropy(void) { return entropy; }
+/* --- S2: the runner's `seed N` (SPEC C18) overrides plat_entropy() --- */
+void nat_set_entropy(uint32_t v) { entropy = v; }
+/* --- end S2 --- */
 uint32_t plat_ticks(void) { return ticks; }
 const char *plat_name(void) { return "NATIVE"; }
 

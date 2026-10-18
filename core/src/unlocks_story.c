@@ -1,5 +1,5 @@
 /* unlocks_story.c - the story module's unlockables (owner: story), ids
- * 608..735: modes the ending opens, every song for the jukebox, every
+ * 608..735 (677..710: the story SPEC's additions, S2): modes the ending opens, every song for the jukebox, every
  * cutscene for the gallery, chapter / collection achievements, the
  * keepsake badges side quests reward and Mr. Flops' bunny-ears hat. All
  * are granted by code (unlock_grant) as the story is played. (Side quest
@@ -14,6 +14,14 @@
 #define MISC(id, k, name, how) { id, UL_CAT_MISC, 83, k, name, how, 0, 0 }
 #define PART(k, list, idx, name, how) { (uint16_t)(USTORY_REWARD_FIRST + (k)), UL_CAT_PART, list, idx, name, how, 0, 0 }
 #define BADGE(k, name, how) { (uint16_t)(USTORY_REWARD_FIRST + (k)), UL_CAT_MISC, 83, (uint16_t)(20 + (k)), name, how, 0, 0 }
+/* --- S2: the story SPEC's ids 677..710 (R7, C14; unlock_ids.h) --- */
+#define CUTU2(c, name, how) { (uint16_t)UL_STORY_CUT2(c), UL_CAT_GALLERY, GAL_CUTSCENES, c, name, how, 0, 0 }
+#define SONGU2(s, name) { (uint16_t)UL_STORY_SONG2(s), UL_CAT_GALLERY, GAL_JUKEBOX, s, name, "Hear it in Story Mode", 0, 0 }
+/* misc k: title variants, Breach and Arena variants, creator part sets
+ * (UL_MISC_STORY index 40 + k; S3 / S5 grant them, the creator's owner may
+ * re-point the two part sets at real CLIST_* parts) */
+#define MISC2(k, name, how) { (uint16_t)(UL_STORY_MISC2_FIRST + (k)), UL_CAT_MISC, UL_MISC_STORY, (uint16_t)(40 + (k)), name, how, 0, 0 }
+/* --- end S2 --- */
 
 const DoomoUnlock doomo_unlocks_story[] = {
     MODE(USTORY_UNITED_PARK, MODE_UNITED_PARK, "United Park", "Finish Story Mode"),
@@ -39,6 +47,17 @@ const DoomoUnlock doomo_unlocks_story[] = {
     SONGU(SONG_CREDITS, "Everyone Together"),
     SONGU(SONG_VAPE_LOUNGE, "Cloud Nine Lounge"),
     SONGU(SONG_OMINOUS, "The Wall"),
+    /* --- S2: the 9 new songs (689..697) --- */
+    SONGU2(SONG_MINGLE, "Mingle"),
+    SONGU2(SONG_WALL_LULLABY, "Lullaby for the Wall"),
+    SONGU2(SONG_TWO_CHOIRS, "Two Choirs"),
+    SONGU2(SONG_BOAT_FLOATS, "The Boat Floats"),
+    SONGU2(SONG_THIRTEEN_BELLS, "Thirteen Bells"),
+    SONGU2(SONG_HELL_LULLABY, "Hellvile Lullaby"),
+    SONGU2(SONG_DOUBLE_ACT, "Double Act"),
+    SONGU2(SONG_HEEHEE_JINGLE, "Hee. Hee."),
+    SONGU2(SONG_NUMBER_TEN, "Number Ten"),
+    /* --- end S2 --- */
 
     CUTU(CUT_ARRIVAL, "Arrival in HaHaland", "Start Story Mode"),
     CUTU(CUT_FOG, "The Purple Fog", "Investigate the Wall"),
@@ -48,6 +67,20 @@ const DoomoUnlock doomo_unlocks_story[] = {
     CUTU(CUT_FREEPLAY, "Happily Ever After", "Finish Story Mode"),
     CUTU(CUT_HOME, "Home Sweet Home", "Move into your cottage"),
     CUTU(CUT_FEAST_POP, "What an Ass", "Let the Feast of Rebuilding go too far"),
+    /* --- S2: the 12 new cutscenes (677..688) --- */
+    CUTU2(CUT_P0, "The Crayon Prologue", "Start Story Mode"),
+    CUTU2(CUT_BOTTLE, "The Bottle", "Chapter 2: the Bottle"),
+    CUTU2(CUT_F1, "Flashback: The Fountain", "Remember the first flashback"),
+    CUTU2(CUT_F2, "Flashback: The Pump", "Remember the second flashback"),
+    CUTU2(CUT_F3, "Flashback: Re-plumbed", "Remember the third flashback"),
+    CUTU2(CUT_F4, "Cupcakes and Bone Soup", "Remember the fourth flashback"),
+    CUTU2(CUT_INT3_KNOCKS, "Knock Knock", "Answer every knock"),
+    CUTU2(CUT_SUMMIT, "The Summit", "Bring both towns to one table"),
+    CUTU2(CUT_SAYIT, "Say It", "Say it"),
+    CUTU2(CUT_FEAST_SAVE, "Saved by the Bell", "Save the Feast of Rebuilding"),
+    CUTU2(CUT_E1, "Days Since: 1", "See the epilogue"),
+    CUTU2(CUT_BALLOON, "The Ninth Cloud", "Take the balloon up"),
+    /* --- end S2 --- */
 
     MISC(USTORY_CH1_DONE, 0, "Welcome Home", "Finish Chapter 1"),
     MISC(USTORY_CH2_DONE, 1, "Vapor Buster", "Finish Chapter 2"),
@@ -60,6 +93,22 @@ const DoomoUnlock doomo_unlocks_story[] = {
     MISC(USTORY_FRIEND_OF_ALL, 8, "Friend of All", "Make 25 friends in Story Mode"),
     MISC(USTORY_BRUTAL_START, 9, "Boomstick", "Choose the brutal starter weapon"),
     MISC(USTORY_CUTE_START, 10, "Bubble Trouble", "Choose the cute starter weapon"),
+    /* --- S2: misc 698..710 (R7: 3 title variants, 6 Breach variants, 2
+     * arena modes, 2 creator part sets; granted by S3 / S5 content) --- */
+    MISC2(0, "Title: On Fire", "Finish Story Mode"),
+    MISC2(1, "Title: Population 1000", "Side mission: S143"),
+    MISC2(2, "Title: Mingle Night", "Side mission: S195"),
+    MISC2(3, "Breach: The Bakery", "Hell Breach 3, after the story"),
+    MISC2(4, "Breach: Soft", "Hell Breach 4, after the story"),
+    MISC2(5, "Breach: Dry", "Hell Breach 5, after the story"),
+    MISC2(6, "Breach: The Choir", "Hell Breach 6, after the story"),
+    MISC2(7, "Breach: The Ninth Cloud", "Side mission: S171"),
+    MISC2(8, "Breach 3-7 Post-Story", "Finish Story Mode"),
+    MISC2(9, "Arena: The Exes", "Side mission: S174"),
+    MISC2(10, "Arena: Hold the Door", "Hold the Door (Ep 3.7)"),
+    MISC2(11, "Creator: Stitched Parts", "Side mission: the Florist Monster"),
+    MISC2(12, "Creator: Hellvile Palette", "Side mission: Phantasma's portrait"),
+    /* --- end S2 --- */
 
     /* side quest keepsakes (badges), and one hat */
     BADGE(0, "Cupid's Arrow Pin", "Side quest: Knightly Hearts"),

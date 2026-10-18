@@ -46,6 +46,22 @@ file(GLOB PS1_SRCS CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/*.c
                                      ${CMAKE_CURRENT_SOURCE_DIR}/src/*.s)
 list(SORT PS1_SRCS)
 
+# --- S2: the story text packs (SPEC C3) --- core/gen/text_*.c are the
+# GBA's and the native runner's ROM copies; the PS1 reads the same bytes
+# from TEXT.BIN on the disc into a resident window (src/txtload.c), so they
+# are never linked here. TEXT.BIN is a build product, never committed.
+list(FILTER CORE_SRCS EXCLUDE REGEX "/core/gen/text_[a-z0-9_]+\\.c$")
+file(GLOB_RECURSE DOOMO_DSC CONFIGURE_DEPENDS ${CORE_DIR}/data/story/*.dsc ${CORE_DIR}/data/story/*.txt)
+add_custom_command(
+	OUTPUT  ${CMAKE_CURRENT_BINARY_DIR}/TEXT.BIN
+	COMMAND ${Python3_EXECUTABLE} ${CORE_DIR}/tools/textpack.py
+	        --out-root ${CMAKE_CURRENT_BINARY_DIR}/textpack --bin ${CMAKE_CURRENT_BINARY_DIR}/TEXT.BIN
+	DEPENDS ${DOOMO_DSC} ${CORE_DIR}/tools/textpack.py
+	COMMENT "Packing the story text (core/tools/textpack.py -> TEXT.BIN)"
+	VERBATIM)
+add_custom_target(textbin DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/TEXT.BIN)
+# --- end S2 ---
+
 list(LENGTH CORE_SRCS _ncore)
 message(STATUS "doomogachi: ${_ncore} core sources")
 
@@ -219,6 +235,7 @@ add_custom_command(
 	        -c ${CMAKE_CURRENT_BINARY_DIR}/${DOOMO_EXE_NAME}.cue
 	        ${DOOMO_ISO_XML}
 	DEPENDS ${DOOMO_EXE_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/system.cnf
+	        ${CMAKE_CURRENT_BINARY_DIR}/TEXT.BIN
 	        ${CMAKE_CURRENT_SOURCE_DIR}/iso.xml
 	        ${CMAKE_CURRENT_SOURCE_DIR}/README.md
 	WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}

@@ -282,6 +282,7 @@ static void story_enter(int arg)
 {
     memset(&ow, 0, sizeof(ow));
     camfx_reset();                                 /* --- S1 M5 --- */
+    story_text_prefetch();                         /* S2: the text packs (PS1: TEXT.BIN) */
     border_t = 0;
     ow_scratch_claim();
     ow.near_npc = -1;
@@ -297,8 +298,8 @@ static void story_enter(int arg)
         ow_enter_map(maps[k], sx[k], sy[k]);
         return;
     }
-    if (arg >= STORY_ARG_DEBUG_BEAT && arg < STORY_ARG_DEBUG_NIGHT + BEAT_COUNT &&
-        (arg - STORY_ARG_DEBUG_BEAT) % 100 < BEAT_COUNT) {
+    if (arg >= STORY_ARG_DEBUG_BEAT && arg < STORY_ARG_DEBUG_NIGHT + BEAT_ALL_COUNT &&   /* S2: + the new ids */
+        (arg - STORY_ARG_DEBUG_BEAT) % 100 < BEAT_ALL_COUNT) {
         int beat = (arg - STORY_ARG_DEBUG_BEAT) % 100;
         town_new(TOWN_STORY, 0xD0D0u + (uint32_t)beat, TOWN_POP_PREMADE);
         sim_init();
@@ -336,6 +337,7 @@ static void story_enter(int arg)
     }
     sim_init();
     ow.started = 1;
+    story_rearm_possessors();                      /* S2: a load re-arms the authored possessors */
     continue_on_saved_map();
 }
 
@@ -426,7 +428,8 @@ static void on_new_cell(int cx, int cy)
         ow.region = rg;
     }
     if (ow.visit) return;
-    if ((c->flags & CELL_TRIGGER) && c->tag) story_trigger(c->tag);
+    if ((c->flags & CELL_TRIGGER) && c->tag) story_trigger_ow(c->tag);
+    story_verbs_cell(cx, cy);                      /* S2: the find verb */
     if (!story_talking()) side_trigger_spot(ow.map, cx, cy, 0);
 }
 
@@ -441,6 +444,7 @@ static void player_update(void)
     ow.running = btn_down(BTN_B) ? 1 : 0;
     speed = ow.running ? RUN_SPEED : WALK_SPEED;
     if (dx && dy) speed = speed * 181 / 256;
+    if (!ow.visit) speed = speed * story_verbs_walk_q8() / 256;   /* S2: carrying a delivery */
     if (dx) ow.dir = dx < 0 ? 1 : 2;
     else if (dy) ow.dir = dy < 0 ? 3 : 0;
     fh = ow_floor_h(ow.px / OW_CELL, ow.py / OW_CELL);
@@ -553,8 +557,11 @@ static void interact_prop(int i)
     }
 }
 
+int ow_player_facing(void) { return ow.dir; }      /* S2: the photo verb */
+
 static void press_a(void)
 {
+    if (!ow.visit && story_verbs_press_a()) return; /* S2: the photo verb */
     if (ow.near_npc >= 0) {
         OwNpc *n = &ow_npcs[ow.near_npc];
         ownpc_face_player(ow.near_npc);
@@ -735,6 +742,13 @@ static void story_update(void)
         return;
     }
     if (map_current_id() != ow.map) after_subscene();
+    story_vm_pump();                               /* the story VM (S2; SPEC C6 host) */
+    story_vm_minute();
+    story_poll_callbacks();                        /* conversation callbacks by id */
+    story_trigger_poll();
+    story_verbs_tick();                            /* S2: escort / delivery */
+    story_objective_refresh();                     /* S2: the HUD's resident copy */
+    if (scene_top() != &SCENE_STORY) return;
     sim_tick();
     owfx_update();
     if (border_t && --border_t == 0) audio_music(ow_music_for_map(ow.map));   /* on the downbeat */

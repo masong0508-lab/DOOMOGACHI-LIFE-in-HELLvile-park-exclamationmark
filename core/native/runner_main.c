@@ -20,6 +20,11 @@
  *   save SLOT / load SLOT / expect-save SLOT
  *   log TEXT            print TEXT
  *   no-stubs            fail now if any stub has run
+ *   seed N              (S2, SPEC C18) doomo_town.seed = N, and N is what
+ *                       plat_entropy() returns from now (the next new town)
+ *   expect-text "TEXT"  fail unless the dialogue box's line contains TEXT
+ *   expect-flag F [V]   fail unless story flag F (0..255) is V (default 1)
+ *   story-fp [HEX]      print story_fingerprint(); with HEX, fail unless equal
  * Buttons: UP DOWN LEFT RIGHT A B L R START SELECT X Y L2 R2.
  * Exit status: 0 ok, 1 script failure, 2 stubs ran with --assert-no-stubs.
  */
@@ -30,6 +35,8 @@
 #include <errno.h>
 #include <sys/stat.h>
 #include "native.h"
+#include "doomo/story_vm.h"           /* S2: story_fingerprint */
+#include "../src/ui_internal.h"       /* S2: ui_dialog_debug (expect-text) */
 
 static uint32_t held;
 static int gba_input;
@@ -229,6 +236,34 @@ static void run_line(char *line)
         stats(argc > 1 ? argv[1] : "");
     } else if (strcmp(cmd, "no-stubs") == 0) {
         if (stub_check("so far")) failures++;
+    /* --- S2: story checks (SPEC R20 / C2: seed, expect-text, expect-flag, story-fp) --- */
+    } else if (strcmp(cmd, "seed") == 0) {
+        uint32_t v = argc > 1 ? (uint32_t)strtoul(argv[1], NULL, 0) : 0;
+        doomo_town.seed = v;
+        nat_set_entropy(v);
+    } else if (strcmp(cmd, "expect-text") == 0) {
+        UiDialogDebug d;
+        const char *want = argc > 1 ? argv[1] : "";
+        memset(&d, 0, sizeof(d));
+        ui_dialog_debug(&d);
+        if (!d.text || !strstr(d.text, want)) {
+            char msg[256];
+            snprintf(msg, sizeof(msg), "expected the dialogue to say \"%s\" but it says", want);
+            fail(msg, d.text && d.text[0] ? d.text : "(nothing)");
+        }
+    } else if (strcmp(cmd, "expect-flag") == 0) {
+        int f = argc > 1 ? atoi(argv[1]) : -1, want = argc > 2 ? atoi(argv[2]) : 1;
+        if (f < 0 || f > 255) fail("expect-flag needs a flag 0..255, got", argc > 1 ? argv[1] : "");
+        else if (story_flag(f) != (want != 0)) {
+            char msg[64];
+            snprintf(msg, sizeof(msg), "expected story flag %d to be %d but it is", f, want != 0);
+            fail(msg, story_flag(f) ? "1" : "0");
+        }
+    } else if (strcmp(cmd, "story-fp") == 0) {
+        uint32_t fp = story_fingerprint();
+        printf("story-fp: 0x%08x\n", (unsigned)fp);
+        if (argc > 1 && (uint32_t)strtoul(argv[1], NULL, 16) != fp) fail("story fingerprint differs from", argv[1]);
+    /* --- end S2 --- */
     } else {
         fail("unknown command", cmd);
     }

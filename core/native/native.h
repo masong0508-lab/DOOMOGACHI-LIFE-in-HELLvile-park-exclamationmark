@@ -21,6 +21,7 @@ typedef struct NatOptions {
 } NatOptions;
 
 void nat_init(const NatOptions *o);
+void nat_set_entropy(uint32_t v);      /* S2: the runner's `seed N` (SPEC C18) */
 /* "STUB:" lines logged so far (unique names). */
 int  nat_stub_count(void);
 const char *nat_stub_name(int i);

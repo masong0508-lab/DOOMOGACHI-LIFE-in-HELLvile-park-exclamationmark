@@ -10,7 +10,7 @@
 #include "story_int.h"
 
 typedef struct SideQuest {
-    const char *title;
+    uint16_t title;            /* text ids (the legside pack)                */
     int16_t  giver;            /* roster id                                  */
     uint8_t  ch_min, ch_max;   /* offered in these chapters (5 = free roam)  */
     uint8_t  gmap, gx, gy;     /* where the giver waits                      */
@@ -24,9 +24,7 @@ typedef struct SideQuest {
     uint16_t money;
     uint8_t  item, item_n;
     uint16_t unlock;
-    const char *offer;
-    const char *hint;
-    const char *thanks;
+    uint16_t offer, hint, thanks;
 } SideQuest;
 
 #define HH MAPID_HAHALAND
@@ -36,259 +34,259 @@ typedef struct SideQuest {
 
 static const SideQuest quests[] = {
     /* ---------------- chapter 1: pastel errands ---------------------------- */
-    { "Mail Mix-Up", 97, 1, 2, HH, 20, 20, SQ_DELIVER, 52, ITEM_LOVE_LETTER, 1, HH, 42, 26,
+    { TXT_Q0_TITLE, 97, 1, 2, HH, 20, 20, SQ_DELIVER, 52, ITEM_LOVE_LETTER, 1, HH, 42, 26,
       60, ITEM_FLOWERS, 1, USTORY_REWARD_FIRST + 1,
-      "Ribbit! A love letter for Valentina the matchmaker got stuck to my hat. Could you hop it over to her in the plaza?",
-      "Deliver the love letter to Valentina (plaza)",
-      "She read it and fainted from joy! Wonderful! Here, a thank-you and a lovebird stamp. Ribbit!" },
-    { "Coffee for Bluebell", 29, 1, 2, HH, 30, 16, SQ_FETCH, ITEM_COFFEE, -1, 1, HH, 0, 0,
+      TXT_Q0_OFFER,
+      TXT_Q0_HINT,
+      TXT_Q0_THANKS },
+    { TXT_Q1_TITLE, 29, 1, 2, HH, 30, 16, SQ_FETCH, ITEM_COFFEE, -1, 1, HH, 0, 0,
       45, ITEM_NONE, 0, USTORY_REWARD_FIRST + 2,
-      "I've been up since dawn arranging tulips into the shape of a heart. I need coffee. Please. From the cafe.",
-      "Bring Bluebell a Coffee (Brimstone Bites)",
-      "*slurp* My petals are perking up! Take this tulip pin. I made it from a real tulip. Mostly." },
-    { "Lost Kitten", 96, 1, 2, HH, 17, 9, SQ_PET, 0, -1, 1, HH, 18, 15,
+      TXT_Q1_OFFER,
+      TXT_Q1_HINT,
+      TXT_Q1_THANKS },
+    { TXT_Q2_TITLE, 96, 1, 2, HH, 17, 9, SQ_PET, 0, -1, 1, HH, 18, 15,
       80, ITEM_NONE, 0, NONE,
-      "Woof! I was walking Sir Whiskers and he walked ME into a hedge and vanished! He likes high places. Up on the Lane?",
-      "Find Sir Whiskers the cat (Hillvile Lane)",
-      "SIR WHISKERS! You little rascal! Thank you, thank you! Here's my dog-walking money." },
-    { "Say Cheese!", 46, 1, 5, HH, 37, 24, SQ_PHOTO, 0, -1, 1, HH, 34, 24,
+      TXT_Q2_OFFER,
+      TXT_Q2_HINT,
+      TXT_Q2_THANKS },
+    { TXT_Q3_TITLE, 46, 1, 5, HH, 37, 24, SQ_PHOTO, 0, -1, 1, HH, 34, 24,
       50, ITEM_NONE, 0, NONE,
-      "I'm making a postcard of HaHaland! Could you snap the giggling fountain for me? Stand right in front and press A!",
-      "Photograph the fountain in the plaza",
-      "Oh, the sparkles! The lighting! You have the eye, darling. Here's your model fee." },
-    { "Cupid's Little Helper", 117, 1, 2, HH, 44, 28, SQ_MATCH, 11, 25, 1, HH, 45, 36,
+      TXT_Q3_OFFER,
+      TXT_Q3_HINT,
+      TXT_Q3_THANKS },
+    { TXT_Q4_TITLE, 117, 1, 2, HH, 44, 28, SQ_MATCH, 11, 25, 1, HH, 45, 36,
       100, ITEM_PERFUME, 1, NONE,
-      "Psst! Freckles has a HUGE crush on Skipper the paper kid. Give Freckles a little pep talk? She's in the park.",
-      "Encourage Freckles to confess (park)",
-      "Love is in the air! Or at least nervous giggling. Thanks, partner. Here, smell nice!" },
-    { "Strong Bones", 5, 1, 2, HH, 8, 18, SQ_FETCH, ITEM_MILK, -1, 2, HH, 0, 0,
+      TXT_Q4_OFFER,
+      TXT_Q4_HINT,
+      TXT_Q4_THANKS },
+    { TXT_Q5_TITLE, 5, 1, 2, HH, 8, 18, SQ_FETCH, ITEM_MILK, -1, 2, HH, 0, 0,
       70, ITEM_NONE, 0, NONE,
-      "Clack clack! I'm a xylophone teacher AND a xylophone. Two Milks keep these bones ringing true. Could you?",
-      "Bring Bonejangles 2 Milk",
-      "*glug glug* Hear that? Perfect pitch! You've saved my tibia solo." },
-    { "Bedtime Stories", 16, 1, 5, HH, 40, 36, SQ_VISIT, PLACE_LIBRARY, -1, 1, HH, 41, 35,
+      TXT_Q5_OFFER,
+      TXT_Q5_HINT,
+      TXT_Q5_THANKS },
+    { TXT_Q6_TITLE, 16, 1, 5, HH, 40, 36, SQ_VISIT, PLACE_LIBRARY, -1, 1, HH, 41, 35,
       40, ITEM_HYMN_BOOK, 1, USTORY_REWARD_FIRST + 4,
-      "Hoo! The little ones want a new bedtime story. Would you check the Library for 'The Very Hungry Demon'?",
-      "Visit the Library in the park",
-      "Hoo hoo! The kids will love it. It has a happy ending. Mostly. Take this, and a bookworm bookmark." },
-    { "Ribbon Cutting", 83, 1, 2, HH, 8, 43, SQ_VISIT, PLACE_FUN_FAIR, -1, 1, HH, 4, 42,
+      TXT_Q6_OFFER,
+      TXT_Q6_HINT,
+      TXT_Q6_THANKS },
+    { TXT_Q7_TITLE, 83, 1, 2, HH, 8, 43, SQ_VISIT, PLACE_FUN_FAIR, -1, 1, HH, 4, 42,
       60, ITEM_NONE, 0, NONE,
-      "I cut ribbons professionally! The Fun Fair's big top needs an official visitor before I can snip. Pop in?",
-      "Visit the Fun Fair big top",
-      "SNIP! The Fun Fair is officially fun! Here, your official visitor fee." },
-    { "Grandma's Glasses", 27, 1, 2, HH, 6, 10, SQ_FIND, 0, -1, 1, HH, 44, 55,
+      TXT_Q7_OFFER,
+      TXT_Q7_HINT,
+      TXT_Q7_THANKS },
+    { TXT_Q8_TITLE, 27, 1, 2, HH, 6, 10, SQ_FIND, 0, -1, 1, HH, 44, 55,
       70, ITEM_PUDDING, 1, USTORY_REWARD_FIRST + 3,
-      "Dearie, I've lost my reading glasses! Last I saw them I was napping at the beach. Or was it 1974?",
-      "Find Oma Fluff's glasses (beach)",
-      "Oh! I can see you now! You're lovely. Have a pudding, and my old locket. There's a cake in it." },
-    { "Sandcastle Contest", 112, 1, 5, HH, 36, 53, SQ_PHOTO, 0, -1, 1, HH, 38, 61,
+      TXT_Q8_OFFER,
+      TXT_Q8_HINT,
+      TXT_Q8_THANKS },
+    { TXT_Q9_TITLE, 112, 1, 5, HH, 36, 53, SQ_PHOTO, 0, -1, 1, HH, 38, 61,
       50, ITEM_NONE, 0, USTORY_REWARD_FIRST + 14,
-      "Duuude. I need a photo from the very end of the pier for the surf club wall. Gnarly view out there!",
-      "Photograph the view from the end of the pier",
-      "Radical shot! You're officially in the surf club now, dude!" },
-    { "Clean Sweep", 39, 1, 2, HH, 44, 10, SQ_FETCH, ITEM_SOAP, -1, 3, HH, 0, 0,
+      TXT_Q9_OFFER,
+      TXT_Q9_HINT,
+      TXT_Q9_THANKS },
+    { TXT_Q10_TITLE, 39, 1, 2, HH, 44, 10, SQ_FETCH, ITEM_SOAP, -1, 3, HH, 0, 0,
       90, ITEM_NONE, 0, NONE,
-      "Blorp! I wash every window in Hillvile Towers. I'm out of soap and full of pride. Three Soaps, please!",
-      "Bring Squishy 3 Soap (shop)",
-      "Sparkle sparkle! You can see your reflection in me now. Thanks, friend!" },
-    { "Choir Practice", 142, 1, 5, HH, 23, 36, SQ_VISIT, PLACE_CONCERT_HALL, -1, 1, HH, 25, 35,
+      TXT_Q10_OFFER,
+      TXT_Q10_HINT,
+      TXT_Q10_THANKS },
+    { TXT_Q11_TITLE, 142, 1, 5, HH, 23, 36, SQ_VISIT, PLACE_CONCERT_HALL, -1, 1, HH, 25, 35,
       60, ITEM_NONE, 0, USTORY_SONG_FIRST + SONG_CHURCH - 1,
-      "HALLELUJAH! I mean, hello. The Concert Hall needs someone to test the echo. Go in and sing! Loudly!",
-      "Visit the Concert Hall",
-      "I heard you from here! Beautiful! Terrible! Beautiful! Here's a hymn for your jukebox." },
+      TXT_Q11_OFFER,
+      TXT_Q11_HINT,
+      TXT_Q11_THANKS },
 
     /* ---------------- chapter 2: something in the vapor -------------------- */
-    { "Smoke Signals", 57, 2, 2, HH, 50, 24, SQ_PHOTO, 0, -1, 1, HH, 51, 38,
+    { TXT_Q12_TITLE, 57, 2, 2, HH, 50, 24, SQ_PHOTO, 0, -1, 1, HH, 51, 38,
       80, ITEM_NONE, 0, USTORY_REWARD_FIRST + 8,
-      "The weather's all wrong. A purple cloud is sitting over Cloud Nine Vapor and it's NOT on my forecast. Photo, please?",
-      "Photograph the purple cloud at Cloud Nine Vapor",
-      "Look at that cloud... it's SMILING. That's not meteorology. That's evil. Here, a storm chaser badge." },
-    { "Steam Cleaning", 41, 2, 4, HH, 21, 26, SQ_DELIVER, ID_STEAMY, ITEM_SOAP, 1, HH, 38, 26,
+      TXT_Q12_OFFER,
+      TXT_Q12_HINT,
+      TXT_Q12_THANKS },
+    { TXT_Q13_TITLE, 41, 2, 4, HH, 21, 26, SQ_DELIVER, ID_STEAMY, ITEM_SOAP, 1, HH, 38, 26,
       70, ITEM_SOAP, 2, NONE,
-      "Poor Steamy smells like grape after his... ordeal. Bring him my lavender soap? It's very calming.",
-      "Bring the lavender soap to Steamy (plaza)",
-      "He's back at the bath house, humming! Real humming, not demon humming. Bless you!" },
-    { "Holy Supplies", 354, 2, 3, HH, 11, 27, SQ_FETCH, ITEM_HOLY_WATER, -1, 2, HH, 0, 0,
+      TXT_Q13_OFFER,
+      TXT_Q13_HINT,
+      TXT_Q13_THANKS },
+    { TXT_Q14_TITLE, 354, 2, 3, HH, 11, 27, SQ_FETCH, ITEM_HOLY_WATER, -1, 2, HH, 0, 0,
       100, ITEM_ROSARY, 1, NONE,
-      "The old scrolls warn of more possessions. We need Holy Water, two flasks. The church sells it, child.",
-      "Bring Sr. Lumen 2 Holy Water",
-      "Blessed be. Take this rosary: it once made a demon sneeze for an hour." },
-    { "Scrap Science", 69, 2, 4, HH, 50, 12, SQ_FETCH, ITEM_SCRAP, -1, 3, HH, 0, 0,
+      TXT_Q14_OFFER,
+      TXT_Q14_HINT,
+      TXT_Q14_THANKS },
+    { TXT_Q15_TITLE, 69, 2, 4, HH, 50, 12, SQ_FETCH, ITEM_SCRAP, -1, 3, HH, 0, 0,
       80, ITEM_GEARS, 2, NONE,
-      "Squeak! I'm inventing a vapor detector! I just need three bits of scrap. Rivet sells some, or find it in fights!",
-      "Bring Prof. Fizz 3 Scrap",
-      "EUREKA! It beeps! It beeps at everything! Take some gears for your welding." },
-    { "Nervous Nellie", 23, 2, 2, HH, 19, 30, SQ_EXORCISE, 14, -1, 1, HH, 21, 31,
+      TXT_Q15_OFFER,
+      TXT_Q15_HINT,
+      TXT_Q15_THANKS },
+    { TXT_Q16_TITLE, 23, 2, 2, HH, 19, 30, SQ_EXORCISE, 14, -1, 1, HH, 21, 31,
       150, ITEM_CHILL_PILL, 1, USTORY_REWARD_FIRST + 7,
-      "My client Lagspike vaped ALL night on stream and now his chat is only screaming. Can you help him? Gently?",
-      "Exorcise Lagspike (near the graveyard)",
-      "He's streaming cat videos again. Normal cat videos. Have a chill pill and a golden hug token." },
-    { "No Vapes at Daycare", 36, 2, 3, HH, 30, 42, SQ_FIND, 0, -1, 1, HH, 5, 49,
+      TXT_Q16_OFFER,
+      TXT_Q16_HINT,
+      TXT_Q16_THANKS },
+    { TXT_Q17_TITLE, 36, 2, 3, HH, 30, 42, SQ_FIND, 0, -1, 1, HH, 5, 49,
       60, ITEM_NONE, 0, NONE,
-      "Someone dropped a vape pen at the playground! The kids think it's a magic wand. Please find it before they do!",
-      "Find the dropped vape pen (playground)",
-      "Got it? Into the bin it goes. Forever. Thank you, @P. The kids are safe." },
-    { "A Taste of Home", 13, 2, 3, HH, 53, 10, SQ_FETCH, ITEM_CANDY_EYEBALLS, -1, 2, HH, 0, 0,
+      TXT_Q17_OFFER,
+      TXT_Q17_HINT,
+      TXT_Q17_THANKS },
+    { TXT_Q18_TITLE, 13, 2, 3, HH, 53, 10, SQ_FETCH, ITEM_CANDY_EYEBALLS, -1, 2, HH, 0, 0,
       60, ITEM_WELD_ROD, 2, NONE,
-      "Don't laugh. I miss Hellvile candy. The shop sells Candy Eyeballs now. Two packs? For morale. Imp morale.",
-      "Bring Rivet 2 Candy Eyeballs (shop)",
-      "*crunch* ...Just like Mum's. Ahem. Thanks. Have some weld rods. Don't tell anyone I'm sentimental." },
-    { "Knightly Hearts", 52, 2, 5, HH, 40, 26, SQ_MATCH, 9, 86, 1, HH, 12, 21,
+      TXT_Q18_OFFER,
+      TXT_Q18_HINT,
+      TXT_Q18_THANKS },
+    { TXT_Q19_TITLE, 52, 2, 5, HH, 40, 26, SQ_MATCH, 9, 86, 1, HH, 12, 21,
       120, ITEM_RING, 1, USTORY_REWARD_FIRST + 0,
-      "Dame Fluff and Valkyrie have been sparring for YEARS. It's obviously love. Go nudge Dame Fluff, darling!",
-      "Nudge Dame Fluff to confess (west lawn)",
-      "They're holding paws! With gauntlets on! Take this ring, and my Cupid's Arrow pin." },
-    { "Pip's Bravery Badge", 42, 2, 2, HH, 11, 47, SQ_PHOTO, 0, -1, 1, HH, 55, 27,
+      TXT_Q19_OFFER,
+      TXT_Q19_HINT,
+      TXT_Q19_THANKS },
+    { TXT_Q20_TITLE, 42, 2, 2, HH, 11, 47, SQ_PHOTO, 0, -1, 1, HH, 55, 27,
       50, ITEM_PLUSHIE, 1, USTORY_REWARD_FIRST + 15,
-      "Mr. Flops wants a picture of the scary Wall! He's too scared. I'm NOT scared. You do it though.",
-      "Photograph the Wall for Pip",
-      "Whoa! Spooky! Mr. Flops fainted. Here's a plushie for being brave, and Mr. Flops ears!" },
+      TXT_Q20_OFFER,
+      TXT_Q20_HINT,
+      TXT_Q20_THANKS },
 
     /* ---------------- chapter 3: hell invades ------------------------------ */
-    { "Fire Drill", 99, 3, 3, HH, 45, 22, SQ_HUNT, MAPID_HAHALAND_INVADED, 4, 1, HH, 45, 24,
+    { TXT_Q21_TITLE, 99, 3, 3, HH, 45, 22, SQ_HUNT, MAPID_HAHALAND_INVADED, 4, 1, HH, 45, 24,
       150, ITEM_HELLSTEEL, 1, USTORY_REWARD_FIRST + 5,
-      "WOOF! A big brute demon is sitting on my fire hydrant! I'm a fire chief, not a demon chief! Help!",
-      "Defeat the brute by the plaza",
-      "The hydrant is FREE! You're an honorary firefighter now, kid. Here's your badge." },
-    { "Barricade the Bakery", 1, 3, 3, HH, 9, 28, SQ_FETCH, ITEM_SCRAP, -1, 3, HH, 0, 0,
+      TXT_Q21_OFFER,
+      TXT_Q21_HINT,
+      TXT_Q21_THANKS },
+    { TXT_Q22_TITLE, 1, 3, 3, HH, 9, 28, SQ_FETCH, ITEM_SCRAP, -1, 3, HH, 0, 0,
       100, ITEM_CUPCAKE, 3, NONE,
-      "Sweet pea! The demons are after my sourdough starter! Three bits of scrap and I can barricade the cafe!",
-      "Bring Nana 3 Scrap",
-      "Perfect! Nothing gets between Nana and her starter. Have some emergency cupcakes." },
-    { "Medic!", 111, 3, 3, HH, 10, 29, SQ_FETCH, ITEM_MEDICINE, -1, 2, HH, 0, 0,
+      TXT_Q22_OFFER,
+      TXT_Q22_HINT,
+      TXT_Q22_THANKS },
+    { TXT_Q23_TITLE, 111, 3, 3, HH, 10, 29, SQ_FETCH, ITEM_MEDICINE, -1, 2, HH, 0, 0,
       120, ITEM_ENERGY_DRINK, 2, NONE,
-      "So many scrapes and singed fur. I'm running low. Two Medicine, please. My cold hands are steady, at least.",
-      "Bring Dr. Bloom 2 Medicine",
-      "Thank you. Everyone will be patched up. You look tired. Drink these. Doctor's orders." },
-    { "Hymn of Hope", 426, 3, 4, HH, 3, 27, SQ_EXORCISE, 91, -1, 1, HH, 16, 28,
+      TXT_Q23_OFFER,
+      TXT_Q23_HINT,
+      TXT_Q23_THANKS },
+    { TXT_Q24_TITLE, 426, 3, 4, HH, 3, 27, SQ_EXORCISE, 91, -1, 1, HH, 16, 28,
       150, ITEM_BLESSED_SALT, 2, NONE,
-      "Bellwether rang the bells too close to the cloud and now they toll BACKWARDS. Free her, please!",
-      "Exorcise Bellwether the bell ringer",
-      "Listen! The bells ring forward again! Take some blessed salt for the road." },
-    { "Mr. Biscuit", 127, 3, 4, HH, 8, 27, SQ_PET, 0, -1, 1, HH, 16, 35,
+      TXT_Q24_OFFER,
+      TXT_Q24_HINT,
+      TXT_Q24_THANKS },
+    { TXT_Q25_TITLE, 127, 3, 4, HH, 8, 27, SQ_PET, 0, -1, 1, HH, 16, 35,
       100, ITEM_NONE, 0, NONE,
-      "*hic* Mr. Biscuit ran away when the sky went red! He's a puppy. He's THIS big. *gestures tiny*",
-      "Find Mr. Biscuit the puppy (by the graveyard)",
-      "MR. BISCUIT! *hug* Thank you thank you thank you!" },
-    { "Graveyard Shift", 354, 3, 3, HH, 11, 27, SQ_HUNT, MAPID_HAHALAND_INVADED, 5, 1, HH, 14, 48,
+      TXT_Q25_OFFER,
+      TXT_Q25_HINT,
+      TXT_Q25_THANKS },
+    { TXT_Q26_TITLE, 354, 3, 3, HH, 11, 27, SQ_HUNT, MAPID_HAHALAND_INVADED, 5, 1, HH, 14, 48,
       200, ITEM_BLESSED_SALT, 1, USTORY_REWARD_FIRST + 6,
-      "Something with too many legs crawled out of the Fun Fair. Spiders made of cloud, child. Purge them.",
-      "Clear the cloud spiders at the Fun Fair",
-      "The children can play again. Take this salt and my old spider swatter medal, child." },
-    { "Spire Scout", 17, 3, 3, HH, 46, 40, SQ_PHOTO, 0, -1, 1, HH, 52, 39,
+      TXT_Q26_OFFER,
+      TXT_Q26_HINT,
+      TXT_Q26_THANKS },
+    { TXT_Q27_TITLE, 17, 3, 3, HH, 46, 40, SQ_PHOTO, 0, -1, 1, HH, 52, 39,
       80, ITEM_NONE, 0, USTORY_REWARD_FIRST + 11,
-      "My balloon got sucked toward that cloud tower! Get me a close-up photo so I can plan a rescue flight!",
-      "Photograph the foot of Cloud Nine Spire",
-      "Oof. It's even uglier up close. Thanks! Here, my sky scout wings pin." },
-    { "Stay Awake, Guards!", 86, 3, 3, HH, 24, 23, SQ_FETCH, ITEM_ENERGY_DRINK, -1, 2, HH, 0, 0,
+      TXT_Q27_OFFER,
+      TXT_Q27_HINT,
+      TXT_Q27_THANKS },
+    { TXT_Q28_TITLE, 86, 3, 3, HH, 24, 23, SQ_FETCH, ITEM_ENERGY_DRINK, -1, 2, HH, 0, 0,
       100, ITEM_HELLSTEEL, 1, NONE,
-      "The royal guard hasn't slept since the sky ripped. Two Energy Drinks and we'll hold the plaza till dawn!",
-      "Bring Valkyrie 2 Energy Drinks",
-      "HUZZAH! The guard stands firm! Take this hellsteel we pried off a demon." },
-    { "Comfort Food", 4, 3, 4, HH, 39, 22, SQ_DELIVER, 26, ITEM_ONIGIRI, 1, HH, 22, 20,
+      TXT_Q28_OFFER,
+      TXT_Q28_HINT,
+      TXT_Q28_THANKS },
+    { TXT_Q29_TITLE, 4, 3, 4, HH, 39, 22, SQ_DELIVER, 26, ITEM_ONIGIRI, 1, HH, 22, 20,
       70, ITEM_ONIGIRI, 1, NONE,
-      "Hootenanny has been keeping night watch for three days straight. Bring him my onigiri? Extra pickle.",
-      "Bring the onigiri to Hootenanny (west lawn)",
-      "He ate it in one bite and said 'hoo'. That means thank you. Here's one for you too." },
-    { "Save the Mascot", 43, 3, 4, HH, 14, 44, SQ_EXORCISE, 20, -1, 1, HH, 17, 47,
+      TXT_Q29_OFFER,
+      TXT_Q29_HINT,
+      TXT_Q29_THANKS },
+    { TXT_Q30_TITLE, 43, 3, 4, HH, 14, 44, SQ_EXORCISE, 20, -1, 1, HH, 17, 47,
       150, ITEM_PLUSHIE, 1, NONE,
-      "Hugsley the town mascot breathed the cloud and now he hugs TOO HARD. Please exorcise him before he hugs a bus.",
-      "Exorcise Hugsley the mascot (playground)",
-      "He's back to normal hugs! Normal, wonderful hugs. Here, a balloon animal. It's a plushie. Close enough." },
+      TXT_Q30_OFFER,
+      TXT_Q30_HINT,
+      TXT_Q30_THANKS },
 
     /* ---------------- chapter 4: hellvile, reconciliation ------------------ */
-    { "Postcard from the Fountain", 753, 4, 5, HV, 36, 36, SQ_PHOTO, 0, -1, 1, HH, 34, 24,
+    { TXT_Q31_TITLE, 753, 4, 5, HV, 36, 36, SQ_PHOTO, 0, -1, 1, HH, 34, 24,
       120, ITEM_NONE, 0, NONE,
-      "I write poems on the gate in chalk. I've never seen a fountain that giggles. Could you bring me a photo of one?",
-      "Photograph HaHaland's fountain for Clinker",
-      "A fountain... that laughs. I'm going to write forty poems about this. Thank you." },
-    { "Charcoal Cookies", 566, 4, 5, HV, 20, 22, SQ_DELIVER, ID_NANA, ITEM_BRIMSTONE_BAGEL, 1, HH, 25, 17,
+      TXT_Q31_OFFER,
+      TXT_Q31_HINT,
+      TXT_Q31_THANKS },
+    { TXT_Q32_TITLE, 566, 4, 5, HV, 20, 22, SQ_DELIVER, ID_NANA, ITEM_BRIMSTONE_BAGEL, 1, HH, 25, 17,
       150, ITEM_ANGEL_CAKE, 1, NONE,
-      "I baked for Nana Pudding! The famous Nana Pudding! They're only a little bit charcoal. Would you deliver them?",
-      "Bring Charlotte's bagels to Nana Pudding",
-      "She said they were 'crunchy and full of love'! She wants to swap recipes! Have some angel cake!" },
-    { "The Florist's Apprentice", 582, 4, 5, HV, 24, 31, SQ_RECONCILE, 29, -1, 1, HH, 30, 16,
+      TXT_Q32_OFFER,
+      TXT_Q32_HINT,
+      TXT_Q32_THANKS },
+    { TXT_Q33_TITLE, 582, 4, 5, HV, 24, 31, SQ_RECONCILE, 29, -1, 1, HH, 30, 16,
       120, ITEM_FLOWERS, 3, USTORY_REWARD_FIRST + 10,
-      "Shh. I want to be a florist. A HILLVILE florist. Could you ask Bluebell if she'd take a ghoul apprentice?",
-      "Ask Bluebell to take Morguelet as an apprentice",
-      "She said YES?! I'm going to cry black tears of joy. Here, flowers, and a flower friend ribbon!" },
-    { "Game Night", 730, 4, 5, HV, 22, 12, SQ_FETCH, ITEM_BOARD_GAME, -1, 1, HH, 0, 0,
+      TXT_Q33_OFFER,
+      TXT_Q33_HINT,
+      TXT_Q33_THANKS },
+    { TXT_Q34_TITLE, 730, 4, 5, HV, 22, 12, SQ_FETCH, ITEM_BOARD_GAME, -1, 1, HH, 0, 0,
       100, ITEM_NONE, 0, NONE,
-      "I lowered the rent for the families in my crypts. Now the kids need something fun. A board game, maybe?",
-      "Bring Graveley a Board Game",
-      "Ha! The little ghouls will play for a century. Thank you. Don't tell anyone I'm nice." },
-    { "Lullaby for Clouds", 701, 4, 5, HV, 55, 34, SQ_VISIT, PLACE_CONCERT_HALL, -1, 1, HH, 25, 35,
+      TXT_Q34_OFFER,
+      TXT_Q34_HINT,
+      TXT_Q34_THANKS },
+    { TXT_Q35_TITLE, 701, 4, 5, HV, 55, 34, SQ_VISIT, PLACE_CONCERT_HALL, -1, 1, HH, 25, 35,
       100, ITEM_NONE, 0, NONE,
-      "I hum lullabies to the clouds I haul. I've heard Hillvile has a Concert Hall. Could you go hear it for me?",
-      "Visit HaHaland's Concert Hall for Ploddy",
-      "Real music. In a real hall. The clouds will sleep so well tonight. Thank you, friend." },
-    { "Squeaky Toy Diplomacy", 855, 4, 5, HV, 54, 31, SQ_FETCH, ITEM_PLUSHIE, -1, 1, HH, 0, 0,
+      TXT_Q35_OFFER,
+      TXT_Q35_HINT,
+      TXT_Q35_THANKS },
+    { TXT_Q36_TITLE, 855, 4, 5, HV, 54, 31, SQ_FETCH, ITEM_PLUSHIE, -1, 1, HH, 0, 0,
       90, ITEM_MEAT_SLAB, 1, NONE,
-      "GRR. Nobody gets into the Arena without a squeaky toy. Rules is rules. ...Can I keep it after?",
-      "Bring Big Snarl a Plushie",
-      "*squeak squeak squeak* ...Ahem. You're on the list. FOREVER. Have a steak." },
-    { "Last Puff", 766, 4, 5, HV, 9, 17, SQ_EXORCISE, 788, -1, 1, HV, 11, 19,
+      TXT_Q36_OFFER,
+      TXT_Q36_HINT,
+      TXT_Q36_THANKS },
+    { TXT_Q37_TITLE, 766, 4, 5, HV, 9, 17, SQ_EXORCISE, 788, -1, 1, HV, 11, 19,
       180, ITEM_SAGE_BUNDLE, 1, NONE,
-      "My friend Hazey still heralds Vapula's smoke. He can't stop. Something's still inside him. Please?",
-      "Exorcise Hazey the smoke herald",
-      "He coughed out the last of it and then he SANG. My friend is back! Thank you!" },
-    { "Counting Together", 712, 4, 5, HV, 9, 31, SQ_RECONCILE, 104, -1, 1, HH, 46, 24,
+      TXT_Q37_OFFER,
+      TXT_Q37_HINT,
+      TXT_Q37_THANKS },
+    { TXT_Q38_TITLE, 712, 4, 5, HV, 9, 31, SQ_RECONCILE, 104, -1, 1, HH, 46, 24,
       120, ITEM_NONE, 0, NONE,
-      "I counted days for ten years. They say a clockmaker in Hillvile counts seconds. Would he count with me?",
-      "Introduce Tallyworn to Tock the clockmaker",
-      "He said yes! Every day at noon, we count together. One. Two. Three. Thank you." },
-    { "Echo of the Duke", 519, 4, 5, HV, 52, 37, SQ_HUNT, MAPID_CLOUD_NINE_SPIRE, -1, 1, HV, 52, 37,
+      TXT_Q38_OFFER,
+      TXT_Q38_HINT,
+      TXT_Q38_THANKS },
+    { TXT_Q39_TITLE, 519, 4, 5, HV, 52, 37, SQ_HUNT, MAPID_CLOUD_NINE_SPIRE, -1, 1, HV, 52, 37,
       250, ITEM_HELLSTEEL, 2, USTORY_REWARD_FIRST + 12,
-      "Sniff sniff. There's still an echo of Vapula's stink up in that Spire. A real champion would clear it out.",
-      "Clear the echo of Vapula from the Spire",
-      "You smell like victory! And smoke. Mostly victory. Take this champion's buckle, champ." },
-    { "Rival Bakers", 669, 4, 5, HV, 17, 40, SQ_RECONCILE, 73, -1, 1, HH, 29, 19,
+      TXT_Q39_OFFER,
+      TXT_Q39_HINT,
+      TXT_Q39_THANKS },
+    { TXT_Q40_TITLE, 669, 4, 5, HV, 17, 40, SQ_RECONCILE, 73, -1, 1, HH, 29, 19,
       120, ITEM_CUPCAKE, 2, NONE,
-      "Crumbelina the royal baker said my marshmallows were 'a crime'. Could you... make peace for me?",
-      "Make peace between Scorchmello and Crumbelina",
-      "A bake-off! She challenged me to a FRIENDLY bake-off! Have some of her cupcakes, they're incredible." },
-    { "Squeak the Bat", 820, 4, 5, HV, 45, 38, SQ_PET, 0, -1, 1, HV, 44, 41,
+      TXT_Q40_OFFER,
+      TXT_Q40_HINT,
+      TXT_Q40_THANKS },
+    { TXT_Q41_TITLE, 820, 4, 5, HV, 45, 38, SQ_PET, 0, -1, 1, HV, 44, 41,
       100, ITEM_NONE, 0, USTORY_REWARD_FIRST + 9,
-      "*sniffle* My pet bat Squeak flew off when the gate opened! He likes the lake shore. I bit someone. Sorry.",
-      "Find Squeak the bat by the Lake of Fire",
-      "SQUEAK! *happy chomp* Oops, sorry. Here, you're officially a bat buddy!" },
-    { "Wall Art", 565, 4, 5, HV, 11, 24, SQ_PHOTO, 0, -1, 1, HV, 3, 25,
+      TXT_Q41_OFFER,
+      TXT_Q41_HINT,
+      TXT_Q41_THANKS },
+    { TXT_Q42_TITLE, 565, 4, 5, HV, 11, 24, SQ_PHOTO, 0, -1, 1, HV, 3, 25,
       100, ITEM_NONE, 0, USTORY_REWARD_FIRST + 13,
-      "I painted hearts on the Wall every night for years. Before they knock it down, could you photograph them?",
-      "Photograph the hearts on the Wall gate",
-      "My hearts will live forever in that picture. Here, a wall artist ribbon. You've earned it." },
+      TXT_Q42_OFFER,
+      TXT_Q42_HINT,
+      TXT_Q42_THANKS },
 
     /* ---------------- after the credits: the united park -------------------- */
-    { "Encore!", 511, 5, 5, PK, 36, 12, SQ_VISIT, PLACE_STAGE, -1, 1, PK, 31, 8,
+    { TXT_Q43_TITLE, 511, 5, 5, PK, 36, 12, SQ_VISIT, PLACE_STAGE, -1, 1, PK, 31, 8,
       200, ITEM_NONE, 0, USTORY_SONG_FIRST + SONG_FESTIVAL - 1,
-      "That festival was the best gig of my un-life. Get up on the Unity Stage and give 'em an encore!",
-      "Visit the Unity Stage for an encore",
-      "ENCORE! ENCORE! You rock, Hillvile! Take the festival anthem for your jukebox." },
-    { "Frog Wedding", 62, 5, 5, PK, 20, 12, SQ_MATCH, 912, 82, 1, PK, 45, 40,
+      TXT_Q43_OFFER,
+      TXT_Q43_HINT,
+      TXT_Q43_THANKS },
+    { TXT_Q44_TITLE, 62, 5, 5, PK, 20, 12, SQ_MATCH, 912, 82, 1, PK, 45, 40,
       300, ITEM_RING, 1, USTORY_REWARD_FIRST + 16,
-      "Warty sings love songs to the moon. Lily Lou grows lilies for the pond. A cross-border frog wedding! Nudge him?",
-      "Nudge Warty to confess to Lily Lou",
-      "A wedding! A WEDDING! The first cross-border wedding in Hellvile Park! Have a ring and my planner pin!" },
-    { "The Big Picture", 46, 5, 5, PK, 22, 15, SQ_PHOTO, 0, -1, 1, PK, 31, 18,
+      TXT_Q44_OFFER,
+      TXT_Q44_HINT,
+      TXT_Q44_THANKS },
+    { TXT_Q45_TITLE, 46, 5, 5, PK, 22, 15, SQ_PHOTO, 0, -1, 1, PK, 31, 18,
       150, ITEM_NONE, 0, NONE,
-      "Darling, I need the shot of the century: the river, both sides, no Wall. Stand on the bridge and snap it!",
-      "Photograph the park from the north bridge",
-      "No Wall in the frame. Just people. It's the most beautiful thing I've ever developed." },
-    { "Potluck Planner", 778, 5, 5, PK, 40, 22, SQ_FETCH, ITEM_SOUL_SOUP, -1, 2, HH, 0, 0,
+      TXT_Q45_OFFER,
+      TXT_Q45_HINT,
+      TXT_Q45_THANKS },
+    { TXT_Q46_TITLE, 778, 5, 5, PK, 40, 22, SQ_FETCH, ITEM_SOUL_SOUP, -1, 2, HH, 0, 0,
       150, ITEM_ANGEL_CAKE, 2, NONE,
-      "My potluck is open to everyone now. Everyone! I need more soup. Two Soul Soups from the market, dear?",
-      "Bring Mother Nox 2 Soul Soup (Hellvile market)",
-      "Splendid. Hillvile brought cake and we brought soup. That is diplomacy. Have some cake." },
-    { "Vapula's Apology", 999, 5, 5, PK, 45, 31, SQ_DELIVER, ID_MAYOR, ITEM_FLOWERS, 1, PK, 29, 10,
+      TXT_Q46_OFFER,
+      TXT_Q46_HINT,
+      TXT_Q46_THANKS },
+    { TXT_Q47_TITLE, 999, 5, 5, PK, 45, 31, SQ_DELIVER, ID_MAYOR, ITEM_FLOWERS, 1, PK, 29, 10,
       200, ITEM_NONE, 0, NONE,
-      "...*tiny wheeze* I'm... smaller now. Humbler. Could you give these flowers to your Mayor? With my apology?",
-      "Bring Vapula's apology flowers to the Mayor (stage)",
-      "He forgave me. He HUGGED me. I didn't know a cloud could feel this... dry-eyed. Thank you." },
-    { "Explorer's Club", 15, 4, 5, HH, 14, 25, SQ_VISIT, PLACE_MARKET, -1, 1, HV, 19, 17,
+      TXT_Q47_OFFER,
+      TXT_Q47_HINT,
+      TXT_Q47_THANKS },
+    { TXT_Q48_TITLE, 15, 4, 5, HH, 14, 25, SQ_VISIT, PLACE_MARKET, -1, 1, HV, 19, 17,
       120, ITEM_NONE, 0, NONE,
-      "As scout leader I MUST know: what do they sell at the Hellvile imp market? Go look! For science! For badges!",
-      "Visit the imp market in Hellvile",
-      "Spicy peppers and eyeball candy?! Incredible. You've earned the Cross-Border Explorer badge!" },
+      TXT_Q48_OFFER,
+      TXT_Q48_HINT,
+      TXT_Q48_THANKS },
 };
 #define NQ ((int)(sizeof(quests) / sizeof(quests[0])))
 DOOMO_STATIC_ASSERT(sizeof(quests) / sizeof(quests[0]) <= STORY_SIDE_MAX, side_quests_fit);
@@ -361,11 +359,22 @@ int story_side_state(int q)
     return s == 1 ? SIDE_ACTIVE : s == 2 ? SIDE_READY : SIDE_DONE;
 }
 
-const char *story_side_title(int q) { return (q >= 0 && q < NQ) ? quests[q].title : ""; }
+/* Titles and hints live in the legside pack: decoded into a small ring
+ * so a caller may hold two at once (the quest log's row and its hint). */
+static const char *side_text(unsigned tid)
+{
+    static char ring[2][96];
+    static uint8_t k;
+    char *b = ring[k++ & 1];
+    if (txt_get((uint16_t)tid, b, (int)sizeof(ring[0])) < 0) b[0] = 0;
+    return b;
+}
+
+const char *story_side_title(int q) { return (q >= 0 && q < NQ) ? side_text(quests[q].title) : ""; }
 int story_side_kind(int q) { return (q >= 0 && q < NQ) ? quests[q].kind : 0; }
 int story_side_giver(int q) { return (q >= 0 && q < NQ) ? quests[q].giver : -1; }
 int story_side_chapter(int q) { return (q >= 0 && q < NQ) ? quests[q].ch_min : 0; }
-const char *story_side_hint(int q) { return (q >= 0 && q < NQ) ? quests[q].hint : ""; }
+const char *story_side_hint(int q) { return (q >= 0 && q < NQ) ? side_text(quests[q].hint) : ""; }
 const char *story_side_kind_name(int k) { return (k >= 0 && k < SQ_KIND_COUNT) ? kind_names[k] : ""; }
 
 void story_side_where(int q, int *map_id, int *cx, int *cy)
@@ -407,8 +416,133 @@ const char *side_objective(void)
 {
     int q;
     for (q = 0; q < NQ; q++) if (raw_state(q) == 2) return "Hand in a finished side quest!";
-    for (q = 0; q < NQ; q++) if (raw_state(q) == 1) return quests[q].hint;
+    for (q = 0; q < NQ; q++) if (raw_state(q) == 1) return side_text(quests[q].hint);
     return "";
+}
+
+/* ---- S2: the side-table walker (S100..S217, core/gen/side_table.c) ----------
+ * The new missions are VM scripts in the side packs; their rows say who
+ * offers them, when and after what. The gate (SPEC S2): a mission is offered
+ * in its chapter window, after the mission it requires; part k of a chain
+ * after part k-1, and at most one part of a chain per chapter; parts 3+ of a
+ * chain that crosses the Wall only from Ep 4.1. STRY.side2 keeps 2 bits per
+ * row (0 none, 1 offered, 2 active, 3 done). Which chapter a chain's last
+ * part was turned in is kept for the session only (STRY is full): after a
+ * reload the next part may come one chapter early, never out of order. */
+static uint8_t chain_done_ch[26];        /* the chapter (0..5) each chain's last part was done */
+static int16_t cur2 = -1;                 /* the row whose script is running */
+
+static int side2_bits(const uint8_t *side2, int sid)
+{
+    return (side2[sid >> 2] >> ((sid & 3) * 2)) & 3;
+}
+
+static int chain_crosses(const StorySideRow *rows, int chain)
+{
+    int i, seen = 0;
+    for (i = 0; i < STORY_SIDE2_ROWS; i++) {
+        const StorySideRow *r = &rows[i];
+        if (!r->kind || r->chain != chain) continue;
+        if (r->side == 3) return 1;
+        if (r->side <= 1) seen |= 1 << r->side;
+    }
+    return seen == 3;
+}
+
+int story_side2_gate(const StorySideRow *rows, int sid, const uint8_t *side2,
+                     int chapter, int ep41, const uint8_t *done_in_chapter)
+{
+    const StorySideRow *r;
+    int i;
+    if (!rows || !side2 || sid < 0 || sid >= STORY_SIDE2_ROWS) return 0;
+    r = &rows[sid];
+    if (!r->kind || side2_bits(side2, sid) != 0) return 0;
+    if (chapter < r->ch_lo || chapter > r->ch_hi) return 0;
+    if (r->requires && (r->requires - 1 >= STORY_SIDE2_ROWS || side2_bits(side2, r->requires - 1) != 3)) return 0;
+    if (r->chain >= 'A' && r->chain <= 'Z') {
+        if (r->step > 1) {
+            int prev = -1;
+            for (i = 0; i < STORY_SIDE2_ROWS; i++)
+                if (rows[i].kind && rows[i].chain == r->chain && rows[i].step == r->step - 1) { prev = i; break; }
+            if (prev < 0 || side2_bits(side2, prev) != 3) return 0;
+            if (done_in_chapter && done_in_chapter[r->chain - 'A'] == chapter) return 0;
+        }
+        if (r->step >= 3 && !ep41 && chain_crosses(rows, r->chain)) return 0;
+    }
+    return 1;
+}
+
+int story_side2_available(int sid)
+{
+    const DoomoResident *g;
+    int ch = chapter_now(), ep41;
+    if (sid < 0 || sid >= STORY_SIDE2_ROWS || !doomo_side_rows[sid].kind) return 0;
+    g = town_res(doomo_side_rows[sid].giver);
+    if (!g || g->status != RES_ALIVE) return 0;
+    ep41 = story_episode_order(story_beat()) >= story_episode_order(BEAT_EP4_1);
+    return story_side2_gate(doomo_side_rows, sid, story_stry()->side2, ch, ep41, chain_done_ch);
+}
+
+/* Where a mission's giver stands: Hillvile givers are on the invaded town
+ * in Ch3 (SPEC S2), Hellvile's in Hellvile, the park's in the united park. */
+int story_side2_giver_map(int sid)
+{
+    int side;
+    if (sid < 0 || sid >= STORY_SIDE2_ROWS) return -1;
+    side = doomo_side_rows[sid].side;
+    if (side == 1) return MAPID_HELLVILE;
+    if (side == 2) return MAPID_PARK_UNITED;
+    if (side == 3 && story_map() == MAPID_HELLVILE) return MAPID_HELLVILE;
+    return chapter_now() == 3 ? MAPID_HAHALAND_INVADED : MAPID_HAHALAND;
+}
+
+int story_trophies(const StorySideRow *rows, const uint8_t *side2, uint8_t *out, int max)
+{
+    int i, n = 0;
+    if (!rows || !side2) return 0;
+    for (i = 0; i < STORY_SIDE2_ROWS && n < max; i++)
+        if (rows[i].kind && rows[i].trophy != 0xFFFFu && side2_bits(side2, i) == 3) out[n++] = (uint8_t)i;
+    return n;
+}
+
+/* Talking to a giver: an offered (or newly available) mission runs its
+ * offer script, an active one its `active` script; the scripts set the
+ * state themselves (quest S1xx active / done). */
+static int side2_npc(int id)
+{
+    int sid;
+    for (sid = 0; sid < STORY_SIDE2_ROWS; sid++) {
+        const StorySideRow *r = &doomo_side_rows[sid];
+        int st;
+        if (!r->kind || r->giver != (unsigned)id) continue;
+        st = story_side2_state(sid);
+        if (st == 0 && !story_side2_available(sid)) continue;
+        if (st == 3) continue;
+        if (st == 2 && r->active != 0xFFFFu) {
+            cur2 = (int16_t)sid;
+            story_conv(r->active, 67 /* side2_after */);
+            return 1;
+        }
+        if (st <= 1 && r->offer != 0xFFFFu) {
+            if (st == 0) story_side2_set_state(sid, 1);
+            cur2 = (int16_t)sid;
+            story_conv(r->offer, 67 /* side2_after */);
+            return 1;
+        }
+    }
+    return 0;
+}
+
+static void side2_after(void)
+{
+    int sid = cur2;
+    cur2 = -1;
+    if (sid < 0 || sid >= STORY_SIDE2_ROWS) return;
+    if (story_side2_state(sid) == 3) {
+        int c = doomo_side_rows[sid].chain;
+        if (c >= 'A' && c <= 'Z') chain_done_ch[c - 'A'] = (uint8_t)chapter_now();
+    }
+    ow_refresh_cast();
 }
 
 /* ---- accepting & finishing -------------------------------------------------- */
@@ -447,7 +581,7 @@ static void finish(int q)
     ow_refresh_cast();
 }
 
-static const char *const O_accept[] = { "Sure, I'll help!", "Maybe later" };
+static const char *const O_accept[] = { "Sure, I'll help!", "Maybe later", NULL };
 
 static void accept_choice(int c)
 {
@@ -457,6 +591,11 @@ static void accept_choice(int c)
 static void say_giver(int q, const char *text)
 {
     story_say(quests[q].giver, text);
+}
+
+static void say_giver_txt(int q, unsigned tid)
+{
+    story_say_txt(quests[q].giver, tid);
 }
 
 static void hunt_choice(int c)
@@ -470,7 +609,7 @@ static void hunt_choice(int c)
         story_push_combat(s->target, CTX_SIDE, cur_q, -1, -1, -1);
 }
 
-static const char *const O_hunt[] = { "Let's go!", "Not yet" };
+static const char *const O_hunt[] = { "Let's go!", "Not yet", NULL };
 
 static void exo_choice(int c)
 {
@@ -481,6 +620,7 @@ static void exo_choice(int c)
 int side_npc(int id)
 {
     int q;
+    if (side2_npc(id)) return 1;                  /* S2: S100..S217 */
     /* 1) someone you are delivering to / matching / reconciling / exorcising */
     for (q = 0; q < NQ; q++) {
         const SideQuest *s = &quests[q];
@@ -490,7 +630,7 @@ int side_npc(int id)
             if (inv_count(it) > 0) {
                 inv_take(it, 1);
                 story_befriend(id, 3);
-                story_say(id, "For me? Oh! Thank you so much! Please tell them I said so!");
+                story_say_txt(id, TXT_SS_1);
                 set_state(q, 2);
                 ui_toast(STR_ICON_CHECK " Delivered! Report back.");
                 ow_refresh_cast();
@@ -499,17 +639,17 @@ int side_npc(int id)
         } else if (s->kind == SQ_MATCH) {
             int ok;
             story_fmt_target = (int16_t)s->other;
-            story_say(id, "You think I should tell @T how I feel? ...Okay. Okay! Wish me luck!");
+            story_say_txt(id, TXT_SS_2);
             ok = sim_confess(id, s->other, 45);
-            story_say(-1, ok ? "It worked! They're blushing at each other from across the park." :
-                               "It didn't go perfectly... but they agreed to have tea. That's a start!");
+            story_say_txt(-1, ok ? TXT_SS_3 :
+                               TXT_SS_4);
             set_state(q, 2);
             ow_refresh_cast();
             return 1;
         } else if (s->kind == SQ_RECONCILE) {
             DoomoEdge *e;
             story_fmt_target = (int16_t)s->giver;
-            story_say(id, "@T asked about me? From across the river? ...Well. I suppose it's time we talked.");
+            story_say_txt(id, TXT_SS_5);
             rel_adjust(id, s->giver, 45);
             e = rel_find(id, s->giver);
             if (e && (e->kind & REL_KIND_MASK) == REL_ACQUAINTANCE) rel_set_kind(id, s->giver, REL_FRIEND);
@@ -521,11 +661,11 @@ int side_npc(int id)
         } else if (s->kind == SQ_EXORCISE) {
             const DoomoResident *t = town_res(id);
             if (t && t->status == RES_POSSESSED) {
-                static const char *const O_ex[] = { "Begin the exorcism!", "Not yet" };
+                static const char *const O_ex[] = { "Begin the exorcism!", "Not yet", NULL };
                 cur_q = (int16_t)q;
                 story_fmt_target = (int16_t)id;
-                story_say(-1, "@T's eyes glow red. A voice that isn't theirs whispers: \"Go away, little hero.\"");
-                story_choice(-1, "Perform the exorcism?", O_ex, 2, exo_choice);
+                story_say_txt(-1, TXT_SS_6);
+                story_choice_id(-1, "Perform the exorcism?", O_ex, 2, 64 /* exo_choice */);
                 return 1;
             }
         }
@@ -537,12 +677,12 @@ int side_npc(int id)
         if (s->giver != id) continue;
         cur_q = (int16_t)q;
         if (st == 0 && available(q)) {
-            say_giver(q, s->offer);
-            story_choice(id, s->title, O_accept, 2, accept_choice);
+            say_giver_txt(q, s->offer);
+            story_choice_id(id, story_side_title(q), O_accept, 2, 65 /* accept_choice */);
             return 1;
         }
         if (st == 2) {
-            say_giver(q, s->thanks);
+            say_giver_txt(q, s->thanks);
             finish(q);
             return 1;
         }
@@ -550,7 +690,7 @@ int side_npc(int id)
             if (s->kind == SQ_FETCH) {
                 if (inv_count(s->target) >= s->count) {
                     inv_take(s->target, s->count);
-                    say_giver(q, s->thanks);
+                    say_giver_txt(q, s->thanks);
                     finish(q);
                 } else {
                     char buf[96];
@@ -562,12 +702,12 @@ int side_npc(int id)
             }
             if (s->kind == SQ_HUNT) {
                 say_giver(q, "Ready to fight? It's dangerous out there!");
-                story_choice(id, s->hint, O_hunt, 2, hunt_choice);
+                story_choice_id(id, story_side_hint(q), O_hunt, 2, 66 /* hunt_choice */);
                 return 1;
             }
             {
                 char buf[96];
-                doomo_snprintf(buf, sizeof(buf), "Still on it? %s.", s->hint);
+                doomo_snprintf(buf, sizeof(buf), "Still on it? %s.", story_side_hint(q));
                 say_giver(q, buf);
             }
             return 1;
@@ -617,13 +757,13 @@ int side_trigger_spot(int map_id, int cx, int cy, int press)
         if (s->kind == SQ_PHOTO) {
             audio_sfx(SFX_SELECT);
             ow_flash(PAL_WHITE, 6);
-            story_say(-1, "*CLICK!* A perfect shot. Bring it back!");
+            story_say_txt(-1, TXT_SS_7);
         } else if (s->kind == SQ_PET) {
             audio_sfx(SFX_SQUEAK);
-            story_say(-1, "Found them! The little critter wiggles happily in your arms. Bring them home!");
+            story_say_txt(-1, TXT_SS_8);
         } else {
             audio_sfx(SFX_SPARKLE);
-            story_say(-1, "You found it! Bring it back to its owner.");
+            story_say_txt(-1, TXT_SS_9);
         }
         ow_refresh_cast();
         return 1;
@@ -654,13 +794,13 @@ void side_resume(const StoryPending *p, int result)
     int q = p->extra;
     if (q < 0 || q >= NQ) return;
     if (p->kind == PEND_COMBAT) {
-        if (result > 0) { set_state(q, 2); story_say(-1, "Victory! Go tell them the good news."); }
-        else story_say(-1, "You'll get them next time. Catch your breath first.");
+        if (result > 0) { set_state(q, 2); story_say_txt(-1, TXT_SS_10); }
+        else story_say_txt(-1, TXT_SS_11);
     } else if (p->kind == PEND_EXORCISM) {
         story_fmt_target = quests[q].target;
-        if (result > 0) { set_state(q, 2); story_say(-1, "The demon @D is cast out! @T is free. Go tell the good news."); }
-        else if (result < 0) { set_state(q, 2); story_say(-1, "@T's soul could not be saved. Their friends will want to know..."); }
-        else story_say(-1, "The demon clings on. Try again when you're ready.");
+        if (result > 0) { set_state(q, 2); story_say_txt(-1, TXT_SS_12); }
+        else if (result < 0) { set_state(q, 2); story_say_txt(-1, TXT_SS_13); }
+        else story_say_txt(-1, TXT_SS_14);
     }
     ow_refresh_cast();
 }
@@ -706,4 +846,16 @@ void story_side_debug_finish(int q)
 {
     if (q < 0 || q >= NQ) return;
     finish(q);
+}
+
+/* choice callbacks by id (story.c story_poll_callbacks; see story_int.h) */
+void side_callback(int cb, int choice)
+{
+    switch (cb) {
+    case 64: exo_choice(choice); break;
+    case 65: accept_choice(choice); break;
+    case 66: hunt_choice(choice); break;
+    case 67: side2_after(); break;
+    default: break;
+    }
 }

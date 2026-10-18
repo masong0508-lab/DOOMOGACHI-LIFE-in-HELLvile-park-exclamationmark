@@ -314,6 +314,12 @@ int  story_rite_blocker(int resident_id);
 /* Authored possessors (S3, exorcism.c): the true-name id that overrides
  * sim_soul.c's pick for `resident_id`, or -1. */
 int  story_possessor_override(int resident_id);
+/* (S2) The episode a beat belongs to: legacy BEAT_C* ids alias onto the
+ * new episode ids (SF sec.10-13); new ids map to themselves; -1 none. Its
+ * position in the story order (P0 = 0 .. E2 = 37), and setting the done bit. */
+int  story_beat_episode(int beat);
+int  story_episode_order(int beat);
+void story_episode_set_done(int beat, int on);
 /* Hooks the customisation spec re-targets (C10; S2). 256 = 1.0. */
 int  story_pacing_scale(void);
 int  story_encounter_rate(void);
