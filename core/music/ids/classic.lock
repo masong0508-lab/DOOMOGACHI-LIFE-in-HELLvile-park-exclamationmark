@@ -1,0 +1,33 @@
+# classic.lock - the classic cues (owner: MU1T; docs/design/music/SPEC.md
+# sec.16.1, 18). APPEND ONLY: ids are baked into banks, packs and saves.
+# One cue per SONG_* (audio.h), imported by `tools/mmlc.py` from songs.c
+# and the mml_<name>.c files. Range MC 200-231.
+#   NAME = id      kind (cue | sting | vinyl | motif | inst)
+MC_CLASSIC_TITLE          = 200  cue
+MC_CLASSIC_HAHALAND_DAY   = 201  cue
+MC_CLASSIC_HAHALAND_NIGHT = 202  cue
+MC_CLASSIC_CREATOR        = 203  cue
+MC_CLASSIC_SHOP           = 204  cue
+MC_CLASSIC_CHURCH         = 205  cue
+MC_CLASSIC_PET            = 206  cue
+MC_CLASSIC_HELLVILE       = 207  cue
+MC_CLASSIC_EXORCISM       = 208  cue
+MC_CLASSIC_WORKSHOP       = 209  cue
+MC_CLASSIC_INVASION       = 210  cue
+MC_CLASSIC_HELL_BREACH    = 211  cue
+MC_CLASSIC_BOSS           = 212  cue
+MC_CLASSIC_VICTORY        = 213  cue
+MC_CLASSIC_SAD            = 214  cue
+MC_CLASSIC_FESTIVAL       = 215  cue
+MC_CLASSIC_CREDITS        = 216  cue
+MC_CLASSIC_VAPE_LOUNGE    = 217  cue
+MC_CLASSIC_OMINOUS        = 218  cue
+MC_CLASSIC_MINGLE         = 219  cue
+MC_CLASSIC_WALL_LULLABY   = 220  cue
+MC_CLASSIC_TWO_CHOIRS     = 221  cue
+MC_CLASSIC_BOAT_FLOATS    = 222  cue
+MC_CLASSIC_THIRTEEN_BELLS = 223  cue
+MC_CLASSIC_HELL_LULLABY   = 224  cue
+MC_CLASSIC_DOUBLE_ACT     = 225  cue
+MC_CLASSIC_HEEHEE_JINGLE  = 226  cue
+MC_CLASSIC_NUMBER_TEN     = 227  cue

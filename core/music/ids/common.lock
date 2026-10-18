@@ -1,0 +1,25 @@
+# common.lock - shared ids (owner: MU4d; seeded by MU0; docs/design/music/
+# SPEC.md sec.16.1). APPEND ONLY. Ranges: MC 176-199, STG 0-127, VINYL,
+# MOTIF and INST ids. MC_NONE (0) is built into mmlc.
+#   NAME = id      kind (cue | sting | vinyl | motif | inst)
+#
+# Vinyl patterns (sec.7.2). Ids 1-15 equal the Studio's drum-cell scratch
+# nibble (sec.17: 14 = the crackle toggle), so a song's nibble IS the id.
+VINYL_NONE        = 0   vinyl
+VINYL_BABY        = 1   vinyl
+VINYL_FORWARD     = 2   vinyl
+VINYL_CHIRP       = 3   vinyl
+VINYL_TRANSFORMER = 4   vinyl
+VINYL_TEAR        = 5   vinyl
+VINYL_FLARE       = 6   vinyl
+VINYL_SCRIBBLE    = 7   vinyl
+VINYL_WIKKA       = 8   vinyl
+VINYL_REWIND      = 9   vinyl
+VINYL_SPINBACK    = 10  vinyl
+VINYL_STOP        = 11  vinyl
+VINYL_NEEDLE      = 12  vinyl
+VINYL_STUTTER     = 13  vinyl
+VINYL_CRACKLE     = 14  vinyl
+VINYL_SLOWMO      = 15  vinyl
+VINYL_WOBBLE      = 16  vinyl
+VINYL_TAPESTOP    = 17  vinyl
