@@ -389,7 +389,8 @@ static void render_fighter_ctx(PCtx *c, int view, int anim, int wframe, uint8_t 
 /* ====================================================================== */
 /* cache                                                                     */
 #define PC_BLOCK   384
-#define PC_BLOCKS  48
+#define PC_BLOCKS  48                   /* 18 KB (EWRAM on the GBA; the PS1
+                                           has no RAM to spare either) */
 #define PC_FREE    0xFF
 /* Re-renders that only change the animation phase (blink, breathing, aura
  * frames, mouth flaps) run as a sliced job: PC_STEPS of the DL_STEPS layer
@@ -497,13 +498,36 @@ static void cache_init(void)
     cache_ready = 1;
 }
 
+/* FNV-1a over the look, four bytes a step (12 multiplies instead of 48:
+ * the concert asks for ~45 chibi images a frame, and the byte-wise hash
+ * was 3% of its PS1 frame). Byte loads, so any alignment / endianness
+ * gives the same value. */
+DOOMO_STATIC_ASSERT(sizeof(DoomoLook) % 4 == 0, look_is_words);
 static uint32_t look_hash(const DoomoLook *l)
 {
     const uint8_t *p = (const uint8_t *)l;
     uint32_t h = 2166136261u;
     size_t i;
-    for (i = 0; i < sizeof(*l); i++) { h ^= p[i]; h *= 16777619u; }
+    for (i = 0; i < sizeof(*l); i += 4) {
+        uint32_t v = (uint32_t)p[i] | (uint32_t)p[i + 1] << 8 | (uint32_t)p[i + 2] << 16 |
+                     (uint32_t)p[i + 3] << 24;
+        h ^= v; h *= 16777619u;
+    }
     return h;
+}
+
+/* A direct-mapped memo of the entry a (kind, rid, look) found last: the
+ * scan below runs for every chibi drawn, and a scene draws the same few
+ * dozen every frame (the scan over PC_BLOCKS entries was 4% of the PS1
+ * concert's frame). An entry that was dropped or reused fails the match
+ * and the scan runs as before. */
+#define PC_MEMO 64
+static uint8_t memo[PC_MEMO];
+
+static unsigned memo_slot(int kind, int rid, uint32_t look)
+{
+    uint32_t h = (uint32_t)kind * 0x9E3779B1u ^ (uint32_t)(rid + 7) * 0x85EBCA77u ^ look;
+    return (h ^ (h >> 16)) & (PC_MEMO - 1);
 }
 
 /* the matching ready entry used most recently (mask: which key bits must
@@ -513,13 +537,26 @@ static CacheEnt *cache_get(int kind, int rid, uint32_t key, uint32_t look, uint3
 {
     int i;
     CacheEnt *best = NULL;
-    for (i = 0; i < PC_BLOCKS; i++) {
-        CacheEnt *e = &ent[i];
-        if (e->kind == kind && !e->busy && e->rid == rid && e->look == look &&
-            ((e->key ^ key) & mask) == 0 && (!best || e->stamp > best->stamp))
-            best = e;
+    unsigned slot = memo_slot(kind, rid, look);
+    CacheEnt *m = &ent[memo[slot] < PC_BLOCKS ? memo[slot] : 0];
+    if (m->kind == kind && !m->busy && m->rid == rid && m->look == look &&
+        ((m->key ^ key) & mask) == 0) {
+        /* the memo entry is the one touched last for this look, i.e. the
+         * most recently used of the matches: the answer the scan gives */
+        best = m;
+    } else {
+        for (i = 0; i < PC_BLOCKS; i++) {
+            CacheEnt *e = &ent[i];
+            if (e->kind == kind && !e->busy && e->rid == rid && e->look == look &&
+                ((e->key ^ key) & mask) == 0 && (!best || e->stamp > best->stamp))
+                best = e;
+        }
     }
-    if (best && touch) { best->stamp = ++cache_stamp; best->tick = now(); }
+    if (best && touch) {
+        best->stamp = ++cache_stamp;
+        best->tick = now();
+        memo[slot] = (uint8_t)(best - ent);
+    }
     return best;
 }
 

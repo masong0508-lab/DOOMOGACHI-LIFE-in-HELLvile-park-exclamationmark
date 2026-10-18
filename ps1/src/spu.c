@@ -107,10 +107,15 @@ static int16_t wave_sample(int wave, int i, int len, uint32_t *rng)
 
 #define NOISE_LEN (28 * 64)
 
+/* PCM -> ADPCM staging, shared by the boot-time waveforms and the lazily
+ * converted effects (load_pcm8): 4.5 KB once instead of twice */
+static int16_t s_pcm[28 * 64];
+static uint8_t s_adpcm[64 * 16];
+
 static void build_waves(void)
 {
-    static int16_t pcm[NOISE_LEN];
-    static uint8_t adpcm[NOISE_LEN / 28 * 16];
+    int16_t *pcm = s_pcm;
+    uint8_t *adpcm = s_adpcm;
     uint32_t addr = SPU_WAVE_BASE, rng = 0x1234567u;
     int w, v, i;
     /* a silent looping block (idle voices point here) */
@@ -213,8 +218,8 @@ void plat_tone(int channel, uint16_t freq_hz, uint8_t vol, uint8_t wave)
  * ends + mutes the voice). Returns the SPU address or 0 if full. */
 static uint32_t load_pcm8(const int8_t *src, uint32_t len)
 {
-    static int16_t pcm[28 * 64];
-    static uint8_t adpcm[64 * 16];
+    int16_t *pcm = s_pcm;
+    uint8_t *adpcm = s_adpcm;
     uint32_t done = 0, addr = s_sfx_top, bytes;
     if (len > 44100u * 3u)
         len = 44100u * 3u;
@@ -226,7 +231,7 @@ static uint32_t load_pcm8(const int8_t *src, uint32_t len)
     while (done < len) {
         uint32_t n = len - done, i;
         int blocks;
-        if (n > sizeof(pcm) / 2) n = sizeof(pcm) / 2;
+        if (n > sizeof(s_pcm) / 2) n = sizeof(s_pcm) / 2;
         for (i = 0; i < n; i++)
             pcm[i] = (int16_t)(src[done + i] * 256);
         blocks = adpcm_encode(pcm, (int)n, adpcm, 1);

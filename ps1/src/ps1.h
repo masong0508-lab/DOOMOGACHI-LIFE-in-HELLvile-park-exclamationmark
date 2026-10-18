@@ -42,6 +42,11 @@
 #define VR_SKY_Y           0
 #define VR_FONT_X          960
 #define VR_FONT_Y          192
+/* the glyphs dilated for plat_text_outline (7x11 in 8x12 cells, 4bpp, 16
+ * per row): the bottom 96 rows of the image cache's 128-wide strip */
+#define VR_FONTD_X         960
+#define VR_FONTD_Y         416
+#define VR_FONTD_CELL_H    12
 #define VR_BLOB_X          992
 #define VR_BLOB_Y          192
 #define VR_IMG_Y           256
@@ -102,6 +107,7 @@ int   gfx_upload_strided(int x, int y, int w, int h, const uint8_t *src, int str
 void  gfx_upload_now(int x, int y, int w, int h, const void *data);
 /* Set the GPU texpage / semi-transparency mode for following 2D prims. */
 void  gfx_tpage(uint16_t tpage);
+extern uint16_t g_tpage_cur;      /* the one last set, 0xffff = unknown  */
 void  gfx_fb_xy(int *x, int *y);  /* VRAM origin of the buffer being built */
 uint32_t gfx_prims_used(void);
 
@@ -123,6 +129,7 @@ int  vram_image(const DoomoImage *img, int tx, int ty, TexRef *out);
 uint16_t vram_sil_clut(uint8_t color);   /* all opaque pixels -> color */
 uint16_t vram_font_clut(uint8_t color);
 uint16_t vram_font_tpage(void);
+uint16_t vram_fontd_tpage(void);         /* dilated glyphs (4bpp page)  */
 /* Sky: uploads if the sky id / frame changed. Returns 0 if no sky. */
 int  vram_sky(int sky_id, uint16_t time, TexRef *left, TexRef *right);
 void vram_blob(TexRef *out);             /* soft round shadow (4bpp)   */
@@ -132,8 +139,15 @@ uint32_t vram_uploads(void);             /* bytes uploaded this frame  */
 void gfx2d_init(void);
 /* plat_rect() batches runs of rects (merging adjacent spans, turning 50%
  * checker rows into one blended tile); anything else that appends to the
- * display list must flush the pending run first (gfx.c does). */
-void gfx2d_flush(void);
+ * display list must flush the pending run first (gfx.c does). The check
+ * is inline: every text sprite and image goes through gfx_chain(). */
+enum { RUN_NONE, RUN_TILE, RUN_DOTS };
+extern int g_run_kind;
+void gfx2d_flush_run(void);
+static inline void gfx2d_flush(void)
+{
+    if (g_run_kind != RUN_NONE) gfx2d_flush_run();
+}
 void gfx2d_reset(void);
 extern uint32_t *g_chain_tail;
 /* append prim p (len words after the tag) to the draw chain, no flush */

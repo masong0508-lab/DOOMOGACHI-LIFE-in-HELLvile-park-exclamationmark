@@ -142,8 +142,10 @@ x 320..959   y   0..255   world textures: 5 8bpp texture pages x 16 slots of 64x
 x 960..1023  y   0..191   sky: 256x96 8bpp in two 128x96 halves
 x 960..991   y 192..255   font: 128 glyphs 8x8, 4bpp
 x 992..999   y 192..223   soft shadow blob (32x32 4bpp)
-x 320..1023  y 256..511   image cache: 5 256x256 8bpp pages + one 128x256 strip,
+x 320..1023  y 256..511   image cache: 5 256x256 8bpp pages + one 128x160 strip,
                           shelf packed, LRU per page
+x 960..991   y 416..511   dilated font for plat_text_outline: 128 glyphs 7x11 in
+                          8x12 cells, 4bpp (the bottom of the strip)
 ```
 
 Colours: the core's 256-entry `doomo_palette` (15-bit BGR) is converted
@@ -608,6 +610,82 @@ order of payoff: image-backed shape cache entries on the PS1 (a cached
 shape drawn two frames running becomes ONE `SPRT` from the VRAM image
 cache instead of tens of TILEs), a bigger portrait pool here, an
 incremental ellipse rasteriser, and whole-rect checker tiles.
+
+### Speed pass 3 (rendering, both consoles)
+
+Same harness, same tour scripts (60-120 frames per scene; `new island`
+is measured after the boot-time sound effect conversion, one effect per
+frame for the first ~60 frames, has finished - the 22.5 of pass 2 was
+that conversion, not the scene). Every 2D screen that was below 30 is
+faster, pixel for pixel the same (the harness smoke screenshots, the UI
+gallery pages, the title and every static screen of the tour are
+byte-identical before and after; the native raster tests check the new
+arithmetic against the old formulas):
+
+| scene | pass 2 | pass 3 | what changed |
+|-------|-------:|-------:|--------------|
+| concert (band) | 19.9 | **21.8-22.2** | checker tiles, one texpage per run, chibi lookup memo (two runs: the crowd is random) |
+| dialogue | 20.2 | **21.1-22.1** | hearts / ellipses without `fx_isqrt`, shape images |
+| island hub | 21.8 | **23.4-23.8** | shape images for the ellipses (trees, patches), rect path |
+| island, town hall menu | 17.6 | **18.7-19.0** | |
+| exorcism | 25.2 | **26.7** | |
+| title, menu open | 27.6 | **28.9-29.4** | logo letters, pills, hearts as shape images: 54% idle now |
+| title, idle / drop | 29.3 / 29.8 | 29.5 / 29.8 | |
+| creator | 25.7 | 25.8 | bound by `unlock_find` per field (creator module) |
+| new island | (22.5) 30.3 | 30.3 | |
+| whack, library, gallery, studio | 29.2-29.5 | **30** | |
+| everything else | 30 | 30 | |
+
+What changed (all exact):
+
+* **Shape images** (`ui_raster.c`): a cached UI shape (big glyphs, pills,
+  hearts, stars, cursors, and now small ellipses) that is drawn two
+  frames running also gets a bitmap, painted once from its rect list, and
+  is drawn as ONE `plat_image` (one `SPRT` from the VRAM image cache)
+  from then on; a shape whose rects use colour 0 (transparent in images)
+  or that was clipped keeps its rects. 16 KB pool; the GBA keeps replaying
+  rects (no RAM, and its rects are cheap). The native runner's `stats`
+  line shows the replayed rects and images built / drawn per frame.
+* **Ellipses and flat hearts without a square root per row**: the
+  half-width of row `ay` is `isqrt(floor(t * rx^2 / ry^2)) / 2`; the
+  quotient is now stepped from row to row with its remainder (the
+  parabola's differences) and the half-width walked up or down by whole
+  pixels - the same integers, no division or `fx_isqrt` per row
+  (`fx_isqrt` was 4-14% of these scenes). `ui_heart_flat` walks its lobe
+  width the same way. `fx_dist` takes the 32-bit root when both legs are
+  below 46341 (the 64-bit loop is twice as long).
+* **`plat_text_outline`** (platform.h, weak core default = the old ten
+  passes): the PS1 draws the outline from a dilated glyph page (7x11
+  glyphs at VRAM (960, 416), carved out of the image cache's 128-wide
+  strip) as one sprite per glyph, then the text: 2 sprites per glyph
+  instead of 10.
+* **Checker tiles**: a checker of 2+ rows is one semi-transparent TILE
+  for the columns every row covers plus the alternating edge pixels (the
+  concert's beams and seams were one `DR_TPAGE` + one TILE per row), and
+  a `DR_TPAGE` equal to the one the chain last set is skipped
+  (`g_tpage_cur`, reset after a 3D view).
+* **Per-rect cost**: `gfx2d_flush()` is an inline check, the per-rect
+  statistics counters are gone, the `perf:` line reports prims only.
+* **Portrait cache**: a direct-mapped memo in front of the cache scan
+  (`cache_get`) and a word-wise look hash: the ~45 chibi lookups a
+  concert frame were 7% of it. (A bigger pool, 80 blocks, was tried and
+  measured no gain worth its 12 KB; the pool stays 48 blocks.)
+* **RAM**: the image cache's hash is 512 entries (8 KB less), the boot-time
+  font / CLUT staging uses the cache's staging union (12 KB of statics
+  gone), the SPU's PCM -> ADPCM staging is shared (4.5 KB). With the 16 KB
+  image pool and the bigger cache entries (4 KB) the pass is a net 4.5 KB
+  less resident RAM than before it.
+
+Where the remaining time goes: the island hub still issues ~1,900
+`plat_rect` calls at 320x240 (land, roads, decorations: `rect_slow` +
+`plat_rect` ~25%), the concert ~4,500 (LED wall, seats, fringe) plus
+its chibi re-renders (the lead singer's mouth flaps every 4 ticks), and
+the dialogue's hearts; a full chibi render for a *new* expression still
+runs in one frame (~30 ms here, one dropped frame when the title's pair
+changes expression). Next steps: a sprite for the island's static land
+layer (needs ~67 KB, i.e. a smaller display list), a stand-in image
+while a new expression renders in slices, fewer rects in the concert's
+wall shows.
 
 **Outdoor skies were black in every 3D view** on the game disc (Demon
 Arena, the Hell Breach levels). The packed sky is decoded into the frame's

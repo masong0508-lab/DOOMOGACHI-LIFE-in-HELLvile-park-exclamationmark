@@ -91,8 +91,8 @@ void vid_shade(int x0, int y0, int x1, int y1, const uint8_t *cm)
     }
 }
 
-/* nibble -> byte mask: bit i set = byte i of a word */
-static const uint32_t nibmask[16] = {
+/* nibble -> byte mask: bit i set = byte i of a word (also video.c) */
+const uint32_t gba_nibmask[16] = {
     0x00000000, 0x000000FF, 0x0000FF00, 0x0000FFFF,
     0x00FF0000, 0x00FF00FF, 0x00FFFF00, 0x00FFFFFF,
     0xFF000000, 0xFF0000FF, 0xFF00FF00, 0xFF00FFFF,
@@ -111,10 +111,10 @@ static inline void glyph(const uint8_t *g, int x, int y, uint32_t c4)
     for (r = 0; r < 8; r++, w += SCREEN_W / 4) {
         uint32_t m = (uint32_t)g[r] << sh, k;
         if (!m) continue;
-        k = nibmask[m & 15];
+        k = gba_nibmask[m & 15];
         if (k == 0xFFFFFFFFu) w[0] = c4;
         else if (k) w[0] = (w[0] & ~k) | (c4 & k);
-        k = nibmask[m >> 4];
+        k = gba_nibmask[m >> 4];
         if (k) w[1] = (w[1] & ~k) | (c4 & k);
     }
 }
@@ -148,6 +148,7 @@ void vid_text(int x, int y, const char *s, uint32_t color)
 
 /* images: 8bpp, index 0 transparent, integer scale 1..4, walked in VRAM
  * halfword pairs (opaque pairs are written without reading) */
+__attribute__((optimize("Os")))
 void vid_blit(int x, int y, const DoomoImage *img, int scale, int flags, uint32_t color)
 {
     const int w = img->w * scale, h = img->h * scale;
@@ -162,6 +163,35 @@ void vid_blit(int x, int y, const DoomoImage *img, int scale, int flags, uint32_
     if (x0 >= x1 || y0 >= y1) return;
     xa = x0 & ~1;
     xb = (x1 + 1) & ~1;
+    if (scale == 1 && !flip) {
+        /* the common case (cached chibis, building sprites, shape images):
+         * source pairs straight from the row, no column table; only the
+         * first / last VRAM pair may reach one pixel outside the image */
+        int n = (xb - xa) >> 1, lead = xa < x0, trail = xb > x1;
+        for (yy = y0; yy < y1; yy++) {
+            const uint8_t *src = img->pix + (yy - y) * img->w + (xa - x);
+            uint16_t *p = gba_back + yy * LINE + (xa >> 1);
+            int k = 0;
+            if (lead) {                         /* only its right pixel is in */
+                uint32_t b = src[1];
+                if (b) put_hi(p, sil ? color : b);
+                p++; src += 2; k = 1;
+            }
+            for (; k < n - trail; k++, p++, src += 2) {
+                uint32_t a = src[0], b = src[1];
+                if (!(a | b)) continue;
+                if (sil) { if (a) a = color; if (b) b = color; }
+                if (a && b) *p = (uint16_t)(a | (b << 8));
+                else if (a) put_lo(p, a);
+                else put_hi(p, b);
+            }
+            if (trail && k < n) {               /* only its left pixel is in */
+                uint32_t a = src[0];
+                if (a) put_lo(p, sil ? color : a);
+            }
+        }
+        return;
+    }
     {
         int px;
         for (px = xa; px < xb; px++) {
@@ -191,16 +221,6 @@ void vid_blit(int x, int y, const DoomoImage *img, int scale, int flags, uint32_
 }
 
 /* ---- platform.h entry points (clip, then the loops above) ------------- */
-/* plat_rect itself is ARM assembly (video_loops.s): the UI calls it a
- * thousand times a frame, so the clipping is done there and it tail-calls
- * vid_rect, or this DMA fill for full-width rects. */
-void vid_rect_full(int x0, int y0, int x1, int y1, uint32_t color)
-{
-    static volatile uint32_t fill;
-    (void)x0; (void)x1;
-    fill = (color & 0xFF) * 0x01010101u;
-    dma3_fill32(gba_back + y0 * (SCREEN_W / 2), &fill, (uint32_t)(y1 - y0) * SCREEN_W / 4);
-}
 
 /* 50% checkerboard: pixel (x+i, y+j) when i + j is even. Each row's
  * pixels all sit in the same byte of consecutive halfwords. */
@@ -230,20 +250,6 @@ void plat_checker(int x, int y, int w, int h, uint8_t color)
     }
 }
 
-void plat_shade_rect(int x, int y, int w, int h, int level)
-{
-    int x1 = x + w, y1 = y + h;
-    if (gba_nodraw) return;
-    if (level < 0) level = 0;
-    if (level > 15) level = 15;
-    if (level == 15) return;
-    if (x < 0) x = 0;
-    if (y < 0) y = 0;
-    if (x1 > SCREEN_W) x1 = SCREEN_W;
-    if (y1 > SCREEN_H) y1 = SCREEN_H;
-    if (x >= x1 || y >= y1) return;
-    vid_shade(x, y, x1, y1, doomo_colormap[level]);
-}
 
 void plat_line(int x0, int y0, int x1, int y1, uint8_t color)
 {
@@ -285,9 +291,4 @@ void plat_line(int x0, int y0, int x1, int y1, uint8_t color)
     }
 }
 
-void plat_text(int x, int y, const char *s, uint8_t color)
-{
-    if (gba_nodraw || !s) return;
-    if (!color) color = PAL_BLACK;
-    vid_text(x, y, s, color);
-}
+

@@ -136,14 +136,21 @@ void gfx_chain(void *prim)
     s_prims++;
 }
 
+/* The texpage the draw chain last set (0xffff: unknown, e.g. after a 3D
+ * view's own prims): a DR_TPAGE equal to it is redundant and skipped. The
+ * core's text draws one per string, the checker seams one per row. */
+uint16_t g_tpage_cur = 0xffff;
+
 void gfx_tpage(uint16_t tpage)
 {
     DR_TPAGE *t;
     gfx2d_flush();
+    if (g_tpage_cur == tpage) return;
     t = (DR_TPAGE *)gfx_alloc(sizeof(DR_TPAGE));
     if (!t) return;
     setDrawTPage(t, 1, 1, tpage);
     gfx_chain(t);
+    g_tpage_cur = tpage;
 }
 
 void gfx_begin(void)
@@ -162,6 +169,7 @@ void gfx_begin(void)
     setDrawTPage((DR_TPAGE *)f->head, 1, 1, getTPage(0, 0, 0, 0));
     termPrim((DR_TPAGE *)f->head);
     s_tail = f->head;
+    g_tpage_cur = getTPage(0, 0, 0, 0);
     gfx2d_reset();
     f->flush[0] = 0x01ffffffu;          /* len 1 */
     f->flush[1] = 0x01000000u;          /* GP0(01h) clear texture cache */
@@ -193,6 +201,7 @@ uint32_t *gfx_ot_begin(int vx, int vy, int vw, int vh)
     TAG_LINK(s_tail, &ot[OT_LEN - 1]);
     s_tail = &ot[0];
     s_view_ot = ot;
+    g_tpage_cur = 0xffff;                   /* the view's prims set their own */
     return ot;
 }
 
@@ -300,6 +309,7 @@ void gfx_busy_banner(const char *msg)
     uint16_t clut = vram_font_clut(PAL_UI_CREAM);
 
     DrawSync(0);                        /* newest frame complete */
+    g_tpage_cur = 0xffff;               /* immediate draws below: state unknown */
     while (msg[n] && n < BANNER_MAX)
         n++;
     w = n * FONT_ADVANCE + 10;
@@ -382,6 +392,7 @@ static void busy_puts(int y, const char *msg, uint8_t pal)
     DrawSync(0);                        /* the shared prims are free again */
     setDrawTPage(&tp, 0, 0, vram_font_tpage());
     DrawPrim(&tp);
+    g_tpage_cur = 0xffff;               /* drawn outside the chain: state unknown */
     for (i = 0; i < n; i++) {
         unsigned c = (uint8_t)msg[i];
         SPRT *p = &glyph[i];

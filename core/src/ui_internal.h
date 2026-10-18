@@ -64,6 +64,9 @@ int  ur_cache_end(void);
 /* rects in use, entries, and lookup / reset counters (tests, tuning) */
 void ur_cache_stats(int *used, int *entries, uint32_t *hits, uint32_t *misses,
                     uint32_t *resets);
+/* rects replayed, shape images built and drawn (PS1 / native: a shape
+ * drawn two frames running becomes one plat_image) */
+void ur_cache_image_stats(uint32_t *replayed, uint32_t *built, uint32_t *drawn);
 /* 1 if ui_heart_flat(cx, cy, s, ..) paints every pixel of the screen */
 int  ui_heart_flat_covers_screen(int cx, int cy, int s);
 /* ui_text_big through bit rows; 0 = too big, draw it the slow way. */

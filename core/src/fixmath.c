@@ -90,8 +90,18 @@ static uint32_t isqrt64(uint64_t v)
 fix16 fx_dist(fix16 dx, fix16 dy)
 {
     int64_t x = dx, y = dy;
-    uint64_t s = (uint64_t)(x * x) + (uint64_t)(y * y);
-    uint32_t r = isqrt64(s);
+    uint64_t s;
+    uint32_t r;
+    /* (perf) both under 46341: the sum fits 32 bits, so the 32-bit root
+     * gives the same result in half the steps (and the GBA's THUMB code
+     * avoids the 64-bit multiplies and shifts: the raycaster's actors call
+     * this for every sprite every frame) */
+    if ((uint32_t)(dx + 46340) <= 92680u && (uint32_t)(dy + 46340) <= 92680u) {
+        uint32_t ux = (uint32_t)(dx < 0 ? -dx : dx), uy = (uint32_t)(dy < 0 ? -dy : dy);
+        return (fix16)fx_isqrt(ux * ux + uy * uy);
+    }
+    s = (uint64_t)(x * x) + (uint64_t)(y * y);
+    r = isqrt64(s);
     if (r > 0x7FFFFFFFu) r = 0x7FFFFFFFu;
     return (fix16)r;
 }

@@ -40,6 +40,13 @@ void plat_line(int x0, int y0, int x1, int y1, uint8_t color);
 /* Text in the core font (font.h): 6 px advance, 8 px line, ASCII + icon
  * glyphs 0x80..0x9F. '\n' starts a new line at the original x. */
 void plat_text(int x, int y, const char *s, uint8_t color);
+/* Outlined text (foundation, additive): plat_text(x, y, s, color) over an
+ * outline of `outline` at the eight 1-pixel neighbours and at (+1, +2),
+ * i.e. exactly what ui_text_outline() drew as ten plat_text passes. The
+ * core has a weak default (core/src/ui.c) that draws those passes; a
+ * platform implements it to draw the outline in one pass (GBA: dilated
+ * glyph masks; PS1: a dilated glyph page). */
+void plat_text_outline(int x, int y, const char *s, uint8_t color, uint8_t outline);
 /* Draw an 8bpp image; index 0 transparent. scale 1..4 (integer
  * nearest-neighbour). flags: IMG_FLIPX, IMG_SHADOW (1px dark outline
  * drop shadow), IMG_SILHOUETTE (all opaque pixels drawn as `color`). */

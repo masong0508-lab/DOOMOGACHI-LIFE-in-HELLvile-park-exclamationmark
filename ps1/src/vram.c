@@ -90,13 +90,14 @@ const TexRef *vram_wtex(int tex_id, uint16_t time)
 /* ---- image cache ---------------------------------------------------------- */
 #define IMG_PAGES   6
 #define MAX_SHELF   40
-#define HASH_SIZE   1024
+#define HASH_SIZE   512               /* (speed pass 2: 1024 took 16 KB) */
 #define HASH_MASK   (HASH_SIZE - 1)
 
 typedef struct Shelf { uint8_t y, h; uint16_t x; } Shelf;
 typedef struct Page {
     uint16_t vx;          /* VRAM x of the page                  */
     uint16_t w;           /* width in texels (256 or 128)        */
+    uint16_t h;           /* rows (256; the strip keeps 96 for the dilated font) */
     uint16_t top;         /* next free row                       */
     uint16_t nshelf;
     uint32_t used;        /* last frame any entry was used       */
@@ -174,7 +175,7 @@ static int img_alloc(int w, int h, int *ou, int *ov)
                     return i;
                 }
             }
-            if (p->nshelf < MAX_SHELF && p->top + sh <= 256) {
+            if (p->nshelf < MAX_SHELF && p->top + sh <= p->h) {
                 Shelf *s = &p->shelf[p->nshelf++];
                 s->y = (uint8_t)p->top;
                 s->h = (uint8_t)(sh > 255 ? 255 : sh);
@@ -321,6 +322,7 @@ uint16_t vram_font_clut(uint8_t color)
 }
 
 uint16_t vram_font_tpage(void) { return getTPage(0, 0, VR_FONT_X, 0); }
+uint16_t vram_fontd_tpage(void) { return getTPage(0, 0, VR_FONTD_X, 256); }
 
 /* ---- sky -------------------------------------------------------------------- */
 static const uint8_t *s_sky_ptr;
@@ -380,12 +382,20 @@ void vram_frame(void)
 }
 
 /* ---- init -------------------------------------------------------------------- */
+/* Boot-time staging for the font / CLUT uploads: the image cache's
+ * staging union (16.9 KB) is idle until the first frame, so these need
+ * no RAM of their own (they were 12 KB of static buffers used once). */
+static uint16_t *init_scratch(size_t bytes)
+{
+    memset(&s_scr, 0, sizeof(s_scr));
+    return bytes <= sizeof(s_scr) ? (uint16_t *)&s_scr : NULL;
+}
+
 static void upload_font(void)
 {
-    static uint16_t tex[32 * 64];
+    uint16_t *tex = init_scratch(32 * 64 * 2);
     const uint8_t (*font)[5] = core_font();
     int g, col, row;
-    memset(tex, 0, sizeof(tex));
     for (g = 0; g < 128; g++) {
         int gx = (g & 15) * 8, gy = (g >> 4) * 8;
         for (col = 0; col < 5; col++) {
@@ -399,19 +409,46 @@ static void upload_font(void)
         }
     }
     gfx_upload_now(VR_FONT_X, VR_FONT_Y, 32, 64, tex);
+    /* the glyphs dilated for plat_text_outline: each glyph pixel at its
+     * eight 1-pixel neighbours and at (+1, +2), i.e. the union the ten
+     * plat_text passes of ui_text_outline painted, in 8x12 cells whose
+     * origin is (-1, -1) from the glyph's */
+    tex = init_scratch(32 * 96 * 2);
+    for (g = 0; g < 128; g++) {
+        int gx = (g & 15) * 8, gy = (g >> 4) * VR_FONTD_CELL_H;
+        for (col = 0; col < 5; col++) {
+            uint8_t bits = font[g][col];
+            for (row = 0; row < 8; row++) {
+                int dx, dy;
+                if (!(bits & (1 << row)))
+                    continue;
+                for (dy = -1; dy <= 2; dy++)
+                    for (dx = -1; dx <= 1; dx++) {
+                        int tx, ty;
+                        if (dy == 2 && dx != 1)
+                            continue;
+                        tx = gx + 1 + col + dx;
+                        ty = gy + 1 + row + dy;
+                        tex[ty * 32 + (tx >> 2)] |= (uint16_t)(1u << ((tx & 3) * 4));
+                    }
+            }
+        }
+    }
+    gfx_upload_now(VR_FONTD_X, VR_FONTD_Y, 32, 96, tex);
+    memset(&s_scr, 0, sizeof(s_scr));
 }
 
 static void upload_cluts(void)
 {
-    static uint16_t font_cluts[16][256];
+    uint16_t (*font_cluts)[256] = (uint16_t (*)[256])init_scratch(16 * 256 * 2);
     int c;
     for (c = 0; c < 256; c++)
         s_clutbuf[c] = g_pal15[c];
     gfx_upload_now(VR_CLUT_MASTER_X, VR_CLUT_MASTER_Y, 256, 1, s_clutbuf);
-    memset(font_cluts, 0, sizeof(font_cluts));
     for (c = 0; c < 256; c++)
         font_cluts[c >> 4][(c & 15) * 16 + 1] = g_pal15[c] ? g_pal15[c] : 0x8000;
     gfx_upload_now(0, VR_CLUT_FONT_Y, 256, 16, font_cluts);
+    memset(&s_scr, 0, sizeof(s_scr));
 }
 
 static void upload_blob(void)
@@ -447,6 +484,7 @@ void vram_init(void)
     for (i = 0; i < IMG_PAGES; i++) {
         s_page[i].vx = (uint16_t)(i < 5 ? 320 + i * 128 : 960);
         s_page[i].w = (uint16_t)(i < 5 ? 256 : 128);
+        s_page[i].h = (uint16_t)(i < 5 ? 256 : VR_FONTD_Y - VR_IMG_Y);
         s_page[i].gen = 1;
     }
     memset(s_hash, 0, sizeof(s_hash));

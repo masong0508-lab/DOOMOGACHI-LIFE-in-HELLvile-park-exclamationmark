@@ -85,6 +85,9 @@ static const char *shots_dir = ".";
 static char *logbuf;
 static size_t log_len, log_cap;
 static char last_scene[64];
+#define SCENE_STACK_MAX 8
+static char scene_stack[SCENE_STACK_MAX][64];   /* [0] is the scene underneath all pushes */
+static int scene_depth;
 
 /* ---------------------------------------------------------------------- */
 static void log_append(const char *s)
@@ -113,17 +116,23 @@ static void on_log(struct mLogger *logger, int category, enum mLogLevel level,
         if (!quiet) printf("%s\n", msg);
         if (strncmp(msg, "scene: ", 7) == 0) {
             /* "scene: set NAME" / "scene: push NAME" / "scene: pop NAME"
-             * (scene.c): the name is the last word */
+             * (scene.c): a small mirror of the core's scene stack, so
+             * expect-scene sees the scene underneath after a pop */
             const char *p = msg + 7;
             size_t n;
-            if (!strncmp(p, "set ", 4)) p += 4;
+            if (!strncmp(p, "set ", 4)) { p += 4; scene_depth = 0; }
             else if (!strncmp(p, "push ", 5)) p += 5;
-            else if (!strncmp(p, "pop ", 4)) p = NULL;    /* names the scene that left */
-            if (!p) return;
+            else if (!strncmp(p, "pop ", 4)) {
+                if (scene_depth > 0) scene_depth--;
+                strcpy(last_scene, scene_stack[scene_depth]);
+                return;
+            }
             n = strcspn(p, " \r\n");
             if (n >= sizeof(last_scene)) n = sizeof(last_scene) - 1;
             memcpy(last_scene, p, n);
             last_scene[n] = 0;
+            if (scene_depth + 1 < SCENE_STACK_MAX) scene_depth++;
+            strcpy(scene_stack[scene_depth], last_scene);
         }
         if (fail_on_stub && strncmp(msg, "STUB:", 5) == 0) {
             fprintf(stderr, "harness: stub ran: %s\n", msg);

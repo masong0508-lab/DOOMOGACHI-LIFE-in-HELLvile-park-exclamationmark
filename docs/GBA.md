@@ -280,6 +280,63 @@ maths with shifts and tables. The harness now also parses the core's
 `scene: set / push NAME` log lines, so `expect-scene` works in game-ROM
 scripts.
 
+### Speed pass 3 (libmgba, `harness fps`, game ROM, every scene of the tour)
+
+Drawn frames per second and CPU work per drawn tick (the pacing shows
+a frame every second vblank at best, so a tick over 33 ms halves the
+rate): the HEAD before the pass against after it. Pixel for pixel the
+same (the UI gallery pages, options, news, library and creator shots are
+byte-identical; the native raster tests check the new arithmetic).
+
+| scene | before | after | notes |
+|-------|-------:|------:|-------|
+| title, logo drop | 20.1 / 38.8 ms | 21.8 / 34.4 ms | |
+| title, idle | 13.5 / 58.0 ms | 14.5 / 44-51 ms | hills cached, outline text in one pass, blit fast path (the pair / theme vary between runs) |
+| title, menu open | 12.3 / 59.7 ms | 13.9 / 52.6 ms | |
+| apartments | 24.0 / 35.6 ms | **30** / 33.4 ms | |
+| new island | 21.0 / 37.9 ms | 23.4 / 35.8 ms | |
+| studio / play | 24.7 / 35.0 ms | 27.8 / 34.1 ms | |
+| library | 16.0 / 56.1 ms | 17.3 / 53.8 ms | |
+| creator | 13.5 / 58.2 ms | 13.4 / 54.5 ms | `unlock_find` per field (creator module) |
+| shop, roster, resident | 21-27 | 21-27 | 35-41 ms |
+| mg whack / gallery | 13.9 / 12.0 | 14.2 / 12.0 | 65 / 75 ms: thousands of 1-pixel rects (minigame module) |
+| island hub / town hall menu | 7.5 / 5.5 | 7.5 / 5.6 | 96 / 139 ms: ~2,100 rects + building blits |
+| pet, exorcism, concert, dialogue | 6.3-8.9 | 6.6-8.9 | 90-120 ms: the modules' own drawing + chibi re-renders |
+| 3D (combat, breaches, arena, overworld) | 8.8-12.7 | 8.7-12.9 | 70-96 ms, raycaster bound |
+
+What changed on the GBA (all exact; IWRAM keeps its 6 KB main stack with
+176 bytes to spare, EWRAM is within 200 bytes of before, 8.3 KB free):
+
+* `plat_text_outline` (platform.h; `ui_text_outline` calls it): the
+  outline is one pass of 7x11 dilated glyph masks (dilated per glyph
+  drawn from the transposed font, ROM code since IWRAM is full) plus the
+  text, instead of ten `plat_text` passes.
+* `vid_blit`: a scale-1 unflipped path reads source pairs straight from
+  the row (no column table), the common case of every cached chibi,
+  building sprite and crowd silhouette; `plat_rect`: a one-pixel fast
+  path (dots, sparkles, stars) with no stack frame.
+* The DMA fills' source word (`plat_clear`, full-width rects) lives in
+  IWRAM: DMA re-reads a fixed source for every word, and an EWRAM read
+  costs 6 cycles against 1 (a 38 KB clear was 2.5 ms slower).
+* Core: ellipses and flat hearts without a square root or division per
+  row, `fx_dist` with the 32-bit root, the title's hill heights computed
+  once (120 software divisions a frame), a memo in front of the portrait
+  cache scan.
+* Harness: `expect-scene` mirrors the core's scene stack, so it is right
+  after a `pop` (it reported the popped scene before); `make -C gba test`
+  rebuilds `build/harness`, a plain `make` does not.
+
+The GBA's slow screens are the scene modules' own drawing: the island
+hub issues ~2,100 small rects a frame (land spans, roads, decorations,
+walkers) and the minigames thousands of 1-pixel rects, the dialogue /
+exorcism / concert / pet redraw their whole stage each tick and
+re-render a chibi phase in slices (one group per tick, ~12 ms), and the
+3D scenes are raycaster bound. The next steps there are structural:
+a static land layer for the island drawn once (needs ~31 KB that EWRAM
+and VRAM do not have at once), dirty-rect redraws of the static parts
+of the dialogue / pet / concert stages, and a stand-in image while a
+chibi's new expression renders in slices.
+
 ### Frame pacing
 
 The core logic runs at 30 Hz (`plat_begin_frame` / `plat_end_frame`, one

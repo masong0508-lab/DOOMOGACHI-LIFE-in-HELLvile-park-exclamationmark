@@ -21,17 +21,16 @@ int plat_screen_h(void) { return SCR_H; }
  *     checker is meant to look like
  * Nothing else is ever drawn between the merged pieces, so the result is
  * identical in painter's order. */
-enum { RUN_NONE, RUN_TILE, RUN_DOTS };
+int g_run_kind;            /* RUN_* of the open run (ps1.h gfx2d_flush) */
+#define s_run_kind g_run_kind
 static struct {
-    int kind;
     uint32_t *prim;
     int x, y, w, h, n;
     int nx, ny;            /* next x of a dot run / next y of a tile run */
     int c;                 /* -1 = none */
-} s_run = { 0, 0, 0, 0, 0, 0, 0, 0, 0, -1 };
-uint32_t g_rect_calls, g_rect_prims;
+} s_run = { 0, 0, 0, 0, 0, 0, 0, 0, -1 };
 
-void gfx2d_reset(void) { s_run.kind = RUN_NONE; s_run.c = -1; }
+void gfx2d_reset(void) { s_run_kind = RUN_NONE; s_run.c = -1; }
 
 static inline __attribute__((always_inline))
 uint32_t *emit_tile(int x, int y, int w, int h, uint32_t rgb, int semi)
@@ -44,7 +43,6 @@ uint32_t *emit_tile(int x, int y, int w, int h, uint32_t rgb, int semi)
     p[2] = ((uint32_t)y << 16) | (uint32_t)x;
     p[3] = ((uint32_t)h << 16) | (uint32_t)w;
     gfx_link_raw(p, 3);
-    g_rect_prims++;
     return p;
 }
 
@@ -57,29 +55,36 @@ static void emit_dot(int x, int y, uint32_t rgb)
     p[1] = rgb | 0x68000000u;           /* TILE_1 */
     p[2] = ((uint32_t)y << 16) | (uint32_t)x;
     gfx_link_raw(p, 2);
-    g_rect_prims++;
 }
 
-void gfx2d_flush(void)
+/* the 50/50 semi-transparency texpage for the blended checker tiles */
+static void tpage_half(void)
 {
-    if (s_run.kind == RUN_DOTS) {
-        int k = s_run.kind;
-        s_run.kind = RUN_NONE;      /* gfx_tpage() below flushes again */
+    DR_TPAGE *t;
+    if (g_tpage_cur == getTPage(0, 0, 0, 0))
+        return;                             /* already set (a run of rows) */
+    t = (DR_TPAGE *)gfx_alloc(sizeof(DR_TPAGE));
+    if (t) {
+        setDrawTPage(t, 1, 1, getTPage(0, 0, 0, 0));
+        gfx_link_raw((uint32_t *)t, 1);
+        g_tpage_cur = getTPage(0, 0, 0, 0);
+    }
+}
+
+void gfx2d_flush_run(void)
+{
+    if (s_run_kind == RUN_DOTS) {
+        s_run_kind = RUN_NONE;
         if (s_run.n >= 4) {
-            DR_TPAGE *t = (DR_TPAGE *)gfx_alloc(sizeof(DR_TPAGE));
-            if (t) {
-                setDrawTPage(t, 1, 1, getTPage(0, 0, 0, 0));   /* 50/50 */
-                gfx_link_raw((uint32_t *)t, 1);
-            }
+            tpage_half();
             emit_tile(s_run.x, s_run.y, s_run.n * 2 - 1, 1, g_rgb[s_run.c], 1);
         } else {
             int i;
             for (i = 0; i < s_run.n; i++)
                 emit_dot(s_run.x + i * 2, s_run.y, g_rgb[s_run.c]);
         }
-        (void)k;
     }
-    s_run.kind = RUN_NONE;
+    s_run_kind = RUN_NONE;
     s_run.c = -1;
 }
 
@@ -112,34 +117,34 @@ static void __attribute__((noinline)) rect_slow(int x, int y, int w, int h, uint
     if (w <= 0 || h <= 0)
         return;
     if (s_run.c == color) {
-        if (s_run.kind == RUN_TILE) {
+        if (s_run_kind == RUN_TILE) {
             if (y == s_run.y && h == s_run.h && x == s_run.x + s_run.w) {
                 s_run.w += w;                       /* grow rightward */
                 s_run.prim[3] = ((uint32_t)s_run.h << 16) | (uint32_t)s_run.w;
                 return;
             }
-        } else if (s_run.kind == RUN_DOTS && w == 1 && h == 1 && y == s_run.y &&
+        } else if (s_run_kind == RUN_DOTS && w == 1 && h == 1 && y == s_run.y &&
                    s_run.n == 1 && x == s_run.x + 1) {
             /* two adjacent pixels: it is a span after all */
-            s_run.kind = RUN_NONE;
+            s_run_kind = RUN_NONE;
             x = s_run.x;
             w = 2;
         }
     }
-    if (s_run.kind == RUN_DOTS)
-        gfx2d_flush();
+    if (s_run_kind == RUN_DOTS)
+        gfx2d_flush_run();
     if (w == 1 && h == 1) {
-        s_run.kind = RUN_DOTS;
+        s_run_kind = RUN_DOTS;
         s_run.x = x; s_run.y = y; s_run.n = 1; s_run.nx = x + 2; s_run.c = color;
         return;
     }
     s_run.prim = emit_tile(x, y, w, h, g_rgb[color], 0);
     if (s_run.prim) {
-        s_run.kind = RUN_TILE;
+        s_run_kind = RUN_TILE;
         s_run.x = x; s_run.y = y; s_run.w = w; s_run.h = h; s_run.ny = y + h;
         s_run.c = color;
     } else {
-        s_run.kind = RUN_NONE;
+        s_run_kind = RUN_NONE;
         s_run.c = -1;
     }
 }
@@ -148,15 +153,14 @@ void plat_rect(int x, int y, int w, int h, uint8_t color)
 {
     /* fast paths: continuing the current run needs no clipping beyond the
      * screen-edge test */
-    g_rect_calls++;
     if (color == s_run.c) {
-        if (s_run.kind == RUN_DOTS) {
+        if (s_run_kind == RUN_DOTS) {
             if (y == s_run.y && x == s_run.nx && (w | h) == 1 && (unsigned)x < SCR_W) {
                 s_run.n++;
                 s_run.nx += 2;
                 return;
             }
-        } else if (s_run.kind == RUN_TILE) {
+        } else if (s_run_kind == RUN_TILE) {
             if (x == s_run.x && w == s_run.w && y == s_run.ny && (unsigned)(y + h) <= SCR_H &&
                 y >= 0) {
                 s_run.h += h;
@@ -172,11 +176,14 @@ void plat_rect(int x, int y, int w, int h, uint8_t color)
 /* 50% checkerboard (platform.h): each row of 4+ dots is ONE 50% semi-
  * transparent TILE from its first to its last dot, exactly what a row of
  * stride-2 single-pixel rects becomes in rect_slow(); shorter rows are
- * drawn as dots. */
-void plat_checker(int x, int y, int w, int h, uint8_t color)
+ * drawn as dots. Rows of a taller checker alternate between two extents
+ * (even rows start at x, odd rows at x + 1), so the columns every row
+ * covers are ONE tile of the full height, and only the edge column(s)
+ * that alternate are drawn pixel by pixel (the concert's light beams and
+ * seams were one texpage + one tile per row, 14% of its frame). */
+static void checker_rows(int x, int y, int w, int h, uint8_t color)
 {
     int j;
-    g_rect_calls++;
     for (j = 0; j < h; j++) {
         int px = x + (j & 1), last = x + w - 1, yy = y + j, n;
         if (yy < 0 || yy >= SCR_H)
@@ -191,18 +198,58 @@ void plat_checker(int x, int y, int w, int h, uint8_t color)
             continue;
         n = (last - px) / 2 + 1;
         if (n >= 4) {
-            DR_TPAGE *t;
             gfx2d_flush();
-            t = (DR_TPAGE *)gfx_alloc(sizeof(DR_TPAGE));
-            if (t) {
-                setDrawTPage(t, 1, 1, getTPage(0, 0, 0, 0));   /* 50/50 */
-                gfx_link_raw((uint32_t *)t, 1);
-            }
+            tpage_half();
             emit_tile(px, yy, last - px + 1, 1, g_rgb[color], 1);
         } else {
             for (; px <= last; px += 2)
                 plat_rect(px, yy, 1, 1, color);
         }
+    }
+}
+
+void plat_checker(int x, int y, int w, int h, uint8_t color)
+{
+    int p, px[2], last[2], j0, j1, bx0, bx1, j;
+    uint32_t rgb = g_rgb[color];
+    if (h < 2 || w < 8) {
+        checker_rows(x, y, w, h, color);
+        return;
+    }
+    j0 = y < 0 ? -y : 0;
+    j1 = y + h > SCR_H ? SCR_H - y : h;
+    if (j0 >= j1)
+        return;
+    /* the two row kinds' dot extents, clipped as checker_rows() does */
+    for (p = 0; p < 2; p++) {
+        px[p] = x + p;
+        last[p] = x + w - 1;
+        if ((last[p] - px[p]) & 1)
+            last[p]--;
+        if (px[p] < 0)
+            px[p] += (1 - px[p]) & ~1;
+        if (last[p] > SCR_W - 1)
+            last[p] -= (last[p] - (SCR_W - 1) + 1) & ~1;
+        if (last[p] < px[p] || (last[p] - px[p]) / 2 + 1 < 4) {
+            checker_rows(x, y, w, h, color);       /* dots: row by row */
+            return;
+        }
+    }
+    bx0 = px[0] > px[1] ? px[0] : px[1];
+    bx1 = last[0] < last[1] ? last[0] : last[1];
+    gfx2d_flush();
+    tpage_half();
+    if (bx1 >= bx0)
+        emit_tile(bx0, y + j0, bx1 - bx0 + 1, j1 - j0, rgb, 1);
+    /* the alternating edge columns, blended like the rest of their row */
+    for (p = 0; p < 2; p++) {
+        int q = p ^ 1;
+        if (px[p] < px[q])                     /* the left edge: kind p only */
+            for (j = j0 + ((j0 & 1) != p); j < j1; j += 2)
+                emit_tile(px[p], y + j, 1, 1, rgb, 1);
+        if (last[p] > last[q])                 /* the right edge             */
+            for (j = j0 + ((j0 & 1) != p); j < j1; j += 2)
+                emit_tile(last[p], y + j, 1, 1, rgb, 1);
     }
 }
 
@@ -310,6 +357,47 @@ void plat_text(int x, int y, const char *s, uint8_t color)
     }
 }
 
+/* platform.h: the outline as one sprite per glyph from the dilated glyph
+ * page (7x11, origin (-1, -1)), then the text (was ten plat_text passes
+ * = ten sprites per glyph). */
+void plat_text_outline(int x, int y, const char *s, uint8_t color, uint8_t outline)
+{
+    int x0 = x, ox = x, oy = y;
+    uint16_t clut = vram_font_clut(outline);
+    const char *p;
+    int started = 0;
+    if (!s)
+        return;
+    for (p = s; *p; p++) {
+        unsigned c = (uint8_t)*p;
+        if (c == '\n') {
+            x = x0;
+            y += FONT_LINE;
+            continue;
+        }
+        if (c > ' ' && c <= FONT_LAST && x > -7 && x < SCR_W + 1 && y > -10 && y < SCR_H + 1) {
+            unsigned g = c - FONT_FIRST;
+            SPRT *q;
+            if (!started) {
+                gfx_tpage(vram_fontd_tpage());
+                started = 1;
+            }
+            q = (SPRT *)gfx_alloc(sizeof(SPRT));
+            if (!q)
+                return;
+            setSprt(q);
+            setShadeTex(q, 1);
+            setXY0(q, x - 1, y - 1);
+            setUV0(q, (g & 15) * 8, VR_FONTD_Y - 256 + (g >> 4) * VR_FONTD_CELL_H);
+            setWH(q, 7, 11);
+            q->clut = clut;
+            gfx_chain(q);
+        }
+        x += FONT_ADVANCE;
+    }
+    plat_text(ox, oy, s, color);
+}
+
 /* One image tile at screen position (sx,sy), tile size tw x th. */
 static void blit(int sx, int sy, int tw, int th, int scale, const TexRef *r,
                  uint16_t clut)
@@ -323,6 +411,7 @@ static void blit(int sx, int sy, int tw, int th, int scale, const TexRef *r,
             return;
         setDrawTPage(t, 1, 1, r->tpage);
         gfx_chain(t);
+        g_tpage_cur = r->tpage;
         p = (SPRT *)(t + 1);
         setSprt(p);
         setShadeTex(p, 1);
@@ -343,6 +432,7 @@ static void blit(int sx, int sy, int tw, int th, int scale, const TexRef *r,
         p->tpage = r->tpage;
         p->clut = clut;
         gfx_chain(p);
+        g_tpage_cur = r->tpage;         /* a textured poly sets the GPU's texpage too */
     }
 }
 

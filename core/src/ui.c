@@ -210,15 +210,22 @@ void ui_text_shadow(int x, int y, const char *s, uint8_t color, uint8_t shadow)
     ui_text(x, y, s, color);
 }
 
-void ui_text_outline(int x, int y, const char *s, uint8_t color, uint8_t outline)
+/* Weak default of plat_text_outline (platform.h): the ten passes. */
+__attribute__((weak)) void plat_text_outline(int x, int y, const char *s, uint8_t color,
+                                             uint8_t outline)
 {
-    if (plat_draw_skipped()) return;
     int dx, dy;
     for (dy = -1; dy <= 1; dy++)
         for (dx = -1; dx <= 1; dx++)
             if (dx || dy) plat_text(x + dx, y + dy, s, outline);
     plat_text(x + 1, y + 2, s, outline);
     plat_text(x, y, s, color);
+}
+
+void ui_text_outline(int x, int y, const char *s, uint8_t color, uint8_t outline)
+{
+    if (plat_draw_skipped() || !s) return;
+    plat_text_outline(x, y, s, color, outline);
 }
 
 void ui_text_center(int cx, int y, const char *s, uint8_t color)

@@ -102,6 +102,8 @@ static void ut_rect(int x, int y, int w, int h, uint8_t c)
 #define SC_ENT  160
 #define SC_HASH 256
 #endif
+/* shape kinds (k0 & 255), below UR_K_PILL */
+enum { K_HEART = 1, K_TINY, K_STAR, K_GLYPH, K_TEXT, K_ELLIPSE };
 #define SC_PAL  8
 /* packed rect: x 8 bits | w 8 | y 7 | h 6 | colour index 3 */
 typedef uint32_t SRect;
@@ -109,12 +111,17 @@ typedef struct {
     uint32_t k0, k1, k2;
     uint16_t start, n;
     uint8_t pal[SC_PAL];
+#if !defined(DOOMO_PLATFORM_GBA)
+    DoomoImage img;                    /* its pixels, valid iff igen == si_gen */
+    uint32_t igen, last;               /* image generation, last frame drawn   */
+    int16_t bx, by;                    /* image origin relative to the anchor  */
+#endif
 } SEnt;
 static SRect sc_pool[SC_POOL];
 static SEnt sc_ent[SC_ENT];
 static int sc_top, sc_nent;
 static uint8_t sc_hash[SC_HASH];       /* entry index + 1, 0 = empty slot   */
-static uint32_t sc_resets, sc_misses, sc_hits;
+static uint32_t sc_resets, sc_misses, sc_hits, sc_replayed;
 
 static unsigned sc_slot(uint32_t k0, uint32_t k1, uint32_t k2)
 {
@@ -122,8 +129,38 @@ static unsigned sc_slot(uint32_t k0, uint32_t k1, uint32_t k2)
     return (h ^ (h >> 15)) & (SC_HASH - 1);
 }
 
+/* ---- shape images (PS1 / native) -----------------------------------------
+ * A cached shape that is drawn again in the next frame (or twice in one
+ * frame) also gets a bitmap, painted once from its rect list in the same
+ * order, and is from then on drawn with ONE plat_image: on the PS1 that is
+ * one SPRT from the VRAM image cache instead of tens of TILE prims (the
+ * title's logo letters, hearts, pills and buttons: ~860 of its ~1150 rects
+ * a frame; the island hub's and the menus' pills and hearts likewise). The
+ * pixels are the same: index 0 is "transparent" in images and never a
+ * shape colour here (a shape that uses it keeps its rects). The GBA
+ * replays rects: it has no RAM for the pool and its rects are cheap. */
+#if !defined(DOOMO_PLATFORM_GBA)
+#define SC_IMAGES 1
+#define SI_POOL (16u * 1024u)          /* the title's letters + pills take 11 */
+#define SI_MIN_RECTS 6                 /* fewer rects are cheaper as rects  */
+static uint8_t si_pool[SI_POOL];
+static uint32_t si_top, si_gen = 1, si_reset_frame;
+static uint32_t si_built, si_drawn;
+
+static void si_reset(void)
+{
+    si_top = 0;
+    si_gen++;
+}
+#else
+#define SC_IMAGES 0
+#endif
+
 static void sc_reset(void)
 {
+#if SC_IMAGES
+    si_reset();
+#endif
     sc_top = 0;
     sc_nent = 0;
     memset(sc_hash, 0, sizeof(sc_hash));
@@ -156,6 +193,7 @@ static void rec_add(int x, int y, int w, int h, uint8_t c)
 static void sc_replay(const SEnt *e, int ax, int ay)
 {
     const SRect *r = &sc_pool[e->start], *end = r + e->n;
+    sc_replayed += e->n;
     for (; r < end; r++) {
         uint32_t v = *r;
         UR_PLAT_RECT(ax + (int)(v & 255), ay + (int)((v >> 16) & 127), (int)((v >> 8) & 255),
@@ -163,12 +201,85 @@ static void sc_replay(const SEnt *e, int ax, int ay)
     }
 }
 
+#if SC_IMAGES
+/* paint the shape's rects into a bitmap from the image pool; 0 = no room
+ * or not suitable (then the rects are replayed) */
+static int si_build(SEnt *e)
+{
+    const SRect *r = &sc_pool[e->start], *end = r + e->n;
+    int x0 = 0x7FFF, y0 = 0x7FFF, x1 = -1, y1 = -1, w, h, i;
+    uint32_t now = doomo_frame_count(), size;
+    uint8_t *pix;
+    for (i = 0; i < SC_PAL; i++)
+        if (e->pal[i] == 0) {
+            /* colour 0 (black as a fill, transparent in an image)? */
+            const SRect *q;
+            for (q = r; q < end; q++) if ((*q >> 29) == (uint32_t)i) return 0;
+        }
+    for (; r < end; r++) {
+        uint32_t v = *r;
+        int rx = (int)(v & 255), ry = (int)((v >> 16) & 127);
+        int rw = (int)((v >> 8) & 255), rh = (int)((v >> 23) & 63);
+        if (rx < x0) x0 = rx;
+        if (ry < y0) y0 = ry;
+        if (rx + rw > x1) x1 = rx + rw;
+        if (ry + rh > y1) y1 = ry + rh;
+    }
+    w = x1 - x0;
+    h = y1 - y0;
+    if (w <= 0 || h <= 0) return 0;
+    size = (uint32_t)(w * h + 3) & ~3u;
+    if (si_top + size > SI_POOL) {
+        /* full: start the pool over, but not over and over (a screen with
+         * more shapes than the pool just replays rects) */
+        if (size > SI_POOL / 4 || now - si_reset_frame < 60u) return 0;
+        si_reset_frame = now;
+        si_reset();
+    }
+    pix = si_pool + si_top;
+    si_top += size;
+    memset(pix, 0, (size_t)w * (size_t)h);
+    for (r = &sc_pool[e->start]; r < end; r++) {
+        uint32_t v = *r;
+        int rx = (int)(v & 255) - x0, ry = (int)((v >> 16) & 127) - y0;
+        int rw = (int)((v >> 8) & 255), rh = (int)((v >> 23) & 63), j;
+        uint8_t c = e->pal[v >> 29];
+        for (j = 0; j < rh; j++) memset(pix + (ry + j) * w + rx, c, (size_t)rw);
+    }
+    e->img.w = (uint16_t)w;
+    e->img.h = (uint16_t)h;
+    e->img.pix = pix;
+    e->img.uid = doomo_image_new_uid();
+    e->bx = (int16_t)x0;
+    e->by = (int16_t)y0;
+    e->igen = si_gen;
+    si_built++;
+    return 1;
+}
+
+/* draw a cached shape: its image if it has (or now earns) one */
+static int si_draw(SEnt *e, int ax, int ay)
+{
+    uint32_t now = doomo_frame_count();
+    int again = e->last && now - e->last <= 1u;
+    e->last = now ? now : 1;
+    if (ut_on || e->n < SI_MIN_RECTS) return 0;
+    if (e->igen != si_gen && (!again || !si_build(e))) return 0;
+    plat_image(ax + e->bx, ay + e->by, &e->img, 1, 0, 0);
+    si_drawn++;
+    return 1;
+}
+#endif
+
 int ur_cache_draw(uint32_t k0, uint32_t k1, uint32_t k2, int ax, int ay)
 {
     unsigned slot = sc_slot(k0, k1, k2), n;
     for (n = 0; n < SC_HASH && sc_hash[slot]; n++, slot = (slot + 1) & (SC_HASH - 1)) {
-        const SEnt *e = &sc_ent[sc_hash[slot] - 1];
+        SEnt *e = &sc_ent[sc_hash[slot] - 1];
         if (e->k0 == k0 && e->k1 == k1 && e->k2 == k2) {
+#if SC_IMAGES
+            if (si_draw(e, ax, ay)) { sc_hits++; return 1; }
+#endif
             sc_replay(e, ax, ay);
             sc_hits++;
             return 1;
@@ -185,6 +296,16 @@ void ur_cache_stats(int *used, int *entries, uint32_t *hits, uint32_t *misses,
     *hits = sc_hits; *misses = sc_misses; *resets = sc_resets;
 }
 
+void ur_cache_image_stats(uint32_t *replayed, uint32_t *built, uint32_t *drawn)
+{
+    *replayed = sc_replayed;
+#if SC_IMAGES
+    *built = si_built; *drawn = si_drawn;
+#else
+    *built = 0; *drawn = 0;
+#endif
+}
+
 void ur_cache_begin(uint32_t k0, uint32_t k1, uint32_t k2, int ax, int ay)
 {
     if (sc_nent == SC_ENT) sc_reset();
@@ -192,6 +313,10 @@ void ur_cache_begin(uint32_t k0, uint32_t k1, uint32_t k2, int ax, int ay)
     rec_e->k0 = k0; rec_e->k1 = k1; rec_e->k2 = k2;
     rec_e->start = (uint16_t)sc_top;
     rec_e->n = 0;
+#if SC_IMAGES
+    rec_e->igen = 0;
+    rec_e->last = 0;
+#endif
     rec_ax = ax; rec_ay = ay;
     rec_fail = 0;
     rec_npal = 0;
@@ -403,6 +528,69 @@ static const uint8_t *circle_dx(int r)
 
 /* ====================================================================== */
 /* filled ellipses: the union of one rect per distinct half-width           */
+/* The half-width of row |dy| = ay is isqrt(q(ay)) / 2 with
+ * q(ay) = floor(t(ay) * A / B), t(ay) = (ry*ry - ay*ay) * 4 + 2*ry, A =
+ * rx*rx, B = ry*ry. Instead of one division and one bit-serial square root
+ * per row (fx_isqrt was 4-14% of the slow 2D scenes), the quotient is
+ * stepped exactly: ay -> ay + 1 takes D(ay) = (8 ay + 4) A off the
+ * numerator and D grows by 8 A per row, so quotient and remainder of both
+ * are carried along, and the half-width (monotone in ay) is walked up or
+ * down by whole pixels. Same integers as the formula, no division per row. */
+typedef struct {
+    uint32_t B, q, r;                   /* q = floor(N / B), r = N - q B   */
+    uint32_t dq, dr;                    /* D(ay) / B, D(ay) % B            */
+    uint32_t c8q, c8r;                  /* 8A / B, 8A % B                  */
+} EllQ;
+
+/* 1 if the numerator t(0) * A stays well inside 32 bits (as the reference
+ * formula assumes; otherwise the formula itself wraps and we keep it) */
+static int ellq_ok(uint32_t A, int ry)
+{
+    uint32_t t0 = (uint32_t)(ry * ry * 4 + ry * 2 + 12);
+    return A <= 0x3FFFFFFFu / t0;
+}
+
+static void ellq_init(EllQ *e, uint32_t A, uint32_t B, int ry, int ay)
+{
+    uint32_t t = (uint32_t)((ry * ry - ay * ay) * 4 + ry * 2);
+    uint32_t N = t * A, D = (uint32_t)(8 * ay + 4) * A, A8 = 8u * A;
+    e->B = B;
+    e->q = N / B; e->r = N - e->q * B;
+    e->dq = D / B; e->dr = D - e->dq * B;
+    e->c8q = A8 / B; e->c8r = A8 - e->c8q * B;
+}
+
+static void ellq_down(EllQ *e)          /* ay -> ay + 1 */
+{
+    e->q -= e->dq;
+    if (e->r < e->dr) { e->r += e->B; e->q--; }
+    e->r -= e->dr;
+    e->dq += e->c8q; e->dr += e->c8r;
+    if (e->dr >= e->B) { e->dr -= e->B; e->dq++; }
+}
+
+static void ellq_up(EllQ *e)            /* ay -> ay - 1 */
+{
+    if (e->dr < e->c8r) { e->dr += e->B; e->dq--; }
+    e->dr -= e->c8r; e->dq -= e->c8q;
+    e->q += e->dq; e->r += e->dr;
+    if (e->r >= e->B) { e->r -= e->B; e->q++; }
+}
+
+/* isqrt(q) / 2 = the largest d with 4 d^2 <= q, walked from the previous
+ * row's value */
+static int ellq_dx_down(int d, uint32_t q)
+{
+    while (d > 0 && 4u * (uint32_t)d * (uint32_t)d > q) d--;
+    return d;
+}
+
+static int ellq_dx_up(int d, uint32_t q)
+{
+    while (4u * (uint32_t)(d + 1) * (uint32_t)(d + 1) <= q) d++;
+    return d;
+}
+
 /* Half-widths are non-increasing away from the centre row, so the rows
  * whose half-width is >= v form one band around it: the shape is the union
  * of one rect per distinct half-width (same colour, so overlap is free). */
@@ -413,18 +601,40 @@ static void nested_bands(int cx, int cy, const int *dxs, int ry, uint8_t c)
         int v = dxs[y], y2 = y;
         /* rows |dy| <= y all have half-width >= v; rows beyond y2 ... */
         while (y2 > 0 && dxs[y2 - 1] == v) y2--;
-        UR_PLAT_RECT(cx - v, cy - y, 2 * v + 1, 2 * y + 1, c);
+        out_rect(cx - v, cy - y, 2 * v + 1, 2 * y + 1, c);
         y = y2 - 1;
     }
 }
 
+static void ellipse_draw(int cx, int cy, int rx, int ry, uint8_t c);
+
 void ui_fill_ellipse(int cx, int cy, int rx, int ry, uint8_t c)
+{
+    if (plat_draw_skipped()) return;
+    if (rx < 0 || ry < 0) return;
+#if SC_IMAGES
+    /* (PS1 / native) small ellipses are cached shapes too: drawn two
+     * frames running, each becomes ONE sprite instead of its ~6 band
+     * rects (the island's clover patches and tree crowns, the concert's
+     * props: a quarter of the island hub's 2,000 rects). The GBA draws
+     * them directly: its rects cost what a replay costs. */
+    if (ry > 0 && ry <= 24 && rx <= 60 && c != 0) {
+        uint32_t k0 = K_ELLIPSE | (uint32_t)rx << 8 | (uint32_t)ry << 16;
+        if (ur_cache_draw(k0, c, 0, cx - rx, cy - ry)) return;
+        ur_cache_begin(k0, c, 0, cx - rx, cy - ry);
+        ellipse_draw(cx, cy, rx, ry, c);
+        if (!ur_cache_end()) ellipse_draw(cx, cy, rx, ry, c);
+        return;
+    }
+#endif
+    ellipse_draw(cx, cy, rx, ry, c);
+}
+
+static void ellipse_draw(int cx, int cy, int rx, int ry, uint8_t c)
 {
     int dxs[CIRC_MAX + 1];
     int y;
-    if (plat_draw_skipped()) return;
-    if (rx < 0 || ry < 0) return;
-    if (ry == 0) { UR_PLAT_RECT(cx - rx, cy, 2 * rx + 1, 1, c); return; }
+    if (ry == 0) { out_rect(cx - rx, cy, 2 * rx + 1, 1, c); return; }
     if (rx == ry && ry <= CIRC_MAX) {
         const uint8_t *t = circle_dx(ry);
         for (y = 0; y <= ry; y++) dxs[y] = t[y];
@@ -432,10 +642,22 @@ void ui_fill_ellipse(int cx, int cy, int rx, int ry, uint8_t c)
         return;
     }
     if (ry <= CIRC_MAX) {
-        for (y = 0; y <= ry; y++) {
-            /* x extent: rx * sqrt(1 - y^2/ry^2), +0.5 ry for rounder pixels */
-            uint32_t t = (uint32_t)((ry * ry - y * y) * 4 + ry * 2);
-            dxs[y] = (int)(fx_isqrt(t * (uint32_t)(rx * rx) / (uint32_t)(ry * ry)) / 2);
+        uint32_t A = (uint32_t)(rx * rx), B = (uint32_t)(ry * ry);
+        if (ellq_ok(A, ry)) {
+            EllQ e;
+            int d;
+            ellq_init(&e, A, B, ry, 0);
+            d = (int)(fx_isqrt(e.q) / 2);
+            for (y = 0; y <= ry; y++) {
+                dxs[y] = d;
+                if (y < ry) { ellq_down(&e); d = ellq_dx_down(d, e.q); }
+            }
+        } else {
+            for (y = 0; y <= ry; y++) {
+                /* x extent: rx * sqrt(1 - y^2/ry^2), +0.5 ry for rounder pixels */
+                uint32_t t = (uint32_t)((ry * ry - y * y) * 4 + ry * 2);
+                dxs[y] = (int)(fx_isqrt(t * A / B) / 2);
+            }
         }
         nested_bands(cx, cy, dxs, ry, c);
         return;
@@ -444,19 +666,34 @@ void ui_fill_ellipse(int cx, int cy, int rx, int ry, uint8_t c)
     {
         int prev = -1, y0 = 0;
         int sh = plat_screen_h();
+        uint32_t A = rx == ry ? 1u : (uint32_t)(rx * rx), B = rx == ry ? 1u : (uint32_t)(ry * ry);
+        int fast = ellq_ok(A, ry), d = 0;
+        EllQ e;
+        if (fast) {
+            ellq_init(&e, A, B, ry, ry);                 /* the top row */
+            d = (int)(fx_isqrt(e.q) / 2);
+        }
         for (y = -ry; y <= ry + 1; y++) {
             int dx = -2;
             if (y <= ry) {
-                int ay = y < 0 ? -y : y;
-                uint32_t t = (uint32_t)((ry * ry - ay * ay) * 4 + ry * 2);
-                if (rx == ry) dx = (int)(fx_isqrt(t) / 2);
-                else dx = (int)(fx_isqrt(t * (uint32_t)(rx * rx) / (uint32_t)(ry * ry)) / 2);
-                if (cy + y < 0 || cy + y >= sh) dx = -2;     /* off screen */
+                if (fast) {
+                    dx = d;
+                } else {
+                    int ay = y < 0 ? -y : y;
+                    uint32_t t = (uint32_t)((ry * ry - ay * ay) * 4 + ry * 2);
+                    if (rx == ry) dx = (int)(fx_isqrt(t) / 2);
+                    else dx = (int)(fx_isqrt(t * A / B) / 2);
+                }
+                if (cy + y < 0 || cy + y >= sh) { dx = -2; rec_clipped(); }  /* off screen */
             }
             if (dx != prev) {
-                if (prev >= 0) UR_PLAT_RECT(cx - prev, cy + y0, 2 * prev + 1, y - y0, c);
+                if (prev >= 0) out_rect(cx - prev, cy + y0, 2 * prev + 1, y - y0, c);
                 prev = dx;
                 y0 = y;
+            }
+            if (fast) {                                   /* to the next row */
+                if (y < 0) { ellq_up(&e); d = ellq_dx_up(d, e.q); }
+                else if (y < ry) { ellq_down(&e); d = ellq_dx_down(d, e.q); }
             }
         }
     }
@@ -876,7 +1113,6 @@ void ui_ramp5(uint8_t fill, uint8_t pal[5])
     pal[4] = PAL_WHITE;
 }
 
-enum { K_HEART = 1, K_TINY, K_STAR, K_GLYPH, K_TEXT };
 
 static void heart_draw(int cx, int cy, int s, int hw, int hh, uint8_t fill)
 {
@@ -936,14 +1172,25 @@ void ui_heart_squash(int cx, int cy, int size, int sx256, int sy256, uint8_t fil
 }
 
 /* Spans of row y (relative to the centre) of the flat heart of half-size
- * s: two lobes and the point, merged; returns the count (<= 3). */
-static int hf_row(int s, int y, int sp[3][2])
+ * s: two lobes and the point, merged; returns the count (<= 3). *run is
+ * the lobe half-width of the previous row (-1 at the first row): the
+ * rows come in order and the half-width changes by a few pixels a row, so
+ * isqrt(r2) is walked from it instead of computed bit by bit. */
+static int hf_row(int s, int y, int sp[3][2], int *run)
 {
     int lr = (s + 1) / 2, bottom = 2 * s - 1;
     int py = 2 * y, ly = py + lr, n = 0, i, j, m;
     int32_t r2 = (int32_t)lr * lr * 4 + 2 - (int32_t)ly * ly;
     if (r2 >= 0) {
-        int dx = (int)fx_isqrt((uint32_t)r2), k;
+        int dx, k;
+        if (*run < 0) {
+            dx = (int)fx_isqrt((uint32_t)r2);
+        } else {
+            dx = *run;
+            while ((dx + 1) * (dx + 1) <= r2) dx++;
+            while (dx > 0 && dx * dx > r2) dx--;
+        }
+        *run = dx;
         for (k = -1; k <= 1; k += 2) {
             int c0 = k * (2 * lr - 1);
             int x0 = (c0 - dx + 1) >> 1, x1 = (c0 + dx) >> 1;
@@ -982,14 +1229,14 @@ static int hf_size(int s)
  * the screen are visited. */
 void ui_heart_flat(int cx, int cy, int s, uint8_t c)
 {
-    int y, y0, y1, sh = plat_screen_h();
+    int y, y0, y1, sh = plat_screen_h(), run = -1;
     if (plat_draw_skipped()) return;
     s = hf_size(s);
     y0 = DOOMO_MAX(-s, -cy);
     y1 = DOOMO_MIN(s, sh - 1 - cy);
     ur_begin();
     for (y = y0; y <= y1; y++) {
-        int sp[3][2], n = hf_row(s, y, sp), i;
+        int sp[3][2], n = hf_row(s, y, sp, &run), i;
         for (i = 0; i < n; i++) ur_run(cy + y, cx + sp[i][0], sp[i][1] - sp[i][0] + 1, c);
     }
     ur_end();
@@ -997,11 +1244,11 @@ void ui_heart_flat(int cx, int cy, int s, uint8_t c)
 
 int ui_heart_flat_covers_screen(int cx, int cy, int s)
 {
-    int y, sw = plat_screen_w(), sh = plat_screen_h();
+    int y, sw = plat_screen_w(), sh = plat_screen_h(), run = -1;
     s = hf_size(s);
     if (cy - s > 0 || cy + s < sh - 1) return 0;
     for (y = -cy; y < sh - cy; y++) {
-        int sp[3][2], n = hf_row(s, y, sp), i, ok = 0;
+        int sp[3][2], n = hf_row(s, y, sp, &run), i, ok = 0;
         for (i = 0; i < n; i++)
             if (cx + sp[i][0] <= 0 && cx + sp[i][1] >= sw - 1) ok = 1;
         if (!ok) return 0;

@@ -137,17 +137,12 @@ int main(void)
         plat_end_frame();
         g_loop_frames++;
         if ((g_frame % 150) == 0) {
-            extern uint32_t g_rect_calls, g_rect_prims;
-            dbg("perf: frame=%u fps=%d.%d cpu=%uus gpuwait=%uus prims=%u/%uB rects=%u->%u "
+            dbg("perf: frame=%u fps=%d.%d cpu=%uus gpuwait=%uus prims=%u/%uB "
                 "3d=%uus polys=%d upload=%uB\n",
                 (unsigned)g_frame, (int)(g_perf.fps_x10 / 10), (int)(g_perf.fps_x10 % 10),
                 (unsigned)g_perf.cpu_us, (unsigned)g_perf.sync_us, (unsigned)g_perf.prims,
-                (unsigned)g_perf.prim_bytes, (unsigned)g_rect_calls, (unsigned)g_rect_prims,
+                (unsigned)g_perf.prim_bytes,
                 (unsigned)g_r3stats.cpu_us, g_r3stats.polys, (unsigned)vram_uploads());
-        }
-        {
-            extern uint32_t g_rect_calls, g_rect_prims;
-            g_rect_calls = g_rect_prims = 0;
         }
     }
 #endif

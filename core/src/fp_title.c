@@ -305,10 +305,22 @@ static void draw_ground(void)
     uint8_t g0 = hell ? PAL_RAMP(RAMP_VAPE, 2) : PAL_RAMP(RAMP_GRASS, 6);
     uint8_t g1 = hell ? PAL_RAMP(RAMP_VAPE, 1) : PAL_RAMP(RAMP_GRASS, 5);
     uint8_t g2 = hell ? PAL_RAMP(RAMP_STONE, 0) : PAL_RAMP(RAMP_GRASS, 4);
-    /* rolling hills: Hillvile houses on the left, Hellvile spires on the right */
-    for (i = 0; i < sw; i += 4) {
-        int h = 10 + ui_wave(i * 6 + 30, 400, 6) + ui_wave(i * 13, 300, 2);
-        plat_rect(i, y0 - h, 4, h + 2, g1);
+    /* rolling hills: Hillvile houses on the left, Hellvile spires on the right
+     * (perf: the heights depend on the column only; ui_wave's divisions
+     * for 80 columns were 120 software divisions a frame on the GBA) */
+    {
+        static uint8_t hill_h[96];
+        static int hill_sw;
+        if (hill_sw != sw) {
+            for (i = 0; i < sw && i / 4 < (int)DOOMO_COUNTOF(hill_h); i += 4)
+                hill_h[i / 4] = (uint8_t)(10 + ui_wave(i * 6 + 30, 400, 6) + ui_wave(i * 13, 300, 2));
+            hill_sw = sw;
+        }
+        for (i = 0; i < sw; i += 4) {
+            int h = i / 4 < (int)DOOMO_COUNTOF(hill_h) ? hill_h[i / 4]
+                                                      : 10 + ui_wave(i * 6 + 30, 400, 6) + ui_wave(i * 13, 300, 2);
+            plat_rect(i, y0 - h, 4, h + 2, g1);
+        }
     }
     for (i = 0; i < 7; i++) {
         int x = 6 + i * 18, hh = 10 + (i * 7) % 8, y = y0 - 10 - (i % 3) * 2;

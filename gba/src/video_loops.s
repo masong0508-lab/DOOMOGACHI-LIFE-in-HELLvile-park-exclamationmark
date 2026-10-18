@@ -33,7 +33,8 @@ plat_rect:
     str     r12, [sp]
     cmp     r0, #0
     cmpeq   r2, #240
-    beq     vid_rect_full
+    ldreq   r12, =vid_rect_full         @ ROM (THUMB): interworking jump
+    bxeq    r12
     b       vid_rect
     .size   plat_rect, . - plat_rect
     .ltorg
@@ -47,7 +48,31 @@ plat_rect:
     .global vid_rect
     .type   vid_rect, %function
 vid_rect:
-    sub     r12, r2, r0                 @ narrow spans (< 32 px): word masks
+    sub     r12, r2, r0                 @ width
+    cmp     r12, #1
+    bne     1f
+    sub     r12, r3, r1
+    cmp     r12, #1
+    bne     1f
+    @ one pixel (dots, sparkles, stars, checker fall-backs: the UI's most
+    @ frequent rect): a halfword read-modify-write, no stack frame
+    ldr     r2, =gba_back
+    ldr     r2, [r2]
+    rsb     r3, r1, r1, lsl #4          @ y0 * 15
+    add     r2, r2, r3, lsl #4          @ + y0 * 240
+    add     r2, r2, r0                  @ byte address of the pixel
+    ldr     r3, [sp]                    @ colour
+    and     r3, r3, #0xFF
+    tst     r0, #1
+    bic     r2, r2, #1                  @ its halfword
+    ldrh    r12, [r2]
+    andeq   r12, r12, #0xFF00           @ even x: low byte
+    orreq   r12, r12, r3
+    andne   r12, r12, #0xFF             @ odd x: high byte
+    orrne   r12, r12, r3, lsl #8
+    strh    r12, [r2]
+    bx      lr
+1:  sub     r12, r2, r0                 @ narrow spans (< 32 px): word masks
     cmp     r12, #32
     blt     vid_rect_narrow
     stmfd   sp!, {r4-r9, lr}
