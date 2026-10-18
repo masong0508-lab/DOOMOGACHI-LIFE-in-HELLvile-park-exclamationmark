@@ -516,6 +516,93 @@ a block top + front face skip their ground tile.
 
 ---------------------------------------------------------------------------
 
+## 6a. `plat_room`: the dream house (H2, `gba/src/room.c`)
+
+<!-- H2 (SPEC sec.7 H2): text for I9 to merge into this doc -->
+
+`SCENE_HOME` draws its room through `plat_room()` (platform.h; HF sec.6,
+SPEC C7). The GBA renderer draws exactly what the reference
+`core/src/room_ref.c` draws. `make -C gba test-home` checks the parity
+layout of `core/tests/test_home_render.c` against
+`core/tests/golden/room_ref.txt` hash for hash: views 0-3 and night, a
+full recompose, the dirty-rect path and the UI-restore path.
+
+**A static bitmap with dirty rects.** Each mode-4 page remembers what it
+shows: the shell key (room, view, light, paints, viewport, HUD bands),
+the draw list (screen box + signature per item) and a checksum of every
+16x8 block of the managed area. Each frame then runs four steps:
+
+1. Re-read the page's block checksums. A block that changed was drawn
+   over after `plat_room` (menus, captions, the iris), so it is redrawn.
+   The core never has to report its 2D drawing.
+2. Diff the draw list. New, gone or changed items dirty their old and new
+   boxes as exact rects, merged only when that wastes little.
+3. Redraw each rect: background, walls, floor, then the items that touch
+   it, in room_ref's order.
+4. Re-checksum the blocks the rects touched.
+
+A full recompose happens on a changed view, light, room or HUD band, a
+lost `gba_big` claim, or more than 70% dirty area. The other page then
+starts from a VRAM-to-VRAM copy of the shown page (about 2 ms) instead of
+a second recompose. The opaque HUD bars (`plat_room_ui_opaque`, called
+after `plat_room`) are never drawn or checked. Rects a scene registers
+*before* `plat_room` in the same frame skip the check for that frame: a
+modal window that stays put then costs nothing.
+
+**Pixel paths.** There is no new IWRAM code; everything per pixel runs in
+the existing ARM loops or DMA.
+
+| Part | How it is drawn |
+|---|---|
+| Walls | The wallpaper repeats every 16 units, so a wall is one sheared 16 px strip. It is cached as 8 phase rows, so a wall's screen row is one DMA. |
+| Floor | The tiles repeat every 32x16 px (upper-half tiles win the 2 px overlaps). A floor row is one or two DMAs from 16 cached pattern rows, plus at most 2 px patches on the two front edges. |
+| Plain pieces | No paint, full light, not mirrored: each opaque run goes straight from ROM. |
+| Other pieces | Each run goes through a 256-byte LUT (paint recolour composed with `doomo_colormap[light]`) into a stack buffer laid out at the destination's pixel parity, so the copy is always a halfword DMA. |
+| Actors | `ow_sprite`. |
+| Squash | `plat_image_xform` (S1's affine OBJs) when nothing covers the piece; otherwise drawn unsquashed in order. |
+
+Per object, the item and its sort entry are cached until the object or
+the view changes. The sort is room_ref's topological pick, done on
+bitsets and re-run only for entries that moved.
+
+**Memory.**
+
+| Resource | Use |
+|---|---|
+| `gba_big` | Claim `GBA_BIG_BY_ROOM` (4; moves to `gba_plat.h` at G0). State is at most 15,488 B; the harness layouts sit behind it. |
+| IWRAM | 0 B |
+| `.bss` / `.data` | About 34 B for room.c and 27 B for hcmd.c (budget 64 B) |
+| OBJ VRAM | None of its own. obj.c's four squash slots fill it, and obj.c only copies OAM while a squash shows, so the cursor and the held ghost are bitmap items. |
+| THUMB ROM | About 17.6 KB, of which about 2.7 KB is harness hooks |
+
+**Speed** (libmgba, game ROM, `harness fps`, drawn frames per second;
+`room-test` swaps in fixed layouts because this ROM keeps no HOME state
+before G0):
+
+| Scene (`home.txt`) | C-G gate | Measured |
+|---|---|---|
+| `home_plain`: template room, player, cursor | - | 30.0 (room 80k cycles) |
+| `home_steady`: parity room, Live, 4 chibis, 3 animated pieces | >= 28 | 29.8 |
+| `home_modal`: Score panel over the plain room | >= 18 | 20.0 |
+| `home_modal_busy`: Score panel, 3 walkers still moving under it | - | 13.4 |
+| `home_rotate`: two view turns (brake + recompose) | >= 20 | 26.5 |
+| `home_cellar_full`: 8x8, 40 pieces, dim | avg >= 24 | 26.2 |
+| `home_defend_w3`: 10 citizens + player walking, 24 lit pieces | >= 20 | **12.6 (not met)** |
+
+A full recompose of the parity room costs about 0.95 M cycles (about
+57 ms): 250k for the shell, 420k for the pieces, 63k for the checksums.
+Running THUMB code from ROM costs about 400 cycles of loop and DMA setup
+per sprite run, which dominates the busy cases. The defend crowd redraws
+about 7k px of rects every frame through the LUT path.
+
+The remaining levers, in order:
+
+1. LZ or aligned runs in `furn_iso.c` (H4), so every run is a DMA.
+2. Drawing a covered actor only once per page.
+3. Having the house scene register its modal windows with
+   `plat_room_ui_opaque` before `plat_room`, which removes the per-frame
+   restore under a static modal.
+
 ## 7. Audio
 
 * `plat_tone(ch, hz, vol, wave)` uses the PSG: channels 0/1 are the
@@ -608,6 +695,13 @@ gba/build/harness ROM.gba [--script FILE] [--shots DIR] [--save FILE]
   logic tick for 20 s of emulated time; 60 s at boot), failed
   expectations, and with `--fail-on-stub` on `STUB:` log lines.
 * Screenshots are PNG (own encoder, `png.c`), optionally scaled.
+* House commands (H2, game ROM): `room-parity ARG [INDEX]` hashes the
+  parity room frame (view `ARG & 3`, night `ARG & 0x10`, path `ARG >> 8`:
+  0 full, 1 dirty rects, 2 UI restore) and compares it with line INDEX of
+  `--golden FILE` (`core/tests/golden/room_ref.txt`); `room-test MODE`
+  swaps the house test layouts into `SCENE_HOME` (0 off, 1 steady, 2
+  cellar, 3 defend crowd); `expect-fps MIN [LABEL]` is `fps` that fails
+  below MIN drawn frames a second.
 
 `make -C gba test`:
 
@@ -617,6 +711,7 @@ gba/build/harness ROM.gba [--script FILE] [--shots DIR] [--save FILE]
 | `test-save` | engine-test ROM twice with the same `--save` file and SELECT held at boot: first run "no previous data / write ok", second run "persisted ok" (both 30 KB slots verified byte for byte, slot 1 erased and rewritten) |
 | `test-game` | game ROM, `scripts/smoke.txt`: boot, title, START, menu presses, screenshots in `build/shots/game` |
 | `test-coresave` | game ROM, `scripts/coresave1.txt` then `coresave2.txt` with the same `--save` file: the core's streamed saves (worst-case island in slot 1, a too-big save refused in slot 0, a story island in slot 0), loads checked by town CRC, then persistence across a reboot |
+| `test-home` | game ROM, `scripts/home.txt` (H2): `plat_room` parity with the room_ref golden on every path (15 frames), then `SCENE_HOME` fps gates (section 6a) and a profile, screenshots in `build/shots/home` |
 
 ---------------------------------------------------------------------------
 

@@ -103,7 +103,7 @@ CORE_OBJS := $(call core_obj,$(CORE_SRCS))
 # over the core's weak stubs, and the core's strong definitions win over both.
 ALL_OBJS  := $(GBA_OBJS) $(CORE_OBJS)
 
-.PHONY: all rom engine-test engine-test-nocore harness test test-et test-game test-save test-coresave clean sizes
+.PHONY: all rom engine-test engine-test-nocore harness test test-et test-game test-save test-coresave test-home clean sizes
 .DEFAULT_GOAL := all
 
 all: rom
@@ -166,6 +166,7 @@ test:
 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile test-game
 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile test-coresave
 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile test-story
+	@$(MAKE) --no-print-directory -f $(GBA)/Makefile test-home
 
 test-et: harness
 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile engine-test
@@ -206,6 +207,17 @@ test-story: harness
 	    $(HARNESS) $(BUILD)/doomogachi.gba --script $$s --shots $(SHOTS)/story --quiet || exit 1; \
 	done
 # --- end S2 ---
+
+# --- H2 (SPEC sec.7 H2, C2): the dream house renderer, gba/src/room.c:
+# parity with the room_ref golden on every path, then SCENE_HOME fps ---
+test-home: harness
+	@$(MAKE) --no-print-directory -f $(GBA)/Makefile rom ENGINE_TEST=0
+	@mkdir -p $(SHOTS)/home
+	$(PREFIX)nm -n $(BUILD)/doomogachi.elf > $(BUILD)/doomogachi.nm
+	$(HARNESS) $(BUILD)/doomogachi.gba --script $(GBA)/harness/scripts/home.txt \
+	    --shots $(SHOTS)/home --golden $(ROOT)/core/tests/golden/room_ref.txt \
+	    --nm $(BUILD)/doomogachi.nm --quiet
+# --- end H2 ---
 
 sizes: $(ELF)
 	$(SIZE) -A $(ELF)
