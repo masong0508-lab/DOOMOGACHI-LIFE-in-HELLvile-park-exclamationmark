@@ -56,5 +56,8 @@ int  fp_island_tint(void);
 /* Sea, land, river + Wall, roads, decorations, walkers, the buildings
  * (back to front; sel bounces) and the weather. */
 void fp_island_draw_map(const FpLocDraw *locs, int n, int sel);
+/* An opaque rect drawn over the map later this frame (w <= 0: none): map
+ * parts wholly inside it are not drawn. */
+void fp_island_occluder(int x, int y, int w, int h);
 
 #endif

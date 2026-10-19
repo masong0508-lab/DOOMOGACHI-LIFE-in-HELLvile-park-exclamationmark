@@ -843,15 +843,24 @@ static void draw_bubbles(const FpLocDraw *ld)
     }
 }
 
+static void menu_rect(int *x, int *y, int *w, int *h)
+{
+    int sw = fp_sw(), big = fp_big();
+    *w = DOOMO_MIN(sw - 12, 300);
+    *h = big ? 190 : 128;
+    *x = (sw - *w) / 2;
+    *y = big ? 26 : 18;
+}
+
 static void draw_menu(void)
 {
     const Loc *L = I.mloc;
-    int sw = fp_sw(), sh = fp_sh(), big = fp_big();
-    int w = DOOMO_MIN(sw - 12, 300), h = big ? 190 : 128, x = (sw - w) / 2, y = big ? 26 : 18;
+    int sw = fp_sw(), sh = fp_sh(), big = fp_big(), w, h, x, y;
     int has_host = L->host != NULL, lx, lw, vis = big ? 11 : 7, i, t = fp_t();
     int style = (L->kind == LOC_PITS || L->kind == LOC_BLACK_MARKET || L->kind == LOC_SQUARE ||
                  L->kind == LOC_ARENA || L->kind == LOC_LAKE || L->kind == LOC_GRAVEYARD) ? WIN_DARK : WIN_CUTE;
     const UiStyle *st = ui_style(style);
+    menu_rect(&x, &y, &w, &h);
     plat_shade_rect(0, 0, sw, sh, 11);
     if (!ui_window_pop(x, y, w, h, style, I.menu_t)) return;
     /* title */
@@ -927,7 +936,15 @@ static void island_draw(void)
         ld[i].locked = (uint8_t)(locs[i].kind == LOC_ARENA && arena_locked());
     }
     plat_clear(PAL_RAMP(RAMP_SKY, 5));
+    /* (perf) a fully popped menu window hides most of the map: skip what
+     * lies under its opaque inside (4 px in from the rounded rim) */
+    if (I.menu_open && I.menu_t >= 0 && ui_pop_scale(I.menu_t) == 256) {
+        int mx, my, mw, mh;
+        menu_rect(&mx, &my, &mw, &mh);
+        fp_island_occluder(mx + 4, my + 4, mw - 8, mh - 8);
+    }
     fp_island_draw_map(ld, NLOCS, I.menu_open ? -1 : I.sel);
+    fp_island_occluder(0, 0, 0, 0);
     draw_bubbles(ld);
     /* the corner buttons */
     for (i = 0; i < NLOCS; i++) {

@@ -106,10 +106,27 @@ static uint8_t g_measure_dummy;
 static uint8_t *g_off;                       /* NULL: draw to the screen */
 static int g_ox, g_oy, g_ow, g_oh, g_bx0, g_by0, g_bx1, g_by1;
 
+/* (perf) An opaque window drawn over the map later in the frame (the
+ * island's place menus): screen draws that lie wholly inside it are
+ * skipped, as the window paints over them anyway. Same pixels. */
+static int g_occ, g_occ_x0, g_occ_y0, g_occ_x1, g_occ_y1;
+
+void fp_island_occluder(int x, int y, int w, int h)
+{
+    g_occ = w > 0 && h > 0;
+    g_occ_x0 = x; g_occ_y0 = y; g_occ_x1 = x + w; g_occ_y1 = y + h;
+}
+
+static int hidden(int x, int y, int w, int h)
+{
+    return g_occ && !g_off && x >= g_occ_x0 && y >= g_occ_y0 && x + w <= g_occ_x1 &&
+           y + h <= g_occ_y1;
+}
+
 static void put(int x, int y, int w, int h, uint8_t c)
 {
     int j;
-    if (!g_off) { plat_rect(x, y, w, h, c); return; }
+    if (!g_off) { if (!hidden(x, y, w, h)) plat_rect(x, y, w, h, c); return; }
     if (g_off == G_MEASURE) {
         g_bx0 = DOOMO_MIN(g_bx0, x); g_by0 = DOOMO_MIN(g_by0, y);
         g_bx1 = DOOMO_MAX(g_bx1, x + w); g_by1 = DOOMO_MAX(g_by1, y + h);
@@ -126,8 +143,18 @@ static void put(int x, int y, int w, int h, uint8_t c)
 }
 static void R(int x, int y, int w, int h, uint8_t c) { if (w > 0 && h > 0) put(x, y, w, h, tc(c)); }
 static void RG(int x, int y, int w, int h, uint8_t c) { if (w > 0 && h > 0) put(x, y, w, h, c); }
-static void C(int cx, int cy, int r, uint8_t c) { ui_fill_circle(cx, cy, r, tc(c)); }
-static void E(int cx, int cy, int rx, int ry, uint8_t c) { ui_fill_ellipse(cx, cy, rx, ry, tc(c)); }
+static void C(int cx, int cy, int r, uint8_t c)
+{
+    if (!hidden(cx - r - 1, cy - r - 1, 2 * r + 3, 2 * r + 3)) ui_fill_circle(cx, cy, r, tc(c));
+}
+static void E(int cx, int cy, int rx, int ry, uint8_t c)
+{
+    if (!hidden(cx - rx - 1, cy - ry - 1, 2 * rx + 3, 2 * ry + 3)) ui_fill_ellipse(cx, cy, rx, ry, tc(c));
+}
+static void CK(int x, int y, int w, int h, uint8_t c)
+{
+    if (!hidden(x, y, w, h)) plat_checker(x, y, w, h, c);
+}
 
 /* a shaded box with a coloured outline (dark shade of its own colour) */
 static void box(int x, int y, int w, int h, uint8_t dark, uint8_t base, uint8_t light)
@@ -173,7 +200,8 @@ static void shadow(int cx, int y, int rx)
     int i;
     for (i = 0; i < 3; i++) {
         int w = rx * 2 - (i == 1 ? 0 : 4) - (i == 2 ? 4 : 0);
-        plat_shade_rect(cx - w / 2, y - 1 + i, w, 1, i == 1 ? 10 : 12);
+        if (!hidden(cx - w / 2, y - 1 + i, w, 1))
+            plat_shade_rect(cx - w / 2, y - 1 + i, w, 1, i == 1 ? 10 : 12);
     }
 }
 
@@ -233,7 +261,7 @@ static void draw_sea(void)
     for (i = 0; i < bands; i++) {
         int y = M.y + i * bh;
         R(M.x, y, M.w, DOOMO_MIN(bh, M.y + M.h - y), band[i]);
-        if (i) plat_checker(M.x, y, M.w, 1, tc(band[i - 1]));
+        if (i) CK(M.x, y, M.w, 1, tc(band[i - 1]));
     }
     /* wave glints drifting along */
     for (i = 0; i < 18; i++) {
@@ -275,7 +303,7 @@ static void draw_river_run(int row0, int row1)
     R(wl, y, 6, h, PAL_RAMP(RAMP_STONE, 1));
     R(wl + 1, y, 1, h, PAL_RAMP(RAMP_STONE, 6));
     R(wl + 2, y, 3, h, PAL_RAMP(RAMP_STONE, 5));
-    plat_checker(wl + 2 + (row0 & 1), y, 2, h, tc(PAL_RAMP(RAMP_STONE, 4)));
+    CK(wl + 2 + (row0 & 1), y, 2, h, tc(PAL_RAMP(RAMP_STONE, 4)));
     /* its shadow on the Hellvile ground (darker shade of each band) */
     for (row = row0; row < row1;) {
         int r1 = row + 1;
@@ -400,8 +428,8 @@ static void draw_land(void)
         l = coast_l[rr0];
         r = coast_r[rr0];
         rc = river_c[rr0];
-        plat_checker(l + 3, M.y + rr0, rc - 4 - l - 3, 1, tc(hill_grass(rr0 - 1)));
-        plat_checker(rc + 13, M.y + rr0, r - 3 - rc - 13, 1, tc(hell_ground(rr0 - 1)));
+        CK(l + 3, M.y + rr0, rc - 4 - l - 3, 1, tc(hill_grass(rr0 - 1)));
+        CK(rc + 13, M.y + rr0, r - 3 - rc - 13, 1, tc(hell_ground(rr0 - 1)));
     }
 }
 
@@ -526,6 +554,7 @@ static void draw_deco(const Deco *d)
 {
     int x = fp_mx(d->x), y = fp_my(d->y), t = g_t;
     int sway = ui_wave(t + d->x * 9, 90, 1);
+    if (hidden(x - 24, y - 40, 48, 48)) return;          /* (well inside any deco) */
     switch (d->kind) {
     case D_TREE:
         deco_tree(x, y, PAL_RAMP(RAMP_GRASS, 3), PAL_RAMP(RAMP_GRASS, 5), PAL_RAMP(RAMP_GRASS, 7), sway);
@@ -1337,6 +1366,9 @@ void fp_island_draw_map(const FpLocDraw *locs, int n, int sel)
         shadow(l->x, l->y, 11);
         if (bc && order[i] < FP_LOC_MAX && bc->spr[order[i]].img.pix) {
             const FpSprite *sp = &bc->spr[order[i]];
+            /* hidden with a wide margin for its live bits (flags, smoke) */
+            if (hidden(sp->x - 24, l->y - b + sp->y - 24, sp->img.w + 48, sp->img.h + 48))
+                continue;
             plat_image(sp->x, l->y - b + sp->y, &sp->img, 1, 0, 0);
             g_pass = PASS_ANIM;
             fp_island_building(l->kind, l->x, l->y - b, l->locked);
