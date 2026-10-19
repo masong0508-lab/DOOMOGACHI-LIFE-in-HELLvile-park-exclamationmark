@@ -239,4 +239,7 @@ uint32_t timer_us(void);                 /* microseconds since boot (wraps) */
 /* Debug output to the TTY (pcsx-redux -stdout), printf-like subset. */
 void dbg(const char *fmt, ...);
 
+/* the LZ codec of tools/packart.py (packart.c): n bytes out */
+void ps1_unlz(const uint8_t *src, uint8_t *dst, uint32_t n);
+
 #endif

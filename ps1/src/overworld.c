@@ -28,6 +28,7 @@
 #define OW_TAN    1843            /* tan(hfov/2) = 0.45: a calm telephoto view */
 #define OW_ROWS_N 9               /* rows visible north of the focus          */
 #define OW_ROWS_S 6               /* rows south of the focus (+ tall blocks)  */
+#define OW_HALF_MAX (7 + ((OW_ROWS_S + OW_ROWS_N) * 4) / 14)  /* widest row's half */
 #define OW_SPRITE 2               /* billboard scale vs the 3D view: chibi
                                      residents ~ as tall as a cottage        */
 
@@ -185,13 +186,16 @@ static int floor_of(const DoomoCell *c, int cx, int cy)
     return world_floor(s_map, c, cx, cy);
 }
 
-static void emit_cell(int cx, int cy)
+/* lit corners: lt = the cell's two north corners, lb = its two south ones
+ * (rows of corner_lit() computed once per frame by plat_overworld: every
+ * corner is shared by four cells, and corner_lit was 20% of a frame) */
+static void emit_cell(int cx, int cy, const uint32_t *lt, const uint32_t *lb)
 {
     const DoomoCell *c = cell_at(cx, cy);
     int x0 = cx * CELL, y0 = cy * CELL;
     int fz = floor_of(c, cx, cy);
-    uint32_t c00 = glow(c, corner_lit(cx, cy)), c10 = glow(c, corner_lit(cx + 1, cy));
-    uint32_t c01 = glow(c, corner_lit(cx, cy + 1)), c11 = glow(c, corner_lit(cx + 1, cy + 1));
+    uint32_t c00 = glow(c, lt[0]), c10 = glow(c, lt[1]);
+    uint32_t c01 = glow(c, lb[0]), c11 = glow(c, lb[1]);
     g_r3stats.cells++;
     if (c->wall) {
         int top = block_top(c);
@@ -321,13 +325,24 @@ void plat_overworld(const DoomoOverworldView *v)
     r3_sky(s_map->sky, v->time, 96 + (v->daylight * 32) / 15);
 
     /* footprint: rows north of the focus widen with distance */
-    for (row = -OW_ROWS_N; row <= OW_ROWS_S; row++) {
-        /* the view frustum on the ground is a trapezoid: ~4 cells either
-         * side at the bottom of the screen, ~9 at the top */
-        int half = 7 + ((OW_ROWS_S - row) * 4) / 14;
-        cy = ccy + row;
-        for (cx = ccx - half; cx <= ccx + half; cx++)
-            emit_cell(cx, cy);
+    {
+        /* rows narrow southward, so the south corners of one row cover the
+         * north corners the next row needs: the two buffers swap */
+        uint32_t lit[2][2 * OW_HALF_MAX + 2], *top = lit[0], *bot = lit[1], *sw;
+        int x0 = ccx - OW_HALF_MAX, k;
+        for (k = 0; k < 2 * OW_HALF_MAX + 2; k++)
+            top[k] = corner_lit(x0 + k, ccy - OW_ROWS_N);
+        for (row = -OW_ROWS_N; row <= OW_ROWS_S; row++) {
+            /* the view frustum on the ground is a trapezoid: ~4 cells either
+             * side at the bottom of the screen, ~9 at the top */
+            int half = 7 + ((OW_ROWS_S - row) * 4) / 14;
+            cy = ccy + row;
+            for (cx = ccx - half; cx <= ccx + half + 1; cx++)
+                bot[cx - x0] = corner_lit(cx, cy + 1);
+            for (cx = ccx - half; cx <= ccx + half; cx++)
+                emit_cell(cx, cy, top + (cx - x0), bot + (cx - x0));
+            sw = top; top = bot; bot = sw;
+        }
     }
 
     /* billboards: camera-facing, standing on their feet */

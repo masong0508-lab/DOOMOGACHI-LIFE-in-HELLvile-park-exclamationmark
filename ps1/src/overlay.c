@@ -18,7 +18,8 @@
  *
  * Everything that is not reached only through a scene's four entry
  * points stays resident (ovl_plan.py), so nothing else ever calls into
- * the slot. A load is ~0.1-0.3 s at 2x CD speed; it happens when a scene
+ * the slot. Groups are LZ-packed and decoded while they are read: a load
+ * is ~0.05-0.33 s at 2x CD speed (~30% less than raw). It happens when a scene
  * of another group starts (three loads when a scene starts another one:
  * the new group, the caller's back, then the new one again next frame).
  */
@@ -40,7 +41,7 @@ extern uint8_t __ovl_slot[], __ovl_slot_end[];
 #define OVL_MAGIC   0x4C564F44u          /* "DOVL" */
 #define OVL_MAXG    32
 
-typedef struct OvlGroup { uint32_t sector, bytes; } OvlGroup;
+typedef struct OvlGroup { uint32_t sector, bytes, packed; } OvlGroup;
 
 static OvlGroup s_grp[OVL_MAXG + 1];
 static int      s_lba = -1;              /* OVL.BIN on the disc          */
@@ -73,24 +74,107 @@ static int read_sectors(int lba, int n, void *dst)
     return 0;
 }
 
+/* One token of the LZ stream (packart.c ps1_unlz's format): returns the
+ * new source pointer, or NULL on a corrupt stream (never happens). */
+static const uint8_t *unlz_token(const uint8_t *src, uint8_t **dp, uint8_t *dst, uint8_t *end)
+{
+    uint8_t *d = *dp;
+    uint32_t c = *src++;
+    const uint8_t *s;
+    if (c < 0x80) {
+        c++;
+        s = src;
+        src += c;
+    } else {
+        uint32_t dist = (uint32_t)src[0] | ((uint32_t)src[1] << 8);
+        src += 2;
+        c = (c & 0x7f) + 3;
+        if (dist == 0 || dist > (uint32_t)(d - dst))
+            return NULL;
+        s = d - dist;
+    }
+    if (c > (uint32_t)(end - d))
+        return NULL;
+    while (c >= 4) {                        /* overlap-safe: bytewise */
+        d[0] = s[0]; d[1] = s[1]; d[2] = s[2]; d[3] = s[3];
+        d += 4; s += 4; c -= 4;
+    }
+    while (c--)
+        *d++ = *s++;
+    *dp = d;
+    return src;
+}
+
+/* read n packed sectors into the slot's tail and decode them to its head as they
+ * arrive (a token is at most 129 bytes, so a token is only decoded once
+ * the sectors holding it are in) */
+static int read_unpack(int lba, int n, uint32_t bytes, uint32_t *t_wait)
+{
+    CdlLOC loc;
+    int tries;
+    uint8_t *tmp = __ovl_slot_end - (uint32_t)n * 2048;
+    for (tries = 0; tries < 4; tries++) {
+        uint8_t *d = __ovl_slot, *end = __ovl_slot + bytes;
+        const uint8_t *src = tmp;
+        int left;
+        CdIntToPos(lba, &loc);
+        if (!CdControl(CdlSetloc, &loc, 0))
+            continue;
+        if (!CdRead(n, (uint32_t *)tmp, CdlModeSpeed))
+            continue;
+        while (d < end && src) {
+            const uint8_t *avail;
+            left = CdReadSync(1, 0);
+            if (left < 0)
+                break;
+            avail = left ? tmp + (uint32_t)(n - left) * 2048 - 130 : tmp + (uint32_t)n * 2048;
+            if (src >= avail) {
+                uint32_t t = timer_us();
+                while (CdReadSync(1, 0) == left) {}
+                *t_wait += timer_us() - t;
+                continue;
+            }
+            while (d < end && src && src < avail)
+                src = unlz_token(src, &d, __ovl_slot, end);
+        }
+        if (CdReadSync(0, 0) < 0 || !src || d != end)
+            continue;
+        return 1;
+    }
+    return 0;
+}
+
 static void load(int g)
 {
-    uint32_t t0 = timer_us(), n;
+    uint32_t t0 = timer_us(), t1 = 0, n;
     if (g < 1 || g > (int)ps1_ovl_ngroups || s_lba < 0) {
         dbg("ovl: cannot load group %d (no OVL.BIN)\n", g);
         s_cur = 0;
         return;
     }
-    n = (s_grp[g].bytes + 2047) / 2048;
-    while (!read_sectors(s_lba + (int)s_grp[g].sector, (int)n, __ovl_slot)) {
-        dbg("ovl: read error, group %d (%s), retrying\n", g, ps1_ovl_name[g]);
-        VSync(30);
+    if (s_grp[g].packed) {
+        /* packed (ovl_pack.py): read into the END of the slot and decode in
+         * place to its start WHILE the drive delivers the sectors, so the
+         * load takes as long as reading ~30% fewer sectors (ovl_pack.py
+         * only packs a group whose output never overtakes its input) */
+        n = (s_grp[g].packed + 2047) / 2048;
+        while (!read_unpack(s_lba + (int)s_grp[g].sector, (int)n, s_grp[g].bytes, &t1)) {
+            dbg("ovl: read error, group %d (%s), retrying\n", g, ps1_ovl_name[g]);
+            VSync(30);
+        }
+    } else {
+        n = (s_grp[g].bytes + 2047) / 2048;
+        while (!read_sectors(s_lba + (int)s_grp[g].sector, (int)n, __ovl_slot)) {
+            dbg("ovl: read error, group %d (%s), retrying\n", g, ps1_ovl_name[g]);
+            VSync(30);
+        }
     }
     FlushCache();                         /* new code in the slot */
     s_cur = g;
     s_loads++;
-    dbg("ovl: %s (%u KB) in %u ms\n", ps1_ovl_name[g], (unsigned)(s_grp[g].bytes / 1024),
-        (unsigned)((timer_us() - t0) / 1000));
+    dbg("ovl: %s (%u KB) in %u ms (%u ms waiting for the drive)\n", ps1_ovl_name[g],
+        (unsigned)(s_grp[g].bytes / 1024), (unsigned)((timer_us() - t0) / 1000),
+        (unsigned)(t1 / 1000));
 }
 
 int plat_scene_code(const DoomoScene *s)
@@ -130,15 +214,16 @@ void overlay_init(void)
         return;
     }
     n = h[2];
-    if (h[0] != OVL_MAGIC || n != ps1_ovl_ngroups || n > OVL_MAXG ||
+    if (h[0] != OVL_MAGIC || h[1] != 2 || n != ps1_ovl_ngroups || n > OVL_MAXG ||
         h[3] != (uint32_t)__ovl_slot || h[4] > slot) {
         dbg("ovl: OVL.BIN does not match this EXE (magic %08x, %u groups, slot %08x)\n",
             (unsigned)h[0], (unsigned)n, (unsigned)h[3]);
         return;
     }
     for (i = 1; i <= n; i++) {
-        s_grp[i].sector = h[4 + i * 2 - 1];
-        s_grp[i].bytes = h[4 + i * 2];
+        s_grp[i].sector = h[5 + (i - 1) * 3];
+        s_grp[i].bytes = h[6 + (i - 1) * 3];
+        s_grp[i].packed = h[7 + (i - 1) * 3];
         if (s_grp[i].bytes > slot) {
             dbg("ovl: group %u is bigger than the slot\n", (unsigned)i);
             return;

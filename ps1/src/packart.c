@@ -17,26 +17,39 @@
 #include "ps1.h"
 
 /* the save codec's LZ format (packart.py) */
-__attribute__((unused)) static void unlz(const uint8_t *src, uint8_t *dst, uint32_t n)
+/* (also the scene overlays of OVL.BIN, overlay.c) */
+void ps1_unlz(const uint8_t *src, uint8_t *dst, uint32_t n)
 {
+    /* the encoder never writes a token past n, so the copies only check
+     * the bound once per token (a whole overlay group is ~110 KB) */
     uint8_t *d = dst, *end = dst + n;
     while (d < end) {
         uint32_t c = *src++;
+        const uint8_t *s;
         if (c < 0x80) {
             c++;
-            while (c-- && d < end) *d++ = *src++;
+            s = src;
+            src += c;
         } else {
             uint32_t dist = (uint32_t)src[0] | ((uint32_t)src[1] << 8);
-            const uint8_t *s;
             src += 2;
             c = (c & 0x7f) + 3;
             if (dist == 0 || dist > (uint32_t)(d - dst))
                 return;                         /* corrupt: never happens */
             s = d - dist;
-            while (c-- && d < end) *d++ = *s++;
         }
+        if (c > (uint32_t)(end - d))
+            c = (uint32_t)(end - d);            /* corrupt: never happens */
+        while (c >= 4) {                        /* overlap-safe: bytewise */
+            d[0] = s[0]; d[1] = s[1]; d[2] = s[2]; d[3] = s[3];
+            d += 4; s += 4; c -= 4;
+        }
+        while (c--)
+            *d++ = *s++;
     }
 }
+
+#define unlz ps1_unlz
 
 #ifdef DOOMO_PACKED_ART
 extern const uint16_t ps1_pack_tex_frames, ps1_pack_sky_frames;
