@@ -191,7 +191,7 @@ TEST(mg_pause_and_quit)
         CHECK_EQ(mg.play_t, t);                     /* frozen while paused */
     }
     scene_draw();
-    input_update(BTN_DOWN); scene_update();
+    input_update(BTN_UP); scene_update();          /* wraps to Quit */
     input_update(0); scene_update();
     input_update(BTN_A); scene_update();
     CHECK_EQ(scene_depth(), 0);

@@ -13,7 +13,7 @@
 #include "levels_int.h"
 
 enum { BR_INTRO, BR_PLAY, BR_PAUSE, BR_DONE, BR_DEAD };
-enum { BP_RESUME, BP_WEAPON, BP_CAMERA, BP_RESTART, BP_QUIT, BP_COUNT };
+enum { BP_RESUME, BP_WEAPON, BP_CAMERA, BP_OPTIONS, BP_RESTART, BP_QUIT, BP_COUNT };
 
 static struct {
     uint8_t  level, mode, demo, state, sel, news;
@@ -154,8 +154,7 @@ static void play_tick(void)
 static void pause_update(void)
 {
     if (btn_pressed(BTN_START) || btn_pressed(BTN_B)) { br.state = BR_PLAY; audio_sfx(SFX_CANCEL); return; }
-    if (btn_repeat(BTN_UP)) { br.sel = (uint8_t)((br.sel + BP_COUNT - 1) % BP_COUNT); audio_sfx(SFX_CURSOR); }
-    if (btn_repeat(BTN_DOWN)) { br.sel = (uint8_t)((br.sel + 1) % BP_COUNT); audio_sfx(SFX_CURSOR); }
+    { int sel = br.sel; pause_menu_nav(&sel, BP_COUNT); br.sel = (uint8_t)sel; }
     if (btn_pressed(BTN_LEFT) || btn_pressed(BTN_RIGHT)) {
         int dir = btn_down(BTN_LEFT) ? -1 : 1;
         if (br.sel == BP_WEAPON) combat_next_weapon(dir);
@@ -167,6 +166,7 @@ static void pause_update(void)
     case BP_RESUME: br.state = BR_PLAY; break;
     case BP_WEAPON: combat_next_weapon(1); break;
     case BP_CAMERA: combat_toggle_camera(); break;
+    case BP_OPTIONS: options_open(OPTPAGE_CONTROLS); break;
     case BP_RESTART: br_start(); break;
     default: combat_set_result_quit(); leave_scene(); break;
     }
@@ -306,44 +306,16 @@ static void hud_extras(void)
 
 static void pause_draw(void)
 {
-    static const char *const names[BP_COUNT] = { "Resume", "Weapon", "Camera", "Restart level", "Quit level" };
-    int sw = plat_screen_w(), sh = plat_screen_h(), style = style_now();
-    int w = lvd_big() ? 200 : 176, h = BP_COUNT * 17 + 30, x = sw / 2 - w / 2, y = sh / 2 - h / 2 + 4, i;
-    char buf[40];
-    plat_shade_rect(0, 0, sw, sh, 7);
-    if (!ui_window_pop(x, y, w, h, style, br.t)) return;
-    ui_title(sw / 2, y - 6, "PAUSED", style);
-    for (i = 0; i < BP_COUNT; i++) {
-        const char *label = names[i];
-        if (i == BP_WEAPON) {
-            int k;
-            weld_name(combat_weapon(), buf, sizeof(buf));
-            if (ui_text_width(buf) > w - 40) {
-                /* too long for the button: trim it with an ellipsis */
-                for (k = (int)strlen(buf); k > 3 && ui_text_width(buf) > w - 40; k--) {
-                    buf[k - 3] = '.';
-                    buf[k - 2] = '.';
-                    buf[k - 1] = 0;
-                }
-            }
-            label = buf;
-        } else if (i == BP_CAMERA) {
-            label = doomo_player.camera == CAM_FIRST_PERSON ? "Camera: 1st person" : "Camera: 3rd person";
-        }
-        ui_button(x + 14, y + 12 + i * 17, w - 28, label, i == br.sel, style);
-        if (i == br.sel && (i == BP_WEAPON || i == BP_CAMERA)) {
-            ui_text(x + 6 + ui_wave(br.t, 16, 1), y + 15 + i * 17, STR_ICON_ARROW_L, PAL_UI_GOLD);
-            ui_text(x + w - 12 - ui_wave(br.t, 16, 1), y + 15 + i * 17, STR_ICON_ARROW_R, PAL_UI_GOLD);
-        }
-    }
-    {
-        const LevelInfo *L = &lv_info[br.level];
-        char tb[12];
-        lvd_time(tb, sizeof(tb), (int)(combat_stats()->ticks / DOOMO_TICK_HZ));
-        doomo_snprintf(buf, sizeof(buf), "%s  %s", L->title, tb);
-        ui_text_center(sw / 2, y + h - 12, buf, ui_style(style)->text_dim);
-    }
-    ui_hint(STR_ICON_A " Select  " STR_ICON_B " Back", style);
+    char wb[40];
+    const char *labels[BP_COUNT];
+    weld_name(combat_weapon(), wb, sizeof(wb));
+    labels[BP_RESUME] = "Resume";
+    labels[BP_WEAPON] = wb;
+    labels[BP_CAMERA] = doomo_player.camera == CAM_FIRST_PERSON ? "Camera: 1st person" : "Camera: 3rd person";
+    labels[BP_OPTIONS] = "Options";
+    labels[BP_RESTART] = "Restart level";
+    labels[BP_QUIT] = "Quit level";
+    pause_menu_draw(labels, BP_COUNT, br.sel, (1u << BP_WEAPON) | (1u << BP_CAMERA), br.t, style_now());
 }
 
 /* one tally row: label, value text, points (counting up) */

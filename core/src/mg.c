@@ -302,14 +302,13 @@ void mg_scene_update(void)
         mg_fx_update();
         break;
     case MGP_PAUSE:
-        if (btn_pressed(BTN_UP | BTN_DOWN | BTN_LEFT | BTN_RIGHT)) {
-            mg.pause_sel ^= 1;
-            audio_sfx(SFX_CURSOR);
-        }
+        { int sel = mg.pause_sel; pause_menu_nav(&sel, 3); mg.pause_sel = (uint8_t)sel; }
         if (btn_pressed(BTN_START) || btn_pressed(BTN_B) ||
             (btn_pressed(BTN_A) && mg.pause_sel == 0)) {
             mg.phase = MGP_PLAY;
             input_eat();
+        } else if (btn_pressed(BTN_A) && mg.pause_sel == 1) {
+            options_open(OPTPAGE_AUDIO);
         } else if (btn_pressed(BTN_A)) {
             leave();
         }
@@ -495,13 +494,8 @@ static void draw_ready(void)
 
 static void draw_pause(void)
 {
-    int W = mg_w(), H = mg_h(), w = 120, h = 66, x = (W - w) / 2, y = (H - h) / 2;
-    plat_shade_rect(0, 0, W, H, 8);
-    if (ui_window_pop(x, y, w, h, WIN_CUTE, mg.t)) {
-        ui_title(W / 2, y - 6, "PAUSED", WIN_CUTE);
-        ui_button(x + 14, y + 16, w - 28, "Resume", mg.pause_sel == 0, WIN_CUTE);
-        ui_button(x + 14, y + 38, w - 28, "Quit", mg.pause_sel == 1, WIN_CUTE);
-    }
+    static const char *const labels[3] = { "Resume", "Options", "Quit" };
+    pause_menu_draw(labels, 3, mg.pause_sel, 0, mg.t, WIN_CUTE);
 }
 
 static void draw_end(void)

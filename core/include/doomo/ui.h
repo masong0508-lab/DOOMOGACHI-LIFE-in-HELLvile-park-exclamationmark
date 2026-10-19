@@ -199,4 +199,12 @@ void ui_dialog_style(int style);
 int  ui_toast_pending(void);
 void ui_toast_clear(void);
 
+/* Shared pause menu (combat, levels, arena, minigames): a "PAUSED" window
+ * of n button rows, the same look, cursor and hints everywhere. Rows in
+ * lr_mask (bit i) show < > arrows when selected (left/right changes them).
+ * pause_menu_nav() moves *sel with up/down (wrapping) and returns 1 when it
+ * moved. Options rows open options_open() (town.h). */
+void pause_menu_draw(const char *const *labels, int n, int sel, unsigned lr_mask, int t, int style);
+int  pause_menu_nav(int *sel, int n);
+
 #endif

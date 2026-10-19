@@ -117,12 +117,19 @@ enum {
     OPT_CHEAT_PAPER_MODE, OPT_CHEAT_GOD_MODE, OPT_CHEAT_RICH,
     OPT_CHEAT_DISCO, OPT_CHEAT_TINY_DEMONS, OPT_CHEAT_ALL_GHOSTS,
     OPT_COMBAT_FEEL,     /* classic / punchy / brutal (PS1 only)            */
+    OPT_TURN_SWAP,       /* modern scheme: 0 R1 turns right, 1 R1 turns left */
+    OPT_EFFECTS,         /* effects detail: 0 low (fewer, shorter gibs) / 1 normal */
+    OPT_DRAW_DIST,       /* PS1 3D view distance cap: 0 near / 1 normal     */
+    OPT_SHOW_FPS,        /* 1 = frames-drawn counter in the shooter         */
     OPT_COUNT
 };
 DOOMO_STATIC_ASSERT(OPT_COUNT <= 64, options_fit);
 /* Option pages (DoomoOptionInfo.page). */
-enum { OPTPAGE_GAME, OPTPAGE_SHOOTER, OPTPAGE_SIM, OPTPAGE_AUDIO,
-       OPTPAGE_DISPLAY, OPTPAGE_ACCESS, OPTPAGE_CHEATS, OPTPAGE_COUNT };
+enum { OPTPAGE_GAME, OPTPAGE_CONTROLS, OPTPAGE_SHOOTER, OPTPAGE_SIM, OPTPAGE_AUDIO,
+       OPTPAGE_DISPLAY, OPTPAGE_PERF, OPTPAGE_ACCESS, OPTPAGE_CHEATS, OPTPAGE_COUNT };
+/* Opens the paged Options screen on top of the current scene (pause menus
+ * use it: the scene below stays frozen; B comes back). */
+void options_open(int page);
 extern const char *const doomo_option_page_names[OPTPAGE_COUNT];
 /* Value constants for a few options other modules branch on. */
 enum { GORE_CUTE, GORE_BRUTAL, GORE_PER_WEAPON, GORE_MIXED };   /* MIXED: unlocked by finishing the story */

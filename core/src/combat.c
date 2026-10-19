@@ -629,6 +629,7 @@ static void read_controls(CombatCtl *c)
          * no R2). Hold L2 for D-pad up/down look. */
         int dir = btn_down(BTN_R) - (btn_down(BTN_R2) || btn_down(BTN_L));
         if (btn_down(BTN_L) && btn_down(BTN_R)) dir = 0;   /* L1+R1 = lock-on */
+        if (opt_get(OPT_TURN_SWAP)) dir = -dir;           /* Options: R1 turns left */
         c->strafe = (int8_t)(right - left);
         if (slx && have) c->fstrafe = (int16_t)stick_curve(slx), c->strafe = (int8_t)(slx < 0 ? -1 : 1);
         if (dir) {

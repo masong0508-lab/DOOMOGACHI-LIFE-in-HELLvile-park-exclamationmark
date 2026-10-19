@@ -245,15 +245,18 @@ int actor_fx(int spr, fix16 x, fix16 y, fix16 z, int speed_ticks)
 
 int actor_gib(int spr, fix16 x, fix16 y, fix16 z, int vx, int vy, int vz)
 {
-    int i = actor_alloc(1);
+    static uint8_t thin;
+    int low = opt_get(OPT_EFFECTS) == 0, i;
     DoomoActor *a;
+    if (low && (++thin & 1)) return -1;             /* Effects detail: Low = half the gibs */
+    i = actor_alloc(1);
     if (i < 0) return -1;
     a = &doomo_actors[i];
     a->type = AK_GIB;
     a->spr = (uint8_t)spr;
     a->x = x; a->y = y; a->z = z;
     a->vx = vx; a->vy = vy; a->vz = vz;
-    a->hp = 240;                                    /* lifetime ticks */
+    a->hp = low ? 120 : 240;                        /* lifetime ticks */
     a->strafe = (int8_t)(rng_range(&doomo_rng, 4));
     return i;
 }

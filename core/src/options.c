@@ -5,8 +5,8 @@
 #include "doomo/ui.h"
 
 const char *const doomo_option_page_names[OPTPAGE_COUNT] = {
-    "Game", "Shooter", "Life Sim", "Audio", "Display", "Accessibility",
-    "Cheats"
+    "Game", "Controls", "Shooter", "Life Sim", "Audio", "Display",
+    "Performance", "Accessibility", "Cheats"
 };
 
 static const char *const v_off_on[] = { "Off", "On" };
@@ -29,7 +29,7 @@ static const char *const v_cross_col[] = { "White", "Pink", "Mint", "Gold",
                                            "Red", "Cyan" };
 static const char *const v_fov[] = { "Narrow", "Normal", "Wide" };
 static const char *const v_level3[] = { "Off", "Low", "Full" };
-static const char *const v_hud[] = { "Cute", "Classic", "Minimal" };
+static const char *const v_hud[] = { "Cute", "Classic", "Minimal", "Hidden" };
 static const char *const v_shoulder[] = { "Right", "Left" };
 static const char *const v_blood[] = { "Red", "Green", "Rainbow", "Confetti" };
 static const char *const v_confetti[] = { "Some", "Lots", "Absurd" };
@@ -53,6 +53,9 @@ static const char *const v_cursor[] = { "Heart", "Paw", "Star", "Sparkle",
 static const char *const v_filter[] = { "None", "Storybook", "VHS",
                                         "Game Pal", "Sepia", "Nightvision" };
 static const char *const v_bounce[] = { "Off", "Subtle", "Boingy" };
+static const char *const v_turn[] = { "R1 right", "R1 left" };
+static const char *const v_fx[] = { "Low", "Normal" };
+static const char *const v_dist[] = { "Near", "Normal" };
 static const char *const v_feel[] = { "Classic", "Punchy", "Brutal" };
 
 #define OPT(n, vals, d, pg) { n, (uint8_t)DOOMO_COUNTOF(vals), d, vals, pg }
@@ -71,11 +74,11 @@ const DoomoOptionInfo doomo_option_info[OPT_COUNT] = {
     /* OPT_DAY_LENGTH */      OPT("Day length", v_day_len, 2, OPTPAGE_SIM),
     /* OPT_AUTOSAVE */        OPT("Autosave", v_autosave, 1, OPTPAGE_GAME),
     /* OPT_CAMERA_DEFAULT */  OPT("Camera", v_camera, 0, OPTPAGE_SHOOTER),
-    /* OPT_CONTROL_SCHEME */  OPT("Controls", v_scheme, CONTROLS_MODERN, OPTPAGE_SHOOTER),
-    /* OPT_INVERT_LOOK */     OPT("Invert look", v_off_on, 0, OPTPAGE_SHOOTER),
-    /* OPT_LOOK_SPEED */      OPTN("Look speed", 10, 5, OPTPAGE_SHOOTER),
-    /* OPT_AIM_ASSIST */      OPT("Aim assist", v_level4, 2, OPTPAGE_SHOOTER),
-    /* OPT_LOCK_ON */         OPT("Lock-on", v_lock, 1, OPTPAGE_SHOOTER),
+    /* OPT_CONTROL_SCHEME */  OPT("Controls", v_scheme, CONTROLS_MODERN, OPTPAGE_CONTROLS),
+    /* OPT_INVERT_LOOK */     OPT("Invert look", v_off_on, 0, OPTPAGE_CONTROLS),
+    /* OPT_LOOK_SPEED */      OPTN("Look speed", 10, 5, OPTPAGE_CONTROLS),
+    /* OPT_AIM_ASSIST */      OPT("Aim assist", v_level4, 2, OPTPAGE_CONTROLS),
+    /* OPT_LOCK_ON */         OPT("Lock-on", v_lock, 1, OPTPAGE_CONTROLS),
     /* OPT_CROSSHAIR */       OPT("Crosshair", v_cross, 0, OPTPAGE_SHOOTER),
     /* OPT_CROSSHAIR_COLOR */ OPT("Crosshair colour", v_cross_col, 1, OPTPAGE_SHOOTER),
     /* OPT_FOV */             OPT("Field of view", v_fov, 1, OPTPAGE_SHOOTER),
@@ -83,7 +86,7 @@ const DoomoOptionInfo doomo_option_info[OPT_COUNT] = {
     /* OPT_SCREEN_SHAKE */    OPT("Screen shake", v_level3, 2, OPTPAGE_ACCESS),
     /* OPT_DAMAGE_NUMBERS */  OPT("Damage numbers", v_off_on, 1, OPTPAGE_SHOOTER),
     /* OPT_HIT_MARKERS */     OPT("Hit markers", v_off_on, 1, OPTPAGE_SHOOTER),
-    /* OPT_HUD_LAYOUT */      OPT("HUD layout", v_hud, 0, OPTPAGE_SHOOTER),
+    /* OPT_HUD_LAYOUT */      OPT("HUD layout", v_hud, 0, OPTPAGE_DISPLAY),
     /* OPT_SHOULDER */        OPT("Shoulder", v_shoulder, 0, OPTPAGE_SHOOTER),
     /* OPT_BLOOD_COLOR */     OPT("Blood colour", v_blood, 0, OPTPAGE_GAME),
     /* OPT_CONFETTI_AMOUNT */ OPT("Confetti", v_confetti, 1, OPTPAGE_GAME),
@@ -116,7 +119,11 @@ const DoomoOptionInfo doomo_option_info[OPT_COUNT] = {
     /* OPT_CHEAT_DISCO */     OPT("Disco lights", v_off_on, 0, OPTPAGE_CHEATS),
     /* OPT_CHEAT_TINY_DEMONS */ OPT("Tiny demons", v_off_on, 0, OPTPAGE_CHEATS),
     /* OPT_CHEAT_ALL_GHOSTS */ OPT("Everyone's a ghost", v_off_on, 0, OPTPAGE_CHEATS),
-    /* OPT_COMBAT_FEEL */     OPT("Combat feel", v_feel, 2, OPTPAGE_SHOOTER)
+    /* OPT_COMBAT_FEEL */     OPT("Combat feel", v_feel, 2, OPTPAGE_SHOOTER),
+    /* OPT_TURN_SWAP */       OPT("Turn buttons", v_turn, 0, OPTPAGE_CONTROLS),
+    /* OPT_EFFECTS */         OPT("Effects detail", v_fx, 1, OPTPAGE_PERF),
+    /* OPT_DRAW_DIST */       OPT("Draw distance", v_dist, 1, OPTPAGE_PERF),
+    /* OPT_SHOW_FPS */        OPT("Show FPS", v_off_on, 0, OPTPAGE_PERF)
 };
 
 int opt_get(int opt)
