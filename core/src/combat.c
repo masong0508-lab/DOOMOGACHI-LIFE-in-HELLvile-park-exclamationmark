@@ -623,10 +623,38 @@ static void read_controls(CombatCtl *c)
         c->move = 0;
         if (slx) c->fstrafe = (int16_t)stick_curve(slx), c->strafe = (int8_t)(slx < 0 ? -1 : 1);
         if (sly) c->look = (int16_t)(-stick_curve(sly) * look * 2 / 256 * inv);
+    } else if (!classic) {
+        /* modern: D-pad left/right (and the left stick) strafe; R1 turns
+         * right, R2 turns left (L1 also turns left, for the GBA, which has
+         * no R2). Hold L2 for D-pad up/down look. */
+        int dir = btn_down(BTN_R) - (btn_down(BTN_R2) || btn_down(BTN_L));
+        if (btn_down(BTN_L) && btn_down(BTN_R)) dir = 0;   /* L1+R1 = lock-on */
+        c->strafe = (int8_t)(right - left);
+        if (slx && have) c->fstrafe = (int16_t)stick_curve(slx), c->strafe = (int8_t)(slx < 0 ? -1 : 1);
+        if (dir) {
+            int t = ++turn_ticks;
+            if (feel) {
+                c->turn = (int16_t)ease_turn(dir * maxturn);
+            } else {
+                int sp = t < 4 ? maxturn / 3 : t < 8 ? maxturn * 2 / 3 : maxturn;
+                c->turn = (int16_t)(dir * sp);
+            }
+        } else {
+            turn_ticks = 0;
+            if (feel) c->turn = (int16_t)ease_turn(0);
+        }
+        if (sly && have) {
+            c->fmove = (int16_t)(-stick_curve(sly));
+            c->move = (int8_t)(sly < 0 ? 1 : -1);
+        }
+        if (btn_down(BTN_L2)) {
+            c->look = (int16_t)((up - down) * look * 2 * inv);
+            c->move = 0; c->fmove = 0;
+        }
     } else {
         int dir = right - left;
         if (slx && have) {
-            /* analog turn straight off the stick (modern / classic) */
+            /* analog turn straight off the stick (classic) */
             c->turn = (int16_t)(stick_curve(slx) * maxturn / 256);
             combat_px.turn_vel = c->turn;
             turn_ticks = 0;
@@ -646,12 +674,8 @@ static void read_controls(CombatCtl *c)
             c->fmove = (int16_t)(-stick_curve(sly));
             c->move = (int8_t)(sly < 0 ? 1 : -1);
         }
-        if (!classic) {
-            if (btn_down(BTN_L) && !btn_down(BTN_R)) c->strafe = -1;
-            if (btn_down(BTN_R) && !btn_down(BTN_L)) c->strafe = 1;
-        }
     }
-    if (!dual) {
+    if (classic) {
         if (btn_down(BTN_L2)) c->look = (int16_t)(-look * 2 * inv);
         if (btn_down(BTN_R2)) c->look = (int16_t)(look * 2 * inv);
     }
@@ -665,7 +689,6 @@ static void read_controls(CombatCtl *c)
     } else {
         c->lock = (uint8_t)(btn_down(BTN_L) && btn_down(BTN_R));
         c->lock_pressed = (uint8_t)(c->lock && (btn_pressed(BTN_L) || btn_pressed(BTN_R)));
-        if (c->lock) c->strafe = 0;
     }
     if (dual) {
         /* trigger fingers: R2 / R1 / Cross all shoot */
@@ -695,8 +718,8 @@ static void read_controls(CombatCtl *c)
             if (lmod && btn_pressed(BTN_LEFT)) tap = 1;
             if (lmod && btn_pressed(BTN_RIGHT)) tap = 2;
         } else {
-            if (btn_pressed(BTN_L) && !btn_down(BTN_R)) tap = 1;
-            if (btn_pressed(BTN_R) && !btn_down(BTN_L)) tap = 2;
+            if (btn_pressed(BTN_LEFT) && !(smask & BTN_LEFT)) tap = 1;
+            if (btn_pressed(BTN_RIGHT) && !(smask & BTN_RIGHT)) tap = 2;
         }
         if (btn_pressed(BTN_DOWN) && !(smask & BTN_DOWN) && !lmod && !dual) tap = 3;
         if (tap) {
