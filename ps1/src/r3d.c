@@ -345,12 +345,15 @@ static inline int judge(int minx, int maxx, int miny, int maxy, int32_t zmin, in
     big = minx <= -1000 || maxx >= 1000 || miny <= -1000 || maxy >= 1000;
     size = maxx - minx;
     if (maxy - miny > size) size = maxy - miny;
-    if (can_sub || (big && depth < R3_MAXDEPTH + 2)) {
-        if (big || size > 160 ||
-            (size > 24 && size * (zmax - zmin) > 9 * (zmax + zmin)))
-            return 1;
-    }
-    return big ? -1 : 0;
+    /* A piece with a vertex outside the GPU range is split until every
+     * piece fits (off-screen children cull cheaply); dropping it instead
+     * left holes in walls/floors right next to the camera. */
+    if (big)
+        return depth < R3_MAXDEPTH + 6 ? 1 : -1;
+    if (can_sub &&
+        (size > 128 || (size > 20 && size * (zmax - zmin) > 7 * (zmax + zmin))))
+        return 1;
+    return 0;
 }
 
 /* recursive part: split into 4 and re-test the children */
@@ -367,8 +370,7 @@ static void __attribute__((noinline)) quad_split(R3V *a, R3V *b, R3V *c, R3V *d,
     xf3(&m01, &m02, &m13);
     xf3(&m23, &mc, &mc);
     flags &= ~R3F_FRONT;     /* children re-test (rounded midpoints) */
-    if (depth >= R3_MAXDEPTH)
-        flags |= R3F_FRONT;  /* forced split of a huge piece: no clip loop */
+    /* recursion is bounded by depth (judge), so children may re-clip */
     quad_rec(a, &m01, &m02, &mc, t, flags, depth + 1, bias);
     quad_rec(&m01, b, &mc, &m13, t, flags, depth + 1, bias);
     quad_rec(&m02, &mc, c, &m23, t, flags, depth + 1, bias);
@@ -461,8 +463,6 @@ static void tri_rec(R3V *a, R3V *b, R3V *c, const TexRef *t, int flags, int dept
     vmid(&ca, c, a);
     xf3(&ab, &bc, &ca);
     flags &= ~R3F_FRONT;
-    if (depth >= R3_MAXDEPTH)
-        flags |= R3F_FRONT;
     tri_rec(a, &ab, &ca, t, flags, depth + 1, bias);
     tri_rec(&ab, b, &bc, t, flags, depth + 1, bias);
     tri_rec(&ca, &bc, c, t, flags, depth + 1, bias);
