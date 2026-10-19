@@ -378,6 +378,46 @@ static uint32_t sprite_light(const DoomoBillboard *b, int *visible)
     return (uint32_t)l * 0x010101u;
 }
 
+/* The GTE cannot project closer than H/2 camera units, so the clip plane
+ * sits ~19-22 world units in front of the eye: more than the player's
+ * collision radius (14). Facing a wall or a corner at speed put the whole
+ * wall in front of the clip plane and it vanished, showing the clear colour
+ * behind it. Keep the EYE (not the player) at least r units from every
+ * solid cell by pushing it out of nearby wall boxes. */
+static void eye_clear_walls(int32_t *px, int32_t *py, int r)
+{
+    int it, cx, cy;
+    for (it = 0; it < 3; it++) {
+        int x = *px >> 16, y = *py >> 16, moved = 0;
+        int cx0 = (x - r) / CELL, cx1 = (x + r) / CELL;
+        int cy0 = (y - r) / CELL, cy1 = (y + r) / CELL;
+        if (x - r < 0) cx0 = -1;
+        if (y - r < 0) cy0 = -1;
+        for (cy = cy0; cy <= cy1; cy++)
+            for (cx = cx0; cx <= cx1; cx++) {
+                int qx, qy, dx, dy, d2, d;
+                if (in_map(cx, cy) && !cellp(cx, cy)->wall)
+                    continue;
+                qx = x < cx * CELL ? cx * CELL : x > cx * CELL + CELL ? cx * CELL + CELL : x;
+                qy = y < cy * CELL ? cy * CELL : y > cy * CELL + CELL ? cy * CELL + CELL : y;
+                dx = x - qx;
+                dy = y - qy;
+                d2 = dx * dx + dy * dy;
+                if (d2 >= r * r || d2 == 0)
+                    continue;           /* clear (or inside: leave it) */
+                for (d = 1; d * d < d2; d++)
+                    ;
+                x += dx * (r - d) / d + (dx > 0) - (dx < 0);
+                y += dy * (r - d) / d + (dy > 0) - (dy < 0);
+                moved = 1;
+            }
+        *px = ((int32_t)x << 16) | (*px & 0xffff);
+        *py = ((int32_t)y << 16) | (*py & 0xffff);
+        if (!moved)
+            break;
+    }
+}
+
 /* ---- entry ---------------------------------------------------------------------- */
 void plat_view3d(const DoomoView3D *v)
 {
@@ -415,8 +455,12 @@ void plat_view3d(const DoomoView3D *v)
         int fov = core_opt(OPT_FOV, 1);
         th = k_tan[fov < 0 || fov > 2 ? 1 : fov];
         tv = (th * v->vh) / (v->vw ? v->vw : 1);
-        r3_camera(v->x, v->y, ez, v->angle, pitch_a, v->vx, v->vy, v->vw, v->vh,
-                  ((v->vw / 2) << 12) / th, s_view_dist * CELL, fogn, 0);
+        int hp = ((v->vw / 2) << 12) / th;
+        int32_t ex = v->x, ey = v->y;
+        /* clip plane distance in world units, + a margin for pitch */
+        eye_clear_walls(&ex, &ey, ((hp / 2 + 10 + 2 * R3_W2C(1)) << 12) / R3_SCALE_Q12 + 3);
+        r3_camera(ex, ey, ez, v->angle, pitch_a, v->vx, v->vy, v->vw, v->vh,
+                  hp, s_view_dist * CELL, fogn, 0);
     }
     if (!r3_begin())
         return;
