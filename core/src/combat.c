@@ -709,31 +709,6 @@ static void read_controls(CombatCtl *c)
     if (btn_pressed(BTN_X)) { c->roll = 1; c->roll_dir = 0; select_used = 1; }
     if (dual && btn_pressed(BTN_L)) { c->roll = 1; c->roll_dir = 0; select_used = 1; }
     if (btn_pressed(BTN_Y)) { c->next_weapon = 1; select_used = 1; }
-    /* double-tap a strafe direction / back = dodge-roll */
-    {
-        int tap = 0;
-        if (dual) {
-            /* no L/R taps here: Square / L1 roll toward the stick instead */
-        } else if (classic) {
-            if (lmod && btn_pressed(BTN_LEFT)) tap = 1;
-            if (lmod && btn_pressed(BTN_RIGHT)) tap = 2;
-        } else {
-            if (btn_pressed(BTN_LEFT) && !(smask & BTN_LEFT)) tap = 1;
-            if (btn_pressed(BTN_RIGHT) && !(smask & BTN_RIGHT)) tap = 2;
-        }
-        if (btn_pressed(BTN_DOWN) && !(smask & BTN_DOWN) && !lmod && !dual) tap = 3;
-        if (tap) {
-            if (combat_px.tap_dir == tap && combat_px.tap_t > 0) {
-                c->roll = 1;
-                c->roll_dir = (int8_t)(tap == 1 ? -1 : tap == 2 ? 1 : 2);
-                combat_px.tap_t = 0;
-            } else {
-                combat_px.tap_dir = tap;
-                combat_px.tap_t = 8;
-            }
-        }
-        if (combat_px.tap_t > 0) combat_px.tap_t--;
-    }
     if (btn_pressed(BTN_SELECT)) select_used = 0;
     if (btn_released(BTN_SELECT) && !select_used) c->camera = 1;
     if (btn_pressed(BTN_START)) c->pause = 1;
