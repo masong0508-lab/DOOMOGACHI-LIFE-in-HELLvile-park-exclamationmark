@@ -378,12 +378,11 @@ static uint32_t sprite_light(const DoomoBillboard *b, int *visible)
     return (uint32_t)l * 0x010101u;
 }
 
-/* The GTE cannot project closer than H/2 camera units, so the clip plane
- * sits ~19-22 world units in front of the eye: more than the player's
- * collision radius (14). Facing a wall or a corner at speed put the whole
- * wall in front of the clip plane and it vanished, showing the clear colour
- * behind it. Keep the EYE (not the player) at least r units from every
- * solid cell by pushing it out of nearby wall boxes. */
+/* r3d clips polygons a few world units in front of the eye (vertices
+ * closer than the GTE's H/2 limit are projected in software). As a safety
+ * margin keep the EYE (not the player) at least r units from every solid
+ * cell by pushing it out of nearby wall boxes, so a wall right in front of
+ * the eye never falls entirely before the clip plane. */
 static void eye_clear_walls(int32_t *px, int32_t *py, int r)
 {
     int it, cx, cy;
@@ -422,7 +421,7 @@ static void eye_clear_walls(int32_t *px, int32_t *py, int r)
 void plat_view3d(const DoomoView3D *v)
 {
     int i, pitch_a, fogn, th, tv;
-    int32_t ez, pfx = 0, pfy = 0;
+    int32_t ez, pfx = 0, pfy = 0, ex = 0, ey = 0;
     uint32_t t0 = timer_us();
     if (!v || !v->map || !v->map->w || !v->map->h)
         return;
@@ -456,9 +455,11 @@ void plat_view3d(const DoomoView3D *v)
         th = k_tan[fov < 0 || fov > 2 ? 1 : fov];
         tv = (th * v->vh) / (v->vw ? v->vw : 1);
         int hp = ((v->vw / 2) << 12) / th;
-        int32_t ex = v->x, ey = v->y;
-        /* clip plane distance in world units, + a margin for pitch */
-        eye_clear_walls(&ex, &ey, ((hp / 2 + 10 + 2 * R3_W2C(1)) << 12) / R3_SCALE_Q12 + 3);
+        ex = v->x;
+        ey = v->y;
+        /* clip plane distance in world units, + a margin for pitch, x1.5
+         * for the corners of the near rectangle (seen at an angle) */
+        eye_clear_walls(&ex, &ey, (((R3_CLIP_Q(hp) + 10) * 3 / 2) << 12) / R3_SCALE_Q12 + 3);
         r3_camera(ex, ey, ez, v->angle, pitch_a, v->vx, v->vy, v->vw, v->vh,
                   hp, s_view_dist * CELL, fogn, 0);
     }
@@ -481,7 +482,14 @@ void plat_view3d(const DoomoView3D *v)
     }
     s_nvis = 0;
     g_r3stats.t_setup = timer_us() - t0;
-    visibility(v->x, v->y, v->angle, pitch_a, pfx, pfy, th, tv);
+    /* cast from the render eye, not the player: once the eye is pushed
+     * back from a wall, cells beside it fell outside a fan cast from the
+     * player and showed as black holes in the floor */
+    if (!pfx && !pfy && (ex != v->x || ey != v->y)) {
+        pfx = v->x;
+        pfy = v->y;
+    }
+    visibility(ex, ey, v->angle, pitch_a, pfx, pfy, th, tv);
     g_r3stats.t_vis = timer_us() - t0;
     s_any_sky = 0;
     {

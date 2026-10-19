@@ -402,6 +402,26 @@ static const DoomoMap *pick_map(int sel)
     return m;
 }
 
+static const char *s_log_mode;
+
+static void perf_log(int t)
+{
+    const char *mode = s_log_mode;
+    if (!mode)
+        return;
+    s_log_mode = 0;
+    if ((t % 60) == 59)
+        dbg("perf: t=%d mode=%s fps=%d.%d cpu=%uus r3d=%uus gpuwait=%uus polys=%d cells=%d "
+            "subdiv=%d clipped=%d sprites=%d prims=%uB upload=%uB faces=%d culled=%d "
+            "t_setup=%u t_vis=%u t_cells=%u\n",
+            t, mode, (int)(g_perf.fps_x10 / 10), (int)(g_perf.fps_x10 % 10),
+            (unsigned)g_perf.cpu_us, (unsigned)g_r3stats.cpu_us, (unsigned)g_perf.sync_us,
+            g_r3stats.polys, g_r3stats.cells, g_r3stats.subdiv, g_r3stats.clipped,
+            g_r3stats.sprites, (unsigned)g_perf.prim_bytes, (unsigned)vram_uploads(),
+            g_r3stats.faces, g_r3stats.culled, (unsigned)g_r3stats.t_setup,
+            (unsigned)g_r3stats.t_vis, (unsigned)g_r3stats.t_cells);
+}
+
 static void hud(const char *mode, int t)
 {
     char buf[96];
@@ -416,16 +436,10 @@ static void hud(const char *mode, int t)
              (int)(g_r3stats.cpu_us / 1000), (int)(g_r3stats.cpu_us / 100 % 10),
              g_r3stats.polys, g_r3stats.cells, g_r3stats.sprites);
     plat_text(4, 11, buf, PAL_WHITE);
-    if ((t % 60) == 59)
-        dbg("perf: t=%d mode=%s fps=%d.%d cpu=%uus r3d=%uus gpuwait=%uus polys=%d cells=%d "
-            "subdiv=%d clipped=%d sprites=%d prims=%uB upload=%uB faces=%d culled=%d "
-            "t_setup=%u t_vis=%u t_cells=%u\n",
-            t, mode, (int)(g_perf.fps_x10 / 10), (int)(g_perf.fps_x10 % 10),
-            (unsigned)g_perf.cpu_us, (unsigned)g_r3stats.cpu_us, (unsigned)g_perf.sync_us,
-            g_r3stats.polys, g_r3stats.cells, g_r3stats.subdiv, g_r3stats.clipped,
-            g_r3stats.sprites, (unsigned)g_perf.prim_bytes, (unsigned)vram_uploads(),
-            g_r3stats.faces, g_r3stats.culled, (unsigned)g_r3stats.t_setup,
-            (unsigned)g_r3stats.t_vis, (unsigned)g_r3stats.t_cells);
+    /* logged after the frame (perf_log): the TTY printf takes ~30 ms and,
+     * done here, showed up as a 50 ms frame every 2 s (the "spike") */
+    s_log_mode = mode;
+    (void)t;
 }
 
 static void view_fp_tp(const DoomoMap *m, int32_t x, int32_t y, int ang, int pitch, int cam,
@@ -754,6 +768,7 @@ void etest_run(void)
             }
         }
         plat_end_frame();
+        perf_log((int)t);
         g_loop_frames++;
         t++;
         scene_t++;

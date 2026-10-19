@@ -87,7 +87,12 @@ void r3_camera(int32_t x, int32_t y, int32_t z, int ang, int pitch_a,
     }
     /* SZ must stay above H/2 for the GTE divide (else it saturates) */
     c->near_z = c->H / 2 + 6;
-    c->clip_z = c->near_z + 2 * R3_W2C(1) + 4;
+    /* polygons are clipped much closer than that: vertices between the
+     * clip plane and near_z are projected in software (soft_proj). A clip
+     * plane at near_z (~22 world units) cut away walls, floors and step
+     * edges right next to the eye and left black holes / screen-edge
+     * slivers. */
+    c->clip_z = R3_CLIP_Q(c->H);
     c->far_z = R3_W2C(far_world);
     if (c->far_z > 65000) c->far_z = 65000;
     for (s = 0; (c->far_z >> s) >= OT_LEN - 24; s++)
@@ -272,6 +277,7 @@ static inline int32_t cam_z(const R3V *v)
     return ((m->m[2][0] * v->x + m->m[2][1] * v->y + m->m[2][2] * v->z) >> 12) + m->t[2];
 }
 
+static void soft_proj(R3V *v);
 static void lerp_clip(R3V *o, const R3V *a, const R3V *b, int32_t za, int32_t zb)
 {
     /* point on a->b where camera z == R3_CLIPZ; t in 1/4096 */
@@ -288,6 +294,7 @@ static void lerp_clip(R3V *o, const R3V *a, const R3V *b, int32_t za, int32_t zb
                       ba + (((bb - ba) * t) >> 12));
     }
     xf1(o);
+    soft_proj(o);
 }
 
 static void quad_rec(R3V *a, R3V *b, R3V *c, R3V *d, const TexRef *t, int flags,
@@ -310,8 +317,10 @@ static void __attribute__((noinline)) clip_poly(R3V **ring, int nr, const TexRef
     for (i = 0; i < nr; i++) {
         int j = i + 1 == nr ? 0 : i + 1;
         int in_i = z[i] >= R3_CLIPZ, in_j = z[j] >= R3_CLIPZ;
-        if (in_i)
+        if (in_i) {
+            soft_proj(ring[i]);
             out[n++] = ring[i];
+        }
         if (in_i != in_j && nt < 4) {
             lerp_clip(&tmp[nt], ring[i], ring[j], z[i], z[j]);
             out[n++] = &tmp[nt++];
@@ -342,7 +351,11 @@ static inline int judge(int minx, int maxx, int miny, int maxy, int32_t zmin, in
         g_r3stats.culled++;
         return -1;
     }
-    big = minx <= -1000 || maxx >= 1000 || miny <= -1000 || maxy >= 1000;
+    /* the GPU also drops any primitive wider than 1023 or taller than 511
+     * pixels: a near wall seen in a corner spans more than that and left
+     * a black sliver at the screen edge, so split those too */
+    big = minx <= -1000 || maxx >= 1000 || miny <= -1000 || maxy >= 1000 ||
+          maxx - minx > 1000 || maxy - miny > 500;
     size = maxx - minx;
     if (maxy - miny > size) size = maxy - miny;
     /* A piece with a vertex outside the GPU range is split until every
@@ -414,7 +427,8 @@ static void quad_rec(R3V *a, R3V *b, R3V *c, R3V *d, const TexRef *t, int flags,
          * T-junction slivers between split and unsplit faces show the
          * same texture instead of the background. */
         if (depth == 0 && !(flags & R3F_SEMI) && minx > -1000 && maxx < 1000 &&
-            miny > -1000 && maxy < 1000)
+            miny > -1000 && maxy < 1000 &&
+            maxx - minx <= 1000 && maxy - miny <= 500)
             emit_gt4_at(a, b, c, d, t, flags, zmax + (zmax >> 4) + 8, zmax);
         quad_split(a, b, c, d, t, flags, depth, bias);
     }
@@ -490,12 +504,41 @@ int32_t r3_point(int x, int y, int z, int32_t *sxy)
     return v.sz;
 }
 
+/* camera-space x / y of a world-relative vertex */
+static inline int32_t cam_x(const R3V *v)
+{
+    const MATRIX *m = &g_cam.m;
+    return ((m->m[0][0] * v->x + m->m[0][1] * v->y + m->m[0][2] * v->z) >> 12) + m->t[0];
+}
+
+static inline int32_t cam_y(const R3V *v)
+{
+    const MATRIX *m = &g_cam.m;
+    return ((m->m[1][0] * v->x + m->m[1][1] * v->y + m->m[1][2] * v->z) >> 12) + m->t[1];
+}
+
+/* The GTE divide saturates below SZ = H/2: project such a vertex on the
+ * CPU (clamped to the GTE's screen range, so judge() splits it). */
+static void __attribute__((noinline)) soft_proj(R3V *v)
+{
+    int32_t z = cam_z(v), x, y;
+    if (z >= R3_NEAR || z <= 0)
+        return;
+    x = g_cam.cx + (cam_x(v) * g_cam.H) / z;
+    y = g_cam.cy + (cam_y(v) * g_cam.H) / z;
+    if (x < -1024) x = -1024;
+    if (x > 1023) x = 1023;
+    if (y < -1024) y = -1024;
+    if (y > 1023) y = 1023;
+    v->sxy = (uint32_t)(uint16_t)x | ((uint32_t)(uint16_t)y << 16);
+}
+
 /* ---- untextured (models) ------------------------------------------------------- */
 void r3_tri_g(R3V *a, R3V *b, R3V *c, int bias)
 {
     POLY_G3 *p;
     xf3(a, b, c);
-    if (a->sz < R3_CLIPZ || b->sz < R3_CLIPZ || c->sz < R3_CLIPZ)
+    if (a->sz < R3_NEAR || b->sz < R3_NEAR || c->sz < R3_NEAR)
         return;
     /* back-face cull: models are closed meshes wound counter-clockwise */
     {

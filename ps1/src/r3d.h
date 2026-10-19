@@ -26,6 +26,8 @@
  * little further (clip points are rounded to integer world units) */
 #define R3_NEAR      (g_cam.near_z)
 #define R3_CLIPZ     (g_cam.clip_z)
+/* clip-plane depth in camera units for a projection distance H */
+#define R3_CLIP_Q(H) ((H) / 8 + 2 * R3_W2C(1) + 4)
 #define R3_MAXDEPTH  3                    /* 8x8 pieces max per quad      */
 
 /* A pipeline vertex. The first 8 bytes are SVECTOR-compatible (u,v sit in
