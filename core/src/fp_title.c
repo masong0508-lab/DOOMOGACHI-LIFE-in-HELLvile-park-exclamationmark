@@ -34,6 +34,7 @@ static struct {
     int drip_x[8], drip_y[8], drip_v[8];
     int parade_k;
     uint8_t has_story, has_free;
+    DoomoSaveInfo info[2];   /* save headers, read once on entering the title */
 } T;
 
 static int theme(void) { return opt_get(OPT_TITLE_THEME) % THEME_N; }
@@ -42,9 +43,10 @@ static int theme_ok(int v) { return unlock_ok(UL_CAT_SKIN, OPT_TITLE_THEME, v); 
 
 static void refresh_saves(void)
 {
-    DoomoSaveInfo si;
-    T.has_story = (uint8_t)(save_peek(0, &si) && si.mode == TOWN_STORY);
-    T.has_free = (uint8_t)(save_peek(1, &si) && si.mode == TOWN_FREEPLAY);
+    /* Read once: on the PS1 every peek is a blocking BIOS card read (and
+     * draws the "Checking MEMORY CARD" banner), so never peek per frame. */
+    T.has_story = (uint8_t)(save_peek(0, &T.info[0]) && T.info[0].mode == TOWN_STORY);
+    T.has_free = (uint8_t)(save_peek(1, &T.info[1]) && T.info[1].mode == TOWN_FREEPLAY);
 }
 
 static void title_enter(int arg)
@@ -514,8 +516,9 @@ static void draw_menu(void)
                       (i == 1 && !has) ? WIN_CREAM : WIN_CUTE);
         }
         if (T.sub_sel == 1 && has) {
-            DoomoSaveInfo si;
-            if (save_peek(T.menu == M_STORY ? 0 : 1, &si)) {
+            const DoomoSaveInfo *pi = &T.info[T.menu == M_STORY ? 0 : 1];
+            {
+                DoomoSaveInfo si = *pi;
                 char buf[64];
                 if (T.menu == M_STORY)
                     doomo_snprintf(buf, sizeof(buf), "%s - Chapter %d - Day %u", si.player, si.chapter, (unsigned)si.day + 1);
