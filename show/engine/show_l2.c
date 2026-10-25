@@ -23,11 +23,13 @@ WEAK int show_stage_slot_xy(int slot, int *x, int *y) { (void)slot; (void)x; (vo
 WEAK int show_shot_frame(void) { return 0; }
 WEAK int show_preroll(void) { return 0; }
 
+WEAK int show_l2_ext_op(int op, const int16_t *args, int nargs, int t) { (void)op; (void)args; (void)nargs; (void)t; return 0; }
+
 int show_l2_op(int op, const int16_t *args, int nargs, int t)
 {
-    (void)t;
     if (op < SOP_L2_BASE || op >= SOP_L2_END) return 0;
-    return show_fx_op(op, args, nargs);
+    if (show_fx_op(op, args, nargs)) return 1;
+    return show_l2_ext_op(op, args, nargs, t);
 }
 
 /* ---- the bound shot ---------------------------------------------------------- */
