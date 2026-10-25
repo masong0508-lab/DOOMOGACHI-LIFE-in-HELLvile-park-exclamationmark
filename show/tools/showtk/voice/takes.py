@@ -294,10 +294,10 @@ def vo_files(ep_dir):
     dirs = [os.path.join(ep_dir, "vo")]
     # docs/show/ep101/RECORDING_GUIDE.md §5: show/lib/takes/<voice>/e101/<id>_t<n>.wav
     epn = "e" + os.path.basename(os.path.normpath(ep_dir)).lstrip("ep")
-    lib = os.path.join(env.SHOW, "lib", "takes")
-    if os.path.isdir(lib):
-        for v in sorted(os.listdir(lib)):
-            dirs.append(os.path.join(lib, v, epn))
+    for lib in (os.path.join(env.SHOW, "lib", "takes"), os.path.join(env.show_lib(), "takes")):
+        if os.path.isdir(lib):
+            for v in sorted(os.listdir(lib)):
+                dirs.append(os.path.join(lib, v, epn))
     for d in dirs:
         if not os.path.isdir(d):
             continue
@@ -355,7 +355,8 @@ def ingest(path, line, params, kind="rec", denoise=True):
     y = load(path).astype(np.float64)
     sos = butter(2, 80, btype="high", fs=env.SR, output="sos")
     y = sosfiltfilt(sos, y)
-    if denoise and line.attrs.get("fx") != "dry":
+    # a .flac from the guide's clean chain is already denoised
+    if denoise and line.attrs.get("fx") != "dry" and not path.lower().endswith(".flac"):
         y = _denoise(y)
     on, end = onset_end(y.astype(np.float32))
     # alignment on the recording (relative to its own start), then finish() rebases to the onset

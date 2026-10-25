@@ -84,7 +84,7 @@ def _ingest(argv):
     ap.add_argument("--ep", default="ep101")
     ap.add_argument("--scratch", action="store_true", help="a guide read (_s<n>) rather than a take")
     a = ap.parse_args(argv)
-    from . import ingest
+    from . import recingest as ingest
     ingest.ingest_file(a.wav, a.line, a.ep, scratch=a.scratch)
     return 0
 

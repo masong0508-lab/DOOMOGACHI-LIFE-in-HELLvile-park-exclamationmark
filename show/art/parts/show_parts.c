@@ -2,7 +2,7 @@
  * sec.4.3, 9.1).  Mayor Giggs v2: the TURKEY Mad-Hatter mayor.
  *
  * The game's portrait engine has no turkey: no long neck, no wattle, no
- * snood, no crooked tall hat with a card, no floppy bow tie.  These parts are
+ * snood, no crooked tall hat, no floppy bow tie.  These parts are
  * drawn HERE with the engine's own raster primitives (pc_part / pc_ellipse /
  * pc_bezier ..., portrait_int.h), so they get the engine's shading bands,
  * inner contours and selective outline exactly like every other part.  The
@@ -28,7 +28,7 @@
  *     horn_size 0-15  hat height (crown)        nose_size 0-15 wattle + snood size
  *     marking_color   wattle + snood            accessory_color the bow tie
  *     top_color       the frock coat (TOP_SUIT body + lapels + coat tails)
- *     eye_size 0-15   how far the eyes bulge    horn_color   the card in the band
+ *     eye_size 0-15   how far the eyes bulge    horn_color   (unused: no card)
  *     eye_color       pupils' ring (iris)       brow_style   BROW_NONE = no brows
  * Animation: c->anim bits 3-4 (= the cache's fx phase, 4 frames) swing the
  * wattle, snood, tufts and tail fan (secondary motion); EXPR_SHOCK doubles
@@ -82,20 +82,6 @@ static TK T;
 #define TONGUE_C  PAL_RAMP(RAMP_PASTEL_PINK, 4)
 
 static const int8_t k_wob[4] = { 0, 1, 0, -1 };
-
-/* the 3x5 digits for the card in the hat band ("18" = Mingle Night, 18:00) */
-static const uint8_t k_dig[10][5] = {
-    { 7, 5, 5, 5, 7 }, { 2, 6, 2, 2, 7 }, { 7, 1, 7, 4, 7 }, { 7, 1, 3, 1, 7 }, { 5, 5, 7, 1, 1 },
-    { 7, 4, 7, 1, 7 }, { 7, 4, 7, 5, 7 }, { 7, 1, 1, 2, 2 }, { 7, 5, 7, 5, 7 }, { 7, 5, 7, 1, 7 },
-};
-
-static void digit(int x, int y, int d, uint8_t col)
-{
-    int r, b;
-    for (r = 0; r < 5; r++)
-        for (b = 0; b < 3; b++)
-            if (k_dig[d][r] & (4 >> b)) pc_px(x + b, y + r, col);
-}
 
 /* ---- the beak's state from the expression and the viseme override -------- */
 static void beak_state(PCtx *c)
@@ -537,17 +523,16 @@ static void tufts(PCtx *c)
     }
 }
 
-/* ---- the crooked tall top hat with the card in its band ------------------- */
+/* ---- the crooked tall top hat with its grape band (no card) ------------------- */
 static void hat(PCtx *c)
 {
     const DoomoLook *l = c->l;
-    PMat hm, band, card;
+    PMat hm, band;
     int H = T.hatc, by = -150, lean = 30, lean2 = 74 + (c->breath ? 4 : 0);
     int bx0 = 8, w0 = 76, w1 = 70, w2 = 94, tilt = -20;
     int ax0, ay0, ax1, ay1, mx0, my0, mx1, my1, tx0, ty0, tx1, ty1;
     pm_paint(&hm, l->hat_color);
     pm_paint(&band, l->pattern_color);
-    pm_paint(&card, l->horn_color);
     if (T.yaw == 2) { bx0 = 16; lean = 20; lean2 = 50; tilt = -34; }
     if (T.yaw >= 3) { tilt = 20; lean = -20; lean2 = -60; }
     /* brim (a tilted ellipse) */
@@ -576,23 +561,6 @@ static void hat(PCtx *c)
     pc_decal(&band, SH_SOFT);
     pc_quad(ax0, ay0 - S(4), ax1, ay1 - S(4), HX(bx0 + w0 - 2 + lean / 3), HY(by - 44),
             HX(bx0 - w0 + 2 + lean / 3), HY(by - 40));
-    if (T.yaw >= 3) return;
-    /* the card, tucked into the band on the hat's right, sticking up */
-    {
-        int cx = bx0 + w0 - 18 + lean / 4, cyb = by - 24, cw = T.tiny ? 40 : 104, ch = T.tiny ? 44 : 92;
-        int x0 = HX(cx - cw / 2), x1 = HX(cx + cw / 2), x2 = HX(cx + cw / 2 + 16), x3 = HX(cx - cw / 2 + 16);
-        int y0 = HY(cyb), y1 = HY(cyb - 6), y2 = HY(cyb - ch - 6), y3 = HY(cyb - ch);
-        pc_part(&card, SH_SOFT, PF_NOCAST);
-        pc_quad(x0, y0, x1, y1, x2, y2, x3, y3);
-        if (!T.tiny && T.k >= 180) {
-            int px = ((x0 + x2) / 2 >> 4) - 3, py = ((y0 + y2) / 2 >> 4) - 3;
-            digit(px, py, 1, PAL_PAINT(PAINT_CHERRY, 0));
-            digit(px + 4, py, 8, PAL_PAINT(PAINT_CHERRY, 0));
-        } else if (!T.tiny) {
-            pc_px(((x0 + x2) / 2) >> 4, ((y0 + y2) / 2) >> 4, PAL_PAINT(PAINT_CHERRY, 0));
-            pc_px((((x0 + x2) / 2) >> 4) + 1, ((y0 + y2) / 2) >> 4, PAL_PAINT(PAINT_CHERRY, 0));
-        }
-    }
 }
 
 /* ---- coat front: huge lapels, the shirt, the floppy bow tie, the rosette --- */

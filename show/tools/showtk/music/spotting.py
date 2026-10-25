@@ -84,6 +84,9 @@ def load(ep: str = "ep101", path=None):
     for st in S.parse_file(path, blocks=()):
         if st.head == "spot":
             spots[st.name] = dict(st.kv)
+        elif st.head.startswith("@") and len(st.words) >= 3 and st.words[1] == "tapestop":
+            # the spec's own op (sec.5.5 `tapestop F`): stops every cue playing at that time
+            ops.append(Op(st.head[1:], "*", "tapestop", st.words[2:], dict(st.kv), st.where()))
         elif st.head.startswith("@"):
             if len(st.words) < 4 or st.words[1] != "mx":
                 raise S.ShwError(f"{st.where()}: expected `@<time> mx <cue> <op> ...`")
@@ -144,8 +147,21 @@ def resolve(ops, spots, rd, metas):
 
 def events(ops, spots, metas):
     """Resolved ops -> audio_events-shaped dicts (sec.6.6), with instance ids."""
-    evs, live = [], {}
-    for o in ops:
+    evs, live, playing = [], {}, {}
+    exp = []
+    for o in ops:                    # a global tapestop applies to every cue still sounding then
+        if o.cue == "*":
+            exp += [dc.replace(o, cue=c) for c, end in playing.items() if end > o.smp]
+            continue
+        exp.append(o)
+        if o.op == "start":
+            n = int(metas.get(o.cue, {}).get("length_smp") or 0)
+            off = BM.BarMap.from_json(metas[o.cue]["barmap"]).at(
+                o.kv.get("from", spots.get(o.cue, {}).get("from", "bar:1.1"))) if o.cue in metas else 0
+            playing[o.cue] = o.smp + max(0, n - off)
+        elif o.op == "stop":
+            playing.pop(o.cue, None)
+    for o in exp:
         sp = spots.get(o.cue, {})
         e = {"smp": o.smp, "frame": o.frame, "src": f"cue:{o.cue}", "bus": sp.get("bus", "MX")}
         if o.op == "start":

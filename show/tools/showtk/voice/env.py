@@ -221,6 +221,11 @@ def unrel(p):
         return os.path.join(show_lib(), p[6:])
     if os.path.isabs(p):
         return p
+    if p.startswith("show/lib/takes/"):
+        # takes.toml paths from the RECORDING_GUIDE ingest: show/lib/ is the local store
+        q = os.path.join(show_lib(), p[len("show/lib/"):])
+        if os.path.exists(q) or not os.path.exists(os.path.join(REPO, p)):
+            return q
     if p.startswith("show/"):
         return os.path.join(REPO, p)
     return os.path.join(SHOW, p)

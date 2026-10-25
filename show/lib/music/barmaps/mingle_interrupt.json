@@ -1,0 +1,36 @@
+{
+ "cue": "mingle_interrupt",
+ "bpm": 150.0,
+ "meter": 4,
+ "bars": 6,
+ "sections": [
+  [
+   "phrase1",
+   1,
+   6
+  ]
+ ],
+ "offset_smp": 0,
+ "frames_per_bar": 48.0,
+ "smp_per_bar": 76800.0,
+ "source": "score:mingle.mingle",
+ "bar_smp": [
+  0,
+  76800,
+  153600,
+  230400,
+  307200,
+  384000,
+  460800
+ ],
+ "bar_frame": [
+  0,
+  48,
+  96,
+  144,
+  192,
+  240,
+  288
+ ],
+ "named_notes": {}
+}
