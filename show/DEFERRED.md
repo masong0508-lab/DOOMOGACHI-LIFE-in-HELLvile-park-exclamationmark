@@ -11,3 +11,4 @@
 - ENGINE: `show/hooks/session_start.sh` (the opt-in restore hook): `show vault fetch DIR` restores by hand; nothing in this week's container needs restoring.
 - ENGINE: `show/tools/requirements.lock`: the tools use what this container has (numpy, Pillow, pytest); `show doctor` checks them.
 - ENGINE: gaze hunk (e), `ps1-show-wide`, `ps1-show-dev` (PCdrv), `runner-show`, the P2 draw trace (`show_wrap.c`): deferred to 2027 by the spec itself (§1.2, §4.3, §8.8).
+- ENGINE lane 3: `--tail fade=`, the timing strip (`show strip`), the diff heat map, a measured (pixel) flash analysis in STD-FLASH (the lint reads the scripted flash events; the PEAT/Harding pass is the creator's), AD/TTML/SCC captions, UHD and broadcast recipes (the `web_uhd` recipe exists, unused).

@@ -45,7 +45,9 @@ def read_lints(ep):
         if not m:
             continue
         rest = ln[m.end():].strip().lower()
-        if " ok" in " " + rest[:3] or rest.startswith("ok") or "waived" in rest[:8]:
+        if (m.group(2) or "").lower() == "ok":
+            continue
+        if" ok" in " " + rest[:3] or rest.startswith("ok") or "waived" in rest[:8]:
             continue
         if "warning" in rest[:10] or (m.group(2) or "").lower().startswith("warn"):
             warns += 1

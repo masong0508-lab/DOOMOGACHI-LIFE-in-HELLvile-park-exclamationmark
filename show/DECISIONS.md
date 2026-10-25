@@ -96,3 +96,16 @@ Each names the default taken and where to change it.
 - **The theme cues name files** (`src=file:doomtastic_times_main_title.flac` under docs/show/theme/ once
   published, else the scratchpad's theme/final): a new vocal master drops in with no other change; the bar
   map is re-imported from the master's own `*_full.mid` (tempo + section markers).
+
+## ENGINE lane 3: deliver, review, standards (WP12, WP13, WP17), 2026-10-25
+
+- **Segments are per beat**, video-only H.264, cached by a hash of their masters' frame hashes + recipe + burn-ins; audio is encoded once over the whole range (no AAC priming seams). Change: `showtk/edl.py`.
+- **EDL in/out points sit 0.6 ms inside frame boundaries** with an explicit `duration` per entry (Matroska stores ms timestamps); frame-exact, tested on cut ranges.
+- **BT.709 conversion is explicit** in the filter graph (swscale's default would be BT.601 under bt709 tags: measured max error 26 levels vs 3).
+- **AT12.2 reading:** H.264 is lossy, so "framemd5 matches the masters x6" is checked on the deliver chain before the encoder (exact md5 per sampled frame) plus the decoded encode at art-pixel centres within mean error 3 and closer to its own master frame than to its neighbours.
+- **Threads:** ffmpeg runs with 2 threads (`SHOW_FFMPEG_THREADS`); the machine is shared.
+- **Chapters = the acts** (the eyecatches sit on the act breaks) unless the timeline gives `chapters`; folded to YouTube's >= 10 s rule.
+- **The slur list ships as SHA-256 hashes and starts empty**: no slur is ever spelled in the repo; the pilot script is written clean and checklist item 5 is the human gate. The STD-HATE fixture uses an invented word.
+- **The sign-off binds to the manifest's `render_hash`** (frame hashes, mix hash + window, captions, chapters, recipe), not to MP4 bytes, so a re-encode of the same render stays signed.
+- **Thumbnail** = a master frame x4 (1280x720), default the middle of the longest shot in a scene with no child; `release.thumb` overrides and is refused in a child's scene.
+- **--release needs the compiler's lint report** (`build/<ep>/lint.txt` or `lint.json`) with no errors.

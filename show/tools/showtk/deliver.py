@@ -414,6 +414,7 @@ def assemble(ep, recipe, rng=None, out=None, mix=None, masters_dir=None, allow_s
     (out / (base + ".manifest.json")).write_text(json.dumps(manifest, indent=1, sort_keys=True))
     manifest["_paths"] = {"out": str(out), "mp4": str(mp4), "srt": str(srt_p), "vtt": str(vtt_p),
                           "base": base}
+    manifest["_masters"] = str(masters_dir) if masters_dir else None
     return manifest
 
 
