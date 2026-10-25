@@ -1,0 +1,102 @@
+# Licences of everything that reaches a frame or a sample (SHOW_ENGINE_SPEC.md §10.8).
+# AUD-LIC: every sample source a mix uses must resolve to one row here, by the longest
+# matching `match` prefix. `credit` is the line the release package must print whenever
+# the source is in the mix; `in_mix = false` means the lint refuses it in any mix.
+# Prefixes: "kit:<asset path under KIT_ASSETS>", "tts:kokoro", "rec:", "lib:", "game:", "sfxgen:",
+# "synth:" (kit synthesis, no samples), "mml:", "theme:".
+
+[project]
+match = ["game:", "mml:", "sfxgen:", "synth:", "theme:", "foley:", "lib:", "rec:"]
+licence = "The project's own (art, palette, fonts, cue melodies, procedural SFX, the theme, the creator's recordings)"
+credit = ""
+in_mix = true
+
+[kokoro]
+match = ["tts:kokoro"]
+licence = "Apache-2.0 (Kokoro-82M v1.0 weights and voices)"
+file = "kokoro_Apache-2.0.txt"
+credit = "Voices: Kokoro TTS (synthetic)"
+in_mix = true
+
+[whisper]
+match = ["qa:whisper"]
+licence = "MIT (Whisper small, QA only; never in the audio)"
+file = "whisper_small_MIT.txt"
+credit = ""
+in_mix = false
+
+[cmudict]
+match = ["g2p:cmudict"]
+licence = "BSD-style (CMU Pronouncing Dictionary data; G2P only, read as data, the GPL wrapper is never imported)"
+file = "cmudict_BSD.txt"
+credit = ""
+in_mix = false
+
+[sonicpi]
+match = ["kit:sonicpi/"]
+licence = "CC0-1.0"
+file = "sonicpi_CC0.txt"
+credit = ""
+in_mix = true
+
+[vsco2]
+match = ["kit:vsco2/"]
+licence = "CC0-1.0 (VSCO-2 Community Edition)"
+file = "vsco2_CC0.txt"
+credit = ""          # optional: "VSCO-2 CE samples by Versilian Studios"
+in_mix = true
+
+[tr808]
+match = ["kit:tr808/"]
+licence = "Free 808 sample library (ISC wrapper, @fluid-music/tr-808)"
+file = "tr808_README.md"
+credit = ""
+in_mix = true
+
+[salamander]
+match = ["kit:salamander/"]
+licence = "CC BY 3.0 (Salamander Grand Piano V3, Alexander Holm)"
+file = "salamander_CC-BY-3.0_README.md"
+credit = "Salamander Grand Piano V3 by Alexander Holm (CC BY 3.0)"
+in_mix = true
+
+[teropa_dwsd]
+match = ["kit:teropa/kick", "kit:teropa/snare", "kit:teropa/hat", "kit:teropa/ride"]
+licence = "CC BY (DWSD Deep House Drum Kit, freesound.org, via @teropa/drumkit)"
+file = "teropa_drumkit_NOTES.md"
+credit = "Drum samples: DWSD / freesound.org (CC BY)"
+in_mix = true
+
+[teropa_cc0]
+match = ["kit:teropa/crash", "kit:teropa/tom"]
+licence = "CC0 (Stomachache's Analog Cymbal; Karman Lyne's 808 toms; freesound.org)"
+file = "teropa_drumkit_NOTES.md"
+credit = ""
+in_mix = true
+
+[generaluser_gs]
+match = ["kit:soundfonts/GeneralUser_GS"]
+licence = "GeneralUser GS License v2.0 (music production incl. commercial)"
+file = "GeneralUser_GS_LICENSE.txt"
+credit = ""
+in_mix = true
+
+[fluidr3_mono]
+match = ["kit:soundfonts/FluidR3Mono"]
+licence = "MIT"
+file = "FluidR3Mono_License.md"
+credit = ""
+in_mix = true
+
+[musescore_general_lite]
+match = ["kit:soundfonts/MuseScore_General_Lite"]
+licence = "MIT"
+file = "MuseScore_General_Lite.copyright"
+credit = ""
+in_mix = true
+
+[timgm6mb]
+match = ["kit:TimGM6mb", "pretty_midi:TimGM6mb"]
+licence = "GPL-2.0 (inside pretty_midi): comparison only"
+credit = ""
+in_mix = false
