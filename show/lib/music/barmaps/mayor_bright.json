@@ -1,0 +1,28 @@
+{
+ "cue": "mayor_bright",
+ "bpm": 132.0,
+ "meter": 4,
+ "bars": 2,
+ "sections": [
+  [
+   "MAYOR",
+   1,
+   2
+  ]
+ ],
+ "offset_smp": 0,
+ "frames_per_bar": 54.54545454545455,
+ "smp_per_bar": 87272.72727272728,
+ "source": "score:pilot.sting",
+ "bar_smp": [
+  0,
+  87273,
+  174545
+ ],
+ "bar_frame": [
+  0,
+  55,
+  109
+ ],
+ "named_notes": {}
+}

@@ -1,0 +1,28 @@
+{
+ "cue": "home_2bar",
+ "bpm": 84.0,
+ "meter": 3,
+ "bars": 2,
+ "sections": [
+  [
+   "HOME",
+   1,
+   2
+  ]
+ ],
+ "offset_smp": 0,
+ "frames_per_bar": 64.28571428571429,
+ "smp_per_bar": 102857.14285714286,
+ "source": "score:pilot.sting",
+ "bar_smp": [
+  0,
+  102857,
+  205714
+ ],
+ "bar_frame": [
+  0,
+  64,
+  129
+ ],
+ "named_notes": {}
+}

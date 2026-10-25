@@ -172,4 +172,7 @@ Each names the default taken and where to change it.
 - co_mt: MT-5 rots a replay of the mt01 crane (no child), never the cast pop-in (Pip is in it).
 - co_mt: beat rows (`act`/`beat`) live at the top of each shot file, since episode.shw is a plain include list.
 - co_mt: timed prop states are written as `+N show <prop>[:<state>]` / `hide <prop>` (proposed SOP_PROP_STATE); fallback is base= + one change per state.
+- WP6: crowd image keys include the flip bit (VRAM caches flips apart); AT6.4 checks 0 portrait-pool rerenders every frame and 0 VRAM uploads after warm-up (t>=24), allowing deferred first uploads.
+- WP6: until lane 1's plug-in API lands, WP6 is driven by show/tests/engine/wp6 (self-test hook build); the frame protocol is documented at the top of show/include/show/show_actor.h.
+- WP10.5 (AUDIO): ep101/cues.shw spots all 60 beats (99 mx ops). Where the beat sheet gives a rule, not a frame, the time is a marked `choice:`. Level ladder vs unity: theme 0 dB, stings -3..-6, underscore -6..-10, diegetic -8..-14, beds -16. The cute HOOK in 3-01 is restarted every 8 bars (384 f) on the 150 grid; insert_doom is one 61-bar render with bars 26-50 muted for 3-04 (re-entry bar 51.1 = 3-05 frame 0). Theme is still from scratchpad theme/final (docs/show/theme/ not on origin yet); swapping is a file drop.
 - lane 2 (picture): text/strokes/camera/fx shot data travels as one PIC1 blob per shot (show_l2_bind) until lane 1's chunk API lands; ops 0x0100-0x01FF are lane 2's.

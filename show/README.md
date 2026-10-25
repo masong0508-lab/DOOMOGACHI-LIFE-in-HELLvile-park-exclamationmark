@@ -238,6 +238,53 @@ Everyone appends to `DECISIONS.md` and `DEFERRED.md`. Binaries, renders,
 models and audio are never committed (`show/.gitignore`); they live in the
 vault and the scratch dirs.
 
+## Staging reference: WP6 actors, crowds, mouths (`show_cast.c`, `show_actor.c`, `show_crowd.c`)
+
+The compiler side is `showtk/actors.py` (`ShotCast`, `parse_actor`, `parse_crowd`);
+records are the byte images of `show/include/show/show_actor.h`. A shot's actors
+wear the ART lane's looks (`show/series/cast.shw`, `looks/`); slot order is the
+declaration order.
+
+```
+actor mayor who=mayor kind=figure at=110,150 face=R expr=EXPR_HAPPY idle=on
+actor nana  who=nana  kind=bust   at=160,180 px=2
+crowd plaza looks=kset:giggle_adults n=150 form=scatter area=0,100,320,60 flip=mix bob=on
+end
+crowd kids looks=kset:kids n=12 form=lane from=-20,150 spacing=26 speed=2.2 dir=R ripple=0..3 cycle=walk4
+end
+
++0   mayor expr EXPR_SHOCK
++12  mayor headturn 64 2          ; turn 64 (of 256) over 2 frames
++20  mayor move 200,150 over=24 ease=SMOOTH
++20  nana  walk 40 over=30
++30  mayor squash 300 over=6
++40  mayor pop TWT_HOP2
++44  mayor pose wave speed=1.0    ; flipbook; `pose off` returns to the rig
++50  mayor state possessed
++60  mayor freeze 13              ; clock stops: wings/blink hold exactly 13 f
++80  kids  freeze | thaw | pop TWT_HOP2 | face L | speed 0.5 | show off
+```
+
+Actor options: `kind=bust|figure|chibi|fighter`, `at=x,y` (feet, show pixels),
+`face=L|R|front|back`, `expr=EXPR_*`, `idle=on|still|frozen|none`, `px=1..3`,
+`state=normal|possessed|ghost|dead`, `hidden`. Timed ops: `expr`, `blink`, `face`,
+`move`, `walk`, `pop`, `squash`, `headturn`, `pose`, `state`, `show on|off`,
+`twitch`, `freeze N`/`thaw`, `still`.
+
+Crowd options: `looks=kset:<id>` (K <= 48 looks, reused: 150 citizens draw from
+<= 48 images at 0 pool evictions), `n=1..256`, `form=lane|grid|scatter`,
+`from=x,y` (lane) or `area=x,y,w,h`, `spacing`, `row`, `speed` (px/f), `dir`,
+`ripple=0..R` (per-member clock lag, frames), `cycle=walkN`, `clock=<actor clock>`,
+`layer=front`, `flip=mix`, `bob=on`, `special=<member>:<char>,...` (never moves).
+
+Mouths: the AUDIO lane's mouth tracks (spec §9.3/§10.2), one viseme letter per
+frame from `XMCEAOUF` (X = rest), mapped through `visemes.shw`; tracks for `expr`
+(EXPR_* per frame) and `blink` (`1` shut, `0` open, `.` the clock's own blink)
+use the same TRAK records. Crowds never flap.
+
+Tests: `python3 -m pytest show/tests/engine/test_wp6.py` (AT6.1-AT6.5, dx_proof;
+one PS1 test build + one emulator run, ~2 min). Sheets in
+`<scratch>/show_out/engine/{model_sheets,freeze,crowd_lanes,crowd_klook,blink_patch_f,dx_proof}/`.
 ## Staging reference: picture (ENGINE lane 2: WP5 planes, WP7 text, WP8 camera/FX)
 
 Engine: `show/engine/show_{cam,fx,strokes,tilemap,text,l2,font_child}.c`, headers in
