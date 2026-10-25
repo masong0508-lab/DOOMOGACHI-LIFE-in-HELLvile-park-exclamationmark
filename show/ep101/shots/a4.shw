@@ -1,0 +1,603 @@
+# show/ep101/shots/a4.shw - Act Four, Tag "Morning", End Credits, Post-credits
+# Shot list: show/ep101/shotlists/a4.md (56 shots, 9300 f, 00:16:50:00-00:22:00:00).
+# Script: docs/show/ep101/PILOT_SCRIPT.md SC49-SC60. Show px on 320x180.
+# Written to spec sec.5-6 before the compiler exists; see the TODO list in the shot list.
+# Every shot is gore=CUTE; Pip (KID) is in scenes a4_bandstand, a4_gate, a4_grave, a4_hill.
+
+# ============================== ACT FOUR ==============================
+
+# ---- 4-01 (600 f) ----
+shot a4s01 beat=e101_4_01 len=90 set=act_cards:act4 px=1 look=pixel cut=CUT matte=open gore=CUTE scene=a4_bandstand
+  +0    mx heehee_bell_flat start                       # the HEE_HEE bell once, flat; no jingle
+  +9    pop l6 TWT_POP_SMALL                            # the blank line pops in (8 f)
+  +9    super s_a4_01_card style=deadpan at=prop:l6 until=end
+  ad "The Mayor's clipboard. The next line reads 23:00, then nothing."
+end
+
+shot a4s02 beat=e101_4_01 len=180 set=bandstand:rite px=1 look=pixel cut=CUT matte=open gore=CUTE
+  cam at=0,0
+  actor fuzz  who=fuzz  kind=figure at=150,124 face=R idle=frozen pose=kneel_sheet expr=EXPR_SHOCK
+  actor bloom who=bloom kind=figure at=128,136 face=R idle=frozen
+  actor pip   who=pip   kind=figure at=112,150 face=R idle=on pose=hold_flops_headlock expr=EXPR_SAD
+  actor nana  who=nana  kind=figure at=94,154  face=R idle=frozen
+  actor mayor who=mayor kind=figure at=40,150  face=R idle=frozen pose=sit_clipboard
+  actor sunny who=sunny kind=figure at=232,124 face=L idle=on
+  actor pet   who=pet   kind=sprite at=232,92  idle=on
+  actor bone  who=bonejangles kind=figure at=182,120 face=L idle=on
+  change candle3.art=blue
+  +0    state bone possessed ; twitch bone on
+  +0    amb AMB_night_air on gain=-34dB ; cc "[night air]"
+  ad "The bandstand. Everyone frozen. Only the possessed skeleton twitches."
+end
+
+shot a4s03 beat=e101_4_01 len=60 set=bandstand_cu:north_night px=2 look=pixel cut=CUT matte=open gore=CUTE
+  actor nana who=nana kind=bust at=80,60 face=R expr=EXPR_SHOCK idle=frozen
+  +0    sfx FOL_breath_small gain=-22dB
+  +4    say a4_01_nana_01 nana
+  >+R13 take look_at nana n=30 turn=64                  # her eyes go to the Mayor
+end
+
+shot a4s04 beat=e101_4_01 len=45 set=bandstand_cu:north_night px=2 look=pixel cut=CUT matte=open gore=CUTE
+  actor mayor who=mayor kind=bust at=80,60 face=L expr=EXPR_NEUTRAL idle=on
+  +0    sfx FOL_wing_rustle_stop gain=-24dB
+  +0    headturn mayor 16 6 ; still mayor               # looks at the sky, keeps looking
+end
+
+shot a4s05 beat=e101_4_01 len=165 set=bandstand_cu:north_night px=2 look=pixel cut=CUT matte=open gore=CUTE
+  actor sunny who=sunny kind=bust at=80,64 face=L expr=EXPR_NEUTRAL idle=on mouth=track
+  actor pet   who=pet   kind=sprite at=80,18 idle=on
+  +0    sfx FOL_pet_shuffle gain=-26dB
+  +13   say - sunny mouth="MOUTH_CLOSED:0,MOUTH_SMALL:3,MOUTH_OPEN:8"   # opens over 8 f; no sound (Sunny never speaks)
+  +57   pose pet lean_upside_down ; sfx FX_pet_blip_tiny gain=-30dB
+  +70   say - sunny mouth="MOUTH_OPEN:0,MOUTH_SMALL:6,MOUTH_CLOSED:13"  # closes over 13 f
+  nobutton
+end
+
+shot a4s06 beat=e101_4_01 len=60 set=bandstand:rite px=1 look=pixel cut=CUT matte=open gore=CUTE
+  cam at=prop:candle3 scale=2
+  change candle3.art=blue
+  +0    sfx FOL_flame_flutter gain=-28dB
+  +13   button ; change candle3.art=lean                # the bead leans toward the Wall
+end
+
+# ---- 4-02 (900 f) ----
+shot a4s07 beat=e101_4_02 len=285 set=bandstand:rite px=1 look=pixel cut=CUT matte=open gore=CUTE
+  cam at=60,20 scale=1.5
+  actor fuzz  who=fuzz  kind=figure at=150,124 face=R idle=frozen pose=kneel_sheet
+  actor pip   who=pip   kind=figure at=118,150 face=R idle=on pose=hold_flops_headlock expr=EXPR_SAD
+  actor nana  who=nana  kind=figure at=94,154  face=R idle=frozen
+  +0    sfx FOL_sniff gain=-14dB
+  +20   headturn pip 192 4                               # Nana
+  +45   headturn pip 160 4 ; mx ominous_bed start gain=-24dB   # the Mayor; the bed creeps in
+  +70   headturn pip 64 4                                # Fuzz
+  +150  say a4_02_pip_01 pip
+  +241  say a4_02_pip_02 pip                             # R13 after "rain" (provisional: @a4_02_pip_01.end+R13)
+end
+
+shot a4s08 beat=e101_4_02 len=165 set=bandstand:rite px=1 look=pixel cut=CUT matte=open gore=CUTE
+  cam at=90,30 scale=1.75
+  actor fuzz  who=fuzz  kind=figure at=150,124 face=R idle=frozen pose=kneel_sheet
+  actor bloom who=bloom kind=figure at=128,136 face=R idle=frozen
+  actor pip   who=pip   kind=figure at=118,150 face=R idle=on pose=hold_flops_headlock
+  assert pip.x < fuzz.x @+164                            # Fuzz stays between Pip and the bones
+  +0    walk pip to=140 over=30 ; fol FOL_small_steps
+  +30   pose pip pip_tiptoe
+  +45   mx * mute 999 ; amb AMB_night_air off            # MUTE ALL
+  +50   say a4_02_pip_03 pip                             # R5 after MUTE ALL; dry, unprocessed
+  +60   pose pip pip_point
+end
+
+shot a4s09 beat=e101_4_02 len=75 set=bandstand_cu:north_night px=2 look=pixel cut=CUT matte=open gore=CUTE
+  actor bone who=bonejangles kind=bust at=80,60 face=L idle=on
+  +0    state bone possessed ; twitch bone on
+  +0    sfx FOL_bone_tick_stop gain=-20dB
+  +13   mx true_name start gain=-16dB
+  +13   take unpossess bone                              # purple drains top to bottom over 21 f; sockets go dark
+  +34   twitch bone off
+end
+
+shot a4s10 beat=e101_4_02 len=225 set=bandstand:rite px=1 look=pixel cut=CUT matte=open gore=CUTE
+  actor fuzz  who=fuzz  kind=figure at=150,124 face=R idle=frozen pose=kneel_sheet
+  actor bloom who=bloom kind=figure at=128,136 face=R idle=frozen
+  actor pip   who=pip   kind=figure at=140,140 face=R idle=on
+  actor nana  who=nana  kind=figure at=94,154  face=R idle=frozen
+  actor mayor who=mayor kind=figure at=40,150  face=R idle=frozen pose=sit_clipboard
+  actor sunny who=sunny kind=figure at=232,124 face=L idle=on
+  actor pet   who=pet   kind=sprite at=232,92  idle=on
+  actor bone  who=bonejangles kind=figure at=182,120 face=L idle=on
+  change candle3.art=blue
+  +0    change candle3.art=lit ; sfx FOL_flame_swell gain=-20dB
+  +15   mx choir_soft start gain=-18dB
+  +30   thaw fuzz ; thaw bloom ; thaw nana                # ripple 0-3 f from the ids (TIME-RIPPLE)
+  +38   thaw mayor ; sfx FOL_wing_stutter gain=-22dB      # the Mayor R8 last
+  +120  headturn fuzz 128 8 ; pose fuzz kneel_turn
+end
+
+shot a4s11 beat=e101_4_02 len=150 set=bandstand_cu:steps px=2 look=pixel cut=CUT matte=open gore=CUTE
+  actor pip  who=pip  kind=bust at=70,64 face=R expr=EXPR_SAD idle=on pose=hold_flops_headlock
+  actor fuzz who=fuzz kind=bust at=146,60 face=L idle=on
+  +0    sfx FOL_sniff gain=-20dB
+  +40   pose pip hold_flops                              # holds Mr. Flops properly
+  +130  mx choir_soft stop over=20
+  nobutton                                               # the name never gets one (GAG_BIBLE sec.6.22)
+end
+
+# ---- 4-03 (1350 f) PROTECTED HOLD 2 of 3 ----
+shot a4s12 beat=e101_4_03 len=60 set=bandstand_cu:north_night px=2 look=pixel cut=CUT matte=open gore=CUTE scene=a4_gate
+  actor bone who=bonejangles kind=bust at=80,60 face=L idle=still expr=EXPR_NEUTRAL
+  prop  puff art=pxt:puff_breath at=92,74 hidden=yes
+  +0    sfx FOL_long_sigh gain=-16dB
+  +0    squash bone 240 over=10
+  +10   squash bone 256 over=6
+  +30   show puff ; pose puff out ; mx goodbye start gain=-18dB
+end
+
+shot a4s13 beat=e101_4_03 len=360 set=sealed_gate:night px=1 look=pixel cut=CUT matte=open gore=CUTE
+  prop  puff  art=pxt:puff_breath at=-12,100
+  prop  chalk art=text:s_a4_03_chalk at=70,168 plane=wall
+  +0    move puff to=@keyhole over=+0..+345 tw=TW_LINEAR  # constant speed; south, away from the steps
+  +0    fx chalk_dust at=follow:puff n=1/4f seed=413
+end
+
+shot a4s14 beat=e101_4_03 len=315 set=bandstand_cu:steps px=2 look=pixel cut=CUT matte=open gore=CUTE
+  actor bone who=bonejangles kind=bust at=80,60 face=L idle=still expr=EXPR_NEUTRAL
+  +0    pose bone sockets_warm ; sfx FOL_tiny_click gain=-24dB
+  +15   pose bone jaw_reseat ; sfx FOL_jaw_click gain=-20dB
+  +30   thaw bone ; squash bone 232 over=4 ; sfx FOL_bone_clatter_soft gain=-18dB
+  +34   squash bone 256 over=6
+  +60   say a4_03_bone_01 bonejangles
+  +105  say a4_03_bone_02 bonejangles                     # R13 after "...Clack?"
+end
+
+shot a4s15 beat=e101_4_03 len=333 set=bandstand:night px=1 look=pixel cut=CUT matte=open gore=CUTE
+  cam at=120,10 scale=1.25 ; cam to x=128 y=12 scale=1.30 over=333 ease=LINEAR
+  actor bone who=bonejangles kind=figure at=200,126 face=R idle=on
+  prop  puff art=pxt:puff_breath at=@gate_x,118 plane=stage
+  +0    headturn bone 64 6
+  +40   pose bone mallets_up
+  +60   sfx FOL_mallet_clack gain=-16dB
+  +68   sfx FOL_mallet_clack gain=-16dB
+  +75   mx goodbye stop over=13 ; mx hook_major_ribs start gain=-12dB ; pose bone mallet_play fps=15
+  +126  say a4_03_bone_03 bonejangles                     # 4 bars at 140 bpm, C major; "pink" rings
+end
+
+shot a4s16 beat=e101_4_03 len=282 set=sealed_gate:night px=1 look=pixel cut=CUT matte=open gore=CUTE
+  prop  puff art=pxt:puff_breath at=@keyhole
+  actor bone who=bonejangles kind=figure at=24,170 face=R idle=on
+  +0    mx hook_major_ribs stop over=20                   # the last note rings out
+  +20   pose puff squeeze ; fol FOL_bottle_blow           # through the keyhole, a little at a time
+  +117  hide puff ; show chalk_smudge
+  +141  say a4_03_clink_01 clinker                        # R21 of silence after; ON TIME (late=0)
+  +162  label L_HOLD                                      # HOLD 4 s, idles only
+  nobutton
+  tag shot rear
+end
+
+# ---- 4-04 (600 f) ----
+shot a4s17 beat=e101_4_04 len=222 set=bandstand_cu:steps px=2 look=pixel cut=CUT matte=open gore=CUTE scene=a4_bandstand
+  actor fuzz who=fuzz kind=bust at=80,62 face=R expr=EXPR_SAD idle=on pose=candle_paws
+  +0    sfx FOL_candle_fizz gain=-28dB ; twitch fuzz on   # paws shake a little
+  +90   say a4_04_fuzz_01 fuzz
+  +156  say a4_04_fuzz_02 fuzz ; expr fuzz EXPR_HAPPY     # the smallest smile
+end
+
+shot a4s18 beat=e101_4_04 len=378 set=bandstand:night px=1 look=pixel cut=CUT matte=open gore=CUTE
+  cam at=-20,20 scale=2
+  actor fuzz  who=fuzz  kind=figure at=20,140 face=R idle=on pose=sit_candle
+  actor sunny who=sunny kind=figure at=60,140 face=L idle=on
+  actor pet   who=pet   kind=sprite at=60,108 idle=on
+  +0    fol FOL_soft_step
+  +40   walk sunny to=34 over=30
+  +78   pose sunny hug ; squash sunny 230 over=6 ; fol FOL_plush_pff ; cc "[soft plush hug]"
+  +84   mx fuzz_amen start gain=-14dB                     # 2 bars, half tempo
+  +78   expr fuzz EXPR_SHOCK ; still fuzz
+  +91   thaw fuzz ; pose fuzz hug_back
+  +104  button ; pose fuzz candle_arm_out                 # flame held well clear of the plush
+end
+
+# ---- 4-05 (750 f) ----
+shot a4s19 beat=e101_4_05 len=288 set=bandstand:night px=1 look=pixel cut=CUT matte=open gore=CUTE
+  actor mayor who=mayor kind=figure at=120,150 face=R idle=on
+  crowd giggle gen=randomize seed=4519 n=40 kind=chibi age=adult formation=lawn y=@lawn_y spread=20..300 ripple=0..3
+  end
+  +0    move mayor to=150,104 over=20 tw=TW_EASE_OUT ; sfx FOL_wing_buzz gain=-18dB
+  +0    mx mayor_motif start gain=-14dB
+  +45   say a4_05_mayor_01 mayor ; take speech_pose mayor
+  +147  walla w_giggle_11 ; cc "[relieved sighs]"
+  +147  pose crowd:giggle hat_on ripple=0..3
+  +192  say a4_05_mayor_03 mayor
+  +243  headturn crowd:giggle 64 3 ripple=0..3            # every head turns to the boards
+  +258  headturn crowd:giggle 192 2 ripple=0..1           # and snaps back, 2x
+end
+
+shot a4s20 beat=e101_4_05 len=84 set=bandstand_cu:north_night px=2 look=pixel cut=CUT matte=open gore=CUTE
+  actor mayor who=mayor kind=bust at=80,62 face=R expr=EXPR_HAPPY idle=on pose=clipboard_pen
+  +0    say a4_05_mayor_04 mayor ; sfx FOL_pen_click gain=-20dB
+  +42   pose mayor clipboard_lift
+  +66   pose mayor sheet_flip ; sfx FOL_paper_flip gain=-18dB
+end
+
+shot a4s21 beat=e101_4_05 len=69 set=act_cards:act4 px=1 look=pixel cut=CUT matte=open gore=CUTE insert
+  change board.image=gen:clipboard(sheet=grey4,seed=4)    # the pale grey fourth sheet from 20:00
+  +0    sfx FOL_paper_settle gain=-24dB
+  +0    sign s_a4_05_draft on=board                       # 69 f: reading hold (GAG_BIBLE sec.4.13)
+  waive TIME-READ "69 f is the script's reading hold for 6 words (0.3 s/word + 0.5 s)"
+end
+
+shot a4s22 beat=e101_4_05 len=42 set=bandstand_cu:north_night px=2 look=pixel cut=CUT matte=open gore=CUTE
+  actor mayor who=mayor kind=bust at=80,62 face=R expr=EXPR_SHOCK idle=frozen
+  +0    thaw mayor ; pose mayor fold4 ; sfx FOL_paper_fold gain=-16dB   # fold, fold, into the waistcoat (4 f)
+  +4    mx mayor_motif mute 14
+  +18   say a4_05_mayor_02 mayor ; expr mayor EXPR_HAPPY  # the smile back a beat early
+end
+
+shot a4s23 beat=e101_4_05 len=21 set=bandstand_cu:north_night px=2 look=pixel cut=CUT matte=open gore=CUTE
+  actor nana who=nana kind=bust at=80,62 face=L expr=EXPR_NEUTRAL idle=on
+  +0    sfx FOL_breath_small gain=-30dB                   # frame-0 sound; the motif re-enters on the grid under it
+  +0    take still_hold nana n=R8
+end
+
+shot a4s24 beat=e101_4_05 len=66 set=act_cards:act4 px=1 look=pixel cut=CUT matte=open gore=CUTE insert
+  prop  home art=text:s_a4_05_home at=prop:l6 plane=board
+  prop  stamp art=text:s_a4_05_stamp at=230,140 plane=board hidden=yes
+  +0    sfx FOL_pen_scratch gain=-20dB
+  +13   button ; reveal home over=+13..+33
+  +40   show stamp ; pop stamp TWT_POP_SMALL ; sfx FX_stamp_thunk gain=-14dB
+end
+
+shot a4s25 beat=e101_4_05 len=180 set=bandstand:torn px=1 look=pixel cut=CUT matte=open gore=CUTE
+  actor pip who=pip kind=figure at=120,160 face=R idle=on
+  crowd giggle gen=randomize seed=4519 n=40 kind=chibi age=adult formation=lawn y=@lawn_y spread=20..300 ripple=0..3
+    exit=split over=150 groups=2..3
+  end
+  +0    fol FOL_footsteps_crowd from=crowd:giggle gain=-20dB
+  +100  walk pip to=150 over=20 ; pose pip climb_crate
+  +130  pose pip sit_crate
+  +150  mx mayor_motif stop over=30
+end
+
+# ---- 4-06 (1050 f) ----
+shot a4s26 beat=e101_4_06 len=222 set=bandstand:torn px=1 look=pixel cut=CUT matte=open gore=CUTE
+  cam at=60,40 scale=1.5
+  actor pip   who=pip   kind=figure at=150,146 face=R idle=on pose=sit_crate_swing
+  actor nana  who=nana  kind=figure at=112,156 face=R idle=on
+  actor fuzz  who=fuzz  kind=figure at=190,152 face=L idle=on pose=hold_candle
+  actor bone  who=bonejangles kind=figure at=214,152 face=L idle=on
+  actor sunny who=sunny kind=figure at=88,156 face=R idle=on
+  actor pet   who=pet   kind=sprite at=88,124 idle=on
+  actor mayor who=mayor kind=figure at=170,110 face=L idle=on
+  +0    mx pip_motif start gain=-16dB                     # pizzicato, slower
+  +0    walk mayor to=176 over=60
+  +90   say a4_06_pip_01 pip
+  +128  say a4_06_pip_02 pip                              # R8
+  +174  say a4_06_pip_03 pip                              # R13
+  +210  mx pip_motif stop over=12                         # MUSIC OUT
+end
+
+shot a4s27 beat=e101_4_06 len=228 set=bandstand_cu:north_night px=2 look=pixel cut=CUT matte=open gore=CUTE
+  actor mayor who=mayor kind=bust at=80,62 face=L expr=EXPR_NEUTRAL idle=on
+  +0    sfx FOL_breath_small gain=-30dB
+  +0    headturn mayor 224 4                               # the crate
+  +13   headturn mayor 48 4                                # the Wall
+  +26   headturn mayor 200 4 ; still mayor                 # the candle; HOLD 21
+  +47   thaw mayor
+  +60   say a4_06_mayor_01 mayor
+  +88   say a4_06_mayor_02 mayor
+  +128  say a4_06_mayor_03 mayor ; expr mayor EXPR_HAPPY
+end
+
+shot a4s28 beat=e101_4_06 len=132 set=bandstand:torn px=1 look=pixel cut=CUT matte=open gore=CUTE
+  actor pip   who=pip   kind=figure at=150,146 face=L idle=on pose=sit_crate
+  actor nana  who=nana  kind=figure at=112,156 face=R idle=on
+  actor mayor who=mayor kind=figure at=176,150 face=L idle=on
+  +0    pop pip TWT_HOP2 ; move pip to=146,156 over=8 ; sfx FOL_hop_thump gain=-18dB
+  +10   say a4_06_pip_04 pip ; mx mayor_slow start gain=-16dB
+  +60   move pip to=138,156 over=4 ; fol FOL_small_step
+  +68   move pip to=130,156 over=4 ; fol FOL_small_step
+  +76   move pip to=122,156 over=4 ; fol FOL_small_step ; headturn pip 32 3   # looks at Mr. Flops
+  +89   move pip to=114,156 over=4 ; fol FOL_small_step   # R13: one more, for Mr. Flops
+  +102  button ; move nana to=106,156 over=6 ; fol FOL_small_step   # Nana takes one small step back too
+  assert pip.x <= 114 @+93
+end
+
+shot a4s29 beat=e101_4_06 len=228 set=bandstand:torn px=1 look=pixel cut=CUT matte=open gore=CUTE
+  cam at=prop:crate scale=1.5
+  actor mayor who=mayor kind=figure at=164,150 face=L idle=on
+  prop  lid art=pxt:crate_lid at=prop:crate
+  prop  rocket art=pxt:rocket_small at=150,140 hidden=yes
+  +0    sfx FOL_crate_tap gain=-24dB
+  +30   pose lid open ; sfx FOL_lid_creak gain=-14dB ; cc "[old lid creaks]"
+  +60   fx dust at=prop:crate n=12 seed=429 ; sfx FOL_dust_puff gain=-22dB
+  +100  show rocket ; pose mayor lift_rocket
+  +150  pose mayor blow_dust ; pose rocket pink
+end
+
+shot a4s30 beat=e101_4_06 len=150 set=bandstand_cu:north_night px=2 look=pixel cut=CUT matte=open gore=CUTE
+  actor fuzz  who=fuzz  kind=bust at=50,64 face=R idle=on pose=hold_candle
+  actor mayor who=mayor kind=bust at=112,62 face=L idle=on pose=hold_rocket
+  +0    sfx FOL_candle_fizz gain=-26dB
+  +20   pose fuzz offer_candle
+  +60   pose mayor take_candle ; pose fuzz paws_empty
+end
+
+shot a4s31 beat=e101_4_06 len=90 set=bandstand:night px=1 look=pixel cut=CUT matte=open gore=CUTE
+  actor mayor who=mayor kind=figure at=180,150 face=R idle=on pose=rocket_candle
+  actor sunny who=sunny kind=figure at=156,154 face=R idle=on
+  actor pet   who=pet   kind=sprite at=156,122 idle=on
+  actor nana  who=nana  kind=figure at=134,156 face=R idle=on
+  actor pip   who=pip   kind=figure at=92,158 face=R idle=on
+  actor fuzz  who=fuzz  kind=figure at=116,154 face=R idle=on
+  actor bone  who=bonejangles kind=figure at=60,154 face=R idle=on
+  +0    cam pan dx=0.3 ; fol FOL_footsteps_group
+  +0    walk mayor to=260 over=90 ; walk sunny to=236 over=90 ; walk nana to=214 over=90
+  +4    walk fuzz to=196 over=86 ; walk bone to=140 over=86
+  +10   walk pip to=172 over=80                           # four steps back
+end
+
+# ---- 4-07 (360 f) ----
+shot a4s32 beat=e101_4_07 len=360 set=joke_graveyard:night px=1 look=pixel cut=CUT matte=open gore=CUTE scene=a4_grave
+  cam at=0,20 ; cam pan dx=0.8                            # low on the path; the sky stays out of frame
+  actor mayor who=mayor kind=figure at=120,150 face=R idle=on pose=rocket_candle
+  actor sunny who=sunny kind=figure at=96,152  face=R idle=on
+  actor pet   who=pet   kind=sprite at=96,120  idle=on
+  actor nana  who=nana  kind=figure at=70,154  face=R idle=on pose=hold_paw
+  actor pip   who=pip   kind=figure at=56,158  face=R idle=on
+  actor fuzz  who=fuzz  kind=figure at=36,154  face=R idle=on
+  actor bone  who=bonejangles kind=figure at=12,154 face=R idle=on
+  sign s_a4_07_grave_huggins on=gen:joke_stone(slot=1)
+  sign s_a4_07_grave_cake on=gen:joke_stone(slot=2)
+  sign s_a4_07_grave_moustache on=gen:joke_stone(slot=3)
+  sign s_a4_07_grave_fluffy on=stone
+  +0    walk * dx=0.8 over=360                            # constant walking pace, with the camera
+  +0    fol FOL_footsteps_group ; fol FOL_bone_click_walk gain=-24dB
+  +150  mx mayor_slow mute 13 ; pose mayor wings_stop ; expr mayor EXPR_SAD   # feet don't stop
+  +158  expr mayor EXPR_HAPPY                             # exactly R8 (canon W16)
+  +163  pose mayor wings_idle
+  +165  headturn sunny 64 6                               # only Sunny sees: the stone
+  +210  headturn sunny 192 6                              # the back of his hat
+  waive TIME-READ "joke graves are texture; only Huggins is held (>=60 f)"
+  note "No shot links the stone to the sky (Fluffy/Vapula reveal protected)."
+end
+
+# ---- 4-08 (1440 f) PROTECTED HOLD 3 of 3, NO BUTTON ----
+shot a4s33 beat=e101_4_08 len=300 set=launch_hill:night px=1 look=pixel cut=CUT matte=open gore=CUTE scene=a4_hill
+  prop  stand art=pxt:launch_stand at=176,150 plane=hill
+  prop  rocket art=pxt:rocket_small at=164,140 hidden=no
+  actor mayor who=mayor kind=figure at=150,150 face=R idle=on pose=rocket_candle
+  actor sunny who=sunny kind=figure at=112,156 face=R idle=on
+  actor pet   who=pet   kind=sprite at=112,124 idle=on
+  actor nana  who=nana  kind=figure at=94,158 face=R idle=on
+  actor fuzz  who=fuzz  kind=figure at=78,156 face=R idle=on
+  actor bone  who=bonejangles kind=figure at=62,156 face=R idle=on
+  actor pip   who=pip   kind=figure at=30,162 face=R idle=on pose=hold_flops_tight   # 4 steps behind the furthest grown-up
+  crowd mascotty gen=fixed who=mascotty n=1 kind=figure at=10,150 clock=none
+  end
+  assert pip.x <= bone.x - 30 @+0
+  +0    mx mayor_slow start gain=-16dB
+  +60   move rocket to=176,128 over=20 ; pose mayor set_rocket
+  +210  pose mayor light_fuse ; fol FOL_fuse_fsss ; cc "[fuse hisses]"
+end
+
+shot a4s34 beat=e101_4_08 len=60 set=launch_hill:night px=1 look=pixel cut=CUT matte=open gore=CUTE
+  cam at=0,-30 ; cam crane dy=-30 over=26
+  prop  rocket art=pxt:rocket_climb at=176,150
+  prop  heart  art=pxt:heart_bloom at=160,40 hidden=yes
+  +0    mx * mute 999 ; sfx FOL_rocket_whistle_soft gain=-26dB   # the score goes; the sequencer keeps time
+  +0    move rocket to=160,40 over=26 tw=TW_EASE_OUT
+  +26   hide rocket ; show heart ; pose heart bloom ; sfx FX_firework_thump_soft gain=-16dB ; cc "[soft firework thump]"
+  +26   pal PAL_PINK 3 over=8                             # luminance ramps over 8 f (Harding)
+  +45   say a4_08_pip_01 pip
+  tag shot gore_truth=no
+end
+
+shot a4s35 beat=e101_4_08 len=180 set=launch_hill:night px=1 look=pixel cut=CUT matte=open gore=CUTE
+  cam at=0,40 scale=1.5
+  actor nana  who=nana  kind=figure at=70,170 face=L idle=on
+  actor fuzz  who=fuzz  kind=figure at=110,170 face=L idle=on
+  actor bone  who=bonejangles kind=figure at=150,170 face=L idle=on
+  actor sunny who=sunny kind=figure at=190,170 face=L idle=on
+  actor pet   who=pet   kind=sprite at=190,138 idle=on
+  crowd mascotty gen=fixed who=mascotty n=1 kind=figure at=250,160 clock=none
+  end
+  +0    sfx FX_sparkle_crackle gain=-28dB
+  +0    tint TINT_PINK 2 ; fx light_ripple target=actors ripple=0..3 over=8
+end
+
+shot a4s36 beat=e101_4_08 len=117 set=launch_hill:night px=2 look=pixel cut=CUT matte=open gore=CUTE
+  actor mayor who=mayor kind=bust at=80,62 face=L expr=EXPR_HAPPY idle=on
+  +0    sfx FX_sparkle_crackle gain=-32dB
+  +30   look crayon mask=edges grain=12 boil=2 over=8     # he is nine; his face stays his own (GAG_BIBLE sec.8.7)
+  +86   look pixel over=8
+end
+
+shot a4s37 beat=e101_4_08 len=80 set=wall_split:night px=1 look=pixel cut=WIPE:brick matte=open gore=CUTE
+  actor hand who=hellvile_hand kind=figure at=232,150 face=L idle=on
+  +0    fx brick_wipe at=@wall_x courses=5 every=2 stop=half ; sfx FOL_brick_clack x5 every=2 gain=-20dB
+  +20   pose hand strike_match ; sfx FOL_match_scratch pan=R gain=-18dB
+  +35   pose hand light_fuse ; sfx FOL_fuse_fsss pan=R gain=-22dB
+  +70   fx brick_wipe close dir=RL courses=5 every=2
+  +79   sfx FOL_trowel_tink gain=-18dB
+  note "Hands and two bowls only. No faces. A held 60 f split, not an insert."
+end
+
+shot a4s38 beat=e101_4_08 len=375 set=launch_hill:night px=1 look=pixel cut=CUT matte=open gore=CUTE
+  cam at=0,-30
+  prop  heart  art=pxt:heart_bloom at=160,40
+  prop  purple art=pxt:purple_bloom at=176,70 hidden=yes
+  crowd heads gen=fixed who=nana,fuzz,bonejangles,sunny,pip kind=chibi lane=bottom y=200 spacing=40 clock=on
+  end
+  +0    sfx FX_sparkle_fall gain=-30dB
+  +0    pose heart sink over=105
+  +105  hide heart
+  +135  show purple ; pose purple bloom ; sfx FX_firework_thump_soft gain=-22dB pan=0.1 ; cc "[distant firework thump]"
+  +135  pal PAL_PURPLE 2 over=8
+  +165  headturn crowd:heads 64 4 ripple=0..3
+  +180  fx sparks_side_by_side colors=pink,purple at=@wall_x n=24 seed=438
+end
+
+shot a4s39 beat=e101_4_08 len=138 set=launch_hill:night px=2 look=pixel cut=CUT matte=open gore=CUTE
+  actor mayor who=mayor kind=bust at=80,62 face=L expr=EXPR_NEUTRAL idle=on
+  +0    say a4_08_mayor_01 mayor ; hum mayor on note=mingle_box.plus1   # one note further than co12; stops dead
+end
+
+shot a4s40 beat=e101_4_08 len=190 set=launch_hill:night px=1 look=pixel cut=CUT matte=open gore=CUTE
+  cam at=0,-30
+  prop  specks art=pxt:specks_pink_purple at=168,60
+  +0    amb AMB_night_air on gain=-60dB                   # frame-0 sound: room tone only
+  +0    label L_HOLD                                      # HOLD 4 s
+  +120  iris_out at=prop:specks over=8 shape=heart hold=0 # 5 f close (compiler floor 8: see TODO)
+  +125  fade out over=1
+  nobutton
+end
+
+# ============================== TAG "Morning" ==============================
+
+shot a4s41 beat=e101_t_1 len=90 set=cottage:dawn px=1 look=pixel cut=FADE matte=open gore=CUTE scene=a4_tag
+  cam3d room yaw=0 zoom=1                                 # inside, looking at the door
+  actor sunny who=sunny kind=chibi at=room:door_out face=front idle=on
+  actor pet   who=pet   kind=sprite at=follow:sunny.head idle=on
+  prop  key  art=pxt:key_turn at=room:door_lock
+  +0    fade in over=13 ; mx home_box start gain=-14dB
+  +12   pose key turn ; sfx FOL_key_click gain=-18dB
+  +30   door open tw=TW_WOBBLE amp=34% ; sfx FX_bwobble gain=-14dB ; cc "[door wobbles like jelly]"
+end
+
+shot a4s42 beat=e101_t_1 len=180 set=cottage:dawn px=1 look=pixel cut=CUT matte=open gore=CUTE
+  cam3d room yaw=512 zoom=1
+  actor sunny who=sunny kind=chibi at=room:door_in face=front idle=on pose=suitcase
+  actor pet   who=pet   kind=sprite at=follow:sunny.head idle=on
+  +0    sfx FOL_dawn_birds gain=-30dB
+  +60   walk sunny to=room:2,2 over=40 ; door close tw=TW_WOBBLE amp=34% ; sfx FX_bwobble gain=-20dB
+  +110  pose sunny set_suitcase ; prop suitcase art=pxt:suitcase at=room:door_side ; fol FOL_soft_thud
+  +123  button ; door wobble amp=20%                      # the shut door still wobbling
+end
+
+shot a4s43 beat=e101_t_1 len=180 set=cottage:dawn px=1 look=pixel cut=CUT matte=open gore=CUTE
+  cam3d room yaw=512 zoom=2 at=room:window
+  actor sunny who=sunny kind=chibi at=room:2,1 face=back idle=on
+  actor pet   who=pet   kind=sprite at=follow:sunny.head idle=on
+  prop  shellL art=gen:eggshell(half=left,size=1) at=room:window_sill_l hidden=yes
+  prop  shellR art=gen:eggshell(half=right,size=1) at=room:window_sill_r hidden=yes
+  +0    fol FOL_soft_step
+  +30   pose sunny unfold_towel ; fol FOL_cloth
+  +60   show shellL ; show shellR
+  +90   move pet to=prop:shellL over=10 tw=TW_HOP ; sfx FX_pet_blip_tiny gain=-28dB
+  +100  pose pet curl
+  +122  face pet wall over=13                             # turns to face the window (13 f)
+end
+
+shot a4s44 beat=e101_t_2 len=105 set=cottage:dawn px=1 look=pixel cut=CUT matte=open gore=CUTE
+  cam3d room yaw=0 zoom=1
+  +0    door wobble amp=34% ; sfx FX_bwomp gain=-14dB ; cc "[soft knocking]"
+  +15   door wobble amp=34% ; sfx FX_bwomp gain=-14dB
+  +30   door wobble amp=34% ; sfx FX_bwomp gain=-14dB
+  +60   door open tw=TW_WOBBLE amp=34% ; sfx FX_bwobble gain=-18dB
+end
+
+shot a4s45 beat=e101_t_2 len=333 set=cottage:dawn px=1 look=pixel cut=CUT matte=open gore=CUTE
+  cam3d room yaw=0 zoom=2 at=room:door
+  actor nana  who=nana  kind=figure at=room:door_out face=front idle=on pose=muffins_dish
+  actor sunny who=sunny kind=chibi  at=room:door_in face=back idle=on
+  prop  muffin1 art=gen:muffin(seed=1) at=follow:nana.hand
+  prop  muffin2 art=gen:muffin(seed=2) at=follow:nana.hand
+  prop  dish art=gen:pie_dish(scrubbed=1,cookie=burnt) at=follow:nana.arm hidden=yes
+  +0    say t2_nana_04 nana ; mx nana_motif start gain=-16dB
+  +42   move muffin1 to=follow:sunny.hand over=12
+  +70   move muffin2 to=room:window_sill_l over=20
+  +111  pose sunny shake_muffin_ear ; fol FOL_muffin_shake
+  +159  say t2_nana_05 nana ; expr nana EXPR_HAPPY
+  +189  show dish ; pose nana hold_out_dish
+  +240  say t2_nana_01 nana
+  +313  pose nana thumb_rim                               # R13 after; held R21
+end
+
+shot a4s46 beat=e101_t_2 len=81 set=cottage:dawn px=2 look=pixel cut=CUT matte=open gore=CUTE insert
+  cam3d room yaw=512 zoom=3 at=room:window_sill_l
+  actor pet who=pet kind=sprite at=prop:shellL idle=on pose=curl_facing_wall
+  +0    sfx FOL_tiny_breath gain=-30dB
+  +20   pose pet horn_nubs
+end
+
+shot a4s47 beat=e101_t_2 len=81 set=cottage:dawn px=2 look=pixel cut=CUT matte=open gore=CUTE
+  cam3d room yaw=0 zoom=3 at=room:door
+  actor nana who=nana kind=bust at=80,62 face=R expr=EXPR_NEUTRAL idle=on
+  +0    say t2_nana_02 nana
+  +20   say t2_nana_03 nana ; expr nana EXPR_HAPPY
+  +60   mx nana_motif stop over=21
+end
+
+# ============================== END CREDITS ==============================
+
+shot a4s48 beat=e101_cr_1 len=180 set=credits_card px=1 look=pixel cut=SMASH matte=open gore=CUTE scene=a4_credits
+  +0    mx its_fine start gain=-10dB                      # the smash's sound
+  +12   mx credits_box start gain=-14dB                   # theme chorus hook on the music box; NOT the Mingle
+  +20   card credits_panel text=s_cr_01 side=R skin=CREAM until=end
+end
+
+shot a4s49 beat=e101_cr_1 len=120 set=credits_storybook:banner px=2 look=crayon cut=FADE matte=open gore=CUTE
+  look crayon grain=12 boil=2
+  +0    fade dither over=13 ; fol FOL_page_soft gain=-34dB
+  +0    card credits_panel text=s_cr_02 side=R skin=CREAM until=end
+  waive TIME-READ "13 lines in 120 f; the busiest card needs ~70 f (script note: 2.3 s)"
+end
+
+shot a4s50 beat=e101_cr_1 len=120 set=credits_storybook:bubbles px=2 look=crayon cut=FADE matte=open gore=CUTE
+  look crayon grain=12 boil=2
+  +0    fade dither over=13 ; fol FOL_page_soft gain=-34dB
+  +0    card credits_panel text=s_cr_03 side=L skin=CREAM until=end
+end
+
+shot a4s51 beat=e101_cr_1 len=120 set=credits_storybook:bigpuff px=2 look=crayon cut=FADE matte=open gore=CUTE
+  look crayon grain=12 boil=2
+  +0    fade dither over=13 ; fol FOL_page_soft gain=-34dB
+  +0    card credits_panel text=s_cr_04 side=R skin=CREAM until=end
+end
+
+shot a4s52 beat=e101_cr_1 len=120 set=credits_storybook:candles px=2 look=crayon cut=FADE matte=open gore=CUTE
+  look crayon grain=12 boil=2
+  +0    fade dither over=13 ; fol FOL_page_soft gain=-34dB
+  +0    card credits_panel text=s_cr_05 side=L skin=CREAM until=end
+end
+
+shot a4s53 beat=e101_cr_1 len=120 set=credits_storybook:heart px=2 look=crayon cut=FADE matte=open gore=CUTE
+  look crayon grain=12 boil=2
+  +0    fade dither over=13 ; fol FOL_page_soft gain=-34dB
+  +0    card credits_panel text=s_cr_06 side=R skin=CREAM until=end
+  +0    card credits_panel_add text=s_cr_06_piano when=mixlog:salamander   # AUD-LIC gated (spec sec.10.8)
+  +0    card credits_panel_add text=s_cr_06_dwsd  when=mixlog:dwsd
+end
+
+shot a4s54 beat=e101_cr_1 len=120 set=credits_storybook:answer px=2 look=crayon cut=FADE matte=open gore=CUTE
+  look crayon grain=12 boil=2
+  +0    fade dither over=13 ; fol FOL_page_soft gain=-34dB
+  +0    card credits_panel text=s_cr_07 side=L skin=CREAM until=end
+  +119  mx credits_box stop hard                          # one note short of home; unresolved on the last frame
+end
+
+# ============================== POST-CREDITS ==============================
+
+shot a4s55 beat=e101_pc_1 len=255 set=sealed_gate:pc1 px=1 look=pixel cut=CUT matte=open gore=CUTE scene=a4_pc
+  sign s_gate_keepout on=keepout
+  prop  lostlantern art=gen:lost_property_lantern(state=out) at=-20,4 plane=wall
+  prop  tag art=text:s_a1_10_tag at=follow:lostlantern
+  +0    amb AMB_crickets on gain=-30dB ; sfx FOL_paper_rustle gain=-26dB
+  +0    move lostlantern to=160,4 over=45 tw=TW_EASE_OUT
+  +45   move lostlantern to=160,60 over=45 tw=TW_EASE_IN ; plane lostlantern behind=wall   # sinks out of sight behind the gate
+  +90   hide lostlantern
+  +103  sfx FX_wet_crunch gain=-14dB ; cc "[wet crunch]"
+  +110  say pc1_gurgle_01 gurgle ; cc "[GURGLE: gurgle.]"
+  +118  punch 1 0 ; sfx FOL_padlock_rattle gain=-20dB
+  +133  punch 2 0 ; sfx FOL_padlock_rattle gain=-16dB
+  +148  punch 3 1 ; sfx FOL_padlock_rattle gain=-12dB
+  +161  pop door TWT_BOING ; change door.art=bulge ; sfx FX_BOING gain=-12dB
+  +170  change door.art=shut                              # settles; the shutter stays shut
+  +180  super s_pc1_box style=deadpan at=lower until=+222 box=dialog name=GURGLE ; say pc1_gurgle_02 gurgle ; cc "[GURGLE: ...needs salt.]"
+  +225  say pc1_grum_01 grumbleguts ; cc "[low purr]"
+  assert grille.shutter == shut @+254
+  note "Grumbleguts is never seen: nothing in the grille; the gate's bulge is the only shape (D8)."
+end
+
+shot a4s56 beat=e101_pc_1 len=45 set=dippinn_card px=1 look=pixel cut=SMASH matte=black gore=CUTE
+  +0    stop pc1_grum_01                                  # the purr's tail cut dead: the cut's sound
+  +34   say pc1_gurgle_03 gurgle ; cc "[GURGLE: gurgle.]" # ends on the last frame (episode frame 39,599)
+end
