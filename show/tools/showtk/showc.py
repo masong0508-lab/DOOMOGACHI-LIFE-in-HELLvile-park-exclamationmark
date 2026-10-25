@@ -1855,16 +1855,19 @@ class ShotCompiler:
                 c.words[0], c.get("section")), c, "warning")
             return
         elif kw == "mx":
-            if len(c.words) < 2:
+            mw = list(c.words) + (["start"] if len(c.words) == 1 and c.get("section") else [])
+            if len(mw) < 2:                                # `mx <cue> section=<s>` jumps there
                 c.fail("AUD-MX", "`mx <cue> start|stop|mute F|duck <g> F|bend <a>-><b> over=F|to <g> over=F`")
-            cue, opn = c.words[0], c.words[1]
+            cue, opn = mw[0], mw[1]
             if cue not in self.lib.cues:
                 c.fail("AUD-MX", "unknown cue %s (series/music.shw has: %s)" % (
                     cue, ", ".join(sorted(self.lib.cues)) or "no cues yet"))
             spot = self.lib.spots.get(cue, {})
             ev = {"smp": smp, "src": "cue:%s" % cue}
             if opn == "start":
-                ev["from"] = c.get("from", spot.get("from") or "bar:1.1")
+                ev["from"] = c.get("section") or c.get("from", spot.get("from") or "bar:1.1")
+                if c.get("section"):
+                    ev["jump"] = True                      # the mixer stops the playing instance
                 ev["bus"] = spot.get("bus", "MX")
                 ev["gain_db"] = docunits.gain_db(c.get("gain"), w) if c.get("gain") else spot.get("gain_db", 0)
             elif opn in ("stop", "mute", "duck", "bend", "to"):
@@ -1889,6 +1892,10 @@ class ShotCompiler:
             if len(c.words) < 2:
                 c.fail("AUD-WALLA", "`walla <bed> on|off|to gain= [over=]`")
             bed, opn = c.words[0], c.words[1]
+            wdef = {}
+            if opn in ("cheer", "hush"):                   # level moves: a swell up, a drop
+                wdef = {"gain": "-12dB", "over": "4"} if opn == "cheer" else {"gain": "-30dB", "over": "12"}
+                opn = "to"
             if bed not in self.lib.wallas:
                 kids = [b for b in self.lib.wallas if "kid" in b]
                 if "kid" in bed and kids:
@@ -1903,10 +1910,10 @@ class ShotCompiler:
             ev = {"smp": smp, "src": "walla:%s" % bed, "op": opn}
             if opn == "on":
                 ev["bus"] = "DX"
-            if c.get("gain"):
-                ev["gain_db"] = docunits.gain_db(c.get("gain"), w)
-            if c.get("over"):
-                ev["over_smp"] = self.frames_arg(c.get("over"), c) * SPF
+            if c.get("gain", wdef.get("gain")):
+                ev["gain_db"] = docunits.gain_db(c.get("gain", wdef.get("gain")), w)
+            if c.get("over", wdef.get("over")):
+                ev["over_smp"] = self.frames_arg(c.get("over", wdef.get("over")), c) * SPF
         elif kw == "tapestop":
             n = docunits.frames(c.words[0], w) if c.words else 5
             ev = {"smp": smp, "src": "tapestop", "op": "tapestop", "over_smp": n * SPF}

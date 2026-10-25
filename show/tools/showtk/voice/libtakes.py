@@ -28,10 +28,7 @@ from . import env, kokoro, takes, world
 
 INDEX = os.path.join(env.SHOW, "lib", "takes", "index.json")
 
-PENDING = {
-    "pet/beep_v1": "SFX, not a voice: the game's raw piezo from WP10's sfx library (process=none)",
-    "walla/claps_v1": "foley, not a voice: the crowd's claps on 2 and 4 (w_giggle_09), WP10's sfx library",
-}
+PENDING = {}
 
 
 def index():
@@ -218,7 +215,50 @@ def _purr(short=False):
     return y, ph, [("Mmmh.", ph[0][1], ph[-1][2])] if ph else [], made
 
 
-RECIPES = {"mayor/heehee_v1": _heehee, "grum/purr_v1": lambda: _purr(False), "grum/purr_v2": lambda: _purr(True),
+def _sfx(sid):
+    """A library take that is WP10's SFX library sound, raw (no loudness pass, process=none)."""
+    from showtk.sfx import library as L
+    y = np.asarray(L.render(L.load_entries()[sid]), np.float64)
+    if y.ndim == 2:
+        y = y.mean(axis=1)
+    return y
+
+
+def _pet_beep():
+    """pet/beep_v1: the game's raw piezo "beep." (series/sfx.shw PET_BEEP_1), untouched."""
+    y = _sfx("PET_BEEP_1")
+    return y, [("b", 0, len(y))], [("beep.", 0, len(y))], "sfx:PET_BEEP_1 (piezo:beep, raw)"
+
+
+def _claps(bpm=140.0, bars=8):
+    """walla/claps_v1 (w_giggle_09): the crowd claps on 2 and 4 at 140 bpm, a loopable 8-bar
+    take. Bar 1 is Pip alone (one small clap), bar 2 adds Nana, bars 3+ the whole crowd
+    (FX_CLAP_CROWD, itself a dozen hands rippled 0-3 f). No voices."""
+    one = _sfx("FX_FUZZ_CLAP")
+    crowd = _sfx("FX_CLAP_CROWD")
+    spb = 60.0 / bpm * env.SR
+    n = int(round(bars * 4 * spb))
+    y = np.zeros(n + len(crowd) + 1, np.float64)
+    rng = np.random.default_rng(9)
+    for bar in range(bars):
+        for beat in (1, 3):                               # beats 2 and 4
+            t = int(round((bar * 4 + beat) * spb))
+            if bar == 0:
+                y[t:t + len(one)] += one * 0.5
+            elif bar == 1:
+                y[t:t + len(one)] += one * 0.5
+                t2 = t + int(rng.uniform(0, 3) * env.SPF)
+                y[t2:t2 + len(one)] += one * 0.6
+            else:
+                y[t:t + len(crowd)] += crowd * rng.uniform(0.85, 1.0)
+    y = y[:n]                                             # the loop seam falls between claps
+    return y, [], [], f"sfx:FX_FUZZ_CLAP+FX_CLAP_CROWD claps on 2 and 4, {bpm:g} bpm, {bars} bars"
+
+
+SFX_RECIPES = {"pet/beep_v1", "walla/claps_v1"}
+
+RECIPES = {"pet/beep_v1": _pet_beep, "walla/claps_v1": _claps,
+           "mayor/heehee_v1": _heehee, "grum/purr_v1": lambda: _purr(False), "grum/purr_v2": lambda: _purr(True),
            "mayor/hum_dawn_v1": lambda: _hum((12, 1.0)),       # stops dead on the Mayor's note (G)
            "mayor/hum_plusone_v1": lambda: _hum((12, 1.5))}    # 4-08: one note further (sings the G)
 
@@ -233,7 +273,15 @@ def make(name, force=False, log=print):
     res = RECIPES[name]()
     y, ph, wd, made = res[:4]
     anchor = res[4] if len(res) > 4 else None
-    y, ph, wd, _ = takes.finish(np.asarray(y, np.float32), ph, wd)
+    if name in SFX_RECIPES:                 # raw: onset at PREROLL, no loudness pass
+        y = np.concatenate([np.zeros(env.PREROLL), np.asarray(y, np.float64)]).astype(np.float32)
+        pk = float(np.abs(y).max())
+        if pk > 0.89:
+            y *= 0.89 / pk
+        ph = [(c, int(a), int(b)) for c, a, b in ph]
+        wd = [(w, int(a), int(b)) for w, a, b in wd]
+    else:
+        y, ph, wd, _ = takes.finish(np.asarray(y, np.float32), ph, wd)
     voice, nm = name.split("/", 1)
     p, sha = takes.store(y, voice, "lib", nm, "lib")
     ix[name] = {"take": env.rel(p), "sha256": sha, "made": made, "synthetic": True,

@@ -148,7 +148,7 @@ cue fuzz_hymn_motif src=score:pilot.sting form=fuzz_small bpm=80 meter=4/4 key=F
 end
 cue fail_sting src=score:pilot.fail times=1 bpm=120 meter=4/4 key=C desc="the FAIL card sting (2-06) (= fail_x1)"
 end
-cue doomtastic_doom src=file:doomtastic_times_main_title.flac barmap=midi:midi/main_title/tracks/doomtastic_times_main_title_full.mid length=1500 fade=0.3 desc="the theme as the DOOM-side lift (3-03): start from=prechorus_last2 (= theme_main_title)"
+cue doomtastic_doom src=file:doomtastic_times_main_title.flac barmap=midi:midi/main_title/tracks/doomtastic_times_main_title_full.mid length=1500 fade=0.3 addsec=riff@2+8,chorus2@21+4 desc="the theme as the DOOM-side lift (3-03): start from=prechorus_last2 (= theme_main_title)"
 end
 cue wall_motif src=score:pilot.sting form=wall_flame bpm=70 meter=4/4 key=E desc="the wall's motif under the blue candle (3-09) (= wall_flame)"
 end

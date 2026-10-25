@@ -293,5 +293,35 @@
         194880
       ]
     ]
+  },
+  "pet/beep_v1": {
+    "len": 15840,
+    "made": "sfx:PET_BEEP_1 (piezo:beep, raw)",
+    "phones": [
+      [
+        "b",
+        0,
+        14400
+      ]
+    ],
+    "sha256": "97b0863bd883785cd2e5b50d77d08bdb1f3fa8d9b4c4ed390287729ead062d49",
+    "synthetic": true,
+    "take": "store:takes/pet/lib/beep_v1_lib_97b0863bd883.flac",
+    "words": [
+      [
+        "beep.",
+        0,
+        14400
+      ]
+    ]
+  },
+  "walla/claps_v1": {
+    "len": 659726,
+    "made": "sfx:FX_FUZZ_CLAP+FX_CLAP_CROWD claps on 2 and 4, 140 bpm, 8 bars",
+    "phones": [],
+    "sha256": "e2357f272067d7f7c91bf6e0f488d4ac388668365ba860d372dd2f12cceaf6c5",
+    "synthetic": true,
+    "take": "store:takes/walla/lib/claps_v1_lib_e2357f272067.flac",
+    "words": []
   }
 }

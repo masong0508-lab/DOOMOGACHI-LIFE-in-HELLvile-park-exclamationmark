@@ -35,6 +35,13 @@ def bed(ep, bed_id, n, lead_in=0):
         if not r or not r.get("take"):
             raise KeyError(f"walla {bed_id}: line {lid} is not locked (run `show voice {ep}`)")
         clips.append(takes.load(env.unrel(r["take"])))
+    if b.attrs.get("mode") == "loop":                       # one take tiled on its own grid
+        y = np.concatenate(clips) if len(clips) > 1 else clips[0]
+        pan = 0.0 if b.attrs.get("pan", "0") == "spread" else float(b.attrs.get("pan", 0))
+        lft, rgt = np.cos((pan + 1) * np.pi / 4), np.sin((pan + 1) * np.pi / 4)
+        body = y[env.PREROLL:] if len(y) > env.PREROLL * 2 else y
+        mono = np.resize(body, n).astype(np.float32)        # repeats from sample 0
+        return np.stack([mono * lft, mono * rgt], 1).astype(np.float32)
     rng = np.random.default_rng(int(b.attrs.get("seed", 0)))
     dens = _density(b.attrs.get("density", "1.0/s"))
     pan_mode = b.attrs.get("pan", "spread")
