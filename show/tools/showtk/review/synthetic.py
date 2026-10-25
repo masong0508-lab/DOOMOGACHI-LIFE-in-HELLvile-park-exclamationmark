@@ -59,12 +59,12 @@ def frame(f, pal):
         pic[:] = pal[47]
         rows = PH if t >= 7 else (PH * (t + 1)) // 8   # fade over R8: complete on +7
         pic[rows:] = 0
-        r = min(t, 24) / 24.0                     # reveal circle_midsummer over +0..+24
-        n = int(round(r * 160))
+        r = min(t + 1, 25) / 25.0                 # reveal circle_midsummer over +0..+24: 100 % on +24
+        n = int(round(r * 150))
         if n:
             pic[60:64, 80:80 + n] = pal[19]
-        if t >= 30:                               # reveal fireworks over +30..+60
-            m = int(round(min(t - 30, 30) / 30.0 * 120))
+        if t >= 30:                               # reveal fireworks over +30..+60: 100 % on +60
+            m = int(round(min(t - 29, 31) / 31.0 * 124))
             if m:
                 pic[100:104, 100:100 + m] = pal[21]
     elif f < 270:                               # co02 storybook park
@@ -74,7 +74,7 @@ def frame(f, pal):
         band = ((x + t) // 4) % 2 == 0            # the near plane drifts 1 px/f
         pic[150:170][:, band] = pal[90]
         if t < 13:                                # iris_in over 13 f (90..102), open on 103
-            rad = int(10 + t * 15)
+            rad = int(10 + t * 14)                # still clips the corners (183 px) on +12
             yy, xx = np.ogrid[:PH, :W]
             mask = (yy - 90) ** 2 + (xx - 160) ** 2 > rad * rad
             pic[mask] = 0
@@ -216,7 +216,8 @@ def write_mix(path, nframes, seed=7):
     burst(48000, L, 0.2 * rng.standard_normal(L) * env)
     burst(96000, n - 96000, 0.18 * np.sin(2 * np.pi * 349.2 * t[:n - 96000]))   # F4
     ch = np.sin(2 * np.pi * (800 + 4000 * np.arange(9600) / 9600.0) * np.arange(9600) / 48000.0)
-    burst(144000, 9600, 0.4 * ch * np.hanning(9600))
+    att = np.minimum(1.0, np.arange(9600) / 96.0) * np.exp(-np.arange(9600) / 4000.0)   # 2 ms attack
+    burst(144000, 9600, 0.4 * ch * att)
     burst(144000, n - 144000, 0.05 * rng.standard_normal(n - 144000))
     burst(432000, L, 0.2 * rng.standard_normal(L) * env)
     x = np.clip(x, -0.99, 0.99)
