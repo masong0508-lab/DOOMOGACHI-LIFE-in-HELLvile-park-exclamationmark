@@ -114,6 +114,11 @@ static int bind_shot(int shot, int frame)
     const ShwShotHdr *hd;
     const BeatEv *ev;
     int i, n, nev, f;
+    if (ix) {                    /* a load error names this shot, frame 0 (AT3.4) */
+        g_show_shot.ix = ix;
+        g_show_shot.index = shot;
+        g_show_shot.t = 0;
+    }
     if (!ix || !show_load_chunk(shot)) {
         s_state = SHOW_ST_ERROR;
         g_show_mbox.state = SHOW_ST_ERROR;
