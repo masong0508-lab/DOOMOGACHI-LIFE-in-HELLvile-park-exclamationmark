@@ -57,6 +57,24 @@ Each names the default taken and where to change it.
   the TIK, the creak, the whistle.  `headturn` in brads (64 = a quarter turn, the game's unit),
   `squash` in Q8 (256 = rest).  CLI: `show cast check|sheet|look|macro` (commands/cast.py).
 
+## ENGINE (WP0 + WP1, 2026-10-25)
+
+- **Patch hunk (a) also widens the sliced job's entry index** (`Job.e`, `int8_t` -> `int16_t` under `#if DOOMO_SHOW`). With `PC_BLOCKS=240` a cache entry index can reach 239, which an `int8_t` turns negative (`&ent[job.e]` would then write before the array). Spec §4.3 lists the `PC_FREE` collision but missed this one. The game (48 blocks) is unaffected.
+- **New patch hunk (g): a phase that is due now always gets its pool blocks** (`job_start()` claims with `soft = 0` under `#if DOOMO_SHOW`). Found by AT1.3's override check: under one fixed clock every cached image was "drawn in the last two ticks", so the game's soft claim failed and the old blink phase stayed on screen (0/20 blink overrides took effect). Hunk (f) alone does not cover it. Safe on the PS1: `plat_image` copies the pixels into the GPU packet when it is called, so evicting an image drawn earlier in the frame cannot corrupt it. Rule for the player: draw each image right after its fetch.
+- **Patches are applied by `show/engine/apply_patch.py`, not GNU patch**: no fuzz (a changed context line stops the build), offsets allowed, the copy is written only when every hunk applied, and the error names the patch, the game file and the hunk (AT1.4).
+- **The (c) blink hunk normalises the override** (`p->blink = portrait_show_blink != 0`), so any non-zero value means shut; `show_portrait_overrides()` clamps the mouth to `0..MOUTH_COUNT-1` and (d) ignores anything else.
+- **Every `show/engine/show_*.c` is compiled** (CMake glob), so WP2-WP8 add player files without editing the CMakeLists; `show_selftest.c` only with `-DSHOW_SELFTEST=ON`, `show_wrap.c` (P2, deferred) never.
+- **`show_audio_stub.c` landed in WP1** (spec lists it under the player): spu.c's SFX upload called the weak `audio_sfx_pcm` stub at boot, so the harness reported "core weak stubs hit". Strong no-ops make the stub report empty from the first boot.
+- **The 3D closure is compiled now** (map, maps, home, home_draw, home_edit, furn_* and the packed maps, as measured by the probe); `--gc-sections` drops it until a stage references `plat_view3d`/`plat_overworld`/`plat_room`, so the 2D build costs nothing.
+- **`ps1-show-8mb` is the same build with `SHOW_RAM_KB=8192`** (a define the player can size buffers by). elf2exe (the game's, read-only) still enforces 2 MB; the emulator side of M0-T5 (the 8 MB setting) is tested with the harness fork (WP2/WP3).
+- **The test chart** shows the 16:9 picture on palette bands, the title-safe box (16 px / 9 px), the Wall line at x = 160, the 256-colour palette, a random look as a bust (px=2) and chibi (px=2) and another as a figure (px=1), cycling the 11 expressions every 45 f, an 8 px ruler and the frame counter; matte bars are drawn last.
+- **AT1.3 is measured on the PS1 by a self-test build pair**: the same `show_selftest.c` built with the patched copies (`-DPC_BLOCKS=240`, overrides at -1) and with the game's unpatched files (`-DSHOW_PORTRAIT_ORIGINAL=ON`); both print the CRC32 of 440 busts/figures and 80 chibis (20 roster looks, the roster linked only into these test builds) and the logs must be identical. The patched build also checks that a mouth/blink override changes the image and that -1 brings the original back (no stale cache entry).
+- **WP1's emulator runs use the game's `ps1/harness/run.py`, invoked read-only** with `--map show/build/<preset>/show.map`; the show's own fork (unthrottled, Lua crop, mailbox) is WP3.
+- **`check-game --full` builds from `git archive`** of the merge-base and of HEAD (committed files only, so a dirty work tree cannot fake a pass), targets `doomogachi` + `textbin` (not the disc), and caches each build's hashes by the tree ids of `core/`, `ps1/`, `tools/` in `show/build/check-game/`. The path half also fails on uncommitted changes outside `show/`.
+- **The vault's SDK archive carries the cross toolchain**: `/opt/psn00bsdk` alone cannot build anything, so `vault-sdk` also holds the files of the mipsel gcc/binutils packages (`dpkg -L`) and the shared libraries `ld`, `as` and `cc1` load (libbfd/opcodes/ctf-mipsel, isl, mpc, mpfr, gmp, jansson, sframe, zstd).
+- **Vault archives are reproducible** (members sorted, mtime 0, uid/gid 0, Python lzma preset 6, one thread) and split into `<name>.tar.xz.partNN` pieces of 95 MiB only when larger. `fetch` never overwrites a differing file without `--force` and never writes through the `/opt/ps1emu/pcsx-redux` symlink into the scratchpad.
+- **No remote vault was created** (no repo, branch or release asset): where the archives go is the creator's decision (spec §10.7 lists the three routes). They are in `<scratch>/vault/` with `SHA256SUMS` and a copy of `vault.lock`.
+
 ## AUDIO WP10: music and SFX (showtk/music, showtk/sfx, series/music.shw, sfx.shw, ep101/cues.shw), 2026-10-25
 
 - **Game cues play on the tempo grid, not the 30 Hz tick.** `mml_legacy.py` (over `tools/mmlc.py`) places every
@@ -78,3 +96,33 @@ Each names the default taken and where to change it.
 - **The theme cues name files** (`src=file:doomtastic_times_main_title.flac` under docs/show/theme/ once
   published, else the scratchpad's theme/final): a new vocal master drops in with no other change; the bar
   map is re-imported from the master's own `*_full.mid` (tempo + section markers).
+
+## ART: the sets (show/series/sets/, show/art/gen/), 2026-10-25
+
+- **One set per location, cheapest route first** (table in `show/series/sets/SETS.md`): the game's
+  own `hahaland` overworld for MT-1/MT-3, its `vape_cellar` 3D map for every first-person beat
+  (MT-5, 3-03, 3-05: the pastel back room and the tiled room under the candy-stripe canopy), its
+  house (`HOME_COTTAGE`, living room, `HP_EMPTY`) for the tag; new generated plates for the rest.
+  Change: the `set` blocks in `series/sets/*.shw`.
+- **Time of day is a CLUT swap** (`show/art/gen/light.py`): dawn, sunset, dusk, night, dark, sepia,
+  drained as 256-entry index remaps (family-preferring nearest, artgen's rule); night keeps the
+  emissive indices lit. Our `night` is a little lighter than the game's `TINT_NIGHT` (which ships
+  as `game_night`) so pastel reads at 320x180. Skies are BANDS lists per time of day.
+- **The bandstand**: north half live (candy posts, the GIGGLE banner with the cupcake balloon over
+  its third letter, lanterns), south half boarded against the Wall, the MINGLE crate in the hollow
+  under the boarded deck (skirt boards are props: 2-03 tears them), the sealed gate in the Wall
+  beside it. One 800x240 TILEMAP at figure scale with named framings (wide/north/steps/boards/
+  gate/fair). The Wall is drawn face-on at the right (the side-scroller convention); the x = 160
+  Wall line belongs to the crayon co09 frame and to `wall_split`.
+- **The cold open's red** is `PAINT_CHERRY` (candy red), never the BLOOD ramp (D16; a test checks
+  the drip). The pink drip (A/B for the animatic) is the drip prop's `pink` state.
+- **The crayon/pixel banner match**: both banners put their six letters at x = 42 + 40k, 35x42,
+  baseline show y 104 (co11 -> co12). GIGGLE is wet pink over MINGLE, which shows through.
+- **Grain density 4 %**, not 12: at 320x180 a 12 % fleck tile read as snow over the night sky;
+  the spec's "12 %" was an overlay strength. Change: `paper_grain(density=)` in storybook.shw.
+- **Signs are blank boards with a text box** (`text=x,y,w,h` on the prop); every readable word is a
+  string (STAGING's strings.shw). Baked lettering only where it is paint or print: the banner,
+  the act cards' handwriting (the brief's own lines), the TV-MA card, the town sign's painted-over
+  1000, the calendar's print, the logo (drawn the way `fp_title.c` draws it).
+- **Previews are host composites** (`show sets sheet`), never master pixels; the player draws the
+  masters. PIC-PAL is checked on every composed frame of every variant (100 %).

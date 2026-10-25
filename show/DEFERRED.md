@@ -6,3 +6,11 @@
 - ART cast: arm poses as flipbooks (Mascotty's quarter-speed wave, the Mayor's ladder/roller/reach, Kevin's lone third-eye blink): the portrait engine draws none; staging covers them with head turns, expressions and cutaways until a flipbook exists.
 - ART cast: the pet and the Puff Demons have no model sheet here (pet_render / the sprite engine, not portrait.c); cast.shw maps them (pet:0, pet:-1, pet:12, SPR_PUFF_DEMON).
 - ART cast: generic rule-of-three and whiplash-insert macros (shot structure, `insert`/`replay=` headers, not an actor's acting).
+- ENGINE: `show vault push` and the remote vault (private repo / orphan branch / release assets): the creator decides where the vault lives; the archives wait in `<scratch>/vault/`.
+- ENGINE: packing the TTS/ASR models into the vault (~1.2 GB): pinned by hash in `show/vault.lock` this week, packed after the release (disk is tight).
+- ENGINE: `show/hooks/session_start.sh` (the opt-in restore hook): `show vault fetch DIR` restores by hand; nothing in this week's container needs restoring.
+- ENGINE: `show/tools/requirements.lock`: the tools use what this container has (numpy, Pillow, pytest); `show doctor` checks them.
+- ENGINE: gaze hunk (e), `ps1-show-wide`, `ps1-show-dev` (PCdrv), `runner-show`, the P2 draw trace (`show_wrap.c`): deferred to 2027 by the spec itself (§1.2, §4.3, §8.8).
+- ART sets: new 3D maps (a real funhouse, the bake tent's inside): the first-person beats use the game's `vape_cellar` rooms (spec: new show maps are deferred).
+- ART sets: per-pixel preview of the camfx lerps (PAL_CRAYON/HELLIFY) in the set sheets: the sheets show the plates' own colours; the player applies the lerp.
+- ART sets: a 9:16 / wide (384x216) version of any plate: the canvas is 320x180 in 2026.

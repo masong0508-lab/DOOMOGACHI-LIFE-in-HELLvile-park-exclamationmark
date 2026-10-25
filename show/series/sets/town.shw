@@ -1,0 +1,115 @@
+# show/series/sets/town.shw - HaHaland beyond the fair: the road in, the town sign, the
+# fountain plaza and Nana's bakery window, the launch hill and the joke graveyard, the Wall
+# edge-on for the split screen, and the two short inserts.
+# Pixel art, figure scale unless a set says otherwise; time of day is a palette variant.
+
+set candy_hills_road kind=2d px=1 matte=open look=pixel desc="1-01 (18:00, sunset): the pink bus crosses the candy hills at constant speed and stops"
+  plane sky    bands=sky:sunset par=0
+  plane far    image=gen:candy_hills(seed=300,w=480) size=480x240 par=0.3
+  plane road   image=gen:candy_road(seed=301,w=640) size=640x240 par=1.0
+  prop  bus    art=gen:pink_bus(state=drive) art.stop=gen:pink_bus(state=stop) plane=road at=60,161 anchor=bottom
+  path  lane   y=161 from=-140 to=460              # the bus's wheels; it crosses at a constant speed
+  mark  stop_x 0                                   # the bus stop post (show x at cam 0)
+  frame wide   at=0,0
+  frame stop   at=-60,0                            # the brake: the step, Sunny thrown off, the suitcase
+  variant sunset light=sunset bands.sky=sky:sunset desc="1-01"
+  variant day    light=day    bands.sky=sky:day    desc="spare: the road at noon"
+end
+
+set town_sign kind=2d px=1 matte=open look=pixel desc="1-02 (sunset): HaHaland! Population: 500 lovely citizens. (a painted-over 1000; pencilled 'and Sunny.')"
+  plane sky    bands=sky:sunset par=0
+  plane far    image=gen:candy_hills(seed=302,w=480) size=480x240 par=0.3
+  plane verge  image=gen:sign_verge(seed=311,w=352) size=352x240 par=1.0
+  prop  sign   art=gen:town_sign_board(seed=310) plane=verge at=110,150 anchor=bottom
+  prop  d5     art=gen:digit(ch=5) plane=verge at=114,88 anchor=topleft
+  prop  d0a    art=gen:digit(ch=0) plane=verge at=124,88 anchor=topleft
+  prop  d0b    art=gen:digit(ch=0) plane=verge at=134,88 anchor=topleft
+  prop  d1     art=gen:digit(ch=1) plane=verge at=144,88 anchor=topleft hidden=yes
+  mark  sign_text_title 46,62        # the sign's text boxes, show px at cam 0 (strings drawn here)
+  mark  sign_text_line  38,88
+  mark  sign_text_tail  38,102
+  mark  sign_text_pencil 122,124
+  variant sunset light=sunset bands.sky=sky:sunset desc="1-02: 500"
+  variant s501   light=sunset bands.sky=sky:sunset show=d1 desc="1-02: it ticks up to 501 (then the 1 falls off: STAGING moves d1)"
+end
+
+set fountain_plaza kind=2d px=1 matte=open look=pixel desc="CO-6 (dawn): the plaza wakes pastel; 1-03 (sunset): the Giggling Fountain and the park gate"
+  plane sky    bands=sky:dawn par=0
+  plane far    image=gen:plaza_far(seed=320,w=480) size=480x240 par=0.4
+  plane plaza  image=gen:plaza(seed=321,w=560) size=560x240 par=1.0
+  plane near   image=gen:fair_lanterns(seed=322,w=480,y=4) size=480x240 par=1.2 hidden=yes
+  prop  poster art=gen:poster(w=30,h=40,seed=1) plane=plaza at=30,124 anchor=bottom text=2,7,26,20
+  prop  banner art=gen:banner(size=wide,state=giggle) plane=plaza at=290,38 anchor=top
+  prop  balloon art=gen:cupcake_balloon(face=front) plane=plaza at=283,70 anchor=bottom
+  mark  fountain_x 90
+  frame ews     at=-24,0                # co19 +0 (drift right 0.25 px/f to +24 at +180)
+  frame ews_end at=24,0
+  frame gate    at=120,0                # 1-03: the park gate under the GIGGLE banner, the basin
+  variant dawn   light=dawn   bands.sky=sky:dawn   desc="CO-6 co19"
+  variant sunset light=sunset bands.sky=sky:sunset show=near desc="1-03: the lanterns lit, the fair beyond the gate"
+end
+
+set fountain_faces kind=2d px=2 matte=open look=pixel desc="co14 INSERT: the fountain's two laughing stone faces giggle back, 8 f late"
+  plane faces  image=gen:fountain_faces(seed=330) size=160x120 par=0
+  variant dawn   light=dawn   desc="co14"
+  variant sunset light=sunset desc="1-03 (late, then on time)"
+end
+
+set bakery_window kind=2d px=1 matte=open look=pixel desc="co20 (dawn): Nana's bakery window, two of everything; the paw tucks a tea towel round an egg"
+  plane shop   image=gen:bakery_window(seed=340) size=336x240 par=1.0
+  prop  basket art=gen:basket(size=1) plane=shop at=246,130 anchor=bottom
+  prop  egg    art=gen:egg(state=whole) plane=shop at=246,117 anchor=bottom
+  prop  lamp   art=gen:small_lamp(lit=1) plane=shop at=282,130 anchor=bottom hidden=yes
+  prop  tag    art=gen:gift_tag(turned=0) art.turned=gen:gift_tag(turned=1) plane=shop at=226,122 anchor=center text=6,3,14,8
+  variant dawn  light=dawn desc="co20 +0"
+  variant lamp  light=dawn show=lamp state=tag:turned desc="co20 +110: the lamp set down; +170 the tag turns"
+end
+
+set egg_basket kind=2d px=2 matte=open look=pixel desc="co21 CU: the egg in its basket; two wobbles; the heart iris; CRACK = main title frame 0"
+  plane basket image=gen:egg_basket(seed=350) size=160x120 par=0
+  prop  egg    art=gen:egg(state=whole) art.cracked=gen:egg(state=cracked) plane=basket at=160,108 anchor=bottom
+  prop  lamp   art=gen:small_lamp(lit=1) plane=basket at=262,162 anchor=bottom
+  prop  tag    art=gen:gift_tag(turned=1) plane=basket at=86,100 anchor=center text=6,3,14,8
+  mark  egg    160,86
+  variant dawn  light=dawn desc="co21"
+end
+
+set joke_graveyard kind=2d px=1 matte=open look=pixel desc="4-07 (night): the path up to the launch hill through the joke graves; FLUFFY THE CLOUD. DRIFTED."
+  plane sky    bands=sky:night par=0
+  plane stars  tile=gen:sky_stars(seed=12) size=128x80 par=0.05
+  plane yard   image=gen:joke_graveyard(seed=360,w=480) size=480x240 par=1.0
+  prop  stone  art=gen:small_stone(seed=361) plane=yard at=182,136 anchor=bottom text=3,5,16,12
+  prop  cake   art=gen:cupcake(seed=1) plane=yard at=182,116 anchor=bottom
+  frame path   at=0,0
+  frame stone  at=20,0
+  variant night light=night bands.sky=sky:night desc="4-07"
+end
+
+set launch_hill kind=2d px=1 matte=open look=pixel desc="4-08 (night): the hilltop; the Wall below across the middle distance; one firework opens over it"
+  plane sky    bands=sky:night par=0
+  plane stars  tile=gen:sky_stars(seed=13) size=128x80 par=0.05
+  plane hill   image=gen:launch_hill(seed=370,w=400) size=400x240 par=1.0
+  mark  wall_y 96
+  frame crowd  at=0,0
+  variant night light=night bands.sky=sky:night desc="4-08"
+end
+
+set wall_split kind=2d px=1 matte=open look=pixel desc="MT-3 / MT-6 / 4-08: both sides of the Wall at once, split on x = 160 (Hellvile: silhouettes only)"
+  plane sky    bands=sky:day par=0
+  plane both   image=gen:wall_split(seed=380) size=320x240 par=0
+  prop  table  art=gen:hellvile_table(seed=381) plane=both at=246,166 anchor=bottom hidden=yes
+  mark  wall_x 160
+  variant day   light=day bands.sky=sky:day desc="MT-3 the mirrored knock, MT-6 the end pose"
+  variant night light=night bands.sky=sky:night show=table desc="4-08: the 2 s split; a sooty hand (actor) lights a fuse beside two bowls"
+end
+
+set pipe_yard kind=2d px=1 matte=open look=pixel desc="1-13 INSERT (4 f): beyond the Wall a pipe heaves a purple sigh (no faces)"
+  plane yard   image=gen:pipe_yard(seed=390) size=320x240 par=0
+  prop  sigh   art=gen:sigh_puff(seed=391) plane=yard at=60,80 anchor=center light=fixed
+  variant night light=day desc="1-13 insert"
+end
+
+set kids_tent_memory kind=2d px=1 matte=open look=pixel desc="1-14 INSERT (4 f, sepia): the kids' tent eleven years ago tonight (the cloud lady and the crowned silhouette are cast)"
+  plane tent   image=gen:kids_tent_old(seed=392) size=320x240 par=0
+  variant sepia light=sepia desc="1-14 insert (Fuzz's POV)"
+end

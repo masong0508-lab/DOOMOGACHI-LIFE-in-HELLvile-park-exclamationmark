@@ -1,0 +1,114 @@
+--- a/core/src/portrait.c
++++ b/core/src/portrait.c
+@@ -12,6 +12,11 @@
+ #include "doomo/resident.h"
+ #include "doomo/town.h"
+ #include "doomo/game.h"
++#if DOOMO_SHOW
++/* the show's per-fetch overrides (show/engine/show_actor.c); -1 = the
++ * engine's own mouth / blink */
++extern int8_t portrait_show_mouth, portrait_show_blink;
++#endif
+ 
+ /* ====================================================================== */
+ /* context                                                                 */
+@@ -389,9 +394,16 @@
+ /* ====================================================================== */
+ /* cache                                                                     */
+ #define PC_BLOCK   384
++#ifndef PC_BLOCKS                       /* the show passes -DPC_BLOCKS=240 (90 KB) */
+ #define PC_BLOCKS  48                   /* 18 KB (EWRAM on the GBA; the PS1
+                                            has no RAM to spare either) */
++#endif
+ #define PC_FREE    0xFF
++#if DOOMO_SHOW
++/* owner[] is uint8_t and 0xFF means "free", so an entry index of 255 would
++ * read as free: 256 blocks corrupts the pool */
++DOOMO_STATIC_ASSERT(PC_BLOCKS < PC_FREE, pool_ids_fit_owner_bytes);
++#endif
+ /* Re-renders that only change the animation phase (blink, breathing, aura
+  * frames, mouth flaps) run as a sliced job: PC_STEPS of the DL_STEPS layer
+  * groups per tick. A GBA bust costs ~0.75M cycles (~1.4 logic ticks) in
+@@ -452,6 +464,11 @@
+ {
+     uint32_t t = now();
+     if (t != steps_tick) { steps_tick = t; steps_used = 0; }
++#if DOOMO_SHOW
++    /* (f) no per-tick budget: every fetch finishes its phase on the frame
++     * it is due, whatever else was drawn that tick */
++    return steps_max();
++#endif
+     return steps_max() - steps_used;
+ }
+ 
+@@ -459,7 +476,11 @@
+ typedef struct Job {
+     uint8_t  on, step, kind;
+     uint8_t  restarts;          /* times other renders forced a restart      */
++#if DOOMO_SHOW
++    int16_t  e;                 /* (a) 240 entries do not fit an int8_t      */
++#else
+     int8_t   e;                 /* cache entry being filled (busy, hidden)   */
++#endif
+     int      status, expr;
+     uint32_t gen;               /* canvas generation after our last step     */
+     uint32_t want;              /* last tick its resident was asked for      */
+@@ -636,6 +657,9 @@
+     memset(p, 0, sizeof(*p));
+     if (status == RES_EMPTY) return 0;          /* the "?" stays still */
+     p->blink = ((t + off) % 110u) >= 106u;
++#if DOOMO_SHOW
++    if (portrait_show_blink >= 0) p->blink = portrait_show_blink != 0;  /* (c) */
++#endif
+     p->breath = (int)(((t + off) >> 5) & 1u);
+     p->twitch = ((t + off * 3u) % 270u) >= 262u;
+     p->wag = p->breath;
+@@ -691,15 +715,27 @@
+         if (now() - job.want <= PC_STALE) return;   /* still wanted: wait */
+         job_abort();
+     }
++#if DOOMO_SHOW
++    /* (g) a phase that is due now always gets its blocks: the soft claim
++     * fails while every run holds an image drawn in the last two ticks
++     * (all of them, under one fixed clock), and the old phase would show */
++    e = cache_alloc(kind, rid, key, look, kind == CK_FIGURE ? FIGURE_W : PORTRAIT_W,
++                    kind == CK_FIGURE ? FIGURE_H : PORTRAIT_H, 0);
++#else
+     e = cache_alloc(kind, rid, key, look, kind == CK_FIGURE ? FIGURE_W : PORTRAIT_W,
+                     kind == CK_FIGURE ? FIGURE_H : PORTRAIT_H, 1);
++#endif
+     if (!e) return;
+     e->busy = 1;
+     job.on = 1;
+     job.step = 0;
+     job.restarts = 0;
+     job.kind = (uint8_t)kind;
++#if DOOMO_SHOW
++    job.e = (int16_t)(e - ent);
++#else
+     job.e = (int8_t)(e - ent);
++#endif
+     job.want = now();
+     job.status = status;
+     job.expr = expr;
+@@ -757,6 +793,10 @@
+     Phase p, q;
+     CacheEnt *e;
+     base = ((uint32_t)expr << 8) | ((uint32_t)(status & 15) << 12);
++#if DOOMO_SHOW
++    /* (b) the mouth override is content: MOUTH_COUNT = 20 fits bits 16-20 */
++    base |= (uint32_t)(portrait_show_mouth + 1) << 16;
++#endif
+     key = base | phase_of(kind, rid, expr, status, l, t, &p);
+     if (job_for(kind, rid, lh, base, 0xFFFFFF00u)) job.want = t;
+     e = cache_find(kind, rid, key, lh, 0xFFFFFFFFu);
+@@ -831,6 +871,9 @@
+     frame &= 3;
+     lh = look_hash(&r->look);
+     key = (uint32_t)(dir | (frame << 2)) | ((uint32_t)status << 12);
++#if DOOMO_SHOW
++    key |= (uint32_t)(portrait_show_mouth + 1) << 16;   /* (b') chibis flap too */
++#endif
+     e = cache_find(CK_BODY, resident_id, key, lh, 0xFFFFFFFFu);
+     if (e) return &e->img;
+     job_reap();
