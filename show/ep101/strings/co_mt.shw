@@ -1,0 +1,43 @@
+# show/ep101/strings/co_mt.shw - on-screen text for the cold open, the main title and the
+# eyecatch cards (seg co_mt; spec 5.1 strings, 6.2). Localisable; textless is a switch.
+# Cold-open captions are in a child's hand (font=child_hand lands in M2; the game font until then).
+
+# ---- COLD OPEN supers (COLD_OPEN_SHOTLIST.md; no narrator)
+string s_co02 "Every Midsummer night, the whole park had one party." font=child_hand
+string s_co03 "It was called the Mingle."                             font=child_hand
+string s_co06 "It loved fireworks."                                   font=child_hand
+string s_co07 "The string slipped. Nobody noticed."                   font=child_hand
+string s_co08 "Not everybody went home."                              font=child_hand
+string s_co09 "Nobody talks about why."                               font=child_hand
+string s_co11a "Now there's a different party."                       font=child_hand
+string s_co11b "Same night."                                          font=child_hand
+string s_co11c "Half a park."                                         font=child_hand
+string s_co11d "No fireworks."                                        font=child_hand
+
+# ---- COLD OPEN signs (drawn onto props through their text= rects)
+string s_co19_poster "MIDSUMMER GIGGLE TONIGHT!{n}(half the park, all the fun!)" font=game sign=poster
+string s_co20_tag    "for whoever's next"                                         font=game sign=tag
+
+# ---- MAIN TITLE name plates (MT-2: CUTE skin; Grumbleguts does not pop in in the pilot)
+string s_mt_np_sunny       "Sunny"            font=game style=plate
+string s_mt_np_pet         "the pet"          font=game style=plate
+string s_mt_np_mayor       "Mayor Giggs"      font=game style=plate
+string s_mt_np_nana        "Nana Puddin"      font=game style=plate
+string s_mt_np_pip         "Pip & Mr. Flops"  font=game style=plate
+string s_mt_np_fuzz        "Father Fuzz"      font=game style=plate
+string s_mt_np_bloom       "Dr. Bloom"        font=game style=plate
+string s_mt_np_steamy      "Steamy"           font=game style=plate
+string s_mt_np_hattie      "Hattie Haha"      font=game style=plate
+string s_mt_np_grampy      "Grampy Bean"      font=game style=plate
+string s_mt_np_bonejangles "Bonejangles"      font=game style=plate
+string s_mt_np_rivet       "Rivet"            font=game style=plate
+
+# ---- MAIN TITLE pilot card (MT-7): the title is baked into the banner art; this is its text
+string s_mt7_title "GIGGLE NIGHT" font=game sign=banner note="MINGLE shows through the wet paint (art)"
+
+# ---- EYECATCH cards (the clock and the art carry them; only EC2 OUT has text on screen)
+string s_ec2out_bubble "beep." font=game style=bubble
+string s_ec1_out "" note="EC1 OUT: textless card (lantern, banner, clock 21:00)"
+string s_ec1_in  "" note="EC1 IN: textless card (the lantern glows purple)"
+string s_ec3out  "" note="EC3 OUT: textless card (three candles, two out, clock 22:59)"
+string s_ec3in   "" note="EC3 IN: textless card (the last flame leans toward the Wall)"

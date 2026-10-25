@@ -13,4 +13,5 @@ from showtk.music import spot as _spot
 def register(subparsers):
     p = _render.register(subparsers)
     _spot.register_into(p)
+    p.set_defaults(func=lambda a: a.fn(a))
     return p
