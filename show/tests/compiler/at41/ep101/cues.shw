@@ -1,0 +1,2 @@
+# show/ep101/cues.shw (excerpt): defaults for the cue; the start time lives in the shot (co01 +60)
+spot mingle_box from=bar:1.1 bus=MX gain=-12dB               # enters at 00:00:02:00 (shot list)

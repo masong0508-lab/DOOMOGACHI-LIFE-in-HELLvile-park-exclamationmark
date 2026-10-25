@@ -1,0 +1,4 @@
+show doomogachi fps=30 audio=48000 canvas=320x180@320x240 doc_canvas=384x216 rating=tvma seed=0xD00D
+  safe title=16,9 action=8,5
+  palette core                       # doomo_palette, 256 entries, index 0 transparent
+end
