@@ -1,0 +1,3 @@
+# show/ep101/strings.shw (excerpt)
+string s_co02 "Every Midsummer night, the whole park had one party." font=child_hand   # M1: game font; child_hand lands in M2
+string s_co03 "It was called the Mingle."                             font=child_hand

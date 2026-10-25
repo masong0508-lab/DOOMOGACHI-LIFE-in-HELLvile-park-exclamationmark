@@ -33,7 +33,7 @@ char pet         sprite=pet:0 age=adult kinds=sprite voice=pet tags=PET squash=p
 # ---- the speaking roles (12; BREAKDOWN sec.3.2) ---------------------------------
 char mayor       look=look:mayor roster=0 age=adult kinds=bust,figure,chibi,model3d voice=mayor
                  squash=plush:22 phase=39 name="Mayor Giggs"
-                 note="halo never squashes, lags 2 f; wings flap on their own cycle; FREEZE stops them"
+                 note="v2 TURKEY (show part set): wattle, snood, tufts and tail fan wobble on the fx clock (secondary motion), hat lags 2 f on takes; FREEZE stops them; no halo, no wings"
 char nana        look=look:nana roster=1 age=adult kinds=bust,figure,chibi voice=nana
                  squash=wool:30 phase=92 name="Nana Puddin" note="recovers over 3 f (wool absorbs)"
 char pip         look=look:pip roster=42 age=child tags=KID kinds=bust,figure,chibi voice=pip

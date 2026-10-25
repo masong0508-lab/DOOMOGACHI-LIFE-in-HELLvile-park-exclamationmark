@@ -107,6 +107,11 @@ if(_packed_maps)
 	list(APPEND SHOW_PACKED_SRCS ${_packed_maps})
 endif()
 
+# the ART track's part sets, called by portrait.c hunks (h)/(i)
+if(NOT SHOW_PORTRAIT_ORIGINAL)
+	file(GLOB SHOW_ART_PARTS CONFIGURE_DEPENDS ${SHOW_ROOT}/art/parts/*.c)
+	list(APPEND SHOW_PORTRAIT_SRCS ${SHOW_ART_PARTS})
+endif()
 set(SHOW_ALL_CORE ${SHOW_CORE_SRCS} ${SHOW_PORTRAIT_SRCS} ${SHOW_PACKED_SRCS})
 
 # Objects are linked directly (no archive), so the core's weak stubs are
@@ -132,6 +137,7 @@ target_link_options(${SHOW_EXE_NAME} PRIVATE
 	-Wl,-Map=${CMAKE_CURRENT_BINARY_DIR}/${SHOW_EXE_NAME}.ldmap
 	-Wl,--no-warn-rwx-segments
 	-Wl,--wrap=plat_post_offset
+	-Wl,--wrap=gfx_upload_strided   # lane 3: synchronous uploads at host prep (show_host_wrap.c)
 	-Wl,--defsym=doomo_art_tex_pix=0x01000000
 	-Wl,--defsym=doomo_art_sky_pix=0x01800000
 	-Wl,--defsym=doomo_art_spr_pix_v=0x02000000)
