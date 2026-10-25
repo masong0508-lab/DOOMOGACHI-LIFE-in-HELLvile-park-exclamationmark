@@ -87,7 +87,7 @@ def run(sc, only, out_dir):
     script = []
     base = 0
     grabs = []
-    W = 10                             # SHOST_WARM_MAX: the driver's warm-up frames
+    W = 0                              # no warm-up frames: prep warms (show_host.c)
     for s in sc:
         base += W
         for f in shot_frames(s["len"]):

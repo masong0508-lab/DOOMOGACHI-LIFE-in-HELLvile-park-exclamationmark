@@ -17,7 +17,8 @@
 ShowHostCtx g_sh;
 ShowHostStats g_show_host_stats;
 static const char *s_err = "";
-static int s_warm_n;           /* show_host_warm() calls since prep */
+static void warm_images(void);
+static void warm_draw(void);
 static int s_forced;            /* frames the kid rule forced CUTE (this shot) */
 
 const char *show_host_error(void) { return s_err; }
@@ -449,12 +450,14 @@ int show_host_prep(const void *rec, uint32_t bytes)
     }
     if (r < 0)
         return fail(s_err[0] ? s_err : "host prep failed");
+    warm_images();
     g_sh.ready = 1;
-    s_warm_n = 0;
     g_sh.t = g_sh.wt = 0;
     g_sh.gore_script = gore_script_at(0);
     g_sh.gore = (g_sh.hdr->flags & SHF_KIDS) ? SG_CUTE : g_sh.gore_script;
     sh_set_game_gore(g_sh.gore);
+    if (g_sh.kind == SHOST_VIEW3D) sh_hud_warm();
+    warm_draw();
     s_err = "";
     return 0;
 }
@@ -507,45 +510,41 @@ void show_host_draw(int t)
     g_show_host_stats.draw_us = timer_us() - t0;
 }
 
-/* Warm-up (spec 8.2 pre-roll): a host plane's first frame uploads its world
- * textures and images into the display list, which they share with the
- * drawing (56 KB): drawn cold, frame 0 of a map comes out cut off. The
- * player calls show_host_warm() on uncaptured frames after prep until it
- * returns 0 (at most SHOST_WARM_MAX): each draws frame 0 normally; it
- * returns 0 once a frame made no new VRAM upload. */
-/* the chibi frames every actor and citizen look can show (4 dirs x 4 walk
- * frames, 1 pool block each), rendered a few per warm frame */
-static int s_warm_img;
-static int warm_images(int budget)
+/* Warm-up, at prep (spec 8.2): a host plane's first frame would upload its
+ * world textures into the display list it shares with the drawing (56 KB);
+ * drawn cold, frame 0 of a map comes out cut off. So prep uploads them
+ * itself, synchronously, by drawing frame 0 once and discarding the list
+ * (show_host_wrap.c: gfx_upload_strided runs as LoadImage while
+ * g_show_upload_sync is set), and renders every chibi
+ * frame its actors and citizens can show (1 pool block each) and the
+ * weapon's view frames, so no shot frame pays a first-use render. */
+int g_show_upload_sync;
+
+static void warm_images(void)
 {
-    int i, g, k, idx = 0;
-    for (i = 0; i < g_sh.nact; i++) {
-        if (g_sh.act[i].kind != SAK_CHIBI) continue;
-        for (k = 0; k < 16; k++, idx++)
-            if (idx >= s_warm_img && budget > 0) { bodyspr_image(g_sh.act[i].ref, k >> 2, k & 3); budget--; s_warm_img++; }
-    }
+    int i, g, k;
+    for (i = 0; i < g_sh.nact; i++)
+        if (g_sh.act[i].kind == SAK_CHIBI)
+            for (k = 0; k < 16; k++) bodyspr_image(g_sh.act[i].ref, k >> 2, k & 3);
     for (g = 0; g < g_sh.nnpc; g++)
         for (i = 0; i < sh_npc_looks(g); i++)
-            for (k = 0; k < 16; k++, idx++)
-                if (idx >= s_warm_img && budget > 0) { bodyspr_image(g_sh.npc[g].rid + i, k >> 2, k & 3); budget--; s_warm_img++; }
-    return s_warm_img < idx;
+            for (k = 0; k < 16; k++) bodyspr_image(g_sh.npc[g].rid + i, k >> 2, k & 3);
 }
 
-int show_host_warm(void)
+/* draw frame 0 once with every VRAM upload synchronous, then throw the
+ * display list away (gfx_begin(): prep runs at the start of the frame,
+ * before anything of it is drawn): frame 0 then finds its textures, images,
+ * sky and weapon in VRAM and has the whole list to draw in */
+static void warm_draw(void)
 {
-    uint32_t before;
-    int more;
-    if (!g_sh.ready || s_warm_n >= SHOST_WARM_MAX) return 0;
-    if (s_warm_n == 0) {
-        s_warm_img = 0;
-        if (g_sh.kind == SHOST_VIEW3D) sh_hud_warm();
-    }
-    s_warm_n++;
-    more = warm_images(24);
-    before = vram_uploads();
+    int forced = s_forced;
+    g_show_upload_sync = 1;
     show_host_draw(0);
     show_host_draw_hud(0);
-    return more || vram_uploads() != before;    /* still work to do: go again */
+    if (g_sh.kind == SHOST_VIEW3D) sh_hud_warm_vram();
+    g_show_upload_sync = 0;
+    gfx_begin();
+    s_forced = forced;
 }
 
 void show_host_draw_hud(int t)

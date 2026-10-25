@@ -39,15 +39,67 @@ void sh_hud_prep(void)
     }
 }
 
-/* warm-up: the welded weapon's two view frames (weld_gfx keeps 2 slots) in
- * the register of frame 0, so the first shot fired costs no render */
+/* The weapon's view frames, both filter styles, composed once at prep.
+ * weld_gfx keeps only 2 slots (idle + fire of ONE style), so a mid-shot
+ * filter flip (Act Three's cute/brutal switch) would compose a new 96x64
+ * frame in the flip frame: measured 65+ ms, double the budget. The show
+ * keeps its own copies (4 x 6 KB) with a stable uid each, so the flip only
+ * changes which image is drawn. Another weapon (a swap) falls back to the
+ * game's cache. */
+#define HW_N 4
+static uint8_t s_hw_pix[HW_N][WELD_VIEW_W * WELD_VIEW_H];
+static DoomoImage s_hw_img[HW_N];
+static int s_hw_weapon = -1;
+
+static const DoomoImage *hud_weapon_image(const DoomoWeapon *w, int weapon, int brutal, int frame)
+{
+    if (weapon == s_hw_weapon && frame >= 0 && frame < 2 && s_hw_img[brutal * 2 + frame].pix)
+        return &s_hw_img[brutal * 2 + frame];
+    return weld_view_image(w, frame);
+}
+
 void sh_hud_warm(void)
 {
     DoomoWeapon w;
+    int st, f;
+    const DoomoImage *img;
+    s_hw_weapon = -1;
+    memset(s_hw_img, 0, sizeof(s_hw_img));
     if (s_hud.weapon == SWPN_NONE) return;
-    weld_default(&w, wframe_of(s_hud.weapon), g_sh.gore == SG_BRUTAL ? WSTYLE_BRUTAL : WSTYLE_CUTE);
-    weld_view_image(&w, 1);
-    weld_view_image(&w, 0);
+    for (st = 0; st < 2; st++)
+        for (f = 0; f < 2; f++) {
+            weld_default(&w, wframe_of(s_hud.weapon), st ? WSTYLE_BRUTAL : WSTYLE_CUTE);
+            img = weld_view_image(&w, f);
+            if (!img || img->w != WELD_VIEW_W || img->h != WELD_VIEW_H) continue;
+            memcpy(s_hw_pix[st * 2 + f], img->pix, sizeof(s_hw_pix[0]));
+            s_hw_img[st * 2 + f] = *img;
+            s_hw_img[st * 2 + f].pix = s_hw_pix[st * 2 + f];
+            s_hw_img[st * 2 + f].uid = doomo_image_new_uid();
+        }
+    s_hw_weapon = s_hud.weapon;
+}
+
+/* at prep, inside warm_draw() (uploads synchronous, list discarded): put all
+ * four weapon frames in VRAM, and draw the HUD's raster-cached shapes (the
+ * hearts, the lens splats and hearts) in BOTH filter styles, so a filter
+ * flip's frame renders no new shape (measured: 13 ms of first-use hearts) */
+void sh_hud_warm_vram(void)
+{
+    static const uint8_t blood[3] = { 2, 3, 4 };
+    int i, r, saved = g_sh.gore;
+    if (s_hw_weapon >= 0)
+        for (i = 0; i < HW_N; i++)
+            if (s_hw_img[i].pix) plat_image(0, 30, &s_hw_img[i], 1, 0, 0);
+    for (r = 0; r <= 9; r++) {
+        ui_heart(40, 80, r + 1, PAL_PAINT(PAINT_BUBBLEGUM, 1));
+        ui_heart(40, 80, r + 1, PAL_PAINT(PAINT_CHERRY, 2));
+        for (i = 0; i < 3; i++) ui_fill_circle(40, 80, r, PAL_RAMP(RAMP_BLOOD, blood[i]));
+    }
+    for (i = 0; i < 2; i++) {
+        g_sh.gore = i ? SG_BRUTAL : SG_CUTE;
+        show_host_draw_hud(0);
+    }
+    g_sh.gore = saved;
 }
 
 /* the HUD's state at t: the record's start, then every event up to t */
@@ -240,7 +292,7 @@ static void weapon_draw(int vx, int vy, int vw, int strip_y, const HudState *h, 
     }
     weld_default(&w, wframe_of(weapon), brutal ? WSTYLE_BRUTAL : WSTYLE_CUTE);
     if (flash > 1) frame = 1;
-    img = weld_view_image(&w, frame);
+    img = hud_weapon_image(&w, weapon, brutal, frame);
     if (!img) return;
     weld_view_points(&w, &mx, &my, &gx, &gy);
     x = vx + vw / 2 - WELD_VIEW_W / 2 + 22;

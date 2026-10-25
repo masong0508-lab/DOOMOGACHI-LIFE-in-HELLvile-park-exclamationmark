@@ -274,6 +274,39 @@ MAPS = {"hahaland": 0, "hahaland_invaded": 1, "hellvile": 2, "vape_cellar": 3, "
 OW_MAPS = {"hahaland", "hahaland_invaded", "hellvile", "park_united"}
 
 
+_HOME_ROOMS = None
+
+
+def _home_rooms():
+    """HOME_ROOM_* -> (index, w, d) from core/src/home.c's home_room_defs (read-only)"""
+    global _HOME_ROOMS
+    if _HOME_ROOMS is None:
+        hdr = open(os.path.join(INC, "home.h"), encoding="utf-8").read()
+        m = re.search(r"enum\s*\{\s*(HOME_ROOM_LIVING[^}]*)\}", hdr)
+        names = [n.strip().split("=")[0].strip() for n in _strip(m.group(1)).split(",") if n.strip()]
+        src = open(os.path.join(REPO, "core", "src", "home.c"), encoding="utf-8").read()
+        body = src[src.index("home_room_defs[HOME_ROOM_COUNT]"):]
+        rows = re.findall(r'\{\s*"[^"]*",\s*(\d+),\s*(\d+),', body)
+        _HOME_ROOMS = {n: (i, int(rows[i][0]), int(rows[i][1])) for i, n in enumerate(names)
+                       if n != "HOME_ROOM_COUNT" and i < len(rows)}
+    return _HOME_ROOMS
+
+
+def home_room(name, where=None):
+    r = _home_rooms().get(name.upper())
+    if not r:
+        raise HostError("SET-ROOM", "room=%s is not one of the game's rooms (%s)"
+                        % (name, ", ".join(sorted(_home_rooms()))), where)
+    return r
+
+
+def home_room_size(idx):
+    for i, w, d in _home_rooms().values():
+        if i == idx:
+            return w, d
+    return 16, 16
+
+
 class Plane:
     """one host plane: what the record holds, before packing"""
 
@@ -347,6 +380,12 @@ def parse_set(lines):
         w["fov"] = max(0, min(2, int(d["fov"])))
     if "view" in d:
         w["view_dist"] = max(11, min(18, int(d["view"])))
+    if kind == "room" and d.get("room", "").upper().startswith("HOME_ROOM_"):
+        tid, rw, rd = home_room(d["room"], lines[0])
+        w["tmpl"] = tid + 1
+        d["room"] = "%dx%d" % (rw, rd)
+        d.setdefault("wall_paint", "0")
+        d.setdefault("floor_paint", "0")
     if kind == "room":
         r = d.get("room", "6x6").lower().split("x")
         w["room_w"], w["room_d"] = int(r[0]), int(r[1])
@@ -355,8 +394,10 @@ def parse_set(lines):
         w["room_kind"] = ROOM_KINDS.get(d.get("walls", "walls"), 0)
         w["wallpaper"] = int(d.get("wallpaper", "0"))
         w["floor"] = int(d.get("floor", "0"))
-        w["wall_paint"] = sym(d.get("wall_paint", "PAINT_BUBBLEGUM"), "PAINT_", lines[0])
-        w["floor_paint"] = sym(d.get("floor_paint", "PAINT_CARAMEL"), "PAINT_", lines[0])
+        w["wall_paint"] = 0 if d.get("wall_paint") == "0" else sym(d.get("wall_paint", "PAINT_BUBBLEGUM"), "PAINT_", lines[0])
+        w["floor_paint"] = 0 if d.get("floor_paint") == "0" else sym(d.get("floor_paint", "PAINT_CARAMEL"), "PAINT_", lines[0])
+        if w.get("tmpl"):
+            w["room_w"] = w["room_d"] = 0        # the template's own size (show_host_room.c)
         w["daylight"] = max(0, min(15, int(d.get("daylight", "12"))))
     for ln in lines[1:]:
         ws = split_words(ln.text)
@@ -380,9 +421,10 @@ def parse_set(lines):
                     pb = sym(ps[1], "PAINT_", ln)
             sq = [int(v) for v in nums(e.get("squash", "0,0"), 2, ln)]
             fl = C("RO_FULLBRIGHT") if e.get("lit") == "on" else 0
-            if not (0 <= x < w["room_w"] and 0 <= y < w["room_d"]):
+            rw, rd = (w["room_w"], w["room_d"]) if not w.get("tmpl") else home_room_size(w["tmpl"] - 1)
+            if not (0 <= x < rw and 0 <= y < rd):
                 raise HostError("SET-FURN", "%s at %d,%d is outside the %dx%d room" % (bare[0], x, y,
-                                w["room_w"], w["room_d"]), ln)
+                                rw, rd), ln)
             p.furn.append((fid, x, y, int(e.get("z", "0")), rot | (anim << 2), pa, pb, sq[0], sq[1], 0, fl))
         elif ws[0] == "path" and kind == "view3d":
             if not bare:
@@ -394,7 +436,7 @@ def parse_set(lines):
             if len(pts) < 2:
                 raise HostError("SET-PATH", "path %s needs two points or more" % bare[0], ln)
             p.paths[bare[0]] = dict(points=pts, eye=float(e.get("eye", EYE)), look=e.get("look", "ahead"),
-                                    pitch=int(e.get("pitch", "0")), where=ln)
+                                    pitch=int(e.get("pitch", "0")), ease=e.get("ease", "LINEAR").upper(), where=ln)
         elif ws[0] in ("mark", "note", "waive", "prop", "plane"):
             pass                # other packages' set lines: not the host's
         else:
@@ -454,20 +496,33 @@ def _ease(name, u):
     return u
 
 
-def rail_keys(path, f0, f1, ease="LINEAR", step=2, yaw=None, pitch=None):
-    """camera keys (f, x, y, eye, yaw) every `step` frames from f0 to f1"""
+def rail_keys(path, f0, f1, ease="LINEAR", step=2, yaw=None, pitch=None, part=(0.0, 1.0)):
+    """camera keys (f, x, y, eye, yaw) every `step` frames from f0 to f1; part = the
+    stretch of the path's length run (0..1, 0..1); look=x,y turns the eye to a point"""
     dense, acc = rail_samples(path)
     total = acc[-1]
     keys = []
     look = path.get("look", "ahead")
-    fixed = None if (look == "ahead" and yaw is None) else yaw_of(yaw if yaw is not None else look)
+    point = None
+    if yaw is None and isinstance(look, str) and "," in look:
+        point = [float(v) for v in look.split(",")[:2]]
+    fixed = None if ((look == "ahead" or point) and yaw is None) else yaw_of(yaw if yaw is not None else look)
     prev_yaw = None
     frames = list(range(f0, f1, step)) + [f1]
     for f in frames:
         u = 0.0 if f1 == f0 else (f - f0) / (f1 - f0)
-        s = _ease(ease, u) * total
+        s = (part[0] + (part[1] - part[0]) * _ease(ease, u)) * total
         x, y = _at_len(dense, acc, s)
-        if fixed is None:
+        if point is not None:
+            a = math.atan2(point[1] - y, point[0] - x) * 4096 / (2 * math.pi)
+            if prev_yaw is not None:
+                while a - prev_yaw > 2048:
+                    a -= 4096
+                while prev_yaw - a > 2048:
+                    a += 4096
+            prev_yaw = a
+            yw = int(round(a))
+        elif fixed is None:
             ax, ay = _at_len(dense, acc, s - 0.25)
             bx, by = _at_len(dense, acc, s + 0.25)
             if (bx - ax) ** 2 + (by - ay) ** 2 < 1e-9:
@@ -597,10 +652,38 @@ def apply_statement(p, ln, cast, shot_len, shot_id="shot"):
         if f1 <= f:
             raise HostError("SHW-TIME", "cam3d rail=%s to=+%d is not after +%d" % (name, f1, f), ln)
         p.eye_keys = True
-        for k in rail_keys(p.paths[name], f, f1, d.get("ease", "LINEAR").upper(), int(d.get("step", "2")),
-                           d.get("yaw"), int(d["pitch"]) if "pitch" in d else None):
+        part = (0.0, 1.0)
+        if "part" in d:
+            i, n = [int(v) for v in d["part"].split("/")]
+            part = ((i - 1) / n, i / n)
+        for k in rail_keys(p.paths[name], f, f1, d.get("ease", p.paths[name].get("ease", "LINEAR")).upper(),
+                           int(d.get("step", "2")), d.get("yaw"), int(d["pitch"]) if "pitch" in d else None,
+                           part):
             fk, x, y, eye, yw, pitch = k
             p.cam.append((fk, 1, 2, _cell(x), _cell(y), int(round(eye * FIX)), yw, pitch))
+        return
+    if op in ("turn", "tilt"):
+        if not v3d or not p.cam:
+            raise HostError("SHW-KIND", "world %s needs a VIEW3D camera (a cam3d rail or world cam) first" % op, ln)
+        if t is None:
+            raise HostError("SHW-TIME", "world %s needs a time" % op, ln)
+        over = max(1, int(d.get("over", "15")))
+        cam = sorted(p.cam, key=lambda k: k[0])
+        last = [k for k in cam if k[0] <= f][-1] if any(k[0] <= f for k in cam) else cam[0]
+        # the keys after +f keep moving the eye, offset by the turn
+        dyaw = int(d.get("yaw", "0").lstrip("+")) if op == "turn" else 0
+        dpit = 0
+        if op == "tilt":
+            dpit = int(d.get("up", "0")) - int(d.get("down", "0"))
+        newcam = [k for k in cam if k[0] < f] + [(f, 0, last[2], last[3], last[4], last[5], last[6], last[7])]
+        for k in cam:
+            if k[0] > f:
+                u = min(1.0, (k[0] - f) / over)
+                newcam.append(k[:6] + (k[6] + int(round(dyaw * u)), max(-256, min(256, k[7] + int(round(dpit * u))))))
+        if not any(k[0] > f for k in cam):
+            newcam.append((f + over, EASES["INOUT"], last[2], last[3], last[4], last[5], last[6] + dyaw,
+                           max(-256, min(256, last[7] + dpit))))
+        p.cam = newcam
         return
     if op == "actor":
         if not bare:

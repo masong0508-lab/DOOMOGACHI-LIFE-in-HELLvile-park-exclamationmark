@@ -22,7 +22,6 @@
  *                               events: camfx shakes, the game's gore
  *                               option); everything it draws is a pure
  *                               function of t
- *   show_host_warm()            uncaptured frames after prep, until 0
  *   show_host_draw(t)           draw the plane (skipped during pre-roll)
  *   show_host_draw_hud(t)       VIEW3D: the HUD, the weapon and the lens,
  *                               after camfx_apply() (the HUD does not shake)
@@ -259,12 +258,12 @@ void show_host_tick(int t);
 void show_host_draw(int t);
 void show_host_draw_hud(int t);
 void show_host_end(void);
-#define SHOST_WARM_MAX 10
-int  show_host_warm(void);     /* after prep, on UNCAPTURED frames, until it
-                                  returns 0: draws frame 0 so its textures are
-                                  in VRAM before the captured frame 0          */
 int  show_host_kind(void);                             /* SHOST_* of the shot    */
 const char *show_host_error(void);                     /* why prep failed        */
+
+/* prep uploads the map's textures synchronously while this is set (the
+ * show links with -Wl,--wrap=gfx_upload_strided; show_host_wrap.c) */
+extern int g_show_upload_sync;
 
 /* ---- the filter (STD-KIDS, spec 13.5) ---------------------------------------- */
 /* The cute/brutal switch is the game's own OPT_GORE. It is CUTE in every

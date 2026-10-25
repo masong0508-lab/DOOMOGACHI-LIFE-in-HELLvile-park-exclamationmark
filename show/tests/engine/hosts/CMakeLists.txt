@@ -42,6 +42,7 @@ list(REMOVE_DUPLICATES SHOW_CORE_SRCS)
 file(GLOB HT_SHOW_SRCS CONFIGURE_DEPENDS
 	${SHOW_ENGINE}/show_host*.c ${SHOW_ENGINE}/show_rcopy_*.c ${SHOW_ENGINE}/show_hud.c
 	${SHOW_ENGINE}/show_actor.c)
+list(FILTER HT_SHOW_SRCS EXCLUDE REGEX "/show_host_mod\\.c$")   # the player plug-in (show_api.h)
 list(SORT HT_SHOW_SRCS)
 
 # the test shots: scenes/*.shw -> one C table (hosts.py)
@@ -106,6 +107,7 @@ target_link_options(hosttest PRIVATE
 	-T${PSN00BSDK_LDSCRIPTS}/exe.ld
 	-Wl,-Map=${CMAKE_CURRENT_BINARY_DIR}/hosttest.ldmap
 	-Wl,--no-warn-rwx-segments
+	-Wl,--wrap=gfx_upload_strided
 	-Wl,--defsym=doomo_art_tex_pix=0x01000000
 	-Wl,--defsym=doomo_art_sky_pix=0x01800000
 	-Wl,--defsym=doomo_art_spr_pix_v=0x02000000)

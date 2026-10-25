@@ -29,7 +29,7 @@ extern const int host_scene_count;
 static uint32_t s_frames, s_uid = 0x01000000u;
 static int s_init;
 static int s_scene = -1, s_t, s_jump = -1;
-static int s_warm = -1, s_warm_more;
+static int s_warm = -1;
 
 uint32_t doomo_image_new_uid(void)
 {
@@ -145,16 +145,6 @@ void doomo_frame(uint32_t buttons)
             printf("hosttest: %s: prep failed: %s\n", host_scenes[s_scene].name, show_host_error());
         s_prep_us = timer_us() - t0;
         s_warm = 0;
-        s_warm_more = 1;
-    }
-    /* the warm-up: always SHOST_WARM_MAX uncaptured frames (a fixed count
-     * keeps run_hosts.py's frame arithmetic simple; the player stops at 0) */
-    if (s_warm < SHOST_WARM_MAX) {
-        plat_clear(PAL_BLACK);
-        if (s_warm_more) s_warm_more = show_host_warm();
-        s_warm++;
-        bars();
-        return;
     }
     show_host_tick(s_t);
     camfx_tick();

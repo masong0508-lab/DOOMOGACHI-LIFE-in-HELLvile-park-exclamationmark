@@ -81,6 +81,7 @@ void sh_v3d_draw(int t);
 void sh_hud_prep(void);
 void sh_hud_draw(int t);
 void sh_hud_warm(void);
+void sh_hud_warm_vram(void);
 /* VIEW3D state the HUD reads (show_host_v3d.c) */
 int  sh_v3d_flash(int t);           /* muzzle flash frames left at t (0 = none)  */
 int  sh_v3d_kick(int t);            /* weapon kick 0..256                         */
