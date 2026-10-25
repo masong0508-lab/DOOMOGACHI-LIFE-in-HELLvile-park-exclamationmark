@@ -85,11 +85,12 @@ set joke_graveyard kind=2d px=1 matte=open look=pixel desc="4-07 (night): the pa
   variant night light=night bands.sky=sky:night desc="4-07"
 end
 
-set launch_hill kind=2d px=1 matte=open look=pixel desc="4-08 (night): the hilltop; the Wall below across the middle distance; one firework opens over it"
+set launch_hill kind=2d px=1 matte=open look=pixel desc="4-08 (night): the hilltop; the park below with the Wall down the centre line; one firework opens over it"
   plane sky    bands=sky:night par=0
   plane stars  tile=gen:sky_stars(seed=13) size=128x80 par=0.05
   plane hill   image=gen:launch_hill(seed=370,w=400) size=400x240 par=1.0
-  mark  wall_y 96
+  prop  stand  art=gen:launch_stand(seed=371) plane=hill at=172,150 anchor=bottom
+  mark  wall_x 160
   frame crowd  at=0,0
   variant night light=night bands.sky=sky:night desc="4-08"
 end
