@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+	DOOMOGACHI LIFE in HELLvile Park! - the show disc (mkpsxiso).
+	Processed by show/engine/CMakeLists.txt (configure_file): SHOW.EXE and
+	the episodes' SHW files (SHOW_ISO_FILES) under SHOW/. No licence data.
+-->
+<iso_project>
+	<track type="data">
+		<identifiers
+			system        ="PLAYSTATION"
+			volume        ="DOOMO_SHOW"
+			volume_set    ="DOOMO_SHOW"
+			publisher     ="HELLVILE_PARK_HOMEBREW"
+			data_preparer ="PSN00BSDK ${PSN00BSDK_VERSION} + MKPSXISO"
+			application   ="PLAYSTATION"
+		/>
+		<directory_tree>
+			<file name="SYSTEM.CNF" type="data" source="${SHOW_ENGINE}/system.cnf" />
+			<file name="SHOW.EXE"   type="data" source="${SHOW_EXE_NAME}.exe" />
+${SHOW_ISO_EPISODES}			<dummy sectors="1024"/>
+		</directory_tree>
+	</track>
+</iso_project>
