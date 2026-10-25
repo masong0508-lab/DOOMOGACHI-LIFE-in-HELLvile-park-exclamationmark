@@ -96,3 +96,42 @@ Each names the default taken and where to change it.
 - **The theme cues name files** (`src=file:doomtastic_times_main_title.flac` under docs/show/theme/ once
   published, else the scratchpad's theme/final): a new vocal master drops in with no other change; the bar
   map is re-imported from the master's own `*_full.mid` (tempo + section markers).
+
+## ART: the sets (show/series/sets/, show/art/gen/), 2026-10-25
+
+- **One set per location, cheapest route first** (table in `show/series/sets/SETS.md`): the game's
+  own `hahaland` overworld for MT-1/MT-3, its `vape_cellar` 3D map for every first-person beat
+  (MT-5, 3-03, 3-05: the pastel back room and the tiled room under the candy-stripe canopy), its
+  house (`HOME_COTTAGE`, living room, `HP_EMPTY`) for the tag; new generated plates for the rest.
+  Change: the `set` blocks in `series/sets/*.shw`.
+- **Time of day is a CLUT swap** (`show/art/gen/light.py`): dawn, sunset, dusk, night, dark, sepia,
+  drained as 256-entry index remaps (family-preferring nearest, artgen's rule); night keeps the
+  emissive indices lit. Our `night` is a little lighter than the game's `TINT_NIGHT` (which ships
+  as `game_night`) so pastel reads at 320x180. Skies are BANDS lists per time of day.
+- **The bandstand**: north half live (candy posts, the GIGGLE banner with the cupcake balloon over
+  its third letter, lanterns), south half boarded against the Wall, the MINGLE crate in the hollow
+  under the boarded deck (skirt boards are props: 2-03 tears them), the sealed gate in the Wall
+  beside it. One 800x240 TILEMAP at figure scale with named framings (wide/north/steps/boards/
+  gate/fair). The Wall is drawn face-on at the right (the side-scroller convention); the x = 160
+  Wall line belongs to the crayon co09 frame and to `wall_split`.
+- **The cold open's red** is `PAINT_CHERRY` (candy red), never the BLOOD ramp (D16; a test checks
+  the drip). The pink drip (A/B for the animatic) is the drip prop's `pink` state.
+- **The crayon/pixel banner match**: both banners put their six letters at x = 42 + 40k, 35x42,
+  baseline show y 104 (co11 -> co12). GIGGLE is wet pink over MINGLE, which shows through.
+- **Grain density 4 %**, not 12: at 320x180 a 12 % fleck tile read as snow over the night sky;
+  the spec's "12 %" was an overlay strength. Change: `paper_grain(density=)` in storybook.shw.
+- **Signs are blank boards with a text box** (`text=x,y,w,h` on the prop); every readable word is a
+  string (STAGING's strings.shw). Baked lettering only where it is paint or print: the banner,
+  the act cards' handwriting (the brief's own lines), the TV-MA card, the town sign's painted-over
+  1000, the calendar's print, the logo (drawn the way `fp_title.c` draws it).
+- **Previews are host composites** (`show sets sheet`), never master pixels; the player draws the
+  masters. PIC-PAL is checked on every composed frame of every variant (100 %).
+- ART review (art director): Mr. Flops is a prop bunny (gen:mr_flops, one floppy ear) in Pip's paws, not ACC_TEDDY (a bear); launch_hill redrawn to the script (Wall down the frame's centre line, park below, iron launch stand prop, mark wall_x 160); joke_graveyard fills its sky with a yew/tree line (4-07 board note: sky out of frame).
+
+## STAGING co_mt (cold open, main title, eyecatches), 2026-10-25
+- co_mt: files are `ep101/shots/co.shw` (cold open, owned by co_mt from now on), `shots/co_mt.shw` (main title) and `shots/ec1.shw` (EC1, included after a1; a1 stages 9,600 f without it). EC2 and EC3 were already staged by a2 (a2_56-57) and a3 (a3s38-39) when co_mt landed, so episode.shw does NOT include co_mt's `ec2.shw`/`ec3.shw` (same beat ids `e101_ec2_*`/`e101_ec3_*`, would double 600 f). They stay as the co_mt versions (Mascotty prop, flash level, bell timing); the integrator includes exactly one version of each pair.
+- co_mt: the main title is cut to the master's bar map (150 bpm, 48 f/bar, 30 bars + 60-f ring = 1,500 f), not the beat sheet's provisional TCs: MT-1 bars 1-9 (432 f), MT-2 verse 10-13 (192), MT-3 wall window + pre-chorus to "Come out!" (108), MT-4 the stop-time drop 16.2-16.4 (36), MT-5 chorus 17-24 (384), MT-6 post-chorus + button to the last chord (264), MT-7 ring/mute/beep/title (84). Total 1,500, so 1-01 is not stretched.
+- co_mt: the mirrored knock lands on the lyric's three "Knock, knock, knock!" syllables (bar 15.1, +6, 15.2), not "two snare hits": the master's pre-chorus is P4 alone.
+- co_mt: MT-5 rots a replay of the mt01 crane (no child), never the cast pop-in (Pip is in it).
+- co_mt: beat rows (`act`/`beat`) live at the top of each shot file, since episode.shw is a plain include list.
+- co_mt: timed prop states are written as `+N show <prop>[:<state>]` / `hide <prop>` (proposed SOP_PROP_STATE); fallback is base= + one change per state.

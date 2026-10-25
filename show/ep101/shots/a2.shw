@@ -1,0 +1,560 @@
+# show/ep101/shots/a2.shw: ACT TWO "21:00 (we don't do that)" + EYECATCH PAIR 2
+# Source: show/ep101/shotlists/a2.md (57 shots, 7950 f, episode frames 14400-22349).
+# Spec §5-§6. Show px on 320x180. Numbers not in the shot list are marked "# choice:".
+# Possessed lines: two takes, Clinker slid exactly R8 (8 f) behind Bonejangles, mouth=none (voice from the ribs).
+include ../strings/a2.shw
+
+act A2 "21:00 (we don't do that)"
+  beat e101_2_01 len=660  shots=a2_01..a2_04
+  beat e101_2_02 len=990  shots=a2_05..a2_10
+  beat e101_2_03 len=900  shots=a2_11..a2_21
+  beat e101_2_04 len=1050 shots=a2_22..a2_27
+  beat e101_2_05 len=840  shots=a2_28..a2_32
+  beat e101_2_06 len=1200 shots=a2_33..a2_40
+  beat e101_2_07 len=1200 shots=a2_41..a2_49
+  beat e101_2_08 len=810  shots=a2_50..a2_55
+  beat e101_ec2_out len=150 shots=a2_56
+  beat e101_ec2_in  len=150 shots=a2_57
+end
+
+# ============================================================== 2-01 (660)
+shot a2_01 beat=e101_2_01 len=60 set=act_cards:act2 px=1 cut=CUT scene=a2_card
+  +0    mx heehee_bell_flat start ; cc "[a bright bell]"
+  +6    reveal l4.underline over=+6..+30 ; sfx FOL_pen_scratch
+  ad "The Mayor's clipboard: 21:00, we don't do that, now underlined twice in a shaking hand."
+end
+
+shot a2_02 beat=e101_2_01 len=120 set=bandstand:dark px=1 cut=CUT scene=a2_bandstand
+  cam at=0,0
+  actor bj who=bonejangles kind=figure at=160,118 idle=still
+  crowd party gen=randomize seed=2002 n=40 kind=chibi age=adult formation=lawn y=150..176 clock=stopped
+  end
+  +0    state bj possessed ; mx ominous_fog start ; amb AMB_night_still on
+  +30   take possess bj side=L ; sfx FX_TIK
+  +32   take possess bj side=R ; sfx FX_TIK                     # R2 after the left
+  +45   twitch bj on ; mx riff_em start                         # the ribs play with no hands
+  ad "Every lantern is out. Bonejangles' ribcage glows purple; his eye sockets go red."
+end
+
+shot a2_03 beat=e101_2_01 len=45 set=bandstand:dark px=1 cut=CUT
+  cam at=-60,0                                                  # choice: crowd frame
+  actor sunny who=sunny kind=figure at=160,150 face=R idle=on expr=EXPR_NEUTRAL pose=hold_bundle
+  +0    sfx FOL_crowd_breath_out gain=-24dB
+end
+
+shot a2_04 beat=e101_2_01 len=435 set=bandstand_cu:north_dark px=2 cut=CUT
+  actor bj who=bonejangles kind=bust at=160,100 idle=still
+  +0    state bj possessed ; twitch bj on ; fx glow_pulse at=bj.ribs n=1 seed=4
+  +0    say a2_01_bone_01 bj mouth=none
+  @a2_01_bone_01.start+R8   say a2_01_clink_01 bj mouth=none
+  @a2_01_clink_01.end+R13   say a2_01_bone_02 bj mouth=none
+  @a2_01_bone_02.start+R8   say a2_01_clink_02 bj mouth=none
+  @a2_01_clink_02.end+13    button ; headturn bj 1 4 ; sfx FOL_bone_creak     # 1 px toward the cake table
+  note "provisional: LINE_TIMING.md absent; couplet budget +0..+309 at 2.0 w/s"
+end
+
+# ============================================================== 2-02 (990)
+shot a2_05 beat=e101_2_02 len=270 set=bandstand:dark px=1 cut=CUT
+  actor bj who=bonejangles kind=figure at=160,118 idle=still
+  crowd party gen=randomize seed=2002 n=40 kind=chibi age=adult formation=lawn y=150..176 clock=stopped
+  end
+  +0    state bj possessed ; twitch bj on
+  +10   headturn bj -48 240                                     # 1 px a step across the crowd
+  +10   still crowd:party ripple=0..3 over=+10..+250            # breathing stops where it points
+end
+
+shot a2_06 beat=e101_2_02 len=45 set=bandstand_cu:north_dark px=2 cut=CUT insert
+  prop egg art=gen:egg_towel(seed=1) at=160,110
+  +0    sfx FOL_cloth_soft gain=-30dB
+  +20   squash egg 1 over=3 ; sfx FOL_cloth_rustle gain=-22dB
+end
+
+shot a2_07 beat=e101_2_02 len=45 set=bandstand:dark px=1 cut=CUT
+  cam at=-120,20                                                # choice: cake table frame
+  actor nana  who=nana  kind=figure at=140,150 face=R pose=hold_pie
+  actor mayor who=mayor kind=figure at=184,150 face=L pose=clipboard_chest
+  +0    still mayor ; sfx FOL_wing_stop
+  +10   eyes nana U over=3
+end
+
+shot a2_08 beat=e101_2_02 len=375 set=bandstand:dark px=1 cut=CUT
+  cam at=-120,20
+  actor nana  who=nana  kind=figure at=120,150 face=R pose=hold_pie
+  actor mayor who=mayor kind=figure at=168,150 face=R pose=clipboard_chest
+  actor bj    who=bonejangles kind=figure at=260,108 face=L idle=still
+  +0    state bj possessed ; pose nana offer_slice ; sfx FOL_knife_pie
+  +4    say a2_02_nana_01 nana
+  @a2_02_nana_01.end      mx riff_em stop ; amb AMB_night_still on   # the ribs stop
+  >+R8  say a2_02_bone_01 bj mouth=none
+  @a2_02_bone_01.start+R8 say a2_02_clink_01 bj mouth=none
+  @a2_02_clink_01.end+R8  say a2_02_bone_02 bj mouth=none
+  @a2_02_bone_02.start+R8 say a2_02_clink_02 bj mouth=none
+  @a2_02_bone_02.w1       move nana.slice to=+0,+1 over=1     # the slice droops 1 px
+  @a2_02_clink_02.end+15  pose mayor sprinkle ; sfx FOL_shaker_x3
+  >+20    pose mayor offer_cupcake
+  >+R8    say a2_02_bone_03 bj mouth=none
+  @a2_02_bone_03.start+R8 say a2_02_clink_03 bj mouth=none
+  @a2_02_clink_03.end+15  pose mayor hold_speech ; sfx FOL_paper_whip
+  >+R8    say a2_02_bone_04 bj mouth=none
+  @a2_02_bone_04.start+R8 say a2_02_clink_04 bj mouth=none
+  @a2_02_clink_04.end+R13 punch ; move mayor.speech to=+0,+30 over=60 tw=TW_EASE_IN   # lowered, slowly
+  note "rule of three stepping down: 6, 4, 2; offers start 15-16 f after each rating"
+end
+
+shot a2_09 beat=e101_2_02 len=60 set=bandstand_cu:north_dark px=2 cut=CUT
+  actor nana who=nana kind=bust at=160,100 expr=EXPR_NEUTRAL
+  +0    sfx FOL_cloth_soft gain=-30dB
+  +13   button ; eyes nana R over=4
+  +22   eyes nana D over=4 ; move nana.slice to=-3,+0 over=6
+  +30   expr nana EXPR_SMUG ; say a2_02_nana_02 nana
+end
+
+shot a2_10 beat=e101_2_02 len=195 set=bandstand_cu:north_dark px=2 cut=CUT
+  actor bj who=bonejangles kind=bust at=160,100 idle=still
+  +0    state bj possessed ; zoom 282 195                       # 1.00 to 1.10 (q8)
+  +0    sfx FOL_room_tone gain=-36dB
+  +21   mx riff_em start ; mx riff_em bend 40->140 over=+21..+170   # music-box wind-up, accelerating
+  +21   fx eyes_widen at=crowd n=6 seed=10 ripple=0..3
+  +170  squash bj stretch over=10
+  +180  hitstop 5 ; punch 1 0                                   # 5-f hold, 1-px jitter
+end
+
+# ============================================================== 2-03 (900)
+shot a2_11 beat=e101_2_03 len=30 set=bandstand:dark px=1 cut=SMASH cue=riff_em@bar:1
+  actor bj who=bonejangles kind=figure at=160,118
+  crowd party gen=randomize seed=2002 n=40 kind=chibi age=adult formation=lawn y=150..176 clock=stopped
+  end
+  +0    shake SHK_FWOOMP ; sfx FX_FWOOMP ; mx riff_em start swing=S2
+  +0    thaw crowd:party speed=2 ; panic crowd:party
+  +4    say w_giggle_03
+end
+
+shot a2_12 beat=e101_2_03 len=114 set=bandstand:dark px=1 cut=CUT
+  cam at=-120,20
+  actor mayor who=mayor kind=figure at=160,150 face=R expr=EXPR_HAPPY pose=arms_up
+  prop cloth art=gen:tablecloth(state=up) art.down=gen:tablecloth(state=down) at=176,156
+  +0    sfx FOL_wing_flap
+  +4    say a2_03_mayor_01 mayor
+  @a2_03_mayor_01.w6      move mayor to=176,170 over=6 tw=TW_EASE_IN ; sfx FX_WHOOSH_SMEAR   # "under"
+  >+6     state cloth down ; sfx FOL_cloth_flump ; hide mayor
+  >+R8    say a2_03_mayor_02 mayor mouth=none          # O.S., from under the cloth
+  >+4     fx tremble at=prop:cloth n=1 seed=12 ; fx halo_glow at=prop:cloth
+end
+
+shot a2_13 beat=e101_2_03 len=96 set=bandstand:dark px=1 cut=CUT
+  actor bj who=bonejangles kind=figure at=160,118
+  crowd demons who=puff_demon kind=sprite n=24 from=bj.ribs spawn=+0:1,+8:1,+16:22 path=steps_down ripple=0..3
+  end
+  crowd fleeing gen=randomize seed=2013 n=30 kind=chibi age=adult lane=lawn dir=L speed=3 panic=on
+  end
+  +0    sfx FX_POP_SMALL ; fol FOL_demon_squeak from=crowd:demons
+  +20   say w_giggle_04
+  +55   say w_giggle_05 ; pose fleeing.3 trip
+end
+
+shot a2_14 beat=e101_2_03 len=84 set=fun_fair:panic px=1 cut=CUT scene=a2_teacups
+  cam at=-150,0                                                 # frame teacups
+  crowd demons who=puff_demon kind=sprite n=6 seed=2014 formation=scatter
+  end
+  +0    sfx FOL_teacup_whirr_rev ; pose teacups spin_rev fps=12
+  +10   say w_giggle_06
+  +40   move demons.1 to=150,120 over=12 tw=TW_EASE_IN
+  +60   hide demons.1 ; fx confetti at=150,96 n=24 seed=14 ; sfx FX_CONFETTI_PFF
+  waive STD-KIDS "no child in frame or audio in this scene (a2_teacups); checked by shot list"
+end
+
+shot a2_15 beat=e101_2_03 len=4 set=fun_fair:panic px=1 cut=CUT replay=a2_14@+60 insert gore=BRUTAL
+  tag shot gore_truth
+  +0    sfx FX_WET_SHRED ; mx riff_em mute 4                    # owns the audio
+  +0    fx gore_spiral at=150,96 n=1 seed=15                    # fur, meat, teeth, one eyeball
+end
+
+shot a2_16 beat=e101_2_03 len=62 set=fun_fair:panic px=1 cut=CUT base=a2_14@+84
+  change teacup1.state=red                                      # the one change: stays red
+  +2    sfx FOL_plip
+  +10   eyes demons.2 D over=4 ; pose demons.2 peek ; sfx FOL_gulp
+  @bar:+1  mx riff_em start                                     # re-enters on the grid
+end
+
+shot a2_17 beat=e101_2_03 len=90 set=fun_fair:panic px=1 cut=CUT
+  cam at=150,0                                                  # frame house
+  sign s_a2_03_house_sign on=housesign
+  +0    sfx FOL_cardboard_fwip
+  +12   state ghost* wall ripple=0..3 ; fol FOL_cardboard_fwip from=props:ghost*
+  +40   say w_giggle_07
+end
+
+shot a2_18 beat=e101_2_03 len=120 set=bandstand:dark px=1 cut=CUT scene=a2_bandstand_b
+  actor bj who=bonejangles kind=figure at=160,118
+  +0    sfx FX_GUST ; shake SHK_RUMBLE ; fx fog_gust at=60,150 n=1 seed=18
+  +20   hide skirt2 ; sfx FOL_clatter
+  +35   hide skirt3 ; sfx FOL_clatter
+  +50   hide skirt4 ; sfx FOL_clatter ; fx boards_tumble at=150,140 n=3 seed=180
+  +60   sign s_a2_03_crate on=crate
+end
+
+shot a2_19 beat=e101_2_03 len=30 set=bandstand_cu:north_night px=2 cut=CUT
+  actor pip who=pip kind=bust at=160,112 expr=EXPR_HAPPY pose=hold_flops_up
+  prop bale art=gen:hay_bale(seed=19) at=160,150 plane=front
+  +0    pop pip TWT_POP_SMALL ; sfx FX_POP_SMALL
+  +4    say a2_03_pip_01 pip
+end
+
+shot a2_20 beat=e101_2_03 len=120 set=fun_fair:lost px=1 cut=CUT
+  cam at=-40,0                                                  # frame lantern: no teacups
+  crowd run gen=randomize seed=2020 n=36 kind=chibi age=adult lane=lawn dir=R speed=3 panic=on
+  end
+  actor c1 who=random:2021 kind=chibi age=adult at=150,168 face=R
+  actor c2 who=random:2022 kind=chibi age=adult at=176,168 face=L
+  +0    sfx FOL_stampede
+  +2    freeze crowd:run ripple=0..3 ; face crowd:run L ; say w_giggle_02 ; sfx FOL_skid
+  +32   thaw crowd:run
+  +40   sfx FOL_string_snap gain=-26dB ; move lostlantern to=330,-20 over=80 tw=TW_LINEAR
+  +50   still c1 ; still c2 ; pose c1 bow ; pose c2 bow
+  +60   say w_giggle_08 c1
+  >+R8  say w_giggle_10 c2
+  +70   pose crowd:run pileup ripple=0..3
+end
+
+shot a2_21 beat=e101_2_03 len=150 set=fun_fair:panic px=1 cut=CUT
+  crowd run gen=randomize seed=2020 n=36 kind=chibi age=adult lane=lawn split=sunny speed=3 panic=on
+  end
+  actor sunny who=sunny kind=figure at=160,150 idle=still pose=hold_bundle
+  +0    fol FOL_stampede from=crowd:run
+  +0    cam crane dy=-40 over=60 ease=OUT
+  +60   cam to x=0 y=10 scale=1.15 over=90 ease=INOUT
+end
+
+# ============================================================== 2-04 (1050)
+shot a2_22 beat=e101_2_04 len=300 set=fun_fair:panic px=2 cut=CUT scene=a2_hatch
+  actor sunny who=sunny kind=bust at=160,100 expr=EXPR_NEUTRAL
+  prop egg art=gen:egg_towel(seed=1,state=slip) at=160,140
+  crowd blur gen=randomize seed=2022 n=12 kind=chibi age=adult lane=back dir=L speed=4
+  end
+  +0    sfx FOL_cloth_slip
+  +60   squash egg wobble over=300 every=6 ; fol FOL_tock every=6 until=+240
+  +90   pose sunny ears_up
+  +150  fx demon_bounce at=200,80 n=1 seed=22 ; sfx FX_POP_SMALL
+  +240  squash egg wobble every=3 ; fol FOL_tock every=3 until=end
+end
+
+shot a2_23 beat=e101_2_04 len=75 set=fun_fair:panic px=2 cut=CUT cue=riff_em@bar:1
+  actor sunny who=sunny kind=bust at=160,100
+  actor pet who=pet kind=sprite at=160,132 pose=hatch fps=15
+  +0    flash PAL_WHITE 8 3 ; sfx FX_HATCH_CRACK                 # 3 f max, reduced luminance
+  +0    mx riff_em mute 29 ; amb all off                         # sequencer keeps running
+  +21   say a2_04_pet_01 pet ; cc cc_a2_beep
+  +29   super s_a2_04_fine style=deadpan at=lower until=end ; mx its_fine start
+  +40   flinch crowd ripple=0..3
+  waive TIME-FLASH "3 f white at lvl 8 (reduced luminance), Harding-checked per beat sheet"
+end
+
+shot a2_24 beat=e101_2_04 len=45 set=bandstand:dark px=1 cut=CUT
+  actor bj who=bonejangles kind=figure at=160,118
+  +0    state bj possessed ; headturn bj 64 12 ; sfx FOL_bone_creak     # stiff, no squash
+  +25   say a2_04_bone_01 bj mouth=none
+  @a2_04_bone_01.start+R8 say a2_04_clink_01 bj mouth=none
+  @bar:+1  mx riff_em start ; amb AMB_stampede on
+end
+
+shot a2_25 beat=e101_2_04 len=240 set=fun_fair:panic px=2 cut=CUT
+  actor sunny who=sunny kind=bust at=150,104
+  actor pet who=pet kind=sprite at=150,140
+  +0    eyes sunny D over=4 ; eyes pet U over=4
+  +12   pose sunny ears_hood
+  +12   take still_hold sunny n=26                              # HOLD 26, no gag
+  +90   move pet to=150,110 over=8 tw=TW_HOP ; sfx FOL_plush_hop
+  +105  move pet to=150,62 over=8 tw=TW_HOP ; sfx FOL_plush_hop
+  +150  pose sunny scoop_shells ; sfx FOL_shell_clink gain=-24dB
+end
+
+shot a2_26 beat=e101_2_04 len=300 set=fun_fair:panic px=1 cut=CUT
+  actor sunny who=sunny kind=figure at=160,150 pet=on_head
+  crowd swarm who=puff_demon kind=sprite n=30 formation=ring r=36 center=sunny seed=2026
+  end
+  actor brave who=puff_demon kind=sprite at=230,150
+  +0    fol FOL_demon_squeak from=crowd:swarm gain=-6dB
+  +150  move brave to=190,150 over=80 tw=TW_LINEAR
+  +232  headturn pet 64 6
+  +250  move brave to=250,150 over=40 tw=TW_LINEAR               # backing away from a bee
+  +263  button ; squash brave 4 over=4 ; sfx FOL_poff             # into the hay bale
+end
+
+shot a2_27 beat=e101_2_04 len=90 set=fun_fair:panic px=1 cut=CUT
+  actor sunny who=sunny kind=figure at=120,150 face=R pet=on_head
+  actor fuzz  who=fuzz  kind=chibi at=270,140 face=L
+  actor bloom who=bloom kind=chibi at=290,140 face=L
+  +0    sfx FOL_stampede gain=-6dB
+  +20   face sunny L ; headturn sunny 32 6
+  +20   walk fuzz to=230 over=70 ; walk bloom to=256 over=70
+end
+
+# ============================================================== 2-05 (840)
+shot a2_28 beat=e101_2_05 len=105 set=bandstand:torn px=1 cut=CUT scene=a2_rite
+  actor fuzz  who=fuzz  kind=figure at=330,150 face=L pose=trot
+  actor bloom who=bloom kind=figure at=360,150 face=L
+  actor nana  who=nana  kind=figure at=60,150 face=R
+  actor pip   who=pip   kind=chibi  at=46,154 face=R            # behind Nana, out of reach
+  actor sunny who=sunny kind=figure at=110,152 face=R pet=on_head
+  crowd hugs gen=randomize seed=2028 n=10 kind=chibi age=adult formation=parted x=160..300
+  end
+  +0    fol FOL_trot ; mx riff_em start
+  +0    walk fuzz to=180 over=80 ; walk bloom to=200 over=100
+  +4    say a2_05_fuzz_03 fuzz
+  +30   take hug crowd:hugs.2 fuzz ; take hug crowd:hugs.5 fuzz
+  @a2_05_fuzz_03.end+R13  say a2_05_bloom_03 bloom
+  >+2   move crowd:hugs to=+0,-6 over=8 ripple=0..3               # parts further than it needs to
+end
+
+shot a2_29 beat=e101_2_05 len=240 set=bandstand_cu:steps px=2 cut=CUT
+  actor bloom who=bloom kind=bust at=120,100 pose=hold_wrist
+  actor bj    who=bonejangles kind=bust at=210,96 idle=still
+  +0    state bj possessed ; twitch bj on
+  +20   pose bloom finger_up ; mx riff_em duck -60dB 2              # the ribs stop mid-bar
+  +40   fol FOL_watch_tik every=15 until=+100
+  +100  eyes bj D over=8
+  +170  say a2_05_bloom_01 bloom
+  >+R8  say a2_05_bloom_02 bloom ; expr bloom EXPR_SMUG
+  >+20  pose bloom release ; mx riff_em duck 0dB 6
+end
+
+shot a2_30 beat=e101_2_05 len=60 set=bandstand:rite px=2 cut=CUT insert
+  cam at=-60,40 scale=2                                         # the rail
+  +0    sfx FOL_satchel
+  +5    show candle1 ; sfx FX_TINK ; shake SHK_TAP
+  +20   show candle2 ; sfx FX_TINK ; shake SHK_TAP
+  +35   show candle3 ; sfx FX_TINK ; shake SHK_TAP
+  +40   mx fuzz_hymn start gain=-18dB
+end
+
+shot a2_31 beat=e101_2_05 len=315 set=bandstand_cu:steps px=2 cut=CUT
+  actor fuzz who=fuzz kind=bust at=160,100 expr=EXPR_DETERMINED
+  tint TINT_CANDLE 6
+  +0    say a2_05_fuzz_01 fuzz
+  @a2_05_fuzz_01.w8       headturn fuzz -16 4                    # "Three tries." a nod per candle
+  >+15    headturn fuzz 0 4
+  >+15    headturn fuzz 16 4
+  +120  pose fuzz roll_sleeves ; sfx FOL_plush_rustle
+  +150  say a2_05_fuzz_02 fuzz
+end
+
+shot a2_32 beat=e101_2_05 len=120 set=bandstand:rite px=1 cut=CUT
+  actor bj   who=bonejangles kind=figure at=200,118 idle=still
+  actor fuzz who=fuzz kind=figure at=120,124 face=R
+  +0    state bj possessed ; amb AMB_night_still on
+  +13   button ; sfx MX_rib_note_1
+  +28   sfx MX_rib_note_2
+  +43   sfx MX_rib_note_3                                       # the musical yawn
+end
+
+# ============================================================== 2-06 (1200)
+shot a2_33 beat=e101_2_06 len=138 set=bandstand:rite px=1 cut=CUT
+  actor fuzz  who=fuzz  kind=figure at=140,124 face=R pose=arms_wide
+  actor bloom who=bloom kind=figure at=110,134 face=R
+  actor bj    who=bonejangles kind=figure at=210,118 idle=still
+  +0    state bj possessed ; sfx FOL_stance_thump ; take pop_big fuzz
+  +30   say a2_06_fuzz_01 fuzz ; mx riff_em duck -12dB 8
+end
+
+shot a2_34 beat=e101_2_06 len=42 set=bandstand_cu:north_night px=2 cut=CUT
+  actor bj who=bonejangles kind=bust at=160,100 idle=still
+  +0    state bj possessed ; amb AMB_night_still on
+  +13   say a2_06_bone_01 bj mouth=none size=tiny
+  @a2_06_bone_01.start+R8 say a2_06_clink_01 bj mouth=none
+end
+
+shot a2_35 beat=e101_2_06 len=30 set=bandstand_cu:steps px=2 cut=CUT
+  actor fuzz who=fuzz kind=bust at=160,100 expr=EXPR_HAPPY pose=arms_wide
+  +0    sfx FOL_plush_rustle gain=-30dB
+  +8    say a2_06_fuzz_03 fuzz
+end
+
+shot a2_36 beat=e101_2_06 len=465 set=bandstand:rite px=1 cut=CUT cue=riff_em@bar:1
+  actor fuzz who=fuzz kind=figure at=130,124 face=R pose=clap
+  actor bj   who=bonejangles kind=figure at=210,118 idle=still
+  +0    state bj possessed ; mx fuzz_hymn start ; mx riff_em start key=Em
+  +0    say a2_06_fuzz_02 fuzz                                  # sung; take is bar-mapped
+  @bar:1.2   pose fuzz clap ; sfx FOL_clap
+  @bar:2.1+2 label L_DRIFT2                                     # 2 f late
+  @bar:3.1+5 pose fuzz ears_back
+  @bar:4.1+8 pose fuzz ears_down ; mx fuzz_hymn key=minor
+  @bar:5.1   mx riff_em solo bars=1                             # the ribs show him how
+  +0    cam creep dx=4
+end
+
+shot a2_37 beat=e101_2_06 len=90 set=bandstand:rite px=2 cut=CUT insert
+  cam at=-60,40 scale=2
+  +0    sfx MX_KAZOO_1
+  +15   sfx MX_KAZOO_2
+  +30   sfx MX_KAZOO_3
+  +45   state candle1 flash ; sfx FOL_candle_out ; fx smoke_thread at=prop:candle1 n=1 seed=37
+  +48   state candle1 out                                       # local red flash, 3 f, reduced sat
+  +55   card fail text=s_a2_06_fail from_scale=2.0 ; shake SHK_STAMP ; mx fail_sting start
+end
+
+shot a2_38 beat=e101_2_06 len=45 set=bandstand:rite px=1 cut=CUT
+  cam at=-120,20
+  prop cloth art=gen:tablecloth(state=down) at=176,156
+  +0    amb AMB_night_still on
+  +13   button ; move cloth to=+0,+1 over=4 ; sfx FOL_cloth_tug
+end
+
+shot a2_39 beat=e101_2_06 len=210 set=bandstand_cu:steps px=2 cut=CUT
+  actor fuzz  who=fuzz  kind=bust at=150,100 expr=EXPR_SAD pose=paws_midclap
+  actor bloom who=bloom kind=bust at=290,104
+  +0    amb AMB_night_still on ; mx riff_em duck -24dB 1
+  +10   eyes fuzz D over=6
+  +40   twitch fuzz.paws on
+  +120  pose fuzz paws_pressed ; twitch fuzz.paws off
+  +140  eyes bloom L over=6
+  +150  take still_hold fuzz n=21
+end
+
+shot a2_40 beat=e101_2_06 len=180 set=bandstand:rite px=1 cut=CUT
+  actor bj who=bonejangles kind=figure at=200,118 idle=still
+  +0    state bj possessed ; mx riff_em duck 0dB 30                # the victory lap
+  +60   cam crane dy=60 over=120 ease=INOUT
+end
+
+# ============================================================== 2-07 (1200)
+shot a2_41 beat=e101_2_07 len=372 set=bandstand_cu:boards px=2 cut=MATCH:a2_40
+  actor bj who=bonejangles kind=figure at=220,40 idle=still
+  +0    state bj possessed ; mx riff_em stop ; amb AMB_night_still on
+  +0    pose bj hinge_fold                                     # one stiff hinge, +0..+30
+  +30   reveal s_a2_07_poem over=+30..+340 ease=LINEAR stop_at=char:66 ; fol FOL_chalk follow=s_a2_07_poem
+  +200  sfx FX_FAR_CLINK pan=R gain=-30dB ; cc cc_a2_clink
+  +360  freeze all n=13                                        # STILL 13: even the twitching
+end
+
+shot a2_42 beat=e101_2_07 len=75 set=bandstand_cu:boards px=2 cut=CUT
+  actor bj who=bonejangles kind=bust at=160,100 idle=still
+  +0    state bj possessed ; amb AMB_night_still on
+  +2    say a2_07_bone_01 bj mouth=none
+  @a2_07_bone_01.start+R8 say a2_07_clink_01 bj mouth=none
+  +10   mx ominous_fog start gain=-24dB
+end
+
+shot a2_43 beat=e101_2_07 len=63 set=bandstand:rite px=1 cut=CUT
+  cam at=-120,20
+  actor nana who=nana kind=figure at=150,150 face=R
+  actor pip  who=pip  kind=figure at=136,152 face=R pose=lean_out_flops
+  +0    sfx FOL_cloth_soft gain=-30dB ; pose pip lean_out
+  +8    say a2_07_pip_01 pip
+end
+
+shot a2_44 beat=e101_2_07 len=240 set=bandstand_cu:steps px=2 cut=CUT
+  actor nana who=nana kind=bust at=160,100 expr=EXPR_SAD
+  +0    sfx FOL_cloth_soft gain=-30dB
+  +15   say a2_07_nana_01 nana
+  @a2_07_nana_01.end+R8  expr nana EXPR_NEUTRAL ; say a2_07_nana_02 nana
+end
+
+shot a2_45 beat=e101_2_07 len=90 set=bandstand_cu:steps px=2 cut=CUT
+  actor fuzz who=fuzz kind=bust at=160,100 expr=EXPR_SURPRISED
+  +0    sfx FOL_plush_rustle gain=-30dB ; eyes fuzz L over=6
+  +14   expr fuzz EXPR_HAPPY
+  +20   say a2_07_fuzz_01 fuzz
+end
+
+shot a2_46 beat=e101_2_07 len=90 set=bandstand_cu:steps px=2 cut=CUT
+  actor nana who=nana kind=bust at=160,100 expr=EXPR_DETERMINED
+  +0    sfx FOL_cloth_soft gain=-30dB
+  +6    say a2_07_nana_03 nana
+end
+
+shot a2_47 beat=e101_2_07 len=90 set=bandstand:rite px=1 cut=CUT
+  cam at=-120,20
+  prop cloth art=gen:tablecloth(state=down) art.lift=gen:tablecloth(state=lift_eyes) at=176,156
+  +0    sfx FOL_cloth_soft gain=-30dB
+  +8    state cloth lift ; sfx FOL_cloth_tug
+  +20   say a2_07_mayor_01 mayor mouth=none
+end
+
+shot a2_48 beat=e101_2_07 len=18 set=bandstand:rite px=1 cut=CUT
+  crowd group gen=cast n=6 who=nana,pip,fuzz,bloom,sunny,random:2048 kind=chibi formation=row y=150
+  end
+  +0    mx riff_em start gain=-18dB ; face crowd:group R ripple=0..3 ; sfx FOL_turn_rustle
+end
+
+shot a2_49 beat=e101_2_07 len=162 set=fun_fair:panic px=1 cut=CUT
+  cam at=-200,0
+  +0    fol FOL_fog_bed ; cam to x=180 y=0 scale=1.25 over=162 ease=INOUT
+  +8    fx eye_pairs at=fair n=14 seed=49 every=R8                # blink on pair by pair; teacup inside stays dark
+  nobutton
+end
+
+# ============================================================== 2-08 (810)
+shot a2_50 beat=e101_2_08 len=90 set=bandstand:rite px=1 cut=CUT scene=a2_booth
+  actor sunny who=sunny kind=figure at=60,150 face=R pet=on_head
+  +0    sfx FOL_fog_bed gain=-6dB
+  +10   headturn sunny 32 6
+  +40   headturn sunny 16 6
+  +70   headturn sunny 32 6
+end
+
+shot a2_51 beat=e101_2_08 len=150 set=whack_an_imp:night px=1 cut=CUT
+  actor sunny who=sunny kind=figure at=-10,150 face=R pet=on_head
+  +0    walk sunny to=200 over=150 ; fol FOL_paw_steps follow=sunny ; cam pan dx=60
+  +40   pop imp1 TWT_POP_SMALL ripple=imp1..imp5:0..3
+  +60   state imp1 shut ; sfx FOL_clack
+  +62   state imp2 shut ; sfx FOL_clack
+  +64   state imp3 shut ; sfx FOL_clack
+  +66   state imp4 shut ; sfx FOL_clack
+  +68   state imp5 shut ; sfx FOL_clack
+  +100  state imp3 up ; squash imp3 1 over=2
+  +108  state imp3 shut ; sfx FOL_clack
+end
+
+shot a2_52 beat=e101_2_08 len=60 set=whack_an_imp:shut px=1 cut=CUT
+  cam at=100,0
+  +0    mx riff_em stop ; amb AMB_lamp_hum on
+end
+
+shot a2_53 beat=e101_2_08 len=210 set=whack_an_imp:shut px=2 cut=CUT
+  cam at=100,-20 scale=2
+  +0    cam to y=20 over=13 ease=INOUT ; amb AMB_lamp_hum on
+  +13   sign s_a2_08_tag_wand on=tag1
+  +58   cam pan dx=60 over=10 ; sign s_a2_08_tag_pump on=tag2
+  +142  cam to y=50 over=10 ease=INOUT ; sign s_a2_08_tag_saw on=tag3
+  note "tags hold 45 / 84 / 68 f (script: 1.5 / 2.8 / 2.7 s, rounded to the cut)"
+end
+
+shot a2_54 beat=e101_2_08 len=105 set=whack_an_imp:shut px=2 cut=CUT insert
+  cam at=100,-30 scale=2
+  sign s_a2_08_sign on=topsign
+  +0    mx rivet_sting start ; sfx FX_ANVIL
+  +90   mx rivet_sting stop
+end
+
+shot a2_55 beat=e101_2_08 len=195 set=whack_an_imp:shut px=2 cut=CUT
+  actor sunny who=sunny kind=bust at=140,100
+  actor pet   who=pet kind=sprite at=140,52
+  +0    amb AMB_lamp_hum on ; eyes sunny R over=4
+  +20   eyes sunny L over=4
+  +40   eyes sunny R over=4
+  +80   pose sunny paw_pull over=6
+  +86   pose sunny paw_press over=3
+  +89   squash sunny.paw flat over=4 ; sfx FOL_paw_tup
+  +93   pose sunny paw_settle over=8
+  +110  eyes pet D over=4
+  +125  say a2_08_pet_01 pet ; cc cc_a2_beep
+  ad "Sunny's paw on the glass of the prize case. On Sunny's head, the pet: beep."
+end
+
+# ============================================================== EC2 (300)
+shot a2_56 beat=e101_ec2_out len=150 set=eyecatch:ec2_out px=1 cut=CUT scene=a2_ec2
+  +0    sfx FX_GLASS_CRACK
+  +4    mx heehee_bell start
+  +10   mx theme_eyecatch_out start
+  +20   super s_ec2out_bubble style=deadpan at=160,40 until=end
+end
+
+shot a2_57 beat=e101_ec2_in len=150 set=eyecatch:ec2_in px=1 cut=CUT base=a2_56@+0
+  change shell2.occupant=puff_demon                             # the one change
+  crowd bg who=mascotty kind=chibi n=1 at=250,70 clock=none
+  end
+  +0    pal PAL_HELLIFY 8 over=4 ; sfx FX_HELLIFY_WHUM          # 4 f, reduced luminance
+  +20   sfx FX_PIEZO_BEEP_LOW ; cc cc_a2_lowbeep
+  +30   mx riff_em start
+  +110  mx its_fine start
+end

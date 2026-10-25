@@ -1,0 +1,129 @@
+# show/series/sets/fair.shw - the Midsummer Giggle (Hellvile Park, north half): a pastel fun
+# fair under lantern strings. Figure scale: feet on the fairground at show y ~150-170; a
+# stall-holder behind a counter shows from the counter top (show y 118) up.
+# Every stall shares the fair's far plane and ground; signs are blank boards whose words are
+# strings (show/ep101/strings.shw) drawn by the player in the sign's text box.
+
+set hook_a_duck kind=2d px=1 matte=open look=pixel desc="1-04 (dusk): Steamy's Hook-a-Duck; one duck faces the Wall"
+  plane sky    bands=sky:dusk par=0
+  plane far    image=gen:fair_far(seed=200,w=480) size=480x240 par=0.5
+  plane ground image=gen:fair_ground(seed=201,w=352) size=352x240 par=1.0
+  plane stall  image=gen:stall_hook_a_duck(seed=210) size=352x240 par=1.0
+  plane near   image=gen:fair_lanterns(seed=202,w=400) size=400x240 par=1.2
+  prop  sign   art=gen:sign(w=96,h=18,face=pink,frame=white,seed=4) plane=stall at=160,4 anchor=top text=4,4,90,12
+  prop  duck1  art=gen:duck(face=front,seed=1) plane=stall at=104,100 anchor=bottom
+  prop  duck2  art=gen:duck(face=front,seed=2) plane=stall at=128,98 anchor=bottom
+  prop  duck3  art=gen:duck(face=front,seed=3) plane=stall at=152,101 anchor=bottom
+  prop  duck4  art=gen:duck(face=front,seed=4) plane=stall at=178,99 anchor=bottom
+  prop  duck5  art=gen:duck(face=wall,seed=5) art.front=gen:duck(face=front,seed=5) plane=stall at=206,100 anchor=bottom
+  prop  duck6  art=gen:duck(face=front,seed=6) plane=stall at=230,98 anchor=bottom
+  mark  counter_y 118
+  variant dusk  light=dusk  bands.sky=sky:dusk  desc="1-04"
+  variant night light=night bands.sky=sky:night desc="3-01 (Steamy hides in the duck pool)"
+end
+
+set face_painting kind=2d px=1 matte=open look=pixel desc="1-05 (dusk): Kevin's face painting; ANY FACE (within reason)"
+  plane sky    bands=sky:dusk par=0
+  plane far    image=gen:fair_far(seed=203,w=480) size=480x240 par=0.5
+  plane ground image=gen:fair_ground(seed=204,w=352) size=352x240 par=1.0
+  plane stall  image=gen:stall_face_painting(seed=220) size=352x240 par=1.0
+  plane near   image=gen:fair_lanterns(seed=205,w=400) size=400x240 par=1.2
+  prop  sign   art=gen:sign(w=110,h=18,face=lemon,frame=white,seed=5) plane=stall at=160,2 anchor=top text=4,4,104,12
+  mark  counter_y 118
+  variant dusk  light=dusk  bands.sky=sky:dusk  desc="1-05"
+end
+
+set hattie_tent kind=2d px=1 matte=open look=pixel desc="1-06 (dusk): inside Hattie Haha's tent: the crate stage, the mic, the benches"
+  plane stall  image=gen:stall_hattie_tent(seed=230) size=352x240 par=1.0
+  prop  sign   art=gen:sign(w=120,h=18,face=cream,frame=pink,seed=6) plane=stall at=160,8 anchor=top text=4,4,114,12
+  mark  stage_y 124
+  variant dusk  light=day desc="1-06: lit inside (the tent's own lights)"
+end
+
+set lulla_tent kind=2d px=1 matte=open look=pixel desc="1-07 (dusk): Miss Lulla's craft tent: eleven drawings of the same crowned purple cloud; the flap opens on the Wall"
+  plane sky    bands=sky:dusk par=0
+  plane far    image=gen:fair_far(seed=206,w=480) size=480x240 par=0.4
+  plane tent   image=gen:lulla_tent(seed=240,drawings=11) size=480x240 par=1.0
+  prop  vapesign art=gen:sign(w=34,h=14,face=lavender,frame=steel,seed=7) art.flicker=gen:sign(w=34,h=14,face=chalk,frame=steel,seed=7) plane=tent at=254,74 anchor=center text=3,3,28,8
+  frame start at=-64,0                 # the drawings pan at constant speed
+  frame flap  at=64,0                  # through the flap: the sign by the Wall, Mascotty outside
+  variant dusk light=dusk bands.sky=sky:dusk light.tent=day desc="1-07 (inside lit; outside at dusk)"
+end
+
+set bake_tent kind=2d px=1 matte=open look=pixel desc="1-09 (night): the bake tent; Nana's stall has two of everything; 3-02 the Big Puff perches on it"
+  plane sky    bands=sky:night par=0
+  plane stars  tile=gen:sky_stars(seed=9) size=128x80 par=0.02
+  plane far    image=gen:fair_far(seed=207,w=480) size=480x240 par=0.5
+  plane ground image=gen:fair_ground(seed=251,w=352,path=0) size=352x240 par=1.0
+  plane tent   image=gen:bake_tent(seed=250) size=352x240 par=1.0
+  prop  sign   art=gen:sign(w=90,h=18,face=cream,frame=pink,seed=8) plane=tent at=160,-4 anchor=top text=4,4,84,12
+  prop  pie1   art=gen:pie(card=1,seed=1) plane=tent at=136,118 anchor=bottom text=21,15,6,4
+  prop  pie2   art=gen:pie(card=1,seed=2) plane=tent at=166,118 anchor=bottom text=21,15,6,4
+  prop  muf1   art=gen:muffin(seed=1) plane=tent at=196,118 anchor=bottom
+  prop  muf2   art=gen:muffin(seed=2) plane=tent at=206,118 anchor=bottom
+  prop  muf3   art=gen:muffin(seed=3) plane=tent at=216,118 anchor=bottom
+  prop  muf4   art=gen:muffin(seed=4) plane=tent at=201,110 anchor=bottom
+  prop  muf5   art=gen:muffin(seed=5) plane=tent at=211,110 anchor=bottom
+  prop  muf6   art=gen:muffin(seed=6) plane=tent at=226,118 anchor=bottom
+  prop  muf7   art=gen:muffin(seed=7) plane=tent at=221,110 anchor=bottom
+  prop  muf8   art=gen:muffin(seed=8) plane=tent at=206,102 anchor=bottom
+  prop  muf9   art=gen:muffin(seed=9) plane=tent at=216,102 anchor=bottom
+  prop  muf10  art=gen:muffin(seed=10) plane=tent at=236,118 anchor=bottom
+  prop  muf11  art=gen:muffin(seed=11) plane=tent at=231,110 anchor=bottom
+  prop  muf12  art=gen:muffin(seed=12) plane=tent at=226,102 anchor=bottom
+  mark  counter_y 118
+  variant night light=night bands.sky=sky:night light.tent=dusk desc="1-09: the tent glows warm inside"
+  variant dark  light=dark  bands.sky=sky:dark desc="3-02: the Big Puff on the roof, the fair's lanterns out"
+end
+
+set fun_fair kind=2d px=1 matte=open look=pixel desc="1-10, 1-11, 2-03, 2-04, 3-01: the midway: teacups, the Absolutely Not Scary House, the low lantern string"
+  plane sky    bands=sky:night par=0
+  plane stars  tile=gen:sky_stars(seed=10) size=128x80 par=0.02
+  plane far    image=gen:fair_far(seed=208,w=480) size=480x240 par=0.5
+  plane fair   image=gen:fun_fair(seed=260,w=640) size=640x240 par=1.0
+  plane near   image=gen:fair_lanterns(seed=209,w=480) size=480x240 par=1.2
+  prop  housesign art=gen:sign(w=100,h=16,face=white,frame=pink,seed=9) plane=fair at=310,44 anchor=center text=4,3,92,10
+  prop  lp1  art=gen:lantern(color=lemon) art.out=gen:lantern(color=lemon,state=out) plane=fair at=152,69 anchor=top
+  prop  lp2  art=gen:lantern(color=pink) art.out=gen:lantern(color=pink,state=out) plane=fair at=196,78 anchor=top
+  prop  lostlantern art=gen:lost_property_lantern(state=lit) plane=fair at=174,79 anchor=top hidden=yes
+  prop  pipcrate art=gen:crate(seed=3) plane=fair at=168,160 anchor=bottom        # Pip stands on it (1-10)
+  prop  lp4  art=gen:lantern(color=mint) art.out=gen:lantern(color=mint,state=out) plane=fair at=218,68 anchor=top
+  frame lantern  at=-40,0              # 1-10: the low lantern string (Pip hangs the "1")
+  frame edge     at=-150,0             # 1-11: the edge of the crowd (the teacups behind)
+  frame teacups  at=-150,0             # 2-03: the teacups (truth insert wide)
+  frame house    at=150,0              # 2-03: the cardboard ghosts turn to face the Wall
+  variant night  light=night bands.sky=sky:night show=stars desc="1-10, 1-11"
+  variant lost   light=night bands.sky=sky:night show=stars,lostlantern desc="1-10 +: the LOST PROPERTY lantern with Sunny's 1"
+  variant panic  light=dark  bands.sky=sky:vape show=stars desc="2-03, 2-04: the lanterns out, the stampede"
+  variant cute   light=dusk  bands.sky=sky:dusk desc="3-01: cute mode (the filter at full strength)"
+end
+
+set whack_an_imp kind=2d px=1 matte=open look=pixel desc="2-08 (night): the Whack-an-Imp booth and Rivet's welded prize case"
+  plane sky    bands=sky:night par=0
+  plane far    image=gen:fair_far(seed=211,w=480) size=480x240 par=0.5
+  plane ground image=gen:fair_ground(seed=212,w=352) size=352x240 par=1.0
+  plane stall  image=gen:whack_booth(seed=270) size=352x240 par=1.0
+  prop  imp1 art=gen:plastic_imp(state=up) art.shut=gen:plastic_imp(state=shut) plane=stall at=28,117 anchor=bottom
+  prop  imp2 art=gen:plastic_imp(state=up) art.shut=gen:plastic_imp(state=shut) plane=stall at=58,117 anchor=bottom
+  prop  imp3 art=gen:plastic_imp(state=up) art.shut=gen:plastic_imp(state=shut) plane=stall at=88,117 anchor=bottom
+  prop  imp4 art=gen:plastic_imp(state=up) art.shut=gen:plastic_imp(state=shut) plane=stall at=118,117 anchor=bottom
+  prop  imp5 art=gen:plastic_imp(state=up) art.shut=gen:plastic_imp(state=shut) plane=stall at=148,117 anchor=bottom
+  prop  wand art=gen:prize(kind=wand) plane=stall at=224,72 anchor=center
+  prop  pump art=gen:prize(kind=pump) plane=stall at=284,68 anchor=center
+  prop  saw  art=gen:prize(kind=saw) plane=stall at=284,98 anchor=center
+  prop  tag1 art=gen:name_tag(w=30,h=9) plane=stall at=224,96 anchor=center text=3,1,26,7
+  prop  tag2 art=gen:name_tag(w=34,h=9) plane=stall at=284,83 anchor=center text=3,1,30,7
+  prop  tag3 art=gen:name_tag(w=38,h=9) plane=stall at=284,113 anchor=center text=3,1,34,7
+  prop  topsign art=gen:sign(w=96,h=16,face=cream,frame=steel,seed=10) plane=stall at=260,38 anchor=center text=3,3,90,10
+  variant night light=night bands.sky=sky:night light.stall=dusk desc="2-08 (the booth's own light)"
+  variant shut  light=night bands.sky=sky:night light.stall=dusk state=imp1:shut,imp2:shut,imp3:shut,imp4:shut,imp5:shut desc="2-08: the imps pull their lids shut"
+end
+
+set giggle_wide kind=2d px=1 matte=open look=pixel desc="1-13 (21:00): the whole Giggle looks up at an empty sky; the town clock strikes nine"
+  plane sky    bands=sky:night par=0
+  plane stars  tile=gen:sky_stars(seed=11) size=128x80 par=0.05
+  plane fair   image=gen:giggle_wide(seed=280,w=400) size=400x240 par=1.0
+  variant night light=night bands.sky=sky:night desc="1-13"
+  variant dusk  light=dusk bands.sky=sky:dusk hide=stars desc="1-04..1-07 establishing"
+  variant lean  light=night bands.sky=sky:vape desc="1-13 after the insert: the VAPE ramp floods in from the south"
+end

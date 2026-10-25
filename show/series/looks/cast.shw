@@ -49,11 +49,12 @@ end
 
 # PIP (they, a child, KID): JUNIOR FESTIVAL PATROL.  The patrol sash is the
 # hi-vis tangerine overall bib and a matching patrol cap (the catalogue has no
-# sash); Mr. Flops is the plush under one arm, ACC_TEDDY in white (the only
-# hugged-plush part; a floppy-eared Mr. Flops flipbook is deferred).
-look pip base=roster:42 age=child tags=KID note="patrol cap + hi-vis bib; Mr. Flops = ACC_TEDDY"
+# sash). ART review: Mr. Flops is a toy BUNNY with one floppy ear (script cast list), and
+# ACC_TEDDY draws a bear, so Pip carries no accessory part; Mr. Flops is the prop
+# gen:mr_flops in Pip's paws (show/art/gen/props.py).
+look pip base=roster:42 age=child tags=KID note="patrol cap + hi-vis bib; Mr. Flops = prop gen:mr_flops"
   top_color=PAINT_TANGERINE hat=HAT_CAP hat_color=PAINT_TANGERINE
-  accessory=ACC_TEDDY accessory_color=PAINT_WHITE mouth_size=12
+  accessory=ACC_NONE accessory_color=PAINT_WHITE mouth_size=12
 end
 
 # FATHER FUZZ: the roster record (plushie bear priest, rosary).
