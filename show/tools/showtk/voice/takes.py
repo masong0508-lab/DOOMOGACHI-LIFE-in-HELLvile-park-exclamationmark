@@ -291,15 +291,27 @@ TAKE_RE = re.compile(r"^(?P<id>[a-z][a-z0-9_]*?)_(?P<kind>take|t|s)(?P<n>\d+)\.(
 def vo_files(ep_dir):
     """{line_id: {'rec': {n: path}, 'scratch': {n: path}}} from <ep>/vo/."""
     out = {}
-    d = os.path.join(ep_dir, "vo")
-    if not os.path.isdir(d):
-        return out
-    for f in sorted(os.listdir(d)):
-        m = TAKE_RE.match(f)
-        if not m:
+    dirs = [os.path.join(ep_dir, "vo")]
+    # docs/show/ep101/RECORDING_GUIDE.md §5: show/lib/takes/<voice>/e101/<id>_t<n>.wav
+    epn = "e" + os.path.basename(os.path.normpath(ep_dir)).lstrip("ep")
+    lib = os.path.join(env.SHOW, "lib", "takes")
+    if os.path.isdir(lib):
+        for v in sorted(os.listdir(lib)):
+            dirs.append(os.path.join(lib, v, epn))
+    for d in dirs:
+        if not os.path.isdir(d):
             continue
-        kind = "scratch" if m.group("kind").lower() == "s" else "rec"
-        out.setdefault(m.group("id"), {}).setdefault(kind, {})[int(m.group("n"))] = os.path.join(d, f)
+        for f in sorted(os.listdir(d)):
+            m = TAKE_RE.match(f)
+            if not m:
+                continue
+            kind = "scratch" if m.group("kind").lower() == "s" else "rec"
+            slot = out.setdefault(m.group("id"), {}).setdefault(kind, {})
+            n = int(m.group("n"))
+            p = os.path.join(d, f)
+            # the raw .wav beats the guide's ingested .flac beside it (we finish it ourselves)
+            if n not in slot or not p.lower().endswith(".flac"):
+                slot[n] = p
     return out
 
 

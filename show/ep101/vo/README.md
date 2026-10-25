@@ -1,5 +1,7 @@
 # show/ep101/vo/: drop your own recordings here
 
+The RECORDING_GUIDE.md folders work too: `show/lib/takes/<voice>/e101/<line id>_t<n>.wav`.
+
 Any line can be your voice instead of the temp TTS, one line at a time (spec §5.6, §10.2).
 
 1. Record the line (WAV, 48 kHz, 24-bit, mono is best; any rate works) and name it by its

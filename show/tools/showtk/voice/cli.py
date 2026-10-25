@@ -12,6 +12,7 @@
   show voice lib make <name> | lib ingest <wav> <name>             library takes
   show voice import-lines <ep> <script.md ...>                     lines.shw from the script drafts
   show voice g2p "<text>"                                          the phonemes Kokoro will get
+  show voice sync-csv <ep> [--check]                               lines.shw <- docs/show/<ep>/lines.csv
   show voice strip <ep> <line ...> --out x.png                     waveform + spectrogram + mouth + closures
 """
 from __future__ import annotations
@@ -19,7 +20,7 @@ from __future__ import annotations
 import argparse
 import sys
 
-SUBS = {"strip", "audition", "casting", "ingest", "verify", "report", "lint", "mouth", "bed", "lib", "import-lines", "g2p"}
+SUBS = {"strip", "audition", "casting", "ingest", "verify", "report", "lint", "mouth", "bed", "lib", "import-lines", "sync-csv", "g2p"}
 
 
 def register(subparsers):
@@ -164,6 +165,16 @@ def _import_lines(argv):
     from . import importer
     p, n, b = importer.import_lines(a.ep, a.sources)
     print(f"{p}: {n} lines, {b} walla beds")
+    return 0
+
+
+def _sync_csv(argv):
+    ap = argparse.ArgumentParser(prog="show voice sync-csv")
+    ap.add_argument("ep")
+    ap.add_argument("--check", action="store_true")
+    a = ap.parse_args(argv)
+    from . import csvsync
+    csvsync.sync(a.ep, check=a.check)
     return 0
 
 

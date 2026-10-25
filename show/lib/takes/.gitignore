@@ -1,0 +1,6 @@
+# recordings (RECORDING_GUIDE.md §5) go to the vault, never git; only index.json is committed
+*.wav
+*.flac
+*.aif
+*.aiff
+*.ogg

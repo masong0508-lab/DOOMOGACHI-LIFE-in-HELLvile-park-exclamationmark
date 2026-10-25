@@ -66,7 +66,7 @@
       "dur": 21840,
       "frames": 14,
       "mouth_from": -1,
-      "mouth": "CCCEEEEEEEEEEEXXXXX",
+      "mouth": "CCCAAAAAAEEEEEXXXXX",
       "words": [["Stay", 360, 21840]],
       "phones": [["s", 360, 2760], ["t", 2760, 5160], ["A", 5160, 21840]],
       "align": "tts",

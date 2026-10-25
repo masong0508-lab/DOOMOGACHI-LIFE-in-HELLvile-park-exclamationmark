@@ -122,7 +122,11 @@ Each names the default taken and where to change it.
 - **Recordings**: drop folder `show/ep101/vo/<line_id>_take<n>.wav` (also `_t<n>`; scratch
   reads `_s<n>`), gitignored; `takes.toml` `fav = <n>` picks one; with no pick the **highest take
   number wins** (the last read is usually the keeper). A recording beats TTS with no edit.
-  `docs/show/ep101/RECORDING_GUIDE.md` was not published yet; BREAKDOWN §2.4's naming is accepted too.
+  The published `docs/show/ep101/RECORDING_GUIDE.md` §5 folder `show/lib/takes/<voice>/e101/<id>_t<n>.wav`
+  is read too (same numbering, gitignored); its `take = "rec:<path>"` picks work as written.
+- **lines.shw follows the published lines.csv** (`show voice sync-csv ep101`): 55 lines added, 3
+  re-worded, the 2 cut lines (a2_07_fuzz_02, a2_07_nana_04) dropped; pet beeps, hums and the purr
+  keep their library takes; w_giggle_09's claps are foley (pending on WP10's SFX).
 - **Casting** (CASTING.md in the scratchpad's `show_out/voices/`): option 1 of each role is the
   spec §10.3 pick, with pitch moved where the measured native pitch missed the voice bible's
   register: Mayor +3 st (not +2: 136 Hz reads "upper-middle"), Bonejangles **bm_lewis** (not

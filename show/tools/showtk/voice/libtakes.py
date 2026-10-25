@@ -30,6 +30,7 @@ INDEX = os.path.join(env.SHOW, "lib", "takes", "index.json")
 
 PENDING = {
     "pet/beep_v1": "SFX, not a voice: the game's raw piezo from WP10's sfx library (process=none)",
+    "walla/claps_v1": "foley, not a voice: the crowd's claps on 2 and 4 (w_giggle_09), WP10's sfx library",
 }
 
 

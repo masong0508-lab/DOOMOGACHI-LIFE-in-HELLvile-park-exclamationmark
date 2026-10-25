@@ -1,7 +1,7 @@
 """Mouth tracks: one viseme character per frame (spec §9.3).
 
 Visemes: X rest, M closed (m b p), C slightly open (consonants, teeth), E open (e, i,
-schwa), A wide (a, ai, ae, uh), O round, U pucker (u, w), F teeth on lip (f, v).
+schwa), A wide (a, ai, ae, uh, the onset of ay), O round, U pucker (u, w), F teeth on lip (f, v).
 
 Track contract (voice.lock): character i is shown on frame say + mouth_from + i, where the
 `say` frame is the frame whose first sample is the take's onset and mouth_from = -lead
@@ -32,7 +32,7 @@ for _c in "aɑæɐʌ":
     VIS[_c] = "A"
 for _c in "eɛəɚɜᵊɪiᵻɨ":
     VIS[_c] = "E"
-DIPH = {"A": ("E", "E"), "I": ("A", "E"), "O": ("O", "U"), "W": ("A", "U"), "Y": ("O", "E")}
+DIPH = {"A": ("A", "E"), "I": ("A", "E"), "O": ("O", "U"), "W": ("A", "U"), "Y": ("O", "E")}
 MARKS = set("ˈˌːʰʲ")
 SILENT = set("^$ ,.!?;:—…\"()“”")
 BILABIAL = set("pbm")
