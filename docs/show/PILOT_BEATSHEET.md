@@ -6,7 +6,7 @@
 | **Runtime** | **22:00 exactly** (1320 s, 39,600 frames at 30 fps nominal), including the cold open, the 0:50 main title, three eyecatch pairs, the tag, the end credits and the post-credits button. Every timecode below is computed from the beat lengths; the runtime proof is at the end. |
 | **Shape** | Cold open, main title, four acts with an eyecatch pair at each break, tag, end credits, post-credits button |
 | **Story clock** | 18:00 to midnight on Midsummer night. Act cards are the Mayor's festival clipboard; eyecatch cards carry the town clock |
-| **Rating** | Submitted TV-PG (V). Series ceiling TV-PG (D, V), never exceeded |
+| **Rating** | Submitted **TV-MA (V)** for graphic fantasy violence (the gore is on demons and monsters). Series TV-MA (L, S, V) from 102; 18+ elsewhere, 16+ where a territory's scale allows. Not made for kids. The four hard limits (`SERIES_OVERVIEW.md` §2) bind every beat: there is no suggestive material anywhere in the pilot, and the filter is on in every frame with a child in it |
 | **Picture** | 384x216 native pixel canvas (the baseline; the W3 look-dev test confirms it against 480x270), scaled x5 nearest-neighbour to 1080p (x10 to UHD); 29.97 fps, with frame math at 30 nominal so the comic-timing ladder carries over from the game unchanged. The master frame rate is open decision D1 (`PILOT_ROADMAP.md`); every count in this sheet is at 30, and `GAG_BIBLE.md` Appendix A converts any of them to 24 |
 | **Timing source** | This sheet is the single source of timing for Episode 101. Where another document gives a different TC or length, this sheet wins |
 | **Companion docs** | `PILOT_ROADMAP.md` (front door), `PILOT_TREATMENT.md` (story, cast, locations), `PILOT_COLD_OPEN.md` (script), `COLD_OPEN_SHOTLIST.md` (board), `PRODUCTION_ROADMAP.md` (schedule and budget), `SERIES_OVERVIEW.md` (season), `GAG_BIBLE.md` (gag and standards rules) |
@@ -17,8 +17,9 @@
 * **The ladder** (`comic_timing.md`): R2 blink (2 f), R3 react, R5 beat, **R8 take (267 ms)**, R13 hold, R21 pause, R26 deadpan.
 * `{d}` **deadpan**: the line just appears, with no type-on, no bounce, no music. `{w}` is wobble text. `{..}` is a 13-f pause inside a line.
 * **FREEZE**: that character's idle clock stops. **STILL**: every idle clock in frame stops. **HOLD n**: the shot holds n frames. **MUTE n**: the score is out for n frames while the sequencer keeps time, so the music re-enters on the grid.
-* **INSERT** is a whiplash insert. It always runs **4 frames** (the Standards minimum), owns the audio for its length, and cuts back to the same shot with exactly one persistent change.
-* **Elastic beats** for territorial cuts: 1-01 (+/-5 s, absorbs the main title conform), the Giggle crawl 1-04 to 1-07 (the first cut, up to 20 s, since all four stall-holders return in Eps 103-104), 3-01 the cute run (+/-20 s) and the bite test in 1-09 (up to 10 s). The most the elastic beats can give is 55 s; Appendix G shows the version cuts that use them.
+* **INSERT** is a whiplash insert. It always runs **4 frames** (the broadcast minimum, subliminal-image rules), owns the audio for its length, and cuts back to the same shot with exactly one persistent change.
+* **TRUTH INSERT** is a whiplash insert of a filtered moment as it really is (`GAG_BIBLE.md` §4.16): HaHaland's filter shows confetti, the truth shows the gore, and the gag is the switch. 4 frames, owns the audio, returns with one persistent change, never in a frame with a child. The pilot has three (2-03, and two in 3-01).
+* **Elastic beats** for territorial cuts: 1-01 (+/-5 s, absorbs the main title conform), the Giggle crawl 1-04 to 1-07 (the first cut, up to 20 s, since all four stall-holders return in Eps 103-104), 3-01 the cute run (+/-20 s; its two truth inserts sit in waves 1-2 and are never trimmed) and the bite test in 1-09 (up to 10 s). The most the elastic beats can give is 55 s; Appendix G shows the version cuts that use them.
 * **Protected holds** (never trimmed, never undercut): 3-04 Fuzz on the steps, 4-03 "...Seven." and 4-08 the firework.
 * **Episode numbers.** Three-digit numbers (102, 107) are TV episodes. "Ep 2.6" style numbers are the game's chapter episodes, which the show adapts (game Ep 2.6 becomes TV 108).
 
@@ -37,7 +38,7 @@
 | ACT FOUR, "23:00 ________" | 16:50 | 20:45 | 3:55 | The answering firework; the hum one note further. NO BUTTON |
 | TAG, "Morning" | 20:45 | 21:20 | 0:35 | "...He's teething." |
 | END CREDITS | 21:20 | 21:50 | 0:30 | The music-box hook, unresolved |
-| POST-CREDITS BUTTON | 21:50 | 22:00 | 0:10 | GURGLE: "...needs salt." / Dippinn card: "gurgle." |
+| POST-CREDITS BUTTON | 21:50 | 22:00 | 0:10 | GURGLE: "...needs salt."; his purr / Dippinn card: "gurgle." |
 | **Total** | **00:00** | **22:00** | **22:00** | |
 
 ---
@@ -96,9 +97,9 @@ Crayon storybook, then a match cut to pixel art. No narrator: captions are in a 
 
 | | |
 |---|---|
-| **What happens** | MATCH CUT to pixel art on the same frame: the real banner at dawn, GIGGLE in wet pink paint. Mayor Giggs is up a ladder with a roller, humming the Mingle. He stops on the same note. MAYOR: "...Hee. Hee." The fountain giggles back, late. The wet N of MINGLE blooms back through the pink; he rolls it out three times and it blooms back three times, bigger each time. Topper: he ties a cupcake balloon over it and pats it. MAYOR: "Perfect." He glances south at the boarded half and the Wall. FREEZE; his wings stop. INSERT (crayon): the small empty hand, the string sliding off. Back to the same shot with one change: the balloon has turned to face the Wall. He turns it back and gives it a firm pat. MAYOR: "Stay." He climbs down, briskly. |
+| **What happens** | MATCH CUT to pixel art on the same frame: the real banner at dawn, GIGGLE in wet pink paint. Mayor Giggs is up a ladder with a roller, humming the Mingle. He stops on the same note. MAYOR: "...Hee. Hee." The fountain giggles back, late. The wet N of MINGLE blooms back through the pink; he rolls it out three times and it blooms back three times, bigger each time, and the third bleeds red, with a red drip (paint: the series' first red, `PILOT_ROADMAP.md` D16). Topper: he ties a cupcake balloon over it and pats it. MAYOR: "Perfect." He glances south at the boarded half and the Wall. FREEZE; his wings stop. INSERT (crayon): the small empty hand, the string sliding off. Back to the same shot with one change: the balloon has turned to face the Wall. He turns it back and gives it a firm pat. MAYOR: "Stay." He climbs down, briskly. |
 | **Joke / scare** | The rule of three on the bleeding N, and the balloon turning (the first wrongness). "Stay." is the button: he talks to it like a pet. |
-| **Timing** | The hum takes over from the music box at its exact pitch on frame 0. Stop + R8. The fountain giggles 8 f (267 ms) after his line. Rule of three: roll and bloom alternate at 15/16 f; three roller squeaks, each lower; the third bloom adds a drip; topper R13 later (TINK). FREEZE 13 into the 4-f INSERT, which owns the audio; a rubber creak 2 f after the cut back; his eyes slide at R8; he turns it back at R13; "Stay." 17 f after. |
+| **Timing** | The hum takes over from the music box at its exact pitch on frame 0. Stop + R8. The fountain giggles 8 f (267 ms) after his line. Rule of three: roll and bloom alternate at 15/16 f; three roller squeaks, each lower; the third bloom adds a red drip (CANDY's deepest red, not BLOOD: the truth's ramp stays out of the cold open, which has children in it); topper R13 later (TINK). FREEZE 13 into the 4-f INSERT, which owns the audio; a rubber creak 2 f after the cut back; his eyes slide at R8; he turns it back at R13; "Stay." 17 f after. |
 | **Music / SFX** | MINGLE hummed, dry and close. HEE_HEE as speech. Fountain giggle. Three descending roller squeaks. TINK. PLUCK (insert). Balloon creak and squeak. Ladder clacks in threes. |
 | **Build / reuse** | Shots 12-18. Mayor preset must be a cherub (the trailer's TK_MAYOR is a sheep). |
 
@@ -136,7 +137,7 @@ A locked 0:50 block, boarded by song section and conformed to the master in `doc
 
 | | |
 |---|---|
-| **What happens** | The cast pops in on the beat, each with a CUTE-skin name plate: Sunny and the suitcase, the pet, Mayor Giggs, Nana, Pip with Mr. Flops, Father Fuzz, Dr. Bloom, Steamy, Hattie, Grampy, Bonejangles at his ribs, and Rivet (welding mask and sparks only). |
+| **What happens** | The cast pops in on the beat, each with a CUTE-skin name plate: Sunny and the suitcase, the pet, Mayor Giggs, Nana, Pip with Mr. Flops, Father Fuzz, Dr. Bloom, Steamy, Hattie, Grampy, Bonejangles at his ribs, and Rivet (welding mask and sparks only). Pilot variant: Grumbleguts does not pop in (from 102 he enters rear first with a record scratch, the only cast member who enters backwards, in a verse shot of his own with no child in it). |
 | **Joke / scare** | Mascotty never pops in. She is in every verse shot, perfectly still. |
 | **Timing** | POP entrances 4-6 f with overshoot (0.4x to 1.2x), one per beat. |
 | **Music / SFX** | Verse. |
@@ -158,7 +159,7 @@ A locked 0:50 block, boarded by song section and conformed to the master in `doc
 
 | | |
 |---|---|
-| **What happens** | The song's drop is the record scratch. The camera stops on the gate: seven padlocks, KEEP OUT. FOREVER. |
+| **What happens** | The song's drop is the record scratch. The camera stops on the gate: seven padlocks, KEEP OUT. FOREVER., and a small barred grille, its shutter shut (the plant for 102). |
 | **Joke / scare** | Brakes on the fun. |
 | **Timing** | Tape-stop into 14 f of near-silence, then the drop. |
 | **Music / SFX** | The song's own drop (the demo's "Hell slide" bar, or its equivalent in the master). |
@@ -168,9 +169,9 @@ A locked 0:50 block, boarded by song section and conformed to the master in `doc
 
 | | |
 |---|---|
-| **What happens** | On the lift, hellify rots the verse shots pixel by pixel. The first-person corridor flips from cute to brutal on the downbeat (confetti only). Three candles go out in rhythm. Behind the gate, one round silhouette bounces once. |
-| **Joke / scare** | The DOOM half arrives as a promise, inside the opening. The bounce is Grumbleguts' only appearance before his debut, and it is a silhouette with no detail. |
-| **Timing** | Hellify 0 to 16 over 21 f. Candles out on beats 1, 3 and 5. One BOING on the last bar. |
+| **What happens** | On the lift, hellify rots the verse shots pixel by pixel. The first-person corridor flips from the filter to the truth on the downbeat, on the chorus's sweetest line: a Puff Demon bursts into red mist and gibs across the lens while the vocal keeps smiling. Three candles go out in rhythm. Behind the shut grille, a big round rear silhouette presses against the gate and bounces once: BOING; the padlocks jump. |
+| **Joke / scare** | The DOOM half arrives as a promise, and the cute song over it is part of the joke: the theme stays sugary and the picture does the brutality. The silhouette is Grumbleguts' only appearance in the pilot: no detail, no face. He debuts in 102. |
+| **Timing** | Hellify 0 to 16 over 21 f. The burst on the downbeat, its gibs sliding off the lens on twos by the next bar. Candles out on beats 1, 3 and 5. One BOING on the last bar, the padlocks jumping 2 f after it. Red local to the burst (Harding). No child in the corridor shot. |
 | **Music / SFX** | Chorus. |
 | **Build / reuse** | Trailer s10 (raycaster, cute/brutal), s11 (candles). |
 
@@ -179,11 +180,11 @@ A locked 0:50 block, boarded by song section and conformed to the master in `doc
 
 | | |
 |---|---|
-| **What happens** | The frame splits at the Wall; the pastel and Hellvile halves meet on the logo. The "nothing to see here! ♥" sticker slaps over the red drip. |
-| **Joke / scare** | The sticker gag from the game's title screen. |
-| **Timing** | Sticker SLAM from 2.0x, lands on the last chord. |
-| **Music / SFX** | Last chord. |
-| **Build / reuse** | `docs/media/title.png` logo, rebuilt at 384x216. |
+| **What happens** | The frame splits at the Wall; the pastel and Hellvile halves meet on the logo. The Mayor's pink paint roller crosses the logo and paints over the red drip (squeak). On the last chord the drip bleeds back through. |
+| **Joke / scare** | HaHaland paints over things (GIGGLE over MINGLE), and they bleed back: the show's thesis on its own logo. No sticker (`GAG_BIBLE.md` §6.20). |
+| **Timing** | The roller crosses in 30 f from frame 15, squeak on its first frame; the bleed-back lands on the last chord (the one persistent change). |
+| **Music / SFX** | Roller squeak. Last chord. |
+| **Build / reuse** | `docs/media/title.png` logo, rebuilt at 384x216, + the roller from CO-4/CO-5. |
 
 ### MT-7 · 02:26 to 02:30 · 0:04
 **PILOT TITLE CARD**
@@ -290,7 +291,7 @@ A locked 0:50 block, boarded by song section and conformed to the master in `doc
 |---|---|
 | **What happens** | Clipboard insert: 19:00 Bake-Off! Nana Puddin's stall has two of everything, including two pies; the second has a blank name card. MAYOR (judging): "Who's the second one for?" NANA: "Habit, sweet pea." To Sunny: "The key's in a muffin. Don't ask which. I forgot. I always forget." Bite test: raisin, raisin, "that's a button," then a crunch. INSERT (x-ray): the key has tiny horns. Under the twin pies, page two. NANA: "Is this yours? It was under the pies. It's mostly 'Hee. Hee.'" Then the egg in a tea towel: "It's been waiting for someone." She holds on to it a beat too long. "The last one hatched into a little demon! Ha! Kidding." [R8] "...Mostly." |
 | **Joke / scare** | The bite-test rule of three, then "...Mostly." B-plot: page two. |
-| **Timing** | Bites 15-16 f apart, each crunch bigger, pitch stepping down. The x-ray INSERT runs 4 f (the game uses 3; the show's Standards minimum is 4). Hesitation R13; R8 before "...Mostly." |
+| **Timing** | Bites 15-16 f apart, each crunch bigger, pitch stepping down. The x-ray INSERT runs 4 f (the game uses 3; the show's broadcast minimum is 4). Hesitation R13; R8 before "...Mostly." |
 | **Music / SFX** | NANA motif. Bite crunches. A 4-f tone under the x-ray. Music out for "...Mostly." |
 
 ### 1-10 · 05:50 to 06:18 · 0:28
@@ -340,7 +341,7 @@ A locked 0:50 block, boarded by song section and conformed to the master in `doc
 |---|---|
 | **What happens** | Fog pours over the boards. The lanterns go out from the south, faster and faster. Red eyes pop open in the fog: one pair, then more. Every eye goes still. A voice made of many voices: {w}"come and PLAY with us" (the second "us" in a child's voice). The fog drifts toward Lulla's craft tent. At his FREE HUGS booth, Father Fuzz freezes. INSERT (his point of view): the kids' tent eleven years ago tonight, a cloud-shaped lady with glowing eyes, a crowned silhouette behind her, with no string. Back with one change: his paws are shaking. The fog turns away from the tent, toward the music. Bonejangles plays on, and the fourth note of his tune bends from C to B♭. |
 | **Joke / scare** | None. The first real scare of the series: comic timing with the release removed. |
-| **Timing** | Lanterns go out on an accelerating curve (21, 13, 8, 5, 3, 2 f). Eyes: an accelerating three plus one (R8, R5, R3). MUTE 40. {w} wobble text. The kids'-tent INSERT runs 4 f. The fog never reaches the tent (Standards). The pitch bend takes 13 f. |
+| **Timing** | Lanterns go out on an accelerating curve (21, 13, 8, 5, 3, 2 f). Eyes: an accelerating three plus one (R8, R5, R3). MUTE 40. {w} wobble text. The kids'-tent INSERT runs 4 f. The fog never reaches the tent (canon; hard limit 3 staging). The pitch bend takes 13 f. |
 | **Music / SFX** | **The first OMINOUS cue of the series enters with the fog.** The possession inhale (10-f stretch, 5-f hold, FWOOMP) as the fog enters the ribs. The HOOK pivots to the RIFF on the shared E-E-G cell. |
 | **Build / reuse** | Trailer s07 (possession inhale), s08 (party freeze). One emissive ribcage layer for Bonejangles. |
 
@@ -407,10 +408,10 @@ A locked 0:50 block, boarded by song section and conformed to the master in `doc
 
 | | |
 |---|---|
-| **What happens** | Panic, accelerating. The Mayor dives under a cake table: "Everybody stay calm! I'll be under here. Being calm!" Puff Demons spill from the ribs into the fun fair. The teacups spin backwards. In the Absolutely Not Scary House, every cardboard ghost turns to face the Wall. A gust of fog tears the bandstand boards loose; underneath is a crate stencilled MINGLE, DO NOT OPEN. PIP: "FIREWORKS!" EVERYONE: "NOT NOW, PIP." In the background the same gust snaps a lantern string, and the LOST PROPERTY lantern with Sunny's "1" floats free into the dark, toward the Wall. Nobody notices. |
-| **Joke / scare** | "Being calm!" and "NOT NOW, PIP." |
-| **Timing** | The stampede runs on an accelerating curve, with a sweat drop every third frame. "NOT NOW, PIP." staggered 0-3 f. The lantern drift is background only, with no cut to it. |
-| **Music / SFX** | The RIFF at swing tempo (dial S2). Demon squeaks. Teacups whirring in reverse. |
+| **What happens** | Panic, accelerating. The Mayor dives under a cake table: "Everybody stay calm! I'll be under here. Being calm!" Puff Demons spill from the ribs into the fun fair. The teacups spin backwards. A Puff Demon is sucked into a backwards-spinning teacup and sprays out as confetti. **TRUTH INSERT (4 f):** the same frame as it really is: the demon shredded in a red spiral. Back with one change: the inside of that teacup is red, and stays red. In the Absolutely Not Scary House, every cardboard ghost turns to face the Wall. A gust of fog tears the bandstand boards loose; underneath is a crate stencilled MINGLE, DO NOT OPEN. PIP: "FIREWORKS!" EVERYONE: "NOT NOW, PIP." In the background the same gust snaps a lantern string, and the LOST PROPERTY lantern with Sunny's "1" floats free into the dark, toward the Wall. Nobody notices. |
+| **Joke / scare** | "Being calm!" and "NOT NOW, PIP." The first truth insert: the show tells you what the confetti is. |
+| **Timing** | The stampede runs on an accelerating curve, with a sweat drop every third frame. The insert lands on a RIFF downbeat and owns the audio; it is cut into a wide of the teacups with no child in frame (Pip's "FIREWORKS!" is its own shot, after it, framed off the teacups, so the red cup is never in a frame with a child). "NOT NOW, PIP." staggered 0-3 f. The lantern drift is background only, with no cut to it. |
+| **Music / SFX** | The RIFF at swing tempo (dial S2). Demon squeaks. Teacups whirring in reverse. A wet shred (4 f), then the RIFF re-enters on the grid. |
 
 ### 2-04 · 09:25 to 10:00 · 0:35
 **EXT. FUN FAIR, THE STAMPEDE - NIGHT**
@@ -459,8 +460,8 @@ A locked 0:50 block, boarded by song section and conformed to the master in `doc
 
 | | |
 |---|---|
-| **What happens** | Sunny looks at the tent, at the eyes, and back. Between them is the Whack-an-Imp booth; its plastic imps pop up, see the fog, and pull their lids shut. On the counter stands Rivet's welded prize case. On velvet inside: a Bubble Wand and a Pump Sprinkler (a bath-house bellows, a drainpipe, a bike bell and a sprinkler head). The sign: "TOP PRIZE. Please don't. —R". Sunny puts a paw on the glass. The pet, newborn, on Sunny's head: "beep." |
-| **Joke / scare** | The imps hiding. Rivet's sign (she stays unseen until TV 108, game Ep 2.6). |
+| **What happens** | Sunny looks at the tent, at the eyes, and back. Between them is the Whack-an-Imp booth; its plastic imps pop up, see the fog, and pull their lids shut. On the counter stands Rivet's welded prize case. On velvet inside: a Bubble Wand, a Pump Shotgun (Rivet's welded build: a bath-house bellows, a drainpipe, a bike bell) and a welded saw (`PILOT_ROADMAP.md` D15). Each prize has two name tags, a cute one pinned over a brutal one: PARTY PUMP over SLAUGHTER, PURRING SAW over MEATCLEAVER (the Bubble Wand's tag just says BUBBLE WAND). The sign: "TOP PRIZE. Please don't. —R". Sunny puts a paw on the glass. The pet, newborn, on Sunny's head: "beep." |
+| **Joke / scare** | The imps hiding. Rivet's sign (she stays unseen until TV 108, game Ep 2.6). The two name tags plant the HUD flip in 3-03. |
 | **Timing** | Imps pop up in a ripple and shut 2 f apart. The paw lands on a 4-f squash. R13 to "beep." |
 | **Music / SFX** | The RIFF drops out. The RIVET motif (G mixolydian plus anvil) as a 2-bar sting under the sign. Silence. "beep." |
 
@@ -507,21 +508,21 @@ A locked 0:50 block, boarded by song section and conformed to the master in `doc
 
 | | |
 |---|---|
-| **What happens** | Cute mode, side view. Sunny and the pet cross the fair with the Bubble Wand, trapping Puff Demons in bubbles that float up and pop into hearts and plush stuffing. Jokes come only between waves: Steamy, hiding in the duck pool, hooks a bubbled demon by reflex. STEAMY: "...I don't know that one either." |
-| **Joke / scare** | Steamy's callback: same words, new context. |
-| **Timing** | Waves on 4-bar phrases; pops on the beat with a POP shake. One joke only, between waves 2 and 3. **Elastic +/-20 s.** |
-| **Music / SFX** | The cute arrangement of the HOOK (dial S1). POP, SPARKLE. |
-| **Build / reuse** | The game's CUTE gore set. Puff Demon sprites from `artgen`. |
+| **What happens** | Cute mode, side view. Sunny and the pet cross the fair with the Bubble Wand, trapping Puff Demons in bubbles that float up and pop into hearts and plush stuffing. **Wave 1, TRUTH INSERT (4 f):** a bubbled demon pops into a cartoon heart; the truth: an anatomical heart, still beating, falls out of the burst. Back with one change: one of the cartoon hearts on the grass is beating. **Wave 2, TRUTH INSERT (4 f):** a Bubble Wand hit, as it really is; back with one change: the wand's next bubbles come out faintly pink. Jokes come only between waves: Steamy, hiding in the duck pool, hooks a bubbled demon by reflex. STEAMY: "...I don't know that one either." |
+| **Joke / scare** | Steamy's callback: same words, new context. Filter, filter, then (3-02 and 3-03) the truth: a rule of three across the beats. |
+| **Timing** | Waves on 4-bar phrases; pops on the beat with a POP shake. The inserts land on a pop's beat, in waves 1 and 2 only. One joke only, between waves 2 and 3. **Elastic +/-20 s**: the trim takes wave 3 and the wave tails, never the inserts. No child in frame. |
+| **Music / SFX** | The cute arrangement of the HOOK (dial S1). POP, SPARKLE; each insert owns the audio (a wet pop). |
+| **Build / reuse** | The game's CUTE gore set, plus two truth frames from the BRUTAL set. Puff Demon sprites from `artgen`. |
 
 ### 3-02 · 13:15 to 13:30 · 0:15
 **EXT. BAKE TENT - NIGHT**
 
 | | |
 |---|---|
-| **What happens** | The demons stack into one Big Puff perched on the bake tent. Bubbles bounce off it. Sunny looks at the Pump Sprinkler. The pet looks at Sunny. Sunny looks at the camera. "beep." Squeak-CHK. |
-| **Joke / scare** | The look chain, ending on the camera. |
-| **Timing** | Three bubble bounces 15 f apart, each bigger. Looks R8 apart. SCRATCH: tape-stop over 5 f, 14 f of silence, then the small sting, the CHK. |
-| **Music / SFX** | The cute HOOK, then SCRATCH, then silence. |
+| **What happens** | The demons stack into one Big Puff perched on the bake tent. Bubbles bounce off it. Sunny looks at the Pump Shotgun. The pet looks at Sunny. Sunny looks at the camera. "beep." The pump squeaks (the filter's sound). SCRATCH. Silence. CHK-CHK (the truth's). |
+| **Joke / scare** | The look chain, ending on the camera; the squeak is the last cute sound. |
+| **Timing** | Three bubble bounces 15 f apart, each bigger. Looks R8 apart. The squeak, then SCRATCH: tape-stop over 5 f, 14 f of silence, then the small sting: CHK-CHK. |
+| **Music / SFX** | The cute HOOK, the squeak, SCRATCH, silence, CHK-CHK. |
 | **Build / reuse** | Big Puff = the Puff Demon sprite at 3x. |
 
 ### 3-03 · 13:30 to 14:10 · 0:40
@@ -529,11 +530,11 @@ A locked 0:50 block, boarded by song section and conformed to the master in `doc
 
 | | |
 |---|---|
-| **What happens** | The brutal register. First person through the funhouse shortcut to the back of the bake tent (sign: "NOTHING INSIDE! (we checked) —Mayor"). The HUD slams in: hearts for health, sprinkle shells for ammo, the pet's face in the centre slot glancing left and right, and a tiny plate, RIP AND TEAR... GENTLY. The mode label reads GORE: BRUTAL for 8 f, until a HELLVILE PARK BOARD OF DECENCY (approved) sticker slaps over it and peels back to GORE: CUTE. Cardboard ghosts, and real Puff Demons among them. Every blast is a sprinkle burst; every demon pops into confetti. A cardboard ghost hit by mistake just falls over flat, and the HUD face winces. |
-| **Joke / scare** | The show announces its own rating as a joke, then keeps to it. |
-| **Timing** | In: SCRATCH, then hellify rots the palette over 21 f. The HUD slams on the insert song's downbeat. GORE: BRUTAL holds 8 f; the sticker SLAMs in 4 f. Every blast has a POW or STAMP shake and a sound on frame 0. Sunny is never seen hurt: a hit is a grape-goo splat on the "lens" and a heart popping off the HUD. |
-| **Music / SFX** | **Insert song:** the TV-size chorus of "Doomtastic Times" in its DOOM-side arrangement (dial S3/S4). Fallback if no DOOM-side stem exists: the trailer RIFF, with the theme's hook quoted on the last blast. Sprinkle-shot SFX: the trailer's blast recipe pitched up an octave, plus a sprinkler hiss and a bike-bell ting. |
-| **Build / reuse** | Trailer s10 raycaster, re-staged 16:9. 32-px HUD strip; pet face in 5 states. |
+| **What happens** | The brutal register, and the truth. First person through the funhouse shortcut to the back of the bake tent (sign: "NOTHING INSIDE! (we checked) —Mayor"). The HUD slams in: hearts for health, shells for ammo, the pet's face in the centre slot glancing left and right, the weapon plate (PARTY PUMP, which flips to SLAUGHTER on the first shot), and a tiny plate, RIP AND TEAR... GENTLY. The mode label reads GORE: BRUTAL; a HELLVILE PARK BOARD OF DECENCY (approved) sticker slaps over it, and **the first shell blows the sticker off the HUD in a spray of red**; it flutters down the lens. Cardboard ghosts, and real Puff Demons among them: buckshot turns the demons into red mist, gibs and loose eyeballs, and the pet's HUD face grins. A cardboard ghost hit by mistake just falls over flat, and the HUD face winces. |
+| **Joke / scare** | The show announces its own rating as a joke, then breaks it: the episode's one sticker, and it loses (`GAG_BIBLE.md` §6.20). |
+| **Timing** | In: SCRATCH, then hellify rots the palette over 21 f. The HUD slams on the insert song's downbeat. GORE: BRUTAL holds 8 f; the sticker SLAMs in 4 f and is blown off 13 f later on the first blast (hit-stop 2 f, `SHK_SHOTGUN`); the plate flips on the same frame. Every blast has a sound on frame 0 and a gore button (an eyeball rolls to a stop facing the Wall; a tooth *tink*s off the lens). Sunny is never seen hurt: a hit is a splash of demon blood on the lens and a heart popping off the HUD. Splatter slides off the lens on twos; red stays local (Harding). No child in the funhouse. |
+| **Music / SFX** | **Insert song:** the TV-size chorus of "Doomtastic Times" in its DOOM-side arrangement (dial S3/S4). Fallback if no DOOM-side stem exists: the trailer RIFF, with the theme's hook quoted on the last blast. Shotgun SFX: the trailer's blast recipe, the CHK-CHK, wet bursts; the sticker's blow-off is a paper rip inside the blast. |
+| **Build / reuse** | Trailer s10 raycaster, re-staged 16:9. 32-px HUD strip; pet face in 5 states; the weapon plate in two states. + The truth gore set (the game's BRUTAL set); lens splatter on twos; the sticker and its blow-off. |
 
 ### 3-04 · 14:10 to 14:50 · 0:40
 **EXT. BANDSTAND - NIGHT**
@@ -541,7 +542,7 @@ A locked 0:50 block, boarded by song section and conformed to the master in `doc
 | | |
 |---|---|
 | **What happens** | WHIPLASH CUT: the insert song drops to silence. BLOOM: "Father, don't." FUZZ: "Nothing is unhuggable." He hugs the possessed bandleader. The ribs play a terrible minor chord. Kazoo; the second candle goes out. FAIL x2. Fuzz sits down on the steps. FUZZ: "Eleven years ago tonight, I hugged someone who needed it." [R13] "It didn't work then either." HOLD 4 s. No gag. |
-| **Joke / scare** | None after the chord. **Protected hold 1 of 3.** |
+| **Joke / scare** | None after the chord. The hard cut from the gore to silence is the whiplash. **Protected hold 1 of 3.** |
 | **Timing** | A hard cut, with the sequencer running under the mute so the song can re-enter on the grid. The chord lands on the hug's contact frame. HOLD 4 s (120 f) with breathing idles only. |
 | **Music / SFX** | Silence. The minor chord (detuned rib xylophone). KAZOO. Then nothing. |
 
@@ -550,10 +551,10 @@ A locked 0:50 block, boarded by song section and conformed to the master in `doc
 
 | | |
 |---|---|
-| **What happens** | Back in first person, and the song re-enters on the grid. The tin sits under the Big Puff. On the HUD, the pet's face grows a horn nub and glares. A "beep." makes the Big Puff flinch; the last shell; POP. The Board of Decency sticker covers the frame, then peels back to show hearts raining down and one tuft of stuffing landing on the tin. A REWIND sound takes the show back to cute, with one change: the tent sign now reads BAKE TEN. |
-| **Joke / scare** | BAKE TEN: the one persistent change after a register switch. |
-| **Timing** | Re-entry on the bar line. The horn nub pops in 4 f. The flinch lands R5 after the beep. The sticker SLAM. REWIND out of hellify over 21 f. **First-person total: 3-03 + 3-05 = 70 s (cap 75 s).** |
-| **Music / SFX** | The insert song's chorus to its last hit. REWIND. A cute bed. |
+| **What happens** | Back in first person, and the song re-enters on the grid. The tin sits under the Big Puff. On the HUD, the pet's face grows a horn nub and glares. A "beep." makes the Big Puff flinch; the last shell takes half its face. CLICK: empty. The weapon slot spins to the saw, and its plate flips PURRING SAW → MEATCLEAVER (`PILOT_ROADMAP.md` D15). A rev. It saws the Big Puff top to bottom in a geyser over the tent; the lens is painted red, with a slow drip. The button: an eyeball rolls to a stop on Nana's tin, facing the Wall. A REWIND takes the show back to the filter: hearts raining down, one tuft of stuffing landing on the tin, and one change: the tent sign now reads BAKE TEN. (Without D15: the last shell, and the Big Puff bursts in a red shower; the same eyeball, the same REWIND.) |
+| **Joke / scare** | The switch both ways: the truth, then the filter, with BAKE TEN as the one persistent change. No sticker. |
+| **Timing** | 900 f at 30: re-entry on the bar line and the tin 0-120; the horn nub pops in 4 f at ~150; the beep ~200; the flinch R5 after it; the last shell ~260 (hit-stop 3 f, `SHK_SHOTGUN`); CLICK ~360, then R13 of silence; the slot spin and plate flip ~380-400; the rev ~420-450; the saw ~450-600 (the boss pop: hit-stop 8 f at 30, plus 1 reduced white frame); the red lens holds and drips ~600-660 (the red ramps in over 8 f and drains over 13 f or more); REWIND out of hellify over 21 f ~660-681; the filter's hearts, the stuffing and BAKE TEN to 900. **First-person total: 3-03 + 3-05 = 70 s (cap 75 s).** No child in the tent; the REWIND clears the eyeball before the tin reaches Pip in 3-06. |
+| **Music / SFX** | The insert song's chorus to its last hit; the saw's rev under the chorus's last hit (it purrs, then screams). REWIND. A cute bed. |
 
 ### 3-06 · 15:20 to 15:55 · 0:35
 **EXT. BANDSTAND STEPS - NIGHT**
@@ -638,7 +639,7 @@ A locked 0:50 block, boarded by song section and conformed to the master in `doc
 
 | | |
 |---|---|
-| **What happens** | The breath leaves as a small, tired puff trailing chalk dust. It drifts to the sealed gate in the Wall beside the bandstand and stops at the keyhole. BONEJANGLES (himself again): "...Clack?" [R13] "Something was in there with me. It kept trying to finish a poem." He plays the hook on his ribs, in major, and finishes it for it: "Down by the Wall where the pumps go clink, / we work all night, and we dream in pink." The puff waits, then goes through the keyhole. From the other side, small, and for the first time on time: "...Seven." HOLD 4 s. |
+| **What happens** | The breath leaves as a small, tired puff trailing chalk dust. It drifts to the sealed gate in the Wall beside the bandstand (its grille's shutter shut) and stops at the keyhole. BONEJANGLES (himself again): "...Clack?" [R13] "Something was in there with me. It kept trying to finish a poem." He plays the hook on his ribs, in major, and finishes it for it: "Down by the Wall where the pumps go clink, / we work all night, and we dream in pink." The puff waits, then goes through the keyhole. From the other side, small, and for the first time on time: "...Seven." HOLD 4 s. |
 | **Joke / scare** | The last rating of the runner is the emotional peak. **Protected hold 2 of 3.** "Something" and "it", never "she": "The Bottle" (107) keeps "That was a PERSON." |
 | **Timing** | The puff drifts at constant speed. R13 at the keyhole. R21 of silence. "...Seven." lands on time: the 8-f lag is gone, because the voice was always on the other side. HOLD 4 s. No button. |
 | **Music / SFX** | GOODBYE motif under the puff. The HOOK in major on the ribs (the redeemed form). Silence for "...Seven." |
@@ -732,8 +733,8 @@ A locked 0:50 block, boarded by song section and conformed to the master in `doc
 
 | | |
 |---|---|
-| **What happens** | The title card at the head of the credits has peeled to read MINGLE NIGHT. Crayon storybook stills of the night: the banner, the bubbles, three candles, a pink heart over the Wall, a purple firework answering it. |
-| **Joke / scare** | Tonight is history now, so it is drawn in the history style. |
+| **What happens** | The title card at the head of the credits has peeled to read MINGLE NIGHT. Crayon storybook stills of the night: the banner, the bubbles, the Big Puff bursting into hearts, three candles, a pink heart over the Wall, a purple firework answering it. |
+| **Joke / scare** | Tonight is history now, so it is drawn in the history style, and history is told with the filter on. |
 | **Timing** | One still per 4 s, crossfading over 13 f. |
 | **Music / SFX** | A music-box arrangement of the theme's chorus hook. The Mingle tune stays unfinished; it is saved for the finale. |
 
@@ -747,10 +748,10 @@ A locked 0:50 block, boarded by song section and conformed to the master in `doc
 
 | | |
 |---|---|
-| **What happens** | Seven padlocks; KEEP OUT. FOREVER. The LOST PROPERTY lantern with Sunny's "1" drifts over the Wall and sinks out of sight behind the gate. A crunch. A gurgle so deep that the padlocks rattle, one, two, three. The gate bulges outward once, BOING, and settles. A small dialogue box appears with the name plate GURGLE: "...needs salt." Smash to the Dippinn Productions card, silent until its last frame: "gurgle." |
-| **Joke / scare** | The "1" crosses the Wall; HaHaland stays at Population 500 until "Population: 1,001." Grumbleguts is neither seen nor heard. His belly (it) speaks for itself, and rates the snack like everyone else tonight. |
-| **Timing** | The crunch comes R13 after the lantern sinks. Rattles 15 f apart, each bigger (a rule of three). BOING R13 later. The caption appears (no type-on) R8 after the gate settles. |
-| **Music / SFX** | VOICE_GURGLE (the comedy kit's bass babble). Padlock rattles. BOING. Captions: "[GURGLE: gurgle.]", then "[GURGLE: ...needs salt.]". |
+| **What happens** | Seven padlocks; KEEP OUT. FOREVER.; the grille, its shutter shut. The LOST PROPERTY lantern with Sunny's "1" drifts over the Wall and sinks out of sight behind the gate. A wet crunch. A gurgle so deep that the padlocks rattle, one, two, three. The gate bulges outward once, BOING, and settles. A small dialogue box appears with the name plate GURGLE: "...needs salt." Then, from behind the gate, a low, satisfied purr. Smash to the Dippinn Productions card, silent until its last frame: "gurgle." |
+| **Joke / scare** | The "1" crosses the Wall; HaHaland stays at Population 500 until "Population: 1,001." Grumbleguts is not seen; he is heard once, purring (`PILOT_ROADMAP.md` D8). His belly (it) rates the snack like everyone else tonight, and the purr is the promise of 102. |
+| **Timing** | 300 f at 30: the lantern sinks 0-90; the crunch R13 later (~103); rattles 15 f apart, each bigger (a rule of three: ~118, 133, 148); BOING R13 later (~161); the caption appears (no type-on) R8 after the gate settles (~180) and reads for 42 f; the purr ~225-250; smash to the Dippinn card ~255, "gurgle." on its last frame (300). |
+| **Music / SFX** | VOICE_GURGLE (Grumbleguts' actor's processed bass babble). Padlock rattles. BOING. The purr, dry and close, performed by the same actor. Captions: "[GURGLE: gurgle.]", "[GURGLE: ...needs salt.]", "[low purr]". |
 
 ---
 
@@ -774,7 +775,7 @@ A locked 0:50 block, boarded by song section and conformed to the master in `doc
 
 Programme check: cold open 1:40 + main title 0:50 + acts 5:20 / 4:15 / 4:15 / 3:55 + eyecatches 3 x 0:10 + tag 0:35 + credits 0:30 + post-credits 0:10 = **22:00**. Story content (cold open, acts, tag) runs 20:00.
 
-Budget checks: first-person footage 70 s (cap 75 s, built only from the trailer's s10 raycaster); Giggle crawl 4 stalls (52 s); speaking roles 12 (Appendix E).
+Budget checks: first-person footage 70 s (cap 75 s, built only from the trailer's s10 raycaster); Giggle crawl 4 stalls (52 s); speaking roles 12 (Appendix E); truth inserts 3 (12 f); censor stickers 1 (3-03, and it loses). Every beat length is unchanged in v1.1: re-summed by script from the beat headers, 60 beats, contiguous TCs, 1,320 s; Appendix F's 60 rows total 1,320.0 s.
 
 ---
 
@@ -802,25 +803,28 @@ Budget checks: first-person footage 70 s (cap 75 s, built only from the trailer'
 
 ## Appendix B. Insert and flash log (Standards and Harding/PSE)
 
-Every whiplash insert runs 4 frames, never 1 (broadcast codes forbid subliminal images). White and red flashes run 3 frames at most, at reduced luminance and saturation, and never more than 3 flashes in any second. White flashes may fill the frame; red flashes are always local (a candle, a muzzle), never full-screen. Every item is checked on a Harding/PSE pass before delivery.
+Every whiplash insert runs 4 frames, never 1 (broadcast codes forbid subliminal images). White and red flashes run 3 frames at most, at reduced luminance and saturation, and never more than 3 flashes in any second. White flashes may fill the frame; red flashes are always local (a candle, a muzzle), never full-screen. Blood is a held or sliding overlay, never a strobe; truth inserts keep saturated red local; any large red change (the lens painted red in 3-05) ramps in over 8 f or more, drains over 13 f or more, and is logged below. Every item is checked on a Harding/PSE pass before delivery.
 
 | Beat (starts) | Event | Length | Notes |
 |---|---|---|---|
 | CO-2 (00:03) | Crayon firework blooms | ramped | Luminance ramps over 8 f or more; no bangs |
 | CO-5 (00:56) | INSERT: the crayon empty hand (shot 17, 00:01:12:10) | 4 f | A memory, not a scare |
 | MT-1 (01:40) | White flash off the crack | 3 f max | Reduced luminance |
-| MT-5 (02:08) | Hellify; three candles out in rhythm | 21 f ramp | Candles 2 beats apart (well under 3/s) |
+| MT-5 (02:08) | Hellify; the truth on the corridor flip; three candles out in rhythm | 21 f ramp | Red local to the burst; candles 2 beats apart (well under 3/s) |
 | 1-09 (04:55) | INSERT: x-ray of the key (tiny horns) | 4 f | The game uses 3 f; the show uses 4 |
 | 1-13 (06:56) | INSERT: a pipe beyond the Wall heaves a purple sigh | 4 f | No faces; plumbing rewatch clue |
 | 1-14 (07:20) | INSERT: the kids' tent eleven years ago (Fuzz's POV) | 4 f | Crowned silhouette without a string; the fog never reaches the children |
 | EC1-IN (07:55) | Hellify flash | 4 f | Reduced luminance; repeated on EC2-IN and EC3-IN |
+| 2-03 (08:55) | TRUTH INSERT: the teacup | 4 f | Red local; no child in frame; returns with one change |
 | 2-04 (09:25) | White flash on the hatch | 3 f max | Reduced luminance |
 | 2-06 (10:28) | Red flash, candle 1 out | 3 f max | Single flash, reduced saturation, local to the candle (full-screen red flashes are never used, `SERIES_OVERVIEW.md` §2) |
-| 3-03 (13:30) | Hellify in; GORE: BRUTAL label; sprinkle bursts | 21 f / 8 f / per shot | The ramp is not a flash; the label is text; burst density checked under 3/s |
+| 3-01 (12:25) | TRUTH INSERTS x2 (waves 1 and 2) | 4 f each | Red local; seconds apart (well under 3/s); no child in frame |
+| 3-03 (13:30) | Hellify in; GORE: BRUTAL label; the sticker SLAM and blow-off; shotgun bursts (local muzzle flash); blood mist and lens splatter | 21 f / 8 f / 4 f + 13 f / per shot | The ramp is not a flash; the label is text; burst density checked under 3/s; splatter slides off on twos; checked for large red changes |
 | 3-04 (14:10) | Red flash, candle 2 out | 3 f max | Single flash, reduced saturation, local to the candle |
+| 3-05 (14:50) | The saw geyser; the red lens | ramped | Red ramps in over 8 f or more and drains over 13 f or more; never a strobe; on the Harding log |
 | 4-08 (19:57) | Firework bloom; Wall-wipe split screen | ramped / 2 s | The split is a held shot, not an insert: a hand and two bowls only |
 
-Standards notes carried on every beat above: confetti, hearts, stuffing and grape goo only; the Pump Sprinkler is never aimed at a citizen; no pentagram imagery in this episode; Cloud Nine Vapor is a sign only, with no product and no smoke; Pip and Miss Lulla's kids are never touched by the fog and are in no suggestive material; Grumbleguts is neither seen nor heard (GURGLE only, no innuendo).
+Standards notes carried on every beat above: **the four hard limits** (`SERIES_OVERVIEW.md` §2); there is no suggestive material anywhere in the pilot; the gore is the demons', through the filter (confetti on the Hillvile side) and the truth (first person, the main title's chorus, three truth inserts), and the filter is on in every frame with a child in it; the Pump Shotgun is never aimed at a citizen; Cloud Nine Vapor is a sign only, with no product and no smoke; Pip and Miss Lulla's kids are never touched by the fog; Grumbleguts is not seen (a silhouette, a gurgle, a caption and a purr); one censor sticker (3-03), and it loses.
 
 ## Appendix C. The ratings runner
 
@@ -835,7 +839,7 @@ The possessor rates everything in Clinker's voice, which runs exactly 8 f behind
 | 5 | 2-06 | "THE POWER OF CUDDLES COMPELS YOU!" | "...One." |
 | 6 | 2-07 | Its own unfinished poem | "...Three. Needs an ending." |
 | 7 | 4-03 | The ending Bonejangles gives it | "...Seven." From beyond the Wall, on time |
-| + | PC-1 | Sunny's lost-property "1" | GURGLE: "...needs salt." |
+| + | PC-1 | Sunny's lost-property "1" | GURGLE: "...needs salt." (102 continues the runner in his own voice: Nana's muffin, "...Seven."; the Small Puff, "Six. Needs salt.") |
 
 ## Appendix D. Plants and payoffs
 
@@ -857,8 +861,12 @@ Everything the pilot plants has a canon payoff; nothing is paid off early.
 | "Charlotte: cookies (sorry)"; the scrubbed dish with a burnt cookie | 3-06, T-2 | S199 "The Loose Brick": "Every Thursday. She never missed one. ...Neither did I." (Ep 102's tag; the same Thursday from the other side in 112) |
 | "TOP PRIZE. Please don't. —R" | 2-08 | Rivet's debut (TV 108, game Ep 2.6): "You WON that?" [R8] "Nobody wins that." |
 | The key with tiny horns; the horn nubs | 1-09, T-2 | The pet keeps its horns forever; post-credits of the series, its poop grows horns |
-| The fallen "1" and the LOST PROPERTY lantern | 1-02, 1-10, 2-03, PC-1 | HaHaland stays at Population 500 until "Population: 1,001." |
-| GURGLE, the rattling padlocks, the BOING; the round silhouette in the main title | PC-1, MT-5 | Grumbleguts' debut insert when the gate cracks (game Ep 2.7, S1 finale) |
+| The fallen "1" and the LOST PROPERTY lantern | 1-02, 1-10, 2-03, PC-1 | HaHaland stays at Population 500 until "Population: 1,001." (102: he burps it up and swallows it again) |
+| GURGLE, the padlocks, the BOING, the purr; the rear silhouette in the main title | PC-1, MT-5 | **Grumbleguts' debut, TV 102 "Open Late"**; the "1" inside him pays in 113 ("...Five hundred and one."); the gate cracks in 113 (game Ep 2.7) |
+| The grille, its shutter shut | MT-4, 4-03, PC-1 | 102: the first knock in ten years; it opens rear first |
+| The tiny Puff Demon in the second eggshell | EC2-IN | 102: the Small Puff, eaten through the grille ("Six. Needs salt.") |
+| Two name tags on each prize | 2-08 | 3-03 and 3-05: the weapon plates flip with the register |
+| The red teacup; the beating heart on the grass | 2-03, 3-01 | The truth is always one change away: the series' switch grammar |
 | The thumps, 3 then 1; Mascotty thumping back | 1-13 | Thumpkin, "for my sister" (Ep 4.2); her head comes off in the rubble (Ep 4.6) |
 | Cloud Nine Vapor, COMING SOON | 1-07 | Vex opens it (Ep 2.1); payoff: "plain-water vapes. They're terrible." |
 | The MINGLE crate, DO NOT OPEN; GIGGLE painted over MINGLE | 2-03, CO-4 | The first real Mingle since the Wall (canon's "eleven years", twelve on the show calendar because the special is the next Midsummer): the series-closing special shares this episode's title |
@@ -878,9 +886,9 @@ Everything the pilot plants has a canon payoff; nothing is paid off early.
 | 9 | Kevin | he | "Yes, three eyes." | 1-05 |
 | 10 | Hattie Haha | she | "Knock knock." | 1-06 |
 | 11 | Miss Lulla | she | "They all drew the same friend." | 1-07 |
-| 12 | GURGLE | it | "...needs salt." (captioned babble) | PC-1 |
+| 12 | GURGLE | it | "...needs salt." (captioned babble, performed by Grumbleguts' actor) | PC-1 |
 
-Non-speaking: **Sunny** (they), **the pet** (it; "beep." is the raw GBA piezo, a sound effect, not a performance), **Mascotty** (she). Walla: the Giggle crowd, Miss Lulla's kids. The fog's voice in 1-14 is not a 13th role: it is the walla group stacked with Clinker's actor, and its child's "us" is recorded by a walla performer, never by Pip's actor. GURGLE is sound design over a bass vocalist's babble; no actor is cast for Grumbleguts. Felt but not seen: Rivet (she), Charlotte (she), Fluffy, Grumbleguts (he).
+Non-speaking: **Sunny** (they), **the pet** (it; "beep." is the raw GBA piezo, a sound effect, not a performance), **Mascotty** (she). Walla: the Giggle crowd, Miss Lulla's kids. The fog's voice in 1-14 is not a 13th role: it is the walla group stacked with Clinker's actor, and its child's "us" is recorded by an adult walla performer, never by Pip's actor. The cast is adults only: Pip and every child in the walla are voiced by adults. GURGLE is Grumbleguts' actor's processed babble; his purr in PC-1 is non-speaking (under the alternative in `PILOT_ROADMAP.md` D8, the line "Mm. {..}Somebody new.", he becomes speaking role 13). Heard, not seen: Grumbleguts (he). Felt but not seen: Rivet (she), Charlotte (she), Fluffy.
 
 ## Appendix F. Week-1 animatic rows for `trailer/timeline.c`
 
@@ -962,7 +970,7 @@ The elastic beats can give at most 55 s: 1-01 the bus (5 s, down to 13 s), the G
 | **Part 1, "The Giggle"** | Cold open 1:40 + a 0:20 short open (the main title cut's intro and end pose) + Act One trimmed to 4:45 (bus -5 s, crawl -20 s, bite test -10 s) + Act Two 4:15. Eyecatch pair 1 is dropped. Ends on the Act Two out ("beep.", the glass cracks) | 100 + 20 + 285 + 255 = **660 s = 11:00** |
 | **Part 2, "Say It"** | A 0:35 recap card (the clipboard, then three shots: the egg, the ribs, the tin) + the 0:50 main title + Act Three 4:15 + eyecatch pair 3 0:10 + Act Four 3:55 + tag 0:35 + end credits 0:30 + post-credits 0:10. Eyecatch pair 2 sits at the split and is dropped | 35 + 50 + 255 + 10 + 235 + 35 + 30 + 10 = **660 s = 11:00** |
 
-Part 1 carries no end credits; the full credits run once, at the end of Part 2. The cute run stays full length in Part 2, so the 2x11 version keeps 70 s of first person.
+Part 1 carries no end credits; the full credits run once, at the end of Part 2. The cute run stays full length in Part 2, so the 2x11 version keeps 70 s of first person. The truth inserts in 3-01 survive every trim (they sit in waves 1-2).
 
 **21:00 territorial cut** (only if a buyer asks): all four elastic beats at their minimum (-55 s) and the end credits cut from 0:30 to 0:25 (-5 s) = -60 s, giving **1,260 s = 21:00**. First-person footage stays at 70 s, because 3-01 is the cute (side-view) run, not first person.
 

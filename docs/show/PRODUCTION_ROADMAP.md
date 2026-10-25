@@ -4,10 +4,10 @@
 
 | | |
 |---|---|
-| Version | 1.0, 2026-10-25 |
-| Status | Roadmap. The pilot spec is locked for outlining. The script is not yet written. |
+| Version | 1.1, 2026-10-25 (the adult direction: TV-MA, the four hard limits, Grumbleguts' debut in 102; ledger in §1.3a) |
+| Status | Roadmap. The pilot spec is locked for outlining. The script is not yet written. Ep 102, "Open Late", is outlined in act beats. |
 | Producer of record | Dippinn Productions (entity to be confirmed, see §9 R1) |
-| Canon | `docs/design/story/story_final.md` wins every conflict. After it come `docs/STORY.md`, `docs/ROSTER.md`, the shipped Ch1 script `core/data/story/ch1/*.dsc`, `bible_heart.md`, `bible_horror.md`, `comic_timing.md` and the Grumbleguts docs, read show-safe. |
+| Canon | `docs/design/story/story_final.md` wins every conflict. After it come `docs/STORY.md`, `docs/ROSTER.md`, the shipped Ch1 script `core/data/story/ch1/*.dsc`, `bible_heart.md`, `bible_horror.md`, `comic_timing.md` and the Grumbleguts docs, adopted within the show's four hard limits (§2). |
 | Inputs | Pitch C, "Mingle Night", won both judge panels (8.36 and 8.21). This roadmap applies the grafts from Pitches A and B and resolves the points where the judges disagreed (§1.4). |
 | Theme | "Doomtastic Times" is being produced in parallel and will be published to `docs/show/theme/`. The plan uses two cuts: the main title (about 45-55 s, boarded here at 0:50) and the TV size (about 1:30). |
 
@@ -19,9 +19,9 @@ Calendar dates assume Week 1 starts **Monday 2026-10-26**. Episode numbers: thre
 
 | | |
 |---|---|
-| **What** | A 22-minute 2D pixel-art animated pilot. One Midsummer night carries the whole show: the cozy life-sim, small-town comedy, the mystery, horror, a cute/brutal first-person run, and heart. |
-| **Audience** | Core audience 10-16, built for family co-viewing. Secondary: adult animation fans and retro-game players. |
-| **Rating** | Series ceiling **TV-PG (D, V)**, never exceeded. This episode is **TV-PG (V)**. Gore is confetti only. Grumbleguts is a sound (GURGLE) and nothing else. |
+| **What** | A 22-minute 2D pixel-art animated pilot. One Midsummer night carries the whole show: the cozy life-sim, small-town comedy, the mystery, horror, a cute/brutal run (HaHaland's filter, then the truth), and heart. |
+| **Audience** | Adult animation, made for adults. Secondary: retro-game players and the game's own audience. Not made for kids, and not pitched to children, teens or family co-viewing. |
+| **Rating** | **TV-MA.** This episode is **TV-MA (V)**: DOOM gore on demons and monsters, through the filter and the truth. The series is **TV-MA (L, S, V)** from 102. 18+ elsewhere (16+ where a territory's scale allows). Grumbleguts is not seen in the pilot: a silhouette, a gurgle and a purr. He debuts in 102. |
 | **Look** | Native 16:9 pixel art at 384x216, scaled by whole numbers to 1080p (5x) and UHD (10x). 29.97 fps, using the game's 256-colour palette as the colour script. |
 | **Sound** | The "Doomtastic Times" main title, a leitmotif score built on the game's E-E-G cell, eyecatch stings, a comedy SFX kit, a stereo and 5.1 mix, and audio description. |
 | **Gates** | G0 decisions (W1). **G1 pitch package (W12, 2027-01-17)**. G2 script lock. G3 animatic lock. G4 picture lock. G5 delivery. G6 launch. |
@@ -31,7 +31,7 @@ Calendar dates assume Week 1 starts **Monday 2026-10-26**. Episode numbers: thre
 | Option | Team | Cash budget | Delivery | Premiere target |
 |---|---|---|---|---|
 | **1. Solo creator + AI-assisted tools** | The creator, plus freelancers for voice, theme, mix and legal | **$8k-65k** (typical $26k, §6.1) plus about 18 months (78 weeks) of the creator's time | W78 (Apr 2028), with an 8-week buffer before the premiere | **Midsummer 2028**, the week of 2028-06-19, which is the show's own holiday |
-| **2. Indie team of 5-8** (recommended if about $200k or more can be committed by W12) | Core crew of 6-8 plus freelancers | **$187k-543k** (mid case $340k: every line at its midpoint, with the creator's fee deferred, §6.2) | W46 (Sep 2027) | Halloween week 2027 (W53) on YouTube, or held for a festival premiere. A Midsummer 2027 teaser releases the main title. |
+| **2. Indie team of 5-8** (recommended if about $200k or more can be committed by W12) | Core crew of 6-8 plus freelancers | **$187k-543k** (mid case $340k: every line at its midpoint, with the creator's fee deferred, §6.2) | W46 (Sep 2027) | Halloween week 2027 (W53) on YouTube (age-restricted, with a green-band teaser for discovery), or held for a festival premiere. A Midsummer 2027 teaser releases the main title. |
 | **3. Studio co-production** | A partner studio's crew, with the creator as EP | **$0.75M-1.9M** (mid case $1.2M, §6.3), partly offset by tax credits | Deal + 48 weeks | Set by the buyer. Pitch Midsummer or Halloween 2028. |
 
 **Decision rule.** Every path runs Gate 1 (W1-W12) the same way, because the pitch package is what raises the money. At W12:
@@ -49,7 +49,7 @@ All work done on the solo track (bible, script, animatic, designs, toolkit upgra
 4. **Lighting by the hour**, so the night visibly progresses, using the palette's NIGHT tint and emissives (lanterns, the ribcage, the firework).
 5. **A hi-fi score.** The chiptune core is re-rendered at 48 kHz stereo, with live layers on top: a choir for TRUE NAME, guitars for the brutal register, and a real xylophone for Bonejangles' ribs.
 6. **Comedy timing enforced to the frame** (the R2-R26 ladder), alongside three gag-free holds that are protected.
-7. **Accessibility as craft.** The silent lead makes audio description essential. Captions carry the show's own jokes ("[beep.]", "[GURGLE: gurgle.]").
+7. **Accessibility as craft.** The silent lead makes audio description essential. Captions carry the show's own jokes ("[beep.]", "[GURGLE: gurgle.]"), and SDH carries the gore and the purr ("[wet crunch]", "[squelch]", "[low purr]").
 8. **QC that protects the look**: a palette lint on every frame, integer scaling only, a 4:4:4 master, PSE/Harding checks, and broadcast loudness.
 
 ---
@@ -77,7 +77,7 @@ At the Midsummer Giggle, the half-a-festival HaHaland throws on the anniversary 
 | 16:50 | **Act Four: "23:00 ________"** | 3:55 | The answering firework, and the hum one note further. `[NO BUTTON]` |
 | 20:45 | **Tag: "Morning"** | 0:35 | "...He's teething." |
 | 21:20 | End credits (music-box arrangement of the hook) | 0:30 | The card has peeled to read MINGLE NIGHT |
-| 21:50 | Post-credits: the gate | 0:10 | GURGLE: "...needs salt."; "gurgle." on the Dippinn card |
+| 21:50 | Post-credits: the gate | 0:10 | GURGLE: "...needs salt."; his purr; "gurgle." on the Dippinn card |
 | | **Total** | **22:00** | 1,320 s = 39,600 frames at 30 nominal |
 
 **What changed from v1.1** (the first draft of this roadmap), with the total unchanged: the cold open lost 10 s when its red-eyes insert became the crayon empty hand (no OMINOUS cue before the fog); Act One gained 20 s for the three speech pages and the lost-property lantern; Act Two lost 15 s; Act Four gained 10 s for the grave, the old-draft page and the split; the tag lost 5 s. (-10 +20 -15 +10 -5 = 0.)
@@ -86,22 +86,23 @@ At the Midsummer Giggle, the half-a-festival HaHaland throws on the anniversary 
 * About **270 shots**, averaging 4.5 s (the cold open alone is 21 shots averaging 4.8 s, `COLD_OPEN_SHOTLIST.md`).
 * About **1,000-1,200 board panels**.
 * A script of 32-38 pages.
-* **12 speaking roles** (beat sheet Appendix E): 11 cast principals plus GURGLE, which is sound design over a bass vocalist's babble. The fog's voice is the walla group stacked with Clinker's actor, and the walla group is 4-6 performers.
+* **12 speaking roles** (beat sheet Appendix E): 11 cast principals plus GURGLE (Grumbleguts' actor's processed babble). The purr after the credits is non-speaking (`PILOT_ROADMAP.md` D8). The fog's voice is the walla group stacked with Clinker's actor, and the walla group is 4-6 adult performers.
 * **70 s of first-person footage** (3-03 and 3-05), under the 1:15 cap.
+* **3 truth inserts** (12 frames in all: 2-03, and two in 3-01) and **1 sticker** (3-03, shot off the HUD).
 * **3 gag-free holds**, protected: Fuzz on the steps, "...Seven.", and the firework.
 
 **Where the grafts land, by beat** (beat IDs from the beat sheet):
 * **Act One:** 1-02 the "1" falls off and the pencilled "and Sunny."; 1-03 S107 page 1 in the fountain basin; 1-04 to 1-07 the Giggle crawl cut to 4 stalls (52 s; Grampy in the background without a line); 1-09 page 2 under the twin pies and the horned key; 1-10 the LOST PROPERTY lantern; 1-11 page 3 in Mascotty's paw after R21 of stillness; 1-13 the 4-frame pipe-sigh insert; 1-14 Fuzz's kids'-tent insert, **with no string on the crowned silhouette**.
-* **Act Three:** 3-01 the cute run (0:50, elastic +/-20 s); 3-03 and 3-05 the first-person runs (40 s + 30 s).
+* **Act Three:** 3-01 the cute run (0:50, elastic +/-20 s, with two 4-frame truth inserts that are never trimmed); 3-03 and 3-05 the first-person runs (40 s + 30 s), in the truth.
 * **Act Four:** 4-03 **"Something was in there with me. It kept trying to finish a poem."**; 4-04 **"...I got lucky."** [R13] **"Luck isn't a liturgy."**; 4-05 the old draft, **"You never asked where it went."**, "Old draft."; 4-07 **Fluffy's grave**, with a cupcake on it; 4-08 the pink heart and **the 2 s half-split** (a sooty hand, a fuse, two bowls, no faces), then the hum one note further.
 
 **Post-credits (0:10).**
-1. Night at the sealed gate.
+1. Night at the sealed gate. The grille, its shutter shut, is in frame throughout (the plant for 102).
 2. The stray Giggle lantern drifts over the Wall **carrying the pink "1"**. R13.
-3. *Crunch.*
+3. A wet *crunch*.
 4. GURGLE, and the padlocks rattle three times, 15 frames apart.
 5. Topper at R13: *BOING*.
-6. A deadpan caption, attributed to GURGLE (it): **"...needs salt."** Grumbleguts is neither seen nor heard.
+6. A deadpan caption, attributed to GURGLE (it): **"...needs salt."** Then his purr behind the gate (`PILOT_ROADMAP.md` D8). Grumbleguts is not seen.
 7. Smash to the Dippinn card, which says "gurgle." on its last frame.
 
 HaHaland stays at **Population 500** as a running gag until the finale's "Population: 1,001."
@@ -110,7 +111,7 @@ HaHaland stays at **Population 500** as a running gag until the finale's "Popula
 
 | # | Change | Source | Lands in |
 |---|---|---|---|
-| G1 | **Pump Shotgun becomes the Pump Sprinkler from day one.** Same squeak-CHK, sprinkle shells, never aimed at a citizen, never merchandised. **The Bubble Wand leads the merchandise.** | Both judges | Act Two prize case, Act Three, all art |
+| G1 | **Pump Shotgun becomes the Pump Sprinkler from day one.** Same squeak-CHK, sprinkle shells, never aimed at a citizen, never merchandised. **The Bubble Wand leads the merchandise.** **Superseded by M3** (§1.3a): the Pump Shotgun is restored. | Both judges | Act Two prize case, Act Three, all art |
 | G2 | Clinker line: "Something... It kept trying to finish a poem." "...She?" is cut. | Judge 2 | Act Four |
 | G3 | Fuzz explains the win away as luck ("I got lucky. Luck isn't a liturgy."). The bible flags the pilot's name as a **lucky shout, not a true rite**, so "The Bottle" (game Ep 2.5, TV 107) is still the first real one. | Both judges | Act Four, bible |
 | G4 | The **S107 "Speech Notes"** runner: three pages found (fountain basin, under the twin pies, in Mascotty's paw after Sunny stands still for R21). "Two." is the rating for the recovered speech. The old-draft page sits on the back of the clipboard. | A, via both judges | Acts One, Two and Four |
@@ -122,20 +123,38 @@ HaHaland stays at **Population 500** as a running gag until the finale's "Popula
 | G10 | **Wall-wipe grammar is a series rule.** The camera can cross the Wall and nobody else can. The split screen closes for good in the finale. | B | The firework answer, then the series |
 | G11 | **The main title is a living opening.** One detail updates per arc: the glow blinks back after Arc 1, the gate has a crack after Ep 2.7, the pipes show under the town after Ep 3.4, and the finale's pan has no Wall. The pre-chorus is a **mirrored knock**, with the Hellvile side in silhouette only until canon reveals it. | A and B | Main title |
 | G12 | The eyecatches keep C's festival-clock cards and add **Mascotty's season runner**. She appears in every IN card, a little closer each episode, and the head comes off only at Ep 4.6. | A | Eyecatches |
-| G13 | **Standards discipline**: TV-PG; inserts never shorter than 4 frames; flashes no longer than 3 frames at reduced luminance; a Harding/PSE pass. **No OMINOUS cue before the fog**, so the 21:00 fog is the first real scare. | A | Whole episode |
+| G13 | **Standards discipline**: ~~TV-PG~~ (the rating is superseded by M1); inserts never shorter than 4 frames; flashes no longer than 3 frames at reduced luminance; a Harding/PSE pass. **No OMINOUS cue before the fog**, so the 21:00 fog is the first real scare. Everything but the rating stays. | A | Whole episode |
 | G14 | **The season plan shows the work that follows.** Eps 102-104 take Pitch A's quiet material almost unchanged: the Pink Door Cottage, COSY: B+, the S199 "Thursday" brick, "Neither did I." | A | Bible, deck |
-| G15 | **The format changes over the series.** Before 107 "The Bottle", episodes are single 22-minute Hillvile stories. After it they become 2x11 with a Hellvile B-segment ("the same day from the other side"), which stays away from the gate until Ep 2.7. The finale closes the split screen. | B | Bible, deck |
-| G16 | **A show-safe Grumbleguts model sheet, commissioned now**: a peaked cap between the horns, a brass-button waistcoat that won't close, trousers, the gate key on a chain, and a crossing-guard sign that says NO on both sides. | B | Pre-production. Used for the main-title silhouette. |
+| G15 | **The format changes over the series.** Before 107 "The Bottle", episodes are single 22-minute Hillvile stories. After it they become 2x11 with a Hellvile B-segment ("the same day from the other side"), which stays away from the gate's inside until Ep 2.7 (the keeper and the gate's Hellvile face are seen from 102, M6). The finale closes the split screen. | B | Bible, deck |
+| G16 | **A Grumbleguts model sheet, commissioned now**, first briefed as a buttoned-up uniform (a cap, a vest, trousers, the gate key on a chain, a NO sign) for the old family audience. **Superseded by M5** (§1.3a): the sheet is drawn in the game's look. | B | Pre-production. Used for the main-title silhouette. |
 | G17 | **Deliverables**: the "[GURGLE: gurgle.]" and "[beep.]" caption gags, **mandatory audio description**, and a per-language localization guide covering the they/xe pronouns, "beep." and the lyrics. | B | Post |
 | G18 | **Scope trims**: first person no longer than 1:15 and built on the s10 raycaster; a single emissive-ribcage layer; about 12 speaking roles; the trailer scenes reused as Pitch C lists them. | Both judges | Pipeline |
 | G19 | **Chibi preset fixes before any pitch art**: the Mayor is a cherub, Nana a sheepkin, Pip a bunnykin and Sunny a bunnykin. | Judge 2 | W1 |
-| G20 | **Comps are cleaned up.** Shaun of the Dead and Hazbin are dropped from all pitch material. The comps are Gravity Falls, The Owl House, Amphibia, Over the Garden Wall and Hilda. | Judge 1 | Deck |
+| G20 | **Comps are cleaned up** for a family audience: Shaun of the Dead and Hazbin were dropped and five kids' and family comps used instead. **Reversed by M8** (§1.3a): the comps are adult and tonal only. | Judge 1 | Deck |
+
+### 1.3a The mature direction (2026-10-25), which supersedes G1, G16 and G20 and part of G13
+
+The user re-pointed the show at adult animation: "The show won't be rated for kids. So add the butt gag back." / "It's supposed to have the gruesomeness of DOOM, so naturally there is leeway for maturity." / "Remember Grumbleguts can be as promiscuous as someone like Angel Dust sometimes." / "Bar censor stickers as much as you can." / "Maybe save Grumbleguts' appearance for the next episode." The pilot's beats keep their lengths (22:00, 60 beats, 1,320 s); every change sits inside an existing beat.
+
+| # | Change | Lands in |
+|---|---|---|
+| M1 | **Rating and audience.** Adult animation, made for adults; TV-MA (the pilot TV-MA (V); the series TV-MA (L, S, V) from 102); 18+ elsewhere, 16+ where a territory's scale allows; not made for kids. The 10-16 core, family co-viewing, the TV-PG ceiling and the "D first in the finale" delay are gone | §0, §2, deck slide 16, every rating row |
+| M2 | **The four hard limits**, the show's own non-negotiables: nothing explicit; adults and consent; children never in it; no real-world hate content | §2 (first), the bible's standards appendix, every script, board and animatic |
+| M3 | **The Pump Shotgun is restored** (the game's canon brutal weapon, Rivet's junk-welded build); the **Bubble Wand stays** as the cute-mode weapon, no longer a substitution or the merchandise lead. Each weapon carries the game's two names (PARTY PUMP / SLAUGHTER; the optional welded saw, PURRING SAW / MEATCLEAVER, is `PILOT_ROADMAP.md` D15) | Act Two prize case, Act Three, the HUD, props, foley |
+| M4 | **HaHaland's filter and the truth.** The game's CUTE/BRUTAL toggle is the device: the filter shows confetti, the truth shows DOOM gore on demons and monsters, and the gag is the switch. The truth shows in the brutal register, in 4-frame truth inserts, on Hellvile's side of the Wall and in the main title's chorus. The filter is always on with a child in frame. Per-beat upgrades are in `PILOT_BEATSHEET.md` | §2 Gore, §4.3 FX, §4.6, the beat sheet |
+| M5 | **Grumbleguts' character and the game's look.** Flamboyant, shameless, flirty and promiscuous; hookups off-screen and implied, with willing adults; the butt gags in full (the restored bagel bend, the X pucker, the blush). The model sheet is drawn in the game's look: harness, collar, studs, chains, the riding crop, the gate key, a bare cartoon butt and a smooth front | §2 Grumbleguts, §4.3, §4.5, `GAG_BIBLE.md` §7 |
+| M6 | **Not seen in 101; debut in 102 at the grille; 113 as his turn.** In 101 he is a rear silhouette in the main title and a gurgle and a purr after the credits. 102, "Open Late", is built around him. The town sees him only through the gate's grille, and the gate stays sealed until 113 | §1.2, §1.5, §1.6, `SERIES_OVERVIEW.md` §5 |
+| M7 | **The season moves.** 102's old quiet material moves without loss: the cottage and the Thursday tag stay in 102; the beach, Mr. Flops and the first paper boat open 103; Pip's shoebox bed goes to 104. Each of 103-112 gets a small Grumbleguts beat | `SERIES_OVERVIEW.md` §5, deck slides 11-12 |
+| M8 | **Comps, buyers, markets, the YouTube route.** Adult tonal comps only (never copied designs, names or lines); adult slates; Kidscreen and the kids' and family slates dropped; YouTube as not made for kids, age-restricted, with green-band and red-band cuts | §4.9, deck |
+| M9 | **No censor stickers.** Staging, framing, props, silhouettes, smash cuts, reaction shots, off-screen sound and implication do the work. One survives in the pilot (3-03), because the sticker is the joke and the first shell blows it off. The main title's end pose uses the Mayor's pink roller instead | §2 Stickers, §4.3 FX, §4.6, deck slide 1 |
+| M10 | **The theme note.** The cute theme over a brutal show is part of the joke; nothing in the theme package changes | §4.6 |
+| M11 | **The cast is adults only.** Pip and every child voice, the walla included, are adults; breakdowns disclose the adult material; one performer voices Grumbleguts and GURGLE in the line the GURGLE vocalist held | §4.5, §6, R21 |
 
 ### 1.4 Where the judges disagreed, and how this roadmap resolves it
 
 | Question | Judge 1 | Judge 2 | Locked |
 |---|---|---|---|
-| Does anything speak at the gate in the post-credits? | Grumbleguts is not seen and does not speak | An offscreen "...Needs salt." | **Grumbleguts is unseen and unvoiced.** "...needs salt." becomes a deadpan caption attributed to GURGLE, which also closes the ratings runner. *Fallback:* pure gurgle. |
+| Does anything speak at the gate in the post-credits? | Grumbleguts is not seen and does not speak | An offscreen "...Needs salt." | **Locked, then revised by the user's direction (v1.1; the old lock had no voice at all and a pure gurgle as its fallback):** he is unseen; "...needs salt." stays a deadpan caption attributed to GURGLE (which also closes the ratings runner), then his purr behind the gate. *Fallback:* one spoken line, "Mm. Somebody new." (`PILOT_ROADMAP.md` D8). |
 | The answering firework | A 2 s half-split: hand, two bowls, no faces | A 4-frame brick-wipe insert of a sooty hand | **Default: a 2 s half-split entered by brick wipe.** The 4-frame version is the animatic alternate, decided at the G3 review. |
 | Clinker's line | Keep it, lightly | Change it to "Something... It..." and cut "...She?" | **Judge 2's version**, which is stricter about protecting "The Bottle". |
 | "It was the name. Not the hug." | Make it light and add the luck line | Not addressed | **Replaced by the luck line**, which protects Fuzz's Ch3 crisis. |
@@ -143,7 +162,7 @@ HaHaland stays at **Population 500** as a running gag until the finale's "Popula
 
 ### 1.5 Room decisions, locked at G0
 
-* **Sunny is they.** A young adult in their first home. Never a target of romance or innuendo. Silent: canon gives Sunny three lines, at Ep 3.7, 4.4 and 4.6.
+* **Sunny is they**, an adult (a young adult in their first home). Silent: canon gives Sunny three lines, at Ep 3.7, 4.4 and 4.6. Whether Sunny can be flirted at is `PILOT_ROADMAP.md` D13.
 * **The pet is it.** Its name is withheld until Sunny's first spoken line (Ep 3.7). Its vocabulary is "beep.", plus the horned "beep." and "bep?".
 * **Pronouns as the roster gives them**:
   * Rivet, Steamy, Mascotty, Nana, Bloom, Hattie, Lulla, Clinker and Charlotte are she;
@@ -153,35 +172,56 @@ HaHaland stays at **Population 500** as a running gag until the finale's "Popula
   * GURGLE is it.
 * **The pilot's host and possessor exist only in the pilot**: Bonejangles (5, he) possessed by the breath of Clinker (753, she). Steamy and TALLYWORN, Sprinklepop and "The Bottle" all stay where canon puts them.
 * **Rivet is unseen until TV 108 (game Ep 2.6).** In the pilot she exists as the prize case signed "—R".
-* **Grumbleguts' series choices**: his crush is the Gate (story_final), and his catchphrase is "Open late."
+* **Grumbleguts' series choices**: his crush is the Gate (story_final), and his catchphrase is "Open late." He is not seen in 101 and debuts in 102, "Open Late"; one performer voices him and GURGLE.
+* **The cast is adults only**, Pip included.
 
 ### 1.6 The season this pilot sells
 
 | Season | Game chapters | Shape | Ends on |
 |---|---|---|---|
-| 1, "Something in the Vapor" (13) | P0, Ch1, Ch2 | **101** is the pilot. **102-104** finish Ch1 using Pitch A's quiet material and close Arc 1 on the glow blinking back. **105-113** are Ch2, with **107 "The Bottle"** as the mid-season turn. From 108 the format is 2x11 with a Hellvile B-segment. | The gate cracks, Grumbleguts debuts, and "THE DEMONS OF HELL ARE HERE." |
+| 1, "Something in the Vapor" (13) | P0, Ch1, Ch2 | **101** is the pilot. **102 "Open Late" is Grumbleguts' debut**, at the gate's grille. **103-104** finish Ch1 with Pitch A's quiet material and close Arc 1 on the glow blinking back. **105-113** are Ch2, with **107 "The Bottle"** as the mid-season turn. From 108 the format is 2x11 with a Hellvile B-segment. | The gate cracks (Grumbleguts' turn), and "THE DEMONS OF HELL ARE HERE." |
 | 2, "Hell Invades" (13) | Ch3 | The plumbing reveal lands at **S2E7, the series midpoint** | The pet runs over the Wall. "I had a cloud once." |
 | 3, "Hellvile Park" (13) | Ch4 + epilogue | Ends on "...Hi, Fluffy.", the Wall falling and the split screen closing | "Population: 1,001." Then the **"Mingle Night" special**, one year to the night after the pilot. |
 
 ---
 
-## 2. Audience, rating and standards (binding)
+## 2. Audience, rating and standards
+
+**Audience.** Adult animation, made for adults. Secondary: retro-game players and the game's own audience. Not made for kids, and not pitched to children, teens or family co-viewing.
+
+**Rating.** US TV Parental Guidelines **TV-MA**. The pilot is submitted **TV-MA (V)** for graphic fantasy violence (the gore is on demons and monsters). The series is **TV-MA (L, S, V)** from 102, when Grumbleguts brings crude language and sexual innuendo; the network sets the final descriptors. Elsewhere: post-watershed, planned to an **18** ceiling, and **16+** where a territory's scale has that band and its classifier agrees (confirm with each buyer's standards team). One version of the content worldwide; no "safe" alternates are boarded in advance.
+
+### The show's non-negotiables
+
+Four hard limits bind every episode, cut, promo, short, sizzle, deck page and product, in every market. Nothing in the show's adult direction loosens them.
+
+1. **Nothing explicit.** No explicit sexual acts and no genitals on screen, ever. Sex is implied, off-screen or innuendo: a closed door, a sign, a sound, a reaction, a smash cut. Grumbleguts' design has nothing explicit to hide: his front is smooth cartoon with no anatomy drawn, and a bare cartoon butt and the cartoon X pucker are fine.
+2. **Adults, and consent.** Every sexual or suggestive moment is between adults and consensual. A no ends the advance on the spot (he steps back on his next line and does not try again in that scene). Nobody's body is used on someone who has not said yes. Silence is never a yes. Consent is never the punchline.
+3. **Children are never in it.** Child and teen characters (Pip; the young cherub and the young imp in the storybook flashbacks; Miss Lulla's daycare kids; Bolt, Pokefork, Wisp, Tantrum, Wobbles, Homework; every KID- or TEEN-flagged citizen) are never in sexual or suggestive scenes or dialogue, and never the subject of graphic gore. A scene is one continuous time and place: a scene with a child in it carries no innuendo at all, and graphic gore never shows in a frame with a child in it (the filter stays on).
+4. **No real-world hate content.** No slurs, no real-world hate symbols, and no joke whose target is a real group of people, a real faith or a real person.
+
+Everything else is open, and governed by craft: the comic-timing rules, the cute/brutal device, the sticker rule, the Grumbleguts gag book (`GAG_BIBLE.md` §7) and the technical rules below.
+
+**Supporting practice.** The cast is adults only: Pip, the fog's child "us" and every child in the walla are voiced by adults. Casting breakdowns disclose the adult material. The bible keeps a KID/TEEN flag on every citizen. A standards check (`GAG_BIBLE.md` §11.2) runs on every script, board and animatic.
+
+**Technical rules that stay** (they are broadcast law and viewer health, not age rules): whiplash inserts and hidden images run 4 frames or longer, never 1 (subliminal-image rules, e.g. Ofcom 2.11); white flashes 3 frames at most at reduced luminance; no more than 3 flashes a second; red flashes are local, never full-screen; blood is a held or sliding overlay, never a strobe, and any large saturated-red change goes on the Harding list; PEAT on every cut and a Harding/PSE pass before delivery (Ofcom 2.12).
+
+### How the rules apply in production
 
 | Area | Rule in this production |
 |---|---|
-| **Audience** | Core 10-16, safe for families to watch together. Secondary: adult animation fans and retro gamers. |
-| **Rating** | US TV Parental Guidelines. **Series TV-PG (D, V) maximum; pilot TV-PG (V).** Equivalents in other territories are confirmed with each buyer's standards team. Nothing is ever cut "hotter" for any market. |
-| **Gore** | Confetti, hearts, plush stuffing and grape goo only. The game's BRUTAL gore and Monster Mode are not in the show. In the show, "brutal" names a register (camera, music, palette, HUD), never a level of gore. The HUD's "GORE: BRUTAL" label shows for 8 frames and is then stickered over by the Board of Decency. |
-| **Weapons** | The Pump Sprinkler is a welded junk contraption (bellows, drainpipe, bike bell) firing sprinkle shells, aimed only at Puff Demons, never at a citizen. Its silhouette must not read as a realistic gun. Not merchandised. |
-| **Possession and religion** | Possession is shown as stillness, red sockets, the lit ribcage and a doubled voice, with no body horror. The rite is hugs, a hymn and water, shown with affection. **No pentagrams in the pilot.** This includes removing the 4-frame pentagram from trailer scene s04 wherever it is reused. |
-| **Kids** | Pip, Lulla's daycare kids and every kid or teen character are **fully out of romantic or suggestive material and out of any scene that carries it**. Kid peril stays mild: the fog never touches a child. Pip's big moment is courage. Fireworks: an adult lights the rocket, and the kid stands three (then four) steps back. |
-| **Grumbleguts** | **Sound only in the pilot.** Across the series his butt, belly and feast humour stay innuendo and slapstick and are never explicit. His flirting is with adults only, played for his vanity, with kind rejections. With kids he is only the grumpy uncle. The concept-sheet cuts apply: no hose close-up, no gas gag, no crop or unbuckle poses, no "...that's hot", the harness becomes a uniform, and none of the S186 outcome. |
-| **Vaping** | The pilot has only the Cloud Nine "COMING SOON" sign. In the series, vaping is always the villain's lure and never glamorised. No real brands. |
-| **Flashes and inserts** | Inserts are **4 frames or longer**, never 1 (Ofcom rule 2.11 on subliminal images). White flashes last at most 3 frames, at reduced luminance. A PEAT self-check runs on every cut, and a Harding pass runs before delivery (Ofcom rule 2.12 / PSE). |
+| **Gore** | **HaHaland's filter, and the truth.** On the Hillvile side a demon pops into confetti, hearts, plush stuffing and grape goo (the filter); the truth is DOOM: blood, gibs, viscera, eyeballs and teeth, shotgun and chainsaw mayhem, the big red splatter, timed on the comic-timing ladder. The gag is the switch. The truth shows in the brutal register (the record scratch into first person, the HUD, the metal insert song), in a 4-frame **truth insert** that owns the audio and cuts back with exactly one persistent change, on Hellvile's side of the Wall (which has no filter; from 102, Grumbleguts' side of the gate) and in the main title's chorus. The filter is always on when a child is in frame. A cute citizen is never gored. Gore lands on a beat and gets a button. The switch always has a sound: SCRATCH in, REWIND out. A hit on Sunny reads on the lens (demon blood, a heart off the HUD); Sunny is never seen hurt, and the pet is never harmed. Blood comes from the palette's BLOOD ramp only where the truth shows, and splatter slides off the lens on twos. First person stays capped at 1:15 an episode. Monster Mode is no longer barred (no Season 1 episode uses it). |
+| **Weapons** | **The Pump Shotgun** (canon): Rivet's junk-welded build (a bath-house bellows, a drainpipe, a bike bell), with no real-model silhouette; a squeak in the filter, CHK-CHK in the truth; name plate PARTY PUMP / SLAUGHTER, which flips with the register. The **Bubble Wand** is the cute-mode weapon. The welded saw (PURRING SAW / MEATCLEAVER) is `PILOT_ROADMAP.md` D15. Aimed only at demons, never at a citizen (the hosts are neighbours). No replica-firearm merchandise (retail law): the shotgun only as a non-replica figure accessory. |
+| **Possession and religion** | Possession can be properly frightening (stillness, red sockets, the lit ribcage, a doubled voice; the 180-degree head turn is canon in 107); the host always comes home whole (canon). The rite is hugs, a hymn and water, never mocked. Pentagrams are allowed as hell décor; the 4-frame pentagram edit to trailer scene s04 is no longer required. Hell décor is never aimed at a real faith (hard limit 4). |
+| **Kids** | Hard limit 3, for production: the cast has no minors; every citizen carries its KID/TEEN flag; the scene split (a scene with a child in it carries no innuendo at all); the filter is on in every frame with a child; kid peril can be real, never graphic gore; the fog never touches a child and no child is possessed (canon). Fireworks staging stays: an adult lights the rocket, and the kid stands three (then four) steps back. |
+| **Grumbleguts** | **Not seen in the pilot**: a rear silhouette behind the gate's shut grille in the main title, then a gurgle and a purr after the credits. He debuts in 102, "Open Late". Across the series: flamboyant, shameless, flirty and promiscuous, in the way of adult animated comedy (double entendres, propositions, bragging); every flirt aimed at an adult, every advance taking its no; hookups off-screen and implied, with willing adults; the belly, appetite and gas gags (gross-out close-ups rationed to 2-3 an episode); the butt gags in full (the bagel bend, the X pucker, the blush; every rear reveal gets a record scratch). With a child he is only the grumpy uncle, in a scene with no innuendo in it. The S186 Feast outcome stays game-only as written (`PILOT_ROADMAP.md` D17); the show's version is the post-Season 3 consent rewrite (`SERIES_OVERVIEW.md` §6.1). Gag book: `GAG_BIBLE.md` §7. |
+| **Stickers** | **No censor stickers or bars.** Non-explicitness comes from staging, framing, props, silhouettes, smash cuts, reaction shots, off-screen sound and implication; the hard limits mean there is never anything explicit to hide. A sticker may appear only where the sticker itself is the joke, at most once a season: Season 1's is in 101 (3-03), where the Board of Decency sticker slaps over GORE: BRUTAL and the first shell blows it off. HaHaland's own covering habit (GIGGLE over MINGLE, the Mayor's pink paint, the Board's doilies) is the in-world censor, and it always fails. |
+| **Vaping** | The pilot has only the Cloud Nine "COMING SOON" sign. In the series, vaping is always the villain's lure and never glamorised (satire). No real brands or devices. |
+| **Flashes and inserts** | Inserts are **4 frames or longer**, never 1 (Ofcom rule 2.11 on subliminal images). White flashes last at most 3 frames, at reduced luminance; red flashes are local. Blood is a held or sliding overlay, never a strobe, and large saturated-red changes go on the Harding list. A PEAT self-check runs on every cut, and a Harding pass runs before delivery (Ofcom rule 2.12 / PSE). |
 | **Sound** | No OMINOUS cue before the fog. The first real scare is the 21:00 fog. |
-| **Third-party references** | `docs/design/story/refs/*.webp` (a pot-bellied devil, Baloo, a dragon demon, the Red Guy) are for inspiration only. They **never appear in pitch or show material**. |
+| **Third-party references** | `docs/design/story/refs/*.webp` (a pot-bellied devil, Baloo, a dragon demon, the Red Guy) are for inspiration only. They **never appear in pitch or show material**. Comparable shows are tonal only: no copied designs, names or lines (R28). |
 
-A **standards appendix** in the bible restates these rules. It is sent to every writer, board artist, animator and vendor, and to each buyer's standards team at the first meeting.
+A **standards appendix** in the bible restates the four hard limits first, then these rules. It is sent to every writer, board artist, animator, performer and vendor, and to each buyer's standards team at the first meeting.
 
 ---
 
@@ -209,10 +249,10 @@ A **standards appendix** in the bible restates these rules. It is sent to every 
 * **Series bible v1** (25-40 pages):
   * the one-breath premise;
   * HaHaland, the Wall and Hellvile, and the rules: possession, the three-part rite, the three candles, the Wall wipe;
-  * the cast, with species, pronouns, an age band and **KID flags**, plus voice notes taken from the roster sliders;
-  * tone and the comedy-timing rules, taken from `comic_timing.md`;
-  * the standards appendix (§2);
-  * the season map (§1.6), including the format change after 107 and the 102-104 plan from Pitch A;
+  * the cast, with species, pronouns, an age band and **KID/TEEN flags**, plus voice notes taken from the roster sliders;
+  * tone and the comedy-timing rules, taken from `comic_timing.md`, and the cute/brutal device (HaHaland's filter and the truth);
+  * the standards appendix (§2: the four hard limits first);
+  * the season map (§1.6), including the format change after 107, 102 "Open Late" (Grumbleguts' debut) and the 103-104 plan from Pitch A;
   * the look (palette and colour script) and the sound (leitmotifs and the theme);
   * the game, a real GBA ROM and PS1 disc, as transmedia.
 * **Treatment**: 3-5 pages of the pilot in prose, the night told hour by hour.
@@ -222,14 +262,18 @@ A **standards appendix** in the bible restates these rules. It is sent to every 
   * the sign-up sheet;
   * the MINGLE crate;
   * the R8-late possessor voice;
-  * Clinker's breath.
+  * Clinker's breath;
+  * the grille in the sealed gate;
+  * Grumbleguts' debut moved to 102 (game Ep 2.7, TV 113 in canon);
+  * the Small Puff (102's leftover demon, paying 101's second IN card);
+  * the two-name weapon plates.
 
 **Milestones.**
 * Bible v1: W3.
 * Treatment: W4.
 * Deck v0: W6. Deck v2: W11.
 
-**Exit.** The bible has been read by a standards reader (either a consultant or a structured self-review against §2). Every canon flag has a disposition.
+**Exit.** The bible has been read by a standards reader (either a consultant or a structured self-review against §2, the four hard limits first). Every canon flag has a disposition.
 
 ### 4.2 Writing: outline, drafts, table read
 
@@ -254,20 +298,21 @@ A **standards appendix** in the bible restates these rules. It is sent to every 
 
 | Need | Repo source | How |
 |---|---|---|
-| Cast model sheets | `core/tools/portrait_sheet.c` (bust 48x56, figure 48x80, chibi 16x24 with a 4-direction walk, fighter 32x48; 11 expressions; possessed, soul-lost and ghost states) | Render ids 0, 1, 2, 5 (including possessed), 36, 42, 71, 77, 88, 106, 111 and 753 as the base for the show turnarounds. See `docs/PORTRAIT.md`. |
-| Show-size chibis | `trailer/tk_chibi.c` (sizes 1-4, 11 expressions, 8 mouths, idle clock) | Add **show presets** (`TK_SHOW_*`) so the shipped trailer stays reproducible, then fix the species (G19). **New presets:** Bonejangles (with one emissive-ribcage layer), Steamy, Mascotty, Kevin, Hattie, Bloom, Lulla. |
+| Cast model sheets | `core/tools/portrait_sheet.c` (bust 48x56, figure 48x80, chibi 16x24 with a 4-direction walk, fighter 32x48; 11 expressions; possessed, soul-lost and ghost states) | Render ids 0, 1, 2, 5 (including possessed), 36, 42, 71, 77, 88, 106, 111, 729 (Grumbleguts) and 753 as the base for the show turnarounds. See `docs/PORTRAIT.md`. |
+| Show-size chibis | `trailer/tk_chibi.c` (sizes 1-4, 11 expressions, 8 mouths, idle clock) | Add **show presets** (`TK_SHOW_*`) so the shipped trailer stays reproducible, then fix the species (G19). **New presets:** Bonejangles (with one emissive-ribcage layer), Steamy, Mascotty, Kevin, Hattie, Bloom, Lulla, and Grumbleguts (`TK_SHOW_GRUMBLEGUTS`, from the concept sheet). |
 | Backgrounds and texture | `artgen --sheet DIR`: 47 seamless 64x64 textures, 5 sky panoramas (PASTEL_DAY, SUNSET, NIGHT_STARS, HELL, VAPE_STORM) | BG tiles and parallax plates |
 | Demons | `artgen`: the Puff Demon and Impling, 8 frames each | The swarm, and the Big Puff at 3x with re-drawn detail |
 | Palette | `core/src/palette.c`, with its 15 eight-shade ramps and the NIGHT tint | Export it to `.gpl`/`.ase`/`.pal` for Aseprite, Krita, Blender and Harmony. **It is the colour script.** |
 | UI | `docs/media/ui_gallery.png` (the CUTE, MINT, CREAM, HELL, LCD and DARK skins) | The CREAM clipboard act cards, name plates, the HUD frame, eyecatch frames |
-| Grumbleguts | `trailer/concept/grumbleguts.c` (`trailer/build/ggsheet`) | **Re-tuned to the show-safe uniform (G16).** The scale shot, reaction cut, censor sticker and belly X-ray can be reused. The flirt poses and gas gags are cut. |
+| Grumbleguts | `trailer/concept/grumbleguts.c` (`trailer/build/ggsheet`) | **Re-staged for the show canvas in the game's look (M5).** The scale shot, the reaction cut, the belly X-ray, the flirt and unbuckle poses, the taunt turnaround and the gas puffs are all reusable. The censor sticker is not used as a cover (§2 Stickers). `gg_storyboard` (the Feast) and the hose close-up stay game-only (`PILOT_ROADMAP.md` D17). |
 | Logo and ident | `docs/media/title.png`, `trailer/assets/dippinn_logo.mp4` | Title card and studio ident |
 
 **The design package (exit list).**
-* **Characters**, 14 plus the crowd:
+* **Characters**, 15 plus the crowd:
   * Sunny; the pet (newborn, then with horn nubs); Mayor Giggs; Nana; Pip with Mr. Flops; Fuzz; Bonejangles (normal and possessed); Bloom; Steamy; Kevin; Hattie; Lulla with her kids; Mascotty; Grampy (background only);
+  * Grumbleguts: the silhouette for 101; the full sheet for 102 (turnaround, the 11 expressions, X-pucker and blush overlays, the rump-jiggle secondary);
   * the crayon versions: a small cherub seen from behind, a small imp (no face), and Fluffy on a string;
-  * a Hillvile-only crowd built with `tk_random_citizen` on ids 0-499. **No Hellvile citizens are visible before 107.**
+  * a Hillvile-only crowd built with `tk_random_citizen` on ids 0-499. **No Hellvile citizen is visible in the pilot; Grumbleguts (from 102) is the only one before 108, apart from Tallyworn's faceless back in 107's coda.**
   * Each character sheet has:
     * a turnaround (front, 3/4, side, back, 3/4 back);
     * the 11-expression sheet;
@@ -293,7 +338,7 @@ A **standards appendix** in the bible restates these rules. It is sent to every 
     * three candles, in three states, plus the blue bead;
     * holy water.
   * Fun Fair and fireworks:
-    * the prize case, the Bubble Wand and the **Pump Sprinkler**;
+    * the prize case, the Bubble Wand, the **Pump Shotgun** and (`PILOT_ROADMAP.md` D15) the welded saw, with their cute/brutal name tags;
     * the MINGLE crate and the rocket;
     * the Giggle lanterns, including the stray one;
     * the Hook-a-Duck ducks, including the unknown duck that faces the Wall;
@@ -304,7 +349,7 @@ A **standards appendix** in the bible restates these rules. It is sent to every 
     * Mr. Flops and the JUNIOR FESTIVAL PATROL sash;
     * Bonejangles' xylophone ribs and the chalk poem;
     * Fluffy's grave ("FLUFFY THE CLOUD. DRIFTED.") with its cupcake;
-    * the gate's seven padlocks and its KEEP OUT / FOREVER sign.
+    * the gate's seven padlocks and its KEEP OUT / FOREVER sign, and the grille with its shutter (shut in 101).
 * **Locations.**
   * Arrival, festival and cottage:
     * the bus road, candy hills and town sign;
@@ -316,10 +361,13 @@ A **standards appendix** in the bible restates these rules. It is sent to every 
     * the one park and the bandstand;
     * the Wall-split bandstand.
   * Inserts and the Wall:
-    * the 4-frame inserts: fog with eyes, the pipe sigh, the kids' tent in sepia;
+    * the 4-frame inserts: fog with eyes, the pipe sigh, the kids' tent in sepia, and the three truth inserts (2-03, and two in 3-01);
     * **the 2 s Hellvile half-split**: a table, two bowls, a sooty hand, no faces.
 * **FX sheets.**
-  * Confetti-gibs.
+  * The filter set: confetti, hearts, plush stuffing, grape goo.
+  * The truth set: blood from the BLOOD ramp, gibs, viscera, eyeballs, teeth, and lens splatter that slides off on twos.
+  * The truth insert (4 frames, owning the audio, cutting back with one persistent change).
+  * The chainsaw geyser (`PILOT_ROADMAP.md` D15).
   * Bubble traps.
   * Fog with eyes and the lantern-out wave.
   * The ribcage emissive.
@@ -329,10 +377,12 @@ A **standards appendix** in the bible restates these rules. It is sent to every 
   * Hellify transitions.
   * The R8 crayon bleed.
   * Irises.
-  * The Board of Decency sticker slap.
+  * The Board of Decency sticker and its blow-off (3-03 only).
+  * The Mayor's pink paint roller over the red drip, and the bleed-back (main title end pose).
   * The hatch flash (3 frames or less).
 * **HUD**:
-  * a 32 px strip with hearts on the left and sprinkles on the right;
+  * a 32 px strip with hearts on the left and shells on the right;
+  * the two-name weapon plate (PARTY PUMP / SLAUGHTER), which flips with the register;
   * the pet's face in five states;
   * the plate "RIP AND TEAR... GENTLY", pending counsel (§9 R3).
 * **Style guides**:
@@ -348,14 +398,14 @@ A **standards appendix** in the bible restates these rules. It is sent to every 
   | 18:00 | PASTEL_DAY into SUNSET |
   | 19:00-21:00 | NIGHT_STARS with PEACH lantern pools |
   | 21:00 | VAPE floods in from the south, and the red eyes are the only hot colour |
-  | The brutal register | HELL, BLOOD and LAVA through hellify, and only here, in the main title and in the IN flashes |
+  | The brutal register (the truth) | HELL, BLOOD and LAVA through hellify; BLOOD is the truth's blood. Only where the truth shows: the brutal register, the truth inserts, the main title's chorus and the IN flashes (the cold open's red paint drip, `PILOT_ROADMAP.md` D16, uses CANDY's deepest red, not BLOOD) |
   | The rite | BONE and holy gold against VAPE |
   | 23:00 | A white-pink firework and one purple one |
   | Dawn | PEACH and WOOD |
 
 * **Look-dev test (W3)**: a 20 s proof-of-look shot running from 21:00 into the fog, with lip-sync and palette lint. It compares **384x216** (the baseline) with **480x270** (more room to act, 4x to 1080p and 8x to UHD). The resolution decision is made here and never reopened.
 
-**Exit.** Every asset the boards need is designed. Standards have cleared the prop list (the Sprinkler, the HUD label, the plate text). Every design PNG passes palette lint.
+**Exit.** Every asset the boards need is designed. The prop list is cleared (the Pump Shotgun look, the HUD label, the plate text), and the gore density is reviewed against the hard limits and the Harding rules. Every design PNG passes palette lint.
 
 ### 4.4 Boards and animatic: what the trailer toolkit can do now
 
@@ -371,15 +421,15 @@ A **standards appendix** in the bible restates these rules. It is sent to every 
 **Animatic v0, the slug reel (W1, one to two days; recipe in Appendix A).**
 1. Paste the 60 rows from `PILOT_BEATSHEET.md` Appendix F into a pilot timeline beside the trailer's. Names are C identifiers: `e101_1_02` is beat 1-02, the town sign.
 2. Replace the placeholder text with a slug card generated from a CSV (`beats_101.csv` holds TC, act, beat and dialogue), with a frame counter burned in.
-3. Link the trailer scenes Pitch C reuses as **temp shots** ("rip-o-matic"). Each one needs standards edits before it is shown to anyone outside the team:
+3. Link the trailer scenes Pitch C reuses as **temp shots** ("rip-o-matic"). Each one needs continuity edits (canon order) before it is shown to anyone outside the team:
 
    | Trailer scene | Temp for | Edits required |
    |---|---|---|
    | s03 | Arrival | Strip "(and 500 not-so-nice people next door)" |
-   | s04 | The hatch | **Remove the 4-frame pentagram** |
+   | s04 | The hatch | Optional: drop the 4-frame pentagram for the pilot's cute-mode hatch (no longer a standards requirement) |
    | s07 | The fog entering the ribs | Remove the vape product, Vex's lines and "*may contain souls" |
    | s08 | The 21:00 freeze | Remove Vapula rising and the vape |
-   | s10 | The Absolutely Not Scary House | Brutal gibs become confetti; the shotgun becomes the Sprinkler; drop "(We judge a little.)" and the minigun |
+   | s10 | The Absolutely Not Scary House | Keep the brutal gibs and the shotgun; drop "(We judge a little.)" and the minigun (the prize case has no minigun) |
    | s11 | The rite | Drop SOUL LOST and MONSTER MODE |
    | s12 | The festival crowd | |
    | s15 | The gate | Drop the platform text |
@@ -406,10 +456,11 @@ A **standards appendix** in the bible restates these rules. It is sent to every 
 1. **Open:** the Dippinn ident, then the crayon caption "Every Midsummer night, the whole park had one party."
 2. **Body:** the TV-size chorus of "Doomtastic Times" under a montage built from two sources:
    * re-edited trailer shots (s02, s03, s04, s06, s08, s10, s11, s12, s13), with the edits listed above;
-   * **four new toolkit shots, one for each of Pitch C's trailer moments**: the GIGGLE-over-MINGLE rule of three; the hatch in the stampede; the ratings runner ("Six." [R8] "Needs death."), done in the HELL dialogue skin; and the pink heart over the Wall, with its purple answer.
+   * **four new toolkit shots, one for each of Pitch C's trailer moments**: the GIGGLE-over-MINGLE rule of three; the hatch in the stampede; the ratings runner ("Six." [R8] "Needs death."), done in the HELL dialogue skin; and the pink heart over the Wall, with its purple answer;
+   * a fifth, **the 102 teaser**: the grille slides open, rear first, record scratch, "Well, well. {..}Somebody knocked."
 3. **Close:** the title card (s15, re-staged), then "A pilot in development".
 
-Also produce a **9:16 cut** for Shorts and Reels, and **5 s eyecatch loops** as standalone posts.
+Cut the sizzle twice: a **red-band** version for buyers and age-gated posts, and a **green-band 30 s** with no gore and no raunch on screen. Also produce a **9:16 cut** for Shorts and Reels, and clean **5 s eyecatch loops** as standalone posts.
 
 **Boards (production).**
 * Rough boards W13-W17 (Option 2).
@@ -431,7 +482,7 @@ Also produce a **9:16 cut** for Shorts and Reels, and **5 s eyecatch loops** as 
 |---|---|
 | **Mayor Giggs** (he) | Sing-song (intonation 29), as expressive as possible. "Hee. Hee." is his wound, so he must play both the joke and the hurt. |
 | **Nana Puddin** (she) | Low, slow and warm. "Sweet pea." One R8 look per scene. |
-| **Pip** (they, KID) | The highest and fastest voice in the cast. **Cast an adult performer who specialises in kid voices.** If a minor is cast, comply with child-performer law: permits, a studio teacher, trust accounts, hour limits. |
+| **Pip** (they, KID) | The highest and fastest voice in the cast. An adult performer who specialises in kid voices. **The production casts no minors.** |
 | **Father Fuzz** (he) | High and quick, and sincere at the steps. |
 | **Bonejangles** (he) | Low and very expressive, at mid speed (pitch 8, intonation 29). He plays a xylophone on his own ribs. |
 | **Clinker** (she, heard and never seen) | Low, slow and flat (pitch 7, speed 6, intonation 5). Her "we" line is recorded both together with Bonejangles and separately: the mix slides her track 8 frames (about 267 ms) late, and "...Seven." is her track alone, **on time**. |
@@ -440,15 +491,16 @@ Also produce a **9:16 cut** for Shorts and Reels, and **5 s eyecatch loops** as 
 | **Kevin** (he) | One line ("Yes, three eyes."). Deadpan. |
 | **Hattie Haha** (she) | Slow and precise, a comic's timing. "...Yikes." |
 | **Miss Lulla** (she) | Low and soothing. |
-| **The fog voice** | "come and PLAY with us", with the second "us" in a child's voice. The child's line is recorded by a walla performer, not by Pip's actor. |
-| **Walla, 4-6 performers** | The crowd ripple, "NOT NOW, PIP.", Lulla's kids shouting "BEEP!" |
-| **GURGLE** (it) | Sound design built on the comedy kit's VOICE_GURGLE plus a bass vocalist's babble. **The pilot casts no actor for Grumbleguts.** |
+| **The fog voice** | "come and PLAY with us", with the second "us" in a child's voice. The child's line is recorded by an adult walla performer, not by Pip's actor. |
+| **Walla, 4-6 performers** (all adults) | The crowd ripple, "NOT NOW, PIP.", Lulla's kids shouting "BEEP!" |
+| **Grumbleguts and GURGLE** (he / it) | One performer: a warm, oily baritone, slow, purring and amused, who can sing and play R-range raunch with total sincerity. The same performer's bass babble, processed over the comedy kit's VOICE_GURGLE (with tuba and a draining sink), is GURGLE. In the pilot: the purr and the babble. A series regular from 102. |
 
 **Who is not cast.** Sunny is silent and has foley only. The pet's "beep." is the game's piezo motif, the one sound kept raw from the GBA.
 
 **Process.**
 * Self-tape auditions with sides taken from the pitch draft.
-* Callbacks in pairs: Mayor with Nana, Fuzz with Bonejangles, Pip with Nana.
+* **Breakdowns disclose the adult material** (gore, raunch, R-range language), and each performer approves their script's content before booking.
+* Callbacks in pairs: Mayor with Nana, Fuzz with Bonejangles, Pip with Nana, Grumbleguts with the Mayor (102 sides).
 * **Union.**
   * Ask SAG-AFTRA (US), Equity (UK) or ACTRA (Canada) which tier fits: low-budget, new-media or standard animation.
   * Option 1 may run non-union.
@@ -490,10 +542,12 @@ Also produce a **9:16 cut** for Shorts and Reels, and **5 s eyecatch loops** as 
 3. **Pre-chorus: the mirrored knock (G11).** The Hillvile cast runs at the Wall, and on the other side silhouettes mirror them frame for frame. On the same beat, both sides knock. The music's own record scratch lands on the gate.
 4. **Chorus.**
    * Hellify rots the shots.
-   * The s10 corridor flips from cute to brutal on the downbeat.
+   * The s10 corridor flips from the filter to the truth on the sweetest line (a Puff Demon bursts into red mist across the lens while the vocal keeps smiling).
    * Three candles go out in rhythm.
-   * A round silhouette bounces once behind the gate, drawn from the show-safe Grumbleguts sheet.
-5. **End pose.** A split at the Wall, the "nothing to see here! ♥" sticker, 13 frames of silence, "beep.", and the purple sparkle sinking. *Pilot variant:* GIGGLE NIGHT, with MINGLE showing through.
+   * Behind the shut grille, a big round rear silhouette presses against the gate and bounces once, drawn from the Grumbleguts model sheet (M5); the padlocks jump.
+5. **End pose.** A split at the Wall; the Mayor's pink roller paints over the red drip, which bleeds back on the last chord; 13 frames of silence, "beep.", and the purple sparkle sinking. *Pilot variant:* GIGGLE NIGHT, with MINGLE showing through. *From 102:* Grumbleguts pops into the verse rear first, with a record scratch, in a verse shot of his own with no child in it.
+
+**The cute theme over a brutal show is part of the joke.** "Doomtastic Times" stays exactly what the theme team is making: bright, sugary, slightly J-pop, with clean, sincere lyrics; nobody rewrites it edgier. The picture does the brutality: the chorus lands the corridor's switch to the truth (blood and gibs across the lens) on its sweetest line while the vocal keeps smiling, and the end pose paints over a red drip that bleeds back through. The Act Three insert song is the same chorus in its DOOM-side arrangement under real gore; the credits are a music box over crayon stills of the night, drawn as HaHaland remembers it, filter on. The theme line ("We don't talk about the other side.") is still never sung. Nothing in the theme package changes.
 
 **Build notes.**
 * Build the opening as **one layered project with per-arc toggles**: the glow blinks back, the gate crack, the pipes under the town, no Wall. The later variants then cost one render each.
@@ -510,6 +564,7 @@ Also produce a **9:16 cut** for Shorts and Reels, and **5 s eyecatch loops** as 
 | TRUE NAME, CHOIR, GOODBYE | | Pip's name, and the puff at the keyhole |
 | FUZZ hymn and amen | | The rite, including the prayer-rhythm duel against the RIFF on the ribs |
 | NANA, MAYOR, PIP, BEEP, HEE HEE bell, WALL | | Character colour and act-card stings |
+| GRUMBLEGUTS | The 7/8 gate engine; the RIFF in major (the game's motif) | From 102. In 101, only under the post-credits purr, if at all |
 | The vinyl kit | NEEDLE, STOP, TAPESTOP, REWIND, SPINBACK, WOBBLE, STUTTER | The flashback bus and the record scratches |
 | Stingers (about 70) and fear stings (24) | ITS_FINE, SAD_TROMBONE, IRIS... | ITS_FINE resolves every IN eyecatch |
 
@@ -554,7 +609,10 @@ Also produce a **9:16 cut** for Shorts and Reels, and **5 s eyecatch loops** as 
   * padlock rattles, at three sizes;
   * the eggshell crack;
   * the Bubble Wand and bubble pops;
-  * the **Sprinkler's squeak-CHK**;
+  * the **Pump Shotgun's two sounds**: the filter's squeak and the truth's CHK-CHK;
+  * gore foley: wet bursts, bone crunch, splatter on glass, the eyeball roll, the tooth tink;
+  * the saw's rev (`PILOT_ROADMAP.md` D15);
+  * the wet crunch and the purr (PC-1);
   * the paint roller (three squeaks at falling pitch);
   * lanterns going out;
   * a crate lid;
@@ -668,7 +726,7 @@ Also produce a **9:16 cut** for Shorts and Reels, and **5 s eyecatch loops** as 
 * **Palette.** Every rendered frame is checked against the 256-colour palette by a **palette lint** script (Python plus Pillow, or ffmpeg), run in CI on every render. An off-palette pixel is a retake.
 * **Scaling.** Nearest-neighbour by whole numbers only: 5x and 10x. No frame blending, ever.
 * **Reuse.** Cycles, the crowd generator and the artgen demons are reused. The elastic beats (the bus ±5 s, the Giggle crawl up to 20 s, the cute run ±20 s, the bite test up to 10 s; 55 s at most, beat sheet Appendix G) are the first cuts if the schedule slips.
-* **The first-person run.** It is the s10 raycaster re-staged at 16:9 and capped at **1:15**; the pilot uses 70 s. The HUD is our own design (hearts, sprinkles, the pet's face), with no id Software assets, fonts or names.
+* **The first-person run.** It is the s10 raycaster re-staged at 16:9 and capped at **1:15**; the pilot uses 70 s. The HUD is our own design (hearts, shells, the pet's face, the two-name weapon plate), with no id Software assets, fonts or names.
 * **Throughput assumptions.** A solo creator finishes about 25-30 s of hand animation a week. An indie team of 3 animators plus procedural support finishes 55-65 s a week. A service studio finishes 80-120 s a week. The rates count hand-animated seconds only. The pilot has about **1,140 s** of them: the cold open 100, Act One 320, Act Two 255, Act Three 185, Act Four 235, the tag 35 and the post-credits 10. On top of that come the main title (50 s, partly procedural), and three blocks that are procedural or stills and come from TD time: the 70 s first-person run, the 30 s of eyecatch templates and the 30 s of crayon credit stills.
 
 **Exit (G4).**
@@ -725,10 +783,11 @@ HDR is not needed.
 | Web | H.264/H.265 at UHD, `-tune animation`, 4K upload |
 | Versions | Broadcast, streaming, 2x11, textless, and the main title and eyecatches standalone (texted and textless); 21:00 territorial on request |
 | Audio | 5.1 and stereo printmasters; DX/MX/FX stems; 5.1 and 2.0 M&E; theme stems; AD mix |
-| Captions | SCC (CEA-608/708), SRT/WebVTT, TTML/IMSC 1.1. SDH conventions, including **"[beep.]"** and **"[GURGLE: gurgle.]"**. Captions are positioned clear of burned-in diegetic text. |
+| Captions | SCC (CEA-608/708), SRT/WebVTT, TTML/IMSC 1.1. SDH conventions, including **"[beep.]"** and **"[GURGLE: gurgle.]"**, and the gore and purr SDH ("[wet crunch]", "[squelch]", "[low purr]"). Captions are positioned clear of burned-in diegetic text. |
 | Audio description | **Mandatory.** AD script (every Sunny action, every sign and every deadpan caption), AD narration stems and the AD mix. |
 | Localization guide | Per-language rules for **they/xe pronouns** and for "beep." (kept untranslated); lyric translation policy and singable or subtitled options; the on-screen text string table (the procedural renderer re-renders localised signs); font coverage (the 5x8 font needs accents, and CJK needs a new font) |
 | Paperwork | As-broadcast script and dialogue list with TC; music cue sheet; credits list; chain of title; E&O certificate; licences; talent releases; Harding certificate; QC report; standards report; key art (16:9, 2:3, square); stills; loglines and 25/50/150-word synopses |
+| Content advisories | The platform's, and outside programme time; the 22:00 never carries one. No pre-emptive "safe" versions: a territorial edit, if a buyer's classifier requires one, is cut from the delivered master |
 
 **QC.**
 * Palette lint and PEAT on every version, then the Harding pass.
@@ -741,25 +800,26 @@ HDR is not needed.
 
 ### 4.9 Pitching and distribution
 
-**Pitch deck (15-20 slides).**
-1. The title, with the "nothing to see here! ♥" sticker.
+**Pitch deck (15-20 slides).** Every page sits inside the four hard limits (§2); the deck is for adult buyers.
+1. The title, with the red drip painted over in pink and bleeding back through.
 2. The logline and the one-breath premise.
-3. **Why now**: cozy-horror and game-born animation, and an IP that already plays.
+3. **Why now**: adult animation's indie-to-streamer pipeline (Hazbin Hotel, Helluva Boss, The Amazing Digital Circus), cozy-horror, game-born animation, and an IP that already plays.
 4. The world: HaHaland, the Wall, Hellvile Park.
-5. Tone, using the cleaned-up comps (G20). Undertale goes in as a game reference only.
+5. Tone, using the adult comps (M8; tonal comparisons only). Undertale and DOOM go in as game references.
 6. Characters, with pronouns.
-7. The pilot in one page, told hour by hour.
+7. The pilot in one page, told hour by hour, and the gate it doesn't open.
 8. **The series engine**: a neighbour of the week, a three-part rite, three candles, a true name, over a serial mystery.
 9. The season map and its bookend: the pilot is half a festival, and the finale is the whole park.
 10. **The format change after 107** (2x11, a Hellvile B-segment, the split screen that closes).
-11. **Eps 102-104 already boarded in outline** (G14).
-12. Music: "Doomtastic Times" as an anime-style opening, plus the major/minor leitmotif idea.
-13. The look: the palette as colour script, and stills from the look test.
-14. **It's also a game**: `gba_engine.png` and `ps1_engine.png`, labelled with plain text and no console logos.
-15. Audience and rating, with a standards summary.
-16. Marketing hooks: Midsummer as the show's own date, the annual "Mingle Night", the 5 s loops, merchandise (the pet, Mr. Flops, the **Bubble Wand**, a lantern Bonejangles).
-17. The team.
-18. The production plan, the budget and **the ask**.
+11. **102 "Open Late", Grumbleguts' debut**, outlined in act beats; 103-104 outlined (G14).
+12. **Meet Grumbleguts**: the model sheet, three lines, and the 102 teaser still (the grille opening rear first).
+13. Music: "Doomtastic Times" as an anime-style opening (the cute theme over a brutal show), plus the major/minor leitmotif idea.
+14. The look: the palette as colour script, the filter and the truth side by side, and stills from the look test.
+15. **It's also a game**: `gba_engine.png` and `ps1_engine.png`, labelled with plain text and no console logos.
+16. Audience and rating (TV-MA; 18+, 16+ where allowed), with the four hard limits.
+17. Marketing hooks: Midsummer as the show's own date, the annual "Mingle Night", Halloween, the 5 s loops, merchandise: an adult collectibles line (the pet with a "beep." chip, Mr. Flops, a lantern-ribcage Bonejangles, Grumbleguts, the Population sign, the Board of Decency sticker sheet).
+18. The team.
+19. The production plan, the budget and **the ask**.
 
 **Leave-behinds.**
 * The bible.
@@ -772,35 +832,40 @@ HDR is not needed.
 
 | Event | When | Use |
 |---|---|---|
-| Kidscreen Summit (Miami) | February | Meetings with kids' buyers. **G1 at W12 is timed for Feb 2027.** |
-| Annecy, MIFA and MIFA Pitches | June. Pitch applications are usually due in late winter. | Pitch the series. Screen the finished pilot in 2028. |
+| Annecy, MIFA and MIFA Pitches | June. Pitch applications are usually due in late winter. | Pitch the series in MIFA Pitches (adult series are eligible); **G1 at W12 is timed for the application.** Screen the finished pilot in 2028. |
+| SXSW, episodic pilot strand | March | Check whether animation is eligible |
 | Cartoon Forum (Toulouse) | September | Needs a European co-producer (Option 3) |
 | Ottawa International Animation Festival and TAC | September | Pitch sessions and screenings |
 | MIPCOM (Cannes) | October | International buyers, for Option 2's finished pilot in Oct 2027 |
-| Licensing Expo (Las Vegas) | May | Merchandise partners, once the pilot exists |
-| SXSW, episodic pilot strand | March | Check whether animation is eligible |
+| Licensing Expo (Las Vegas) | May | Adult collectibles partners, once the pilot exists |
+| Fan conventions (Comic-Con, Anime Expo) | Summer | A panel and a screening after the YouTube premiere |
 
-**Buyers.**
-* Kids' and family slates at Netflix, Disney, Warner Bros. Animation, Nickelodeon, Amazon and Apple.
-* Public broadcasters and children's channels: CBC, BBC/CBBC, ZDF and others, usually through a co-producer.
+**Buyers** (verify each slate when pitching).
+* Adult animation slates at Adult Swim, Prime Video, Netflix, Hulu/FX, Max and Paramount+/Comedy Central.
+* Adult-skewing animation and anime platforms (Crunchyroll, for the J-pop opening and the pixel look).
+* UK and European broadcasters' post-watershed and young-adult channels, usually through a co-producer.
+* Adult-animation studios and financiers that have partnered indie creators (for example A24 with Bento Box on *Hazbin Hotel*; studios such as Titmouse).
 * Through a co-production, tax-credit territories (Canada, the UK, Ireland, France, Belgium) can return roughly 20-40% of qualifying spend. Verify the current rates.
 
 **The YouTube pilot route.**
-* **Precedents.** Free pilots that built an audience first and found a series later: *Hazbin Hotel* (YouTube pilot 2019, then a Prime Video series), *The Amazing Digital Circus* (2023) and *Lackadaisy* (crowdfunded, 2023). These are proofs of the route only. **They are not tone comps.** Their ratings are higher than ours.
+* **Precedents.** The adult indie route is the precedent now, and these are tone comps as well as route proofs: *Hazbin Hotel* (YouTube pilot 2019, then a Prime Video series), *Helluva Boss* (a YouTube series), *The Amazing Digital Circus* (YouTube, 2023), *Lackadaisy* (crowdfunded, 2023) and *Happy Tree Friends* (web-born). We take tone from them, never designs, names or lines.
 * **Pros:**
   * the creator controls the release;
   * view and retention data become pitch leverage;
-  * the game launch and the show promote each other;
-  * the in-game Music Studio can host a remix campaign for the theme.
+  * the game launch and the show promote each other, on age-gated surfaces;
+  * the in-game Music Studio can host a remix campaign for the theme;
+  * Halloween week suits an adult horror-comedy premiere.
 * **Cons and requirements:**
-  * **COPPA.** With a 10-16 core audience, the pilot may count as "made for kids". That turns off comments and personalised ads and lowers revenue. Counsel makes the call, and the budget assumes little ad revenue.
+  * **Designate the pilot "not made for kids."** Expect **age restriction** for the gore: signed-in adult viewers only, limited embedding, and **limited or no ads**. The budget keeps assuming little ad revenue. Counsel confirms the designation.
+  * Check the platform's policy on cartoon nudity and sexual content (the hard limits keep us inside it).
+  * Cut a **green-band teaser** (no gore and no raunch on screen) and clean 5 s eyecatch loops and shorts for discovery, and a **red-band trailer** for age-gated surfaces.
   * Some festivals decline works that are already free online.
 * **Decision at G5: festival first or YouTube first.**
   * **Option 1:** YouTube first, premiering on Midsummer 2028. Festival submissions follow wherever online premieres are allowed.
   * **Option 2:** festival and market first (Ottawa, then MIPCOM screenings in Oct 2027), then YouTube for Halloween week, unless a buyer asks to hold it.
 * **After the premiere:**
-  * Patreon or crowdfunding can finance Eps 102-104. Their outlines already exist.
-  * Shorts are cut from the eyecatches and the ratings runner.
+  * Patreon or crowdfunding can finance Eps 102-104. 102 is outlined in act beats, and 103-104 in outline.
+  * Shorts are cut from the eyecatches and the ratings runner (green-band), and the Grumbleguts teaser (red-band, age-gated).
 
 ---
 
@@ -812,7 +877,7 @@ HDR is not needed.
 |---|---|---|---|---|---|
 | W1 | Oct 26-Nov 1 | DECISIONS.md (§1.3-1.5 and the open decisions in `PILOT_ROADMAP.md`); beat sheet v1.2 re-checked | Slug-reel animatic v0; show chibi presets with corrected species (G19) | Theme status check; order the trademark knockout search; start the chain-of-title inventory | **G0** |
 | W2 | Nov 2-8 | Bible outline; scene outline v1 | Named-beat header; 29.97 timebase; 16:9 canvas prototype; render cast sheets with `portrait_sheet` | Theme package request (§4.6) | |
-| W3 | Nov 9-15 | Bible v1 draft with the standards appendix; outline v2 after the canon pass | **Look-dev test** (384 vs 480); palette exporter; **commission the Grumbleguts show-safe sheet** | Entity formation; IP assignment from the creator; contributor agreements | Look decided |
+| W3 | Nov 9-15 | Bible v1 draft with the standards appendix; outline v2 after the canon pass | **Look-dev test** (384 vs 480); palette exporter; **commission the Grumbleguts model sheet (M5)** | Entity formation; IP assignment from the creator; contributor agreements | Look decided |
 | W4 | Nov 16-22 | Treatment; **Draft 1** | Model sheets pass 1: Sunny, the pet, Mayor, Nana, Pip, Fuzz, Bonejangles | Trademark search results; list of fallback titles | |
 | W5 | Nov 23-29 (US holiday) | Read-aloud of Draft 1; timing estimate | Thumbnails for the cold open and Act One; sizzle v0 assembly | | |
 | W6 | Nov 30-Dec 6 | **Draft 2**; deck v0 | Animatic v1 (cold open and Act One boarded) | **Micro voice session for the sizzle (6-8 lines, paid)** | |
@@ -821,13 +886,13 @@ HDR is not needed.
 | W9 | Dec 21-27 (holiday, light) | Notes digest | Sizzle v1 | | |
 | W10 | Dec 28-Jan 3 (holiday, light) | **Pitch draft** | | | |
 | W11 | Jan 4-10 | Deck v2 with the budget and schedule appendix; pitch rehearsal | **Sizzle v2** (real voices and the theme); key art | **Trademark opinion** and title confirmation; standards reader's notes | |
-| W12 | Jan 11-17 | Buyer list and outreach; Kidscreen meetings requested | Animatic v2.1 fixes | **Funding decision, which picks the option** | **G1** |
+| W12 | Jan 11-17 | Buyer list and outreach (adult slates, §4.9); MIFA Pitches application | Animatic v2.1 fixes | **Funding decision, which picks the option** | **G1** |
 
 ### 5.2 Option 1: solo creator (W13-W87)
 
 | Wk | Dates | Work | Milestone |
 |---|---|---|---|
-| W13-W14 | Jan 18-31, 2027 | Production draft; Kidscreen pitching | **G2** |
+| W13-W14 | Jan 18-31, 2027 | Production draft; buyer meetings; SXSW in March if eligible | **G2** |
 | W13-W16 | Jan 18-Feb 14 | Final designs (all characters, props, locations, FX, HUD, crayon); toolkit upgrades (camera, external audio track, Rhubarb import, palette lint) | Design lock |
 | W17-W18 | Feb 15-28 | Casting by self-tape; contracts | |
 | W19-W20 | Mar 1-14 | Remote recording; dialogue edit and selects | |
@@ -917,14 +982,14 @@ gantt
 ### 5.4 Option 3: studio co-production (D = the week the deal closes)
 
 **Pre-deal.**
-* Pitch from W12: Kidscreen (Feb 2027), Annecy and MIFA (Jun 2027), MIPCOM (Oct 2027).
+* Pitch from W12: buyer meetings (Feb-Mar 2027), Annecy and MIFA (Jun 2027), MIPCOM (Oct 2027).
 * The realistic window for closing a deal is **W26-W52**.
 * Keep running Option 1 work in the meantime. It costs little and raises the creator's leverage.
 
 | Weeks | Work | Milestone |
 |---|---|---|
 | D+1-D+4 | Long-form contracts; onboarding; standards kickoff with the buyer; bible revision | |
-| D+5-D+12 | Pilot rewrite through two rounds of studio notes; table read; outlines for 102-104 | Script lock (D+12) |
+| D+5-D+12 | Pilot rewrite through two rounds of studio notes; table read; 102's beat sheet and outlines for 103-104 | Script lock (D+12) |
 | D+9-D+18 | Studio design team; model sheets; colour script; the pixel bible written for the service studio | |
 | D+10-D+18 | Casting director; union casting; recording | |
 | D+13-D+22 | Boards (3-4 artists); animatic; buyer approval | Animatic lock (D+22) |
@@ -948,7 +1013,7 @@ If the deal closes at W30 (May 2027), delivery falls in about April 2028, ready 
 | Standards reader (bible and script) | 0 | 500 | 1,500 | Or a structured self-review against §2 |
 | Freelance design polish (model sheets, key art) | 0 | 1,000 | 4,000 | |
 | Freelance storyboard help (the first-person run, Act Four) | 0 | 0 | 3,000 | |
-| Voice cast: 11 principals, the GURGLE vocalist, walla (which also voices the fog), and the W6 sizzle session | 2,000 | 4,500 | 7,500 | Indie rates of $150-600 per role. Union tiers cost more. |
+| Voice cast: 11 principals, Grumbleguts/GURGLE (one performer, in the line the GURGLE vocalist held), adult walla (which also voices the fog), and the W6 sizzle session | 2,000 | 4,500 | 7,500 | Indie rates of $150-600 per role. Union tiers cost more. |
 | Remote recording; dialogue edit | 0 | 500 | 1,500 | |
 | Theme: finalising "Doomtastic Times", stems, licence | 0 | 0 | 8,000 | $0 if the creator owns and produced it (the typical case assumes so) |
 | Score extras (libraries, a choir or guitar session, a xylophone recording) | 200 | 1,000 | 3,000 | |
@@ -985,7 +1050,7 @@ If the deal closes at W30 (May 2027), delivery falls in about April 2028, ready 
 | Editor (part-time) | 6,000 | 15,000 | |
 | Composer and sound designer (score, eyecatches, SFX kit) | 8,000 | 24,000 | |
 | *Crew subtotal* | *134,000* | *340,500* | |
-| Voice cast (11 principals, the fog voice, walla) | 6,000 | 25,000 | A SAG-AFTRA new-media or low-budget tier, or non-union |
+| Voice cast (11 principals, Grumbleguts/GURGLE, the fog voice, adult walla) | 6,000 | 25,000 | A SAG-AFTRA new-media or low-budget tier, or non-union |
 | Casting (self-tape platform or a casting director) | 0 | 6,000 | |
 | Studio, remote sessions, voice director | 1,500 | 6,000 | |
 | Theme finalisation, stems, licence | 0 | 12,000 | Depends on how the parallel production is contracted |
@@ -1032,7 +1097,7 @@ If the deal closes at W30 (May 2027), delivery falls in about April 2028, ready 
 **The mid case, worked.** Every line at its midpoint except animation, which assumes a service studio at $300,000 (near the low end of its line, since the toolkit supplies the crowds, FX and first-person run as plates): $900,000 for the other lines' midpoints plus $300,000, about **$1.2M**. With every line at its midpoint, animation included, it would be about $1.33M.
 
 **Assumptions.**
-* Industry-standard kids and family 2D rates. A pilot costs more per minute than a series episode, because design is built once.
+* Industry-standard 2D rates for adult streaming animation (ranges vary widely by buyer; verify). A pilot costs more per minute than a series episode, because design is built once.
 * Union cast, plus TAG or WGA crew where the studio's location requires it.
 * Financing typically combines the buyer's licence fee or presale, **tax credits (roughly 20-40% of qualifying spend in Canada, the UK, Ireland, France and Belgium; verify the rates)** and the co-producer's equity.
 
@@ -1093,8 +1158,8 @@ Weeks are for Option 2.
 | D5 | Chain of title and IP assignment | Inventory | Funding, deals, E&O | W12 |
 | D6 | Toolkit upgrades (16:9, camera, named beats, timebase, loader, lip-sync import, lint) | | Layout, animation, final renders | W16 |
 | D7 | Show chibi presets and model sheets | D1, `portrait_sheet` renders | Pitch art, clean boards, animation | W4 (pitch) / W17 (final) |
-| D8 | Grumbleguts show-safe sheet | Standards rules | The main title silhouette and every later episode | W16 |
-| D9 | Prop clearance (Sprinkler, HUD label, plate text) | Standards reader | Act Two and Three boards | W15 |
+| D8 | Grumbleguts model sheet (M5) | The hard limits | The main title silhouette (101) and 102's boards | W16 |
+| D9 | Prop clearance (Pump Shotgun look, HUD label, plate text, gore density) | Standards reader | Act Two and Three boards | W15 |
 | D10 | Script lock (G2) | D2, table read, passes | Casting sides, recording, final boards | W14 |
 | D11 | Casting and contracts (no-replica clause) | D10 | Recording | W16 |
 | D12 | Recording and selects | D11 | Animatic lock, lip-sync | W18 |
@@ -1126,34 +1191,38 @@ D1 → D2 → D10 (script lock, W14) → D11/D12 (record, W17-W18) → **D13 (an
 | R1 | **The repo has no LICENSE or ownership statement**, and the chain of title for code, art generators, palette, story and music is undocumented, so a buyer or E&O insurer cannot close. | H / H | • Form or confirm the Dippinn Productions entity.<br>• Get a written assignment from the creator.<br>• Get assignments from every contributor.<br>• Build an asset inventory (author, date, tool, source).<br>• Add an "All rights reserved" notice, and keep the show materials in a private repo. | Counsel and creator |
 | R2 | **AI-assisted authorship.** The commit history shows AI co-authored work, and the procedural art is generated by code, so some outputs may be weakly protected, and buyers are asking about AI use. | M / H | • Document human creative control.<br>• Register the human-authored bible, scripts and model sheets, and disclose AI material as US Copyright Office guidance requires.<br>• No generative images or voice clones in the final show.<br>• Keep an AI usage log. | Creator and counsel |
 | R3 | **Trademarks.** "DOOM" inside DOOMOGACHI (id Software/ZeniMax/Microsoft); the echo of Tamagotchi (Bandai); the phrase "Rip and tear"; a DOOM-style HUD; console names. | M / H | • Knockout search in W1 and an opinion by W11, before anything public.<br>• Keep fallback titles ready.<br>• Original HUD layout and fonts.<br>• Alternate plate text ready.<br>• Descriptive-only mentions, with **no console logos**. | Counsel |
-| R4 | **Third-party references** (`docs/design/story/refs/*.webp`) invite a substantial-similarity claim against Grumbleguts. | L / M | • The refs never appear in show or pitch material.<br>• Review the show-safe sheet against them.<br>• Keep the refs out of the show repo. | Art director |
+| R4 | **Third-party references** (`docs/design/story/refs/*.webp`) invite a substantial-similarity claim against Grumbleguts. | L / M | • The refs never appear in show or pitch material.<br>• Review the Grumbleguts model sheet against them (and against the adult comps, R28).<br>• Keep the refs out of the show repo. | Art director |
 | R5 | **The game's rights get swallowed** by a studio deal. | M / H | Carve out the game and interactive rights; a first-negotiation right on merchandise; a reversion clause. | Counsel |
 | **Music rights** | | | | |
 | R6 | **"Doomtastic Times" has unclear splits or ownership** (composer, lyricist, producer, vocalist, master), or AI-generated parts. | M / H | • A split sheet, plus work-for-hire or assignment.<br>• Confirmed master ownership.<br>• A sync licence to the entity: all media, worldwide, perpetual, covering in-context and out-of-context promo and the game.<br>• Performer releases and AI disclosure. A human vocal is preferred.<br>• PRO registration and cue sheets. | Producer and counsel |
 | R7 | The J-pop-style hook **sounds like an existing anime opening**. | L / H | • A musicologist checks the hook before lock.<br>• No mimicking of reference tracks.<br>• Document that the hook derives from the game's own E-E-G cell. | Composer |
 | R8 | Library or sample licences don't cover broadcast. | L / M | Use only libraries licensed for broadcast, and keep a usage log. | Composer |
 | **Rating and standards** | | | | |
-| R9 | **A firearm-like prop** in a show for 10-16s. | M / H | The **Pump Sprinkler** from day one. Never aimed at a citizen, never merchandised. The Bubble Wand leads the merchandise. | Creator |
-| R10 | Sensitivity around possession, exorcism or religion. | M / M | • The rite is hugs, a hymn and water.<br>• **Strip the pentagram from the reused s04.**<br>• A standards read of the bible before boards. | Producer |
+| R9 | **A shotgun prop.** | L / M | • Rivet's junk-welded build (no real-model silhouette).<br>• Never aimed at a citizen.<br>• No replica merchandise.<br>• The two-name plate keeps it a game object. | Creator |
+| R10 | Sensitivity around possession, exorcism or religion. | M / M | • The rite is never mocked.<br>• Pentagrams are hell décor, never aimed at a real faith (hard limit 4).<br>• A standards read of the bible before boards. | Producer |
 | R11 | **Flashing or subliminal images** (the hatch, hellify flashes, the firework). | M / H | • Inserts of 4 frames or longer; flashes of 3 frames or less at reduced luminance.<br>• PEAT on every cut, and Harding before delivery. | Editor |
-| R12 | Grumbleguts' later innuendo drifting into kid-adjacent scenes. | M / H | • Sound only in the pilot.<br>• The show-safe sheet and the appendix rules.<br>• **Kids are never in a scene that carries innuendo.** | Showrunner |
-| R13 | The vaping theme, for a young audience. | M / M | The pilot has only the sign. In the series, vaping is always the villain's lure, with no brands and nothing glamorised. | Showrunner |
-| R14 | **COPPA "made for kids"** on YouTube cuts comments and ads. | H / M | Counsel makes the determination. The budget assumes little ad revenue. Never misdesignate. | Producer |
-| R15 | The word "GORE" on screen, and the brutal register. | M / L | Pre-clear the 8-frame label and the sticker gag. Alternate: "GORE: CUTE" only. | Producer |
+| R12 | **Grumbleguts' raunch drifting past the hard limits.** | M / H | • The hard-limit checklist (`GAG_BIBLE.md` §7.7, §11.2) on every script, board and animatic.<br>• The scene split for kids: **a scene with a child in it carries no innuendo at all.**<br>• No minors in the cast.<br>• A standards reader at script and animatic. | Showrunner |
+| R13 | The vaping theme (glamorisation, real brands). | M / M | The pilot has only the sign. In the series, vaping is always the villain's lure, with no brands and nothing glamorised. | Showrunner |
+| R14 | **YouTube age restriction** limits reach and ads. | H / M | • Designated not made for kids; counsel confirms the designation. Never misdesignate.<br>• A green-band teaser and clean loops for discovery.<br>• The budget assumes little ad revenue. | Producer |
+| R15 | **Gore past a buyer's or platform's tolerance**; red and Harding. | M / M | • One master; the buyer's standards team sees the animatic.<br>• The §2 blood rules (held or sliding overlays, local red, the Harding list).<br>• Any territorial trim comes from the truth inserts and lens time, never the story. | Producer |
 | **Schedule** | | | | |
 | R16 | **The theme master is late.** | M / M | • Board the opening by song section; the bus shot absorbs ±5 s.<br>• Lock dates: master by W17 (Option 2) or W24 (Option 1).<br>• Fallback: the trailer's RIFF covers Act Three, with the hook quoted on the last blast. | Producer |
 | R17 | **Solo burnout**, or **game development competing** for the same person (the repo has active game work in progress). | H / H | • Timebox the creator's week (for example, 4 show days and 1 game day).<br>• Keep the cut list ready: the Giggle crawl first, then the cute run, then the Bake-Off.<br>• Spend the 8-week buffer first.<br>• Move to Option 2 if funding arrives. | Creator |
 | R18 | Animation throughput falls below plan. | M / H | • A weekly burn-up chart in Kitsu.<br>• Rules for reuse; procedural crowds.<br>• The elastic beats.<br>• The first-person cap of 1:15. | Producer |
 | R19 | **Toolkit technical debt**: no camera, hard-coded 3:2 layouts, the `FR(n)` coupling, a 22 kHz mono synth, no image loader. | H / M | The TD's upgrade sprint (W13-W16), finished before layout starts. Named beats and an external audio track. | TD |
 | R20 | **Timebase drift** between 30 and 29.97 fps (1.3 s over 22 min). | M / M | Fix the timebase in W2 and treat frames as the truth. | TD |
-| R21 | Voice availability, union constraints, a child performer. | M / M | Cast an adult for Pip. Book the ensemble early. Budget for pickups. | Producer |
+| R21 | Voice availability, union constraints, consent to adult material. | M / M | No minors in the cast (Pip is an adult performer). Content disclosed in the breakdowns. Book the ensemble early. Budget for pickups. | Producer |
 | R22 | Studio notes cycles and canon drift (Option 3). | M / H | The bible, the standards appendix and the graft ledger go to the buyer up front. Approval over canon in the contract. | Creator |
 | **Market and budget** | | | | |
-| R23 | **Kids' animation commissioning is tight** since the 2023-24 streamer pullback. | H / H | • The YouTube pilot route.<br>• Cross-promotion with the game.<br>• Co-production with tax-credit territories.<br>• A finished indie pilot is the strongest leverage. | Producer |
+| R23 | **Adult animation commissioning is tight and hit-driven** since the 2023-24 streamer pullback. | H / H | • The YouTube pilot route.<br>• Cross-promotion with the game.<br>• Co-production with tax-credit territories.<br>• A finished indie pilot is the strongest leverage. | Producer |
 | R24 | Cost overruns. | M / M | 10% contingency, the cut list, fixed-bid vendor contracts. | Producer |
 | **Canon and technical** | | | | |
 | R25 | **Canon drift**: spending "The Bottle", or the Fluffy/Vapula string. | M / H | The graft ledger (§1.3). A canon pass on every draft against story_final.md. The "lucky shout" is flagged in the bible. | Showrunner |
 | R26 | **The pixels get damaged** by scaling, chroma subsampling or frame blending. | M / H | Integer nearest-neighbour scaling only; a 4:4:4 master; UHD uploads; no frame-blending standards conversion; palette lint. | Editor and TD |
+| **The adult direction** | | | | |
+| R27 | **The breakout character isn't in the pilot.** | M / M | • The post-credits tease (the gurgle and the purr).<br>• The 102 teaser in the sizzle.<br>• The "Meet Grumbleguts" deck page.<br>• 102 outlined in act beats. | Creator |
+| R28 | **Comps read as derivative** (Hazbin Hotel, Angel Dust). | M / H | • Comps are tonal only: no copied designs, names or lines.<br>• His look comes from the game's own sheet (`trailer/concept/grumbleguts.c`, roster 729).<br>• Counsel reviews similarity alongside R4. | Creator and counsel |
+| R29 | **Cast or crew discomfort** with the material. | L / M | • Disclosure in breakdowns and crew briefs, and opt-in.<br>• The four hard limits as written policy (§2). | Producer |
 
 ---
 
@@ -1166,20 +1235,20 @@ D1 → D2 → D10 (script lock, W14) → D11/D12 (record, W17-W18) → **D13 (an
 | 2 | Tue Oct 27 | Add show chibi presets: Mayor cherub, Nana sheepkin, Pip bunnykin, Sunny bunnykin | A contact sheet is approved |
 | 3 | Wed Oct 28 | Engage counsel: trademark knockout search (DOOMOGACHI, HaHaland, Hellvile Park, Doomtastic Times) and an entity and IP-assignment plan | Engagement letter signed |
 | 3 | Wed Oct 28 | Start the chain-of-title inventory: code, art generators, palette, story docs, music, trailer, concept sheets, refs (marked *excluded*), and AI-assisted portions | Inventory v0 |
-| 4-5 | Oct 29-30 | Bible outline and the standards appendix (§2) | Outline committed |
-| 5 | Fri Oct 30 | Brief the Grumbleguts show-safe sheet (G16) and render a retune of `ggsheet` | Brief sent or started |
+| 4-5 | Oct 29-30 | Bible outline and the standards appendix (§2: the four hard limits first) | Outline committed |
+| 5 | Fri Oct 30 | Brief the Grumbleguts model sheet (M5) and re-stage `ggsheet` for the show canvas | Brief sent or started |
 | 8 | Mon Nov 2 | Agree the theme deliverables with the theme team (§4.6 list) | Written list confirmed |
 | 8-9 | Nov 2-3 | Toolkit: the named-beat header and the 29.97 timebase | A test render shows no drift |
 | 10-12 | Nov 4-6 | Toolkit: a 384x216 canvas prototype and integer camera pans; a palette exporter (`.gpl`/`.ase`) | One re-staged shot |
 | 10-12 | Nov 4-6 | Scene outline v1 (8-10 pages), with a canon pass against story_final.md | Outline v1 |
-| 12 | Fri Nov 6 | Render cast sheets with `portrait_sheet` for ids 0, 1, 2, 5 (including possessed), 36, 42, 71, 77, 88, 106, 111 and 753 | Sheets saved |
+| 12 | Fri Nov 6 | Render cast sheets with `portrait_sheet` for ids 0, 1, 2, 5 (including possessed), 36, 42, 71, 77, 88, 106, 111, 729 (Grumbleguts) and 753 | Sheets saved |
 | 15-17 | Nov 9-11 | **Look-dev test**: a 20 s shot from 21:00 into the fog, 384x216 against 480x270, with Rhubarb lip-sync and palette lint | Resolution decided |
 | 15-19 | Nov 9-13 | Bible v1 draft; outline v2 | Bible v1 |
 | 18 | Thu Nov 12 | Entity and IP assignment executed; contributor agreements sent | Signed |
 | 22-26 | Nov 16-20 | **Script Draft 1**; treatment | Draft 1 |
 | 22-26 | Nov 16-20 | Model sheets pass 1 (Sunny, the pet, Mayor, Nana, Pip, Fuzz, Bonejangles) | Pass 1 |
 | 25 | Thu Nov 19 | Trademark search results; fallback title list | Memo received |
-| 26 | Fri Nov 20 | Casting breakdowns drafted (§4.5); shortlist for the W6 sizzle session | Breakdowns |
+| 26 | Fri Nov 20 | Casting breakdowns drafted (§4.5: adult performers only, disclosing the adult material); shortlist for the W6 sizzle session | Breakdowns |
 | 29 | Mon Nov 23 | Read-aloud of Draft 1 with 3-4 people; timing estimate | Notes logged |
 | 30 | Tue Nov 24 | **Day-30 review.** Check the animatic v0, Draft 1, Bible v1, the look decision, the legal status and the theme status. Confirm the path to G1 at W12. Choose a provisional target option for the budget conversation. | Review notes and a G1 plan update |
 
@@ -1202,7 +1271,7 @@ show/animatic/101/
 #   pal.h  = python3 ../../../trailer/pal_gen.py ../../../core/src/palette.c $(BUILD)/pal.h
 #   No music.c: tk_music() stays weak and silent. The reused scenes keep their own SFX.
 #   A reused scene keeps its trailer name and native length as its row
-#   (e.g. X(s04_doomogachi, 5.5)). Apply the §4.4 standards edits in a show copy first.
+#   (e.g. X(s04_doomogachi, 5.5)). Apply the §4.4 continuity edits in a show copy first.
 
 make -C show/animatic/101
 B=show/animatic/101/build
@@ -1242,7 +1311,7 @@ $B/animatic --raw | ffmpeg -f rawvideo -pix_fmt rgb24 -s 240x160 -r 30 -i - -i $
 |---|---|
 | Canon story | `docs/design/story/story_final.md` |
 | Tone, horror, heart, timing | `docs/design/story/bible_heart.md`, `bible_horror.md`, `comic_timing.md` |
-| Grumbleguts (read show-safe) | `docs/design/story/GRUMBLEGUTS_AND_DIRECTOR_NOTES.md`, `GRUMBLEGUTS_TONE.md`, `GRUMBLEGUTS_ROMANCE.md`, `docs/design/story/concept/*.png` |
+| Grumbleguts (adopted within the hard limits; the S186 Feast stays game-only) | `docs/design/story/GRUMBLEGUTS_AND_DIRECTOR_NOTES.md`, `GRUMBLEGUTS_TONE.md`, `GRUMBLEGUTS_ROMANCE.md`, `docs/design/story/concept/*.png` |
 | Housing (Eps 102-104, the dream house) | `docs/design/story/housing_final.md`, `docs/HOUSING.md` |
 | Cast and pronouns | `docs/ROSTER.md`, `core/data/roster/*.txt` |
 | Shipped Ch1 lines | `core/data/story/ch1/*.dsc` |

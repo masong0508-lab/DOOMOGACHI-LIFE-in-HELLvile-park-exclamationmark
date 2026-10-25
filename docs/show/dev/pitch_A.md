@@ -1,6 +1,6 @@
 # Pitch A: "ARRIVAL"
 
-> **Superseded development draft. Do not board, record or pitch from this file.** Pitch C won; the pilot is specified by `../PILOT_BEATSHEET.md` and `../PILOT_TREATMENT.md`, and this pitch's quiet material now lives in Eps 102-104 (`../SERIES_OVERVIEW.md` §5.3). Known places where this draft falls short of the binding standards now in force: 3-frame and 1-frame inserts (the show's minimum is 4 frames) and a 1-frame LCD pentagram (no pentagram imagery in Season 1). See `README.md` in this folder.
+> **Superseded development draft. Do not board, record or pitch from this file.** Pitch C won; the pilot is specified by `../PILOT_BEATSHEET.md` and `../PILOT_TREATMENT.md`, and this pitch's quiet material now lives in Eps 102-104 (`../SERIES_OVERVIEW.md` §5.3). Its rating, audience and comps (TV-PG, a 10-16 family audience, kids' and family comps) are superseded: the show is adult animation, TV-MA, bound by four hard limits (`../PILOT_ROADMAP.md` §1). Known places where this draft falls short of the binding standards now in force: 3-frame and 1-frame inserts (the show's minimum is 4 frames) and a 1-frame LCD pentagram (too short: the minimum is 4 frames). See `README.md` in this folder.
 
 ## DOOMOGACHI LIFE in HELLvile Park!, Episode 101: "Population: 500 (and Sunny)"
 

@@ -1,14 +1,14 @@
 # DOOMOGACHI LIFE in HELLvile Park!: Gag Bible
 
-**Running gags, recurring bits, Gatekeeper Grumbleguts' show-safe gag book, visual gag rules, and the comic timing rules adapted for animation at 24 fps**
+**Running gags, recurring bits, Gatekeeper Grumbleguts' gag book, the cute/brutal device, visual gag rules, and the comic timing rules adapted for animation at 24 fps**
 
 | | |
 |---|---|
-| Version | 1.0, 2026-10-25 |
+| Version | 1.1 (adult direction), 2026-10-25 |
 | For | Writers, board artists, animators, editors, sound, standards, localisation |
-| Canon | `docs/design/story/story_final.md` wins every conflict. Timing comes from `docs/design/story/comic_timing.md` (the Comic Timing Bible, reverse-engineered from the 78-second trailer) and `story_final.md` §7 (the timing contract). Grumbleguts comes from `story_final.md` §3, read through the show-safe rules in §7 of this document. |
+| Canon | `docs/design/story/story_final.md` wins every conflict. Timing comes from `docs/design/story/comic_timing.md` (the Comic Timing Bible, reverse-engineered from the 78-second trailer) and `story_final.md` §7 (the timing contract). Grumbleguts comes from `story_final.md` §3 and the Grumbleguts notes (`GRUMBLEGUTS_AND_DIRECTOR_NOTES.md`, `GRUMBLEGUTS_TONE.md`, `GRUMBLEGUTS_ROMANCE.md`), adopted within the hard limits (§7). |
 | Companions | `SERIES_OVERVIEW.md` (the season and the engine), `PRODUCTION_ROADMAP.md` (the pilot's production) |
-| Rating | Series ceiling **TV-PG (D, V)**, core audience 10-16 with family co-viewing. Every gag in this document has been placed inside that ceiling; §11.2 is the checklist that keeps new ones there. |
+| Rating | Adult animation, **TV-MA** (the pilot TV-MA (V); the series TV-MA (L, S, V) from 102); 18+ elsewhere, 16+ where a territory's scale allows. Not made for kids. Every gag in this document sits inside the show's four hard limits (§7.1, restated in §11.2), which no gag, market or version ever crosses. |
 
 ---
 
@@ -18,7 +18,7 @@
 * **The master frame rate is a room decision** (`SERIES_OVERVIEW.md` §8, D1; open decision D1 in `PILOT_ROADMAP.md`). The roadmap's working spec, and the recommendation, is 29.97 fps, and **the pilot's own timing documents (`PILOT_BEATSHEET.md`, `COLD_OPEN_SHOTLIST.md`) already count at 30**. If the room keeps 29.97, read the 30 fps column of Appendix A. Nothing else in this bible changes, because every gag is specified by rung and milliseconds first.
 * **Pixels.** Amplitudes are in **native pixels of the 384x216 show canvas**. Trailer and game amplitudes (240x160) are multiplied by 1.5 and rounded.
 * **Notation** in scripts and boards follows `story_final.md` §7 (summarised in §2.5).
-* **Precedence inside this bible:** standards (§2 of the overview, §7 and §8 here) beat timing; timing beats any single gag.
+* **Precedence inside this bible:** the four hard limits beat everything; then the rest of the standards (§2 of the overview, §7 and §8 here); then timing; timing beats any single gag.
 
 ### 0.1 The house style in three words: snap, stretch, stop
 
@@ -36,18 +36,22 @@
 
 **The sandwich.** Cute first. Then something is wrong in the background. Then it is funny. Then, sometimes, chosen carefully, it is not funny at all. The pastel world goes wrong in the background, then in your house, then in the sky. Every scare is undercut or doubled by a joke, except the ones that are not, and those are chosen.
 
+**The switch.** HaHaland sees the world through a cheerful filter: a demon pops into confetti and stuffing. The truth is DOOM: blood, gibs, eyeballs, the big red splatter. The show cuts between the two on a beat, with a sound, and **the gag is the switch** (§4.15, §4.16, §8.1). The gore belongs to demons and monsters, and the filter never comes off in a frame with a child in it.
+
 **Who the joke is on:**
 
 * the town's avoidance (the Mayor stepping in front of the camera);
-* a character's vanity, appetite or denial (Grumbleguts, the Mayor, Vex's smile);
-* the gap between how HaHaland talks and what it does ("Enemies don't exist!").
+* a character's vanity, appetite, shamelessness or denial (Grumbleguts, the Mayor, Vex's smile);
+* the gap between how HaHaland talks and what it does ("Enemies don't exist!"), and between the filter and the truth.
 
 **Who the joke is never on:**
 
 * a kid's fear (we laugh at "my eyes are just doing a rain", never at the crying);
 * Hellvile for being Hellvile (the prejudice is the punchline, never its targets);
 * the person someone flirts with, or their body;
-* a real person, a real faith, an accent, a disability.
+* consent (a no is never the punchline);
+* a child, in any sexual or suggestive joke, ever;
+* a real person, a real group of people, a real faith, an accent, a disability.
 
 **The eight laws** (each is expanded later):
 
@@ -137,6 +141,7 @@ Scripts carry the timing codes; boards carry them in the panel margin; exposure 
 | `[TAPESTOP]`, `[SCRATCH]`, `{r}` | The record scratch (§4.8) |
 | `[FREEZE x]`, `[THAW]`, `[PANIC x]`, `[STILL x]`, `[TWITCH x]` | Actor clocks: clamp, release, run at 2x, stop one actor, fast ears |
 | `[INSERT n: what]`, `[ONE CHANGE: what]` | The whiplash insert and its persistent change |
+| `[TRUTH n: what]` | A truth insert: the same moment as it really is, n frames (always 4), never in a frame with a child (§4.16) |
 | `[SMASH]`, `[COVER n]`, `[FLASH]`, `[IRIS♥ out h]`, `[IRIS○ out h]` | Cuts and transitions |
 | `[POP]`, `[SLAM]`, `[DROP]`, `[JELLY]`, `[BOING]`, `[BRAKE]`, `[WOBBLE]`, `[SQUASH a/b]` | Entrances and springs |
 | `[!RIPPLE]` | A crowd reaction staggered 0-3 frames |
@@ -221,10 +226,11 @@ At 30 fps these reproduce the trailer's own coefficients exactly (checked agains
 | Candy letters | 38% | Titles, signs, the logo |
 | Plush | up to 34% | Sunny, Pip, Fuzz, the pet, every Hillvile critter-folk |
 | A plush critter landing | 22% (1.22 wide / 0.80 tall) | Every hop |
-| Plastic and hardware | 18-22% | Bonejangles, Rivet's tools, the Pump Sprinkler, a handheld |
+| Plastic and hardware | 18-22% | Bonejangles, Rivet's tools, the Pump Shotgun, a handheld |
 | Metal | 18% | The gate, the padlocks |
 | **Hell** | **0%: hell drips, it never wobbles** | Horns, lava, bone, the red HELL in the logo |
-| **Grumbleguts** | **He bounces** (`TW_BOING`); up to 1.4 / 0.7 on a BOING beat only | The only character who neither drips nor wobbles |
+| **Grumbleguts** | **He bounces** (`TW_BOING`); up to 1.4 / 0.7 on a BOING beat only; the rump jiggles one beat (R3) behind the belly on every step and every laugh | The only character who neither drips nor wobbles |
+| **Gibs and blood** (the truth) | **0%: they obey hell.** Blood slides on twos; a gib lands with one 2-frame squash and stays where it lands | Only where the truth shows (§8.1) |
 
 **By character** (the model sheets carry these):
 
@@ -311,7 +317,7 @@ The show's most-used transition. Always in this order:
 4. **The first sound after the silence is small:** "beep.", a *tink*, a single "dun". A big sting only ever comes after a small one has broken the silence.
 5. **Re-entry:** the score behaves as if it kept playing silently and comes back on the grid.
 
-**Every rear-first entrance by Grumbleguts gets a record scratch** (§7).
+**Every rear reveal by Grumbleguts gets a record scratch** (§7).
 
 ### 4.9 Double-takes, looks to camera, ripples
 
@@ -359,6 +365,7 @@ The canonical example is the trailer's exorcism (s11), and the show's is Sprinkl
 * **Equal steps, then a deflation:** 1000 / 500 / 500, then "1 PARK".
 * **Escalating to the personal:** the bath, the bakery, **your bed** (106's chair).
 * **List and break by name:** "Sunny... Sonny... Bunny... Toaster."
+* **Filter, filter, truth:** two 4-frame truth inserts, then the full switch (101: 3-01's two waves, then 3-02 and 3-03).
 
 ### 4.12 Deadpan
 
@@ -381,7 +388,7 @@ The show is voiced, but diegetic text carries a large share of its gags: signs, 
 
 ### 4.14 Shake profiles at 24 fps
 
-All shakes use the same sign pattern: x alternates every frame, y every 2 frames (at half the x amplitude unless noted), so it reads as a rattle, not a flicker. Short profiles keep their frame counts; long ones scale by duration. Amplitudes are native px (the trailer's GBA px x1.5). The largest (the Sprinkler blast and ROAR) stay under 3% of the frame width.
+All shakes use the same sign pattern: x alternates every frame, y every 2 frames (at half the x amplitude unless noted), so it reads as a rattle, not a flicker. Short profiles keep their frame counts; long ones scale by duration. Amplitudes are native px (the trailer's GBA px x1.5). The largest (the shotgun blast and ROAR) stay under 3% of the frame width.
 
 | Profile | Frames | x per frame | Use |
 |---|---|---|---|
@@ -393,7 +400,8 @@ All shakes use the same sign pattern: x alternates every frame, y every 2 frames
 | `SHK_STAMP3` | 4 | 4, 4, 3, 2 | FAIL x3 |
 | `SHK_SLAM` | 4 | 4 | Slam captions |
 | `SHK_IGNITE` | 4 | 4 | The logo on fire, the hellify flash |
-| `SHK_SHOTGUN` | 6 | 10, 8, 6, 5, 3, 2 | A Pump Sprinkler blast |
+| `SHK_SHOTGUN` | 6 | 10, 8, 6, 5, 3, 2 | A Pump Shotgun blast |
+| `SHK_SAW` | 8 | 3 constant (y 0) | The welded saw's cut (101, 3-05) |
 | `SHK_FWOOMP` | 6 | 6, 6, 5, 3, 2, 1 | The possession inhale's release |
 | `SHK_CRACK` | 6 | 4, with glitch | The sky cracks; the fountain cracks (S2) |
 | `SHK_RUMBLE` | 10 | 4 constant (y +3, -2) | The Wall, a gate under strain |
@@ -401,35 +409,41 @@ All shakes use the same sign pattern: x alternates every frame, y every 2 frames
 
 **Reduced motion** (for the streaming accessibility version, if a buyer asks): shakes become a 1-frame darken pulse on the same frame, so the **timing** of the beat survives and only the amplitude goes.
 
-### 4.15 The brutal register: hit-stop and the first-person run
+### 4.15 The brutal register: the truth, hit-stop and the first-person run
 
-The first-person runs (101, 113) are the show's DOOM half: first person, HUD, metal, hellified palette. The gore stays confetti.
+The first-person runs (101, 113) are the show's DOOM half: first person, HUD, metal, the hellified palette, and **the truth** (§8.1). HaHaland sees the world through a cheerful filter; the brutal register is where the show stops pretending. **The gag is the switch:** the same hit, first as the town sees it, then as it is.
 
-| Event | Hit-stop at 24 | Then |
-|---|---|---|
-| A cute pop (Bubble Wand) | 2 f | Hearts and confetti; a "*squeak*" pop 2 f later |
-| A Pump Sprinkler blast | 2 f | `SHK_SHOTGUN`; sprinkles |
-| A demon pops | 3 f | `SHK_IMPACT`; grape goo and stuffing |
-| A mini-boss stagger | 4 f | `SHK_STAMP` |
-| A boss pops | 6 f, plus 1 reduced white frame | The record-scratch silence |
+| Event | Hit-stop at 24 | The filter shows | The truth shows |
+|---|---|---|---|
+| A Bubble Wand pop (cute only) | 2 f | Hearts and confetti; a *squeak* pop 2 f later | The demon bursts like a water balloon and drops a literal heart, still beating |
+| A Pump Shotgun blast (PARTY PUMP / SLAUGHTER) | 2 f | Sprinkles, a sprinkler hiss and a bike-bell ting | Buckshot and red mist; `SHK_SHOTGUN`; the CHK-CHK |
+| A demon pops | 3 f | Grape goo and plush stuffing; `SHK_IMPACT` | Viscera, eyeballs and teeth; `SHK_IMPACT`; a gib slaps the lens |
+| The welded saw (PURRING SAW / MEATCLEAVER) | 4 f stutter (1 f on, 1 f off, twice) | Ribbons and a purr | A geyser of blood; `SHK_SAW`; the lens painted red |
+| A mini-boss stagger | 4 f | A wobble | Chunks missing; `SHK_STAMP` |
+| A boss pops | 6 f, plus 1 reduced white frame | A shower of hearts | The full shower and the lens painted red, then the record-scratch silence |
 
 * **Never above 6 frames** of hit-stop at 24: longer reads as a hitch.
 * Hit-stop freezes actor clocks only, **not** the HUD face, particles already spawned, or the audio.
 * **Muzzle flash is local** (on the weapon only). The full screen never flickers faster than 3 times a second.
-* **A hit on Sunny** is a grape-goo splat on the "lens" and a heart popping off the HUD. Sunny is never seen hurt.
-* **The HUD face** (the pet) is the run's reaction shot: a look-around idle, a grin on a pickup, a wince on a hit, a horn nub and glowing eyes at one heart, a squint at the Board of Decency sticker.
+* **Every gore beat gets a button**, smaller than the hit: an eyeball rolls to a stop facing the Wall; a tooth *tink*s off the lens; a horn clatters into a bucket.
+* **Splatter slides off the lens on twos** and is gone within 2 s; the lens is clean before the next wave's first hit.
+* **Saturated red stays local** (the burst, the lens splash). A full-lens red wash ramps in over 8 f or more and drains over 13 f or more, never strobes, and goes on the Harding log (`SERIES_OVERVIEW.md` §2).
+* **The weapon plate flips with the register:** PARTY PUMP to SLAUGHTER, PURRING SAW to MEATCLEAVER (the game's own name tables, `core/src/weld.c`), on the frame of the first shot. The Bubble Wand has no brutal name.
+* **A hit on Sunny** is a splash of demon blood on the lens and a heart popping off the HUD. Sunny is never seen hurt; the pet is never harmed.
+* **The HUD face** (the pet) is the run's reaction shot: a look-around idle, a grin on a pickup, a wince on a hit, a horn nub and glowing eyes at one heart, and a grin at the gore and at the Board of Decency sticker getting shot off (§6.20).
 * **Jokes only between waves.** Juice on every hit.
-* **Cap: 1:15 of first-person footage per episode.**
+* **Cap: 1:15 of first-person footage per episode** (a cost rule).
 
 ### 4.16 Tonal whiplash: the 4-frame insert
 
-1. **The insert is 4 frames** (167 ms at 24 fps). Two frames are too short to read; six are too long to stay a "did I just see that?". **It is never shorter than 4 frames**, in any version, for standards (subliminal-image rules).
+1. **The insert is 4 frames** (167 ms at 24 fps). Two frames are too short to read; six are too long to stay a "did I just see that?". **It is never shorter than 4 frames**, in any version: that is the broadcast minimum (subliminal-image rules).
 2. **The insert owns the soundtrack** for exactly its length: the score mutes, the insert brings its own sound.
 3. **Come back to the same shot with one persistent change.**
 4. **A small sound 2 frames later; the deadpan acknowledgement at R8** (6 frames).
 5. **Never show a cute character harmed** in the cute half of a whiplash. The gore belongs to the demons and the hell world.
+6. **The truth insert:** a 4-frame insert of a filtered moment as it really is (§4.15, §8.1). It owns the audio (a wet shred, a wet pop), it is never cut into a frame with a child in it, and it returns with one persistent change that keeps the truth in the shot (the teacup's inside is red; one cartoon heart on the grass is beating).
 
-Show examples: the cupcake balloon turns to face the Wall (101); the pipe beyond the Wall heaves a purple sigh (101); every heart in the wallpaper is an eye, and one stays an eye (106); the IN eyecatch card (every episode).
+Show examples: the cupcake balloon turns to face the Wall (101); the pipe beyond the Wall heaves a purple sigh (101); the teacup (101, 2-03); the hearts that are hearts (101, 3-01); every heart in the wallpaper is an eye, and one stays an eye (106); the IN eyecatch card (every episode).
 
 ### 4.17 Buttons, irises and the withheld button
 
@@ -472,7 +486,7 @@ The trailer packs a gag every 1.7 s. Twenty-two minutes at that rate would be no
 | **Dialogue** | 1 punchline per 3-6 lines | Punch lines pop; one deadpan per conversation |
 | **Walk and talk, ambient** | 1 background micro-gag per 20-40 s | A double-take, a running-gag sighting, a prop gag |
 | **Decorating** (the dream house) | 1 reaction per placement, then a cooldown | Three visitor reactions 12 frames apart, then a topper |
-| **First-person run** | Juice on every hit; jokes only between waves | §4.15 |
+| **First-person run** | Juice on every hit; a gore button on every kill; jokes only between waves | §4.15 |
 | **Heart** | **0 for 3-5 s minimum**, then optionally one soft button | |
 | **Horror** | 0: the same holds with no button | |
 | **After a big beat** | 5-15 s with no scripted gag | The audience needs to land |
@@ -517,8 +531,8 @@ The trailer packs a gag every 1.7 s. Twenty-two minutes at that rate would be no
 | Ep | The beep |
 |---|---|
 | 101 | Hatched mid-stampede: HOLD 21, MUTE 29, "beep." ("...Ten."); then the metronome that makes the rite hold |
-| 102 | At the paper boat, in love |
-| 103 | Lulla's eleven kids shout "BEEP!"; the pet answers, very quietly, "beep." |
+| 102 | At the grille: the pet beeps, GURGLE gurgles back (the two bellies' first conversation) |
+| 103 | Lulla's eleven kids shout "BEEP!"; the pet answers, very quietly, "beep."; and at the paper boat, in love |
 | 104 | At the window, turned to face the Wall again, R13 after Sunny turned it round |
 | 106 | From the pet bed, during the chair-in-the-bed hold; the first horned beep |
 | 107 | Once, very small, at the Bottle |
@@ -573,8 +587,9 @@ The trailer packs a gag every 1.7 s. Twenty-two minutes at that rate would be no
 
 * **Established (101):** the sign drops in, "Population: 500 lovely citizens.", updates to 501, and R8 later the "1" falls off (*tink*). Under the 500, a 1000 has been painted over. Pencilled underneath: "and Sunny."
 * **Ladder:**
-  * 101 post-credits: the "1" drifts over the gate on a stray lantern; *crunch*; GURGLE; "...needs salt.";
-  * 102 post-credits: under "and Sunny." someone has pencilled, smaller, "and beep.";
+  * 101 post-credits: the "1" drifts over the gate on a stray lantern; a wet *crunch*; GURGLE; "...needs salt."; a purr;
+  * **102 cold open:** he burps the "1" up, it lands on his tongue, and he swallows it again: "Mm. {..}Tastes like somebody new.";
+  * 103 post-credits: under "and Sunny." someone has pencilled, smaller, "and beep.";
   * 113 post-credits: Grumbleguts pats his belly at the sign: "{d}...Five hundred and one.";
   * series finale: "Population: 1,001."
 * **Rules:** the sign reads 500 in every plaza wide shot until the finale (a continuity item on every background); the pencil lines are never erased.
@@ -630,7 +645,7 @@ The trailer packs a gag every 1.7 s. Twenty-two minutes at that rate would be no
 
 ### 6.13 Paper boats
 
-* **Ladder:** a crayon house with a candle in the window, two imps, ARE YOU THERE written backwards (102); a second boat with an unlit candle and the same house, now lit, plus Pip's note (104); "not in MY room." (S2); "That's MY house. You KEPT it?" (S3).
+* **Ladder:** a crayon house with a candle in the window, two imps, ARE YOU THERE written backwards (103's cold open); a second boat with an unlit candle and the same house, now lit, plus Pip's note (104); "not in MY room." (S2); "That's MY house. You KEPT it?" (S3).
 * **Rules:** boats always arrive on the water from the south, never by hand; always crayon; the hand matches the drawing above the little bed (106).
 
 ### 6.14 Kevin's third eye
@@ -669,16 +684,18 @@ The trailer packs a gag every 1.7 s. Twenty-two minutes at that rate would be no
 
 * **The pilot's runner:** the possessor rates everything. "Six." [R8] "{d}Needs death." / "Four. Too much death." / "Two." (the Mayor's speech) / "...Ten." (the first beep) / "...One." (THE POWER OF CUDDLES) / "Three. Needs an ending." / and, from beyond the Wall, on time: "...Seven." The last rating is the emotional peak of the episode.
 * **The series rule:** Hellvile rates with numbers out of ten; Hillvile grades with letters and stamps (COSY: B+, TIDY). It is a culture gag that also tells the audience, quietly, that a demon is a person with opinions.
-* **Grumbleguts inherits it:** "Six. Needs salt." The pilot's post-credits caption ("...needs salt.") ties the two together.
+* **Grumbleguts inherits it:** "Six. Needs salt." The pilot's post-credits caption ("...needs salt.") ties the two together, and his first ratings in his own voice are 102's: Nana's muffin, "{d}...Seven.", and the Small Puff, "Six. {..}Needs salt."
 * **Rules:** always an integer; said flat; the tail is always "Needs X."
 
-### 6.20 The Board of Decency sticker
+### 6.20 The Board of Decency always loses
 
-* "HELLVILE PARK BOARD OF DECENCY (approved)." It slaps over "GORE: BRUTAL" on the HUD for a quarter of a second and peels away to "GORE: CUTE" (101). On the logo, the "nothing to see here! ♥" sticker slaps over the red drip.
+* **What:** the HELLVILE PARK BOARD OF DECENCY (approved), chaired by the Mayor (members: Oma Fluff, Ribbonetta and, by co-option, a doily), is HaHaland's censor, and it always fails. It is the town's covering habit made into a committee: GIGGLE painted over MINGLE, a cupcake balloon tied over a word, the Mayor's pink roller.
+* **Its sticker appears at most once a season, and only when the sticker itself is the joke.** Season 1's is in 101 (3-03): it slaps over GORE: BRUTAL on the HUD, and the first shell blows it off in a spray of red; it flutters down the lens, and the label stays BRUTAL.
+* **Everywhere else the Board covers things the way the town does, and the cover fails on the third try.** In 102 the Board covers the grille with a doily (eaten), the cupcake balloon (popped with a fang) and the GIGGLE banner (licked: "Strawberry."), then paints it pink, and a tongue licks a clean peephole. On the logo, the Mayor's pink roller paints over the red drip, and on the last chord the drip bleeds back through.
 * **Rules:**
-  * at most once per episode;
-  * **it only ever covers something that needs no covering** (a word, a drip, a fully trousered seat); there is never anything real under it, because the show has nothing to hide;
-  * it is the show announcing its own rating as a joke, and then keeping to it.
+  * never a censor bar, never a blur, never a sticker over anything explicit, because nothing is (hard limit 1);
+  * the cover is the joke, and it always loses;
+  * at most one Board beat an episode.
 
 ### 6.21 The little bed (the Season 1 home runner)
 
@@ -703,9 +720,11 @@ Not a gag, and the bible guards it like one. Each rite, a different Hillvile cit
   * captions read **[GURGLE: gurgle.]**;
   * Grumbleguts translates, and GURGLE contradicts him when he's lying ("...He says eight.").
 * **Season 1:**
-  * 101 post-credits: a gurgle so deep the padlocks rattle three times, then BOING;
-  * 108-112: **one distant GURGLE per B-segment** rattles the cups on a Hellvile shelf, and nobody comments (the ambient runner that tells the audience something big lives at the gate);
-  * 113: on screen at last: "He says hello."
+  * 101 post-credits: a gurgle so deep the padlocks rattle three times, then BOING, then "...needs salt.";
+  * **102:** heard and seen at the grille: the two-belly conversation with the pet, "He says you're cute. {..}He's not wrong.", and the contradiction ("...He says I'm blushing.");
+  * 103-107: at the grille, one beat an episode;
+  * 108-112: **one distant GURGLE per B-segment** rattles the cups on a Hellvile shelf, and nobody comments, plus his cameo;
+  * 113: the warning gurgle before the belly-flop, and "He says hello."
 
 ### 6.24 Small runners
 
@@ -717,164 +736,262 @@ Not a gag, and the bible guards it like one. Each rite, a different Hillvile cit
 | "Clack clack!" | 101 | Bonejangles; a hug plays a chord |
 | "NOT NOW, PIP." | 101 | The whole crowd, in unison; Pip's question is always the right one |
 | "Sorry. Ghoul." | 106 | Bloom, then the instant cover: "I mean: *cool* hands." |
-| Hauntessa's notes ("your crate is a table now. you're welcome.") | 102 | Lowercase, tidy, apologetic |
+| Hauntessa's notes ("your crate is a table now. you're welcome.") | 103 | Lowercase, tidy, apologetic |
 | "It's a texture." | 109B | Charlotte, about anything burnt |
 | "Present." | 109B | Drudge, once, and never again |
 | "Nobody's practice." | 110 | Said on both sides of the Wall in the same episode |
 | "Habit." | 101 | Nana; later Tallyworn and Signhere's world (S3) |
-| The OPEN LATE sign | 113 | The gate's Hellvile face; KEEP OUT. FOREVER. faces the other way |
+| The OPEN LATE sign | 102 | The gate's Hellvile face; KEEP OUT. FOREVER. faces the other way |
+| The grille | 101 (shut), 102 | A small barred window in the sealed gate. The town sees him only through it until 113; it gets painted pink and licked clean |
+| "Nobody knocks." | 102 | Pays in S3: "Kept this gate ten years. Nobody came up to see it." |
+| "Didn't happen." | 102 | After every kindness he does |
+| The butt-print signature | 102 | On every document an adult hands him (never one from a child: rule 3) |
+| "gift from G" | 104 | A Gate Key (Copy) on a ribbon, tagged, on the cottage shelf forever ("Doesn't open anything on your side. {..}It's the thought.") |
+| SUITE CLOSED | 102 | The gatehouse sign; the building rocks; a stud pings off the roof |
 | "Rest in pieces" | 101 | Graves and dummies only |
 | The Plain Human figurine | Dream house | The only decor that never animates, ever |
 | Junk mail "from The Other Side" addressed to "THE SNACK, Pink Door Cottage" | S2 | "Well. It's a valid address." |
 
 ---
 
-## 7. Gatekeeper Grumbleguts: the cartoon-modest gag book
+## 7. Gatekeeper Grumbleguts: the gag book
 
 He is the show's breakout character and its biggest standards risk. Both are true at once, so his rules come first.
 
+**Who he is.** Hell's biggest flirt and its biggest appetite: a flamboyant, shameless, promiscuous, smooth-talking bad influence in the Red Guy mould, with the energy of an Angel Dust-type adult-cartoon demon (a *type*, never a template: no borrowed design, name or line). A slow drawl, hooded eyes, a purr in the voice and a breathy pause before every punchline. He performs for the room with his jokes and his body, propositions every adult on both sides of the Wall, gets lucky off-screen, and gets turned down by everyone on this side. Under the act he is lonely and loyal, and every filthy joke is one step from a brave thing he will swear he didn't do. Canon: `story_final.md` §3, `GRUMBLEGUTS_AND_DIRECTOR_NOTES.md`, `GRUMBLEGUTS_TONE.md` and `GRUMBLEGUTS_ROMANCE.md`, adopted here within the show's four hard limits.
+
 ### 7.1 The rules (binding)
 
-1. **Innuendo and implication only. Nothing explicit, ever.** No acts, no genitals, no nudity. **He is always dressed:** peaked cap, waistcoat, trousers.
-2. **Adults only.** He flirts only with adults: Nana, Father Fuzz, the Mayor, Charlotte, Rivet, Mother Nox, the Gate, and inanimate objects. **Sunny is never his target** (Sunny is the audience's stand-in), and Sunny is out of his eyeline whenever he flirts.
-3. **Kids are never in a scene that carries innuendo.** A scene is one continuous time and place. Where canon puts kids and a flirt in one scene (the church window in game Ep 3.1), the show splits it into two scenes.
-4. **With kids he is only the grumpy uncle:** "Go home. Eat something. {d}Not THAT." The "THAT" is always visibly food or an inedible thing the kid is reaching for (his bagel, a lava rock, a charcoal crumb).
-5. **Every flirt is turned down kindly, or ignored.** After a "No." he takes one step back on his next line. He never touches, never corners, never repeats an advance in the same scene.
-6. **The joke is his vanity and his appetite,** never the person he flirts with, never their body.
-7. **Belly and feast humour is slapstick:** eating, the gut sucked in and sprung out, buttons pinging, rating food, getting stuck in a gate. **No gas and no burps** (his burp portals become hiccup portals), no inflation, no popping, no fullness meter, no drool, no gross-out close-ups.
-8. **Rear humour is blocking and timing,** not framing. His trousered seat leads him into frame and through doors, blocks the camera, gets stuck, and BOINGs free, always wide and always brief, always with a record scratch. **Never a close-up on it, never a pan or tilt that lingers over it, never a "bend for the camera" pose, never cheeks.**
-9. **One D-weight line per episode at most.** In Season 1 that is one line, in 113, with an alternate on file.
-10. **Never mean**, to him or from him. The show loves him.
+1. **The show's four hard limits** (`SERIES_OVERVIEW.md` §2). Nothing below loosens them.
+   1. **Nothing explicit.** No explicit sexual acts and no genitals on screen, ever. Sex is implied, off-screen or innuendo: a closed door, a sign, a sound, a reaction, a smash cut. His design has nothing explicit to hide: his front is smooth cartoon with no anatomy drawn, and a bare cartoon butt and the cartoon X pucker are fine.
+   2. **Adults, and consent.** Every sexual or suggestive moment is between adults and consensual. A no ends the advance on the spot. Nobody's body is used on someone who has not said yes. Silence is never a yes. Consent is never the punchline.
+   3. **Children are never in it.** Child and teen characters (Pip; the young cherub and the young imp in the storybook flashbacks; Miss Lulla's daycare kids; Bolt, Pokefork, Wisp, Tantrum, Wobbles, Homework; every KID- or TEEN-flagged citizen) are never in sexual or suggestive scenes or dialogue, and never the subject of graphic gore.
+   4. **No real-world hate content.** No slurs, no real-world hate symbols, and no joke whose target is a real group of people, a real faith or a real person.
+2. **He flirts with every adult in both towns:** Nana, Father Fuzz, the Mayor, Charlotte, Anvil, Rivet, Mother Nox, Hattie, Dr. Bloom, Sutura, the forklift driver, his exes, and every adult who comes to the gate; plus the Gate, objects (a napkin, a bagel, the grille's bars) and his own reflection. **Sunny** is an adult and may be flirted at (`PILOT_ROADMAP.md` D13). In Season 1 Sunny always gives a visible no (ears flat, a slow headshake, a paw up, the pet beeping at him) and he steps back. Sunny's silence is never read as a yes, by him or by the staging. No romance arc for Sunny in Season 1.
+3. **Kids: the grumpy uncle, and nothing else.** A scene is one continuous time and place. In a scene with a child or teen in it there is **no innuendo anywhere in the scene, his rear stays out of frame and out of the joke, and he bites back the swearing**: "Go home. Eat something. {d}Not THAT." (the THAT is always visibly food, or an inedible thing the kid is reaching for). Where canon puts kids and a flirt together (the church window, game Ep 3.1), the show splits it into two scenes, with a cut and a time jump between them.
+4. **A no ends it.** A no can be said, signed, beeped or shown (ears flat, a step back, a paw up, a door shut). He steps back on his next line ("Shy. {..}Noted.", "Fair.", "...I respect that more.") and never repeats the advance in that scene. A line that misreads the no as a game (canon's "Playing hard to get.") is always answered on screen ("{d}I'm not playing.") and taken back on his next line, so the joke is his vanity and the no is never left standing as a game. He never corners anyone, never touches without a yes, and never sits on anyone who hasn't invited it. The no is the running gag, and the joke is always on him, never on the person who said it.
+5. **His hookups are off-screen and implied, with willing adults who came to him.** The visitor's voice is the invitation ("You said 'open late.'"); then the gatehouse door shuts, the sign flips to SUITE CLOSED, the gatehouse rocks on its foundations, a harness stud pings off the roof, and a satisfied voice leaves ("Call me." "I won't."). That is all anyone ever sees or hears. On screen, the Hillvile cast turns him down: nobody on this side is interested, except possibly the Gate.
+6. **The joke is his vanity, appetite and shamelessness**, never the target's body, size, shyness or no. He rates food out of ten. He rates himself eleven.
+7. **Belly and appetite are open:** eating with enormous effort (two-handed, cheeks puffed, a groan of pleasure on every swallow), the gut sucked in and sprung out, studs and buckles pinging, the belt unbuckled with a dramatic sigh, rating food, wet burps, drool, and gas both ways (burp and fart as tempo-synced chiptune raspberries with a vinyl-crackle tail; cute green puffs with hearts in them under the filter, sulphur-yellow clouds with flies in the truth). **Gross-out close-ups at most 2-3 an episode**, so they land (smash cut, HOLD 13, record scratch), in the Ren & Stimpy spirit of the director's notes. Gas and gross-outs never play in a scene with a child.
+8. **The butt is open:** bare, big, smooth, peach-shaped and always somehow in frame (the Red Guy rule). Strut-aways camera-side, backing into frame, doors butt-first, the bend, the wiggle, reflections, the butt-print, sitting on things, the X pucker, the blush. Close-ups are allowed when they are the joke. Nothing anatomical is drawn between the cheeks: **the cartoon X is the only mark**. **Every rear reveal gets a record scratch** (§4.8).
+9. **No censor stickers** (§6.20). The hard limits mean there is never anything explicit to hide, so his gags are simply shown. When a moment has to stay implied, staging does it: framing, props, the grille's bars, silhouettes, smash cuts, reaction shots, off-screen sound.
+10. **The edgy antihero.** After a filthy joke he does the brave thing. He drops the act to save a friend; the save is played straight and never undercut, and the denial comes after ("Didn't happen.", "Did it for the snack.").
+11. **Language.** He swears in the R range (damn, hell, ass, bastard, and an f-bomb at most once an episode, so it stays a punchline), timed like any other punchline. Never a slur (hard limit 4); never in a scene with a child.
+12. **Never mean**, to him or from him. He is crude on purpose and proud of it, and he never punches down. The show loves him.
 
-### 7.2 The show model
+### 7.2 The model
 
-From the show-safe model sheet (commission it now; graft G16):
+From `story_final.md` §3, the director's notes, the concept sheets drawn by `trailer/concept/grumbleguts.c` and roster row 729. Commission the model sheet now: 101's main-title silhouette and 102's boards both draw from it.
 
-* glossy red pot-bellied imp devil with stubby bone horns, fangs and an enormous grin; vape-purple bat wings; a spiked, striped tail; a peach belly and peach cheeks;
-* **a peaked gatekeeper's cap** between the horns;
-* **a brass-button waistcoat that won't close** over the belly;
-* **trousers**, and a plain belt with one big buckle (for the belt-notch gag);
-* **the gate key on a chain**;
-* **a crossing-guard lollipop sign that says NO on both sides** (his "tool"; it replaces the game's riding crop);
-* glossier, rubberier and sharper-lined than the plush cast. **He bounces** (`TW_BOING`, period 8.8 frames at 24); squash up to 1.4 / 0.7, only on a BOING beat.
+* **Body:** a glossy red pot-bellied imp devil with tall black devil horns, fangs, lashes, a beauty mark and an enormous grin; bat wings; a thick spiked tail; gym-demon muscle over the gut (the shoulders and arms carry the effort); Baloo's loose, belly-forward posture; a peach belly and peach cheeks.
+* **The hell dress code:** spiked collar, leather chest harness, studded belt and cuffs, chains, **the gate key on a chain** (it swings as a flail in the Season 3 fight), and **a riding crop**, his gatekeeper's tool: he taps the bars with it, points with it, and conducts the Gate's creak with it. Optional: a leather peaked cap as his badge of office.
+* **The butt:** bare, smooth, peach-shaped, about a third wider than the belly seen from behind. **The front is smooth cartoon, with no anatomy** (the Red Guy rule).
+* **Overlays:** the **X pucker** (a 5 x 5 native px cartoon X between the cheeks; it pops in on 1s with a *tink*, holds R3 and is gone on the next beat) and **two blush layers** (the face's cheeks and the seat's, which glows pink through the grille at night).
+* **Material:** glossier, rubberier and sharper-lined than the plush cast. **He bounces** (`TW_BOING`, period 8.8 frames at 24): squash up to 1.4 / 0.7, on a BOING beat only. **The rump jiggles one beat (R3) behind the belly** on every step and every laugh.
+* **Scale:** the gate's grille is 48 x 32 native px and his rump is 64 px across. It never fits, and that is the joke.
+* **Turnarounds to board first:** rear three-quarter ("my good side"), the bend, the over-the-shoulder look, his face filling the grille, the strut-away cycle (8 drawings on 2s, the rump a beat behind), the belly-flop, the blush on both sets of cheeks.
 
-**What the game's concept sheets give the show** (`docs/design/story/concept/`): the scale shot against a citizen chibi, the reaction cut with the eyes bulging one at a time, the Board of Decency sticker, and the belly X-ray ("60% air, 40% bagel"). Everything else on those sheets is retuned or cut (§7.6).
+**What the game's concept sheets give the show** (`docs/design/story/concept/`): the scale shot against a citizen chibi, the reaction cut with the eyes bulging one at a time, the belly X-ray ("60% air, 40% bagel"), the flirt and unbuckle poses, the taunt turnaround and the gas puffs. **Not used:** the censor sticker as a cover (§6.20), and the Feast storyboard's hose close-up as drawn (§7.6).
 
-### 7.3 Two voices in one box
+### 7.3 Two voices in one box (one performer)
 
-* **GRUMBLEGUTS** (he): a warm, oily baritone, slow and amused. Sign-off: **"Open late."** (the series' pick; "Sulfur kisses!" stays Vex's).
-* **GURGLE** (it): bass babble, about 3 frames a syllable at 24 fps. Plain text, never deadpan. Captioned [GURGLE: gurgle.]. §6.23.
-* Pet names: "sugar" only to an adult, inside a flirt beat; "padre" for Fuzz; "new kid" for Sunny, as a nickname only, never in a flirt.
+* **GRUMBLEGUTS** (he): a warm, oily baritone, slow, purring and amused, with a breathy pause before the punchline. He swears in the R range (rule 11) and he sings: his number "Open Late" comes in Season 3, and 102 has its bridge. Sign-off: **"Open late."** (the series' pick; "Sulfur kisses!" stays Vex's).
+* **GURGLE** (it): the same performer's bass babble, processed with tuba and a draining sink, about 3 frames a syllable at 24 fps. Plain text, never deadpan. Captioned [GURGLE: gurgle.]. See §6.23.
+* **His laugh** is the purr breaking: a low "heh" that the belly finishes.
+* **Pet names (adults only):** sugar, darlin', hon; "padre" for Fuzz; "Mayor", said like a pet name. Never "kid" or "new kid" in any flirt; for Sunny, "bunny" or "newcomer".
 
-### 7.4 The approved gags
+### 7.4 The gag book
 
-Rating weight: **G** plays for any audience; **PG** is mild and fine with kids watching; **D** is the series' innuendo, adults-only scenes, one per episode at most.
+**Scene** says who may be in the scene: **adults** means only adults are in it; **any** means the gag carries no innuendo and shows no rear, so it may play in a scene with a child (rule 3). **First use** is the episode it lands in first; **bank** means written but unplaced, for the room to spend.
 
 **Appetite (the feast gags)**
 
-| Gag | Timing at 24 fps | Weight | First use |
+| Gag | Timing at 24 fps | Scene | First use |
 |---|---|---|---|
-| "I only had a light snack—" [R5: 4 f] and a forklift reverse-beeps in with the next course [DROP] | Beep on the line's cut-off; the DROP 4 f later | G | 113 |
-| Rating a dish: "Six. Needs salt." | Flat, after a 6 f chew | G | 101 (only as GURGLE's caption, "...needs salt."; Grumbleguts himself is neither seen nor heard); S3 |
-| "...Is there dessert?" [R8: 6 f] GURGLE: gurgle. [R13: 10 f] | | G | S3 |
-| The buffet empties around him, bigger every time the camera "accidentally" cuts back [3x@12] | Three cutbacks 12 f apart, then a topper | G | S3 festival |
-| "Light snack." in a too-tight shirt, carrying the forklift's next course up the stairs | | G | S3 |
-| The line-cook offer: "You'd have to wear a shirt." "...A TIGHT shirt?" {r} | Record scratch on "TIGHT" | PG | S3 |
-| Asking about leftovers; there are none; he asks again | | G | The special |
+| First seen mid-meal on a mountain of Brimstone Bagels, rear to camera, eating with enormous effort (two-handed, cheeks puffed, a groan of pleasure on every swallow) | The crossing's brick wipe lands on the rear {r} | adults | 102 cold open; reprised 113 |
+| **The burped "1":** a burp; Sunny's pink "1" pops out, spins, lands on his tongue, and he swallows it again: "Mm. {..}Tastes like somebody new." | Spin 6 f; GULP 4 f after it lands | adults | 102 cold open |
+| "I only had a light snack—" [R5: 4 f] and a forklift reverse-beeps in with the next course [DROP] | Beep on the line's cut-off; the DROP 4 f later | any | 102 cold open (on the bagel mountain); reprised 113 |
+| Rating a dish: "Six. Needs salt." | Flat, after a 6 f chew | any | 101 (only as GURGLE's caption, "...needs salt."); 102 in his own voice (the Small Puff) |
+| **The snatch:** a basket vanishes through the grille; CHOMP; GURGLE [R8]; "{d}...Seven." | Snatch on 1s (a 2 f smear); CHOMP 4 f later | any | 102 (Act One out) |
+| "...Is there dessert?" [R8: 6 f] GURGLE: gurgle. [R13: 10 f] | | any | S3 |
+| The buffet empties around him, bigger every time the camera "accidentally" cuts back [3x@12] | Three cutbacks 12 f apart, then a topper | adults | S3 festival |
+| "Light snack." in a too-tight shirt, carrying the forklift's next course up the stairs | | any | S3 |
+| The line-cook offer: "You'd have to wear a shirt." "...A TIGHT shirt?" {r} | Record scratch on "TIGHT" | adults | S3 |
+| **Innuendo on every cooking verb** at Brimstone Bites: stuffing, basting, "a good long simmer", "you have to let it rest after", "I like a firm bun" | One verb per line, never two | adults | S3 |
+| **Gas both ways:** a burp, then a fart, each a tempo-synced chiptune raspberry with a vinyl-crackle tail; the X pops on the fart's shudder; a cute green puff with hearts in it under the filter, sulphur-yellow with flies in the truth. He wafts it toward whoever is nearest: "{d}Compliments to the chef." | Burp; R8; fart; the line at R13 | adults | 102 (Act Two's afternoon) |
+| **The smoke-ring burp:** three perfect rings drift out through the grille, each bigger; he hooks a claw through the third. "{d}Showing off." | [3x@12], topper 10 f later | adults | bank (a 103-106 grille beat) |
+| **A gross-out close-up** (2-3 an episode at most): his face mid-burp with a wobbling uvula and bits of bagel; a string of drool that will not break; the belly skin stretching with a stitch seam about to go | Smash cut in, HOLD 13 (10 f), {r} out | adults | from 102 |
+| Asking about leftovers; there are none; he asks again | | any | The special |
 
 **The belly**
 
-| Gag | Timing at 24 fps | Weight | First use |
+| Gag | Timing at 24 fps | Scene | First use |
 |---|---|---|---|
-| Gut sucked in [HOLD 13: 10 f], springs out [JELLY] {r}, and a brass waistcoat button pings off and hits something (*tink*) | Button flight 6 f, *tink* on contact | G | 113 |
-| Lets his belt out one notch with a dramatic sigh [R21: 17 f]; the notch *pings* | | G | 113 |
-| The belly X-ray: a 4-frame insert, "60% air, 40% bagel" | Insert 4 f; caption at R8 | G | S3 |
-| GURGLE translations: "He says hello." / "The belly says yes. The belly outranks me." / "He says go on, kid." | | G | 113, S3 |
-| The belly-flop: hangs in the air 2 f, `SHK_ROAR` 11 f, a local flash | | G (action) | 113 |
-| The belly trampoline in the fight [SQUASH 1.3/0.7]; hiccup portals in threes [3x@12] | | G | S3 |
-| The belly-bump on the last stubborn section of the Wall [SQUASH 1.4/0.7] | Part of the Wall-falls action, played straight: never a joke there | G | Series finale |
+| Gut sucked in [HOLD 13: 10 f], springs out [JELLY] {r}, and a harness stud pings off and hits something (*tink*): the forklift driver's hard hat, the Mayor's top hat, the pet | Stud flight 6 f, *tink* on contact | any | 102 (at the Mayor); 113 |
+| **Unbuckles his belt with a dramatic sigh** [R21: 17 f] (canon: "The belt comes off.") | The buckle's *clunk* on the peak of the sigh | adults | 113 |
+| **The two-belly conversation:** the pet beeps; GURGLE gurgles back; they keep going while everyone else waits | Alternating 12 f apart, four exchanges | any | 102 |
+| GURGLE translations: "He says hello." / "He says you're cute. {..}He's not wrong." / "The belly says yes. The belly outranks me." / "He says go on, kid." (to a kid, never in a flirt) | | "cute": adults; the rest: any | 102, 113, S3 |
+| **GURGLE contradicts him:** "I'm not blushing. {..}It's the pit." GURGLE: gurgle. "{d}...He says I'm blushing." | The contradiction R8 after the lie | adults | 102 (the blush) |
+| The belly X-ray: a 4-frame insert, "60% air, 40% bagel". The truth's version: "60% air, 30% bagel, 10% Puff Demon (still waving)" | Insert 4 f; caption at R8 | any (the truth's version: adults) | S3 |
+| The belly-flop: hangs in the air 2 f, `SHK_ROAR` 11 f, a local flash | | any (action) | 113 |
+| The belly trampoline in the fight [SQUASH 1.3/0.7]; **burp portals** in threes [3x@12] (canon; they burp imps into the arena) | | adults (action) | S3 |
+| The belly-bump on the last stubborn section of the Wall [SQUASH 1.4/0.7] | Part of the Wall-falls action, played straight: never a joke there | any | Series finale |
 
-**The rear (always trousered, always wide, always brief)**
+**The butt (bare, shown off, every reveal scratched; adults-only scenes, rule 3)**
 
-| Gag | Timing at 24 fps | Weight | First use |
-|---|---|---|---|
-| Squeezes through the cracked gate rear-first, stuck [HOLD 13: 10 f], BOING pop-through [SQUASH 1.4/0.7], record scratch | | PG | 113 |
-| Walks past a window backwards, eating; record scratch | Scratch on the first frame he's in shot | G | S2 |
-| Stops in front of the window to finish a bagel, standing upright, and blocks the whole view; the scene behind waits; record scratch | Wide; held 10 f; no linger; never a bend (rule 8) | G | S2 |
-| Backs into a doorway to block it; the camera tries left, tries right, can't get round him [3x@12] | The camera is the victim | G | S2 |
-| The Board of Decency sticker slaps over his fully trousered seat; he peels it off and admires it | Once a season at most; wide, never a close-up (rule 8); adults only in the scene | PG | S3 |
+| Gag | Timing at 24 fps | First use |
+|---|---|---|
+| **The grille opens rear first:** the whole little window is butt {r}. It turns: two hooded eyes, a fang. "Well, well. {..}Somebody knocked." | Shutter *clack* on frame 0; {r} on the first frame the window reads as butt; HOLD 21 before he turns; the turn over 6 f | 102 |
+| **He bends for a dropped bagel in front of the window** (restored; full timing in §7.8): he drops it {r}, bends slowly and fills the window, stays down there eating it off the floor while the scene behind waits, the X pops in (*tink*), Nana's R8, then "Evening, sugar. {..}Nice buns." | The drop, {r}, a 17 f bend, HOLD 21 down there, the X held R3 | 102, at the grille (restored); reprised in the church window, S2 (canon Ep 3.1; the kids' BEEP plays as its own scene) |
+| Presses it to the gate: "Feel that, padre? {..}Ten years of devotion." | On the Split (§8.2); the Gate creaks, jealous, R8 after Fuzz's "No." | 102 |
+| **The butt-print signature:** every document handed to him comes back signed with a big butt-print where the signature goes | SLAM, stamp table (§4.1), with a wet *plap* and {r} | 102 (the noise complaint); every document after; S3: Signhere files one ("This is in breach of nothing. I don't know what to do with that.") |
+| Slides down the bagel mountain on it [BOING]; struts away camera-side, the rump a beat behind | The strut on 2s, the rump R3 late | 102 cold open |
+| Backs butt-first into the gatehouse and hip-checks the door shut | Door slam `SHK_POW` | 102 cold open |
+| Admires it in a lava puddle: a slow look over his shoulder, a satisfied "Mm." | The over-the-shoulder hold runs R21 (17 f): too long, on purpose | 102 |
+| **The Board's covers fail** (§6.20): a doily over the grille (eaten); the cupcake balloon (popped with a fang; it whistles off over the Wall); the GIGGLE banner (licked: "Strawberry."). Topper: the Mayor paints the grille pink, and from inside a tongue licks a clean peephole | Rule of three, about 12 s a cover; the topper R13 after the third | 102 |
+| The blush on both sets of cheeks, glowing pink through the bars | The face blushes first, the seat 4 f later | 102 |
+| The X pucker on the shudder (the front-fart beat) | Pops in on 1s, held R3 | 102 |
+| Squeezes through the cracked gate rear first and sticks [HOLD 13: 10 f]: "{d}Tight. {..}Ten years and it's still tight."; BOING, he pops through [SQUASH 1.4/0.7] {r} | | 113 |
+| Walks past a window backwards, eating {r} | Scratch on the first frame he's in shot | S2 |
+| Backs into a doorway; the camera tries left, tries right, can't get round him [3x@12] | The camera is the victim | S2 (the Spire door) |
+| **The wiggle taunt:** a 3-frame telegraph before the sit-slam | 3 f, then the slam | S3 (the fight) |
+| Sits on things: the Big Chair (three citizens to a cushion); the throne, which says "{d}it's fine" and collapses. On people only by invitation: "Mind if I sit?" "...Go on." GURGLE: gurgle. | | S3 |
+| **The cheek drum:** in "Open Late" he plays his own rump on the theme's six-hit stab | On the six hits | S3 (the number) |
+| **Tanning on the gatehouse roof**, rump to the sky: "{d}Both of me deserve it." | | bank |
 
 **Vanity**
 
-| Gag | Weight | First use |
+| Gag | Scene | First use |
 |---|---|---|
-| Admires himself in anything shiny: a lava puddle, a spoon, the Mayor's shoes | G | S3 |
-| "You're cute when you're scared." said **to his own reflection** (the game aims it at the player; the show retargets it) | G | S3 |
-| "Mayor. Love the hat." "It's my head." "I know." | G | S3 |
-| The little black book the size of a phone directory: he reads it at the gate; we never see inside | PG | S3 |
-| The dating ticker of rejections, all kind ("not interested", "very flattered", "it's the gate, isn't it") | PG | Park Life |
+| Admires himself in anything shiny: a lava puddle, the grille's brass plate, a spoon, the Mayor's shoes | adults | 102 (the lava puddle); S3 |
+| Rates himself: "Eleven. {..}Needs nothing." | adults | bank |
+| **The rolodex on a forklift** (the little black book, upgraded): the driver reverses it up to him; he spins it, and it never stops on a name | adults | 102 |
+| **The dating profile**, pinned to the gatehouse noticeboard (a 2 s freeze-frame gag): "Gatekeeper. Open late. Hung like a drawbridge (it's a metaphor, mostly)." | adults | 102 (Act Two's afternoon) |
+| **The exes** (Shriekra, 587, a shriek vocalist; Spearmint, 591, a gate guard), voices only until 108. Shriekra, off-screen, at full shriek: "AND I WANT MY CHAINS BACK!" Spearmint, off-screen on his side, minty: "{d}You still owe me a spear polish." | adults | 102 (Shriekra); bank (Spearmint, a 103-106 grille beat) |
+| "You're cute when you're scared." To his own reflection, or to Sunny (D13): "Well, hello, bunny. {..}You're cute when you're scared." Sunny's paw goes up. "{d}Noted." | adults | S3 (the Underbelly) |
+| "Mayor. Love the hat." "It's my head." "I know." | adults | S3 |
+| "Sugar, I was born this way." (his answer to every complaint) | adults | bank |
+| The dating news ticker: "GRUMBLEGUTS DUMPED BY GATE: 'IT'S NOT YOU, IT'S YOUR MAINTENANCE SCHEDULE'" | adults | S3; Park Life |
 
-**Flirting (adults only, D, one per episode at most)**
+**Flirting and raunch (adults only)**
 
 | Gag | Scene rule | First use |
 |---|---|---|
-| To the Gate: "Don't be like that. I'll be gentle." [R8: 6 f] The Gate creaks. **Standards alternate, boarded and recorded:** "Don't be like that. I'll knock first." | Vapula and Grumbleguts only | 113 |
-| "Evening, sugar. Nice buns." NANA: "They're MUFFINS." [R8] "I'll allow it." | Nana and adults only; the kids' BEEP and the grumpy-uncle line play as a separate scene | S2 |
-| "Come up and see my gate sometime. This is my gate." | Aimed at the adults at the gate; Sunny out of his eyeline | S3 |
-| "Padre. Come up and see my gate sometime." [R13] FUZZ: "{d}No." [R8] "Playing hard to get. I respect it." (one step back on "I respect it.") | Adults only | S3 |
-| Flirts with Honkers' napkin; the napkin is not interested | Any | S3 festival |
-| **His only crush is the Gate.** It creaks. Nobody is interested in him, except possibly the Gate. | | Running |
+| To Sunny, through the grille: "He says you're cute. {..}He's not wrong." Sunny's ears go flat; a slow headshake. "Shy. {..}Noted." (one step back from the bars) | Sunny per D13 | 102 |
+| "Mayor. {..}You look like trouble. Lucky me." MAYOR: "I am the MAYOR." "I know. I've seen the posters. {..}I keep one by the bed." | The Mayor retreats on "Hee. Hee." | 102 |
+| "Feel that, padre? {..}Ten years of devotion." FUZZ: "{d}No." [R8] "Playing hard to get. I respect it." (one step back on "I respect it.") FUZZ: "{d}I'm not playing." [R5] "...I respect that more." (a second step back) | The Split; Fuzz's button is never cut (rule 4) | 102 |
+| "Evening, sugar. {..}Nice buns." NANA: "They're MUFFINS." [R8] "I'll allow it." NANA: "{d}Sweet pea. {..}I've seen bigger." | After the bend (§7.8) | 102 |
+| "Take a seat. Take two. I'm sturdy." The forklift driver reverses away, beeping | | 102 |
+| **SUITE CLOSED:** an adult visitor's voice from inside: "You said 'open late.'" "I did say that." The door shuts; the sign flips; the gatehouse rocks; a stud pings off the roof onto the forklift driver's hard hat: *tink*. Later, a satisfied voice leaving: "Same time Thursday?" / "Call me." "I won't." | Off-screen and implied; the visitor is an unseen adult who came to him (rule 5) | 102 cold open and Act Two |
+| The riding crop: "Is that a riding crop?" "It's a conversation starter." | | 102 (the Mayor) |
+| "Come up and see my gate sometime. {..}It's very big. {..}And hinged." | Aimed at the adults at the gate | S2-S3 |
+| To the Gate: "Ready, darlin'?" [R8: 6 f] The Gate creaks back in harmony (its yes), then "I'll be gentle." Canon's "Don't be like that." is cut: the Gate is his crush, and its yes comes first (hard limit 2) | Vapula and Grumbleguts only. No alternate | 113 |
+| **The bank** (`GRUMBLEGUTS_TONE.md`), at most one bank line a scene so each stays a joke: "I don't bite. {..}Unless it's requested." / "Say my name again. {..}Slower." / "Is it hot in here, or is that just the pit?" / "I keep my gate unlocked for you." / "Is that a Brimstone Bagel in your pocket, or are you just happy to be exorcised?" / "Always date a demon. {..}They're used to the screaming." / "Dying's just the world's worst hangover. {..}I'd know." | Any adult scene | bank |
+| **The body-language set:** the slow once-over of whoever walks in; the lip-bite; a finger crooked in the harness strap; hips that arrive before he does; the belly pat that turns into a stretch; the back-arch against the gate; a chain hooked round his own wrist and tugged; the over-the-shoulder glance that lasts R21 too long; a wink on every second sentence; leaning far too close and **stepping back the moment they flinch** (rule 4, played as the joke on him). Reactions: bystanders fan themselves, Father Fuzz covers his eyes and prays, the Gate hums | The step back is never cut for time | from 102 |
+| Flirts with Honkers' napkin; the napkin is not interested | Any adult scene | S3 festival |
+| **His only crush is the Gate.** It creaks when he flirts with anyone else (jealous) and creaks along when he sings to it (harmony) | Running | from 102 |
+| **Gatekeep** (404, she, a robot: "Has never opened the gate. Polishes it."), optional: she polishes the Hillvile face while he flirts at her through the grille. "{d}Not interested." The Gate creaks, jealous: a triangle | `PILOT_ROADMAP.md` D18 | 102 (optional) |
 
-**The grumpy uncle (kids)**
+**The grumpy uncle (kids)**: no innuendo anywhere in the scene, his rear out of frame, no swearing (rule 3).
 
 | Gag | Rule | First use |
 |---|---|---|
-| "Go home. Eat something. {d}Not THAT." | The kid is reaching for food or a lava rock, visibly; no flirting anywhere in the scene | S2 |
-| To Bolt: "Eat your vegetables. {d}Not those. Those are mine." | Same | S3 |
-| Gives a kid his own bagel for the walk home: "{d}Didn't happen." | Same | S3 |
+| PIP: "Patrol. You have my friend's one." "{d}Ate it." "...That's LOST PROPERTY." "It's found property now. {..}It's in here somewhere." GURGLE. | Pip at the grille; his face in the window and nothing else | 102 |
+| "Go home. Eat something. {d}Not THAT." | The kid is visibly reaching for food or a lava rock | 102 (Pip, a lava rock) |
+| Slides his own bagel under the gate for the walk home: "{d}Didn't happen." | | 102 |
+| To Bolt: "Eat your vegetables. {d}Not those. Those are mine." | | S3 |
+| Volunteers to be the monster under the nap mat and falls asleep first; asks if there's a snack after nap time (there is; Lulla planned for it) | | Park Life |
 
 **The antihero turn and the heart (played straight)**
 
 | Beat | Rule | First use |
 |---|---|---|
+| **The Small Puff save:** his arm shoots out through the grille and drags the demon through the bars; on his side (the truth) he bites it in half, blood to the elbows. "Six. {..}Needs salt." Back at the grille: "Didn't do that for you." [R8] "{d}Did it for the snack." | The save is played straight; the denial comes after. Sunny and the pet only | 102 |
+| "...Ten years. {..}Nobody knocks." | **Protected hold, 3 s, no button** | 102 |
+| Sings the bridge of "Open Late" to the Gate when he thinks nobody is listening ("somebody has to keep the light on"); the Gate creaks along in harmony | | 102 |
+| At the brick, he holds Charlotte's tin while she waits, and drops the act | No flirt in the scene | 112B |
 | Drops the act to save his friends, then: "I totally didn't do that for you." | The save is never undercut; the line comes after | S3 |
 | Holds the gate for the Mayor | | S3 |
 | "There's a THING down there. It beeps. {..}It ate my lunch. {d}Nobody eats my lunch." | | S3 |
-| "Kept this gate ten years. Nobody came up to see it." [HOLD 21: 17 f] | **No button** | S3 |
+| "Stay behind me, friends." (the fight's last bark) | | S3 |
+| "Kept this gate ten years. Nobody came up to see it." [HOLD 21: 17 f] | **No button.** Pays 102's "Nobody knocks." | S3 |
 
 ### 7.5 The ladder across the series
 
 | When | What the audience gets |
 |---|---|
-| **101** | Sound only behind the gate: GURGLE, the padlocks, BOING, "...needs salt." |
-| **Main title v1-v2** | A round silhouette that bounces once behind the gate, from the show sheet |
-| **108-112** | One distant GURGLE per B-segment; nobody comments |
-| **113** | "The Gate Cracks" (about 25 s) and the post-credits "...Five hundred and one." |
-| **Season 2** | The window walk-past; "Nice buns" (Nana); the grumpy uncle (a separate scene); he eats the Fun Fair's cotton-candy machine, machine included; he blocks the Spire door |
-| **Season 3** | The toll ("Nobody passes without giving me their number."; a cupcake: "The belly says yes. The belly outranks me."); the Underbelly fight with the dish-feeding pacifist route; "...Is there dessert?"; the line cook; "Mayor. Love the hat."; the buffet; **the festival's button: a brass waistcoat button pings off and hits the Mayor's hat** {r} (not the belt, so the trousers never come into it); the credits: he waves a drumstick at the camera, then at the Gate |
-| **Park Life** | Feed the Gate as a cooking-and-friendship story; the gatehouse redecorated; a little heart painted on the repaired Gate. Nobody knows who. Everybody knows. **Never the Feast outcome.** |
+| **101** (not seen) | The main title's chorus: behind the gate's shut grille, a big round rear silhouette presses against the gate and bounces once, BOING; the padlocks jump. The grille, its shutter shut, is in frame in MT-4, 4-03 and PC-1 (the plant). Post-credits: a wet crunch, the gurgle, three padlock rattles, BOING, GURGLE's caption "...needs salt.", then his purr |
+| **102 "Open Late"** | The debut (`SERIES_OVERVIEW.md` §5.7; the gag map is §7.8): the camera crosses to his side for the cold open; Sunny knocks; the grille opens rear first; he flirts with every adult and gets a no from each; the restored bagel bend; the Board's failed covers; the butt-print signature; the grumpy uncle with Pip; the save; "Nobody knocks."; the blush |
+| **The main title from 102** | He pops into the verse rear first with a record scratch, the only cast member who enters backwards, and winks over his shoulder on the next beat, in a verse shot of his own with no child in it (Pip pops in on another; rule 3) |
+| **103-107** | The grille is a stop on Sunny's week, one beat an episode, kid-free unless he is the grumpy uncle: 103 the late-show heckle; 104 "gift from G" (a Gate Key (Copy)); 105 the grape smell reaches the grille (optionally, Vex at the grille); 106 a card on Bloom's board; 107 the grille stays shut all episode, and nobody comments |
+| **108-112** | He lives in Hellvile, so the B-segments get one Grumbleguts cameo each, in a kid-free scene (Anvil's hinge, Charlotte's cookie, Sutura's clinic after hours, the Thursday brick), plus the distant GURGLE that rattles the cups |
+| **113** | The turn: Vapula's promised feast; "I'll be gentle."; the belly-flop; the crack; the rear-first squeeze into Hillvile; he does not wink at Sunny. Post-credits: "...Five hundred and one." |
+| **Season 2** | In Hillvile: the church-window reprise of the bagel bend (canon Ep 3.1, split from the kids' BEEP scene, which plays as its own scene); he eats the Fun Fair's cotton-candy machine, machine included; he blocks the Spire door |
+| **Season 3** | Canon: the toll ("Nobody passes without giving me their number."; a cupcake: "The belly says yes. The belly outranks me."); the Underbelly fight and the dish-feeding pacifist route; "...Is there dessert?"; the line cook ("...A TIGHT shirt?"); "Mayor. Love the hat."; "Kept this gate ten years. Nobody came up to see it." (pays 102); the "Open Late" number; the antihero saves; the buffet; **the festival's button: his belt pings off and hits the Mayor's hat** {r} (canon); the credits: he waves a drumstick at the camera, then at the Gate |
+| **The Feast special** | "The Feast of Rebuilding" (title card: "What an Ass"), after Season 3, in its consent rewrite (`SERIES_OVERVIEW.md` §6.1) |
+| **Park Life** | Feed the Gate as a cooking-and-friendship story; the gatehouse redecorated (S185); a little heart painted on the repaired Gate. Nobody knows who. Everybody knows |
 
 ### 7.6 Never
 
-These exist in the game's docs and the shipped game, and are **out of the show entirely**:
+1. **Anything past the four hard limits**, in any episode, cut, promo, short, deck page or product.
+2. **The S186 Feast outcome as the game writes it.** There the hose goes into him without his say-so, which hard limit 2 rules out, and the crowd's "...that's hot" lands on that act. As written it stays game-only (`PILOT_ROADMAP.md` D17). The show's version is the post-Season 3 special in its **consent rewrite** (`SERIES_OVERVIEW.md` §6.1 and D10 there): the hose is the feast's soda line and he asks for it, the push and the slap are asked for, and the joke is his gluttony.
+3. **Copying another show.** The comps are tonal only: no borrowed designs, names or lines. Angel Dust is a type, not a template.
+4. **The third-party references** in `docs/design/story/refs/*.webp`: inspiration only, never in show or pitch material.
 
-* **The S186 Feast outcome** ("What an Ass"): the inflation, the pop, the fullness meter, the crowd reactions, every staging note for it in `GRUMBLEGUTS_AND_DIRECTOR_NOTES.md`.
-* **Every pass in `GRUMBLEGUTS_TONE.md`:** the personality rework's propositions, the adult-humour pass (swearing, the gag bank, the dating-app bio), "very suggestive" body language (lip-bites, hooded eyes, the strap tug, the hips), the gratuitous and distasteful passes, the front fart shot, and every line written for them.
-* **From the concept sheets:** the hose close-up with hands on the cheeks; "BRAAP" gas both ways; the crop and unbuckle "flirt" poses; the "...that's hot" crowd line. The harness and studded leather become the uniform.
-* **From the shipped game's Ep 2.7:** "Darlin'", "sugar" in a non-flirt line, "The belt comes off."
-* **The riding crop**, the menu line "Is that a riding crop?" (if the menu joke is wanted, it becomes "Is that a crossing-guard sign?" "It's a conversation starter.").
-* **The third-party references** in `docs/design/story/refs/*.webp`: inspiration only, never in show or pitch material.
+**Back in from the old never list:** the `GRUMBLEGUTS_TONE.md` passes (the propositions, the adult humour and the swearing, the gag bank and the dating bio, the very suggestive body language, the gratuitous and distasteful passes, the front-fart shot with the X), the harness and the studded leather, the riding crop and "Is that a riding crop?", "Darlin'" and "sugar", "The belt comes off.", gas both ways, the unbuckle and flirt poses, the gross-out close-ups (rationed by §7.1 rule 7), and "I'll be gentle." with no alternate (after the Gate's yes).
 
 ### 7.7 Before any Grumbleguts scene is boarded
 
-1. Who is in the scene, and how old are they? Any kid or teen: grumpy uncle only, no innuendo anywhere in the scene.
-2. Who is he aiming at? An adult, the Gate, an object. Never Sunny, and Sunny is out of the eyeline.
-3. Is the joke his vanity or appetite?
-4. Is every advance turned down kindly or ignored, and does he step back after a "No."?
-5. Is the rear wide, brief, trousered, with a record scratch, and no lingering camera?
-6. Any gas, burp, inflation, drool or close-up? Cut it.
-7. Is this the episode's only D-weight line?
-8. Captions written ([GURGLE: gurgle.]); standards note on the board.
+1. Any child or teen in the scene? Then grumpy uncle only: no innuendo anywhere in the scene, his rear out of frame, no swearing, and no graphic gore in any frame with them.
+2. Who is he aiming at? An adult, the Gate, an object or his reflection (Sunny per D13, with a visible no).
+3. Is every advance consensual, and does a no end it with a step back on his next line?
+4. Any hookup on screen? Move it off-screen (the door, the sign, the rocking gatehouse).
+5. Anything explicit (an act, genitals)? Cut it. The bare butt and the X are fine.
+6. Is the joke his vanity, appetite or shamelessness, and not the target's body?
+7. Every rear reveal scratched? Gross-out close-ups within 2-3 for the episode? One f-bomb at most?
+8. Any censor sticker? Replace it with staging (§6.20).
+9. Captions written ([GURGLE: gurgle.], [low purr], [record scratch]); standards note on the board.
+
+### 7.8 His debut, gag by gag: 102 "Open Late"
+
+Timings at 24 fps (Appendix A converts them to 30). The episode's outline is `SERIES_OVERVIEW.md` §5.7.
+
+**The crossing** (cold open). The series' first full brick wipe across the Wall lands on the gate's other face: a buzzing sign, OPEN LATE (its flicker 2 f off, 21 f on, never faster). Tilt up a mountain of Brimstone Bagels, 13 f of smoothstep, to the rear on top {r}. Hold 10 f. The first sound after the scratch's silence is small (§4.8): one wet chew. Then the light-snack line and the forklift's DROP, then the burp, and the "1" spinning onto his tongue 6 f later.
+
+**The grille opens rear first** (Act One, beat 6).
+
+| Frame | Event |
+|---|---|
+| 0 | Sunny's third knock (the knocks run 12 f apart, each softer). Then HOLD 21 (17 f) of silence: every hedge holds its breath |
+| +17 | The shutter *clacks* open. The whole window is butt |
+| +18 | {r}: tape-stop over 4 f, then 17 f of silence |
+| +39 | "bep?" (the pet: the small sting) |
+| +45 | HOLD 21: the butt considers the question |
+| +62 | It turns over 6 f: two hooded eyes and a fang fill the window |
+| +74 | The crop taps the bars twice, 4 f apart: "Well, well. {..}Somebody knocked." |
+
+**The bagel bend** (Act Two, beat 4). Nana's POV through the bars.
+
+| Frame | Event |
+|---|---|
+| 0 | He stands right in front of the grille, back turned, finishing a bagel. Nana's face in the foreground, the second basket on her arm |
+| +10 | The bagel slips: *plip* |
+| +16 | {r} at R8: tape-stop over 4 f; silence |
+| +20 | The bend: 17 f (R21), eased in, because slow is the joke. The rump rises until the whole window is butt at +37 |
+| +37 | HOLD 21 (17 f): he eats the bagel off the floor, down there, chewing on 2s, with tiny wet *nom*s. The scene behind waits: a bird lands on the hedge, looks, and leaves |
+| +54 | The X pucker pops in: *tink*; held R3 (3 f) |
+| +57 | Nana's look: exactly R8 (6 f), no line (§6.10) |
+| +63 | He straightens over 10 f and turns over 6 f; his face fills the grille at +79 |
+| +85 | "Evening, sugar. {..}Nice buns." NANA: "They're MUFFINS." [R8] "I'll allow it." |
+| | NANA: "{d}Sweet pea. {..}I've seen bigger." [R13] GURGLE {r}. She hangs the muffin on the nail anyway (two of everything: one is his now) |
+
+**The Board's covers** (Act Two, beat 2). Each cover goes up on a SLAM, holds R21, and fails on 1s; the Mayor's "Hee. Hee." buttons the first two, and the third has no button so the topper can land. Doily: a CHOMP, a lace thread left on the bars. Cupcake balloon: one fang, a squeal, and it whistles off over the Wall on the flee curve. GIGGLE banner: one long lick, then "{d}Strawberry." Topper, R13 later: the Mayor paints the grille solid pink. Silence. Three wet squeaks, 6 f apart, from inside: a tongue licks a clean peephole, and an eye in it winks.
+
+**The butt-print** (Act Two out). The complaint slides back out through the bars face down. The Mayor turns it over: a big butt-print where the signature goes, SLAM {r}. He holds it at arm's length for R21. "Resolution:" is still blank.
+
+**The save** (Act Three, beat 2). On the Hillvile side the Small Puff goes through the bars in a puff of confetti (the filter). The brick wipe to his side is the truth: one bite, `SHK_IMPACT`, the top half of the demon in his mouth and the bottom half in his fist, blood to the elbows, a slow chew on 2s. "Six. {..}Needs salt." A tooth from the demon *tink*s off the gate. Wipe back: a single heart-shaped confetti piece drifts down past the grille. "Didn't do that for you." [R8] "{d}Did it for the snack."
+
+**The blush** (Act Three, beat 4). Sunny's paw on the gate. His face blushes first; 4 f later the seat's blush glows pink through the bars. "I'm not blushing. {..}It's the pit." GURGLE: gurgle. "{d}...He says I'm blushing." (the soft button after the protected hold; the hold itself has none)
 
 ---
 
@@ -884,18 +1001,20 @@ These exist in the game's docs and the shipped game, and are **out of the show e
 
 * **Plush wobbles, hardware is stiff, hell drips and never wobbles, Grumbleguts bounces.** No exceptions; a model sheet that breaks this is redrawn.
 * **Nothing is ever static** (§4.18). A stopped clock is always a choice.
-* **No cute character is ever shown hurt.** Violence is for demons and hell-stuff, and it ends in confetti.
-* **The confetti-gibs palette:** hearts, confetti, plush stuffing, grape goo. **Goo is grape purple, never red.** Red is for eyes, the sky in the eruption, lava, the HELL in the logo, and nothing that comes out of anyone.
-* **The HELL, BLOOD and LAVA ramps** appear only in the brutal register, the main title and the IN cards' flashes in the arc 1 episodes; from 113's eruption the sky may use them.
+* **No cute citizen is ever gored.** Violence is for demons, monsters and hell-stuff; citizens get slapstick.
+* **Two gore sets.** **The filter's** (HaHaland's): hearts, confetti, plush stuffing, grape goo (grape purple). **The truth's** (DOOM's): blood from the BLOOD ramp, gibs, viscera, eyeballs, teeth. The filter is what HaHaland sees. The truth shows in four places: the brutal register (§4.15); truth inserts (§4.16); Hellvile's side of the Wall, which has no filter (from 102, Grumbleguts' side of the gate); and the main title's chorus. **The gag is the switch**, and the switch always has a sound: SCRATCH in, REWIND out, with one persistent change.
+* **The filter is always on when a child is in frame** (hard limit 3). Truth inserts are cut into frames with no child in them.
+* **Gore lands on a beat and gets a button** (§4.15).
+* **The HELL, BLOOD and LAVA ramps** appear only where the truth shows (and in the IN cards' flashes in the arc 1 episodes); from 113's eruption the sky may use them.
 
 ### 8.2 The Wall grammar
 
-* **The camera can cross the Wall. Nobody else can** (until canon says so).
+* **The camera can cross the Wall. Nobody else can** (until canon says so). Hands and things pass through the loose brick and, from 102, the gate's grille; nobody crosses until 113.
 * **Screen geography:** whenever the Wall is face-on, Hillvile is screen-left and Hellvile screen-right.
 * **The brick wipe:** bricks stack in 5 courses, 2 frames each, along a vertical line sweeping left to right (10 frames) going into Hellvile; right to left coming back. A trowel *tink* on the last course. The course count is a drawn step count, like the crayon line boil, so it stays 5 x 2 frames at 30 fps too (the pilot's beat 4-08 uses exactly that).
 * **The Split:** the wipe stops halfway and holds, at least 2 s (48 frames), with the Wall line exactly at the frame's centre. Both halves keep their own sound. The left half often reuses the A-segment's footage.
 * **The Split is for crossings only:** a name, a knock, a hand at the brick, a sign flipping on both sides. Never for a gag that could play in one shot.
-* **Season 1's Hellvile is shot tight** (`SERIES_OVERVIEW.md` §4.7).
+* **Season 1's Hellvile is shot tight** (`SERIES_OVERVIEW.md` §4.7). From 102 that includes the gate's Hellvile face, the gatehouse and its keeper; other Hellvile people are hands, voices and silhouettes until 108 (and Tallyworn's faceless back in 107's coda).
 
 ### 8.3 One persistent change
 
@@ -906,7 +1025,7 @@ After any insert, freeze or wipe-back, the shot returns **exactly** as it was wi
 * **The sign is the joke:** "NOTHING INSIDE! (we checked) —Mayor"; "TOP PRIZE. Please don't. —R"; "BAKE TEN"; "KEEP OUT. Underneath, smaller: FOREVER."
 * Give every sign gag its reading time (§4.13) and keep the frame still around it.
 * **Gifts stay tagged "gift from X" forever**, in every shot of the house.
-* **Continuity props** (checked on every background): the Population sign reads 500; the gate has seven padlocks; the fountain's two faces are turned away from each other; the crack stays after 113.
+* **Continuity props** (checked on every background): the Population sign reads 500; the gate has seven padlocks and a grille (shut in 101; open, painted pink and licked clean from 102); the fountain's two faces are turned away from each other; the crack stays after 113.
 
 ### 8.5 Background gags
 
@@ -929,15 +1048,16 @@ After any insert, freeze or wipe-back, the shot returns **exactly** as it was wi
 | **Sepia** | Flashbacks (F1-F4) | A palette lerp in and out, the REWIND sound on the way in |
 | **LCD** | The pet's dreams, its inserts, the HUD face | LCD green, chunky pixels, piezo sound |
 | **Hellify** | The DOOM switch | The palette rots pixel by pixel over 17 frames on the way in; REWIND back to cute, with one persistent change |
-| **The HUD** | First-person runs only | Hearts on the left, sprinkle shells on the right, the pet's face in the centre; our own layout, no third-party assets |
+| **The truth insert** | Any filtered moment, 4 frames | The same frame as it really is (§4.16); owns the audio; returns with one change; never in a frame with a child |
+| **The HUD** | First-person runs only | Hearts on the left, shells on the right, the pet's face in the centre, the weapon plate (it flips with the register); our own layout, no third-party assets |
 
 ### 8.8 Kids on screen
 
 * We laugh **with** Pip, never at Pip's fear.
 * Kids are brave in the show: Pip says the name, Pip patrols the Wall.
-* **No child is ever possessed, touched by the fog, or in a scene with innuendo.**
+* **Hard limit 3:** child and teen characters are never in sexual or suggestive scenes or dialogue, and never the subject of graphic gore. A scene with a child in it carries no innuendo at all, and the filter stays on in every frame with a child in it. **No child is ever possessed or touched by the fog** (canon).
 * Kids can be in a rite's room only behind an adult, and never within reach of the possessed.
-* Kid peril is mild, and always comes with an adult nearby.
+* Kid peril can be real; graphic gore never is (the filter stays on).
 
 ### 8.9 Who the joke is on
 
@@ -945,13 +1065,14 @@ After any insert, freeze or wipe-back, the shot returns **exactly** as it was wi
 * **Faith is affectionate:** Father Fuzz's rite, the hymn and the water are never mocked; "THE POWER OF CUDDLES COMPELS YOU!" is a parody of a film line, not of a church.
 * **No accent gags.** Steamy's lilt is a performance, not a punchline.
 * **Vaping is the villain's marketing,** and the joke is on the marketer ("That's the business model.").
+* **No real-world hate content** (hard limit 4): no slurs, no real-world hate symbols, no joke whose target is a real group, faith or person.
 
 ### 8.10 Pixel discipline for gags
 
 * Every gag frame passes the palette lint: smears and flashes included.
 * Integer camera moves and integer scaling only.
 * No frame blending, no motion blur, no anti-aliased smears.
-* Particles (confetti, hearts) are palette sprites, never alpha.
+* Particles (confetti, hearts, gibs, blood droplets) are palette sprites, never alpha.
 
 ---
 
@@ -969,6 +1090,7 @@ After any insert, freeze or wipe-back, the shot returns **exactly** as it was wi
   * the eyecatch OUT is a 2-bar cut of the hook in major, the IN the same bar in minor;
   * if the revised master keeps the demo's six-hit stab rhythm in its intro, it becomes the hit pattern for kime moments (a cast pose landing on six hits);
   * if it keeps the demo's chromatic "hell slide", it scores the hellify switch.
+* **The switch has its own sounds:** SCRATCH into the truth, REWIND out of it; the Pump Shotgun *squeaks* in the filter and goes CHK-CHK in the truth; the saw purrs, then screams. A truth insert brings its own wet sound and owns the audio for its 4 frames.
 * **The leitmotifs are gags too:** HaHaland's tune and Hellvile's are the same melody in major and minor; **a possession is the moment the fourth note bends** from C to B♭.
 * **The babble rhythm for deadpan:** low syllables 5, 3, 2, 2 frames apart; a period holds 5 frames.
 * **Silence budget:** §5.3.
@@ -979,7 +1101,7 @@ After any insert, freeze or wipe-back, the shot returns **exactly** as it was wi
 
 ### 10.1 Captions
 
-* Comic sounds that carry a joke are captioned: **[beep.]**, **[GURGLE: gurgle.]**, [record scratch], [squeak], [*tink*], [kazoo, lower], [the fountain giggles, late].
+* Comic sounds that carry a joke are captioned: **[beep.]**, **[GURGLE: gurgle.]**, [low purr], [record scratch], [squeak], [*tink*], [kazoo, lower], [the fountain giggles, late], [wet crunch], [the gatehouse creaks rhythmically].
 * Captions sit clear of burned-in diegetic text and never cover a sign gag.
 * A caption for a 267 ms-late sound appears on the late beat, not the expected one.
 
@@ -999,8 +1121,10 @@ Mandatory, because the lead is silent.
 | **"beep."** | Never translated. Same lowercase, same period, in every language. |
 | **Pronouns** | They (Sunny, Pip, Zoomzoom, Hauntessa, Drudge, Ploddy), xe (Bolt, Sootkin, Sutura), it (the pet, GURGLE). The per-language guide defines each language's form; no character is re-gendered to fit a grammar. |
 | **GIGGLE over MINGLE; BAKE TENT to BAKE TEN** | Translators may rebuild the wordplay with the same rule (one painted-over word that bleeds through; one fallen letter that makes a new word). |
-| **"Nice buns." / "They're MUFFINS."** | Keep a baked-goods double meaning at the same mildness, or replace it with a food pun that is not innuendo. Never make it stronger. |
-| **"Open late."** | The shop-sign meaning must survive. |
+| **"Nice buns." / "They're MUFFINS."** | Keep a baked-goods double meaning at the same strength: it is innuendo, and should stay innuendo. |
+| **"Open late." / SUITE CLOSED** | Keep both meanings, the shop sign and the bedroom. |
+| **Swearing** | Translate at the same strength; never substitute a slur. |
+| **The weapon plates** | PARTY PUMP / SLAUGHTER and PURRING SAW / MEATCLEAVER: a cute name over a brutal one, in the language's own register. |
 | **Knock-knock jokes** | Use the language's own call-and-response form. |
 | **The ratings** | Numbers out of ten stay numbers; "Needs X." keeps its flat shape. |
 | **"Hee. Hee."** | Keep two syllables with a stop after each. |
@@ -1026,14 +1150,14 @@ Mandatory, because the lead is silent.
 
 ### 11.2 Gag standards
 
-- [ ] Inside TV-PG (D, V); no gag needs a higher rating in any market
-- [ ] Gore is confetti; goo is purple; no cute character hurt
-- [ ] No kid or teen in a scene that carries innuendo; no child possessed; kid peril mild
+- [ ] **The four hard limits:** nothing explicit; adults and consent; no child in suggestive material or near graphic gore; no real-world hate content
+- [ ] Gore on demons and monsters only; the filter and the truth assigned correctly; the filter on in every frame with a child; every gore beat buttoned
+- [ ] No censor sticker, unless it is the season's one sticker-as-joke (§6.20)
+- [ ] No child possessed or touched by the fog
 - [ ] Grumbleguts: §7.7 passed
-- [ ] No flash shorter than its rule or brighter than its cap; no image under 4 frames; full-screen flashes 3 a second or fewer
-- [ ] Vaping unglamorous; nobody sympathetic inhales on screen
-- [ ] The joke is not on a kid's fear, on Hellvile for being Hellvile, on faith, on an accent or on a real person
-- [ ] No pentagram imagery in Season 1
+- [ ] No flash shorter than its rule or brighter than its cap; no image under 4 frames; full-screen flashes 3 a second or fewer; blood never strobes; large red changes logged for Harding
+- [ ] Vaping unglamorous; no real brands
+- [ ] The joke is not on a kid's fear, on Hellvile for being Hellvile, on consent, on faith, on an accent or on a real person
 - [ ] The theme line used only in its canon places, and never sung
 - [ ] Sign gags localisable; translator note written for wordplay
 
@@ -1043,6 +1167,7 @@ Mandatory, because the lead is silent.
 - [ ] The laugh map passes (§5.2)
 - [ ] The silence budget is 20-25% per act
 - [ ] Protected holds intact (no music under them, no gag in them)
+- [ ] Truth inserts intact at 4 frames, each returning with its one change, none in a frame with a child
 - [ ] The final story beat of the episode has no button; its button is after the credits
 - [ ] Running-gag continuity: the Population sign, the padlocks, the fountain faces, the little bed's cell, Mascotty's step in the IN cards
 - [ ] Captions and audio description scripted for every sound gag and sight gag
@@ -1081,7 +1206,8 @@ Mandatory, because the lead is silent.
 |---|---|
 | The story, the cast, Grumbleguts' canon and hard rules, the running gags table, the timing contract | `docs/design/story/story_final.md` §0-§7 |
 | Timing measurements, techniques, density, accessibility | `docs/design/story/comic_timing.md` |
-| Grumbleguts material excluded from the show | `docs/design/story/GRUMBLEGUTS_TONE.md`, `GRUMBLEGUTS_AND_DIRECTOR_NOTES.md` (the Feast), `GRUMBLEGUTS_ROMANCE.md` |
+| Grumbleguts' tone, gags and romance (adopted within the hard limits; the S186 Feast as written stays game-only, §7.6) | `docs/design/story/GRUMBLEGUTS_TONE.md`, `GRUMBLEGUTS_AND_DIRECTOR_NOTES.md`, `GRUMBLEGUTS_ROMANCE.md` |
+| The weapons' cute and brutal names | `core/src/weld.c` |
 | Concept sheets | `docs/design/story/concept/*.png` |
 | Shipped lines | `core/data/story/ch1/*.dsc`, `core/data/story/ch2/*.dsc` |
 | Pronouns and species | `core/data/roster/*.txt`, `docs/ROSTER.md` |

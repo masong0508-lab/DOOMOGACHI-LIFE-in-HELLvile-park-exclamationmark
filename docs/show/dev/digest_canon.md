@@ -1,6 +1,6 @@
 # Canon digest for the pilot: DOOMOGACHI LIFE in HELLvile Park!
 
-> **Development reference.** A reading digest of the repo canon made for the pitch round. `docs/design/story/story_final.md` wins every conflict with it, and the show's own decisions (Sunny's pronoun, the pilot's inventions, the standards) are in `../PILOT_TREATMENT.md` §9 and `../SERIES_OVERVIEW.md` §5.6. See `README.md` in this folder.
+> **Development reference.** A reading digest of the repo canon made for the pitch round. `docs/design/story/story_final.md` wins every conflict with it, and the show's own decisions (Sunny's pronoun, the pilot's inventions) are in `../PILOT_TREATMENT.md` §9 and `../SERIES_OVERVIEW.md` §5.6. Its "binding" content boundaries and recommended rating (§6: TV-PG, 10-16, family viewing, confetti-only gore, the `GRUMBLEGUTS_TONE.md` passes excluded) and its "show-safe" Grumbleguts (§8, debuting in game Ep 2.7, TV 113) are superseded by the adult direction: TV-MA and the four hard limits (`../PRODUCTION_ROADMAP.md` §2), the gag book (`../GAG_BIBLE.md` §7) and his debut in 102 (`../SERIES_OVERVIEW.md` §5.7). See `README.md` in this folder.
 
 Purpose: the canon a pilot-episode roadmap needs, read from the repo. Repo root: `/home/user/DOOMOGACHI-LIFE-in-HELLvile-park-exclamationmark`.
 

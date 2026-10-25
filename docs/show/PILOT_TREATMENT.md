@@ -6,12 +6,12 @@
 | **Series** | *DOOMOGACHI LIFE in HELLvile Park!*, an animated comedy based on the GBA/PS1 game |
 | **Episode** | 101, "Mingle Night" (the title card reads GIGGLE NIGHT until the end credits peel it back) |
 | **Runtime** | 22:00, a single episode in four acts |
-| **Rating** | Submitted **TV-PG (V)**. Series ceiling **TV-PG (D, V)**, never exceeded |
-| **Audience** | Ages 10-16, built for family co-viewing. Secondary: adult animation fans and retro-game players |
+| **Rating** | Submitted **TV-MA (V)**. Series **TV-MA (L, S, V)** from 102. 18+ elsewhere (16+ where a territory's scale allows) |
+| **Audience** | Adults: adult animation, not made for kids. Secondary: retro-game players and the game's own audience |
 | **Main title** | "Doomtastic Times": the 0:50 main title cut opens the show, and the 1:30 TV size returns as the Act Three insert song |
 | **Studio** | Dippinn Productions |
 | **Status** | The room's pick (pitch C, "Mingle Night"), with grafts from pitches A and B. Draft of 25 October 2026 |
-| **Companion documents** | `PILOT_ROADMAP.md` (front door and open decisions) · `PILOT_BEATSHEET.md` (60 beats, frame-timed, runtime proof; **the timing source**) · `PILOT_COLD_OPEN.md` (script) · `COLD_OPEN_SHOTLIST.md` (21-shot board) · `PRODUCTION_ROADMAP.md` (schedule, budget, risks) · `SERIES_OVERVIEW.md` (season plan) · `GAG_BIBLE.md` (gag and Grumbleguts rules) |
+| **Companion documents** | `PILOT_ROADMAP.md` (front door and open decisions) · `PILOT_BEATSHEET.md` (60 beats, frame-timed, runtime proof; **the timing source**) · `PILOT_COLD_OPEN.md` (script) · `COLD_OPEN_SHOTLIST.md` (21-shot board) · `PRODUCTION_ROADMAP.md` (schedule, budget, risks) · `SERIES_OVERVIEW.md` (season plan) · `GAG_BIBLE.md` (gags, Grumbleguts, the cute/brutal device, the hard limits) |
 
 ---
 
@@ -21,7 +21,7 @@
 
 **Episode logline.** On the anniversary of the night HaHaland walled off half its own park, a silent newcomer and a just-hatched pet that only says "beep." must save the town's skeleton bandleader from a rhyming demon. The cure turns out to be a name nobody on this side is allowed to say.
 
-**The tone in one line.** Gravity Falls and Undertale, with DOOM sewn into a plush toy: cute first, then creepy, then very loud, then kind.
+**The tone in one line.** Happy Tree Friends' switch inside Hazbin Hotel's hell, with DOOM sewn into a plush toy: cute first, then creepy, then very loud and very red, then kind.
 
 **What the pilot is about.** HaHaland's cure for everything is not saying it. In one night, the thing it won't say comes over the Wall, gets into a friend, and is sent home by a crying child reading a name off a list. The town survives by doing the one thing it has forbidden, and it doesn't notice. The audience does.
 
@@ -31,7 +31,7 @@
 * **B-plot, the Mayor's perfect Giggle** (built on the game's side mission S107, "Speech Notes"). He paints over MINGLE, loses and recovers a one-sentence speech, runs the night from a clipboard, hides, stops the name, finds an old draft he didn't write, and lights one firework. His hum gets one note further.
 * **C-plot, Nana's two of everything.** The second pie, the egg she holds too long, the tin she gives up, the thumb on Charlotte's name, the dish that comes back.
 
-**Why this pilot.** It puts the whole show on screen in 22 minutes: the cozy life-sim, the small-town comedy, the mystery, the horror, the cute-to-brutal first-person run and the heart. It also proves the weekly engine on screen (a neighbour possessed, clue props, a three-part rite, three candles as visible stakes, a true name from the other side), while the serial mystery of the plumbing, the cloud and the Wall runs underneath, planted but unpaid.
+**Why this pilot.** It puts the whole show on screen in 22 minutes: the cozy life-sim, the small-town comedy, the mystery, the horror, the cute-to-brutal first-person run and the heart. Its breakout character is kept behind the gate: you hear him eat, and he arrives in 102. It also proves the weekly engine on screen (a neighbour possessed, clue props, a three-part rite, three candles as visible stakes, a true name from the other side), while the serial mystery of the plumbing, the cloud and the Wall runs underneath, planted but unpaid.
 
 ---
 
@@ -52,7 +52,7 @@
 | **Act Four**, "23:00 ________" | 16:50 | 3:55 | An answering firework; the hum goes one note further. No button |
 | **Tag**, "Morning" | 20:45 | 0:35 | "...He's teething." |
 | End credits (a music-box arrangement of the theme's hook) | 21:20 | 0:30 | The title card has peeled to MINGLE NIGHT |
-| Post-credits button | 21:50 | 0:10 | GURGLE: "...needs salt." |
+| Post-credits button | 21:50 | 0:10 | GURGLE: "...needs salt."; then a purr behind the gate |
 | **Total** | | **22:00** | |
 
 ### Shape
@@ -60,7 +60,7 @@
 * **The clock.** The story runs in real story time on Midsummer night, from 18:00 to midnight. Every act card is the Mayor's festival clipboard, written in his own hand: "18:00 Welcome! · 19:00 Bake-Off! · 20:00 Bandstand! · 21:00 (we don't do that) · 22:00 Bedtime!" By Act Three, "Bedtime!" is crossed out and "weather" written over it. Act Four's card is the next line down, and it is blank: the Mayor never planned past bedtime.
 * **Four acts** suit horror-comedy escalation, because every act out is a step down a ladder: something is inside him; the only cure is across a fair full of red eyes; the name is there and nobody can say it; then the name, and the firework.
 * **Eyecatches.** Three OUT/IN pairs of 5 s each, built on comic_timing rule 5: the IN card is the OUT card with exactly one persistent change. Each card shows the town clock, so the breaks also tell the time (see §7).
-* **Elastic beats** absorb territorial lengths: the bus drive (+/-5 s; it also absorbs the theme conform), the Giggle crawl (the first cut, up to 20 s, since all four stall-holders return in Eps 103-104), the cute-mode run (+/-20 s) and the bite test (up to 10 s). Together they can give at most 55 s. Three gag-free holds are protected and never trimmed.
+* **Elastic beats** absorb territorial lengths: the bus drive (+/-5 s; it also absorbs the theme conform), the Giggle crawl (the first cut, up to 20 s, since all four stall-holders return in Eps 103-104), the cute-mode run (+/-20 s; its two truth inserts sit in waves 1-2 and are never trimmed) and the bite test (up to 10 s). Together they can give at most 55 s. Three gag-free holds are protected and never trimmed.
 
 ### Versions
 
@@ -68,7 +68,7 @@ The arithmetic for every version is in `PILOT_BEATSHEET.md` Appendix G.
 
 * **Broadcast:** 22:00 with three natural breaks at the act outs.
 * **Streaming:** the same cut. The eyecatches stay in as chapter markers, and the main title carries a skip-intro marker.
-* **2x11 markets:** Part 1, "The Giggle" (11:00): the cold open, a 0:20 short open cut from the main title, Act One trimmed by 35 s on its three elastic beats, and Act Two, ending on the Act Two out; eyecatch pair 1 is dropped. Part 2, "Say It" (11:00): a 0:35 recap card, the 0:50 main title, then Act Three to the post-credits button, with eyecatch pair 3 kept and pair 2 dropped.
+* **2x11** (markets, and adult blocks that schedule 11 minutes): Part 1, "The Giggle" (11:00): the cold open, a 0:20 short open cut from the main title, Act One trimmed by 35 s on its three elastic beats, and Act Two, ending on the Act Two out; eyecatch pair 1 is dropped. Part 2, "Say It" (11:00): a 0:35 recap card, the 0:50 main title, then Act Three to the post-credits button, with eyecatch pair 3 kept and pair 2 dropped.
 * **21:00 territorial cut,** if a buyer asks: every elastic beat at its minimum (55 s) and the end credits at 0:25 (5 s).
 
 ### Picture and sound
@@ -81,31 +81,46 @@ The arithmetic for every version is in `PILOT_BEATSHEET.md` Appendix G.
 * **The Wall line.** The Wall runs down the exact centre of frame (x = 192) whenever it is in shot. Every move across the Wall that lasts longer than an insert is a **brick wipe along that line**. The camera can cross the Wall; nobody else can. The pilot uses it twice: the mirrored knock in the main title, and a 2-second half-split in the Act Four firework. The split screen closes for good when the Wall falls in the series finale.
 * **The 8-frame lag.** Everything from the other side arrives exactly 8 frames (267 ms) late: the fountain's giggle, the second laugh at Hattie's tent, the possessor's voice. The one time that voice comes on time, it is home.
 * **Whiplash inserts** run 4 frames, own the audio, and return to the same shot with exactly one persistent change.
-* **Cute and brutal are registers, not gore levels.** A record scratch takes the show into first person, a hellified palette and the insert song; a rewind brings it back, always with one thing changed. The gore is confetti either way.
+* **Cute is HaHaland's filter; brutal is the truth.** The game's CUTE/BRUTAL toggle is the show's device: on the Hillvile side a demon pops into confetti, hearts, plush stuffing and grape goo, and the truth is DOOM (blood, gibs, shotgun and chainsaw mayhem, the big red splatter). **The gag is the switch.** A record scratch takes the show into first person, a hellified palette, the insert song and real gore; a rewind brings it back, always with one thing changed. A 4-frame truth insert can show any filtered moment as it really is. The truth also shows in the main title's chorus and, from 102, on Hellvile's side of the Wall, which has no filter. The filter is on whenever a child is in frame.
 
 ---
 
-## 3. Rating and audience
+## 3. Rating, audience and standards
 
-* **Core audience:** 10-16, built for family co-viewing.
-* **Secondary audiences:** adult animation fans and retro-game players, who get the real GBA ROM, the PS1 disc and a show made in the game's own pixels.
-* **Comparable shows:** Gravity Falls (a summer-event episode over a serial mystery), The Owl House, Amphibia, Over the Garden Wall and Hilda.
-* **Rating.** The pilot is submitted **TV-PG (V)**, for confetti-only fantasy violence and mild peril. The series ceiling is **TV-PG (D, V)**: the "D" arrives with Gatekeeper Grumbleguts' innuendo at the gate, from the Season 1 finale on. The show never goes higher. Pre-watershed and PG-equivalent everywhere else.
+* **Audience.** Adult animation, made for adults. Secondary: retro-game players and the game's own audience, who get the real GBA ROM, the PS1 disc and a show made in the game's own pixels. Not made for kids, and not pitched to children, teens or family co-viewing.
+* **Comparable shows** (tonal comparisons only; we never copy designs, names or lines): *Hazbin Hotel* and *Helluva Boss* (hell, flamboyant demons, musical vanity, raunch with a sad story underneath); *Happy Tree Friends* (cute to gore: the switch); *Invincible* (a bright surface, then sudden real gore); *Smiling Friends* (adult absurd comedy); *Shaun of the Dead* (cosy to horror to gore to heart). Game references, named as games: Tamagotchi, Tomodachi Life, Animal Crossing, Undertale, DOOM.
+* **Rating.** US TV Parental Guidelines **TV-MA**. The pilot is submitted **TV-MA (V)** for graphic fantasy violence (the gore is on demons and monsters). The series is **TV-MA (L, S, V)** from 102, when Grumbleguts brings crude language and sexual innuendo; the network sets the final descriptors. Elsewhere: post-watershed, planned to an **18** ceiling, and **16+** where a territory's scale has that band and its classifier agrees (confirmed with each buyer's standards team). One version of the content worldwide; no "safe" alternates are boarded in advance.
 
-### How the binding boundaries apply in this episode
+### The show's non-negotiables
+
+Four hard limits bind every episode, cut, promo, short, sizzle, deck page and product, in every market. Nothing in the show's adult direction loosens them.
+
+1. **Nothing explicit.** No explicit sexual acts and no genitals on screen, ever. Sex is implied, off-screen or innuendo: a closed door, a sign, a sound, a reaction, a smash cut. Grumbleguts' design has nothing explicit to hide: his front is smooth cartoon with no anatomy drawn, and a bare cartoon butt and the cartoon X pucker are fine.
+2. **Adults, and consent.** Every sexual or suggestive moment is between adults and consensual. A no ends the advance on the spot (he steps back on his next line and does not try again in that scene). Nobody's body is used on someone who has not said yes. Silence is never a yes. Consent is never the punchline.
+3. **Children are never in it.** Child and teen characters (Pip; the young cherub and the young imp in the storybook flashbacks; Miss Lulla's daycare kids; Bolt, Pokefork, Wisp, Tantrum, Wobbles, Homework; every KID- or TEEN-flagged citizen) are never in sexual or suggestive scenes or dialogue, and never the subject of graphic gore. A scene is one continuous time and place: a scene with a child in it carries no innuendo at all, and graphic gore never shows in a frame with a child in it (the filter stays on).
+4. **No real-world hate content.** No slurs, no real-world hate symbols, and no joke whose target is a real group of people, a real faith or a real person.
+
+Everything else is open, and governed by craft: the comic-timing rules, the cute/brutal device, the sticker rule, the Grumbleguts gag book (`GAG_BIBLE.md` §7) and the technical rules below.
+
+**Supporting practice.** The cast is adults only: Pip, the fog's child "us" and every child in the walla are voiced by adults. Casting breakdowns disclose the adult material. The bible keeps a KID/TEEN flag on every citizen. A standards check (`GAG_BIBLE.md` §11.2) runs on every script, board and animatic.
+
+**Technical rules that stay** (they are broadcast law and viewer health, not age rules): whiplash inserts and hidden images run 4 frames or longer, never 1 (subliminal-image rules, e.g. Ofcom 2.11); white flashes 3 frames at most at reduced luminance; no more than 3 flashes a second; red flashes are local, never full-screen; blood is a held or sliding overlay, never a strobe, and any large saturated-red change goes on the Harding list; PEAT on every cut and a Harding/PSE pass before delivery (Ofcom 2.12).
+
+### How the standards apply in this episode
 
 | Area | The rule | In the pilot |
 |---|---|---|
-| **Gore** | Confetti, hearts, plush stuffing and grape goo only. The game's BRUTAL gore setting and Monster Mode are out of the show. | The HUD reads GORE: BRUTAL for 8 frames, then the Hellvile Park Board of Decency slaps a sticker over it. The show announces its rating as a joke and keeps to it. |
-| **The prop weapon** | The **Pump Sprinkler**, from day one: a welded junk contraption (a bath-house bellows, a drainpipe, a bike bell, a sprinkler head) that fires sprinkle shells with a squeak-CHK. No realistic silhouette. | Fired only at Puff Demons. Never aimed at a citizen. Never merchandised: the **Bubble Wand** is the toy. |
-| **Possession** | Stillness, red eye sockets, a ribcage lit like a lantern, a doubled voice. | No body horror, no harm to the host. The scariest beats are made of stillness and silence. |
-| **Children** | Kids and teens are fully out of romantic or suggestive material, and out of any scene that carries it. | Pip and Miss Lulla's kids face mild peril only, and the fog never touches them. Pip stands behind Fuzz throughout. Pip's big moment is courage. |
-| **Sunny** | A young adult, they/them. | Never a target of romance or innuendo, in the pilot or after. |
-| **Grumbleguts** | Innuendo and slapstick only, adults only, always kindly turned down, never explicit, never mean. The game's Feast outcome and the adult-humour passes are game-only. | **Sound only.** His belly (GURGLE, "it") gurgles behind a locked gate and rates a snack. No innuendo in this episode. |
-| **Religion** | Father Fuzz's rite is hugs, a hymn and holy water, shown with affection and never mocked. | No pentagram imagery in this episode. |
-| **Vaping** | Cloud Nine Vapor is the villain's lure, always unglamorous, with no real-looking products. | A "COMING SOON" sign flickering purple in the background. Nobody inhales anything. |
+| **Gore** | DOOM gore on demons and monsters, seen through HaHaland's filter (confetti, hearts, stuffing, grape goo) and in the truth (blood, gibs, viscera, eyeballs and teeth); the gag is the switch. Never on a cute citizen; never in a frame with a child. | Act One is the filter at full strength. The truth arrives in three 4-frame inserts (2-03, and two in 3-01), the main title's chorus and the 70 s of first person (3-03, 3-05). The HUD reads GORE: BRUTAL; the Board of Decency sticker slaps on, and the first shell blows it off. The show announces its rating as a joke and then breaks it. |
+| **The weapons** | **The Pump Shotgun** (canon): Rivet's welded junk build (a bath-house bellows, a drainpipe, a bike bell), with no real-model silhouette; a squeak in the filter, CHK-CHK in the truth; name plate PARTY PUMP / SLAUGHTER. The **Bubble Wand** is the cute-mode weapon. A welded saw (PURRING SAW / MEATCLEAVER) is `PILOT_ROADMAP.md` D15. | Fired only at Puff Demons, never at a citizen (the hosts are neighbours). No replica-firearm merchandise. |
+| **Possession** | Stillness, red eye sockets, a ribcage lit like a lantern, a doubled voice. It can be properly frightening; the host comes home whole (canon). | The scariest beats are still stillness and silence. |
+| **Children** | Hard limit 3: child and teen characters are never in sexual or suggestive scenes or dialogue, and never the subject of graphic gore. | No suggestive material anywhere in the pilot. The fog never touches a child (canon). The filter is on in every frame with Pip, the daycare kids or the storybook children; the truth inserts are cut into frames with no child. Pip stands behind Fuzz throughout. Pip's big moment is courage. |
+| **Sunny** | An adult (they/them), silent. | No suggestive material in the pilot. From 102, per `PILOT_ROADMAP.md` D13: if Grumbleguts flirts at Sunny, Sunny's no is always visible and he backs off; Sunny's silence is never a yes. |
+| **Grumbleguts** | Raunchy, flamboyant and promiscuous: double entendres, propositions, bragging, every flirt aimed at an adult and every advance taking its no; hookups off-screen and implied, with willing adults; the butt and belly gags in full. Nothing explicit (his design has nothing to hide). The game's Feast outcome stays game-only as written (`PILOT_ROADMAP.md` D17); the show's version is the post-Season 3 consent rewrite (`SERIES_OVERVIEW.md` §6.1). | **Not seen.** Teased: a big round rear silhouette behind the gate's shut grille in the main title. Heard: the gurgle, the padlocks, BOING, GURGLE's caption and his purr after the credits. No innuendo in this episode. He debuts in 102. |
+| **Religion** | Father Fuzz's rite is hugs, a hymn and holy water, shown with affection and never mocked. | Pentagrams are allowed as hell décor (none is needed in the pilot). |
+| **Vaping** | Cloud Nine Vapor is the villain's lure, always unglamorous, with no real brands or devices (satire). | A "COMING SOON" sign flickering purple in the background. Nobody inhales anything. |
 | **Fireworks** | No imitable unsafe behaviour. | An adult lights the one rocket. The kid stands three steps back, then one more for Mr. Flops. |
-| **Flashes** | Inserts run 4 frames, never 1. White and red flashes run 3 frames at most, at reduced luminance; red flashes are always local (the candle), never full-screen. No more than 3 flashes a second. | Every item is logged in the beat sheet (Appendix B) and checked on a Harding/PSE pass. |
+| **Stickers** | No censor stickers or bars: staging, framing, props, silhouettes, smash cuts, reaction shots, off-screen sound and implication do the work. A sticker appears only where the sticker itself is the joke, at most once a season. | One sticker, in 3-03, and it gets shot off. The logo's red drip is painted over with the Mayor's pink roller, and it bleeds back through. |
+| **Flashes** | Inserts run 4 frames, never 1. White and red flashes run 3 frames at most, at reduced luminance; red flashes are always local (the candle), never full-screen. No more than 3 flashes a second. Blood is a held or sliding overlay, never a strobe; large saturated-red changes go on the Harding list. | Every item is logged in the beat sheet (Appendix B) and checked on a Harding/PSE pass. |
 | **Scares** | No OMINOUS music cue before the fog. | The fog at 21:00 is the first real scare of the series. Everything before it is stillness, silence and a late laugh. |
 
 ---
@@ -128,13 +143,13 @@ At nine, the hour the fireworks used to go up, the whole Giggle looks up at an e
 
 **Act Two: "21:00 (we don't do that)."** Bonejangles is possessed. He speaks in rhyming couplets, in "we", with a second, flat voice running eight frames behind his own, and he rates everything: Nana's pie, "Six. Needs death."; the Mayor's skull-sprinkled cupcake, "Four. Too much death."; the Mayor's speech, "Two." Puff Demons spill from his ribs into the fair, and the Mayor hides under a cake table, being calm. A gust tears the boards off the bandstand, revealing a crate stencilled MINGLE, DO NOT OPEN ("FIREWORKS!" "NOT NOW, PIP."), and snaps the lantern with Sunny's "1" loose into the dark. In the middle of the stampede, Sunny's egg hatches on the downbeat of the demon's riff. Two glossy eyes. A long silence. "beep." It's fine. The demon turns and gives it a ten.
 
-Father Fuzz arrives with Dr. Bloom ("No pulse. He never has one.") and three candles: three tries at a three-part rite of rhythm, holy water and a true name. "A demon is a frightened thing in a loud coat. You take the coat off." His first try loses a rhythm duel to the ribs ("THE POWER OF CUDDLES COMPELS YOU!" "...One."), and the first candle goes out. The clues: the bones keep chalking a poem they can't finish ("Down by the Wall where the pumps go clink..."), and Nana has heard those ratings before, from somebody at the last Mingle. Everyone who came that night is listed in her recipe tin, in the bake tent, across a fair full of red eyes. On the way stands Rivet's welded prize case: a Bubble Wand and a Pump Sprinkler, under a sign, "TOP PRIZE. Please don't. —R". Sunny puts a paw on the glass. "beep."
+Father Fuzz arrives with Dr. Bloom ("No pulse. He never has one.") and three candles: three tries at a three-part rite of rhythm, holy water and a true name. "A demon is a frightened thing in a loud coat. You take the coat off." His first try loses a rhythm duel to the ribs ("THE POWER OF CUDDLES COMPELS YOU!" "...One."), and the first candle goes out. The clues: the bones keep chalking a poem they can't finish ("Down by the Wall where the pumps go clink..."), and Nana has heard those ratings before, from somebody at the last Mingle. Everyone who came that night is listed in her recipe tin, in the bake tent, across a fair full of red eyes. On the way stands Rivet's welded prize case: a Bubble Wand, a Pump Shotgun and a welded saw, each with a cute name tag over a brutal one (PARTY PUMP over SLAUGHTER, PURRING SAW over MEATCLEAVER), under a sign, "TOP PRIZE. Please don't. —R". Sunny puts a paw on the glass. "beep."
 
-**Act Three: "22:00 ~~Bedtime!~~ weather."** Sunny and the hour-old pet fight through the fair in cute mode, bubbling demons into hearts, until the swarm stacks into one Big Puff and the bubbles bounce off. Sunny pumps the Sprinkler, squeak-CHK, and the show changes register: first person, a DOOM-style HUD with the pet's face in the middle, the theme's chorus back as a metal insert song. For eight frames the HUD reads GORE: BRUTAL, until the Board of Decency slaps a sticker over it. Everything pops into confetti.
+**Act Three: "22:00 ~~Bedtime!~~ weather."** Sunny and the hour-old pet fight through the fair in cute mode, bubbling demons into hearts (twice, for four frames, we see what the hearts really are), until the swarm stacks into one Big Puff and the bubbles bounce off. Sunny pumps the shotgun (a squeak... a record scratch... then a real CHK-CHK) and the show changes register: first person, a DOOM-style HUD with the pet's face in the middle, the theme's chorus back as a metal insert song. The HUD reads GORE: BRUTAL; the Board of Decency slaps its sticker over it, and the first shell blows it off in a spray of red. Nothing in here pops into confetti: buckshot turns Puff Demons into red mist, gibs and loose eyeballs, and the weapon plate flips from PARTY PUMP to SLAUGHTER.
 
 At the bandstand the music cuts out. On the anniversary of the hug that failed, Fuzz tries a hug again ("Nothing is unhuggable.") and loses the second candle. He sits on the steps. "Eleven years ago tonight, I hugged someone who needed it. It didn't work then either." The show holds on him, with no joke.
 
-Sunny brings back the tin. Under Nana's keepsakes is the sign-up sheet from the last Mingle, names from both sides in one column: "Nox: bone soup (2 bowls)"; "Giggs: cupcakes (+1)", which the Mayor folds over fast; "Charlotte: cookies (sorry)", where Nana's thumb rests; "Clinker: a poem (will rate yours)." On the third try the rhythm holds, with the pet beeping in time and the crowd clapping along, and Sunny pours the water. Then Fuzz lifts the sheet, and his mouth won't make the name. "Father," the Mayor says quietly. "Nobody on this side says those names." Every adult freezes. The last flame shrinks to a blue bead. "We'll wait."
+In the bake tent, the last shell takes half the Big Puff's face, and Rivet's welded saw finishes it, top to bottom, over Nana's tin; an eyeball rolls to a stop facing the Wall. A rewind, and it's hearts again, and the tent sign reads BAKE TEN. Sunny brings back the tin. Under Nana's keepsakes is the sign-up sheet from the last Mingle, names from both sides in one column: "Nox: bone soup (2 bowls)"; "Giggs: cupcakes (+1)", which the Mayor folds over fast; "Charlotte: cookies (sorry)", where Nana's thumb rests; "Clinker: a poem (will rate yours)." On the third try the rhythm holds, with the pet beeping in time and the crowd clapping along, and Sunny pours the water. Then Fuzz lifts the sheet, and his mouth won't make the name. "Father," the Mayor says quietly. "Nobody on this side says those names." Every adult freezes. The last flame shrinks to a blue bead. "We'll wait."
 
 **Act Four: "23:00 ________."** Nobody can say it. Sunny opens their mouth, and nothing comes. Then Pip, crying, Mr. Flops in a headlock ("My eyes are just doing a rain. ...It's just a NAME."), shouts it off the sheet: "CLINKER!" The purple drains from the ribs. The breath leaves as a small, tired puff of chalk dust and stops at the keyhole of the sealed gate. Bonejangles wakes. "Something was in there with me. It kept trying to finish a poem." He finishes the poem on his ribs, in major ("...and we dream in pink"), and the puff slips through. From the other side, small, and for the first time on time: "...Seven."
 
@@ -144,7 +159,7 @@ Pip sits on the fireworks crate. "Not even one?" The Mayor looks at the crate, t
 
 **Tag: "Morning."** Sunny's first look at the Pink Door Cottage: a door that wobbles like jelly, a crate, a window. The suitcase stays packed by the door. The pet curls up in half an eggshell on the sill, facing the Wall. Nana brings two muffins and her second pie dish, which has come back from somewhere scrubbed clean, with a burnt cookie on it. "Somebody returned my dish." Then she sees the pet's two new horn nubs. "Ah. ...He's teething."
 
-**After the credits,** the lost-property lantern with Sunny's "1" drifts over the Wall and sinks behind the sealed gate. A crunch. A gurgle so deep that all seven padlocks rattle. BOING. A small caption box pops up: GURGLE: "...needs salt." HaHaland's population stays at 500.
+**After the credits,** the lost-property lantern with Sunny's "1" drifts over the Wall and sinks behind the sealed gate. A wet crunch. A gurgle so deep that all seven padlocks rattle. BOING. A small caption box pops up: GURGLE: "...needs salt." Then, behind the gate, a low, satisfied purr. HaHaland's population stays at 500.
 
 ---
 
@@ -155,10 +170,10 @@ Pronouns follow the roster and the canon rules, and are locked in the bible: see
 ### The leads
 
 **Sunny** (they/them). *Lead.*
-* **Who:** a bunnykin newcomer, a young adult in their first home, who arrives on a pink bus with one suitcase and never speaks. Canon gives the protagonist three lines in the whole story, and the show keeps all three for the episodes that earn them.
+* **Who:** a bunnykin newcomer, an adult (a young adult in their first home), who arrives on a pink bus with one suitcase and never speaks. Canon gives the protagonist three lines in the whole story, and the show keeps all three for the episodes that earn them.
 * **Pilot arc:** arrives with nobody to meet them; is the only one who notices everything the town won't look at; ends the night as the one who carried the tin, poured the water and kept the pet safe. At the freeze, Sunny opens their mouth and nothing comes. The suitcase stays packed.
 * **Voice and casting:** non-speaking. Sunny acts with ears, eyes, posture and timing, and is the only character in town who can stand perfectly still on purpose. The animation reference is a physical comedian with a dancer's control. No effort sounds (breaths, grunts) unless the mix or audio description needs them. The voice role is cast for Season 2, against Sunny's first spoken word (the pet's name, game Ep 3.7): a warm, unshowy young-adult voice that sounds as if it hasn't been used in a while.
-* **Standards:** never a target of romance or innuendo. Audio description is a mandatory deliverable because of Sunny.
+* **Standards:** an adult; silent. Whether Sunny can be flirted at is `PILOT_ROADMAP.md` D13 (recommended: yes, with Sunny's no always visible and Grumbleguts backing off); Sunny's silence is never a yes. Audio description is a mandatory deliverable because of Sunny.
 
 **The pet** (it). *Co-lead.*
 * **Who:** a Doomogachi, a Mingle egg that is half plush and half brimstone, and the only creature that belongs to both sides. Its whole vocabulary is "beep.", "bep?" and, with horns, a lower "beep."
@@ -178,14 +193,14 @@ Pronouns follow the roster and the canon rules, and are locked in the bible: see
 **Pip** (they/them; a child).
 * **Who:** the tiniest bunnykin in town, on Junior Festival Patrol, with Mr. Flops under one arm (one floppy ear, one not-floppy, a stitched smile).
 * **Pilot arc:** thinks brave means not crying. Learns that brave means saying it out loud while your eyes do a rain. Sees their first firework. Friendship and courage only, always.
-* **Voice and casting:** the highest and fastest voice in the cast; breathless sincerity; a kid who narrates their own bravery. Cast an adult performer who specialises in child voices (the production's default, `PRODUCTION_ROADMAP.md` §4.5 and R21). If a minor is cast instead, every session runs under child-performer law: permits, a studio teacher, a trust account and hour limits. The cry in Act Four is the climax of the episode and has to be real, not cute.
+* **Voice and casting:** the highest and fastest voice in the cast; breathless sincerity; a kid who narrates their own bravery. Cast an adult performer who specialises in child voices: the production casts no minors (`PRODUCTION_ROADMAP.md` §4.5 and R21). The cry in Act Four is the climax of the episode and has to be real, not cute.
 
 **Father Fuzz** (he).
 * **Who:** the plushie bear priest of St. Cuddles, "stuffed with love and a little bit of buckwheat", who believes nothing is unhuggable.
 * **Pilot arc:** tonight is the anniversary of his failed first exorcism. He runs his first rite since, and the hug fails again. Then a child's shout works where he couldn't, and he calls it luck ("Luck isn't a liturgy."). Sunny hugs him anyway. His Season 2 crisis is seeded here, not spent.
 * **Voice and casting:** high, quick and warm, a youth-group leader's energy over a deep well of doubt. He commits completely to "THE POWER OF CUDDLES COMPELS YOU!" with no wink, then sits on the steps and says "It didn't work then either." with nothing left.
 
-### The guest lead and the voice
+### The guest lead and the voices
 
 **Bonejangles** (he). *Guest lead.*
 * **Who:** Hillvile's skeleton xylophone teacher, who plays his own ribs and says "Clack clack!". He played the last Mingle.
@@ -196,7 +211,12 @@ Pronouns follow the roster and the canon rules, and are locked in the bible: see
 **Clinker** (she). *Heard, never seen.*
 * **Who:** the name behind the breath: a Hellvile gate labourer who writes poems in chalk and rates everyone else's.
 * **Pilot arc:** her voice runs eight frames late under Bonejangles' all night. Once the breath is home, it comes on time: "...Seven." On screen the breath is only ever "it" or "something", which keeps "That was a PERSON." for "The Bottle" (Ep 107).
-* **Voice and casting:** low, slow and flat: a tired poet at the end of a long shift, with opinions about rhyme. Every number she says is a verdict. She records the couplets in sync with Bonejangles' actor, for the slip edit, and "...Seven." alone.
+* **Voice and casting:** low, slow and flat: a tired poet at the end of a long shift, with opinions about rhyme. Every number she says is a verdict. She records the couplets in sync with Bonejangles' actor, for the slip edit, and "...Seven." alone. The fog's voice is the walla group stacked with hers; its child "us" is an adult walla performer, not Pip's actor.
+
+**Gatekeeper Grumbleguts** (he). *Heard, never seen, in the pilot; debuts in 102.*
+* **Who:** the Keeper of the Sealed Gate on its Hellvile side for ten years, waiting on a feast somebody promised him ("Keeper of the Sealed Gate. Also of a very large seat."). Hell's biggest flirt and its biggest appetite: flamboyant, shameless and promiscuous, a smooth-talking bad influence with a slow drawl and a purr in the voice, whose compliments are really propositions. Under the act he is lonely and loyal. His crush is the Gate; his catchphrase and sign-off is "Open late." His belly, GURGLE (it), translates and contradicts him.
+* **Pilot:** a big round rear silhouette that presses against the gate's shut grille and bounces once in the main title's chorus; after the credits, a wet crunch, the gurgle, the padlocks, BOING, GURGLE's caption and his purr. No innuendo in this episode. His entrance, his look and his gag book are 102's ("Open Late").
+* **Voice and casting:** a warm, oily baritone, slow, purring and amused, with a singing voice (his number "Open Late" comes later); comfortable with raunchy, R-range material, which the breakdown says up front. The same performer voices GURGLE's babble. In the pilot he records the purr and the babble; from 102 he is a series regular.
 
 ### Featured
 
@@ -208,9 +228,9 @@ Pronouns follow the roster and the canon rules, and are locked in the bible: see
 | **Hattie Haha** (she) | Plushie comedian | "Knock knock... Nobody ever says." A second laugh from the Wall. "...Yikes." | Slow and precise; a stand-up's timing; "Yikes." is a whole sentence |
 | **Miss Lulla** (she) | Daycare sheepkin who can nap any baby in under a minute | "They all drew the same friend. I don't know who he is." | Low and soothing |
 | **Mascotty** (she) | The town mascot in a giant bunny head, perfectly still in a crowd that bobs | Holds page three; thumps 3-then-1 back at the Wall; lit by the firework at the back | Non-speaking. The head stays on until the canon finale beat |
-| **GURGLE** (it) | Gatekeeper Grumbleguts' belly, heard through the sealed gate | Post-credits: "...needs salt." | Bass babble: a low vocalist doubled with tuba and a draining sink, captioned. Always hungry, always honest |
+| **GURGLE** (it) | Gatekeeper Grumbleguts' belly, heard through the sealed gate | Post-credits: "...needs salt." | Grumbleguts' actor's bass babble (one performer voices both), doubled with tuba and a draining sink, captioned. Always hungry, always honest |
 
-**Felt but not seen:** Rivet (she), through her prize case and its "—R"; Charlotte (she), through the scrubbed dish; Fluffy, as a crayon cloud and a child's gravestone; Nox (she), as two bowls; Grumbleguts (he), as one bounce of a round silhouette in the main title, and a BOING. Grampy (he) appears in the main title and the crowd, with no lines; his tomatoes ("Sunny... Sonny... Bunny... Toaster") and his lost glasses (S124) moved to Ep 103, "Three Neighbours".
+**Felt but not seen:** Rivet (she), through her prize case and its "—R"; Charlotte (she), through the scrubbed dish; Fluffy, as a crayon cloud and a child's gravestone; Nox (she), as two bowls. Grampy (he) appears in the main title and the crowd, with no lines; his tomatoes ("Sunny... Sonny... Bunny... Toaster") and his lost glasses (S124) moved to Ep 103, "Three Neighbours".
 
 ### Pronouns (locked)
 
@@ -232,7 +252,7 @@ Series-wide, for characters after the pilot: Wisp is they; Sootkin and Bolt are 
 | **The Midsummer Giggle** (Hellvile Park, north half) | Acts One to Four | Lantern strings over a pastel fun fair: Steamy's Hook-a-Duck, Kevin's face painting, Hattie's tent, Miss Lulla's craft tent, the teacups, the Whack-an-Imp booth and prize case, the bake tent (later BAKE TEN), Fuzz's FREE HUGS booth | Trailer s12 crowds; `artgen` cute textures |
 | **The bandstand** | The heart of the episode | The north half live and lit; the south half boarded up against the Wall; the MINGLE crate under the boards; the sealed gate beside it. The only set drawn in both looks | New |
 | **The Absolutely Not Scary House** | 3-03 (first person) | "NOTHING INSIDE! (we checked) —Mayor". Cardboard ghosts, real Puff Demons, the hellified palette | Trailer s10 raycaster, re-staged 16:9 |
-| **The Wall and the sealed gate** | Throughout; 4-03; post-credits | Seven padlocks, KEEP OUT. FOREVER. A Cloud Nine Vapor COMING SOON sign nearby | Trailer s03, s15 |
+| **The Wall and the sealed gate** | Throughout; 4-03; post-credits | Seven padlocks, KEEP OUT. FOREVER., and a small barred grille whose shutter hasn't opened in ten years (it opens in 102). A Cloud Nine Vapor COMING SOON sign nearby | Trailer s03, s15 |
 | **The joke graveyard and the launch hill** | 4-07, 4-08 | Joke graves ("Rest in pieces, Mr. Huggins the 1st"); a child-sized stone, FLUFFY THE CLOUD. DRIFTED., with a cupcake on it | New |
 | **Nana's bakery window** | Cold open | Two of everything; an egg in a tea towel by a small lamp | `artgen` SHOP_FRONT, dressed |
 | **The Pink Door Cottage** | Tag | A jelly-wobble door; an empty room with a crate and a window | The game's housing assets |
@@ -246,7 +266,7 @@ Series-wide, for characters after the pilot: Wisp is they; Sootkin and Bolt are 
 | 18:00 | PASTEL_DAY into the SUNSET sky; CANDY and PASTEL_PINK stalls |
 | 19:00-21:00 | NIGHT_STARS sky; warm PEACH lantern pools (the NIGHT tint keeps the emissives lit) |
 | 21:00 | The VAPE ramp floods in from the south as the lanterns die; red eyes are the only hot colour |
-| The brutal register | The HELL, BLOOD and LAVA ramps, through hellify. These ramps appear only here, in the main title and in the IN-card flashes |
+| The brutal register (the truth) | The HELL, BLOOD and LAVA ramps, through hellify; BLOOD is the truth's blood. They appear only where the truth shows: the brutal register, the truth inserts, the main title's chorus and the IN-card flashes. (The cold open's red paint drip, `PILOT_ROADMAP.md` D16, uses CANDY's deepest red, not BLOOD) |
 | The rite | BONE and holy gold against VAPE |
 | 23:00 | A white-pink firework, one purple firework, and crayon bleeding in at the Mayor's edges for 8 frames |
 | Dawn (tag) | PEACH and WOOD |
@@ -266,9 +286,9 @@ The cold open's egg crack is both frame 0 of the main title and the song's first
 | Intro | 0:06 | A white flash off the crack (3 frames, reduced luminance). Crane up over pastel HaHaland; the logo letters drop on the intro hits |
 | A-melo (verse) | 0:13 | The cast pops in on the beat with CUTE-skin name plates: Sunny and the suitcase, the pet, the Mayor, Nana, Pip and Mr. Flops, Fuzz, Bloom, Steamy, Hattie, Grampy, Bonejangles at his ribs, and Rivet as a welding mask and sparks. **Mascotty never pops in; she is simply in every verse shot, perfectly still** |
 | B-melo (pre-chorus) | 0:07 | **The mirrored knock.** Pan to the Wall; a brick wipe opens a split screen down the Wall line; both sides run at it, mirrored frame for frame, and knock on the same beat. The Hellvile side is silhouettes only |
-| Drop | 0:02 | The song's drop is the record scratch: the camera stops on the gate, seven padlocks, KEEP OUT. FOREVER. |
-| Sabi (chorus) | 0:13 | Hellify rots the verse shots pixel by pixel. The first-person corridor flips from cute to brutal on the downbeat (confetti only). Three candles go out in rhythm. Behind the gate, one round silhouette bounces once |
-| End pose | 0:05 | The frame splits at the Wall, and the pastel and Hellvile halves meet on the logo. The "nothing to see here! ♥" sticker slaps over the red drip |
+| Drop | 0:02 | The song's drop is the record scratch: the camera stops on the gate, seven padlocks, KEEP OUT. FOREVER., and the small barred grille, its shutter shut |
+| Sabi (chorus) | 0:13 | Hellify rots the verse shots pixel by pixel. The first-person corridor flips from the filter to the truth on the sweetest line: a Puff Demon bursts into red mist and gibs across the lens while the vocal keeps smiling. Three candles go out in rhythm. Behind the gate, a big round rear silhouette presses against the shut grille and bounces once, BOING; the padlocks jump (a tease, no detail) |
+| End pose | 0:05 | The frame splits at the Wall, and the pastel and Hellvile halves meet on the logo. The Mayor's pink paint roller crosses the logo and paints over the red drip (squeak); on the last chord the drip bleeds back through |
 | Pilot title card | 0:04 | 13 frames of silence, "beep.", and the canon Chapter 1 button: the last sparkle is purple, and it sinks. Dissolve to the Giggle banner: **GIGGLE NIGHT**, with MINGLE showing through the wet paint |
 
 **The opening changes as the series goes**, one detail per arc, the way anime openings do:
@@ -276,6 +296,7 @@ The cold open's egg crack is both frame 0 of the main title and the song's first
 | From | The one change |
 |---|---|
 | 101 | The pilot variant: the end pose dissolves to GIGGLE NIGHT |
+| 102 | Grumbleguts pops into the verse, rear first, with a record scratch: the only cast member who enters backwards, in a verse shot of his own with no child in it (the pilot variant has only his silhouette) |
 | 105 (after Arc 1) | In the Wall shot, a far purple glow blinks back once |
 | Season 2 (after the gate cracks) | The gate has a crack in it |
 | S2E8 (after the plumbing reveal) | The crane-up shows the pipes under the town |
@@ -301,11 +322,13 @@ Each card is 5 s and a seamless loop, ready to post as a short. The **OUT** card
 
 ### End credits
 
-A music-box arrangement of the theme's hook, so the episode closes in the instrument it opened in, over crayon storybook stills of the night: tonight is history now. The Mingle tune itself stays unfinished, saved for the finale.
+A music-box arrangement of the theme's hook, so the episode closes in the instrument it opened in, over crayon storybook stills of the night: tonight is history now, and history is told with the filter on (one still is the Big Puff bursting into hearts). The Mingle tune itself stays unfinished, saved for the finale.
 
 ### What the theme team needs to deliver for the pilot
 
 The main title cut (0:50) with a bar map; the TV size (1:30) with a DOOM-side chorus stem; major and minor two-bar hook stems for the eyecatches; a music-box arrangement of the hook for the credits; the instrumental and a stems package for M&E. From the bar map the editor cuts the 0:20 short open for the 2x11 version (the intro plus the end pose), so the theme team does not need to deliver a third cut. The bus-horn notes in the cold open are the first two and three notes of the chorus hook.
+
+**The cute theme over a brutal show is part of the joke.** "Doomtastic Times" stays exactly what the theme team is making: bright, sugary, slightly J-pop, with clean, sincere lyrics; nobody rewrites it edgier. The picture does the brutality: the chorus lands the corridor's switch to the truth (blood and gibs across the lens) on its sweetest line while the vocal keeps smiling, and the end pose paints over a red drip that bleeds back through. The Act Three insert song is the same chorus in its DOOM-side arrangement under real gore; the credits are a music box over crayon stills of the night, drawn as HaHaland remembers it, filter on. The theme line ("We don't talk about the other side.") is still never sung. Nothing in the theme package changes.
 
 ---
 
@@ -321,23 +344,23 @@ A neighbour is possessed. Clue props point to a name from the other side. Father
 
 | Season | Game chapters | Episodes | Key turns | Ends on |
 |---|---|---|---|---|
-| **1, "Something in the Vapor"** | Prologue, Ch1, Ch2 | 13 | 101, the pilot. 102-104 finish Chapter 1. 105 Cloud Nine opens (Vex). 106 "Grape" and the house turns HAUNTED. **107 Steamy's possession (TALLYWORN) and "The Bottle"**, the mid-season turn (game Ep 2.4-2.5). 108 Rivet, "Don't Make It Weird", with the flashback F1 "The Fountain Gift" (the first 2x11). 109-112 the 2x11 Name and Mirror episodes built on side missions. 113 "The Cellar", opening on the dream D1 "Teeth Like Muffins" | The gate cracks, Grumbleguts debuts, and "THE DEMONS OF HELL ARE HERE." |
+| **1, "Something in the Vapor"** | Prologue, Ch1, Ch2 | 13 | 101, the pilot. **102 "Open Late", Grumbleguts' debut at the gate's grille.** 103-104 finish Chapter 1. 105 Cloud Nine opens (Vex). 106 "Grape" and the house turns HAUNTED. **107 Steamy's possession (TALLYWORN) and "The Bottle"**, the mid-season turn (game Ep 2.4-2.5). 108 Rivet, "Don't Make It Weird", with the flashback F1 "The Fountain Gift" (the first 2x11). 109-112 the 2x11 Name and Mirror episodes built on side missions. 113 "The Cellar", opening on the dream D1 "Teeth Like Muffins" | The gate cracks (Grumbleguts' turn), and "THE DEMONS OF HELL ARE HERE." |
 | **2, "Hell Invades"** | Ch3 | 13 | The plumbing reveal lands at **S2E7, the series midpoint**: the fountain cracks and the pipes run under the Wall | The pet runs over the Wall; the dark night; "I had a cloud once." |
 | **3, "Hellvile Park"** | Ch4 and the epilogue | 13 | "...Hi, Fluffy." The Wall falls; the festival fills the whole park; "Population: 1,001." | A special, **"Mingle Night"**: the first real Mingle since the Wall, one year to the night after the pilot (canon says "the first Mingle in eleven years"; on the show calendar the next Midsummer makes it twelve). The pilot's title becomes the title of the show's last episode |
 
 ### The format changes after "The Bottle"
 
-Episodes 101-107 are single 22-minute Hillvile stories. From 108 on, episodes run **2x11**: a Hillvile A-segment and a Hellvile B-segment showing the same day from the other side, joined by the brick wipe along the Wall line. The reveals stay in canon order (no Grumbleguts before 113, no pump yard or plumbing before S2E7, Mascotty's and Thumpkin's secret held for Season 3). The finale closes the split screen for good. Buyers get a format refresh built into Season 1.
+Episodes 101-107 are single 22-minute Hillvile stories. From 108 on, episodes run **2x11**: a Hillvile A-segment and a Hellvile B-segment showing the same day from the other side, joined by the brick wipe along the Wall line. The reveals stay in canon order (Grumbleguts from 102, seen by the town only through the gate's grille, and the one Hellvile person on screen before 108, Tallyworn's faceless back in 107's coda aside; no pump yard or plumbing before S2E7, Mascotty's and Thumpkin's secret held for Season 3). The finale closes the split screen for good. Buyers get a format refresh built into Season 1.
 
-### Episodes 102-104 are already outlined
+### Episodes 102-104 are outlined
 
-The quiet Chapter 1 material from pitch A moves into 102-104 almost unchanged, so the episodes after the pilot exist on paper today. Full loglines are in `SERIES_OVERVIEW.md` §5.3, which wins if the two ever differ:
+102 is Grumbleguts' debut episode, outlined in act beats. The quiet Chapter 1 material from pitch A moves into 102-104 without loss: the cottage and the Thursday tag stay in 102, the beach and the first paper boat open 103, and Pip's shoebox bed goes to 104. The episodes after the pilot exist on paper today. Full loglines and 102's act beats are in `SERIES_OVERVIEW.md` §5.3, which wins if the two ever differ:
 
 | Ep | Working title | What it is |
 |---|---|---|
-| 102 | "Population: 500 (and Sunny)" | The Pink Door Cottage, decorated: the bed drops in with a THUD and a BOING, COSY: B+, "...is that a crate?", and the crate slides one pixel in shame. Nana at the door: "You put a lamp by its bed. That's exactly where my mother put hers." (canon says "by the egg"; the egg hatched in 101). Pip loses Mr. Flops; the beach and the first paper boat: "ARE YOU THERE". Tag: Nana at the loose brick in the Wall, a sooty hand takes the muffin. "Every Thursday. She never missed one." [R13] "Neither did I." |
-| 103 | "Three Neighbours" | Steamy's unknown duck (named Guest), Hattie's open mic with Sunny on cue cards, Grampy's tomatoes ("Sunny... Sonny... Bunny... Toaster") and his lost glasses, and Prof. Fizz timing the fountain: 267 milliseconds late |
-| 104 | "Fluffy Cupcakes" | The housewarming: nine guests and their gifts, including Rivet's welded coat hook ("don't make it weird"); the toast, "To fluffy— ...cupcakes."; Mascotty at the window, "Ignore that one."; thumps at night; the second paper boat and its candle. The far glow blinks back, closing Arc 1 |
+| 102 | **"Open Late"** | Grumbleguts' debut. The morning after Mingle Night the whole town complains about the gurgling, and the Mayor writes a noise complaint "to the weather" for the newcomer to deliver. Sunny knocks on the sealed gate, the first knock in ten years, and a little barred grille nobody remembered slides open, rear first. Behind it: hell's biggest flirt, its biggest appetite and its biggest seat, who burps up Sunny's "1" and swallows it again. He propositions every adult who comes to shut him up and is turned down every time (hookups off-screen and implied); the Board of Decency's covers fail one by one; the restored bagel bend fills the grille ("Evening, sugar. Nice buns." "They're MUFFINS." [R8] "I'll allow it."); he signs the complaint with a butt-print. With Pip, in a scene of its own with no innuendo in it, he is only the grumpy uncle ("Go home. Eat something. {d}Not THAT."). He bites a leftover demon in half on his side of the gate to save Sunny, denies it ("Didn't happen."), and admits, "...Ten years. Nobody knocks." Also: the Pink Door Cottage, decorated (the bed drops in with a THUD and a BOING, COSY: B+, "...is that a crate?", the crate slides one pixel in shame); Nana at the door: "You put a lamp by its bed. That's exactly where my mother put hers." (canon says "by the egg"; the egg hatched in 101). Tag: Nana at the loose brick in the Wall, a sooty hand takes the muffin. "Every Thursday. She never missed one." [R13] "Neither did I." The town only ever sees him through the grille; the gate stays sealed until 113 |
+| 103 | "Three Neighbours" | Cold open (game Ep 1.3): Pip loses Mr. Flops; the beach; "...He says he saw the Wall breathe."; the first paper boat, ARE YOU THERE, with the pet on it, in love. Then Steamy's unknown duck (named Guest), Hattie's open mic with Sunny on cue cards, and Grampy's tomatoes ("Sunny... Sonny... Bunny... Toaster") and his lost glasses, with Prof. Fizz joining Grampy's fountain strand (the stopwatch: 267 milliseconds late); Hauntessa's crate note on the cottage crate in the morning. Post-credits: "and beep." pencilled on the sign |
+| 104 | "Fluffy Cupcakes" | The housewarming: nine guests and their gifts, including Rivet's welded coat hook ("don't make it weird"); the toast, "To fluffy— ...cupcakes."; Mascotty at the window, "Ignore that one."; Sunny takes cake to the grille for the guest who can't come, and "gift from G" comes back through; Pip's shoebox bed for Mr. Flops at night; thumps at night; the second paper boat and its candle. The far glow blinks back, closing Arc 1 |
 
 ---
 
@@ -345,16 +368,20 @@ The quiet Chapter 1 material from pitch A moves into 102-104 almost unchanged, s
 
 These are flagged so the bible, the pitch materials and the scripts agree.
 
-1. **Sunny is they/them**, a young adult who is never a target of romance or innuendo. The pet's name is withheld until Sunny's first spoken line (game Ep 3.7).
+1. **Sunny is they/them**, an adult (a young adult in their first home), silent; whether Sunny can be flirted at is `PILOT_ROADMAP.md` D13. The pet's name is withheld until Sunny's first spoken line (game Ep 3.7).
 2. **The Midsummer Giggle is invented**: a Hillvile-only festival on the old Mingle date, with no fireworks and the bandstand's south half boarded up. It is consistent with canon, which has no Mingle for eleven years. GIGGLE painted over MINGLE twins the painted-over 1000 on the town sign.
 3. **The pilot's possession is pilot-only**: Bonejangles (he) by the breath of Clinker (she). It is an addition to the possessor table, with every existing row untouched. Steamy and TALLYWORN, Sprinklepop's scripted soul loss and "The Bottle" all stay where canon puts them.
 4. **The pilot's name is a lucky shout, not a true rite.** Ep 107, "The Bottle", stays the first true exorcism and the first true name, and keeps "That was a PERSON." In 101 the breath is only "it" or "something"; "...Seven." from beyond the Wall is the rewatch clue. Fuzz explains the win away: "I got lucky. Luck isn't a liturgy."
 5. **Moved earlier, deliberately:** Fuzz's first rite since Lady Smog, with his battle cry and creed; Rivet's two prizes (she stays unseen until TV 108, game Ep 2.6, which can open on "You WON that?" [R8] "Nobody wins that."); the Ep 1.6 fog beats; and Interlude I's horn nubs and "He's teething."
 6. **Invented and consistent with canon:** the Mingle sign-up sheet in Nana's recipe tin (canon already keeps a Mingle slip there: "Charlotte's turn: #9"); the MINGLE fireworks crate; the answering purple firework, left unexplained; the ratings beyond Clinker's two canon ratings; the 8-frame-late possessor voice; the Absolutely Not Scary House and the Hook-a-Duck; the launch hill; the lost-property lantern.
 7. **The population runner.** The "1" that falls off the sign crosses the Wall in the post-credits. HaHaland stays at "Population: 500" until "Population: 1,001."
-8. **Grumbleguts is sound only** in the pilot: GURGLE (it), no innuendo, no face. Series picks: his crush is the Gate (per the merged story), and his catchphrase is "Open late."
+8. **Grumbleguts is not seen in the pilot**: heard and teased only (the main-title silhouette, the gurgle, GURGLE's caption, his purr), with no innuendo. He debuts in 102, at the grille. Series picks: his crush is the Gate (per the merged story), and his catchphrase is "Open late."
 9. **The crowned cloud** appears in the pilot only in the children's drawings and in one silhouette with no string (Fuzz's memory). Nothing in 101 links the cloud on the string to the shape in the sky; the Act Four grave beat carries the Mayor's grief instead.
 10. **Continuity:** the theme line is used once, as the joke, leaving its other two uses intact. The starer is Mascotty (the trailer's "plain human" is the separate figurine gag). Rivet's age is never stated. Fluffy's stone has no year on it.
+11. **The grille** in the sealed gate is invented: a small barred window, its shutter shut in 101 (a plant in the main title, 4-03 and the post-credits) and opened by Sunny's knock in 102. The town sees Grumbleguts only through it until the gate cracks in 113.
+12. **The filter rule.** HaHaland sees confetti; the truth shows the gore, in the brutal register, in 4-frame truth inserts, on Hellvile's side of the Wall and in the main title's chorus. The filter is always on when a child is in frame.
+13. **Moved earlier, deliberately (Grumbleguts):** his debut (game Ep 2.7, TV 113 → TV 102), "Nice buns." / "They're MUFFINS." / "I'll allow it." (game Ep 3.1 → 102) and "Didn't happen." (Season 3 → 102). The gate's crack, the church-window bend, his betrayal and his redemption stay in canon order. He is the one Hellvile person seen before 108 (Tallyworn's back in 107 aside), and he never talks about workers, pumps, clouds or why, which keeps "That was a PERSON." for 107.
+14. **One sticker** (3-03), because the sticker is the joke: it slaps over GORE: BRUTAL and the first shell blows it off.
 
 ---
 
@@ -367,18 +394,18 @@ The full plan (three scale options, week-by-week schedules, budgets, risks and t
 | Weeks (indie / solo) | Phase | Outputs | Gate |
 |---|---|---|---|
 | W1 / W1 | **Decisions and animatic v0** | The decisions in §9 and the open decisions in `PILOT_ROADMAP.md`; the beat sheet's 60 rows pasted into a pilot copy of `trailer/timeline.c` (beat sheet Appendix F), giving a timed 22:00 placeholder animatic; the chibi preset fixes | G0 |
-| W1-W12 / same | **Development and pitch package** | The bible with its standards appendix; script drafts and a recorded table read (W8); the full 22:00 animatic v2 with temp sound (W8); the sizzle with real voices and the theme (W11); deck, one-pager, key art; the trademark opinion; the chain-of-title inventory; the Pump Sprinkler prop sheet and the show-safe Grumbleguts sheet | **G1 pitch package, 2027-01-17** |
+| W1-W12 / same | **Development and pitch package** | The bible with its standards appendix; script drafts and a recorded table read (W8); the full 22:00 animatic v2 with temp sound (W8); the sizzle with real voices and the theme (W11); deck, one-pager, key art; the trademark opinion; the chain-of-title inventory; the Pump Shotgun prop sheet (with its two name plates) and the Grumbleguts model sheet in the game's look | **G1 pitch package, 2027-01-17** |
 | W13-W14 / same | **Production draft** | Scene numbers and dialogue IDs; canon, standards and pronoun passes | G2 script lock |
 | W13-W19 / W13-W24 | **Design, voice and boards** | Final designs, the 16:9 re-stage of the reused trailer scenes, the HUD, Bonejangles' emissive ribcage layer; casting and record for the 12 speaking roles, including the Bonejangles/Clinker sync session for the 8-frame slip; the theme master locked (W17 / W24) | G3 animatic lock |
-| W19-W40 / W25-W74 | **Production** | Main title and eyecatches; layout, animation, FX (hellify, confetti, irises, brick wipe) and compositing; the first-person runs from the s10 raycaster | G4 picture lock |
+| W19-W40 / W25-W74 | **Production** | Main title and eyecatches; layout, animation, FX (hellify, the filter and truth gore sets, the truth insert, lens splatter, irises, brick wipe) and compositing; the first-person runs from the s10 raycaster | G4 picture lock |
 | W41-W46 / W75-W78 | **Post and delivery** | Score, sound design and mix; captions, audio description, M&E, textless master, the 2x11 version, localization guide; Harding/PSE and QC | **G5 delivery: W46 (September 2027) / W78 (April 2028)** |
 
 ### Day-one fixes
 
 1. **Chibi presets to canon species**, in `trailer/tk_chibi.c`, before any pitch art: the Mayor is a cherub (not a sheep), Nana a sheepkin (not a bunny), Pip a bunnykin (not a mouse), and Sunny a bunnykin (not a fox).
-2. **New presets:** Bonejangles (with one emissive ribcage layer for the possession), Steamy, Mascotty, Kevin, Hattie, Grampy, Dr. Bloom and Miss Lulla. Model sheets come from `core/tools/portrait_sheet.c`, including the possessed state.
-3. **The Pump Sprinkler** prop sheet, for Standards review at the design stage.
-4. **The show-safe Grumbleguts model sheet**, commissioned now so the main title's silhouette and every later episode are standards-cleared from the first drawing: a peaked cap between the horns, a brass-button waistcoat that won't close, trousers, the gate key on a chain, and a crossing-guard sign that says NO on both sides. It replaces the concept sheets' harness, crop and unbuckle poses, and drops the hose close-up, the gas gag and the "...that's hot" line. It keeps the scale shot, the reaction cut, the censor-sticker gag and the belly X-ray. Third-party reference images never appear in pitch material.
+2. **New presets:** Bonejangles (with one emissive ribcage layer for the possession), Steamy, Mascotty, Kevin, Hattie, Grampy, Dr. Bloom and Miss Lulla, and Grumbleguts (a silhouette for 101; the full figure for 102). Model sheets come from `core/tools/portrait_sheet.c`, including the possessed state.
+3. **The Pump Shotgun** prop sheet (and the welded saw, `PILOT_ROADMAP.md` D15), each with its cute and brutal name plates (PARTY PUMP / SLAUGHTER; PURRING SAW / MEATCLEAVER).
+4. **The Grumbleguts model sheet, in the game's look**, commissioned now so the main title's silhouette and 102's boards draw from one sheet: horns, fangs and the enormous grin, bat wings, a spiked tail, gym-demon muscle over the gut; spiked collar, leather chest harness, studded belt and cuffs, chains, the riding crop, the gate key on a chain; a bare, smooth cartoon butt and a smooth front with no anatomy drawn; X-pucker and blush overlays; the silhouette for 101's main title and the full turnaround for 102. From the concept sheets it keeps the scale shot, the reaction cut, the belly X-ray, the unbuckle and flirt poses and the gas puffs; the censor sticker is not used as a cover; the Feast storyboard and the hose close-up stay game-only (`PILOT_ROADMAP.md` D17). Third-party reference images never appear in pitch or show material.
 5. **The pipeline:** re-stage on 384x216; add a camera and rig layer, mouth-shape lip-sync and an external audio track; replace the duplicated `FR(n)` beat constants with named beats shared by picture and music.
 
 ### Reuse from the 78-second trailer
@@ -401,11 +428,11 @@ Demon sprites come from `artgen`: the Puff Demon (the swarm, and the Big Puff at
 
 * **Cuts:** broadcast (22:00, three breaks), streaming (skip-intro marker, eyecatch chapter markers) and the international 2x11 version.
 * **Masters:** a textless master (the signs, the sheet and the clipboard are all graphics), an M&E track and the theme stems.
-* **Access:** closed captions, including the caption gags "[beep.]" and "[GURGLE: gurgle.]"; **audio description, mandatory**, because the lead never speaks.
+* **Access:** closed captions, including the caption gags "[beep.]" and "[GURGLE: gurgle.]", and SDH for the gore and the purr ("[wet crunch]", "[squelch]", "[low purr]"); **audio description, mandatory**, because the lead never speaks.
 * **Localization guide, per language:** how to handle the they and xe pronouns; "beep.", which is never translated; the clipboard, the sign-up sheet and the signs; and the song lyrics.
 * **Compliance:** loudness certificates (-24 LKFS or -23 LUFS) and a Harding/PSE certificate.
 
 ### Clearances
 
 * The series title and the song title ("DOOM", "Doomtastic") and the Tamagotchi-style pet: clear with counsel before pitching, with a fallback series title ready.
-* The HUD is an original layout (hearts, sprinkles, the pet's face), with no id Software assets, fonts or names. The engraved plate "RIP AND TEAR... GENTLY" (Rivet's canon catchphrase) needs clearing, or swap it for her other one, "DON'T MAKE IT WEIRD".
+* The HUD is an original layout (hearts, shells, the pet's face, the two-name weapon plate), with no id Software assets, fonts or names. The engraved plate "RIP AND TEAR... GENTLY" (Rivet's canon catchphrase) needs clearing, or swap it for her other one, "DON'T MAKE IT WEIRD".

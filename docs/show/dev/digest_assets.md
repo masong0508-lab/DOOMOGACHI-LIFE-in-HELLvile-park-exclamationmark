@@ -1,6 +1,6 @@
 # Digest: production assets the pilot can reuse
 
-> **Development reference.** An inventory of the repo's reusable art, toolkit and audio, made for the pitch round. The production plan that uses it is `../PRODUCTION_ROADMAP.md`. The concept-sheet items it lists as "must be cut or retuned" are out of the show (`../GAG_BIBLE.md` §7.6). See `README.md` in this folder.
+> **Development reference.** An inventory of the repo's reusable art, toolkit and audio, made for the pitch round. The production plan that uses it is `../PRODUCTION_ROADMAP.md`. Under the adult direction most of the concept-sheet items it lists as "must be cut or retuned" are back in; the S186 Feast storyboard and the hose close-up stay out as drawn (`../GAG_BIBLE.md` §7.6; the show's Feast is the post-Season 3 consent rewrite, `../SERIES_OVERVIEW.md` §6.1). See `README.md` in this folder.
 
 Repo root: /home/user/DOOMOGACHI-LIFE-in-HELLvile-park-exclamationmark. All paths below are relative to it.
 

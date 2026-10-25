@@ -6,7 +6,7 @@
 | **Draft** | Writers' room pilot draft, 25 October 2026 |
 | **Runs** | 1:40 (3,000 frames at 30 fps nominal), ending on the crack that is the main title's first downbeat |
 | **Pages** | 4 (standard screenplay layout: Courier 12 pt, 6" text width, 54 lines a page; page 1 unnumbered) |
-| **Rating** | TV-PG (V) episode; nothing in the cold open goes above TV-Y7 |
+| **Rating** | TV-MA (V) episode. The cold open is HaHaland's filter at full strength and the setup for the switch: no gore and no innuendo, because children are on screen (hard limit 3, `SERIES_OVERVIEW.md` §2). Its one red is paint |
 | **Timing and board** | `COLD_OPEN_SHOTLIST.md` (21 shots, frame-accurate). Beat sheet: CO-1 to CO-6 in `PILOT_BEATSHEET.md` |
 
 **Notes for the reader.** The first eleven shots are a children's crayon storybook with captions (SUPER) in a child's hand and no narrator, so the first spoken words of the series are the Mayor's "...Hee. Hee." Sound cues in capitals (PLUCK, THUD, CRACK) are scored to the frame in the shot list. The young cherub and the young imp are never shown from the front.
@@ -195,8 +195,8 @@ He rolls over it. Squeak. It blooms back.
 
 He rolls again. Squeak, lower. It blooms back bigger.
 
-He rolls again. Squeak, lowest. It blooms back biggest, and
-a drip runs down.
+He rolls again. Squeak, lowest. It blooms back biggest,
+red this time, and a red drip runs down.
 
 He whips out a cupcake balloon, ties it over the N --
 tink -- and pats it twice.
