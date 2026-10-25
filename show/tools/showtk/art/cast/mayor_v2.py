@@ -16,14 +16,10 @@ from .catalog import catalog
 from .lookdata import Bible, Look, parse_value, field_key
 from .sheet import Canvas, DEFAULT_OUT
 
+# LOCKED (creator, Oct 25): variant 1 "with no paper number on the hat" is
+# the only mayor look; the alternates were dropped.
 VARIANTS = [
-    ("1 DEFAULT lavender hat, peach head, teal coat", {}),
-    ("2 HaHaland-pink tall hat, turkey-blue head, navy coat",
-     {"hat_color": "PAINT_BUBBLEGUM", "pattern_color": "PAINT_CHERRY", "horn_size": "15",
-      "skin": "PAINT_SKY", "top_color": "PAINT_NAVY", "accessory_color": "PAINT_LEMON"}),
-    ("3 short hat, big wattle, plum coat",
-     {"horn_size": "4", "nose_size": "15", "top_color": "PAINT_GRAPE",
-      "accessory_color": "PAINT_TANGERINE", "hair_color": "PAINT_WHITE"}),
+    ("1 LOCKED lavender hat, peach head, teal coat, no card", {}),
 ]
 
 
@@ -51,7 +47,7 @@ def main(argv):
                  host.job(lb, "bust", expr=cat.value("EXPR_HAPPY"), anim=12),
                  host.job(lb, "bust", mouth=cat.value("MOUTH_OPEN"), anim=20)]
     pal, recs = host.render(jobs)
-    c = Canvas(3 * 420, 200, pal)
+    c = Canvas(len(VARIANTS) * 420, 200, pal)
     for i, (name, _) in enumerate(VARIANTS):
         x = 8 + i * 420
         c.text(x, 4, name)
@@ -80,8 +76,37 @@ def main(argv):
         c.img(recs[3 + i], 330 + i * 40 + (8 if i >= 4 else 0), 30, 2)
     p2 = os.path.join(out, "mayor_v2_lineup.png")
     c.im.save(p2)
+    # final: bust px=2 + figure px=2 per expression, chibi px=2 4 directions
+    exprs = ["EXPR_NEUTRAL", "EXPR_HAPPY", "EXPR_ANGRY", "EXPR_SHOCK", "EXPR_SAD"]
+    fj = []
+    for e in exprs:
+        v = cat.value(e)
+        fj += [host.job(m, "bust", expr=v, anim=8), host.job(m, "figure", expr=v, anim=8)]
+    for d in range(4):
+        fj.append(host.job(m, "chibi", a=d, b=1))
+    pal, recs = host.render(fj)
+    bh = max(recs[2 * i][1] for i in range(len(exprs))) * 2
+    fh = max(recs[2 * i + 1][1] for i in range(len(exprs))) * 2
+    cw = max(r[0] for r in recs) * 2 + 8
+    ch = max(r[1] for r in recs[2 * len(exprs):]) * 2
+    y1, y2 = 32, 32 + bh + 8
+    y3 = y2 + fh + 22
+    c = Canvas(max(len(exprs) * cw + 16, 560), y3 + ch + 8, pal)
+    c.text(8, 4, "MAYOR GIGGS (locked v1, no hat card): bust + figure per expression")
+    for i, e in enumerate(exprs):
+        x = 8 + i * cw
+        c.text(x, 18, e[5:].lower())
+        c.img(recs[2 * i], x, y1, 2)
+        c.img(recs[2 * i + 1], x, y2, 2)
+    c.text(8, y3 - 14, "chibi: down left right up")
+    for d in range(4):
+        r = recs[2 * len(exprs) + d]
+        c.img(r, 8 + d * (r[0] * 2 + 8), y3, 2)
+    p3 = os.path.join(out, "mayor_final.png")
+    c.im.save(p3)
     print(p1)
     print(p2)
+    print(p3)
     return 0
 
 
