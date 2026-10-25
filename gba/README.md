@@ -26,7 +26,7 @@ Layout:
 | `src/r3d*.c`, `src/r3d_loops.s` | `plat_view3d()`: height raycaster (ARM inner loops) |
 | `src/overworld.c`, `src/ow*.c`, `src/ow_loops.s` | `plat_overworld()` |
 | `src/audio.c`, `src/irq.iwram.c` | PSG tones, DirectSound sample mixer (VBlank IRQ) |
-| `src/save_flash.c`, `src/flash.iwram.c` | 128 KB flash saves |
+| `src/save_flash.c`, `src/flash_ram.c` | 128 KB flash saves (the chip routines run from a copy on the stack, G0) |
 | `src/div.s`, `src/mem.s` | IWRAM integer division, `memcpy` / `memset` |
 | `src/bigbuf.c` | the shared 17 KB EWRAM buffer (renderer caches, the core's save window: `plat_save_scratch()`) |
 | `enginetest/` | ENGINE_TEST=1 tour, showcase map, save / division self-tests |

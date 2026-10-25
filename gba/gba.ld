@@ -42,6 +42,14 @@ SECTIONS
     } > rom
 
     .text : {
+        /* the flash chip routines (flash_ram.c, ARM): one position
+         * independent block that save_flash.c copies onto the stack for
+         * each save / load call (G0, task #78: not IWRAM for good) */
+        . = ALIGN(4);
+        __flash_ram_start = .;
+        KEEP(*(.text.flashram))
+        . = ALIGN(4);
+        __flash_ram_end = .;
         /* ROM_COLD (gba_hw.h): cold functions of *.iwram.c files stay
          * in ROM; listed first so the .iwram rule below never sees them */
         *(.text.rom .text.rom.*)
@@ -138,4 +146,7 @@ SECTIONS
 
 ASSERT(__iwram_bss_end <= __iwram_stack_limit,
        "IWRAM overflow: code/data eat into the 6 KB main stack")
+/* FL_RAM_WORDS (flash_int.h): the stack copy of the flash routines */
+ASSERT(__flash_ram_end - __flash_ram_start <= 1152,
+       "flash_ram.c grew past its 1,152 B stack copy (FL_RAM_WORDS)")
 ASSERT(__ewram_end <= 0x02040000, "EWRAM overflow (256 KB)")

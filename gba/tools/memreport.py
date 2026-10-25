@@ -6,15 +6,18 @@
 
 Reads the linker-script symbols out of the GNU ld map file and prints
 IWRAM (ARM code + data + bss, stack) and EWRAM (.data + .bss + .noinit)
-usage, plus the biggest EWRAM / IWRAM objects. Exit status 0 always (the
-hard limits are ASSERTs in gba.ld).
+usage, the arena (bigbuf.c: the scene scratch, the platform caches, the
+billboards and the save window share one block, gba_plat.h), the flash
+routines' stack copy (flash_ram.c, G0), plus the biggest EWRAM / IWRAM
+objects. Exit status 0 always (the hard limits are ASSERTs in gba.ld).
 """
 import re
 import sys
 
 SYMS = ("__iwram_start", "__iwram_end", "__iwram_bss_start", "__iwram_bss_end",
         "__iwram_stack_limit", "__sp_usr", "__data_start", "__data_end",
-        "__bss_start", "__bss_end", "__ewram_end", "__rom_end")
+        "__bss_start", "__bss_end", "__ewram_end", "__rom_end",
+        "__flash_ram_start", "__flash_ram_end")
 
 
 def main():
@@ -41,9 +44,17 @@ def main():
     print("memreport: IWRAM %7d / 32768 used (code+data %d, bss %d); "
           "%d bytes left for the main stack (+672 IRQ stack)" %
           (iw_used, iw_code, iw_bss, stack))
+    if "__flash_ram_end" in val:
+        fl = val["__flash_ram_end"] - val["__flash_ram_start"]
+        print("memreport:   flash routines: %d bytes, copied onto the stack while saving "
+              "(%d bytes of stack left beside them)" % (fl, stack - fl))
     print("memreport: EWRAM %7d / 262144 used (.data %d, .bss %d, noinit %d); "
           "%d bytes free" % (ew_used, data, bss,
                              val["__ewram_end"] - val["__bss_end"], 262144 - ew_used))
+    m = re.search(r"^ \.ewram_bss\s*\n?\s+0x([0-9a-f]+)\s+0x([0-9a-f]+)\s+\S*bigbuf\.o", text, re.M)
+    if m and re.search(r"\sgba_arena$", text, re.M):
+        print("memreport:   arena %d bytes at 0x%s (bigbuf.c: scene scratch + platform "
+              "caches + billboards + save window)" % (int(m.group(2), 16), m.group(1)[-8:]))
     # biggest objects in .bss / .data (EWRAM) and IWRAM
     objs = []
     for m in re.finditer(r"^ (\.(?:bss|data|iwram|iwram_bss|iwram_data|ewram_bss|noinit)"
