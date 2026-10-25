@@ -47,7 +47,8 @@ def patched_head(dst):
                            capture_output=True, text=True)
         if r.returncode == 0:
             return "engine patch"
-    text = open(src).read()
+    with open(src) as f:
+        text = f.read()
     at = text.find(ANCHOR_AFTER)
     pos = text.find(ANCHOR, at) if at >= 0 else -1
     if pos < 0:
@@ -129,7 +130,8 @@ def render(jobs):
         r = subprocess.run([exe, jp, op], capture_output=True, text=True)
         if r.returncode != 0:
             raise HostError("portrait_host failed: " + r.stderr)
-        data = open(op, "rb").read()
+        with open(op, "rb") as f:
+            data = f.read()
     pal = [tuple(data[i * 3:i * 3 + 3]) for i in range(256)]
     pos, out = 768, []
     for _ in jobs:

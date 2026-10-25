@@ -24,8 +24,10 @@ Each names the default taken and where to change it.
   bear: a one-floppy-ear flipbook is deferred).
 - **Bonejangles bares his ribs** (TOP_NONE on a skeleton draws the ribcage) and wears a bow tie;
   possession is a state (`state=possessed` / RES_POSSESSED), never a separate look.
-- **Kevin is a human** with `eye_count=3`: critter ears and hats hide a forehead eye at bust
-  size; a bare human brow shows it at every size.
+- **Kevin is a bald human with stubble** and `eye_count=3`: critter ears, hats and any hair line
+  hide a forehead eye at bust size; a bare brow shows it at every size, the stubble reads 30s.
+- **Dr. Bloom: lavender scrubs, EYE_DROOPY**; **Miss Lulla: EYE_SLEEPY**: their roster eyes
+  vanished at bust size (into the ghoul's dark sockets / into white wool).
 - **Mascotty = her roster bunnykin with a costume head**: EYE_WIDE, MOUTH_STITCHED, no brows or
   hair, a one-piece rose suit.
 - **Rivet (MT-2 pop-in) wears a gas-mask respirator under a welding helmet**: her face is never
@@ -47,6 +49,13 @@ Each names the default taken and where to change it.
 - **Model sheets render on the host** (`showtk.art.cast.sheet`: the game's portrait engine compiled
   natively with a patched copy of portrait_head.c carrying hunk (d)) until show.exe can draw
   them; they are review material, never master pixels.
+- **A KID's model sheet never draws the possessed, ghost or dead states** (blank "never: KID"
+  panels), and `lookdata` refuses `state=` other than normal on an age=child char.
+- **register=crayon** marks the storybook cast and K-sets; the lineup previews them through the
+  PAL_CRAYON lerp (camfx.c's formula); on the PS1 it is the shot's `look=crayon`.
+- **Acting macros are picture-only** (`series/acting.shw`): no sound op in a macro; the shot adds
+  the TIK, the creak, the whistle.  `headturn` in brads (64 = a quarter turn, the game's unit),
+  `squash` in Q8 (256 = rest).  CLI: `show cast check|sheet|look|macro` (commands/cast.py).
 
 ## AUDIO WP10: music and SFX (showtk/music, showtk/sfx, series/music.shw, sfx.shw, ep101/cues.shw), 2026-10-25
 

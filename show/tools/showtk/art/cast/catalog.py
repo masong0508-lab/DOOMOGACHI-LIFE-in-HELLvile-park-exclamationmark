@@ -91,7 +91,8 @@ class Catalog:
             path = os.path.join(INC, h)
             if not os.path.exists(path):
                 continue
-            src = _tp.strip_comments(open(path).read())
+            with open(path) as f:
+                src = _tp.strip_comments(f.read())
             for m in re.finditer(r"enum\s*\w*\s*\{(.*?)\}", src, flags=re.S):
                 cur = -1
                 for item in m.group(1).split(","):
@@ -120,7 +121,8 @@ class Catalog:
 
     @staticmethod
     def _look_order():
-        src = _tp.strip_comments(open(os.path.join(INC, "resident.h")).read())
+        with open(os.path.join(INC, "resident.h")) as f:
+            src = _tp.strip_comments(f.read())
         m = re.search(r"typedef struct DoomoLook \{(.*?)\} DoomoLook;", src, flags=re.S)
         return re.findall(r"uint8_t\s+(\w+)\s*;", m.group(1))
 
