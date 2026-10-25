@@ -1,0 +1,40 @@
+{
+ "cue": "mingle_thin",
+ "bpm": 96.0,
+ "meter": 4,
+ "bars": 8,
+ "sections": [
+  [
+   "A",
+   1,
+   8
+  ]
+ ],
+ "offset_smp": 0,
+ "frames_per_bar": 75.0,
+ "smp_per_bar": 120000.0,
+ "source": "mml:core/src/mml_mingle.c",
+ "bar_smp": [
+  0,
+  120000,
+  240000,
+  360000,
+  480000,
+  600000,
+  720000,
+  840000,
+  960000
+ ],
+ "bar_frame": [
+  0,
+  75,
+  150,
+  225,
+  300,
+  375,
+  450,
+  525,
+  600
+ ],
+ "named_notes": {}
+}

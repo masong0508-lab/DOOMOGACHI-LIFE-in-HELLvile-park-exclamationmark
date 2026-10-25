@@ -1,0 +1,189 @@
+# show/series/acting.shw - the acting library (ART track; SHOW_ENGINE_SPEC.md
+# sec.5.1, 5.5; GAG_BIBLE.md sec.2-4 at 30 fps).
+#
+# A macro is a block of timed ops on the engine's own acting channels
+# (expression, clocks, pops, head turns, squash, flipbook poses):
+#
+#     macro <name> <actor param> [<param>=<default> ...]
+#       <time> <op> <args> [; <op> <args> ...]
+#     end
+#
+# * Times are relative to the frame the shot's `take` fires: `+N` frames,
+#   `+R8`-style rungs, or `+$param`.  Ops are the shot ops of sec.5.5, with
+#   the macro's actor written as `$A` (or its own param name).
+# * `$name` substitutes a parameter; a shot overrides one with k=v:
+#       +40   take freeze mayor n=13
+#       @a1_08_mayor_06.end   take double_take sunny
+# * Units: `headturn A <brad> <F>` turns by brad (64 = a quarter turn, the
+#   game's NACT_HEAD_TURN unit; 192 turns a quarter back); `squash A <q> over=F`
+#   takes a height scale in Q8 (256 = rest; the tween tables' unit); `pop A
+#   TWT_*` plays a comic table from core/src/tween_tables.c.
+# * Picture only: no sound op lives in a macro.  The shot adds the sfx (the
+#   TIK of a take, the creak of a head turn) so AUDIO owns every sound.
+# * Every number traces to GAG_BIBLE.md (24 fps there, converted by time:
+#   x1.25) or to the beat ladder (rungs convert by name).
+# showtk.art.cast.acting checks every macro: ops, symbols, params, times.
+
+# ---- clocks: freezes, stills, deadpans -----------------------------------------
+
+# [FREEZE 13]: a dead stop mid-breath; the idle clock clamps, so the Mayor's
+# wings stop too (AT6.2).  Any length: take freeze mayor n=21.
+macro freeze A n=13
+  +0     freeze $A
+  +$n    thaw $A
+end
+
+# The freeze-frame gag (GAG_BIBLE.md sec.4.6): clocks clamp, SHOCK 2 f later,
+# hang 14 f (11 at 24), then panic breathing at 2x for a second.
+macro freeze_frame A
+  +0     freeze $A
+  +2     expr $A EXPR_SHOCK
+  +14    thaw $A ; panic $A
+  +44    thaw $A
+end
+
+# Deadpan ({d}, sec.4.12): no bounce, no idle, the face goes flat; the clock
+# comes back after the double-beat (R26).  `face=` keeps a mood (EXPR_SAD).
+macro deadpan A n=26 face=EXPR_NEUTRAL
+  +0     still $A ; expr $A $face
+  +$n    thaw $A
+end
+
+# A dead hold for horror or the Starer: every idle channel stops for n.
+macro still_hold A n=21
+  +0     still $A
+  +$n    thaw $A
+end
+
+# ---- entrances and reactions ---------------------------------------------------
+
+# POP (sec.4.1): 0.40, 1.20, 0.92, 1.04, 1.00 (TW_POP_BUBBLE).
+macro pop A table=TWT_POP_BUBBLE
+  +0     pop $A $table
+end
+
+# POP, big: 0.20, 1.25, 0.90, 1.05, 1.00 (TW_POP_BLOB): main-title cast pop-ins.
+macro pop_big A
+  +0     pop $A TWT_POP_BLOB
+end
+
+# A plush hop (sec.4.3, the 6 f arc): TW_HOP2's dy table at scale 2.
+macro hop A
+  +0     pop $A TWT_HOP2
+end
+
+# The quick take (the game's NACT_DOUBLE_TAKE): stop R3, the head snaps
+# round in 2 f, SHOCK pops on the eye table.
+macro quick_take A turn=64
+  +0     still $A
+  +R3    headturn $A $turn 2
+  +5     expr $A EXPR_SHOCK ; pop $A TWT_POP_EYE ; thaw $A
+end
+
+# The classic double-take (sec.4.9; 24 fps 6/13/6/13/5 -> 30 fps 8/16/8/16/6):
+# look, shock with nervous 2x jitter, stare at the lens, denial (happy),
+# re-shock, then look away (the whistle is the shot's sound).
+macro double_take A turn=64
+  +0     headturn $A $turn 2
+  +8     expr $A EXPR_SHOCK ; pop $A TWT_POP_EYE ; panic $A
+  +24    thaw $A ; headturn $A 192 2
+  +32    expr $A EXPR_HAPPY
+  +48    expr $A EXPR_SHOCK ; pop $A TWT_POP_BUBBLE
+  +54    headturn $A $turn 3 ; expr $A EXPR_NEUTRAL
+end
+
+# A look to camera (sec.4.9): hold 8 f (6 at 24) straight into the lens
+# before the line or caption; the clock keeps breathing.
+macro look_to_camera A n=8 face=EXPR_NEUTRAL
+  +0     expr $A $face
+  +$n    expr $A EXPR_NEUTRAL
+end
+
+# Nana's look at the Mayor (exactly R8, one a scene): a quarter turn, a still
+# face, then back.  `n=` for other looks (the 4-01 look chain is R13 each).
+macro look_at A n=R8 turn=64 back=192
+  +0     headturn $A $turn 2 ; still $A
+  +$n    headturn $A $back 2 ; thaw $A
+end
+
+# Glare: angry and dead still for a pause (R21), then the clock comes back.
+macro glare A n=21
+  +0     expr $A EXPR_ANGRY ; still $A
+  +$n    thaw $A
+end
+
+# Flinch: the clap table squashes (0.90 tall) and springs back; SHOCK on the
+# squash, the mood back after R5.  The Puff Demons' flinch at the beep is a
+# ripple of these, 0-3 f apart (the shot staggers them).
+macro flinch A after=EXPR_NEUTRAL
+  +0     pop $A TWT_CLAP ; expr $A EXPR_SHOCK
+  +R5    expr $A $after
+end
+
+# Sob: SAD draws the engine's tears; breathing at 2x heaves the shoulders.
+# Pip's "My eyes are just doing a rain." (the laugh is at the euphemism,
+# never at the crying: play it straight).
+macro sob A n=60
+  +0     expr $A EXPR_SAD ; panic $A
+  +$n    thaw $A
+end
+
+# Laugh: HAPPY with three plush hops 8 f apart (the snort-laugh ripple is
+# this on every tent citizen, staggered 0-3 f by the crowd).
+macro laugh A
+  +0     expr $A EXPR_HAPPY ; pop $A TWT_HOP1
+  +8     pop $A TWT_HOP1
+  +16    pop $A TWT_HOP1
+  +30    expr $A EXPR_NEUTRAL
+end
+
+# Slow burn: the face sours in steps, held still, until it boils over.
+macro slow_burn A step=R13
+  +0     still $A ; expr $A EXPR_NEUTRAL
+  +$step expr $A EXPR_SAD
+  +26    expr $A EXPR_ANGRY ; pop $A TWT_POP_EYE
+  +34    thaw $A
+end
+
+# Panic (2-03 "Being calm!"): the clock at 2x, SHOCK, sweat is the shot's FX.
+macro panic A n=45
+  +0     expr $A EXPR_SHOCK ; panic $A
+  +$n    thaw $A ; expr $A EXPR_NEUTRAL
+end
+
+# ---- the Mayor ---------------------------------------------------------------
+
+# The Mayor's speech pose: he puffs up (POP), chest out, happy-arc eyes, the
+# busy little wings flutter at 2x for R13 ("a little breathless flutter when
+# he's excited"), then settle for the patter.  The mouth track does the talk.
+macro speech_pose A
+  +0     pop $A TWT_POP_BUBBLE ; expr $A EXPR_HAPPY ; panic $A
+  +R13   thaw $A
+end
+
+# "...Hee. Hee." (the library take, identical every time: two 12-f syllables
+# 8 f apart, so the second starts 20 f after the first): the smile pops on
+# the second hee.  Fire it on the line's first sound:
+#     @co13_heehee.start   take heehee mayor
+macro heehee A
+  +0     expr $A EXPR_NEUTRAL
+  +20    expr $A EXPR_HAPPY ; pop $A TWT_POP_BUBBLE
+end
+
+# The possession inhale (sec.4.1, 24 fps 8/4/1/6 -> 30 fps 10/5/1/8): stretch,
+# hold with jitter, release on one frame (FWOOMP), recover; the host is then
+# possessed: red sockets, 0 % squash, ears twitching every frame.
+macro possess A
+  +0     squash $A 296 over=10
+  +10    twitch $A on
+  +15    squash $A 256 over=1 ; state $A possessed ; shake SHK_FWOOMP
+  +16    still $A
+end
+
+# The breath leaves (4-02/4-03): the purple drains over 21 f, the host wakes
+# confused ("...Clack?"), the clock comes back.
+macro unpossess A
+  +0     twitch $A off
+  +21    state $A normal ; expr $A EXPR_SHOCK ; thaw $A
+  +34    expr $A EXPR_NEUTRAL
+end

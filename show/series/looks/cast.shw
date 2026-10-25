@@ -70,9 +70,13 @@ look bonejangles base=roster:5 note="ribs bared for the rib-xylophone; bow tie"
 end
 
 # DR. BLOOM, ghoul doctor "in pastel scrubs": the roster lab coat becomes
-# mint scrubs (TOP_NURSE draws a scrub top) over a pastel skirt.
-look bloom base=roster:111 note="pastel scrubs"
-  top=TOP_NURSE top_color=PAINT_MINT bottom=BOTTOM_PANTS bottom_color=PAINT_MINT mouth_size=11
+# lavender scrubs (TOP_NURSE draws a scrub top; lavender so they part from
+# her mint skin).  Her roster EYE_SLEEPY at size 12 vanished into the ghoul's
+# dark eye sockets at bust size; EYE_DROOPY at 10 keeps the calm, tired look
+# and lets every expression read.
+look bloom base=roster:111 note="pastel scrubs; droopy eyes that read"
+  top=TOP_NURSE top_color=PAINT_LAVENDER bottom=BOTTOM_PANTS bottom_color=PAINT_LAVENDER mouth_size=11
+  eyes=EYE_DROOPY eye_size=10
 end
 
 # ---- the Midsummer Giggle stall-holders --------------------------------------
@@ -85,12 +89,13 @@ end
 # the middle)".  Not in the roster.  A human reads the third eye cleanest at
 # every size (critter ears and hats cover the forehead); nothing on the brow.
 # The painter's smock is polka-spattered overalls.  "Only the third eye
-# blinks" is a flipbook insert (the engine blinks all eyes together).
+# blinks" is a flipbook insert (the engine blinks all eyes together).  Bald
+# with stubble: any hair line crosses the third eye, and the stubble reads 30s.
 look kevin base=SPECIES_HUMAN age=adult note="three eyes; forehead kept clear"
   body=BODY_AVERAGE height=9 build=8 skin=SKIN_TAN head=HEAD_ROUND head_size=11
   eyes=EYE_ROUND eye_color=PAINT_FOREST eye_size=8 eye_spacing=7 eye_height=8 eye_tilt=8 eye_count=3
   brows=BROW_FLAT brow_height=7 nose=NOSE_DOT nose_size=6 mouth=MOUTH_FLAT mouth_size=9 fangs=0
-  cheeks=CHEEK_BLUSH hair=HAIR_BUZZ hair_color=PAINT_CHOCOLATE highlight=NONE facial_hair=FHAIR_NONE
+  cheeks=CHEEK_BLUSH hair=HAIR_BALD hair_color=PAINT_CHOCOLATE highlight=NONE facial_hair=FHAIR_STUBBLE
   ears=EARS_NORMAL horns=HORNS_NONE tail=TAIL_NONE wings=WINGS_NONE halo=HALO_NONE
   marking=MARK_NONE marking_color=PAINT_WHITE aura=AURA_NONE
   top=TOP_OVERALLS top_color=PAINT_SKY pattern=PATTERN_POLKA pattern_color=PAINT_ROSE
@@ -104,8 +109,11 @@ look hattie base=roster:71 note="the roster record; a wider stitched mouth for t
 end
 
 # MISS LULLA, the craft tent: the roster record (sheepkin, teddy for the kids).
-look lulla base=roster:36 note="the roster record, but a closed rest mouth (her roster MOUTH_OPEN reads as mid-word)"
-  mouth=MOUTH_SMILE mouth_size=12
+# Two look-dev fixes: her roster MOUTH_OPEN reads as mid-word at rest (now
+# MOUTH_SMILE), and the thin happy arcs vanished into white wool at bust size
+# (now heavy-lidded EYE_SLEEPY: the woman who can nap any baby in a minute).
+look lulla base=roster:36 note="the roster record; closed rest mouth, sleepy eyes that read on wool"
+  mouth=MOUTH_SMILE mouth_size=12 eyes=EYE_SLEEPY eye_size=9 eye_spacing=8
 end
 
 # MASCOTTY (she), "bunnykin in a mascot head", the Starer: the costume head is

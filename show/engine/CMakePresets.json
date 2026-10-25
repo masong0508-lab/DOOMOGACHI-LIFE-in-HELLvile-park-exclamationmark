@@ -1,0 +1,31 @@
+{
+	"version": 3,
+	"cmakeMinimumRequired": { "major": 3, "minor": 21, "patch": 0 },
+	"configurePresets": [
+		{
+			"name":          "ps1-show",
+			"displayName":   "show.exe (PSn00bSDK, release, retail 2 MB)",
+			"description":   "The show player. Needs PSN00BSDK_LIBS=/opt/psn00bsdk/lib/libpsn00b and mipsel-linux-gnu-gcc. Writes only show/build/ps1-show.",
+			"generator":     "Ninja",
+			"toolchainFile": "$env{PSN00BSDK_LIBS}/cmake/sdk.cmake",
+			"binaryDir":     "${sourceDir}/../build/${presetName}",
+			"cacheVariables": {
+				"CMAKE_BUILD_TYPE": "Release",
+				"PSN00BSDK_TC":     "",
+				"PSN00BSDK_TARGET": "mipsel-linux-gnu",
+				"SHOW_RAM_KB":      "2048"
+			},
+			"warnings": { "dev": false }
+		},
+		{
+			"name":        "ps1-show-8mb",
+			"inherits":    "ps1-show",
+			"displayName": "show.exe for the 8 MB hatch (EMU-ONLY, spec 8.11)",
+			"cacheVariables": { "SHOW_RAM_KB": "8192" }
+		}
+	],
+	"buildPresets": [
+		{ "name": "ps1-show",     "configurePreset": "ps1-show",     "jobs": 2 },
+		{ "name": "ps1-show-8mb", "configurePreset": "ps1-show-8mb", "jobs": 2 }
+	]
+}

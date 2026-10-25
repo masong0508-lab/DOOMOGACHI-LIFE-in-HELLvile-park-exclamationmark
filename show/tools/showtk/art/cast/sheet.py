@@ -52,7 +52,9 @@ def visemes(species):
     fam = {}
     path = os.path.join(SERIES, "visemes.shw")
     if os.path.exists(path):
-        for line in open(path):
+        with open(path) as f:
+            lines = f.read().split("\n")
+        for line in lines:
             line = line.split("#", 1)[0]
             m = re.match(r"\s*viseme\s+([XMCEAOUF])\s+(MOUTH_\w+)(?:\s+family=(SPECIES_\w+))?", line)
             if m:
@@ -82,12 +84,15 @@ class Canvas:
         self.pal = pal
         self.font = _font()
 
-    def img(self, rec, x, y, z, panel=True):
+    def img(self, rec, x, y, z, panel=True, pal=None):
+        if rec is None:          # a panel a KID never gets
+            return
         w, h, px = rec
+        pal = pal or self.pal
         if panel:
             self.d.rectangle([x, y, x + w * z - 1, y + h * z - 1], fill=PANEL)
         t = Image.new("RGBA", (w, h))
-        t.putdata([(*self.pal[p], 255) if p else (0, 0, 0, 0) for p in px])
+        t.putdata([(*pal[p], 255) if p else (0, 0, 0, 0) for p in px])
         if z != 1:
             t = t.resize((w * z, h * z), Image.NEAREST)
         self.im.paste(t, (x, y), t)
@@ -96,11 +101,18 @@ class Canvas:
         self.d.text((x, y), s, fill=fill, font=self.font)
 
 
-def char_jobs(look, species):
+# a child is never possessed, never dead on screen (hard limit 3, canon): a
+# KID's sheet leaves those panels empty instead of drawing them
+KID_NEVER = ("EXPR_POSSESSED", "EXPR_DEAD", "RES_POSSESSED", "RES_GHOST", "RES_DEAD")
+
+
+def char_jobs(look, species, kid=False):
     vis = visemes(species)
     jobs, labels = [], []
 
     def add(label, *a, **k):
+        if kid and label[1] in KID_NEVER:
+            return
         jobs.append(host.job(look, *a, **k))
         labels.append(label)
     cat = catalog()
@@ -129,7 +141,8 @@ def char_sheet(bible, cid, out_dir, scale=2):
     c = bible.chars[cid]
     look = c.look.pack()
     species = c.look.values["species"]
-    jobs, labels, vis = char_jobs(look, species)
+    kid = "KID" in c.opts.get("tags", ("", None))[0].split(",")
+    jobs, labels, vis = char_jobs(look, species, kid)
     pal, imgs = host.render(jobs)
     R = dict(zip(labels, imgs))
     gap = 6
@@ -149,8 +162,8 @@ def char_sheet(bible, cid, out_dir, scale=2):
     y = 32
     x = 8
     for e in EXPRS:
-        cv.img(R[("fig", e)], x, y, 1)
-        cv.text(x, y + 81, short(e)[:8])
+        cv.img(R.get(("fig", e)), x, y, 1)
+        cv.text(x, y + 81, short(e)[:8] if ("fig", e) in R else "never:KID", INK if ("fig", e) in R else DIM)
         x += 48 + gap
     x += 8
     for v in VISEMES:
@@ -160,8 +173,8 @@ def char_sheet(bible, cid, out_dir, scale=2):
     y += 80 + 22
     x = 8
     for e in EXPRS:
-        cv.img(R[("bust", e)], x, y, 2)
-        cv.text(x, y + 113, short(e))
+        cv.img(R.get(("bust", e)), x, y, 2)
+        cv.text(x, y + 113, short(e) if ("bust", e) in R else "never: KID", INK if ("bust", e) in R else DIM)
         x += 96 + gap
     y += 112 + 22
     x = 8
@@ -170,6 +183,8 @@ def char_sheet(bible, cid, out_dir, scale=2):
         cv.text(x, y + 113, "%s  %s" % (v, (vis[v] or "rest").replace("MOUTH_", "").lower()))
         x += 96 + gap
     for k in ("blink", "RES_POSSESSED", "RES_GHOST", "RES_DEAD"):
+        if ("bust", k) not in R:
+            continue
         cv.img(R[("bust", k)], x, y, 2 if k == "blink" else 1)
         cv.text(x, y + (113 if k == "blink" else 57), short(k))
         x += (96 if k == "blink" else 48) + gap
@@ -190,6 +205,23 @@ def char_sheet(bible, cid, out_dir, scale=2):
     path = os.path.join(out_dir, "%s_sheet.png" % cid)
     im.save(path)
     return path
+
+
+def crayon_palette(pal, level16=16):
+    """the STORYBOOK register's palette: camfx.c pal_target(PAL_CRAYON) and the
+    lerp of camfx_pal_entry(), on the 5-bit components the PS1 uses (preview
+    only: on the PS1 the shot's look=crayon does this through plat_pal_lerp)"""
+    out = []
+    for (r8, g8, b8) in pal:
+        r, g, b = r8 >> 3, g8 >> 3, b8 >> 3
+        tr = ((r * 5 + 30 * 3) // 8) & ~3 | 2
+        tg = ((g * 5 + 28 * 3) // 8) & ~3 | 2
+        tb = ((b * 5 + 24 * 3) // 8) & ~3 | 1
+        lr = r + (tr - r) * level16 // 16
+        lg = g + (tg - g) * level16 // 16
+        lb = b + (tb - b) * level16 // 16
+        out.append(((lr << 3) | (lr >> 2), (lg << 3) | (lg >> 2), (lb << 3) | (lb >> 2)))
+    return out
 
 
 def seen(c, episode="ep101"):
@@ -217,6 +249,8 @@ def lineup(bible, out_dir, scale=2, episode="ep101"):
             labels.append(("kfig", kid, n))
     pal, imgs = host.render(jobs)
     R = dict(zip(labels, imgs))
+    cpal = crayon_palette(pal)
+    reg = lambda o: o.get("register", ("pixel", None))[0]  # noqa: E731
     per_row = 12
     cell = 76
     rows = (len(chars) + per_row - 1) // per_row
@@ -232,19 +266,22 @@ def lineup(bible, out_dir, scale=2, episode="ep101"):
         r, col = divmod(i, per_row)
         x = 8 + col * cell
         yy = y + r * 124
-        cv.img(R[("fig", cid)], x, yy, 1)
-        cv.img(R[("chibi", cid)], x + 52, yy + 56, 1)
         c = bible.chars[cid]
+        p = cpal if reg(c.opts) == "crayon" else None
+        cv.img(R[("fig", cid)], x, yy, 1, pal=p)
+        cv.img(R[("chibi", cid)], x + 52, yy + 56, 1, pal=p)
         cv.text(x, yy + 82, cid[:12])
-        cv.text(x, yy + 94, c.opts.get("age", ("?", 0))[0], DIM)
+        cv.text(x, yy + 94, c.opts.get("age", ("?", 0))[0] + (" crayon" if p else ""), DIM)
     y += rows * 124
     for kid, looks in kl.items():
         ks = bible.ksets[kid]
-        cv.text(8, y, "kset %s  (K=%d, age=%s) %s" % (kid, len(looks), ks.age, ks.note[:60]), DIM)
+        cv.text(8, y, "kset %s  (K=%d, age=%s%s) %s" % (kid, len(looks), ks.age,
+                ", look=crayon" if ks.register == "crayon" else "", ks.note[:60]), DIM)
         y += 14
         for n in range(len(looks)):
             r, col = divmod(n, 24)
-            cv.img(R[("kfig", kid, n)], 8 + col * 40, y + r * 86, 1, panel=False)
+            cv.img(R[("kfig", kid, n)], 8 + col * 40, y + r * 86, 1, panel=False,
+                   pal=cpal if ks.register == "crayon" else None)
         y += ((len(looks) + 23) // 24) * 86 + 2
     im = cv.im.crop((0, 0, W, min(H, y + 8)))
     if scale != 1:
