@@ -13,7 +13,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools"))
 
-from showtk import capture, cache, errors, paths, render, scheduler, slug
+from showtk import capture, cache, disc, errors, paths, render, scheduler, slug
 from showtk import shw_format as F
 
 slow = pytest.mark.skipif(os.environ.get("SHOW_TEST_SLOW") == "0", reason="emulator tests off")
@@ -57,6 +57,15 @@ def test_scheduler_splits_contiguously():
     assert [(x.shot, x.count, x.last) for x in r] == [(1, 500, 2), (4, 50, 4)]
 
 
+def test_scheduler_boots_cap_long_jobs():
+    """one emulator boot captures at most MAX_BOOT_FRAMES (the Redux Vsync leak)"""
+    m = scheduler.MAX_BOOT_FRAMES
+    lens = [m // 2, m // 2, m // 2, 10]
+    b = scheduler.boots([0, 1, 2, 3], lens, 1)
+    assert b == [[[0, 1], [2, 3]]]
+    assert all(sum(lens[s] for s in g) <= m for job in b for g in job)
+
+
 def test_palette_lut_and_expand():
     assert len(capture.palette15()) == 256
     rgb = capture.expand_lut()
@@ -78,6 +87,53 @@ def test_cache_key_ignores_start_frame_only():
 
 
 # ---- emulator -------------------------------------------------------------------
+def _load():
+    return os.getloadavg()[0] / (os.cpu_count() or 4)
+
+
+@slow
+def test_at2_1_boots_to_the_chart_fast():
+    """AT2.1: the player is up on the test chart within 1.2 s unthrottled.
+    Measured as the emulator's own CPU time (os.clock in the Lua) from process
+    start to the player's lockstep handshake (the chart is the next frame):
+    that is the unthrottled time and does not depend on the shared machine's
+    load. Emulated time (vsyncs / 60, -fastboot) and wall are recorded too."""
+    WORK.mkdir(parents=True, exist_ok=True)
+    cue = disc.make(paths.build_dir(), {}, WORK / "at21" / "disc")
+    rs = []
+    for _ in range(2):
+        r = capture.run(cue, paths.build_dir() / "show.map", [], [],
+                        lambda s, ri: WORK / "at21" / "out", work=WORK / "at21" / "emu",
+                        encode=False, timeout=60)
+        assert r.boot_vsyncs > 0 and r.boot_cpu >= 0, r.log
+        rs.append(r)
+    best = min(rs, key=lambda r: r.boot_cpu)
+    _note(at2_1_cpu_s=best.boot_cpu, at2_1_vsyncs=best.boot_vsyncs,
+          at2_1_emulated_s=round(best.boot_vsyncs / 60, 2),
+          at2_1_wall_s=round(min(r.seconds for r in rs), 2), at2_1_load=round(_load(), 2))
+    assert best.boot_cpu <= 1.2, f"{best.boot_cpu:.2f} s of emulator CPU to the chart"
+
+
+@slow
+def test_at3_2_jobs_throughput():
+    """AT3.2: --jobs 1/2/3 throughput on the same shots (recorded; the hashes
+    must not depend on the job count)"""
+    shw = _shw("at32.SHW", 0, 8)
+    reps, shas = {}, {}
+    for j in (1, 2, 3):
+        rep = render.render(shw, jobs=j, force=True, encode=True, out=WORK / f"at32_{j}",
+                            quiet=True)
+        reps[j] = rep
+        shas[j] = open(os.path.join(rep["out"], "frames.sha256")).read()
+    assert shas[1] == shas[2] == shas[3]
+    base = reps[1]["wall_s"]
+    _note(at3_2=dict(frames=reps[1]["frames"], load=round(_load(), 2),
+                     **{f"jobs{j}": dict(wall_s=reps[j]["wall_s"],
+                                         ms_per_frame=reps[j]["ms_per_frame"],
+                                         speedup=round(base / reps[j]["wall_s"], 2))
+                        for j in reps}))
+
+
 @slow
 def test_at3_1_600_frames_in_5_s():
     """AT3.1: 600 frames <= 5 s including boot (one emulator, FFV1 on)"""

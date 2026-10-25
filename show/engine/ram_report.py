@@ -5,9 +5,13 @@
 
 elf2exe.py (read-only, the game's) writes the PS-X EXE and refuses an image
 that leaves no room for the stack in 2 MB. This adds the show's budget
-from spec 8.7 on top: what the skeleton leaves below the stack top must
-still hold the two shot-chunk buffers (320 KB) and the rest of the player
-(<= 120 KB), with the 64 KB stack reserve elf2exe already keeps. The
+from spec 8.7 on top. The player is linked statically (no heap) and its
+shot-chunk buffer (show_load.c s_chunk, 160 KB) is already in .bss; the
+second (prefetch) buffer is deferred (DEFERRED.md). So what is left below
+the stack top must hold only what is not linked yet: the prefetch buffer if
+it lands (160 KB, counted when SHOW_PREFETCH_KB says so) plus a 128 KB margin
+for modules still to land, with the 64 KB stack reserve elf2exe already
+keeps. (The WP1 skeleton counted 320 + 120 KB because nothing was linked.) The
 numbers go to ram.txt (AT1.2, M0-T4) and to stdout.
 """
 import argparse
@@ -15,8 +19,8 @@ import re
 import subprocess
 import sys
 
-CHUNK_BUFFERS_KB = 320      # spec 8.7: play one, prefetch the next
-PLAYER_KB = 120             # spec 8.7: show player (e), the upper end
+CHUNK_BUFFERS_KB = 0        # spec 8.7: the play buffer is in .bss; prefetch deferred
+PLAYER_KB = 128             # margin for player modules not linked yet
 
 
 def main():
@@ -48,7 +52,7 @@ def main():
         "bss        %5d KB" % bss_kb,
         "ends       0x%08x" % end,
         "left       %5d KB  below the stack top (64 KB stack reserve kept by elf2exe)" % left_kb,
-        "needs      %5d KB  (two shot-chunk buffers %d + rest of the player %d)" % (
+        "needs      %5d KB  (unlinked chunk buffers %d + margin for modules to land %d)" % (
             need, CHUNK_BUFFERS_KB, PLAYER_KB),
         "headroom   %5d KB  after those" % (left_kb - need),
         "verdict    %s" % ("PASS" if ok else "FAIL: over the spec 8.7 budget"),

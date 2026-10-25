@@ -39,7 +39,7 @@ static void slug_draw(int layer, int t)
     if (s_slug->act)
         snprintf(buf, sizeof buf, "ACT %u  BEAT %u", (unsigned)s_slug->act, (unsigned)s_slug->beat);
     else
-        snprintf(buf, sizeof buf, "COLD OPEN  BEAT %u", (unsigned)s_slug->beat);
+        snprintf(buf, sizeof buf, "BEAT %u OF 60", (unsigned)s_slug->beat);
     plat_text(SHOW_SAFE_X + 4, y + SHOW_SAFE_Y + 6, buf, s_slug->fg);
     snprintf(buf, sizeof buf, "%.8s", sh->ix ? sh->ix->id : "");
     plat_text(SHOW_CANVAS_W - SHOW_SAFE_X - 4 - ui_text_width(buf), y + SHOW_SAFE_Y + 6, buf, s_slug->fg);
