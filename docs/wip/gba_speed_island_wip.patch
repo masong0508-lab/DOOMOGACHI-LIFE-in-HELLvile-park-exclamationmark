@@ -1,0 +1,765 @@
+diff --git a/core/include/doomo/platform.h b/core/include/doomo/platform.h
+index 2e89609..458fe25 100644
+--- a/core/include/doomo/platform.h
++++ b/core/include/doomo/platform.h
+@@ -66,6 +66,20 @@ void plat_checker(int x, int y, int w, int h, uint8_t color);
+  * early then, so such ticks cost little. Weak default (core/src/
+  * ui_raster.c): 0, every frame is shown. */
+ int  plat_draw_skipped(void);
++/* A kept static layer (perf, additive). plat_layer_begin(key, y0, y1)
++ * returns 1 when the platform will keep a layer: screen rows y0..y1-1 are
++ * then cleared to "nothing"; the caller draws the layer (plat_rect /
++ * plat_checker / spans only, no index 0) and calls plat_layer_end(), which
++ * keeps exactly the pixels drawn since begin (the rows are left
++ * undefined: the caller redraws what lies under the layer). Later,
++ * plat_layer_restore(key) draws those pixels again (the rest of the rows
++ * is left alone, so the layer is transparent where it drew nothing) and
++ * returns 1, or 0 when that layer is not held (any may be dropped at any
++ * time). Weak defaults (core/src/ui_raster.c): begin and restore return 0.
++ * GBA: rects in its spare EWRAM block. */
++int  plat_layer_begin(uint32_t key, int y0, int y1);
++void plat_layer_end(void);
++int  plat_layer_restore(uint32_t key);
+ 
+ /* ---- 3D views ------------------------------------------------------------ */
+ /* A billboard sprite placed in the world. */
+diff --git a/core/native/native.h b/core/native/native.h
+index dc8a1c8..13dd118 100644
+--- a/core/native/native.h
++++ b/core/native/native.h
+@@ -36,6 +36,9 @@ extern int nat_stream_fail_at;          /* > 0: that stream write fails  */
+ extern uint32_t nat_tone_calls, nat_sample_calls;
+ extern int nat_last_sample;
+ 
++/* 1: plat_layer_begin / _restore keep nothing (tests compare both) */
++extern int nat_layer_off;
++
+ /* draw-call counters (runner "stats"): calls since start, per primitive */
+ enum { NC_RECT, NC_TEXT, NC_IMAGE, NC_CHECKER, NC_SHADE, NC_LINE, NC_CLEAR, NC_VIEW, NC_N };
+ extern uint32_t nat_calls[NC_N];
+diff --git a/core/native/plat_native.c b/core/native/plat_native.c
+index e4f2608..ebb612a 100644
+--- a/core/native/plat_native.c
++++ b/core/native/plat_native.c
+@@ -97,6 +97,50 @@ void plat_checker(int x, int y, int w, int h, uint8_t color)
+         for (i = j & 1; i < w; i += 2) nat_px(x + i, y + j, color);
+ }
+ 
++/* the kept static layer (platform.h): a copy of its rows, 0 = nothing
++ * drawn there (the 2D layer never draws index 0 on purpose); tests can
++ * switch it off (nat_layer_off) to compare against drawing it */
++int nat_layer_off;
++static uint8_t lay_pix[NAT_MAX_W * NAT_MAX_H];
++static uint32_t lay_key;
++static int lay_y0, lay_y1, lay_w, lay_ok, lay_open;
++
++int plat_layer_begin(uint32_t key, int y0, int y1)
++{
++    if (nat_layer_off) return 0;
++    y0 = DOOMO_CLAMP(y0, 0, nat_h);
++    y1 = DOOMO_CLAMP(y1, y0, nat_h);
++    lay_ok = 0;
++    lay_open = 1;
++    lay_key = key;
++    lay_y0 = y0;
++    lay_y1 = y1;
++    lay_w = nat_w;
++    memset(&nat_fb[y0 * nat_w], 0, (size_t)((y1 - y0) * nat_w));
++    return 1;
++}
++
++void plat_layer_end(void)
++{
++    if (!lay_open) return;
++    lay_open = 0;
++    memcpy(lay_pix, &nat_fb[lay_y0 * lay_w], (size_t)((lay_y1 - lay_y0) * lay_w));
++    lay_ok = 1;
++}
++
++int plat_layer_restore(uint32_t key)
++{
++    int i, n;
++    const uint8_t *s;
++    uint8_t *d;
++    if (nat_layer_off || !lay_ok || key != lay_key || lay_w != nat_w || lay_y1 > nat_h) return 0;
++    n = (lay_y1 - lay_y0) * lay_w;
++    s = lay_pix;
++    d = &nat_fb[lay_y0 * lay_w];
++    for (i = 0; i < n; i++) if (s[i]) d[i] = s[i];
++    return 1;
++}
++
+ void plat_line(int x0, int y0, int x1, int y1, uint8_t color)
+ {
+     nat_calls[NC_LINE]++;
+diff --git a/core/src/fp_island.c b/core/src/fp_island.c
+index fd45b9e..0dccb86 100644
+--- a/core/src/fp_island.c
++++ b/core/src/fp_island.c
+@@ -916,6 +916,15 @@ static void draw_menu(void)
+     }
+ }
+ 
++/* town_count(-1) == 0, without scanning a full island to the end */
++static int island_empty(void)
++{
++    int i;
++    for (i = 0; i < DOOMO_MAX_RESIDENTS; i++)
++        if (doomo_town.res[i].status != RES_EMPTY) return 0;
++    return 1;
++}
++
+ static void island_draw(void)
+ {
+     FpLocDraw ld[FP_LOC_MAX];
+@@ -938,7 +947,7 @@ static void island_draw(void)
+             draw_round_button(ld[i].x, ld[i].y - 10, ICON_SMILE, "Folks", i == I.sel && !I.menu_open, 0);
+     }
+     /* an arrow that nags toward Town Hall on an empty island */
+-    if (town_count(-1) == 0 && !I.menu_open && locs[I.sel].kind != LOC_TOWN_HALL) {
++    if (!I.menu_open && locs[I.sel].kind != LOC_TOWN_HALL && island_empty()) {
+         int k = loc_index_of(LOC_TOWN_HALL), b = ui_wave(fp_t(), 24, 2);
+         plat_text(ld[k].x - 3, ld[k].y - 42 + b, STR_ICON_ARROW_D, PAL_UI_RED);
+     }
+diff --git a/core/src/fp_island_gfx.c b/core/src/fp_island_gfx.c
+index ef0deb8..900cdef 100644
+--- a/core/src/fp_island_gfx.c
++++ b/core/src/fp_island_gfx.c
+@@ -223,7 +223,7 @@ static uint8_t hell_ground(int row)
+ 
+ static void draw_sea(void)
+ {
+-    int i, t = g_t, night = g_tint == TINT_NIGHT;
++    int i;
+     int bands = 4, bh = (M.h + bands - 1) / bands;
+     static const uint8_t day[4] = { PAL_RAMP(RAMP_SKY, 6), PAL_RAMP(RAMP_MINT, 6),
+                                     PAL_RAMP(RAMP_MINT, 5), PAL_RAMP(RAMP_SKY, 5) };
+@@ -235,6 +235,12 @@ static void draw_sea(void)
+         R(M.x, y, M.w, DOOMO_MIN(bh, M.y + M.h - y), band[i]);
+         if (i) plat_checker(M.x, y, M.w, 1, tc(band[i - 1]));
+     }
++}
++
++/* the sea's moving parts (see draw_ground) */
++static void draw_sea_anim(void)
++{
++    int i, t = g_t, night = g_tint == TINT_NIGHT;
+     /* wave glints drifting along */
+     for (i = 0; i < 18; i++) {
+         uint32_t h = doomo_hash32((uint32_t)i * 977u + 5u);
+@@ -319,7 +325,7 @@ static void vm_flush_all(void)
+ 
+ static void draw_land(void)
+ {
+-    int row, t = g_t, run0 = -1;
++    int row, run0 = -1;
+     /* the cliff under the south rim: the land drawn 3 rows lower first;
+      * only the slivers the land does not cover are drawn */
+     for (row = 0; row < M.h; row++) {
+@@ -380,19 +386,6 @@ static void draw_land(void)
+     }
+     vm_flush_all();
+     if (run0 >= 0) draw_river_run(run0, M.h);
+-    /* foam laps at the shore and a shimmer drifts down the river */
+-    for (row = (9 - (t / 6) % 9) % 9; row < M.h; row += 9) {
+-        int k;
+-        for (k = 0; k < 2 && row + k < M.h; k++) {
+-            if (coast_l[row + k] < 0) continue;
+-            RG(coast_l[row + k] - 1, M.y + row + k, 1, 1, tc(PAL_WHITE));
+-            RG(coast_r[row + k], M.y + row + k, 1, 1, tc(PAL_WHITE));
+-        }
+-    }
+-    for (row = (7 - (t / 4) % 7) % 7; row < M.h; row += 7) {
+-        if (coast_l[row] < 0) continue;
+-        R(river_c[row] - 3 + (row & 1), M.y + row, 2, 1, PAL_RAMP(RAMP_SKY, 7));
+-    }
+     /* soft seams between the meadow bands */
+     for (row = 1; row < 6; row++) {
+         int rr0 = row * M.h / 6, l, r, rc;
+@@ -405,6 +398,38 @@ static void draw_land(void)
+     }
+ }
+ 
++/* Is the screen pixel under a road? The roads are drawn after the foam,
++ * the shimmer and the embers and cover them there (draw_roads: each road
++ * is one full edge rect first). */
++static int road_covers(int px, int py);
++
++/* one pixel of a moving part, unless a road covers it (see road_covers) */
++static void RA(int x, int y, int w, uint8_t c)
++{
++    int i;
++    for (i = 0; i < w; i++)
++        if (!road_covers(x + i, y)) put(x + i, y, 1, 1, c);
++}
++
++/* the land's moving parts: foam laps at the shore and a shimmer drifts
++ * down the river (see draw_ground) */
++static void draw_land_anim(void)
++{
++    int row, t = g_t;
++    for (row = (9 - (t / 6) % 9) % 9; row < M.h; row += 9) {
++        int k;
++        for (k = 0; k < 2 && row + k < M.h; k++) {
++            if (coast_l[row + k] < 0) continue;
++            RA(coast_l[row + k] - 1, M.y + row + k, 1, tc(PAL_WHITE));
++            RA(coast_r[row + k], M.y + row + k, 1, tc(PAL_WHITE));
++        }
++    }
++    for (row = (7 - (t / 4) % 7) % 7; row < M.h; row += 7) {
++        if (coast_l[row] < 0) continue;
++        RA(river_c[row] - 3 + (row & 1), M.y + row, 2, tc(PAL_RAMP(RAMP_SKY, 7)));
++    }
++}
++
+ /* ---- ground patches: clover on the meadow, plum blotches and embers in
+  * Hellvile (so neither side is ever a flat single-colour blob) --------- */
+ typedef struct { uint8_t x, y, rx, ry; } Patch;
+@@ -419,7 +444,7 @@ static const Patch hell_patches[] = {
+ 
+ static void draw_patches(void)
+ {
+-    int i, t = g_t;
++    int i;
+     for (i = 0; i < DOOMO_COUNTOF(hill_patches); i++) {
+         const Patch *p = &hill_patches[i];
+         int x = fp_mx(p->x), y = fp_my(p->y), rx = p->rx * M.w / 256 + 1, ry = p->ry * M.h / 256 + 1;
+@@ -431,19 +456,29 @@ static void draw_patches(void)
+     for (i = 0; i < DOOMO_COUNTOF(hell_patches); i++) {
+         const Patch *p = &hell_patches[i];
+         int x = fp_mx(p->x), y = fp_my(p->y), rx = p->rx * M.w / 256 + 1, ry = p->ry * M.h / 256 + 1;
+-        int glow = ((t / 8) + i * 3) % 12;
+         E(x, y, rx * 3 / 4, ry * 3 / 4, PAL_RAMP(RAMP_VAPE, 3));
+         E(x + rx / 5, y + ry / 5, rx / 2, ry / 2, PAL_RAMP(RAMP_VAPE, 2));
+         /* a little ember crack */
+         R(x - rx / 2, y, rx / 3, 1, PAL_RAMP(RAMP_LAVA, 3));
+         R(x - rx / 2 + rx / 3, y + 1, rx / 4, 1, PAL_RAMP(RAMP_LAVA, 3));
+-        if (glow < 6) RG(x - rx / 3, y, 2, 1, PAL_RAMP(RAMP_LAVA, 5 + glow / 3));
+         /* purple grass tufts */
+         R(x + rx - 1, y - ry, 1, 2, PAL_RAMP(RAMP_VAPE, 6));
+         R(x + rx + 1, y - ry - 1, 1, 3, PAL_RAMP(RAMP_VAPE, 6));
+     }
+ }
+ 
++/* the embers' glow in the plum blotches (over the static layer) */
++static void draw_patches_anim(void)
++{
++    int i, t = g_t;
++    for (i = 0; i < DOOMO_COUNTOF(hell_patches); i++) {
++        const Patch *p = &hell_patches[i];
++        int x = fp_mx(p->x), y = fp_my(p->y), rx = p->rx * M.w / 256 + 1;
++        int glow = ((t / 8) + i * 3) % 12;
++        if (glow < 6) RA(x - rx / 3, y, 2, PAL_RAMP(RAMP_LAVA, 5 + glow / 3));
++    }
++}
++
+ /* ---- roads --------------------------------------------------------------- */
+ typedef struct { uint8_t x0, y0, x1, y1; } Seg;     /* map units, axis aligned */
+ static const Seg roads[] = {
+@@ -459,6 +494,33 @@ static const Seg roads[] = {
+     { 108, 40, 108, 128 }
+ };
+ 
++/* the roads' edge rects of this frame (x0, y0, x1, y1), set by
++ * draw_ground: every road is first drawn as one full rect of its edge
++ * colour, so these are exactly the pixels the roads cover */
++static int16_t road_rc[DOOMO_COUNTOF(roads)][4];
++
++static void road_rects(void)
++{
++    int i, rw = 3;
++    for (i = 0; i < DOOMO_COUNTOF(roads); i++) {
++        const Seg *s = &roads[i];
++        int x0 = fp_mx(s->x0), y0 = fp_my(s->y0), x1 = fp_mx(s->x1), y1 = fp_my(s->y1);
++        int16_t *r = road_rc[i];
++        if (y0 == y1) { r[0] = (int16_t)x0; r[1] = (int16_t)(y0 - 1); r[2] = (int16_t)(x1 + rw); r[3] = (int16_t)(y0 + rw); }
++        else { r[0] = (int16_t)(x0 - 1); r[1] = (int16_t)y0; r[2] = (int16_t)(x0 + rw + 1); r[3] = (int16_t)(y1 + rw); }
++    }
++}
++
++static int road_covers(int px, int py)
++{
++    int i;
++    for (i = 0; i < DOOMO_COUNTOF(roads); i++) {
++        const int16_t *r = road_rc[i];
++        if (px >= r[0] && px < r[2] && py >= r[1] && py < r[3]) return 1;
++    }
++    return 0;
++}
++
+ static void draw_roads(void)
+ {
+     int i, rw = 3;
+@@ -1229,8 +1291,11 @@ static void bc_build(FpBCache *bc, const FpLocDraw *locs, int n, uint32_t key)
+ 
+ static void draw_walkers(void)
+ {
+-    int i, t = g_t, n = 14;
+-    int pop = town_count(-1);
++    int i, t = g_t, n = 14, pop = 0;
++    /* (perf) only a count under 40 matters: stop there (a full island
++     * would otherwise scan all 1000 slots every frame) */
++    for (i = 0; i < DOOMO_MAX_RESIDENTS && pop < 40; i++)
++        if (doomo_town.res[i].status != RES_EMPTY) pop++;
+     if (pop <= 0) return;
+     if (pop < 40) n = 3 + pop / 6;
+     for (i = 0; i < n; i++) {
+@@ -1300,6 +1365,38 @@ int fp_island_tint(void)
+ }
+ 
+ 
++/* (perf) The land, the ground patches and the roads do not move: they
++ * are one static layer that a platform may keep (plat_layer_*, platform.h;
++ * the GBA keeps it as rects in its spare EWRAM block) and put back instead
++ * of the ~600 spans and ellipses that draw it. The layer is transparent
++ * where it draws nothing, so the sea and its glints show through as
++ * before; the moving parts drawn after it (foam, shimmer, embers) skip
++ * the pixels a road covers (RA). Same pixels as drawing everything. */
++static void draw_ground(void)
++{
++    uint32_t key = 2166136261u;
++#define LK_MIX(v) (key = (key ^ (uint32_t)(v)) * 16777619u)
++    LK_MIX(0x15A7u); LK_MIX(M.x); LK_MIX(M.y); LK_MIX(M.w); LK_MIX(M.h); LK_MIX(g_tint);
++#undef LK_MIX
++    road_rects();
++    draw_sea();
++    draw_sea_anim();
++    if (plat_layer_restore(key)) return;
++    if (plat_layer_begin(key, M.y, M.y + M.h)) {
++        draw_land();
++        draw_patches();
++        draw_roads();
++        plat_layer_end();
++        /* the rows were blanked for the capture: draw them again */
++        draw_sea();
++        draw_sea_anim();
++        if (plat_layer_restore(key)) return;
++    }
++    draw_land();
++    draw_patches();
++    draw_roads();
++}
++
+ void fp_island_draw_map(const FpLocDraw *locs, int n, int sel)
+ {
+     int i, order[FP_LOC_MAX];
+@@ -1307,10 +1404,9 @@ void fp_island_draw_map(const FpLocDraw *locs, int n, int sel)
+     fp_island_geometry();
+     g_t = fp_t();
+     g_tint = fp_island_tint();
+-    draw_sea();
+-    draw_land();
+-    draw_patches();
+-    draw_roads();
++    draw_ground();
++    draw_land_anim();
++    draw_patches_anim();
+     for (i = 0; i < DOOMO_COUNTOF(decos); i++) draw_deco(&decos[i]);
+     draw_walkers();
+     /* buildings back to front */
+diff --git a/core/src/ui_raster.c b/core/src/ui_raster.c
+index 7e600ff..5800570 100644
+--- a/core/src/ui_raster.c
++++ b/core/src/ui_raster.c
+@@ -29,6 +29,15 @@ __attribute__((weak)) int plat_draw_skipped(void)
+     return 0;
+ }
+ 
++/* Weak defaults of the kept static layer (platform.h): nothing is kept. */
++__attribute__((weak)) int plat_layer_begin(uint32_t key, int y0, int y1)
++{
++    (void)key; (void)y0; (void)y1;
++    return 0;
++}
++__attribute__((weak)) void plat_layer_end(void) { }
++__attribute__((weak)) int plat_layer_restore(uint32_t key) { (void)key; return 0; }
++
+ /* Weak default of plat_checker (platform.h): one pixel per call. */
+ __attribute__((weak)) void plat_checker(int x, int y, int w, int h, uint8_t color)
+ {
+diff --git a/core/tests/test_layer.c b/core/tests/test_layer.c
+new file mode 100644
+index 0000000..2c32a7f
+--- /dev/null
++++ b/core/tests/test_layer.c
+@@ -0,0 +1,57 @@
++/* test_layer.c - the kept static layer (platform.h plat_layer_*; owner:
++ * gba speed pass). A scene that keeps a layer must draw exactly the same
++ * pixels as when the platform keeps nothing: the free play island is run
++ * frame by frame at both resolutions, day / dusk / night, with the native
++ * platform's layer on and off, and every frame is compared. */
++#include "test.h"
++#include "../src/fp_int.h"
++#include "../src/fp_island.h"
++
++static uint32_t frame_hash(void)
++{
++    uint32_t h = 2166136261u;
++    int p;
++    for (p = 0; p < nat_w * nat_h; p++) h = (h ^ nat_fb[p]) * 16777619u;
++    return h;
++}
++
++/* each frame of the island drawn twice, with the layer kept (as the
++ * game does: captured on the first frame, restored after) and without */
++static int island_check(int minute, int n)
++{
++    int k;
++    fp_new_island(TOWN_POP_PREMADE, 4242);
++    scene_set(&SCENE_ISLAND, FP_ISLAND_ARG_RETURN);
++    for (k = 0; k < n; k++) {
++        uint32_t kept, drawn;
++        doomo_town.minute = (uint16_t)minute;
++        plat_begin_frame();
++        doomo_frame(0);
++        plat_end_frame();
++        SCENE_ISLAND.draw();
++        kept = frame_hash();
++        nat_layer_off = 1;
++        SCENE_ISLAND.draw();
++        nat_layer_off = 0;
++        drawn = frame_hash();
++        if (kept != drawn) return k;
++    }
++    return -1;
++}
++
++TEST(layer_island_same_pixels_as_drawn)
++{
++    static const int minutes[] = { 8 * 60, 19 * 60, 23 * 60 };
++    int res, m, bad;
++    for (res = 0; res < 2; res++) {
++        nat_w = res ? 320 : 240;
++        nat_h = res ? 240 : 160;
++        for (m = 0; m < DOOMO_COUNTOF(minutes); m++) {
++            bad = island_check(minutes[m], 200);
++            CHECK_MSG(bad < 0, "island %dx%d minute %d: frame %d differs with the layer kept",
++                      nat_w, nat_h, minutes[m], bad);
++        }
++    }
++    nat_w = 240;
++    nat_h = 160;
++}
+diff --git a/gba/src/bigbuf.c b/gba/src/bigbuf.c
+index 4902545..87975b9 100644
+--- a/gba/src/bigbuf.c
++++ b/gba/src/bigbuf.c
+@@ -32,6 +32,8 @@ void gba_big_claim(int who)
+     big_owner = who;
+ }
+ 
++int gba_big_owner(void) { return big_owner; }
++
+ void *plat_save_scratch(uint32_t *cap)
+ {
+     gba_big_claim(GBA_BIG_BY_SAVE);
+diff --git a/gba/src/gba_plat.h b/gba/src/gba_plat.h
+index 7bd884c..75b52ef 100644
+--- a/gba/src/gba_plat.h
++++ b/gba/src/gba_plat.h
+@@ -75,6 +75,9 @@ void video_flip(void);                   /* wait for vblank pacing + flip */
+ extern uint8_t gba_big[];
+ enum { GBA_BIG_FREE, GBA_BIG_BY_OW, GBA_BIG_BY_R3D, GBA_BIG_BY_SAVE };
+ void gba_big_claim(int who);
++int  gba_big_owner(void);
++/* the kept static layer (layer.c, plat_layer_*); the house is 4 (room_int.h) */
++#define GBA_BIG_BY_LAYER 5
+ 
+ /* ---- 3D (r3d*.c) --------------------------------------------------------- */
+ void r3d_init(void);
+diff --git a/gba/src/hcmd.c b/gba/src/hcmd.c
+index 1478380..575b485 100644
+--- a/gba/src/hcmd.c
++++ b/gba/src/hcmd.c
+@@ -197,6 +197,10 @@ void gba_harness_cmd(void)
+         r = 1;
+         break;
+     /* --- end H2 --- */
++    case GBA_HC_FRAME_HASH:
++        gba_fhash_left = (uint16_t)arg;
++        r = 1;
++        break;
+     default:
+         break;
+     }
+diff --git a/gba/src/hcmd.h b/gba/src/hcmd.h
+index 1b0e583..e35e6b5 100644
+--- a/gba/src/hcmd.h
++++ b/gba/src/hcmd.h
+@@ -15,9 +15,16 @@ enum {
+     GBA_HC_TEXT_HIT = 12,     /* -> 1 if the needle was drawn since the arm         */
+     GBA_HC_STORY_FP = 13,     /* -> story_fingerprint()                            */
+     GBA_HC_ROOM_PARITY = 14,  /* arg view | path: -> FNV of the parity frame (room.c) */
+-    GBA_HC_ROOM_TEST = 15     /* arg ROOM_TEST_*: the house test layout (room.c)   */
++    GBA_HC_ROOM_TEST = 15,    /* arg ROOM_TEST_*: the house test layout (room.c)   */
++    GBA_HC_FRAME_HASH = 16    /* arg n: the next n ticks are all drawn (no catch-up
++                               * skips) and each frame's FNV-1a is logged as
++                               * "fhash TICK HASH" (speed pass: pixel parity of two
++                               * ROMs, "post 16 N" in a harness script) */
+ };
+ 
++/* GBA_HC_FRAME_HASH: ticks left to draw and hash (main.c) */
++extern uint16_t gba_fhash_left;
++
+ /* "seed N": plat_entropy() returns the pinned value while gba_entropy_pinned
+  * (like the native runner's fixed entropy), so the next town_new() and every
+  * later entropy read are reproducible. */
+diff --git a/gba/src/layer.c b/gba/src/layer.c
+new file mode 100644
+index 0000000..b57aafa
+--- /dev/null
++++ b/gba/src/layer.c
+@@ -0,0 +1,79 @@
++/* layer.c - the kept static layer of platform.h (plat_layer_*; owner: gba).
++ *
++ * A scene draws a layer that does not move (the free play island's land,
++ * patches and roads: ~600 spans and ellipses, ~35 ms of THUMB a frame)
++ * once between plat_layer_begin and plat_layer_end; afterwards
++ * plat_layer_restore puts the same pixels back from runs (layer_rows,
++ * ARM in IWRAM: layer_loops.s), a few ms.
++ *
++ * begin clears the rows to index 0, which no 2D primitive ever draws
++ * (they all turn 0 into PAL_BLACK), so end can tell the layer's pixels
++ * from "nothing": it reads the rows back from the back page and keeps,
++ * per row, a count and the runs of one colour (x0, length, colour; 3 B).
++ * The runs live in gba_big (bigbuf.c), claimed as GBA_BIG_BY_LAYER: the
++ * 3D views, the overworld, the house and the save code take the block
++ * over in turn, which drops the layer (the scene then simply captures it
++ * again). A layer with more runs than fit is not kept (the scene draws
++ * it, and is not asked again for that key).
++ *
++ * RAM: 12 B of .bss; the runs are in gba_big.
++ */
++#include "gba_plat.h"
++#include "video_int.h"
++
++void layer_rows(const uint8_t *s, int y0, int y1) IWRAM_CALL;
++
++static uint32_t lay_key, lay_bad;       /* held / too big to keep         */
++static uint8_t  lay_y0, lay_y1;         /* rows of the layer              */
++static uint8_t  lay_ok, lay_open;
++
++int plat_layer_begin(uint32_t key, int y0, int y1)
++{
++    if (gba_nodraw || (key == lay_bad && key)) return 0;
++    if (y0 < 0) y0 = 0;
++    if (y1 > SCREEN_H) y1 = SCREEN_H;
++    if (y1 <= y0) return 0;
++    gba_big_claim(GBA_BIG_BY_LAYER);
++    lay_ok = 0;
++    lay_key = key;
++    lay_y0 = (uint8_t)y0;
++    lay_y1 = (uint8_t)y1;
++    lay_open = 1;
++    vid_rect_full(0, y0, SCREEN_W, y1, 0);   /* index 0: "nothing" */
++    return 1;
++}
++
++void plat_layer_end(void)
++{
++    uint8_t *d = gba_big, *const end = gba_big + GBA_BIG_SIZE;
++    int y;
++    if (!lay_open) return;
++    lay_open = 0;
++    if (gba_big_owner() != GBA_BIG_BY_LAYER) return;     /* taken meanwhile */
++    for (y = lay_y0; y < lay_y1; y++) {
++        const volatile uint8_t *row = (const volatile uint8_t *)gba_back + y * SCREEN_W;
++        uint8_t *cnt = d++;
++        int x = 0, n = 0;
++        while (x < SCREEN_W) {
++            const uint8_t c = row[x];
++            const int x0 = x;
++            while (++x < SCREEN_W && row[x] == c) {}
++            if (!c) continue;
++            if (d + 3 + 1 > end) { lay_bad = lay_key; return; }   /* too big */
++            d[0] = (uint8_t)x0;
++            d[1] = (uint8_t)(x - x0);
++            d[2] = c;
++            d += 3;
++            n++;
++        }
++        *cnt = (uint8_t)n;
++    }
++    lay_ok = 1;
++}
++
++int plat_layer_restore(uint32_t key)
++{
++    if (!lay_ok || key != lay_key || gba_big_owner() != GBA_BIG_BY_LAYER) return 0;
++    if (!gba_nodraw) layer_rows(gba_big, lay_y0, lay_y1);
++    return 1;
++}
+diff --git a/gba/src/layer_loops.s b/gba/src/layer_loops.s
+new file mode 100644
+index 0000000..7d28c62
+--- /dev/null
++++ b/gba/src/layer_loops.s
+@@ -0,0 +1,75 @@
++@ layer_loops.s - plat_layer_restore's row loop, ARM in IWRAM (owner: gba).
++
++    .section .iwram, "ax", %progbits
++    .arm
++    .align 2
++
++@ void layer_rows(const uint8_t *s, int y0, int y1)
++@ A kept layer (layer.c) is, per row, a count and runs of (x0, length,
++@ colour). A row's span from its first run's word to its last run's end
++@ is DMA'd into a line buffer on the stack, the runs are stored there with
++@ plain byte / word stores (VRAM would need halfword read-modify-writes)
++@ and the span is DMA'd back: the pixels between runs go back as they
++@ were, so the layer stays transparent there.
++    .global layer_rows
++    .type   layer_rows, %function
++layer_rows:
++    push    {r4-r11, lr}
++    sub     sp, sp, #240
++    ldr     r10, =gba_back
++    ldr     r10, [r10]
++    ldr     r11, =0x040000D4            @ REG_DMA3SAD (DAD, CNT follow)
++1:  cmp     r1, r2
++    bge     9f
++    ldrb    r3, [r0], #1                @ runs in this row
++    cmp     r3, #0
++    beq     8f
++    add     r5, r3, r3, lsl #1
++    add     r5, r0, r5                  @ end of the row's runs
++    ldrb    r4, [r0]
++    bic     r4, r4, #3                  @ a: first word
++    ldrb    r6, [r5, #-3]
++    ldrb    r7, [r5, #-2]
++    add     r6, r6, r7
++    add     r6, r6, #3
++    sub     r6, r6, r4
++    mov     r6, r6, lsr #2              @ words
++    orr     r6, r6, #0x84000000         @ DMA enable, 32-bit
++    mov     r7, #240
++    mla     r8, r1, r7, r10
++    add     r8, r8, r4                  @ VRAM row + a
++    add     r9, sp, r4                  @ line buffer + a
++    stmia   r11, {r8, r9}               @ VRAM -> buffer
++    str     r6, [r11, #8]
++2:  ldrb    r3, [r0], #1                @ x0
++    ldrb    r7, [r0], #1                @ length
++    ldrb    r12, [r0], #1               @ colour
++    add     r3, sp, r3
++    orr     r12, r12, r12, lsl #8
++    orr     r12, r12, r12, lsl #16
++3:  tst     r3, #3                      @ bytes up to a word boundary
++    beq     4f
++    strb    r12, [r3], #1
++    subs    r7, r7, #1
++    bne     3b
++    b       6f
++4:  subs    r7, r7, #4                  @ words
++    strge   r12, [r3], #4
++    bgt     4b
++    beq     6f
++    add     r7, r7, #4                  @ the last 1..3 bytes
++5:  strb    r12, [r3], #1
++    subs    r7, r7, #1
++    bne     5b
++6:  cmp     r0, r5
++    blt     2b
++    str     r9, [r11]                   @ buffer -> VRAM
++    str     r8, [r11, #4]
++    str     r6, [r11, #8]
++8:  add     r1, r1, #1
++    b       1b
++9:  add     sp, sp, #240
++    pop     {r4-r11, lr}
++    bx      lr
++    .size   layer_rows, . - layer_rows
++    .ltorg
+diff --git a/gba/src/main.c b/gba/src/main.c
+index 1f15536..4445057 100644
+--- a/gba/src/main.c
++++ b/gba/src/main.c
+@@ -166,7 +166,7 @@ void plat_begin_frame(void)
+         logic_base_vbl = gba_vblanks - gba_frames * 2;
+         due = gba_frames;
+     }
+-    if (due > gba_frames + 1 && !skipped_in_row) {
++    if (due > gba_frames + 1 && !skipped_in_row && !gba_fhash_left) {
+         gba_nodraw = 1;
+         skipped_in_row = 1;
+     } else {
+@@ -182,6 +182,18 @@ int plat_draw_skipped(void)
+     return gba_nodraw;
+ }
+ 
++/* GBA_HC_FRAME_HASH (hcmd.h): the drawn frame's FNV-1a, logged */
++uint16_t gba_fhash_left;
++static void fhash_log(void)
++{
++    const uint32_t *p = (const uint32_t *)gba_back;
++    uint32_t h = 2166136261u;
++    int i;
++    for (i = 0; i < SCREEN_W * SCREEN_H / 4; i++) h = (h ^ p[i]) * 16777619u;
++    gba_fhash_left--;
++    gba_logf("fhash %u %x", (unsigned)gba_frames, (unsigned)h);
++}
++
+ void plat_end_frame(void)
+ {
+     static uint32_t stack_hw;
+@@ -199,6 +211,7 @@ void plat_end_frame(void)
+         gba_mailbox.work_sum += w;
+         gba_mailbox.work_n++;
+         if (w > gba_mailbox.work_max) gba_mailbox.work_max = w;
++        if (gba_fhash_left) fhash_log();
+         video_flip();
+         gba_mailbox.drawn++;
+     }
+diff --git a/gba/src/video.c b/gba/src/video.c
+index eedcd8d..6d4ed9c 100644
+--- a/gba/src/video.c
++++ b/gba/src/video.c
+@@ -72,6 +72,15 @@ void video_init(void)
+     build_font_rows();
+ }
+ 
++/* one pixel, a halfword read-modify-write (volatile: a plain one may be
++ * compiled into a byte store, which VRAM mirrors into both bytes) */
++void vid_pixel(int x, int y, uint32_t color)
++{
++    volatile uint16_t *p = gba_back + y * (SCREEN_W / 2) + (x >> 1);
++    if (x & 1) *p = (uint16_t)((*p & 0x00FF) | (color << 8));
++    else *p = (uint16_t)((*p & 0xFF00) | color);
++}
++
+ int plat_screen_w(void) { return SCREEN_W; }
+ int plat_screen_h(void) { return SCREEN_H; }
+ 
+diff --git a/gba/src/video.iwram.c b/gba/src/video.iwram.c
+index 4afb43e..fe7ddbf 100644
+--- a/gba/src/video.iwram.c
++++ b/gba/src/video.iwram.c
+@@ -21,12 +21,8 @@ static inline void put_hi(uint16_t *p, uint32_t c)
+     *q = (uint16_t)((*q & 0x00FF) | (c << 8));
+ }
+ 
+-void vid_pixel(int x, int y, uint32_t color)
+-{
+-    uint16_t *p = gba_back + y * LINE + (x >> 1);
+-    if (x & 1) put_hi(p, color);
+-    else put_lo(p, color);
+-}
++/* vid_pixel: video.c (THUMB; only clipped glyph edges and 1-pixel lines
++ * use it, and IWRAM is full) */
+ 
+ /* vid_rect: video_loops.s */
+ 
+@@ -282,8 +278,11 @@ void plat_line(int x0, int y0, int x1, int y1, uint8_t color)
+     n = 4096;                              /* hard cap */
+     while (n-- > 0) {
+         int e2;
+-        if ((unsigned)x0 < SCREEN_W && (unsigned)y0 < SCREEN_H)
+-            vid_pixel(x0, y0, color);
++        if ((unsigned)x0 < SCREEN_W && (unsigned)y0 < SCREEN_H) {
++            uint16_t *p = gba_back + y0 * LINE + (x0 >> 1);  /* (inline: no call a pixel) */
++            if (x0 & 1) put_hi(p, color);
++            else put_lo(p, color);
++        }
+         if (x0 == x1 && y0 == y1) break;
+         e2 = 2 * err;
+         if (e2 >= dy) { err += dy; x0 += sx; }

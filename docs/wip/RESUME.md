@@ -11,6 +11,7 @@ The patches apply on top of `7fccf54`, with `git apply docs/wip/<name>.patch`.
 |---|---|---|
 | `house_h3_ps1_room_and_h4m2_visits_mart.patch` | H3: the PS1 2.5D house renderer (`ps1/src/room.c`). H4.M2 rest: visits (`home_visit.c`), the mart (`home_mart.c`), animations and hooks | mid-work; not yet through the core, GBA and PS1 checks |
 | `music_mu1t_m15_mu4d_banks.patch` | MU1T M1.5 (musgen, guard, turnarounds, GEN graphs), MU6 T3, MU4d banks | mid-work |
+| `gba_speed_island_wip.patch` | GBA speed pass, stopped mid-work: island hub static layers / row stream (`fp_island*.c`, `ui_raster.c`, `gba/src/video.c`, `bigbuf.c`) | mid-work; apply onto the current branch and re-verify |
 | `music_mu1_m4.patch` | MU1 M4 (matrix, stingers, comic bridge, DECK vinyl, GEN bags, chapters, beds), MU6 T8/T9 | mid-work |
 
 Each patch's agent was told to verify everything before pushing. Re-run the full verification after applying a patch: `make -C core test`, SAN=1, xcheck, check-gen, the GBA builds and tests, and clean PS1 builds.
