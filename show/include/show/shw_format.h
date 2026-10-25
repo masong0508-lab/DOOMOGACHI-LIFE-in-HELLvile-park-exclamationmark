@@ -43,6 +43,8 @@
  * A show op is BeatEv{at, anchor, BOP_SHOT, a = SHW_SOP_FLAG | SOP_*, b = arg
  * index}: args[b] is the op's word count n, args[b+1 .. b+n] its words (layouts
  * by op below). beat.c hands BOP_SHOT back as BT_EXT; show_ext.c runs it.
+ * An "object" in an op's words is an actor slot (0..7) or 0x100 + a prop slot.
+ * A slug card's strings are four NUL-terminated texts: beat id, title, act, TC in.
  * Every sound is SOP_AUDIO carrying its event index k from audio_events.json
  * (the PS1 publishes the k values it fired, P4). The show never emits
  * BOP_SFX / BOP_MUSIC* / BOP_FLAG / BOP_WAIT_A.
@@ -150,8 +152,10 @@ typedef struct ShwShotHdr {
     uint32_t off_texpages;     /* 72                                           */
     uint32_t off_cluts;        /* 76                                           */
     uint16_t vram_plan[4];     /* 80 VRAM pages used: set, cast, crowd, text   */
+    uint16_t variant;          /* 88 strtab offset of the set variant (set=x:v) */
+    uint16_t pad;              /* 90                                           */
 } ShwShotHdr;
-SHW_ASSERT_SIZE(ShwShotHdr, 88);
+SHW_ASSERT_SIZE(ShwShotHdr, 92);
 
 enum { SHW_SET_SLUG, SHW_SET_2D, SHW_SET_VIEW3D, SHW_SET_OVERWORLD, SHW_SET_ROOM };
 enum { SHW_BADGE_PS1_LEGAL, SHW_BADGE_EMU_ONLY };
@@ -176,7 +180,7 @@ SHW_ASSERT_SIZE(ShwPlane, 24);
 enum { SHW_PLANE_BANDS, SHW_PLANE_IMAGE, SHW_PLANE_TILEMAP, SHW_PLANE_STROKES, SHW_PLANE_GRAIN,
        SHW_PLANE_VIEW3D, SHW_PLANE_OVERWORLD, SHW_PLANE_ROOM };
 enum { SHW_ORDER_BACK, SHW_ORDER_FRONT, SHW_ORDER_TOP };  /* behind actors / over / over all */
-enum { SHW_PLANE_F_TILE = 1, SHW_PLANE_F_OUTSIDE = 2 };
+enum { SHW_PLANE_F_TILE = 1, SHW_PLANE_F_OUTSIDE = 2, SHW_PLANE_F_HIDDEN = 4, SHW_PLANE_F_LIGHT_FIXED = 8 };
 
 typedef struct ShwActor {
     uint8_t  kind;             /*  0 SHW_ACTOR_*                               */
@@ -201,8 +205,8 @@ enum { SHW_STATE_NORMAL, SHW_STATE_POSSESSED, SHW_STATE_GHOST, SHW_STATE_DEAD };
 typedef struct ShwProp {
     uint8_t  plane;            /*  0 plane index it rides                      */
     uint8_t  face;             /*  1 SHW_FACE_*                                */
-    uint8_t  anchor;           /*  2 0 = top-left, 1 = centre                  */
-    uint8_t  flags;            /*  3                                           */
+    uint8_t  anchor;           /*  2 SHW_ANCHOR_* (the point at= names)        */
+    uint8_t  flags;            /*  3 SHW_PROP_F_*                              */
     int16_t  x, y;             /*  4 in its plane's coordinates                */
     uint16_t art;              /*  8 strtab offset of the art source name      */
     uint16_t tex;              /* 10 texpage index, SHW_NONE = slug box        */
@@ -210,6 +214,8 @@ typedef struct ShwProp {
 SHW_ASSERT_SIZE(ShwProp, 12);
 
 enum { SHW_FACE_FRONT, SHW_FACE_L, SHW_FACE_R, SHW_FACE_WALL };
+enum { SHW_ANCHOR_BOTTOM, SHW_ANCHOR_CENTER, SHW_ANCHOR_TOP, SHW_ANCHOR_TOPLEFT };
+enum { SHW_PROP_F_HIDDEN = 1, SHW_PROP_F_LIGHT_FIXED = 2 };
 
 typedef struct ShwCrowd {
     uint8_t  look_base;        /*  0 first look index (look_k looks, reused)   */
@@ -310,9 +316,9 @@ SHW_ASSERT_SIZE(ShwClut, 8);
 enum {
     SOP_NOP = 0,
     SOP_AUDIO,       /* k                                   (P4: publish k)      */
-    SOP_MOVE,        /* actor, x, y, over, TW_* ease id                          */
+    SOP_MOVE,        /* object, x, y, over, TW_* ease id (-1 linear)              */
     SOP_WALK,        /* actor, x, over                                           */
-    SOP_SQUASH,      /* actor, q8, over                                          */
+    SOP_SQUASH,      /* object, q8, over                                         */
     SOP_FACE,        /* actor, 0 = R | 1 = L                                     */
     SOP_POSE,        /* actor, str flipbook, fps                                 */
     SOP_BLINK,       /* actor, frames                                            */
@@ -321,8 +327,8 @@ enum {
     SOP_STOP,        /* actor                                                    */
     SOP_HUM,         /* actor, on                                                */
     SOP_SUPER,       /* str, style (SHW_TXT_*), x, y, from, to, until, glyphs    */
-    SOP_TEXT_STEP,   /* super event index, glyphs shown                          */
-    SOP_TEXT_CLEAR,  /* super event index                                        */
+    SOP_TEXT_STEP,   /* super index (0 = the shot's first), glyphs shown          */
+    SOP_TEXT_CLEAR,  /* super index                                              */
     SOP_SIGN,        /* str, prop slot                                           */
     SOP_CARD,        /* str template, str k=v text                               */
     SOP_CAM,         /* camkey index                                             */
@@ -331,11 +337,14 @@ enum {
     SOP_REVEAL,      /* stroke index, from, to                                   */
     SOP_FX,          /* str kind, x, y, n, seed                                  */
     SOP_BOIL,        /* on, every                                                */
-    SOP_PROP,        /* prop slot, field (SHW_PF_*), value  (`change`, base=)    */
+    SOP_PROP,        /* object, field (SHW_PF_*), value  (`change`, `prop <id> state=`) */
     SOP_IRIS,        /* in(1)|out(0), x, y, shape (0 circle, 1 heart), over, hold */
     SOP_COUNT
 };
 enum { SHW_TXT_TYPE, SHW_TXT_POP, SHW_TXT_DEADPAN };
-enum { SHW_PF_FACE, SHW_PF_X, SHW_PF_Y, SHW_PF_HIDE };
+/* SOP_PROP: HIDE value 1 hide / 0 show; STATE value = str offset of the state name
+ * (the prop's art.<state>); ATTACH value = the object it rides (-1 = detach);
+ * KIND value = SHW_ACTOR_* (an actor changes image kind). */
+enum { SHW_PF_FACE, SHW_PF_X, SHW_PF_Y, SHW_PF_HIDE, SHW_PF_STATE, SHW_PF_ATTACH, SHW_PF_KIND };
 
 #endif

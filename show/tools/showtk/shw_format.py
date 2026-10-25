@@ -44,7 +44,8 @@ STRUCTS = {
         ("off_props", "uint32_t", 1), ("off_crowds", "uint32_t", 1), ("off_camkeys", "uint32_t", 1),
         ("off_events", "uint32_t", 1), ("off_args", "uint32_t", 1), ("off_tracks", "uint32_t", 1),
         ("off_strokes", "uint32_t", 1), ("off_strings", "uint32_t", 1),
-        ("off_texpages", "uint32_t", 1), ("off_cluts", "uint32_t", 1), ("vram_plan", "uint16_t", 4)],
+        ("off_texpages", "uint32_t", 1), ("off_cluts", "uint32_t", 1), ("vram_plan", "uint16_t", 4),
+        ("variant", "uint16_t", 1), ("pad", "uint16_t", 1)],
     "ShwLook": [("b", "uint8_t", 48)],
     "ShwPlane": [
         ("kind", "uint8_t", 1), ("order", "uint8_t", 1), ("flags", "uint8_t", 1), ("boil", "uint8_t", 1),
