@@ -13,11 +13,15 @@
 set hahaland_crane kind=overworld map=MAPID_HAHALAND px=1 desc="MT-1: crane up over pastel HaHaland (the plaza to Town Hall hill)"
   cam3d crane from=34.5,24.5 to=30.5,10.5 daylight=15 ease=OUT       # the plaza -> Town Hall (1,1 door at row 6)
   variant day daylight=15 desc="MT-1 intro"
+  # ambient overlay (the 3D hosts animate the world themselves; SETS.md sec.6)
+  amb petals kind=motes type=petal n=16 area=0,0,320,180 order=front par=0 seed=401 speed=0.7
 end
 
 set hahaland_wall_pan kind=overworld map=MAPID_HAHALAND px=1 desc="MT-3: pan east across the park to the Wall and its gate (the brick wipe starts on the Wall line)"
   cam3d pan from=40.5,30.5 to=53.5,30.5 daylight=15 ease=LINEAR      # the gate 'g' is at x 56, rows 30-31
   variant day daylight=15 desc="MT-3 pre-chorus"
+  # ambient overlay (the 3D hosts animate the world themselves; SETS.md sec.6)
+  amb petals kind=motes type=petal n=12 area=0,0,320,180 order=front par=0 seed=402 speed=0.7
 end
 
 # ---- VIEW3D: core/data/maps/vape_cellar.txt (first person, with the HUD) -----------------
@@ -31,6 +35,8 @@ set title_corridor kind=view3d map=MAPID_VAPE_CELLAR px=1 desc="MT-5: the first-
   cam3d run from=2.5,5.5 to=10.5,5.5 look=16.5,5.5 z=eye      # down the back room toward the cellar stairs
   variant cute  tint=TINT_NONE tint_level=0 desc="MT-5 before the downbeat"
   variant truth tint=TINT_RED tint_level=4 desc="MT-5 on the sweetest line (with PAL_HELLIFY on the shot)"
+  # ambient overlay (the 3D hosts animate the world themselves; SETS.md sec.6)
+  amb dust kind=motes type=dust n=18 area=0,0,320,180 order=front par=0 seed=403 speed=0.4
 end
 
 set scary_house_fp kind=view3d map=MAPID_VAPE_CELLAR px=1 desc="3-03: INT. the Absolutely Not Scary House (first person), cardboard ghosts and real Puff Demons"
@@ -39,12 +45,16 @@ set scary_house_fp kind=view3d map=MAPID_VAPE_CELLAR px=1 desc="3-03: INT. the A
   cam3d out    from=10.5,5.5 to=16.5,5.5 look=20.5,5.5 z=eye      # the shortcut toward the bake tent
   variant cute  tint=TINT_NONE tint_level=0 desc="3-03 in (the filter)"
   variant truth tint=TINT_RED tint_level=3 desc="3-03 SLAUGHTER (with PAL_HELLIFY)"
+  # ambient overlay (the 3D hosts animate the world themselves; SETS.md sec.6)
+  amb dust kind=motes type=dust n=18 area=0,0,320,180 order=front par=0 seed=404 speed=0.4
 end
 
 set bake_tent_fp kind=view3d map=MAPID_VAPE_CELLAR px=1 desc="3-05: INT. the bake tent (first person): the Big Puff, Nana's tin, the saw"
   cam3d hold   from=25.5,17.5 to=26.5,18.5 look=28.5,20.0 z=eye
   variant truth tint=TINT_RED tint_level=3 desc="3-05 the fight"
   variant cute  tint=TINT_NONE tint_level=0 desc="3-05 after the REWIND: hearts, one tuft of stuffing, BAKE TEN"
+  # ambient overlay (the 3D hosts animate the world themselves; SETS.md sec.6)
+  amb flour kind=motes type=dust n=22 area=0,0,320,180 order=front par=0 seed=405 speed=0.3
 end
 
 # ---- ROOM: the game's 2.5D house (core/data/home, ps1/src/room.c) ------------------------
@@ -53,4 +63,6 @@ set cottage kind=room home=HOME_COTTAGE room=HOME_ROOM_LIVING preset=HP_EMPTY px
   obj window furn=FURN_WOOD_WINDOW  at=2,0 rot=0
   cam3d room yaw=512 zoom=1 daylight=6
   variant dawn daylight=6 desc="T-1, T-2"
+  # ambient overlay (the 3D hosts animate the world themselves; SETS.md sec.6)
+  amb dust kind=motes type=dust n=14 area=60,20,140,120 order=front par=0 seed=406 speed=0.2
 end

@@ -182,3 +182,9 @@ Each names the default taken and where to change it.
 - continuity D1: one design for all three eyecatch pairs = co_mt's ec1/ec2/ec3.shw (Mascotty `gen:mascotty_tiny(h=8)` by the banner pole, same depth). a2 drops a2_56-57 + `s_ec2out_bubble`, a3 drops a3s38-39 + `s_ec3out`/`s_ec3in`; then episode.shw includes ec2.shw/ec3.shw and strings/co_mt.shw. Until then the a2/a3 versions stay (no doubled frames).
 - continuity D2: every lantern stays dark from 2-01 to the end of Act Four (script 3-01 "dark since nine"); the rite candles and the 4-08 firework are the light. ART's `bandstand:torn/rite/night` need the lanterns-out states.
 - continuity: strings files not included by their own shots file are included from episode.shw ahead of the shots (a3, a4 now; co_mt after D1).
+
+## ART motion pass, 2026-10-25
+- ART motion: every set animates through `amb` statements (SETS.md sec.6), pure integer math with a C twin (show/art/engine/amb_math.h) so ENGINE ports it line for line; proposed record SHWR_AMB = 36. No hand-keyed frames.
+- ART motion: character motion = the engine's own figure render cut into parts (hat/ears, paws, feet) and moved (show/art/gen/motion.py); 229 flipbooks in series/acting.shw (`cycles` + `flip`), macros enter_walk/exit_run/take_big/react_small/laugh_full/hit_react/... A one-shot pose hands back to its `next` (idle) by itself.
+- ART motion: fun_fair's ferris wheel is 4 drawings (4.88 of 5 set-pool pages); pcycle is never used on a plane whose ramp also paints big areas (it flashed fountain_faces and lulla_tent: replaced by jets and waves).
+- ART motion: "make him a turkey too" (creator) -> gen:turkey(kind=roast|live|walk), flips turkey_roast/turkey_live/turkey_strut; "him" was not named, so the roast is a prop any cast member can hold (OVER) or Nana's table can carry.

@@ -80,6 +80,7 @@ class SetDef:
         self.planes, self.props, self.strokes, self.paths = [], [], [], []
         self.marks, self.frames, self.variants, self.cams, self.notes = [], [], [], [], []
         self.objs = []
+        self.ambs = []
 
     def plane(self, pid):
         for p in self.planes:
@@ -173,6 +174,8 @@ class Library:
                 cur.cams.append(st)
             elif kw == "obj":
                 cur.objs.append(st)
+            elif kw == "amb":
+                cur.ambs.append(st)
             elif kw in ("note", "waive", "lock"):
                 cur.notes.append(st)
             else:

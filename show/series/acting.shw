@@ -187,3 +187,132 @@ macro unpossess A
   +21    state $A normal ; expr $A EXPR_SHOCK ; thaw $A
   +34    expr $A EXPR_NEUTRAL
 end
+
+# ==== MOTION (ART motion pass): flipbooks built from the engine's own renders ====
+# gen:cycle / gen:pose (show/art/gen/motion.py) cut each character's engine render
+# into parts (hat/ears band, paws, feet) and move the parts; nothing is repainted.
+# `pose A <kind>` with a bare kind plays the actor's own <char>_<kind>; one-shots
+# hand back to `next` (idle) by themselves.  Previews: show_out/art/motion/.
+
+cycles chars=mayor,nana,fuzz,bonejangles,bloom,steamy,kevin,hattie,lulla,sunny,grampy,rivet
+       kinds=idle,walk,run,tiptoe,back_step,pop,pop_small,take_big,react_small,laugh_full,hit,smear_l,smear_r,exit_run
+# Pip (KID): everything but the hit
+cycles chars=pip kinds=idle,walk,run,tiptoe,back_step,pop,pop_small,take_big,react_small,laugh_full,smear_l,smear_r,exit_run
+# Mascotty never squashes and has no idle clock: his walk and his quarter-speed wave only
+cycles chars=mascotty kinds=walk
+# the storybook (crayon register)
+cycles chars=young_giggs,young_imp,fluffy kinds=idle,walk
+
+# ---- named poses: the ART items of the shot lists' TODOs ------------------------
+flip young_giggs_back  src=gen:pose(char=young_giggs,name=from_behind) char=young_giggs
+flip fluffy_bob21      src=gen:pose(char=fluffy,name=bob21) char=fluffy
+flip nana_paw_tuck     src=gen:pose(char=nana,name=paw_tuck) char=nana loop=0
+flip mayor_roll        src=gen:pose(char=mayor,name=roll) char=mayor loop=0
+flip mayor_tie_balloon src=gen:pose(char=mayor,name=tie_balloon) char=mayor
+flip mayor_pat         src=gen:pose(char=mayor,name=pat) char=mayor loop=0
+flip mayor_reach_turn  src=gen:pose(char=mayor,name=reach_turn) char=mayor loop=0
+flip mayor_climb_down  src=gen:pose(char=mayor,name=climb_down) char=mayor
+flip hand_slip         src=gen:hand_slip(seed=70) loop=0
+flip kevin_third_blink src=gen:pose(char=kevin,name=third_blink) char=kevin mode=over
+flip mascotty_wave     src=gen:pose(char=mascotty,name=wave_quarter) char=mascotty
+flip bonejangles_ribs_purple src=gen:pose(char=bonejangles,name=ribs_purple) char=bonejangles mode=over
+flip bonejangles_mallet src=gen:pose(char=bonejangles,name=mallet_play) char=bonejangles
+flip fuzz_hug          src=gen:pose(char=fuzz,name=hug) char=fuzz loop=0
+flip fuzz_sheet_up     src=gen:pose(char=fuzz,name=sheet_up) char=fuzz loop=0
+flip pip_steps         src=gen:pose(char=pip,name=steps) char=pip
+flip steamy_tub        src=gen:pose(char=steamy,name=tub) char=steamy
+flip pet_hatch         src=gen:pet_hatch() loop=0
+flip horn_nubs         src=gen:horn_nubs() loop=0
+flip puff_idle         src=gen:puff_demon(state=idle)
+flip puff_flinch       src=gen:puff_demon(state=flinch) loop=0
+flip puff_hearts       src=gen:puff_demon(state=hearts) loop=0
+flip puff_mist         src=gen:puff_demon(state=mist) loop=0
+flip big_puff_idle     src=gen:puff_demon(state=idle,size=3)
+flip big_puff_hearts   src=gen:puff_demon(state=hearts,size=3) loop=0
+flip puff_breath       src=gen:puff_breath()
+flip rocket_climb      src=gen:rocket_climb()
+flip heart_bloom       src=gen:heart_bloom() loop=0
+flip purple_bloom      src=gen:purple_bloom() loop=0
+flip sheet_flip        src=gen:sheet_flip() loop=0
+flip fold4             src=gen:fold4() loop=0
+flip stamp             src=gen:stamp() loop=0
+flip crate_lid         src=gen:crate_lid() loop=0
+flip key_turn          src=gen:key_turn() loop=0
+flip knock_wobble      src=gen:knock_wobble() loop=0
+flip ghost_turn        src=gen:cardboard_ghost_turn() loop=0
+flip bedsheet_ghost    src=gen:bedsheet_ghost()
+flip underline_wobble  src=gen:underline_wobble() loop=0
+# the creator's turkey: a roast on its platter (Nana's table, or in any cast member's paws as
+# an OVER prop), and a live festival turkey critter that bobs, fans its tail and struts
+flip turkey_roast      src=gen:turkey(kind=roast)
+flip turkey_live       src=gen:turkey(kind=live)
+flip turkey_strut      src=gen:turkey(kind=walk)
+
+# ---- motion macros ------------------------------------------------------------------
+# Entrances and exits are walked or run, never popped (the quality bar).  `to=` is the
+# x the actor stops on, `over=` the frames it takes (~1 px/f walking, ~2.5 px/f running).
+macro enter_walk A to=160 over=60 face=R
+  +0      face $A $face ; pose $A walk ; walk $A to=$to over=$over
+  +$over  pose $A pop_small
+end
+
+macro enter_run A to=160 over=24 face=R
+  +0      face $A $face ; pose $A run ; walk $A to=$to over=$over
+  +$over  pose $A pop
+end
+
+macro exit_walk A to=380 over=80 face=R
+  +0      face $A $face ; pose $A walk ; walk $A to=$to over=$over
+end
+
+# exit_run: a 7 f anticipation lean-back, a smeared first stride, then the run loop
+macro exit_run A to=400 over=30 face=R
+  +0      face $A $face ; pose $A exit_run
+  +7      walk $A to=$to over=$over
+end
+
+macro walk_to A to=160 over=40
+  +0      pose $A walk ; walk $A to=$to over=$over
+  +$over  pose $A idle
+end
+
+# takes: anticipation -> stretch -> overshoot -> settle live in the flipbooks
+macro take_big A
+  +0      pose $A take_big
+  +6      expr $A EXPR_SHOCK
+end
+
+macro react_small A
+  +0      pose $A react_small ; expr $A EXPR_SHOCK
+  +R13    expr $A EXPR_NEUTRAL
+end
+
+macro laugh_full A
+  +0      pose $A laugh_full ; expr $A EXPR_HAPPY
+  +30     expr $A EXPR_NEUTRAL
+end
+
+# a hit: squash, the hat jumps and lands late, the ears flop; the shake rides along
+macro hit_react A
+  +0      pose $A hit ; expr $A EXPR_SHOCK ; shake SHK_TAP
+  +R21    expr $A EXPR_NEUTRAL
+end
+
+# the whip smears, cut on the camera's whip
+macro whip_smear_r A
+  +0      pose $A smear_r
+end
+
+macro whip_smear_l A
+  +0      pose $A smear_l
+end
+
+# a talking beat: one small pop on a stressed word (a gesture per line)
+macro beat_gesture A
+  +0      pose $A pop_small
+end
+
+# a pop entrance that still squashes (MT-2 cast pop-ins): anticipation and settle built in
+macro pop_in A
+  +0      pose $A pop
+end
