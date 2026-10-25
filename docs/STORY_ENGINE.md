@@ -562,11 +562,19 @@ which only matters once H3's `ovl_tail()` lands.
 3,287,856 -> 3,357,944 B (+68 KB: the 55 missions' text, the seven games,
 six songs, four layouts), EWRAM 5,632 -> 5,632 B free and IWRAM unchanged
 (6,320 B of stack): the Herald's posted day is 2 B of `.bss`, side_npc's
-offer turn moved into `chain_done_ch`'s alignment slack. PS1: 99 -> 97 KB
-below the stack top (resident text + rodata 1,092 -> 1,093 KB: the 55
-side-table rows, the songs' MML, Grumbleguts' getters; `.bss` unchanged);
-the `storymg` group 17 -> 36 KB, the story group 112 -> 115 KB
-(`story_grumble.c`), both well under the 156 KB slot; `OVL.BIN` 866 -> 882
-KB packed. fps: the seven games run at the 30 fps cap on both consoles
-(GBA work 11-26 ms a frame; PS1 30.4-32.7 measured), the Ch5 overworld is
-unchanged (GBA 13.9 -> 14.3 drawn fps, PS1 30).
+offer turn moved into `chain_done_ch`'s alignment slack. PS1: S5 costs
+1,676 B of resident rodata - the six songs in the music bank 1,356 B (the
+bank is resident), the 13 new packs' table rows 180 B, the giver spots 56
+B, the rite lock 120 B, less the stubs it replaces - and wins 496 B back:
+`doomo_txt_pack_names` (532 B) left resident RAM (TEXT.BIN carries each
+pack's name in its last sector's padding and `txtload.c` logs it from the
+window, so `"txt: pack ep46"` reads as before), and story_mg_b's small
+tables left the PS1's resident `.sdata` (objects of 8 B or less stay there
+whatever group the code is in). After the merge with MU1 M4 (whose own
+tree is at 73.2 KB): **72.1 KB below the stack top** (gate 72 KB; before
+the merge, against 81d4a76: 99 -> 97 KB). The `storymg` group 17 -> 36 KB,
+the story group 112 -> 115 KB (`story_grumble.c`), both well under the
+156 KB slot; `OVL.BIN` 866 -> 882 KB packed. fps: the seven games run at
+the 30 fps cap on both consoles (GBA work 11-26 ms a frame; PS1 30.4-32.7
+measured), the Ch5 overworld is unchanged (GBA 13.9 -> 14.3 drawn fps, PS1
+30).

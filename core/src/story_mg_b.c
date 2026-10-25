@@ -490,7 +490,13 @@ static void fly_draw(int sw, int sh)
 static const uint8_t stage_at[16] = { 0, 2, 4, 6, 8, 10, 11, 12, 14, 16, 18, 19, 20, 22, 24, 26 };
 /* the duet: which burner each ingredient lands on (0 left, 1 right) */
 static const uint8_t duet_side[15] = { 0, 1, 0, 0, 1, 1, 0, 1, 0, 1, 1, 0, 1, 0, 1 };
-static const uint8_t ev_n[3] = { 16, 16, 15 }, ev_goal[3] = { 10, 11, 7 }, ev_o0[3] = { 60, 40, 54 };
+/* events, goal, first event's frame per game - one 9 B table, not three of
+ * 3 B: the PS1 keeps every object of 8 B or less in its resident .sdata
+ * (gp-relative), whatever overlay group the code is in */
+static const uint8_t ev_tab[3][3] = { { 16, 16, 15 }, { 10, 11, 7 }, { 60, 40, 54 } };
+#define ev_n    ev_tab[0]
+#define ev_goal ev_tab[1]
+#define ev_o0   ev_tab[2]
 #define EV(e) ((e) == E_STAGE ? 0 : (e) == E_NAP ? 1 : 2)
 
 /* the frame event k is due (the duet: the ball is ready to flip) */
@@ -762,8 +768,15 @@ static void poem_draw(int sw, int sh)
 /* ---- SQUEEZE: the hug line --------------------------------------------------- */
 enum { Z_GENTLER, Z_GENTLE, Z_FIRM, Z_ALL };
 static const uint16_t hug_id[8] = { 855, 42, 1, 666, 77, 13, 111, ROSTER_ID_GRUMBLEGUTS };
-static const uint8_t hug_zone[8] = { Z_FIRM, Z_GENTLER, Z_GENTLE, Z_GENTLE, Z_GENTLE, Z_FIRM, Z_GENTLER, Z_ALL };
-static const uint8_t zone_lo[4] = { 12, 32, 56, 88 }, zone_hi[4] = { 28, 52, 76, 100 };
+/* each hugger's zone, then the zones' meter bounds: one 16 B table (out of
+ * the PS1's resident .sdata, see ev_tab) */
+static const uint8_t hug_tab[16] = {
+    Z_FIRM, Z_GENTLER, Z_GENTLE, Z_GENTLE, Z_GENTLE, Z_FIRM, Z_GENTLER, Z_ALL,
+    12, 32, 56, 88,                                       /* zone_lo */
+    28, 52, 76, 100 };                                    /* zone_hi */
+#define hug_zone hug_tab
+#define zone_lo  (hug_tab + 8)
+#define zone_hi  (hug_tab + 12)
 static const char *const zone_name[4] = { "GENTLER", "GENTLE", "FIRM", "ALL THE WAY" };
 static const char *const hug_say[4] = { "Too soft...", "Aww!", "Too tight!", "A hug anyway." };
 
@@ -946,7 +959,8 @@ static void draw(void)
         "D-pad: lead them into the shape", "Hold " STR_ICON_A ": in.  Let go: out.",
         "^v Word  " STR_ICON_A " Write  " STR_ICON_B " Rub out", STR_ICON_B " / " STR_ICON_A " Flip that pan!",
         "Hold " STR_ICON_A " to hug. Let go in the zone!" };
-    static const uint8_t style[7] = { WIN_MINT, WIN_CUTE, WIN_DARK, WIN_DARK, WIN_CREAM, WIN_HELL, WIN_CUTE };
+    /* [9], not [7]: over 8 B it leaves the PS1's resident .sdata (ev_tab) */
+    static const uint8_t style[9] = { WIN_MINT, WIN_CUTE, WIN_DARK, WIN_DARK, WIN_CREAM, WIN_HELL, WIN_CUTE };
     static void (*const draws[7])(int, int) = { pop_draw, stage_draw, fly_draw, nap_draw, poem_draw, duet_draw, hug_draw };
     MgB *g = G;
     int sw = plat_screen_w(), sh = plat_screen_h(), e;

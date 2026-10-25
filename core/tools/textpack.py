@@ -1648,7 +1648,15 @@ def main(argv):
         for p, blob in zip(packs, blobs):
             dir_ += u32(sec) + u32(len(blob))
             pad = (-len(blob)) % SECTOR
-            body += blob + b"\0" * pad
+            # --- S5: the pack's name, NUL-terminated, at the start of its
+            # last sector's padding when it fits: the PS1 logs it from the
+            # window ("txt: pack ep46 ...") without a resident name table
+            # (ps1/src/txtload.c; 532 B of RAM). The layout is unchanged. ---
+            tail = p.name.encode("ascii") + b"\0"
+            if pad < len(tail):
+                tail = b""
+            body += blob + tail + b"\0" * (pad - len(tail))
+            # --- end S5 ---
             sec += (len(blob) + pad) // SECTOR
         if len(dir_) > SECTOR:
             raise Fail("TEXT.BIN directory over one sector")

@@ -105,18 +105,24 @@ int txt_plat_load(int pack)
         (doomo_txt_pack_kinds[pack] == TXT_KIND_COMMON && n * SECTOR <= SLOT_C) ? 2 : 0;
     cap = s == 1 ? SLOT_S : s == 2 ? SLOT_C : SLOT_E;
     if (n * SECTOR > cap) {
-        dbg("txt: pack %s does not fit its slot\n", doomo_txt_pack_names[pack]);
+        dbg("txt: pack #%d does not fit its slot\n", pack);
         return 0;
     }
     t0 = timer_us();
     live[s] = -1;
     if (!read_sectors(s_lba + s_sector[pack], n, s == 1 ? win_s : s == 2 ? win_c : win_e)) {
-        dbg("txt: read error, pack %s\n", doomo_txt_pack_names[pack]);
+        dbg("txt: read error, pack #%d\n", pack);
         return 0;
     }
     live[s] = (int16_t)pack;
-    dbg("txt: pack %s (%u B) in %u ms\n", doomo_txt_pack_names[pack],
-        (unsigned)doomo_txt_pack_bytes[pack], (unsigned)((timer_us() - t0) / 1000));
+    {   /* --- S5: the name rides in the last sector's padding (textpack.py
+         * --bin), so doomo_txt_pack_names (532 B) stays out of resident RAM;
+         * a pack that fills its sectors exactly logs "?" --- */
+        const char *w = (const char *)(s == 1 ? win_s : s == 2 ? win_c : win_e);
+        unsigned b = doomo_txt_pack_bytes[pack];
+        dbg("txt: pack %s (%u B) in %u ms\n", (b & (SECTOR - 1)) && w[b] ? w + b : "?", b,
+            (unsigned)((timer_us() - t0) / 1000));
+    }   /* --- end S5 --- */
     return 1;
 }
 
