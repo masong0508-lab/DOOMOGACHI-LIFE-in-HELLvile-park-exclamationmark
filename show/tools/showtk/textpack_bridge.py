@@ -97,12 +97,20 @@ def symbols():
     return _syms
 
 
+# staged names that are another engine name (the show's synonyms, not new engine constants)
+SYNONYMS = {"TWT_POP_SMALL": "TWT_POP_LETTER", "PAL_RED": "PAL_UI_RED", "PAL_RED_D": "PAL_UI_RED_D",
+            "PAL_GOLD": "PAL_UI_GOLD", "PAL_PURPLE": "PAL_UI_PURPLE", "PAL_PINK": "PAL_UI_PINK",
+            "PAL_CREAM": "PAL_UI_CREAM", "PAL_MINT": "PAL_UI_MINT"}
+
+
 def sym(name, where=None, prefix=None):
     """an engine constant by name (or a number); unknown -> a file:line error"""
     s = str(name)
     if re.fullmatch(r"-?\d+", s) or re.fullmatch(r"0x[0-9a-fA-F]+", s):
         return int(s, 0)
     S = symbols()
+    if s not in S and s in SYNONYMS and SYNONYMS[s] in S:
+        s = SYNONYMS[s]
     if s in S:
         if prefix and not s.startswith(prefix):
             raise ShowError(Diag("SYM", "%s is not a %s* constant" % (s, prefix), **(where or {})))

@@ -19,6 +19,7 @@
     X(stage)      /* lane 1: BANDS, IMAGE, GRAIN, FILL planes                */ \
     X(tilemap)    /* lane 2: TILEMAP planes                                  */ \
     X(strokes)    /* lane 2: STROKES planes                                  */ \
+    X(amb)        /* ENGINE: the sets' ambient layers (show_amb.c)           */ \
     X(overworld)  /* lane 3: OVERWORLD                                       */ \
     X(room)       /* lane 3: ROOM                                            */ \
     X(view3d)     /* lane 3: VIEW3D + rails                                  */ \

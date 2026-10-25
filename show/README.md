@@ -537,6 +537,28 @@ All read the compiler's sidecars through `showtk/sidecars.py` (`build/<ep>/timel
 Synthetic co01..co03 for trying all of it without a render: `python3 -m showtk.review.synthetic DIR`
 then `SHOW_BUILD=DIR/build SHOW_EPISODES=DIR/eps show deliver ep101 web --range co01..co03 --masters DIR/masters`.
 
+### In the player (show_l2_mod.c, Oct 25)
+
+The picture module is plugged into show.exe as `show_mod_cam`: every lane-1 plane (BANDS, IMAGE, GRAIN)
+goes through the stage camera (keys, drift, pan, creep, whip, crane, shake, parallax, scale), STROKES and
+TILEMAP planes draw, SUPERs/signs/cards draw over the fades, irises (slot-anchored, heart) and the brick
+wipe draw, and the blob's events run. What the compiler now also takes:
+
+| Staged | Means |
+|---|---|
+| `at=center` · `frame:<set frame>` · `prop:/actor:/follow:/crowd:/mark:<id>[.part]` · `@<mark>` | a named position (an id the shot lacks: the frame centre, with a warning) |
+| `cam at=frame:north` · `cam at=edge` | the set's `frame` (its at= and scale=) |
+| `cam pan|to|crane|whip ...` written as setup | the same move from +0 |
+| `fade dither|up over=F` · `fade down` | fade in / fade out |
+| `iris_in|iris_out over=5..7` | allowed (hold 0): the a4s40 5-f close |
+| `fx <kind> at= n= seed= [nib=] [life=] [size=]` | particles (SOP_L2_PFX): firework, sparkle, sparks, confetti, paint_bloom, pop_heart, heart_fall, smoke, steam, bubbles, embers, dust... (`PFX_KINDS` in showc.py; others warn, not drawn) |
+| `lens splat|gib|paint [over=]` · `lens drip on|off` · `lens clear over=F [twos]` | first-person lens blobs (SOP_L2_LENS) |
+| `sign/card/fx/tint/zoom/pal/boil/lens/super/flash/shake/button/nobutton` untimed | at +0 |
+| `sign ... on=<unknown>` · `reveal <prop>` · `reveal <missing stroke>` | frame anchor / the prop shows / warning |
+| `cut=WIPE:brick` | a brick column sweeps the shot in (frames 0..9) |
+| `TWT_POP_SMALL`, `PAL_RED`, `PAL_GOLD`... | synonyms (textpack_bridge.SYNONYMS) |
+| `cam3d room|turn|tilt ...` | compiles to SOP_CAM3D (text); the hosts do not read it yet |
+
 ## Staging reference: standards tags (WP17)
 
 Every statement below is read by the STD-* lints (spec §13.5); none of the hard-limit rules can be waived.

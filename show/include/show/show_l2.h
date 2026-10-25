@@ -47,6 +47,10 @@ enum {
                                 /*   (mode 0 in, 1 out, 2 static, 3 off; x,y show px)    */
     SOP_L2_BOIL,                 /* every (0 = off): the crayon boil from now on          */
     SOP_L2_FADE_SET,             /* level16: the fade level now, no ramp                  */
+    SOP_L2_PFX,                  /* x y n seed mode color life size: a particle burst      */
+                                /*   (mode 0 burst, 1 rise, 2 fall, 3 hearts, 4 sparkle)  */
+    SOP_L2_LENS,                 /* kind over twos seed: lens splat/gib/paint/drip/clear  */
+                                /*   (kind 0 splat, 1 gib, 2 paint, 3 drip on, 4 drip off, 5 clear) */
     SOP_L2_COUNT
 };
 /* Everything else lane 2 draws (strokes and their reveals, SUPERs, signs,
@@ -56,6 +60,9 @@ enum {
 
 /* Dispatch one lane-2 show op (show_l2.c). Returns 1 if it was lane 2's. */
 int  show_l2_op(int op, const int16_t *args, int nargs, int t);
+/* ops show_fx does not own (SOP_L2_PFX, SOP_L2_LENS): the player module
+ * (show_l2_mod.c) defines it; weak default in show_l2.c returns 0 */
+int  show_l2_ext_op(int op, const int16_t *args, int nargs, int t);
 
 /* ---- what lane 2 asks of the player core (weak defaults in show_l2.c) ------ */
 /* Screen-space (show px) anchor of a prop or actor slot (the iris centre of

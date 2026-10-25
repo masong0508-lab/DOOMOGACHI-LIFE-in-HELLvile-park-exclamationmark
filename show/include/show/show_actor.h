@@ -106,7 +106,8 @@ enum { SHC_LANE, SHC_GRID, SHC_SCATTER };                  /* form=          */
 enum { SHCF_FRONT = 1,        /* draw in front of the actors                    */
        SHCF_FLIPMIX = 2,      /* standing members mirror at random (variety)    */
        SHCF_BOB = 4,          /* standing members bob 1 px on their own phase   */
-       SHCF_NOCLOCK = 8 };    /* clock none: never moves (Mascotty as a crowd)  */
+       SHCF_NOCLOCK = 8,      /* clock none: never moves (Mascotty as a crowd)  */
+       SHCF_WRAP = 16 };      /* lane: members loop over [x, x + w) (ambient)   */
 typedef struct ShowCrowdRec {
     uint8_t  form;               /* SHC_*                                      */
     uint8_t  look_base;          /* first LOOK slot                            */

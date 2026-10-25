@@ -23,6 +23,12 @@ void show_stage_draw(int t);                    /* kind->draw by order       */
 void show_images_prep(void);                    /* decode SHWR_IMAGE         */
 uint32_t show_plane_vis_mask(void);
 
+/* show_amb.c: the sets' ambient layers (SETS.md sec.6.2), called by show_stage.c */
+void show_amb_plane_off(const ShwPlane *p, ShowPlaneXf *xf);
+int  show_amb_plane_draw(const ShwPlane *p, const void *pay, int t,
+                         void (*draw)(const ShwPlane *, const void *, int));
+void show_amb_after_plane(const ShwPlane *p, int t);
+
 /* show_purity.c */
 void show_purity_reset(void);
 
