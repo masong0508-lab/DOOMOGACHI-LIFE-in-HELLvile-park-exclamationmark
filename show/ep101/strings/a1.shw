@@ -1,0 +1,25 @@
+# show/ep101/strings/a1.shw - on-screen text for Act One (STAGING a1; spec 5.1, 6.2)
+# Ids from docs/show/ep101/PILOT_SCRIPT.md (s_a1_*); extra ids added by staging are marked # staging.
+# font=hand is the Mayor's handwriting (.pxt, ART); font=child_hand is Pip's crayon; font=game is the 8x8.
+
+string s_a1_01_card    "18:00 Welcome!|19:00 Bake-Off!|20:00 Bandstand!|21:00 (we don't do that)|22:00 Bedtime!" font=hand   # the act card is props l1-l5 in act_cards; text kept for captions/textless
+string s_a1_02_sign    "HaHaland!|Population: 500|lovely citizens." font=game
+string s_a1_02_pencil  "and Sunny."                                      font=pencil
+string s_a1_02_ticket  "MIDSUMMER GIGGLE|ADMIT ONE (NEW)"                font=game
+string s_a1_03_page1   "WELCOME SPEECH, p.1|Hee. Hee.|Hee. Hee."         font=hand
+string s_a1_04_sign    "HOOK-A-DUCK"                                     font=game    # staging
+string s_a1_05_sign    "ANY FACE (within reason)"                        font=game
+string s_a1_06_sign    "HATTIE HAHA, LIVE! (mostly)"                     font=game
+string s_a1_07_vapor   "Cloud Nine Vapor|COMING SOON"                    font=game
+string s_a1_08_judge   "JUDGE"                                           font=game    # staging: the rosette (worn in 1-09)
+string s_a1_09_card    "19:00 Bake-Off!"                                 font=hand
+string s_a1_09_sign    "BAKE-OFF!"                                       font=game    # staging
+string s_a1_09_nana    "NANA"                                            font=hand    # staging: pie1's card
+string s_a1_09_aplus   "A+"                                              font=hand    # staging: the stamp
+string s_a1_09_page2   "WELCOME SPEECH, p.2|Hee. Hee. Hee. Hee."         font=hand    # staging
+string s_a1_09_tag     "for whoever's next."                             font=hand    # staging (CO-6 tag, turned)
+string s_a1_10_tag     "LOST PROPERTY"                                   font=child_hand
+string s_a1_10_sash    "JUNIOR FESTIVAL PATROL"                          font=game    # staging
+string s_a1_10_card    "21:00 (we don't do that)"                        font=hand
+string s_a1_11_page3   "WELCOME SPEECH, p.3"                             font=hand    # staging
+string s_a1_14_hugs    "FREE HUGS"                                       font=game    # staging: Father Fuzz's booth
