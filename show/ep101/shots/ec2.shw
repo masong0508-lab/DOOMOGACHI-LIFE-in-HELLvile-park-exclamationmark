@@ -1,0 +1,26 @@
+# show/ep101/shots/ec2.shw - EYECATCH PAIR 2 (12:15-12:25, 300 f), seg co_mt. Included in episode.shw after act two.
+# OUT: the act-out sound on frame 0 (the prize-case glass cracks), the HEE_HEE bell, the hook in
+# major. IN: a 4-f hellify flash, then ONE change: a tiny Puff Demon in the second shell.
+# Mascotty 8 px at the same deep-background depth as pair 1. Shot list: shotlists/co_mt.md.
+
+act EC2 "Eyecatch pair 2"
+  beat e101_ec2_out len=150 shots=ec2o
+  beat e101_ec2_in  len=150 shots=ec2i
+end
+
+shot ec2o beat=e101_ec2_out len=150 set=eyecatch:ec2_out px=1 look=pixel cut=CUT matte=open scene=ec2 gore=CUTE cue=theme_eyecatch_out@bar:1
+  +0    sfx FX_GLASS_CRACK                                    # the act-out sound (2-08's prize case)
+  +0    mx theme_eyecatch_out start
+  +6    mx heehee_bell_150 start gain=-6dB                    # choice: the bell 6 f after the act-out sound
+  +0    super s_ec2out_bubble style=bubble at=160,30 until=end   # "beep." bubble: text only, no sound
+  ad "Two eggshell halves hang on the lantern string with a tiny beep bubble. The clock reads 9:40."
+end
+
+shot ec2i beat=e101_ec2_in len=150 set=eyecatch:ec2_in px=1 look=pixel cut=CUT matte=open gore=CUTE cue=theme_eyecatch_in@bar:1
+  prop  mascotty art=gen:mascotty_tiny(h=8) plane=back at=40,40 anchor=bottom
+  actor demon who=puff_demon kind=sprite at=198,26 idle=on    # a tiny Puff Demon sits in the second shell (the one change)
+  +0    flash PAL_HELLIFY 8 4 ; sfx FX_HELLIFY_FLASH
+  +0    mx theme_eyecatch_in start                            # TODO(AUDIO): cue not in series/music.shw yet
+  +40   pop demon TWT_POP_SMALL ; sfx FX_DEMON_BEEP ; cc "[a lower beep]"   # a demon's copy (an SFX, not a gag beep)
+  ad "The same card - but a tiny fluffy demon sits in the second shell and beeps, lower."
+end

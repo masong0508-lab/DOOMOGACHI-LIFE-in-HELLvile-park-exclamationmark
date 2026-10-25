@@ -1,0 +1,129 @@
+# show/series/sets/park.shw - Hellvile Park, the north half: the bandstand, the Wall, the gate.
+# Pixel art (the show's look). Figure scale: a figure on the deck has its feet at show y 124,
+# a figure on the lawn at about y 160-175. Time of day is a palette variant (light=), never a
+# redraw; the sky is a BANDS plane per time of day; the lantern light pools are a fixed-light
+# plane that only shows when the lanterns are lit.
+#
+# Lanterns are props with states: lit (default), out, purple, lean, red.
+
+set bandstand kind=2d px=1 matte=open look=pixel desc="the heart of the episode: north half live, south half boarded against the Wall, the sealed gate beside it"
+  plane sky    bands=sky:dusk par=0
+  plane stars  tile=gen:sky_stars(seed=3) size=128x80 par=0.02 hidden=yes
+  plane glowhv image=gen:hellvile_glow(seed=126) size=560x240 par=0.5 light=fixed
+  plane far    image=gen:bandstand_far(seed=125) size=560x240 par=0.5
+  plane stage  tilemap=gen:bandstand_tiles(seed=124) size=800x240 par=1.0
+  plane glow   tilemap=gen:bandstand_glow(seed=127) size=800x240 par=1.0 light=fixed
+  # the banner on the north eave, the cupcake balloon over its third letter (since CO-5)
+  prop  banner  art=gen:banner(size=wide,state=giggle) art.bloom3=gen:banner(size=wide,state=bloom3) plane=stage at=5,18 anchor=top
+  prop  balloon art=gen:cupcake_balloon(face=front) art.wall=gen:cupcake_balloon(face=wall) plane=stage at=-2,52 anchor=bottom
+  # lanterns: the string from Lulla's tent pole to the eave, then along the north eave
+  prop  lan01 art=gen:lantern(color=pink) art.out=gen:lantern(color=pink,state=out) art.purple=gen:lantern(color=pink,state=purple) art.lean=gen:lantern(color=pink,state=lean) plane=stage at=-175,48 anchor=top
+  prop  lan02 art=gen:lantern(color=lemon) art.out=gen:lantern(color=lemon,state=out) art.purple=gen:lantern(color=lemon,state=purple) art.lean=gen:lantern(color=lemon,state=lean) plane=stage at=-157,49 anchor=top
+  prop  lan03 art=gen:lantern(color=mint) art.out=gen:lantern(color=mint,state=out) art.purple=gen:lantern(color=mint,state=purple) art.lean=gen:lantern(color=mint,state=lean) plane=stage at=-139,45 anchor=top
+  prop  lan04 art=gen:lantern(color=lavender) art.out=gen:lantern(color=lavender,state=out) art.purple=gen:lantern(color=lavender,state=purple) art.lean=gen:lantern(color=lavender,state=lean) plane=stage at=-121,37 anchor=top
+  prop  lan05 art=gen:lantern(color=peach) art.out=gen:lantern(color=peach,state=out) art.purple=gen:lantern(color=peach,state=purple) art.lean=gen:lantern(color=peach,state=lean) plane=stage at=-103,24 anchor=top
+  prop  lan06 art=gen:lantern(color=pink) art.out=gen:lantern(color=pink,state=out) art.purple=gen:lantern(color=pink,state=purple) art.lean=gen:lantern(color=pink,state=lean) plane=stage at=-66,22 anchor=top
+  prop  lan07 art=gen:lantern(color=lemon) art.out=gen:lantern(color=lemon,state=out) art.purple=gen:lantern(color=lemon,state=purple) art.lean=gen:lantern(color=lemon,state=lean) plane=stage at=-26,25 anchor=top
+  prop  lan08 art=gen:lantern(color=mint) art.out=gen:lantern(color=mint,state=out) art.purple=gen:lantern(color=mint,state=purple) art.lean=gen:lantern(color=mint,state=lean) plane=stage at=14,25 anchor=top
+  prop  lan09 art=gen:lantern(color=lavender) art.out=gen:lantern(color=lavender,state=out) art.purple=gen:lantern(color=lavender,state=purple) art.lean=gen:lantern(color=lavender,state=lean) plane=stage at=54,22 anchor=top
+  prop  lan10 art=gen:lantern(color=peach) art.out=gen:lantern(color=peach,state=out) art.purple=gen:lantern(color=peach,state=purple) art.lean=gen:lantern(color=peach,state=lean) plane=stage at=74,20 anchor=top
+  # the south half: the crate in the hollow under the deck, boards nailed over it (2-03 tears them)
+  prop  crate   art=gen:mingle_crate(seed=2,w=52,h=20) plane=stage at=150,150 anchor=bottom text=8,5,36,10
+  prop  skirt1  art=gen:skirt_board(w=30,h=20,seed=1) plane=stage at=92,130 anchor=topleft
+  prop  skirt2  art=gen:skirt_board(w=30,h=20,seed=2) plane=stage at=121,130 anchor=topleft
+  prop  skirt3  art=gen:skirt_board(w=30,h=20,seed=3) plane=stage at=150,130 anchor=topleft
+  prop  skirt4  art=gen:skirt_board(w=30,h=20,seed=4) plane=stage at=179,130 anchor=topleft
+  prop  skirt5  art=gen:skirt_board(w=22,h=20,seed=5) plane=stage at=208,130 anchor=topleft
+  # the sealed gate: seven padlocks, the KEEP OUT. FOREVER. plate (a string), the grille (shut)
+  prop  keepout art=gen:keep_out_sign(seed=3) plane=stage at=400,96 anchor=center text=3,3,52,12
+  prop  lock1 art=gen:padlock(seed=1) plane=stage at=388,116 anchor=center
+  prop  lock2 art=gen:padlock(seed=2) plane=stage at=400,112 anchor=center
+  prop  lock3 art=gen:padlock(seed=3) plane=stage at=412,116 anchor=center
+  prop  lock4 art=gen:padlock(seed=4) plane=stage at=394,128 anchor=center
+  prop  lock5 art=gen:padlock(seed=5) plane=stage at=406,128 anchor=center
+  prop  lock6 art=gen:padlock(seed=6) plane=stage at=388,140 anchor=center
+  prop  lock7 art=gen:padlock(seed=7) plane=stage at=412,140 anchor=center
+  # 1-14: the fog over the boards (hidden until the act out); red eyes in it
+  prop  fog1  art=gen:fog_bank(w=200,h=40,seed=1) plane=stage at=150,156 hidden=yes
+  prop  fog2  art=gen:fog_bank(w=160,h=34,seed=2) plane=stage at=60,152 hidden=yes
+  prop  eyes1 art=gen:red_eyes(seed=1) plane=stage at=140,140 anchor=center light=fixed hidden=yes
+  prop  eyes2 art=gen:red_eyes(seed=2) plane=stage at=176,132 anchor=center light=fixed hidden=yes
+  prop  eyes3 art=gen:red_eyes(seed=3) plane=stage at=112,146 anchor=center light=fixed hidden=yes
+  # the rite's three candles on the rail by the steps (2-05 on): lit, out, blue, lean, flash
+  prop  candle1 art=gen:candle(state=lit) art.out=gen:candle(state=out) art.flash=gen:candle(state=flash) plane=stage at=-44,106 anchor=bottom hidden=yes
+  prop  candle2 art=gen:candle(state=lit) art.out=gen:candle(state=out) art.flash=gen:candle(state=flash) plane=stage at=-28,106 anchor=bottom hidden=yes
+  prop  candle3 art=gen:candle(state=lit) art.out=gen:candle(state=out) art.blue=gen:candle(state=blue) art.lean=gen:candle(state=lean) plane=stage at=-12,106 anchor=bottom hidden=yes
+  mark  deck_y 124
+  mark  lawn_y 160
+  mark  steps 4,140
+  mark  split_x 90
+  mark  gate_x 400
+  frame wide    at=-70,0          # the whole bandstand, the Wall's end at the right edge
+  frame north   at=-130,0         # the north half: the welcome, the speech (1-08, 1-12)
+  frame steps   at=-90,0          # the front steps centred (2-05, 3-04, 3-06, 4-04)
+  frame boards  at=20,0           # the boarded south half and the Wall (1-14, 2-07)
+  frame gate    at=232,0          # the sealed gate (4-03, PC-1 wide)
+  frame fair    at=-232,0         # Lulla's craft tent and Fuzz's FREE HUGS booth (1-14)
+  variant dawn  light=dawn  bands.sky=sky:dawn  hide=glow desc="CO-5/CO-6 deep background"
+  variant dusk  light=dusk  bands.sky=sky:dusk  desc="1-08 the welcome (18:00-19:00)"
+  variant night light=night bands.sky=sky:night show=stars desc="1-12 to 4-08 (lanterns lit)"
+  variant dark  light=dark  bands.sky=sky:dark  show=stars hide=glow,balloon state=lan01:out,lan02:out,lan03:out,lan04:out,lan05:out,lan06:out,lan07:out,lan08:out,lan09:out,lan10:out desc="1-14 act out, 2-01: every lantern out"
+  variant vape  light=night bands.sky=sky:vape  hide=glow show=fog1,fog2,eyes1,eyes2,eyes3 state=lan01:out,lan02:out,lan03:out,lan04:out,lan05:out,lan06:lean,lan07:lean,lan08:lean,lan09:lean,lan10:lean desc="1-14: the fog pours over the boards, red eyes, the lanterns dying from the south"
+  variant torn  light=night bands.sky=sky:night show=stars hide=skirt2,skirt3,skirt4 desc="2-03 on: a gust tore the boards loose, the MINGLE crate shows"
+  variant rite  light=night bands.sky=sky:night show=stars,candle1,candle2,candle3 hide=skirt2,skirt3,skirt4 desc="2-05 on: three candles on the rail (states: out after each failed try; the last a blue bead)"
+end
+
+set bandstand_banner kind=2d px=1 matte=open look=pixel desc="CO-5 (dawn, co12-18): the real banner, GIGGLE in wet pink over MINGLE; the ladder; the N blooms back three times, the third red with a drip"
+  plane sky    bands=sky:dawn par=0
+  plane far    image=gen:bandstand_far(seed=125) size=560x240 par=0.3
+  plane north  image=gen:bandstand_ms(seed=128) size=352x240 par=1.0
+  # the banner's letters sit on the crayon banner's baseline (show y 104) at the same x (co11 -> co12 match cut)
+  prop  banner  art=gen:banner(size=ms,state=giggle) art.bloom1=gen:banner(size=ms,state=bloom1) art.bloom2=gen:banner(size=ms,state=bloom2) art.bloom3=gen:banner(size=ms,state=bloom3) plane=north at=160,50 anchor=top
+  prop  drip    art=gen:paint_drip(size=ms,color=red,length=14) art.pink=gen:paint_drip(size=ms,color=pink,length=14) plane=north at=148,103 anchor=top hidden=yes
+  prop  balloon art=gen:cupcake_balloon(face=front) art.wall=gen:cupcake_balloon(face=wall) plane=north at=140,104 anchor=bottom hidden=yes
+  prop  ladder  art=gen:ladder(h=110) plane=north at=92,178 anchor=bottom
+  mark  baseline 104
+  mark  letter_n 140,83                  # the third letter (the N of MINGLE under the G)
+  frame ms at=0,0                        # co15/co16/co18 (co12 pulls back to this from scale 1.10)
+  variant giggle light=dawn bands.sky=sky:dawn desc="co12-co14: GIGGLE wet"
+  variant bloom1 light=dawn bands.sky=sky:dawn state=banner:bloom1 desc="co15 +15: the N blooms back"
+  variant bloom2 light=dawn bands.sky=sky:dawn state=banner:bloom2 desc="co15 +45/+76: bigger"
+  variant bloom3 light=dawn bands.sky=sky:dawn state=banner:bloom3 show=drip desc="co15 +107: red, with the drip (D16: candy red)"
+  variant topper light=dawn bands.sky=sky:dawn state=banner:bloom3 show=drip,balloon desc="co15 +120 on, co16: the cupcake balloon over the N"
+  variant turned light=dawn bands.sky=sky:dawn state=banner:bloom3,balloon:wall show=drip,balloon desc="co18: one change, the balloon faces the Wall"
+end
+
+set bandstand_cu kind=2d px=2 matte=open look=pixel desc="close-up backings for busts at the bandstand (px=2): north, boards, steps, wall"
+  plane sky    bands=sky:night par=0
+  plane back   image=gen:bandstand_cu(side=north,seed=129) size=160x120 par=0
+  variant north_dusk  light=dusk  bands.sky=sky:dusk desc="1-08 CUs"
+  variant north_night light=night bands.sky=sky:night desc="1-12, 2-01..4-06 CUs on the north half"
+  variant boards      light=night bands.sky=sky:night image.back=gen:bandstand_cu(side=boards,seed=129) desc="1-14, 2-07: the boards"
+  variant steps       light=night bands.sky=sky:night image.back=gen:bandstand_cu(side=steps,seed=129) desc="2-05, 3-04, 3-06, 4-04: the steps"
+  variant wall        light=night bands.sky=sky:night image.back=gen:bandstand_cu(side=wall,seed=129) desc="4-03: by the gate"
+  variant north_dark  light=dark  bands.sky=sky:dark desc="1-14 act out, 2-01 (lanterns out)"
+end
+
+set sealed_gate kind=2d px=1 matte=open look=pixel desc="MT-4 / 4-03 / PC-1: the sealed gate: seven padlocks, KEEP OUT. FOREVER., the small barred grille (shut)"
+  plane sky    bands=sky:night par=0
+  plane stars  tile=gen:sky_stars(seed=14) size=128x80 par=0.02
+  plane glowhv image=gen:hellvile_glow(seed=132,w=560) size=560x240 par=0.2 light=fixed
+  plane wall   image=gen:gate_wall(seed=130) size=352x240 par=1.0
+  prop  door    art=gen:gate_door(state=shut) art.bulge=gen:gate_door(state=bulge) plane=wall at=160,150 anchor=bottom
+  prop  keepout art=gen:keep_out_sign(seed=3) plane=wall at=160,96 anchor=center text=3,3,52,12
+  prop  lock1 art=gen:padlock(seed=1) plane=wall at=148,112 anchor=center
+  prop  lock2 art=gen:padlock(seed=2) plane=wall at=160,108 anchor=center
+  prop  lock3 art=gen:padlock(seed=3) plane=wall at=172,112 anchor=center
+  prop  lock4 art=gen:padlock(seed=4) plane=wall at=154,124 anchor=center
+  prop  lock5 art=gen:padlock(seed=5) plane=wall at=166,124 anchor=center
+  prop  lock6 art=gen:padlock(seed=6) plane=wall at=148,136 anchor=center
+  prop  lock7 art=gen:padlock(seed=7) plane=wall at=172,136 anchor=center
+  prop  lostlantern art=gen:lost_property_lantern(state=lit) plane=wall at=100,4 anchor=top hidden=yes
+  mark  keyhole 160,118
+  mark  grille 160,78
+  mark  wall_top 22
+  variant night light=night bands.sky=sky:night desc="4-03, PC-1"
+  variant drop  light=dusk  bands.sky=sky:dusk desc="MT-4 (the main title's palette)"
+  variant pc1   light=night bands.sky=sky:night show=lostlantern desc="PC-1: the lantern drifts over the Wall and sinks behind the gate"
+  variant bulge light=night bands.sky=sky:night state=door:bulge desc="PC-1 ~161: the gate bulges outward once, BOING"
+end
