@@ -1,350 +1,247 @@
-/* shw_format.h - the EP###.SHW episode file the compiler (showc) writes and
- * show.exe reads (SHOW_ENGINE_SPEC.md sec.7.3).
+/* shw_format.h - the EP###.SHW binary format (spec 7.3). Owner: ENGINE lane 1.
  *
- * Mirrored field for field by show/tools/showtk/shw_format.py; the AT4.2 test
- * (show/tests/compiler/test_at4_2_format.py) parses this header, compiles it
- * with the host gcc and round-trips a file through both. Change both in the
- * same commit and bump SHW_ABI.
+ * Mirrored field for field by show/tools/showtk/shw_format.py (the compiler
+ * writes it, tests/compiler checks the two agree, AT4.2). Little-endian,
+ * every struct and record 4-byte aligned. ADD-ONLY: never move or resize a
+ * field; bump SHW_ABI only for an incompatible change and update every
+ * user on origin in the same push.
  *
- * LAYOUT. Little-endian; every record is naturally aligned and every section
- * starts on a 4-byte boundary.
+ * File layout
+ *   ShwEpHeader                    at 0                         (64 B)
+ *   ShwShotIndex[nshots]           at index_off                 (48 B each)
+ *   strtab                         at strtab_off (episode strings, NUL-terminated)
+ *   shot chunks                    each at chunk_sector * 2048 (sector aligned,
+ *                                  so the disc loader reads whole sectors)
  *
- *   file offset 0      ShwEpHeader                         (40 B)
- *               40     ShwShotIndex[nshots]                (36 B each)
- *               ...    episode string table (strtab_off, strtab_bytes):
- *                      NUL-terminated ASCII names (shot ids, beat ids, set and
- *                      cast ids) referenced by *_name fields as byte offsets
- *               k*2048 one ShwShotChunk per shot, each starting on a 2048-byte
- *                      sector (chunk_sector), chunk_bytes long
+ * A shot chunk is a ShwShotHdr followed by `nrec` RECORDS. A record is an
+ * 8-byte ShwRec header, then `bytes` of payload, then zero padding to a
+ * multiple of 4. Record types are allocated below, one line per package;
+ * the player skips types it does not know, so a package can add a record
+ * type without touching anyone else's code. A host finds its records with
+ * show_chunk_find() (show_api.h).
  *
- *   ShwShotChunk = ShwShotHdr, then the sections it points at (offsets are from
- *   the chunk start; a section with n == 0 has offset 0):
- *     looks     ShwLook[look_n]       48 B DoomoLook each (resident.h order)
- *     planes    ShwPlane[plane_n]
- *     actors    ShwActor[actor_n]     actor slot = index (BeatEv actor = slot)
- *     props     ShwProp[prop_n]       prop slot = index
- *   An iris centre (BOP_IRIS_IN/OUT a) is 0 = the frame centre, 1..63 = prop
- *   slot + 1 (co02's bandstand, prop 0, is 1), 64 + n = actor slot n.
- *     crowds    ShwCrowd[crowd_n]
- *     camkeys   ShwCamKey[camkey_n]   sorted by frame
- *     events    BeatEv[ev_n]          8 B, beat.h layout, sorted by (anchor, at),
- *                                     ending with BOP_END at the shot's length
- *     args      int32_t[arg_n]        the show ops' argument table (below)
- *     tracks    ShwTrack[track_n] + their runs (ShwRun pairs)
- *     strokes   ShwStroke[stroke_n] + their points (ShwPoint)
- *     strings   NUL-terminated text with the game's inline codes kept as
- *               written ("{d}", "{w}", "{..}"); offsets into it are u16
- *     texpages  ShwTexPage[texpage_n] + their pixel data (8bpp; comp 0 raw,
- *               1 = the game's LZ)
- *     cluts     ShwClut[clut_n] + BGR555 entries
- *
- * SHOW OPS. Engine-native ops (shake, flash, iris, fade, expr, freeze, ...)
- * are plain BeatEv, exactly what core/tools/textpack.py's compile_beat makes.
- * A show op is BeatEv{at, anchor, BOP_SHOT, a = SHW_SOP_FLAG | SOP_*, b = arg
- * index}: args[b] is the op's word count n, args[b+1 .. b+n] its words (layouts
- * by op below). beat.c hands BOP_SHOT back as BT_EXT; show_ext.c runs it.
- * An "object" in an op's words is an actor slot (0..7) or 0x100 + a prop slot.
- * A slug card's strings are four NUL-terminated texts: beat id, title, act, TC in.
- * Every sound is SOP_AUDIO carrying its event index k from audio_events.json
- * (the PS1 publishes the k values it fired, P4). The show never emits
- * BOP_SFX / BOP_MUSIC* / BOP_FLAG / BOP_WAIT_A.
- *
- * UNITS. Positions are show pixels on the 320x180 canvas (y 0 = the top of the
- * picture; screen y = y + canvas_y). Q16 = 16.16 fixed point, Q8 = 8.8.
+ * Shots that start from another shot's state (base= / replay=, spec 5.4) are
+ * resolved by the COMPILER into a self-contained chunk plus `preroll`: the
+ * player runs that chunk's logic for `preroll` frames with drawing skipped
+ * before frame 0 is shown (DECISIONS.md "WP2 base/replay").
  */
 #ifndef SHOW_SHW_FORMAT_H
 #define SHOW_SHW_FORMAT_H
 
 #include <stdint.h>
 
-#define SHW_MAGIC        0x31574853u  /* "SHW1" as bytes in the file          */
-#define SHW_SHOT_MAGIC   0x544F4853u  /* "SHOT" at the start of every chunk   */
+#define SHW_MAGIC        0x31574853u    /* 'SHW1' as read little-endian    */
+#define SHW_SHOT_MAGIC   0x544f4853u    /* 'SHOT'                          */
 #define SHW_ABI          1
 #define SHW_SECTOR       2048
-#define SHW_CHUNK_MAX    (160u * 1024u)  /* sec.7.3: a bigger shot splits     */
-#define SHW_NONE         0xFFFFu      /* "no shot / no index" in u16 fields   */
-#define SHW_SOP_FLAG     0x4000       /* BeatEv.a of a show op on BOP_SHOT    */
+#define SHW_CHUNK_MAX    (160 * 1024)   /* spec 7.3: a shot chunk <= 160 KB */
+#define SHW_ID_LEN       8              /* shot id "co01", NUL-padded       */
 
-#define SHW_ASSERT_SIZE(T, n) typedef char shw_size_##T[(sizeof(T) == (n)) ? 1 : -1]
-
-/* ---- the episode --------------------------------------------------------- */
-typedef struct ShwEpHeader {
-    uint32_t magic;            /*  0 SHW_MAGIC                                 */
-    uint16_t abi;              /*  4 SHW_ABI                                   */
-    uint16_t nshots;           /*  6                                           */
-    uint8_t  fps;              /*  8 30                                        */
-    uint8_t  flags;            /*  9 SHW_EP_*                                  */
-    uint16_t canvas_w;         /* 10 320                                       */
-    uint16_t canvas_h;         /* 12 180                                       */
-    uint16_t canvas_y;         /* 14 30 (show y + 30 = screen y)               */
-    uint32_t seed;             /* 16 episode seed                              */
-    uint8_t  toolchain_hash[8];/* 20 first 8 bytes of sha256(compiler inputs)  */
-    uint32_t strtab_off;       /* 28 file offset of the string table           */
-    uint32_t strtab_bytes;     /* 32                                           */
-    uint32_t total_frames;     /* 36 sum of every shot's len                   */
+typedef struct ShwEpHeader {            /* 64 B */
+    uint32_t magic;                     /* SHW_MAGIC                         */
+    uint16_t abi;                       /* SHW_ABI                           */
+    uint16_t nshots;
+    uint8_t  fps;                       /* 30                                */
+    uint8_t  px_canvas;                 /* 1 (reserved for the wide hatch)   */
+    uint16_t canvas_w, canvas_h, y_off; /* 320, 180, 30                      */
+    uint32_t seed;                      /* episode seed                      */
+    uint16_t episode;                   /* 101                               */
+    uint16_t pad;
+    uint8_t  toolchain_hash[8];         /* showc + format, first 8 B of sha256 */
+    uint32_t index_off;                 /* byte offset of ShwShotIndex[0]    */
+    uint32_t strtab_off, strtab_bytes;
+    uint32_t total_frames;              /* sum of len                        */
+    uint32_t file_bytes;
+    uint32_t reserved[3];
 } ShwEpHeader;
-SHW_ASSERT_SIZE(ShwEpHeader, 40);
 
-enum { SHW_EP_SLUG = 1 };      /* every shot is a slug card (`show slug`)     */
+enum {                                  /* ShwShotIndex.flags                */
+    SHWF_SLUG     = 1,                  /* a slug card (show slug)           */
+    SHWF_HOLDLAST = 2,                  /* reserved                          */
+    SHWF_3D       = 4                   /* uses VIEW3D/OVERWORLD/ROOM        */
+};
 
-typedef struct ShwShotIndex {
-    uint32_t start_frame;      /*  0 episode frame of the shot's frame 0       */
-    uint16_t len;              /*  4 frames                                    */
-    uint8_t  px;               /*  6 1|2|3                                     */
-    uint8_t  look;             /*  7 SHW_LOOK_*                                */
-    uint32_t chunk_sector;     /*  8 file offset / SHW_SECTOR                  */
-    uint32_t chunk_bytes;      /* 12                                           */
-    uint16_t base_shot;        /* 16 shot index of base=, else SHW_NONE        */
-    uint16_t base_frame;       /* 18                                           */
-    uint16_t replay_shot;      /* 20 shot index of replay=, else SHW_NONE      */
-    uint16_t replay_from;      /* 22                                           */
-    uint16_t flags;            /* 24 SHW_SHOT_*                                */
-    uint16_t name;             /* 26 strtab offset of the shot id ("co01")     */
-    uint32_t seed;             /* 28 episode seed ^ shot seed                  */
-    uint32_t chunk_crc;        /* 32 CRC-32 (zlib) of the chunk bytes          */
+typedef struct ShwShotIndex {           /* 48 B */
+    uint32_t start_frame;               /* episode frame of the shot's frame 0 */
+    uint16_t len;                       /* frames                            */
+    uint8_t  px;                        /* 1|2|3 (spec 2.3)                  */
+    uint8_t  look;                      /* look register (0 = none)          */
+    uint32_t chunk_sector;              /* chunk at chunk_sector * SHW_SECTOR */
+    uint32_t chunk_bytes;
+    uint16_t base_shot, base_frame;     /* provenance only (0xFFFF = none);   */
+    uint16_t replay_shot, replay_from;  /*   the chunk is already resolved    */
+    uint16_t flags;                     /* SHWF_*                            */
+    uint16_t preroll;                   /* logic frames run, undrawn, before 0 */
+    uint32_t seed;                      /* shot seed (RNG = ep seed ^ this)   */
+    char     id[SHW_ID_LEN];            /* "co01"                            */
+    uint32_t beat;                      /* rundown beat number (logs, slugs)  */
+    uint32_t reserved;
 } ShwShotIndex;
-SHW_ASSERT_SIZE(ShwShotIndex, 36);
 
-enum { SHW_LOOK_PIXEL, SHW_LOOK_CRAYON, SHW_LOOK_SEPIA, SHW_LOOK_LCD, SHW_LOOK_HELLIFY };
-enum {                         /* ShwShotIndex.flags                          */
-    SHW_SHOT_SLUG       = 1u << 0,  /* a slug card: draw the beat name + TC   */
-    SHW_SHOT_INSERT     = 1u << 1,  /* `insert` (whiplash, owns its audio)    */
-    SHW_SHOT_MATTE_BLACK= 1u << 2,  /* matte=black (else open)                */
-    SHW_SHOT_TEXT_OFF   = 1u << 3,  /* text=off (textless version)            */
-    SHW_SHOT_GORE_BRUTAL= 1u << 4,  /* gore=BRUTAL (else CUTE: filter on)     */
-    SHW_SHOT_FADE_IN    = 1u << 5,  /* setup camfx_fade(16) (fade in at +0)   */
-    SHW_SHOT_PROVISIONAL= 1u << 6   /* some time is a provisional estimate    */
-};
-/* the cut INTO this shot, bits 8-11 of flags */
-enum { SHW_CUT_CUT, SHW_CUT_SMASH, SHW_CUT_MATCH, SHW_CUT_FADE, SHW_CUT_IRIS, SHW_CUT_WIPE_BRICK };
-#define SHW_SHOT_CUT(flags) (((flags) >> 8) & 15)
-
-/* ---- one shot ------------------------------------------------------------- */
-typedef struct ShwShotHdr {
-    uint32_t magic;            /*  0 SHW_SHOT_MAGIC                            */
-    uint8_t  set_kind;         /*  4 SHW_SET_*                                 */
-    uint8_t  plane_n;          /*  5                                           */
-    uint8_t  actor_n;          /*  6                                           */
-    uint8_t  prop_n;           /*  7                                           */
-    uint8_t  crowd_n;          /*  8                                           */
-    uint8_t  look_n;           /*  9                                           */
-    uint8_t  track_n;          /* 10                                           */
-    uint8_t  badge_est;        /* 11 SHW_BADGE_*                               */
-    uint16_t ev_n;             /* 12                                           */
-    uint16_t arg_n;            /* 14 int32 words                               */
-    uint16_t camkey_n;         /* 16                                           */
-    uint16_t stroke_n;         /* 18                                           */
-    uint16_t texpage_n;        /* 20                                           */
-    uint16_t clut_n;           /* 22                                           */
-    uint16_t strings_bytes;    /* 24                                           */
-    uint16_t set_name;         /* 26 strtab offset (episode table) of the set  */
-    uint32_t off_looks;        /* 28                                           */
-    uint32_t off_planes;       /* 32                                           */
-    uint32_t off_actors;       /* 36                                           */
-    uint32_t off_props;        /* 40                                           */
-    uint32_t off_crowds;       /* 44                                           */
-    uint32_t off_camkeys;      /* 48                                           */
-    uint32_t off_events;       /* 52                                           */
-    uint32_t off_args;         /* 56                                           */
-    uint32_t off_tracks;       /* 60                                           */
-    uint32_t off_strokes;      /* 64                                           */
-    uint32_t off_strings;      /* 68                                           */
-    uint32_t off_texpages;     /* 72                                           */
-    uint32_t off_cluts;        /* 76                                           */
-    uint16_t vram_plan[4];     /* 80 VRAM pages used: set, cast, crowd, text   */
-    uint16_t variant;          /* 88 strtab offset of the set variant (set=x:v) */
-    uint16_t pad;              /* 90                                           */
+typedef struct ShwShotHdr {             /* 32 B, at the start of a chunk     */
+    uint32_t magic;                     /* SHW_SHOT_MAGIC                    */
+    uint16_t nrec;                      /* records that follow               */
+    uint16_t shot;                      /* its index (a check)               */
+    uint32_t bytes;                     /* whole chunk incl. this header     */
+    uint8_t  set_kind;                  /* SHWP_* of the main set plane      */
+    uint8_t  badge_est;                 /* SHWB_*                            */
+    uint8_t  bg;                        /* palette index the frame clears to */
+    uint8_t  nlabels;                   /* beat labels used (BeatScript)     */
+    uint16_t vram_plan[4];              /* set-pool KB, image-pool blocks, -, - */
+    uint32_t content_crc;               /* CRC32 of the records (cache key input) */
+    uint32_t reserved;
 } ShwShotHdr;
-SHW_ASSERT_SIZE(ShwShotHdr, 92);
 
-enum { SHW_SET_SLUG, SHW_SET_2D, SHW_SET_VIEW3D, SHW_SET_OVERWORLD, SHW_SET_ROOM };
-enum { SHW_BADGE_PS1_LEGAL, SHW_BADGE_EMU_ONLY };
+enum { SHWB_PS1_LEGAL = 0, SHWB_EMU_ONLY = 1 };
 
-typedef struct ShwLook { uint8_t b[48]; } ShwLook;      /* DoomoLook bytes      */
-SHW_ASSERT_SIZE(ShwLook, 48);
+typedef struct ShwRec {                 /* 8 B, then `bytes` of payload      */
+    uint16_t type;                      /* SHWR_*                            */
+    uint16_t n;                         /* items in the payload (type-defined) */
+    uint32_t bytes;                     /* payload bytes (excl. this header and padding) */
+} ShwRec;
 
-typedef struct ShwPlane {
-    uint8_t  kind;             /*  0 SHW_PLANE_*                               */
-    uint8_t  order;            /*  1 SHW_ORDER_*                               */
-    uint8_t  flags;            /*  2 SHW_PLANE_F_*                             */
-    uint8_t  boil;             /*  3 boil period in frames (0 = none)          */
-    int32_t  par_q16;          /*  4 parallax factor (0.05 = 3277)             */
-    uint16_t w, h;             /*  8 plane size in show px                     */
-    uint16_t tex;              /* 12 texpage index, SHW_NONE = none            */
-    uint16_t clut;             /* 14 clut index, SHW_NONE = none               */
-    int16_t  x, y;             /* 16 top-left at camera 0,0                    */
-    uint32_t arg;              /* 20 kind-specific: GRAIN density, BANDS seed, */
-} ShwPlane;                    /*    STROKES first stroke | count << 16        */
-SHW_ASSERT_SIZE(ShwPlane, 24);
-
-enum { SHW_PLANE_BANDS, SHW_PLANE_IMAGE, SHW_PLANE_TILEMAP, SHW_PLANE_STROKES, SHW_PLANE_GRAIN,
-       SHW_PLANE_VIEW3D, SHW_PLANE_OVERWORLD, SHW_PLANE_ROOM };
-enum { SHW_ORDER_BACK, SHW_ORDER_FRONT, SHW_ORDER_TOP };  /* behind actors / over / over all */
-enum { SHW_PLANE_F_TILE = 1, SHW_PLANE_F_OUTSIDE = 2, SHW_PLANE_F_HIDDEN = 4, SHW_PLANE_F_LIGHT_FIXED = 8 };
-
-typedef struct ShwActor {
-    uint8_t  kind;             /*  0 SHW_ACTOR_*                               */
-    uint8_t  look;             /*  1 index into looks (SHW_NONE & 0xFF = none) */
-    uint8_t  face;             /*  2 0 = R, 1 = L                              */
-    uint8_t  expr;             /*  3 EXPR_*                                    */
-    uint8_t  idle;             /*  4 SHW_IDLE_*                                */
-    uint8_t  phase;            /*  5 idle clock offset (cast.shw phase=)       */
-    uint8_t  px;               /*  6 draw scale                                */
-    uint8_t  state;            /*  7 SHW_STATE_*                               */
-    int16_t  x, y;             /*  8 anchor (feet centre; bust: bottom centre) */
-    uint16_t name;             /* 12 strtab offset of the cast id              */
-    uint16_t roster;           /* 14 roster id, SHW_NONE = none                */
-} ShwActor;
-SHW_ASSERT_SIZE(ShwActor, 16);
-
-enum { SHW_ACTOR_BUST, SHW_ACTOR_FIGURE, SHW_ACTOR_CHIBI, SHW_ACTOR_FIGHTER, SHW_ACTOR_MODEL3D,
-       SHW_ACTOR_SPRITE };
-enum { SHW_IDLE_ON, SHW_IDLE_STILL, SHW_IDLE_FROZEN, SHW_IDLE_NONE };
-enum { SHW_STATE_NORMAL, SHW_STATE_POSSESSED, SHW_STATE_GHOST, SHW_STATE_DEAD };
-
-typedef struct ShwProp {
-    uint8_t  plane;            /*  0 plane index it rides                      */
-    uint8_t  face;             /*  1 SHW_FACE_*                                */
-    uint8_t  anchor;           /*  2 SHW_ANCHOR_* (the point at= names)        */
-    uint8_t  flags;            /*  3 SHW_PROP_F_*                              */
-    int16_t  x, y;             /*  4 in its plane's coordinates                */
-    uint16_t art;              /*  8 strtab offset of the art source name      */
-    uint16_t tex;              /* 10 texpage index, SHW_NONE = slug box        */
-} ShwProp;
-SHW_ASSERT_SIZE(ShwProp, 12);
-
-enum { SHW_FACE_FRONT, SHW_FACE_L, SHW_FACE_R, SHW_FACE_WALL };
-enum { SHW_ANCHOR_BOTTOM, SHW_ANCHOR_CENTER, SHW_ANCHOR_TOP, SHW_ANCHOR_TOPLEFT };
-enum { SHW_PROP_F_HIDDEN = 1, SHW_PROP_F_LIGHT_FIXED = 2 };
-
-typedef struct ShwCrowd {
-    uint8_t  look_base;        /*  0 first look index (look_k looks, reused)   */
-    uint8_t  n;                /*  1 members                                   */
-    uint8_t  lane;             /*  2 path index in the set (0xFF = y below)    */
-    uint8_t  dir;              /*  3 0 = R, 1 = L                              */
-    uint8_t  kind;             /*  4 SHW_ACTOR_*                               */
-    uint8_t  ripple_lo;        /*  5 frames                                    */
-    uint8_t  ripple_hi;        /*  6                                           */
-    uint8_t  age;              /*  7 SHW_AGE_*                                 */
-    uint16_t spacing_q8;       /*  8 px between members                        */
-    int16_t  from;             /* 10 first member's x                          */
-    int16_t  y;                /* 12 lane y + dy                               */
-    uint16_t cycle;            /* 14 strtab offset of the walk cycle name      */
-    int32_t  speed_q16;        /* 16 px per frame                              */
-    uint32_t seed;             /* 20 ripple + resident_randomize_look() seed   */
-    uint32_t clock_mask;       /* 24 members whose idle clock runs             */
-    uint8_t  gen;              /* 28 SHW_CROWD_LOOKS | SHW_CROWD_RANDOMIZE     */
-    uint8_t  species;          /* 29 SPECIES_* forced after the generator, 0xFF keep */
-    uint8_t  look_k;           /* 30 looks in the K-set (LOOKS mode)           */
-    uint8_t  flags;            /* 31 SHW_CROWD_F_*                             */
-} ShwCrowd;
-SHW_ASSERT_SIZE(ShwCrowd, 32);
-
-/* LOOKS: member i draws looks[look_base + i % look_k]. RANDOMIZE: member i is
- * resident_randomize_look(seed + i) on the PS1 at shot prep, then `species`
- * and the KID tag (age=child) are applied (spec 4.2). */
-enum { SHW_CROWD_LOOKS, SHW_CROWD_RANDOMIZE };
-enum { SHW_CROWD_F_KID = 1, SHW_CROWD_F_FLIP = 2 };
-
-enum { SHW_AGE_ADULT, SHW_AGE_TEEN, SHW_AGE_CHILD };
-
-typedef struct ShwCamKey {
-    uint16_t frame;            /*  0 shot frame the key starts                 */
-    uint8_t  mode;             /*  2 SHW_CAM_*                                 */
-    uint8_t  ease;             /*  3 SHW_EASE_*                                */
-    int32_t  x_q16, y_q16;     /*  4 camera position at `frame`                */
-    int32_t  vx_q16, vy_q16;   /* 12 DRIFT: px per frame from `frame` on        */
-    uint16_t scale_q8;         /* 20 256 = 1.0                                 */
-    uint16_t over;             /* 22 MOVE: frames to reach the next key        */
-} ShwCamKey;
-SHW_ASSERT_SIZE(ShwCamKey, 24);
-
-/* SET: jump to (x, y, scale). DRIFT: x = x_q16 + vx_q16 * (f - frame), exact in
- * Q16 (co02: x_q16 = -0.8333*90 px so the camera is at 0 on +90). MOVE: ease
- * from the previous position to this key's over `over` frames. */
-enum { SHW_CAM_SET, SHW_CAM_DRIFT, SHW_CAM_MOVE };
-enum { SHW_EASE_LINEAR, SHW_EASE_IN, SHW_EASE_OUT, SHW_EASE_INOUT };
-
-typedef struct ShwTrack {
-    uint8_t  actor;            /*  0 actor slot                                */
-    uint8_t  kind;             /*  1 SHW_TRACK_*                               */
-    uint16_t run_n;            /*  2                                           */
-    uint32_t off_runs;         /*  4 from the chunk start                      */
-} ShwTrack;
-SHW_ASSERT_SIZE(ShwTrack, 8);
-typedef struct ShwRun { uint8_t value, count; } ShwRun;  /* RLE from frame 0  */
-SHW_ASSERT_SIZE(ShwRun, 2);
-/* MOUTH value = MOUTH_* + 1 (0 = the engine's own); BLINK 0 = engine, 1 = open,
- * 2 = shut; EXPR value = EXPR_* + 1. */
-enum { SHW_TRACK_MOUTH, SHW_TRACK_EXPR, SHW_TRACK_EYES, SHW_TRACK_BLINK };
-
-typedef struct ShwStroke {
-    uint8_t  nib;              /*  0 palette index of the crayon               */
-    uint8_t  width;            /*  1 px                                        */
-    uint8_t  flags;            /*  2 SHW_PLANE_F_OUTSIDE = draws over the lines*/
-    uint8_t  boil;             /*  3                                           */
-    uint16_t pt_n;             /*  4                                           */
-    uint16_t reveal_from;      /*  6 shot frame the reveal starts              */
-    uint16_t reveal_to;        /*  8 shot frame it reaches 100 %               */
-    uint16_t name;             /* 10 strtab offset of the stroke id            */
-    uint32_t off_pts;          /* 12 ShwPoint[pt_n] from the chunk start       */
-} ShwStroke;
-SHW_ASSERT_SIZE(ShwStroke, 16);
-typedef struct ShwPoint { int16_t x, y; } ShwPoint;
-SHW_ASSERT_SIZE(ShwPoint, 4);
-
-typedef struct ShwTexPage {
-    uint16_t w, h;             /*  0 px                                        */
-    uint8_t  bpp;              /*  4 8 (4 later)                               */
-    uint8_t  comp;             /*  5 0 raw, 1 game LZ                          */
-    uint16_t name;             /*  6 strtab offset of the source               */
-    uint32_t bytes;            /*  8 stored bytes                              */
-    uint32_t off;              /* 12 from the chunk start                      */
-} ShwTexPage;
-SHW_ASSERT_SIZE(ShwTexPage, 16);
-
-typedef struct ShwClut {
-    uint16_t n;                /*  0 entries                                   */
-    uint16_t pad;              /*  2                                           */
-    uint32_t off;              /*  4 uint16_t BGR555[n] from the chunk start   */
-} ShwClut;
-SHW_ASSERT_SIZE(ShwClut, 8);
-
-/* ---- the show ops (BeatEv.a = SHW_SOP_FLAG | op) ---------------------------
- * Word layouts in the arg table after the count word. Frames are shot frames.
- * "str" = byte offset into the chunk's strings; "q16" = 16.16.            */
+/* ---- record types: ADD-ONLY, one line per package ----------------------- *
+ * Payload layouts of the lane-1 types are below; the other packages document
+ * theirs in their own headers (named in the comment).                        */
 enum {
-    SOP_NOP = 0,
-    SOP_AUDIO,       /* k                                   (P4: publish k)      */
-    SOP_MOVE,        /* object, x, y, over, TW_* ease id (-1 linear)              */
-    SOP_WALK,        /* actor, x, over                                           */
-    SOP_SQUASH,      /* object, q8, over                                         */
-    SOP_FACE,        /* actor, 0 = R | 1 = L                                     */
-    SOP_POSE,        /* actor, str flipbook, fps                                 */
-    SOP_BLINK,       /* actor, frames                                            */
-    SOP_STATE,       /* actor, SHW_STATE_*                                       */
-    SOP_SAY,         /* actor (-1 = off screen), line str, end frame, mouth track */
-    SOP_STOP,        /* actor                                                    */
-    SOP_HUM,         /* actor, on                                                */
-    SOP_SUPER,       /* str, style (SHW_TXT_*), x, y, from, to, until, glyphs    */
-    SOP_TEXT_STEP,   /* super index (0 = the shot's first), glyphs shown          */
-    SOP_TEXT_CLEAR,  /* super index                                              */
-    SOP_SIGN,        /* str, prop slot                                           */
-    SOP_CARD,        /* str template, str k=v text                               */
-    SOP_CAM,         /* camkey index                                             */
-    SOP_CAM_DRIFT,   /* camkey index                                             */
-    SOP_CAM3D,       /* str rail, from, to                                       */
-    SOP_REVEAL,      /* stroke index, from, to                                   */
-    SOP_FX,          /* str kind, x, y, n, seed                                  */
-    SOP_BOIL,        /* on, every                                                */
-    SOP_PROP,        /* object, field (SHW_PF_*), value  (`change`, `prop <id> state=`) */
-    SOP_IRIS,        /* in(1)|out(0), x, y, shape (0 circle, 1 heart), over, hold */
-    SOP_COUNT
+    SHWR_NONE      = 0,
+    /* lane 1: player core (show_api.h) */
+    SHWR_LOOK      = 1,     /* DoomoLook[n] (48 B each; show_cast.c fills doomo_town.res[]) */
+    SHWR_PLANE     = 2,     /* n planes: each a ShwPlane + kind payload, ShwPlane.bytes long */
+    SHWR_BEAT      = 3,     /* BeatEv[n], sorted by (anchor, at)                 */
+    SHWR_ARGS      = 4,     /* int32_t[n]: show-op argument table (BeatEv.b indexes it) */
+    SHWR_STRINGS   = 5,     /* bytes of NUL-terminated strings; referenced by byte offset */
+    SHWR_IMAGE     = 6,     /* n images: each ShwImage + pixels, ShwImage.bytes long */
+    SHWR_SLUG      = 7,     /* ShwSlug (one)                                     */
+    SHWR_AUDIO_K   = 8,     /* ShwAudioK[n]: audio events k due in this shot (P4) */
+    SHWR_CLUT      = 9,     /* uint16_t[n] BGR555 (reserved)                     */
+    /* lane 2: stage FX / text / camera (show_cam.h, show_fx.h, show_text.h) */
+    SHWR_CAMSETUP  = 16,    /* ShowCamSetup (show_cam.h)                         */
+    SHWR_CAMKEY    = 17,    /* ShowCamKey[n] (show_cam.h)                        */
+    SHWR_STROKES   = 18,    /* show_strokes                                      */
+    SHWR_TILEMAP   = 19,    /* show_tilemap                                      */
+    SHWR_TEXT      = 20,    /* SUPERs, signs, cards (show_text.h)                */
+    SHWR_FX        = 21,    /* particles, wipes, Split, dissolve (show_fx.h)     */
+    SHWR_FONT      = 22,    /* .pxt glyph sets (show_text.h)                     */
+    /* lane 2: actors and crowds (show_actor.h, show_crowd.h) */
+    SHWR_ACTOR     = 32,    /* actors                                            */
+    SHWR_TRACK     = 33,    /* per-frame MOUTH/EXPR/EYES/BLINK tracks (RLE)      */
+    SHWR_CROWD     = 34,    /* crowds                                            */
+    SHWR_PROP      = 35,    /* props / flipbooks                                 */
+    /* lane 3: 3D and map hosts, HUD (show_hosts.h) */
+    SHWR_OVERWORLD = 48,
+    SHWR_ROOM      = 49,
+    SHWR_VIEW3D    = 50,
+    SHWR_HUD       = 51,
+    SHWR_RAIL      = 52,
+    /* private ranges for anything not foreseen: 0x100-0x1FF lane 2,
+     * 0x200-0x2FF lane 3, 0x300-0x3FF lane 1. Promote to a named line when stable. */
+    SHWR_PRIV_L2   = 0x100,
+    SHWR_PRIV_L3   = 0x200,
+    SHWR_PRIV_L1   = 0x300
 };
-enum { SHW_TXT_TYPE, SHW_TXT_POP, SHW_TXT_DEADPAN };
-/* SOP_PROP: HIDE value 1 hide / 0 show; STATE value = str offset of the state name
- * (the prop's art.<state>); ATTACH value = the object it rides (-1 = detach);
- * KIND value = SHW_ACTOR_* (an actor changes image kind). */
-enum { SHW_PF_FACE, SHW_PF_X, SHW_PF_Y, SHW_PF_HIDE, SHW_PF_STATE, SHW_PF_ATTACH, SHW_PF_KIND };
+
+/* ---- planes (SHWR_PLANE): drawn back to front by `order` ----------------- */
+enum {                                  /* ShwPlane.kind: ADD-ONLY           */
+    SHWP_NONE = 0,
+    SHWP_BANDS = 1,                     /* lane 1: palette-step gradient (TILE bands) */
+    SHWP_IMAGE = 2,                     /* lane 1: a baked plate (SHWR_IMAGE)  */
+    SHWP_TILEMAP = 3,                   /* lane 2 */
+    SHWP_STROKES = 4,                   /* lane 2 */
+    SHWP_GRAIN = 5,                     /* lane 1: 64x64 two-tone paper tile   */
+    SHWP_VIEW3D = 6,                    /* lane 3 */
+    SHWP_OVERWORLD = 7,                 /* lane 3 */
+    SHWP_ROOM = 8,                      /* lane 3 */
+    SHWP_FILL = 9,                      /* lane 1: one flat colour             */
+    SHWP_COUNT = 16                     /* table size; kinds < 16              */
+};
+
+enum {                                  /* ShwPlane.flags                    */
+    SHWPF_NOSHAKE = 1,                  /* ignores the camera shake          */
+    SHWPF_HIDDEN  = 2,                  /* starts hidden (a show op shows it) */
+    SHWPF_TILE_X  = 4,                  /* repeats horizontally              */
+    SHWPF_TILE_Y  = 8                   /* repeats vertically                */
+};
+
+typedef struct ShwPlane {               /* 24 B common header, then the kind payload */
+    uint8_t  kind;                      /* SHWP_*                            */
+    uint8_t  flags;                     /* SHWPF_*                           */
+    uint16_t bytes;                     /* this header + payload (4-aligned)  */
+    int16_t  order;                     /* draw order, lower first           */
+    uint16_t id;                        /* plane id within the shot (show ops address it) */
+    /* the camera fields: the same order as show_cam.h's ShowPlaneCam */
+    int16_t  par_xn, par_xd;            /* x parallax = par_xn / par_xd (den > 0) */
+    int16_t  par_yn, par_yd;
+    int16_t  at_x, at_y;                /* plane origin, show px             */
+    uint16_t spar_q8;                   /* scale parallax, Q8 (256 = with the camera) */
+    uint16_t t_in;                      /* reserved (0)                      */
+} ShwPlane;
+
+typedef struct ShwBand { int16_t y; uint8_t color, pad; } ShwBand;
+typedef struct ShwBands {               /* SHWP_BANDS payload                */
+    uint16_t n;                         /* bands that follow                 */
+    uint16_t pad;
+    /* ShwBand band[n]: band i covers show y [band[i].y, band[i+1].y)
+     * (the last to the picture bottom), in plane px (moves with the plane) */
+} ShwBands;
+
+typedef struct ShwFill { uint8_t color, pad[3]; } ShwFill;   /* SHWP_FILL payload */
+
+typedef struct ShwImagePlane {          /* SHWP_IMAGE payload                */
+    uint16_t image;                     /* index into the shot's SHWR_IMAGE list */
+    uint8_t  scale;                     /* 0 = the shot's px, else 1..4      */
+    uint8_t  flip;                      /* IMG_FLIPX                         */
+} ShwImagePlane;
+
+typedef struct ShwGrain {               /* SHWP_GRAIN payload                */
+    uint8_t  color;                     /* the grain colour                  */
+    uint8_t  density;                   /* dots per 64x64 tile / 16 (1..255) */
+    uint8_t  boil;                      /* 0 = still; N = new seed every N frames */
+    uint8_t  pad;
+    uint32_t seed;
+} ShwGrain;
+
+/* ---- images (SHWR_IMAGE): 8bpp indexed, index 0 transparent -------------- */
+enum { SHWI_RAW = 0, SHWI_RLE = 1 };    /* ShwImage.comp                     */
+typedef struct ShwImage {               /* 12 B, then the pixel data         */
+    uint16_t w, h;
+    uint8_t  comp;                      /* SHWI_RAW: w*h bytes. SHWI_RLE: pairs
+                                           (count 1..255, index), row-major  */
+    uint8_t  pad;
+    uint16_t id;                        /* the compiler's image id (logs)    */
+    uint32_t bytes;                     /* this header + data (4-aligned)    */
+} ShwImage;
+
+/* ---- slug card (SHWR_SLUG) ----------------------------------------------- */
+typedef struct ShwSlug {                /* 16 B; strings in SHWR_STRINGS     */
+    uint16_t title;                     /* string offsets                    */
+    uint16_t line1, line2;
+    uint8_t  bg, fg;                    /* palette indices                   */
+    uint32_t beat;                      /* beat number                       */
+    uint16_t act;                       /* act number (0 cold open)          */
+    uint16_t pad;
+} ShwSlug;
+
+/* ---- audio events due in the shot (SHWR_AUDIO_K), for the P4 log --------- */
+typedef struct ShwAudioK { uint16_t frame; uint16_t pad; uint32_t k; } ShwAudioK;
+
+/* ---- show ops: BeatEv { op = BOP_SHOT, a = SHOW_OP_FLAG | op, b = ArgTable index }
+ * Ranges (ADD-ONLY inside your range; a module's ext hook claims its range):
+ *   0x000-0x03F lane 1 core        0x040-0x05F lane 2 text
+ *   0x060-0x07F lane 2 fx          0x080-0x09F lane 2 camera
+ *   0x0A0-0x0BF lane 2 actors      0x0C0-0x0DF lane 2 crowds/props
+ *   0x100-0x17F lane 3 hosts/HUD   0x180-0x1FF free                       */
+#define SHOW_OP_FLAG    0x4000
+enum {
+    SOP_NOP        = 0x000,
+    SOP_PLANE_SHOW = 0x001,             /* args[b]: plane id                 */
+    SOP_PLANE_HIDE = 0x002,             /* args[b]: plane id                 */
+    SOP_MARK       = 0x003,             /* args[b]: marker id -> P1 (tests)  */
+    SOP_FADE_TO    = 0x004,             /* args[b..]: level16, frames        */
+    SOP_PAL_TO     = 0x005,             /* args[b..]: pal_id, level16, frames */
+    SOP_IRIS       = 0x006,             /* args[b..]: out(1)/in(0), cx, cy, r, heart, hold */
+    SOP_TEXT_BASE  = 0x040, SOP_FX_BASE = 0x060, SOP_CAM_BASE = 0x080,
+    SOP_ACTOR_BASE = 0x0A0, SOP_CROWD_BASE = 0x0C0, SOP_HOST_BASE = 0x100
+};
 
 #endif

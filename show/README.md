@@ -66,6 +66,35 @@ are at 48 kHz: `smp = 1600 * frame`. `tc` strings are `HH:MM:SS:FF` at 30 fps.
 `end` fields are **exclusive** (`start + len`). Every format carries a
 `"format"` version string; additions are add-only within a version.
 
+### `EP101.SHW` (what `showc` writes into the player's format)
+
+The file is the player's `shw_format.h` (lane 1 player core; `shw_format.py` mirrors it,
+AT4.2 compiles the header with gcc and checks sizes, constants and a C read-back). The
+compiler's own working form is `showtk/shw_ir.py` (in memory only). Per shot chunk:
+
+| Record | What the compiler puts there |
+|---|---|
+| `SHWR_PLANE` + `SHWR_IMAGE` | The set (`stage.resolve_set`, ART's set reader and generators): BANDS skies, IMAGE plates (`tile=` planes get `SHWPF_TILE_X/Y`), every **prop and every prop state as its own IMAGE plane** right after its plane (state planes start `SHWPF_HIDDEN`), lane 2's `SHWP_TILEMAP` (payload `picture.tilemap`, or an IMAGE when over a plane's 64 KB) and `SHWP_STROKES` (payload `picture.strokes`, reveal spans baked in). Variant LUTs (`light=`) are folded into the indices. Plane ids are 1.. in draw order; `order` = file order + 100 x (back 0, front 1, top 2); `par` from `par=x[,y]` exactly; `at` = the image's top-left in show px at camera 0 |
+| `SHWR_BEAT` + `SHWR_ARGS` | beat.h ops from `textpack.compile_beat` (fade, iris with a prop slot, expr, pop, shake, labels...), plus show ops `BOP_SHOT, a=0x4000\|op, b=args row`: `SOP_PLANE_SHOW/HIDE [plane id]` (from `+T show <prop>[:<state>]`, `hide <prop>`, `prop.set <prop> state=`, `change <prop>.state=`), and the **proposed** actor/prop ops below |
+| `SHWR_STRINGS` | the shot's strings (byte offsets are what args and records reference) |
+| `SHWR_AUDIO_K` | `(shot frame, k)` of every audio event in the shot (P4) |
+| `SHWR_LOOK` | 48-B DoomoLooks, indexed by `ShwActor.look` |
+| `SHWR_ACTOR` | proposed: `{u8 kind (0 bust 1 figure 2 chibi 3 fighter 4 model3d 5 sprite), u8 look, u8 face (0 R 1 L), u8 expr, u8 idle, u8 phase, u8 px, u8 state, i16 x, i16 y, u16 name (string), u16 roster}` 16 B |
+| `SHWR_TRACK` | proposed: n x `{u8 actor, u8 kind (0 MOUTH), u16 runs, u32 off}` then `(u8 value, u8 count)` runs from frame 0; MOUTH value 0 = closed, else `MOUTH_* + 1` |
+| `SHWR_CROWD` | proposed: `{u8 look_base, n, lane, dir, kind, ripple_lo, ripple_hi, age; u16 spacing_q8; i16 from, y; u16 cycle (string); i32 speed_q16; u32 seed, clock_mask; u8 gen, species, look_k, flags}` 36 B |
+| `SHWR_PRIV_L2` (0x100) | lane 2's `PIC1` blob for `show_l2_bind()`: `CAM ` (picture.camera, exact), `FX  ` (look, boil, matte, fade-in, wipes, dissolve), `TEXT` (SUPERs, signs, cards with glyph schedules), `EVTS` (lane-2 ops: `SOP_IRIS` 0x100 for an x,y iris, `SOP_BOIL` 0x101), `SLOT` (slot 0 = 160,90; 1.. props' anchors; 64.. actors). Planes are in `SHWR_PLANE`, not in the blob |
+| `SHWR_SLUG` | slug cards (`show slug`, and any beat a shot list does not fill): title `<beat id>  <title>`, the act title, the TC |
+
+Proposed show ops (the actor modules own the final numbers; `args` rows in brackets):
+`SOP_ACTOR_BASE+` 0 MOVE `[actor, x, y, over, ease]`, 1 WALK `[actor, x, over]`, 2 SQUASH `[actor, q8, over]`,
+3 FACE `[actor, 0 R|1 L]`, 4 POSE `[actor, flipbook str, fps]`, 5 BLINK `[actor, frames]`, 6 STATE `[actor, state]`,
+7 SAY `[actor, line text str, end frame, track index]`, 8 STOP `[actor]`, 9 HUM `[actor, on]`;
+`SOP_CROWD_BASE+` 0 PROP `[prop, field 0 face|1 x|2 y|3 hide, value]`, 1 FX `[kind str, x, y, n, seed]`;
+`SOP_HOST_BASE+0x40` CAM3D `[rail str, from, to]`.
+`ShwShotIndex`: `beat` = rundown beat number, `look` 0 pixel 1 crayon 2 sepia 3 lcd 4 hellify,
+`base_shot/base_frame`, `replay_shot/replay_from` (provenance; the source's cast is copied into the
+shot, `preroll` is 0 for now), `flags` `SHWF_SLUG`/`SHWF_3D`.
+
 ### `timeline.json` (`"format": "show-timeline/1"`)
 
 ```json
@@ -222,6 +251,92 @@ gives the repo-relative form for messages.
 | `show_selftest.c` | AT1.3 only (`-DSHOW_SELFTEST=ON`): CRC32 of busts, figures and chibis for 20 roster looks x 11 expressions on the TTY, plus the override checks |
 | `ram_report.py`, `iso_show.xml`, `system.cnf` | The elf2exe step + RAM budget, and the disc (`SHOW.EXE`, episodes under `SHOW/` via `-DSHOW_ISO_FILES=EP101.SHW=/abs/path`) |
 
+## Plug-in API (how lanes 2 and 3 plug into the player)
+
+The contract is `show/include/show/show_api.h` (C) plus
+`show/include/show/shw_format.h` (the `.SHW` file, mirrored by
+`showtk/shw_format.py`). Both are add-only; a breaking change updates every
+user on origin in the same push.
+
+**1. A module is one const struct in your own file.** Everything that draws
+or animates is a `ShowModule`:
+
+```c
+#include "show/show_api.h"
+static void cam_reset(void) { /* EVERY static back to its boot value */ }
+static void cam_prep(const ShowShot *s) { n = 0; keys = show_chunk_find(SHWR_CAMKEY, &n, NULL); }
+static int  cam_ext(const BeatEv *ev) { int op = show_op_of(ev);
+                                        return op >= SOP_CAM_BASE && op < SOP_CAM_BASE + 32 ? (do_op(op, show_args(ev->b)), 1) : 0; }
+static void cam_tick(int t) { /* logic: runs on EVERY frame, pre-roll included */ }
+static void cam_draw(int layer, int t) { if (layer == SHOW_L_FX) ...; }
+static void cam_hash(ShowCrc *c) { show_crc_add(c, &state, sizeof state); }
+const ShowModule show_mod_cam = { "cam", SHOW_API_VERSION, 0,
+    cam_reset, cam_prep, cam_ext, cam_tick, cam_draw, cam_hash, NULL /* plane kinds */ };
+```
+
+Any pointer may be NULL. `show/engine/show_registry.c` already lists every
+planned module **as a weak reference**, in call order: `core cast cam stage
+tilemap strokes overworld room view3d actor crowd prop fx text hud slug` plus
+spare slots `l2_spare1/2`, `l3_spare1/2`. A module that is not linked yet is
+skipped, so plugging in needs **no edit to a shared file**: name your struct
+`show_mod_<name>` and drop `show_<name>.c` into `show/engine/` (CMake globs
+`show_*.c`). Only a brand-new name is a one-line add to the registry.
+
+**2. Plane kinds (stage-kind hosts).** A module may bring a table of
+`ShowPlaneKind { kind, name, prep, draw }` ending with `{0}` in its last
+field. The core walks the shot's `SHWR_PLANE` list in `order` and calls the
+kind's `draw(plane, payload, t)`. Kinds are `SHWP_*` in shw_format.h: lane 1
+owns BANDS, IMAGE, GRAIN, FILL; lane 2 TILEMAP, STROKES; lane 3 VIEW3D,
+OVERWORLD, ROOM. Every plane starts with the 24-byte `ShwPlane` header (kind,
+flags, bytes, order, id, parallax num/den, origin, scale parallax: the same
+order as `show_cam.h`'s `ShowPlaneCam`), then the kind's payload. Actor kinds,
+text styles and FX are entries in their own module's tables; the core only
+needs the module.
+
+**3. The per-frame call order** (`show_api.h` has it in full):
+`hcmd_poll` → `show_mbox_poll` (seek) → at a shot start: chunk bind, core
+reset, every `reset()`, every plane kind `prep()`, every `prep(shot)`, then
+pre-roll/seek frames of logic with drawing off → `camfx_tick`, `beat_tick`
+(each `BT_EXT` to the modules' `ext()` in registry order until one returns 1;
+the core takes IRIS, TINT, POP, EXPR and show ops 0x000-0x03F) → every
+`tick(t)` → draw (only when `show_drawing()`): clear, planes, then
+`draw(layer)` for `SHOW_L_PLANES, ACTORS, CROWDS, FX, TEXT_UNDER`, tint,
+`camfx_apply()`, `SHOW_L_TEXT, HUD`, matte bars → P1/P4/stats to
+`g_show_mbox`. camfx_apply's whole-frame shake offset is a no-op in the show
+(`--wrap=plat_post_offset`): the shake is a camera offset the stage camera
+applies (`camfx_offset()`), so the frame edge and matte never move.
+
+**4. Reading your `.SHW` data.** Each record type appears at most once per
+chunk (the compiler merges). `show_chunk_find(SHWR_x, &n, &bytes)` returns
+the payload; `show_str(off)` the shot's strings; `show_args(b)` the
+show-op argument row (`BeatEv{op=BOP_SHOT, a=0x4000|op, b=row}`);
+`show_image(i)` a decoded `DoomoImage` (fresh uid per shot);
+`show_plane(i)` / `show_plane_by_id(id)` the planes. Record types and show-op
+ranges are pre-allocated per lane in shw_format.h (lane 2: records 16-47,
+ops 0x040-0x0DF; lane 3: records 48-63, ops 0x100-0x17F; private record
+ranges 0x100/0x200/0x300). Document your payload layout in your own header
+and mirror it in Python next to your packer (`shw_format.Chunk.add(type, n,
+payload)` writes any record).
+
+**5. Purity and seeking.** `reset()` restores all your state; seed from
+`show_shot()->seed` or `show_rng()`; never `plat_entropy()` or a counter that
+crosses shots. `tick()` runs on pre-roll and seek frames too and must make
+the same portrait fetches in the same order as a full run; `draw()` only
+issues `plat_*` calls. The camera module installs the plane transform with
+`g_show_plane_xf_hook` / `g_show_draw_image_hook` in its `prep()` (the core
+clears both each shot; the default is a fixed camera at the plane's origin
+and the shot's px). An iris centred on an actor uses `g_show_anchor_hook`.
+
+**6. Stats and diagnostics.** `show_stat_add(SHOW_STAT_UPLOADS |
+EVICTIONS | POOL_BLOCKS | SPRITES | USER0, n)` per frame; `hash(ShowCrc*)`
+adds your state to P1 (fixed layout, no pointers). `show_warn(rule, msg)` /
+`show_error(rule, msg)` print `show: W co02 +150 [RULE] msg` on the TTY; the
+capture fails a shot on any `show: E`. Audio event ids scheduled outside
+`SHWR_AUDIO_K` go to P4 with `show_p4_fire(k)`.
+
+**Coordinates:** the `plat_*` calls take screen pixels; the 320x180
+picture is rows 30-209, so draw at `SHOW_Y(y)`.
+
 New player sources: any `show/engine/show_*.c` is compiled automatically
 (CMake globs them), so later packages add files without editing the
 CMakeLists. Headers go in `show/include/show/`.
@@ -261,3 +376,80 @@ ART `art/`, `showtk/art/`, `series/cast.shw`, `acting.shw`, `looks/`, `sets/`.
 Everyone appends to `DECISIONS.md` and `DEFERRED.md`. Binaries, renders,
 models and audio are never committed (`show/.gitignore`); they live in the
 vault and the scratch dirs.
+
+## Staging reference: picture (ENGINE lane 2: WP5 planes, WP7 text, WP8 camera/FX)
+
+Engine: `show/engine/show_{cam,fx,strokes,tilemap,text,l2,font_child}.c`, headers in
+`show/include/show/`. Compiler side: `show/tools/showtk/picture/` (camera.py, fx.py,
+strokes.py, tilemap.py, text.py, pxt.py, bake.py, lints.py, blob.py). Each module's
+docstring is the full grammar; the summary:
+
+**Camera** (setup `cam at=X,Y [scale=S]`, `cam drift dx=R [dy=R]`; timed `+T cam to x= y= scale= over=F ease=`,
+`cam pan dx=R`, `cam creep dx=R ramp=13`, `cam whip L|R over=6`, `cam crane dy=D over=F`, `cam stop`).
+Planes take `par=P` (Q16 parallax), `scale` and `matte=open|letterbox`; drift is exact (no accumulated error).
+
+**Strokes** (crayon register): in a set `strokes <plane> boil=2 ... stroke <id> nib=<colour> w=2 path=...`;
+in a shot `+A reveal <stroke> over=+A..+B` (100 % on frame B), `+T stroke <id> show|hide`, `+T boil on|off every=2`.
+
+**Tilemap**: `plane <name> tilemap=gen:<plate>(...) par=P at=X,Y` (16x16 tiles, 128x128 atlas pages).
+
+**Text**: `+T super <string> style=type|pop|deadpan at=lower|title|top|X,Y [over=+A..+B|cps=N] [until=] [font=game|child_hand]`;
+`+T sign <string> on=<prop>`; `+T card tvma|act|title|text|black k=v`.
+
+**Effects**: `look crayon|pixel|sepia|lcd|hellify`; `+T iris_in|iris_out at=prop:<id> over=F [shape=heart] [r=R] [hold=end]`;
+`+T fade in|out over=F`; `+T flash <colour> <level16> <F>`; `+T shake SHK_*`; `+T pal PAL_SEPIA level over=F`;
+`+T wipe brick [dir=R] [hold=F] [out=on]`; `+T split [hold=60] [out=on]`; `+T dissolve over=13`.
+
+Example (co02-style):
+```
+look crayon boil=2
+cam at=0,0
+cam drift dx=0.25
++0  iris_in at=prop:bandstand over=13
++30 super "Every Midsummer night, the whole park had one party." style=type at=lower font=child_hand cps=12
++120 super "Now there's a different party." style=pop at=title
++200 iris_out at=prop:bandstand over=20 shape=heart r=40 hold=end
+```
+Tests: `PYTHONPATH=show/tools python3 -m pytest show/tests/engine/picture -m "not slow"`
+(host raster of the same C; AT5.1-5.3, AT7.1-7.2, AT8.1-8.3). Contact sheets:
+`python3 show/tests/engine/picture/make_sheets.py`. Until lane 1's shot loop lands, a shot
+reaches these modules as a "PIC1" blob (`show_l2_bind/events/draw`, see show_l2.h for the
+per-frame order); lane 1 binds that blob from the shot's .SHW chunk.
+## Delivery, review and standards (WP12, WP13, WP17)
+
+All read the compiler's sidecars through `showtk/sidecars.py` (`build/<ep>/timeline.json`,
+`audio_events.json`, `captions.json`) and the per-shot FFV1 masters (`--masters DIR` with
+`<shot>.mkv`, else the cache key in the timeline, else `build/<ep>/render_index.json`).
+
+| Command | Does |
+|---|---|
+| `show deliver ep101 web --range co01..co03` | EDL -> one H.264 segment per beat (cached) -> x6 1920x1080 30p CRF 16 + AAC 320k, chapters, `.srt`/`.vtt`, QC (ffprobe + sampled frames vs masters x6), `manifest.json` (+ `show/ep101/deliveries/<v>/`) |
+| `show deliver ep101 web --release` | also: STD-* lints green, compiler lint report clean, sign-off bound to this render hash -> `build/ep101/release/web/` (MP4, captions, title, description, chapters, tags, 1280x720 thumbnail, upload sheet, standards, sign-off, manifest) |
+| `show preview ep101 co01..co03` | x3 960x540 with burn-ins (TC, frame, beat, shot +N, line id, TEMP TTS, badge), temp mix |
+| `show timing ep101 co02 [--static]` | each event's frame, the measured picture change, the audio onset (±1 ms), rungs, mouth tracks |
+| `show sheet ep101 co01..co03` / `show diff ep101 co02 --against DIR` | contact sheet / before-after sheet |
+| `show frame ep101 co02 +13 --overlay` | x3 frame: safe areas, Wall x=160, anchors, off-palette in magenta |
+| `show status ep101` · `show notes add|list|done ep101 ...` | states, lints, cache, sign-off · review rounds in `show/ep101/notes/` |
+| `show standards ep101` · `show signoff ep101 "all 8 fine"` | the report (`build/ep101/standards.txt/.html`) · the checklist TOML |
+
+Synthetic co01..co03 for trying all of it without a render: `python3 -m showtk.review.synthetic DIR`
+then `SHOW_BUILD=DIR/build SHOW_EPISODES=DIR/eps show deliver ep101 web --range co01..co03 --masters DIR/masters`.
+
+## Staging reference: standards tags (WP17)
+
+Every statement below is read by the STD-* lints (spec §13.5); none of the hard-limit rules can be waived.
+
+    shot co40 beat=e101_3_03 len=120 set=cellar scene=sc_fp gore=BRUTAL   # scene= starts a scene; gore=BRUTAL never with a child in the scene
+      +0  tag shot gore_truth                     # also: innuendo implied offscreen suggestive rear sticker explicit(=error)
+    end
+    line a2_05_dance mayor "Shall we?"  tags=advance to=nana            # advance/contact/touch name their adult target
+    line a2_05_yes   nana  "Gladly."    tags=yes
+    line a2_05_hold  mayor ""           tags=contact to=nana consent=a2_05_yes   # consent= cites an earlier spoken yes, same scene
+    line a2_06_no    nana  "No, dear."  tags=no                         # the advancer's next line must be tags=stepback
+    line a1_09_joke  nana  "..."        tags=innuendo ref=mayor         # ref= who a line is about (never a child if suggestive)
+    shot ... tags=hurt:sunny | harm:pet | gore:<cute char>              # STD-SUNNY / STD-PET / STD-GORE errors
+
+`age=adult|teen|child` is required on every `char`, `crowd` and `voice` (STD-AGE). Word lists:
+`show/series/lints.shw` (`slur sha256:<hex>` via `python3 -m showtk.standards.lints hash "<word>"`,
+`real`, `innuendo`, `brand`). Release metadata (optional) in the timeline's `release` block:
+`title=`, `logline=`, `tags=`, `voices=`, `thumb=<shot>+<frame>` (refused in a scene with a child).

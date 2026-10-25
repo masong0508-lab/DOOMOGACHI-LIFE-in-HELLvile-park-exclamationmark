@@ -1,385 +1,290 @@
-"""shw_format.py - the EP###.SHW binary format, mirrored from
-show/include/show/shw_format.h (spec 7.3). AT4.2 checks the two agree.
+"""shw_format.py - the EP###.SHW format, mirrored field for field from
+show/include/show/shw_format.h (spec 7.3). Owner: ENGINE.
+
+The C header is the source of truth; tests/compiler/test_shw_format.py
+(AT4.2) parses the header's structs and enums and checks this module
+against them. Change both in one commit.
+
+Writing an episode:
 
     from showtk import shw_format as F
-    blob = F.write_episode(header_fields, shots)   # bytes
-    ep = F.read_episode(blob)                      # dicts, round-trips
+    ch = F.Chunk(shot=0, bg=F.PAL_BLACK)
+    ch.planes.append(F.plane_bands(id=1, order=0, bands=[(0, 140), (90, 141)]))
+    ch.add_beat([(0, 0, F.BOP_END, 0, 0)])
+    ep = F.Episode(episode=101, seed=0x101)
+    ep.add_shot("co01", len=120, chunk=ch, px=1, seed=1)
+    open("EP101.SHW", "wb").write(ep.build())
 
-Every struct is a list of (field, ctype, count) in header order; pack() /
-unpack() turn dicts into bytes and back. Constants (SOP_*, SHW_*) are read
-from the header itself at import, so the two can never drift on a number.
+Reading one back (tests, verify): F.read_episode(data) -> dict.
 """
-import re
+from __future__ import annotations
+
+import hashlib
 import struct
 import zlib
-from pathlib import Path
+from dataclasses import dataclass, field
 
-HEADER = Path(__file__).resolve().parents[2] / "include" / "show" / "shw_format.h"
+SHW_MAGIC = 0x31574853
+SHW_SHOT_MAGIC = 0x544F4853
+SHW_ABI = 1
+SHW_SECTOR = 2048
+SHW_CHUNK_MAX = 160 * 1024
+SHW_ID_LEN = 8
 
-CTYPES = {"uint8_t": "B", "int8_t": "b", "uint16_t": "H", "int16_t": "h",
-          "uint32_t": "I", "int32_t": "i"}
+# struct formats (little-endian, no implicit padding: sizes are asserted)
+EP_HEADER = struct.Struct("<IHHBBHHHIHH8sIIIIIIII")          # 64
+SHOT_INDEX = struct.Struct("<IHBBIIHHHHHHI8sII")             # 48
+SHOT_HDR = struct.Struct("<IHHIBBBB4HII")                    # 32
+REC = struct.Struct("<HHI")                                  # 8
+PLANE = struct.Struct("<BBHhHhhhhhhHH")                      # 24
+IMAGE = struct.Struct("<HHBBHI")                             # 12
+SLUG = struct.Struct("<HHHBBIHH")                            # 16
+AUDIO_K = struct.Struct("<HHI")                              # 8
+BEATEV = struct.Struct("<HBBhh")                             # 8 (core/include/doomo/beat.h)
+BAND = struct.Struct("<hBB")                                 # 4
+assert (EP_HEADER.size, SHOT_INDEX.size, SHOT_HDR.size, REC.size, PLANE.size, IMAGE.size,
+        SLUG.size, AUDIO_K.size, BEATEV.size) == (64, 48, 32, 8, 24, 12, 16, 8, 8)
 
-# (field, ctype, count) in the header's order; keep in lock-step with the .h
-STRUCTS = {
-    "ShwEpHeader": [
-        ("magic", "uint32_t", 1), ("abi", "uint16_t", 1), ("nshots", "uint16_t", 1),
-        ("fps", "uint8_t", 1), ("flags", "uint8_t", 1), ("canvas_w", "uint16_t", 1),
-        ("canvas_h", "uint16_t", 1), ("canvas_y", "uint16_t", 1), ("seed", "uint32_t", 1),
-        ("toolchain_hash", "uint8_t", 8), ("strtab_off", "uint32_t", 1),
-        ("strtab_bytes", "uint32_t", 1), ("total_frames", "uint32_t", 1)],
-    "ShwShotIndex": [
-        ("start_frame", "uint32_t", 1), ("len", "uint16_t", 1), ("px", "uint8_t", 1),
-        ("look", "uint8_t", 1), ("chunk_sector", "uint32_t", 1), ("chunk_bytes", "uint32_t", 1),
-        ("base_shot", "uint16_t", 1), ("base_frame", "uint16_t", 1), ("replay_shot", "uint16_t", 1),
-        ("replay_from", "uint16_t", 1), ("flags", "uint16_t", 1), ("name", "uint16_t", 1),
-        ("seed", "uint32_t", 1), ("chunk_crc", "uint32_t", 1)],
-    "ShwShotHdr": [
-        ("magic", "uint32_t", 1), ("set_kind", "uint8_t", 1), ("plane_n", "uint8_t", 1),
-        ("actor_n", "uint8_t", 1), ("prop_n", "uint8_t", 1), ("crowd_n", "uint8_t", 1),
-        ("look_n", "uint8_t", 1), ("track_n", "uint8_t", 1), ("badge_est", "uint8_t", 1),
-        ("ev_n", "uint16_t", 1), ("arg_n", "uint16_t", 1), ("camkey_n", "uint16_t", 1),
-        ("stroke_n", "uint16_t", 1), ("texpage_n", "uint16_t", 1), ("clut_n", "uint16_t", 1),
-        ("strings_bytes", "uint16_t", 1), ("set_name", "uint16_t", 1),
-        ("off_looks", "uint32_t", 1), ("off_planes", "uint32_t", 1), ("off_actors", "uint32_t", 1),
-        ("off_props", "uint32_t", 1), ("off_crowds", "uint32_t", 1), ("off_camkeys", "uint32_t", 1),
-        ("off_events", "uint32_t", 1), ("off_args", "uint32_t", 1), ("off_tracks", "uint32_t", 1),
-        ("off_strokes", "uint32_t", 1), ("off_strings", "uint32_t", 1),
-        ("off_texpages", "uint32_t", 1), ("off_cluts", "uint32_t", 1), ("vram_plan", "uint16_t", 4),
-        ("variant", "uint16_t", 1), ("pad", "uint16_t", 1)],
-    "ShwLook": [("b", "uint8_t", 48)],
-    "ShwPlane": [
-        ("kind", "uint8_t", 1), ("order", "uint8_t", 1), ("flags", "uint8_t", 1), ("boil", "uint8_t", 1),
-        ("par_q16", "int32_t", 1), ("w", "uint16_t", 1), ("h", "uint16_t", 1), ("tex", "uint16_t", 1),
-        ("clut", "uint16_t", 1), ("x", "int16_t", 1), ("y", "int16_t", 1), ("arg", "uint32_t", 1)],
-    "ShwActor": [
-        ("kind", "uint8_t", 1), ("look", "uint8_t", 1), ("face", "uint8_t", 1), ("expr", "uint8_t", 1),
-        ("idle", "uint8_t", 1), ("phase", "uint8_t", 1), ("px", "uint8_t", 1), ("state", "uint8_t", 1),
-        ("x", "int16_t", 1), ("y", "int16_t", 1), ("name", "uint16_t", 1), ("roster", "uint16_t", 1)],
-    "ShwProp": [
-        ("plane", "uint8_t", 1), ("face", "uint8_t", 1), ("anchor", "uint8_t", 1), ("flags", "uint8_t", 1),
-        ("x", "int16_t", 1), ("y", "int16_t", 1), ("art", "uint16_t", 1), ("tex", "uint16_t", 1)],
-    "ShwCrowd": [
-        ("look_base", "uint8_t", 1), ("n", "uint8_t", 1), ("lane", "uint8_t", 1), ("dir", "uint8_t", 1),
-        ("kind", "uint8_t", 1), ("ripple_lo", "uint8_t", 1), ("ripple_hi", "uint8_t", 1),
-        ("age", "uint8_t", 1), ("spacing_q8", "uint16_t", 1), ("from", "int16_t", 1),
-        ("y", "int16_t", 1), ("cycle", "uint16_t", 1), ("speed_q16", "int32_t", 1),
-        ("seed", "uint32_t", 1), ("clock_mask", "uint32_t", 1), ("gen", "uint8_t", 1),
-        ("species", "uint8_t", 1), ("look_k", "uint8_t", 1), ("flags", "uint8_t", 1)],
-    "ShwCamKey": [
-        ("frame", "uint16_t", 1), ("mode", "uint8_t", 1), ("ease", "uint8_t", 1),
-        ("x_q16", "int32_t", 1), ("y_q16", "int32_t", 1), ("vx_q16", "int32_t", 1),
-        ("vy_q16", "int32_t", 1), ("scale_q8", "uint16_t", 1), ("over", "uint16_t", 1)],
-    "ShwTrack": [("actor", "uint8_t", 1), ("kind", "uint8_t", 1), ("run_n", "uint16_t", 1),
-                 ("off_runs", "uint32_t", 1)],
-    "ShwRun": [("value", "uint8_t", 1), ("count", "uint8_t", 1)],
-    "ShwStroke": [
-        ("nib", "uint8_t", 1), ("width", "uint8_t", 1), ("flags", "uint8_t", 1), ("boil", "uint8_t", 1),
-        ("pt_n", "uint16_t", 1), ("reveal_from", "uint16_t", 1), ("reveal_to", "uint16_t", 1),
-        ("name", "uint16_t", 1), ("off_pts", "uint32_t", 1)],
-    "ShwPoint": [("x", "int16_t", 1), ("y", "int16_t", 1)],
-    "ShwTexPage": [
-        ("w", "uint16_t", 1), ("h", "uint16_t", 1), ("bpp", "uint8_t", 1), ("comp", "uint8_t", 1),
-        ("name", "uint16_t", 1), ("bytes", "uint32_t", 1), ("off", "uint32_t", 1)],
-    "ShwClut": [("n", "uint16_t", 1), ("pad", "uint16_t", 1), ("off", "uint32_t", 1)],
-    # beat.h, the engine's own record (not in shw_format.h)
-    "BeatEv": [("at", "uint16_t", 1), ("anchor", "uint8_t", 1), ("op", "uint8_t", 1),
-               ("a", "int16_t", 1), ("b", "int16_t", 1)],
-}
+# ShwShotIndex.flags
+SHWF_SLUG, SHWF_HOLDLAST, SHWF_3D = 1, 2, 4
+SHWB_PS1_LEGAL, SHWB_EMU_ONLY = 0, 1
 
-
-def fmt(name):
-    return "<" + "".join((str(n) if n > 1 else "") + CTYPES[t] for _f, t, n in STRUCTS[name])
-
-
-SIZES = {name: struct.calcsize(fmt(name)) for name in STRUCTS}
-
-
-def pack(name, d):
-    vals = []
-    for f, _t, n in STRUCTS[name]:
-        v = d.get(f, 0)
-        if n > 1:
-            v = list(v) if v else []
-            v = (v + [0] * n)[:n]
-            vals += v
-        else:
-            vals.append(v)
-    return struct.pack(fmt(name), *vals)
-
-
-def unpack(name, blob, off=0):
-    raw = struct.unpack_from(fmt(name), blob, off)
-    d, i = {}, 0
-    for f, _t, n in STRUCTS[name]:
-        if n > 1:
-            d[f] = list(raw[i:i + n])
-        else:
-            d[f] = raw[i]
-        i += n
-    return d
-
-
-# ---- constants straight from the header ---------------------------------------
-def _header_constants(text):
-    c = {}
-    src = re.sub(r"/\*.*?\*/", "", text, flags=re.S)
-    for m in re.finditer(r"#define\s+(SHW_\w+|SOP_\w+)\s+(\(?[0-9xXa-fA-FuU \*\(\)]+\)?)\s*$", src, re.M):
-        try:
-            c[m.group(1)] = int(eval(m.group(2).replace("u", "").replace("U", "")))
-        except Exception:
-            pass
-    for m in re.finditer(r"enum\s*\{(.*?)\}", src, re.S):
-        cur = -1
-        for item in m.group(1).split(","):
-            item = item.strip()
-            if not item:
-                continue
-            if "=" in item:
-                k, v = item.split("=", 1)
-                v = v.strip().replace("u <<", " <<").replace("1u", "1")
-                cur = int(eval(v, {}, c))
-                k = k.strip()
-            else:
-                k = item
-                cur += 1
-            c[k] = cur
-    return c
-
-
-def header_structs(text=None):
-    """{struct name: [(field, ctype, count)]} parsed from shw_format.h (AT4.2)"""
-    text = text if text is not None else HEADER.read_text()
-    src = re.sub(r"/\*.*?\*/", "", text, flags=re.S)
-    out = {}
-    for m in re.finditer(r"typedef struct (\w+)\s*\{(.*?)\}\s*(\w+)\s*;", src, re.S):
-        fields = []
-        for decl in m.group(2).split(";"):
-            decl = decl.strip()
-            if not decl:
-                continue
-            t, rest = decl.split(None, 1)
-            for name in rest.split(","):
-                name = name.strip()
-                mm = re.match(r"(\w+)\s*\[(\d+)\]", name)
-                fields.append((mm.group(1), t, int(mm.group(2))) if mm else (name, t, 1))
-        out[m.group(3)] = fields
-    return out
-
-
-C = _header_constants(HEADER.read_text())
-MAGIC, SHOT_MAGIC, ABI, SECTOR, NONE = (C["SHW_MAGIC"], C["SHW_SHOT_MAGIC"], C["SHW_ABI"],
-                                        C["SHW_SECTOR"], C["SHW_NONE"])
-SOP_FLAG = C["SHW_SOP_FLAG"]
-CHUNK_MAX = 160 * 1024
-SOP = {k: v for k, v in C.items() if k.startswith("SOP_")}
-
-
-def align(n, a=4):
-    return (n + a - 1) // a * a
-
-
-# ---- the string table -----------------------------------------------------------
-class StrTab:
-    """NUL-terminated names; offset of each, de-duplicated"""
-
-    def __init__(self):
-        self.buf = bytearray()
-        self.at = {}
-
-    def add(self, s):
-        if s is None:
-            return NONE
-        s = str(s)
-        if s not in self.at:
-            if len(self.buf) > 0xFFF0:
-                raise ValueError("string table over 64 KB")
-            self.at[s] = len(self.buf)
-            self.buf += s.encode("utf-8") + b"\0"
-        return self.at[s]
-
-    def bytes(self):
-        return bytes(self.buf) + b"\0" * (align(len(self.buf)) - len(self.buf))
-
-
-def cstr(blob, off):
-    if off == NONE:
-        return None
-    end = blob.index(b"\0", off)
-    return blob[off:end].decode("utf-8")
-
-
-# ---- one shot chunk -------------------------------------------------------------
-SECTIONS = (  # (key in the shot dict, struct, ShwShotHdr count field, offset field)
-    ("looks", "ShwLook", "look_n", "off_looks"),
-    ("planes", "ShwPlane", "plane_n", "off_planes"),
-    ("actors", "ShwActor", "actor_n", "off_actors"),
-    ("props", "ShwProp", "prop_n", "off_props"),
-    ("crowds", "ShwCrowd", "crowd_n", "off_crowds"),
-    ("camkeys", "ShwCamKey", "camkey_n", "off_camkeys"),
-    ("events", "BeatEv", "ev_n", "off_events"),
+# record types (ADD-ONLY; keep in step with the header)
+SHWR = dict(
+    NONE=0, LOOK=1, PLANE=2, BEAT=3, ARGS=4, STRINGS=5, IMAGE=6, SLUG=7, AUDIO_K=8, CLUT=9,
+    CAMSETUP=16, CAMKEY=17, STROKES=18, TILEMAP=19, TEXT=20, FX=21, FONT=22,
+    ACTOR=32, TRACK=33, CROWD=34, PROP=35,
+    OVERWORLD=48, ROOM=49, VIEW3D=50, HUD=51, RAIL=52,
+    PRIV_L2=0x100, PRIV_L3=0x200, PRIV_L1=0x300,
 )
+globals().update({"SHWR_" + k: v for k, v in SHWR.items()})
+
+SHWP = dict(NONE=0, BANDS=1, IMAGE=2, TILEMAP=3, STROKES=4, GRAIN=5, VIEW3D=6, OVERWORLD=7,
+            ROOM=8, FILL=9, COUNT=16)
+globals().update({"SHWP_" + k: v for k, v in SHWP.items()})
+SHWPF_NOSHAKE, SHWPF_HIDDEN, SHWPF_TILE_X, SHWPF_TILE_Y = 1, 2, 4, 8
+SHWI_RAW, SHWI_RLE = 0, 1
+
+SHOW_OP_FLAG = 0x4000
+SOP = dict(NOP=0x000, PLANE_SHOW=0x001, PLANE_HIDE=0x002, MARK=0x003, FADE_TO=0x004,
+           PAL_TO=0x005, IRIS=0x006, TEXT_BASE=0x040, FX_BASE=0x060, CAM_BASE=0x080,
+           ACTOR_BASE=0x0A0, CROWD_BASE=0x0C0, HOST_BASE=0x100)
+globals().update({"SOP_" + k: v for k, v in SOP.items()})
+
+# the beat ops the player sees (core/include/doomo/beat.h enum order)
+_BOPS = ("END LABEL WAIT_A HOLD SAY CAPTION POP EXPR ACT FREEZE THAW PANIC HITSTOP SHAKE PUNCH "
+         "ZOOM FLASH FADE IRIS_OUT IRIS_IN CUT INSERT SFX MUSIC MUSIC_MUTE MUSIC_DUCK TAPESTOP FLAG "
+         "STILL TWITCH NPC CAM TINT PAL_LERP NOBUTTON SHOT HEADTURN COUNT").split()
+BOP = {n: i for i, n in enumerate(_BOPS)}
+globals().update({"BOP_" + k: v for k, v in BOP.items()})
+
+PAL_BLACK = 1          # core palette.h: 0 transparent, 1 black, 2 white
+PAL_WHITE = 2
 
 
-def write_chunk(shot):
-    """shot: {'hdr': {...ShwShotHdr scalars...}, 'looks': [bytes48], 'planes': [dict], ...,
-    'args': [int32], 'tracks': [{'actor','kind','runs':[(v,c)]}],
-    'strokes': [{..., 'pts': [(x,y)]}], 'strings': bytes, 'texpages': [{..., 'data': bytes}],
-    'cluts': [[bgr555, ...]]} -> bytes"""
-    hdr = dict(shot.get("hdr", {}))
-    hdr["magic"] = SHOT_MAGIC
-    body = bytearray(b"\0" * SIZES["ShwShotHdr"])
-
-    def here():
-        while len(body) % 4:
-            body.append(0)
-        return len(body)
-
-    for key, sname, nfield, ofield in SECTIONS:
-        items = shot.get(key) or []
-        hdr[nfield] = len(items)
-        hdr[ofield] = here() if items else 0
-        for it in items:
-            body += (bytes(it) if sname == "ShwLook" else pack(sname, it))
-    args = shot.get("args") or []
-    hdr["arg_n"] = len(args)
-    hdr["off_args"] = here() if args else 0
-    for a in args:
-        body += struct.pack("<i", a)
-    # tracks: records, then the runs
-    tracks = shot.get("tracks") or []
-    hdr["track_n"] = len(tracks)
-    hdr["off_tracks"] = here() if tracks else 0
-    rec_at = len(body)
-    body += b"\0" * (SIZES["ShwTrack"] * len(tracks))
-    for i, t in enumerate(tracks):
-        off = here()
-        for v, c in t["runs"]:
-            body += pack("ShwRun", {"value": v, "count": c})
-        body[rec_at + i * 8: rec_at + i * 8 + 8] = pack(
-            "ShwTrack", {"actor": t["actor"], "kind": t["kind"], "run_n": len(t["runs"]), "off_runs": off})
-    strokes = shot.get("strokes") or []
-    hdr["stroke_n"] = len(strokes)
-    hdr["off_strokes"] = here() if strokes else 0
-    rec_at = len(body)
-    body += b"\0" * (SIZES["ShwStroke"] * len(strokes))
-    for i, s in enumerate(strokes):
-        off = here()
-        for x, y in s["pts"]:
-            body += pack("ShwPoint", {"x": x, "y": y})
-        d = dict(s)
-        d["pt_n"], d["off_pts"] = len(s["pts"]), off
-        body[rec_at + i * 16: rec_at + i * 16 + 16] = pack("ShwStroke", d)
-    strings = shot.get("strings") or b""
-    hdr["strings_bytes"] = len(strings)
-    hdr["off_strings"] = here() if strings else 0
-    body += strings
-    pages = shot.get("texpages") or []
-    hdr["texpage_n"] = len(pages)
-    hdr["off_texpages"] = here() if pages else 0
-    rec_at = len(body)
-    body += b"\0" * (SIZES["ShwTexPage"] * len(pages))
-    for i, p in enumerate(pages):
-        off = here()
-        body += p["data"]
-        d = dict(p)
-        d["bytes"], d["off"] = len(p["data"]), off
-        body[rec_at + i * 16: rec_at + i * 16 + 16] = pack("ShwTexPage", d)
-    cluts = shot.get("cluts") or []
-    hdr["clut_n"] = len(cluts)
-    hdr["off_cluts"] = here() if cluts else 0
-    rec_at = len(body)
-    body += b"\0" * (SIZES["ShwClut"] * len(cluts))
-    for i, cl in enumerate(cluts):
-        off = here()
-        body += struct.pack("<%dH" % len(cl), *cl)
-        body[rec_at + i * 8: rec_at + i * 8 + 8] = pack("ShwClut", {"n": len(cl), "off": off})
-    here()
-    body[0:SIZES["ShwShotHdr"]] = pack("ShwShotHdr", hdr)
-    return bytes(body)
+def pal_ramp(ramp: int, shade: int) -> int:
+    """PAL_RAMP(r, shade) from palette.h."""
+    return 136 + ramp * 8 + shade
 
 
-def read_chunk(blob):
-    hdr = unpack("ShwShotHdr", blob)
-    if hdr["magic"] != SHOT_MAGIC:
-        raise ValueError("not a SHOT chunk")
-    shot = {"hdr": hdr}
-    for key, sname, nfield, ofield in SECTIONS:
-        n, off, sz = hdr[nfield], hdr[ofield], SIZES[sname]
-        if sname == "ShwLook":
-            shot[key] = [bytes(blob[off + i * sz: off + (i + 1) * sz]) for i in range(n)]
+def _pad4(b: bytes) -> bytes:
+    return b + b"\0" * (-len(b) % 4)
+
+
+def show_op(op: int, b: int = 0, at: int = 0, anchor: int = 0) -> tuple:
+    """A show op as a BeatEv tuple (at, anchor, op, a, b)."""
+    return (at, anchor, BOP_SHOT, SHOW_OP_FLAG | op, b)
+
+
+# ---- planes ---------------------------------------------------------------
+def plane(kind, payload: bytes, *, id=0, order=0, flags=0, par=(1, 1, 1, 1), at=(0, 0),
+          spar_q8=256) -> bytes:
+    payload = _pad4(payload)
+    return PLANE.pack(kind, flags, PLANE.size + len(payload), order, id, par[0], par[1], par[2],
+                      par[3], at[0], at[1], spar_q8, 0) + payload
+
+
+def plane_bands(bands, **kw) -> bytes:
+    """bands: [(y, colour), ...] top to bottom, y in plane px."""
+    body = struct.pack("<HH", len(bands), 0) + b"".join(BAND.pack(y, c, 0) for y, c in bands)
+    return plane(SHWP_BANDS, body, **kw)
+
+
+def plane_fill(color, **kw) -> bytes:
+    return plane(SHWP_FILL, struct.pack("<BBBB", color, 0, 0, 0), **kw)
+
+
+def plane_image(image, scale=0, flip=0, **kw) -> bytes:
+    return plane(SHWP_IMAGE, struct.pack("<HBB", image, scale, flip), **kw)
+
+
+def plane_grain(color, density, seed, boil=0, **kw) -> bytes:
+    return plane(SHWP_GRAIN, struct.pack("<BBBBI", color, density, boil, 0, seed), **kw)
+
+
+def image(w, h, pix: bytes, id=0, rle=None) -> bytes:
+    """An 8bpp image (index 0 transparent). RLE is chosen when it is smaller."""
+    assert len(pix) == w * h
+    if rle is None or rle:
+        out = bytearray()
+        i = 0
+        while i < len(pix):
+            j = i
+            while j < len(pix) and j - i < 255 and pix[j] == pix[i]:
+                j += 1
+            out += bytes((j - i, pix[i]))
+            i = j
+        if rle or len(out) < len(pix):
+            data, comp = bytes(out), SHWI_RLE
         else:
-            shot[key] = [unpack(sname, blob, off + i * sz) for i in range(n)]
-    shot["args"] = list(struct.unpack_from("<%di" % hdr["arg_n"], blob, hdr["off_args"])) if hdr["arg_n"] else []
-    shot["tracks"] = []
-    for i in range(hdr["track_n"]):
-        t = unpack("ShwTrack", blob, hdr["off_tracks"] + i * 8)
-        runs = [tuple(unpack("ShwRun", blob, t["off_runs"] + j * 2).values()) for j in range(t["run_n"])]
-        shot["tracks"].append({"actor": t["actor"], "kind": t["kind"], "runs": runs})
-    shot["strokes"] = []
-    for i in range(hdr["stroke_n"]):
-        s = unpack("ShwStroke", blob, hdr["off_strokes"] + i * 16)
-        s["pts"] = [(p["x"], p["y"]) for p in (unpack("ShwPoint", blob, s["off_pts"] + j * 4)
-                                               for j in range(s["pt_n"]))]
-        shot["strokes"].append(s)
-    shot["strings"] = bytes(blob[hdr["off_strings"]: hdr["off_strings"] + hdr["strings_bytes"]])
-    shot["texpages"] = []
-    for i in range(hdr["texpage_n"]):
-        p = unpack("ShwTexPage", blob, hdr["off_texpages"] + i * 16)
-        p["data"] = bytes(blob[p["off"]: p["off"] + p["bytes"]])
-        shot["texpages"].append(p)
-    shot["cluts"] = []
-    for i in range(hdr["clut_n"]):
-        c = unpack("ShwClut", blob, hdr["off_cluts"] + i * 8)
-        shot["cluts"].append(list(struct.unpack_from("<%dH" % c["n"], blob, c["off"])))
-    return shot
+            data, comp = pix, SHWI_RAW
+    else:
+        data, comp = pix, SHWI_RAW
+    data = _pad4(data)
+    return IMAGE.pack(w, h, comp, 0, id, IMAGE.size + len(data)) + data
 
 
-# ---- the episode ----------------------------------------------------------------
-def write_episode(ep, shots, strtab):
-    """ep: ShwEpHeader fields (magic/abi/nshots/strtab/total filled here);
-    shots: [(ShwShotIndex fields, chunk bytes)]; strtab: StrTab -> bytes"""
-    n = len(shots)
-    st = strtab.bytes()
-    head = SIZES["ShwEpHeader"] + n * SIZES["ShwShotIndex"]
-    strtab_off = align(head)
-    pos = align(strtab_off + len(st), SECTOR)
-    idx_blobs, chunks = [], []
-    for ix, chunk in shots:
-        ix = dict(ix)
-        ix["chunk_sector"] = pos // SECTOR
-        ix["chunk_bytes"] = len(chunk)
-        ix["chunk_crc"] = zlib.crc32(chunk) & 0xFFFFFFFF
-        idx_blobs.append(pack("ShwShotIndex", ix))
-        chunks.append((pos, chunk))
-        pos = align(pos + len(chunk), SECTOR)
-    e = dict(ep)
-    e.update(magic=MAGIC, abi=ABI, nshots=n, strtab_off=strtab_off, strtab_bytes=len(st))
-    e.setdefault("total_frames", sum(unpack("ShwShotIndex", b)["len"] for b in idx_blobs))
-    out = bytearray(pack("ShwEpHeader", e))
-    for b in idx_blobs:
-        out += b
-    out += b"\0" * (strtab_off - len(out))
-    out += st
-    for at, chunk in chunks:
-        out += b"\0" * (at - len(out))
-        out += chunk
-    out += b"\0" * (align(len(out), SECTOR) - len(out))
-    return bytes(out)
+# ---- a shot chunk ---------------------------------------------------------
+@dataclass
+class Chunk:
+    shot: int = 0
+    bg: int = PAL_BLACK
+    set_kind: int = 0
+    badge: int = SHWB_PS1_LEGAL
+    nlabels: int = 0
+    vram_plan: tuple = (0, 0, 0, 0)
+    planes: list = field(default_factory=list)          # bytes from plane_*()
+    images: list = field(default_factory=list)          # bytes from image()
+    records: dict = field(default_factory=dict)         # type -> (n, payload bytes)
+    strings: bytearray = field(default_factory=bytearray)
+
+    def add(self, rtype: int, n: int, payload: bytes):
+        assert rtype not in self.records, f"record type {rtype} twice in one chunk"
+        self.records[rtype] = (n, bytes(payload))
+
+    def add_beat(self, events, nlabels=None):
+        """events: (at, anchor, op, a, b) tuples; sorted by (anchor, at) here."""
+        ev = sorted(events, key=lambda e: (e[1], e[0]))
+        if not ev or ev[-1][2] != BOP_END:
+            last = max([e[0] for e in ev if e[1] == 0] or [0])
+            ev.append((last, 0, BOP_END, 0, 0))
+        self.add(SHWR_BEAT, len(ev), b"".join(BEATEV.pack(*e) for e in ev))
+        if nlabels is not None:
+            self.nlabels = nlabels
+
+    def add_args(self, words):
+        self.add(SHWR_ARGS, len(words), struct.pack(f"<{len(words)}i", *words))
+
+    def str(self, s: str) -> int:
+        """Intern a string; returns its offset in SHWR_STRINGS."""
+        b = s.encode("latin-1", "replace") + b"\0"
+        i = self.strings.find(b)
+        if i >= 0 and (i == 0 or self.strings[i - 1] == 0):
+            return i
+        off = len(self.strings)
+        self.strings += b
+        return off
+
+    def add_slug(self, title, line1="", line2="", beat=0, act=0, bg=PAL_BLACK, fg=PAL_WHITE):
+        t, a, b = self.str(title), self.str(line1), self.str(line2)
+        self.add(SHWR_SLUG, 1, SLUG.pack(t, a, b, bg, fg, beat, act, 0))
+
+    def add_audio_k(self, items):
+        """items: [(frame, k), ...]"""
+        self.add(SHWR_AUDIO_K, len(items), b"".join(AUDIO_K.pack(f, 0, k) for f, k in items))
+
+    def build(self) -> bytes:
+        recs = dict(self.records)
+        if self.planes:
+            recs[SHWR_PLANE] = (len(self.planes), b"".join(self.planes))
+        if self.images:
+            recs[SHWR_IMAGE] = (len(self.images), b"".join(self.images))
+        if self.strings:
+            recs[SHWR_STRINGS] = (len(self.strings), bytes(self.strings))
+        body = b""
+        for rtype in sorted(recs):
+            n, pay = recs[rtype]
+            body += REC.pack(rtype, n, len(pay)) + _pad4(pay)
+        crc = zlib.crc32(body) & 0xFFFFFFFF
+        total = SHOT_HDR.size + len(body)
+        if total > SHW_CHUNK_MAX:
+            raise ValueError(f"shot chunk {total} B > {SHW_CHUNK_MAX} B (spec 7.3)")
+        hdr = SHOT_HDR.pack(SHW_SHOT_MAGIC, len(recs), self.shot, total, self.set_kind, self.badge,
+                            self.bg, self.nlabels, *self.vram_plan, crc, 0)
+        return hdr + body
 
 
-def read_episode(blob):
-    ep = unpack("ShwEpHeader", blob)
-    if ep["magic"] != MAGIC:
-        raise ValueError("not an SHW1 file")
-    if ep["abi"] != ABI:
-        raise ValueError("SHW abi %d, this tool reads %d" % (ep["abi"], ABI))
+# ---- the episode file -------------------------------------------------------
+@dataclass
+class Episode:
+    episode: int = 101
+    seed: int = 0x00101101
+    toolchain: bytes = b"showc-v0"
+    shots: list = field(default_factory=list)
+
+    def add_shot(self, id, len, chunk, px=1, seed=0, flags=0, preroll=0, beat=0, look=0,
+                 base=(0xFFFF, 0), replay=(0xFFFF, 0)):
+        if isinstance(chunk, Chunk):
+            chunk.shot = self._n()
+            chunk = chunk.build()
+        self.shots.append(dict(id=id, len=len, chunk=chunk, px=px, seed=seed, flags=flags,
+                               preroll=preroll, beat=beat, look=look, base=base, replay=replay))
+
+    def _n(self):
+        return self.shots.__len__()
+
+    def build(self) -> bytes:
+        n = len(self.shots)
+        index_off = EP_HEADER.size
+        strtab_off = index_off + n * SHOT_INDEX.size
+        strtab = b""
+        head_end = strtab_off + len(strtab)
+        sector = (head_end + SHW_SECTOR - 1) // SHW_SECTOR
+        chunks, index, start = b"", b"", 0
+        for s in self.shots:
+            c = s["chunk"]
+            secs = (len(c) + SHW_SECTOR - 1) // SHW_SECTOR
+            sid = s["id"].encode()[:SHW_ID_LEN].ljust(SHW_ID_LEN, b"\0")
+            index += SHOT_INDEX.pack(start, s["len"], s["px"], s["look"], sector, len(c),
+                                     s["base"][0], s["base"][1], s["replay"][0], s["replay"][1],
+                                     s["flags"], s["preroll"], s["seed"], sid, s["beat"], 0)
+            chunks += c + b"\0" * (secs * SHW_SECTOR - len(c))
+            sector += secs
+            start += s["len"]
+        th = hashlib.sha256(self.toolchain).digest()[:8]
+        head_wo_size = (index_off, strtab_off, len(strtab), start)
+        body_len = ((head_end + SHW_SECTOR - 1) // SHW_SECTOR) * SHW_SECTOR + len(chunks)
+        hdr = EP_HEADER.pack(SHW_MAGIC, SHW_ABI, n, 30, 1, 320, 180, 30, self.seed, self.episode, 0,
+                             th, *head_wo_size, body_len, 0, 0, 0)
+        head = hdr + index + strtab
+        head += b"\0" * (-len(head) % SHW_SECTOR)
+        return head + chunks
+
+
+def read_episode(data: bytes) -> dict:
+    """Parse an episode file (header, index, and each chunk's record list)."""
+    h = EP_HEADER.unpack_from(data, 0)
+    keys = ("magic abi nshots fps px_canvas canvas_w canvas_h y_off seed episode pad "
+            "toolchain_hash index_off strtab_off strtab_bytes total_frames file_bytes r0 r1 r2").split()
+    hd = dict(zip(keys, h))
+    assert hd["magic"] == SHW_MAGIC, "not an SHW1 file"
     shots = []
-    for i in range(ep["nshots"]):
-        ix = unpack("ShwShotIndex", blob, SIZES["ShwEpHeader"] + i * SIZES["ShwShotIndex"])
-        at = ix["chunk_sector"] * SECTOR
-        chunk = blob[at: at + ix["chunk_bytes"]]
-        if zlib.crc32(chunk) & 0xFFFFFFFF != ix["chunk_crc"]:
-            raise ValueError("shot %d: chunk CRC mismatch" % i)
-        shots.append((ix, read_chunk(chunk)))
-    strtab = blob[ep["strtab_off"]: ep["strtab_off"] + ep["strtab_bytes"]]
-    return ep, shots, strtab
+    ik = ("start_frame len px look chunk_sector chunk_bytes base_shot base_frame replay_shot "
+          "replay_from flags preroll seed id beat reserved").split()
+    for i in range(hd["nshots"]):
+        s = dict(zip(ik, SHOT_INDEX.unpack_from(data, hd["index_off"] + i * SHOT_INDEX.size)))
+        s["id"] = s["id"].rstrip(b"\0").decode()
+        off = s["chunk_sector"] * SHW_SECTOR
+        c = data[off:off + s["chunk_bytes"]]
+        ch = SHOT_HDR.unpack_from(c, 0)
+        s["chunk_hdr"] = dict(zip(("magic nrec shot bytes set_kind badge bg nlabels v0 v1 v2 v3 "
+                                   "crc reserved").split(), ch))
+        recs, p = {}, SHOT_HDR.size
+        for _ in range(ch[1]):
+            t, n, b = REC.unpack_from(c, p)
+            recs[t] = (n, c[p + REC.size:p + REC.size + b])
+            p += REC.size + b + (-b % 4)
+        s["records"] = recs
+        shots.append(s)
+    hd["shots"] = shots
+    return hd

@@ -6,7 +6,7 @@ and a badge: PS1-LEGAL unless a budget says EMU-ONLY. The text goes to
 plan.txt and into timeline.json (shots[].badge, chunk_bytes).
 """
 from . import docunits
-from . import shw_format as F
+from . import shw_ir as F
 from .errors import Diag
 
 CROWD_MAX = 160          # members a 2D crowd can draw per frame inside the prim budget (8.5)

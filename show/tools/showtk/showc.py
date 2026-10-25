@@ -23,7 +23,7 @@ from fractions import Fraction
 from pathlib import Path
 
 from . import docunits, macros as macro_mod, parse, paths, stage, textpack_bridge, timeexpr
-from . import shw_format as F
+from . import shw_ir as F
 from .errors import Diag, ShowError
 
 FPS, SPF = docunits.FPS, docunits.SPF
@@ -503,6 +503,11 @@ class ShotCompiler:
         self.look_name = shot.kv.get("look", "pixel")
         self.texpages, self.cluts = [], []
         self.ad = []
+        self.vis = []                   # (f, prop|plane|stroke, id, state, on)  -> SOP_PLANE_SHOW/HIDE
+        self.wipes = []                 # (f, wipe|split|dissolve, kv, words)    -> PIC1 FX
+        self.pcam = None                # picture.camera.Camera (lane 2's exact camera)
+        self.text_items = []            # picture.text.Item list               -> PIC1 TEXT
+        self.pic_events = []            # (t, op, args)                         -> PIC1 EVTS
 
     # -- helpers -------------------------------------------------------------
     def d(self, rule, msg, st=None, severity="error", frame=None):
@@ -740,7 +745,9 @@ class ShotCompiler:
         self.props.append({"plane": self.plane_ix.get(plane, 0), "face": stage.FACES[face],
                            "anchor": 1 if p.get("anchor") == "center" else 0, "flags": 0, "x": x, "y": y,
                            "art": self.ep.strtab.add(p.get("art")), "tex": F.NONE, "id": pid,
-                           "par": self.planes[self.plane_ix[plane]]["par_q16"] if plane else 0})
+                           "par": self.planes[self.plane_ix[plane]]["par_q16"] if plane else 0,
+                           "plane_id": plane, "src": p.get("art"),
+                           "states": {k[4:]: v for k, v in p.kv.items() if k.startswith("art.")}})
 
     # -- setup statements -----------------------------------------------------------
     def setup(self, c):
@@ -789,12 +796,34 @@ class ShotCompiler:
             self.ad.append({"f": self.shot.start, "text": c.strs[0] if c.strs else " ".join(c.words)})
         elif kw in ("label",):
             c.fail("TIME", "`label` needs a time (+N label NAME)")
+        elif kw in ("show", "hide", "prop.set", "stroke"):
+            self.vis_op(0, c)                    # a setup visibility = its state at frame 0
         else:
             c.fail("SHW-OPS", "`%s` is not a setup statement (spec 5.5: look cam actor prop crowd change assert "
                               "waive note scene tag ad); timed ops need a time: +N %s ..." % (kw, kw))
 
+    def pic_cam(self, c, fn):
+        """mirror a camera statement into lane 2's exact camera (picture.camera)"""
+        from .picture import camera as pcam
+        if self.pcam is None:
+            self.pcam = pcam.Camera()
+        try:
+            fn(self.pcam)
+        except (pcam.CamError, ValueError, ZeroDivisionError) as e:
+            self.d("CAM", "the stage camera cannot take `%s`: %s" % (c.text(), e), c, "warning")
+
     def cam_setup(self, c):
         w = _w(c)
+        if c.words and c.words[0] == "drift":
+            z = 0
+            if c.get("zero"):
+                za = timeexpr.parse(c.get("zero"), w)
+                z = za[1] if za[0] == "rel" else 0
+            self.pic_cam(c, lambda k: k.drift(c.get("dx"), c.get("dy"), z))
+        elif c.get("at"):
+            at = c.get("at").split(",")
+            self.pic_cam(c, lambda k: k.setup_at(at[0], at[1] if len(at) > 1 else None, c.get("scale"),
+                                                 c.get("about").split(",") if c.get("about") else None))
         if c.words and c.words[0] == "drift":
             dx = docunits.num(c.get("dx", "0"), w)
             dy = docunits.num(c.get("dy", "0"), w)
@@ -949,10 +978,18 @@ class ShotCompiler:
         else:
             obj, field, val = m.groups()
         self.changes = getattr(self, "changes", []) + [(obj, field, val, c)]
+        if obj in self.prop_ix and field == "state":
+            if val not in self.props[self.prop_ix[obj]]["states"]:
+                c.fail("COMP-ONECHANGE", "%s.state=%s: the prop has no art.%s" % (obj, val, val))
+            self.vis.append((0, "prop", obj, val, True))
+            return
+        if obj in self.prop_ix and field == "hide":
+            self.vis.append((0, "prop", obj, None, val in ("0", "no", "off")))
+            return
         if obj in self.prop_ix:
             pf = {"face": 0, "x": 1, "y": 2, "hide": 3}.get(field)
             if pf is None:
-                c.fail("COMP-ONECHANGE", "prop field %s (face|x|y|hide)" % field)
+                c.fail("COMP-ONECHANGE", "prop field %s (face|x|y|hide|state)" % field)
             v = stage.FACES.get(val, None) if field == "face" else int(val) if val.lstrip("-").isdigit() else 1
             if v is None:
                 c.fail("COMP-ONECHANGE", "face=%s" % val)
@@ -1161,7 +1198,61 @@ class ShotCompiler:
             return
         if kw == "punch":
             return self.engine(f, c)
+        if kw in ("show", "hide", "prop.set", "stroke"):
+            return self.vis_op(f, c)
+        if kw in ("wipe", "split", "dissolve"):
+            return self.wipe_op(f, c)
         c.fail("SHW-OPS", "unknown op `%s` (spec 5.5)" % kw)
+
+    def until_arg(self, c):
+        u = c.get("until")
+        if u in (None, "end"):
+            return None
+        a = timeexpr.parse(u, _w(c))
+        return a[1] if a[0] == "rel" else None
+
+    def pic_text(self, c, fn):
+        """mirror a SUPER/sign/card into lane 2's text records (picture.text)"""
+        from .picture import text as T
+        try:
+            self.text_items += fn(T)
+        except (T.TextError, ValueError, KeyError) as e:
+            self.d("SUPER", "the text module cannot set `%s`: %s" % (c.text(), e), c, "warning")
+
+    def vis_op(self, f, c):
+        """`+T show <prop>[:<state>]` / `hide <prop>` / `prop.set <prop> state=<s>` /
+        `stroke <id> show|hide`: plane visibility, resolved to plane ids by emit."""
+        kw = c.kw
+        if kw == "stroke":
+            sid = c.words[0] if c.words else c.fail("STROKE", "`stroke <id> show|hide`")
+            if sid not in self.stroke_ix:
+                c.fail("STROKE", "no stroke %s in set %s" % (sid, self.set_name))
+            on = (c.words[1] if len(c.words) > 1 else "show") == "show"
+            self.vis.append((f, "stroke", sid, None, on))
+            self.tl(f, c, "show", "stroke " + ("show" if on else "hide"))
+            return
+        if kw == "prop.set":
+            tgt = c.words[0] if c.words else c.fail("STAGE", "`prop.set <prop> state=<state>`")
+            state, on = c.get("state"), True
+        else:
+            tgt = c.words[0] if c.words else c.fail("STAGE", "`%s <prop>[:<state>]`" % kw)
+            tgt, _, state = tgt.partition(":")
+            state, on = state or None, kw == "show"
+        if tgt not in self.prop_ix and tgt not in self.plane_ix:
+            c.fail("STAGE", "%s %s: no prop or plane %s in set %s (props: %s)" % (
+                kw, tgt, tgt, self.set_name, ", ".join(self.prop_ix) or "none"))
+        if state and tgt in self.prop_ix:
+            arts = self.props[self.prop_ix[tgt]].get("states", {})
+            if state not in arts:
+                c.fail("STAGE", "%s %s:%s: the prop has no art.%s (states: %s)" % (
+                    kw, tgt, state, state, ", ".join(sorted(arts)) or "none"))
+        self.vis.append((f, "prop" if tgt in self.prop_ix else "plane", tgt, state, on))
+        self.tl(f, c, "show", "%s %s%s" % (kw, tgt, ":" + state if state else ""))
+
+    def wipe_op(self, f, c):
+        """lane-2 wipes (the brick wipe, the Split, the dissolve): kept as statements for emit."""
+        self.wipes.append((f, c.kw, dict(c.kv), list(c.words)))
+        self.tl(f, c, "show", c.kw)
 
     def span(self, txt, f, c, default=None):
         if txt is None:
@@ -1255,6 +1346,8 @@ class ShotCompiler:
                 x, y = self.xy(at, c)
                 self.sop(f, "SOP_IRIS", [1 if kw == "iris_in" else 0, x, y, 1 if shape == "heart" else 0,
                                          8 + h, h], c)
+                self.pic_events.append((f, 0x0100, [x, y, radius, 1 if shape == "heart" else 0,
+                                                    0 if kw == "iris_in" else 1, h]))
                 self.tl(f, c, "show", kw, end=f + 8 + h)
                 return
             line = "%s %d %d" % (kw, centre, b)
@@ -1539,6 +1632,12 @@ class ShotCompiler:
         if u > self.shot.len:
             self.d("SUPER", "until=+%d is past the shot's end (+%d)" % (u, self.shot.len), c)
             u = self.shot.len
+        self.pic_text(c, lambda T: [T.super_(
+            re.sub(r"\{[^}]*\}", "", s["text"]), style, f, self.shot.len, at=at,
+            over=(a, b) if style == "type" else None, until=None if u >= self.shot.len else u,
+            font=c.get("font") or s.get("font") or "game", scale=int(c.get("scale", "1")),
+            align=c.get("align"), color=c.get("color"), outline=c.get("outline"), shadow=c.get("shadow"),
+            hop=c.get("hop", "on") != "off", where=_w(c), sid=sid)])
         idx = self.supers
         self.supers += 1
         self.sop(f, "SOP_SUPER", [self.s(s["text"]), TXT_STYLES[style], x, y, a, b, u, glyphs], c)
@@ -1571,6 +1670,25 @@ class ShotCompiler:
         w = _w(c)
         sub = c.words[0] if c.words else None
         prev = self.camkeys[-1] if self.camkeys else {"x_q16": 0, "y_q16": 0, "scale_q8": 256}
+        over_n = self.frames_arg(c.get("over"), c) if c.get("over") else None
+        if sub == "to":
+            self.pic_cam(c, lambda k: k.to(f, over_n or 1, c.get("x"), c.get("y"), c.get("scale"),
+                                           c.get("ease", "INOUT")))
+        elif sub == "pan" and over_n:
+            self.pic_cam(c, lambda k: k.by(f, over_n, c.get("dx"), c.get("dy"), c.get("ease", "INOUT")))
+        elif sub == "pan":
+            self.pic_cam(c, lambda k: k.pan(f, c.get("dx"), c.get("dy")))
+        elif sub == "creep":
+            self.pic_cam(c, lambda k: k.creep(f, c.get("dx"), c.get("dy"), int(c.get("ramp", "13"))))
+        elif sub == "whip":
+            self.pic_cam(c, lambda k: k.whip(f, c.words[1] if len(c.words) > 1 else "R", over_n or 6,
+                                             c.get("dist", "320")))
+        elif sub == "crane":
+            self.pic_cam(c, lambda k: k.crane(f, c.get("dy", "0"), over_n or 30, c.get("ease", "INOUT")))
+        elif sub == "stop":
+            self.pic_cam(c, lambda k: k.stop(f))
+            self.tl(f, c, "show", "cam stop")
+            return
         if sub == "to":
             over = self.frames_arg(c.get("over"), c) or 0
             x = docunits.q16(docunits.num(c.get("x"), w)) if c.get("x") else prev["x_q16"]
@@ -1665,9 +1783,18 @@ class ShotCompiler:
             if on not in self.prop_ix:
                 c.fail("SIGN", "sign %s on=%s: no such prop" % (sid, on))
             self.sop(f, "SOP_SIGN", [self.s(s["text"]), self.prop_ix[on]], c)
+            until = self.until_arg(c)
+            self.pic_text(c, lambda T: [T.sign(re.sub(r"\{[^}]*\}", "", s["text"]), f, self.prop_ix[on] + 1,
+                                               c.get("dx", "0"), c.get("dy", "0"), until,
+                                               c.get("font") or s.get("font") or "game",
+                                               int(c.get("scale", "1")), c.get("color"), c.get("outline"),
+                                               where=_w(c))])
         elif kw == "card":
             tpl = c.words[0] if c.words else c.fail("CARD", "`card <template> k=v...`")
             kv = " ".join("%s=%s" % (k, v) for k, v in c.kv.items())
+            until = self.until_arg(c)
+            ckv = {k: v for k, v in c.kv.items() if k != "until"}
+            self.pic_text(c, lambda T: T.card(tpl, f, until, **ckv))
             self.sop(f, "SOP_CARD", [self.s(tpl), self.s(kv)], c)
         elif kw == "fx":
             kind = c.words[0] if c.words else c.fail("FX", "`fx <kind> at=x,y n= seed=`")
@@ -1676,6 +1803,7 @@ class ShotCompiler:
         elif kw == "boil":
             on = (c.words[0] if c.words else "on") == "on"
             self.sop(f, "SOP_BOIL", [1 if on else 0, int(c.get("every", "2"))], c)
+            self.pic_events.append((f, 0x0101, [int(c.get("every", "2")) if on else 0]))
         elif kw == "cam3d":
             rail = c.get("rail") or c.fail("CAM", "`cam3d rail=<path> from= to=`")
             self.sop(f, "SOP_CAM3D", [self.s(rail), int(c.get("from", "0")), int(c.get("to", "0"))], c)
@@ -1753,8 +1881,9 @@ class Result:
 
 
 class EpisodeCompiler:
-    def __init__(self, ep="ep101", root=None, series=None, shots=None, slug=False):
+    def __init__(self, ep="ep101", root=None, series=None, shots=None, slug=False, bake=True):
         self.prj = Project(ep, root, series)
+        self.bake = bake
         self.want = shots
         self.slug_only = slug
         self.strtab = F.StrTab()
@@ -1826,7 +1955,7 @@ class EpisodeCompiler:
         diags += self.lints(compilers, sel)
         res.diags = diags
         from . import emit, plan
-        emit.build(self, res, compilers)
+        emit.build(self, res, compilers, bake=self.bake)
         plan.plan(self, res, compilers)
         res.timeline["diagnostics"] = [{"rule": d.rule, "severity": d.severity, "text": d.format()}
                                        for d in res.diags]
@@ -2066,8 +2195,8 @@ class EpisodeCompiler:
         return out
 
 
-def compile_episode(ep="ep101", root=None, series=None, shots=None, slug=False):
-    return EpisodeCompiler(ep, root, series, shots, slug).run()
+def compile_episode(ep="ep101", root=None, series=None, shots=None, slug=False, bake=True):
+    return EpisodeCompiler(ep, root, series, shots, slug, bake).run()
 
 
 def inputs_hash(files):

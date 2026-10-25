@@ -207,3 +207,145 @@ def par_q16(v, where):
     """par=0.05 or par=<x>,<y> (the x factor drives the plane; y is in the timeline)"""
     v = str(v).split(",")[0]
     return int(math.floor(Fraction(docunits.num(v, where)) * 65536 + Fraction(1, 2)))
+
+
+# =============================================================================
+# the picture of a 2D set for one shot (emit): ART's set files baked into planes
+# =============================================================================
+# The ART package's reader (showtk.art.setkit) and its generators are the
+# reference for what a set looks like (SETS.md section 3); the compiler bakes
+# the same plates, with the variant's light LUT folded into the indices, so
+# the player only draws indexed images through the master palette.
+_SETLIB = {}
+ORDER_RANK = {"back": 0, "mid": 0, "front": 1, "top": 2}
+
+
+def setlib(sets_dir=None):
+    """ART's reader over a sets dir (default show/series/sets), cached per dir and mtimes"""
+    import glob
+    import os
+    from .art.setkit import setfile, SETS_DIR
+    d = str(sets_dir or SETS_DIR)
+    key = (d, tuple((f, os.path.getmtime(f)) for f in sorted(glob.glob(os.path.join(d, "*.shw")))))
+    if _SETLIB.get(d, (None,))[0] != key:
+        _SETLIB[d] = (key, setfile.Library().load_dir(d))
+    return _SETLIB[d][1]
+
+
+def _arr(img):
+    import numpy as np
+    return np.asarray(img.a if hasattr(img, "a") else img, np.uint8)
+
+
+class _Size:
+    def __init__(self, w, h):
+        self.w, self.h = w, h
+
+
+def resolve_set(set_id, variant_id=None, bake_images=True, sets_dir=None):
+    """-> (planes, notes): planes in draw order (back, front, top; a plane's props right
+    after it), each a dict:
+      kind   bands|image|tile|tilemap|strokes
+      id     plane id, or the prop id (a prop state: '<prop>:<state>')
+      prop   the prop id or None; state: the prop state or None
+      order  0 back, 1 front, 2 top
+      par    (xn, xd, yn, yd); at: (x, y) show px of the image's top-left at camera 0
+      px     the plate's pixel scale; hidden: starts off
+      img    uint8 array (indices, LUT applied) for image/tile/tilemap
+      bands  [(y, colour)] in show y for bands
+      strokes [(id, nib, w, path src, hidden)] for strokes; boil
+    notes: [(severity, message)] for what could not be baked."""
+    from .art.setkit import compose as C
+    from .picture import camera as pc
+    lib = setlib(sets_dir)
+    sd = lib.sets.get(set_id)
+    if sd is None:
+        return None, [("warning", "set %s is not in series/sets/ (ART's reader): no planes" % set_id)]
+    vst = sd.variant(variant_id) if variant_id else None
+    notes, out = [], []
+    if variant_id and vst is None:
+        notes.append(("warning", "set %s has no variant %s (variants: %s); drawn as the base set" % (
+            set_id, variant_id, ", ".join(v.id for v in sd.variants) or "none")))
+    var = C.Variant(vst)
+
+    def par(st):
+        a, _, b = st.get("par", "0").partition(",")
+        xn, xd = pc.par_frac(a)
+        yn, yd = pc.par_frac(b) if b else (xn, xd)
+        return (xn, xd, yn, yd)
+
+    def bake(src, lut):
+        if not bake_images:
+            return None
+        try:
+            from .picture import bake as pbake
+            a = _arr(pbake.image(src)[0])      # lane 2's bake: disk-cached by generator input hash
+        except Exception as e:                       # a generator bug must not stop the compile
+            notes.append(("warning", "cannot bake %s: %s: %s" % (src, type(e).__name__, e)))
+            return None
+        return lut[a] if lut is not None else a
+
+    ranked = sorted(enumerate(sd.planes), key=lambda t: (ORDER_RANK.get(t[1].get("order", "back"), 0), t[0]))
+    for _, st in ranked:
+        order = ORDER_RANK.get(st.get("order", "back"), 0)
+        lut = C._lut_for(st, var)
+        ppx = int(st.get("px", sd.px))
+        base = {"id": st.id, "prop": None, "state": None, "order": order, "par": par(st), "px": ppx,
+                "hidden": C.plane_hidden(st, var), "img": None, "bands": None, "strokes": None,
+                "boil": int(st.get("boil", "0") or 0), "at": (0, 0), "src": None}
+        if st.kw == "strokes":
+            base.update(kind="strokes", at=tuple(int(v) for v in C.xy(st.get("at"))),
+                        strokes=[(s.id, s.get("nib", "0"), int(s.get("w", "2")), s.get("path", ""),
+                                  s.get("hidden", "no") in ("yes", "on")) for s in st.strokes])
+            out.append(base)
+            continue
+        if "bands" in st.args:
+            spec = var.over.get("bands." + st.id, st.get("bands"))
+            try:
+                rows = C.band_rows(lib, spec)
+            except Exception as e:
+                notes.append(("warning", "bands %s: %s" % (spec, e)))
+                rows = [1] * 240
+            if lut is not None:
+                rows = [int(lut[r]) for r in rows]
+            bands = []
+            for y, col in enumerate(rows):
+                if not bands or bands[-1][1] != col:
+                    bands.append((y - 30, col))
+            base.update(kind="bands", bands=bands, src=spec)
+            out.append(base)
+            continue
+        src = st.get("image") or st.get("tilemap") or st.get("tile")
+        if src is None:
+            continue
+        src = var.over.get("image." + st.id, src)
+        a = bake(src, lut)
+        kind = "tile" if "tile" in st.args else "tilemap" if "tilemap" in st.args else "image"
+        x0, y0 = 0, -30
+        if a is not None and kind != "tile":
+            x0, y0 = C.plane_origin(st, a.shape[1], a.shape[0], ppx)
+            y0 -= 30
+        base.update(kind=kind, at=(int(round(x0)), int(round(y0))), img=a, src=src)
+        out.append(base)
+        for pr in sd.props:
+            if pr.get("plane") != st.id:
+                continue
+            p_hidden = C.plane_hidden(pr, var)
+            plut = None if pr.get("light") == "fixed" else lut
+            cur = var.states.get(pr.id)
+            arts = [(None, pr.get("art"))] + [(k[4:], v) for k, v in sorted(pr.args.items())
+                                                if k.startswith("art.")]
+            for state, art in arts:
+                if art is None:
+                    continue
+                pa = bake(art, plut)
+                if pa is None:
+                    continue
+                x, y = C.prop_xy(pr, _Size(pa.shape[1], pa.shape[0]), ppx)
+                on = (state == cur) if cur else state is None
+                out.append({"kind": "image", "id": pr.id + (":" + state if state else ""), "prop": pr.id,
+                            "state": state, "order": order, "par": base["par"], "px": ppx,
+                            "hidden": p_hidden or not on, "img": pa, "bands": None, "strokes": None,
+                            "boil": base["boil"], "at": (int(round(x)), int(round(y - 30))), "src": art,
+                            "anchor_xy": tuple(int(v) for v in C.xy(pr.get("at"))), "text": pr.get("text")})
+    return out, notes
