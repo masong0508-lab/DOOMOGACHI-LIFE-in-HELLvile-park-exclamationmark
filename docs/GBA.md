@@ -120,7 +120,7 @@ PS1 build has the same viewer (`ps1/src/cutview.c`, hold SELECT at boot).
 | region | address | size | use |
 |--------|---------|------|-----|
 | ROM | `0x08000000` | 762 KB game / 794 KB ET (padded to 1 MB) | THUMB code, art, tables; WS0 3/1 + prefetch |
-| EWRAM | `0x02000000` | 256 KB | 16 B harness mailbox, `.data`, `.bss` (core state, `gba_big`) |
+| EWRAM | `0x02000000` | 256 KB | 16 B harness mailbox, `.data`, `.bss` (core state, the arena `gba_arena`) |
 | IWRAM | `0x03000000` | 32 KB | ARM hot code + data (`.iwram`), `.iwram_bss`, stacks |
 | IRQ stack | `0x03007FA0` down | 672 B | the master IRQ handler (`crt0.s`) |
 | main stack | `0x03007D00` down | >= 6 KB reserved (linker `ASSERT`) | system mode |
@@ -143,49 +143,65 @@ to count logic ticks and frame rates.
 ### RAM usage (measured, `tools/memreport.py`)
 
 Every build prints this report; the linker script `ASSERT`s the limits.
-Game ROM (`build/doomogachi.gba`) with every core module linked (story,
-free play, creator, studio, concert, dreams, library, minigames, fishing
-/ cooking, Hell Breach levels):
+Game ROM (`build/doomogachi.gba`) with every core module linked, after
+the G0 memory pass (tasks #77/#78, 2026-10-25):
 
 ```
-ROM   2,428,644 bytes
-IWRAM    25,540 / 32,768  (code+data 21,672, bss 3,868)  6,460 bytes left for the 6 KB main stack
-EWRAM   254,464 / 262,144 (.data 304, .bss 254,128)      7.5 KB free
+ROM   3,379,276 bytes
+IWRAM    24,588 / 32,768  (code+data 20,720, bss 3,868)  7,412 bytes left for the main stack
+  flash routines: 1,092 bytes, copied onto the stack while saving
+EWRAM   252,192 / 262,144 (.data 536, .bss 251,592)      9,952 bytes free
   109,524  doomo_town      core (town.o)
    32,780  doomo_map       core (map.o, the live map)
+   26,992  gba_arena       platform + core: the arena (bigbuf.c, below)
    18,432  pool            core (portrait.o)
-   17,408  gba_big         platform: renderer caches / save window (bigbuf.c)
-   12,288  block           core (scene_scratch.o: the shared scene scratch)
     7,084  sim_s           core (sim.o)
     6,144  doomo_actors    core (actor.o)
     5,352  doomo_song_book core (song_book.o, saved)
     4,480  pcv             core (portrait_gfx.o)
     4,096  first_dir/queue/target_bits  core (combat_bot.o, the autopilot's BFS)
-    3,040  dq              core (ui_dialog.o)
     2,560  sc_pool         core (ui_raster.o: the UI shape cache)
-    2,400  frame_bb        core (scene_scratch.o: the per-frame billboards)
+    2,048  ul_by_id        core (unlocks.o)
+    1,984  dq              core (ui_dialog.o)
 ```
 
-IWRAM: the link failed with code eating 1.2 KB into the 6 KB main stack
-once the portrait renderer's hot loops (`P_FAST`, portrait_int.h) moved to
-IWRAM. `finish_marked()` (1.3 KB, it only visits the few boundary pixels
-`scan_transitions()` marked) is THUMB in ROM again, and the boot-only
-`mixer_init()` / `gba_irq_init()` of `irq.iwram.c` stay in ROM
-(`ROM_COLD`, gba_hw.h: `.text.rom` is placed in ROM before the IWRAM
-rule): 6,460 bytes are left for the 6 KB stack (+316). The measured
-main-stack high-water mark of the harness runs is 1,744 bytes.
+| | before G0 (`9d4d915`) | after G0 |
+|---|---:|---:|
+| EWRAM free | 4,872 B | **9,952 B** (+5,080) |
+| main stack (IWRAM) | 6,320 B | **7,412 B** (+1,092) |
+| main stack high-water (harness) | 1,944 B | 1,944 B; 2,520 B during a save |
+| fps (every scene of the G0 tour, below) | | unchanged |
 
-EWRAM: the game ROM links with 7.5 KB free (the CI run before this pass
-was 33 KB over: the modules that landed since keep their per-scene state
-in the scene scratch). The remaining big items are save-persistent
-(`doomo_town`, the song book), the live map / actors, the sim and the
-portrait cache, which every screen with citizens needs; the next
-candidates, if a module needs room, are the combat autopilot's BFS
-buffers (4 KB, only used while it plans; they would have to share a
-buffer with something that is idle during combat updates), the dialogue
-queue (3 KB: 8 entries x 380 bytes, the choice options could share one
-pool) and the overworld's per-frame texture table (already cut to
-`TEX_COUNT` entries, -1 KB).
+**The arena** (`src/bigbuf.c`, `gba_plat.h`). Until G0 the core's scene
+scratch (12 KB, `scene.h`), the platform's `gba_big` (17 KB: the overworld
+tile cache, the raycaster's buffers, the house, the save window) and the
+core's per-frame billboard list (2.4 KB) were three blocks, 32,096 B. They
+are never all full at once, so on the GBA they are ONE block of 26,992 B
+(`scene_scratch.c` hands out its bottom; the size is set by a save beside
+the largest claim: 12,288 + the codec's 14,592 + a 112 B window):
+
+| arena bytes | user |
+|---|---|
+| `[0, claim)` | the scene scratch: `scene_scratch(owner, size)`, size <= 12,288 |
+| `[24,592 - region, 24,592)` | the platform owner that claimed it last (`gba_big_claim()`): the raycaster's 11,840 B (clip checkpoints 6,720, roof table 4,096, sprite order 1,024; it fits beside the largest claim, combat's 12 KB of weapon views), the overworld's tile cache 17,152 B (beside the story overworld's 6,472 B claim; beside a claim over 7,440 B it uses only its upper 16 sets), the house's 16,872 B (beside its own 2,828 B) |
+| `[24,592, 26,992)` | `doomo_frame_bb`: filled and read inside a draw |
+| `[claim, 26,992)` | `plat_save_scratch()` (saves run in an update, never during a draw): 14,704 B beside the largest claim, 1 KB more than the codec needs beside the island's 11,312 B |
+
+A platform owner's region is a cache: it is rebuilt when another owner or
+a save took the memory, and (overworld, house) after a new scratch claim
+(`scene_scratch_gen()`): the raycaster's region never overlaps a claim, so
+a claim costs it nothing. The regions have symbols of their own
+(`gba_r3d`, `gba_ow`, `gba_room`): with `gba_arena + offset` GCC kept the
+arena base in a register and could not fold the offsets into THUMB loads
+(the house's sort was a third slower), and the overworld's per-call state
+is one struct (`OwLit`), so the half-cache flag costs no extra load.
+Measured with the G0 fps tour (libmgba harness, 13 scenes + the house
+script): every scene's work per frame is identical to `9d4d915` within
+0.1 ms (combat walk 71.5 -> 71.6, house plain 9.9 -> 10.0 ms), screenshots
+identical.
+
+IWRAM: the flash chip routines (`flash_ram.c`, section 8) moved from IWRAM
+to a copy on the stack while saving: +1,092 B for the main stack.
 
 How EWRAM got here:
 
@@ -198,34 +214,26 @@ How EWRAM got here:
 | UI rasteriser tables `const` | 8.1 KB | corner / circle / band tables of `ui_raster.c` moved to ROM (1.1 KB) |
 | colormap / tint map in ROM | 13.6 KB | `doomo_colormap` / `doomo_tintmap` are pointers to the generated `const` tables (palette.h); only the no-art fallback builds RAM copies (5.6 KB) |
 | smaller UI shape cache | 15.2 KB | `sc_pool` 1,024 -> 640 rects, 48 -> 40 entries (1.7 KB); the UI gallery / dialog fps are unchanged |
+| story, house, side missions, music (S1-S5, H1-H4, MU1) | 4.8 KB | `9d4d915` |
+| G0: the arena | 9.7 KB | scene scratch + `gba_big` + billboards in one 26,992 B block (-5,104 B) |
 
 The engine-test ROM (no game scenes): ROM 1,146,352 bytes, IWRAM 20,800
 (10.9 KB for the stack), EWRAM 168,608 (91.3 KB free).
 
-Modules landing after the perf pass (creator, studio song book, story
-overworld, free play, library, minigames, concert, fishing / cooking,
-levels) added about 75 KB of `.bss`; most of it is per-scene state that is
-dead while another scene runs, so it lives in the shared `scene_scratch()`
-block (scene.h, 12 KB, ARCHITECTURE.md "Memory and performance") or in
-`gba_big`, rather than in a static each. New modules: do the same.
+Levers left for the >= 24 KB goal (task #77), none of them fps-free or
+G0's: the customisation package's P0 shrinks the resident record 96 -> 76
+B (-20,020 B, docs/design/customization/SPEC.md section 2.1, CF-1); the
+portrait cache 48 -> 36 blocks (-5,040 B) costs fps (G0 tour: dialogue
+10.6 -> 8.4 fps; 42 blocks: breach third person 100.7 -> 103.0 ms), so it
+stays at 48; the autopilot's BFS (4 KB, demo mode only) could borrow the
+raycaster's per-frame clip buffers during the update.
 
 Measured main-stack high-water marks (the boot code paints the free IWRAM
 and `gba_stack_used()` scans it): 660 bytes in the game's boot / title /
-UI gallery (1,568 with the span rasteriser's row buffers), 936 - 1,024
-bytes in the 3D tour and overworld. The game ROM logs
-`GBA: main stack high-water N bytes` whenever the mark grows by 256 bytes.
-
-`gba_big` (17 KB, `src/bigbuf.c`) is one shared EWRAM buffer; whoever
-uses it claims it first (`gba_big_claim()`), which invalidates the
-previous owner's cache (it is rebuilt in a frame):
-
-| offset | user |
-|--------|------|
-| 0 - 17 KB | overworld lit-tile cache (64 tiles of 16x16) |
-| 0 - 8 KB | 3D: per-column clip checkpoints for sprites |
-| 8 - 12 KB | 3D: roof heights per map cell |
-| 12 - 13 KB | 3D: sprite sort order |
-| whole | `plat_save_scratch()`: the core's save window (2.75 KB) + its codec work area (`DOOMO_SAVE_WORK_SIZE`, 14.25 KB); less than a slot, so the core streams (section 8) |
+UI gallery (1,568 with the span rasteriser's row buffers), 936 - 1,944
+bytes in the 3D tour, overworld and house, 2,520 bytes while saving (the
+flash routines' copy). The game ROM logs `GBA: main stack high-water N
+bytes` whenever the mark grows by 256 bytes.
 
 ---------------------------------------------------------------------------
 
@@ -509,7 +517,7 @@ block rows with drop shadows, daylight 0..15 -> colormap level 5..15
 (lamps glow at night), a dithered night tint, then the view tint.
 
 Speed: ground tiles are cached *lit* (per texture frame, light level,
-front height and tint state) in a 2-way, 32-set cache in `gba_big`, so a
+front height and tint state) in a 2-way, 32-set cache in the arena, so a
 frame of ground is mostly 16-pixel block copies; horizontal scrolling
 moves in 2-pixel steps so every copy is halfword aligned. Cells covered by
 a block top + front face skip their ground tile.
@@ -569,7 +577,7 @@ bitsets and re-run only for entries that moved.
 
 | Resource | Use |
 |---|---|
-| `gba_big` | Claim `GBA_BIG_BY_ROOM` (4; moves to `gba_plat.h` at G0). State is at most 15,488 B; the harness layouts sit behind it. |
+| arena | Claim `GBA_BIG_BY_ROOM` (`gba_plat.h`); the house's region `gba_room` (16,872 B, section 3). State is at most 15,488 B; the harness layouts sit behind it. |
 | IWRAM | 0 B |
 | `.bss` / `.data` | About 34 B for room.c and 27 B for hcmd.c (budget 64 B) |
 | OBJ VRAM | None of its own. obj.c's four squash slots fill it, and obj.c only copies OAM while a squash shows, so the cursor and the held ghost are bitmap items. |
@@ -630,8 +638,18 @@ PSG channels on ticks 10-18; `enginetest.txt` checks both windows with
 
 ## 8. Saves (128 KB flash)
 
-`src/save_flash.c` (logic, THUMB) and `src/flash.iwram.c` (chip access,
-ARM in IWRAM, interrupts off while the chip is in command mode).
+`src/save_flash.c` (logic, THUMB) and `src/flash_ram.c` (chip access,
+ARM, interrupts off while the chip is in command mode). The chip routines
+must not run from ROM (the cartridge bus is busy with the flash commands),
+but since G0 they no longer sit in IWRAM for good: they are one position
+independent ARM block in ROM (`.text.flashram`, `__flash_ram_start` ..
+`__flash_ram_end`, 1,092 B; `gba.ld` asserts <= 1,152 B), and every
+`plat_save_*` entry point copies it onto its own stack (`FL_RUN`, a
+0.07 ms DMA) and calls the copy (`FL()`, `flash_int.h`). That gave the
+main stack its 1,092 B back (6,320 -> 7,412 B); a save's stack high-water
+is 2,520 B (1,568 B without a save). Saves are byte-identical and as fast
+as before (`test-coresave`: the 58.6 KB save 7,696 ms in the emulator,
+both builds).
 
 * Detection: switch bank 1 then bank 0 (makes emulators upgrade to the
   128 KB chip), enter ID mode (`AA/55/90`), read manufacturer/device:
@@ -652,8 +670,10 @@ ARM in IWRAM, interrupts off while the chip is in command mode).
   size; `plat_save_erase` erases the trailer sector (the slot reads as
   empty).
 * **Streaming** (platform.h): `plat_save_scratch()` hands the core the
-  17 KB `gba_big` (claiming it from the renderer caches), less than a
-  slot, so no RAM copy of a save ever exists. `save_game()` sizes and
+  arena above the scene scratch's claim (section 3: 14.7 KB beside the
+  largest 12 KB claim, 26.4 KB with none; it claims the arena from the
+  renderer caches), less than a slot, so no RAM copy of a save ever
+  exists. `save_game()` sizes and
   checksums the save in a first encode pass, then streams the same bytes:
   `plat_save_stream_begin(slot, size)` erases the trailer sector,
   `plat_save_stream_write()` erases each 4 KB sector when the stream

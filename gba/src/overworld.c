@@ -38,16 +38,28 @@ typedef struct OwTile {
     uint8_t  tex, used, pad[2];
 } OwTile;
 
-/* the cache lives in the shared buffer (bigbuf.c) */
-#define cache ((OwTile (*)[CACHE_WAYS])(gba_big + GBA_BIG_OW))
-DOOMO_STATIC_ASSERT(GBA_BIG_OW + sizeof(OwTile) * CACHE_SETS * CACHE_WAYS <= GBA_BIG_SIZE,
-                    ow_cache_fits);
-static uint32_t cache_tick;
-static uint32_t tint_state;      /* changes invalidate by key        */
-/* this frame's texture pixels per id (animated textures change frame);
- * ids >= TEX_COUNT (textures.h: <= 64) fall back to TEX_GRASS below */
-static const uint8_t *frame_tex[TEX_COUNT];
-static uint8_t frame_tex_ok[TEX_COUNT];
+/* The cache is the overworld's region of the arena (bigbuf.c, G0): the
+ * CACHE_SETS sets right below the billboards (GBA_BIG_OW = 17,152 B)
+ * beside the story overworld's 6.5 KB of scene scratch. Beside a larger
+ * scratch claim only the upper half of the sets is used (cache_half), which
+ * clears any claim, instead of covering the scene's state. */
+#define OW_SET_BYTES (sizeof(OwTile) * CACHE_WAYS)
+#define cache ((OwTile (*)[CACHE_WAYS])(void *)gba_ow)
+DOOMO_STATIC_ASSERT(OW_SET_BYTES * CACHE_SETS == GBA_BIG_OW, ow_region_size);
+DOOMO_STATIC_ASSERT((uint32_t)GBA_ARENA_BB - DOOMO_SCENE_SCRATCH >= OW_SET_BYTES * CACHE_SETS / 2u,
+                    ow_upper_half_clears_any_claim);
+/* what lit_cached() reads on every call, in one struct so that one base
+ * register reaches all of it (G0: the half-cache flag costs no load) */
+typedef struct OwLit {
+    uint32_t hi;                 /* 0, or CACHE_SETS / 2: only sets 16..31 */
+    uint32_t tick;
+    uint32_t tint_state;         /* changes invalidate by key        */
+    /* this frame's texture pixels per id (animated textures change frame);
+     * ids >= TEX_COUNT (textures.h: <= 64) fall back to TEX_GRASS below */
+    const uint8_t *frame_tex[TEX_COUNT];
+    uint8_t frame_tex_ok[TEX_COUNT];
+} OwLit;
+static OwLit lc;
 
 const uint8_t ow_bayer[16] = { 0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5 };
 
@@ -55,7 +67,19 @@ OwFrame owf;
 
 void ow_invalidate(void)
 {
-    memset(cache, 0, sizeof(OwTile) * CACHE_SETS * CACHE_WAYS);
+    if (lc.hi) memset(cache[CACHE_SETS / 2], 0, OW_SET_BYTES * CACHE_SETS / 2);
+    else memset(cache, 0, OW_SET_BYTES * CACHE_SETS);
+}
+
+/* after the claim: the whole cache, or its upper half beside a claim that
+ * reaches into the lower one */
+static void cache_fit(void)
+{
+    uint32_t hi = gba_big_fits(GBA_BIG_OW) ? 0u : CACHE_SETS / 2u;
+    if (hi != lc.hi) {
+        lc.hi = hi;
+        ow_invalidate();
+    }
 }
 
 void ow_init(void)
@@ -76,34 +100,36 @@ static uint8_t post(uint8_t c, int x, int y)
 /* lit 16x16 tile (front == 0) or 16 x front block front face, cached */
 static const OwTile *lit_cached(int tex, int lvl, int front)
 {
+    OwLit *L = &lc;
     const uint8_t *tp;
-    uint32_t set, key;
+    uint32_t set, key, tick;
     OwTile *t, *victim;
     int w, x, y;
     if (tex <= 0 || tex >= TEX_COUNT) tex = TEX_GRASS;
     if (lvl < 0) lvl = 0;
     if (lvl > 15) lvl = 15;
-    if (!frame_tex_ok[tex]) {
-        frame_tex[tex] = texture_pixels(tex, owf.time);
-        frame_tex_ok[tex] = 1;
+    if (!L->frame_tex_ok[tex]) {
+        L->frame_tex[tex] = texture_pixels(tex, owf.time);
+        L->frame_tex_ok[tex] = 1;
     }
-    tp = frame_tex[tex];
-    key = (uint32_t)lvl | ((uint32_t)front << 4) | (tint_state << 8);
-    set = ((uint32_t)tex * 7u + (uint32_t)lvl * 13u + (uint32_t)front * 5u) & (CACHE_SETS - 1);
+    tp = L->frame_tex[tex];
+    key = (uint32_t)lvl | ((uint32_t)front << 4) | (L->tint_state << 8);
+    set = ((((uint32_t)tex * 7u + (uint32_t)lvl * 13u + (uint32_t)front * 5u) & (CACHE_SETS - 1)) | L->hi);
+    tick = L->tick;
     victim = &cache[set][0];
     for (w = 0; w < CACHE_WAYS; w++) {
         t = &cache[set][w];
         if (t->src == tp && t->key == key && t->tex == tex && tp) {
-            t->used = (uint8_t)cache_tick;
+            t->used = (uint8_t)tick;
             return t;
         }
-        if ((uint8_t)(cache_tick - t->used) > (uint8_t)(cache_tick - victim->used)) victim = t;
+        if ((uint8_t)(tick - t->used) > (uint8_t)(tick - victim->used)) victim = t;
     }
     t = victim;
     t->src = tp;
     t->key = key;
     t->tex = (uint8_t)tex;
-    t->used = (uint8_t)cache_tick;
+    t->used = (uint8_t)tick;
     {
         const uint8_t *cm = doomo_colormap[lvl];
         uint8_t avg = tp ? 0 : texture_avg(tex);
@@ -218,6 +244,7 @@ void plat_overworld(const DoomoOverworldView *v)
     int tx0, ty0, tx1, ty1, tx, ty, i, n, si;
     if (gba_nodraw || !v) return;
     gba_big_claim(GBA_BIG_BY_OW);
+    cache_fit();
     m = v->map;
     owf.ox = v->vw > 0 ? v->vx : 0;
     owf.oy = v->vh > 0 ? v->vy : 0;
@@ -240,10 +267,10 @@ void plat_overworld(const DoomoOverworldView *v)
     {
         uint32_t st = (uint32_t)owf.night | ((uint32_t)owf.tint_level << 5) |
                       ((uint32_t)(owf.tint_level ? v->tint : 0) << 10);
-        if (st != (tint_state & 0x0FFF)) tint_state = st;
+        if (st != (lc.tint_state & 0x0FFF)) lc.tint_state = st;
     }
-    cache_tick++;
-    memset(frame_tex_ok, 0, sizeof(frame_tex_ok));
+    lc.tick++;
+    memset(lc.frame_tex_ok, 0, sizeof(lc.frame_tex_ok));
 
     /* horizontal scroll in 2-pixel steps: every row copy is then halfword
      * aligned with VRAM (DMA / halfword copies, no byte shuffling) */

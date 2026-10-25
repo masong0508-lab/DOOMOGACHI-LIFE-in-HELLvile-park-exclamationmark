@@ -229,7 +229,7 @@ static void setup_map(const DoomoMap *m)
 /* ------------------------------------------------------------------------- */
 typedef struct SprOrder { int32_t depth; int16_t idx; } SprOrder;
 #define R3D_MAXSPR 128
-#define spr_order ((SprOrder *)(gba_big + GBA_BIG_SPR))
+#define spr_order ((SprOrder *)(gba_r3d + GBA_BIG_SPR))
 
 static void draw_sprites(const DoomoView3D *v)
 {
@@ -327,7 +327,7 @@ static void draw_sprites(const DoomoView3D *v)
 DOOMO_STATIC_ASSERT(R3D_MAXCOLS * R3D_MAXCP * sizeof(R3DClip) <= GBA_BIG_ROOF - GBA_BIG_CLIPS,
                     clips_fit);
 DOOMO_STATIC_ASSERT(DOOMO_MAP_MAX_W * DOOMO_MAP_MAX_H <= GBA_BIG_CMT - GBA_BIG_ROOF, roof_fits);
-DOOMO_STATIC_ASSERT(GBA_BIG_SPR + R3D_MAXSPR * sizeof(SprOrder) <= GBA_BIG_SIZE, sprorder_fits);
+DOOMO_STATIC_ASSERT(GBA_BIG_SPR + R3D_MAXSPR * sizeof(SprOrder) <= GBA_BIG_R3D && GBA_BIG_SPR % 4 == 0, sprorder_fits);
 
 /* the shared buffer was used by the overworld or the save code: rebuild
  * what lives there */

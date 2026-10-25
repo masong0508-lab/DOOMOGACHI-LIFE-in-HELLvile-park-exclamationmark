@@ -1,5 +1,6 @@
 /* save_flash.c - plat_save_*() on the cartridge's 128 KB FLASH
- * (owner: gba). Low-level chip routines: flash.iwram.c.
+ * (owner: gba). Low-level chip routines: flash_ram.c, run from a copy
+ * on the stack (G0, task #78; flash_int.h).
  *
  * Layout (platform.h / save.h):
  *   slot 0 (story)     0x00000 .. 0x09FFF   40 KB
@@ -26,6 +27,33 @@
 #include "flash_int.h"
 #include "doomo/save.h"
 
+/* ---- the chip routines' RAM copy (flash_int.h) ---------------------------
+ * The ARM block __flash_ram_start .. __flash_ram_end (flash_ram.c) must run
+ * from RAM. Every entry point of this file copies it into a local array
+ * (FL_RUN: <= 1,152 B of stack, a 0.07 ms DMA per call) and the helpers below
+ * call the copy through FL(); the block is position independent. It used
+ * to live in IWRAM for good, which took 1,092 B from the main stack. */
+static uint32_t *fl_ram;                  /* the live copy (NULL: none)  */
+
+static void fl_ram_load(uint32_t *buf)
+{
+    /* DMA3 (main thread only): ~0.07 ms, a third of a CPU copy from ROM */
+    dma3_copy32(buf, __flash_ram_start, (uint32_t)(__flash_ram_end - __flash_ram_start));
+}
+
+#define FL(fn) ((__typeof__(&fn))(void *)((uint8_t *)fl_ram + \
+                ((uintptr_t)(fn) - (uintptr_t)__flash_ram_start)))
+/* run `call` (an expression of type T) with the copy on this stack frame */
+#define FL_RUN(T, call) do {                                                  \
+        uint32_t fl_buf_[FL_RAM_WORDS];                                        \
+        uint32_t *fl_was_ = fl_ram;                                            \
+        T fl_r_;                                                               \
+        if (!fl_was_) { fl_ram_load(fl_buf_); fl_ram = fl_buf_; }              \
+        fl_r_ = (call);                                                        \
+        fl_ram = fl_was_;                                                      \
+        return fl_r_;                                                          \
+    } while (0)
+
 #define SECTOR      4096u
 #define TRAILER     12u
 #define SLOT0_OFF   0x00000u
@@ -39,14 +67,14 @@ static int chip_macronix, chip_atmel;
 static int cur_bank = -1;
 static const char *chip_name = "none";
 
-void flash_init(void)
+static int flash_init_body(void)
 {
     /* A bank switch before the ID read: harmless on 64 KB chips (unknown
      * command, back to read mode), and it makes emulators that guess the
      * flash size on first use (mGBA) switch to the 128 KB chip. */
-    fl_bank(1);
-    fl_bank(0);
-    chip_id = fl_read_id();
+    FL(fl_bank)(1);
+    FL(fl_bank)(0);
+    chip_id = FL(fl_read_id)();
     chip_kb = 0;
     switch (chip_id) {
     case 0x09C2: chip_kb = 128; chip_macronix = 1; chip_name = "Macronix MX29L010"; break;
@@ -60,8 +88,12 @@ void flash_init(void)
         break;
     }
     cur_bank = -1;
-    if (chip_kb == 128) { fl_bank(0); cur_bank = 0; }
+    if (chip_kb == 128) { FL(fl_bank)(0); cur_bank = 0; }
+    return chip_kb;
 }
+
+static int flash_init_entry(void);
+void flash_init(void) { (void)flash_init_entry(); }
 
 int flash_detected(void) { return chip_kb; }
 const char *flash_chip_name(void) { return chip_name; }
@@ -71,7 +103,7 @@ static void select_bank(uint32_t addr)
 {
     int b = (int)(addr >> 16);
     if (chip_kb != 128) return;
-    if (b != cur_bank) { fl_bank(b); cur_bank = b; }
+    if (b != cur_bank) { FL(fl_bank)(b); cur_bank = b; }
 }
 
 static void read_bytes(uint32_t addr, uint8_t *dst, uint32_t n)
@@ -80,7 +112,7 @@ static void read_bytes(uint32_t addr, uint8_t *dst, uint32_t n)
         uint32_t room = 0x10000u - (addr & 0xFFFFu);
         uint32_t k = n < room ? n : room;
         select_bank(addr);
-        fl_read(addr & 0xFFFFu, dst, k);
+        FL(fl_read)(addr & 0xFFFFu, dst, k);
         addr += k; dst += k; n -= k;
     }
 }
@@ -100,11 +132,11 @@ static int erase_sector(uint32_t addr)
             255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255 };
         uint32_t p;
         for (p = 0; p < SECTOR; p += 128)
-            if (!fl_program_atmel_page((addr + p) & 0xFFFFu, ff)) return 0;
+            if (!FL(fl_program_atmel_page)((addr + p) & 0xFFFFu, ff)) return 0;
         return 1;
     }
     select_bank(addr);
-    return fl_erase_sector(addr & 0xFFFFu, chip_macronix);
+    return FL(fl_erase_sector)(addr & 0xFFFFu, chip_macronix);
 }
 
 /* program n bytes at addr (the area must be erased; never crosses a bank
@@ -120,13 +152,13 @@ static int program(uint32_t addr, const uint8_t *src, uint32_t n)
             uint32_t i;
             read_bytes(base, page, 128);
             for (i = 0; i < k; i++) page[o + i] = src[i];
-            if (!fl_program_atmel_page(base & 0xFFFFu, page)) return 0;
+            if (!FL(fl_program_atmel_page)(base & 0xFFFFu, page)) return 0;
             addr += k; src += k; n -= k;
         }
         return 1;
     }
     select_bank(addr);
-    return fl_program(addr & 0xFFFFu, src, n, chip_macronix);
+    return FL(fl_program)(addr & 0xFFFFu, src, n, chip_macronix);
 }
 
 static int slot_region(int slot, uint32_t *off, uint32_t *len)
@@ -156,7 +188,7 @@ static int read_trailer(uint32_t off, uint32_t len, uint32_t *size)
 }
 
 /* ---------------------------------------------------------------------- */
-int plat_save_write(int slot, const void *data, uint32_t size)
+static int save_write_body(int slot, const void *data, uint32_t size)
 {
     uint32_t off, len, last, s, done;
     const uint8_t *src = (const uint8_t *)data;
@@ -196,7 +228,7 @@ static struct {
     uint32_t off, len, size, pos;
 } ws;
 
-int plat_save_stream_begin(int slot, uint32_t size)
+static int stream_begin_body(int slot, uint32_t size)
 {
     uint32_t off, len;
     ws.active = 0;
@@ -216,7 +248,7 @@ int plat_save_stream_begin(int slot, uint32_t size)
     return 1;
 }
 
-int plat_save_stream_write(const void *data, uint32_t n)
+static int stream_write_body(const void *data, uint32_t n)
 {
     const uint8_t *src = (const uint8_t *)data;
     if (!ws.active || !ws.ok || ws.pos + n > ws.size) { ws.ok = 0; return 0; }
@@ -239,7 +271,7 @@ int plat_save_stream_write(const void *data, uint32_t n)
     return 1;
 }
 
-int plat_save_stream_end(int commit)
+static int stream_end_body(int commit)
 {
     uint8_t t[TRAILER];
     uint32_t size = ws.size, chk;
@@ -255,7 +287,7 @@ int plat_save_stream_end(int commit)
     return read_trailer(ws.off, ws.len, &chk) && chk == size;
 }
 
-int plat_save_read_at(int slot, uint32_t offset, void *data, uint32_t n, uint32_t *size)
+static int read_at_body(int slot, uint32_t offset, void *data, uint32_t n, uint32_t *size)
 {
     uint32_t off, len, s;
     if (size) *size = 0;
@@ -267,7 +299,7 @@ int plat_save_read_at(int slot, uint32_t offset, void *data, uint32_t n, uint32_
     return 1;
 }
 
-int plat_save_read(int slot, void *data, uint32_t cap, uint32_t *size)
+static int read_body(int slot, void *data, uint32_t cap, uint32_t *size)
 {
     uint32_t off, len, s, n;
     if (size) *size = 0;
@@ -279,7 +311,7 @@ int plat_save_read(int slot, void *data, uint32_t cap, uint32_t *size)
     return 1;
 }
 
-int plat_save_erase(int slot)
+static int erase_body(int slot)
 {
     uint32_t off, len, s, sz = 0, end;
     if (!slot_region(slot, &off, &len)) return 0;
@@ -290,3 +322,14 @@ int plat_save_erase(int slot)
         if (!erase_sector(s)) return 0;
     return 1;
 }
+
+/* ---- the entry points: each body runs with the chip routines' copy on
+ * its caller's stack (FL_RUN) ------------------------------------------- */
+static int flash_init_entry(void) { FL_RUN(int, flash_init_body()); }
+int plat_save_write(int slot, const void *data, uint32_t size) { FL_RUN(int, save_write_body(slot, data, size)); }
+int plat_save_stream_begin(int slot, uint32_t size) { FL_RUN(int, stream_begin_body(slot, size)); }
+int plat_save_stream_write(const void *data, uint32_t n) { FL_RUN(int, stream_write_body(data, n)); }
+int plat_save_stream_end(int commit) { FL_RUN(int, stream_end_body(commit)); }
+int plat_save_read_at(int slot, uint32_t offset, void *data, uint32_t n, uint32_t *size) { FL_RUN(int, read_at_body(slot, offset, data, n, size)); }
+int plat_save_read(int slot, void *data, uint32_t cap, uint32_t *size) { FL_RUN(int, read_body(slot, data, cap, size)); }
+int plat_save_erase(int slot) { FL_RUN(int, erase_body(slot)); }

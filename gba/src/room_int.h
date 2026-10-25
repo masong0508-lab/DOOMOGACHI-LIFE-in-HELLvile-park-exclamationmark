@@ -9,13 +9,8 @@
 
 #include "gba_plat.h"
 
-/* gba_big owner id of the house renderer. SPEC sec.6.3: the GBA_BIG_ROOM
- * line goes into gba_plat.h once the GBA memory pass (G0, task #77) hands
- * that header over; until then it lives here, next to the enum's last
- * value (GBA_BIG_BY_SAVE = 3). bigbuf.c only compares owner ids. */
-#ifndef GBA_BIG_BY_ROOM
-#define GBA_BIG_BY_ROOM 4
-#endif
+/* the house's owner id and region: GBA_BIG_BY_ROOM, GBA_BIG_ROOM, gba_room
+ * (gba_plat.h, the arena; G0) */
 
 /* The harness parity frame (SPEC H2 acceptance, HF sec.11.5): the
  * test_home_render.c layout drawn at 240x160 exactly as the room_ref golden

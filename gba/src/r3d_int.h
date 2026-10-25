@@ -87,8 +87,8 @@ extern const uint8_t *r3d_texc[R3D_MAXTEX]; /* per-frame texture cache (IWRAM) *
 extern uint16_t r3d_texpix[R3D_MAXTEX];      /* pixels drawn per texture this frame */
 extern uint8_t r3d_avgc[R3D_MAXTEX];        /* texture average colours (IWRAM) */
 
-/* per-column clip checkpoints, inside gba_big (bigbuf.c) */
-#define r3d_clips ((R3DClip (*)[R3D_MAXCP])(gba_big + GBA_BIG_CLIPS))
+/* per-column clip checkpoints, in the raycaster's arena region (bigbuf.c) */
+#define r3d_clips ((R3DClip (*)[R3D_MAXCP])(gba_r3d + GBA_BIG_CLIPS))
 extern uint8_t  r3d_nclips[R3D_MAXCOLS];
 
 extern const int32_t  gba_sin16[5120];
@@ -171,7 +171,7 @@ void r3d_draw_sky(uint16_t *p, int c, int y0, int y1, R3DRows cm);
 
 /* roof height (x 8 units) of each open roofed cell seen from the sky
  * (max explicit top of its solid neighbours), 127 = none (r3d.c) */
-#define r3d_roof ((int8_t *)(gba_big + GBA_BIG_ROOF))
+#define r3d_roof ((int8_t *)(gba_r3d + GBA_BIG_ROOF))
 
 /* ARM / IWRAM entry points (r3d.iwram.c) */
 void r3d_columns(void) IWRAM_CALL;

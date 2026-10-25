@@ -56,11 +56,13 @@
  * when the ROM source is misaligned), fills vid_rect(), actors ow_sprite(),
  * checksums ldmia word reads.
  *
- * MEMORY. All state lives in gba_big (claim GBA_BIG_BY_ROOM; RBig <=
- * 15,488 B, the C7 claim, plus the harness layouts behind it), 0 B of
- * IWRAM, ~34 B of .bss / .data (the claim canary, the HUD bands, the
- * same-frame opaque rects). Another claim on gba_big (overworld, r3d, a
- * save) is noticed through a canary word and a frame gap and costs one full
+ * MEMORY. All state lives in the house's region of the arena (bigbuf.c,
+ * gba_plat.h GBA_BIG_ROOM; claim GBA_BIG_BY_ROOM; RBig <= 15,488 B, the C7
+ * claim, plus the harness layouts behind it), 0 B of IWRAM, ~34 B of .bss
+ * / .data (the claim canary, the HUD bands, the same-frame opaque rects).
+ * Another claim on the region (overworld, r3d, a save, a new scene scratch
+ * claim) is noticed through a canary word, a frame gap or the scratch's
+ * generation and costs one full
  * recompose. The core's plat_cache (the scene scratch tail) is not used on
  * the GBA (SPEC C9). No OBJ of its own: OBJ VRAM belongs to obj.c's four
  * squash slots (16 KB) and obj.c only copies OAM while a squash shows, so
@@ -164,8 +166,11 @@ typedef struct RTest {
     DoomoRoomActor acts[12];
 } RTest;
 DOOMO_STATIC_ASSERT(sizeof(RBig) <= 15488u, room_state_fits_the_c7_claim);
-DOOMO_STATIC_ASSERT(sizeof(RBig) + sizeof(RTest) <= GBA_BIG_SIZE, room_test_fits_gba_big);
-#define TEST ((RTest *)(gba_big + ((sizeof(RBig) + 7u) & ~7u)))
+DOOMO_STATIC_ASSERT(((sizeof(RBig) + 7u) & ~7u) + sizeof(RTest) <= GBA_BIG_ROOM, room_test_fits_its_region);
+/* the house's region of the arena (bigbuf.c, G0): GBA_BIG_ROOM bytes below
+ * the billboards, beside the house scene's 2.8 KB of scene scratch */
+#define RB_BASE gba_room              /* == GBA_BIG(GBA_BIG_ROOM) */
+#define TEST ((RTest *)(RB_BASE + ((sizeof(RBig) + 7u) & ~7u)))
 
 /* ~30 B of .bss (SPEC H2: <= 64 B, with hcmd.c's 28) */
 static uint32_t rb_epoch;              /* changes on every reset             */
@@ -177,7 +182,7 @@ static uint8_t  op_n;                  /* opaque rects registered before plat_ro
 static uint8_t  op_rect[4][4];         /* x0, y0, x1, y1 of this frame's      */
 static uint32_t op_frame;              /* the frame they belong to            */
 
-#define B ((RBig *)gba_big)            /* the house's claim                   */
+#define B ((RBig *)(void *)RB_BASE)    /* the house's claim                   */
 #define room_stats (B->stats)
 
 /* ---- the frame's geometry (room_ref's RR, plus the platform's bounds) ---- */
@@ -262,9 +267,12 @@ static void reset_state(void)
 
 static void claim(void)
 {
+    static uint32_t gen;                /* a new scratch claim may cover RBig */
+    uint32_t g = scene_scratch_gen();
     gba_big_claim(GBA_BIG_BY_ROOM);
-    if (!rb_epoch || B->magic != (RB_MAGIC ^ rb_epoch) || rb_last_frame + 1u != gba_frames)
+    if (!rb_epoch || B->magic != (RB_MAGIC ^ rb_epoch) || rb_last_frame + 1u != gba_frames || g != gen)
         reset_state();
+    gen = g;
 }
 
 void room_invalidate(void)
@@ -1339,6 +1347,10 @@ static void render(const DoomoRoomView *v)
     RG g;
     RPage *pg;
     uint32_t c0 = gba_cycles(), key;
+    if (!gba_big_fits(GBA_BIG_ROOM)) {   /* never with the house's 2.8 KB claim */
+        gba_log("GBA: plat_room: the scene scratch claim covers the house's region");
+        return;
+    }
     claim();
     rb_last_frame = gba_frames;
     band_cur[0] = band_pend[0];
