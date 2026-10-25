@@ -140,6 +140,12 @@ Each names the default taken and where to change it.
 - **"...Hee. Hee." (lib:mayor/heehee_v1)** is the Mayor's voice saying "hee", re-sung by WORLD
   on E4 then C4, 12 f each, the second 20 f after the first; synthetic until the creator records it
   (`show voice lib ingest take.wav mayor/heehee_v1`).
+- **The Mayor's hums** (lib:mayor/hum_dawn_v1 for co12, hum_plusone_v1 for 4-08) are his voice's
+  closed-mouth "mmm" sung by WORLD on MINGLE's melody (WP10's mml_legacy over tools/mmlc.py), an
+  octave under the music box (music.shw `hum=G4`), from the held note at bar 10.3 of mingle_box
+  to the Mayor's note at 12.1 (he stops dead; 3.75 s at 96 bpm), and one note further for 4-08.
+  Pitches measured on the takes: within 0.05 st of the score. The library index's `anchor` says
+  which bar.beat of the cue the take's onset is, so staging can place `say co12_hum` on the bar.
 - **dx_proof lines** live in `show/tests/audio/dx_proof/` (lines.shw + voice.lock): they keep
   the ep101 ids where the script has the line (`co15_perfect`, `co18_stay`, `a1_09_nana_01`) and
   `dx_nana_two` for "Two of everything, dear."

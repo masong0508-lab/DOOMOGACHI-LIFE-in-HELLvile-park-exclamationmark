@@ -13,7 +13,6 @@
 - ENGINE: gaze hunk (e), `ps1-show-wide`, `ps1-show-dev` (PCdrv), `runner-show`, the P2 draw trace (`show_wrap.c`): deferred to 2027 by the spec itself (§1.2, §4.3, §8.8).
 - AUDIO voice: MFCC-DTW alignment of recordings against the TTS render (spec §1.2): Whisper word times + TTS phone ratios, energy fallback.
 - AUDIO voice: espeak-ng G2P fallback (its wheel's data path is broken here, spec R7): cmudict + lexicon.shw + compound splitting cover every pilot word.
-- AUDIO voice: the two Mayor hums (lib:mayor/hum_dawn_v1, hum_plusone_v1) wait for WP10's MINGLE notes (mml_legacy); the lines lock as `pending` until then.
 - AUDIO voice: lib:pet/beep_v1 is the game's piezo, an SFX (WP10 library), not a voice take; mt7_pet_01 and the pet lines lock as `pending`.
 - AUDIO voice: stressed words in CAPITALS (WORD, SPEECH, PLAY) get no extra emphasis in TTS; the creator's reads carry it.
 - AUDIO voice: retime="fit" time-stretching of recordings (world.stretch exists; the compiler decides when a take overruns its slot).

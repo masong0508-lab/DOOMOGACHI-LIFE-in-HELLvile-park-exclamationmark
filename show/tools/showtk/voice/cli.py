@@ -4,7 +4,7 @@
   show voice audition <char> "<text>" [--out DIR] [--n 6]          the voice + 5 neighbours
   show voice casting [--roles a,b] [--out DIR]                     3 numbered options per main role
   show voice ingest <wav> --line <id> [--ep ep101]                 a recording -> vo/ -> lock
-  show voice verify <ep> [--no-rerender]                           AT9.1: store + re-render hashes
+  show voice verify <ep> [--line ID ...] [--no-rerender]           AT9.1: store + re-render hashes
   show voice report <ep> [--require human-voice]                   provenance (AT9.4)
   show voice lint <ep>                                             AUD-ASR, G2P-OOV, STD-AGE, closures, AUD-HEEHEE
   show voice mouth <ep> <line>                                     the mouth track and its closure check
@@ -92,9 +92,10 @@ def _verify(argv):
     ap = argparse.ArgumentParser(prog="show voice verify")
     ap.add_argument("ep")
     ap.add_argument("--no-rerender", action="store_true")
+    ap.add_argument("--line", action="append", help="only this line id (repeatable)")
     a = ap.parse_args(argv)
     from . import build
-    return 0 if build.verify(a.ep, rerender=not a.no_rerender) else 1
+    return 0 if build.verify(a.ep, rerender=not a.no_rerender, only=set(a.line) if a.line else None) else 1
 
 
 def _report(argv):

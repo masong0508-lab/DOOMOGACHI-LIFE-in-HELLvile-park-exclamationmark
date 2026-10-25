@@ -1,0 +1,297 @@
+{
+  "grum/purr_v1": {
+    "len": 69240,
+    "made": "tts:kokoro@8fbea51ea711f2af+ef9e2b69:am_fenrir:0.7+am_santa:0.3,speed=0.7,pitch=-7st,formant=-2st,contour=lilt:-0.4,breath=0.35",
+    "phones": [
+      [
+        "m",
+        2760,
+        6360
+      ],
+      [
+        "m",
+        6360,
+        9960
+      ],
+      [
+        "m",
+        9960,
+        14760
+      ],
+      [
+        "m",
+        14760,
+        20760
+      ],
+      [
+        "m",
+        20760,
+        26760
+      ],
+      [
+        "m",
+        26760,
+        32760
+      ],
+      [
+        "m",
+        39960,
+        47160
+      ],
+      [
+        "m",
+        47160,
+        54360
+      ],
+      [
+        "m",
+        54360,
+        64920
+      ]
+    ],
+    "sha256": "a794d393d3636fce0cf4ddbe709d2599b381ddc4e80315b8e1ae179d5d56ba17",
+    "synthetic": true,
+    "take": "store:takes/grum/lib/purr_v1_lib_a794d393d363.flac",
+    "words": [
+      [
+        "Mmmh.",
+        2760,
+        64920
+      ]
+    ]
+  },
+  "grum/purr_v2": {
+    "len": 57840,
+    "made": "tts:kokoro@8fbea51ea711f2af+ef9e2b69:am_fenrir:0.7+am_santa:0.3,speed=0.7,pitch=-7st,formant=-2st,contour=lilt:-0.4,breath=0.35",
+    "phones": [
+      [
+        "m",
+        2400,
+        6000
+      ],
+      [
+        "m",
+        6000,
+        9600
+      ],
+      [
+        "m",
+        9600,
+        14400
+      ],
+      [
+        "m",
+        14400,
+        18000
+      ],
+      [
+        "m",
+        18000,
+        21600
+      ],
+      [
+        "m",
+        21600,
+        26400
+      ],
+      [
+        "m",
+        26400,
+        34800
+      ],
+      [
+        "m",
+        34800,
+        43200
+      ],
+      [
+        "m",
+        43200,
+        53520
+      ]
+    ],
+    "sha256": "ca6fcd6d057a49fa6262d1368942d32a355475e7168aa3ab15bb342cf1b383de",
+    "synthetic": true,
+    "take": "store:takes/grum/lib/purr_v2_lib_ca6fcd6d057a.flac",
+    "words": [
+      [
+        "Mmmh.",
+        2400,
+        53520
+      ]
+    ]
+  },
+  "mayor/heehee_v1": {
+    "len": 57600,
+    "made": "tts+world:kokoro@8fbea51ea711f2af+ef9e2b69:am_puck:0.6+am_michael:0.4,\"hˈi\" sung E4:12f then C4:12f, 20 f apart",
+    "phones": [
+      [
+        "h",
+        0,
+        520
+      ],
+      [
+        "i",
+        520,
+        19720
+      ],
+      [
+        " ",
+        19720,
+        31560
+      ],
+      [
+        "h",
+        31560,
+        32520
+      ],
+      [
+        "i",
+        32520,
+        51720
+      ]
+    ],
+    "sha256": "90871c052ba25159595aa965dfe7574dfb619e72fafc78a15de70a4eeee92ffc",
+    "synthetic": true,
+    "take": "store:takes/mayor/lib/heehee_v1_lib_90871c052ba2.flac",
+    "words": [
+      [
+        "Hee.",
+        0,
+        19720
+      ],
+      [
+        "Hee.",
+        31560,
+        51720
+      ]
+    ]
+  },
+  "mayor/hum_dawn_v1": {
+    "anchor": {
+      "cue": "mingle_box",
+      "from": "10.3",
+      "to": "12.1"
+    },
+    "len": 184200,
+    "made": "tts+world:kokoro@8fbea51ea711f2af+ef9e2b69:am_puck:0.6+am_michael:0.4,\"mmm\" sung on mingle_box bars 10.3-12.1 an octave down (midi 67 60 62 65 70 74 60 69) at 96 bpm",
+    "phones": [
+      [
+        "m",
+        0,
+        29880
+      ],
+      [
+        "m",
+        29880,
+        59880
+      ],
+      [
+        "m",
+        59880,
+        74880
+      ],
+      [
+        "m",
+        74880,
+        89880
+      ],
+      [
+        "m",
+        89880,
+        104880
+      ],
+      [
+        "m",
+        104880,
+        119880
+      ],
+      [
+        "m",
+        119880,
+        149880
+      ],
+      [
+        "m",
+        149880,
+        179880
+      ]
+    ],
+    "sha256": "32435747d5f23334916a1b2d403f28b4f88201247cd1078861431d78e3ad970d",
+    "synthetic": true,
+    "take": "store:takes/mayor/lib/hum_dawn_v1_lib_32435747d5f2.flac",
+    "words": [
+      [
+        "Mm",
+        0,
+        179880
+      ]
+    ]
+  },
+  "mayor/hum_plusone_v1": {
+    "anchor": {
+      "cue": "mingle_box",
+      "from": "10.3",
+      "to": "12.1.5"
+    },
+    "len": 199320,
+    "made": "tts+world:kokoro@8fbea51ea711f2af+ef9e2b69:am_puck:0.6+am_michael:0.4,\"mmm\" sung on mingle_box bars 10.3-12.1.5 an octave down (midi 67 60 62 65 70 74 60 69 67) at 96 bpm",
+    "phones": [
+      [
+        "m",
+        0,
+        29880
+      ],
+      [
+        "m",
+        29880,
+        59880
+      ],
+      [
+        "m",
+        59880,
+        74880
+      ],
+      [
+        "m",
+        74880,
+        89880
+      ],
+      [
+        "m",
+        89880,
+        104880
+      ],
+      [
+        "m",
+        104880,
+        119880
+      ],
+      [
+        "m",
+        119880,
+        149880
+      ],
+      [
+        "m",
+        149880,
+        179880
+      ],
+      [
+        "m",
+        179880,
+        194880
+      ]
+    ],
+    "sha256": "640a8062d1e4e67e2c76889a443d46ed327eaf2c52a380df4556a2f54fdd9308",
+    "synthetic": true,
+    "take": "store:takes/mayor/lib/hum_plusone_v1_lib_640a8062d1e4.flac",
+    "words": [
+      [
+        "Mm",
+        0,
+        194880
+      ]
+    ]
+  }
+}

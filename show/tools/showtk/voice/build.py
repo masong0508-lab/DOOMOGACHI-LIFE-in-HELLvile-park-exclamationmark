@@ -209,13 +209,14 @@ def _have(row):
     return os.path.exists(p)
 
 
-def verify(ep, rerender=True, log=print):
+def verify(ep, rerender=True, only=None, log=print):
     """AT9.1: every row's take is in the store with its hash; TTS rows re-render to the
     same samples (the lock reproduces)."""
     d, lines, beds, cfg, vo = load_ep(ep)
     lk = lock.read(d)
     bad = 0
-    for lid, r in lk["lines"].items():
+    rows = {k: v for k, v in lk["lines"].items() if not only or k in only}
+    for lid, r in rows.items():
         if r.get("kind") == "pending":
             log(f"  {lid:20s} PENDING {r.get('status', '')}")
             continue
@@ -240,7 +241,7 @@ def verify(ep, rerender=True, log=print):
                 pass
         bad += not ok
         log(f"  {lid:20s} {msg}")
-    log(f"verify {ep}: {len(lk['lines']) - bad}/{len(lk['lines'])} ok")
+    log(f"verify {ep}: {len(rows) - bad}/{len(rows)} ok")
     return bad == 0
 
 

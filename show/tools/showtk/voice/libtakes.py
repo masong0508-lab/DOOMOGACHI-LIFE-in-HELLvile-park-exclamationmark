@@ -9,9 +9,13 @@ with `show voice lib ingest <wav> <name>` (index entry synthetic=false).
                     apart (E4 -> C4, "mi... do"), each 12 f, 8 f apart (BREAKDOWN §2.3)
   grum/purr_v1      Grumbleguts' purr: a low, pleased "Mmmh", vocal fry, rising at the end
   grum/purr_v2      the shorter alternate
+  mayor/hum_dawn_v1     co12: MINGLE hummed an octave under the music box from its held
+                        note (bar 10.3) to the Mayor's note (bar 12.1), where he stops dead
+  mayor/hum_plusone_v1  4-08: the same, one note further (through the G, stopping at 12.1.5)
+                        Both read the melody from WP10's mml_legacy (tools/mmlc.py); the index
+                        entry's `anchor` says which bar.beat of mingle_box the onset is.
 Not voice (WP10's SFX library, listed so lines that name them resolve): pet/beep_v1 (the
-game's raw piezo, process=none). The two Mayor hums (mayor/hum_dawn_v1, hum_plusone_v1)
-need the MINGLE cue's notes from WP10's mml_legacy.py; until then they stay pending.
+game's raw piezo, process=none).
 """
 from __future__ import annotations
 
@@ -26,8 +30,6 @@ INDEX = os.path.join(env.SHOW, "lib", "takes", "index.json")
 
 PENDING = {
     "pet/beep_v1": "SFX, not a voice: the game's raw piezo from WP10's sfx library (process=none)",
-    "mayor/hum_dawn_v1": "needs the MINGLE cue's held/muted notes (WP10 mml_legacy); sung by singer.py once they land",
-    "mayor/hum_plusone_v1": "needs the MINGLE cue's notes (WP10 mml_legacy); the hum one note further",
 }
 
 
@@ -128,6 +130,77 @@ def _heehee():
     return y, ph, wd, made
 
 
+HUM_FROM = (10, 3.0)        # the music box's held note (bar 10, beat 3 of mingle_box, two passes)
+
+
+def _hum(to_bar_beat):
+    """The Mayor hums MINGLE an octave under the music box (series/music.shw: mayors_note
+    pitch=G5 hum=G4), from the held note at bar 10.3 up to `to_bar_beat`, where he stops
+    dead. Kokoro gives a closed-mouth "mmm" in his voice; WORLD sings it on the melody
+    (25 ms glides, a little vibrato on long notes, a dip between notes, a 12 ms stop)."""
+    import pyworld as pw
+
+    from showtk.music import mml_legacy as M     # WP10: the game's MML through tools/mmlc.py
+    s = M.song("mingle")
+    bpm = M.song_bpm(s)
+    spb = 60.0 / bpm
+    rows = M.melody(s, 0, 2)
+    b0 = (HUM_FROM[0] - 1) * 4 + (HUM_FROM[1] - 1)
+    b1 = (to_bar_beat[0] - 1) * 4 + (to_bar_beat[1] - 1)
+    notes = []
+    for bar, beat, midi, span in rows:
+        t = (bar - 1) * 4 + (beat - 1)
+        if b0 - 1e-6 <= t < b1 - 1e-6:
+            notes.append((t - b0, min(span, b1 - t), midi - 12))
+    sr = env.SR_K
+    blend = _mayor_blend()
+    y, chars, st, _ = kokoro.speak_segment("mˈmmm.", kokoro.parse_blend(blend), 1.0)
+    x = np.asarray(y, np.float64)
+    f0, t = pw.harvest(x, sr, f0_floor=60, f0_ceil=500, frame_period=world.FP)
+    sp = pw.cheaptrick(x, f0, t, sr)
+    ap = pw.d4c(x, f0, t, sr)
+    v = np.nonzero(f0 > 0)[0]
+    blk = v[len(v) // 4: 3 * len(v) // 4]              # the steady middle of the "mmm"
+    fp = world.FP / 1000.0
+    total = (b1 - b0) * spb
+    n = int(np.ceil(total / fp))
+    pp = np.concatenate([blk, blk[::-1]])
+    idx = pp[np.arange(n) % len(pp)]
+    f = np.zeros(n)
+    amp = np.ones(n)
+    tt = np.arange(n) * fp
+    for i, (tb, db, midi) in enumerate(notes):
+        a, b = tb * spb, (tb + db) * spb
+        sel = (tt >= a) & (tt < b)
+        hz = 440.0 * 2 ** ((midi - 69) / 12.0)
+        local = tt[sel] - a
+        vib = 0.25 * np.sin(2 * np.pi * 5.5 * local) * np.clip((local - 0.25) / 0.15, 0, 1)
+        f[sel] = hz * 2 ** (vib / 12.0)
+        if i:
+            prev = 440.0 * 2 ** ((notes[i - 1][2] - 69) / 12.0)
+            g = sel & (tt < a + 0.025)
+            f[g] = prev + (hz - prev) * ((tt[g] - a) / 0.025)
+            d = (tt >= a - 0.015) & (tt < a + 0.03)
+            amp[d] = np.minimum(amp[d], 0.75)
+    amp *= np.clip(tt / 0.04, 0, 1)                     # a soft start
+    amp *= np.clip((total - tt) / 0.012, 0, 1)           # stop dead
+    out = pw.synthesize(np.ascontiguousarray(f), np.ascontiguousarray(sp[idx]), np.ascontiguousarray(ap[idx]),
+                        sr, world.FP)
+    env_s = np.interp(np.arange(len(out)) / sr, tt, amp)
+    out = (out * env_s).astype(np.float32)
+    lead = int(0.1 * sr)
+    y24 = np.concatenate([np.zeros(lead, np.float32), out, np.zeros(lead, np.float32)])
+    y48 = takes.to48(y24)
+    k = env.SR // sr
+    ph = [("m", (lead + int(tb * spb * sr)) * k, (lead + int((tb + db) * spb * sr)) * k) for tb, db, _ in notes]
+    names = " ".join(f"{m}" for _, _, m in notes)
+    made = (f"tts+world:kokoro@{env.model_id()}:{kokoro.blend_str(kokoro.parse_blend(blend))},\"mmm\" sung on "
+            f"mingle_box bars {HUM_FROM[0]}.{HUM_FROM[1]:g}-{to_bar_beat[0]}.{to_bar_beat[1]:g} an octave down "
+            f"(midi {names}) at {bpm} bpm")
+    return y48, ph, [("Mm", ph[0][1], ph[-1][2])], made, {"cue": "mingle_box", "from": f"{HUM_FROM[0]}.{HUM_FROM[1]:g}",
+                                                           "to": f"{to_bar_beat[0]}.{to_bar_beat[1]:g}"}
+
+
 def _purr(short=False):
     """Kokoro says "Mmmh." low and slow; WORLD drops it an octave-ish with fry (breath) and
     a slight rise at the end."""
@@ -144,7 +217,9 @@ def _purr(short=False):
     return y, ph, [("Mmmh.", ph[0][1], ph[-1][2])] if ph else [], made
 
 
-RECIPES = {"mayor/heehee_v1": _heehee, "grum/purr_v1": lambda: _purr(False), "grum/purr_v2": lambda: _purr(True)}
+RECIPES = {"mayor/heehee_v1": _heehee, "grum/purr_v1": lambda: _purr(False), "grum/purr_v2": lambda: _purr(True),
+           "mayor/hum_dawn_v1": lambda: _hum((12, 1.0)),       # stops dead on the Mayor's note (G)
+           "mayor/hum_plusone_v1": lambda: _hum((12, 1.5))}    # 4-08: one note further (sings the G)
 
 
 def make(name, force=False, log=print):
@@ -154,13 +229,17 @@ def make(name, force=False, log=print):
         return ix[name]
     if name not in RECIPES:
         raise KeyError(f"no recipe for {name} ({pending_reason(name)})")
-    y, ph, wd, made = RECIPES[name]()
+    res = RECIPES[name]()
+    y, ph, wd, made = res[:4]
+    anchor = res[4] if len(res) > 4 else None
     y, ph, wd, _ = takes.finish(np.asarray(y, np.float32), ph, wd)
     voice, nm = name.split("/", 1)
     p, sha = takes.store(y, voice, "lib", nm, "lib")
     ix[name] = {"take": env.rel(p), "sha256": sha, "made": made, "synthetic": True,
                 "len": int(len(y)), "phones": [[c, int(a), int(b)] for c, a, b in ph],
                 "words": [[w, int(a), int(b)] for w, a, b in wd]}
+    if anchor:
+        ix[name]["anchor"] = anchor     # the take's onset (sample 1440) is this point of the cue
     _write_index(ix)
     log(f"{name}: made {sha[:12]} ({len(y) / env.SR:.2f} s) <- {made}")
     return ix[name]

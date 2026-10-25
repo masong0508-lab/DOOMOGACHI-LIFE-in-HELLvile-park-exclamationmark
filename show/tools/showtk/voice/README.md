@@ -32,7 +32,7 @@ Run from `show/tools` as `python3 -m showtk.voice ...` (or `show voice ...` once
 | `show/ep101/takes.toml` | creator | `[id] fav = n` / `take = "tts" \| "rec:n" \| "rec:<path>" \| "lib:<name>"`, `retime = "fit" \| "take"` |
 | `show/ep101/vo/` | creator | Drop folder for recordings (gitignored): `<id>_take<n>.wav`, `<id>_s<n>.wav` |
 | `show/ep101/voice.lock` | generated, committed | See below |
-| `show/lib/takes/index.json` | generated, committed | Library takes: hash, how made, synthetic or not |
+| `show/lib/takes/index.json` | generated, committed | Library takes: hash, how made, synthetic or not; the hums' `anchor` (`mingle_box` bar.beat of the take's onset) |
 
 ## voice.lock (format `show-voice-lock/1`), the contract with the compiler and the mixer
 
