@@ -1,0 +1,102 @@
+# show/ep101/rundown.shw - the rundown of 101 "Mingle Night" (ENGINE, WP4 v0; spec 5.1, 6.2).
+#
+# The timing source is docs/show/PILOT_BEATSHEET.md (60 beats, 22:00 = 39,600 f at 30 fps):
+# every beat's id and length is its Appendix F row, the title is the beat's slug line, and
+# tc= is the beat sheet's TC in, which `show compile` / `show slug` re-check against the sum
+# of the lengths (FMT-RUNTIME). Generated once from the beat sheet; edit it by hand from now
+# on (a re-timed beat is a one-line diff here and in the beat sheet).
+#
+#   act <id> "<title>"                       a segment; its beats follow
+#   beat <id> len=<frames> [tc=MM:SS] [title="..."] [elastic=<s>] [protected=yes] [shots=a..b]
+#
+# Shots join a beat by naming it (`shot co01 beat=e101_co_1 ...` in ep101/shots/*.shw); a beat
+# whose shots do not fill len= is padded with a slug card, so the episode is always 39,600 f.
+# elastic=<s>: the most the beat may give in a version cut (Appendix G; 0 = part of a group
+# budget, the Giggle crawl 1-04..1-07 gives 20 s together). protected: never trimmed.
+
+@episode e101 "Mingle Night" shape=B fps=30 matte=open rating=tvma seed=101
+
+
+act CO "COLD OPEN, 'The Last Mingle'"
+  beat e101_co_1      len=90    tc=00:00  title="INSERT. A CRAYON CALENDAR PAGE (STORYBOOK)"   # CO-1
+  beat e101_co_2      len=900   tc=00:03  title="EXT. HELLVILE PARK, THE BANDSTAND (ONE PARK) - NIGHT (STORYBOOK, LONG AGO)"   # CO-2
+  beat e101_co_3      len=240   tc=00:33  title="EXT. HELLVILE PARK, THE BANDSTAND - NIGHT (STORYBOOK, LATER)"   # CO-3
+  beat e101_co_4      len=450   tc=00:41  title="EXT. HELLVILE PARK, THE BANDSTAND BANNER - NIGHT (STORYBOOK)"   # CO-4
+  beat e101_co_5      len=630   tc=00:56  title="EXT. HELLVILE PARK, BANDSTAND - DAWN (MIDSUMMER)"   # CO-5
+  beat e101_co_6      len=690   tc=01:17  title="EXT. FOUNTAIN PLAZA / NANA'S BAKERY WINDOW - DAWN"   # CO-6
+
+act MT "MAIN TITLE, 'Doomtastic Times' (main title cut)"
+  beat e101_mt_1      len=180   tc=01:40  title="INTRO: HAHALAND FROM ABOVE"   # MT-1
+  beat e101_mt_2      len=390   tc=01:46  title="A-MELO (VERSE): THE CAST POPS IN"   # MT-2
+  beat e101_mt_3      len=210   tc=01:59  title="B-MELO (PRE-CHORUS): THE MIRRORED KNOCK"   # MT-3
+  beat e101_mt_4      len=60    tc=02:06  title="DROP: THE GATE"   # MT-4
+  beat e101_mt_5      len=390   tc=02:08  title="SABI (CHORUS): HELLIFY"   # MT-5
+  beat e101_mt_6      len=150   tc=02:21  title="END POSE: THE LOGO"   # MT-6
+  beat e101_mt_7      len=120   tc=02:26  title="PILOT TITLE CARD"   # MT-7
+
+act A1 "ACT ONE, '18:00 Welcome!'"
+  beat e101_1_01      len=540   tc=02:30  title="ACT CARD / EXT. CANDY HILLS ROAD - SUNSET (18:00)" elastic=5   # 1-01
+  beat e101_1_02      len=510   tc=02:48  title="EXT. TOWN SIGN - SUNSET"   # 1-02
+  beat e101_1_03      len=390   tc=03:05  title="EXT. GIGGLING FOUNTAIN, PARK GATE - SUNSET"   # 1-03
+  beat e101_1_04      len=390   tc=03:18  title="EXT. THE MIDSUMMER GIGGLE, HOOK-A-DUCK - DUSK" elastic=0   # 1-04
+  beat e101_1_05      len=300   tc=03:31  title="EXT. THE MIDSUMMER GIGGLE, FACE PAINTING - DUSK" elastic=0   # 1-05
+  beat e101_1_06      len=480   tc=03:41  title="EXT. THE MIDSUMMER GIGGLE, HATTIE'S TENT - DUSK" elastic=0   # 1-06
+  beat e101_1_07      len=390   tc=03:57  title="EXT. THE MIDSUMMER GIGGLE, MISS LULLA'S CRAFT TENT - DUSK" elastic=0   # 1-07
+  beat e101_1_08      len=1350  tc=04:10  title="EXT. BANDSTAND (NORTH HALF) - DUSK"   # 1-08
+  beat e101_1_09      len=1650  tc=04:55  title="EXT. BAKE TENT - NIGHT (19:00)" elastic=10   # 1-09
+  beat e101_1_10      len=840   tc=05:50  title="EXT. FUN FAIR, LANTERN STRING - NIGHT (19:40)"   # 1-10
+  beat e101_1_11      len=540   tc=06:18  title="EXT. FUN FAIR, EDGE OF THE CROWD - NIGHT (19:55)"   # 1-11
+  beat e101_1_12      len=600   tc=06:36  title="EXT. BANDSTAND - NIGHT (20:00)"   # 1-12
+  beat e101_1_13      len=720   tc=06:56  title="EXT. THE MIDSUMMER GIGGLE - NIGHT (21:00)"   # 1-13
+  beat e101_1_14      len=900   tc=07:20  title="EXT. BANDSTAND / THE BOARDS - NIGHT"   # 1-14
+
+act EC1 "EYECATCH PAIR 1"
+  beat e101_ec1_out   len=150   tc=07:50  title="OUT CARD: THE LANTERN (clock 21:00)"   # EC1-OUT
+  beat e101_ec1_in    len=150   tc=07:55  title="IN CARD: THE LANTERN, ONE CHANGE"   # EC1-IN
+
+act A2 "ACT TWO, '21:00 (we don't do that)'"
+  beat e101_2_01      len=660   tc=08:00  title="ACT CARD / EXT. BANDSTAND - NIGHT"   # 2-01
+  beat e101_2_02      len=990   tc=08:22  title="EXT. BANDSTAND - CONTINUOUS"   # 2-02
+  beat e101_2_03      len=900   tc=08:55  title="EXT. FUN FAIR - NIGHT"   # 2-03
+  beat e101_2_04      len=1050  tc=09:25  title="EXT. FUN FAIR, THE STAMPEDE - NIGHT"   # 2-04
+  beat e101_2_05      len=840   tc=10:00  title="EXT. BANDSTAND STEPS - NIGHT"   # 2-05
+  beat e101_2_06      len=1200  tc=10:28  title="EXT. BANDSTAND - NIGHT"   # 2-06
+  beat e101_2_07      len=1200  tc=11:08  title="EXT. BANDSTAND BOARDS - NIGHT"   # 2-07
+  beat e101_2_08      len=810   tc=11:48  title="EXT. WHACK-AN-IMP BOOTH - NIGHT"   # 2-08
+
+act EC2 "EYECATCH PAIR 2"
+  beat e101_ec2_out   len=150   tc=12:15  title="OUT CARD: THE EGGSHELLS (clock 21:40)"   # EC2-OUT
+  beat e101_ec2_in    len=150   tc=12:20  title="IN CARD: THE EGGSHELLS, ONE CHANGE"   # EC2-IN
+
+act A3 "ACT THREE, '22:00 ~~Bedtime!~~ weather'"
+  beat e101_3_01      len=1500  tc=12:25  title="ACT CARD / EXT. FUN FAIR - NIGHT (CUTE MODE)" elastic=20   # 3-01
+  beat e101_3_02      len=450   tc=13:15  title="EXT. BAKE TENT - NIGHT"   # 3-02
+  beat e101_3_03      len=1200  tc=13:30  title="INT. THE ABSOLUTELY NOT SCARY HOUSE - NIGHT (FIRST PERSON)"   # 3-03
+  beat e101_3_04      len=1200  tc=14:10  title="EXT. BANDSTAND - NIGHT" protected=yes   # 3-04
+  beat e101_3_05      len=900   tc=14:50  title="INT. BAKE TENT - NIGHT (FIRST PERSON)"   # 3-05
+  beat e101_3_06      len=1050  tc=15:20  title="EXT. BANDSTAND STEPS - NIGHT"   # 3-06
+  beat e101_3_07      len=1350  tc=15:55  title="EXT. BANDSTAND - NIGHT"   # 3-07
+
+act EC3 "EYECATCH PAIR 3"
+  beat e101_ec3_out   len=150   tc=16:40  title="OUT CARD: THREE CANDLES (clock 22:59)"   # EC3-OUT
+  beat e101_ec3_in    len=150   tc=16:45  title="IN CARD: THREE CANDLES, ONE CHANGE"   # EC3-IN
+
+act A4 "ACT FOUR, '23:00 ________'"
+  beat e101_4_01      len=600   tc=16:50  title="ACT CARD / EXT. BANDSTAND - NIGHT"   # 4-01
+  beat e101_4_02      len=900   tc=17:10  title="EXT. BANDSTAND - CONTINUOUS"   # 4-02
+  beat e101_4_03      len=1350  tc=17:40  title="EXT. THE SEALED GATE - NIGHT" protected=yes   # 4-03
+  beat e101_4_04      len=600   tc=18:25  title="EXT. BANDSTAND STEPS - NIGHT"   # 4-04
+  beat e101_4_05      len=750   tc=18:45  title="EXT. BANDSTAND - NIGHT"   # 4-05
+  beat e101_4_06      len=1050  tc=19:10  title="EXT. BANDSTAND, THE MINGLE CRATE - NIGHT"   # 4-06
+  beat e101_4_07      len=360   tc=19:45  title="EXT. THE JOKE GRAVEYARD, LAUNCH HILL PATH - NIGHT"   # 4-07
+  beat e101_4_08      len=1440  tc=19:57  title="EXT. LAUNCH HILL - NIGHT" protected=yes   # 4-08
+
+act TAG "TAG, 'Morning'"
+  beat e101_t_1       len=450   tc=20:45  title="INT. PINK DOOR COTTAGE - DAWN"   # T-1
+  beat e101_t_2       len=600   tc=21:00  title="INT. PINK DOOR COTTAGE - CONTINUOUS"   # T-2
+
+act CR "END CREDITS"
+  beat e101_cr_1      len=900   tc=21:20  title="END CREDITS"   # CR-1
+
+act PC "POST-CREDITS BUTTON"
+  beat e101_pc_1      len=300   tc=21:50  title="EXT. THE SEALED GATE - NIGHT"   # PC-1

@@ -1,0 +1,31 @@
+# show/ep101/shots/co.shw  (COLD_OPEN_SHOTLIST.md; show px on 320x180; doc: = 384x216 units)
+
+shot co01 beat=e101_co_1 len=90 set=calendar_page px=2 look=crayon cut=FADE matte=open scene=co_storybook
+  look crayon grain=12 boil=2
+  +0    fade in over=R8                                       # choice: FADE IN length not in the shot list
+  +0    fol FOL_crayon_scratch follow=circle_midsummer ; reveal circle_midsummer over=+0..+24
+  +30   reveal fireworks_scribble over=+30..+60 ; fol FOL_crayon_scratch follow=fireworks_scribble gain=-3dB
+  +60   mx mingle_box start                                   # sample 96,000 of the episode
+  ad "A crayon circles Midsummer on a calendar, then scribbles fireworks round it."
+end
+
+shot co02 beat=e101_co_2 len=180 set=park_storybook px=1 look=crayon cut=CUT matte=open
+  cam at=0,0 ; cam drift dx=doc:1.0 zero=+90                   # planes ride it at x0.05/0.10/0.20 (doc px/f)
+  assert bandstand.x == 160 @+90                              # composition lock; co09 is base=co02@+90
+  +0    iris_in at=prop:bandstand over=13 shape=circle ; sfx FX_SHWIP
+  +0    walla kids_far on gain=-28dB ; cc "[soft crowd babble]"
+  +30   super s_co02 style=type over=+30..+132 at=lower until=end
+  ad "One park, no wall: a river, a bridge, a round bandstand strung with lanterns."
+end
+
+shot co03 beat=e101_co_2 len=120 set=bridge_storybook px=2 look=crayon cut=CUT matte=open
+  crowd bunnies gen=randomize seed=301 n=6 species=SPECIES_BUNNYKIN tags=KID age=child kind=chibi
+    lane=deck dir=R from=-32 spacing=26 speed=doc:2.2 ripple=0..3 cycle=walk4
+  end
+  crowd imps gen=randomize seed=302 n=6 species=SPECIES_IMP tags=KID age=child kind=chibi
+    lane=deck dir=L from=352 spacing=26 speed=doc:2.2 ripple=0..3 cycle=walk4 dy=+6
+  end
+  waive CANON-HV107 "storybook flashback: crayon imp kids crossing, no featured faces (shot list co03)"
+  +0    fol FOL_paw_patter from=crowd:bunnies,imps ; walla kids_far to gain=-20dB over=30   # "babble swells"
+  +13   super s_co03 style=type at=lower until=+63
+end
