@@ -23,7 +23,14 @@ GAP = int(0.6 * env.SR)
 
 
 def out_root():
-    for s in env.scratchpads():
+    if os.environ.get("SHOW_OUT"):
+        return os.path.join(os.environ["SHOW_OUT"], "voices")
+    pads = env.scratchpads()
+    # the session scratchpad: the one holding the models (theme/), else the first
+    for s in pads:
+        if os.path.isdir(os.path.join(s, "theme", "final_dl")):
+            return os.path.join(s, "show_out", "voices")
+    for s in pads:
         return os.path.join(s, "show_out", "voices")
     return os.path.join(env.BUILD, "show_out", "voices")
 

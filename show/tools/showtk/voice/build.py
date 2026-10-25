@@ -113,6 +113,9 @@ def _sync_to(tk, target_row):
     return tk
 
 
+HUM_RE = __import__("re").compile(r"^[Mm\-,.\s]+$")
+
+
 def row_for(line, plan, tk, do_asr=True):
     y = tk.y
     on = env.PREROLL
@@ -124,6 +127,8 @@ def row_for(line, plan, tk, do_asr=True):
         m, mf = "", -1
     else:
         m, mf = mouth.track(tk.phones, y[on:])
+        if HUM_RE.match(line.text):
+            m = "".join("X" if c == "X" else "M" for c in m)   # a closed-mouth hum
     row = {"speaker": line.speaker, "voice": plan["voice"], "text": line.text, "kind": tk.kind,
            "src": tk.src, "inputs": plan["inputs"], "take": env.rel(tk.path), "sha256": tk.sha,
            "onset": on, "len": int(len(y)), "dur": int(dur), "frames": int(np.ceil(dur / env.SPF)),
