@@ -131,6 +131,7 @@ target_link_options(${SHOW_EXE_NAME} PRIVATE
 	-T${PSN00BSDK_LDSCRIPTS}/exe.ld
 	-Wl,-Map=${CMAKE_CURRENT_BINARY_DIR}/${SHOW_EXE_NAME}.ldmap
 	-Wl,--no-warn-rwx-segments
+	-Wl,--wrap=plat_post_offset
 	-Wl,--defsym=doomo_art_tex_pix=0x01000000
 	-Wl,--defsym=doomo_art_sky_pix=0x01800000
 	-Wl,--defsym=doomo_art_spr_pix_v=0x02000000)

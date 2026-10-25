@@ -96,3 +96,29 @@ Each names the default taken and where to change it.
 - **The theme cues name files** (`src=file:doomtastic_times_main_title.flac` under docs/show/theme/ once
   published, else the scratchpad's theme/final): a new vocal master drops in with no other change; the bar
   map is re-imported from the master's own `*_full.mid` (tempo + section markers).
+
+## ENGINE lane 1: player core and capture (WP2, WP3)
+
+- **Plug-in API = weak-referenced module table.** `show_registry.c` names every planned module
+  (`show_mod_cam`, `show_mod_overworld`, ...) as a weak reference; an unlinked one is NULL and skipped. Lanes
+  plug in by adding their own `show_<name>.c` and never edit a shared file. Data references (not calls) to
+  weak symbols link to 0 on the R3000 (the `jal` to a weak function is what fails, spec 15.1).
+- **Records, not a fixed ShotChunk struct.** A chunk is a 32 B `ShwShotHdr` plus tagged records
+  (`ShwRec{type, n, bytes}`), at most one per type; record types and show-op ranges are pre-allocated per
+  lane in `shw_format.h`. The player skips unknown types, so packages add data without a format bump.
+- **base= / replay= are resolved by the compiler**: it emits a self-contained chunk plus `preroll` (logic
+  frames run undrawn before frame 0). The player only knows "pre-roll N frames", which is also what a seek is.
+- **The shake is a camera offset only**: `-Wl,--wrap=plat_post_offset` turns camfx_apply's whole-frame E5
+  offset into a no-op, so the frame edge and the matte bars never move (spec 2.1, 2.3); the stage camera
+  (lane 2) adds `camfx_offset()` to the planes.
+- **TINT** (a host kind) is a `plat_post_blend` of the tint's colour at level16, drawn just before
+  `camfx_apply` (off-palette by design, like a fade). **IRIS** from a beat event is centred on
+  `g_show_anchor_hook(actor)` when the actor module installs it, else the picture centre; `SOP_IRIS` takes an
+  explicit centre.
+- **One chunk buffer, synchronous CD read at shot prep.** The lockstep capture does not care how long prep
+  takes; the second (prefetch) buffer is only for the deferred disc edition. The `needs 440 KB` line of the
+  RAM report therefore over-counts by 160 KB.
+- **Stats are microseconds** (`timer_us`), not raw root-counter cycles; they never reach a pixel or P1.
+- **P1** = CRC32 (zlib polynomial) of a fixed 152 B core record (shot, frame, beat_now, 32 label ages,
+  8 actor clocks, camfx read-backs, RNG, plane visibility) + show_ext's host-kind state + every module's
+  `hash()`.

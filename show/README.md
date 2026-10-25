@@ -112,6 +112,92 @@ gives the repo-relative form for messages.
 | `show_selftest.c` | AT1.3 only (`-DSHOW_SELFTEST=ON`): CRC32 of busts, figures and chibis for 20 roster looks x 11 expressions on the TTY, plus the override checks |
 | `ram_report.py`, `iso_show.xml`, `system.cnf` | The elf2exe step + RAM budget, and the disc (`SHOW.EXE`, episodes under `SHOW/` via `-DSHOW_ISO_FILES=EP101.SHW=/abs/path`) |
 
+## Plug-in API (how lanes 2 and 3 plug into the player)
+
+The contract is `show/include/show/show_api.h` (C) plus
+`show/include/show/shw_format.h` (the `.SHW` file, mirrored by
+`showtk/shw_format.py`). Both are add-only; a breaking change updates every
+user on origin in the same push.
+
+**1. A module is one const struct in your own file.** Everything that draws
+or animates is a `ShowModule`:
+
+```c
+#include "show/show_api.h"
+static void cam_reset(void) { /* EVERY static back to its boot value */ }
+static void cam_prep(const ShowShot *s) { n = 0; keys = show_chunk_find(SHWR_CAMKEY, &n, NULL); }
+static int  cam_ext(const BeatEv *ev) { int op = show_op_of(ev);
+                                        return op >= SOP_CAM_BASE && op < SOP_CAM_BASE + 32 ? (do_op(op, show_args(ev->b)), 1) : 0; }
+static void cam_tick(int t) { /* logic: runs on EVERY frame, pre-roll included */ }
+static void cam_draw(int layer, int t) { if (layer == SHOW_L_FX) ...; }
+static void cam_hash(ShowCrc *c) { show_crc_add(c, &state, sizeof state); }
+const ShowModule show_mod_cam = { "cam", SHOW_API_VERSION, 0,
+    cam_reset, cam_prep, cam_ext, cam_tick, cam_draw, cam_hash, NULL /* plane kinds */ };
+```
+
+Any pointer may be NULL. `show/engine/show_registry.c` already lists every
+planned module **as a weak reference**, in call order: `core cast cam stage
+tilemap strokes overworld room view3d actor crowd prop fx text hud slug` plus
+spare slots `l2_spare1/2`, `l3_spare1/2`. A module that is not linked yet is
+skipped, so plugging in needs **no edit to a shared file**: name your struct
+`show_mod_<name>` and drop `show_<name>.c` into `show/engine/` (CMake globs
+`show_*.c`). Only a brand-new name is a one-line add to the registry.
+
+**2. Plane kinds (stage-kind hosts).** A module may bring a table of
+`ShowPlaneKind { kind, name, prep, draw }` ending with `{0}` in its last
+field. The core walks the shot's `SHWR_PLANE` list in `order` and calls the
+kind's `draw(plane, payload, t)`. Kinds are `SHWP_*` in shw_format.h: lane 1
+owns BANDS, IMAGE, GRAIN, FILL; lane 2 TILEMAP, STROKES; lane 3 VIEW3D,
+OVERWORLD, ROOM. Every plane starts with the 24-byte `ShwPlane` header (kind,
+flags, bytes, order, id, parallax num/den, origin, scale parallax: the same
+order as `show_cam.h`'s `ShowPlaneCam`), then the kind's payload. Actor kinds,
+text styles and FX are entries in their own module's tables; the core only
+needs the module.
+
+**3. The per-frame call order** (`show_api.h` has it in full):
+`hcmd_poll` → `show_mbox_poll` (seek) → at a shot start: chunk bind, core
+reset, every `reset()`, every plane kind `prep()`, every `prep(shot)`, then
+pre-roll/seek frames of logic with drawing off → `camfx_tick`, `beat_tick`
+(each `BT_EXT` to the modules' `ext()` in registry order until one returns 1;
+the core takes IRIS, TINT, POP, EXPR and show ops 0x000-0x03F) → every
+`tick(t)` → draw (only when `show_drawing()`): clear, planes, then
+`draw(layer)` for `SHOW_L_PLANES, ACTORS, CROWDS, FX, TEXT_UNDER`, tint,
+`camfx_apply()`, `SHOW_L_TEXT, HUD`, matte bars → P1/P4/stats to
+`g_show_mbox`. camfx_apply's whole-frame shake offset is a no-op in the show
+(`--wrap=plat_post_offset`): the shake is a camera offset the stage camera
+applies (`camfx_offset()`), so the frame edge and matte never move.
+
+**4. Reading your `.SHW` data.** Each record type appears at most once per
+chunk (the compiler merges). `show_chunk_find(SHWR_x, &n, &bytes)` returns
+the payload; `show_str(off)` the shot's strings; `show_args(b)` the
+show-op argument row (`BeatEv{op=BOP_SHOT, a=0x4000|op, b=row}`);
+`show_image(i)` a decoded `DoomoImage` (fresh uid per shot);
+`show_plane(i)` / `show_plane_by_id(id)` the planes. Record types and show-op
+ranges are pre-allocated per lane in shw_format.h (lane 2: records 16-47,
+ops 0x040-0x0DF; lane 3: records 48-63, ops 0x100-0x17F; private record
+ranges 0x100/0x200/0x300). Document your payload layout in your own header
+and mirror it in Python next to your packer (`shw_format.Chunk.add(type, n,
+payload)` writes any record).
+
+**5. Purity and seeking.** `reset()` restores all your state; seed from
+`show_shot()->seed` or `show_rng()`; never `plat_entropy()` or a counter that
+crosses shots. `tick()` runs on pre-roll and seek frames too and must make
+the same portrait fetches in the same order as a full run; `draw()` only
+issues `plat_*` calls. The camera module installs the plane transform with
+`g_show_plane_xf_hook` / `g_show_draw_image_hook` in its `prep()` (the core
+clears both each shot; the default is a fixed camera at the plane's origin
+and the shot's px). An iris centred on an actor uses `g_show_anchor_hook`.
+
+**6. Stats and diagnostics.** `show_stat_add(SHOW_STAT_UPLOADS |
+EVICTIONS | POOL_BLOCKS | SPRITES | USER0, n)` per frame; `hash(ShowCrc*)`
+adds your state to P1 (fixed layout, no pointers). `show_warn(rule, msg)` /
+`show_error(rule, msg)` print `show: W co02 +150 [RULE] msg` on the TTY; the
+capture fails a shot on any `show: E`. Audio event ids scheduled outside
+`SHWR_AUDIO_K` go to P4 with `show_p4_fire(k)`.
+
+**Coordinates:** the `plat_*` calls take screen pixels; the 320x180
+picture is rows 30-209, so draw at `SHOW_Y(y)`.
+
 New player sources: any `show/engine/show_*.c` is compiled automatically
 (CMake globs them), so later packages add files without editing the
 CMakeLists. Headers go in `show/include/show/`.
