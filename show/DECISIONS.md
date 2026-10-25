@@ -135,3 +135,4 @@ Each names the default taken and where to change it.
 - co_mt: MT-5 rots a replay of the mt01 crane (no child), never the cast pop-in (Pip is in it).
 - co_mt: beat rows (`act`/`beat`) live at the top of each shot file, since episode.shw is a plain include list.
 - co_mt: timed prop states are written as `+N show <prop>[:<state>]` / `hide <prop>` (proposed SOP_PROP_STATE); fallback is base= + one change per state.
+- WP10.5 (AUDIO): ep101/cues.shw spots all 60 beats (99 mx ops). Where the beat sheet gives a rule, not a frame, the time is a marked `choice:`. Level ladder vs unity: theme 0 dB, stings -3..-6, underscore -6..-10, diegetic -8..-14, beds -16. The cute HOOK in 3-01 is restarted every 8 bars (384 f) on the 150 grid; insert_doom is one 61-bar render with bars 26-50 muted for 3-04 (re-entry bar 51.1 = 3-05 frame 0). Theme is still from scratchpad theme/final (docs/show/theme/ not on origin yet); swapping is a file drop.
