@@ -237,3 +237,80 @@ ART `art/`, `showtk/art/`, `series/cast.shw`, `acting.shw`, `looks/`, `sets/`.
 Everyone appends to `DECISIONS.md` and `DEFERRED.md`. Binaries, renders,
 models and audio are never committed (`show/.gitignore`); they live in the
 vault and the scratch dirs.
+
+## Staging reference: picture (ENGINE lane 2: WP5 planes, WP7 text, WP8 camera/FX)
+
+Engine: `show/engine/show_{cam,fx,strokes,tilemap,text,l2,font_child}.c`, headers in
+`show/include/show/`. Compiler side: `show/tools/showtk/picture/` (camera.py, fx.py,
+strokes.py, tilemap.py, text.py, pxt.py, bake.py, lints.py, blob.py). Each module's
+docstring is the full grammar; the summary:
+
+**Camera** (setup `cam at=X,Y [scale=S]`, `cam drift dx=R [dy=R]`; timed `+T cam to x= y= scale= over=F ease=`,
+`cam pan dx=R`, `cam creep dx=R ramp=13`, `cam whip L|R over=6`, `cam crane dy=D over=F`, `cam stop`).
+Planes take `par=P` (Q16 parallax), `scale` and `matte=open|letterbox`; drift is exact (no accumulated error).
+
+**Strokes** (crayon register): in a set `strokes <plane> boil=2 ... stroke <id> nib=<colour> w=2 path=...`;
+in a shot `+A reveal <stroke> over=+A..+B` (100 % on frame B), `+T stroke <id> show|hide`, `+T boil on|off every=2`.
+
+**Tilemap**: `plane <name> tilemap=gen:<plate>(...) par=P at=X,Y` (16x16 tiles, 128x128 atlas pages).
+
+**Text**: `+T super <string> style=type|pop|deadpan at=lower|title|top|X,Y [over=+A..+B|cps=N] [until=] [font=game|child_hand]`;
+`+T sign <string> on=<prop>`; `+T card tvma|act|title|text|black k=v`.
+
+**Effects**: `look crayon|pixel|sepia|lcd|hellify`; `+T iris_in|iris_out at=prop:<id> over=F [shape=heart] [r=R] [hold=end]`;
+`+T fade in|out over=F`; `+T flash <colour> <level16> <F>`; `+T shake SHK_*`; `+T pal PAL_SEPIA level over=F`;
+`+T wipe brick [dir=R] [hold=F] [out=on]`; `+T split [hold=60] [out=on]`; `+T dissolve over=13`.
+
+Example (co02-style):
+```
+look crayon boil=2
+cam at=0,0
+cam drift dx=0.25
++0  iris_in at=prop:bandstand over=13
++30 super "Every Midsummer night, the whole park had one party." style=type at=lower font=child_hand cps=12
++120 super "Now there's a different party." style=pop at=title
++200 iris_out at=prop:bandstand over=20 shape=heart r=40 hold=end
+```
+Tests: `PYTHONPATH=show/tools python3 -m pytest show/tests/engine/picture -m "not slow"`
+(host raster of the same C; AT5.1-5.3, AT7.1-7.2, AT8.1-8.3). Contact sheets:
+`python3 show/tests/engine/picture/make_sheets.py`. Until lane 1's shot loop lands, a shot
+reaches these modules as a "PIC1" blob (`show_l2_bind/events/draw`, see show_l2.h for the
+per-frame order); lane 1 binds that blob from the shot's .SHW chunk.
+## Delivery, review and standards (WP12, WP13, WP17)
+
+All read the compiler's sidecars through `showtk/sidecars.py` (`build/<ep>/timeline.json`,
+`audio_events.json`, `captions.json`) and the per-shot FFV1 masters (`--masters DIR` with
+`<shot>.mkv`, else the cache key in the timeline, else `build/<ep>/render_index.json`).
+
+| Command | Does |
+|---|---|
+| `show deliver ep101 web --range co01..co03` | EDL -> one H.264 segment per beat (cached) -> x6 1920x1080 30p CRF 16 + AAC 320k, chapters, `.srt`/`.vtt`, QC (ffprobe + sampled frames vs masters x6), `manifest.json` (+ `show/ep101/deliveries/<v>/`) |
+| `show deliver ep101 web --release` | also: STD-* lints green, compiler lint report clean, sign-off bound to this render hash -> `build/ep101/release/web/` (MP4, captions, title, description, chapters, tags, 1280x720 thumbnail, upload sheet, standards, sign-off, manifest) |
+| `show preview ep101 co01..co03` | x3 960x540 with burn-ins (TC, frame, beat, shot +N, line id, TEMP TTS, badge), temp mix |
+| `show timing ep101 co02 [--static]` | each event's frame, the measured picture change, the audio onset (±1 ms), rungs, mouth tracks |
+| `show sheet ep101 co01..co03` / `show diff ep101 co02 --against DIR` | contact sheet / before-after sheet |
+| `show frame ep101 co02 +13 --overlay` | x3 frame: safe areas, Wall x=160, anchors, off-palette in magenta |
+| `show status ep101` · `show notes add|list|done ep101 ...` | states, lints, cache, sign-off · review rounds in `show/ep101/notes/` |
+| `show standards ep101` · `show signoff ep101 "all 8 fine"` | the report (`build/ep101/standards.txt/.html`) · the checklist TOML |
+
+Synthetic co01..co03 for trying all of it without a render: `python3 -m showtk.review.synthetic DIR`
+then `SHOW_BUILD=DIR/build SHOW_EPISODES=DIR/eps show deliver ep101 web --range co01..co03 --masters DIR/masters`.
+
+## Staging reference: standards tags (WP17)
+
+Every statement below is read by the STD-* lints (spec §13.5); none of the hard-limit rules can be waived.
+
+    shot co40 beat=e101_3_03 len=120 set=cellar scene=sc_fp gore=BRUTAL   # scene= starts a scene; gore=BRUTAL never with a child in the scene
+      +0  tag shot gore_truth                     # also: innuendo implied offscreen suggestive rear sticker explicit(=error)
+    end
+    line a2_05_dance mayor "Shall we?"  tags=advance to=nana            # advance/contact/touch name their adult target
+    line a2_05_yes   nana  "Gladly."    tags=yes
+    line a2_05_hold  mayor ""           tags=contact to=nana consent=a2_05_yes   # consent= cites an earlier spoken yes, same scene
+    line a2_06_no    nana  "No, dear."  tags=no                         # the advancer's next line must be tags=stepback
+    line a1_09_joke  nana  "..."        tags=innuendo ref=mayor         # ref= who a line is about (never a child if suggestive)
+    shot ... tags=hurt:sunny | harm:pet | gore:<cute char>              # STD-SUNNY / STD-PET / STD-GORE errors
+
+`age=adult|teen|child` is required on every `char`, `crowd` and `voice` (STD-AGE). Word lists:
+`show/series/lints.shw` (`slur sha256:<hex>` via `python3 -m showtk.standards.lints hash "<word>"`,
+`real`, `innuendo`, `brand`). Release metadata (optional) in the timeline's `release` block:
+`title=`, `logline=`, `tags=`, `voices=`, `thumb=<shot>+<frame>` (refused in a scene with a child).

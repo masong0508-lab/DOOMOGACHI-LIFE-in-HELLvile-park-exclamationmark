@@ -122,6 +122,18 @@ Each names the default taken and where to change it.
 - **P1** = CRC32 (zlib polynomial) of a fixed 152 B core record (shot, frame, beat_now, 32 label ages,
   8 actor clocks, camfx read-backs, RNG, plane visibility) + show_ext's host-kind state + every module's
   `hash()`.
+## ENGINE lane 3: deliver, review, standards (WP12, WP13, WP17), 2026-10-25
+
+- **Segments are per beat**, video-only H.264, cached by a hash of their masters' frame hashes + recipe + burn-ins; audio is encoded once over the whole range (no AAC priming seams). Change: `showtk/edl.py`.
+- **EDL in/out points sit 0.6 ms inside frame boundaries** with an explicit `duration` per entry (Matroska stores ms timestamps); frame-exact, tested on cut ranges.
+- **BT.709 conversion is explicit** in the filter graph (swscale's default would be BT.601 under bt709 tags: measured max error 26 levels vs 3).
+- **AT12.2 reading:** H.264 is lossy, so "framemd5 matches the masters x6" is checked on the deliver chain before the encoder (exact md5 per sampled frame) plus the decoded encode at art-pixel centres within mean error 3 and closer to its own master frame than to its neighbours.
+- **Threads:** ffmpeg runs with 2 threads (`SHOW_FFMPEG_THREADS`); the machine is shared.
+- **Chapters = the acts** (the eyecatches sit on the act breaks) unless the timeline gives `chapters`; folded to YouTube's >= 10 s rule.
+- **The slur list ships as SHA-256 hashes and starts empty**: no slur is ever spelled in the repo; the pilot script is written clean and checklist item 5 is the human gate. The STD-HATE fixture uses an invented word.
+- **The sign-off binds to the manifest's `render_hash`** (frame hashes, mix hash + window, captions, chapters, recipe), not to MP4 bytes, so a re-encode of the same render stays signed.
+- **Thumbnail** = a master frame x4 (1280x720), default the middle of the longest shot in a scene with no child; `release.thumb` overrides and is refused in a child's scene.
+- **--release needs the compiler's lint report** (`build/<ep>/lint.txt` or `lint.json`) with no errors.
 ## ART: the sets (show/series/sets/, show/art/gen/), 2026-10-25
 
 - **One set per location, cheapest route first** (table in `show/series/sets/SETS.md`): the game's
@@ -160,3 +172,4 @@ Each names the default taken and where to change it.
 - co_mt: MT-5 rots a replay of the mt01 crane (no child), never the cast pop-in (Pip is in it).
 - co_mt: beat rows (`act`/`beat`) live at the top of each shot file, since episode.shw is a plain include list.
 - co_mt: timed prop states are written as `+N show <prop>[:<state>]` / `hide <prop>` (proposed SOP_PROP_STATE); fallback is base= + one change per state.
+- lane 2 (picture): text/strokes/camera/fx shot data travels as one PIC1 blob per shot (show_l2_bind) until lane 1's chunk API lands; ops 0x0100-0x01FF are lane 2's.
