@@ -1,0 +1,4 @@
+# show/series/sfx.shw (excerpt)
+sfx FX_SHWIP          src=sfxgen:SHWIP@48k            gain=-10dB pan=center
+fol FOL_crayon_scratch src=foley:crayon(stroke_speed) gain=-14dB cc="[crayon scratching]"
+fol FOL_paw_patter    src=foley:paws(steps=crowd)     gain=-18dB cc="[small feet patter]"

@@ -1,0 +1,9 @@
+# show/tests/dx_proof/dxp/rundown.shw - the dialogue proof (WP4): the Mayor and Nana at the
+# bake tent. One beat, 4 shots: a px=1 two-shot of figures, two px=2 bust close-ups, the
+# two-shot again. Compiled against the REAL show/series (cast, looks, sets).
+
+@episode dxp "Dialogue proof" shape=B fps=30 matte=open rating=tvma seed=7
+
+act DX "Dialogue proof"
+  beat dx_1 len=600 title="Two of everything" shots=dx01..dx04
+end

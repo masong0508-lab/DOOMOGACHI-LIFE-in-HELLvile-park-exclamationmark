@@ -1,0 +1,8 @@
+# show/ep101/lines.shw (excerpt): walla is scripted, so it can be swapped, re-voiced and logged like dialogue
+line w_kids_01 walla:kids_walla "Cupcakes!"
+line w_kids_02 walla:kids_walla "Wait for me!"
+line w_kids_03 walla:kids_walla "Soup! There's soup!"
+line w_kids_04 walla:kids_walla "Look, lanterns!"
+line w_kids_05 walla:kids_walla "Race you to the bridge!"
+line w_kids_06 walla:kids_walla "Hi! Hi! Hi!"
+walla kids_far lines=w_kids_01..w_kids_06 density=1.4/s pan=spread seed=7   # captioned by the shot's `cc`

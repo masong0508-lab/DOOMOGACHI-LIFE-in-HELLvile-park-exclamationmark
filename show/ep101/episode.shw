@@ -1,5 +1,9 @@
 # show/ep101/episode.shw: the rundown, a plain include list in running order (continuity owns order)
+# Strings: a1 and a2 include their own strings file from their shots file; the others are
+# included here, ahead of their shots (strings/co_mt.shw waits on CONTINUITY.md B3).
 @episode e101 "Mingle Night" shape=B fps=30 matte=open rating=tvma seed=101
+include strings/a3.shw
+include strings/a4.shw
 include shots/co.shw
 include shots/co_mt.shw
 include shots/a1.shw
