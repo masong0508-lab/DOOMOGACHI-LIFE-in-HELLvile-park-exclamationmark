@@ -134,6 +134,16 @@ def track(phones, y_from_onset, r=None):
         must.add(i if s[i] == "M" else next(j for j in frames if 0 <= j < nf and s[j] == "M"))
     s = _close_gaps(s, gap)
     s = _min_hold(s, hold, must)
+    # AT9.2 against the audio: an M within 1 f of every measured closure onset
+    try:
+        ons = closure_onsets(y_from_onset, [(p[0], p[1], p[2]) for p in phones])
+    except Exception:
+        ons = []
+    for t in ons:
+        i = int(t // spf) + lead
+        if not any(0 <= j < len(s) and s[j] == "M" for j in (i - 1, i, i + 1)):
+            if 0 <= i < len(s):
+                s[i] = "M"
     # never end open
     while s and s[-1] != "X":
         s.append("X")
