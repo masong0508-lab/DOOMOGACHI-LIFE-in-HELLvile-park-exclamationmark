@@ -10,6 +10,11 @@ from __future__ import annotations
 
 from .capture import Run
 
+# PCSX-Redux's GPU::Vsync listener leaks two Lua stack slots per call
+# (measured: "stack overflow" after 32,722 vsyncs = 15,655 frames), so one
+# boot captures at most this many frames; longer work is more boots
+MAX_BOOT_FRAMES = 10000
+
 
 def split(shots: list[int], lens: list[int], jobs: int) -> list[list[int]]:
     """shots: sorted indices; lens: frames per episode shot -> up to `jobs` groups."""
@@ -29,6 +34,23 @@ def split(shots: list[int], lens: list[int], jobs: int) -> list[list[int]]:
     if cur:
         groups.append(cur)
     return groups
+
+
+def boots(shots: list[int], lens: list[int], jobs: int) -> list[list[list[int]]]:
+    """split() per job, then each job's group cut into boots of <= MAX_BOOT_FRAMES."""
+    out = []
+    for g in split(shots, lens, jobs):
+        bl, cur, acc = [], [], 0
+        for s in g:
+            if cur and acc + lens[s] > MAX_BOOT_FRAMES:
+                bl.append(cur)
+                cur, acc = [], 0
+            cur.append(s)
+            acc += lens[s]
+        if cur:
+            bl.append(cur)
+        out.append(bl)
+    return out
 
 
 def runs_for(group: list[int], lens: list[int]) -> list[Run]:

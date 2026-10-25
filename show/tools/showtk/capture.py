@@ -178,6 +178,8 @@ class Result:
     frames: int = 0
     seconds: float = 0.0
     boot_seconds: float = 0.0
+    boot_vsyncs: int = -1        # emulated vsyncs from reset until the player is up
+    boot_cpu: float = -1.0       # emulator CPU seconds (unthrottled) until then
     shots: list = field(default_factory=list)       # (shot index, out dir, frames)
     tty: str = ""
     log: str = ""
@@ -215,7 +217,7 @@ def run(cue: Path, mapfile: Path, runs: list[Run], shot_ids: list[str], out_for,
                SHOW_RUNS=";".join(f"{r.shot}:{r.frame}:{r.count}:{r.last}" for r in runs))
     emu = emu or str(paths.EMU)
     bios = bios or str(paths.BIOS)
-    argv = ["xvfb-run", "-a", emu, "-cli", "-stdout", "-run", "-bios", bios,
+    argv = ["xvfb-run", "-a", emu, "-cli", "-stdout", "-run", "-fastboot", "-bios", bios,
             "-iso", str(Path(cue).resolve()), "-dofile", str(LUA)]
     for card in ("card1.mcd", "card2.mcd"):
         p = work / card
@@ -253,7 +255,6 @@ def run(cue: Path, mapfile: Path, runs: list[Run], shot_ids: list[str], out_for,
             if left == 0:
                 run_i += 1
                 left = runs[run_i].count
-                writer_key = None
             shot, frm = mb["cur_shot"], mb["cur_frame"]
             if mb["magic"] != 0x424D4853:
                 err = (f"the frame stream lost sync after {res.frames} frames "
@@ -289,6 +290,9 @@ def run(cue: Path, mapfile: Path, runs: list[Run], shot_ids: list[str], out_for,
         res.seconds = time.time() - t0
         res.tty = tty_path.read_bytes().decode("latin-1")
         res.log = log_path.read_text() if log_path.exists() else ""
+        m = re.search(r"lockstep on vsyncs=(\d+) clock=([\d.]+)", res.log)
+        if m:
+            res.boot_vsyncs, res.boot_cpu = int(m.group(1)), float(m.group(2))
         os.close(fd)
         fifo.unlink(missing_ok=True)
     problem = _problem(res, runs, err)

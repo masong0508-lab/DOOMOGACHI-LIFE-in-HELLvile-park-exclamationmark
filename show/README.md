@@ -220,6 +220,28 @@ still say the images are the game's).
 | `check-game --full` | two game builds, 131 s each with `-j2`; EXE `44e80cc7`, OVL.BIN `664c8573`, TEXT.BIN `50d371f0` at `d079776` |
 | `vault pack` | vault-emu 5.9 MB xz (stripped emulator, SDL3, BIOS, licences) |
 
+### Measured: the player and capture (WP2 + WP3, 2026-10-25, shared 4-CPU box)
+
+`python3 -m pytest show/tests/engine/test_wp23.py` writes these to
+`<scratch>/show_work/lane1/at_wp23.json`. The machine is shared by about
+ten agents (load average 2-3x the CPU count), so the wall times are upper
+bounds; an idle box is faster.
+
+| AT | What | Value |
+|---|---|---|
+| AT2.1 | Boot to the test chart, unthrottled, `-fastboot` | **0.51 s** of emulator CPU (limit 1.2 s); 369 emulated vsyncs; 2.5 s wall incl. xvfb + process start/exit at load 2.9 |
+| AT2.2 | `show slug ep101` | 60 beats, **39,600 frames** |
+| AT2.3 | Two renders of 4 shots | identical `frames.sha256` and P1/P4 logs |
+| AT3.1 | 600 frames, one emulator, FFV1 on, incl. boot | **7.9 s** wall at load 2.6 (limit 5 s x load); boot 1.8 s |
+| AT3.2 | `--jobs` on 8 slug shots (3,570 frames, FFV1 on, load 2.85) | jobs 1: 55.1 s, **15.4 ms/frame**; jobs 2: 42.5 s, 11.9 ms/frame (**x1.30**); jobs 3: 29.3 s, 8.2 ms/frame (**x1.88**). Hashes identical across job counts |
+| AT3.3 | Seek to co-2+150 alone | equals the full run's frame (`d7b55752...`) |
+| AT3.4 | Corrupt shot chunk | render stops with `co-2` frame 0 named |
+
+Whole episode estimate at jobs 2: 39,600 frames x 11.9 ms = about 8 min
+on the loaded box. One boot captures at most `scheduler.MAX_BOOT_FRAMES`
+(10,000): PCSX-Redux's `GPU::Vsync` listener leaks Lua stack slots and
+overflows after about 15,600 frames, so longer jobs are split into boots.
+
 ## Tests
 
 ```sh

@@ -57,20 +57,23 @@ def render(shw, *, jobs=2, shots=None, encode=True, force=False, out=None, prese
     dirty = [s for s in sel if force or not cache.hit(keys[s], need_master=encode)]
     for s in dirty:
         cache.drop(keys[s])
-    groups = scheduler.split(dirty, lens, jobs)
+    groups = scheduler.boots(dirty, lens, jobs)
     t0 = time.time()
-    results, fails = [None] * len(groups), []
+    results, fails = [], []
 
-    def job(gi, group):
-        runs = scheduler.runs_for(group, lens)
-        n = sum(r.count for r in runs)
-        try:
-            results[gi] = capture.run(
-                cue, mp, runs, ids, lambda s, ri: cache.entry(keys[s]), work=work / f"job{gi}",
-                encode=encode, episode=ep["episode"],
-                timeout=timeout or max(120, n // 30))
-        except errors.ShowError as e:
-            fails.append(e)
+    def job(gi, boots):
+        for bi, group in enumerate(boots):
+            if fails:
+                return
+            runs = scheduler.runs_for(group, lens)
+            n = sum(r.count for r in runs)
+            try:
+                results.append(capture.run(
+                    cue, mp, runs, ids, lambda s, ri: cache.entry(keys[s]),
+                    work=work / f"job{gi}", encode=encode, episode=ep["episode"],
+                    timeout=timeout or max(120, n // 30)))
+            except errors.ShowError as e:
+                fails.append(e)
 
     th = [threading.Thread(target=job, args=(gi, g)) for gi, g in enumerate(groups)]
     for t in th:
