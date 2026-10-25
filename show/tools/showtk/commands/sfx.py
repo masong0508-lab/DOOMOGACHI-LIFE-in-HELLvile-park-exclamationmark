@@ -13,5 +13,5 @@ def register(subparsers):
     b.add_argument("ids", nargs="*")
     s.add_parser("list")
     s.add_parser("check")
-    p.set_defaults(fn=_run)
+    p.set_defaults(func=_run)
     return p
