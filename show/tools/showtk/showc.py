@@ -1902,7 +1902,8 @@ class ShotCompiler:
             self.sop(f, "SOP_FACE", [ai, 1 if d == "L" else 0], c)
         elif kw == "pose":
             fb = c.words[1] if len(c.words) > 1 else c.fail("ACTOR", "pose <actor> <flipbook>")
-            self.sop(f, "SOP_POSE", [ai, self.s(fb), int(c.get("fps", "10"))], c)
+            sp = c.get("speed")
+            self.sop(f, "SOP_POSE", [ai, self.s(fb), int(round(float(sp) * 256)) if sp else 256], c)
         elif kw == "blink":
             n = docunits.frames(c.words[1], w) if len(c.words) > 1 else 2
             self.sop(f, "SOP_BLINK", [ai, n], c)

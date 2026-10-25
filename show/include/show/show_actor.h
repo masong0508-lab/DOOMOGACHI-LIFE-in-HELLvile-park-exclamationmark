@@ -93,7 +93,7 @@ DOOMO_STATIC_ASSERT(sizeof(ShowTrackHdr) == 8, show_track_hdr_8);
  * at the actor's anchor: its bottom-centre + (dx, dy) * px, flipped with the
  * actor. mode REPLACE hides the actor's own image, OVER draws on top of it. */
 enum { SHFM_REPLACE, SHFM_OVER };
-enum { SHFL_LOOP = 1 };
+enum { SHFL_LOOP = 1, SHFL_HOLD = 2 };   /* HOLD: a one-shot keeps its last drawing */
 typedef struct ShowFlipHdr {
     uint16_t w, h;
     uint8_t  n, mode, flags, pad;
