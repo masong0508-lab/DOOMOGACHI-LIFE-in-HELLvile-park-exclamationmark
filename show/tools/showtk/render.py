@@ -50,7 +50,12 @@ def render(shw, *, jobs=2, shots=None, encode=True, force=False, out=None, prese
     lens = [s["len"] for s in ep["shots"]]
     sel = list(range(len(ids))) if shots is None else sorted(set(shots))
     out = Path(out) if out else paths.episode_build("ep%03d" % ep["episode"]) / "render"
-    work = paths.SHOW_WORK / "render" / ("ep%03d" % ep["episode"])
+    # one work dir per .SHW path (and process), so agents rendering different files at once
+    # never share a disc image or a FIFO
+    import hashlib
+    import os
+    work = paths.SHOW_WORK / "render" / ("ep%03d-%s-%d" % (
+        ep["episode"], hashlib.sha1(str(shw).encode()).hexdigest()[:8], os.getpid()))
     work.mkdir(parents=True, exist_ok=True)
     cue, exe, mp = _disc(shw, ep, work, preset)
     keys = cache.shot_keys(data, ep, exe)
@@ -105,6 +110,21 @@ def render(shw, *, jobs=2, shots=None, encode=True, force=False, out=None, prese
                boot_s=[round(r.boot_seconds, 2) for r in results if r], encode=encode,
                out=str(out))
     (out / "render.json").write_text(json.dumps(rep, indent=1) + "\n")
+    import shutil
+    shutil.rmtree(work, ignore_errors=True)       # disc image + FIFOs; the cache keeps the shots
+    # The .SHW keeps 8-byte shot ids; timeline.json beside it has the full ones (by index).
+    # render_index.json maps those to cache dirs so preview/deliver (edl.Masters) find them.
+    full = list(ids)
+    tlp = shw.parent / "timeline.json"
+    if tlp.exists():
+        try:
+            tsh = json.loads(tlp.read_text()).get("shots", [])
+            if len(tsh) == len(ids):
+                full = [t.get("id", i) for t, i in zip(tsh, ids)]
+        except (ValueError, AttributeError):
+            pass
+    (out / "render_index.json").write_text(json.dumps(
+        {"shw": str(shw), "shots": {full[s]: str(cache.entry(keys[s])) for s in sel}}, indent=1) + "\n")
     if not quiet:
         print(f"render: {len(sel)} shots, {nfr} frames ({len(dirty)} shots / {made} frames "
               f"rendered on {len(groups)} job(s) in {wall:.1f} s, "

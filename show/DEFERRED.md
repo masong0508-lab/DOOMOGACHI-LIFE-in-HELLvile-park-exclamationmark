@@ -21,3 +21,5 @@
 - WP4: the texture-only second shot chunk (spec 7.3) for shots over 160 KB: no ep101 shot needs it today (plates are RLE'd; the warning PLAN-CHUNK says when one does).
 - WP6: actors, crowds and their camera: they stand on the camera's main plane (1:1 parallax); camera scale moves do not resize actors in this pass (only push-ins on plates).
 - ART motion: the PS1 module that draws `amb` (SHWR_AMB) is ENGINE's; ART ships the math (amb_math.h) and host previews only. Gaze-based glances in crowds stay deferred (WP6).
+- PCdrv loading (M0-T5's optional half): not tested; disc images rebuild in seconds and the pilot does not need it.
+- Compiler `pose <actor> <flipbook>` ops: dropped until the compiler emits lane 2's FLIP records (the flipbooks are in ART's library; staging still gets walks, moves, squash, blinks, faces).
