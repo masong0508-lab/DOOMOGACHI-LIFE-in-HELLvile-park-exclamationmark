@@ -475,7 +475,11 @@ void story_text_prefetch(void)
     int ch34 = ch34_beat(b) && doomo_town.story.chapter != STORY_CH_NONE;   /* (S3) */
     for (p = 0; p < n; p++) {
         int k = txt_pack_kind(p);
-        if (k == TXT_KIND_SIDE || (k == TXT_KIND_LEGACY && !ch12 && !ch34)) txt_pack_load(p);
+        /* (S4) of the side packs only the index (titles, hints: the quest log
+         * and the HUD); a mission's own pack loads when its script starts.
+         * Reading every side pack into the PS1's one side slot was a CD read
+         * per pack at each boundary, of which only the last stayed. */
+        if ((k == TXT_KIND_SIDE && p == PACK_QUESTS) || (k == TXT_KIND_LEGACY && !ch12 && !ch34)) txt_pack_load(p);
     }
     if (ch12) {                         /* (S2) the chapter's common pack and the beat's episode */
         txt_pack_load(story_chapter() >= STORY_CH2 ? PACK_CH2 : PACK_CH1);

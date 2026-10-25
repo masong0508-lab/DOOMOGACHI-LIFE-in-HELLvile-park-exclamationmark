@@ -184,6 +184,30 @@ int  side_spots(int map_id, SideSpot *out, int max);
 int  side_active_count(void);
 const char *side_objective(void);         /* first active side quest text  */
 int  story_side2_giver_map(int sid);      /* S2: MAPID_* a mission's giver is on */
+/* --- S4: side missions batch A (docs/design/story/SPEC.md sec.7 S4) ---
+ * `native CB_SIDE_* ARG` in a side script: little questions the VM cannot
+ * ask by itself (story_side.c side_callback); the answer is var 0. */
+enum { CB_SIDE_HAVE = 70,       /* ARG = ITEM_*: how many you carry           */
+       CB_SIDE_STATE,           /* ARG = mission number (100..217): its row state 0..3 */
+       CB_SIDE_NIGHT,           /* 1 if it is night                           */
+       CB_SIDE_STATUS,          /* ARG = resident: RES_* status               */
+       CB_SIDE_QUEST,           /* ARG = old quest #0..#48: SIDE_* state       */
+       CB_SIDE_MONEY,           /* H$ / 10 you carry (capped at 32767)        */
+       CB_SIDE_DAY,             /* the day of the week 0 Monday .. 6 Sunday    */
+       CB_SIDE_MUSIC,           /* the map's own music back (after a song)     */
+       CB_SIDE_ONCE };          /* ARG = SONG_*: play it once, then the map's
+                                   music comes back (and it joins the jukebox) */
+/* The quest log's rows for S100..S217 (the Side tab, after the 49 old ones):
+ * the visible ones (offered, active or done) in row order; title and hint
+ * come from the mission's index pack (one pack, so the PS1 never thrashes
+ * its side slot). */
+int  story_side2_visible(int sid);
+const char *story_side2_title(int sid);
+const char *story_side2_hint(int sid);
+/* The resident a running verb needs on the map (escort / photo / deliver)
+ * and the cell the script gave it; -1 none (story_verbs.c). */
+int  story_verb_who(int *cx, int *cy);
+/* --- end S4 --- */
 
 /* ---- S2: the verbs and the story minigames (story_verbs.c, story_timing.c) ----
  * A verb runs on the overworld while the VM is free; SCENE_STORY's update

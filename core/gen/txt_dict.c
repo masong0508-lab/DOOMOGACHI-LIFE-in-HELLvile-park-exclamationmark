@@ -5,8 +5,8 @@
  * kinds and sizes (TEXT.BIN sectors are derived from the sizes). */
 #include "doomo/txt.h"
 
-const uint16_t doomo_txt_npacks = 34;
-const char doomo_txt_pack_names[34][9] = {
+const uint16_t doomo_txt_npacks = 36;
+const char doomo_txt_pack_names[36][9] = {
     "ch1",
     "ch2",
     "d1",
@@ -38,96 +38,97 @@ const char doomo_txt_pack_names[34][9] = {
     "f1",
     "int1",
     "int3",
-    "legside",
     "p0",
+    "q49a",
+    "q49b",
+    "quests",
     "vmtest",
 };
-const uint8_t doomo_txt_pack_kinds[34] = { 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0 };
-const uint8_t doomo_txt_pack_chapters[34] = { 1, 2, 2, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 5, 2, 1, 3, 0, 1, 0 };
-const uint16_t doomo_txt_pack_minutes[34] = { 0, 0, 2, 20, 25, 20, 30, 25, 30, 21, 30, 26, 25, 26, 25, 27, 50, 60, 40, 55, 25, 25, 40, 32, 35, 35, 25, 30, 1, 2, 8, 0, 2, 0 };
-const uint16_t doomo_txt_pack_bytes[34] = { 1692, 1260, 240, 992, 1248, 1344, 1884, 1696, 1184, 1624, 1756, 1240, 1204, 1300, 1344, 1528, 2608, 3996, 2196, 3032, 1812, 1528, 2864, 1496, 2044, 4260, 1872, 1268, 384, 324, 1924, 7124, 696, 684 };
-const uint8_t doomo_txt_huff_count[17] = { 0, 0, 0, 1, 2, 11, 11, 7, 15, 20, 22, 47, 113, 76, 11, 2, 0 };
+const uint8_t doomo_txt_pack_kinds[36] = { 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 0 };
+const uint8_t doomo_txt_pack_chapters[36] = { 1, 2, 2, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 5, 2, 1, 3, 1, 0, 0, 0, 0 };
+const uint16_t doomo_txt_pack_minutes[36] = { 0, 0, 2, 20, 25, 20, 30, 25, 30, 21, 30, 26, 25, 26, 25, 27, 50, 60, 40, 55, 25, 25, 40, 32, 35, 35, 25, 30, 1, 2, 8, 2, 60, 60, 0, 0 };
+const uint16_t doomo_txt_pack_bytes[36] = { 1684, 1252, 240, 996, 1244, 1344, 1884, 1696, 1188, 1616, 1740, 1236, 1204, 1308, 1336, 1532, 2604, 3988, 2192, 3020, 1808, 1532, 2860, 1496, 2044, 4256, 1884, 1260, 384, 324, 1916, 700, 6536, 6208, 2104, 684 };
+const uint8_t doomo_txt_huff_count[17] = { 0, 0, 0, 1, 2, 11, 10, 8, 15, 23, 21, 56, 112, 66, 11, 2, 0 };
 const uint16_t doomo_txt_huff_nsym = 338;
 const uint16_t doomo_txt_huff_sym[338] = {
-    32, 97, 101, 0, 46, 47, 104, 105, 108, 110, 111, 114,
-    115, 116, 98, 99, 100, 103, 107, 109, 112, 117, 119, 121,
-    256, 33, 40, 41, 44, 73, 102, 118, 39, 63, 65, 69,
-    70, 72, 76, 78, 79, 80, 83, 84, 257, 263, 266, 58,
-    66, 67, 68, 71, 77, 82, 85, 87, 120, 258, 260, 264,
-    270, 273, 283, 285, 287, 292, 295, 45, 64, 75, 86, 89,
-    122, 123, 125, 259, 261, 262, 265, 267, 268, 269, 271, 277,
-    291, 301, 302, 309, 326, 42, 106, 113, 272, 274, 275, 276,
-    278, 280, 281, 284, 286, 290, 293, 294, 297, 298, 299, 300,
-    303, 306, 313, 316, 318, 319, 321, 322, 323, 324, 332, 334,
-    335, 336, 364, 365, 366, 381, 382, 391, 392, 403, 408, 425,
-    449, 478, 479, 482, 34, 48, 49, 50, 51, 279, 282, 288,
-    289, 296, 304, 305, 307, 308, 311, 312, 314, 315, 317, 325,
-    328, 329, 330, 333, 337, 338, 339, 340, 341, 342, 343, 344,
-    345, 346, 347, 348, 349, 350, 351, 352, 353, 354, 355, 356,
-    357, 358, 359, 360, 361, 362, 363, 367, 369, 372, 373, 374,
-    375, 376, 377, 383, 384, 385, 386, 387, 388, 389, 390, 393,
-    394, 395, 396, 398, 402, 409, 411, 412, 414, 415, 417, 420,
-    428, 429, 430, 431, 432, 433, 434, 436, 444, 446, 447, 448,
-    452, 453, 454, 457, 461, 462, 463, 464, 466, 467, 469, 470,
-    472, 475, 480, 481, 486, 487, 490, 498, 501, 52, 57, 74,
-    81, 88, 90, 310, 320, 327, 331, 368, 370, 371, 378, 379,
-    380, 397, 399, 400, 401, 404, 405, 406, 407, 410, 413, 416,
-    418, 419, 421, 422, 423, 424, 426, 427, 437, 438, 439, 440,
-    441, 442, 443, 450, 455, 456, 458, 459, 460, 465, 468, 471,
-    473, 474, 476, 477, 483, 485, 488, 489, 491, 492, 493, 494,
-    495, 497, 499, 500, 502, 504, 505, 506, 507, 508, 509, 510,
-    511, 53, 54, 55, 56, 60, 435, 445, 451, 484, 496, 503,
+    32, 97, 101, 0, 46, 47, 100, 105, 108, 110, 111, 114,
+    115, 116, 98, 99, 103, 104, 109, 112, 117, 119, 121, 256,
+    33, 40, 41, 44, 73, 83, 102, 107, 39, 63, 65, 69,
+    72, 76, 78, 79, 80, 84, 118, 257, 258, 263, 265, 58,
+    66, 67, 68, 70, 71, 77, 82, 85, 87, 120, 259, 261,
+    267, 271, 275, 282, 284, 285, 295, 298, 299, 301, 45, 64,
+    75, 86, 89, 122, 260, 262, 264, 266, 268, 270, 272, 280,
+    292, 300, 308, 332, 379, 395, 502, 42, 50, 51, 106, 113,
+    123, 125, 269, 273, 274, 276, 278, 281, 283, 286, 288, 289,
+    290, 293, 294, 302, 303, 304, 305, 306, 307, 309, 310, 316,
+    317, 322, 324, 325, 326, 327, 328, 329, 330, 331, 340, 346,
+    359, 364, 373, 374, 376, 394, 401, 431, 445, 457, 482, 487,
+    488, 491, 504, 34, 48, 49, 277, 279, 287, 291, 296, 297,
+    311, 313, 314, 315, 318, 319, 320, 321, 333, 334, 335, 336,
+    337, 339, 341, 342, 343, 344, 345, 347, 348, 349, 350, 351,
+    352, 354, 356, 357, 358, 360, 361, 362, 363, 365, 366, 367,
+    368, 369, 370, 371, 372, 375, 377, 380, 384, 386, 387, 388,
+    389, 390, 396, 397, 398, 400, 402, 403, 404, 405, 406, 411,
+    413, 416, 417, 419, 420, 422, 434, 435, 436, 437, 438, 439,
+    440, 441, 442, 449, 450, 452, 453, 456, 458, 459, 460, 463,
+    468, 469, 470, 471, 472, 473, 474, 475, 477, 478, 479, 483,
+    485, 489, 490, 497, 498, 499, 509, 52, 57, 74, 81, 88,
+    90, 312, 323, 338, 353, 355, 378, 381, 382, 383, 385, 391,
+    392, 393, 399, 407, 408, 409, 410, 412, 414, 415, 418, 421,
+    423, 424, 425, 426, 427, 428, 429, 430, 432, 433, 443, 444,
+    446, 447, 448, 451, 454, 461, 462, 465, 467, 476, 480, 481,
+    484, 486, 492, 494, 495, 496, 501, 503, 505, 506, 507, 510,
+    511, 53, 54, 55, 56, 60, 455, 464, 466, 493, 500, 508,
     37, 43,
 };
 const uint16_t doomo_txt_dict_n = 256;
 const uint16_t doomo_txt_dict_off[257] = {
-    0, 4, 8, 12, 19, 23, 28, 33, 36, 40, 45, 48,
-    52, 56, 60, 63, 67, 76, 79, 86, 93, 99, 104, 110,
-    119, 125, 131, 140, 143, 149, 152, 157, 160, 167, 174, 179,
-    183, 186, 192, 197, 200, 207, 212, 217, 223, 229, 233, 236,
-    240, 247, 257, 261, 267, 273, 276, 287, 296, 302, 306, 312,
-    319, 324, 331, 335, 340, 350, 355, 361, 366, 371, 378, 381,
-    390, 395, 401, 406, 416, 421, 429, 434, 438, 442, 447, 452,
-    457, 462, 467, 473, 479, 485, 491, 496, 501, 506, 511, 517,
-    524, 530, 536, 542, 548, 555, 560, 565, 570, 575, 580, 585,
-    590, 594, 598, 602, 608, 616, 622, 630, 638, 643, 649, 655,
-    661, 666, 671, 680, 689, 698, 702, 706, 711, 716, 721, 726,
-    731, 736, 742, 748, 752, 756, 762, 768, 772, 777, 785, 790,
-    798, 806, 814, 819, 823, 830, 837, 845, 853, 856, 861, 868,
-    873, 878, 885, 890, 895, 902, 907, 915, 924, 928, 934, 940,
-    946, 952, 955, 961, 967, 972, 977, 982, 987, 992, 997, 1002,
-    1013, 1017, 1024, 1031, 1038, 1045, 1052, 1059, 1066, 1070, 1080, 1085,
-    1090, 1095, 1098, 1104, 1114, 1119, 1124, 1129, 1137, 1143, 1148, 1154,
-    1162, 1170, 1175, 1180, 1185, 1189, 1195, 1200, 1204, 1212, 1217, 1222,
-    1230, 1235, 1241, 1247, 1252, 1258, 1264, 1267, 1270, 1274, 1278, 1281,
-    1286, 1295, 1300, 1305, 1310, 1315, 1320, 1325, 1330, 1335, 1340, 1345,
-    1350, 1359, 1364, 1368, 1374, 1381, 1385, 1392, 1404, 1410, 1416, 1423,
-    1430, 1436, 1443, 1450, 1456,
+    0, 4, 8, 12, 16, 23, 27, 32, 35, 40, 43, 48,
+    52, 56, 62, 66, 69, 73, 80, 87, 90, 99, 110, 116,
+    125, 130, 136, 139, 145, 148, 151, 157, 166, 171, 177, 183,
+    190, 194, 199, 204, 207, 214, 221, 224, 227, 231, 234, 239,
+    244, 249, 255, 259, 264, 267, 271, 276, 283, 293, 299, 305,
+    314, 318, 322, 328, 334, 341, 348, 353, 363, 368, 373, 378,
+    383, 389, 394, 399, 403, 406, 412, 418, 423, 428, 433, 443,
+    451, 455, 460, 465, 470, 475, 480, 484, 490, 496, 502, 508,
+    514, 519, 527, 532, 541, 546, 551, 557, 561, 568, 575, 581,
+    587, 591, 597, 603, 608, 613, 618, 623, 628, 633, 637, 641,
+    646, 650, 656, 664, 668, 673, 681, 689, 697, 702, 710, 716,
+    721, 727, 733, 738, 747, 756, 763, 767, 770, 775, 780, 785,
+    795, 801, 805, 811, 817, 823, 828, 833, 841, 848, 856, 864,
+    869, 876, 880, 887, 894, 899, 904, 911, 916, 921, 928, 933,
+    941, 950, 956, 965, 974, 980, 986, 992, 995, 1001, 1007, 1012,
+    1017, 1022, 1027, 1032, 1037, 1042, 1046, 1050, 1057, 1064, 1067, 1074,
+    1081, 1088, 1092, 1097, 1105, 1110, 1115, 1121, 1131, 1136, 1139, 1144,
+    1149, 1154, 1162, 1168, 1173, 1183, 1191, 1201, 1209, 1213, 1218, 1223,
+    1228, 1232, 1237, 1242, 1247, 1253, 1258, 1263, 1268, 1276, 1282, 1288,
+    1293, 1299, 1304, 1310, 1313, 1316, 1320, 1324, 1327, 1332, 1341, 1346,
+    1351, 1356, 1361, 1366, 1371, 1380, 1385, 1388, 1393, 1398, 1403, 1408,
+    1413, 1422, 1426, 1432, 1439,
 };
-const char doomo_txt_dict_chars[1457] =
-    "the The and little You your It's is you with in for I'm {..}"
-    "of was Everyone to Nobody That's still like never Hillvile B"
-    "ring don't Hellvile at every it from ...Father You're that o"
-    "ne on Every They my purple back this Thank cloud not He has "
-    "always Something are there years It Photograph Somebody Don'"
-    "t She demon didn't it's scared Mr. I'll Everybody over other"
-    " Your very again. {d}fountain Nana Three down something them"
-    " through you, it. you.Wall gate have know said Cloud Wall. a"
-    "bout where Hee. beep.into will Flops Steamy again.looks need"
-    "s whole you're Take That been does make says you. And One Tw"
-    "o Mayor Someone back. brought doesn't fine.home. right them."
-    " what when Vapula's cupcakes.festival Not out He's just look"
-    " love need they Could Here, her one.time. under For Hell Hug"
-    "gins Nine Rivet's There's They're Wall.all anyway.church cup"
-    "cake holding it.made mascot now. real smells some take there"
-    ". went window, bellows. can first going holds small up walks"
-    " water From Have Lady Look came goes good xylophone. put Gra"
-    "mpy Hattie Here's Please THUMP. house. inside @P. Brimstone "
-    "Come Fuzz I've My Rivet Somewhere This Wisp back.bounces cha"
-    "ir come fine. flowers friends home kids last new paper same "
-    "say scared. shop sits someone tell thank there.tiny weird.wr"
-    "ite Go We get his @E Both Exorcise Find gate.here.keep miss "
-    "one. only out. pink then were windows. {big}All Bless Breach"
-    " Hee.Mother Sprinklepop There Visit You've across after anyo"
-    "ne before being "
+const char doomo_txt_dict_chars[1440] =
+    "the The {..}and little You It's is with in your you I'm Brin"
+    "g for of was Nobody That's to Everyone Photograph still Hill"
+    "vile like never {.}don't it at every Hellvile from Don't Eve"
+    "ry You're one They that on Father purple my ...not He back t"
+    "his {big}Thank has I'll It are very always Something there y"
+    "ears Somebody Mr. She cloud demon didn't scared Your Everybo"
+    "dy Take it's over you, other Nana them it. {d}Three about do"
+    "wn have said something through you.Wall gate know will you. "
+    "And Cloud Wall. again.needs where Hee. They're beep.fountain"
+    " into make Flops Not Steamy again. back. looks one.them. who"
+    "le He's That does love says when One Two Find For Mayor Some"
+    "one all been brought cupcake doesn't fine.holding home. look"
+    " right thank what Vapula's festival you're her it.just made "
+    "they Brimstone holds out small time. under From Hell Huggins"
+    " Mostly Rivet's There's Wall.anyway.can church mascot need r"
+    "eal smells some take there. went window, Bluebell Visit bell"
+    "ows. cupcakes.fine. first going up walks water I've Lady Loo"
+    "k Nine came goes good put say Grampy Hattie My THUMP. house."
+    " inside @P. Come Concert Free Fuzz Rivet Somewhere This We W"
+    "isp With back.bounces chair come cupcakes. flowers fountain."
+    " friends get home kids last new now. only out. paper same sh"
+    "op sits someone there.thing.tiny weird.were write Go {/}his "
+    "two @E Both Exorcise Have Help Like ever gate.here.humming. "
+    "keep me miss one. pink tell then windows. All Bless Breach "
     ;

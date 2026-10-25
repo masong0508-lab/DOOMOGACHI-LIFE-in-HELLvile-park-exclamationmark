@@ -35,11 +35,13 @@ extern const uint32_t doomo_text_pack_epi[];
 extern const uint32_t doomo_text_pack_f1[];
 extern const uint32_t doomo_text_pack_int1[];
 extern const uint32_t doomo_text_pack_int3[];
-extern const uint32_t doomo_text_pack_legside[];
 extern const uint32_t doomo_text_pack_p0[];
+extern const uint32_t doomo_text_pack_q49a[];
+extern const uint32_t doomo_text_pack_q49b[];
+extern const uint32_t doomo_text_pack_quests[];
 extern const uint32_t doomo_text_pack_vmtest[];
 
-static const uint32_t *const packs[34] = {
+static const uint32_t *const packs[36] = {
     doomo_text_pack_ch1,
     doomo_text_pack_ch2,
     doomo_text_pack_d1,
@@ -71,14 +73,16 @@ static const uint32_t *const packs[34] = {
     doomo_text_pack_f1,
     doomo_text_pack_int1,
     doomo_text_pack_int3,
-    doomo_text_pack_legside,
     doomo_text_pack_p0,
+    doomo_text_pack_q49a,
+    doomo_text_pack_q49b,
+    doomo_text_pack_quests,
     doomo_text_pack_vmtest,
 };
 
 const uint8_t *txt_plat_pack(int pack)
 {
-    if (pack < 0 || pack >= 34) return 0;
+    if (pack < 0 || pack >= 36) return 0;
     return (const uint8_t *)packs[pack];
 }
 

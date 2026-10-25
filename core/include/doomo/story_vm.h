@@ -232,16 +232,25 @@ typedef struct StorySideRow {
     uint8_t  step;           /* part k of its chain (1..)                       */
     uint8_t  requires;       /* 1 + the sid it requires, 0 none                 */
     uint8_t  later_min;      /* the Later callback, minutes after turn-in       */
-    uint8_t  tag;
+    uint8_t  tag;            /* (S4) after=: the BEAT_* episode that must be
+                                done before it is offered, 0 none           */
     uint16_t giver;          /* resident id                                     */
     uint16_t verbs;          /* 1 << verb (docs/STORY_ENGINE.md)                */
     uint16_t reward;         /* H$                                              */
     uint16_t offer;          /* script id run by the giver (none / offered), 0xFFFF none */
     uint16_t active;         /* script id run by the giver while active, 0xFFFF none */
-    uint16_t title;          /* text id, 0xFFFF none                            */
+    uint16_t title;          /* text id, 0xFFFF none; (S4) its hint is the next
+                                string of the same pack (title + 1)         */
     uint16_t trophy;         /* text id of its trophy (R8), 0xFFFF none          */
     uint8_t  pack;           /* the pack its scripts live in                    */
+    uint8_t  spot;           /* (S4) at=: 1 + its doomo_side_spots row, 0 none
+                                (the padding byte: the row stays 26 B)      */
 } StorySideRow;
+/* (S4) Where the givers stand (@mission at=X,Y): cells on the giver's map
+ * (story_side2_giver_map), de-duplicated. In Chapter 3 the Hillvile givers
+ * stand around the church on the invaded map instead (story_side.c). */
+extern const uint8_t doomo_side_spots[][2];
+extern const uint16_t doomo_side_spot_count;
 /* The quest log's Trophies (R8): the rows whose mission is done (STRY.side2
  * state 3) and that name a trophy, in row order; returns the count. */
 int  story_trophies(const StorySideRow *rows, const uint8_t *side2, uint8_t *out, int max);

@@ -206,8 +206,30 @@ chapter, and parts 3+ of a chain that crosses the Wall only from Ep 4.1.
 Talking to the giver runs `offer=` (state 0 / 1) or `active=` (state 2);
 the scripts set the state (`quest S1xx active|done`). Hillvile givers stand
 in the invaded town in Ch3 (`story_side2_giver_map`). The 49 old quests
-keep their table and their bits in the story flags (the `legside` pack
-holds their text).
+keep their table and their bits in the story flags.
+
+**S4 additions.** `@mission` takes `at=X,Y` (where the giver stands on
+their map: `StorySideRow.spot`, the row's padding byte, into
+`doomo_side_spots`; in Ch3 the Hillvile givers shelter around the church
+instead), `after=BEAT_*` (an episode that must be done first: the `tag`
+byte) and `hint="..."` (the quest log's line, stored right after the
+title: hint id = title id + 1). Every `@mission` header lives in the one
+index pack `quests` (`core/data/story/quests49/index.dsc`; reopen it with
+`@pack quests kind=side` above each header), with the 49 old quests'
+titles and hints: the PS1 keeps one side pack resident, and a quest log
+reading titles from many packs would re-read the disc every frame. The
+missions' scripts live in their own side packs, loaded when a script
+starts; `story_text_prefetch` loads only the index. The old quests'
+offers and thank-yous are re-timed scripts (`q49a`, `q49b`): the offer ends
+on the accept choice, the thank-you is followed by the table's reward.
+`native CB_SIDE_HAVE ITEM_X` (and `CB_SIDE_STATE`, `_NIGHT`, `_STATUS`,
+`_QUEST`, `_MONEY`, `_DAY`, story_int.h) put an answer the VM cannot get
+by itself into var 0. The overworld keeps a running verb's resident (the
+escort's follower, the photo's subject, the delivery's recipient) on the
+map through cast refreshes, and Ch3-5 idle lines let a side mission's
+business go first (`story_ch34.c idle()`). The verb key is SF sec.14's
+(`fetch deliver find photo combat exorcism weld pet minigame fishing
+cooking concert housing creator escort timing`; talk is implicit).
 
 **Trophies (R8)** are not unlock ids: a done row with a `trophy=` name is
 listed in the quest log's Trophies tab (`story_trophies()`).
@@ -325,8 +347,9 @@ on return (`bind`, one ~0.1 s read).
 
 The old beats of Chapters 3-4 still run as C glue in `story_script.c`
 around the `legacy` pack (`legacy_ch34.dsc`, which S3 replaces); the 49 old
-side quests' text is the `legside` pack. `legacy_ch12.dsc` is gone: Ch1-2
-are the packs above.
+side quests' text was the `legside` pack until S4 re-timed it into
+`quests49/` (the `quests`, `q49a` and `q49b` packs). `legacy_ch12.dsc` is
+gone: Ch1-2 are the packs above.
 
 ## Tests
 
