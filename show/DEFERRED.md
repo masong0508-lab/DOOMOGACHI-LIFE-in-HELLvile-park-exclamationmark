@@ -16,3 +16,6 @@
 - AUDIO voice: lib:pet/beep_v1 is the game's piezo, an SFX (WP10 library), not a voice take; mt7_pet_01 and the pet lines lock as `pending`.
 - AUDIO voice: stressed words in CAPITALS (WORD, SPEECH, PLAY) get no extra emphasis in TTS; the creator's reads carry it.
 - AUDIO voice: retime="fit" time-stretching of recordings (world.stretch exists; the compiler decides when a take overruns its slot).
+- ART sets: new 3D maps (a real funhouse, the bake tent's inside): the first-person beats use the game's `vape_cellar` rooms (spec: new show maps are deferred).
+- ART sets: per-pixel preview of the camfx lerps (PAL_CRAYON/HELLIFY) in the set sheets: the sheets show the plates' own colours; the player applies the lerp.
+- ART sets: a 9:16 / wide (384x216) version of any plate: the canvas is 320x180 in 2026.

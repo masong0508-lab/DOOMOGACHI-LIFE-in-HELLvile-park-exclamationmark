@@ -1,0 +1,56 @@
+# show/series/sets/world3d.shw - sets that reuse the game's own worlds (spec 8.3):
+# OVERWORLD on the game's overworld maps, VIEW3D on its 3D maps (first person), ROOM on
+# its 2.5D house. No new geometry: these are camera positions and settings on maps that
+# already ship in core/gen/ (the cheapest route; see SETS.md).
+#
+# Positions are in CELLS of the named map (x east, y south; a cell = DOOMO_CELL_UNITS =
+# 64 world units; .5 is a cell centre). A cam3d rail runs from= to= over its shot, looking
+# at look= (the player computes the yaw from the two points, so no angle convention is
+# baked in); z=eye is DOOMO_EYE_HEIGHT above the floor. Tint and daylight use the game's
+# own fields (DoomoView3D.tint/tint_level, DoomoOverworldView.daylight 0..15).
+
+# ---- OVERWORLD: core/data/maps/hahaland.txt ---------------------------------------------
+set hahaland_crane kind=overworld map=MAPID_HAHALAND px=1 desc="MT-1: crane up over pastel HaHaland (the plaza to Town Hall hill)"
+  cam3d crane from=34.5,24.5 to=30.5,10.5 daylight=15 ease=OUT       # the plaza -> Town Hall (1,1 door at row 6)
+  variant day daylight=15 desc="MT-1 intro"
+end
+
+set hahaland_wall_pan kind=overworld map=MAPID_HAHALAND px=1 desc="MT-3: pan east across the park to the Wall and its gate (the brick wipe starts on the Wall line)"
+  cam3d pan from=40.5,30.5 to=53.5,30.5 daylight=15 ease=LINEAR      # the gate 'g' is at x 56, rows 30-31
+  variant day daylight=15 desc="MT-3 pre-chorus"
+end
+
+# ---- VIEW3D: core/data/maps/vape_cellar.txt (first person, with the HUD) -----------------
+# The tutorial dungeon's cute pastel back room (heart wallpaper, candy-stripe ceiling,
+# wood and carpet) is the Absolutely Not Scary House and the title corridor; its small
+# tiled room with the candy-stripe canopy (rows 17-20) is the inside of the bake tent.
+# The filter (cute) and the truth (brutal) are the HUD's gore switch plus the camfx
+# HELLIFY lerp; no child is ever in these sets (STD-KIDS).
+
+set title_corridor kind=view3d map=MAPID_VAPE_CELLAR px=1 desc="MT-5: the first-person corridor that flips from the filter to the truth"
+  cam3d run from=2.5,5.5 to=10.5,5.5 look=16.5,5.5 z=eye      # down the back room toward the cellar stairs
+  variant cute  tint=TINT_NONE tint_level=0 desc="MT-5 before the downbeat"
+  variant truth tint=TINT_RED tint_level=4 desc="MT-5 on the sweetest line (with PAL_HELLIFY on the shot)"
+end
+
+set scary_house_fp kind=view3d map=MAPID_VAPE_CELLAR px=1 desc="3-03: INT. the Absolutely Not Scary House (first person), cardboard ghosts and real Puff Demons"
+  cam3d enter  from=2.5,8.5 to=6.5,6.5 look=10.5,3.5 z=eye
+  cam3d sweep  from=6.5,6.5 to=10.5,3.5 look=16.5,5.5 z=eye
+  cam3d out    from=10.5,5.5 to=16.5,5.5 look=20.5,5.5 z=eye      # the shortcut toward the bake tent
+  variant cute  tint=TINT_NONE tint_level=0 desc="3-03 in (the filter)"
+  variant truth tint=TINT_RED tint_level=3 desc="3-03 SLAUGHTER (with PAL_HELLIFY)"
+end
+
+set bake_tent_fp kind=view3d map=MAPID_VAPE_CELLAR px=1 desc="3-05: INT. the bake tent (first person): the Big Puff, Nana's tin, the saw"
+  cam3d hold   from=25.5,17.5 to=26.5,18.5 look=28.5,20.0 z=eye
+  variant truth tint=TINT_RED tint_level=3 desc="3-05 the fight"
+  variant cute  tint=TINT_NONE tint_level=0 desc="3-05 after the REWIND: hearts, one tuft of stuffing, BAKE TEN"
+end
+
+# ---- ROOM: the game's 2.5D house (core/data/home, ps1/src/room.c) ------------------------
+set cottage kind=room home=HOME_COTTAGE room=HOME_ROOM_LIVING preset=HP_EMPTY px=1 desc="T-1/T-2 (dawn): the Pink Door Cottage: empty but for a crate and a window; the jelly-wobble door"
+  obj crate  furn=FURN_PICNIC_CRATE at=3,3 rot=0
+  obj window furn=FURN_WOOD_WINDOW  at=2,0 rot=0
+  cam3d room yaw=512 zoom=1 daylight=6
+  variant dawn daylight=6 desc="T-1, T-2"
+end

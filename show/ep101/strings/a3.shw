@@ -1,0 +1,41 @@
+# show/ep101/strings/a3.shw - on-screen text for Act Three + EC3 (seg a3; spec 5.1).
+# Ids from docs/show/ep101/PILOT_SCRIPT.md SC40-SC48. s_a2_03_house_sign is a2's (used in a3s14).
+
+# ---- 3-01 act card (the Mayor's clipboard, his hand) ----
+string s_a3_01_card       "22:00 Bedtime!" font=mayor_hand
+string s_a3_01_card_over  "weather" font=mayor_hand size=small
+
+# ---- 3-02 ----
+string s_a3_02_tent_sign  "BAKE TENT" font=bunting
+
+# ---- 3-03 the HUD (32-px strip) ----
+string s_a3_03_hud_plate_pump   "PARTY PUMP" font=hud
+string s_a3_03_hud_plate_slaughter "SLAUGHTER" font=hud
+string s_a3_03_hud_sub          "RIP AND TEAR... GENTLY" font=hud size=small
+string s_a3_03_hud              "GORE: BRUTAL" font=hud color=red
+string s_a3_03_sticker          "HELLVILE PARK BOARD OF DECENCY (approved)" font=stamp
+string s_a3_03_ghost_back       "THANK YOU FOR NOT SCREAMING -Mayor" font=mayor_hand
+string s_a3_03_ammo_box         "PARTY POPPERS" font=bunting
+string s_a3_03_ammo_box_under   "SHELLS" font=stencil
+
+# ---- 3-04 ----
+string s_a3_04_fail       "FAIL x2" font=stamp
+
+# ---- 3-05 ----
+string s_a3_05_plate_saw_purr  "PURRING SAW" font=hud
+string s_a3_05_plate_saw       "MEATCLEAVER" font=hud
+string s_a3_05_tent_sign       "BAKE TEN" font=bunting          # the one persistent change
+
+# ---- 3-06 the tin and the sign-up sheet (many hands) ----
+string s_a3_06_slip         "Charlotte's turn: #9" font=round_hand
+string s_a3_06_sheet_title  "MIDSUMMER MINGLE · WHO'S BRINGING WHAT?" font=mayor_hand
+string s_a3_06_sheet_01     "Nox: bone soup (2 bowls)" font=hand_a
+string s_a3_06_sheet_02     "Giggs: cupcakes (+1)" font=mayor_hand
+string s_a3_06_sheet_03     "Charlotte: cookies (sorry)" font=round_hand
+string s_a3_06_sheet_04     "Fuzz: hugs" font=hand_b
+string s_a3_06_sheet_05     "Bonejangles: music" font=hand_c
+string s_a3_06_sheet_06     "Clinker: a poem (will rate yours)" font=hand_d
+
+# ---- EC3 ----
+string s_ec3out  "22:59" font=clock
+string s_ec3in   "22:59" font=clock

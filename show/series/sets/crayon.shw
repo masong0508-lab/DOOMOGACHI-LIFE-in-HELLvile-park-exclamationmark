@@ -1,0 +1,25 @@
+# show/series/sets/crayon.shw - the crayon register's nibs (STROKES planes use them)
+#
+# A nib is a crayon: `ink` is the stroke colour, `edge` the 1-px darker underside of
+# a 2-px stroke, `gap` the skip pattern along the stroke (on px, off px), so a live
+# GPU line reads as wax on paper. Colours are master-palette indices written as the
+# repo's own enums: PAINT_<paint>.<shade 0-2>, RAMP_<ramp>.<shade 0-7>, PAL_*.
+# Boil (+-1 px on twos) and the reveal by arc length are the player's (spec 9.4).
+
+nib CRAYON_RED     ink=PAINT_CHERRY.1      edge=PAINT_CHERRY.0      gap=9,1
+nib CRAYON_PINK    ink=PAINT_BUBBLEGUM.1   edge=PAINT_BUBBLEGUM.0   gap=9,1
+nib CRAYON_ROSE    ink=PAINT_ROSE.1        edge=PAINT_ROSE.0        gap=9,1
+nib CRAYON_YELLOW  ink=PAINT_LEMON.1       edge=PAINT_LEMON.0       gap=9,1
+nib CRAYON_ORANGE  ink=PAINT_TANGERINE.1   edge=PAINT_TANGERINE.0   gap=9,1
+nib CRAYON_GREEN   ink=PAINT_LIME.1        edge=PAINT_LIME.0        gap=9,1
+nib CRAYON_SKY     ink=PAINT_SKY.1         edge=PAINT_SKY.0         gap=9,1
+nib CRAYON_BLUE    ink=PAINT_COBALT.1      edge=PAINT_COBALT.0      gap=9,1
+nib CRAYON_PURPLE  ink=PAINT_GRAPE.1       edge=PAINT_GRAPE.0       gap=9,1
+nib CRAYON_BROWN   ink=PAINT_CHOCOLATE.2   edge=PAINT_CHOCOLATE.1   gap=9,1
+nib CRAYON_GREY    ink=PAL_GRAY            edge=PAL_GRAY_D          gap=9,1
+nib CRAYON_BLACK   ink=PAINT_CHARCOAL.1    edge=PAINT_JET.1         gap=11,1
+nib CRAYON_WHITE   ink=PAL_WHITE           edge=PAL_GRAY_L          gap=9,1
+# the firework scribbles glow a little: their edge is the light shade
+nib CRAYON_SPARK_PINK   ink=PAINT_BUBBLEGUM.1 edge=PAINT_BUBBLEGUM.2 gap=4,2
+nib CRAYON_SPARK_YELLOW ink=PAINT_LEMON.1     edge=PAINT_LEMON.2     gap=4,2
+nib CRAYON_SPARK_PURPLE ink=PAINT_VAPE_PURPLE.1 edge=PAINT_VAPE_PURPLE.2 gap=4,2
