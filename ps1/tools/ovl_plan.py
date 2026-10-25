@@ -105,6 +105,16 @@ LOCAL_CALLBACKS = {
     "fp_roster": ("cmp_res",),
 }
 
+# --- S4: registries read only by their own group (object base -> symbol).
+# doomo_story_mg_a / _b point at the S4 / S5 story minigames; their only
+# reader is story_mg.c's story_mg_find (the storymg scene, group loaded).
+# The planner checks the readers (see main); a wrong entry stays resident. ---
+LOCAL_REGISTRIES = {
+    "story_mg_a": "doomo_story_mg_a",
+    "story_mg_b": "doomo_story_mg_b",
+}
+# --- end S4 ---
+
 
 def run(cmd):
     return subprocess.run(cmd, check=True, capture_output=True, text=True).stdout
@@ -280,7 +290,7 @@ def main(argv):
                     todo.append(t)
         return seen
 
-    def closure(start, follow_scene_ptrs):
+    def closure(start, follow_scene_ptrs, cut_all=frozenset()):
         # A scene struct's code pointers are not followed (scene.c loads the
         # scene's group before calling them); its data (the name string,
         # read by scene_by_name() at any time) is.
@@ -288,6 +298,8 @@ def main(argv):
         todo = list(start)
         while todo:
             n = todo.pop()
+            if n in cut_all:
+                continue
             cut = n in scene_secs and not follow_scene_ptrs
             for t, _ in edges.get(n, ()):
                 if cut and is_code(t):
@@ -303,7 +315,31 @@ def main(argv):
     entry |= {n for n in alloc if n[1].startswith((".ctors", ".dtors"))}
     live = closure_all(entry)
     roots = {n for n in live if grp(n) is None} | (set() if os.environ.get("OVL_NOESC") else (escaped & live))
-    resident = closure(roots, False)
+    # --- S4: group-local registries (LOCAL_REGISTRIES). The pointer itself
+    # is small data (.sdata under -G8) and stays resident, but when only its
+    # own group's code reads it, what it points to (the game table and the
+    # games) is not followed into the resident set: it is reached, and
+    # owned, through the group's scene like any other group code. If a
+    # reader is outside the group, or ends up resident, the cut is dropped. ---
+    regs = {}
+    for n in live:
+        sym = LOCAL_REGISTRIES.get(base(objs[n[0]].path))
+        if sym and n[1] in (".sdata." + sym, ".data." + sym, ".rodata." + sym):
+            regs[n] = [s for s in live if any(t == n for t, _ in edges.get(s, ()))]
+    for n in sorted(regs):
+        g = group_of(objs[n[0]].path)
+        if not g or not regs[n] or any(grp(s) != g for s in regs[n]):
+            print("ovl_plan: %s:%s is read outside its group; it stays resident" % (base(objs[n[0]].path), n[1]))
+            del regs[n]
+    while True:
+        resident = closure(roots, False, frozenset(regs))
+        bad = sorted(n for n in regs if any(s in resident for s in regs[n]))
+        if not bad:
+            break
+        for n in bad:
+            print("ovl_plan: %s:%s is read by resident code; it stays resident" % (base(objs[n[0]].path), n[1]))
+            del regs[n]
+    # --- end S4 ---
     # A scene's entry points run with its group loaded; everything they
     # reach that is not resident must be of that same group. Whatever two
     # groups (or a resident scene) reach becomes resident, and so does all

@@ -303,6 +303,11 @@ scene edge from the story, like the cutscenes). Built in:
 prompt (slot 0), case and spaces forgiven (Sprinklepop's EXORCISM
 UNFAILED).
 
+The registry reader `story_mg_find` lives in `story_mg.c` (S4; stubs.c's
+weak one is resident and would pin every registry game in resident RAM on
+the PS1); `ps1/tools/ovl_plan.py`'s `LOCAL_REGISTRIES` lets the games load
+with the `storymg` group (17 KB with S4's six; resident RAM unchanged).
+
 S4's six (`SMG_A_*`, story_int.h; state in the scene scratch, 0 B EWRAM):
 `SMG_A_HOPSCOTCH` (S150: ten stone slabs over lava, A on the beat, the pet
 goes first; three sizzles lose), `SMG_A_ROLLER` (S143: paint the town sign,

@@ -27,7 +27,10 @@ Each patch's agent was told to verify everything before pushing. Re-run the full
      grafts (S196+) are exempt from one-part-per-chapter (story_vm.h
      `STORY_SIDE2_GRAFT_FIRST`); S4 used 14 `{d}` (the game is at 66 of 80);
      the runner has `side`, `talk`, `cell`, `skip-to`, `skip-to-scene`,
-     `skip-talk` for side samples (docs/STORY_ENGINE.md);
+     `skip-talk` for side samples (docs/STORY_ENGINE.md); `story_mg_b.c`
+     loads with the PS1 `storymg` group by itself (`story_mg_find` is in
+     `story_mg.c`, `ovl_plan.py` `LOCAL_REGISTRIES`): read the registry only
+     from there;
    - S5: batch B (55 missions);
    - the Feast cutscene port;
    - I9: integration.

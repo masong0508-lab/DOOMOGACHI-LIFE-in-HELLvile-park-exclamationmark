@@ -33,6 +33,23 @@ static int16_t mg_last = 0;
 
 int story_mg_result(void) { return mg_last; }
 
+/* --- S4: the registry reader lives here, in the storymg group. stubs.c's
+ * weak reader is resident code, and on the PS1 everything resident code
+ * reaches stays resident: through it the registry tables, and with them
+ * every S4 / S5 game, would be pinned in resident RAM instead of loading
+ * with this scene. Reads the tables directly (stubs.c's story_mg_at is
+ * resident too). The tables are extern here, so nothing folds them. --- */
+const StoryMgEntry *story_mg_find(int id)
+{
+    const StoryMgEntry *e = doomo_story_mg_a;
+    int t;
+    for (t = 0; t < 2; t++, e = doomo_story_mg_b)
+        for (; e && e->name; e++)
+            if (e->id == id) return e;
+    return NULL;
+}
+/* --- end S4 --- */
+
 /* the only escaping address (ui_text_entry's callback): it only sets flags */
 static void te_cb(int ok) { M.te_done = 1; M.te_ok = (uint8_t)ok; }
 
