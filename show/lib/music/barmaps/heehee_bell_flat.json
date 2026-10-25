@@ -1,0 +1,28 @@
+{
+ "cue": "heehee_bell_flat",
+ "bpm": 120.0,
+ "meter": 4,
+ "bars": 2,
+ "sections": [
+  [
+   "A",
+   1,
+   2
+  ]
+ ],
+ "offset_smp": 0,
+ "frames_per_bar": 60.0,
+ "smp_per_bar": 96000.0,
+ "source": "mml:core/src/mml_heehee_jingle.c",
+ "bar_smp": [
+  0,
+  96000,
+  192000
+ ],
+ "bar_frame": [
+  0,
+  60,
+  120
+ ],
+ "named_notes": {}
+}
