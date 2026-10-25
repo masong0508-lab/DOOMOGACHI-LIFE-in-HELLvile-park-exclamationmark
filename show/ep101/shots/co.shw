@@ -103,7 +103,7 @@ shot co08 beat=e101_co_2 len=195 set=river_storybook px=1 look=crayon cut=CUT ma
   cam at=-48,0
   +0    cam to x=48 y=0 over=195 ease=LINEAR      # pan south 0.5 px/f (frame start -> end)
   actor fluffy who=fluffy kind=chibi at=96,64 face=R idle=on pose=fluffy_bob21
-  +0    move fluffy to=258,58 over=195 ; squash fluffy 141 over=195   # smaller with distance; never looks back
+  +0    move fluffy to=258,58 over=195                              # drifts away; never looks back (squash read as a flattened cloud: dropped)
   +0    fx embers at=160,30 n=18 seed=801 fade=+0..+150 ; sfx FX_SPARKLE gain=-18dB ; cc "[embers fizz]"
   +90   mx mingle_full mute 29                                  # MINGLE v2 refit: pass 3 beat 20.75, the Ab is heard, the Eb (beat 21) never is
   +119  mx mingle_full to -16dB over=2                          # the tail rings softer under the caption
@@ -191,7 +191,7 @@ shot co15 beat=e101_co_5 len=225 set=bandstand_banner:giggle px=1 look=pixel cut
   +61   pose mayor mayor_roll fps=30 ; sfx FX_ROLLER_2 ; show banner      # roll 2
   +76   show banner:bloom2 scale=1.25 ; sfx FX_WET_BLIP gain=+2dB ; fx paint_bloom at=140,83 n=12 seed=153
   +92   pose mayor mayor_roll fps=30 ; sfx FX_ROLLER_3 ; show banner      # roll 3
-  +107  show banner:bloom3 ; show drip ; sfx FX_WET_BLIP gain=+3dB ; fx paint_bloom at=140,83 n=16 seed=154   # biggest, RED (CANDY), red drip
+  +107  show banner:bloom2 ; show drip ; sfx FX_WET_BLIP gain=+3dB ; fx paint_bloom at=140,83 n=16 seed=154   # biggest, red drip (render pass: banner:bloom3 drew nothing on show.exe; bloom2 + the red drip until ART checks bloom3)
   note "the red is paint (D16); no BLOOD ramp in the cold open"
   +120  pose mayor mayor_whip_balloon ; show balloon ; pop balloon TWT_POP_EYE ; sfx FX_POP     # R13 topper: POP 4 f
   +128  sfx FX_TINK                                            # tied over the N
@@ -205,6 +205,7 @@ shot co16 beat=e101_co_5 len=40 set=bandstand_banner:topper px=1 look=pixel cut=
   cam at=0,0                                                  # frame ms; co18 is this exact frame
   actor mayor who=mayor kind=figure at=96,98 face=R idle=on pose=mayor_ladder_idle expr=EXPR_HAPPY
   +0    sfx FX_WINGS gain=-14dB loop=on
+  +0    show banner:bloom2                                    # render pass: the variant's banner:bloom3 draws nothing on show.exe (ART)
   +13   headturn mayor 32 5                                    # glance south toward the boards and the Wall
   +27   freeze mayor 13 ; stop FX_WINGS ; cc "[the wings stop]"   # idle clock + wings stop; the silence is the cue
   ad "He glances toward the boarded-up half and the Wall, and freezes."
@@ -218,6 +219,7 @@ end
 shot co18 beat=e101_co_5 len=136 set=bandstand_banner:turned px=1 look=pixel cut=CUT matte=open base=co16@+39 scene=co_dawn
   change prop balloon.state=wall                                   # the ONE change (COMP-ONECHANGE): the balloon faces the Wall
   +0    thaw mayor ; amb AMB_dawn_birds on gain=-24dB
+  +0    show banner:bloom2                                    # render pass: see co16
   +2    sfx FX_BALLOON_CREAK                                  # a small sound 2 f after the cut
   +8    headturn mayor 32 2                                    # R8: his head slides to it
   +21   pose mayor mayor_reach_turn ; show balloon ; sfx FX_BALLOON_SQUEAK   # R13: turns it back to face the town

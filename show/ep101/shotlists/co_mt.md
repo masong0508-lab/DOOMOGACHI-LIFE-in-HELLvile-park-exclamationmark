@@ -13,6 +13,19 @@ Columns: **id** · **f** (frames at 30 fps) · **TC in** · **set[:variant]** (s
 
 ## TODO (engine features this segment needs; re-check after every fetch)
 
+**RENDER PASS 1 (Oct 25 evening, show.exe built from origin 1b18d11):** all 37 shots (co01-co21, mt01-mt03b-mt13, ec1o/ec1i; 4,800 f) compile with 0 errors and render (6-9 ms/frame); WIP picture `show_out/staging/co_mt/co_mt_x3_WIP.mp4`, sheets `show_out/staging/co_mt/<shot>_sheet.png`.
+Changes this pass: MT beat rows moved into rundown.shw on the bar map; every `@bar:` anchor is an explicit +N (the compiler's midi bar map gives 60 f/bar); mt03 split into mt03 + mt03b (8 actors max); prop motion (rollers, logos, the rear, the egg) restaged as show/hide + fx + shake; `eyes` -> headturn; co20's paw is a Nana actor with the `nana_paw_tuck` pose; co16/co18/co15 use banner:bloom2 (bloom3 draws nothing); ec2/ec3 parked in shots/pending/ (continuity D1).
+Measured motion (diff of consecutive frames): only co03, co08, co13, mt05 have no static run over 12 f. BLOCKED, not fixable in .shw:
+- [ ] **ENGINE lane 2 picture blob not bound in show.exe** (`show_l2_bind/events/draw` is never called): no `cam to/pan/drift/whip` moves, no `super`/`sign`/`card` text, no `fx` particles, no strokes `reveal`/boil, no `fade`, no `pal` lerps, no timed `show`/`hide` of props (mt02 logos, mt08 candles, co05 bowls, co20 lamp/tag), no `hidden` on actors (mt03 cast visible from +0). This is most of the segment's motion.
+- [ ] `pose` dropped by emit.py (known): co04/co06/co08 Fluffy bob, co15/co18 Mayor flipbooks, co20 paw (full chibi Nana shows instead of the paw: re-check when poses land).
+- [ ] ambient set layers (`amb`) not drawn on PS1 (known): every set's sway/fireflies/clouds.
+- [ ] px=2 storybook plates draw at px=1 and tile (co01, co03, co05 show a seam at x 256).
+- [ ] frame 0 of co08 and co20 has a black rectangle over the lower-left (first-frame VRAM upload).
+- [ ] co19 crowds without a lane path (`from=` + `dy=`) do not show; fountain_plaza has no `path` (ART: add `path plaza_walk`/`lanterns`).
+- [ ] ART: `banner:bloom3` (bandstand_banner) draws nothing; variants topper/turned use it.
+- [ ] `show sheet` crashes (`review/sheet.py:54`, `g[0]` on an int); sheets made with ffmpeg tile instead.
+- [ ] overworld (mt01/mt04/mt07) and VIEW3D (mt09) hosts: mt01 shows the crane but static for 236 f; mt09 HUD/gore switch/lens gibs await lane 3 grammar.
+
 - [ ] **MINGLE v2 (Oct 25, creator):** `mingle_box`/`mingle_thin` are replaced by `mingle_full` (pad1, 150 bpm, 3 passes) and `mingle_interrupt` (pad1interrupt). Shot-level refits in co.shw: co08 mute moved +75 -> +90 (pass 3 beat 20.75, the Eb is the muted note), soften +104 -> +119; co11 mute 26/hold removed (the interrupt phrase cuts itself off ~co11 +170); `co12_hum` (the interrupt phrase hummed, 9.5 s) now pre-laps from co11 +186 so its Ab lands co12 +105 and stops at +120 as before. Table rows below still describe the old 96 bpm cue.
 Status 2026-10-25 (origin 8505a78): no compiler (`show compile`), no player, no `show.exe` on origin yet;
 README has no "Staging reference" section yet. Everything below is written to spec §5-§6 and waits.
