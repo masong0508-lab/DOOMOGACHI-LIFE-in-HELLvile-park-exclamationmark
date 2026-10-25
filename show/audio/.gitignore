@@ -1,0 +1,11 @@
+# binaries and outputs never go in git (spec §10.7): samples and models are in the vault
+assets/
+.cache/
+demo/out/
+__pycache__/
+*.wav
+*.flac
+*.mp3
+*.npz
+*.onnx
+*.bin

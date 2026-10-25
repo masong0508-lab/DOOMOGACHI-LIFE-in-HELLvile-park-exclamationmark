@@ -1,0 +1,57 @@
+# show/series/looks/crowds.shw - crowd K-looks for 101 (ART track).
+#
+# SHOW_ENGINE_SPEC.md sec.8.5: a crowd draws K unique looks (K <= 48) many
+# times at different positions and flips.  A kset names those K looks; the
+# shot's crowd block picks one:
+#     crowd plaza looks=kset:giggle_adults n=150 kind=chibi age=adult ...
+# Members are the game's own citizens (roster ids, the 500 lovely citizens of
+# Hillvile and the far side's 500), show looks (look:<id>), or seeds for the
+# game's resident_randomize_look() (gen=a..b), which showtk.art.cast.lookdata runs
+# on the host so every LOOK chunk is fixed bytes.  Every kset declares its
+# age (STD-AGE); an adult kset holds no KID or TEEN citizen, a child kset
+# only kids who pass the kid-look check (hard limit 3).
+#
+# The named cast (Mayor, Nana, Pip, Fuzz, Bonejangles, Bloom, Steamy, Kevin,
+# Hattie, Lulla, Mascotty, Grampy, Rivet, Sunny) is never in a kset: a crowd
+# never doubles a character who is also on stage.
+
+# The whole Giggle (1-04..1-13, 2-03/2-04 stampede, 4-05, 4-08): 40 Hillvile
+# adults, one of every kind of critter-folk the roster has, round-robin.
+kset giggle_adults age=adult note="the Midsummer Giggle: 40 Hillvile adults, every species"
+  looks=roster:3,roster:4,roster:6,roster:7,roster:9,roster:10,roster:12,roster:14,roster:15,roster:17
+  looks=roster:19,roster:20,roster:21,roster:24,roster:26,roster:28,roster:29,roster:31,roster:32,roster:34
+  looks=roster:37,roster:38,roster:39,roster:52,roster:53,roster:60,roster:63,roster:67,roster:73,roster:82
+  looks=roster:85,roster:97,roster:112,roster:196,roster:198,roster:295,roster:304,roster:374,roster:413,roster:425
+end
+
+# CO-6 dawn: citizens stringing lanterns round the fountain plaza (Mascotty
+# perfectly still among them is her own actor).
+kset plaza_dawn age=adult note="CO-6 lantern stringers"
+  looks=roster:4,roster:6,roster:19,roster:20,roster:28,roster:29,roster:53,roster:60,roster:63,roster:85,roster:97,roster:304
+end
+
+# 1-06 Hattie's tent: the snort-laugh ripple (w_tent).
+kset tent_crowd age=adult note="1-06 Hattie's tent audience"
+  looks=roster:3,roster:7,roster:10,roster:14,roster:15,roster:24,roster:31,roster:38,roster:39,roster:52,roster:73,roster:413
+end
+
+# 1-09 the bake tent, the bake-off crowd.
+kset bakeoff_crowd age=adult note="1-09 bake-off onlookers"
+  looks=roster:4,roster:9,roster:12,roster:17,roster:21,roster:26,roster:28,roster:32,roster:34,roster:37
+  looks=roster:60,roster:67,roster:82,roster:112,roster:198,roster:425
+end
+
+# 1-07 Miss Lulla's craft tent: "eleven small children", KID, background, the
+# filter's softest pastels; the fog never reaches them.  Roster kids of
+# Hillvile who pass the kid-look check (Wobbles and Puff Jr wear MOUTH_LIPSTICK
+# in the roster and Wafer a TOP_PRIEST, so they are not cast here).
+kset lulla_kids age=child note="1-07 the daycare kids (KID, background only)"
+  looks=roster:18,roster:75,roster:122,roster:126,roster:166,roster:174,roster:192,roster:207,roster:326,roster:364,roster:433
+end
+
+# MT-3 the main title's mirror run at the Wall, the Hellvile half as
+# silhouettes only (and any far-side crowd in 101): 16 Hellvile adults.
+kset hellvile_silhouettes age=adult note="MT-3 far-side runners, silhouettes only in 101"
+  looks=roster:500,roster:502,roster:503,roster:504,roster:505,roster:507,roster:516,roster:518
+  looks=roster:523,roster:527,roster:534,roster:536,roster:547,roster:559,roster:569,roster:588
+end

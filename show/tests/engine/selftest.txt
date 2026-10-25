@@ -1,0 +1,3 @@
+# selftest.txt - run show_selftest.c (AT1.3): 20 looks, one per frame, then the summary
+wait 26
+shot selftest_after
