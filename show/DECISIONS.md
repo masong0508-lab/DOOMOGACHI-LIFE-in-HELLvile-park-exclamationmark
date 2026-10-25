@@ -174,3 +174,8 @@ Each names the default taken and where to change it.
 - co_mt: timed prop states are written as `+N show <prop>[:<state>]` / `hide <prop>` (proposed SOP_PROP_STATE); fallback is base= + one change per state.
 - WP10.5 (AUDIO): ep101/cues.shw spots all 60 beats (99 mx ops). Where the beat sheet gives a rule, not a frame, the time is a marked `choice:`. Level ladder vs unity: theme 0 dB, stings -3..-6, underscore -6..-10, diegetic -8..-14, beds -16. The cute HOOK in 3-01 is restarted every 8 bars (384 f) on the 150 grid; insert_doom is one 61-bar render with bars 26-50 muted for 3-04 (re-entry bar 51.1 = 3-05 frame 0). Theme is still from scratchpad theme/final (docs/show/theme/ not on origin yet); swapping is a file drop.
 - lane 2 (picture): text/strokes/camera/fx shot data travels as one PIC1 blob per shot (show_l2_bind) until lane 1's chunk API lands; ops 0x0100-0x01FF are lane 2's.
+
+## CONTINUITY (ep101 integration), 2026-10-25
+- continuity D1: one design for all three eyecatch pairs = co_mt's ec1/ec2/ec3.shw (Mascotty `gen:mascotty_tiny(h=8)` by the banner pole, same depth). a2 drops a2_56-57 + `s_ec2out_bubble`, a3 drops a3s38-39 + `s_ec3out`/`s_ec3in`; then episode.shw includes ec2.shw/ec3.shw and strings/co_mt.shw. Until then the a2/a3 versions stay (no doubled frames).
+- continuity D2: every lantern stays dark from 2-01 to the end of Act Four (script 3-01 "dark since nine"); the rite candles and the 4-08 firework are the light. ART's `bandstand:torn/rite/night` need the lanterns-out states.
+- continuity: strings files not included by their own shots file are included from episode.shw ahead of the shots (a3, a4 now; co_mt after D1).
