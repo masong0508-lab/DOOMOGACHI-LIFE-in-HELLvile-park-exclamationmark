@@ -135,3 +135,4 @@ Each names the default taken and where to change it.
 - co_mt: MT-5 rots a replay of the mt01 crane (no child), never the cast pop-in (Pip is in it).
 - co_mt: beat rows (`act`/`beat`) live at the top of each shot file, since episode.shw is a plain include list.
 - co_mt: timed prop states are written as `+N show <prop>[:<state>]` / `hide <prop>` (proposed SOP_PROP_STATE); fallback is base= + one change per state.
+- lane 2 (picture): text/strokes/camera/fx shot data travels as one PIC1 blob per shot (show_l2_bind) until lane 1's chunk API lands; ops 0x0100-0x01FF are lane 2's.

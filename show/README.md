@@ -151,3 +151,42 @@ ART `art/`, `showtk/art/`, `series/cast.shw`, `acting.shw`, `looks/`, `sets/`.
 Everyone appends to `DECISIONS.md` and `DEFERRED.md`. Binaries, renders,
 models and audio are never committed (`show/.gitignore`); they live in the
 vault and the scratch dirs.
+
+## Staging reference: picture (ENGINE lane 2: WP5 planes, WP7 text, WP8 camera/FX)
+
+Engine: `show/engine/show_{cam,fx,strokes,tilemap,text,l2,font_child}.c`, headers in
+`show/include/show/`. Compiler side: `show/tools/showtk/picture/` (camera.py, fx.py,
+strokes.py, tilemap.py, text.py, pxt.py, bake.py, lints.py, blob.py). Each module's
+docstring is the full grammar; the summary:
+
+**Camera** (setup `cam at=X,Y [scale=S]`, `cam drift dx=R [dy=R]`; timed `+T cam to x= y= scale= over=F ease=`,
+`cam pan dx=R`, `cam creep dx=R ramp=13`, `cam whip L|R over=6`, `cam crane dy=D over=F`, `cam stop`).
+Planes take `par=P` (Q16 parallax), `scale` and `matte=open|letterbox`; drift is exact (no accumulated error).
+
+**Strokes** (crayon register): in a set `strokes <plane> boil=2 ... stroke <id> nib=<colour> w=2 path=...`;
+in a shot `+A reveal <stroke> over=+A..+B` (100 % on frame B), `+T stroke <id> show|hide`, `+T boil on|off every=2`.
+
+**Tilemap**: `plane <name> tilemap=gen:<plate>(...) par=P at=X,Y` (16x16 tiles, 128x128 atlas pages).
+
+**Text**: `+T super <string> style=type|pop|deadpan at=lower|title|top|X,Y [over=+A..+B|cps=N] [until=] [font=game|child_hand]`;
+`+T sign <string> on=<prop>`; `+T card tvma|act|title|text|black k=v`.
+
+**Effects**: `look crayon|pixel|sepia|lcd|hellify`; `+T iris_in|iris_out at=prop:<id> over=F [shape=heart] [r=R] [hold=end]`;
+`+T fade in|out over=F`; `+T flash <colour> <level16> <F>`; `+T shake SHK_*`; `+T pal PAL_SEPIA level over=F`;
+`+T wipe brick [dir=R] [hold=F] [out=on]`; `+T split [hold=60] [out=on]`; `+T dissolve over=13`.
+
+Example (co02-style):
+```
+look crayon boil=2
+cam at=0,0
+cam drift dx=0.25
++0  iris_in at=prop:bandstand over=13
++30 super "Every Midsummer night, the whole park had one party." style=type at=lower font=child_hand cps=12
++120 super "Now there's a different party." style=pop at=title
++200 iris_out at=prop:bandstand over=20 shape=heart r=40 hold=end
+```
+Tests: `PYTHONPATH=show/tools python3 -m pytest show/tests/engine/picture -m "not slow"`
+(host raster of the same C; AT5.1-5.3, AT7.1-7.2, AT8.1-8.3). Contact sheets:
+`python3 show/tests/engine/picture/make_sheets.py`. Until lane 1's shot loop lands, a shot
+reaches these modules as a "PIC1" blob (`show_l2_bind/events/draw`, see show_l2.h for the
+per-frame order); lane 1 binds that blob from the shot's .SHW chunk.
