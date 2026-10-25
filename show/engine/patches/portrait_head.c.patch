@@ -1,0 +1,22 @@
+--- a/core/src/portrait_head.c
++++ b/core/src/portrait_head.c
+@@ -7,6 +7,9 @@
+  */
+ #include "portrait_int.h"
+ #include "doomo/resident.h"
++#if DOOMO_SHOW
++extern int8_t portrait_show_mouth;      /* show/engine/show_actor.c; -1 = off */
++#endif
+ 
+ PHSpace phs;
+ 
+@@ -1390,6 +1393,9 @@
+     case EXPR_TALK: if (!(c->anim & 4)) st = st == MOUTH_BEAK ? st : MOUTH_O; break;
+     default: break;
+     }
++#if DOOMO_SHOW
++    if (portrait_show_mouth >= 0 && portrait_show_mouth < MOUTH_COUNT) st = portrait_show_mouth;  /* (d) */
++#endif
+     if (phs.h->lod == LOD_TINY) {
+         switch (st) {
+         case MOUTH_OPEN: case MOUTH_O: case MOUTH_BIG_GRIN: case MOUTH_VOID:

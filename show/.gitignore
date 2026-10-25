@@ -1,0 +1,25 @@
+# show/.gitignore - nothing built, rendered or downloaded is committed
+# (binaries live in the vault, hashes in git: spec 4.1, 10.7)
+build/
+/renders/
+/out/
+__pycache__/
+*.pyc
+.pytest_cache/
+# media and model binaries, wherever they land
+*.wav
+*.flac
+*.mp3
+*.ogg
+*.mkv
+*.mp4
+*.mov
+*.onnx
+*.bin
+*.cue
+*.exe
+*.elf
+*.xz
+*.tar
+*.raw
+*.vram
