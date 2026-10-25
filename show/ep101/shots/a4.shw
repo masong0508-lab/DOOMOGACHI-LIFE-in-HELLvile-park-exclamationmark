@@ -556,7 +556,7 @@ shot a4s38 beat=e101_4_08 len=375 set=launch_hill:night px=1 look=pixel cut=CUT 
   +165  headturn crowd:heads 64 4 ripple=0..3
   +180  fx sparks_side_by_side colors=pink,purple at=@wall_x n=24 seed=438
   +135     shake SHK_TAP    # motion: the impact lands
-  +234  say a4_08_mayor_01 mayor                              # MINGLE v2 refit: pre-lap (O.S.) so the Eb3 lands at a4s39 +111
+  +227  say a4_08_mayor_01 mayor mouth="hum"                   # HUMS ingest: the creator's take (9.54 s, unstretched) placed so its final Eb ends at a4s39 +138 (stop dead)
   +0    cam to scale=1.100 over=375 ease=OUT    # motion: insert push
   +0    cam pan dx=14.5 dy=8.2 over=375 ease=OUT    # motion: (centred on the frame)
 end

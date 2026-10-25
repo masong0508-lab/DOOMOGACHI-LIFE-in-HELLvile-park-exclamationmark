@@ -190,3 +190,17 @@ take = "rec:show/lib/takes/mayor/e101/a4_06_mayor_03_t1.flac"
 retime = "fit"   # speech 1.13 s / target 1.10 s
 sha256 = "44fa629a29195ce2bc45c4f8b2aac7e1e049aae8ed4fc11b6e5086b2f6fc6fd6"   # flac
 mouth = "show/ep101/mouth/a4_06_mayor_03_t1.mouth"
+
+# --- mayor hums (Oct 25, HUMS ingest): same clean chain, trimmed to 0.10 s lead / 0.03 s tail;
+# never pitch-corrected, quantized or stretched; placed in the shots by the stop point.
+[co12_hum]
+take = "rec:show/lib/takes/mayor/e101/co12_hum_t1.flac"
+retime = "take"   # hum 8.41 s; last note ends at co12 +120 (say at co11 +198)
+sha256 = "d5c0b8e6b1318044a30dd810cb4c4b440e0a091d27a4c7ba9c3dba62e8da8c96"   # flac
+mouth = "show/ep101/mouth/co12_hum_t1.mouth"
+
+[a4_08_mayor_01]
+take = "rec:show/lib/takes/mayor/e101/a4_08_mayor_01_t1.flac"
+retime = "take"   # hum 9.54 s; final Eb ends at a4s39 +138 (say at a4s38 +227)
+sha256 = "0bb6dd14ba7cacddf35cdefdb0321f0661dae056abd7696d041b91a02de72776"   # flac
+mouth = "show/ep101/mouth/a4_08_mayor_01_t1.mouth"

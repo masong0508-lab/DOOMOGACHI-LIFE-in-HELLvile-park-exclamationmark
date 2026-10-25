@@ -135,7 +135,7 @@ shot co11 beat=e101_co_4 len=330 set=banner_storybook:giggle px=1 look=crayon cu
   +100  super s_co11b style=pop at=lower until=+159
   +160  super s_co11c style=pop at=lower until=+239
   +240  super s_co11d style=deadpan at=lower until=end
-  +186  say co12_hum mayor mouth="hum"                         # MINGLE v2 refit: pre-lap (O.S.); the box's interrupt phrase has ended (~+170); the hum's Ab lands at co12 +105
+  +198  say co12_hum mayor mouth="hum"                         # HUMS ingest: the creator's take (8.41 s, his own swing, unstretched) placed so its last note ends at co12 +120 (stop dead)
   ad "Captions: Now there's a different party. Same night. Half a park. No fireworks."
 end
 
@@ -145,7 +145,7 @@ shot co12 beat=e101_co_5 len=150 set=bandstand_banner:giggle px=1 look=pixel cut
   cam at=0,0 scale=1.10                                       # matched to co11's end frame (scale 1.04 crayon = 1.10 here on the baseline)
   actor mayor who=mayor kind=figure at=96,98 face=R idle=on pose=mayor_ladder_roll    # up the ladder, roller in hand; wings on idle
   show drip:pink                                              # the drip (pink) on the wet G
-  # co12_hum pre-laps from co11 +186 (MINGLE v2, 150 bpm interrupt phrase hummed at written pitch, from middle C)
+  # co12_hum pre-laps from co11 +198 (MINGLE v2, 150 bpm interrupt phrase hummed at written pitch, from middle C)
   +0    amb AMB_dawn_birds on gain=-24dB
   +60   cam to x=0 y=0 scale=1.00 over=45 ease=OUT             # pull back +60..+105
   +120  stop co12_hum ; still mayor n=8                        # stops dead on the Mayor's note (Ab3, 15 f after its onset: the interrupt cut-off)
