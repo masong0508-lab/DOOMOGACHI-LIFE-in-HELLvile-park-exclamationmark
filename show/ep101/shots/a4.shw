@@ -12,6 +12,8 @@ shot a4s01 beat=e101_4_01 len=90 set=act_cards:act4 px=1 look=pixel cut=CUT matt
   +9    pop l6 TWT_POP_SMALL                            # the blank line pops in (8 f)
   +9    super s_a4_01_card style=deadpan at=prop:l6 until=end
   ad "The Mayor's clipboard. The next line reads 23:00, then nothing."
+  +0    cam to scale=1.100 over=90 ease=OUT    # motion: insert push
+  +0    cam pan dx=14.5 dy=8.2 over=90 ease=OUT    # motion: (centred on the frame)
 end
 
 shot a4s02 beat=e101_4_01 len=180 set=bandstand:rite px=1 look=pixel cut=CUT matte=open gore=CUTE
@@ -28,6 +30,8 @@ shot a4s02 beat=e101_4_01 len=180 set=bandstand:rite px=1 look=pixel cut=CUT mat
   +0    state bone possessed ; twitch bone on
   +0    amb AMB_night_air on gain=-34dB ; cc "[night air]"
   ad "The bandstand. Everyone frozen. Only the possessed skeleton twitches."
+  +0    cam to scale=1.060 over=180 ease=INOUT    # motion: crane-in reveal
+  +0    cam pan dx=9.1 dy=2.1 over=180 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a4s03 beat=e101_4_01 len=60 set=bandstand_cu:north_night px=2 look=pixel cut=CUT matte=open gore=CUTE
@@ -35,12 +39,16 @@ shot a4s03 beat=e101_4_01 len=60 set=bandstand_cu:north_night px=2 look=pixel cu
   +0    sfx FOL_breath_small gain=-22dB
   +4    say a4_01_nana_01 nana
   >+R13 take look_at nana n=30 turn=64                  # her eyes go to the Mayor
+  +0    cam to scale=1.080 over=60 ease=INOUT    # motion: slow push-in on the line
+  +0    cam pan dx=11.9 dy=6.7 over=60 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a4s04 beat=e101_4_01 len=45 set=bandstand_cu:north_night px=2 look=pixel cut=CUT matte=open gore=CUTE
   actor mayor who=mayor kind=bust at=80,60 face=L expr=EXPR_NEUTRAL idle=on
   +0    sfx FOL_wing_rustle_stop gain=-24dB
   +0    headturn mayor 16 6 ; still mayor               # looks at the sky, keeps looking
+  +0    cam to scale=1.060 over=45 ease=INOUT    # motion: crane-in reveal
+  +0    cam pan dx=9.1 dy=2.1 over=45 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a4s05 beat=e101_4_01 len=165 set=bandstand_cu:north_night px=2 look=pixel cut=CUT matte=open gore=CUTE
@@ -51,6 +59,12 @@ shot a4s05 beat=e101_4_01 len=165 set=bandstand_cu:north_night px=2 look=pixel c
   +57   pose pet lean_upside_down ; sfx FX_pet_blip_tiny gain=-30dB
   +70   say - sunny mouth="MOUTH_OPEN:0,MOUTH_SMALL:6,MOUTH_CLOSED:13"  # closes over 13 f
   nobutton
+  +19 headturn sunny 16 3    # motion:
+  +27 headturn sunny 240 4    # motion:
+  +76 headturn sunny 240 3    # motion:
+  +84 headturn sunny 16 4    # motion:
+  +0    cam to scale=1.080 over=165 ease=INOUT    # motion: slow push-in on the line
+  +0    cam pan dx=11.9 dy=6.7 over=165 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a4s06 beat=e101_4_01 len=60 set=bandstand:rite px=1 look=pixel cut=CUT matte=open gore=CUTE
@@ -58,6 +72,8 @@ shot a4s06 beat=e101_4_01 len=60 set=bandstand:rite px=1 look=pixel cut=CUT matt
   change candle3.art=blue
   +0    sfx FOL_flame_flutter gain=-28dB
   +13   button ; change candle3.art=lean                # the bead leans toward the Wall
+  +0    cam to scale=2.200 over=60 ease=OUT    # motion: insert push
+  +0    cam pan dx=7.2 dy=4.1 over=60 ease=OUT    # motion: (centred on the frame)
 end
 
 # ---- 4-02 (900 f) ----
@@ -72,6 +88,10 @@ shot a4s07 beat=e101_4_02 len=285 set=bandstand:rite px=1 look=pixel cut=CUT mat
   +70   headturn pip 64 4                                # Fuzz
   +150  say a4_02_pip_01 pip
   +241  say a4_02_pip_02 pip                             # R13 after "rain" (provisional: @a4_02_pip_01.end+R13)
+  @a4_02_pip_01.start+6 take beat_gesture pip    # motion:
+  @a4_02_pip_02.start+6 take beat_gesture pip    # motion:
+  +0    cam to scale=1.575 over=285 ease=INOUT    # motion: push in, drifting toward the speaker
+  +0    cam pan dx=0.1 dy=2.9 over=285 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a4s08 beat=e101_4_02 len=165 set=bandstand:rite px=1 look=pixel cut=CUT matte=open gore=CUTE
@@ -85,6 +105,8 @@ shot a4s08 beat=e101_4_02 len=165 set=bandstand:rite px=1 look=pixel cut=CUT mat
   +45   mx * mute 999 ; amb AMB_night_air off            # MUTE ALL
   +50   say a4_02_pip_03 pip                             # R5 after MUTE ALL; dry, unprocessed
   +60   pose pip pip_point
+  +0    cam to scale=1.838 over=165 ease=INOUT    # motion: push in, drifting toward the speaker
+  +0    cam pan dx=-0.6 dy=2.5 over=165 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a4s09 beat=e101_4_02 len=75 set=bandstand_cu:north_night px=2 look=pixel cut=CUT matte=open gore=CUTE
@@ -94,6 +116,8 @@ shot a4s09 beat=e101_4_02 len=75 set=bandstand_cu:north_night px=2 look=pixel cu
   +13   mx true_name start gain=-16dB
   +13   take unpossess bone                              # purple drains top to bottom over 21 f; sockets go dark
   +34   twitch bone off
+  +0    cam to scale=1.060 over=75 ease=INOUT    # motion: crane-in reveal
+  +0    cam pan dx=9.1 dy=2.1 over=75 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a4s10 beat=e101_4_02 len=225 set=bandstand:rite px=1 look=pixel cut=CUT matte=open gore=CUTE
@@ -111,6 +135,8 @@ shot a4s10 beat=e101_4_02 len=225 set=bandstand:rite px=1 look=pixel cut=CUT mat
   +30   thaw fuzz ; thaw bloom ; thaw nana                # ripple 0-3 f from the ids (TIME-RIPPLE)
   +38   thaw mayor ; sfx FOL_wing_stutter gain=-22dB      # the Mayor R8 last
   +120  headturn fuzz 128 8 ; pose fuzz kneel_turn
+  +0    cam to scale=1.060 over=225 ease=INOUT    # motion: crane-in reveal
+  +0    cam pan dx=9.1 dy=2.1 over=225 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a4s11 beat=e101_4_02 len=150 set=bandstand_cu:steps px=2 look=pixel cut=CUT matte=open gore=CUTE
@@ -120,6 +146,8 @@ shot a4s11 beat=e101_4_02 len=150 set=bandstand_cu:steps px=2 look=pixel cut=CUT
   +40   pose pip hold_flops                              # holds Mr. Flops properly
   +130  mx choir_soft stop over=20
   nobutton                                               # the name never gets one (GAG_BIBLE sec.6.22)
+  +0    cam to scale=1.060 over=150 ease=INOUT    # motion: crane-in reveal
+  +0    cam pan dx=9.1 dy=2.1 over=150 ease=INOUT    # motion: (centred on the frame)
 end
 
 # ---- 4-03 (1350 f) PROTECTED HOLD 2 of 3 ----
@@ -130,6 +158,8 @@ shot a4s12 beat=e101_4_03 len=60 set=bandstand_cu:north_night px=2 look=pixel cu
   +0    squash bone 240 over=10
   +10   squash bone 256 over=6
   +30   show puff ; pose puff out ; mx goodbye start gain=-18dB
+  +0    cam to scale=1.060 over=60 ease=INOUT    # motion: crane-in reveal
+  +0    cam pan dx=9.1 dy=2.1 over=60 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a4s13 beat=e101_4_03 len=360 set=sealed_gate:night px=1 look=pixel cut=CUT matte=open gore=CUTE
@@ -137,6 +167,8 @@ shot a4s13 beat=e101_4_03 len=360 set=sealed_gate:night px=1 look=pixel cut=CUT 
   prop  chalk art=text:s_a4_03_chalk at=70,168 plane=wall
   +0    move puff to=@keyhole over=+0..+345 tw=TW_LINEAR  # constant speed; south, away from the steps
   +0    fx chalk_dust at=follow:puff n=1/4f seed=413
+  +0    cam to scale=1.060 over=360 ease=INOUT    # motion: track the action
+  +0    cam pan dx=15.1 dy=5.1 over=360 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a4s14 beat=e101_4_03 len=315 set=bandstand_cu:steps px=2 look=pixel cut=CUT matte=open gore=CUTE
@@ -147,6 +179,8 @@ shot a4s14 beat=e101_4_03 len=315 set=bandstand_cu:steps px=2 look=pixel cut=CUT
   +34   squash bone 256 over=6
   +60   say a4_03_bone_01 bonejangles
   +105  say a4_03_bone_02 bonejangles                     # R13 after "...Clack?"
+  +0    cam to scale=1.080 over=315 ease=INOUT    # motion: slow push-in on the line
+  +0    cam pan dx=11.9 dy=6.7 over=315 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a4s15 beat=e101_4_03 len=333 set=bandstand:night px=1 look=pixel cut=CUT matte=open gore=CUTE
@@ -159,6 +193,9 @@ shot a4s15 beat=e101_4_03 len=333 set=bandstand:night px=1 look=pixel cut=CUT ma
   +68   sfx FOL_mallet_clack gain=-16dB
   +75   mx goodbye stop over=13 ; mx hook_major_ribs start gain=-12dB ; pose bone mallet_play fps=15
   +126  say a4_03_bone_03 bonejangles                     # 4 bars at 140 bpm, C major; "pink" rings
+  @a4_03_bone_03.start+6 take beat_gesture bone    # motion:
+  +0    cam to scale=1.312 over=333 ease=INOUT    # motion: push in, drifting toward the speaker
+  +0    cam pan dx=11.0 dy=3.4 over=333 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a4s16 beat=e101_4_03 len=282 set=sealed_gate:night px=1 look=pixel cut=CUT matte=open gore=CUTE
@@ -171,6 +208,12 @@ shot a4s16 beat=e101_4_03 len=282 set=sealed_gate:night px=1 look=pixel cut=CUT 
   +162  label L_HOLD                                      # HOLD 4 s, idles only
   nobutton
   tag shot rear
+  @a4_03_clink_01.start+4 headturn bone 24 3    # motion:
+  @a4_03_clink_01.start+13 blink bone    # motion:
+  @a4_03_clink_01.start+21 take react_small bone    # motion:
+  @a4_03_clink_01.start+29 headturn bone 232 4    # motion:
+  +0    cam to scale=1.050 over=282 ease=INOUT    # motion: push in, drifting toward the speaker
+  +0    cam pan dx=2.6 dy=4.3 over=282 ease=INOUT    # motion: (centred on the frame)
 end
 
 # ---- 4-04 (600 f) ----
@@ -179,6 +222,10 @@ shot a4s17 beat=e101_4_04 len=222 set=bandstand_cu:steps px=2 look=pixel cut=CUT
   +0    sfx FOL_candle_fizz gain=-28dB ; twitch fuzz on   # paws shake a little
   +90   say a4_04_fuzz_01 fuzz
   +156  say a4_04_fuzz_02 fuzz ; expr fuzz EXPR_HAPPY     # the smallest smile
+  @a4_04_fuzz_01.start+6 headturn fuzz 16 3    # motion:
+  @a4_04_fuzz_01.start+14 headturn fuzz 240 4    # motion:
+  +0    cam to scale=1.080 over=222 ease=INOUT    # motion: slow push-in on the line
+  +0    cam pan dx=11.9 dy=6.7 over=222 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a4s18 beat=e101_4_04 len=378 set=bandstand:night px=1 look=pixel cut=CUT matte=open gore=CUTE
@@ -187,12 +234,14 @@ shot a4s18 beat=e101_4_04 len=378 set=bandstand:night px=1 look=pixel cut=CUT ma
   actor sunny who=sunny kind=figure at=60,140 face=L idle=on
   actor pet   who=pet   kind=sprite at=60,108 idle=on
   +0    fol FOL_soft_step
-  +40   walk sunny to=34 over=30
+  +40   take walk_to sunny to=34 over=30    # motion: walk cycle
   +78   pose sunny hug ; squash sunny 230 over=6 ; fol FOL_plush_pff ; cc "[soft plush hug]"
   +84   mx fuzz_amen start gain=-14dB                     # 2 bars, half tempo
-  +78   expr fuzz EXPR_SHOCK ; still fuzz
+  +78   expr fuzz EXPR_SHOCK ; pose fuzz take_big ; still fuzz    # motion: the take (anticipation, stretch, settle)
   +91   thaw fuzz ; pose fuzz hug_back
   +104  button ; pose fuzz candle_arm_out                 # flame held well clear of the plush
+  +0    cam to scale=2.120 over=378 ease=INOUT    # motion: track the action
+  +0    cam pan dx=-1.5 dy=2.5 over=378 ease=INOUT    # motion: (centred on the frame)
 end
 
 # ---- 4-05 (750 f) ----
@@ -208,6 +257,9 @@ shot a4s19 beat=e101_4_05 len=288 set=bandstand:night px=1 look=pixel cut=CUT ma
   +192  say a4_05_mayor_03 mayor
   +243  headturn crowd:giggle 64 3 ripple=0..3            # every head turns to the boards
   +258  headturn crowd:giggle 192 2 ripple=0..1           # and snaps back, 2x
+  @a4_05_mayor_03.start+6 take beat_gesture mayor    # motion:
+  +0    cam to scale=1.050 over=288 ease=INOUT    # motion: push in, drifting toward the speaker
+  +0    cam pan dx=2.6 dy=4.3 over=288 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a4s20 beat=e101_4_05 len=84 set=bandstand_cu:north_night px=2 look=pixel cut=CUT matte=open gore=CUTE
@@ -215,6 +267,10 @@ shot a4s20 beat=e101_4_05 len=84 set=bandstand_cu:north_night px=2 look=pixel cu
   +0    say a4_05_mayor_04 mayor ; sfx FOL_pen_click gain=-20dB
   +42   pose mayor clipboard_lift
   +66   pose mayor sheet_flip ; sfx FOL_paper_flip gain=-18dB
+  @a4_05_mayor_04.start+6 headturn mayor 16 3    # motion:
+  @a4_05_mayor_04.start+14 headturn mayor 240 4    # motion:
+  +0    cam to scale=1.080 over=84 ease=INOUT    # motion: slow push-in on the line
+  +0    cam pan dx=11.9 dy=6.7 over=84 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a4s21 beat=e101_4_05 len=69 set=act_cards:act4 px=1 look=pixel cut=CUT matte=open gore=CUTE insert
@@ -222,6 +278,8 @@ shot a4s21 beat=e101_4_05 len=69 set=act_cards:act4 px=1 look=pixel cut=CUT matt
   +0    sfx FOL_paper_settle gain=-24dB
   +0    sign s_a4_05_draft on=board                       # 69 f: reading hold (GAG_BIBLE sec.4.13)
   waive TIME-READ "69 f is the script's reading hold for 6 words (0.3 s/word + 0.5 s)"
+  +0    cam to scale=1.100 over=69 ease=OUT    # motion: insert push
+  +0    cam pan dx=14.5 dy=8.2 over=69 ease=OUT    # motion: (centred on the frame)
 end
 
 shot a4s22 beat=e101_4_05 len=42 set=bandstand_cu:north_night px=2 look=pixel cut=CUT matte=open gore=CUTE
@@ -243,6 +301,8 @@ shot a4s24 beat=e101_4_05 len=66 set=act_cards:act4 px=1 look=pixel cut=CUT matt
   +0    sfx FOL_pen_scratch gain=-20dB
   +13   button ; reveal home over=+13..+33
   +40   show stamp ; pop stamp TWT_POP_SMALL ; sfx FX_stamp_thunk gain=-14dB
+  +0    cam to scale=1.100 over=66 ease=OUT    # motion: insert push
+  +0    cam pan dx=14.5 dy=8.2 over=66 ease=OUT    # motion: (centred on the frame)
 end
 
 shot a4s25 beat=e101_4_05 len=180 set=bandstand:torn px=1 look=pixel cut=CUT matte=open gore=CUTE
@@ -254,6 +314,8 @@ shot a4s25 beat=e101_4_05 len=180 set=bandstand:torn px=1 look=pixel cut=CUT mat
   +100  walk pip to=150 over=20 ; pose pip climb_crate
   +130  pose pip sit_crate
   +150  mx mayor_motif stop over=30
+  +0    cam to scale=1.060 over=180 ease=INOUT    # motion: track the action
+  +0    cam pan dx=15.1 dy=5.1 over=180 ease=INOUT    # motion: (centred on the frame)
 end
 
 # ---- 4-06 (1050 f) ----
@@ -267,11 +329,41 @@ shot a4s26 beat=e101_4_06 len=222 set=bandstand:torn px=1 look=pixel cut=CUT mat
   actor pet   who=pet   kind=sprite at=88,124 idle=on
   actor mayor who=mayor kind=figure at=170,110 face=L idle=on
   +0    mx pip_motif start gain=-16dB                     # pizzicato, slower
-  +0    walk mayor to=176 over=60
+  +0    take walk_to mayor to=176 over=60    # motion: walk cycle
   +90   say a4_06_pip_01 pip
   +128  say a4_06_pip_02 pip                              # R8
   +174  say a4_06_pip_03 pip                              # R13
   +210  mx pip_motif stop over=12                         # MUSIC OUT
+  @a4_06_pip_01.start+6 take beat_gesture pip    # motion:
+  @a4_06_pip_02.start+6 take beat_gesture pip    # motion:
+  @a4_06_pip_03.start+6 take beat_gesture pip    # motion:
+  @a4_06_pip_01.start+4 headturn nana 24 3    # motion:
+  @a4_06_pip_01.start+13 blink nana    # motion:
+  @a4_06_pip_03.start+13 blink nana    # motion:
+  @a4_06_pip_03.start+21 take react_small nana    # motion:
+  @a4_06_pip_03.start+29 headturn nana 232 4    # motion:
+  @a4_06_pip_01.start+4 headturn fuzz 24 3    # motion:
+  @a4_06_pip_01.start+13 blink fuzz    # motion:
+  @a4_06_pip_03.start+13 blink fuzz    # motion:
+  @a4_06_pip_03.start+21 take react_small fuzz    # motion:
+  @a4_06_pip_03.start+29 headturn fuzz 232 4    # motion:
+  @a4_06_pip_01.start+4 headturn bone 24 3    # motion:
+  @a4_06_pip_01.start+13 blink bone    # motion:
+  @a4_06_pip_03.start+13 blink bone    # motion:
+  @a4_06_pip_03.start+21 take react_small bone    # motion:
+  @a4_06_pip_03.start+29 headturn bone 232 4    # motion:
+  @a4_06_pip_01.start+4 headturn sunny 24 3    # motion:
+  @a4_06_pip_01.start+13 blink sunny    # motion:
+  @a4_06_pip_03.start+13 blink sunny    # motion:
+  @a4_06_pip_03.start+21 take react_small sunny    # motion:
+  @a4_06_pip_03.start+29 headturn sunny 232 4    # motion:
+  @a4_06_pip_01.start+4 headturn pet 24 3    # motion:
+  @a4_06_pip_01.start+13 blink pet    # motion:
+  @a4_06_pip_03.start+13 blink pet    # motion:
+  @a4_06_pip_03.start+21 pop pet TWT_HOP1    # motion:
+  @a4_06_pip_03.start+29 headturn pet 232 4    # motion:
+  +0    cam to scale=1.575 over=222 ease=INOUT    # motion: push in, drifting toward the speaker
+  +0    cam pan dx=0.1 dy=2.9 over=222 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a4s27 beat=e101_4_06 len=228 set=bandstand_cu:north_night px=2 look=pixel cut=CUT matte=open gore=CUTE
@@ -284,6 +376,12 @@ shot a4s27 beat=e101_4_06 len=228 set=bandstand_cu:north_night px=2 look=pixel c
   +60   say a4_06_mayor_01 mayor
   +88   say a4_06_mayor_02 mayor
   +128  say a4_06_mayor_03 mayor ; expr mayor EXPR_HAPPY
+  @a4_06_mayor_01.start+6 headturn mayor 16 3    # motion:
+  @a4_06_mayor_01.start+14 headturn mayor 240 4    # motion:
+  @a4_06_mayor_02.start+6 headturn mayor 240 3    # motion:
+  @a4_06_mayor_02.start+14 headturn mayor 16 4    # motion:
+  +0    cam to scale=1.080 over=228 ease=INOUT    # motion: slow push-in on the line
+  +0    cam pan dx=11.9 dy=6.7 over=228 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a4s28 beat=e101_4_06 len=132 set=bandstand:torn px=1 look=pixel cut=CUT matte=open gore=CUTE
@@ -298,6 +396,13 @@ shot a4s28 beat=e101_4_06 len=132 set=bandstand:torn px=1 look=pixel cut=CUT mat
   +89   move pip to=114,156 over=4 ; fol FOL_small_step   # R13: one more, for Mr. Flops
   +102  button ; move nana to=106,156 over=6 ; fol FOL_small_step   # Nana takes one small step back too
   assert pip.x <= 114 @+93
+  @a4_06_pip_04.start+6 take beat_gesture pip    # motion:
+  @a4_06_pip_04.start+4 headturn mayor 24 3    # motion:
+  @a4_06_pip_04.start+13 blink mayor    # motion:
+  @a4_06_pip_04.start+21 take react_small mayor    # motion:
+  @a4_06_pip_04.start+29 headturn mayor 232 4    # motion:
+  +0    cam to scale=1.050 over=132 ease=INOUT    # motion: push in, drifting toward the speaker
+  +0    cam pan dx=2.6 dy=4.3 over=132 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a4s29 beat=e101_4_06 len=228 set=bandstand:torn px=1 look=pixel cut=CUT matte=open gore=CUTE
@@ -310,6 +415,8 @@ shot a4s29 beat=e101_4_06 len=228 set=bandstand:torn px=1 look=pixel cut=CUT mat
   +60   fx dust at=prop:crate n=12 seed=429 ; sfx FOL_dust_puff gain=-22dB
   +100  show rocket ; pose mayor lift_rocket
   +150  pose mayor blow_dust ; pose rocket pink
+  +0    cam to scale=1.590 over=228 ease=INOUT    # motion: crane-in reveal
+  +0    cam pan dx=6.1 dy=0.4 over=228 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a4s30 beat=e101_4_06 len=150 set=bandstand_cu:north_night px=2 look=pixel cut=CUT matte=open gore=CUTE
@@ -318,6 +425,8 @@ shot a4s30 beat=e101_4_06 len=150 set=bandstand_cu:north_night px=2 look=pixel c
   +0    sfx FOL_candle_fizz gain=-26dB
   +20   pose fuzz offer_candle
   +60   pose mayor take_candle ; pose fuzz paws_empty
+  +0    cam to scale=1.060 over=150 ease=INOUT    # motion: crane-in reveal
+  +0    cam pan dx=9.1 dy=2.1 over=150 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a4s31 beat=e101_4_06 len=90 set=bandstand:night px=1 look=pixel cut=CUT matte=open gore=CUTE
@@ -329,9 +438,9 @@ shot a4s31 beat=e101_4_06 len=90 set=bandstand:night px=1 look=pixel cut=CUT mat
   actor fuzz  who=fuzz  kind=figure at=116,154 face=R idle=on
   actor bone  who=bonejangles kind=figure at=60,154 face=R idle=on
   +0    cam pan dx=0.3 ; fol FOL_footsteps_group
-  +0    walk mayor to=260 over=90 ; walk sunny to=236 over=90 ; walk nana to=214 over=90
-  +4    walk fuzz to=196 over=86 ; walk bone to=140 over=86
-  +10   walk pip to=172 over=80                           # four steps back
+  +0    walk mayor to=260 over=90 ; pose sunny walk ; walk sunny to=236 over=90 ; pose nana walk ; walk nana to=214 over=90    # motion: walk cycle
+  +4    pose fuzz walk ; walk fuzz to=196 over=86 ; pose bone walk ; walk bone to=140 over=86    # motion: walk cycle
+  +10   pose pip walk ; walk pip to=172 over=80                           # four steps back    # motion: walk cycle
 end
 
 # ---- 4-07 (360 f) ----
@@ -357,6 +466,8 @@ shot a4s32 beat=e101_4_07 len=360 set=joke_graveyard:night px=1 look=pixel cut=C
   +210  headturn sunny 192 6                              # the back of his hat
   waive TIME-READ "joke graves are texture; only Huggins is held (>=60 f)"
   note "No shot links the stone to the sky (Fluffy/Vapula reveal protected)."
+  +0    cam to scale=1.060 over=360 ease=INOUT    # motion: track the action
+  +0    cam pan dx=15.1 dy=5.1 over=360 ease=INOUT    # motion: (centred on the frame)
 end
 
 # ---- 4-08 (1440 f) PROTECTED HOLD 3 of 3, NO BUTTON ----
@@ -376,6 +487,8 @@ shot a4s33 beat=e101_4_08 len=300 set=launch_hill:night px=1 look=pixel cut=CUT 
   +0    mx mayor_slow start gain=-16dB
   +60   move rocket to=176,128 over=20 ; pose mayor set_rocket
   +210  pose mayor light_fuse ; fol FOL_fuse_fsss ; cc "[fuse hisses]"
+  +0    cam to scale=1.060 over=300 ease=INOUT    # motion: track the action
+  +0    cam pan dx=15.1 dy=5.1 over=300 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a4s34 beat=e101_4_08 len=60 set=launch_hill:night px=1 look=pixel cut=CUT matte=open gore=CUTE
@@ -388,6 +501,9 @@ shot a4s34 beat=e101_4_08 len=60 set=launch_hill:night px=1 look=pixel cut=CUT m
   +26   pal PAL_PINK 3 over=8                             # luminance ramps over 8 f (Harding)
   +45   say a4_08_pip_01 pip
   tag shot gore_truth=no
+  +26      shake SHK_TAP    # motion: the impact lands
+  +0    cam to scale=1.050 over=60 ease=INOUT    # motion: push in, drifting toward the speaker
+  +0    cam pan dx=2.6 dy=4.3 over=60 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a4s35 beat=e101_4_08 len=180 set=launch_hill:night px=1 look=pixel cut=CUT matte=open gore=CUTE
@@ -401,6 +517,8 @@ shot a4s35 beat=e101_4_08 len=180 set=launch_hill:night px=1 look=pixel cut=CUT 
   end
   +0    sfx FX_sparkle_crackle gain=-28dB
   +0    tint TINT_PINK 2 ; fx light_ripple target=actors ripple=0..3 over=8
+  +0    cam to scale=1.590 over=180 ease=INOUT    # motion: crane-in reveal
+  +0    cam pan dx=6.0 dy=0.4 over=180 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a4s36 beat=e101_4_08 len=117 set=launch_hill:night px=2 look=pixel cut=CUT matte=open gore=CUTE
@@ -408,6 +526,8 @@ shot a4s36 beat=e101_4_08 len=117 set=launch_hill:night px=2 look=pixel cut=CUT 
   +0    sfx FX_sparkle_crackle gain=-32dB
   +30   look crayon mask=edges grain=12 boil=2 over=8     # he is nine; his face stays his own (GAG_BIBLE sec.8.7)
   +86   look pixel over=8
+  +0    cam to scale=1.060 over=117 ease=INOUT    # motion: crane-in reveal
+  +0    cam pan dx=9.1 dy=2.1 over=117 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a4s37 beat=e101_4_08 len=80 set=wall_split:night px=1 look=pixel cut=WIPE:brick matte=open gore=CUTE
@@ -418,6 +538,8 @@ shot a4s37 beat=e101_4_08 len=80 set=wall_split:night px=1 look=pixel cut=WIPE:b
   +70   fx brick_wipe close dir=RL courses=5 every=2
   +79   sfx FOL_trowel_tink gain=-18dB
   note "Hands and two bowls only. No faces. A held 60 f split, not an insert."
+  +0    cam to scale=1.060 over=80 ease=INOUT    # motion: crane-in reveal
+  +0    cam pan dx=9.1 dy=2.1 over=80 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a4s38 beat=e101_4_08 len=375 set=launch_hill:night px=1 look=pixel cut=CUT matte=open gore=CUTE
@@ -433,11 +555,19 @@ shot a4s38 beat=e101_4_08 len=375 set=launch_hill:night px=1 look=pixel cut=CUT 
   +135  pal PAL_PURPLE 2 over=8
   +165  headturn crowd:heads 64 4 ripple=0..3
   +180  fx sparks_side_by_side colors=pink,purple at=@wall_x n=24 seed=438
+  +135     shake SHK_TAP    # motion: the impact lands
+  +227  say a4_08_mayor_01 mayor mouth="hum"                   # HUMS ingest: the creator's take (9.54 s, unstretched) placed so its final Eb ends at a4s39 +138 (stop dead)
+  +0    cam to scale=1.100 over=375 ease=OUT    # motion: insert push
+  +0    cam pan dx=14.5 dy=8.2 over=375 ease=OUT    # motion: (centred on the frame)
 end
 
 shot a4s39 beat=e101_4_08 len=138 set=launch_hill:night px=2 look=pixel cut=CUT matte=open gore=CUTE
   actor mayor who=mayor kind=bust at=80,62 face=L expr=EXPR_NEUTRAL idle=on
-  +0    say a4_08_mayor_01 mayor ; hum mayor on note=mingle_box.plus1   # one note further than co12; stops dead
+  +0    hum mayor on note=mingle_full.plus_one_note           # the take started in a4s38; Eb3 at +111, held 27 f, stops dead at +138
+  +6    headturn mayor 16 3    # motion:
+  +14   headturn mayor 240 4    # motion:
+  +0    cam to scale=1.080 over=138 ease=INOUT    # motion: slow push-in on the line
+  +0    cam pan dx=11.9 dy=6.7 over=138 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a4s40 beat=e101_4_08 len=190 set=launch_hill:night px=1 look=pixel cut=CUT matte=open gore=CUTE
@@ -448,6 +578,8 @@ shot a4s40 beat=e101_4_08 len=190 set=launch_hill:night px=1 look=pixel cut=CUT 
   +120  iris_out at=prop:specks over=8 shape=heart hold=0 # 5 f close (compiler floor 8: see TODO)
   +125  fade out over=1
   nobutton
+  +0    cam to scale=1.100 over=190 ease=OUT    # motion: insert push
+  +0    cam pan dx=14.5 dy=8.2 over=190 ease=OUT    # motion: (centred on the frame)
 end
 
 # ============================== TAG "Morning" ==============================
@@ -460,6 +592,7 @@ shot a4s41 beat=e101_t_1 len=90 set=cottage:dawn px=1 look=pixel cut=FADE matte=
   +0    fade in over=13 ; mx home_box start gain=-14dB
   +12   pose key turn ; sfx FOL_key_click gain=-18dB
   +30   door open tw=TW_WOBBLE amp=34% ; sfx FX_bwobble gain=-14dB ; cc "[door wobbles like jelly]"
+  +0    world cam to punch=272 over=90 ease=INOUT    # motion: slow push in the room (ROOM host keyed camera)
 end
 
 shot a4s42 beat=e101_t_1 len=180 set=cottage:dawn px=1 look=pixel cut=CUT matte=open gore=CUTE
@@ -470,6 +603,7 @@ shot a4s42 beat=e101_t_1 len=180 set=cottage:dawn px=1 look=pixel cut=CUT matte=
   +60   walk sunny to=room:2,2 over=40 ; door close tw=TW_WOBBLE amp=34% ; sfx FX_bwobble gain=-20dB
   +110  pose sunny set_suitcase ; prop suitcase art=pxt:suitcase at=room:door_side ; fol FOL_soft_thud
   +123  button ; door wobble amp=20%                      # the shut door still wobbling
+  +0    world cam to punch=272 over=180 ease=INOUT    # motion: slow push in the room (ROOM host keyed camera)
 end
 
 shot a4s43 beat=e101_t_1 len=180 set=cottage:dawn px=1 look=pixel cut=CUT matte=open gore=CUTE
@@ -484,6 +618,7 @@ shot a4s43 beat=e101_t_1 len=180 set=cottage:dawn px=1 look=pixel cut=CUT matte=
   +90   move pet to=prop:shellL over=10 tw=TW_HOP ; sfx FX_pet_blip_tiny gain=-28dB
   +100  pose pet curl
   +122  face pet wall over=13                             # turns to face the window (13 f)
+  +0    world cam to punch=272 over=180 ease=INOUT    # motion: slow push in the room (ROOM host keyed camera)
 end
 
 shot a4s44 beat=e101_t_2 len=105 set=cottage:dawn px=1 look=pixel cut=CUT matte=open gore=CUTE
@@ -492,6 +627,7 @@ shot a4s44 beat=e101_t_2 len=105 set=cottage:dawn px=1 look=pixel cut=CUT matte=
   +15   door wobble amp=34% ; sfx FX_bwomp gain=-14dB
   +30   door wobble amp=34% ; sfx FX_bwomp gain=-14dB
   +60   door open tw=TW_WOBBLE amp=34% ; sfx FX_bwobble gain=-18dB
+  +0    world cam to punch=272 over=105 ease=INOUT    # motion: slow push in the room (ROOM host keyed camera)
 end
 
 shot a4s45 beat=e101_t_2 len=333 set=cottage:dawn px=1 look=pixel cut=CUT matte=open gore=CUTE
@@ -509,6 +645,7 @@ shot a4s45 beat=e101_t_2 len=333 set=cottage:dawn px=1 look=pixel cut=CUT matte=
   +189  show dish ; pose nana hold_out_dish
   +240  say t2_nana_01 nana
   +313  pose nana thumb_rim                               # R13 after; held R21
+  +0    world cam to punch=280 over=333 ease=INOUT    # motion: slow push in the room (ROOM host keyed camera)
 end
 
 shot a4s46 beat=e101_t_2 len=81 set=cottage:dawn px=2 look=pixel cut=CUT matte=open gore=CUTE insert
@@ -516,6 +653,7 @@ shot a4s46 beat=e101_t_2 len=81 set=cottage:dawn px=2 look=pixel cut=CUT matte=o
   actor pet who=pet kind=sprite at=prop:shellL idle=on pose=curl_facing_wall
   +0    sfx FOL_tiny_breath gain=-30dB
   +20   pose pet horn_nubs
+  +0    world cam to punch=272 over=81 ease=INOUT    # motion: slow push in the room (ROOM host keyed camera)
 end
 
 shot a4s47 beat=e101_t_2 len=81 set=cottage:dawn px=2 look=pixel cut=CUT matte=open gore=CUTE
@@ -524,6 +662,9 @@ shot a4s47 beat=e101_t_2 len=81 set=cottage:dawn px=2 look=pixel cut=CUT matte=o
   +0    say t2_nana_02 nana
   +20   say t2_nana_03 nana ; expr nana EXPR_HAPPY
   +60   mx nana_motif stop over=21
+  @t2_nana_02.start+6 headturn nana 16 3    # motion:
+  @t2_nana_02.start+14 headturn nana 240 4    # motion:
+  +0    world cam to punch=272 over=81 ease=INOUT    # motion: slow push in the room (ROOM host keyed camera)
 end
 
 # ============================== END CREDITS ==============================
@@ -532,6 +673,8 @@ shot a4s48 beat=e101_cr_1 len=180 set=credits_card px=1 look=pixel cut=SMASH mat
   +0    mx its_fine start gain=-10dB                      # the smash's sound
   +12   mx credits_box start gain=-14dB                   # theme chorus hook on the music box; NOT the Mingle
   +20   card credits_panel text=s_cr_01 side=R skin=CREAM until=end
+  +0    cam to scale=1.100 over=180 ease=OUT    # motion: insert push
+  +0    cam pan dx=14.5 dy=8.2 over=180 ease=OUT    # motion: (centred on the frame)
 end
 
 shot a4s49 beat=e101_cr_1 len=120 set=credits_storybook:banner px=2 look=crayon cut=FADE matte=open gore=CUTE
@@ -539,24 +682,32 @@ shot a4s49 beat=e101_cr_1 len=120 set=credits_storybook:banner px=2 look=crayon 
   +0    fade dither over=13 ; fol FOL_page_soft gain=-34dB
   +0    card credits_panel text=s_cr_02 side=R skin=CREAM until=end
   waive TIME-READ "13 lines in 120 f; the busiest card needs ~70 f (script note: 2.3 s)"
+  +0    cam to scale=1.100 over=120 ease=OUT    # motion: insert push
+  +0    cam pan dx=14.5 dy=8.2 over=120 ease=OUT    # motion: (centred on the frame)
 end
 
 shot a4s50 beat=e101_cr_1 len=120 set=credits_storybook:bubbles px=2 look=crayon cut=FADE matte=open gore=CUTE
   look crayon grain=12 boil=2
   +0    fade dither over=13 ; fol FOL_page_soft gain=-34dB
   +0    card credits_panel text=s_cr_03 side=L skin=CREAM until=end
+  +0    cam to scale=1.100 over=120 ease=OUT    # motion: insert push
+  +0    cam pan dx=14.5 dy=8.2 over=120 ease=OUT    # motion: (centred on the frame)
 end
 
 shot a4s51 beat=e101_cr_1 len=120 set=credits_storybook:bigpuff px=2 look=crayon cut=FADE matte=open gore=CUTE
   look crayon grain=12 boil=2
   +0    fade dither over=13 ; fol FOL_page_soft gain=-34dB
   +0    card credits_panel text=s_cr_04 side=R skin=CREAM until=end
+  +0    cam to scale=1.100 over=120 ease=OUT    # motion: insert push
+  +0    cam pan dx=14.5 dy=8.2 over=120 ease=OUT    # motion: (centred on the frame)
 end
 
 shot a4s52 beat=e101_cr_1 len=120 set=credits_storybook:candles px=2 look=crayon cut=FADE matte=open gore=CUTE
   look crayon grain=12 boil=2
   +0    fade dither over=13 ; fol FOL_page_soft gain=-34dB
   +0    card credits_panel text=s_cr_05 side=L skin=CREAM until=end
+  +0    cam to scale=1.100 over=120 ease=OUT    # motion: insert push
+  +0    cam pan dx=14.5 dy=8.2 over=120 ease=OUT    # motion: (centred on the frame)
 end
 
 shot a4s53 beat=e101_cr_1 len=120 set=credits_storybook:heart px=2 look=crayon cut=FADE matte=open gore=CUTE
@@ -565,6 +716,8 @@ shot a4s53 beat=e101_cr_1 len=120 set=credits_storybook:heart px=2 look=crayon c
   +0    card credits_panel text=s_cr_06 side=R skin=CREAM until=end
   +0    card credits_panel_add text=s_cr_06_piano when=mixlog:salamander   # AUD-LIC gated (spec sec.10.8)
   +0    card credits_panel_add text=s_cr_06_dwsd  when=mixlog:dwsd
+  +0    cam to scale=1.100 over=120 ease=OUT    # motion: insert push
+  +0    cam pan dx=14.5 dy=8.2 over=120 ease=OUT    # motion: (centred on the frame)
 end
 
 shot a4s54 beat=e101_cr_1 len=120 set=credits_storybook:answer px=2 look=crayon cut=FADE matte=open gore=CUTE
@@ -572,6 +725,8 @@ shot a4s54 beat=e101_cr_1 len=120 set=credits_storybook:answer px=2 look=crayon 
   +0    fade dither over=13 ; fol FOL_page_soft gain=-34dB
   +0    card credits_panel text=s_cr_07 side=L skin=CREAM until=end
   +119  mx credits_box stop hard                          # one note short of home; unresolved on the last frame
+  +0    cam to scale=1.100 over=120 ease=OUT    # motion: insert push
+  +0    cam pan dx=14.5 dy=8.2 over=120 ease=OUT    # motion: (centred on the frame)
 end
 
 # ============================== POST-CREDITS ==============================
@@ -595,9 +750,14 @@ shot a4s55 beat=e101_pc_1 len=255 set=sealed_gate:pc1 px=1 look=pixel cut=CUT ma
   +225  say pc1_grum_01 grumbleguts ; cc "[low purr]"
   assert grille.shutter == shut @+254
   note "Grumbleguts is never seen: nothing in the grille; the gate's bulge is the only shape (D8)."
+  +0    cam to scale=1.050 over=255 ease=INOUT    # motion: push in, drifting toward the speaker
+  +0    cam pan dx=2.6 dy=4.3 over=255 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a4s56 beat=e101_pc_1 len=45 set=dippinn_card px=1 look=pixel cut=SMASH matte=black gore=CUTE
   +0    stop pc1_grum_01                                  # the purr's tail cut dead: the cut's sound
   +34   say pc1_gurgle_03 gurgle ; cc "[GURGLE: gurgle.]" # ends on the last frame (episode frame 39,599)
+  +0    cam to scale=1.050 over=45 ease=INOUT    # motion: push in, drifting toward the speaker
+  +0    cam pan dx=2.6 dy=4.3 over=45 ease=INOUT    # motion: (centred on the frame)
+  +34   shake SHK_TAP    # motion: the gurgle jolts the card
 end

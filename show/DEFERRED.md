@@ -11,6 +11,11 @@
 - ENGINE: `show/hooks/session_start.sh` (the opt-in restore hook): `show vault fetch DIR` restores by hand; nothing in this week's container needs restoring.
 - ENGINE: `show/tools/requirements.lock`: the tools use what this container has (numpy, Pillow, pytest); `show doctor` checks them.
 - ENGINE: gaze hunk (e), `ps1-show-wide`, `ps1-show-dev` (PCdrv), `runner-show`, the P2 draw trace (`show_wrap.c`): deferred to 2027 by the spec itself (§1.2, §4.3, §8.8).
+- AUDIO voice: MFCC-DTW alignment of recordings against the TTS render (spec §1.2): Whisper word times + TTS phone ratios, energy fallback.
+- AUDIO voice: espeak-ng G2P fallback (its wheel's data path is broken here, spec R7): cmudict + lexicon.shw + compound splitting cover every pilot word.
+- AUDIO voice: lib:pet/beep_v1 is the game's piezo, an SFX (WP10 library), not a voice take; mt7_pet_01 and the pet lines lock as `pending`.
+- AUDIO voice: stressed words in CAPITALS (WORD, SPEECH, PLAY) get no extra emphasis in TTS; the creator's reads carry it.
+- AUDIO voice: retime="fit" time-stretching of recordings (world.stretch exists; the compiler decides when a take overruns its slot).
 - ENGINE lane 3: `--tail fade=`, the timing strip (`show strip`), the diff heat map, a measured (pixel) flash analysis in STD-FLASH (the lint reads the scripted flash events; the PEAT/Harding pass is the creator's), AD/TTML/SCC captions, UHD and broadcast recipes (the `web_uhd` recipe exists, unused).
 - ART sets: new 3D maps (a real funhouse, the bake tent's inside): the first-person beats use the game's `vape_cellar` rooms (spec: new show maps are deferred).
 - ART sets: per-pixel preview of the camfx lerps (PAL_CRAYON/HELLIFY) in the set sheets: the sheets show the plates' own colours; the player applies the lerp.

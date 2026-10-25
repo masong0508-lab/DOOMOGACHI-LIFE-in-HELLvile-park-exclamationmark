@@ -1,0 +1,4 @@
+# recordings are binaries: the vault keeps them, voice.lock keeps their hashes
+*
+!.gitignore
+!README.md

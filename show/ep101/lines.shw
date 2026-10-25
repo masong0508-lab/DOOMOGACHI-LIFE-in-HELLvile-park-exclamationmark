@@ -1,0 +1,176 @@
+# show/ep101/lines.shw: dialogue, one line per id (spec §5.6, ep101 BREAKDOWN §2).
+# Imported from the writers' drafts (scratchpad ep101/part1.md, part2.md, 2026-10-25) by
+# `show voice import-lines`; parts 3-4 join when they are written. IDs are provisional until
+# the freeze (BREAKDOWN §2.6), then stable forever. The take each line uses is decided by
+# takes.toml and the vo/ folder (show/ep101/vo/README.md); `show voice ep101` locks them.
+# Added on import: mode=possessed (the voices.shw variant) and say=... for stage parentheticals.
+
+# ---- walla beds (spec §6.2): the mixer builds each bed from its locked lines (voice/walla.py)
+walla kids_far lines=w_kids_01..w_kids_06 density=1.4/s pan=spread seed=7    # captioned by the shot's `cc`
+
+# ---- Cold open
+line w_kids_01    walla:kids_walla "Cupcakes!"
+line w_kids_02    walla:kids_walla "Wait for me!"
+line w_kids_03    walla:kids_walla "Soup! There's soup!"
+line w_kids_04    walla:kids_walla "Look, lanterns!"
+line w_kids_05    walla:kids_walla "Race you to the bridge!"
+line w_kids_06    walla:kids_walla "Hi! Hi! Hi!"
+line co12_hum     mayor "Mm-mm, mm-mm-mm, mm-mm-mm, mm--" take=lib:mayor/hum_dawn_v1 asr=skip dir="hums the Mingle from the music box's held note; stops dead on the Mayor's note at +120"
+line co13_heehee  mayor "...Hee. Hee."    take=lib:mayor/heehee_v1 lock=identical asr=skip
+line co15_perfect mayor "Perfect."        dir="pleased with himself, quiet"
+line co18_stay    mayor "Stay."           dir="firm, to the balloon, as to a pet"
+line mt7_pet_01   pet   "beep."           take=lib:pet/beep_v1 process=none
+line a1_04_steamy_01 steamy "That's Duckworth."     dir="proud, quick, even, lilting; names 15-16 f apart"
+line a1_04_steamy_02 steamy "That's Quackers."      dir="same tune as the first"
+line a1_04_steamy_03 steamy "That's..."             dir="the tune breaks off"
+line a1_04_steamy_04 steamy "I don't know that one." dir="a little wobble of alarm"
+line a1_05_kevin_01  kevin  "Yes, three eyes."      dir="pre-emptive, cheerful-flat"
+line a1_05_kevin_02  kevin  "Nobody ever asks about the third one." dir="a touch wistful; don't milk it"
+line a1_05_kevin_03  kevin  "It's lonely."          dir="smaller still; OPTIONAL, first cut in a trim"
+line a1_06_hattie_01 hattie "Knock knock."          dir="a pro at work, mic-close"
+line w_tent_01       walla:tent "Who's there?"      dir="loose unison, eager"
+line a1_06_hattie_02 hattie "See, that's the trick. Nobody ever says." dir="relaxed; let it land"
+line w_tent_02       walla:tent "(laughter)"        dir="snort-laugh ripple, staggered 0-3 f" say="Ha ha ha! Ha ha!" asr=skip
+line w_wall_01       walla:wall "(a laugh)"         dir="one voice, distant, filtered; exactly R8 after the ripple" say="Ha!" asr=skip
+line a1_06_hattie_03 hattie "{d}...Yikes."          dir="tiny, dry, eyes on the Wall"
+line a1_07_lulla_01  lulla  "They all drew the same friend.{..} I don't know who he is." dir="hushed, proud; the second half softer, a tiny unease smoothed over"
+line a1_08_mayor_01  mayor  "Welcome, welcome! Mayor Gigglesworth. Friends call me Giggs. Enemies don't exist!" dir="bright patter, a curtain call"
+line a1_08_mayor_10  mayor  "Ooh, a new face! We get so few." dir="leaning in, delighted"        # NEW (canon, game Ep 1.1)
+line a1_08_mayor_02  mayor  "My speech. I've given it four hundred times." dir="the smile stays, the eyes don't"
+line a1_08_mayor_03  mayor  "I can't remember a WORD."  dir="stress WORD; still smiling"
+line a1_08_mayor_04  mayor  "Page one! Manners! We'll keep you." dir="love at first sight"
+line a1_08_mayor_05  mayor  "The SPEECH is at eight!"   dir="to the crowd, a promise"
+line a1_08_mayor_06  mayor  "Hellvile Park has two sides. This one, and..." dir="straight into the lens; stop dead, no trail"
+line a1_08_mayor_07  mayor  "...the weather side."      dir="restarting, too smoothly"
+line a1_08_mayor_08  mayor  "{d}We don't talk about the other side." dir="flat, no wink: he means it"
+line a1_08_mayor_09  mayor  "Hee. Hee."                 take=lib:mayor/heehee_v1 lock=identical asr=skip
+line a1_08_bone_01   bonejangles "Clack clack!"         dir="fanfare-happy, two crisp hits"
+line a1_09_mayor_02  mayor  "Mm! A-plus!"               dir="judging, transported"        # NEW
+line a1_09_mayor_01  mayor  "Who's the second one for?" dir="lightly, too lightly"
+line a1_09_nana_01   nana   "Habit, sweet pea."         dir="not looking up"
+line a1_09_nana_02   nana   "The key's in a muffin. Don't ask which. I forgot. I always forget." dir="cosy, amused at herself"
+line a1_09_nana_03   nana   "Raisin."                   dir="by ear, like a wine expert"
+line a1_09_nana_04   nana   "Raisin."                   dir="same, a touch lower"
+line a1_09_nana_05   nana   "...That's a button."       dir="mild"
+line a1_09_nana_10   nana   "There it is! Mind your teeth." dir="delighted, a little late"   # NEW
+line a1_09_nana_06   nana   "Is this yours? It was under the pies. It's mostly \"Hee. Hee.\"" dir="her own read of the quote, not the Mayor's tic"
+line a1_09_nana_11   nana   "And this. An egg."         dir="softer"                         # NEW (canon, game Ep 1.2)
+line a1_09_nana_07   nana   "It's been waiting for someone." dir="softer still; then she holds on"
+line a1_09_nana_08   nana   "The last one hatched into a little demon! Ha! Kidding." dir="bright, a fib"
+line a1_09_nana_09   nana   "...Mostly."                dir="the brightness falls out; small"
+line a1_10_pip_01    pip    "Found your one. Lost property goes on a lantern so the owner can see it." dir="fast, official, proud; 1.3x tempo"
+line a1_10_pip_02    pip    "Patrol rules."             dir="tapping the sash"
+line a1_10_pip_03    pip    "When's the fireworks?"     dir="hopeful, straight to it"
+line a1_10_mayor_01  mayor  "There's a lovely nine o'clock..." dir="passing, brightly; stop dead"
+line a1_10_mayor_02  mayor  "...nothing!"               dir="restarting, brighter"
+line a1_10_pip_04    pip    "I saw them once. I was a baby. So it doesn't count." dir="to Sunny, matter-of-fact"
+line a1_12_mayor_01  mayor  "Welcome to HaHaland, where.{..}.{..}." dir="grand, every word a gift; the dots type 8 f apart"
+line a1_12_mayor_02  mayor  "{d}hee. hee."              lint_skip=AUD-HEEHEE dir="read flat off the page; NOT the library tic"   # lint_skip: proposed field (BREAKDOWN 5.5)
+line a1_12_mayor_03  mayor  "It kills every time."      dir="beaming, to Sunny"
+line w_giggle_01     walla:giggle "(laughter)"          dir="a ripple of real laughter, staggered 0-3 f" say="Ha ha ha! Ha ha!" asr=skip
+line a1_13_mayor_01  mayor  "...Hee. Hee."              take=lib:mayor/heehee_v1 lock=identical asr=skip
+line w_fog_01        walla:fog "{w}come and PLAY with us" dir="many voices, whispered to half-sung, stretched on PLAY"
+line a1_14_clink_01  clinker "{w}come and PLAY with us" sync=w_fog_01 late=R8 dir="her layer inside the stack; flat, low; record in sync, never lag yourself"
+line w_fog_02        walla:fog_child "{w}...us"        dir="child-pitched, small, too sweet; plays R8 after w_fog_01; adult walla performer, never Pip's actor"
+line a1_14_bone_01   bonejangles "{d}...Clack."         dir="tiny, flat, slightly wrong; no Clinker layer yet"
+line a2_01_bone_01  bonejangles "We came on the fog, and we came for the cake." dir="possessed: dead flat, one syllable per RIFF beat (140 bpm)" mode=possessed
+line a2_01_clink_01 clinker     "We came on the fog, and we came for the cake." dir="flat, no melody; in sync with his take" sync=a2_01_bone_01 late=R8
+line a2_01_bone_02  bonejangles "We came for the party you only half make." dir="possessed: same weight on every word" mode=possessed
+line a2_01_clink_02 clinker     "We came for the party you only half make." dir="flat; in sync with his take" sync=a2_01_bone_02 late=R8
+line a2_02_nana_01  nana        "...Pie, sweet pea?" dir="by reflex, holding out a slice"
+line a2_02_bone_01  bonejangles "Six." dir="possessed: a bored verdict" mode=possessed
+line a2_02_clink_01 clinker     "Six." dir="in sync with his take" sync=a2_02_bone_01 late=R8
+line a2_02_bone_02  bonejangles "{d}Needs death." dir="possessed: flatter still" mode=possessed
+line a2_02_clink_02 clinker     "{d}Needs death." dir="in sync with his take" sync=a2_02_bone_02 late=R8
+line a2_02_bone_03  bonejangles "Four. Too much death." dir="possessed: verdict" mode=possessed
+line a2_02_clink_03 clinker     "Four. Too much death." dir="in sync with his take" sync=a2_02_bone_03 late=R8
+line a2_02_bone_04  bonejangles "Two." dir="possessed: final" mode=possessed
+line a2_02_clink_04 clinker     "Two." dir="in sync with his take" sync=a2_02_bone_04 late=R8
+line a2_02_nana_02  nana        "...Six." dir="to her slice; stung but winning"
+line w_giggle_03    walla:giggle "Fudge! FUDGE!" dir="panic, running"
+line a2_03_mayor_01 mayor       "Everybody stay calm! I'll be under here." dir="arms up; dives after the first sentence; the rest from under a tablecloth (muffled in the mix), 'Being calm!' squeaky"
+line w_giggle_04    walla:giggle "Single file, please!" dir="polite panic"
+line w_giggle_05    walla:giggle "Leave me! Save the cupcakes!" dir="panic"
+line w_giggle_06    walla:giggle "Not the teacups!" dir="panic"
+line w_giggle_07    walla:giggle "Is this the weather?!" dir="panic, genuinely asking"
+line a2_03_pip_01   pip         "{big}FIREWORKS!{/}" dir="pure joy, full chest"
+line w_giggle_02    walla:giggle "NOT NOW, PIP." dir="whole crowd in unison, exasperated; stagger 0-3 f; cast takes may be stacked in"
+line w_giggle_08    walla:giggle "After you!" dir="panic, running"
+line a2_04_pet_01   pet         "beep." take=lib:pet/beep_v1 lock=identical asr=skip
+line a2_04_bone_01  bonejangles "...Ten." dir="possessed: flat, completely sincere" mode=possessed
+line a2_04_clink_01 clinker     "...Ten." dir="in sync with his take" sync=a2_04_bone_01 late=R8
+line a2_05_fuzz_03  fuzz        "Pardon me! Clergy! Coming through!" dir="trotting; cheerful, urgent"
+line a2_05_bloom_03 bloom       "Doctor." dir="behind him, flat"
+line a2_05_bloom_01 bloom       "No pulse." dir="clinical"
+line a2_05_bloom_02 bloom       "He never has one." dir="dry; the tiniest smile"
+line a2_05_fuzz_01  fuzz        "Three parts. The rhythm, the water, the name. Three tries." dir="steady, teaching"
+line a2_05_fuzz_02  fuzz        "A demon is a frightened thing in a loud coat. You take the coat off." dir="gentle; means every word; no wink"
+line a2_06_fuzz_01  fuzz        "THE POWER OF CUDDLES COMPELS YOU!" dir="full chest, arms wide, sincere; no wink"
+line a2_06_bone_01  bonejangles "...One." dir="possessed: tiny, instant" mode=possessed
+line a2_06_clink_01 clinker     "...One." dir="in sync with his take" sync=a2_06_bone_01 late=R8
+line a2_06_fuzz_03  fuzz        "One's a start!" dir="undimmed"
+line a2_06_fuzz_02  fuzz        "Come in close, come in close, hold the one who's frightened most." dir="SUNG hymn phrase: 4 bars at 140 bpm, major, claps on 2 and 4; drifts late to 8 f by bar 4, the last two words in minor (TTS fallback: sing())"
+line a2_07_bone_01  bonejangles "...Three. Needs an ending." dir="possessed: rating its own poem, unimpressed" mode=possessed
+line a2_07_clink_01 clinker     "...Three. Needs an ending." dir="in sync with his take" sync=a2_07_bone_01 late=R8
+line a2_07_pip_01   pip         "It keeps saying clink." dir="quick, quiet, very sure"
+line a2_07_nana_01  nana        "I know that rating. Last Mingle, somebody gave my pie a six." dir="slow; remembering"
+line a2_07_nana_02  nana        "Said it needed death." dir="the warmth drops out"
+line a2_07_fuzz_01  fuzz        "Then the name's from that night." dir="quick; hope rising"
+line a2_07_nana_03  nana        "Everybody who came that night is in my recipe tin." dir="steady, sure"
+line a2_07_mayor_01 mayor       "...Where's the tin?" dir="from under the table; small"
+line a2_08_pet_01   pet         "beep." take=lib:pet/beep_v1 lock=identical asr=skip
+line a1_10_pip_05       pip "I'm the whole patrol." dir="proud, after the salute; plays R8 before a1_10_pip_06"
+line a1_10_pip_06       pip "And Mr. Flops!" dir="a quick glance at Mr. Flops, correcting the record; bright"
+line a2_03_mayor_02     mayor "Being calm!" dir="from under the tablecloth, R8 after it drops; squeaky; muffled in the mix"
+line w_giggle_10        walla:giggle "No, after YOU!" dir="the other citizen, bowing back; politer still; a different voice from w_giggle_08"
+line a3_01_steamy_01    steamy "...I don't know that one either." dir="hiding in the duck tub up to her eyes; the same tune as a1_04_steamy_04, smaller; up on 'know', down on the period"
+line a3_02_pet_01       pet "beep." dir="raw piezo (lib:pet/beep_v1); nobody performs it" take=lib:pet/beep_v1 lock=identical asr=skip
+line a3_04_bloom_01     bloom "Father, don't." dir="quiet, urgent; a hand on his sleeve"
+line a3_04_fuzz_01      fuzz "Nothing is unhuggable." dir="gently, certain; reassuring her, not a battle cry"
+line a3_04_fuzz_02      fuzz "Eleven years ago tonight, I hugged someone who needed it." dir="sitting on the steps; quiet, flat with grief, to his paws; about 2 words a second"
+line a3_04_fuzz_03      fuzz "It didn't work then either." dir="nothing left; no tears performed; the protected hold follows"
+line a3_05_pet_01       pet "beep." dir="raw piezo (lib:pet/beep_v1); nobody performs it; from the HUD" take=lib:pet/beep_v1 lock=identical asr=skip
+line a3_07_fuzz_01      fuzz "All three. From the top." dir="renewed; quick, a coach before the match"
+line a3_07_pet_01       pet "beep." dir="raw piezo (lib:pet/beep_v1); nobody performs it; metronome: one per beat on the 140 bpm grid, from the downbeat after a3_07_fuzz_01 to the FREEZE; the shot repeats this ID; counts as one gag beep (6 of 6)" take=lib:pet/beep_v1 lock=identical asr=skip
+line a3_07_fuzz_03      fuzz "Come in close, come in close, hold the one who's frightened most." dir="SUNG hymn phrase (writer 2's lyric from 2-06): 4 bars at 140 bpm, major, claps on 2 and 4; this time it holds the tempo and never drifts (TTS fallback: sing())"
+line w_giggle_09        walla:giggle "[claps on 2 and 4]" dir="foley walla, no voices: Pip first, then Nana, then the whole crowd, staggered 0-3 f, locked to the beep" take=lib:walla/claps_v1 asr=skip
+line a3_07_bloom_01     bloom "...Steady." dir="clinical, almost surprised; two fingers up as if taking a pulse"
+line a3_07_fuzz_04      fuzz "Gently." dir="soft, to Sunny, handing over the flask"
+line a3_07_fuzz_02      fuzz "Cl-" dir="reading the name; the sound catches and stops dead on the L; no breath out; cut on frame 0 of the FREEZE (TTS fallback: phoneme override /kl/)" asr=skip
+line a3_07_mayor_01     mayor "Father." dir="quietly, from the steps, not looking up; low, level, almost kind; his one quiet register"
+line a3_07_mayor_02     mayor "Nobody on this side says those names." dir="the same; no smile; every word the same weight"
+line a3_07_bone_01      bonejangles "{d}We'll wait." dir="possessed: dead flat; deadpan, no music" mode=possessed
+line a3_07_clink_01     clinker "{d}We'll wait." dir="in sync with his take; flat" sync=a3_07_bone_01 late=R8
+line a4_01_nana_01      nana "Cl..." dir="the name starts and dies in her mouth; not a stutter" asr=skip
+line a4_02_pip_01       pip "My eyes are just doing a rain." dir="crying, trying to sound official about it"
+line a4_02_pip_02       pip "...It's just a NAME." dir="the voice cracks on NAME"
+line a4_02_pip_03       pip "CLINKER! The name is CLINKER! It says so RIGHT HERE!" dir="from the diaphragm, dry and alone; plays under mx mute all; record last; skip denoise at ingest"
+line a4_03_bone_01      bonejangles "...Clack?" dir="himself again: small, confused"
+line a4_03_bone_02      bonejangles "Something was in there with me. It kept trying to finish a poem." dir="gentle, puzzled, kind; 'Something' and 'It', never 'she'"
+line a4_03_bone_03      bonejangles "Down by the Wall where the pumps go clink, / we work all night, and we dream in pink." dir="spoken-sung to the hook, 140 bpm, C major, 4 bars; warm; let 'pink' ring (TTS fallback: sing())"
+line a4_03_clink_01     clinker "...Seven." dir="beyond the Wall: small, tired, almost pleased; ON TIME; recorded alone, no sync"
+line a4_04_fuzz_01      fuzz "...I got lucky." dir="small and slow, to his paws"
+line a4_04_fuzz_02      fuzz "Luck isn't a liturgy." dir="rueful, not self-pitying; the smallest smile"
+line a4_05_mayor_01     mayor "Right! Everybody home! Lovely weather tonight! Lovely, lovely weather!" dir="brightly, to everyone; a curtain call, too bright"
+line w_giggle_11        walla:giggle "(relieved sighs, a laugh)" dir="a relieved ripple, staggered 0-3 f; no words" say="Ha ha! Oh... ha." asr=skip
+line a4_05_mayor_03     mayor "Nobody look at the boards!" dir="cheerful, wagging a finger"
+line a4_05_mayor_04     mayor "Let's make it OFFICIAL!" dir="pen out with a flourish; stress OFFICIAL; full showman"
+line a4_05_mayor_02     mayor "Old draft." dir="brisk, far too casual; the smile back on a beat early"
+line a4_06_pip_01       pip "I didn't cry." dir="sitting on the crate; proud, tired"
+line a4_06_pip_02       pip "I did a little." dir="honest, smaller"
+line a4_06_pip_03       pip "...Not even one firework?" dir="very small; hopeful anyway"
+line a4_06_mayor_01     mayor "One." dir="quiet; deciding"
+line a4_06_mayor_02     mayor "A small one." dir="quiet; a little warmer"
+line a4_06_mayor_03     mayor "For the patrol." dir="to Pip, gently; the showman coming back"
+line a4_06_pip_04       pip "Patrol: three steps back." dir="instantly official"
+line a4_08_pip_01       pip "...Oh." dir="wonder; barely voiced"
+line a4_08_mayor_01     mayor "Mm-mm, mm-mm-mm, mm-mm-mm, mm-mm--" dir="the Mingle (F major, 96 bpm) from the top, as at dawn; exactly one note past co12_hum's stop, then stop dead; library take mayor/hum_plusone_v1 (record once, reused)" take=lib:mayor/hum_plusone_v1 lock=identical asr=skip
+line t2_nana_04         nana "Morning, sweet pea." dir="warm, at the door"
+line t2_nana_05         nana "Just muffin." dir="amused; she knows what you're checking for"
+line t2_nana_01         nana "Somebody returned my dish." dir="lightly; she won't say who"
+line t2_nana_02         nana "Ah." dir="seeing the horn nubs; knowing"
+line t2_nana_03         nana "...He's teething." dir="warm, amused, keeping a secret"
+line pc1_gurgle_01      gurgle "gurgle." dir="three deep wet swells ~15 f apart under the padlock rattles, each bigger"
+line pc1_gurgle_02      gurgle "...needs salt." dir="bass babble, ~3-4 f a syllable: a thoughtful gloop, a pause, two syllables and a smack; box style: appear, no type-on, not {d}"
+line pc1_grum_01        grumbleguts "(low purr)" dir="non-speaking (D8): a warm, oily, satisfied purr, 'Mmmh.', rising slightly at the end; vocal fry, no strain; same performer as GURGLE" take=lib:grum/purr_v1 lock=identical asr=skip
+line pc1_gurgle_03      gurgle "gurgle." dir="tiny; starts ~f 289 and ends on the Dippinn card's last frame"

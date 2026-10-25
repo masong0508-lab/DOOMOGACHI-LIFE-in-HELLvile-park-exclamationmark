@@ -1,0 +1,26 @@
+{
+ "cue": "fuzz_hymn",
+ "bpm": 96.0,
+ "meter": 4,
+ "bars": 4,
+ "sections": [],
+ "offset_smp": 0,
+ "frames_per_bar": 75.0,
+ "smp_per_bar": 120000.0,
+ "source": "score:pilot.hymn_try3",
+ "bar_smp": [
+  0,
+  120000,
+  240000,
+  360000,
+  480000
+ ],
+ "bar_frame": [
+  0,
+  75,
+  150,
+  225,
+  300
+ ],
+ "named_notes": {}
+}

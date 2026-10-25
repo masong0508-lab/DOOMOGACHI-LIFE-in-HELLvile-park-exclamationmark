@@ -6,7 +6,7 @@
 #
 # <time>: <beat>+N (frames from the beat's frame 0) | tc:HH:MM:SS:FF | <cue>:bar:B.b[+N].
 # Every op is a shot's `mx` op with its time written against the rundown, so STAGING can
-# move it into the shot unchanged (`+60 mx mingle_box start` in co01). Times come from
+# move it into the shot unchanged (`+60 mx mingle_full start` in co01). Times come from
 # docs/show/PILOT_BEATSHEET.md (the timing source) and COLD_OPEN_SHOTLIST.md; where a doc
 # gives a rule rather than a frame ("music out for the deadpan"), the time is this file's
 # choice, marked `choice:`. The resolved frames, samples and TCs are in the cue sheet
@@ -17,8 +17,8 @@
 # Silence is spotted by omission: every beat with no op below plays no score.
 
 # ---------------------------------------------------------------- cue defaults
-spot mingle_box         from=bar:1.1 bus=MX gain=-12dB   # enters at 00:00:02:00 (shot list)
-spot mingle_thin        bus=MX gain=-12dB
+spot mingle_full         from=bar:1.1 bus=MX gain=-12dB   # enters at 00:00:02:00 (shot list)
+spot mingle_interrupt        bus=MX gain=-12dB
 spot hahaland_dawn      bus=MX gain=-12dB
 spot theme_main_title   bus=MX gain=0dB
 spot heehee_bell        bus=MX gain=-6dB
@@ -65,12 +65,12 @@ spot its_fine           bus=MX gain=-3dB
 spot credits_musicbox   bus=MX gain=-6dB
 
 # ================================================================ COLD OPEN (00:00-01:40)
-@e101_co_1+60   mx mingle_box start                     # co01 +60 = smp 96,000 (AT10.1)
-@tc:00:00:29:00 mx mingle_box mute 29                   # co08 +75: MUTE 29 f mid-phrase; first muted onset = the Mayor's note (G5)
-@tc:00:00:29:29 mx mingle_box to -16dB over=2           # "then resumes softer under the caption"
-@e101_co_3+0    mx mingle_box stop                      # co09 SMASH: THUD + RUMBLE, score out
-@e101_co_4+0    mx mingle_thin start                    # CO-4: the music box returns thinner, one voice
-@e101_co_5+0    mx mingle_thin stop over=2              # CO-5 frame 0: the hum takes over at its pitch (voice, not MX)
+@e101_co_1+60   mx mingle_full start                     # co01 +60 = smp 96,000 (AT10.1)
+@tc:00:00:29:15 mx mingle_full mute 29                   # co08 +90 (MINGLE v2): pass 3 beat 20.75; the Eb3 the Mayor never reaches is muted
+@tc:00:00:30:14 mx mingle_full to -16dB over=2           # the tail rings softer under the caption
+@e101_co_3+0    mx mingle_full stop                      # co09 SMASH: THUD + RUMBLE, score out
+@e101_co_4+0    mx mingle_interrupt start                    # CO-4: the music box returns thinner, one voice
+@e101_co_5+0    mx mingle_interrupt stop over=2              # safety; the interrupt phrase has already cut itself off; co12_hum pre-laps from co11 +186
 @e101_co_6+0    mx hahaland_dawn start                  # CO-6: HaHaland Day, dawn (music box + celesta, low)
 @e101_co_6+625  mx hahaland_dawn stop over=5            # choice: out with the heart iris (5 f): ~2 s of silence before the CRACK
 
@@ -80,7 +80,7 @@ spot credits_musicbox   bus=MX gain=-6dB
 # ================================================================ ACT ONE (02:30-07:50)
 @e101_1_01+0    mx heehee_bell start                    # act card, frame 0
 @e101_1_01+60   mx hahaland_radio start                 # choice: the bus radio after the card's bell
-@e101_1_01+330  mx hahaland_radio tapestop 5            # choice: the SCRATCH (5 f), 14 f of silence, then BOING (SFX)
+@e101_1_01+330  tapestop 5                             # choice: the SCRATCH (5 f), 14 f of silence, then BOING (SFX)
 @e101_1_01+335  mx hahaland_radio stop
 @e101_1_02+180  mx home_2bar start                      # choice: two bars of HOME under the pencil line
 @e101_1_03+0    mx hahaland_distant start               # the festival from the park, filtered with distance
@@ -92,7 +92,7 @@ spot credits_musicbox   bus=MX gain=-6dB
 @e101_1_07+0    mx hahaland_tent start                  # inside the tent, 6 dB down (the tent form)
 @e101_1_08+0    mx hahaland_tent stop over=4
 @e101_1_08+0    mx hahaland_band start                  # live from the bandstand
-@e101_1_08+480  mx hahaland_band tapestop 8             # choice: TAPESTOP into the FREEZE 13
+@e101_1_08+480  tapestop 8                              # choice: TAPESTOP into the FREEZE 13
 @e101_1_08+488  mx hahaland_band stop                   # the deadpan with no music; HOLD 13; fountain R8
 @e101_1_08+720  mx ribs_fanfare start                   # choice: the rib-xylophone FANFARE brings the music back on the downbeat
 @e101_1_08+874  mx hahaland_band start                  # the band again off the fanfare
@@ -147,7 +147,7 @@ spot credits_musicbox   bus=MX gain=-6dB
 @e101_3_01+768  mx hook_cute start
 @e101_3_01+1152 mx hook_cute start
 @e101_3_01+1536 mx hook_cute start                      # = 3-02 +36
-@e101_3_02+300  mx hook_cute tapestop 5                 # choice: the squeak, then the SCRATCH (5 f), 14 f of silence, CHK-CHK (SFX)
+@e101_3_02+300  tapestop 5                                  # choice: the squeak, then the SCRATCH (5 f), 14 f of silence, CHK-CHK (SFX)
 @e101_3_02+305  mx hook_cute stop
 # 3-03..3-05: the DOOM-side insert song, one continuous render (61 bars at 150 bpm, 48 f a bar).
 # Bar 2 = the HUD slam; bars 26-50 are held under the 3-04 mute (the sequencer runs); bar 51 = 3-05 frame 0.

@@ -1,0 +1,18 @@
+# show/series/visemes.shw: the 8 visemes, their engine mouth styles, and the mouth-track rules (spec §9.3).
+# Mouth tracks are text, one character per frame: X rest, M closed (m b p), C slightly open
+# (consonants, teeth), E open (e, i, schwa), A wide (a, ai, ae, uh), O round, U pucker (u, w),
+# F teeth on lip (f, v). The player shows track char i on frame say + mouth_from + i.
+
+# lead: frames the mouth leads the sound; hold: minimum frames per mouth (an M closure may
+# show for 1 f, on every bilabial); gap: silence closes the mouth only when this long;
+# gate_db: frames quieter than this (re the take's loudest frame) show X.
+rules lead=1 hold=2 gap=3 gate_db=-38
+
+# Per look family: viseme -> MOUTH_* (core/include/doomo/catalog.h). X = the look's own
+# mouth_style ("own"). Tunable at look-dev with the creator (M1-T10/T11).
+family default X=own M=MOUTH_FLAT C=MOUTH_TEETH E=MOUTH_GRIN A=MOUTH_OPEN O=MOUTH_O U=MOUTH_POUT F=MOUTH_TEETH
+family wide    X=own M=MOUTH_FLAT C=MOUTH_TEETH E=MOUTH_GRIN A=MOUTH_BIG_GRIN O=MOUTH_O U=MOUTH_POUT F=MOUTH_TEETH
+# beaked species keep their beak and flap open/closed only
+family beak    X=MOUTH_BEAK M=MOUTH_BEAK C=MOUTH_BEAK E=MOUTH_BEAK A=MOUTH_BEAK O=MOUTH_BEAK U=MOUTH_BEAK F=MOUTH_BEAK flap=open_closed
+# chibis flap A/X from the same track (any non-X, non-M char shows A); crowds never flap
+family chibi   X=own M=own C=MOUTH_OPEN E=MOUTH_OPEN A=MOUTH_OPEN O=MOUTH_OPEN U=MOUTH_OPEN F=MOUTH_OPEN flap=a_x

@@ -1,0 +1,143 @@
+# show/series/voices.shw: every voice in the show (spec §5.1, §10.3; ep101 BREAKDOWN §3 voice bible).
+# 2026 default: every role is temp TTS (stock Kokoro-82M voices only, never a clone of a
+# performer) until the creator drops in a recording (show/ep101/vo/, takes.toml). Each
+# `voice` row is option 1 of that role's auditions (CASTING.md in the scratchpad's
+# show_out/voices/); to recast, copy an `audition` row's settings into the `voice` row and
+# run `show voice ep101` (only that role's lines re-render).
+#
+#   voice <id> engine=kokoro kokoro=<voice>[:<w>][+<voice>:<w>...] speed=<x> [pitch=<±st>st]
+#         [formant=<±st>st] [flatten_f0=0..1] [contour=lilt|fall] [contour_amt=x] [breath=0..1]
+#         [double=g] [wavy=st] [deadpan_f0=0..1] [babble=1] age=adult|teen|child role="..."
+#   voice <id>.<mode> base=<id> ...       a variant, picked by a line's mode= (possessed)
+#   voice <id> pool=a,b,c pitch=lo..hi speed=lo..hi formant=lo..hi seed=N   walla: each line
+#         draws its voice and settings from the pool by a hash of (seed, line id)
+#   audition <id> <n> <settings>          numbered casting options (1 = the voice row)
+#   sample <id> "<text>"                   the voice bible's sample reads, used by auditions
+#
+# WORLD shaping keeps the timing: pitch moves F0 with the formants kept (the voice stays
+# itself), formant warps the spectral envelope (+ smaller/younger, - bigger/creature),
+# flatten_f0 squeezes the melody toward monotone (possessed, deadpan), contour lays a fixed
+# tune. Native pitch of each Kokoro voice, measured here (median F0, one sentence): af_alloy
+# 138, af_aoede 184, af_bella 200, af_heart 205, af_jessica 198, af_kore 149, af_nicole 156,
+# af_nova 154, af_river 181, af_sarah 186, af_sky 167, am_adam 116, am_echo 108, am_eric 155,
+# am_fenrir 142, am_liam 118, am_michael 109, am_onyx 86, am_puck 118, am_santa 160,
+# bf_alice 200, bf_emma 185, bf_isabella 205, bf_lily 171, bm_daniel 120, bm_fable 115,
+# bm_george 139, bm_lewis 89 Hz.
+# age= is the CHARACTER's age (STD-AGE); every child is voiced by an adult voice, pitched.
+# Kids' voices are kid-like in sound only: no child's line is ever suggestive (hard limit 3).
+
+# ---- the 12 speaking roles (beat sheet Appendix E) -----------------------------------
+voice mayor       engine=kokoro kokoro=am_puck:0.6+am_michael:0.4 speed=1.00 pitch=+3st age=adult role="Mayor Giggs" brief="musical-theatre tenor; bright, sing-song; patter 2.7-3.0 w/s"
+audition mayor 1  kokoro=am_puck:0.6+am_michael:0.4 speed=1.00 pitch=+3st
+audition mayor 2  kokoro=am_puck speed=1.05 pitch=+3st
+audition mayor 3  kokoro=am_eric speed=1.00 pitch=+1st
+sample mayor "Welcome, welcome! Mayor Gigglesworth. Friends call me Giggs. Enemies don't exist!"
+sample mayor "Father.{...} Nobody on this side says those names."
+
+voice nana        engine=kokoro kokoro=bf_emma speed=0.88 pitch=-2st formant=-0.5st age=adult role="Nana Puddin" brief="low, slow, warm alto; 2.0-2.4 w/s; about 70"
+audition nana 1   kokoro=bf_emma speed=0.88 pitch=-2st formant=-0.5st
+audition nana 2   kokoro=af_alloy speed=0.88 pitch=-1st formant=-0.5st
+audition nana 3   kokoro=af_nova speed=0.88 pitch=-1st formant=-0.5st
+sample nana "The key's in a muffin. Don't ask which. I forgot. I always forget."
+sample nana "The last one hatched into a little demon! Ha! Kidding.{..} ...Mostly."
+
+voice pip         engine=kokoro kokoro=af_sky speed=1.25 pitch=+4st formant=+2st age=child role="Pip" brief="a child voiced by an adult voice: highest and fastest, sincere, never baby talk"
+audition pip 1    kokoro=af_sky speed=1.25 pitch=+4st formant=+2st
+audition pip 2    kokoro=af_jessica speed=1.25 pitch=+3st formant=+2st
+audition pip 3    kokoro=af_river speed=1.25 pitch=+4st formant=+2st
+sample pip "Found your one. Lost property goes on a lantern so the owner can see it.{..} Patrol rules."
+sample pip "My eyes are just doing a rain.{...} ...It's just a NAME."
+
+voice fuzz        engine=kokoro kokoro=am_liam speed=1.10 pitch=+2st age=adult role="Father Fuzz" brief="high, quick, soft and round; earnest, never ironic"
+audition fuzz 1   kokoro=am_liam speed=1.10 pitch=+2st
+audition fuzz 2   kokoro=am_eric speed=1.05
+audition fuzz 3   kokoro=am_adam speed=1.10 pitch=+3st
+sample fuzz "THE POWER OF CUDDLES COMPELS YOU!"
+sample fuzz "Eleven years ago tonight, I hugged someone who needed it.{...} It didn't work then either."
+
+voice bonejangles engine=kokoro kokoro=bm_lewis speed=0.95 age=adult role="Bonejangles" brief="low, woody, expressive, rhythmic"
+voice bonejangles.possessed base=bonejangles flatten_f0=0.7 speed=0.90 role="Bonejangles (possessed)" brief="dead flat, every word the same weight"
+# bm_lewis, not the spec's bm_george: bm_george sits at 139 Hz and, pitched down and flattened,
+# Whisper heard his possessed ratings as "Ziggs" (Six), "Nade's death", "Zen" (Ten); bm_lewis
+# (89 Hz, low already) was heard right on every one, flattened (measured 2026-10-25).
+audition bonejangles 1 kokoro=bm_lewis speed=0.95
+audition bonejangles 2 kokoro=bm_george speed=0.95 pitch=-4st
+audition bonejangles 3 kokoro=bm_daniel speed=0.95 pitch=-3st
+sample bonejangles "Clack clack!"
+sample bonejangles "We came on the fog, and we came for the cake."
+
+voice clinker     engine=kokoro kokoro=af_nicole speed=0.85 pitch=-3st flatten_f0=1.0 age=adult role="Clinker (voice only)" brief="low, slow, flat; laid R8 under Bonejangles (late= on the line)"
+audition clinker 1 kokoro=af_nicole speed=0.85 pitch=-3st flatten_f0=1.0
+audition clinker 2 kokoro=af_alloy speed=0.85 pitch=-2st flatten_f0=1.0
+audition clinker 3 kokoro=af_kore speed=0.85 pitch=-3st flatten_f0=1.0
+sample clinker "Six.{..} Needs death."
+sample clinker "...Seven."
+
+voice bloom       engine=kokoro kokoro=af_aoede speed=0.95 pitch=+1st age=adult role="Dr. Bloom" brief="high, soft, clinical, a dry smile"
+audition bloom 1  kokoro=af_aoede speed=0.95 pitch=+1st
+audition bloom 2  kokoro=af_sarah speed=0.95 pitch=+1st
+audition bloom 3  kokoro=af_bella speed=0.95
+sample bloom "No pulse.{..} He never has one."
+sample bloom "Father, don't."
+
+voice steamy      engine=kokoro kokoro=bf_lily speed=1.00 contour=lilt contour_amt=1.0 age=adult role="Steamy" brief="a defined fictional lilt (WORLD contour), never a borrowed accent"
+audition steamy 1 kokoro=bf_lily speed=1.00 contour=lilt contour_amt=1.0
+audition steamy 2 kokoro=bf_alice speed=1.00 contour=lilt contour_amt=1.0
+audition steamy 3 kokoro=af_jessica speed=1.00 contour=lilt contour_amt=0.8
+sample steamy "That's Duckworth.{.} That's Quackers.{.} That's...{..} I don't know that one."
+sample steamy "...I don't know that one either."
+
+voice kevin       engine=kokoro kokoro=am_onyx speed=0.92 pitch=+4st flatten_f0=0.5 age=adult role="Kevin" brief="deadpan, flat and friendly, middle pitch"
+audition kevin 1  kokoro=am_onyx speed=0.92 pitch=+4st flatten_f0=0.5
+audition kevin 2  kokoro=am_adam speed=0.95 flatten_f0=0.5
+audition kevin 3  kokoro=am_echo speed=0.95 flatten_f0=0.5
+sample kevin "Yes, three eyes."
+sample kevin "Nobody ever asks about the third one."
+
+voice hattie      engine=kokoro kokoro=bf_isabella speed=0.85 pitch=-3st age=adult role="Hattie Haha" brief="middle-low, slow and precise, mic-close, dry"
+audition hattie 1 kokoro=bf_isabella speed=0.85 pitch=-3st
+audition hattie 2 kokoro=bf_alice speed=0.85 pitch=-3st
+audition hattie 3 kokoro=af_kore speed=0.85 pitch=-1st
+sample hattie "Knock knock."
+sample hattie "See, that's the trick. Nobody ever says.{...} ...Yikes."
+
+voice lulla       engine=kokoro kokoro=af_heart speed=0.90 pitch=-3st breath=0.12 age=adult dx_filter=tent role="Miss Lulla" brief="low, soothing, hushed; -6 dB tent filter in the mix"
+audition lulla 1  kokoro=af_heart speed=0.90 pitch=-3st breath=0.12
+audition lulla 2  kokoro=af_nova speed=0.90 pitch=-1st breath=0.12
+audition lulla 3  kokoro=af_alloy speed=0.90 breath=0.12
+sample lulla "They all drew the same friend."
+sample lulla "I don't know who he is."
+
+voice gurgle      engine=kokoro kokoro=am_santa speed=0.80 pitch=-11st formant=-5st breath=0.25 babble=1 age=adult role="GURGLE" brief="Grumbleguts' belly: a bass babble carrying the caption's rhythm (temp; VOICE_GURGLE + tuba + sink in the mix)"
+audition gurgle 1 kokoro=am_santa speed=0.80 pitch=-11st formant=-5st breath=0.25
+audition gurgle 2 kokoro=am_fenrir speed=0.80 pitch=-10st formant=-6st breath=0.3
+audition gurgle 3 kokoro=bm_lewis speed=0.80 pitch=-7st formant=-5st breath=0.3
+sample gurgle "...Needs salt."
+sample gurgle "Mm. Somebody new."
+
+voice grumbleguts engine=kokoro kokoro=am_fenrir:0.7+am_santa:0.3 speed=1.05 pitch=-4st age=adult role="Grumbleguts" brief="flamboyant, raunchy, oily baritone; heard only as a purr in 101 (lib:grum/purr_v1)"
+audition grumbleguts 1 kokoro=am_fenrir:0.7+am_santa:0.3 speed=1.05 pitch=-4st
+audition grumbleguts 2 kokoro=am_fenrir speed=1.00 pitch=-5st formant=-1st
+audition grumbleguts 3 kokoro=bm_george speed=1.00 pitch=-5st
+sample grumbleguts "Mm.{..} Somebody new."
+sample grumbleguts "Oh, don't stop on my account, darlings."
+
+voice pet         engine=lib age=adult role="the pet" brief="beep. only: the game's raw piezo (lib:pet/beep_v1, process=none); not a performance"
+
+# ---- walla ----------------------------------------------------------------------------
+voice kids_walla  engine=kokoro pool=af_sky,af_river,am_puck,bf_lily speed=1.10..1.20 pitch=+4..+6st formant=+2..+3st seed=7 age=child role="storybook kids (co02-co03)" brief="children voiced by adult voices, pitched up"
+audition kids_walla 1 pool=af_sky,af_river,am_puck,bf_lily speed=1.10..1.20 pitch=+4..+6st formant=+2..+3st seed=7
+audition kids_walla 2 pool=af_river,af_kore,am_eric,bf_alice speed=1.10..1.20 pitch=+5..+7st formant=+2.5..+3st seed=7
+audition kids_walla 3 pool=af_sky,af_river,am_puck,bf_lily speed=1.15..1.25 pitch=+3..+4st formant=+1.5..+2st seed=7
+sample kids_walla "Cupcakes!{..} Wait for me!{..} Soup! There's soup!"
+sample kids_walla "Look, lanterns!{..} Race you to the bridge!{..} Hi! Hi! Hi!"
+
+voice lulla_kids  engine=kokoro pool=af_river,af_kore,bf_lily,am_puck speed=1.05..1.15 pitch=+5..+7st formant=+2.5..+3st seed=19 age=child role="Miss Lulla's kids" brief="children voiced by adult voices; sleepy"
+voice giggle      engine=kokoro pool=am_eric,af_river,am_adam,af_kore,bm_daniel,bf_alice speed=0.95..1.10 pitch=-2..+2st seed=11 age=adult role="the Giggle crowd"
+voice tent        engine=kokoro pool=am_eric,af_river,am_adam,af_kore,bm_daniel,bf_alice speed=0.95..1.10 pitch=-2..+2st seed=12 age=adult role="Hattie's audience"
+voice wall        engine=kokoro kokoro=am_adam speed=0.95 pitch=-1st age=adult dx_filter=distant role="a laugh beyond the Wall"
+voice fog         engine=kokoro pool=am_eric,af_river,am_adam,af_kore,bm_daniel,af_nicole speed=0.80..0.90 pitch=-3..+1st breath=0.45 wavy=0.8 seed=13 age=adult role="the fog (walla stack)" brief="whispered to half-sung, wavy"
+voice fog_child   engine=kokoro kokoro=af_kore speed=0.90 pitch=+6st formant=+2.5st breath=0.2 wavy=0.6 age=child role="the fog's child echo" brief="small and too sweet; never Pip's voice (af_sky)"
+
+# ---- audio description (deferred with AD, spec §1.2; cast so ad.shw can render later) ----
+voice ad          engine=kokoro kokoro=bm_fable speed=1.00 age=adult role="AD narrator"

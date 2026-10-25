@@ -44,7 +44,7 @@ def _metas(defs, needed):
 def run(ep="ep101", mx=False, rng=None, sheet=True):
     defs = cuelib.load_defs()
     spots, ops = spotting.load(ep)
-    metas = _metas(defs, {o.cue for o in ops})
+    metas = _metas(defs, {o.cue for o in ops if o.cue != "*"})
     rd = spotting.rundown(ep)
     total = (rd[-1][1] + rd[-1][2]) * SPF
     res = spotting.resolve(ops, spots, rd, metas)

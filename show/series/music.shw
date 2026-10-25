@@ -12,18 +12,16 @@
 # on that key (70 = the kit's synthesised shaker).
 
 # ---------------------------------------------------------------- the game's own cues (MML)
-cue mingle_box src=mml:core/src/mml_mingle.c bpm=96 meter=4/4 key=F passes=2 desc="MINGLE on the music box (S2's mml_mingle.c), full: CO-1, CO-2"
-  # 96 bpm: one beat = 18.75 f = 30,000 smp; one bar = 75 f = 120,000 smp (bars land on frames)
-  track 0 inst=musicbox send=-13 ; track 1 inst=warm_pad gain=-9dB send=-11 ; track 2 inst=chip_tri gain=-8dB ; track 3 inst=drums_pop:70 gain=-20dB
-  # the music box's muted note in CO-2 (co08 +75, 29 f): the first onset under the mute is
-  # bar 12.1 = phrase bar 4, beat 1, G5 - the cadence "g f e g f2" never gets its first note.
-  # The Mayor stops humming on it in co12 (+120) and gets one note past it in 4-08 (F5).
-  note mayors_note bar=12.1 phrase=4.1 pitch=G5 hum=G4
-  note plus_one_note bar=12.1.5 phrase=4.1.5 pitch=F5 hum=F4
+cue mingle_full src=score:mingle.mingle form=full reps=3 bpm=150 meter=4/4 key=Cm desc="MINGLE v2 (the creator's pad1.mid), music box, full phrase x3: CO-1, CO-2"
+  # 150 bpm: beat = 12 f = 19,200 smp; bar = 48 f = 76,800 smp. Box = written pitch +24.
+  # beats 0-15: C Bb G C | Bb G Bb Ab | F Bb Ab F | Ab G Eb C(3 beats) | rest | 18 C 19 Bb 20 Ab 21 Eb
+  # 3 passes (CO-1/CO-2 = 31 s); the named notes are pass 3's (CO-2 mutes at its beat 20.75)
+  note mayors_note bar=17.4.75 phrase=20.75 pitch=Ab5 hum=Ab3
+  note plus_one_note bar=18.2 phrase=21 pitch=Eb5 hum=Eb3
 end
 
-cue mingle_thin src=mml:core/src/mml_mingle.c bpm=96 meter=4/4 key=F passes=1 send=-20 desc="MINGLE, one voice (the lead channel alone), thinner: CO-4"
-  track 0 inst=musicbox gain=-2dB send=-18
+cue mingle_interrupt src=score:mingle.mingle form=interrupt bpm=150 meter=4/4 key=Cm desc="MINGLE v2 (pad1interrupt.mid), music box, cut off before the Eb: CO-4"
+  # as full to beat 18, then Bb at 19.25 and Ab at 20.75, then nothing: the hum takes over
 end
 
 cue heehee_bell src=mml:core/src/mml_heehee_jingle.c bpm=120 meter=4/4 key=A tail=6 desc="The HEE_HEE bell (S2's mml_heehee_jingle.c, the bell channel): every act card, frame 0"
@@ -137,4 +135,44 @@ end
 cue true_name src=score:pilot.true_name bpm=72 meter=4/4 key=F desc="TRUE NAME motif, then a soft choir (4-01)"
 end
 cue credits_musicbox src=score:pilot.credits_musicbox bpm=120 meter=4/4 key=E desc="End credits: the chorus hook on the music box, unresolved"
+end
+
+# ---------------------------------------------------------------- staged-shot names
+# STAGING's shots name these; each renders the same score/file as the cue it copies (same
+# bar map), so a later dedicated arrangement replaces one line here and no shot changes.
+cue riff_em src=score:pilot.riff form=possessed bars=16 bpm=140 meter=4/4 key=E desc="the ribs play with no hands (2-01) (= riff_possessed)"
+end
+cue fuzz_hymn src=score:pilot.hymn_try3 bpm=96 meter=4/4 key=F desc="the FUZZ hymn under the sermon (2-05) (= hymn_try3)"
+end
+cue fuzz_hymn_motif src=score:pilot.sting form=fuzz_small bpm=80 meter=4/4 key=F desc="the FUZZ hymn motif, small (3-08) (= fuzz_small)"
+end
+cue fail_sting src=score:pilot.fail times=1 bpm=120 meter=4/4 key=C desc="the FAIL card sting (2-06) (= fail_x1)"
+end
+cue doomtastic_doom src=file:doomtastic_times_main_title.flac barmap=midi:midi/main_title/tracks/doomtastic_times_main_title_full.mid length=1500 fade=0.3 desc="the theme as the DOOM-side lift (3-03): start from=prechorus_last2 (= theme_main_title)"
+end
+cue wall_motif src=score:pilot.sting form=wall_flame bpm=70 meter=4/4 key=E desc="the wall's motif under the blue candle (3-09) (= wall_flame)"
+end
+cue riff_its_fine src=score:pilot.its_fine key=C bpm=140 meter=4/4 desc="the RIFF landing on ITS_FINE (3-09) (= its_fine)"
+end
+cue ominous_bed src=mml:SONG_OMINOUS bpm=70 meter=4/4 key=E passes=2 verb=hall rt60=2.6 desc="the Mayor's bed creeping in (4-0x) (= ominous_fog)"
+  # @10 spooky wobble lead (the WALL motif e2 f2 | e2 a+2) -> a wobbling pulse; @9 pad; the
+  # @12 music box far off; the heartbeat kick
+  track 0 inst=chip_p12 p.vib_depth=55 p.vib_rate=4.5 p.vib_delay=0.1 gain=-6dB send=-6
+  track 1 inst=string_pad gain=-4dB send=-8
+  track 2 inst=musicbox gain=-15dB send=-4
+  track 3 inst=drums_acoustic gain=-10dB send=-14
+end
+cue choir_soft src=score:pilot.true_name bpm=72 meter=4/4 key=F desc="the soft choir as the candles relight (4-01) (= true_name)"
+end
+cue goodbye src=score:pilot.sting form=goodbye bpm=72 meter=4/4 key=E desc="Puff's goodbye (4-02) (= goodbye_puff)"
+end
+cue hook_major_ribs src=score:pilot.riff form=redeem bars=4 bpm=140 meter=4/4 key=E desc="the HOOK in major on the ribs (4-02) (= ribs_redeemed)"
+end
+cue mayor_motif src=score:pilot.sting form=mayor_slow bpm=72 meter=4/4 key=C desc="the Mayor's motif, slow (4-0x) (= mayor_slow)"
+end
+cue home_box src=score:pilot.sting form=home_cottage bpm=84 meter=3/4 key=C desc="HOME on the music box at the cottage (4-08) (= home_cottage)"
+end
+cue credits_box src=score:pilot.credits_musicbox bpm=120 meter=4/4 key=E desc="end credits: the theme's chorus hook on the music box (= credits_musicbox)"
+end
+cue theme_eyecatch_in src=score:pilot.eyecatch_in bpm=150 meter=4/4 key=E desc="eyecatch IN: the RIFF resolving on ITS_FINE (= eyecatch_in)"
 end

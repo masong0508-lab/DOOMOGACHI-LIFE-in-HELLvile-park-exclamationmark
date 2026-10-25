@@ -22,7 +22,7 @@ shot co01 beat=e101_co_1 len=90 set=calendar_page px=2 look=crayon cut=FADE matt
   +0    fade in over=R8                                       # choice: FADE IN length not in the shot list
   +0    fol FOL_crayon_scratch follow=circle_midsummer ; reveal circle_midsummer over=+0..+24
   +30   reveal fireworks_scribble over=+30..+60 ; fol FOL_crayon_scratch follow=fireworks_scribble gain=-3dB
-  +60   mx mingle_box start                                   # sample 96,000 of the episode
+  +60   mx mingle_full start                                   # sample 96,000 of the episode
   ad "A crayon circles Midsummer on a calendar, then scribbles fireworks round it."
 end
 
@@ -102,8 +102,8 @@ shot co08 beat=e101_co_2 len=195 set=river_storybook px=1 look=crayon cut=CUT ma
   actor fluffy who=fluffy kind=chibi at=96,64 face=R idle=on pose=fluffy_bob21
   +0    move fluffy to=258,58 over=195 tw=TW_LINEAR ; squash fluffy 0.55 over=195   # smaller with distance; never looks back
   +0    fx embers at=0,0..320,60 n=18 seed=801 fade=+0..+150 ; sfx FX_SPARKLE gain=-18dB ; cc "[embers fizz]"
-  +75   mx mingle_box mute 29                                  # mid-phrase; first muted onset = the Mayor's note (G5)
-  +104  mx mingle_box to -16dB over=2                          # resumes softer under the caption
+  +90   mx mingle_full mute 29                                  # MINGLE v2 refit: pass 3 beat 20.75, the Ab is heard, the Eb (beat 21) never is
+  +119  mx mingle_full to -16dB over=2                          # the tail rings softer under the caption
   +105  super s_co08 style=type at=lower over=+105..+153 until=end
   ad "The cloud drifts away over the river as the fireworks fade. It does not look back."
 end
@@ -113,7 +113,7 @@ shot co09 beat=e101_co_3 len=240 set=park_storybook:later px=1 look=crayon cut=S
   assert wall.x + 16 == 160                                   # the Wall sits on x = 160 (doc 192)
   cam at=0,0                                                  # locked, static (co02's drift is zero at +90)
   +0    sfx FX_THUD ; shake SHK_RUMBLE                        # RUMBLE = 13 f
-  +0    mx mingle_box stop ; walla kids_far off               # silence to the end (about 7 s)
+  +0    mx mingle_full stop ; walla kids_far off               # silence to the end (about 7 s)
   +60   super s_co09 style=deadpan at=lower until=end         # appears, no type-on
   ad "The same park, years later: a wall runs straight through the bandstand."
 end
@@ -121,7 +121,7 @@ end
 shot co10 beat=e101_co_4 len=120 set=banner_storybook:mingle px=1 look=crayon cut=CUT matte=open
   look crayon grain=12 boil=2
   prop  roller art=gen:crayon_roller(color=CRAYON_SPARK_PINK,seed=63) at=-40,96 plane=mingle
-  +0    mx mingle_thin start                                  # back, thinner: one voice
+  +0    mx mingle_interrupt start                                  # back, thinner: one voice
   +15   move roller to=360,96 over=30 tw=TW_LINEAR ; reveal giggle over=+15..+45 follow=roller ; sfx FX_ROLLER_LONG
   ad "A banner reads MINGLE. A pink paint roller crosses it and leaves GIGGLE behind."
 end
@@ -135,8 +135,7 @@ shot co11 beat=e101_co_4 len=330 set=banner_storybook:giggle px=1 look=crayon cu
   +100  super s_co11b style=pop at=lower until=+159
   +160  super s_co11c style=pop at=lower until=+239
   +240  super s_co11d style=deadpan at=lower until=end
-  +240  mx mingle_thin mute 26                                # R26 of silence for "No fireworks."
-  +266  mx mingle_thin hold note=mayors_note                  # resumes its phrase; the held note into the cut is the Mayor's hum pitch
+  +198  say co12_hum mayor mouth="hum"                         # HUMS ingest: the creator's take (8.41 s, his own swing, unstretched) placed so its last note ends at co12 +120 (stop dead)
   ad "Captions: Now there's a different party. Same night. Half a park. No fireworks."
 end
 
@@ -146,10 +145,10 @@ shot co12 beat=e101_co_5 len=150 set=bandstand_banner:giggle px=1 look=pixel cut
   cam at=0,0 scale=1.10                                       # matched to co11's end frame (scale 1.04 crayon = 1.10 here on the baseline)
   actor mayor who=mayor kind=figure at=96,98 face=R idle=on pose=mayor_ladder_roll    # up the ladder, roller in hand; wings on idle
   show drip:pink                                              # the drip (pink) on the wet G
-  +0    say co12_hum mayor mouth="hum"                         # takes over from the music box at its exact pitch
+  # co12_hum pre-laps from co11 +198 (MINGLE v2, 150 bpm interrupt phrase hummed at written pitch, from middle C)
   +0    amb AMB_dawn_birds on gain=-24dB
   +60   cam to x=0 y=0 scale=1.00 over=45 ease=OUT             # pull back +60..+105
-  +120  stop co12_hum ; still mayor n=8                        # stops on the Mayor's note
+  +120  stop co12_hum ; still mayor n=8                        # stops dead on the Mayor's note (Ab3, 15 f after its onset: the interrupt cut-off)
   +120  eyes mayor L over=2 ; +124 blink mayor 2               # R8: eyes flick, a 2-f blink
   +128  thaw mayor
   ad "Real now: Mayor Giggs, a round cherub on a ladder, hums - and stops on a note."

@@ -32,6 +32,11 @@ shot mt02 beat=e101_mt_1 len=192 set=cast_popin:day px=1 look=pixel cut=CUT matt
   @bar:8.1  move logo3 to=160,110 over=5 tw=TW_DROP ; squash logo3 1.22 over=6 ; sfx FX_LETTER_DROP
   @bar:9.1  squash logo1 1.22 over=4 ; squash logo2 1.22 over=4 ; squash logo3 1.22 over=4 ; sfx FX_BOING gain=-12dB
   ad "The show's logo drops in, word by word: DOOMOGACHI LIFE in HELLvile Park!"
+  @bar:6.1+5 shake SHK_TAP    # motion: each word lands with a tap of shake (on the drop's last frame)
+  @bar:7.1+5 shake SHK_TAP    # motion: the impact lands
+  @bar:8.1+5 shake SHK_TAP    # motion: the impact lands
+  +0    cam to scale=1.060 over=192 ease=INOUT    # motion: track the action
+  +0    cam pan dx=15.1 dy=5.1 over=192 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot mt03 beat=e101_mt_2 len=192 set=cast_popin:day px=1 look=pixel cut=CUT matte=open cue=theme_main_title@bar:10
@@ -66,6 +71,12 @@ shot mt03 beat=e101_mt_2 len=192 set=cast_popin:day px=1 look=pixel cut=CUT matt
   @bar:12.4   take pop rivet ; super s_mt_np_rivet style=plate at=292,158 until=end ; sfx FX_NAME_POP ; fx sparks at=292,120 n=8 seed=313
   waive TIME-READ "name plates are on screen 48-192 f; the line-up holds through bar 13"
   ad "The cast pops in one by one, each with a name plate. A bunny mascot stands at the edge, perfectly still."
+  +0    cam to scale=1.060 over=192 ease=INOUT    # motion: crane-in reveal
+  +0    cam pan dx=9.1 dy=2.1 over=192 ease=INOUT    # motion: (centred on the frame)
+  +150  headturn sunny 24 3 ; blink pip               # motion: the line-up glances at the still bunny (a ripple, 0-3 f)
+  +152  headturn nana 24 3 ; headturn fuzz 24 3
+  +153  take react_small mayor                        # motion: the one who notices
+  +174  headturn sunny 232 4 ; headturn nana 232 4 ; headturn fuzz 232 4
 end
 
 shot mt04 beat=e101_mt_3 len=36 set=hahaland_wall_pan:day px=1 look=pixel cut=CUT matte=open cue=theme_main_title@bar:14
@@ -87,11 +98,16 @@ shot mt05 beat=e101_mt_3 len=72 set=wall_split:day px=1 look=pixel cut=WIPE:bric
   @bar:15.1+6    sfx FX_KNOCK_WALL pan=L ; sfx FX_KNOCK_WALL pan=R ; pop hh TWT_TAP ; pop hv TWT_TAP   #  knock,
   @bar:15.2      sfx FX_KNOCK_WALL pan=L ; sfx FX_KNOCK_WALL pan=R ; pop hh TWT_TAP ; pop hv TWT_TAP   #  knock!"
   ad "Split screen at the Wall: both sides run up to it and knock at the same moment."
+  +0    cam to scale=1.060 over=72 ease=INOUT    # motion: track the action
+  +0    cam pan dx=15.1 dy=5.1 over=72 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot mt06 beat=e101_mt_4 len=36 set=sealed_gate:night px=1 look=pixel cut=CUT matte=open cue=theme_main_title@bar:16.2
   +0    sfx FX_RECORD_SCRATCH ; tapestop 5                     # the drop is the record scratch
   +5    mx theme_main_title duck -30dB 14                      # 14 f of near-silence
+  +0    shake SHK_TAP                                         # motion: the scratch stops the picture with a jolt
+  +0    cam to scale=1.080 over=36 ease=OUT                   # motion: a hard push on the KEEP OUT sign
+  +0    cam pan dx=11.9 dy=6.7 over=36 ease=OUT               # motion: (centred on the frame)
   ad "The sealed gate: seven padlocks, a sign - KEEP OUT. FOREVER. - and a small shuttered grille."
 end
 
@@ -109,6 +125,8 @@ shot mt08 beat=e101_mt_5 len=96 set=bandstand_cu:north_night px=2 look=pixel cut
   @bar:19.3  show candle2:out ; sfx FX_CANDLE_OUT_BEAT ; fx smoke at=160,70 n=3 seed=802
   @bar:20.1  show candle3:out ; sfx FX_CANDLE_OUT_BEAT ; fx smoke at=216,70 n=3 seed=803
   ad "Three candles go out, one by one, in rhythm."
+  +0    cam to scale=1.100 over=96 ease=OUT    # motion: insert push
+  +0    cam pan dx=14.5 dy=8.2 over=96 ease=OUT    # motion: (centred on the frame)
 end
 
 shot mt09 beat=e101_mt_5 len=144 set=title_corridor:cute px=1 look=pixel cut=CUT matte=open gore=CUTE cue=theme_main_title@bar:21
@@ -122,6 +140,7 @@ shot mt09 beat=e101_mt_5 len=144 set=title_corridor:cute px=1 look=pixel cut=CUT
   @bar:23.1+16 sfx FX_LENS_DRIP gain=-6dB
   tag shot gore_truth=yes
   ad "A fluffy demon floats toward us - then bursts in red mist against the lens while the song keeps smiling."
+  @bar:23.1+2 shake SHK_TAP    # motion: the impact lands
 end
 
 shot mt10 beat=e101_mt_5 len=48 set=sealed_gate:night px=1 look=pixel cut=CUT matte=open gore=CUTE cue=theme_main_title@bar:24
@@ -131,6 +150,8 @@ shot mt10 beat=e101_mt_5 len=48 set=sealed_gate:night px=1 look=pixel cut=CUT ma
   @bar:24.2  squash rear 1.3 over=6 tw=TW_BOING ; sfx FX_BOING_GATE   # bounces once
   @bar:24.2+2  punch 0 -2 ; pop lock1 TWT_HOP2 ; pop lock2 TWT_HOP2 ; pop lock3 TWT_HOP2 ; pop lock4 TWT_HOP2 ; pop lock5 TWT_HOP2 ; pop lock6 TWT_HOP2 ; pop lock7 TWT_HOP2 ; fol FOL_padlock_1
   ad "Behind the shut grille, something big and round presses against the gate and bounces. The padlocks jump."
+  +0    cam to scale=1.060 over=48 ease=INOUT    # motion: track the action
+  +0    cam pan dx=15.1 dy=5.1 over=48 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot mt11 beat=e101_mt_6 len=264 set=logo_card:pose px=1 look=pixel cut=SMASH matte=open gore=CUTE cue=theme_main_title@bar:25
@@ -140,6 +161,8 @@ shot mt11 beat=e101_mt_6 len=264 set=logo_card:pose px=1 look=pixel cut=SMASH ma
   +30   hide drip                                             # painted over as the roller passes x 126
   @bar:30.1  show drip ; sfx FX_WET_BLIP ; fx paint_bloom at=126,84 n=8 seed=1101   # on the last chord, it bleeds back
   ad "The logo. A pink roller paints over its red drip - and on the last chord the drip bleeds back through."
+  +0    cam to scale=1.060 over=264 ease=INOUT    # motion: track the action
+  +0    cam pan dx=15.1 dy=5.1 over=264 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot mt12 beat=e101_mt_7 len=36 set=logo_card:pose px=1 look=pixel cut=CUT matte=open base=mt11@+263
@@ -154,4 +177,6 @@ shot mt13 beat=e101_mt_7 len=48 set=title_card:dusk px=1 look=pixel cut=FADE mat
   +0    amb AMB_night_fair on gain=-34dB                      # frame-0 sound; 1-01 owns what follows
   sign s_mt7_title on=banner
   ad "Title: GIGGLE NIGHT - with MINGLE showing through the wet paint."
+  +0    cam to scale=1.100 over=48 ease=OUT    # motion: insert push
+  +0    cam pan dx=14.5 dy=8.2 over=48 ease=OUT    # motion: (centred on the frame)
 end

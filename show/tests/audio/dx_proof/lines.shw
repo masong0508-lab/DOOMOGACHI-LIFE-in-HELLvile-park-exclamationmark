@@ -1,0 +1,9 @@
+# show/tests/audio/dx_proof/lines.shw: the dialogue proof's lines (spec §17 M1-T10, AT9.2).
+# The Mayor and Nana: "Perfect." / "Two of everything, dear." / "Stay." and one line from
+# the pilot's Act One. Lines that exist in ep101 keep their episode ids (same text, same
+# voice), so the proof exercises the real lines; the one line the script does not have gets
+# a dx_ id. `show voice dx_proof` locks them into this folder's voice.lock.
+line co15_perfect  mayor "Perfect."                  dir="pleased with himself, quiet"
+line dx_nana_two   nana  "Two of everything, dear."  dir="cosy, matter-of-fact"
+line co18_stay     mayor "Stay."                     dir="firm, to the balloon, as to a pet"
+line a1_09_nana_01 nana  "Habit, sweet pea."         dir="not looking up"

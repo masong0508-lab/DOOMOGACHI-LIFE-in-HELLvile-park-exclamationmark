@@ -1,0 +1,224 @@
+# show/ep101/takes.toml: which take each line uses (spec §5.6). CREATOR-OWNED.
+#
+# A line not listed here uses the default order: a recording in show/ep101/vo/
+# (<line id>_take<n>.wav, the highest n) > a scratch read (_s<n>) > its library take
+# (take=lib:... in lines.shw) > TTS (its speaker's voice in series/voices.shw).
+#
+#   [co15_perfect]
+#   fav = 2                    # vo/co15_perfect_take2.wav
+#   retime = "fit"             # keep the written timing (lint AUD-OVERRUN past +/-15 %)
+#
+#   [co18_stay]
+#   take = "tts"               # back to the temp voice, keeping the recordings
+#   retime = "take"            # the take's length drives len=auto and every anchor after it
+#
+#   take = "rec:3" | "rec:<path>" | "scratch:1" | "lib:mayor/heehee_v1" | "tts"
+#
+# Every line is temp TTS until a recording lands (roadmap §8 default).
+
+# show/ep101/takes.toml - the pick for each recorded line (docs/show/ep101/RECORDING_GUIDE.md sec.6).
+# A line with no entry plays: recording, guide read, library take, TTS. take = "tts" forces TTS.
+
+# --- mayor: the creator's own recordings (Oct 25), ingested by Mayor-VO ---
+# take paths are relative to SHOW_LIB's parent (show/lib -> scratchpad show_lib); .wav twins exist.
+# retime: "fit" when the favourite's speech is within +-15 % of target_seconds, else "take".
+# mouth = show/ep101/mouth/<take>.mouth (30 fps, one viseme per frame, spec 9.3).
+
+[a1_08_mayor_01]
+take = "rec:show/lib/takes/mayor/e101/a1_08_mayor_01_t1.flac"
+retime = "take"   # speech 5.39 s / target 4.20 s
+sha256 = "22d1bf38c9a13fbc95d6fae3d9856ab48ebda1e2ad1242fa109d78290fb00a74"   # flac
+mouth = "show/ep101/mouth/a1_08_mayor_01_t1.mouth"
+
+[a1_08_mayor_10]
+take = "rec:show/lib/takes/mayor/e101/a1_08_mayor_10_t1.flac"
+retime = "fit"   # speech 2.92 s / target 2.60 s
+sha256 = "11583159c53b7e57f571f1c1e582b37e6f81838b5469333a0bbaa108483ce2dc"   # flac
+mouth = "show/ep101/mouth/a1_08_mayor_10_t1.mouth"
+
+[a1_08_mayor_02]
+take = "rec:show/lib/takes/mayor/e101/a1_08_mayor_02_t2.flac"
+retime = "take"   # speech 4.39 s / target 2.80 s
+sha256 = "0c7dd079f3782ec0e799de59015f7127c83aa981c7be36ab3fc6932f47c941be"   # flac
+mouth = "show/ep101/mouth/a1_08_mayor_02_t2.mouth"
+alts = ["a1_08_mayor_02_t1"]
+
+[a1_08_mayor_03]
+take = "rec:show/lib/takes/mayor/e101/a1_08_mayor_03_t1.flac"
+retime = "fit"   # speech 1.91 s / target 1.80 s
+sha256 = "3d7c5185c4400d924ee17f7314f42151b19486bc8da5ae446e237f07f706ec54"   # flac
+mouth = "show/ep101/mouth/a1_08_mayor_03_t1.mouth"
+
+[a1_08_mayor_04]
+take = "rec:show/lib/takes/mayor/e101/a1_08_mayor_04_t1.flac"
+retime = "fit"   # speech 2.40 s / target 2.20 s
+sha256 = "2600012fca81135bd92f55250898d679f7b9cc5a4a52b9eaef7ddc6552513ed9"   # flac
+mouth = "show/ep101/mouth/a1_08_mayor_04_t1.mouth"
+alts = ["a1_08_mayor_04_t2"]
+
+[a1_08_mayor_05]
+take = "rec:show/lib/takes/mayor/e101/a1_08_mayor_05_t1.flac"
+retime = "fit"   # speech 1.89 s / target 1.80 s
+sha256 = "37198d4517cbca695a78a4d48915e7ddb06831fe0baded95c3082add73642419"   # flac
+mouth = "show/ep101/mouth/a1_08_mayor_05_t1.mouth"
+
+[a1_08_mayor_06]
+take = "rec:show/lib/takes/mayor/e101/a1_08_mayor_06_t1.flac"
+retime = "fit"   # speech 3.17 s / target 2.80 s
+sha256 = "5bacc35c7a6ed703d8f618eff5b1493e8539b926133f6a908de93756e91273cd"   # flac
+mouth = "show/ep101/mouth/a1_08_mayor_06_t1.mouth"
+
+[a1_08_mayor_07]
+take = "rec:show/lib/takes/mayor/e101/a1_08_mayor_07_t1.flac"
+retime = "fit"   # speech 1.16 s / target 1.20 s
+sha256 = "3b7b556fa06f7d5eed1e2c25bbbb8b3cc15f778a70c2bf93889bdad6623936bb"   # flac
+mouth = "show/ep101/mouth/a1_08_mayor_07_t1.mouth"
+
+[a1_08_mayor_08]
+take = "rec:show/lib/takes/mayor/e101/a1_08_mayor_08_t1.flac"
+retime = "take"   # speech 1.49 s / target 3.00 s
+sha256 = "298fc8de4306ff38a8261dce74427e0fd6ae527a8a66fa2af85834e9bd650224"   # flac
+mouth = "show/ep101/mouth/a1_08_mayor_08_t1.mouth"
+
+[a1_08_mayor_09]
+take = "rec:show/lib/takes/mayor/e101/a1_08_mayor_09_t1.flac"
+retime = "fit"   # speech 1.18 s / target 1.07 s
+sha256 = "62aae11c51b13d4aef2da10f356f5b8c75f9fcc230347d9c76e3dd6852da04f8"   # flac
+mouth = "show/ep101/mouth/a1_08_mayor_09_t1.mouth"
+
+[a1_09_mayor_02]
+take = "rec:show/lib/takes/mayor/e101/a1_09_mayor_02_t2.flac"
+retime = "take"   # speech 1.46 s / target 0.90 s
+sha256 = "3bb7a824b41f09fab771ad7501d34cb825d019f9bde36892cbbe2fd681024e49"   # flac
+mouth = "show/ep101/mouth/a1_09_mayor_02_t2.mouth"
+alts = ["a1_09_mayor_02_t1"]
+
+[a1_09_mayor_01]
+take = "rec:show/lib/takes/mayor/e101/a1_09_mayor_01_t1.flac"
+retime = "fit"   # speech 1.67 s / target 1.80 s
+sha256 = "3fa542774f766a7fce2fb916a0a8c0d33d049ab19e12aa2211a7e268d6e588be"   # flac
+mouth = "show/ep101/mouth/a1_09_mayor_01_t1.mouth"
+
+[a1_10_mayor_01]
+take = "rec:show/lib/takes/mayor/e101/a1_10_mayor_01_t1.flac"
+retime = "fit"   # speech 1.79 s / target 1.90 s
+sha256 = "ea229b74cfee12fc972c68291c53b6c5c0f2caff92583f8145fcda36f2f1bec7"   # flac
+mouth = "show/ep101/mouth/a1_10_mayor_01_t1.mouth"
+alts = ["a1_10_mayor_01_t2"]
+
+[a1_10_mayor_02]
+take = "rec:show/lib/takes/mayor/e101/a1_10_mayor_02_t1.flac"
+retime = "take"   # speech 0.91 s / target 0.60 s
+sha256 = "b31ebfc5c495d754b92fbf2cdb141cf3c396ff8e2aed44ca9aeafb7fe0016c72"   # flac
+mouth = "show/ep101/mouth/a1_10_mayor_02_t1.mouth"
+
+[a1_12_mayor_01]
+take = "rec:show/lib/takes/mayor/e101/a1_12_mayor_01_t1.flac"
+retime = "take"   # speech 1.57 s / target 2.00 s
+sha256 = "9ef3b9cb97686265599d995295d6092be3062b511b26860676e6370c0d77df55"   # flac
+mouth = "show/ep101/mouth/a1_12_mayor_01_t1.mouth"
+
+[a1_12_mayor_02]
+take = "rec:show/lib/takes/mayor/e101/a1_12_mayor_02_t1.flac"
+retime = "fit"   # speech 1.07 s / target 1.00 s
+sha256 = "cd03b070e3000d6fdd05e0289b92755301d55b7aaedce17feedfd442700a1c68"   # flac
+mouth = "show/ep101/mouth/a1_12_mayor_02_t1.mouth"
+
+[a1_12_mayor_03]
+take = "rec:show/lib/takes/mayor/e101/a1_12_mayor_03_t1.flac"
+retime = "fit"   # speech 1.33 s / target 1.50 s
+sha256 = "045c1c96e3fb431a4e8f223b01260e94c1f1a7ba2cd88fbeea78084404306beb"   # flac
+mouth = "show/ep101/mouth/a1_12_mayor_03_t1.mouth"
+
+[a1_13_mayor_01]
+take = "rec:show/lib/takes/mayor/e101/a1_13_mayor_01_t1.flac"
+retime = "take"   # speech 0.82 s / target 1.07 s
+sha256 = "6ddc5adb5a29d4a981049577b42a39367c249efeadceaa341b735014fba6b26d"   # flac
+mouth = "show/ep101/mouth/a1_13_mayor_01_t1.mouth"
+
+[a2_03_mayor_01]
+take = "rec:show/lib/takes/mayor/e101/a2_03_mayor_01_t1.flac"
+retime = "take"   # speech 2.17 s / target 2.60 s
+sha256 = "827662a14301025869c8df2e90d3d1661f1a9e7e57e3c2f80a1cb26024f569e4"   # flac
+mouth = "show/ep101/mouth/a2_03_mayor_01_t1.mouth"
+
+[a2_03_mayor_02]
+take = "rec:show/lib/takes/mayor/e101/a2_03_mayor_02_t1.flac"
+retime = "take"   # speech 1.31 s / target 0.70 s
+sha256 = "8457670a379cb82b2988b0ac548267f62fcb99a3d5e87c963f3cc92190fb5fed"   # flac
+mouth = "show/ep101/mouth/a2_03_mayor_02_t1.mouth"
+
+[a2_07_mayor_01]
+take = "rec:show/lib/takes/mayor/e101/a2_07_mayor_01_t1.flac"
+retime = "fit"   # speech 1.00 s / target 1.10 s
+sha256 = "71facf7608b25d81aa0259b0caef0903878a6fb0c68823d1b7d630f68a59d4d7"   # flac
+mouth = "show/ep101/mouth/a2_07_mayor_01_t1.mouth"
+
+[a3_07_mayor_01]
+take = "rec:show/lib/takes/mayor/e101/a3_07_mayor_01_t1.flac"
+retime = "take"   # speech 0.94 s / target 0.60 s
+sha256 = "4450ac596333014dfd40cd75d637d300dda683b559e3563b69776dfc2cdade05"   # flac
+mouth = "show/ep101/mouth/a3_07_mayor_01_t1.mouth"
+
+[a3_07_mayor_02]
+take = "rec:show/lib/takes/mayor/e101/a3_07_mayor_02_t1.flac"
+retime = "take"   # speech 1.84 s / target 3.50 s
+sha256 = "dee98a9016624ed8abc98693dc4f87585df3d59af69e9d93436e2512131a2d0d"   # flac
+mouth = "show/ep101/mouth/a3_07_mayor_02_t1.mouth"
+
+[a4_05_mayor_01]
+take = "rec:show/lib/takes/mayor/e101/a4_05_mayor_01_t1.flac"
+retime = "fit"   # speech 3.52 s / target 3.40 s
+sha256 = "0a4e8c666a102dc1e9d21d0eee22fb24ad4c3c5de539fb38be2598b14a69e356"   # flac
+mouth = "show/ep101/mouth/a4_05_mayor_01_t1.mouth"
+
+[a4_05_mayor_03]
+take = "rec:show/lib/takes/mayor/e101/a4_05_mayor_03_t1.flac"
+retime = "fit"   # speech 1.76 s / target 1.70 s
+sha256 = "cab9320b2940dd635126c08fa9fb15ed408360de3eea4bdc19a9ceee962c507d"   # flac
+mouth = "show/ep101/mouth/a4_05_mayor_03_t1.mouth"
+
+[a4_05_mayor_04]
+take = "rec:show/lib/takes/mayor/e101/a4_05_mayor_04_t1.flac"
+retime = "take"   # speech 1.75 s / target 1.40 s
+sha256 = "7b8523f932c50c2a43ee8b9bf7e8056e80f54085a004626c6a2b506bed028591"   # flac
+mouth = "show/ep101/mouth/a4_05_mayor_04_t1.mouth"
+
+[a4_05_mayor_02]
+take = "rec:show/lib/takes/mayor/e101/a4_05_mayor_02_t1.flac"
+retime = "fit"   # speech 0.68 s / target 0.80 s
+sha256 = "1840d292b0ca947d8dac9872558fc7eb10122fb344828f4fe27f9bace048940c"   # flac
+mouth = "show/ep101/mouth/a4_05_mayor_02_t1.mouth"
+
+[a4_06_mayor_01]
+take = "rec:show/lib/takes/mayor/e101/a4_06_mayor_01_t1.flac"
+retime = "take"   # speech 0.71 s / target 0.50 s
+sha256 = "44d39e44e944322fa7365f779cec5bc615533540106d2d9da2a7c24dc8ac1428"   # flac
+mouth = "show/ep101/mouth/a4_06_mayor_01_t1.mouth"
+
+[a4_06_mayor_02]
+take = "rec:show/lib/takes/mayor/e101/a4_06_mayor_02_t2.flac"
+retime = "take"   # speech 1.41 s / target 0.90 s
+sha256 = "dd7791624b8663214292c5f69218dfd9e45e57047352b233ccb01e01a2a2f050"   # flac
+mouth = "show/ep101/mouth/a4_06_mayor_02_t2.mouth"
+alts = ["a4_06_mayor_02_t1"]
+
+[a4_06_mayor_03]
+take = "rec:show/lib/takes/mayor/e101/a4_06_mayor_03_t1.flac"
+retime = "fit"   # speech 1.13 s / target 1.10 s
+sha256 = "44fa629a29195ce2bc45c4f8b2aac7e1e049aae8ed4fc11b6e5086b2f6fc6fd6"   # flac
+mouth = "show/ep101/mouth/a4_06_mayor_03_t1.mouth"
+
+# --- mayor hums (Oct 25, HUMS ingest): same clean chain, trimmed to 0.10 s lead / 0.03 s tail;
+# never pitch-corrected, quantized or stretched; placed in the shots by the stop point.
+[co12_hum]
+take = "rec:show/lib/takes/mayor/e101/co12_hum_t1.flac"
+retime = "take"   # hum 8.41 s; last note ends at co12 +120 (say at co11 +198)
+sha256 = "d5c0b8e6b1318044a30dd810cb4c4b440e0a091d27a4c7ba9c3dba62e8da8c96"   # flac
+mouth = "show/ep101/mouth/co12_hum_t1.mouth"
+
+[a4_08_mayor_01]
+take = "rec:show/lib/takes/mayor/e101/a4_08_mayor_01_t1.flac"
+retime = "take"   # hum 9.54 s; final Eb ends at a4s39 +138 (say at a4s38 +227)
+sha256 = "0bb6dd14ba7cacddf35cdefdb0321f0661dae056abd7696d041b91a02de72776"   # flac
+mouth = "show/ep101/mouth/a4_08_mayor_01_t1.mouth"

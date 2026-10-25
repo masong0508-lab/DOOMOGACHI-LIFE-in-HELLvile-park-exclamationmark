@@ -96,6 +96,63 @@ Each names the default taken and where to change it.
 - **The theme cues name files** (`src=file:doomtastic_times_main_title.flac` under docs/show/theme/ once
   published, else the scratchpad's theme/final): a new vocal master drops in with no other change; the bar
   map is re-imported from the master's own `*_full.mid` (tempo + section markers).
+## AUDIO: voice (WP9) and the vendored kit (show/audio), 2026-10-25
+
+- **show/audio/ is the kit and the theme's voice sources, text only (364 KB).** The only edits
+  make model, sample and cache paths overridable (`KIT_ASSETS`, `KIT_CACHE`, `KOKORO_MODELS`,
+  `KOKORO_VOICES`, `KOKORO_SRC`, `WHISPER_MODEL`); the kit cache moved out of the repo to
+  `show/build/cache/kit`. Source hashes: `show/audio/README.md`.
+- **The CMU dictionary data is not in git** (3.6 MB): spec §10.7 puts the cmudict wheel in
+  `vault-models`. `showtk/voice/env.py` reads `$SHOW_LIB/g2p/cmudict.dict` and, if missing,
+  extracts it from the pinned PyPI wheel (`cmudict==1.1.3`, sha256 `81917843…` checked); the GPL
+  wrapper is never imported. Its BSD licence is in `show/lib/licences/`.
+- **voice.lock is JSON** (`show-voice-lock/1`, one row per line, readable diffs). Placement
+  contract: `say <line>` on frame F puts take sample `onset` (= 1440, the 30 ms pre-roll) on
+  episode sample 1600·F; `mouth` letter i is on frame F + `mouth_from` (-1) + i. Full format:
+  `show/tools/showtk/voice/README.md`. Change: `showtk/voice/lock.py`.
+- **Takes live in the take store** (`$SHOW_LIB/takes/<voice>/<ep>/<id>_<kind>_<sha12>.flac`,
+  default the scratchpad's `show_lib/`), 24-bit FLAC, keyed by the sha256 of the samples, so
+  the vault can mirror the folder as is.
+- **Every take is finished the same way**: 48 kHz mono, -23 LUFS (pyloudnorm), exactly 30 ms
+  before the first sound (-40 dB re peak), a 60 ms tail with a 10 ms fade.
+- **Kokoro's audio runs 65 ms ahead of its token grid** (measured here on bilabial closures and
+  fricative bursts, and in the theme's singer.py): every token time is corrected by -1,560
+  samples at 24 kHz before the mouth track is made. AT9.2 measures closures from the audio
+  itself (the 1-6 kHz band dip), not from the token times.
+- **Recordings**: drop folder `show/ep101/vo/<line_id>_take<n>.wav` (also `_t<n>`; scratch
+  reads `_s<n>`), gitignored; `takes.toml` `fav = <n>` picks one; with no pick the **highest take
+  number wins** (the last read is usually the keeper). A recording beats TTS with no edit.
+  The published `docs/show/ep101/RECORDING_GUIDE.md` §5 folder `show/lib/takes/<voice>/e101/<id>_t<n>.wav`
+  is read too (same numbering, gitignored); its `take = "rec:<path>"` picks work as written.
+- **lines.shw follows the published lines.csv** (`show voice sync-csv ep101`): 55 lines added, 3
+  re-worded, the 2 cut lines (a2_07_fuzz_02, a2_07_nana_04) dropped; pet beeps, hums and the purr
+  keep their library takes; w_giggle_09's claps are foley (pending on WP10's SFX).
+- **Casting** (CASTING.md in the scratchpad's `show_out/voices/`): option 1 of each role is the
+  spec §10.3 pick, with pitch moved where the measured native pitch missed the voice bible's
+  register: Mayor +3 st (not +2: 136 Hz reads "upper-middle"), Bonejangles **bm_lewis** (not
+  bm_george: it sits at 139 Hz, and pitched down and flattened for the possessed ratings Whisper
+  heard "Six" as "Ziggs" and "Ten" as "Zen"; bm_lewis, 89 Hz, was heard right every time), Kevin am_onyx +4 st (86 Hz is a basso;
+  the bible says "middle"), Hattie bf_isabella -3 st, Lulla af_heart -3 st with a little breath,
+  Pip af_sky +4 st / formant +2 st at speed 1.25 (1.30 blurred words). Kids are adult voices
+  pitched up with the formants raised; the fog's child is af_kore, never Pip's af_sky.
+- **Leading "..." is not spoken** (a timing note: "come in a little late, small"); Kokoro read
+  it as a stray "a". **Stage parentheticals** in walla ("(laughter)") speak a `say=` text and
+  skip ASR. **Possessed lines** carry `mode=possessed` (voices.shw variant `bonejangles.possessed`).
+- **Clinker's twins** are rendered in her voice and then time-warped by WORLD word by word onto
+  Bonejangles' locked take (same text, same rhythm); `late=R8` stays a placement field
+  (`sync.late` = 12,800 smp) for the mixer.
+- **"...Hee. Hee." (lib:mayor/heehee_v1)** is the Mayor's voice saying "hee", re-sung by WORLD
+  on E4 then C4, 12 f each, the second 20 f after the first; synthetic until the creator records it
+  (`show voice lib ingest take.wav mayor/heehee_v1`).
+- **The Mayor's hums** (lib:mayor/hum_dawn_v1 for co12, hum_plusone_v1 for 4-08) are his voice's
+  closed-mouth "mmm" sung by WORLD on MINGLE's melody (WP10's mml_legacy over tools/mmlc.py), an
+  octave under the music box (music.shw `hum=G4`), from the held note at bar 10.3 of mingle_box
+  to the Mayor's note at 12.1 (he stops dead; 3.75 s at 96 bpm), and one note further for 4-08.
+  Pitches measured on the takes: within 0.05 st of the score. The library index's `anchor` says
+  which bar.beat of the cue the take's onset is, so staging can place `say co12_hum` on the bar.
+- **dx_proof lines** live in `show/tests/audio/dx_proof/` (lines.shw + voice.lock): they keep
+  the ep101 ids where the script has the line (`co15_perfect`, `co18_stay`, `a1_09_nana_01`) and
+  `dx_nana_two` for "Two of everything, dear."
 
 ## ENGINE lane 1: player core and capture (WP2, WP3)
 
@@ -202,8 +259,21 @@ Each names the default taken and where to change it.
 - ART motion: fun_fair's ferris wheel is 4 drawings (4.88 of 5 set-pool pages); pcycle is never used on a plane whose ramp also paints big areas (it flashed fountain_faces and lulla_tent: replaced by jets and waves).
 - ART motion: "make him a turkey too" (creator) -> gen:turkey(kind=roast|live|walk), flips turkey_roast/turkey_live/turkey_strut; "him" was not named, so the roast is a prop any cast member can hold (OVER) or Nana's table can carry.
 - **Mayor v2 = a turkey Mad-Hatter (creator, Oct 25).** Drawn by a show-only part set (show/art/parts/show_parts.c), called from portrait.c patch hunks (h)/(i) for looks with the turkey signature (OWLKIN+BEAK+TOP_HAT+FEATHER_FAN+BOWTIE+FHAIR_WIZARD; the game's randomizer never makes it, tested). Default = option 1 (lavender hat, peach head, teal coat, magenta bow tie, card "18"); options 2/3 in show_out/art/mayor_v2/mayor_v2_variants.png. No wings, so the dx3 white box on his bust is gone. The fighter view is not built (the mayor's kinds exclude it).
+- WP10 pass 3 (AUDIO, Oct 25): every sound and cue the staged shots name now resolves. 153 staged SFX names
+  (FX_BLAM, FOL_*, AMB_night_*, MX_KAZOO_*, ...) are `src=alias:<ID>[:semis[:seconds]]` rows in series/sfx.shw
+  (varispeed/cut of a library sound, own gain and caption); 15 staged cue names (riff_em, doomtastic_doom,
+  credits_box, theme_eyecatch_in, ...) are copies of existing cues in series/music.shw. Either swaps for a dedicated
+  design in one line, no shot changes. `from=<section>[_lastN]` now resolves on a cue's bar map
+  (doomtastic_doom from=prechorus_last2 = bar 15.1). cues.shw uses the spec's global `tapestop F`; spotting applies it
+  to every cue still sounding. Left for STAGING/ENGINE: `mx * mute` (MUTE ALL) is not in the compiler's cue table;
+  `mx <cue> hold|solo|@+N`, `sfx all`, fol follow=/from=crowd: names, and walla beds (lines.shw, voice) fail lint.
 - ART mayor final (Oct 25, creator: "1 with no paper number on the hat"): Mayor Giggs is LOCKED to v2 variant 1 (lavender hat, peach head, teal coat, magenta bow tie). The card/paper and its "18" were removed from the hat band in every image kind (bust, figure, chibi, all expressions); the grape band stays. horn_color is no longer used by the mayor part set; the variant alternates 2/3 were dropped from showtk/art/cast/mayor_v2.py, which now also writes mayor_final.png.
 - **ENGINE lane 1 integration (M0, Oct 25): the compiler writes lane 2's WP6 records.** `emit.py` wrote its own 16/36-byte ACTOR/CROWD proposals while `show_wp6_mod.c` reads `ShowActorRec` (32 B) / `ShowCrowdRec` (48 B) / the TRAK blob; co03's crowds drew as a full-screen smear. emit now builds them through `showtk.actors.ShotCast` (looks from the cast, `looks=a_1..a_6` ranges resolved through the look bible, mouth tracks from `mouth_raw`), and the timed actor ops become one `SOP_ACTOR_BASE` row `[actor, SHOP_*, v0..v3]` each (move, walk, squash, face, blink, state, show/hide). `SOP_PROP`/`SOP_FX` are no longer emitted at 0x0C0 (that is the crowd op; nothing reads them). `pose` (no FLIP records from the compiler yet) and `eyes` are dropped with no op.
 - **Slug cards (M0-T3)** come from `showc`'s rundown again with the segment's BANDS sky and boiling grain (as `slug.py`'s); a slug shot's 8-byte .SHW id is its beat code (`co_1`, `1_12`), timeline.json keeps `slug:<beat>`.
 - **`show render` writes `render_index.json`** (timeline id -> cache dir) beside its outputs; `edl.Masters` reads it beside the timeline, in its `render/`, and in `build/<ep>/`, so preview/deliver find masters of a slug or `--out` compile. Render work dirs are per .SHW path and process and are removed after a good render (two agents rendering at once no longer share a disc image or FIFO).
 - **M0-T5:** the 8 MB setting works on the installed PCSX-Redux (`PCSX.settings.emulator['8Megs']` + reset); kept as a hatch, not used.
+
+- **MINGLE v2 (Oct 25, creator: "I do not like the mingle melody at all")**: the show's Mingle is the creator's pad1.mid (C minor, 150 bpm), `show/lib/music/mingle.py` -> cues `mingle_full` / `mingle_interrupt` (series/music.shw); the music box plays it +2 octaves (no body below C4), the Mayor hums at written pitch from middle C. `mayors_note` = Ab (where the interrupt stops), `plus_one_note` = Eb. The game's mml_mingle.c is untouched; the old G5/F5 note above is superseded. Hums pre-lap their shots (see co_mt.md / a4.md TODOs). No show/ep101/lines.shw exists yet: the lines.csv directions ("F major, 96 bpm") are stale in docs/ (not ours to edit); the voice package should read GUIDES.md.
+- Mayor VO (Oct 25): the creator's 35 Mayor recordings are ingested as takes (showtk/voice/clean.py chain, -23 LUFS-I, -2 dBTP, 48 kHz/24-bit mono); the favourite is the latest take unless its misread score (script-primed Whisper) or plain WER is worse; mouth tracks are text in show/ep101/mouth/<line>_t<n>.mouth until voice.lock carries them.
+- **Creator recordings (Mayor-VO)**: `takes.toml` `take = "rec:show/lib/takes/..."` paths resolve to the local store (`$SHOW_LIB`); its clean-chain `.flac` skips our denoise. Their standalone `voice/ingest.py` (`.mouth` files) is kept; the `show voice ingest` CLI helper moved to `voice/recingest.py`. voice.lock carries the 30 Mayor recordings as `kind: rec` with our own mouth tracks.
+- Mayor hums (Oct 25): co12_hum / a4_08_mayor_01 are the creator's takes, cleaned with the Mayor-VO chain and played unstretched with his own swing; each is anchored by its STOP (last note end at co12 +120 / a4s39 +138), so the say moved co11 +186 -> +198 and a4s38 +234 -> +227 (frame totals unchanged). The music box needed no retime: the interrupt phrase is done before the hum starts and a4s38/39 has no score under it. Hum mouth tracks: M, C on the loudest 20 % of frames.
