@@ -1,0 +1,28 @@
+# core/music/common/fills.dms - drum fills (owner: MU4d; docs/design/music/
+# SPEC.md sec.5 MusFill, 8.2). A fill replaces the KIT over its last beats;
+# fills are sized by the intensity jump with no immediate repeat, and a
+# crash follows only a fill or a rise.
+#
+#   fill NAME beats=N bands=Sa..Sb [crash] : HITS
+#
+# HITS: K S H O C T P r with MML lengths; ! after a hit = accent (two !! =
+# strong), a digit after T = the tom (0 high .. 7 low). The hits sum to
+# `beats` quarters. `crash` = the next downbeat crashes.
+
+fill snare_4       beats=1 bands=S1..S4 crash : l16 S S S! S!!
+fill snare_8       beats=2 bands=S2..S4 crash : l16 S S S S S S! S! S!!
+fill tom_roll      beats=1 bands=S1..S4 crash : l16 T0 T2 T4 T6!
+fill tom_roll_2    beats=2 bands=S3..S4 crash : l16 T0 T0 T2 T2 T4 T4 T6! T7!!
+fill kick_snare    beats=1 bands=S1..S4 crash : l16 K S K S!
+fill clap_pop      beats=1 bands=S1..S2 : P8 r16 P16!
+fill toy_rattle    beats=1 bands=S0..S1 : l16 H H O H!
+fill box_tick      beats=1 bands=S0..S0 : l8 H H
+fill swing_brush   beats=1 bands=S2..S2 : l12 S S S!
+fill swing_rims    beats=2 bands=S2..S2 : l12 P r P S S! S!!
+fill rock_break    beats=1 bands=S3..S4 crash : l8 K S!
+fill rock_toms     beats=2 bands=S3..S4 crash : l16 S S T2 T2 T4 T4 T6 T6!
+fill metal_blast   beats=1 bands=S4..S4 crash : l32 S S S S S S S S
+fill metal_double  beats=2 bands=S4..S4 crash : l32 K S K S K S K S T0 T2 T4 T6 K K S! S!!
+fill metal_triplet beats=2 bands=S4..S4 crash : l12 T0 T2 T4 T0 T2 T4!
+fill stop_hit      beats=1 bands=S1..S4 : C8! r8
+fill waltz_lift    beats=1 bands=S0..S2 : l16 S S T2 T4!

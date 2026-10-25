@@ -9,7 +9,7 @@ The patches apply on top of `7fccf54`, with `git apply docs/wip/<name>.patch`.
 
 | Patch | Package | State |
 |---|---|---|
-| `music_mu1t_m15_mu4d_banks.patch` | MU1T M1.5 (musgen, guard, turnarounds, GEN graphs), MU6 T3, MU4d banks | mid-work |
+| ~~`music_mu1t_m15_mu4d_banks.patch`~~ | MU1T M1.5 (musgen, guard, turnarounds, GEN graphs), MU6 T3, MU4d banks | **done** (2026-10-25): applied, finished (T3 + T18 in `test_music_rep.c`, the shared-bank T4 check, docs/AUDIO.md), pushed; the patch is deleted |
 | `gba_speed_island_wip.patch` | GBA speed pass, stopped mid-work: island hub static layers / row stream (`fp_island*.c`, `ui_raster.c`, `gba/src/video.c`, `bigbuf.c`) | mid-work; apply onto the current branch and re-verify |
 | `music_mu1_m4.patch` | MU1 M4 (matrix, stingers, comic bridge, DECK vinyl, GEN bags, chapters, beds), MU6 T8/T9 | mid-work |
 
@@ -42,7 +42,12 @@ Each patch's agent was told to verify everything before pushing. Re-run the full
    - the Feast cutscene port;
    - I9: integration.
 2. **Music core** (`music_core_workflow.js`), still to do:
-   - finish M1.5/MU4d and MU1 M4 (the patches above);
+   - ~~finish M1.5/MU4d~~ **done** (2026-10-25): the shared banks
+     (`core/music/common/*.dms`), `tools/musgen` (fingerprint on gcc and
+     clang), the GEN slots of TITLE / HAHALAND / INVASION / HOME, T3/T18
+     (`test_music_rep.c`, `music_rep_lib.c`, `music_rep_proto.c`: the
+     prototype passes, the four known loops fail); the bank is 14,428 B;
+   - finish MU1 M4 (the patch above);
    - MU4a/b/c: the wave-1 cues;
    - MU5b: Studio, Concert and DJ.
 3. **Finish and optimize** (`finish_workflow.js`), all of it still to do:

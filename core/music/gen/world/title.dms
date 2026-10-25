@@ -1,0 +1,42 @@
+# core/music/gen/world/title.dms - musgen output for MC_TITLE (D2, sec.8.3), curated source.
+# Written by `python3 tools/mmlc.py --gen MC_TITLE` (tools/musgen: composer fingerprint
+# 37d71b12 8d898ef0 c33cfa26 bdcb0bd2). CI never re-runs musgen: edit by ear, delete
+# noodling, and mmlc lints what is left (lane sums, the guard, STRONG_CT). The
+# owning cue (MC_TITLE) references the slots below with `gen <SLOT>`.
+gencue MC_TITLE theme=TITLE key=C:major bpm=140 meter=4 dial=S1 i=I3
+
+# GEN_BUILD: 391 sections heard, 4 kept in 2 families; rejected: thin 58, key 0, strong-beat 0,
+#   duplicate 212, guard 0, near-copy 4 (the rest: other chart families)
+gen GEN_BUILD tmpl=BUILD motif=TITLE cad=HC n=4 fam=2 roles=LEAD,COUNTER bars=4 energy=3 var_cap=3
+  variant 0 fam=0 from=seed:0x7b122e99,section:20,var:1,energy:4
+    chords  | Bdim . | G . | G . | G . |
+    LEAD    q7 | o6 f8 a8 o7 d8 o6 a8 b4 a8 f8 | g8 b8 o7 d8 o6 b8 b4. r8 | g8 b8 o7 e8 o6 b8 o7 d4 o6 b8 g8 | b8 o7 c8 e8 c8 o6 b4. r8 |
+    COUNTER q8 | o5 d4 r4 f4 r4 | d4 r4 d4. r8 | o4 b4 r4 o5 g4 r4 | d4 r4 d4. r8 |
+  variant 1 fam=0 from=seed:0xe8ef34e9,section:37,var:1,energy:3
+    chords  | Bdim . | Bdim . | G . | G . |
+    LEAD    q7 | o6 f8 a8 o7 d8 o6 a8 b4 a8 f8 | f8 b8 o7 d8 o6 b8 b4. r8 | g8 b8 o7 e8 o6 b8 o7 d4 o6 b8 g8 | b8 o7 c8 e8 c8 o6 b4. r8 |
+  variant 2 fam=1 from=seed:0x7b122e99,section:42,var:1,energy:4
+    chords  | F . | F . | G . | Am . |
+    LEAD    q7 | o6 f8 a8 o7 d8 o6 a8 o7 c4 o6 a8 f8 | a8 b8 o7 d8 o6 b8 a4. r8 | g8 b8 o7 e8 o6 b8 o7 d4 o6 b8 g8 | a8 o7 c8 e8 c8 c4. r8 |
+    COUNTER q8 | o5 c4 r4 a4 r4 | f4 r4 f4. r8 | o4 b4 r4 o5 g4 r4 | e4 r4 a4. r8 |
+  variant 3 fam=1 from=seed:0x7b122e99,section:56,var:2,energy:3
+    chords  | F . | G7 . | G . | G . |
+    LEAD    q7 | o6 f8 a8 o7 d8 o6 a8 o7 c4 o6 a8 f8 | g8 b8 o7 d8 o6 b8 b4. r8 | g8 b8 o7 e8 o6 b8 o7 d4 o6 b8 g8 | b8 o7 c8 e8 c8 o6 b4. r8 |
+
+# GEN_TAG: 326 sections heard, 4 kept in 2 families; rejected: thin 37, key 0, strong-beat 0,
+#   duplicate 29, guard 0, near-copy 2 (the rest: other chart families)
+gen GEN_TAG tmpl=TAG motif=TITLE cad=PAC n=4 fam=2 roles=LEAD,COUNTER bars=2 energy=3 var_cap=3
+  variant 0 fam=0 from=seed:0x19caa040,section:2,var:1,energy:3
+    chords  | G . | C . |
+    LEAD    q7 | o6 g8 g8 f8 g8 d2 | c1 |
+  variant 1 fam=0 from=seed:0x19caa040,section:97,var:3,energy:4
+    chords  | G . | C . |
+    LEAD    q7 | o6 d8 f8 g8 a8 d2 | c1 |
+    COUNTER q8 | o4 b4 r4 g2 | g1 |
+  variant 2 fam=1 from=seed:0x19caa040,section:30,var:2,energy:4
+    chords  | G7 . | Cmaj7 . |
+    LEAD    q7 | o6 f8 c8 o5 b8 o6 c8 o5 b2 | o6 c1 |
+    COUNTER q8 | o4 b4 r4 d2 | e1 |
+  variant 3 fam=1 from=seed:0x19caa040,section:67,var:2,energy:3
+    chords  | G7 . | C . |
+    LEAD    q7 | o6 g8 a8 b8 g8 f2 | e1 |

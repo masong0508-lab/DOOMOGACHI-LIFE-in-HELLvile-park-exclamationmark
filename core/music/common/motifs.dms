@@ -1,0 +1,46 @@
+# core/music/common/motifs.dms - the leitmotifs (owner: MU4d; docs/design/
+# music/SPEC.md sec.14, CF-2; canon: trailer/music.c, S2's shipped
+# mml_mingle.c and mml_heehee_jingle.c). One MusMotif per line, id =
+# its MOTIF_* lock in core/music/ids/common.lock (append-only).
+#
+#   motif NAME key=TONIC:MODE head=N [fixed] [glide] : MML
+#
+# The MML is today's dialect (one voice, lengths from LEN_TAB). mmlc
+# stores scale degrees from the tonic (the first note's octave), with a
+# chromatic +-1, so the runtime can transpose and mode-map a quote
+# (sec.8.4); `fixed` keeps the motif's own mode (WALL, the Riff's b5);
+# `glide` marks every interval a glide (VEX). The first `head` notes are
+# the head: quoted literally, never bent (sec.8.1).
+
+motif HOOK        key=C:major  head=4        : o5 l8 e e g e >c4< g4 | a a g e d4 e4
+motif HOOK_LOVE   key=C:major  head=4        : o5 l8 f f a f >c4< a b
+motif HOOK_SCALE  key=C:major  head=0        : o5 l8 f a >c< a g f e d
+motif TITLE       key=C:major  head=4        : o5 l8 e g >c< g a4 g e | f a >c< a g4. r
+motif RIFF        key=E:minor  head=4 fixed  : o2 l16 e e g8 e e b-8 e e a8 e e g f+ | e e g8 e e b-8 e e >c8< b8 b- a
+motif RIFF_REDEEM key=E:minor  head=4 fixed  : o2 l16 e e g+8 e e b8 e e a8 e e g+ f+
+motif MINGLE      key=F:major  head=4        : o5 l8 c f a f >c4< a4 | b- a g f g4 c4
+motif WALL        key=E:minor  head=2 fixed  : o4 e2 f2 | e2 b-2
+motif WALL_GATE   key=E:minor  head=2 fixed  : o4 e2 f+2 | e2 b2
+motif BEEP_EGG    key=C:major  head=1        : o7 l16 c
+motif BEEP        key=C:major  head=3        : o6 l16 c e g r >c8<
+motif BEEP_ANGEL  key=C:major  head=3        : o6 l16 c g >e< r >b<
+motif BEEP_FERAL  key=C:major  head=3 fixed  : o6 l16 c c+ g r >c<
+motif BEEP_DEMON  key=C:major  head=3 fixed  : o6 l16 c e- g- r >c<
+motif VEX         key=A:minor  head=3 glide  : o4 a2 >e-4 d8 d-8 | c2.<
+motif VAPULA      key=E:minor  head=2 fixed  : o4 e2 b-4 a8 a-8 | g2.
+motif VAPULA_P3   key=E:minor  head=2 fixed  : o4 e2 b-4 b8 >c8 | c+2.<
+motif FLUFFY      key=C:major  head=2        : o5 c2 g4 f8 e8 | d2.
+motif HEEHEE      key=A:major  head=2 fixed  : o6 l8 e r e r r2 | c+ r c+ r r2
+motif FUZZ        key=F:major  head=4        : o5 l4 f a g f | b- a8 g8 a2
+motif NOX         key=F:minor  head=4 fixed  : o5 l4 f d- e- f
+motif BONEBOTTOM  key=F:minor  head=4 fixed  : o5 l4 f a- g- f
+motif RIVET       key=G:mixolydian head=4    : o3 l16 g g b8 g g >d8< g g >c8< g g b a
+motif HOME        key=C:major  head=3        : o5 g4 >c4 e4 | g2 e4 | e2.
+motif HOME_ANSWER key=C:major  head=2        : o5 d4 e4 g4 | >c2.<
+motif DOORBELL    key=C:major  head=3        : o6 l8 e c <g>
+motif LOVE        key=F:major  head=4        : o5 l8 f f a f >c4< a b
+motif MAYOR       key=C:major  head=3        : o5 c12 c12 c12 e4 g4 >c4<
+motif NANA        key=F:major  head=3        : o5 c8 f8 f8 a8 g4 f4
+motif PIP         key=G:major  head=3        : o5 d8 g8 b16 a16 g8 d4
+motif BLOOM       key=A:minor  head=3        : o5 a8. b16 >c8< b8 a4
+motif GOODBYE     key=E:minor  head=2        : o5 e2 d4 c4 | <b2 a2>

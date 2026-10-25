@@ -1,0 +1,111 @@
+# core/music/common/grooves.dms - drum DNA (owner: MU4d; docs/design/music/
+# SPEC.md sec.5 MusGroove, 8.2; the prototype's styles, design_generative.md
+# sec.3.5). A KIT lane's `dna=pool:NAME,...` plays one per bar.
+#
+#   groove NAME kit=TOY|BONES|808|PLUSH|FORGE|CLASSIC bands=Sa..Sb [steps=12] [ghosts] [halftime] [blast]
+#     HIT I  pppp pppp pppp pppp
+#
+# One row per drum (<= 6): HIT = K kick, S snare, H hat, O open hat, C crash,
+# T tom, P clap; I = the intensity rank (0-5) at which the row enters; then
+# one hex digit per 16th step: the hit plays iff
+# mus_h(seed, S_DRUM, node.pass, role.bar.step) % 15 < p, so f = always
+# (a core step, the only steps the T3 signatures count), 0 = never. Ghost
+# notes (I3+) and accents are the runtime's (sec.8.2).
+
+# ---- S0 music box: a ticking clock -------------------------------------------------
+groove box_clock   kit=TOY bands=S0..S0
+  K 1  f000 0000 0000 0000
+  H 2  0000 9000 0000 9000
+groove box_tick    kit=TOY bands=S0..S0 steps=12
+  K 1  f000 0000 0000
+  H 2  0000 9000 9000
+# ---- S1 toy pop ---------------------------------------------------------------------
+groove toy_pop     kit=TOY bands=S1..S1
+  K 1  f000 0040 d003 0040
+  S 2  0000 f000 0000 f003
+  H 2  a0d0 a0d0 a0d0 a0d0
+  O 4  0000 0000 0000 0030
+  P 3  0000 4000 0000 4000
+groove toy_bounce  kit=TOY bands=S1..S1
+  K 1  f000 00a0 f000 0000
+  S 2  0000 f000 0000 f000
+  H 2  f0f0 f0f0 f0f0 f0f3
+  T 4  0000 0000 0000 0034
+groove toy_shuffle kit=PLUSH bands=S1..S2 steps=12
+  K 1  f00 000 f00 000
+  S 2  000 f00 000 f03
+  H 2  f0d f0d f0d f0d
+groove toy_waltz   kit=PLUSH bands=S0..S2 steps=12
+  K 1  f000 0000 0000
+  H 2  0000 d000 d000
+  S 3  0000 0000 0040
+# ---- S2 spooky swing: rims and claps --------------------------------------------------
+groove spook_swing kit=BONES bands=S2..S2
+  K 1  f000 0030 9004 0000
+  S 2  0000 c000 0000 c004
+  H 2  c040 c040 c040 c040
+  P 3  0000 9000 0000 9030
+  T 4  0000 0000 0000 0003
+groove spook_tiptoe kit=BONES bands=S2..S2 halftime
+  K 1  f000 0000 0000 0000
+  P 2  0000 0000 f000 0000
+  H 2  9000 9000 9000 9040
+# ---- S3 chip rock ------------------------------------------------------------------------
+groove rock_beat   kit=CLASSIC bands=S3..S3
+  K 1  f000 0000 f060 0030
+  S 2  0000 f000 0000 f002
+  H 2  d0d0 d0d0 d0d0 d0d0
+  O 4  0000 0000 0000 0040
+groove rock_drive  kit=CLASSIC bands=S3..S4
+  K 1  f000 00f0 f000 0040
+  S 2  0000 f000 0000 f000
+  H 2  f0f0 f0f0 f0f0 f0f0
+  C 5  f000 0000 0000 0000
+groove rock_half   kit=808 bands=S3..S4 halftime
+  K 1  f000 0000 0040 0000
+  S 2  0000 0000 f000 0000
+  H 2  d0d0 d0d0 d0d0 d0d0
+# ---- S4 chip metal: double kick ---------------------------------------------------------
+groove metal_dbl   kit=FORGE bands=S4..S4
+  K 1  fefe fefe fefe fefe
+  S 2  0000 f000 0000 f002
+  H 2  c0c0 c0c0 c0c0 c0c0
+  T 4  0000 0000 0000 0003
+groove metal_march kit=FORGE bands=S4..S4
+  K 1  f000 f000 f000 f0f0
+  S 2  0000 f000 0000 f000
+  T 3  0000 0000 00f0 0000
+  H 3  f000 f000 f000 f000
+groove metal_blast kit=FORGE bands=S4..S4 blast
+  K 1  f0f0 f0f0 f0f0 f0f0
+  S 2  0f0f 0f0f 0f0f 0f0f
+  H 3  ffff ffff ffff ffff
+groove metal_half  kit=FORGE bands=S4..S4 halftime
+  K 1  f0f0 0000 f000 0040
+  S 2  0000 0000 f000 0000
+  C 3  f000 0000 0000 0000
+  H 2  f0f0 f0f0 f0f0 f0f0
+# ---- world flavours ---------------------------------------------------------------------
+groove bossa       kit=808 bands=S1..S2
+  K 1  f00f 00f0 f00f 00f0
+  P 2  f00f 00f0 00f0 0f00
+  H 2  d0d0 d0d0 d0d0 d0d0
+groove polka       kit=CLASSIC bands=S1..S2
+  K 1  f000 0000 f000 0000
+  S 1  0000 f000 0000 f000
+  H 3  00a0 00a0 00a0 00a0
+groove calypso     kit=PLUSH bands=S1..S2
+  K 1  f000 0000 f000 0000
+  P 2  000f 00f0 000f 00f0
+  H 2  f0d0 f0d0 f0d0 f0d0
+groove industrial  kit=FORGE bands=S3..S4
+  K 1  f00f 00f0 0000 f000
+  S 2  0000 f000 0000 f000
+  T 3  0000 0000 f00f 0000
+  H 2  f0f0 f0f0 f0f0 f0f0
+groove lofi        kit=808 bands=S2..S3 halftime
+  K 1  f000 000a 00f0 0000
+  S 2  0000 f000 0000 f000
+  H 2  d0d0 d0d0 d0d0 d0d4
+groove clock_bed   kit=TOY bands=S0..S4
+  H 0  f000 f000 f000 f000

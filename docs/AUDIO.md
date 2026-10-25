@@ -4,10 +4,13 @@ Owner: MU1 (the music engine). The design is `docs/design/music/SPEC.md`;
 its Critique fixes (CF-*) are binding. This file says what is built today,
 how it fits together, and what it costs.
 
-Status: **M1** (engine, rings, driver, legacy bridge, classic cues). The
-game sounds exactly as it did before the engine: all 28 classic songs are
-compiled into the music bank and played by the engine through the legacy
-bridge on native, GBA and PS1 (T1 proves it tick for tick).
+Status: **M1** (engine, rings, driver, legacy bridge, classic cues) and
+**M1.5** (the shared banks, the build-time composer, the GEN material of
+the four hubs, the T3 metric). The game sounds exactly as it did before
+the engine: all 28 classic songs are compiled into the music bank and
+played by the engine through the legacy bridge on native, GBA and PS1 (T1
+proves it tick for tick). The shared banks sit in the bank, ready for M4's
+runtime and MU4's cues; nothing plays them yet.
 
 ## Files
 
@@ -28,7 +31,10 @@ bridge on native, GBA and PS1 (T1 proves it tick for tick).
 | `core/src/plat_weak_music.c` | weak platform defaults: the legacy bridge tier |
 | `core/native/plat_music_native.c` | musrender: `runner --wav` |
 | `tools/mmlc.py` | the music compiler (a `doomo-generator`) |
-| `core/music/ids/*.lock` | the cue / sting / motif id locks |
+| `tools/musgen/` | the build-time composer (host only, never in CI): GEN variants, the offline guard, renders |
+| `core/music/common/*.dms` | MU4d's shared banks: instruments, comps, grooves, fills, motifs, vinyl, transitions, turnarounds |
+| `core/music/gen/<area>/*.dms` | curated musgen output: the GEN slots of TITLE, HAHALAND, INVASION, HOME |
+| `core/music/ids/*.lock` | the cue / sting / vinyl / motif / instrument id locks (append-only) |
 | `core/gen/mus_data.c`, `mus_ids.h` | generated: the bank and the ids |
 
 ## How a note gets out
@@ -106,15 +112,80 @@ Runner script commands for listening: `music N`, `music-once N`,
 `music-hash CUE MIN`. Renders go to `build/renders/<package>/` (git-ignored,
 CF-36).
 
+### Shared banks and the build-time composer (M1.5)
+
+`core/music/common/*.dms` (MU4d) compile into sections between the
+instruments and the cue blobs (layouts: the M1.5 block of `mus_data.h`):
+
+| Bank | Today | Bytes |
+|---|---|---:|
+| `inst.dms` | 58 instruments (rows 24-81 after the 24 classic ones; leads S0-S4, harmony, pads, basses, 6 kits, comedy, crackle, 12 beds), `psg_env` and `spu_adsr1/2` fitted | 1,160 |
+| `comps.dms` | 29 comp patterns in families (arp, stab, Alberti, pad, root-5, walk, gallop, chug, pedal, octave, Charleston, waltz) | 486 |
+| `grooves.dms` | 21 grooves (64 B: 6 rows x 16 steps x a 4-bit probability; 15 = a core step) | 1,344 |
+| `fills.dms` | 17 fills | 280 |
+| `motifs.dms` | the 32 leitmotifs of SPEC sec.14 (heads protected; MINGLE and HEE HEE as shipped, CF-2) | 644 |
+| `vinyl.dms` | the 16 turntable patterns + the crackle toggle (sec.7.2), segments in half-semitone log speed | 294 |
+| `trans.dms` | the default transition rows (`(*,*)` CROSS 2 at a phrase, `MC_NONE` in/out) | 24 |
+| `turns.dms` | 16 turnarounds + the cadence bitmaps of the 3 families | 204 |
+| synth SFX | the 15 `SynthSeg` recipes of `audio_fx.c`, imported verbatim as `MDK_SFX` cues (D14, CF-3) | 966 |
+
+The bank is 14,428 B (was 8,980 B). The GEN slots (`core/music/gen/`)
+are linted (lane sums, chart length, STRONG_CT, the offline guard: no 4-bar
+pitched window twice in a file) but take no bank bytes until MU4a/b's cues
+reference them: TITLE 2 slots x 4 variants (410 B), HAHALAND 3 x 4 (1,253
+B), INVASION 2 x 4 (1,282 B), HOME 2 slots, 5 variants (408 B).
+
+```
+make -C tools/musgen check     # gcc AND clang print 37d71b12 8d898ef0 c33cfa26 bdcb0bd2
+make -C tools/musgen renders   # build/renders/MU1T/<cue>_morph_180s_ref.wav, <cue>_genreel_ref.wav
+python3 tools/mmlc.py --gen MC_HAHALAND   # re-realise a cue's GEN slots (never in CI)
+```
+
+`tools/musgen` is the design study's composer moved to the host bit for
+bit (only its identifiers carry an `Mg` prefix). For each slot it plays the
+theme at the cue's dial over a fixed list of seeds, takes every section of
+the slot's form type as a candidate (the pitched roles the variants own and
+the chord chart) and keeps 4 variants in 2 chart families, rejecting thin,
+off-key and non-chord-tone candidates, duplicates, any 4-bar M2 window that
+collides with the theme's V0 statement or another kept variant (D10), and
+near-copies (mean fuzzy F >= 0.85). The rejection counts are in each
+`.dms` header. The committed `.dms` is the source: curate by ear.
+
+Listening (the 8 M1.5 renders, `musgen` reference synth, 22,050 Hz): no
+clipping (peaks 13.3k-15.8k), no drop-outs (no silence over 0.3 s), level
+steady per 10 s (rms 1.6k HOME's waltz to 2.8k INVASION); the morph renders
+walk home -> spooky -> metal -> home on schedule, and each GEN reel plays A
+(V0) between the kept variants, so every variant can be heard against the
+theme.
+
 ## Tests
 
 | Test | File | Proves |
 |---|---|---|
 | T1 | `test_music_classic.c` | engine == interpreter per tick (freq, vol, wave), 28 songs x 1,500 ticks; quiet volumes, dual, once + resume, lengths, names |
 | T2-native | `test_music_hash.c` + `data/music_golden.h` | per cue: blob FNV, `music_hash(cue,2)`, 600 ticks of bridge tones |
-| T4 | `test_music_data.c` | bank walk (lanes sum to node length, CALL/RET), 30 min random play (no stuck voice), IRQ-mode 15 Hz 30 min without under-run, prefill |
+| T3 | `test_music_rep.c`, `music_rep_lib.c`, `music_rep_proto.c` | the CF-38 metric on real events: every adaptive cue (>= 2 nodes, 10 min) and hub (60 min, 8 seeds x steady/walk/morph) against gates 1-5; the 5 worst near-repeat spans with timestamps |
+| T18 | `test_music_rep.c` | the metric FAILS classic HAHALAND_DAY (gates 1-3), a static hub with drum dice (gate 1), an ornamented A-B-A-B (gate 2) and a velocity-only 4-bar loop (gate 1), and PASSES the prototype composer (96 streams of 60 min) |
+| T4 | `test_music_data.c` | bank walk (lanes sum to node length, CALL/RET), the shared banks in bounds (indexes, records, locks, sorted transitions, turnarounds, the synth SFX), 30 min random play (no stuck voice), IRQ-mode 15 Hz 30 min without under-run, prefill |
 | T13 | `test_music_drv.c` | driver: merge order, batched == single ticks, envelope, rest/cut, vibrato delay, arp, sweep, mute windows, gain ramp, fence, under-runs, volume table |
 | MU0 | `test_music_contracts.c` | sizes, enums, packing, bank header, weak defaults |
+
+**The T3 metric (CF-38).** Per deck-A bar of the hash-mode decision
+stream: S (pitched roles as role, 16th onset, pitch, length class + drum
+core steps, fills, crashes + stems + dial band; no velocity, no dice or
+ghost drums, no surface ops or GRACE / MORDENT / TURN), P (pitched only), L
+(lead only, an anchor's first 4 bars masked), F (per role class a 16-step
+onset bitmap and a pitch-class set; weighted Jaccard product, LEAD 3, BASS
+2, HARM 1, COUNTER 1, KIT 1; a match is >= 0.85) and an 8-bar texture
+vector. Two choices CF-38 left open, both needed for T18(e) and neither
+lets T18(a)-(d) pass: the lead takes part in every F comparison (two bars
+without a lead score 0 there, as a rest never matches in L), and the
+texture's stem set is the pair (roles sounding throughout the 8 bars,
+roles sounding in any of them), so a role dropping out inside a block is a
+texture change. The prototype then passes every gate with margins: worst
+of 96 streams LRR S 4 / P 5 / L 10, near-loop 8, recency >= 99.7 %,
+texture >= 94.2 %, HEAD_GAP 24, cadences >= 99 %. Re-measured without
+velocity (CF-37) its full-mix LRR is 2 bars, not 1. T3 + T18 take 1.4 s.
 
 Re-record T2 after a deliberate bank change:
 `core/build/tests --update-golden music_t2` (it rewrites
@@ -132,6 +203,13 @@ island, dream ...) are byte-identical to the pre-engine runner.
 | GBA IWRAM | 6,320 B stack | unchanged | +86 B |
 | GBA ROM | 3,158,428 B | 3,161,012 B | - |
 | PS1 image end | 0x801e7000 (99 KB below stack top) | 0x801e8530 (94 KB) | >= 72 KB |
+
+M1.5 (the shared banks and the synth SFX in the bank; no code), measured
+on the 2026-10-25 tree: GBA EWRAM 5,632 B free and IWRAM 6,320 B stack,
+both unchanged; GBA ROM 3,287,856 -> 3,293,304 B (+5,448 B: the bank);
+PS1 image end 0x801e7370 -> 0x801e88c0 (+5,456 B, the bank is resident
+until MU3's MUSIC.BIN at M3), 93 KB below the stack top. No scene or
+per-frame code changed, so no fps moved.
 
 * GBA music RAM: driver 748 B, core (decks, voice runtimes) 502 B,
   `audio_seq` 48 B, bridge tones 16 B; the interpreter's state and

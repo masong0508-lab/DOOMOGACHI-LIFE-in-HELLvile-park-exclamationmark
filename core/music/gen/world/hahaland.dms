@@ -1,0 +1,61 @@
+# core/music/gen/world/hahaland.dms - musgen output for MC_HAHALAND (D2, sec.8.3), curated source.
+# Written by `python3 tools/mmlc.py --gen MC_HAHALAND` (tools/musgen: composer fingerprint
+# 37d71b12 8d898ef0 c33cfa26 bdcb0bd2). CI never re-runs musgen: edit by ear, delete
+# noodling, and mmlc lints what is left (lane sums, the guard, STRONG_CT). The
+# owning cue (MC_HAHALAND) references the slots below with `gen <SLOT>`.
+gencue MC_HAHALAND theme=HOOK key=F:major bpm=124 meter=4 dial=S1 i=I3
+
+# GEN_B: 670 sections heard, 4 kept in 2 families; rejected: thin 69, key 0, strong-beat 0,
+#   duplicate 1, guard 0, near-copy 0 (the rest: other chart families)
+gen GEN_B tmpl=ANSWER motif=HOOK cad=HC n=4 fam=2 roles=LEAD,COUNTER bars=8 energy=3 var_cap=3
+  variant 0 fam=0 from=seed:0x4b00dd14,section:6,var:1,energy:3
+    chords  | Dm . | Bb . | Gm . | C . | Dm . | Bb . | Gm . | C . |
+    LEAD    q7 | o6 d8 d8 f8 d8 a4 o7 e4 | d8 d8. e8 g8 o6 a4 g8. | d8 d8 f8 d8 a+4 o7 e4 | e8 d8. e8. g16 o6 a4 g8. | d8 d8 g8 a8 a4 o7 e4 | d8 d8. e8 o6 a+8 d4 f8. | o5 a+8 o6 d8 o5 a+2. | g1 |
+  variant 1 fam=0 from=seed:0x4b00dd14,section:13,var:1,energy:4
+    chords  | Dm . | Bb . | Dm . | C . | Dm . | Bb . | C . | C . |
+    LEAD    q7 | o7 d8 d8 f8 d8 o6 a4 o7 e4 | d8 d8. e8 g8 o6 a4 g8. | o7 d8 d8 g8 o6 a8 a4 o7 e4 | e8 d8. e8 o6 a+8 o7 d4 f8. | d8 d8 f8 d8 o6 a4 o7 e4 | d8 d8. e8 g8 o6 a4 g8. | g8 o7 c8 o6 g2. | o7 c1 |
+    COUNTER q8 | o5 f4 r4 o6 f4 r4 | f4 r2. | o5 a4 r4 o7 d4 r4 | c4 r2. | o5 f4 r4 o6 f4 r4 | a+4 r2. | o5 c4 r2. | g1 |
+  variant 2 fam=1 from=seed:0x4b00dd14,section:30,var:2,energy:3
+    chords  | Dm7 . | Bb . | Dm7 . | C . | Dm7 . | C . | Dm . | C . |
+    LEAD    q7 | o6 d8 d8 f8 d8 c4 e4 | o7 d8 d8. e8 g8 o6 a4 g8. | d8 d8 g8 a8 a4 o7 e4 | e8 d8. e8 o6 a+8 d4 f8. | d8 d8 f8. d16 c4 e4 | o7 e8 d8. e8. g16 o6 a4 g8. | o5 a8 f8 g2. | o6 c1 |
+  variant 3 fam=1 from=seed:0x02119434,section:20,var:2,energy:4
+    chords  | Dm7 . | Gm . | Dm . | C . | Dm7 . | C7 . | Gm . | C . |
+    LEAD    q7 | o7 d8 d8 f8 d8 c4 e4 | d8 d8 e8 g8 o6 a+4 o7 g4 | d8 d8 g8 o6 a8 a4 o7 e4 | e8 d8 e8 o6 a+8 o7 e4 f4 | d8 d8 g8 o6 a8 a4 o7 e4 | e8 d8 e8 o6 a+8 o7 e4 f4 | o6 g8 f8 e2. | o7 c1 |
+    COUNTER q8 | o6 c4 r4 f4 r4 | a+4 r4 o7 d4 r4 | o5 f4 r4 o7 d4 r4 | c4 r4 o6 c4 r4 | c4 r4 o7 c4 r4 | c4 r4 o6 c4 r4 | o4 a+4 r2. | o5 g1 |
+
+# GEN_C: 371 sections heard, 4 kept in 2 families; rejected: thin 41, key 0, strong-beat 31,
+#   duplicate 20, guard 0, near-copy 5 (the rest: other chart families)
+gen GEN_C tmpl=DEV motif=HOOK cad=HC n=4 fam=2 roles=LEAD,COUNTER bars=8 energy=3 var_cap=3
+  variant 0 fam=0 from=seed:0x29d853cd,section:16,var:1,energy:3
+    chords  | Am . | Bb . | Edim . | C . | F . | Dm . | Bb . | C . |
+    LEAD    q7 | o5 a4 a4 o6 c4 o5 a4 | o6 f2 d8 c8 e8 c8 | o5 g4 g4 a+4 g4 | o6 e2 c8 o5 a+8 o6 d8 o5 a+8 | f4 f4 a4 f4 | o6 d2 o5 a8 a8 o6 c8 o5 a8 | o6 d4 d4 d4 e4 | o5 g1 |
+  variant 1 fam=0 from=seed:0x29d853cd,section:41,var:3,energy:4
+    chords  | Am . | F . | Edim . | C . | F . | Gm . | Bb . | C . |
+    LEAD    q7 | o5 a4 a4 o6 c4 o5 a4 | o6 f2 c8 c8 e8 c8 | o5 g4 g4 a+4 g4 | o6 e2 c8 o5 a+8 o6 d8 o5 a+8 | f4 f4 a4 f4 | o6 d2 o5 a+8 a8 o6 c8 o5 a8 | a+4 a4 f4 a4 | g1 |
+    COUNTER q8 | o4 e4 r4 e4 r4 | o5 c2 o4 f4 r4 | e4 r4 g4 r4 | o5 c2 o4 g4 r4 | c4 r4 f4 r4 | a+2 g4 r4 | d4 r4 o3 a+4 r4 | o4 e1 |
+  variant 2 fam=1 from=seed:0x2894cbdd,section:83,var:3,energy:4
+    chords  | F . | Bb . | Gm7 . | C . | F . | Bb . | Gm7 . | C7 . |
+    LEAD    q7 | o5 a4 a4 o6 c4 o5 a4 | o6 f2 f8 f8 o5 a8 f8 | g4 g4 a+4 g4 | o6 e2 e8 e8 o5 g8 e8 | f4 f4 a4 f4 | o6 d2 d8 d8 o5 f8 d8 | o6 d4 f4 f4 f4 | c1 |
+    COUNTER q8 | o4 f4 r4 f4 r4 | a+2 d4 r4 | o3 a+4 r4 o4 d4 r4 | o5 c2 o4 c4 r4 | o3 a4 r4 o4 c4 r4 | f2 o3 a+4 r4 | o4 f4 r4 o5 d4 r4 | o4 e1 |
+  variant 3 fam=1 from=seed:0x34d72f5d,section:3,var:1,energy:4
+    chords  | F . | Bb . | Gm . | C . | F . | Gm . | Bb . | C . |
+    LEAD    q7 | o5 a4 a4 o6 c4 o5 a4 | o6 f2 d8 c8 e8 c8 | o5 g4 g4 a+4 g4 | o6 e2 c8 o5 a+8 o6 d8 o5 a+8 | f4 f4 a4 f4 | o6 d2 o5 a+8 a8 o6 c8 o5 a8 | a+4 a4 a+4 g4 | o6 c1 |
+    COUNTER q8 | o4 c4 r4 f4 r4 | o5 d2 o4 f4 r4 | o3 a+4 r4 o4 g4 r4 | g2 g4 r4 | c4 r4 c4 r4 | a+2 d4 r4 | f4 r4 d4 r4 | e1 |
+
+# GEN_BUILD: 376 sections heard, 4 kept in 2 families; rejected: thin 47, key 0, strong-beat 0,
+#   duplicate 209, guard 0, near-copy 1 (the rest: other chart families)
+gen GEN_BUILD tmpl=BUILD motif=HOOK cad=HC n=4 fam=2 roles=LEAD,COUNTER bars=4 energy=3 var_cap=3
+  variant 0 fam=0 from=seed:0xb791c986,section:9,var:1,energy:3
+    chords  | Edim . | Gm . | Am . | C . |
+    LEAD    q7 | o5 a+8 a+8 o6 d8 o5 a+8 o6 g4 d4 | d8 e8 d8 o5 a+8 a+4 a+4 | o6 c8 c8 e8 c8 a4 e4 | g8 f8 e8 c8 c4 c4 |
+  variant 1 fam=0 from=seed:0xdb9feaf6,section:13,var:1,energy:4
+    chords  | Edim . | G7 . | Am . | C . |
+    LEAD    q7 | o5 a+8 a+8 o6 d8 o5 a+8 o6 g4 d4 | f8 e8 d8 o5 a+8 g4 a+4 | o6 c8 c8 e8 c8 a4 e4 | g8 f8 e8 c8 c4 c4 |
+    COUNTER q8 | o4 e4 r4 o5 e4 r4 | o4 g4 r4 f4 r4 | e4 r4 o5 c4 r4 | c4 r4 o4 g4 r4 |
+  variant 2 fam=1 from=seed:0xb791c986,section:17,var:2,energy:3
+    chords  | Gm . | Bb . | Am . | Dm . |
+    LEAD    q7 | o5 a+8 a+8 o6 d8 o5 a+8 o6 g4 d4 | f8 e8 d8 o5 a+8 a+4 a+4 | o6 c8 c8 e8 c8 a4 e4 | f8 f8 e8 c8 o5 a4 o6 c4 |
+  variant 3 fam=1 from=seed:0xb791c986,section:49,var:3,energy:4
+    chords  | Gm . | Bb . | Am . | C . |
+    LEAD    q7 | o5 a+8 a+8 o6 d8 o5 a+8 o6 g4 d4 | f8 e8 d8 o5 a+8 a+4 a+4 | o6 c8 c8 e8 c8 a4 e4 | g8 f8 e8 c8 c4 c4 |
+    COUNTER q8 | o4 d4 r4 o5 d4 r4 | o4 a+4 r4 f4 r4 | e4 r4 o5 e4 r4 | c4 r4 o4 g4 r4 |

@@ -1,0 +1,15 @@
+# core/music/common/trans.dms - the default rows of the transition matrix
+# (owner: MU4d; docs/design/music/SPEC.md sec.6.5, CF-18). Lookup order:
+# (from, to) -> (from, *) -> (*, to) -> (*, *), binary search. Cue owners
+# add their own rows in their cue files (`trans -> ...`); these are the
+# fallbacks every cue gets. The compatibility path (audio_music(), CF-18)
+# only ever takes a shape that starts now.
+#
+#   trans FROM -> TO grid=G type=T[:ARG] [entry=N|resume|same] [max_wait=BEATS]
+#         [tempo_ramp] [keep_tempo] [duck] [fast_morph]
+#   FROM / TO: an MC_* id or *; grid: NOW 16TH BEAT BAR PHRASE NODE_END MARKER;
+#   type: CUT CROSS FILL PICKUP BRIDGE PIVOT VINYL SILENCE SYNC.
+
+trans *       -> *       grid=PHRASE type=CROSS:2 entry=resume max_wait=16
+trans MC_NONE -> *       grid=NOW    type=CUT     entry=entry
+trans *       -> MC_NONE grid=BAR    type=CROSS:1 max_wait=4 duck

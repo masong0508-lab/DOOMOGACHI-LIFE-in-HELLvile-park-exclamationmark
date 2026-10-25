@@ -1,0 +1,44 @@
+# core/music/gen/combat/invasion.dms - musgen output for MC_INVASION (D2, sec.8.3), curated source.
+# Written by `python3 tools/mmlc.py --gen MC_INVASION` (tools/musgen: composer fingerprint
+# 37d71b12 8d898ef0 c33cfa26 bdcb0bd2). CI never re-runs musgen: edit by ear, delete
+# noodling, and mmlc lints what is left (lane sums, the guard, STRONG_CT). The
+# owning cue (MC_INVASION) references the slots below with `gen <SLOT>`.
+gencue MC_INVASION theme=RIFF key=E:minor bpm=168 meter=4 dial=S4 i=I4
+
+# GEN_B: 601 sections heard, 4 kept in 2 families; rejected: thin 0, key 0, strong-beat 0,
+#   duplicate 1, guard 0, near-copy 0 (the rest: other chart families)
+gen GEN_B tmpl=ANSWER motif=RIFF cad=HC n=4 fam=2 roles=LEAD,COUNTER bars=8 energy=4 var_cap=3
+  variant 0 fam=0 from=seed:0x948f684e,section:5,var:1,energy:4
+    chords  | G5 . | B5 . | C5 . | B5 . | G5 . | B5 . | C5 . | B5 . |
+    LEAD    q7 | o5 g8 g8 b8 g8 o6 d4 e8. f+16 | r16 g8 f+8 e8 d8 e4 f+8. | o5 g8 g8 f+8 e8 o6 c4 e8. f+16 | r16 g8 f+8 e8 d8 o5 g4 b8. | g8 g8 b8 g8 o6 d4 e8. f+16 | r8 g16 f+8. e16 d8 e4 f+8. | o5 g8 o6 c8 o5 a2. | b1 |
+    COUNTER q8 | o5 d8 d8 g8 d8 o6 d4 d8. d16 | r16 f+8 f+8 o5 b8 b8 b4 o6 f+8. | o5 g8 g8 o6 c8 c8 o5 g4 o6 c8. c16 | r16 f+8 f+8 o5 b8 b8 f+4 f+8. | d8 d8 g8 d8 o6 d4 d8. d16 | r8 f+16 f+8. o5 b16 b8 b4 o6 f+8. | o5 g8 g8 g2. | f+1 |
+  variant 1 fam=0 from=seed:0x948f684e,section:17,var:1,energy:4
+    chords  | G5 . | C5 . | G5 . | B5 . | G5 . | C5 . | D5 . | B5 . |
+    LEAD    q7 | o6 g8 g8 b8 g8 o7 d4 e8. f+16 | r16 g8 f+8 e8 d8 e4 f+8. | o6 g8 g8 f+8 e8 d4 e8. f+16 | r16 o7 g8 f+8 e8 d8 o6 g4 b8. | g8 g8 b8. g16 o7 d4 e8. f+16 | r16 g8 f+8. e16 d8 e4 f+8. | o6 a8 b8 f+2. | f+1 |
+    COUNTER q8 | o6 d8 d8 g8 d8 o7 d4 d8. d16 | r16 g8 c8 c8 c8 c4 c8. | o6 d8 d8 o7 d8 d8 d4 d8. d16 | r16 f+8 f+8 o6 b8 b8 f+4 f+8. | d8 d8 g8. d16 o7 d4 d8. d16 | r16 g8 c8. c16 c8 c4 c8. | o6 a8 a8 d2. | f+1 |
+  variant 2 fam=1 from=seed:0x948f684e,section:40,var:3,energy:5
+    chords  | A5 . | A5 . | D5 . | B5 . | A5 . | B5 . | C5 . | B5 . |
+    LEAD    q7 | o6 a8 a8 o7 c8 o6 a8 o7 e4 f+8 g8 | r16 o6 a8 g8 f+8 e8. f+4 g8 | a8 a8 f+8 a8 d4 c8 o5 b8 | r16 a8 b8 o6 c8 d8. c4 o5 b8 | o6 a8 a8 f+8 a8 e4 c8 o5 b8 | r16 a8 b8 o6 c8 d8. c4 o5 b8 | o7 c8 d8 o6 f+2. | b1 |
+    COUNTER q8 | o6 e8 e8 a8 e8 o7 e4 e8 e8 | r16 e8 e8 e8 e8. e4 e8 | o6 a8 a8 d8 a8 o5 a4 a8 a8 | r16 f+8 f+8 b8 b8. b4 f+8 | o6 e8 e8 e8 e8 e4 o5 a8 a8 | r16 f+8 f+8 b8 b8. b4 f+8 | o6 g8 o7 c8 o6 c2. | f+1 |
+  variant 3 fam=1 from=seed:0x948f684e,section:47,var:3,energy:4
+    chords  | A5 . | A5 . | D5 . | B5 . | A5 . | A5 . | D5 . | B5 . |
+    LEAD    q7 | o5 a8 a8 o6 c8 o5 a8 o6 e4 f+8 g8 | r16 a8 g8 f+8 e8. f+4 g8 | o5 a8 a8 g8 f+8 o6 d4 f+8 g8 | r16 a8 g8 f+8 e8. o5 a4 o6 c8 | o5 a8 a8 o6 c8 o5 a8 o6 e4 f+8 g8 | r16 a8. g16 f+8 e8. f+4 g8 | o5 a8 b8 f+2. | f+1 |
+    COUNTER q8 | o5 e8 e8 a8 e8 o6 e4 e8 e8 | r16 e8 e8 e8 e8. e4 e8 | o5 a8 a8 o6 d8 d8 o5 a4 o6 d8 d8 | r16 f+8 f+8 f+8 o5 b8. f+4 b8 | e8 e8 a8 e8 o6 e4 e8 e8 | r16 e8. e16 e8 e8. e4 e8 | o5 a8 a8 d2. | f+1 |
+
+# GEN_C: 501 sections heard, 4 kept in 1 families; rejected: thin 0, key 0, strong-beat 234,
+#   duplicate 3, guard 15, near-copy 24 (the rest: other chart families)
+gen GEN_C tmpl=DEV motif=RIFF cad=HC n=4 fam=1 roles=LEAD,COUNTER bars=8 energy=4 var_cap=3
+  variant 0 fam=0 from=seed:0xf657e697,section:75,var:3,energy:3
+    chords  | C5 . | B5 . | D5 . | D5 . | C5 . | C5 . | B5 . | B5 . |
+    LEAD    q7 | o5 e4 e4 g4 e4 | b2 b8 o6 c8 o5 e8 c8 | d4 d4 f+4 d4 | a2 a8 b8 d8 b8 | c4 c4 e4 c4 | g2 g8 a8 c8 a8 | b4 b4 b4 a4 | b1 |
+  variant 1 fam=0 from=seed:0x3f66bfb7,section:52,var:3,energy:5
+    chords  | C5 . | E5 . | D5 . | D5 . | C5 . | G5 . | E5 . | B5 . |
+    LEAD    q7 | o5 e4 e4 g4 e4 | b2 b8 g8 b8 g8 | d4 d4 f+4 d4 | a2 a8 f+8 a8 f+8 | c4 c4 e4 c4 | g2 d8 e8 g8 e8 | b4 o6 c4 o5 b4 a4 | f+1 |
+    COUNTER q8 | o5 c4 c4 g4 c4 | b2 b8 e8 b8 e8 | o4 a4 a4 o5 d4 o4 a4 | o5 a2 a8 d8 a8 d8 | o4 g4 g4 o5 c4 o4 g4 | o5 d2 d8 d8 d8 d8 | b4 b4 b4 e4 | f+1 |
+  variant 2 fam=0 from=seed:0x5bed1427,section:27,var:1,energy:3
+    chords  | C5 . | B5 . | D5 . | D5 . | C5 . | G5 . | A5 . | B5 . |
+    LEAD    q7 | o5 e4 e4 g4 e4 | b2 f+8 g8 b8 g8 | d4 d4 f+4 d4 | a2 a8 f+8 a8 f+8 | c4 c4 e4 c4 | g2 d8 e8 g8 e8 | e4 g4 e4 g4 | b1 |
+  variant 3 fam=0 from=seed:0x84fdecc7,section:68,var:3,energy:5
+    chords  | C5 . | B5 . | D5 . | D5 . | C5 . | C5 . | B5 . | B5 . |
+    LEAD    q7 | o5 e4 e4 g4 e4 | b2 f+8 g8 b8 g8 | d4 d4 f+4 d4 | a2 a8 f+8 a8 f+8 | c4 c4 e4 c4 | g2 g8 e8 g8 e8 | f+4 g4 f+4 g4 | f+1 |
+    COUNTER q8 | o5 c4 c4 g4 c4 | f+2 f+8 f+8 f+8 f+8 | o4 a4 a4 o5 d4 o4 a4 | o5 a2 a8 d8 a8 d8 | o4 g4 g4 o5 c4 o4 g4 | o5 g2 g8 c8 g8 c8 | f+4 f+4 f+4 f+4 | f+1 |

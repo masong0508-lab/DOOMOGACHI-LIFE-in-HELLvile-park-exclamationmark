@@ -1,3 +1,19 @@
 # sfx.lock - the synth SFX imported as MDK_SFX cues (D14, CF-3; seeded empty
 # by MU0, filled by MU1T/MU4d at M3). APPEND ONLY. Range MC 232-255.
 #   NAME = id      kind (cue | sting | vinyl | motif | inst)
+
+MC_SFX_SCRATCH    = 232 cue
+MC_SFX_BOING      = 233 cue
+MC_SFX_POP        = 234 cue
+MC_SFX_THUD       = 235 cue
+MC_SFX_WHOOSH     = 236 cue
+MC_SFX_KAZOO      = 237 cue
+MC_SFX_BEEP       = 238 cue
+MC_SFX_GLITCH     = 239 cue
+MC_SFX_TIK        = 240 cue
+MC_SFX_SHWIP      = 241 cue
+MC_SFX_TINK       = 242 cue
+MC_SFX_FANFARE    = 243 cue
+MC_SFX_CHOIR      = 244 cue
+MC_SFX_PLUCK      = 245 cue
+MC_SFX_CREAK      = 246 cue
