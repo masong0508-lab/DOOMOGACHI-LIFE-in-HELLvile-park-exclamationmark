@@ -5,7 +5,7 @@
 | **Covers** | COLD OPEN 00:00:00:00-00:01:40:00 (3,000 f, 21 shots) · MAIN TITLE 00:01:40:00-00:02:30:00 (1,500 f, 13 shots) · EYECATCH pairs 1-3 at 07:50, 12:15, 16:40 (3 x 300 f, 6 shots) |
 | **Frames** | 3,000 + 1,500 + 900 = **5,400 f** in **40 shots** |
 | **Sources** | `docs/show/COLD_OPEN_SHOTLIST.md` (converted 1:1, every +N kept), `PILOT_BEATSHEET.md` (timing), `ep101/PILOT_SCRIPT.md` SC01-SC13, SC28-29, SC38-39, SC47-48, the theme's main-title bar map (`show_lib/music/theme_main_title.json`: 150 bpm, 48 f/bar, 30 bars = 1,440 f + 60 f ring) |
-| **Files** | `show/ep101/shots/co.shw` (cold open), `shots/co_mt.shw` (main title), `shots/ec1.shw`, `ec2.shw`, `ec3.shw` (one eyecatch pair each, included between the acts), `strings/co_mt.shw` |
+| **Files** | `show/ep101/shots/co.shw` (cold open), `shots/co_mt.shw` (main title), `shots/ec1.shw` (included after a1), `ec2.shw`, `ec3.shw` (NOT included: a2 and a3 already stage EC2/EC3 with the same beat ids; kept as the co_mt versions, include exactly one per pair; see DECISIONS), `strings/co_mt.shw` |
 | **Canvas** | show px on 320x180 (`doc:` = the shot list's 384x216 units, x5/6). Wall line / bandstand centre = **x 160** (doc 192) |
 | **Line timing** | `show_out/table_read/LINE_TIMING.md` does not exist yet: the four Mayor lines keep the shot list's frame-locked slots (hum +0..+120, "...Hee. Hee." +4..+36, "Perfect." +153..+170, "Stay." +38..+50), which match lines.csv's target seconds (4.00 / 1.07 / 0.57 / 0.40 s). Re-fit when the table read lands. |
 

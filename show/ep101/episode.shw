@@ -5,7 +5,5 @@ include shots/co_mt.shw
 include shots/a1.shw
 include shots/ec1.shw
 include shots/a2.shw
-include shots/ec2.shw
 include shots/a3.shw
-include shots/ec3.shw
 include shots/a4.shw
