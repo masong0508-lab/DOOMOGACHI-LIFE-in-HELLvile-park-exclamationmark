@@ -18,14 +18,14 @@ end
 
 shot a4s02 beat=e101_4_01 len=180 set=bandstand:rite px=1 look=pixel cut=CUT matte=open gore=CUTE
   cam at=0,0
-  actor fuzz  who=fuzz  kind=figure at=150,124 face=R idle=frozen pose=kneel_sheet expr=EXPR_SHOCK
-  actor bloom who=bloom kind=figure at=128,136 face=R idle=frozen
-  actor pip   who=pip   kind=figure at=112,150 face=R idle=on pose=hold_flops_headlock expr=EXPR_SAD
-  actor nana  who=nana  kind=figure at=94,154  face=R idle=frozen
-  actor mayor who=mayor kind=figure at=40,150  face=R idle=frozen pose=sit_clipboard
-  actor sunny who=sunny kind=figure at=232,124 face=L idle=on
-  actor pet   who=pet   kind=sprite at=232,92  idle=on
-  actor bone  who=bonejangles kind=figure at=182,120 face=L idle=on
+  actor fuzz  who=fuzz  kind=figure at=178,126 face=R idle=frozen pose=kneel_sheet expr=EXPR_SHOCK
+  actor bloom who=bloom kind=figure at=124,132 face=R idle=frozen
+  actor pip   who=pip   kind=figure at=104,160 face=R idle=on pose=hold_flops_headlock expr=EXPR_SAD
+  actor nana  who=nana  kind=figure at=68,156  face=R idle=frozen
+  actor mayor who=mayor kind=figure at=30,150  face=R idle=frozen pose=sit_clipboard
+  actor sunny who=sunny kind=figure at=258,124 face=L idle=on
+  actor pet   who=pet   kind=sprite at=258,92  idle=on
+  actor bone  who=bonejangles kind=figure at=216,120 face=L idle=on
   show candle3:blue
   +0    state bone possessed ; twitch bone on
   +0    amb AMB_night_air on gain=-34dB ; cc "[night air]"
@@ -77,9 +77,9 @@ end
 
 # ---- 4-02 (900 f) ----
 shot a4s07 beat=e101_4_02 len=285 set=bandstand:rite px=1 look=pixel cut=CUT matte=open gore=CUTE
-  actor fuzz  who=fuzz  kind=figure at=150,124 face=R idle=frozen pose=kneel_sheet px=2
-  actor pip   who=pip   kind=figure at=118,150 face=R idle=on pose=hold_flops_headlock expr=EXPR_SAD px=2
-  actor nana  who=nana  kind=figure at=94,154  face=R idle=frozen px=2
+  actor fuzz  who=fuzz  kind=figure at=210,124 face=R idle=frozen pose=kneel_sheet px=2
+  actor pip   who=pip   kind=figure at=140,150 face=R idle=on pose=hold_flops_headlock expr=EXPR_SAD px=2
+  actor nana  who=nana  kind=figure at=50,170  face=R idle=frozen px=2
   +0    sfx FOL_sniff gain=-14dB
   +20   headturn pip 192 4                               # Nana
   +45   headturn pip 160 4 ; mx ominous_bed start gain=-24dB   # the Mayor; the bed creeps in
@@ -93,11 +93,11 @@ shot a4s07 beat=e101_4_02 len=285 set=bandstand:rite px=1 look=pixel cut=CUT mat
 end
 
 shot a4s08 beat=e101_4_02 len=165 set=bandstand:rite px=1 look=pixel cut=CUT matte=open gore=CUTE
-  actor fuzz  who=fuzz  kind=figure at=150,124 face=R idle=frozen pose=kneel_sheet px=2
-  actor bloom who=bloom kind=figure at=128,136 face=R idle=frozen px=2
-  actor pip   who=pip   kind=figure at=118,150 face=R idle=on pose=hold_flops_headlock px=2
+  actor fuzz  who=fuzz  kind=figure at=210,124 face=R idle=frozen pose=kneel_sheet px=2
+  actor bloom who=bloom kind=figure at=60,140 face=R idle=frozen px=2
+  actor pip   who=pip   kind=figure at=100,152 face=R idle=on pose=hold_flops_headlock px=2
   note "assert: pip.x < fuzz.x @+164 (Fuzz stays between Pip and the bones; asserts take == only)"
-  +0    walk pip to=140 over=30 ; fol FOL_small_steps
+  +0    walk pip to=150 over=30 ; fol FOL_small_steps
   +30   pose pip pip_tiptoe
   +45   mx ominous_bed mute 999 ; amb AMB_night_air off  # MUTE ALL (the only cue playing)
   +50   say a4_02_pip_03 pip                             # R5 after MUTE ALL; dry, unprocessed
@@ -118,19 +118,21 @@ shot a4s09 beat=e101_4_02 len=75 set=bandstand_cu:north_night px=2 look=pixel cu
 end
 
 shot a4s10 beat=e101_4_02 len=225 set=bandstand:rite px=1 look=pixel cut=CUT matte=open gore=CUTE
-  actor fuzz  who=fuzz  kind=figure at=150,124 face=R idle=frozen pose=kneel_sheet
-  actor bloom who=bloom kind=figure at=128,136 face=R idle=frozen
-  actor pip   who=pip   kind=figure at=140,140 face=R idle=on
-  actor nana  who=nana  kind=figure at=94,154  face=R idle=frozen
-  actor mayor who=mayor kind=figure at=40,150  face=R idle=frozen pose=sit_clipboard
-  actor sunny who=sunny kind=figure at=232,124 face=L idle=on
-  actor pet   who=pet   kind=sprite at=232,92  idle=on
-  actor bone  who=bonejangles kind=figure at=182,120 face=L idle=on
+  actor fuzz  who=fuzz  kind=figure at=178,126 face=R idle=frozen pose=kneel_sheet
+  actor bloom who=bloom kind=figure at=110,134 face=R idle=frozen
+  actor pip   who=pip   kind=figure at=146,150 face=R idle=on
+  actor nana  who=nana  kind=figure at=68,156  face=R idle=frozen
+  actor mayor who=mayor kind=figure at=30,150  face=R idle=frozen pose=sit_clipboard
+  actor sunny who=sunny kind=figure at=258,124 face=L idle=on
+  actor pet   who=pet   kind=sprite at=258,92  idle=on
+  actor bone  who=bonejangles kind=figure at=216,120 face=L idle=on
   show candle3:blue
   +0    show candle3 ; sfx FOL_flame_swell gain=-20dB
   +15   mx choir_soft start gain=-18dB
   +30   thaw fuzz ; thaw bloom ; thaw nana                # ripple 0-3 f from the ids (TIME-RIPPLE)
   +38   thaw mayor ; sfx FOL_wing_stutter gain=-22dB      # the Mayor R8 last
+  +46   headturn nana 64 4 ; headturn bloom 64 4    # eyelines to Pip
+  +52   headturn mayor 64 6 ; blink mayor
   +120  headturn fuzz 128 8 ; pose fuzz kneel_turn
   +0    cam to scale=1.060 over=225 ease=INOUT    # motion: crane-in reveal
   +0    cam pan dx=9.1 dy=2.1 over=225 ease=INOUT    # motion: (centred on the frame)
@@ -321,14 +323,14 @@ end
 # ---- 4-06 (1050 f) ----
 shot a4s26 beat=e101_4_06 len=222 set=bandstand:torn px=1 look=pixel cut=CUT matte=open gore=CUTE
   actor pip   who=pip   kind=figure at=150,146 face=R idle=on pose=sit_crate_swing px=2
-  actor nana  who=nana  kind=figure at=112,156 face=R idle=on px=2
-  actor fuzz  who=fuzz  kind=figure at=190,152 face=L idle=on pose=hold_candle px=2
-  actor bone  who=bonejangles kind=figure at=214,152 face=L idle=on px=2
-  actor sunny who=sunny kind=figure at=88,156 face=R idle=on px=2
-  actor pet   who=pet   kind=sprite at=88,124 idle=on
-  actor mayor who=mayor kind=figure at=170,110 face=L idle=on px=2
+  actor nana  who=nana  kind=figure at=92,160 face=R idle=on px=2
+  actor fuzz  who=fuzz  kind=figure at=230,152 face=L idle=on pose=hold_candle px=2
+  actor bone  who=bonejangles kind=figure at=278,150 face=L idle=on px=2
+  actor sunny who=sunny kind=figure at=40,156 face=R idle=on px=2
+  actor pet   who=pet   kind=sprite at=40,124 idle=on
+  actor mayor who=mayor kind=figure at=190,104 face=L idle=on px=2
   +0    mx pip_motif start gain=-16dB                     # pizzicato, slower
-  +0    take walk_to mayor to=176 over=60    # motion: walk cycle
+  +0    take walk_to mayor to=196 over=60    # motion: walk cycle
   +90   say a4_06_pip_01 pip
   +128  say a4_06_pip_02 pip                              # R8
   +174  say a4_06_pip_03 pip                              # R13
@@ -419,7 +421,7 @@ end
 
 shot a4s30 beat=e101_4_06 len=150 set=bandstand_cu:north_night px=2 look=pixel cut=CUT matte=open gore=CUTE
   actor fuzz  who=fuzz  kind=bust at=50,84 face=R idle=on pose=hold_candle
-  actor mayor who=mayor kind=bust at=112,84 face=L idle=on pose=hold_rocket
+  actor mayor who=mayor kind=bust at=124,84 face=L idle=on pose=hold_rocket
   +0    sfx FOL_candle_fizz gain=-26dB
   +20   pose fuzz offer_candle
   +60   pose mayor take_candle ; pose fuzz paws_empty
@@ -444,13 +446,13 @@ end
 # ---- 4-07 (360 f) ----
 shot a4s32 beat=e101_4_07 len=360 set=joke_graveyard:night px=1 look=pixel cut=CUT matte=open gore=CUTE scene=a4_grave
   cam at=0,20 ; cam drift dx=0.8                           # low on the path; the sky stays out of frame
-  actor mayor who=mayor kind=figure at=120,150 face=R idle=on pose=rocket_candle
-  actor sunny who=sunny kind=figure at=96,152  face=R idle=on
-  actor pet   who=pet   kind=sprite at=96,120  idle=on
-  actor nana  who=nana  kind=figure at=70,154  face=R idle=on pose=hold_paw
-  actor pip   who=pip   kind=figure at=56,158  face=R idle=on
-  actor fuzz  who=fuzz  kind=figure at=36,154  face=R idle=on
-  actor bone  who=bonejangles kind=figure at=12,154 face=R idle=on
+  actor mayor who=mayor kind=figure at=130,150 face=R idle=on pose=rocket_candle
+  actor sunny who=sunny kind=figure at=104,152  face=R idle=on
+  actor pet   who=pet   kind=sprite at=104,120  idle=on
+  actor nana  who=nana  kind=figure at=78,150  face=R idle=on pose=hold_paw
+  actor pip   who=pip   kind=figure at=54,160  face=R idle=on
+  actor fuzz  who=fuzz  kind=figure at=30,152  face=R idle=on
+  actor bone  who=bonejangles kind=figure at=6,156 face=R idle=on
   prop  grave1 art=gen:joke_stone(slot=1) plane=yard at=60,138 anchor=bottom text=3,5,16,12
   prop  grave2 art=gen:joke_stone(slot=2) plane=yard at=118,140 anchor=bottom text=3,5,16,12
   prop  grave3 art=gen:joke_stone(slot=3) plane=yard at=246,138 anchor=bottom text=3,5,16,12
@@ -458,8 +460,8 @@ shot a4s32 beat=e101_4_07 len=360 set=joke_graveyard:night px=1 look=pixel cut=C
   +0    sign s_a4_07_grave_cake on=grave2
   +0    sign s_a4_07_grave_moustache on=grave3
   +0    sign s_a4_07_grave_fluffy on=stone
-  +0    walk mayor to=408 over=360 ; walk sunny to=384 over=360 ; walk pet to=384 over=360    # constant walking pace (0.8 px/f), with the camera
-  +0    walk nana to=358 over=360 ; walk pip to=344 over=360 ; walk fuzz to=324 over=360 ; walk bone to=300 over=360
+  +0    walk mayor to=418 over=360 ; walk sunny to=392 over=360 ; walk pet to=392 over=360    # constant walking pace (0.8 px/f), with the camera
+  +0    walk nana to=366 over=360 ; walk pip to=342 over=360 ; walk fuzz to=318 over=360 ; walk bone to=294 over=360
   +0    fol FOL_footsteps_group ; fol FOL_bone_click_walk gain=-24dB
   +150  mx mayor_slow mute 13 ; pose mayor wings_stop ; expr mayor EXPR_SAD   # feet don't stop
   +158  expr mayor EXPR_HAPPY                             # exactly R8 (canon W16)
@@ -475,15 +477,18 @@ end
 # ---- 4-08 (1440 f) PROTECTED HOLD 3 of 3, NO BUTTON ----
 shot a4s33 beat=e101_4_08 len=300 set=launch_hill:night px=1 look=pixel cut=CUT matte=open gore=CUTE scene=a4_hill
   prop  rocket art=pxt:rocket_small at=284,150 hidden=no
-  actor mayor who=mayor kind=figure at=250,164 face=R idle=on pose=rocket_candle px=2
-  actor sunny who=sunny kind=figure at=206,166 face=R idle=on px=2
-  actor nana  who=nana  kind=figure at=164,168 face=R idle=on px=2
-  actor fuzz  who=fuzz  kind=figure at=124,166 face=R idle=on px=2
-  actor bone  who=bonejangles kind=figure at=86,166 face=R idle=on px=2
-  actor pip   who=pip   kind=figure at=44,170 face=R idle=on pose=hold_flops_tight px=2   # 4 steps behind the furthest grown-up
+  actor mayor who=mayor kind=figure at=250,160 face=R idle=on pose=rocket_candle px=2
+  actor sunny who=sunny kind=figure at=206,172 face=R idle=on px=2
+  actor nana  who=nana  kind=figure at=166,158 face=R idle=on px=2
+  actor fuzz  who=fuzz  kind=figure at=128,166 face=R idle=on px=2
+  actor bone  who=bonejangles kind=figure at=92,156 face=R idle=on px=2
+  actor pip   who=pip   kind=figure at=44,172 face=R idle=on pose=hold_flops_tight px=2   # 4 steps behind the furthest grown-up
   note "assert: pip.x <= bone.x - 30 @+0 (44 <= 56 as staged; asserts take == only)"
   +0    mx mayor_slow start gain=-16dB
   +60   move rocket to=290,140 over=20 ; pose mayor set_rocket
+  +120  headturn nana 192 6                              # glances back at Pip
+  +132  headturn fuzz 192 6 ; blink fuzz
+  +170  headturn nana 64 6 ; headturn fuzz 64 6        # back to the Mayor
   +210  pose mayor light_fuse ; fol FOL_fuse_fsss ; cc "[fuse hisses]"
   +0    cam to scale=1.060 over=300 ease=INOUT    # motion: track the action
   +0    cam pan dx=24.0 dy=2.0 over=300 ease=INOUT    # motion: (centred on the frame)
@@ -505,12 +510,12 @@ shot a4s34 beat=e101_4_08 len=60 set=launch_hill:night px=1 look=pixel cut=CUT m
 end
 
 shot a4s35 beat=e101_4_08 len=180 set=launch_hill:night px=1 look=pixel cut=CUT matte=open gore=CUTE
-  actor nana  who=nana  kind=figure at=70,170 face=L idle=on px=2
-  actor fuzz  who=fuzz  kind=figure at=110,170 face=L idle=on px=2
-  actor bone  who=bonejangles kind=figure at=150,170 face=L idle=on px=2
-  actor sunny who=sunny kind=figure at=190,170 face=L idle=on px=2
-  actor pet   who=pet   kind=sprite at=190,138 idle=on
-  actor mascotty who=mascotty kind=figure at=250,160 face=L idle=still px=2
+  actor nana  who=nana  kind=figure at=64,172 face=R idle=on px=2
+  actor fuzz  who=fuzz  kind=figure at=110,160 face=R idle=on px=2
+  actor bone  who=bonejangles kind=figure at=152,166 face=R idle=on px=2
+  actor sunny who=sunny kind=figure at=198,158 face=R idle=on px=2
+  actor pet   who=pet   kind=sprite at=198,126 idle=on
+  actor mascotty who=mascotty kind=figure at=262,162 face=L idle=still px=2
   +0    sfx FX_sparkle_crackle gain=-28dB
   +0    tint TINT_PURPLE 2 ; fx light_ripple target=actors ripple=0..3 over=8
   +0    cam to scale=1.060 over=180 ease=INOUT    # motion: crane-in reveal
@@ -541,11 +546,11 @@ end
 shot a4s38 beat=e101_4_08 len=375 set=launch_hill:night px=1 look=pixel cut=CUT matte=open gore=CUTE
   prop  heart  art=pxt:heart_bloom at=160,70
   prop  purple art=pxt:purple_bloom at=176,90 hidden=yes
-  actor h_nana  who=nana        kind=chibi at=80,168 face=back idle=on px=2
-  actor h_fuzz  who=fuzz        kind=chibi at=120,168 face=back idle=on px=2
-  actor h_bone  who=bonejangles kind=chibi at=160,168 face=back idle=on px=2
-  actor h_sunny who=sunny       kind=chibi at=200,168 face=back idle=on px=2
-  actor h_pip   who=pip         kind=chibi at=240,168 face=back idle=on px=2
+  actor h_nana  who=nana        kind=chibi at=80,170 face=back idle=on px=2
+  actor h_fuzz  who=fuzz        kind=chibi at=120,160 face=back idle=on px=2
+  actor h_bone  who=bonejangles kind=chibi at=160,172 face=back idle=on px=2
+  actor h_sunny who=sunny       kind=chibi at=200,162 face=back idle=on px=2
+  actor h_pip   who=pip         kind=chibi at=238,174 face=back idle=on px=2
   +0    sfx FX_sparkle_fall gain=-30dB
   +0    pose heart sink over=105
   +105  hide heart
