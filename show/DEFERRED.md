@@ -11,7 +11,9 @@
 - ENGINE: `show/hooks/session_start.sh` (the opt-in restore hook): `show vault fetch DIR` restores by hand; nothing in this week's container needs restoring.
 - ENGINE: `show/tools/requirements.lock`: the tools use what this container has (numpy, Pillow, pytest); `show doctor` checks them.
 - ENGINE: gaze hunk (e), `ps1-show-wide`, `ps1-show-dev` (PCdrv), `runner-show`, the P2 draw trace (`show_wrap.c`): deferred to 2027 by the spec itself (§1.2, §4.3, §8.8).
+- ENGINE lane 3: `--tail fade=`, the timing strip (`show strip`), the diff heat map, a measured (pixel) flash analysis in STD-FLASH (the lint reads the scripted flash events; the PEAT/Harding pass is the creator's), AD/TTML/SCC captions, UHD and broadcast recipes (the `web_uhd` recipe exists, unused).
 - ART sets: new 3D maps (a real funhouse, the bake tent's inside): the first-person beats use the game's `vape_cellar` rooms (spec: new show maps are deferred).
 - ART sets: per-pixel preview of the camfx lerps (PAL_CRAYON/HELLIFY) in the set sheets: the sheets show the plates' own colours; the player applies the lerp.
 - ART sets: a 9:16 / wide (384x216) version of any plate: the canvas is 320x180 in 2026.
 - WP6: gaze and the crowd atlas (spec §8.5 marks them deferred; the pilot's crowds fit K-look reuse).
+- lane 2: PS1 emulator contact sheets of lane-2 shots wait for lane 1's shot loop (host raster of the same C proves the pixels meanwhile).

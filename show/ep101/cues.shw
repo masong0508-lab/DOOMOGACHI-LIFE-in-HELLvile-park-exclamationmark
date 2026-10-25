@@ -9,13 +9,180 @@
 # move it into the shot unchanged (`+60 mx mingle_box start` in co01). Times come from
 # docs/show/PILOT_BEATSHEET.md (the timing source) and COLD_OPEN_SHOTLIST.md; where a doc
 # gives a rule rather than a frame ("music out for the deadpan"), the time is this file's
-# choice, marked `# choice:`. The resolved frames, samples and TCs are in the cue sheet
+# choice, marked `choice:`. The resolved frames, samples and TCs are in the cue sheet
 # (show_out/music/CUE_SHEET.md, `python3 -m showtk.music.spot ep101`).
 # Levels are relative to each cue's unity (-16 LUFS / -1 dBTP), before the WP11 mix.
+# Level ladder (choice): the theme 0 dB; stings -3..-6; score underscore -6..-10;
+# diegetic source music -8..-14 (filtered in the cue's own form); beds -16.
+# Silence is spotted by omission: every beat with no op below plays no score.
+
+# ---------------------------------------------------------------- cue defaults
+spot mingle_box         from=bar:1.1 bus=MX gain=-12dB   # enters at 00:00:02:00 (shot list)
+spot mingle_thin        bus=MX gain=-12dB
+spot hahaland_dawn      bus=MX gain=-12dB
+spot theme_main_title   bus=MX gain=0dB
+spot heehee_bell        bus=MX gain=-6dB
+spot heehee_bell_flat   bus=MX gain=-6dB
+spot heehee_bell_150    bus=MX gain=-8dB
+spot theme_eyecatch_out bus=MX gain=-2dB
+spot eyecatch_in        bus=MX gain=-3dB
+spot hahaland_radio     bus=MX gain=-10dB
+spot home_2bar          bus=MX gain=-9dB
+spot home_cottage       bus=MX gain=-8dB
+spot hahaland_distant   bus=MX gain=-14dB
+spot hahaland_fair      bus=MX gain=-10dB
+spot hahaland_tent      bus=MX gain=-12dB
+spot hahaland_band      bus=MX gain=-8dB
+spot ribs_fanfare       bus=MX gain=-4dB
+spot nana_motif         bus=MX gain=-8dB
+spot nana_fragment      bus=MX gain=-8dB
+spot pip_motif          bus=MX gain=-8dB
+spot musicbox_note      bus=MX gain=-8dB
+spot hahaland_ribs      bus=MX gain=-8dB
+spot ominous_fog        bus=MX gain=-6dB
+spot riff_pivot         bus=MX gain=-6dB
+spot riff_possessed     bus=MX gain=-6dB
+spot riff_swing         bus=MX gain=-6dB
+spot riff_hit           bus=MX gain=-5dB
+spot fuzz_small         bus=MX gain=-9dB
+spot riff_duel          bus=MX gain=-6dB
+spot fail_x1            bus=MX gain=-3dB
+spot riff_low           bus=MX gain=-10dB
+spot rivet_sting        bus=MX gain=-4dB
+spot hook_cute          bus=MX gain=-6dB
+spot insert_doom        bus=MX gain=-2dB
+spot ribs_minor_chord   bus=MX gain=-6dB
+spot cute_bed           bus=MX gain=-10dB
+spot hymn_try3          bus=MX gain=-7dB
+spot wall_flame         bus=MX gain=-6dB
+spot true_name          bus=MX gain=-7dB
+spot goodbye_puff       bus=MX gain=-8dB
+spot ribs_redeemed      bus=MX gain=-7dB
+spot fuzz_amen          bus=MX gain=-8dB
+spot mayor_bright       bus=MX gain=-6dB
+spot mayor_slow         bus=MX gain=-8dB
+spot its_fine           bus=MX gain=-3dB
+spot credits_musicbox   bus=MX gain=-6dB
 
 # ================================================================ COLD OPEN (00:00-01:40)
-spot mingle_box from=bar:1.1 bus=MX gain=-12dB          # enters at 00:00:02:00 (shot list)
 @e101_co_1+60   mx mingle_box start                     # co01 +60 = smp 96,000 (AT10.1)
 @tc:00:00:29:00 mx mingle_box mute 29                   # co08 +75: MUTE 29 f mid-phrase; first muted onset = the Mayor's note (G5)
 @tc:00:00:29:29 mx mingle_box to -16dB over=2           # "then resumes softer under the caption"
-@e101_co_3+0    mx mingle_box stop                      # co09 SMASH: THUD + RUMBLE, score out (7 s of silence)
+@e101_co_3+0    mx mingle_box stop                      # co09 SMASH: THUD + RUMBLE, score out
+@e101_co_4+0    mx mingle_thin start                    # CO-4: the music box returns thinner, one voice
+@e101_co_5+0    mx mingle_thin stop over=2              # CO-5 frame 0: the hum takes over at its pitch (voice, not MX)
+@e101_co_6+0    mx hahaland_dawn start                  # CO-6: HaHaland Day, dawn (music box + celesta, low)
+@e101_co_6+625  mx hahaland_dawn stop over=5            # choice: out with the heart iris (5 f): ~2 s of silence before the CRACK
+
+# ================================================================ MAIN TITLE (01:40-02:30)
+@e101_mt_1+0    mx theme_main_title start               # the CRACK = bar 1.1 = frame 3,000; the 0:50 cut ends at 02:30 (tape-stop, drop, BEEP mute are in the master)
+
+# ================================================================ ACT ONE (02:30-07:50)
+@e101_1_01+0    mx heehee_bell start                    # act card, frame 0
+@e101_1_01+60   mx hahaland_radio start                 # choice: the bus radio after the card's bell
+@e101_1_01+330  mx hahaland_radio tapestop 5            # choice: the SCRATCH (5 f), 14 f of silence, then BOING (SFX)
+@e101_1_01+335  mx hahaland_radio stop
+@e101_1_02+180  mx home_2bar start                      # choice: two bars of HOME under the pencil line
+@e101_1_03+0    mx hahaland_distant start               # the festival from the park, filtered with distance
+@e101_1_04+0    mx hahaland_distant stop over=8
+@e101_1_04+0    mx hahaland_fair start                  # diegetic, the fair speakers (1-04..1-06)
+@e101_1_06+330  mx hahaland_fair duck -40dB 6           # choice: ducks to nothing for "Yikes." (the R26 deadpan)
+@e101_1_06+420  mx hahaland_fair duck 0dB 13            # choice: back after the deadpan
+@e101_1_07+0    mx hahaland_fair stop over=4
+@e101_1_07+0    mx hahaland_tent start                  # inside the tent, 6 dB down (the tent form)
+@e101_1_08+0    mx hahaland_tent stop over=4
+@e101_1_08+0    mx hahaland_band start                  # live from the bandstand
+@e101_1_08+480  mx hahaland_band tapestop 8             # choice: TAPESTOP into the FREEZE 13
+@e101_1_08+488  mx hahaland_band stop                   # the deadpan with no music; HOLD 13; fountain R8
+@e101_1_08+720  mx ribs_fanfare start                   # choice: the rib-xylophone FANFARE brings the music back on the downbeat
+@e101_1_08+874  mx hahaland_band start                  # the band again off the fanfare
+@e101_1_09+0    mx hahaland_band stop over=15
+@e101_1_09+60   mx nana_motif start                     # NANA motif; ends +312, so the music is out for "...Mostly."
+@e101_1_10+0    mx pip_motif start                      # PIP motif, pizzicato
+@e101_1_10+0    mx hahaland_distant start gain=-20dB    # HaHaland Day ducked under Pip
+@e101_1_11+0    mx hahaland_distant stop over=6         # music out entirely; crowd walla only
+@e101_1_11+300  mx musicbox_note start                  # choice: the one music-box note on the wave
+@e101_1_12+0    mx hahaland_ribs start                  # Bonejangles' rib xylophone, diegetic
+@e101_1_13+0    mx hahaland_ribs stop over=2            # the clock strike: MUTE, no score (no OMINOUS yet)
+@e101_1_14+0    mx ominous_fog start                    # the FIRST OMINOUS cue of the series, with the fog
+@e101_1_14+330  mx ominous_fog mute 40                  # choice: MUTE 40 on the eyes
+@e101_1_14+540  mx riff_pivot start                     # the HOOK pivots to the RIFF on the shared E-E-G cell
+@e101_1_14+540  mx riff_pivot bend -1->0 over=13        # the 13-f pitch bend into the RIFF
+@e101_ec1_out+0 mx ominous_fog stop                     # act out (the click)
+@e101_ec1_out+0 mx riff_pivot stop
+
+# ================================================================ EYECATCH PAIR 1 (07:50-08:00)
+@e101_ec1_out+0 mx theme_eyecatch_out start             # the 2-bar hook in major (theme master, a swappable file cue)
+@e101_ec1_out+0 mx heehee_bell_150 start                # the HEE_HEE bell on the 150 grid
+@e101_ec1_in+0  mx eyecatch_in start                    # the RIFF resolving on ITS_FINE in the theme's key
+@e101_2_01+10   mx eyecatch_in stop over=20
+
+# ================================================================ ACT TWO (08:00-12:15)
+@e101_2_01+0    mx heehee_bell start                    # act card
+@e101_2_01+0    mx riff_possessed start                 # the RIFF on the ribs becomes the score
+@e101_2_01+0    mx ominous_fog start gain=-16dB         # a low OMINOUS bed
+@e101_2_02+600  mx ominous_fog stop over=30             # choice: out for the deadpan "Needs death." (the ribs are silent)
+@e101_2_03+0    mx riff_swing start                     # dial S2: the RIFF at swing tempo
+@riff_swing:bar:5.1 mx riff_swing mute 4                # the insert owns the audio: the wet shred, then re-entry on the grid
+@e101_2_04+0    mx riff_hit start                       # RIFF downbeat
+@riff_hit:bar:3.1 mx riff_hit mute 29                   # choice: HOLD 21 + MUTE 29, the BEEP (SFX), re-entry on the grid
+@e101_2_05+240  mx fuzz_small start                     # choice: the FUZZ hymn motif enters, small, after the pulse check
+@e101_2_06+0    mx riff_duel start                      # the FUZZ hymn against the RIFF (140 grid)
+@e101_2_06+480  mx fail_x1 start                        # choice: the FAIL sting SLAMs in
+@e101_2_07+780  mx riff_low start                       # choice: no score while the bones write; the RIFF returns low for the turn
+@e101_2_08+0    mx riff_low stop over=8                 # the RIFF drops out
+@e101_2_08+300  mx rivet_sting start                    # choice: the RIVET 2-bar sting under the sign; then silence; "beep."
+
+# ================================================================ EYECATCH PAIR 2 (12:15-12:25)
+@e101_ec2_out+0 mx theme_eyecatch_out start
+@e101_ec2_out+0 mx heehee_bell_150 start
+@e101_ec2_in+0  mx eyecatch_in start
+@e101_3_01+10   mx eyecatch_in stop over=20
+
+# ================================================================ ACT THREE (12:25-16:40)
+# 3-01..3-02: the cute HOOK (dial S1), 8-bar phrases of 384 f, restarted on the 150 grid
+@e101_3_01+0    mx heehee_bell start                    # act card
+@e101_3_01+0    mx hook_cute start
+@e101_3_01+384  mx hook_cute start
+@e101_3_01+768  mx hook_cute start
+@e101_3_01+1152 mx hook_cute start
+@e101_3_01+1536 mx hook_cute start                      # = 3-02 +36
+@e101_3_02+300  mx hook_cute tapestop 5                 # choice: the squeak, then the SCRATCH (5 f), 14 f of silence, CHK-CHK (SFX)
+@e101_3_02+305  mx hook_cute stop
+# 3-03..3-05: the DOOM-side insert song, one continuous render (61 bars at 150 bpm, 48 f a bar).
+# Bar 2 = the HUD slam; bars 26-50 are held under the 3-04 mute (the sequencer runs); bar 51 = 3-05 frame 0.
+@e101_3_03+0    mx insert_doom start                    # bar 1 = the pickup out of the SCRATCH silence
+@insert_doom:bar:26.1 mx insert_doom mute 1200          # 3-04: the hard cut to silence (re-entry on bar 51.1)
+@e101_3_04+150  mx ribs_minor_chord start               # choice: the minor chord on the hug's contact frame; KAZOO (SFX); then nothing
+@e101_3_05+690  mx cute_bed start                       # choice: a cute bed after the REWIND (660-681)
+@e101_3_06+0    mx cute_bed stop over=13
+@e101_3_06+0    mx nana_fragment start                  # a 2-bar NANA fragment, then silence for the last name
+@e101_3_07+0    mx hymn_try3 start                      # the FUZZ hymn in major + BEEP metronome + claps
+@e101_3_07+330  mx hymn_try3 stop                       # choice: MUTE on "Cl-" (frame 0 of the FREEZE)
+@e101_3_07+600  mx wall_flame start                     # choice: the WALL motif on the shrinking flame; "We'll wait." in silence
+
+# ================================================================ EYECATCH PAIR 3 (16:40-16:50)
+@e101_ec3_out+0 mx theme_eyecatch_out start
+@e101_ec3_out+0 mx heehee_bell_150 start
+@e101_ec3_in+0  mx eyecatch_in start
+@e101_4_01+10   mx eyecatch_in stop over=20
+
+# ================================================================ ACT FOUR (16:50-20:45)
+@e101_4_01+0    mx heehee_bell_flat start               # the card's bell once, flat; then silence
+@e101_4_02+60   mx true_name start                      # choice: the TRUE NAME motif, then a soft choir (not triumphant)
+@e101_4_03+0    mx goodbye_puff start                   # GOODBYE under the puff
+@e101_4_03+480  mx ribs_redeemed start                  # choice: the HOOK in major on the ribs; out by +943, silence for "...Seven."
+@e101_4_04+120  mx fuzz_amen start                      # choice: the FUZZ hymn's amen, solo, 2 bars
+@e101_4_05+240  mx mayor_bright start                   # choice: the MAYOR motif, too bright ...
+@e101_4_05+300  mx mayor_bright mute 14                 # ... cut to MUTE 14
+@e101_4_05+314  mx mayor_bright stop
+@e101_4_06+0    mx pip_motif start                      # PIP motif, then silence
+@e101_4_06+600  mx mayor_slow start                     # choice: the slow MAYOR motif
+# 4-07: MUTE 13 under the stopped wings, footsteps only (no score). 4-08: no score (the hum is voice).
+
+# ================================================================ TAG, CREDITS (20:45-22:00)
+@e101_t_1+0     mx home_cottage start                   # the HOME motif on the music box
+@e101_t_2+0     mx nana_motif start                     # NANA motif ...
+@e101_cr_1+0    mx its_fine start                       # ... SMASH to the credits on the ITS_FINE sting
+@e101_cr_1+30   mx credits_musicbox start               # the chorus hook on the music box (the Mingle stays unfinished)
+@e101_pc_1+0    mx credits_musicbox stop over=21        # PC-1: no score (VOICE_GURGLE, rattles, BOING)
