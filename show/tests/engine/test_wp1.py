@@ -91,7 +91,7 @@ def test_patches_apply_to_the_current_game():
                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
         assert p.returncode == 0, p.stdout
         text = out.read_text(encoding="latin-1")
-        assert text.count("#if DOOMO_SHOW") == (9 if f == "portrait" else 2)
+        assert text.count("#if DOOMO_SHOW") == (11 if f == "portrait" else 2)   # a-d, f, g + ART h, i
 
 
 def test_ram_report_within_spec_8_7():

@@ -25,7 +25,7 @@ def test_at4_1_worked_example():
         want = [
             {"k": 0, "smp": 0, "src": "FOL_crayon_scratch", "follow": "co01:circle_midsummer", "bus": "FX", "gain_db": -14},
             {"k": 1, "smp": 48000, "src": "FOL_crayon_scratch", "follow": "co01:fireworks_scribble", "bus": "FX", "gain_db": -17},
-            {"k": 2, "smp": 96000, "src": "cue:mingle_box", "from": "bar:1.1", "bus": "MX", "gain_db": -12},
+            {"k": 2, "smp": 96000, "src": "cue:mingle_full", "from": "bar:1.1", "bus": "MX", "gain_db": 0},   # MINGLE v2 (AUDIO, Oct 25),
             {"k": 3, "smp": 144000, "src": "FX_SHWIP", "bus": "FX", "gain_db": -10, "pan": 0.0},
             {"k": 4, "smp": 144000, "src": "walla:kids_far", "op": "on", "bus": "DX", "gain_db": -28, "cc": "[soft crowd babble]"},
             {"k": 5, "smp": 432000, "src": "FOL_paw_patter", "from": "crowd:co03.bunnies,co03.imps", "bus": "FX", "gain_db": -18},

@@ -28,3 +28,5 @@
 - ART motion: the PS1 module that draws `amb` (SHWR_AMB) is ENGINE's; ART ships the math (amb_math.h) and host previews only. Gaze-based glances in crowds stay deferred (WP6).
 - WP11: the r128 / a85 / dlg27 masters, the AD bus and stem, the M&E and 5.1 (spec 10.6 defers them; the pilot ships `web` stereo only).
 - WP11: per-frame crayon foley from the stroke's real reveal speed (needs the art lane's stroke points; the mix uses the reveal span) and paw ticks from showc's walk-cycle contacts (timeline.json has crowd counts only).
+- PCdrv loading (M0-T5's optional half): not tested; disc images rebuild in seconds and the pilot does not need it.
+- Compiler `pose <actor> <flipbook>` ops: dropped until the compiler emits lane 2's FLIP records (the flipbooks are in ART's library; staging still gets walks, moves, squash, blinks, faces).

@@ -8,7 +8,8 @@ re-encodes one segment and the rest are reused from build/<ep>/segments/.
 Masters are found, in order:
   1. --masters DIR:   DIR/<shot>.mkv or DIR/<shot>/master.mkv
   2. the shot's cache key from timeline.json:  build/cache/shots/<key>/master.mkv
-  3. build/<ep>/render_index.json  {"co01": "<cache dir or key>", ...}
+  3. render_index.json (written by `show render`) beside timeline.json, in its render/,
+     or build/<ep>/  {"shots": {"co01": "<cache dir or key>", ...}}
 """
 import hashlib
 import json
@@ -38,10 +39,14 @@ class Masters:
         self.tl = tl
         self.dir = Path(masters_dir) if masters_dir else None
         self.index = {}
-        idx = build_dir(tl.episode) / "render_index.json"
-        if idx.exists():
-            data = json.loads(idx.read_text())
-            self.index = data.get("shots", data) if isinstance(data, dict) else {}
+        idxs = [build_dir(tl.episode) / "render" / "render_index.json", build_dir(tl.episode) / "render_index.json"]
+        if getattr(tl, "path", None):           # a timeline compiled elsewhere (slug, --out DIR)
+            tp = Path(tl.path).parent
+            idxs = [tp / "render_index.json", tp / "render" / "render_index.json"] + idxs
+        for idx in reversed(idxs):              # nearest to the timeline wins
+            if idx.exists():
+                data = json.loads(idx.read_text())
+                self.index.update(data.get("shots", data) if isinstance(data, dict) else {})
 
     def path(self, sid):
         cands = []

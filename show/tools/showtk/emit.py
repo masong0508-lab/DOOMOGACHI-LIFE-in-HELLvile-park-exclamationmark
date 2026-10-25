@@ -19,6 +19,7 @@ player package). Per shot chunk, the compiler writes:
 """
 import hashlib
 import json
+import re
 import struct
 from pathlib import Path
 
@@ -211,6 +212,100 @@ class Stage:
         return out
 
 
+# ---- WP6 records: the compiler's actors/crowds/tracks -> lane 2's structs ----------------
+# show_actor.h (ShowActorRec 32 B, ShowCrowdRec 48 B, the TRAK blob) via showtk.actors;
+# the timed ops are one SHOW_SOP_ACTOR row [actor, SHOP_*, v0..v3] each.
+WP6_SHOP = {"expr": 0, "blink": 1, "face": 2, "move": 3, "walk": 4, "pop": 5, "squash": 6,
+            "headturn": 7, "pose": 8, "state": 9, "twitch": 10, "show": 11}
+
+
+def _wp6_actor_op(name, w):
+    w = list(w) + [0] * 6
+    S = WP6_SHOP
+    if name == "SOP_MOVE":
+        return [w[0], S["move"], w[1], w[2], max(1, w[3]), 1]
+    if name == "SOP_WALK":
+        return [w[0], S["walk"], w[1], 0, max(1, w[2]), 0]
+    if name == "SOP_SQUASH":
+        return [w[0], S["squash"], w[1], 0, max(1, w[2]), 0]
+    if name == "SOP_FACE":
+        return [w[0], S["face"], 1 if w[1] else 0, 0, 0, 0]
+    if name == "SOP_BLINK":
+        return [w[0], S["blink"], w[1], 0, 0, 0]
+    if name == "SOP_STATE":
+        return [w[0], S["state"], w[1], 0, 0, 0]
+    return None         # SAY/STOP/HUM (the mouth TRAK carries them), POSE (no flipbook records yet), EYES
+
+
+def _look_ids(spec):
+    """'a_1..a_6' -> [a_1, ..., a_6]; 'a,b' -> [a, b]"""
+    import re as _re
+    out = []
+    for part in (spec or "").split(","):
+        m = _re.fullmatch(r"(.*?)(\d+)\.\.(?:\1)?(\d+)", part)
+        if m:
+            out += ["%s%d" % (m.group(1), i) for i in range(int(m.group(2)), int(m.group(3)) + 1)]
+        elif part:
+            out.append(part)
+    return out
+
+
+def _wp6_records(ch, c, diags):
+    from . import actors as A
+    from .errors import Diag
+    sc = A.ShotCast()
+
+    def warn(msg):
+        diags.append(Diag("WP6", msg, shot=c.shot.id, severity="warning", **c.shot.where()))
+
+    amap = {}
+    for i, a in enumerate(c.actors):
+        try:
+            lb = c.looks[a["look"]] if a["look"] != 0xFF and a["look"] < len(c.looks) else None
+            look = (a["who"], bytes(lb)) if lb else None
+            st = a.get("state_name", "normal")
+            amap[i] = sc.actor(a["id"], a["who"], kind=a.get("kind_name", "figure"), at=(a["x"], a["y"]),
+                               face=a.get("face_name", "R") if a.get("face_name") in A.FACE else "R",
+                               expr=a.get("expr_name", "EXPR_NEUTRAL"), idle=a.get("idle_name", "on"),
+                               px=max(1, min(4, int(a.get("px", 1)))),
+                               state=st if st in A.STATE else "normal", look=look)
+        except Exception as e:                      # noqa: BLE001 - one bad actor never sinks the shot
+            warn("actor %s: %s" % (a.get("id"), e))
+    for ai, f0, track in getattr(c, "mouth_raw", []):
+        if ai in amap:
+            try:
+                sc.tracks.append(A.pack_track(amap[ai], "mouth", f0, A.mouth_values(track)))
+            except Exception as e:                  # noqa: BLE001
+                warn("mouth track: %s" % e)
+    for r in c.crowds:
+        kv = dict(r.get("kv") or {})
+        try:
+            looks = kv.get("looks", "")
+            if not looks.startswith("kset:"):
+                ids = _look_ids(looks)
+                if not ids:
+                    raise A.CastError("crowd %s: no looks (gen=randomize needs looks=<a_1..a_N> or kset:)"
+                                      % r["id"])
+                looks = [(lid, sc.bible.resolve_look(lid, ()).pack()) for lid in ids]
+            n = int(kv.get("n", r["n"]))
+            spd = float(kv.get("speed", "0").replace("doc:", "") or 0)
+            d = kv.get("dir", "front")
+            if d in ("L", "R"):
+                spd = -abs(spd) if d == "L" else abs(spd)
+            rip = kv.get("ripple", "0").split("..")[-1]
+            x0 = int(r.get("from", 0))
+            sc.crowd(r["id"], looks, n, form=kv.get("form", "lane"), seed=int(kv.get("seed", "0"), 0),
+                     at=(x0, int(r.get("y", 0))),
+                     area=tuple(int(v) for v in kv["area"].split(",")) if "area" in kv else (0, 0, 0, 0),
+                     spacing=float(kv.get("spacing", "16").replace("doc:", "")), speed=spd,
+                     dir=d if d in A.CDIR else "front", ripple=int(rip), cycle=kv.get("cycle", "walk4"),
+                     front=kv.get("layer") == "front", px=max(1, min(2, int(kv.get("px", c.shot.px or 1)))))
+        except Exception as e:                      # noqa: BLE001
+            warn("crowd %s: %s" % (r.get("id"), e))
+    sc.to_chunk(ch)
+    return len(sc.looks), len(sc.crowds)
+
+
 def _slots(c):
     """slot 0 = the frame centre, 1.. the props (their anchor, show px), 64.. the actors"""
     slots = [(160, 90)]
@@ -270,8 +365,22 @@ def chunk_for(ep, c, diags, bake=True):
     if getattr(c, "slug", False) or getattr(c, "is_slug", False):
         b = ep.rundown.by_id[s.beat]
         act = next((a for a in ep.rundown.acts if a["id"] == b.act), {"title": ""})
-        ch.add_slug("%s  %s" % (b.id, b.title or ""), act.get("title") or "", docunits.tc(b.start),
-                    beat=_beat_no(ep, s), act=_act_no(ep, s))
+        # M0-T3 card: the segment's BANDS sky + boiling grain under the text (as slug.py's)
+        import re
+        import zlib
+        from . import slug as slugmod
+        seg = re.sub(r"^A(?=\d)", "", str(b.act or "")).upper()
+        actno, ramp = slugmod._SEG.get({"TAG": "T"}.get(seg, seg), (0, 0))
+        ch.planes.append(F.plane_bands([(0, F.pal_ramp(ramp, 1)), (60, F.pal_ramp(ramp, 2)),
+                                        (120, F.pal_ramp(ramp, 3))], order=0))
+        ch.planes.append(F.plane_grain(F.pal_ramp(ramp, 4), 8, zlib.crc32(b.id.encode()), boil=2,
+                                       order=1))
+        title = re.sub(r"\s*\(.*?\)", "", b.title or "").replace("\u201c", '"').replace("\u201d", '"')
+        title = "%s  %s" % (b.id, title)
+        if len(title) > 44:
+            title = title[:41] + "..."
+        l1 = re.sub(r"\s*\(.*?\)", "", act.get("title") or "")[:40]
+        ch.add_slug(title, l1, docunits.tc(b.start), beat=_beat_no(ep, s) + 1, act=actno)
         ch.add_beat([(s.len, 0, F.BOP_END, 0, 0)])
         return ch, []
     ch.strings = bytearray(c.strings)
@@ -297,13 +406,18 @@ def chunk_for(ep, c, diags, bake=True):
         if name in BAKED:
             continue
         if name in SOP_ACTOR:
-            show_op(f, F.SOP_ACTOR_BASE + SOP_ACTOR[name], words, w.get("line", 0))
+            row = _wp6_actor_op(name, words)          # lane 2's ShowActorOp row, or None
+            if row is not None:
+                show_op(f, F.SOP_ACTOR_BASE, row, w.get("line", 0))
         elif name in SOP_CROWD:
-            show_op(f, F.SOP_CROWD_BASE + SOP_CROWD[name], words, w.get("line", 0))
+            pass        # SOP_PROP / SOP_FX: no player module reads them (0x0C0 is the crowd op)
         elif name in SOP_HOST:
             show_op(f, F.SOP_HOST_BASE + SOP_HOST[name], words, w.get("line", 0))
     for f, op, words in stg.vis_events():
         show_op(f, op, words)
+    for f, kind, tgt, _st, on in c.vis:                 # show/hide <actor>
+        if kind == "actor" and tgt in getattr(c, "actor_ix", {}):
+            show_op(f, F.SOP_ACTOR_BASE, [c.actor_ix[tgt], WP6_SHOP["show"], 1 if on else 0, 0, 0, 0])
     evs.sort(key=lambda e: (e[0], e[1], e[2]))
     events = [e[3] for e in evs] + [(s.len, 0, F.BOP_END, 0, 0)]
     ch.add_beat(events, nlabels=sum(1 for e in events if e[2] == S["BOP_LABEL"]))
@@ -312,37 +426,9 @@ def chunk_for(ep, c, diags, bake=True):
     ak = sorted({(e["_f"] - s.start, e["k"]) for e in c.audio})
     if ak:
         ch.add_audio_k(ak)
-    if c.looks:
-        ch.add(F.SHWR_LOOK, len(c.looks), b"".join(bytes(x) for x in c.looks))
-    if c.actors:
-        ch.add(F.SHWR_ACTOR, len(c.actors), b"".join(ACTOR.pack(
-            a["kind"], a["look"] & 0xFF, a["face"], a["expr"] & 0xFF, a["idle"], a["phase"], a["px"], a["state"],
-            a["x"], a["y"], _strings_of(ep, c, ch, a["name"]), a["roster"] & 0xFFFF) for a in c.actors))
-    if c.tracks:
-        head, runs_b = b"", b""
-        recs = []
-        for (ai, kind), arr in c.tracks.items():
-            runs = []
-            for v in arr:
-                if runs and runs[-1][0] == v and runs[-1][1] < 255:
-                    runs[-1][1] += 1
-                else:
-                    runs.append([v, 1])
-            recs.append((ai, kind, runs))
-        off = TRACK.size * len(recs)
-        for ai, kind, runs in recs:
-            head += TRACK.pack(ai, kind, len(runs), off + len(runs_b))
-            runs_b += b"".join(struct.pack("<BB", v & 0xFF, n) for v, n in runs)
-        ch.add(F.SHWR_TRACK, len(recs), head + runs_b)
-    if c.crowds:
-        ch.add(F.SHWR_CROWD, len(c.crowds), b"".join(CROWD.pack(
-            x["look_base"] & 0xFF, x["n"] & 0xFF, x["lane"] & 0xFF, x["dir"], x.get("kind", 0) & 0xFF,
-            x.get("ripple_lo", 0), x.get("ripple_hi", 0), x.get("age", 0) & 0xFF, x.get("spacing_q8", 0) & 0xFFFF,
-            x.get("from", 0), x.get("y", 0), _strings_of(ep, c, ch, x.get("cycle")), x.get("speed_q16", 0),
-            x.get("seed", 0) & 0xFFFFFFFF, x.get("clock_mask", 0) & 0xFFFFFFFF, x.get("gen", 0) & 0xFF,
-            x.get("species", 0) & 0xFF, x.get("look_k", 0) & 0xFF, x.get("flags", 0) & 0xFF) for x in c.crowds))
+    nlooks, ncrowds = _wp6_records(ch, c, diags)
     ch.add(F.SHWR_PRIV_L2, 1, pic1(c, s.len))
-    ch.vram_plan = (0, min(len(c.looks), 255), len(c.crowds), len(ch.images))
+    ch.vram_plan = (0, min(nlooks, 255), ncrowds, len(ch.images))
     return ch, events
 
 
@@ -407,7 +493,10 @@ def build(ep, res, compilers, bake=True):
         look = {"pixel": 0, "crayon": 1, "sepia": 2, "lcd": 3, "hellify": 4}.get(getattr(c, "look_name", "pixel"), 0)
         seed = (ep.rundown.seed * 0x9E3779B1 + int(s.kv.get("seed", s.index)) * 2654435761) & 0xFFFFFFFF
         c.seed = seed
-        epi.add_shot(s.id, s.len, chunk, px=s.px, seed=seed, flags=flags, preroll=preroll,
+        sid = s.id
+        if getattr(c, "slug", False):         # 8-byte .SHW id: the beat code ("co_1", "1_12")
+            sid = re.sub(r"^e\d+_", "", s.beat or s.id)[:8]
+        epi.add_shot(sid, s.len, chunk, px=s.px, seed=seed, flags=flags, preroll=preroll,
                      beat=_beat_no(ep, s), look=look, base=base, replay=replay)
     res.shw = epi.build()
     res.compilers = compilers
@@ -452,7 +541,7 @@ def timeline(ep, res, compilers):
                 "waivers": c.waivers, "asserts": getattr(c, "asserts_done", []), "notes": c.notes,
                 "ad": c.ad, "provisional": c.provisional, "chunk_bytes": getattr(c, "chunk_bytes", 0),
                 "badge": getattr(c, "badge", "PS1-LEGAL"),
-                "events": sorted(c.events_tl, key=lambda e: (e["f"], e["line"]))})
+                "events": sorted(c.events_tl, key=lambda e: (e["f"], e["line"] if isinstance(e["line"], int) else -1))})
             if getattr(c, "cam_drift", None):
                 d = c.cam_drift
                 rec["camera"] = {"drift_px_per_f": [float(d["vx"]), float(d["vy"])], "zero_shot_f": d["zero"],

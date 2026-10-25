@@ -26,6 +26,21 @@ show/tools/show check-game          # the gate, every commit (milliseconds)
 show/tools/show check-game --full   # + the game's EXE/OVL.BIN/TEXT.BIN hash build (~4 min)
 ```
 
+From the scripts to a picture (episode 101):
+
+```sh
+show/tools/show compile ep101                 # .shw -> build/ep101/EP101.SHW + timeline.json + audio_events.json
+show/tools/show compile ep101 --shots co01..co03 --out DIR   # just some shots (the rest is slug-carded)
+show/tools/show render DIR/EP101.SHW --jobs 2 # capture in PCSX-Redux -> per-shot FFV1 masters (cached)
+show/tools/show preview ep101 co01..co03      # x3 960x540 burned-in MP4 (+ the temp mix if built)
+show/tools/show sheet ep101 co01..co03        # contact sheet PNG
+show/tools/show frame ep101 co02 +13 --overlay  # one frame x3 with safe areas
+show/tools/show slug ep101 --render --jobs 2  # the 22:00 slug animatic (M0-T3), one card per beat
+```
+
+A second `render` of an unchanged file is a cache hit (`show/build/cache/shots/`);
+`--force` re-captures, and each shot's `frames.sha256` is what two renders compare.
+
 `show/tools/show` is a two-line shell script that runs `python3 -m showtk`
 with `show/tools` on the path; it works from any directory. Every command is
 headless, exits non-zero on failure and prints problems in one format
@@ -358,6 +373,18 @@ still say the images are the game's).
 | Boot to the chart, game harness (throttled) | 300 frames in 27 s wall, 26.5 fps shown, 4.0 ms CPU per frame |
 | `check-game --full` | two game builds, 131 s each with `-j2`; EXE `44e80cc7`, OVL.BIN `664c8573`, TEXT.BIN `50d371f0` at `d079776` |
 | `vault pack` | vault-emu 5.9 MB xz (stripped emulator, SDL3, BIOS, licences) |
+
+### M0 results (M0-T3/T4/T5, 2026-10-25, shared 4-CPU box at load 6-9)
+
+| Test | What | Value |
+|---|---|---|
+| M0-T3 | `show slug ep101 --render --jobs 2` | 60 cards, **39,600 frames** captured by `show.exe` in PCSX-Redux in **317.6 s** (8.0 ms/frame, FFV1 masters on, 5 boots) |
+| M0-T3 | x3 preview (960x540, burned-in, silent: no mix yet) | 60 segments, 766.6 s (51.7 fps; an earlier run at lower load took 527.6 s, 75 fps). Render + encode **1,088 s = 18.1 min** this run, 14.7 min the first: over the 15-min target when the box is loaded, inside it when not. The 156 fps of spec (m) needs an idle box |
+| M0-T3 | Second render (`--force --no-encode`, every shot re-captured) | `frames.sha256` **byte-identical** (39,600 lines, all 39,600 frames distinct: every card's grain boils); 184.5 s, 4.66 ms/frame |
+| M0-T4 | `elf2exe` RAM (ps1-show, §8.7) | image 702 KB + .bss 889 KB, ends 0x8019d98c; **393 KB left** below the stack top, 265 KB after the 128 KB margin: PASS |
+| M0-T4 | ms per frame with the Lua crop | 4.66 ms hashes only, 8.0 ms with FFV1 masters (jobs 2, whole episode); 15.4 ms at jobs 1 on 8 shots (AT3.2) |
+| M0-T4 | `--jobs` speed-up (AT3.2, 8 shots) | jobs 2 x1.30, jobs 3 x1.88; hashes identical across job counts |
+| M0-T5 | The 8 MB setting | **Works.** `ps1-show-8mb` boots; its RAM probe (`show_game.c`, writes a word 2 MB above another) reads `2MB-mirrored` with the emulator's default and `8MB` after `PCSX.settings.emulator['8Megs'] = true` + `PCSX.resetEmulator()` in the Lua (the key is `emulator`, not `emulation`). Not needed by the pilot (265 KB headroom). PCdrv not tested (deferred) |
 
 ### Measured: the player and capture (WP2 + WP3, 2026-10-25, shared 4-CPU box)
 

@@ -26,13 +26,13 @@ act CO "COLD OPEN, 'The Last Mingle'"
   beat e101_co_6      len=690   tc=01:17  title="EXT. FOUNTAIN PLAZA / NANA'S BAKERY WINDOW - DAWN"   # CO-6
 
 act MT "MAIN TITLE, 'Doomtastic Times' (main title cut)"
-  beat e101_mt_1      len=180   tc=01:40  title="INTRO: HAHALAND FROM ABOVE"   # MT-1
-  beat e101_mt_2      len=390   tc=01:46  title="A-MELO (VERSE): THE CAST POPS IN"   # MT-2
-  beat e101_mt_3      len=210   tc=01:59  title="B-MELO (PRE-CHORUS): THE MIRRORED KNOCK"   # MT-3
-  beat e101_mt_4      len=60    tc=02:06  title="DROP: THE GATE"   # MT-4
-  beat e101_mt_5      len=390   tc=02:08  title="SABI (CHORUS): HELLIFY"   # MT-5
-  beat e101_mt_6      len=150   tc=02:21  title="END POSE: THE LOGO"   # MT-6
-  beat e101_mt_7      len=120   tc=02:26  title="PILOT TITLE CARD"   # MT-7
+  beat e101_mt_1      len=432   tc=01:40  title="INTRO: HAHALAND FROM ABOVE"   # MT-1
+  beat e101_mt_2      len=192   tc=01:54:12 title="A-MELO (VERSE): THE CAST POPS IN"   # MT-2
+  beat e101_mt_3      len=108   tc=02:00:24 title="B-MELO (PRE-CHORUS): THE MIRRORED KNOCK"   # MT-3
+  beat e101_mt_4      len=36    tc=02:04:12 title="DROP: THE GATE"   # MT-4
+  beat e101_mt_5      len=384   tc=02:05:18 title="SABI (CHORUS): HELLIFY"   # MT-5
+  beat e101_mt_6      len=264   tc=02:18:12 title="END POSE: THE LOGO"   # MT-6
+  beat e101_mt_7      len=84    tc=02:27:06 title="PILOT TITLE CARD"   # MT-7
 
 act A1 "ACT ONE, '18:00 Welcome!'"
   beat e101_1_01      len=540   tc=02:30  title="ACT CARD / EXT. CANDY HILLS ROAD - SUNSET (18:00)" elastic=5   # 1-01

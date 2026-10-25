@@ -71,8 +71,27 @@ uint32_t show_episode_frame(void)
     return g_show_shot.ix ? g_show_shot.ix->start_frame + (uint32_t)(g_show_shot.t < 0 ? 0 : g_show_shot.t) : 0;
 }
 
+#if SHOW_RAM_KB > 2048
+/* M0-T5: does the machine have 8 MB? On 2 MB the bus mirrors every 2 MB, so a
+ * write 2 MB above a word lands on the word itself; on 8 MB it does not. */
+static volatile uint32_t s_ram_probe;
+static void show_ram_probe(void)
+{
+    volatile uint32_t *hi = (volatile uint32_t *)((uintptr_t)&s_ram_probe + 0x200000u);
+    uint32_t keep = *hi;
+    s_ram_probe = 0x11111111u;
+    *hi = 0x5A5A5A5Au;
+    printf("show: ram probe %s (word %08x, +2MB %08x)\n",
+           s_ram_probe == 0x5A5A5A5Au ? "2MB-mirrored" : "8MB", (unsigned)s_ram_probe, (unsigned)*hi);
+    *hi = keep;
+}
+#endif
+
 void doomo_init(void)
 {
+#if SHOW_RAM_KB > 2048
+    show_ram_probe();
+#endif
     printf("show: init (show.exe %s, canvas %dx%d at y %d, api %d, %d modules)\n",
            SHOW_BUILD_ID, SHOW_CANVAS_W, SHOW_CANVAS_H, SHOW_CANVAS_Y, SHOW_API_VERSION,
            show_module_count());
