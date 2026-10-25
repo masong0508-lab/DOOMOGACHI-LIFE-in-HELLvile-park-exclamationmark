@@ -10,6 +10,7 @@ The patches apply on top of `7fccf54`, with `git apply docs/wip/<name>.patch`.
 | Patch | Package | State |
 |---|---|---|
 | ~~`music_mu1t_m15_mu4d_banks.patch`~~ | MU1T M1.5 (musgen, guard, turnarounds, GEN graphs), MU6 T3, MU4d banks | **done** (2026-10-25): applied, finished (T3 + T18 in `test_music_rep.c`, the shared-bank T4 check, docs/AUDIO.md), pushed; the patch is deleted |
+| `g0_m2_wip.patch` | G0 after M1 (`0f7ee76`), paused 2026-10-25 so the show pilot gets the CPU: scene/ui_dialog/ui_modal/scene_scratch, PS1 memcard + `ovl_plan.py`, ARCHITECTURE.md and docs/PS1.md | mid-work, unverified; resume the build workflow (`wf_196b215a-7db`) after the pilot, apply this first |
 | `gba_speed_island_wip.patch` | GBA speed pass, stopped mid-work: island hub static layers / row stream (`fp_island*.c`, `ui_raster.c`, `gba/src/video.c`, `bigbuf.c`) | mid-work; apply onto the current branch and re-verify |
 | ~~`music_mu1_m4.patch`~~ | MU1 M4 (matrix, stingers, comic bridge, DECK vinyl, GEN bags, chapters, beds), MU6 T8/T9 | **done** (2026-10-25): applied on the M1.5 formats, finished (mmlc's authored cues + the test bank, walk rule 5, quotes from the motif bank, T8, T9, `test_music_graph.c`, docs/AUDIO.md), pushed; the patch is deleted |
 
