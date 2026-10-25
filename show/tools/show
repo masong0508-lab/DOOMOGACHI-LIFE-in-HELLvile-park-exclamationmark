@@ -1,0 +1,7 @@
+#!/bin/sh
+# show - the show's command line (spec 14): runs `python3 -m showtk "$@"`.
+#   show/tools/show --help          every command
+#   show/tools/show doctor          is this machine ready?
+# Commands live in show/tools/showtk/commands/<name>.py (see show/README.md).
+HERE=$(cd "$(dirname "$0")" && pwd)
+PYTHONPATH="$HERE${PYTHONPATH:+:$PYTHONPATH}" exec python3 -m showtk "$@"

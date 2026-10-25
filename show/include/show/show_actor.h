@@ -169,7 +169,7 @@ int  show_cast_status(int slot);
 int  show_cast_count(void);
 
 /* ---- show_actor.c ------------------------------------------------------------ */
-extern int8_t portrait_show_mouth, portrait_show_blink;   /* -1 = engine default */
+/* portrait_show_mouth / portrait_show_blink: show/show_portrait.h */
 void show_actor_reset(void);
 int  show_actor_load(const ShowActorRec *recs, int n);
 int  show_actor_tracks(const uint8_t *blob, uint32_t bytes);  /* returns tracks   */

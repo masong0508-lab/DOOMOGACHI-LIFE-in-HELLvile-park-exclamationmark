@@ -1,0 +1,9 @@
+# chart.txt - boot show.exe to the test chart and grab frames (ps1/harness/run.py format)
+wait 30
+shot chart_f030
+wait 60
+shot chart_f090
+wait 90
+shot chart_f180
+wait 120
+shot chart_f300
