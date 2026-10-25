@@ -23,6 +23,8 @@ shot a3s01 beat=e101_3_01 len=75 set=act_cards:act3 look=pixel cut=CUT scene=a3_
   +18   sfx FX_PEN_SCRATCH ; reveal l5_strike2 over=+18..+21
   +23   sfx FX_PEN_SCRATCH ; reveal l5_strike3 over=+23..+26
   +35   sign s_a3_01_card_over on=weather ; pop weather TWT_POP_SMALL
+  +0    cam to scale=1.100 over=75 ease=OUT    # motion: insert push
+  +0    cam pan dx=14.5 dy=8.2 over=75 ease=OUT    # motion: (centred on the frame)
 end
 
 shot a3s02 beat=e101_3_01 len=234 set=fun_fair:cute px=1 look=pixel cut=CUT scene=a3_fair gore=CUTE cue=hook_cute@bar:1
@@ -58,6 +60,8 @@ shot a3s04 beat=e101_3_01 len=176 set=fun_fair:cute px=1 look=pixel cut=CUT scen
   +10   eyes pet D over=3                                 # R8 after the ba-dum
   +40   move sunny to=+16,-4 over=10 tw=TW_HOP ; label L_STEP
   +50   walk sunny to=200 over=126
+  +0    cam to scale=1.060 over=176 ease=INOUT    # motion: track the action
+  +0    cam pan dx=15.1 dy=5.1 over=176 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a3s05 beat=e101_3_01 len=129 set=fun_fair:cute px=1 look=pixel cut=CUT scene=a3_fair gore=CUTE
@@ -89,6 +93,8 @@ shot a3s07 beat=e101_3_01 len=74 set=fun_fair:cute px=1 look=pixel cut=CUT scene
   +10   take look_at sunny turn=-48                       # looks at the wand
   +30   fx bubbles at=actor:sunny n=1 seed=12 tint=pink
   +50   walk sunny to=200 over=24
+  +0    cam to scale=1.060 over=74 ease=INOUT    # motion: track the action
+  +0    cam pan dx=15.1 dy=5.1 over=74 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a3s08 beat=e101_3_01 len=219 set=hook_a_duck:night px=1 look=pixel cut=CUT scene=a3_fair gore=CUTE
@@ -106,6 +112,9 @@ shot a3s08 beat=e101_3_01 len=219 set=hook_a_duck:night px=1 look=pixel cut=CUT 
   +110  thaw steamy ; say a3_01_steamy_01 steamy
   +198  button ; fx pop_heart at=actor:puff seed=13 ; sfx FX_POP ; hide puff
   +205  move steamy to=166,170 over=14 tw=TW_EASE_IN ; move hatduck to=166,124 over=14 ; sfx FX_BLUB ; cc "[blub]"
+  @a3_01_steamy_01.start+6 take beat_gesture steamy    # motion:
+  +0    cam to scale=1.050 over=219 ease=INOUT    # motion: push in, drifting toward the speaker
+  +0    cam pan dx=12.6 dy=4.3 over=219 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a3s09 beat=e101_3_01 len=207 set=fun_fair:cute px=1 look=pixel cut=CUT scene=a3_fair gore=CUTE
@@ -132,6 +141,8 @@ shot a3s10 beat=e101_3_01 len=378 set=bandstand:rite px=1 look=pixel cut=CUT sce
   end
   +0    sfx FX_SPARKLE ; fx heart_fall at=0,0 n=24 seed=16
   +0    walk sunny to=260 over=378
+  +0    cam to scale=1.060 over=378 ease=INOUT    # motion: track the action
+  +0    cam pan dx=15.1 dy=5.1 over=378 ease=INOUT    # motion: (centred on the frame)
 end
 
 # =================================================================== 3-02 (450 f)
@@ -153,6 +164,8 @@ shot a3s11 beat=e101_3_02 len=285 set=bake_tent:dark px=1 look=pixel cut=CUT sce
   +245  eyes bigpuff D over=8
   +262  fx drool at=actor:bigpuff to=160,168 over=8
   +270  sfx FX_PLAP
+  +0    cam to scale=1.060 over=285 ease=INOUT    # motion: crane-in reveal
+  +0    cam pan dx=9.1 dy=2.1 over=285 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a3s12 beat=e101_3_02 len=69 set=bake_tent:dark px=2 look=pixel cut=CUT scene=a3_tent gore=CUTE
@@ -163,6 +176,9 @@ shot a3s12 beat=e101_3_02 len=69 set=bake_tent:dark px=2 look=pixel cut=CUT scen
   +8    headturn pet 512 4 ; move pet to=160,58 over=4  # leans over the brow, upside down
   +16   take look_to_camera sunny n=8
   +60   say a3_02_pet_01 pet mouth=none ; cc "[beep.]"
+  @a3_02_pet_01.start+6 pop pet TWT_HOP1    # motion:
+  +0    cam to scale=1.080 over=69 ease=INOUT    # motion: slow push-in on the line
+  +0    cam pan dx=11.9 dy=6.7 over=69 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a3s13 beat=e101_3_02 len=96 set=bake_tent:dark px=1 look=pixel cut=CUT scene=a3_tent gore=CUTE
@@ -231,6 +247,8 @@ shot a3s16 beat=e101_3_03 len=261 set=scary_house_fp:truth px=1 look=hellify cut
   +150  sfx FX_SPLAT ; lens splat ; hud heart pop ; hud set hearts=2 ; hud face wince ; lens clear over=16 twos
   +175  sfx FX_BLAM ; hitstop 2 ; shake SHK_SHOTGUN ; mon door6 die gore=door_and_all ; hud set shells=1
   +256  tapestop 5 ; mx doomtastic_doom section=riff @+261
+  +69      shake SHK_TAP    # motion: the impact lands
+  +150     shake SHK_TAP    # motion: the impact lands
 end
 
 shot a3s17 beat=e101_3_03 len=288 set=scary_house_fp:truth px=1 look=hellify cut=CUT scene=a3_house_fp gore=BRUTAL
@@ -275,6 +293,10 @@ shot a3s19 beat=e101_3_04 len=120 set=bandstand:rite px=1 look=pixel cut=CUT sce
   +47   pose fuzz pat ; sfx FX_PAT                        # R8 after the line
   +60   say a3_04_fuzz_01 fuzz
   +115  move bloom to=126,156 over=5
+  @a3_04_bloom_01.start+6 take beat_gesture bloom    # motion:
+  @a3_04_fuzz_01.start+6 take beat_gesture fuzz    # motion:
+  +0    cam to scale=1.050 over=120 ease=INOUT    # motion: push in, drifting toward the speaker
+  +0    cam pan dx=2.6 dy=4.3 over=120 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a3s20 beat=e101_3_04 len=210 set=bandstand:rite px=1 look=pixel cut=CUT scene=a3_steps gore=CUTE
@@ -287,6 +309,8 @@ shot a3s20 beat=e101_3_04 len=210 set=bandstand:rite px=1 look=pixel cut=CUT sce
   +0    sfx FX_PFF
   +0    move fuzz to=168,126 over=210 tw=TW_STEPS steps=7 ; sfx FX_PFF every=30 n=7
   +0    eyes bone L over=210
+  +0    cam to scale=1.060 over=210 ease=INOUT    # motion: track the action
+  +0    cam pan dx=15.1 dy=5.1 over=210 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a3s21 beat=e101_3_04 len=90 set=bandstand:rite px=1 look=pixel cut=CUT scene=a3_steps gore=CUTE
@@ -300,6 +324,8 @@ shot a3s21 beat=e101_3_04 len=90 set=bandstand:rite px=1 look=pixel cut=CUT scen
   +0    still crowd:giggle ripple=0..3                    # they forget to breathe
   +20   pose pip paw_over_flops_eyes                      # played straight
   +50   move cloth to=90,148 over=6 ; actor mayor who=mayor kind=figure at=90,154 show=eyes idle=still
+  +0    cam to scale=1.060 over=90 ease=INOUT    # motion: track the action
+  +0    cam pan dx=15.1 dy=5.1 over=90 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a3s22 beat=e101_3_04 len=390 set=bandstand:rite px=1 look=pixel cut=CUT scene=a3_steps gore=CUTE
@@ -319,6 +345,8 @@ shot a3s22 beat=e101_3_04 len=390 set=bandstand:rite px=1 look=pixel cut=CUT sce
   +225  pose fuzz let_go_2
   +240  move fuzz to=150,140 over=60 tw=TW_STEPS steps=2
   +310  pose fuzz sit ; move bloom to=140,150 over=60 ; pose bloom sit @+370
+  +0    cam to scale=1.060 over=390 ease=INOUT    # motion: track the action
+  +0    cam pan dx=15.1 dy=5.1 over=390 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a3s23 beat=e101_3_04 len=390 set=bandstand_cu:steps px=2 look=pixel cut=CUT scene=a3_steps gore=CUTE
@@ -332,6 +360,10 @@ shot a3s23 beat=e101_3_04 len=390 set=bandstand_cu:steps px=2 look=pixel cut=CUT
   +247  label HOLD4S ; still fuzz idle=breath ; still bloom idle=breath
   +367  thaw fuzz ; thaw bloom
   nobutton
+  @a3_04_fuzz_03.start+6 headturn fuzz 240 3    # motion:
+  @a3_04_fuzz_03.start+14 headturn fuzz 16 4    # motion:
+  +0    cam to scale=1.080 over=390 ease=INOUT    # motion: slow push-in on the line
+  +0    cam pan dx=11.9 dy=6.7 over=390 ease=INOUT    # motion: (centred on the frame)
 end
 
 # =================================================================== 3-05 (900 f, FIRST PERSON)
@@ -361,6 +393,7 @@ shot a3s24 beat=e101_3_05 len=681 set=bake_tent_fp:truth px=1 look=hellify cut=C
   +630  fx eyeball_roll to=prop:tin face=wall over=25
   +655  sfx FX_TIK
   +660  sfx FX_REWIND ; pal PAL_HELLIFY 0 over=21 ; lens clear over=21 ; gore CUTE over=21 ; hud off over=21
+  +130     shake SHK_TAP    # motion: the impact lands
 end
 
 shot a3s25 beat=e101_3_05 len=219 set=bake_tent_fp:cute px=1 look=pixel cut=CUT scene=a3_tent_fp gore=CUTE base=a3s24@+680
@@ -395,6 +428,8 @@ shot a3s26 beat=e101_3_06 len=270 set=bandstand:rite px=1 look=pixel cut=CUT sce
   +180  pose sunny hold_out
   +188  walk nana to=160 over=20 ; pose nana take_tin @+208 ; pose nana sit_tin @+214
   +220  pose pip tiptoe_hold_flops ; walk mayor to=170 over=40
+  +0    cam to scale=1.060 over=270 ease=INOUT    # motion: track the action
+  +0    cam pan dx=15.1 dy=5.1 over=270 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a3s27 beat=e101_3_06 len=150 set=bandstand_cu:steps px=2 look=pixel cut=CUT scene=a3_tin gore=CUTE
@@ -405,6 +440,8 @@ shot a3s27 beat=e101_3_06 len=150 set=bandstand_cu:steps px=2 look=pixel cut=CUT
   +50   fx lift prop=keepsake_cutter
   +60   sign s_a3_06_slip on=slip                         # 40 f to read
   +100  fx unfold prop=sheet over=10 ; sign s_a3_06_sheet_title on=sheet.title
+  +0    cam to scale=1.100 over=150 ease=OUT    # motion: insert push
+  +0    cam pan dx=14.5 dy=8.2 over=150 ease=OUT    # motion: (centred on the frame)
 end
 
 shot a3s28 beat=e101_3_06 len=237 set=bandstand_cu:steps px=2 look=pixel cut=CUT scene=a3_tin gore=CUTE
@@ -419,6 +456,8 @@ shot a3s28 beat=e101_3_06 len=237 set=bandstand_cu:steps px=2 look=pixel cut=CUT
   +99   sign s_a3_06_sheet_04 on=sheet.row4 ; pop sheet.row4 TWT_POP_SMALL ; hide thumb
   +125  sign s_a3_06_sheet_05 on=sheet.row5 ; pop sheet.row5 TWT_POP_SMALL ; sfx FX_PLINK ; mx nana_motif stop
   +151  sign s_a3_06_sheet_06 on=sheet.row6 ; pop sheet.row6 TWT_POP_SMALL ; label HOLD13
+  +0    cam to scale=1.100 over=237 ease=OUT    # motion: insert push
+  +0    cam pan dx=14.5 dy=8.2 over=237 ease=OUT    # motion: (centred on the frame)
 end
 
 shot a3s29 beat=e101_3_06 len=27 set=bandstand_cu:north_night px=2 look=pixel cut=CUT scene=a3_tin gore=CUTE
@@ -441,6 +480,8 @@ shot a3s30 beat=e101_3_06 len=126 set=bandstand:rite px=1 look=pixel cut=CUT sce
   +24   take look_at mayor turn=-128 back=-128           # away, at nothing
   +60   pose pip ears_up ; pop pip TWT_POP_SMALL
   +90   mx fuzz_hymn_motif start gain=-6dB
+  +0    cam to scale=1.060 over=126 ease=INOUT    # motion: crane-in reveal
+  +0    cam pan dx=9.1 dy=2.1 over=126 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a3s31 beat=e101_3_06 len=240 set=bandstand:rite px=1 look=pixel cut=CUT scene=a3_tin gore=CUTE
@@ -456,6 +497,8 @@ shot a3s31 beat=e101_3_06 len=240 set=bandstand:rite px=1 look=pixel cut=CUT sce
   +40   pose fuzz take_sheet ; pose nana give_sheet
   +90   eyes fuzz R over=4                                # the last candle
   +120  move fuzz to=176,124 over=120 tw=TW_STEPS steps=5 ; sfx FX_PFF every=24 n=5
+  +0    cam to scale=1.060 over=240 ease=INOUT    # motion: track the action
+  +0    cam pan dx=15.1 dy=5.1 over=240 ease=INOUT    # motion: (centred on the frame)
 end
 
 # =================================================================== 3-07 (1,350 f, ACT OUT)
@@ -484,6 +527,21 @@ shot a3s32 beat=e101_3_07 len=285 set=bandstand:rite px=1 look=pixel cut=CUT sce
   +205  pose bloom two_fingers
   +222  say a3_07_bloom_01 bloom
   +270  state candle3 tall
+  @a3_07_fuzz_01.start+6 take beat_gesture fuzz    # motion:
+  @a3_07_pet_01.start+6 pop pet TWT_HOP1    # motion:
+  @a3_07_bloom_01.start+6 take beat_gesture bloom    # motion:
+  @a3_07_fuzz_01.start+4 headturn sunny 24 3    # motion:
+  @a3_07_fuzz_01.start+13 blink sunny    # motion:
+  @a3_07_pet_01.start+13 blink sunny    # motion:
+  @a3_07_bloom_01.start+21 take react_small sunny    # motion:
+  @a3_07_bloom_01.start+29 headturn sunny 232 4    # motion:
+  @a3_07_fuzz_01.start+4 headturn mayor 24 3    # motion:
+  @a3_07_fuzz_01.start+13 blink mayor    # motion:
+  @a3_07_pet_01.start+13 blink mayor    # motion:
+  @a3_07_bloom_01.start+21 take react_small mayor    # motion:
+  @a3_07_bloom_01.start+29 headturn mayor 232 4    # motion:
+  +0    cam to scale=1.050 over=285 ease=INOUT    # motion: push in, drifting toward the speaker
+  +0    cam pan dx=12.6 dy=4.3 over=285 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a3s33 beat=e101_3_07 len=180 set=bandstand_cu:north_night px=2 look=pixel cut=CUT scene=a3_try3 gore=CUTE
@@ -498,6 +556,10 @@ shot a3s33 beat=e101_3_07 len=180 set=bandstand_cu:north_night px=2 look=pixel c
   +65   sfx FX_HISS ; fx steam at=actor:bone
   +80   tint TINT_PURPLE -1 ; pose bone shudder
   +100  state candle3 grow
+  @a3_07_fuzz_04.start+6 headturn fuzz 16 3    # motion:
+  @a3_07_fuzz_04.start+14 headturn fuzz 240 4    # motion:
+  +0    cam to scale=1.080 over=180 ease=INOUT    # motion: slow push-in on the line
+  +0    cam pan dx=11.9 dy=6.7 over=180 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a3s34 beat=e101_3_07 len=270 set=bandstand_cu:north_night px=2 look=pixel cut=CUT scene=a3_try3 gore=CUTE
@@ -508,6 +570,9 @@ shot a3s34 beat=e101_3_07 len=270 set=bandstand_cu:north_night px=2 look=pixel c
   +60   fx finger_run prop=sheet from=row1 to=row6 over=160
   +254  sfx FX_BREATH_IN
   +264  say a3_07_fuzz_02 fuzz                            # "Cl-" stops dead at the cut
+  @a3_07_fuzz_02.start+5 headturn fuzz 16 3    # motion:
+  +0    cam to scale=1.080 over=270 ease=INOUT    # motion: slow push-in on the line
+  +0    cam pan dx=11.9 dy=6.7 over=270 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a3s35 beat=e101_3_07 len=210 set=bandstand:rite px=1 look=pixel cut=CUT scene=a3_try3 gore=CUTE
@@ -530,6 +595,22 @@ shot a3s35 beat=e101_3_07 len=210 set=bandstand:rite px=1 look=pixel cut=CUT sce
   +180  freeze nana
   +190  freeze bloom
   +205  freeze mayor                                      # last, mid-breath
+  @a3_07_mayor_01.start+6 take beat_gesture mayor    # motion:
+  @a3_07_mayor_02.start+6 take beat_gesture mayor    # motion:
+  @a3_07_mayor_01.start+4 headturn sunny 24 3    # motion:
+  @a3_07_mayor_01.start+13 blink sunny    # motion:
+  @a3_07_mayor_02.start+21 take react_small sunny    # motion:
+  @a3_07_mayor_02.start+29 headturn sunny 232 4    # motion:
+  @a3_07_mayor_01.start+4 headturn pet 24 3    # motion:
+  @a3_07_mayor_01.start+13 blink pet    # motion:
+  @a3_07_mayor_02.start+21 pop pet TWT_HOP1    # motion:
+  @a3_07_mayor_02.start+29 headturn pet 232 4    # motion:
+  @a3_07_mayor_01.start+4 headturn pip 24 3    # motion:
+  @a3_07_mayor_01.start+13 blink pip    # motion:
+  @a3_07_mayor_02.start+21 take react_small pip    # motion:
+  @a3_07_mayor_02.start+29 headturn pip 232 4    # motion:
+  +0    cam to scale=1.050 over=210 ease=INOUT    # motion: push in, drifting toward the speaker
+  +0    cam pan dx=2.6 dy=4.3 over=210 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a3s36 beat=e101_3_07 len=60 set=bandstand:rite px=1 look=pixel cut=CUT scene=a3_try3 gore=CUTE
@@ -543,6 +624,8 @@ shot a3s36 beat=e101_3_07 len=60 set=bandstand:rite px=1 look=pixel cut=CUT scen
   +0    eyes pip L over=4 ; eyes pip R @+20 over=4 ; eyes pip U @+40 over=4
   +10   eyes pet R over=3
   +30   pose sunny ear_turn
+  +0    cam to scale=1.060 over=60 ease=INOUT    # motion: crane-in reveal
+  +0    cam pan dx=9.1 dy=2.1 over=60 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a3s37 beat=e101_3_07 len=345 set=bandstand_cu:north_night px=2 look=pixel cut=CUT scene=a3_try3 gore=CUTE
@@ -553,6 +636,8 @@ shot a3s37 beat=e101_3_07 len=345 set=bandstand_cu:north_night px=2 look=pixel c
   +26   state candle blue ; mx wall_motif start
   +234  say a3_07_bone_01 bone  +242  say a3_07_clink_01 clinker mouth=none            # sync late R8
   +345  label L_ACTOUT                                    # cut on the gutter = a3s38 frame 0
+  +0    cam to scale=1.080 over=345 ease=INOUT    # motion: slow push-in on the line
+  +0    cam pan dx=11.9 dy=6.7 over=345 ease=INOUT    # motion: (centred on the frame)
 end
 
 # =================================================================== EYECATCH PAIR 3 (300 f)
@@ -561,6 +646,8 @@ shot a3s38 beat=e101_ec3_out len=150 set=eyecatch:ec3_out px=1 look=pixel cut=CU
   +0    sign s_ec3out on=clock
   +6    mx heehee_bell_150 start
   +6    mx theme_eyecatch_out start
+  +0    cam to scale=1.100 over=150 ease=OUT    # motion: insert push
+  +0    cam pan dx=14.5 dy=8.2 over=150 ease=OUT    # motion: (centred on the frame)
 end
 
 shot a3s39 beat=e101_ec3_in len=150 set=eyecatch:ec3_in px=1 look=pixel cut=CUT scene=a3_ec3 gore=CUTE
@@ -568,4 +655,6 @@ shot a3s39 beat=e101_ec3_in len=150 set=eyecatch:ec3_in px=1 look=pixel cut=CUT 
   +0    sfx FX_HELLIFY_STING ; pal PAL_HELLIFY 8 over=2 ; pal PAL_HELLIFY 0 over=2 @+2   # 4 f, reduced luminance
   +0    sign s_ec3in on=clock
   +4    mx riff_its_fine start
+  +0    cam to scale=1.060 over=150 ease=INOUT    # motion: crane-in reveal
+  +0    cam pan dx=9.1 dy=2.1 over=150 ease=INOUT    # motion: (centred on the frame)
 end

@@ -164,8 +164,8 @@ def analyse_shot(sc, protected=False, by_id=None):
             elems.add("fx:" + (o.words[0] if o.words else o.kw))
         elif o.kw in ("sign", "card", "super", "reveal"):
             elems.add("text")
-        elif o.kw == "cam3d":
-            cam_moving = True
+        elif o.kw == "cam3d" or (o.kw == "world" and o.words[:2] == ["cam", "to"]):
+            cam_moving = True           # a host's rail or keyed camera (OVERWORLD / ROOM / VIEW3D)
     src = sh.kv.get("replay") or sh.kv.get("base")
     if src and by_id:
         s2 = by_id.get(src.split("@")[0])
@@ -252,7 +252,7 @@ def analyse_shot(sc, protected=False, by_id=None):
                  frame=start)
 
     n_el = len(elems)
-    if n_el < MIN_ELEMENTS:
+    if n_el < MIN_ELEMENTS and L > MAX_STATIC:      # a flash insert (<= 12 f) cannot hold too long
         warn("ANIM-DENSITY", "%d independently moving element(s) (%s); the bar is %d" % (
             n_el, ", ".join(sorted(elems)) or "none", MIN_ELEMENTS))
 

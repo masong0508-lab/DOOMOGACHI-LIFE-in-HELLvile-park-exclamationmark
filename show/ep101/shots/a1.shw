@@ -35,6 +35,8 @@ shot a1_01a beat=e101_1_01 len=90 set=act_cards:act1 px=1 cut=CUT matte=open sce
   +52   prop.set l1 state=tick ; pop l1 TWT_POP_BUBBLE ; sfx FX_TINK
   cc "[a bell: hee, hee]"
   ad "The Mayor's festival clipboard: 18:00 Welcome! gets a tick."
+  +0    cam to scale=1.100 over=90 ease=OUT    # motion: insert push
+  +0    cam pan dx=14.5 dy=8.2 over=90 ease=OUT    # motion: (centred on the frame)
 end
 
 shot a1_01b beat=e101_1_01 len=330 set=candy_hills_road:sunset px=1 cut=CUT matte=open
@@ -53,6 +55,8 @@ shot a1_01b beat=e101_1_01 len=330 set=candy_hills_road:sunset px=1 cut=CUT matt
   +300  squash suitcase 256 over=3                            # settles beside Sunny as if first
   prop  suitcase art=gen:suitcase(seed=14) plane=road at=250,166 anchor=bottom hidden=yes
   ad "A pink bus crosses the candy hills without slowing, then brakes dead. Sunny is thrown into the road; the suitcase lands after."
+  +0    cam to scale=1.060 over=330 ease=INOUT    # motion: track the action
+  +0    cam pan dx=15.1 dy=5.1 over=330 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a1_01c beat=e101_1_01 len=120 set=candy_hills_road:sunset px=1 cut=CUT
@@ -64,6 +68,8 @@ shot a1_01c beat=e101_1_01 len=120 set=candy_hills_road:sunset px=1 cut=CUT
   +20   prop.set bus state=drive ; move bus to=460,161 over=135 tw=TW_LINEAR ; sfx FX_BUS_AWAY
   +20   fx dust_pink at=prop:bus n=12 seed=1401
   +80   blink sunny
+  +0    cam to scale=1.060 over=120 ease=INOUT    # motion: track the action
+  +0    cam pan dx=15.1 dy=5.1 over=120 ease=INOUT    # motion: (centred on the frame)
 end
 
 # ===================================================================== SC15 · 1-02 (510)
@@ -79,6 +85,8 @@ shot a1_02a beat=e101_1_02 len=210 set=town_sign:sunset px=1 cut=CUT scene=a1_sc
   +68   sfx FX_TINK ; move d1 to=196,172 over=10 tw=TW_DROP   # R8: the 1 falls off at Sunny's feet
   +78   pop d1 TWT_POP_SMALL
   ad "The town sign: Population 500. It ticks to 501; the 1 falls off."
+  +0    cam to scale=1.060 over=210 ease=INOUT    # motion: track the action
+  +0    cam pan dx=15.1 dy=5.1 over=210 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a1_02b beat=e101_1_02 len=120 set=town_sign:sunset px=1 cut=CUT
@@ -86,6 +94,8 @@ shot a1_02b beat=e101_1_02 len=120 set=town_sign:sunset px=1 cut=CUT
   +0    fol FOL_PENCIL_SCRATCH ; super s_a1_02_pencil style=type over=+0..+20 at=mark:sign_text_pencil until=end
   +0    mx home_motif start bars=2
   ad "In pencil, under it: and Sunny."
+  +0    cam to scale=2.200 over=120 ease=OUT    # motion: insert push
+  +0    cam pan dx=7.3 dy=4.1 over=120 ease=OUT    # motion: (centred on the frame)
 end
 
 shot a1_02c beat=e101_1_02 len=180 set=town_sign:sunset px=1 cut=CUT
@@ -99,6 +109,8 @@ shot a1_02c beat=e101_1_02 len=180 set=town_sign:sunset px=1 cut=CUT
   +70   squash sunny 240 over=4 ; sfx FX_TICKET_PAT ; sign s_a1_02_ticket on=ticket
   +100  move one to=330,190 over=50 tw=TW_LINEAR ; sfx FX_ROLL  # rolls away downhill toward the lanterns
   +130  walk sunny to=340 over=50
+  +0    cam to scale=1.060 over=180 ease=INOUT    # motion: track the action
+  +0    cam pan dx=15.1 dy=5.1 over=180 ease=INOUT    # motion: (centred on the frame)
 end
 
 # ===================================================================== SC16 · 1-03 (390)
@@ -118,11 +130,15 @@ shot a1_03b beat=e101_1_03 len=150 set=fountain_plaza:sunset px=1 cut=CUT
   +40   move page1 to=200,120 over=20 tw=TW_OUT ; sfx FX_DRIP
   +64   super s_a1_03_page1 style=deadpan at=center until=+140
   +140  still sunny                                           # Sunny stops still
+  +0    cam to scale=1.590 over=150 ease=INOUT    # motion: track the action
+  +0    cam pan dx=12.0 dy=3.4 over=150 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a1_03c beat=e101_1_03 len=90 set=fountain_faces:sunset px=2 cut=CUT insert
   +5    sfx FX_FOUNTAIN_HEE ; cc "[the fountain giggles, on time: ...Hee.]"   # the stop is a1_03b +140: 10 f to the cut + 5 = 15 f (>= R5)
   +45   fol FOL_STEP_BACK
+  +0    cam to scale=1.100 over=90 ease=OUT    # motion: insert push
+  +0    cam pan dx=14.5 dy=8.2 over=90 ease=OUT    # motion: (centred on the frame)
 end
 
 # ===================================================================== SC17 · 1-04 (390)
@@ -137,6 +153,16 @@ shot a1_04a beat=e101_1_04 len=180 set=hook_a_duck:dusk px=1 cut=CUT scene=a1_sc
   +78   expr steamy EXPR_SHOCK ; pop steamy TWT_POP_EYE ; sfx FX_POP
   +86   say a1_04_steamy_04 steamy
   label L_PUNCH
+  @a1_04_steamy_01.start+6 take beat_gesture steamy    # motion:
+  @a1_04_steamy_02.start+6 take beat_gesture steamy    # motion:
+  @a1_04_steamy_04.start+6 take beat_gesture steamy    # motion:
+  @a1_04_steamy_01.start+4 headturn sunny 24 3    # motion:
+  @a1_04_steamy_01.start+13 blink sunny    # motion:
+  @a1_04_steamy_03.start+13 blink sunny    # motion:
+  @a1_04_steamy_04.start+21 take react_small sunny    # motion:
+  @a1_04_steamy_04.start+29 headturn sunny 232 4    # motion:
+  +0    cam to scale=1.050 over=180 ease=INOUT    # motion: push in, drifting toward the speaker
+  +0    cam pan dx=2.6 dy=4.3 over=180 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a1_04b beat=e101_1_04 len=120 set=hook_a_duck:dusk px=1 cut=CUT
@@ -148,6 +174,8 @@ shot a1_04b beat=e101_1_04 len=120 set=hook_a_duck:dusk px=1 cut=CUT
   +44   sfx FX_SQUEAK pan=x:206 ; squash duck5 220 over=3
   +59   sfx FX_SQUEAK pan=x:206 ; squash duck5 220 over=3
   +85   sfx FX_SQUEAK pan=x:206 gain=-3dB ; squash duck5 230 over=3   # R26 ...squeak
+  +0    cam to scale=2.120 over=120 ease=INOUT    # motion: crane-in reveal
+  +0    cam pan dx=4.5 dy=-0.5 over=120 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a1_04c beat=e101_1_04 len=90 set=hook_a_duck:dusk px=1 cut=CUT
@@ -156,6 +184,8 @@ shot a1_04c beat=e101_1_04 len=90 set=hook_a_duck:dusk px=1 cut=CUT
   button
   +13   move duck1 to=104,112 over=40 tw=TW_LINEAR             # very slowly sinks Duckworth
   +53   sfx FX_BLUB ; cc "[blub]"
+  +0    cam to scale=1.060 over=90 ease=INOUT    # motion: track the action
+  +0    cam pan dx=15.1 dy=5.1 over=90 ease=INOUT    # motion: (centred on the frame)
 end
 
 # ===================================================================== SC18 · 1-05 (300)
@@ -167,12 +197,16 @@ shot a1_05a beat=e101_1_05 len=90 set=face_painting:dusk px=1 cut=CUT scene=a1_s
   +20   headturn sunny 16 5
   +30   take quick_take kevin ; sfx FX_HEADTURN_TIK
   +40   say a1_05_kevin_01 kevin
+  +0    cam to scale=1.050 over=90 ease=INOUT    # motion: push in, drifting toward the speaker
+  +0    cam pan dx=2.6 dy=4.3 over=90 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a1_05b beat=e101_1_05 len=70 set=bandstand_cu:north_dusk px=2 cut=CUT
   actor kevin who=kevin kind=bust px=2 at=160,120 face=front idle=on
   +0    walla giggle to gain=-26dB
   +5    pose kevin third_blink fps=30 ; sfx FX_TIK             # R5: only the third eye, a 2-f lid
+  +0    cam to scale=1.060 over=70 ease=INOUT    # motion: crane-in reveal
+  +0    cam pan dx=9.1 dy=2.1 over=70 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a1_05c beat=e101_1_05 len=140 set=face_painting:dusk px=1 cut=CUT
@@ -182,6 +216,10 @@ shot a1_05c beat=e101_1_05 len=140 set=face_painting:dusk px=1 cut=CUT
   +4    say a1_05_kevin_02 kevin                               # R13 from the blink: 65 + 4 f
   >+R8  say a1_05_kevin_03 kevin                               # OPTIONAL (first cut in a trim)
   @a1_05_kevin_03.end+13 button ; blink sunny 4                # both eyes back at the third
+  @a1_05_kevin_02.start+6 take beat_gesture kevin    # motion:
+  @a1_05_kevin_03.start+6 take beat_gesture kevin    # motion:
+  +0    cam to scale=1.050 over=140 ease=INOUT    # motion: push in, drifting toward the speaker
+  +0    cam pan dx=2.6 dy=4.3 over=140 ease=INOUT    # motion: (centred on the frame)
 end
 
 # ===================================================================== SC19 · 1-06 (480)
@@ -195,6 +233,15 @@ shot a1_06a beat=e101_1_06 len=210 set=hattie_tent:dusk px=1 cut=CUT scene=a1_sc
   +40   say a1_06_hattie_01 hattie
   >+8   say w_tent_01 crowd:tent
   >+10  say a1_06_hattie_02 hattie
+  @a1_06_hattie_01.start+6 take beat_gesture hattie    # motion:
+  @a1_06_hattie_02.start+6 take beat_gesture hattie    # motion:
+  @a1_06_hattie_01.start+4 headturn sunny 24 3    # motion:
+  @a1_06_hattie_01.start+13 blink sunny    # motion:
+  @a1_06_hattie_02.start+13 blink sunny    # motion:
+  @a1_06_hattie_02.start+21 take react_small sunny    # motion:
+  @a1_06_hattie_02.start+29 headturn sunny 232 4    # motion:
+  +0    cam to scale=1.050 over=210 ease=INOUT    # motion: push in, drifting toward the speaker
+  +0    cam pan dx=2.6 dy=4.3 over=210 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a1_06b beat=e101_1_06 len=270 set=hattie_tent:dusk px=1 cut=CUT
@@ -205,6 +252,8 @@ shot a1_06b beat=e101_1_06 len=270 set=hattie_tent:dusk px=1 cut=CUT
   +8    say w_wall_01 pan=R ; cc "[a laugh from beyond the Wall, late]"   # R8: the lag is a series rule
   +20   headturn hattie 64 8 ; expr hattie EXPR_NEUTRAL ; mx hahaland_day duck -60dB 6
   +54   take deadpan hattie ; say a1_06_hattie_03 hattie        # R26
+  +0    cam to scale=1.620 over=270 ease=INOUT    # motion: slow push-in on the line
+  +0    cam pan dx=7.9 dy=4.4 over=270 ease=INOUT    # motion: (centred on the frame)
 end
 
 # ===================================================================== SC20 · 1-07 (390)
@@ -218,6 +267,9 @@ shot a1_07a beat=e101_1_07 len=240 set=lulla_tent:dusk px=1 cut=CUT scene=a1_sc2
   +40   say a1_07_lulla_01 lulla
   tag scene no
   ad "Eleven children's drawings on a string, every one the same crowned purple cloud."
+  @a1_07_lulla_01.start+6 take beat_gesture lulla    # motion:
+  +0    cam to scale=1.050 over=240 ease=INOUT    # motion: push in, drifting toward the speaker
+  +0    cam pan dx=2.6 dy=4.3 over=240 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a1_07b beat=e101_1_07 len=150 set=lulla_tent:dusk px=1 cut=CUT
@@ -231,6 +283,8 @@ shot a1_07b beat=e101_1_07 len=150 set=lulla_tent:dusk px=1 cut=CUT
   +51   prop.set vapesign state=flicker ; sfx FX_NEON_BUZZ gain=-20dB   # 21 f after
   +55   prop.set vapesign state=default
   nobutton
+  +0    cam to scale=1.060 over=150 ease=INOUT    # motion: crane-in reveal
+  +0    cam pan dx=9.1 dy=2.1 over=150 ease=INOUT    # motion: (centred on the frame)
 end
 
 # ===================================================================== SC21 · 1-08 (1350)
@@ -246,6 +300,8 @@ shot a1_08a beat=e101_1_08 len=150 set=bandstand:dusk px=1 cut=CUT scene=a1_sc21
   +60   move spot to=200,0 over=30 tw=TW_INOUT                # swings back
   +90   sfx FX_SPOT_CLUNK ; still sunny
   +100  ripple giggle headturn to=sunny 0..3
+  +0    cam to scale=1.060 over=150 ease=INOUT    # motion: track the action
+  +0    cam pan dx=15.1 dy=5.1 over=150 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a1_08b beat=e101_1_08 len=270 set=bandstand:dusk px=1 cut=CUT
@@ -257,6 +313,8 @@ shot a1_08b beat=e101_1_08 len=270 set=bandstand:dusk px=1 cut=CUT
   +24   say a1_08_mayor_01 mayor
   @a1_08_mayor_01.end+4 walla giggle cheer ; ripple giggle cheer 0..3
   >+R13 say a1_08_mayor_10 mayor ; move mayor to=126,112 over=8   # leaning in
+  +0    cam to scale=1.050 over=270 ease=INOUT    # motion: push in, drifting toward the speaker
+  +0    cam pan dx=2.6 dy=4.3 over=270 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a1_08c beat=e101_1_08 len=240 set=bandstand_cu:north_dusk px=2 cut=CUT
@@ -266,6 +324,12 @@ shot a1_08c beat=e101_1_08 len=240 set=bandstand_cu:north_dusk px=2 cut=CUT
   +10   prop.set clip state=empty ; sfx FX_CLIP_FLIP            # only the clip, and air
   +30   say a1_08_mayor_02 mayor
   >+R8  say a1_08_mayor_03 mayor                               # the smile stays, the eyes don't
+  @a1_08_mayor_02.start+6 headturn mayor 16 3    # motion:
+  @a1_08_mayor_02.start+14 headturn mayor 240 4    # motion:
+  @a1_08_mayor_03.start+6 headturn mayor 240 3    # motion:
+  @a1_08_mayor_03.start+14 headturn mayor 16 4    # motion:
+  +0    cam to scale=1.080 over=240 ease=INOUT    # motion: slow push-in on the line
+  +0    cam pan dx=11.9 dy=6.7 over=240 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a1_08d beat=e101_1_08 len=210 set=bandstand:dusk px=1 cut=CUT
@@ -278,6 +342,13 @@ shot a1_08d beat=e101_1_08 len=210 set=bandstand:dusk px=1 cut=CUT
   @a1_08_mayor_04.end+R8 sfx FX_CLIP_SNAP ; face mayor L        # clips it on, spins to the crowd
   >+20  say a1_08_mayor_05 mayor
   @a1_08_mayor_05.end+4 walla giggle cheer ; ripple giggle cheer 0..3
+  @a1_08_mayor_05.start+6 take beat_gesture mayor    # motion:
+  @a1_08_mayor_04.start+4 headturn sunny 24 3    # motion:
+  @a1_08_mayor_04.start+13 blink sunny    # motion:
+  @a1_08_mayor_05.start+21 take react_small sunny    # motion:
+  @a1_08_mayor_05.start+29 headturn sunny 232 4    # motion:
+  +0    cam to scale=1.050 over=210 ease=INOUT    # motion: push in, drifting toward the speaker
+  +0    cam pan dx=2.6 dy=4.3 over=210 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a1_08e beat=e101_1_08 len=240 set=bandstand:dusk px=1 cut=CUT
@@ -305,12 +376,16 @@ shot a1_08f beat=e101_1_08 len=240 set=bandstand_cu:north_dusk px=2 cut=CUT
   >+8   say a1_08_bone_01 bonejangles ; sfx FX_RIB_FANFARE
   @a1_08_bone_01.end mx hahaland_day start from=bar:1.1 gain=-14dB ; walla giggle cheer
   button
+  +0    cam to scale=1.080 over=240 ease=INOUT    # motion: slow push-in on the line
+  +0    cam pan dx=11.9 dy=6.7 over=240 ease=INOUT    # motion: (centred on the frame)
 end
 
 # ===================================================================== SC22 · 1-09 (1650)
 shot a1_09a beat=e101_1_09 len=30 set=act_cards:act1 px=1 cut=CUT scene=a1_sc22 insert
   cam at=60,40 scale=1.5
   +0    sfx FX_PEN_TICK
+  +0    cam to scale=1.58 over=30 ease=OUT      # motion: the insert pushes onto the tick
+  +0    cam pan dx=5.4 dy=3 over=30 ease=OUT    # motion: (centred on the frame)
   +6    prop.set l2 state=tick ; pop l2 TWT_POP_SMALL            # (art: l2 needs a tick state, ART)
 end
 
@@ -327,6 +402,16 @@ shot a1_09b beat=e101_1_09 len=330 set=bake_tent:night px=1 cut=CUT
   >+18  say a1_09_mayor_01 mayor
   >+8   say a1_09_nana_01 nana
   @a1_09_nana_01.end+R8 walk mayor to=-40 over=30               # doesn't stamp it; moves on, fast
+  @a1_09_mayor_02.start+6 take beat_gesture mayor    # motion:
+  @a1_09_mayor_01.start+6 take beat_gesture mayor    # motion:
+  @a1_09_nana_01.start+6 take beat_gesture nana    # motion:
+  @a1_09_mayor_02.start+4 headturn sunny 24 3    # motion:
+  @a1_09_mayor_02.start+13 blink sunny    # motion:
+  @a1_09_nana_01.start+13 blink sunny    # motion:
+  @a1_09_nana_01.start+21 take react_small sunny    # motion:
+  @a1_09_nana_01.start+29 headturn sunny 232 4    # motion:
+  +0    cam to scale=1.050 over=330 ease=INOUT    # motion: push in, drifting toward the speaker
+  +0    cam pan dx=2.6 dy=4.3 over=330 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a1_09c beat=e101_1_09 len=240 set=bake_tent:night px=1 cut=CUT
@@ -336,6 +421,9 @@ shot a1_09c beat=e101_1_09 len=240 set=bake_tent:night px=1 cut=CUT
   +0    fol FOL_TRAY_SLIDE
   +10   say a1_09_nana_02 nana
   @a1_09_nana_02.end+8 still sunny                              # twelve muffins look back
+  @a1_09_nana_02.start+6 take beat_gesture nana    # motion:
+  +0    cam to scale=1.575 over=240 ease=INOUT    # motion: push in, drifting toward the speaker
+  +0    cam pan dx=0.1 dy=2.9 over=240 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a1_09d beat=e101_1_09 len=300 set=bake_tent:night px=1 cut=CUT
@@ -354,6 +442,14 @@ shot a1_09d beat=e101_1_09 len=300 set=bake_tent:night px=1 cut=CUT
   +150  pose sunny bite
   +163  sfx FX_CRUNCH gain=+2dB pitch=-6st ; squash sunny 230 over=2   # R13: biggest, lowest
   +165  pose sunny ears_up
+  @a1_09_nana_03.start+6 headturn nana 16 3    # motion:
+  @a1_09_nana_03.start+14 headturn nana 240 4    # motion:
+  @a1_09_nana_04.start+6 headturn nana 240 3    # motion:
+  @a1_09_nana_04.start+14 headturn nana 16 4    # motion:
+  @a1_09_nana_05.start+6 headturn nana 16 3    # motion:
+  @a1_09_nana_05.start+14 headturn nana 240 4    # motion:
+  +0    cam to scale=2.160 over=300 ease=INOUT    # motion: slow push-in on the line
+  +0    cam pan dx=5.9 dy=3.3 over=300 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a1_09e beat=e101_1_09 len=4 set=bake_tent:night px=1 cut=CUT insert
@@ -367,6 +463,14 @@ shot a1_09f beat=e101_1_09 len=116 set=bake_tent:night px=1 cut=CUT base=a1_09d@
   +0    walla giggle to gain=-34dB
   +2    sfx FX_TIK
   +20   say a1_09_nana_10 nana
+  @a1_09_nana_10.start+6 headturn nana 16 3    # motion:
+  @a1_09_nana_10.start+14 headturn nana 240 4    # motion:
+  @a1_09_nana_10.start+4 headturn sunny 24 3    # motion:
+  @a1_09_nana_10.start+13 blink sunny    # motion:
+  @a1_09_nana_10.start+21 pop sunny TWT_HOP1    # motion:
+  @a1_09_nana_10.start+29 headturn sunny 232 4    # motion:
+  +0    cam to scale=1.080 over=116 ease=INOUT    # motion: slow push-in on the line
+  +0    cam pan dx=11.9 dy=6.7 over=116 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a1_09g beat=e101_1_09 len=270 set=bake_tent:night px=1 cut=CUT
@@ -379,6 +483,13 @@ shot a1_09g beat=e101_1_09 len=270 set=bake_tent:night px=1 cut=CUT
   +40   say a1_09_nana_06 nana
   +150  move page2 to=240,130 over=12
   +160  super s_a1_09_page2 style=deadpan at=center until=+250
+  @a1_09_nana_06.start+6 take beat_gesture nana    # motion:
+  @a1_09_nana_06.start+4 headturn sunny 24 3    # motion:
+  @a1_09_nana_06.start+13 blink sunny    # motion:
+  @a1_09_nana_06.start+21 take react_small sunny    # motion:
+  @a1_09_nana_06.start+29 headturn sunny 232 4    # motion:
+  +0    cam to scale=1.050 over=270 ease=INOUT    # motion: push in, drifting toward the speaker
+  +0    cam pan dx=2.6 dy=4.3 over=270 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a1_09h beat=e101_1_09 len=360 set=bake_tent:night px=1 cut=CUT
@@ -397,6 +508,9 @@ shot a1_09h beat=e101_1_09 len=360 set=bake_tent:night px=1 cut=CUT
   @a1_09_nana_08.end+R8 mx nana_motif stop                        # MUSIC OUT
   >+R8  take deadpan nana ; say a1_09_nana_09 nana
   @a1_09_nana_09.end+13 button ; pose nana tuck_towel ; fol FOL_CLOTH_TUCK
+  @a1_09_nana_08.start+6 take beat_gesture nana    # motion:
+  +0    cam to scale=1.575 over=360 ease=INOUT    # motion: push in, drifting toward the speaker
+  +0    cam pan dx=0.1 dy=2.9 over=360 ease=INOUT    # motion: (centred on the frame)
 end
 
 # ===================================================================== SC23 · 1-10 (840)
@@ -415,6 +529,14 @@ shot a1_10a beat=e101_1_10 len=330 set=fun_fair:lost px=1 cut=CUT scene=a1_sc23
   >+10  say a1_10_pip_05 pip tempo=1.3
   >+R8  headturn pip 32 4 ; say a1_10_pip_06 pip tempo=1.3
   tag scene no                                                   # STD-KIDS: no innuendo/suggestive in a child's scene
+  @a1_10_pip_06.start+6 take beat_gesture pip    # motion:
+  @a1_10_pip_01.start+4 headturn sunny 24 3    # motion:
+  @a1_10_pip_01.start+13 blink sunny    # motion:
+  @a1_10_pip_05.start+13 blink sunny    # motion:
+  @a1_10_pip_06.start+21 take react_small sunny    # motion:
+  @a1_10_pip_06.start+29 headturn sunny 232 4    # motion:
+  +0    cam to scale=1.050 over=330 ease=INOUT    # motion: push in, drifting toward the speaker
+  +0    cam pan dx=12.6 dy=4.3 over=330 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a1_10b beat=e101_1_10 len=180 set=fun_fair:lost px=1 cut=CUT
@@ -428,10 +550,19 @@ shot a1_10b beat=e101_1_10 len=180 set=fun_fair:lost px=1 cut=CUT
   @a1_10_mayor_01.end take freeze mayor n=13 ; stop FX_WING_BUZZ   # one foot in the air; wings stop
   >+13  say a1_10_mayor_02 mayor
   @a1_10_mayor_02.end take panic mayor ; walk mayor to=380 over=20 ; sfx FX_WHOOSH
+  @a1_10_pip_03.start+6 take beat_gesture pip    # motion:
+  @a1_10_pip_03.start+4 headturn sunny 24 3    # motion:
+  @a1_10_pip_03.start+13 blink sunny    # motion:
+  @a1_10_mayor_02.start+13 blink sunny    # motion:
+  @a1_10_mayor_02.start+21 take react_small sunny    # motion:
+  @a1_10_mayor_02.start+29 headturn sunny 232 4    # motion:
+  +0    cam to scale=1.050 over=180 ease=INOUT    # motion: push in, drifting toward the speaker
+  +0    cam pan dx=2.6 dy=4.3 over=180 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a1_10c beat=e101_1_10 len=30 set=act_cards:act1 px=1 cut=CUT insert
-  cam at=40,70 scale=2 ; cam pan dx=1                           # held 1 s insert, not a whiplash
+  cam at=40,70 scale=2                                          # held 1 s insert, not a whiplash
+  +0    cam pan dx=1                                            # motion: the slow pan is timed now (a setup `cam pan` was dropped)
   +0    sfx FX_WHOOSH_SMALL
 end
 
@@ -442,6 +573,13 @@ shot a1_10d beat=e101_1_10 len=300 set=fun_fair:lost px=1 cut=CUT
   +0    fol FOL_FOOTSTEP_SMALL
   +20   say a1_10_pip_04 pip
   @a1_10_pip_04.end+13 button ; pose pip flops_ear_down ; sfx FX_EAR_FLOP
+  @a1_10_pip_04.start+6 take beat_gesture pip    # motion:
+  @a1_10_pip_04.start+4 headturn sunny 24 3    # motion:
+  @a1_10_pip_04.start+13 blink sunny    # motion:
+  @a1_10_pip_04.start+21 take react_small sunny    # motion:
+  @a1_10_pip_04.start+29 headturn sunny 232 4    # motion:
+  +0    cam to scale=1.050 over=300 ease=INOUT    # motion: push in, drifting toward the speaker
+  +0    cam pan dx=12.6 dy=4.3 over=300 ease=INOUT    # motion: (centred on the frame)
 end
 
 # ===================================================================== SC24 · 1-11 (540)
@@ -454,6 +592,8 @@ shot a1_11a beat=e101_1_11 len=300 set=fun_fair:night px=1 cut=CUT scene=a1_sc24
   +0    mx all stop ; walla giggle on gain=-18dB                 # music out entirely
   +0    walk sunny to=170 over=40
   +40   take still_hold sunny n=160                              # R21 minimum; held ~5 s
+  +0    cam to scale=1.060 over=300 ease=INOUT    # motion: track the action
+  +0    cam pan dx=15.1 dy=5.1 over=300 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a1_11b beat=e101_1_11 len=90 set=fun_fair:night px=1 cut=CUT insert
@@ -463,6 +603,8 @@ shot a1_11b beat=e101_1_11 len=90 set=fun_fair:night px=1 cut=CUT insert
   +20   pose mascotty paw_open fps=1 ; fol FOL_PAPER              # opens over 8 f
   +60   prop.show page3 ; move page3 to=150,140 over=10
   prop  page3 art=gen:soggy_page(n=3,dry=1,seed=19) plane=fair at=200,140 anchor=center hidden=yes
+  +0    cam to scale=1.060 over=90 ease=INOUT    # motion: track the action
+  +0    cam pan dx=15.1 dy=5.1 over=90 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a1_11c beat=e101_1_11 len=150 set=fun_fair:night px=1 cut=CUT
@@ -473,6 +615,8 @@ shot a1_11c beat=e101_1_11 len=150 set=fun_fair:night px=1 cut=CUT
   +5    fol FOL_SUITCASE_DOWN
   +20   pose mascotty wave fps=7.5 ; sfx FX_MUSICBOX_NOTE         # quarter speed
   +60   pose sunny wave_page fps=7.5
+  +0    cam to scale=1.060 over=150 ease=INOUT    # motion: crane-in reveal
+  +0    cam pan dx=9.1 dy=2.1 over=150 ease=INOUT    # motion: (centred on the frame)
 end
 
 # ===================================================================== SC25 · 1-12 (600)
@@ -492,6 +636,15 @@ shot a1_12a beat=e101_1_12 len=270 set=bandstand:night px=1 cut=CUT scene=a1_sc2
   @a1_12_mayor_01.w5+8 fol FOL_PAGE_FWIP
   @a1_12_mayor_01.w5+16 fol FOL_PAGE_FWIP
   >+R8  take deadpan mayor n=13 ; say a1_12_mayor_02 mayor
+  @a1_12_mayor_01.start+6 take beat_gesture mayor    # motion:
+  @a1_12_mayor_02.start+4 headturn bone 24 3    # motion:
+  @a1_12_mayor_02.start+13 blink bone    # motion:
+  @a1_12_mayor_01.start+21 take react_small bone    # motion:
+  @a1_12_mayor_01.start+29 headturn bone 232 4    # motion:
+  +60      shake SHK_TAP    # motion: the impact lands
+  +70      shake SHK_TAP    # motion: the impact lands
+  +0    cam to scale=1.050 over=270 ease=INOUT    # motion: push in, drifting toward the speaker
+  +0    cam pan dx=2.6 dy=4.3 over=270 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a1_12b beat=e101_1_12 len=120 set=bandstand_cu:north_night px=2 cut=CUT
@@ -500,6 +653,8 @@ shot a1_12b beat=e101_1_12 len=120 set=bandstand_cu:north_night px=2 cut=CUT
   +13   thaw mayor ; expr mayor EXPR_HAPPY ; say a1_12_mayor_03 mayor   # HOLD 13
   >+4   say w_giggle_01 crowd:giggle ; ripple giggle laugh 0..3
   @w_giggle_01.end sfx FX_RIMSHOT_RIBS                           # ba-dum-CLACK
+  +0    cam to scale=1.080 over=120 ease=INOUT    # motion: slow push-in on the line
+  +0    cam pan dx=11.9 dy=6.7 over=120 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a1_12c beat=e101_1_12 len=60 set=act_cards:act1 px=1 cut=CUT insert
@@ -508,6 +663,8 @@ shot a1_12c beat=e101_1_12 len=60 set=act_cards:act1 px=1 cut=CUT insert
   +0    sfx FX_CLIP_SNAP ; prop.set l3 state=tick
   +15   prop.show sheet4                                          # the fourth sheet: 30 f clear
   +45   note "sheet4 held +15..+45, nothing else moves (rewatch clue)"
+  +0    cam to scale=1.375 over=60 ease=OUT    # motion: insert push
+  +0    cam pan dx=11.6 dy=6.5 over=60 ease=OUT    # motion: (centred on the frame)
 end
 
 shot a1_12d beat=e101_1_12 len=150 set=bandstand:night px=1 cut=CUT
@@ -517,6 +674,8 @@ shot a1_12d beat=e101_1_12 len=150 set=bandstand:night px=1 cut=CUT
   actor sunny who=sunny kind=figure at=170,172 face=front idle=on
   crowd giggle reuse=a1_12a cycle=dance
   +0    mx bone_xylo start from=bar:1.1 gain=-12dB source=bandstand   # the hook in C, diegetic
+  +0    cam to scale=1.060 over=150 ease=INOUT    # motion: crane-in reveal
+  +0    cam pan dx=9.1 dy=2.1 over=150 ease=INOUT    # motion: (centred on the frame)
 end
 
 # ===================================================================== SC26 · 1-13 (720)
@@ -533,12 +692,16 @@ shot a1_13a beat=e101_1_13 len=300 set=giggle_wide:night px=1 cut=CUT scene=a1_s
   @silence+R26 sfx FX_CRICKET
   >+R21 sfx FX_BALLOON_POP_FAR pan=R
   nobutton
+  +0    cam to scale=1.060 over=300 ease=INOUT    # motion: crane-in reveal
+  +0    cam pan dx=9.1 dy=2.1 over=300 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a1_13b beat=e101_1_13 len=90 set=bandstand_cu:north_night px=2 cut=CUT
   actor mayor who=mayor kind=bust px=2 at=160,124 face=front idle=on pose=look_up
   +0    sfx FX_CRICKET gain=-6dB
   +10   say a1_13_mayor_01 mayor ; take heehee mayor
+  +0    cam to scale=1.080 over=90 ease=INOUT    # motion: slow push-in on the line
+  +0    cam pan dx=11.9 dy=6.7 over=90 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a1_13c beat=e101_1_13 len=4 set=pipe_yard:night px=1 cut=CUT insert
@@ -556,6 +719,16 @@ shot a1_13d beat=e101_1_13 len=326 set=giggle_wide:lean px=1 cut=CUT base=a1_13a
   +130  pose mascotty foot_thump ; sfx FX_FOOT_THUMP pan=x:292
   +156  pose mascotty foot_thump ; sfx FX_FOOT_THUMP pan=x:292    # R26
   +170  headturn sunny 64 8                                       # only Sunny sees
+  +20      shake SHK_TAP    # motion: the impact lands
+  +35      shake SHK_TAP    # motion: the impact lands
+  +50      shake SHK_TAP    # motion: the impact lands
+  +76      shake SHK_TAP    # motion: the impact lands
+  +100     shake SHK_TAP    # motion: the impact lands
+  +115     shake SHK_TAP    # motion: the impact lands
+  +130     shake SHK_TAP    # motion: the impact lands
+  +156     shake SHK_TAP    # motion: the impact lands
+  +0    cam to scale=1.060 over=326 ease=INOUT    # motion: crane-in reveal
+  +0    cam pan dx=9.1 dy=2.1 over=326 ease=INOUT    # motion: (centred on the frame)
 end
 
 # ===================================================================== SC27 · 1-14 (900) ACT OUT
@@ -576,6 +749,8 @@ shot a1_14a beat=e101_1_14 len=240 set=bandstand:vape px=1 cut=CUT scene=a1_sc27
   +110  prop.set lan05 state=out ; sfx FX_LANTERN_PFF             # 3
   +112  prop.set lan04 state=out ; sfx FX_LANTERN_PFF             # 2
   tag scene no
+  +0    cam to scale=1.060 over=240 ease=INOUT    # motion: track the action
+  +0    cam pan dx=15.1 dy=5.1 over=240 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a1_14b beat=e101_1_14 len=210 set=bandstand:vape px=1 cut=CUT
@@ -591,6 +766,8 @@ shot a1_14b beat=e101_1_14 len=210 set=bandstand:vape px=1 cut=CUT
   +70   say w_fog_01 ; cc "[many voices, whispering]"
   @w_fog_01.start+R8 say a1_14_clink_01                            # her layer, slid R8 late
   @w_fog_01.end+R8 say w_fog_02                                    # the child-pitched echo (adult performer)
+  +0    cam to scale=1.050 over=210 ease=INOUT    # motion: push in, drifting toward the speaker
+  +0    cam pan dx=2.6 dy=4.3 over=210 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a1_14c beat=e101_1_14 len=90 set=bandstand:vape px=1 cut=CUT
@@ -602,6 +779,8 @@ shot a1_14c beat=e101_1_14 len=90 set=bandstand:vape px=1 cut=CUT
   +0    move fogtent dx=-24 over=90 tw=TW_LINEAR
   +30   take freeze fuzz n=60
   assert fogtent.x > -200 @+89                                     # never reaches the tent's guy-ropes
+  +0    cam to scale=1.060 over=90 ease=INOUT    # motion: track the action
+  +0    cam pan dx=15.1 dy=5.1 over=90 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a1_14d beat=e101_1_14 len=4 set=kids_tent_memory:sepia px=1 look=sepia cut=CUT insert
@@ -616,6 +795,8 @@ shot a1_14e beat=e101_1_14 len=86 set=bandstand:vape px=1 cut=CUT base=a1_14c@+4
   +0    amb FX_FOG_HISS on gain=-26dB ; twitch fuzz on
   +30   move fogtent dx=0 over=1                                    # stops at the guy-ropes
   +50   move fogtent dx=60 over=36 tw=TW_IN                         # turns away, toward the music
+  +0    cam to scale=1.060 over=86 ease=INOUT    # motion: track the action
+  +0    cam pan dx=15.1 dy=5.1 over=86 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a1_14f beat=e101_1_14 len=180 set=bandstand:vape px=1 cut=CUT
@@ -635,6 +816,8 @@ shot a1_14f beat=e101_1_14 len=180 set=bandstand:vape px=1 cut=CUT
   +142  prop.set lan02 state=out ; sfx FX_LANTERN_PFF
   +144  prop.set lan03 state=out ; sfx FX_LANTERN_PFF
   +146  prop.set lan04 state=out ; sfx FX_LANTERN_PFF ; mx bone_xylo stop
+  +0    cam to scale=1.060 over=180 ease=INOUT    # motion: track the action
+  +0    cam pan dx=15.1 dy=5.1 over=180 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a1_14g beat=e101_1_14 len=90 set=bandstand_cu:north_dark px=2 cut=CUT
@@ -644,4 +827,7 @@ shot a1_14g beat=e101_1_14 len=90 set=bandstand_cu:north_dark px=2 cut=CUT
   +74   say a1_14_bone_01 bonejangles                                 # {d}...Clack. (0.5 s: the click lands on +89)
   assert a1_14_bone_01.end <= +89                                   # cut ON the click: EC1-OUT frame 0
   ad "Every lantern is out. Only Bonejangles' ribcage glows purple from inside. His skull turns to us."
+  @a1_14_bone_01.start+6 take beat_gesture bone    # motion:
+  +0    cam to scale=1.050 over=90 ease=INOUT    # motion: push in, drifting toward the speaker
+  +0    cam pan dx=2.6 dy=4.3 over=90 ease=INOUT    # motion: (centred on the frame)
 end
