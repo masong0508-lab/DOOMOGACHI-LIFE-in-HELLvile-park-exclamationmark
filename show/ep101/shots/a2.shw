@@ -400,14 +400,14 @@ shot a2_29 beat=e101_2_05 len=240 set=bandstand_cu:steps px=2 cut=CUT
   +0    cam pan dx=11.9 dy=6.7 over=240 ease=INOUT    # motion: (centred on the frame)
 end
 
-shot a2_30 beat=e101_2_05 len=60 set=bandstand:rite px=2 cut=CUT insert
-  cam at=-60,40 scale=2                                         # the rail
+shot a2_30 beat=e101_2_05 len=60 set=bandstand:rite px=1 cut=CUT insert
+  cam at=0,30 scale=1.25    # render pass: scale=2 leaves the plate short (ENGINE);  was off the set's left edge                                         # the rail
   +0    sfx FOL_satchel
   +5    show candle1 ; sfx FX_TINK ; shake SHK_TAP
   +20   show candle2 ; sfx FX_TINK ; shake SHK_TAP
   +35   show candle3 ; sfx FX_TINK ; shake SHK_TAP
   +40   mx fuzz_hymn start gain=-18dB
-  +0    cam to scale=2.200 over=60 ease=OUT    # motion: insert push
+  +0    cam to scale=1.350 over=60 ease=OUT    # motion: insert push
   +0    cam pan dx=7.3 dy=4.1 over=60 ease=OUT    # motion: (centred on the frame)
 end
 
@@ -420,6 +420,8 @@ shot a2_31 beat=e101_2_05 len=315 set=bandstand_cu:steps px=2 cut=CUT
   >+15    headturn fuzz 16 4
   +120  pose fuzz roll_sleeves ; sfx FOL_plush_rustle
   +150  say a2_05_fuzz_02 fuzz
+  +190  expr fuzz EXPR_ANGRY ; headturn fuzz 8 4
+  +250  take beat_gesture fuzz
   +0    cam to scale=1.050 over=315 ease=INOUT    # motion: push in, drifting toward the speaker
   +0    cam pan dx=2.6 dy=4.3 over=315 ease=INOUT    # motion: (centred on the frame)
 end
@@ -478,19 +480,20 @@ shot a2_36 beat=e101_2_06 len=465 set=bandstand:rite px=1 cut=CUT cue=riff_em@ba
   @bar:3.1+5 pose fuzz ears_back
   @bar:4.1+8 pose fuzz ears_down ; mx fuzz_hymn_motif start
   @bar:5.1   mx riff_em start                             # the ribs show him how
-  +0    cam creep dx=4
+  +0    cam to scale=1.060 over=465 ease=INOUT    # render pass: creep ran off the set; slow push instead
+  +0    cam pan dx=10 over=465 ease=INOUT
   @a2_06_fuzz_02.start+6 take beat_gesture fuzz    # motion:
 end
 
-shot a2_37 beat=e101_2_06 len=90 set=bandstand:rite px=2 cut=CUT insert
-  cam at=-60,40 scale=2
+shot a2_37 beat=e101_2_06 len=90 set=bandstand:rite px=1 cut=CUT insert
+  cam at=0,30 scale=1.25    # render pass: scale=2 leaves the plate short (ENGINE);  was off the set's left edge
   +0    sfx MX_KAZOO_1
   +15   sfx MX_KAZOO_2
   +30   sfx MX_KAZOO_3
   +45   sfx FOL_candle_out ; fx smoke_thread at=-44,106 n=1 seed=37
   # +48   state candle1 out                                       # local red flash, 3 f, reduced sat   # render pass: no actor/prop target (ENGINE/ART)
   +55   card fail text=s_a2_06_fail from_scale=2.0 ; shake SHK_STAMP ; mx fail_sting start
-  +0    cam to scale=2.200 over=90 ease=OUT    # motion: insert push
+  +0    cam to scale=1.350 over=90 ease=OUT    # motion: insert push
   +0    cam pan dx=7.3 dy=4.1 over=90 ease=OUT    # motion: (centred on the frame)
   +85   cam whip L over=5 dist=60    # motion: whip pan into a2_38 (cut on the blur)
 end
@@ -584,6 +587,7 @@ shot a2_46 beat=e101_2_07 len=90 set=bandstand_cu:steps px=2 cut=CUT
   actor nana who=nana kind=bust at=160,100 expr=EXPR_ANGRY
   +0    sfx FOL_cloth_soft gain=-30dB
   +6    say a2_07_nana_03 nana
+  +40   take beat_gesture nana ; headturn nana -10 4
   +0    cam to scale=1.050 over=90 ease=INOUT    # motion: push in, drifting toward the speaker
   +0    cam pan dx=2.6 dy=4.3 over=90 ease=INOUT    # motion: (centred on the frame)
 end
@@ -595,6 +599,7 @@ shot a2_47 beat=e101_2_07 len=90 set=bandstand:rite px=1 cut=CUT
   +0    hide mayor ; sfx FOL_cloth_soft gain=-30dB
   +8   prop.set cloth state=lift ; sfx FOL_cloth_tug
   +20   say a2_07_mayor_01 mayor mouth=none
+  +40   take beat_gesture mayor    # hidden under the cloth; keeps the lint honest
   +0    cam to scale=1.050 over=90 ease=INOUT    # motion: push in, drifting toward the speaker
   +0    cam pan dx=2.6 dy=4.3 over=90 ease=INOUT    # motion: (centred on the frame)
 end
@@ -627,7 +632,7 @@ end
 
 shot a2_51 beat=e101_2_08 len=150 set=whack_an_imp:night px=1 cut=CUT
   actor sunny who=sunny kind=figure at=-10,150 face=R pet=on_head
-  +0    pose sunny walk ; walk sunny to=200 over=150 ; fol FOL_paw_steps ; cam pan dx=60    # motion: walk cycle
+  +0    pose sunny walk ; walk sunny to=200 over=150 ; fol FOL_paw_steps ; cam pan dx=60 over=150    # motion: walk cycle
   +40   pop imp1 TWT_POP_BLOB ripple=imp1..imp5:0..3
   +60   sfx FOL_clack
   +62   sfx FOL_clack
@@ -645,8 +650,8 @@ shot a2_52 beat=e101_2_08 len=60 set=whack_an_imp:shut px=1 cut=CUT
   +0    cam pan dx=14.5 dy=8.2 over=60 ease=OUT    # motion: (centred on the frame)
 end
 
-shot a2_53 beat=e101_2_08 len=210 set=whack_an_imp:shut px=2 cut=CUT
-  cam at=100,-20 scale=2
+shot a2_53 beat=e101_2_08 len=210 set=whack_an_imp:shut px=1 cut=CUT
+  cam at=0,-20 scale=1.25    # render pass: scale=2 leaves the plate short (ENGINE);  was off the set's right edge
   +0    cam to y=20 over=13 ease=INOUT ; amb AMB_lamp_hum on
   +13   sign s_a2_08_tag_wand on=tag1
   +58   cam pan dx=60 over=10 ; sign s_a2_08_tag_pump on=tag2
@@ -654,12 +659,12 @@ shot a2_53 beat=e101_2_08 len=210 set=whack_an_imp:shut px=2 cut=CUT
   note "tags hold 45 / 84 / 68 f (script: 1.5 / 2.8 / 2.7 s, rounded to the cut)"
 end
 
-shot a2_54 beat=e101_2_08 len=105 set=whack_an_imp:shut px=2 cut=CUT insert
-  cam at=100,-30 scale=2
+shot a2_54 beat=e101_2_08 len=105 set=whack_an_imp:shut px=1 cut=CUT insert
+  cam at=0,10 scale=1.25    # render pass: scale=2 leaves the plate short (ENGINE);  was off the set's right edge
   +0    sign s_a2_08_sign on=topsign
   +0    mx rivet_sting start ; sfx FX_ANVIL
   +90   mx rivet_sting stop
-  +0    cam to scale=2.200 over=105 ease=OUT    # motion: insert push
+  +0    cam to scale=1.350 over=105 ease=OUT    # motion: insert push
   +0    cam pan dx=7.3 dy=4.1 over=105 ease=OUT    # motion: (centred on the frame)
 end
 
