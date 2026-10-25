@@ -55,103 +55,38 @@ static void fit_text(char *s, int maxw)
 }
 
 /* ---- pause menu --------------------------------------------------------- */
-enum { PM_RESUME, PM_WEAPON, PM_CAMERA, PM_SHOULDER, PM_CONTROLS, PM_INVERT, PM_AIM,
-       PM_CROSSHAIR, PM_HUD, PM_GORE, PM_QUIT, PM_COUNT };
-static const char *const pm_names[PM_COUNT] = {
-    "Resume", "Weapons", "Camera", "Shoulder", "Controls", "Invert look", "Aim assist",
-    "Crosshair", "HUD", "Gore", "Quit level"
-};
-static const int pm_opts[PM_COUNT] = { -1, -1, -1, OPT_SHOULDER, OPT_CONTROL_SCHEME, OPT_INVERT_LOOK,
-                                       OPT_AIM_ASSIST, OPT_CROSSHAIR, OPT_HUD_LAYOUT, OPT_GORE, -1 };
-
-static void opt_cycle(int opt, int dir)
-{
-    const DoomoOptionInfo *oi = &doomo_option_info[opt];
-    int v = opt_get(opt), n = oi->count, k;
-    for (k = 0; k < n; k++) {
-        v = (v + dir + n) % n;
-        /* skip values that are still locked (crosshairs) */
-        if (unlock_ok(UL_CAT_SKIN, opt, v)) break;
-    }
-    opt_set(opt, v);
-}
+/* Settings live in Options (the paged screen, pushed on top: the fight
+ * stays frozen underneath and B comes back here). */
+enum { PM_RESUME, PM_WEAPON, PM_CAMERA, PM_OPTIONS, PM_QUIT, PM_COUNT };
 
 static void pause_update(void)
 {
     if (btn_pressed(BTN_START) || btn_pressed(BTN_B)) { cs_state = CS_PLAY; audio_sfx(SFX_CANCEL); return; }
-    if (btn_repeat(BTN_UP)) { cs_sel = (cs_sel + PM_COUNT - 1) % PM_COUNT; audio_sfx(SFX_CURSOR); }
-    if (btn_repeat(BTN_DOWN)) { cs_sel = (cs_sel + 1) % PM_COUNT; audio_sfx(SFX_CURSOR); }
-    if (btn_repeat(BTN_LEFT) || btn_repeat(BTN_RIGHT)) {
-        int dir = btn_down(BTN_LEFT) ? -1 : 1;
-        if (cs_sel == PM_CAMERA) combat_toggle_camera();
-        else if (pm_opts[cs_sel] >= 0) {
-            opt_cycle(pm_opts[cs_sel], dir);
-            if (cs_sel == PM_SHOULDER) doomo_player.shoulder = (uint8_t)opt_get(OPT_SHOULDER);
-        }
-        audio_sfx(SFX_CURSOR);
+    pause_menu_nav(&cs_sel, PM_COUNT);
+    if (cs_sel == PM_CAMERA && btn_pressed(BTN_LEFT | BTN_RIGHT)) { combat_toggle_camera(); audio_sfx(SFX_CURSOR); }
+    if (!btn_pressed(BTN_A)) return;
+    switch (cs_sel) {
+    case PM_RESUME: cs_state = CS_PLAY; break;
+    case PM_WEAPON: cs_state = CS_WEAPONS; cs_wsel = doomo_player.weapon_slot; cs_top = 0; break;
+    case PM_CAMERA: combat_toggle_camera(); break;
+    case PM_OPTIONS: options_open(OPTPAGE_CONTROLS); return;
+    default: combat_set_result_quit(); leave_scene(); return;
     }
-    if (btn_pressed(BTN_A)) {
-        switch (cs_sel) {
-        case PM_RESUME: cs_state = CS_PLAY; break;
-        case PM_WEAPON: cs_state = CS_WEAPONS; cs_wsel = doomo_player.weapon_slot; cs_top = 0; break;
-        case PM_CAMERA: combat_toggle_camera(); break;
-        case PM_QUIT: combat_set_result_quit(); leave_scene(); return;
-        default:
-            if (pm_opts[cs_sel] >= 0) opt_cycle(pm_opts[cs_sel], 1);
-            if (cs_sel == PM_SHOULDER) doomo_player.shoulder = (uint8_t)opt_get(OPT_SHOULDER);
-            break;
-        }
-        audio_sfx(SFX_SELECT);
-    }
-}
-
-static const char *pm_value(int i, char *buf)
-{
-    if (i == PM_CAMERA) return doomo_player.camera == CAM_FIRST_PERSON ? "First person" : "Third person";
-    if (i == PM_WEAPON) {
-        weld_name(combat_weapon(), buf, 32);
-        return buf;
-    }
-    if (pm_opts[i] >= 0) {
-        const DoomoOptionInfo *oi = &doomo_option_info[pm_opts[i]];
-        int v = opt_get(pm_opts[i]);
-        if (oi->values) return oi->values[v];
-        doomo_snprintf(buf, 32, "%d", v);
-        return buf;
-    }
-    return "";
+    audio_sfx(SFX_SELECT);
 }
 
 static void pause_draw(void)
 {
-    int sw = plat_screen_w(), sh = plat_screen_h();
-    int w = sw > 260 ? 220 : 200, rows = sh > 200 ? PM_COUNT : 9;
-    int h = rows * 11 + 38, x = sw / 2 - w / 2, y = sh / 2 - h / 2, i, top, ry;
-    char buf[40];
-    int style = style_now();
-    plat_shade_rect(0, 0, sw, sh, 7);
-    if (!ui_window_pop(x, y, w, h, style, cs_t)) return;
-    ui_title(sw / 2, y - 6, "PAUSED", style);
-    top = cs_sel - rows + 1 > 0 ? cs_sel - rows + 1 : 0;
-    ry = y + 10;
-    for (i = 0; i < rows && top + i < PM_COUNT; i++) {
-        int k = top + i;
-        const char *val = pm_value(k, buf);
-        if (val && val != buf) {                /* cut long weapon names */
-            doomo_snprintf(buf, sizeof(buf), "%s", val);
-            val = buf;
-        }
-        if (val) fit_text(buf, w - 12 - ui_text_width(pm_names[k]) - 14);
-        if (k == PM_RESUME || k == PM_QUIT) {          /* 14 px pills */
-            ui_button(x + 10, ry + 1, w - 20, pm_names[k], k == cs_sel, style);
-            ry += 16;
-        } else {
-            ui_value_row(x + 6, ry, w - 12, pm_names[k], val, k == cs_sel);
-            ry += 11;
-        }
-    }
-    ui_scroll_arrows(x + w - 8, y + 8, y + h - 10, top > 0, top + rows < PM_COUNT);
-    ui_hint(STR_ICON_A " Select  " STR_ICON_ARROW_L STR_ICON_ARROW_R " Change  " STR_ICON_B " Back", style);
+    char wb[40], wl[48];
+    const char *labels[PM_COUNT];
+    weld_name(combat_weapon(), wb, sizeof(wb));
+    doomo_snprintf(wl, sizeof(wl), "Weapons: %s", wb);
+    labels[PM_RESUME] = "Resume";
+    labels[PM_WEAPON] = wl;
+    labels[PM_CAMERA] = doomo_player.camera == CAM_FIRST_PERSON ? "Camera: 1st person" : "Camera: 3rd person";
+    labels[PM_OPTIONS] = "Options";
+    labels[PM_QUIT] = "Quit level";
+    pause_menu_draw(labels, PM_COUNT, cs_sel, 1u << PM_CAMERA, cs_t, style_now());
 }
 
 /* ---- weapon select ----------------------------------------------------- */

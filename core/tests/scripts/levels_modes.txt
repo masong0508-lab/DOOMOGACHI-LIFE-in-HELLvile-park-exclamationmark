@@ -41,6 +41,7 @@ wait 12
 press DOWN
 press DOWN
 press DOWN
+press DOWN
 wait 4
 shot brutal_pause_restart
 press A

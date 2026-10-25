@@ -418,11 +418,10 @@ static void fight_tick(void)
 static void pause_update(void)
 {
     if (btn_pressed(BTN_START) || btn_pressed(BTN_B)) { am.state = am.prev_state; audio_sfx(SFX_CANCEL); return; }
-    if (btn_pressed(BTN_UP) || btn_pressed(BTN_DOWN)) {
-        am.sel = (uint8_t)((am.sel + (btn_pressed(BTN_UP) ? 2 : 1)) % 3);
-        audio_sfx(SFX_CURSOR);
-    }
+    { int sel = am.sel; pause_menu_nav(&sel, 4); am.sel = (uint8_t)sel; }
+    if (am.sel == 1 && btn_pressed(BTN_LEFT | BTN_RIGHT)) { combat_toggle_camera(); audio_sfx(SFX_CURSOR); }
     if (!btn_pressed(BTN_A)) return;
+    if (am.sel == 2) { options_open(OPTPAGE_CONTROLS); return; }
     audio_sfx(SFX_SELECT);
     if (am.sel == 0) am.state = am.prev_state;
     else if (am.sel == 1) combat_toggle_camera();
@@ -528,13 +527,12 @@ static void shop_draw(void)
 
 static void pause_draw(void)
 {
-    int sw = plat_screen_w(), sh = plat_screen_h(), w = 160, h = 66, x = sw / 2 - w / 2, y = sh / 2 - h / 2;
-    plat_shade_rect(0, 0, sw, sh, 7);
-    if (!ui_window_pop(x, y, w, h, WIN_HELL, am.t)) return;
-    ui_title(sw / 2, y - 6, "PAUSED", WIN_HELL);
-    ui_button(x + 14, y + 10, w - 28, "Resume", am.sel == 0, WIN_HELL);
-    ui_button(x + 14, y + 27, w - 28, doomo_player.camera == CAM_FIRST_PERSON ? "Camera: 1st" : "Camera: 3rd", am.sel == 1, WIN_HELL);
-    ui_button(x + 14, y + 44, w - 28, "Give up", am.sel == 2, WIN_HELL);
+    const char *labels[4];
+    labels[0] = "Resume";
+    labels[1] = doomo_player.camera == CAM_FIRST_PERSON ? "Camera: 1st person" : "Camera: 3rd person";
+    labels[2] = "Options";
+    labels[3] = "Give up";
+    pause_menu_draw(labels, 4, am.sel, 1u << 1, am.t, WIN_HELL);
 }
 
 static void results_draw(void)

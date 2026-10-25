@@ -629,6 +629,25 @@ static void classic_bar(void)
     if (doomo_player.keys & 2) icon_key(sw - 13, y + 6, PAL_PAINT(PAINT_COBALT, 1));
 }
 
+/* Options > Performance > Show FPS: frames actually drawn per second of
+ * game ticks (DOOMO_TICK_HZ), top-centre. */
+static void fps_counter(int sw)
+{
+    static uint32_t last_tick;
+    static uint16_t frames, shown;
+    uint32_t now = combat_stats()->ticks;
+    char buf[12];
+    if (!plat_draw_skipped()) frames++;
+    if (now < last_tick || now - last_tick >= DOOMO_TICK_HZ) {
+        shown = now >= last_tick && now - last_tick < DOOMO_TICK_HZ * 2
+              ? (uint16_t)(frames * DOOMO_TICK_HZ / (now - last_tick)) : 0;
+        frames = 0;
+        last_tick = now;
+    }
+    doomo_snprintf(buf, sizeof(buf), "%u FPS", (unsigned)shown);
+    ui_text_outline(sw / 2 - ui_text_width(buf) / 2, 2, buf, PAL_UI_MINT, PAL_BLACK);
+}
+
 /* ---- main entry ----------------------------------------------------------------------- */
 void combat_draw_hud(void)
 {
@@ -658,7 +677,7 @@ void combat_draw_hud(void)
                                                                                  : combat_ammo(combat_ws.ammo_type));
             ui_text_outline(sw - ui_text_width(buf) - 4, sh - 12, buf, p.text, p.text_out);
         }
-    } else {
+    } else if (layout == 0) {
         health_panel(3, sh - 30, &p);
         ammo_panel(sw - 73, sh - 29, &p);
         top_left(&p);
@@ -666,6 +685,7 @@ void combat_draw_hud(void)
     }
     story_caption(&p);                           /* S3 */
     toast(&p);
+    if (opt_get(OPT_SHOW_FPS)) fps_counter(sw);
 }
 
 /* called by combat_build_view() so the HUD projects with the same camera */

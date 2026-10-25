@@ -21,11 +21,13 @@
  */
 #include <string.h>
 #include "r3d.h"
+#include "doomo/town.h"
 #include "world.h"
 
 #define CELL      DOOMO_CELL_UNITS
 #define MAXCELLS  (DOOMO_MAP_MAX_W * DOOMO_MAP_MAX_H)
 #define VIEW_DIST 18             /* cells (maximum) */
+#define VIEW_DIST_NEAR 12        /* Options: Draw distance = Near */
 #define VIEW_DIST_MIN 11         /* adaptive floor: fog has already faded to near black there */
 /* Adaptive view distance: when the previous frames' CPU time crowds the
  * 33 ms budget the view shrinks one cell (every 4 frames); with headroom it
@@ -39,6 +41,8 @@ static void adapt_view_dist(void)
     s_view_tick = 0;
     if (g_perf.cpu_us > 29000 && s_view_dist > VIEW_DIST_MIN) s_view_dist--;
     else if (g_perf.cpu_us < 21000 && s_view_dist < VIEW_DIST) s_view_dist++;
+    /* Options > Performance > Draw distance: Near caps the view */
+    if (opt_get(OPT_DRAW_DIST) == 0 && s_view_dist > VIEW_DIST_NEAR) s_view_dist = VIEW_DIST_NEAR;
 }
 #define NRAYS     36             /* rays per 45 degrees of fan */
 

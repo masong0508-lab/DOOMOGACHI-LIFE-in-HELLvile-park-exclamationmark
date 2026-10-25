@@ -37,7 +37,7 @@ static const char *const opt_help[OPT_COUNT] = {
     /* SCREEN_SHAKE */ "Shake on hits and explosions.",
     /* DAMAGE_NUMBERS */ "Pop-up numbers when you hit demons.",
     /* HIT_MARKERS */ "A little X when a shot connects.",
-    /* HUD_LAYOUT */ "How the shooter's health and ammo look.",
+    /* HUD_LAYOUT */ "How the shooter's health and ammo look. Hidden: crosshair only.",
     /* SHOULDER */ "Which shoulder the third-person camera sits on.",
     /* BLOOD_COLOR */ "Red, green, rainbow... or just confetti.",
     /* CONFETTI */ "How much confetti cute kills make.",
@@ -70,7 +70,11 @@ static const char *const opt_help[OPT_COUNT] = {
     /* DISCO */ "Disco lights everywhere.",
     /* TINY_DEMONS */ "Demons shrink to pocket size.",
     /* ALL_GHOSTS */ "Every citizen looks like a ghost.",
-    /* COMBAT_FEEL */ "PS1: Punchy = heavy recoil, shake, snappy moves. Brutal adds gore, gibs and hit-stop."
+    /* COMBAT_FEEL */ "PS1: Punchy = heavy recoil, shake, snappy moves. Brutal adds gore, gibs and hit-stop.",
+    /* TURN_SWAP */ "Modern controls: which way R1 turns (R2/L1 turn the other way).",
+    /* EFFECTS */ "Low: fewer, shorter-lived gibs and confetti. Smoother in big fights.",
+    /* DRAW_DIST */ "How far the 3D view reaches. Near is faster in big open maps.",
+    /* SHOW_FPS */ "Show how many frames per second the shooter draws."
 };
 
 static struct {
@@ -91,7 +95,8 @@ static void build_rows(void)
     int i;
     O.nrows = 0;
     for (i = 0; i < OPT_COUNT && O.nrows < ROWS_MAX; i++)
-        if (doomo_option_info[i].page == O.page) O.rows[O.nrows++] = i;
+        if (doomo_option_info[i].page == O.page && (i != OPT_DRAW_DIST || input_feel()))
+            O.rows[O.nrows++] = i;       /* draw distance: PS1 3D only */
     O.sel = DOOMO_MIN(O.sel, O.nrows);       /* last row = "Defaults" */
 }
 
@@ -212,7 +217,7 @@ static void opt_draw(void)
     {
         /* page tabs: show a window of them around the current page */
         int first = O.page > 2 ? O.page - 2 : 0, count = big ? 5 : 3, k;
-        const char *names[7];
+        const char *names[OPTPAGE_COUNT];
         if (first + count > OPTPAGE_COUNT) first = OPTPAGE_COUNT - count;
         for (k = 0; k < count; k++) names[k] = doomo_option_page_names[first + k];
         ui_tabs(x, 21, names, count, O.page - first, style);
@@ -271,6 +276,47 @@ static void opt_draw(void)
     }
     ui_hint(STR_ICON_ARROW_L STR_ICON_ARROW_R " Change  L/R Page  " STR_ICON_B " Done", style);
     fp_fx_draw();
+}
+
+/* ---- the shared pause menu -------------------------------------------------- */
+int pause_menu_nav(int *sel, int n)
+{
+    int d = btn_repeat(BTN_UP) ? -1 : btn_repeat(BTN_DOWN) ? 1 : 0;
+    if (!d || n <= 0) return 0;
+    *sel = (*sel + n + d) % n;
+    audio_sfx(SFX_CURSOR);
+    return 1;
+}
+
+void pause_menu_draw(const char *const *labels, int n, int sel, unsigned lr_mask, int t, int style)
+{
+    int sw = plat_screen_w(), sh = plat_screen_h(), big = sh >= 200;
+    int w = big ? 200 : 176, row = big ? 18 : 16, h = n * row + 24;
+    int x = sw / 2 - w / 2, y = sh / 2 - h / 2 + 2, i;
+    char buf[40];
+    plat_shade_rect(0, 0, sw, sh, 7);
+    if (!ui_window_pop(x, y, w, h, style, t)) return;
+    ui_title(sw / 2, y - 6, "PAUSED", style);
+    for (i = 0; i < n; i++) {
+        int by = y + 12 + i * row, k;
+        doomo_snprintf(buf, sizeof(buf), "%s", labels[i]);
+        for (k = (int)strlen(buf); k > 3 && ui_text_width(buf) > w - 44; k--) {
+            buf[k - 3] = '.'; buf[k - 2] = '.'; buf[k - 1] = 0;
+        }
+        ui_button(x + 16, by, w - 32, buf, i == sel, style);
+        if (i == sel && (lr_mask & (1u << i))) {
+            ui_text(x + 6 + ui_wave(t, 16, 1), by + 3, STR_ICON_ARROW_L, PAL_UI_GOLD);
+            ui_text(x + w - 12 - ui_wave(t, 16, 1), by + 3, STR_ICON_ARROW_R, PAL_UI_GOLD);
+        }
+    }
+    ui_hint((lr_mask & (1u << sel)) ? STR_ICON_A " Select  " STR_ICON_ARROW_L STR_ICON_ARROW_R " Change  " STR_ICON_B " Resume"
+                                     : STR_ICON_A " Select  " STR_ICON_B " Resume", style);
+}
+
+void options_open(int page)
+{
+    audio_sfx(SFX_SELECT);
+    scene_push(&SCENE_OPTIONS, page);
 }
 
 const DoomoScene SCENE_OPTIONS = { "OPTIONS", opt_enter, NULL, opt_update, opt_draw, 0 };
