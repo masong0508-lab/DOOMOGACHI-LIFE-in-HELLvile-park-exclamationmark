@@ -18,6 +18,11 @@ credits      0
 home         -4..-1         # HOME_ARG_OWN (home.h)
 home         2..1001        # HOME_ARG_VISIT (home.h)
 home         0x4000..0x40FF # HOME_ARG_STORY (home.h)
+# --- S5: decorate-for with its layout as the param, so the house shows the
+# target and stamps DONE! (HSM_DECORATE_FOR | layout << 8; layouts_b.txt) ---
+home         0x4A04..0x4F04 # HOME_ARG_STORY(HSM_DECORATE_FOR) | (10..15) << 8
+home         0x4101..0x4501 # HOME_ARG_STORY(HSM_GOAL) | HG_COSY..HG_ETERNAL << 8
+# --- end S5 ---
 cooking      0..1           # COOK_ARG_COUNTER (fishcook_int.h)
 cooking      0x100..0x3F01  # COOK_ARG_RECIPE(r) [| COUNTER]
 concert      0..999         # the lead singer (concert_int.h)

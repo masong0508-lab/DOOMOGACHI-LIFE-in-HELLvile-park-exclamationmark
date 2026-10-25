@@ -1,0 +1,52 @@
+# core/data/home/layouts_b.txt - decorate-for target layouts of the S5
+# content package, side missions batch B (owner: S5; SPEC R19: one
+# layouts_<owner>.txt per content package; furngen joins them into
+# core/gen/furn_data.c). A side script opens the room with `push home
+# 0x4?04` (HOME_ARG_STORY(HSM_DECORATE_FOR) | layout << 8) and asks how close
+# it is with `home DECORATE_FOR <id>` (var 0 = progress 0..8; story_final.md
+# sec.14 / housing_final.md "homes you decorate for others"). Format:
+# layouts_s3.txt. IDs are saved (4 bits): S5 owns 10..15.
+# (S210's Annex is not a layout: it is the ETERNAL goal, HG_ETERNAL.)
+
+# ---- S153 "A Clinic With Two Doors": the clinic on the old line -------------
+# "A bed each side. One lamp in the middle. That's all a clinic is, really."
+# Bloom's lantern from S152 is the lamp if you kept it; any lamp will do.
+[layout 10 two_door_clinic] LIVING "Two-Door Clinic"
+  tol 1
+  any BED 0 2 E
+  any BED 5 2 W
+  piece blooms_lantern 3 1 S
+  any LAMP 2 1 S
+  any SEAT 3 4 N
+  need 3
+
+# ---- S185 "Come Up and See My Gate": Grumbleguts's gatehouse ----------------
+# Every piece is a seat (sized for him) and a mirror, he insists; the big
+# chair from S207 at the head of the room.
+[layout 11 gatehouse] PITS_FLAT "The Gatehouse"
+  tol 2
+  any MIRROR 3 0 S
+  piece big_chair 3 2 S
+  any SEAT 1 3 E
+  any SEAT 5 3 W
+  any SEAT 3 5 N
+  need 3
+
+# ---- S162 "They All Want to Be Florists": the monster's stall ---------------
+# "It needs a stall. Two by two. Flowers on top, a stool behind."
+[layout 12 florist_stall] GARDEN "Florist's Stall"
+  tol 1
+  any TABLE 3 2 S
+  any PLANT 3 1 S
+  any PLANT 4 2 S
+  any SEAT 3 4 N
+  need 2
+
+# ---- S164 "Day 3,653": Tallyworn's second wall in the pump-yard shed --------
+# "You pick where": a seat to count from and a light to count by; the wall
+# itself is his. Generous on purpose (tolerance 3).
+[layout 13 second_wall] CELLAR "Tallyworn's 2nd Wall"
+  tol 3
+  any SEAT 3 4 N
+  any LAMP 1 1 S
+  need 1

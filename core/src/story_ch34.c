@@ -672,6 +672,9 @@ static int npc(int id)
         if (id == ID_TALLYWORN) return idle(id, SCR_SE_TALLY);
         if (id == ID_RIVET) return idle(id, SCR_SE_RIVET);
         if (id == ID_WISP) {
+            /* --- S5: Wisp's own side missions (S168, S205, S206) come first --- */
+            if (side_npc(id)) return 1;
+            /* --- end S5 --- */
             switch (story_stry()->branch & 3) {
             case 1: conv(SCR_SE_WISP_HUM); return 1;
             case 2: conv(SCR_SE_WISP_LIE); return 1;

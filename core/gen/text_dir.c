@@ -39,6 +39,9 @@ extern const uint32_t doomo_text_pack_p0[];
 extern const uint32_t doomo_text_pack_q49a[];
 extern const uint32_t doomo_text_pack_q49b[];
 extern const uint32_t doomo_text_pack_quests[];
+extern const uint32_t doomo_text_pack_s139[];
+extern const uint32_t doomo_text_pack_s179[];
+extern const uint32_t doomo_text_pack_s187[];
 extern const uint32_t doomo_text_pack_sa_fuzz[];
 extern const uint32_t doomo_text_pack_sa_masc[];
 extern const uint32_t doomo_text_pack_sa_mayor[];
@@ -49,9 +52,19 @@ extern const uint32_t doomo_text_pack_sa_solo1[];
 extern const uint32_t doomo_text_pack_sa_solo2[];
 extern const uint32_t doomo_text_pack_sa_sprk[];
 extern const uint32_t doomo_text_pack_sa_tower[];
+extern const uint32_t doomo_text_pack_sb_bloom[];
+extern const uint32_t doomo_text_pack_sb_cloud[];
+extern const uint32_t doomo_text_pack_sb_gate[];
+extern const uint32_t doomo_text_pack_sb_kids[];
+extern const uint32_t doomo_text_pack_sb_solo1[];
+extern const uint32_t doomo_text_pack_sb_solo2[];
+extern const uint32_t doomo_text_pack_sb_solo3[];
+extern const uint32_t doomo_text_pack_sb_tock[];
+extern const uint32_t doomo_text_pack_sb_vex[];
+extern const uint32_t doomo_text_pack_sb_wisp[];
 extern const uint32_t doomo_text_pack_vmtest[];
 
-static const uint32_t *const packs[46] = {
+static const uint32_t *const packs[59] = {
     doomo_text_pack_ch1,
     doomo_text_pack_ch2,
     doomo_text_pack_d1,
@@ -87,6 +100,9 @@ static const uint32_t *const packs[46] = {
     doomo_text_pack_q49a,
     doomo_text_pack_q49b,
     doomo_text_pack_quests,
+    doomo_text_pack_s139,
+    doomo_text_pack_s179,
+    doomo_text_pack_s187,
     doomo_text_pack_sa_fuzz,
     doomo_text_pack_sa_masc,
     doomo_text_pack_sa_mayor,
@@ -97,12 +113,22 @@ static const uint32_t *const packs[46] = {
     doomo_text_pack_sa_solo2,
     doomo_text_pack_sa_sprk,
     doomo_text_pack_sa_tower,
+    doomo_text_pack_sb_bloom,
+    doomo_text_pack_sb_cloud,
+    doomo_text_pack_sb_gate,
+    doomo_text_pack_sb_kids,
+    doomo_text_pack_sb_solo1,
+    doomo_text_pack_sb_solo2,
+    doomo_text_pack_sb_solo3,
+    doomo_text_pack_sb_tock,
+    doomo_text_pack_sb_vex,
+    doomo_text_pack_sb_wisp,
     doomo_text_pack_vmtest,
 };
 
 const uint8_t *txt_plat_pack(int pack)
 {
-    if (pack < 0 || pack >= 46) return 0;
+    if (pack < 0 || pack >= 59) return 0;
     return (const uint8_t *)packs[pack];
 }
 

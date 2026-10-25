@@ -38,7 +38,24 @@ Each patch's agent was told to verify everything before pushing. Re-run the full
      loads with the PS1 `storymg` group by itself (`story_mg_find` is in
      `story_mg.c`, `ovl_plan.py` `LOCAL_REGISTRIES`): read the registry only
      from there;
-   - S5: batch B (55 missions);
+   - ~~S5: batch B (55 missions)~~ **done** (2026-10-25): the 55 missions in
+     `core/data/story/side_b/`, `story_mg_b.c` (seven games), six songs,
+     `story_grumble.c` (R22 getters, the dating ticker, the no-rite lock),
+     `layouts_b.txt`, `test_side_b.c`, `test_side_table.c`, runner
+     `side_sample_b.txt` and `side_chains.txt` (docs/STORY_ENGINE.md). The
+     table is complete (118 rows, 109 live). Left for the Feast package:
+     S186's scripts, title, hint, trophy and spot (the row is live and
+     inert: chain T step 5), its weekday rule (C16), the guests (C9), the
+     clue rounds and fullness meter (in `story_feast.c`, which shrinks with
+     the cut - `story_mg_b.c` is already past the SPEC's 8 KB line with its
+     seven games, see docs/STORY_ENGINE.md), the consequences
+     (`SF_GRUMBLE_DEAD`, `SF_GRUMBLE_NO_RITE`, the grave via the sim's
+     burial path; the batch-B scripts already branch on the flag), the
+     library's fate lines, `test_feast.c`, `story_feast_a/b.txt`. Not built:
+     the Breach / Arena story variants and the Ninth Cloud map that S3 was
+     to add (S171, S174, S178-S181 run the existing maps with their captions
+     and grant the unlock rows); `chain_done_ch` is not saved (a loaded game
+     starts it afresh);
    - the Feast cutscene port;
    - I9: integration.
 2. **Music core** (`music_core_workflow.js`), still to do:

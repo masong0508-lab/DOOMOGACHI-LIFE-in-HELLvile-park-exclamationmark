@@ -263,6 +263,58 @@ catalogue's `reward Sxxx` rows) -> its Later. Rules learned the hard way:
 * The reverse rite (S133): `possess sprinklepop 10` arms exorcism row 10 on
   a soul that is lost; autowin un-fails it too (story.c).
 
+**Batch B** (`core/data/story/side_b/`, S5, 55 missions: chains K M N O P
+Q R L U T V and the stand-alones S176, S178-S182, S187, S191, S192, S195,
+S211-S217; one side pack per chain or pair, `s139`/`s179`/`s187` for the
+three "Ten years I" missions). With batch A the table is complete: 118 rows,
+109 live, the 9 retired ones empty; chapter counts 17/19/18/32/23 (by first
+chapter); every verb used. What batch B added:
+
+* **The post-game is exempt** from one-part-per-chapter (`story_side2_gate`,
+  `chapter < STORY_CH_DONE`): chains L, U and T live in Chapter 5, which has
+  no chapter after it to space them out; their Laters do.
+* **S186, the Feast,** is a live row with no scripts, title or spot yet (the
+  Feast package writes them): it keeps chain T's count and the table's
+  counts honest; `test_side_table.c` knows the exemption.
+* More `native` questions and actions (story_int.h, `side_callback`):
+  `CB_SIDE_NEWS` (the Later's headline, stash slot 0, goes to the Herald:
+  only the four news-ticker Laters, S140 S156 S168 S191), `CB_SIDE_GRUMBLE
+  GRB_DISH|GRB_EXES n|GRB_PACIFIST` (Grumbleguts' story-only counters),
+  `CB_SIDE_FRIENDS`, `CB_SIDE_BRANCH 0|1|2` (Wisp's answer in Ep 4.4, the
+  Say It line, the Feast: that 2-bit field of `STRY.branch`).
+* **Decorate-for with its layout as the param** (`push_args.txt`): `push home
+  0x4A04` = `HOME_ARG_STORY(HSM_DECORATE_FOR) | 10 << 8`, then `home
+  DECORATE_FOR 10`; layouts 10-13 in `core/data/home/layouts_b.txt` (the
+  two-door clinic, the gatehouse, the Florist's stall, Tallyworn's second
+  wall). S208/S210 use the home goals (`0x4101..0x4501`, `HG_COSY ..
+  HG_ETERNAL`); S210's Annex is the ETERNAL goal, not a layout.
+* **After the Feast** (`SF_GRUMBLE_DEAD`): every Ch4-5 mission Grumbleguts
+  appears in branches with `jif SF_GRUMBLE_DEAD` (S153 Big Snarl is the first
+  patient, S159 Snarl sleeps under the mats, S162 Nox buys one rose, S174
+  the exes hold a quiet supper, S216 nobody says "Hey.", S217 @E signs for
+  him); his own givers' rows go quiet with him (the giver must be alive).
+* Wisp's epilogue lines let Wisp's own missions go first (`story_ch34.c`,
+  as `idle()` does for the others), so S168, S205 and S206 can be offered
+  after the credits.
+* A new game resets `story_side.c`'s session state (`story_side_reset`: the
+  old-quest / S100+ turn and the chapter each chain last moved in).
+
+**Grumbleguts** (`story_grumble.c`, R22 / C13) is roster resident 729; the
+sim owns his friendship, romance, death and grave. `STRY.grumble` keeps
+dishes fed (4 bits, capped at 15), pacifist (1), exes met (3) and, in bit
+8, "the obituary line was posted". `story_grumble_dead()` is the Feast's
+flag or a sim death; `story_rite_blocker(729)` is the graveyard's no-rite
+clause (`fp_ghost_rite_blocker`, one marked hunk: "He went out full. The
+rite won't take him."). **The dating ticker** ("Hell's Biggest Flirt", from
+S173 on): once a day, at the first quiet minute after 13:00, the Herald runs
+one line (`story_grumble_headline`): a flirt with an adult citizen - the
+sim's romance gate and the roster's KID/TEEN traits both checked - the Gate,
+Father Fuzz's horror, the black book, or his partner if the sim has given
+him one; he is turned down kindly every time. After the Feast, one last
+line ("...now reads 'deceased'.") and nothing more. Every line fits the
+Herald's 63 characters; the toast is the short "Herald: Hell's Biggest
+Flirt!" (35 characters fit a 240-pixel toast).
+
 **Trophies (R8)** are not unlock ids: a done row with a `trophy=` name is
 listed in the quest log's Trophies tab (`story_trophies()`).
 
@@ -306,7 +358,8 @@ UNFAILED).
 The registry reader `story_mg_find` lives in `story_mg.c` (S4; stubs.c's
 weak one is resident and would pin every registry game in resident RAM on
 the PS1); `ps1/tools/ovl_plan.py`'s `LOCAL_REGISTRIES` lets the games load
-with the `storymg` group (17 KB with S4's six; resident RAM unchanged).
+with the `storymg` group (17 KB with S4's six, 36 KB with S5's seven too;
+resident RAM unchanged).
 
 S4's six (`SMG_A_*`, story_int.h; state in the scene scratch, 0 B EWRAM):
 `SMG_A_HOPSCOTCH` (S150: ten stone slabs over lava, A on the beat, the pet
@@ -318,12 +371,41 @@ the last one says "beep."), `SMG_A_BALLOONS` (S130: pop the grey ones, the
 pink ones float into your bundle; a grey one left alone pops one of yours)
 and `SMG_A_BOBBER` (S144: pull when the float dips, not when it twitches).
 
+S5's seven (`SMG_B_*`, story_mg_b.c; scene scratch, 0 B EWRAM; every one
+ends by itself with no input). Four engines: STEER - `SMG_B_BUBBLES` (S140,
+the Fun Fair: the pet pops the clear bubbles from Vex's rig, the grape ones
+must float away; the first is always grape) and `SMG_B_FIREFLY` (S195: pick
+a heart / two faces / the fountain, it shows dotted in the sky; the pet's
+glow leads the fireflies, a lit one passing a free point settles there;
+result 1 + the shape; Glowbug helps after 90 s); BEAT, one judge for timed
+presses and releases - `SMG_B_BUBBLES_STAGE` (S140, pop each bubble as its
+ring closes), `SMG_B_NAPOFF` (S159, hold A to breathe in, let go to breathe
+out, with Dozy Doe and Batty Betty upside down; Grumbleguts snores in
+another key) and `SMG_B_DUET` (S184, two burners, flip the ready pan; every
+third ingredient never lands); CHALK - `SMG_B_POEM` (S164, Clinker's board:
+the 3-line text entry in chalk words, result 1 + the lines with a death);
+SQUEEZE - `SMG_B_HUGS` (S216, hold A, let go in the hugger's zone; the
+citizens' own portraits; Grumbleguts backs in rear first with the record
+scratch and wants it all the way; the counter reaches 1,000). The static
+sets are display lists (`scenery()`: rects, rounded rects, circles and
+ellipses in 1/256ths of the screen, so one list serves both resolutions).
+Code size: 9.8 KB of THUMB code and 2.2 KB of tables and words on the GBA
+(over the SPEC's 8 KB line, which planned four games: the three restaged
+ones - the stage, the duet, the hug line - are the difference; ROM only on
+the GBA, the `storymg` overlay on the PS1, 0 B of resident RAM either way).
+The Feast's clue rounds and fullness meter belong in `story_feast.c`, which
+shrinks with the cut.
+
 **Runner commands for side missions** (S4, `runner_main.c`): `side M
 [STATE]` sets a mission's state (a chain's earlier parts), `talk ID` talks
 to a resident, `cell X Y` steps on a cell (a find verb), `skip-to "TEXT"`
 presses A until the dialogue says TEXT, `skip-to-scene NAME` until a scene
 is on top, `skip-talk` until the conversation is over
-(`core/tests/scripts/side_sample_a.txt`).
+(`core/tests/scripts/side_sample_a.txt`; S5's `side_sample_b.txt` pushes
+each game with `push STORY_MG 2817..2823`, and `side_chains.txt` walks
+chains K, R, U and T one offer at a time, answering "Later." with `wait 30`,
+`press DOWN`, `press A` once the choice is open). `skip-to` matches the
+text as shown: a `/` line break in the script is a newline on screen.
 
 **Scripted dreams** (`push dream 0x4000|n`, `DREAM_ARG_SCRIPTED`): you
 dream, the Peek is forced (no tiptoeing away), the vignettes are the row's
@@ -426,6 +508,20 @@ stage). GBA: `gba/harness/scripts/story_ch1.txt` (`make -C gba
 test-story`, part of `test`) measures the stages' fps: P0 23-30, the fog
 30, the gate 24 (gate: ≥ 15).
 
+Side missions: `test_side_a.c` (S4), `test_side_b.c` (S5: the batch's rows
+live, titled, spotted and reachable; the seven `story_mg_b` games end, the
+poem scores 1/2/3 deaths as written, the hug line reaches 1,000; the six
+songs pass `audio_song_check`; layouts 10-13; Grumbleguts' counters, 2,000
+days of ticker lines with no child in them, the obituary once, the no-rite
+lock; S142, S164, S166, S183, S206, S211 and S216 - alive and after the
+Feast - through the real talk path) and `test_side_table.c` (the table-wide
+rules of story_final.md sec.14: 118 / 109 / 9 retired, the chapter counts,
+every verb, both towns' givers, chains monotone and finishable, the post-game
+exemption, no chain withholding its button - `[NO BUTTON]` or `[NO GAG]` on
+the ending - twice in a row, exactly four ticker Laters, Grumbleguts' LOVE
+lines never in a child's conversation; the markers the compiler drops are
+read from the `.dsc` sources). Runner: `side_sample_b.txt`, `side_chains.txt`.
+
 ## Memory
 
 Measured on clean builds against 4ba4e96 (the commit before S2's engine).
@@ -461,3 +557,16 @@ two songs' MML, the stage and idle buffers); the cutscene group 98,912 ->
 stays 116 KB); the story group 101,748 -> 104,640 B (`story_ch12.c` 7 KB in,
 `story_script.c` 3 KB out), about 200 B over C5's tail line (slot - 14 KB),
 which only matters once H3's `ovl_tail()` lands.
+
+**Side missions batch B (S5), measured against 81d4a76.** GBA: ROM
+3,287,856 -> 3,357,944 B (+68 KB: the 55 missions' text, the seven games,
+six songs, four layouts), EWRAM 5,632 -> 5,632 B free and IWRAM unchanged
+(6,320 B of stack): the Herald's posted day is 2 B of `.bss`, side_npc's
+offer turn moved into `chain_done_ch`'s alignment slack. PS1: 99 -> 97 KB
+below the stack top (resident text + rodata 1,092 -> 1,093 KB: the 55
+side-table rows, the songs' MML, Grumbleguts' getters; `.bss` unchanged);
+the `storymg` group 17 -> 36 KB, the story group 112 -> 115 KB
+(`story_grumble.c`), both well under the 156 KB slot; `OVL.BIN` 866 -> 882
+KB packed. fps: the seven games run at the 30 fps cap on both consoles
+(GBA work 11-26 ms a frame; PS1 30.4-32.7 measured), the Ch5 overworld is
+unchanged (GBA 13.9 -> 14.3 drawn fps, PS1 30).

@@ -1,0 +1,264 @@
+# assert-no-stubs
+# Side missions batch B (S5): four quest chains walked through the real
+# talk path, one offer at a time, each in the chapter the S2 gate allows
+# (step k after k-1, one part of a chain per chapter - grafts and the
+# post-game exempt - cross-border parts 3+ from Ep 4.1): the offer's first
+# line on screen, then "Later." (the part is marked done with `side`, as if
+# played), at both resolutions. Ends on the quest log.
+#   K  Vex's exit interview  S137 Ch2 -> S138 Ch3 -> S139 Ch4 -> S140 Ch5
+#   R  Wisp                  S166 Ch2 -> S167 Ch3 -> S205 + S168 Ch4 -> S206 Ch5
+#   U  the little black book S172 Ch4 -> S173 + S174 Ch5 (post-game: two in one)
+#   T  feed the gate         S183 Ch4 -> S184 + S207 + S185 Ch5
+seed 1371
+
+# ---- chain K ----------------------------------------------------------------------
+scene STORY 136
+wait 60
+skip-talk 200
+talk 709
+wait 24
+expect-text "Employee of the Month"
+shot k1_s137
+skip-to "Take the photo?"
+wait 30
+press DOWN
+wait 4
+press A
+skip-talk 200
+side 137
+scene STORY 143
+wait 60
+skip-talk 200
+side 137
+talk 666
+wait 24
+expect-text "Psst."
+shot k2_s138
+skip-to "Let Vex stay?"
+wait 30
+press DOWN
+wait 4
+press A
+skip-talk 200
+side 138
+scene STORY 150
+wait 60
+skip-talk 200
+side 137
+side 138
+talk 666
+wait 24
+expect-text "reference letter"
+shot k3_s139
+skip-to "Air out Cloud Nine?"
+wait 30
+press DOWN
+wait 4
+press A
+skip-talk 200
+side 139
+scene STORY 165
+wait 60
+skip-talk 200
+side 137
+side 138
+side 139
+talk 666
+wait 24
+expect-text "vape rig"
+shot k4_s140
+skip-to "Build a bubble machine?"
+wait 30
+press DOWN
+wait 4
+press A
+skip-talk 200
+
+# ---- chain R ----------------------------------------------------------------------
+scene STORY 138
+wait 60
+skip-talk 200
+talk 109
+wait 24
+expect-text "housekeeper"
+shot r1_s166
+skip-to "Look into it?"
+wait 30
+press DOWN
+wait 4
+press A
+skip-talk 200
+scene STORY 144
+wait 60
+skip-talk 200
+side 166
+talk 563
+wait 24
+expect-text "red sky"
+shot r2_s167
+skip-to "Make Wisp a window?"
+wait 30
+press DOWN
+wait 4
+press A
+skip-talk 200
+scene STORY 153
+wait 60
+skip-talk 200
+side 166
+side 167
+talk 563
+wait 24
+expect-text "measure me"
+shot r3_s205
+skip-to "Measure Wisp?"
+wait 30
+press DOWN
+wait 4
+press A
+skip-talk 200
+side 205
+talk 563
+wait 24
+expect-text "housewarming"
+shot r4_s168
+skip-to "Have a housewarming?"
+wait 30
+press DOWN
+wait 4
+press A
+skip-talk 200
+side 168
+scene STORY 165
+wait 60
+skip-talk 200
+side 166
+side 167
+side 205
+side 168
+talk 563
+wait 24
+expect-text "The candle in"
+shot r5_s206
+skip-to "Help with the candle?"
+wait 30
+press DOWN
+wait 4
+press A
+skip-talk 200
+
+# ---- chain U ----------------------------------------------------------------------
+scene STORY 155
+wait 60
+skip-talk 200
+talk 729
+wait 24
+expect-text "hot stuff"
+shot u1_s172
+skip-to "Fetch the book?"
+wait 30
+press DOWN
+wait 4
+press A
+skip-talk 200
+scene STORY 165
+wait 60
+skip-talk 200
+side 172
+talk 729
+wait 24
+expect-text "dating ticker"
+shot u2_s173
+skip-to "Take his photo?"
+wait 30
+press DOWN
+wait 4
+press A
+skip-talk 200
+side 173
+talk 522
+wait 24
+expect-text "Taking bets"
+shot u3_s174
+skip-to "Go to the group?"
+wait 30
+press DOWN
+wait 4
+press A
+skip-talk 200
+
+# ---- chain T (his own chain U is done: one offer at a time) -------------------------
+scene STORY 155
+wait 60
+skip-talk 200
+side 172
+talk 729
+wait 24
+expect-text "ordered the menu"
+shot t1_s183
+skip-to "Help in the kitchen?"
+wait 30
+press DOWN
+wait 4
+press A
+skip-talk 200
+scene STORY 165
+wait 60
+skip-talk 200
+side 172
+side 173
+side 174
+side 183
+talk 128
+wait 24
+expect-text "He wants to cook"
+shot t2_s184
+skip-to "Run the duet?"
+wait 30
+press DOWN
+wait 4
+press A
+skip-talk 200
+side 184
+talk 729
+wait 24
+expect-text "made dessert"
+shot t3_s207
+skip-to "Find a dessert date?"
+wait 30
+press DOWN
+wait 4
+press A
+skip-talk 200
+side 207
+talk 729
+wait 24
+expect-text "gate's fixed"
+shot t4_s185
+skip-to "Decorate the gatehouse?"
+wait 30
+press DOWN
+wait 4
+press A
+skip-talk 200
+side 185
+
+# ---- the quest log: the chains' trophies so far -------------------------------------
+side 140
+side 153
+side 156
+side 206
+push QUESTLOG
+wait 40
+press RIGHT
+wait 20
+shot questlog_side
+press RIGHT
+wait 8
+press RIGHT
+wait 8
+press RIGHT
+wait 8
+press RIGHT
+wait 30
+shot questlog_trophies

@@ -1,0 +1,265 @@
+# assert-no-stubs
+# Side missions batch B (S5): the seven story_mg_b games in play, each on
+# its title card, mid-game and on its finish, and two missions through the
+# real talk path, at both resolutions:
+#   SMG_B_BUBBLES        S140's Fun Fair test (the first bubble is grape)
+#   SMG_B_BUBBLES_STAGE  S140's Unity Stage (pop on the beat)
+#   SMG_B_FIREFLY        S195 (two faces; Glowbug finishes the shape)
+#   SMG_B_NAPOFF         S159 (Doe, Betty upside down, the gatekeeper)
+#   SMG_B_POEM           S164 Clinker's board (one death, "Seven.")
+#   SMG_B_DUET           S184 two burners (he eats every third one)
+#   SMG_B_HUGS           S216 the hug line to 1,000 (rear first)
+#   S164 "Day 3,653"     the poem in its conversation, Clinker's verdict
+#   S206 "A Candle Goes Out"  no comic beat; the candle; "Now I can SEE out."
+seed 5151
+
+# ---- the Fun Fair ---------------------------------------------------------------
+scene STORY 165
+wait 60
+skip-talk 200
+push STORY_MG 2817
+wait 20
+shot b_bubbles_card
+press A
+wait 40
+shot b_bubbles_grape
+hold RIGHT 20
+hold UP 30
+wait 30
+shot b_bubbles_play
+hold LEFT 40
+hold DOWN 20
+wait 200
+shot b_bubbles_late
+skip-to-scene STORY 400
+
+# ---- the Unity Stage ------------------------------------------------------------
+push STORY_MG 2818
+wait 20
+press A
+wait 70
+shot b_stage_ring
+press A
+press A
+press A
+press A
+press A
+press A
+press A
+press A
+press A
+press A
+press A
+press A
+press A
+press A
+press A
+press A
+shot b_stage_pop
+skip-to-scene STORY 400
+
+# ---- the fireflies --------------------------------------------------------------
+push STORY_MG 2819
+wait 20
+press A
+wait 20
+press RIGHT
+wait 30
+shot b_fly_pick
+press A
+wait 30
+hold UP 40
+hold LEFT 30
+wait 20
+shot b_fly_herd
+hold RIGHT 60
+hold DOWN 20
+wait 2560
+shot b_fly_glowbug
+wait 70
+shot b_fly_done
+skip-to-scene STORY 400
+
+# ---- the nap-off -----------------------------------------------------------------
+push STORY_MG 2820
+wait 20
+press A
+wait 40
+hold A 36
+wait 36
+hold A 36
+wait 20
+shot b_nap_breathe
+wait 16
+hold A 36
+wait 36
+hold A 30
+shot b_nap_in
+skip-to-scene STORY 400
+
+# ---- Clinker's board -------------------------------------------------------------
+push STORY_MG 2821
+wait 20
+press A
+wait 30
+shot b_poem_board
+press DOWN
+wait 4
+press DOWN
+wait 4
+press DOWN
+wait 8
+shot b_poem_grave
+press A
+wait 4
+press A
+wait 4
+press A
+wait 4
+press DOWN
+wait 4
+press A
+wait 4
+press A
+wait 4
+press A
+wait 4
+press A
+wait 4
+press DOWN
+wait 4
+press A
+wait 8
+shot b_poem_last
+press A
+wait 8
+shot b_poem_signed
+skip-to-scene STORY 400
+
+# ---- the duet --------------------------------------------------------------------
+push STORY_MG 2822
+wait 20
+press A
+wait 80
+shot b_duet_drop
+wait 40
+shot b_duet_ready
+press B
+wait 6
+shot b_duet_flip
+wait 60
+shot b_duet_gulp
+skip-to-scene STORY 400
+
+# ---- the hug line ----------------------------------------------------------------
+push STORY_MG 2823
+wait 20
+press A
+wait 60
+hold A 20
+shot b_hugs_squeeze
+hold A 13
+wait 10
+shot b_hugs_again
+wait 90
+hold A 10
+wait 100
+hold A 21
+wait 100
+hold A 21
+wait 100
+hold A 21
+wait 100
+hold A 33
+wait 100
+hold A 10
+wait 66
+shot b_hugs_rear
+wait 30
+hold A 30
+shot b_hugs_all_the_way
+hold A 25
+wait 12
+shot b_hugs_1000
+skip-to-scene STORY 400
+
+# ---- S164 "Day 3,653": the poem in its conversation -------------------------------
+scene STORY 150
+wait 60
+skip-talk 200
+side 163
+talk 712
+wait 24
+expect-text "My tally wall is full"
+shot s164_offer
+skip-to "Get him chalk?"
+wait 30
+press A
+wait 20
+skip-talk 200
+talk 753
+wait 24
+expect-text "Chalk for a poem"
+shot s164_clinker
+skip-to-scene STORY_MG
+press A
+wait 20
+press DOWN
+wait 4
+press A
+wait 4
+press A
+wait 4
+press A
+wait 4
+press A
+wait 4
+press A
+wait 4
+press A
+wait 4
+press A
+wait 4
+press DOWN
+wait 4
+press A
+wait 4
+press A
+wait 8
+shot s164_poem
+skip-to "Seven." 200
+wait 60
+shot s164_verdict
+skip-to "Take the chalk"
+wait 40
+shot s164_chalk
+
+# ---- S206 "A Candle Goes Out" ---------------------------------------------------------
+scene STORY 165
+wait 60
+skip-talk 200
+side 166
+side 167
+side 205
+side 168
+talk 563
+wait 24
+expect-text "The candle in"
+shot s206_offer
+skip-to "Help with the candle?"
+wait 30
+press A
+wait 20
+skip-to "Apartment 13"
+wait 40
+shot s206_dusk
+skip-to "Wisp blows"
+wait 60
+shot s206_blow
+skip-to "SEE out"
+wait 60
+shot s206_see
+skip-to "Very small"
+wait 60
+shot s206_beep
+skip-talk 200

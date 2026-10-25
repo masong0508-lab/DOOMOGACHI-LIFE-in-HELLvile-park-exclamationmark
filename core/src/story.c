@@ -189,6 +189,7 @@ void story_new_game(void)
     if (doomo_town.money < DOOMO_START_MONEY) doomo_town.money = DOOMO_START_MONEY;
     memset(&story_pending, 0, sizeof(story_pending));
     friends_dirty = 1;
+    story_side_reset();                          /* S5: nor a stale side-mission turn */
     story_rearm_possessors();                    /* no stale slot from another session */
     script_enter_beat(BEAT_C1_ARRIVE);
     story_objective_refresh();
@@ -450,6 +451,7 @@ void story_vm_minute(void)
     later_minute = doomo_town.minute;
     if (vm_running() || convq_n || story_talking()) return;
     if ((s = vm_later_due()) != 0) story_conv((unsigned)s, 0);
+    else story_grumble_minute();      /* S5: the Herald's line of the day */
 }
 
 void story_conv_arg(unsigned scr, int cb, int arg)

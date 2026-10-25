@@ -447,7 +447,17 @@ const char *side_objective(void)
  * row (0 none, 1 offered, 2 active, 3 done). Which chapter a chain's last
  * part was turned in is kept for the session only (STRY is full): after a
  * reload the next part may come one chapter early, never out of order. */
-static uint8_t chain_done_ch[26];        /* the chapter (0..5) each chain's last part was done */
+static uint8_t chain_done_ch[27];        /* the chapter (0..5) each chain's last part was done; [26]: S5 */
+/* --- S5: the old-quest / S100+ alternation of side_npc lives in the last
+ * byte of chain_done_ch (its alignment slack: no RAM), so a new game starts
+ * both afresh - before, both carried over from the last game of the
+ * session --- */
+#define SIDE_TURN chain_done_ch[26]
+void story_side_reset(void)
+{
+    memset(chain_done_ch, 0, sizeof(chain_done_ch));
+}
+/* --- end S5 --- */
 static int16_t cur2 = -1;                 /* the row whose script is running */
 
 static int side2_bits(const uint8_t *side2, int sid)
@@ -483,8 +493,11 @@ int story_side2_gate(const StorySideRow *rows, int sid, const uint8_t *side2,
             for (i = 0; i < STORY_SIDE2_ROWS; i++)
                 if (rows[i].kind && rows[i].chain == r->chain && rows[i].step == r->step - 1) { prev = i; break; }
             if (prev < 0 || side2_bits(side2, prev) != 3) return 0;
+            /* (S4) grafts are exempt; (S5) so is the post-game: Chapter 5
+             * has no chapters left to space the parts out (chains L, U and
+             * T live there), their Laters do it */
             if (done_in_chapter && done_in_chapter[r->chain - 'A'] == chapter &&
-                sid < STORY_SIDE2_GRAFT_FIRST) return 0;          /* (S4) grafts are exempt */
+                sid < STORY_SIDE2_GRAFT_FIRST && chapter < STORY_CH_DONE) return 0;
         }
         if (r->step >= 3 && !ep41 && sid < STORY_SIDE2_GRAFT_FIRST && chain_crosses(rows, r->chain)) {
             /* (S4) "part 3" counts the chain's own parts, not its grafts */
@@ -695,10 +708,9 @@ static int old_offer(int id)
 
 int side_npc(int id)
 {
-    static uint8_t turn;
     if (old_ready(id)) return old_npc(id);
     if (side2_npc(id, 0)) return 1;                       /* the S100+ mission under way */
-    if (!old_offer(id) || (turn ^= 1u) != 0) {
+    if (!old_offer(id) || (SIDE_TURN ^= 1u) != 0) {
         if (side2_npc(id, 1)) return 1;                   /* an S100+ offer */
     }
     return old_npc(id);
@@ -1038,6 +1050,12 @@ void side_callback(int cb, int choice)
         break;
     case CB_SIDE_CHAPTER: vm_set_var(0, chapter_now()); break;
     /* --- end S4 --- */
+    /* --- S5: batch B's questions and actions (story_int.h) --- */
+    case CB_SIDE_NEWS: { const char *s = txt_stash_get(0); if (s && s[0]) sim_news_push(s); break; }
+    case CB_SIDE_GRUMBLE: story_grumble_count(choice & 0xFF, (choice >> 8) & 0xFF); break;
+    case CB_SIDE_FRIENDS: vm_set_var(0, story_friend_count(-1)); break;
+    case CB_SIDE_BRANCH: vm_set_var(0, (story_stry()->branch >> (2 * (choice & 3))) & 3); break;
+    /* --- end S5 --- */
     default: break;
     }
 }

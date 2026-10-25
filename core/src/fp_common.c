@@ -866,6 +866,9 @@ const char *fp_ghost_rite_blocker(int id)
 {
     const DoomoResident *r = fp_res(id);
     if (!r || r->status != RES_DEAD) return "Only the departed can be raised.";
+    /* --- S5 (C13): the story's no-rite lock (story_grumble.c) --- */
+    if (story_rite_blocker(id)) return "He went out full. The rite won't take him.";
+    /* --- end S5 --- */
     if (!town_is_night()) return "The veil is too thick by day. Come back after 9 PM...";
     if (!opt_get(OPT_CHEAT_INFINITE_CANDY) &&
         (inv_count(ITEM_HYMN_BOOK) <= 0 || inv_count(ITEM_SAGE_BUNDLE) <= 0))

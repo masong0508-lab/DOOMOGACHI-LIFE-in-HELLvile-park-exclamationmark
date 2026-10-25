@@ -218,6 +218,45 @@ const char *story_side2_hint(int sid);
  * and the cell the script gave it; -1 none (story_verbs.c). */
 int  story_verb_who(int *cx, int *cy);
 /* --- end S4 --- */
+/* --- S5: side missions batch B (docs/design/story/SPEC.md sec.7 S5) ---
+ * More `native CB_SIDE_*` questions and actions (story_side.c side_callback;
+ * the answer, if any, is var 0). */
+enum { CB_SIDE_NEWS = 80,       /* the Later's headline (stash slot 0) goes to the
+                                   Hellvile Herald (sim news); only the four
+                                   news-ticker Laters use it (S140 S156 S168 S191) */
+       CB_SIDE_GRUMBLE,         /* ARG = GRB_* | value << 8: Grumbleguts' story-only
+                                   counters (STRY.grumble, story_grumble.c)      */
+       CB_SIDE_FRIENDS,         /* how many friends you have, both sides        */
+       CB_SIDE_BRANCH };        /* ARG = 0 Wisp's answer (Ep 4.4: 1 hummed, 2 the
+                                   kind lie, 3 the chair), 1 the Say It line,
+                                   2 the Feast: that 2-bit field of STRY.branch */
+enum { GRB_DISH = 1,            /* a dish fed (+1, capped at 15)                 */
+       GRB_EXES,                /* the exes met so far = value (0..7)            */
+       GRB_PACIFIST };          /* he was never hit (Ep 4.5, S174)              */
+void story_grumble_count(int op, int value);   /* GRB_*; STRY.grumble          */
+/* (S5) story_side.c's session state back to a fresh game (story_new_game) */
+void story_side_reset(void);
+/* S5's story minigames (story_mg_b.c, the doomo_story_mg_b registry; `push
+ * minigame SMG_B_*`). Results: 0 lost, 1 won (more where noted). */
+enum { SMG_B_BUBBLES = 0x0B01,     /* S140 the Fun Fair test: @E pops the bubbles, the
+                                      grape one must float away                       */
+       SMG_B_BUBBLES_STAGE,        /* S140 the Unity Stage: pop them on the beat       */
+       SMG_B_FIREFLY,              /* S195 herd the fireflies with @E's glow into the
+                                      shape; 1 + the shape (1 heart, 2 faces, 3 fountain) */
+       SMG_B_NAPOFF,               /* S159 the nap-off: breathe in and out on the beat */
+       SMG_B_POEM,                 /* S164 Clinker's chalkboard: three lines; result =
+                                      1 + the death in it (0..3)                      */
+       SMG_B_DUET,                 /* S184 two burners, flip on the beat; every third
+                                      ingredient vanishes (he ate it)                 */
+       SMG_B_HUGS };               /* S216 the hug line: gentle, gentler, Grumbleguts */
+/* (S5) Grumbleguts' Herald line of the day (story_grumble.c), once S173 has
+ * started the "Hell's Biggest Flirt" ticker: called once per game minute on
+ * the overworld; at 13:00 it posts one headline (a toast and sim news). */
+void story_grumble_minute(void);
+/* the headline for `day` into out: a flirt with an ADULT citizen (never a
+ * KID or TEEN), the Gate, or a rejection. Returns the target id (-1 none). */
+int  story_grumble_headline(uint32_t day, char *out, int cap);
+/* --- end S5 --- */
 
 /* ---- S2: the verbs and the story minigames (story_verbs.c, story_timing.c) ----
  * A verb runs on the overworld while the VM is free; SCENE_STORY's update
