@@ -94,12 +94,12 @@ shot a1_02a beat=e101_1_02 len=210 set=town_sign:sunset px=1 cut=CUT scene=a1_sc
 end
 
 shot a1_02b beat=e101_1_02 len=120 set=town_sign:sunset px=1 cut=CUT
-  cam at=70,40 scale=2                                        # the pencil box, CU
+  cam at=70,0                                        # the pencil box, CU  # FRAMING: setup scale>1.1 draws the plate shrunk (engine gap); staged at 1.0
   +0    fol FX_PENCIL ; super s_a1_02_pencil style=type over=+0..+20 at=122,124 until=end
   +0    mx home_2bar start bars=2
   ad "In pencil, under it: and Sunny."
-  +0    cam to scale=2.200 over=120 ease=OUT    # motion: insert push
-  +0    cam pan dx=7.3 dy=4.1 over=120 ease=OUT    # motion: (centred on the frame)
+  +0    cam to scale=1.080 over=120 ease=OUT    # motion: insert push
+  +0    cam pan dx=4.0 dy=0.0 over=120 ease=OUT    # motion: (centred on the frame)
 end
 
 shot a1_02c beat=e101_1_02 len=180 set=town_sign:sunset px=1 cut=CUT
@@ -127,15 +127,15 @@ shot a1_03a beat=e101_1_03 len=150 set=fountain_plaza:sunset px=1 cut=CUT scene=
 end
 
 shot a1_03b beat=e101_1_03 len=150 set=fountain_plaza:sunset px=1 cut=CUT
-  cam at=190,20 scale=1.5
+  cam at=120,0  # FRAMING: setup scale>1.1 draws the plate shrunk (engine gap); staged at 1.0
   actor sunny who=sunny kind=bust px=2 at=220,110 face=L idle=on
   prop  page1 art=gen:soggy_page(n=1,seed=16) plane=plaza at=180,150 anchor=center
   +10   sfx FX_SPLASH ; pop page1 TWT_POP_BLOB
   +40   move page1 to=200,120 over=20 tw=TW_BRAKE ; sfx FX_DRIP_TICK
   +64   super s_a1_03_page1 style=deadpan at=160,90 until=+140
   +140  still sunny                                           # Sunny stops still
-  +0    cam to scale=1.590 over=150 ease=INOUT    # motion: track the action
-  +0    cam pan dx=12.0 dy=3.4 over=150 ease=INOUT    # motion: (centred on the frame)
+  +0    cam to scale=1.080 over=150 ease=INOUT    # motion: track the action
+  +0    cam pan dx=4.0 dy=0.0 over=150 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a1_03c beat=e101_1_03 len=90 set=fountain_faces:sunset px=2 cut=CUT insert
@@ -170,7 +170,7 @@ shot a1_04a beat=e101_1_04 len=180 set=hook_a_duck:dusk px=1 cut=CUT scene=a1_sc
 end
 
 shot a1_04b beat=e101_1_04 len=120 set=hook_a_duck:dusk px=1 cut=CUT
-  cam at=60,30 scale=2
+  cam at=60,0  # FRAMING: setup scale>1.1 draws the plate shrunk (engine gap); staged at 1.0
   actor steamy who=steamy kind=bust px=2 at=250,120 face=L idle=on expr=EXPR_SHOCK
   +13   sfx FX_SQUEAK pan=0.29 ; squash duck5 220 over=3       # R13: by itself
   +21   sfx FX_SQUEAK pan=-0.35 ; squash duck1 220 over=3 ; expr steamy EXPR_SHOCK   # R8: Steamy answers
@@ -178,7 +178,7 @@ shot a1_04b beat=e101_1_04 len=120 set=hook_a_duck:dusk px=1 cut=CUT
   +44   sfx FX_SQUEAK pan=0.29 ; squash duck5 220 over=3
   +59   sfx FX_SQUEAK pan=0.29 ; squash duck5 220 over=3
   +85   sfx FX_SQUEAK pan=0.29 gain=-3dB ; squash duck5 230 over=3   # R26 ...squeak
-  +0    cam to scale=2.120 over=120 ease=INOUT    # motion: crane-in reveal
+  +0    cam to scale=1.080 over=120 ease=INOUT    # motion: crane-in reveal
   +0    cam pan dx=4.5 dy=-0.5 over=120 ease=INOUT    # motion: (centred on the frame)
 end
 
@@ -249,15 +249,15 @@ shot a1_06a beat=e101_1_06 len=210 set=hattie_tent:dusk px=1 cut=CUT scene=a1_sc
 end
 
 shot a1_06b beat=e101_1_06 len=270 set=hattie_tent:dusk px=1 cut=CUT
-  cam at=100,10 scale=1.5
+  cam at=0,0  # FRAMING: setup scale>1.1 draws the plate shrunk (engine gap); staged at 1.0
   actor hattie who=hattie kind=bust px=2 at=160,118 face=front idle=on expr=EXPR_HAPPY
   +0    say w_tent_02 crowd:tent ; ripple tent laugh 0..3       # the ripple on the cut
   +40   walla tent to gain=-30dB over=20
   +8    say w_wall_01 pan=R ; cc "[a laugh from beyond the Wall, late]"   # R8: the lag is a series rule
   +20   headturn hattie 64 8 ; expr hattie EXPR_NEUTRAL ; mx hahaland_fair duck -60dB 6
   +54   take deadpan hattie ; say a1_06_hattie_03 hattie        # R26
-  +0    cam to scale=1.620 over=270 ease=INOUT    # motion: slow push-in on the line
-  +0    cam pan dx=7.9 dy=4.4 over=270 ease=INOUT    # motion: (centred on the frame)
+  +0    cam to scale=1.080 over=270 ease=INOUT    # motion: slow push-in on the line
+  +0    cam pan dx=4.0 dy=0.0 over=270 ease=INOUT    # motion: (centred on the frame)
 end
 
 # ===================================================================== SC20 · 1-07 (390)
@@ -309,7 +309,7 @@ shot a1_08a beat=e101_1_08 len=150 set=bandstand:dusk px=1 cut=CUT scene=a1_sc21
 end
 
 shot a1_08b beat=e101_1_08 len=270 set=bandstand:dusk px=1 cut=CUT
-  cam at=-130,0 scale=1.25
+  cam at=-130,0  # FRAMING: setup scale>1.1 draws the plate shrunk (engine gap); staged at 1.0
   actor mayor who=mayor kind=figure at=120,150 face=front idle=on
   crowd giggle gen=randomize seed=1801 n=40 looks=K24 age=adult kind=chibi formation=lawn(y=150..178) ripple=0..3    # reuse=a1_08a
   +0    sfx FOL_wing_buzz ; move mayor to=120,112 over=20 tw=TW_BRAKE   # flaps up onto the rail
@@ -317,8 +317,8 @@ shot a1_08b beat=e101_1_08 len=270 set=bandstand:dusk px=1 cut=CUT
   +24   say a1_08_mayor_01 mayor
   @a1_08_mayor_01.end+4 walla giggle cheer ; ripple giggle cheer 0..3
   >+R13 say a1_08_mayor_10 mayor ; move mayor to=126,112 over=8   # leaning in
-  +0    cam to scale=1.312 over=270 ease=INOUT    # motion: push in, drifting toward the speaker
-  +0    cam pan dx=1.0 dy=3.4 over=270 ease=INOUT    # motion: (centred on the frame)
+  +0    cam to scale=1.080 over=270 ease=INOUT    # motion: push in, drifting toward the speaker
+  +0    cam pan dx=4.0 dy=0.0 over=270 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a1_08c beat=e101_1_08 len=240 set=bandstand_cu:north_dusk px=2 cut=CUT
@@ -386,10 +386,10 @@ end
 
 # ===================================================================== SC22 · 1-09 (1650)
 shot a1_09a beat=e101_1_09 len=30 set=act_cards:act1 px=1 cut=CUT scene=a1_sc22 insert
-  cam at=60,40 scale=1.5
+  cam at=0,0  # FRAMING: setup scale>1.1 draws the plate shrunk (engine gap); staged at 1.0
   +0    sfx FOL_pen_click
-  +0    cam to scale=1.58 over=30 ease=OUT      # motion: the insert pushes onto the tick
-  +0    cam pan dx=5.4 dy=3 over=30 ease=OUT    # motion: (centred on the frame)
+  +0    cam to scale=1.080 over=30 ease=OUT      # motion: the insert pushes onto the tick
+  +0    cam pan dx=4.0 dy=0.0 over=30 ease=OUT    # motion: (centred on the frame)
   +6    prop.set l2 state=tick ; pop l2 TWT_POP_BLOB            # (art: l2 needs a tick state, ART)
 end
 
@@ -419,19 +419,19 @@ shot a1_09b beat=e101_1_09 len=330 set=bake_tent:night px=1 cut=CUT
 end
 
 shot a1_09c beat=e101_1_09 len=240 set=bake_tent:night px=1 cut=CUT
-  cam at=40,20 scale=1.5
+  cam at=40,0  # FRAMING: setup scale>1.1 draws the plate shrunk (engine gap); staged at 1.0
   actor nana  who=nana  kind=figure at=150,118 face=R idle=on
   actor sunny who=sunny kind=figure at=250,176 face=L idle=on
   +0    fol FX_DISH_SET
   +10   say a1_09_nana_02 nana
   @a1_09_nana_02.end+8 still sunny                              # twelve muffins look back
   @a1_09_nana_02.start+6 take beat_gesture nana    # motion:
-  +0    cam to scale=1.575 over=240 ease=INOUT    # motion: push in, drifting toward the speaker
-  +0    cam pan dx=0.1 dy=2.9 over=240 ease=INOUT    # motion: (centred on the frame)
+  +0    cam to scale=1.080 over=240 ease=INOUT    # motion: push in, drifting toward the speaker
+  +0    cam pan dx=4.0 dy=0.0 over=240 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a1_09d beat=e101_1_09 len=300 set=bake_tent:night px=1 cut=CUT
-  cam at=120,30 scale=2
+  cam at=0,0  # FRAMING: setup scale>1.1 draws the plate shrunk (engine gap); staged at 1.0
   actor sunny who=sunny kind=bust px=2 at=200,120 face=L idle=on
   actor nana  who=nana  kind=bust px=2 at=60,124 face=R idle=on  # OTS
   +0    walla giggle to gain=-34dB
@@ -452,12 +452,12 @@ shot a1_09d beat=e101_1_09 len=300 set=bake_tent:night px=1 cut=CUT
   @a1_09_nana_04.start+14 headturn nana 16 4    # motion:
   @a1_09_nana_05.start+6 headturn nana 16 3    # motion:
   @a1_09_nana_05.start+14 headturn nana 240 4    # motion:
-  +0    cam to scale=2.160 over=300 ease=INOUT    # motion: slow push-in on the line
-  +0    cam pan dx=5.9 dy=3.3 over=300 ease=INOUT    # motion: (centred on the frame)
+  +0    cam to scale=1.080 over=300 ease=INOUT    # motion: slow push-in on the line
+  +0    cam pan dx=4.0 dy=0.0 over=300 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a1_09e beat=e101_1_09 len=4 set=bake_tent:night px=1 cut=CUT insert
-  cam at=120,30 scale=2
+  cam at=0,0  # FRAMING: setup scale>1.1 draws the plate shrunk (engine gap); staged at 1.0
   +0    fx xray at=180,110 art=gen:muffin_xray(key=horned,seed=1) # ART: no plate yet (TODO)
   +0    sfx FX_XRAY_TONE                                        # owns the audio, 4 f
 end
@@ -497,7 +497,7 @@ shot a1_09g beat=e101_1_09 len=270 set=bake_tent:night px=1 cut=CUT
 end
 
 shot a1_09h beat=e101_1_09 len=360 set=bake_tent:night px=1 cut=CUT
-  cam at=60,20 scale=1.5
+  cam at=60,0  # FRAMING: setup scale>1.1 draws the plate shrunk (engine gap); staged at 1.0
   actor nana  who=nana  kind=figure at=150,118 face=R idle=on
   actor sunny who=sunny kind=figure at=230,176 face=L idle=on
   prop  basket art=gen:basket(size=1) plane=tent at=170,140 anchor=bottom hidden=yes
@@ -513,8 +513,8 @@ shot a1_09h beat=e101_1_09 len=360 set=bake_tent:night px=1 cut=CUT
   >+R8  take deadpan nana ; say a1_09_nana_09 nana
   +358  button ; pose nana tuck_towel ; fol FOL_cloth_tug
   @a1_09_nana_08.start+6 take beat_gesture nana    # motion:
-  +0    cam to scale=1.575 over=360 ease=INOUT    # motion: push in, drifting toward the speaker
-  +0    cam pan dx=0.1 dy=2.9 over=360 ease=INOUT    # motion: (centred on the frame)
+  +0    cam to scale=1.080 over=360 ease=INOUT    # motion: push in, drifting toward the speaker
+  +0    cam pan dx=4.0 dy=0.0 over=360 ease=INOUT    # motion: (centred on the frame)
 end
 
 # ===================================================================== SC23 · 1-10 (840)
@@ -565,13 +565,13 @@ shot a1_10b beat=e101_1_10 len=180 set=fun_fair:lost px=1 cut=CUT
 end
 
 shot a1_10c beat=e101_1_10 len=30 set=act_cards:act1 px=1 cut=CUT insert
-  cam at=40,70 scale=2                                          # held 1 s insert, not a whiplash
+  cam at=0,0                                          # held 1 s insert, not a whiplash  # FRAMING: setup scale>1.1 draws the plate shrunk (engine gap); staged at 1.0
   +0    cam pan dx=1                                            # motion: the slow pan is timed now (a setup `cam pan` was dropped)
   +0    sfx FX_SHWIP
 end
 
 shot a1_10d beat=e101_1_10 len=300 set=fun_fair:lost px=1 cut=CUT
-  cam at=-40,0 scale=1.25
+  cam at=-40,0  # FRAMING: setup scale>1.1 draws the plate shrunk (engine gap); staged at 1.0
   actor pip   who=pip   kind=figure at=190,176 face=L idle=on
   actor sunny who=sunny kind=figure at=110,176 face=R idle=on
   +0    fol FX_FOOTSTEP_SMALL
@@ -582,8 +582,8 @@ shot a1_10d beat=e101_1_10 len=300 set=fun_fair:lost px=1 cut=CUT
   @a1_10_pip_04.start+13 blink sunny    # motion:
   @a1_10_pip_04.start+21 take react_small sunny    # motion:
   @a1_10_pip_04.start+29 headturn sunny 232 4    # motion:
-  +0    cam to scale=1.312 over=300 ease=INOUT    # motion: push in, drifting toward the speaker
-  +0    cam pan dx=11.0 dy=3.4 over=300 ease=INOUT    # motion: (centred on the frame)
+  +0    cam to scale=1.080 over=300 ease=INOUT    # motion: push in, drifting toward the speaker
+  +0    cam pan dx=4.0 dy=0.0 over=300 ease=INOUT    # motion: (centred on the frame)
 end
 
 # ===================================================================== SC24 · 1-11 (540)
@@ -602,14 +602,14 @@ end
 
 shot a1_11b beat=e101_1_11 len=90 set=fun_fair:night px=1 cut=CUT insert
   cam at=-150,0
-  +0    cam to x=-110 y=40 scale=2 over=1
+  +0    cam to x=-110 y=0 scale=1 over=1
   actor mascotty who=mascotty kind=figure at=200,170 idle=none pose=paw_closed
   +0    walla giggle to gain=-18dB
   +20   pose mascotty paw_open fps=1 ; fol FOL_paper_rustle              # opens over 8 f
   +60   show page3 ; move page3 to=150,140 over=10
   prop  page3 art=gen:soggy_page(n=3,dry=1,seed=19) plane=fair at=200,140 anchor=center hidden=yes
-  +0    cam to scale=2.120 over=90 ease=INOUT    # motion: track the action
-  +0    cam pan dx=10.6 dy=2.6 over=90 ease=INOUT    # motion: (centred on the frame)
+  +0    cam to scale=1.080 over=90 ease=INOUT    # motion: track the action
+  +0    cam pan dx=4.0 dy=0.0 over=90 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a1_11c beat=e101_1_11 len=150 set=fun_fair:night px=1 cut=CUT
@@ -664,13 +664,13 @@ shot a1_12b beat=e101_1_12 len=120 set=bandstand_cu:north_night px=2 cut=CUT
 end
 
 shot a1_12c beat=e101_1_12 len=60 set=act_cards:act1 px=1 cut=CUT insert
-  cam at=60,40 scale=1.25
+  cam at=0,0  # FRAMING: setup scale>1.1 draws the plate shrunk (engine gap); staged at 1.0
   prop  sheet4 art=gen:paper_sheet(color=grey,face=down,seed=20) plane=board at=88,40 anchor=topleft hidden=yes
   +0    sfx FX_CLIPBOARD ; prop.set l3 state=tick
   +15   show sheet4                                          # the fourth sheet: 30 f clear
   +45   note "sheet4 held +15..+45, nothing else moves (rewatch clue)"
-  +0    cam to scale=1.375 over=60 ease=OUT    # motion: insert push
-  +0    cam pan dx=11.6 dy=6.5 over=60 ease=OUT    # motion: (centred on the frame)
+  +0    cam to scale=1.080 over=60 ease=OUT    # motion: insert push
+  +0    cam pan dx=4.0 dy=0.0 over=60 ease=OUT    # motion: (centred on the frame)
 end
 
 shot a1_12d beat=e101_1_12 len=150 set=bandstand:night px=1 cut=CUT
@@ -741,7 +741,7 @@ end
 # STD: the fog never reaches the tent; no child is in any frame with the fog (no KID cast here).
 shot a1_14a beat=e101_1_14 len=240 set=bandstand:vape px=1 cut=CUT scene=a1_sc27
   cam at=20,0
-  actor bone who=bonejangles kind=figure at=-40,124 face=R idle=on pose=play_ribs fps=8
+  actor bone who=bonejangles kind=figure at=110,124 face=R idle=on pose=play_ribs fps=8
   hide fog1
   hide fog2
   hide eyes1
@@ -769,7 +769,7 @@ shot a1_14a beat=e101_1_14 len=240 set=bandstand:vape px=1 cut=CUT scene=a1_sc27
 end
 
 shot a1_14b beat=e101_1_14 len=210 set=bandstand:vape px=1 cut=CUT
-  cam at=20,0 scale=1.25
+  cam at=20,0  # FRAMING: setup scale>1.1 draws the plate shrunk (engine gap); staged at 1.0
   prop  eyes4 art=gen:red_eyes(seed=4) plane=stage at=196,146 anchor=center light=fixed hidden=yes
   prop.set lan04 state=out
   +0    amb FX_HISS on gain=-28dB
@@ -781,8 +781,8 @@ shot a1_14b beat=e101_1_14 len=210 set=bandstand:vape px=1 cut=CUT
   +70   say w_fog_01 ; cc "[many voices, whispering]"
   @w_fog_01.start+R8 say a1_14_clink_01                            # her layer, slid R8 late
   @w_fog_01.end+R8 say w_fog_02                                    # the child-pitched echo (adult performer)
-  +0    cam to scale=1.312 over=210 ease=INOUT    # motion: push in, drifting toward the speaker
-  +0    cam pan dx=1.0 dy=3.4 over=210 ease=INOUT    # motion: (centred on the frame)
+  +0    cam to scale=1.080 over=210 ease=INOUT    # motion: push in, drifting toward the speaker
+  +0    cam pan dx=4.0 dy=0.0 over=210 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a1_14c beat=e101_1_14 len=90 set=bandstand:vape px=1 cut=CUT
