@@ -11,7 +11,7 @@ The patches apply on top of `7fccf54`, with `git apply docs/wip/<name>.patch`.
 |---|---|---|
 | ~~`music_mu1t_m15_mu4d_banks.patch`~~ | MU1T M1.5 (musgen, guard, turnarounds, GEN graphs), MU6 T3, MU4d banks | **done** (2026-10-25): applied, finished (T3 + T18 in `test_music_rep.c`, the shared-bank T4 check, docs/AUDIO.md), pushed; the patch is deleted |
 | `gba_speed_island_wip.patch` | GBA speed pass, stopped mid-work: island hub static layers / row stream (`fp_island*.c`, `ui_raster.c`, `gba/src/video.c`, `bigbuf.c`) | mid-work; apply onto the current branch and re-verify |
-| `music_mu1_m4.patch` | MU1 M4 (matrix, stingers, comic bridge, DECK vinyl, GEN bags, chapters, beds), MU6 T8/T9 | mid-work |
+| ~~`music_mu1_m4.patch`~~ | MU1 M4 (matrix, stingers, comic bridge, DECK vinyl, GEN bags, chapters, beds), MU6 T8/T9 | **done** (2026-10-25): applied on the M1.5 formats, finished (mmlc's authored cues + the test bank, walk rule 5, quotes from the motif bank, T8, T9, `test_music_graph.c`, docs/AUDIO.md), pushed; the patch is deleted |
 
 Each patch's agent was told to verify everything before pushing. Re-run the full verification after applying a patch: `make -C core test`, SAN=1, xcheck, check-gen, the GBA builds and tests, and clean PS1 builds.
 
@@ -47,7 +47,13 @@ Each patch's agent was told to verify everything before pushing. Re-run the full
      clang), the GEN slots of TITLE / HAHALAND / INVASION / HOME, T3/T18
      (`test_music_rep.c`, `music_rep_lib.c`, `music_rep_proto.c`: the
      prototype passes, the four known loops fail); the bank is 14,428 B;
-   - finish MU1 M4 (the patch above);
+   - ~~finish MU1 M4~~ **done** (2026-10-25): the adaptive runtime
+     (docs/AUDIO.md "The adaptive runtime"), mmlc's `cue` / `sting` blocks,
+     the test bank (`core/tests/music/`), T8 / T9 / `test_music_graph.c`.
+     Not in M4, so MU4 cues use literal lanes and the walk: the comp / DNA
+     runtime (`mus_var` ops, MU1T's comp patterns), the 1-bar turnaround
+     insertion (walk rule 5 relaxes instead), TAPE scratches and the
+     zip / clicks crackle (M7);
    - MU4a/b/c: the wave-1 cues;
    - MU5b: Studio, Concert and DJ.
 3. **Finish and optimize** (`finish_workflow.js`), all of it still to do:

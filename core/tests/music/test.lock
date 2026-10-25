@@ -1,0 +1,7 @@
+# test.lock - the test bank's ids (owner: MU6; T3, T8, T9). Not game ids:
+# core/tests/data/mus_testbank.h defines them for the tests only.
+#   NAME = id      kind (cue | sting)
+MCT_HUB        = 1   cue
+MCT_TWO        = 2   cue
+STGT_TADA      = 1   sting
+STGT_HIT       = 2   sting

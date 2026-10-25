@@ -102,5 +102,15 @@ int  music_cue_exists(int cue);
 uint32_t music_cue_length(int cue);
 /* Display name of a cue ("" if none). */
 const char *music_cue_name(int cue);
+/* M4: music_update() calls so far - the clock of music_sting_at() and
+ * music_vinyl_at() (an event lands on tick T when it is dispatched in the
+ * update that brings music_now() to T). */
+uint32_t music_now(void);
+/* M4: ambient beds (sec.6.5), seeded emitters that play while the music
+ * rests or is silent ([NO MUSIC]); the scene says which (a mask of 1 << MBED_*),
+ * hour gates the birds and the crickets. 0 = none (the default). */
+enum { MBED_BIRDS, MBED_CRICKETS, MBED_WIND, MBED_RAIN, MBED_RIVER, MBED_LAVA, MBED_VAPE, MBED_CROWD,
+       MBED_CLOCK, MBED_MACHINERY, MBED_EMBERS, MBED_FIREWORKS, MUS_BED_COUNT };
+void music_beds(uint16_t mask);
 
 #endif

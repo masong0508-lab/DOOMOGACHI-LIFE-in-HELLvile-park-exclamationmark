@@ -1,0 +1,19 @@
+# hub.dms - the test hub's GEN slot (owner: MU6): hand-written variants in
+# musgen's format (core/music/gen/*.dms), 2 families of 2.
+gencue MCT_HUB theme=TEST key=C:major bpm=120 meter=4 dial=S1 i=I3
+
+gen GEN_T tmpl=DEV motif=HOOK cad=HC n=4 fam=2 roles=LEAD,COUNTER bars=2 energy=3 var_cap=2
+  variant 0 fam=0
+    chords  | C . | G . |
+    LEAD    o5 l8 c e g e c4 e4 | d f g f d2 |
+    COUNTER o4 l4 g r e r | g r b r |
+  variant 1 fam=0
+    chords  | C . | G . |
+    LEAD    o5 l8 e g e c e4 g4 | b g d g b2 |
+  variant 2 fam=1
+    chords  | Am . | F . |
+    LEAD    o5 l8 a >c< a e a4 >c4< | f8 a8 >c8< a8 f2 |
+    COUNTER o4 l4 e r c r | c r a r |
+  variant 3 fam=1
+    chords  | Am . | F . |
+    LEAD    o5 l8 c e a e c4 e4 | a f c f a2 |

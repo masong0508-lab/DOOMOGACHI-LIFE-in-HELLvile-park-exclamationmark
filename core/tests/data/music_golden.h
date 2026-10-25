@@ -24,7 +24,7 @@ static const uint32_t music_golden[MUSIC_GOLDEN_N][3] = {
     { 0xB92232ECu, 0x275307F2u, 0x9FA13755u },   /* Cloud Nine Lounge */
     { 0x004B93C7u, 0x19EFC381u, 0x12441C08u },   /* The Wall */
     { 0x3FE604D2u, 0xAAFE1EC5u, 0xABF2678Fu },   /* Mingle */
-    { 0x214911ACu, 0x66D7A7AFu, 0xD243E0C5u },   /* Lullaby for the Wall */
+    { 0xD1341392u, 0xC40366EFu, 0x722ECE62u },   /* Lullaby for the Wall */
     { 0x9BB0C09Bu, 0x66D7A7AFu, 0xD243E0C5u },   /* Two Choirs */
     { 0x86FCB9A1u, 0x66D7A7AFu, 0xD243E0C5u },   /* Boat Floats */
     { 0x9F7F61ACu, 0x66D7A7AFu, 0xD243E0C5u },   /* Thirteen Bells */

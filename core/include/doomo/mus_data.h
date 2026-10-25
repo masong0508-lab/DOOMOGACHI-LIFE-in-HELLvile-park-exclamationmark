@@ -256,6 +256,15 @@ enum { MCAD_FAM_MAJOR, MCAD_FAM_MINOR, MCAD_FAM_METAL };              /* S0-S1, 
 enum { MCC_MAJ, MCC_MIN, MCC_DOM, MCC_OTHER };
 #define MUS_CAD_BYTES 24
 /* --- end music --- */
+/* --- music: MU1 M4 runtime notes ---
+ * Edge conditions MEC_PARAM_GE / MEC_PARAM_LT read arg = param (5 bits) |
+ * level (3 bits) << 5, threshold = level * 32. A pack with MNP_VARIANTS keeps
+ * its MusVarDir offset (from the pack start) in lane_off[n_lanes]; variant
+ * lane offsets and var_off[] count from the pack start too. A missing misc
+ * table (offset 0) means the engine's built-in default (PARAMS: rise / fall
+ * 8 per tick, MP_INTENSITY 128, MP_HP 255). */
+#define MUS_ANY 0xFF                /* MusTrans.from / to: any cue */
+/* --- end music --- */
 
 /* ---- events: rings A (deck A) and B (deck B, SFX deck, urgent) ------------------- */
 /* pos = master units (bits 0-27) | kind << 28; arg packed per kind,
