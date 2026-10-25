@@ -126,6 +126,9 @@ class Stage:
         from . import stage
         c = self.c
         sname = (c.shot.kv.get("set") or "").partition(":")
+        if getattr(c, "host", None) is not None:
+            self.host_plane()
+            return
         if not sname[0] or c.set_kind != "2d":
             return
         planes, notes = stage.resolve_set(sname[0], sname[2] or None, bake_images=bake,
@@ -172,6 +175,26 @@ class Stage:
             self.ids[p["id"]] = pid
             if p.get("prop"):
                 self.prop_planes.setdefault(p["prop"], []).append((p["state"], pid))
+
+    def host_plane(self):
+        """the shot's one OVERWORLD/ROOM/VIEW3D plane: hosts.py's record (hostbridge.py)"""
+        from . import hosts as H
+        from .errors import Diag
+        c = self.c
+        kind = {"view3d": F.SHWP_VIEW3D, "overworld": F.SHWP_OVERWORLD, "room": F.SHWP_ROOM}[c.set_kind]
+        try:
+            payload = c.host.pack()
+        except H.HostError as e:
+            s = c.shot
+            w = {"file": e.where.file, "line": e.where.line} if getattr(e, "where", None) is not None and \
+                hasattr(e.where, "file") else s.where()
+            self.diags.append(Diag(e.rule, str(e.msg) if hasattr(e, "msg") else str(e), shot=s.id,
+                                   severity="error", **w))
+            return
+        pid = self.next_id
+        self.next_id += 1
+        self.ch.planes.append(F.plane(kind, payload, id=pid, order=0))
+        self.ids["host"] = pid
 
     def strokes(self, p, pid):
         from .picture import strokes as S
@@ -346,7 +369,9 @@ def _wp6_records(ch, c, diags):
         kv = dict(r.get("kv") or {})
         try:
             looks = kv.get("looks", "")
-            if not looks.startswith("kset:"):
+            if r.get("cast_looks"):
+                looks = list(r["cast_looks"])
+            elif not looks.startswith("kset:"):
                 ids = _look_ids(looks)
                 if not ids:
                     raise A.CastError("crowd %s: no looks (gen=randomize needs looks=<a_1..a_N> or kset:)"
@@ -482,6 +507,8 @@ def chunk_for(ep, c, diags, bake=True):
             row = _wp6_actor_op(name, words)          # lane 2's ShowActorOp row, or None
             if row is not None:
                 show_op(f, F.SOP_ACTOR_BASE, row, w.get("line", 0))
+        elif name == "SOP_CROWDOP":                   # [crowd, SHCO_*, a] (show_crowd_op)
+            show_op(f, F.SOP_CROWD_BASE, words, w.get("line", 0))
         elif name in SOP_CROWD:
             pass        # SOP_PROP / SOP_FX: no player module reads them (0x0C0 is the crowd op)
         elif name in SOP_HOST:

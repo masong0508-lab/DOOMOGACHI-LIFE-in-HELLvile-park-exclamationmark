@@ -30,3 +30,4 @@
 - WP11: per-frame crayon foley from the stroke's real reveal speed (needs the art lane's stroke points; the mix uses the reveal span) and paw ticks from showc's walk-cycle contacts (timeline.json has crowd counts only).
 - PCdrv loading (M0-T5's optional half): not tested; disc images rebuild in seconds and the pilot does not need it.
 - Compiler `pose <actor> <flipbook>` ops: dropped until the compiler emits lane 2's FLIP records (the flipbooks are in ART's library; staging still gets walks, moves, squash, blinks, faces).
+- ENGINE hosts: ROOM door hinge, single-member crowd hide (demons.N), timed show/hide of shot props: approximated/no-op this week (compile-clean; hostbridge.py).

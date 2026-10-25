@@ -509,6 +509,7 @@ class ShotCompiler:
         self.text_items = []            # picture.text.Item list               -> PIC1 TEXT
         self.pic_events = []            # (t, op, args)                         -> PIC1 EVTS
         self.mouth_raw = []             # (actor index, shot frame, viseme letters) -> WP6 TRAK
+        self.host = None                # hostbridge.HostShot on an overworld/room/view3d set
 
     # -- helpers -------------------------------------------------------------
     def d(self, rule, msg, st=None, severity="error", frame=None):
@@ -535,11 +536,44 @@ class ShotCompiler:
     def xy(self, txt, st, what="at"):
         if txt is None:
             return 0, 0
+        an = self.anchor_xy(txt, st)
+        if an is not None:
+            return an
         parts = str(txt).split(",")
         if len(parts) != 2:
             st.fail("STAGE", "%s=%s: x,y" % (what, txt))
         return (self.snap(docunits.num(parts[0], _w(st)), st, what + " x"),
                 self.snap(docunits.num(parts[1], _w(st)), st, what + " y"))
+
+    def anchor_xy(self, txt, st, f=0):
+        """room:/mon:/follow:/prop: anchors and VIEW3D world cells -> show px (None: not an anchor)"""
+        t = str(txt)
+        kind = t.partition(":")[0]
+        if kind == "prop" and t[5:] in self.prop_ix:
+            p = self.props[self.prop_ix[t[5:]]]
+            return p["x"], p["y"]
+        if kind == "prop" and self.host is not None:
+            return self.host.anchor("room:" + t[5:].replace("shellL", "window_sill_l").replace(
+                "shellR", "window_sill_r"), f)
+        if self.host is not None:
+            if kind in ("room", "mon", "follow"):
+                xy = self.host.anchor(t, f or getattr(self.host, "cur_f", 0))
+                return xy if xy is not None else (160, 120)
+            if self.set_kind == "view3d" and re.fullmatch(r"-?\d+(\.\d+)?,-?\d+(\.\d+)?", t):
+                x, y = [float(v) for v in t.split(",")]
+                if x < 128 and y < 128 and ("." in t):
+                    return self.host.project(x, y, f, 0.4)
+        elif kind == "follow":
+            who, _, part = t[7:].partition(".")
+            ai = self.actor_ix.get(who)
+            if ai is None and who in self.prop_ix:
+                p = self.props[self.prop_ix[who]]
+                return p["x"], p["y"]
+            if ai is not None:
+                from .hostbridge import PARTS
+                dx, dy = PARTS.get(part or "feet", (0, -16))
+                return self.actors[ai]["x"] + dx, self.actors[ai]["y"] + dy
+        return None
 
     def actor(self, name, st):
         if name in self.actor_ix:
@@ -653,6 +687,12 @@ class ShotCompiler:
                    severity="warning")
         if sd.kind != "2d" and sh.px != 1:
             self.d("PIC-SNAP", "3D set kinds are px=1 only (spec 2.3)")
+        if sd.kind in ("overworld", "room", "view3d"):
+            from . import hostbridge
+            try:
+                self.host = hostbridge.HostShot(self)       # the shot's one host plane (emit.Stage)
+            except Exception as e:                          # noqa: BLE001
+                self.d("SHW-HOST", "set %s: %s: %s" % (sname, type(e).__name__, e))
         for p in sd.planes:
             try:
                 self.plane(p, sd)
@@ -913,6 +953,9 @@ class ShotCompiler:
         w = _w(c)
         n = int(c.get("n", "1"))
         age = c.get("age")
+        cast_looks = None
+        if c.get("gen") == "cast":
+            cast_looks, age, n = self.cast_crowd(c, cid, n, age)
         if age not in AGES:
             self.d("STD-AGE", "crowd %s must declare age=adult|teen|child" % cid, c)
             age = "adult"
@@ -930,7 +973,12 @@ class ShotCompiler:
                "id": cid, "age_name": age, "kind_name": kind, "species_name": c.get("species"), "tags": tags,
                "kv": dict(c.kv)}
         looks = c.get("looks")
-        if c.get("gen") == "randomize":
+        if cast_looks is not None:
+            rec["gen"] = 2
+            rec["cast_looks"] = cast_looks
+            rec["look_k"] = len(cast_looks)
+            rec["kv"]["n"] = str(n)
+        elif c.get("gen") == "randomize":
             rec["gen"] = 1
         elif looks and looks.startswith("kset:"):
             kid = looks[5:]
@@ -964,6 +1012,46 @@ class ShotCompiler:
             self.d("TIME-RIPPLE", "crowd %s ripple %s: ripples are 0-3 f" % (cid, rp), c, "warning")
         self.crowd_ix[cid] = len(self.crowds)
         self.crowds.append(rec)
+
+    def kid_safe(self):
+        """STD-KIDS: may a child be in this shot? Not with gore=BRUTAL, on a first-person (VIEW3D)
+        set, or in a scene tagged adult/suggestive/innuendo/romance"""
+        if self.gore == "BRUTAL" or self.set_kind == "view3d":
+            return False
+        tags = " ".join(str(self.shot.kv.get(k, "")) for k in ("tags", "rating", "scene", "tone")).lower()
+        tags += " " + " ".join(str(c.text()).lower() for c in self.st.children if c.kw in ("tag", "note"))
+        return not any(t in tags for t in ("adult", "suggestive", "innuendo", "romance", "sexy", "flirt",
+                                           "mingle", "brutal", "gore"))
+
+    def cast_crowd(self, c, cid, n, age):
+        """`crowd <id> gen=cast who=a,b,random:N`: the named cast as crowd members (their own
+        looks); children are dropped from any shot that is not kid-safe (STD-KIDS)"""
+        who = [x for x in (c.get("who") or "").split(",") if x]
+        safe = self.kid_safe()
+        looks, dropped, kid = [], [], False
+        for wid in who:
+            if wid.startswith("random:"):
+                continue
+            ch = self.cast.chars.get(wid)
+            if ch is None:
+                self.d("CROWD", "crowd %s: gen=cast who=%s: no such character" % (cid, wid), c)
+                continue
+            if ch.get("age") == "child":
+                if not safe:
+                    dropped.append(wid)
+                    continue
+                kid = True
+            lb = self.cast.looks.get(wid)
+            if lb:
+                looks.append((wid, bytes(lb)))
+        if dropped:
+            self.d("STD-KIDS", "crowd %s: %s left out of the crowd (a child is never in this shot's context)"
+                   % (cid, ", ".join(dropped)), c, "info")
+        if not looks:
+            c.fail("CROWD", "crowd %s: gen=cast found no cast looks (who=%s)" % (cid, c.get("who")))
+        if age not in AGES:
+            age = "child" if kid else "adult"
+        return looks, age, max(len(looks), min(n, len(looks)))
 
     def change(self, c):
         if not self.shot.kv.get("base"):
@@ -1161,6 +1249,22 @@ class ShotCompiler:
             c.fail(FORBIDDEN[kw], "`%s` is not allowed in a show (spec 5.5%s)" % (
                 kw, ": a show never waits for a button" if kw == "waita" else
                 "; sound is a show op: sfx/mx/walla" if kw in ("music", "mute", "duck") else ""))
+        if self.host is not None:
+            from .hostbridge import HOST_KWS
+            self.host.cur_f = f
+            if kw in HOST_KWS and self.host.op(f, c):
+                self.tl(f, c, "show", kw)
+                return
+            if kw == "sfx":
+                self.host.sfx(f, c)
+            if kw == "eyes" and self.host.eyes(f, c):
+                return
+        if self.crowd_op(f, c):
+            return
+        if kw == "prop" and c.pos and c.pos[0] not in self.prop_ix:
+            self.prop(c)                    # a timed prop: declared where the line is (props have no hide yet)
+            self.tl(f, c, "show", kw)
+            return
         if kw in ENGINE_OPS:
             return self.engine(f, c)
         if kw in AUDIO_OPS:
@@ -1206,6 +1310,114 @@ class ShotCompiler:
         if kw in ("wipe", "split", "dissolve"):
             return self.wipe_op(f, c)
         c.fail("SHW-OPS", "unknown op `%s` (spec 5.5)" % kw)
+
+    # -- crowds as targets (show_crowd.c SHCO_*: one SOP_CROWD row [crowd, op, a]) ------------
+    CROWD_KWS = {"still", "freeze", "thaw", "panic", "walk", "move", "pose", "face", "headturn", "ripple",
+                 "flinch", "hide", "show", "say", "take", "expr", "squash", "blink", "pop", "eyes"}
+    SHCO = {"freeze": 0, "thaw": 1, "pop": 2, "face": 3, "speed": 4, "show": 5}
+    CROWD_POP = {"clap": "TWT_CLAP", "pileup": "TWT_CLUNK", "laugh": "TWT_HOP2", "hat": "TWT_HOP1"}
+
+    def crowd_ref(self, tok):
+        """'crowd:<id>[.N]' or a bare crowd id[.N] (not an actor) -> (crowd index, member) or None"""
+        if not tok:
+            return None
+        t = tok[6:] if tok.startswith("crowd:") else tok
+        name, _, mem = t.partition(".")
+        if name in self.crowd_ix and (tok.startswith("crowd:") or name not in self.actor_ix):
+            return self.crowd_ix[name], mem or None
+        return None
+
+    def crowd_row(self, f, ci, op, a, c):
+        self.sop(f, "SOP_CROWDOP", [ci, self.SHCO[op], a], c)
+
+    def crowd_twt(self, name):
+        for k, v in self.CROWD_POP.items():
+            if name and name.startswith(k):
+                return textpack_bridge.sym(v, _w(self.st), "TWT_")
+        return textpack_bridge.sym("TWT_HOP1", _w(self.st), "TWT_")
+
+    def crowd_op(self, f, c):
+        kw = c.kw
+        if kw not in self.CROWD_KWS:
+            return False
+        w = list(c.words)
+        if kw in ("ripple", "flinch") and w and (w[0] == "crowd" or w[0].startswith("crowd:") or not self.crowds) \
+                and (not self.crowds or self.crowd_ref(w[0]) is None and w[0] != "crowd"):
+            self.d("CROWD", "%s %s: no such crowd in this shot (nothing to ripple)" % (kw, w[0]), c, "info")
+            return True
+        if kw == "ripple" and w and w[0] not in self.crowd_ix and w[0] not in self.actor_ix:
+            self.d("CROWD", "ripple %s: no crowd %s in this shot" % (w[0], w[0]), c, "info")
+            return True
+        if not self.crowds:
+            return False
+        if kw == "flinch" and w and w[0] == "crowd":
+            for ci in range(len(self.crowds)):
+                self.crowd_row(f, ci, "pop", self.crowd_twt("hat"), c)
+            self.tl(f, c, "show", kw)
+            return True
+        ti = 1 if kw in ("say", "take") else 0
+        ref = self.crowd_ref(w[ti]) if len(w) > ti else None
+        if ref is None:
+            return False
+        ci, mem = ref
+        rec = self.crowds[ci]
+        if kw == "say":                       # a crowd line: the walla's voice, the crowd hops on it
+            rest = [t for t in c.toks if not (t.kind == "word" and t.value == w[1])]
+            from .parse import Stmt
+            self.say(f, Stmt("say", rest, c.file, c.line, c.time))
+            self.crowd_row(f, ci, "pop", self.crowd_twt("laugh"), c)
+            return True
+        if kw in ("still", "freeze"):
+            self.crowd_row(f, ci, "freeze", 0, c)
+            ov = c.get("over")
+            if ov and ".." in ov:
+                end = self.span(ov, f, c)[1]
+                if end < self.shot.len:
+                    self.crowd_row(end, ci, "thaw", 0, c)
+        elif kw == "thaw":
+            self.crowd_row(f, ci, "thaw", 0, c)
+        elif kw == "panic":
+            self.crowd_row(f, ci, "thaw", 0, c)
+            self.crowd_row(f, ci, "speed", -768 if rec["dir"] else 768, c)
+            self.crowd_row(f, ci, "pop", self.crowd_twt("hat"), c)
+        elif kw in ("walk", "move"):
+            ov = max(1, docunits.frames(c.get("over", "30"), _w(c)))
+            to = str(c.get("to", "0"))
+            if "," in to or to.startswith("+") or to.startswith("-"):
+                dx = float(docunits.num(to.split(",")[0].lstrip("+"), _w(c)) or 0)
+                if to.startswith("-"):
+                    dx = -abs(dx)
+            else:
+                dx = float(docunits.num(to, _w(c))) - rec["from"]
+            self.crowd_row(f, ci, "speed", int(round(dx * 256 / ov)), c)
+            if f + ov < self.shot.len:
+                self.crowd_row(f + ov, ci, "speed", 0, c)
+        elif kw in ("pose", "take", "pop", "squash", "expr", "blink"):
+            self.crowd_row(f, ci, "pop", self.crowd_twt(w[1] if len(w) > 1 else "hat"), c)
+        elif kw == "ripple":
+            what = w[1] if len(w) > 1 else "laugh"
+            if what == "headturn":
+                b = int(w[2]) if len(w) > 2 and re.fullmatch(r"-?\d+", w[2]) else 64
+                self.crowd_row(f, ci, "face", 2 if 0 < b % 256 < 128 else (1 if b % 256 >= 128 else 0), c)
+            else:
+                self.crowd_row(f, ci, "pop", self.crowd_twt(what), c)
+        elif kw == "headturn":
+            b = int(w[1]) if len(w) > 1 and re.fullmatch(r"-?\d+", w[1]) else 64
+            self.crowd_row(f, ci, "face", 2 if 0 < b % 256 < 128 else (1 if b % 256 >= 128 else 0), c)
+        elif kw == "eyes":
+            d = (w[1] if len(w) > 1 else "D").upper()
+            self.crowd_row(f, ci, "face", {"L": 1, "R": 2, "U": 3}.get(d, 0), c)
+        elif kw == "face":
+            d = (w[1] if len(w) > 1 else "front")
+            self.crowd_row(f, ci, "face", {"L": 1, "R": 2, "back": 3, "wall": 3}.get(d, 0), c)
+        elif kw in ("hide", "show"):
+            if mem is not None:              # one member: show_crowd.c hides whole crowds only
+                self.d("CROWD", "%s %s: one crowd member cannot be hidden on its own yet; the crowd stays"
+                       % (kw, w[0]), c, "info")
+            else:
+                self.crowd_row(f, ci, "show", 1 if kw == "show" else 0, c)
+        self.tl(f, c, "show", kw, extra={"crowd": rec["id"]})
+        return True
 
     def until_arg(self, c):
         u = c.get("until")
@@ -1541,7 +1753,9 @@ class ShotCompiler:
         t = self.lib.line_timing(lid, self.cast)
         ai = -1
         who = ln["speaker"]
-        if len(c.words) > 1:
+        if len(c.words) > 1 and c.words[1].startswith("crowd:") and self.crowd_ref(c.words[1]) is None:
+            pass                                # an off-screen crowd's line: the voice only
+        elif len(c.words) > 1:
             ai = self.actor(c.words[1], c)
         else:
             hits = [i for i, a in enumerate(self.actors) if a["who"] == who]
@@ -1745,7 +1959,8 @@ class ShotCompiler:
             self.sop(f, "SOP_MOVE", [ai, x, y, over, tw], c)
             end = f + over
         elif kw == "walk":
-            x = self.snap(docunits.num((c.get("to") or "0").split(",")[0], w), c, "to")
+            an = self.anchor_xy(c.get("to") or "0", c)
+            x = an[0] if an else self.snap(docunits.num((c.get("to") or "0").split(",")[0], w), c, "to")
             over = self.frames_arg(c.get("over"), c) or 0
             self.sop(f, "SOP_WALK", [ai, x, over], c)
             end = f + over
@@ -1789,6 +2004,12 @@ class ShotCompiler:
             if s is None:
                 c.fail("SIGN", "unknown string %s" % sid)
             on = c.get("on")
+            if on and on.startswith("mon:") and on not in self.prop_ix:
+                x, y = self.xy(on, c)
+                self.prop_ix[on] = len(self.props)          # an art-less anchor where the monster stands
+                self.props.append({"plane": 0, "face": 0, "anchor": 1, "flags": 0, "x": x, "y": y - 24,
+                                   "art": self.ep.strtab.add(None), "tex": F.NONE, "id": on, "par": 0,
+                                   "plane_id": None, "src": None, "states": {}})
             if on not in self.prop_ix:
                 c.fail("SIGN", "sign %s on=%s: no such prop" % (sid, on))
             self.sop(f, "SOP_SIGN", [self.s(s["text"]), self.prop_ix[on]], c)
