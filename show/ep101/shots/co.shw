@@ -267,7 +267,8 @@ end
 
 shot co21 beat=e101_co_6 len=270 set=egg_basket:dawn px=2 look=pixel cut=CUT matte=open
   +0    sfx FX_BASKET_CREAK
-  +15   sfx FX_BUS_HORN_FAR                                   # the first two notes of the chorus hook
+  +0    cam to x=0 y=-18 over=195 ease=LINEAR                 # slow crane up the basket onto the egg (keeps the wait alive)
+  +15   sfx FX_BUS_HORN_FAR                                  # the first two notes of the chorus hook
   +45   shake SHK_TAP ; fx sparkle at=160,90 n=4 seed=2101 ; sfx FX_EGG_WOBBLE ; cc "[tik]"           # 30 f after the horn
   +105  sfx FX_BUS_HORN_NEAR                                  # nearer, three notes
   +135  shake SHK_TAP ; fx sparkle at=160,90 n=8 seed=2102 ; sfx FX_EGG_WOBBLE_LOW ; mx hahaland_dawn duck -12dB 30
