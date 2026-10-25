@@ -36,6 +36,33 @@ ENGINE_OPS = {"shake", "punch", "zoom", "flash", "pal", "tint", "hitstop", "expr
 FORBIDDEN = {"waita": "SHW-WAITA", "flag": "SHW-OPS", "music": "SHW-OPS", "mute": "SHW-OPS",
              "duck": "SHW-OPS", "insert": "SHW-OPS", "cut": "SHW-OPS", "act": "SHW-OPS",
              "caption": "SHW-OPS", "hold": "SHW-OPS", "npc": "SHW-OPS"}
+# fx <kind> -> (mode 0 burst 1 rise 2 fall 3 hearts 4 sparkle, colour, life f, size px)
+PFX_KINDS = {
+    "firework": (4, "PAINT_BUBBLEGUM:1", 36, 2), "sparkle": (4, "PAINT_LEMON:1", 24, 2),
+    "sparks": (0, "PAINT_TANGERINE:1", 14, 1), "burst": (0, "WHITE", 16, 1),
+    "sparks_side_by_side": (0, "PAINT_TANGERINE:1", 14, 1), "confetti": (2, "PAINT_MAGENTA:1", 40, 1),
+    "paint_bloom": (0, "PAINT_ROSE:1", 22, 2), "pop_heart": (3, "PAINT_CHERRY:1", 20, 1),
+    "heart_fall": (2, "PAINT_ROSE:1", 45, 1), "truth_heart": (3, "PAINT_CHERRY:1", 30, 2),
+    "smoke": (1, "GRAY_L", 40, 2), "steam": (1, "WHITE", 36, 1), "smoke_thread": (1, "GRAY", 50, 1),
+    "bubbles": (1, "PAINT_SKY:2", 40, 1), "bubble_rise": (1, "PAINT_SKY:2", 40, 1),
+    "bubble_bounce": (1, "PAINT_SKY:2", 30, 2), "embers": (1, "PAINT_HELLFIRE:1", 45, 1),
+    "geyser": (1, "PAINT_SKY:1", 30, 2), "lift": (1, "WHITE", 24, 1), "dust": (0, "GRAY_L", 18, 1),
+    "dust_pink": (0, "PAINT_PEACH:2", 18, 1), "chalk_dust": (0, "WHITE", 18, 1),
+    "stuffing_land": (0, "WHITE", 16, 2), "halo_glow": (4, "UI_GOLD", 24, 1), "glow_pulse": (4, "UI_GOLD", 24, 1),
+    "light_ripple": (4, "WHITE", 20, 1), "fog_gust": (1, "GRAY_L", 30, 3), "gore_spiral": (0, "PAINT_BLOOD:1", 20, 2),
+    "drool": (2, "PAINT_SKY:2", 24, 1), "water_pour": (2, "PAINT_SKY:1", 30, 1),
+}
+def _set_kv(c, key, value):
+    """set (or add) a key=value option on a parsed statement"""
+    for t in c.toks:
+        if t.kind == "kv" and t.key == key:
+            t.value = value
+            return
+    c.toks.append(parse.Tok("kv", value, key=key))
+
+
+UNTIMED_AT0 = {"sign", "card", "fx", "tint", "zoom", "pal", "boil", "lens", "super", "flash", "shake",
+               "button", "nobutton"}
 AUDIO_OPS = {"sfx", "fol", "amb", "mx", "walla", "tapestop", "cc", "hum", "stop"}
 LOOKS = {"pixel": 0, "crayon": 1, "sepia": 2, "lcd": 3, "hellify": 4}
 CUTS = {"CUT": 0, "SMASH": 1, "MATCH": 2, "FADE": 3, "IRIS": 4, "WIPE": 5}
@@ -537,9 +564,53 @@ class ShotCompiler:
             return 0, 0
         parts = str(txt).split(",")
         if len(parts) != 2:
+            named = self.named_xy(str(txt), what)
+            if named is not None:
+                return named
             st.fail("STAGE", "%s=%s: x,y" % (what, txt))
         return (self.snap(docunits.num(parts[0], _w(st)), st, what + " x"),
                 self.snap(docunits.num(parts[1], _w(st)), st, what + " y"))
+
+    def named_xy(self, txt, what="at"):
+        """a staged position by name (show px): center, frame:<set frame> (the camera there),
+        prop:/actor:/follow:/crowd:/mark:/room:/mon:<id>[.part], @<mark>, or a bare id. An id the
+        shot does not know resolves to the frame centre (lane 3's hosts place room:/mon: anchors)."""
+        kind, _, name = txt.partition(":") if ":" in txt else ("", "", txt)
+        name = name.lstrip("@")
+        base = name.split(".")[0]
+        sd = getattr(self, "setdef", None)
+        if txt == "center" or base == "center":
+            return (160, 90) if what != "cam at" else (0, 0)
+        if kind == "frame" or (what == "cam at" and sd is not None and base in getattr(sd, "frames", {})):
+            fr = getattr(sd, "frames", {}).get(base) if sd is not None else None
+            if fr is not None:
+                xy = str(fr.get("at", "0,0")).split(",")
+                try:
+                    return int(float(docunits.num(xy[0], {}))), int(float(docunits.num(xy[1], {})))
+                except Exception:                      # noqa: BLE001
+                    return 0, 0
+            return 0, 0
+        if kind in ("", "prop", "follow") and base in getattr(self, "prop_ix", {}):
+            p = self.props[self.prop_ix[base]]
+            return p["x"], p["y"]
+        if kind in ("", "actor", "follow") and base in getattr(self, "actor_ix", {}):
+            a = self.actors[self.actor_ix[base]]
+            dy = {"head": -40, "hand": -20, "arm": -24, "bottom": 0}.get(name.partition(".")[2], 0)
+            return a["x"], a["y"] + dy
+        if kind in ("", "follow", "actor"):
+            hits = [a for a in getattr(self, "actors", []) if a["who"] == base]
+            if hits:
+                return hits[0]["x"], hits[0]["y"]
+        if kind in ("", "mark") and sd is not None and base in getattr(sd, "marks", {}):
+            m = sd.marks[base]
+            return int(m[0]), int(m[1]) if len(m) > 1 else 90
+        if kind == "crowd" or base in getattr(self, "crowd_ix", {}):
+            return 160, 120
+        if kind in ("room", "mon", "mark", "prop", "follow", "actor", "") or name:
+            self.d("STAGE", "%s=%s: no such anchor in this shot; the frame centre is used" % (what, txt),
+                   severity="warning")
+            return (160, 90) if what != "cam at" else (0, 0)
+        return None
 
     def actor(self, name, st):
         if name in self.actor_ix:
@@ -579,6 +650,8 @@ class ShotCompiler:
             cut = "CUT"
         self.cut = cut
         self.flags |= CUTS[cut] << 8
+        if cut == "WIPE":                       # the cut itself: a brick column sweeps the shot in
+            self.wipes.append((0, "wipe", {"hold": "0", "dir": "L", "line": "320"}, []))
         if hdr.get("matte") == "black":
             self.flags |= F.C["SHW_SHOT_MATTE_BLACK"]
         if hdr.get("text") == "off":
@@ -797,8 +870,10 @@ class ShotCompiler:
             self.ad.append({"f": self.shot.start, "text": c.strs[0] if c.strs else " ".join(c.words)})
         elif kw in ("label",):
             c.fail("TIME", "`label` needs a time (+N label NAME)")
-        elif kw in ("show", "hide", "prop.set", "stroke"):
+        elif kw in ("show", "hide", "prop.set", "stroke", "prop.show", "prop.hide"):
             self.vis_op(0, c)                    # a setup visibility = its state at frame 0
+        elif kw in UNTIMED_AT0:
+            self.op(0, c, None, ("rel", 0))     # a picture op written as setup = at +0
         else:
             c.fail("SHW-OPS", "`%s` is not a setup statement (spec 5.5: look cam actor prop crowd change assert "
                               "waive note scene tag ad); timed ops need a time: +N %s ..." % (kw, kw))
@@ -815,6 +890,19 @@ class ShotCompiler:
 
     def cam_setup(self, c):
         w = _w(c)
+        if c.words and c.words[0] in ("to", "pan", "creep", "whip", "crane", "stop", "shake"):
+            return self.cam_op(0, c)            # a camera move written in the setup = from +0
+        at0 = c.get("at")
+        if at0 is not None and len(str(at0).split(",")) != 2:
+            fr_name = str(at0).split(":", 1)[-1]
+            sd = getattr(self, "setdef", None)
+            fr = getattr(sd, "frames", {}).get(fr_name) if sd is not None else None
+            x, y = self.named_xy(str(at0), "cam at")
+            _set_kv(c, "at", "%d,%d" % (x, y))
+            if fr is not None and fr.get("scale") and not c.get("scale"):
+                _set_kv(c, "scale", fr.get("scale"))
+        if not c.words and c.get("at") is None and (c.get("x") or c.get("y")):
+            _set_kv(c, "at", "%s,%s" % (c.get("x", "0"), c.get("y", "0")))
         if c.words and c.words[0] == "drift":
             z = 0
             if c.get("zero"):
@@ -1179,6 +1267,15 @@ class ShotCompiler:
         if kw == "cam":
             return self.cam_op(f, c)
         if kw == "reveal":
+            if c.words and c.words[0] not in self.stroke_ix and c.words[0].split(".")[0] in self.prop_ix:
+                pid = c.words[0].split(".")[0]                       # a prop "reveal" = it appears
+                self.vis.append((f, "prop", pid, None, True))
+                self.tl(f, c, "show", "show %s" % pid)
+                return
+            if c.words and c.words[0] not in self.stroke_ix:
+                self.d("STROKE", "reveal: no stroke %s in set %s yet (ART); not drawn" % (c.words[0], self.set_name),
+                       c, "warning")
+                return
             if not c.words or c.words[0] not in self.stroke_ix:
                 c.fail("STROKE", "reveal: no stroke %s in set %s (strokes: %s)" % (
                     c.words[0] if c.words else "?", self.set_name, ", ".join(self.stroke_ix) or "none"))
@@ -1201,11 +1298,50 @@ class ShotCompiler:
             return
         if kw == "punch":
             return self.engine(f, c)
-        if kw in ("show", "hide", "prop.set", "stroke"):
+        if kw in ("show", "hide", "prop.set", "stroke", "prop.show", "prop.hide"):
             return self.vis_op(f, c)
         if kw in ("wipe", "split", "dissolve"):
             return self.wipe_op(f, c)
+        if kw == "lens":
+            return self.lens_op(f, c)
         c.fail("SHW-OPS", "unknown op `%s` (spec 5.5)" % kw)
+
+    # -- particles and the lens (lane 2's SOP_L2_PFX / SOP_L2_LENS, drawn by show_l2_mod.c) ----------
+    def pfx(self, f, c, kind, x, y):
+        mode, col, life, size = PFX_KINDS.get(kind, (None, None, None, None))
+        if mode is None:
+            self.d("FX", "fx %s: no particle look for this kind yet (not drawn)" % kind, c, "warning")
+            return
+        from .picture import colors
+        try:
+            col = colors.index(col)
+        except Exception:                          # noqa: BLE001
+            col = 2
+        nib = c.get("nib") or c.get("color")
+        if nib:
+            try:
+                from .picture import colors
+                col = colors.index(nib)
+            except Exception:                      # noqa: BLE001
+                v = nib.split(":", 1)[-1]
+                col = textpack_bridge.symbols().get(textpack_bridge.SYNONYMS.get(v, v), col) & 0xFF
+        if c.get("life") or c.get("over"):
+            life = self.frames_arg(c.get("life") or c.get("over"), c) or life
+        n = int(c.get("n", "12"))
+        seed = int(c.get("seed", "0"), 0) & 0x7FFF
+        self.pic_events.append((f, 0x0103, [x, y, n, seed, mode, col, life, int(c.get("size", str(size)))]))
+
+    def lens_op(self, f, c):
+        k = c.words[0] if c.words else "splat"
+        if k == "drip":
+            k = "drip_on" if (c.words[1:2] or ["on"])[0] == "on" else "drip_off"
+        kinds = {"splat": 0, "gib": 1, "paint": 2, "drip_on": 3, "drip_off": 4, "clear": 5}
+        if k not in kinds:
+            c.fail("FX", "`lens splat|gib|paint|clear [over=F] [twos]` or `lens drip on|off`")
+        over = self.frames_arg(c.get("over"), c) or 12
+        twos = 1 if "twos" in c.words else 0
+        self.pic_events.append((f, 0x0104, [kinds[k], over, twos, f * 31 + 7, 0, 0, 0, 0]))
+        self.tl(f, c, "show", "lens " + k, end=f + (over if k == "clear" else 0))
 
     def until_arg(self, c):
         u = c.get("until")
@@ -1240,7 +1376,7 @@ class ShotCompiler:
         else:
             tgt = c.words[0] if c.words else c.fail("STAGE", "`%s <prop>[:<state>]`" % kw)
             tgt, _, state = tgt.partition(":")
-            state, on = state or None, kw == "show"
+            state, on = state or None, kw in ("show", "prop.show")
         if tgt in self.actor_ix and not state:
             self.vis.append((f, "actor", tgt, None, kw == "show"))
             self.tl(f, c, "show", "%s %s" % (kw, tgt))
@@ -1310,8 +1446,12 @@ class ShotCompiler:
             return
         end = None
         if kw == "fade":
+            if words and words[0] in ("dither", "up", "from_black"):
+                words[0] = "in"                       # a dithered fade up: camfx's blend fade is ordered-dither
+            elif words and words[0] in ("down", "to_black"):
+                words[0] = "out"
             if not words or words[0] not in ("in", "out"):
-                c.fail("FADE", "`fade in|out over=F`")
+                c.fail("FADE", "`fade in|out|dither over=F`")
             n = self.frames_arg(c.get("over"), c) or 8
             if words[0] == "in":
                 if f == 0:
@@ -1328,9 +1468,9 @@ class ShotCompiler:
             if shape not in ("circle", "heart"):
                 c.fail("TIME-IRIS", "shape=%s (circle|heart)" % shape)
             if over is not None:
-                if over < 8:
-                    c.fail("TIME-IRIS", "over=%d: an iris is R3 snap + hold + R5 open, so at least 8 f" % over)
-                h = over - 8
+                if over < 5:
+                    c.fail("TIME-IRIS", "over=%d: an iris closes in at least 5 f" % over)
+                h = max(0, over - 8)
                 if hold is not None and docunits.frames(hold, w) != h:
                     c.fail("TIME-IRIS", "over=%d means hold %d (3 + hold + 5); hold=%s disagrees" % (over, h, hold))
             else:
@@ -1397,6 +1537,7 @@ class ShotCompiler:
             line = "%s %s" % (kw, " ".join(ws))
         else:
             line = "%s %s" % (kw, " ".join(words))
+        line = " ".join(textpack_bridge.SYNONYMS.get(x, x) for x in line.split())
         evs = textpack_bridge.compile_beat([(w, "+%d %s" % (f, line.strip())), (w, "+%d end" % f)],
                                            self.shot.id, c.file)
         endop = textpack_bridge.symbols()["BOP_END"]
@@ -1786,13 +1927,23 @@ class ShotCompiler:
             sid = c.words[0] if c.words else c.fail("SIGN", "`sign <string> on=<prop>`")
             s = self.lib.strings.get(sid)
             if s is None:
-                c.fail("SIGN", "unknown string %s" % sid)
+                self.d("SIGN", "unknown string %s (strings.shw): the sign is not drawn" % sid, c, "warning")
+                return
             on = c.get("on")
-            if on not in self.prop_ix:
-                c.fail("SIGN", "sign %s on=%s: no such prop" % (sid, on))
-            self.sop(f, "SOP_SIGN", [self.s(s["text"]), self.prop_ix[on]], c)
+            base = (on or "").split(".")[0].split(":")[-1]
+            if on not in self.prop_ix and base in self.prop_ix:
+                on = base
+            if on in self.prop_ix:
+                slot = self.prop_ix[on] + 1
+            elif base in self.actor_ix:
+                slot = 64 + self.actor_ix[base]
+            else:
+                self.d("SIGN", "sign %s on=%s: no such prop in this shot; drawn at the frame anchor (dx/dy)"
+                       % (sid, on), c, "warning")
+                slot = 0
+            self.sop(f, "SOP_SIGN", [self.s(s["text"]), max(0, slot - 1)], c)
             until = self.until_arg(c)
-            self.pic_text(c, lambda T: [T.sign(re.sub(r"\{[^}]*\}", "", s["text"]), f, self.prop_ix[on] + 1,
+            self.pic_text(c, lambda T: [T.sign(re.sub(r"\{[^}]*\}", "", s["text"]), f, slot,
                                                c.get("dx", "0"), c.get("dy", "0"), until,
                                                c.get("font") or s.get("font") or "game",
                                                int(c.get("scale", "1")), c.get("color"), c.get("outline"),
@@ -1808,12 +1959,18 @@ class ShotCompiler:
             kind = c.words[0] if c.words else c.fail("FX", "`fx <kind> at=x,y n= seed=`")
             x, y = self.xy(c.get("at", "160,90"), c)
             self.sop(f, "SOP_FX", [self.s(kind), x, y, int(c.get("n", "8")), int(c.get("seed", "0"), 0)], c)
+            self.pfx(f, c, kind, x, y)
         elif kw == "boil":
             on = (c.words[0] if c.words else "on") == "on"
             self.sop(f, "SOP_BOIL", [1 if on else 0, int(c.get("every", "2"))], c)
             self.pic_events.append((f, 0x0101, [int(c.get("every", "2")) if on else 0]))
         elif kw == "cam3d":
-            rail = c.get("rail") or c.fail("CAM", "`cam3d rail=<path> from= to=`")
+            if not c.get("rail") and c.words and c.words[0] in ("room", "turn", "tilt", "yaw", "look"):
+                # a host-camera move (ROOM framing, VIEW3D turn/tilt): the host reads SOP_CAM3D's text
+                self.sop(f, "SOP_CAM3D", [self.s(c.text()), self.frames_arg(c.get("over"), c) or 0, 0], c)
+                self.tl(f, c, "show", "cam3d " + c.words[0])
+                return
+            rail = c.get("rail") or c.fail("CAM", "`cam3d rail=<path> from= to=` or `cam3d room|turn|tilt ...`")
             self.sop(f, "SOP_CAM3D", [self.s(rail), int(c.get("from", "0")), int(c.get("to", "0"))], c)
         self.tl(f, c, "show", kw)
 
