@@ -1,0 +1,26 @@
+# show/ep101/shots/ec1.shw - EYECATCH PAIR 1 (07:50-08:00, 300 f), seg co_mt. Included in episode.shw after act one.
+# OUT: pure HaHaland, the act-out sound on frame 0, the HEE_HEE bell, the theme's 2-bar hook in major
+# (a seamless 5 s loop). IN: a 4-f hellify flash at reduced level, then exactly ONE persistent
+# change (the set variant); Mascotty 8 px tall in the deep background by the banner pole (same
+# depth in every pair). Shot list: shotlists/co_mt.md. Cards: no child, no gore, no innuendo.
+
+act EC1 "Eyecatch pair 1"
+  beat e101_ec1_out len=150 shots=ec1o
+  beat e101_ec1_in  len=150 shots=ec1i
+end
+
+shot ec1o beat=e101_ec1_out len=150 set=eyecatch:ec1_out px=1 look=pixel cut=CUT matte=open scene=ec1 gore=CUTE cue=theme_eyecatch_out@bar:1
+  +0    sfx FX_BONE_CLICK                                     # the act-out click
+  +0    mx theme_eyecatch_out start                           # 3 bars: the hook in major + the ending hit (144 f)
+  +6    mx heehee_bell_150 start gain=-6dB                    # choice: the bell 6 f after the act-out sound
+  +0    sway lantern dx=2 period=75                           # seamless 5 s loop (150 f = 2 periods)
+  ad "A paper lantern printed with the logo hangs before the Giggle banner. The clock reads nine."
+end
+
+shot ec1i beat=e101_ec1_in len=150 set=eyecatch:ec1_in px=1 look=pixel cut=CUT matte=open gore=CUTE cue=theme_eyecatch_in@bar:1
+  prop  mascotty art=gen:mascotty_tiny(h=8) plane=back at=40,40 anchor=bottom   # the Starer, 8 px, by the banner pole; never moves
+  +0    flash PAL_HELLIFY 8 4 ; sfx FX_HELLIFY_FLASH          # 4 f at level 8 of 16 (reduced luminance, Harding-checked)
+  +0    mx theme_eyecatch_in start                            # the RIFF (minor) resolving on ITS_FINE. TODO(AUDIO): cue not in series/music.shw yet
+  +4    sway lantern dx=2 period=75
+  ad "The same card - but the lantern glows purple from inside, like a ribcage."
+end

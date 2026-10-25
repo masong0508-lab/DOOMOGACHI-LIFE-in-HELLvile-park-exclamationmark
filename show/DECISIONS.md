@@ -126,3 +126,11 @@ Each names the default taken and where to change it.
   1000, the calendar's print, the logo (drawn the way `fp_title.c` draws it).
 - **Previews are host composites** (`show sets sheet`), never master pixels; the player draws the
   masters. PIC-PAL is checked on every composed frame of every variant (100 %).
+
+## STAGING co_mt (cold open, main title, eyecatches), 2026-10-25
+- co_mt: files are `ep101/shots/co.shw` (cold open, owned by co_mt from now on), `shots/co_mt.shw` (main title), `shots/ec1.shw`..`ec3.shw` (the three eyecatch pairs, owned by co_mt per its package; included right after a1/a2/a3 in episode.shw). Acts a1-a3 must NOT stage EC1-EC3 (CONTINUITY.md's budget counts them inside a1-a3: a1 = 9,600 + EC1 300, etc.; the TCs do not change).
+- co_mt: the main title is cut to the master's bar map (150 bpm, 48 f/bar, 30 bars + 60-f ring = 1,500 f), not the beat sheet's provisional TCs: MT-1 bars 1-9 (432 f), MT-2 verse 10-13 (192), MT-3 wall window + pre-chorus to "Come out!" (108), MT-4 the stop-time drop 16.2-16.4 (36), MT-5 chorus 17-24 (384), MT-6 post-chorus + button to the last chord (264), MT-7 ring/mute/beep/title (84). Total 1,500, so 1-01 is not stretched.
+- co_mt: the mirrored knock lands on the lyric's three "Knock, knock, knock!" syllables (bar 15.1, +6, 15.2), not "two snare hits": the master's pre-chorus is P4 alone.
+- co_mt: MT-5 rots a replay of the mt01 crane (no child), never the cast pop-in (Pip is in it).
+- co_mt: beat rows (`act`/`beat`) live at the top of each shot file, since episode.shw is a plain include list.
+- co_mt: timed prop states are written as `+N show <prop>[:<state>]` / `hide <prop>` (proposed SOP_PROP_STATE); fallback is base= + one change per state.
