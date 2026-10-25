@@ -61,8 +61,8 @@ def test_enums_match_the_header():
     assert shop == ["SHOP_" + k.upper() for k, _ in sorted(A.SHOP.items(), key=lambda kv: kv[1])]
     shco = _enum("SHCO_FREEZE", "SHCO_SHOW")
     assert shco == ["SHCO_" + k.upper() for k, _ in sorted(A.SHCO.items(), key=lambda kv: kv[1])]
-    assert "#define SHOW_SOP_ACTOR 0x%02x" % A.SHOW_SOP_ACTOR in HDR
-    assert "SHOW_SOP_CROWD 0x%02x" % A.SHOW_SOP_CROWD in HDR
+    assert "#define SHOW_SOP_ACTOR 0x%03X" % A.SHOW_SOP_ACTOR in HDR
+    assert "SHOW_SOP_CROWD 0x%03X" % A.SHOW_SOP_CROWD in HDR
 
 
 def test_actor_record_layout():
@@ -312,3 +312,19 @@ if __name__ == "__main__":
                 fails += 1
                 print("FAIL", name, type(e).__name__, str(e)[:2000])
     sys.exit(1 if fails else 0)
+
+
+@slow
+def test_e2e_through_the_players_shot_loop():
+    """EP101.SHW (shw_format + ShotCast.to_chunk) on a show disc, played by
+    show.exe's own loop through show_mod_cast/actor/crowd (show_wp6_mod.c)"""
+    import e2e_shw
+    tty = e2e_shw.run()
+    assert "episode 101: 3 shots" in tty
+    assert not [l for l in tty.splitlines() if l.startswith("show: E")]
+    from PIL import Image
+    run = e2e_shw.WORK / "run"
+    two, cu, crowd = (Image.open(run / n).convert("RGB") for n in ("f030.png", "f090.png", "f150.png"))
+    assert len(set(two.crop((100, 120, 220, 200)).getdata())) > 20      # two actors drawn
+    assert len(set(cu.crop((100, 60, 220, 210)).getdata())) > 20        # the px=2 bust
+    assert len(set(crowd.crop((0, 100, 320, 200)).getdata())) > 60      # the crowd

@@ -282,8 +282,14 @@ frame from `XMCEAOUF` (X = rest), mapped through `visemes.shw`; tracks for `expr
 (EXPR_* per frame) and `blink` (`1` shut, `0` open, `.` the clock's own blink)
 use the same TRAK records. Crowds never flap.
 
-Tests: `python3 -m pytest show/tests/engine/test_wp6.py` (AT6.1-AT6.5, dx_proof;
-one PS1 test build + one emulator run, ~2 min). Sheets in
+Player plug-in: `show/engine/show_wp6_mod.c` defines `show_mod_cast`, `show_mod_actor`
+and `show_mod_crowd` (show_api.h). Records: SHWR_LOOK, SHWR_ACTOR, SHWR_TRACK,
+SHWR_CROWD and the private flipbook record 0x160; show ops SOP_ACTOR_BASE (args
+actor, SHOP_*, a, b, c, d) and SOP_CROWD_BASE (args crowd, SHCO_*, a). The compiler
+writes all of them with `ShotCast.to_chunk(chunk, ops)` (see `tests/engine/wp6/e2e_shw.py`).
+
+Tests: `python3 -m pytest show/tests/engine/test_wp6.py` (AT6.1-AT6.5, dx_proof and
+an EP101.SHW played by show.exe's own shot loop; ~4 min). Sheets in
 `<scratch>/show_out/engine/{model_sheets,freeze,crowd_lanes,crowd_klook,blink_patch_f,dx_proof}/`.
 ## Staging reference: picture (ENGINE lane 2: WP5 planes, WP7 text, WP8 camera/FX)
 

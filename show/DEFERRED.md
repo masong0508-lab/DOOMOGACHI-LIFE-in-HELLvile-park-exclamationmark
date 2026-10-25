@@ -17,3 +17,4 @@
 - ART sets: a 9:16 / wide (384x216) version of any plate: the canvas is 320x180 in 2026.
 - WP6: gaze and the crowd atlas (spec §8.5 marks them deferred; the pilot's crowds fit K-look reuse).
 - lane 2: PS1 emulator contact sheets of lane-2 shots wait for lane 1's shot loop (host raster of the same C proves the pixels meanwhile).
+- WP6: actors, crowds and their camera: they stand on the camera's main plane (1:1 parallax); camera scale moves do not resize actors in this pass (only push-ins on plates).

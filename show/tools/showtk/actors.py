@@ -39,7 +39,7 @@ EASE = {"LINEAR": 0, "SMOOTH": 1, "IN": 2, "OUT": 3, "BOUNCE": 4, "INOUT": 1}
 SHCO = {"freeze": 0, "thaw": 1, "pop": 2, "face": 3, "speed": 4, "show": 5}
 STATE = {"normal": 1, "possessed": 2, "dead": 4, "ghost": 5}       # RES_*
 FLIP_MODE = {"replace": 0, "over": 1}
-SHOW_SOP_ACTOR, SHOW_SOP_CROWD = 0x60, 0x61    # show op numbers (BOP_SHOT a = 0x4000 | op)
+SHOW_SOP_ACTOR, SHOW_SOP_CROWD = 0x0A0, 0x0C0   # show op numbers (BOP_SHOT a = 0x4000 | op)
 
 ACTOR_SIZE, CROWD_SIZE, TRACK_HDR, FLIP_HDR, LOOK_SIZE = 32, 48, 8, 12, 48
 MAX_LOOKS, MAX_ACTORS, MAX_CROWDS, MAX_K, MAX_N, BEAT_ACTORS = 256, 16, 8, 48, 256, 8
@@ -333,6 +333,33 @@ class ShotCast:
         crwd = b"".join(pack_crowd(**r) for _, r in self.crowds)
         return {"LOOK": b"".join(self.looks), "ACTR": actr, "CRWD": crwd,
                 "TRAK": b"".join(self.tracks), "FLIP": b"".join(b for _, b in self.flips)}
+
+    # the .SHW records (shw_format.h): LOOK 1, ACTOR 32, TRACK 33, CROWD 34, FLIP private 0x160
+    SHWR_WP6_FLIP = 0x100 + 0x60
+
+    def to_chunk(self, chunk, ops=()):
+        """add this shot's records to a shw_format.Chunk; ops: [(at, (sop, args)), ...]
+        from op()/crowd_op() become BOP_SHOT events with their argument rows.
+        Returns the beat events (at, anchor, op, a, b) for the caller's add_beat()."""
+        from . import shw_format as F
+        s = self.pack()
+        if s["LOOK"]:
+            chunk.add(F.SHWR_LOOK, len(self.looks), s["LOOK"])
+        if s["ACTR"]:
+            chunk.add(F.SHWR_ACTOR, len(self.actors), s["ACTR"])
+        if s["TRAK"]:
+            chunk.add(F.SHWR_TRACK, len(self.tracks), s["TRAK"])
+        if s["CRWD"]:
+            chunk.add(F.SHWR_CROWD, len(self.crowds), s["CRWD"])
+        if s["FLIP"]:
+            chunk.add(self.SHWR_WP6_FLIP, len(self.flips), s["FLIP"])
+        words, events = [], []
+        for at, (sop, args) in ops:
+            events.append(F.show_op(sop, len(words), at))
+            words += list(args) + [0] * (6 - len(args))
+        if words:
+            chunk.add_args(words)
+        return events
 
     def blocks_estimate(self):
         """portrait-pool blocks this shot keeps live (the planner's PLAN-POOL count, spec 8.4)"""

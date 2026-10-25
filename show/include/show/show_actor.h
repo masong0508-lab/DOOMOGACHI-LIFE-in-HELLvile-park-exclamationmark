@@ -232,8 +232,8 @@ void show_wp6_tick(int t);                      /* actor + crowd tick          *
  *   SHOW_SOP_ACTOR argv = { actor, SHOP_*, a, b, c, d }
  *   SHOW_SOP_CROWD argv = { crowd, SHCO_*, a }
  * Returns 1 when op is one of them. */
-#define SHOW_SOP_ACTOR 0x60
-#define SHOW_SOP_CROWD 0x61
+#define SHOW_SOP_ACTOR 0x0A0       /* = SOP_ACTOR_BASE (shw_format.h) */
+#define SHOW_SOP_CROWD 0x0C0       /* = SOP_CROWD_BASE */
 struct BeatEv;
 int show_wp6_ext(const struct BeatEv *e);
 int show_wp6_sop(int op, const int16_t *argv, int argc);
