@@ -13,6 +13,8 @@
 #             first=ep<NNN>                  first episode the character is SEEN (lints refuse earlier)
 #             roster=<N>                     the game citizen this is (portrait.c caches by it)
 #             name="..."                     the name plate
+#             register=pixel|crayon|sepia    the register its shots draw it in (crayon = the
+#                                            storybook: the shot's look=crayon / PAL_CRAYON)
 #   A line that starts with key=value continues the char above it.
 #
 # Eye style and mouth: each char's EYE_* and rest MOUTH_* are in its look;
@@ -69,17 +71,17 @@ char hellvile_hand look=look:hellvile_hand age=adult tags=SILENT,HELLVILE kinds=
                  phase=216 note="4-08 split: a sooty hand lights a fuse; hand only, no face"
 
 # ---- the storybook (CO-1..CO-4, credits stills; look=crayon) ---------------------
-char young_giggs look=look:young_giggs age=child tags=KID,SILENT kinds=figure,chibi voice=none
+char young_giggs look=look:young_giggs age=child tags=KID,SILENT kinds=figure,chibi voice=none register=crayon
                  squash=plush:34 phase=21 name="the young cherub" note="from behind, no face"
-char young_imp   look=look:young_imp age=child tags=KID,SILENT kinds=figure,chibi voice=none
+char young_imp   look=look:young_imp age=child tags=KID,SILENT kinds=figure,chibi voice=none register=crayon
                  squash=plush:34 phase=74 note="two small horned hands, no face"
-char fluffy      look=look:fluffy age=adult tags=SILENT,PET kinds=figure,chibi voice=none
+char fluffy      look=look:fluffy age=adult tags=SILENT,PET kinds=figure,chibi voice=none register=crayon
                  squash=cloud:34 phase=127 name="Fluffy" note="a crayon cloud on a string; heart eyes = EXPR_LOVE"
 
 # ---- inserts (silhouettes) ----------------------------------------------------
-char cloud_lady  look=look:cloud_lady age=adult tags=SILENT,SILHOUETTE kinds=figure voice=none
+char cloud_lady  look=look:cloud_lady age=adult tags=SILENT,SILHOUETTE kinds=figure voice=none register=sepia
                  note="1-14 Fuzz's sepia insert; silhouette with glowing eyes"
-char crowned_shadow look=look:crowned_shadow age=adult tags=SILENT,SILHOUETTE kinds=figure voice=none
+char crowned_shadow look=look:crowned_shadow age=adult tags=SILENT,SILHOUETTE kinds=figure voice=none register=sepia
                  note="1-14 sepia insert: the crowned silhouette behind her"
 
 # ---- demons (the game's sprite engine; the truth shows only on these) -------------
