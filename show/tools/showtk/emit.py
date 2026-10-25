@@ -237,6 +237,71 @@ def _wp6_actor_op(name, w):
     return None         # SAY/STOP/HUM (the mouth TRAK carries them), POSE (no flipbook records yet), EYES
 
 
+FLIP_BUDGET = 72 * 1024          # bytes of flipbook drawings one shot keeps resident
+FLIP_MAX, FLIP_FRAMES = 32, 160   # show_actor.c MAX_FLIPS / MAX_FLIP_FRAMES
+
+
+def _pose_plan(c, diags):
+    """`pose <actor> <name>` + walks -> SHOP_POSE rows and c._flips (the FLIP records).
+    A `walk` with no pose of its own plays the actor's <char>_walk loop and hands
+    back to idle when it lands; one-shots hand back to idle by themselves (engine)."""
+    from . import flips as FL
+    from .errors import Diag
+    rev = {v: k for k, v in getattr(c, "str_at", {}).items()}
+    c._flips = []
+    index, used = {}, [0, 0]
+    rows = []
+
+    def warn(msg, w=None):
+        diags.append(Diag("POSE", msg, shot=c.shot.id, severity="warning", **c.shot.where()))
+
+    def flip_ix(ai, name, w):
+        a = c.actors[ai]
+        if a.get("kind_name") not in ("figure", None):
+            return None if name in FL.IDLE else -2        # busts/chibis: the engine's own frames
+        try:
+            r = FL.load(a["who"], name)
+        except Exception as e:                          # noqa: BLE001 - a missing pose never sinks a shot
+            warn("actor %s: %s" % (a["id"], e), w)
+            return -2
+        if r is None:
+            return None
+        key = (a["who"], name)
+        if key not in index:
+            n = len(r["frames"])
+            if (len(c._flips) >= FLIP_MAX or used[1] + n > FLIP_FRAMES
+                    or used[0] + FL.size(r) > FLIP_BUDGET):
+                warn("pose %s for %s dropped: the shot's flipbooks are over budget (%d KB, %d drawings)"
+                     % (name, a["id"], used[0] // 1024, used[1]), w)
+                index[key] = -2
+            else:
+                index[key] = len(c._flips)
+                c._flips.append((key, r))
+                used[0] += FL.size(r)
+                used[1] += n
+        return index[key]
+
+    poses = [(f, words[0], rev.get(words[1], ""), words[2] if len(words) > 2 else 256, w)
+             for f, name, words, w, _o in c.show_ops if name == "SOP_POSE"]
+    walks = [(f, words[0], words[2] if len(words) > 2 else 0, w)
+             for f, name, words, w, _o in c.show_ops if name == "SOP_WALK"]
+    for f, ai, over, w in walks:
+        mine = [p for p in poses if p[1] == ai]
+        if not any(p[0] == f for p in mine):
+            poses.append((f, ai, "walk", 256, w))
+            if over > 0 and not any(f < p[0] <= f + over for p in mine) and f + over < c.shot.len:
+                poses.append((f + over, ai, "idle", 256, w))
+    for f, ai, name, speed, w in sorted(poses, key=lambda p: p[0]):
+        if not (0 <= ai < len(c.actors)):
+            continue
+        ix = flip_ix(ai, name, w)
+        if ix == -2:
+            continue
+        rows.append((f, [ai, WP6_SHOP["pose"], -1 if ix is None else ix, speed if speed > 0 else 256, 0, 0],
+                     w.get("line", 0)))
+    return rows
+
+
 def _look_ids(spec):
     """'a_1..a_6' -> [a_1, ..., a_6]; 'a,b' -> [a, b]"""
     import re as _re
@@ -302,6 +367,9 @@ def _wp6_records(ch, c, diags):
                      front=kv.get("layer") == "front", px=max(1, min(2, int(kv.get("px", c.shot.px or 1)))))
         except Exception as e:                      # noqa: BLE001
             warn("crowd %s: %s" % (r.get("id"), e))
+    for (_who, _name), r in getattr(c, "_flips", []):
+        sc.flipbook("%s_%s" % (_who, _name), r["w"], r["h"], r["frames"], r["holds"], r["mode"],
+                    (1 if r["loop"] else 0) | (2 if r["hold_end"] else 0), r["dx"], r["dy"])
     sc.to_chunk(ch)
     return len(sc.looks), len(sc.crowds)
 
@@ -402,7 +470,12 @@ def chunk_for(ep, c, diags, bake=True):
         evs.append((f, line, seq, (f, 0, F.BOP_SHOT, F.SHOW_OP_FLAG | op, row)))
         seq += 1
 
+    pose_rows = _pose_plan(c, diags)
+    for f, row, line in pose_rows:
+        show_op(f, F.SOP_ACTOR_BASE, row, line)
     for f, name, words, w, _o in c.show_ops:
+        if name == "SOP_POSE":
+            continue                                  # _pose_plan's rows
         if name in BAKED:
             continue
         if name in SOP_ACTOR:

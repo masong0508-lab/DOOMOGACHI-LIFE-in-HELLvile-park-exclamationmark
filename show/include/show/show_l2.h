@@ -43,10 +43,10 @@ static inline uint32_t show_hash3(uint32_t a, uint32_t b, uint32_t c)
 #define SOP_L2_BASE      0x0100
 #define SOP_L2_END       0x0200
 enum {
-    SOP_IRIS = SOP_L2_BASE,     /* x y r heart mode hold: an iris anywhere, any hold    */
+    SOP_L2_IRIS = SOP_L2_BASE,     /* x y r heart mode hold: an iris anywhere, any hold    */
                                 /*   (mode 0 in, 1 out, 2 static, 3 off; x,y show px)    */
-    SOP_BOIL,                   /* every (0 = off): the crayon boil from now on          */
-    SOP_FADE_SET,               /* level16: the fade level now, no ramp                  */
+    SOP_L2_BOIL,                 /* every (0 = off): the crayon boil from now on          */
+    SOP_L2_FADE_SET,             /* level16: the fade level now, no ramp                  */
     SOP_L2_COUNT
 };
 /* Everything else lane 2 draws (strokes and their reveals, SUPERs, signs,

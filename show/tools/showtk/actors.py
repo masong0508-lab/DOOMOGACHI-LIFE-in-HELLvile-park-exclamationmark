@@ -144,7 +144,7 @@ def pack_flip(w, h, frames, holds, mode="replace", loop=False, dx=0, dy=0):
     if len(frames) != len(holds) or not frames:
         raise CastError("a flipbook needs one hold per drawing")
     b = struct.pack("<HHBBBxbb2x", w, h, len(frames), FLIP_MODE[mode] if isinstance(mode, str) else mode,
-                    1 if loop else 0, dx, dy)
+                    int(loop) & 0xFF, dx, dy)
     hb = bytes(holds)
     b += hb + b"\0" * (-len(hb) % 4)
     pix = b"".join(bytes(f) for f in frames)

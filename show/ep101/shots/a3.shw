@@ -19,10 +19,10 @@ shot a3s01 beat=e101_3_01 len=75 set=act_cards:act3 look=pixel cut=CUT scene=a3_
   ad "The Mayor's clipboard: 22:00 Bedtime! is crossed out. Above it, small: weather."
   +0    mx heehee_bell start ; cc "[bell]"
   +0    sign s_a3_01_card on=l5
-  +8    sfx FX_PEN_SCRATCH ; reveal l5_strike1 over=+8..+12
-  +18   sfx FX_PEN_SCRATCH ; reveal l5_strike2 over=+18..+21
-  +23   sfx FX_PEN_SCRATCH ; reveal l5_strike3 over=+23..+26
-  +35   sign s_a3_01_card_over on=weather ; pop weather TWT_POP_BUBBLE
+  +8    sfx FX_PEN_SCRATCH
+  +18   sfx FX_PEN_SCRATCH
+  +23   sfx FX_PEN_SCRATCH ; show l5:strike                 # act_cards has no strike strokes: the l5 strike art lands on the third scratch
+  +35   sign s_a3_01_card_over on=weather ; show weather
   +0    cam to scale=1.100 over=75 ease=OUT    # motion: insert push
   +0    cam pan dx=14.5 dy=8.2 over=75 ease=OUT    # motion: (centred on the frame)
 end
@@ -32,29 +32,29 @@ shot a3s02 beat=e101_3_01 len=234 set=fun_fair:cute px=1 look=pixel cut=CUT scen
   cam at=-150,0 ; cam drift dx=0.4
   actor sunny who=sunny kind=figure at=-30,160 face=R idle=on pose=carry_wand
   actor pet   who=pet kind=sprite at=-30,112 idle=on
-  crowd puffs gen=randomize who=puff_demon n=8 seed=3021 kind=sprite lane=y150 from=120 spacing=22 cycle=bounce ripple=0..3 age=adult
+  crowd puffs gen=randomize who=puff_demon n=8 seed=3021 kind=sprite dy=150 from=120 spacing=22 cycle=bounce ripple=0..3 age=adult
   end
   ad "Cute mode: Sunny marches across a lilac fun fair, bubbling round gumdrop demons."
   +0    sfx FX_POP ; mx hook_cute start
   +0    walk sunny to=60 over=60
   +105  label WAVE1 ; pose sunny wand_swing fps=8
-  +105  fx bubbles at=actor:sunny n=4 seed=31
-  +129  fx pop_heart at=crowd:puffs.0 seed=1 ; sfx FX_POP ; sfx FX_SPARKLE ; hitstop 2 ; shake SHK_TAP ; pop pet TWT_POP_BUBBLE
-  +155  fx pop_heart at=crowd:puffs.1 seed=2 ; sfx FX_POP ; hitstop 2 ; shake SHK_TAP ; pop pet TWT_POP_BUBBLE
-  +180  fx pop_heart at=crowd:puffs.2 seed=3 ; sfx FX_POP ; hitstop 2 ; shake SHK_TAP ; pop pet TWT_POP_BUBBLE
-  +206  fx pop_heart at=crowd:puffs.3 seed=4 ; sfx FX_POP ; hitstop 2 ; shake SHK_TAP ; pop pet TWT_POP_BUBBLE
-  +232  fx bubble_rise at=crowd:puffs.4 seed=5           # the insert's bubble, on the pop's beat
+  +105  fx bubbles at=-30,136 n=4 seed=31
+  +129  fx pop_heart at=120,142 seed=1 ; sfx FX_POP ; sfx FX_SPARKLE ; hitstop 2 ; shake SHK_TAP ; pop pet TWT_POP_BUBBLE
+  +155  fx pop_heart at=142,142 seed=2 ; sfx FX_POP ; hitstop 2 ; shake SHK_TAP ; pop pet TWT_POP_BUBBLE
+  +180  fx pop_heart at=164,142 seed=3 ; sfx FX_POP ; hitstop 2 ; shake SHK_TAP ; pop pet TWT_POP_BUBBLE
+  +206  fx pop_heart at=186,142 seed=4 ; sfx FX_POP ; hitstop 2 ; shake SHK_TAP ; pop pet TWT_POP_BUBBLE
+  +232  fx bubble_rise at=208,142 seed=5           # the insert's bubble, on the pop's beat
 end
 
 shot a3s03 beat=e101_3_01 len=4 set=fun_fair:cute px=1 look=pixel cut=CUT scene=a3_fair gore=BRUTAL replay=a3s02@+233 insert
   tag shot gore_truth
   note "STD: no child in this scene"
   +0    sfx FX_WETPOP                                     # owns the audio, 4 f
-  +0    fx truth_heart at=crowd:puffs.4 seed=6           # the burst, an anatomical heart, beating; red stays in the burst
+  +0    fx truth_heart at=208,142 seed=6           # the burst, an anatomical heart, beating; red stays in the burst
 end
 
 shot a3s04 beat=e101_3_01 len=176 set=fun_fair:cute px=1 look=pixel cut=CUT scene=a3_fair gore=CUTE base=a3s02@+233
-  change heart3.state=beating                            # COMP-ONECHANGE: the one persistent change
+  note "continuity: heart3 keeps beating (fx state; no set object to `change`)"
   +0    sfx FX_POP gain=-6dB
   +2    sfx FX_BADUM ; cc "[ba-dum]"
   +10   eyes pet D over=3                                 # R8 after the ba-dum
@@ -70,28 +70,28 @@ shot a3s05 beat=e101_3_01 len=129 set=fun_fair:cute px=1 look=pixel cut=CUT scen
   actor sunny who=sunny kind=figure at=110,160 face=R idle=on pose=carry_wand
   actor pet   who=pet kind=sprite at=110,112 idle=on
   prop  cup_red art=gen:teacup(state=red) at=60,140 plane=fair
-  crowd cups gen=randomize who=puff_demon n=6 seed=3051 kind=sprite lane=y148 from=40 spacing=20 cycle=bounce ripple=0..3 age=adult
+  crowd cups gen=randomize who=puff_demon n=6 seed=3051 kind=sprite dy=148 from=40 spacing=20 cycle=bounce ripple=0..3 age=adult
   end
   +0    sfx FX_POP ; pose sunny wand_swing fps=8
-  +40   fx pop_heart at=crowd:cups.0 seed=7 ; sfx FX_POP ; hitstop 2 ; shake SHK_TAP
-  +66   fx pop_heart at=crowd:cups.1 seed=8 ; sfx FX_POP ; hitstop 2 ; shake SHK_TAP
-  +92   fx pop_heart at=crowd:cups.2 seed=9 ; sfx FX_POP ; hitstop 2 ; shake SHK_TAP
-  +118  fx bubbles at=actor:sunny n=1 seed=10
+  +40   fx pop_heart at=40,140 seed=7 ; sfx FX_POP ; hitstop 2 ; shake SHK_TAP
+  +66   fx pop_heart at=60,140 seed=8 ; sfx FX_POP ; hitstop 2 ; shake SHK_TAP
+  +92   fx pop_heart at=80,140 seed=9 ; sfx FX_POP ; hitstop 2 ; shake SHK_TAP
+  +118  fx bubbles at=110,136 n=1 seed=10
 end
 
 shot a3s06 beat=e101_3_01 len=4 set=fun_fair:cute px=1 look=pixel cut=CUT scene=a3_fair gore=BRUTAL replay=a3s05@+128 insert
   tag shot gore_truth
   note "STD: no child in this scene"
   +0    sfx FX_WETPOP
-  +0    fx truth_clingwrap at=crowd:cups.3 seed=11        # the film shrinks, fills red, splits; red stays inside
+  +0    fx truth_clingwrap at=100,140 seed=11        # the film shrinks, fills red, splits; red stays inside
 end
 
 shot a3s07 beat=e101_3_01 len=74 set=fun_fair:cute px=1 look=pixel cut=CUT scene=a3_fair gore=CUTE base=a3s05@+128
-  change wand.bubble=pink                                 # persists through a3s13
+  note "continuity: wand bubble pink through a3s13 (no set object to `change`)"
   +0    sfx FX_POP gain=-6dB
   +2    sfx FX_BLIP ; cc "[blip]"
   +10   take look_at sunny turn=-48                       # looks at the wand
-  +30   fx bubbles at=actor:sunny n=1 seed=12 tint=pink
+  +30   fx bubbles at=110,136 n=1 seed=12 tint=pink
   +50   pose sunny run ; walk sunny to=200 over=24    # motion: walk cycle
   +0    cam to scale=1.060 over=74 ease=INOUT    # motion: track the action
   +0    cam pan dx=15.1 dy=5.1 over=74 ease=INOUT    # motion: (centred on the frame)
@@ -110,7 +110,7 @@ shot a3s08 beat=e101_3_01 len=219 set=hook_a_duck:night px=1 look=pixel cut=CUT 
   +90   move pole to=166,92 over=10 ; move puff to=166,86 over=10
   +100  still steamy                                       # R13 look
   +110  thaw steamy ; say a3_01_steamy_01 steamy
-  +198  button ; fx pop_heart at=actor:puff seed=13 ; sfx FX_POP ; hide puff
+  +198  button ; fx pop_heart at=-20,86 seed=13 ; sfx FX_POP ; hide puff
   +205  move steamy to=166,170 over=14 ; move hatduck to=166,124 over=14 ; sfx FX_BLUB ; cc "[blub]"
   @a3_01_steamy_01.start+6 take beat_gesture steamy    # motion:
   +0    cam to scale=1.050 over=219 ease=INOUT    # motion: push in, drifting toward the speaker
@@ -123,21 +123,21 @@ shot a3s09 beat=e101_3_01 len=207 set=fun_fair:cute px=1 look=pixel cut=CUT scen
   cam at=0,0 ; cam drift dx=0.5
   actor sunny who=sunny kind=figure at=80,160 face=R idle=on pose=wand_swing
   actor pet   who=pet kind=sprite at=80,112 idle=on
-  crowd swarm gen=randomize who=puff_demon n=16 seed=3091 kind=sprite lane=y140 from=140 spacing=12 cycle=bounce ripple=0..3 age=adult
+  crowd swarm gen=randomize who=puff_demon n=16 seed=3091 kind=sprite dy=140 from=140 spacing=12 cycle=bounce ripple=0..3 age=adult
   end
   +0    sfx FX_POP ; fx snowglobe at=0,0 n=40 seed=14
-  +13   fx pop_heart at=crowd:swarm every=13 n=12 seed=15 ; sfx FX_POP every=13 n=12
+  +13   fx pop_heart at=140,132 every=13 n=12 seed=15 ; sfx FX_POP every=13 n=12
   +170  walk crowd:swarm to=400 over=37 ; sfx FX_SQUEAK_FLEE
 end
 
 shot a3s10 beat=e101_3_01 len=378 set=bandstand:rite px=1 look=pixel cut=CUT scene=a3_fair gore=CUTE
   note "ELASTIC tail (up to 13 s with a3s09). frame fair only: the kids at the bandstand stay out of frame"
   note "STD: no child in this scene"
-  cam at=-232,0 ; cam pan dx=0.5
+  cam at=-232,0 ; cam drift dx=0.5
   actor sunny who=sunny kind=figure at=60,160 face=R idle=on pose=carry_wand
   actor pet   who=pet kind=sprite at=60,112 idle=on
   prop  hugsign art=gen:sign(w=60,h=14,face=pink,frame=white,seed=12) state=hanging at=150,92 plane=stage
-  crowd far gen=randomize who=puff_demon n=6 seed=3101 kind=sprite lane=y90 from=300 spacing=10 cycle=bounce age=adult
+  crowd far gen=randomize who=puff_demon n=6 seed=3101 kind=sprite dy=90 from=300 spacing=10 cycle=bounce age=adult
   end
   +0    sfx FX_SPARKLE ; fx heart_fall at=0,0 n=24 seed=16
   +0    walk sunny to=260 over=378
@@ -157,12 +157,12 @@ shot a3s11 beat=e101_3_02 len=285 set=bake_tent:dark px=1 look=pixel cut=CUT sce
   +30   sfx FX_SQUELCH
   +60   sfx FX_SQUELCH
   +90   fx merge crowd:stack into=bigpuff over=60 ; squash tent 0.92 over=60
-  +180  fx bubble_bounce from=actor:sunny to=actor:bigpuff size=1 ; sfx FX_BWIP
-  +195  fx bubble_bounce from=actor:sunny to=actor:bigpuff size=2 ; sfx FX_BWIP pitch=-3st
-  +210  fx bubble_bounce from=actor:sunny to=actor:bigpuff size=3 away=yes ; sfx FX_BWOMP
+  +180  fx bubble_bounce from=110,144 to=160,16 size=1 ; sfx FX_BWIP
+  +195  fx bubble_bounce from=110,144 to=160,16 size=2 ; sfx FX_BWIP pitch=-3st
+  +210  fx bubble_bounce from=110,144 to=160,16 size=3 away=yes ; sfx FX_BWOMP
   +240  sfx FX_PIP gain=-18dB ; cc "[distant pip]"
   +245  eyes bigpuff D over=8
-  +262  fx drool at=actor:bigpuff to=160,168 over=8
+  +262  fx drool at=160,16 to=160,168 over=8
   +270  sfx FX_PLAP
   +0    cam to scale=1.060 over=285 ease=INOUT    # motion: crane-in reveal
   +0    cam pan dx=9.1 dy=2.1 over=285 ease=INOUT    # motion: (centred on the frame)
@@ -198,6 +198,7 @@ shot a3s14 beat=e101_3_03 len=190 set=scary_house_fp:truth px=1 look=hellify cut
   +0    cam3d rail=enter from=+0 to=+190
   ad "First person. The shotgun rises toward a funhouse door; a HUD slams up."
   +0    sfx FX_CHK half=2 ; sfx FX_HELL_SLIDE ; pal PAL_HELLIFY 16 over=21
+  prop  door_sign art=gen:sign(w=100,h=16,face=white,frame=pink,seed=9) at=8.5,4.0 text=4,3,92,10
   +0    sign s_a2_03_house_sign on=door_sign
   +39   mx doomtastic_doom start from=prechorus_last2
   +60   fx barrel_rise over=10
@@ -214,7 +215,7 @@ shot a3s14 beat=e101_3_03 len=190 set=scary_house_fp:truth px=1 look=hellify cut
 end
 
 shot a3s15 beat=e101_3_03 len=260 set=scary_house_fp:truth px=1 look=hellify cut=CUT scene=a3_house_fp gore=BRUTAL base=a3s14@+189
-  change cam3d.rail=sweep
+  note "continuity: the rail switches to sweep (cam3d below)"
   +0    cam3d rail=sweep from=+0 to=+130
   +0    sfx FX_GIB_PATTER gain=-12dB
   +30   mon d2 spawn sprite=puff_demon at=8.0,5.5 ; mon d2 lunge
@@ -246,7 +247,8 @@ shot a3s16 beat=e101_3_03 len=261 set=scary_house_fp:truth px=1 look=hellify cut
   +127  sfx FX_CHK2
   +150  sfx FX_SPLAT ; lens splat ; hud heart pop ; hud set hearts=2 ; hud face wince ; lens clear over=16 twos
   +175  sfx FX_BLAM ; hitstop 2 ; shake SHK_SHOTGUN ; mon door6 die gore=door_and_all ; hud set shells=1
-  +256  tapestop 5 ; mx doomtastic_doom section=riff @+261
+  +256  tapestop 5
+  +261  mx doomtastic_doom section=riff
   +69      shake SHK_TAP    # motion: the impact lands
   +150     shake SHK_TAP    # motion: the impact lands
 end
@@ -256,7 +258,8 @@ shot a3s17 beat=e101_3_03 len=288 set=scary_house_fp:truth px=1 look=hellify cut
   +0    cam3d rail=out from=+0 to=+288 part=1/2
   +0    hud on ; hud set hearts=2 shells=1 plate=s_a3_03_hud_plate_slaughter sub=s_a3_03_hud_sub label=s_a3_03_hud
   prop ammo art=gen:ammo_box(doily=1) at=11.5,5.0
-  +0    sfx FX_RATTLE ; sign s_a3_03_ammo_box on=ammo ; sign s_a3_03_ammo_box_under on=ammo.under
+  prop ammo_under art=gen:ammo_box_label(under=1) at=11.5,5.1
+  +0    sfx FX_RATTLE ; sign s_a3_03_ammo_box on=ammo ; sign s_a3_03_ammo_box_under on=ammo_under
   +30   fx paw_take prop=ammo ; hud set shells=6 ; hud face grin
   +59   sfx FX_OI ; cc "[Oi!]"
   +80   sfx FX_BLAM ; hitstop 2 ; shake SHK_SHOTGUN ; mon sheet1 die gore=bloom_sheet ; hud set shells=5
@@ -286,7 +289,7 @@ shot a3s19 beat=e101_3_04 len=120 set=bandstand:rite px=1 look=pixel cut=CUT sce
   actor bloom who=bloom kind=figure at=130,156 face=R idle=on
   actor bone who=bonejangles kind=figure at=174,124 face=L idle=still
   +0    state bone possessed ; twitch bone on
-  +0    state candle2 lit ; state candle3 out                  # two lit, one dead wick
+  +0    show candle2 ; show candle3:out                  # two lit, one dead wick
   ad "Silence. On the bandstand steps Bloom catches Father Fuzz's sleeve."
   +0    mx doomtastic_doom mute 1200 ; sfx FX_CREAK      # sequencer keeps time under the mute
   +6    say a3_04_bloom_01 bloom
@@ -315,15 +318,17 @@ end
 
 shot a3s21 beat=e101_3_04 len=90 set=bandstand:rite px=1 look=pixel cut=CUT scene=a3_steps gore=CUTE
   cam at=-130,0
-  crowd giggle gen=randomize who=giggle_adults n=12 seed=3211 kind=chibi lane=y168 from=20 spacing=18 age=adult ripple=0..3
+  crowd giggle gen=randomize who=giggle_adults n=12 seed=3211 kind=chibi dy=168 from=20 spacing=18 age=adult ripple=0..3
   end
   actor nana who=nana kind=figure at=220,166 face=L idle=on
   actor pip  who=pip kind=figure at=236,170 face=L idle=on prop=mr_flops
   prop  cloth art=gen:tablecloth at=90,150 plane=stage
+  actor mayor who=mayor kind=figure at=90,154 idle=still
+  hide mayor
   +0    sfx FX_PFF gain=-14dB
   +0    still crowd:giggle ripple=0..3                    # they forget to breathe
   +20   pose pip paw_over_flops_eyes                      # played straight
-  +50   move cloth to=90,148 over=6 ; actor mayor who=mayor kind=figure at=90,154 show=eyes idle=still
+  +50   move cloth to=90,148 over=6 ; show mayor                 # eyes only under the cloth
   +0    cam to scale=1.060 over=90 ease=INOUT    # motion: track the action
   +0    cam pan dx=15.1 dy=5.1 over=90 ease=INOUT    # motion: (centred on the frame)
 end
@@ -338,8 +343,8 @@ shot a3s22 beat=e101_3_04 len=390 set=bandstand:rite px=1 look=pixel cut=CUT sce
   +13   move fuzz to=178,124 over=20
   +60   punch ; pose fuzz hug ; expr fuzz EXPR_NEUTRAL ; sfx FX_CHORD_MINOR ; cc "[a terrible minor chord rings]"
   +150  sfx FX_KAZOO ; cc "[kazoo sags]"
-  +180  state candle2 flash ; sfx FX_CANDLE_OUT ; flash PAL_RED 4 3 at=prop:candle2
-  +183  state candle2 out ; fx smoke at=prop:candle2
+  +180  show candle2:flash ; sfx FX_CANDLE_OUT ; flash PAL_UI_RED 4 3
+  +183  show candle2:out ; fx smoke at=-28,100
   +189  card stamp text=s_a3_04_fail ; shake SHK_STAMP ; sfx FX_STAMP
   +210  pose fuzz let_go_1
   +225  pose fuzz let_go_2
@@ -359,7 +364,7 @@ shot a3s23 beat=e101_3_04 len=390 set=bandstand_cu:steps px=2 look=pixel cut=CUT
   +163  say a3_04_fuzz_03 fuzz                           # R13 after the first line
   +247  label HOLD4S ; still fuzz idle=breath ; still bloom idle=breath
   +367  thaw fuzz ; thaw bloom
-  nobutton
+  +0    nobutton
   @a3_04_fuzz_03.start+6 headturn fuzz 240 3    # motion:
   @a3_04_fuzz_03.start+14 headturn fuzz 16 4    # motion:
   +0    cam to scale=1.080 over=390 ease=INOUT    # motion: slow push-in on the line
@@ -378,7 +383,7 @@ shot a3s24 beat=e101_3_05 len=681 set=bake_tent_fp:truth px=1 look=hellify cut=C
   +100  eyes big D over=12
   +130  sfx FX_SPIT ; sfx FX_SPLAT ; lens splat ; hud heart pop ; hud set hearts=1 ; lens clear over=16 twos
   +150  hud face horn ; sfx FX_POP_SMALL                  # nub at one heart (GAG bible)
-  +200  say a3_05_pet_01 pet mouth=none ; cc "[beep.]"
+  +200  say a3_05_pet_01 mouth=none ; cc "[beep.]"
   +205  mon big flinch                                    # R5
   +260  sfx FX_BLAM ; hitstop 3 ; shake SHK_SHOTGUN ; mon big damage gore=half_face ; hud set shells=0
   +264  lens gib ; sfx FX_TINK ; lens clear over=14 twos
@@ -390,14 +395,15 @@ shot a3s24 beat=e101_3_05 len=681 set=bake_tent_fp:truth px=1 look=hellify cut=C
   +435  sfx FX_SAW_SCREAM
   +450  shake SHK_TAP ; mon big die gore=saw_vertical over=150 ; fx geyser at=mon:big over=150 seed=24
   +600  hitstop 8 ; flash PAL_WHITE 6 1 ; lens paint over=8 ; lens drip on
-  +630  fx eyeball_roll to=prop:tin face=wall over=25
+  +630  fx eyeball_roll to=28,20 face=wall over=25
   +655  sfx FX_TIK
   +660  sfx FX_REWIND ; pal PAL_HELLIFY 0 over=21 ; lens clear over=21 ; gore CUTE over=21 ; hud off over=21
   +130     shake SHK_TAP    # motion: the impact lands
 end
 
 shot a3s25 beat=e101_3_05 len=219 set=bake_tent_fp:cute px=1 look=pixel cut=CUT scene=a3_tent_fp gore=CUTE base=a3s24@+680
-  change tentsign.text=s_a3_05_tent_sign                  # BAKE TEN, the one change
+  prop  tentsign art=gen:sign(w=90,h=18,face=cream,frame=pink,seed=8) at=28.5,18.0 text=4,4,84,12
+  note "continuity: the tent sign reads BAKE TEN (the sign below)"
   +0    cam3d rail=hold from=+0 to=+120
   +0    mx cute_bed start ; fx heart_fall at=0,0 n=30 seed=25
   +40   fx stuffing_land to=prop:tin
@@ -419,7 +425,7 @@ shot a3s26 beat=e101_3_06 len=270 set=bandstand:rite px=1 look=pixel cut=CUT sce
   actor mayor who=mayor kind=figure at=90,170 face=R idle=on hidden=yes
   actor bone  who=bonejangles kind=figure at=184,124 face=L idle=still
   +0    state bone possessed ; twitch bone on
-  crowd giggle gen=randomize who=giggle_adults n=12 seed=3261 kind=chibi lane=y176 from=240 spacing=16 age=adult ripple=0..3
+  crowd giggle gen=randomize who=giggle_adults n=12 seed=3261 kind=chibi dy=176 from=240 spacing=16 age=adult ripple=0..3
   end
   +0    sfx FX_PFF ; fx heart_fall at=0,0 n=12 seed=26
   +0    walk sunny to=130 over=150
@@ -433,29 +439,50 @@ shot a3s26 beat=e101_3_06 len=270 set=bandstand:rite px=1 look=pixel cut=CUT sce
 end
 
 shot a3s27 beat=e101_3_06 len=150 set=bandstand_cu:steps px=2 look=pixel cut=CUT scene=a3_tin gore=CUTE
-  prop tin art=gen:recipe_tin(open=0) at=160,100
-  +0    state tin open ; sfx FX_TUNK ; cc "[tunk]"
+  prop tin art=gen:recipe_tin(open=0) art.open=gen:recipe_tin(open=1) at=160,100
+  prop slip art=gen:recipe_slip at=160,70 text=4,4,72,10
+  prop sheet art=gen:signup_sheet(folded=1) at=160,96
+  prop sheet_title art=gen:signup_sheet_title at=160,40 text=4,2,96,10
+  hide slip
+  hide sheet_title
+  +0    show tin:open ; sfx FX_TUNK ; cc "[tunk]"
   +10   fx lift prop=keepsake_flower
   +30   fx lift prop=keepsake_ribbon
   +50   fx lift prop=keepsake_cutter
-  +60   sign s_a3_06_slip on=slip                         # 40 f to read
-  +100  fx unfold prop=sheet over=10 ; sign s_a3_06_sheet_title on=sheet.title
+  +60   show slip ; sign s_a3_06_slip on=slip             # 40 f to read
+  +100  fx unfold prop=sheet over=10 ; show sheet_title ; sign s_a3_06_sheet_title on=sheet_title
   +0    cam to scale=1.100 over=150 ease=OUT    # motion: insert push
   +0    cam pan dx=14.5 dy=8.2 over=150 ease=OUT    # motion: (centred on the frame)
 end
 
 shot a3s28 beat=e101_3_06 len=237 set=bandstand_cu:steps px=2 look=pixel cut=CUT scene=a3_tin gore=CUTE
   prop sheet art=gen:signup_sheet at=160,90
-  cam at=0,0 ; cam to x=0 y=60 over=+0..+151 ease=LINEAR
-  +0    mx nana_motif start ; sign s_a3_06_sheet_01 on=sheet.row1 ; pop sheet.row1 TWT_POP_BUBBLE
-  +26   sign s_a3_06_sheet_02 on=sheet.row2 ; pop sheet.row2 TWT_POP_BUBBLE
-  +30   actor mhand who=mayor kind=figure pose=hand_fold at=260,100 ; fx fold prop=sheet.row2.tail over=4 ; sfx FX_FWIP
+  prop row1 art=gen:signup_row(n=1) at=160,40 text=4,2,120,10
+  prop row2 art=gen:signup_row(n=2) at=160,56 text=4,2,120,10
+  prop row3 art=gen:signup_row(n=3) at=160,72 text=4,2,120,10
+  prop row4 art=gen:signup_row(n=4) at=160,88 text=4,2,120,10
+  prop row5 art=gen:signup_row(n=5) at=160,104 text=4,2,120,10
+  prop row6 art=gen:signup_row(n=6) at=160,120 text=4,2,120,10
+  actor mhand who=mayor kind=figure at=260,100 idle=still
+  actor thumb who=nana kind=figure at=120,118 idle=still
+  hide row2
+  hide row3
+  hide row4
+  hide row5
+  hide row6
+  hide mhand
+  hide thumb
+  cam at=0,0
+  +0    cam to x=0 y=60 over=151 ease=LINEAR
+  +0    mx nana_motif start ; sign s_a3_06_sheet_01 on=row1
+  +26   show row2 ; sign s_a3_06_sheet_02 on=row2
+  +30   show mhand ; pose mhand hand_fold ; fx fold prop=row2 over=4 ; sfx FX_FWIP
   +36   hide mhand
-  +52   sign s_a3_06_sheet_03 on=sheet.row3 ; pop sheet.row3 TWT_POP_BUBBLE
-  +56   actor thumb who=nana kind=figure pose=thumb at=120,118 ; still thumb    # R21 and beyond
-  +99   sign s_a3_06_sheet_04 on=sheet.row4 ; pop sheet.row4 TWT_POP_BUBBLE ; hide thumb
-  +125  sign s_a3_06_sheet_05 on=sheet.row5 ; pop sheet.row5 TWT_POP_BUBBLE ; sfx FX_PLINK ; mx nana_motif stop
-  +151  sign s_a3_06_sheet_06 on=sheet.row6 ; pop sheet.row6 TWT_POP_BUBBLE ; label HOLD13
+  +52   show row3 ; sign s_a3_06_sheet_03 on=row3
+  +56   show thumb ; pose thumb thumb ; still thumb    # R21 and beyond
+  +99   show row4 ; sign s_a3_06_sheet_04 on=row4 ; hide thumb
+  +125  show row5 ; sign s_a3_06_sheet_05 on=row5 ; sfx FX_PLINK ; mx nana_motif stop
+  +151  show row6 ; sign s_a3_06_sheet_06 on=row6 ; label HOLD13
   +0    cam to scale=1.100 over=237 ease=OUT    # motion: insert push
   +0    cam pan dx=14.5 dy=8.2 over=237 ease=OUT    # motion: (centred on the frame)
 end
@@ -515,20 +542,20 @@ shot a3s32 beat=e101_3_07 len=285 set=bandstand:rite px=1 look=pixel cut=CUT sce
   actor nana  who=nana kind=figure at=104,170 face=R idle=on
   actor mayor who=mayor kind=figure at=60,150 face=R idle=on pose=sit_clipboard
   +0    state bone possessed ; twitch bone on
-  crowd giggle gen=randomize who=giggle_adults n=14 seed=3321 kind=chibi lane=y178 from=10 spacing=16 age=adult ripple=0..3
+  crowd giggle gen=randomize who=giggle_adults n=14 seed=3321 kind=chibi dy=178 from=10 spacing=16 age=adult ripple=0..3
   end
   ad "Try three. Fuzz sings in major; the pet beeps the beat; the whole crowd claps in."
   +0    sfx FX_PFF
   +15   say a3_07_fuzz_01 fuzz
   +78   say a3_07_pet_01 pet mouth=none loop=beat bpm=140 until=@a3s35+0 ; cc "[beep. beep. beep. beep.]"
-  +78   say a3_07_fuzz_03 fuzz ; pose fuzz clap_24 fps=beat
+  +78   say a3_07_fuzz_03 fuzz ; pose fuzz clap_24 fps=6
   +78   walla w_giggle_09 on                              # Pip first, then Nana, then the crowd
-  +112  pose pip clap_24 fps=beat
-  +118  pose nana clap_24 fps=beat
+  +112  pose pip clap_24 fps=6
+  +118  pose nana clap_24 fps=6
   +124  pose crowd:giggle clap_24 fps=beat ripple=0..3
   +205  pose bloom two_fingers
   +222  say a3_07_bloom_01 bloom
-  +270  state candle3 tall
+  +270  show candle3                           # no art.tall: the lit wick (ART: tall state)
   @a3_07_fuzz_01.start+6 take beat_gesture fuzz    # motion:
   @a3_07_pet_01.start+6 pop pet TWT_HOP1    # motion:
   @a3_07_bloom_01.start+6 take beat_gesture bloom    # motion:
@@ -547,6 +574,7 @@ shot a3s32 beat=e101_3_07 len=285 set=bandstand:rite px=1 look=pixel cut=CUT sce
 end
 
 shot a3s33 beat=e101_3_07 len=180 set=bandstand_cu:north_night px=2 look=pixel cut=CUT scene=a3_try3 gore=CUTE
+  prop  candle3 art=gen:candle(state=lit,size=2) art.lit=gen:candle(state=lit,size=2) art.out=gen:candle(state=out,size=2) art.flash=gen:candle(state=flash,size=2) art.tall=gen:candle(state=tall,size=2) art.grow=gen:candle(state=grow,size=2) art.blue=gen:candle(state=blue,size=2) art.lean=gen:candle(state=lean,size=2) at=196,128 anchor=bottom
   actor fuzz  who=fuzz kind=bust at=110,104 face=R idle=on
   actor sunny who=sunny kind=bust at=200,110 face=L idle=on
   actor bone  who=bonejangles kind=figure at=250,60 face=L idle=still
@@ -554,10 +582,10 @@ shot a3s33 beat=e101_3_07 len=180 set=bandstand_cu:north_night px=2 look=pixel c
   +0    walla w_giggle_09 to gain=-6dB                    # beep + claps continue (a3s32's loop)
   +10   pose fuzz give_flask
   +20   say a3_07_fuzz_04 fuzz
-  +60   pose sunny pour over=21 ; fx water_pour from=actor:sunny to=actor:bone over=21
-  +65   sfx FX_HISS ; fx steam at=actor:bone
+  +60   pose sunny pour over=21 ; fx water_pour from=200,86 to=250,36 over=21
+  +65   sfx FX_HISS ; fx steam at=250,36
   +80   tint TINT_PURPLE -1 ; pose bone shudder
-  +100  state candle3 grow
+  +100  show candle3                           # no art.grow (ART)
   @a3_07_fuzz_04.start+6 headturn fuzz 16 3    # motion:
   @a3_07_fuzz_04.start+14 headturn fuzz 240 4    # motion:
   +0    cam to scale=1.080 over=180 ease=INOUT    # motion: slow push-in on the line
@@ -567,7 +595,8 @@ end
 shot a3s34 beat=e101_3_07 len=270 set=bandstand_cu:north_night px=2 look=pixel cut=CUT scene=a3_try3 gore=CUTE
   actor fuzz who=fuzz kind=bust at=120,110 face=R idle=on pose=kneel_sheet
   prop sheet art=gen:signup_sheet(small=1) at=190,96
-  cam at=0,0 ; zoom 261 270                               # 2% push
+  cam at=0,0
+  +0    zoom 261 270                                      # 2% push
   +0    walla w_giggle_09 to gain=-6dB
   +60   fx finger_run prop=sheet from=row1 to=row6 over=160
   +254  sfx FX_BREATH_IN
@@ -588,7 +617,7 @@ shot a3s35 beat=e101_3_07 len=210 set=bandstand:rite px=1 look=pixel cut=CUT sce
   actor nana  who=nana kind=figure at=104,170 face=R idle=on
   actor mayor who=mayor kind=figure at=60,150 face=R idle=on pose=sit_clipboard
   +0    state bone possessed ; twitch bone on
-  crowd giggle gen=randomize who=giggle_adults n=14 seed=3321 kind=chibi lane=y178 from=10 spacing=16 age=adult
+  crowd giggle gen=randomize who=giggle_adults n=14 seed=3321 kind=chibi dy=178 from=10 spacing=16 age=adult
   end
   +0    freeze fuzz ; walla w_giggle_09 off ; stop a3_07_pet_01 ; mx fuzz_hymn_motif stop ; cc "[silence]"
   +27   say a3_07_mayor_01 mayor                          # R21 after the cut; he doesn't look up
@@ -631,11 +660,11 @@ shot a3s36 beat=e101_3_07 len=60 set=bandstand:rite px=1 look=pixel cut=CUT scen
 end
 
 shot a3s37 beat=e101_3_07 len=345 set=bandstand_cu:north_night px=2 look=pixel cut=CUT scene=a3_try3 gore=CUTE
-  prop candle art=gen:candle(state=lit) at=110,130
+  prop candle art=gen:candle(state=lit) art.blue=gen:candle(state=blue) at=110,130
   actor bone who=bonejangles kind=bust at=220,96 face=L idle=still
   +0    state bone possessed ; twitch bone on
   +0    sfx FX_HISS gain=-18dB ; fx candle_shrink prop=candle to=blue over=26
-  +26   state candle blue ; mx wall_motif start
+  +26   show candle:blue ; mx wall_motif start
   +234  say a3_07_bone_01 bone  +242  say a3_07_clink_01 clinker mouth=none            # sync late R8
   +345  label L_ACTOUT                                    # cut on the gutter = a3s38 frame 0
   +0    cam to scale=1.080 over=345 ease=INOUT    # motion: slow push-in on the line
