@@ -145,7 +145,7 @@ local function on_vsync()
     u32(hcmd_addr + H_STOP)[0] = 0
     u32(hcmd_addr + H_LOCK)[0] = 1
     lock = true
-    log('lockstep on')
+    log(string.format('lockstep on vsyncs=%d clock=%.3f', vsyncs, os.clock()))
     return
   end
   if paused ~= base + 1 then return end      -- not stopped at our frame yet
