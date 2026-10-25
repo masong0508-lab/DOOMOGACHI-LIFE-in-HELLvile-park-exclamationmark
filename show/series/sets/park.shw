@@ -9,7 +9,9 @@
 set bandstand kind=2d px=1 matte=open look=pixel desc="the heart of the episode: north half live, south half boarded against the Wall, the sealed gate beside it"
   plane sky    bands=sky:dusk par=0
   plane stars  tile=gen:sky_stars(seed=3) size=128x80 par=0.02 hidden=yes
+  plane clouds image=gen:amb_clouds(seed=49,w=512,h=56,n=4,tone=night) size=512x56 at=0,-22 par=0.08
   plane glowhv image=gen:hellvile_glow(seed=126) size=560x240 par=0.5 light=fixed
+  plane haze image=gen:amb_haze(seed=48,w=512,h=48) size=512x48 at=0,40 par=0.45 light=fixed
   plane far    image=gen:bandstand_far(seed=125) size=560x240 par=0.5
   plane stage  tilemap=gen:bandstand_tiles(seed=124) size=800x240 par=1.0
   plane glow   tilemap=gen:bandstand_glow(seed=127) size=800x240 par=1.0 light=fixed
@@ -71,10 +73,23 @@ set bandstand kind=2d px=1 matte=open look=pixel desc="the heart of the episode:
   variant vape  light=night bands.sky=sky:vape  hide=glow show=fog1,fog2,eyes1,eyes2,eyes3 state=lan01:out,lan02:out,lan03:out,lan04:out,lan05:out,lan06:lean,lan07:lean,lan08:lean,lan09:lean,lan10:lean desc="1-14: the fog pours over the boards, red eyes, the lanterns dying from the south"
   variant torn  light=night bands.sky=sky:night show=stars hide=skirt2,skirt3,skirt4 desc="2-03 on: a gust tore the boards loose, the MINGLE crate shows"
   variant rite  light=night bands.sky=sky:night show=stars,candle1,candle2,candle3 hide=skirt2,skirt3,skirt4 desc="2-05 on: three candles on the rail (states: out after each failed try; the last a blue bead)"
+  # ambient layers (SETS.md sec.6; previews in show_out/art/motion)
+  amb cloudrun kind=drift plane=clouds vx=0.1
+  amb smoke    kind=drift plane=haze vx=-0.15
+  amb swing    kind=sway props=lan01,lan02,lan03,lan04,lan05,lan06,lan07,lan08,lan09,lan10 amp=1 period=100 lag=6
+  amb lanterns kind=lamps props=lan01,lan02,lan03,lan04,lan05,lan06,lan07,lan08,lan09,lan10 hold=5..14 dim=16 bloom=14 seed=81
+  amb glowshim kind=pcycle plane=glow idx=RAMP_CANDY.6,RAMP_CANDY.5,RAMP_CANDY.6,RAMP_CANDY.7 every=9
+  amb balloon  kind=sway props=balloon,banner amp=1 period=140 lag=20
+  amb crowd    kind=crowd form=idle kset=giggle_adults n=10 y=160 x=-300..60 depth=14 seed=82 plane=stage
+  amb strollers kind=crowd form=walk kset=giggle_adults n=5 y=178 x=-330..140 speed=0.35 seed=83 plane=stage
+  amb flies    kind=motes type=firefly n=18 area=-330,40,600,100 plane=stage seed=84
+  amb embers   kind=motes type=ember n=14 area=230,60,240,80 plane=far seed=85
+  amb fogroll  kind=motes type=dust n=20 area=40,120,220,50 plane=stage seed=86 hidden=yes
 end
 
 set bandstand_banner kind=2d px=1 matte=open look=pixel desc="CO-5 (dawn, co12-18): the real banner, GIGGLE in wet pink over MINGLE; the ladder; the N blooms back three times, the third red with a drip"
   plane sky    bands=sky:dawn par=0
+  plane clouds image=gen:amb_clouds(seed=50,w=512,h=56,n=4,tone=dawn) size=512x56 at=0,-22 par=0.1
   plane far    image=gen:bandstand_far(seed=125) size=560x240 par=0.3
   plane north  image=gen:bandstand_ms(seed=128) size=352x240 par=1.0
   # the banner's letters sit on the crayon banner's baseline (show y 104) at the same x (co11 -> co12 match cut)
@@ -91,10 +106,16 @@ set bandstand_banner kind=2d px=1 matte=open look=pixel desc="CO-5 (dawn, co12-1
   variant bloom3 light=dawn bands.sky=sky:dawn state=banner:bloom3 show=drip desc="co15 +107: red, with the drip (D16: candy red)"
   variant topper light=dawn bands.sky=sky:dawn state=banner:bloom3 show=drip,balloon desc="co15 +120 on, co16: the cupcake balloon over the N"
   variant turned light=dawn bands.sky=sky:dawn state=banner:bloom3,balloon:wall show=drip,balloon desc="co18: one change, the balloon faces the Wall"
+  # ambient layers (SETS.md sec.6; previews in show_out/art/motion)
+  amb cloudrun kind=drift plane=clouds vx=0.12
+  amb birds    kind=motes type=leaf n=6 area=-40,0,400,60 plane=far seed=91 speed=0.6
+  amb glints   kind=motes type=sparkle n=6 area=40,20,240,70 plane=north seed=92
+  amb wet      kind=sway props=balloon amp=1 period=130 lag=0
 end
 
 set bandstand_cu kind=2d px=2 matte=open look=pixel desc="close-up backings for busts at the bandstand (px=2): north, boards, steps, wall"
   plane sky    bands=sky:night par=0
+  plane clouds image=gen:amb_clouds(seed=51,w=256,h=30,n=3,tone=night) size=256x30 at=0,-30 par=0.15
   plane back   image=gen:bandstand_cu(side=north,seed=129) size=160x120 par=0
   variant north_dusk  light=dusk  bands.sky=sky:dusk desc="1-08 CUs"
   variant north_night light=night bands.sky=sky:night desc="1-12, 2-01..4-06 CUs on the north half"
@@ -102,13 +123,19 @@ set bandstand_cu kind=2d px=2 matte=open look=pixel desc="close-up backings for 
   variant steps       light=night bands.sky=sky:night image.back=gen:bandstand_cu(side=steps,seed=129) desc="2-05, 3-04, 3-06, 4-04: the steps"
   variant wall        light=night bands.sky=sky:night image.back=gen:bandstand_cu(side=wall,seed=129) desc="4-03: by the gate"
   variant north_dark  light=dark  bands.sky=sky:dark desc="1-14 act out, 2-01 (lanterns out)"
+  # ambient layers (SETS.md sec.6; previews in show_out/art/motion)
+  amb cloudrun kind=drift plane=clouds vx=0.06
+  amb flies    kind=motes type=firefly n=6 area=0,0,320,140 plane=back seed=93
+  amb bulbs    kind=lamps plane=back hold=5..14 dim=16 bloom=12 seed=94
 end
 
 set sealed_gate kind=2d px=1 matte=open look=pixel desc="MT-4 / 4-03 / PC-1: the sealed gate: seven padlocks, KEEP OUT. FOREVER., the small barred grille (shut)"
   plane sky    bands=sky:night par=0
   plane stars  tile=gen:sky_stars(seed=14) size=128x80 par=0.02
   plane glowhv image=gen:hellvile_glow(seed=132,w=560) size=560x240 par=0.2 light=fixed
+  plane haze image=gen:amb_haze(seed=52,w=512,h=48) size=512x48 at=0,30 par=0.25 light=fixed
   plane wall   image=gen:gate_wall(seed=130) size=352x240 par=1.0
+  plane fog image=gen:amb_fog(seed=53,w=512,h=40,c=RAMP_STONE.5,density=10) size=512x40 at=0,128 par=1.15 order=front
   prop  door    art=gen:gate_door(state=shut) art.bulge=gen:gate_door(state=bulge) plane=wall at=160,150 anchor=bottom
   prop  keepout art=gen:keep_out_sign(seed=3) plane=wall at=160,96 anchor=center text=3,3,52,12
   prop  lock1 art=gen:padlock(seed=1) plane=wall at=148,112 anchor=center
@@ -126,4 +153,9 @@ set sealed_gate kind=2d px=1 matte=open look=pixel desc="MT-4 / 4-03 / PC-1: the
   variant drop  light=dusk  bands.sky=sky:dusk desc="MT-4 (the main title's palette)"
   variant pc1   light=night bands.sky=sky:night show=lostlantern desc="PC-1: the lantern drifts over the Wall and sinks behind the gate"
   variant bulge light=night bands.sky=sky:night state=door:bulge desc="PC-1 ~161: the gate bulges outward once, BOING"
+  # ambient layers (SETS.md sec.6; previews in show_out/art/motion)
+  amb smoke    kind=drift plane=haze vx=-0.12
+  amb fogroll  kind=drift plane=fog vx=0.22
+  amb embers   kind=motes type=ember n=10 area=0,-6,320,30 par=0.25 seed=95
+  amb flies    kind=motes type=firefly n=6 area=0,90,320,60 plane=wall seed=96
 end

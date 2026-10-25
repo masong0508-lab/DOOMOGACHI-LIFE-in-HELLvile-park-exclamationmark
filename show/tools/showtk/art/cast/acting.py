@@ -12,6 +12,16 @@ sound ops are refused (the shot owns every sound).  Engine constants
 
     Library().expand("freeze", "mayor", n="21") -> [(0, "freeze mayor"), (21, "thaw mayor")]
 
+The same file declares the FLIPBOOKS a `pose A <name>` plays (ART motion pass):
+
+    cycles chars=<char>,... kinds=<kind>,...    # <char>_<kind> = gen:cycle(char=,kind=)
+    flip <name> src=<gen:...> [char=<char>] [mode=replace|over] [loop=1|0] [next=<kind>]
+
+`pose A <kind>` with a bare cycle kind (walk, run, take_big, ...) resolves to
+the actor's own `<char>_<kind>`; any other name must be a declared flip.  A
+one-shot (loop=0) hands over to `next` (default idle) when it ends, so a
+macro never has to time the return.
+
 `python3 -m showtk.art.cast.acting` checks the file and prints every macro
 expanded on a sample actor.
 """
@@ -52,6 +62,9 @@ ACTOR_FIRST = {"expr", "pop", "headturn", "squash", "move", "walk", "face", "pos
                "still", "freeze", "thaw", "panic", "twitch", "state"}
 SOUND = {"sfx", "fol", "amb", "mx", "tapestop", "say", "hum", "walla", "cc", "music", "mute", "duck"}
 STATES = {"possessed", "ghost", "dead", "normal"}
+CYCLE_KINDS = ("idle", "walk", "run", "tiptoe", "back_step", "pop", "pop_small", "take_big", "react_small",
+               "laugh_full", "hit", "smear_l", "smear_r", "exit_run")
+ONESHOT = {"pop", "pop_small", "take_big", "react_small", "laugh_full", "hit", "smear_l", "smear_r", "exit_run"}
 TIME = re.compile(r"^\+(\d+|R\d+|\$\w+)$")
 PARAM = re.compile(r"\$(\w+)")
 
@@ -69,6 +82,7 @@ class Library:
     def __init__(self, path=os.path.join(SERIES, "acting.shw")):
         self.path = path
         self.macros = {}
+        self.flips = {}         # name -> {src, char, mode, loop, next, where}
         self.errors = []
         try:
             stmts = parse_file(path, keep_raw_blocks=("macro",))
@@ -76,10 +90,56 @@ class Library:
             self.errors.append(str(e))
             return
         for st in stmts:
+            if st.kw == "flip":
+                self._flip(st)
+                continue
+            if st.kw == "cycles":
+                self._cycles(st)
+                continue
             if st.kw != "macro":
-                self.errors.append("%s: acting.shw holds `macro` blocks (got `%s`)" % (st.where, st.kw))
+                self.errors.append("%s: acting.shw holds `macro` blocks, `flip` and `cycles` (got `%s`)" % (st.where, st.kw))
                 continue
             self._load(st)
+        for m in self.macros.values():
+            self._check(m)
+
+    def _flip(self, st):
+        if len(st.words) != 1:
+            self.errors.append("%s: `flip <name> src=<gen:...> [char=] [mode=] [loop=] [next=]`" % st.where)
+            return
+        kv = {k: v for k, v, _w in st.kv}
+        if "src" not in kv:
+            self.errors.append("%s: flip %s has no src=" % (st.where, st.words[0]))
+            return
+        self._add_flip(st.words[0], kv["src"], st.where, kv.get("char"), kv.get("mode", "replace"),
+                       kv.get("loop", "1"), kv.get("next", "idle"))
+
+    def _cycles(self, st):
+        kv = {k: v for k, v, _w in st.kv}
+        chars = [c for c in kv.get("chars", "").split(",") if c]
+        kinds = [k for k in kv.get("kinds", ",".join(CYCLE_KINDS)).split(",") if k]
+        for k in kinds:
+            if k not in CYCLE_KINDS:
+                self.errors.append("%s: cycle kind %s (%s)" % (st.where, k, " ".join(CYCLE_KINDS)))
+        for c in chars:
+            for k in kinds:
+                nxt = "run" if k == "exit_run" else "idle"
+                self._add_flip("%s_%s" % (c, k), "gen:cycle(char=%s,kind=%s)" % (c, k), st.where, c, "replace",
+                               "0" if k in ONESHOT else "1", nxt)
+
+    def _add_flip(self, name, src, where, char, mode, loop, nxt):
+        if name in self.flips:
+            self.errors.append("%s: flip %s already declared at %s" % (where, name, self.flips[name]["where"]))
+            return
+        if mode not in ("replace", "over"):
+            self.errors.append("%s: flip %s mode=replace|over" % (where, name))
+        self.flips[name] = dict(src=src, char=char, mode=mode, loop=int(loop), next=nxt, where=where)
+
+    def resolve_pose(self, char, name):
+        """the flip a `pose <actor of char> <name>` plays, or None"""
+        if name in self.flips:
+            return self.flips[name]
+        return self.flips.get("%s_%s" % (char, name))
 
     def _load(self, st):
         if len(st.words) != 2:
@@ -99,7 +159,6 @@ class Library:
                 continue
             m.lines.append((where, parts[0], [p.strip() for p in parts[1].split(";") if p.strip()]))
         self.macros[m.name] = m
-        self._check(m)
 
     def _check(self, m):
         if not m.lines:
@@ -173,6 +232,12 @@ class Library:
                     return "headturn A <brad 0..255> <frames>"
             if int(args[1]) > 255:
                 return "headturn brad is 0..255 (64 = a quarter turn)"
+        if name == "pose":
+            fl = args[1]
+            if fl not in CYCLE_KINDS and fl not in self.flips and not fl.startswith("$"):
+                return "pose %s: not a cycle kind (%s) nor a declared flip" % (fl, " ".join(CYCLE_KINDS))
+        if name == "walk" and not any(a.startswith("to=") for a in args):
+            return "walk A to=<x> over=<frames>"
         if name == "squash" and (not args[1].isdigit() or not any(a.startswith("over=") for a in args)):
             return "squash A <q8 scale> over=<frames>"
         return None
@@ -200,7 +265,7 @@ def main(argv):
     for name in sorted(lib.macros):
         if "-v" in argv:
             print("%s: %s" % (name, " | ".join("+%d %s" % fo for fo in lib.expand(name, "mayor"))))
-    print("%d macros, %d errors" % (len(lib.macros), len(lib.errors)))
+    print("%d macros, %d flipbooks, %d errors" % (len(lib.macros), len(lib.flips), len(lib.errors)))
     return 1 if lib.errors else 0
 
 
