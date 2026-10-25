@@ -208,6 +208,11 @@ def build(d: CueDef, bends=None, write=True):
             bm = BM.BarMap(bpm=float(d.kv.get("bpm", 120)),
                            meter=int(str(d.kv.get("meter", "4")).split("/")[0]),
                            bars=int(d.kv.get("bars", 1)), source=d.src)
+        for spec in filter(None, str(d.kv.get("addsec", "")).split(",")):
+            # addsec=<name>@<bar>+<n bars>: an extra named section for `mx <cue> section=<name>`
+            nm, _, rest = spec.partition("@")
+            b0, _, n = rest.partition("+")
+            bm.sections = list(bm.sections) + [(nm, int(b0), int(n or 1))]
         meta.update(bpm=bm.bpm, meter=bm.meter, bars=bm.bars, sections=bm.sections,
                     named_notes=d.notes, desc=d.kv.get("desc", ""))
         if bends:

@@ -7,6 +7,24 @@
 
 # ---- walla beds (spec §6.2): the mixer builds each bed from its locked lines (voice/walla.py)
 walla kids_far lines=w_kids_01..w_kids_06 density=1.4/s pan=spread seed=7    # captioned by the shot's `cc`
+# Adult crowd beds (Act 1-4). Built from the ADULT walla lines only (walla:giggle / tent voices,
+# age=adult) -- never from the kids bed. mode=loop tiles one take on its own grid (the claps).
+walla giggle      lines=w_fair_01..w_fair_08,w_giggle_01 density=1.6/s pan=spread seed=11  # the fair at large
+walla giggle_far  lines=w_fair_01..w_fair_08 density=1.0/s pan=spread seed=12               # the fair, heard from the road
+walla tent        lines=w_fair_02,w_fair_05,w_fair_07,w_tent_02 density=0.7/s pan=spread seed=13  # the comedy-tent audience settling
+walla lulla       lines=w_fair_03,w_fair_06,w_fair_08 density=0.5/s pan=spread seed=14       # parents murmuring in the drawing tent
+walla w_giggle_09 lines=w_giggle_09 mode=loop pan=0                                          # the crowd's claps on 2 and 4 (140 bpm)
+walla w_giggle_11 lines=w_giggle_11,w_giggle_01 density=1.2/s pan=spread seed=15             # relieved sighs and a laugh
+
+# ---- Adult fair chatter (walla:giggle, Act 1 beds; background murmur, mixed under -18 dB)
+line w_fair_01    walla:giggle "Ooh, lanterns!"            dir="pleased, passing by"
+line w_fair_02    walla:giggle "Two cupcakes, please."     dir="friendly, to a stall"
+line w_fair_03    walla:giggle "Isn't this lovely?"        dir="warm, to a neighbour"
+line w_fair_04    walla:giggle "Is that the Mayor?"        dir="excited, craning"
+line w_fair_05    walla:giggle "Ha! Oh, that's good."      dir="a chuckle at a joke"
+line w_fair_06    walla:giggle "Mm, smells like soup."     dir="content"
+line w_fair_07    walla:giggle "Save me a seat!"           dir="calling across"
+line w_fair_08    walla:giggle "Every year, same as ever." dir="fond, a shrug"
 
 # ---- Cold open
 line w_kids_01    walla:kids_walla "Cupcakes!"
@@ -19,7 +37,7 @@ line co12_hum     mayor "Mm-mm, mm-mm-mm, mm-mm-mm, mm--" take=lib:mayor/hum_daw
 line co13_heehee  mayor "...Hee. Hee."    take=lib:mayor/heehee_v1 lock=identical asr=skip
 line co15_perfect mayor "Perfect."        dir="pleased with himself, quiet"
 line co18_stay    mayor "Stay."           dir="firm, to the balloon, as to a pet"
-line mt7_pet_01   pet   "beep."           take=lib:pet/beep_v1 process=none
+line mt7_pet_01   pet   "beep."           take=lib:pet/beep_v1 process=none asr=skip
 line a1_04_steamy_01 steamy "That's Duckworth."     dir="proud, quick, even, lilting; names 15-16 f apart"
 line a1_04_steamy_02 steamy "That's Quackers."      dir="same tune as the first"
 line a1_04_steamy_03 steamy "That's..."             dir="the tune breaks off"

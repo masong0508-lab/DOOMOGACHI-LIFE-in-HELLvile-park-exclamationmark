@@ -340,6 +340,10 @@ class Mixer:
                     metas[cue] = cuelib.load_meta(cue)
                 self.sources.update(metas[cue].get("sources", []))
             if "op" not in e:
+                prev = inst.get("%s#%d" % (cue, live.get(cue, 0)))
+                if e.get("jump") and prev and not prev.get("stopped"):   # section= jump: the
+                    prev["stopped"] = True                               # old instance stops
+                    prev["ops"].append({"smp": e["smp"], "op": "stop", "over_smp": int(A.DECLICK)})
                 live[cue] = live.get(cue, 0) + 1
                 name = "%s#%d" % (cue, live[cue])
                 bm = BM.BarMap.from_json(metas[cue]["barmap"])
@@ -354,7 +358,7 @@ class Mixer:
             op = dict(e)
             if op["op"] == "bend" and "bend" in op:
                 a, _, b = str(op["bend"]).partition("->")
-                op["from_st"], op["to_st"] = float(a), float(b)
+                op["from_st"], op["to_st"] = _bend_st(a, b)
             if op["op"] == "stop":
                 inst[name]["stopped"] = True
             inst[name]["ops"].append(op)
@@ -441,6 +445,26 @@ def _voice_src(r):
     if s.startswith("lib:") or r.get("kind") == "lib":
         return "lib:" + s.split(":", 1)[-1]
     return s or "tts:kokoro"
+
+
+_NOTE = {"C": 0, "D": 2, "E": 4, "F": 5, "G": 7, "A": 9, "B": 11}
+
+
+def _bend_st(a, b):
+    """`bend <a>-><b>`: semitones (-2->0), note names (C->Bb: 0 -> -2, the cue's pitch is
+    the first note), or tempi in bpm (40->140: a varispeed wind-up, ending at pitch 0)."""
+    def note(t):
+        t = t.strip()
+        if t[:1].upper() in _NOTE:
+            return _NOTE[t[0].upper()] + t[1:].count("#") - t[1:].count("b")
+        return None
+    if note(a) is not None and note(b) is not None:
+        d = (note(b) - note(a) + 6) % 12 - 6
+        return 0.0, float(d)
+    x, y = float(a), float(b)
+    if min(abs(x), abs(y)) > 24:                        # tempi: pitch follows speed
+        return 12 * np.log2(x / y), 0.0
+    return x, y
 
 
 def _render_mx(rows, metas, n):
