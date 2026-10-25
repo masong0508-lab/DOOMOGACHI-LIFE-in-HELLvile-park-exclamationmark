@@ -1,0 +1,22 @@
+{
+ "cue": "ribs_fanfare",
+ "bpm": 140.0,
+ "meter": 4,
+ "bars": 2,
+ "sections": [],
+ "offset_smp": 0,
+ "frames_per_bar": 51.42857142857143,
+ "smp_per_bar": 82285.71428571429,
+ "source": "score:pilot.ribs_fanfare",
+ "bar_smp": [
+  0,
+  82286,
+  164571
+ ],
+ "bar_frame": [
+  0,
+  51,
+  103
+ ],
+ "named_notes": {}
+}
