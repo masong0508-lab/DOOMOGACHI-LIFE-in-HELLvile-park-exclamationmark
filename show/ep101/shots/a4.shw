@@ -72,8 +72,8 @@ shot a4s06 beat=e101_4_01 len=60 set=bandstand:rite px=1 look=pixel cut=CUT matt
   change candle3.art=blue
   +0    sfx FOL_flame_flutter gain=-28dB
   +13   button ; change candle3.art=lean                # the bead leans toward the Wall
-  +0    cam to scale=1.100 over=60 ease=OUT    # motion: insert push
-  +0    cam pan dx=14.5 dy=8.2 over=60 ease=OUT    # motion: (centred on the frame)
+  +0    cam to scale=2.200 over=60 ease=OUT    # motion: insert push
+  +0    cam pan dx=7.2 dy=4.1 over=60 ease=OUT    # motion: (centred on the frame)
 end
 
 # ---- 4-02 (900 f) ----
@@ -234,10 +234,10 @@ shot a4s18 beat=e101_4_04 len=378 set=bandstand:night px=1 look=pixel cut=CUT ma
   actor sunny who=sunny kind=figure at=60,140 face=L idle=on
   actor pet   who=pet   kind=sprite at=60,108 idle=on
   +0    fol FOL_soft_step
-  +40   walk sunny to=34 over=30
+  +40   take walk_to sunny to=34 over=30    # motion: walk cycle
   +78   pose sunny hug ; squash sunny 230 over=6 ; fol FOL_plush_pff ; cc "[soft plush hug]"
   +84   mx fuzz_amen start gain=-14dB                     # 2 bars, half tempo
-  +78   expr fuzz EXPR_SHOCK ; still fuzz
+  +78   expr fuzz EXPR_SHOCK ; pose fuzz take_big ; still fuzz    # motion: the take (anticipation, stretch, settle)
   +91   thaw fuzz ; pose fuzz hug_back
   +104  button ; pose fuzz candle_arm_out                 # flame held well clear of the plush
   +0    cam to scale=2.120 over=378 ease=INOUT    # motion: track the action
@@ -329,7 +329,7 @@ shot a4s26 beat=e101_4_06 len=222 set=bandstand:torn px=1 look=pixel cut=CUT mat
   actor pet   who=pet   kind=sprite at=88,124 idle=on
   actor mayor who=mayor kind=figure at=170,110 face=L idle=on
   +0    mx pip_motif start gain=-16dB                     # pizzicato, slower
-  +0    walk mayor to=176 over=60
+  +0    take walk_to mayor to=176 over=60    # motion: walk cycle
   +90   say a4_06_pip_01 pip
   +128  say a4_06_pip_02 pip                              # R8
   +174  say a4_06_pip_03 pip                              # R13
@@ -415,8 +415,8 @@ shot a4s29 beat=e101_4_06 len=228 set=bandstand:torn px=1 look=pixel cut=CUT mat
   +60   fx dust at=prop:crate n=12 seed=429 ; sfx FOL_dust_puff gain=-22dB
   +100  show rocket ; pose mayor lift_rocket
   +150  pose mayor blow_dust ; pose rocket pink
-  +0    cam to scale=1.060 over=228 ease=INOUT    # motion: crane-in reveal
-  +0    cam pan dx=9.1 dy=2.1 over=228 ease=INOUT    # motion: (centred on the frame)
+  +0    cam to scale=1.590 over=228 ease=INOUT    # motion: crane-in reveal
+  +0    cam pan dx=6.1 dy=0.4 over=228 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a4s30 beat=e101_4_06 len=150 set=bandstand_cu:north_night px=2 look=pixel cut=CUT matte=open gore=CUTE
@@ -438,9 +438,9 @@ shot a4s31 beat=e101_4_06 len=90 set=bandstand:night px=1 look=pixel cut=CUT mat
   actor fuzz  who=fuzz  kind=figure at=116,154 face=R idle=on
   actor bone  who=bonejangles kind=figure at=60,154 face=R idle=on
   +0    cam pan dx=0.3 ; fol FOL_footsteps_group
-  +0    walk mayor to=260 over=90 ; walk sunny to=236 over=90 ; walk nana to=214 over=90
-  +4    walk fuzz to=196 over=86 ; walk bone to=140 over=86
-  +10   walk pip to=172 over=80                           # four steps back
+  +0    walk mayor to=260 over=90 ; pose sunny walk ; walk sunny to=236 over=90 ; pose nana walk ; walk nana to=214 over=90    # motion: walk cycle
+  +4    pose fuzz walk ; walk fuzz to=196 over=86 ; pose bone walk ; walk bone to=140 over=86    # motion: walk cycle
+  +10   pose pip walk ; walk pip to=172 over=80                           # four steps back    # motion: walk cycle
 end
 
 # ---- 4-07 (360 f) ----
@@ -591,6 +591,7 @@ shot a4s41 beat=e101_t_1 len=90 set=cottage:dawn px=1 look=pixel cut=FADE matte=
   +0    fade in over=13 ; mx home_box start gain=-14dB
   +12   pose key turn ; sfx FOL_key_click gain=-18dB
   +30   door open tw=TW_WOBBLE amp=34% ; sfx FX_bwobble gain=-14dB ; cc "[door wobbles like jelly]"
+  +0    world cam to punch=272 over=90 ease=INOUT    # motion: slow push in the room (ROOM host keyed camera)
 end
 
 shot a4s42 beat=e101_t_1 len=180 set=cottage:dawn px=1 look=pixel cut=CUT matte=open gore=CUTE
@@ -601,6 +602,7 @@ shot a4s42 beat=e101_t_1 len=180 set=cottage:dawn px=1 look=pixel cut=CUT matte=
   +60   walk sunny to=room:2,2 over=40 ; door close tw=TW_WOBBLE amp=34% ; sfx FX_bwobble gain=-20dB
   +110  pose sunny set_suitcase ; prop suitcase art=pxt:suitcase at=room:door_side ; fol FOL_soft_thud
   +123  button ; door wobble amp=20%                      # the shut door still wobbling
+  +0    world cam to punch=272 over=180 ease=INOUT    # motion: slow push in the room (ROOM host keyed camera)
 end
 
 shot a4s43 beat=e101_t_1 len=180 set=cottage:dawn px=1 look=pixel cut=CUT matte=open gore=CUTE
@@ -615,6 +617,7 @@ shot a4s43 beat=e101_t_1 len=180 set=cottage:dawn px=1 look=pixel cut=CUT matte=
   +90   move pet to=prop:shellL over=10 tw=TW_HOP ; sfx FX_pet_blip_tiny gain=-28dB
   +100  pose pet curl
   +122  face pet wall over=13                             # turns to face the window (13 f)
+  +0    world cam to punch=272 over=180 ease=INOUT    # motion: slow push in the room (ROOM host keyed camera)
 end
 
 shot a4s44 beat=e101_t_2 len=105 set=cottage:dawn px=1 look=pixel cut=CUT matte=open gore=CUTE
@@ -623,6 +626,7 @@ shot a4s44 beat=e101_t_2 len=105 set=cottage:dawn px=1 look=pixel cut=CUT matte=
   +15   door wobble amp=34% ; sfx FX_bwomp gain=-14dB
   +30   door wobble amp=34% ; sfx FX_bwomp gain=-14dB
   +60   door open tw=TW_WOBBLE amp=34% ; sfx FX_bwobble gain=-18dB
+  +0    world cam to punch=272 over=105 ease=INOUT    # motion: slow push in the room (ROOM host keyed camera)
 end
 
 shot a4s45 beat=e101_t_2 len=333 set=cottage:dawn px=1 look=pixel cut=CUT matte=open gore=CUTE
@@ -640,6 +644,7 @@ shot a4s45 beat=e101_t_2 len=333 set=cottage:dawn px=1 look=pixel cut=CUT matte=
   +189  show dish ; pose nana hold_out_dish
   +240  say t2_nana_01 nana
   +313  pose nana thumb_rim                               # R13 after; held R21
+  +0    world cam to punch=280 over=333 ease=INOUT    # motion: slow push in the room (ROOM host keyed camera)
 end
 
 shot a4s46 beat=e101_t_2 len=81 set=cottage:dawn px=2 look=pixel cut=CUT matte=open gore=CUTE insert
@@ -647,6 +652,7 @@ shot a4s46 beat=e101_t_2 len=81 set=cottage:dawn px=2 look=pixel cut=CUT matte=o
   actor pet who=pet kind=sprite at=prop:shellL idle=on pose=curl_facing_wall
   +0    sfx FOL_tiny_breath gain=-30dB
   +20   pose pet horn_nubs
+  +0    world cam to punch=272 over=81 ease=INOUT    # motion: slow push in the room (ROOM host keyed camera)
 end
 
 shot a4s47 beat=e101_t_2 len=81 set=cottage:dawn px=2 look=pixel cut=CUT matte=open gore=CUTE
@@ -657,6 +663,7 @@ shot a4s47 beat=e101_t_2 len=81 set=cottage:dawn px=2 look=pixel cut=CUT matte=o
   +60   mx nana_motif stop over=21
   @t2_nana_02.start+6 headturn nana 16 3    # motion:
   @t2_nana_02.start+14 headturn nana 240 4    # motion:
+  +0    world cam to punch=272 over=81 ease=INOUT    # motion: slow push in the room (ROOM host keyed camera)
 end
 
 # ============================== END CREDITS ==============================
@@ -751,4 +758,5 @@ shot a4s56 beat=e101_pc_1 len=45 set=dippinn_card px=1 look=pixel cut=SMASH matt
   +34   say pc1_gurgle_03 gurgle ; cc "[GURGLE: gurgle.]" # ends on the last frame (episode frame 39,599)
   +0    cam to scale=1.050 over=45 ease=INOUT    # motion: push in, drifting toward the speaker
   +0    cam pan dx=2.6 dy=4.3 over=45 ease=INOUT    # motion: (centred on the frame)
+  +34   shake SHK_TAP    # motion: the gurgle jolts the card
 end

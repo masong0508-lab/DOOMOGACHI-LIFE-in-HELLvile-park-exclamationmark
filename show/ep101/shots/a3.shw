@@ -59,7 +59,7 @@ shot a3s04 beat=e101_3_01 len=176 set=fun_fair:cute px=1 look=pixel cut=CUT scen
   +2    sfx FX_BADUM ; cc "[ba-dum]"
   +10   eyes pet D over=3                                 # R8 after the ba-dum
   +40   move sunny to=+16,-4 over=10 tw=TW_HOP ; label L_STEP
-  +50   walk sunny to=200 over=126
+  +50   pose sunny run ; walk sunny to=200 over=126    # motion: walk cycle
   +0    cam to scale=1.060 over=176 ease=INOUT    # motion: track the action
   +0    cam pan dx=15.1 dy=5.1 over=176 ease=INOUT    # motion: (centred on the frame)
 end
@@ -92,7 +92,7 @@ shot a3s07 beat=e101_3_01 len=74 set=fun_fair:cute px=1 look=pixel cut=CUT scene
   +2    sfx FX_BLIP ; cc "[blip]"
   +10   take look_at sunny turn=-48                       # looks at the wand
   +30   fx bubbles at=actor:sunny n=1 seed=12 tint=pink
-  +50   walk sunny to=200 over=24
+  +50   pose sunny run ; walk sunny to=200 over=24    # motion: walk cycle
   +0    cam to scale=1.060 over=74 ease=INOUT    # motion: track the action
   +0    cam pan dx=15.1 dy=5.1 over=74 ease=INOUT    # motion: (centred on the frame)
 end
@@ -226,7 +226,7 @@ shot a3s15 beat=e101_3_03 len=260 set=scary_house_fp:truth px=1 look=hellify cut
   +108  sfx FX_CLONK ; hud face grin
   +116  sfx FX_CHK2
   +150  mon ghost1 spawn sprite=cardboard_ghost at=9.5,4.0 ; mon ghost1 swing
-  +160  sfx FX_BLAM ; hitstop 2 ; mon ghost1 die gore=none fall=flat ; hud set shells=4
+  +160  sfx FX_BLAM ; hitstop 2 ; mon ghost1 die gore=none fall=flat ; hud set shells=4 ; shake SHK_SHOTGUN    # motion: camera kick
   +162  sfx FX_FWAP ; hud face wince
   +173  sign s_a3_03_ghost_back on=mon:ghost1             # reads 70 f (2.3 s)
   +243  sfx FX_CHK2
@@ -261,11 +261,11 @@ shot a3s17 beat=e101_3_03 len=288 set=scary_house_fp:truth px=1 look=hellify cut
   +59   sfx FX_OI ; cc "[Oi!]"
   +80   sfx FX_BLAM ; hitstop 2 ; shake SHK_SHOTGUN ; mon sheet1 die gore=bloom_sheet ; hud set shells=5
   +92   sfx FX_CHK2
-  +115  sfx FX_BLAM ; hitstop 2 ; mon sheet2 die gore=shred ; hud set shells=4
-  +135  sfx FX_BLAM ; hitstop 2 ; mon sheet3 die gore=shred_eyeballs ; hud set shells=3
+  +115  sfx FX_BLAM ; hitstop 2 ; mon sheet2 die gore=shred ; hud set shells=4 ; shake SHK_SHOTGUN    # motion: camera kick
+  +135  sfx FX_BLAM ; hitstop 2 ; mon sheet3 die gore=shred_eyeballs ; hud set shells=3 ; shake SHK_SHOTGUN    # motion: camera kick
   +180  sfx FX_BLAM ; hitstop 2 ; shake SHK_SHOTGUN ; mon sheet4 die gore=bloom_sheet ; mon sheet5 die gore=bloom_sheet ; hud set shells=2
   +192  sfx FX_CHK2
-  +230  sfx FX_BLAM ; hitstop 2 ; mon sheet6 die gore=gib ; lens gib ; lens clear over=14 twos ; hud set shells=1
+  +230  sfx FX_BLAM ; hitstop 2 ; mon sheet6 die gore=gib ; lens gib ; lens clear over=14 twos ; hud set shells=1 ; shake SHK_SHOTGUN    # motion: camera kick
 end
 
 shot a3s18 beat=e101_3_03 len=201 set=scary_house_fp:truth px=1 look=hellify cut=CUT scene=a3_house_fp gore=BRUTAL
@@ -465,6 +465,8 @@ shot a3s29 beat=e101_3_06 len=27 set=bandstand_cu:north_night px=2 look=pixel cu
   state bone possessed ; twitch bone on
   +0    amb AMB_NIGHT_ROOM on
   +13   button ; headturn bone 4 1 ; sfx FX_CREAK
+  +0    cam to scale=1.060 over=27 ease=INOUT    # motion: creep in on the creak
+  +0    cam pan dx=9.1 dy=5.1 over=27 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a3s30 beat=e101_3_06 len=126 set=bandstand:rite px=1 look=pixel cut=CUT scene=a3_tin gore=CUTE

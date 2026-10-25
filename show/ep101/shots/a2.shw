@@ -38,6 +38,7 @@ shot a2_02 beat=e101_2_01 len=120 set=bandstand:dark px=1 cut=CUT scene=a2_bands
   ad "Every lantern is out. Bonejangles' ribcage glows purple; his eye sockets go red."
   +0    cam to scale=1.060 over=120 ease=INOUT    # motion: crane-in reveal
   +0    cam pan dx=9.1 dy=2.1 over=120 ease=INOUT    # motion: (centred on the frame)
+  +115   cam whip L over=5 dist=60    # motion: whip pan into a2_03 (cut on the blur)
 end
 
 shot a2_03 beat=e101_2_01 len=45 set=bandstand:dark px=1 cut=CUT
@@ -347,7 +348,7 @@ shot a2_27 beat=e101_2_04 len=90 set=fun_fair:panic px=1 cut=CUT
   actor bloom who=bloom kind=chibi at=290,140 face=L
   +0    sfx FOL_stampede gain=-6dB
   +20   face sunny L ; headturn sunny 32 6
-  +20   walk fuzz to=230 over=70 ; walk bloom to=256 over=70
+  +20   pose fuzz walk ; walk fuzz to=230 over=70 ; pose bloom walk ; walk bloom to=256 over=70    # motion: walk cycle
   +0    cam to scale=1.060 over=90 ease=INOUT    # motion: track the action
   +0    cam pan dx=3.1 dy=5.1 over=90 ease=INOUT    # motion: (centred on the frame)
 end
@@ -362,7 +363,7 @@ shot a2_28 beat=e101_2_05 len=105 set=bandstand:torn px=1 cut=CUT scene=a2_rite
   crowd hugs gen=randomize seed=2028 n=10 kind=chibi age=adult formation=parted x=160..300
   end
   +0    fol FOL_trot ; mx riff_em start
-  +0    walk fuzz to=180 over=80 ; walk bloom to=200 over=100
+  +0    walk fuzz to=180 over=80 ; take walk_to bloom to=200 over=100    # motion: walk cycle
   +4    say a2_05_fuzz_03 fuzz
   +30   take hug crowd:hugs.2 fuzz ; take hug crowd:hugs.5 fuzz
   @a2_05_fuzz_03.end+R13  say a2_05_bloom_03 bloom
@@ -454,6 +455,8 @@ shot a2_34 beat=e101_2_06 len=42 set=bandstand_cu:north_night px=2 cut=CUT
   +0    state bj possessed ; amb AMB_night_still on
   +13   say a2_06_bone_01 bj mouth=none size=tiny
   @a2_06_bone_01.start+R8 say a2_06_clink_01 bj mouth=none
+  +0    cam to scale=1.060 over=42 ease=INOUT    # motion: creep in on the possessed skeleton
+  +0    cam pan dx=9.1 dy=5.1 over=42 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a2_35 beat=e101_2_06 len=30 set=bandstand_cu:steps px=2 cut=CUT
@@ -488,6 +491,7 @@ shot a2_37 beat=e101_2_06 len=90 set=bandstand:rite px=2 cut=CUT insert
   +55   card fail text=s_a2_06_fail from_scale=2.0 ; shake SHK_STAMP ; mx fail_sting start
   +0    cam to scale=2.200 over=90 ease=OUT    # motion: insert push
   +0    cam pan dx=7.3 dy=4.1 over=90 ease=OUT    # motion: (centred on the frame)
+  +85   cam whip L over=5 dist=60    # motion: whip pan into a2_38 (cut on the blur)
 end
 
 shot a2_38 beat=e101_2_06 len=45 set=bandstand:rite px=1 cut=CUT
@@ -597,6 +601,8 @@ shot a2_48 beat=e101_2_07 len=18 set=bandstand:rite px=1 cut=CUT
   crowd group gen=cast n=6 who=nana,pip,fuzz,bloom,sunny,random:2048 kind=chibi formation=row y=150
   end
   +0    mx riff_em start gain=-18dB ; face crowd:group R ripple=0..3 ; sfx FOL_turn_rustle
+  +0    cam to scale=1.040 over=18 ease=OUT    # motion: a short punch-in on the row turning
+  +0    cam pan dx=6.2 dy=3.5 over=18 ease=OUT    # motion: (centred on the frame)
 end
 
 shot a2_49 beat=e101_2_07 len=162 set=fun_fair:panic px=1 cut=CUT
@@ -619,7 +625,7 @@ end
 
 shot a2_51 beat=e101_2_08 len=150 set=whack_an_imp:night px=1 cut=CUT
   actor sunny who=sunny kind=figure at=-10,150 face=R pet=on_head
-  +0    walk sunny to=200 over=150 ; fol FOL_paw_steps follow=sunny ; cam pan dx=60
+  +0    pose sunny walk ; walk sunny to=200 over=150 ; fol FOL_paw_steps follow=sunny ; cam pan dx=60    # motion: walk cycle
   +40   pop imp1 TWT_POP_SMALL ripple=imp1..imp5:0..3
   +60   state imp1 shut ; sfx FOL_clack
   +62   state imp2 shut ; sfx FOL_clack
