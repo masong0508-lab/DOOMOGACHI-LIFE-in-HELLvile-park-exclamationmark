@@ -126,3 +126,4 @@ Each names the default taken and where to change it.
   1000, the calendar's print, the logo (drawn the way `fp_title.c` draws it).
 - **Previews are host composites** (`show sets sheet`), never master pixels; the player draws the
   masters. PIC-PAL is checked on every composed frame of every variant (100 %).
+- ART review (art director): Mr. Flops is a prop bunny (gen:mr_flops, one floppy ear) in Pip's paws, not ACC_TEDDY (a bear); launch_hill redrawn to the script (Wall down the frame's centre line, park below, iron launch stand prop, mark wall_x 160); joke_graveyard fills its sky with a yew/tree line (4-07 board note: sky out of frame).

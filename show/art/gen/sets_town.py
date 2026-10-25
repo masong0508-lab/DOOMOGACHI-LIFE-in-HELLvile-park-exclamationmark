@@ -465,6 +465,22 @@ def joke_graveyard(seed=360, w=480):
     strings; the child-sized FLUFFY stone and its cupcake are props)."""
     w = int(w)
     cv = Canvas(w, 240)
+    # ART review: 4-07's board note keeps the sky out of frame (camera low on the path), so
+    # a dark yew wall and a row of lollipop trees fill everything above the fence; only a
+    # few stars peek through the top rows. Lantern glints keep it from reading as a void.
+    rng0 = Rng(seed + 50)
+    yew = np.zeros((240, w), bool)
+    for x in range(w):
+        yew[max(0, 6 + int(4 * math.sin(x / 11.0 + seed)) + rng0.randint(0, 2)):Y(110), x] = True
+    cv.a[yew] = R("GRASS", 2)
+    cv.a[yew & (bayer(w, 240) < 4)] = R("GRASS", 1)
+    cv.a[cv.inner_edge(yew, "top")] = R("GRASS", 3)
+    for k, x in enumerate(range(10, w, 38)):
+        kit.tree_round(cv, x + rng0.randint(-6, 6), Y(96), 14 + rng0.randint(0, 6), leaf=R("GRASS", 3),
+                       seed=seed + 60 + k)
+    for k in range(0, w, 46):
+        kit.glow_pool(cv, k + 20, Y(54), 10, 6, c=P("LEMON", 2), levels=(6, 3, 1))
+        cv.px(k + 20, Y(54), kit.LANTERN_COLS[(k // 46) % 5])
     m, crest = kit.hills(cv, Y(96), 10, 300, R("GRASS", 4), seed, top=R("GRASS", 5), lumps=2, bottom=240)
     kit.grass(cv, 0, Y(110), w, 240 - Y(110), seed + 1, ramp_lo=3, ramp_hi=5, flowers=False)
     # the path, rising to the right
@@ -520,44 +536,77 @@ def cupcake(seed=1):
 
 @generator()
 def launch_hill(seed=370, w=400):
-    """4-08: the top of the launch hill: the lawn in front, the Wall below running across
-    the middle distance, Hellvile's dark rooftops beyond it, a huge sky for one firework."""
+    """4-08: the top of the launch hill looking south. Below lies the whole park, dark, with
+    the Wall straight down the frame's centre line (plate x = w/2 = show x 160 at cam 0):
+    HaHaland's lanterns on the left, Hellvile's rooftops on the right. The hill crest is
+    the foreground; the iron launch stand is a prop. The sky (top third) stays open for
+    the firework."""
     w = int(w)
     cv = Canvas(w, 240)
-    base = Y(128)
-    # Hellvile beyond the Wall: crooked rooftops and spires (silhouettes)
+    hz = Y(52)            # the far horizon
+    near = Y(124)         # where the crest hides the valley
+    cx = w // 2
     rng = Rng(seed)
-    x = 0
+    # left: HaHaland, dark lawns in bands that recede, lanterns, tiny tents and the bandstand
+    for k, (y, c) in enumerate(((hz, R("GRASS", 2)), (hz + 18, R("GRASS", 3)), (hz + 40, R("GRASS", 3)))):
+        kit.hills(cv, y, 3 + k, 160, c, seed + k, top=L(c, 1), bottom=near + 6)
+    cv.a[:, cx:] = 0
+    for k in range(40):
+        x = rng.randint(4, cx - 10)
+        y = rng.randint(hz + 6, near)
+        cv.px(x, y, kit.LANTERN_COLS[k % 5])
+    for tx, c in ((40, P("BUBBLEGUM", 1)), (70, P("LAVENDER", 1)), (104, P("MINT", 1))):
+        cv.poly([(tx - 5, hz + 30), (tx + 5, hz + 30), (tx, hz + 22)], c)
+    bx = cx - 52
+    cv.poly([(bx - 9, hz + 24), (bx + 9, hz + 24), (bx, hz + 16)], P("CHERRY", 1))   # bandstand roof
+    cv.rect(bx - 7, hz + 24, 14, 5, pal.WHITE)
+    # right: Hellvile, crooked rooftops on purple ground with ember windows
+    cv.rect(cx, hz, w - cx, near + 6 - hz, R("VAPE", 1))
+    x = cx + 6
     while x < w:
-        bw = rng.randint(14, 30)
-        bh = rng.randint(18, 44)
-        c = R("VAPE", 1)
-        cv.rect(x, base - 40 - bh, bw, bh + 40, c)
-        if rng.chance(0.5):
-            cv.poly([(x - 2, base - 40 - bh), (x + bw + 2, base - 40 - bh), (x + bw // 2, base - 54 - bh)], c)
-        if rng.chance(0.4):
-            cv.rect(x + bw // 2 - 1, base - 46 - bh - 14, 2, 12, c)
-        if rng.chance(0.5):
-            cv.rect(x + 4, base - 30 - bh, 3, 3, P("HELLFIRE", 1))   # a lit window (emissive)
-        x += bw + rng.randint(-4, 6)
-    # the Wall across the middle distance
-    cv.rect(0, base - 46, w, 22, R("STONE", 3))
-    kit.bricks(cv, 0, base - 46, w, 22, seed + 1, base=R("STONE", 3), mortar=R("STONE", 1), bw=10, bh=5,
+        bw = rng.randint(10, 22)
+        bh = rng.randint(10, 26)
+        base = hz + 10 + rng.randint(0, 50)
+        c = R("VAPE", 0)
+        cv.rect(x, base - bh, bw, bh, c)
+        cv.poly([(x - 2, base - bh), (x + bw + 2, base - bh), (x + bw // 2, base - bh - 9)], c)
+        if rng.chance(0.6):
+            cv.rect(x + 3, base - bh + 4, 2, 2, P("HELLFIRE", 1))
+        x += bw + rng.randint(2, 10)
+    # the Wall: straight down the centre line, narrow at the horizon, wider near
+    wall = cv.poly_mask([(cx - 2, hz - 6), (cx + 2, hz - 6), (cx + 9, near + 6), (cx - 9, near + 6)])
+    tmp = Canvas(w, 240)
+    kit.bricks(tmp, 0, 0, w, 240, seed + 1, base=R("STONE", 3), mortar=R("STONE", 1), bw=6, bh=3,
                chips=False)
-    cv.rect(0, base - 48, w, 2, R("STONE", 4))
-    # HaHaland below this side of the Wall: the fair's lights, small
-    kit.hills(cv, base - 26, 4, 300, R("GRASS", 3), seed + 2, bottom=base + 4)
-    for k in range(26):
-        xx = 10 + k * 15 + rng.randint(-3, 3)
-        cv.px(xx, base - 14 + rng.randint(-3, 3), kit.LANTERN_COLS[k % 5])
-    # the hilltop lawn in front
+    cv.a[wall] = tmp.a[wall]
+    cv.a[cv.outline_mask(wall)] = R("STONE", 1)
+    cv.rect(cx - 2, hz - 7, 4, 1, R("STONE", 5))
+    # the hill crest in front
     m = np.zeros((240, w), bool)
     for xx in range(w):
-        top = base + int(10 * (1 - math.cos((xx / w - 0.5) * 2.2)) - 4)
+        top = near - int(14 * math.cos((xx / w - 0.5) * 2.6))
         m[top:, xx] = True
-    kit.grass(cv, 0, base - 4, w, 240 - base + 4, seed + 3, ramp_lo=3, ramp_hi=5)
-    cv.a[(~m) & (np.arange(240)[:, None] >= base - 4)] = 0
-    # redraw the middle distance where the lawn was cleared
+    g = Canvas(w, 240)
+    kit.grass(g, 0, near - 20, w, 240 - near + 20, seed + 3, ramp_lo=3, ramp_hi=5)
+    cv.a[m] = g.a[m]
+    cv.a[cv.inner_edge(m, "top")] = R("GRASS", 6)
+    return cv
+
+
+@generator()
+def launch_stand(seed=371):
+    """The old iron launch stand on the crest (24x30): rusted A-frame and a rail pointing
+    south, over the Wall."""
+    cv = Canvas(24, 30)
+    iron, rust = R("STONE", 2), R("WOOD", 3)
+    cv.line(4, 29, 12, 6, iron, 2)
+    cv.line(20, 29, 12, 6, iron, 2)
+    cv.line(7, 20, 17, 20, iron)
+    cv.line(12, 4, 12, 26, R("STONE", 4), 2)       # the rail
+    for (x, y) in ((6, 25), (17, 23), (10, 13), (14, 16)):
+        cv.px(x, y, rust)
+    cv.rect(10, 2, 5, 3, R("STONE", 3))
+    cv.meta["anchor"] = "bottom"
     return cv
 
 
