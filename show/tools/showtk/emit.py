@@ -314,10 +314,11 @@ class Stage:
         from . import stage
         from .art.setkit import compose as C
         sd = stage.setlib(self.c.ep.prj.series / "sets").sets.get(set_id)
-        if sd is None or not getattr(sd, "ambs", None):
-            return
-        var = C.Variant(sd.variant(variant_id) if variant_id else None)
-        items, crowds, tile_x = AMB.compile_set(self, sd, var, self.pinfo)
+        items, crowds, tile_x = [], [], set()
+        if sd is not None and getattr(sd, "ambs", None):
+            var = C.Variant(sd.variant(variant_id) if variant_id else None)
+            items, crowds, tile_x = AMB.compile_set(self, sd, var, self.pinfo)
+        items += AMB.prop_moves(self.c, self.pinfo, self.ids) + AMB.prop_sways(self.c, self.pinfo)
         self.amb_crowds = crowds
         for info in self.pinfo.values():
             if info["pid"] in tile_x:

@@ -29,7 +29,7 @@ extern int g_show_upload_sync;            /* show_host.c / show_host_wrap.c */
 
 #define SHWR_AMB   36
 #define AMB_MAX    48
-enum { AK_DRIFT = 1, AK_WAVE, AK_SWAY, AK_FLIP, AK_MOTES, AK_LAMPS, AK_PCYCLE };
+enum { AK_DRIFT = 1, AK_WAVE, AK_SWAY, AK_FLIP, AK_MOTES, AK_LAMPS, AK_PCYCLE, AK_PMOVE };
 enum { AF_FRONT = 1, AF_HIDDEN = 2 };
 #define NOPLANE 0xFFFF
 
@@ -88,12 +88,40 @@ static int scale_of(const ShowPlaneXf *xf)
     return s < 1 ? 1 : s;
 }
 
-/* show_plane_xf: drift, sway and the wave band's shift */
+/* a prop's staged move at t (the last PMOVE key started by t wins) */
+static void pmove(const ShwPlane *p, int *dx, int *dy)
+{
+    const int16_t *k = NULL;
+    int i, u, len, x, y;
+    for (i = 0; i < s_n; i++) {
+        const AmbHdr *h = s_item[i];
+        if (h->kind == AK_PMOVE && h->plane == p->id && P(h)[0] <= s_t &&
+            (!k || P(h)[0] >= k[0])) k = P(h);
+    }
+    *dx = *dy = 0;
+    if (!k) return;
+    len = k[1] > 0 ? k[1] : 1;
+    u = s_t - k[0] >= len ? 256 : ((s_t - k[0]) * 256) / len;
+    if (k[6] == 1) u = 256 - (((256 - u) * (256 - u)) >> 8);          /* decelerate */
+    x = k[2] + (((k[4] - k[2]) * u) >> 8);
+    y = k[3] + (((k[5] - k[3]) * u) >> 8);
+    if (k[6] == 2) {                                                  /* a hop's arc */
+        int span = k[4] - k[2], hgt = 6 + (span < 0 ? -span : span) / 6;
+        y -= (hgt * 4 * u * (256 - u)) >> 16;
+    }
+    *dx = x;
+    *dy = y;
+}
+
+/* show_plane_xf: drift, sway, staged prop moves and the wave band's shift */
 void show_amb_plane_off(const ShwPlane *p, ShowPlaneXf *xf)
 {
-    int i, s;
+    int i, s, mx, my;
     if (!p || !s_n) return;
     s = scale_of(xf);
+    pmove(p, &mx, &my);
+    xf->ox += mx * s;
+    xf->oy += my * s;
     for (i = 0; i < s_n; i++) {
         const AmbHdr *h = s_item[i];
         const int16_t *v = P(h);

@@ -19,6 +19,10 @@ from .errors import Diag, ShowError
 MAX_DEPTH = 4
 
 
+class MacroMissing(ShowError):
+    """an unknown macro: reported as a warning, the take does nothing"""
+
+
 class Macro:
     def __init__(self, st):
         if len(st.words) < 2:
@@ -82,7 +86,8 @@ def expand(take, macros, at_frame, depth=0):
     m = macros.get(name)
     if m is None:
         near = ", ".join(sorted(macros)[:20])
-        take.fail("MACRO", "unknown macro %s (series/acting.shw has: %s)" % (name, near or "none"))
+        raise MacroMissing(Diag("MACRO", "unknown macro %s (series/acting.shw has: %s): the take is skipped" % (
+            name, near or "none"), severity="warning", **w))
     if len(take.words) < 2:
         take.fail("MACRO", "take %s needs the actor (`take %s <actor>`)" % (name, name))
     env = dict(m.defaults)

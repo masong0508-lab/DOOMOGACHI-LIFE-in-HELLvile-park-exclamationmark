@@ -29,5 +29,7 @@
 - WP11: the r128 / a85 / dlg27 masters, the AD bus and stem, the M&E and 5.1 (spec 10.6 defers them; the pilot ships `web` stereo only).
 - WP11: per-frame crayon foley from the stroke's real reveal speed (needs the art lane's stroke points; the mix uses the reveal span) and paw ticks from showc's walk-cycle contacts (timeline.json has crowd counts only).
 - PCdrv loading (M0-T5's optional half): not tested; disc images rebuild in seconds and the pilot does not need it.
-- Compiler `pose <actor> <flipbook>` ops: dropped until the compiler emits lane 2's FLIP records (the flipbooks are in ART's library; staging still gets walks, moves, squash, blinks, faces).
+- (done Oct 25, ENGINE pose) `pose` plays acting.shw flipbooks; poses on busts/chibis and names not in acting.shw (bite, button, salute...) are POSE warnings until ART adds the flips.
 - ENGINE hosts: ROOM door hinge, single-member crowd hide (demons.N), timed show/hide of shot props: approximated/no-op this week (compile-clean; hostbridge.py).
+- ENGINE amb (Oct 25): amb kind=pcycle (CLUT rotation) is not drawn; amb hidden=yes/variant show= of amb ids is not honoured (hidden ambs are dropped); prop squash is a 2-3 px press (planes do not scale); prop pose with no art state, sub-part motion (fuzz.paws, nana.slice), attach/detach, actor.kind, look, lens, plane, ripple are warnings (not drawn).
+- ENGINE VRAM (Oct 25): the image cache is 6 pages with page-granular LRU (game vram.c, not ours): a set's visible plate cells + the cast + crowds must fit ~5 pages, or the newest figure variants (talking mouths) drop out for a frame. Mitigated in the compiler (grid cells, camera crop, occlusion erase, near-parallax merge, 3 looks per ambient crowd); a per-shot VRAM estimate lint is not built.

@@ -201,6 +201,48 @@ def compile_set(stage, sd, var, planes):
     return items, crowds, tile_x
 
 
+def prop_sways(c, pinfo):
+    """`sway <prop> dx= period=` -> SWAY items on the prop's planes"""
+    out = []
+    for name, amp, period in getattr(c, "prop_sways", []):
+        for i in pinfo.values():
+            if i.get("prop") == name:
+                out.append(item(3, i["pid"], [amp, period, 0, 0, 0]))
+    return out
+
+
+def prop_moves(c, pinfo, ids):
+    """showc prop_op moves -> PMOVE items (kind 8) on every plane of the prop (all its states):
+    [t0, over, x0, y0, x1, y1, ease] offsets in show px from where the set puts it;
+    ease 0 linear, 1 out (decelerate), 2 hop (an arc), 3 press (there and straight back)"""
+    out = []
+    moves = sorted(getattr(c, "prop_moves", []), key=lambda m: m[0])
+    cur = {}
+    for f, name, mode, x, y, over, ease in moves:
+        x0, y0 = cur.get(name, (0, 0))
+        if mode == "abs":
+            ax, ay = 0, 0
+            if name in getattr(c, "prop_ix", {}):
+                p = c.props[c.prop_ix[name]]
+                ax, ay = p["x"], p["y"]
+            x1, y1 = x - ax, y - ay
+        elif mode == "press":
+            x1, y1 = x0, y0 + y
+        else:
+            x1, y1 = x0 + x, y0 + y
+        pids = [i["pid"] for i in pinfo.values() if i.get("prop") == name] or \
+               ([ids[name]] if name in ids else [])
+        for pid in pids:
+            if mode == "press":
+                out.append(item(8, pid, [f, max(1, over), x0, y0, x1, y1, 1]))
+                out.append(item(8, pid, [f + max(1, over), 3, x1, y1, x0, y0, 1]))
+            else:
+                out.append(item(8, pid, [f, max(1, over), x0, y0, x1, y1, ease]))
+        if mode != "press":
+            cur[name] = (x1, y1)
+    return out
+
+
 def add_crowds(sc, crowds, warn):
     """`amb kind=crowd` -> CRWD records on a ShotCast (walkers wrap; idlers bob)"""
     for st in crowds:

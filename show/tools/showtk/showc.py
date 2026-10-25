@@ -649,6 +649,8 @@ class ShotCompiler:
     def actor(self, name, st):
         if name in self.actor_ix:
             return self.actor_ix[name]
+        if "." in name and self.is_actor(name.split(".")[0]):     # fuzz.paws: the actor's own acting
+            return self.actor(name.split(".")[0], st)
         hits = [i for i, a in enumerate(self.actors) if a["who"] == name]
         if len(hits) == 1:
             return hits[0]
@@ -1143,12 +1145,12 @@ class ShotCompiler:
 
     def change(self, c):
         if not self.shot.kv.get("base"):
-            self.d("COMP-ONECHANGE", "`change` is for a shot with base=<shot>@<frame>", c)
+            self.d("COMP-ONECHANGE", "`change` is for a shot with base=<shot>@<frame>: applied at +0", c, "warning")
         m = re.fullmatch(r"(\w+)\.(\w+)=(\S+)", " ".join(c.pos) if c.pos else "")
         if not m:
             kv = c.toks
             m = None
-            if c.pos and c.toks and c.toks[-1].kind == "kv":
+            if c.toks and c.toks[-1].kind == "kv":
                 m = re.fullmatch(r"(\w+)\.(\w+)", c.toks[-1].key)
                 if m:
                     obj, field, val = m.group(1), m.group(2), c.toks[-1].value
@@ -1157,9 +1159,30 @@ class ShotCompiler:
         else:
             obj, field, val = m.groups()
         self.changes = getattr(self, "changes", []) + [(obj, field, val, c)]
+        if obj in self.prop_ix and field in ("x", "y") and re.fullmatch(r"-?\d+", val):
+            p = self.props[self.prop_ix[obj]]
+            x, y = (int(val), p["y"]) if field == "x" else (p["x"], int(val))
+            self.__dict__.setdefault("prop_moves", []).append((0, obj, "abs", x, y, 1, 0))
+            return
+        if obj not in self.prop_ix and self.is_actor(obj) and field in ("pose", "state", "expr"):
+            ai = self.actor(obj, c)
+            if field == "pose":
+                self.sop(0, "SOP_POSE", [ai, self.s(val), 256], c)
+            elif field == "expr":
+                self.ev_direct.append((0, textpack_bridge.symbols()["BOP_EXPR"], ai,
+                                       textpack_bridge.sym(val, _w(c), "EXPR_"), {"line": c.line}))
+            elif val in STATES:
+                self.sop(0, "SOP_STATE", [ai, STATES[val]], c)
+            return
+        if obj not in self.prop_ix:
+            self.d("COMP-ONECHANGE", "change %s.%s=%s: not a prop field or actor pose/state/expr: not drawn" % (
+                obj, field, val), c, "warning")
+            return
         if obj in self.prop_ix and field == "state":
             if val not in self.props[self.prop_ix[obj]]["states"]:
-                c.fail("COMP-ONECHANGE", "%s.state=%s: the prop has no art.%s" % (obj, val, val))
+                self.d("COMP-ONECHANGE", "%s.state=%s: the prop has no art.%s (ART): not drawn" % (obj, val, val),
+                       c, "warning")
+                return
             self.vis.append((0, "prop", obj, val, True))
             return
         if obj in self.prop_ix and field == "hide":
@@ -1168,7 +1191,8 @@ class ShotCompiler:
         if obj in self.prop_ix:
             pf = {"face": 0, "x": 1, "y": 2, "hide": 3}.get(field)
             if pf is None:
-                c.fail("COMP-ONECHANGE", "prop field %s (face|x|y|hide|state)" % field)
+                self.d("COMP-ONECHANGE", "prop field %s (face|x|y|hide|state): not drawn" % field, c, "warning")
+                return
             v = stage.FACES.get(val, None) if field == "face" else int(val) if val.lstrip("-").isdigit() else 1
             if v is None:
                 c.fail("COMP-ONECHANGE", "face=%s" % val)
@@ -1408,6 +1432,21 @@ class ShotCompiler:
             return self.wipe_op(f, c)
         if kw == "lens":
             return self.lens_op(f, c)
+        if kw == "point" and c.words and self.is_actor(c.words[0]):
+            ai = self.actor(c.words[0], c)
+            x, _y = self.xy(c.get("at"), c, "at") if c.get("at") else (self.actors[ai]["x"], 0)
+            self.sop(f, "SOP_FACE", [ai, 1 if x < self.actors[ai]["x"] else 0], c)
+            self.sop(f, "SOP_POSE", [ai, self.s("pop_small"), 256], c)
+            self.tl(f, c, "show", "point", extra={"actor": self.actors[ai]["id"]})
+            return
+        if kw == "sway" and c.words and c.words[0] in self.prop_ix:
+            w = _w(c)
+            self.__dict__.setdefault("prop_sways", []).append(
+                (c.words[0], int(docunits.num(c.get("dx", "2"), w)), self.frames_arg(c.get("period"), c) or 75))
+            return
+        if kw in ("point", "sway", "look", "actor.kind", "plane", "attach", "detach", "ripple", "lens"):
+            self.d("SHW-OPS", "`%s` is not drawn yet (DEFERRED.md): %s" % (kw, c.text()), c, "warning")
+            return
         c.fail("SHW-OPS", "unknown op `%s` (spec 5.5)" % kw)
 
     # -- crowds as targets (show_crowd.c SHCO_*: one SOP_CROWD row [crowd, op, a]) ------------
@@ -1539,7 +1578,7 @@ class ShotCompiler:
                 col = textpack_bridge.symbols().get(textpack_bridge.SYNONYMS.get(v, v), col) & 0xFF
         if c.get("life") or c.get("over"):
             life = self.frames_arg(c.get("life") or c.get("over"), c) or life
-        n = int(c.get("n", "12"))
+        n = int(re.match(r"\d*", str(c.get("n", "12"))).group() or 12)      # n=1/4f: a rate; its count
         seed = int(c.get("seed", "0"), 0) & 0x7FFF
         self.pic_events.append((f, 0x0103, [x, y, n, seed, mode, col, life, int(c.get("size", str(size)))]))
 
@@ -1599,8 +1638,9 @@ class ShotCompiler:
         if state and tgt in self.prop_ix:
             arts = self.props[self.prop_ix[tgt]].get("states", {})
             if state not in arts:
-                c.fail("STAGE", "%s %s:%s: the prop has no art.%s (states: %s)" % (
-                    kw, tgt, state, state, ", ".join(sorted(arts)) or "none"))
+                self.d("STAGE", "%s %s:%s: the prop has no art.%s (states: %s): not drawn until ART adds it" % (
+                    kw, tgt, state, state, ", ".join(sorted(arts)) or "none"), c, "warning")
+                return
         self.vis.append((f, "prop" if tgt in self.prop_ix else "plane", tgt, state, on))
         self.tl(f, c, "show", "%s %s%s" % (kw, tgt, ":" + state if state else ""))
 
@@ -1810,6 +1850,10 @@ class ShotCompiler:
                         ev["pan"] = float(pan)
                     except ValueError:
                         c.fail("AUD-LIB", "pan=%s (auto|center|L|R|-1..1)" % pan)
+        elif kw == "mx" and len(c.words) == 1 and c.get("section"):
+            self.d("AUD-MX", "mx %s section=%s: section jumps are the mixer's (AUDIO); not scheduled" % (
+                c.words[0], c.get("section")), c, "warning")
+            return
         elif kw == "mx":
             mw = list(c.words) + (["start"] if len(c.words) == 1 and c.get("section") else [])
             if len(mw) < 2:                                # `mx <cue> section=<s>` jumps there
@@ -1853,8 +1897,14 @@ class ShotCompiler:
                 wdef = {"gain": "-12dB", "over": "4"} if opn == "cheer" else {"gain": "-30dB", "over": "12"}
                 opn = "to"
             if bed not in self.lib.wallas:
-                c.fail("AUD-WALLA", "unknown walla bed %s (ep lines.shw `walla` lines: %s)" % (
-                    bed, ", ".join(sorted(self.lib.wallas)) or "none yet"))
+                kids = [b for b in self.lib.wallas if "kid" in b]
+                if "kid" in bed and kids:
+                    bed = kids[0]
+                else:
+                    self.d("AUD-WALLA", "walla bed %s is not in lines.shw yet (has: %s): silent until AUDIO adds it" % (
+                        bed, ", ".join(sorted(self.lib.wallas)) or "none"), c, "warning")
+                    return
+            opn = {"cheer": "to", "hush": "to", "swell": "to", "up": "to", "down": "to"}.get(opn, opn)
             if opn not in ("on", "off", "to"):
                 c.fail("AUD-WALLA", "walla %s %s: on|off|to" % (bed, opn))
             ev = {"smp": smp, "src": "walla:%s" % bed, "op": opn}
@@ -1903,6 +1953,9 @@ class ShotCompiler:
         who = ln["speaker"]
         if len(c.words) > 1 and c.words[1].startswith("crowd:") and self.crowd_ref(c.words[1]) is None:
             pass                                # an off-screen crowd's line: the voice only
+        elif len(c.words) > 1 and not self.is_actor(c.words[1]):
+            self.d("LINE", "say %s %s: no actor %s in the shot: the voice only (off screen)" % (
+                lid, c.words[1], c.words[1]), c, "warning")
         elif len(c.words) > 1:
             ai = self.actor(c.words[1], c)
         else:
@@ -2093,11 +2146,85 @@ class ShotCompiler:
         self.sop(f, "SOP_CAM", [len(self.camkeys) - 1], c)
         self.tl(f, c, "show", "cam " + sub, end=f + key.get("over", 0))
 
+    def is_actor(self, name):
+        return name in self.actor_ix or sum(1 for a in self.actors if a["who"] == name) == 1
+
+    def prop_op(self, f, c):
+        """move/squash/state/pose on a PROP or a PLANE (show_amb.c PMOVE: the plane slides):
+        move <p> to=x,y | to=+dx,+dy | dx= dy= [over=] [tw=]; squash <p> <q|flat|wobble> [over=];
+        state|pose <p> <art state>. Anything else on a prop is a warning (not drawn)."""
+        kw, name = c.kw, c.words[0]
+        if name.endswith("*"):                          # state ghost* wall: every prop ghost...
+            hits = [p for p in self.prop_ix if p.startswith(name[:-1])]
+            for p in hits:
+                c.words[0] = p
+                self.prop_op(f, c)
+            c.words[0] = name
+            if hits:
+                return
+        base = name.split(".")[0].rstrip("*")
+        if name not in self.prop_ix and name not in self.plane_ix:
+            why = ("a sub-part (%s) of %s: not separately animated (DEFERRED.md)" % (name, base)
+                   if "." in name else "no actor, prop or plane %s in shot %s" % (name, self.shot.id))
+            self.d("STAGE-TARGET", "%s %s: %s" % (kw, name, why), c, "warning")
+            return
+        w = _w(c)
+        moves = self.__dict__.setdefault("prop_moves", [])
+        states = self.props[self.prop_ix[name]].get("states", {}) if name in self.prop_ix else {}
+        if kw == "move":
+            to = c.get("to")
+            over = self.frames_arg(c.get("over"), c) or 1
+            tw = (c.get("tw") or "").upper()
+            ease = 2 if "HOP" in tw or "BOUNCE" in tw else 1 if tw else 0
+            if to and str(to)[:1] in "+-" and "," in str(to):
+                dx, dy = (docunits.num(v, w) for v in str(to).split(",")[:2])
+                moves.append((f, name, "rel", dx, dy, over, ease))
+            elif to and re.fullmatch(r"-?[\d.]+,-?[\d.]+", str(to)):
+                x, y = self.xy(to, c, "to")
+                moves.append((f, name, "abs", x, y, over, ease))
+            elif c.get("dx") or c.get("dy"):
+                moves.append((f, name, "rel", docunits.num(c.get("dx", "0"), w),
+                              docunits.num(c.get("dy", "0"), w), over, ease))
+            else:
+                self.d("STAGE-TARGET", "move %s to=%s: a prop moves to x,y / +dx,+dy / dx= dy=" % (name, to),
+                       c, "warning")
+                return
+            self.tl(f, c, "show", "move %s" % name, end=f + over)
+        elif kw == "squash":
+            q = c.words[1] if len(c.words) > 1 else "200"
+            over = self.frames_arg(c.get("over"), c) or 3
+            if q == "wobble":
+                moves.append((f, name, "rel", 0, -2, 3, 2))
+                moves.append((f + 3, name, "rel", 0, 2, 3, 0))
+            else:
+                try:
+                    v = float(q) * (256 if float(q) <= 4 else 1)
+                except ValueError:
+                    v = 160
+                d = 0 if v >= 250 else 2 if v > 128 else 3
+                moves.append((f, name, "press", 0, d, over, 1))
+            self.tl(f, c, "show", "squash %s" % name, end=f + over)
+        elif kw in ("state", "pose"):
+            st = c.words[1] if len(c.words) > 1 else None
+            if name in self.prop_ix and st in states:
+                self.vis.append((f, "prop", name, st, True))
+                self.tl(f, c, "show", "%s %s:%s" % (kw, name, st))
+            elif name in self.prop_ix and st in ("normal", "base", "off", "rest"):
+                self.vis.append((f, "prop", name, None, True))
+            else:
+                self.d("STAGE-TARGET", "%s %s %s: the prop has no art.%s (states: %s)" % (
+                    kw, name, st, st, ", ".join(sorted(states)) or "none"), c, "warning")
+        else:
+            self.d("STAGE-TARGET", "%s on prop %s is not drawn (props move, squash, change state)" % (kw, name),
+                   c, "warning")
+
     def actor_op(self, f, c):
         kw = c.kw
         w = _w(c)
         if not c.words:
             c.fail("ACTOR", "`%s <actor> ...`" % kw)
+        if not self.is_actor(c.words[0]):
+            return self.prop_op(f, c)
         ai = self.actor(c.words[0], c)
         end = None
         if kw == "move":
@@ -2119,6 +2246,11 @@ class ShotCompiler:
             end = f + over
         elif kw == "face":
             d = c.words[1] if len(c.words) > 1 else "R"
+            if d in ("wall", "back", "away", "front", "camera"):
+                self.ev_direct.append((f, textpack_bridge.symbols()["BOP_HEADTURN"], ai,
+                                       (128 if d in ("wall", "back", "away") else 0) |
+                                       (max(1, self.frames_arg(c.get("over"), c) or 4) << 8), {"line": c.line}))
+                return
             if d not in ("L", "R"):
                 c.fail("ACTOR", "face %s L|R" % c.words[0])
             self.sop(f, "SOP_FACE", [ai, 1 if d == "L" else 0], c)
@@ -2133,7 +2265,14 @@ class ShotCompiler:
         elif kw == "state":
             s = c.words[1] if len(c.words) > 1 else "normal"
             if s not in STATES:
-                c.fail("ACTOR", "state %s (%s)" % (s, "|".join(STATES)))
+                try:
+                    from . import flips as _fl
+                    _fl.resolve(self.actors[ai]["who"], s)
+                    self.sop(f, "SOP_POSE", [ai, self.s(s), 256], c)
+                except Exception:                           # noqa: BLE001
+                    self.d("ACTOR", "state %s: not normal|possessed|ghost|dead nor a flip of %s: not drawn" % (
+                        s, self.actors[ai]["who"]), c, "warning")
+                return
             if s != "normal" and self.actors[ai]["age"] == "child":
                 self.d("STD-KIDS", "a child (%s) is never shown %s" % (self.actors[ai]["who"], s), c)
             self.sop(f, "SOP_STATE", [ai, STATES[s]], c)
@@ -2187,7 +2326,8 @@ class ShotCompiler:
         elif kw == "fx":
             kind = c.words[0] if c.words else c.fail("FX", "`fx <kind> at=x,y n= seed=`")
             x, y = self.xy(c.get("at", "160,90"), c)
-            self.sop(f, "SOP_FX", [self.s(kind), x, y, int(c.get("n", "8")), int(c.get("seed", "0"), 0)], c)
+            self.sop(f, "SOP_FX", [self.s(kind), x, y, int(re.match(r"\d*", str(c.get("n", "8"))).group() or 8),
+                                   int(c.get("seed", "0"), 0)], c)
             self.pfx(f, c, kind, x, y)
         elif kw == "boil":
             on = (c.words[0] if c.words else "on") == "on"
