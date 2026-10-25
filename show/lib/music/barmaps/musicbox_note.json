@@ -1,0 +1,20 @@
+{
+ "cue": "musicbox_note",
+ "bpm": 96.0,
+ "meter": 4,
+ "bars": 1,
+ "sections": [],
+ "offset_smp": 0,
+ "frames_per_bar": 75.0,
+ "smp_per_bar": 120000.0,
+ "source": "score:pilot.musicbox_note",
+ "bar_smp": [
+  0,
+  120000
+ ],
+ "bar_frame": [
+  0,
+  75
+ ],
+ "named_notes": {}
+}

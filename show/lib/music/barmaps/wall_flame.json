@@ -1,0 +1,28 @@
+{
+ "cue": "wall_flame",
+ "bpm": 70.0,
+ "meter": 4,
+ "bars": 2,
+ "sections": [
+  [
+   "WALL",
+   1,
+   2
+  ]
+ ],
+ "offset_smp": 0,
+ "frames_per_bar": 102.85714285714286,
+ "smp_per_bar": 164571.42857142858,
+ "source": "score:pilot.sting",
+ "bar_smp": [
+  0,
+  164571,
+  329143
+ ],
+ "bar_frame": [
+  0,
+  103,
+  206
+ ],
+ "named_notes": {}
+}

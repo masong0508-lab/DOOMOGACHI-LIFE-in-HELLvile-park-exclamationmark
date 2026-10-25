@@ -1,0 +1,40 @@
+{
+ "cue": "hook_cute",
+ "bpm": 150.0,
+ "meter": 4,
+ "bars": 8,
+ "sections": [
+  [
+   "cute",
+   1,
+   8
+  ]
+ ],
+ "offset_smp": 0,
+ "frames_per_bar": 48.0,
+ "smp_per_bar": 76800.0,
+ "source": "score:pilot.hook_cute",
+ "bar_smp": [
+  0,
+  76800,
+  153600,
+  230400,
+  307200,
+  384000,
+  460800,
+  537600,
+  614400
+ ],
+ "bar_frame": [
+  0,
+  48,
+  96,
+  144,
+  192,
+  240,
+  288,
+  336,
+  384
+ ],
+ "named_notes": {}
+}
