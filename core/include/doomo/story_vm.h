@@ -232,23 +232,37 @@ typedef struct StorySideRow {
     uint8_t  step;           /* part k of its chain (1..)                       */
     uint8_t  requires;       /* 1 + the sid it requires, 0 none                 */
     uint8_t  later_min;      /* the Later callback, minutes after turn-in       */
-    uint8_t  tag;
+    uint8_t  tag;            /* (S4) after=: the BEAT_* episode that must be
+                                done before it is offered, 0 none           */
     uint16_t giver;          /* resident id                                     */
     uint16_t verbs;          /* 1 << verb (docs/STORY_ENGINE.md)                */
     uint16_t reward;         /* H$                                              */
     uint16_t offer;          /* script id run by the giver (none / offered), 0xFFFF none */
     uint16_t active;         /* script id run by the giver while active, 0xFFFF none */
-    uint16_t title;          /* text id, 0xFFFF none                            */
+    uint16_t title;          /* text id, 0xFFFF none; (S4) its hint is the next
+                                string of the same pack (title + 1)         */
     uint16_t trophy;         /* text id of its trophy (R8), 0xFFFF none          */
     uint8_t  pack;           /* the pack its scripts live in                    */
+    uint8_t  spot;           /* (S4) at=: 1 + its doomo_side_spots row, 0 none
+                                (the padding byte: the row stays 26 B)      */
 } StorySideRow;
+/* (S4) Where the givers stand (@mission at=X,Y): cells on the giver's map
+ * (story_side2_giver_map), de-duplicated. In Chapter 3 the Hillvile givers
+ * stand around the church on the invaded map instead (story_side.c). */
+extern const uint8_t doomo_side_spots[][2];
+extern const uint16_t doomo_side_spot_count;
 /* The quest log's Trophies (R8): the rows whose mission is done (STRY.side2
  * state 3) and that name a trophy, in row order; returns the count. */
 int  story_trophies(const StorySideRow *rows, const uint8_t *side2, uint8_t *out, int max);
 extern const StorySideRow doomo_side_rows[STORY_SIDE2_ROWS];
 /* The side walker (story_side.c): chain gating (step k requires k-1; at
  * most one part of a chain per chapter; cross-border parts 3+ from Ep 4.1).
- * Returns 1 if row `sid` may be offered now. */
+ * Returns 1 if row `sid` may be offered now. (S4) The 22 grafts (S196..S217,
+ * story_final.md sec.14: short parts grafted into a chain's chapter, e.g.
+ * S196 before S107 in Ch1) are outside the one-per-chapter count: a graft
+ * may follow a part of the same chapter, and finishing one does not hold
+ * the next part back - which is what lets the sec.14 chapter table play. */
+#define STORY_SIDE2_GRAFT_FIRST 96   /* S196: rows from here are grafts */
 int  story_side2_available(int sid);
 int  story_side2_state(int sid);     /* 0 none, 1 offered, 2 active, 3 done (STRY.side2) */
 void story_side2_set_state(int sid, int st);

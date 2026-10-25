@@ -113,6 +113,17 @@ void story_verb_begin(int kind, int who, int arg, int then)
 }
 
 int story_verb_active(void) { return V.live ? V.kind : -1; }
+
+/* --- S4: the overworld keeps a verb's resident on the map (story_side.c
+ * side_cast re-places them after every cast refresh) --- */
+int story_verb_who(int *cx, int *cy)
+{
+    if (!V.live || V.kind == VERB_FIND) return -1;
+    if (cx) *cx = V.cx;
+    if (cy) *cy = V.cy;
+    return V.who;
+}
+/* --- end S4 --- */
 void story_verb_cancel(void) { V.live = 0; }
 
 void story_verbs_tick(void)

@@ -16,28 +16,53 @@ static const char *const tab_names_narrow[QT_COUNT] = { "Story", "Side", "Items"
 
 static int tab, sel, top;
 static uint32_t qt;
-static int16_t side_ids[STORY_SIDE_MAX];
-static int nside;
-static uint8_t item_ids[ITEM_COUNT];
-static int nitems;
-static uint8_t trophy_ids[STORY_SIDE2_ROWS];   /* S2: rows of doomo_side_rows */
-static int ntrophies;
+/* (S4) one list for the open tab (refilled on every tab change): the Side
+ * tab's rows (an old quest q 0..48, or SIDE2_ROW + an S100..S217 row), the
+ * Items tab's item ids or the Trophies tab's rows. One buffer instead of
+ * three saves ~110 B of .bss (GBA EWRAM). */
+#define SIDE2_ROW 64
+#define LIST_MAX (STORY_SIDE_MAX + STORY_SIDE2_ROWS)
+DOOMO_STATIC_ASSERT(SIDE2_ROW >= STORY_SIDE_MAX && SIDE2_ROW + STORY_SIDE2_ROWS <= 255 &&
+                    LIST_MAX >= ITEM_COUNT, questlog_list_fits);
+static uint8_t list[LIST_MAX];
+static int nlist;
+#define side_ids list
+#define item_ids list
+#define trophy_ids list
+#define nside nlist
+#define nitems nlist
+#define ntrophies nlist
+
+/* the side rows by state class: 0 under way, 1 on offer, 2 done */
+static int side_class(int e)
+{
+    int st;
+    if (e >= SIDE2_ROW) {
+        st = story_side2_state(e - SIDE2_ROW);
+        return st == 2 ? 0 : st == 3 ? 2 : 1;
+    }
+    st = story_side_state(e);
+    return (st == SIDE_ACTIVE || st == SIDE_READY) ? 0 : st == SIDE_DONE ? 2 : 1;
+}
 
 static void collect(void)
 {
-    int q, i;
-    nside = 0;
-    for (q = 0; q < story_side_count(); q++) {
-        int st = story_side_state(q);
-        if (st == SIDE_ACTIVE || st == SIDE_READY) side_ids[nside++] = (int16_t)q;
+    int q, i, c;
+    nlist = 0;
+    if (tab == QT_SIDE) {
+        uint8_t all[LIST_MAX];
+        int n = 0;
+        for (q = 0; q < story_side_count() && q < STORY_SIDE_MAX; q++)
+            if (story_side_state(q) != SIDE_LOCKED) all[n++] = (uint8_t)q;
+        for (q = 0; q < STORY_SIDE2_ROWS; q++)
+            if (story_side2_visible(q)) all[n++] = (uint8_t)(SIDE2_ROW + q);
+        for (c = 0; c < 3; c++)
+            for (i = 0; i < n; i++) if (side_class(all[i]) == c) list[nlist++] = all[i];
+    } else if (tab == QT_ITEMS) {
+        for (i = 1; i < ITEM_COUNT; i++) if (inv_count(i) > 0) item_ids[nitems++] = (uint8_t)i;
+    } else if (tab == QT_TROPHIES) {
+        ntrophies = story_trophies(doomo_side_rows, story_stry()->side2, trophy_ids, STORY_SIDE2_ROWS);
     }
-    for (q = 0; q < story_side_count(); q++)
-        if (story_side_state(q) == SIDE_OFFERED) side_ids[nside++] = (int16_t)q;
-    for (q = 0; q < story_side_count(); q++)
-        if (story_side_state(q) == SIDE_DONE) side_ids[nside++] = (int16_t)q;
-    nitems = 0;
-    for (i = 1; i < ITEM_COUNT; i++) if (inv_count(i) > 0) item_ids[nitems++] = (uint8_t)i;
-    ntrophies = story_trophies(doomo_side_rows, story_stry()->side2, trophy_ids, STORY_SIDE2_ROWS);
 }
 
 static void ql_enter(int arg)
@@ -66,8 +91,9 @@ static void ql_update(void)
         if (scene_depth() > 1) scene_pop(); else scene_set(&SCENE_STORY, STORY_ARG_CONTINUE);
         return;
     }
-    if (btn_repeat(BTN_L | BTN_LEFT)) { tab = (tab + QT_COUNT - 1) % QT_COUNT; sel = top = 0; qt = 0; audio_sfx(SFX_CURSOR); }
-    if (btn_repeat(BTN_R | BTN_RIGHT)) { tab = (tab + 1) % QT_COUNT; sel = top = 0; qt = 0; audio_sfx(SFX_CURSOR); }
+    if (btn_repeat(BTN_L | BTN_LEFT)) { tab = (tab + QT_COUNT - 1) % QT_COUNT; sel = top = 0; qt = 0; audio_sfx(SFX_CURSOR); collect(); }
+    if (btn_repeat(BTN_R | BTN_RIGHT)) { tab = (tab + 1) % QT_COUNT; sel = top = 0; qt = 0; audio_sfx(SFX_CURSOR); collect(); }
+    n = list_len();
     if (n > 0) {
         if (btn_repeat(BTN_UP)) { sel = (sel + n - 1) % n; audio_sfx(SFX_CURSOR); }
         if (btn_repeat(BTN_DOWN)) { sel = (sel + 1) % n; audio_sfx(SFX_CURSOR); }
@@ -122,6 +148,30 @@ static void draw_story(int x, int y, int w, int h, int style)
     }
 }
 
+/* (S4) an S100+ row's state as a SIDE_* (on offer / under way / done) */
+static int side_state_of(int e)
+{
+    int st;
+    if (e < SIDE2_ROW) return story_side_state(e);
+    st = story_side2_state(e - SIDE2_ROW);
+    return st == 2 ? SIDE_ACTIVE : st == 3 ? SIDE_DONE : SIDE_OFFERED;
+}
+
+/* (S4) an S100+ mission's kind: its first verb (the bit order of
+ * core/tools/textpack.py VERBS; every mission talks, "talk" has no bit) */
+static const char *side2_kind_name(int sid)
+{
+    static const char *const names[16] = {
+        "Fetch", "Deliver", "Find", "Photo", "Fight", "Exorcism", "Weld", "Pet",
+        "Minigame", "Fishing", "Cooking", "Music", "Housing", "Creator", "Escort", "Timing"
+    };
+    unsigned v = doomo_side_rows[sid].verbs;
+    int k = 0;
+    if (!v) return "Talk";
+    while (!(v & 1u)) { v >>= 1; k++; }
+    return names[k & 15];
+}
+
 static void draw_side(int x, int y, int w, int h, int style)
 {
     const UiStyle *st = ui_style(style);
@@ -133,28 +183,30 @@ static void draw_side(int x, int y, int w, int h, int style)
     }
     list_h = vis * 11;
     for (i = top; i < nside && i < top + vis; i++) {
-        int q = side_ids[i], s = story_side_state(q), yy = y + (i - top) * 11;
+        int q = side_ids[i], s = side_state_of(q), yy = y + (i - top) * 11;
         const char *icon = s == SIDE_DONE ? STR_ICON_CHECK : s == SIDE_READY ? STR_ICON_HEART : s == SIDE_ACTIVE ? STR_ICON_STAR : "?";
         if (i == sel) {
             ui_round_rect(x - 2, yy - 1, w, 10, 3, st->accent);
             ui_cursor(x - 6, yy + 3);
         }
         plat_text(x, yy, icon, s == SIDE_DONE ? PAL_UI_MINT_D : s == SIDE_READY ? PAL_UI_RED : PAL_UI_GOLD);
-        doomo_snprintf(buf, sizeof(buf), "%s", story_side_title(q));
+        doomo_snprintf(buf, sizeof(buf), "%s", q >= SIDE2_ROW ? story_side2_title(q - SIDE2_ROW) : story_side_title(q));
         ui_text(x + 9, yy, buf, s == SIDE_DONE ? st->text_dim : st->text);
     }
     ui_scroll_arrows(x + w - 6, y - 2, y + list_h - 6, top > 0, top + vis < nside);
     /* details */
     if (sel < nside) {
-        int q = side_ids[sel], g = story_side_giver(q), s = story_side_state(q), dy = y + list_h + 4;
+        int q = side_ids[sel], s = side_state_of(q), dy = y + list_h + 4;
+        int g = q >= SIDE2_ROW ? (int)doomo_side_rows[q - SIDE2_ROW].giver : story_side_giver(q);
         const DoomoResident *gr = town_res(g);
+        const char *kind = q >= SIDE2_ROW ? side2_kind_name(q - SIDE2_ROW) : story_side_kind_name(story_side_kind(q));
         plat_rect(x, dy - 2, w - 4, 1, st->outline);
         ui_portrait(x, dy + 1, g, 1, s == SIDE_DONE ? EXPR_HAPPY : EXPR_NEUTRAL);
-        doomo_snprintf(buf, sizeof(buf), "%s (%s)", gr ? gr->name : "?", story_side_kind_name(story_side_kind(q)));
+        doomo_snprintf(buf, sizeof(buf), "%s (%s)", gr ? gr->name : "?", kind);
         ui_text(x + PORTRAIT_W + 4, dy + 2, buf, st->title);
         ui_text_wrap(x + PORTRAIT_W + 4, dy + 12, w - PORTRAIT_W - 8,
                      s == SIDE_DONE ? "All done! Thank you!" : s == SIDE_READY ? "Done! Go back and tell them." :
-                     story_side_hint(q), st->text, 1);
+                     q >= SIDE2_ROW ? story_side2_hint(q - SIDE2_ROW) : story_side_hint(q), st->text, 1);
         (void)h;
     }
 }

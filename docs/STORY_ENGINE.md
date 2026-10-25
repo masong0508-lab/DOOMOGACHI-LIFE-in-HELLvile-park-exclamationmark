@@ -206,8 +206,62 @@ chapter, and parts 3+ of a chain that crosses the Wall only from Ep 4.1.
 Talking to the giver runs `offer=` (state 0 / 1) or `active=` (state 2);
 the scripts set the state (`quest S1xx active|done`). Hillvile givers stand
 in the invaded town in Ch3 (`story_side2_giver_map`). The 49 old quests
-keep their table and their bits in the story flags (the `legside` pack
-holds their text).
+keep their table and their bits in the story flags.
+
+**S4 additions.** `@mission` takes `at=X,Y` (where the giver stands on
+their map: `StorySideRow.spot`, the row's padding byte, into
+`doomo_side_spots`; in Ch3 the Hillvile givers shelter around the church
+instead), `after=BEAT_*` (an episode that must be done first: the `tag`
+byte) and `hint="..."` (the quest log's line, stored right after the
+title: hint id = title id + 1). Every `@mission` header lives in the one
+index pack `quests` (`core/data/story/quests49/index.dsc`; reopen it with
+`@pack quests kind=side` above each header), with the 49 old quests'
+titles and hints: the PS1 keeps one side pack resident, and a quest log
+reading titles from many packs would re-read the disc every frame. The
+missions' scripts live in their own side packs, loaded when a script
+starts; `story_text_prefetch` loads only the index. The old quests'
+offers and thank-yous are re-timed scripts (`q49a`, `q49b`): the offer ends
+on the accept choice, the thank-you is followed by the table's reward.
+`native CB_SIDE_HAVE ITEM_X` (and `CB_SIDE_STATE`, `_NIGHT`, `_STATUS`,
+`_QUEST`, `_MONEY`, `_DAY`, story_int.h) put an answer the VM cannot get
+by itself into var 0. The overworld keeps a running verb's resident (the
+escort's follower, the photo's subject, the delivery's recipient) on the
+map through cast refreshes, and Ch3-5 idle lines let a side mission's
+business go first (`story_ch34.c idle()`). The verb key is SF sec.14's
+(`fetch deliver find photo combat exorcism weld pet minigame fishing
+cooking concert housing creator escort timing`; talk is implicit).
+
+**Batch A** (`core/data/story/side_a/`, 54 missions: chains A-J and S,
+S143-S150, the grafts S196-S204; one side pack per chain or pair, each
+under 8 KB). Every mission is offer -> task -> the comic beat on the
+ladder -> the heart (or the scare) -> reward (`furn=` keys are the
+catalogue's `reward Sxxx` rows) -> its Later. Rules learned the hard way:
+
+* **Grafts** (rows from `STORY_SIDE2_GRAFT_FIRST`, S196+) sit outside the
+  one-part-per-chapter count: a graft may follow a part of the same chapter
+  and finishing one holds nothing back; "part 3+ of a cross-border chain"
+  counts the chain's own parts. Without that, sec.14's chapter table
+  (S196 + S107 in Ch1, S118 + S201 in Ch3, chain B's grafts in Ch4) could
+  never finish (`side_a_chains_can_finish`).
+* **One resident, two lists**: talking to a giver hands in an old quest
+  that is ready first, then runs the S100+ mission under way, then the
+  offers (an old one and a new one take turns, so declining one never hides
+  the other), then an old quest's "still on it?" (`story_side.c side_npc`).
+  On the map the giver keeps the old quest's spot and shows both "?".
+* **Verb cells** must be walkable on every map the mission can run on (the
+  invaded town in Ch3 has rubble where the town has grass); a `deliver`
+  always names the cell its resident is put on (`cell=`), so the delivery
+  never depends on the plot's cast; a delivery across the Wall carries a
+  `# map=hell|hill` comment for the checker.
+* `native CB_SIDE_CHAPTER` (the chapter, 1..5), `CB_SIDE_ONCE SONG_X` (play
+  a song once and list it in the jukebox), `CB_SIDE_MUSIC` (the map's music
+  back after a `[SILENCE]`).
+* Decorate-for: `push home 0x4004` then `home DECORATE_FOR <id>` with the
+  layouts of `core/data/home/layouts_a.txt` (4 Mr. Flops's corner, 5
+  Steamy's bath house, 6 Towers 7B, 7 Mascotty's room, 8 the shared flower
+  bed).
+* The reverse rite (S133): `possess sprinklepop 10` arms exorcism row 10 on
+  a soul that is lost; autowin un-fails it too (story.c).
 
 **Trophies (R8)** are not unlock ids: a done row with a `trophy=` name is
 listed in the quest log's Trophies tab (`story_trophies()`).
@@ -248,6 +302,28 @@ scene edge from the story, like the cutscenes). Built in:
 `STORY_MG_TEXT_ENTRY` types the stashed answer (slot 1) to the stashed
 prompt (slot 0), case and spaces forgiven (Sprinklepop's EXORCISM
 UNFAILED).
+
+The registry reader `story_mg_find` lives in `story_mg.c` (S4; stubs.c's
+weak one is resident and would pin every registry game in resident RAM on
+the PS1); `ps1/tools/ovl_plan.py`'s `LOCAL_REGISTRIES` lets the games load
+with the `storymg` group (17 KB with S4's six; resident RAM unchanged).
+
+S4's six (`SMG_A_*`, story_int.h; state in the scene scratch, 0 B EWRAM):
+`SMG_A_HOPSCOTCH` (S150: ten stone slabs over lava, A on the beat, the pet
+goes first; three sizzles lose), `SMG_A_ROLLER` (S143: paint the town sign,
+the counter rolls 500 -> 1000 on the s12 ease), `SMG_A_WHACK` /
+`SMG_A_WHACK_OFF` (S146: the lit cabinet, Father Fuzz pops up too - result
+2 if you bonk him; switched off the imps come slower with glowing eyes and
+the last one says "beep."), `SMG_A_BALLOONS` (S130: pop the grey ones, the
+pink ones float into your bundle; a grey one left alone pops one of yours)
+and `SMG_A_BOBBER` (S144: pull when the float dips, not when it twitches).
+
+**Runner commands for side missions** (S4, `runner_main.c`): `side M
+[STATE]` sets a mission's state (a chain's earlier parts), `talk ID` talks
+to a resident, `cell X Y` steps on a cell (a find verb), `skip-to "TEXT"`
+presses A until the dialogue says TEXT, `skip-to-scene NAME` until a scene
+is on top, `skip-talk` until the conversation is over
+(`core/tests/scripts/side_sample_a.txt`).
 
 **Scripted dreams** (`push dream 0x4000|n`, `DREAM_ARG_SCRIPTED`): you
 dream, the Peek is forced (no tiptoeing away), the vignettes are the row's
@@ -325,8 +401,9 @@ on return (`bind`, one ~0.1 s read).
 
 The old beats of Chapters 3-4 still run as C glue in `story_script.c`
 around the `legacy` pack (`legacy_ch34.dsc`, which S3 replaces); the 49 old
-side quests' text is the `legside` pack. `legacy_ch12.dsc` is gone: Ch1-2
-are the packs above.
+side quests' text was the `legside` pack until S4 re-timed it into
+`quests49/` (the `quests`, `q49a` and `q49b` packs). `legacy_ch12.dsc` is
+gone: Ch1-2 are the packs above.
 
 ## Tests
 

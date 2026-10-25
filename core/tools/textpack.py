@@ -227,6 +227,15 @@ class Pack:
         self.minutes = int(attrs.get("minutes", "0"))
         self.chapter = int(attrs.get("chapter", "0"))
 
+    def text_new(self, s, where):
+        """(S4) always a fresh string (no de-duplication): a mission's title
+        and hint are a pair (hint = title + 1, story_vm.h StorySideRow)"""
+        check_text(s, where, self)
+        if len(self.strings) >= MAX_INDEX:
+            die(where, "pack %s has more than %d strings" % (self.name, MAX_INDEX))
+        self.strings.append(s)
+        return (self.id << INDEX_BITS) | (len(self.strings) - 1)
+
     def text(self, s, where):
         check_text(s, where, self)
         if s not in self.str_index:
@@ -311,6 +320,7 @@ class Compiler:
         self.missions = []        # (where, attrs, pack)
         self.possessors = []
         self.armed = []           # @armed: when an authored possession is the story's
+        self.spots = []           # (S4) the givers' cells (@mission at=), in first-use order
         self.push_args = load_push_args()
 
     def sym(self, name, where, prefix=None):
@@ -1252,8 +1262,13 @@ def c_str(s):
     return "".join(out)
 
 
-VERBS = ("talk", "fetch", "deliver", "find", "photo", "escort", "timing", "fight", "exorcise", "housing",
-         "cook", "concert", "fish", "pet", "text", "visit", "minigame", "match")
+# (S4) the verb key of story_final.md sec.14, one bit each in the u16
+# StorySideRow.verbs; every mission talks, so "talk" has no bit. The names
+# S2 used before any mission existed stay as aliases.
+VERBS = ("fetch", "deliver", "find", "photo", "combat", "exorcism", "weld", "pet", "minigame", "fishing",
+         "cooking", "concert", "housing", "creator", "escort", "timing")
+VERB_ALIAS = {"talk": None, "match": None, "fight": "combat", "exorcise": "exorcism", "cook": "cooking",
+              "fish": "fishing", "studio": "concert", "dream": "pet", "text": "minigame", "visit": "find"}
 SIDES = {"hill": 0, "hell": 1, "park": 2, "both": 3}
 
 
@@ -1272,6 +1287,8 @@ def mission_rows(comp):
             die(where, "mission %s has no later= (every mission has a Later callback)" % sid)
         verbs = 0
         for v in a.get("verbs", "").split(","):
+            if v in VERB_ALIAS:
+                v = VERB_ALIAS[v]
             if not v:
                 continue
             if v not in VERBS:
@@ -1291,7 +1308,33 @@ def mission_rows(comp):
         if active and active not in comp.script_names:
             die(where, "unknown active script %s" % active)
         title = a.get("title", "")
-        tid = pack.text(title, where) if title else TXT_NONE
+        # (S4) the title and its quest-log hint are a pair: hint = title + 1
+        if title:
+            tid = pack.text_new(title, where)
+            hint = a.get("hint", "")
+            if len(visible(hint)) > 95:
+                die(where, "a hint is at most 95 characters (the HUD objective)")
+            pack.text_new(hint, where)
+        else:
+            tid = TXT_NONE
+        # (S4) at=X,Y: where the giver stands; after=BEAT: an episode done first
+        spot = 0
+        if a.get("at"):
+            m2 = re.match(r"^(\d+),(\d+)$", a["at"])
+            if not m2 or int(m2.group(1)) > 63 or int(m2.group(2)) > 63:
+                die(where, "at=X,Y is a cell (0..63)")
+            xy = (int(m2.group(1)), int(m2.group(2)))
+            if xy not in comp.spots:
+                comp.spots.append(xy)
+            spot = comp.spots.index(xy) + 1
+            if spot > 255:
+                die(where, "more than 255 giver spots")
+        after = comp.sym(a["after"], where, "BEAT_") if a.get("after") else 0
+        if not 0 <= after < 256:
+            die(where, "after= is a BEAT_* id")
+        spack = pack.id
+        if offer in comp.script_names:
+            spack = comp.script_names[offer] >> INDEX_BITS
         # R8: a trophy is a quest-log entry (and a catalog piece), never an unlock id
         trophy = a.get("trophy", "")
         if trophy and len(trophy) > 27:
@@ -1302,7 +1345,7 @@ def mission_rows(comp):
                        chain=ord(a["chain"][0]) if a.get("chain") else 0, step=int(a.get("step", "0")),
                        req=reqn, later=later, verbs=verbs, reward=int(a.get("reward", "0").split()[0]) & 0xFFFF,
                        offer=comp.script_names.get(offer, TXT_NONE), active=comp.script_names.get(active, TXT_NONE),
-                       title=tid, trophy=trid, pack=pack.id)
+                       title=tid, trophy=trid, pack=spack, tag=after, spot=spot)
     return rows
 
 
@@ -1517,12 +1560,21 @@ def main(argv):
         for n in range(118):
             r = missions.get(n)
             if not r:
-                f.write("    { %d, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xFFFFu, 0xFFFFu, 0xFFFFu, 0xFFFFu, 0 },\n" % n)
+                f.write("    { %d, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xFFFFu, 0xFFFFu, 0xFFFFu, 0xFFFFu, 0, 0 },\n" % n)
                 continue
-            f.write("    { %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %du, %du, %du, 0x%04Xu, 0x%04Xu, 0x%04Xu, 0x%04Xu, %d },\n" % (
-                r["sid"], r["kind"], r["lo"], r["hi"], r["side"], r["chain"], r["step"], r["req"], r["later"], 0,
-                r["giver"], r["verbs"], r["reward"], r["offer"], r["active"], r["title"], r["trophy"], r["pack"]))
+            f.write("    { %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %du, %du, %du, 0x%04Xu, 0x%04Xu, 0x%04Xu, 0x%04Xu, %d, %d },\n" % (
+                r["sid"], r["kind"], r["lo"], r["hi"], r["side"], r["chain"], r["step"], r["req"], r["later"], r["tag"],
+                r["giver"], r["verbs"], r["reward"], r["offer"], r["active"], r["title"], r["trophy"], r["pack"],
+                r["spot"]))
         f.write("};\n")
+        # (S4) the givers' cells (at=), indexed by StorySideRow.spot - 1
+        f.write("\n/* (S4) where the givers stand: StorySideRow.spot - 1 -> { x, y } */\n")
+        f.write("const uint8_t doomo_side_spots[%d][2] = {\n" % max(1, len(comp.spots)))
+        for x, y in comp.spots:
+            f.write("    { %d, %d },\n" % (x, y))
+        if not comp.spots:
+            f.write("    { 0, 0 }\n")
+        f.write("};\nconst uint16_t doomo_side_spot_count = %d;\n" % len(comp.spots))
     with open(os.path.join(gen, "possess_table.c"), "w") as f:
         f.write(head)
         f.write("/* Authored possessors (the @possessor blocks, placed by row=N: the row\n"

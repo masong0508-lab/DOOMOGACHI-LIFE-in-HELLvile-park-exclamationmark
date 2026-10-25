@@ -1,0 +1,64 @@
+# core/data/home/layouts_a.txt - decorate-for target layouts of the S4
+# content package, side missions batch A (owner: S4; SPEC R19: one
+# layouts_<owner>.txt per content package; furngen joins them into
+# core/gen/furn_data.c). A side script asks the house how close the room is
+# with `home DECORATE_FOR <id>` after its `push home` (var 0 = progress
+# 0..8; story_final.md sec.14 / housing_final.md "homes you decorate for
+# others"). Format: layouts_s3.txt. IDs are saved (4 bits): S4 owns 4..9.
+
+# ---- S100 "A Bed for Mr. Flops": Pip's shoebox bed in your bedroom ----------
+# Too close to the door, too close to the window, too close to the floor;
+# then one pixel to the left. Near the window (he sleeps better when he can
+# see the sky) with a lamp left on, away from the door.
+[layout 4 flops_corner] BEDROOM "Mr. Flops's Corner"
+  tol 2
+  piece mr_flops_bed 4 2 S
+  any WINDOW 4 0 S
+  any LAMP 5 1 S
+  need 1
+
+# ---- S128 "The Bath House": Steamy's bath house, both sides welcome ---------
+# The tub in the middle, the guest duck on the rim, the duck that faces
+# whatever faced the Wall by the door, a lamp and somewhere to sit and steam.
+[layout 5 steamy_bath] CELLAR "Steamy's Bath House"
+  tol 1
+  piece steamys_tub 3 3 S
+  piece rubber_duck_guest 5 3 S
+  piece facing_duck 1 6 N
+  any LAMP 0 0 S
+  any SEAT 6 6 W
+  need 3
+
+# ---- S114-S116 "Hillvile Towers 7B": Tallyworn's old flat, made a home ------
+# The tally wall kept (the fresh mark under the sill), the bone lamp from
+# Ploddy's move, Rattlecup's teacup on a table, a bed, the window.
+[layout 6 towers_7b] TOWERS_7B "Towers 7B"
+  tol 1
+  piece tally_wall 0 2 E
+  piece bone_lamp 1 1 S
+  piece rattlecup_teacup 3 3 S
+  any WINDOW 2 0 S
+  any BED 4 1 S
+  need 3
+
+# ---- S136 "The Head Comes Off": Mascotty's room in the Hell Pits ------------
+# One request: a window that faces away from where the Wall was (the west
+# wall). A bed she can lie in with the head off, a rug, a lamp.
+[layout 7 mascotty_room] PITS_FLAT "Mascotty's Room"
+  tol 1
+  any WINDOW 0 2 W
+  any BED 4 1 S
+  any LAMP 5 4 S
+  piece wool_rug 2 3 E
+  need 2
+
+# ---- S126 "Sootkin's Garden": the shared flower bed in the Park Plot --------
+# Hillvile soil, Hellvile ash: the bed in the middle, Grampy's tomatoes on
+# one side, the sunflower on the other, something else growing.
+[layout 8 shared_bed] PARK_PLOT "Shared Flower Bed"
+  tol 2
+  piece shared_flower_bed 4 3 S
+  piece tomato_planter 3 3 S
+  piece sunflower 6 3 S
+  any PLANT 4 5 S
+  need 2

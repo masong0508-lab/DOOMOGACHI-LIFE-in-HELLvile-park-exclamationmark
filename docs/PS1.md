@@ -185,6 +185,12 @@ disc no longer fitted (`0x802ec0b4`, 1.1 MB over the limit), so:
     followed are the four function pointers of a `const DoomoScene`
     (`SCENE_*`): the core's `scene.c` calls those through
     `plat_scene_code()` (`scene.h`), which loads the scene's group first;
+    and (S4) the edges out of a group-local registry pointer
+    (`LOCAL_REGISTRIES`: `doomo_story_mg_a` / `_b`, small data and so
+    resident), which only its own group's code may read: the planner
+    checks every reader and keeps the cut only if all of them are in the
+    group and none is resident (the S4 story minigames: 11 KB out of
+    resident RAM into the `storymg` group);
   - it writes the linker script (every group is an output section of one
     `OVERLAY` at the slot, `NOCROSSREFS`) and the scene -> group table.
 

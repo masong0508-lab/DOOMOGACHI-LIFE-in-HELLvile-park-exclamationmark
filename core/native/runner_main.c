@@ -27,6 +27,12 @@
  *   expect-text "TEXT"  fail unless the dialogue box's line contains TEXT
  *   expect-flag F [V]   fail unless story flag F (0..255) is V (default 1)
  *   story-fp [HEX]      print story_fingerprint(); with HEX, fail unless equal
+ *   side M [STATE]      (S4) set side mission S<M>'s state (default 3, done)
+ *   talk ID             (S4) talk to resident ID (story_interact_npc)
+ *   cell X Y            (S4) as if the player stepped on cell X,Y (a find verb)
+ *   skip-talk [MAX]     (S4) press A until the conversation is over
+ *   skip-to "TEXT" [MAX]      (S4) press A until the dialogue says TEXT
+ *   skip-to-scene NAME [MAX]  (S4) press A until NAME is the top scene
  * Buttons: UP DOWN LEFT RIGHT A B L R START SELECT X Y L2 R2.
  * Exit status: 0 ok, 1 script failure, 2 stubs ran with --assert-no-stubs.
  */
@@ -41,6 +47,8 @@
 #include "doomo/story_vm.h"           /* S2: story_fingerprint */
 #include "doomo/music.h"              /* music: music-hash */
 #include "../src/ui_internal.h"       /* S2: ui_dialog_debug (expect-text) */
+void story_verbs_cell(int cx, int cy);    /* S4: "cell", "skip-talk" (core/src/story_int.h) */
+int  story_talking(void);
 
 static uint32_t held;
 static int gba_input;
@@ -268,6 +276,46 @@ static void run_line(char *line)
         printf("story-fp: 0x%08x\n", (unsigned)fp);
         if (argc > 1 && (uint32_t)strtoul(argv[1], NULL, 16) != fp) fail("story fingerprint differs from", argv[1]);
     /* --- end S2 --- */
+    /* --- S4: side missions (side_sample_a.txt) ---
+     *   side M STATE   set mission S<M>'s state (0 none .. 3 done), e.g. a
+     *                  chain's earlier parts
+     *   talk ID        talk to resident ID as if you pressed A in front of them */
+    } else if (strcmp(cmd, "side") == 0) {
+        int m = argc > 1 ? atoi(argv[1]) : 0;
+        if (m < 100 || m >= 100 + STORY_SIDE2_ROWS) fail("side needs a mission 100..217, got", argc > 1 ? argv[1] : "");
+        else story_side2_set_state(m - 100, argc > 2 ? atoi(argv[2]) : 3);
+    } else if (strcmp(cmd, "talk") == 0) {
+        story_interact_npc(argc > 1 ? atoi(argv[1]) : -1);
+    } else if (strcmp(cmd, "skip-talk") == 0) {
+        /* press A until the conversation is over and the overworld is back */
+        int max = argc > 1 ? atoi(argv[1]) : 120, k;
+        for (k = 0; (story_talking() || scene_top() != &SCENE_STORY) && k < max; k++) {
+            held |= BTN_A;
+            step(1);
+            held &= ~(uint32_t)BTN_A;
+            step(10);
+        }
+        if (story_talking() || scene_top() != &SCENE_STORY) fail("the conversation never ended", "");
+    } else if (strcmp(cmd, "cell") == 0) {
+        story_verbs_cell(argc > 1 ? atoi(argv[1]) : 0, argc > 2 ? atoi(argv[2]) : 0);
+    } else if (strcmp(cmd, "skip-to") == 0 || strcmp(cmd, "skip-to-scene") == 0) {
+        /* press A (then wait 10 frames) until the dialogue says TEXT / the
+         * top scene is NAME; fail after MAX presses (default 80) */
+        const char *want = argc > 1 ? argv[1] : "";
+        int max = argc > 2 ? atoi(argv[2]) : 80, k, scene = cmd[7] == '-';
+        if (scene && strncmp(want, "SCENE_", 6) == 0) want += 6;
+        for (k = 0; k <= max; k++) {
+            UiDialogDebug d;
+            memset(&d, 0, sizeof(d));
+            ui_dialog_debug(&d);
+            if (scene ? (scene_top() && strcmp(scene_top()->name, want) == 0) : (d.text && strstr(d.text, want) != NULL)) break;
+            if (k == max) { fail(scene ? "never reached the scene" : "the dialogue never said", want); break; }
+            held |= BTN_A;
+            step(1);
+            held &= ~(uint32_t)BTN_A;
+            step(10);
+        }
+    /* --- end S4 --- */
     /* --- music: render and hash commands (MU1, SPEC sec.16.3, row 39) ---
      *   music N | music-once N | music-dual A B   audio_music*() by SONG_* number
      *   mute N | duck Q8 N | tapestop N | resume  S1's comic-timing hooks

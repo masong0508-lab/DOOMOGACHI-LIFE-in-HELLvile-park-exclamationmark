@@ -96,6 +96,15 @@ static int has(int f) { return story_flag(f); }
 static void flag(int f) { story_set_flag(f, 1); }
 static void conv(unsigned scr) { story_conv(scr, 0); }
 static void conv_cb(unsigned scr, int cb) { story_conv(scr, cb); }
+/* --- S4: an idle line lets a side quest's business come first (the cast's
+ * side missions stay reachable in Chapters 3-5; story_ch12.c's npc rows do
+ * the same with their `flavour` bit) --- */
+static int idle(int id, unsigned scr)
+{
+    if (!side_npc(id)) conv(scr);
+    return 1;
+}
+/* --- end S4 --- */
 
 static int alive(int id)
 {
@@ -529,13 +538,13 @@ static int npc(int id)
             return 1;
         }
         if (s == 3 && id == ID_RIVET) { conv_cb(SCR_S31_RIVET, CB_C34_FINISH); return 1; }
-        if (s >= 3 && id == ID_MAYOR) { conv(SCR_S31_MAYOR_IDLE); return 1; }
-        if (s >= 3 && id == ID_NANA) { conv(SCR_S31_NANA_IDLE); return 1; }
-        if (s >= 3 && id == ID_PIP) { conv(SCR_S31_PIP_IDLE); return 1; }
+        if (s >= 3 && id == ID_MAYOR) return idle(id, SCR_S31_MAYOR_IDLE);
+        if (s >= 3 && id == ID_NANA) return idle(id, SCR_S31_NANA_IDLE);
+        if (s >= 3 && id == ID_PIP) return idle(id, SCR_S31_PIP_IDLE);
         break;
     case E32:
-        if (id == ID_RIVET) { conv(SCR_S32_RIVET_IDLE); return 1; }
-        if (id == ID_MAYOR) { conv(SCR_S31_MAYOR_IDLE); return 1; }
+        if (id == ID_RIVET) return idle(id, SCR_S32_RIVET_IDLE);
+        if (id == ID_MAYOR) return idle(id, SCR_S31_MAYOR_IDLE);
         break;
     case E33:
         if ((id == ID_HATTIE || id == ID_GRAMPY) && possessed(id)) {
@@ -551,7 +560,7 @@ static int npc(int id)
             story_push_scene(&SCENE_WORKSHOP, 0, PEND_WORKSHOP, CTX_FREE, 0);
             return 1;
         }
-        if (id == ID_MAYOR) { conv(SCR_S33_MAYOR_IDLE); return 1; }
+        if (id == ID_MAYOR) return idle(id, SCR_S33_MAYOR_IDLE);
         break;
     case E34: case EF3:
         if (id == ID_RIVET || id == ID_MAYOR || id == ID_FUZZ || id == ID_BLOOM || id == ID_NANA) {
@@ -568,7 +577,7 @@ static int npc(int id)
         }
         break;
     case E36:
-        if (id == ID_FUZZ) { conv(SCR_S35_DONE); return 1; }
+        if (id == ID_FUZZ) return idle(id, SCR_S35_DONE);
         break;
     case E37: case EF2:
         if (s == 0 && id == ID_MAYOR) {
@@ -577,7 +586,7 @@ static int npc(int id)
             conv(SCR_S37_FOG);
             return 1;
         }
-        if (id == ID_MAYOR) { conv(SCR_S37_MAYOR_IDLE); return 1; }
+        if (id == ID_MAYOR) return idle(id, SCR_S37_MAYOR_IDLE);
         break;
     case E41:
         if (s <= 1 && (id == ID_RIVET || id == ID_MAYOR || id == ID_FUZZ)) {
@@ -606,10 +615,10 @@ static int npc(int id)
         if (id == ID_MOTHER_NOX) {
             if (s == 0) { set_stage(1); conv(SCR_S43_NOX); }
             else if (s == 2) conv_cb(SCR_S43_DONE, CB_C34_FINISH);
-            else conv(SCR_S43_NOX_IDLE);
+            else { idle(id, SCR_S43_NOX_IDLE); }
             return 1;
         }
-        if (id == ID_SOOTKIN && has(SF_C4_SOOTKIN)) { conv(SCR_S43_SUNFLOWER); return 1; }
+        if (id == ID_SOOTKIN && has(SF_C4_SOOTKIN)) return idle(id, SCR_S43_SUNFLOWER);
         if (s != 1) break;
         if (id == ID_SOOTKIN && !has(SF_C4_SOOTKIN)) {
             if (inv_count(ITEM_FLOWERS) > 0) conv_cb(SCR_S43_SOOTKIN, CB_C34_CHECK);
@@ -660,8 +669,8 @@ static int npc(int id)
         if (id == ID_HATTIE) { conv((s & 8) ? SCR_S47_STALL_IDLE : SCR_S47_JOKE); return 1; }
         break;
     case EE1: case EE2:
-        if (id == ID_TALLYWORN) { conv(SCR_SE_TALLY); return 1; }
-        if (id == ID_RIVET) { conv(SCR_SE_RIVET); return 1; }
+        if (id == ID_TALLYWORN) return idle(id, SCR_SE_TALLY);
+        if (id == ID_RIVET) return idle(id, SCR_SE_RIVET);
         if (id == ID_WISP) {
             switch (story_stry()->branch & 3) {
             case 1: conv(SCR_SE_WISP_HUM); return 1;
@@ -671,9 +680,9 @@ static int npc(int id)
             }
             break;
         }
-        if (id == ROSTER_ID_GRUMBLEGUTS && !story_grumble_dead()) { conv(SCR_SE_GRUMBLE); return 1; }
-        if (id == ID_MAYOR) { conv(SCR_SE_MAYOR); return 1; }
-        if (id == ID_VEX) { conv(SCR_SE_VEX); return 1; }
+        if (id == ROSTER_ID_GRUMBLEGUTS && !story_grumble_dead()) return idle(id, SCR_SE_GRUMBLE);
+        if (id == ID_MAYOR) return idle(id, SCR_SE_MAYOR);
+        if (id == ID_VEX) return idle(id, SCR_SE_VEX);
         break;
     default: break;
     }
