@@ -135,3 +135,5 @@ Each names the default taken and where to change it.
 - co_mt: MT-5 rots a replay of the mt01 crane (no child), never the cast pop-in (Pip is in it).
 - co_mt: beat rows (`act`/`beat`) live at the top of each shot file, since episode.shw is a plain include list.
 - co_mt: timed prop states are written as `+N show <prop>[:<state>]` / `hide <prop>` (proposed SOP_PROP_STATE); fallback is base= + one change per state.
+- WP6: crowd image keys include the flip bit (VRAM caches flips apart); AT6.4 checks 0 portrait-pool rerenders every frame and 0 VRAM uploads after warm-up (t>=24), allowing deferred first uploads.
+- WP6: until lane 1's plug-in API lands, WP6 is driven by show/tests/engine/wp6 (self-test hook build); the frame protocol is documented at the top of show/include/show/show_actor.h.

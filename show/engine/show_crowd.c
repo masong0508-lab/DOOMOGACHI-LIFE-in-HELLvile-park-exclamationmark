@@ -342,7 +342,8 @@ void show_crowd_draw(int ox, int oy, int layer, int draw)
             if (x < -BODYSPR_W * px || x > 320 + BODYSPR_W * px || y < 0 || y > 240 + BODYSPR_H * px)
                 continue;                                  /* off screen: not fetched */
             im = bodyspr_image(m->look, m->dir, m->frame);
-            note_fetch((uint32_t)m->look | ((uint32_t)m->dir << 8) | ((uint32_t)m->frame << 10), im);
+            note_fetch((uint32_t)m->look | ((uint32_t)m->dir << 8) | ((uint32_t)m->frame << 10) |
+                       ((uint32_t)(m->flip ? 1 : 0) << 14), im);   /* VRAM keeps flips apart */
             if (!draw || c->hidden || !im) continue;
             if (c->pop_tw >= 0) {
                 const TwTab *tt = tw_table(c->pop_tw);

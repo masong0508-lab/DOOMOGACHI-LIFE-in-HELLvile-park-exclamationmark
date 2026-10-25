@@ -209,7 +209,7 @@ typedef struct ShowCrowdStats {
     uint32_t fetched;            /* image fetches this frame                   */
     uint32_t rerenders;          /* fetches that rendered an image again that
                                     was cached before: a pool eviction         */
-    uint32_t keys;               /* distinct (look, dir, frame) images in use  */
+    uint32_t keys;               /* distinct (look, dir, frame, flip) images in use  */
     uint32_t newkeys;            /* of those, first used in this shot this frame */
 } ShowCrowdStats;
 const ShowCrowdStats *show_crowd_stats(void);

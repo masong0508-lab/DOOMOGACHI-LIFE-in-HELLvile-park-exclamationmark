@@ -214,11 +214,17 @@ def test_at64_150_citizens_from_48_looks_at_0_evictions():
     r = ps1()
     rows = r["mod"].lines(r["tty"], "at64")
     assert len(rows) == 150
+    tot_up = tot_new = 0
     for d in rows:
         t = int(d["t"])
         assert int(d["rerender"]) == 0, d                            # no pool eviction, any frame
-        if int(d["up"]):
-            assert int(d["new"]) > 0, d                              # VRAM uploads only for new images
+        # VRAM warm-up: about one 450-byte 16x24 sprite tile per new (look, dir,
+        # frame, flip) key, some a few frames late (the display list defers an
+        # upload it has no room for; vram_uploads() also counts the frame's
+        # other images), then nothing: every image stays resident
+        tot_up += int(d["up"]) // 450
+        tot_new += int(d["new"])
+        assert tot_up <= 2 * tot_new, (d, tot_up, tot_new)
         if t >= 24:                                                  # every walk frame seen by then
             assert int(d["new"]) == 0 and int(d["up"]) == 0, d
     assert int(rows[0]["up"]) < 50 * 1024                            # the first frame fits the display list
