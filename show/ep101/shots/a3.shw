@@ -18,11 +18,11 @@
 shot a3s01 beat=e101_3_01 len=75 set=act_cards:act3 look=pixel cut=CUT scene=a3_card gore=CUTE
   ad "The Mayor's clipboard: 22:00 Bedtime! is crossed out. Above it, small: weather."
   +0    mx heehee_bell start ; cc "[bell]"
-  +0    sign s_a3_01_card on=l5
+  +0    show l5:strike                                   # card plate carries the text (sign overlaid it)
   +8    sfx FX_PEN_SCRATCH
   +18   sfx FX_PEN_SCRATCH
   +23   sfx FX_PEN_SCRATCH ; show l5:strike                 # act_cards has no strike strokes: the l5 strike art lands on the third scratch
-  +35   sign s_a3_01_card_over on=weather ; show weather
+  +35   show weather
   +0    cam to scale=1.100 over=75 ease=OUT    # motion: insert push
   +0    cam pan dx=14.5 dy=8.2 over=75 ease=OUT    # motion: (centred on the frame)
 end
@@ -105,13 +105,13 @@ shot a3s08 beat=e101_3_01 len=219 set=hook_a_duck:night px=1 look=pixel cut=CUT 
   actor puff who=puff_demon kind=sprite at=-20,110 idle=on
   ad "Steamy hides in the duck pool, a rubber duck on her head."
   +0    sfx FX_SPARKLE ; move puff to=150,110 over=60
-  +70   move pole to=150,104 over=8      # pure reflex
+  +70   pop puff TWT_HOP1 ; sfx FX_BWIP      # pure reflex (props cannot move: pole stays set dressing)
   +78   move puff to=150,96 over=4
-  +90   move pole to=166,92 over=10 ; move puff to=166,86 over=10
+  +90   move puff to=166,86 over=10
   +100  still steamy                                       # R13 look
   +110  thaw steamy ; say a3_01_steamy_01 steamy
   +198  button ; fx pop_heart at=-20,86 seed=13 ; sfx FX_POP ; hide puff
-  +205  move steamy to=166,170 over=14 ; move hatduck to=166,124 over=14 ; sfx FX_BLUB ; cc "[blub]"
+  +205  move steamy to=166,170 over=14 ; sfx FX_BLUB ; cc "[blub]"
   @a3_01_steamy_01.start+6 take beat_gesture steamy    # motion:
   +0    cam to scale=1.050 over=219 ease=INOUT    # motion: push in, drifting toward the speaker
   +0    cam pan dx=12.6 dy=4.3 over=219 ease=INOUT    # motion: (centred on the frame)
@@ -156,7 +156,7 @@ shot a3s11 beat=e101_3_02 len=285 set=bake_tent:dark px=1 look=pixel cut=CUT sce
   +0    sfx FX_SQUELCH
   +30   sfx FX_SQUELCH
   +60   sfx FX_SQUELCH
-  +90   fx merge crowd:stack into=bigpuff over=60 ; squash tent 0.92 over=60
+  +90   fx merge crowd:stack into=bigpuff over=60 ; squash bigpuff 920 over=60
   +180  fx bubble_bounce from=110,144 to=160,16 size=1 ; sfx FX_BWIP
   +195  fx bubble_bounce from=110,144 to=160,16 size=2 ; sfx FX_BWIP pitch=-3st
   +210  fx bubble_bounce from=110,144 to=160,16 size=3 away=yes ; sfx FX_BWOMP
@@ -175,7 +175,7 @@ shot a3s12 beat=e101_3_02 len=69 set=bake_tent:dark px=2 look=pixel cut=CUT scen
   +0    take look_at sunny turn=128 back=0              # over the shoulder, at the shotgun
   +8    headturn pet 512 4 ; move pet to=160,58 over=4  # leans over the brow, upside down
   +16   take look_to_camera sunny n=8
-  +60   say a3_02_pet_01 pet mouth=none ; cc "[beep.]"
+  +39   say a3_02_pet_01 pet mouth=none ; cc "[beep.]"
   @a3_02_pet_01.start+6 pop pet TWT_HOP1    # motion:
   +0    cam to scale=1.080 over=69 ease=INOUT    # motion: slow push-in on the line
   +0    cam pan dx=11.9 dy=6.7 over=69 ease=INOUT    # motion: (centred on the frame)
@@ -199,7 +199,7 @@ shot a3s14 beat=e101_3_03 len=190 set=scary_house_fp:truth px=1 look=hellify cut
   ad "First person. The shotgun rises toward a funhouse door; a HUD slams up."
   +0    sfx FX_CHK half=2 ; sfx FX_HELL_SLIDE ; pal PAL_HELLIFY 16 over=21
   prop  door_sign art=gen:sign(w=100,h=16,face=white,frame=pink,seed=9) at=8.5,4.0 text=4,3,92,10
-  +0    sign s_a2_03_house_sign on=door_sign
+  +0    sign s_a3_03_house_sign on=door_sign
   +39   mx doomtastic_doom start from=prechorus_last2
   +60   fx barrel_rise over=10
   +75   sfx FX_DOOR_CREAK ; fx door_open over=40
@@ -259,7 +259,7 @@ shot a3s17 beat=e101_3_03 len=288 set=scary_house_fp:truth px=1 look=hellify cut
   +0    hud on ; hud set hearts=2 shells=1 plate=s_a3_03_hud_plate_slaughter sub=s_a3_03_hud_sub label=s_a3_03_hud
   prop ammo art=gen:ammo_box(doily=1) at=11.5,5.0
   prop ammo_under art=gen:ammo_box_label(under=1) at=11.5,5.1
-  +0    sfx FX_RATTLE ; sign s_a3_03_ammo_box on=ammo ; sign s_a3_03_ammo_box_under on=ammo_under
+  +0    sfx FX_RATTLE ; sign s_a3_03_ammo_box on=ammo
   +30   fx paw_take prop=ammo ; hud set shells=6 ; hud face grin
   +59   sfx FX_OI ; cc "[Oi!]"
   +80   sfx FX_BLAM ; hitstop 2 ; shake SHK_SHOTGUN ; mon sheet1 die gore=bloom_sheet ; hud set shells=5
@@ -294,7 +294,7 @@ shot a3s19 beat=e101_3_04 len=120 set=bandstand:rite px=1 look=pixel cut=CUT sce
   +0    mx doomtastic_doom mute 1200 ; sfx FX_CREAK      # sequencer keeps time under the mute
   +6    say a3_04_bloom_01 bloom
   +47   pose fuzz pat ; sfx FX_PAT                        # R8 after the line
-  +60   say a3_04_fuzz_01 fuzz
+  +56   say a3_04_fuzz_01 fuzz
   +115  move bloom to=126,156 over=5
   @a3_04_bloom_01.start+6 take beat_gesture bloom    # motion:
   @a3_04_fuzz_01.start+6 take beat_gesture fuzz    # motion:
@@ -328,7 +328,7 @@ shot a3s21 beat=e101_3_04 len=90 set=bandstand:rite px=1 look=pixel cut=CUT scen
   +0    sfx FX_PFF gain=-14dB
   +0    still crowd:giggle ripple=0..3                    # they forget to breathe
   +20   pose pip paw_over_flops_eyes                      # played straight
-  +50   move cloth to=90,148 over=6 ; show mayor                 # eyes only under the cloth
+  +50   show mayor ; pop mayor TWT_HOP1                 # eyes only under the cloth
   +0    cam to scale=1.060 over=90 ease=INOUT    # motion: track the action
   +0    cam pan dx=15.1 dy=5.1 over=90 ease=INOUT    # motion: (centred on the frame)
 end
@@ -345,7 +345,7 @@ shot a3s22 beat=e101_3_04 len=390 set=bandstand:rite px=1 look=pixel cut=CUT sce
   +150  sfx FX_KAZOO ; cc "[kazoo sags]"
   +180  show candle2:flash ; sfx FX_CANDLE_OUT ; flash PAL_UI_RED 4 3
   +183  show candle2:out ; fx smoke at=-28,100
-  +189  card stamp text=s_a3_04_fail ; shake SHK_STAMP ; sfx FX_STAMP
+  +189  card text text="FAIL x2" ; shake SHK_STAMP ; sfx FX_STAMP
   +210  pose fuzz let_go_1
   +225  pose fuzz let_go_2
   +240  move fuzz to=150,140 over=60 steps=2
