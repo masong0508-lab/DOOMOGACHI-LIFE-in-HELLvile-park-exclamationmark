@@ -211,3 +211,5 @@ Each names the default taken and where to change it.
   to every cue still sounding. Left for STAGING/ENGINE: `mx * mute` (MUTE ALL) is not in the compiler's cue table;
   `mx <cue> hold|solo|@+N`, `sfx all`, fol follow=/from=crowd: names, and walla beds (lines.shw, voice) fail lint.
 - ART mayor final (Oct 25, creator: "1 with no paper number on the hat"): Mayor Giggs is LOCKED to v2 variant 1 (lavender hat, peach head, teal coat, magenta bow tie). The card/paper and its "18" were removed from the hat band in every image kind (bust, figure, chibi, all expressions); the grape band stays. horn_color is no longer used by the mayor part set; the variant alternates 2/3 were dropped from showtk/art/cast/mayor_v2.py, which now also writes mayor_final.png.
+
+- Mayor VO (Oct 25): the creator's 35 Mayor recordings are ingested as takes (showtk/voice/clean.py chain, -23 LUFS-I, -2 dBTP, 48 kHz/24-bit mono); the favourite is the latest take unless its misread score (script-primed Whisper) or plain WER is worse; mouth tracks are text in show/ep101/mouth/<line>_t<n>.mouth until voice.lock carries them.
