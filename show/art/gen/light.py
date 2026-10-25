@@ -94,6 +94,31 @@ def _drained(r, g, b):
     return (r * 2 + l) / 3, (g * 2 + l) / 3, (b * 2 + l) / 3 + 4
 
 
+def _shade_then(level, fn, keep_emissive=True, slack=60):
+    """The game's own shading first (doomo_colormap[level]: a colour in shadow walks down
+    its own shade family, so hues survive), then a small cool push (fn) that prefers to
+    stay in the family. Emissive indices are kept lit."""
+    lut = IDENT.copy()
+    cm = pal.COLORMAP[level]
+    for i in range(1, 256):
+        if keep_emissive and i in EMISSIVE:
+            continue
+        j = int(cm[i])
+        r, g, b = [int(v) for v in pal.RGB[j]]
+        r2, g2, b2 = fn(r, g, b)
+        lut[i] = pal.nearest_fam(r2, g2, b2, j, slack)
+    lut[0] = 0
+    return lut
+
+
+def _cool(r, g, b):
+    return r * 0.86, g * 0.94, b * 1.06 + 10
+
+
+def _cooler(r, g, b):
+    return r * 0.78, g * 0.88, b * 1.10 + 14
+
+
 _CACHE = {}
 
 
@@ -105,7 +130,7 @@ def lut(name):
     if name in ("day", "none", "identity"):
         t = IDENT.copy()
     elif name == "night":
-        t = _xform(_night, keep_emissive=True, slack=35)
+        t = _shade_then(11, _cool)
     elif name == "game_night":
         t = pal.TINTMAP[pal.TINT_NIGHT].copy()
     elif name == "sunset":
@@ -115,7 +140,7 @@ def lut(name):
     elif name == "dusk":
         t = _xform(_dusk, keep_emissive=True, slack=40)
     elif name == "dark":
-        t = _xform(_dark)
+        t = _shade_then(6, _cooler, keep_emissive=False)
     elif name == "vape":
         t = _xform(_vape)
     elif name == "sepia":

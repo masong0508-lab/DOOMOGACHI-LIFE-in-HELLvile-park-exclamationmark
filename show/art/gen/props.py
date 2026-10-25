@@ -382,3 +382,16 @@ def basket(size=1):
         cv.px(bx + math.cos(a) * 15 * s, by - 13 * s + math.sin(a) * 13 * s, R("WOOD", 3))
     cv.meta["anchor"] = "bottom"
     return cv
+
+
+@generator()
+def crate(seed=1, w=30, h=22):
+    """A sturdy wooden crate (Pip stands on one to reach the lantern string, 1-10)."""
+    w, h = int(w), int(h)
+    cv = Canvas(w, h)
+    kit.planks(cv, 0, 0, w, h, int(seed), base=R("WOOD", 4), pw=5)
+    cv.frame(0, 0, w, h, R("WOOD", 1))
+    cv.line(2, 2, w - 3, h - 3, R("WOOD", 3), 2)
+    cv.rect(0, 0, w, 2, R("WOOD", 5))
+    cv.meta["anchor"] = "bottom"
+    return cv

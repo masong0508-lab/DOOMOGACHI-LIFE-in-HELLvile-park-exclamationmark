@@ -163,8 +163,10 @@ def _steps(cv, seed):
 
 
 def _boards(cv, x0, x1, y0, y1, seed, shade=0):
-    """Weathered planks nailed across an opening, with two cross braces."""
+    """Weathered planks nailed across an opening, with two cross braces; a few gaps show
+    the dark inside, one plank hangs loose, an old festival poster is half torn off."""
     rng = Rng(seed)
+    cv.rect(x0, y0, x1 - x0, y1 - y0, R("STONE", 0))
     y = y0
     while y < y1:
         hgt = rng.randint(7, 10)
@@ -185,12 +187,24 @@ def _boards(cv, x0, x1, y0, y1, seed, shade=0):
         if rng.chance(0.35):
             px_ = rng.randint(x0 + 6, x1 - 10)
             cv.rect(px_, y + 2, rng.randint(2, 5), 2, R("PASTEL_PINK", 4))     # old paint
-        y += hgt
+        y += hgt + (2 if rng.chance(0.3) else 0)                              # a gap: the dark inside
     # braces
     for (ax, ay, bx, by) in ((x0, y0 + 4, x1, y1 - 4), (x0, y1 - 4, x1, y0 + 4)):
-        kit.Canvas  # noqa
         cv.line(ax, ay, bx, by, R("WOOD", 2), 3)
         cv.line(ax, ay - 1, bx, by - 1, R("WOOD", 4), 1)
+    if x1 - x0 > 80 and y1 - y0 > 60:
+        # a torn poster (pink, its corner flapping) and a hand-lettered KEEP OFF board (a string)
+        px_, py_ = x0 + (x1 - x0) // 3, y0 + (y1 - y0) // 3
+        cv.poly([(px_, py_), (px_ + 22, py_ - 2), (px_ + 24, py_ + 26), (px_ + 4, py_ + 30)], R("PASTEL_PINK", 5))
+        cv.poly([(px_ + 12, py_ + 30), (px_ + 24, py_ + 26), (px_ + 20, py_ + 36)], R("PASTEL_PINK", 3))
+        kit.heart(cv, px_ + 12, py_ + 12, 5, P("BUBBLEGUM", 0))
+        cv.px(px_ + 2, py_ + 2, R("STEEL", 6))
+        cv.px(px_ + 21, py_, R("STEEL", 6))
+        # one plank hanging loose by a nail
+        lx, ly = x1 - (x1 - x0) // 4, y1 - 22
+        cv.line(lx - 20, ly - 6, lx + 14, ly + 12, R("WOOD", 3), 5)
+        cv.line(lx - 20, ly - 8, lx + 14, ly + 10, R("WOOD", 4), 1)
+        cv.px(lx - 18, ly - 6, R("STEEL", 6))
 
 
 def _wall(cv, x0, x1, seed):
