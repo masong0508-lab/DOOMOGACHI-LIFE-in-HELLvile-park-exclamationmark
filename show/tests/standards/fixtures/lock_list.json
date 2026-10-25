@@ -1,0 +1,100 @@
+{
+ "episode": "ep101",
+ "title": "Fixture",
+ "cast": {
+  "mayor": {
+   "age": "adult",
+   "name": "Mayor Giggs"
+  },
+  "nana": {
+   "age": "adult",
+   "name": "Nana Puddin"
+  },
+  "bloom": {
+   "age": "adult"
+  },
+  "fuzz": {
+   "age": "adult"
+  },
+  "pip": {
+   "age": "child",
+   "tags": "KID"
+  },
+  "sunny": {
+   "age": "adult",
+   "tags": "SILENT"
+  },
+  "pet": {
+   "age": "adult",
+   "tags": "PET"
+  },
+  "grumbleguts": {
+   "age": "adult",
+   "first": "ep102"
+  }
+ },
+ "voices": {},
+ "shots": [
+  {
+   "id": "s01",
+   "start": 0,
+   "len": 90,
+   "scene": "sc_a",
+   "set": "x",
+   "gore": "CUTE",
+   "actors": [
+    {
+     "id": "m",
+     "who": "mayor"
+    },
+    {
+     "id": "n",
+     "who": "nana"
+    }
+   ]
+  },
+  {
+   "id": "s02",
+   "start": 90,
+   "len": 90,
+   "set": "x",
+   "gore": "CUTE",
+   "actors": [
+    {
+     "id": "b",
+     "who": "bloom"
+    }
+   ]
+  },
+  {
+   "id": "s03",
+   "start": 180,
+   "len": 90,
+   "scene": "sc_b",
+   "set": "x",
+   "gore": "CUTE",
+   "actors": [
+    {
+     "id": "f",
+     "who": "fuzz"
+    },
+    {
+     "id": "g",
+     "who": "grumbleguts",
+     "modest": "yes"
+    }
+   ]
+  }
+ ],
+ "lines": [
+  {
+   "id": "l1",
+   "who": "mayor",
+   "text": "Lovely evening.",
+   "shot": "s01",
+   "start": 5
+  }
+ ],
+ "expect": "STD-LOCK",
+ "why": "Grumbleguts seen in 101 (first=ep102)"
+}
