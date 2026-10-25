@@ -39,5 +39,5 @@ string s_mt7_title "GIGGLE NIGHT" font=game sign=banner note="MINGLE shows throu
 string s_ec2out_bubble "beep." font=game style=bubble
 string s_ec1_out "" note="EC1 OUT: textless card (lantern, banner, clock 21:00)"
 string s_ec1_in  "" note="EC1 IN: textless card (the lantern glows purple)"
-string s_ec3out  "" note="EC3 OUT: textless card (three candles, two out, clock 22:59)"
-string s_ec3in   "" note="EC3 IN: textless card (the last flame leans toward the Wall)"
+# (a3 owns s_ec3out until D1 lands) s_ec3out "" note="EC3 OUT: textless card (three candles, two out, clock 22:59)"
+# (a3 owns s_ec3in until D1 lands) s_ec3in "" note="EC3 IN: textless card (the last flame leans toward the Wall)"
