@@ -589,6 +589,8 @@ class ShotCompiler:
         setup, timed = [], []
         for c in self.st.children:
             (timed if c.time is not None else setup).append(c)
+        own = {c.pos[0] for c in setup if c.kw in ("actor", "crowd") and c.pos}
+        setup = [c for c in self.inherited(own) if not (c.pos and c.pos[0] in own)] + setup
         for c in setup:
             try:
                 self.setup(c)
@@ -598,6 +600,28 @@ class ShotCompiler:
                 self.d("SHW", "cannot read `%s`: %s: %s" % (c.text(), type(e).__name__, e), c)
         self.solve_and_run(timed)
         sh.compiled = True
+
+    def inherited(self, own):
+        """base=<shot>@f / replay=<shot>@f: the source shot's cast (actor/crowd setup lines, in its
+        slot order, recursively), because the player re-derives the state by running the source
+        silently (spec 5.3, 8.1): the same slots must exist here. A cycle is an error."""
+        out, seen, sh = [], {self.shot.id}, self.shot
+        while True:
+            src = sh.kv.get("base") or sh.kv.get("replay")
+            if not src:
+                return out
+            sid = src.split("@", 1)[0]
+            if sid in seen:
+                self.d("STAGE", "base=/replay= sources form a cycle: %s" % " -> ".join(list(seen) + [sid]))
+                return out
+            seen.add(sid)
+            sh = self.ep.shot_by_id.get(sid)
+            if sh is None or sh.stmt is None:
+                self.d("STAGE", "base=/replay=%s: no shot %s" % (src, sid))
+                return out
+            got = [c for c in sh.stmt.children if c.time is None and c.kw in ("actor", "crowd") and c.pos
+                   and c.pos[0] not in own and all(c.pos[0] != o.pos[0] for o in out)]
+            out = got + out
 
     # -- stage ---------------------------------------------------------------------
     def set_stage(self):

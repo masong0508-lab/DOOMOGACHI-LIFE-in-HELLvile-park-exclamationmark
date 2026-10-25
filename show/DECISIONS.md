@@ -135,3 +135,9 @@ Each names the default taken and where to change it.
 - co_mt: MT-5 rots a replay of the mt01 crane (no child), never the cast pop-in (Pip is in it).
 - co_mt: beat rows (`act`/`beat`) live at the top of each shot file, since episode.shw is a plain include list.
 - co_mt: timed prop states are written as `+N show <prop>[:<state>]` / `hide <prop>` (proposed SOP_PROP_STATE); fallback is base= + one change per state.
+
+## WP4 compiler: ep101 compile report (2026-10-25, lane 1)
+- `base=`/`replay=` shots now inherit the source shot's `actor`/`crowd` setup lines (same slots; the player re-derives the state by running the source silently, spec 5.3/8.1); a source cycle is a STAGE error.
+- `show compile ep101` on the current branch: 211 shots, 40,566 f (beats over-filled by STAGING's shots; `show slug ep101` = 39,600 f exactly). 1,094 errors, all in content owned by other lanes, reported here for them:
+  - AUDIO: 260 AUD-LIB unknown sounds and 71 AUD-MX unknown cues (series/sfx.shw, music.shw not complete yet); 103 LINE unknown line ids (show/ep101/lines.shw not on the branch yet).
+  - STAGING: ~150 ACTOR "no actor X" where shots address set props as actors (co20 paw, mt02 logo*, mt05 hh/hv...): declare them with `actor` or use `prop.set`; 144 SHW-OPS unknown op `show` (use `prop.set <prop> state=...`, spec 5.5); 56 STAGE `at=` forms the compiler does not read (`at=x0,y0..x1,y1`, `at=mark:...`); 13 FMT-RUNTIME beats whose shots exceed `len=`.

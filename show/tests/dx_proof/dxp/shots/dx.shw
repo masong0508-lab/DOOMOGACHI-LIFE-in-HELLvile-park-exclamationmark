@@ -1,0 +1,30 @@
+# show/tests/dx_proof/dxp/shots/dx.shw - the dialogue proof: two-shot (px=1 figures), two px=2
+# bust close-ups, two-shot. Four lines, lip-synced from the line timings.
+
+shot dx01 beat=dx_1 len=150 set=bake_tent:night px=1 cut=CUT matte=open scene=dx_tent
+  actor nana  who=nana  kind=figure at=150,118 face=front idle=on
+  actor mayor who=mayor kind=figure at=110,150 face=R idle=on
+  +0    fol FOL_plush_squash
+  +20   expr mayor EXPR_HAPPY
+  +30   say co15_perfect mayor
+end
+
+shot dx02 beat=dx_1 len=150 set=bake_tent:night px=2 cut=CUT
+  actor nana  who=nana  kind=bust px=2 at=160,124 face=L idle=on
+  +0    fol FOL_plush_squash
+  +12   say dx_nana_two nana
+end
+
+shot dx03 beat=dx_1 len=120 set=bake_tent:night px=2 cut=CUT
+  actor mayor who=mayor kind=bust px=2 at=160,124 face=R idle=on
+  +0    fol FOL_plush_squash
+  +20   say co18_stay mayor
+end
+
+shot dx04 beat=dx_1 len=180 set=bake_tent:night px=1 cut=CUT
+  actor nana  who=nana  kind=figure at=150,118 face=front idle=on
+  actor mayor who=mayor kind=figure at=110,150 face=R idle=on
+  +0    fol FOL_plush_squash
+  +10   say a1_09_nana_01 nana
+  >+20  walk mayor to=-40 over=30
+end
