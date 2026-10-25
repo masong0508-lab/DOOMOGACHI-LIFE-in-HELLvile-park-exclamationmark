@@ -1,0 +1,57 @@
+# show/series/music.shw - the cue library (owner: AUDIO, WP10; SHOW_ENGINE_SPEC.md sec.5.1,
+# 6.1, 10.4). Cue ids -> scores, bar maps, named notes. Rendered by `show music build`
+# (python3 -m showtk.music.render build) to <show_lib>/music/<id>.flac at "unity"
+# (-16 LUFS, or the -1 dBTP ceiling when that is lower), with <id>.json beside it (the bar
+# map, sections, named notes, loudness, sha256); show/lib/music/library.lock pins the hashes.
+# The spotting (in, out, level, automation) is ep101/cues.shw.
+#
+# Sources: mml:<game song> (tools/mmlc.py -> kit presets), score:<show/lib/music module>.<fn>,
+# file:<theme master> (relative to docs/show/theme/, else the scratchpad's theme/final:
+# swap the master by dropping a new file in; the cue names a file, nothing else changes).
+# Kit presets are the names in show/audio/kit/render.py; drums_<kit>:<GM key> plays every hit
+# on that key (70 = the kit's synthesised shaker).
+
+# ---------------------------------------------------------------- the game's own cues (MML)
+cue mingle_box src=mml:core/src/mml_mingle.c bpm=96 meter=4/4 key=F passes=2 desc="MINGLE on the music box (S2's mml_mingle.c), full: CO-1, CO-2"
+  # 96 bpm: one beat = 18.75 f = 30,000 smp; one bar = 75 f = 120,000 smp (bars land on frames)
+  track 0 inst=musicbox send=-13 ; track 1 inst=warm_pad gain=-9dB send=-11 ; track 2 inst=chip_tri gain=-8dB ; track 3 inst=drums_pop:70 gain=-20dB
+  # the music box's muted note in CO-2 (co08 +75, 29 f): the first onset under the mute is
+  # bar 12.1 = phrase bar 4, beat 1, G5 - the cadence "g f e g f2" never gets its first note.
+  # The Mayor stops humming on it in co12 (+120) and gets one note past it in 4-08 (F5).
+  note mayors_note bar=12.1 phrase=4.1 pitch=G5 hum=G4
+  note plus_one_note bar=12.1.5 phrase=4.1.5 pitch=F5 hum=F4
+end
+
+cue mingle_thin src=mml:core/src/mml_mingle.c bpm=96 meter=4/4 key=F passes=1 send=-20 desc="MINGLE, one voice (the lead channel alone), thinner: CO-4"
+  track 0 inst=musicbox gain=-2dB send=-18
+end
+
+cue heehee_bell src=mml:core/src/mml_heehee_jingle.c bpm=120 meter=4/4 key=A tail=6 desc="The HEE_HEE bell (S2's mml_heehee_jingle.c, the bell channel): every act card, frame 0"
+  track 0 inst=glock send=-12
+end
+
+cue heehee_bell_flat src=mml:core/src/mml_heehee_jingle.c bpm=120 meter=4/4 key=A tail=4 desc="The HEE_HEE bell played once, flat (40 cents under, damped): the Act Four card"
+  track 0 inst=glock p.t60=1.1 cents=-40 send=-16
+end
+
+cue heehee_bell_150 src=mml:core/src/mml_heehee_jingle.c bpm=150 tempo=150 meter=4/4 key=A tail=4 desc="The HEE_HEE bell on the theme's 150 bpm grid: over every OUT eyecatch"
+  track 0 inst=glock send=-12
+end
+
+cue ominous_fog src=mml:SONG_OMINOUS bpm=70 meter=4/4 key=E passes=2 verb=hall rt60=2.6 desc="The game's OMINOUS cue ('The Wall', songs.c): the series' first scare, the fog in 1-14"
+  # @10 spooky wobble lead (the WALL motif e2 f2 | e2 a+2) -> a wobbling pulse; @9 pad; the
+  # @12 music box far off; the heartbeat kick
+  track 0 inst=chip_p12 p.vib_depth=55 p.vib_rate=4.5 p.vib_delay=0.1 gain=-6dB send=-6
+  track 1 inst=string_pad gain=-4dB send=-8
+  track 2 inst=musicbox gain=-15dB send=-4
+  track 3 inst=drums_acoustic gain=-10dB send=-14
+end
+
+# ---------------------------------------------------------------- the theme (file cues)
+# "Doomtastic Times" (theme workflow). 150 bpm: 12 f per beat, 48 f per bar, 76,800 smp per bar.
+# The CRACK is the main title's frame 0 = bar 1, beat 1 = episode frame 3,000 (01:40).
+cue theme_main_title src=file:doomtastic_times_main_title.flac barmap=midi:midi/main_title/tracks/doomtastic_times_main_title_full.mid length=1500 fade=0.3 desc="Main title cut, 0:50 (01:40-02:30): 30 bars + ring, cut at 1,500 f"
+end
+
+cue theme_eyecatch_out src=file:doomtastic_times_eyecatch_A.flac barmap=midi:midi/eyecatch_A/tracks/doomtastic_times_eyecatch_A_full.mid length=150 fade=0.4 desc="Eyecatch OUT: 2-bar cut of the hook in major + ending hit + beep (3 bars), 5 s"
+end

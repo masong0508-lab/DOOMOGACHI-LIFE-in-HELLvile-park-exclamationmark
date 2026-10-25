@@ -1,0 +1,30 @@
+{
+ "cue": "theme_eyecatch_out",
+ "bpm": 150.0,
+ "meter": 4,
+ "bars": 3,
+ "sections": [
+  [
+   "eyecatch A",
+   1,
+   3
+  ]
+ ],
+ "offset_smp": 0,
+ "frames_per_bar": 48.0,
+ "smp_per_bar": 76800.0,
+ "source": "/tmp/claude-0/-home-user-DOOMOGACHI-LIFE-in-HELLvile-park-exclamationmark/ea792815-11f0-5f9f-bdfe-5997cdfc4994/scratchpad/theme/final/midi/eyecatch_A/tracks/doomtastic_times_eyecatch_A_full.mid",
+ "bar_smp": [
+  0,
+  76800,
+  153600,
+  230400
+ ],
+ "bar_frame": [
+  0,
+  48,
+  96,
+  144
+ ],
+ "named_notes": {}
+}

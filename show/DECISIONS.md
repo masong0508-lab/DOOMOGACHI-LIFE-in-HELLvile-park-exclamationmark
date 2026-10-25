@@ -47,3 +47,25 @@ Each names the default taken and where to change it.
 - **Model sheets render on the host** (`showtk.art.cast.sheet`: the game's portrait engine compiled
   natively with a patched copy of portrait_head.c carrying hunk (d)) until show.exe can draw
   them; they are review material, never master pixels.
+
+## AUDIO WP10: music and SFX (showtk/music, showtk/sfx, series/music.shw, sfx.shw, ep101/cues.shw), 2026-10-25
+
+- **Game cues play on the tempo grid, not the 30 Hz tick.** `mml_legacy.py` (over `tools/mmlc.py`) places every
+  MML onset on the song's own grid (`timing=grid`: at t96 a bar is exactly 75 f / 120,000 smp). `timing=game`
+  on a cue reproduces the sequencer's tick quantisation (onset tick = ceil(units*256/rate256)) for an A/B
+  against `runner --wav`. The two differ by under one frame per note. Change: `timing=` in series/music.shw.
+- **Chord instruments (@4/@5/... arpeggio insts) are voiced as chords** on pads, and as the game's per-tick
+  arpeggio on `chip_*` presets (`arp=chord|arp` per track).
+- **Unity.** Every cue in show_lib/music is rendered at -16 LUFS integrated, or lower when the true peak would
+  pass -1 dBTP; `gain=` in cues.shw is relative to that. The theme master (-14 LUFS) comes in at -2 dB.
+- **The Mayor's note is G5**, MINGLE phrase bar 4 beat 1 (the cadence "g f e g f2"): it is the first onset
+  under the cold open's 29-f mute at the shot list's TC 00:00:29:00 (mingle_box bar 12.1). The music box's
+  held note into the co12 match cut is A5 (the hum's first pitch); the hum stops on G; 4-08 gets one note
+  further, to F5. Hums sound an octave down (A4 / G4 / F4) for the Mayor's tenor. Change: `note` lines in
+  series/music.shw.
+- **cues.shw carries timed `mx` ops** (`@<beat>+N mx <cue> <op>`) next to the spec's `spot` defaults, so the
+  whole episode is spotted before the shots exist; STAGING copies each op into its shot unchanged (the cue
+  sheet prints the shot-relative frame). A `<cue>:bar:B.b` time anchors on a playing cue's bar map.
+- **The theme cues name files** (`src=file:doomtastic_times_main_title.flac` under docs/show/theme/ once
+  published, else the scratchpad's theme/final): a new vocal master drops in with no other change; the bar
+  map is re-imported from the master's own `*_full.mid` (tempo + section markers).
