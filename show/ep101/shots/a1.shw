@@ -222,8 +222,8 @@ end
 
 shot a1_07b beat=e101_1_07 len=150 set=lulla_tent:dusk px=1 cut=CUT
   cam at=frame:flap
+  actor mascotty who=mascotty kind=chibi at=330,150 idle=still   # the one still thing in a bobbing crowd (crowd members: an actor until lane-2 `member` lands)
   crowd giggle_bg gen=randomize seed=1702 n=14 age=adult kind=chibi lane=y:150 dir=L speed=0.4 ripple=0..3
-    member mascotty who=mascotty clock=none at=330,150         # perfectly still in the bobbing crowd
   end
   +0    sfx FX_NEON_BUZZ gain=-28dB ; sign s_a1_07_vapor on=vapesign
   +30   prop.set vapesign state=flicker ; sfx FX_NEON_BUZZ gain=-20dB
@@ -448,8 +448,8 @@ end
 shot a1_11a beat=e101_1_11 len=300 set=fun_fair:night px=1 cut=CUT scene=a1_sc24
   cam at=frame:edge
   actor sunny who=sunny kind=figure at=40,172 face=R idle=on pose=egg_suitcase
+  actor mascotty who=mascotty kind=chibi at=200,170 idle=still light=cool   # the one still thing in a bobbing crowd (crowd members: an actor until lane-2 `member` lands)
   crowd giggle gen=randomize seed=1901 n=30 looks=K16 age=adult kind=chibi lanes=y:150,y:182 dir=LR speed=0.5 ripple=0..3
-    member mascotty who=mascotty clock=none at=200,170 light=cool
   end
   +0    mx all stop ; walla giggle on gain=-18dB                 # music out entirely
   +0    walk sunny to=170 over=40
@@ -521,8 +521,8 @@ end
 
 # ===================================================================== SC26 · 1-13 (720)
 shot a1_13a beat=e101_1_13 len=300 set=giggle_wide:night px=1 cut=CUT scene=a1_sc26
+  actor mascotty who=mascotty kind=chibi at=292,164 idle=still   # the one still thing in a bobbing crowd (crowd members: an actor until lane-2 `member` lands)
   crowd giggle gen=randomize seed=2101 n=120 looks=K32 age=adult kind=chibi formation=wide(y=120..176) ripple=0..3
-    member mascotty who=mascotty clock=none at=292,164
   end
   actor sunny who=sunny kind=chibi at=150,170 face=front idle=on
   +0    sfx FX_CLOCK_BONG ; mx bone_xylo mute 9999            # MUTE: the sequencer keeps running

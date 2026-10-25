@@ -508,6 +508,7 @@ class ShotCompiler:
         self.pcam = None                # picture.camera.Camera (lane 2's exact camera)
         self.text_items = []            # picture.text.Item list               -> PIC1 TEXT
         self.pic_events = []            # (t, op, args)                         -> PIC1 EVTS
+        self.mouth_raw = []             # (actor index, shot frame, viseme letters) -> WP6 TRAK
 
     # -- helpers -------------------------------------------------------------
     def d(self, rule, msg, st=None, severity="error", frame=None):
@@ -902,7 +903,8 @@ class ShotCompiler:
                             "state": STATES[state], "x": x, "y": y, "name": self.ep.strtab.add(who),
                             "roster": ch["roster"] if ch.get("roster") is not None else F.NONE,
                             "id": aid, "who": who, "kind_name": kind, "age": ch.get("age"),
-                            "tags": ch.get("tags", []), "voice": ch.get("voice")})
+                            "tags": ch.get("tags", []), "voice": ch.get("voice"), "face_name": face,
+                            "state_name": state, "idle_name": idle, "expr_name": c.get("expr", "EXPR_NEUTRAL")})
 
     def add_crowd(self, c):
         if not c.pos:
@@ -925,7 +927,8 @@ class ShotCompiler:
                "from": 0, "y": 0, "cycle": self.ep.strtab.add(c.get("cycle")), "speed_q16": 0,
                "seed": int(c.get("seed", "0"), 0), "clock_mask": (1 << min(n, 32)) - 1 if n < 32 else 0xFFFFFFFF,
                "gen": 0, "species": 0xFF, "look_k": 0, "flags": 1 if age == "child" else 0,
-               "id": cid, "age_name": age, "kind_name": kind, "species_name": c.get("species"), "tags": tags}
+               "id": cid, "age_name": age, "kind_name": kind, "species_name": c.get("species"), "tags": tags,
+               "kv": dict(c.kv)}
         looks = c.get("looks")
         if c.get("gen") == "randomize":
             rec["gen"] = 1
@@ -1238,6 +1241,10 @@ class ShotCompiler:
             tgt = c.words[0] if c.words else c.fail("STAGE", "`%s <prop>[:<state>]`" % kw)
             tgt, _, state = tgt.partition(":")
             state, on = state or None, kw == "show"
+        if tgt in self.actor_ix and not state:
+            self.vis.append((f, "actor", tgt, None, kw == "show"))
+            self.tl(f, c, "show", "%s %s" % (kw, tgt))
+            return
         if tgt not in self.prop_ix and tgt not in self.plane_ix:
             c.fail("STAGE", "%s %s: no prop or plane %s in set %s (props: %s)" % (
                 kw, tgt, tgt, self.set_name, ", ".join(self.prop_ix) or "none"))
@@ -1580,6 +1587,7 @@ class ShotCompiler:
         return list(self.tracks).index((ai, 0))
 
     def mouth_track(self, ai, f0, track, c):
+        self.mouth_raw.append((ai, f0, track))
         key = (ai, 0)
         arr = self.tracks.get(key) or [0] * (self.shot.len + 1)
         for i, ch in enumerate(track):
