@@ -126,3 +126,12 @@ Each names the default taken and where to change it.
   1000, the calendar's print, the logo (drawn the way `fp_title.c` draws it).
 - **Previews are host composites** (`show sets sheet`), never master pixels; the player draws the
   masters. PIC-PAL is checked on every composed frame of every variant (100 %).
+- ART review (art director): Mr. Flops is a prop bunny (gen:mr_flops, one floppy ear) in Pip's paws, not ACC_TEDDY (a bear); launch_hill redrawn to the script (Wall down the frame's centre line, park below, iron launch stand prop, mark wall_x 160); joke_graveyard fills its sky with a yew/tree line (4-07 board note: sky out of frame).
+
+## STAGING co_mt (cold open, main title, eyecatches), 2026-10-25
+- co_mt: files are `ep101/shots/co.shw` (cold open, owned by co_mt from now on), `shots/co_mt.shw` (main title) and `shots/ec1.shw` (EC1, included after a1; a1 stages 9,600 f without it). EC2 and EC3 were already staged by a2 (a2_56-57) and a3 (a3s38-39) when co_mt landed, so episode.shw does NOT include co_mt's `ec2.shw`/`ec3.shw` (same beat ids `e101_ec2_*`/`e101_ec3_*`, would double 600 f). They stay as the co_mt versions (Mascotty prop, flash level, bell timing); the integrator includes exactly one version of each pair.
+- co_mt: the main title is cut to the master's bar map (150 bpm, 48 f/bar, 30 bars + 60-f ring = 1,500 f), not the beat sheet's provisional TCs: MT-1 bars 1-9 (432 f), MT-2 verse 10-13 (192), MT-3 wall window + pre-chorus to "Come out!" (108), MT-4 the stop-time drop 16.2-16.4 (36), MT-5 chorus 17-24 (384), MT-6 post-chorus + button to the last chord (264), MT-7 ring/mute/beep/title (84). Total 1,500, so 1-01 is not stretched.
+- co_mt: the mirrored knock lands on the lyric's three "Knock, knock, knock!" syllables (bar 15.1, +6, 15.2), not "two snare hits": the master's pre-chorus is P4 alone.
+- co_mt: MT-5 rots a replay of the mt01 crane (no child), never the cast pop-in (Pip is in it).
+- co_mt: beat rows (`act`/`beat`) live at the top of each shot file, since episode.shw is a plain include list.
+- co_mt: timed prop states are written as `+N show <prop>[:<state>]` / `hide <prop>` (proposed SOP_PROP_STATE); fallback is base= + one change per state.

@@ -395,3 +395,26 @@ def crate(seed=1, w=30, h=22):
     cv.rect(0, 0, w, 2, R("WOOD", 5))
     cv.meta["anchor"] = "bottom"
     return cv
+
+
+@generator()
+def mr_flops(size=1, hug=0):
+    """MR. FLOPS, Pip's toy bunny with one floppy ear (12x16 at size 1). The script names a
+    bunny, and the portrait engine's only hugged plush (ACC_TEDDY) is a bear, so he is a
+    prop the shots put in Pip's paws (anchor at the paws). hug=1 squashes him 1 px."""
+    s = int(size)
+    cv = Canvas(12 * s, 16 * s)
+    fur, shade, inner = pal.WHITE, R("PASTEL_PINK", 6), P("BUBBLEGUM", 2)
+    # the up ear and the floppy ear (folded down over the right side of the head)
+    cv.rect(3 * s, 0, 2 * s, 6 * s, fur)
+    cv.rect(int(3.5 * s), 1 * s, max(1, s), 4 * s, inner)
+    cv.poly([(7 * s, 5 * s), (11 * s, 4 * s), (11 * s, 9 * s), (10 * s, 9 * s)], fur)
+    cv.ellipse(6 * s, 8 * s, 3.5 * s, 3 * s - int(hug), fur)                  # head
+    cv.ellipse(6 * s, 13 * s, 3.5 * s, 3 * s, fur)                           # body
+    cv.ellipse(6 * s, 14 * s, 2 * s, 1.5 * s, shade)
+    cv.px(5 * s, 8 * s, P("JET", 1))
+    cv.px(7 * s, 8 * s, P("JET", 1))
+    cv.px(6 * s, 9 * s, inner)
+    cv.a[cv.outline_mask(cv.a != 0)] = R("PASTEL_PINK", 3)
+    cv.meta["anchor"] = "bottom"
+    return cv
