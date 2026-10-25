@@ -1,0 +1,30 @@
+# show/series/sets/storybook.shw   (crayon register; everything palette-exact)
+set calendar_page kind=2d px=2 matte=open look=crayon
+  plane paper  image=gen:paper_sheet(seed=1)                      size=160x120 par=0
+  plane page   image=gen:calendar_page(month=JUN,mark=MIDSUMMER,seed=3) par=0
+  strokes ink  par=0 boil=2                                       # live GPU lines, jittered ±1 px on twos
+    stroke circle_midsummer   nib=crayon:CRAYON_RED  w=2 path=ellipse(194,96,46,18,turns=1.15,wobble=1,seed=11)
+    stroke fireworks_scribble nib=crayon:CRAYON_PINK w=2 path=gen:scribble_bursts(cx=194,cy=96,n=5,r=28..52,seed=12) outside=on
+  end
+  plane grain  tile=gen:paper_grain(density=12,seed=2) size=64x64 par=0 order=top   # "12 %": a fixed density, never alpha
+end
+
+set park_storybook kind=2d px=1 matte=open look=crayon
+  plane sky    image=gen:crayon_sky(night=1,stars=40,seed=21)        size=352x240 par=0.05
+  plane park   image=gen:storybook_park(river=1,bridge=1,seed=22)   size=368x240 par=0.10
+  plane near   image=gen:lantern_strings(seed=23)                   size=400x240 par=0.20
+  prop  bandstand art=gen:bandstand_round(lanterns=12,seed=24) plane=park at=160,92 anchor=center
+  prop  table_n   art=gen:table(cupcake_tower=1,seed=25)       plane=park at=116,70
+  prop  table_s   art=gen:table(cauldron=1,seed=26)            plane=park at=206,128
+  plane grain  tile=gen:paper_grain(density=12,seed=2) par=0 order=top
+  mark  wall_x 160                                               # doc:192; every brick wipe and Split uses it
+end
+
+set bridge_storybook kind=2d px=2 matte=open look=crayon
+  plane sky    image=gen:crayon_sky(night=1,stars=12,seed=31)  par=0
+  plane water  image=gen:crayon_river(seed=32)                 par=0 boil=2
+  plane bridge image=gen:crayon_bridge(side=1,seed=33)         par=0
+  plane rail   image=gen:crayon_bridge_rail(seed=34)           par=0 order=front    # kids walk behind the rail
+  path  deck   y=118 from=-32 to=352
+  plane grain  tile=gen:paper_grain(density=12,seed=2) par=0 order=top
+end
