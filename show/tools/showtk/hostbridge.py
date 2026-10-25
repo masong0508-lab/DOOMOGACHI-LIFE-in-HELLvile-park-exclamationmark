@@ -44,7 +44,7 @@ LENS = {"gib": (9, 2), "splat": (11, 2), "paint": (14, 8), "drip": (12, 4)}
 # at the door wall, yaw 512 = the window wall); show px of a standing actor's feet.
 ROOM_ANCHORS = {
     "door": (160, 112), "door_out": (160, 118), "door_in": (160, 136), "door_lock": (176, 96),
-    "door_side": (196, 140), "window": (112, 92), "window_sill_l": (100, 100), "window_sill_r": (124, 100),
+    "door_side": (196, 140), "door_greet": (128, 132), "window": (112, 92), "window_sill_l": (100, 100), "window_sill_r": (124, 100),
     "centre": (160, 132), "center": (160, 132),
 }
 PARTS = {"head": (0, -30), "hand": (10, -14), "arm": (8, -18), "feet": (0, 0)}

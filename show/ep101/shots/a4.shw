@@ -605,7 +605,7 @@ shot a4s41 beat=e101_t_1 len=90 set=cottage:dawn px=1 look=pixel cut=FADE matte=
   +0    fade in over=13 ; mx home_box start gain=-14dB
   +12   pose key turn ; sfx FOL_key_click gain=-18dB
   +30   door open tw=TW_WOBBLE amp=34% ; sfx FX_bwobble gain=-14dB ; cc "[door wobbles like jelly]"
-  +0    world cam to punch=272 over=90 ease=INOUT    # motion: slow push in the room (ROOM host keyed camera)
+  +0    world cam to punch=330 over=90 ease=INOUT    # motion: slow push in the room (ROOM host keyed camera)
 end
 
 shot a4s42 beat=e101_t_1 len=180 set=cottage:dawn px=1 look=pixel cut=CUT matte=open gore=CUTE
@@ -616,11 +616,11 @@ shot a4s42 beat=e101_t_1 len=180 set=cottage:dawn px=1 look=pixel cut=CUT matte=
   +60   walk sunny to=room:2,2 over=40 ; door close tw=TW_WOBBLE amp=34% ; sfx FX_bwobble gain=-20dB
   +110  pose sunny set_suitcase ; prop suitcase art=pxt:suitcase at=room:door_side ; fol FOL_soft_thud
   +123  button ; door wobble amp=20%                      # the shut door still wobbling
-  +0    world cam to punch=272 over=180 ease=INOUT    # motion: slow push in the room (ROOM host keyed camera)
+  +0    world cam to punch=330 over=180 ease=INOUT    # motion: slow push in the room (ROOM host keyed camera)
 end
 
 shot a4s43 beat=e101_t_1 len=180 set=cottage:dawn px=1 look=pixel cut=CUT matte=open gore=CUTE
-  +0    cam3d room yaw=512 zoom=2 at=room:window
+  +0    cam3d room yaw=0 zoom=2 at=room:window
   actor sunny who=sunny kind=chibi at=room:2,1 face=back idle=on
   actor pet   who=pet   kind=sprite at=follow:sunny.head idle=on
   prop  shellL art=gen:eggshell(half=left,size=1) at=room:window_sill_l hidden=yes
@@ -631,7 +631,7 @@ shot a4s43 beat=e101_t_1 len=180 set=cottage:dawn px=1 look=pixel cut=CUT matte=
   +90   move pet to=prop:shellL over=10 ; sfx FX_pet_blip_tiny gain=-28dB
   +100  pose pet curl
   +122  face pet wall over=13                             # turns to face the window (13 f)
-  +0    world cam to punch=272 over=180 ease=INOUT    # motion: slow push in the room (ROOM host keyed camera)
+  +0    world cam to punch=350 over=180 ease=INOUT    # motion: slow push in the room (ROOM host keyed camera)
 end
 
 shot a4s44 beat=e101_t_2 len=105 set=cottage:dawn px=1 look=pixel cut=CUT matte=open gore=CUTE
@@ -640,13 +640,13 @@ shot a4s44 beat=e101_t_2 len=105 set=cottage:dawn px=1 look=pixel cut=CUT matte=
   +15   door wobble amp=34% ; sfx FX_bwomp gain=-14dB
   +30   door wobble amp=34% ; sfx FX_bwomp gain=-14dB
   +60   door open tw=TW_WOBBLE amp=34% ; sfx FX_bwobble gain=-18dB
-  +0    world cam to punch=272 over=105 ease=INOUT    # motion: slow push in the room (ROOM host keyed camera)
+  +0    world cam to punch=330 over=105 ease=INOUT    # motion: slow push in the room (ROOM host keyed camera)
 end
 
 shot a4s45 beat=e101_t_2 len=333 set=cottage:dawn px=1 look=pixel cut=CUT matte=open gore=CUTE
   +0    cam3d room yaw=0 zoom=2 at=room:door
   actor nana  who=nana  kind=figure at=room:door_out face=front idle=on pose=muffins_dish
-  actor sunny who=sunny kind=chibi  at=room:door_in face=back idle=on
+  actor sunny who=sunny kind=chibi  at=room:door_greet face=R idle=on
   prop  muffin1 art=gen:muffin(seed=1) at=follow:nana.hand
   prop  muffin2 art=gen:muffin(seed=2) at=follow:nana.hand
   prop  dish art=gen:pie_dish(scrubbed=1,cookie=burnt) at=follow:nana.arm hidden=yes
@@ -658,15 +658,15 @@ shot a4s45 beat=e101_t_2 len=333 set=cottage:dawn px=1 look=pixel cut=CUT matte=
   +189  show dish ; pose nana hold_out_dish
   +240  say t2_nana_01 nana
   +313  pose nana thumb_rim                               # R13 after; held R21
-  +0    world cam to punch=280 over=333 ease=INOUT    # motion: slow push in the room (ROOM host keyed camera)
+  +0    world cam to punch=340 over=333 ease=INOUT    # motion: slow push in the room (ROOM host keyed camera)
 end
 
 shot a4s46 beat=e101_t_2 len=81 set=cottage:dawn px=1 look=pixel cut=CUT matte=open gore=CUTE insert
-  +0    cam3d room yaw=512 zoom=3 at=room:window_sill_l
-  actor pet who=pet kind=sprite at=prop:shellL idle=on pose=curl_facing_wall
+  +0    cam3d room yaw=0 zoom=3 at=room:window_sill_l
+  actor pet who=pet kind=sprite at=room:window_sill_l idle=on pose=curl_facing_wall
   +0    sfx FOL_tiny_breath gain=-30dB
   +20   pose pet horn_nubs
-  +0    world cam to punch=272 over=81 ease=INOUT    # motion: slow push in the room (ROOM host keyed camera)
+  +0    world cam to punch=380 over=81 ease=INOUT    # motion: slow push in the room (ROOM host keyed camera)
 end
 
 shot a4s47 beat=e101_t_2 len=81 set=cottage:dawn px=1 look=pixel cut=CUT matte=open gore=CUTE
@@ -677,7 +677,7 @@ shot a4s47 beat=e101_t_2 len=81 set=cottage:dawn px=1 look=pixel cut=CUT matte=o
   +60   mx nana_motif stop over=21
   @t2_nana_02.start+6 headturn nana 16 3    # motion:
   @t2_nana_02.start+14 headturn nana 240 4    # motion:
-  +0    world cam to punch=272 over=81 ease=INOUT    # motion: slow push in the room (ROOM host keyed camera)
+  +0    world cam to punch=360 over=81 ease=INOUT    # motion: slow push in the room (ROOM host keyed camera)
 end
 
 # ============================== END CREDITS ==============================
