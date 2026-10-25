@@ -3,6 +3,7 @@
 # s_gate_keepout and s_a1_10_tag are shared (owned by the segment that first uses them);
 # a4 only references them.
 
+string s_gate_keepout "KEEP OUT. FOREVER."                          font=game
 string s_a4_01_card   "23:00 ________"                              font=hand_mayor
 string s_a4_05_draft  "You never asked where it went."              font=hand_other
 string s_a4_05_home   "23:00 Home!"                                 font=hand_mayor
