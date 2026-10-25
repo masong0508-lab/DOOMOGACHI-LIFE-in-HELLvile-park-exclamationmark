@@ -105,7 +105,8 @@ shot a3s08 beat=e101_3_01 len=219 set=hook_a_duck:night px=1 look=pixel cut=CUT 
   actor puff who=puff_demon kind=sprite at=-20,110 idle=on
   ad "Steamy hides in the duck pool, a rubber duck on her head."
   +0    sfx FX_SPARKLE ; move puff to=150,110 over=60
-  +70   pop puff TWT_HOP1 ; sfx FX_BWIP      # pure reflex (props cannot move: pole stays set dressing)
+  +70   pop puff TWT_HOP1 ; sfx FX_BWIP ; move pole to=158,140 over=6 ; squash pole 300 over=6   # pure reflex: the pole jerks up
+  +90   move pole to=166,120 over=10
   +78   move puff to=150,96 over=4
   +90   move puff to=166,86 over=10
   +100  still steamy                                       # R13 look
@@ -231,6 +232,11 @@ shot a3s15 beat=e101_3_03 len=260 set=scary_house_fp:truth px=1 look=hellify cut
   +162  sfx FX_FWAP ; hud face wince
   +173  sign s_a3_03_ghost_back on=mon:ghost1             # reads 70 f (2.3 s)
   +243  sfx FX_CHK2
+  +12   shake SHK_TAP    # motion: walk bob
+  +65   shake SHK_TAP    # motion: walk bob
+  +125  shake SHK_TAP    # motion: walk bob
+  +185  shake SHK_TAP    # motion: walk bob
+  +215  shake SHK_TAP    # motion: walk bob
 end
 
 shot a3s16 beat=e101_3_03 len=261 set=scary_house_fp:truth px=1 look=hellify cut=CUT scene=a3_house_fp gore=BRUTAL
@@ -277,6 +283,11 @@ shot a3s18 beat=e101_3_03 len=201 set=scary_house_fp:truth px=1 look=hellify cut
   +0    hud on ; hud set hearts=2 shells=1 plate=s_a3_03_hud_plate_slaughter sub=s_a3_03_hud_sub label=s_a3_03_hud
   prop shadow art=gen:tent_shadow(big_puff=1) at=20.5,5.5
   +0    mx doomtastic_doom section=chorus2 ; sfx FX_DOOR_CREAK
+  +20   shake SHK_TAP    # motion: walk bob
+  +50   shake SHK_TAP    # motion: walk bob
+  +85   shake SHK_TAP    # motion: walk bob
+  +115  shake SHK_TAP    # motion: walk bob
+  +185  shake SHK_TAP    # motion: barrel settles
   +150  fx barrel_rise over=8
   +170  sfx FX_CHK2
   +201  label L_WHIPLASH                                   # cut 3 f after "Say it out-"
@@ -328,7 +339,8 @@ shot a3s21 beat=e101_3_04 len=90 set=bandstand:rite px=1 look=pixel cut=CUT scen
   +0    sfx FX_PFF gain=-14dB
   +0    still crowd:giggle ripple=0..3                    # they forget to breathe
   +20   pose pip paw_over_flops_eyes                      # played straight
-  +50   show mayor ; pop mayor TWT_HOP1                 # eyes only under the cloth
+  +50   show mayor ; pop mayor TWT_HOP1 ; squash cloth 300 over=6 ; move cloth to=90,146 over=6   # eyes only under the cloth
+  +60   move cloth to=90,150 over=8
   +0    cam to scale=1.060 over=90 ease=INOUT    # motion: track the action
   +0    cam pan dx=15.1 dy=5.1 over=90 ease=INOUT    # motion: (centred on the frame)
 end
@@ -406,7 +418,10 @@ shot a3s25 beat=e101_3_05 len=219 set=bake_tent_fp:cute px=1 look=pixel cut=CUT 
   note "continuity: the tent sign reads BAKE TEN (the sign below)"
   +0    cam3d rail=hold from=+0 to=+120
   +0    mx cute_bed start ; fx heart_fall at=0,0 n=30 seed=25
-  +40   fx stuffing_land to=prop:tin
+  +10   shake SHK_TAP    # motion: bob
+  +40   fx stuffing_land to=prop:tin ; shake SHK_TAP
+  +65   shake SHK_TAP    # motion: bob
+  +190  shake SHK_TAP    # motion: bob
   +90   fx paws_lift prop=tin
   +120  cam3d turn yaw=+512 over=30 ; sfx FX_FLAP
   +150  cam3d tilt up=24 over=10
