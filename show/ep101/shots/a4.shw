@@ -556,15 +556,16 @@ shot a4s38 beat=e101_4_08 len=375 set=launch_hill:night px=1 look=pixel cut=CUT 
   +165  headturn crowd:heads 64 4 ripple=0..3
   +180  fx sparks_side_by_side colors=pink,purple at=@wall_x n=24 seed=438
   +135     shake SHK_TAP    # motion: the impact lands
+  +234  say a4_08_mayor_01 mayor                              # MINGLE v2 refit: pre-lap (O.S.) so the Eb3 lands at a4s39 +111
   +0    cam to scale=1.100 over=375 ease=OUT    # motion: insert push
   +0    cam pan dx=14.5 dy=8.2 over=375 ease=OUT    # motion: (centred on the frame)
 end
 
 shot a4s39 beat=e101_4_08 len=138 set=launch_hill:night px=2 look=pixel cut=CUT matte=open gore=CUTE
   actor mayor who=mayor kind=bust at=80,62 face=L expr=EXPR_NEUTRAL idle=on
-  +0    say a4_08_mayor_01 mayor ; hum mayor on note=mingle_box.plus1   # one note further than co12; stops dead
-  @a4_08_mayor_01.start+6 headturn mayor 16 3    # motion:
-  @a4_08_mayor_01.start+14 headturn mayor 240 4    # motion:
+  +0    hum mayor on note=mingle_full.plus_one_note           # the take started in a4s38; Eb3 at +111, held 27 f, stops dead at +138
+  +6    headturn mayor 16 3    # motion:
+  +14   headturn mayor 240 4    # motion:
   +0    cam to scale=1.080 over=138 ease=INOUT    # motion: slow push-in on the line
   +0    cam pan dx=11.9 dy=6.7 over=138 ease=INOUT    # motion: (centred on the frame)
 end

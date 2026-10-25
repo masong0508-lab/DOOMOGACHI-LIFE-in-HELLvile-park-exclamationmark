@@ -36,6 +36,8 @@ mayor_bright               a25601ee5e17424e smp=305455    lufs=-16.0 tp=-5.84 bp
 mayor_motif                8d767ad1d6585f08 smp=560000    lufs=-16.0 tp=-7.72 bpm=72.0 bars=2 music/mayor_motif.flac
 mayor_slow                 8d767ad1d6585f08 smp=560000    lufs=-16.0 tp=-7.72 bpm=72.0 bars=2 music/mayor_slow.flac
 mingle_box                 4cfd25e2a8421b49 smp=2100000   lufs=-16.0 tp=-5.64 bpm=96.0 bars=16 music/mingle_box.flac
+mingle_full                eb830fda731332d4 smp=1459200   lufs=-16.0 tp=-7.02 bpm=150.0 bars=18 music/mingle_full.flac
+mingle_interrupt           6038bb8ddb0223af smp=537600    lufs=-16.0 tp=-7.1 bpm=150.0 bars=6 music/mingle_interrupt.flac
 mingle_thin                5a3925d4ed50ca80 smp=1140000   lufs=-16.0 tp=-6.65 bpm=96.0 bars=8 music/mingle_thin.flac
 musicbox_note              0eac37da095fd1a3 smp=240000    lufs=-16.0 tp=-3.54 bpm=96.0 bars=1 music/musicbox_note.flac
 nana_fragment              26cd190effa3035c smp=403200    lufs=-16.0 tp=-5.5 bpm=100.0 bars=2 music/nana_fragment.flac

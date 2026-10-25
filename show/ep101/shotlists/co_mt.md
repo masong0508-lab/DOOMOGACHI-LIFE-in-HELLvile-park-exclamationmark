@@ -13,6 +13,7 @@ Columns: **id** · **f** (frames at 30 fps) · **TC in** · **set[:variant]** (s
 
 ## TODO (engine features this segment needs; re-check after every fetch)
 
+- [ ] **MINGLE v2 (Oct 25, creator):** `mingle_box`/`mingle_thin` are replaced by `mingle_full` (pad1, 150 bpm, 3 passes) and `mingle_interrupt` (pad1interrupt). Shot-level refits in co.shw: co08 mute moved +75 -> +90 (pass 3 beat 20.75, the Eb is the muted note), soften +104 -> +119; co11 mute 26/hold removed (the interrupt phrase cuts itself off ~co11 +170); `co12_hum` (the interrupt phrase hummed, 9.5 s) now pre-laps from co11 +186 so its Ab lands co12 +105 and stops at +120 as before. Table rows below still describe the old 96 bpm cue.
 Status 2026-10-25 (origin 8505a78): no compiler (`show compile`), no player, no `show.exe` on origin yet;
 README has no "Staging reference" section yet. Everything below is written to spec §5-§6 and waits.
 

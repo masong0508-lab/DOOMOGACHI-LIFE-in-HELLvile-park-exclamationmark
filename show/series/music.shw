@@ -12,18 +12,16 @@
 # on that key (70 = the kit's synthesised shaker).
 
 # ---------------------------------------------------------------- the game's own cues (MML)
-cue mingle_box src=mml:core/src/mml_mingle.c bpm=96 meter=4/4 key=F passes=2 desc="MINGLE on the music box (S2's mml_mingle.c), full: CO-1, CO-2"
-  # 96 bpm: one beat = 18.75 f = 30,000 smp; one bar = 75 f = 120,000 smp (bars land on frames)
-  track 0 inst=musicbox send=-13 ; track 1 inst=warm_pad gain=-9dB send=-11 ; track 2 inst=chip_tri gain=-8dB ; track 3 inst=drums_pop:70 gain=-20dB
-  # the music box's muted note in CO-2 (co08 +75, 29 f): the first onset under the mute is
-  # bar 12.1 = phrase bar 4, beat 1, G5 - the cadence "g f e g f2" never gets its first note.
-  # The Mayor stops humming on it in co12 (+120) and gets one note past it in 4-08 (F5).
-  note mayors_note bar=12.1 phrase=4.1 pitch=G5 hum=G4
-  note plus_one_note bar=12.1.5 phrase=4.1.5 pitch=F5 hum=F4
+cue mingle_full src=score:mingle.mingle form=full reps=3 bpm=150 meter=4/4 key=Cm desc="MINGLE v2 (the creator's pad1.mid), music box, full phrase x3: CO-1, CO-2"
+  # 150 bpm: beat = 12 f = 19,200 smp; bar = 48 f = 76,800 smp. Box = written pitch +24.
+  # beats 0-15: C Bb G C | Bb G Bb Ab | F Bb Ab F | Ab G Eb C(3 beats) | rest | 18 C 19 Bb 20 Ab 21 Eb
+  # 3 passes (CO-1/CO-2 = 31 s); the named notes are pass 3's (CO-2 mutes at its beat 20.75)
+  note mayors_note bar=17.4.75 phrase=20.75 pitch=Ab5 hum=Ab3
+  note plus_one_note bar=18.2 phrase=21 pitch=Eb5 hum=Eb3
 end
 
-cue mingle_thin src=mml:core/src/mml_mingle.c bpm=96 meter=4/4 key=F passes=1 send=-20 desc="MINGLE, one voice (the lead channel alone), thinner: CO-4"
-  track 0 inst=musicbox gain=-2dB send=-18
+cue mingle_interrupt src=score:mingle.mingle form=interrupt bpm=150 meter=4/4 key=Cm desc="MINGLE v2 (pad1interrupt.mid), music box, cut off before the Eb: CO-4"
+  # as full to beat 18, then Bb at 19.25 and Ab at 20.75, then nothing: the hum takes over
 end
 
 cue heehee_bell src=mml:core/src/mml_heehee_jingle.c bpm=120 meter=4/4 key=A tail=6 desc="The HEE_HEE bell (S2's mml_heehee_jingle.c, the bell channel): every act card, frame 0"
