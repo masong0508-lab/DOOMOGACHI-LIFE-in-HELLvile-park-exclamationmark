@@ -1,2 +1,7 @@
-# show/ep101/episode.shw - the rundown as a plain include list (STAGING, one line per segment)
+# show/ep101/episode.shw: the rundown, a plain include list in running order (continuity owns order)
+@episode e101 "Mingle Night" shape=B fps=30 matte=open rating=tvma seed=101
+include shots/co_mt.shw
 include shots/a1.shw
+include shots/a2.shw
+include shots/a3.shw
+include shots/a4.shw
