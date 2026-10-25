@@ -107,6 +107,167 @@ def _act_no(ep, s):
     return acts.index(b.act) if b is not None and b.act in acts else 0
 
 
+GRID_W, GRID_H = 126, 120     # show_stage.c SHOW_GRID_W/H: plate cells that pack 4 to a VRAM page
+IMAGES_MAX = 96               # show_stage.c IMAGES_MAX
+
+
+def _cam_view(c):
+    """[(cam x, cam y, scale)] over the shot (every 3rd frame and the last), show px"""
+    from .picture.fmt import CAM_CU, Q16
+    cam = getattr(c, "pcam", None)
+    n = max(1, int(c.shot.len))
+    if cam is None:
+        return [(0.0, 0.0, 1.0)]
+    out = []
+    for t in list(range(0, n, 3)) + [n - 1]:
+        x, y, s = cam.at(t)
+        out.append((x / CAM_CU, y / CAM_CU, max(0.25, s / Q16)))
+    return out
+
+
+def _screen_xy(p, cam, u, v):
+    """plate pixel (u, v) -> screen (x, y) at camera (cx, cy, s): show_cam.c axis_xf, scaled about 160,90"""
+    cx, cy, s = cam
+    xn, xd, yn, yd = p["par"]
+    px = max(1, int(p.get("px") or 1))
+    bx = p["at"][0] - cx * xn / max(1, xd) + u * px
+    by = p["at"][1] - cy * yn / max(1, yd) + v * px
+    return 160 + (bx - 160) * s, 90 + (by - 90) * s
+
+
+MERGE_PX = 6      # max parallax error (px) a merge of two plates may cost over the shot
+
+
+def _merge_planes(planes, view, ambs):
+    """VRAM: a plate right behind another whose relative parallax moves < MERGE_PX over the
+    shot's camera is composited into it (the image cache holds ~24 cells; a 3-plate midway
+    plus the cast does not fit). -> {behind id: (front id, (dx, dy) of its amb origin vs
+    the merged plate's origin)}"""
+    import numpy as np
+    alias = {}
+    i = 0
+    while i < len(planes) - 1:
+        a, b = planes[i], planes[i + 1]
+        ok = (a["kind"] == b["kind"] == "image" and a["img"] is not None and b["img"] is not None
+              and not a.get("prop") and not b.get("prop") and not a["hidden"] and not b["hidden"]
+              and a["id"] not in ambs and b["id"] not in ambs and a["px"] == b["px"])
+        if ok:
+            pa, pb = a["par"], b["par"]
+            dpx = pa[0] / max(1, pa[1]) - pb[0] / max(1, pb[1])
+            dpy = pa[2] / max(1, pa[3]) - pb[2] / max(1, pb[3])
+            xs = [c[0] * dpx for c in view]
+            ys = [c[1] * dpy for c in view]
+            ok = max(xs) - min(xs) <= 2 * MERGE_PX and max(ys) - min(ys) <= 2 * MERGE_PX
+        if not ok:
+            i += 1
+            continue
+        mx, my = (max(xs) + min(xs)) / 2.0, (max(ys) + min(ys)) / 2.0
+        px = max(1, int(a["px"] or 1))
+        ax, ay = int(round(a["at"][0] - mx)), int(round(a["at"][1] - my))      # a's origin in b's space
+        bx, by = b["at"]
+        ia, ib = a["img"], b["img"]
+        x0, y0 = min(ax, bx), min(ay, by)
+        x1 = max(ax + ia.shape[1] * px, bx + ib.shape[1] * px)
+        y1 = max(ay + ia.shape[0] * px, by + ib.shape[0] * px)
+        out = np.zeros(((y1 - y0) // px, (x1 - x0) // px), np.uint8)
+        u, v = (ax - x0) // px, (ay - y0) // px
+        out[v:v + ia.shape[0], u:u + ia.shape[1]] = ia
+        u, v = (bx - x0) // px, (by - y0) // px
+        reg = out[v:v + ib.shape[0], u:u + ib.shape[1]]
+        out[v:v + ib.shape[0], u:u + ib.shape[1]] = np.where(ib != 0, ib, reg)
+        b["img"], b["at"] = out, (x0, y0)
+        # a's amb coordinates: merged local = x - (a.at - a_in_b + x0); kept relative to b's origin
+        alias[a["id"]] = (b["id"], (int(round(mx)), int(round(my))))
+        for k, (bid, d) in list(alias.items()):
+            if bid == a["id"]:
+                alias[k] = (b["id"], d)
+        planes.pop(i)
+    return alias
+
+
+def _occlude(planes, view, ambs):
+    """erase the pixels of a plate that no camera position of the shot can see (behind the
+    opaque pixels of a plate in front of it, or off screen): VRAM holds what shows"""
+    import numpy as np
+    occ = [p for p in planes if p["kind"] == "image" and p["img"] is not None and not p["hidden"]
+           and not p.get("prop") and p["id"] not in ambs]
+    if len(occ) < 2:
+        return
+    samples = view[::2] + [view[-1]]
+    for i, p in enumerate(occ[:-1]):
+        a = p["img"]
+        h, w = a.shape
+        vv, uu = np.mgrid[0:h, 0:w]
+        seen = np.zeros((h, w), bool)
+        for cam in samples:
+            sx, sy = _screen_xy(p, cam, uu, vv)
+            on = (sx > -12) & (sx < 332) & (sy > -12) & (sy < 192)
+            covered = np.zeros((h, w), bool)
+            for q in occ[i + 1:]:
+                b = q["img"]
+                qpx = max(1, int(q.get("px") or 1))
+                ox, oy = _screen_xy(q, cam, 0, 0)
+                s = cam[2]
+                qu = np.floor((sx - ox) / (s * qpx)).astype(int)
+                qv = np.floor((sy - oy) / (s * qpx)).astype(int)
+                inb = (qu >= 1) & (qv >= 1) & (qu < b.shape[1] - 1) & (qv < b.shape[0] - 1)
+                cu, cv = np.clip(qu, 1, b.shape[1] - 2), np.clip(qv, 1, b.shape[0] - 2)
+                op = (b[cv, cu] != 0) & (b[cv - 1, cu] != 0) & (b[cv + 1, cu] != 0) & \
+                     (b[cv, cu - 1] != 0) & (b[cv, cu + 1] != 0)
+                covered |= inb & op
+            seen |= on & ~covered
+        if not seen.all():
+            p["img"] = np.where(seen, a, 0).astype(a.dtype)
+
+
+def _crop_view(p, view, margin=16):
+    """keep only the columns/rows of a big plate the shot's camera can see (+ margin):
+    VRAM holds the visible part of a 640-wide midway, not all of it"""
+    a = p["img"]
+    if a is None or a.shape[1] <= 320 and a.shape[0] <= 180:
+        return
+    xn, xd, yn, yd = p["par"]
+    px = max(1, int(p.get("px") or 1))
+    ax, ay = p["at"]
+    u0 = v0 = 1 << 30
+    u1 = v1 = -(1 << 30)
+    for cx, cy, s in view:
+        sx0, sx1 = 160 - 160 / s - margin, 160 + 160 / s + margin
+        sy0, sy1 = 90 - 90 / s - margin, 90 + 90 / s + margin
+        ox, oy = ax - cx * xn / max(1, xd), ay - cy * yn / max(1, yd)
+        u0, u1 = min(u0, (sx0 - ox) / px), max(u1, (sx1 - ox) / px)
+        v0, v1 = min(v0, (sy0 - oy) / px), max(v1, (sy1 - oy) / px)
+    x0, x1 = max(0, int(u0)), min(a.shape[1], int(u1) + 1)
+    y0, y1 = max(0, int(v0)), min(a.shape[0], int(v1) + 1)
+    if x1 <= x0 or y1 <= y0:
+        p["img"] = a[:1, :1] * 0
+        return
+    if (x0, y0, x1, y1) != (0, 0, a.shape[1], a.shape[0]):
+        p["img"] = a[y0:y1, x0:x1]
+        p["at"] = (ax + x0 * px, ay + y0 * px)
+
+
+def _crop_plate(p, view=None):
+    """trim a plate's fully transparent rows/columns (index 0), moving its origin to match"""
+    import numpy as np
+    if view is not None:
+        _crop_view(p, view)
+    a = p["img"]
+    if a is None or not a.size:
+        return
+    rows = np.nonzero(a.any(axis=1))[0]
+    cols = np.nonzero(a.any(axis=0))[0]
+    if not len(rows):
+        p["img"] = a[:1, :1]
+        return
+    y0, y1, x0, x1 = int(rows[0]), int(rows[-1]) + 1, int(cols[0]), int(cols[-1]) + 1
+    if (y0, y1, x0, x1) == (0, a.shape[0], 0, a.shape[1]):
+        return
+    px = max(1, int(p.get("px") or 1))
+    p["img"] = np.ascontiguousarray(a[y0:y1, x0:x1])
+    p["at"] = (p["at"][0] + x0 * px, p["at"][1] + y0 * px)
+
+
 # ---- the set's planes -------------------------------------------------------------
 class Stage:
     """The shot's planes (lane-1 records), plane ids, and slot positions."""
@@ -116,6 +277,55 @@ class Stage:
         self.ids = {}                    # plane id / prop id / 'prop:state' / 'stroke:<id>' -> ShwPlane.id
         self.prop_planes = {}            # prop id -> [(state, plane id)]
         self.next_id = 1
+        self.pinfo = {}                  # plane/prop id -> {pid, at, px, img, prop, ix} (show_amb)
+        self.amb_crowds = []
+
+    def c_images_left(self):
+        return IMAGES_MAX - len(self.ch.images)
+
+    def grid_images(self, a):
+        """a plate wider than 126 or taller than 120 -> row-major GRID_W x GRID_H cells
+        (4 per 256x256 VRAM page: a 128-texel tile + its 2 px pad would take a whole page)"""
+        import numpy as np
+        h, w = a.shape
+        cols, rows = (w + GRID_W - 1) // GRID_W, (h + GRID_H - 1) // GRID_H
+        first = len(self.ch.images)
+        for r in range(rows):
+            for c in range(cols):
+                cell = np.ascontiguousarray(a[r * GRID_H:(r + 1) * GRID_H, c * GRID_W:(c + 1) * GRID_W])
+                if not cell.any():
+                    cell = np.zeros((1, 1), np.uint8)       # nothing to see: no VRAM (show_stage.c)
+                self.ch.images.append(image_bytes(cell, id=len(self.ch.images)))
+        return first, cols, rows
+
+    def add_images(self, arrs):
+        """append drawings to SHWR_IMAGE; -> the first index, or -1 when they do not fit"""
+        if len(arrs) > self.c_images_left():
+            self.note("warning", "amb: %d drawings do not fit the shot's %d images" % (len(arrs), IMAGES_MAX))
+            return -1
+        first = len(self.ch.images)
+        for a in arrs:
+            self.ch.images.append(image_bytes(a, id=len(self.ch.images)))
+        return first
+
+    def ambs(self, set_id, variant_id):
+        """the set's `amb` layers -> SHWR_AMB (show_amb.c) + crowds (SETS.md sec.6)"""
+        from . import amb as AMB
+        from . import stage
+        from .art.setkit import compose as C
+        sd = stage.setlib(self.c.ep.prj.series / "sets").sets.get(set_id)
+        if sd is None or not getattr(sd, "ambs", None):
+            return
+        var = C.Variant(sd.variant(variant_id) if variant_id else None)
+        items, crowds, tile_x = AMB.compile_set(self, sd, var, self.pinfo)
+        self.amb_crowds = crowds
+        for info in self.pinfo.values():
+            if info["pid"] in tile_x:
+                b = bytearray(self.ch.planes[info["ix"]])
+                b[1] |= F.SHWPF_TILE_X
+                self.ch.planes[info["ix"]] = bytes(b)
+        if items:
+            self.ch.add(AMB.SHWR_AMB, len(items), b"".join(items))
 
     def note(self, sev, msg):
         from .errors import Diag
@@ -134,6 +344,19 @@ class Stage:
             self.note(sev, msg)
         if planes is None:
             return
+        view = _cam_view(c)
+        try:
+            from .art.setkit import compose as _C
+            _sd = stage.setlib(c.ep.prj.series / "sets").sets.get(sname[0])
+            drift = {a.get("plane") for a in getattr(_sd, "ambs", []) if a.get("kind") in ("drift", "wave")}
+        except Exception:                            # noqa: BLE001
+            drift = set()
+        try:
+            _amb_t = {a.get("plane") for a in getattr(_sd, "ambs", []) if a.get("kind") in ("drift", "wave", "sway")}
+            self.alias = _merge_planes(planes, view, _amb_t)
+            _occlude(planes, view, {a.get("plane") for a in getattr(_sd, "ambs", []) if a.get("kind") in ("drift", "sway")})
+        except Exception as e:                       # noqa: BLE001
+            self.note("warning", "occlusion pass: %s: %s" % (type(e).__name__, e))
         for order_i, p in enumerate(planes):
             pid = self.next_id
             self.next_id += 1
@@ -146,11 +369,21 @@ class Stage:
                 elif k in ("image", "tile"):
                     if p["img"] is None:
                         continue
+                    if k == "image":
+                        _crop_plate(p, None if p["id"] in drift else view)   # decode arena + VRAM
+                        kw["at"] = p["at"]
                     if k == "tile":
                         kw["flags"] |= F.SHWPF_TILE_X | F.SHWPF_TILE_Y
                     a = p["img"]
-                    self.ch.images.append(image_bytes(a, id=len(self.ch.images)))
-                    self.ch.planes.append(F.plane_image(len(self.ch.images) - 1, scale=p["px"], **kw))
+                    if k == "tile" and 126 < a.shape[1] <= 128:
+                        a = a[:, :GRID_W]                # 128 + the 2 px pad takes a whole VRAM page row
+                    if k == "image" and (a.shape[1] > GRID_W or a.shape[0] > GRID_H):
+                        first, cols, rows = self.grid_images(a)
+                        self.ch.planes.append(F.plane_image(first, scale=p["px"] | (rows << 3),
+                                                            flip=0x80 | cols, **kw))
+                    else:
+                        self.ch.images.append(image_bytes(a, id=len(self.ch.images)))
+                        self.ch.planes.append(F.plane_image(len(self.ch.images) - 1, scale=p["px"], **kw))
                 elif k == "tilemap":
                     if p["img"] is None:
                         continue
@@ -170,8 +403,22 @@ class Stage:
                 self.note("warning", "plane %s: %s: %s" % (p["id"], type(e).__name__, e))
                 continue
             self.ids[p["id"]] = pid
+            self.pinfo[p["id"]] = dict(pid=pid, at=p["at"], px=p["px"], img=p.get("img"), prop=p.get("prop"),
+                                       ix=len(self.ch.planes) - 1)
             if p.get("prop"):
                 self.prop_planes.setdefault(p["prop"], []).append((p["state"], pid))
+        for a_id, (b_id, (mx, my)) in getattr(self, "alias", {}).items():
+            if b_id in self.pinfo:
+                info = dict(self.pinfo[b_id])
+                # a's set coords x: merged local = x - a.at + (a.at - m) - b.at  ->  origin a "at" = b.at + m
+                info["at"] = (info["at"][0] + mx, info["at"][1] + my)
+                info["img"] = None
+                self.pinfo[a_id] = info
+                self.ids[a_id] = info["pid"]
+        try:
+            self.ambs(sname[0], sname[2] or None)
+        except Exception as e:                       # noqa: BLE001 - ambient never sinks a shot
+            self.note("warning", "amb: %s: %s" % (type(e).__name__, e))
 
     def strokes(self, p, pid):
         from .picture import strokes as S
@@ -367,6 +614,9 @@ def _wp6_records(ch, c, diags):
                      front=kv.get("layer") == "front", px=max(1, min(2, int(kv.get("px", c.shot.px or 1)))))
         except Exception as e:                      # noqa: BLE001
             warn("crowd %s: %s" % (r.get("id"), e))
+    if getattr(c, "_amb_crowds", None):
+        from . import amb as AMB
+        AMB.add_crowds(sc, c._amb_crowds, warn)
     for (_who, _name), r in getattr(c, "_flips", []):
         sc.flipbook("%s_%s" % (_who, _name), r["w"], r["h"], r["frames"], r["holds"], r["mode"],
                     (1 if r["loop"] else 0) | (2 if r["hold_end"] else 0), r["dx"], r["dy"])
@@ -456,6 +706,7 @@ def chunk_for(ep, c, diags, bake=True):
                    "room": F.SHWP_ROOM}.get(c.set_kind, F.SHWP_IMAGE)
     stg = Stage(c, ch, diags)
     stg.build(bake)
+    c._amb_crowds = stg.amb_crowds
     args = []
     evs = []                               # (at, line, seq, (at, anchor, op, a, b))
     seq = 0

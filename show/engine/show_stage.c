@@ -19,9 +19,11 @@
 #include "show_core.h"
 
 #define PLANES_MAX   32
-#define IMAGES_MAX   48
+#define IMAGES_MAX   96
+#define GRID_W       126                /* a grid plate's cells (emit.py GRID_W/H) */
+#define GRID_H       120
 #define OVERSCAN     8
-#define IMG_ARENA    (96 * 1024)        /* decoded RLE plates, per shot      */
+#define IMG_ARENA    (224 * 1024)       /* decoded RLE plates, per shot (a 640x240 midway + layers) */
 
 static const ShwPlane *s_planes[PLANES_MAX];
 static int s_nplanes;
@@ -113,7 +115,11 @@ void show_stage_draw(int t)
         const ShowPlaneKind *k;
         if (s_hidden & (1u << i)) continue;
         k = kind_of(s_planes[i]->kind);
-        if (k && k->draw) k->draw(s_planes[i], show_plane_payload(s_planes[i]), t);
+        if (k && k->draw) {
+            const void *pay = show_plane_payload(s_planes[i]);
+            if (!show_amb_plane_draw(s_planes[i], pay, t, k->draw)) k->draw(s_planes[i], pay, t);
+            show_amb_after_plane(s_planes[i], t);           /* show_amb.c: flips, motes, lamps */
+        }
     }
 }
 
@@ -121,11 +127,15 @@ void show_stage_draw(int t)
 void show_plane_xf(const ShwPlane *p, ShowPlaneXf *out)
 {
     int px = g_show_shot.px > 0 ? g_show_shot.px : 1;
-    if (g_show_plane_xf_hook) { g_show_plane_xf_hook(p, px, out); return; }
-    out->ox = p ? p->at_x : 0;
-    out->oy = p ? p->at_y : 0;
-    out->fx = out->fy = 0;
-    out->s = px << 16;
+    if (g_show_plane_xf_hook) {
+        g_show_plane_xf_hook(p, px, out);
+    } else {
+        out->ox = p ? p->at_x : 0;
+        out->oy = p ? p->at_y : 0;
+        out->fx = out->fy = 0;
+        out->s = px << 16;
+    }
+    show_amb_plane_off(p, out);                             /* show_amb.c: drift, sway, wave */
 }
 
 void show_draw_image(const DoomoImage *img, const ShowPlaneXf *xf, int flags)
@@ -216,6 +226,37 @@ static void fill_draw(const ShwPlane *p, const void *pay, int t)
 }
 
 /* ---- IMAGE ---------------------------------------------------------------- */
+/* a big plate as row-major GRID_W x GRID_H cells: flip = 0x80 | cols,
+ * scale = px | rows << 3 (cells pack 4 to a VRAM page; a 128 tile takes one) */
+static void grid_draw(const ShwPlane *p, const ShwImagePlane *ip, ShowPlaneXf xf)
+{
+    int cols = ip->flip & 0x7F, rows = ip->scale >> 3, r, c, s, x0, tw, k;
+    const DoomoImage *last;
+    if ((ip->scale & 7) != 0) xf.s = (int32_t)(ip->scale & 7) << 16;
+    s = (xf.s + 0x8000) >> 16;
+    if (s < 1) s = 1;
+    last = show_image(ip->image + cols - 1);
+    tw = ((cols - 1) * GRID_W + (last ? last->w : GRID_W)) * s;     /* the whole plate's width */
+    x0 = xf.ox;
+    if ((p->flags & SHWPF_TILE_X) && tw > 0) { x0 %= tw; if (x0 > -OVERSCAN) x0 -= tw; }
+    for (k = 0; k < 4; k++, x0 += tw) {
+        if (x0 >= SHOW_CANVAS_W + OVERSCAN) break;
+        for (r = 0; r < rows; r++)
+            for (c = 0; c < cols; c++) {
+                ShowPlaneXf t2 = xf;
+                int y = xf.oy + r * GRID_H * s, x = x0 + c * GRID_W * s;
+                if (y >= SHOW_CANVAS_H + OVERSCAN || y + GRID_H * s <= -OVERSCAN ||
+                    x >= SHOW_CANVAS_W + OVERSCAN || x + GRID_W * s <= -OVERSCAN) continue;
+                const DoomoImage *cell = show_image(ip->image + r * cols + c);
+                if (!cell || cell->w <= 1) continue;       /* an empty (hidden) cell */
+                t2.ox = x;
+                t2.oy = y;
+                show_draw_image(cell, &t2, 0);
+            }
+        if (!(p->flags & SHWPF_TILE_X)) break;
+    }
+}
+
 static void image_draw(const ShwPlane *p, const void *pay, int t)
 {
     const ShwImagePlane *ip = (const ShwImagePlane *)pay;
@@ -225,6 +266,7 @@ static void image_draw(const ShwPlane *p, const void *pay, int t)
     (void)t;
     if (!img) return;
     show_plane_xf(p, &xf);
+    if (ip->flip & 0x80) { grid_draw(p, ip, xf); return; }
     if (ip->scale) xf.s = (int32_t)ip->scale << 16;
     s = (xf.s + 0x8000) >> 16;
     if (s < 1) s = 1;

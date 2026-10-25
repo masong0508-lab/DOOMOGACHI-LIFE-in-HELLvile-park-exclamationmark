@@ -229,6 +229,10 @@ static void member(const Crowd *c, int i, ShowMember *m)
         x = r->x - sgn * (int)(sp0 >> 4);
         y = r->y + (r->h > 0 ? (int)((h >> 8) % (uint32_t)(r->h + 1)) : 0);
         x += (int)(travelled(c, clk) >> 16);
+        if ((r->flags & SHCF_WRAP) && r->w > 0) {     /* ambient walkers loop over [x, x + w) */
+            int d = (x - r->x) % r->w;
+            x = r->x + (d < 0 ? d + r->w : d);
+        }
     } else if (r->form == SHC_GRID) {
         int pitch = r->spacing_q4 > 0 ? r->spacing_q4 : 16 * 18;
         int rowp = r->row_q4 > 0 ? r->row_q4 : 16 * 12;
