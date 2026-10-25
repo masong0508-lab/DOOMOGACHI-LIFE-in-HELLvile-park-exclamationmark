@@ -107,6 +107,11 @@ if(_packed_maps)
 	list(APPEND SHOW_PACKED_SRCS ${_packed_maps})
 endif()
 
+# the ART track's part sets, called by portrait.c hunks (h)/(i)
+if(NOT SHOW_PORTRAIT_ORIGINAL)
+	file(GLOB SHOW_ART_PARTS CONFIGURE_DEPENDS ${SHOW_ROOT}/art/parts/*.c)
+	list(APPEND SHOW_PORTRAIT_SRCS ${SHOW_ART_PARTS})
+endif()
 set(SHOW_ALL_CORE ${SHOW_CORE_SRCS} ${SHOW_PORTRAIT_SRCS} ${SHOW_PACKED_SRCS})
 
 # Objects are linked directly (no archive), so the core's weak stubs are

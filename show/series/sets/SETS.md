@@ -157,3 +157,121 @@ nib   <NIB> ink=<INDEX> edge=<INDEX> gap=<on>,<off>         (top level, crayon.s
 * Children are in the cold open, the bridge, the craft tent and Pip's scenes: these sets
   carry no gore and nothing suggestive; the red in the cold open is candy-red paint
   (`PAINT_CHERRY`, D16), never the BLOOD ramp (a test checks the drip).
+
+## 6. Ambient layers: every set lives (ART motion pass, the creator's quality bar)
+
+Every set carries `amb` statements and at least two parallax depth planes (new
+`clouds` / `fog` / `haze` planes where a plate stood alone). Nothing is hand-keyed:
+each layer is a pure integer function of (parameters, shot frame t, seed), so shots
+stay pure (spec 8.2) and a seek draws the same pixels. Reference math:
+`showtk/art/motion/ambient.py`; its C twin `show/art/engine/amb_math.h` (a host
+test checks they agree value for value). Previews: `show_out/art/motion/`.
+
+### 6.1 Grammar (inside a `set`)
+
+```
+amb <id> kind=drift  plane=<p> vx=<px/f> [vy=]                  the plane slides by itself, wrapping
+amb <id> kind=wave   plane=<p> amp=<px> period=<f> len=<rows> [strip=2] [rows=y0..y1]
+                                                                rows shear in the wind (strings, bunting, flags, grass, water)
+amb <id> kind=pcycle plane=<p> idx=<INDEX>,... every=<f>        rotate those CLUT entries on that plane (fountain water)
+amb <id> kind=lamps  plane=<p> | props=<ids> [hold=a..b] [dim=%] [bloom=%] [seed=]
+                                                                every lantern core / bulb flickers on its own clock
+amb <id> kind=sway   props=<ids> amp=<px> period=<f> [lag=<f>] [dy=<px>]   hanging props swing, each lag f later
+amb <id> kind=flip   art=<flipbook gen> plane=<p> at=x,y [anchor=] [speed=] [phase=] [light=fixed]
+amb <id> kind=motes  type=firefly|sparkle|ember|dust|petal|snow|bubble|leaf n=<N> area=x,y,w,h
+                     [plane=<p> | order=front | par=<f>] [seed=] [speed=]
+amb <id> kind=crowd  form=walk|idle kset=<kset> n=<N> y=<feet y> x=<x0..x1> [speed=] [depth=] [seed=] [plane=]
+common:  hidden=yes (a variant's show= turns it on); variants' hide=/show= take amb ids
+```
+
+Lamps are found at bake time, not listed: connected blobs of `RAMP_CANDY.7` + `PAL_WHITE`
+(2..48 px) in the plate or prop are lantern cores. Dim = the core one step down
+(WHITE->CANDY.7, CANDY.7->CANDY.5); bloom = a 1-px CANDY.6 ring. A prop lamp only
+flickers in its `lit` state (dark variants switch them off by themselves).
+
+### 6.2 Contract for ENGINE (the player module that draws them)
+
+* Record (proposed, lane 2's props/crowds range): `SHWR_AMB = 36`, n items of
+  `{u8 kind, u8 plane_id, u16 bytes, int16 params[...]}`; flip drawings ride `SHWR_IMAGE`
+  like plates, lamp blobs as `{x, y, w, h, image}` dim/bloom overlay images.
+* `drift`: add `amb_drift(vx_q8, t)` to the plane's x before the camera transform; the
+  plane is drawn with SHWPF_TILE_X. `wave`: draw the plane in `strip`-row SPRT strips,
+  each offset by `amb_wave_dx(amp, period, len, row, t)`. `pcycle`: rewrite the plane's
+  CLUT entries every `every` frames (no texels). `sway`: add `amb_sway_dx(...)` to the
+  prop's x. `lamps`: `amb_lamp_state()` picks no overlay / dim / bloom. `flip`:
+  `amb_flip_frame(holds, n, t, speed_q8, phase)`. `motes`: `amb_mote()` returns
+  (x, y, size, role); size 0 = one TILE_1, 1 = plus, 2 = 2x2, 3 = r3 cross; colours
+  per `ambient.MOTE_COLOURS`. `crowd`: `amb_walker()` per member == a CRWD lane whose
+  members wrap 20 px off both edges (odd members walk left); `form=idle` = SHC_SCATTER
+  with SHCF_BOB and glances (ambient.idler).
+* Order: an amb draws right after its plane's props; `order=front` after the actors;
+  crowds (no plane) with the actors, behind them.
+
+### 6.3 Budget (every set with its ambient layers; `python3 -m showtk.art.motion.budget`)
+
+Flipbook drawings are all resident; motes/waves/sways/pcycles cost no texels;
+crowd chibis live in the portrait pool (384 B blocks), not the set pool.
+Worst set: **fun_fair 4.88 of 5 pages** (the ferris wheel is 4 drawings x 4 f, a 1/32
+turn per step; a 5th drawing would overflow). Every set is PS1-LEGAL.
+
+| set | kind | plates (pages) | ambient texels | total pages | amb prims/f | chibi blocks | amb layers |
+|---|---|---|---|---|---|---|---|
+| act_cards | 2d | 1.64 | 0 | **1.64** | 40 | 0 | 2 |
+| bake_tent | 2d | 3.11 | 2442 | **3.15** | 109 | 28 | 7 |
+| bake_tent_fp | view3d | 0.00 | 0 | **0.00** | 0 | 0 | 1 |
+| bakery_window | 2d | 1.51 | 1225 | **1.53** | 65 | 0 | 4 |
+| bandstand | 2d | 4.67 | 480 | **4.68** | 233 | 60 | 11 |
+| bandstand_banner | 2d | 4.41 | 0 | **4.41** | 48 | 0 | 4 |
+| bandstand_cu | 2d | 0.40 | 0 | **0.40** | 24 | 0 | 3 |
+| banner_storybook | 2d | 2.20 | 0 | **2.20** | 280 | 0 | 4 |
+| bridge_storybook | 2d | 0.80 | 0 | **0.80** | 272 | 0 | 3 |
+| calendar_page | 2d | 0.43 | 0 | **0.43** | 40 | 0 | 2 |
+| candy_hills_road | 2d | 3.05 | 0 | **3.05** | 76 | 0 | 3 |
+| cast_popin | 2d | 1.93 | 0 | **1.93** | 168 | 0 | 3 |
+| cottage | room | 0.00 | 0 | **0.00** | 0 | 0 | 1 |
+| credits_card | 2d | 1.68 | 0 | **1.68** | 32 | 0 | 2 |
+| credits_storybook | 2d | 0.44 | 0 | **0.44** | 32 | 0 | 2 |
+| dippinn_card | 2d | 1.33 | 0 | **1.33** | 0 | 0 | 1 |
+| egg_basket | 2d | 0.39 | 0 | **0.39** | 40 | 0 | 3 |
+| eyecatch | 2d | 2.04 | 0 | **2.04** | 32 | 0 | 4 |
+| face_painting | 2d | 2.66 | 816 | **2.67** | 169 | 32 | 6 |
+| fountain_faces | 2d | 0.37 | 7042 | **0.48** | 58 | 0 | 4 |
+| fountain_plaza | 2d | 3.60 | 2653 | **3.64** | 177 | 44 | 9 |
+| fun_fair | 2d | 4.63 | 16536 | **4.88** | 260 | 40 | 8 |
+| giggle_wide | 2d | 1.56 | 0 | **1.56** | 108 | 112 | 5 |
+| hahaland_crane | overworld | 0.00 | 0 | **0.00** | 0 | 0 | 1 |
+| hahaland_wall_pan | overworld | 0.00 | 0 | **0.00** | 0 | 0 | 1 |
+| hattie_tent | 2d | 1.64 | 0 | **1.64** | 105 | 36 | 5 |
+| hook_a_duck | 2d | 2.75 | 864 | **2.77** | 183 | 20 | 6 |
+| joke_graveyard | 2d | 2.43 | 0 | **2.43** | 192 | 0 | 4 |
+| kids_tent_memory | 2d | 1.45 | 0 | **1.45** | 64 | 0 | 2 |
+| launch_hill | 2d | 1.47 | 0 | **1.47** | 224 | 0 | 5 |
+| logo_card | 2d | 1.65 | 0 | **1.65** | 72 | 0 | 3 |
+| lulla_tent | 2d | 3.44 | 0 | **3.44** | 277 | 20 | 6 |
+| park_storybook | 2d | 3.97 | 0 | **3.97** | 424 | 0 | 4 |
+| pipe_yard | 2d | 1.50 | 0 | **1.50** | 48 | 0 | 2 |
+| river_storybook | 2d | 2.41 | 0 | **2.41** | 288 | 0 | 3 |
+| scary_house_fp | view3d | 0.00 | 0 | **0.00** | 0 | 0 | 1 |
+| sealed_gate | 2d | 2.22 | 0 | **2.22** | 64 | 0 | 4 |
+| sky_storybook | 2d | 3.11 | 0 | **3.11** | 176 | 0 | 4 |
+| soup_table_storybook | 2d | 0.46 | 0 | **0.46** | 32 | 0 | 2 |
+| title_card | 2d | 3.53 | 0 | **3.53** | 40 | 0 | 3 |
+| title_corridor | view3d | 0.00 | 0 | **0.00** | 0 | 0 | 1 |
+| town_sign | 2d | 2.35 | 0 | **2.35** | 160 | 0 | 3 |
+| tvma_card | 2d | 1.30 | 0 | **1.30** | 0 | 0 | 1 |
+| wall_split | 2d | 1.77 | 0 | **1.77** | 96 | 0 | 4 |
+| whack_an_imp | 2d | 2.60 | 0 | **2.60** | 83 | 12 | 6 |
+
+### 6.4 Cast motion (series/acting.shw)
+
+`cycles chars=... kinds=...` declares `<char>_<kind>` flipbooks = `gen:cycle(char,kind)`
+(show/art/gen/motion.py): the character's own engine render cut into parts (hat/ears
+band, paws, feet) and moved. Kinds: idle (engine breath + blink), walk (8x3 f
+waddle: contact squash, passing bob, feet lift, paw swing, lean, hat/ears lag 2 f), run
+(6x2 f), tiptoe, back_step, pop, pop_small, take_big (anticipation, stretch 1.25, hat pop
+6 px landing late, overshoot, settle), react_small, laugh_full, hit (hat jumps, ears
+flop), smear_l/smear_r (whip smears), exit_run. `flip` lines name the shot lists' poses
+and prop flipbooks. Macros: enter_walk, enter_run, exit_walk, exit_run, walk_to,
+take_big, react_small, laugh_full, hit_react, whip_smear_r/l, beat_gesture, pop_in.
+`pose A <kind>` resolves to the actor's `<char>_<kind>`; a one-shot hands back to its
+`next` (idle; exit_run -> run) when it ends. Sheets: `python3 -m showtk.art.motion.actors sheet`.

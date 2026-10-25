@@ -21,7 +21,7 @@ import re
 
 GENERATORS = {}
 _MODULES = ["crayon", "kit", "props", "cards", "sets_park", "sets_fair", "sets_town",
-            "sets_misc"]
+            "sets_misc", "amb", "motion", "props2"]
 _loaded = False
 
 

@@ -6,6 +6,7 @@
 
 set hook_a_duck kind=2d px=1 matte=open look=pixel desc="1-04 (dusk): Steamy's Hook-a-Duck; one duck faces the Wall"
   plane sky    bands=sky:dusk par=0
+  plane clouds image=gen:amb_clouds(seed=41,w=512,h=56,n=4,tone=warm) size=512x56 at=0,-22 par=0.1
   plane far    image=gen:fair_far(seed=200,w=480) size=480x240 par=0.5
   plane ground image=gen:fair_ground(seed=201,w=352) size=352x240 par=1.0
   plane stall  image=gen:stall_hook_a_duck(seed=210) size=352x240 par=1.0
@@ -20,10 +21,18 @@ set hook_a_duck kind=2d px=1 matte=open look=pixel desc="1-04 (dusk): Steamy's H
   mark  counter_y 118
   variant dusk  light=dusk  bands.sky=sky:dusk  desc="1-04"
   variant night light=night bands.sky=sky:night desc="3-01 (Steamy hides in the duck pool)"
+  # ambient layers (SETS.md sec.6; previews in show_out/art/motion)
+  amb cloudrun kind=drift plane=clouds vx=0.1
+  amb wind     kind=wave plane=near amp=1 period=110 len=90 strip=2
+  amb bulbs    kind=lamps plane=near hold=4..14 dim=16 bloom=14 seed=11
+  amb ducks    kind=sway props=duck1,duck2,duck3,duck4,duck5,duck6 amp=1 period=40 lag=7 dy=1
+  amb walkers  kind=crowd form=walk kset=giggle_adults n=5 y=176 x=-40..360 speed=0.4 seed=12 plane=ground
+  amb flies    kind=motes type=firefly n=10 area=-20,40,360,70 plane=far seed=13 hidden=yes
 end
 
 set face_painting kind=2d px=1 matte=open look=pixel desc="1-05 (dusk): Kevin's face painting; ANY FACE (within reason)"
   plane sky    bands=sky:dusk par=0
+  plane clouds image=gen:amb_clouds(seed=42,w=512,h=56,n=4,tone=warm) size=512x56 at=0,-22 par=0.1
   plane far    image=gen:fair_far(seed=203,w=480) size=480x240 par=0.5
   plane ground image=gen:fair_ground(seed=204,w=352) size=352x240 par=1.0
   plane stall  image=gen:stall_face_painting(seed=220) size=352x240 par=1.0
@@ -31,28 +40,51 @@ set face_painting kind=2d px=1 matte=open look=pixel desc="1-05 (dusk): Kevin's 
   prop  sign   art=gen:sign(w=110,h=18,face=lemon,frame=white,seed=5) plane=stall at=160,2 anchor=top text=4,4,104,12
   mark  counter_y 118
   variant dusk  light=dusk  bands.sky=sky:dusk  desc="1-05"
+  # ambient layers (SETS.md sec.6; previews in show_out/art/motion)
+  amb cloudrun kind=drift plane=clouds vx=0.1
+  amb wind     kind=wave plane=near amp=1 period=120 len=90 strip=2
+  amb bulbs    kind=lamps plane=near hold=4..14 dim=16 bloom=14 seed=21
+  amb idlers   kind=crowd form=idle kset=giggle_adults n=4 y=168 x=-10..80 seed=22 plane=ground
+  amb walkers  kind=crowd form=walk kset=giggle_adults n=4 y=178 x=-40..360 speed=0.35 seed=23 plane=ground
+  amb glints   kind=motes type=sparkle n=6 area=60,60,200,60 plane=stall seed=24
 end
 
 set hattie_tent kind=2d px=1 matte=open look=pixel desc="1-06 (dusk): inside Hattie Haha's tent: the crate stage, the mic, the benches"
   plane stall  image=gen:stall_hattie_tent(seed=230) size=352x240 par=1.0
+  plane haze image=gen:amb_fog(seed=43,w=512,h=60,c=RAMP_CANDY.6,density=5) size=512x60 at=0,20 par=0.6 order=front
   prop  sign   art=gen:sign(w=120,h=18,face=cream,frame=pink,seed=6) plane=stall at=160,8 anchor=top text=4,4,114,12
   mark  stage_y 124
   variant dusk  light=day desc="1-06: lit inside (the tent's own lights)"
+  # ambient layers (SETS.md sec.6; previews in show_out/art/motion)
+  amb smoke    kind=drift plane=haze vx=0.08
+  amb spot     kind=motes type=dust n=24 area=60,0,200,130 plane=stall seed=31 speed=0.5
+  amb audience kind=crowd form=idle kset=tent_crowd n=9 y=166 x=10..310 depth=8 seed=32 plane=stall
+  amb bulbs    kind=lamps plane=stall hold=6..16 dim=12 bloom=10 seed=33
+  amb sign     kind=sway props=sign amp=1 period=150 lag=0
 end
 
 set lulla_tent kind=2d px=1 matte=open look=pixel desc="1-07 (dusk): Miss Lulla's craft tent: eleven drawings of the same crowned purple cloud; the flap opens on the Wall"
   plane sky    bands=sky:dusk par=0
   plane far    image=gen:fair_far(seed=206,w=480) size=480x240 par=0.4
+  plane clouds image=gen:amb_clouds(seed=44,w=512,h=50,n=3,tone=warm) size=512x50 at=0,-24 par=0.2
   plane tent   image=gen:lulla_tent(seed=240,drawings=11) size=480x240 par=1.0
   prop  vapesign art=gen:sign(w=34,h=14,face=lavender,frame=steel,seed=7) art.flicker=gen:sign(w=34,h=14,face=chalk,frame=steel,seed=7) plane=tent at=254,74 anchor=center text=3,3,28,8
   frame start at=-64,0                 # the drawings pan at constant speed
   frame flap  at=64,0                  # through the flap: the sign by the Wall, Mascotty outside
   variant dusk light=dusk bands.sky=sky:dusk light.tent=day desc="1-07 (inside lit; outside at dusk)"
+  # ambient layers (SETS.md sec.6; previews in show_out/art/motion)
+  amb cloudrun kind=drift plane=clouds vx=0.08
+  amb flap     kind=wave plane=tent amp=1 period=150 len=200 rows=0..40 strip=4
+  amb dust     kind=motes type=dust n=20 area=-160,30,480,120 plane=tent seed=41 speed=0.4
+  amb kids     kind=crowd form=idle kset=lulla_kids n=5 y=168 x=-120..60 depth=6 seed=42 plane=tent
+  amb drawings kind=wave plane=tent amp=1 period=130 len=400 rows=40..110 strip=2
+  amb vapesign kind=motes type=sparkle n=3 area=240,64,28,20 plane=tent seed=43
 end
 
 set bake_tent kind=2d px=1 matte=open look=pixel desc="1-09 (night): the bake tent; Nana's stall has two of everything; 3-02 the Big Puff perches on it"
   plane sky    bands=sky:night par=0
   plane stars  tile=gen:sky_stars(seed=9) size=128x80 par=0.02
+  plane clouds image=gen:amb_clouds(seed=45,w=512,h=56,n=3,tone=night) size=512x56 at=0,-22 par=0.08
   plane far    image=gen:fair_far(seed=207,w=480) size=480x240 par=0.5
   plane ground image=gen:fair_ground(seed=251,w=352,path=0) size=352x240 par=1.0
   plane tent   image=gen:bake_tent(seed=250) size=352x240 par=1.0
@@ -74,14 +106,31 @@ set bake_tent kind=2d px=1 matte=open look=pixel desc="1-09 (night): the bake te
   mark  counter_y 118
   variant night light=night bands.sky=sky:night light.tent=dusk desc="1-09: the tent glows warm inside"
   variant dark  light=dark  bands.sky=sky:dark desc="3-02: the Big Puff on the roof, the fair's lanterns out"
+  # ambient layers (SETS.md sec.6; previews in show_out/art/motion)
+  amb cloudrun kind=drift plane=clouds vx=0.1
+  amb twinkle  kind=motes type=sparkle n=10 area=-20,0,360,60 par=0.02 seed=51
+  amb steam1   kind=flip art=gen:amb_steam(w=12,h=22) plane=tent at=136,100 anchor=bottom
+  amb steam2   kind=flip art=gen:amb_steam(w=12,h=22) plane=tent at=166,100 anchor=bottom phase=11
+  amb bulbs    kind=lamps plane=tent hold=5..16 dim=14 bloom=12 seed=52
+  amb onlook   kind=crowd form=idle kset=bakeoff_crowd n=7 y=166 x=-30..350 depth=10 seed=53 plane=ground
+  amb flies    kind=motes type=firefly n=14 area=-60,70,440,60 plane=far seed=54
 end
 
 set fun_fair kind=2d px=1 matte=open look=pixel desc="1-10, 1-11, 2-03, 2-04, 3-01: the midway: teacups, the Absolutely Not Scary House, the low lantern string"
   plane sky    bands=sky:night par=0
   plane stars  tile=gen:sky_stars(seed=10) size=128x80 par=0.02
+  plane clouds image=gen:amb_clouds(seed=31,w=512,h=56,n=4,tone=night) size=512x56 at=0,-22 par=0.1
   plane far    image=gen:fair_far(seed=208,w=480) size=480x240 par=0.5
   plane fair   image=gen:fun_fair(seed=260,w=640) size=640x240 par=1.0
   plane near   image=gen:fair_lanterns(seed=209,w=480) size=480x240 par=1.2
+  amb cloudrun kind=drift plane=clouds vx=0.12
+  amb wheel    kind=flip art=gen:amb_wheel(r=24,frames=4) plane=far at=232,106 anchor=bottom
+  amb wind     kind=wave plane=near amp=1 period=110 len=90 strip=2
+  amb bulbs    kind=lamps plane=near hold=4..14 dim=18 bloom=14 seed=3
+  amb swing    kind=sway props=lp1,lp2,lp4 amp=1 period=96 lag=11
+  amb plamps   kind=lamps props=lp1,lp2,lp4,lostlantern seed=5
+  amb walkers  kind=crowd form=walk kset=giggle_adults n=10 y=146 x=-160..480 speed=0.45 seed=4 plane=fair
+  amb flies    kind=motes type=firefly n=26 area=-160,60,640,80 plane=fair seed=9
   prop  housesign art=gen:sign(w=100,h=16,face=white,frame=pink,seed=9) plane=fair at=310,44 anchor=center text=4,3,92,10
   prop  lp1  art=gen:lantern(color=lemon) art.out=gen:lantern(color=lemon,state=out) plane=fair at=152,69 anchor=top
   prop  lp2  art=gen:lantern(color=pink) art.out=gen:lantern(color=pink,state=out) plane=fair at=196,78 anchor=top
@@ -100,6 +149,7 @@ end
 
 set whack_an_imp kind=2d px=1 matte=open look=pixel desc="2-08 (night): the Whack-an-Imp booth and Rivet's welded prize case"
   plane sky    bands=sky:night par=0
+  plane clouds image=gen:amb_clouds(seed=46,w=512,h=56,n=3,tone=night) size=512x56 at=0,-22 par=0.08
   plane far    image=gen:fair_far(seed=211,w=480) size=480x240 par=0.5
   plane ground image=gen:fair_ground(seed=212,w=352) size=352x240 par=1.0
   plane stall  image=gen:whack_booth(seed=270) size=352x240 par=1.0
@@ -117,13 +167,27 @@ set whack_an_imp kind=2d px=1 matte=open look=pixel desc="2-08 (night): the Whac
   prop  topsign art=gen:sign(w=96,h=16,face=cream,frame=steel,seed=10) plane=stall at=260,38 anchor=center text=3,3,90,10
   variant night light=night bands.sky=sky:night light.stall=dusk desc="2-08 (the booth's own light)"
   variant shut  light=night bands.sky=sky:night light.stall=dusk state=imp1:shut,imp2:shut,imp3:shut,imp4:shut,imp5:shut desc="2-08: the imps pull their lids shut"
+  # ambient layers (SETS.md sec.6; previews in show_out/art/motion)
+  amb cloudrun kind=drift plane=clouds vx=0.1
+  amb bulbs    kind=lamps plane=stall hold=4..12 dim=20 bloom=14 seed=61
+  amb prizes   kind=motes type=sparkle n=8 area=200,50,110,80 plane=stall seed=62
+  amb tags     kind=sway props=tag1,tag2,tag3 amp=1 period=80 lag=9
+  amb flies    kind=motes type=firefly n=12 area=-60,60,440,70 plane=far seed=63
+  amb walkers  kind=crowd form=walk kset=giggle_adults n=3 y=178 x=-60..380 speed=0.3 seed=64 plane=ground hidden=yes
 end
 
 set giggle_wide kind=2d px=1 matte=open look=pixel desc="1-13 (21:00): the whole Giggle looks up at an empty sky; the town clock strikes nine"
   plane sky    bands=sky:night par=0
   plane stars  tile=gen:sky_stars(seed=11) size=128x80 par=0.05
+  plane clouds image=gen:amb_clouds(seed=47,w=512,h=56,n=4,tone=night) size=512x56 at=0,-22 par=0.06
   plane fair   image=gen:giggle_wide(seed=280,w=400) size=400x240 par=1.0
   variant night light=night bands.sky=sky:night desc="1-13"
   variant dusk  light=dusk bands.sky=sky:dusk hide=stars desc="1-04..1-07 establishing"
   variant lean  light=night bands.sky=sky:vape desc="1-13 after the insert: the VAPE ramp floods in from the south"
+  # ambient layers (SETS.md sec.6; previews in show_out/art/motion)
+  amb cloudrun kind=drift plane=clouds vx=0.08
+  amb bulbs    kind=lamps plane=fair hold=4..14 dim=18 bloom=12 seed=71
+  amb crowdA   kind=crowd form=idle kset=giggle_adults n=22 y=150 x=-30..350 depth=22 seed=72 plane=fair
+  amb crowdB   kind=crowd form=walk kset=giggle_adults n=6 y=176 x=-40..440 speed=0.3 seed=73 plane=fair
+  amb flies    kind=motes type=firefly n=20 area=-40,40,480,90 plane=fair seed=74
 end

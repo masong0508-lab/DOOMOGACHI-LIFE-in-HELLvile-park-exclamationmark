@@ -5,6 +5,7 @@
 
 set candy_hills_road kind=2d px=1 matte=open look=pixel desc="1-01 (18:00, sunset): the pink bus crosses the candy hills at constant speed and stops"
   plane sky    bands=sky:sunset par=0
+  plane clouds image=gen:amb_clouds(seed=61,w=512,h=60,n=4,tone=warm) size=512x60 at=0,-16 par=0.12
   plane far    image=gen:candy_hills(seed=300,w=480) size=480x240 par=0.3
   plane road   image=gen:candy_road(seed=301,w=640) size=640x240 par=1.0
   prop  bus    art=gen:pink_bus(state=drive) art.stop=gen:pink_bus(state=stop) plane=road at=60,161 anchor=bottom
@@ -14,10 +15,15 @@ set candy_hills_road kind=2d px=1 matte=open look=pixel desc="1-01 (18:00, sunse
   frame stop   at=-60,0                            # the brake: the step, Sunny thrown off, the suitcase
   variant sunset light=sunset bands.sky=sky:sunset desc="1-01"
   variant day    light=day    bands.sky=sky:day    desc="spare: the road at noon"
+  # ambient layers (SETS.md sec.6; previews in show_out/art/motion)
+  amb cloudrun kind=drift plane=clouds vx=0.15
+  amb petals   kind=motes type=petal n=14 area=-60,40,440,120 plane=road seed=181 speed=0.7
+  amb birds    kind=motes type=leaf n=5 area=0,0,480,50 plane=far seed=182 speed=0.5
 end
 
 set town_sign kind=2d px=1 matte=open look=pixel desc="1-02 (sunset): HaHaland! Population: 500 lovely citizens. (a painted-over 1000; pencilled 'and Sunny.')"
   plane sky    bands=sky:sunset par=0
+  plane clouds image=gen:amb_clouds(seed=62,w=512,h=60,n=4,tone=warm) size=512x60 at=0,-16 par=0.12
   plane far    image=gen:candy_hills(seed=302,w=480) size=480x240 par=0.3
   plane verge  image=gen:sign_verge(seed=311,w=352) size=352x240 par=1.0
   prop  sign   art=gen:town_sign_board(seed=310) plane=verge at=110,150 anchor=bottom
@@ -31,10 +37,15 @@ set town_sign kind=2d px=1 matte=open look=pixel desc="1-02 (sunset): HaHaland! 
   mark  sign_text_pencil 122,124
   variant sunset light=sunset bands.sky=sky:sunset desc="1-02: 500"
   variant s501   light=sunset bands.sky=sky:sunset show=d1 desc="1-02: it ticks up to 501 (then the 1 falls off: STAGING moves d1)"
+  # ambient layers (SETS.md sec.6; previews in show_out/art/motion)
+  amb cloudrun kind=drift plane=clouds vx=0.12
+  amb grass    kind=wave plane=verge amp=1 period=80 len=40 rows=170..240 strip=2
+  amb petals   kind=motes type=petal n=10 area=-20,60,360,110 plane=verge seed=191 speed=0.6
 end
 
 set fountain_plaza kind=2d px=1 matte=open look=pixel desc="CO-6 (dawn): the plaza wakes pastel; 1-03 (sunset): the Giggling Fountain and the park gate"
   plane sky    bands=sky:dawn par=0
+  plane clouds image=gen:amb_clouds(seed=63,w=512,h=60,n=4,tone=dawn) size=512x60 at=0,-18 par=0.1
   plane far    image=gen:plaza_far(seed=320,w=480) size=480x240 par=0.4
   plane plaza  image=gen:plaza(seed=321,w=560) size=560x240 par=1.0
   plane near   image=gen:fair_lanterns(seed=322,w=480,y=4) size=480x240 par=1.2 hidden=yes
@@ -47,70 +58,126 @@ set fountain_plaza kind=2d px=1 matte=open look=pixel desc="CO-6 (dawn): the pla
   frame gate    at=120,0                # 1-03: the park gate under the GIGGLE banner, the basin
   variant dawn   light=dawn   bands.sky=sky:dawn   desc="CO-6 co19"
   variant sunset light=sunset bands.sky=sky:sunset show=near desc="1-03: the lanterns lit, the fair beyond the gate"
+  # ambient layers (SETS.md sec.6; previews in show_out/art/motion)
+  amb cloudrun kind=drift plane=clouds vx=0.1
+  amb water    kind=pcycle plane=plaza idx=RAMP_SKY.5,RAMP_SKY.6,RAMP_SKY.7,PAL_WHITE every=5
+  amb jet      kind=flip art=gen:amb_jet(frames=6,h=22,w=19) plane=plaza at=130,90 anchor=bottom
+  amb banner   kind=sway props=banner,balloon amp=1 period=140 lag=25
+  amb wind     kind=wave plane=near amp=1 period=110 len=90 strip=2
+  amb bulbs    kind=lamps plane=near hold=4..14 dim=16 bloom=14 seed=201
+  amb stringers kind=crowd form=idle kset=plaza_dawn n=6 y=160 x=-80..60 depth=8 seed=202 plane=plaza
+  amb walkers  kind=crowd form=walk kset=giggle_adults n=5 y=176 x=-140..440 speed=0.4 seed=203 plane=plaza
+  amb birds    kind=motes type=leaf n=6 area=-80,0,480,60 plane=far seed=204 speed=0.5
 end
 
 set fountain_faces kind=2d px=2 matte=open look=pixel desc="co14 INSERT: the fountain's two laughing stone faces giggle back, 8 f late"
   plane faces  image=gen:fountain_faces(seed=330) size=160x120 par=0
+  plane spray image=gen:amb_fog(seed=64,w=256,h=40,c=PAL_WHITE,density=3) size=256x40 at=0,110 par=0.3 order=front
   variant dawn   light=dawn   desc="co14"
   variant sunset light=sunset desc="1-03 (late, then on time)"
+  # ambient layers (SETS.md sec.6; previews in show_out/art/motion)
+  amb mist     kind=drift plane=spray vx=0.2
+  amb jetL     kind=flip art=gen:amb_jet(frames=6,h=30,w=27) plane=faces at=110,96 anchor=top
+  amb jetR     kind=flip art=gen:amb_jet(frames=6,h=30,w=27) plane=faces at=210,96 anchor=top phase=7
+  amb bubbles  kind=motes type=bubble n=14 area=40,140,240,40 plane=faces seed=211
 end
 
 set bakery_window kind=2d px=1 matte=open look=pixel desc="co20 (dawn): Nana's bakery window, two of everything; the paw tucks a tea towel round an egg"
   plane shop   image=gen:bakery_window(seed=340) size=336x240 par=1.0
+  plane glass image=gen:amb_fog(seed=65,w=512,h=60,c=RAMP_SKY.7,density=3) size=512x60 at=0,20 par=1.3 order=front
   prop  basket art=gen:basket(size=1) plane=shop at=246,130 anchor=bottom
   prop  egg    art=gen:egg(state=whole) plane=shop at=246,117 anchor=bottom
   prop  lamp   art=gen:small_lamp(lit=1) plane=shop at=282,130 anchor=bottom hidden=yes
   prop  tag    art=gen:gift_tag(turned=0) art.turned=gen:gift_tag(turned=1) plane=shop at=226,122 anchor=center text=6,3,14,8
   variant dawn  light=dawn desc="co20 +0"
   variant lamp  light=dawn show=lamp state=tag:turned desc="co20 +110: the lamp set down; +170 the tag turns"
+  # ambient layers (SETS.md sec.6; previews in show_out/art/motion)
+  amb reflect  kind=drift plane=glass vx=0.1
+  amb steam    kind=flip art=gen:amb_steam(w=12,h=24) plane=shop at=120,118 anchor=bottom
+  amb motes    kind=motes type=dust n=16 area=0,20,336,120 plane=shop seed=221 speed=0.3
+  amb lamp     kind=lamps props=lamp seed=222
 end
 
 set egg_basket kind=2d px=2 matte=open look=pixel desc="co21 CU: the egg in its basket; two wobbles; the heart iris; CRACK = main title frame 0"
   plane basket image=gen:egg_basket(seed=350) size=160x120 par=0
+  plane glow image=gen:amb_fog(seed=66,w=256,h=40,c=RAMP_CANDY.6,density=3) size=256x40 at=0,-30 par=0.15
   prop  egg    art=gen:egg(state=whole) art.cracked=gen:egg(state=cracked) plane=basket at=160,108 anchor=bottom
   prop  lamp   art=gen:small_lamp(lit=1) plane=basket at=262,162 anchor=bottom
   prop  tag    art=gen:gift_tag(turned=1) plane=basket at=86,100 anchor=center text=6,3,14,8
   mark  egg    160,86
   variant dawn  light=dawn desc="co21"
+  # ambient layers (SETS.md sec.6; previews in show_out/art/motion)
+  amb warmdrift kind=drift plane=glow vx=0.06
+  amb motes    kind=motes type=dust n=10 area=0,0,320,180 order=front par=1.2 seed=231 speed=0.25
+  amb lamp     kind=lamps props=lamp seed=232
 end
 
 set joke_graveyard kind=2d px=1 matte=open look=pixel desc="4-07 (night): the path up to the launch hill through the joke graves; FLUFFY THE CLOUD. DRIFTED."
   plane sky    bands=sky:night par=0
   plane stars  tile=gen:sky_stars(seed=12) size=128x80 par=0.05
+  plane clouds image=gen:amb_clouds(seed=67,w=512,h=56,n=4,tone=night) size=512x56 at=0,-22 par=0.08
   plane yard   image=gen:joke_graveyard(seed=360,w=480) size=480x240 par=1.0
+  plane fog image=gen:amb_fog(seed=68,w=512,h=40,c=RAMP_STONE.5,density=8) size=512x40 at=0,150 par=1.2 order=front
   prop  stone  art=gen:small_stone(seed=361) plane=yard at=182,136 anchor=bottom text=3,5,16,12
   prop  cake   art=gen:cupcake(seed=1) plane=yard at=182,116 anchor=bottom
   frame path   at=0,0
   frame stone  at=20,0
   variant night light=night bands.sky=sky:night desc="4-07"
+  # ambient layers (SETS.md sec.6; previews in show_out/art/motion)
+  amb cloudrun kind=drift plane=clouds vx=0.1
+  amb fogroll  kind=drift plane=fog vx=0.25
+  amb flies    kind=motes type=firefly n=18 area=-80,60,480,100 plane=yard seed=241
+  amb grass    kind=wave plane=yard amp=1 period=90 len=30 rows=200..240 strip=2
 end
 
 set launch_hill kind=2d px=1 matte=open look=pixel desc="4-08 (night): the hilltop; the park below with the Wall down the centre line; one firework opens over it"
   plane sky    bands=sky:night par=0
   plane stars  tile=gen:sky_stars(seed=13) size=128x80 par=0.05
+  plane clouds image=gen:amb_clouds(seed=69,w=512,h=56,n=3,tone=night) size=512x56 at=0,-22 par=0.06
   plane hill   image=gen:launch_hill(seed=370,w=400) size=400x240 par=1.0
   prop  stand  art=gen:launch_stand(seed=371) plane=hill at=172,150 anchor=bottom
   mark  wall_x 160
   frame crowd  at=0,0
   variant night light=night bands.sky=sky:night desc="4-08"
+  # ambient layers (SETS.md sec.6; previews in show_out/art/motion)
+  amb cloudrun kind=drift plane=clouds vx=0.08
+  amb twinkle  kind=motes type=sparkle n=12 area=-40,-10,400,80 par=0.05 seed=251
+  amb flies    kind=motes type=firefly n=14 area=-40,100,400,70 plane=hill seed=252
+  amb grass    kind=wave plane=hill amp=1 period=100 len=30 rows=190..240 strip=2
+  amb bulbs    kind=lamps plane=hill hold=6..18 dim=12 bloom=10 seed=253
 end
 
 set wall_split kind=2d px=1 matte=open look=pixel desc="MT-3 / MT-6 / 4-08: both sides of the Wall at once, split on x = 160 (Hellvile: silhouettes only)"
   plane sky    bands=sky:day par=0
+  plane clouds image=gen:amb_clouds(seed=70,w=512,h=50,n=4,tone=day) size=512x50 at=0,-24 par=0.1
   plane both   image=gen:wall_split(seed=380) size=320x240 par=0
+  plane haze image=gen:amb_haze(seed=71,w=512,h=48) size=512x48 at=0,40 par=0.3 light=fixed
   prop  table  art=gen:hellvile_table(seed=381) plane=both at=246,166 anchor=bottom hidden=yes
   mark  wall_x 160
   variant day   light=day bands.sky=sky:day desc="MT-3 the mirrored knock, MT-6 the end pose"
   variant night light=night bands.sky=sky:night show=table desc="4-08: the 2 s split; a sooty hand (actor) lights a fuse beside two bowls"
+  # ambient layers (SETS.md sec.6; previews in show_out/art/motion)
+  amb cloudrun kind=drift plane=clouds vx=0.12
+  amb smoke    kind=drift plane=haze vx=-0.2
+  amb embers   kind=motes type=ember n=14 area=165,60,155,110 plane=both seed=261
+  amb petals   kind=motes type=petal n=10 area=0,40,155,120 plane=both seed=262 speed=0.6
 end
 
 set pipe_yard kind=2d px=1 matte=open look=pixel desc="1-13 INSERT (4 f): beyond the Wall a pipe heaves a purple sigh (no faces)"
   plane yard   image=gen:pipe_yard(seed=390) size=320x240 par=0
+  plane haze image=gen:amb_haze(seed=72,w=512,h=48) size=512x48 at=0,20 par=0.4 light=fixed
   prop  sigh   art=gen:sigh_puff(seed=391) plane=yard at=60,80 anchor=center light=fixed
   variant night light=day desc="1-13 insert"
+  # ambient layers (SETS.md sec.6; previews in show_out/art/motion)
+  amb smoke    kind=drift plane=haze vx=-0.3
+  amb embers   kind=motes type=ember n=12 area=0,40,320,140 plane=yard seed=271
 end
 
 set kids_tent_memory kind=2d px=1 matte=open look=pixel desc="1-14 INSERT (4 f, sepia): the kids' tent eleven years ago tonight (the cloud lady and the crowned silhouette are cast)"
   plane tent   image=gen:kids_tent_old(seed=392) size=320x240 par=0
+  plane haze image=gen:amb_fog(seed=73,w=512,h=60,c=RAMP_PEACH.6,density=5) size=512x60 at=0,120 par=1.2 order=front
   variant sepia light=sepia desc="1-14 insert (Fuzz's POV)"
+  # ambient layers (SETS.md sec.6; previews in show_out/art/motion)
+  amb dream    kind=drift plane=haze vx=0.1
+  amb motes    kind=motes type=dust n=16 area=0,0,320,180 plane=tent seed=281 speed=0.3
 end
