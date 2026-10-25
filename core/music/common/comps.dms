@@ -1,0 +1,50 @@
+# core/music/common/comps.dms - comp patterns: harmony, arps and bass over
+# the chord chart (owner: MU4d; docs/design/music/SPEC.md sec.5 MusComp,
+# 8.2). A cue's `comp=pool:NAME,...` lane plays one per bar, rotated per
+# pass with no repeat (sec.8.2); the pick inside a pool is hashed.
+#
+#   comp NAME role=harm|bass family=F bands=Sa..Sb [meter=3] [voicelead] [swing] : TONES
+#
+# TONES are comp tones with MML lengths (l sets the default):
+#   R 3 5 7 9  chord tones (the nearest inversion with `voicelead`)
+#   R' 3' 5'   an octave up       R, 5,  an octave down
+#   C          the whole chord (the chip chord: a 60 Hz arp on one voice)
+#   A          a chromatic approach into the next chord's root
+#   N          the next chord's root (anticipation)
+#   ~          hold the previous tone       r   rest
+# family: ARP STAB ALBERTI PAD ROOT5 WALK GALLOP CHUG PEDAL OCTAVE
+#         CHARLESTON WALTZ. Every pattern is one bar.
+
+# ---- harmony: S0 music box / S1 toy pop -------------------------------------------
+comp box_arp_up      role=harm family=ARP     bands=S0..S1 : l8 R 3 5 R' 5 3 R 3
+comp box_arp_down    role=harm family=ARP     bands=S0..S1 : l8 R' 5 3 R 3' 5 3 5
+comp box_alberti     role=harm family=ALBERTI bands=S0..S1 : l8 R 5 3 5 R 5 3 5
+comp toy_offbeat     role=harm family=STAB    bands=S1..S2 : l8 r C r C r C r C
+comp toy_skank       role=harm family=STAB    bands=S1..S2 : l16 r8 C r r8 C C r8 C r r8 C8
+comp toy_charleston  role=harm family=CHARLESTON bands=S1..S2 : C4. C8 ~2
+comp chip_8ths       role=harm family=ARP     bands=S0..S2 : l8 C C C C C C C C
+comp chip_pad        role=harm family=PAD     bands=S0..S3 : C1
+comp soft_pad_2      role=harm family=PAD     bands=S0..S2 voicelead : C2 C2
+comp waltz_oompah    role=harm family=WALTZ   bands=S0..S2 meter=3 : r4 C4 C4
+comp waltz_box       role=harm family=ARP     bands=S0..S1 meter=3 : l8 R 5 3' 5 R' 5
+# ---- harmony: S2 spooky swing --------------------------------------------------------
+comp spook_arp       role=harm family=ARP     bands=S2..S2 swing : l8 R 3 5 7 5 3 R 3
+comp spook_stab      role=harm family=STAB    bands=S2..S3 swing : r4 C8 r8 r4 C8 C8
+comp lounge_comp     role=harm family=CHARLESTON bands=S1..S2 swing voicelead : C4. C8 r2
+# ---- harmony: S3 chip rock / S4 metal -------------------------------------------------
+comp rock_8ths       role=harm family=CHUG    bands=S3..S4 : l8 C C C C C C C C
+comp rock_push       role=harm family=STAB    bands=S3..S4 : C4. C8 ~4 C8 C8
+comp metal_chug16    role=harm family=CHUG    bands=S4..S4 : l16 C C r C C C r C C C r C C r C C
+comp metal_gallop    role=harm family=GALLOP  bands=S4..S4 : l16 C8 C C C8 C C C8 C C C8 C C
+# ---- bass -------------------------------------------------------------------------------
+comp bass_root5      role=bass family=ROOT5   bands=S1..S3 : l4 R 5, R' 5,
+comp bass_root_long  role=bass family=PEDAL   bands=S0..S1 : R2 5,2
+comp bass_octave8    role=bass family=OCTAVE  bands=S3..S4 : l8 R R' R R' R R' R R'
+comp bass_walk       role=bass family=WALK    bands=S1..S2 : l4 R 3 5 A
+comp bass_walk_up    role=bass family=WALK    bands=S1..S2 swing : l4 R 5 R' A
+comp bass_charleston role=bass family=CHARLESTON bands=S1..S2 : R4. 5,8 ~2
+comp bass_gallop     role=bass family=GALLOP  bands=S4..S4 : l16 R8 R R R8 R R R8 R R R8 R R
+comp bass_chug       role=bass family=CHUG    bands=S3..S4 : l8 R R R R R R R N
+comp bass_pedal      role=bass family=PEDAL   bands=S0..S4 : R1
+comp bass_waltz      role=bass family=WALTZ   bands=S0..S2 meter=3 : R4 r4 5,4
+comp bass_waltz_walk role=bass family=WALTZ   bands=S1..S2 meter=3 : R4 5,4 A4

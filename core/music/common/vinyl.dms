@@ -1,0 +1,42 @@
+# core/music/common/vinyl.dms - the 16 turntable patterns (owner: MU4d;
+# docs/design/music/SPEC.md sec.7.2, 17; mus_data.h MusVinyl). Pattern ids
+# are the VINYL_* locks (1-15 = the Studio's drum-cell scratch nibble;
+# 14 is the crackle toggle). The driver and the arranger both evaluate
+# mus_vinyl_speed(pattern, t, seed) from these segments (sec.7.1).
+#
+#   vinyl NAME after=RESUME|CONTINUE|STOP [tape] [zip] [crackle] [clicks] [snap] [silence] [loop] : SEG | SEG ...
+#   SEG = LEN V0>V1 CURVE [FADER] [JITTER%]
+#
+# LEN: an MML length (4 = a quarter), Nu units (48 per quarter) or Nf
+#      frames (30 Hz; frame-timed patterns cannot mix in beat lengths).
+# V:   platter speed, 1 = play, negative = backwards, 0 = stopped; or Nst
+#      semitones of play speed (-15st = 2^(-15/12)). Stored in half-
+#      semitone log steps (192 log2|v| is the driver's pitch law), so
+#      WOBBLE's 6 % and TAPESTOP's -15 st are exact enough to hear as such.
+# CURVE: lin (linear speed), ease (smoothstep), exp (linear in pitch),
+#      sin (a hump: V0 -> V1 -> V0 over the segment, a hand stroke).
+# FADER: open (default), closed, chirp (closes as the stroke slows), gate32
+#      (chopped at 32nds), flare (one 1/64 click at the stroke's middle).
+# JITTER: seeded hand jitter, 0-14 % (default 6).
+# Flags: tape = prefer TAPE; zip = a friction zip on each direction change;
+#      clicks = NEEDLE groove clicks + a pop; snap = REWIND's playhead jump
+#      (1-2 bars back, +1 on the downbeat); silence = mute after; loop =
+#      repeat until released (WOBBLE).
+
+vinyl BABY        after=RESUME   tape zip : 16 0>2.4 sin | 16 0>-2.4 sin
+vinyl FORWARD     after=RESUME   tape     : 32 0>3 sin open | 32 0>-2 sin closed
+vinyl CHIRP       after=RESUME   tape zip : 32 0>2.6 sin chirp | 32 0>-2.6 sin chirp
+vinyl TRANSFORMER after=RESUME   tape zip : 16 0>1.2 sin gate32 | 16 0>-1.2 sin gate32 | 16 0>1.2 sin gate32 | 16 0>-1.2 sin gate32
+vinyl TEAR        after=RESUME   tape zip : 32 0>2 sin | 32 0>2 sin | 16 0>-2.4 sin
+vinyl FLARE       after=RESUME   tape zip : 16 0>2.4 sin flare | 16 0>-2.4 sin flare
+vinyl SCRIBBLE    after=RESUME   tape     : 4u 0>1.3 sin 10% | 4u 0>-1.3 sin 10% | 4u 0>1.3 sin 10% | 4u 0>-1.3 sin 10% | 4u 0>1.3 sin 10% | 4u 0>-1.3 sin 10%
+vinyl WIKKA       after=RESUME   tape zip : 6u 0>1.4 sin | 6u 0>-1.4 sin | 6u 0>1.8 sin | 6u 0>-1.8 sin | 6u 0>2.2 sin | 6u 0>-2.2 sin | 6u 0>2.6 sin | 6u 0>-2.6 sin
+vinyl REWIND      after=CONTINUE zip snap : 4 1>-4 exp
+vinyl SPINBACK    after=RESUME   zip      : 1 -6>0 exp
+vinyl STOP        after=STOP     silence  : 8 1>0.25 exp
+vinyl NEEDLE      after=STOP     clicks silence : 32 1>3 lin | 32 3>0 exp
+vinyl STUTTER     after=RESUME            : 64 1>1 lin | 64 -1>-1 lin closed | 64 1>1 lin | 64 -1>-1 lin closed | 64 1>1 lin | 64 -1>-1 lin closed | 64 1>1 lin | 64 -1>-1 lin closed
+vinyl CRACKLE     after=RESUME   crackle  :
+vinyl SLOWMO      after=RESUME            : 4 1>0.5 ease | 2 0.5>0.5 lin | 4 0.5>1 ease
+vinyl WOBBLE      after=RESUME   loop     : 15f 1>1.06 sin 0% | 15f 1>0.94 sin 0%
+vinyl TAPESTOP    after=STOP     silence  : 5f 1>-15st exp 0%

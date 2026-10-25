@@ -1,0 +1,70 @@
+# core/music/common/turns.dms - seams: cadence legality and the 1-bar
+# turnarounds (owner: MU1T, M1.5; docs/design/music/SPEC.md sec.6.3 rule 5,
+# DG sec.4.5). The walk checks every node seam (chord_out -> the next node's
+# chord_in) against its family's bitmap; an illegal seam gets one bar of a
+# turnaround from this table (V7, ii-V, bVI-bVII-I, chromatic), picked by
+# mus_h(seed, S_HARM, ...) among the rows whose band and target mode match,
+# and the pick is re-tried with rule 2 relaxed. mmlc's lint uses the same
+# bitmaps (an edge that is neither legal nor marked `turn` fails, sec.16.2).
+#
+# Families by dial band: MAJOR = S0-S1 (cute), MINOR = S2 (spooky swing),
+# METAL = S3-S4. Chord classes: MAJ (maj maj7 add9 six sus2), MIN (min min7
+# min9 mmaj7), DOM (dom7 aug), OTHER (dim hdim7 dim7 sus4 power, N.C.).
+#
+#   cadence FAMILY out=CLASS in=CLASS[,CLASS] : INTERVALS
+#     INTERVALS = semitones from chord_out's root up to chord_in's root
+#     (0-11) that make a legal seam. Unlisted pairs are illegal.
+#   turn NAME bands=Sa..Sb targets=major|minor|any weight=W : SLOT SLOT
+#     SLOT = INTERVAL:QUALITY, the half-bar chords relative to the target
+#     (the next node's chord_in) root; QUALITY as in MusChord.
+
+# ---- MAJOR (S0-S1) ------------------------------------------------------------------
+cadence MAJOR out=MAJ   in=MAJ,MIN : 0 2 4 5 7 9 10
+cadence MAJOR out=MAJ   in=DOM     : 0 2 4 5 7 9
+cadence MAJOR out=MAJ   in=OTHER   : 0 2 5 7 11
+cadence MAJOR out=MIN   in=MAJ,MIN : 0 1 2 3 5 7 8 10
+cadence MAJOR out=MIN   in=DOM     : 0 2 5 7 10
+cadence MAJOR out=MIN   in=OTHER   : 0 5 7
+cadence MAJOR out=DOM   in=MAJ,MIN : 0 1 2 5
+cadence MAJOR out=DOM   in=DOM     : 0 5
+cadence MAJOR out=DOM   in=OTHER   : 0 5
+cadence MAJOR out=OTHER in=MAJ,MIN : 0 1 5 7
+cadence MAJOR out=OTHER in=DOM     : 0 5 7
+cadence MAJOR out=OTHER in=OTHER   : 0 5 7
+# ---- MINOR (S2): adds the phrygian bII, the tritone and the bVI / bVII moves --------
+cadence MINOR out=MAJ   in=MAJ,MIN : 0 1 2 3 4 5 6 7 8 9 10
+cadence MINOR out=MAJ   in=DOM     : 0 2 5 7 9
+cadence MINOR out=MAJ   in=OTHER   : 0 1 2 5 6 7 11
+cadence MINOR out=MIN   in=MAJ,MIN : 0 1 2 3 5 6 7 8 10
+cadence MINOR out=MIN   in=DOM     : 0 2 5 7 10
+cadence MINOR out=MIN   in=OTHER   : 0 1 5 6 7
+cadence MINOR out=DOM   in=MAJ,MIN : 0 1 2 5
+cadence MINOR out=DOM   in=DOM     : 0 5 6
+cadence MINOR out=DOM   in=OTHER   : 0 5
+cadence MINOR out=OTHER in=MAJ,MIN : 0 1 5 6 7 11
+cadence MINOR out=OTHER in=DOM     : 0 5 7
+cadence MINOR out=OTHER in=OTHER   : 0 1 5 6 7
+# ---- METAL (S3-S4): power chords go anywhere; a dominant still resolves ----------------
+cadence METAL out=MAJ   in=MAJ,MIN,DOM,OTHER : 0 1 2 3 4 5 6 7 8 9 10 11
+cadence METAL out=MIN   in=MAJ,MIN,DOM,OTHER : 0 1 2 3 4 5 6 7 8 9 10 11
+cadence METAL out=DOM   in=MAJ,MIN,OTHER     : 0 1 2 5 7 8
+cadence METAL out=DOM   in=DOM               : 0 5
+cadence METAL out=OTHER in=MAJ,MIN,DOM,OTHER : 0 1 2 3 4 5 6 7 8 9 10 11
+
+# ---- turnarounds (one bar = two half-bar chords before the target) ---------------------
+turn v7            bands=S0..S3 targets=any   weight=40 : 7:DOM7 7:DOM7
+turn v7_sus        bands=S0..S2 targets=any   weight=20 : 7:SUS4 7:DOM7
+turn ii_v          bands=S0..S2 targets=major weight=35 : 2:MIN7 7:DOM7
+turn ii_v_minor    bands=S1..S3 targets=minor weight=35 : 2:HDIM7 7:DOM7
+turn iv_v          bands=S0..S3 targets=any   weight=25 : 5:MAJ 7:MAJ
+turn bvi_bvii      bands=S1..S4 targets=any   weight=30 : 8:MAJ 10:MAJ
+turn minor_plagal  bands=S0..S2 targets=major weight=15 : 5:MAJ 5:MIN
+turn leading_dim   bands=S1..S3 targets=any   weight=15 : 11:DIM7 11:DIM7
+turn tritone_sub   bands=S1..S2 targets=any   weight=12 : 2:MIN7 1:DOM7
+turn chromatic_up  bands=S1..S3 targets=any   weight=10 : 10:MAJ 11:MAJ
+turn chromatic_dn  bands=S2..S3 targets=any   weight=10 : 2:MAJ 1:MAJ
+turn phrygian      bands=S2..S4 targets=minor weight=20 : 1:MAJ 1:MAJ
+turn power_bvi     bands=S3..S4 targets=any   weight=35 : 8:POWER 10:POWER
+turn power_step    bands=S3..S4 targets=any   weight=20 : 10:POWER 11:POWER
+turn power_tritone bands=S4..S4 targets=minor weight=15 : 6:POWER 1:POWER
+turn box_v         bands=S0..S0 targets=any   weight=30 : 7:MAJ 7:SUS4

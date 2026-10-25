@@ -203,6 +203,69 @@ enum { MTF_TEMPO_RAMP = 1, MTF_KEEP_TEMPO = 2, MTF_DUCK = 4, MTF_FAST_MORPH = 8 
 typedef struct MusTrans { uint8_t from, to, grid, type, arg, entry /* 0xFE resume */, max_wait, flags; } MusTrans; /* 8 */
 typedef struct MusParamDef { uint8_t rise, fall, def, flags; } MusParamDef;    /* 4 */
 
+/* --- music: MU1T/MU4d shared bank layouts (M1.5; core/music/common/NAME.dms) ---
+ * Sections, all 4-aligned, between the instruments and the cue blobs:
+ *   comp_off    u16 idx[n_comp] (from the section start), MusComp records
+ *   groove_off  MusGroove[n_groove]
+ *   misc_off    u32 off[MUS_MISC_COUNT] from the bank start, 0 = absent:
+ *     FILLS  u16 idx[n_fill], MusFill records
+ *     MOTIFS u16 idx[n_motif] by MOTIF_* id (0 = no motif), MusMotif records
+ *     VINYL  u16 idx[n_vinyl] by VINYL_* id (0 = none), MusVinyl records
+ *     TRANS  MusTrans[n_trans] sorted by (from, to); 0xFF = any
+ *     TURNS  u8 n_turn, n_fam, pad[2]; u8 cad[n_fam][24]; MusTurn[n_turn]
+ * MusComp: flags = family (MCPF_*) | MCP_BASS | MCP_VOICELEAD | MCP_SWING,
+ *   len_beats = beats (one bar), pad = dial band mask (bit n = Sn); then
+ *   n_ev x { onset in 1/12 beat, tone << 4 | LEN_TAB index } (MCT_* tones).
+ * MusGroove: kit = KIT_*; flags = MGRF_* | band mask << 3; steps 12 / 16;
+ *   hit[r] = KH_* of row r, pad[r] = the intensity rank the row enters at;
+ *   prob nibble of row r step s at prob[r * 8 + s / 2] (s odd: high nibble):
+ *   the hit plays iff mus_h(..) % 15 < p (15 = a core step).
+ * MusFill: n_hit counts hit[0] = { band mask, MFLF_* } and the hits;
+ *   beats; each hit { onset in 1/24 beat, KH_* | accent 0-3 << 3 | tom 0-7 << 5 }.
+ * MusMotif: n_note, head (protected notes), mode = MMODE_* | MMF_FIXED |
+ *   MMF_GLIDE, pad = the canonical tonic pitch class; each note
+ *   { int8 scale degree from the tonic, LEN_TAB index | acc << 4 (0, 1 = +1,
+ *   2 = -1) | MMN_REST | MMN_GLIDE }.
+ * MusVinyl: n_seg, flags = MVF_*, beats_q4 = length in quarter beats (0 =
+ *   frame-timed or looping), pad = the AFTER_* default; each segment
+ *   { len (units, or frames with MVF_FRAMES), v0, v1, curve | fader << 2 |
+ *   jitter/2 << 5 }; v = MVS_REV | L, speed |v| = 2^((L - 64) / 24) (half
+ *   semitones), L = 0 stopped.
+ * Cadence bitmaps: bit ((out_class * 4 + in_class) * 12 + interval) of the
+ *   family (MCAD_FAM_*), classes MCC_*; interval = in root - out root mod 12.
+ * MDK_SFX cue: one silent node; common = u8 n_seg + n x { t0, n, a, b, wc,
+ *   vol }, audio_fx.c's SynthSeg verbatim (D14, CF-3). */
+enum { MUS_MISC_FILLS, MUS_MISC_MOTIFS, MUS_MISC_VINYL, MUS_MISC_TRANS, MUS_MISC_REHARM,
+       MUS_MISC_PARAMS, MUS_MISC_TURNS, MUS_MISC_GENSPECS, MUS_MISC_COUNT };
+enum { MCPF_ARP, MCPF_STAB, MCPF_ALBERTI, MCPF_PAD, MCPF_ROOT5, MCPF_WALK, MCPF_GALLOP, MCPF_CHUG,
+       MCPF_PEDAL, MCPF_OCTAVE, MCPF_CHARLESTON, MCPF_WALTZ };
+enum { MCP_BASS = 16, MCP_VOICELEAD = 32, MCP_SWING = 64 };
+enum { MCT_ROOT, MCT_THIRD, MCT_FIFTH, MCT_SEVENTH, MCT_ROOT_UP, MCT_THIRD_UP, MCT_FIFTH_UP,
+       MCT_CHORD, MCT_ROOT_DOWN, MCT_FIFTH_DOWN, MCT_APPROACH, MCT_NEXT, MCT_HOLD, MCT_NINTH };
+enum { MGRF_GHOSTS = 1, MGRF_HALFTIME = 2, MGRF_BLAST = 4 };
+enum { MFLF_CRASH = 1 };
+enum { MMODE_MAJOR, MMODE_MINOR, MMODE_HARMONIC, MMODE_DORIAN, MMODE_PHRYGIAN, MMODE_MIXOLYDIAN };
+enum { MMF_FIXED = 0x40, MMF_GLIDE = 0x80, MMN_REST = 0x40, MMN_GLIDE = 0x80 };
+enum { MVF_TAPE = 1, MVF_ZIP = 2, MVF_CRACKLE = 4, MVF_CLICKS = 8, MVF_SNAP = 16, MVF_SILENCE = 32,
+       MVF_LOOP = 64, MVF_FRAMES = 128 };
+enum { MVC_LIN, MVC_EASE, MVC_EXP, MVC_SIN };                          /* segment curve */
+enum { MVD_OPEN, MVD_CLOSED, MVD_CHIRP, MVD_GATE32, MVD_FLARE };       /* segment fader */
+#define MVS_REV 0x80
+typedef struct MusTurn { uint8_t id, bands, targets /* 1 major 2 minor */, weight, chord[2], pad[2]; } MusTurn; /* 8 */
+enum { MCAD_FAM_MAJOR, MCAD_FAM_MINOR, MCAD_FAM_METAL };              /* S0-S1, S2, S3-S4 */
+enum { MCC_MAJ, MCC_MIN, MCC_DOM, MCC_OTHER };
+#define MUS_CAD_BYTES 24
+/* --- end music --- */
+/* --- music: MU1 M4 runtime notes ---
+ * Edge conditions MEC_PARAM_GE / MEC_PARAM_LT read arg = param (5 bits) |
+ * level (3 bits) << 5, threshold = level * 32. A pack with MNP_VARIANTS keeps
+ * its MusVarDir offset (from the pack start) in lane_off[n_lanes]; variant
+ * lane offsets and var_off[] count from the pack start too. A missing misc
+ * table (offset 0) means the engine's built-in default (PARAMS: rise / fall
+ * 8 per tick, MP_INTENSITY 128, MP_HP 255). */
+#define MUS_ANY 0xFF                /* MusTrans.from / to: any cue */
+/* --- end music --- */
+
 /* ---- events: rings A (deck A) and B (deck B, SFX deck, urgent) ------------------- */
 /* pos = master units (bits 0-27) | kind << 28; arg packed per kind,
  * low bits first (MEV_* helpers below). */
@@ -329,6 +392,7 @@ MUS_ASSERT_SIZE(MusInst, 20);
 MUS_ASSERT_SIZE(MusGroove, 64);
 MUS_ASSERT_SIZE(MusTrans, 8);
 MUS_ASSERT_SIZE(MusParamDef, 4);
+MUS_ASSERT_SIZE(MusTurn, 8);              /* music: MU1T M1.5 */
 MUS_ASSERT_SIZE(MusGenSpec, 12);
 MUS_ASSERT_SIZE(DoomoMusEv, 8);
 MUS_ASSERT_SIZE(DoomoVoice, 12);

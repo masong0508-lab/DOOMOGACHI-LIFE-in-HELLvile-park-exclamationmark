@@ -1,0 +1,86 @@
+# core/music/common/inst.dms - the shared instrument bank (owner: MU4d;
+# docs/design/music/SPEC.md sec.5 MusInst, sec.13). Compiled by
+# tools/mmlc.py into the bank's MusInst rows after the 24 classic ones
+# (rows 0-23 = songs.c's audio_insts, imported verbatim); each name's row
+# is its INST_* id in core/music/ids/common.lock (append-only).
+#
+#   inst NAME timbre=T[/ALT] duty=N atk=F dec=D sus=S rel=R lvl=L gate=G
+#             vib=DEPTH,SPEED,DELAY arp=A sweep=S [psg=SOFT]
+#
+# The 30 Hz envelope law of the classic sequencer (MIF_ENV30, mus_drv.c):
+# lvl / sus 0..15, the peak is lvl x 16; atk = frames to the peak; dec /
+# rel = level drop per frame on that 0..240 scale; gate = eighths of the
+# note; vib depth 1/16 st, speed = phase per frame (256 = a cycle), delay
+# frames; arp = NONE MAJOR MINOR OCTAVE POWER SUS4 DIM MAJ7 TRILL (the chip
+# chord is re-chorded at 60 Hz from the CHORD event at M4); sweep 1/16 st
+# per frame; duty in 1/32 for PULSE (4 = 12.5 %, 8 = 25 %, 16 = 50 %).
+# mmlc fits psg_env (the GBA NRx2 byte; 0 = soft envelope) and the PS1
+# spu_adsr1/2 to every row. ALT = timbre_alt, the fallback where a timbre
+# is missing (the GBA PSG in tier L, AU10's speaker).
+#
+# Defaults: duty=16 atk=0 dec=0 sus=15 rel=8 lvl=12 gate=7 vib=0,0,0 arp=NONE sweep=0
+
+# ---- leads (S0 cute -> S4 metal) ---------------------------------------------
+inst box_lead      timbre=PULSE        duty=4  dec=14 sus=0  rel=6  lvl=13 gate=6           # S0 music box, fast decay
+inst celesta_arp   timbre=PULSE        duty=4  dec=18 sus=0  rel=8  lvl=11 gate=4
+inst toy_lead      timbre=PULSE        duty=8  dec=9  sus=11 rel=12 lvl=13 gate=7 vib=4,22,10   # S1, delayed vibrato
+inst cute_lead     timbre=PWM/PULSE    duty=8  dec=10 sus=10 rel=10 lvl=13 gate=7 vib=3,20,12
+inst wobble_lead   timbre=PULSE        duty=4  dec=4  sus=11 rel=8  lvl=12 gate=7 vib=10,18,0   # S2 spooky
+inst lounge_lead   timbre=PULSE        duty=16 atk=1  dec=4 sus=12 rel=10 lvl=12 gate=8 vib=3,14,14
+inst sync_lead     timbre=SYNC_SAW/PULSE duty=8 dec=3 sus=13 rel=6  lvl=14 gate=7 vib=4,26,16   # S3-4
+inst twin_lead     timbre=PULSE        duty=24 dec=3  sus=13 rel=6  lvl=13 gate=7 vib=4,26,16   # the twin a 3rd under (SQ2 75 %)
+inst metal_lead    timbre=SAW/PULSE    duty=8  dec=2  sus=14 rel=5  lvl=15 gate=8 vib=6,28,6
+inst flute         timbre=TRI          atk=3   dec=1  sus=12 rel=8  lvl=14 gate=7 vib=5,18,12
+inst kazoo         timbre=SAW/PULSE    duty=8  atk=1  dec=2 sus=12 rel=8  lvl=12 gate=7 vib=8,30,2
+inst piezo         timbre=PIEZO/PULSE  duty=16 sus=15 rel=255 lvl=12 gate=6                    # the pet's LCD, no envelope
+inst calliope      timbre=WT_ORGAN/PULSE duty=16 atk=1 dec=2 sus=12 rel=10 lvl=12 gate=7 vib=6,24,4
+inst harpsichord   timbre=PULSE        duty=8  dec=12 sus=2  rel=10 lvl=13 gate=8
+# ---- harmony, arps, pads -------------------------------------------------------
+inst chip_chord    timbre=PULSE        duty=16 dec=9  sus=10 rel=12 lvl=11 gate=6 arp=MAJOR
+inst chip_minor    timbre=PULSE        duty=16 dec=9  sus=10 rel=12 lvl=11 gate=6 arp=MINOR
+inst soft_harm     timbre=PULSE        duty=4  dec=7  sus=12 rel=10 lvl=11 gate=7
+inst hm_arp        timbre=PULSE        duty=8  dec=10 sus=6  rel=10 lvl=11 gate=5
+inst pwm_pad       timbre=PWM/PULSE    duty=16 atk=6  dec=1 sus=11 rel=4  lvl=11 gate=8
+inst organ_wave    timbre=WT_ORGAN/PULSE duty=16 atk=1 dec=1 sus=12 rel=12 lvl=12 gate=8
+inst hymn_organ    timbre=WT_ORGAN/PULSE duty=16 atk=2 dec=1 sus=13 rel=6  lvl=12 gate=8 vib=2,12,16
+inst power5        timbre=WT_POWER5/SAW atk=0  dec=2  sus=13 rel=10 lvl=14 gate=7 arp=POWER
+inst glock         timbre=TRI          dec=16 sus=0  rel=6  lvl=13 gate=4
+inst fm_bell       timbre=WT_BELL/PULSE duty=4 dec=6  sus=3  rel=4  lvl=13 gate=8
+inst choir_aah     timbre=CHOIR_AAH/TRI atk=5 dec=1  sus=12 rel=6  lvl=12 gate=8 vib=3,14,18
+inst choir_ooh     timbre=CHOIR_OOH/TRI atk=6 dec=1  sus=11 rel=5  lvl=11 gate=8 vib=3,12,20
+inst vowel_a       timbre=WT_VOWEL_A/PULSE duty=8 atk=1 dec=2 sus=11 rel=8 lvl=12 gate=7
+# ---- bass ------------------------------------------------------------------------
+inst tri_bass      timbre=TRI          dec=13 sus=8  rel=40 lvl=15 gate=6
+inst walk_tri      timbre=TRI4/TRI     dec=10 sus=9  rel=30 lvl=15 gate=6
+inst saw_bass      timbre=SAW/TRI      dec=14 sus=8  rel=40 lvl=15 gate=7
+inst sub_bass      timbre=SINE/TRI     dec=4  sus=12 rel=30 lvl=15 gate=7
+inst growl_bass    timbre=WT_GROWL/SAW dec=6  sus=10 rel=30 lvl=15 gate=7
+inst tuba          timbre=TRI          atk=1  dec=8 sus=9  rel=20 lvl=15 gate=6 sweep=0
+inst chug          timbre=SAW/PULSE    duty=8  dec=30 sus=4  rel=40 lvl=15 gate=4 arp=POWER
+inst gross         timbre=WT_GROSS/SAW atk=1  dec=3 sus=11 rel=12 lvl=13 gate=7 vib=8,10,0
+# ---- kits (KIT roles; the DRUM event picks the hit) --------------------------------
+inst kit_toy       timbre=KIT_TOY/NOISE15
+inst kit_bones     timbre=KIT_BONES/NOISE15
+inst kit_808       timbre=KIT_808/NOISE15
+inst kit_plush     timbre=KIT_PLUSH/NOISE15
+inst kit_forge     timbre=KIT_FORGE/NOISE15
+inst kit_classic   timbre=KIT_CLASSIC/NOISE15
+# ---- comedy and effects -----------------------------------------------------------
+inst slide_whistle timbre=SINE/PULSE   duty=16 atk=2 dec=1 sus=13 rel=8 lvl=12 gate=8 vib=6,20,0
+inst boing         timbre=PULSE        duty=16 dec=12 sus=0  rel=8  lvl=13 gate=8 sweep=24
+inst zap           timbre=PULSE        duty=4  dec=6  sus=0  rel=20 lvl=12 gate=6 sweep=-24
+inst crackle       timbre=CRACKLE/NOISE7 sus=15 rel=255 lvl=6 gate=8
+inst stream        timbre=STREAM/NOISE15 sus=15 rel=255 lvl=15 gate=8
+# ---- beds (seeded emitters, sec.6.5; GBA: PSG noise while resting) -------------------
+inst bed_birds     timbre=PULSE        duty=4  dec=24 sus=0 rel=12 lvl=8 gate=3 sweep=12
+inst bed_crickets  timbre=PULSE        duty=4  dec=30 sus=0 rel=30 lvl=6 gate=2
+inst bed_wind      timbre=NOISE15      atk=20  dec=1 sus=6 rel=2  lvl=6 gate=8
+inst bed_rain      timbre=NOISE15      sus=4   rel=4  lvl=5 gate=8
+inst bed_river     timbre=NOISE7/NOISE15 atk=10 sus=5 rel=3 lvl=5 gate=8
+inst bed_lava      timbre=NOISE7/NOISE15 atk=6 dec=2 sus=6 rel=3 lvl=7 gate=8
+inst bed_vape      timbre=NOISE15      atk=12  dec=2 sus=4 rel=2  lvl=6 gate=8
+inst bed_crowd     timbre=CHOP_BABBLE/NOISE15 atk=8 sus=6 rel=4 lvl=6 gate=8
+inst bed_clock     timbre=PULSE        duty=4  dec=60 sus=0 rel=60 lvl=9 gate=1
+inst bed_machine   timbre=NOISE7/NOISE15 dec=20 sus=2 rel=20 lvl=8 gate=4
+inst bed_embers    timbre=NOISE15      dec=40 sus=0 rel=40 lvl=7 gate=1
+inst bed_fireworks timbre=NOISE15      dec=6  sus=0 rel=6  lvl=12 gate=8 sweep=-8

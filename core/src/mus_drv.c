@@ -26,8 +26,20 @@
  * cost one test per frame, and with nothing playing a tick only moves the
  * clock.
  *
+ * MUTE WINDOWS belong to a deck: a ring-A event is silenced only by a deck-0
+ * window, a ring-B event only by a deck-1 one, so a stinger or a vinyl
+ * re-key on ring B plays on voices whose deck-A notes are muted (M4). A
+ * window of length 0 closes the deck's live windows over its mask.
+ * VINYL (M4): between FX VINYL_START and VINYL_END every control frame
+ * reads mus_vinyl_speed() of the pattern at the master time since its
+ * start (or the live DJ speed) and bends deck A's voices by 192 log2|v|
+ * sixteenth-semitones with gain min(1, 2|v|) x the fader (CF-40: a voice
+ * below its PSG floor goes silent instead of buzzing).
+ *
  * Integer only. The main thread writes ring tails; mus_drv_tick() only
- * reads them and moves the heads (single producer, single consumer). */
+ * reads them and moves the heads (single producer, single consumer). Ring B
+ * is kept sorted: a push lands after every queued event at or before its
+ * position (the console backends mask the IRQ around it). */
 #include "mus_int.h"
 
 /* the classic kit (the old sequencer's drums[]): the envelope here, the
@@ -56,7 +68,7 @@ const uint8_t mus_vol63_of15[16] = { 0, 4, 8, 13, 17, 21, 25, 29, 34, 38, 42, 46
 enum { ST_ATTACK, ST_DECAY, ST_SUSTAIN, ST_RELEASE, ST_OFF };
 enum { DV_DRUM = 1, DV_DIRTY = 2, DV_KEYON = 4 };      /* DrvVoice.flags */
 
-typedef struct MuteWin { uint32_t from, to; uint16_t vmask; uint8_t live, pad; } MuteWin;
+typedef struct MuteWin { uint32_t from, to; uint16_t vmask; uint8_t live, deck; } MuteWin;
 
 static struct {
     DoomoMusEv a[MUS_RING_A];
@@ -78,7 +90,19 @@ static struct {
     uint8_t  bridge;             /* render straight into mus_bridge_tones[]       */
     uint8_t  wave[MUS_DRV_VOICES];  /* the bridge: each voice's WAVE_* (its inst)   */
     uint8_t  tempo_pending;      /* TEMPO events in the rings (mus_drv_run)       */
+    uint8_t  vy_on, live_fader;  /* vinyl: a pattern bends deck A / the DJ fader  */
+    int16_t  vy_speed, live_speed;  /* the last frame's platter speed; live input  */
+    int16_t  vy_pitch;           /* the bend of this frame, 1/16 st               */
+    uint16_t vy_gain;            /* 0..256                                        */
+    uint32_t vy_start;           /* master position the pattern started at        */
+    uint32_t mt;                 /* driver ticks so far                           */
 } D;
+
+MusVinylView mus_drv_vy;
+uint32_t mus_drv_vy_seed;
+#ifndef MUS_CONSOLE
+void (*mus_drv_trace)(const DoomoMusEv *e, int ring);   /* native tests only (T8, T9) */
+#endif
 
 /* signed distance a - b on the 28-bit master clock */
 static int32_t pdiff(uint32_t a, uint32_t b)
@@ -120,13 +144,20 @@ void mus_drv_push(int r, uint32_t pos_kind, uint32_t arg)
 {
     if ((pos_kind >> 28) == MEV_TEMPO) D.tempo_pending++;
     if (r) {
-        uint8_t t = D.b_tail, n = (uint8_t)(t + 1 == MUS_RING_B ? 0 : t + 1);
-        if (n == D.b_head) return;
-        D.b[t].pos = pos_kind; D.b[t].arg = arg;
+        uint8_t t = D.b_tail, n = (uint8_t)(t + 1 == MUS_RING_B ? 0 : t + 1), i = t;
+        uint32_t pos = pos_kind & MUS_POS_MASK;
+        if (n == D.b_head) { if ((pos_kind >> 28) == MEV_TEMPO) D.tempo_pending--; return; }
+        while (i != D.b_head) {                     /* sorted: after equal positions */
+            uint8_t p = (uint8_t)(i ? i - 1 : MUS_RING_B - 1);
+            if (pdiff(MEV_POS(&D.b[p]), pos) <= 0) break;
+            D.b[i] = D.b[p];
+            i = p;
+        }
+        D.b[i].pos = pos_kind; D.b[i].arg = arg;
         D.b_tail = n;
     } else {
         uint8_t t = D.a_tail, n = (uint8_t)(t + 1 == MUS_RING_A ? 0 : t + 1);
-        if (n == D.a_head) return;
+        if (n == D.a_head) { if ((pos_kind >> 28) == MEV_TEMPO) D.tempo_pending--; return; }
         D.a[t].pos = pos_kind; D.a[t].arg = arg;
         D.a_tail = n;
     }
@@ -138,6 +169,35 @@ void mus_drv_truncate(int r)
 {
     if (r) D.b_tail = D.b_head; else D.a_tail = D.a_head;
     if (D.a_head == D.a_tail && D.b_head == D.b_tail) D.tempo_pending = 0;
+}
+
+static void recount_tempo(void)
+{
+    uint8_t i, n = 0;
+    for (i = D.a_head; i != D.a_tail; i = (uint8_t)(i + 1 == MUS_RING_A ? 0 : i + 1))
+        n = (uint8_t)(n + (MEV_KIND(&D.a[i]) == MEV_TEMPO));
+    for (i = D.b_head; i != D.b_tail; i = (uint8_t)(i + 1 == MUS_RING_B ? 0 : i + 1))
+        n = (uint8_t)(n + (MEV_KIND(&D.b[i]) == MEV_TEMPO));
+    D.tempo_pending = n;
+}
+
+/* drop the undispatched events at or after pos (a CUT at a grid point) */
+void mus_drv_truncate_at(int r, uint32_t pos)
+{
+    if (r) {
+        while (D.b_tail != D.b_head) {
+            uint8_t p = (uint8_t)(D.b_tail ? D.b_tail - 1 : MUS_RING_B - 1);
+            if (pdiff(MEV_POS(&D.b[p]), pos) < 0) break;
+            D.b_tail = p;
+        }
+    } else {
+        while (D.a_tail != D.a_head) {
+            uint8_t p = (uint8_t)(D.a_tail ? D.a_tail - 1 : MUS_RING_A - 1);
+            if (pdiff(MEV_POS(&D.a[p]), pos) < 0) break;
+            D.a_tail = p;
+        }
+    }
+    recount_tempo();
 }
 
 void mus_drv_cut(uint32_t mask)
@@ -157,6 +217,26 @@ void mus_drv_cut(uint32_t mask)
 void mus_drv_set_tempo(uint32_t upm_q16) { D.upm = upm_q16; }
 uint32_t mus_drv_rebase(void) { D.clk_f = 0; return D.clk_u; }
 uint32_t mus_drv_clock(void) { return D.clk_u; }
+uint16_t mus_drv_clock_frac(void) { return D.clk_f; }
+uint32_t mus_drv_tempo(void) { return D.upm; }
+uint32_t mus_drv_mt(void) { return D.mt; }
+int mus_drv_vinyl_on(void) { return D.vy_on; }
+int16_t mus_drv_vinyl_speed(void) { return D.vy_speed; }
+void mus_drv_vinyl_live(int16_t speed_q8, uint8_t fader)
+{
+    D.live_speed = speed_q8;
+    D.live_fader = fader;
+}
+
+int mus_drv_muted(int deck, uint32_t pos)
+{
+    int i;
+    for (i = 0; i < MUS_WINDOWS; i++) {
+        const MuteWin *w = &D.win[i];
+        if (w->live && w->deck == deck && pdiff(pos, w->from) >= 0 && pdiff(pos, w->to) < 0) return 1;
+    }
+    return 0;
+}
 void mus_drv_written(int r, uint32_t pos) { if (!r) D.written = pos; }
 uint8_t mus_drv_take_marks(void) { uint8_t m = D.marks; D.marks = 0; return m; }
 uint32_t mus_drv_keyons(void) { return D.keyons; }
@@ -245,26 +325,30 @@ static int32_t vib_sin(int a)
 }
 
 /* ---- dispatch ------------------------------------------------------------------------- */
-static int muted(int voice, uint32_t pos)
+static int muted(int voice, uint32_t pos, int deck)
 {
     int i;
     if (!D.nwin) return 0;
     for (i = 0; i < MUS_WINDOWS; i++) {
         const MuteWin *w = &D.win[i];
-        if (w->live && (w->vmask & (1u << voice)) && pdiff(pos, w->from) >= 0 && pdiff(pos, w->to) < 0)
+        if (w->live && w->deck == deck && (w->vmask & (1u << voice)) && pdiff(pos, w->from) >= 0 &&
+            pdiff(pos, w->to) < 0)
             return 1;
     }
     return 0;
 }
 
-static void dispatch(const DoomoMusEv *e)
+static void dispatch(const DoomoMusEv *e, int ring)
 {
     uint32_t a = e->arg, pos = MEV_POS(e);
     int k = MEV_KIND(e), vi = MEV_VOICE(a);
     DrvVoice *v = vi < MUS_DRV_VOICES ? &D.v[vi] : NULL;
+#ifndef MUS_CONSOLE
+    if (mus_drv_trace) mus_drv_trace(e, ring);
+#endif
     switch (k) {
     case MEV_NOTE:
-        if (!v || muted(vi, pos)) break;
+        if (!v || muted(vi, pos, ring)) break;
         {
             const MusInst *in = inst_row(v->inst);
             int dur = MEV_NOTE_DUR(a);
@@ -283,7 +367,7 @@ static void dispatch(const DoomoMusEv *e)
         }
         break;
     case MEV_DRUM:
-        if (!v || muted(vi, pos)) break;
+        if (!v || muted(vi, pos, ring)) break;
         {
             int hit = MEV_DRUM_HIT(a);
             v->flags = (uint8_t)(DV_DRUM | DV_DIRTY | DV_KEYON);
@@ -340,9 +424,17 @@ static void dispatch(const DoomoMusEv *e)
         D.marks |= (uint8_t)(a & 0xFFu);
         break;
     case MEV_MUTE: {
-        /* M1: role_mask = driver voice mask (deck A roles are voices 0..3) */
-        int i, slot = 0;
+        /* role_mask = driver voice mask (deck A roles are voices 0..3) */
+        int i, slot = 0, deck = MEV_MUTE_DECK(a);
         uint32_t mask = (uint32_t)MEV_MUTE_MASK(a);
+        if (MEV_MUTE_LEN(a) == 0) {           /* close the deck's windows over mask */
+            for (i = 0; i < MUS_WINDOWS; i++)
+                if (D.win[i].live && D.win[i].deck == deck && (D.win[i].vmask & mask)) {
+                    D.win[i].vmask &= (uint16_t)~mask;
+                    if (!D.win[i].vmask) { D.win[i].live = 0; D.nwin--; }
+                }
+            break;
+        }
         for (i = 0; i < MUS_WINDOWS; i++) if (!D.win[i].live) { slot = i; break; }
         if (i == MUS_WINDOWS) {           /* full: replace the one ending first */
             for (i = 1; i < MUS_WINDOWS; i++) if (pdiff(D.win[i].to, D.win[slot].to) < 0) slot = i;
@@ -351,9 +443,18 @@ static void dispatch(const DoomoMusEv *e)
         D.win[slot].to = (pos + MEV_MUTE_LEN(a)) & MUS_POS_MASK;
         D.win[slot].vmask = (uint16_t)mask;
         D.win[slot].live = 1;
+        D.win[slot].deck = (uint8_t)deck;
         mus_drv_cut(mask);
         break; }
-    default:                              /* CHORD PITCH FX: M4 */
+    case MEV_FX:
+        if ((a & 15u) == MFX_VINYL_START) { D.vy_on = 1; D.vy_start = pos; D.vy_speed = 256; }
+        else if ((a & 15u) == MFX_VINYL_END) {
+            D.vy_on = 0;
+            for (vi = 0; vi < MUS_DRV_VOICES; vi++) D.v[vi].flags |= DV_DIRTY;
+            D.live = (uint8_t)((1u << MUS_DRV_VOICES) - 1u);
+        }
+        break;
+    default:                              /* CHORD PITCH: mus_var */
         break;
     }
 }
@@ -372,11 +473,12 @@ static void dispatch_due(void)
                              MEV_POS(&D.b[D.b_head]) == MEV_POS(&D.a[D.a_head]))))) {
             e = D.a[D.a_head];
             D.a_head = (uint8_t)(D.a_head + 1 == MUS_RING_A ? 0 : D.a_head + 1);
+            dispatch(&e, 0);
         } else {
             e = D.b[D.b_head];
             D.b_head = (uint8_t)(D.b_head + 1 == MUS_RING_B ? 0 : D.b_head + 1);
+            dispatch(&e, 1);
         }
-        dispatch(&e);
     }
 }
 
@@ -426,6 +528,7 @@ static void control(int i)
         if (nl <= 0) { nl = 0; v->stage = ST_OFF; }
         if (hit == KH_CLAP && t == 1) nl = d->vol * 16;
         v->env = (uint8_t)nl;
+        if (D.vy_on && i < MUS_A_VOICES) level = (level * D.vy_gain) >> 8;
         if (D.bridge && i < 4) {
             bridge_out(i, v, (t >= d->ticks_sweep || d->ticks_sweep == 0) ? d->f1 :
                        (uint16_t)(d->f0 + ((int32_t)d->f1 - d->f0) * t / d->ticks_sweep), level, WAVE_NOISE);
@@ -472,6 +575,12 @@ static void control(int i)
             mod = 1;
         }
         if (in->arp) { p += arp_tab[in->arp < MARP_COUNT ? in->arp : 0][v->arp_i & 3] * 16; mod = 1; }
+        if (D.vy_on && i < MUS_A_VOICES) {           /* the platter (CF-40: floors) */
+            int lo = D.wave[i] == WAVE_TRIANGLE || D.wave[i] == WAVE_SAW ? 180 : 372;
+            p += D.vy_pitch;
+            level = p < lo ? 0 : (level * D.vy_gain) >> 8;
+            mod = 1;
+        }
         if (p < 1) p = 1;
         if (p > 16 * 12 * 9 - 1) p = 16 * 12 * 9 - 1;
         if (mod || (v->flags & DV_DIRTY)) {
@@ -488,6 +597,16 @@ static void control(int i)
 static void frame(void)
 {
     int i;
+    if (D.vy_on) {
+        int sp, t = (int)pdiff(D.clk_u, D.vy_start), fd;
+        if (t < 0) t = 0;
+        if (mus_drv_vy.seg) { sp = mus_vinyl_speed(&mus_drv_vy, t, mus_drv_vy_seed); fd = mus_vinyl_fader(&mus_drv_vy, t); }
+        else { sp = D.live_speed; fd = D.live_fader != 0; }
+        D.vy_speed = (int16_t)sp;
+        D.vy_pitch = (int16_t)mus_vinyl_pitch(sp);
+        D.vy_gain = (uint16_t)(fd ? mus_vinyl_gain(sp) : 0);
+        D.live |= (uint8_t)MUS_ALL_A;
+    }
     if (D.master != D.master_sent) {
         D.master_sent = D.master;
         for (i = 0; i < MUS_DRV_VOICES; i++) { D.v[i].flags |= DV_DIRTY; D.live |= (uint8_t)(1u << i); }
@@ -498,6 +617,7 @@ static void frame(void)
 
 void mus_drv_tick(void)
 {
+    D.mt++;
     if (!(D.fence_on && pdiff(D.clk_u, D.fence) >= 0)) {
         uint32_t f = (uint32_t)D.clk_f + (D.upm & 0xFFFFu);
         D.clk_u = (D.clk_u + (D.upm >> 16) + (f >> 16)) & MUS_POS_MASK;
@@ -516,7 +636,7 @@ void mus_drv_tick(void)
     }
     if (++D.ctl_t >= D.ctl_mt) {
         D.ctl_t = 0;
-        if (D.live || D.master != D.master_sent) frame();
+        if (D.live || D.master != D.master_sent || D.vy_on) frame();
     }
 }
 
@@ -534,6 +654,7 @@ void mus_drv_run(int n)
         while (n-- > 0) mus_drv_tick();
         return;
     }
+    D.mt += (uint32_t)n;
     {
         uint32_t f = (uint32_t)D.clk_f + (D.upm & 0xFFFFu) * (uint32_t)n;
         D.clk_u = (D.clk_u + (D.upm >> 16) * (uint32_t)n + (f >> 16)) & MUS_POS_MASK;
@@ -545,5 +666,5 @@ void mus_drv_run(int n)
         for (i = 0; i < MUS_WINDOWS; i++)
             if (D.win[i].live && pdiff(D.clk_u, D.win[i].to) >= 0) { D.win[i].live = 0; D.nwin--; }
     }
-    if (D.live || D.master != D.master_sent) frame();
+    if (D.live || D.master != D.master_sent || D.vy_on) frame();
 }

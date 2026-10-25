@@ -12,6 +12,7 @@
 #include "test.h"
 #include "../src/audio_int.h"
 #include "../src/mus_int.h"
+#include "data/mus_testbank.h"
 
 static const uint16_t t4_len[16] = MUS_LEN_TAB_INIT;
 
@@ -62,36 +63,51 @@ static long lane_units(const uint8_t *pack, unsigned plen, unsigned off, char *w
     return -1;
 }
 
-TEST(music_t4_the_bank_is_well_formed)
+/* every cue and stinger of the current bank (mus_bank_use): header fields,
+ * offsets, edges and the lanes of every node - the variants of a GEN node
+ * too - summing to the node's length */
+static void check_bank(void)
 {
     const MusBank *b = mus_bank();
-    const MusDirEnt *dir = (const MusDirEnt *)(const void *)(doomo_mus_bank + b->dir_off);
+    const uint8_t *B = (const uint8_t *)(const void *)b;
+    const MusDirEnt *dir = (const MusDirEnt *)(const void *)(B + b->dir_off);
     int e, last_id = -1;
     char why[160];
     CHECK_EQ(b->magic, MUS_BANK_MAGIC);
-    CHECK(b->n_cues >= MC_CLASSIC_COUNT);
     CHECK(b->inst_off + 20u * b->n_inst <= b->total);
     for (e = 0; e < b->n_cues + b->n_stings; e++) {
         const MusDirEnt *d = &dir[e];
         MusCueView cv;
         int n, r;
         CHECK_MSG(d->off % 4 == 0 && d->off + d->len <= b->total, "dir %d out of the bank", e);
-        if (e < b->n_cues) { CHECK_MSG((int)d->id > last_id, "directory not sorted at %d", e); last_id = d->id; }
-        if (e >= b->n_cues) continue;
-        CHECK(mus_bank_cue(d->id, &cv));
+        if (e == b->n_cues) last_id = -1;
+        CHECK_MSG((int)d->id > last_id, "directory not sorted at %d", e);
+        last_id = d->id;
+        if (e < b->n_cues) {
+            if (MUS_DIR_KIND(d) != MDK_CUE && MUS_DIR_KIND(d) != MDK_LEGACY) continue;
+            if (!mus_bank_cue(d->id, &cv)) { CHECK_MSG(0, "cue %d not found", d->id); continue; }
+        } else {
+            if (!mus_bank_sting(d->id, &cv)) { CHECK_MSG(0, "sting %d not found", d->id); continue; }
+            CHECK(cv.sting != NULL);
+        }
         CHECK(cv.cue->n_roles <= 12 && cv.cue->n_nodes >= 1 && cv.cue->n_nodes <= 32);
         CHECK(cv.cue->entry < cv.cue->n_nodes && cv.cue->reentry < cv.cue->n_nodes);
         CHECK(cv.cue->tag < cv.cue->n_nodes);
         CHECK(cv.cue->meter >= 1 && cv.cue->bpm >= 30);
         CHECK((unsigned)cv.cue->common_off + cv.cue->common_len <= cv.len);
         for (r = 0; r < cv.cue->n_roles; r++) CHECK(cv.roles[r].inst < b->n_inst);
+        for (r = 0; r < cv.cue->n_binds; r++) CHECK(cv.binds[r].param < MP_COUNT);
         for (n = 0; n < cv.cue->n_nodes; n++) {
             const MusNode *nd = &cv.nodes[n];
             const uint8_t *pack = cv.blob + nd->pack_off;
             long want = (long)nd->bars * cv.cue->meter * MUS_UPQ;
-            CHECK_MSG((unsigned)nd->pack_off + nd->pack_len <= cv.len && nd->pack_len <= MUS_PACK_MAX,
+            int k;
+            CHECK_MSG((unsigned)nd->pack_off + nd->pack_len <= cv.len &&
+                      ((pack[1] & MNP_VARIANTS) || nd->pack_len <= MUS_PACK_MAX),
                       "cue %d node %d pack out of bounds", d->id, n);
-            CHECK(nd->n_edge >= 1 && nd->edge0 < cv.cue->n_edges && cv.edges[nd->edge0].to < cv.cue->n_nodes);
+            CHECK(nd->n_edge >= 1 && nd->edge0 + nd->n_edge <= cv.cue->n_edges);
+            for (k = nd->edge0; k < nd->edge0 + nd->n_edge && k < cv.cue->n_edges; k++)
+                CHECK(cv.edges[k].to < cv.cue->n_nodes);
             for (r = 0; r < pack[0] && r < cv.cue->n_roles; r++) {
                 unsigned off = rd16(pack + 2 + 2 * r);
                 long got;
@@ -101,8 +117,164 @@ TEST(music_t4_the_bank_is_well_formed)
                 CHECK_MSG(got == want, "cue %d (%s) node %d role %d: %ld units, want %ld %s", d->id,
                           music_cue_name(d->id), n, r, got, want, got < 0 ? why : "");
             }
+            if (pack[1] & MNP_VARIANTS) {                /* MusVarDir + the variants */
+                const uint8_t *vd = pack + rd16(pack + 2 + 2 * pack[0]);
+                int nv = vd[0], v, owned = 0;
+                unsigned mask = rd16(vd + 2);
+                for (r = 0; r < 16; r++) owned += (mask >> r) & 1;
+                CHECK(nv >= 1 && nv <= 8 && vd[1] >= 1 && owned >= 1);
+                for (v = 0; v < nv && v < 8; v++) {
+                    const uint8_t *vb = pack + rd16(vd + 4 + 2 * v);
+                    int kv = (vb[0] & 1) ? nd->bars * 2 : 0, j;
+                    CHECK((vb[0] >> 4) < vd[1]);
+                    for (j = 0; j < owned; j++) {
+                        unsigned off = rd16(vb + 1 + kv + 2 * j);
+                        long got;
+                        if (!off) continue;
+                        got = lane_units(pack, nd->pack_len, off, why, sizeof(why));
+                        CHECK_MSG(got == want, "cue %d node %d variant %d lane %d: %ld units, want %ld %s", d->id,
+                                  n, v, j, got, want, got < 0 ? why : "");
+                    }
+                }
+            }
         }
     }
+}
+
+TEST(music_t4_the_bank_is_well_formed)
+{
+    CHECK(mus_bank()->n_cues >= MC_CLASSIC_COUNT);
+    check_bank();
+}
+
+/* the test bank (core/tests/music: mmlc's authored cues and stingers) */
+TEST(music_t4_the_test_bank_is_well_formed)
+{
+    MusCueView cv;
+    const MusTrans *t;
+    mus_bank_use(mus_testbank);
+    check_bank();
+    CHECK_EQ(mus_bank()->n_stings, 2);
+    CHECK(mus_bank_cue(MCT_HUB, &cv));
+    CHECK_EQ(cv.cue->n_nodes, 4);
+    CHECK(cv.nodes[0].flags & MNF_ANCHOR);
+    CHECK(cv.nodes[3].flags & MNF_BREAKDOWN);
+    CHECK(cv.blob[cv.nodes[2].pack_off + 1] & MNP_VARIANTS);      /* node C: the GEN slot */
+    CHECK_EQ(cv.cue->n_binds, 1);
+    CHECK(mus_bank_sting(STGT_TADA, &cv));
+    CHECK_EQ(cv.sting->prio, 2);
+    CHECK(mus_bank_sting(STGT_HIT, &cv));
+    CHECK_EQ(cv.sting->hit_units, 0);
+    t = mus_trans_find(MCT_HUB, MCT_TWO);
+    CHECK(t && t->type == MTT_FILL);
+    t = mus_trans_find(MCT_TWO, MCT_HUB);
+    CHECK(t && t->type == MTT_VINYL && t->arg == VINYL_NEEDLE);
+    mus_bank_use(NULL);
+}
+
+/* M1.5: the shared banks (MU4d, core/music/common) - every index and
+ * record inside the bank, the 16 vinyl patterns + the crackle toggle, the
+ * motif and instrument locks, sorted transitions, the turnaround table and
+ * the synth SFX imported from audio_fx.c (D14, CF-3) */
+static int in_bank(uint32_t off, uint32_t len) { return off && off + len <= mus_bank()->total; }
+
+TEST(music_t4_the_shared_banks_are_in_bounds)
+{
+    const MusBank *b = mus_bank();
+    const uint8_t *B = doomo_mus_bank;
+    const uint32_t *misc;
+    const MusDirEnt *dir = (const MusDirEnt *)(const void *)(B + b->dir_off);
+    int i, sfx = 0;
+    CHECK(in_bank(b->misc_off, 4u * MUS_MISC_COUNT));
+    misc = (const uint32_t *)(const void *)(B + b->misc_off);
+    CHECK_EQ(b->n_inst, INST_BED_FIREWORKS + 1);               /* 24 classic + the shared bank */
+    /* comps: u16 index from the section start, then 4 + 2 per event */
+    CHECK(b->n_comp >= 16 && in_bank(b->comp_off, 2u * b->n_comp));
+    for (i = 0; i < b->n_comp; i++) {
+        unsigned o = rd16(B + b->comp_off + 2 * i);
+        const MusComp *c = (const MusComp *)(const void *)(B + b->comp_off + o);
+        CHECK_MSG(o && in_bank(b->comp_off + o, 4u) && in_bank(b->comp_off + o, 4u + 2u * c->n_ev), "comp %d", i);
+        CHECK_MSG(c->n_ev >= 1 && c->len_beats >= 1 && c->len_beats <= 8 && c->pad, "comp %d header", i);
+    }
+    /* grooves: 64 B each; steps 12 or 16; hits are KH_* */
+    CHECK(b->n_groove >= 8 && in_bank(b->groove_off, 64u * b->n_groove));
+    for (i = 0; i < b->n_groove; i++) {
+        const MusGroove *g = (const MusGroove *)(const void *)(B + b->groove_off) + i;
+        int r;
+        CHECK_MSG(g->kit < KIT_COUNT && (g->steps == 12 || g->steps == 16), "groove %d", i);
+        for (r = 0; r < 6; r++) CHECK_MSG(g->hit[r] < KH_COUNT, "groove %d row %d", i, r);
+    }
+    /* fills, motifs, vinyl: u16 index (0 = absent) + records */
+    {
+        static const int kinds[3] = { MUS_MISC_FILLS, MUS_MISC_MOTIFS, MUS_MISC_VINYL };
+        const int counts[3] = { b->n_fill, b->n_motif, b->n_vinyl };
+        int k;
+        for (k = 0; k < 3; k++) {
+            uint32_t sec = misc[kinds[k]];
+            CHECK_MSG(in_bank(sec, 2u * (uint32_t)counts[k]), "misc table %d", kinds[k]);
+            for (i = 0; i < counts[k]; i++) {
+                unsigned o = rd16(B + sec + 2 * i);
+                const uint8_t *rec = B + sec + o;
+                uint32_t len;
+                if (!o) continue;
+                len = kinds[k] == MUS_MISC_FILLS ? 2u + 2u * rec[0] :
+                      kinds[k] == MUS_MISC_MOTIFS ? 4u + 2u * rec[0] : 4u + 4u * rec[0];
+                CHECK_MSG(in_bank(sec + o, len), "misc table %d record %d", kinds[k], i);
+            }
+        }
+        CHECK_EQ(b->n_motif, MOTIF_GOODBYE + 1);
+        for (i = 0; i <= MOTIF_GOODBYE; i++) {
+            unsigned o = rd16(B + misc[MUS_MISC_MOTIFS] + 2 * i);
+            const MusMotif *m = (const MusMotif *)(const void *)(B + misc[MUS_MISC_MOTIFS] + o);
+            CHECK_MSG(o && m->n_note >= 1 && m->head <= m->n_note, "motif %d", i);   /* BEEP_EGG is one note */
+        }
+        CHECK_EQ(b->n_vinyl, VINYL_TAPESTOP + 1);
+        for (i = 1; i <= VINYL_TAPESTOP; i++) {
+            unsigned o = rd16(B + misc[MUS_MISC_VINYL] + 2 * i);
+            const MusVinyl *v = (const MusVinyl *)(const void *)(B + misc[MUS_MISC_VINYL] + o);
+            CHECK_MSG(o, "vinyl %d has no pattern", i);
+            CHECK_MSG(i == VINYL_CRACKLE ? v->n_seg == 0 : v->n_seg >= 1, "vinyl %d: %d segments", i, v->n_seg);
+            CHECK_MSG(v->pad <= AFTER_NEXT_CUE, "vinyl %d after", i);
+        }
+    }
+    /* transitions: sorted by (from, to), the (*, *) row present */
+    CHECK(b->n_trans >= 1 && in_bank(misc[MUS_MISC_TRANS], 8u * b->n_trans));
+    {
+        const MusTrans *t = (const MusTrans *)(const void *)(B + misc[MUS_MISC_TRANS]);
+        int any = 0;
+        for (i = 0; i < b->n_trans; i++) {
+            if (i) CHECK_MSG(t[i - 1].from < t[i].from || (t[i - 1].from == t[i].from && t[i - 1].to < t[i].to),
+                             "transitions not sorted at %d", i);
+            CHECK(t[i].grid < MQ_COUNT && t[i].type <= MTT_SYNC);
+            any |= t[i].from == 0xFF && t[i].to == 0xFF;
+        }
+        CHECK(any);
+    }
+    /* turnarounds: header, cadence bitmaps per family, the MusTurn rows */
+    {
+        const uint8_t *tt = B + misc[MUS_MISC_TURNS];
+        CHECK(in_bank(misc[MUS_MISC_TURNS], 4u));
+        CHECK(tt[0] >= 8 && tt[1] == 3);
+        CHECK(in_bank(misc[MUS_MISC_TURNS], 4u + (uint32_t)tt[1] * MUS_CAD_BYTES + 8u * tt[0]));
+        for (i = 0; i < tt[0]; i++) {
+            const MusTurn *u = (const MusTurn *)(const void *)(tt + 4 + tt[1] * MUS_CAD_BYTES) + i;
+            CHECK_MSG(u->bands && u->targets && u->weight, "turnaround %d", i);
+        }
+    }
+    /* the synth SFX: one MDK_SFX cue per audio_fx.c recipe, segments verbatim */
+    for (i = 0; i < b->n_cues; i++) {
+        MusCueView cv;
+        const uint8_t *c;
+        int s;
+        if (MUS_DIR_KIND(&dir[i]) != MDK_SFX) continue;
+        sfx++;
+        CHECK(mus_bank_cue(dir[i].id, &cv));
+        CHECK(dir[i].id >= MC_SFX_SCRATCH && dir[i].id <= 255);
+        c = cv.blob + cv.cue->common_off;
+        CHECK_MSG(c[0] >= 1 && cv.cue->common_len == 1 + 6 * c[0], "sfx cue %d common", dir[i].id);
+        for (s = 0; s < c[0]; s++) CHECK_MSG(c[1 + 6 * s + 1] >= 1, "sfx cue %d segment %d", dir[i].id, s);
+    }
+    CHECK_EQ(sfx, SFX_SYNTH_COUNT);
 }
 
 TEST(music_t4_every_song_has_its_cue)

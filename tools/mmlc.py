@@ -1007,6 +1007,1347 @@ def inst_row(r):
     return bytes(row)
 
 
+# ==== .dms sources: the shared banks (MU4d), seams and GEN (M1.5) =====================
+# docs/design/music/SPEC.md sec.5, 7.2, 8.3, 13, 14, 16. Byte layouts are
+# documented in core/include/doomo/mus_data.h ("shared bank layouts").
+TIMBRES = ['PULSE', 'PWM', 'SAW', 'SYNC_SAW', 'TRI', 'TRI4', 'SINE', 'WT_ORGAN', 'WT_POWER5',
+           'WT_VOWEL_A', 'WT_VOWEL_O', 'WT_VOWEL_E', 'WT_GROWL', 'WT_BELL', 'WT_GROSS', 'NOISE15',
+           'NOISE7', 'KIT_TOY', 'KIT_BONES', 'KIT_808', 'KIT_PLUSH', 'KIT_FORGE', 'KIT_CLASSIC',
+           'CHOIR_AAH', 'CHOIR_OOH', 'CHOP_BABBLE', 'CRACKLE', 'PIEZO', 'STREAM']
+MARPS = ['NONE', 'MAJOR', 'MINOR', 'OCTAVE', 'POWER', 'SUS4', 'DIM', 'MAJ7', 'TRILL']
+KITS = ['TOY', 'BONES', '808', 'PLUSH', 'FORGE', 'CLASSIC']
+KHITS = {'K': 1, 'S': 2, 'H': 3, 'O': 4, 'C': 5, 'T': 6, 'P': 7}
+MODES = ['major', 'minor', 'harmonic', 'dorian', 'phrygian', 'mixolydian']
+MODE_STEPS = [[0, 2, 4, 5, 7, 9, 11], [0, 2, 3, 5, 7, 8, 10], [0, 2, 3, 5, 7, 8, 11],
+              [0, 2, 3, 5, 7, 9, 10], [0, 1, 3, 5, 7, 8, 10], [0, 2, 4, 5, 7, 9, 10]]
+TONICS = {'C': 0, 'C#': 1, 'Db': 1, 'D': 2, 'D#': 3, 'Eb': 3, 'E': 4, 'F': 5, 'F#': 6, 'Gb': 6,
+          'G': 7, 'G#': 8, 'Ab': 8, 'A': 9, 'A#': 10, 'Bb': 10, 'B': 11}
+QUALS = ['MAJ', 'MIN', 'DIM', 'AUG', 'SUS2', 'SUS4', 'DOM7', 'MAJ7', 'MIN7', 'HDIM7', 'DIM7',
+         'MMAJ7', 'POWER', 'ADD9', 'MIN9', 'SIX']
+QUAL_IV = {'MAJ': (0, 4, 7), 'MIN': (0, 3, 7), 'DIM': (0, 3, 6), 'AUG': (0, 4, 8), 'SUS2': (0, 2, 7),
+           'SUS4': (0, 5, 7), 'DOM7': (0, 4, 7, 10), 'MAJ7': (0, 4, 7, 11), 'MIN7': (0, 3, 7, 10),
+           'HDIM7': (0, 3, 6, 10), 'DIM7': (0, 3, 6, 9), 'MMAJ7': (0, 3, 7, 11), 'POWER': (0, 7),
+           'ADD9': (0, 4, 7, 2), 'MIN9': (0, 3, 7, 10, 2), 'SIX': (0, 4, 7, 9)}
+# chord-name suffixes in `chords` lines (musgen writes these)
+CHORD_SUFFIX = {'': 'MAJ', 'm': 'MIN', 'dim': 'DIM', 'aug': 'AUG', 'sus2': 'SUS2', 'sus4': 'SUS4',
+                '7': 'DOM7', 'maj7': 'MAJ7', 'm7': 'MIN7', 'm7b5': 'HDIM7', 'dim7': 'DIM7',
+                'mmaj7': 'MMAJ7', '5': 'POWER', 'add9': 'ADD9', 'm9': 'MIN9', '6': 'SIX'}
+CLASS_OF = {'MAJ': 0, 'MAJ7': 0, 'ADD9': 0, 'SIX': 0, 'SUS2': 0, 'MIN': 1, 'MIN7': 1, 'MIN9': 1,
+            'MMAJ7': 1, 'DOM7': 2, 'AUG': 2, 'DIM': 3, 'HDIM7': 3, 'DIM7': 3, 'SUS4': 3, 'POWER': 3}
+CAD_FAMILIES = ['MAJOR', 'MINOR', 'METAL']
+CAD_OUT = ['MAJ', 'MIN', 'DOM', 'OTHER']
+CAD_IN = {'MAJ': 0, 'MIN': 1, 'DOM': 2, 'OTHER': 3}
+GRIDS = ['NOW', '16TH', 'BEAT', 'BAR', 'PHRASE', 'NODE_END', 'MARKER']
+TTYPES = ['CUT', 'CROSS', 'FILL', 'PICKUP', 'BRIDGE', 'PIVOT', 'VINYL', 'SILENCE', 'SYNC']
+TFLAGS = {'tempo_ramp': 1, 'keep_tempo': 2, 'duck': 4, 'fast_morph': 8}
+COMP_FAMILIES = ['ARP', 'STAB', 'ALBERTI', 'PAD', 'ROOT5', 'WALK', 'GALLOP', 'CHUG', 'PEDAL',
+                 'OCTAVE', 'CHARLESTON', 'WALTZ']
+COMP_TONES = {'R': 0, '3': 1, '5': 2, '7': 3, "R'": 4, "3'": 5, "5'": 6, 'C': 7, 'R,': 8, '5,': 9,
+              'A': 10, 'N': 11, '~': 12, '9': 13}
+GENT = ['SENTENCE', 'PERIOD', 'ANSWER', 'DEV', 'BUILD', 'TAG']
+CADS = ['PAC', 'HC', 'DC', 'PLAGAL', 'AEOL']
+VFADERS = ['open', 'closed', 'chirp', 'gate32', 'flare']
+VCURVES = ['lin', 'ease', 'exp', 'sin']
+VFLAGS = {'tape': 1, 'zip': 2, 'crackle': 4, 'clicks': 8, 'snap': 16, 'silence': 32, 'loop': 64}
+VFRAMES = 128
+AFTERS = ['DEFAULT', 'RESUME', 'CONTINUE', 'STOP', 'NEXT_CUE']
+
+
+def dms_blocks(path):
+    """-> [(line_no, head_text, [(line_no, sub_text)])]: '#' comments go,
+    indented lines belong to the block above."""
+    out = []
+    with open(path, encoding='ascii') as f:
+        for ln, raw in enumerate(f, 1):
+            line = raw.split('#', 1)[0].rstrip()
+            if not line.strip():
+                continue
+            if line[0] in ' \t':
+                if not out:
+                    raise MmlcError('%s:%d: an indented line outside a block' % (path, ln))
+                out[-1][2].append((ln, line.strip()))
+            else:
+                out.append((ln, line.strip(), []))
+    return out
+
+
+def kv(tokens, where):
+    """key=value tokens -> dict; bare words -> True."""
+    d = {}
+    for t in tokens:
+        if '=' in t:
+            k, v = t.split('=', 1)
+            d[k] = v
+        else:
+            d[t] = True
+    return d
+
+
+def split_colon(text):
+    """`HEAD : BODY` (the colon stands alone, so key=C:major is safe)"""
+    m = re.search(r'\s:(\s|$)', text)
+    if not m:
+        return text, ''
+    return text[:m.start()], text[m.end():].strip()
+
+
+def bands_mask(s, where):
+    m = re.match(r'^S([0-4])(?:\.\.S([0-4]))?$', s)
+    if not m:
+        raise MmlcError('%s: bad bands %r (S0..S4)' % (where, s))
+    lo, hi = int(m.group(1)), int(m.group(2) if m.group(2) else m.group(1))
+    return sum(1 << b for b in range(lo, hi + 1))
+
+
+def mml_len_units(tok, deflen):
+    """an MML length suffix ('8.', '4', '', '12') -> units"""
+    m = re.match(r'^(\d*)(\.*)$', tok)
+    if not m:
+        raise MmlcError('bad length %r' % tok)
+    u = WHOLE // int(m.group(1)) if m.group(1) else deflen
+    add = u
+    for _ in m.group(2):
+        add //= 2
+        u += add
+    return u
+
+
+def len_index(u, where):
+    if u not in LEN_TAB:
+        raise MmlcError('%s: length %d units is not in LEN_TAB %s' % (where, u, LEN_TAB))
+    return LEN_TAB.index(u)
+
+
+def mml_voice(text, where):
+    """One MML voice -> [(pos, units, key or None)] (None = rest)."""
+    items, ends, c = simulate(text, 0, 1)
+    out = []
+    for it in items:
+        if it['k'] == 'N':
+            out.append((it['pos'], sum(it['pieces']), it['key']))
+        elif it['k'] in 'RX':
+            out.append((it['pos'], it['len'], None))
+        elif it['k'] == 'D':
+            raise MmlcError('%s: a drum letter in a pitched lane' % where)
+    return out, (ends[0][0] if ends else 0)
+
+
+# ---- instruments ---------------------------------------------------------------------
+def psg_env_fit(r):
+    """GBA NRx2 (initial volume 4 | direction 1 | step 3) for a row the PSG
+    envelope can play exactly: no attack and a decay to 0 (or none). Else 0
+    (the soft envelope: volume writes per control frame)."""
+    if r['attack'] or r['flags_soft']:
+        return 0
+    if r['decay'] == 0:
+        return (r['level'] << 4) if r['sustain'] >= r['level'] else 0
+    if r['sustain'] != 0:
+        return 0
+    # our decay: d/16 levels per 30 Hz frame; NRx2: one level per n/64 s
+    best = None
+    for n in range(1, 8):
+        err = abs(64 * 16 - 30 * r['decay'] * n)
+        if best is None or err < best[0]:
+            best = (err, n)
+    return (r['level'] << 4) | best[1]
+
+
+def spu_env_time(rate, increase, exponential, start, target):
+    """PS1 ADSR samples (44.1 kHz) from start to target at a rate (psx-spx)."""
+    shift, step = rate >> 2, rate & 3
+    lvl, t = start, 0
+    for _ in range(200000):
+        if (increase and lvl >= target) or (not increase and lvl <= target):
+            return t
+        cyc = 1 << max(0, shift - 11)
+        st = (7 - step) if increase else (-8 + step)
+        st <<= max(0, 11 - shift)
+        if exponential and increase and lvl > 0x6000:
+            cyc *= 4
+        if exponential and not increase:
+            st = st * lvl // 0x8000
+            if st == 0:
+                st = -1
+        lvl += st
+        t += cyc
+        if t > 44100 * 30:
+            return t
+    return t
+
+
+def spu_adsr_fit(r):
+    """(adsr1, adsr2) closest in time to the row's envelope (30 Hz frames)."""
+    peak = 0x7FFF
+    sus_l = r['sustain'] * 0x7FFF // 15 if r['level'] else 0
+    # attack: frames -> samples
+    at = r['attack'] * 1470
+    ar = 0
+    if at:
+        ar = min(range(0x7F), key=lambda q: abs(spu_env_time(q, True, False, 0, peak) - at))
+    # decay: exponential, shift 0..15 (rate = shift << 2)
+    if r['decay'] and r['sustain'] < r['level']:
+        frames = (r['level'] - r['sustain']) * 16 // max(1, r['decay'])
+        dt = frames * 1470
+        dr = min(range(16), key=lambda q: abs(spu_env_time(q << 2, False, True, peak, max(sus_l, 0x10)) - dt))
+    else:
+        dr = 0
+    sl = min(15, max(0, (sus_l + 0x400) // 0x800 - 1)) if sus_l else 0
+    # release: exponential, shift 0..31
+    rel_frames = (max(1, r['sustain'] if r['sustain'] else r['level']) * 16) // max(1, r['release'])
+    rt = rel_frames * 1470
+    rr = min(range(32), key=lambda q: abs(spu_env_time(q << 2, False, True, max(sus_l, 0x800), 0x10) - rt))
+    adsr1 = (ar << 8) | (dr << 4) | sl            # attack linear (bit 15 = 0)
+    adsr2 = (0x7F << 6) | 0x20 | rr               # sustain: hold (slowest), release exponential
+    if r['sustain'] == 0:
+        adsr2 = (1 << 15) | (1 << 14) | (0x60 << 6) | 0x20 | rr   # sustain decays (exp)
+    return adsr1 & 0xFFFF, adsr2 & 0xFFFF
+
+
+def read_insts_dms(path):
+    rows = []
+    names = set()
+    for ln, head, subs in dms_blocks(path):
+        t = head.split()
+        where = '%s:%d' % (os.path.basename(path), ln)
+        if t[0] != 'inst' or len(t) < 2 or subs:
+            raise MmlcError('%s: expected `inst NAME key=value ...`' % where)
+        name = t[1]
+        if name in names:
+            raise MmlcError('%s: instrument %s defined twice' % (where, name))
+        names.add(name)
+        d = kv(t[2:], where)
+        tim = str(d.get('timbre', 'PULSE')).split('/')
+        if tim[0] not in TIMBRES or (len(tim) > 1 and tim[1] not in TIMBRES):
+            raise MmlcError('%s: unknown timbre %r' % (where, d.get('timbre')))
+        vib = [int(x) for x in str(d.get('vib', '0,0,0')).split(',')]
+        if len(vib) != 3:
+            raise MmlcError('%s: vib=DEPTH,SPEED,DELAY' % where)
+        arp = str(d.get('arp', 'NONE'))
+        if arp not in MARPS:
+            raise MmlcError('%s: unknown arp %s' % (where, arp))
+        r = {'name': name, 'timbre': TIMBRES.index(tim[0]),
+             'alt': TIMBRES.index(tim[1] if len(tim) > 1 else tim[0]),
+             'tparam': int(d.get('duty', 16)), 'attack': int(d.get('atk', 0)),
+             'decay': int(d.get('dec', 0)), 'sustain': int(d.get('sus', 15)),
+             'release': int(d.get('rel', 8)), 'level': int(d.get('lvl', 12)),
+             'gate': int(d.get('gate', 7)), 'vib_depth': vib[0], 'vib_speed': vib[1],
+             'vib_delay': vib[2], 'arp': MARPS.index(arp), 'sweep': int(d.get('sweep', 0)),
+             'flags_soft': 'psg' in d and d['psg'] == 'SOFT'}
+        if tim[0].startswith('KIT_'):
+            r.update({'decay': 0, 'sustain': 15, 'release': 8, 'level': 15, 'gate': 8})
+        for k, lo, hi in (('sustain', 0, 15), ('level', 0, 15), ('gate', 1, 8), ('sweep', -128, 127),
+                          ('attack', 0, 255), ('decay', 0, 255), ('release', 0, 255), ('tparam', 0, 255)):
+            if not lo <= r[k] <= hi:
+                raise MmlcError('%s: %s=%d outside %d..%d' % (where, k, r[k], lo, hi))
+        rows.append(r)
+    return rows
+
+
+def inst_row_dms(r):
+    a1, a2 = spu_adsr_fit(r)
+    row = [r['timbre'], r['alt'], r['attack'], r['decay'], r['sustain'], r['release'], r['level'],
+           r['gate'], r['vib_depth'], r['vib_speed'], r['vib_delay'], r['arp'], r['sweep'] & 0xFF,
+           r['tparam'], psg_env_fit(r), MIF_ENV30] + u16(a1) + u16(a2)
+    return bytes(row)
+
+
+# ---- motifs ------------------------------------------------------------------------------
+def parse_key(s, where):
+    m = re.match(r'^([A-G][#b]?):([a-z]+)$', s)
+    if not m or m.group(1) not in TONICS or m.group(2) not in MODES:
+        raise MmlcError('%s: bad key %r (TONIC:mode)' % (where, s))
+    return TONICS[m.group(1)], MODES.index(m.group(2))
+
+
+def degree_of(key, tonic_key, mode):
+    """MIDI-ish key -> (degree from tonic_key, chromatic -1/0/+1)."""
+    rel = key - tonic_key
+    oct_, pc = rel // 12, rel % 12
+    steps = MODE_STEPS[mode]
+    if pc in steps:
+        return oct_ * 7 + steps.index(pc), 0
+    if (pc - 1) % 12 in steps:                     # a raised degree (f+ in C)
+        return oct_ * 7 + steps.index((pc - 1) % 12) + (7 if pc - 1 < 0 else 0), 1
+    return oct_ * 7 + steps.index((pc + 1) % 12) + (7 if pc + 1 >= 12 else 0), -1
+
+
+def read_motifs_dms(path, lockmap):
+    recs = {}
+    for ln, head, subs in dms_blocks(path):
+        where = '%s:%d' % (os.path.basename(path), ln)
+        left, mml = split_colon(head)
+        t = left.split()
+        if t[0] != 'motif' or len(t) < 2 or subs:
+            raise MmlcError('%s: expected `motif NAME key=K:mode head=N : MML`' % where)
+        name = 'MOTIF_' + t[1]
+        if name not in lockmap:
+            raise MmlcError('%s: %s has no lock in common.lock (append it)' % (where, name))
+        d = kv(t[2:], where)
+        tonic, mode = parse_key(str(d.get('key', 'C:major')), where)
+        notes, total = mml_voice(mml, where)
+        first = next((k for (_, _, k) in notes if k is not None), None)
+        if first is None:
+            raise MmlcError('%s: a motif needs a note' % where)
+        tonic_key = first - ((first - tonic) % 12)       # the tonic at or below the first note
+        body = []
+        for (pos, u, k) in notes:
+            li = len_index(u, where)
+            if k is None:
+                body += [0, li | 0x40]
+                continue
+            deg, acc = degree_of(k, tonic_key, mode)
+            if not -64 <= deg <= 63:
+                raise MmlcError('%s: degree %d out of range' % (where, deg))
+            body += [deg & 0xFF, li | ({0: 0, 1: 1, -1: 2}[acc] << 4) | (0x80 if 'glide' in d else 0)]
+        head_n = int(d.get('head', 0))
+        n = len(body) // 2
+        if head_n > n:
+            raise MmlcError('%s: head %d > %d notes' % (where, head_n, n))
+        modeb = mode | (0x40 if 'fixed' in d else 0) | (0x80 if 'glide' in d else 0)
+        recs[lockmap[name]] = bytes([n, head_n, modeb, tonic] + body)
+    return recs
+
+
+# ---- comps, grooves, fills ----------------------------------------------------------------------
+TOK_RE = re.compile(r"(R'|3'|5'|R,|5,|[R3579CAN~r])(\d*\.*)")
+
+
+def read_comps_dms(path):
+    recs, names = [], {}
+    for ln, head, subs in dms_blocks(path):
+        where = '%s:%d' % (os.path.basename(path), ln)
+        left, body = split_colon(head)
+        t = left.split()
+        if t[0] != 'comp' or len(t) < 2 or subs:
+            raise MmlcError('%s: expected `comp NAME role=.. family=.. bands=.. : TONES`' % where)
+        d = kv(t[2:], where)
+        fam = str(d.get('family', ''))
+        if fam not in COMP_FAMILIES:
+            raise MmlcError('%s: family must be one of %s' % (where, ' '.join(COMP_FAMILIES)))
+        meter = int(d.get('meter', 4))
+        deflen, pos, ev = 24, 0, []
+        for w in body.split():
+            if w == '|':
+                continue
+            m = re.match(r'^l(\d+\.*)$', w)
+            if m:
+                deflen = mml_len_units(m.group(1), deflen)
+                continue
+            m = TOK_RE.match(w)
+            if not m or m.end() != len(w):
+                raise MmlcError('%s: bad comp token %r' % (where, w))
+            u = mml_len_units(m.group(2), deflen)
+            if m.group(1) != 'r':
+                if pos % 4:
+                    raise MmlcError('%s: onset %d is not on the 1/12-beat grid' % (where, pos))
+                ev += [pos // 4, (COMP_TONES[m.group(1)] << 4) | len_index(u, where)]
+            pos += u
+        if pos != meter * 48:
+            raise MmlcError('%s: comp %s lasts %d units, a bar is %d' % (where, t[1], pos, meter * 48))
+        if t[1] in names:
+            raise MmlcError('%s: comp %s defined twice' % (where, t[1]))
+        flags = COMP_FAMILIES.index(fam) | (16 if d.get('role') == 'bass' else 0) | \
+            (32 if 'voicelead' in d else 0) | (64 if 'swing' in d else 0)
+        names[t[1]] = len(recs)
+        recs.append(bytes([len(ev) // 2, flags, meter, bands_mask(str(d.get('bands', 'S0..S4')), where)] + ev))
+    return recs, names
+
+
+def read_grooves_dms(path):
+    recs, names = [], {}
+    for ln, head, subs in dms_blocks(path):
+        where = '%s:%d' % (os.path.basename(path), ln)
+        t = head.split()
+        if t[0] != 'groove' or len(t) < 2:
+            raise MmlcError('%s: expected `groove NAME kit=.. bands=..` + rows' % where)
+        d = kv(t[2:], where)
+        kit = str(d.get('kit', 'CLASSIC'))
+        if kit not in KITS:
+            raise MmlcError('%s: kit must be one of %s' % (where, ' '.join(KITS)))
+        steps = int(d.get('steps', 16))
+        if steps not in (12, 16) or not 1 <= len(subs) <= 6:
+            raise MmlcError('%s: steps 12 or 16, 1-6 rows' % where)
+        hit, imin, prob = [0] * 6, [0] * 6, [0] * 48
+        for r, (sl, row) in enumerate(subs):
+            w = row.split()
+            digits = ''.join(w[2:])
+            if w[0] not in KHITS or not w[1].isdigit() or len(digits) != steps or \
+                    not re.match(r'^[0-9a-f]+$', digits):
+                raise MmlcError('%s:%d: a row is `HIT I` + %d hex digits' % (os.path.basename(path), sl, steps))
+            hit[r], imin[r] = KHITS[w[0]], int(w[1])
+            for s, ch in enumerate(digits):
+                prob[r * 8 + s // 2] |= int(ch, 16) << (4 * (s & 1))
+        flags = (1 if 'ghosts' in d else 0) | (2 if 'halftime' in d else 0) | (4 if 'blast' in d else 0) | \
+            (bands_mask(str(d.get('bands', 'S0..S4')), where) << 3)
+        if t[1] in names:
+            raise MmlcError('%s: groove %s defined twice' % (where, t[1]))
+        names[t[1]] = len(recs)
+        rec = bytes([KITS.index(kit), flags, steps, int(d.get('swing', 0))] + hit + imin + prob)
+        assert len(rec) == 64
+        recs.append(rec)
+    return recs, names
+
+
+FILL_RE = re.compile(r'^([KSHOCTPr])([0-7]?)(\d*\.*)(!*)$')
+
+
+def read_fills_dms(path):
+    recs, names = [], {}
+    for ln, head, subs in dms_blocks(path):
+        where = '%s:%d' % (os.path.basename(path), ln)
+        left, body = split_colon(head)
+        t = left.split()
+        if t[0] != 'fill' or len(t) < 2 or subs:
+            raise MmlcError('%s: expected `fill NAME beats=N bands=.. : HITS`' % where)
+        d = kv(t[2:], where)
+        beats = int(d.get('beats', 1))
+        deflen, pos, ev = 24, 0, []
+        for w in body.split():
+            m = re.match(r'^l(\d+\.*)$', w)
+            if m:
+                deflen = mml_len_units(m.group(1), deflen)
+                continue
+            m = FILL_RE.match(w)
+            if not m:
+                raise MmlcError('%s: bad fill token %r' % (where, w))
+            if m.group(2) and m.group(1) != 'T':
+                # a digit after a non-tom is a length (S16)
+                u = mml_len_units(m.group(2) + m.group(3), deflen)
+                tom = 0
+            else:
+                u = mml_len_units(m.group(3), deflen)
+                tom = int(m.group(2) or 0)
+            if m.group(1) != 'r':
+                if pos % 2:
+                    raise MmlcError('%s: onset %d is off the 1/24-beat grid' % (where, pos))
+                ev += [pos // 2, KHITS[m.group(1)] | (min(3, len(m.group(4))) << 3) | (tom << 5)]
+            pos += u
+        if pos != beats * 48:
+            raise MmlcError('%s: fill %s lasts %d units, beats=%d wants %d' % (where, t[1], pos, beats, beats * 48))
+        names[t[1]] = len(recs)
+        attr = [bands_mask(str(d.get('bands', 'S0..S4')), where), 1 if 'crash' in d else 0]
+        recs.append(bytes([len(ev) // 2 + 1, beats] + attr + ev))
+    return recs, names
+
+
+# ---- vinyl -------------------------------------------------------------------------------------
+def ilog_halfsemi(num, den):
+    """L = 64 + round(24 log2(num/den)) by exact integer comparison (0 if num == 0)."""
+    if num == 0:
+        return 0
+    best = None
+    for L in range(1, 128):
+        # compare (num/den)^24 with 2^(L-64): ratio error in the log domain
+        e = L - 64
+        a, b = num ** 24, den ** 24
+        if e >= 0:
+            b <<= e
+        else:
+            a <<= -e
+        # distance |log(a/b)|: compare a/b against 1 via max(a,b)/min(a,b)
+        hi, lo = (a, b) if a >= b else (b, a)
+        if best is None or hi * best[2] < best[1] * lo:
+            best = (L, hi, lo)
+    return best[0]
+
+
+def vinyl_speed(tok, where):
+    m = re.match(r'^([+-]?)(\d+)st$', tok)
+    if m:
+        st = int(m.group(2)) * (-1 if m.group(1) == '-' else 1)
+        L = 64 + 2 * st
+        if not 1 <= L <= 127:
+            raise MmlcError('%s: %s outside -31..+31 st' % (where, tok))
+        return L
+    m = re.match(r'^([+-]?)(\d+)(?:\.(\d{1,2}))?$', tok)
+    if not m:
+        raise MmlcError('%s: bad platter speed %r' % (where, tok))
+    num = int(m.group(2)) * 100 + int((m.group(3) or '0').ljust(2, '0'))
+    L = ilog_halfsemi(num, 100)
+    if num and not 1 <= L <= 127:
+        raise MmlcError('%s: speed %s out of range' % (where, tok))
+    return L | (0x80 if m.group(1) == '-' and num else 0)
+
+
+def read_vinyl_dms(path, lockmap):
+    recs = {}
+    for ln, head, subs in dms_blocks(path):
+        where = '%s:%d' % (os.path.basename(path), ln)
+        left, body = split_colon(head)
+        t = left.split()
+        if t[0] != 'vinyl' or len(t) < 2 or subs:
+            raise MmlcError('%s: expected `vinyl NAME after=.. flags : SEGS`' % where)
+        name = 'VINYL_' + t[1]
+        if name not in lockmap:
+            raise MmlcError('%s: %s has no lock in common.lock' % (where, name))
+        d = kv(t[2:], where)
+        after = str(d.get('after', 'RESUME'))
+        if after not in AFTERS:
+            raise MmlcError('%s: after must be one of %s' % (where, ' '.join(AFTERS)))
+        flags = 0
+        for k, v in VFLAGS.items():
+            if k in d:
+                flags |= v
+        segs, total, frames = [], 0, None
+        for seg in [s.strip() for s in body.split('|') if s.strip()]:
+            w = seg.split()
+            if len(w) < 3 or '>' not in w[1]:
+                raise MmlcError('%s: a segment is `LEN V0>V1 CURVE [FADER] [JITTER%%]`: %r' % (where, seg))
+            m = re.match(r'^(\d+)([uf])$', w[0])
+            if m:
+                n, isf = int(m.group(1)), m.group(2) == 'f'
+            else:
+                n, isf = mml_len_units(w[0], 48), False
+            if frames is None:
+                frames = isf
+            elif frames != isf:
+                raise MmlcError('%s: frame and beat lengths mixed' % where)
+            if not 1 <= n <= 255:
+                raise MmlcError('%s: segment length %d outside 1..255' % (where, n))
+            v0, v1 = w[1].split('>')
+            curve = w[2]
+            if curve not in VCURVES:
+                raise MmlcError('%s: curve must be one of %s' % (where, ' '.join(VCURVES)))
+            fader, jit = 'open', 6
+            for x in w[3:]:
+                if x in VFADERS:
+                    fader = x
+                elif re.match(r'^\d+%$', x) and int(x[:-1]) <= 14:
+                    jit = int(x[:-1])
+                else:
+                    raise MmlcError('%s: bad segment word %r' % (where, x))
+            segs += [n, vinyl_speed(v0, where), vinyl_speed(v1, where),
+                     VCURVES.index(curve) | (VFADERS.index(fader) << 2) | ((jit // 2) << 5)]
+            total += n
+        if frames:
+            flags |= VFRAMES
+        q4 = 0 if frames or not segs else (total + 11) // 12
+        recs[lockmap[name]] = bytes([len(segs) // 4, flags, min(255, q4), AFTERS.index(after)] + segs)
+    return recs
+
+
+# ---- transitions, seams -------------------------------------------------------------------------------
+def read_trans_dms(path, cue_ids):
+    rows = []
+    for ln, head, subs in dms_blocks(path):
+        where = '%s:%d' % (os.path.basename(path), ln)
+        t = head.split()
+        if t[0] != 'trans' or len(t) < 4 or t[2] != '->' or subs:
+            raise MmlcError('%s: expected `trans FROM -> TO key=value ...`' % where)
+
+        def cue(x):
+            if x == '*':
+                return 0xFF
+            if x == 'MC_NONE':
+                return 0
+            if x not in cue_ids:
+                raise MmlcError('%s: unknown cue %s' % (where, x))
+            return cue_ids[x]
+        d = kv(t[4:], where)
+        grid = str(d.get('grid', 'PHRASE'))
+        ty = str(d.get('type', 'CUT')).split(':')
+        if grid not in GRIDS or ty[0] not in TTYPES:
+            raise MmlcError('%s: bad grid / type' % where)
+        ent = str(d.get('entry', 'entry'))
+        entry = {'entry': 0xFF, 'resume': 0xFE, 'same': 0xFD}.get(ent)
+        if entry is None:
+            entry = int(ent)
+        flags = sum(v for k, v in TFLAGS.items() if k in d)
+        rows.append(bytes([cue(t[1]), cue(t[3]), GRIDS.index(grid), TTYPES.index(ty[0]),
+                           int(ty[1]) if len(ty) > 1 else 0, entry, int(d.get('max_wait', 0)), flags]))
+    rows.sort(key=lambda r: (r[0], r[1]))
+    for a, b in zip(rows, rows[1:]):
+        if a[:2] == b[:2]:
+            raise MmlcError('%s: two rows for (%d, %d)' % (path, a[0], a[1]))
+    return rows
+
+
+def parse_slot_chord(s, where):
+    m = re.match(r'^(\d+):([A-Z0-9]+)$', s)
+    if not m or int(m.group(1)) > 11 or m.group(2) not in QUALS:
+        raise MmlcError('%s: a slot is INTERVAL:QUALITY, got %r' % (where, s))
+    return int(m.group(1)) | (QUALS.index(m.group(2)) << 4)
+
+
+def read_turns_dms(path):
+    bits = [[0] * 192 for _ in CAD_FAMILIES]
+    seen = [set() for _ in CAD_FAMILIES]
+    turns = []
+    for ln, head, subs in dms_blocks(path):
+        where = '%s:%d' % (os.path.basename(path), ln)
+        left, body = split_colon(head)
+        t = left.split()
+        if subs:
+            raise MmlcError('%s: no indented lines here' % where)
+        if t[0] == 'cadence':
+            if len(t) != 4 or t[1] not in CAD_FAMILIES:
+                raise MmlcError('%s: expected `cadence FAMILY out=C in=C,.. : INTERVALS`' % where)
+            f = CAD_FAMILIES.index(t[1])
+            d = kv(t[2:], where)
+            o = str(d.get('out'))
+            if o not in CAD_OUT:
+                raise MmlcError('%s: out= one of %s' % (where, ' '.join(CAD_OUT)))
+            ins = str(d.get('in')).split(',')
+            for i in ins:
+                if i not in CAD_IN:
+                    raise MmlcError('%s: in= classes of %s' % (where, ' '.join(CAD_IN)))
+                key = (o, CAD_IN[i])
+                if key in seen[f]:
+                    raise MmlcError('%s: (%s, %s) given twice' % (where, o, i))
+                seen[f].add(key)
+                for iv in body.split():
+                    iv = int(iv)
+                    if not 0 <= iv <= 11:
+                        raise MmlcError('%s: interval %d' % (where, iv))
+                    bits[f][(CAD_OUT.index(o) * 4 + CAD_IN[i]) * 12 + iv] = 1
+        elif t[0] == 'turn':
+            d = kv(t[2:], where)
+            tg = {'any': 3, 'major': 1, 'minor': 2}.get(str(d.get('targets', 'any')))
+            sl = body.split()
+            if tg is None or len(sl) != 2:
+                raise MmlcError('%s: expected `turn NAME bands=.. targets=.. weight=W : SLOT SLOT`' % where)
+            turns.append(bytes([len(turns), bands_mask(str(d.get('bands', 'S0..S4')), where), tg,
+                                int(d.get('weight', 10)), parse_slot_chord(sl[0], where),
+                                parse_slot_chord(sl[1], where), 0, 0]))
+        else:
+            raise MmlcError('%s: `cadence` or `turn` expected' % where)
+    for f in range(len(CAD_FAMILIES)):
+        for o in range(4):
+            if not any(bits[f][(o * 4 + i) * 12 + iv] for i in range(4) for iv in range(12)):
+                raise MmlcError('%s: family %s has no rows for out=%s' % (path, CAD_FAMILIES[f], CAD_OUT[o]))
+    maps = []
+    for f in range(len(CAD_FAMILIES)):
+        b = [0] * 24
+        for k in range(192):
+            if bits[f][k]:
+                b[k >> 3] |= 1 << (k & 7)
+        maps.append(bytes(b))
+    return maps, turns, bits
+
+
+def seam_legal(bits, family, out_q, out_root, in_q, in_root):
+    iv = (in_root - out_root) % 12
+    return bits[family][(CLASS_OF[out_q] * 4 + CLASS_OF[in_q]) * 12 + iv] == 1
+
+
+# ---- the synth SFX (D14, CF-3): audio_fx.c's SynthSeg tables -------------------------------------------
+def read_synth_sfx(src):
+    text = strip_comments(read(os.path.join(src, 'core', 'src', 'audio_fx.c')))
+    consts = {w: i for i, w in enumerate(WAVES)}
+    for m in re.finditer(r'#define\s+([A-Z_]+)\s+(\d+)\b', text):
+        consts[m.group(1)] = int(m.group(2))
+    arrays = {}
+    for m in re.finditer(r'static\s+const\s+SynthSeg\s+(\w+)\s*\[\s*\]\s*=\s*\{(.*?)\};', text, re.S):
+        segs = []
+        for sm in re.finditer(r'\{([^{}]*)\}', m.group(2)):
+            f = [x.strip() for x in sm.group(1).split(',')]
+            if len(f) != 6:
+                raise MmlcError('audio_fx.c: %s: a SynthSeg has 6 fields' % m.group(1))
+            vals = []
+            for x in f:
+                v = 0
+                for part in x.split('|'):
+                    part = part.strip()
+                    if part in consts:
+                        v |= consts[part]
+                    else:
+                        v |= int(part, 0)
+                if not 0 <= v <= 255:
+                    raise MmlcError('audio_fx.c: %s: field %r out of range' % (m.group(1), x))
+                vals.append(v)
+            segs.append(vals)
+        arrays[m.group(1)] = segs
+    rm = re.search(r'recipes\s*\[\s*SFX_SYNTH_COUNT\s*\]\s*=\s*\{(.*?)\};', text, re.S)
+    if not rm:
+        raise MmlcError('audio_fx.c: no recipes[] table')
+    out = []
+    for m in re.finditer(r'R\(\s*(\w+)\s*,\s*"([a-z0-9_]+)"\s*\)', rm.group(1)):
+        if m.group(1) not in arrays:
+            raise MmlcError('audio_fx.c: recipe %s has no table' % m.group(1))
+        out.append((m.group(2), arrays[m.group(1)]))
+    return out
+
+
+def compile_sfx_cue(name, segs):
+    """An MDK_SFX cue: one silent node (the cue is played by music_sfx_synth
+    from its common data, M3) and the SynthSeg records verbatim:
+    common = u8 n_seg, n x {t0, n, a, b, wc, vol} (the names stay in
+    audio_fx.c: audio_sfx_synth_name())."""
+    del name
+    common = bytes([len(segs)] + sum(segs, []))
+    head = 24 + 12 + 4
+    pack_off = head + len(common)
+    if pack_off % 2:
+        pack_off += 1
+    frames = max(s[0] + s[1] for s in segs)
+    cuehdr = [0, 1, 1, 0, 225, 0, 1, 0, 64, 64, 64, 0, 0, 0, 0, MCF_ONCE | MCF_EXACT,
+              0, 0, 0, 0] + u16(head) + u16(len(common))
+    node = [max(1, (frames + 7) // 8), MNF_ANCHOR, 0, 255, 0x0D, 0x0D, 0, 1] + u16(pack_off) + u16(2)
+    blob = cuehdr + node + [0, 255, 0, 0] + list(common)
+    while len(blob) < pack_off:
+        blob.append(0)
+    blob += [0, MNP_NO_CHART]
+    return bytes(blob)
+
+
+# ---- GEN .dms (musgen output, curated) ---------------------------------------------------------------------
+def parse_chord_name(s, key_pc, where):
+    m = re.match(r'^([A-G][b#]?)(.*)$', s)
+    if not m or m.group(1) not in TONICS or m.group(2) not in CHORD_SUFFIX:
+        raise MmlcError('%s: bad chord %r' % (where, s))
+    return (TONICS[m.group(1)] - key_pc) % 12, CHORD_SUFFIX[m.group(2)]
+
+
+def read_gen_dms(path):
+    """-> {'cue', 'key', 'mode', 'meter', 'slots': [{name, spec, variants: [{fam, chords, lanes}]}]}"""
+    g = None
+    slot = var = None
+    for ln, head, subs in dms_blocks(path):
+        where = '%s:%d' % (os.path.relpath(path, ROOT), ln)
+        t = head.split()
+        if t[0] == 'gencue':
+            d = kv(t[2:], where)
+            kp, mode = parse_key(str(d.get('key', 'C:major')), where)
+            g = {'cue': t[1], 'key': kp, 'mode': mode, 'meter': int(d.get('meter', 4)),
+                 'bpm': int(d.get('bpm', 120)), 'slots': [], 'path': path}
+            continue
+        if g is None:
+            raise MmlcError('%s: `gencue` must come first' % where)
+        if t[0] != 'gen':
+            raise MmlcError('%s: `gen SLOT ...` expected' % where)
+        d = kv(t[2:], where)
+        if str(d.get('tmpl')) not in GENT or str(d.get('cad')) not in CADS:
+            raise MmlcError('%s: tmpl= %s, cad= %s' % (where, '|'.join(GENT), '|'.join(CADS)))
+        slot = {'name': t[1], 'd': d, 'bars': int(d.get('bars', 8)), 'variants': [], 'line': where}
+        g['slots'].append(slot)
+        for sl, sub in subs:
+            swhere = '%s:%d' % (os.path.relpath(path, ROOT), sl)
+            w = sub.split(None, 1)
+            if w[0] == 'variant':
+                vd = kv(sub.split()[2:], swhere)
+                var = {'fam': int(vd.get('fam', 0)), 'chords': None, 'lanes': {}, 'line': swhere}
+                slot['variants'].append(var)
+            elif var is None:
+                raise MmlcError('%s: `variant` expected' % swhere)
+            elif w[0] == 'chords':
+                cs = [c.split()[0] for c in w[1].split('|') if c.strip()]
+                var['chords'] = [parse_chord_name(c, g['key'], swhere) for c in cs]
+            elif w[0] in ('LEAD', 'COUNTER'):
+                var['lanes'][w[0]] = (w[1], swhere)
+            else:
+                raise MmlcError('%s: unknown line %r' % (swhere, w[0]))
+    if g is None:
+        raise MmlcError('%s: empty' % path)
+    return g
+
+
+def lane_bars(notes, bar_u, nbars):
+    """[(pos, u, key)] -> per bar [(onset16, key, lenclass)] of the notes"""
+    out = [[] for _ in range(nbars)]
+    for (pos, u, k) in notes:
+        if k is None:
+            continue
+        b = pos // bar_u
+        if b < nbars:
+            lc = 0
+            x = u
+            while x > 12 and lc < 7:
+                x >>= 1
+                lc += 1
+            out[b].append(((pos - b * bar_u) // 12, k, lc))
+    return out
+
+
+def lint_gen(g, report):
+    """lane sums, chord count, STRONG_CT and the offline guard (D10): no
+    4-bar M2 window twice in the file. Returns the compiled bytes (the
+    variants as they would sit in the bank) for the report."""
+    bar_u = g['meter'] * 48
+    windows = {}
+    total = 0
+    for s in g['slots']:
+        if len(s['variants']) != int(s['d'].get('n', len(s['variants']))):
+            raise MmlcError('%s: n=%s but %d variants' % (s['line'], s['d'].get('n'), len(s['variants'])))
+        if not 1 <= len(s['variants']) <= 8:
+            raise MmlcError('%s: 1..8 variants' % s['line'])
+        for vi, v in enumerate(s['variants']):
+            if v['chords'] is None or len(v['chords']) != s['bars']:
+                raise MmlcError('%s: the chart needs %d bars' % (v['line'], s['bars']))
+            if 'LEAD' not in v['lanes']:
+                raise MmlcError('%s: a variant needs a LEAD lane' % v['line'])
+            sig = [[] for _ in range(s['bars'])]
+            nbytes = 2 + s['bars'] * 2 + 2 * len(v['lanes'])
+            for role, (text, where) in sorted(v['lanes'].items()):
+                notes, length = mml_voice(text, where)
+                if length != s['bars'] * bar_u:
+                    raise MmlcError('%s: %s lasts %d units, the slot is %d' % (where, role, length, s['bars'] * bar_u))
+                per = lane_bars(notes, bar_u, s['bars'])
+                for b in range(s['bars']):
+                    sig[b] += [(role,) + x for x in per[b]]
+                if role == 'LEAD':                       # STRONG_CT: beats 1 (and 3)
+                    strong = [0, bar_u // 2] if g['meter'] == 4 else [0]
+                    n = bad = 0
+                    for (pos, u, k) in notes:
+                        if k is None or pos % bar_u not in strong:
+                            continue
+                        root, q = v['chords'][pos // bar_u]
+                        pc = (k - g['key'] - root) % 12
+                        n += 1
+                        ok = pc in [x % 12 for x in QUAL_IV[q]] or (q == 'POWER' and pc in (3, 4))
+                        bad += not ok
+                    if n and (bad if n < 20 else bad * 20 > n):
+                        raise MmlcError('%s: STRONG_CT %d of %d strong lead notes are not chord tones' % (where, bad, n))
+                lane = Lane(24, 0, 48)
+                for (pos, u, k) in notes:
+                    if k is None:
+                        lane.timed_tab(T_REST, T_REST_D, u)
+                    else:
+                        li = [i for i in range(len(LEN_TAB)) if LEN_TAB[i] <= u]
+                        lane.b += [T_NOTE_L + li[-1], k & 0x7F] + ext_tokens(u - LEN_TAB[li[-1]])
+                nbytes += len(lane.b) + 1
+            if nbytes > MUS_VARIANT_MAX:
+                raise MmlcError('%s: variant is %d B (> %d)' % (v['line'], nbytes, MUS_VARIANT_MAX))
+            total += nbytes
+            wl = min(4, s['bars'])
+            for b in range(s['bars'] - wl + 1):
+                key = tuple(tuple(sorted(sig[b + k])) for k in range(wl))
+                if key in windows:
+                    raise MmlcError('%s: guard (D10): bars %d-%d repeat %s' % (v['line'], b + 1, b + wl, windows[key]))
+                windows[key] = '%s variant %d bars %d-%d' % (s['name'], vi, b + 1, b + wl)
+    report.append('%-28s %d slots, %d variants, %d B as variants (not in the bank until %s references them)' % (
+        os.path.relpath(g['path'], ROOT), len(g['slots']), sum(len(s['variants']) for s in g['slots']), total, g['cue']))
+    return total
+
+
+MUS_VARIANT_MAX = 384
+
+
+# ---- authored cues and stingers (sec.16.1, DG sec.11.1; MU4's sources) ---------------------------
+# A cue file is any .dms in core/music/{world,combat,activity}/ and the
+# non-bank files of core/music/common/ (MU4d's stings, cards, story cues).
+#
+#   cue MC_NAME "Name" bpm=124 key=F:major meter=4 dial=S1 range=S0..S2
+#         [hub] [jukebox] [once] [exact] [logic] [no_quotes] [no_vinyl] [dj]
+#         [var_max=0..3] [entry=NODE] [reentry=NODE] [tag=NODE] [rest=NODE every=MIN]
+#         [fx=reverb:0-7,depth:0-3,echo,crackle,stem]
+#     bind MP_CROWD*0.5 +I2 [inv|sq|step]                 up to 4; the first bias counts
+#     role NAME [kind=K] inst=a[/b] | kit=TOY  [on=I3] [prio=0..3] [psg=SQ1|SQ2|WAVE|NOISE]
+#          [share] [pan=-32..31] [rank=0..3] [vmask=0..31] [twin] [duck_dialog echo modemap sung
+#          quote ghostable stream sidechain]          NAME = a kind (LEAD ...) unless kind= says
+#     node NAME [anchor intro tag breakdown reentry transit cadence pickup] bars=N
+#          [i=I0..I5] [gen=SLOT]                         gen: the slot's variants (core/music/gen)
+#       chords | F . Dm . | Bb . C . |                   2 half-bars per bar; . = the same; NC
+#       ROLE <MML>                                       a literal lane (today's dialect; lines of
+#                                                        one role join); a role without one rests
+#       -> NODE:W [NODE:W:COND] ...                      COND: i>=I3 i<I2 dial>=S3 dial<S2 pass>=2
+#                                                        chapter>=2 lift=1|2 MP_X>=L MP_X<L (L 0-7);
+#                                                        a trailing :turn waives the seam lint
+#     trans -> MC_X|* grid=G type=T[:ARG] [entry=N|resume] [max_wait=B] [flags]
+#
+#   sting STG_NAME "Name" bpm= key= meter= hit=BEATS|Nu [duck=0..1] [prio=0..3] [grid=BEAT]
+#         [key_follow] [dial] [resume_grid] [gap=BEATS] + roles and nodes as for a cue
+#
+# A node's edges default to the next node (the last to `reentry`). Lints:
+# every lane lasts bars x meter x 48; packs <= 1,024 B (with variants: the
+# base <= 640, each variant <= 384); a stinger <= 4 bars; every node
+# reachable; an anchor in a hub; every intensity 0..255 pickable by some
+# node; every edge's seam a cadence of the home family (turns.dms) unless
+# marked :turn; ids in the area's lock.
+ROLE_KINDS = ['LEAD', 'COUNTER', 'HARM', 'ARP', 'BASS', 'KIT', 'PERC', 'PAD', 'METAL', 'CHOIR', 'BED', 'FX']
+ROLE_FLAGS = {'duck_dialog': 1, 'echo': 2, 'modemap': 4, 'sung': 8, 'quote': 16, 'ghostable': 32,
+              'stream': 64, 'sidechain': 128}
+NODE_FLAGS = {'anchor': 1, 'intro': 2, 'tag': 4, 'breakdown': 8, 'reentry': 16, 'transit': 32,
+              'cadence': 64, 'pickup': 128}
+CUE_FLAGS = {'loop': 1, 'once': 2, 'exact': 4, 'logic': 8, 'no_quotes': 16, 'no_vinyl': 32, 'dj': 64,
+             'stream_ok': 128}
+PSG_PREF = {'SQ1': 1, 'SQ2': 2, 'WAVE': 3, 'NOISE': 4}
+MP_NAMES = ['MP_INTENSITY', 'MP_DANGER', 'MP_ENEMIES', 'MP_HP', 'MP_COMBO', 'MP_BOSS_PHASE', 'MP_HELL',
+            'MP_INFECT', 'MP_HOUR', 'MP_WEATHER', 'MP_SEASON', 'MP_CROWD', 'MP_ACTIVITY', 'MP_WALL_DIST',
+            'MP_ZONE', 'MP_SANITY', 'MP_COMFORT', 'MP_SPOOK', 'MP_FORT', 'MP_PET_STAGE', 'MP_PET_LINE',
+            'MP_TENSION', 'MP_HEAT', 'MP_TIMER', 'MP_HYPE', 'MP_TRUST', 'MP_LOVE', 'MP_ALTITUDE',
+            'MP_DIALOG', 'MP_MENU', 'MP_HARMONY', 'MP_QUEST']
+STM_FLAGS = {'key_follow': 1, 'dial': 2, 'resume_grid': 4}
+MEC = {'i>=': 1, 'i<': 2, 'dial>=': 3, 'dial<': 4, 'pass>=': 5, 'chapter>=': 8}
+MEC_PARAM_GE, MEC_PARAM_LT, MEC_LIFT = 6, 7, 9
+MDF_HUB, MDF_GEN = 1, 4
+MNP_VARIANTS = 2
+MUS_PACK_MAX, MUS_PACK_BASE = 1024, 640
+BANK_FILES = ('inst.dms', 'comps.dms', 'grooves.dms', 'fills.dms', 'motifs.dms', 'vinyl.dms',
+              'trans.dms', 'turns.dms')
+
+
+def level(s, where, kind='I'):
+    """I0..I5 (intensity: 0 51 102 153 204 255), S0..S4 (the dial: 0 64 128 192 255) or 0..255"""
+    s = str(s)
+    m = re.match(r'^([IS])([0-5])$', s)
+    if m:
+        n = int(m.group(2))
+        if m.group(1) == 'I':
+            return 255 if n == 5 else n * 51
+        if n > 4:
+            raise MmlcError('%s: dial bands are S0..S4' % where)
+        return [0, 64, 128, 192, 255][n]
+    if re.match(r'^\d+$', s) and int(s) <= 255:
+        return int(s)
+    raise MmlcError('%s: bad level %r (I0..I5, S0..S4 or 0..255)' % (where, s))
+
+
+def level_range(s, where):
+    a, _, b = str(s).partition('..')
+    return level(a, where), level(b or a, where)
+
+
+def quoted_split(text):
+    return re.findall(r'"[^"]*"|\S+', text)
+
+
+def chord_chart(text, bars, key_pc, where):
+    """`| F . Dm . | Bb . C . |` -> bars*2 MusChord bytes (root above the key | quality << 4)"""
+    cells = [c.split() for c in text.split('|') if c.strip()]
+    if len(cells) != bars:
+        raise MmlcError('%s: the chart has %d bars, the node %d' % (where, len(cells), bars))
+    out, prev = [], 0x0D
+    for cell in cells:
+        if len(cell) == 1:
+            cell = cell + ['.']
+        if len(cell) != 2:
+            raise MmlcError('%s: 1 or 2 chords per bar' % where)
+        for c in cell:
+            if c == '.':
+                b = prev
+            elif c in ('NC', 'N.C.'):
+                b = 0x0D
+            else:
+                root, q = parse_chord_name(c, key_pc, where)
+                b = root | (QUALS.index(q) << 4)
+            out.append(b)
+            prev = b
+    return out
+
+
+def edge_cond(s, where):
+    if s.startswith('lift='):
+        return MEC_LIFT, int(s[5:])
+    for k, v in MEC.items():
+        if s.startswith(k):
+            val = s[len(k):]
+            arg = level(val, where) if k[0] in 'id' else int(val)
+            return v, arg
+    m = re.match(r'^(MP_[A-Z_]+)(>=|<)([0-7])$', s)
+    if m and m.group(1) in MP_NAMES:
+        return (MEC_PARAM_GE if m.group(2) == '>=' else MEC_PARAM_LT), MP_NAMES.index(m.group(1)) | (int(m.group(3)) << 5)
+    raise MmlcError('%s: bad edge condition %r' % (where, s))
+
+
+def inst_id(name, lock, where):
+    if re.match(r'^\d+$', name):
+        return int(name)
+    key = ('inst', 'INST_' + name.upper())
+    if key not in lock:
+        raise MmlcError('%s: unknown instrument %s (common.lock INST_%s)' % (where, name, name.upper()))
+    return lock[key]
+
+
+def parse_cue_block(ln, head, subs, path, lock):
+    where = '%s:%d' % (os.path.relpath(path, ROOT), ln)
+    t = quoted_split(head)
+    kind = t[0]
+    if kind not in ('cue', 'sting') or len(t) < 2:
+        raise MmlcError('%s: `cue MC_X ...` or `sting STG_X ...` expected' % where)
+    name = t[1]
+    disp = ''
+    rest = t[2:]
+    if rest and rest[0].startswith('"'):
+        disp = rest[0][1:-1]
+        rest = rest[1:]
+    d = kv(rest, where)
+    tonic, mode = parse_key(str(d.get('key', 'C:major')), where)
+    c = {'kind': kind, 'name': name, 'disp': disp, 'd': d, 'where': where, 'path': path,
+         'bpm': int(d.get('bpm', 120)), 'key': tonic, 'mode': mode, 'meter': int(d.get('meter', 4)),
+         'roles': [], 'nodes': [], 'binds': [], 'trans': []}
+    if not 30 <= c['bpm'] <= 255 or not 1 <= c['meter'] <= 8:
+        raise MmlcError('%s: bpm 30..255, meter 1..8' % where)
+    node = None
+    for sl, sub in subs:
+        sw = '%s:%d' % (os.path.relpath(path, ROOT), sl)
+        w = sub.split(None, 1)
+        word, body = w[0], (w[1] if len(w) > 1 else '')
+        if word == 'role':
+            rt = body.split()
+            rd = kv(rt[1:], sw)
+            rk = str(rd.get('kind', rt[0]))
+            if rk not in ROLE_KINDS:
+                raise MmlcError('%s: role %s needs kind= (one of %s)' % (sw, rt[0], ' '.join(ROLE_KINDS)))
+            if any(r['name'] == rt[0] for r in c['roles']):
+                raise MmlcError('%s: role %s twice' % (sw, rt[0]))
+            if 'kit' in rd:
+                insts = ['KIT_' + str(rd['kit']).upper()] * 2
+            else:
+                insts = str(rd.get('inst', '0')).split('/')
+            i0 = inst_id(insts[0], lock, sw)
+            i1 = inst_id(insts[1], lock, sw) if len(insts) > 1 else i0
+            prio = int(rd.get('prio', 1)) & 3
+            prio |= PSG_PREF.get(str(rd.get('psg', '')), 0) << 4
+            if 'share' in rd:
+                prio |= 0x80
+            morph = (int(rd.get('rank', 0)) & 3) | ((int(rd.get('vmask', 0)) & 31) << 2) | (0x80 if 'twin' in rd else 0)
+            fl = sum(v for k, v in ROLE_FLAGS.items() if k in rd)
+            pan = int(rd.get('pan', 0))
+            if not -32 <= pan <= 31:
+                raise MmlcError('%s: pan -32..31' % sw)
+            c['roles'].append({'name': rt[0], 'kind': ROLE_KINDS.index(rk), 'inst': i0, 'inst_hi': i1,
+                               'i_on': level(rd.get('on', 'I0'), sw), 'prio': prio, 'pan': pan & 0xFF,
+                               'flags': fl, 'morph': morph, 'where': sw})
+        elif word == 'bind':
+            m = re.match(r'^(MP_[A-Z_]+)\*(\d+(?:\.\d+)?)\s*(?:([+-])(I[0-5]|\d+))?\s*(inv|sq|step)?$', body.strip())
+            if not m or m.group(1) not in MP_NAMES:
+                raise MmlcError('%s: `bind MP_X*W [+I2] [inv|sq|step]`' % sw)
+            wq4 = int(round(float(m.group(2)) * 16))
+            bias = level(m.group(4), sw) if m.group(4) else 0
+            if m.group(3) == '-':
+                bias = -bias
+            if not 0 <= wq4 <= 255 or not -128 <= bias <= 127:
+                raise MmlcError('%s: weight 0..15.9, bias -128..127' % sw)
+            curve = {'inv': 1, 'sq': 2, 'step': 3}.get(m.group(5), 0)
+            c['binds'].append([MP_NAMES.index(m.group(1)), wq4, bias & 0xFF, curve])
+        elif word == 'node':
+            nt = body.split()
+            nd = kv(nt[1:], sw)
+            if any(n['name'] == nt[0] for n in c['nodes']):
+                raise MmlcError('%s: node %s twice' % (sw, nt[0]))
+            i_min, i_max = level_range(nd.get('i', 'I0..I5'), sw)
+            node = {'name': nt[0], 'bars': int(nd.get('bars', 0)), 'flags': sum(v for k, v in NODE_FLAGS.items() if k in nd),
+                    'i_min': i_min, 'i_max': i_max, 'chart': None, 'lanes': {}, 'edges': None,
+                    'gen': nd.get('gen'), 'where': sw}
+            if not 1 <= node['bars'] <= 64:
+                raise MmlcError('%s: bars=1..64' % sw)
+            c['nodes'].append(node)
+        elif word == 'trans':
+            c['trans'].append((body, sw))
+        elif node is None:
+            raise MmlcError('%s: %r before the first node' % (sw, word))
+        elif word == 'chords':
+            node['chart'] = (body, sw)
+        elif word == '->':
+            node['edges'] = (body, sw)
+        else:
+            if word not in [r['name'] for r in c['roles']]:
+                raise MmlcError('%s: %s is not a role of %s' % (sw, word, name))
+            prev = node['lanes'].get(word)
+            node['lanes'][word] = ((prev[0] + ' ' + body) if prev else body, prev[1] if prev else sw)
+    if not c['roles'] or not c['nodes']:
+        raise MmlcError('%s: a cue needs roles and nodes' % where)
+    if len(c['roles']) > 12 or len(c['nodes']) > 32 or len(c['binds']) > 4:
+        raise MmlcError('%s: <= 12 roles, 32 nodes, 4 binds' % where)
+    return c
+
+
+def compile_authored_lane(text, role, bars, meter, insts, where):
+    """One literal lane (today's MML dialect) -> lane bytes (END included)."""
+    end = bars * meter * 48
+    items, ends, ch = simulate(text, 3, 1)
+    if not ends:
+        raise MmlcError('%s: the lane never ends' % where)
+    if ends[0][0] != end:
+        raise MmlcError('%s: the lane lasts %d units, the node %d' % (where, ends[0][0], end))
+    items = [it for it in items if it['k'] != 'TEMPO']
+    try:
+        return encode_lane({'key': where}, 3, items, 0, end, {'inst': role['inst']}, insts, (role['inst'], 12, 0))
+    except MmlcError as e:
+        raise MmlcError('%s: %s' % (where, e))
+
+
+def gen_slot_for(cue_name, slot, gens):
+    for g in gens:
+        if g['cue'] == cue_name:
+            for s in g['slots']:
+                if s['name'] == slot:
+                    return g, s
+    raise MmlcError('no GEN slot %s for %s in core/music/gen/' % (slot, cue_name))
+
+
+def build_pack(c, node, insts, gens):
+    """-> pack bytes: n_lanes, flags, lane_off[n] [, var dir off], [chart], lanes [, MusVarDir, variants]"""
+    roles = c['roles']
+    n = len(roles)
+    bars = node['bars']
+    chart = chord_chart(node['chart'][0], bars, c['key'], node['chart'][1]) if node['chart'] else None
+    slot = None
+    if node['gen']:
+        g, slot = gen_slot_for(c['name'], node['gen'], gens)
+        if slot['bars'] != bars or g['meter'] != c['meter']:
+            raise MmlcError('%s: GEN slot %s is %d bars of %d, the node %d of %d' % (
+                node['where'], slot['name'], slot['bars'], g['meter'], bars, c['meter']))
+    flags = (MNP_VARIANTS if slot else 0) | (0 if chart else MNP_NO_CHART)
+    hdr = 2 + 2 * n + (2 if slot else 0)
+    body = list(chart or [])
+    offs = []
+    for r in roles:
+        if r['name'] not in node['lanes']:
+            offs.append(0)
+            continue
+        text, lw = node['lanes'][r['name']]
+        lane = compile_authored_lane(text, r, bars, c['meter'], insts, lw)
+        offs.append(hdr + len(body))
+        body += list(lane)
+    base_len = hdr + len(body)
+    var_dir_off = 0
+    if slot:
+        # the roles the variants own: the cue's first role of each lane kind
+        owned = []
+        for kname in ('LEAD', 'COUNTER'):
+            ri = next((i for i, r in enumerate(roles) if r['kind'] == ROLE_KINDS.index(kname)), None)
+            if ri is not None and any(kname in v['lanes'] for v in slot['variants']):
+                owned.append((ri, kname))
+        owned.sort()
+        mask = sum(1 << ri for ri, _ in owned)
+        while (hdr + len(body)) % 2:
+            body.append(0)
+        var_dir_off = hdr + len(body)
+        nv = len(slot['variants'])
+        nfam = max(v['fam'] for v in slot['variants']) + 1
+        vd = [nv, nfam, mask & 0xFF, mask >> 8] + [0, 0] * nv
+        body += vd
+        for vi, v in enumerate(slot['variants']):
+            while (hdr + len(body)) % 2:
+                body.append(0)
+            vstart = hdr + len(body)
+            at = var_dir_off - hdr + 4 + 2 * vi
+            body[at], body[at + 1] = vstart & 0xFF, vstart >> 8
+            vchart = []
+            for (root, q) in v['chords']:
+                b = root | (QUALS.index(q) << 4)
+                vchart += [b, b]
+            vhead = [1 | (v['fam'] << 4)] + vchart
+            lane_offs_at = len(body) + len(vhead)
+            body += vhead + [0, 0] * len(owned)
+            for k, (ri, kname) in enumerate(owned):
+                if kname not in v['lanes']:
+                    continue
+                text, lw = v['lanes'][kname]
+                lane = compile_authored_lane(text, roles[ri], bars, c['meter'], insts, lw)
+                lo = hdr + len(body)
+                body[lane_offs_at + 2 * k], body[lane_offs_at + 2 * k + 1] = lo & 0xFF, lo >> 8
+                body += list(lane)
+            vlen = hdr + len(body) - vstart
+            if vlen > MUS_VARIANT_MAX:
+                raise MmlcError('%s: GEN %s variant %d is %d B (> %d)' % (node['where'], slot['name'], vi, vlen, MUS_VARIANT_MAX))
+    head = [n, flags] + sum(([o & 0xFF, o >> 8] for o in offs), [])
+    if slot:
+        head += [var_dir_off & 0xFF, var_dir_off >> 8]
+    pack = bytes(head + body)
+    if slot and base_len > MUS_PACK_BASE:
+        raise MmlcError('%s: the base pack is %d B (> %d with variants)' % (node['where'], base_len, MUS_PACK_BASE))
+    if not slot and len(pack) > MUS_PACK_MAX:
+        raise MmlcError('%s: the pack is %d B (> %d)' % (node['where'], len(pack), MUS_PACK_MAX))
+    return pack, chart
+
+
+def seam_lint(out_chart, in_chart, dial, cad, where):
+    """walk rule 5 (mus_graph.c): the seam chord_out -> chord_in of an edge
+    must be legal in the cadence bitmap of the cue's home family (S0-S1
+    MAJOR, S2 MINOR, S3-S4 METAL); N.C., "same" and chartless nodes pass. An
+    edge marked `:turn` is a deliberate break (the walk takes it only when
+    nothing legal is left)."""
+    o = out_chart[-1] if out_chart else 0x0D
+    n = in_chart[0] if in_chart else 0x0D
+    if (o & 15) >= 12 or (n & 15) >= 12:
+        return
+    fam = 0 if dial < 128 else 1 if dial < 192 else 2
+    k = (CLASS_OF[QUALS[o >> 4]] * 4 + CLASS_OF[QUALS[n >> 4]]) * 12 + ((n & 15) - (o & 15)) % 12
+    if not cad[fam][k]:
+        raise MmlcError('%s: the seam %s%s -> %s%s is not a %s cadence (turns.dms); mark the edge `:turn` '
+                        'if it is meant' % (where, ROOT_NAMES[o & 15], QUALS[o >> 4], ROOT_NAMES[n & 15],
+                                            QUALS[n >> 4], CAD_FAMILIES[fam]))
+
+
+ROOT_NAMES = ['I', 'bII', 'II', 'bIII', 'III', 'IV', '#IV', 'V', 'bVI', 'VI', 'bVII', 'VII']
+
+
+def compile_authored(c, cue_ids, sting_ids, insts, gens, vinyl_ids, cad=None):
+    """-> (id, kind, dir flags, blob, trans rows, report line)"""
+    d, where = c['d'], c['where']
+    sting = c['kind'] == 'sting'
+    ids = sting_ids if sting else cue_ids
+    if c['name'] not in ids:
+        raise MmlcError('%s: %s has no lock (append it to the area lock)' % (where, c['name']))
+    ident = ids[c['name']]
+    names = [nd['name'] for nd in c['nodes']]
+
+    def node_ix(key, default):
+        v = d.get(key)
+        if v is None:
+            return default
+        if v not in names:
+            raise MmlcError('%s: %s=%s is not a node' % (where, key, v))
+        return names.index(v)
+    # packs
+    packs, charts = [], []
+    for nd in c['nodes']:
+        p, ch = build_pack(c, nd, insts, gens)
+        packs.append(p)
+        charts.append(ch)
+    entry = node_ix('entry', 0)
+    reentry = node_ix('reentry', entry)
+    tag = node_ix('tag', len(names) - 1)
+    rest = node_ix('rest', 0)
+    # edges
+    edges, e0 = [], []
+    for i, nd in enumerate(c['nodes']):
+        e0.append(len(edges))
+        if nd['edges'] is None:
+            edges.append([i + 1 if i + 1 < len(names) else reentry, 255, 0, 0])
+            continue
+        body, ew = nd['edges']
+        for tok in body.split():
+            parts = tok.split(':')
+            if parts[0] not in names or len(parts) < 2:
+                raise MmlcError('%s: edge %r (NODE:W[:COND][:turn])' % (ew, tok))
+            waived = 'turn' in parts[2:]
+            parts = [p for p in parts if p != 'turn']
+            w = int(parts[1])
+            cond, arg = edge_cond(parts[2], ew) if len(parts) > 2 else (0, 0)
+            if not 1 <= w <= 255 or not 0 <= arg <= 255:
+                raise MmlcError('%s: edge weight 1..255' % ew)
+            to = names.index(parts[0])
+            if not sting and not waived and to != i and cad:
+                seam_lint(charts[i], charts[to], level(d.get('dial', 'S1'), where), cad,
+                          '%s: edge %s -> %s' % (ew, nd['name'], parts[0]))
+            edges.append([to, w, cond, arg])
+    if len(edges) > 96:
+        raise MmlcError('%s: %d edges (<= 96)' % (where, len(edges)))
+    # lints: reachability, an anchor in a hub, intensity coverage, stinger length
+    seen, todo = {entry}, [entry]
+    while todo:
+        x = todo.pop()
+        for k in range(e0[x], e0[x + 1] if x + 1 < len(e0) else len(edges)):
+            if edges[k][0] not in seen:
+                seen.add(edges[k][0])
+                todo.append(edges[k][0])
+    if not sting and len(seen) != len(names):
+        raise MmlcError('%s: unreachable nodes %s' % (where, ', '.join(names[i] for i in range(len(names)) if i not in seen)))
+    if 'hub' in d and not any(nd['flags'] & 1 for nd in c['nodes']):
+        raise MmlcError('%s: a hub needs an anchor node' % where)
+    if not sting and 'exact' not in d:
+        for lv in range(0, 256, 17):
+            if not any(nd['i_min'] <= lv <= nd['i_max'] for nd in c['nodes']):
+                raise MmlcError('%s: intensity %d picks no node' % (where, lv))
+    if sting and sum(nd['bars'] for nd in c['nodes'][:tag + 1]) > 4:
+        raise MmlcError('%s: a stinger lasts <= 4 bars' % where)
+    # header
+    flags = sum(v for k, v in CUE_FLAGS.items() if k in d)
+    if sting:
+        flags |= CUE_FLAGS['once']
+    elif not flags & CUE_FLAGS['once']:
+        flags |= CUE_FLAGS['loop']
+    dial = level(d.get('dial', 'S1'), where)
+    dlo, dhi = level_range(d.get('range', d.get('dial', 'S1')), where)
+    fx = 0
+    if 'fx' in d:
+        for part in str(d['fx']).split(','):
+            k, _, v = part.partition(':')
+            if k == 'reverb':
+                fx |= int(v) & 7
+            elif k == 'depth':
+                fx |= (int(v) & 3) << 3
+            elif k in ('echo', 'crackle', 'stem'):
+                fx |= {'echo': 32, 'crackle': 64, 'stem': 128}[k]
+            else:
+                raise MmlcError('%s: fx=%s' % (where, part))
+    common = c['disp'].encode('ascii') + b'\0'
+    n_roles, n_nodes, n_binds = len(c['roles']), len(c['nodes']), len(c['binds'])
+    head = 24 + (8 if sting else 0) + 8 * n_roles + 12 * n_nodes + 4 * len(edges) + 4 * n_binds
+    common_off = head
+    pack_off = common_off + len(common)
+    pack_off += pack_off % 2
+    cuehdr = [n_roles, n_nodes, len(edges), n_binds, c['bpm'], c['key'] | (c['mode'] << 4), c['meter'],
+              int(d.get('swing', 0)), dial, dlo, dhi, entry, reentry, tag, rest, flags,
+              int(d.get('var_max', 3)), int(d.get('every', 0)), int(d.get('arc', 0)), fx] + u16(common_off) + u16(len(common))
+    blob = list(cuehdr)
+    if sting:
+        hit = str(d.get('hit', '0'))
+        hu = int(hit[:-1]) if hit.endswith('u') else int(round(float(hit) * 48))
+        duck = int(round(float(d.get('duck', 1)) * 255))
+        grid = str(d.get('grid', 'BEAT'))
+        if grid not in GRIDS:
+            raise MmlcError('%s: grid=%s' % (where, grid))
+        mode = sum(v for k, v in STM_FLAGS.items() if k in d)
+        blob += u16(hu) + [min(255, max(0, duck)), int(d.get('prio', 1)), GRIDS.index(grid), mode,
+                           int(d.get('gap', 0)), 0]
+    for r in c['roles']:
+        blob += [r['kind'], r['inst'], r['inst_hi'], r['i_on'], r['prio'], r['pan'], r['flags'], r['morph']]
+    po = pack_off
+    for i, nd in enumerate(c['nodes']):
+        ch = charts[i]
+        n_edge = (e0[i + 1] if i + 1 < len(e0) else len(edges)) - e0[i]
+        blob += [nd['bars'], nd['flags'], nd['i_min'], nd['i_max'], ch[0] if ch else 0x0D,
+                 ch[-1] if ch else 0x0D, e0[i], n_edge] + u16(po) + u16(len(packs[i]))
+        po += len(packs[i])
+        po += po % 2
+    for e in edges:
+        blob += e
+    for b in c['binds']:
+        blob += b
+    blob += list(common)
+    while len(blob) < pack_off:
+        blob.append(0)
+    for p in packs:
+        blob += list(p)
+        if len(blob) % 2:
+            blob.append(0)
+    if len(blob) > 0xFFFF:
+        raise MmlcError('%s: the cue blob is %d B' % (where, len(blob)))
+    dflags = (MDF_HUB if 'hub' in d else 0) | (MDF_JUKEBOX if 'jukebox' in d else 0) | \
+             (MDF_GEN if any(nd['gen'] for nd in c['nodes']) else 0)
+    # the cue's own transition rows
+    trans = []
+    for body, tw in c['trans']:
+        t = body.split()
+        if len(t) < 2 or t[0] != '->':
+            raise MmlcError('%s: `trans -> MC_X|* key=value`' % tw)
+        to = 0xFF if t[1] == '*' else (0 if t[1] == 'MC_NONE' else cue_ids.get(t[1]))
+        if to is None:
+            raise MmlcError('%s: unknown cue %s' % (tw, t[1]))
+        td = kv(t[2:], tw)
+        grid = str(td.get('grid', 'PHRASE'))
+        ty = str(td.get('type', 'CUT')).split(':')
+        if grid not in GRIDS or ty[0] not in TTYPES:
+            raise MmlcError('%s: bad grid / type' % tw)
+        arg = 0
+        if len(ty) > 1:
+            arg = vinyl_ids['VINYL_' + ty[1]] if ty[0] == 'VINYL' and 'VINYL_' + ty[1] in vinyl_ids else int(ty[1])
+        ent = str(td.get('entry', 'entry'))
+        entry_b = {'entry': 0xFF, 'resume': 0xFE, 'same': 0xFD}.get(ent)
+        if entry_b is None:
+            entry_b = names.index(ent) if ent in names else int(ent)
+        trans.append(bytes([ident, to, GRIDS.index(grid), TTYPES.index(ty[0]), arg, entry_b,
+                            int(td.get('max_wait', 0)), sum(v for k, v in TFLAGS.items() if k in td)]))
+    line = '%-28s %3d  bpm %3d  %2d nodes %-28s %5d B%s' % (
+        c['name'], ident, c['bpm'], n_nodes, str([nd['bars'] for nd in c['nodes']]), len(blob),
+        '  (GEN)' if dflags & MDF_GEN else '')
+    return ident, (MDK_STING if sting else MDK_CUE), dflags, bytes(blob), trans, line
+
+
+def cue_files(src, areas=('world', 'combat', 'activity', 'common')):
+    out = []
+    for a in areas:
+        dd = os.path.join(src, 'core', 'music', a)
+        if not os.path.isdir(dd):
+            continue
+        for f in sorted(os.listdir(dd)):
+            if f.endswith('.dms') and not (a == 'common' and f in BANK_FILES):
+                out.append(os.path.join(dd, f))
+    return out
+
+
+def read_authored(paths, lock):
+    out = []
+    for p in paths:
+        for ln, head, subs in dms_blocks(p):
+            out.append(parse_cue_block(ln, head, subs, p, lock))
+    return out
+
+
 # ---- the bank -----------------------------------------------------------------------
 def u16(v):
     return [v & 0xFF, (v >> 8) & 0xFF]
@@ -1024,37 +2365,78 @@ def fnv1a(data):
     return h
 
 
-def build_bank(cues=(), insts=()):
-    """cues: list of (id, kind, flags, blob) ; insts: list of 20-byte rows."""
+def indexed(recs):
+    """u16 offset index (from the section start; 0 = absent) + records.
+    recs: a list (dense) or a dict id -> bytes (sparse, n = max id + 1)."""
+    if isinstance(recs, dict):
+        n = (max(recs) + 1) if recs else 0
+        items = [recs.get(i) for i in range(n)]
+    else:
+        items = list(recs)
+        n = len(items)
+    pos = 2 * n
+    idx, body = [], []
+    for r in items:
+        if r is None:
+            idx += u16(0)
+            continue
+        idx += u16(pos)
+        body += list(r)
+        pos += len(r)
+    if pos > 0xFFFF:
+        raise MmlcError('a bank section is over 64 KB')
+    return n, bytes(idx + body)
+
+
+def build_bank(cues=(), insts=(), banks=None):
+    """cues: list of (id, kind, flags, blob); insts: 20-byte rows; banks:
+    the shared sections (comps, grooves, fills, motifs, vinyl, trans, turns)."""
+    banks = banks or {}
     hdr_size = 52
     dir_entries = sorted(cues, key=lambda c: (c[1] == MDK_STING, c[0]))   # MC ids, then STG ids
     n_cues = sum(1 for c in cues if c[1] != MDK_STING)
     n_stings = sum(1 for c in cues if c[1] == MDK_STING)
-    dir_off = hdr_size
-    inst_off = dir_off + 8 * len(dir_entries)
-    off = inst_off + 20 * len(insts)
-    blobs, dir_bytes = [], []
-    for ident, kind, flags, blob in dir_entries:
-        while off % 4:
-            blobs.append(0)
-            off += 1
-        dir_bytes += u32(off) + u16(len(blob)) + [ident, (kind << 6) | (flags & 0x3F)]
-        blobs += list(blob)
-        off += len(blob)
-    while off % 4:
-        blobs.append(0)
-        off += 1
-    body = []
+    out = bytearray(hdr_size)
+    dir_off = len(out)
+    out += bytes(8 * len(dir_entries))
+    inst_off = len(out)
     for row in insts:
         assert len(row) == 20
-        body += list(row)
-    rest = dir_bytes + body + blobs
-    total = hdr_size + len(rest)
-    hdr = (u16(0x534D) + u16(1) + u16(n_cues) + u16(n_stings) + u16(len(insts)) + u16(0) * 7 +
-           u32(dir_off) + u32(inst_off) + u32(total) + u32(total) + u32(total) + u32(total))
-    hdr += u32(fnv1a(rest))
+        out += row
+
+    def section(data):
+        while len(out) % 4:
+            out.append(0)
+        off = len(out)
+        out.extend(data)
+        return off if data else 0
+    n_comp, comp_sec = indexed(banks.get('comps', []))
+    comp_off = section(comp_sec)
+    grooves = banks.get('grooves', [])
+    groove_off = section(b''.join(grooves))
+    misc_off = section(bytes(32))
+    n_fill, fill_sec = indexed(banks.get('fills', []))
+    n_motif, motif_sec = indexed(banks.get('motifs', {}))
+    n_vinyl, vinyl_sec = indexed(banks.get('vinyl', {}))
+    trans = banks.get('trans', [])
+    misc = [section(fill_sec), section(motif_sec), section(vinyl_sec), section(b''.join(trans)),
+            0, 0, section(banks.get('turns', b'')), 0]
+    out[misc_off:misc_off + 32] = bytes(sum((u32(x) for x in misc), []))
+    dir_bytes = []
+    for ident, kind, flags, blob in dir_entries:
+        off = section(blob)
+        dir_bytes += u32(off) + u16(len(blob)) + [ident, (kind << 6) | (flags & 0x3F)]
+    while len(out) % 4:
+        out.append(0)
+    out[dir_off:dir_off + len(dir_bytes)] = bytes(dir_bytes)
+    total = len(out)
+    hdr = (u16(0x534D) + u16(1) + u16(n_cues) + u16(n_stings) + u16(len(insts)) + u16(n_comp) +
+           u16(len(grooves)) + u16(n_fill) + u16(n_motif) + u16(n_vinyl) + u16(len(trans)) + u16(0) +
+           u32(dir_off) + u32(inst_off) + u32(comp_off) + u32(groove_off) + u32(misc_off) + u32(total))
+    hdr += u32(fnv1a(bytes(out[hdr_size:])))
     assert len(hdr) == hdr_size
-    return bytes(hdr + rest)
+    out[0:hdr_size] = bytes(hdr)
+    return bytes(out)
 
 
 def emit_bank_c(bank, comment_lines=()):
@@ -1078,6 +2460,66 @@ def write(out_root, rel_path, text):
         f.write(text)
 
 
+def build_common(src, locks, report):
+    """The shared banks (core/music/common/*.dms) -> (inst rows, banks)."""
+    common = os.path.join(src, 'core', 'music', 'common')
+    lock = {(k, n): i for (n, i, k, a) in locks}
+    by_kind = lambda kind: {n: i for (n, i, k, a) in locks if k == kind}
+    path = lambda f: os.path.join(common, f)
+    banks, rows = {}, []
+    if not os.path.isdir(common):
+        return rows, banks
+    if os.path.exists(path('inst.dms')):
+        for i, r in enumerate(read_insts_dms(path('inst.dms'))):
+            want = lock.get(('inst', 'INST_' + r['name'].upper()))
+            if want != NINST + i:
+                raise MmlcError('inst.dms: %s is row %d; common.lock must say INST_%s = %d inst (append it)' % (
+                    r['name'], NINST + i, r['name'].upper(), NINST + i))
+            rows.append(inst_row_dms(r))
+            banks.setdefault('inst_dicts', []).append(r)
+    if os.path.exists(path('comps.dms')):
+        banks['comps'], banks['comp_names'] = read_comps_dms(path('comps.dms'))
+    if os.path.exists(path('grooves.dms')):
+        banks['grooves'], banks['groove_names'] = read_grooves_dms(path('grooves.dms'))
+    if os.path.exists(path('fills.dms')):
+        banks['fills'], banks['fill_names'] = read_fills_dms(path('fills.dms'))
+    if os.path.exists(path('motifs.dms')):
+        banks['motifs'] = read_motifs_dms(path('motifs.dms'), by_kind('motif'))
+    if os.path.exists(path('vinyl.dms')):
+        banks['vinyl'] = read_vinyl_dms(path('vinyl.dms'), by_kind('vinyl'))
+    if os.path.exists(path('trans.dms')):
+        banks['trans'] = read_trans_dms(path('trans.dms'), by_kind('cue'))
+    if os.path.exists(path('turns.dms')):
+        maps, turns, bits = read_turns_dms(path('turns.dms'))
+        banks['turns'] = bytes([len(turns), len(maps), 0, 0]) + b''.join(maps) + b''.join(turns)
+        banks['cadence_bits'] = bits
+    sizes = [('instruments', 20 * len(rows)), ('comps', sum(len(x) + 2 for x in banks.get('comps', []))),
+             ('grooves', 64 * len(banks.get('grooves', []))),
+             ('fills', sum(len(x) + 2 for x in banks.get('fills', []))),
+             ('motifs', sum(len(x) + 2 for x in banks.get('motifs', {}).values())),
+             ('vinyl', sum(len(x) + 2 for x in banks.get('vinyl', {}).values())),
+             ('transitions', 8 * len(banks.get('trans', []))), ('seams', len(banks.get('turns', b'')))]
+    report.append('shared banks (core/music/common): ' + ', '.join('%s %d B' % s for s in sizes) +
+                  '; %d B' % sum(s[1] for s in sizes))
+    report.append('  %d instruments, %d comps, %d grooves, %d fills, %d motifs, %d vinyl patterns, '
+                  '%d transitions, %d turnarounds' % (
+                      len(rows), len(banks.get('comps', [])), len(banks.get('grooves', [])),
+                      len(banks.get('fills', [])), len(banks.get('motifs', {})), len(banks.get('vinyl', {})),
+                      len(banks.get('trans', [])), banks['turns'][0] if 'turns' in banks else 0))
+    return rows, banks
+
+
+def gen_files(src):
+    out = []
+    root = os.path.join(src, 'core', 'music', 'gen')
+    if os.path.isdir(root):
+        for area in sorted(os.listdir(root)):
+            d = os.path.join(root, area)
+            if os.path.isdir(d):
+                out += [os.path.join(d, f) for f in sorted(os.listdir(d)) if f.endswith('.dms')]
+    return out
+
+
 def build(src):
     locks = read_locks(src)
     lockmap = {n: i for (n, i, k, a) in locks if k == 'cue'}
@@ -1099,11 +2541,132 @@ def build(src):
         report.append('%-28s %3d  bpm %3d  %2d nodes %-28s %5d B (lanes %5d B)  passes %d' % (
             name, lockmap[name], cue['bpm'], info['nodes'], str(info['bars']), len(blob),
             info['pack_bytes'], info['npass']))
-    bank = build_bank(cues, [inst_row(r) for r in insts])
+    # the synth SFX (D14, CF-3)
+    sfx_bytes = 0
+    for nm, segs in read_synth_sfx(src):
+        name = 'MC_SFX_' + nm.upper()
+        if name not in lockmap:
+            raise MmlcError('sfx.lock has no %s (append it)' % name)
+        blob = compile_sfx_cue(nm, segs)
+        cues.append((lockmap[name], MDK_SFX, 0, blob))
+        sfx_bytes += len(blob) + 8
+    report.append('synth SFX (audio_fx.c SynthSeg tables): %d cues, %d B' % (
+        sum(1 for c in cues if c[1] == MDK_SFX), sfx_bytes))
+    NINST_CLASSIC = len(insts)
+    rows, banks = build_common(src, locks, report)
+    gens = [read_gen_dms(g) for g in gen_files(src)]
+    for g in gens:
+        lint_gen(g, report)
+    insts_all = insts + banks.get('inst_dicts', [])
+    common_trans = list(banks.get('trans', []))
+    cues += compile_authored_set(cue_files(src), locks, insts_all, gens, banks, report)
+    seen = {}
+    for (ident, kind, fl, blob) in cues:
+        k = (kind == MDK_STING, ident)
+        if k in seen:
+            raise MmlcError('two cues with id %d' % ident)
+        seen[k] = 1
+    bank = build_bank(cues, [inst_row(r) for r in insts] + rows, banks)
     report.append('')
-    report.append('bank %d B: %d cues, %d instruments; classic MML %d B' % (
-        len(bank), len(cues), len(insts), mml_bytes))
-    return locks, bank, report
+    report.append('bank %d B: %d cues, %d instruments (%d classic); classic MML %d B' % (
+        len(bank), len(cues), NINST_CLASSIC + len(rows), NINST_CLASSIC, mml_bytes))
+    # the test bank (core/tests/music/): T3, T8, T9 play it through mus_bank_use()
+    tb = None
+    tdir = os.path.join(src, 'core', 'tests', 'music')
+    if os.path.isdir(tdir):
+        tlocks = read_test_lock(os.path.join(tdir, 'test.lock'))
+        tb_banks = dict(banks)
+        tb_banks['trans'] = common_trans
+        tgens = [read_gen_dms(os.path.join(tdir, 'gen', f)) for f in
+                 sorted(os.listdir(os.path.join(tdir, 'gen')))] if os.path.isdir(os.path.join(tdir, 'gen')) else []
+        trep = []
+        for g in tgens:
+            lint_gen(g, trep)
+        tpaths = [os.path.join(tdir, f) for f in sorted(os.listdir(tdir)) if f.endswith('.dms')]
+        tcues = compile_authored_set(tpaths, [l for l in locks if l[2] not in ('cue', 'sting')] + tlocks,
+                                     insts_all, gens + tgens, tb_banks, trep)
+        tb = (build_bank(tcues, [inst_row(r) for r in insts] + rows, tb_banks), tlocks)
+        report.append('test bank %d B: %d cues (core/tests/music)' % (len(tb[0]), len(tcues)))
+    return locks, bank, report, tb
+
+
+def compile_authored_set(paths, locks, insts_all, gens, banks, report):
+    """compile the cue / sting blocks of `paths`; their transition rows join
+    banks['trans'] (sorted, one row per (from, to))"""
+    global NINST
+    lock = {(k, n): i for (n, i, k, a) in locks}
+    cue_ids = {n: i for (n, i, k, a) in locks if k == 'cue'}
+    sting_ids = {n: i for (n, i, k, a) in locks if k == 'sting'}
+    vinyl_ids = {n: i for (n, i, k, a) in locks if k == 'vinyl'}
+    keep, NINST = NINST, len(insts_all)
+    out, trans = [], list(banks.get('trans', []))
+    try:
+        for c in read_authored(paths, lock):
+            ident, kind, fl, blob, tr, line = compile_authored(c, cue_ids, sting_ids, insts_all, gens, vinyl_ids,
+                                                               banks.get('cadence_bits'))
+            out.append((ident, kind, fl, blob))
+            trans += tr
+            report.append(line)
+    finally:
+        NINST = keep
+    trans.sort(key=lambda r: (r[0], r[1]))
+    for a, b in zip(trans, trans[1:]):
+        if a[:2] == b[:2]:
+            raise MmlcError('two transition rows for (%d, %d)' % (a[0], a[1]))
+    banks['trans'] = trans
+    return out
+
+
+def read_test_lock(path):
+    """core/tests/music/test.lock: NAME = id kind (cue | sting), any id 1..255"""
+    out = []
+    if not os.path.exists(path):
+        return out
+    with open(path, encoding='ascii') as f:
+        for ln, line in enumerate(f, 1):
+            line = line.split('#', 1)[0].strip()
+            if not line:
+                continue
+            m = re.match(r'^([A-Z][A-Z0-9_]*)\s*=\s*(\d+)\s+(cue|sting)$', line)
+            if not m or not 0 < int(m.group(2)) < 256:
+                raise MmlcError('test.lock:%d: bad line %r' % (ln, line))
+            out.append((m.group(1), int(m.group(2)), m.group(3), 'test'))
+    return out
+
+
+def emit_testbank_h(bank, tlocks):
+    out = ['/* mus_testbank.h - GENERATED by tools/mmlc.py from core/tests/music/ (owner: MU6;',
+           ' * T3, T8, T9). A bank of test cues and stingers over the shared banks, played',
+           ' * through mus_bank_use(). Do not edit; run `make -C core gen`. */',
+           '#ifndef DOOMO_MUS_TESTBANK_H', '#define DOOMO_MUS_TESTBANK_H', '']
+    for name, ident, kind, area in sorted(tlocks, key=lambda t: (t[2], t[1])):
+        out.append('#define %-24s %d' % (name, ident))
+    out += ['', 'static const uint8_t mus_testbank[%d] __attribute__((aligned(4))) = {' % len(bank)]
+    for i in range(0, len(bank), 16):
+        out.append('    ' + ','.join('0x%02x' % b for b in bank[i:i + 16]) + ',')
+    out += ['};', '', '#endif', '']
+    return '\n'.join(out)
+
+
+# ---- --gen: musgen (sec.8.3, 16.2; never run by CI) -----------------------------------------
+def run_musgen(src, cue):
+    import subprocess
+    tool = os.path.join(src, 'tools', 'musgen')
+    r = subprocess.run(['make', '-s', '-C', tool], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if r.returncode:
+        raise MmlcError('cannot build tools/musgen:\n' + r.stderr.decode('ascii', 'replace'))
+    exe = os.path.join(src, 'build', 'musgen', 'musgen')
+    lst = subprocess.run([exe, 'list'], stdout=subprocess.PIPE, check=True).stdout.decode('ascii').split('\n')
+    rows = [l.split() for l in lst if l.strip()]
+    row = [x for x in rows if x[1] == cue or x[0] == cue]
+    if not row:
+        raise MmlcError('musgen has no configuration for %s (it knows: %s)' % (cue, ', '.join(x[1] for x in rows)))
+    fp = subprocess.run([exe, 'fingerprint', '--check'], stdout=subprocess.PIPE)
+    if fp.returncode:
+        raise MmlcError('musgen: the composer fingerprint does not match')
+    out = subprocess.run([exe, 'gen', row[0][0]], stdout=subprocess.PIPE, check=True).stdout.decode('ascii')
+    rel = os.path.join('core', 'music', 'gen', row[0][2], row[0][0] + '.dms')
+    return rel, out
 
 
 def main(argv):
@@ -1111,12 +2674,24 @@ def main(argv):
     ap.add_argument('--out-root', default=ROOT)
     ap.add_argument('--src-root', default=ROOT)
     ap.add_argument('--report')
+    ap.add_argument('--gen', metavar='CUE', help='run musgen for CUE and write core/music/gen/<area>/<cue>.dms')
     args = ap.parse_args(argv)
     try:
-        locks, bank, report = build(args.src_root)
+        if args.gen:
+            rel, text = run_musgen(args.src_root, args.gen)
+            write(args.out_root, rel, text)
+            path = os.path.join(args.out_root, rel)
+            rep = []
+            lint_gen(read_gen_dms(path), rep)
+            sys.stdout.write('mmlc: wrote %s\n%s\n' % (rel, '\n'.join(rep)))
+            return 0
+        locks, bank, report, tb = build(args.src_root)
         write(args.out_root, 'core/gen/mus_ids.h', emit_ids(locks))
+        summary = [l for l in report if l.startswith('bank ')][-1]
         write(args.out_root, 'core/gen/mus_data.c',
-              emit_bank_c(bank, ['%d bytes: %s' % (len(bank), report[-1])]))
+              emit_bank_c(bank, ['%d bytes: %s' % (len(bank), summary)]))
+        if tb:
+            write(args.out_root, 'core/tests/data/mus_testbank.h', emit_testbank_h(*tb))
         if args.report:
             d = os.path.dirname(os.path.abspath(args.report))
             os.makedirs(d, exist_ok=True)

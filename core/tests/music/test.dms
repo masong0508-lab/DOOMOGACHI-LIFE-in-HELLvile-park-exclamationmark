@@ -1,0 +1,62 @@
+# test.dms - the test bank's cues and stingers (owner: MU6; T3, T8, T9;
+# the authored-cue syntax is tools/mmlc.py's "authored cues" section).
+# MCT_HUB is a small adaptive hub: an anchor, an answer, a GEN slot
+# (core/tests/music/gen/hub.dms), a low-intensity breakdown, conditional
+# edges, a key lift, an intensity bind, a quote role and a twin; MCT_TWO is
+# a 3/4 cue for the matrix; two stingers for the comic bridge.
+
+cue MCT_HUB "Test hub" bpm=120 key=C:major meter=4 dial=S1 range=S0..S4 hub jukebox
+  bind MP_INTENSITY*1
+  role LEAD inst=toy_lead/sync_lead on=I0 prio=3 quote
+  role COUNTER inst=flute on=I3 prio=1 twin
+  role HARM inst=chip_chord on=I1 prio=2
+  role BASS inst=tri_bass on=I0 prio=2
+  role KIT kit=CLASSIC on=I2 prio=1
+  node A anchor bars=2 i=I0..I5
+    chords | C . | G . |
+    LEAD  o5 l8 e e g e >c4< g4 | a a g e d4 e4
+    HARM  o4 l4 e g e g | d g d g
+    BASS  o3 l4 c g c g | g d g d
+    KIT   l8 K H S H K H S H | K H S H K K S C
+    -> B:60 C:40 BRK:30:i<I2
+  node B bars=2 i=I0..I5
+    chords | F . | G . |
+    LEAD  o5 l8 f f a f >c4< a4 | g g f d c2
+    HARM  o4 l4 f a f a | d g d g
+    BASS  o3 l4 f c f c | g d g d
+    KIT   l8 K H S H K H S H | K H S H K H S H
+    -> A:50 C:50 A:40:lift=1
+  node C bars=2 i=I2..I5 gen=GEN_T
+    chords | C . | G . |
+    HARM  o4 l4 e g e g | d g d g
+    BASS  o3 l4 c g c g | g d g d
+    KIT   l8 K H S H K H S H | K H S H K H S H
+    -> A:70 B:30
+  node BRK breakdown bars=2 i=I0..I2
+    BASS  o3 l2 c g | g d
+    KIT   l4 K r K r | K r K S
+    -> A:100
+  trans -> MCT_TWO grid=BAR type=FILL:1
+
+cue MCT_TWO "Test two" bpm=96 key=F:major meter=3 dial=S0
+  role LEAD inst=box_lead on=I0 prio=3
+  role BASS inst=tri_bass on=I0 prio=2
+  node A anchor bars=2
+    LEAD  o5 l4 c f a | f2.
+    BASS  o3 f2. | c2.
+  node B bars=2
+    LEAD  o5 l4 b- a g | f2.
+    BASS  o3 c2. | f2.
+  trans -> MCT_HUB grid=BEAT type=VINYL:NEEDLE
+
+sting STGT_TADA "Ta-da" bpm=150 key=C:major meter=4 hit=1 duck=0.5 prio=2 gap=1 key_follow
+  role LEAD inst=toy_lead prio=3
+  role KIT kit=CLASSIC prio=1
+  node A bars=1
+    LEAD  o5 l8 c e g >c4< r8 r4
+    KIT   C4 r4 r2
+
+sting STGT_HIT "Hit" bpm=120 key=C:major meter=4 hit=0 prio=1
+  role LEAD inst=toy_lead prio=3
+  node A bars=1
+    LEAD  o6 c4 r4 r2
