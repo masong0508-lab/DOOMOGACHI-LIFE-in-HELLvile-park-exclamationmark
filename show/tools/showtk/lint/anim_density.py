@@ -47,12 +47,13 @@ HOST_MOTION = {"view3d": 2, "overworld": 1, "room": 1}
 
 
 class Op:
-    __slots__ = ("f", "kw", "words", "kv", "line", "file", "macro")
+    __slots__ = ("f", "kw", "words", "kv", "line", "file", "macro", "time")
 
     def __init__(self, f, c):
         self.f, self.kw, self.words, self.kv = f, c.kw, list(c.words), dict(c.kv)
         self.line, self.file = c.line, c.file
         self.macro = getattr(c, "from_macro", None)
+        self.time = c.time
 
 
 def compile_recording(ep="ep101", shots=None):
@@ -114,7 +115,7 @@ def visible_ambs(setdef, variant):
     return ambs
 
 
-def analyse_shot(sc, protected=False):
+def analyse_shot(sc, protected=False, by_id=None):
     """-> (stats dict, [Diag])"""
     sh = sc.shot
     L = sh.len
@@ -165,6 +166,11 @@ def analyse_shot(sc, protected=False):
             elems.add("text")
         elif o.kw == "cam3d":
             cam_moving = True
+    src = sh.kv.get("replay") or sh.kv.get("base")
+    if src and by_id:
+        s2 = by_id.get(src.split("@")[0])
+        if s2 is not None and any(o.kw in ("cam", "cam3d") for o in getattr(s2, "_anim_ops", [])):
+            cam_moving = True           # a replay re-runs its source's camera
     if cam_moving:
         elems.add("camera")
 
@@ -288,12 +294,13 @@ def run(ep="ep101", shots=None):
     beats = {}
     for b in getattr(epc.rundown, "beats", {}).values() if isinstance(getattr(epc.rundown, "beats", None), dict) else []:
         beats[b.id] = b
+    by_id = {sc.shot.id: sc for sc in epc.compilers if hasattr(sc, "st")}
     for sc in epc.compilers:
         if getattr(sc, "slug", False) or getattr(sc, "is_slug", False) or not hasattr(sc, "st"):
             continue
         b = getattr(sc.shot, "beat", None)
-        prot = bool(getattr(b, "protected", False))
-        s, d = analyse_shot(sc, prot)
+        prot = bool(getattr(getattr(epc.rundown, "by_id", {}).get(b), "protected", False))
+        s, d = analyse_shot(sc, prot, by_id)
         stats.append(s)
         diags += d
     return stats, diags

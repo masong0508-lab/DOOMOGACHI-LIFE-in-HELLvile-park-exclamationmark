@@ -120,3 +120,13 @@ Sum: 6 x 150 = **900 f**.
 ## Gag beats checked against the shot list / GAG_BIBLE
 
 Rule of three with constant 15/16-f interval and escalation in every channel (co15); whiplash = insert (co17, 4 f) + same frame with exactly one change (co18 `base=co16@+39`, one `change`); FREEZE 13 (co16); R8/R13/R21/R26 holds kept to the frame; the 8-f fountain lag (co14 +0 = 8 f after co13's line end); Mascotty the Starer (co19, mt03, every IN card); "beep." gag beep 1 of 6 (mt12); one-change "previously on" cards (ec IN).
+
+## Motion pass (Oct 25, the creator's no-slideshow bar; `# motion:` lines in co_mt.shw)
+
+Lint: `cd show/tools && python3 -m showtk.lint.anim_density plan ep101 --file co_mt` (or `show lint ep101`).
+Before: 9 shots warned (ANIM-CAM 6, ANIM-DENSITY 3, ANIM-OVERWORLD 1). After: 1 (mt01, below). Frames (1,500) and lines unchanged.
+
+- Camera: every 2D shot of 45 f or more that had no move now has one, centred on the frame. Each is a `cam to scale=` push paired with the `cam pan` that keeps the centre still, because the stage camera scales about 0,0. mt02: a 1.06 track push under the logo drops. mt03: a 1.06 crane-in. mt05: a 1.06 track on the run to the Wall. mt08: a 1.10 insert push (ease OUT) on the candles. mt10: a 1.06 track. mt11: 1.06 under the roller. mt13: a 1.10 insert push on the title. mt06 (36 f, the drop): a hard 1.08 push with a SHK_TAP jolt on the record scratch.
+- Impacts: SHK_TAP on the last frame of each logo word's drop (mt02 bars 6.1/7.1/8.1 +5) and on the lens gibs (mt09 bar 23.1+2).
+- Listeners: in mt03 the line-up glances at the still bunny at +150 (sunny, then nana and fuzz 2 f later), the Mayor gets `react_small` (+153), and heads come back at +174. Mascotty never moves (idle=none: the gag).
+- OVERWORLD: mt01 (hahaland_crane, 240 f) runs longer than ~4 s on purpose. It is the main title's song-locked crane reveal (bars 1-5, cam3d rail, no game UI, no dialogue), and mt07 replays it at +120 for the hellify; splitting it would move the theme's bar map. mt04 (36 f) and mt07 (96 f, a replay) are under the cap. No dialogue plays on an overworld set.
