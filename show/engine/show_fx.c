@@ -88,7 +88,7 @@ int show_fx_beat_ext(const struct BeatEv *ev)
 int show_fx_op(int op, const int16_t *a, int n)
 {
     switch (op) {
-    case SOP_IRIS: {            /* slot(-1 = point) x y r heart mode hold */
+    case SOP_L2_IRIS: {         /* slot(-1 = point) x y r heart mode hold */
         int x, y;
         if (n < 7) return 1;
         x = a[1]; y = a[2];
@@ -96,11 +96,11 @@ int show_fx_op(int op, const int16_t *a, int n)
         iris_at(a[5], x, y, a[3], a[4], a[6]);
         return 1;
     }
-    case SOP_BOIL:
+    case SOP_L2_BOIL:
         if (n > 0 && a[0] > 0) { s_fx.boil_every = DOOMO_CLAMP(a[0], 1, 30); s_fx.boil_off = 0; }
         else s_fx.boil_off = 1;
         return 1;
-    case SOP_FADE_SET:
+    case SOP_L2_FADE_SET:
         camfx_fade(n > 0 ? DOOMO_CLAMP(a[0], 0, 16) : 0);
         return 1;
     default:
