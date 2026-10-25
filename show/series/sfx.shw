@@ -1,0 +1,242 @@
+# show/series/sfx.shw - SFX, foley and ambience names -> sources, gains, pans, SDH captions
+# (owner: AUDIO, WP10; SHOW_ENGINE_SPEC.md sec.5.1, 6.1, 10.5; GAG_BIBLE.md sec.9, 10.1).
+# Rendered by `show sfx build` (python3 -m showtk.sfx.library build) to
+# <show_lib>/sfx/DGL_<cat>_<name>_<var>.wav, 48 kHz / 24-bit, peak -1 dBFS; hashes in
+# show/lib/sfx/sfx.lock. A shot plays one with `sfx† <id> [gain=] [pan=]` (`fol†`, `amb†`).
+#
+#   sfx|fol|amb <ID> src=<source> cat=<category> [gain=dB] [pan=center|L|R|x|auto] [cc="[...]"]
+#                    [stereo] [loop] [process=none]
+# Sources (the game's own first):
+#   synth:<recipe>[:semis]   core/src/audio_fx.c SynthSeg tables, stepped as audio_fx_synth_step()
+#   sfxgen:<NAME>            tools/sfxgen.py imported and run at 48,000 Hz
+#   piezo:<recipe>[:semis]   the engine's own render (`runner --wav` code), sample-and-hold to 48 kHz
+#   design:<fn>              showtk/sfx/designs.py (built on the two above where the game has it)
+#   foley:crayon(stroke_speed) | foley:paws(steps=crowd)   the two data-driven foley synths
+# `gain` is the default level in the FX bus (the shot may override it); captions follow the
+# gag bible: comic sounds that carry a joke are captioned, the rest are not.
+
+# ===================================================== the game's comedy kit (audio_fx.c SynthSeg)
+sfx FX_SCRATCH       src=synth:scratch   cat=synth gain=-8dB  pan=center cc="[record scratch]"
+sfx FX_BOING         src=synth:boing     cat=synth gain=-9dB  pan=auto   cc="[boing]"
+sfx FX_POP           src=synth:pop       cat=synth gain=-12dB pan=auto
+sfx FX_THUD          src=synth:thud      cat=synth gain=-6dB  pan=center
+sfx FX_WHOOSH        src=synth:whoosh    cat=synth gain=-12dB pan=auto
+sfx FX_KAZOO         src=synth:kazoo     cat=synth gain=-9dB  pan=center cc="[kazoo]"
+sfx FX_KAZOO_2       src=synth:kazoo:-3  cat=synth gain=-9dB  pan=center cc="[kazoo, lower]"
+sfx FX_KAZOO_3       src=synth:kazoo:-6  cat=synth gain=-9dB  pan=center cc="[kazoo, lower still]"
+sfx FX_GLITCH        src=synth:glitch    cat=synth gain=-12dB pan=center
+sfx FX_TIK           src=synth:tik       cat=synth gain=-14dB pan=auto
+sfx FX_SHWIP         src=synth:shwip     cat=synth gain=-10dB pan=center
+sfx FX_TINK          src=synth:tink      cat=synth gain=-12dB pan=auto   cc="[*tink*]"
+sfx FX_FANFARE       src=synth:fanfare   cat=synth gain=-10dB pan=center
+sfx FX_CHOIR         src=synth:choir     cat=synth gain=-12dB pan=center
+sfx FX_PLUCK         src=synth:pluck     cat=synth gain=-10dB pan=center
+sfx FX_CREAK         src=synth:creak     cat=synth gain=-12dB pan=auto
+
+# ===================================================== the game's PCM effects (sfxgen.py at 48 kHz)
+sfx FX_CURSOR        src=sfxgen:CURSOR      cat=game gain=-14dB pan=center
+sfx FX_SELECT        src=sfxgen:SELECT      cat=game gain=-14dB pan=center
+sfx FX_CANCEL        src=sfxgen:CANCEL      cat=game gain=-14dB pan=center
+sfx FX_ERROR         src=sfxgen:ERROR       cat=game gain=-14dB pan=center
+sfx FX_BLIP          src=sfxgen:BLIP        cat=game gain=-14dB pan=center
+sfx FX_EAT           src=sfxgen:EAT         cat=game gain=-10dB pan=auto
+sfx FX_HAPPY         src=sfxgen:HAPPY       cat=game gain=-12dB pan=center
+sfx FX_SAD           src=sfxgen:SAD         cat=game gain=-12dB pan=center
+sfx FX_LOVE          src=sfxgen:LOVE        cat=game gain=-12dB pan=center
+sfx FX_SPARKLE       src=sfxgen:SPARKLE     cat=game gain=-14dB pan=auto
+sfx FX_SPLASH        src=sfxgen:SPLASH      cat=game gain=-10dB pan=auto
+sfx FX_POOP          src=sfxgen:POOP        cat=game gain=-12dB pan=auto
+sfx FX_EGG_CRACK     src=sfxgen:EGG_CRACK   cat=game gain=-6dB  pan=center cc="[crack]"
+sfx FX_EVOLVE        src=sfxgen:EVOLVE      cat=game gain=-12dB pan=center
+sfx FX_PISTOL        src=sfxgen:PISTOL      cat=game gain=-8dB  pan=auto
+sfx FX_SHOTGUN       src=sfxgen:SHOTGUN     cat=game gain=-6dB  pan=auto
+sfx FX_CHAINGUN      src=sfxgen:CHAINGUN    cat=game gain=-8dB  pan=auto
+sfx FX_ROCKET        src=sfxgen:ROCKET      cat=game gain=-8dB  pan=auto
+sfx FX_PLASMA        src=sfxgen:PLASMA      cat=game gain=-8dB  pan=auto
+sfx FX_BUBBLE        src=sfxgen:BUBBLE      cat=game gain=-12dB pan=auto
+sfx FX_SQUEAK        src=sfxgen:SQUEAK      cat=game gain=-10dB pan=auto   cc="[squeak]"
+sfx FX_CHAINSAW      src=sfxgen:CHAINSAW    cat=game gain=-8dB  pan=auto
+sfx FX_EXPLODE       src=sfxgen:EXPLODE     cat=game gain=-6dB  pan=auto
+sfx FX_SPLAT         src=sfxgen:SPLAT       cat=game gain=-8dB  pan=auto
+sfx FX_CONFETTI      src=sfxgen:CONFETTI    cat=game gain=-10dB pan=auto
+sfx FX_DEMON_ROAR    src=sfxgen:DEMON_ROAR  cat=game gain=-8dB  pan=auto
+sfx FX_DEMON_PAIN    src=sfxgen:DEMON_PAIN  cat=game gain=-10dB pan=auto
+sfx FX_DEMON_DIE     src=sfxgen:DEMON_DIE   cat=game gain=-8dB  pan=auto
+sfx FX_PLAYER_HURT   src=sfxgen:PLAYER_HURT cat=game gain=-10dB pan=center
+sfx FX_PICKUP        src=sfxgen:PICKUP      cat=game gain=-12dB pan=center
+sfx FX_DOOR          src=sfxgen:DOOR        cat=game gain=-10dB pan=auto
+sfx FX_WELD          src=sfxgen:WELD        cat=game gain=-10dB pan=auto
+sfx FX_HOLY          src=sfxgen:HOLY        cat=game gain=-10dB pan=center
+sfx FX_POSSESS       src=sfxgen:POSSESS     cat=game gain=-8dB  pan=center
+sfx FX_BELL          src=sfxgen:BELL        cat=game gain=-10dB pan=auto
+
+# ===================================================== the pet: the raw GBA piezo (never processed)
+# "beep." is the engine's own sound in three readings (sec.10.2): process=none is enforced, no
+# EQ, no reverb, no limiter; the caption is the line. The demon copy (EC2-IN) beeps lower.
+sfx PET_BEEP_1       src=piezo:beep       cat=pet gain=-10dB pan=center process=none cc="[beep.]"
+sfx PET_BEEP_2       src=piezo:beep:2     cat=pet gain=-10dB pan=center process=none cc="[beep.]"
+sfx PET_BEEP_3       src=piezo:beep:-2    cat=pet gain=-10dB pan=center process=none cc="[beep.]"
+sfx FX_DEMON_BEEP    src=piezo:beep:-7    cat=pet gain=-12dB pan=center process=none cc="[a lower beep]"
+
+# ===================================================== the cold open (COLD_OPEN_SHOTLIST.md)
+fol FOL_crayon_scratch src=foley:crayon(stroke_speed) cat=foley gain=-14dB pan=center cc="[crayon scratching]"
+fol FOL_paw_patter   src=foley:paws(steps=crowd)      cat=foley gain=-18dB pan=auto stereo cc="[small feet patter]"
+sfx FX_BOWL_CLINK    src=design:bowl_clink         cat=comedy gain=-14dB pan=auto
+sfx FX_FIREWORK_SOFT src=design:firework_thump_soft cat=comedy gain=-12dB pan=center stereo cc="[soft firework thump]"
+sfx FX_ROLLER_LONG   src=design:roller_squeak_long cat=foley gain=-12dB pan=auto  cc="[roller squeaks]"
+sfx FX_ROLLER_1      src=design:roller_squeak_1    cat=foley gain=-12dB pan=auto  cc="[squeak]"
+sfx FX_ROLLER_2      src=design:roller_squeak_2    cat=foley gain=-12dB pan=auto  cc="[squeak, lower]"
+sfx FX_ROLLER_3      src=design:roller_squeak_3    cat=foley gain=-12dB pan=auto  cc="[squeak, lower still]"
+sfx FX_DRIP_TICK     src=design:drip_tick          cat=foley gain=-16dB pan=auto
+sfx FX_WET_BLIP      src=design:wet_blip_rise      cat=comedy gain=-16dB pan=auto
+sfx FX_PAT_PAT       src=design:pat_pat            cat=foley gain=-14dB pan=auto
+sfx FX_BALLOON_CREAK src=design:balloon_creak      cat=foley gain=-12dB pan=auto  cc="[rubber creaks]"
+sfx FX_BALLOON_SQUEAK src=design:balloon_squeak    cat=foley gain=-12dB pan=auto  cc="[squeak]"
+sfx FX_LADDER_CLACK  src=design:ladder_clack       cat=foley gain=-14dB pan=auto
+sfx FX_WINGS         src=design:wings_flutter      cat=foley gain=-20dB pan=auto  loop
+sfx FX_FOUNTAIN_GIGGLE src=design:fountain_giggle  cat=comedy gain=-10dB pan=auto stereo cc="[the fountain giggles, late]"
+sfx FX_FOUNTAIN_HEE  src=design:fountain_hee       cat=comedy gain=-10dB pan=auto stereo cc="[the fountain giggles, on time: ...Hee.]"
+sfx FX_LANTERN_FWIP  src=design:lantern_fwip       cat=foley gain=-16dB pan=auto
+sfx FX_OVEN_TIK      src=design:oven_tik           cat=foley gain=-18dB pan=auto
+sfx FX_TOWEL_RUSTLE  src=design:towel_rustle       cat=foley gain=-20dB pan=auto
+sfx FX_LAMP_TINK     src=design:lamp_tink          cat=foley gain=-16dB pan=auto
+sfx FX_BASKET_CREAK  src=design:basket_creak       cat=foley gain=-18dB pan=auto
+sfx FX_EGG_WOBBLE    src=design:egg_wobble         cat=foley gain=-14dB pan=center
+sfx FX_EGG_WOBBLE_LOW src=design:egg_wobble_low    cat=foley gain=-12dB pan=center
+sfx FX_BUS_HORN_FAR  src=design:bus_horn_far       cat=comedy gain=-14dB pan=L stereo cc="[a far bus horn]"
+sfx FX_BUS_HORN_NEAR src=design:bus_horn_near      cat=comedy gain=-10dB pan=L stereo cc="[the bus horn, nearer]"
+
+# ===================================================== main title and the eyecatches
+sfx FX_LETTER_DROP   src=design:mallet_drop        cat=comedy gain=-12dB pan=auto
+sfx FX_KNOCK_WALL    src=design:knock_wall         cat=foley gain=-10dB pan=auto stereo
+sfx FX_CANDLE_OUT_BEAT src=design:candle_out_rhythm cat=foley gain=-12dB pan=auto
+sfx FX_GATE_RATTLE   src=design:gate_rattle        cat=foley gain=-12dB pan=center
+sfx FX_HELLIFY_FLASH src=design:hellify_flash      cat=horror gain=-10dB pan=center
+sfx FX_BONE_CLICK    src=design:bone_click         cat=foley gain=-8dB  pan=center cc="[click]"
+sfx FX_GLASS_CRACK   src=design:glass_crack        cat=foley gain=-8dB  pan=center cc="[glass cracks]"
+sfx FX_FLAME_GUTTER  src=design:flame_gutter       cat=foley gain=-10dB pan=center
+
+# ===================================================== Act One
+sfx FX_CARD_POP      src=design:card_pop           cat=comedy gain=-14dB pan=auto
+sfx FX_SUITCASE_LAND src=design:suitcase_land      cat=foley gain=-10dB pan=auto
+sfx FX_TICKET        src=design:ticket_flutter     cat=foley gain=-16dB pan=auto
+sfx FX_NUMBER_FALL   src=design:number_fall        cat=foley gain=-14dB pan=auto
+sfx FX_NUMBER_ROLL   src=design:number_roll        cat=foley gain=-18dB pan=auto
+sfx FX_PENCIL        src=design:pencil_scratch     cat=foley gain=-16dB pan=auto cc="[pencil scratching]"
+sfx FX_PAGE_SOGGY    src=design:page_soggy         cat=foley gain=-16dB pan=auto
+sfx FX_DUCK_SQUEAK   src=design:duck_squeak        cat=comedy gain=-10dB pan=auto cc="[a duck squeaks]"
+sfx FX_DUCK_SQUEAK_BACK src=design:duck_squeak_answer cat=comedy gain=-10dB pan=auto cc="[squeak squeak]"
+sfx FX_EYE_TIK       src=design:tik_blink          cat=comedy gain=-16dB pan=auto
+sfx FX_SPOTLIGHT     src=design:spotlight_on       cat=foley gain=-12dB pan=center
+sfx FX_BONE_CLACK2   src=design:bone_clack_pair    cat=foley gain=-10dB pan=auto
+sfx FX_BITE_1        src=design:bite_crunch_1      cat=comedy gain=-12dB pan=auto cc="[crunch]"
+sfx FX_BITE_2        src=design:bite_crunch_2      cat=comedy gain=-11dB pan=auto cc="[crunch]"
+sfx FX_BITE_3        src=design:bite_crunch_3      cat=comedy gain=-10dB pan=auto cc="[CRUNCH]"
+sfx FX_XRAY_TONE     src=design:xray_tone          cat=comedy gain=-16dB pan=center
+sfx FX_CLIPBOARD     src=design:clipboard_clip     cat=foley gain=-16dB pan=auto
+sfx FX_CLOCK_NINE    src=design:clock_strike       cat=foley gain=-6dB  pan=center stereo cc="[the town clock strikes nine]"
+sfx FX_CRICKET       src=design:cricket            cat=amb gain=-18dB pan=auto stereo cc="[a cricket]"
+sfx FX_BALLOON_POP_FAR src=design:balloon_pop_far  cat=comedy gain=-16dB pan=R stereo cc="[far off, a balloon pops]"
+sfx FX_PIPE_SIGH     src=design:pipe_sigh          cat=horror gain=-8dB  pan=center
+sfx FX_WALL_THUMP    src=design:wall_thump         cat=horror gain=-8dB  pan=R stereo cc="[thump]"
+sfx FX_FOOT_THUMP    src=design:foot_thump         cat=foley gain=-10dB pan=auto
+sfx FX_LANTERN_OUT   src=design:lantern_out        cat=horror gain=-12dB pan=auto
+sfx FX_EYES_OPEN     src=design:eyes_open          cat=horror gain=-14dB pan=auto
+sfx FX_POSSESS_INHALE src=design:possess_inhale    cat=horror gain=-6dB  pan=center cc="[a long inhale; FWOOMP]"
+
+# ===================================================== Act Two
+sfx FX_MAYOR_DIVE    src=design:mayor_dive         cat=comedy gain=-10dB pan=auto
+sfx FX_DEMON_SQUEAK  src=design:demon_squeak       cat=comedy gain=-12dB pan=auto
+sfx FX_CONFETTI_SPRAY src=design:confetti_spray    cat=comedy gain=-10dB pan=auto
+sfx FX_WET_SHRED     src=design:wet_shred          cat=gore gain=-6dB  pan=center
+sfx FX_CARDBOARD_TURN src=design:cardboard_turn    cat=foley gain=-14dB pan=auto
+sfx FX_GUST_TEAR     src=design:gust_tear          cat=foley gain=-8dB  pan=auto
+sfx FX_CRATE_THUD    src=design:crate_thud         cat=foley gain=-10dB pan=auto
+sfx FX_STRING_SNAP   src=design:string_snap        cat=foley gain=-18dB pan=auto
+sfx FX_HATCH         src=design:hatch              cat=comedy gain=-6dB  pan=center cc="[the egg cracks open]"
+sfx FX_CANDLE_SET    src=design:candle_set         cat=foley gain=-12dB pan=auto
+sfx FX_CANDLE_OUT    src=design:candle_out         cat=foley gain=-10dB pan=auto cc="[a candle goes out]"
+sfx FX_FUZZ_CLAP     src=design:fuzz_clap          cat=foley gain=-12dB pan=auto
+sfx FX_CHALK         src=design:chalk_scrape       cat=foley gain=-12dB pan=auto loop cc="[chalk scraping]"
+sfx FX_WALL_CLINK    src=design:wall_clink         cat=horror gain=-16dB pan=R stereo cc="[a faint clink]"
+sfx FX_LID_SHUT      src=design:lid_shut           cat=comedy gain=-14dB pan=auto
+sfx FX_GLASS_PAW     src=design:glass_paw          cat=foley gain=-14dB pan=center
+sfx FX_ANVIL         src=design:anvil              cat=foley gain=-12dB pan=auto
+
+# ===================================================== Act Three: the filter, then the truth
+sfx FX_BUBBLE_POP    src=design:bubble_pop_cute    cat=comedy gain=-10dB pan=auto
+sfx FX_WET_POP       src=design:wet_pop            cat=gore gain=-6dB  pan=center
+sfx FX_HEARTBEAT     src=design:heart_beating      cat=gore gain=-12dB pan=auto
+sfx FX_BOUNCE_1      src=design:bubble_bounce_1    cat=comedy gain=-12dB pan=auto
+sfx FX_BOUNCE_2      src=design:bubble_bounce_2    cat=comedy gain=-11dB pan=auto
+sfx FX_BOUNCE_3      src=design:bubble_bounce_3    cat=comedy gain=-10dB pan=auto
+sfx FX_PUMP_SQUEAK   src=design:pump_squeak        cat=comedy gain=-10dB pan=center cc="[squeak]"
+sfx FX_RECORD_SCRATCH src=design:record_scratch    cat=comedy gain=-6dB  pan=center cc="[record scratch]"
+sfx FX_CHK_CHK       src=design:shotgun_pump       cat=gore gain=-6dB  pan=center cc="[CHK-CHK]"
+sfx FX_PARTY_PUMP    src=design:party_pump_filter  cat=comedy gain=-10dB pan=center
+sfx FX_HUD_SLAM      src=design:hud_slam           cat=gore gain=-6dB  pan=center
+sfx FX_STICKER_SLAP  src=design:sticker_slap       cat=comedy gain=-8dB  pan=center
+sfx FX_PAPER_RIP     src=design:paper_rip          cat=comedy gain=-10dB pan=center
+sfx FX_SHOTGUN_BLAST src=design:shotgun_blast      cat=gore gain=-3dB  pan=center
+sfx FX_GORE_BURST    src=design:gore_burst         cat=gore gain=-5dB  pan=auto
+sfx FX_GIB_SPLAT     src=design:gib_splat          cat=gore gain=-8dB  pan=auto
+sfx FX_EYEBALL_ROLL  src=design:eyeball_roll       cat=gore gain=-12dB pan=auto cc="[an eyeball rolls to a stop]"
+sfx FX_TOOTH_TINK    src=design:tooth_tink         cat=gore gain=-12dB pan=auto cc="[*tink*]"
+sfx FX_CARDBOARD_FALL src=design:cardboard_fall    cat=comedy gain=-12dB pan=auto
+sfx FX_HUD_HEART_POP src=design:hud_heart_pop      cat=gore gain=-10dB pan=center
+sfx FX_PLATE_FLIP    src=design:plate_flip         cat=foley gain=-12dB pan=center
+sfx FX_CLICK_EMPTY   src=design:click_empty        cat=gore gain=-8dB  pan=center cc="[click]"
+sfx FX_SLOT_SPIN     src=design:slot_spin          cat=foley gain=-10dB pan=center
+sfx FX_SAW_REV       src=design:saw_rev            cat=gore gain=-6dB  pan=center cc="[the saw purrs, then screams]"
+sfx FX_SAW_GORE      src=design:saw_gore           cat=gore gain=-5dB  pan=center
+sfx FX_BOSS_POP      src=design:boss_pop           cat=gore gain=-3dB  pan=center stereo
+sfx FX_LENS_DRIP     src=design:lens_drip          cat=gore gain=-14dB pan=center
+sfx FX_REWIND        src=design:rewind             cat=comedy gain=-6dB  pan=center cc="[rewind]"
+sfx FX_PLUSH_LAND    src=design:plush_land         cat=foley gain=-16dB pan=auto
+sfx FX_TIN_OPEN      src=design:tin_open           cat=foley gain=-12dB pan=auto
+sfx FX_PAPER_FOLD    src=design:paper_fold         cat=foley gain=-14dB pan=auto
+sfx FX_NAME_POP      src=design:name_pop           cat=comedy gain=-18dB pan=auto
+sfx FX_CLAP_CROWD    src=design:clap_crowd         cat=foley gain=-12dB pan=auto stereo
+sfx FX_HOLY_POUR     src=design:holy_pour          cat=foley gain=-12dB pan=center
+sfx FX_FLAME_SHRINK  src=design:flame_shrink       cat=foley gain=-16dB pan=center
+
+# ===================================================== Act Four, the tag, the button
+sfx FX_PURPLE_DRAIN  src=design:purple_drain       cat=horror gain=-14dB pan=center
+sfx FX_PUFF_DRIFT    src=design:puff_drift         cat=foley gain=-16dB pan=auto
+sfx FX_KEYHOLE       src=design:keyhole            cat=foley gain=-14dB pan=auto
+sfx FX_PAPER_FLIP    src=design:paper_flip         cat=foley gain=-14dB pan=auto
+sfx FX_FOOTSTEP_SMALL src=design:footsteps_small   cat=foley gain=-18dB pan=auto
+sfx FX_FUSE          src=design:fuse_light         cat=foley gain=-12dB pan=auto
+sfx FX_ROCKET_CLIMB  src=design:rocket_climb       cat=foley gain=-12dB pan=auto
+sfx FX_FIREWORK_HEART src=design:firework_heart_bloom cat=comedy gain=-8dB pan=center stereo cc="[a soft thump]"
+sfx FX_BRICK_WIPE    src=design:brick_wipe         cat=foley gain=-12dB pan=center
+sfx FX_FIREWORK_FAR  src=design:firework_far_answer cat=comedy gain=-12dB pan=R stereo cc="[far off, a firework answers]"
+sfx FX_JELLY_DOOR    src=design:jelly_door         cat=comedy gain=-12dB pan=auto cc="[the door wobbles like jelly]"
+sfx FX_SUITCASE_SET  src=design:suitcase_set       cat=foley gain=-12dB pan=auto
+sfx FX_PET_HOP       src=design:pet_hop            cat=foley gain=-16dB pan=auto
+sfx FX_DOOR_KNOCK    src=design:door_knock         cat=foley gain=-8dB  pan=auto stereo cc="[knocking]"
+sfx FX_DISH_SET      src=design:dish_set           cat=foley gain=-12dB pan=auto
+sfx FX_LANTERN_SINK  src=design:lantern_sink       cat=foley gain=-16dB pan=center
+sfx FX_WET_CRUNCH    src=design:wet_crunch         cat=gore gain=-8dB  pan=center cc="[wet crunch]"
+sfx FX_GURGLE_DEEP   src=design:gurgle_deep        cat=horror gain=-4dB  pan=center cc="[GURGLE: gurgle.]"
+sfx FX_GURGLE_BABBLE src=design:gurgle_babble      cat=horror gain=-6dB  pan=center cc="[GURGLE: ...needs salt.]"
+sfx FX_GURGLE_TINY   src=design:gurgle_tiny        cat=comedy gain=-12dB pan=center cc="[GURGLE: gurgle.]"
+sfx FX_PURR          src=design:purr_low           cat=horror gain=-6dB  pan=center cc="[low purr]"
+sfx FX_BOING_GATE    src=design:boing_big          cat=comedy gain=-6dB  pan=center cc="[BOING]"
+
+# ===================================================== kit-synthesised foley (sec.10.5)
+fol FOL_plush_squash src=design:plush_squash       cat=foley gain=-14dB pan=auto
+fol FOL_bone_clack   src=design:bone_clack         cat=foley gain=-12dB pan=auto
+fol FOL_padlock_1    src=design:padlock_rattle_1   cat=foley gain=-12dB pan=center cc="[padlocks rattle]"
+fol FOL_padlock_2    src=design:padlock_rattle_2   cat=foley gain=-10dB pan=center cc="[padlocks rattle]"
+fol FOL_padlock_3    src=design:padlock_rattle_3   cat=foley gain=-8dB  pan=center cc="[padlocks rattle]"
+
+# ===================================================== ambiences (stereo loops)
+amb AMB_dawn_birds   src=design:amb_dawn_birds     cat=amb gain=-22dB stereo loop
+amb AMB_fountain     src=design:amb_fountain       cat=amb gain=-24dB stereo loop
+amb AMB_night_fair   src=design:amb_night_fair     cat=amb gain=-24dB stereo loop
+amb AMB_night_crickets src=design:amb_night_crickets cat=amb gain=-26dB stereo loop
+amb AMB_fog          src=design:amb_fog            cat=amb gain=-20dB stereo loop
+amb AMB_funhouse     src=design:amb_funhouse       cat=amb gain=-24dB stereo loop
+amb AMB_cottage_dawn src=design:amb_cottage_dawn   cat=amb gain=-26dB stereo loop
+amb AMB_teacups_reverse src=design:teacups_reverse cat=amb gain=-16dB loop cc="[teacups whirring backwards]"

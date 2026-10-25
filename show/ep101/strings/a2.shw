@@ -1,0 +1,19 @@
+# show/ep101/strings/a2.shw: on-screen text for Act Two and eyecatch pair 2 (SC30-SC39)
+# Source: docs/show/ep101/PILOT_SCRIPT.md. Localisable; textless masters switch these off.
+
+string s_a2_01_card      "21:00 (we don't do that)"                font=hand    note="baked into act_cards:act2; listed for the textless/localised builds"
+string s_a2_03_house_sign "NOTHING INSIDE! (we checked) —Mayor"    font=game    on=housesign
+string s_a2_03_crate     "MINGLE · DO NOT OPEN"                    font=stencil on=crate
+string s_a2_04_fine      "...it's fine."                           font=game
+string s_a2_06_fail      "FAIL x1"                                 font=game_big
+string s_a2_07_poem      "Down by the Wall where the pumps go clink,\nwe work all night, and we-"  font=chalk
+string s_a2_08_tag_wand  "BUBBLE WAND"                             font=game_small on=tag1
+string s_a2_08_tag_pump  "PARTY PUMP"                              font=game_small on=tag2 under="SLAUGHTER"
+string s_a2_08_tag_saw   "PURRING SAW"                             font=game_small on=tag3 under="MEATCLEAVER"
+string s_a2_08_sign      "TOP PRIZE. Please don't. —R"             font=blunt   on=topsign
+string s_ec2out_bubble   "beep."                                   font=game_small
+
+# SDH captions used by this segment
+string cc_a2_clink       "[a faint clink, beyond the Wall]"        kind=cc
+string cc_a2_beep        "[beep.]"                                 kind=cc
+string cc_a2_lowbeep     "[a lower beep]"                          kind=cc

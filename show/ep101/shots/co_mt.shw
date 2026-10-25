@@ -1,0 +1,157 @@
+# show/ep101/shots/co_mt.shw - MAIN TITLE "Doomtastic Times" (main title cut), 00:01:40:00-00:02:30:00.
+# Seg co_mt. Cut to the theme master's bar map (series/music.shw theme_main_title: 150 bpm,
+# 48 f per bar, 30 bars = 1,440 f + a 60-f ring; bar B starts at MT frame 48 x (B-1)), not to
+# the beat sheet's provisional section TCs (DECISIONS). Shot list: shotlists/co_mt.md.
+# STANDARDS: Pip pops in in mt03 only; mt03 is never reprised under hellify (FC). No child in
+# the corridor (mt09). Red stays local to the burst. The silhouette in mt10 has no look, no face.
+
+act MT "Main title"
+  beat e101_mt_1 len=432 shots=mt01..mt02     # cold open bar + intro, bars 1-9
+  beat e101_mt_2 len=192 shots=mt03           # verse, bars 10-13
+  beat e101_mt_3 len=108 shots=mt04..mt05     # wall window bar 14 + pre-chorus to "Come out!"
+  beat e101_mt_4 len=36  shots=mt06           # the drop (stop-time), bar 16.2-16.4
+  beat e101_mt_5 len=384 shots=mt07..mt10     # chorus, bars 17-24
+  beat e101_mt_6 len=264 shots=mt11           # post-chorus + button to the last chord
+  beat e101_mt_7 len=84  shots=mt12..mt13     # ring, mute, beep, the pilot title
+end
+
+shot mt01 beat=e101_mt_1 len=240 set=hahaland_crane:day px=1 look=pixel cut=SMASH matte=open scene=mt cue=theme_main_title@bar:1
+  +0    sfx FX_EGG_CRACK ; mx theme_main_title start          # the CRACK = bar 1.1 = the song's first downbeat
+  +0    flash PAL_WHITE 8 3                                   # white flash off the crack: 3 f, level 8 of 16 (reduced; Harding)
+  +0    cam3d rail=crane from=+0 to=+240                      # crane up over pastel HaHaland, ease OUT
+  ad "A white flash. The camera cranes up over the pastel town of HaHaland."
+end
+
+shot mt02 beat=e101_mt_1 len=192 set=cast_popin:day px=1 look=pixel cut=CUT matte=open cue=theme_main_title@bar:6
+  prop  logo1 art=gen:logo(part=doomogachi,scale=3) at=160,-40 anchor=top
+  prop  logo2 art=gen:logo(part=life,scale=3)       at=160,-40 anchor=top
+  prop  logo3 art=gen:logo(part=park,scale=2)       at=160,-40 anchor=top
+  +0    sfx FX_WHOOSH gain=-18dB                              # choice: frame-0 sound
+  @bar:6.1  move logo1 to=160,28 over=5 tw=TW_DROP ; squash logo1 1.38 over=6 ; sfx FX_LETTER_DROP   # DROP 4-6 f, squash wide
+  @bar:7.1  move logo2 to=160,74 over=5 tw=TW_DROP ; squash logo2 1.30 over=6 ; sfx FX_LETTER_DROP
+  @bar:8.1  move logo3 to=160,110 over=5 tw=TW_DROP ; squash logo3 1.22 over=6 ; sfx FX_LETTER_DROP
+  @bar:9.1  squash logo1 1.22 over=4 ; squash logo2 1.22 over=4 ; squash logo3 1.22 over=4 ; sfx FX_BOING gain=-12dB
+  ad "The show's logo drops in, word by word: DOOMOGACHI LIFE in HELLvile Park!"
+end
+
+shot mt03 beat=e101_mt_2 len=192 set=cast_popin:day px=1 look=pixel cut=CUT matte=open cue=theme_main_title@bar:10
+  note "one POP per beat (4-6 f, overshoot 0.4x -> 1.2x), each with a CUTE name plate; Mascotty never pops, never moves"
+  actor sunny  who=sunny  kind=chibi at=24,132  hidden=yes
+  prop  suitcase art=gen:suitcase(seed=1) at=38,134 anchor=bottom hidden=yes
+  actor pet    who=pet    kind=sprite at=50,140 hidden=yes
+  actor mayor  who=mayor  kind=chibi at=76,128  hidden=yes
+  actor nana   who=nana   kind=chibi at=100,132 hidden=yes
+  actor pip    who=pip    kind=chibi at=124,134 hidden=yes      # KID: filter on; never reprised under hellify
+  actor fuzz   who=fuzz   kind=chibi at=148,128 hidden=yes
+  actor bloom  who=bloom  kind=chibi at=172,132 hidden=yes
+  actor steamy who=steamy kind=chibi at=196,130 hidden=yes
+  actor hattie who=hattie kind=chibi at=220,132 hidden=yes
+  actor grampy who=grampy kind=chibi at=244,130 hidden=yes
+  actor bones  who=bonejangles kind=chibi at=268,128 hidden=yes pose=bones_ribs
+  actor rivet  who=rivet  kind=chibi at=292,132 hidden=yes pose=rivet_mask_sparks   # welding mask and sparks only
+  actor mascotty who=mascotty kind=chibi at=306,96 face=L idle=none                 # far right, perfectly still, from frame 0
+  tag shot innuendo=no
+  +0          sfx FX_WHOOSH gain=-20dB                        # choice: frame-0 sound
+  @bar:10.1   take pop sunny ; show suitcase ; super s_mt_np_sunny style=plate at=24,150 until=end ; sfx FX_NAME_POP
+  @bar:10.2   take pop pet ; super s_mt_np_pet style=plate at=50,158 until=end ; sfx FX_NAME_POP
+  @bar:10.3   take pop mayor ; super s_mt_np_mayor style=plate at=76,150 until=end ; sfx FX_NAME_POP
+  @bar:10.4   take pop nana ; super s_mt_np_nana style=plate at=100,158 until=end ; sfx FX_NAME_POP
+  @bar:11.1   take pop pip ; super s_mt_np_pip style=plate at=124,150 until=end ; sfx FX_NAME_POP
+  @bar:11.2   take pop fuzz ; super s_mt_np_fuzz style=plate at=148,158 until=end ; sfx FX_NAME_POP
+  @bar:11.3   take pop bloom ; super s_mt_np_bloom style=plate at=172,150 until=end ; sfx FX_NAME_POP
+  @bar:11.4   take pop steamy ; super s_mt_np_steamy style=plate at=196,158 until=end ; sfx FX_NAME_POP
+  @bar:12.1   take pop hattie ; super s_mt_np_hattie style=plate at=220,150 until=end ; sfx FX_NAME_POP
+  @bar:12.2   take pop grampy ; super s_mt_np_grampy style=plate at=244,158 until=end ; sfx FX_NAME_POP
+  @bar:12.3   take pop bones ; super s_mt_np_bonejangles style=plate at=268,150 until=end ; sfx FX_NAME_POP
+  @bar:12.4   take pop rivet ; super s_mt_np_rivet style=plate at=292,158 until=end ; sfx FX_NAME_POP ; fx sparks at=292,120 n=8 seed=313
+  waive TIME-READ "name plates are on screen 48-192 f; the line-up holds through bar 13"
+  ad "The cast pops in one by one, each with a name plate. A bunny mascot stands at the edge, perfectly still."
+end
+
+shot mt04 beat=e101_mt_3 len=36 set=hahaland_wall_pan:day px=1 look=pixel cut=CUT matte=open cue=theme_main_title@bar:14
+  +0    sfx FX_WHOOSH gain=-16dB ; cam3d rail=pan from=+0 to=+36   # the wall window bar: arrive on the Wall
+  ad "The camera pans across the park to the Wall."
+end
+
+shot mt05 beat=e101_mt_3 len=72 set=wall_split:day px=1 look=pixel cut=WIPE:brick matte=open cue=theme_main_title@bar:14.4
+  note "mirrored to the frame: the Hellvile lane is the HaHaland lane flipped about x 160"
+  crowd hh gen=randomize seed=501 n=5 species=any tags=CITIZEN age=adult kind=chibi
+    lane=wall_run dir=R from=40 to=150 spacing=0,12 speed=12 ripple=0 cycle=run4
+  end
+  crowd hv gen=randomize seed=501 n=5 species=any tags=CITIZEN,SILHOUETTE,HELLVILE age=adult kind=chibi
+    mirror=hh about=160 silhouette=on
+  end
+  +0    sfx FX_BRICK_WIPE                                     # the brick wipe runs down x 160
+  +4    walk hh to=150 over=8 ; walk hv to=170 over=8         # both run at the Wall
+  @bar:15.1      sfx FX_KNOCK_WALL pan=L ; sfx FX_KNOCK_WALL pan=R ; pop hh TWT_TAP ; pop hv TWT_TAP   # "Knock,
+  @bar:15.1+6    sfx FX_KNOCK_WALL pan=L ; sfx FX_KNOCK_WALL pan=R ; pop hh TWT_TAP ; pop hv TWT_TAP   #  knock,
+  @bar:15.2      sfx FX_KNOCK_WALL pan=L ; sfx FX_KNOCK_WALL pan=R ; pop hh TWT_TAP ; pop hv TWT_TAP   #  knock!"
+  ad "Split screen at the Wall: both sides run up to it and knock at the same moment."
+end
+
+shot mt06 beat=e101_mt_4 len=36 set=sealed_gate:night px=1 look=pixel cut=CUT matte=open cue=theme_main_title@bar:16.2
+  +0    sfx FX_RECORD_SCRATCH ; tapestop 5                     # the drop is the record scratch
+  +5    mx theme_main_title duck -30dB 14                      # 14 f of near-silence
+  ad "The sealed gate: seven padlocks, a sign - KEEP OUT. FOREVER. - and a small shuttered grille."
+end
+
+shot mt07 beat=e101_mt_5 len=96 set=hahaland_crane:day px=1 look=pixel cut=CUT matte=open replay=mt01@+120 cue=theme_main_title@bar:17
+  note "the rot runs on a verse shot with no child in it (FC standards)"
+  +0    pal PAL_HELLIFY 16 over=21 ; sfx FX_HELLIFY_FLASH gain=-12dB   # hellify 0 -> 16 over 21 f, on the lift
+  ad "On the chorus the pastel town rots, pixel by pixel."
+end
+
+shot mt08 beat=e101_mt_5 len=96 set=bandstand_cu:north_night px=2 look=pixel cut=CUT matte=open cue=theme_main_title@bar:19
+  prop  candle1 art=gen:candle(state=lit,size=3) art.out=gen:candle(state=out,size=3) at=104,100 anchor=bottom
+  prop  candle2 art=gen:candle(state=lit,size=3) art.out=gen:candle(state=out,size=3) at=160,100 anchor=bottom
+  prop  candle3 art=gen:candle(state=lit,size=3) art.out=gen:candle(state=out,size=3) at=216,100 anchor=bottom
+  @bar:19.1  show candle1:out ; sfx FX_CANDLE_OUT_BEAT ; fx smoke at=104,70 n=3 seed=801     # beats 1, 3 and 5
+  @bar:19.3  show candle2:out ; sfx FX_CANDLE_OUT_BEAT ; fx smoke at=160,70 n=3 seed=802
+  @bar:20.1  show candle3:out ; sfx FX_CANDLE_OUT_BEAT ; fx smoke at=216,70 n=3 seed=803
+  ad "Three candles go out, one by one, in rhythm."
+end
+
+shot mt09 beat=e101_mt_5 len=144 set=title_corridor:cute px=1 look=pixel cut=CUT matte=open gore=CUTE cue=theme_main_title@bar:21
+  note "no child in the corridor (STD-KIDS); red local to the burst (Harding)"
+  actor demon who=puff_demon kind=sprite at=cell:8.5,5.5 idle=on
+  +0    cam3d rail=run from=+0 to=+144 ; hud on               # first person, the HUD
+  +0    sfx FX_PUFF_DRIFT gain=-10dB ; move demon to=cell:4.0,5.5 over=96 tw=TW_LINEAR   # bobs toward the lens
+  @bar:23.1  gore BRUTAL ; set variant=truth ; pal PAL_HELLIFY 16 over=1 ; state demon dead ; fx burst kind=red_mist at=actor:demon n=24 seed=901 ; sfx FX_GORE_BURST   # on "side!"
+  @bar:23.1+2  fx lens_gibs n=6 seed=902 slide=twos until=+144 ; sfx FX_GIB_SPLAT
+  @bar:23.1+14 sfx FX_TOOTH_TINK ; fx lens_tooth at=200,60
+  @bar:23.1+16 sfx FX_LENS_DRIP gain=-6dB
+  tag shot gore_truth=yes
+  ad "A fluffy demon floats toward us - then bursts in red mist against the lens while the song keeps smiling."
+end
+
+shot mt10 beat=e101_mt_5 len=48 set=sealed_gate:night px=1 look=pixel cut=CUT matte=open gore=CUTE cue=theme_main_title@bar:24
+  prop  rear art=gen:gate_silhouette(shape=round_rear,seed=1) plane=wall at=160,92 anchor=center hidden=yes   # featureless; no look, no face
+  +0    sfx FX_WHOOSH gain=-24dB                              # choice: frame-0 sound
+  +6    show rear ; move rear to=160,86 over=6 tw=TW_EASE_IN    # presses against the grille
+  @bar:24.2  squash rear 1.3 over=6 tw=TW_BOING ; sfx FX_BOING_GATE   # bounces once
+  @bar:24.2+2  punch 0 -2 ; pop lock1 TWT_HOP2 ; pop lock2 TWT_HOP2 ; pop lock3 TWT_HOP2 ; pop lock4 TWT_HOP2 ; pop lock5 TWT_HOP2 ; pop lock6 TWT_HOP2 ; pop lock7 TWT_HOP2 ; fol FOL_padlock_1
+  ad "Behind the shut grille, something big and round presses against the gate and bounces. The padlocks jump."
+end
+
+shot mt11 beat=e101_mt_6 len=264 set=logo_card:pose px=1 look=pixel cut=SMASH matte=open gore=CUTE cue=theme_main_title@bar:25
+  note "HaHaland paints over things and they bleed back: the drip's return is the one persistent change"
+  +0    move logo to=160,26 from=160,-60 over=10 tw=TW_BOUNCE ; sfx FX_LETTER_DROP   # the halves meet on the logo
+  +15   show roller ; move roller to=340,70 over=30 tw=TW_LINEAR ; sfx FX_ROLLER_LONG # crosses in 30 f from frame 15
+  +30   hide drip                                             # painted over as the roller passes x 126
+  @bar:30.1  show drip ; sfx FX_WET_BLIP ; fx paint_bloom at=126,84 n=8 seed=1101   # on the last chord, it bleeds back
+  ad "The logo. A pink roller paints over its red drip - and on the last chord the drip bleeds back through."
+end
+
+shot mt12 beat=e101_mt_7 len=36 set=logo_card:pose px=1 look=pixel cut=CUT matte=open base=mt11@+263
+  +0    mx theme_main_title mute 36                           # MUTE 13, then the ring stays out
+  +13   say mt7_pet_01 mouth=none                             # "beep." raw piezo (lib:pet/beep_v1); gag beep 1 of 6
+  +14   fx sparkle at=200,40 n=1 color=PAL_PURPLE seed=1201 sink=21 ; sfx FX_SPARKLE gain=-20dB   # the last sparkle is purple, and it sinks
+  ad "Silence. A tiny beep. One purple sparkle sinks."
+end
+
+shot mt13 beat=e101_mt_7 len=48 set=title_card:dusk px=1 look=pixel cut=FADE matte=open
+  +0    fade in over=13                                       # the dissolve, 13 f
+  +0    amb AMB_night_fair on gain=-34dB                      # frame-0 sound; 1-01 owns what follows
+  sign s_mt7_title on=banner
+  ad "Title: GIGGLE NIGHT - with MINGLE showing through the wet paint."
+end

@@ -1,0 +1,265 @@
+# show/ep101/shots/co.shw - COLD OPEN "The Last Mingle" (seg co_mt; owner from now on).
+# Source: docs/show/COLD_OPEN_SHOTLIST.md, converted 1:1 (every +N is the shot list's own);
+# spec 6.3's co01-co03 worked example is the start. Shot list: show/ep101/shotlists/co_mt.md.
+# Show px on 320x180; doc: = the docs' 384x216 units. Wall line / bandstand centre = x 160.
+# Numbers the shot list does not give are marked `# choice:`.
+# STANDARDS: children are on screen in scene co_storybook (hard limit 3): gore=CUTE, no
+# innuendo, no truth insert, no OMINOUS cue anywhere in the cold open; the one red is paint.
+
+act CO "Cold open"
+  beat e101_co_1 len=90   shots=co01
+  beat e101_co_2 len=900  shots=co02..co08
+  beat e101_co_3 len=240  shots=co09
+  beat e101_co_4 len=450  shots=co10..co11
+  beat e101_co_5 len=630  shots=co12..co18
+  beat e101_co_6 len=690  shots=co19..co21
+end
+
+# ================================================================ SCENE 1: THE STORYBOOK (crayon)
+
+shot co01 beat=e101_co_1 len=90 set=calendar_page px=2 look=crayon cut=FADE matte=open scene=co_storybook gore=CUTE
+  look crayon grain=12 boil=2
+  +0    fade in over=R8                                       # choice: FADE IN length not in the shot list
+  +0    fol FOL_crayon_scratch follow=circle_midsummer ; reveal circle_midsummer over=+0..+24
+  +30   reveal fireworks_scribble over=+30..+60 ; fol FOL_crayon_scratch follow=fireworks_scribble gain=-3dB
+  +60   mx mingle_box start                                   # sample 96,000 of the episode
+  ad "A crayon circles Midsummer on a calendar, then scribbles fireworks round it."
+end
+
+shot co02 beat=e101_co_2 len=180 set=park_storybook:long_ago px=1 look=crayon cut=CUT matte=open
+  look crayon grain=12 boil=2
+  cam at=0,0 ; cam drift dx=doc:1.0 zero=+90                  # planes ride it at x0.05/0.10/0.20 (doc px/f)
+  assert bandstand.x == 160 @+90                              # composition lock; co09 is base=co02@+90
+  +0    iris_in at=prop:bandstand over=13 shape=circle ; sfx FX_SHWIP
+  +0    walla kids_far on gain=-28dB ; cc "[soft crowd babble]"
+  +30   super s_co02 style=type over=+30..+132 at=lower until=end
+  ad "One park, no wall: a river, a bridge, a round bandstand strung with lanterns."
+end
+
+shot co03 beat=e101_co_2 len=120 set=bridge_storybook px=2 look=crayon cut=CUT matte=open
+  look crayon grain=12 boil=2
+  crowd bunnies gen=randomize seed=301 n=6 species=SPECIES_BUNNYKIN tags=KID age=child kind=chibi looks=sb_bunny_1..sb_bunny_6
+    lane=deck dir=R from=-32 spacing=26 speed=doc:2.2 ripple=0..3 cycle=walk4
+  end
+  crowd imps gen=randomize seed=302 n=6 species=SPECIES_IMP tags=KID age=child kind=chibi looks=sb_imp_1..sb_imp_6
+    lane=deck dir=L from=352 spacing=26 speed=doc:2.2 ripple=0..3 cycle=walk4 dy=+6
+  end
+  waive CANON-HV107 "storybook flashback: crayon imp kids crossing, no featured faces (shot list co03)"
+  +0    fol FOL_paw_patter from=crowd:bunnies,imps ; walla kids_far to gain=-20dB over=30   # "babble swells"
+  +13   super s_co03 style=type at=lower until=+63
+  waive TIME-READ "shot list sets +13..+63 for the 5-word caption; the cut carries it"
+  ad "Little bunnies and little imps run across the bridge both ways."
+end
+
+shot co04 beat=e101_co_2 len=75 set=sky_storybook:sky px=1 look=crayon cut=CUT matte=open
+  look crayon grain=12 boil=2
+  cam at=0,0                                                  # frame cherub
+  actor kid    who=young_giggs kind=figure at=150,176 face=R idle=on pose=giggs_back_hold   # from behind, no face; arm up
+  actor fluffy who=fluffy      kind=chibi  at=196,72  face=L idle=on pose=fluffy_bob21       # bobs on a 21-f cycle
+  prop  string art=gen:crayon_string(from=kid.hand,to=fluffy.bottom,seed=71) plane=near
+  +0    sfx FX_PUFF_DRIFT gain=-6dB ; cc "[a tiny puff]"
+  +40   blink fluffy 2
+  ad "A small cherub, seen from behind, holds the string of a little smiling cloud."
+end
+
+shot co05 beat=e101_co_2 len=60 set=soup_table_storybook:empty px=2 look=crayon cut=CUT matte=open
+  look crayon grain=12 boil=2
+  actor hands who=young_imp kind=figure at=148,0 idle=on pose=imp_hands_set_bowls   # hands only, top of frame
+  +0    amb AMB_night_crickets on gain=-30dB                  # choice: frame-0 sound (the shot list gives clinks at +5/+20)
+  +5    show bowl_1 ; sfx FX_BOWL_CLINK
+  +20   show bowl_2 ; sfx FX_BOWL_CLINK pan=R
+  +59   amb AMB_night_crickets off
+  ad "Two small sooty hands set down two bowls, one at a time."
+end
+
+shot co06 beat=e101_co_2 len=150 set=sky_storybook:sky px=1 look=crayon cut=CUT matte=open
+  look crayon grain=12 boil=2
+  cam at=0,0 ; +0 cam to x=0 y=-12 over=150 ease=LINEAR       # tilt up 12 px over the shot (frame cherub -> tilt)
+  actor fluffy who=fluffy kind=chibi at=160,212 face=R idle=on pose=fluffy_bob21
+  +0    sfx FX_FIREWORK_SOFT gain=-14dB                       # choice: frame-0 sound = a far thump before the first bloom
+  +15   fx firework at=110,40 n=24 seed=601 ramp=8 nib=crayon:CRAYON_SPARK_PINK ; sfx FX_FIREWORK_SOFT
+  +35   move fluffy to=160,108 over=30 tw=TW_EASE_OUT ; headturn fluffy 0 4     # rises into frame, looks up
+  +52   fx firework at=220,30 n=24 seed=602 ramp=8 nib=crayon:CRAYON_YELLOW ; sfx FX_FIREWORK_SOFT pan=R
+  +75   super s_co06 style=type at=lower over=+75..+111 until=end
+  +90   fx firework at=160,22 n=32 seed=603 ramp=10 nib=crayon:CRAYON_SPARK_PINK ; sfx FX_FIREWORK_SOFT
+  +95   expr fluffy EXPR_LOVE ; pop fluffy TWT_POP_EYE        # heart eyes POP in, 4 f, overshoot
+  ad "Crayon fireworks bloom. The cloud rises, looks up, and its eyes turn to hearts."
+end
+
+shot co07 beat=e101_co_2 len=120 set=sky_storybook:hand px=1 look=crayon cut=CUT matte=open
+  look crayon grain=12 boil=2
+  note "co17 replays this shot from +8: the hand pose and the loop must stay identical"
+  +0    flash PAL_CRAYON_GLOW 6 6 ; sfx FX_FIREWORK_SOFT      # a burst's light flickers on the hand (level 6 of 16, 6 f ramp)
+  +8    show hand:open ; sfx FX_PLUCK ; label L_SLIP          # the loop slips off (R8)
+  +8    still hand_hold n=13                                  # HOLD 13 on the open, empty hand (+8..+21)
+  +25   super s_co07 style=type at=lower over=+25..+93 until=end
+  ad "The string slips from the small hand. Nobody notices."
+end
+
+shot co08 beat=e101_co_2 len=195 set=river_storybook px=1 look=crayon cut=CUT matte=open
+  look crayon grain=12 boil=2
+  cam at=-48,0 ; +0 cam to x=48 y=0 over=195 ease=LINEAR      # pan south 0.5 px/f (frame start -> end)
+  actor fluffy who=fluffy kind=chibi at=96,64 face=R idle=on pose=fluffy_bob21
+  +0    move fluffy to=258,58 over=195 tw=TW_LINEAR ; squash fluffy 0.55 over=195   # smaller with distance; never looks back
+  +0    fx embers at=0,0..320,60 n=18 seed=801 fade=+0..+150 ; sfx FX_SPARKLE gain=-18dB ; cc "[embers fizz]"
+  +75   mx mingle_box mute 29                                  # mid-phrase; first muted onset = the Mayor's note (G5)
+  +104  mx mingle_box to -16dB over=2                          # resumes softer under the caption
+  +105  super s_co08 style=type at=lower over=+105..+153 until=end
+  ad "The cloud drifts away over the river as the fireworks fade. It does not look back."
+end
+
+shot co09 beat=e101_co_3 len=240 set=park_storybook:later px=1 look=crayon cut=SMASH matte=open base=co02@+90
+  change set.variant=later                                    # the ONE change: the Wall plane on, pink drained, 2 bowls S, 1 cupcake N
+  assert wall.x + 16 == 160                                   # the Wall sits on x = 160 (doc 192)
+  cam at=0,0                                                  # locked, static (co02's drift is zero at +90)
+  +0    sfx FX_THUD ; shake SHK_RUMBLE                        # RUMBLE = 13 f
+  +0    mx mingle_box stop ; walla kids_far off               # silence to the end (about 7 s)
+  +60   super s_co09 style=deadpan at=lower until=end         # appears, no type-on
+  ad "The same park, years later: a wall runs straight through the bandstand."
+end
+
+shot co10 beat=e101_co_4 len=120 set=banner_storybook:mingle px=1 look=crayon cut=CUT matte=open
+  look crayon grain=12 boil=2
+  prop  roller art=gen:crayon_roller(color=CRAYON_SPARK_PINK,seed=63) at=-40,96 plane=mingle
+  +0    mx mingle_thin start                                  # back, thinner: one voice
+  +15   move roller to=360,96 over=30 tw=TW_LINEAR ; reveal giggle over=+15..+45 follow=roller ; sfx FX_ROLLER_LONG
+  ad "A banner reads MINGLE. A pink paint roller crosses it and leaves GIGGLE behind."
+end
+
+shot co11 beat=e101_co_4 len=330 set=banner_storybook:giggle px=1 look=crayon cut=CUT matte=open
+  look crayon grain=12 boil=2
+  note "lock the letter baseline (y 104) to co12's: the match cut lands on the same word"
+  cam at=0,0 scale=1.00 ; +0 cam to x=0 y=0 scale=1.04 over=330 ease=LINEAR   # push in 4 %
+  +0    sfx FX_WET_BLIP gain=-20dB                            # choice: frame-0 sound under the music box downbeat
+  +10   super s_co11a style=pop at=lower until=+99            # POP 4-6 f, overshoot
+  +100  super s_co11b style=pop at=lower until=+159
+  +160  super s_co11c style=pop at=lower until=+239
+  +240  super s_co11d style=deadpan at=lower until=end
+  +240  mx mingle_thin mute 26                                # R26 of silence for "No fireworks."
+  +266  mx mingle_thin hold note=mayors_note                  # resumes its phrase; the held note into the cut is the Mayor's hum pitch
+  ad "Captions: Now there's a different party. Same night. Half a park. No fireworks."
+end
+
+# ================================================================ SCENE 2: BANDSTAND, DAWN (pixel)
+
+shot co12 beat=e101_co_5 len=150 set=bandstand_banner:giggle px=1 look=pixel cut=MATCH:co11 matte=open scene=co_dawn
+  cam at=0,0 scale=1.10                                       # matched to co11's end frame (scale 1.04 crayon = 1.10 here on the baseline)
+  actor mayor who=mayor kind=figure at=96,98 face=R idle=on pose=mayor_ladder_roll    # up the ladder, roller in hand; wings on idle
+  show drip:pink                                              # the drip (pink) on the wet G
+  +0    say co12_hum mayor mouth="hum"                         # takes over from the music box at its exact pitch
+  +0    amb AMB_dawn_birds on gain=-24dB
+  +60   cam to x=0 y=0 scale=1.00 over=45 ease=OUT             # pull back +60..+105
+  +120  stop co12_hum ; still mayor n=8                        # stops on the Mayor's note
+  +120  eyes mayor L over=2 ; +124 blink mayor 2               # R8: eyes flick, a 2-f blink
+  +128  thaw mayor
+  ad "Real now: Mayor Giggs, a round cherub on a ladder, hums - and stops on a note."
+end
+
+shot co13 beat=e101_co_5 len=44 set=bandstand_banner:giggle px=1 look=pixel cut=CUT matte=open
+  cam at=-36,-30 scale=1.6                                    # MCU on the Mayor, eye level
+  actor mayor who=mayor kind=bust at=96,70 face=R idle=on expr=EXPR_NEUTRAL
+  +0    sfx FX_WHOOSH gain=-26dB ; cc "[a breath]"             # the breath
+  +4    say co13_heehee mayor                                  # +4..+16, +24..+36 (lib:mayor/heehee_v1)
+  @co13_heehee.w2  expr mayor EXPR_HAPPY ; pop mayor TWT_POP_SMALL   # the smile pops on the second Hee
+  ad "He says: Hee. Hee."
+end
+
+shot co14 beat=e101_co_5 len=31 set=fountain_faces:dawn px=2 look=pixel cut=CUT matte=open
+  assert @co13_heehee.end + 8 == @co14+0                       # the 8-f lag (series rule)
+  +0    sfx FX_FOUNTAIN_GIGGLE ; amb AMB_fountain on gain=-22dB ; fx bubbles at=110,92 n=6 seed=141 ; fx bubbles at=210,92 n=6 seed=142
+  ad "Below, the fountain's two stone faces giggle back, a beat late."
+end
+
+shot co15 beat=e101_co_5 len=225 set=bandstand_banner:giggle px=1 look=pixel cut=CUT matte=open
+  cam at=0,0                                                  # frame ms
+  actor mayor who=mayor kind=figure at=96,98 face=R idle=on pose=mayor_ladder_roll
+  show drip:pink
+  note "rule of three: constant 15/16-f interval; bloom size, then colour + drip; squeak pitch steps down; blip pitch rises"
+  +0    sfx FX_DRIP_TICK
+  +15   show banner:bloom1 ; sfx FX_WET_BLIP ; fx paint_bloom at=mark:letter_n n=6 seed=151
+  +30   pose mayor mayor_roll fps=30 ; sfx FX_ROLLER_1 ; show banner:giggle      # roll 1 (15 f stroke)
+  +45   show banner:bloom2 ; sfx FX_WET_BLIP gain=+1dB ; fx paint_bloom at=mark:letter_n n=9 seed=152
+  +61   pose mayor mayor_roll fps=30 ; sfx FX_ROLLER_2 ; show banner:giggle      # roll 2
+  +76   show banner:bloom2 scale=1.25 ; sfx FX_WET_BLIP gain=+2dB ; fx paint_bloom at=mark:letter_n n=12 seed=153
+  +92   pose mayor mayor_roll fps=30 ; sfx FX_ROLLER_3 ; show banner:giggle      # roll 3
+  +107  show banner:bloom3 ; show drip:default ; sfx FX_WET_BLIP gain=+3dB ; fx paint_bloom at=mark:letter_n n=16 seed=154   # biggest, RED (CANDY), red drip
+  tag shot gore_truth=no                                       # the red is paint (D16); no BLOOD ramp in the cold open
+  +120  pose mayor mayor_whip_balloon ; show balloon ; pop balloon TWT_POP_SMALL ; sfx FX_POP     # R13 topper: POP 4 f
+  +128  sfx FX_TINK                                            # tied over the N
+  +140  pose mayor mayor_pat ; sfx FX_PAT_PAT                  # pats it twice
+  +153  say co15_perfect mayor ; expr mayor EXPR_HAPPY         # +153..+170
+  +171  pose mayor mayor_ladder_idle                           # hold on his pleased idle to the end
+  ad "The old letter keeps bleeding through the paint. He rolls it three times, then ties a cupcake balloon over it."
+end
+
+shot co16 beat=e101_co_5 len=40 set=bandstand_banner:topper px=1 look=pixel cut=CUT matte=open
+  cam at=0,0                                                  # frame ms; co18 is this exact frame
+  actor mayor who=mayor kind=figure at=96,98 face=R idle=on pose=mayor_ladder_idle expr=EXPR_HAPPY
+  +0    sfx FX_WINGS gain=-14dB loop=on
+  +10   eyes mayor R over=3 ; +13 headturn mayor 32 5         # glance south toward the boards and the Wall
+  +27   take freeze mayor n=13 ; stop FX_WINGS ; cc "[the wings stop]"   # idle clock + wings stop; the silence is the cue
+  ad "He glances toward the boarded-up half and the Wall, and freezes."
+end
+
+shot co17 beat=e101_co_5 len=4 set=sky_storybook:empty px=1 look=crayon cut=CUT matte=open replay=co07@+8 insert scene=co_storybook
+  note "4 f, never 1 (broadcast minimum); a memory, not a scare: no OMINOUS cue"
+  +0    sfx FX_PLUCK                                          # owns all 4 f of audio
+end
+
+shot co18 beat=e101_co_5 len=136 set=bandstand_banner:turned px=1 look=pixel cut=CUT matte=open base=co16@+39 scene=co_dawn
+  change balloon.state=wall                                   # the ONE change (COMP-ONECHANGE): the balloon faces the Wall
+  +0    thaw mayor
+  +2    sfx FX_BALLOON_CREAK                                  # a small sound 2 f after the cut
+  +8    eyes mayor R over=2                                   # R8: his eyes slide to it
+  +21   pose mayor mayor_reach_turn ; show balloon:front ; sfx FX_BALLOON_SQUEAK   # R13: turns it back to face the town
+  +38   pose mayor mayor_pat ; sfx FX_PAT_PAT ; say co18_stay mayor ; punch        # "Stay." the button, 17 f after the punch
+  @co18_stay.end button
+  +62   pose mayor mayor_climb_down ; sfx FX_LADDER_CLACK ; sfx FX_WINGS loop=on gain=-14dB   # wings resume on the climb
+  +62   move mayor to=96,250 over=54 tw=TW_LINEAR             # out of frame by +116
+  +67   sfx FX_LADDER_CLACK
+  +72   sfx FX_LADDER_CLACK
+  +116  stop FX_WINGS over=8
+  ad "The balloon has turned to face the Wall. He turns it back, pats it - Stay. - and climbs down."
+end
+
+# ================================================================ SCENE 3: PLAZA / BAKERY, DAWN
+
+shot co19 beat=e101_co_6 len=180 set=fountain_plaza:dawn px=1 look=pixel cut=CUT matte=open scene=co_plaza
+  cam at=-24,0 ; +0 cam to x=24 y=0 over=180 ease=LINEAR     # drift right 0.25 px/f (ews -> ews_end)
+  crowd stringers gen=randomize seed=1901 n=14 species=any tags=CITIZEN age=adult kind=chibi
+    formation=lanterns from=40,128 to=520,128 ripple=0..3 cycle=string_lantern
+  end
+  crowd plaza gen=randomize seed=1902 n=18 species=any tags=CITIZEN age=adult kind=chibi
+    lane=plaza_walk dir=both spacing=28 speed=0.4 ripple=0..3 cycle=walk4
+  end
+  actor mascotty who=mascotty kind=chibi at=508,118 face=L idle=none   # the far edge; perfectly still (clock none)
+  sign s_co19_poster on=poster
+  +0    sfx FX_LANTERN_FWIP ; mx hahaland_dawn start gain=-14dB       # TODO(AUDIO): cue not yet in series/music.shw
+  +0    amb AMB_dawn_birds on gain=-22dB ; amb AMB_fountain on gain=-26dB
+  ad "HaHaland wakes up pastel. Citizens string lanterns. At the far edge, a giant bunny mascot stands perfectly still."
+end
+
+shot co20 beat=e101_co_6 len=240 set=bakery_window:dawn px=1 look=pixel cut=CUT matte=open
+  cam at=0,0 scale=1.00 ; +0 cam to x=40 y=10 scale=1.08 over=240 ease=LINEAR   # slow push in on the basket
+  prop  paw art=flip:nana_paw_tuck plane=shop at=330,118 hidden=yes          # Nana's woolly paw (sheepkin)
+  sign s_co20_tag on=tag
+  +0    sfx FX_OVEN_TIK
+  +30   show paw ; move paw to=262,118 over=12 tw=TW_EASE_OUT ; pose paw tuck fps=12 ; sfx FX_TOWEL_RUSTLE   # +30..+90 tucks the towel
+  +110  show lamp ; sfx FX_LAMP_TINK                                         # a small lamp beside it
+  +110  still paw n=21                                                       # lingers R21
+  +131  move paw to=340,118 over=19 tw=TW_EASE_IN                            # withdraws +131..+150
+  +170  show tag:turned ; sfx FX_PAPER_FLIP gain=-20dB                       # the tag turns: "for whoever's next"
+  ad "In the bakery window, two of everything. A woolly paw tucks a tea towel round an egg and sets a lamp beside it."
+end
+
+shot co21 beat=e101_co_6 len=270 set=egg_basket:dawn px=2 look=pixel cut=CUT matte=open
+  +0    sfx FX_BASKET_CREAK
+  +15   sfx FX_BUS_HORN_FAR                                   # the first two notes of the chorus hook
+  +45   squash egg 1.10 over=6 tw=TW_JELLY ; sfx FX_EGG_WOBBLE ; cc "[tik]"           # 30 f after the horn
+  +105  sfx FX_BUS_HORN_NEAR                                  # nearer, three notes
+  +135  squash egg 1.22 over=8 tw=TW_JELLY ; sfx FX_EGG_WOBBLE_LOW ; mx hahaland_dawn duck -12dB 30
+  +195  mx hahaland_dawn stop ; iris_out at=prop:egg over=5 shape=heart hold=70 ; sfx FX_SHWIP   # a heart round the egg by +200
+  +200  label L_HOLD                                          # silence to the end
+  note "CUT ON THE CRACK: the crack is mt01 +0 (00:01:40:00), the song's first downbeat"
+  ad "Close on the egg. A far horn; it wobbles. Nearer; it wobbles harder. A heart closes round it."
+end
