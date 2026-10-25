@@ -438,6 +438,10 @@ void show_actor_tick(int t)
             const Flip *f = &s_flip[a->pose];
             int age = (int)(((int32_t)(t - a->pose_t0) * a->pose_speed) >> 8), j;
             if (f->h->flags & SHFL_LOOP) age %= f->total;
+            else if (age >= f->total && !(f->h->flags & SHFL_HOLD)) {
+                a->pose = -1;                 /* a one-shot hands back to the idle image */
+                goto pose_done;
+            }
             for (j = 0; j < f->h->n; j++) {
                 int hld = f->hold[j] ? f->hold[j] : 1;
                 if (age < hld) break;
@@ -446,6 +450,7 @@ void show_actor_tick(int t)
             if (j >= f->h->n) j = f->h->n - 1;
             st->pose = (int8_t)j;
         }
+    pose_done:
         st->x = (int16_t)(a->x_q8 >> 8);
         st->y = (int16_t)(a->y_q8 >> 8);
         st->x = (int16_t)(st->x + dx * a->r.px);
