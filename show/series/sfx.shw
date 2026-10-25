@@ -240,3 +240,161 @@ amb AMB_fog          src=design:amb_fog            cat=amb gain=-20dB stereo loo
 amb AMB_funhouse     src=design:amb_funhouse       cat=amb gain=-24dB stereo loop
 amb AMB_cottage_dawn src=design:amb_cottage_dawn   cat=amb gain=-26dB stereo loop
 amb AMB_teacups_reverse src=design:teacups_reverse cat=amb gain=-16dB loop cc="[teacups whirring backwards]"
+
+# ===================================================== staged-shot names (STAGING's shots/*.shw call these)
+# alias:<ID>[:semis[:seconds]] renders another library sound, varispeed and cut; the staged name keeps
+# its own gain and caption. Swap any for a dedicated design later without touching a shot.
+amb AMB_NIGHT_ROOM           src=alias:AMB_cottage_dawn:-3          cat=staged gain=-26dB stereo loop
+amb AMB_crickets             src=alias:AMB_night_crickets           cat=staged gain=-22dB stereo loop
+amb AMB_lamp_hum             src=alias:AMB_fog:7                    cat=staged gain=-28dB stereo loop
+amb AMB_night_air            src=alias:AMB_fog:3                    cat=staged gain=-24dB stereo loop
+amb AMB_night_still          src=alias:AMB_night_crickets:-2        cat=staged gain=-26dB stereo loop
+fol FOL_bone_clatter_soft    src=alias:FOL_bone_clack               cat=staged gain=-14dB
+fol FOL_bone_click_walk      src=alias:FX_BONE_CLICK                cat=staged gain=-14dB
+fol FOL_bone_creak           src=alias:FX_CREAK:-5                  cat=staged gain=-14dB
+fol FOL_bone_tick_stop       src=alias:FX_BONE_CLICK:3              cat=staged gain=-14dB
+fol FOL_bottle_blow          src=alias:FX_PIPE_SIGH:5               cat=staged gain=-12dB
+fol FOL_breath_small         src=alias:FX_POSSESS_INHALE:7:0.5      cat=staged gain=-18dB
+fol FOL_brick_clack          src=alias:FX_LADDER_CLACK:-3           cat=staged gain=-12dB
+fol FOL_candle_fizz          src=alias:FX_FLAME_GUTTER:4            cat=staged gain=-16dB
+fol FOL_candle_out           src=alias:FX_CANDLE_OUT                cat=staged gain=-14dB
+fol FOL_cardboard_fwip       src=alias:FX_CARDBOARD_TURN            cat=staged gain=-14dB
+fol FOL_chalk                src=alias:FX_CHALK                     cat=staged gain=-14dB
+fol FOL_clack                src=alias:FX_LADDER_CLACK              cat=staged gain=-12dB
+fol FOL_clatter              src=alias:FX_CARDBOARD_FALL            cat=staged gain=-10dB
+fol FOL_cloth                src=alias:FX_TOWEL_RUSTLE              cat=staged gain=-16dB
+fol FOL_cloth_flump          src=alias:FX_PLUSH_LAND:-3             cat=staged gain=-14dB
+fol FOL_cloth_rustle         src=alias:FX_TOWEL_RUSTLE:2            cat=staged gain=-16dB
+fol FOL_cloth_slip           src=alias:FX_TOWEL_RUSTLE:4:0.4        cat=staged gain=-16dB
+fol FOL_cloth_soft           src=alias:FX_TOWEL_RUSTLE:-2           cat=staged gain=-18dB
+fol FOL_cloth_tug            src=alias:FX_TOWEL_RUSTLE:3:0.3        cat=staged gain=-16dB
+fol FOL_crate_tap            src=alias:FX_CRATE_THUD:5:0.3          cat=staged gain=-14dB
+fol FOL_crowd_breath_out     src=alias:FX_PIPE_SIGH:-3              cat=staged gain=-16dB
+fol FOL_dawn_birds           src=alias:AMB_dawn_birds               cat=staged gain=-20dB
+fol FOL_demon_squeak         src=alias:FX_DEMON_SQUEAK              cat=staged gain=-12dB
+fol FOL_dust_puff            src=alias:FX_PUFF_DRIFT                cat=staged gain=-16dB
+fol FOL_flame_flutter        src=alias:FX_FLAME_GUTTER              cat=staged gain=-16dB
+fol FOL_flame_swell          src=alias:FX_HELLIFY_FLASH:-5          cat=staged gain=-14dB
+fol FOL_fog_bed              src=alias:AMB_fog                      cat=staged gain=-22dB
+fol FOL_footsteps_crowd      src=alias:FOL_paw_patter:-3            cat=staged gain=-16dB
+fol FOL_footsteps_group      src=alias:FOL_paw_patter:-2            cat=staged gain=-16dB
+fol FOL_fuse_fsss            src=alias:FX_FUSE                      cat=staged gain=-14dB
+fol FOL_gulp                 src=alias:FX_GURGLE_TINY:-2:0.4        cat=staged gain=-14dB
+fol FOL_hop_thump            src=alias:FX_PET_HOP:-3                cat=staged gain=-14dB
+fol FOL_jaw_click            src=alias:FX_BONE_CLICK:-3             cat=staged gain=-14dB
+fol FOL_key_click            src=alias:FX_KEYHOLE                   cat=staged gain=-14dB
+fol FOL_knife_pie            src=alias:FX_WET_CRUNCH:5:0.4          cat=staged gain=-14dB
+fol FOL_lid_creak            src=alias:FX_BASKET_CREAK              cat=staged gain=-14dB
+fol FOL_long_sigh            src=alias:FX_PIPE_SIGH:-5              cat=staged gain=-14dB
+fol FOL_mallet_clack         src=alias:FX_LETTER_DROP               cat=staged gain=-12dB
+fol FOL_match_scratch        src=alias:FX_PENCIL:5:0.4              cat=staged gain=-14dB
+fol FOL_muffin_shake         src=alias:FX_GATE_RATTLE:7:0.5         cat=staged gain=-16dB
+fol FOL_padlock_rattle       src=alias:FOL_padlock_1                cat=staged gain=-12dB
+fol FOL_page_soft            src=alias:FX_PAPER_FLIP:-2             cat=staged gain=-18dB
+fol FOL_paper_flip           src=alias:FX_PAPER_FLIP                cat=staged gain=-16dB
+fol FOL_paper_fold           src=alias:FX_PAPER_FOLD                cat=staged gain=-16dB
+fol FOL_paper_rustle         src=alias:FX_PAPER_FLIP:2              cat=staged gain=-16dB
+fol FOL_paper_settle         src=alias:FX_PAPER_FOLD:-3             cat=staged gain=-18dB
+fol FOL_paper_whip           src=alias:FX_SHWIP                     cat=staged gain=-14dB
+fol FOL_paw_steps            src=alias:FOL_paw_patter               cat=staged gain=-16dB
+fol FOL_paw_tup              src=alias:FX_PET_HOP:4:0.25            cat=staged gain=-16dB
+fol FOL_pen_click            src=alias:FX_TIK:-5                    cat=staged gain=-16dB
+fol FOL_pen_scratch          src=alias:FX_PENCIL                    cat=staged gain=-16dB
+fol FOL_pet_shuffle          src=alias:FX_TOWEL_RUSTLE:5:0.5        cat=staged gain=-16dB
+fol FOL_plip                 src=alias:FX_DRIP_TICK                 cat=staged gain=-16dB
+fol FOL_plush_hop            src=alias:FX_PET_HOP                   cat=staged gain=-14dB
+fol FOL_plush_pff            src=alias:FX_PUFF_DRIFT:5:0.4          cat=staged gain=-14dB
+fol FOL_plush_rustle         src=alias:FX_TOWEL_RUSTLE:1            cat=staged gain=-16dB
+fol FOL_poff                 src=alias:FX_PUFF_DRIFT:3:0.4          cat=staged gain=-14dB
+fol FOL_rocket_whistle_soft  src=alias:FX_ROCKET_CLIMB              cat=staged gain=-16dB
+fol FOL_room_tone            src=alias:AMB_cottage_dawn:-5          cat=staged gain=-30dB
+fol FOL_satchel              src=alias:FX_BASKET_CREAK:3            cat=staged gain=-16dB
+fol FOL_shaker_x3            src=alias:FX_GATE_RATTLE:9:0.6         cat=staged gain=-16dB
+fol FOL_shell_clink          src=alias:FX_BOWL_CLINK:4              cat=staged gain=-14dB
+fol FOL_skid                 src=alias:FX_RECORD_SCRATCH:-7:0.5     cat=staged gain=-12dB
+fol FOL_small_step           src=alias:FX_FOOTSTEP_SMALL            cat=staged gain=-16dB
+fol FOL_small_steps          src=alias:FX_FOOTSTEP_SMALL            cat=staged gain=-16dB
+fol FOL_sniff                src=alias:FX_POSSESS_INHALE:12:0.3     cat=staged gain=-16dB
+fol FOL_soft_step            src=alias:FX_FOOTSTEP_SMALL:-3         cat=staged gain=-18dB
+fol FOL_soft_thud            src=alias:FX_THUD:-3                   cat=staged gain=-14dB
+fol FOL_stampede             src=alias:FOL_paw_patter:-7            cat=staged gain=-10dB
+fol FOL_stance_thump         src=alias:FX_FOOT_THUMP                cat=staged gain=-12dB
+fol FOL_string_snap          src=alias:FX_STRING_SNAP               cat=staged gain=-12dB
+fol FOL_teacup_whirr_rev     src=alias:AMB_teacups_reverse          cat=staged gain=-16dB
+fol FOL_tiny_breath          src=alias:FX_POSSESS_INHALE:12:0.4     cat=staged gain=-20dB
+fol FOL_tiny_click           src=alias:FX_TIK:5                     cat=staged gain=-16dB
+fol FOL_tock                 src=alias:FX_OVEN_TIK:-7               cat=staged gain=-14dB
+fol FOL_trot                 src=alias:FOL_paw_patter:2             cat=staged gain=-16dB
+fol FOL_trowel_tink          src=alias:FX_TINK:-2                   cat=staged gain=-14dB
+fol FOL_turn_rustle          src=alias:FX_TOWEL_RUSTLE:-1:0.5       cat=staged gain=-16dB
+fol FOL_watch_tik            src=alias:FX_OVEN_TIK:5                cat=staged gain=-18dB
+fol FOL_wing_buzz            src=alias:FX_WINGS:7                   cat=staged gain=-16dB
+fol FOL_wing_flap            src=alias:FX_WINGS                     cat=staged gain=-14dB
+fol FOL_wing_rustle_stop     src=alias:FX_WINGS:-3:0.3              cat=staged gain=-16dB
+fol FOL_wing_stop            src=alias:FX_WINGS:0:0.25              cat=staged gain=-16dB
+fol FOL_wing_stutter         src=alias:FX_WINGS:3:0.5               cat=staged gain=-16dB
+sfx FX_BADUM                 src=alias:FX_FUZZ_CLAP:-5              cat=staged gain=-8dB cc="[ba-dum]"
+sfx FX_BLAM                  src=alias:FX_SHOTGUN_BLAST             cat=staged gain=-4dB cc="[BLAM]"
+sfx FX_BLUB                  src=alias:FX_GURGLE_TINY               cat=staged gain=-12dB
+sfx FX_BREATH_IN             src=alias:FX_POSSESS_INHALE            cat=staged gain=-14dB
+sfx FX_BWIP                  src=alias:FX_SHWIP:5                   cat=staged gain=-12dB
+sfx FX_BWOMP                 src=alias:FX_BOING_GATE:-5             cat=staged gain=-8dB cc="[bwomp]"
+sfx FX_CHK                   src=alias:FX_CHK_CHK:0:0.25            cat=staged gain=-6dB
+sfx FX_CHK2                  src=alias:FX_CHK_CHK                   cat=staged gain=-6dB cc="[chk-chk]"
+sfx FX_CHORD_MINOR           src=alias:FX_SAD                       cat=staged gain=-10dB
+sfx FX_CLATTER               src=alias:FX_CARDBOARD_FALL            cat=staged gain=-10dB
+sfx FX_CLICK                 src=alias:FX_CLICK_EMPTY               cat=staged gain=-12dB
+sfx FX_CLONK                 src=alias:FX_ANVIL:5                   cat=staged gain=-10dB
+sfx FX_CONFETTI_PFF          src=alias:FX_CONFETTI                  cat=staged gain=-12dB
+sfx FX_DOORS_BANG            src=alias:FX_DOOR:-3                   cat=staged gain=-6dB
+sfx FX_DOOR_CREAK            src=alias:FX_CREAK                     cat=staged gain=-10dB
+sfx FX_FAR_CLINK             src=alias:FX_WALL_CLINK:3              cat=staged gain=-22dB
+sfx FX_FLAP                  src=alias:FX_WINGS:-2:0.4              cat=staged gain=-14dB
+sfx FX_FWAP                  src=alias:FX_STICKER_SLAP              cat=staged gain=-10dB
+sfx FX_FWIP                  src=alias:FX_LANTERN_FWIP              cat=staged gain=-12dB
+sfx FX_FWOOMP                src=alias:FX_HELLIFY_FLASH             cat=staged gain=-8dB
+sfx FX_GIB_PATTER            src=alias:FX_GIB_SPLAT:4               cat=staged gain=-10dB
+sfx FX_GUST                  src=alias:FX_GUST_TEAR                 cat=staged gain=-12dB
+sfx FX_GUTTER                src=alias:FX_FLAME_GUTTER              cat=staged gain=-14dB
+sfx FX_HATCH_CRACK           src=alias:FX_HATCH                     cat=staged gain=-10dB
+sfx FX_HELLIFY_STING         src=alias:FX_HELLIFY_FLASH:-3          cat=staged gain=-6dB
+sfx FX_HELLIFY_WHUM          src=alias:FX_HELLIFY_FLASH:-9          cat=staged gain=-6dB
+sfx FX_HELL_SLIDE            src=alias:FX_PURPLE_DRAIN:-5           cat=staged gain=-10dB
+sfx FX_HISS                  src=alias:FX_FUSE:-5:0.8               cat=staged gain=-14dB
+sfx FX_KNOCK                 src=alias:FX_DOOR_KNOCK                cat=staged gain=-10dB
+sfx FX_OI                    src=alias:FX_DUCK_SQUEAK:-7            cat=staged gain=-10dB cc="[oi]"
+sfx FX_PAT                   src=alias:FX_PAT_PAT:0:0.3             cat=staged gain=-14dB
+sfx FX_PEN_SCRATCH           src=alias:FX_PENCIL                    cat=staged gain=-14dB
+sfx FX_PFF                   src=alias:FX_PUFF_DRIFT:5:0.5          cat=staged gain=-12dB
+sfx FX_PIEZO_BEEP_LOW        src=alias:PET_BEEP_3                   cat=staged gain=-12dB
+sfx FX_PIP                   src=alias:PET_BEEP_2                   cat=staged gain=-14dB
+sfx FX_PLAP                  src=alias:FX_STICKER_SLAP:-3           cat=staged gain=-12dB
+sfx FX_PLINK                 src=alias:FX_TINK:3                    cat=staged gain=-14dB
+sfx FX_POP_SMALL             src=alias:FX_POP:5                     cat=staged gain=-14dB
+sfx FX_RATTLE                src=alias:FX_GATE_RATTLE               cat=staged gain=-12dB
+sfx FX_SAW_PURR              src=alias:FX_SAW_REV:-5                cat=staged gain=-10dB
+sfx FX_SAW_SCREAM            src=alias:FX_SAW_GORE:3                cat=staged gain=-6dB
+sfx FX_SLAM                  src=alias:FX_HUD_SLAM:-5               cat=staged gain=-6dB
+sfx FX_SPIT                  src=alias:FX_WET_POP:7                 cat=staged gain=-12dB
+sfx FX_SQUEAK_DEMON          src=alias:FX_DEMON_SQUEAK              cat=staged gain=-12dB
+sfx FX_SQUEAK_FLEE           src=alias:FX_DEMON_SQUEAK:5            cat=staged gain=-12dB
+sfx FX_SQUELCH               src=alias:FX_WET_SHRED:-3              cat=staged gain=-8dB
+sfx FX_STAMP                 src=alias:FX_STICKER_SLAP:-7           cat=staged gain=-8dB
+sfx FX_STEP_WOOD             src=alias:FX_FOOT_THUMP:5              cat=staged gain=-14dB
+sfx FX_TUNK                  src=alias:FX_CRATE_THUD:3              cat=staged gain=-10dB
+sfx FX_WETPOP                src=alias:FX_WET_POP                   cat=staged gain=-10dB
+sfx FX_bwobble               src=alias:FX_EGG_WOBBLE                cat=staged gain=-12dB
+sfx FX_bwomp                 src=alias:FX_BOING_GATE:-5             cat=staged gain=-8dB
+sfx FX_firework_thump_soft   src=alias:FX_FIREWORK_SOFT             cat=staged gain=-14dB
+sfx FX_pet_blip_tiny         src=alias:PET_BEEP_1:5                 cat=staged gain=-16dB
+sfx FX_sparkle_crackle       src=alias:FX_SPARKLE:-3                cat=staged gain=-14dB
+sfx FX_sparkle_fall          src=alias:FX_SPARKLE:-5                cat=staged gain=-14dB
+sfx FX_stamp_thunk           src=alias:FX_STICKER_SLAP:-7           cat=staged gain=-8dB
+sfx FX_wet_crunch            src=alias:FX_WET_CRUNCH                cat=staged gain=-10dB
+sfx MX_KAZOO_1               src=alias:FX_KAZOO                     cat=staged gain=-9dB cc="[kazoo]"
+sfx MX_KAZOO_2               src=alias:FX_KAZOO_2                   cat=staged gain=-9dB cc="[kazoo, lower]"
+sfx MX_KAZOO_3               src=alias:FX_KAZOO_3                   cat=staged gain=-9dB cc="[kazoo, lower still]"
+sfx MX_rib_note_1            src=alias:FX_PLUCK:0                   cat=staged gain=-10dB
+sfx MX_rib_note_2            src=alias:FX_PLUCK:4                   cat=staged gain=-10dB
+sfx MX_rib_note_3            src=alias:FX_PLUCK:7                   cat=staged gain=-10dB
+fol FOL_clap                 src=alias:FX_FUZZ_CLAP                cat=staged gain=-14dB

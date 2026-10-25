@@ -19,7 +19,7 @@ TOTAL = 22 * 60 * 30
 def _resolved():
     defs = cuelib.load_defs()
     spots, ops = spotting.load("ep101")
-    metas = {c: cuelib.load_meta(c) for c in {o.cue for o in ops}}
+    metas = {c: cuelib.load_meta(c) for c in {o.cue for o in ops} if c != "*"}
     rd = spotting.rundown("ep101")
     return defs, rd, spotting.resolve(ops, spots, rd, metas), metas
 
@@ -28,7 +28,7 @@ def test_cues_resolve_inside_programme():
     defs, rd, res, _ = _resolved()
     assert rd[-1][1] + rd[-1][2] == TOTAL
     for o in res:
-        assert o.cue in defs, o.where
+        assert o.cue == "*" or o.cue in defs, o.where
         assert 0 <= o.frame < TOTAL, o.where
         assert o.smp == o.frame * 1600 or ":bar:" in o.time
 

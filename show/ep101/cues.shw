@@ -80,7 +80,7 @@ spot credits_musicbox   bus=MX gain=-6dB
 # ================================================================ ACT ONE (02:30-07:50)
 @e101_1_01+0    mx heehee_bell start                    # act card, frame 0
 @e101_1_01+60   mx hahaland_radio start                 # choice: the bus radio after the card's bell
-@e101_1_01+330  mx hahaland_radio tapestop 5            # choice: the SCRATCH (5 f), 14 f of silence, then BOING (SFX)
+@e101_1_01+330  tapestop 5                             # choice: the SCRATCH (5 f), 14 f of silence, then BOING (SFX)
 @e101_1_01+335  mx hahaland_radio stop
 @e101_1_02+180  mx home_2bar start                      # choice: two bars of HOME under the pencil line
 @e101_1_03+0    mx hahaland_distant start               # the festival from the park, filtered with distance
@@ -92,7 +92,7 @@ spot credits_musicbox   bus=MX gain=-6dB
 @e101_1_07+0    mx hahaland_tent start                  # inside the tent, 6 dB down (the tent form)
 @e101_1_08+0    mx hahaland_tent stop over=4
 @e101_1_08+0    mx hahaland_band start                  # live from the bandstand
-@e101_1_08+480  mx hahaland_band tapestop 8             # choice: TAPESTOP into the FREEZE 13
+@e101_1_08+480  tapestop 8                              # choice: TAPESTOP into the FREEZE 13
 @e101_1_08+488  mx hahaland_band stop                   # the deadpan with no music; HOLD 13; fountain R8
 @e101_1_08+720  mx ribs_fanfare start                   # choice: the rib-xylophone FANFARE brings the music back on the downbeat
 @e101_1_08+874  mx hahaland_band start                  # the band again off the fanfare
@@ -147,7 +147,7 @@ spot credits_musicbox   bus=MX gain=-6dB
 @e101_3_01+768  mx hook_cute start
 @e101_3_01+1152 mx hook_cute start
 @e101_3_01+1536 mx hook_cute start                      # = 3-02 +36
-@e101_3_02+300  mx hook_cute tapestop 5                 # choice: the squeak, then the SCRATCH (5 f), 14 f of silence, CHK-CHK (SFX)
+@e101_3_02+300  tapestop 5                                  # choice: the squeak, then the SCRATCH (5 f), 14 f of silence, CHK-CHK (SFX)
 @e101_3_02+305  mx hook_cute stop
 # 3-03..3-05: the DOOM-side insert song, one continuous render (61 bars at 150 bpm, 48 f a bar).
 # Bar 2 = the HUD slam; bars 26-50 are held under the 3-04 mute (the sequencer runs); bar 51 = 3-05 frame 0.

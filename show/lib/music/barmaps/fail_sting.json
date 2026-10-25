@@ -1,0 +1,20 @@
+{
+ "cue": "fail_sting",
+ "bpm": 120.0,
+ "meter": 4,
+ "bars": 1,
+ "sections": [],
+ "offset_smp": 0,
+ "frames_per_bar": 60.0,
+ "smp_per_bar": 96000.0,
+ "source": "score:pilot.fail",
+ "bar_smp": [
+  0,
+  96000
+ ],
+ "bar_frame": [
+  0,
+  60
+ ],
+ "named_notes": {}
+}

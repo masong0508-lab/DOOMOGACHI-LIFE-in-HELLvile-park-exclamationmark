@@ -202,4 +202,12 @@ Each names the default taken and where to change it.
 - ART motion: fun_fair's ferris wheel is 4 drawings (4.88 of 5 set-pool pages); pcycle is never used on a plane whose ramp also paints big areas (it flashed fountain_faces and lulla_tent: replaced by jets and waves).
 - ART motion: "make him a turkey too" (creator) -> gen:turkey(kind=roast|live|walk), flips turkey_roast/turkey_live/turkey_strut; "him" was not named, so the roast is a prop any cast member can hold (OVER) or Nana's table can carry.
 - **Mayor v2 = a turkey Mad-Hatter (creator, Oct 25).** Drawn by a show-only part set (show/art/parts/show_parts.c), called from portrait.c patch hunks (h)/(i) for looks with the turkey signature (OWLKIN+BEAK+TOP_HAT+FEATHER_FAN+BOWTIE+FHAIR_WIZARD; the game's randomizer never makes it, tested). Default = option 1 (lavender hat, peach head, teal coat, magenta bow tie, card "18"); options 2/3 in show_out/art/mayor_v2/mayor_v2_variants.png. No wings, so the dx3 white box on his bust is gone. The fighter view is not built (the mayor's kinds exclude it).
+- WP10 pass 3 (AUDIO, Oct 25): every sound and cue the staged shots name now resolves. 153 staged SFX names
+  (FX_BLAM, FOL_*, AMB_night_*, MX_KAZOO_*, ...) are `src=alias:<ID>[:semis[:seconds]]` rows in series/sfx.shw
+  (varispeed/cut of a library sound, own gain and caption); 15 staged cue names (riff_em, doomtastic_doom,
+  credits_box, theme_eyecatch_in, ...) are copies of existing cues in series/music.shw. Either swaps for a dedicated
+  design in one line, no shot changes. `from=<section>[_lastN]` now resolves on a cue's bar map
+  (doomtastic_doom from=prechorus_last2 = bar 15.1). cues.shw uses the spec's global `tapestop F`; spotting applies it
+  to every cue still sounding. Left for STAGING/ENGINE: `mx * mute` (MUTE ALL) is not in the compiler's cue table;
+  `mx <cue> hold|solo|@+N`, `sfx all`, fol follow=/from=crowd: names, and walla beds (lines.shw, voice) fail lint.
 - ART mayor final (Oct 25, creator: "1 with no paper number on the hat"): Mayor Giggs is LOCKED to v2 variant 1 (lavender hat, peach head, teal coat, magenta bow tie). The card/paper and its "18" were removed from the hat band in every image kind (bust, figure, chibi, all expressions); the grape band stays. horn_color is no longer used by the mayor part set; the variant alternates 2/3 were dropped from showtk/art/cast/mayor_v2.py, which now also writes mayor_final.png.

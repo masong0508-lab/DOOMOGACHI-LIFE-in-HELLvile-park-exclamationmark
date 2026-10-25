@@ -60,8 +60,26 @@ class BarMap:
     def at(self, text: str) -> int:
         """'bar:17.1' / '17.3' / '17' -> sample."""
         s = text.split(":", 1)[-1]
+        if s and not s[0].isdigit():
+            return self.smp(self.section_bar(s), 1.0)
         b, _, bt = s.partition(".")
         return self.smp(int(b), float(bt) if bt else 1.0)
+
+    def section_bar(self, name: str) -> int:
+        """A section by name ('chorus', 'pre-chorus' = 'prechorus'), or '<section>_lastN' =
+        the section's last N bars; returns the bar it starts on."""
+        import re as _re
+        key = name.lower()
+        last = None
+        m = _re.match(r"^(.*?)_last(\d+)$", key)
+        if m:
+            key, last = m.group(1), int(m.group(2))
+        norm = lambda t: _re.sub(r"[^a-z0-9]", "", t.lower())
+        for sec, b0, n in self.sections:
+            if norm(sec) == norm(key):
+                return b0 + max(0, n - last) if last else b0
+        raise ValueError("no section %r in this cue's bar map (%s)" % (
+            name, ", ".join(s[0] for s in self.sections) or "none"))
 
     def bar_of_smp(self, smp: int) -> tuple:
         """sample -> (bar 1-based, beat 1-based float)."""
