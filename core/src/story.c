@@ -653,7 +653,9 @@ void story_push_exorcism(int resident_id, int ctx, int extra)
     if (autowin) {
         if (resident_id >= 0) {
             const DoomoResident *r = town_res(resident_id);
-            if (r && r->status == RES_POSSESSED) exorcism_apply(resident_id, 1);
+            /* (S4) a soul lost is a reverse rite's host (S133): exorcism_apply
+             * un-fails it when the rite is armed, else changes nothing */
+            if (r && (r->status == RES_POSSESSED || r->status == RES_SOUL_LOST)) exorcism_apply(resident_id, 1);
         }
         dispatch_result();
         return;

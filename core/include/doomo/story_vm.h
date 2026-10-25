@@ -257,7 +257,12 @@ int  story_trophies(const StorySideRow *rows, const uint8_t *side2, uint8_t *out
 extern const StorySideRow doomo_side_rows[STORY_SIDE2_ROWS];
 /* The side walker (story_side.c): chain gating (step k requires k-1; at
  * most one part of a chain per chapter; cross-border parts 3+ from Ep 4.1).
- * Returns 1 if row `sid` may be offered now. */
+ * Returns 1 if row `sid` may be offered now. (S4) The 22 grafts (S196..S217,
+ * story_final.md sec.14: short parts grafted into a chain's chapter, e.g.
+ * S196 before S107 in Ch1) are outside the one-per-chapter count: a graft
+ * may follow a part of the same chapter, and finishing one does not hold
+ * the next part back - which is what lets the sec.14 chapter table play. */
+#define STORY_SIDE2_GRAFT_FIRST 96   /* S196: rows from here are grafts */
 int  story_side2_available(int sid);
 int  story_side2_state(int sid);     /* 0 none, 1 offered, 2 active, 3 done (STRY.side2) */
 void story_side2_set_state(int sid, int st);

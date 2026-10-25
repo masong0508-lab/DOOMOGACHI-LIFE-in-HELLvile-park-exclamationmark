@@ -483,9 +483,16 @@ int story_side2_gate(const StorySideRow *rows, int sid, const uint8_t *side2,
             for (i = 0; i < STORY_SIDE2_ROWS; i++)
                 if (rows[i].kind && rows[i].chain == r->chain && rows[i].step == r->step - 1) { prev = i; break; }
             if (prev < 0 || side2_bits(side2, prev) != 3) return 0;
-            if (done_in_chapter && done_in_chapter[r->chain - 'A'] == chapter) return 0;
+            if (done_in_chapter && done_in_chapter[r->chain - 'A'] == chapter &&
+                sid < STORY_SIDE2_GRAFT_FIRST) return 0;          /* (S4) grafts are exempt */
         }
-        if (r->step >= 3 && !ep41 && chain_crosses(rows, r->chain)) return 0;
+        if (r->step >= 3 && !ep41 && sid < STORY_SIDE2_GRAFT_FIRST && chain_crosses(rows, r->chain)) {
+            /* (S4) "part 3" counts the chain's own parts, not its grafts */
+            int part = 0;
+            for (i = 0; i < STORY_SIDE2_GRAFT_FIRST; i++)
+                if (rows[i].kind && rows[i].chain == r->chain && rows[i].step <= r->step) part++;
+            if (part >= 3) return 0;
+        }
     }
     return 1;
 }
@@ -551,9 +558,9 @@ const char *story_side2_hint(int sid)
 /* --- end S4 --- */
 
 /* Talking to a giver: an offered (or newly available) mission runs its
- * offer script, an active one its `active` script; the scripts set the
- * state themselves (quest S1xx active / done). */
-static int side2_npc(int id)
+ * offer script (offers != 0), an active one its `active` script (offers
+ * == 0); the scripts set the state themselves (quest S1xx active / done). */
+static int side2_npc(int id, int offers)
 {
     int sid;
     for (sid = 0; sid < STORY_SIDE2_ROWS; sid++) {
@@ -563,12 +570,12 @@ static int side2_npc(int id)
         st = story_side2_state(sid);
         if (st == 0 && !story_side2_available(sid)) continue;
         if (st == 3) continue;
-        if (st == 2 && r->active != 0xFFFFu) {
+        if (!offers && st == 2 && r->active != 0xFFFFu) {
             cur2 = (int16_t)sid;
             story_conv(r->active, 67 /* side2_after */);
             return 1;
         }
-        if (st <= 1 && r->offer != 0xFFFFu) {
+        if (offers && st <= 1 && r->offer != 0xFFFFu) {
             if (st == 0) story_side2_set_state(sid, 1);
             cur2 = (int16_t)sid;
             story_conv(r->offer, 67 /* side2_after */);
@@ -583,7 +590,7 @@ static void side2_after(void)
     int sid = cur2;
     cur2 = -1;
     if (sid < 0 || sid >= STORY_SIDE2_ROWS) return;
-    if (story_side2_state(sid) == 3) {
+    if (story_side2_state(sid) == 3 && sid < STORY_SIDE2_GRAFT_FIRST) {   /* (S4) a graft holds nothing back */
         int c = doomo_side_rows[sid].chain;
         if (c >= 'A' && c <= 'Z') chain_done_ch[c - 'A'] = (uint8_t)chapter_now();
     }
@@ -656,10 +663,51 @@ static void exo_choice(int c)
 }
 
 /* ---- talking ------------------------------------------------------------------ */
-int side_npc(int id)
+static int old_npc(int id);
+
+/* --- S4: one resident, two lists (Shutterbug gives #3 and S147, Lou #0 and
+ * S121): an old quest you can finish here goes first, then the mission under
+ * way, then the offers (an old one and a new one take turns, so declining
+ * one never hides the other), then an old quest's "still on it?". */
+static int old_ready(int id)
 {
     int q;
-    if (side2_npc(id)) return 1;                  /* S2: S100..S217 */
+    for (q = 0; q < NQ; q++) {
+        const SideQuest *s = &quests[q];
+        int st = raw_state(q);
+        if (s->giver == id && (st == 2 || (st == 1 && s->kind == SQ_FETCH && inv_count(s->target) >= s->count)))
+            return 1;
+        if (s->target != id || st != 1) continue;
+        if ((s->kind == SQ_DELIVER && inv_count(s->other) > 0) || s->kind == SQ_MATCH || s->kind == SQ_RECONCILE)
+            return 1;
+        if (s->kind == SQ_EXORCISE && town_res(id) && town_res(id)->status == RES_POSSESSED) return 1;
+    }
+    return 0;
+}
+
+static int old_offer(int id)
+{
+    int q;
+    for (q = 0; q < NQ; q++)
+        if (quests[q].giver == id && raw_state(q) == 0 && available(q)) return 1;
+    return 0;
+}
+
+int side_npc(int id)
+{
+    static uint8_t turn;
+    if (old_ready(id)) return old_npc(id);
+    if (side2_npc(id, 0)) return 1;                       /* the S100+ mission under way */
+    if (!old_offer(id) || (turn ^= 1u) != 0) {
+        if (side2_npc(id, 1)) return 1;                   /* an S100+ offer */
+    }
+    return old_npc(id);
+}
+/* --- end S4 --- */
+
+static int old_npc(int id)
+{
+    int q;
     /* 1) someone you are delivering to / matching / reconciling / exorcising */
     for (q = 0; q < NQ; q++) {
         const SideQuest *s = &quests[q];
@@ -857,23 +905,29 @@ static const uint8_t church_ring[12][2] = {
     { 11, 27 }, { 17, 29 }, { 20, 27 }, { 19, 29 }, { 2, 27 }, { 21, 28 }
 };
 
-static int cast_has(const StoryNpcSpot *out, int n, int id)
+static int cast_find(const StoryNpcSpot *out, int n, int id)
 {
     int i;
-    for (i = 0; i < n; i++) if (out[i].id == id) return 1;
-    return 0;
+    for (i = 0; i < n; i++) if (out[i].id == id) return i;
+    return -1;
 }
 
 static int side2_cast(int map_id, StoryNpcSpot *out, int n, int max)
 {
-    int sid, ring = 0, who, vx, vy;
+    int sid, ring = 0, who, vx, vy, k;
     for (sid = 0; sid < STORY_SIDE2_ROWS && n < max; sid++) {
         const StorySideRow *r = &doomo_side_rows[sid];
         int st, x, y, invaded;
         if (!r->kind || !r->spot || r->spot > doomo_side_spot_count) continue;
         st = story_side2_state(sid);
         if (st == 3 || (st == 0 && !story_side2_available(sid)) || !alive_ok(r->giver)) continue;
-        if (story_side2_giver_map(sid) != map_id || cast_has(out, n, r->giver)) continue;
+        if (story_side2_giver_map(sid) != map_id) continue;
+        if ((k = cast_find(out, n, r->giver)) >= 0) {
+            /* already standing for an old quest (or an earlier mission): keep
+             * that spot, show the "?" of this offer too */
+            if (st != 2) out[k].flags |= NPCF_SIDE;
+            continue;
+        }
         invaded = map_id == MAPID_HAHALAND_INVADED && r->side == 0;
         x = invaded ? church_ring[ring % 12][0] : doomo_side_spots[r->spot - 1][0];
         y = invaded ? church_ring[ring % 12][1] : doomo_side_spots[r->spot - 1][1];
@@ -886,7 +940,7 @@ static int side2_cast(int map_id, StoryNpcSpot *out, int n, int max)
         n++;
     }
     who = story_verb_who(&vx, &vy);
-    if (who >= 0 && who < DOOMO_MAX_RESIDENTS && n < max && !cast_has(out, n, who)) {
+    if (who >= 0 && who < DOOMO_MAX_RESIDENTS && n < max && cast_find(out, n, who) < 0) {
         int home = RES_DISTRICT(who) ? MAPID_HELLVILE :
                    story_chapter() == STORY_CH3 ? MAPID_HAHALAND_INVADED : MAPID_HAHALAND;
         int px, py;
@@ -982,6 +1036,7 @@ void side_callback(int cb, int choice)
             if (choice >= SONG_MINGLE) story_unlock_quiet(UL_STORY_SONG2(choice));   /* heard: the jukebox */
         }
         break;
+    case CB_SIDE_CHAPTER: vm_set_var(0, chapter_now()); break;
     /* --- end S4 --- */
     default: break;
     }

@@ -1,0 +1,217 @@
+# assert-no-stubs
+# Side missions batch A (S4): one shot per sampled mission on its punch
+# frame (the comic button or the scare), through the real talk path, at
+# both resolutions, and the story minigames of story_mg_a.c in play.
+# "skip-to" presses A until the dialogue says a line (inside a minigame
+# A is its button, so the games are played by mashing it).
+#   S130 Party Supplies (Ch1)      Twisty's balloon stall (lost: "feelings")
+#   S117 Buckwheat Run (Ch2)       Mr. Huggins the 3rd: "They all do that."
+#   S146 Whack-a-Nothing (Ch2)     on, off (the last imp says "beep."), the plug
+#   S132 Wheezle's Ghosts (Ch4)    "...Also Thursday."
+#   S150 Hellvile Hopscotch (Ch4)  the pet goes first; "hmph."
+#   S143 Population: 1000 (Ch5, E2) the roller; "999. I can live with 999."
+seed 4242
+
+# ---- S130 "Party Supplies" ----------------------------------------------------
+scene STORY 132
+wait 60
+skip-talk 200
+talk 81
+wait 24
+expect-text "twenty balloons"
+shot s130_offer
+skip-to "Pop the grey ones"
+skip-to-scene STORY_MG
+wait 24
+shot s130_card
+press A
+wait 70
+shot s130_play
+skip-to "only feelings" 200
+wait 60
+shot s130_punch
+skip-talk
+
+# ---- S117 "Buckwheat Run" -------------------------------------------------------
+scene STORY 140
+wait 60
+skip-talk 200
+talk 77
+wait 24
+expect-text "Mr. Huggins the 3rd"
+skip-to "to a carrot"
+skip-to-scene STORY 10
+talk 120
+wait 20
+skip-to "Compliment the carrot"
+press A
+wait 16
+skip-to "threads a needle"
+skip-to-scene STORY_TIMING
+wait 40
+shot s117_timing
+skip-to "head falls off" 120
+wait 60
+shot s117_head
+skip-to "They all do that"
+wait 60
+shot s117_punch
+skip-to "all their names"
+wait 60
+shot s117_heart
+skip-talk
+
+# ---- S146 "Whack-a-Nothing" -----------------------------------------------------
+scene STORY 140
+wait 60
+skip-talk 200
+talk 64
+wait 24
+expect-text "switched OFF"
+skip-to "do NOT bonk"
+wait 60
+shot s146_rule
+skip-to-scene STORY_MG
+press A
+wait 90
+shot s146_on
+skip-to "STAFF" 200
+wait 60
+shot s146_staff
+skip-to-scene STORY_MG
+press A
+wait 330
+shot s146_off
+skip-to "voice." 200
+wait 60
+shot s146_scare
+skip-to "plug GO"
+skip-to-scene STORY 10
+cell 53 41
+wait 20
+skip-to "very good machine"
+wait 60
+shot s146_punch
+skip-talk
+
+# ---- S132 "Wheezle's Little Ghosts" -----------------------------------------------
+scene STORY 151
+wait 60
+skip-talk 200
+side 130
+side 131
+talk 707
+wait 24
+expect-text "little ghosts"
+skip-to "Tuesday"
+wait 60
+shot s132_tuesday
+skip-to "Also Thursday"
+wait 60
+shot s132_punch
+skip-to "long week"
+wait 60
+shot s132_week
+skip-to "against the law" 120
+wait 60
+shot s132_heart
+skip-talk
+
+# ---- S150 "Hellvile Hopscotch" ------------------------------------------------------
+scene STORY 151
+wait 60
+skip-talk 200
+talk 530
+wait 24
+expect-text "hopscotch"
+skip-to "Ten lava squares"
+skip-to-scene STORY_MG
+press A
+wait 30
+shot s150_pet_first
+wait 90
+shot s150_board
+skip-to "hmph" 120
+wait 60
+shot s150_punch
+skip-talk
+
+# ---- S143 "Population: 1000" ----------------------------------------------------------
+scene STORY 165
+wait 60
+skip-talk 200
+talk 0
+wait 24
+expect-text "The town sign still says"
+skip-to "Stencilla, over the gate"
+skip-to-scene STORY 10
+talk 28
+wait 20
+skip-to "Don't let"
+skip-to-scene STORY 10
+talk 565
+wait 20
+skip-to "That's the point"
+skip-to-scene STORY 10
+talk 0
+wait 20
+skip-to "Ten years ago"
+wait 60
+shot s143_heart
+skip-to-scene STORY_MG
+press A
+wait 20
+hold A 8
+press RIGHT
+hold A 8
+press RIGHT
+hold A 8
+press RIGHT
+hold A 8
+press RIGHT
+hold A 8
+press RIGHT
+hold A 8
+press RIGHT
+hold A 8
+press RIGHT
+hold A 8
+press RIGHT
+hold A 8
+press RIGHT
+hold A 8
+press RIGHT
+hold A 8
+press RIGHT
+shot s143_roller
+hold A 8
+press RIGHT
+hold A 8
+press RIGHT
+hold A 8
+press RIGHT
+hold A 8
+press RIGHT
+hold A 8
+press RIGHT
+hold A 8
+press RIGHT
+hold A 8
+press RIGHT
+hold A 8
+press RIGHT
+hold A 8
+press RIGHT
+hold A 8
+press RIGHT
+hold A 8
+wait 10
+shot s143_1000
+skip-to "POPULATION: 1000"
+wait 60
+shot s143_sign
+skip-to "999"
+wait 60
+shot s143_punch
+skip-talk
+no-stubs

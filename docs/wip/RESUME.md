@@ -20,7 +20,14 @@ Each patch's agent was told to verify everything before pushing. Re-run the full
 
 1. **Story and dream-house build** (`story_house_build_workflow.js`), still to do:
    - finish H3 and H4.M2 (the patches above);
-   - S4: side-mission batch A (54 missions, plus re-timing the 49 existing quests);
+   - ~~S4: side-mission batch A~~ **done** (2026-10-25): the 54 missions in
+     `core/data/story/side_a/`, the 49 old quests re-timed (`quests49/`),
+     givers on the maps, `story_mg_a.c` (six games), `SONG_WALL_LULLABY`,
+     `layouts_a.txt`, `test_side_a.c`, runner `side_sample_a.txt`. For S5:
+     grafts (S196+) are exempt from one-part-per-chapter (story_vm.h
+     `STORY_SIDE2_GRAFT_FIRST`); S4 used 14 `{d}` (the game is at 66 of 80);
+     the runner has `side`, `talk`, `cell`, `skip-to`, `skip-to-scene`,
+     `skip-talk` for side samples (docs/STORY_ENGINE.md);
    - S5: batch B (55 missions);
    - the Feast cutscene port;
    - I9: integration.

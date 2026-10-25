@@ -195,8 +195,18 @@ enum { CB_SIDE_HAVE = 70,       /* ARG = ITEM_*: how many you carry           */
        CB_SIDE_MONEY,           /* H$ / 10 you carry (capped at 32767)        */
        CB_SIDE_DAY,             /* the day of the week 0 Monday .. 6 Sunday    */
        CB_SIDE_MUSIC,           /* the map's own music back (after a song)     */
-       CB_SIDE_ONCE };          /* ARG = SONG_*: play it once, then the map's
+       CB_SIDE_ONCE,            /* ARG = SONG_*: play it once, then the map's
                                    music comes back (and it joins the jukebox) */
+       CB_SIDE_CHAPTER };       /* the chapter now, 1..5                        */
+/* S4's story minigames (story_mg_a.c, the doomo_story_mg_a registry; `push
+ * minigame SMG_A_*`). Results: 0 lost, 1 won; SMG_A_WHACK 2 = you bonked
+ * Father Fuzz. */
+enum { SMG_A_HOPSCOTCH = 0x0A01,   /* S150 lava hopscotch: ten squares on the beat  */
+       SMG_A_ROLLER,               /* S143 the roller and the population counter    */
+       SMG_A_WHACK,                /* S146 Whack-an-Imp, switched on                */
+       SMG_A_WHACK_OFF,            /* S146 ... switched off (they come anyway)      */
+       SMG_A_BALLOONS,             /* S130 Twisty's stall: keep twenty pink ones    */
+       SMG_A_BOBBER };             /* S144 the float dips: pull                     */
 /* The quest log's rows for S100..S217 (the Side tab, after the 49 old ones):
  * the visible ones (offered, active or done) in row order; title and hint
  * come from the mission's index pack (one pack, so the PS1 never thrashes
