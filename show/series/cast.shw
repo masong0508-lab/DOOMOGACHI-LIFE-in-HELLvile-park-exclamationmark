@@ -1,0 +1,94 @@
+# show/series/cast.shw - the cast as data (ART track; SHOW_ENGINE_SPEC.md
+# sec.5.1, 9.1).  Every character who appears in 101, speaking or not.
+#
+#   char <id> look=roster:<N> | look:<id>    the DoomoLook (looks/*.shw; look=show:<id> also works)
+#             sprite=<SPR_*> | sprite=pet:<form>   cast drawn by the sprite / pet engines instead
+#             age=adult|teen|child           required on every char (STD-AGE); child => tags=KID
+#             kinds=bust,figure,chibi,fighter,model3d,sprite   the image kinds a shot may ask for
+#             voice=<id>|none                a voice in series/voices.shw (AUDIO track)
+#             tags=KID,SILENT,VOICE_ONLY,...  KID = hard limit 3; VOICE_ONLY = heard, never seen
+#             squash=<material>:<pct>        GAG_BIBLE.md sec.4.3 (peak deformation)
+#             phase=<0..255>                 idle clock offset (blink, breath, wings never sync)
+#             idle=on|still|none             none = no idle clock at all (Mascotty)
+#             first=ep<NNN>                  first episode the character is SEEN (lints refuse earlier)
+#             roster=<N>                     the game citizen this is (portrait.c caches by it)
+#             name="..."                     the name plate
+#   A line that starts with key=value continues the char above it.
+#
+# Eye style and mouth: each char's EYE_* and rest MOUTH_* are in its look;
+# the 11 EXPR_* and the 8 visemes are the engine's (sheets in
+# show_out/art/cast/<id>_sheet.png).  Speakers' viseme mouths follow
+# series/visemes.shw (AUDIO); the sheets show the spec's sec.9.3 defaults.
+# Phases are spaced by 53 so no two idle clocks share a frame.
+
+# ---- the lead and the pet ----------------------------------------------------
+char sunny       look=look:sunny age=adult kinds=bust,figure,chibi,fighter,model3d voice=none
+                 tags=SILENT,LEAD squash=plush:34 phase=12 name="Sunny"
+                 note="silent; ears lag the head 2 f; the only character who stands still on purpose"
+char pet         sprite=pet:0 age=adult kinds=sprite voice=pet tags=PET squash=plush:34
+                 name="the pet" note="pet_render form 0 (Mochiblob) from the hatch; egg = pet:-1; horn nubs by morning (T-2) = pet:12 Impkin; never harmed; says only beep."
+
+# ---- the speaking roles (12; BREAKDOWN sec.3.2) ---------------------------------
+char mayor       look=look:mayor roster=0 age=adult kinds=bust,figure,chibi,model3d voice=mayor
+                 squash=plush:22 phase=39 name="Mayor Giggs"
+                 note="halo never squashes, lags 2 f; wings flap on their own cycle; FREEZE stops them"
+char nana        look=look:nana roster=1 age=adult kinds=bust,figure,chibi voice=nana
+                 squash=wool:30 phase=92 name="Nana Puddin" note="recovers over 3 f (wool absorbs)"
+char pip         look=look:pip roster=42 age=child tags=KID kinds=bust,figure,chibi voice=pip
+                 squash=plush:34 phase=145 name="Pip"
+                 note="hard limit 3: filter on, no innuendo, no gore, never in reach of the possessed; ears lag 2 f, Mr. Flops 3 f"
+char fuzz        look=look:fuzz roster=77 age=adult kinds=bust,figure,chibi voice=fuzz
+                 squash=plush:34 phase=198 name="Father Fuzz" note="a hug squashes the one hugged, not Fuzz"
+char bonejangles look=look:bonejangles roster=5 age=adult kinds=bust,figure,chibi voice=bonejangles
+                 squash=hardware:18 phase=251 name="Bonejangles"
+                 note="possessed in Acts 2-4 = state=possessed (red sockets, 0% squash, ears twitch); ribs glow purple = the emissive layer"
+char clinker     look=roster:753 roster=753 age=adult tags=VOICE_ONLY kinds=bust,figure voice=clinker
+                 first=ep108 phase=48 name="Clinker" note="heard, never seen in 101; on screen she is only 'it' or 'something'"
+char bloom       look=look:bloom roster=111 age=adult kinds=bust,figure,chibi voice=bloom
+                 squash=plush:30 phase=101 name="Dr. Bloom"
+char steamy      look=look:steamy roster=2 age=adult kinds=bust,figure,chibi voice=steamy
+                 squash=jelly:30 phase=154 name="Steamy" note="TW_JELLY on every squash"
+char kevin       look=look:kevin age=adult kinds=bust,figure,chibi voice=kevin
+                 squash=plush:30 phase=207 name="Kevin" note="'only the third eye blinks' = a flipbook over the bust"
+char hattie      look=look:hattie roster=71 age=adult kinds=bust,figure,chibi voice=hattie
+                 squash=plush:34 phase=4 name="Hattie Haha"
+char lulla       look=look:lulla roster=36 age=adult kinds=bust,figure,chibi voice=lulla
+                 squash=wool:30 phase=57 name="Miss Lulla"
+char gurgle      age=adult tags=VOICE_ONLY voice=gurgle name="GURGLE"
+                 note="Grumbleguts' belly, heard through the sealed gate (PC-1 caption box only)"
+
+# ---- the silent and the background --------------------------------------------
+char mascotty    look=look:mascotty roster=106 age=adult tags=SILENT kinds=figure,chibi voice=none
+                 squash=none:0 idle=none phase=0 name="Mascotty"
+                 note="the Starer: no idle clock, never squashes, a crowd member with clock none; waves at quarter speed"
+char grampy      look=look:grampy roster=88 age=adult kinds=bust,figure,chibi voice=none
+                 squash=plush:30 phase=110 name="Grampy Bean" note="main-title pop-in"
+char rivet       look=look:rivet_masked roster=13 age=adult tags=SILENT kinds=figure,chibi voice=none
+                 squash=hardware:18 phase=163 name="Rivet" note="welding mask and sparks only; unseen until 108"
+char hellvile_hand look=look:hellvile_hand age=adult tags=SILENT,HELLVILE kinds=figure voice=none
+                 phase=216 note="4-08 split: a sooty hand lights a fuse; hand only, no face"
+
+# ---- the storybook (CO-1..CO-4, credits stills; look=crayon) ---------------------
+char young_giggs look=look:young_giggs age=child tags=KID,SILENT kinds=figure,chibi voice=none
+                 squash=plush:34 phase=21 name="the young cherub" note="from behind, no face"
+char young_imp   look=look:young_imp age=child tags=KID,SILENT kinds=figure,chibi voice=none
+                 squash=plush:34 phase=74 note="two small horned hands, no face"
+char fluffy      look=look:fluffy age=adult tags=SILENT,PET kinds=figure,chibi voice=none
+                 squash=cloud:34 phase=127 name="Fluffy" note="a crayon cloud on a string; heart eyes = EXPR_LOVE"
+
+# ---- inserts (silhouettes) ----------------------------------------------------
+char cloud_lady  look=look:cloud_lady age=adult tags=SILENT,SILHOUETTE kinds=figure voice=none
+                 note="1-14 Fuzz's sepia insert; silhouette with glowing eyes"
+char crowned_shadow look=look:crowned_shadow age=adult tags=SILENT,SILHOUETTE kinds=figure voice=none
+                 note="1-14 sepia insert: the crowned silhouette behind her"
+
+# ---- demons (the game's sprite engine; the truth shows only on these) -------------
+char puff_demon  sprite=SPR_PUFF_DEMON age=adult tags=DEMON kinds=sprite voice=none
+                 note="actor.h THING_PUFF_DEMON; spill from the ribs, bubble into hearts (filter) or red mist (truth)"
+char big_puff    sprite=SPR_PUFF_DEMON age=adult tags=DEMON kinds=sprite voice=none
+                 note="the demons stacked into one (3-02, 3-05): the Puff Demon sprite at px=3 or stacked"
+
+# ---- later episodes (no image of them in 101) -------------------------------------
+char grumbleguts look=roster:729 roster=729 age=adult tags=SILENT_IN_101 kinds=bust,figure,chibi,fighter
+                 voice=grumbleguts squash=boing:40 first=ep102 name="Grumbleguts"
+                 note="NOT seen in 101 (only the purr in PC-1; the MT-5 rear shape behind the shut grille is a featureless set silhouette, no look); debuts in 102"

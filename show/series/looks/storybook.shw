@@ -1,0 +1,86 @@
+# show/series/looks/storybook.shw - the cold open's crayon flashback (CO-1..CO-4)
+# and the end-credit stills (ART track).
+#
+# These are ordinary DoomoLooks drawn by the game's portrait engine; the
+# STORYBOOK register is the shot's `look=crayon` (camfx PAL_CRAYON lerp, the
+# paper grain and the +-1 px boil on twos, SHOW_ENGINE_SPEC.md sec.9.4), never
+# a second set of drawings.  Long ago = thirty years before the pilot.
+#
+# Every child here is age=child (hard limit 3): the filter stays on, no gore
+# and no innuendo in any scene they are in; the lookdata kid check runs on
+# every look below.
+
+# The young cherub (Giggs at nine), "from behind, no face": staged as the
+# chibi's up-facing frames (dir 3) or a figure cropped from behind.
+look young_giggs base=roster:0 age=child tags=KID note="Giggs at nine; seen from behind"
+  height=1 body=BODY_TINY build=8 head_size=15 facial_hair=FHAIR_NONE hat=HAT_NONE
+  eyes=EYE_ROUND eye_size=11 mouth=MOUTH_SMILE marking=MARK_NONE aura=AURA_NONE
+  top=TOP_TSHIRT top_color=PAINT_SKY pattern=PATTERN_SOLID bottom=BOTTOM_SHORTS bottom_color=PAINT_NAVY
+  accessory=ACC_NONE
+end
+
+# The young imp, "two small horned hands (no face)": the same age, the other
+# side of the park; framed so only the hands and the bowls show.
+look young_imp base=SPECIES_IMP age=child tags=KID note="two small hands set down two bowls; no face"
+  height=1 body=BODY_TINY build=8 head_size=15 skin=PAINT_CHERRY horns=HORNS_NUBS horn_color=PAINT_BONE horn_size=4
+  eyes=EYE_ROUND eye_color=PAINT_LEMON mouth=MOUTH_SMILE fangs=1 hair=HAIR_MESSY hair_color=PAINT_CHARCOAL
+  top=TOP_TSHIRT top_color=PAINT_LEMON bottom=BOTTOM_SHORTS bottom_color=PAINT_RUST shoes=SHOES_SNEAKERS
+end
+
+# FLUFFY, the pet cloud on a string: "a crayon cloud, two dot eyes", heart
+# eyes when the fireworks go up (EXPR_LOVE draws the engine's heart eyes).
+# The round, legless slime body is the catalogue's cloud; white so the crayon
+# lerp turns it to chalk pastel.  (Spoiler-protected: nothing here links him
+# to the sky.)
+look fluffy base=SPECIES_SLIME age=adult tags=PET note="the pet cloud; EXPR_LOVE = heart eyes"
+  skin=PAINT_WHITE eyes=EYE_DOT eye_size=9 mouth=MOUTH_CAT mouth_size=5 hair=HAIR_BALD
+  top=TOP_NONE bottom=BOTTOM_NONE shoes=SHOES_BARE cheeks=CHEEK_BLUSH
+end
+
+# ---- the storybook kids crossing the bridge (CO-2/CO-3: KID, background,
+# no featured faces): six bunnykin from the north, six imps from the south.
+look sb_bunny_1 base=SPECIES_BUNNYKIN age=child tags=KID
+  height=1 body=BODY_TINY build=8 head_size=14 eyes=EYE_ROUND eye_color=PAINT_SKY mouth=MOUTH_SMILE
+  hair=HAIR_MESSY hair_color=PAINT_WHITE skin=PAINT_WHITE top=TOP_TSHIRT top_color=PAINT_BUBBLEGUM
+  bottom=BOTTOM_SHORTS bottom_color=PAINT_SKY shoes=SHOES_SNEAKERS shoes_color=PAINT_LEMON
+end
+look sb_bunny_2 base=look:sb_bunny_1
+  skin=PAINT_HONEY hair_color=PAINT_HONEY top=TOP_OVERALLS top_color=PAINT_MINT height=2
+end
+look sb_bunny_3 base=look:sb_bunny_1
+  skin=PAINT_CARAMEL hair=HAIR_PIGTAILS hair_color=PAINT_CHOCOLATE top=TOP_DRESS top_color=PAINT_LEMON bottom=BOTTOM_NONE
+end
+look sb_bunny_4 base=look:sb_bunny_1
+  skin=PAINT_SILVER hair=HAIR_BOWL hair_color=PAINT_CHARCOAL top=TOP_HOODIE top_color=PAINT_SKY height=0
+end
+look sb_bunny_5 base=look:sb_bunny_1
+  skin=PAINT_PEACH hair=HAIR_ODANGO hair_color=PAINT_ROSE top=TOP_SWEATER top_color=PAINT_LAVENDER height=2
+end
+look sb_bunny_6 base=look:sb_bunny_1
+  skin=PAINT_BONE hair=HAIR_CURLY hair_color=PAINT_CARAMEL top=TOP_PAJAMAS top_color=PAINT_TEAL cheeks=CHEEK_BLUSH,CHEEK_FRECKLES
+end
+look sb_imp_1 base=look:young_imp age=child tags=KID
+  skin=PAINT_CHERRY top_color=PAINT_MINT hair=HAIR_SPIKY
+end
+look sb_imp_2 base=look:young_imp
+  skin=PAINT_TANGERINE top=TOP_OVERALLS top_color=PAINT_SKY hair=HAIR_BOWL hair_color=PAINT_JET height=2
+end
+look sb_imp_3 base=look:young_imp
+  skin=PAINT_GRAPE horns=HORNS_DEVIL top=TOP_HOODIE top_color=PAINT_LEMON hair=HAIR_BALD height=0
+end
+look sb_imp_4 base=look:young_imp
+  skin=PAINT_ROSE top=TOP_DRESS top_color=PAINT_TEAL bottom=BOTTOM_NONE hair=HAIR_PIGTAILS hair_color=PAINT_CHARCOAL
+end
+look sb_imp_5 base=look:young_imp
+  skin=PAINT_RUST horns=HORNS_RAM top=TOP_SWEATER top_color=PAINT_BUBBLEGUM hair=HAIR_CURLY hair_color=PAINT_JET height=2
+end
+look sb_imp_6 base=look:young_imp
+  skin=PAINT_MAGENTA top=TOP_PAJAMAS top_color=PAINT_LAVENDER hair=HAIR_MESSY hair_color=PAINT_CHARCOAL cheeks=CHEEK_BLUSH,CHEEK_FRECKLES
+end
+
+kset storybook_bunnies age=child note="CO-2/CO-3 bridge crossing, north side (crowd bunnies)"
+  looks=look:sb_bunny_1,look:sb_bunny_2,look:sb_bunny_3,look:sb_bunny_4,look:sb_bunny_5,look:sb_bunny_6
+end
+kset storybook_imps age=child note="CO-2/CO-3 bridge crossing, south side (crowd imps)"
+  looks=look:sb_imp_1,look:sb_imp_2,look:sb_imp_3,look:sb_imp_4,look:sb_imp_5,look:sb_imp_6
+end

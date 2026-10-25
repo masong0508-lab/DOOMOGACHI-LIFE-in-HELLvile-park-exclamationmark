@@ -1,0 +1,149 @@
+# show/series/looks/cast.shw - the named cast's show looks (ART track).
+#
+# DoomoLook text (SHOW_ENGINE_SPEC.md sec.5.1, 9.1): every value is a real
+# catalogue enum from core/include/doomo/catalog.h, palette.h or resident.h.
+# A look starts from a roster citizen (core/data/roster, the game's own
+# record) or a species, and lists only what the show changes.  The format
+# is documented in show/tools/showtk/art/cast/lookdata.py; `python3 -m
+# showtk.art.cast.lookdata` (from show/tools) validates and packs every look.
+# Model sheets: python3 -m showtk.art.cast.sheet <char>  (the game's portrait
+# engine on the host; review only).
+#
+# Rule for every look: built from the engine's own parts, never drawn
+# outside it.  Where the catalogue lacks something the script names, the
+# nearest part stands in and the note says so (see show/DECISIONS.md).
+
+# ---- the lead -----------------------------------------------------------------
+# SUNNY (they), a young adult bunnykin, silent; "ears that notice everything".
+# Not in the roster (the game's protagonist is the player's own resident), so
+# built from the species.  Honey fur, mint travel hoodie: warm, readable next
+# to Pip (white, sky) and Mascotty (pink).  Rest mouth is MOUTH_FLAT: a
+# closed, quiet mouth (Sunny never speaks; expressions still override it).
+look sunny base=SPECIES_BUNNYKIN age=adult note="the lead; acts with ears, eyes, posture"
+  body=BODY_AVERAGE height=8 build=7 skin=PAINT_HONEY head=HEAD_MOCHI head_size=13
+  eyes=EYE_ROUND eye_color=PAINT_TEAL eye_size=10 eye_spacing=8 eye_height=8 eye_tilt=8 eye_count=2
+  brows=BROW_THIN brow_height=8 nose=NOSE_BUTTON nose_size=6 mouth=MOUTH_FLAT mouth_size=6 fangs=0
+  cheeks=CHEEK_BLUSH hair=HAIR_MESSY hair_color=PAINT_HONEY highlight=NONE facial_hair=FHAIR_NONE
+  ears=EARS_BUNNY horns=HORNS_NONE tail=TAIL_BUNNY wings=WINGS_NONE halo=HALO_NONE
+  marking=MARK_FUR_MUZZLE marking_color=PAINT_BONE aura=AURA_NONE
+  top=TOP_HOODIE top_color=PAINT_MINT pattern=PATTERN_SOLID pattern_color=PAINT_WHITE
+  bottom=BOTTOM_PANTS bottom_color=PAINT_NAVY shoes=SHOES_SNEAKERS shoes_color=PAINT_WHITE
+  hat=HAT_NONE hat_color=PAINT_LEMON accessory=ACC_NONE accessory_color=PAINT_MINT
+end
+
+# ---- the town ------------------------------------------------------------------
+# MAYOR GIGGS: the roster record as is (cherub, wings, halo, top hat on a
+# pompadour, handlebar moustache, bow tie).  The pilot script dresses him for
+# the Giggle with a JUDGE rosette ON HIS BOW TIE (a prop) and clutches the
+# clipboard to the bow tie, so the bow tie stays: no sash (DECISIONS.md).
+look mayor base=roster:0 note="Mayor Gigglesworth; bow tie kept (script: rosette on the bow tie)"
+  mouth_size=13
+end
+
+# NANA PUDDIN, festival baker: "all wool and flour, wipes her paws on her
+# apron".  TOP_MAID is the catalogue's dress with a white apron and a waist
+# bow; her own peach and polka dots carry over, chef hat and glasses kept.
+look nana base=roster:1 note="baker's apron = TOP_MAID (the engine's white apron)"
+  top=TOP_MAID top_color=PAINT_PEACH aura=AURA_NONE mouth_size=14
+end
+
+# PIP (they, a child, KID): JUNIOR FESTIVAL PATROL.  The patrol sash is the
+# hi-vis tangerine overall bib and a matching patrol cap (the catalogue has no
+# sash); Mr. Flops is the plush under one arm, ACC_TEDDY in white (the only
+# hugged-plush part; a floppy-eared Mr. Flops flipbook is deferred).
+look pip base=roster:42 age=child tags=KID note="patrol cap + hi-vis bib; Mr. Flops = ACC_TEDDY"
+  top_color=PAINT_TANGERINE hat=HAT_CAP hat_color=PAINT_TANGERINE
+  accessory=ACC_TEDDY accessory_color=PAINT_WHITE mouth_size=12
+end
+
+# FATHER FUZZ: the roster record (plushie bear priest, rosary).
+look fuzz base=roster:77 note="St. Cuddles; the roster record"
+  mouth_size=10
+end
+
+# BONEJANGLES, the bandleader who plays his own ribs: the sweater vest comes
+# off so the ribcage shows (TOP_NONE on a skeleton draws the ribs), and a
+# bandleader's bow tie replaces the glasses.  Possessed = state=possessed in
+# a shot (RES_POSSESSED: red sockets, glitch), never a different look.
+look bonejangles base=roster:5 note="ribs bared for the rib-xylophone; bow tie"
+  top=TOP_NONE accessory=ACC_BOWTIE accessory_color=PAINT_ROSE mouth_size=10
+end
+
+# DR. BLOOM, ghoul doctor "in pastel scrubs": the roster lab coat becomes
+# mint scrubs (TOP_NURSE draws a scrub top) over a pastel skirt.
+look bloom base=roster:111 note="pastel scrubs"
+  top=TOP_NURSE top_color=PAINT_MINT bottom=BOTTOM_PANTS bottom_color=PAINT_MINT mouth_size=11
+end
+
+# ---- the Midsummer Giggle stall-holders --------------------------------------
+# STEAMY, Hook-a-Duck: "a frogling bath-house keeper in a steam-damp apron".
+look steamy base=roster:2 note="Hook-a-Duck stall; bath-house apron"
+  top=TOP_MAID top_color=PAINT_SKY pattern=PATTERN_SOLID hat=HAT_BUCKET hat_color=PAINT_LEMON
+end
+
+# KEVIN (he), face painting: "three eyes (two where you'd expect them, one in
+# the middle)".  Not in the roster.  A human reads the third eye cleanest at
+# every size (critter ears and hats cover the forehead); nothing on the brow.
+# The painter's smock is polka-spattered overalls.  "Only the third eye
+# blinks" is a flipbook insert (the engine blinks all eyes together).
+look kevin base=SPECIES_HUMAN age=adult note="three eyes; forehead kept clear"
+  body=BODY_AVERAGE height=9 build=8 skin=SKIN_TAN head=HEAD_ROUND head_size=11
+  eyes=EYE_ROUND eye_color=PAINT_FOREST eye_size=8 eye_spacing=7 eye_height=8 eye_tilt=8 eye_count=3
+  brows=BROW_FLAT brow_height=7 nose=NOSE_DOT nose_size=6 mouth=MOUTH_FLAT mouth_size=9 fangs=0
+  cheeks=CHEEK_BLUSH hair=HAIR_BUZZ hair_color=PAINT_CHOCOLATE highlight=NONE facial_hair=FHAIR_NONE
+  ears=EARS_NORMAL horns=HORNS_NONE tail=TAIL_NONE wings=WINGS_NONE halo=HALO_NONE
+  marking=MARK_NONE marking_color=PAINT_WHITE aura=AURA_NONE
+  top=TOP_OVERALLS top_color=PAINT_SKY pattern=PATTERN_POLKA pattern_color=PAINT_ROSE
+  bottom=BOTTOM_PANTS bottom_color=PAINT_NAVY shoes=SHOES_SNEAKERS shoes_color=PAINT_WHITE
+  hat=HAT_NONE hat_color=PAINT_ROSE accessory=ACC_NONE accessory_color=PAINT_ROSE
+end
+
+# HATTIE HAHA, the plushie comedian on a crate: the roster record (suit, beret).
+look hattie base=roster:71 note="the roster record; a wider stitched mouth for the lip flap"
+  mouth_size=9
+end
+
+# MISS LULLA, the craft tent: the roster record (sheepkin, teddy for the kids).
+look lulla base=roster:36 note="the roster record, but a closed rest mouth (her roster MOUTH_OPEN reads as mid-word)"
+  mouth=MOUTH_SMILE mouth_size=12
+end
+
+# MASCOTTY (she), "bunnykin in a mascot head", the Starer: the costume head is
+# built from the parts a mascot has: the biggest head, wide staring felt eyes,
+# a stitched-on smile, no brows, no hair; a one-piece rose suit.  She never
+# squashes and has no idle clock (cast.shw).
+look mascotty base=roster:106 note="mascot costume head: wide eyes, stitched smile"
+  head_size=15 eyes=EYE_WIDE eye_color=PAINT_COBALT eye_size=14 brows=BROW_NONE
+  mouth=MOUTH_STITCHED hair=HAIR_BALD hat=HAT_NONE
+  top=TOP_OVERALLS top_color=PAINT_ROSE bottom=BOTTOM_NONE shoes=SHOES_CLOGS shoes_color=PAINT_WHITE
+end
+
+# GRAMPY BEAN (main-title pop-in only): the roster record.
+look grampy base=roster:88 note="the roster record"
+end
+
+# RIVET (main-title pop-in): "welding mask and sparks only"; she stays unseen
+# until 108, so the face is always covered: gas-mask respirator under a
+# charcoal welding helmet.
+look rivet_masked base=roster:13 note="face never shown in season 1 before 108"
+  accessory=ACC_GAS_MASK accessory_color=PAINT_CHARCOAL hat=HAT_MARINE_HELMET hat_color=PAINT_CHARCOAL
+end
+
+# ---- the Hellvile side (silhouettes and hands only in 101) ---------------------
+# 4-08's split: "a sooty hand lights a fuse beside a table with two bowls (no
+# faces)".  Unnamed on purpose: a sooty imp's arm, framed so only the hand shows.
+look hellvile_hand base=SPECIES_IMP age=adult note="hand only; never a face in 101"
+  skin=PAINT_CHARCOAL top=TOP_SWEATER top_color=PAINT_RUST
+end
+
+# 1-14 Fuzz's sepia insert (the kids' tent eleven years ago): "a cloud-shaped
+# lady with glowing eyes, a crowned silhouette behind her".  Drawn only as
+# silhouettes (plat_image silhouette) under PAL_SEPIA: outline and eyes count.
+look cloud_lady base=SPECIES_GHOST age=adult note="sepia insert silhouette; glowing eyes"
+  skin=PAINT_LAVENDER eyes=EYE_GLOW eye_color=PAINT_VAPE_PURPLE hair=HAIR_WAVY hair_color=PAINT_LAVENDER
+  top=TOP_NONE bottom=BOTTOM_NONE shoes=SHOES_BARE
+end
+look crowned_shadow base=SPECIES_CACOBLOB age=adult note="sepia insert silhouette; the crown is the read"
+  height=15 build=15 head_size=15 hat=HAT_CROWN hat_color=PAINT_LEMON eye_count=2 eyes=EYE_GLOW
+  top=TOP_CLOAK top_color=PAINT_GRAPE skin=PAINT_GRAPE
+end
