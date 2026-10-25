@@ -1,0 +1,383 @@
+diff --git a/ARCHITECTURE.md b/ARCHITECTURE.md
+index 046a2a7..6419ec7 100644
+--- a/ARCHITECTURE.md
++++ b/ARCHITECTURE.md
+@@ -149,8 +149,11 @@ overworld 4.2 + fx 3.3 + NPCs 3.0 KB, free play ~7.6 KB, library 2.1 KB,
+ minigames 2.6 KB, concert 1.1 KB, ...) add ~43 KB of `.bss`, which the
+ GBA game ROM cannot hold (EWRAM was over by ~27 KB). Almost all of it is
+ state that only matters while its own scene runs. With everything in the
+-scratch the game ROM links with 7.5 KB of EWRAM free and the full 6 KB
+-IWRAM stack (docs/GBA.md section 3). `scene_scratch(owner, size)` hands out ONE shared 12 KB block
++scratch the game ROM links (docs/GBA.md section 3: since the G0 memory
++pass 9,952 B of EWRAM free and a 7,412 B IWRAM stack; on the GBA the
++scratch is the bottom of one 27 KB arena that it shares with the
++platform's renderer caches, the billboards and the save window).
++`scene_scratch(owner, size)` hands out ONE shared 12 KB block
+ (`DOOMO_SCENE_SCRATCH`) to the scene that claims it: claim and initialise
+ it in `enter()`, check `scene_scratch_mine(owner)` where the scene can
+ resume after a pushed scene, and rebuild if another owner took it.
+@@ -223,7 +226,14 @@ pointer to a scene module's const data (a string, a table, a callback)
+ after that scene has gone - copy it, as `ui_say()` / `ui_confirm()` do.
+ Whatever ovl_plan.py cannot prove is only reached through a scene's entry
+ points (a function whose address is taken, anything two scenes use)
+-simply stays resident.
++simply stays resident. The exception (G0): a modal (`ui_confirm`,
++`ui_text_entry`, `ui_choice`, `ui_say_done`) calls the callback it was
++given through `scene_callback_begin()` / `scene_callback_end()` (scene.h),
++which load the code of the scene it was opened over, so such callbacks
++may stay in their scene's overlay (ovl_plan.py `MODAL_CALLBACKS`, a
++reviewed list). A new modal that calls back into scene code must do the
++same. G0 left the game disc 139 KB below the stack top (docs/PS1.md
++section 3).
+ 
+ ## Art direction (all teams)
+ 
+diff --git a/core/include/doomo/scene.h b/core/include/doomo/scene.h
+index e4d863f..131a9a1 100644
+--- a/core/include/doomo/scene.h
++++ b/core/include/doomo/scene.h
+@@ -44,6 +44,17 @@ enum { PLAT_PART_NONE, PLAT_PART_HOME_VISIT, PLAT_PART_HOME_DEFEND, PLAT_PART_HO
+        PLAT_PART_HOME_ROOMTEST /* the PS1 renderer's harness layouts */ };
+ void plat_code_part(int part);
+ /* --- end H4 --- */
++/* --- G0 (additive, task #79): a modal scene (an overlay: SCENE_CONFIRM,
++ * SCENE_TEXT_ENTRY, SCENE_DIALOG) calls the callback it was given by the
++ * scene it was opened over from its own (resident) code. It brackets that
++ * call with
++ *     t = scene_callback_begin();  done(...);  scene_callback_end(t);
++ * which makes the code of the first non-overlay scene of the stack (the
++ * opener) present for the call, as scene.c does for a scene's own entry
++ * points. So such a callback may live in its scene's PS1 overlay
++ * (ps1/tools/ovl_plan.py MODAL_CALLBACKS). --- */
++int  scene_callback_begin(void);
++void scene_callback_end(int token);
+ 
+ /* ---- shared scene scratch (perf pass, additive) --------------------------
+  * On the GBA every byte of .bss is EWRAM, and most scenes' big buffers
+diff --git a/core/src/scene.c b/core/src/scene.c
+index 33b5791..25ec6b6 100644
+--- a/core/src/scene.c
++++ b/core/src/scene.c
+@@ -146,6 +146,17 @@ const DoomoScene *scene_top(void)
+ 
+ int scene_depth(void) { return depth; }
+ 
++/* G0 (scene.h): the code of the first non-overlay scene of the stack, for
++ * a modal's callback */
++int scene_callback_begin(void)
++{
++    int i = depth - 1;
++    while (i > 0 && stack[i].s->overlay) i--;
++    return plat_scene_code(i >= 0 ? stack[i].s : NULL);
++}
++
++void scene_callback_end(int token) { plat_scene_code_end(token); }
++
+ uint32_t scene_ticks(void)
+ {
+     return depth > 0 ? stack[depth - 1].ticks : 0;
+diff --git a/core/src/scene_scratch.c b/core/src/scene_scratch.c
+index 47fba83..6c03899 100644
+--- a/core/src/scene_scratch.c
++++ b/core/src/scene_scratch.c
+@@ -11,12 +11,20 @@
+ #include "doomo/scene.h"
+ #include "doomo/platform.h"
+ 
+-static uint32_t ss_owner, ss_size, ss_gen;
++static uint32_t ss_owner;
+ 
+ #if defined(DOOMO_PLATFORM_GBA)
++static uint32_t ss_size, ss_gen;
+ extern uint8_t gba_arena[];                            /* gba/src/bigbuf.c */
+ static uint8_t *ss_block(void) { return gba_arena; }
++#define SS_NOTE(size) (ss_size = (size), ss_gen++)
++
++/* (G0) for the platform: the bytes the current owner claimed (it owns
++ * nothing above them), and a counter that changes with every claim. */
++uint32_t scene_scratch_used(void) { return ss_owner ? ss_size : 0; }
++uint32_t scene_scratch_gen(void) { return ss_gen; }
+ #else
++#define SS_NOTE(size) ((void)(size))
+ static uint8_t *ss_block(void)
+ {
+     static uint32_t block[DOOMO_SCENE_SCRATCH / 4];    /* word aligned */
+@@ -32,8 +40,7 @@ void *scene_scratch(uint32_t owner, uint32_t size)
+ {
+     if (size > DOOMO_SCENE_SCRATCH || owner == 0) return NULL;
+     ss_owner = owner;
+-    ss_size = size;
+-    ss_gen++;
++    SS_NOTE(size);
+     return ss_block();
+ }
+ 
+@@ -46,8 +53,3 @@ void *scene_scratch_block(void)
+ {
+     return ss_block();
+ }
+-
+-/* (G0) for the platform: the bytes the current owner claimed (it owns
+- * nothing above them), and a counter that changes with every claim. */
+-uint32_t scene_scratch_used(void) { return ss_owner ? ss_size : 0; }
+-uint32_t scene_scratch_gen(void) { return ss_gen; }
+diff --git a/core/src/ui_dialog.c b/core/src/ui_dialog.c
+index dab25af..ec1e92e 100644
+--- a/core/src/ui_dialog.c
++++ b/core/src/ui_dialog.c
+@@ -313,8 +313,12 @@ static void advance(int choice)
+     d_dead = 0;
+     d_serial++;
+     if (dq_n == 0) scene_pop();
+-    if (done.kind == DK_CHOICE && done.choice_done) done.choice_done(choice);
+-    if (done.say_done) done.say_done();
++    if ((done.kind == DK_CHOICE && done.choice_done) || done.say_done) {
++        int t = scene_callback_begin();   /* the opener's code (scene.h) */
++        if (done.kind == DK_CHOICE && done.choice_done) done.choice_done(choice);
++        if (done.say_done) done.say_done();
++        scene_callback_end(t);
++    }
+ }
+ 
+ /* Apply the codes at text position pos (page-relative glyph about to show). */
+diff --git a/core/src/ui_modal.c b/core/src/ui_modal.c
+index 109647a..131b32a 100644
+--- a/core/src/ui_modal.c
++++ b/core/src/ui_modal.c
+@@ -29,7 +29,11 @@ static void confirm_finish(int yes)
+     void (*done)(int) = cf_done;
+     cf_done = NULL;
+     scene_pop();
+-    if (done) done(yes);
++    if (done) {                         /* with the opener's code (scene.h) */
++        int t = scene_callback_begin();
++        done(yes);
++        scene_callback_end(t);
++    }
+ }
+ 
+ static void confirm_update(void)
+@@ -133,7 +137,11 @@ static void te_finish(int ok)
+     }
+     te_done = NULL;
+     scene_pop();
+-    if (done) done(ok);
++    if (done) {                         /* with the opener's code (scene.h) */
++        int t = scene_callback_begin();
++        done(ok);
++        scene_callback_end(t);
++    }
+ }
+ 
+ static void te_type(int c)
+diff --git a/docs/PS1.md b/docs/PS1.md
+index c873aee..b15dccb 100644
+--- a/docs/PS1.md
++++ b/docs/PS1.md
+@@ -191,13 +191,26 @@ disc no longer fitted (`0x802ec0b4`, 1.1 MB over the limit), so:
+     checks every reader and keeps the cut only if all of them are in the
+     group and none is resident (the S4 story minigames: 11 KB out of
+     resident RAM into the `storymg` group);
++  - (G0) the callbacks a scene hands to the resident modals (`ui_confirm`,
++    `ui_text_entry`, `ui_choice`, `ui_say_done`; `MODAL_CALLBACKS`, each
++    entry reviewed against its call sites) do not escape: the modals call
++    them through `scene_callback_begin()` / `scene_callback_end()`
++    (scene.h), which load the group of the scene the modal was opened
++    over. The same holds for the callbacks the studio keeps in its own
++    state (`st_popup`, `st_pick_citizen`). Callbacks given to `fp_pick()`
++    stay resident (the picker is a freeplay scene, so the caller's group
++    is not in the slot when it calls back), and so do the combat group's
++    (combat is the biggest group). This took 60 KB of the studio, concert,
++    free play, creator, exorcism, workshop and gallery code out of
++    resident RAM;
+   - it writes the linker script (every group is an output section of one
+     `OVERLAY` at the slot, `NOCROSSREFS`) and the scene -> group table.
+ 
+   `ovl_pack.py` writes the groups' bytes to `OVL.BIN` on the disc
+   (`elf2exe.py` leaves them out of the EXE; their RAM slot counts). At
+   boot `overlay_init()` initialises the CD and reads its header; a scene
+-  of another group costs one CD read (~0.3 s for 70 KB at 2x). When a
++  of another group costs one CD read (~0.3 s for 70 KB at 2x; the studio
++  group, 75 KB since G0, loads in 241 ms). When a
+   scene switches scenes from inside its own update (enter / leave run
+   inside the call), the caller's group is read back before the call
+   returns, so the caller's code is always there: a switch from one
+@@ -245,23 +258,44 @@ Measured (all core modules, fishing / cooking and Hell Breach included):
+ | game disc | ends `0x802ec0b4`: 1.1 MB over the limit | EXE 1,224 KB + BSS 511 KB + overlay slot 108 KB, ends `0x801dd310`: **139 KB below the stack top** (75 KB more than the 64 KB stack reserve); `OVL.BIN` 778 KB in 15 groups |
+ | engine-test disc | ends `0x80178b1c`, 541 KB below the stack top | ends `0x801088d0`, 989 KB below the stack top |
+ 
+-| overlay group | KB | | overlay group | KB |
+-|---|---:|---|---|---:|
+-| combat (combat, actors, arena, levels, weapon view) | 109 | | island | 40 |
+-| fishing + cooking | 88 | | dream | 37 |
+-| minigames | 86 | | exorcism | 28 |
+-| free play screens | 70 | | pet | 21 |
+-| library | 63 | | workshop + welding game | 14 |
+-| concert | 51 | | UI gallery | 4 |
+-| creator | 50 | | | |
+-| cutscenes (cutscene.c, story_feast.c, grumbleguts_gfx.c) | 69 | | resident code + const data | 1,097 |
+-| studio | 44 | | | |
+-| story overworld, credits | 37 | | | |
++**G0 memory pass (task #79, 2026-10-25).** By `9d4d915` the story, house,
++side-mission and music work had brought the game disc to `0x801edf50`,
++**73,888 B (72 KB)** below the stack top, with a 126,976 B slot. G0:
++
++| step | below the stack top | how |
++|---|---:|---|
++| `9d4d915` | 73,888 B | slot 126,976 B, set by the house group's end (it loads 45.5 KB lower, over BORROW) |
++| modal callbacks stay in their groups | +60,288 B | `MODAL_CALLBACKS` + `scene_callback_begin/end` (above): resident text + rodata 1,118 -> 1,059 KB |
++| the house borrows the card's block buffer | +8,192 B | `memcard.c`'s 8 KB `s_blk` joins BORROW (`memcard.c` calls `ovl_borrow_take()` before each card read / write): the house ends 8 KB lower, the slot is the combat / cutscene / story groups' 118,784 B |
++| **after G0** | **142,368 B (139 KB)**, ends `0x801dd3d0` | EXE 1,180 KB + BSS 549 KB + slot 116 KB |
++
++| overlay group (bytes) | `9d4d915` | G0 | | overlay group (bytes) | `9d4d915` | G0 |
++|---|---:|---:|---|---|---:|---:|
++| cutscene | 118,444 | 118,444 | | island | 56,212 | 56,644 |
++| story | 117,992 | 118,172 | | creator | 51,972 | 55,696 |
++| combat | 117,760 | 117,760 | | dream | 39,956 | 39,956 |
++| home (from `__ovl_borrow`) + biggest part | 159,968 + 11,984 | same, 8 KB lower | | storymg | 37,860 | 37,884 |
++| fishcook | 93,052 | 93,052 | | exorcism | 31,852 | 34,820 |
++| minigame | 88,136 | 88,136 | | pet | 23,876 | 24,020 |
++| freeplay | 71,980 | 77,876 | | workshop | 15,012 | 15,468 |
++| library | 71,432 | 71,432 | | cutx | 14,024 | 14,024 |
++| studio | 45,524 | 76,648 | | gallery | 5,096 | 5,352 |
++| concert | 56,336 | 71,860 | | **slot** | **126,976** | **118,784** |
++
++The slot is now exactly the three biggest groups (cutscene 118,444,
++story 118,172, combat 117,760 B, rounded up to whole sectors): any growth
++of them moves the slot again, 2 KB at a time (story SPEC C4). The story
++group is far above its 75 KB cap (C4); the levers are content-level
++(story_script.c's legacy glue, story_talk.c), parts for SCENE_QUESTLOG /
++SCENE_CREDITS (PARTS work only for BORROW groups today) and, for the
++cutscene group (cap 100 KB), the Feast's 77 KB (story_feast.c +
++grumbleguts_gfx.c) as a part of its own.
+ 
+ The biggest remaining consumers of RAM: resident core code (portraits,
+-UI, sim, story engine, ...) ~700 KB, `doomo_town` 107 KB, the display
+-lists 112 KB + OTs 24 KB, the roster 164 KB, packed art 195 KB, the
+-overlay slot 108 KB.
++UI, sim, story engine, ...) ~650 KB, merged string literals of resident
++code ~110 KB, `doomo_town` 107 KB, the display lists 112 KB + OTs 24 KB,
++the roster 164 KB, packed art 195 KB, SFX PCM 47 KB (customisation P3
++moves it to SPU RAM), the overlay slot 116 KB.
+ 
+ `plat_save_scratch()` is the display-list memory of both frames (one
+ contiguous 112 KB block): after `DrawSync()` the previous frame's list is
+diff --git a/ps1/src/memcard.c b/ps1/src/memcard.c
+index 0fc2197..660546d 100644
+--- a/ps1/src/memcard.c
++++ b/ps1/src/memcard.c
+@@ -274,6 +274,13 @@ static uint8_t s_hdr[HDR_BYTES] __attribute__((aligned(4)));
+  * middle of a block and crosses into the next one (it writes to the
+  * physically adjacent block instead of following the file's block chain). */
+ static uint8_t s_blk[BLOCK] __attribute__((aligned(4)));
++/* G0: the house's overlay group borrows s_blk while no card I/O runs
++ * (ovl_plan.py BORROW): take it back before every use */
++static void blk_take(void)
++{
++    static uint32_t seen;
++    (void)ovl_borrow_take(&seen);
++}
+ 
+ /* the file image byte at offset o is header (o < HDR_BYTES) or payload */
+ static void stage_block(int k, const uint8_t *data, uint32_t size)
+@@ -296,6 +303,7 @@ static int write_file(const char *path, const uint8_t *data, uint32_t size, int
+     int fd = open(path, O_WRONLY_), k, ok = 1;
+     if (fd < 0)
+         return 0;
++    blk_take();
+     ls_progress(0, blocks);
+     for (k = 0; ok && k < blocks; k++) {
+         stage_block(k, data, size);
+@@ -411,6 +419,7 @@ static int read_file(const char *path, void *data, uint32_t cap, uint32_t *out_s
+     int ok = 0, total_blocks = 0;
+     if (fd < 0)
+         return 0;
++    blk_take();
+     ls_progress(0, 0);
+     for (k = 0; ; k++) {
+         uint32_t o0 = (uint32_t)k * BLOCK, from, n;
+diff --git a/ps1/tools/ovl_plan.py b/ps1/tools/ovl_plan.py
+index 01cbf64..3495ce5 100644
+--- a/ps1/tools/ovl_plan.py
++++ b/ps1/tools/ovl_plan.py
+@@ -93,7 +93,13 @@ BORROW = (("world", (".bss.g_world_wtop", ".bss.g_world_corner")),
+           ("view3d", (".bss.s_vis", ".bss.s_vlist")),
+           # H4: the combat bot's path search (combat_bot.c): scratch that
+           # every search clears and fills, and only combat searches
+-          ("combat_bot", (".bss.first_dir", ".bss.queue", ".bss.target_bits")))
++          ("combat_bot", (".bss.first_dir", ".bss.queue", ".bss.target_bits")),
++          # G0: the memory card's block buffer (memcard.c): scratch that
++          # every card read / write fills first. Card I/O runs only from
++          # save_game() / load_game() and the harness, never from the
++          # house's code (its group is out first: ovl_borrow_take()), and
++          # the 8 KB it lends cut the slot to the combat group's size
++          ("memcard", (".bss.s_blk",)))
+ BORROW_GROUPS = ("home",)
+ # --- end H3 ---
+ 
+@@ -147,6 +153,51 @@ LOCAL_CALLBACKS = {
+                   "label_room", "label_group"),
+ }
+ 
++# --- G0 (task #79): callbacks of a scene's modals. A function whose address
++# is handed to a resident modal scene (ui_modal.c: ui_confirm, ui_text_entry;
++# ui_dialog.c: ui_choice, ui_say_done) is called back by that modal once it
++# closes - from resident code, but only through scene_callback_begin() /
++# scene_callback_end() (scene.h), which load the code of the scene the modal
++# was opened over (the first non-overlay scene of the stack: the modals are
++# the only overlay scenes) for the call. A function whose address the group
++# keeps in state only its own code reads and calls (the studio's st_popup /
++# st_pick_citizen / ask_dirty: studio.pop_done, pk.done) is just as safe.
++# So these do not escape. Every entry is reviewed by hand against its call
++# sites; the planner still checks that every taker of the address is code of
++# the function's own group, and keeps the function resident otherwise. Not
++# listed (they stay resident): callbacks given to fp_pick / fp_pick_act (the
++# picker is a scene of the freeplay group: the caller's group is not in the
++# slot when it calls back), to ui_list hooks kept in resident variables
++# (ui_list_locked_fn), to a registry or to the harness (hcmd.c), and the
++# combat group's (combat is the biggest group: what it would take in makes
++# the slot bigger).
++#   object base -> function names
++MODAL_CALLBACKS = {
++    "concert_scene": ("confirm_stop",),
++    "creator": ("cb_discard", "cb_name", "cb_nick", "cb_reset"),
++    "exorcism_scene": ("cb_exit", "cb_name", "cb_prayer", "cb_to_tools", "cb_water",
++                       "cb_lost_choice", "cb_lost_confirm", "cb_typed"),
++    "fp_graveyard": ("cb_grave",),
++    "fp_island": ("cb_name_island", "cb_pet_name", "cb_title"),
++    "fp_newisland": ("cb_ask_name", "cb_name", "cb_seed"),
++    "fp_options": ("cb_defaults", "cb_monster_final", "cb_monster_typed"),
++    "fp_resident": ("cb_advice", "cb_help_choice", "cb_monster_typed", "cb_rest_final",
++                    "cb_rest_first"),
++    "fp_roster": ("cb_search",),
++    "fp_saveload": ("cb_erase1", "cb_erase2", "cb_load", "cb_overwrite"),
++    "overworld": ("title_yes",),
++    "pet_scene": ("on_named",),
++    "story_mg": ("te_cb",),
++    "studio": ("leave_choice",),
++    "studio_edit": ("notes_tools", "order_tools", "song_tools", "title_done"),
++    "studio_file": ("confirm_delete", "confirm_load", "confirm_overwrite", "do_new",
++                    "do_template", "slot_menu", "muse_done"),
++    "studio_words": ("fill_menu", "lyric_tools", "member_menu", "lyric_done", "pick_done"),
++    "ui_gallery": ("on_choice", "on_confirm", "on_hell_done", "on_name"),
++    "workshop": ("scrap_done", "weld_go"),
++}
++# --- end G0 ---
++
+ # --- S4: registries read only by their own group (object base -> symbol).
+ # doomo_story_mg_a / _b point at the S4 / S5 story minigames; their only
+ # reader is story_mg.c's story_mg_find (the storymg scene, group loaded).
+@@ -312,10 +363,11 @@ def main(argv):
+             if typ in ("R_MIPS_HI16", "R_MIPS_LO16", "R_MIPS_32") and is_code(tgt):
+                 escaped.add(tgt)
+                 takers[tgt].add(src)
+-    # LOCAL_CALLBACKS (above): not escaped when every taker is in their group
++    # LOCAL_CALLBACKS / MODAL_CALLBACKS (above): not escaped when every taker
++    # is in their group
+     for f in sorted(escaped):
+         o = objs[f[0]]
+-        names = LOCAL_CALLBACKS.get(base(o.path), ())
++        names = LOCAL_CALLBACKS.get(base(o.path), ()) + MODAL_CALLBACKS.get(base(o.path), ())
+         if not names or f[1] not in tuple(".text." + n for n in names):
+             continue
+         g = group_of(o.path)
