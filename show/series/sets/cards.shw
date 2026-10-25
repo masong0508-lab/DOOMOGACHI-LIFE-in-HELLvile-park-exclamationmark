@@ -5,6 +5,7 @@
 
 set act_cards kind=2d px=1 matte=open look=pixel desc="the act cards: the Mayor's festival clipboard (CREAM sheet), his handwriting popping in line by line, 8 f apart"
   plane board  image=gen:clipboard(seed=1) size=320x240 par=0
+  plane desk image=gen:amb_fog(seed=74,w=512,h=40,c=RAMP_WOOD.5,density=3) size=512x40 at=0,150 par=0.2 order=front
   prop  ghost art=gen:mirror_ghost(seed=9) plane=board at=66,92 anchor=topleft hidden=yes    # behind the lines
   prop  l1 art=gen:hand_line(text=18:00_Welcome!,seed=1) art.tick=gen:hand_line(text=18:00_Welcome!,mark=tick,seed=1) plane=board at=92,36 anchor=topleft
   prop  l2 art=gen:hand_line(text=19:00_Bake-Off!,seed=2) plane=board at=92,58 anchor=topleft
@@ -17,32 +18,49 @@ set act_cards kind=2d px=1 matte=open look=pixel desc="the act cards: the Mayor'
   variant act2 light=day state=l1:tick,l4:underline desc="ACT TWO: 21:00 (we don't do that), underlined twice in a nervous hand"
   variant act3 light=day state=l1:tick,l4:underline,l5:strike show=weather desc="ACT THREE: Bedtime! crossed out, weather written over it"
   variant act4 light=day state=l1:tick,l4:underline,l5:strike show=weather,l6,ghost desc="ACT FOUR: 23:00 ________ (blank); faint mirror-writing shows through"
+  # ambient layers (SETS.md sec.6; previews in show_out/art/motion)
+  amb deskdust kind=drift plane=desk vx=0.06
+  amb motes    kind=motes type=dust n=10 area=0,0,320,180 order=front par=0.4 seed=291 speed=0.2
 end
 
 set tvma_card kind=2d px=1 matte=open look=pixel desc="the TV-MA card at the head of the episode (submitted TV-MA (V)); plain and adult"
   plane card   image=gen:tvma_card(descriptors=V) size=320x240 par=0
+  plane grain image=gen:amb_fog(seed=75,w=512,h=40,c=PAL_GRAY_D,density=2) size=512x40 at=0,150 par=0.2
+  # ambient layers (SETS.md sec.6; previews in show_out/art/motion)
+  amb grainrun kind=drift plane=grain vx=0.25
 end
 
 set logo_card kind=2d px=1 matte=open look=pixel desc="MT-6 end pose: the halves meet on the logo; the Mayor's pink roller paints over the red drip, which bleeds back on the last chord"
   plane sky    bands=sky:day par=0
+  plane clouds image=gen:amb_clouds(seed=76,w=512,h=50,n=4,tone=day) size=512x50 at=0,-24 par=0.1
   plane both   image=gen:wall_split(seed=380) size=320x240 par=0
   prop  logo   art=gen:logo(part=all,scale=3) plane=both at=160,26 anchor=top
   prop  drip   art=gen:paint_drip(size=wide,color=red,length=10) plane=both at=126,84 anchor=top
   prop  roller art=gen:roller(seed=1) plane=both at=-20,70 anchor=top hidden=yes
   variant pose  light=day desc="MT-6 (the drip bleeds back on the last chord)"
   variant paint light=day hide=drip show=roller desc="MT-6 +15..+45: the roller has painted over the drip"
+  # ambient layers (SETS.md sec.6; previews in show_out/art/motion)
+  amb cloudrun kind=drift plane=clouds vx=0.12
+  amb glints   kind=motes type=sparkle n=10 area=40,0,240,70 plane=both seed=301
+  amb embers   kind=motes type=ember n=8 area=165,80,150,90 plane=both seed=302
 end
 
 set title_card kind=2d px=1 matte=open look=pixel desc="MT-7: dissolve to the Giggle banner: GIGGLE NIGHT, with MINGLE showing through the wet paint"
   plane sky    bands=sky:dusk par=0
+  plane clouds image=gen:amb_clouds(seed=77,w=512,h=56,n=4,tone=warm) size=512x56 at=0,-22 par=0.1
   plane far    image=gen:bandstand_far(seed=125) size=560x240 par=0.3
   plane north  image=gen:bandstand_ms(seed=128) size=352x240 par=1.0
   prop  banner art=gen:banner(size=title,state=giggle,word2=NIGHT) plane=north at=160,38 anchor=top
   variant dusk light=dusk bands.sky=sky:dusk desc="MT-7"
+  # ambient layers (SETS.md sec.6; previews in show_out/art/motion)
+  amb cloudrun kind=drift plane=clouds vx=0.1
+  amb glints   kind=motes type=sparkle n=10 area=40,20,240,60 plane=north seed=311
+  amb banner   kind=sway props=banner amp=1 period=150 lag=0
 end
 
 set eyecatch kind=2d px=1 matte=open look=pixel desc="the festival-clock eyecatches: OUT is pure HaHaland; IN (after a 4-f hellify flash) has one change; Mascotty 8 px tall in the deep background (actor)"
   plane back   image=gen:eyecatch_back(seed=1,banner=0) size=352x240 par=0
+  plane clouds image=gen:amb_clouds(seed=78,w=512,h=50,n=3,tone=day) size=512x50 at=0,-24 par=0.15
   prop  banner  art=gen:banner(size=wide,state=giggle) plane=back at=160,34 anchor=top
   prop  clock  art=gen:clock_face(time=2100) art.t2140=gen:clock_face(time=2140) art.t2259=gen:clock_face(time=2259) plane=back at=290,22 anchor=center
   prop  lantern art=gen:logo_lantern(state=lit) art.purple=gen:logo_lantern(state=purple) plane=back at=160,10 anchor=top hidden=yes
@@ -57,20 +75,37 @@ set eyecatch kind=2d px=1 matte=open look=pixel desc="the festival-clock eyecatc
   variant ec2_in  light=day show=shell1,shell2 state=clock:t2140 desc="EC2 IN: a tiny Puff Demon (actor) sits in the second shell"
   variant ec3_out light=day show=candle1,candle2,candle3 hide=banner state=clock:t2259 desc="EC3 OUT (16:40): three candles on the rail, two out; 22:59"
   variant ec3_in  light=day show=candle1,candle2,candle3 hide=banner state=clock:t2259,candle3:lean desc="EC3 IN: the last flame leans toward the Wall"
+  # ambient layers (SETS.md sec.6; previews in show_out/art/motion)
+  amb cloudrun kind=drift plane=clouds vx=0.1
+  amb swing    kind=sway props=lantern,shell1,shell2 amp=1 period=90 lag=13
+  amb lamp     kind=lamps props=lantern seed=321
+  amb glints   kind=motes type=sparkle n=8 area=0,0,320,180 plane=back seed=322
 end
 
 set credits_card kind=2d px=1 matte=open look=pixel desc="CR-1 head: the title card has peeled to read MINGLE NIGHT (the credits are strings over the storybook stills)"
   plane back   image=gen:card_backdrop(color=cream,seed=2) size=320x240 par=0
+  plane clouds image=gen:amb_clouds(seed=79,w=512,h=50,n=3,tone=warm) size=512x50 at=0,-24 par=0.1
   prop  banner art=gen:banner(size=title,state=peeled,word2=NIGHT) plane=back at=160,40 anchor=top
+  # ambient layers (SETS.md sec.6; previews in show_out/art/motion)
+  amb cloudrun kind=drift plane=clouds vx=0.08
+  amb glints   kind=motes type=sparkle n=8 area=40,20,240,80 plane=back seed=331
 end
 
 set cast_popin kind=2d px=1 matte=open look=pixel desc="MT-2: the verse: the cast pops in on the beat over pastel HaHaland (Mascotty in every verse shot, perfectly still)"
   plane sky    bands=sky:day par=0
+  plane clouds image=gen:amb_clouds(seed=80,w=512,h=60,n=4,tone=day) size=512x60 at=0,-18 par=0.1
   plane far    image=gen:candy_hills(seed=303,w=480) size=480x240 par=0.3
   plane ground image=gen:fair_ground(seed=304,w=352,path=0) size=352x240 par=1.0
   variant day light=day desc="MT-2"
+  # ambient layers (SETS.md sec.6; previews in show_out/art/motion)
+  amb cloudrun kind=drift plane=clouds vx=0.15
+  amb petals   kind=motes type=petal n=12 area=-20,20,360,140 plane=ground seed=341 speed=0.6
+  amb grass    kind=wave plane=ground amp=1 period=80 len=30 rows=200..240 strip=2
 end
 
 set dippinn_card kind=2d px=1 matte=black look=pixel desc="PC-1 ~255-300: the Dippinn Productions card, silent until its last frame (gurgle.)"
   plane card   image=gen:dippinn_card(seed=1) size=320x240 par=0
+  plane grain image=gen:amb_fog(seed=81,w=512,h=40,c=PAL_GRAY_D,density=2) size=512x40 at=0,150 par=0.2
+  # ambient layers (SETS.md sec.6; previews in show_out/art/motion)
+  amb grainrun kind=drift plane=grain vx=0.2
 end

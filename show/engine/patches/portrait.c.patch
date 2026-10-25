@@ -1,6 +1,6 @@
 --- a/core/src/portrait.c
 +++ b/core/src/portrait.c
-@@ -12,6 +12,11 @@
+@@ -12,6 +12,15 @@
  #include "doomo/resident.h"
  #include "doomo/town.h"
  #include "doomo/game.h"
@@ -8,11 +8,25 @@
 +/* the show's per-fetch overrides (show/engine/show_actor.c); -1 = the
 + * engine's own mouth / blink */
 +extern int8_t portrait_show_mouth, portrait_show_blink;
++/* (h)/(i) the show's own part sets (show/art/parts/show_parts.c, ART):
++ * 0 for every look but theirs, so the game's looks draw untouched */
++int show_parts_of(const DoomoLook *l);
++int show_parts_step(PCtx *c, int step);
 +#endif
  
  /* ====================================================================== */
  /* context                                                                 */
-@@ -389,9 +394,16 @@
+@@ -134,6 +143,9 @@
+ 
+ static void draw_step(PCtx *c, int step)
+ {
++#if DOOMO_SHOW
++    if (show_parts_step(c, step)) return;      /* (h) a show part set drew it */
++#endif
+     switch (step) {
+     case 0:
+         pb_set_neck(c->h.cy + PCT(c->h.ry, 86));
+@@ -389,9 +401,16 @@
  /* ====================================================================== */
  /* cache                                                                     */
  #define PC_BLOCK   384
@@ -29,7 +43,7 @@
  /* Re-renders that only change the animation phase (blink, breathing, aura
   * frames, mouth flaps) run as a sliced job: PC_STEPS of the DL_STEPS layer
   * groups per tick. A GBA bust costs ~0.75M cycles (~1.4 logic ticks) in
-@@ -452,6 +464,11 @@
+@@ -452,6 +471,11 @@
  {
      uint32_t t = now();
      if (t != steps_tick) { steps_tick = t; steps_used = 0; }
@@ -41,7 +55,7 @@
      return steps_max() - steps_used;
  }
  
-@@ -459,7 +476,11 @@
+@@ -459,7 +483,11 @@
  typedef struct Job {
      uint8_t  on, step, kind;
      uint8_t  restarts;          /* times other renders forced a restart      */
@@ -53,7 +67,13 @@
      int      status, expr;
      uint32_t gen;               /* canvas generation after our last step     */
      uint32_t want;              /* last tick its resident was asked for      */
-@@ -636,6 +657,9 @@
+@@ -633,9 +661,15 @@
+                expr == EXPR_HAPPY || expr == EXPR_DEAD || expr == EXPR_POSSESSED ||
+                l->halo == HALO_FLAME_RING || l->halo == HALO_STARS || (l->cheeks & CHEEK_SPARKLES) ||
+                l->hair_style == HAIR_FLAME;
++#if DOOMO_SHOW
++    if (show_parts_of(l)) fxon = 1;              /* (i) its wobble rides the fx clock */
++#endif
      memset(p, 0, sizeof(*p));
      if (status == RES_EMPTY) return 0;          /* the "?" stays still */
      p->blink = ((t + off) % 110u) >= 106u;
@@ -63,7 +83,7 @@
      p->breath = (int)(((t + off) >> 5) & 1u);
      p->twitch = ((t + off * 3u) % 270u) >= 262u;
      p->wag = p->breath;
-@@ -691,15 +715,27 @@
+@@ -691,15 +725,27 @@
          if (now() - job.want <= PC_STALE) return;   /* still wanted: wait */
          job_abort();
      }
@@ -91,7 +111,7 @@
      job.want = now();
      job.status = status;
      job.expr = expr;
-@@ -757,6 +793,10 @@
+@@ -757,6 +803,10 @@
      Phase p, q;
      CacheEnt *e;
      base = ((uint32_t)expr << 8) | ((uint32_t)(status & 15) << 12);
@@ -102,7 +122,7 @@
      key = base | phase_of(kind, rid, expr, status, l, t, &p);
      if (job_for(kind, rid, lh, base, 0xFFFFFF00u)) job.want = t;
      e = cache_find(kind, rid, key, lh, 0xFFFFFFFFu);
-@@ -831,6 +871,9 @@
+@@ -831,6 +881,9 @@
      frame &= 3;
      lh = look_hash(&r->look);
      key = (uint32_t)(dir | (frame << 2)) | ((uint32_t)status << 12);

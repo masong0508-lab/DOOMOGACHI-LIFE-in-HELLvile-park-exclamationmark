@@ -1,0 +1,28 @@
+{
+ "cue": "nana_motif",
+ "bpm": 100.0,
+ "meter": 4,
+ "bars": 2,
+ "sections": [
+  [
+   "NANA",
+   1,
+   2
+  ]
+ ],
+ "offset_smp": 0,
+ "frames_per_bar": 72.0,
+ "smp_per_bar": 115200.0,
+ "source": "score:pilot.sting",
+ "bar_smp": [
+  0,
+  115200,
+  230400
+ ],
+ "bar_frame": [
+  0,
+  72,
+  144
+ ],
+ "named_notes": {}
+}

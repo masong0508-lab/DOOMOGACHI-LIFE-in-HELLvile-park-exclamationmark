@@ -1,0 +1,7 @@
+# show/series/music.shw (excerpt)
+cue mingle_box src=mml:core/src/mml_mingle.c bpm=96 meter=4/4 key=F       # parsed by importing tools/mmlc.py
+  track 0 inst=musicbox ; track 1 inst=warm_pad gain=-9dB ; track 2 inst=chip_tri gain=-8dB ; track 3 inst=drums_pop:70 gain=-20dB
+  # kit preset names as they exist in theme/kit/kit/render.py (v1.0's pad_soft/tri/shaker are not kit presets);
+  # GM note 70 is the kit's synthesised shaker
+  # 96 bpm: one beat = 18.75 f = 30,000 smp; one bar = 75 f = 120,000 smp (bars land on frames)
+end

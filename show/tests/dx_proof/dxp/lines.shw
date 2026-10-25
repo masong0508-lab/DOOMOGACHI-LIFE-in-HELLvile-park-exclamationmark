@@ -1,0 +1,6 @@
+# show/tests/dx_proof/dxp/lines.shw - the four proof lines (ids as in docs/show/ep101/lines.csv
+# where the line is the script's; dx_nana_two is the proof's own).
+line co15_perfect   mayor "Perfect."
+line dx_nana_two    nana  "Two of everything, dear."
+line co18_stay      mayor "Stay."
+line a1_09_nana_01  nana  "Habit, sweet pea."

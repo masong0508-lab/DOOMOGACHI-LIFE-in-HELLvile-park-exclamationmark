@@ -12,7 +12,7 @@
 #define SHOW_SAFE_X     16          /* title-safe (90 %), left / right   */
 #define SHOW_SAFE_Y     9           /* title-safe, top / bottom          */
 #define SHOW_SEED       0x00101101u /* episode-independent default seed  */
-#define SHOW_BUILD_ID   "wp1"
+#define SHOW_BUILD_ID   "wp2"
 
 /* show_chart.c: the boot test chart (M0-T6, AT2.1) */
 void show_chart_init(void);

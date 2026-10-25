@@ -1,0 +1,40 @@
+{
+ "cue": "hahaland_radio",
+ "bpm": 140.0,
+ "meter": 4,
+ "bars": 8,
+ "sections": [
+  [
+   "A",
+   1,
+   8
+  ]
+ ],
+ "offset_smp": 0,
+ "frames_per_bar": 51.42857142857143,
+ "smp_per_bar": 82285.71428571429,
+ "source": "score:pilot.hahaland_day",
+ "bar_smp": [
+  0,
+  82286,
+  164571,
+  246857,
+  329143,
+  411429,
+  493714,
+  576000,
+  658286
+ ],
+ "bar_frame": [
+  0,
+  51,
+  103,
+  154,
+  206,
+  257,
+  309,
+  360,
+  411
+ ],
+ "named_notes": {}
+}

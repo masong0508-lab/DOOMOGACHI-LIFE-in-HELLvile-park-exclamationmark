@@ -154,6 +154,43 @@ Each names the default taken and where to change it.
   the ep101 ids where the script has the line (`co15_perfect`, `co18_stay`, `a1_09_nana_01`) and
   `dx_nana_two` for "Two of everything, dear."
 
+## ENGINE lane 1: player core and capture (WP2, WP3)
+
+- **Plug-in API = weak-referenced module table.** `show_registry.c` names every planned module
+  (`show_mod_cam`, `show_mod_overworld`, ...) as a weak reference; an unlinked one is NULL and skipped. Lanes
+  plug in by adding their own `show_<name>.c` and never edit a shared file. Data references (not calls) to
+  weak symbols link to 0 on the R3000 (the `jal` to a weak function is what fails, spec 15.1).
+- **Records, not a fixed ShotChunk struct.** A chunk is a 32 B `ShwShotHdr` plus tagged records
+  (`ShwRec{type, n, bytes}`), at most one per type; record types and show-op ranges are pre-allocated per
+  lane in `shw_format.h`. The player skips unknown types, so packages add data without a format bump.
+- **base= / replay= are resolved by the compiler**: it emits a self-contained chunk plus `preroll` (logic
+  frames run undrawn before frame 0). The player only knows "pre-roll N frames", which is also what a seek is.
+- **The shake is a camera offset only**: `-Wl,--wrap=plat_post_offset` turns camfx_apply's whole-frame E5
+  offset into a no-op, so the frame edge and the matte bars never move (spec 2.1, 2.3); the stage camera
+  (lane 2) adds `camfx_offset()` to the planes.
+- **TINT** (a host kind) is a `plat_post_blend` of the tint's colour at level16, drawn just before
+  `camfx_apply` (off-palette by design, like a fade). **IRIS** from a beat event is centred on
+  `g_show_anchor_hook(actor)` when the actor module installs it, else the picture centre; `SOP_IRIS` takes an
+  explicit centre.
+- **One chunk buffer, synchronous CD read at shot prep.** The lockstep capture does not care how long prep
+  takes; the second (prefetch) buffer is only for the deferred disc edition. The `needs 440 KB` line of the
+  RAM report therefore over-counts by 160 KB.
+- **Stats are microseconds** (`timer_us`), not raw root-counter cycles; they never reach a pixel or P1.
+- **P1** = CRC32 (zlib polynomial) of a fixed 152 B core record (shot, frame, beat_now, 32 label ages,
+  8 actor clocks, camfx read-backs, RNG, plane visibility) + show_ext's host-kind state + every module's
+  `hash()`.
+## ENGINE lane 3: deliver, review, standards (WP12, WP13, WP17), 2026-10-25
+
+- **Segments are per beat**, video-only H.264, cached by a hash of their masters' frame hashes + recipe + burn-ins; audio is encoded once over the whole range (no AAC priming seams). Change: `showtk/edl.py`.
+- **EDL in/out points sit 0.6 ms inside frame boundaries** with an explicit `duration` per entry (Matroska stores ms timestamps); frame-exact, tested on cut ranges.
+- **BT.709 conversion is explicit** in the filter graph (swscale's default would be BT.601 under bt709 tags: measured max error 26 levels vs 3).
+- **AT12.2 reading:** H.264 is lossy, so "framemd5 matches the masters x6" is checked on the deliver chain before the encoder (exact md5 per sampled frame) plus the decoded encode at art-pixel centres within mean error 3 and closer to its own master frame than to its neighbours.
+- **Threads:** ffmpeg runs with 2 threads (`SHOW_FFMPEG_THREADS`); the machine is shared.
+- **Chapters = the acts** (the eyecatches sit on the act breaks) unless the timeline gives `chapters`; folded to YouTube's >= 10 s rule.
+- **The slur list ships as SHA-256 hashes and starts empty**: no slur is ever spelled in the repo; the pilot script is written clean and checklist item 5 is the human gate. The STD-HATE fixture uses an invented word.
+- **The sign-off binds to the manifest's `render_hash`** (frame hashes, mix hash + window, captions, chapters, recipe), not to MP4 bytes, so a re-encode of the same render stays signed.
+- **Thumbnail** = a master frame x4 (1280x720), default the middle of the longest shot in a scene with no child; `release.thumb` overrides and is refused in a child's scene.
+- **--release needs the compiler's lint report** (`build/<ep>/lint.txt` or `lint.json`) with no errors.
 ## ART: the sets (show/series/sets/, show/art/gen/), 2026-10-25
 
 - **One set per location, cheapest route first** (table in `show/series/sets/SETS.md`): the game's
@@ -192,3 +229,33 @@ Each names the default taken and where to change it.
 - co_mt: MT-5 rots a replay of the mt01 crane (no child), never the cast pop-in (Pip is in it).
 - co_mt: beat rows (`act`/`beat`) live at the top of each shot file, since episode.shw is a plain include list.
 - co_mt: timed prop states are written as `+N show <prop>[:<state>]` / `hide <prop>` (proposed SOP_PROP_STATE); fallback is base= + one change per state.
+
+## WP4 compiler: the .SHW, and the ep101 compile report (2026-10-25, lane 1)
+- The .SHW is the PLAYER's format (shw_format.h + shw_format.py from the player package, record based). The compiler's earlier fixed-section format was dropped before anyone used it; showc now resolves into an in-memory IR (`showtk/shw_ir.py`) and `emit.py` writes the player's records. README "Compiler outputs" lists what goes in each record; SHWR_ACTOR/TRACK/CROWD payloads and the actor/crowd show-op numbers are the compiler's PROPOSAL for lane 2's actor modules (add-only from now on, or change both sides in one push).
+- Props and prop states are IMAGE planes (one per state, hidden unless the variant's `state=` picks it), so `+T show <prop>[:<state>]`, `hide <prop>`, `prop.set <prop> state=` and `change <prop>.state=` (STAGING's proposed SOP_PROP_STATE) compile to `SOP_PLANE_SHOW/HIDE` with no new op. An untimed `show`/`hide` is the frame-0 state.
+- Lane 2 data: camera, fx setup, wipes, text and lane-2 events go in the PIC1 blob (record SHWR_PRIV_L2) built with lane 2's own packers (`showtk.picture`); TILEMAP/STROKES planes go in SHWR_PLANE with lane 2's payloads (a TILEMAP over a plane's 64 KB `bytes` field is drawn as an IMAGE plate, warning PLAN). The player binds the blob with `show_l2_bind(show_chunk_find(SHWR_PRIV_L2, ...))`.
+- Op-range conflict for the player/lane-2 owners: shw_format.h gives lane 3 the ops 0x100-0x17F and lane 2 0x040-0x0DF, but show_l2.h numbers lane 2's ops 0x100.. (SOP_IRIS 0x100, SOP_BOIL 0x101). The compiler sends lane-2 ops only inside the PIC1 EVTS section, never in the beat stream, so nothing collides today; CAM3D is proposed at 0x140.
+- `base=`/`replay=` shots inherit the source shot's `actor`/`crowd` setup lines (same slots); a source cycle is a STAGE error. `preroll` is 0: the base shot starts from its own setup, not from the source's state at +N (DEFERRED).
+- Plates over a 160 KB chunk are dropped to a 1x1 image with warning PLAN-CHUNK (none in ep101 today); the texture-only second chunk is deferred.
+- `show compile ep101` (16-18 s warm, 31 s cold bake): 211 shots, 40,566 f; `show slug ep101` = 39,600 f exactly. ~1,060 errors, all in content owned by other lanes, reported here for them:
+  - AUDIO: 260 AUD-LIB unknown sounds and 71 AUD-MX unknown cues (series/sfx.shw, music.shw not complete yet); 103 LINE unknown line ids (show/ep101/lines.shw not on the branch yet); 7 AUD-WALLA.
+  - STAGING: ~137 ACTOR "no actor X" where shots address set props as actors (co07 hand_hold, co20 paw, mt02 logo*, mt05 hh/hv...): use `show`/`hide`/`prop.set` for props, or declare an `actor`; ~96 SHW-OPS unknown ops: `hud`, `mon`, `lens`, `door` (lane 3's grammar is not in the compiler yet), and a few timed setup statements (`change`, `actor`, `look`, `set`, `prop`, `plane`); 56 STAGE `at=` forms the compiler does not read (`at=x0,y0..x1,y1`, `at=mark:...`); 13 FMT-RUNTIME beats whose shots exceed the rundown's `len=` (co_mt's main title follows the master's bar map; the rundown keeps the beat sheet).
+- WP6: crowd image keys include the flip bit (VRAM caches flips apart); AT6.4 checks 0 portrait-pool rerenders every frame and 0 VRAM uploads after warm-up (t>=24), allowing deferred first uploads.
+- WP6: until lane 1's plug-in API lands, WP6 is driven by show/tests/engine/wp6 (self-test hook build); the frame protocol is documented at the top of show/include/show/show_actor.h.
+- WP10.5 (AUDIO): ep101/cues.shw spots all 60 beats (99 mx ops). Where the beat sheet gives a rule, not a frame, the time is a marked `choice:`. Level ladder vs unity: theme 0 dB, stings -3..-6, underscore -6..-10, diegetic -8..-14, beds -16. The cute HOOK in 3-01 is restarted every 8 bars (384 f) on the 150 grid; insert_doom is one 61-bar render with bars 26-50 muted for 3-04 (re-entry bar 51.1 = 3-05 frame 0). Theme is still from scratchpad theme/final (docs/show/theme/ not on origin yet); swapping is a file drop.
+- lane 2 (picture): text/strokes/camera/fx shot data travels as one PIC1 blob per shot (show_l2_bind) until lane 1's chunk API lands; ops 0x0100-0x01FF are lane 2's.
+- WP6 plug-in: show_mod_cast resets with gore on (TV-MA; DOOM-style gore on adults/demons only, per the brief); flipbooks ride a private lane-2 record 0x160 (SHWR_PROP stays for props).
+
+## CONTINUITY (ep101 integration), 2026-10-25
+- continuity D1: one design for all three eyecatch pairs = co_mt's ec1/ec2/ec3.shw (Mascotty `gen:mascotty_tiny(h=8)` by the banner pole, same depth). a2 drops a2_56-57 + `s_ec2out_bubble`, a3 drops a3s38-39 + `s_ec3out`/`s_ec3in`; then episode.shw includes ec2.shw/ec3.shw and strings/co_mt.shw. Until then the a2/a3 versions stay (no doubled frames).
+- continuity D2: every lantern stays dark from 2-01 to the end of Act Four (script 3-01 "dark since nine"); the rite candles and the 4-08 firework are the light. ART's `bandstand:torn/rite/night` need the lanterns-out states.
+- continuity: strings files not included by their own shots file are included from episode.shw ahead of the shots (a3, a4 now; co_mt after D1).
+- ENGINE lane 1 (WP3): the emulator boots with `-fastboot` (skips the BIOS shell; frames unchanged, AT3.3 hash identical). AT2.1 "1.2 s unthrottled" is measured as the emulator's CPU time to the player's lockstep handshake (load-independent on the shared box); vsyncs and wall are recorded beside it. One boot captures <= 10,000 frames (`scheduler.MAX_BOOT_FRAMES`) because Redux's Vsync listener overflows the Lua stack at ~15,600 frames.
+- ENGINE lane 1: `ram_report.py` no longer double-counts the player. The WP1 gate demanded 320 KB (two chunk buffers) + 120 KB (player) free beyond the image when nothing was linked; now the player and its 160 KB chunk buffer are in .bss (no heap) and prefetch is deferred, so the gate keeps a 128 KB margin for modules still to land. With lane 3's hosts linked: 686 KB image + 889 KB bss, 410 KB left.
+
+## ART motion pass, 2026-10-25
+- ART motion: every set animates through `amb` statements (SETS.md sec.6), pure integer math with a C twin (show/art/engine/amb_math.h) so ENGINE ports it line for line; proposed record SHWR_AMB = 36. No hand-keyed frames.
+- ART motion: character motion = the engine's own figure render cut into parts (hat/ears, paws, feet) and moved (show/art/gen/motion.py); 229 flipbooks in series/acting.shw (`cycles` + `flip`), macros enter_walk/exit_run/take_big/react_small/laugh_full/hit_react/... A one-shot pose hands back to its `next` (idle) by itself.
+- ART motion: fun_fair's ferris wheel is 4 drawings (4.88 of 5 set-pool pages); pcycle is never used on a plane whose ramp also paints big areas (it flashed fountain_faces and lulla_tent: replaced by jets and waves).
+- ART motion: "make him a turkey too" (creator) -> gen:turkey(kind=roast|live|walk), flips turkey_roast/turkey_live/turkey_strut; "him" was not named, so the roast is a prop any cast member can hold (OVER) or Nana's table can carry.
+- **Mayor v2 = a turkey Mad-Hatter (creator, Oct 25).** Drawn by a show-only part set (show/art/parts/show_parts.c), called from portrait.c patch hunks (h)/(i) for looks with the turkey signature (OWLKIN+BEAK+TOP_HAT+FEATHER_FAN+BOWTIE+FHAIR_WIZARD; the game's randomizer never makes it, tested). Default = option 1 (lavender hat, peach head, teal coat, magenta bow tie, card "18"); options 2/3 in show_out/art/mayor_v2/mayor_v2_variants.png. No wings, so the dx3 white box on his bust is gone. The fighter view is not built (the mayor's kinds exclude it).

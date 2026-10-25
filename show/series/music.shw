@@ -55,3 +55,86 @@ end
 
 cue theme_eyecatch_out src=file:doomtastic_times_eyecatch_A.flac barmap=midi:midi/eyecatch_A/tracks/doomtastic_times_eyecatch_A_full.mid length=150 fade=0.4 desc="Eyecatch OUT: 2-bar cut of the hook in major + ending hit + beep (3 bars), 5 s"
 end
+
+# ---------------------------------------------------------------- the score (show/lib/music/pilot.py)
+# HaHaland Day (the HOOK in C, 140): one tune, many perspectives (the post filter is the place)
+cue hahaland_dawn src=score:pilot.hahaland_day form=dawn reps=2 bpm=140 meter=4/4 key=C desc="HaHaland Day, dawn: music box + celesta, low (1-01)"
+end
+cue hahaland_radio src=score:pilot.hahaland_day form=radio reps=1 bpm=140 meter=4/4 key=C desc="HaHaland Day from the bus radio, cut by the SCRATCH (1-02)"
+end
+cue hahaland_distant src=score:pilot.hahaland_day form=distant reps=2 bpm=140 meter=4/4 key=C desc="HaHaland Day from the park, filtered with distance (1-04)"
+end
+cue hahaland_fair src=score:pilot.hahaland_day form=fair reps=3 bpm=140 meter=4/4 key=C desc="HaHaland Day on the fair speakers, diegetic (1-05..1-07, 1-09)"
+end
+cue hahaland_tent src=score:pilot.hahaland_day form=tent reps=2 bpm=140 meter=4/4 key=C desc="HaHaland Day inside the tent, 6 dB down (1-08)"
+end
+cue hahaland_band src=score:pilot.hahaland_day form=band reps=2 bpm=140 meter=4/4 key=C desc="HaHaland Day live from the bandstand: TAPESTOP into the freeze (1-10)"
+end
+cue hahaland_ribs src=score:pilot.hahaland_day form=ribs reps=2 bpm=140 meter=4/4 key=C desc="Bonejangles' rib-xylophone HaHaland Day, diegetic (1-12)"
+end
+# leitmotif stings
+cue home_2bar src=score:pilot.sting form=home_2bar bpm=84 meter=3/4 key=C desc="HOME motif, two bars, music box, under the pencil line (1-03)"
+end
+cue home_cottage src=score:pilot.sting form=home_cottage bpm=84 meter=3/4 key=C desc="HOME motif + answer on the music box (4-?? cottage)"
+end
+cue nana_motif src=score:pilot.sting form=nana bpm=100 meter=4/4 key=F desc="NANA motif (1-11 bake-off, 4-?? NANA + ITS_FINE)"
+end
+cue nana_fragment src=score:pilot.sting form=nana_fragment bpm=100 meter=4/4 key=F desc="A 2-bar NANA fragment, then silence for the last name (3-06)"
+end
+cue pip_motif src=score:pilot.sting form=pip bpm=120 meter=4/4 key=G desc="PIP motif, pizzicato (1-12 patrol; 4-05)"
+end
+cue mayor_bright src=score:pilot.sting form=mayor_bright bpm=132 meter=4/4 key=C desc="MAYOR motif, too bright, cut by MUTE 14 (4-04)"
+end
+cue mayor_slow src=score:pilot.sting form=mayor_slow bpm=72 meter=4/4 key=C desc="MAYOR motif, slow, minor-shaded (4-05)"
+end
+cue fuzz_small src=score:pilot.sting form=fuzz_small bpm=80 meter=4/4 key=F desc="FUZZ hymn motif enters, small (2-05)"
+end
+cue fuzz_amen src=score:pilot.sting form=fuzz_amen bpm=66 meter=4/4 key=F desc="The FUZZ hymn's amen, solo, 2 bars (4-03)"
+end
+cue goodbye_puff src=score:pilot.sting form=goodbye bpm=72 meter=4/4 key=E desc="GOODBYE motif under the puff (4-02)"
+end
+cue wall_flame src=score:pilot.sting form=wall_flame bpm=70 meter=4/4 key=E desc="The WALL motif (E-F-E-Bb) on the flame (3-07)"
+end
+cue rivet_sting src=score:pilot.sting form=rivet bpm=140 meter=4/4 key=G desc="RIVET motif (G mixolydian + anvil), a 2-bar sting under the sign (2-08)"
+end
+cue musicbox_note src=score:pilot.musicbox_note pitch=C6 bpm=96 meter=4/4 key=F desc="One music-box note on the wave (1-11)"
+end
+# Hell: the RIFF (E minor, 140)
+cue riff_pivot src=score:pilot.riff form=pivot bars=6 bpm=140 meter=4/4 key=E desc="The HOOK pivots to the RIFF on the shared E-E-G cell (1-14)"
+end
+cue riff_possessed src=score:pilot.riff form=possessed bars=16 bpm=140 meter=4/4 key=E desc="The RIFF on the ribs becomes the score, a low OMINOUS bed (2-01)"
+end
+cue riff_swing src=score:pilot.riff form=swing bars=8 bpm=112 meter=4/4 key=E desc="The RIFF at swing tempo (dial S2) (2-03)"
+end
+cue riff_hit src=score:pilot.riff form=possessed bars=4 bpm=140 meter=4/4 key=E desc="RIFF downbeat, mute, BEEP, re-entry on the grid (2-04)"
+end
+cue riff_duel src=score:pilot.riff form=duel bars=8 bpm=140 meter=4/4 key=E desc="FUZZ hymn against the RIFF (2-06)"
+end
+cue riff_low src=score:pilot.riff form=low bars=4 bpm=140 meter=4/4 key=E desc="The RIFF returns low for the turn (2-07)"
+end
+cue ribs_redeemed src=score:pilot.riff form=redeem bars=4 bpm=140 meter=4/4 key=E desc="The HOOK in major on the ribs: the RIFF redeemed (4-02)"
+end
+# eyecatches, stings
+cue eyecatch_in src=score:pilot.eyecatch_in bpm=150 meter=4/4 key=E desc="Eyecatch IN: the RIFF resolving on ITS_FINE in the theme's key"
+end
+cue its_fine src=score:pilot.its_fine key=C bpm=140 meter=4/4 desc="ITS_FINE sting (4-?? after NANA)"
+end
+cue fail_x1 src=score:pilot.fail times=1 bpm=120 meter=4/4 key=C desc="The FAIL sting (2-06)"
+end
+cue ribs_fanfare src=score:pilot.ribs_fanfare bpm=140 meter=4/4 key=C desc="Rib-xylophone FANFARE (1-10)"
+end
+cue ribs_minor_chord src=score:pilot.ribs_minor_chord bpm=60 meter=4/4 key=C desc="The minor chord, detuned rib xylophone (3-04)"
+end
+# Act Three: cute -> DOOM
+cue hook_cute src=score:pilot.hook_cute bars=16 bpm=150 meter=4/4 key=E desc="The cute HOOK (dial S1) (3-01, 3-02)"
+end
+cue insert_doom src=score:pilot.insert_doom bpm=150 meter=4/4 key=E desc="Insert song, DOOM side: 3-03 shoot-out to 3-05 last hit"
+end
+cue cute_bed src=score:pilot.cute_bed bars=8 bpm=150 meter=4/4 key=E desc="A cute bed after the REWIND (3-05)"
+end
+cue hymn_try3 src=score:pilot.hymn_try3 bpm=96 meter=4/4 key=F desc="FUZZ hymn in major + BEEP metronome + claps (3-07)"
+end
+cue true_name src=score:pilot.true_name bpm=72 meter=4/4 key=F desc="TRUE NAME motif, then a soft choir (4-01)"
+end
+cue credits_musicbox src=score:pilot.credits_musicbox bpm=120 meter=4/4 key=E desc="End credits: the chorus hook on the music box, unresolved"
+end

@@ -22,6 +22,7 @@ Exit 0 = pass. Python API: path_check(base) -> [Diag], full_check(base) -> [Diag
 import hashlib
 import io
 import json
+import os
 import shutil
 import subprocess
 import tarfile
@@ -138,7 +139,9 @@ def full_check(base_ref, jobs=2, keep=False, rebuild_base=False, out=print):
     head = git("rev-parse", "HEAD").decode().strip()
     cache_dir = paths.BUILD / "check-game"
     cache_dir.mkdir(parents=True, exist_ok=True)
-    work = paths.SHOW_WORK / "check-game"
+    # one work dir per run: several agents run the gate at once, and a shared
+    # dir let one run delete another's half-built tree ("made no doomogachi.exe")
+    work = paths.SHOW_WORK / "check-game" / ("run-%d" % os.getpid())
     work.mkdir(parents=True, exist_ok=True)
     free = _disk_free_gb(work)
     if free < MIN_FREE_GB:
@@ -162,10 +165,7 @@ def full_check(base_ref, jobs=2, keep=False, rebuild_base=False, out=print):
         results["head"]["_built"] = "%s at %s" % (head[:10], time.strftime("%Y-%m-%d %H:%M"))
         (cache_dir / ("%s.json" % kh)).write_text(json.dumps(results["head"], indent=1))
     if not keep:
-        for d in work.glob("src-*"):
-            shutil.rmtree(d)
-        for d in work.glob("build-*"):
-            shutil.rmtree(d)
+        shutil.rmtree(work, ignore_errors=True)
     diags = []
     out("  %-15s %-16s %-16s" % ("output", "merge-base", "HEAD"))
     for name in GAME_OUTPUTS:

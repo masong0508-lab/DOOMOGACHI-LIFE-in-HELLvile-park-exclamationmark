@@ -1,0 +1,24 @@
+# show/series/lints.shw - the word lists the standards lints read (WP17; spec sec.13.5).
+#
+#   slur sha256:<hex>        STD-HATE error. Stored as the SHA-256 of the lower-case word, so
+#                            the repo never spells a slur. Add one with:
+#                              python3 -m showtk.standards.lints hash "<word>"
+#   real "<name>"            STD-HATE warning: a real person, group or faith (a joke may
+#                            mention it, never target it; the creator's check decides)
+#   innuendo "<word>"        STD-TAGSCAN warning on an untagged line, SUPER or sign
+#   brand "<name>"           STD-BRAND warning (no real brands in the show)
+#
+# The slur list starts empty: the pilot's script is clean and checklist item 5 is the
+# human gate. The creator adds hashes as needed (DECISIONS.md).
+
+real "Christian" ; real "Christianity" ; real "Catholic" ; real "Muslim" ; real "Islam"
+real "Jewish" ; real "Judaism" ; real "Hindu" ; real "Buddhist" ; real "Mormon" ; real "Sikh"
+real "Pope" ; real "Vatican" ; real "Democrat" ; real "Republican" ; real "Congress"
+
+innuendo "sexy" ; innuendo "sex" ; innuendo "naughty" ; innuendo "flirt" ; innuendo "kiss"
+innuendo "hookup" ; innuendo "hook up" ; innuendo "booty" ; innuendo "butt" ; innuendo "bedroom"
+innuendo "seduce" ; innuendo "horny" ; innuendo "frisky" ; innuendo "thirsty" ; innuendo "nude"
+innuendo "naked" ; innuendo "lingerie" ; innuendo "make out" ; innuendo "spank" ; innuendo "wink wink"
+
+brand "Juul" ; brand "Vuse" ; brand "Elf Bar" ; brand "Coca-Cola" ; brand "Pepsi" ; brand "Disney"
+brand "Nintendo" ; brand "McDonald's" ; brand "Starbucks"
