@@ -69,7 +69,7 @@ class TestLooks(unittest.TestCase):
     def test_species_fixes(self):
         """the docs' species fixes: Mayor a cherub, Nana a sheepkin, Pip and Sunny bunnykin"""
         sp = lambda cid: CAT.name_of("SPECIES_", BIBLE.chars[cid].look.values["species"])  # noqa: E731
-        self.assertEqual(sp("mayor"), "SPECIES_CHERUB")
+        self.assertEqual(sp("mayor"), "SPECIES_OWLKIN")   # v2: the turkey (creator, Oct 25)
         self.assertEqual(sp("nana"), "SPECIES_SHEEPKIN")
         self.assertEqual(sp("pip"), "SPECIES_BUNNYKIN")
         self.assertEqual(sp("sunny"), "SPECIES_BUNNYKIN")
