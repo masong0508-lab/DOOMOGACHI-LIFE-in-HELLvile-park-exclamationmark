@@ -13,7 +13,7 @@ shot ec1o beat=e101_ec1_out len=150 set=eyecatch:ec1_out px=1 look=pixel cut=CUT
   +0    sfx FX_BONE_CLICK                                     # the act-out click
   +0    mx theme_eyecatch_out start                           # 3 bars: the hook in major + the ending hit (144 f)
   +6    mx heehee_bell_150 start gain=-6dB                    # choice: the bell 6 f after the act-out sound
-  +0    sway lantern dx=2 period=75                           # seamless 5 s loop (150 f = 2 periods)
+  +0    cam to x=6 y=0 over=150 ease=LINEAR                         # slow push across the card; the set sways the lantern (amb swing)
   ad "A paper lantern printed with the logo hangs before the Giggle banner. The clock reads nine."
 end
 
@@ -21,6 +21,6 @@ shot ec1i beat=e101_ec1_in len=150 set=eyecatch:ec1_in px=1 look=pixel cut=CUT m
   prop  mascotty art=gen:mascotty_tiny(h=8) plane=back at=40,40 anchor=bottom   # the Starer, 8 px, by the banner pole; never moves
   +0    flash PAL_HELLIFY 8 4 ; sfx FX_HELLIFY_FLASH          # 4 f at level 8 of 16 (reduced luminance, Harding-checked)
   +0    mx theme_eyecatch_in start                            # the RIFF (minor) resolving on ITS_FINE. TODO(AUDIO): cue not in series/music.shw yet
-  +4    sway lantern dx=2 period=75
+  +4    cam to x=6 y=0 over=146 ease=LINEAR
   ad "The same card - but the lantern glows purple from inside, like a ribcage."
 end
