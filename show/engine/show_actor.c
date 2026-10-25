@@ -108,10 +108,6 @@ static const uint8_t k_vis_default[VIS_COUNT] = {
     SHOW_NO_MOUTH, MOUTH_FLAT, MOUTH_TEETH, MOUTH_GRIN, MOUTH_OPEN, MOUTH_O, MOUTH_POUT, MOUTH_TEETH
 };
 
-static const uint8_t k_size[SHA_KIND_COUNT][2] = {
-    { PORTRAIT_W, PORTRAIT_H }, { FIGURE_W, FIGURE_H }, { BODYSPR_W, BODYSPR_H }, { FIGHTER_W, FIGHTER_H }
-};
-
 /* ---- load -------------------------------------------------------------------- */
 void show_actor_reset(void)
 {
@@ -559,4 +555,38 @@ uint32_t show_actor_hash(uint32_t h)
         for (j = 0; j < 13; j++) { h ^= (uint32_t)v[j]; h *= 16777619u; }
     }
     return h;
+}
+
+/* ---- the host kinds and show ops (show_ext.c calls these) -------------------- */
+int show_wp6_ext(const BeatEv *e)
+{
+    if (!e) return 0;
+    switch (e->op) {
+    case BOP_EXPR:
+        show_actor_op(e->a, SHOP_EXPR, e->b & 0xFF, 0, 0, 0);
+        return 1;
+    case BOP_POP:
+        if (e->a < 0 || e->a >= SHOW_MAX_ACTORS) return 0;      /* a prop: not ours */
+        show_actor_op(e->a, SHOP_POP, e->b, 0, 0, 0);
+        return 1;
+    case BOP_HEADTURN:
+        show_actor_op(e->a, SHOP_HEADTURN, e->b & 0xFF, 0, (e->b >> 8) & 0xFF, 0);
+        return 1;
+    case BOP_TWITCH:
+        show_actor_op(e->a, SHOP_TWITCH, e->b, 0, 0, 0);
+        return 1;
+    default:
+        return 0;
+    }
+}
+
+int show_wp6_sop(int op, const int16_t *argv, int argc)
+{
+    int16_t v[6] = { 0, 0, 0, 0, 0, 0 };
+    int i;
+    if (op != SHOW_SOP_ACTOR && op != SHOW_SOP_CROWD) return 0;
+    for (i = 0; i < argc && i < 6 && argv; i++) v[i] = argv[i];
+    if (op == SHOW_SOP_ACTOR) show_actor_op(v[0], v[1], v[2], v[3], v[4], v[5]);
+    else show_crowd_op(v[0], v[1], v[2]);
+    return 1;
 }

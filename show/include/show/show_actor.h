@@ -210,6 +210,7 @@ typedef struct ShowCrowdStats {
     uint32_t rerenders;          /* fetches that rendered an image again that
                                     was cached before: a pool eviction         */
     uint32_t keys;               /* distinct (look, dir, frame) images in use  */
+    uint32_t newkeys;            /* of those, first used in this shot this frame */
 } ShowCrowdStats;
 const ShowCrowdStats *show_crowd_stats(void);
 uint32_t show_crowd_hash(uint32_t h);
@@ -218,5 +219,23 @@ uint32_t show_crowd_hash(uint32_t h);
 void show_wp6_reset(int gore);                  /* show_cast/actor/crowd_reset +
                                                    portrait_cache_reset()      */
 void show_wp6_tick(int t);                      /* actor + crowd tick          */
+
+/* ---- show_ext.c plugs these in (one line each) --------------------------------
+ * show_wp6_ext(e): the engine-native host kinds beat.c hands back that act on
+ * an actor: BOP_EXPR (a actor, b EXPR_* | mouth << 8: the mouth half is
+ * ignored, mouths come from tracks), BOP_POP (a actor < SHOW_MAX_ACTORS, b
+ * TWT_*), BOP_HEADTURN (a actor, b brad | frames << 8), BOP_TWITCH. Returns 1
+ * when it handled e (a BOP_POP on a prop id returns 0 for the prop host).
+ * FREEZE / THAW / PANIC / STILL never reach the host: beat.c runs the clocks
+ * itself (actor i = beat.c clock i).
+ * show_wp6_sop(op, argv, argc): the show ops on BOP_SHOT (a = 0x4000 | op)
+ *   SHOW_SOP_ACTOR argv = { actor, SHOP_*, a, b, c, d }
+ *   SHOW_SOP_CROWD argv = { crowd, SHCO_*, a }
+ * Returns 1 when op is one of them. */
+#define SHOW_SOP_ACTOR 0x60
+#define SHOW_SOP_CROWD 0x61
+struct BeatEv;
+int show_wp6_ext(const struct BeatEv *e);
+int show_wp6_sop(int op, const int16_t *argv, int argc);
 
 #endif

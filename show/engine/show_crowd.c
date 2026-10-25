@@ -30,6 +30,7 @@
 #include "doomo/portrait.h"
 #include "doomo/beat.h"
 #include "doomo/tween.h"
+#include "show/show_portrait.h"
 #include "show/show_actor.h"
 
 #define MAX_SEG 6                    /* speed changes per crowd              */
@@ -296,6 +297,7 @@ static void note_fetch(uint32_t key, const DoomoImage *im)
             k->uid = im->uid;
             k->frame = s_t + 1;
             s_stats.keys++;
+            s_stats.newkeys++;
             return;
         }
     }
@@ -310,6 +312,7 @@ void show_crowd_draw(int ox, int oy, int layer, int draw)
         s_stats.fetched = 0;
         s_stats.rerenders = 0;
         s_stats.keys = 0;
+        s_stats.newkeys = 0;
     }
     portrait_cache_clock((uint32_t)s_t, 6);
     portrait_show_mouth = -1;                         /* crowds never flap */
