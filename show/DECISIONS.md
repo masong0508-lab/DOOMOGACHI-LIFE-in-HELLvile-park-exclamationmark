@@ -96,3 +96,33 @@ Each names the default taken and where to change it.
 - **The theme cues name files** (`src=file:doomtastic_times_main_title.flac` under docs/show/theme/ once
   published, else the scratchpad's theme/final): a new vocal master drops in with no other change; the bar
   map is re-imported from the master's own `*_full.mid` (tempo + section markers).
+
+## ART: the sets (show/series/sets/, show/art/gen/), 2026-10-25
+
+- **One set per location, cheapest route first** (table in `show/series/sets/SETS.md`): the game's
+  own `hahaland` overworld for MT-1/MT-3, its `vape_cellar` 3D map for every first-person beat
+  (MT-5, 3-03, 3-05: the pastel back room and the tiled room under the candy-stripe canopy), its
+  house (`HOME_COTTAGE`, living room, `HP_EMPTY`) for the tag; new generated plates for the rest.
+  Change: the `set` blocks in `series/sets/*.shw`.
+- **Time of day is a CLUT swap** (`show/art/gen/light.py`): dawn, sunset, dusk, night, dark, sepia,
+  drained as 256-entry index remaps (family-preferring nearest, artgen's rule); night keeps the
+  emissive indices lit. Our `night` is a little lighter than the game's `TINT_NIGHT` (which ships
+  as `game_night`) so pastel reads at 320x180. Skies are BANDS lists per time of day.
+- **The bandstand**: north half live (candy posts, the GIGGLE banner with the cupcake balloon over
+  its third letter, lanterns), south half boarded against the Wall, the MINGLE crate in the hollow
+  under the boarded deck (skirt boards are props: 2-03 tears them), the sealed gate in the Wall
+  beside it. One 800x240 TILEMAP at figure scale with named framings (wide/north/steps/boards/
+  gate/fair). The Wall is drawn face-on at the right (the side-scroller convention); the x = 160
+  Wall line belongs to the crayon co09 frame and to `wall_split`.
+- **The cold open's red** is `PAINT_CHERRY` (candy red), never the BLOOD ramp (D16; a test checks
+  the drip). The pink drip (A/B for the animatic) is the drip prop's `pink` state.
+- **The crayon/pixel banner match**: both banners put their six letters at x = 42 + 40k, 35x42,
+  baseline show y 104 (co11 -> co12). GIGGLE is wet pink over MINGLE, which shows through.
+- **Grain density 4 %**, not 12: at 320x180 a 12 % fleck tile read as snow over the night sky;
+  the spec's "12 %" was an overlay strength. Change: `paper_grain(density=)` in storybook.shw.
+- **Signs are blank boards with a text box** (`text=x,y,w,h` on the prop); every readable word is a
+  string (STAGING's strings.shw). Baked lettering only where it is paint or print: the banner,
+  the act cards' handwriting (the brief's own lines), the TV-MA card, the town sign's painted-over
+  1000, the calendar's print, the logo (drawn the way `fp_title.c` draws it).
+- **Previews are host composites** (`show sets sheet`), never master pixels; the player draws the
+  masters. PIC-PAL is checked on every composed frame of every variant (100 %).

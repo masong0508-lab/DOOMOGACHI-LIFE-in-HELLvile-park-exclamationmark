@@ -1,0 +1,76 @@
+# show/series/sets/cards.shw - the pilot's cards as sets: the act cards (the Mayor's clipboard),
+# the TV-MA card, the main-title logo and its end pose, the pilot title card, the eyecatches,
+# the end-credits head card and the Dippinn Productions card. Lines are props so the player
+# can pop them in on the beat; spaces in a generator's text are written as _ (one token).
+
+set act_cards kind=2d px=1 matte=open look=pixel desc="the act cards: the Mayor's festival clipboard (CREAM sheet), his handwriting popping in line by line, 8 f apart"
+  plane board  image=gen:clipboard(seed=1) size=320x240 par=0
+  prop  ghost art=gen:mirror_ghost(seed=9) plane=board at=66,92 anchor=topleft hidden=yes    # behind the lines
+  prop  l1 art=gen:hand_line(text=18:00_Welcome!,seed=1) art.tick=gen:hand_line(text=18:00_Welcome!,mark=tick,seed=1) plane=board at=92,36 anchor=topleft
+  prop  l2 art=gen:hand_line(text=19:00_Bake-Off!,seed=2) plane=board at=92,58 anchor=topleft
+  prop  l3 art=gen:hand_line(text=20:00_Bandstand!,seed=3) plane=board at=92,80 anchor=topleft
+  prop  l4 art=gen:hand_line(text=21:00_(we_don't_do_that),seed=4) art.underline=gen:hand_line(text=21:00_(we_don't_do_that),mark=underline2,seed=4) plane=board at=92,102 anchor=topleft
+  prop  l5 art=gen:hand_line(text=22:00_Bedtime!,seed=5) art.strike=gen:hand_line(text=22:00_Bedtime!,mark=strike,seed=5) plane=board at=92,124 anchor=topleft
+  prop  weather art=gen:hand_word(text=weather,seed=7) plane=board at=178,124 anchor=topleft hidden=yes
+  prop  l6 art=gen:hand_line(text=23:00,mark=blank,seed=6) plane=board at=92,146 anchor=topleft hidden=yes
+  variant act1 light=day state=l1:tick desc="ACT ONE: 18:00 Welcome! gets a tick (HEE_HEE bell on frame 0)"
+  variant act2 light=day state=l1:tick,l4:underline desc="ACT TWO: 21:00 (we don't do that), underlined twice in a nervous hand"
+  variant act3 light=day state=l1:tick,l4:underline,l5:strike show=weather desc="ACT THREE: Bedtime! crossed out, weather written over it"
+  variant act4 light=day state=l1:tick,l4:underline,l5:strike show=weather,l6,ghost desc="ACT FOUR: 23:00 ________ (blank); faint mirror-writing shows through"
+end
+
+set tvma_card kind=2d px=1 matte=open look=pixel desc="the TV-MA card at the head of the episode (submitted TV-MA (V)); plain and adult"
+  plane card   image=gen:tvma_card(descriptors=V) size=320x240 par=0
+end
+
+set logo_card kind=2d px=1 matte=open look=pixel desc="MT-6 end pose: the halves meet on the logo; the Mayor's pink roller paints over the red drip, which bleeds back on the last chord"
+  plane sky    bands=sky:day par=0
+  plane both   image=gen:wall_split(seed=380) size=320x240 par=0
+  prop  logo   art=gen:logo(part=all,scale=3) plane=both at=160,26 anchor=top
+  prop  drip   art=gen:paint_drip(size=wide,color=red,length=10) plane=both at=126,84 anchor=top
+  prop  roller art=gen:roller(seed=1) plane=both at=-20,70 anchor=top hidden=yes
+  variant pose  light=day desc="MT-6 (the drip bleeds back on the last chord)"
+  variant paint light=day hide=drip show=roller desc="MT-6 +15..+45: the roller has painted over the drip"
+end
+
+set title_card kind=2d px=1 matte=open look=pixel desc="MT-7: dissolve to the Giggle banner: GIGGLE NIGHT, with MINGLE showing through the wet paint"
+  plane sky    bands=sky:dusk par=0
+  plane far    image=gen:bandstand_far(seed=125) size=560x240 par=0.3
+  plane north  image=gen:bandstand_ms(seed=128) size=352x240 par=1.0
+  prop  banner art=gen:banner(size=title,state=giggle,word2=NIGHT) plane=north at=160,38 anchor=top
+  variant dusk light=dusk bands.sky=sky:dusk desc="MT-7"
+end
+
+set eyecatch kind=2d px=1 matte=open look=pixel desc="the festival-clock eyecatches: OUT is pure HaHaland; IN (after a 4-f hellify flash) has one change; Mascotty 8 px tall in the deep background (actor)"
+  plane back   image=gen:eyecatch_back(seed=1,banner=0) size=352x240 par=0
+  prop  banner  art=gen:banner(size=wide,state=giggle) plane=back at=160,34 anchor=top
+  prop  clock  art=gen:clock_face(time=2100) art.t2140=gen:clock_face(time=2140) art.t2259=gen:clock_face(time=2259) plane=back at=290,22 anchor=center
+  prop  lantern art=gen:logo_lantern(state=lit) art.purple=gen:logo_lantern(state=purple) plane=back at=160,10 anchor=top hidden=yes
+  prop  shell1 art=gen:eggshell(half=left,size=2) plane=back at=122,22 anchor=top hidden=yes
+  prop  shell2 art=gen:eggshell(half=right,size=2) plane=back at=198,20 anchor=top hidden=yes
+  prop  candle1 art=gen:candle(state=out,size=3) plane=back at=104,122 anchor=bottom hidden=yes
+  prop  candle2 art=gen:candle(state=out,size=3) plane=back at=160,122 anchor=bottom hidden=yes
+  prop  candle3 art=gen:candle(state=lit,size=3) art.lean=gen:candle(state=lean,size=3) plane=back at=216,122 anchor=bottom hidden=yes
+  variant ec1_out light=day show=lantern desc="EC1 OUT (07:50): a paper lantern printed with the logo, the banner behind it; 21:00"
+  variant ec1_in  light=day show=lantern state=lantern:purple desc="EC1 IN: the lantern glows purple from the inside, like a ribcage"
+  variant ec2_out light=day show=shell1,shell2 state=clock:t2140 desc="EC2 OUT (12:15): two eggshell halves on the string, a tiny beep. bubble (string); 21:40"
+  variant ec2_in  light=day show=shell1,shell2 state=clock:t2140 desc="EC2 IN: a tiny Puff Demon (actor) sits in the second shell"
+  variant ec3_out light=day show=candle1,candle2,candle3 hide=banner state=clock:t2259 desc="EC3 OUT (16:40): three candles on the rail, two out; 22:59"
+  variant ec3_in  light=day show=candle1,candle2,candle3 hide=banner state=clock:t2259,candle3:lean desc="EC3 IN: the last flame leans toward the Wall"
+end
+
+set credits_card kind=2d px=1 matte=open look=pixel desc="CR-1 head: the title card has peeled to read MINGLE NIGHT (the credits are strings over the storybook stills)"
+  plane back   image=gen:card_backdrop(color=cream,seed=2) size=320x240 par=0
+  prop  banner art=gen:banner(size=title,state=peeled,word2=NIGHT) plane=back at=160,40 anchor=top
+end
+
+set cast_popin kind=2d px=1 matte=open look=pixel desc="MT-2: the verse: the cast pops in on the beat over pastel HaHaland (Mascotty in every verse shot, perfectly still)"
+  plane sky    bands=sky:day par=0
+  plane far    image=gen:candy_hills(seed=303,w=480) size=480x240 par=0.3
+  plane ground image=gen:fair_ground(seed=304,w=352,path=0) size=352x240 par=1.0
+  variant day light=day desc="MT-2"
+end
+
+set dippinn_card kind=2d px=1 matte=black look=pixel desc="PC-1 ~255-300: the Dippinn Productions card, silent until its last frame (gurgle.)"
+  plane card   image=gen:dippinn_card(seed=1) size=320x240 par=0
+end
