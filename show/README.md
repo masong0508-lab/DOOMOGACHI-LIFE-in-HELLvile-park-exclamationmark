@@ -43,9 +43,119 @@ headless, exits non-zero on failure and prints problems in one format
 | `show vault verify [--dir DIR]` | AT0.3: the installed tools, the models and the archive parts against `show/vault.lock` |
 | `show vault fetch DIR [--root /] [--force]` | Restores from a directory holding the parts: checks every part's hash, unpacks under `--root`, never overwrites a file whose content differs (unless `--force`) and never writes through the scratchpad symlink |
 
-Commands still to come (other packages; spec §14): `compile`, `slug`,
+Commands still to come (other packages; spec §14):
 `render`, `voice`, `music`, `sfx`, `mix`, `sheet`, `timing`, `lint`,
 `preview`, `deliver`, `standards`, ...
+
+## Compiler outputs (WP4, `showc`; other lanes build on these)
+
+`show compile ep101 [--shots co01..co03]` and `show slug ep101` write, under
+`show/build/ep101/` (`--out DIR` moves it):
+
+| File | Consumer | What |
+|---|---|---|
+| `EP101.SHW` (`SLUG.SHW` for `show slug`) | show.exe | The binary, `show/include/show/shw_format.h` (mirrored by `showtk/shw_format.py`, AT4.2) |
+| `timeline.json` | every host tool (deliver, review, standards, mix) | Acts, beats, scenes, shots, events, lines, strings, tags in absolute frames, with `file`/`line` provenance |
+| `audio_events.json` | voice, music, mix, QC (P4) | Every sound: event index `k`, absolute sample (spec §6.6) |
+| `captions.json` | captions, deliver | SDH cues, frame-exact in/out |
+| `plan.txt`, `lint.txt` | Claude | Per-shot bytes/badge; every diagnostic in the §13.4 format |
+
+All frames are **episode frames** (frame 0 = the first frame of the cold
+open) unless a field says `shot_f` (frames from the shot's frame 0). Samples
+are at 48 kHz: `smp = 1600 * frame`. `tc` strings are `HH:MM:SS:FF` at 30 fps.
+`end` fields are **exclusive** (`start + len`). Every format carries a
+`"format"` version string; additions are add-only within a version.
+
+### `timeline.json` (`"format": "show-timeline/1"`)
+
+```json
+{"format": "show-timeline/1", "episode": "ep101", "id": "e101", "title": "Mingle Night",
+ "fps": 30, "rate": 48000, "spf": 1600, "total_frames": 39600, "slug": false,
+ "inputs_hash": "<sha256 of every input file>",
+ "acts":   [{"id": "CO", "title": "Cold open", "start": 0, "len": 3000, "beats": ["e101_co_1", "..."]}],
+ "beats":  [{"id": "e101_co_1", "act": "CO", "title": "INSERT. A CRAYON CALENDAR PAGE", "start": 0, "len": 90,
+             "tc_in": "00:00:00:00", "elastic": false, "protected": false, "shots": ["co01"],
+             "slug_frames": 0, "file": "show/ep101/rundown.shw", "line": 12}],
+ "scenes": [{"id": "co_storybook", "shots": ["co01", "co02", "co03"], "start": 0, "end": 390,
+             "children": true, "child_sources": ["crowd co03.bunnies (age=child)"], "gore": "CUTE"}],
+ "shots":  [{"id": "co01", "index": 0, "beat": "e101_co_1", "scene": "co_storybook", "start": 0, "len": 90,
+             "end": 90, "tc_in": "00:00:00:00", "set": "calendar_page", "set_kind": "2d", "px": 2,
+             "look": "crayon", "cut": "FADE", "matte": "open", "gore": "CUTE", "text": "on",
+             "insert": false, "slug": false, "base": null, "replay": null, "seed": 1,
+             "cast": [{"id": "mayor", "slot": 0, "kind": "figure", "age": "adult", "tags": [], "voice": "mayor"}],
+             "crowds": [{"id": "bunnies", "n": 6, "age": "child", "kind": "chibi", "species": "SPECIES_BUNNYKIN"}],
+             "lines": ["co15_perfect"], "strings": ["s_co02"], "audio_k": [0, 1, 2],
+             "waivers": [{"rule": "CANON-HV107", "reason": "...", "file": "...", "line": 28}],
+             "asserts": [{"expr": "bandstand.x == 160", "shot_f": 90, "ok": true, "value": 160}],
+             "provisional": false, "chunk_bytes": 1234, "badge": "PS1-LEGAL",
+             "file": "show/ep101/shots/co.shw", "line": 3,
+             "events": [{"f": 0, "shot_f": 0, "end": 8, "op": "fade", "kind": "engine|show|audio|text|mark",
+                         "text": "fade in over=R8", "k": null, "file": "...", "line": 5}]}],
+ "lines":  [{"id": "co15_perfect", "speaker": "mayor", "text": "Perfect.", "dir": "...", "shot": "co15",
+             "start": 1234, "end": 1270, "provisional": true, "tags": ["innuendo"], "to": null, "ref": null,
+             "consent": null, "voice": "mayor", "age": "adult", "file": "...", "line": 3}],
+ "strings": [{"id": "s_co02", "text": "...", "shot": "co02", "start": 120, "end": 270, "style": "type"}],
+ "tags":   [{"on": "shot|line|scene|string|look", "id": "co03", "shot": "co03", "scene": "co_storybook",
+             "tags": ["innuendo"], "to": null, "ref": null, "consent": null, "start": 270, "end": 390,
+             "file": "...", "line": 30}],
+ "diagnostics": [{"rule": "FMT-RUNTIME", "severity": "warning", "text": "<the §13.4 line>"}]}
+```
+
+A beat whose shots do not fill its `len` is padded with a **slug card** for
+the rest (`slug_frames`; the shot entry has `"slug": true` and id
+`slug:<beat>`), so every compile is a full-length episode: `show slug` is a
+compile with no shots at all (60 slug cards, 39,600 frames for 101).
+
+### `audio_events.json` (`"format": "show-audio/1"`)
+
+```json
+{"format": "show-audio/1", "episode": "ep101", "rate": 48000, "spf": 1600, "total_smp": 63360000,
+ "events": [
+  {"k": 0, "smp": 0, "src": "FOL_crayon_scratch", "follow": "co01:circle_midsummer", "bus": "FX", "gain_db": -14},
+  {"k": 2, "smp": 96000, "src": "cue:mingle_box", "from": "bar:1.1", "bus": "MX", "gain_db": -12},
+  {"k": 3, "smp": 144000, "src": "FX_SHWIP", "bus": "FX", "gain_db": -10, "pan": 0.0},
+  {"k": 4, "smp": 144000, "src": "walla:kids_far", "op": "on", "bus": "DX", "gain_db": -28, "cc": "[soft crowd babble]"},
+  {"k": 6, "smp": 432000, "src": "walla:kids_far", "op": "to", "gain_db": -20, "over_smp": 48000},
+  {"k": 9, "smp": 1234000, "src": "line:co15_perfect", "speaker": "mayor", "bus": "DX", "len_smp": 57600,
+   "provisional": true}]}
+```
+
+`k` is dense, in (sample, source order). Keys appear only when they apply:
+`src` is an SFX/foley id from `series/sfx.shw`, `cue:<id>` (music),
+`walla:<bed>`, `amb:<id>` or `line:<id>`; `op` is absent for a one-shot or
+cue start and is `on|off|to|stop|mute|duck|bend|tapestop` otherwise; `follow`
+(`<shot>:<stroke>`), `from` (`bar:B.b` or `crowd:<shot>.<id>,...`),
+`gain_db` (sfx/fol: the library level plus the shot's `gain=` trim;
+walla/mx/amb: the absolute level), `pan` (-1..1; `center` = 0.0), `over_smp`,
+`len_smp`, `cc` (an SDH caption chained on the same line). Every event's
+shot, frame and source line are in `timeline.json` (`events[].k`). A timed op
+in `ep101/cues.shw` (`@<beat>+N mx ...`) is placed in the shot (or slug card)
+that covers its frame and merged with an identical shot op.
+
+### `captions.json` (`"format": "show-captions/1"`)
+
+`{"cues": [{"in": 90, "out": 270, "text": "[soft crowd babble]", "kind": "sdh|line|super", "shot": "co02"}]}`
+(frames, `out` exclusive).
+
+### Scenes and standards tags (the syntax the lints read)
+
+| Where | Syntax |
+|---|---|
+| Shot header | `shot co01 ... scene=co_storybook gore=CUTE\|BRUTAL`; a shot without `scene=` continues the previous shot's scene (a new act starts none: an untagged first shot is scene `<beat>`) |
+| Shot body, setup | `scene <id>` (same as `scene=`); `tag shot <tag>[,<tag>...] [to=<char>] [ref=<char>] [consent=<line>]` (whole shot) |
+| Shot body, timed | `+N tag shot <tags> [over=+a..+b]` (a frame range); `+N tag line <line id> <tags> ...`; `tag scene <tags>` |
+| `lines.shw` | `line <id> <speaker> "<text>" [dir="..."] [tags=innuendo,advance] [to=<char>] [ref=<char>] [consent=<line id>]` |
+| `strings.shw` | `string <id> "<text>" [font=] [tags=...]` |
+| Ages | `age=adult\|teen\|child` on every `char` (cast.shw), `kset`/crowd and `voice` |
+
+Tags are the spec's closed list (§5.5, §13.5): `innuendo implied offscreen
+suggestive advance contact touch yes no stepback gore_truth rear satire
+explicit consent_gag`; the compiler refuses any other word (`STD-TAG`), and
+records every tag in `timeline.json` `tags[]` with the scene it falls in and
+its frame range. The compiler itself only collects and validates them; the
+`STD-*` rules live in `showtk/standards/` (WP17) and read `timeline.json`.
+`waive <RULE> "<reason>"` refuses `STD-EXPLICIT`, `STD-CONSENT`, `STD-AGE`,
+`STD-KIDS` and `STD-HATE`.
 
 ## Adding a command (every workflow does it this way)
 
