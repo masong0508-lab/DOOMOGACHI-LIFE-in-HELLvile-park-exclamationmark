@@ -1,0 +1,156 @@
+# home.txt - the dream house renderer on the PS1 (H3: ps1/src/room.c;
+# docs/design/story/SPEC.md sec.7 H3, C17, C22; housing_final.md sec.7, 11.4).
+#
+#   python3 ps1/harness/run.py --exe ps1/build/doomogachi.exe \
+#       --cue ps1/build/doomogachi.cue --script ps1/harness/scripts/home.txt \
+#       --out ps1/build/shots/home --assert-no-stubs --timeout 900
+#
+# SCENE_HOME on the game disc with the house test layouts (room-test N:
+# 1 steady = the room_ref parity layout + 3 animated pieces + 3 walkers,
+# 2 orbit = the same while the camera turns, 3 cellar = 8x8, 40 pieces, dim,
+# 4 drop = steady with the bed mid-squash, 5 defend = 8x8, 24 pieces, 10
+# walkers, 6..9 the parity pairs), with the C-G fps gates.
+wait 30
+seed 1234
+scene HOME -1
+wait 60
+expect-scene HOME
+expect-log ovl: home
+shot home_plain
+fps home_plain
+wait 90
+fpsend home_plain
+expect-fps 28 home_plain
+
+# --- parity: the backdrop path (the static layer drawn once off screen,
+#     the moving things in clipped passes over it) must give the single
+#     full pass's frame. Two frozen layouts: 2 citizens, the TV (animated),
+#     a squashed sofa, the cursor. The budget is 16 of 76,800 pixels: two
+#     polygons of equal depth may meet in a different order on the odd
+#     pixel where a clip edge cuts them (measured: 1 per layout) ---
+room-test 6
+wait 4
+shot parity_live
+room-test 7
+wait 4
+shot parity_backdrop
+expect-same parity_live parity_backdrop 16
+room-test 8
+wait 4
+shot parity2_live
+room-test 9
+wait 4
+shot parity2_backdrop
+expect-same parity2_live parity2_backdrop 16
+
+# --- home_steady (C-G >= 28 in Redux; 30 on a console) ---
+room-test 1
+wait 30
+fps home_steady
+wait 120
+fpsend home_steady
+expect-fps 28 home_steady
+shot home_steady
+dshot home_steady_display
+
+# --- the soft DROP mid-squash (HF sec.5.1) ---
+room-test 4
+wait 4
+dshot home_drop_squash
+shot home_drop
+
+# --- home_orbit (C-G >= 22): the spring follows a turning yaw ---
+room-test 2
+wait 20
+fps home_orbit
+wait 120
+fpsend home_orbit
+expect-fps 22 home_orbit
+shot home_orbit
+
+# --- the view brake (Build mode): R holds the view 10 ticks (HT_BRAKE),
+#     then turns it 90 degrees on the TW_BOING spring; the shot 6 ticks
+#     into the turn is the overshoot, the walls drop-and-pop ---
+room-test 1
+wait 30
+press R
+wait 16
+dshot home_orbit_overshoot
+wait 30
+shot home_view1
+press R
+wait 30
+shot home_view2
+press R
+wait 30
+shot home_view3
+press R
+wait 30
+shot home_view0
+
+# --- home_cellar_full (C-G >= 24): 8x8, 40 pieces, dim ---
+room-test 3
+wait 30
+fps home_cellar_full
+wait 120
+fpsend home_cellar_full
+expect-fps 24 home_cellar_full
+shot home_cellar
+vram home_cluts
+
+# --- the defence stress layout (the GBA's home_defend_w3 layout): 8x8, 24
+#     lit pieces, 10 citizens walking every frame through them and the
+#     player. Everything is drawn again over the backdrop every frame
+#     (~45 ms in Redux, so every frame takes 3 vblanks: 20 fps). Recorded
+#     with a regression floor; C-G's home_defend_w3 gate (>= 22) is
+#     measured on the real Hold the Door wave 3 (scripts/home_defend.txt) ---
+room-test 5
+wait 30
+fps home_defend_stress
+wait 120
+fpsend home_defend_stress
+expect-fps 19 home_defend_stress
+shot home_defend
+
+# --- home_modal (C-G >= 26): the Score panel over the room ---
+room-test 1
+wait 10
+press START
+wait 14
+press DOWN
+wait 4
+press DOWN
+wait 4
+press A
+wait 30
+fps home_modal
+wait 90
+fpsend home_modal
+expect-fps 26 home_modal
+shot home_modal
+press B
+wait 20
+room-test 0
+wait 10
+
+# --- the house group is linked over the 3D views' tables (ovl_plan.py
+#     BORROW): a 3D scene after it rebuilds them, the house reloads when
+#     it comes back, and the arena looks as it always does ---
+scene COMBAT 5
+wait 90
+expect-scene COMBAT
+shot after_house_arena
+scene HOME -1
+wait 60
+expect-scene HOME
+shot home_again
+
+# --- a card save from inside the house (the home group loaded over the
+#     3D views' tables; the save scratch is the display lists):
+#     `memcard_check.py OUT/card1.mcd` lists the file and its blocks. No
+#     story runs here, so it is 1 block; the house's 'HOME' chunk adds
+#     ~80 B to a story save (SPEC H3's 2-block line, measured in the
+#     H3 report) ---
+save 0
+expect-save 0
+no-stubs

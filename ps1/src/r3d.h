@@ -106,6 +106,11 @@ void r3_shadow(int32_t bx, int32_t by, int32_t bz, int radius);
 /* Sky backdrop across the viewport (view3d). */
 void r3_sky(int sky_id, uint16_t time, int brightness);
 
+/* --- H3: when set (2 words: GP0 E3h, E4h), every r3_tri_g polygon is
+ * preceded by this drawing area (room.c) --- */
+extern const uint32_t *g_r3_area;
+/* --- end H3 --- */
+
 /* statistics for the current frame */
 void r3_stats_reset(void);
 

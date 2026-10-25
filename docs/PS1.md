@@ -400,6 +400,51 @@ the level's ordering table. When no resident is set up yet (engine test),
 it wears a premade roster citizen's look. If the camera is closer than 24
 units it is not drawn (first-person-like close-ups).
 
+The chibi's boxes, plush blobs and pyramids live in `prims.c` (shared
+with the house). Each one transforms its vertices once (RTPT per three)
+and emits the same triangles `r3_tri_g()` would; an in-emulator A/B build
+that recorded both paths for every call (10,240 calls of `model.txt`)
+found no difference.
+
+### The dream house (`room.c`, H3)
+
+`plat_room()` builds the house's `DoomoRoomView` as a small GTE diorama
+(the header of `src/room.c` has the details): the floor and wall slabs
+from the grid, CLUT-recoloured wallpaper and floor, the furniture from
+its `DoomoFurnPrim` lists (round prims get 8 / 6 / 4 sides by their size
+on screen), the player as the 3D chibi, everyone else as billboards,
+lamp pools and contact shadows, a camera on a `TW_BOING` spring with the
+4-frame drop-and-pop of the cut-away walls.
+
+* **The backdrop.** While the camera and the furniture rest, the static
+  layer (floor, walls, every resting piece) is drawn once into the first
+  three world-texture pages (the house uses no world textures) and every
+  frame starts by copying it back with two 15-bit sprites. Only what moves
+  is drawn again, in one clipped pass where each element carries its own
+  drawing area. `room-test 6..9` compares this path with the single full
+  pass pixel for pixel (1 pixel differs per layout, where two equal-depth
+  polygons meet at a clip edge).
+* **Memory.** `room.c` belongs to the `home` overlay group. That group is
+  linked 41,476 B *below* the slot, over the `.bss` tables of `world.c`
+  and `view3d.c` (`ovl_plan.py` BORROW, `OVL.BIN` v3 with a load address
+  per group): it can be 41 KB bigger than the slot allows without moving
+  the slot. `world_sync()` and `plat_view3d()` call `ovl_borrow_take()`
+  before they touch those tables. It marks the group gone (it is read
+  again when a house scene runs next); `world_sync()` then rebuilds its
+  tables and `plat_view3d()` clears its visibility stamps. The resting
+  pieces' boxes (5 KB) go in `DoomoRoomView.plat_cache`.
+* **Harness.** `harness/scripts/home.txt`: `room-test N` (hcmd.c) swaps in
+  fixed layouts, `seed N` pins `plat_entropy()`, `expect-fps`, and
+  `expect-same A B MAX` (the parity pairs).
+
+| scene (Redux, game disc) | patch `room.c` (single pass) | H3 | gate |
+|---|---:|---:|---:|
+| `home_steady` (6x6, 3 animated pieces, 3 walkers) | 19.3 | 29.9 | 28 |
+| `home_orbit` (the camera turning) | 17.3 | 28.7 | 22 |
+| `home_cellar_full` (8x8, 40 pieces, dim) | 11.3 | 25.7 | 24 |
+| `home_modal` (Score panel over the room) | 18.8 | 29.2 | 26 |
+| `home_defend_stress` (8x8, 24 lit pieces, 10 walkers) | - | 21.1 | 19 (floor) |
+
 ## 8. Audio
 
 * **Tones** (`plat_tone`, channels 0-3 -> SPU voices 0-3). At boot,

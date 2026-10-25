@@ -102,6 +102,12 @@ static void sky_top(void)
 void world_sync(const DoomoMap *m)
 {
     int gy;
+    /* --- H3: the house group lives over these tables while it is loaded
+     * (ovl_plan.py BORROW): take them back, rebuild after it was in --- */
+    static uint32_t s_bgen;
+    if (ovl_borrow_take(&s_bgen))
+        s_map = NULL;
+    /* --- end H3 --- */
     if (m != s_map || m->def != s_def || m->w != s_w || m->h != s_h ||
         m->time < s_last_time) {
         s_map = m;

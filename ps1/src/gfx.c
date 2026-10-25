@@ -63,6 +63,7 @@ static uint32_t  s_vb_last;
 static int       s_pal_phase;
 static uint32_t  s_t_begin;
 GfxPerf          g_perf;
+static uint32_t *s_ofs_follow;    /* H3: gfx_ofs_follow()              */
 
 /* link helpers on raw tag words */
 #define TAG_LINK(node, to) (*(node) = (*(node) & 0xff000000u) | ((uint32_t)(to) & 0x00ffffffu))
@@ -165,6 +166,7 @@ void gfx_begin(void)
     s_views = 0;
     s_view_ot = NULL;
     s_prims = 0;
+    s_ofs_follow = NULL;
     /* upload chain: up_head -> ... -> flush -> head -> draw chain */
     f->up_head[0] = 0x00ffffffu;        /* len 0 */
     s_up_tail = f->up_head;
@@ -196,12 +198,21 @@ void gfx_post_offset(int dx, int dy)
     if (!s_open) return;
     gfx_fb_xy(&fx, &fy);
     f->ofs[1] = 0xe5000000u | ((uint32_t)((fy + dy) & 0x7ff) << 11) | (uint32_t)((fx + dx) & 0x7ff);
+    if (s_ofs_follow) *s_ofs_follow = f->ofs[1];        /* H3 */
     e = (uint32_t *)gfx_alloc(8);
     if (!e) return;
     e[0] = 0x01ffffffu;
     e[1] = 0xe5000000u | ((uint32_t)(fy & 0x7ff) << 11) | (uint32_t)(fx & 0x7ff);
     gfx_chain(e);
 }
+
+/* --- H3 (ps1.h) --- */
+void gfx_ofs_follow(uint32_t *e5)
+{
+    s_ofs_follow = e5;
+    if (e5) *e5 = s_fb[g_cur].ofs[1];
+}
+/* --- end H3 --- */
 
 uint32_t *gfx_ot_begin(int vx, int vy, int vw, int vh)
 {

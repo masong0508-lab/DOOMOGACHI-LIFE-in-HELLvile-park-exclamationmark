@@ -98,6 +98,12 @@ void  gfx_chain(void *prim);
  * it into the chain with the viewport clip applied, restores full clip. */
 uint32_t *gfx_ot_begin(int vx, int vy, int vw, int vh);
 void  gfx_ot_end(void);
+/* --- H3: an E5 draw-offset word that follows the frame's (S1 post-FX
+ * shake): set to the frame's current offset now, and patched with it by
+ * gfx_post_offset later in the frame. One per frame (room.c, which draws
+ * its static layer off screen and must come back to the shaken offset). */
+void  gfx_ofs_follow(uint32_t *e5);
+/* --- end H3 --- */
 /* Queue a VRAM upload (executed in order at the start of this frame's list,
  * data copied into the prim buffer). w is in halfwords. Returns 0 if the
  * prim buffer is full (caller may retry next frame). */
@@ -134,6 +140,13 @@ uint16_t vram_fontd_tpage(void);         /* dilated glyphs (4bpp page)  */
 int  vram_sky(int sky_id, uint16_t time, TexRef *left, TexRef *right);
 void vram_blob(TexRef *out);             /* soft round shadow (4bpp)   */
 uint32_t vram_uploads(void);             /* bytes uploaded this frame  */
+/* --- H3: the house lends the first `pages` world-texture pages (x 320..,
+ * y 0..255) for its backdrop (room.c): what they held is forgotten, and
+ * vram_wtex_lent_uploads() counts later uploads into them (the backdrop is
+ * stale when it changed). */
+void vram_wtex_lend(int pages);
+uint32_t vram_wtex_lent_uploads(void);
+/* --- end H3 --- */
 
 /* ---- 2D layer (gfx2d.c) ---------------------------------------------------- */
 void gfx2d_init(void);
@@ -212,6 +225,11 @@ int  packart_sky_edges(const uint8_t *p, uint8_t *top, uint8_t *bottom);
  * the OVL.BIN header (boot). The engine test links everything resident. */
 void     overlay_init(void);
 uint32_t overlay_loads(void);
+/* H3: the house group is linked over world.c's and view3d.c's tables
+ * (ovl_plan.py BORROW). They call this before touching them: it unloads
+ * the house and returns 1 (and updates *seen) when it was loaded since
+ * the caller last looked, i.e. the tables must be rebuilt. */
+int      ovl_borrow_take(uint32_t *seen);
 
 /* ---- engine test / fallback assets (etest*.c) ------------------------------- */
 const uint8_t *etest_texture(int tex_id, uint16_t time);

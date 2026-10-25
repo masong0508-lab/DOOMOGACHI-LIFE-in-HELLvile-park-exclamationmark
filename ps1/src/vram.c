@@ -20,6 +20,8 @@ static TexRef s_wref[VR_WTEX_SLOTS];
 static struct { const uint8_t *key; uint16_t slot; uint32_t frame; } s_wmemo[64];
 static uint32_t s_upbytes;
 static uint32_t s_vframe = 1;
+static uint8_t  s_lent;           /* H3: pages lent to the house backdrop */
+static uint32_t s_lent_up;        /* H3: uploads into them since         */
 
 static void wslot_ref(int s)
 {
@@ -41,8 +43,23 @@ static int wslot_upload(int s, const uint8_t *pix)
     if (!gfx_upload_strided(x, y, 32, 64, packart_resolve(pix), 64))
         return 0;
     s_upbytes += 4096;
+    if (page < s_lent) s_lent_up++;           /* H3: the backdrop is stale */
     return 1;
 }
+
+/* --- H3: the house backdrop (ps1.h) --- */
+void vram_wtex_lend(int pages)
+{
+    int i;
+    if (pages > VR_WTEX_PAGES) pages = VR_WTEX_PAGES;
+    for (i = 0; i < pages * 16; i++)
+        s_wslot[i].key = NULL;
+    memset(s_wmemo, 0, sizeof(s_wmemo));
+    s_lent = (uint8_t)pages;
+}
+
+uint32_t vram_wtex_lent_uploads(void) { return s_lent_up; }
+/* --- end H3 --- */
 
 const TexRef *vram_wtex(int tex_id, uint16_t time)
 {

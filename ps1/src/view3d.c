@@ -435,6 +435,14 @@ void plat_view3d(const DoomoView3D *v)
     }
     s_map = v->map;
     s_time = v->time;
+    {
+        /* --- H3: the house group lives over s_vis / s_vlist while it is
+         * loaded (ovl_plan.py BORROW): take them back, the stamps start over --- */
+        static uint32_t s_bgen;
+        if (ovl_borrow_take(&s_bgen))
+            s_stamp = 0xFFFF;               /* the wrap below clears s_vis */
+        /* --- end H3 --- */
+    }
     if (++s_stamp == 0) {
         memset(s_vis, 0, sizeof(s_vis));
         memset(s_tstamp, 0, sizeof(s_tstamp));

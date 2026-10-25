@@ -37,7 +37,14 @@ volatile uint32_t g_loop_frames;
 
 uint32_t plat_entropy(void)
 {
-    uint32_t v = (uint32_t)VSync(-1) * 2654435761u;
+    /* --- H3: the harness `seed N` pins it (hcmd.c, SPEC C18) --- */
+    extern uint8_t g_entropy_pinned;
+    extern uint32_t g_entropy_pin;
+    uint32_t v;
+    if (g_entropy_pinned)
+        return g_entropy_pin;
+    /* --- end H3 --- */
+    v = (uint32_t)VSync(-1) * 2654435761u;
     v ^= (uint32_t)TIMER_VALUE(2) << 16;
     v ^= (uint32_t)TIMER_VALUE(1);
     v ^= g_frame * 40503u;

@@ -35,6 +35,19 @@ extern int load_game(int slot) WEAKFN;
 extern int save_exists(int slot) WEAKFN;
 extern const char *save_last_error(void) WEAKFN;
 extern int ui_text_entry_feed(int c) WEAKFN;
+/* --- H3: the story / house runner commands (SPEC R20, C2, C18) --- */
+#if !defined(DOOMO_ENGINE_TEST) && defined(DOOMO_HAVE_CORE)
+#include "../../core/src/ui_internal.h"     /* UiDialogDebug (expect-text) */
+extern int story_flag(int f) WEAKFN;
+extern uint32_t story_fingerprint(void) WEAKFN;
+extern void ui_dialog_debug(UiDialogDebug *o) WEAKFN;
+#endif
+/* `seed N` pins plat_entropy() (main.c) so the next town_new() is the
+ * native runner's; `room-test N` swaps the house test layouts (room.c) */
+uint8_t  g_entropy_pinned;
+uint32_t g_entropy_pin;
+volatile uint8_t g_room_test;
+/* --- end H3 --- */
 
 #define HAVE(sym) ({ const void *p_ = (const void *)&(sym); \
                      __asm__("" : "+r"(p_)); p_ != NULL; })
@@ -139,6 +152,43 @@ static void run(void)
     } else if (!strcmp(c, "log")) {
         dbg("log: %s\n", a);
         reply(1, NULL, NULL);
+    /* --- H3: story / house checks (SPEC R20, C2, C18); the native
+     *     runner's semantics (core/native/runner_main.c) --- */
+    } else if (!strcmp(c, "seed")) {
+        doomo_town.seed = (uint32_t)n;
+        rng_seed(&doomo_rng, (uint32_t)n);
+        g_entropy_pin = (uint32_t)n;
+        g_entropy_pinned = 1;
+        reply(1, "seed", a);
+    } else if (!strcmp(c, "expect-flag")) {
+        /* iarg = the flag, arg = the wanted value (default 1) */
+        int want = a[0] ? (a[0] != '0') : 1;
+        int have = HAVE(story_flag) && n >= 0 && n <= 255 ? story_flag(n) != 0 : -1;
+        reply(have == want, have > 0 ? "flag is 1" : have == 0 ? "flag is 0" : "no such flag", NULL);
+    } else if (!strcmp(c, "expect-text")) {
+        UiDialogDebug d;
+        memset(&d, 0, sizeof(d));
+        if (HAVE(ui_dialog_debug)) ui_dialog_debug(&d);
+        reply(d.text && strstr(d.text, a) != NULL, "says", d.text && d.text[0] ? d.text : "(nothing)");
+    } else if (!strcmp(c, "story-fp")) {
+        /* arg = the expected fingerprint in hex, or empty to print it */
+        uint32_t fp = HAVE(story_fingerprint) ? story_fingerprint() : 0, want = 0;
+        char buf[12];
+        const char *p;
+        int i;
+        for (p = a; *p; p++) {
+            int d = *p >= '0' && *p <= '9' ? *p - '0' : (*p | 32) >= 'a' && (*p | 32) <= 'f' ? (*p | 32) - 'a' + 10 : -1;
+            if (d < 0) break;
+            want = (want << 4) | (uint32_t)d;
+        }
+        for (i = 0; i < 8; i++) buf[i] = "0123456789abcdef"[(fp >> (28 - 4 * i)) & 15];
+        buf[8] = 0;
+        dbg("story-fp: 0x%s\n", buf);
+        reply(!a[0] || fp == want, "story-fp", buf);
+    } else if (!strcmp(c, "room-test")) {
+        g_room_test = (uint8_t)n;
+        reply(1, "room-test", a);
+    /* --- end H3 --- */
     } else {
         reply(0, "unknown command", c);
     }

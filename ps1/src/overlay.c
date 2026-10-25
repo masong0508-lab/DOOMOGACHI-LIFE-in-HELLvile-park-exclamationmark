@@ -18,7 +18,8 @@
  *
  * Everything that is not reached only through a scene's four entry
  * points stays resident (ovl_plan.py), so nothing else ever calls into
- * the slot. Groups are LZ-packed and decoded while they are read: a load
+ * the slot. The house group starts lower, over the 3D views' tables just
+ * below the slot (H3, ovl_plan.py BORROW; ovl_borrow_take() below). Groups are LZ-packed and decoded while they are read: a load
  * is ~0.05-0.33 s at 2x CD speed (~30% less than raw). It happens when a scene
  * of another group starts (three loads when a scene starts another one:
  * the new group, the caller's back, then the new one again next frame).
@@ -40,14 +41,39 @@ extern uint8_t __ovl_slot[], __ovl_slot_end[];
 
 #define OVL_MAGIC   0x4C564F44u          /* "DOVL" */
 #define OVL_MAXG    32
+#define OVL_NEST    8
 
-typedef struct OvlGroup { uint32_t sector, bytes, packed; } OvlGroup;
+typedef struct OvlGroup { uint32_t sector, bytes, packed; uint8_t *dst; } OvlGroup;
 
 static OvlGroup s_grp[OVL_MAXG + 1];
 static int      s_lba = -1;              /* OVL.BIN on the disc          */
 static int      s_cur;                   /* group in the slot, 0 = none  */
 static int      s_depth;                 /* nesting of scene calls       */
+static uint8_t  s_run[OVL_NEST];         /* the group of each scene call */
 static uint32_t s_loads;
+
+/* --- H3 (SPEC C4/C5): a group linked below the slot (the house, ovl_plan.py
+ * BORROW) also covers the .bss of world.c and view3d.c. Its loads count
+ * here; world_sync() and plat_view3d() call ovl_borrow_take() before they
+ * touch those tables: the group is then marked gone (it reloads when one
+ * of its scenes runs again) and they rebuild what it overwrote. --- */
+static uint32_t g_ovl_borrow_gen;
+
+static int borrows(int g) { return g > 0 && s_grp[g].dst < __ovl_slot; }
+
+int ovl_borrow_take(uint32_t *seen)
+{
+    int i, fresh = *seen != g_ovl_borrow_gen;
+    if (borrows(s_cur)) {
+        for (i = 0; i < s_depth && i < OVL_NEST; i++)
+            if (s_run[i] == s_cur)       /* its code may be on the stack */
+                dbg("ovl: ERROR: %s's memory taken while it runs\n", ps1_ovl_name[s_cur]);
+        s_cur = 0;
+    }
+    *seen = g_ovl_borrow_gen;
+    return fresh;
+}
+/* --- end H3 --- */
 
 static int group_of(const DoomoScene *s)
 {
@@ -105,16 +131,16 @@ static const uint8_t *unlz_token(const uint8_t *src, uint8_t **dp, uint8_t *dst,
     return src;
 }
 
-/* read n packed sectors into the slot's tail and decode them to its head as they
- * arrive (a token is at most 129 bytes, so a token is only decoded once
- * the sectors holding it are in) */
-static int read_unpack(int lba, int n, uint32_t bytes, uint32_t *t_wait)
+/* read n packed sectors into the slot's tail and decode them to the group's
+ * start (dst) as they arrive (a token is at most 129 bytes, so a token is
+ * only decoded once the sectors holding it are in) */
+static int read_unpack(int lba, int n, uint32_t bytes, uint8_t *dst, uint32_t *t_wait)
 {
     CdlLOC loc;
     int tries;
     uint8_t *tmp = __ovl_slot_end - (uint32_t)n * 2048;
     for (tries = 0; tries < 4; tries++) {
-        uint8_t *d = __ovl_slot, *end = __ovl_slot + bytes;
+        uint8_t *d = dst, *end = dst + bytes;
         const uint8_t *src = tmp;
         int left;
         CdIntToPos(lba, &loc);
@@ -135,7 +161,7 @@ static int read_unpack(int lba, int n, uint32_t bytes, uint32_t *t_wait)
                 continue;
             }
             while (d < end && src && src < avail)
-                src = unlz_token(src, &d, __ovl_slot, end);
+                src = unlz_token(src, &d, dst, end);
         }
         if (CdReadSync(0, 0) < 0 || !src || d != end)
             continue;
@@ -158,13 +184,13 @@ static void load(int g)
          * load takes as long as reading ~30% fewer sectors (ovl_pack.py
          * only packs a group whose output never overtakes its input) */
         n = (s_grp[g].packed + 2047) / 2048;
-        while (!read_unpack(s_lba + (int)s_grp[g].sector, (int)n, s_grp[g].bytes, &t1)) {
+        while (!read_unpack(s_lba + (int)s_grp[g].sector, (int)n, s_grp[g].bytes, s_grp[g].dst, &t1)) {
             dbg("ovl: read error, group %d (%s), retrying\n", g, ps1_ovl_name[g]);
             VSync(30);
         }
     } else {
         n = (s_grp[g].bytes + 2047) / 2048;
-        while (!read_sectors(s_lba + (int)s_grp[g].sector, (int)n, __ovl_slot)) {
+        while (!read_sectors(s_lba + (int)s_grp[g].sector, (int)n, s_grp[g].dst)) {
             dbg("ovl: read error, group %d (%s), retrying\n", g, ps1_ovl_name[g]);
             VSync(30);
         }
@@ -172,6 +198,8 @@ static void load(int g)
     FlushCache();                         /* new code in the slot */
     s_cur = g;
     s_loads++;
+    if (borrows(g))
+        g_ovl_borrow_gen++;               /* H3: world.c / view3d.c rebuild */
     dbg("ovl: %s (%u KB) in %u ms (%u ms waiting for the drive)\n", ps1_ovl_name[g],
         (unsigned)(s_grp[g].bytes / 1024), (unsigned)((timer_us() - t0) / 1000),
         (unsigned)(t1 / 1000));
@@ -180,6 +208,8 @@ static void load(int g)
 int plat_scene_code(const DoomoScene *s)
 {
     int prev = s_cur, g = group_of(s);
+    if (s_depth < OVL_NEST)
+        s_run[s_depth] = (uint8_t)g;
     s_depth++;
     if (g && g != s_cur)
         load(g);
@@ -214,18 +244,20 @@ void overlay_init(void)
         return;
     }
     n = h[2];
-    if (h[0] != OVL_MAGIC || h[1] != 2 || n != ps1_ovl_ngroups || n > OVL_MAXG ||
-        h[3] != (uint32_t)__ovl_slot || h[4] > slot) {
+    if (h[0] != OVL_MAGIC || h[1] != 3 || n != ps1_ovl_ngroups || n > OVL_MAXG ||
+        h[3] != (uint32_t)__ovl_slot || h[4] > slot + 65536u) {
         dbg("ovl: OVL.BIN does not match this EXE (magic %08x, %u groups, slot %08x)\n",
             (unsigned)h[0], (unsigned)n, (unsigned)h[3]);
         return;
     }
     for (i = 1; i <= n; i++) {
-        s_grp[i].sector = h[5 + (i - 1) * 3];
-        s_grp[i].bytes = h[6 + (i - 1) * 3];
-        s_grp[i].packed = h[7 + (i - 1) * 3];
-        if (s_grp[i].bytes > slot) {
-            dbg("ovl: group %u is bigger than the slot\n", (unsigned)i);
+        s_grp[i].sector = h[5 + (i - 1) * 4];
+        s_grp[i].bytes = h[6 + (i - 1) * 4];
+        s_grp[i].packed = h[7 + (i - 1) * 4];
+        s_grp[i].dst = (uint8_t *)h[8 + (i - 1) * 4];   /* the slot, or below it (H3) */
+        if (s_grp[i].dst > __ovl_slot || s_grp[i].dst + s_grp[i].bytes > __ovl_slot_end ||
+            __ovl_slot - s_grp[i].dst > 65536) {
+            dbg("ovl: group %u does not fit the slot\n", (unsigned)i);
             return;
         }
     }
@@ -239,5 +271,6 @@ void overlay_init(void)
 
 void overlay_init(void) {}
 uint32_t overlay_loads(void) { return 0; }
+int ovl_borrow_take(uint32_t *seen) { (void)seen; return 0; }   /* H3: nothing borrows */
 
 #endif

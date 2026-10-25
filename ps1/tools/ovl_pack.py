@@ -5,13 +5,14 @@
     ovl_pack.py game.elf OVL.BIN
 
 The ELF's output sections .ovl_01 .. .ovl_NN (ovl_plan.py's linker
-script) all have the slot as their address. OVL.BIN, one 2048-byte
-sector per unit:
+script) have the slot as their address, except a group that borrows the
+.bss below it (H3: the house, ovl_plan.py BORROW), linked at
+__ovl_borrow. OVL.BIN, one 2048-byte sector per unit:
 
     sector 0   header, little-endian u32s:
-               "DOVL", version 2, N, slot address, biggest group size,
+               "DOVL", version 3, N, slot address, biggest group size,
                then per group 1..N: first sector, size in bytes, packed
-               size (0 = stored raw)
+               size (0 = stored raw), load address
     sector k   group bytes, every group starts on a sector boundary;
                packed with tools/packart.py's LZ (optimal parse) when that
                saves sectors: overlay.c reads the packed sectors into the
@@ -94,28 +95,35 @@ def main(argv):
     if [g[0] for g in groups] != list(range(1, len(groups) + 1)):
         print("ovl_pack: overlay sections are not .ovl_01 .. .ovl_%02d" % len(groups))
         return 1
-    slots = {g[1] for g in groups}
-    if len(slots) != 1:
-        print("ovl_pack: overlays are not all linked at the same address")
-        return 1
-    slot = slots.pop() if groups else 0
+    slot = symbol(data, b"__ovl_slot") or 0
+    borrow = symbol(data, b"__ovl_borrow")
+    slot_end = symbol(data, b"__ovl_slot_end") or 0
+    for g in groups:
+        # H3: the slot, or __ovl_borrow for a borrowing group
+        if g[1] != slot and (borrow is None or g[1] != borrow):
+            print("ovl_pack: .ovl_%02d is linked at 0x%08x, not the slot (or __ovl_borrow)" % (g[0], g[1]))
+            return 1
+        if g[1] + len(g[2]) > slot_end:
+            print("ovl_pack: .ovl_%02d ends past the slot" % g[0])
+            return 1
     biggest = max((len(g[2]) for g in groups), default=0)
-    slot_end = symbol(data, b"__ovl_slot_end")
-    slot_bytes = slot_end - slot if slot_end else 0
-    hdr = [0x4C564F44, 2, len(groups), slot, biggest]
+    hdr = [0x4C564F44, 3, len(groups), slot, biggest]
     out = bytearray()
     sector = 1
     raw_total = 0
-    for _, _, body in groups:
+    for _, dst, body in groups:
         packed = lz(body) if body else b""
         assert unlz(packed, len(body)) == body
         raw_total += len(body)
         if (len(packed) + SECTOR - 1) // SECTOR < (len(body) + SECTOR - 1) // SECTOR and \
-                in_place_ok(packed, slot_bytes):
-            hdr += [sector, len(body), len(packed)]
+                in_place_ok(packed, slot_end - dst):
+            hdr += [sector, len(body), len(packed), dst]
             body = packed
         else:
-            hdr += [sector, len(body), 0]
+            if dst + (len(body) + SECTOR - 1) // SECTOR * SECTOR > slot_end:
+                print("ovl_pack: .ovl at 0x%08x cannot be read raw: its last sector passes the slot" % dst)
+                return 1
+            hdr += [sector, len(body), 0, dst]
         pad = (-len(body)) % SECTOR
         out += body + b"\0" * pad
         sector += (len(body) + pad) // SECTOR

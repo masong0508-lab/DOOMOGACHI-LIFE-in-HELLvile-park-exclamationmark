@@ -7,6 +7,12 @@
 
 R3Cam   g_cam;
 R3Stats g_r3stats;
+/* --- H3: the house clips each model polygon to the player's box
+ * (room.c draws its moving things into one table, each with its own
+ * drawing area): when set, a copy of this DR_AREA precedes every
+ * r3_tri_g polygon --- */
+const uint32_t *g_r3_area;
+/* --- end H3 --- */
 
 /* the GTE load macros do not tell the compiler they read memory */
 #define MEMBAR() __asm__ volatile("" ::: "memory")
@@ -557,7 +563,19 @@ void r3_tri_g(R3V *a, R3V *b, R3V *c, int bias)
     *(uint32_t *)&p->x0 = a->sxy;
     *(uint32_t *)&p->x1 = b->sxy;
     *(uint32_t *)&p->x2 = c->sxy;
-    addPrim(g_cam.ot + ot_index(a->sz + b->sz + c->sz + c->sz, bias), p);
+    {
+        uint32_t *slot = g_cam.ot + ot_index(a->sz + b->sz + c->sz + c->sz, bias);
+        addPrim(slot, p);
+        if (g_r3_area) {                                    /* H3 */
+            uint32_t *ar = (uint32_t *)gfx_alloc(12);
+            if (ar) {
+                ar[0] = 0x02000000u;
+                ar[1] = g_r3_area[0];
+                ar[2] = g_r3_area[1];
+                addPrim(slot, ar);
+            }
+        }
+    }
     g_r3stats.polys++;
 }
 

@@ -29,6 +29,14 @@ when a scene renders below 30 fps:
                     the game runs -> OUT/prof_NAME.txt (harness/prof.py
                     turns it into a per-function table with the map)
     expect-log TEXT    fail unless TEXT appears in the TTY log
+  Story / house commands (H3; native runner semantics, SPEC R20):
+    seed N             doomo_town.seed = N, doomo_rng reseeded, plat_entropy()
+                       pinned to N (the next town_new() matches native)
+    expect-flag F [V]  fail unless story flag F is V (default 1)
+    expect-text "T"    fail unless the dialogue box's line contains T
+    story-fp [HEX]     print story_fingerprint(); with HEX, fail unless equal
+    room-test N        SCENE_HOME draws house test layout N (room.c)
+    expect-fps MIN NAME  fail if the last `fpsend NAME` measured below MIN
 
 Buttons: A B X Y L R L2 R2 START SELECT UP DOWN LEFT RIGHT
 (PS1: Cross Circle Square Triangle L1 R1 L2 R2 Start Select D-pad).
@@ -73,6 +81,8 @@ BUTTONS = {
     "CROSS": "CROSS", "CIRCLE": "CIRCLE", "SQUARE": "SQUARE", "TRIANGLE": "TRIANGLE",
 }
 VSYNC_PER_TICK = 2
+FPS_GATES = []      # (line, min fps, name) from expect-fps (H3)
+SAME_SHOTS = []     # (line, a, b, max differing pixels) from expect-same (H3)
 
 
 def write_png(path, w, h, rgb):
@@ -121,6 +131,25 @@ def convert_shot(raw_path, txt_path, png_path):
         rgb = bgr555_to_rgb(data, w, h)
     write_png(png_path, w, h, rgb)
     return True
+
+
+def read_png_rgb(path):
+    """(w, h, rgb bytes) of a PNG written by write_png (8-bit RGB, filter 0)"""
+    data = open(path, "rb").read()
+    pos, w, h, idat = 8, 0, 0, b""
+    while pos < len(data):
+        n = struct.unpack(">I", data[pos:pos + 4])[0]
+        t = data[pos + 4:pos + 8]
+        if t == b"IHDR":
+            w, h = struct.unpack(">II", data[pos + 8:pos + 16])
+        elif t == b"IDAT":
+            idat += data[pos + 8:pos + 8 + n]
+        pos += 12 + n
+    raw = zlib.decompress(idat)
+    out = bytearray()
+    for y in range(h):
+        out += raw[y * (w * 3 + 1) + 1:(y + 1) * (w * 3 + 1)]
+    return w, h, bytes(out)
 
 
 def convert_vram(path, png_path):
@@ -224,6 +253,25 @@ def compile_script(lines, lockstep=True):
             cmds.append("mark no-stubs line %d" % ln)
         elif op == "expect-log":
             expect.append(" ".join(parts[1:]))
+        # --- H3: story / house commands (SPEC R20, C2), as on native ---
+        elif op == "seed":
+            v = int(arg, 0) & 0xffffffff if arg else 0
+            cmds.append(hcmd(op, v - (1 << 32) if v >= (1 << 31) else v, arg))
+        elif op == "expect-flag":
+            cmds.append(hcmd(op, num(1, -1), parts[2] if len(parts) > 2 else "1"))
+        elif op == "expect-text":
+            cmds.append(hcmd(op, 0, arg[:63]))
+        elif op == "story-fp":
+            cmds.append(hcmd(op, 0, arg[2:] if arg.lower().startswith("0x") else arg))
+        elif op == "room-test":
+            cmds.append(hcmd(op, int(arg, 0) if arg else 0, arg))
+        elif op == "expect-fps":
+            # expect-fps MIN NAME: the fps measured by the last `fpsend NAME`
+            FPS_GATES.append((ln, float(parts[1]), parts[2] if len(parts) > 2 else ""))
+        elif op == "expect-same":
+            # expect-same A B [MAX]: shots A and B differ in at most MAX pixels
+            SAME_SHOTS.append((ln, parts[1], parts[2], int(parts[3]) if len(parts) > 3 else 0))
+        # --- end H3 ---
         else:
             raise SystemExit("line %d: unknown command %s" % (ln, op))
     cmds.append("waitf 1")
@@ -330,7 +378,7 @@ def main():
     if "HARNESS: END" not in tty_text:
         fails.append("harness did not finish (emulator crash?) rc=%s" % rc)
     for pat in ("Unrecoverable error", "*** PANIC", "Segmentation fault",
-                "Exception", "assert"):
+                "Exception", "assert", "ovl: ERROR"):
         if pat in tty_text:
             fails.append("TTY contains '%s'" % pat)
     for e in a.expect + script_expect:
@@ -346,6 +394,29 @@ def main():
     if a.assert_no_stubs and stubs:
         fails.append("stubs ran (--assert-no-stubs): " + ", ".join(stubs))
     fps = re.findall(r"HARNESS: fps (\S+) ([0-9.]+)", tty_text)
+    # --- H3: expect-fps MIN NAME ---
+    for ln, lo, name in FPS_GATES:
+        got = [float(v) for n, v in fps if n == name]
+        if not got:
+            fails.append("line %d: expect-fps: no fps measured for %s" % (ln, name))
+        elif got[-1] < lo:
+            fails.append("line %d: fps %s %.2f below %.1f" % (ln, name, got[-1], lo))
+    # expect-same A B [MAX]: two shots of the same frame drawn two ways
+    for ln, sa, sb, most in SAME_SHOTS:
+        pa, pb = os.path.join(out, sa + ".png"), os.path.join(out, sb + ".png")
+        if not os.path.exists(pa) or not os.path.exists(pb):
+            fails.append("line %d: expect-same: missing shot %s or %s" % (ln, sa, sb))
+            continue
+        wa, ha, ra = read_png_rgb(pa)
+        wb, hb, rb = read_png_rgb(pb)
+        if (wa, ha) != (wb, hb):
+            fails.append("line %d: expect-same: %s is %dx%d, %s is %dx%d" % (ln, sa, wa, ha, sb, wb, hb))
+            continue
+        diff = sum(1 for i in range(0, len(ra), 3) if ra[i:i + 3] != rb[i:i + 3])
+        print("run.py: same %s %s: %d pixel(s) differ" % (sa, sb, diff))
+        if diff > most:
+            fails.append("line %d: %s and %s differ in %d pixel(s) (max %d)" % (ln, sa, sb, diff, most))
+    # --- end H3 ---
     perf = re.findall(r"perf: .*", tty_text)
 
     print("run.py: %d screenshot(s) in %s" % (shots, out))
