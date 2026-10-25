@@ -1,0 +1,35 @@
+{
+ "cue": "theme_eyecatch_in",
+ "bpm": 150.0,
+ "meter": 4,
+ "bars": 3,
+ "sections": [
+  [
+   "riff",
+   1,
+   2
+  ],
+  [
+   "its_fine",
+   3,
+   1
+  ]
+ ],
+ "offset_smp": 0,
+ "frames_per_bar": 48.0,
+ "smp_per_bar": 76800.0,
+ "source": "score:pilot.eyecatch_in",
+ "bar_smp": [
+  0,
+  76800,
+  153600,
+  230400
+ ],
+ "bar_frame": [
+  0,
+  48,
+  96,
+  144
+ ],
+ "named_notes": {}
+}

@@ -30,7 +30,7 @@ from . import designs, foley, gamesfx
 
 SR = 48000
 KINDS = ("sfx", "fol", "amb")
-ID_RE = re.compile(r"^(FX|FOL|AMB|PET)_[A-Za-z0-9_]+$")
+ID_RE = re.compile(r"^(FX|FOL|AMB|PET|MX)_[A-Za-z0-9_]+$")
 
 
 @dc.dataclass
@@ -56,6 +56,15 @@ class Entry:
     @property
     def stereo(self) -> bool:
         return "stereo" in self.kv or self.kv.get("stereo") == "yes"
+
+
+_ENT_CACHE = {}
+
+
+def _ENTS():
+    if "e" not in _ENT_CACHE:
+        _ENT_CACHE["e"] = load_entries()
+    return _ENT_CACHE["e"]
 
 
 def load_entries(path=None) -> dict:
@@ -89,6 +98,27 @@ def render(e: Entry) -> np.ndarray:
         fn = designs.DESIGNS[ref]
         from .synth import rng
         y = fn(rng(e.id, ref))
+    elif kind == "alias":
+        # alias:<ID>[:semis[:seconds]]  another library sound, varispeed by semitones and
+        # optionally cut to a length (a staged shot's name for a sound the library has).
+        parts = ref.split(":")
+        tgt = _ENTS().get(parts[0])
+        if tgt is None or tgt.src.startswith("alias:"):
+            raise S.ShwError(f"{e.where}: alias target {parts[0]} missing or itself an alias")
+        y = np.asarray(render(tgt), dtype=float)
+        semis = float(parts[1]) if len(parts) > 1 and parts[1] else 0.0
+        if semis:
+            from .synth import pitch_shift_resample
+            ratio = 2 ** (semis / 12)
+            y = (pitch_shift_resample(y, ratio) if y.ndim == 1 else
+                 np.stack([pitch_shift_resample(y[:, k], ratio) for k in range(y.shape[1])], 1))
+        if len(parts) > 2 and parts[2]:
+            n = int(float(parts[2]) * SR)
+            y = y[:n].copy()
+            k = min(len(y), int(0.03 * SR))
+            if k:
+                fade = np.linspace(1, 0, k)
+                y[-k:] *= fade if y.ndim == 1 else fade[:, None]
     elif kind == "foley":
         if ref.startswith("crayon"):
             y = foley.crayon_span(36, seed=1)              # the library take: a 36-f stroke
@@ -152,6 +182,8 @@ def build(ids=None, verbose=True):
 def sources(e: Entry) -> list:
     """AUD-LIC keys (show/lib/licences/licences.toml)."""
     kind, _, ref = e.src.partition(":")
+    if kind == "alias":
+        return sources(_ENTS()[ref.split(":")[0]])
     if kind in ("synth", "piezo"):
         return ["game:audio_fx.c"]
     if kind == "sfxgen":
