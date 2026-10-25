@@ -541,7 +541,7 @@ def timeline(ep, res, compilers):
                 "waivers": c.waivers, "asserts": getattr(c, "asserts_done", []), "notes": c.notes,
                 "ad": c.ad, "provisional": c.provisional, "chunk_bytes": getattr(c, "chunk_bytes", 0),
                 "badge": getattr(c, "badge", "PS1-LEGAL"),
-                "events": sorted(c.events_tl, key=lambda e: (e["f"], e["line"]))})
+                "events": sorted(c.events_tl, key=lambda e: (e["f"], e["line"] if isinstance(e["line"], int) else -1))})
             if getattr(c, "cam_drift", None):
                 d = c.cam_drift
                 rec["camera"] = {"drift_px_per_f": [float(d["vx"]), float(d["vy"])], "zero_shot_f": d["zero"],

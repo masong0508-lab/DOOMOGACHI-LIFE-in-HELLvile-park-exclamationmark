@@ -5,3 +5,16 @@ cue mingle_box src=mml:core/src/mml_mingle.c bpm=96 meter=4/4 key=F       # pars
   # GM note 70 is the kit's synthesised shaker
   # 96 bpm: one beat = 18.75 f = 30,000 smp; one bar = 75 f = 120,000 smp (bars land on frames)
 end
+
+# MINGLE v2 (AUDIO, Oct 25): the cues co.shw now names (copied from series/music.shw)
+cue mingle_full src=score:mingle.mingle form=full reps=3 bpm=150 meter=4/4 key=Cm desc="MINGLE v2 (the creator's pad1.mid), music box, full phrase x3: CO-1, CO-2"
+  # 150 bpm: beat = 12 f = 19,200 smp; bar = 48 f = 76,800 smp. Box = written pitch +24.
+  # beats 0-15: C Bb G C | Bb G Bb Ab | F Bb Ab F | Ab G Eb C(3 beats) | rest | 18 C 19 Bb 20 Ab 21 Eb
+  # 3 passes (CO-1/CO-2 = 31 s); the named notes are pass 3's (CO-2 mutes at its beat 20.75)
+  note mayors_note bar=17.4.75 phrase=20.75 pitch=Ab5 hum=Ab3
+  note plus_one_note bar=18.2 phrase=21 pitch=Eb5 hum=Eb3
+end
+
+cue mingle_interrupt src=score:mingle.mingle form=interrupt bpm=150 meter=4/4 key=Cm desc="MINGLE v2 (pad1interrupt.mid), music box, cut off before the Eb: CO-4"
+  # as full to beat 18, then Bb at 19.25 and Ab at 20.75, then nothing: the hum takes over
+end
