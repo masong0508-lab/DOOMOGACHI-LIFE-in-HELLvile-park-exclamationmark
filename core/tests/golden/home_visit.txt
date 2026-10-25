@@ -1,0 +1,5 @@
+# home_visit_gen over all 1000 ids of a TOWN_POP_RANDOM town (core/tests/
+# test_home_visit.c): seed fnv. Regenerate with
+#   $(BUILD)/tests --update-golden home_visit_determinism
+7 90a4bd8c
+12648430 aac08646

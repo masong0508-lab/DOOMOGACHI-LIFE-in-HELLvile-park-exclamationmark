@@ -133,6 +133,7 @@ int  home_remove_only_on(void);
 void home_reset(void);               /* the chunk's reset()                         */
 void home_move_in(void);             /* moved in + the Living Room with its fixed slots */
 void home_unlock_room(int room);
+void home_story_rooms(void);        /* (H4 M2) open the rooms the story has reached */
 int  home_room_open(int room);
 /* Copy a room (from the state, or the room's empty template when there is
  * no state) / commit a working copy back. */
@@ -380,8 +381,83 @@ void room_ref_draw(const DoomoRoomView *v);
  * none) or too big for buf. */
 int  room_ref_sprite(int furn, int facing, int frame, int pa, int pb, int lvl,
                      uint8_t *buf, unsigned cap, DoomoImage *img, int *ox, int *oy);
+/* The catalog / HomeMart preview where there is no sprite (the PS1 links
+ * none): the piece's prims as shaded iso blocks, a little maquette, centred
+ * in (x, y, w, h) at 1x or 2x. 0 = nothing to draw. */
+int  room_ref_maquette(int furn, int pa, int pb, int x, int y, int w, int h);
 /* Fill a render-ready DoomoRoomObj from a room object (catalog paints
  * resolved, z in px). */
 void home_obj_view(const HomeObj *o, DoomoRoomObj *out);
+
+/* ---- H4 M2: home_visit.c (HF sec.3; SPEC H4) ----------------------------------
+ * The 1000 citizens' rooms are generated, never saved: seed = town seed ^
+ * id * 0x9E3779B1 ^ HOME_CTX_VISIT, then the roster record and its live
+ * state pick the template, paints, pieces and the variant. Gifts the
+ * player left (HOME.gifts) override tiles. */
+enum { HVK_HOME, HVK_POSSESSED, HVK_GHOST, HVK_SEALED, HVK_AWAY, HVK_VACANT, HVK_COUNT };
+enum { HWANT_SEAT, HWANT_PINK, HWANT_PLANT, HWANT_LAMP, HWANT_PLUSH, HWANT_SPOOKY,
+       HWANT_CUTE, HWANT_BOOK, HWANT_SNACK, HWANT_MUSIC, HWANT_HOBBY, HWANT_COLOR,
+       HWANT_RUG, HWANT_WALL, HWANT_TABLE, HWANT_GAME, HWANT_COUNT };
+/* reactions (HF sec.3.4, 5.3): what the scene plays when a citizen sees a piece */
+enum { HVR_NONE, HVR_DOUBLE_TAKE, HVR_DAWNING, HVR_DEADPAN, HVR_HEARTS, HVR_BANG,
+       HVR_FLEE, HVR_EW, HVR_SIT, HVR_NOD, HVR_COUNT };
+typedef struct HomeVisit {
+    uint16_t id;
+    uint8_t  kind, room;             /* HVK_*, the template (HOME_ROOM_TOWERS_7B / PITS_FLAT) */
+    uint8_t  daylight, tint, music;  /* 0..15 (0 = the clock), TINT_*, SONG_*        */
+    uint8_t  layout;                 /* 0 tidy, 1 chaotic, 2 shy, 3 show-off          */
+    uint8_t  wants[3];               /* HWANT_* this week                            */
+    uint8_t  gifts;                  /* gifts of the player placed                    */
+    uint8_t  hobby_obj;              /* index of their hobby piece, 0xFF none         */
+    uint8_t  protect;                /* 1: the fear's protective piece was added      */
+    uint32_t ops;                    /* work done (the test keeps it < 60k)           */
+} HomeVisit;
+int  home_visit_gen(int id, HomeRoom *out, HomeVisit *info);   /* 0: no such citizen */
+/* the same, shown as variant `kind` (HVK_POSSESSED .. HVK_AWAY; HOME_ARG_VISIT_AS) */
+int  home_visit_gen_as(int id, int kind, HomeRoom *out, HomeVisit *info);
+/* pieces that set off fear `fear` (FEAR_COUNT entries, -1 terminated) */
+int  home_visit_fear_hit(int fear, int furn);
+/* the room fails the citizen's fear as a whole (The Dark: no lamp lit) */
+int  home_visit_fear_room(const DoomoResident *r, const HomeRoom *room);
+void home_visit_wants(int id, uint8_t out[3]);       /* weekly, (day / 7) ^ id      */
+int  home_visit_want_met(int want, const DoomoResident *r, int furn, int pa);
+const char *home_visit_want_text(int want);
+/* What `r` does on seeing `furn` (painted pa), and the line they say. */
+int  home_visit_react(const DoomoResident *r, int furn, int pa, const char **line);
+/* Leave a gift: placed in the generated room `room` (already checked by
+ * home_fit), one is taken from storage. Returns the gift slot, -1 full. */
+int  home_visit_gift(int id, int furn, int x, int y, int rot, int pa);
+int  home_visit_gift_count(int id);
+/* Log a visit: the visited bit, the visitor log, the trophies. */
+void home_visit_log(int id);
+int  home_visited(int id);
+int  home_visit_recent(int i);                       /* the log, -1 empty           */
+/* After a gift: friendship +8 per want met this week; all three met gives
+ * their thank-you piece once per week. Returns the HWANT_* bits met. */
+int  home_visit_thank(int id, int furn, int pa, int *thanks_furn);
+
+/* ---- H4 M2: home_mart.c (HomeMart, the Black Market, the furniture bench) ----- */
+#define HOME_MART_STOCK 12
+enum { HMT_STOCK, HMT_SEASON, HMT_LAST_SEASON, HMT_WANTS, HMT_SELL, HMT_COUNT };
+typedef struct HomeMartRow {
+    uint16_t furn, price;
+    uint8_t  locked, deal, owned, tab;
+} HomeMartRow;
+/* Today's rows of tab `tab` (HMT_*); black = the Black Market. */
+int  home_mart_rows(int tab, int black, HomeMartRow *out, int cap);
+int  home_mart_season(void);                         /* 0 spring .. 3 winter        */
+int  home_mart_black_open(void);                     /* night, or by day after Ch4  */
+int  home_mart_buy(const HomeMartRow *row);          /* 1 bought                    */
+int  home_mart_sell(int furn);                       /* 40%; 0 when it cannot be sold */
+/* The Workshop furniture bench: recipe i -> the piece and its items. */
+#define HOME_BENCH_RECIPES 24
+typedef struct HomeBenchRecipe { uint16_t furn; uint8_t item[3], n[3]; } HomeBenchRecipe;
+extern const HomeBenchRecipe home_bench_recipes[HOME_BENCH_RECIPES];
+int  home_bench_can(int i);
+int  home_bench_make(int i, int grade);              /* grade 0..3 (S = 3: gold paint B) */
+/* Room expansion (Town Hall "Expand"): the next room and its price, -1 none. */
+int  home_expand_next(int *price);
+int  home_expand_buy(void);                          /* the room unlocked, -1 */
+extern uint8_t home_mart_expanded;                   /* the room the house shows off next, 0xFF */
 
 #endif

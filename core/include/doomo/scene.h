@@ -35,6 +35,15 @@ uint32_t scene_ticks(void);
  * scene.c) do nothing. Never call a scene's functions directly. */
 int  plat_scene_code(const DoomoScene *s);
 void plat_scene_code_end(int token);
+/* --- H4 (additive): a scene's code may also come in PARTS that share one
+ * address range (ps1/tools/ovl_plan.py PARTS): the code of one mode of a
+ * scene. Before the scene's own code calls into a part it asks for it;
+ * after that, only while that mode runs, may it call the part's functions.
+ * The default (weak, scene.c) does nothing. --- */
+enum { PLAT_PART_NONE, PLAT_PART_HOME_VISIT, PLAT_PART_HOME_DEFEND, PLAT_PART_HOME_MART,
+       PLAT_PART_HOME_ROOMTEST /* the PS1 renderer's harness layouts */ };
+void plat_code_part(int part);
+/* --- end H4 --- */
 
 /* ---- shared scene scratch (perf pass, additive) --------------------------
  * On the GBA every byte of .bss is EWRAM, and most scenes' big buffers

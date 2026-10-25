@@ -188,6 +188,14 @@ static void run(void)
     } else if (!strcmp(c, "room-test")) {
         g_room_test = (uint8_t)n;
         reply(1, "room-test", a);
+    /* H4: the house scripts' clock and purse (core/native/runner_main.c);
+     * `home-room` stays native-only: it would pull home.c resident */
+    } else if (!strcmp(c, "clock")) {
+        doomo_town.minute = (uint16_t)(((n % 1440) + 1440) % 1440);
+        reply(1, "clock", a);
+    } else if (!strcmp(c, "money")) {
+        doomo_town.money = (uint32_t)n;
+        reply(1, "money", a);
     /* --- end H3 --- */
     } else {
         reply(0, "unknown command", c);

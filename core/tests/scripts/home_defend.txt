@@ -1,0 +1,45 @@
+# assert-no-stubs
+# Hold the Door (H4 M2 + H1 home_defend.c; HF sec.10.3, 11.2; SPEC R11):
+# Ep 3.2's tutorial wave (HOME_ARG_DEFEND(HDT_TUTORIAL)): the lanes, the
+# door's HP, A at the door repairs it; then the Ep 3.7 siege from wave 3
+# (HOME_ARG_DEFEND_AT(HDT_SIEGE, 2)): the chimney beat freezes everything,
+# the wave runs on at double clock, dawn and the result card.
+scene TITLE
+wait 10
+push HOME 16643
+wait 20
+expect-scene HOME
+shot defend_tutorial
+# the cursor to the door (4,0): A repairs
+press UP
+wait 2
+press UP
+wait 2
+press UP
+wait 2
+press RIGHT
+wait 60
+shot defend_tutorial_imps
+press A
+wait 4
+shot defend_repair
+wait 600
+shot defend_tutorial_late
+press A
+wait 10
+expect-scene TITLE
+# --- the siege, wave 3 ---
+push HOME 25091
+wait 30
+shot defend_w3
+wait 200
+shot defend_imps
+wait 12
+shot defend_freeze
+wait 18
+shot defend_double_clock
+wait 600
+shot defend_dawn
+press A
+wait 10
+expect-scene TITLE

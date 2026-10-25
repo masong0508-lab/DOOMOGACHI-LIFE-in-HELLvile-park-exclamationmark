@@ -430,26 +430,52 @@ lamp pools and contact shadows, a camera on a `TW_BOING` spring with the
   drawing area. `room-test 6..9` compares this path with the single full
   pass pixel for pixel (1 pixel differs per layout, where two equal-depth
   polygons meet at a clip edge).
+* **The resting player (H4).** While the chibi stands still it is drawn
+  into the backdrop with the furniture (`model.c` `g_model_hold` keeps its
+  walk cycle where it was) and again only inside the clips of what moves
+  over it, without its contact shadow. The Hell-Cellar with the player at
+  the back went from 17 to 30 fps with it.
 * **Memory.** `room.c` belongs to the `home` overlay group. That group is
-  linked 41,476 B *below* the slot, over the `.bss` tables of `world.c`
-  and `view3d.c` (`ovl_plan.py` BORROW, `OVL.BIN` v3 with a load address
-  per group): it can be 41 KB bigger than the slot allows without moving
-  the slot. `world_sync()` and `plat_view3d()` call `ovl_borrow_take()`
-  before they touch those tables. It marks the group gone (it is read
-  again when a house scene runs next); `world_sync()` then rebuilds its
-  tables and `plat_view3d()` clears its visibility stamps. The resting
-  pieces' boxes (5 KB) go in `DoomoRoomView.plat_cache`.
+  linked 45,572 B *below* the slot, over the `.bss` tables of `world.c`
+  and `view3d.c` and the arena bot's path-search scratch (`combat_bot.c`:
+  cleared and refilled by every search) (`ovl_plan.py` BORROW, `OVL.BIN`
+  v3 with a load address per group): it can be 45 KB bigger than the slot
+  allows without moving the slot. `world_sync()` and `plat_view3d()` call
+  `ovl_borrow_take()` before they touch those tables. It marks the group
+  gone (it is read again when a house scene runs next); `world_sync()`
+  then rebuilds its tables and `plat_view3d()` clears its visibility
+  stamps. The resting pieces' boxes (5 KB) go in
+  `DoomoRoomView.plat_cache`.
+* **Parts (H4).** The group's mode-only code is linked into PARTS that
+  share one range after its common code (`ovl_plan.py` PARTS, `OVL.BIN`
+  entries after the groups): `visit` (`home_visit.c`, 8 KB), `defend`
+  (`home_defend.c`, 7 KB), `mart` (`home_mart.c`, 11 KB, `SCENE_HOME_MART`'s
+  entry points: loaded with the scene) and `roomtest` (the harness layouts,
+  `room_test.c`, 2 KB). The house's common code asks for a part with
+  `plat_code_part()` (scene.h; `overlay.c`) before it calls into it; a
+  part's section that another part reaches becomes common, the parts are
+  `NOCROSSREFS`, and `--report` (with `OVL_PART_EDGES=1`) lists every call
+  from the common code into a part for review. A part loads in 70-95 ms.
+  The group costs 153 KB common + 11 KB (the biggest part) instead of
+  189 KB. Furniture names and descriptions are Huffman-packed
+  (`doomo_furn_text()`), and `gfx_upload_now()` stages its rows in the
+  other frame's display list instead of 4 KB of its own `.bss`.
 * **Harness.** `harness/scripts/home.txt`: `room-test N` (hcmd.c) swaps in
   fixed layouts, `seed N` pins `plat_entropy()`, `expect-fps`, and
-  `expect-same A B MAX` (the parity pairs).
+  `expect-same A B MAX` (the parity pairs); then the real Hold the Door
+  wave 3, a visit and HomeMart, each checking its part loaded
+  (`expect-log ovl: home.defend`). `clock H M` and `money N` play the
+  core's house scripts (`home-room` stays native-only).
 
-| scene (Redux, game disc) | patch `room.c` (single pass) | H3 | gate |
-|---|---:|---:|---:|
-| `home_steady` (6x6, 3 animated pieces, 3 walkers) | 19.3 | 29.9 | 28 |
-| `home_orbit` (the camera turning) | 17.3 | 28.7 | 22 |
-| `home_cellar_full` (8x8, 40 pieces, dim) | 11.3 | 25.7 | 24 |
-| `home_modal` (Score panel over the room) | 18.8 | 29.2 | 26 |
-| `home_defend_stress` (8x8, 24 lit pieces, 10 walkers) | - | 21.1 | 19 (floor) |
+| scene (Redux, game disc) | patch `room.c` (single pass) | H3 | H4 | gate |
+|---|---:|---:|---:|---:|
+| `home_steady` (6x6, 3 animated pieces, 3 walkers) | 19.3 | 29.9 | 29.9 | 28 |
+| `home_orbit` (the camera turning) | 17.3 | 28.7 | 28.6 | 22 |
+| `home_cellar_full` (8x8, 40 pieces, dim) | 11.3 | 25.7 | 30.0 | 24 |
+| `home_modal` (Score panel over the room) | 18.8 | 29.2 | 29.8 | 26 |
+| `home_defend_stress` (8x8, 24 lit pieces, 10 walkers) | - | 21.1 | 20.8 | 19 (floor) |
+| `home_defend_w3` (Hold the Door, the siege's wave 3) | - | - | 30.1 | 22 |
+| `home_visit` (Nana Puddin's flat) | - | - | 30.2 | 28 |
 
 ## 8. Audio
 

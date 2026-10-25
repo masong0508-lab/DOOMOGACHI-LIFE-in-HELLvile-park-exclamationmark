@@ -85,12 +85,35 @@ OVL_KINDS = (".text", ".rodata")
 # visibility stamps. They are only ever written by world_sync() and
 # plat_view3d(), and nothing of the house draws a 3D view; both call
 # ovl_borrow_take() (src/overlay.c) first, which unloads the house and has
-# them rebuilt. Object base -> its borrowed sections; then the groups that
-# load at the start of the borrowed range. ---
+# them rebuilt. A lender may also be plain scratch that its code clears
+# before every use and that only runs while the house is out (H4: the
+# combat bot's path search). Object base -> its borrowed sections; then the
+# groups that load at the start of the borrowed range. ---
 BORROW = (("world", (".bss.g_world_wtop", ".bss.g_world_corner")),
-          ("view3d", (".bss.s_vis", ".bss.s_vlist")))
+          ("view3d", (".bss.s_vis", ".bss.s_vlist")),
+          # H4: the combat bot's path search (combat_bot.c): scratch that
+          # every search clears and fills, and only combat searches
+          ("combat_bot", (".bss.first_dir", ".bss.queue", ".bss.target_bits")))
 BORROW_GROUPS = ("home",)
 # --- end H3 ---
+
+# --- H4 (for H3, SPEC C4): parts of a group. Code that only one mode of
+# a group's scene needs (a visit, Hold the Door), or only one of its
+# scenes (HomeMart), is linked into PARTS that all start where the rest
+# of the group (its common code) ends: they overlap, so the group costs its
+# common code plus its biggest part. src/overlay.c loads a part after its
+# group: for a scene whose entry points are in it (ps1_ovl_scene_part), or
+# when the group's common code asks (plat_code_part(): core part id =
+# position in the list, from 1, platform.h PLAT_PART_*). A part's section
+# that another part can reach (through any path) is common code instead,
+# and the parts are NOCROSSREFS. The common code calls into a part only
+# while that part is in (home_draw.c: H->part); --report lists those
+# edges for review. Only for BORROW_GROUPS (linked last). ---
+PARTS = {
+    "home": (("visit", r"home_visit$"), ("defend", r"home_defend$"), ("mart", r"home_mart$"),
+             ("roomtest", r"room_test$")),
+}
+# --- end H4 ---
 
 # Callbacks that never escape their group: functions whose address is taken
 # only to be called back SYNCHRONOUSLY by code of the same file, before that
@@ -118,6 +141,10 @@ LOCAL_CALLBACKS = {
     "lib_weapons": ("row",),
     # fp_roster.c: cmp_res is the comparator of fp_sort_u16() (a shell sort).
     "fp_roster": ("cmp_res",),
+    # H4: home_draw.c's menu rows: label_* go to its own draw_list_rows(),
+    # which draws the visible rows with them and returns (home group).
+    "home_draw": ("label_main", "label_catalog", "label_theme", "label_bp",
+                  "label_room", "label_group"),
 }
 
 # --- S4: registries read only by their own group (object base -> symbol).
@@ -149,7 +176,7 @@ def group_of(path):
         return "home"
     # --- end H4 ---
     # --- H3 (SPEC C3): the PS1 house renderer is house code too ---
-    if "/core/" not in path and "/src/" in path and base(path) == "room":
+    if "/core/" not in path and "/src/" in path and base(path) in ("room", "room_test"):
         return "home"
     # --- end H3 ---
     if "/core/src/" not in path:
@@ -447,8 +474,44 @@ def main(argv):
         print("ovl_plan: %d home section(s) resident; nothing but house_api.c may be" % len(pinned))
         return 1
     # --- end H3 ---
+    # --- H4: the parts (PARTS above) ---
+    part_of = {}                          # node -> (group, part number from 1)
+    for g, plist in PARTS.items():
+        if g not in groups:
+            continue
+        if g not in BORROW_GROUPS:
+            print("ovl_plan: ERROR: PARTS: %s is not a BORROW group" % g)
+            return 1
+        for k, (pname, rx) in enumerate(plist, 1):
+            for n in groups[g]:
+                if re.fullmatch(rx, base(objs[n[0]].path)):
+                    part_of[n] = (g, k)
+    # what a part's code can reach is its own or common code: anything of
+    # another part that it reaches (through common code too) becomes common
+    while True:
+        moved = set()
+        for g, plist in PARTS.items():
+            for k in range(1, len(plist) + 1):
+                start = {n for n, gk in part_of.items() if gk == (g, k)}
+                for r in closure(start, False):
+                    pk = part_of.get(r)
+                    if pk and pk[0] == g and pk[1] != k:
+                        moved.add(r)
+        if not moved:
+            break
+        for r in moved:
+            del part_of[r]
+    # --- end H4 ---
     names = sorted(groups)
     gid = {g: i + 1 for i, g in enumerate(names)}
+    # --- H4: OVL.BIN entries after the groups: the parts, in PARTS order ---
+    pid, core_part = {}, [0]
+    for g in sorted(PARTS):
+        for k in range(1, len(PARTS[g]) + 1):
+            if any(v == (g, k) for v in part_of.values()):
+                pid[(g, k)] = len(names) + len(pid) + 1
+            core_part.append(pid.get((g, k), 0))
+    # --- end H4 ---
     in_ovl = {}
     for g in names:
         for n in groups[g]:
@@ -475,7 +538,8 @@ def main(argv):
     # --- H3: the borrowed .bss (BORROW above) ---
     borrow = []                          # (obj index, its borrowed sections)
     for bname, bsecs in BORROW:
-        cand = [oi for oi, o in enumerate(objs) if base(o.path) == bname and group_of(o.path) is None]
+        # (.bss is resident whatever group the object's code is in)
+        cand = [oi for oi, o in enumerate(objs) if base(o.path) == bname]
         if len(cand) != 1:
             print("ovl_plan: ERROR: BORROW: %d objects named %s" % (len(cand), bname))
             return 1
@@ -595,13 +659,35 @@ def main(argv):
                 sec = ".ovl_%02d" % gid[g]
                 L.append("\t%s __ovl_borrow : AT (LOADADDR(%s) + SIZEOF(%s)) {\t/* %s */" % (sec, last, last, g))
                 for oi in sorted({n[0] for n in groups[g]}):
-                    ss = secs_of(oi, (".text", ".rodata"), True)
+                    ss = [s for s in secs_of(oi, (".text", ".rodata"), True) if (oi, s) not in part_of]
                     if ss:
                         L.append("\t\t%s(%s)" % (pat(oi), " ".join(ss)))
                 L.append("\t\t. = ALIGN(4);")
                 L.append("\t}")
-                L.append("\t. = MAX(__ovl_main_end, .);")
                 last = sec
+                # --- H4: its parts, all at the end of its common code ---
+                ks = sorted(k for (pg, k) in pid if pg == g)
+                if ks:
+                    L.append("\t__ovl_part_%s = .;" % g)
+                    # (an explicit start: without one the region's own
+                    # pointer, past the slot's groups, would place them)
+                    L.append("\tOVERLAY __ovl_part_%s : NOCROSSREFS AT (LOADADDR(%s) + SIZEOF(%s)) {" % (g, sec, sec))
+                    for k in ks:
+                        L.append("\t\t.ovl_%02d {\t/* %s.%s */" % (pid[(g, k)], g, PARTS[g][k - 1][0]))
+                        for oi in sorted({n[0] for n, v in part_of.items() if v == (g, k)}):
+                            ss = sorted(n[1] for n, v in part_of.items() if v == (g, k) and n[0] == oi)
+                            L.append("\t\t\t%s(%s)" % (pat(oi), " ".join(ss)))
+                        L.append("\t\t\t. = ALIGN(4);")
+                        L.append("\t\t}")
+                        last = ".ovl_%02d" % pid[(g, k)]
+                    L.append("\t} > APP_RAM")
+                    # each part's raw read is whole sectors from __ovl_part_*
+                    L.append("\t. = MAX(__ovl_main_end, MAX(__ovl_borrow + ((SIZEOF(%s) + 2047) & ~2047),"
+                             " __ovl_part_%s + ((. - __ovl_part_%s + 2047) & ~2047)));" % (sec, g, g))
+                else:
+                    # a raw (unpacked) read of it is whole sectors from __ovl_borrow
+                    L.append("\t. = MAX(__ovl_main_end, __ovl_borrow + ((. - __ovl_borrow + 2047) & ~2047));")
+                # --- end H4 ---
         # --- end H3 ---
         L.append("""\t/* whole sectors: the CD reads 2048-byte units into the slot */
 \t. = __ovl_slot + ((. - __ovl_slot + 2047) & ~2047);
@@ -622,30 +708,51 @@ def main(argv):
         rows = []
         for sct in scene_live:
             g = grp(sct)
-            sg = 0
+            sg = sp = 0
             for t, _ in edges.get(sct, ()):
                 if t in in_ovl:
                     if sg and gid[in_ovl[t]] != sg:
                         sys.exit("ovl_plan: scene %s spans two overlays" % sct[1])
                     sg = gid[in_ovl[t]]
+                    # H4: a scene whose entry points are in a part loads it
+                    if t in part_of:
+                        if sp and pid[part_of[t]] != sp:
+                            sys.exit("ovl_plan: scene %s spans two parts" % sct[1])
+                        sp = pid[part_of[t]]
             if sg:
-                rows.append((sct[1][len(".rodata."):], sg))
+                rows.append((sct[1][len(".rodata."):], sg, sp))
         C = ["/* generated by ps1/tools/ovl_plan.py - do not edit */",
              '#include "doomo/scene.h"', ""]
-        for sym, _ in rows:
+        for sym, _, _ in rows:
             C.append("extern const DoomoScene %s;" % sym)
         C.append("")
         C.append("const DoomoScene *const ps1_ovl_scene[] = {")
-        for sym, _ in rows:
+        for sym, _, _ in rows:
             C.append("    &%s," % sym)
         C.append("    0\n};")
         C.append("const unsigned char ps1_ovl_scene_grp[] = {")
-        C.append("    " + ", ".join(str(g) for _, g in rows) + (", 0" if rows else "0"))
+        C.append("    " + ", ".join(str(g) for _, g, _ in rows) + (", 0" if rows else "0"))
         C.append("};")
-        C.append("const unsigned ps1_ovl_ngroups = %d;" % len(names))
+        # --- H4: the parts are OVL.BIN entries after the groups ---
+        C.append("const unsigned char ps1_ovl_scene_part[] = {")
+        C.append("    " + ", ".join(str(p) for _, _, p in rows) + (", 0" if rows else "0"))
+        C.append("};")
+        C.append("const unsigned ps1_ovl_ngroups = %d;   /* entries: the groups, then the parts */" %
+                 (len(names) + len(pid)))
+        C.append("const unsigned ps1_ovl_nparts = %d;" % len(pid))
+        parent = [0] * (len(names) + len(pid) + 1)
+        for (g, k), e in pid.items():
+            parent[e] = gid[g]
+        C.append("const unsigned char ps1_ovl_part_group[] = { %s };   /* entry -> its group, 0 = a group */" %
+                 ", ".join(str(x) for x in parent))
+        C.append("const unsigned char ps1_ovl_part_core[] = { %s };   /* platform.h PLAT_PART_* -> entry */" %
+                 ", ".join(str(x) for x in core_part))
+        C.append("const unsigned ps1_ovl_ncore_parts = %d;" % len(core_part))
         C.append("const char *const ps1_ovl_name[] = {")
-        C.append('    "-", ' + ", ".join('"%s"' % g for g in names))
+        C.append('    "-", ' + ", ".join('"%s"' % g for g in names) +
+                 "".join(', "%s.%s"' % (g, PARTS[g][k - 1][0]) for (g, k) in sorted(pid, key=pid.get)))
         C.append("};")
+        # --- end H4 ---
         with open(a.out_c, "w") as f:
             f.write("\n".join(C) + "\n")
 
@@ -659,9 +766,28 @@ def main(argv):
             print("ovl_plan:   %-10s %4d KB  %d sections" % (g, sz // 1024, len(groups[g])))
         print("ovl_plan: overlays total %d KB" % (tot // 1024))
         if borrow:
-            print("ovl_plan: %s load%s %d B lower, over the 3D views' tables (BORROW)" % (
+            print("ovl_plan: %s load%s %d B lower, over borrowed .bss (BORROW)" % (
                 ", ".join(g for g in sorted(groups) if g in BORROW_GROUPS),
                 "s" if len(BORROW_GROUPS) == 1 else "", borrow_bytes))
+        # --- H4: the parts and the common code's calls into them ---
+        for g in sorted(PARTS):
+            if g not in groups:
+                continue
+            common = sum(node_size(n) for n in groups[g] if n not in part_of)
+            sizes = [(PARTS[g][k - 1][0], sum(node_size(n) for n, v in part_of.items() if v == (g, k)))
+                     for k in range(1, len(PARTS[g]) + 1)]
+            print("ovl_plan: %s = common %d KB + the biggest of %s; in RAM %d KB" % (
+                g, common // 1024, ", ".join("%s %d KB" % (p, s // 1024) for p, s in sizes),
+                (common + max((s for _, s in sizes), default=0)) // 1024))
+            if os.environ.get("OVL_PART_EDGES"):
+                for n in sorted(groups[g]):
+                    if n in part_of:
+                        continue
+                    for t, _ in edges.get(n, ()):
+                        if t in part_of:
+                            print("ovl_plan:   %s:%s -> %s %s:%s" % (base(objs[n[0]].path), n[1],
+                                  PARTS[g][part_of[t][1] - 1][0], base(objs[t[0]].path), t[1]))
+        # --- end H4 ---
         if os.environ.get("OVL_WHY"):
             c = collections.Counter()
             for n in resident:

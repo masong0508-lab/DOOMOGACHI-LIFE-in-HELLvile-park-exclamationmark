@@ -790,12 +790,15 @@ int home_blueprint_count(void) { return (int)doomo_home_blueprint_count + HOME_B
 
 const char *home_blueprint_name(int bp)
 {
-    static const char *const saved[HOME_BLUEPRINTS] = { "My Blueprint 1", "My Blueprint 2" };
     HomeState *s = home_state();
     if (bp >= 0 && bp < (int)doomo_home_blueprint_count) return doomo_home_blueprints[bp].name;
     bp -= (int)doomo_home_blueprint_count;
     if (bp < 0 || bp >= HOME_BLUEPRINTS || !s || !s->bp[bp].nobj) return NULL;
-    return saved[bp];
+    /* --- H4: no table of pointers here: on the PS1 a two-pointer table is
+     * .sdata (-G8), stays resident and pins its strings out of the home
+     * overlay group (ovl_plan.py) --- */
+    return bp ? "My Blueprint 2" : "My Blueprint 1";
+    /* --- end H4 --- */
 }
 
 int home_blueprint_save(int slot, const HomeRoom *r)

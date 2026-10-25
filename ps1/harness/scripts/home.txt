@@ -9,7 +9,8 @@
 # 1 steady = the room_ref parity layout + 3 animated pieces + 3 walkers,
 # 2 orbit = the same while the camera turns, 3 cellar = 8x8, 40 pieces, dim,
 # 4 drop = steady with the bed mid-squash, 5 defend = 8x8, 24 pieces, 10
-# walkers, 6..9 the parity pairs), with the C-G fps gates.
+# walkers, 6..9 the parity pairs), with the C-G fps gates; then (H4) the
+# real Hold the Door wave 3, a visit and HomeMart, each loading its part.
 wait 30
 seed 1234
 scene HOME -1
@@ -131,6 +132,43 @@ shot home_modal
 press B
 wait 20
 room-test 0
+wait 10
+
+# --- H4: the real scenes and the group's PARTS (ovl_plan.py PARTS: each
+#     mode's code loads after the common code, in one shared range) ---
+# home_defend_w3 (C-G >= 22): Hold the Door, the siege from wave 3
+# (HOME_ARG_DEFEND_AT(HDT_SIEGE, 2)): imps at the door and both windows, the
+# five guests, the lane strip; the defend part
+scene HOME 25091
+wait 40
+expect-log ovl: home.defend
+fps home_defend_w3
+wait 120
+fpsend home_defend_w3
+expect-fps 22 home_defend_w3
+shot home_defend_w3
+# a visit: Nana Puddin's flat (HOME_ARG_VISIT(1)), the double take; the visit part
+scene TITLE
+wait 10
+push HOME 3
+wait 14
+expect-log ovl: home.visit
+shot home_visit_take
+wait 60
+fps home_visit
+wait 90
+fpsend home_visit
+expect-fps 28 home_visit
+shot home_visit
+press B
+wait 10
+# HomeMart: a scene of its own in the group, all of it in the mart part
+push HOME_MART 0
+wait 30
+expect-scene HOME_MART
+expect-log ovl: home.mart
+shot home_mart
+press B
 wait 10
 
 # --- the house group is linked over the 3D views' tables (ovl_plan.py

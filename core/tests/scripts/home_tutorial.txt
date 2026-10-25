@@ -1,0 +1,72 @@
+# assert-no-stubs
+# SCENE_HOME's Ep 1.2 tutorial (H4 M2, HF sec.11.2; story_final.md Ep 1.2):
+# the checklist (the Picnic Crate, the Egg Nest, a lamp), the catalog's
+# tabs, a DROP mid-squash, Nana's lamp; the goal met slams the stamp and
+# the house hands back to the scene below (HOME_ARG_STORY(HSM_TUTORIAL)).
+scene TITLE
+wait 10
+push HOME 16384
+wait 3
+shot home_iris
+wait 12
+expect-scene HOME
+shot home_empty
+# the crate, from the Story tab, two tiles left of the middle
+press START
+wait 14
+press A
+wait 14
+shot home_catalog
+press R
+wait 6
+shot home_catalog_story
+press A
+wait 6
+press LEFT
+wait 3
+press LEFT
+wait 3
+press A
+wait 3
+shot home_drop_frame3
+wait 20
+shot home_crate
+# the nest, by the crate
+press START
+wait 14
+press A
+wait 14
+press DOWN
+wait 3
+press A
+wait 6
+press DOWN
+wait 3
+press A
+wait 24
+shot home_nest
+# Nana's lamp across the rug from them: the goal is met
+press START
+wait 14
+press A
+wait 14
+press L
+wait 6
+press A
+wait 6
+press RIGHT
+wait 3
+press RIGHT
+wait 3
+press RIGHT
+wait 3
+press UP
+wait 3
+press A
+wait 10
+shot home_cosy_stamp
+wait 20
+shot home_stamp_held
+expect-scene HOME
+wait 60
+expect-scene TITLE

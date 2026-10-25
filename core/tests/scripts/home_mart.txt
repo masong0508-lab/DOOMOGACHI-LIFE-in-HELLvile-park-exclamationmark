@@ -1,0 +1,94 @@
+# assert-no-stubs
+# HomeMart and its doors (H4 M2, HF sec.8.4, 3.1, 11.2; home_mart.c):
+# today's stock with the day's deal and the locked "???" rows, the Season
+# tabs, the Wants tab (what the last visitor wished for), Sell; the
+# Hellvile Black Market; Town Hall's "Expand" (the house plays the wall
+# crumbling through); "Visit a neighbour"; the Workshop furniture bench.
+scene TITLE
+wait 10
+# a knock on Nana's door first: it moves the premade island in and puts
+# her in the visitor log (the Wants tab)
+push HOME 3
+wait 4
+press B
+wait 10
+money 3000
+push HOME_MART 0
+wait 20
+expect-scene HOME_MART
+shot mart_today
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+wait 4
+shot mart_deal
+press A
+wait 3
+shot mart_mine
+wait 20
+press R
+wait 6
+shot mart_season
+press R
+wait 6
+shot mart_last_season
+press R
+wait 6
+shot mart_wants
+press R
+wait 6
+shot mart_sell
+press A
+wait 3
+shot mart_sold
+wait 20
+press B
+wait 10
+expect-scene TITLE
+# the Black Market (free play: open by day)
+push HOME_MART 1
+wait 20
+shot mart_black
+press B
+wait 10
+# Town Hall: the next room, then the house shows it off
+push HOME_MART 3
+wait 20
+shot mart_expand
+press A
+wait 20
+expect-scene HOME
+shot mart_expand_rumble
+wait 30
+shot mart_expand_tiles
+wait 60
+press B
+wait 10
+expect-scene HOME_MART
+press B
+wait 10
+# the neighbours' doors
+push HOME_MART 4
+wait 20
+shot mart_doors
+press A
+wait 30
+expect-scene HOME
+shot mart_door_visit
+press B
+wait 10
+expect-scene HOME_MART
+press B
+wait 10
+# the Workshop furniture bench
+push HOME_MART 2
+wait 20
+shot mart_bench
+press DOWN
+press DOWN
+wait 4
+shot mart_bench_recipe
+press B
+wait 10
+expect-scene TITLE

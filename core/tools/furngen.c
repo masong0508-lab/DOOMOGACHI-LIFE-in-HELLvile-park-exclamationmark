@@ -938,6 +938,133 @@ static void cstr(FILE *f, const char *s)
     fputc('"', f);
 }
 
+/* ---- the packed names / descriptions (the PS1 build; SPEC H3 budget: the
+ * home group's strings): one canonical Huffman code over the bytes of every
+ * name and description (each ends with a 0 symbol and starts on a byte),
+ * decoded by the generated doomo_furn_text() (furn.h) ---- */
+typedef struct HuffText {
+    uint8_t len[256];                   /* code length per byte value, 0 = unused */
+    uint16_t code[256];
+    uint8_t count[17];                  /* codes of each length                   */
+    uint8_t sym[256];                   /* the symbols, shortest code first        */
+    int nsym;
+    uint8_t bits[16384];
+    int nbytes;
+    int name_off[FG_MAX], desc_off[FG_MAX];
+} HuffText;
+static HuffText ht;
+
+static void huff_lengths(const uint32_t *freq)
+{
+    /* package-free Huffman: repeatedly merge the two lightest nodes */
+    int node_w[512], node_p[512], live[512], n = 0, i, nl;
+    memset(node_p, -1, sizeof(node_p));
+    for (i = 0; i < 256; i++)
+        if (freq[i]) { node_w[n] = (int)freq[i]; live[n] = 1; n++; }
+    nl = n;
+    while (1) {
+        int a = -1, b = -1;
+        for (i = 0; i < n; i++) {
+            if (!live[i]) continue;
+            if (a < 0 || node_w[i] < node_w[a] || (node_w[i] == node_w[a] && i < a)) { b = a; a = i; }
+            else if (b < 0 || node_w[i] < node_w[b] || (node_w[i] == node_w[b] && i < b)) b = i;
+        }
+        if (b < 0) break;
+        node_w[n] = node_w[a] + node_w[b];
+        live[n] = 1;
+        live[a] = live[b] = 0;
+        node_p[a] = node_p[b] = n;
+        n++;
+    }
+    {
+        int k = 0;
+        for (i = 0; i < 256; i++) {
+            int d = 0, j;
+            if (!freq[i]) continue;
+            for (j = k; node_p[j] >= 0; j = node_p[j]) d++;
+            ht.len[i] = (uint8_t)(d ? d : 1);
+            k++;
+        }
+        (void)nl;
+    }
+}
+
+static void huff_build(void)
+{
+    uint32_t freq[256];
+    int i, l, code = 0, k = 0;
+    const char *s;
+    memset(&ht, 0, sizeof(ht));
+    memset(freq, 0, sizeof(freq));
+    for (i = 0; i < nrows; i++) {
+        for (s = rows[i].name; *s; s++) freq[(uint8_t)*s]++;
+        for (s = rows[i].desc; *s; s++) freq[(uint8_t)*s]++;
+        freq[0] += 2;
+    }
+    huff_lengths(freq);
+    for (i = 0; i < 256; i++)
+        if (ht.len[i] > 16) { fg_err("catalog.txt", 0, "furniture text: a Huffman code is longer than 16 bits", ""); return; }
+    /* canonical: by length, then by byte value */
+    for (l = 1; l <= 16; l++) {
+        for (i = 0; i < 256; i++)
+            if (ht.len[i] == l) { ht.code[i] = (uint16_t)code++; ht.sym[k++] = (uint8_t)i; ht.count[l]++; }
+        code <<= 1;
+    }
+    ht.nsym = k;
+}
+
+static int huff_put(const char *s)
+{
+    int start = ht.nbytes, pos = start * 8;
+    for (;; s++) {
+        int c = (uint8_t)*s, l = ht.len[c], b;
+        for (b = l - 1; b >= 0; b--, pos++)
+            if ((ht.code[c] >> b) & 1) ht.bits[pos >> 3] |= (uint8_t)(0x80 >> (pos & 7));
+        if (!c) break;
+    }
+    ht.nbytes = (pos + 7) / 8;
+    return start;
+}
+
+/* the generated decoder's loop, to check every string back */
+static void huff_get(int off, char *out, int cap)
+{
+    uint32_t pos = (uint32_t)off * 8;
+    int n = 0;
+    for (;;) {
+        unsigned code = 0, first = 0, index = 0, l, c = 0;
+        for (l = 1; l <= 16; l++) {
+            code |= (ht.bits[pos >> 3] >> (7 - (pos & 7))) & 1u;
+            pos++;
+            if (code - first < ht.count[l]) { c = ht.sym[index + code - first]; break; }
+            index += ht.count[l];
+            first = (first + ht.count[l]) << 1;
+            code <<= 1;
+        }
+        if (!c || l > 16) break;
+        if (n < cap - 1) out[n++] = (char)c;
+    }
+    out[n] = 0;
+}
+
+static void huff_pack(void)
+{
+    int i;
+    char back[80];
+    huff_build();
+    for (i = 0; i < nrows; i++) {
+        ht.name_off[i] = huff_put(rows[i].name);
+        ht.desc_off[i] = huff_put(rows[i].desc);
+        if (ht.nbytes > (int)sizeof(ht.bits) - 64) { fg_err("catalog.txt", 0, "furniture text: too long", ""); return; }
+    }
+    for (i = 0; i < nrows; i++) {
+        huff_get(ht.name_off[i], back, sizeof back);
+        if (strcmp(back, rows[i].name)) fg_err("catalog.txt", rows[i].line, "furniture text does not decode", rows[i].key);
+        huff_get(ht.desc_off[i], back, sizeof back);
+        if (strcmp(back, rows[i].desc)) fg_err("catalog.txt", rows[i].line, "furniture text does not decode", rows[i].key);
+    }
+}
+
 static void upper_key(const char *k, char *out)
 {
     int i;
@@ -1090,13 +1217,60 @@ int main(int argc, char **argv)
                     p->kind | ((p->style & 3) << 2) | (p->frames << 4), mat, p->x, p->y, p->z,
                     w > 255 ? 255 : w, d > 255 ? 255 : d, h > 255 ? 255 : h, k == 0 ? "" : "");
         }
-    fprintf(o, "};\n\nconst DoomoFurn doomo_furn[%d] = {\n", nrows);
+    /* the names and descriptions: packed on the PS1 (H4), plain elsewhere */
+    huff_pack();
+    if (fg_errors) return 1;
+    {
+        int total = 0;
+        for (i = 0; i < nrows; i++) total += (int)strlen(rows[i].name) + (int)strlen(rows[i].desc) + 2;
+        fprintf(o, "};\n\n#if defined(DOOMO_PLATFORM_PS1) || defined(DOOMO_FURN_PACKED_TEXT)\n"
+                   "/* every name and description, Huffman coded (canonical, <= 16 bits), each\n"
+                   " * from a byte boundary and ended by a 0 symbol: %d B for %d B of text */\n"
+                   "#define FURN_PACKED_TEXT 1\n"
+                   "static const uint8_t furn_text[%d] = {", ht.nbytes, total, ht.nbytes);
+    }
+    for (i = 0; i < ht.nbytes; i++) fprintf(o, "%s%d,", (i % 24) ? "" : "\n    ", ht.bits[i]);
+    fprintf(o, "\n};\nstatic const uint8_t furn_huff_n[17] = {");
+    for (i = 0; i <= 16; i++) fprintf(o, " %d,", ht.count[i]);
+    fprintf(o, " };\nstatic const uint8_t furn_huff_sym[%d] = {", ht.nsym);
+    for (i = 0; i < ht.nsym; i++) fprintf(o, "%s%d,", (i % 24) ? " " : "\n    ", ht.sym[i]);
+    fprintf(o, "\n};\n#define FT(s, o) ((const char *)furn_text + (o))\n#else\n#define FT(s, o) (s)\n#endif\n");
+    fprintf(o, "\n/* a piece's name or description to show (furn.h): decoded into buf where\n"
+               " * the text is packed, else the string itself */\n"
+               "const char *doomo_furn_text(const char *p, char *buf, int cap)\n{\n"
+               "#ifdef FURN_PACKED_TEXT\n"
+               "    const uint8_t *s = (const uint8_t *)p;\n"
+               "    uint32_t pos = 0;\n"
+               "    int n = 0;\n"
+               "    if (!p || !buf || cap <= 0) return \"\";\n"
+               "    if (s < furn_text || s >= furn_text + sizeof(furn_text)) return p;   /* not packed */\n"
+               "    for (;;) {\n"
+               "        unsigned code = 0, first = 0, index = 0, l, c = 0;\n"
+               "        for (l = 1; l <= 16; l++) {\n"
+               "            code |= (s[pos >> 3] >> (7 - (pos & 7))) & 1u;\n"
+               "            pos++;\n"
+               "            if (code - first < furn_huff_n[l]) { c = furn_huff_sym[index + code - first]; break; }\n"
+               "            index += furn_huff_n[l];\n"
+               "            first = (first + furn_huff_n[l]) << 1;\n"
+               "            code <<= 1;\n"
+               "        }\n"
+               "        if (!c || l > 16) break;\n"
+               "        if (n < cap - 1) buf[n++] = (char)c;\n"
+               "    }\n"
+               "    buf[n] = 0;\n"
+               "    return buf;\n"
+               "#else\n"
+               "    (void)buf; (void)cap;\n"
+               "    return p ? p : \"\";\n"
+               "#endif\n}\n");
+    fprintf(o, "\nconst DoomoFurn doomo_furn[%d] = {\n", nrows);
     for (i = 0; i < nrows; i++) {
         const Row *r = &rows[i];
-        fprintf(o, "    { ");
+        fprintf(o, "    { FT(");
         cstr(o, r->name);
-        fprintf(o, ", ");
+        fprintf(o, ", %d), FT(", ht.name_off[i]);
         cstr(o, r->desc);
+        fprintf(o, ", %d)", ht.desc_off[i]);
         fprintf(o, ", %d, 0x%04X, 0x%04X, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d },\n",
                 r->price, r->unlock, r->giver, r->cat, r->flags, r->flags2, r->fi, r->fw, r->fd, r->fh,
                 r->pa, r->pb, r->cute, r->spooky, r->comfy, r->need, r->seat, r->light, r->theme, r->mass,

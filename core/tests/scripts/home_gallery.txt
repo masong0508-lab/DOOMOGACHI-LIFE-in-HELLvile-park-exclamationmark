@@ -1,0 +1,78 @@
+# assert-no-stubs
+# The Library's photo wing (H4 M2, HF sec.11.2; lib_gallery.c ROOM_PHOTO):
+# three photos are only 8-byte recipes (home_photo_add) - one of Nana
+# Puddin's home on a visit, two of the cottage (a turned view, the Storybook
+# filter, a sticker) - and the wing re-renders each with SCENE_HOME
+# (HOME_ARG_STORY(HSM_PHOTO)); L/R steps through them, B goes back.
+scene TITLE
+wait 10
+# a visit (it also moves the premade island in): START, Photo, snap
+push HOME 3
+wait 40
+press START
+wait 14
+press DOWN
+wait 2
+press A
+wait 8
+press A
+wait 20
+shot gallery_snap_visit
+press START
+wait 6
+press B
+wait 10
+# the cottage: two more, the second turned, filtered and stickered
+scene HOME -1
+wait 20
+press START
+wait 14
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+wait 2
+press A
+wait 8
+press A
+wait 20
+press R
+wait 14
+press SELECT
+wait 4
+press B
+wait 4
+press A
+wait 20
+shot gallery_snap_cottage
+press START
+wait 10
+# the Library's gallery: the fifth room is the photo wing
+scene LIB_GALLERY 256
+wait 20
+press R
+wait 6
+press R
+wait 6
+press R
+wait 6
+press R
+wait 20
+expect-scene LIB_GALLERY
+shot gallery_photos
+press A
+wait 20
+expect-scene HOME
+shot gallery_photo1
+press R
+wait 20
+shot gallery_photo2
+press R
+wait 20
+shot gallery_photo3
+press B
+wait 10
+expect-scene LIB_GALLERY
+shot gallery_back

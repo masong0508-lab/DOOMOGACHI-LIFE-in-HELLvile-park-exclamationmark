@@ -6,6 +6,9 @@
  * trophy gives is in the catalog (catalog.txt `unlock` + furn_grant.c).
  */
 #include "home_int.h"
+#include "doomo/activities.h"
+#include "doomo/scenes.h"
+#include "doomo/font.h"
 
 #define TROPHY(id, name, how) \
     { (uint16_t)(id), UL_CAT_MISC, UL_MISC_HOME, (uint16_t)((id) - UL_IDS_HOME_FIRST), name, how, 0, 0 }
@@ -33,3 +36,26 @@ const DoomoUnlock doomo_unlocks_home[] = {
     TROPHY(HUL_EVERY_GAG, "Running Gags", "Own every gag piece"),
     { 0, 0, 0, 0, NULL, NULL, 0, 0 }
 };
+
+/* ---- (H4 M2) the house's activities (SPEC sec.4 doomo_activities_home) -------
+ * The table lives here, in a resident file, and not in home_mart.c: the hubs
+ * read it at any time, and the home group must keep nothing resident on the
+ * PS1 (HF sec.11.4). Every row is a scene edge (SCENE_HOME, SCENE_HOME_MART;
+ * arg encodings in home.h and home_mart.c). */
+static const DoomoActivity home_acts[] = {
+    { "My Dream House", "Decorate your cottage", ACTLOC_APARTMENTS,
+      ACTF_FREEPLAY | ACTF_STORY, ICON_HOUSE, 1, ACT_ALWAYS, &SCENE_HOME, HOME_ARG_OWN(HOME_COTTAGE) },
+    { "Visit a Neighbour", "Knock on a citizen's door", ACTLOC_APARTMENTS,
+      ACTF_FREEPLAY | ACTF_STORY, ICON_HEART, 1, ACT_ALWAYS, &SCENE_HOME_MART, 4 },
+    { "HomeMart", "Furniture, 12 new pieces a day", ACTLOC_APARTMENTS,
+      ACTF_FREEPLAY | ACTF_STORY, ICON_COIN, 1, ACT_ALWAYS, &SCENE_HOME_MART, 0 },
+    { "Black Market", "Hellish furniture. No refunds.", ACTLOC_HELLVILE,
+      ACTF_FREEPLAY | ACTF_STORY, ICON_PENTAGRAM, 2, ACT_ALWAYS, &SCENE_HOME_MART, 1 },
+    { "Expand the House", "Knock a wall through (H$)", ACTLOC_TOWN_HALL,
+      ACTF_FREEPLAY | ACTF_STORY, ICON_HOUSE, 1, ACT_ALWAYS, &SCENE_HOME_MART, 3 },
+    { "Hold the Door", "Defend your house, wave by wave", ACTLOC_ARENA,
+      ACTF_FREEPLAY | ACTF_STORY, ICON_SKULL, 0, (uint16_t)(UL_STORY_MISC2_FIRST + 10), &SCENE_HOME,
+      HOME_ARG_DEFEND(HDT_ARENA) },
+    { NULL, NULL, 0, 0, 0, 0, 0, NULL, 0 }
+};
+const DoomoActivity *const doomo_activities_home = home_acts;

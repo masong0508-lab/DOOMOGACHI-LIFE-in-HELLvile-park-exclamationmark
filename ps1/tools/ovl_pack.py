@@ -7,7 +7,9 @@
 The ELF's output sections .ovl_01 .. .ovl_NN (ovl_plan.py's linker
 script) have the slot as their address, except a group that borrows the
 .bss below it (H3: the house, ovl_plan.py BORROW), linked at
-__ovl_borrow. OVL.BIN, one 2048-byte sector per unit:
+__ovl_borrow, and its parts (H4, ovl_plan.py PARTS), which follow the
+groups and start where its common code ends. OVL.BIN, one 2048-byte
+sector per unit:
 
     sector 0   header, little-endian u32s:
                "DOVL", version 3, N, slot address, biggest group size,
@@ -99,9 +101,11 @@ def main(argv):
     borrow = symbol(data, b"__ovl_borrow")
     slot_end = symbol(data, b"__ovl_slot_end") or 0
     for g in groups:
-        # H3: the slot, or __ovl_borrow for a borrowing group
-        if g[1] != slot and (borrow is None or g[1] != borrow):
-            print("ovl_pack: .ovl_%02d is linked at 0x%08x, not the slot (or __ovl_borrow)" % (g[0], g[1]))
+        # H3: the slot, or __ovl_borrow for a borrowing group; H4: a part
+        # of a borrowing group starts where its common code ends
+        lo = borrow if borrow is not None else slot
+        if g[1] != slot and g[1] != lo and not (lo < g[1] < slot_end):
+            print("ovl_pack: .ovl_%02d is linked at 0x%08x, not in the slot (or above __ovl_borrow)" % (g[0], g[1]))
             return 1
         if g[1] + len(g[2]) > slot_end:
             print("ovl_pack: .ovl_%02d ends past the slot" % g[0])

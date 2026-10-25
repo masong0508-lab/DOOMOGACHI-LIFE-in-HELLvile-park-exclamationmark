@@ -308,10 +308,16 @@ void gfx_upload_now(int x, int y, int w, int h, const void *data)
 {
     /* LoadImage needs a word-aligned source and an even pixel count
      * (every boot-time upload has an even width) */
-    static uint32_t tmp[1024];
+    /* --- H4: the rows are staged in the other frame's display list (the GPU
+     * is idle after the DrawSync, and the CPU fills only this frame's), not
+     * in 4 KB of .bss of their own (only boot calls this) --- */
+    uint32_t *tmp;
     RECT r;
     const uint8_t *src = (const uint8_t *)data;
-    int rows_per = (int)(sizeof(tmp) / 2) / w;
+    int rows_per = (4096 / 2) / w;
+    DrawSync(0);
+    tmp = (uint32_t *)s_prim[g_cur ^ 1];
+    /* --- end H4 --- */
     while (h > 0) {
         int rows = h < rows_per ? h : rows_per;
         int n = w * rows;

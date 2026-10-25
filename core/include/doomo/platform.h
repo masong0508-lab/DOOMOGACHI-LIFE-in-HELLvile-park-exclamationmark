@@ -243,6 +243,11 @@ void plat_pal_lerp(int pal_id, int level16);
  * (H3), native: core/src/room_ref.c (H4, the reference renderer). Until
  * those land plat_room is a weak stub (core/src/stubs.c). */
 enum { RO_GHOST = 1, RO_INVALID = 2, RO_FULLBRIGHT = 4, RO_SEMI = 8, RO_SELECTED = 16 };
+/* (H1 M3, add-only) a small on a surface sits half a tile further along +x
+ * / +y (HomeObj's sub-position); RO_GHOST | RO_SEMI is a blueprint's grey
+ * "Buy at HomeMart" ghost; DoomoRoomView.sel_mask is 128 bits, bit
+ * y * w + x per tile of the rubber band (room space). */
+enum { RO_HALF_X = 32, RO_HALF_Y = 64 };
 enum { RA_PLAYER = 0x80 };            /* DoomoRoomActor.flags, with BB_* */
 typedef struct DoomoRoomObj {         /* render-ready; the core fills it per frame */
     uint16_t furn;                    /* 0..FURN_MAX-1                              */

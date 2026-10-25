@@ -135,6 +135,20 @@ void home_unlock_room(int room)
     s->ver_flags |= HVF_TOUCHED;
 }
 
+/* (H4 M2) the rooms the story has reached (HF sec.1.1): the Bedroom after
+ * Ep 1.5, the Kitchen after Ep 2.1, the Garden after Ep 2.4, the Cellar
+ * after Ep 2.6, the Annex after Ep 4.3. Free play buys them (home_mart.c). */
+void home_story_rooms(void)
+{
+    static const uint8_t room_of[5] = { HOME_ROOM_BEDROOM, HOME_ROOM_KITCHEN, HOME_ROOM_GARDEN,
+                                        HOME_ROOM_CELLAR, HOME_ROOM_ANNEX };
+    static const uint8_t beat_of[5] = { BEAT_EP1_5, BEAT_EP2_1, BEAT_EP2_4, BEAT_EP2_6, BEAT_EP4_3 };
+    int i;
+    if (doomo_town.mode != TOWN_STORY || !home_state()) return;
+    for (i = 0; i < 5; i++)
+        if (story_episode_done(beat_of[i]) && !home_room_open(room_of[i])) home_unlock_room(room_of[i]);
+}
+
 void home_move_in(void)
 {
     HomeState *s = home_state();

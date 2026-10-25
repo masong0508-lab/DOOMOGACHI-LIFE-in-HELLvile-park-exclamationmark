@@ -1223,6 +1223,7 @@ WEAK const DoomoFurn doomo_furn[1] = { { NULL, NULL, 0, 0xFFFF, 0xFFFF, 0, 0, 0,
                                           0, 0, 0, 0xFF, 0xFF, 0, 0, 0, 0xFF, 0, 0,
                                           THEME_NONE, 0, 0, 0, 0, 0 } };
 WEAK const uint16_t doomo_furn_count = 0;
+WEAK const char *doomo_furn_text(const char *p, char *buf, int cap) { (void)buf; (void)cap; return p ? p : ""; }
 
 /* ---- house_api.h (H1: house_api.c) ---- */
 WEAK int  home_grade(int room) { (void)room; STUB("home_grade"); return HG_NONE; }

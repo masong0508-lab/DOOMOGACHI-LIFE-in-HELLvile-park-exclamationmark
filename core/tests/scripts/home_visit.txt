@@ -1,0 +1,106 @@
+# assert-no-stubs
+# The citizens' homes (H4 M2, HF sec.3, 11.2): SCENE_HOME(2 + id) on the
+# premade island. Nana Puddin (1) lives tidy along the walls and does the
+# double take (the look +8, the SHOCK, the stare at the lens +24..+32);
+# a gift from storage lands with a reaction; Rivet (13), a Hellborn in
+# Hillvile, gets the mixed set; Scallywag (500) is chaotic in the Pits;
+# then the variants (HOME_ARG_VISIT_AS): possessed, a ghost, the sealed
+# room of the departed, away (the note on the door). B / Leave hands back.
+scene TITLE
+wait 10
+# the first knock moves the premade island in (an empty runner town)
+push HOME 3
+wait 4
+press B
+wait 10
+# two pieces from HomeMart for the gift box (HomeMart moves the player in;
+# the starter kit is in the house)
+money 2000
+push HOME_MART 0
+wait 20
+shot visit_mart_bought0
+press A
+wait 10
+press DOWN
+wait 2
+press A
+wait 10
+press B
+wait 120
+push HOME 3
+wait 8
+shot visit_tidy_take8
+wait 6
+shot visit_tidy_shock
+wait 10
+shot visit_tidy_take24
+wait 8
+shot visit_tidy_take32
+wait 40
+expect-scene HOME
+shot visit_tidy
+# a gift: the menu's first row, the catalog of what is in storage
+press START
+wait 14
+shot visit_menu
+press A
+wait 14
+shot visit_gift_catalog
+press A
+wait 6
+press RIGHT
+wait 3
+press A
+wait 4
+shot visit_gift_drop
+wait 20
+shot visit_gift_react
+wait 60
+# walk up to the host and ask what they want
+hold DOWN 24
+hold LEFT 14
+press A
+wait 20
+shot visit_wish
+press START
+wait 14
+press UP
+wait 2
+press A
+wait 10
+expect-scene TITLE
+# Rivet: a Hellborn in Hillvile, the mixed set
+push HOME 15
+wait 40
+shot visit_hellborn_mix
+press B
+wait 10
+expect-scene TITLE
+# Scallywag: chaotic, the Pits
+push HOME 502
+wait 40
+shot visit_chaotic_pits
+press B
+wait 10
+# the variants: possessed (Steamy), a ghost (Pip), sealed (Bonejangles), away (Zoomzoom)
+push HOME 1028
+wait 40
+shot visit_possessed
+press B
+wait 10
+push HOME 2092
+wait 40
+shot visit_ghost
+press B
+wait 10
+push HOME 3079
+wait 40
+shot visit_sealed
+press B
+wait 10
+push HOME 4106
+wait 40
+shot visit_away
+press B
+wait 10
+expect-scene TITLE

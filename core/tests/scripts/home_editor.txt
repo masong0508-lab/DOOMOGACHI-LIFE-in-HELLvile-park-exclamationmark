@@ -1,8 +1,10 @@
 # assert-no-stubs
-# SCENE_HOME (H4 M1, HF sec.11.2): the player moves in (the starter kit),
-# the heart iris, the catalog, the held ghost, the soft DROP mid-squash,
-# the squash-flip of a held piece, the nope at an occupied tile, the four
-# views, undo, Live mode and the Score panel.
+# SCENE_HOME (H4 M1 + M2, HF sec.11.2): the player moves in (the starter
+# kit), the heart iris, the catalog, the held ghost, the soft DROP
+# mid-squash, the squash-flip of a held piece, the nope at an occupied
+# tile, the four views, undo, Live mode and the Score panel; then (M2) a
+# recolour, the walls with the paint-roller runner, a rubber-band group
+# move, a theme, a blueprint with its grey ghosts and a photo.
 scene HOME -1
 wait 3
 shot home_iris
@@ -96,4 +98,122 @@ wait 16
 shot home_score
 press B
 wait 6
+expect-scene HOME
+# --- M2: in again (the cursor back in the middle; the bed is one tile
+#     to its right): hold A on the bed, L steps paint A (the splat) ---
+scene HOME -1
+wait 20
+press RIGHT
+wait 3
+down A
+wait 16
+press L
+wait 4
+shot home_recolour
+press L
+wait 10
+up A
+wait 6
+# the walls: the next wallpaper, painted on by the paint-roller runner
+press START
+wait 14
+press DOWN
+press DOWN
+press DOWN
+wait 2
+press A
+wait 14
+press RIGHT
+wait 2
+press DOWN
+press RIGHT
+press RIGHT
+wait 4
+shot home_walls_panel
+press A
+wait 8
+shot home_roller_mid
+wait 14
+shot home_walls_done
+# the rubber band: hold SELECT, drag over the two pieces, move them
+down SELECT
+wait 10
+press LEFT
+wait 2
+press DOWN
+wait 2
+up SELECT
+wait 4
+shot home_group_sel
+press RIGHT
+wait 4
+shot home_group_drop
+wait 12
+press A
+wait 4
+# undo x3: the group move, the walls, the paint
+press SELECT
+wait 8
+press SELECT
+wait 20
+press SELECT
+wait 8
+shot home_undo3
+# a theme (the roller again)
+press START
+wait 14
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+wait 2
+press A
+wait 14
+press DOWN
+wait 4
+shot home_themes
+press A
+wait 24
+shot home_theme_applied
+# a blueprint: what is owned drops in, the rest are grey ghosts
+press START
+wait 14
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+wait 2
+press A
+wait 14
+shot home_blueprints
+press A
+wait 30
+shot home_blueprint_drop
+wait 60
+shot home_blueprint_ghosts
+# a photo with a sticker and the Storybook filter
+press START
+wait 14
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+wait 2
+press A
+wait 8
+press B
+wait 2
+press SELECT
+wait 10
+shot home_photo_mode
+press A
+wait 1
+shot home_photo_shutter
+wait 12
+shot home_photo_snapped
+press START
+wait 10
 expect-scene HOME

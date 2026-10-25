@@ -1,0 +1,83 @@
+# assert-no-stubs
+# The Ch2 haunting, night 2 (H4 M2, HF sec.10.2, 11.2; story_final.md Ch2).
+# Ep 1.2's tutorial first (the crate, the nest, Nana's lamp), then
+# HOME_ARG_STORY(HSM_HAUNT_NIGHT) | 2 << 8: the morning's reveal (the crate
+# has moved, the lamp is off, an eye in the wallpaper), lights out (dead
+# still, the fade), the hell insert (4 red frames), "...it's fine.", then
+# 03:00: the freeze, the tik, and one more piece has moved.
+scene TITLE
+wait 10
+# --- the tutorial (home_tutorial.txt without its shots) ---
+push HOME 16384
+wait 3
+wait 12
+expect-scene HOME
+press START
+wait 14
+press A
+wait 14
+press R
+wait 6
+press A
+wait 6
+press LEFT
+wait 3
+press LEFT
+wait 3
+press A
+wait 3
+wait 20
+press START
+wait 14
+press A
+wait 14
+press DOWN
+wait 3
+press A
+wait 6
+press DOWN
+wait 3
+press A
+wait 24
+press START
+wait 14
+press A
+wait 14
+press L
+wait 6
+press A
+wait 6
+press RIGHT
+wait 3
+press RIGHT
+wait 3
+press RIGHT
+wait 3
+press UP
+wait 3
+press A
+wait 10
+wait 20
+expect-scene HOME
+wait 60
+expect-scene TITLE
+# --- night 2 (the house at night) ---
+clock 22 30
+push HOME 16898
+wait 4
+expect-scene HOME
+wait 26
+shot haunt_reveal
+wait 48
+shot haunt_lights_out
+wait 4
+shot haunt_dark
+wait 4
+shot haunt_insert
+wait 24
+shot haunt_fine
+wait 56
+shot haunt_3am_freeze
+wait 34
+shot haunt_3am_after
+expect-scene HOME

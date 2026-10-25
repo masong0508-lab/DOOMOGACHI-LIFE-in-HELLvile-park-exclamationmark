@@ -268,6 +268,13 @@ static void workshop_update(void)
         if (scene_depth() > 1) scene_pop(); else scene_set(&SCENE_TITLE, 0);
         return;
     }
+    /* --- H4: the furniture bench (home_mart.c, HF sec.8.4) --- */
+    if (btn_pressed(BTN_SELECT)) {
+        audio_sfx(SFX_SELECT);
+        scene_push(&SCENE_HOME_MART, 2);
+        return;
+    }
+    /* --- end H4 --- */
     if (ws_tab == WT_WELD) {
         if (btn_repeat(BTN_UP)) { ws_sel = (ws_sel + WP_COUNT - 1) % WP_COUNT; audio_sfx(SFX_CURSOR); }
         if (btn_repeat(BTN_DOWN)) { ws_sel = (ws_sel + 1) % WP_COUNT; audio_sfx(SFX_CURSOR); }
@@ -520,6 +527,10 @@ static void workshop_draw(void)
     ui_tabs(4, 3, tabs, 2, ws_tab, WIN_CUTE);
     ui_text_outline(sw - ui_text_width(title) - 6, 4, title, PAL_WHITE, PAL_UI_PINK_D);
     ui_heart(sw - ui_text_width(title) - 12, 7, 3, PAL_PAINT(PAINT_CHERRY, 1));
+    {   /* H4: SELECT opens the furniture bench (home_mart.c), between the tabs and the title */
+        const char *bench = sw >= 300 ? "SEL: furniture" : "SEL" STR_ICON_HOUSE;
+        ui_text(sw - ui_text_width(title) - 20 - ui_text_width(bench), 4, bench, PAL_UI_PINK_D);
+    }
     if (ws_tab == WT_WELD) draw_weld_tab(sw, sh);
     else draw_armory_tab(sw, sh);
     if (ws_msg_t && ws_msg) {

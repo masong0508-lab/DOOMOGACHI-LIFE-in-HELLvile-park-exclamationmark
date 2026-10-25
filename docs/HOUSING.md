@@ -18,6 +18,7 @@ visits and HomeMart (H4).
 | `core/data/furn/catalog.txt`, `core/data/home/themes.txt`, `blueprints.txt` | H1 | stats, the 10 themes, the 12 ROM blueprints |
 | `core/data/furn/art/*.txt`, `core/tools/furngen.c`, `core/gen/furn_*.c` | H4 | the art and the generator |
 | `core/src/home_draw.c`, `home_visit.c`, `home_mart.c`, `room_ref.c` | H4 | the scene, visits, HomeMart, the reference renderer |
+| `core/tests/scripts/home_*.txt`, `test_home_visit.c`, `test_furngen.c`, `test_home_render.c` | H4 | the runner scripts and tests (section 9) |
 | `core/data/home/layouts_<pkg>.txt` | the content packages | decorate-for targets (SPEC R19) |
 
 ## 1. Rooms and the chunk
@@ -149,6 +150,158 @@ A bare `HOME_ARG_STORY(HSM_DEFEND)` asks the story (Ep 3.2 done or not).
 
 Every frame count lives in the timing table at the top of each file.
 
-## 6-9. The scene, visits, HomeMart, the renderers
+## 6. The scene (`SCENE_HOME`, `home_draw.c`)
 
-(H4; see below once H4 M2 lands.)
+One scene, five modes over one working room (`HomeEdit` and its undo ring):
+
+| mode | buttons |
+|---|---|
+| Build | D-pad the cursor; A picks up (a tap, on release) or places; hold A on a piece (12 f) to recolour, L / R step paint A / B; L / R turn a held piece (the squash-flip) or the view (10 f of brake, then the turn); B puts a held piece back, else leaves; SELECT taps undo, a held SELECT (8 f) draws the rubber band |
+| Live | walk; A uses what is in front: a door goes to the next open room (the iris), lamps switch, beds sleep (the heartfelt fade), seats sit, anything else is examined; on a visit A next to the host asks what they wish for |
+| Photo | L / R turn, UP / DOWN the daylight, SELECT the filter, B a sticker (3 at most), A snaps the 8-byte recipe, START is done |
+| Defend | Hold the Door: D-pad the cursor, A on the door / turret / a guest / a window slot |
+| View | a photo re-rendered from its recipe (the Library's photo wing): L / R the next photo, A / B back |
+
+The START menu: Catalog, Live / Build mode, Score, then (Build) Walls,
+Themes, Blueprints, then Photo, Rooms (own home), Leave. A visit's menu is
+Give a gift, Photo, Leave (no gift in the sealed room or a vacant flat).
+
+**Arguments** (`home.h`): `HOME_ARG_OWN(k)` (-1 = the cottage),
+`HOME_ARG_VISIT(id)`, `HOME_ARG_VISIT_AS(id, kind)` (a visit shown as
+possessed / ghost / sealed / away whatever the citizen's state: previews
+and runner scripts), `HOME_ARG_STORY(mode) | param << 8` for the story
+modes: TUTORIAL (Ep 1.2's checklist: the Picnic Crate, the Egg Nest, a
+lamp), GOAL (param = a stamp), HAUNT_NIGHT (param = the night: the
+morning's reveal, lights out, the 4-frame hell insert, "...it's fine.",
+the 03:00 freeze and the tik), DEFEND (`HOME_ARG_DEFEND(table)`,
+`HOME_ARG_DEFEND_AT(table, wave)`), DECORATE_FOR (param = layout id),
+OPEN_HOUSE (three friends hop in 8 frames apart and rate the room 15 apart)
+and PHOTO (param = the slot). A met goal slams its stamp (or "DONE!") and
+hands back after `HT_GOAL_HOLD`.
+
+**Animation.** Every frame count is in the timing table `ht[]` at the top
+of the file (SPEC risk 6): the heart iris, the 2-frame anticipation and
+lift, the DROP (t^2 fall, the s14 impact, corner dust), the neighbour
+ripple (one `TW_JELLY` spring sampled with delays), the nope, the
+squash-flip, the view brake, the paint splat and the paint-roller runner
+(the covered cut for walls and themes; an iris when nobody is home), the
+group DROP stagger, the reverse DROP of an undo, the blueprint montage
+(gaps 10 9 8 8 6, then 4, the BLUEPRINT stamp), the expansion rumble
+(12 f of crumbling, 8 of silence, then the new floor diagonal by
+diagonal), the Score counter and SLAM stamp, the shutter, the reactions
+(the double take: look 8, SHOCK 16 with jitter, stare at the lens 8; the
+dawning "!", hearts, the bang, the sweat drop, the flee), the pet hopping
+between the lamp, the bed's plushie and the nest, idle breathing, and the
+open house's arrivals.
+
+**State.** The scene scratch (`'HOME'`, `HomeScn` about 2.9 KB on 32-bit;
+the house's budget is 4 KB, SPEC C9); its tail is the view's
+`plat_cache`. A scene pushed over the house (HomeMart, the bench, the
+Library) takes the scratch; the house re-enters its room from the
+remembered arg the next frame it updates or draws, and the undo history
+is gone. `SCENE_HOME` is a singleton: never push a house over a house.
+Every enter path starts with all effect clocks idle (`clear_fx`). Nothing
+is saved except through `home.c` (commit on leave, on room switches and
+after story results).
+
+**HUD.** 12-pixel bars top and bottom: the room's name (a visit: "Nana
+Puddin, Towers 1-2", the facade's floor-room numbering), the clock, the
+purse and the four stat dials; the bottom bar says what the buttons do,
+with a shorter line wherever the full one would not fit (`hint()`). The
+catalog panel lays out from the bottom up: the price line, the wrapped
+description, the sprite preview in what is left (2x when it fits, the
+320x240 panel; on the PS1, which links no baked sprites, a maquette of
+the piece's prims as shaded iso blocks, `room_ref_maquette()`). Photo and View modes letterbox the bars in black. The
+lane strip of Hold the Door counts its lanes from `HomeDefend.lanes` (a
+bit per lane), shows the door's HP, the wave, and the turret's rounds
+only when there is a turret; at dawn the result card stands alone.
+
+## 7. Visits (`home_visit.c`)
+
+`home_visit_gen(id)` builds a citizen's room from the seed and their
+record, never saved (0 save bytes for 1000 homes): the district's set
+(Hillvile pastel / Hellvile goth; a Hellborn in Hillvile gets a mix), the
+wall paint from `like_color` and its floor partner, 1-2 hobby pieces, a
+snack, a band poster in the genre's colour, never a fear trigger (The
+Dark always gets a lamp; sometimes the protective piece), the layout from
+the personality (tidy along the walls, chaotic, shy with the bed in the
+far corner, show-off with the biggest piece in the middle), a framed
+candid per married / best-friend edge (2 at most), the tomato board for a
+nemesis, then the player's gifts, which override their tiles. Variants:
+possessed (bleeding hearts, red, everything facing the wall), ghost (dust
+sheets, the night tint), sealed (the departed's room: candles, flowers,
+their hobby piece on the bed, no music, no bubbles), away (a note on the
+door, the lamp off), vacant (the realtor's sign). Work is counted in
+`HomeVisit.ops` (worst room under 60k, `home_visit_time`); the 1000 ids on
+two seeds hash to `core/tests/golden/home_visit.txt`
+(`home_visit_determinism`, regenerate with `tests --update-golden
+home_visit_determinism`).
+
+**Gifts, wants, reactions.** A gift from storage is placed in the
+citizen's room (`HOME.gifts`: u16 resident 10 | x 3 | y 3, u16 furn 9 |
+rot 2 | paint 5; 32 slots) and leaves storage. Wants are three of 16,
+recomputed each week from `(day / 7) ^ id` (The Dark wants light; a fear
+of cute things or hugs never wants them). A gift that meets a want raises
+friendship by 8; one that meets all three, once a week, earns a thank-you
+piece (their hobby's first). The reaction picks one of nine (flee for a
+fear trigger, ew for their hated food's snack, the bang for their hobby,
+hearts for their colour, sit, nod, double take, dawning, deadpan) with a
+polite or blunt line by `PERS_SPEECH`, one per 90 frames. The visitor log
+keeps the last four (HomeMart's Wants tab, the neighbours' doors);
+50 / 500 / 1000 homes visited are trophies.
+
+**Ways in.** The care screen's "Their home" (`fp_resident.c`), HomeMart's
+"Visit a neighbour", a visit's photo in the Library. On the apartment
+facade A still opens the care screen (the free-play runner scripts and
+players rely on it); "Their home" is one press from there.
+
+## 8. HomeMart and its doors (`home_mart.c`)
+
+`SCENE_HOME_MART` (scratch `'HMRT'`, about 600 B) by its arg:
+
+| arg | what |
+|---|---|
+| 0 | HomeMart: Today (12 seeded pieces a day, one at -30%, locked rows as "???"), Season, Last Season (3x), Wants (what the last four visitors wished for), Sell (40%) |
+| 1 | the Hellvile Black Market: the hell / goth stock; open at night, by day once Chapter 4 is done or in free play |
+| 2 | the Workshop's furniture bench (SELECT in `SCENE_WORKSHOP`): 24 recipes of scrap, gears, hellsteel, stuffing, glitter and horns; the weld bar grades S / A / B / C (S: a second copy, A: one material back) |
+| 3 | Town Hall's "Expand": the next cottage room for H$ (400, 600, 500, 900, 1200; the story opens its own); the house then plays the expansion rumble |
+| 4 | "Visit a neighbour": the visitor log, the best friends, a random door |
+
+Stock and the deal come from `story_rng(HOME_CTX_MART)` (daily, C18). Rows
+are cut to fit before the price ("Stained-Glass Wi."); the preview panel
+lays out from the bottom (the count, who wants it, or the bench's
+materials one per line), then the description, then the sprite. The
+house's activities (`doomo_activities_home`: My Dream House, Visit a
+Neighbour, HomeMart, the Black Market, Expand the House, Hold the Door)
+live in `unlocks_home.c`, a resident file. The raw unlock bits (which
+tutorials ran, the Black Market found) are set without a toast.
+
+## 9. The renderers and the platforms
+
+* **Native** (`room_ref.c`): the reference renderer (HF sec.11.5): the
+  same `DoomoRoomView` as an iso bitmap from `furngen`'s sprites;
+  `test_home_render.c` holds its parity golden (`room_ref.txt`).
+* **GBA** (`gba/src/room.c`, H2): the static iso bitmap and OBJ actors.
+* **PS1** (`ps1/src/room.c`, H3): a GTE diorama with the backdrop and the
+  clipped passes (docs/PS1.md, section 7). H4 adds the resting player:
+  the chibi joins the static layer while it stands still.
+* **The PS1 overlay group.** Everything of the house is one group,
+  `home`, linked over the 3D views' and the arena bot's tables below the
+  slot (`ovl_plan.py` BORROW, 45,572 B). Its mode-only code is in PARTS
+  that share one range after the common code: `visit`
+  (`home_visit.c`), `defend` (`home_defend.c`), `mart` (`home_mart.c`,
+  a scene of its own) and `roomtest` (the renderer's harness layouts).
+  The common code asks for a part (`plat_code_part(PLAT_PART_*)`, scene.h;
+  a no-op elsewhere) before it calls into it, and `home_draw.c` keeps the
+  mode's part in `HomeScn.part` so update and draw ask again after
+  another group ran. The furniture names and descriptions are packed with
+  a canonical Huffman code on the PS1 (`furngen`, `doomo_furn_text()`;
+  other platforms read the plain strings).
+* **Runner scripts** (`core/tests/scripts/home_*.txt`, both resolutions):
+  `home_tutorial`, `home_editor`, `home_rooms`, `home_visit`,
+  `home_haunt`, `home_defend`, `home_mart`, `home_gallery`. The runner's
+  `home-room R` (move in and open a room), `clock H M` and `money N` set
+  the scene up; the PS1 harness plays `clock` and `money` too
+  (`home-room` is native-only: it would pull `home.c` resident).
+  `ps1/harness/scripts/home.txt` and `gba/harness/scripts/home.txt` hold
+  the fps gates.

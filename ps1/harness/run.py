@@ -265,6 +265,13 @@ def compile_script(lines, lockstep=True):
             cmds.append(hcmd(op, 0, arg[2:] if arg.lower().startswith("0x") else arg))
         elif op == "room-test":
             cmds.append(hcmd(op, int(arg, 0) if arg else 0, arg))
+        # H4: the house scripts (core/tests/scripts/home_*.txt)
+        elif op == "clock":
+            cmds.append(hcmd(op, num(1, 8) * 60 + num(2, 0), " ".join(parts[1:])))
+        elif op == "money":
+            cmds.append(hcmd(op, num(1, 0), arg))
+        elif op == "home-room":
+            warnings.append("line %d: home-room is native-only (skipped)" % ln)
         elif op == "expect-fps":
             # expect-fps MIN NAME: the fps measured by the last `fpsend NAME`
             FPS_GATES.append((ln, float(parts[1]), parts[2] if len(parts) > 2 else ""))

@@ -149,3 +149,12 @@ int home_moved_in(void)
     HomeState *s = home_state();
     return s ? (s->ver_flags & HVF_MOVED_IN) != 0 : 0;
 }
+
+/* (H4 M2) the photo wing reads the recipe's place without the home group:
+ * bits 0-9 of the 8-byte recipe, bit 62 = a photo is there (home.c) */
+int home_photo_place(int slot)
+{
+    HomeState *s = home_state();
+    if (!s || slot < 0 || slot >= HOME_PHOTOS || !(s->photo[slot][7] & 0x40)) return -1;
+    return s->photo[slot][0] | ((s->photo[slot][1] & 3) << 8);
+}

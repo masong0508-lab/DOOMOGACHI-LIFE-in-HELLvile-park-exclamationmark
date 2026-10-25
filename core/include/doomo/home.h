@@ -60,6 +60,13 @@ enum { HDT_AUTO, HDT_TUTORIAL, HDT_SIEGE, HDT_RAID, HDT_ARENA, HDT_COUNT };
 #define HOME_ARG_DEFEND(table)  (HOME_ARG_STORY(HSM_DEFEND) | (((table) & 15) << 8))
 #define HOME_ARG_STORY_MODE(a)  ((a) & 0xFF)
 #define HOME_ARG_STORY_PARAM(a) (((a) >> 8) & 0x3F)
+/* (H4 M2, add-only) Hold the Door from wave `wave` (0..3) of `table`: the
+ * Arena's continue and the runner scripts (param bits 4-5). A visit that
+ * shows citizen `id` as variant `kind` (home_int.h HVK_*: 1 possessed,
+ * 2 ghost, 3 the sealed room, 4 away) whatever their state: the facade's
+ * preview and the runner scripts; still a visit arg (< 0x4000). */
+#define HOME_ARG_DEFEND_AT(table, wave) (HOME_ARG_DEFEND(table) | (((wave) & 3) << 12))
+#define HOME_ARG_VISIT_AS(id, kind)     (HOME_ARG_VISIT(id) + 1024 * ((kind) & 7))
 
 /* ---- the 'HOME' chunk, version 2 (SPEC R9, R10, C9) ----------------------
  * HF sec.9.2's layout with 9 room records, owned[192], seen_new[48], a visitor

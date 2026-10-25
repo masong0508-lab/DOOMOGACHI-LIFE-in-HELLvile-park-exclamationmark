@@ -33,6 +33,10 @@
  *   skip-talk [MAX]     (S4) press A until the conversation is over
  *   skip-to "TEXT" [MAX]      (S4) press A until the dialogue says TEXT
  *   skip-to-scene NAME [MAX]  (S4) press A until NAME is the top scene
+ *   home-room R         (H4) move in and open cottage room R (0..5), as the
+ *                       story / HomeMart would
+ *   clock H M           (H4) the island clock (the house's daylight)
+ *   money N             (H4) the purse (HomeMart's deals)
  * Buttons: UP DOWN LEFT RIGHT A B L R START SELECT X Y L2 R2.
  * Exit status: 0 ok, 1 script failure, 2 stubs ran with --assert-no-stubs.
  */
@@ -49,6 +53,8 @@
 #include "../src/ui_internal.h"       /* S2: ui_dialog_debug (expect-text) */
 void story_verbs_cell(int cx, int cy);    /* S4: "cell", "skip-talk" (core/src/story_int.h) */
 int  story_talking(void);
+void home_move_in(void);                  /* H4: "home-room" (core/src/home_int.h) */
+void home_unlock_room(int room);
 
 static uint32_t held;
 static int gba_input;
@@ -316,6 +322,16 @@ static void run_line(char *line)
             step(10);
         }
     /* --- end S4 --- */
+    /* --- H4: the house's runner scripts (home_rooms.txt, home_mart.txt) --- */
+    } else if (strcmp(cmd, "home-room") == 0) {
+        home_move_in();
+        home_unlock_room(argc > 1 ? atoi(argv[1]) : 0);
+    } else if (strcmp(cmd, "clock") == 0) {
+        int hh = argc > 1 ? atoi(argv[1]) : 8, mm = argc > 2 ? atoi(argv[2]) : 0;
+        doomo_town.minute = (uint16_t)(((hh * 60 + mm) % 1440 + 1440) % 1440);
+    } else if (strcmp(cmd, "money") == 0) {
+        doomo_town.money = (uint32_t)strtoul(argc > 1 ? argv[1] : "0", NULL, 0);
+    /* --- end H4 --- */
     /* --- music: render and hash commands (MU1, SPEC sec.16.3, row 39) ---
      *   music N | music-once N | music-dual A B   audio_music*() by SONG_* number
      *   mute N | duck Q8 N | tapestop N | resume  S1's comic-timing hooks

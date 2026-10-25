@@ -69,6 +69,11 @@ typedef struct DoomoFurn {
 /* Generated tables (furngen, H4). Weak empty defaults: core/src/stubs.c. */
 extern const DoomoFurn doomo_furn[];
 extern const uint16_t  doomo_furn_count;
+/* (H4, add-only) a piece's name or description to show. The PS1 build keeps
+ * them Huffman-packed (furngen; SPEC H3 budget), so name / desc may only be
+ * read through this: it decodes into buf there (cap >= 48 is enough) and
+ * returns the plain string elsewhere. */
+const char *doomo_furn_text(const char *p, char *buf, int cap);
 
 /* ---- H1 additions (add-only) ------------------------------------------------ */
 

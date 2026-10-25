@@ -9,7 +9,6 @@ The patches apply on top of `7fccf54`, with `git apply docs/wip/<name>.patch`.
 
 | Patch | Package | State |
 |---|---|---|
-| `house_h3_ps1_room_and_h4m2_visits_mart.patch` | H4.M2 rest: visits (`home_visit.c`), the mart (`home_mart.c`), animations and hooks. H3 (the PS1 house renderer) has landed: skip the patch's `ps1/src/room.c` hunk (`git apply --exclude=ps1/src/room.c`) | mid-work; not yet through the core, GBA and PS1 checks |
 | `music_mu1t_m15_mu4d_banks.patch` | MU1T M1.5 (musgen, guard, turnarounds, GEN graphs), MU6 T3, MU4d banks | mid-work |
 | `gba_speed_island_wip.patch` | GBA speed pass, stopped mid-work: island hub static layers / row stream (`fp_island*.c`, `ui_raster.c`, `gba/src/video.c`, `bigbuf.c`) | mid-work; apply onto the current branch and re-verify |
 | `music_mu1_m4.patch` | MU1 M4 (matrix, stingers, comic bridge, DECK vinyl, GEN bags, chapters, beds), MU6 T8/T9 | mid-work |
@@ -19,7 +18,15 @@ Each patch's agent was told to verify everything before pushing. Re-run the full
 ## What is left, in order
 
 1. **Story and dream-house build** (`story_house_build_workflow.js`), still to do:
-   - finish H4.M2 (the patch above; H3 has landed);
+   - ~~finish H4.M2~~ **done** (2026-10-25): visits (`home_visit.c`, golden
+     `core/tests/golden/home_visit.txt`), HomeMart / the Black Market / the
+     bench / Expand / the doors (`home_mart.c`), the hooks (care screen,
+     workshop bench, the Library's photo wing), the eight `home_*.txt`
+     runner scripts (the runner's `home-room`, `clock`, `money`), the PS1
+     home group's PARTS (`ovl_plan.py`: visit, defend, mart, roomtest;
+     `plat_code_part()`), docs/HOUSING.md sections 6-9. Left open: the
+     apartment facade's A still opens the care screen (HF sec.3.1 wanted
+     the house; the free-play scripts rely on it);
    - ~~S4: side-mission batch A~~ **done** (2026-10-25): the 54 missions in
      `core/data/story/side_a/`, the 49 old quests re-timed (`quests49/`),
      givers on the maps, `story_mg_a.c` (six games), `SONG_WALL_LULLABY`,

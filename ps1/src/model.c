@@ -103,6 +103,11 @@ static int atan2_4096(int y, int x)
 static int32_t s_lastx, s_lasty;
 static int     s_phase, s_speed;
 static int     s_have;
+/* --- H3: the house (room.c) holds the idle chibi's pose: a resting player
+ * is drawn into the backdrop and again inside clips, and every one of
+ * those draws must give the same polygons --- */
+uint8_t g_model_hold;
+/* --- end H3 --- */
 
 #define U(v) ((v) * 16)        /* model units -> 1/16 */
 
@@ -123,6 +128,7 @@ int model_player_draw(const DoomoView3D *v, const DoomoBillboard *bb, uint32_t l
     dy = (bb->y - s_lasty) >> 12;
     if (!s_have || dx > 4096 || dx < -4096 || dy > 4096 || dy < -4096)
         dx = dy = 0;
+    if (!g_model_hold) {                    /* H3: a held pose does not move on */
     s_have = 1;
     s_lastx = bb->x;
     s_lasty = bb->y;
@@ -131,6 +137,7 @@ int model_player_draw(const DoomoView3D *v, const DoomoBillboard *bb, uint32_t l
         s_speed += (sp - s_speed) / 3;
     }
     s_phase = (s_phase + 40 + s_speed * 6) & 4095;
+    }                                       /* H3 */
     /* facing: the player's aim, else the movement, else away from the camera */
     if (ps)
         ang = ps->angle & 4095;

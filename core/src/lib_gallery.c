@@ -8,16 +8,19 @@
  *             up/down steps); demons only once the Bestiary has them
  *   PALETTE   all 256 colours: the cursor shows each one's family, shade,
  *             RGB and its lighter / darker neighbours
- * Visiting all four rooms in one go earns the Art Critic trophy.
+ *   PHOTOS    (H4) the dream house's photo album: 8-byte recipes, each one
+ *             re-rendered by SCENE_HOME (HSM_PHOTO) when you look at it
+ * Visiting the first four rooms in one go earns the Art Critic trophy.
  *
  * PS1 note: texture / sky pixels are only handed to plat_image (they are
  * virtual addresses there), never read.
  */
 #include "lib_int.h"
+#include "doomo/house_api.h"           /* H4: the photo wing */
 
 #define G (lib_w.gal)
-enum { ROOM_TEX, ROOM_SKY, ROOM_SPR, ROOM_PAL, N_ROOMS };
-static const char *const room_names[N_ROOMS] = { "Textures", "Skies", "Sprites", "Palette" };
+enum { ROOM_TEX, ROOM_SKY, ROOM_SPR, ROOM_PAL, ROOM_PHOTO, N_ROOMS };   /* H4: + the photo wing */
+static const char *const room_names[N_ROOMS] = { "Textures", "Skies", "Sprites", "Palette", "Photos" };
 static const char *const sky_names[SKY_COUNT] = {
     "Pastel Day", "Candy Sunset", "Starry Night", "Hellfire", "Vape Storm"
 };
@@ -70,18 +73,53 @@ static const char *pretty(const char *s, char *buf, int cap)
     return buf;
 }
 
+/* --- H4: the photo wing: the k-th saved photo's slot (HOME keeps 16) --- */
+static int photo_slot(int k)
+{
+    int i;
+    for (i = 0; i < HOME_PHOTOS; i++)
+        if (home_photo_place(i) >= 0 && k-- == 0) return i;
+    return -1;
+}
+
+static int photo_count(void)
+{
+    int i, n = 0;
+    for (i = 0; i < HOME_PHOTOS; i++) n += home_photo_place(i) >= 0;
+    return n;
+}
+
+/* the house took the scene scratch to re-render a photo: when it pops, the
+ * wing opens again on the same photo instead of closing (lib_w_lost) */
+static int8_t photo_back = -1;                  /* .bss: the photo looked at */
+static void gal_enter(int arg);
+static void rebuild(void);
+static void photo_return(void)
+{
+    int sel = photo_back;
+    if (sel < 0 || scene_scratch_mine(LIB_SCRATCH_TAG)) return;
+    photo_back = -1;
+    gal_enter(0);
+    lib_b.tab = ROOM_PHOTO;
+    rebuild();
+    lib_b.sel = (int16_t)sel;
+    lib_clamp();
+}
+/* --- end H4 --- */
+
 static void rebuild(void)
 {
     switch (room()) {
     case ROOM_TEX: lib_b.count = TEX_COUNT - 1; break;
     case ROOM_SKY: lib_b.count = SKY_COUNT; break;
     case ROOM_SPR: lib_b.count = SPR_COUNT - 1; break;
+    case ROOM_PHOTO: lib_b.count = (int16_t)photo_count(); break;     /* H4 */
     default: lib_b.count = 0; break;        /* the palette has its own cursor */
     }
     lib_clamp();
     G.frame = 0;
     G.rooms |= (uint8_t)(1u << room());
-    if (G.rooms == (1u << N_ROOMS) - 1) unlock_grant(LIB_UL_CRITIC);
+    if ((G.rooms & 15) == 15) unlock_grant(LIB_UL_CRITIC);
 }
 
 static uint8_t gal_pct;
@@ -101,6 +139,7 @@ static void gal_enter(int arg)
 static void gal_update(void)
 {
     int ev;
+    photo_return();                                     /* H4 */
     if (lib_w_lost(1)) return;
     if (room() == ROOM_PAL) {
         int old = G.pal_y * 16 + G.pal_x;
@@ -114,6 +153,14 @@ static void gal_update(void)
     switch (ev) {
     case LIBE_TAB: rebuild(); break;
     case LIBE_BACK: lib_wing_leave(); break;
+    case LIBE_OPEN:                                     /* H4: re-render the photo */
+        if (room() == ROOM_PHOTO && photo_slot(lib_b.sel) >= 0) {
+            lib_b.detail = 0;
+            photo_back = (int8_t)lib_b.sel;
+            scene_push(&SCENE_HOME, HOME_ARG_STORY(HSM_PHOTO) | (photo_slot(lib_b.sel) << 8));
+            return;
+        }
+        break;
     case LIBE_MOVED: case LIBE_FLIP: G.frame = 0; break;
     case LIBE_TOGGLE: G.paused ^= 1; break;
     case LIBE_FILTER: G.paused ^= 1; break;
@@ -189,6 +236,11 @@ static void row(int i, int x, int y, int w, int sel)
     } else if (room() == ROOM_SKY) {
         ui_round_rect(x, y + 2, 7, 7, 1, sky_horizon(i));
         ui_text(x + 10, y + 2, sky_names[i], st->text);
+    } else if (room() == ROOM_PHOTO) {                  /* H4 */
+        int place = home_photo_place(photo_slot(i));
+        const DoomoResident *r = place >= 0 && place < DOOMO_MAX_RESIDENTS ? town_res(place) : NULL;
+        doomo_snprintf(buf, sizeof(buf), "%d. %s%s", i + 1, r ? r->name : "Your house", r ? "'s home" : "");
+        ui_text(x, y + 2, lib_fit(buf, w - 4, buf, sizeof(buf)), st->text);
     }
 }
 
@@ -382,6 +434,7 @@ static void detail(int sw, int sh)
 static void gal_draw(void)
 {
     int sw = lib_sw(), sh = lib_sh(), y, lw;
+    photo_return();                                     /* H4 */
     if (lib_w_lost(0)) return;
     lib_chrome(LIB_WING_GALLERY, gal_pct);
     if (plat_draw_skipped()) return;
@@ -401,6 +454,17 @@ static void gal_draw(void)
     lw = lib_big() ? 136 : 104;
     lib_list(4, y + 1, lw, sh - y - 16, 12, WIN_CREAM, row);
     ui_window(lw + 8, y + 1, sw - lw - 12, sh - y - 16, WIN_CREAM);
+    if (room() == ROOM_PHOTO) {                         /* H4: the photo wing */
+        const UiStyle *st = ui_style(WIN_CREAM);
+        int px = lw + 8, pw = sw - lw - 12, fx = px + pw / 2 - 30, fy = y + 12;
+        gold_frame(fx, fy, 60, 40);
+        plat_rect(fx, fy, 60, 40, PAL_RAMP(RAMP_PEACH, 6));
+        ui_heart(fx + 30, fy + 20, 8, PAL_UI_PINK);
+        ui_text_wrap(px + 6, fy + 52, pw - 12, lib_b.count ? "Each photo is a recipe: the house builds the room again "
+                     "when you look." : "Take photos in your house (START > Photo) to fill this wing.", st->text, 1);
+        lib_hint(STR_ICON_A " look again  L/R room  " STR_ICON_B " back", WIN_CREAM);
+        return;
+    }
     if (lib_b.count > 0) {
         if (room() == ROOM_TEX) tex_preview(lw + 8, y + 1, sw - lw - 12, sh - y - 16);
         else spr_preview(lw + 8, y + 1, sw - lw - 12, sh - y - 16);

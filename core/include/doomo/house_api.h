@@ -31,5 +31,10 @@ void home_set_phase(int phase);         /* HP_*; writes DoomoStry.home_phase    
 int  home_phase(void);                  /* HP_*                                       */
 int  home_prop_gag(int gag);            /* queue a "Later" prop gag; 0 if the queue is full */
 int  home_moved_in(void);               /* 1 once the player has a home               */
+/* (H4 M2, add-only) the Library's photo wing: a saved photo's place (a
+ * citizen id 0..999, or 1000 + HOME_ROOM_*), -1 for an empty slot (0..15).
+ * The wing re-renders it through SCENE_HOME, HOME_ARG_STORY(HSM_PHOTO) |
+ * slot << 8. */
+int  home_photo_place(int slot);
 
 #endif

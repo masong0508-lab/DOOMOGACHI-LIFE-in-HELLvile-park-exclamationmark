@@ -12,6 +12,7 @@
  * must type "I AM A MONSTER" first. Cute right up to the moment it isn't.
  */
 #include "fp_int.h"
+#include "doomo/home.h"                /* H4: HOME_ARG_VISIT */
 
 enum { TAB_CARE, TAB_ABOUT, TAB_FRIENDS, TAB_FUN, TAB_COUNT };
 static const char *const tab_names[TAB_COUNT] = { "Care", "About", "Friends", "Fun" };
@@ -517,7 +518,7 @@ static void do_action(int a)
         break; }
     case FPA_GHOST: raise_ghost(); break;
     case FPA_GRAVE: scene_push(&SCENE_GRAVEYARD, 0); break;
-    case FPA_HOME: scene_push(&SCENE_APARTMENTS, 2 + R.id); break;
+    case FPA_HOME: scene_push(&SCENE_HOME, HOME_ARG_VISIT(R.id)); break;   /* H4: a visit (HF sec.3.1) */
     case FPA_REST: do_rest(); break;
     default: break;
     }

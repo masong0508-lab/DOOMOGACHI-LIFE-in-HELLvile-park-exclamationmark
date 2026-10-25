@@ -19,7 +19,9 @@
  * Everything that is not reached only through a scene's four entry
  * points stays resident (ovl_plan.py), so nothing else ever calls into
  * the slot. The house group starts lower, over the 3D views' tables just
- * below the slot (H3, ovl_plan.py BORROW; ovl_borrow_take() below). Groups are LZ-packed and decoded while they are read: a load
+ * below the slot (H3, ovl_plan.py BORROW; ovl_borrow_take() below), and
+ * its mode-only code is in parts that overlap after its common code (H4,
+ * ovl_plan.py PARTS; plat_code_part()). Groups are LZ-packed and decoded while they are read: a load
  * is ~0.05-0.33 s at 2x CD speed (~30% less than raw). It happens when a scene
  * of another group starts (three loads when a scene starts another one:
  * the new group, the caller's back, then the new one again next frame).
@@ -36,6 +38,11 @@ extern const DoomoScene *const ps1_ovl_scene[];
 extern const unsigned char ps1_ovl_scene_grp[];
 extern const unsigned ps1_ovl_ngroups;
 extern const char *const ps1_ovl_name[];
+/* H4: the parts (ovl_plan.py PARTS): entries after the groups */
+extern const unsigned char ps1_ovl_scene_part[];
+extern const unsigned char ps1_ovl_part_group[];
+extern const unsigned char ps1_ovl_part_core[];
+extern const unsigned ps1_ovl_ncore_parts;
 /* the slot (linker script) */
 extern uint8_t __ovl_slot[], __ovl_slot_end[];
 
@@ -48,6 +55,7 @@ typedef struct OvlGroup { uint32_t sector, bytes, packed; uint8_t *dst; } OvlGro
 static OvlGroup s_grp[OVL_MAXG + 1];
 static int      s_lba = -1;              /* OVL.BIN on the disc          */
 static int      s_cur;                   /* group in the slot, 0 = none  */
+static int      s_part;                  /* H4: its part in, 0 = none    */
 static int      s_depth;                 /* nesting of scene calls       */
 static uint8_t  s_run[OVL_NEST];         /* the group of each scene call */
 static uint32_t s_loads;
@@ -59,7 +67,7 @@ static uint32_t s_loads;
  * of its scenes runs again) and they rebuild what it overwrote. --- */
 static uint32_t g_ovl_borrow_gen;
 
-static int borrows(int g) { return g > 0 && s_grp[g].dst < __ovl_slot; }
+static int borrows(int g) { return g > 0 && !ps1_ovl_part_group[g] && s_grp[g].dst < __ovl_slot; }
 
 int ovl_borrow_take(uint32_t *seen)
 {
@@ -69,18 +77,22 @@ int ovl_borrow_take(uint32_t *seen)
             if (s_run[i] == s_cur)       /* its code may be on the stack */
                 dbg("ovl: ERROR: %s's memory taken while it runs\n", ps1_ovl_name[s_cur]);
         s_cur = 0;
+        s_part = 0;
     }
     *seen = g_ovl_borrow_gen;
     return fresh;
 }
 /* --- end H3 --- */
 
-static int group_of(const DoomoScene *s)
+static int group_of(const DoomoScene *s, int *part)
 {
     int i;
+    *part = 0;
     for (i = 0; ps1_ovl_scene[i]; i++)
-        if (ps1_ovl_scene[i] == s)
+        if (ps1_ovl_scene[i] == s) {
+            *part = ps1_ovl_scene_part[i];      /* H4: its entry points are in a part */
             return ps1_ovl_scene_grp[i];
+        }
     return 0;
 }
 
@@ -196,7 +208,12 @@ static void load(int g)
         }
     }
     FlushCache();                         /* new code in the slot */
-    s_cur = g;
+    if (ps1_ovl_part_group[g]) {
+        s_part = g;                       /* H4: a part, after its group's common code */
+    } else {
+        s_cur = g;
+        s_part = 0;
+    }
     s_loads++;
     if (borrows(g))
         g_ovl_borrow_gen++;               /* H3: world.c / view3d.c rebuild */
@@ -207,22 +224,43 @@ static void load(int g)
 
 int plat_scene_code(const DoomoScene *s)
 {
-    int prev = s_cur, g = group_of(s);
+    int prev = s_cur | (s_part << 8), p, g = group_of(s, &p);
     if (s_depth < OVL_NEST)
         s_run[s_depth] = (uint8_t)g;
     s_depth++;
     if (g && g != s_cur)
         load(g);
+    if (p && p != s_part)
+        load(p);
     return prev;
 }
 
 void plat_scene_code_end(int prev)
 {
+    int pg = prev & 0xff, pp = prev >> 8;
     s_depth--;
-    /* still inside a scene call: that scene's code must be back */
-    if (s_depth > 0 && prev && prev != s_cur)
-        load(prev);
+    /* still inside a scene call: that scene's code must be back (and the
+     * part it had in, H4) */
+    if (s_depth > 0 && pg && pg != s_cur)
+        load(pg);
+    if (s_depth > 0 && pp && pp != s_part && ps1_ovl_part_group[pp] == s_cur)
+        load(pp);
 }
+
+/* --- H4 (platform.h): the group's common code asks for one of its parts;
+ * it then calls into the part only while it is in --- */
+void plat_code_part(int part)
+{
+    int e;
+    if (part <= 0 || (unsigned)part >= ps1_ovl_ncore_parts || !(e = ps1_ovl_part_core[part]) || e == s_part)
+        return;
+    if (ps1_ovl_part_group[e] != s_cur) {
+        dbg("ovl: ERROR: part %s asked for without its group\n", ps1_ovl_name[e]);
+        return;
+    }
+    load(e);
+}
+/* --- end H4 --- */
 
 uint32_t overlay_loads(void) { return s_loads; }
 
@@ -254,9 +292,9 @@ void overlay_init(void)
         s_grp[i].sector = h[5 + (i - 1) * 4];
         s_grp[i].bytes = h[6 + (i - 1) * 4];
         s_grp[i].packed = h[7 + (i - 1) * 4];
-        s_grp[i].dst = (uint8_t *)h[8 + (i - 1) * 4];   /* the slot, or below it (H3) */
-        if (s_grp[i].dst > __ovl_slot || s_grp[i].dst + s_grp[i].bytes > __ovl_slot_end ||
-            __ovl_slot - s_grp[i].dst > 65536) {
+        s_grp[i].dst = (uint8_t *)h[8 + (i - 1) * 4];   /* the slot, or below it (H3), a part (H4) */
+        if ((s_grp[i].dst > __ovl_slot && !ps1_ovl_part_group[i]) || s_grp[i].dst + s_grp[i].bytes > __ovl_slot_end ||
+            (s_grp[i].dst < __ovl_slot && __ovl_slot - s_grp[i].dst > 65536)) {
             dbg("ovl: group %u does not fit the slot\n", (unsigned)i);
             return;
         }
@@ -272,5 +310,6 @@ void overlay_init(void)
 void overlay_init(void) {}
 uint32_t overlay_loads(void) { return 0; }
 int ovl_borrow_take(uint32_t *seen) { (void)seen; return 0; }   /* H3: nothing borrows */
+void plat_code_part(int part) { (void)part; }                     /* H4: no parts */
 
 #endif

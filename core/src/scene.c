@@ -21,6 +21,7 @@ static int depth;
 /* (ps1 overlays) weak defaults: the code of every scene is always there */
 __attribute__((weak)) int plat_scene_code(const DoomoScene *s) { (void)s; return 0; }
 __attribute__((weak)) void plat_scene_code_end(int token) { (void)token; }
+__attribute__((weak)) void plat_code_part(int part) { (void)part; }   /* H4: scene.h */
 
 static void call_enter(const DoomoScene *s, int arg)
 {
