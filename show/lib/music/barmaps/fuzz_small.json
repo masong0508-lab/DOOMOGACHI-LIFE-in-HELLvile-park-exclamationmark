@@ -1,0 +1,28 @@
+{
+ "cue": "fuzz_small",
+ "bpm": 80.0,
+ "meter": 4,
+ "bars": 2,
+ "sections": [
+  [
+   "FUZZ",
+   1,
+   2
+  ]
+ ],
+ "offset_smp": 0,
+ "frames_per_bar": 90.0,
+ "smp_per_bar": 144000.0,
+ "source": "score:pilot.sting",
+ "bar_smp": [
+  0,
+  144000,
+  288000
+ ],
+ "bar_frame": [
+  0,
+  90,
+  180
+ ],
+ "named_notes": {}
+}

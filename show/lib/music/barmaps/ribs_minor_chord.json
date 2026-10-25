@@ -1,0 +1,20 @@
+{
+ "cue": "ribs_minor_chord",
+ "bpm": 60.0,
+ "meter": 4,
+ "bars": 1,
+ "sections": [],
+ "offset_smp": 0,
+ "frames_per_bar": 120.0,
+ "smp_per_bar": 192000.0,
+ "source": "score:pilot.ribs_minor_chord",
+ "bar_smp": [
+  0,
+  192000
+ ],
+ "bar_frame": [
+  0,
+  120
+ ],
+ "named_notes": {}
+}

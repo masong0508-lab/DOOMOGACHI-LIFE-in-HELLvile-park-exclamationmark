@@ -15,6 +15,8 @@
 - ART sets: new 3D maps (a real funhouse, the bake tent's inside): the first-person beats use the game's `vape_cellar` rooms (spec: new show maps are deferred).
 - ART sets: per-pixel preview of the camfx lerps (PAL_CRAYON/HELLIFY) in the set sheets: the sheets show the plates' own colours; the player applies the lerp.
 - ART sets: a 9:16 / wide (384x216) version of any plate: the canvas is 320x180 in 2026.
+- WP6: gaze and the crowd atlas (spec §8.5 marks them deferred; the pilot's crowds fit K-look reuse).
 - lane 2: PS1 emulator contact sheets of lane-2 shots wait for lane 1's shot loop (host raster of the same C proves the pixels meanwhile).
 - WP4: `preroll` for base=/replay= shots (the base shot starts from its own setup plus the source's cast, not from the source's state at +N): not needed until a base shot moves an actor before its +N; the compiler already copies the cast.
 - WP4: the texture-only second shot chunk (spec 7.3) for shots over 160 KB: no ep101 shot needs it today (plates are RLE'd; the warning PLAN-CHUNK says when one does).
+- WP6: actors, crowds and their camera: they stand on the camera's main plane (1:1 parallax); camera scale moves do not resize actors in this pass (only push-ins on plates).
