@@ -1,0 +1,32 @@
+# show/ep101/strings/a4.shw - on-screen text for segment a4 (Act Four, Tag, End Credits, PC-1)
+# Source: docs/show/ep101/PILOT_SCRIPT.md SC49-SC60. Localisable; textless is a switch.
+# s_gate_keepout and s_a1_10_tag are shared (owned by the segment that first uses them);
+# a4 only references them.
+
+string s_a4_01_card   "23:00 ________"                              font=hand_mayor
+string s_a4_05_draft  "You never asked where it went."              font=hand_other
+string s_a4_05_home   "23:00 Home!"                                 font=hand_mayor
+string s_a4_05_stamp  "A+"                                          font=stamp
+string s_a4_03_chalk  "...and we-"                                  font=chalk
+string s_a4_07_grave_huggins   "Rest in pieces, Mr. Huggins the 1st" font=stone
+string s_a4_07_grave_cake      "THE GREAT CAKE OF '89"              font=stone
+string s_a4_07_grave_moustache "GRANDPA PUFF'S MOUSTACHE"           font=stone
+string s_a4_07_grave_fluffy    "FLUFFY THE CLOUD. DRIFTED."         font=child_hand
+string s_a4_06_crate  "MINGLE · DO NOT OPEN"                        font=stencil
+
+# END CREDITS (CR-1). Voice credits per spec sec.10.8: Kokoro-82M is Apache-2.0
+# (show/lib/licences/kokoro_Apache-2.0.txt); credited anyway. A role reads
+# "Kokoro TTS (synthetic voice)" until a recorded take replaces ALL its lines
+# (`show deliver --require human-voice` lists them).
+string s_cr_01 "DOOMOGACHI LIFE in HELLvile Park!\n\"Mingle Night\"\n\nCreated by [creator credit TBD]\nWritten by [writing credit TBD]" font=game
+string s_cr_02 "VOICE CAST\n(in order of appearance)\n\nMAYOR GIGGS . . Kokoro TTS (synthetic voice)\nSTEAMY . . Kokoro TTS (synthetic voice)\nKEVIN . . Kokoro TTS (synthetic voice)\nHATTIE HAHA . . Kokoro TTS (synthetic voice)\nMISS LULLA . . Kokoro TTS (synthetic voice)\nBONEJANGLES . . Kokoro TTS (synthetic voice)" font=game
+string s_cr_03 "NANA PUDDIN . . Kokoro TTS (synthetic voice)\nPIP . . Kokoro TTS (synthetic voice)\nCLINKER . . Kokoro TTS (synthetic voice)\nFATHER FUZZ . . Kokoro TTS (synthetic voice)\nDR. BLOOM . . Kokoro TTS (synthetic voice)\nGURGLE . . Kokoro TTS (synthetic voice, processed)" font=game
+string s_cr_04 "SUNNY . . . . . . . . .\nTHE PET . . . . . beep.\nMASCOTTY . . . . . (nobody knows who)\n\nThe Giggle crowd, the fog\nand the children of HaHaland\n. . . . . Kokoro TTS (synthetic voices),\nvoiced as adults" font=game
+string s_cr_05 "MUSIC\n\nMain title \"Doomtastic Times\"\nmusic and lyrics [TBD]\nvocal: Kokoro TTS (synthetic voice)\n\nScore, \"HaHaland Day\" and \"Mingle\": [TBD]\nMusic-box arrangements: [TBD]\n\nThe pet's \"beep.\" is the original GBA piezo" font=game
+string s_cr_06 "Animated in the DOOMOGACHI LIFE\ngame engine (PS1)\n\nVoices: Kokoro TTS\n(Kokoro-82M, Apache-2.0)" font=game
+string s_cr_06_piano "Salamander Grand Piano V3\nby Alexander Holm, CC BY 3.0" font=game   # only if the mix log lists it
+string s_cr_06_dwsd  "DWSD / freesound.org, CC BY"                                    font=game   # only if the mix log lists it
+string s_cr_07 "No citizens of either side were harmed\nin the making of this episode.\n(The demons were.)\n\nHaHaland: Population 500 lovely citizens.\n\n© 2026 Dippinn Productions. All rights reserved." font=game
+
+# PC-1
+string s_pc1_box "...needs salt." font=game name="GURGLE"

@@ -197,6 +197,9 @@ He rolls again. Squeak, lower. It blooms back bigger.
 
 He rolls again. Squeak, lowest. It blooms back biggest,
 red this time, and a red drip runs down.
+(Paint: CANDY's deepest red, not blood. The animatic
+boards an A/B with the drip left pink. PILOT_ROADMAP.md
+D16.)
 
 He whips out a cupcake balloon, ties it over the N --
 tink -- and pats it twice.
