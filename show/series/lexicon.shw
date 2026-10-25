@@ -1,0 +1,75 @@
+# show/series/lexicon.shw: pronunciations of the show's names and coinages (spec §5.1, §10.2).
+# lex <word> "<Kokoro/misaki phonemes>" say="<the voice bible's respelling>"
+# The phonemes are Kokoro v1.0 (misaki, American) symbols: ˈ/ˌ stress right before the vowel;
+# A=eɪ I=aɪ O=oʊ W=aʊ Y=ɔɪ; ɡ is U+0261. Case is ignored. A word here wins over the CMU
+# dictionary; possessives (Pip's, Nana's) and plurals are derived automatically.
+# Pronunciations follow ep101 BREAKDOWN §3.1 ("proposed; confirm"): the creator corrects a row here.
+
+# ---- places
+lex HELLvile      "hˈɛlvˌIl"            say="HELL-vyle"
+lex Hellvile      "hˈɛlvˌIl"            say="HELL-vyle"
+lex Hillvile      "hˈɪlvˌIl"            say="HILL-vyle"
+lex HaHaland      "hˈɑhəlˌænd"          say="HAH-huh-land"   # the theme sings it this way
+lex Doomogachi    "dˌumOɡˈɑʧi"          say="doom-oh-GAH-chee"
+lex Doomtastic    "dˈumtˈæstɪk"         say="DOOM-TAS-tic"
+lex HomeMart      "hˈOmmˌɑɹt"           say="HOME-mart"
+lex Cuddles       "kˈʌdəlz"             say="CUD-ulz"          # St. Cuddles
+
+# ---- the cast
+lex Gigglesworth  "ɡˈɪɡəlzwˌɜɹθ"        say="GIG-ulz-wurth"
+lex Giggs         "ɡˈɪɡz"               say="GIGZ"
+lex Puddin        "pˈʊdɪn"              say="PUD-in"
+lex Bonejangles   "bˈOnʤˌæŋɡəlz"        say="BONE-jang-gulz"
+lex Clinker       "klˈɪŋkəɹ"            say="KLINK-er"
+lex Lulla         "lˈulə"               say="LOO-luh"
+lex Mascotty      "mæskˈɑɾi"            say="mass-KOT-ee"
+lex Grumbleguts   "ɡɹˈʌmbəlɡˌʌts"       say="GRUM-bul-guts"
+lex Dippinn       "dˈɪpɪn"              say="DIP-in"
+lex Mingle        "mˈɪŋɡəl"             say="MING-gul"
+lex Hattie        "hˈæɾi"               say="HAT-ee"
+lex Haha          "hˈɑhˌɑ"              say="HAH-hah"
+lex Fuzz          "fˈʌz"                say="FUZZ"
+lex Pip           "pˈɪp"                say="PIP"
+lex Doomo         "dˈumO"               say="DOO-moh"
+lex Pokefork      "pˈOkfˌɔɹk"           say="POKE-fork"
+lex Wobbles       "wˈɑbəlz"             say="WOB-ulz"
+lex Rivet         "ɹˈɪvət"              say="RIV-et"
+lex Duckworth     "dˈʌkwˌɜɹθ"           say="DUCK-wurth"
+lex Quackers      "kwˈækəɹz"            say="QUACK-ers"
+lex Flops         "flˈɑps"              say="FLOPS"            # Mr. Flops
+lex GURGLE        "ɡˈɜɹɡəl"             say="GUR-gul"
+
+# ---- abbreviations the script writes
+lex Mr            "mˈɪstəɹ"             say="MISS-ter"
+lex Dr            "dˈɑktəɹ"             say="DOC-ter"
+lex St            "sˈAnt"               say="SAINT"
+
+# ---- interjections and effort words (the dictionary has none of these as said)
+lex hee           "hˈi"                 say="HEE"
+lex heehee        "hˈihˈi"              say="HEE-HEE"
+lex ha            "hˈɑ"                 say="HAH"
+lex ooh           "ˈu"                  say="OOH"
+lex mm            "ˈʌm"                 say="MM"      # Kokoro has no closed hum; a short "um" reads as one
+lex mmh           "ˈʌm"                 say="MMH"
+lex hmm           "hˈʌm"                say="HMM"
+lex yikes         "jˈIks"               say="YIKES"
+lex clack         "klˈæk"               say="CLACK"
+lex clink         "klˈɪŋk"              say="CLINK"
+lex beep          "bˈip"                say="BEEP"
+lex heck          "hˈɛk"                say="HECK"
+lex kidding       "kˈɪdɪŋ"              say="KID-ing"
+
+# ---- heteronyms the dictionary lists in the other sense first
+lex perfect       "pˈɜɹfəkt"            say="PER-fect"   # the adjective, not the verb "to perFECT"
+
+# ---- GURGLE's babble syllables (voices.shw babble=1)
+lex blub          "blˈʌb"
+lex glub          "ɡlˈʌb"
+lex gloop         "ɡlˈup"
+lex blorp         "blˈɔɹp"
+lex mub           "mˈʌb"
+lex burb          "bˈɜɹb"
+lex glorg         "ɡlˈɔɹɡ"
+lex wub           "wˈʌb"
+lex bloop         "blˈup"
+lex gorp          "ɡˈɔɹp"

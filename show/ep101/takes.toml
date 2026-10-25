@@ -1,0 +1,17 @@
+# show/ep101/takes.toml: which take each line uses (spec §5.6). CREATOR-OWNED.
+#
+# A line not listed here uses the default order: a recording in show/ep101/vo/
+# (<line id>_take<n>.wav, the highest n) > a scratch read (_s<n>) > its library take
+# (take=lib:... in lines.shw) > TTS (its speaker's voice in series/voices.shw).
+#
+#   [co15_perfect]
+#   fav = 2                    # vo/co15_perfect_take2.wav
+#   retime = "fit"             # keep the written timing (lint AUD-OVERRUN past +/-15 %)
+#
+#   [co18_stay]
+#   take = "tts"               # back to the temp voice, keeping the recordings
+#   retime = "take"            # the take's length drives len=auto and every anchor after it
+#
+#   take = "rec:3" | "rec:<path>" | "scratch:1" | "lib:mayor/heehee_v1" | "tts"
+#
+# Every line is temp TTS until a recording lands (roadmap §8 default).

@@ -6,3 +6,9 @@
 - ART cast: arm poses as flipbooks (Mascotty's quarter-speed wave, the Mayor's ladder/roller/reach, Kevin's lone third-eye blink): the portrait engine draws none; staging covers them with head turns, expressions and cutaways until a flipbook exists.
 - ART cast: the pet and the Puff Demons have no model sheet here (pet_render / the sprite engine, not portrait.c); cast.shw maps them (pet:0, pet:-1, pet:12, SPR_PUFF_DEMON).
 - ART cast: generic rule-of-three and whiplash-insert macros (shot structure, `insert`/`replay=` headers, not an actor's acting).
+- AUDIO voice: MFCC-DTW alignment of recordings against the TTS render (spec §1.2): Whisper word times + TTS phone ratios, energy fallback.
+- AUDIO voice: espeak-ng G2P fallback (its wheel's data path is broken here, spec R7): cmudict + lexicon.shw + compound splitting cover every pilot word.
+- AUDIO voice: the two Mayor hums (lib:mayor/hum_dawn_v1, hum_plusone_v1) wait for WP10's MINGLE notes (mml_legacy); the lines lock as `pending` until then.
+- AUDIO voice: lib:pet/beep_v1 is the game's piezo, an SFX (WP10 library), not a voice take; mt7_pet_01 and the pet lines lock as `pending`.
+- AUDIO voice: stressed words in CAPITALS (WORD, SPEECH, PLAY) get no extra emphasis in TTS; the creator's reads carry it.
+- AUDIO voice: retime="fit" time-stretching of recordings (world.stretch exists; the compiler decides when a take overruns its slot).
