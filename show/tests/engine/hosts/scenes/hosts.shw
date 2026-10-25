@@ -1,0 +1,67 @@
+# hosts.shw - the stage-kind hosts' test shots (owner: show, ENGINE lane 3).
+# Packed by show/tools/showtk/hosts.py into the test player's table
+# (CMakeLists.txt); every statement here is documented in show/README.md
+# "Staging reference" (WP15 hosts). Coordinates are map cells (x east,
+# y south); room coordinates are tiles. The cast slots: res:0 "sunny",
+# res:1 "mayor", res:2 "nana", res:3 a kid (host_driver.c cast_init).
+
+set hh_plaza kind=overworld map=hahaland daylight=13
+end
+
+set hh_dusk kind=overworld map=hahaland daylight=6
+end
+
+set cottage kind=room room=6x5 walls=walls wall_paint=PAINT_BUBBLEGUM floor_paint=PAINT_CARAMEL daylight=5
+  furn FURN_PICNIC_CRATE at=3,2
+  furn FURN_DAYTIME_WINDOW at=0,2 rot=1
+end
+
+set factory kind=view3d map=plushie_factory doors=open fov=1 view=12
+  path yard 4.5,8.5 9.5,8.5 13.5,8.6 16.5,9.0 22.5,9.5 eye=40
+end
+
+# 1. the plaza at noon: a slow keyed pan, Sunny walks across, citizens wander
+shot ow_plaza len=150 set=hh_plaza seed=11
+  world cam at=31,17
+  +0 world cam to 36,19 over=150 ease=INOUT
+  world actor sunny who=res:0 kind=chibi at=29.5,18.5
+  +10 world walk sunny to=36.5,18.5 over=120
+  world actor mayor who=res:1 kind=chibi at=34.5,15.5 face=D
+  +60 world face mayor L
+  world npc town n=14 at=24,10..44,25 mode=wander seed=7 speed=0.6
+  world npc lane n=6 at=24,21..44,22 mode=lane_e seed=9 speed=0.9
+end
+
+# 2. dusk at the fun fair: a kid in frame (the filter is forced on)
+shot ow_fair_kids len=90 set=hh_dusk seed=12 gore=BRUTAL fixture   # STD-KIDS fixture: the lint fails it, the runtime forces CUTE
+  world cam at=10,44
+  world actor pip who=res:3 kind=chibi at=9.5,45.5 kid
+  +0 world hop pip to=12.5,45.5 over=60
+  world npc kids n=8 at=4,43..18,50 mode=wander seed=3 kid
+end
+
+# 3. the cottage at dawn: the empty room, a crate, a window; Sunny walks in
+shot room_cottage len=120 set=cottage seed=13
+  world cam yaw=0 zoom=0
+  +60 world cam to yaw=20 over=60 ease=INOUT
+  world actor sunny who=res:0 kind=chibi at=5.5,4.5
+  +10 world walk sunny to=2.5,3.5 over=70
+end
+
+# 4. first person through the factory yard: the rail, the HUD, a kill
+shot v3d_factory len=180 set=factory seed=14 gore=BRUTAL
+  +0 cam3d rail=yard to=+180 ease=INOUT
+  world hud on hearts=5/5 shells=8/8 weapon=pump mode=on tiny="RIP AND TEAR... GENTLY"
+  world actor puff1 kind=monster spr=SPR_PUFF_DEMON at=12.5,8.0
+  world actor puff2 kind=monster spr=SPR_PUFF_DEMON at=15.5,10.0
+  world actor imp kind=monster spr=SPR_IMPLING at=11.0,9.5
+  +40 world fire
+  +40 world hitstop 2
+  +40 world kill puff1 overkill
+  +40 world shake SHK_SHOTGUN
+  +40 world hud plate=brutal
+  +90 world fire
+  +90 world kill imp lens
+  +120 world hurt
+  +150 world gore CUTE
+end

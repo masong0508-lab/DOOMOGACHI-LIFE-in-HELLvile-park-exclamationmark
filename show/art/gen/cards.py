@@ -224,6 +224,7 @@ LOGO_COLS = ["ROSE", "TANGERINE", "LEMON", "MINT", "SKY", "LAVENDER", "BUBBLEGUM
 def logo(part="all", scale=3, seed=1):
     """DOOMOGACHI (ten candy letters) + the LIFE pill + 'in HELLvile Park!', as the game's
     title screen draws them (ui_text_big at scale 3). part=all|letters|life|tagline."""
+    part = {"doomogachi": "letters", "park": "tagline"}.get(part, part)   # mt02's letter-drop names
     sc = int(scale)
     lw = 10 * ADV * sc
     cv = Canvas(lw + 16, 8 * sc + 50)

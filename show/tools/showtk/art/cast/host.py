@@ -24,6 +24,11 @@ BUILD = os.path.join(SHOW, "build", "art_cast")
 EXE = os.path.join(BUILD, "portrait_host")
 HOST_C = os.path.join(os.path.dirname(os.path.abspath(__file__)), "host", "portrait_host.c")
 ENGINE_PATCH = os.path.join(SHOW, "engine", "patches", "portrait_head.c.patch")
+# the show's patched portrait.c (hunks (h)/(i) call the part sets) and the
+# part sets themselves (show/art/parts/*.c: Mayor Giggs' turkey parts)
+PORTRAIT_PATCH = os.path.join(SHOW, "engine", "patches", "portrait.c.patch")
+APPLY_PATCH = os.path.join(SHOW, "engine", "apply_patch.py")
+PARTS_DIR = os.path.join(SHOW, "art", "parts")
 
 HUNK_D = ("#if DOOMO_SHOW\n"
           "    { extern int8_t portrait_show_mouth; if (portrait_show_mouth >= 0) st = portrait_show_mouth; }\n"
@@ -63,16 +68,32 @@ def patched_head(dst):
 def sources():
     src = os.path.join(CORE, "src")
     out = [os.path.join(src, f) for f in sorted(os.listdir(src))
-           if f.startswith("portrait") and f.endswith(".c") and f != "portrait_head.c"]
+           if f.startswith("portrait") and f.endswith(".c") and f not in ("portrait_head.c", "portrait.c")]
     out += [os.path.join(src, f) for f in CORE_SRCS]
     out += [os.path.join(src, f) for f in sorted(os.listdir(src)) if f.startswith("fixmath") and f.endswith(".c")]
     out.append(os.path.join(CORE, "gen", "art_data.c"))
     return out
 
 
+def part_sources():
+    if not os.path.isdir(PARTS_DIR):
+        return []
+    return [os.path.join(PARTS_DIR, f) for f in sorted(os.listdir(PARTS_DIR)) if f.endswith(".c")]
+
+
+def patched_portrait(dst):
+    """core/src/portrait.c through the ENGINE's strict apply_patch.py"""
+    src = os.path.join(CORE, "src", "portrait.c")
+    r = subprocess.run([sys.executable, APPLY_PATCH, src, PORTRAIT_PATCH, dst],
+                       capture_output=True, text=True)
+    if r.returncode != 0:
+        raise HostError("show/engine/patches/portrait.c.patch does not apply: " + r.stderr[-2000:])
+
+
 def stamp():
     """inputs that force a rebuild when they change"""
-    files = sources() + [HOST_C, os.path.join(CORE, "src", "portrait_head.c")]
+    files = sources() + part_sources() + [HOST_C, os.path.join(CORE, "src", "portrait_head.c"),
+                                          os.path.join(CORE, "src", "portrait.c"), PORTRAIT_PATCH, APPLY_PATCH]
     inc = os.path.join(CORE, "include", "doomo")
     files += [os.path.join(inc, f) for f in os.listdir(inc)]
     files += [os.path.join(CORE, "src", f) for f in os.listdir(os.path.join(CORE, "src")) if f.endswith(".h")]
@@ -88,9 +109,11 @@ def build(force=False, quiet=True):
     os.makedirs(gen, exist_ok=True)
     head = os.path.join(gen, "portrait_head.c")
     how = patched_head(head)
+    port = os.path.join(gen, "portrait.c")
+    patched_portrait(port)
     cmd = ["gcc", "-std=c99", "-O2", "-w", "-DDOOMO_SHOW=1",
            "-I" + os.path.join(CORE, "include"), "-I" + os.path.join(CORE, "src"),
-           HOST_C, head] + sources() + ["-o", EXE]
+           HOST_C, head, port] + sources() + part_sources() + ["-o", EXE]
     r = subprocess.run(cmd, capture_output=True, text=True)
     if r.returncode != 0:
         raise HostError("portrait_host build failed:\n" + r.stderr[-4000:])

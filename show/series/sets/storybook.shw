@@ -6,12 +6,16 @@
 
 set calendar_page kind=2d px=2 matte=open look=crayon desc="co01: a crayon circles MIDSUMMER on a calendar page, then scribbles fireworks round it"
   plane page   image=gen:calendar_page(month=JUN,mark=MIDSUMMER,day=21,seed=3) size=160x120 par=0
+  plane shadow image=gen:amb_fog(seed=54,w=256,h=40,c=RAMP_STONE.6,density=3) size=256x40 at=0,130 par=0.1
   strokes ink  par=0 boil=2
     stroke circle_midsummer   nib=crayon:CRAYON_RED  w=2 path=gen:ellipse(cx=160,cy=134,rx=48,ry=13,turns=1.15,wobble=1,seed=11)
     stroke fireworks_scribble nib=crayon:CRAYON_SPARK_PINK w=2 path=gen:scribble_bursts(cx=160,cy=120,n=5,r=28..52,seed=12) outside=on
   end
   plane grain  tile=gen:paper_grain(density=4,seed=2) size=64x64 par=0 order=top
   mark  midsummer 160,134
+  # ambient layers (SETS.md sec.6; previews in show_out/art/motion)
+  amb leafshade kind=drift plane=shadow vx=0.1
+  amb glints   kind=motes type=dust n=10 area=0,0,320,180 order=front par=0.3 seed=101 speed=0.3
 end
 
 set park_storybook kind=2d px=1 matte=open look=crayon desc="co02/co09: one park at night (no Wall), then the same frame with the Wall and the pink drained"
@@ -28,19 +32,30 @@ set park_storybook kind=2d px=1 matte=open look=crayon desc="co02/co09: one park
   frame up  at=0,-12                                 # co06: low, the tilt up at the sky (12 px)
   variant long_ago light=day desc="co02: one park, no Wall"
   variant later    light=drained show=wall state=bandstand:drained,table_n:later,table_s:later desc="co09: the Wall on x=160, pink drained, two bowls south, one cupcake north"
+  # ambient layers (SETS.md sec.6; previews in show_out/art/motion)
+  amb lanternsway kind=wave plane=near amp=1 period=120 len=90 strip=2
+  amb lanterns kind=lamps plane=near hold=6..16 dim=12 bloom=14 seed=111
+  amb flies    kind=motes type=firefly n=16 area=0,60,368,100 plane=park seed=112
+  amb river    kind=wave plane=park amp=1 period=60 len=12 rows=150..180 strip=1
 end
 
 set bridge_storybook kind=2d px=2 matte=open look=crayon desc="co03: kids cross the bridge both ways (bunnies one way, imps the other)"
   plane sky    image=gen:crayon_sky(night=1,stars=12,seed=31,w=160,h=120,moon=0) size=160x120 par=0
+  plane clouds image=gen:amb_clouds(seed=55,w=256,h=30,n=3,tone=crayon) size=256x30 at=0,-30 par=0.1
   plane water  image=gen:crayon_river(seed=32) size=160x120 par=0 boil=2
   plane bridge image=gen:crayon_bridge(side=1,seed=33) size=160x120 par=0
   plane rail   image=gen:crayon_bridge_rail(seed=34) size=160x120 par=0 order=front    # kids walk behind the rail
   path  deck   y=118 from=-32 to=352
   plane grain  tile=gen:paper_grain(density=4,seed=2) size=64x64 par=0 order=top
+  # ambient layers (SETS.md sec.6; previews in show_out/art/motion)
+  amb cloudrun kind=drift plane=clouds vx=0.06
+  amb ripple   kind=wave plane=water amp=1 period=48 len=10 strip=1
+  amb flies    kind=motes type=firefly n=8 area=0,0,320,100 plane=sky seed=121
 end
 
 set sky_storybook kind=2d px=1 matte=open look=crayon desc="co04/co06/co07/co17: the night sky over the bandstand (the cherub from behind, the fireworks, the hand)"
   plane sky    image=gen:crayon_sky(night=1,stars=30,seed=41,h=264) size=352x264 par=1.0 at=-16,-50
+  plane clouds image=gen:amb_clouds(seed=56,w=512,h=60,n=4,tone=crayon) size=512x60 at=0,-20 par=0.4
   plane near   image=gen:lantern_strings(seed=43,y=60) size=400x240 par=1.2
   prop  hand   art=gen:crayon_hand(pose=hold,seed=70) art.open=gen:crayon_hand(pose=open,seed=70) plane=near at=160,180 hidden=yes
   plane grain  tile=gen:paper_grain(density=4,seed=2) size=64x64 par=0 order=top
@@ -49,37 +64,58 @@ set sky_storybook kind=2d px=1 matte=open look=crayon desc="co04/co06/co07/co17:
   variant sky   light=day desc="co04/co06: sky and lanterns"
   variant hand  light=day show=hand desc="co07: the hand holds the loop (the co17 insert source frame)"
   variant empty light=day show=hand state=hand:open desc="co07 +8 / co17: the loop has slipped; the empty hand"
+  # ambient layers (SETS.md sec.6; previews in show_out/art/motion)
+  amb cloudrun kind=drift plane=clouds vx=0.1
+  amb lanternsway kind=wave plane=near amp=1 period=110 len=80 strip=2
+  amb lanterns kind=lamps plane=near hold=6..16 dim=12 bloom=14 seed=131
+  amb twinkle  kind=motes type=sparkle n=14 area=-16,-50,352,140 plane=sky seed=132
 end
 
 set soup_table_storybook kind=2d px=2 matte=open look=crayon desc="co05: top-down, two small sooty horned hands set down two bowls"
   plane table  image=gen:crayon_soup_table(seed=80) size=160x120 par=0
+  plane steam image=gen:amb_fog(seed=57,w=256,h=40,c=PAL_WHITE,density=4) size=256x40 at=0,40 par=0.3 order=front
   prop  bowl_1 art=gen:crayon_bowl(seed=81) plane=table at=120,108 anchor=center hidden=yes
   prop  bowl_2 art=gen:crayon_bowl(seed=82) plane=table at=176,112 anchor=center hidden=yes
   plane grain  tile=gen:paper_grain(density=4,seed=2) size=64x64 par=0 order=top
   variant empty light=day desc="+0: the table, the cauldron"
   variant bowls light=day show=bowl_1,bowl_2 desc="+20: two bowls down (clink +5, clink +20)"
+  # ambient layers (SETS.md sec.6; previews in show_out/art/motion)
+  amb steamrun kind=drift plane=steam vx=0.15 vy=-0.05
+  amb bubbles  kind=motes type=bubble n=8 area=130,70,60,30 plane=table seed=141
 end
 
 set river_storybook kind=2d px=1 matte=open look=crayon desc="co08: the cloud drifts south (right) over the river; pan 0.5 px/f"
   plane sky    image=gen:crayon_sky(night=1,stars=36,seed=51) size=352x240 par=0.10
+  plane clouds image=gen:amb_clouds(seed=58,w=512,h=56,n=4,tone=crayon) size=512x56 at=0,-14 par=0.3
   plane river  image=gen:river_storybook(seed=50) size=456x240 par=1.0
   plane grain  tile=gen:paper_grain(density=4,seed=2) size=64x64 par=0 order=top
   frame start  at=-48,0                              # +0
   frame end    at=48,0                               # +195 (0.5 px/f)
+  # ambient layers (SETS.md sec.6; previews in show_out/art/motion)
+  amb cloudrun kind=drift plane=clouds vx=0.15
+  amb ripple   kind=wave plane=river amp=1 period=56 len=10 rows=130..240 strip=1
+  amb flies    kind=motes type=firefly n=12 area=-48,80,416,80 plane=river seed=151
 end
 
 set banner_storybook kind=2d px=1 matte=open look=crayon desc="co10/co11: the banner reads MINGLE; the pink roller leaves GIGGLE (letter baseline = the pixel banner's)"
   plane back   image=gen:storybook_bandstand_north(seed=61) size=352x240 par=0.5
+  plane clouds image=gen:amb_clouds(seed=59,w=512,h=50,n=3,tone=crayon) size=512x50 at=0,-24 par=0.2
   plane mingle image=gen:storybook_banner(word=MINGLE,seed=60) size=320x240 par=1.0
   plane giggle image=gen:storybook_banner(word=GIGGLE,seed=62) size=320x240 par=1.0 reveal=wipe_x hidden=yes
   plane grain  tile=gen:paper_grain(density=4,seed=2) size=64x64 par=0 order=top
   mark  baseline 104                                 # the letters' baseline (show y); co12 matches it
   variant mingle light=day desc="co10 +0: MINGLE"
   variant giggle light=day show=giggle desc="co10 +45 / co11: GIGGLE (wet paint) over MINGLE"
+  # ambient layers (SETS.md sec.6; previews in show_out/art/motion)
+  amb cloudrun kind=drift plane=clouds vx=0.1
+  amb bannerwind kind=wave plane=mingle amp=1 period=90 len=160 strip=2
+  amb bannerwind2 kind=wave plane=giggle amp=1 period=90 len=160 strip=2
+  amb flies    kind=motes type=firefly n=10 area=0,100,320,60 plane=back seed=161
 end
 
 set credits_storybook kind=2d px=2 matte=open look=crayon desc="CR-1: tonight as a storybook, one still per 4 s, crossfading over 13 f"
   plane still  image=gen:credits_still(n=1,seed=90) size=160x120 par=0
+  plane drift image=gen:amb_clouds(seed=60,w=256,h=24,n=3,tone=crayon) size=256x24 at=0,-30 par=0.15 order=front
   plane grain  tile=gen:paper_grain(density=4,seed=2) size=64x64 par=0 order=top
   variant banner  light=day image.still=gen:credits_still(n=1,seed=90) desc="the banner"
   variant bubbles light=day image.still=gen:credits_still(n=2,seed=90) desc="the bubbles"
@@ -87,4 +123,7 @@ set credits_storybook kind=2d px=2 matte=open look=crayon desc="CR-1: tonight as
   variant candles light=day image.still=gen:credits_still(n=4,seed=90) desc="three candles"
   variant heart   light=day image.still=gen:credits_still(n=5,seed=90) desc="a pink heart over the Wall"
   variant answer  light=day image.still=gen:credits_still(n=6,seed=90) desc="a purple firework answering it"
+  # ambient layers (SETS.md sec.6; previews in show_out/art/motion)
+  amb cloudrun kind=drift plane=drift vx=0.08
+  amb glints   kind=motes type=sparkle n=8 area=0,0,320,180 order=front par=0.1 seed=171
 end

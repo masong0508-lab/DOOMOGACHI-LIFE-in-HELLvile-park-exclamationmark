@@ -76,8 +76,11 @@ def chunk_for(b: Beat, n: int) -> F.Chunk:
     ch.planes.append(F.plane_grain(F.pal_ramp(ramp, 4), 8, zlib.crc32(b.id.encode()), boil=2,
                                    order=1))
     l1, l2 = _card_lines(b.what)
-    title = b.title.replace("“", '"').replace("”", '"')
-    ch.add_slug(f"{b.id}  {title}"[:52], l1, l2, beat=n + 1, act=act, bg=F.PAL_BLACK,
+    title = re.sub(r"\s*\(.*?\)", "", b.title).replace("\u201c", '"').replace("\u201d", '"')
+    title = f"{b.id}  {title}"
+    if len(title) > 44:
+        title = title[:41] + "..."
+    ch.add_slug(title, l1, l2, beat=n + 1, act=act, bg=F.PAL_BLACK,
                 fg=F.PAL_WHITE)
     ch.add_beat([])
     return ch

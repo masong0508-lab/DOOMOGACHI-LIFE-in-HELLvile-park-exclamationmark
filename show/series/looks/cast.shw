@@ -32,12 +32,38 @@ look sunny base=SPECIES_BUNNYKIN age=adult note="the lead; acts with ears, eyes,
 end
 
 # ---- the town ------------------------------------------------------------------
-# MAYOR GIGGS: the roster record as is (cherub, wings, halo, top hat on a
-# pompadour, handlebar moustache, bow tie).  The pilot script dresses him for
-# the Giggle with a JUDGE rosette ON HIS BOW TIE (a prop) and clutches the
-# clipboard to the bow tie, so the bow tie stays: no sash (DECISIONS.md).
-look mayor base=roster:0 note="Mayor Gigglesworth; bow tie kept (script: rosette on the bow tie)"
-  mouth_size=13
+# MAYOR GIGGS v2 (the creator, Oct 25: "change the mayor's appearance
+# altogether ... and make him a turkey too"): an anthropomorphic TURKEY with a
+# Mad-Hatter streak, inspired by (never copying) the Tenniel / 1951 Hatter and
+# a turkey mayor.  Long skinny neck, orange beak with a goofy grin, a red
+# snood and a throat wattle that wobble, big bulging eyes with tiny pupils,
+# silver feather tufts poking out sideways under a towering, crooked LAVENDER
+# top hat with a grape band (no card: the creator, Oct 25, locked variant 1),
+# a giant floppy magenta bow tie, an oversized teal frock coat with
+# huge lapels and long tails, the JUDGE rosette on his lapel, a turkey's
+# tail fan behind the coat, bare clawed bird feet.
+#
+# The engine has none of the turkey parts, so they are the show's own part
+# set (show/art/parts/show_parts.c, called from the patched portrait.c copy).
+# The look turns it on with the TURKEY SIGNATURE (species OWLKIN + MOUTH_BEAK +
+# HAT_TOP_HAT + TAIL_FEATHER_FAN + ACC_BOWTIE + FHAIR_WIZARD) and drives it
+# with ordinary fields (show_parts.c lists them): hat_color = hat,
+# pattern_color = band, (horn_color unused), horn_size = hat height,
+# nose_size = wattle/snood size, marking_color = wattle, hair_color = tufts,
+# accessory_color = bow tie, top_color = coat, skin = head and neck.
+# No wings, no halo: the old cherub's white wings filled the px=2 bust's
+# frame edge to edge (the "white box" of dx3); a turkey has neither.
+look mayor base=SPECIES_OWLKIN age=adult note="turkey Mad-Hatter mayor (show part set: show/art/parts/show_parts.c)"
+  body=BODY_LANKY height=10 build=5 skin=PAINT_PEACH head=HEAD_ROUND head_size=8
+  eyes=EYE_ROUND eye_color=PAINT_SKY eye_size=6 eye_spacing=10 eye_height=0 eye_tilt=8 eye_count=2
+  brows=BROW_THICK brow_height=8 nose=NOSE_NONE nose_size=8 mouth=MOUTH_BEAK mouth_size=10 fangs=0
+  cheeks=CHEEK_NONE hair=HAIR_BALD hair_color=PAINT_SILVER highlight=NONE facial_hair=FHAIR_WIZARD
+  ears=EARS_NONE horns=HORNS_NONE horn_color=PAINT_BONE horn_size=10
+  tail=TAIL_FEATHER_FAN wings=WINGS_NONE halo=HALO_NONE
+  marking=MARK_NONE marking_color=PAINT_CHERRY aura=AURA_NONE
+  top=TOP_SUIT top_color=PAINT_TEAL pattern=PATTERN_SOLID pattern_color=PAINT_GRAPE
+  bottom=BOTTOM_PANTS bottom_color=PAINT_CHARCOAL shoes=SHOES_CLAWS shoes_color=PAINT_TANGERINE
+  hat=HAT_TOP_HAT hat_color=PAINT_LAVENDER accessory=ACC_BOWTIE accessory_color=PAINT_MAGENTA
 end
 
 # NANA PUDDIN, festival baker: "all wool and flour, wipes her paws on her

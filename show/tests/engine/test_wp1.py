@@ -101,7 +101,8 @@ def test_ram_report_within_spec_8_7():
     text = ram.read_text()
     assert "verdict    PASS" in text, text
     left = int(re.search(r"left\s+(\d+) KB", text).group(1))
-    assert left >= 440, text
+    need = int(re.search(r"needs\s+(\d+) KB", text).group(1))
+    assert left >= need >= 128, text   # the player and its chunk buffer are linked (DECISIONS)
     assert (paths.build_dir() / "show.exe").stat().st_size < 2 * 1024 * 1024
 
 
