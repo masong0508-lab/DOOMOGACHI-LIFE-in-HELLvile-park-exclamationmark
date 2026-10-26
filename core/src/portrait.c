@@ -624,6 +624,8 @@ static const DoomoResident *res_of(int rid, int *status)
 
 /* animation phase at tick t (staggered per resident); the low byte of the
  * cache key */
+static int hold_on;   /* portrait_hold() */
+
 static uint32_t phase_of(int kind, int rid, int expr, int status, const DoomoLook *l,
                          uint32_t t, Phase *p)
 {
@@ -634,7 +636,10 @@ static uint32_t phase_of(int kind, int rid, int expr, int status, const DoomoLoo
                l->halo == HALO_FLAME_RING || l->halo == HALO_STARS || (l->cheeks & CHEEK_SPARKLES) ||
                l->hair_style == HAIR_FLAME;
     memset(p, 0, sizeof(*p));
-    if (status == RES_EMPTY) return 0;          /* the "?" stays still */
+    if (status == RES_EMPTY) return 0;
+    /* portrait_hold() (title figures): one still pose per expression, so
+     * nothing re-renders between expression changes */
+    if (hold_on) return 0;          /* the "?" stays still */
     p->blink = ((t + off) % 110u) >= 106u;
     p->breath = (int)(((t + off) >> 5) & 1u);
     p->twitch = ((t + off * 3u) % 270u) >= 262u;
@@ -683,7 +688,7 @@ static int job_for(int kind, int rid, uint32_t look, uint32_t key, uint32_t mask
            ((e->key ^ key) & mask) == 0;
 }
 
-static int hold_on, job_hold;   /* job_hold: the job is a portrait_hold one */
+static int job_hold;   /* job_hold: the job is a portrait_hold one */
 
 static void job_start(int kind, int rid, uint32_t key, uint32_t look, const DoomoLook *l,
                       int status, int expr, const Phase *p)

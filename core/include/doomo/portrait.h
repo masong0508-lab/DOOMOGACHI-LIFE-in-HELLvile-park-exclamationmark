@@ -71,7 +71,8 @@ const DoomoImage *figure_image(const DoomoLook *l, int status, int expr);
  * old image stays up, instead of a ~45 ms render at once (GBA title).
  * portrait_hold(2): likewise for a look not shown last tick, but
  * figure_image returns NULL until it is ready (the caller shows something
- * else meanwhile). */
+ * else meanwhile). While on, figures hold one still pose (no blink,
+ * breathing or aura frames). */
 void portrait_hold(int on);
 /* Third-person shooter body: the resident's full look (outfit, hair,
  * horns, wings, tail) holding a weapon, seen from `view` (0 back,
