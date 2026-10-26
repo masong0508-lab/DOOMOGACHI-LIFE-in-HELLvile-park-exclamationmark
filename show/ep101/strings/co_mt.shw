@@ -3,16 +3,16 @@
 # Cold-open captions are in a child's hand (font=child_hand lands in M2; the game font until then).
 
 # ---- COLD OPEN supers (COLD_OPEN_SHOTLIST.md; no narrator)
-string s_co02 "Every Midsummer night, the whole park had one party." font=child_hand
-string s_co03 "It was called the Mingle."                             font=child_hand
-string s_co06 "It loved fireworks."                                   font=child_hand
-string s_co07 "The string slipped. Nobody noticed."                   font=child_hand
-string s_co08 "Not everybody went home."                              font=child_hand
-string s_co09 "Nobody talks about why."                               font=child_hand
-string s_co11a "Now there's a different party."                       font=child_hand
+string s_co02 "Long ago, the whole park threw one big Midsummer party." font=child_hand
+string s_co03 "Everybody came. They called it the Mingle."                             font=child_hand
+string s_co06 "Fluffy the cloud loved the fireworks most."                                   font=child_hand
+string s_co07 "Then the string slipped... and nobody noticed."                   font=child_hand
+string s_co08 "Fluffy drifted away. Not everybody got home."                              font=child_hand
+string s_co09 "Then came the Wall. And nobody says why."                               font=child_hand
+string s_co11a "Now each side throws its own party."                       font=child_hand
 string s_co11b "Same night."                                          font=child_hand
-string s_co11c "Half a park."                                         font=child_hand
-string s_co11d "No fireworks."                                        font=child_hand
+string s_co11c "Half the park each."                                         font=child_hand
+string s_co11d "And no more fireworks."                                        font=child_hand
 
 # ---- COLD OPEN signs (drawn onto props through their text= rects)
 string s_co19_poster "MIDSUMMER GIGGLE TONIGHT!{n}(half the park, all the fun!)" font=game sign=poster
