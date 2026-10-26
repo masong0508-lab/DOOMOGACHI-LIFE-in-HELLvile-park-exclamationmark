@@ -144,3 +144,8 @@ Before: 9 shots warned (ANIM-CAM 6, ANIM-DENSITY 3, ANIM-OVERWORLD 1). After: 1 
 - Impacts: SHK_TAP on the last frame of each logo word's drop (mt02 bars 6.1/7.1/8.1 +5) and on the lens gibs (mt09 bar 23.1+2).
 - Listeners: in mt03 the line-up glances at the still bunny at +150 (sunny, then nana and fuzz 2 f later), the Mayor gets `react_small` (+153), and heads come back at +174. Mascotty never moves (idle=none: the gag).
 - OVERWORLD: mt01 (hahaland_crane, 240 f) runs longer than ~4 s on purpose. It is the main title's song-locked crane reveal (bars 1-5, cam3d rail, no game UI, no dialogue), and mt07 replays it at +120 for the hellify; splitting it would move the theme's bar map. mt04 (36 f) and mt07 (96 f, a replay) are under the cap. No dialogue plays on an overworld set.
+
+### Blocking pass (Oct 25, after the creator's 23:40 "not laid on top of each other" note)
+- mt03 / mt03b: the flat name-plate row is now two staggered depth rows (back y 116-120, front y 144-150), clear x gaps, faces turned toward a neighbour, not the lens. Interaction beats: Sunny looks down at the pet popping in; the Mayor eyes Nana, Nana turns to shield Pip; Fuzz looks down at Pip; Bloom and Steamy bicker; Grampy turns on Hattie; at +66 in mt03b Hattie and Bonejangles edge back from the still bunny. Name plates follow their owner. Timing, frames and SFX unchanged.
+- co03: the imp lane runs dy=+20 (near rail) instead of +6, so the two crossing kid lanes pass at different depths instead of stacking.
+- co04/co12-co21, mt05: single figures or mirrored lanes with no overlap; unchanged.

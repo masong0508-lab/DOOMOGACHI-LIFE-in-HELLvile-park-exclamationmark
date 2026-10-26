@@ -40,10 +40,10 @@ end
 shot co03 beat=e101_co_2 len=120 set=bridge_storybook px=2 look=crayon cut=CUT matte=open
   look crayon grain=12 boil=2
   crowd bunnies gen=randomize seed=301 n=6 species=SPECIES_BUNNYKIN tags=KID age=child kind=chibi looks=sb_bunny_1..sb_bunny_6
-    lane=deck dir=R from=-32 spacing=26 speed=doc:2.2 ripple=0..3 cycle=walk4
+    lane=deck dir=R from=-32 spacing=36 speed=doc:2.2 ripple=0..3 cycle=walk4
   end
   crowd imps gen=randomize seed=302 n=6 species=SPECIES_IMP tags=KID age=child kind=chibi looks=sb_imp_1..sb_imp_6
-    lane=deck dir=L from=352 spacing=26 speed=doc:2.2 ripple=0..3 cycle=walk4 dy=+6
+    lane=deck dir=L from=352 spacing=36 speed=doc:2.2 ripple=0..3 cycle=walk4 dy=+20   # near rail: depth gap, the lanes pass, never stack
   end
   waive CANON-HV107 "storybook flashback: crayon imp kids crossing, no featured faces (shot list co03)"
   +0    fol FOL_paw_patter from=crowd:bunnies,imps ; walla kids_far to gain=-20dB over=30   # "babble swells"

@@ -37,55 +37,62 @@ end
 
 shot mt03 beat=e101_mt_2 len=96 set=cast_popin:day px=1 look=pixel cut=CUT matte=open
   note "one POP per beat (4-6 f, overshoot), each with a name plate; bars 10-11"
-  actor sunny  who=sunny  kind=chibi at=40,132  hidden
-  prop  suitcase art=gen:suitcase(seed=1) at=54,134 anchor=bottom hidden=yes
-  actor pet    who=pet    kind=sprite at=70,140 hidden
-  actor mayor  who=mayor  kind=chibi at=104,128 hidden
-  actor nana   who=nana   kind=chibi at=140,132 hidden
-  actor pip    who=pip    kind=chibi at=176,134 hidden      # KID: filter on; never reprised under hellify
-  actor fuzz   who=fuzz   kind=chibi at=212,128 hidden
-  actor bloom  who=bloom  kind=chibi at=248,132 hidden
-  actor steamy who=steamy kind=chibi at=284,130 hidden
+  actor sunny  who=sunny  kind=chibi at=36,148 px=3 face=R hidden      # front row (near)
+  prop  suitcase art=gen:suitcase(seed=1) at=52,150 anchor=bottom hidden=yes
+  actor pet    who=pet    kind=sprite at=80,154 px=2 face=L hidden      # at Sunny's feet, looking up at her
+  actor mayor  who=mayor  kind=chibi at=110,118 px=2 face=R hidden     # back row (far)
+  actor nana   who=nana   kind=chibi at=140,148 px=3 face=L hidden     # front, turned to the Mayor
+  actor pip    who=pip    kind=chibi at=198,152 px=2 face=R hidden      # KID: filter on; never reprised under hellify
+  actor fuzz   who=fuzz   kind=chibi at=214,116 px=2 face=L hidden     # back row
+  actor bloom  who=bloom  kind=chibi at=258,148 px=3 face=L hidden
+  actor steamy who=steamy kind=chibi at=290,120 px=2 face=L hidden     # back row
   +0    sfx FX_WHOOSH gain=-20dB
   +0    cam to scale=1.060 over=96 ease=INOUT
   +0    cam pan dx=9.1 dy=2.1 over=96 ease=INOUT
-  +0    show sunny ; take pop_in sunny ; show suitcase ; super s_mt_np_sunny style=pop at=40,150 until=end ; sfx FX_NAME_POP
-  +12   show pet ; take pop_in pet ; super s_mt_np_pet style=pop at=70,158 until=end ; sfx FX_NAME_POP
-  +24   show mayor ; take pop_in mayor ; super s_mt_np_mayor style=pop at=104,150 until=end ; sfx FX_NAME_POP
-  +36   show nana ; take pop_in nana ; super s_mt_np_nana style=pop at=140,158 until=end ; sfx FX_NAME_POP
-  +48   show pip ; take pop_in pip ; super s_mt_np_pip style=pop at=176,150 until=end ; sfx FX_NAME_POP
-  +60   show fuzz ; take pop_in fuzz ; super s_mt_np_fuzz style=pop at=212,158 until=end ; sfx FX_NAME_POP
-  +72   show bloom ; take pop_in bloom ; super s_mt_np_bloom style=pop at=248,150 until=end ; sfx FX_NAME_POP
-  +84   show steamy ; take pop_in steamy ; super s_mt_np_steamy style=pop at=284,158 until=end ; sfx FX_NAME_POP
-  +30   blink sunny 2
-  +54   headturn mayor 24 3 ; blink nana 2
-  +66   headturn sunny 24 3
-  +80   blink mayor 2 ; headturn nana 232 3
+  +0    show sunny ; take pop_in sunny ; show suitcase ; super s_mt_np_sunny style=pop at=36,164 until=end ; sfx FX_NAME_POP
+  +12   show pet ; take pop_in pet ; super s_mt_np_pet style=pop at=80,170 until=end ; sfx FX_NAME_POP
+  +24   show mayor ; take pop_in mayor ; super s_mt_np_mayor style=pop at=110,134 until=end ; sfx FX_NAME_POP
+  +36   show nana ; take pop_in nana ; super s_mt_np_nana style=pop at=140,164 until=end ; sfx FX_NAME_POP
+  +48   show pip ; take pop_in pip ; super s_mt_np_pip style=pop at=198,170 until=end ; sfx FX_NAME_POP
+  +60   show fuzz ; take pop_in fuzz ; super s_mt_np_fuzz style=pop at=214,132 until=end ; sfx FX_NAME_POP
+  +72   show bloom ; take pop_in bloom ; super s_mt_np_bloom style=pop at=258,164 until=end ; sfx FX_NAME_POP
+  +84   show steamy ; take pop_in steamy ; super s_mt_np_steamy style=pop at=290,136 until=end ; sfx FX_NAME_POP
+  +14   take react_small sunny ; headturn sunny 232 3          # Sunny looks down at the pet popping in
+  +26   headturn mayor 232 3                                   # the Mayor eyes Nana as she lands
+  +30   blink sunny 2 ; headturn sunny 24 3
+  +40   take react_small mayor
+  +54   headturn nana 24 3 ; blink mayor 2                     # Nana turns to shield Pip from the Mayor's glance
+  +62   take react_small pip ; headturn fuzz 232 3             # Fuzz looks down at the kid
+  +74   headturn pip 24 3 ; take react_small fuzz
+  +80   blink nana 2 ; headturn bloom 232 3                    # Bloom turns to Steamy as it puffs in
+  +82   take react_small bloom
   waive TIME-READ "name plates are on screen 12-96 f; the line-up carries them"
   ad "The cast pops in one by one, each with a name plate."
 end
 
 shot mt03b beat=e101_mt_2 len=96 set=cast_popin:day px=1 look=pixel cut=CUT matte=open
   note "bars 12-13: the rest of the line-up; Mascotty never pops, never moves"
-  actor fuzz   who=fuzz   kind=chibi at=24,128
-  actor bloom  who=bloom  kind=chibi at=60,132
-  actor steamy who=steamy kind=chibi at=96,130
-  actor hattie who=hattie kind=chibi at=136,132 hidden
-  actor grampy who=grampy kind=chibi at=176,130 hidden
-  actor bones  who=bonejangles kind=chibi at=216,128 hidden
-  actor rivet  who=rivet  kind=chibi at=256,132 hidden    # welding mask and sparks only
-  actor mascotty who=mascotty kind=chibi at=300,96 face=L idle=none   # far right, perfectly still, from frame 0
+  actor fuzz   who=fuzz   kind=chibi at=24,116 px=2 face=R      # back
+  actor bloom  who=bloom  kind=chibi at=58,148 px=3 face=R      # front
+  actor steamy who=steamy kind=chibi at=100,120 px=2 face=L      # back, turned to Bloom
+  actor hattie who=hattie kind=chibi at=140,148 px=3 face=R hidden
+  actor grampy who=grampy kind=chibi at=178,118 px=2 face=L hidden
+  actor bones  who=bonejangles kind=chibi at=218,148 px=3 face=R hidden
+  actor rivet  who=rivet  kind=chibi at=252,120 px=2 face=R hidden    # welding mask and sparks only
+  actor mascotty who=mascotty kind=chibi at=298,104 px=2 face=L idle=none   # far right, perfectly still, from frame 0
   +0    sfx FX_WHOOSH gain=-22dB
   cam at=-12,0
   +0    cam to x=12 y=0 scale=1.04 over=96 ease=INOUT          # track along the line-up to the still bunny
-  +0    show hattie ; take pop_in hattie ; super s_mt_np_hattie style=pop at=136,150 until=end ; sfx FX_NAME_POP
-  +12   show grampy ; take pop_in grampy ; super s_mt_np_grampy style=pop at=176,158 until=end ; sfx FX_NAME_POP
-  +24   show bones ; take pop_in bones ; super s_mt_np_bonejangles style=pop at=216,150 until=end ; sfx FX_NAME_POP
-  +36   show rivet ; take pop_in rivet ; super s_mt_np_rivet style=pop at=256,158 until=end ; sfx FX_NAME_POP ; fx sparks at=256,120 n=8 seed=313
-  +8    blink fuzz 2 ; headturn bloom 24 3
+  +0    show hattie ; take pop_in hattie ; super s_mt_np_hattie style=pop at=140,164 until=end ; sfx FX_NAME_POP
+  +12   show grampy ; take pop_in grampy ; super s_mt_np_grampy style=pop at=178,134 until=end ; sfx FX_NAME_POP
+  +24   show bones ; take pop_in bones ; super s_mt_np_bonejangles style=pop at=218,164 until=end ; sfx FX_NAME_POP
+  +36   show rivet ; take pop_in rivet ; super s_mt_np_rivet style=pop at=252,136 until=end ; sfx FX_NAME_POP ; fx sparks at=252,108 n=8 seed=313
+  +8    blink fuzz 2 ; headturn bloom 232 3 ; take react_small steamy   # Bloom and Steamy bicker
+  +20   headturn grampy 232 3 ; take react_small hattie        # Grampy turns on Hattie as she lands
   +54   headturn steamy 24 3 ; headturn hattie 24 3            # the line-up glances at the still bunny (a ripple)
   +56   headturn grampy 24 3 ; headturn bones 24 3
   +57   take react_small rivet                                 # the one who notices
+  +66   move hattie to=150,148 over=10 ; move bones to=206,148 over=10   # both edge back from the bunny
   +78   headturn steamy 232 4 ; headturn hattie 232 4 ; blink grampy 2
   waive TIME-READ "name plates are on screen 60-96 f; the line-up holds through bar 13"
   ad "The rest of the cast pops in. A bunny mascot stands at the edge, perfectly still."
