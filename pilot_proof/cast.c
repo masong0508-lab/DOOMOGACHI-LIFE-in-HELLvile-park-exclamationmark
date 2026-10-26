@@ -30,10 +30,10 @@ void sunny_draw(const Sunny *u) {
         float a = -1.5708f + k * (0.18f + (1 - u->ears) * 1.1f) + 0.05f * sinf(u->t * 0.11f + k);
         float bx = x + k * 3.5f * s, by = hy - 6 * s;
         float ex = bx + cosf(a) * 13 * s, ey = by + sinf(a) * 13 * s;
-        wd_tube(bx, by, ex, ey, 2.4f * s, 1.8f * s, INK, furd, fur, PAL_WHITE);
+        wd_plush(bx, by, ex, ey, 2.8f * s, INK, fur);
         wd_line(bx + (ex - bx) * 0.2f, by + (ey - by) * 0.2f, bx + (ex - bx) * 0.8f, by + (ey - by) * 0.8f, 1.4f * s, PAL_PAINT(PAINT_ROSE, 2));
     }
-    wd_blob_ol(x, hy, 9 * s, 8 * s, 0, fur, INK, WB_SHADE);
+    wd_blob_ol(x, hy, 10.5f * s, 9.5f * s, 0, fur, INK, WB_SHADE);
     /* eyes: big, they notice everything */
     for (int k = -1; k <= 1; k += 2) {
         float ex = x + k * 3.6f * s + u->flip * 0.8f * s, ey = hy - 0.5f * s;
@@ -46,9 +46,10 @@ void sunny_draw(const Sunny *u) {
     /* arms; the near one raises the soggy page */
     float shx = x + 6 * s, shy = y - 13 * s * sq;
     float a = u->page > 0 ? -1.5708f * u->page - 0.3f : 1.3f;
-    float hx = shx + cosf(a) * 8 * s, hyy = shy + sinf(a) * 8 * s;
-    wd_tube(x - 6 * s, shy, x - 7 * s, shy + 6 * s, 1.8f * s, 1.5f * s, INK, PAL_PAINT(PAINT_SKY, 0), cl, PAL_PAINT(PAINT_SKY, 2));
-    wd_tube(shx, shy, hx, hyy, 1.8f * s, 1.5f * s, INK, PAL_PAINT(PAINT_SKY, 0), cl, PAL_PAINT(PAINT_SKY, 2));
+    float hx = shx + cosf(a) * 6.5f * s, hyy = shy + sinf(a) * 6.5f * s;
+    wd_plush(x - 6 * s, shy, x - 7 * s, shy + 5 * s, 2.4f * s, INK, cl);
+    wd_blob_ol(x - 7 * s, shy + 5.5f * s, 2.2f * s, 2.2f * s, 0, fur, INK, WB_SHADE);
+    wd_plush(shx, shy, hx, hyy, 2.4f * s, INK, cl);
     wd_blob_ol(hx, hyy, 2 * s, 2 * s, 0, fur, INK, 0);
     sunny_hand_x = hx; sunny_hand_y = hyy;
     if (u->page > 0 && !u->no_page) {   /* page one: wet, sagging, dripping */
@@ -166,8 +167,8 @@ void nana_draw(const Nana *n) {
         float ux = cosf(a) * side * n->flip, uy = sinf(a);
         float ex = shx + ux * 5.5f * s + side * 1.2f * s, ey = shy + uy * 5.5f * s + 1.5f * s;
         float hx = ex + ux * 5.5f * s, hy2 = ey + uy * 5.5f * s;
-        wd_tube(shx, shy, ex, ey, 3.2f * s, 2.6f * s, INK, cardd, card, cardl);
-        wd_tube(ex, ey, hx, hy2, 2.7f * s, 2.1f * s, INK, cardd, card, cardl);
+        hx = shx + ux * 7 * s; hy2 = shy + uy * 7 * s;
+        wd_plush(shx, shy, hx, hy2, 3.2f * s, INK, card);
         wd_blob_ol(shx, shy, 3.4f * s, 3.2f * s, 0, card, INK, WB_SHADE);                  /* puffy shoulder */
         wd_blob(ex, ey, 2.2f * s, 2.0f * s, 0, card, 0);                                    /* soft elbow */
         for (int q = 0; q < 3; q++) wd_line(shx + (ex - shx) * (0.3f + q * 0.2f) - 1.2f * s, shy + (ey - shy) * (0.3f + q * 0.2f), shx + (ex - shx) * (0.3f + q * 0.2f) + 1.2f * s, shy + (ey - shy) * (0.3f + q * 0.2f) + 0.4f * s, 0.35f * s, cardd);  /* knit ribs */
@@ -182,39 +183,39 @@ float critter_hand_x[2], critter_hand_y[2], critter_mouth_x, critter_mouth_y, cr
 void critter_draw(const Critter *c) {
     float s = c->s, x = c->x, sq = c->squash * (1 + 0.015f * sinf(c->t * 0.13f));
     float y = c->y, kneel = c->kneel;
-    float leg = 7 * (1 - kneel * 0.6f);
+    float leg = 3.5f * (1 - kneel * 0.5f);
     /* legs + feet */
     for (int k = -1; k <= 1; k += 2) {
         float fx = x + k * 3.2f * s, fy = y;
         if (kneel > 0 && k < 0) fy = y - 0.5f * s;
-        wd_tube(x + k * 3 * s, y - leg * s, fx, fy - 1.2f * s, 2.0f * s, 1.8f * s, INK, c->outfitd, c->outfit, c->outfitl);
-        wd_blob_ol(fx + c->flip * 1 * s, fy - 0.8f * s, 2.6f * s, 1.4f * s, 0, c->furd, INK, 0);
+        wd_blob_ol(fx, fy - 2.2f * s, 3.0f * s, 3.0f * s, 0, c->outfit, INK, WB_SHADE);
+        wd_blob_ol(fx + c->flip * 0.6f * s, fy - 0.6f * s, 3.0f * s, 1.6f * s, 0, c->furd, INK, 0);
     }
     float by = y - (leg + 7) * s * sq;
-    wd_blob_ol(x, by, 7.5f * s, 8.5f * s * sq, 0, c->outfit, INK, WB_SHADE);
+    wd_blob_ol(x, by, 7.5f * s, 7 * s * sq, 0, c->outfit, INK, WB_SHADE);
     if (c->extras & CX_COLLAR) { wd_rect(x - 2 * s, by - 8 * s, 4 * s, 2 * s, PAL_WHITE, INK); for (int k = 0; k < 3; k++) wd_blob(x, by - 3 * s + k * 3 * s, 0.6f * s, 0.6f * s, 0, c->outfitl, 0); }
     if (c->extras & CX_STETHO) { wd_line(x - 3 * s, by - 7 * s, x - 1 * s, by + 1 * s, 0.5f * s, PAL_GRAY); wd_line(x + 3 * s, by - 7 * s, x + 1 * s, by + 1 * s, 0.5f * s, PAL_GRAY); wd_blob_ol(x, by + 2 * s, 1.3f * s, 1.3f * s, 0, PAL_GRAY_L, INK, 0); }
     if (c->extras & CX_SASH) wd_line(x - 6 * s, by - 6 * s, x + 6 * s, by + 6 * s, 2 * s, PAL_PAINT(PAINT_LEMON, 1));
     if (c->extras & CX_SATCHEL) { wd_line(x - 6 * s, by - 7 * s, x + 5 * s, by + 4 * s, 0.8f * s, PAL_PAINT(PAINT_CHOCOLATE, 1)); wd_rect(x + 3 * s, by + 3 * s, 5 * s, 4 * s, PAL_PAINT(PAINT_CARAMEL, 1), INK); }
     /* head */
-    float hy = by - 13 * s * sq;
+    float hy = by - 12 * s * sq;
     critter_head_y = hy;
     if (c->ears == CR_EARS_ROUND) for (int k = -1; k <= 1; k += 2) {
-        wd_blob_ol(x + k * 6 * s + c->ear_turn * s, hy - 6 * s, 2.8f * s, 2.8f * s, 0, c->fur, INK, 0);
-        wd_blob(x + k * 6 * s + c->ear_turn * s, hy - 6 * s, 1.4f * s, 1.4f * s, 0, c->furd, 0);
+        wd_blob_ol(x + k * 7.5f * s + c->ear_turn * s, hy - 7.5f * s, 3.4f * s, 3.4f * s, 0, c->fur, INK, 0);
+        wd_blob(x + k * 7.5f * s + c->ear_turn * s, hy - 7.5f * s, 1.4f * s, 1.4f * s, 0, c->furd, 0);
     }
     if (c->ears == CR_EARS_LONG) for (int k = -1; k <= 1; k += 2) {
         float a = -1.5708f + k * 0.2f + c->ear_turn * 0.5f + 0.05f * sinf(c->t * 0.1f + k);
         float bx = x + k * 3 * s, b2 = hy - 5 * s;
-        wd_tube(bx, b2, bx + cosf(a) * 11 * s, b2 + sinf(a) * 11 * s, 2.2f * s, 1.6f * s, INK, c->furd, c->fur, PAL_WHITE);
+        wd_plush(bx, b2 - 2 * s, bx + cosf(a) * 12 * s, b2 - 2 * s + sinf(a) * 12 * s, 2.6f * s, INK, c->fur);
     }
-    wd_blob_ol(x, hy, 8 * s, 7 * s, 0, c->fur, INK, WB_SHADE);
+    wd_blob_ol(x, hy, 10 * s, 9 * s, 0, c->fur, INK, WB_SHADE);
     if (c->extras & CX_BUN) { wd_blob_ol(x, hy - 7.5f * s, 3.2f * s, 2.6f * s, 0, PAL_PAINT(PAINT_GRAPE, 1), INK, 0); wd_blob_ol(x, hy - 3.5f * s, 7.6f * s, 3 * s, 0, PAL_PAINT(PAINT_GRAPE, 1), INK, 0); }
     wd_blob(x + c->flip * 0.6f * s, hy + 2.5f * s, 3 * s, 2.2f * s, 0, c->furd == c->fur ? PAL_WHITE : PAL_PAINT(PAINT_BONE, 2), 0);   /* muzzle */
     for (int k = -1; k <= 1; k += 2) {
-        float ex = x + k * 3 * s + c->flip * 0.6f * s + c->look_x * 0.6f * s, ey = hy - 0.8f * s + c->look_y * 0.4f * s;
+        float ex = x + k * 3.8f * s + c->flip * 0.6f * s + c->look_x * 0.6f * s, ey = hy - 0.5f * s + c->look_y * 0.4f * s;
         if (c->blink > 0.5f) wd_line(ex - 1.2f * s, ey, ex + 1.2f * s, ey, 0.5f * s, INK);
-        else { wd_blob(ex, ey, 1.1f * s, 1.4f * s, 0, INK, 0); wd_blob(ex - 0.3f * s, ey - 0.5f * s, 0.4f * s, 0.4f * s, 0, PAL_WHITE, 0); }
+        else { wd_blob(ex, ey, 1.5f * s, 1.8f * s, 0, INK, 0); wd_blob(ex - 0.4f * s, ey - 0.6f * s, 0.55f * s, 0.55f * s, 0, PAL_WHITE, 0); }
     }
     wd_blob(x + c->flip * 0.6f * s, hy + 1.5f * s, 1.1f * s, 0.8f * s, 0, INK, 0);   /* nose */
     critter_mouth_x = x + c->flip * 0.6f * s; critter_mouth_y = hy + 3.6f * s;
@@ -225,11 +226,9 @@ void critter_draw(const Critter *c) {
         float ang = side < 0 ? c->armL : c->armR;
         float shx = x + side * 6.5f * s, shy = by - 5 * s;
         float a = 1.5708f - ang, ux = cosf(a) * side, uy = sinf(a);
-        float ex = shx + ux * 5 * s + side * 0.8f * s, ey = shy + uy * 5 * s + 1 * s;
-        float hx = ex + ux * 4.5f * s, hy2 = ey + uy * 4.5f * s;
-        wd_tube(shx, shy, ex, ey, 2.4f * s, 2.0f * s, INK, c->outfitd, c->outfit, c->outfitl);
-        wd_tube(ex, ey, hx, hy2, 2.0f * s, 1.7f * s, INK, c->outfitd, c->outfit, c->outfitl);
-        wd_blob_ol(hx, hy2, 2.0f * s, 2.0f * s, 0, c->fur, INK, WB_SHADE);
+        float hx = shx + ux * 6 * s, hy2 = shy + uy * 6 * s;
+        wd_plush(shx, shy, hx, hy2, 2.6f * s, INK, c->outfit);
+        wd_blob_ol(hx, hy2, 2.5f * s, 2.4f * s, 0, c->fur, INK, WB_SHADE);
         critter_hand_x[side > 0] = hx; critter_hand_y[side > 0] = hy2;
     }
     if (c->extras & CX_FLOPS) {   /* Mr. Flops under one arm: toy bunny, one floppy ear */

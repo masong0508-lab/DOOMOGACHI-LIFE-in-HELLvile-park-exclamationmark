@@ -86,7 +86,7 @@ static void tail_fan(float t) {
 static void arm(int side, float ang, float t, int front) {
     /* side -1 = far arm, +1 = near arm. ang 0 = hanging, 1.57 = straight forward, 3 = up */
     float shx = side > 0 ? 6.5f : -6.0f, shy = -23.5f;
-    float len = 10.5f + (side > 0 ? M->reach : 0);
+    float len = 8.0f + (side > 0 ? M->reach : 0);
     float a = 1.5708f - ang;                          /* local angle (0 = +x) */
     float fl = M->flutter * 0.25f * sinf(t * 2.1f + side);
     a -= fl;
@@ -101,8 +101,8 @@ static void arm(int side, float ang, float t, int front) {
     float th = front ? 1.0f : 0.88f;
     uint8_t ol = PAL_PAINT(PAINT_JET, 1);
     uint8_t d = front ? TEALD : PAL_PAINT(PAINT_TEAL, 0), mcol = front ? TEAL : TEALD, li = front ? TEALL : TEAL;
-    wd_tube(WX(shx, shy), WY(shx, shy), WX(elx, ely), WY(elx, ely), WR(3.2f * th), WR(2.6f * th), ol, d, mcol, li);
-    wd_tube(WX(elx, ely), WY(elx, ely), WX(hx, hy), WY(hx, hy), WR(2.6f * th), WR(2.1f * th), ol, d, mcol, li);
+    (void)elx; (void)ely; (void)d; (void)li;
+    wd_plush(WX(shx, shy), WY(shx, shy), WX(hx, hy), WY(hx, hy), WR(3.4f * th), ol, mcol);   /* a plush wing-sleeve */
     BO(shx, shy, 3.6f * th, 3.4f * th, 0, mcol, ol, WB_SHADE);          /* shoulder */
     if (front) BO(shx + (hx - elx) * 0 + (hx - shx) * 0.86f, shy + (hy - shy) * 0.86f, 2.6f, 2.2f, 0, PAL_WHITE, ol, WB_SHADE); /* cuff */
     /* feather fingers */

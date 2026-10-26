@@ -243,3 +243,11 @@ void wd_tube(float ax, float ay, float bx, float by, float ra, float rb,
         if (pass < 2) { wd_blob(cx0, cy0, r0, r0, 0, c, 0); wd_blob(cx1, cy1, r1, r1, 0, c, 0); }
     }
 }
+
+/* a plush limb: one soft, outlined, shaded rounded lozenge (the game's chibi
+ * style), not a tube - stubby, stuffed, rounder at the end */
+void wd_plush(float ax, float ay, float bx, float by, float r, uint8_t ol, uint8_t base) {
+    float dx = bx - ax, dy = by - ay, L = sqrtf(dx * dx + dy * dy);
+    float a = atan2f(dy, dx);
+    wd_blob_ol((ax + bx) * 0.5f, (ay + by) * 0.5f, L * 0.5f + r * 0.6f, r, a, base, ol, WB_SHADE);
+}
