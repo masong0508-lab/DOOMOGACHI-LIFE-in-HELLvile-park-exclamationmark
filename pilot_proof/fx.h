@@ -26,3 +26,10 @@ void verdict(const char *text, float age_s, int y);
 /* cake table at the foot of the bandstand (pie, cupcakes, cloth) */
 void cake_table(float x, float y, float t, int pie_cut);
 #endif
+/* the Midsummer Giggle at dusk: sky, lantern strings, candy-striped stalls */
+void fair_backdrop(float t, float x0, float x1);
+void fair_stall(float x, float w, uint8_t stripe, const char *label, int label_on);
+void fair_tent(float x, float w, float h, uint8_t stripe);
+/* shared scene helpers: a bubble at a world point, and babble */
+void say_at_world(const char *text, float ta, float t0, float secs, float wx, float wy, int side);
+void babble_line(double t, float secs, float pitch, float vol);

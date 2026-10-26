@@ -91,3 +91,39 @@ void cake_table(float x, float y, float t, int pie_cut) {
     }
     (void)t;
 }
+#include "show.h"
+void fair_backdrop(float t, float x0, float x1) {
+    static const uint8_t cols[] = { PAL_PAINT(PAINT_LAVENDER, 2), PAL_RAMP(RAMP_PASTEL_PINK, 6), PAL_RAMP(RAMP_PEACH, 6) };
+    tk_vgrad(0, 0, TW, TH, cols, 3);
+    wd_rect(x0 - 200, -2, x1 - x0 + 400, 200, PAL_RAMP(RAMP_PEACH, 6), 0);
+    for (int k = 0; k < 8; k++) wd_line(x0 - 200, k * 8.0f, x1 + 200, k * 8.0f, 0.4f, PAL_RAMP(RAMP_PEACH, 5));
+    for (float x = x0 - 40; x < x1 + 40; x += 30) {     /* lantern strings */
+        for (int k = 0; k < 10; k++) { float u0 = k / 10.0f, u1 = (k + 1) / 10.0f; wd_line(x + u0 * 30, -70 + sinf(u0 * 3.14f) * 6, x + u1 * 30, -70 + sinf(u1 * 3.14f) * 6, 0.35f, PAL_PAINT(PAINT_CHOCOLATE, 1)); }
+        for (int k = 1; k < 3; k++) { float u = k / 3.0f; int i = (int)(x / 30) + k; wd_blob_ol(x + u * 30, -66 + sinf(u * 3.14f) * 6 + 0.6f * sinf(t * 0.08f + i), 1.8f, 2.2f, 0, (i % 3 == 0) ? PAL_PAINT(PAINT_LEMON, 2) : (i % 3 == 1) ? PAL_PAINT(PAINT_MINT, 2) : PAL_PAINT(PAINT_ROSE, 2), PAL_PAINT(PAINT_CARAMEL, 0), WB_SHADE); }
+    }
+}
+void fair_stall(float x, float w, uint8_t stripe, const char *label, int label_on) {
+    wd_rect(x - w / 2, -30, w, 30, PAL_PAINT(PAINT_BONE, 2), INK);
+    for (int k = 0; k < (int)(w / 6); k++) wd_quad(x - w / 2 + k * 6, -44, x - w / 2 + k * 6 + 6, -44, x - w / 2 + k * 6 + 6, -36, x - w / 2 + k * 6, -36, (k & 1) ? PAL_WHITE : stripe, 0);
+    for (int k = 0; k < (int)(w / 6); k++) wd_blob(x - w / 2 + k * 6 + 3, -36, 3, 2, 0, (k & 1) ? PAL_WHITE : stripe, 0);
+    wd_rect(x - w / 2 - 1, -44, 2, 44, PAL_PAINT(PAINT_CARAMEL, 1), INK); wd_rect(x + w / 2 - 1, -44, 2, 44, PAL_PAINT(PAINT_CARAMEL, 1), INK);
+    wd_rect(x - w / 2, -12, w, 12, stripe, INK);
+    if (label && label_on) { int lw = tk_text_w(label, 1); tk_rect((int)wd_sx(x) - lw / 2 - 3, (int)wd_sy(-52) - 2, lw + 6, 11, PAL_WHITE); tk_text((int)wd_sx(x) - lw / 2, (int)wd_sy(-52), label, PAL_PAINT(PAINT_MAGENTA, 0), 1); }
+}
+void fair_tent(float x, float w, float h, uint8_t stripe) {
+    for (int k = 0; k < 8; k++) { float a = x - w / 2 + k * w / 8, b2 = a + w / 8; wd_quad(a, -h * 0.6f, b2, -h * 0.6f, b2, 0, a, 0, (k & 1) ? PAL_WHITE : stripe, 0); }
+    wd_tri(x - w / 2 - 4, -h * 0.6f, x + w / 2 + 4, -h * 0.6f, x, -h, stripe);
+    wd_blob(x, -h - 2, 2, 2, 0, PAL_UI_GOLD, WB_OUT);
+}
+void say_at_world(const char *text, float ta, float t0, float secs, float wx, float wy, int side) {
+    if (ta < t0 || ta >= t0 + secs + 0.5f) return;
+    bubble_side = side; bubble(text, (int)((ta - t0) * 24) + 1, (int)wd_sx(wx), (int)wd_sy(wy)); bubble_side = 0;
+}
+void babble_line(double t, float secs, float pitch, float vol) {
+    int n = (int)(secs * 7.5f); if (n < 1) n = 1;
+    for (int k = 0; k < n; k++) {
+        uint32_t h = tk_hash((uint32_t)k * 31u + (uint32_t)(secs * 100) + (uint32_t)pitch);
+        tk_note(t + k * secs / n, 0.07, (int)pitch + (int)(h % 5) - 2, TKV_TRI, vol);
+        tk_note(t + k * secs / n, 0.05, (int)pitch + 12 + (int)(h % 5) - 2, TKV_SQ12, vol * 0.25f);
+    }
+}
