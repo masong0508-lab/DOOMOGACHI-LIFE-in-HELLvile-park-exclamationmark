@@ -13,7 +13,7 @@ static Critter steamy(float ta) {
     Critter c = cast_bloom(-14, 6, ta * 30);
     c.fur = PAL_PAINT(PAINT_MINT, 1); c.furd = PAL_PAINT(PAINT_TEAL, 1);
     c.outfit = PAL_PAINT(PAINT_SKY, 2); c.outfitd = PAL_PAINT(PAINT_SKY, 1); c.outfitl = PAL_WHITE;
-    c.extras = 0; c.ears = CR_EARS_NONE; c.s = 1.0f;
+    c.extras = 0; c.ears = CR_EARS_NONE; c.s = 1.0f; c.furd = c.fur;   /* no muzzle patch: a frog's face is all one green */
     return c;
 }
 static void duck(float x, float y, int wall, float squash, float t) {
@@ -47,6 +47,18 @@ static void steamy_draw(float ta, float pole_to_x) {
     if (ta >= T_POP) { c.look_x = 1; c.look_y = -0.3f; }
     if (ta >= T_SQZ) c.armL = 1.6f;
     critter_draw(&c);
+    /* frog features: wide-set bulgy eyes on top, a wide mouth, webbed hands */
+    float hx = c.x + 0.6f, hy = critter_head_y;
+    for (int k = -1; k <= 1; k += 2) {
+        wd_blob_ol(hx + k * 5.2f, hy - 6.2f, 3.4f, 3.2f, 0, c.fur, INK, WB_SHADE);
+        wd_blob_ol(hx + k * 5.2f, hy - 6.6f, 2.4f, 2.4f, 0, PAL_WHITE, INK, 0);
+        wd_blob(hx + k * 5.2f + c.look_x * 0.8f, hy - 6.6f + c.look_y * 0.6f, 1.2f, 1.4f, 0, INK, 0);
+    }
+    wd_blob(hx, hy + 3.4f, 5.2f, 0.6f + c.mouth * 1.6f, 0, PAL_PAINT(PAINT_CHERRY, 0), 0);
+    wd_line(hx - 5.4f, hy + 3.2f, hx + 5.4f, hy + 3.2f, 0.45f, INK);
+    for (int s2 = 0; s2 < 2; s2++) { float px = critter_hand_x[s2], py = critter_hand_y[s2];
+        wd_tri(px - 2.6f, py + 1.4f, px + 2.6f, py + 1.4f, px, py - 0.6f, PAL_PAINT(PAINT_MINT, 2));
+        for (int k = -1; k <= 1; k++) wd_blob(px + k * 2.2f, py + 1.6f, 0.9f, 0.9f, 0, c.fur, WB_OUT); }
     wd_line(critter_hand_x[1], critter_hand_y[1], pole_to_x, 0, 0.6f, PAL_PAINT(PAINT_CARAMEL, 0));
 }
 SHOT(a_fair, { wd_cam(lerp(-40, -10, seg(ta, 0, 2.5f)), -24, 1.4f); stage(ta); tub(ta, 0); steamy_draw(ta, -4); })
