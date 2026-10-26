@@ -1,11 +1,11 @@
 /* act2_common.h - the dark bandstand of Act Two: only the possessed ribs glow */
 #include "fair_common.h"
 #include "mayor.h"
-static float glow_pulse = 0;
+static float glow_pulse = 0, glow_on = 1;
 static void dark_stage(float ta, int candles, float c0, float flame_out) {
     set_sky_dawn(ta * 30, 0.25f); set_wall(ta * 30);
     Banner b = { 0 }; set_bandstand(ta * 30, &b, 0); tk_post_darken(4);
-    for (int k = 0; k < 6; k++) wd_blob(-40, -32 + k * 2.6f, (11 - k) * (1 + 0.35f * glow_pulse), 2.4f * (1 + 0.35f * glow_pulse), 0, glow_pulse > 0.5f ? PAL_PAINT(PAINT_GRAPE, 2) : PAL_PAINT(PAINT_GRAPE, 1), 0);   /* the glow */
+    for (int k = 0; k < 6 && glow_on > 0.01f; k++) wd_blob(-40, -32 + k * 2.6f, glow_on * (11 - k) * (1 + 0.35f * glow_pulse), 2.4f * (1 + 0.35f * glow_pulse), 0, glow_pulse > 0.5f ? PAL_PAINT(PAINT_GRAPE, 2) : PAL_PAINT(PAINT_GRAPE, 1), 0);   /* the glow */
     for (int i = 0; i < candles; i++) {
         float land = seg(ta, c0 + i * 0.5f, c0 + i * 0.5f + 0.1f); if (land <= 0) continue;
         float x = -12 + i * 6;
