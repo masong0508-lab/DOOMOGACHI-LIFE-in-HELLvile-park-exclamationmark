@@ -60,3 +60,9 @@ static void table_close(float ta, float t0) {   /* insert: under the cake table,
     wd_rect(-27, 4, 54, 1 + pull * 2.5f, PAL_WHITE, PAL_PAINT(PAINT_ROSE, 1));
     if (reach > 0 && pull < 1) { float hy = 6 - reach * 2 + pull * 3; wd_blob_ol(2, hy, 2.2f, 1.8f, 0, PAL_PAINT(PAINT_CARAMEL, 1), INK, WB_SHADE); for (int k = -1; k <= 1; k++) wd_blob(2 + k * 1.3f, hy - 1.4f, 0.8f, 1.1f, 0, PAL_PAINT(PAINT_CARAMEL, 2), WB_OUT); }
 }
+
+/* a soap bubble: just a rim and a glint (palette 0 is black, never fill with it) */
+static void soap(float x, float y, float r, uint8_t rim) {
+    int sx = (int)wd_sx(x), sy = (int)wd_sy(y), rr = (int)(r * wd_z); if (rr < 1) rr = 1;
+    tk_ring(sx, sy, rr, rim); tk_px(sx - rr / 2, sy - rr / 2, PAL_WHITE); tk_px(sx - rr / 2 + 1, sy - rr / 2, PAL_WHITE);
+}
