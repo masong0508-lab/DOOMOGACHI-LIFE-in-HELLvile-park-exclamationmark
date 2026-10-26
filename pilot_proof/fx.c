@@ -70,9 +70,10 @@ void puff_demon(float x, float y, float s, float t, int dir) {
 
 void verdict(const char *text, float age_s, int y) {
     if (age_s < 0) return;
-    int w = tk_text_w(text, 2);
-    if (age_s >= 8 / 30.0f) tk_text((TW - w) / 2 + 2, y + 2, text, PAL_PAINT(PAINT_GRAPE, 0), 2);   /* Clinker, 8 f late, a shade under */
-    tk_text_outline((TW - w) / 2, y, text, PAL_PAINT(PAINT_GRAPE, 2), PAL_PAINT(PAINT_JET, 1), 2);   /* Clinker, 8 f late, a shade under */
+    int sc = tk_text_w(text, 2) > TW - 8 ? 1 : 2;
+    int w = tk_text_w(text, sc);
+    if (age_s >= 8 / 30.0f) tk_text((TW - w) / 2 + sc, y + sc, text, PAL_PAINT(PAINT_GRAPE, 0), sc);   /* Clinker, 8 f late, a shade under */
+    tk_text_outline((TW - w) / 2, y, text, PAL_PAINT(PAINT_GRAPE, 2), PAL_PAINT(PAINT_JET, 1), sc);   /* Clinker, 8 f late, a shade under */
 }
 
 void cake_table(float x, float y, float t, int pie_cut) {
