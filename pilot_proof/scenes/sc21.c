@@ -75,15 +75,38 @@ static void world(float t) {
 }
 /* the Giggle crowd, in front of the stage; `turn` makes them look at Sunny */
 static void crowd(float t, float turn, float cheer) {
-    for (int i = 0; i < 14; i++) {
+    /* critter-rig extras with bit-actions (waving, a balloon, a snack, clapping) */
+    static const uint8_t furs[6][2] = { { PAL_PAINT(PAINT_CARAMEL, 1), PAL_PAINT(PAINT_CARAMEL, 0) }, { PAL_WHITE, PAL_PAINT(PAINT_BONE, 1) },
+        { PAL_PAINT(PAINT_HONEY, 2), PAL_PAINT(PAINT_HONEY, 1) }, { PAL_PAINT(PAINT_ROSE, 2), PAL_PAINT(PAINT_ROSE, 1) },
+        { PAL_PAINT(PAINT_SKY, 2), PAL_PAINT(PAINT_SKY, 1) }, { PAL_PAINT(PAINT_CHOCOLATE, 2), PAL_PAINT(PAINT_CHOCOLATE, 1) } };
+    static const uint8_t outs[5][3] = { { PAL_PAINT(PAINT_MINT, 1), PAL_PAINT(PAINT_MINT, 0), PAL_PAINT(PAINT_MINT, 2) },
+        { PAL_PAINT(PAINT_LEMON, 1), PAL_PAINT(PAINT_LEMON, 0), PAL_PAINT(PAINT_LEMON, 2) }, { PAL_PAINT(PAINT_LAVENDER, 1), PAL_PAINT(PAINT_LAVENDER, 0), PAL_PAINT(PAINT_LAVENDER, 2) },
+        { PAL_PAINT(PAINT_TANGERINE, 1), PAL_PAINT(PAINT_TANGERINE, 0), PAL_PAINT(PAINT_TANGERINE, 2) }, { PAL_PAINT(PAINT_TEAL, 1), PAL_PAINT(PAINT_TEAL, 0), PAL_PAINT(PAINT_TEAL, 2) } };
+    for (int i = 0; i < 12; i++) {
         uint32_t h = tk_hash((uint32_t)i * 977u + 11u);
-        TkChibi c = tk_random_citizen((uint32_t)i + 50, 0);
-        float x = -100 + i * 15.5f + (h % 7), y = 14 + (h >> 8) % 22;
-        if (fabsf(x - 38) < 9 && y > 24) x += 18;
-        float hop = cheer * fabsf(sinf((t + (h % 30)) * 0.35f)) * 5 + fabsf(sinf((t + (h % 40)) * 0.08f)) * 1.0f;
-        int flip = turn > 0.5f ? (x > 38) : (h >> 3) % 2;
-        int sz = wd_z > 2.2f ? 2 : 1;
-        tk_chibi((int)wd_sx(x), (int)(wd_sy(y) - hop * wd_z), &c, sz, cheer > 0.3f ? TKE_HAPPY : TKE_NORMAL, cheer > 0.3f ? TKM_OPEN : TKM_SMILE, (int)t + i * 7, flip);
+        float x = -100 + i * 18.0f + (h % 7), y = 18 + (h >> 8) % 18;
+        if (fabsf(x - 38) < 10 && y > 22) x += 20;
+        Critter c = { 0 };
+        c.x = x; c.y = y; c.s = 0.55f + 0.08f * ((h >> 5) % 3); c.t = t + i * 9; c.flip = turn > 0.5f ? (x > 38 ? -1 : 1) : ((h >> 3) & 1 ? 1 : -1);
+        c.fur = furs[h % 6][0]; c.furd = furs[h % 6][1];
+        c.outfit = outs[(h >> 7) % 5][0]; c.outfitd = outs[(h >> 7) % 5][1]; c.outfitl = outs[(h >> 7) % 5][2];
+        c.ears = (h >> 11) % 3 == 0 ? CR_EARS_LONG : CR_EARS_ROUND;
+        c.squash = 1; c.armL = c.armR = 0.4f;
+        c.blink = fmodf(t + i * 13, 90) > 86;
+        if (turn > 0.5f) c.look_x = x > 38 ? -1 : 1;
+        float hop = cheer * fabsf(sinf((t + (h % 30)) * 0.35f)) * 4;
+        c.y -= hop;
+        int act = i % 4;
+        if (cheer > 0.3f) { c.armL = c.armR = 2.6f + 0.3f * sinf(t * 0.6f + i); c.mouth = 0.7f; }
+        else if (act == 0) c.armR = 2.4f + 0.4f * sinf(t * 0.3f + i);          /* waving */
+        else if (act == 1) c.armR = 1.0f;                                     /* holding a balloon */
+        else if (act == 2) c.armL = 1.2f;                                     /* a snack */
+        critter_draw(&c);
+        if (act == 1 && cheer <= 0.3f) {
+            wd_line(critter_hand_x[1], critter_hand_y[1], critter_hand_x[1] + 2, critter_hand_y[1] - 18, 0.3f, PAL_GRAY_D);
+            wd_blob_ol(critter_hand_x[1] + 2, critter_hand_y[1] - 21, 3, 3.6f, 0, (h & 1) ? PAL_PAINT(PAINT_ROSE, 2) : PAL_PAINT(PAINT_MINT, 2), PAL_PAINT(PAINT_JET, 1), WB_SHADE);
+        }
+        if (act == 2 && cheer <= 0.3f) wd_blob_ol(critter_hand_x[0], critter_hand_y[0] - 1.5f, 1.6f, 1.6f, 0, PAL_PAINT(PAINT_BUBBLEGUM, 2), PAL_PAINT(PAINT_JET, 1), 0);
     }
 }
 static void sunny_at(float t, float page, float look_x, float ears) {
