@@ -105,9 +105,13 @@ end
 
 shot mt05 beat=e101_mt_3 len=72 set=wall_split:day px=1 look=pixel cut=WIPE:brick matte=open
   note "mirrored to the frame: the Hellvile lane is the HaHaland lane flipped about x 160"
-  crowd hh looks=kset:giggle_adults seed=501 n=5 tags=CITIZEN age=adult kind=chibi form=lane from=40 dy=140 dir=R spacing=12 speed=1.5 ripple=0..2 cycle=walk4
+  crowd hhb looks=kset:giggle_adults seed=501 n=2 tags=CITIZEN age=adult kind=chibi form=lane from=70 dy=126 dir=R spacing=26 speed=1.2 ripple=2..5 cycle=walk4   # back row, later and slower
   end
-  crowd hv looks=kset:hellvile_silhouettes seed=501 n=5 tags=CITIZEN,SILHOUETTE,HELLVILE age=adult kind=chibi form=lane from=280 dy=140 dir=L spacing=12 speed=1.5 ripple=0..2 cycle=walk4
+  crowd hh looks=kset:giggle_adults seed=511 n=3 tags=CITIZEN age=adult kind=chibi form=lane from=40 dy=150 dir=R spacing=24 speed=1.5 ripple=0..2 cycle=walk4    # near row: depth gap, never stacked
+  end
+  crowd hvb looks=kset:hellvile_silhouettes seed=501 n=2 tags=CITIZEN,SILHOUETTE,HELLVILE age=adult kind=chibi form=lane from=250 dy=126 dir=L spacing=26 speed=1.2 ripple=2..5 cycle=walk4
+  end
+  crowd hv looks=kset:hellvile_silhouettes seed=511 n=3 tags=CITIZEN,SILHOUETTE,HELLVILE age=adult kind=chibi form=lane from=280 dy=150 dir=L spacing=24 speed=1.5 ripple=0..2 cycle=walk4
   end
   +0    sfx FX_BRICK_WIPE                                     # the brick wipe runs down x 160
   +0    cam to scale=1.060 over=72 ease=INOUT
