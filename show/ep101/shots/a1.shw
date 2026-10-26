@@ -229,11 +229,12 @@ end
 # ===================================================================== SC19 · 1-06 (480)
 shot a1_06a beat=e101_1_06 len=210 set=hattie_tent:dusk px=1 cut=CUT scene=a1_sc19
   actor hattie who=hattie kind=figure at=160,124 face=front idle=on
-  actor sunny  who=sunny  kind=chibi at=280,176 face=L idle=on
+  actor sunny  who=sunny  kind=chibi at=304,150 face=L idle=on   # STAGING: enters at the tent mouth, behind the benches (was buried in the back row)
   crowd tent gen=randomize seed=1601 n=12 age=adult kind=chibi formation=benches(rows=2,y=168..180) facing=up ripple=0..3
   end
   +0    sfx FX_TUNK ; walla tent on gain=-26dB ; mx hahaland_fair start gain=-28dB source=outside
   +0    sign s_a1_06_sign on=sign
+  +0    walk sunny to=272 over=36                               # STAGING: walks in, stops at the bench end
   +40   say a1_06_hattie_01 hattie
   >+8   say w_tent_01 crowd:tent
   >+10  say a1_06_hattie_02 hattie
@@ -294,7 +295,7 @@ end
 # ===================================================================== SC21 · 1-08 (1350)
 shot a1_08a beat=e101_1_08 len=150 set=bandstand:dusk px=1 cut=CUT scene=a1_sc21
   cam at=-130,0
-  actor sunny who=sunny kind=figure at=200,172 face=front idle=on
+  actor sunny who=sunny kind=figure at=236,180 face=L idle=on   # STAGING: front of the lawn, clear of the crowd, facing the stage
   actor bone  who=bonejangles kind=figure at=60,124 face=R idle=on pose=mallets
   crowd giggle gen=randomize seed=1801 n=40 looks=K24 age=adult kind=chibi formation=lawn(y=150..178) ripple=0..3
   end
@@ -303,6 +304,7 @@ shot a1_08a beat=e101_1_08 len=150 set=bandstand:dusk px=1 cut=CUT scene=a1_sc21
   +10   move spot to=260,0 over=50 tw=TW_BRAKE                  # sweeps, overshoots
   +60   move spot to=200,0 over=30                 # swings back
   +90   sfx FX_SPOTLIGHT ; still sunny
+  +96   face sunny front                                        # STAGING: caught; turns to the light
   +100  ripple giggle headturn to=sunny 0..3
   +0    cam to scale=1.060 over=150 ease=INOUT    # motion: track the action
   +0    cam pan dx=15.1 dy=5.1 over=150 ease=INOUT    # motion: (centred on the frame)
@@ -395,14 +397,14 @@ end
 
 shot a1_09b beat=e101_1_09 len=330 set=bake_tent:night px=1 cut=CUT
   actor nana  who=nana  kind=figure at=150,118 face=front idle=on
-  actor mayor who=mayor kind=figure at=110,150 face=R idle=on pose=fork
+  actor mayor who=mayor kind=figure at=84,150 face=R idle=on pose=fork   # STAGING: downstage-left of Nana's counter, clear of her
   actor sunny who=sunny kind=figure at=270,176 face=L idle=on
   +0    mx nana_motif start gain=-16dB ; walla giggle on gain=-32dB
   +0    sign s_a1_09_sign on=sign ; sign s_a1_09_nana on=pie1
   +20   sfx FX_TINK ; expr mayor EXPR_HAPPY
   +40   say a1_09_mayor_02 mayor
   @a1_09_mayor_02.end+4 sfx FX_STAMP ; sign s_a1_09_aplus on=pie1
-  >+12  move mayor to=140,150 over=12                          # the stamp drifts over pie2, stops
+  >+12  move mayor to=112,150 over=12                          # the stamp drifts over pie2, stops
   >+18  say a1_09_mayor_01 mayor
   >+8   say a1_09_nana_01 nana
   @a1_09_nana_01.end+R8 walk mayor to=-40 over=30               # doesn't stamp it; moves on, fast
@@ -416,6 +418,11 @@ shot a1_09b beat=e101_1_09 len=330 set=bake_tent:night px=1 cut=CUT
   @a1_09_nana_01.start+29 headturn sunny 232 4    # motion:
   +0    cam to scale=1.050 over=330 ease=INOUT    # motion: push in, drifting toward the speaker
   +0    cam pan dx=2.6 dy=4.3 over=330 ease=INOUT    # motion: (centred on the frame)
+  # STAGING (blocking pass): eyelines between Nana and the Mayor across the counter
+  @a1_09_mayor_02.start+2 face nana L
+  @a1_09_nana_01.start+2 face mayor R
+  @a1_09_nana_01.start+2 face nana L
+  @a1_09_nana_01.end+4 face nana front
 end
 
 shot a1_09c beat=e101_1_09 len=240 set=bake_tent:night px=1 cut=CUT
@@ -433,7 +440,7 @@ end
 shot a1_09d beat=e101_1_09 len=300 set=bake_tent:night px=1 cut=CUT
   cam at=0,0  # FRAMING: setup scale>1.1 draws the plate shrunk (engine gap); staged at 1.0
   actor sunny who=sunny kind=bust px=2 at=200,120 face=L idle=on
-  actor nana  who=nana  kind=bust px=2 at=60,124 face=R idle=on  # OTS
+  actor nana  who=nana  kind=bust px=2 at=56,142 face=R idle=on  # OTS  # STAGING: lower-left foreground shoulder, Sunny deeper at frame right
   +0    walla giggle to gain=-34dB
   +20   pose sunny bite ; sfx FX_BITE_1 gain=-6dB pitch=0
   +25   say a1_09_nana_03 nana
@@ -478,7 +485,7 @@ shot a1_09f beat=e101_1_09 len=116 set=bake_tent:night px=1 cut=CUT base=a1_09d@
 end
 
 shot a1_09g beat=e101_1_09 len=270 set=bake_tent:night px=1 cut=CUT
-  actor nana  who=nana  kind=figure at=150,118 face=front idle=on
+  actor nana  who=nana  kind=figure at=150,118 face=R idle=on   # STAGING: plays the line to Sunny
   actor sunny who=sunny kind=figure at=250,176 face=L idle=on
   prop  page2 art=gen:soggy_page(n=2,pie=1,seed=17) plane=tent at=151,118 anchor=bottom hidden=yes
   +0    fol FOL_cloth
@@ -562,6 +569,10 @@ shot a1_10b beat=e101_1_10 len=180 set=fun_fair:lost px=1 cut=CUT
   @a1_10_mayor_02.start+29 headturn sunny 232 4    # motion:
   +0    cam to scale=1.050 over=180 ease=INOUT    # motion: push in, drifting toward the speaker
   +0    cam pan dx=2.6 dy=4.3 over=180 ease=INOUT    # motion: (centred on the frame)
+  # STAGING (blocking pass): Pip and Sunny track the Mayor as he crosses between them
+  @a1_10_mayor_01.start+4 face sunny R
+  @a1_10_mayor_01.start+8 take react_small pip
+  @a1_10_mayor_02.start+10 headturn pip 32 4
 end
 
 shot a1_10c beat=e101_1_10 len=30 set=act_cards:act1 px=1 cut=CUT insert
@@ -572,8 +583,8 @@ end
 
 shot a1_10d beat=e101_1_10 len=300 set=fun_fair:lost px=1 cut=CUT
   cam at=-40,0  # FRAMING: setup scale>1.1 draws the plate shrunk (engine gap); staged at 1.0
-  actor pip   who=pip   kind=figure at=190,176 face=L idle=on
-  actor sunny who=sunny kind=figure at=110,176 face=R idle=on
+  actor pip   who=pip   kind=figure at=214,168 face=L idle=on   # STAGING: walks in toward Sunny on the line
+  actor sunny who=sunny kind=figure at=104,178 face=R idle=on
   +0    fol FX_FOOTSTEP_SMALL
   +20   say a1_10_pip_04 pip
   @a1_10_pip_04.end+13 button ; pose pip flops_ear_down ; sfx FX_FLAP
@@ -584,13 +595,16 @@ shot a1_10d beat=e101_1_10 len=300 set=fun_fair:lost px=1 cut=CUT
   @a1_10_pip_04.start+29 headturn sunny 232 4    # motion:
   +0    cam to scale=1.080 over=300 ease=INOUT    # motion: push in, drifting toward the speaker
   +0    cam pan dx=4.0 dy=0.0 over=300 ease=INOUT    # motion: (centred on the frame)
+  # STAGING (blocking pass): Pip closes the gap to Sunny (stays an arm's length away)
+  +0    walk pip to=168 over=18
+  @a1_10_pip_04.end+20 headturn sunny 32 5
 end
 
 # ===================================================================== SC24 · 1-11 (540)
 shot a1_11a beat=e101_1_11 len=300 set=fun_fair:night px=1 cut=CUT scene=a1_sc24
-  cam at=-150,0
+  cam at=-60,0   # STAGING: reframed so Sunny is not on the frame edge and Mascotty reads upstage
   actor sunny who=sunny kind=figure at=40,172 face=R idle=on pose=egg_suitcase
-  actor mascotty who=mascotty kind=chibi at=200,170 idle=still light=cool   # the one still thing in a bobbing crowd (crowd members: an actor until lane-2 `member` lands)
+  actor mascotty who=mascotty kind=chibi at=118,150 idle=still light=cool  # STAGING: deep, on the back crowd lane, upstage of Sunny's stop   # the one still thing in a bobbing crowd (crowd members: an actor until lane-2 `member` lands)
   crowd giggle gen=randomize seed=1901 n=30 looks=K16 age=adult kind=chibi lanes=y:150,y:182 dir=LR speed=0.5 ripple=0..3
   end
   +0    mx hahaland_fair stop ; walla giggle on gain=-18dB                 # music out entirely
@@ -613,9 +627,9 @@ shot a1_11b beat=e101_1_11 len=90 set=fun_fair:night px=1 cut=CUT insert
 end
 
 shot a1_11c beat=e101_1_11 len=150 set=fun_fair:night px=1 cut=CUT
-  cam at=-150,0
+  cam at=-60,0   # STAGING: reframed so Sunny is not on the frame edge and Mascotty reads upstage
   actor sunny who=sunny kind=figure at=170,172 face=R idle=still pose=hold_page
-  actor mascotty who=mascotty kind=chibi at=200,170 idle=still    # far back by the lanterns (as a1_11a), waves on +20
+  actor mascotty who=mascotty kind=chibi at=118,150 idle=still  # STAGING: deep, as a1_11a    # far back by the lanterns (as a1_11a), waves on +20
   crowd giggle gen=randomize seed=1901 n=30 looks=K16 age=adult kind=chibi lanes=y:150,y:182 dir=LR speed=0.5 ripple=0..3    # reuse=a1_11a
   +0    walla giggle to gain=-18dB
   +5    fol FX_SUITCASE_SET
@@ -623,6 +637,9 @@ shot a1_11c beat=e101_1_11 len=150 set=fun_fair:night px=1 cut=CUT
   +60   pose sunny wave_page fps=8
   +0    cam to scale=1.060 over=150 ease=INOUT    # motion: crane-in reveal
   +0    cam pan dx=9.1 dy=2.1 over=150 ease=INOUT    # motion: (centred on the frame)
+  # STAGING (blocking pass): Sunny clocks the wave and turns to it
+  +26   face sunny L
+  +40   take react_small sunny
 end
 
 # ===================================================================== SC25 · 1-12 (600)
@@ -630,7 +647,7 @@ shot a1_12a beat=e101_1_12 len=270 set=bandstand:night px=1 cut=CUT scene=a1_sc2
   cam at=-130,0
   actor mayor who=mayor kind=figure at=150,124 face=front idle=on pose=mic
   actor bone  who=bonejangles kind=figure at=60,124 face=R idle=on pose=mallets_up
-  actor sunny who=sunny kind=figure at=170,172 face=front idle=on
+  actor sunny who=sunny kind=figure at=96,178 face=R idle=on   # STAGING: down-left on the lawn, clear of the stage, looking up at the Mayor
   crowd giggle gen=randomize seed=2001 n=50 looks=K24 age=adult kind=chibi formation=lawn(y=150..180) ripple=0..3
   end
   +0    fol FOL_paper_rustle ; walla giggle hush gain=-30dB
@@ -651,6 +668,12 @@ shot a1_12a beat=e101_1_12 len=270 set=bandstand:night px=1 cut=CUT scene=a1_sc2
   +70      shake SHK_TAP    # motion: the impact lands
   +0    cam to scale=1.050 over=270 ease=INOUT    # motion: push in, drifting toward the speaker
   +0    cam pan dx=2.6 dy=4.3 over=270 ease=INOUT    # motion: (centred on the frame)
+  # STAGING (blocking pass): Sunny eyelines up to the Mayor; Mayor turns to her on the deadpan; Bone glances over
+  +12   headturn sunny 32 6
+  @a1_12_mayor_01.start+10 take react_small sunny
+  @a1_12_mayor_02.start+2 face mayor L
+  @a1_12_mayor_02.start+18 blink sunny
+  @a1_12_mayor_02.end+6 face mayor front
 end
 
 shot a1_12b beat=e101_1_12 len=120 set=bandstand_cu:north_night px=2 cut=CUT
@@ -677,19 +700,26 @@ shot a1_12d beat=e101_1_12 len=150 set=bandstand:night px=1 cut=CUT
   cam at=-130,0
   actor bone  who=bonejangles kind=figure at=60,124 face=R idle=on pose=play_ribs fps=8
   actor mayor who=mayor kind=figure at=150,124 face=front idle=on
-  actor sunny who=sunny kind=figure at=170,172 face=front idle=on
+  actor sunny who=sunny kind=figure at=96,178 face=R idle=on   # STAGING: as a1_12a, on the lawn
   crowd giggle gen=randomize seed=2001 n=50 looks=K24 age=adult kind=chibi formation=lawn(y=150..180) ripple=0..3 cycle=dance    # reuse=a1_12a
   +0    mx hahaland_ribs start from=bar:1.1 gain=-12dB source=bandstand   # the hook in C, diegetic
   +0    cam to scale=1.060 over=150 ease=INOUT    # motion: crane-in reveal
   +0    cam pan dx=9.1 dy=2.1 over=150 ease=INOUT    # motion: (centred on the frame)
+  # STAGING (blocking pass): the music lands: Sunny bounces to it, Mayor turns to Bone
+  +12   face mayor L
+  +30   pop sunny TWT_HOP1
+  +60   pop sunny TWT_HOP1
+  +80   headturn sunny 32 6
+  +96   pop sunny TWT_HOP1
+  +126  pop sunny TWT_HOP1
 end
 
 # ===================================================================== SC26 · 1-13 (720)
 shot a1_13a beat=e101_1_13 len=300 set=giggle_wide:night px=1 cut=CUT scene=a1_sc26
-  actor mascotty who=mascotty kind=chibi at=292,164 idle=still   # the one still thing in a bobbing crowd (crowd members: an actor until lane-2 `member` lands)
+  actor mascotty who=mascotty kind=chibi at=286,142 idle=still   # the one still thing in a bobbing crowd (crowd members: an actor until lane-2 `member` lands)
   crowd giggle gen=randomize seed=2101 n=120 looks=K32 age=adult kind=chibi formation=wide(y=120..176) ripple=0..3
   end
-  actor sunny who=sunny kind=chibi at=150,170 face=front idle=on
+  actor sunny who=sunny kind=chibi at=150,179 face=R idle=on   # STAGING: foreground, in front of the crowd, eyeline to Mascotty
   +0    sfx FX_CLOCK_NINE ; mx hahaland_ribs mute 9999            # MUTE: the sequencer keeps running
   +0    ripple giggle headturn 64 0..3 ; still crowd:giggle.bone
   +10   sfx FX_CLOCK_NINE ; +20 sfx FX_CLOCK_NINE ; +30 sfx FX_CLOCK_NINE ; +40 sfx FX_CLOCK_NINE
@@ -799,8 +829,8 @@ shot a1_14c beat=e101_1_14 len=90 set=bandstand:vape px=1 cut=CUT
 end
 
 shot a1_14d beat=e101_1_14 len=4 set=kids_tent_memory:sepia px=1 look=sepia cut=CUT insert
-  actor lady   who=cloud_lady     kind=figure at=150,130 idle=none
-  actor shadow who=crowned_shadow kind=figure at=200,120 idle=none
+  actor lady   who=cloud_lady     kind=figure at=128,140 idle=none   # STAGING: foreground L
+  actor shadow who=crowned_shadow kind=figure at=214,114 idle=none   # STAGING: deeper R, looming
   +0    sfx FX_CHORD_MINOR                                         # owns its 4 f
   note "the memory shows the tent doorway only: no child is drawn (hard limit 3)"
 end
