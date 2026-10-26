@@ -126,7 +126,7 @@ def sweeteners(x):
 def main():
     src, dst, loc, mood = sys.argv[1:5]
     with tempfile.TemporaryDirectory() as td:
-        a = os.path.join(td, "a.wav"); subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", src, "-vn", "-ac", "2", "-ar", str(SR), a], check=True)
+        a = os.path.join(td, "a.wav"); subprocess.run(["ffmpeg", "-nostdin", "-v", "error", "-y", "-i", src, "-vn", "-ac", "2", "-ar", str(SR), a], check=True)
         x, _ = sf.read(a); mono = x.mean(1); n = len(mono)
         mus = music(n, mood) + riser_stinger(n, mood)
         # duck the new music under the scene's own audio (dialogue first)
@@ -138,7 +138,7 @@ def main():
         y = x + add_l[:, None] * np.array([[1.0, 0.92]])
         y /= max(1.0, np.abs(y).max() / 0.95)
         b = os.path.join(td, "b.wav"); sf.write(b, y, SR)
-        subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", src, "-i", b, "-map", "0:v", "-map", "1:a", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", dst], check=True)
+        subprocess.run(["ffmpeg", "-nostdin", "-v", "error", "-y", "-i", src, "-i", b, "-map", "0:v", "-map", "1:a", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", dst], check=True)
 
 if __name__ == "__main__":
     main()
