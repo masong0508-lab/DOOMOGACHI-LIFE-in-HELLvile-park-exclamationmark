@@ -34,7 +34,7 @@ static float lerp(float a, float b, float u) { return a + (b - a) * u; }
 #define T_BLOOM 10.9f
 #define T_OH    11.5f
 #define T_ANSWER 28.0f
-#define T_HUM   37.0f
+#define T_HUM   32.0f   /* the creator's hum runs 9.6 s: start early so it ends at 41.6 s, before the 4 s hold */
 #define T_IRIS  45.6f
 
 /* ---- the panorama: the whole park, dark, the Wall on the centre line ---- */
@@ -249,10 +249,10 @@ SHOT(h_hum, {
     wd_cam(-10, -24, lerp(2.4f, 2.8f, seg(ta, 31.5f, 41.6f)));
     Mayor m; mayor_default(&m, -10, 4, 1.0f, ta * 30);
     m.look_y = -1; m.look_x = 0.3f; m.expr = MX_NEUTRAL; m.flutter = 0;
-    m.mouth = lip("a4_08_mayor_01", (int)((ta - T_HUM) * 30), 138) * 0.5f;
+    m.mouth = lip("a4_08_mayor_01", (int)((ta - T_HUM) * 30), 288) * 0.5f;
     m.blink = fmodf(ta * 30, 120) > 116;
     mayor_draw(&m);
-    if (ta >= T_HUM && ta < T_HUM + 4.8f) { tk_star((int)wd_sx(mayor_head_x + 9), (int)wd_sy(mayor_head_y - 8) - (int)((ta - T_HUM) * 4) % 10, 1, PAL_PAINT(PAINT_ROSE, 2)); }
+    if (ta >= T_HUM && ta < T_HUM + 9.6f) { tk_star((int)wd_sx(mayor_head_x + 9), (int)wd_sy(mayor_head_y - 8) - (int)((ta - T_HUM) * 4) % 10, 1, PAL_PAINT(PAINT_ROSE, 2)); }
 })
 SHOT(i_hold, {
     /* HOLD 4 s on the last pink speck and the last purple speck over the Wall, then the heart iris */
