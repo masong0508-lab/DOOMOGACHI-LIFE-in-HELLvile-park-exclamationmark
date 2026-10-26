@@ -367,7 +367,9 @@ static const uint8_t logo_cols[10] = {
 #define LOGO_TAG 0x4C4F474Fu   /* 'LOGO' */
 static struct {
     uint8_t *pix;
-    int sw, big, ok;
+    int sw, big, ok, used;
+    uint8_t xok, xfail;
+    struct { DoomoImage img; int16_t bx, by; } x[3];
     struct { DoomoImage img; int16_t bx, by; } l[10];
 } LG;
 
@@ -378,7 +380,7 @@ static int logo_cache(int x0, int adv, int sc)
     int16_t bb[10][4];
     if (LG.pix && scene_scratch_mine(LOGO_TAG) && LG.sw == sw && LG.big == big) return LG.ok;
     if (plat_draw_skipped()) return 0;     /* nothing would be painted */
-    LG.pix = NULL; LG.ok = 0; LG.sw = sw; LG.big = big;
+    LG.pix = NULL; LG.ok = 0; LG.sw = sw; LG.big = big; LG.xok = LG.xfail = 0;
     for (pass = 0; pass < 2; pass++) {
         for (i = 0, used = 0; i < 10; i++) {
             char g[2] = { word[i], 0 };
@@ -410,9 +412,64 @@ static int logo_cache(int x0, int adv, int sc)
             if (!LG.pix) return 0;
         }
     }
+    LG.used = used;
+    LG.xok = 0;
     LG.ok = 1;
     return 1;
 }
+
+/* Extra static logo pieces (the LIFE pill, "in", "vile Park!"), painted
+ * once after the letters in the same scratch claim. `fn` draws the piece
+ * at (x, y). Returns 1 if piece `k` is cached (draw it with logo_extra). */
+static int logo_snap(int k, void (*fn)(int, int), int x, int y)
+{
+    int bx0, by0, bx1, by1, w, h;
+    if (LG.xok & (1 << k)) return 1;
+    if (!LG.ok || (LG.xfail & (1 << k)) || plat_draw_skipped()) return 0;
+    LG.xfail |= (uint8_t)(1 << k);
+    ui_raster_target(NULL, 0, 0, 0, 0);
+    fn(x, y);
+    if (!ui_raster_bounds(&bx0, &by0, &bx1, &by1)) { ui_raster_target_off(); return 0; }
+    w = bx1 - bx0; h = by1 - by0;
+    if (LG.used + w * h > (int)DOOMO_SCENE_SCRATCH) { ui_raster_target_off(); return 0; }
+    scene_scratch(LOGO_TAG, (uint32_t)(LG.used + w * h));
+    memset(LG.pix + LG.used, 0, (size_t)(w * h));
+    ui_raster_target(LG.pix + LG.used, bx0, by0, w, h);
+    fn(x, y);
+    ui_raster_target_off();
+    LG.x[k].img.w = (uint16_t)w;
+    LG.x[k].img.h = (uint16_t)h;
+    LG.x[k].img.pix = LG.pix + LG.used;
+    LG.x[k].img.uid = doomo_image_new_uid();
+    LG.x[k].bx = (int16_t)(bx0 - x);
+    LG.x[k].by = (int16_t)(by0 - y);
+    LG.used += (w * h + 3) & ~3;
+    LG.xok |= (uint8_t)(1 << k);
+    LG.xfail &= (uint8_t)~(1 << k);
+    return 1;
+}
+
+static void logo_extra(int k, int x, int y)
+{
+    if (!plat_draw_skipped()) plat_image(x + LG.x[k].bx, y + LG.x[k].by, &LG.x[k].img, 1, 0, 0);
+}
+
+static void pc_pill(int lx, int ly)
+{
+    int big = fp_big();
+    fp_pill(lx, ly, big ? 88 : 66, big ? 22 : 18, PAL_PAINT(PAINT_ROSE, 1),
+            PAL_PAINT(PAINT_ROSE, 0), PAL_PAINT(PAINT_ROSE, 2));
+    ui_text_big(lx + (big ? 18 : 12), ly + (big ? 3 : 2), "LIFE", 2, PAL_WHITE, PAL_PAINT(PAINT_ROSE, 0));
+    ui_heart(lx + (big ? 80 : 60), ly + 4, 3, PAL_UI_GOLD);
+}
+
+static void pc_text(int x, int y, const char *s)
+{
+    if (!fp_big()) ui_text_outline(x, y, s, PAL_WHITE, PAL_PAINT(PAINT_GRAPE, 0));
+    else ui_text_big(x, y, s, 2, PAL_WHITE, PAL_PAINT(PAINT_GRAPE, 0));
+}
+static void pc_in(int x, int y) { pc_text(x, y, "in"); }
+static void pc_vile(int x, int y) { pc_text(x, y, "vile Park!"); }
 
 static void draw_logo(void)
 {
@@ -443,11 +500,14 @@ static void draw_logo(void)
     if (t > 34) {
         int lx = x0 + lw - (big ? 92 : 70), ly = y0 + 8 * sc + (big ? 2 : 1);
         int pop = ui_pop_scale(t - 34), pw = (big ? 88 : 66) * pop / 256;
+        if (pop == 256 && t - 34 >= 12 && logo_snap(0, pc_pill, lx, ly)) logo_extra(0, lx, ly);
+        else {
         fp_pill(lx + ((big ? 88 : 66) - pw) / 2, ly, pw, big ? 22 : 18, PAL_PAINT(PAINT_ROSE, 1),
                 PAL_PAINT(PAINT_ROSE, 0), PAL_PAINT(PAINT_ROSE, 2));
         if (pop >= 220) {
             ui_text_big(lx + (big ? 18 : 12), ly + (big ? 3 : 2), "LIFE", 2, PAL_WHITE, PAL_PAINT(PAINT_ROSE, 0));
             ui_heart(lx + (big ? 80 : 60), ly + 4, 3, PAL_UI_GOLD);
+        }
         }
     }
     /* "in HELLvile Park!" - the HELL glitches */
@@ -458,7 +518,10 @@ static void draw_logo(void)
         int tw = w_in + w_hell + w_rest - 4, lx = (sw - tw) / 2 - (big ? 0 : 20);
         int gl = T.glitch_t > 0, k;
         uint8_t hc = gl ? ((T.t / 2) & 1 ? PAL_UI_RED : PAL_RAMP(RAMP_BLOOD, 2)) : PAL_PAINT(PAINT_CHERRY, 1);
-        if (s2 == 1) {
+        if (logo_snap(1, pc_in, lx, ly) && logo_snap(2, pc_vile, lx + w_in + w_hell - 2, ly)) {
+            logo_extra(1, lx, ly);
+            logo_extra(2, lx + w_in + w_hell - 2, ly);
+        } else if (s2 == 1) {
             ui_text_outline(lx, ly, "in", PAL_WHITE, PAL_PAINT(PAINT_GRAPE, 0));
             ui_text_outline(lx + w_in + w_hell - 2, ly, "vile Park!", PAL_WHITE, PAL_PAINT(PAINT_GRAPE, 0));
         } else {
