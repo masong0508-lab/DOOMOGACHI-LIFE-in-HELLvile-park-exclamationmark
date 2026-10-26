@@ -25,7 +25,9 @@ int fp_project(float wx, float wy, float z, float *sx, float *sy, float *scale);
  * local unit = `unit` world units; returns 0 if not visible */
 int fp_sprite(float wx, float wy, float z, float unit);
 void fp_shotgun(int fire_age, int pump_age, float raise);
-typedef struct FpHud { int hearts, shells, pet_look, pet_mood, brutal, sticker_age, sticker_torn_age; } FpHud;
+typedef struct FpHud { int hearts, shells, pet_look, pet_mood, brutal, sticker_age, sticker_torn_age, horn; const char *weapon, *plate, *mode; } FpHud;
+/* the welded saw, first person: idle purr or full scream */
+void fp_saw(int f, float rev, float raise, float dip);
 void fp_hud(const FpHud *h, int f);
 void fp_lens_blood(int age, uint32_t seed);
 #endif

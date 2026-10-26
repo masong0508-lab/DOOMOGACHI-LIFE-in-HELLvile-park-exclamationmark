@@ -112,19 +112,22 @@ void fp_hud(const FpHud *h, int f) {
     tk_rect(0, y0, TW, TH - y0, PAL_PAINT(PAINT_CHARCOAL, 0));
     tk_rect(0, y0, TW, 1, PAL_PAINT(PAINT_SILVER, 1));
     for (int i = 0; i < 3; i++) tk_heart(6 + i * 14, y0 + 6, 1, i < h->hearts ? PAL_PAINT(PAINT_CHERRY, 1) : PAL_PAINT(PAINT_CHARCOAL, 2));
-    for (int i = 0; i < 8; i++) tk_rect(190 + (i % 4) * 12, y0 + 4 + (i / 4) * 12, 9, 9, i < h->shells ? PAL_PAINT(PAINT_CHERRY, 1) : PAL_PAINT(PAINT_CHARCOAL, 2));
+    for (int i = 0; i < 8; i++) tk_rect(206 + (i % 4) * 8, y0 + 5 + (i / 4) * 10, 6, 8, i < h->shells ? PAL_PAINT(PAINT_CHERRY, 1) : PAL_PAINT(PAINT_CHARCOAL, 2));
     /* the pet's face in LCD green */
     tk_rect(114, y0 + 3, 32, 26, PAL_PAINT(PAINT_TEAL, 0));
     tk_ellipse(130, y0 + 18, 10, 8, PAL_PAINT(PAINT_MINT, 2));
+    if (h->horn) { tk_tri(124, y0 + 11, 128, y0 + 11, 126, y0 + 5, PAL_PAINT(PAINT_MINT, 2)); }
     int lx = h->pet_look;
-    tk_rect(125 + lx * 2, y0 + 15, 2, 3, PAL_PAINT(PAINT_TEAL, 0)); tk_rect(134 + lx * 2, y0 + 15, 2, 3, PAL_PAINT(PAINT_TEAL, 0));
+    uint8_t ec = h->horn ? PAL_UI_RED : PAL_PAINT(PAINT_TEAL, 0);
+    tk_rect(125 + lx * 2, y0 + 15, 2, 3, ec); tk_rect(134 + lx * 2, y0 + 15, 2, 3, ec);
+    if (h->horn) { tk_line(124, y0 + 13, 128, y0 + 14, PAL_PAINT(PAINT_TEAL, 0)); tk_line(136, y0 + 14, 140, y0 + 13, PAL_PAINT(PAINT_TEAL, 0)); }
     if (h->pet_mood > 0) tk_line(126, y0 + 21, 134, y0 + 21, PAL_PAINT(PAINT_TEAL, 0)), tk_px(125, y0 + 20, PAL_PAINT(PAINT_TEAL, 0)), tk_px(135, y0 + 20, PAL_PAINT(PAINT_TEAL, 0));
     if (h->pet_mood < 0) { tk_line(127, y0 + 22, 133, y0 + 20, PAL_PAINT(PAINT_TEAL, 0)); }
-    tk_text(48, y0 + 4, "PARTY PUMP", PAL_PAINT(PAINT_LEMON, 2), 1);
-    tk_text(48, y0 + 14, "RIP+TEAR", PAL_PAINT(PAINT_SILVER, 2), 1);
-    tk_text(48, y0 + 22, "..GENTLY", PAL_PAINT(PAINT_SILVER, 1), 1);
+    tk_text(48, y0 + 4, h->weapon ? h->weapon : "PARTY PUMP", PAL_PAINT(PAINT_LEMON, 2), 1);
+    if (h->plate) tk_text(48, y0 + 16, h->plate, PAL_PAINT(PAINT_SILVER, 2), 1);
+    else { tk_text(48, y0 + 14, "RIP+TEAR", PAL_PAINT(PAINT_SILVER, 2), 1); tk_text(48, y0 + 22, "..GENTLY", PAL_PAINT(PAINT_SILVER, 1), 1); }
     tk_text(150, y0 + 4, "GORE:", PAL_PAINT(PAINT_SILVER, 2), 1);
-    if (h->brutal) tk_text(150, y0 + 14, "BRUTAL", PAL_UI_RED, 1);
+    if (h->brutal) tk_text(150, y0 + 14, h->mode ? h->mode : "BRUTAL", PAL_UI_RED, 1);
     /* the Board of Decency sticker, slapped over it; then torn off in the blast */
     if (h->sticker_age >= 0 && h->sticker_torn_age < 0) {
         int r = h->sticker_age < 4 ? 20 - h->sticker_age * 2 : 13;
@@ -152,4 +155,21 @@ void fp_lens_blood(int age, uint32_t seed) {
         tk_rect(x - 1, y, 3, r + 8, PAL_PAINT(PAINT_CHERRY, 0));
         tk_px(x - r / 3, y - r / 3, PAL_PAINT(PAINT_CHERRY, 2));
     }
+}
+
+void fp_saw(int f, float rev, float raise, float dip) {
+    float oy = (1 - raise) * 90 + dip + (rev > 0.5f ? ((f & 1) ? 1.5f : -1.5f) : 0);
+    wd_cam(TW * 0.5f, TH * 0.5f, 1);
+    uint8_t ol = PAL_PAINT(PAINT_JET, 1);
+    wd_tube(60, 178 + oy, 98, 150 + oy, 12, 10, ol, PAL_PAINT(PAINT_SKY, 0), PAL_PAINT(PAINT_SKY, 1), PAL_PAINT(PAINT_SKY, 2));
+    wd_tube(206, 178 + oy, 150, 152 + oy, 12, 10, ol, PAL_PAINT(PAINT_SKY, 0), PAL_PAINT(PAINT_SKY, 1), PAL_PAINT(PAINT_SKY, 2));
+    /* the welded housing and the blade */
+    wd_rect(96, 128 + oy, 48, 30, PAL_RAMP(RAMP_STEEL, 3), ol);
+    for (int k = 0; k < 4; k++) wd_line(98 + k * 12, 130 + oy, 104 + k * 12, 156 + oy, 0.8f, PAL_RAMP(RAMP_STEEL, 1));   /* weld beads */
+    float spin = f * (0.2f + rev * 1.4f);
+    wd_blob_ol(120, 112 + oy, 26, 22, 0, PAL_RAMP(RAMP_STEEL, 5), ol, WB_SHADE);
+    for (int k = 0; k < 16; k++) { float a = spin + k * 0.3927f; wd_tri(120 + cosf(a) * 24, 112 + oy + sinf(a) * 20, 120 + cosf(a + 0.2f) * 24, 112 + oy + sinf(a + 0.2f) * 20, 120 + cosf(a + 0.1f) * 30, 112 + oy + sinf(a + 0.1f) * 26, PAL_RAMP(RAMP_STEEL, 6)); }
+    wd_blob(120, 112 + oy, 5, 5, 0, PAL_RAMP(RAMP_STEEL, 1), WB_OUT);
+    wd_blob_ol(98, 150 + oy, 9, 8, 0, PAL_WHITE, ol, WB_SHADE);
+    wd_blob_ol(148, 152 + oy, 9, 8, 0, PAL_WHITE, ol, WB_SHADE);
 }
