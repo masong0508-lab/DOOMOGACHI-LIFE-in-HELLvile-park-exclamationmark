@@ -177,6 +177,19 @@ void vid_blit(int x, int y, const DoomoImage *img, int scale, int flags, uint32_
                 if (b) put_hi(p, sil ? color : b);
                 p++; src += 2; k = 1;
             }
+            if (!sil && !((uintptr_t)src & 1)) {
+                /* aligned source: one halfword read per pair (the chibi
+                 * cache is in EWRAM, a 16-bit bus) */
+                const uint16_t *s2 = (const uint16_t *)src;
+                for (; k < n - trail; k++, p++, s2++) {
+                    uint32_t v = *s2;
+                    if (!v) continue;
+                    if ((v & 0xFF) && (v & 0xFF00)) *p = (uint16_t)v;
+                    else if (v & 0xFF) put_lo(p, v);
+                    else put_hi(p, v >> 8);
+                }
+                src = (const uint8_t *)s2;
+            }
             for (; k < n - trail; k++, p++, src += 2) {
                 uint32_t a = src[0], b = src[1];
                 if (!(a | b)) continue;
