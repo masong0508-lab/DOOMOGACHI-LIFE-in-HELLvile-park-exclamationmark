@@ -189,6 +189,22 @@ void vid_blit(int x, int y, const DoomoImage *img, int scale, int flags, uint32_
                     else put_hi(p, v >> 8);
                 }
                 src = (const uint8_t *)s2;
+            } else if (!sil) {
+                /* odd source: aligned halfwords, each pair is the high
+                 * byte of one and the low byte of the next (the bytes
+                 * read beside the row are never used) */
+                const uint16_t *s2 = (const uint16_t *)(src - 1);
+                uint32_t prev = *s2++;
+                for (; k < n - trail; k++, p++) {
+                    uint32_t next = *s2++;
+                    uint32_t v = (prev >> 8) | ((next & 0xFF) << 8);
+                    prev = next;
+                    if (!v) continue;
+                    if ((v & 0xFF) && (v & 0xFF00)) *p = (uint16_t)v;
+                    else if (v & 0xFF) put_lo(p, v);
+                    else put_hi(p, v >> 8);
+                }
+                src = (const uint8_t *)s2 - 1;
             }
             for (; k < n - trail; k++, p++, src += 2) {
                 uint32_t a = src[0], b = src[1];
