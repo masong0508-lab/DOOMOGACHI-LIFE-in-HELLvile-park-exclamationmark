@@ -71,10 +71,11 @@ void scene_b_hills_audio(double t0, double dur) {
 void scene_c_drop(int f, int n) {
     float ta = 9.5f + f / 30.0f;
     float bx = bus_x(ta);
-    wd_cam(lerp(bx + 10, bx + 30, seg(ta, T_LEAVE, 18)), hill_y(bx) - 14, 2.6f);
+    float stop = bus_x(T_BRAKE);   /* hold on Sunny; the bus leaves frame */
+    wd_cam(stop + 16, hill_y(stop) - 10, 2.4f);
     hills(ta);
     bus(bx, ta, ta >= T_THROW - 0.2f && ta < T_DOOR);
-    float sx = bx + 26, sy = hill_y(bx + 26) + 12;   /* in the road, in front of the bus */
+    float sx = stop + 26, sy = hill_y(stop + 26) + 12;   /* in the road, in front of the bus */
     if (ta >= T_THROW) {
         Sunny u; sunny_default(&u, sx, sy, 0.75f, ta * 30);
         float fall = seg(ta, T_THROW, T_THROW + 0.25f);
