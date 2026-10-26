@@ -43,12 +43,17 @@ void crowd_draw(const CrowdOpts *o) {
         if (o->panic > 0) {
             float ph = o->t * 0.6f + i;
             c.y -= fabsf(sinf(ph)) * 3 * o->panic;
-            c.armL = 2.6f + 0.4f * sinf(ph * 1.3f); c.armR = 2.6f + 0.4f * cosf(ph * 1.3f);
+            c.armL = 1.1f + 0.9f * sinf(ph * 2.2f); c.armR = 1.1f - 0.9f * sinf(ph * 2.2f);   /* pumping, running */
             c.mouth = 0.8f;
         } else if (t >= o->t - 0.5f) {    /* idle: breathing, a small bit-action */
             if (i % 4 == 0) c.armR = 1.0f + 0.2f * sinf(t * 0.1f + i);
         } else c.mouth = 0;                /* frozen mid-breath */
         critter_draw(&c);
+        if (o->panic > 0) {   /* motion lines and dust kicked up behind */
+            float bx2 = x - dir * 9 * c.s;
+            for (int k = 0; k < 3; k++) wd_line(bx2 - dir * k * 2, y - 14 * c.s + k * 5 * c.s, bx2 - dir * (k * 2 + 6), y - 14 * c.s + k * 5 * c.s, 0.4f, PAL_WHITE);
+            wd_blob(bx2 - dir * 3, y - 1, 2.4f * c.s, 1.2f * c.s, 0, PAL_PAINT(PAINT_BONE, 1), 0);
+        }
         if (o->eyes > 0.3f) for (int k = -1; k <= 1; k += 2) wd_blob(x + k * 3 * c.s, critter_head_y - 0.8f * c.s, 1.6f * c.s * o->eyes, 1.9f * c.s * o->eyes, 0, PAL_WHITE, WB_OUT);
         if (o->panic > 0 && ((int)o->t + i) % 3 == 0) wd_blob(x + 6 * c.s, critter_head_y - 6 * c.s - fmodf(o->t, 3) * 2, 0.8f * c.s, 1.1f * c.s, 0, PAL_PAINT(PAINT_SKY, 2), WB_OUT);   /* sweat drop */
     }

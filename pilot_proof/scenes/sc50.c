@@ -6,7 +6,7 @@
 #define SHOTS(X) X(main, 30.0)
 #include "scene_tl.h"
 static const float P1 = 2.6f, P2 = 7.0f, CLIMB = 9.0f, MUTE = 12.6f, P3 = 12.8f, DRAIN = 17.6f, THAW = 21.0f, TURN = 24.0f;
-static const Cut C[] = { { 0, 40, 6, 4.0f, 4.4f, 0, 0 }, { 5.0f, 20, -4, 2.0f, 2.2f, 0, 0 }, { P2 - 0.3f, 40, 6, 4.2f, 4.6f, 0, 0 }, { CLIMB, 4, -14, 2.6f, 2.8f, -6, 0 },
+static const Cut C[] = { { 0, 58, 6, 4.0f, 4.4f, 0, 0 }, { 5.0f, 30, -4, 1.5f, 1.65f, 0, 0 }, { P2 - 0.3f, 56, 6, 4.2f, 4.6f, 0, 0 }, { CLIMB, 4, -14, 2.6f, 2.8f, -6, 0 },
     { P3 - 0.2f, 2, -16, 4.4f, 4.8f, 0, 0 }, { DRAIN, -40, -30, 3.4f, 3.8f, 0, 0 }, { 19.6f, 6, -20, 5.4f, 5.6f, 0, 0 }, { THAW, 14, -8, 1.6f, 1.8f, 0, 0 }, { TURN, 0, -14, 3.6f, 4.0f, 0, 0 } };
 void scene_main(int f, int n) {
     float ta = f / 30.0f; (void)n;
@@ -15,7 +15,7 @@ void scene_main(int f, int n) {
     bead_flame = seg(ta, 19.6f, 20.6f);
     town(ta, 0, ta >= THAW ? THAW : -1, poss);
     float climb = seg(ta, CLIMB, MUTE - 0.4f);
-    Critter p = cast_pip(lerp(40, 4, climb), lerp(20, -6, climb), ta * 30); p.flip = -1; p.armL = p.armR = 1.7f;   /* Mr. Flops in a two-armed headlock */
+    Critter p = cast_pip(lerp(56, 4, climb), lerp(20, -6, climb), ta * 30); p.flip = -1; p.armL = p.armR = 1.7f;   /* Mr. Flops in a two-armed headlock */
     p.blink = ta < 1.0f ? 1 : 0; p.squash = 1 - 0.04f * (ta < 1.0f);
     if (ta >= P3 && ta < P3 + 3) { p.armR = 2.4f; p.squash = 1.08f; p.mouth = 1; }   /* the paw jabs at the name */
     if (ta >= TURN) { p.armL = 1.2f; p.armR = 0.9f; }                               /* holds Mr. Flops properly */

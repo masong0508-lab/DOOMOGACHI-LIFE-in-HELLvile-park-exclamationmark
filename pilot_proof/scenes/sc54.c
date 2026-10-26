@@ -18,7 +18,10 @@ void scene_main(int f, int n) {
     tk_text((int)wd_sx(22), (int)wd_sy(-28), "MINGLE", PAL_PAINT(PAINT_CHOCOLATE, 1), 1);
     if (lid > 0) { wd_quad(20, -30, 54, -30, 54 - lid * 4, -30 - lid * 12, 20 - lid * 4, -30 - lid * 12, PAL_PAINT(PAINT_CARAMEL, 2), INK);
         for (int r = 0; r < 4; r++) { wd_tube(26 + r * 7, -30, 27 + r * 7, -38, 1.2f, 1, INK, PAL_PAINT(PAINT_ROSE, 0), PAL_PAINT(PAINT_ROSE, 1), PAL_PAINT(PAINT_ROSE, 2)); }   /* a nest of rockets in straw */
-        if (ta < OPEN + 2) for (int d = 0; d < 6; d++) wd_blob(30 + d * 3, -36 - (ta - OPEN) * 8 - d, 1.4f, 1.4f, 0, PAL_PAINT(PAINT_BONE, 1), 0); }
+        for (int s2 = 0; s2 < 14; s2++) { uint32_t h = tk_hash(s2 * 17u); float sx2 = 22 + (h % 30), sy2 = -30 - (h >> 6) % 4; wd_line(sx2, sy2, sx2 + 3 - (h >> 9) % 6, sy2 - 2 - (h >> 12) % 3, 0.35f, PAL_PAINT(PAINT_HONEY, 2)); }   /* straw */
+        float age = ta - OPEN - 0.4f;
+        if (age < 4) for (int d = 0; d < 16; d++) { uint32_t h = tk_hash(d * 31u + 5u); float dx = 24 + (h % 28) + sinf(age * 1.5f + d) * 4 * age, dy = -32 - age * (4 + (h >> 8) % 6) ; float r = 1.0f + age * 0.5f;
+            if (age < 3.5f) wd_blob(dx, dy, r, r * 0.8f, 0, (h & 1) ? PAL_PAINT(PAINT_BONE, 1) : PAL_PAINT(PAINT_BONE, 2), 0); }   /* eleven years of dust */ }
     float back = ta >= STEPS ? 0 : 0; int st = ta >= STEPS ? (int)((ta - STEPS) / 0.27f) : 0; if (st > 3) st = 3; if (ta >= STEPS + 1.6f) st = 4;
     Critter p = cast_pip(ta < P4 ? 37 : 60 + st * 6, ta < P4 ? -30 : 0, ta * 30); p.flip = -1; p.kneel = ta < P4; p.look_y = ta < P3 + 1 ? 0.5f : -0.3f;
     if (ta >= M3 + 0.4f) p.ear_turn = 0; if (ta >= P4) { p.armR = ta < P4 + 1 ? 2.9f : 0.5f; }
@@ -28,7 +31,7 @@ void scene_main(int f, int n) {
     Nana nn; nana_default(&nn, ta >= NANA ? 88 : 84, 2, 0.85f, ta * 30); nn.buttons = 3; nana_draw(&nn);
     Critter fz = fuzz_at(ta, 76, 0); fz.armR = ta >= CANDLE ? 1.6f : 1.2f; critter_draw(&fz);
     if (ta < CANDLE + 1) { wd_rect(critter_hand_x[1] - 0.8f, critter_hand_y[1] - 4, 1.6f, 4, PAL_PAINT(PAINT_BONE, 2), INK); wd_blob(critter_hand_x[1], critter_hand_y[1] - 5.4f, 0.8f, 1.4f, 0, PAL_PAINT(PAINT_LEMON, 2), WB_OUT); }
-    Mayor m; mayor_default(&m, ta < OPEN ? 0 : 30, -10, 0.9f, ta * 30); m.flutter = 0.1f;
+    Mayor m; mayor_default(&m, ta < OPEN - 1 ? 0 : lerp(0, 66, seg(ta, OPEN - 1, OPEN)), -10, 0.9f, ta * 30); if (ta >= OPEN - 1 && ta < GO) m.flip = -1; m.flutter = 0.1f;
     m.look_x = ta >= LOOKS && ta < LOOKS + 1.2f ? 1 : ta >= LOOKS + 1.2f && ta < LOOKS + 2.4f ? 1 : ta >= LOOKS + 2.4f && ta < M1 ? 1 : 0;
     m.look_y = ta >= LOOKS + 1.2f && ta < LOOKS + 2.4f ? -0.6f : 0;
     if (ta >= OPEN) m.armR = 1.4f; if (ta >= CANDLE + 0.5f) m.armL = 1.4f;

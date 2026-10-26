@@ -15,7 +15,7 @@ static void town(float ta, float freeze_t, float thaw_t, float poss) {
     Critter fz = fuzz_at(clock, -2, -8); fz.kneel = 1; fz.armL = fz.armR = 1.3f; fz.mouth = ta < freeze_t + 0.1f || clock != freeze_t ? 0 : 0.8f; critter_draw(&fz);
     wd_rect(critter_hand_x[1] - 3, critter_hand_y[1] - 7, 7, 8, PAL_UI_CREAM, PAL_PAINT(PAINT_CARAMEL, 0));
     Critter bl = bloom_at(clock, 14, -4); critter_draw(&bl);
-    Nana nn; nana_default(&nn, 34, 20, 0.85f, clock * 30); nn.buttons = 3; nana_draw(&nn);
-    Mayor m; mayor_default(&m, 62, 20, 0.8f, clock * 30); m.look_y = -1; m.flutter = 0; m.expr = MX_NEUTRAL; mayor_draw(&m);
+    Nana nn; nana_default(&nn, 42, 20, 0.85f, clock * 30); nn.buttons = 3; nana_draw(&nn);
+    Mayor m; mayor_default(&m, 92, 20, 0.8f, clock * 30); m.look_y = -1; m.flutter = 0; m.expr = MX_NEUTRAL; mayor_draw(&m);
 }
 static void fade_in_from(float ta, float t0) { if (ta < t0 + 0.2f) tk_post_fade((int)(16 * (1 - seg(ta, t0, t0 + 0.2f)))); }

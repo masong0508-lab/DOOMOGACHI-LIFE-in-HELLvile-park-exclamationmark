@@ -8,7 +8,10 @@
 static const float STOP = 6.0f;
 static void stone(float x, const char *a, const char *b, float w) {
     wd_rect(x - w / 2, -14, w, 14, PAL_PAINT(PAINT_SILVER, 1), INK); wd_blob(x, -14, w / 2, 3, 0, PAL_PAINT(PAINT_SILVER, 1), 0);
-    int sx = (int)wd_sx(x), sy = (int)wd_sy(-12); int aw = tk_text_w(a, 1); tk_text(sx - aw / 2, sy, a, PAL_PAINT(PAINT_CHARCOAL, 1), 1); if (b) { int bw = tk_text_w(b, 1); tk_text(sx - bw / 2, sy + 9, b, PAL_PAINT(PAINT_CHARCOAL, 1), 1); }
+    /* engraved in world units, sized to fit inside the stone */
+    int la = (int)strlen(a), lb = b ? (int)strlen(b) : 0, lm = la > lb ? la : lb;
+    float p = (w - 6) / (lm * 7.2f); if (p > 0.4f) p = 0.4f;
+    wd_text(x - la * 3.6f * p, -12, a, p, PAL_PAINT(PAINT_CHARCOAL, 1), 0); if (b) wd_text(x - lb * 3.6f * p, -12 + 9 * p, b, p, PAL_PAINT(PAINT_CHARCOAL, 1), 0);
 }
 void scene_main(int f, int n) {
     float ta = f / 30.0f; (void)n;
@@ -16,9 +19,9 @@ void scene_main(int f, int n) {
     wd_cam(walk + 10, -4, 2.2f);
     static const uint8_t c[] = { PAL_PAINT(PAINT_NAVY, 1), PAL_PAINT(PAINT_GRAPE, 0) }; tk_vgrad(0, 0, TW, TH, c, 2);
     wd_rect(-200, 0, 600, 60, PAL_RAMP(RAMP_GRASS, 1), 0);
-    stone(30, "Rest in pieces,", "Mr. Huggins the 1st", 50);
+    stone(26, "Rest in pieces,", "Mr. Huggins the 1st", 56);
     stone(70, "HA", NULL, 14); stone(100, "lol", NULL, 14);
-    stone(128, "FLUFFY THE CLOUD.", "DRIFTED.", 44); wd_blob(128, -19, 3, 2, 0, PAL_WHITE, WB_OUT);
+    stone(132, "FLUFFY THE CLOUD.", "DRIFTED.", 52); wd_blob(132, -19, 3, 2, 0, PAL_WHITE, WB_OUT);
     stone(170, "RIP", NULL, 14);
     float base = walk;
     Mayor m; mayor_default(&m, base + 8, 18, 0.75f, ta * 30); m.step = fabsf(sinf(ta * 6)) * 1.5f;

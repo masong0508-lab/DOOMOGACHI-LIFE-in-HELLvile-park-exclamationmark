@@ -19,7 +19,7 @@ Every other speaker's folder is linked through unchanged. The dialogue chain
 import csv, os, sys, subprocess, tempfile
 import numpy as np, soundfile as sf, pyworld as pw
 
-PITCH_ST, FORMANT = 3.0, 1.05
+PITCH_ST, FORMANT, MAX_ST = 3.0, 1.05, 4.0
 SUNG_STR, SPEECH_STR = 0.6, 0.15
 SUNG = ("co12_hum", "co13_heehee", "a1_08_mayor_09", "a1_13_mayor_01", "a4_08_mayor_01", "a1_12_mayor_02")
 CMINOR = [0, 2, 3, 5, 7, 8, 10]   # C natural minor (the Mingle's key family)
@@ -63,10 +63,14 @@ def snap(f0, strength, scale):
     return out
 
 def character(x, sung):
-    f0, t = pw.harvest(x, SR, f0_floor=60, f0_ceil=900, frame_period=5.0)
+    f0, t = pw.harvest(x, SR, f0_floor=70, f0_ceil=700, frame_period=5.0)
     sp = pw.cheaptrick(x, f0, t, SR); ap = pw.d4c(x, f0, t, SR)
+    m0 = np.median(f0[f0 > 0]) if (f0 > 0).any() else 0
     f0 = f0 * 2 ** (PITCH_ST / 12)
     f0 = snap(f0, SUNG_STR if sung else SPEECH_STR, CMINOR if sung else None)
+    if m0 > 0:   # cap the overall rise at MAX_ST (median to median)
+        rise = 12 * np.log2(np.median(f0[f0 > 0]) / m0)
+        if rise > MAX_ST: f0 = f0 * 2 ** ((MAX_ST - rise) / 12)
     # formant lift: read the envelope at freq/FORMANT
     nb = sp.shape[1]; src = np.clip(np.arange(nb) / FORMANT, 0, nb - 1)
     lo = np.floor(src).astype(int); hi = np.minimum(lo + 1, nb - 1); w = src - lo

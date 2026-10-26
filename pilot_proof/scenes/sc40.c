@@ -9,7 +9,7 @@
 #define BEAT (60.0f / 140.0f)
 static const float W1 = 3.0f, TR1 = 7.6f, W2 = 12.0f, TR2 = 16.4f, T_DUCK = 19.5f, ST1 = 23.6f, T_BLUB = 26.4f, W3 = 28.0f, T_END = 36.0f;
 static const Cut C[] = { { 0, 0, 0, 1, 1, 0, 1 }, { W1, 0, -24, 2.2f, 2.3f, 0, 0 }, { 6.0f, 0, -20, 3.4f, 3.7f, 0, 0 }, { W2, 0, -24, 2.0f, 2.2f, 0, 0 },
-    { T_DUCK, 0, -14, 3.0f, 3.4f, 0, 2 }, { ST1 - 0.2f, 0, -18, 4.2f, 4.6f, 0, 2 }, { W3, 0, -26, 1.6f, 1.8f, 0, 0 }, { 33.0f, 0, -24, 2.4f, 2.6f, 0, 0 } };
+    { T_DUCK, 0, -14, 3.0f, 3.4f, 0, 2 }, { ST1 - 0.2f, 0, -18, 4.2f, 4.6f, 0, 2 }, { W3, 0, -26, 1.6f, 1.8f, 0, 0 }, { 33.0f, 0, -30, 1.3f, 1.4f, 0, 0 } };
 static float sunny_x(float ta) { return (ta - W1) * 16; }   /* marching right at a constant pace */
 static void cute_bg(float ta, float cx) {
     static const uint8_t c[] = { PAL_PAINT(PAINT_LAVENDER, 2), PAL_PAINT(PAINT_LAVENDER, 1) };
@@ -79,11 +79,23 @@ void scene_main(int f, int n) {
     if ((ta >= TR1 && ta < TR1 + 4 / 30.0f) || (ta >= TR2 && ta < TR2 + 4 / 30.0f)) { truth_insert(ta >= TR2); return; }
     if (k == 2) { steamy_tub(ta); return; }
     float sx = sunny_x(ta < T_DUCK ? ta : ta - (W3 - T_DUCK));
-    wd_cam(sx + 30 + (wd_cx - 0), wd_cy, wd_z);
+    wd_cam(sx + (ta >= 33 ? 60 : 30) + (wd_cx - 0), wd_cy, wd_z);
     cute_bg(ta, sx);
     if (ta >= W2 && ta < T_DUCK) {   /* the teacups, still turning backwards; the red one still red */
         float tx = sunny_x(W2) + 70; wd_blob_ol(tx, 0, 30, 6, 0, PAL_PAINT(PAINT_LAVENDER, 1), INK, 0);
         for (int c = 0; c < 3; c++) { float a = -ta * 2 + c * 2.1f; wd_quad(tx + cosf(a) * 20 - 6, -8, tx + cosf(a) * 20 + 6, -8, tx + cosf(a) * 20 + 5, 0, tx + cosf(a) * 20 - 5, 0, c == 0 ? PAL_PAINT(PAINT_CHERRY, 1) : PAL_PAINT(PAINT_MINT, 2), INK); }
+    }
+    if (ta < 6.5f) {   /* behind Sunny at the start: Rivet's prize case, open, glass cracked, velvet empty */
+        float cx = 24;
+        wd_rect(cx - 12, -14, 24, 14, PAL_RAMP(RAMP_STEEL, 3), INK); for (int r = 0; r < 5; r++) wd_blob(cx - 10 + r * 5, -13, 0.6f, 0.6f, 0, PAL_RAMP(RAMP_STEEL, 6), WB_OUT);
+        wd_rect(cx - 10, -12, 20, 8, PAL_PAINT(PAINT_GRAPE, 0), 0);
+        wd_quad(cx - 12, -14, cx + 12, -14, cx + 10, -30, cx - 14, -30, PAL_RAMP(RAMP_STEEL, 2), INK);   /* the lid, up */
+        wd_line(cx - 4, -12, cx + 2, -8, 0.3f, PAL_WHITE); wd_line(cx + 2, -8, cx - 1, -5, 0.3f, PAL_WHITE); wd_line(cx + 2, -8, cx + 7, -7, 0.3f, PAL_WHITE);   /* the crack */
+    }
+    if (ta >= W3 + 2) {   /* ahead, the demons pile onto the bake tent */
+        { float tx0 = sx + 120; fair_tent(tx0, 70, 60, PAL_PAINT(PAINT_MINT, 1)); }
+        for (int i = 0; i < 9; i++) { float t0 = W3 + 2 + i * 0.5f; if (ta < t0) continue; float u = seg(ta, t0, t0 + 1.2f);
+            float tx = sx + 120; float x = lerp(tx - 60 + i * 6, tx + (i % 3 - 1) * 10, u), y = lerp(-2, -64 - (i / 3) * 10, u) - 14 * sinf(u * 3.14f); puff_demon(x, y, 1.0f, ta * 30 + i * 7, 1); }
     }
     march(ta, sx);
     float t0 = ta < W2 ? W1 + 0.5f : ta < T_DUCK ? W2 + 0.3f : W3 + 0.2f;
