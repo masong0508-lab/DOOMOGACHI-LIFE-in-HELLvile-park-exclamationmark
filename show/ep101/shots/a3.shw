@@ -135,13 +135,16 @@ shot a3s10 beat=e101_3_01 len=378 set=bandstand:rite px=1 look=pixel cut=CUT sce
   note "ELASTIC tail (up to 13 s with a3s09). frame fair only: the kids at the bandstand stay out of frame"
   note "STD: no child in this scene"
   cam at=-232,0 ; cam drift dx=0.5
-  actor sunny who=sunny kind=figure at=60,160 face=R idle=on pose=carry_wand
-  actor pet   who=pet kind=sprite at=60,112 idle=on
+  actor sunny who=sunny kind=figure at=-200,172 face=R idle=on pose=carry_wand px=2
+  actor pet   who=pet kind=sprite at=-226,80 idle=on px=2
   prop  hugsign art=gen:sign(w=60,h=14,face=pink,frame=white,seed=12) state=hanging at=150,92 plane=stage
   crowd far gen=randomize who=puff_demon n=6 seed=3101 kind=sprite dy=90 from=300 spacing=10 cycle=bounce age=adult
   end
   +0    sfx FX_SPARKLE ; fx heart_fall at=0,0 n=24 seed=16
-  +0    walk sunny to=260 over=378
+  +0    move sunny to=50,172 over=378 ; move pet to=24,80 over=378
+  +90   headturn sunny 232 4    # glances back at the pet
+  +130  headturn sunny 0 4
+  +200  pop pet TWT_HOP1
   +0    cam to scale=1.060 over=378 ease=INOUT    # motion: track the action
   +0    cam pan dx=15.1 dy=5.1 over=378 ease=INOUT    # motion: (centred on the frame)
 end
@@ -296,17 +299,19 @@ end
 # =================================================================== 3-04 (1,200 f, PROTECTED HOLD 1 of 3)
 shot a3s19 beat=e101_3_04 len=120 set=bandstand:rite px=1 look=pixel cut=CUT scene=a3_steps gore=CUTE
   cam at=-90,0
-  actor fuzz who=fuzz kind=figure at=150,150 face=R idle=on
-  actor bloom who=bloom kind=figure at=130,156 face=R idle=on
-  actor bone who=bonejangles kind=figure at=174,124 face=L idle=still
+  actor fuzz who=fuzz kind=figure at=170,164 face=R idle=on px=2
+  actor bloom who=bloom kind=figure at=-30,170 face=R idle=on px=2
+  actor bone who=bonejangles kind=figure at=285,124 face=L idle=still px=2
   +0    state bone possessed ; twitch bone on
   +0    show candle2 ; show candle3:out                  # two lit, one dead wick
   ad "Silence. On the bandstand steps Bloom catches Father Fuzz's sleeve."
+  +0    move bloom to=108,170 over=8    # she hurries in and catches his sleeve
+  +10   headturn fuzz 128 4    # turns to her
   +0    mx doomtastic_doom mute 1200 ; sfx FX_CREAK      # sequencer keeps time under the mute
   +6    say a3_04_bloom_01 bloom
   +47   pose fuzz pat ; sfx FX_PAT                        # R8 after the line
   +56   say a3_04_fuzz_01 fuzz
-  +115  move bloom to=126,156 over=5
+  +115  move bloom to=100,170 over=5 ; headturn fuzz 0 4    # lets go; he looks up at the stage
   @a3_04_bloom_01.start+6 take beat_gesture bloom    # motion:
   @a3_04_fuzz_01.start+6 take beat_gesture fuzz    # motion:
   +0    cam to scale=1.050 over=120 ease=INOUT    # motion: push in, drifting toward the speaker
@@ -316,13 +321,15 @@ end
 shot a3s20 beat=e101_3_04 len=210 set=bandstand:rite px=1 look=pixel cut=CUT scene=a3_steps gore=CUTE
   note "the beat's slack: trim the climb, never the hold"
   cam at=-90,0
-  actor fuzz who=fuzz kind=figure at=150,150 face=R idle=on
-  actor bloom who=bloom kind=figure at=126,156 face=R idle=on
-  actor bone who=bonejangles kind=figure at=174,124 face=L idle=still
+  actor fuzz who=fuzz kind=figure at=170,164 face=R idle=on px=2
+  actor bloom who=bloom kind=figure at=100,170 face=R idle=on px=2
+  actor bone who=bonejangles kind=figure at=285,124 face=L idle=still px=2
   +0    state bone possessed ; twitch bone on
   +0    sfx FX_PFF
-  +0    move fuzz to=168,126 over=210 steps=7 ; sfx FX_PFF every=30 n=7
+  +0    move fuzz to=225,126 over=210 steps=7 ; sfx FX_PFF every=30 n=7
   +0    eyes bone L over=210
+  +40   headturn bloom 16 4    # watches him climb
+  +150  take react_small bloom
   +0    cam to scale=1.060 over=210 ease=INOUT    # motion: track the action
   +0    cam pan dx=15.1 dy=5.1 over=210 ease=INOUT    # motion: (centred on the frame)
 end
@@ -331,8 +338,8 @@ shot a3s21 beat=e101_3_04 len=90 set=bandstand:rite px=1 look=pixel cut=CUT scen
   cam at=-130,0
   crowd giggle gen=randomize who=giggle_adults n=12 seed=3211 kind=chibi dy=168 from=20 spacing=18 age=adult ripple=0..3
   end
-  actor nana who=nana kind=figure at=220,166 face=L idle=on
-  actor pip  who=pip kind=figure at=236,170 face=L idle=on prop=mr_flops
+  actor nana who=nana kind=figure at=222,172 face=L idle=on px=2
+  actor pip  who=pip kind=figure at=150,178 face=L idle=on prop=mr_flops px=2
   prop  cloth art=gen:tablecloth at=90,150 plane=stage
   actor mayor who=mayor kind=figure at=90,154 idle=still
   hide mayor
@@ -347,29 +354,30 @@ end
 
 shot a3s22 beat=e101_3_04 len=390 set=bandstand:rite px=1 look=pixel cut=CUT scene=a3_steps gore=CUTE
   cam at=-90,0
-  actor fuzz who=fuzz kind=figure at=168,126 face=R idle=on
-  actor bloom who=bloom kind=figure at=126,156 face=R idle=on
-  actor bone who=bonejangles kind=figure at=184,124 face=L idle=still
+  actor fuzz who=fuzz kind=figure at=225,126 face=R idle=on px=2
+  actor bloom who=bloom kind=figure at=100,170 face=R idle=on px=2
+  actor bone who=bonejangles kind=figure at=285,124 face=L idle=still px=2
   +0    state bone possessed ; twitch bone on
   +0    sfx FX_PFF ; pose fuzz arms_open
-  +13   move fuzz to=178,124 over=20
+  +13   move fuzz to=262,124 over=20    # the hug (deliberate contact)
   +60   punch ; pose fuzz hug ; expr fuzz EXPR_NEUTRAL ; sfx FX_CHORD_MINOR ; cc "[a terrible minor chord rings]"
+  +90   take react_small bloom
   +150  sfx FX_KAZOO ; cc "[kazoo sags]"
   +180  show candle2:flash ; sfx FX_CANDLE_OUT ; flash PAL_UI_RED 4 3
   +183  show candle2:out ; fx smoke at=-28,100
   +189  card text text="FAIL x2" ; shake SHK_STAMP ; sfx FX_STAMP
   +210  pose fuzz let_go_1
   +225  pose fuzz let_go_2
-  +240  move fuzz to=150,140 over=60 steps=2
-  +310  pose fuzz sit ; move bloom to=140,150 over=60 ; pose bloom sit @+370
+  +240  move fuzz to=192,152 over=60 steps=2 ; headturn fuzz 128 4
+  +310  pose fuzz sit ; move bloom to=128,158 over=60 ; pose bloom sit @+370
   +0    cam to scale=1.060 over=390 ease=INOUT    # motion: track the action
   +0    cam pan dx=15.1 dy=5.1 over=390 ease=INOUT    # motion: (centred on the frame)
 end
 
 shot a3s23 beat=e101_3_04 len=390 set=bandstand_cu:steps px=2 look=pixel cut=CUT scene=a3_steps gore=CUTE
-  actor fuzz who=fuzz kind=bust at=140,96 face=R expr=EXPR_SAD idle=on
-  actor bloom who=bloom kind=bust at=220,120 face=L expr=EXPR_SAD idle=on
-  actor bone who=bonejangles kind=figure at=200,30 face=L idle=still
+  actor fuzz who=fuzz kind=bust at=100,96 face=R expr=EXPR_SAD idle=on
+  actor bloom who=bloom kind=bust at=245,120 face=L expr=EXPR_SAD idle=on
+  actor bone who=bonejangles kind=figure at=172,30 face=L idle=still
   +0    state bone possessed ; twitch bone on
   +0    amb AMB_NIGHT_ROOM on ; eyes fuzz D over=4
   +0    say a3_04_fuzz_02 fuzz
@@ -431,24 +439,26 @@ end
 # =================================================================== 3-06 (1,050 f, silent by design)
 shot a3s26 beat=e101_3_06 len=270 set=bandstand:rite px=1 look=pixel cut=CUT scene=a3_tin gore=CUTE
   cam at=-90,0
-  actor sunny who=sunny kind=figure at=60,168 face=R idle=on pose=carry_tin
-  actor pet   who=pet kind=sprite at=60,120 idle=on
-  actor fuzz  who=fuzz kind=figure at=150,140 face=R idle=on pose=sit
-  actor bloom who=bloom kind=figure at=140,150 face=R idle=on pose=sit
-  actor nana  who=nana kind=figure at=230,166 face=L idle=on
-  actor pip   who=pip kind=figure at=200,172 face=L idle=on prop=mr_flops
-  actor mayor who=mayor kind=figure at=90,170 face=R idle=on hidden=yes
-  actor bone  who=bonejangles kind=figure at=184,124 face=L idle=still
+  actor sunny who=sunny kind=figure at=-40,176 face=R idle=on pose=carry_tin px=2
+  actor pet   who=pet kind=sprite at=-66,80 idle=on px=2
+  actor fuzz  who=fuzz kind=figure at=235,152 face=L idle=on pose=sit px=2
+  actor bloom who=bloom kind=figure at=175,158 face=R idle=on pose=sit px=2
+  actor nana  who=nana kind=figure at=350,178 face=L idle=on px=2
+  actor pip   who=pip kind=figure at=310,190 face=L idle=on prop=mr_flops
+  actor mayor who=mayor kind=figure at=10,170 face=R idle=on hidden=yes
+  actor bone  who=bonejangles kind=figure at=285,124 face=L idle=still
   +0    state bone possessed ; twitch bone on
   crowd giggle gen=randomize who=giggle_adults n=12 seed=3261 kind=chibi dy=176 from=240 spacing=16 age=adult ripple=0..3
   end
   +0    sfx FX_PFF ; fx heart_fall at=0,0 n=12 seed=26
-  +0    walk sunny to=130 over=150
-  +20   walk crowd:giggle to=-40 over=60 ripple=0..3
+  +0    move sunny to=60,176 over=150 ; move pet to=30,80 over=150
+  +150  headturn fuzz 232 4 ; take react_small bloom    # they see the tin
+  +20   walk crowd:giggle to=-140 over=60 ripple=0..3
   +60   show mayor ; pose mayor crawl_out ; pose mayor brush_knees @+100
   +180  pose sunny hold_out
-  +188  walk nana to=160 over=20 ; pose nana take_tin @+208 ; pose nana sit_tin @+214
-  +220  pose pip tiptoe_hold_flops ; walk mayor to=170 over=40
+  +168  move nana to=122,178 over=40    # Nana hurries in for the tin
+  +188  headturn sunny 8 4 ; pose nana take_tin @+208 ; pose nana sit_tin @+214
+  +220  pose pip tiptoe_hold_flops ; headturn mayor 16 4
   +0    cam to scale=1.060 over=270 ease=INOUT    # motion: track the action
   +0    cam pan dx=15.1 dy=5.1 over=270 ease=INOUT    # motion: (centred on the frame)
 end
@@ -513,10 +523,10 @@ end
 
 shot a3s30 beat=e101_3_06 len=126 set=bandstand:rite px=1 look=pixel cut=CUT scene=a3_tin gore=CUTE
   cam at=-90,0
-  actor fuzz  who=fuzz kind=figure at=150,140 face=R idle=on pose=sit
-  actor nana  who=nana kind=figure at=164,142 face=L idle=on pose=sit_tin
-  actor mayor who=mayor kind=figure at=178,150 face=L idle=on
-  actor pip   who=pip kind=figure at=200,172 face=L idle=on prop=mr_flops
+  actor fuzz  who=fuzz kind=figure at=45,158 face=R idle=on pose=sit px=2
+  actor nana  who=nana kind=figure at=110,160 face=L idle=on pose=sit_tin px=2
+  actor mayor who=mayor kind=figure at=190,154 face=L idle=on px=2
+  actor pip   who=pip kind=figure at=262,178 face=L idle=on prop=mr_flops px=2
   +0    amb AMB_NIGHT_ROOM on
   +0    take look_at fuzz turn=-64                       # the chalk poem on the boards
   +8    eyes fuzz U over=3
@@ -530,17 +540,19 @@ end
 
 shot a3s31 beat=e101_3_06 len=240 set=bandstand:rite px=1 look=pixel cut=CUT scene=a3_tin gore=CUTE
   cam at=-90,0
-  actor fuzz  who=fuzz kind=figure at=150,140 face=R idle=on pose=sit
-  actor nana  who=nana kind=figure at=164,142 face=L idle=on pose=sit_tin
-  actor bloom who=bloom kind=figure at=140,150 face=R idle=on pose=sit
-  actor sunny who=sunny kind=figure at=130,168 face=R idle=on
-  actor pet   who=pet kind=sprite at=130,120 idle=on
-  actor bone  who=bonejangles kind=figure at=184,124 face=L idle=still
+  actor fuzz  who=fuzz kind=figure at=145,158 face=R idle=on pose=sit px=2
+  actor nana  who=nana kind=figure at=212,166 face=L idle=on pose=sit_tin px=2
+  actor bloom who=bloom kind=figure at=82,160 face=R idle=on pose=sit px=2
+  actor sunny who=sunny kind=figure at=20,178 face=R idle=on px=2
+  actor pet   who=pet kind=sprite at=46,70 idle=on px=2
+  actor bone  who=bonejangles kind=figure at=290,124 face=L idle=still
   +0    state bone possessed ; twitch bone on
   +0    sfx FX_PFF ; pose fuzz stand
+  +20   headturn nana 240 4    # Fuzz rises; Nana looks up to him
   +40   pose fuzz take_sheet ; pose nana give_sheet
-  +90   eyes fuzz R over=4                                # the last candle
-  +120  move fuzz to=176,124 over=120 steps=5 ; sfx FX_PFF every=24 n=5
+  +90   eyes fuzz R over=4 ; headturn bloom 16 4
+  +100  headturn sunny 16 4                                # the last candle
+  +120  move fuzz to=236,126 over=120 steps=5 ; sfx FX_PFF every=24 n=5
   +0    cam to scale=1.060 over=240 ease=INOUT    # motion: track the action
   +0    cam pan dx=15.1 dy=5.1 over=240 ease=INOUT    # motion: (centred on the frame)
 end
@@ -548,16 +560,16 @@ end
 # =================================================================== 3-07 (1,350 f, ACT OUT)
 shot a3s32 beat=e101_3_07 len=285 set=bandstand:rite px=1 look=pixel cut=CUT scene=a3_try3 gore=CUTE
   cam at=-90,0
-  actor fuzz  who=fuzz kind=figure at=176,124 face=R idle=on
-  actor bloom who=bloom kind=figure at=166,134 face=R idle=on
-  actor sunny who=sunny kind=figure at=190,124 face=L idle=on
-  actor pet   who=pet kind=sprite at=190,76 idle=on
-  actor bone  who=bonejangles kind=figure at=200,124 face=L idle=still
-  actor pip   who=pip kind=figure at=120,172 face=R idle=on prop=mr_flops
-  actor nana  who=nana kind=figure at=104,170 face=R idle=on
-  actor mayor who=mayor kind=figure at=60,150 face=R idle=on pose=sit_clipboard
+  actor fuzz  who=fuzz kind=figure at=236,126 face=R px=2 idle=on
+  actor bloom who=bloom kind=figure at=112,150 face=R idle=on
+  actor sunny who=sunny kind=figure at=178,148 face=R idle=on px=2
+  actor pet   who=pet kind=sprite at=178,56 idle=on px=2
+  actor bone  who=bonejangles kind=figure at=300,124 face=L idle=still
+  actor pip   who=pip kind=figure at=48,184 face=R idle=on prop=mr_flops px=2
+  actor nana  who=nana kind=figure at=-10,184 face=R px=2 idle=on
+  actor mayor who=mayor kind=figure at=290,178 face=L idle=on pose=sit_clipboard
   +0    state bone possessed ; twitch bone on
-  crowd giggle gen=randomize who=giggle_adults n=14 seed=3321 kind=chibi dy=178 from=10 spacing=16 age=adult ripple=0..3
+  crowd giggle gen=randomize who=giggle_adults n=14 seed=3321 kind=chibi dy=186 from=80 spacing=6 age=adult ripple=0..3
   end
   ad "Try three. Fuzz sings in major; the pet beeps the beat; the whole crowd claps in."
   +0    sfx FX_PFF
@@ -569,7 +581,7 @@ shot a3s32 beat=e101_3_07 len=285 set=bandstand:rite px=1 look=pixel cut=CUT sce
   +118  pose nana clap_24 fps=6
   +124  pose crowd:giggle clap_24 fps=beat ripple=0..3
   +205  pose bloom two_fingers
-  +222  say a3_07_bloom_01 bloom
+  +222  say a3_07_bloom_01 bloom ; headturn fuzz 232 4    # Fuzz turns to Bloom
   +270  show candle3                           # no art.tall: the lit wick (ART: tall state)
   @a3_07_fuzz_01.start+6 take beat_gesture fuzz    # motion:
   @a3_07_pet_01.start+6 pop pet TWT_HOP1    # motion:
@@ -590,15 +602,15 @@ end
 
 shot a3s33 beat=e101_3_07 len=180 set=bandstand_cu:north_night px=2 look=pixel cut=CUT scene=a3_try3 gore=CUTE
   prop  candle3 art=gen:candle(state=lit,size=2) art.lit=gen:candle(state=lit,size=2) art.out=gen:candle(state=out,size=2) art.flash=gen:candle(state=flash,size=2) art.tall=gen:candle(state=tall,size=2) art.grow=gen:candle(state=grow,size=2) art.blue=gen:candle(state=blue,size=2) art.lean=gen:candle(state=lean,size=2) at=196,128 anchor=bottom
-  actor fuzz  who=fuzz kind=bust at=110,104 face=R idle=on
-  actor sunny who=sunny kind=bust at=200,110 face=L idle=on
-  actor bone  who=bonejangles kind=figure at=250,60 face=L idle=still
+  actor fuzz  who=fuzz kind=bust at=85,104 face=R idle=on
+  actor sunny who=sunny kind=bust at=235,110 face=L idle=on
+  actor bone  who=bonejangles kind=figure at=160,50 face=L idle=still
   +0    state bone possessed ; twitch bone on
   +0    walla w_giggle_09 to gain=-6dB                    # beep + claps continue (a3s32's loop)
   +10   pose fuzz give_flask
   +20   say a3_07_fuzz_04 fuzz
-  +60   pose sunny pour over=21 ; fx water_pour from=200,86 to=250,36 over=21
-  +65   sfx FX_HISS ; fx steam at=250,36
+  +60   pose sunny pour over=21 ; fx water_pour from=225,86 to=160,26 over=21
+  +65   sfx FX_HISS ; fx steam at=160,26
   +80   tint TINT_PURPLE -1 ; pose bone shudder
   +100  show candle3                           # no art.grow (ART)
   @a3_07_fuzz_04.start+6 headturn fuzz 16 3    # motion:
@@ -623,20 +635,22 @@ end
 
 shot a3s35 beat=e101_3_07 len=210 set=bandstand:rite px=1 look=pixel cut=CUT scene=a3_try3 gore=CUTE
   cam at=-90,0
-  actor fuzz  who=fuzz kind=figure at=176,124 face=R idle=frozen expr=EXPR_SHOCK
-  actor bloom who=bloom kind=figure at=166,134 face=R idle=on
-  actor sunny who=sunny kind=figure at=190,124 face=L idle=on
-  actor pet   who=pet kind=sprite at=190,76 idle=on
-  actor bone  who=bonejangles kind=figure at=200,124 face=L idle=still
-  actor pip   who=pip kind=figure at=120,172 face=R idle=on prop=mr_flops
-  actor nana  who=nana kind=figure at=104,170 face=R idle=on
-  actor mayor who=mayor kind=figure at=60,150 face=R idle=on pose=sit_clipboard
+  actor fuzz  who=fuzz kind=figure at=236,126 face=R px=2 idle=frozen expr=EXPR_SHOCK
+  actor bloom who=bloom kind=figure at=112,150 face=R idle=on
+  actor sunny who=sunny kind=figure at=178,148 face=R idle=on px=2
+  actor pet   who=pet kind=sprite at=178,56 idle=on px=2
+  actor bone  who=bonejangles kind=figure at=300,124 face=L idle=still
+  actor pip   who=pip kind=figure at=48,184 face=R idle=on prop=mr_flops px=2
+  actor nana  who=nana kind=figure at=-10,184 face=R px=2 idle=on
+  actor mayor who=mayor kind=figure at=290,178 face=L idle=on pose=sit_clipboard
   +0    state bone possessed ; twitch bone on
-  crowd giggle gen=randomize who=giggle_adults n=14 seed=3321 kind=chibi dy=178 from=10 spacing=16 age=adult
+  crowd giggle gen=randomize who=giggle_adults n=14 seed=3321 kind=chibi dy=186 from=80 spacing=6 age=adult
   end
   +0    freeze fuzz ; walla w_giggle_09 off ; stop a3_07_pet_01 ; mx fuzz_hymn_motif stop ; cc "[silence]"
   +27   say a3_07_mayor_01 mayor                          # R21 after the cut; he doesn't look up
   +58   say a3_07_mayor_02 mayor                          # R13
+  +40   headturn bloom 240 4    # every eye goes to the Mayor
+  +44   headturn nana 16 4
   +163  freeze crowd:giggle ripple=0..3
   +180  freeze nana
   +190  freeze bloom
@@ -661,11 +675,11 @@ end
 
 shot a3s36 beat=e101_3_07 len=60 set=bandstand:rite px=1 look=pixel cut=CUT scene=a3_try3 gore=CUTE
   cam at=-90,0
-  actor pip   who=pip kind=figure at=120,172 face=R idle=on prop=mr_flops
-  actor sunny who=sunny kind=figure at=190,124 face=L idle=on
-  actor pet   who=pet kind=sprite at=190,76 idle=on
-  actor nana  who=nana kind=figure at=104,170 face=R idle=frozen
-  actor fuzz  who=fuzz kind=figure at=176,124 face=R idle=frozen
+  actor pip   who=pip kind=figure at=48,184 face=R idle=on prop=mr_flops px=2
+  actor sunny who=sunny kind=figure at=178,148 face=R idle=on px=2
+  actor pet   who=pet kind=sprite at=178,56 idle=on px=2
+  actor nana  who=nana kind=figure at=-10,184 face=R px=2 idle=frozen
+  actor fuzz  who=fuzz kind=figure at=236,126 face=R px=2 idle=frozen
   +0    amb AMB_NIGHT_ROOM on
   +0    eyes pip L over=4 ; eyes pip R @+20 over=4 ; eyes pip U @+40 over=4
   +10   eyes pet R over=3
