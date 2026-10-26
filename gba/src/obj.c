@@ -213,6 +213,80 @@ void plat_image_xform(int ax, int ay, const DoomoImage *img, int sx_q8, int sy_q
 /* hide entry i (keeps its attr3: an affine group may live there) */
 static void hide(int i) { if (i < shadow_n) shadow[i * 4] = 0x0200; }
 
+/* ---- pinned figures (title) ---------------------------------------------
+ * plat_figure_obj(): a 48x80 figure as five 8bpp OBJs (32x64, 16x32 x2,
+ * 32x16, 16x16 = 3840 B of tiles), in the VRAM of squash slots 2 and 3
+ * (the title never squashes). Uploaded only when the image changes; OAM
+ * entries 4..13; hidden on any frame the caller did not ask for them. */
+#define FIG_N 2
+#define FIG_ENT0 4
+static const uint8_t fig_part[5][6] = {      /* x, y, w, h, shape, size */
+    { 0, 0, 32, 64, 2, 3 }, { 32, 0, 16, 32, 2, 2 }, { 32, 32, 16, 32, 2, 2 },
+    { 0, 64, 32, 16, 1, 2 }, { 32, 64, 16, 16, 0, 1 }
+};
+static struct { const uint8_t *pix; uint32_t uid; int16_t x, y; uint8_t used; } fig[FIG_N];
+
+static void fig_upload(int k, const DoomoImage *img)
+{
+    int part, tile = SLOT_TILE(2) + k * 120;     /* 3840 B = 120 tiles of 32 B */
+    for (part = 0; part < 5; part++) {
+        const uint8_t *pp = fig_part[part];
+        vu16 *dst = (vu16 *)0x06010000 + (uint32_t)tile * 16u;
+        int tx, ty, r, c;
+        for (ty = 0; ty < pp[3] / 8; ty++)
+            for (tx = 0; tx < pp[2] / 8; tx++)
+                for (r = 0; r < 8; r++) {
+                    const uint8_t *row = img->pix + (uint32_t)(pp[1] + ty * 8 + r) * img->w + pp[0] + tx * 8;
+                    for (c = 0; c < 8; c += 2) *dst++ = (uint16_t)(row[c] | (row[c + 1] << 8));
+                }
+        tile += pp[2] * pp[3] / 32;
+    }
+    xs[2].key = xs[3].key = 0;                  /* their VRAM is ours now */
+}
+
+int plat_figure_obj(int k, int x, int y, const DoomoImage *img)
+{
+    if (k < 0 || k >= FIG_N || !img || !img->pix || img->w != 48 || img->h != 80) return 0;
+    if (shadow != own_shadow || gba_frames - gba_objvram_r3d_frame() <= 1u || slots_used > 2) return 0;
+    if (gba_objvram_claim(OBJV_OBJ) != OBJV_OBJ) {           /* r3d's tiles were there */
+        fig[0].pix = fig[1].pix = NULL;
+        xs[0].key = xs[1].key = 0;
+    }
+    if (fig[k].pix != img->pix || fig[k].uid != img->uid) {
+        fig_upload(k, img);
+        fig[k].pix = img->pix;
+        fig[k].uid = img->uid;
+    }
+    fig[k].x = (int16_t)x;
+    fig[k].y = (int16_t)y;
+    fig[k].used = 1;
+    return 1;
+}
+
+static void fig_pre_flip(void)
+{
+    int k, part;
+    for (k = 0; k < FIG_N; k++) {
+        int tile = SLOT_TILE(2) + k * 120;
+        for (part = 0; part < 5; part++) {
+            const uint8_t *pp = fig_part[part];
+            uint16_t *e = shadow + (FIG_ENT0 + k * 5 + part) * 4;
+            int ox = fig[k].x + pp[0], oy = fig[k].y + pp[1];
+            if (!fig[k].used || ox <= -pp[2] || ox >= SCREEN_W || oy <= -pp[3] || oy >= SCREEN_H) {
+                e[0] = 0x0200;
+            } else {
+                e[0] = (uint16_t)((oy & 0xFF) | 0x2000 | (pp[4] << 14));
+                e[1] = (uint16_t)((ox & 0x1FF) | (pp[5] << 14));
+                e[2] = (uint16_t)tile;
+                any_shown = 1;
+            }
+            tile += pp[2] * pp[3] / 32;
+        }
+        if (!fig[k].used) fig[k].pix = NULL;    /* re-upload when back */
+        fig[k].used = 0;
+    }
+}
+
 void obj_pre_flip(void)
 {
     int k, dx, dy, s, cx, cy, have = postfx_xform(&dx, &dy, &s, &cx, &cy);
@@ -262,6 +336,7 @@ void obj_pre_flip(void)
         shadow[(k * 4 + 3) * 4 + 3] = (uint16_t)pd;
         any_shown = 1;
     }
+    if (shadow == own_shadow) fig_pre_flip();
     slots_used = 0;
 }
 

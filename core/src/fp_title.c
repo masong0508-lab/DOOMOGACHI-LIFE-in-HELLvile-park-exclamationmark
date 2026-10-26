@@ -595,7 +595,12 @@ static void draw_figures(void)
         if (!p) continue;
         ui_fill_ellipse(x + FIGURE_W / 2, sh - (big ? 15 : 5), 18, 3, PAL_RAMP(RAMP_STONE, 3));
         portrait_hold(1);
-        fp_figure(x, y + hop, &p->look, RES_ALIVE, expr);
+        {
+            /* GBA: the figure is a set of hardware sprites (above the
+             * bitmap; the footer text keeps clear of them) */
+            const DoomoImage *img = figure_image(&p->look, RES_ALIVE, expr);
+            if (!img || !plat_figure_obj(k, x, y + hop, img)) fp_figure(x, y + hop, &p->look, RES_ALIVE, expr);
+        }
         portrait_hold(0);
     }
 }
@@ -681,8 +686,12 @@ static void title_draw(void)
     draw_logo();
     draw_menu();
     doomo_snprintf(buf, sizeof(buf), "%s", plat_name());
-    ui_text_outline(sw - ui_text_width(buf) - 4, sh - 10, buf, PAL_WHITE, PAL_RAMP(RAMP_STONE, 2));
-    ui_text_outline(3, sh - 10, "(c) HaHaland", PAL_WHITE, PAL_RAMP(RAMP_STONE, 2));
+    {
+        /* between the two figures, not under them */
+        int m = FIGURE_W + (fp_big() ? 18 : 2) + 3;
+        ui_text_outline(sw - m - ui_text_width(buf), sh - 10, buf, PAL_WHITE, PAL_RAMP(RAMP_STONE, 2));
+        ui_text_outline(m, sh - 10, "(c) HaHaland", PAL_WHITE, PAL_RAMP(RAMP_STONE, 2));
+    }
     fp_fx_draw();
 }
 

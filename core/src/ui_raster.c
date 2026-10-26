@@ -29,6 +29,13 @@ __attribute__((weak)) int plat_draw_skipped(void)
     return 0;
 }
 
+/* Weak default of plat_figure_obj (platform.h): no sprites. */
+__attribute__((weak)) int plat_figure_obj(int k, int x, int y, const DoomoImage *img)
+{
+    (void)k; (void)x; (void)y; (void)img;
+    return 0;
+}
+
 /* Weak default of plat_checker (platform.h): one pixel per call. */
 __attribute__((weak)) void plat_checker(int x, int y, int w, int h, uint8_t color)
 {

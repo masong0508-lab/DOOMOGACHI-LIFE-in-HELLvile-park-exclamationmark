@@ -66,6 +66,10 @@ void plat_checker(int x, int y, int w, int h, uint8_t color);
  * early then, so such ticks cost little. Weak default (core/src/
  * ui_raster.c): 0, every frame is shown. */
 int  plat_draw_skipped(void);
+/* Draw a 48x80 figure image (FIGURE_W x FIGURE_H) as hardware sprites in
+ * slot k (0..1) for this frame, above the whole bitmap: returns 0 when the
+ * platform cannot (then draw it with plat_image). Weak default: 0. */
+int  plat_figure_obj(int k, int x, int y, const DoomoImage *img);
 
 /* ---- 3D views ------------------------------------------------------------ */
 /* A billboard sprite placed in the world. */
