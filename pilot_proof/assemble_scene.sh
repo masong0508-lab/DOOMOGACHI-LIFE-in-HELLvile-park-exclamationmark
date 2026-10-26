@@ -23,9 +23,9 @@ pick() {  # id -> best take path
   for k in $kinds; do ls "$d/$1_${k}_"* 2>/dev/null | head -1 && return; done
 }
 chain() {  # in out
-  ffmpeg -nostdin -v error -y -i "$1" -af "aresample=48000,highpass=f=85,afftdn=nf=-38,\
-equalizer=f=250:t=q:w=1.2:g=-2.5,equalizer=f=3200:t=q:w=1.4:g=2.5,deesser=i=0.4,\
-acompressor=threshold=-22dB:ratio=3:attack=6:release=90:makeup=3,\
+  ffmpeg -nostdin -v error -y -i "$1" -af "aresample=48000,highpass=f=90,afftdn=nf=-42:nr=14,\
+equalizer=f=250:t=q:w=1.2:g=-3,equalizer=f=1250:t=q:w=1.0:g=1.5,equalizer=f=3400:t=q:w=1.3:g=3.5,deesser=i=0.55,\
+acompressor=threshold=-24dB:ratio=3.5:attack=5:release=80:makeup=3.5,\
 aecho=0.9:0.6:45:0.07,loudnorm=I=-18:TP=-3:LRA=7,aresample=48000" -ac 2 "$2"
 }
 inputs=(-i "$tmp/synth.wav"); filt=""; mixin="[0]"; n=1
