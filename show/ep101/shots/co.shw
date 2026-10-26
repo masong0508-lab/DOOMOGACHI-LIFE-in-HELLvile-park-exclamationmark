@@ -138,6 +138,7 @@ shot co11 beat=e101_co_4 len=330 set=banner_storybook:giggle px=1 look=crayon cu
   note "lock the letter baseline (y 104) to co12's: the match cut lands on the same word"
   cam at=0,0 scale=1.00
   +0    cam to x=0 y=0 scale=1.04 over=330 ease=LINEAR   # push in 4 %
+  +0    show giggle                                           # render pass 2: the variant alone drew the wipe half done ("GIG" + a black oval); co10's show draws it whole
   +0    sfx FX_WET_BLIP gain=-20dB                            # choice: frame-0 sound under the music box downbeat
   +10   super s_co11a style=pop at=lower until=+99            # POP 4-6 f, overshoot
   +100  super s_co11b style=pop at=lower until=+159
@@ -267,12 +268,19 @@ end
 
 shot co21 beat=e101_co_6 len=270 set=egg_basket:dawn px=2 look=pixel cut=CUT matte=open
   +0    sfx FX_BASKET_CREAK
-  +0    cam to x=0 y=-18 over=195 ease=LINEAR                 # slow crane up the basket onto the egg (keeps the wait alive)
+  +0    cam to x=0 y=-18 over=260 ease=LINEAR                 # slow crane up the basket onto the egg (keeps the wait alive to the iris)
   +15   sfx FX_BUS_HORN_FAR                                  # the first two notes of the chorus hook
   +45   shake SHK_TAP ; fx sparkle at=160,90 n=4 seed=2101 ; sfx FX_EGG_WOBBLE ; cc "[tik]"           # 30 f after the horn
+  +80   fx sparkle at=140,70 n=3 seed=2103                    # render pass 2: breaks the 15-f still after the first wobble
   +105  sfx FX_BUS_HORN_NEAR                                  # nearer, three notes
   +135  shake SHK_TAP ; fx sparkle at=160,90 n=8 seed=2102 ; sfx FX_EGG_WOBBLE_LOW ; mx hahaland_dawn duck -12dB 30
-  +195  mx hahaland_dawn stop ; iris_out at=prop:egg over=70 shape=heart hold=62 ; sfx FX_SHWIP   # a heart round the egg by +200
+  +165  fx sparkle at=180,74 n=3 seed=2104
+  +195  mx hahaland_dawn stop ; sfx FX_SHWIP
+  +200  fx sparkle at=150,80 n=4 seed=2105
+  +215  fx sparkle at=172,84 n=4 seed=2106
+  +260  iris_out at=prop:egg over=10 shape=heart hold=2      # render pass 2: the heart closes late and fast (was +195 over 70: a 71-f black still)
+  +232  fx sparkle at=160,96 n=3 seed=2107 ; fx sparkle at=166,88 n=2 seed=2108   # the egg twinkles before the heart
+  +248  fx sparkle at=150,86 n=3 seed=2109
   +200  label L_HOLD                                          # silence to the end
   note "CUT ON THE CRACK: the crack is mt01 +0 (00:01:40:00), the song's first downbeat"
   ad "Close on the egg. A far horn; it wobbles. Nearer; it wobbles harder. A heart closes round it."
