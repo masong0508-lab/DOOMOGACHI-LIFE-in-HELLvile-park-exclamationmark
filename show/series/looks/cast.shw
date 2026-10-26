@@ -182,3 +182,20 @@ look crowned_shadow base=SPECIES_CACOBLOB age=adult note="sepia insert silhouett
   height=15 build=15 head_size=15 hat=HAT_CROWN hat_color=PAINT_LEMON eye_count=2 eyes=EYE_GLOW
   top=TOP_CLOAK top_color=PAINT_GRAPE skin=PAINT_GRAPE
 end
+
+# ---- the pet and the demons (drawn by portrait.c's figure path) -----------------
+# THE PET (Mochiblob, pet_render form 0): a round pink mochi slime, dot eyes,
+# cat mouth.  The game's pet engine isn't linked into show.exe, so the pet is
+# a DoomoLook figure built from the slime body (the render pass: "the pet must
+# draw").  Small: height 3 so it reads as a pet beside Sunny.
+look pet base=SPECIES_SLIME age=adult tags=PET note="Mochiblob as a slime figure; says only beep"
+  skin=PAINT_BUBBLEGUM height=3 build=12 head_size=14 eyes=EYE_DOT eye_size=10 brows=BROW_NONE
+  mouth=MOUTH_CAT mouth_size=6 hair=HAIR_BALD cheeks=CHEEK_BLUSH
+  top=TOP_NONE bottom=BOTTOM_NONE shoes=SHOES_BARE
+end
+# PUFF DEMON (actor.h THING_PUFF_DEMON): a floating cacoblob puff, one big eye,
+# fangs, hellfire red.  big_puff is the same look drawn at px=3.
+look puff_demon base=SPECIES_CACOBLOB age=adult tags=DEMON note="the Puff Demon as a cacoblob figure"
+  skin=PAINT_CHERRY height=6 build=14 head_size=15 eye_count=1 eye_size=12 eye_color=PAINT_LIME
+  mouth=MOUTH_SHARK fangs=1 top=TOP_NONE bottom=BOTTOM_NONE shoes=SHOES_BARE
+end

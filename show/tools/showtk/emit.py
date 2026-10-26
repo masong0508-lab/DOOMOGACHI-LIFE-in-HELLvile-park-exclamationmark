@@ -109,6 +109,7 @@ def _act_no(ep, s):
 
 GRID_W, GRID_H = 126, 120     # show_stage.c SHOW_GRID_W/H: plate cells that pack 4 to a VRAM page
 IMAGES_MAX = 96               # show_stage.c IMAGES_MAX
+PLANES_MAX = 64               # show_stage.c PLANES_MAX
 
 
 def _cam_view(c):
@@ -280,6 +281,44 @@ class Stage:
         self.pinfo = {}                  # plane/prop id -> {pid, at, px, img, prop, ix} (show_amb)
         self.amb_crowds = []
 
+    def shot_props(self, planes, bake=True):
+        """the shot's own `prop <id> art=...` (and `fx <kind> art=...` inserts) as image planes,
+        right after the plane they sit on (they were only anchor slots before: never drawn)"""
+        import numpy as np
+        set_props = {p.get("prop") for p in planes if p.get("prop")}
+        for sp in getattr(self.c, "props", []):
+            if not sp.get("src") or sp["id"] in set_props or not bake:
+                continue
+            try:
+                from .picture import bake as pbake
+                from .stage import _arr
+                a = _arr(pbake.image(sp["src"])[0])
+            except Exception as e:                   # noqa: BLE001
+                self.note("warning", "prop %s: cannot bake %s: %s: %s" % (sp["id"], sp["src"], type(e).__name__, e))
+                continue
+            host = next((i for i, p in enumerate(planes) if p["id"] == sp.get("plane_id")), None)
+            par = planes[host]["par"] if host is not None else (1, 1, 1, 1)
+            order = planes[host]["order"] if host is not None else 1
+            px = planes[host]["px"] if host is not None else 1
+            h, w = a.shape
+            if sp.get("fx") and w * px >= 320:
+                x0, y0 = 0, -30                      # a full-frame insert plate (320x240 with the matte)
+            else:
+                anc = sp.get("anchor_name") or ("center" if sp.get("anchor") else "bottom")
+                x, y = sp["x"], sp["y"]
+                ww, hh = w * px, h * px
+                x0, y0 = {"center": (x - ww / 2.0, y - hh / 2.0), "topleft": (x, y), "top": (x - ww / 2.0, y)
+                          }.get(anc, (x - ww / 2.0, y - hh))
+            pl = {"kind": "image", "id": sp["id"], "prop": sp["id"], "state": None, "order": order,
+                  "par": par, "px": px, "hidden": bool(sp.get("hidden")), "img": np.ascontiguousarray(a),
+                  "bands": None, "strokes": None, "boil": 0, "at": (int(round(x0)), int(round(y0))),
+                  "src": sp["src"]}
+            if host is None:
+                planes.append(pl)
+            else:
+                planes.insert(host + 1, pl)
+        return planes
+
     def c_images_left(self):
         return IMAGES_MAX - len(self.ch.images)
 
@@ -361,12 +400,35 @@ class Stage:
             _occlude(planes, view, {a.get("plane") for a in getattr(_sd, "ambs", []) if a.get("kind") in ("drift", "sway")})
         except Exception as e:                       # noqa: BLE001
             self.note("warning", "occlusion pass: %s: %s" % (type(e).__name__, e))
+        planes = self.shot_props(planes, bake)
+        # a prop state that starts hidden and that the shot never shows is dropped: a set with
+        # ten four-state lanterns, fog, eyes and candles is over 80 planes, and the engine draws
+        # only PLANES_MAX (the later props, e.g. 1-14's red eyes, silently never drew)
+        used = set()
+        for _f, _k, _t, _st, _on in getattr(c, "vis", []):
+            if _k == "prop" and _on:
+                used.add((_t, _st))
+        planes = [p for p in planes
+                  if not (p.get("prop") and p["hidden"] and (p["prop"], p.get("state")) not in used)]
         for order_i, p in enumerate(planes):
             pid = self.next_id
             self.next_id += 1
             flags = F.SHWPF_HIDDEN if p["hidden"] else 0
             kw = dict(id=pid, order=order_i + 100 * p["order"], flags=flags, par=p["par"], at=p["at"])
             k = p["kind"]
+            tm_payload = None
+            if k == "tilemap" and p["img"] is not None:
+                from .picture import tilemap
+                try:
+                    tm_payload, _info = tilemap.compile_plane(p["img"], plane_id=pid)
+                except Exception:                    # noqa: BLE001
+                    tm_payload = None
+                if tm_payload is None or len(tm_payload) + F.PLANE.size > 0xFFFC:
+                    # too big for one TILEMAP plane: draw it as an IMAGE plate, cropped to the
+                    # shot's view and gridded like any wide plate (a raw 800x240 plate never
+                    # fit the decode arena / VRAM, so the bandstand's stage never drew)
+                    self.note("info", "TILEMAP %s is over a plane's 64 KB: drawn as a gridded image" % p["id"])
+                    k = "image"
             try:
                 if k == "bands":
                     self.ch.planes.append(F.plane_bands(p["bands"], **kw))
@@ -391,16 +453,7 @@ class Stage:
                 elif k == "tilemap":
                     if p["img"] is None:
                         continue
-                    from .picture import tilemap
-                    payload, info = tilemap.compile_plane(p["img"], plane_id=pid)
-                    if len(payload) + F.PLANE.size > 0xFFFC:
-                        self.note("warning", "TILEMAP %s is %d KB, over a plane's 64 KB: drawn as an image"
-                                  % (p["id"], len(payload) // 1024))
-                        a = p["img"]
-                        self.ch.images.append(image_bytes(a, id=len(self.ch.images)))
-                        self.ch.planes.append(F.plane_image(len(self.ch.images) - 1, scale=p["px"], **kw))
-                    else:
-                        self.ch.planes.append(F.plane(F.SHWP_TILEMAP, payload, **kw))
+                    self.ch.planes.append(F.plane(F.SHWP_TILEMAP, tm_payload, **kw))
                 elif k == "strokes":
                     self.ch.planes.append(F.plane(F.SHWP_STROKES, self.strokes(p, pid), **kw))
             except Exception as e:
@@ -411,6 +464,9 @@ class Stage:
                                        ix=len(self.ch.planes) - 1)
             if p.get("prop"):
                 self.prop_planes.setdefault(p["prop"], []).append((p["state"], pid))
+        if len(self.ch.planes) > PLANES_MAX:
+            self.note("warning", "%d planes: only the first %d draw (show_stage.c PLANES_MAX)"
+                      % (len(self.ch.planes), PLANES_MAX))
         for a_id, (b_id, (mx, my)) in getattr(self, "alias", {}).items():
             if b_id in self.pinfo:
                 info = dict(self.pinfo[b_id])
@@ -621,10 +677,16 @@ def _wp6_records(ch, c, diags):
                 looks = list(r["cast_looks"])
             elif not looks.startswith("kset:"):
                 ids = _look_ids(looks)
-                if not ids:
+                who = kv.get("who") or r.get("who")
+                if not ids and who and who in sc.bible.chars and sc.bible.char_look_bytes(who):
+                    # a crowd of one cast member (who=puff_demon): its own look, n times
+                    ids = None
+                    looks = [("char:" + who, sc.bible.char_look_bytes(who))]
+                elif not ids:
                     raise A.CastError("crowd %s: no looks (gen=randomize needs looks=<a_1..a_N> or kset:)"
                                       % r["id"])
-                looks = [(lid, sc.bible.resolve_look(lid, ()).pack()) for lid in ids]
+                if ids:
+                    looks = [(lid, sc.bible.resolve_look(lid, ()).pack()) for lid in ids]
             n = int(kv.get("n", r["n"]))
             spd = float(kv.get("speed", "0").replace("doc:", "") or 0)
             d = kv.get("dir", "front")

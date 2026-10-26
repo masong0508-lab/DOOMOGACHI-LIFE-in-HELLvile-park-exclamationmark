@@ -354,9 +354,10 @@ def clipboard_cu(seed=1, ox=60, oy=40):
 
 
 @generator()
-def muffin_xray(seed=1):
+def muffin_xray(seed=1, key="horned"):
     """a1_09e insert: the suspicious muffin on the light box: a pastel x-ray, a
-    tiny horned puff curled inside (a demon, so the joke can land later)"""
+    tiny horned puff curled inside (a demon, so the joke can land later); key= names
+    the shape inside (only "horned" is drawn)"""
     cv = Canvas(320, 240)
     cv.rect(0, 0, 320, 240, P("NAVY", 0))
     xs, ys = cv.grid()

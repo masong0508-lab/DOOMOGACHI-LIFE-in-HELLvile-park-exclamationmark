@@ -13,6 +13,8 @@ Columns: **id** · **f** (frames at 30 fps) · **TC in** · **set[:variant]** (s
 
 ## TODO (engine features this segment needs; re-check after every fetch)
 
+**STAGING PASS 3 (Oct 26, blocking):** mt05 crowds split into near/far depth rows per side (dy 150 / 126, spacing 24-26, staggered ripple) so the walkers pass instead of clumping; co19 crowd lanes moved onto the frame (plate x ~470..790) in three depth rows (back stringers dy 124, mid walkers L dy 140, near walkers R dy 162), opposite directions. Lines, timing and frame counts unchanged. Render: 35 shots / 4,500 f, no static run over 12 f. Open: co19 near/mid rows still sparse on screen (lane spacing vs plate width).
+
 **RENDER PASS 2 (Oct 26, engine a147774: plates, poses, amb, camera/text/FX, VIEW3D/ROOM/crowds):** 37 shots / 4,800 f compile (ep101 0 errors) and render; frame-diff: no shot has a static run over 12 f. Fixes: co11 `+0 show giggle` (the variant alone drew "GIG" + a black oval); co21 crane runs to +260, sparkles at +80/+165/+200/+215/+232/+248, heart iris moved to +260 over 10 (was a 71-f black still); mt01 crack flash level 8 -> 4. Still open (engine/ART, not .shw): px=2 160x120 plates show a seam at x 256 (co03, co05, co14, co21); mt08 candles not visible; Fluffy reads very small in co04/co06/co08.
 
 **RENDER PASS 1 (Oct 25 evening, show.exe built from origin 1b18d11):** all 37 shots (co01-co21, mt01-mt03b-mt13, ec1o/ec1i; 4,800 f) compile with 0 errors and render (6-9 ms/frame); WIP picture `show_out/staging/co_mt/co_mt_x3_WIP.mp4`, sheets `show_out/staging/co_mt/<shot>_sheet.png`.

@@ -10,10 +10,10 @@ set bandstand kind=2d px=1 matte=open look=pixel desc="the heart of the episode:
   plane sky    bands=sky:dusk par=0
   plane stars  tile=gen:sky_stars(seed=3) size=128x80 par=0.02 hidden=yes
   plane clouds image=gen:amb_clouds(seed=49,w=512,h=56,n=4,tone=night) size=512x56 at=0,-22 par=0.08
-  plane glowhv image=gen:hellvile_glow(seed=126) size=560x240 par=0.5 light=fixed
+  plane glowhv image=gen:hellvile_glow(seed=126,pad=64) size=688x240 par=0.5 light=fixed
   plane haze image=gen:amb_haze(seed=48,w=512,h=48) size=512x48 at=0,40 par=0.45 light=fixed
-  plane far    image=gen:bandstand_far(seed=125) size=560x240 par=0.5
-  plane stage  tilemap=gen:bandstand_tiles(seed=124) size=800x240 par=1.0
+  plane far    image=gen:bandstand_far(seed=125,pad=64) size=688x240 par=0.5
+  plane stage  tilemap=gen:bandstand_tiles(seed=124,pad=96) size=992x240 par=1.0
   plane glow   tilemap=gen:bandstand_glow(seed=127) size=800x240 par=1.0 light=fixed
   # the banner on the north eave, the cupcake balloon over its third letter (since CO-5)
   prop  banner  art=gen:banner(size=wide,state=giggle) art.bloom3=gen:banner(size=wide,state=bloom3) plane=stage at=5,18 anchor=top

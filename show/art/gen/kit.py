@@ -97,14 +97,15 @@ def cloud(cv, x, y, w, seed, fill=None, shade=None, hi=None):
     return m
 
 
-def hills(cv, base_y, amp, period, fill, seed, top=None, phase=0.0, lumps=3, bottom=None):
-    """Rolling hills from `base_y` (crest line) down to the plate bottom."""
+def hills(cv, base_y, amp, period, fill, seed, top=None, phase=0.0, lumps=3, bottom=None, x0=0):
+    """Rolling hills from `base_y` (crest line) down to the plate bottom.  x0: the canvas
+    column where the hills' own x=0 sits (a padded plate keeps its centre identical)."""
     rng = Rng(seed)
     ph = [rng.uniform(0, 6.28) for _ in range(lumps)]
     xs = np.arange(cv.w)
     crest = np.full(cv.w, float(base_y))
     for k in range(lumps):
-        crest -= amp / (k + 1) * (0.5 + 0.5 * np.sin(xs / (period / (k + 1)) * 6.283 + ph[k] + phase))
+        crest -= amp / (k + 1) * (0.5 + 0.5 * np.sin((xs - x0) / (period / (k + 1)) * 6.283 + ph[k] + phase))
     bottom = cv.h if bottom is None else bottom
     m = np.zeros((cv.h, cv.w), bool)
     for x in xs:

@@ -51,6 +51,16 @@ PFX_KINDS = {
     "stuffing_land": (0, "WHITE", 16, 2), "halo_glow": (4, "UI_GOLD", 24, 1), "glow_pulse": (4, "UI_GOLD", 24, 1),
     "light_ripple": (4, "WHITE", 20, 1), "fog_gust": (1, "GRAY_L", 30, 3), "gore_spiral": (0, "PAINT_BLOOD:1", 20, 2),
     "drool": (2, "PAINT_SKY:2", 24, 1), "water_pour": (2, "PAINT_SKY:1", 30, 1),
+    # the action beats' particle looks (modes: 0 burst, 1 rise, 2 fall, 3 pop, 4 twinkle)
+    "eyeball_roll": (0, "WHITE", 14, 1), "door_open": (0, "GRAY_L", 18, 1), "doors_open": (0, "GRAY_L", 20, 1),
+    "barrel_rise": (1, "GRAY_L", 30, 2), "unfold": (4, "WHITE", 16, 1), "fold": (0, "WHITE", 12, 1),
+    "finger_run": (0, "PAINT_PEACH:2", 14, 1), "candle_shrink": (1, "GRAY", 40, 1),
+    "paw_take": (4, "PAINT_LEMON:1", 16, 1), "paws_lift": (1, "PAINT_LEMON:1", 20, 1),
+    "truth_clingwrap": (4, "PAINT_SKY:2", 24, 1), "demon_bounce": (0, "PAINT_CHERRY:1", 16, 1),
+    "eye_pairs": (4, "PAINT_HELLFIRE:1", 30, 1), "merge": (1, "PAINT_CHERRY:1", 26, 2),
+    "snowglobe": (2, "WHITE", 60, 1), "boards_tumble": (0, "PAINT_CARAMEL:1", 18, 2),
+    "brick_wipe": (0, "GRAY", 20, 2), "eyes_widen": (4, "WHITE", 10, 1), "tremble": (0, "GRAY_L", 12, 1),
+    "gutter": (1, "GRAY_L", 24, 1),
 }
 def _set_kv(c, key, value):
     """set (or add) a key=value option on a parsed statement"""
@@ -863,6 +873,8 @@ class ShotCompiler:
                            "art": self.ep.strtab.add(p.get("art")), "tex": F.NONE, "id": pid,
                            "par": self.planes[self.plane_ix[plane]]["par_q16"] if plane else 0,
                            "plane_id": plane, "src": p.get("art"),
+                           "hidden": p.get("hidden", "no") in ("yes", "on", "1"),
+                           "anchor_name": p.get("anchor"),
                            "states": {k[4:]: v for k, v in p.kv.items() if k.startswith("art.")}})
 
     # -- setup statements -----------------------------------------------------------
@@ -2323,6 +2335,23 @@ class ShotCompiler:
             ckv = {k: v for k, v in c.kv.items() if k != "until"}
             self.pic_text(c, lambda T: T.card(tpl, f, until, **ckv))
             self.sop(f, "SOP_CARD", [self.s(tpl), self.s(kv)], c)
+        elif kw == "fx" and c.get("art"):
+            # an fx with art= is an image insert (e.g. a1_09e's muffin x-ray): a shot prop that
+            # appears at f (and goes at f+life/over when given)
+            kind = c.words[0] if c.words else "insert"
+            x, y = self.xy(c.get("at", "160,90"), c)
+            pid = "fx_%s_%d" % (kind, len(self.props))
+            self.prop_ix[pid] = len(self.props)
+            self.props.append({"plane": 0, "face": 0, "anchor": 1, "flags": 0, "x": x, "y": y,
+                               "art": self.ep.strtab.add(c.get("art")), "tex": F.NONE, "id": pid,
+                               "par": 0, "plane_id": c.get("plane") or "stage", "src": c.get("art"),
+                               "states": {}, "hidden": f > 0, "anchor_name": "center", "fx": True})
+            if f > 0:
+                self.vis.append((f, "prop", pid, None, True))
+            life = self.frames_arg(c.get("life") or c.get("over"), c) if (c.get("life") or c.get("over")) else 0
+            if life and f + life < self.shot.len:
+                self.vis.append((f + life, "prop", pid, None, False))
+            self.tl(f, c, "show", "fx %s (insert)" % kind)
         elif kw == "fx":
             kind = c.words[0] if c.words else c.fail("FX", "`fx <kind> at=x,y n= seed=`")
             x, y = self.xy(c.get("at", "160,90"), c)

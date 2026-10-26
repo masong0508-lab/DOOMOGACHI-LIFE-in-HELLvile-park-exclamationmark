@@ -290,8 +290,22 @@ def _fair_edge(cv, seed):
 
 
 @generator()
-def bandstand_tiles(seed=124, torn=0):
-    """The pixel bandstand (TILEMAP, 800x240): fair edge, north half, south half, Wall, gate."""
+def bandstand_tiles(seed=124, torn=0, pad=0):
+    """The pixel bandstand (TILEMAP, 800x240): fair edge, north half, south half, Wall, gate.
+    pad=N adds N px of lawn on the left and the Wall running on at the right (tight wides
+    and pans past the fair edge or the gate never run off the plate); the centre is the same."""
+    cv = _bandstand_core(seed, torn)
+    if pad:
+        wide = Canvas(W + 2 * pad, 240)
+        _ground(wide, 0, W + 2 * pad, seed)
+        _wall(wide, WALL_X + pad, W + 2 * pad, seed + 1)
+        wide.blit(cv, pad, 0, key=0)
+        wide.meta = dict(cv.meta)
+        cv = wide
+    return to_tilemap(cv)
+
+
+def _bandstand_core(seed, torn):
     cv = Canvas(W, 240)
     _ground(cv, 0, W, seed)
     # the Wall and the gate first (the bandstand's south end overlaps the pilaster)
@@ -325,7 +339,7 @@ def bandstand_tiles(seed=124, torn=0):
             spots.append((int(pts[i][0]), int(pts[i][1])))
     cv.meta["lanterns"] = [(x - (W - 320) // 2, y - 30) for x, y in spots]
     cv.meta["notes"] = "deck top show y 124; ground show y 150; split x %d; gate x %d (plate)" % (SPLIT, GATE_X)
-    return to_tilemap(cv)
+    return cv
 
 
 def as_tilemap(cv):
@@ -341,15 +355,21 @@ def as_tilemap(cv):
 
 
 @generator()
-def bandstand_far(seed=125, w=560):
+def bandstand_far(seed=125, w=560, pad=0):
     """The far plane (par 0.5): the fair beyond (tent tops, a ferris wheel), trees,
-    the town hill and its clock tower; the Hellvile glow over the Wall on the right."""
-    cv = Canvas(w, 240)
+    the town hill and its clock tower; the Hellvile glow over the Wall on the right.
+    pad=N widens the plate by N px on each side (more hills and trees on the left, the
+    Wall running on at the right) so tight wides and long pans never run off it; the
+    centre w px are the same picture."""
+    W2 = w + 2 * pad
+    cv = Canvas(W2, 240)
+    o = pad
     base = Y(118)
-    kit.hills(cv, base - 16, 14, 260, R("GRASS", 4), seed, top=R("GRASS", 5), bottom=240)
+    kit.hills(cv, base - 16, 14, 260, R("GRASS", 4), seed, top=R("GRASS", 5), bottom=240, x0=o)
     # town hill + clock tower (left)
-    m, crest = kit.hills(cv, base - 34, 20, 400, R("GRASS", 3), seed + 1, top=R("GRASS", 4), lumps=2, bottom=base - 4)
-    tx = 70
+    m, crest = kit.hills(cv, base - 34, 20, 400, R("GRASS", 3), seed + 1, top=R("GRASS", 4), lumps=2,
+                         bottom=base - 4, x0=o)
+    tx = 70 + o
     cv.rect(tx - 6, base - 82, 12, 52, R("PEACH", 6))
     cv.rect(tx - 6, base - 82, 2, 52, R("PEACH", 7))
     cv.poly([(tx - 9, base - 82), (tx + 9, base - 82), (tx, base - 98)], P("BUBBLEGUM", 1))
@@ -358,7 +378,7 @@ def bandstand_far(seed=125, w=560):
     cv.line(tx, base - 70, tx, base - 73, R("STONE", 1))
     cv.line(tx, base - 70, tx + 2, base - 70, R("STONE", 1))
     # ferris wheel
-    fx, fy, fr = 190, base - 66, 34
+    fx, fy, fr = 190 + o, base - 66, 34
     for k in range(12):
         a = k / 12 * 6.283
         cv.line(fx, fy, fx + math.cos(a) * fr, fy + math.sin(a) * fr, R("STONE", 6))
@@ -371,30 +391,38 @@ def bandstand_far(seed=125, w=560):
         cv.rect(x - 2, y, 5, 4, [P("BUBBLEGUM", 2), P("LEMON", 2), P("MINT", 2), P("LAVENDER", 2)][k % 4])
     cv.line(fx, fy, fx - 16, base, R("STONE", 5))
     cv.line(fx, fy, fx + 16, base, R("STONE", 5))
-    # distant tent tops
-    for k, (x, c) in enumerate(((280, P("MINT", 2)), (330, P("LEMON", 2)), (120, P("BUBBLEGUM", 2)))):
-        kit.tent(cv, x, base + 4, 44, 40, [c, pal.CREAM], door=False, flag=c)
+    # distant tent tops (more of the fair in the left pad)
+    tents = [(280, P("MINT", 2)), (330, P("LEMON", 2)), (120, P("BUBBLEGUM", 2))]
+    for x in range(-60, -pad - 1, -110):
+        tents.append((x, [P("LAVENDER", 2), P("MINT", 2), P("BUBBLEGUM", 2)][(-x // 110) % 3]))
+    for k, (x, c) in enumerate(tents):
+        kit.tent(cv, x + o, base + 4, 44, 40, [c, pal.CREAM], door=False, flag=c)
     # trees
     for k in range(10):
         x = 10 + k * 56 + hash2(k, 2, seed) % 20
-        kit.tree_round(cv, x, base + 2, 10 + hash2(k, 3, seed) % 5, leaf=R("GRASS", 4), seed=seed + k)
+        kit.tree_round(cv, x + o, base + 2, 10 + hash2(k, 3, seed) % 5, leaf=R("GRASS", 4), seed=seed + k)
+    for k in range(1, pad // 56 + 2):                       # the left pad's trees
+        x = 10 - k * 56 + hash2(-k, 2, seed) % 20
+        kit.tree_round(cv, x + o, base + 2, 10 + hash2(-k, 3, seed) % 5, leaf=R("GRASS", 4), seed=seed + 50 + k)
     # the Wall's far run on the right (lower, hazy) - Hellvile is beyond it
-    cv.rect(430, base - 72, w - 430, 76, R("STONE", 4))
-    kit.bricks(cv, 430, base - 72, w - 430, 76, seed + 9, base=R("STONE", 4), mortar=R("STONE", 3), bw=14, bh=7,
-               chips=False)
-    cv.rect(430, base - 74, w - 430, 2, R("STONE", 5))
+    cv.rect(430 + o, base - 72, W2 - 430 - o, 76, R("STONE", 4))
+    kit.bricks(cv, 430 + o, base - 72, W2 - 430 - o, 76, seed + 9, base=R("STONE", 4), mortar=R("STONE", 3), bw=14,
+               bh=7, chips=False)
+    cv.rect(430 + o, base - 74, W2 - 430 - o, 2, R("STONE", 5))
     return cv
 
 
 @generator()
-def hellvile_glow(seed=126, w=560):
+def hellvile_glow(seed=126, w=560, pad=0):
     """Above the Wall on the far right: the purple haze of the other side (fixed light,
-    so it stays the same colour at every time of day). Dithered, palette-exact."""
-    cv = Canvas(w, 240)
-    b = bayer(w, 240)
+    so it stays the same colour at every time of day). Dithered, palette-exact.
+    pad=N: N more px each side (the haze runs on over the Wall's extension)."""
+    W2 = w + 2 * pad
+    cv = Canvas(W2, 240)
+    b = bayer(W2, 240)
     for y in range(0, Y(50)):
-        for x in range(430, w):
-            t = (x - 430) / (w - 430)
+        for x in range(430 + pad, W2):
+            t = min(1.0, (x - pad - 430) / (w - 430))
             v = (1 - y / Y(50)) * 0.6 + t * 0.4
             lvl = int(v * 9)
             if b[y, x] < lvl:
