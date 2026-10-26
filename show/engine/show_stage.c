@@ -18,6 +18,9 @@
 #include <string.h>
 #include "show_core.h"
 
+void show_platepool_reset(void);
+int show_platepool_draw(const DoomoImage *img, int x0, int y0, int x1, int y1);
+
 #define PLANES_MAX   64               /* a set with 10 four-state lanterns + fog + eyes needs > 32 */
 #define IMAGES_MAX   96
 #define GRID_W       126                /* a grid plate's cells (emit.py GRID_W/H) */
@@ -276,7 +279,8 @@ static void grid_draw(const ShwPlane *p, const ShwImagePlane *ip, ShowPlaneXf xf
                     t2.fx = xf.fx + u * xf.s;
                     t2.fy = xf.fy + v * xf.s;
                 }
-                show_draw_image(cell, &t2, 0);
+                if (!show_platepool_draw(cell, x, y, xf_u(&xf, u + cell->w), xf_v(&xf, v + cell->h)))
+                    show_draw_image(cell, &t2, 0);         /* no pool slot: the shared image cache */
             }
         if (!(p->flags & SHWPF_TILE_X) || tw <= 0) break;
     }
@@ -353,6 +357,7 @@ static void grain_draw(const ShwPlane *p, const void *pay, int t)
 static void stage_reset(void)
 {
     s_grain_key = 0xFFFFFFFFu;          /* a new uid per shot: never stale */
+    show_platepool_reset();             /* show_platepool.c: grid cells re-pin per shot */
 }
 
 static const ShowPlaneKind k_kinds[] = {

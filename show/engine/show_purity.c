@@ -9,14 +9,26 @@
  * cleared so the camera module re-installs them in prep().
  */
 #include "show_core.h"
+#if defined(DOOMO_PLATFORM_PS1) && !defined(SHOW_L2_HOST)
+#include "ps1.h"
+#endif
 
 void show_chunk_clear(void);
+void show_vram_scrub(void);
 
 void show_purity_reset(void)
 {
     int i, n;
     camfx_reset();
     portrait_cache_reset();                 /* portrait.c: drop every cached image */
+#if defined(DOOMO_PLATFORM_PS1) && !defined(SHOW_L2_HOST)
+    /* the VRAM image cache: a batch's earlier shots left pages, LRU stamps and
+     * live hash entries (uids are never reused), so a later shot found the
+     * hash nearly full / pages "recent" and actors failed to upload; one shot
+     * alone started clean. Every shot starts from boot's VRAM state now. */
+    vram_init();
+    show_vram_scrub();                      /* show_platepool.c */
+#endif
     beat_set_actor_clock(-1, BCLK_NORMAL);
     show_rng_seed(g_show_shot.seed);
     rng_seed(&doomo_rng, g_show_shot.seed); /* the core's RNG too (resident looks) */
