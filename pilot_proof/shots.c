@@ -348,7 +348,7 @@ void scene_p04_roll_audio(double t0, double dur) {
  * biggest - red this time (paint: CHERRY, glossy) - and a red drip runs. */
 void scene_p05_red(int f, int n) {
     float dr = seg(f, 40, 150);
-    wd_cam(N_CX + 1, lerp(N_CY - 1, N_CY + 4, dr), lerp(4.6f, 5.0f, seg(f, 0, n)));
+    wd_cam(-33, lerp(N_CY + 1, N_CY + 7, dr), lerp(2.05f, 2.25f, seg(f, 0, n)));
     Banner b = { 0 };
     b.n_scale = 1.75f; b.n_red = 1;
     b.n_amt = f < 24 ? 0 : pop(f, 24, 36);
@@ -628,6 +628,21 @@ void scene_p11_plaza(int f, int n) {
         float hop = fabsf(sinf((f + (h % 40)) * 0.2f)) * 4;
         if (fabsf(x - 300) < 14) x += 28;
         tk_chibi((int)wd_sx(x), (int)(wd_sy(y) - hop), &c, 1, (h >> 4) % 3 ? TKE_HAPPY : TKE_NORMAL, TKM_SMILE, f + i * 7, (h >> 8) % 2);
+        /* bit-actions: everyone has a job before the party */
+        int sx = (int)wd_sx(x), sy = (int)(wd_sy(y) - hop);
+        if (i == 2) {        /* carries a cupcake tray over the head */
+            tk_rect(sx - 9, sy - 30, 18, 3, PAL_PAINT(PAINT_SILVER, 2));
+            for (int q = 0; q < 3; q++) { tk_circle(sx - 6 + q * 6, sy - 33, 2, PAL_PAINT(PAINT_BUBBLEGUM, 2)); tk_px(sx - 6 + q * 6, sy - 36, PAL_PAINT(PAINT_CHERRY, 1)); }
+        } else if (i == 4) { /* sweeping the plaza */
+            int bw = (int)(4 * sinf(f * 0.4f));
+            tk_line(sx + 8, sy - 16, sx + 12 + bw, sy, PAL_PAINT(PAINT_CARAMEL, 0));
+            tk_rect(sx + 9 + bw, sy - 2, 7, 3, PAL_PAINT(PAINT_HONEY, 1));
+        } else if (i == 7) { /* a balloon on a string */
+            tk_line(sx + 6, sy - 14, sx + 8, sy - 34, PAL_GRAY_D);
+            tk_ellipse(sx + 8, sy - 39, 4, 5, PAL_PAINT(PAINT_MINT, 1));
+        } else if (i == 10) { /* waving hello, with a bigger hop */
+            tk_text(sx - 4, sy - 34, "hi!", PAL_PAINT(PAINT_GRAPE, 0), 1);
+        }
         if (i % 3 == 0) {   /* carrying a lantern */
             static const uint8_t lc[3] = { PAL_PAINT(PAINT_LEMON, 2), PAL_PAINT(PAINT_MINT, 2), PAL_PAINT(PAINT_ROSE, 2) };
             tk_circle((int)wd_sx(x) + 6, (int)(wd_sy(y) - hop) - 20, 3, lc[i % 3]);

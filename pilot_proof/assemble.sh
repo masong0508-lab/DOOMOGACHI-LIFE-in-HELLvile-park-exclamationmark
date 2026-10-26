@@ -32,7 +32,8 @@ chain "$(pick co15_perfect_tts)" "$tmp/perfect.wav" -18
 chain "$(pick co18_stay_tts)"  "$tmp/stay.wav"   -18
 
 # placements (s), from timeline.c and the shot frames; minus the 30 ms take preroll
-d_hum=3.35; d_hee=13.137; d_perf=33.437; d_stay=44.57
+off=31.5   # storybook first half (s01-s07) in timeline.c
+d_hum=$(python3 -c "print($off+3.35)"); d_hee=$(python3 -c "print($off+13.137)"); d_perf=$(python3 -c "print($off+33.437)"); d_stay=$(python3 -c "print($off+44.57)")
 ms() { python3 -c "print(int(round($1*1000)))"; }
 ffmpeg -v error -y -i "$tmp/synth.wav" -i "$tmp/hum.wav" -i "$tmp/heehee.wav" -i "$tmp/perfect.wav" -i "$tmp/stay.wav" \
   -filter_complex "[1]adelay=$(ms $d_hum)|$(ms $d_hum)[h];[2]adelay=$(ms $d_hee)|$(ms $d_hee)[a];\

@@ -8,7 +8,7 @@ BUILD   ?= build
 CC      ?= gcc
 TR      := ../trailer
 CFLAGS  ?= -O2 -std=c11 -Wall -Wextra -Wno-unused-parameter -I. -I$(TR) -I../core/include -I$(BUILD)
-SRCS    := $(TR)/tk.c $(TR)/tk_chibi.c $(TR)/main.c timeline.c wd.c mayor.c sets.c shots.c music.c
+SRCS    := $(TR)/tk.c $(TR)/tk_chibi.c $(TR)/main.c timeline.c wd.c mayor.c sets.c shots.c story.c music.c
 
 $(BUILD)/pilot: $(SRCS) wd.h mayor.h sets.h $(TR)/tk.h $(TR)/timeline.h $(BUILD)/pal.h
 	$(CC) $(CFLAGS) $(SRCS) -o $@ -lm

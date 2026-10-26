@@ -1,4 +1,4 @@
-# Pilot proof scene - cold open, live-action half (pages 2-4)
+# Pilot cold open: crayon storybook (s01-s07) + live-action proof (p01-p13)
 
 A 70-second proof that the pilot can look and move like the teaser trailer.
 It is built on the teaser's own toolkit in `../trailer` (`tk.c`, `tk_chibi.c`,

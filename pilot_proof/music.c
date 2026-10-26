@@ -1,4 +1,4 @@
-/* music.c - the score for the pilot proof: the melody (the creator's melody,
+/* music.c - the score for the pilot proof: the Mingle (the creator's melody,
  * pad1.mid: 150 bpm, 3/4, C minor) as a music box and as a jaunty waltz,
  * on the teaser's chiptune synth. The hum in shot 2 is the creator's own
  * recorded take, mixed in by assemble.sh. The score drops out for the
@@ -8,7 +8,7 @@
 #include "timeline.h"
 
 #define BEAT 0.4   /* 150 bpm */
-/* the melody, from pad1.mid: midi note, length in beats */
+/* the Mingle, from pad1.mid: midi note, length in beats */
 static const int MEL[][2] = {
     { 60, 4 }, { 58, 4 }, { 55, 4 }, { 60, 4 }, { 58, 4 }, { 55, 4 },
     { 58, 4 }, { 56, 4 }, { 53, 4 }, { 58, 4 }, { 56, 4 }, { 53, 4 },
@@ -53,6 +53,12 @@ static void melody(double t0, double t1, int style, int transpose, float vol) {
 }
 
 void tk_music(void) {
+    /* storybook: the music box plays the Mingle from the calendar page... */
+    double s0 = tk_scene_start("s01_calendar") + 0.3;
+    double pl = tk_scene_start("s05_pluck") + 30 / 30.0;     /* ...stops dead at the PLUCK */
+    melody(s0, pl, 0, 0, 0.5f);
+    /* ...and starts again, softer, once Fluffy has gone */
+    melody(pl + 2.4, tk_scene_start("p01_storybook") - 0.05, 0, 0, 0.28f);
     /* after "Perfect.": the music box takes the melody up again, alone... */
     double a = tk_scene_start("p06_perfect") + 112 / 30.0;
     double stop = tk_scene_start("p07_glance") + 84 / 30.0;   /* ...and stops, mid-phrase, at the Wall */

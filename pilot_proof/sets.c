@@ -72,36 +72,29 @@ void set_wall(float t) {
 /* the old mystery M blooming back through the pink paint */
 static void old_n(const Banner *b, int crayon) {
     if (b->n_amt <= 0.01f) return;
-    uint8_t g[5];
-    wd_glyph('M', g);
-    float p = LET_PX * b->n_scale;
-    float x0 = N_CX - 2.5f * p, y0 = N_CY - 4.0f * p;
+    /* the whole old word MINGLE ghosting up through the pink GIGGLE paint:
+     * its own colour, offset down-right like old paint under new */
+    const char *word = "MINGLE";
+    float p = LET_PX * (1.0f + (b->n_scale - 1.0f) * 0.3f);
+    float wcx = (LET_X0 + 17.5f * LET_PX) + 0.8f, wcy = LET_Y0 + 4.0f * LET_PX + 1.0f;
+    float x0w = wcx - 17.5f * p, y0 = wcy - 4.0f * p, x0 = x0w;
     uint8_t c = b->n_red ? PAL_PAINT(PAINT_CHERRY, 1) : PAL_PAINT(PAINT_NAVY, 2);
     uint8_t cd = b->n_red ? PAL_PAINT(PAINT_CHERRY, 0) : PAL_PAINT(PAINT_NAVY, 1);
-    /* each font cell grows from a dot to a full square, so the M blooms from
-     * spots into a solid letter; a ragged dark edge makes it read as paint */
     float k = b->n_amt > 1.15f ? 1.15f : b->n_amt;
     for (int pass = 0; pass < 2; pass++)
-        for (int col = 0; col < 5; col++)
-            for (int row = 0; row < 8; row++) {
-                if (!(g[col] >> row & 1)) continue;
-                float cx = x0 + (col + 0.5f) * p, cy = y0 + (row + 0.5f) * p;
-                if (b->rolling && cy < b->roll_y) continue;
-                if (col > 0 && col < 4) continue;      /* the V of the M is drawn as two strokes below */
-                float wob = 1.0f + 0.12f * sinf(col * 2.1f + row * 1.7f);
-                float h = p * 0.5f * k * wob + (pass == 0 ? 0.6f / wd_z : 0);
-                uint8_t cc = pass == 0 ? cd : c;
-                wd_rect(cx - h, cy - h, 2 * h, 2 * h, cc, 0);
-                if (pass == 0 && k > 0.6f && ((col * 3 + row) % 4 == 0))
-                    wd_blob(cx + (col - 2) * 0.3f * p, cy, p * 0.32f * k, p * 0.32f * k, 0, cd, 0);
-            }
-    /* the V of the M: two fat strokes meeting in the middle */
-    for (int pass = 0; pass < 2; pass++)
-        for (int sd = 0; sd < 2; sd++) {
-            float w = p * k * (pass == 0 ? 1.0f : 0.8f) + (pass == 0 ? 0.6f / wd_z : 0);
-            float ax = x0 + (sd ? 4.0f : 1.0f) * p, ay = y0 + 0.9f * p, bx = x0 + 2.5f * p, by = y0 + 4.8f * p;
-            if (b->rolling && ay < b->roll_y) { float u = (b->roll_y - ay) / (by - ay); if (u >= 1) continue; ax += (bx - ax) * u; ay = b->roll_y; }
-            wd_line(ax, ay, bx, by, w, pass == 0 ? cd : c);
+        for (int li = 0; li < 6; li++) {
+            uint8_t g[5];
+            wd_glyph(word[li], g);
+            float lx = x0w + li * 6 * p;
+            for (int col = 0; col < 5; col++)
+                for (int row = 0; row < 8; row++) {
+                    if (!(g[col] >> row & 1)) continue;
+                    float cx = lx + (col + 0.5f) * p, cy = y0 + (row + 0.5f) * p;
+                    if (b->rolling && cy < b->roll_y) continue;
+                    float wob = 1.0f + 0.12f * sinf(col * 2.1f + row * 1.7f + li);
+                    float h = p * 0.5f * k * wob + (pass == 0 ? 0.6f / wd_z : 0);
+                    wd_rect(cx - h, cy - h, 2 * h, 2 * h, pass == 0 ? cd : c, 0);
+                }
         }
     (void)crayon;
     if (b->n_red && b->n_amt > 0.9f) {
@@ -146,8 +139,13 @@ void set_banner(float t, const Banner *b, int crayon) {
         }
     }
     /* the word: GIGGLE, white with hot pink edges */
-    wd_text(LET_X0, LET_Y0, "GIGGLE", LET_PX, PAL_WHITE, HOT);
-    old_n(b, crayon);   /* it blooms through everything, letters included */
+    /* while the old word bleeds up, the wet GIGGLE paint washes out to a pale
+     * ghost, so only one word ever reads at a time */
+    float fade = b->n_amt;
+    if (b->rolling) fade = 0.4f;
+    if (fade > 0.35f) wd_text(LET_X0, LET_Y0, "GIGGLE", LET_PX, PAL_PAINT(PAINT_BUBBLEGUM, 2), PAL_PAINT(PAINT_BUBBLEGUM, 1));
+    else wd_text(LET_X0, LET_Y0, "GIGGLE", LET_PX, PAL_WHITE, HOT);
+    old_n(b, crayon);
     /* wet drips under the letters (they creep) */
     if (!crayon)
         for (int i = 0; i < 5; i++) {
@@ -341,11 +339,24 @@ static void lantern_string(float x0, float x1, float t, int seed) {
 
 static void building(float x, float w, float h, uint8_t c, uint8_t roof) {
     wd_rect(x, -h, w, h, c, wd_ol(c));
+    wd_rect(x, -h, w, 3, PAL_WHITE, 0);                            /* trim */
     wd_tri(x - 3, -h, x + w + 3, -h, x + w * 0.5f, -h - 16, roof);
+    wd_rect(x + w * 0.7f, -h - 14, 5, 9, PAL_PAINT(PAINT_RUST, 1), wd_ol(roof));   /* chimney */
     for (int r = 0; r < (int)(h / 18); r++)
-        for (int k = 0; k < (int)(w / 14); k++)
-            wd_rect(x + 5 + k * 14, -h + 8 + r * 18, 7, 9, PAL_PAINT(PAINT_SKY, 2), PAL_WHITE);
-    wd_rect(x + w * 0.5f - 5, -14, 10, 14, PAL_PAINT(PAINT_CHOCOLATE, 2), 0);
+        for (int k = 0; k < (int)(w / 14); k++) {
+            float wx = x + 5 + k * 14, wy = -h + 8 + r * 18;
+            int lit = (int)(tk_hash((uint32_t)(wx * 7 + wy * 13)) % 3) != 0;
+            wd_rect(wx, wy, 7, 9, lit ? PAL_PAINT(PAINT_LEMON, 2) : PAL_PAINT(PAINT_SKY, 2), PAL_WHITE);
+            wd_line(wx + 3.5f, wy, wx + 3.5f, wy + 9, 0.4f, PAL_WHITE);
+            wd_rect(wx - 1, wy + 9, 9, 2.4f, PAL_PAINT(PAINT_CARAMEL, 1), 0);   /* flower box */
+            for (int q = 0; q < 3; q++) wd_blob(wx + 1 + q * 2.6f, wy + 8.6f, 1.1f, 1.1f, 0, q & 1 ? PAL_PAINT(PAINT_ROSE, 1) : PAL_PAINT(PAINT_LEMON, 1), 0);
+        }
+    /* striped awning over the door, and the door with a knob */
+    for (int k = 0; k < 6; k++)
+        wd_quad(x + w * 0.5f - 12 + k * 4, -22, x + w * 0.5f - 8 + k * 4, -22, x + w * 0.5f - 7 + k * 4, -17, x + w * 0.5f - 13 + k * 4, -17,
+                k & 1 ? PAL_WHITE : roof, 0);
+    wd_rect(x + w * 0.5f - 5, -14, 10, 14, PAL_PAINT(PAINT_CHOCOLATE, 2), PAL_PAINT(PAINT_CHOCOLATE, 0));
+    wd_blob(x + w * 0.5f + 3, -7, 0.9f, 0.9f, 0, PAL_PAINT(PAINT_HONEY, 2), 0);
 }
 
 static void mascotty(float x) {

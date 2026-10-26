@@ -7,6 +7,13 @@
 #include <string.h>
 
 #define SHOTS(X) \
+    X(s01_calendar,  3.5) \
+    X(s02_park,      4.5) \
+    X(s03_bridge,    4.5) \
+    X(s04_fluffy,    5.0) \
+    X(s05_pluck,     5.0) \
+    X(s06_wall,      3.5) \
+    X(s07_roll,      5.5) \
     X(p01_storybook, 3.5) \
     X(p02_banner,    8.0) \
     X(p03_heehee,    6.5) \
