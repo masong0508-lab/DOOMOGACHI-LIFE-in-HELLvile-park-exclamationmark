@@ -21,13 +21,15 @@ void scene_main(int f, int n) {
     Bones bj; bones_default(&bj, -40, -10, 1.0f, ta * 30); bones_draw(&bj);
     float home = seg(ta, HOME, 25);
     CrowdOpts o = { 0 }; o.n = (int)(10 * (1 - home)) + 1; o.x0 = 20; o.x1 = 120; o.y0 = 18; o.y1 = 34; o.t = ta * 30; o.seed = 131; o.freeze_at = -1; o.turn = ta >= LOOK && ta < LOOK + 0.5f ? 1 : 0; crowd_draw(&o);
-    Nana nn; nana_default(&nn, 20, 20, 0.85f, ta * 30); nn.buttons = 3; nn.look_x = ta >= M2 + 0.6f && ta < M2 + 1.0f ? -1 : 0; nana_draw(&nn);
+    Nana nn; nana_default(&nn, 20, 20, 0.85f, ta * 30); nn.buttons = 3; nn.look_x = ta >= M2 + 0.6f && ta < M2 + 1.0f ? -1 : 0; if (ta >= M2 + 0.4f && ta < M2 + 2.0f) { nn.armL = nn.armR = 1.3f; nn.squash = 0.98f; } nana_draw(&nn);   /* arms folded, says nothing */
     float up = seg(ta, 0, 0.8f);
     Mayor m; mayor_default(&m, -18, lerp(0, -10, up) - 6 * sinf(up * 3.14f), 1.0f, ta * 30);
     m.flutter = ta < 0.8f ? 1 : (ta >= FLIP && ta < M2) ? 0 : 0.4f; m.armL = m.armR = ta < M3 ? 2.6f : 1.2f; m.expr = MX_HAPPY;
     if (ta >= M3 && ta < LOOK) m.armR = 2.2f + 0.3f * sinf(ta * 14);   /* wagging a finger */
     if (ta >= M4 && ta < FLIP) m.armR = 2.4f;                          /* pen out, with a flourish */
     if (ta >= FLIP && ta < M2) { m.expr = MX_SHOCK; m.eye_pop = 0.5f; }
+    if (ta >= M1 && ta < M1 + 3.8f) { m.lean = 0.08f * sinf(ta * 4); m.hat_tilt = 0.1f * sinf(ta * 4); m.fan = 0.8f; }   /* every inch the host */
+    if (ta >= LOOK && ta < LOOK + 0.6f) m.look_x = 1;
     m.mouth = lip("a4_05_mayor_01", (int)((ta - M1) * 30), 120) + lip("a4_05_mayor_03", (int)((ta - M3) * 30), 45) + lip("a4_05_mayor_04", (int)((ta - M4) * 30), 45) + lip("a4_05_mayor_02", (int)((ta - M2) * 30), 30);
     mayor_draw(&m);
     if (ta >= FOLD && ta < FOLD + 0.2f) wd_rect(mayor_hand_x[1] - 2, mayor_hand_y[1] - 4, 4 - (ta - FOLD) * 15, 5, PAL_GRAY_L, PAL_GRAY);
