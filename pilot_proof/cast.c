@@ -5,6 +5,7 @@
 
 #define INK PAL_PAINT(PAINT_JET, 1)
 
+float sunny_hand_x, sunny_hand_y;
 void sunny_default(Sunny *u, float x, float y, float s, float t) {
     *u = (Sunny){ .x = x, .y = y, .s = s, .t = t, .flip = 1, .ears = 1, .squash = 1, .suitcase = 1 };
 }
@@ -49,7 +50,8 @@ void sunny_draw(const Sunny *u) {
     wd_tube(x - 6 * s, shy, x - 7 * s, shy + 6 * s, 1.8f * s, 1.5f * s, INK, PAL_PAINT(PAINT_SKY, 0), cl, PAL_PAINT(PAINT_SKY, 2));
     wd_tube(shx, shy, hx, hyy, 1.8f * s, 1.5f * s, INK, PAL_PAINT(PAINT_SKY, 0), cl, PAL_PAINT(PAINT_SKY, 2));
     wd_blob_ol(hx, hyy, 2 * s, 2 * s, 0, fur, INK, 0);
-    if (u->page > 0) {   /* page one: wet, sagging, dripping */
+    sunny_hand_x = hx; sunny_hand_y = hyy;
+    if (u->page > 0 && !u->no_page) {   /* page one: wet, sagging, dripping */
         float px = hx + 1 * s, py = hyy - 7 * s;
         wd_quad(px - 6 * s, py - 6 * s, px + 6 * s, py - 6.5f * s, px + 5 * s, py + 7 * s, px - 6.5f * s, py + 6 * s, PAL_WHITE, PAL_PAINT(PAINT_SKY, 0));
         for (int k = 0; k < 4; k++) wd_line(px - 4 * s, py - 3 * s + k * 2.6f * s, px + 3.5f * s, py - 3 * s + k * 2.6f * s, 0.5f * s, PAL_PAINT(PAINT_SKY, 1));
@@ -100,5 +102,69 @@ void bones_draw(const Bones *b) {
         wd_tube(hx, hy2, mx, my, 0.45f * s, 0.45f * s, INK, PAL_PAINT(PAINT_CARAMEL, 0), PAL_PAINT(PAINT_CARAMEL, 1), PAL_PAINT(PAINT_CARAMEL, 2));
         wd_blob_ol(mx, my, 1.7f * s, 1.7f * s, 0, PAL_PAINT(PAINT_CHERRY, 1), INK, WB_SHADE);
         wd_blob_ol(hx, hy2, 1.4f * s, 1.4f * s, 0, bone, INK, 0);
+    }
+}
+
+float nana_hand_x[2], nana_hand_y[2], nana_mouth_x, nana_mouth_y;
+void nana_default(Nana *n, float x, float y, float s, float t) {
+    *n = (Nana){ .x = x, .y = y, .s = s, .t = t, .flip = 1, .squash = 1, .armL = 0.5f, .armR = 0.5f, .buttons = 4 };
+}
+void nana_draw(const Nana *n) {
+    float s = n->s, x = n->x, y = n->y, sq = n->squash * (1 + 0.015f * sinf(n->t * 0.12f));
+    uint8_t wool = PAL_PAINT(PAINT_BONE, 2), wooll = PAL_WHITE, woold = PAL_PAINT(PAINT_BONE, 0);
+    uint8_t card = PAL_PAINT(PAINT_LAVENDER, 1), cardd = PAL_PAINT(PAINT_LAVENDER, 0), cardl = PAL_PAINT(PAINT_LAVENDER, 2);
+    uint8_t face = PAL_SKIN(SKIN_PEACH, 2);
+    /* legs: little dark hooves under the skirt */
+    for (int k = -1; k <= 1; k += 2) wd_blob_ol(x + k * 3.5f * s, y - 1 * s, 2.6f * s, 1.6f * s, 0, PAL_PAINT(PAINT_CHARCOAL, 1), INK, 0);
+    /* woolly body: a ring of puffs, then the cardigan and the apron */
+    float by = y - 13 * s * sq;
+    for (int k = 0; k < 10; k++) {
+        float a = k * 0.628f;
+        wd_blob_ol(x + cosf(a) * 8 * s, by + sinf(a) * 9 * s * sq, 4 * s, 4 * s, 0, k & 1 ? wool : wooll, woold, 0);
+    }
+    wd_blob_ol(x, by, 9 * s, 10 * s * sq, 0, card, INK, WB_SHADE);
+    wd_quad(x - 6 * s, by - 3 * s, x + 6 * s, by - 3 * s, x + 7 * s, by + 10 * s, x - 7 * s, by + 10 * s, PAL_WHITE, PAL_PAINT(PAINT_ROSE, 1));
+    wd_blob(x, by + 4 * s, 2.4f * s, 1.6f * s, 0, PAL_PAINT(PAINT_ROSE, 2), 0);                 /* apron pocket */
+    for (int k = 0; k < 4; k++) {                                                             /* cardigan buttons, one may be gone */
+        if (k >= n->buttons) { wd_line(x - 7.4f * s, by - 6 * s + k * 3 * s, x - 6.6f * s, by - 5.4f * s + k * 3 * s, 0.3f * s, PAL_GRAY_D); continue; }
+        wd_blob_ol(x - 7 * s, by - 6 * s + k * 3 * s, 0.9f * s, 0.9f * s, 0, PAL_PAINT(PAINT_HONEY, 2), INK, 0);
+    }
+    /* flour dust on the apron */
+    for (int k = 0; k < 5; k++) wd_blob(x - 3 * s + k * 1.6f * s, by + (k & 1) * 3 * s, 0.6f * s, 0.6f * s, 0, PAL_WHITE, 0);
+    /* head: woolly cap of curls, floppy ears, tiny curled horns, round glasses */
+    float hy = y - 30 * s * sq;
+    for (int k = -1; k <= 1; k += 2) {
+        wd_blob_ol(x + k * 8.5f * s, hy + 1 * s, 3.4f * s, 1.8f * s, k * 0.5f, face, INK, 0);    /* ears */
+        wd_blob_ol(x + k * 6 * s, hy - 5 * s, 2.2f * s, 2.2f * s, 0, PAL_PAINT(PAINT_CARAMEL, 2), INK, 0);   /* horn curls */
+        wd_blob(x + k * 6 * s, hy - 5 * s, 0.9f * s, 0.9f * s, 0, PAL_PAINT(PAINT_CARAMEL, 1), 0);
+    }
+    wd_blob_ol(x, hy, 7.5f * s, 7 * s, 0, face, INK, WB_SHADE);
+    for (int k = 0; k < 7; k++) wd_blob_ol(x - 6 * s + k * 2 * s, hy - 6 * s - (k % 2) * 1.2f * s, 2.4f * s, 2.2f * s, 0, k & 1 ? wool : wooll, woold, 0);
+    for (int k = -1; k <= 1; k += 2)   /* round glasses: lenses first, eyes behind the glass */
+        wd_blob_ol(x + k * 3 * s, hy + 0.5f * s, 2.3f * s, 2.1f * s, 0, PAL_PAINT(PAINT_SKY, 2), PAL_PAINT(PAINT_CARAMEL, 0), 0);
+    for (int k = -1; k <= 1; k += 2) {
+        float ex = x + k * 3 * s + n->look_x * 0.6f * s, ey = hy + 0.5f * s;
+        if (n->blink > 0.5f) wd_line(ex - 1.2f * s, ey, ex + 1.2f * s, ey, 0.5f * s, INK);
+        else wd_blob(ex, ey, 0.9f * s, 1.2f * s, 0, INK, 0);
+    }
+    wd_line(x - 0.8f * s, hy + 0.5f * s, x + 0.8f * s, hy + 0.5f * s, 0.3f * s, PAL_PAINT(PAINT_CARAMEL, 0));
+    wd_blob(x, hy + 3.5f * s, 1.3f * s, 0.9f * s, 0, PAL_PAINT(PAINT_ROSE, 1), 0);           /* nose */
+    nana_mouth_x = x; nana_mouth_y = hy + 5.2f * s;
+    wd_blob(x, hy + 5.2f * s, 1.6f * s, (0.3f + n->mouth * 1.4f) * s, 0, PAL_PAINT(PAINT_CHERRY, 0), 0);  /* mouth */
+    for (int k = -1; k <= 1; k += 2) wd_blob(x + k * 5 * s, hy + 3.5f * s, 1.5f * s, 0.9f * s, 0, PAL_PAINT(PAINT_ROSE, 2), 0);
+    /* arms: cardigan sleeves with woolly cuffs and round paws */
+    for (int side = -1; side <= 1; side += 2) {
+        float ang = side < 0 ? n->armL : n->armR;
+        float shx = x + side * 8 * s * n->flip, shy = by - 6 * s;
+        float a = 1.5708f - ang;
+        float ux = cosf(a) * side * n->flip, uy = sinf(a);
+        float ex = shx + ux * 5.5f * s + side * 1.2f * s, ey = shy + uy * 5.5f * s + 1.5f * s;
+        float hx = ex + ux * 5.5f * s, hy2 = ey + uy * 5.5f * s;
+        wd_tube(shx, shy, ex, ey, 2.4f * s, 2.1f * s, INK, cardd, card, cardl);
+        wd_tube(ex, ey, hx, hy2, 2.1f * s, 1.9f * s, INK, cardd, card, cardl);
+        wd_blob_ol(hx, hy2, 2.4f * s, 2.0f * s, 0, wooll, woold, 0);
+        wd_blob_ol(hx + ux * 1.6f * s, hy2 + uy * 1.6f * s, 1.9f * s, 1.9f * s, 0, face, INK, WB_SHADE);
+        int i = side > 0 ? 1 : 0;
+        nana_hand_x[i] = hx + ux * 1.6f * s; nana_hand_y[i] = hy2 + uy * 1.6f * s;
     }
 }

@@ -11,7 +11,9 @@ typedef struct Sunny {     /* silent bunnykin newcomer: acts with ears, eyes and
     float look_x, look_y, blink, squash;
     float page;            /* 0 no page; >0 holds up the soggy page (0..1 raise) */
     int suitcase;
+    int no_page;           /* raise the paw without the page (holding a muffin, key...) */
 } Sunny;
+extern float sunny_hand_x, sunny_hand_y;
 void sunny_default(Sunny *u, float x, float y, float s, float t);
 void sunny_draw(const Sunny *u);
 
@@ -23,4 +25,14 @@ typedef struct Bones {     /* Bonejangles: skeleton bandleader who plays his own
 } Bones;
 void bones_default(Bones *b, float x, float y, float s, float t);
 void bones_draw(const Bones *b);
+
+typedef struct Nana {      /* Nana Puddin: sheepkin head baker, all wool and flour */
+    float x, y, s, t, flip;
+    float mouth, blink, look_x, squash;
+    float armL, armR;      /* 0 hang .. 1.57 forward .. 3 up (far, near) */
+    int buttons;           /* cardigan buttons showing (4 = all) */
+} Nana;
+void nana_default(Nana *n, float x, float y, float s, float t);
+void nana_draw(const Nana *n);
+extern float nana_hand_x[2], nana_hand_y[2], nana_mouth_x, nana_mouth_y;
 #endif

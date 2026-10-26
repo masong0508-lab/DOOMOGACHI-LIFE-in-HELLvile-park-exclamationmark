@@ -17,7 +17,10 @@ ffmpeg -v error -y -i "$tmp/raw.wav" \
 speaker() { local s; s=$(echo "$1" | cut -d_ -f3); case "$s" in bone) echo bonejangles;; *) echo "$s";; esac; }
 pick() {  # id -> best take path
   local d="$root/$(speaker "$1")/ep101" k
-  for k in rec lib tts; do ls "$d/$1_${k}_"* 2>/dev/null | head -1 && return; done
+  local kinds="rec lib tts"
+  # NO_TTS="nana ...": these speakers use a bubble + babble until recorded
+  case " ${NO_TTS:-} " in *" $(speaker "$1") "*) kinds="rec lib";; esac
+  for k in $kinds; do ls "$d/$1_${k}_"* 2>/dev/null | head -1 && return; done
 }
 chain() {  # in out
   ffmpeg -nostdin -v error -y -i "$1" -af "aresample=48000,highpass=f=85,afftdn=nf=-38,\
