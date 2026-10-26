@@ -18,7 +18,7 @@
 #include <string.h>
 #include "show_core.h"
 
-#define PLANES_MAX   32
+#define PLANES_MAX   64               /* a set with 10 four-state lanterns + fog + eyes needs > 32 */
 #define IMAGES_MAX   96
 #define GRID_W       126                /* a grid plate's cells (emit.py GRID_W/H) */
 #define GRID_H       120
@@ -27,7 +27,7 @@
 
 static const ShwPlane *s_planes[PLANES_MAX];
 static int s_nplanes;
-static uint32_t s_hidden;               /* bit per plane slot (draw order)   */
+static uint64_t s_hidden;               /* bit per plane slot (draw order)   */
 
 static DoomoImage s_img[IMAGES_MAX];
 static int s_nimg;
@@ -59,13 +59,13 @@ void show_stage_bind(void)
         s_planes[j + 1] = k;
     }
     for (i = 0; i < s_nplanes; i++)
-        if (s_planes[i]->flags & SHWPF_HIDDEN) s_hidden |= 1u << i;
+        if (s_planes[i]->flags & SHWPF_HIDDEN) s_hidden |= (uint64_t)1 << i;
 }
 
 int show_plane_count(void) { return s_nplanes; }
 const ShwPlane *show_plane(int i) { return (i >= 0 && i < s_nplanes) ? s_planes[i] : NULL; }
 const void *show_plane_payload(const ShwPlane *p) { return p ? (const void *)(p + 1) : NULL; }
-uint32_t show_plane_vis_mask(void) { return ~s_hidden; }
+uint32_t show_plane_vis_mask(void) { return ~((uint32_t)s_hidden ^ (uint32_t)(s_hidden >> 32)); }
 
 static int slot_of(int id)
 {
@@ -76,12 +76,12 @@ static int slot_of(int id)
 }
 
 const ShwPlane *show_plane_by_id(int id) { int s = slot_of(id); return s < 0 ? NULL : s_planes[s]; }
-int show_plane_visible(int id) { int s = slot_of(id); return s >= 0 && !(s_hidden & (1u << s)); }
+int show_plane_visible(int id) { int s = slot_of(id); return s >= 0 && !(s_hidden & ((uint64_t)1 << s)); }
 void show_plane_set_visible(int id, int on)
 {
     int s = slot_of(id);
     if (s < 0) return;
-    if (on) s_hidden &= ~(1u << s); else s_hidden |= 1u << s;
+    if (on) s_hidden &= ~((uint64_t)1 << s); else s_hidden |= (uint64_t)1 << s;
 }
 
 static const ShowPlaneKind *kind_of(int kind)
@@ -113,7 +113,7 @@ void show_stage_draw(int t)
     int i;
     for (i = 0; i < s_nplanes; i++) {
         const ShowPlaneKind *k;
-        if (s_hidden & (1u << i)) continue;
+        if (s_hidden & ((uint64_t)1 << i)) continue;
         k = kind_of(s_planes[i]->kind);
         if (k && k->draw) {
             const void *pay = show_plane_payload(s_planes[i]);
@@ -228,32 +228,57 @@ static void fill_draw(const ShwPlane *p, const void *pay, int t)
 /* ---- IMAGE ---------------------------------------------------------------- */
 /* a big plate as row-major GRID_W x GRID_H cells: flip = 0x80 | cols,
  * scale = px | rows << 3 (cells pack 4 to a VRAM page; a 128 tile takes one) */
+/* x/y of plate texel u/v under xf (the stage camera's fractional zoom kept) */
+static int32_t fdiv16(int32_t n) { return n >= 0 ? n >> 16 : -((-n + 0xFFFF) >> 16); }
+static int xf_u(const ShowPlaneXf *xf, int u) { return xf->ox + (int)fdiv16(xf->fx + u * xf->s); }
+static int xf_v(const ShowPlaneXf *xf, int v) { return xf->oy + (int)fdiv16(xf->fy + v * xf->s); }
+
+/* the plate's own px against the shot's: scale the camera's transform, never replace it
+ * (replacing it with the whole px dropped a zoomed camera's scale: a shot set up at
+ * scale>1 drew its plate at 1x, shrunk into the top-left under the actors) */
+static void plate_scale(ShowPlaneXf *xf, int plate_px)
+{
+    int px = g_show_shot.px > 0 ? g_show_shot.px : 1;
+    if (plate_px > 0 && plate_px != px)
+        xf->s = (int32_t)(((int64_t)xf->s * plate_px) / px);
+}
+
 static void grid_draw(const ShwPlane *p, const ShwImagePlane *ip, ShowPlaneXf xf)
 {
-    int cols = ip->flip & 0x7F, rows = ip->scale >> 3, r, c, s, x0, tw, k;
+    int cols = ip->flip & 0x7F, rows = ip->scale >> 3, r, c, tw, k, pw;
     const DoomoImage *last;
-    if ((ip->scale & 7) != 0) xf.s = (int32_t)(ip->scale & 7) << 16;
-    s = (xf.s + 0x8000) >> 16;
-    if (s < 1) s = 1;
+    plate_scale(&xf, ip->scale & 7);
+    if (xf.s < 0x1000) xf.s = 0x1000;
     last = show_image(ip->image + cols - 1);
-    tw = ((cols - 1) * GRID_W + (last ? last->w : GRID_W)) * s;     /* the whole plate's width */
-    x0 = xf.ox;
-    if ((p->flags & SHWPF_TILE_X) && tw > 0) { x0 %= tw; if (x0 > -OVERSCAN) x0 -= tw; }
-    for (k = 0; k < 4; k++, x0 += tw) {
-        if (x0 >= SHOW_CANVAS_W + OVERSCAN) break;
+    pw = (cols - 1) * GRID_W + (last ? last->w : GRID_W);            /* the plate's width, texels */
+    tw = xf_u(&xf, pw) - xf.ox;                                      /* ... on screen            */
+    if ((p->flags & SHWPF_TILE_X) && tw > 0) {
+        int x0 = xf.ox % tw;
+        if (x0 > -OVERSCAN) x0 -= tw;
+        xf.ox = x0;
+    }
+    for (k = 0; k < 4; k++, xf.ox += tw) {
+        if (xf.ox >= SHOW_CANVAS_W + OVERSCAN) break;
         for (r = 0; r < rows; r++)
             for (c = 0; c < cols; c++) {
                 ShowPlaneXf t2 = xf;
-                int y = xf.oy + r * GRID_H * s, x = x0 + c * GRID_W * s;
-                if (y >= SHOW_CANVAS_H + OVERSCAN || y + GRID_H * s <= -OVERSCAN ||
-                    x >= SHOW_CANVAS_W + OVERSCAN || x + GRID_W * s <= -OVERSCAN) continue;
-                const DoomoImage *cell = show_image(ip->image + r * cols + c);
+                int u = c * GRID_W, v = r * GRID_H;
+                int x = xf_u(&xf, u), x1 = xf_u(&xf, u + GRID_W);
+                int y = xf_v(&xf, v), y1 = xf_v(&xf, v + GRID_H);
+                const DoomoImage *cell;
+                if (y >= SHOW_CANVAS_H + OVERSCAN || y1 <= -OVERSCAN ||
+                    x >= SHOW_CANVAS_W + OVERSCAN || x1 <= -OVERSCAN) continue;
+                cell = show_image(ip->image + r * cols + c);
                 if (!cell || cell->w <= 1) continue;       /* an empty (hidden) cell */
-                t2.ox = x;
-                t2.oy = y;
+                if ((xf.s & 0xFFFF) == 0) {                 /* a whole scale: exact cell origins */
+                    t2.ox = x; t2.oy = y; t2.fx = t2.fy = 0;
+                } else {                                    /* fractional: the cell continues the plate */
+                    t2.fx = xf.fx + u * xf.s;
+                    t2.fy = xf.fy + v * xf.s;
+                }
                 show_draw_image(cell, &t2, 0);
             }
-        if (!(p->flags & SHWPF_TILE_X)) break;
+        if (!(p->flags & SHWPF_TILE_X) || tw <= 0) break;
     }
 }
 
@@ -267,7 +292,7 @@ static void image_draw(const ShwPlane *p, const void *pay, int t)
     if (!img) return;
     show_plane_xf(p, &xf);
     if (ip->flip & 0x80) { grid_draw(p, ip, xf); return; }
-    if (ip->scale) xf.s = (int32_t)ip->scale << 16;
+    plate_scale(&xf, ip->scale);
     s = (xf.s + 0x8000) >> 16;
     if (s < 1) s = 1;
     w = img->w * s;

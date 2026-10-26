@@ -23,7 +23,7 @@ parse_crowd() turn a statement's key=value words into these calls.
 import struct
 
 # ---- enums mirrored from show_actor.h (checked by tests/engine/wp6) ---------------
-KIND = {"bust": 0, "figure": 1, "chibi": 2, "fighter": 3}
+KIND = {"bust": 0, "figure": 1, "chibi": 2, "fighter": 3, "sprite": 2, "model3d": 1}   # sprite: the DoomoLook chibi (pet, demons: pet-sized)
 IDLE = {"on": 0, "still": 1, "frozen": 2, "none": 3}
 FACE = {"R": 0, "L": 1, "front": 2, "back": 3}
 VISEMES = "XMCEAOUF"                       # VIS_X .. VIS_F
@@ -363,11 +363,11 @@ class ShotCast:
 
     def blocks_estimate(self):
         """portrait-pool blocks this shot keeps live (the planner's PLAN-POOL count, spec 8.4)"""
-        per = {"bust": 7, "figure": 10, "chibi": 1, "fighter": 4}
+        per = {"bust": 7, "figure": 10, "chibi": 1, "fighter": 4, "sprite": 1, "model3d": 10}
         n = 0
         for _, r in self.actors:
             # rest + 6 mouths, x2 blink, x2 breath (busts and figures)
-            n += per[r["kind"]] * (28 if r["kind"] in ("bust", "figure") else 4)
+            n += per[r["kind"]] * (28 if r["kind"] in ("bust", "figure", "model3d") else 4)
         for _, r in self.crowds:
             frames = 4 if r["speed"] else 1
             n += r["k"] * frames
