@@ -29,9 +29,21 @@ static void tent(float ta) {
 SHOT(a_string, {
     wd_cam(lerp(-60, 150, seg(ta, 1.0f, 8.0f)), -34, 2.8f);   /* along the string at a constant speed */
     tent(ta);
-    Nana l; nana_default(&l, -76, 8, 0.9f, ta * 30); l.armR = 2.4f; l.look_x = 1;
-    l.mouth = lip("a1_07_lulla_01", (int)((ta - T1) * 30), 165);
-    nana_draw(&l);
+    /* Miss Lulla: a young goat-kin daycare worker - toffee fur, little horns, a mint
+     * smock, a big lemon hair bow and a pencil behind the ear (not Nana's sheep look) */
+    Critter l = cast_pip(-76, 8, ta * 30);
+    l.s = 1.0f; l.extras = 0; l.ears = CR_EARS_ROUND;
+    l.fur = PAL_PAINT(PAINT_HONEY, 1); l.furd = PAL_PAINT(PAINT_CARAMEL, 1);
+    l.outfit = PAL_PAINT(PAINT_MINT, 1); l.outfitd = PAL_PAINT(PAINT_TEAL, 1); l.outfitl = PAL_PAINT(PAINT_MINT, 2);
+    l.armR = 2.4f; l.look_x = 1; l.blink = fmodf(ta * 30, 70) > 64;
+    l.mouth = lip("a1_07_lulla_01", (int)((ta - T1) * 30), 165) * 0.6f;
+    critter_draw(&l);
+    float hy = critter_head_y;
+    for (int k = -1; k <= 1; k += 2) wd_tri(-76 + k * 5.0f, hy - 5, -76 + k * 7.4f, hy - 4, -76 + k * 8.6f, hy - 10.5f, PAL_PAINT(PAINT_BONE, 2));   /* little horns */
+    wd_blob_ol(-80, hy - 7.5f, 3.2f, 2.2f, 0.4f, PAL_PAINT(PAINT_LEMON, 2), INK, 0);    /* the hair bow */
+    wd_blob_ol(-72.5f, hy - 7.5f, 3.2f, 2.2f, -0.4f, PAL_PAINT(PAINT_LEMON, 2), INK, 0);
+    wd_blob_ol(-76.3f, hy - 7.5f, 1.4f, 1.4f, 0, PAL_PAINT(PAINT_LEMON, 1), INK, 0);
+    wd_line(-84, hy - 2, -80, hy - 5, 0.7f, PAL_PAINT(PAINT_LEMON, 1));             /* pencil behind the ear */
     say_at_world("They all drew the same friend. Purple cloud, little crown. I've no idea who he is.", ta, T1, 5.5f, 60, -10, 2);
 })
 SHOT(b_flap, {
