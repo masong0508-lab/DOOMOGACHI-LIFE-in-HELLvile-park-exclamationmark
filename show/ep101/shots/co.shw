@@ -239,11 +239,14 @@ end
 shot co19 beat=e101_co_6 len=180 set=fountain_plaza:dawn px=1 look=pixel cut=CUT matte=open scene=co_plaza
   cam at=-24,0
   +0    cam to x=24 y=0 over=180 ease=LINEAR     # drift right 0.25 px/f (ews -> ews_end)
-  crowd stringers looks=kset:plaza_dawn seed=1901 n=14 tags=CITIZEN age=adult kind=chibi
-    form=lane from=40 dy=128 spacing=34 speed=0 ripple=0..3 cycle=string_lantern bob=on
+  crowd stringers looks=kset:plaza_dawn seed=1901 n=8 tags=CITIZEN age=adult kind=chibi
+    form=lane from=490 dy=124 spacing=56 speed=0 ripple=0..3 cycle=string_lantern bob=on   # back row under the lantern line (set x: the frame sits at ~470..790 on this plate)
   end
-  crowd plaza looks=kset:giggle_adults seed=1902 n=18 tags=CITIZEN age=adult kind=chibi
-    form=lane from=-30 dy=150 dir=R spacing=28 speed=0.4 ripple=0..3 cycle=walk4
+  crowd plaza looks=kset:giggle_adults seed=1902 n=7 tags=CITIZEN age=adult kind=chibi
+    form=lane from=800 dy=162 dir=R spacing=52 speed=0.5 ripple=0..3 cycle=walk4   # near row, already crossing in frame
+  end
+  crowd plazab looks=kset:giggle_adults seed=1903 n=5 tags=CITIZEN age=adult kind=chibi
+    form=lane from=520 dy=140 dir=L spacing=70 speed=0.35 ripple=1..4 cycle=walk4 flip=mix   # mid row, the other way: they pass, not stack
   end
   actor mascotty who=mascotty kind=chibi at=508,118 face=L idle=none   # the far edge; perfectly still (clock none)
   +0    sign s_co19_poster on=poster
