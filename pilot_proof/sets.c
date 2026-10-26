@@ -1,5 +1,5 @@
 /* sets.c - sets and props for the pilot proof: the bandstand at dawn, the
- * GIGGLE banner (with the old N underneath), the giggling fountain, the Wall,
+ * GIGGLE banner (with the old M underneath), the giggling fountain, the Wall,
  * the plaza, Nana's bakery window, the egg, and the crayon storybook bits.
  * All world space through wd.h, all on the game's real palette. */
 #include "sets.h"
@@ -69,16 +69,16 @@ void set_wall(float t) {
     wd_dither(x0 - 30, -8, 470, 14, STONE(2), 8);
 }
 
-/* the old N (from MINGLE) blooming back through the pink paint */
+/* the old mystery M blooming back through the pink paint */
 static void old_n(const Banner *b, int crayon) {
     if (b->n_amt <= 0.01f) return;
     uint8_t g[5];
-    wd_glyph('N', g);
+    wd_glyph('M', g);
     float p = LET_PX * b->n_scale;
     float x0 = N_CX - 2.5f * p, y0 = N_CY - 4.0f * p;
     uint8_t c = b->n_red ? PAL_PAINT(PAINT_CHERRY, 1) : PAL_PAINT(PAINT_NAVY, 2);
     uint8_t cd = b->n_red ? PAL_PAINT(PAINT_CHERRY, 0) : PAL_PAINT(PAINT_NAVY, 1);
-    /* each font cell grows from a dot to a full square, so the N blooms from
+    /* each font cell grows from a dot to a full square, so the M blooms from
      * spots into a solid letter; a ragged dark edge makes it read as paint */
     float k = b->n_amt > 1.15f ? 1.15f : b->n_amt;
     for (int pass = 0; pass < 2; pass++)
@@ -87,7 +87,7 @@ static void old_n(const Banner *b, int crayon) {
                 if (!(g[col] >> row & 1)) continue;
                 float cx = x0 + (col + 0.5f) * p, cy = y0 + (row + 0.5f) * p;
                 if (b->rolling && cy < b->roll_y) continue;
-                if (col > 0 && col < 4) continue;      /* the diagonal is drawn as one stroke below */
+                if (col > 0 && col < 4) continue;      /* the V of the M is drawn as two strokes below */
                 float wob = 1.0f + 0.12f * sinf(col * 2.1f + row * 1.7f);
                 float h = p * 0.5f * k * wob + (pass == 0 ? 0.6f / wd_z : 0);
                 uint8_t cc = pass == 0 ? cd : c;
@@ -95,18 +95,19 @@ static void old_n(const Banner *b, int crayon) {
                 if (pass == 0 && k > 0.6f && ((col * 3 + row) % 4 == 0))
                     wd_blob(cx + (col - 2) * 0.3f * p, cy, p * 0.32f * k, p * 0.32f * k, 0, cd, 0);
             }
-    /* the diagonal: one fat stroke, so it reads as an N and not an H */
-    for (int pass = 0; pass < 2; pass++) {
-        float w = p * k * (pass == 0 ? 1.0f : 0.8f) + (pass == 0 ? 0.6f / wd_z : 0);
-        float ax = x0 + 1.0f * p, ay = y0 + 0.9f * p, bx = x0 + 4.0f * p, by = y0 + 7.1f * p;
-        if (b->rolling && ay < b->roll_y) { float u = (b->roll_y - ay) / (by - ay); if (u >= 1) continue; ax += (bx - ax) * u; ay = b->roll_y; }
-        wd_line(ax, ay, bx, by, w, pass == 0 ? cd : c);
-    }
+    /* the V of the M: two fat strokes meeting in the middle */
+    for (int pass = 0; pass < 2; pass++)
+        for (int sd = 0; sd < 2; sd++) {
+            float w = p * k * (pass == 0 ? 1.0f : 0.8f) + (pass == 0 ? 0.6f / wd_z : 0);
+            float ax = x0 + (sd ? 4.0f : 1.0f) * p, ay = y0 + 0.9f * p, bx = x0 + 2.5f * p, by = y0 + 4.8f * p;
+            if (b->rolling && ay < b->roll_y) { float u = (b->roll_y - ay) / (by - ay); if (u >= 1) continue; ax += (bx - ax) * u; ay = b->roll_y; }
+            wd_line(ax, ay, bx, by, w, pass == 0 ? cd : c);
+        }
     (void)crayon;
     if (b->n_red && b->n_amt > 0.9f) {
         /* glossy wet highlights: it is paint */
         for (int k = 0; k < 4; k++) {
-            float hx = x0 + (k == 0 ? 0.5f : k == 1 ? 4.4f : k == 2 ? 2.2f : 0.6f) * p, hy = y0 + (1.2f + k * 1.6f) * p;
+            float hx = x0 + (k == 0 ? 0.5f : k == 1 ? 4.4f : k == 2 ? 1.6f : 0.6f) * p, hy = y0 + (1.2f + k * 1.6f) * p;
             wd_blob(hx, hy, p * 0.22f, p * 0.32f, 0.3f, PAL_PAINT(PAINT_CHERRY, 2), 0);
         }
         if (b->drip > 0) {
@@ -132,7 +133,7 @@ void set_banner(float t, const Banner *b, int crayon) {
     /* wet pink paint band (painted over the old word) */
     wd_rect(BAN_X0 + 2.5f, BAN_Y0 + 2.5f, BAN_X1 - BAN_X0 - 5, BAN_Y1 - BAN_Y0 - 5, PINK, 0);
     if (!crayon) wd_dither(BAN_X0 + 2.5f, BAN_Y0 + 2.5f, BAN_X1 - BAN_X0 - 5, 2.5f, PAL_WHITE, 6);
-    /* fresh paint over the N where the roller has just been */
+    /* fresh paint over the M where the roller has just been */
     if (b->wet > 0) {
         uint32_t s = 77;
         for (int k = 0; k < 5; k++) {
@@ -207,24 +208,29 @@ void set_bandstand(float t, const Banner *b, int crayon) {
 
 void set_ladder(void) {
     float x = LADDER_X;
-    wd_line(x - 10, 0, x - 4, -33, 2.0f, WOOD(3));
-    wd_line(x + 10, 0, x + 4, -33, 2.0f, WOOD(3));
-    wd_line(x - 10, 0, x - 4, -33, 1.0f, WOOD(5));
+    uint8_t ol = WOOD(1);
+    /* back rungs first, then two chunky rails with planed faces */
     for (int k = 1; k < 5; k++) {
         float y = -k * 6.5f, w = 10 - k * 1.2f;
-        wd_line(x - w, y, x + w, y, 1.5f, WOOD(4));
+        wd_rect(x - w, y - 1.1f, 2 * w, 2.2f, WOOD(4), ol);
+        wd_rect(x - w + 0.4f, y - 1.1f, 2 * w - 0.8f, 0.6f, WOOD(5), 0);
+        wd_rect(x - w + 0.4f, y + 0.5f, 2 * w - 0.8f, 0.5f, WOOD(3), 0);
     }
-    wd_rect(x - 6, -34.5f, 12, 3.5f, WOOD(5), WOOD(2));
+    wd_tube(x - 10, 0, x - 4, -33, 1.7f, 1.4f, ol, WOOD(2), WOOD(3), WOOD(5));
+    wd_tube(x + 10, 0, x + 4, -33, 1.7f, 1.4f, ol, WOOD(2), WOOD(3), WOOD(4));
+    wd_rect(x - 6.5f, -35, 13, 4, WOOD(4), ol);
+    wd_rect(x - 6, -34.6f, 12, 1, WOOD(5), 0);
+    wd_rect(x - 6, -31.8f, 12, 0.7f, WOOD(2), 0);
     /* paint tray on the top step */
-    wd_rect(x - 9, -37.5f, 6, 3, PAL_GRAY_L, PAL_GRAY);
+    wd_rect(x - 9, -37.5f, 6, 3, PAL_GRAY_L, PAL_GRAY_D);
     wd_rect(x - 8.5f, -37, 5, 1.2f, PINKM, 0);
 }
 
 void set_roller(float hx, float hy, float ang, float wet) {
     float ex = hx + cosf(ang) * 6.5f, ey = hy + sinf(ang) * 6.5f;
-    wd_line(hx, hy, ex, ey, 1.6f, PAL_PAINT(PAINT_HONEY, 1));
+    wd_tube(hx, hy, ex, ey, 1.2f, 1.0f, PAL_PAINT(PAINT_CHOCOLATE, 1), PAL_PAINT(PAINT_HONEY, 0), PAL_PAINT(PAINT_HONEY, 1), PAL_PAINT(PAINT_HONEY, 2));
     float rx = ex + cosf(ang) * 2.5f, ry = ey + sinf(ang) * 2.5f;
-    wd_line(ex, ey, rx, ry, 0.6f, PAL_GRAY);
+    wd_tube(ex, ey, rx, ry, 0.55f, 0.55f, PAL_GRAY_D, PAL_GRAY, PAL_GRAY_L, PAL_WHITE);
     wd_blob(rx, ry, 2.4f, 6.2f, ang, PINKM, WB_ALL);
     if (wet > 0) wd_blob(rx - 1.0f, ry, 0.6f, 4.2f, ang, PINK, 0);
 }
@@ -284,7 +290,8 @@ void set_balloon(float x, float y, float face, float sq, float tilt, float tx, f
         float u0 = k / 8.0f, u1 = (k + 1) / 8.0f;
         float x0 = tx + (bx - tx) * u0 + sinf(u0 * 3.14f) * 2.0f, y0 = ty + (by - ty) * u0;
         float x1 = tx + (bx - tx) * u1 + sinf(u1 * 3.14f) * 2.0f, y1 = ty + (by - ty) * u1;
-        wd_line(x0, y0, x1, y1, 0.35f, PAL_GRAY_D);
+        wd_line(x0, y0, x1, y1, 0.8f, PAL_GRAY_D);
+        wd_line(x0 - 0.15f, y0, x1 - 0.15f, y1, 0.4f, PAL_WHITE);
     }
     float sx = 1.0f / sq, sy = sq;
     /* wrapper: striped trapezoid */
@@ -493,18 +500,27 @@ void set_bakery(float t, float paw, float towel, float lamp, float tag_t) {
 }
 
 void set_paw(float x, float y, float t) {
-    /* Nana Puddin's woolly paw in a lavender cardigan sleeve, from the top right */
-    wd_line(x + 60, y - 70, x + 8, y - 8, 15, PAL_PAINT(PAINT_LAVENDER, 0));
-    wd_line(x + 60, y - 70, x + 8, y - 8, 12, PAL_PAINT(PAINT_LAVENDER, 1));
-    for (int k = 0; k < 6; k++)
-        wd_line(x + 56 - k * 8, y - 64 + k * 9, x + 52 - k * 8, y - 66 + k * 9, 0.8f, PAL_PAINT(PAINT_LAVENDER, 2));
-    wd_blob(x + 5, y - 5, 8, 6, -0.8f, PAL_PAINT(PAINT_LAVENDER, 2), WB_ALL);  /* cuff */
-    for (int k = 0; k < 7; k++) {
-        float a = k * 0.9f + 0.3f * sinf(t * 0.1f + k);
-        wd_blob(x + cosf(a) * 4.5f, y + sinf(a) * 3.5f, 3.2f, 3.0f, 0, k & 1 ? PAL_WHITE : PAL_PAINT(PAINT_BONE, 2), WB_ALL);
+    /* Nana Puddin's woolly paw in a knitted lavender cardigan sleeve, from the top right */
+    uint8_t ol = PAL_PAINT(PAINT_LAVENDER, 0);
+    wd_tube(x + 64, y - 74, x + 12, y - 12, 9.5f, 8.0f, PAL_PAINT(PAINT_JET, 1), ol, PAL_PAINT(PAINT_LAVENDER, 1), PAL_PAINT(PAINT_LAVENDER, 2));
+    for (int k = 0; k < 7; k++) {          /* knit ribs across the sleeve */
+        float u = k / 7.0f, cx = x + 60 - u * 46, cy = y - 70 + u * 56;
+        for (int j = -3; j <= 3; j++)
+            wd_blob(cx + j * 1.9f, cy + j * 1.9f, 0.8f, 1.3f, 0.78f, (j + k) & 1 ? PAL_PAINT(PAINT_LAVENDER, 2) : PAL_PAINT(PAINT_LAVENDER, 1), 0);
     }
-    wd_blob(x, y, 4.5f, 4.0f, 0, PAL_PAINT(PAINT_BONE, 2), WB_SHADE);
-    for (int k = 0; k < 3; k++) wd_blob(x - 3 + k * 3, y + 4, 1.3f, 1.0f, 0, PAL_PAINT(PAINT_CHOCOLATE, 2), 0);
+    /* fluffy woolly cuff: a ring of puffs */
+    wd_blob_ol(x + 9, y - 9, 8.0f, 7.5f, 0, PAL_PAINT(PAINT_BONE, 2), PAL_PAINT(PAINT_BONE, 0), WB_SHADE);
+    for (int k = 0; k < 11; k++) {
+        float a = k * 0.571f;
+        wd_blob_ol(x + 9 + cosf(a) * 7.0f, y - 9 + sinf(a) * 7.0f, 3.0f, 2.7f, 0, k & 1 ? PAL_WHITE : PAL_PAINT(PAINT_BONE, 2), PAL_PAINT(PAINT_BONE, 0), WB_SHADE);
+    }
+    /* the paw: a round pad with four plump fingers */
+    wd_blob_ol(x + 2, y - 1, 7.5f, 6.5f, -0.6f, PAL_PAINT(PAINT_BONE, 2), PAL_PAINT(PAINT_CARAMEL, 0), WB_SHADE);
+    for (int k = 0; k < 4; k++) {
+        float a = 2.0f + k * 0.42f + 0.06f * sinf(t * 0.1f + k);
+        wd_blob_ol(x + 2 + cosf(a) * 7.2f, y - 1 + sinf(a) * 6.4f, 2.4f, 2.8f, a, PAL_WHITE, PAL_PAINT(PAINT_CARAMEL, 0), WB_SHADE);
+        wd_blob(x + 2 + cosf(a) * 7.6f, y - 1 + sinf(a) * 6.8f, 0.9f, 0.9f, 0, PAL_PAINT(PAINT_ROSE, 2), 0);
+    }
 }
 
 /* ---------------------------------------------------------------- egg ----- */

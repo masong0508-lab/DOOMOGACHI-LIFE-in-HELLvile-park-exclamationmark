@@ -11,9 +11,9 @@
 #define LET_PX   1.7f
 #define LET_X0   (-64.75f)
 #define LET_Y0   (-66.8f)
-#define N_CX     (-40.1f)
+#define N_CX     (-60.5f)   /* the mystery M, under the first G */
 #define N_CY     (-60.0f)
-#define LADDER_X (-74.0f)
+#define LADDER_X (-92.0f)
 #define STEP_Y   (-30.0f)
 #define FOUNT_X  (-34.0f)
 #define FOUNT_Y  (34.0f)

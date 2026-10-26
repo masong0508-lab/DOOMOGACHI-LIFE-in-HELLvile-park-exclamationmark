@@ -91,20 +91,25 @@ static void arm(int side, float ang, float t, int front) {
     float fl = M->flutter * 0.25f * sinf(t * 2.1f + side);
     a -= fl;
     float hx = shx + cosf(a) * len, hy = shy + sinf(a) * len;
-    if (!front) {
-        L(shx, shy, hx, hy, 5.4f, TEALD);
-        L(shx, shy, hx, hy, 3.8f, TEAL);
-    } else {
-        L(shx, shy, hx, hy, 6.0f, TEALD);
-        L(shx, shy, hx, hy, 4.4f, TEAL);
-        /* cuff */
-        B(shx + cosf(a) * len * 0.82f, shy + sinf(a) * len * 0.82f, 2.6f, 2.2f, 0, PAL_WHITE, WB_OUT);
-    }
+    /* shoulder -> elbow -> wrist, with a soft elbow bend; when stretched the
+     * arm stays thick and rubbery (radius never drops below 1.7 units) */
+    float bend = (side > 0 ? 0.35f : 0.3f) * (1.0f - fminf(1.0f, M->reach / 14.0f) * 0.6f);
+    float ux = cosf(a), uy = sinf(a), px_ = -uy * M->flip, py_ = ux;
+    float elx = shx + ux * len * 0.5f + px_ * len * 0.0f - uy * len * bend * 0.35f;
+    float ely = shy + uy * len * 0.5f + ux * len * bend * 0.35f;
+    (void)px_; (void)py_;
+    float th = front ? 1.0f : 0.88f;
+    uint8_t ol = PAL_PAINT(PAINT_JET, 1);
+    uint8_t d = front ? TEALD : PAL_PAINT(PAINT_TEAL, 0), mcol = front ? TEAL : TEALD, li = front ? TEALL : TEAL;
+    wd_tube(WX(shx, shy), WY(shx, shy), WX(elx, ely), WY(elx, ely), WR(3.2f * th), WR(2.6f * th), ol, d, mcol, li);
+    wd_tube(WX(elx, ely), WY(elx, ely), WX(hx, hy), WY(hx, hy), WR(2.6f * th), WR(2.1f * th), ol, d, mcol, li);
+    BO(shx, shy, 3.6f * th, 3.4f * th, 0, mcol, ol, WB_SHADE);          /* shoulder */
+    if (front) BO(shx + (hx - elx) * 0 + (hx - shx) * 0.86f, shy + (hy - shy) * 0.86f, 2.6f, 2.2f, 0, PAL_WHITE, ol, WB_SHADE); /* cuff */
     /* feather fingers */
     for (int k = -1; k <= 1; k++) {
         float fa = a + k * 0.45f + M->grip * 0.2f * k;
         float fx = hx + cosf(fa) * 2.6f, fy = hy + sinf(fa) * 2.6f;
-        B(fx, fy, 1.4f, 2.8f, fa + 1.5708f, k == 0 ? FEATH1 : FEATH3, WB_OUT | WB_SHADE);
+        B(fx, fy, 1.7f, 3.2f, fa + 1.5708f, k == 0 ? FEATH1 : FEATH3, WB_OUT | WB_SHADE);
     }
     int idx = side > 0 ? 1 : 0;
     mayor_hand_x[idx] = WX(hx, hy);
@@ -129,8 +134,8 @@ void mayor_draw(const Mayor *m) {
         float lx = s * 3.4f;
         float lift = s > 0 ? m->step : -m->step;
         float ly = lift > 0 ? -lift : 0;
-        L(lx, -9 + ly * 0.3f, lx, -2 + ly, 1.6f, BEAK);
-        for (int k = -1; k <= 1; k++) L(lx, -1.5f + ly, lx + k * 2.4f + 0.8f, -0.2f + ly, 1.1f, BEAK);
+        wd_tube(WX(lx, -9 + ly * 0.3f), WY(lx, -9 + ly * 0.3f), WX(lx, -2 + ly), WY(lx, -2 + ly), WR(1.1f), WR(0.9f), PAL_PAINT(PAINT_JET, 1), PAL_PAINT(PAINT_TANGERINE, 0), BEAK, PAL_PAINT(PAINT_TANGERINE, 2));
+        for (int k = -1; k <= 1; k++) wd_tube(WX(lx, -1.5f + ly), WY(lx, -1.5f + ly), WX(lx + k * 2.4f + 0.8f, -0.2f + ly), WY(lx + k * 2.4f + 0.8f, -0.2f + ly), WR(0.75f), WR(0.55f), PAL_PAINT(PAINT_JET, 1), PAL_PAINT(PAINT_TANGERINE, 0), BEAK, BEAK);
         B(lx, -9.5f + ly * 0.4f, 3.4f, 3.6f, 0, PANTS, WB_ALL);
     }
 

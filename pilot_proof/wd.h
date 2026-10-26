@@ -26,6 +26,8 @@ void wd_tri(float ax, float ay, float bx, float by, float qx, float qy, uint8_t 
 void wd_quad(float ax, float ay, float bx, float by, float qx, float qy, float dx, float dy,
              uint8_t c, uint8_t ol);          /* ol = 0: no outline */
 void wd_rect(float x, float y, float w, float h, uint8_t c, uint8_t ol);
+void wd_tube(float ax, float ay, float bx, float by, float ra, float rb,
+             uint8_t ol, uint8_t dark, uint8_t mid, uint8_t light);
 void wd_line(float x0, float y0, float x1, float y1, float w, uint8_t c);
 /* world-scaled 5x8 font text; px = world units per font pixel. oc = 0: no outline */
 void wd_text(float x, float y, const char *s, float px, uint8_t c, uint8_t oc);

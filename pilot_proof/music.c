@@ -1,4 +1,4 @@
-/* music.c - the score for the pilot proof: the Mingle (the creator's melody,
+/* music.c - the score for the pilot proof: the melody (the creator's melody,
  * pad1.mid: 150 bpm, 3/4, C minor) as a music box and as a jaunty waltz,
  * on the teaser's chiptune synth. The hum in shot 2 is the creator's own
  * recorded take, mixed in by assemble.sh. The score drops out for the
@@ -8,7 +8,7 @@
 #include "timeline.h"
 
 #define BEAT 0.4   /* 150 bpm */
-/* the Mingle, from pad1.mid: midi note, length in beats */
+/* the melody, from pad1.mid: midi note, length in beats */
 static const int MEL[][2] = {
     { 60, 4 }, { 58, 4 }, { 55, 4 }, { 60, 4 }, { 58, 4 }, { 55, 4 },
     { 58, 4 }, { 56, 4 }, { 53, 4 }, { 58, 4 }, { 56, 4 }, { 53, 4 },
@@ -21,8 +21,8 @@ static void music_box(double t, int midi, double len, float v) {
     tk_note(t, 0.1, midi + 12, TKV_TRI, v * 0.35f);
 }
 
-/* play the Mingle from t0 until t1 (cut off mid-phrase), style 0 = music box, 1 = waltz */
-static void mingle(double t0, double t1, int style, int transpose, float vol) {
+/* play the melody from t0 until t1 (cut off mid-phrase), style 0 = music box, 1 = waltz */
+static void melody(double t0, double t1, int style, int transpose, float vol) {
     double t = t0;
     for (int rep = 0; rep < 4 && t < t1; rep++) {
         int bar = 0; double tb = t;
@@ -53,14 +53,14 @@ static void mingle(double t0, double t1, int style, int transpose, float vol) {
 }
 
 void tk_music(void) {
-    /* after "Perfect.": the music box takes the Mingle up again, alone... */
+    /* after "Perfect.": the music box takes the melody up again, alone... */
     double a = tk_scene_start("p06_perfect") + 112 / 30.0;
     double stop = tk_scene_start("p07_glance") + 84 / 30.0;   /* ...and stops, mid-phrase, at the Wall */
-    mingle(a, stop, 0, 0, 0.45f);
+    melody(a, stop, 0, 0, 0.45f);
     /* he climbs down: the jaunty waltz, through the plaza */
     double w0 = tk_scene_start("p10_climb") + 44 / 30.0;
     double w1 = tk_scene_start("p12_window");
-    mingle(w0, w1, 1, 0, 0.5f);
+    melody(w0, w1, 1, 0, 0.5f);
     /* the bakery: back to the music box, softer, until the egg */
-    mingle(w1 + 0.2, tk_scene_start("p13_egg") - 0.1, 0, 0, 0.32f);
+    melody(w1 + 0.2, tk_scene_start("p13_egg") - 0.1, 0, 0, 0.32f);
 }

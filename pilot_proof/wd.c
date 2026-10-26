@@ -221,3 +221,25 @@ float wd_spring(float t, float t0, float amp, float freq, float damp) {
 }
 float wd_clamp01(float v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
 float wd_seg(float t, float a, float b) { return tk_ease((t - a) / (b - a)); }
+
+/* a tapered limb with volume: 1 px dark outline, base tone, a mid band and a
+ * thin highlight on the lit (upper-left) side, round caps at both ends */
+void wd_tube(float ax, float ay, float bx, float by, float ra, float rb,
+             uint8_t ol, uint8_t dark, uint8_t mid, uint8_t light) {
+    float dx = bx - ax, dy = by - ay, L = sqrtf(dx * dx + dy * dy);
+    if (L < 1e-4f) L = 1e-4f;
+    float nx = -dy / L, ny = dx / L;
+    if (nx + ny > 0) { nx = -nx; ny = -ny; }           /* normal toward the light */
+    float o = 1.0f / wd_z;
+    for (int pass = 0; pass < 4; pass++) {
+        float off = pass < 2 ? 0 : pass == 2 ? 0.22f : 0.5f;
+        float sc = pass == 0 ? 1 : pass == 1 ? 1 : pass == 2 ? 0.68f : 0.24f;
+        float ea = pass == 0 ? o : 0;
+        float r0 = ra * sc + ea, r1 = rb * sc + ea;
+        float cx0 = ax + nx * ra * off, cy0 = ay + ny * ra * off, cx1 = bx + nx * rb * off, cy1 = by + ny * rb * off;
+        uint8_t c = pass == 0 ? ol : pass == 1 ? dark : pass == 2 ? mid : light;
+        if (pass == 3 && ra * wd_z < 1.6f) break;
+        wd_quad(cx0 + nx * r0, cy0 + ny * r0, cx1 + nx * r1, cy1 + ny * r1, cx1 - nx * r1, cy1 - ny * r1, cx0 - nx * r0, cy0 - ny * r0, c, 0);
+        if (pass < 2) { wd_blob(cx0, cy0, r0, r0, 0, c, 0); wd_blob(cx1, cy1, r1, r1, 0, c, 0); }
+    }
+}

@@ -3,7 +3,7 @@
  * Direction: shots breathe (4-8 s) and the energy lives INSIDE them -
  * constant character motion (squash/stretch, anticipation, overshoot),
  * camera push-ins and drifts, sfx hits, pop-ins and small shakes on impacts.
- * Extreme close-ups are kept for the big beats only: the N, and the egg.
+ * Extreme close-ups are kept for the big beats only: the M, and the egg.
  * Each shot: scene_pNN(f, n) draws local frame f; scene_pNN_audio(t0, dur).
  */
 #include "tk.h"
@@ -62,8 +62,9 @@ static void roller_at(float rx, float ry, float wet) {
     float ang = atan2f(ry - hy, rx - hx);
     float len = sqrtf((rx - hx) * (rx - hx) + (ry - hy) * (ry - hy));
     float ex = rx - cosf(ang) * 2.5f, ey = ry - sinf(ang) * 2.5f;
-    wd_line(hx, hy, hx + (ex - hx) * 0.7f, hy + (ey - hy) * 0.7f, 1.6f, PAL_PAINT(PAINT_HONEY, 1));
-    wd_line(hx + (ex - hx) * 0.7f, hy + (ey - hy) * 0.7f, rx, ry, 0.6f, PAL_GRAY);
+    float mx = hx + (ex - hx) * 0.7f, my = hy + (ey - hy) * 0.7f;
+    wd_tube(mx, my, rx, ry, 0.55f, 0.55f, PAL_GRAY_D, PAL_GRAY, PAL_GRAY_L, PAL_WHITE);
+    wd_tube(hx, hy, mx, my, 1.25f, 1.05f, PAL_PAINT(PAINT_CHOCOLATE, 1), PAL_PAINT(PAINT_HONEY, 0), PAL_PAINT(PAINT_HONEY, 1), PAL_PAINT(PAINT_HONEY, 2));
     /* the roller: a fuzzy pink cylinder with grey end caps */
     wd_rect(rx - 6, ry - 2.2f, 12, 4.4f, PAL_PAINT(PAINT_BUBBLEGUM, 1), PAL_PAINT(PAINT_ROSE, 0));
     for (int k = 0; k < 6; k++) wd_line(rx - 5 + k * 2, ry - 1.6f, rx - 5.6f + k * 2, ry + 1.6f, 0.35f, PAL_PAINT(PAINT_ROSE, 1));
@@ -104,7 +105,7 @@ void scene_p01_storybook(int f, int n) {
     wd_post_crayon(f, PAL_UI_CREAM);
 }
 void scene_p01_storybook_audio(double t0, double dur) {
-    /* music box: the Mingle's last phrase, landing on the note the hum will take */
+    /* music box: the melody's last phrase, landing on the note the hum will take */
     int m[4] = { 75, 73, 71, 66 };
     for (int i = 0; i < 4; i++) {
         double t = t0 + 0.35 + i * 0.4, d = i == 3 ? (dur - 0.35 - 1.2 + 0.25) : 0.36;
@@ -115,7 +116,7 @@ void scene_p01_storybook_audio(double t0, double dur) {
 
 /* ===================================================================== 2 */
 /* MATCH CUT to the real banner at dawn. Wet pink paint, a drip. Pull back to
- * find the Mayor up a ladder, rolling paint and humming the Mingle. */
+ * find the Mayor up a ladder, rolling paint and humming the melody. */
 static void hum_pose(Mayor *m, float f) {
     float beat = f / 12.0f;                 /* 150 bpm = 12 frames a beat */
     float bar = beat / 3.0f;
@@ -135,7 +136,7 @@ static void hum_pose(Mayor *m, float f) {
 }
 void scene_p02_banner(int f, int n) {
     float pull = seg(f, 40, 130), push = seg(f, 140, n);
-    float cx = lerp(-22, -44, pull), cy = lerp(-60, -54, pull), z = lerp(3.2f, 1.65f, pull);
+    float cx = lerp(-22, -60, pull), cy = lerp(-60, -54, pull), z = lerp(3.2f, 1.65f, pull);
     cx = lerp(cx, -50, push); cy = lerp(cy, -58, push); z = lerp(z, 1.95f, push);
     wd_cam(cx, cy, z);
     Banner b = { 0 };
@@ -183,7 +184,7 @@ void scene_p02_banner_audio(double t0, double dur) {
  * stop the instant we look. Whip back: the Mayor, eyes narrowed, down at it. */
 void scene_p03_heehee(int f, int n) {
     float down = seg(f, 100, 110) * (1 - seg(f, 150, 160));
-    float cx = lerp(-68, FOUNT_X, down), cy = lerp(-70, FOUNT_Y - 26, down), z = lerp(3.0f, 2.7f, down);
+    float cx = lerp(-86, FOUNT_X, down), cy = lerp(-70, FOUNT_Y - 26, down), z = lerp(3.0f, 2.7f, down);
     cx += 0.02f * f; cy += f < 86 ? 0.01f * f : 0;
     wd_cam(cx, cy, z);
     Banner b = { 0 };
@@ -260,11 +261,11 @@ void scene_p03_heehee_audio(double t0, double dur) {
 }
 
 /* ===================================================================== 4 */
-/* The wet N of MINGLE blooms back through the pink. He rolls over it.
+/* The wet mystery M blooms back through the pink. He rolls over it.
  * Squeak. It blooms back. Squeak, lower. Bigger. Wind-up. SLAM. */
 void scene_p04_roll(int f, int n) {
     float push = seg(f, 0, 150), push2 = seg(f, 150, 190);
-    wd_cam(lerp(-54, -50, push), lerp(-60, -61, push), lerp(2.2f, 2.55f, push) + 0.25f * push2);
+    wd_cam(lerp(-72, -68, push), lerp(-60, -61, push), lerp(2.2f, 2.55f, push) + 0.25f * push2);
     Banner b = { 0 };
     /* stain timeline */
     float sc = 1.0f;
@@ -343,7 +344,7 @@ void scene_p04_roll_audio(double t0, double dur) {
 }
 
 /* ===================================================================== 5 */
-/* EXTREME CLOSE-UP on the N. Fresh paint, glinting. Then it blooms back
+/* EXTREME CLOSE-UP on the M. Fresh paint, glinting. Then it blooms back
  * biggest - red this time (paint: CHERRY, glossy) - and a red drip runs. */
 void scene_p05_red(int f, int n) {
     float dr = seg(f, 40, 150);
@@ -369,10 +370,10 @@ void scene_p05_red_audio(double t0, double dur) {
 }
 
 /* ===================================================================== 6 */
-/* FWOOF - tail fan. He whips out a cupcake balloon, ties it over the N -
+/* FWOOF - tail fan. He whips out a cupcake balloon, ties it over the M -
  * tink - pats it twice. "Perfect." */
 void scene_p06_perfect(int f, int n) {
-    wd_cam(lerp(-54, -53, seg(f, 0, n)), -61, lerp(2.25f, 2.45f, seg(f, 60, n)));
+    wd_cam(lerp(-72, -70, seg(f, 0, n)), -61, lerp(2.25f, 2.45f, seg(f, 60, n)));
     Banner b = { 0 };
     b.n_amt = 1; b.n_scale = 1.75f; b.n_red = 1; b.drip = 16 + f * 0.04f;
     bandstand_world(f + 790, &b);
@@ -452,8 +453,8 @@ void scene_p06_perfect_audio(double t0, double dur) {
  * Wall. The music box stops. Back on him: the wings stop. */
 void scene_p07_glance(int f, int n) {
     float pan = seg(f, 26, 80), back = seg(f, 96, 104);
-    float cx = lerp(-68, 160, pan), cy = lerp(-68, -64, pan), z = lerp(2.8f, 1.45f, pan);
-    cx = lerp(cx, -68, back); cy = lerp(cy, -67, back); z = lerp(z, 3.1f, back);
+    float cx = lerp(-86, 160, pan), cy = lerp(-68, -64, pan), z = lerp(2.8f, 1.45f, pan);
+    cx = lerp(cx, -86, back); cy = lerp(cy, -67, back); z = lerp(z, 3.1f, back);
     wd_cam(cx + (f > 104 ? 0.03f * (f - 104) : 0), cy, z);
     Banner b = { 0 };
     b.n_amt = 1; b.n_scale = 1.75f; b.n_red = 1; b.drip = 23;
@@ -493,7 +494,7 @@ void scene_p08_pluck_audio(double t0, double dur) {
 /* Back to scene: the balloon has turned to face the Wall. A small rubber
  * creak. His eyes slide to it. He turns it back. Squeak. A firm pat. "Stay." */
 void scene_p09_stay(int f, int n) {
-    wd_cam(lerp(-55, -52, seg(f, 0, n)), -61, lerp(2.3f, 2.6f, seg(f, 0, 90)));
+    wd_cam(lerp(-73, -70, seg(f, 0, n)), -61, lerp(2.3f, 2.6f, seg(f, 0, 90)));
     Banner b = { 0 };
     b.n_amt = 1; b.n_scale = 1.75f; b.n_red = 1; b.drip = 24;
     bandstand_world(f + 1124, &b);
@@ -559,7 +560,7 @@ void scene_p09_stay_audio(double t0, double dur) {
  * stays put. For now. */
 void scene_p10_climb(int f, int n) {
     float pi = seg(f, 96, 140);
-    wd_cam(lerp(-44, -44, pi), lerp(-46, -56, pi), lerp(1.3f, 2.2f, pi));
+    wd_cam(lerp(-56, -56, pi), lerp(-46, -56, pi), lerp(1.3f, 2.2f, pi));
     Banner b = { 0 };
     b.n_amt = 1; b.n_scale = 1.75f; b.n_red = 1; b.drip = 24;
     bandstand_world(f + 1304, &b);
