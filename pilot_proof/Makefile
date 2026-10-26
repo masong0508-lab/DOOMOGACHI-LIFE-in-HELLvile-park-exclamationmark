@@ -21,3 +21,8 @@ sheet: $(BUILD)/pilot
 	$(BUILD)/pilot --sheet $(SHOT) $(BUILD)/sheet_$(SHOT).png
 
 .PHONY: sheet
+
+# --- per-scene binaries: scenes/<name>.c holds the shots + its own timeline
+SCENE_LIB := $(TR)/tk.c $(TR)/tk_chibi.c $(TR)/main.c wd.c mayor.c sets.c cast.c show.c
+$(BUILD)/%: scenes/%.c $(SCENE_LIB) wd.h mayor.h sets.h cast.h show.h scene_tl.h $(BUILD)/pal.h
+	$(CC) $(CFLAGS) $(SCENE_LIB) $< -o $@ -lm
