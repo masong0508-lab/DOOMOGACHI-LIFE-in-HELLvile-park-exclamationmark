@@ -281,7 +281,16 @@ void set_fountain(float t, float g, float g0) {
     }
 }
 
+static void set_balloon_(float x, float y, float face, float sq, float tilt, float tx, float ty, float t);
 void set_balloon(float x, float y, float face, float sq, float tilt, float tx, float ty, float t) {
+    /* draw 1.4x bigger about the balloon itself, so it hides the middle of the word */
+    float k = 1.4f, cx = wd_cx, cy = wd_cy, z = wd_z;
+    wd_z = z * k; wd_cx = x - (x - cx) / k; wd_cy = y - (y - cy) / k;
+    float stx = x + (tx - x) / k, sty = y + (ty - y) / k;   /* keep the string's tie point where it was */
+    set_balloon_(x, y, face, sq, tilt, stx, sty, t);
+    wd_cx = cx; wd_cy = cy; wd_z = z;
+}
+static void set_balloon_(float x, float y, float face, float sq, float tilt, float tx, float ty, float t) {
     /* string with a lazy curve */
     float bx = x + tilt * 8, by = y + 9;
     for (int k = 0; k < 8; k++) {

@@ -388,8 +388,8 @@ void scene_p06_perfect(int f, int n) {
     m.hair_kick = spring(f, 6, 1.5f);
     m.wattle = spring(f, 6, 0.6f) + spring(f, 34, 0.4f) + spring(f, 72, 0.25f) + spring(f, 86, 0.25f);
     /* balloon */
-    float bxx = N_CX - 0.5f, byy = N_CY - 2;
-    float tx = N_CX + 2, ty = BAN_Y1 - 1;
+    float bxx = BAL_X, byy = N_CY - 2;
+    float tx = BAL_X + 2.5f, ty = BAN_Y1 - 1;
     float bq = 1;
     int show_b = f >= 34;
     float aimx, aimy;
@@ -460,7 +460,7 @@ void scene_p07_glance(int f, int n) {
     b.n_amt = 1; b.n_scale = 1.75f; b.n_red = 1; b.drip = 23;
     bandstand_world(f + 970, &b);
     set_ladder();
-    set_balloon(N_CX - 0.5f, N_CY - 2, -0.15f, 1 + 0.02f * sinf(f * 0.2f), 0.02f * sinf(f * 0.1f), N_CX + 2, BAN_Y1 - 1, f);
+    set_balloon(BAL_X, N_CY - 2, -0.15f, 1 + 0.02f * sinf(f * 0.2f), 0.02f * sinf(f * 0.1f), BAL_X + 2.5f, BAN_Y1 - 1, f);
     Mayor m;
     mayor_up(&m, f, 970);
     if (f < 20) { m.expr = MX_SMUG; m.fan = 0.8f; m.flutter = 0.7f; m.look_x = -0.3f; }
@@ -538,7 +538,7 @@ void scene_p09_stay(int f, int n) {
     aim_reach(&m, ax, ay);
     m.grip = f >= 100 ? -1 : 0;
     mayor_draw(&m);
-    set_balloon(N_CX - 0.5f, N_CY - 2, face, bq, tilt + (f >= 100 ? 0.01f * sinf(f * 1.3f) : 0), N_CX + 2, BAN_Y1 - 1, f);
+    set_balloon(BAL_X, N_CY - 2, face, bq, tilt + (f >= 100 ? 0.01f * sinf(f * 1.3f) : 0), BAL_X + 2.5f, BAN_Y1 - 1, f);
     sfx_word("creak", wd_sx(N_CX + 16), wd_sy(N_CY - 18), f, 12, PAL_WHITE, PAL_PAINT(PAINT_CARAMEL, 0));
     sfx_word("squeak", wd_sx(N_CX + 16), wd_sy(N_CY - 18), f, 66, PAL_WHITE, PAL_PAINT(PAINT_BUBBLEGUM, 0));
     if (f >= 28 && f < 62) say("Hey. Eyes on the party.", (f - 28) * 2);
@@ -567,7 +567,7 @@ void scene_p10_climb(int f, int n) {
     set_ladder();
     float face = -0.1f;
     if (f >= 118) face = lerp(-0.1f, 0.55f, seg(f, 118, 140));
-    set_balloon(N_CX - 0.5f, N_CY - 2, face, 1 + 0.02f * sinf(f * 0.2f), face * 0.05f, N_CX + 2, BAN_Y1 - 1, f);
+    set_balloon(BAL_X, N_CY - 2, face, 1 + 0.02f * sinf(f * 0.2f), face * 0.05f, BAL_X + 2.5f, BAN_Y1 - 1, f);
     Mayor m;
     mayor_default(&m, LADDER_X + 1, -34.5f, 1.0f, 1304 + f);
     m.flip = f < 6 ? 1 : -1;

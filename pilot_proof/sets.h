@@ -13,6 +13,7 @@
 #define LET_Y0   (-66.8f)
 #define N_CX     (-60.5f)   /* roller target for the MINGLE ghost */
 #define N_CY     (-60.0f)
+#define BAL_X    (-36.8f)   /* balloon over the middle of the word: only "MI" and "LE" show */
 #define LADDER_X (-92.0f)
 #define STEP_Y   (-30.0f)
 #define FOUNT_X  (-34.0f)
