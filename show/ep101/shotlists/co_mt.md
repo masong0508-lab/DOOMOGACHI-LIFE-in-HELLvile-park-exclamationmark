@@ -13,6 +13,8 @@ Columns: **id** · **f** (frames at 30 fps) · **TC in** · **set[:variant]** (s
 
 ## TODO (engine features this segment needs; re-check after every fetch)
 
+**RENDER PASS 2 (Oct 26, engine a147774: plates, poses, amb, camera/text/FX, VIEW3D/ROOM/crowds):** 37 shots / 4,800 f compile (ep101 0 errors) and render; frame-diff: no shot has a static run over 12 f. Fixes: co11 `+0 show giggle` (the variant alone drew "GIG" + a black oval); co21 crane runs to +260, sparkles at +80/+165/+200/+215/+232/+248, heart iris moved to +260 over 10 (was a 71-f black still); mt01 crack flash level 8 -> 4. Still open (engine/ART, not .shw): px=2 160x120 plates show a seam at x 256 (co03, co05, co14, co21); mt08 candles not visible; Fluffy reads very small in co04/co06/co08.
+
 **RENDER PASS 1 (Oct 25 evening, show.exe built from origin 1b18d11):** all 37 shots (co01-co21, mt01-mt03b-mt13, ec1o/ec1i; 4,800 f) compile with 0 errors and render (6-9 ms/frame); WIP picture `show_out/staging/co_mt/co_mt_x3_WIP.mp4`, sheets `show_out/staging/co_mt/<shot>_sheet.png`.
 Changes this pass: MT beat rows moved into rundown.shw on the bar map; every `@bar:` anchor is an explicit +N (the compiler's midi bar map gives 60 f/bar); mt03 split into mt03 + mt03b (8 actors max); prop motion (rollers, logos, the rear, the egg) restaged as show/hide + fx + shake; `eyes` -> headturn; co20's paw is a Nana actor with the `nana_paw_tuck` pose; co16/co18/co15 use banner:bloom2 (bloom3 draws nothing); ec2/ec3 parked in shots/pending/ (continuity D1).
 Measured motion (diff of consecutive frames): only co03, co08, co13, mt05 have no static run over 12 f. BLOCKED, not fixable in .shw:

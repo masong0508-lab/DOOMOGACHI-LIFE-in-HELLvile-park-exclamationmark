@@ -7,7 +7,7 @@
 
 shot mt01 beat=e101_mt_1 len=240 set=hahaland_crane:day px=1 look=pixel cut=SMASH matte=open scene=mt
   +0    sfx FX_EGG_CRACK ; mx theme_main_title start          # the CRACK = bar 1.1 = the song's first downbeat
-  +0    flash PAL_WHITE 8 3                                   # white flash off the crack: 3 f, level 8 of 16 (reduced; Harding)
+  +0    flash PAL_WHITE 4 3                                   # white flash off the crack: 3 f, level 4 of 16 (render pass 2: level 8 read as a white frame)
   +0    cam3d rail=crane from=+0 to=+240                      # crane up over pastel HaHaland, ease OUT
   ad "A white flash. The camera cranes up over the pastel town of HaHaland."
 end

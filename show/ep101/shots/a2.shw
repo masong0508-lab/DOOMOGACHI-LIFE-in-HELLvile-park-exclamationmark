@@ -345,11 +345,11 @@ end
 
 shot a2_27 beat=e101_2_04 len=90 set=fun_fair:panic px=1 cut=CUT
   actor sunny who=sunny kind=figure at=120,150 face=R pet=on_head
-  actor fuzz  who=fuzz  kind=chibi at=270,140 face=L
-  actor bloom who=bloom kind=chibi at=290,140 face=L
+  actor fuzz  who=fuzz  kind=chibi at=270,136 face=L
+  actor bloom who=bloom kind=chibi at=300,148 face=L    # staging: staggered depth, no stack
   +0    sfx FOL_stampede gain=-6dB
   +20   face sunny L ; headturn sunny 32 6
-  +20   pose fuzz walk ; walk fuzz to=230 over=70 ; pose bloom walk ; walk bloom to=256 over=70    # motion: walk cycle
+  +20   pose fuzz walk ; walk fuzz to=226 over=70 ; pose bloom walk ; walk bloom to=266 over=70    # motion: walk cycle
   +0    cam to scale=1.060 over=90 ease=INOUT    # motion: track the action
   +0    cam pan dx=3.1 dy=5.1 over=90 ease=INOUT    # motion: (centred on the frame)
 end
@@ -358,13 +358,13 @@ end
 shot a2_28 beat=e101_2_05 len=105 set=bandstand:torn px=1 cut=CUT scene=a2_rite
   actor fuzz  who=fuzz  kind=figure at=330,150 face=L pose=trot
   actor bloom who=bloom kind=figure at=360,150 face=L
-  actor nana  who=nana  kind=figure at=60,150 face=R
-  actor pip   who=pip   kind=chibi  at=46,154 face=R            # behind Nana, out of reach
-  actor sunny who=sunny kind=figure at=110,152 face=R pet=on_head
+  actor nana  who=nana  kind=figure at=64,152 face=R           # staging: foreground left
+  actor pip   who=pip   kind=chibi  at=30,144 face=R            # behind Nana (deeper), out of reach, clear of her box
+  actor sunny who=sunny kind=figure at=112,146 face=R pet=on_head   # midground, own gap
   crowd hugs gen=randomize seed=2028 n=10 kind=chibi age=adult formation=parted x=160..300
   end
   +0    fol FOL_trot ; mx riff_em start
-  +0    walk fuzz to=180 over=80 ; take walk_to bloom to=200 over=100    # motion: walk cycle
+  +0    walk fuzz to=180 over=80 ; take walk_to bloom to=216 over=100    # motion: walk cycle
   +4    say a2_05_fuzz_03 fuzz
   +30   take beat_gesture fuzz
   @a2_05_fuzz_03.end+R13  say a2_05_bloom_03 bloom
@@ -393,6 +393,7 @@ shot a2_29 beat=e101_2_05 len=240 set=bandstand_cu:steps px=2 cut=CUT
   +20   pose bloom finger_up ; mx riff_em duck -60dB 2              # the ribs stop mid-bar
   +40   fol FOL_watch_tik every=15 until=+100
   +100  eyes bj D over=8
+  +100  headturn bloom 24 6    # staging: eyeline to Bonejangles
   +170  say a2_05_bloom_01 bloom
   >+R8  say a2_05_bloom_02 bloom ; expr bloom EXPR_HAPPY
   >+20  pose bloom release ; mx riff_em duck 0dB 6
@@ -439,10 +440,10 @@ end
 
 # ============================================================== 2-06 (1200)
 shot a2_33 beat=e101_2_06 len=138 set=bandstand:rite px=1 cut=CUT
-  actor fuzz  who=fuzz  kind=figure at=140,124 face=R pose=arms_wide
-  actor bloom who=bloom kind=figure at=110,134 face=R
+  actor fuzz  who=fuzz  kind=figure at=150,124 face=R
+  actor bloom who=bloom kind=figure at=96,140 face=R      # staging: foreground, OTS on Fuzz
   actor bj    who=bonejangles kind=figure at=210,118 idle=still
-  +0    state bj possessed ; sfx FOL_stance_thump ; take pop_big fuzz
+  +0    state bj possessed ; sfx FOL_stance_thump ; squash fuzz 320 over=8    # staging: pop_big hid Fuzz
   +30   say a2_06_fuzz_01 fuzz ; mx riff_em duck -12dB 8
   @a2_06_fuzz_01.start+6 take beat_gesture fuzz    # motion:
   @a2_06_fuzz_01.start+4 headturn bloom 24 3    # motion:
@@ -483,6 +484,7 @@ shot a2_36 beat=e101_2_06 len=465 set=bandstand:rite px=1 cut=CUT cue=riff_em@ba
   +0    cam to scale=1.060 over=465 ease=INOUT    # render pass: creep ran off the set; slow push instead
   +0    cam pan dx=10 over=465 ease=INOUT
   @a2_06_fuzz_02.start+6 take beat_gesture fuzz    # motion:
+  +200  pose fuzz walk ; walk fuzz to=156 over=40    # staging: steps in on Bonejangles
 end
 
 shot a2_37 beat=e101_2_06 len=90 set=bandstand:rite px=1 cut=CUT insert
@@ -550,15 +552,15 @@ end
 
 shot a2_43 beat=e101_2_07 len=63 set=bandstand:rite px=1 cut=CUT
   cam at=-120,20
-  actor nana who=nana kind=figure at=150,150 face=R
-  actor pip  who=pip  kind=figure at=136,152 face=R pose=lean_out_flops
+  actor nana who=nana kind=figure at=176,152 face=R
+  actor pip  who=pip  kind=figure at=112,146 face=R pose=lean_out_flops   # staging: leans out from behind, deeper, clear gap
   +0    sfx FOL_cloth_soft gain=-30dB ; pose pip lean_out
   +8    say a2_07_pip_01 pip
   @a2_07_pip_01.start+6 take beat_gesture pip    # motion:
   @a2_07_pip_01.start+4 headturn nana 24 3    # motion:
   @a2_07_pip_01.start+13 blink nana    # motion:
   @a2_07_pip_01.start+21 take react_small nana    # motion:
-  @a2_07_pip_01.start+29 headturn nana 232 4    # motion:
+  @a2_07_pip_01.start+29 face nana L ; headturn nana 232 4    # staging: Nana turns to Pip
   +0    cam to scale=1.050 over=63 ease=INOUT    # motion: push in, drifting toward the speaker
   +0    cam pan dx=2.6 dy=4.3 over=63 ease=INOUT    # motion: (centred on the frame)
 end
@@ -688,21 +690,44 @@ end
 
 # ============================================================== EC2 (300)
 shot a2_56 beat=e101_ec2_out len=150 set=eyecatch:ec2_out px=1 cut=CUT scene=a2_ec2
+  actor sunny who=sunny kind=figure at=-30,166 face=R idle=on
+  actor pet   who=pet   kind=sprite at=-60,166 idle=on
   +0    sfx FX_GLASS_CRACK
+  +0    pose sunny run ; move sunny to=150,166 over=28 ease=LINEAR ; move pet to=176,166 over=34 ease=LINEAR
   +4    mx heehee_bell start
+  +8    pop pet TWT_HOP1
   +10   mx theme_eyecatch_out start
-  +20   super s_ec2out_bubble style=deadpan at=160,40 until=end
-  +0    cam to scale=1.100 over=150 ease=OUT    # motion: insert push
-  +0    cam pan dx=14.5 dy=8.2 over=150 ease=OUT    # motion: (centred on the frame)
+  +20   super s_ec2out_bubble style=pop at=160,40 until=end    # the bubble pops on, squash and settle
+  +22   pop pet TWT_HOP2
+  +28   squash sunny 300 over=6 ; pose sunny take_big        # skid, take at the shells
+  +34   pop pet TWT_HOP1 ; fx sparkle at=160,24 n=8 seed=561
+  +36   shake SHK_TAP
+  +52   squash sunny 330 over=4
+  +54   pop pet TWT_HOP2
+  +72   pop pet TWT_HOP1
+  +90   squash sunny 240 over=8 ; pop pet TWT_HOP2
+  +108  pop pet TWT_HOP1
+  +114  face sunny L ; pose sunny run ; move sunny to=-50,166 over=30 ease=LINEAR ; move pet to=-70,166 over=34 ease=LINEAR
+  +126  pop pet TWT_HOP2
+  +6    cam to scale=1.080 over=100 ease=OUT                  # push in on the skid
+  +106  cam to scale=1.000 over=44 ease=INOUT
 end
 
 shot a2_57 beat=e101_ec2_in len=150 set=eyecatch:ec2_in px=1 cut=CUT base=a2_56@+0
   # change shell2.occupant=puff_demon                             # the one change   # render pass: COMP-ONECHANGE target not a prop in this set (ART)
   actor bg who=mascotty kind=chibi at=250,70 idle=frozen
-  +0    pal PAL_HELLIFY 8 over=4 ; sfx FX_HELLIFY_WHUM          # 4 f, reduced luminance
+  actor mayor who=mayor kind=figure at=350,166 face=L idle=on
+  +0    pal PAL_HELLIFY 8 over=3 ; sfx FX_HELLIFY_WHUM          # 3 f, reduced luminance
+  +0    shake SHK_TAP
+  +4    pose mayor walk ; move mayor to=200,166 over=46 ease=LINEAR             # the Mayor waddles in, wattle wobbling
   +20   sfx FX_PIEZO_BEEP_LOW ; cc cc_a2_lowbeep
   +30   mx riff_em start
+  +50   squash mayor 300 over=6 ; pose mayor take_big          # the double take at the shell
+  +52   shake SHK_TAP ; fx sparkle at=198,24 n=6 seed=571
+  +76   squash mayor 220 over=6
+  +96   squash mayor 330 over=4                                   # nervous laugh: it's fine
   +110  mx its_fine start
-  +0    cam to scale=1.100 over=150 ease=OUT    # motion: insert push
-  +0    cam pan dx=14.5 dy=8.2 over=150 ease=OUT    # motion: (centred on the frame)
+  +124  squash mayor 260 over=8
+  +0    cam to scale=1.100 over=56 ease=OUT    # push in to the take
+  +56   cam pan dx=6 dy=0 over=94 ease=INOUT   # drift with the laugh
 end
