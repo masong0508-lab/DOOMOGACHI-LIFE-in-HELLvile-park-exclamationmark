@@ -688,21 +688,44 @@ end
 
 # ============================================================== EC2 (300)
 shot a2_56 beat=e101_ec2_out len=150 set=eyecatch:ec2_out px=1 cut=CUT scene=a2_ec2
+  actor sunny who=sunny kind=figure at=-30,166 face=R idle=on
+  actor pet   who=pet   kind=sprite at=-60,166 idle=on
   +0    sfx FX_GLASS_CRACK
+  +0    pose sunny run ; move sunny to=150,166 over=28 ease=LINEAR ; move pet to=176,166 over=34 ease=LINEAR
   +4    mx heehee_bell start
+  +8    pop pet TWT_HOP1
   +10   mx theme_eyecatch_out start
-  +20   super s_ec2out_bubble style=deadpan at=160,40 until=end
-  +0    cam to scale=1.100 over=150 ease=OUT    # motion: insert push
-  +0    cam pan dx=14.5 dy=8.2 over=150 ease=OUT    # motion: (centred on the frame)
+  +20   super s_ec2out_bubble style=pop at=160,40 until=end    # the bubble pops on, squash and settle
+  +22   pop pet TWT_HOP2
+  +28   squash sunny 300 over=6 ; pose sunny take_big        # skid, take at the shells
+  +34   pop pet TWT_HOP1 ; fx sparkle at=160,24 n=8 seed=561
+  +36   shake SHK_TAP
+  +52   squash sunny 330 over=4
+  +54   pop pet TWT_HOP2
+  +72   pop pet TWT_HOP1
+  +90   squash sunny 240 over=8 ; pop pet TWT_HOP2
+  +108  pop pet TWT_HOP1
+  +114  face sunny L ; pose sunny run ; move sunny to=-50,166 over=30 ease=LINEAR ; move pet to=-70,166 over=34 ease=LINEAR
+  +126  pop pet TWT_HOP2
+  +6    cam to scale=1.080 over=100 ease=OUT                  # push in on the skid
+  +106  cam to scale=1.000 over=44 ease=INOUT
 end
 
 shot a2_57 beat=e101_ec2_in len=150 set=eyecatch:ec2_in px=1 cut=CUT base=a2_56@+0
   # change shell2.occupant=puff_demon                             # the one change   # render pass: COMP-ONECHANGE target not a prop in this set (ART)
   actor bg who=mascotty kind=chibi at=250,70 idle=frozen
-  +0    pal PAL_HELLIFY 8 over=4 ; sfx FX_HELLIFY_WHUM          # 4 f, reduced luminance
+  actor mayor who=mayor kind=figure at=350,166 face=L idle=on
+  +0    pal PAL_HELLIFY 8 over=3 ; sfx FX_HELLIFY_WHUM          # 3 f, reduced luminance
+  +0    shake SHK_TAP
+  +4    pose mayor walk ; move mayor to=200,166 over=46 ease=LINEAR             # the Mayor waddles in, wattle wobbling
   +20   sfx FX_PIEZO_BEEP_LOW ; cc cc_a2_lowbeep
   +30   mx riff_em start
+  +50   squash mayor 300 over=6 ; pose mayor take_big          # the double take at the shell
+  +52   shake SHK_TAP ; fx sparkle at=198,24 n=6 seed=571
+  +76   squash mayor 220 over=6
+  +96   squash mayor 330 over=4                                   # nervous laugh: it's fine
   +110  mx its_fine start
-  +0    cam to scale=1.100 over=150 ease=OUT    # motion: insert push
-  +0    cam pan dx=14.5 dy=8.2 over=150 ease=OUT    # motion: (centred on the frame)
+  +124  squash mayor 260 over=8
+  +0    cam to scale=1.100 over=56 ease=OUT    # push in to the take
+  +56   cam pan dx=6 dy=0 over=94 ease=INOUT   # drift with the laugh
 end

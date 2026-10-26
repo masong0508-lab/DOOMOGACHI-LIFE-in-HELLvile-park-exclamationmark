@@ -10,17 +10,51 @@ act EC1 "Eyecatch pair 1"
 end
 
 shot ec1o beat=e101_ec1_out len=150 set=eyecatch:ec1_out px=1 look=pixel cut=CUT matte=open scene=ec1 gore=CUTE cue=theme_eyecatch_out@bar:1
+  actor mayor who=mayor kind=figure at=-30,166 face=R idle=on
+  actor pet   who=pet   kind=sprite at=-50,166 idle=on
   +0    sfx FX_BONE_CLICK                                     # the act-out click
   +0    mx theme_eyecatch_out start                           # 3 bars: the hook in major + the ending hit (144 f)
+  +0    pose mayor run ; move mayor to=140,166 over=26 ease=LINEAR ; move pet to=110,166 over=30 ease=LINEAR   # the Mayor bolts in, the pet bounding after
   +6    mx heehee_bell_150 start gain=-6dB                    # choice: the bell 6 f after the act-out sound
-  +0    cam to x=6 y=0 over=150 ease=LINEAR                         # slow push across the card; the set sways the lantern (amb swing)
-  ad "A paper lantern printed with the logo hangs before the Giggle banner. The clock reads nine."
+  +6    pop pet TWT_HOP1
+  +18   pop pet TWT_HOP2
+  +26   squash mayor 300 over=6 ; pose mayor take_big        # skid stop under the lantern: squash, take, settle
+  +30   pop pet TWT_HOP1 ; fx sparkle at=160,30 n=10 seed=111
+  +32   shake SHK_TAP
+  +44   squash mayor 330 over=4                                 # wattle wobbles on the fx clock
+  +48   pop pet TWT_HOP2
+  +66   pop pet TWT_HOP1
+  +72   squash mayor 240 over=8
+  +84   pop pet TWT_HOP2 ; fx sparkle at=160,30 n=8 seed=112
+  +102  pop pet TWT_HOP1
+  +112  face mayor L ; pose mayor run ; move mayor to=360,166 over=30 ease=LINEAR ; move pet to=350,166 over=34 ease=LINEAR   # exit run on the hit
+  +116  pop pet TWT_HOP2
+  +130  pop pet TWT_HOP1
+  +0    cam to scale=1.080 over=110 ease=OUT                  # push in on the skid
+  ad "The Mayor skids in under a paper lantern printed with the logo, laughing, the pet bouncing; they dash off. The clock reads nine."
 end
 
 shot ec1i beat=e101_ec1_in len=150 set=eyecatch:ec1_in px=1 look=pixel cut=CUT matte=open gore=CUTE cue=theme_eyecatch_in@bar:1
   prop  mascotty art=gen:mascotty_tiny(h=8) plane=back at=40,40 anchor=bottom   # the Starer, 8 px, by the banner pole; never moves
-  +0    flash PAL_HELLIFY 8 4 ; sfx FX_HELLIFY_FLASH          # 4 f at level 8 of 16 (reduced luminance, Harding-checked)
-  +0    mx theme_eyecatch_in start                            # the RIFF (minor) resolving on ITS_FINE. TODO(AUDIO): cue not in series/music.shw yet
-  +4    cam to x=6 y=0 over=146 ease=LINEAR
-  ad "The same card - but the lantern glows purple from inside, like a ribcage."
+  actor nana  who=nana  kind=figure at=350,166 face=L idle=on
+  actor pet   who=pet   kind=sprite at=380,166 idle=on
+  +0    flash PAL_HELLIFY 8 3 ; sfx FX_HELLIFY_FLASH          # 3 f at level 8 of 16 (reduced luminance, Harding-checked)
+  +0    mx theme_eyecatch_in start                            # the RIFF (minor) resolving on ITS_FINE
+  +0    shake SHK_TAP
+  +4    pose nana walk ; move nana to=190,166 over=50 ease=LINEAR ; move pet to=220,166 over=56 ease=LINEAR   # Nana strolls in, the pet trailing
+  +12   pop pet TWT_HOP1
+  +30   pop pet TWT_HOP2
+  +48   pop pet TWT_HOP1
+  +56   squash nana 300 over=6          # she sees the purple ribcage glow
+  +58   shake SHK_TAP
+  +62   pop pet TWT_HOP2
+  +80   squash nana 220 over=6
+  +86   pop pet TWT_HOP1 ; fx sparkle at=160,30 n=8 seed=121
+  +100  squash nana 330 over=4                                  # it's fine
+  +104  pop pet TWT_HOP2
+  +122  pop pet TWT_HOP1
+  +136  pop pet TWT_HOP2
+  +0    cam to scale=1.080 over=60 ease=OUT                   # push in to the take
+  +60   cam to scale=1.000 over=90 ease=INOUT                 # ease back out
+  ad "The same card - the lantern glows purple from inside, like a ribcage. Nana strolls in, does a double take, then laughs it off."
 end
