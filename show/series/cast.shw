@@ -27,7 +27,7 @@
 char sunny       look=look:sunny age=adult kinds=bust,figure,chibi,fighter,model3d voice=none
                  tags=SILENT,LEAD squash=plush:34 phase=12 name="Sunny"
                  note="silent; ears lag the head 2 f; the only character who stands still on purpose"
-char pet         sprite=pet:0 age=adult kinds=sprite voice=pet tags=PET squash=plush:34
+char pet         look=look:pet age=adult kinds=sprite,figure,bust,chibi voice=pet tags=PET squash=plush:34
                  name="the pet" note="pet_render form 0 (Mochiblob) from the hatch; egg = pet:-1; horn nubs by morning (T-2) = pet:12 Impkin; never harmed; says only beep."
 
 # ---- the speaking roles (12; BREAKDOWN sec.3.2) ---------------------------------
@@ -85,9 +85,9 @@ char crowned_shadow look=look:crowned_shadow age=adult tags=SILENT,SILHOUETTE ki
                  note="1-14 sepia insert: the crowned silhouette behind her"
 
 # ---- demons (the game's sprite engine; the truth shows only on these) -------------
-char puff_demon  sprite=SPR_PUFF_DEMON age=adult tags=DEMON kinds=sprite voice=none
+char puff_demon  look=look:puff_demon age=adult tags=DEMON kinds=sprite,figure voice=none
                  note="actor.h THING_PUFF_DEMON; spill from the ribs, bubble into hearts (filter) or red mist (truth)"
-char big_puff    sprite=SPR_PUFF_DEMON age=adult tags=DEMON kinds=sprite voice=none
+char big_puff    look=look:puff_demon age=adult tags=DEMON kinds=sprite,figure voice=none
                  note="the demons stacked into one (3-02, 3-05): the Puff Demon sprite at px=3 or stacked"
 
 # ---- later episodes (no image of them in 101) -------------------------------------
