@@ -683,6 +683,8 @@ static int job_for(int kind, int rid, uint32_t look, uint32_t key, uint32_t mask
            ((e->key ^ key) & mask) == 0;
 }
 
+static int hold_on, job_hold;   /* job_hold: the job is a portrait_hold one */
+
 static void job_start(int kind, int rid, uint32_t key, uint32_t look, const DoomoLook *l,
                       int status, int expr, const Phase *p)
 {
@@ -691,6 +693,7 @@ static void job_start(int kind, int rid, uint32_t key, uint32_t look, const Doom
         if (now() - job.want <= PC_STALE) return;   /* still wanted: wait */
         job_abort();
     }
+    job_hold = 0;
     e = cache_alloc(kind, rid, key, look, kind == CK_FIGURE ? FIGURE_W : PORTRAIT_W,
                     kind == CK_FIGURE ? FIGURE_H : PORTRAIT_H, 1);
     if (!e) return;
@@ -748,6 +751,8 @@ static void job_pump(void)
 
 /* portrait_image / figure_image: the phase due now; while a sliced job
  * draws it, the phase shown last */
+void portrait_hold(int on) { hold_on = on; }
+
 static const DoomoImage *animated(int kind, int rid, const DoomoLook *l, int status, int expr)
 {
     uint32_t lh = look_hash(l), t = now(), base, key;
@@ -766,6 +771,25 @@ static const DoomoImage *animated(int kind, int rid, const DoomoLook *l, int sta
         job_pump();
         e = cache_find(kind, rid, key, lh, 0xFFFFFFFFu);
         if (!e) e = cache_find(kind, rid, key, lh, 0xFFFFFF00u);
+    }
+    if (!e && hold_on) {
+        /* portrait_hold(): draw the new expression / look as a sliced job
+         * (it starts once the job slot is free) and meanwhile show the
+         * image of this look used last, or nothing (hold 2) */
+        CacheEnt *o;
+        /* any phase of the new content will do: it is a few ticks old */
+        if (!job_for(kind, rid, lh, base, 0xFFFFFF00u)) {
+            if (job.on && !job_hold) job_abort();    /* a look-ahead can wait */
+            job_start(kind, rid, key, lh, l, st, expr, &p);
+            if (job_for(kind, rid, lh, key, 0xFFFFFFFFu)) job_hold = 1;
+        }
+        if (job_for(kind, rid, lh, base, 0xFFFFFF00u)) job.want = t;
+        job_pump();
+        e = cache_find(kind, rid, base, lh, 0xFFFFFF00u);
+        if (e) return &e->img;
+        o = cache_find(kind, rid, base, lh, 0x0000F000u);
+        if (o) return &o->img;
+        if (hold_on == 2) return NULL;
     }
     if (!e) {
         /* new content: draw it now */

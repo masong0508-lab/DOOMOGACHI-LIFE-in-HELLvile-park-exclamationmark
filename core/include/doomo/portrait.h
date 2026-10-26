@@ -66,6 +66,13 @@ void figure_render(const DoomoLook *l, int status, int expr, int anim,
 const DoomoImage *portrait_image(int resident_id, int expr);
 const DoomoImage *bodyspr_image(int resident_id, int dir, int frame);
 const DoomoImage *figure_image(const DoomoLook *l, int status, int expr);
+/* portrait_hold(1): until portrait_hold(0), a brand-new expression of a
+ * look shown last tick is drawn as a sliced job over a few ticks while the
+ * old image stays up, instead of a ~45 ms render at once (GBA title).
+ * portrait_hold(2): likewise for a look not shown last tick, but
+ * figure_image returns NULL until it is ready (the caller shows something
+ * else meanwhile). */
+void portrait_hold(int on);
 /* Third-person shooter body: the resident's full look (outfit, hair,
  * horns, wings, tail) holding a weapon, seen from `view` (0 back,
  * 1 back-left, 2 left, 3 front-left, 4 front, mirrored for right side via

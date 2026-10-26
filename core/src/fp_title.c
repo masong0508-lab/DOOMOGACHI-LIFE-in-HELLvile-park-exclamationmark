@@ -360,12 +360,67 @@ static const uint8_t logo_cols[10] = {
     PAINT_LAVENDER, PAINT_BUBBLEGUM, PAINT_ROSE, PAINT_LEMON, PAINT_MINT
 };
 
+/* The ten big letters as images, painted once into the scene scratch block
+ * (about 6 KB at scale 3, 10 KB at scale 4) and from then on blitted with
+ * the bounce offset: replaying their ~50 rects each cost ~11 ms a tick on
+ * the GBA. Same pixels: drawn by ui_text_big into an offscreen target. */
+#define LOGO_TAG 0x4C4F474Fu   /* 'LOGO' */
+static struct {
+    uint8_t *pix;
+    int sw, big, ok;
+    struct { DoomoImage img; int16_t bx, by; } l[10];
+} LG;
+
+static int logo_cache(int x0, int adv, int sc)
+{
+    static const char word[] = "DOOMOGACHI";
+    int sw = fp_sw(), big = fp_big(), i, used = 0, pass;
+    int16_t bb[10][4];
+    if (LG.pix && scene_scratch_mine(LOGO_TAG) && LG.sw == sw && LG.big == big) return LG.ok;
+    if (plat_draw_skipped()) return 0;     /* nothing would be painted */
+    LG.pix = NULL; LG.ok = 0; LG.sw = sw; LG.big = big;
+    for (pass = 0; pass < 2; pass++) {
+        for (i = 0, used = 0; i < 10; i++) {
+            char g[2] = { word[i], 0 };
+            int bx0, by0, bx1, by1, w, h, x = x0 + i * adv, y = 64;
+            if (!pass) {
+                ui_raster_target(NULL, 0, 0, 0, 0);
+                ui_text_big(x, y, g, sc, PAL_PAINT(logo_cols[i], 2), PAL_PAINT(logo_cols[i], 0));
+                if (!ui_raster_bounds(&bx0, &by0, &bx1, &by1)) { ui_raster_target_off(); return 0; }
+                bb[i][0] = (int16_t)bx0; bb[i][1] = (int16_t)by0;
+                bb[i][2] = (int16_t)(bx1 - bx0); bb[i][3] = (int16_t)(by1 - by0);
+            } else {
+                bx0 = bb[i][0]; by0 = bb[i][1]; w = bb[i][2]; h = bb[i][3];
+                memset(LG.pix + used, 0, (size_t)(w * h));
+                ui_raster_target(LG.pix + used, bx0, by0, w, h);
+                ui_text_big(x, y, g, sc, PAL_PAINT(logo_cols[i], 2), PAL_PAINT(logo_cols[i], 0));
+                LG.l[i].img.w = (uint16_t)w;
+                LG.l[i].img.h = (uint16_t)h;
+                LG.l[i].img.pix = LG.pix + used;
+                LG.l[i].img.uid = doomo_image_new_uid();
+                LG.l[i].bx = (int16_t)(bx0 - x);
+                LG.l[i].by = (int16_t)(by0 - y);
+            }
+            ui_raster_target_off();
+            used += (bb[i][2] * bb[i][3] + 3) & ~3;
+        }
+        if (!pass) {
+            if (used > (int)DOOMO_SCENE_SCRATCH) return 0;
+            LG.pix = (uint8_t *)scene_scratch(LOGO_TAG, (uint32_t)used);
+            if (!LG.pix) return 0;
+        }
+    }
+    LG.ok = 1;
+    return 1;
+}
+
 static void draw_logo(void)
 {
     static const char word[] = "DOOMOGACHI";
     int sw = fp_sw(), big = fp_big(), sc = big ? 4 : 3, adv = FONT_ADVANCE * sc;
     int lw = 10 * adv, x0 = (sw - lw) / 2, y0 = big ? 16 : 10, i, t = T.t;
     char g[2] = { 0, 0 };
+    int cached = logo_cache(x0, adv, sc);
     for (i = 0; i < 10; i++) {
         int drop = t - i * 3, dy;
         if (drop < 0) continue;
@@ -376,6 +431,11 @@ static void draw_logo(void)
         /* never draw big text partly off-screen: the UI kit caches the
          * clipped glyph and would replay it clipped later */
         if (y0 + dy < 2) dy = 2 - y0;
+        if (cached) {
+            if (!plat_draw_skipped())
+                plat_image(x0 + i * adv + LG.l[i].bx, y0 + dy + LG.l[i].by, &LG.l[i].img, 1, 0, 0);
+            continue;
+        }
         ui_text_big(x0 + i * adv, y0 + dy, g, sc, PAL_PAINT(logo_cols[i], 2),
                     PAL_PAINT(logo_cols[i], 0));
     }
@@ -440,7 +500,7 @@ static void draw_figures(void)
     for (k = 0; k < 2; k++) {
         /* roster_find() is a name search over the whole roster: look the
          * pair up once per parade turn, not twice per frame */
-        static int pid[2], pk = -1;
+        static int pid[2], pk = -1, shown[2] = { -1, -1 }, wait[2];
         const DoomoResident *p;
         int id;
         if (pk != T.parade_k) {
@@ -452,12 +512,28 @@ static void draw_figures(void)
         int x = k ? sw - FIGURE_W - (big ? 18 : 2) : (big ? 18 : 2);
         int y = sh - FIGURE_H - (big ? 14 : 4) + (ui_wave(t + k * 30, 50, 2) > 0);
         int hop = ((t + k * 40) % 120) < 10 ? -((t + k * 40) % 120) * (10 - (t + k * 40) % 120) / 6 : 0;
-        int expr = ((t / 90 + k) % 3) == 0 ? EXPR_HAPPY : ((t / 90 + k) % 3) == 1 ? EXPR_LOVE : EXPR_NEUTRAL;
+        /* the two swap expression half a cycle apart: a new expression is a
+         * full ~45 ms render, two on one tick made a 120+ ms hitch */
+        int ec = ((t + k * 45) / 90 + k) % 3;
+        int expr = ec == 0 ? EXPR_HAPPY : ec == 1 ? EXPR_LOVE : EXPR_NEUTRAL;
+        /* a new pair is a brand-new render each (~45 ms on the GBA): it is
+         * drawn in slices over a few ticks while the old figure stays */
+        if (shown[k] != id && shown[k] >= 0 && id >= 0 && wait[k] < 20 && roster_premade(id)) {
+            const DoomoImage *img;
+            portrait_hold(2);
+            img = figure_image(&roster_premade(id)->look, RES_ALIVE, expr);
+            portrait_hold(0);
+            if (img) shown[k] = id; else { wait[k]++; id = shown[k]; }
+        }
+        if (shown[k] != id) shown[k] = id;
+        if (shown[k] == pid[k]) wait[k] = 0;
         if (id < 0) continue;
         p = roster_premade(id);
         if (!p) continue;
         ui_fill_ellipse(x + FIGURE_W / 2, sh - (big ? 15 : 5), 18, 3, PAL_RAMP(RAMP_STONE, 3));
+        portrait_hold(1);
         fp_figure(x, y + hop, &p->look, RES_ALIVE, expr);
+        portrait_hold(0);
     }
 }
 
