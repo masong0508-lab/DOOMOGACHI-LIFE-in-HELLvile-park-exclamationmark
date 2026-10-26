@@ -91,8 +91,8 @@ void bones_draw(const Bones *b) {
     wd_blob_ol(x, y - 35 * s * sq, 2.4f * s, 1.3f * s, 0, PAL_PAINT(PAINT_CHERRY, 1), INK, 0);
     wd_blob_ol(x, hy + 4 * s + b->jaw * 2 * s, 4.2f * s, 2.2f * s, 0, bone, INK, 0);   /* jaw */
     wd_blob_ol(x, hy, 6 * s, 5.5f * s, 0, bone, INK, WB_SHADE);
-    for (int k = -1; k <= 1; k += 2) wd_blob(x + k * 2.4f * s, hy + 0.5f * s, 1.7f * s, 1.9f * s, 0, INK, 0);
-    for (int k = -1; k <= 1; k += 2) wd_blob(x + k * 2.4f * s + 0.4f * s, hy, (0.5f + b->possess * 0.5f) * s, (0.5f + b->possess * 0.5f) * s, 0, b->possess > 0.2f ? PAL_PAINT(PAINT_GRAPE, 2) : PAL_WHITE, 0);
+    for (int k = -1; k <= 1; k += 2) wd_blob(x + k * 2.4f * s + b->look * 1.3f * s, hy + 0.5f * s, 1.7f * s, 1.9f * s, 0, INK, 0);
+    for (int k = -1; k <= 1; k += 2) wd_blob(x + k * 2.4f * s + 0.4f * s + b->look * 1.3f * s, hy, (0.5f + b->possess * 0.5f) * s, (0.5f + b->possess * 0.5f) * s, 0, b->possess > 0.2f ? PAL_PAINT(PAINT_GRAPE, 2) : PAL_WHITE, 0);
     for (int k = -2; k <= 2; k++) wd_line(x + k * 1.3f * s, hy + 3.2f * s, x + k * 1.3f * s, hy + 4.4f * s, 0.35f * s, INK);
     wd_rect(x - 5 * s, hy - 7.5f * s, 10 * s, 3 * s, PAL_PAINT(PAINT_CHERRY, 1), INK);
     wd_rect(x - 6.5f * s, hy - 4.8f * s, 13 * s, 1.2f * s, PAL_PAINT(PAINT_JET, 2), 0);

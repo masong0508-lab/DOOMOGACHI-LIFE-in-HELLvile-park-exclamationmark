@@ -23,6 +23,7 @@ typedef struct Bones {     /* Bonejangles: skeleton bandleader who plays his own
     float jaw;             /* 0..1 */
     float hitL, hitR;      /* mallet swing 0 rest .. 1 striking */
     float squash;
+    float look;            /* skull turn -1..1 (eye sockets slide) */
     float possess;         /* 0..1 purple possession glow (dims as water lands) */
 } Bones;
 void bones_default(Bones *b, float x, float y, float s, float t);

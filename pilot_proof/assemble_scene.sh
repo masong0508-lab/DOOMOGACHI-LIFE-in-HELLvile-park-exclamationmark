@@ -9,7 +9,7 @@
 set -euo pipefail
 bin="$1"; root="$2"; out="$3"
 tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
-mkdir -p "$tmp/env"
+mkdir -p "$tmp/env"; : > "$tmp/cues.txt"
 CUES_OUT="$tmp/cues.txt" "$bin" --wav "$tmp/raw.wav"
 ffmpeg -v error -y -i "$tmp/raw.wav" \
   -af "aresample=48000,volume=5dB,alimiter=limit=0.89:attack=3:release=60:level=disabled" -ac 2 "$tmp/synth.wav"
@@ -52,6 +52,6 @@ ENV_DIR="$tmp/env" "$bin" --raw | ffmpeg -v error -y -f rawvideo -pix_fmt rgb24 
   -vf "scale=1440:960:flags=neighbor,pad=1920:1080:240:60:black,format=yuv420p" \
   -c:v libx264 -crf 16 -preset medium -tune animation -r 30 -c:a aac -b:a 192k -ar 48000 -ac 2 \
   -shortest -movflags +faststart "$out"
-mkdir -p "${out%.mp4}_env"; cp "$tmp/env/"*.env "${out%.mp4}_env/"
+mkdir -p "${out%.mp4}_env"; cp "$tmp/env/"*.env "${out%.mp4}_env/" 2>/dev/null || true
 ENV_DIR="$tmp/env" "$bin" --raw > "${out%.mp4}.rgb"
 echo "wrote $out"
