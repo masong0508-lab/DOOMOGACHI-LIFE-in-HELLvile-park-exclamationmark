@@ -17,5 +17,6 @@ float lip(const char *id, int fr, int fallback);
 
 /* Speech bubble in screen space: text typed on (`chars`), tail pointing at
  * the speaker's mouth (sx, sy). Keeps the speaker visible, unlike the box. */
+extern int bubble_side;   /* 0 auto (beside), 1 right, -1 left, 2 below the speaker */
 void bubble(const char *text, int chars, int sx, int sy);
 #endif

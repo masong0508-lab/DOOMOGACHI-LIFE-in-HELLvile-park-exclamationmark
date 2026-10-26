@@ -50,6 +50,7 @@ float lip(const char *id, int fr, int fallback) {
     return 0.55f * fabsf(sinf(fr * 0.55f)) * (0.7f + 0.3f * sinf(fr * 0.17f));
 }
 
+int bubble_side;   /* 0 auto, 1 right, -1 left, 2 below */
 void bubble(const char *text, int chars, int sx, int sy) {
     int len = (int)strlen(text), w = len * 6 + 12;
     if (w > 118) w = 118;
@@ -57,7 +58,8 @@ void bubble(const char *text, int chars, int sx, int sy) {
     if (lines == 1) h = 18;
     /* beside the speaker's head: right if it fits, else left; never over the face */
     int gap = 18, x, y = sy - h / 2 - 12, side;
-    if (sx + gap + w <= TW - 3) { x = sx + gap; side = 1; }
+    if (bubble_side == 2) { x = sx - w / 2; side = 0; if (x < 3) x = 3; if (x + w > TW - 3) x = TW - 3 - w; }
+    else if (sx + gap + w <= TW - 3 && bubble_side != -1) { x = sx + gap; side = 1; }
     else if (sx - gap - w >= 3) { x = sx - gap - w; side = -1; }
     else { x = sx - w / 2; side = 0; if (x < 3) x = 3; if (x + w > TW - 3) x = TW - 3 - w; }
     if (side == 0) y = sy + 26;

@@ -210,7 +210,7 @@ void scene_b_aplus_audio(double t0, double dur) {
 #define C_CUE1 20
 #define C_CUE2 86
 void scene_c_second(int f, int n) {
-    wd_cam(lerp(10, 14, seg(f, 0, n)), -28, 2.6f);
+    wd_cam(lerp(18, 22, seg(f, 0, n)), -28, 2.4f);
     tent(f); eaten = 0;
     Nana nn; nana_at(&nn, f); nn.armL = nn.armR = 0.4f; nn.look_x = 0.2f;
     nn.mouth = mouth(&N01, f, C_CUE2);
@@ -218,7 +218,7 @@ void scene_c_second(int f, int n) {
     nana_draw(&nn);
     stall(f, 1, 0, 0, 0);
     float go = seg(f, 136, 148);
-    Mayor m; mayor_judge(&m, f, lerp(14, 120, go));
+    Mayor m; mayor_judge(&m, f, lerp(40, 130, go));    /* to the right, so Nana stays clear */
     m.armR = 1.1f; m.lean = go > 0 ? -0.2f : 0.05f;
     m.expr = f < 76 ? MX_HAPPY : MX_WORRY;
     m.look_x = -0.4f; m.look_y = 0.6f;
@@ -232,7 +232,7 @@ void scene_c_second(int f, int n) {
         wd_rect(sx - 2.2f, sy - 4, 4.4f, 3, PAL_PAINT(PAINT_CHOCOLATE, 1), INK);
         wd_rect(sx - 3, sy - 1, 6, 1.4f, PAL_PAINT(PAINT_CHERRY, 1), INK);
     }
-    say(&M01, f, C_CUE1, mayor_head_x + 7, mayor_head_y + 2);
+    bubble_side = 2; say(&M01, f, C_CUE1, mayor_head_x + 7, mayor_head_y + 2); bubble_side = 0;
     say(&N01, f, C_CUE2, nana_mouth_x + 4, nana_mouth_y);
 }
 void scene_c_second_audio(double t0, double dur) {

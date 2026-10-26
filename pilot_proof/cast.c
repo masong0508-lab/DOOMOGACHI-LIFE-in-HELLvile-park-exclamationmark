@@ -66,6 +66,12 @@ void bones_default(Bones *b, float x, float y, float s, float t) {
 void bones_draw(const Bones *b) {
     float s = b->s, x = b->x, y = b->y, sq = b->squash;
     uint8_t bone = PAL_PAINT(PAINT_BONE, 2), boned = PAL_PAINT(PAINT_BONE, 0);
+    if (b->possess > 0) {   /* purple possession aura, flickering */
+        for (int k = 0; k < 9; k++) {
+            float a = k * 0.7f + b->t * 0.05f, r = (9 + 3 * sinf(b->t * 0.3f + k)) * s;
+            wd_blob(x + cosf(a) * r * 0.7f, y - 24 * s + sinf(a) * r * 1.4f, 4 * s * b->possess, 4 * s * b->possess, 0, PAL_PAINT(PAINT_GRAPE, 1), 0);
+        }
+    }
     /* legs */
     for (int k = -1; k <= 1; k += 2) {
         wd_tube(x + k * 3 * s, y - 14 * s * sq, x + k * 3.5f * s, y - 1 * s, 1.1f * s, 1.0f * s, INK, boned, bone, PAL_WHITE);
@@ -86,7 +92,7 @@ void bones_draw(const Bones *b) {
     wd_blob_ol(x, hy + 4 * s + b->jaw * 2 * s, 4.2f * s, 2.2f * s, 0, bone, INK, 0);   /* jaw */
     wd_blob_ol(x, hy, 6 * s, 5.5f * s, 0, bone, INK, WB_SHADE);
     for (int k = -1; k <= 1; k += 2) wd_blob(x + k * 2.4f * s, hy + 0.5f * s, 1.7f * s, 1.9f * s, 0, INK, 0);
-    for (int k = -1; k <= 1; k += 2) wd_blob(x + k * 2.4f * s + 0.4f * s, hy, 0.5f * s, 0.5f * s, 0, PAL_WHITE, 0);
+    for (int k = -1; k <= 1; k += 2) wd_blob(x + k * 2.4f * s + 0.4f * s, hy, (0.5f + b->possess * 0.5f) * s, (0.5f + b->possess * 0.5f) * s, 0, b->possess > 0.2f ? PAL_PAINT(PAINT_GRAPE, 2) : PAL_WHITE, 0);
     for (int k = -2; k <= 2; k++) wd_line(x + k * 1.3f * s, hy + 3.2f * s, x + k * 1.3f * s, hy + 4.4f * s, 0.35f * s, INK);
     wd_rect(x - 5 * s, hy - 7.5f * s, 10 * s, 3 * s, PAL_PAINT(PAINT_CHERRY, 1), INK);
     wd_rect(x - 6.5f * s, hy - 4.8f * s, 13 * s, 1.2f * s, PAL_PAINT(PAINT_JET, 2), 0);
@@ -160,11 +166,102 @@ void nana_draw(const Nana *n) {
         float ux = cosf(a) * side * n->flip, uy = sinf(a);
         float ex = shx + ux * 5.5f * s + side * 1.2f * s, ey = shy + uy * 5.5f * s + 1.5f * s;
         float hx = ex + ux * 5.5f * s, hy2 = ey + uy * 5.5f * s;
-        wd_tube(shx, shy, ex, ey, 2.4f * s, 2.1f * s, INK, cardd, card, cardl);
-        wd_tube(ex, ey, hx, hy2, 2.1f * s, 1.9f * s, INK, cardd, card, cardl);
+        wd_tube(shx, shy, ex, ey, 3.2f * s, 2.6f * s, INK, cardd, card, cardl);
+        wd_tube(ex, ey, hx, hy2, 2.7f * s, 2.1f * s, INK, cardd, card, cardl);
+        wd_blob_ol(shx, shy, 3.4f * s, 3.2f * s, 0, card, INK, WB_SHADE);                  /* puffy shoulder */
+        wd_blob(ex, ey, 2.2f * s, 2.0f * s, 0, card, 0);                                    /* soft elbow */
+        for (int q = 0; q < 3; q++) wd_line(shx + (ex - shx) * (0.3f + q * 0.2f) - 1.2f * s, shy + (ey - shy) * (0.3f + q * 0.2f), shx + (ex - shx) * (0.3f + q * 0.2f) + 1.2f * s, shy + (ey - shy) * (0.3f + q * 0.2f) + 0.4f * s, 0.35f * s, cardd);  /* knit ribs */
         wd_blob_ol(hx, hy2, 2.4f * s, 2.0f * s, 0, wooll, woold, 0);
         wd_blob_ol(hx + ux * 1.6f * s, hy2 + uy * 1.6f * s, 1.9f * s, 1.9f * s, 0, face, INK, WB_SHADE);
         int i = side > 0 ? 1 : 0;
         nana_hand_x[i] = hx + ux * 1.6f * s; nana_hand_y[i] = hy2 + uy * 1.6f * s;
     }
+}
+
+float critter_hand_x[2], critter_hand_y[2], critter_mouth_x, critter_mouth_y, critter_head_y;
+void critter_draw(const Critter *c) {
+    float s = c->s, x = c->x, sq = c->squash * (1 + 0.015f * sinf(c->t * 0.13f));
+    float y = c->y, kneel = c->kneel;
+    float leg = 7 * (1 - kneel * 0.6f);
+    /* legs + feet */
+    for (int k = -1; k <= 1; k += 2) {
+        float fx = x + k * 3.2f * s, fy = y;
+        if (kneel > 0 && k < 0) fy = y - 0.5f * s;
+        wd_tube(x + k * 3 * s, y - leg * s, fx, fy - 1.2f * s, 2.0f * s, 1.8f * s, INK, c->outfitd, c->outfit, c->outfitl);
+        wd_blob_ol(fx + c->flip * 1 * s, fy - 0.8f * s, 2.6f * s, 1.4f * s, 0, c->furd, INK, 0);
+    }
+    float by = y - (leg + 7) * s * sq;
+    wd_blob_ol(x, by, 7.5f * s, 8.5f * s * sq, 0, c->outfit, INK, WB_SHADE);
+    if (c->extras & CX_COLLAR) { wd_rect(x - 2 * s, by - 8 * s, 4 * s, 2 * s, PAL_WHITE, INK); for (int k = 0; k < 3; k++) wd_blob(x, by - 3 * s + k * 3 * s, 0.6f * s, 0.6f * s, 0, c->outfitl, 0); }
+    if (c->extras & CX_STETHO) { wd_line(x - 3 * s, by - 7 * s, x - 1 * s, by + 1 * s, 0.5f * s, PAL_GRAY); wd_line(x + 3 * s, by - 7 * s, x + 1 * s, by + 1 * s, 0.5f * s, PAL_GRAY); wd_blob_ol(x, by + 2 * s, 1.3f * s, 1.3f * s, 0, PAL_GRAY_L, INK, 0); }
+    if (c->extras & CX_SASH) wd_line(x - 6 * s, by - 6 * s, x + 6 * s, by + 6 * s, 2 * s, PAL_PAINT(PAINT_LEMON, 1));
+    if (c->extras & CX_SATCHEL) { wd_line(x - 6 * s, by - 7 * s, x + 5 * s, by + 4 * s, 0.8f * s, PAL_PAINT(PAINT_CHOCOLATE, 1)); wd_rect(x + 3 * s, by + 3 * s, 5 * s, 4 * s, PAL_PAINT(PAINT_CARAMEL, 1), INK); }
+    /* head */
+    float hy = by - 13 * s * sq;
+    critter_head_y = hy;
+    if (c->ears == CR_EARS_ROUND) for (int k = -1; k <= 1; k += 2) {
+        wd_blob_ol(x + k * 6 * s + c->ear_turn * s, hy - 6 * s, 2.8f * s, 2.8f * s, 0, c->fur, INK, 0);
+        wd_blob(x + k * 6 * s + c->ear_turn * s, hy - 6 * s, 1.4f * s, 1.4f * s, 0, c->furd, 0);
+    }
+    if (c->ears == CR_EARS_LONG) for (int k = -1; k <= 1; k += 2) {
+        float a = -1.5708f + k * 0.2f + c->ear_turn * 0.5f + 0.05f * sinf(c->t * 0.1f + k);
+        float bx = x + k * 3 * s, b2 = hy - 5 * s;
+        wd_tube(bx, b2, bx + cosf(a) * 11 * s, b2 + sinf(a) * 11 * s, 2.2f * s, 1.6f * s, INK, c->furd, c->fur, PAL_WHITE);
+    }
+    wd_blob_ol(x, hy, 8 * s, 7 * s, 0, c->fur, INK, WB_SHADE);
+    if (c->extras & CX_BUN) { wd_blob_ol(x, hy - 7.5f * s, 3.2f * s, 2.6f * s, 0, PAL_PAINT(PAINT_GRAPE, 1), INK, 0); wd_blob_ol(x, hy - 3.5f * s, 7.6f * s, 3 * s, 0, PAL_PAINT(PAINT_GRAPE, 1), INK, 0); }
+    wd_blob(x + c->flip * 0.6f * s, hy + 2.5f * s, 3 * s, 2.2f * s, 0, c->furd == c->fur ? PAL_WHITE : PAL_PAINT(PAINT_BONE, 2), 0);   /* muzzle */
+    for (int k = -1; k <= 1; k += 2) {
+        float ex = x + k * 3 * s + c->flip * 0.6f * s + c->look_x * 0.6f * s, ey = hy - 0.8f * s + c->look_y * 0.4f * s;
+        if (c->blink > 0.5f) wd_line(ex - 1.2f * s, ey, ex + 1.2f * s, ey, 0.5f * s, INK);
+        else { wd_blob(ex, ey, 1.1f * s, 1.4f * s, 0, INK, 0); wd_blob(ex - 0.3f * s, ey - 0.5f * s, 0.4f * s, 0.4f * s, 0, PAL_WHITE, 0); }
+    }
+    wd_blob(x + c->flip * 0.6f * s, hy + 1.5f * s, 1.1f * s, 0.8f * s, 0, INK, 0);   /* nose */
+    critter_mouth_x = x + c->flip * 0.6f * s; critter_mouth_y = hy + 3.6f * s;
+    wd_blob(critter_mouth_x, critter_mouth_y, 1.3f * s, (0.25f + c->mouth * 1.2f) * s, 0, PAL_PAINT(PAINT_CHERRY, 0), 0);
+    for (int k = -1; k <= 1; k += 2) wd_blob(x + k * 5 * s, hy + 2 * s, 1.3f * s, 0.8f * s, 0, PAL_PAINT(PAINT_ROSE, 2), 0);
+    /* arms: shoulder, elbow, paw */
+    for (int side = -1; side <= 1; side += 2) {
+        float ang = side < 0 ? c->armL : c->armR;
+        float shx = x + side * 6.5f * s, shy = by - 5 * s;
+        float a = 1.5708f - ang, ux = cosf(a) * side, uy = sinf(a);
+        float ex = shx + ux * 5 * s + side * 0.8f * s, ey = shy + uy * 5 * s + 1 * s;
+        float hx = ex + ux * 4.5f * s, hy2 = ey + uy * 4.5f * s;
+        wd_tube(shx, shy, ex, ey, 2.4f * s, 2.0f * s, INK, c->outfitd, c->outfit, c->outfitl);
+        wd_tube(ex, ey, hx, hy2, 2.0f * s, 1.7f * s, INK, c->outfitd, c->outfit, c->outfitl);
+        wd_blob_ol(hx, hy2, 2.0f * s, 2.0f * s, 0, c->fur, INK, WB_SHADE);
+        critter_hand_x[side > 0] = hx; critter_hand_y[side > 0] = hy2;
+    }
+    if (c->extras & CX_FLOPS) {   /* Mr. Flops under one arm: toy bunny, one floppy ear */
+        float fx = x - 6 * s, fy = by + 1 * s;
+        wd_blob_ol(fx, fy, 3 * s, 3.4f * s, 0, PAL_PAINT(PAINT_ROSE, 2), INK, 0);
+        wd_blob_ol(fx, fy - 4 * s, 2.6f * s, 2.4f * s, 0, PAL_PAINT(PAINT_ROSE, 2), INK, 0);
+        wd_tube(fx - 1, fy - 6 * s, fx - 1.5f, fy - 11 * s, 0.9f * s, 0.7f * s, INK, PAL_PAINT(PAINT_ROSE, 1), PAL_PAINT(PAINT_ROSE, 2), PAL_WHITE);
+        wd_tube(fx + 1, fy - 6 * s, fx + 4 * s, fy - 5 * s, 0.9f * s, 0.7f * s, INK, PAL_PAINT(PAINT_ROSE, 1), PAL_PAINT(PAINT_ROSE, 2), PAL_WHITE);
+        wd_blob(fx - 0.8f * s, fy - 4 * s, 0.4f * s, 0.4f * s, 0, INK, 0); wd_blob(fx + 0.8f * s, fy - 4 * s, 0.4f * s, 0.4f * s, 0, INK, 0);
+    }
+}
+Critter cast_fuzz(float x, float y, float t) {   /* plushie bear priest of St. Cuddles */
+    return (Critter){ .x = x, .y = y, .s = 1.0f, .t = t, .flip = 1, .fur = PAL_PAINT(PAINT_CARAMEL, 1), .furd = PAL_PAINT(PAINT_CARAMEL, 0),
+        .outfit = PAL_PAINT(PAINT_CHARCOAL, 1), .outfitd = PAL_PAINT(PAINT_JET, 2), .outfitl = PAL_PAINT(PAINT_CHARCOAL, 2),
+        .ears = CR_EARS_ROUND, .extras = CX_COLLAR | CX_SATCHEL, .squash = 1, .armL = 0.4f, .armR = 0.4f };
+}
+Critter cast_bloom(float x, float y, float t) {  /* ghoul doctor in pastel scrubs */
+    return (Critter){ .x = x, .y = y, .s = 0.95f, .t = t, .flip = 1, .fur = PAL_PAINT(PAINT_MINT, 2), .furd = PAL_PAINT(PAINT_MINT, 1),
+        .outfit = PAL_PAINT(PAINT_BUBBLEGUM, 2), .outfitd = PAL_PAINT(PAINT_BUBBLEGUM, 1), .outfitl = PAL_WHITE,
+        .ears = CR_EARS_NONE, .extras = CX_STETHO | CX_BUN, .squash = 1, .armL = 0.3f, .armR = 0.3f };
+}
+Critter cast_pip(float x, float y, float t) {    /* the tiniest bunnykin: Junior Festival Patrol */
+    return (Critter){ .x = x, .y = y, .s = 0.55f, .t = t, .flip = 1, .fur = PAL_WHITE, .furd = PAL_PAINT(PAINT_BONE, 1),
+        .outfit = PAL_PAINT(PAINT_SKY, 1), .outfitd = PAL_PAINT(PAINT_SKY, 0), .outfitl = PAL_PAINT(PAINT_SKY, 2),
+        .ears = CR_EARS_LONG, .extras = CX_SASH | CX_FLOPS, .squash = 1, .armL = 0.5f, .armR = 0.5f };
+}
+void pet_draw(float x, float y, float s, float t, float look_x, int beep) {
+    /* the pet: a round little hatchling still wearing the top of its shell */
+    float b = beep ? 0.9f : 1.0f;
+    wd_blob_ol(x, y - 4 * s * b, 4.5f * s, 4 * s * b, 0, PAL_PAINT(PAINT_MINT, 2), INK, WB_SHADE);
+    wd_quad(x - 4 * s, y - 6 * s, x + 4 * s, y - 6 * s, x + 2.5f * s, y - 9.5f * s, x - 2.5f * s, y - 9.5f * s, PAL_PAINT(PAINT_BONE, 2), INK);
+    for (int k = -1; k <= 1; k += 2) wd_blob(x + k * 1.6f * s + look_x * 0.6f * s, y - 4 * s, 0.7f * s, 0.9f * s, 0, INK, 0);
+    if (beep) wd_blob(x, y - 2 * s, 0.8f * s, 0.6f * s, 0, PAL_PAINT(PAINT_CHERRY, 0), 0);
+    (void)t;
 }
