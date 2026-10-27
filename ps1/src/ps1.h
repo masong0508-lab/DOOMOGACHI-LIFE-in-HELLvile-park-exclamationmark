@@ -12,6 +12,9 @@
  *   x 960..1023 y   0..191  sky: 256x96 8bpp split in two 128x96 halves
  *   x 960..991  y 192..255  font: 128 glyphs, 4bpp, 16x8 grid of 8x8 cells
  *   x 992..999  y 192..223  shadow blob (32x32 4bpp)
+ *   x 1000..1015 y 192..207 font glyphs 128..143 (the Spanish letters,
+ *                           0xA0..0xAF): 8x8 cells, 8 per row
+ *   x 1000..1015 y 208..231 the same 16 glyphs dilated (8x12 cells, 8 per row)
  *   x 320..1023 y 256..511  image cache: 5 256x256 8bpp pages + one
  *                           128x256 strip, shelf packed, LRU per page
  */
@@ -49,6 +52,19 @@
 #define VR_FONTD_CELL_H    12
 #define VR_BLOB_X          992
 #define VR_BLOB_Y          192
+/* glyphs 128.. of the font (FONT_FIRST + 128 = 0xA0: the Spanish letters) do
+ * not fit the 16x8 grid above; they sit right of the shadow blob */
+#define VR_FONTX_X         1000
+#define VR_FONTX_Y         192
+#define VR_FONTXD_Y        208                /* their dilated cells (8x12) */
+#define VR_FONTX_U         ((VR_FONTX_X - VR_FONT_X) * 4)   /* = 160 */
+#define FONT_GRID_GLYPHS   128
+/* texture coordinates of font glyph g (g = char - FONT_FIRST) in the font tpage */
+#define FONT_U(g) ((g) < FONT_GRID_GLYPHS ? ((g) & 15) * 8 : VR_FONTX_U + (((g) - FONT_GRID_GLYPHS) & 7) * 8)
+#define FONT_V(g) ((g) < FONT_GRID_GLYPHS ? VR_FONT_Y + ((g) >> 4) * 8 : VR_FONTX_Y + (((g) - FONT_GRID_GLYPHS) >> 3) * 8)
+/* the dilated cell of an extra glyph (also in the font tpage, not the fontd one) */
+#define FONTD_X_U(g) (VR_FONTX_U + (((g) - FONT_GRID_GLYPHS) & 7) * 8)
+#define FONTD_X_V(g) (VR_FONTXD_Y + (((g) - FONT_GRID_GLYPHS) >> 3) * VR_FONTD_CELL_H)
 #define VR_IMG_Y           256
 
 /* ---- frame / display list (gfx.c) ----------------------------------------- */
@@ -237,7 +253,7 @@ const uint8_t *etest_sky(uint16_t time);
 const DoomoImage *etest_sprite(int which, int frame);
 void etest_build_map(DoomoMap *m);
 void etest_run(void);                    /* never returns */
-extern const uint8_t etest_font[128][5];
+extern const uint8_t etest_font[FONT_LAST - FONT_FIRST + 1][5];
 const uint16_t *etest_palette(void);
 
 /* ---- pad / audio / memcard / timing ------------------------------------------ */

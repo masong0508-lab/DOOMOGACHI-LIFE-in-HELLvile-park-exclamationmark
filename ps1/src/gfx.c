@@ -388,7 +388,7 @@ void gfx_busy_banner(const char *msg)
         setSprt(p);
         setShadeTex(p, 1);
         setXY0(p, x + 5 + i * FONT_ADVANCE, y + 3);
-        setUV0(p, (c & 15) * 8, VR_FONT_Y + (c >> 4) * 8);
+        setUV0(p, FONT_U(c), FONT_V(c));
         setWH(p, 5, 8);
         p->clut = clut;
         DrawPrim(p);
@@ -447,7 +447,7 @@ static void busy_puts(int y, const char *msg, uint8_t pal)
         setSprt(p);
         setShadeTex(p, 1);
         setXY0(p, x + i * FONT_ADVANCE, y);
-        setUV0(p, (c & 15) * 8, VR_FONT_Y + (c >> 4) * 8);
+        setUV0(p, FONT_U(c), FONT_V(c));
         setWH(p, 5, 8);
         p->clut = clut;
         DrawPrim(p);

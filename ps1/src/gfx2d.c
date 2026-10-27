@@ -348,7 +348,7 @@ void plat_text(int x, int y, const char *s, uint8_t color)
             setSprt(p);
             setShadeTex(p, 1);
             setXY0(p, x, y);
-            setUV0(p, (g & 15) * 8, VR_FONT_Y + (g >> 4) * 8);
+            setUV0(p, FONT_U(g), FONT_V(g));
             setWH(p, 5, 8);
             p->clut = clut;
             gfx_chain(p);
@@ -377,10 +377,11 @@ void plat_text_outline(int x, int y, const char *s, uint8_t color, uint8_t outli
         }
         if (c > ' ' && c <= FONT_LAST && x > -7 && x < SCR_W + 1 && y > -10 && y < SCR_H + 1) {
             unsigned g = c - FONT_FIRST;
+            int extra = g >= FONT_GRID_GLYPHS;   /* Spanish letters: dilated cell in the font tpage */
             SPRT *q;
-            if (!started) {
-                gfx_tpage(vram_fontd_tpage());
-                started = 1;
+            if (started != 1 + extra) {
+                gfx_tpage(extra ? vram_font_tpage() : vram_fontd_tpage());
+                started = 1 + extra;
             }
             q = (SPRT *)gfx_alloc(sizeof(SPRT));
             if (!q)
@@ -388,7 +389,10 @@ void plat_text_outline(int x, int y, const char *s, uint8_t color, uint8_t outli
             setSprt(q);
             setShadeTex(q, 1);
             setXY0(q, x - 1, y - 1);
-            setUV0(q, (g & 15) * 8, VR_FONTD_Y - 256 + (g >> 4) * VR_FONTD_CELL_H);
+            if (extra)
+                setUV0(q, FONTD_X_U(g), FONTD_X_V(g));
+            else
+                setUV0(q, (g & 15) * 8, VR_FONTD_Y - 256 + (g >> 4) * VR_FONTD_CELL_H);
             setWH(q, 7, 11);
             q->clut = clut;
             gfx_chain(q);

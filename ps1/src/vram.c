@@ -452,6 +452,47 @@ static void upload_font(void)
         }
     }
     gfx_upload_now(VR_FONTD_X, VR_FONTD_Y, 32, 96, tex);
+    /* glyphs 128.. (the Spanish letters, 0xA0..0xAF) do not fit the 16x8
+     * grid: 8x8 cells right of the shadow blob, 8 per row (16 halfwords
+     * wide), and their dilated 8x12 cells below them */
+    if (FONT_LAST - FONT_FIRST + 1 > FONT_GRID_GLYPHS) {
+        int n = FONT_LAST - FONT_FIRST + 1 - FONT_GRID_GLYPHS;
+        tex = init_scratch(16 * 16 * 2);
+        for (g = 0; g < n; g++) {
+            int gx = (g & 7) * 8, gy = (g >> 3) * 8;
+            for (col = 0; col < 5; col++) {
+                uint8_t bits = font[FONT_GRID_GLYPHS + g][col];
+                for (row = 0; row < 8; row++)
+                    if (bits & (1 << row)) {
+                        int tx = gx + col, ty = gy + row;
+                        tex[ty * 16 + (tx >> 2)] |= (uint16_t)(1u << ((tx & 3) * 4));
+                    }
+            }
+        }
+        gfx_upload_now(VR_FONTX_X, VR_FONTX_Y, 16, 16, tex);
+        tex = init_scratch(16 * 24 * 2);
+        for (g = 0; g < n; g++) {
+            int gx = (g & 7) * 8, gy = (g >> 3) * VR_FONTD_CELL_H;
+            for (col = 0; col < 5; col++) {
+                uint8_t bits = font[FONT_GRID_GLYPHS + g][col];
+                for (row = 0; row < 8; row++) {
+                    int dx, dy;
+                    if (!(bits & (1 << row)))
+                        continue;
+                    for (dy = -1; dy <= 2; dy++)
+                        for (dx = -1; dx <= 1; dx++) {
+                            int tx, ty;
+                            if (dy == 2 && dx != 1)
+                                continue;
+                            tx = gx + 1 + col + dx;
+                            ty = gy + 1 + row + dy;
+                            tex[ty * 16 + (tx >> 2)] |= (uint16_t)(1u << ((tx & 3) * 4));
+                        }
+                }
+            }
+        }
+        gfx_upload_now(VR_FONTX_X, VR_FONTXD_Y, 16, 24, tex);
+    }
     memset(&s_scr, 0, sizeof(s_scr));
 }
 
