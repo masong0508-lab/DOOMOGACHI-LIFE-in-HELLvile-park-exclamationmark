@@ -32,5 +32,6 @@
 #include "activities.h"
 #include "song.h"
 #include "save_ext.h"
+#include "lang.h"
 #include "game.h"
 #endif

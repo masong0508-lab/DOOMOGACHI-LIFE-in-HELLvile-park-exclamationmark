@@ -9,6 +9,7 @@
  * 0xA0..0xAF are the Spanish letters (accents, n-tilde, inverted ? and !).
  */
 #include "doomo/font.h"
+#include "doomo/lang.h"
 
 #define ooooo 0
 #define ooooX 1
@@ -1360,6 +1361,7 @@ int font_text_width(const char *s)
 {
     int best = 0, cur = 0;
     if (!s) return 0;
+    s = lang_tr(s);
     for (; *s; s++) {
         if (*s == '\n') {
             if (cur > best) best = cur;

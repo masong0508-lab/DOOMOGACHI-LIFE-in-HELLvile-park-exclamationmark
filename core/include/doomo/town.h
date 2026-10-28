@@ -121,6 +121,7 @@ enum {
     OPT_EFFECTS,         /* effects detail: 0 low (fewer, shorter gibs) / 1 normal */
     OPT_DRAW_DIST,       /* PS1 3D view distance cap: 0 near / 1 normal     */
     OPT_SHOW_FPS,        /* 1 = frames-drawn counter in the shooter         */
+    OPT_LANGUAGE,        /* 0 English / 1 Espanol (lang.h; shown first on the Game page) */
     OPT_COUNT
 };
 DOOMO_STATIC_ASSERT(OPT_COUNT <= 64, options_fit);

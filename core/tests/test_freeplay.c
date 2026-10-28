@@ -264,7 +264,7 @@ TEST(freeplay_monster_mode_option_needs_the_words)
     opt_set(OPT_MONSTER_MODE, 0);
     scene_set(&SCENE_OPTIONS, OPTPAGE_GAME);
     frames(0, 2);
-    press(BTN_DOWN);                            /* Monster Mode row */
+    press(BTN_DOWN); press(BTN_DOWN);           /* past Language and Gore: Monster Mode */
     press(BTN_RIGHT);
     CHECK(top_is(&SCENE_TEXT_ENTRY));
     for (p = "I AM A MONSTER\n"; *p; p++) { ui_text_entry_feed(*p); frames(0, 1); }

@@ -119,6 +119,7 @@ void plat_text(int x, int y, const char *s, uint8_t color)
     nat_calls[NC_TEXT]++;
     int cx = x;
     if (!s) return;
+    s = lang_tr(s);
     for (; *s; s++) {
         unsigned ch = (unsigned char)*s;
         int col, row;

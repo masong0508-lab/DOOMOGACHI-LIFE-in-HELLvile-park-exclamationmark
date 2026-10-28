@@ -74,7 +74,8 @@ static const char *const opt_help[OPT_COUNT] = {
     /* TURN_SWAP */ "Modern controls: which way R1 turns (R2/L1 turn the other way).",
     /* EFFECTS */ "Low: fewer, shorter-lived gibs and confetti. Smoother in big fights.",
     /* DRAW_DIST */ "How far the 3D view reaches. Near is faster in big open maps.",
-    /* SHOW_FPS */ "Show how many frames per second the shooter draws."
+    /* SHOW_FPS */ "Show how many frames per second the shooter draws.",
+    /* LANGUAGE */ "The language of menus and story text. Cambia el idioma del juego."
 };
 
 static struct {
@@ -94,8 +95,10 @@ static void build_rows(void)
 {
     int i;
     O.nrows = 0;
+    if (O.page == OPTPAGE_GAME) O.rows[O.nrows++] = OPT_LANGUAGE;      /* first row */
     for (i = 0; i < OPT_COUNT && O.nrows < ROWS_MAX; i++)
-        if (doomo_option_info[i].page == O.page && (i != OPT_DRAW_DIST || input_feel()))
+        if (doomo_option_info[i].page == O.page && i != OPT_LANGUAGE &&
+            (i != OPT_DRAW_DIST || input_feel()))
             O.rows[O.nrows++] = i;       /* draw distance: PS1 3D only */
     O.sel = DOOMO_MIN(O.sel, O.nrows);       /* last row = "Defaults" */
 }
@@ -169,7 +172,7 @@ static void cb_defaults(int yes)
     if (!yes) return;
     for (i = 0; i < O.nrows; i++) {
         int opt = O.rows[i];
-        if (opt == OPT_MONSTER_MODE) continue;           /* never silently */
+        if (opt == OPT_MONSTER_MODE || opt == OPT_LANGUAGE) continue;   /* never silently */
         opt_set(opt, doomo_option_info[opt].def);
     }
     audio_sfx(SFX_SPARKLE);

@@ -855,6 +855,7 @@ static int read_town(int apply)
         read_story(apply ? &t->story : &st);
     }
     rraw_or_skip(apply ? t->opt : NULL, DOOMO_OPT_BYTES);
+    if (apply) lang_loaded();
     rraw_or_skip(apply ? t->unlocks : NULL, DOOMO_UNLOCK_BITS / 8);
     for (i = 0; i < 32; i++) {
         uint32_t v = r32();

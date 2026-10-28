@@ -1,0 +1,206 @@
+# core/lang/es.tsv - Spanish UI strings: English<TAB>Spanish (UTF-8).
+# Keys are the exact English text the code draws; \n = newline, \xHH = icon byte.
+# Built into core/gen/lang_ui_es.c by tools/langpack.py. Missing = stays English.
+Story Mode	Modo historia
+Free Play	Juego libre
+Options	Opciones
+Unlocks	Desbloqueos
+Credits	Créditos
+Theme	Tema
+Language	Idioma
+New story	Nueva historia
+New island	Nueva isla
+Continue	Continuar
+Continue (no save)	Continuar (sin partida)
+Back	Atrás
+PRESS START	PULSA START
+PAUSED	PAUSA
+No story save yet!	¡Aún no hay partida de historia!
+Game	Juego
+Controls	Controles
+Shooter	Disparos
+Life Sim	Vida
+Audio	Audio
+Display	Pantalla
+Performance	Rendimiento
+Accessibility	Accesibilidad
+Cheats	Trucos
+Off	No
+On	Sí
+ON (monster!)	SÍ (¡monstruo!)
+Gore	Gore
+Cute	Tierno
+Brutal	Brutal
+Per weapon	Por arma
+Cute + Gore	Tierno + Gore
+Monster Mode	Modo monstruo
+Difficulty	Dificultad
+Plushie	Peluche
+Normal	Normal
+Nightmare	Pesadilla
+Ultra-Hellvile	Ultra-Hellvile
+Music volume	Volumen música
+Sound volume	Volumen sonido
+Voice volume	Volumen voces
+Voice babble	Balbuceo de voces
+Text speed	Velocidad texto
+Slow	Lenta
+Fast	Rápida
+Instant	Instantánea
+Sim speed	Velocidad sim.
+Chill	Tranqui
+Turbo	Turbo
+Day length	Duración del día
+Real time	Tiempo real
+2 hours	2 horas
+1 hour	1 hora
+30 minutes	30 minutos
+15 minutes	15 minutos
+Autosave	Autoguardado
+Every day	Cada día
+Every hour	Cada hora
+Camera	Cámara
+First person	Primera persona
+Third person	Tercera persona
+Classic	Clásico
+Modern	Moderno
+Dual stick	Doble stick
+Invert look	Invertir mirada
+Look speed	Velocidad mirada
+Aim assist	Ayuda de puntería
+Low	Baja
+Medium	Media
+High	Alta
+Lock-on	Fijar objetivo
+Hold	Mantener
+Toggle	Alternar
+Crosshair	Mira
+Crosshair colour	Color de mira
+Dot	Punto
+Cross	Cruz
+Circle	Círculo
+Heart	Corazón
+Star	Estrella
+Skull	Calavera
+Paw	Pata
+None	Ninguna
+White	Blanco
+Pink	Rosa
+Mint	Menta
+Gold	Oro
+Red	Rojo
+Cyan	Cian
+Field of view	Campo de visión
+Narrow	Estrecho
+Wide	Amplio
+Head bob	Vaivén de cabeza
+Full	Total
+Screen shake	Temblor de pantalla
+Damage numbers	Números de daño
+Hit markers	Marcas de impacto
+HUD layout	Diseño del HUD
+Minimal	Mínimo
+Hidden	Oculto
+Shoulder	Hombro
+Right	Derecho
+Left	Izquierdo
+Blood colour	Color de sangre
+Green	Verde
+Rainbow	Arcoíris
+Confetti	Confeti
+Some	Algo
+Lots	Mucho
+Absurd	Absurdo
+Demon density	Densidad de demonios
+Sparse	Escasa
+Swarm	Enjambre
+Possessions	Posesiones
+Rare	Raras
+Frequent	Frecuentes
+Town events	Eventos del pueblo
+Calm	Calmo
+Chaotic	Caótico
+Weather	Clima
+LCD filter	Filtro LCD
+Pet screen	Pantalla mascota
+Everything	Todo
+Window skin	Piel de ventanas
+Font style	Estilo de letra
+Bold	Negrita
+Shadowed	Con sombra
+Subtitles	Subtítulos
+Colourblind aid	Ayuda daltonismo
+Reduce flashes	Reducir destellos
+Pet alerts	Avisos de mascota
+News ticker	Noticias
+Clock	Reloj
+12-hour	12 horas
+24-hour	24 horas
+Title theme	Tema del título
+Cursor	Cursor
+Camera filter	Filtro de cámara
+UI bounce	Rebote de menús
+Subtle	Sutil
+Boingy	Boingy
+Big-head mode	Cabezones
+Confetti everything	Todo confeti
+Infinite candy	Caramelos infinitos
+Cute demons	Demonios tiernos
+Brutal residents	Vecinos brutales
+Low gravity	Gravedad baja
+Paper mode	Modo papel
+Plush armor (god)	Armadura peluche
+Bottomless wallet	Cartera sin fondo
+Disco lights	Luces disco
+Tiny demons	Demonios diminutos
+Everyone's a ghost	Todos son fantasmas
+Combat feel	Sensación de combate
+Punchy	Contundente
+Turn buttons	Botones de giro
+R1 right	R1 derecha
+R1 left	R1 izquierda
+Effects detail	Detalle de efectos
+Draw distance	Distancia de dibujo
+Near	Cerca
+Show FPS	Mostrar FPS
+Options	Opciones
+Reset page to defaults	Restablecer página
+\x9C Next	\x9C Siguiente
+Strawberry	Fresa
+Mint Choc	Menta choc.
+Vanilla	Vainilla
+Lavender	Lavanda
+Sky	Cielo
+Peach	Melocotón
+Lemon	Limón
+Bubblegum	Chicle
+Hellfire	Fuego infernal
+Midnight	Medianoche
+Tamagotchi	Tamagotchi
+Goth	Gótico
+Pastel Dawn	Alba pastel
+Starry Night	Noche estrellada
+Candy Storm	Tormenta dulce
+Hellvile Sunset	Ocaso de Hellvile
+Vape Apocalypse	Apocalipsis vape
+United Park	Parque unido
+Storybook	Cuento
+Game Pal	Game Pal
+Sepia	Sepia
+Nightvision	Visión nocturna
+Protan	Protan
+Deutan	Deutan
+Tritan	Tritan
+Reset this page to its default settings?	¿Restablecer esta página?
+Page reset to defaults.	Página restablecida.
+Yes	Sí
+No	No
+OK	Aceptar
+Cancel	Cancelar
+Save	Guardar
+Load	Cargar
+Quit	Salir
+Resume	Reanudar
+\x82 Reset page to defaults	\x82 Restablecer página
+\x88\x87 Change  L/R Page  \x8C Done	\x88\x87 Cambiar  L/R Página  \x8C Listo
+Put every setting on this page back.	Restaura todos los ajustes de esta página.

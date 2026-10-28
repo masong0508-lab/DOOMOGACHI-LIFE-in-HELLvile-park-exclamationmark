@@ -3,6 +3,8 @@
  * options screen (freeplay) is generated from doomo_option_info[]. */
 #include "doomo/town.h"
 #include "doomo/ui.h"
+#include "doomo/font.h"
+#include "doomo/lang.h"
 
 const char *const doomo_option_page_names[OPTPAGE_COUNT] = {
     "Game", "Controls", "Shooter", "Life Sim", "Audio", "Display",
@@ -57,6 +59,8 @@ static const char *const v_turn[] = { "R1 right", "R1 left" };
 static const char *const v_fx[] = { "Low", "Normal" };
 static const char *const v_dist[] = { "Near", "Normal" };
 static const char *const v_feel[] = { "Classic", "Punchy", "Brutal" };
+/* each language in its own language, never translated (not in es.tsv) */
+static const char *const v_lang[] = { "English", "Espa" STR_ES_n "ol" };
 
 #define OPT(n, vals, d, pg) { n, (uint8_t)DOOMO_COUNTOF(vals), d, vals, pg }
 #define OPTN(n, cnt, d, pg) { n, cnt, d, NULL, pg }
@@ -123,7 +127,8 @@ const DoomoOptionInfo doomo_option_info[OPT_COUNT] = {
     /* OPT_TURN_SWAP */       OPT("Turn buttons", v_turn, 0, OPTPAGE_CONTROLS),
     /* OPT_EFFECTS */         OPT("Effects detail", v_fx, 1, OPTPAGE_PERF),
     /* OPT_DRAW_DIST */       OPT("Draw distance", v_dist, 1, OPTPAGE_PERF),
-    /* OPT_SHOW_FPS */        OPT("Show FPS", v_off_on, 0, OPTPAGE_PERF)
+    /* OPT_SHOW_FPS */        OPT("Show FPS", v_off_on, 0, OPTPAGE_PERF),
+    /* OPT_LANGUAGE */        OPT("Language", v_lang, LANG_EN, OPTPAGE_GAME)
 };
 
 int opt_get(int opt)
@@ -140,6 +145,7 @@ void opt_set(int opt, int value)
     if (opt < 0 || opt >= OPT_COUNT) return;
     value = DOOMO_CLAMP(value, 0, doomo_option_info[opt].count - 1);
     doomo_town.opt[opt] = (uint8_t)value;
+    if (opt == OPT_LANGUAGE) lang_changed();
 }
 
 void opt_defaults(void)

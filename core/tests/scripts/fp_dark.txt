@@ -26,6 +26,7 @@ wait 20
 expect-scene OPTIONS
 shot options_game
 press DOWN
+press DOWN
 wait 4
 press RIGHT
 wait 30

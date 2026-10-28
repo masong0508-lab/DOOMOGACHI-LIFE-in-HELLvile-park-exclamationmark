@@ -170,6 +170,7 @@ void ui_text(int x, int y, const char *s, uint8_t color)
     char run[128];
     int n = 0, cx = x, rx = x, fs;
     if (!s || plat_draw_skipped()) return;
+    s = lang_tr(s);
     fs = opt_get(OPT_FONT_STYLE);
     for (;; s++) {
         unsigned char c = (unsigned char)*s;
@@ -194,6 +195,7 @@ int ui_text_width(const char *s)
 {
     int best = 0, cur = 0;
     if (!s) return 0;
+    s = lang_tr(s);
     for (; *s; s++) {
         unsigned char c = (unsigned char)*s;
         if (c == '\n') { if (cur > best) best = cur; cur = 0; continue; }
@@ -206,6 +208,7 @@ int ui_text_width(const char *s)
 void ui_text_shadow(int x, int y, const char *s, uint8_t color, uint8_t shadow)
 {
     if (plat_draw_skipped()) return;
+    s = lang_tr(s);
     plat_text(x + 1, y + 1, s, shadow);
     ui_text(x, y, s, color);
 }
@@ -225,13 +228,14 @@ __attribute__((weak)) void plat_text_outline(int x, int y, const char *s, uint8_
 void ui_text_outline(int x, int y, const char *s, uint8_t color, uint8_t outline)
 {
     if (plat_draw_skipped() || !s) return;
-    plat_text_outline(x, y, s, color, outline);
+    plat_text_outline(x, y, lang_tr(s), color, outline);
 }
 
 void ui_text_center(int cx, int y, const char *s, uint8_t color)
 {
     char line[64];
     if (!s) return;
+    s = lang_tr(s);
     while (*s) {
         int n = 0;
         while (s[n] && s[n] != '\n' && n < 63) { line[n] = s[n]; n++; }
@@ -249,7 +253,7 @@ void ui_textf(int x, int y, uint8_t color, const char *fmt, ...)
     char buf[128];
     va_list ap;
     va_start(ap, fmt);
-    doomo_vsnprintf(buf, sizeof(buf), fmt, ap);
+    doomo_vsnprintf(buf, sizeof(buf), lang_tr(fmt), ap);
     va_end(ap);
     ui_text(x, y, buf, color);
 }
@@ -259,8 +263,9 @@ static int wrap_core(int x, int y, int w, const char *s, uint8_t color, int draw
 {
     char line[64];
     int maxc = w / FONT_ADVANCE, lines = 0, shown = 0;
-    const char *p = s;
+    const char *p;
     if (!s) return 0;
+    p = s = lang_tr(s);
     if (maxc < 1) maxc = 1;
     if (maxc > 63) maxc = 63;
     if (draw && plat_draw_skipped()) draw = 0;          /* lines still count */
@@ -349,13 +354,14 @@ static void big_glyphs(int x, int y, const char *s, int scale, uint8_t c, int to
 
 int ui_text_big_width(const char *s, int scale)
 {
-    return font_text_width(s) * scale + 2;
+    return font_text_width(s) * scale + 2;        /* font_text_width translates */
 }
 
 void ui_text_big(int x, int y, const char *s, int scale, uint8_t color, uint8_t outline)
 {
     int dx, dy;
     if (!s) return;
+    s = lang_tr(s);
     scale = DOOMO_CLAMP(scale, 1, 4);
     if (ur_text_big(x, y, s, scale, color, outline)) return;
     /* too big for the bit-row path: the layers one by one */

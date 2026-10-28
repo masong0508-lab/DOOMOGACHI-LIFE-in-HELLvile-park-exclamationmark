@@ -13,12 +13,21 @@
 #include "fp_int.h"
 
 enum { M_MAIN, M_STORY, M_FREE };
-enum { I_STORY, I_FREE, I_OPTIONS, I_UNLOCKS, I_CREDITS, I_THEME, I_MAIN_N };
+enum { I_STORY, I_FREE, I_OPTIONS, I_UNLOCKS, I_CREDITS, I_THEME, I_LANG, I_MAIN_N };
 enum { THEME_DAWN, THEME_NIGHT, THEME_CANDY, THEME_SUNSET, THEME_VAPE, THEME_UNITED, THEME_N };
 
 static const char *const main_items[I_MAIN_N] = {
-    "Story Mode", "Free Play", "Options", "Unlocks", "Credits", "Theme"
+    "Story Mode", "Free Play", "Options", "Unlocks", "Credits", "Theme", "Language"
 };
+
+/* the Language row only fits the big (PS1 / 320x240) layout */
+static int main_n(void) { return fp_big() ? I_MAIN_N : I_MAIN_N - 1; }
+
+static void cycle_lang(void)
+{
+    opt_set(OPT_LANGUAGE, (opt_get(OPT_LANGUAGE) + 1) % LANG_COUNT);
+    audio_sfx(SFX_CURSOR);
+}
 
 /* premade favourites who take turns waving on the title (roster names) */
 static const char *const parade[] = {
@@ -169,10 +178,11 @@ static void title_update(void)
     }
     T.menu_t++;
     if (T.menu == M_MAIN) {
-        if (btn_repeat(BTN_UP)) { T.sel = (uint8_t)((T.sel + I_MAIN_N - 1) % I_MAIN_N); audio_sfx(SFX_CURSOR); }
-        if (btn_repeat(BTN_DOWN)) { T.sel = (uint8_t)((T.sel + 1) % I_MAIN_N); audio_sfx(SFX_CURSOR); }
+        if (btn_repeat(BTN_UP)) { T.sel = (uint8_t)((T.sel + main_n() - 1) % main_n()); audio_sfx(SFX_CURSOR); }
+        if (btn_repeat(BTN_DOWN)) { T.sel = (uint8_t)((T.sel + 1) % main_n()); audio_sfx(SFX_CURSOR); }
         if (T.sel == I_THEME && btn_repeat(BTN_LEFT)) cycle_theme(-1);
         if (T.sel == I_THEME && btn_repeat(BTN_RIGHT)) cycle_theme(1);
+        if (T.sel == I_LANG && (btn_repeat(BTN_LEFT) || btn_repeat(BTN_RIGHT))) cycle_lang();
         if (btn_pressed(BTN_B)) { T.started = 0; audio_sfx(SFX_CANCEL); return; }
         if (!btn_pressed(BTN_A)) return;
         switch (T.sel) {
@@ -181,6 +191,7 @@ static void title_update(void)
         case I_OPTIONS: audio_sfx(SFX_SELECT); scene_push(&SCENE_OPTIONS, 0); break;
         case I_UNLOCKS: audio_sfx(SFX_SELECT); scene_push(&SCENE_UNLOCKS, 0); break;
         case I_CREDITS: audio_sfx(SFX_SELECT); scene_push(&SCENE_CREDITS, 0); break;
+        case I_LANG: cycle_lang(); break;
         default: cycle_theme(1); break;
         }
         return;
@@ -622,14 +633,18 @@ static void draw_menu(void)
         return;
     }
     if (T.menu == M_MAIN) {
-        n = I_MAIN_N;
+        n = main_n();
         y0 = sh - n * bh - (big ? 22 : 6);
         for (i = 0; i < n; i++) {
             int pop = ui_pop_scale(T.menu_t - i * 2), w = bw * pop / 256;
             int x = (sw - w) / 2, y = y0 + i * bh;
             char label[40];
             if (pop <= 0) continue;
-            if (i == I_THEME) {
+            if (i == I_LANG) {
+                const DoomoOptionInfo *oi = &doomo_option_info[OPT_LANGUAGE];
+                doomo_snprintf(label, sizeof(label), STR_ICON_ARROW_L " %s " STR_ICON_ARROW_R,
+                               oi->values[opt_get(OPT_LANGUAGE)]);
+            } else if (i == I_THEME) {
                 const DoomoOptionInfo *oi = &doomo_option_info[OPT_TITLE_THEME];
                 doomo_snprintf(label, sizeof(label), STR_ICON_ARROW_L " %s " STR_ICON_ARROW_R,
                                oi->values ? oi->values[theme()] : "?");
@@ -640,7 +655,7 @@ static void draw_menu(void)
                 fp_pill(x, y, w, bh - 2, st->fill_hi, st->outline, PAL_WHITE);
                 continue;
             }
-            ui_button(x, y, bw, label, i == T.sel, i == I_THEME ? WIN_MINT : WIN_CUTE);
+            ui_button(x, y, bw, label, i == T.sel, (i == I_THEME || i == I_LANG) ? WIN_MINT : WIN_CUTE);
         }
         return;
     }
