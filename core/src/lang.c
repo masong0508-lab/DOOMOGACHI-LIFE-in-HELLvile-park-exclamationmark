@@ -11,6 +11,9 @@
 /* core/gen/lang_ui_es.c; absent on the PS1, whose table comes from the disc */
 extern const uint32_t doomo_lang_ui_es[] __attribute__((weak));
 
+/* the long strings (option help...): core/gen/lang_help_es.c, not linked on the PS1 */
+extern const uint32_t doomo_lang_help_es[] __attribute__((weak));
+
 __attribute__((weak)) const uint32_t *plat_lang_ui(void) { return doomo_lang_ui_es; }
 __attribute__((weak)) void plat_lang_changed(int lang) { (void)lang; }
 
@@ -28,28 +31,35 @@ uint32_t lang_hash(const char *s)
     return h;
 }
 
-const char *lang_tr(const char *s)
+static const char *find(const uint32_t *t, const char *s, uint32_t h)
 {
-    const uint32_t *t, *key;
+    const uint32_t *key;
     const uint16_t *off;
-    unsigned lo, hi, n;
-    uint32_t h;
-    if (!s || !s[0] || doomo_town.opt[OPT_LANGUAGE] != LANG_ES) return s;
-    t = plat_lang_ui();
-    if (!t || t[0] != LANG_UI_MAGIC) return s;
+    unsigned lo = 0, hi, n;
+    if (!t || t[0] != LANG_UI_MAGIC) return NULL;
     n = t[1] & 0xFFFFu;
     key = t + 2;
     off = (const uint16_t *)(key + n);
-    h = lang_hash(s);
-    lo = 0;
     hi = n;
+    (void)s;
     while (lo < hi) {
         unsigned mid = (lo + hi) >> 1;
         if (key[mid] < h) lo = mid + 1;
         else hi = mid;
     }
     if (lo < n && key[lo] == h) return (const char *)t + (t[1] >> 16) + off[lo];
-    return s;
+    return NULL;
+}
+
+const char *lang_tr(const char *s)
+{
+    const char *r;
+    uint32_t h;
+    if (!s || !s[0] || doomo_town.opt[OPT_LANGUAGE] != LANG_ES) return s;
+    h = lang_hash(s);
+    r = find(plat_lang_ui(), s, h);
+    if (!r) r = find(doomo_lang_help_es, s, h);
+    return r ? r : s;
 }
 
 void lang_changed(void)

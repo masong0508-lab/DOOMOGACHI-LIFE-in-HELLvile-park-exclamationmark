@@ -204,3 +204,181 @@ Resume	Reanudar
 \x82 Reset page to defaults	\x82 Restablecer página
 \x88\x87 Change  L/R Page  \x8C Done	\x88\x87 Cambiar  L/R Página  \x8C Listo
 Put every setting on this page back.	Restaura todos los ajustes de esta página.
+Cute: confetti, hearts, plush stuffing. Brutal: full Doom. Cute + Gore (after the ending): both at once.	Tierno: confeti, corazones y relleno. Brutal: Doom total. Tierno + Gore (tras el final): ambos.
+Lets you kill off ANY citizen. Everyone will remember.	Permite matar a CUALQUIER vecino. Todos lo recordarán.
+How mean the demons are. Plushie is extra gentle.	Lo malos que son los demonios. Peluche es muy suave.
+Volume of the chiptune soundtrack.	Volumen de la banda sonora chiptune.
+Volume of sound effects.	Volumen de los efectos de sonido.
+Volume of the citizens' babbling voices.	Volumen de las voces balbuceantes.
+Citizens babble Tomodachi-style while they talk.	Los vecinos balbucean al hablar, estilo Tomodachi.
+How fast dialogue types out.	Qué tan rápido se escribe el diálogo.
+How fast time flows on the island.	Qué tan rápido pasa el tiempo en la isla.
+How long one island day lasts in real time.	Cuánto dura un día de la isla en tiempo real.
+Save the free play island automatically.	Guarda la isla de juego libre automáticamente.
+Default camera in the shooter (SELECT toggles).	Cámara por defecto en los disparos (SELECT alterna).
+Invert looking up and down.	Invierte mirar arriba y abajo.
+How fast you turn and look around.	Qué tan rápido giras y miras.
+Gentle help keeping demons in your sights.	Ayuda suave para apuntar a los demonios.
+Hold or toggle the soft lock-on.	Mantener o alternar la fijación suave.
+The shape of your crosshair.	La forma de tu mira.
+The colour of your crosshair.	El color de tu mira.
+How wide the 3D view is.	Qué tan amplia es la vista 3D.
+How much the view bobs as you run.	Cuánto se mueve la vista al correr.
+Shake on hits and explosions.	Temblor en golpes y explosiones.
+Pop-up numbers when you hit demons.	Números emergentes al golpear demonios.
+A little X when a shot connects.	Una X pequeña cuando aciertas un tiro.
+Which shoulder the third-person camera sits on.	Sobre qué hombro va la cámara en tercera persona.
+Red, green, rainbow... or just confetti.	Roja, verde, arcoíris... o solo confeti.
+How much confetti cute kills make.	Cuánto confeti dejan las muertes tiernas.
+How many demons crowd each fight.	Cuántos demonios hay en cada pelea.
+How often citizens get possessed at night.	Con qué frecuencia se posee a vecinos de noche.
+How much drama the island gets up to.	Cuánto drama arma la isla.
+Rain, snow and petals on the island map.	Lluvia, nieve y pétalos en el mapa de la isla.
+The Doomogachi's green LCD screen effect.	El efecto de pantalla LCD verde del Doomogachi.
+The colour of every window. Earn more!	El color de todas las ventanas. ¡Consigue más!
+Bold or shadowed letters, easier to read.	Letras en negrita o con sombra, más legibles.
+Show text for voices and sounds.	Muestra texto para voces y sonidos.
+Shift colours that are hard to tell apart.	Cambia colores difíciles de distinguir.
+Tone down bright flashes.	Reduce los destellos brillantes.
+Your Doomogachi calls you when it needs you.	Tu Doomogachi te llama cuando te necesita.
+Scrolling news on the island map.	Noticias deslizantes en el mapa de la isla.
+12-hour or 24-hour clock.	Reloj de 12 o 24 horas.
+The title screen's look. Earn more themes!	El aspecto del título. ¡Consigue más temas!
+The bouncy menu cursor.	El cursor saltarín del menú.
+A filter over the shooter's 3D view.	Un filtro sobre la vista 3D.
+How boingy windows and menus are.	Qué tan saltarinas son ventanas y menús.
+Everyone's heads are huge. Huger.	Todos tienen cabezas enormes. Más.
+Everything explodes into confetti.	Todo explota en confeti.
+Feeding and gifts never use up items.	Alimentar y regalar nunca gasta objetos.
+Demons stay adorable even in the invasion.	Los demonios siguen adorables en la invasión.
+Citizens fight back. Brutally.	Los vecinos se defienden. Brutalmente.
+Floaty jumps and floaty gibs.	Saltos y restos flotantes.
+Everything is a flat paper cut-out.	Todo es un recorte de papel plano.
+Plush armor: you can't be hurt.	Armadura de peluche: no te hacen daño.
+Spending never empties your wallet.	Gastar nunca vacía tu cartera.
+Disco lights everywhere.	Luces disco por todas partes.
+Demons shrink to pocket size.	Los demonios se encogen a tamaño bolsillo.
+Every citizen looks like a ghost.	Todos los vecinos parecen fantasmas.
+PS1: Punchy = heavy recoil, shake, snappy moves. Brutal adds gore, gibs and hit-stop.	PS1: Contundente = retroceso, temblor y movimientos ágiles. Brutal añade gore y pausa de impacto.
+Modern controls: which way R1 turns (R2/L1 turn the other way).	Controles modernos: hacia dónde gira R1 (R2/L1 al otro lado).
+Low: fewer, shorter-lived gibs and confetti. Smoother in big fights.	Baja: menos restos y confeti. Más fluido en peleas grandes.
+How far the 3D view reaches. Near is faster in big open maps.	Alcance de la vista 3D. Cerca es más rápido en mapas grandes.
+Show how many frames per second the shooter draws.	Muestra los fotogramas por segundo de los disparos.
+The language of menus and story text. Cambia el idioma del juego.	Cambia el idioma de menús e historia.
+Phew. Monster Mode stays off.	Uf. El Modo monstruo sigue apagado.
+Last chance! With Monster Mode on you can kill off innocent citizens. Turn it on?	¡Última oportunidad! Con el Modo monstruo puedes matar a vecinos inocentes. ¿Activarlo?
+Type I AM A MONSTER to enable	Escribe I AM A MONSTER para activar
+Next: ??? (%s)	Siguiente: ??? (%s)
+OPTIONS	OPCIONES
+Erase	Borrar
+Couldn't save: %s. Your old save is safe.	No se pudo guardar: %s. Tu partida anterior está a salvo.
+unknown error	error desconocido
+too big	demasiado grande
+Your island is too custom to fit! Try making fewer brand-new citizens, or let some premade ones stay as they are.	¡Tu isla es demasiado personalizada! Crea menos vecinos nuevos o deja algunos prediseñados.
+Couldn't load: %s	No se pudo cargar: %s
+no save	sin partida
+Slot erased.	Ranura borrada.
+Couldn't erase that slot.	No se pudo borrar la ranura.
+Really REALLY erase it? It can't be undone!	¿De VERDAD quieres borrarla? ¡No se puede deshacer!
+Story saves go in slot 1 (Story).	Las partidas de historia van en la ranura 1.
+Free play islands go in slot 2.	Las islas de juego libre van en la ranura 2.
+That slot is empty.	Esa ranura está vacía.
+Overwrite the save in this slot?	¿Sobrescribir la partida de esta ranura?
+Load this save?	¿Cargar esta partida?
+Load this save? Unsaved progress will be lost!	¿Cargar esta partida? ¡Se perderá el progreso sin guardar!
+Erase this save?	¿Borrar esta partida?
+Story	Historia
+- empty -	- vacía -
+You	Tú
+Homemade	Casera
+Random	Aleatoria
+Save & Load	Guardar y cargar
+Empty	Vacío
+Alive	Vivo
+Possessed	Poseído
+Soul lost	Alma perdida
+Dead	Muerto
+Ghost	Fantasma
+Autosave failed!	¡Falló el autoguardado!
+Food	Comida
+Joy	Alegría
+Clean	Limpieza
+Energy	Energía
+Health	Salud
+Mind	Mente
+Dark	Oscuridad
+Social	Social
+All quiet on the island today...	Hoy todo tranquilo en la isla...
+NEWS	NOTICIAS
+At home	En casa
+Asleep	Dormido
+At the park	En el parque
+At the cafe	En el café
+Shopping	De compras
+At church	En la iglesia
+At the workshop	En el taller
+At the beach	En la playa
+At a concert	En un concierto
+At the vape shop	En la tienda de vapes
+At the hospital	En el hospital
+Wandering	Deambulando
+Haunting	Rondando
+Somewhere	En algún lugar
+Locked	Bloqueado
+Only at night	Solo de noche
+Only in the daytime	Solo de día
+Not right now	Ahora no
+Are you sure?	¿Seguro?
+CONFIRM	CONFIRMAR
+Space	Espacio
+Del	Borrar
+Type!	¡Escribe!
+L/R page	L/R página
+MELEE	CUERPO A CUERPO
+RELOAD	RECARGAR
+Find the exit!	¡Encuentra la salida!
+Defeat every demon!	¡Derrota a todos los demonios!
+Survive!	¡Sobrevive!
+x%d COMBO!	¡COMBO x%d!
+AMMO	MUNICIÓN
+Side	Secundarias
+Items	Objetos
+Map	Mapa
+Friends	Amigos
+Trophies	Trofeos
+Fetch	Traer
+Deliver	Entregar
+Find	Buscar
+Photo	Foto
+Fight	Pelea
+Exorcism	Exorcismo
+Weld	Soldar
+Pet	Mascota
+Minigame	Minijuego
+Fishing	Pesca
+Cooking	Cocina
+Music	Música
+Housing	Vivienda
+Creator	Creador
+Escort	Escolta
+Timing	Ritmo
+Talk	Hablar
+No side quests yet. Look for citizens with a pink ? bubble over their heads!	Aún no hay misiones secundarias. ¡Busca vecinos con un globo rosa con ? sobre la cabeza!
+All done! Thank you!	¡Todo listo! ¡Gracias!
+Done! Go back and tell them.	¡Hecho! Vuelve y avísales.
+Your bag is empty!	¡Tu bolsa está vacía!
+No trophies yet. Every side mission you finish puts one on your shelf!	Aún no hay trofeos. ¡Cada misión secundaria que termines pone uno en tu estante!
+Name your Doomogachi!	¡Ponle nombre a tu Doomogachi!
+A new egg! Name it:	¡Un huevo nuevo! Ponle nombre:
+MEAL	COMIDA
+SNACK	SNACK
+WIN!	¡GANAS!
+LOSE	PIERDES
+HUNGRY	HAMBRE
+HAPPY	FELIZ
+HOLY	SANTO
+EGG	HUEVO
+HATCHED!	¡ECLOSIÓN!
+EVOLVED!	¡EVOLUCIONÓ!
+Raised!	¡Criado!
+No island saved yet!	¡Aún no hay isla guardada!
