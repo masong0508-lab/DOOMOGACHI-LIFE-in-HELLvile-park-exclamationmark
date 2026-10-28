@@ -1,0 +1,15 @@
+# English<TAB>Spanish<TAB># where. Keep {codes}, ' / ' line breaks, '//' page breaks.
+Hello, @P! You have @1 hats.	¡Hola, @P! Tienes @1 sombreros.	# core/data/story/test/vmtest.dsc:7
+One page.//Two pages, / with a break.	Una página.//Dos páginas, / con pausa.	# core/data/story/test/vmtest.dsc:8
+Boss caption one	Título de jefe uno	# core/data/story/test/vmtest.dsc:9
+Boss caption two	Título de jefe dos	# core/data/story/test/vmtest.dsc:10
+Hi there, @P.	Hola, @P.	# core/data/story/test/vmtest.dsc:29
+Two lines, one box. {d}	Dos líneas, una caja. {d}	# core/data/story/test/vmtest.dsc:30
+Left or right?	¿Izquierda o derecha?	# core/data/story/test/vmtest.dsc:35
+Left	Izquierda	# core/data/story/test/vmtest.dsc:35
+Right	Derecha	# core/data/story/test/vmtest.dsc:35
+Plain?	¿Simple?	# core/data/story/test/vmtest.dsc:44
+Yes	Sí	# core/data/story/test/vmtest.dsc:44
+No	No	# core/data/story/test/vmtest.dsc:44
+Maybe	Quizá	# core/data/story/test/vmtest.dsc:44
+A stashed line	Una línea guardada	# core/data/story/test/vmtest.dsc:91

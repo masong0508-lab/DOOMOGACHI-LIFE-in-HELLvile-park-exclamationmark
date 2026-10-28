@@ -219,6 +219,7 @@ class Pack:
         self.name, self.kind, self.attrs, self.path = name, kind, attrs, path
         self.id = None
         self.strings = []
+        self.wheres = {}          # string -> file:line of its first use (translator worksheets)
         self.str_index = {}
         self.named = []           # (NAME, text, where): string directives
         self.scripts = []         # [name, body, compiled]
@@ -231,6 +232,7 @@ class Pack:
         """(S4) always a fresh string (no de-duplication): a mission's title
         and hint are a pair (hint = title + 1, story_vm.h StorySideRow)"""
         check_text(s, where, self)
+        self.wheres.setdefault(s, where)
         if len(self.strings) >= MAX_INDEX:
             die(where, "pack %s has more than %d strings" % (self.name, MAX_INDEX))
         self.strings.append(s)
@@ -238,6 +240,7 @@ class Pack:
 
     def text(self, s, where):
         check_text(s, where, self)
+        self.wheres.setdefault(s, where)
         if s not in self.str_index:
             if len(self.strings) >= MAX_INDEX:
                 die(where, "pack %s has more than %d strings" % (self.name, MAX_INDEX))
@@ -1082,7 +1085,7 @@ def load_furn_ids():
 def build_dictionary(strings):
     cand = {}
     for s in strings:
-        for m in re.finditer(r"[A-Za-z'@]+[,.!?]? ?|\{[^}]*\}|\.\.\. ?", s):
+        for m in re.finditer(r"[A-Za-z\xa0-\xaf'@]+[,.!?]? ?|\{[^}]*\}|\.\.\. ?", s):
             w = m.group(0)
             if len(w) >= 3:
                 cand[w] = cand.get(w, 0) + 1
@@ -1207,7 +1210,7 @@ def align4(b):
     return b + b"\0" * ((-len(b)) & 3)
 
 
-def pack_bytes(p, streams):
+def pack_bytes(p, streams, strs=None):
     scripts = b"".join(u16(first) + u16(n) + bytes((nl, p.id)) for first, n, nl in p.script_spans)
     ops = b"".join(bytes((op, a)) + u16(b) for op, a, b in p.all_ops)
     beats = b"".join(u16(first) + u16(n) for first, n in p.beat_spans)
@@ -1412,9 +1415,54 @@ def possessor_row(comp, where, a):
         sym("skin", 0, "EXS_"), flags, sym("near_flag", 0, "SF_"), sym("lost_flag", 0, "SF_")))
 
 
+FONT_ES = {"á": 0xA0, "é": 0xA1, "í": 0xA2, "ó": 0xA3, "ú": 0xA4, "ñ": 0xA5, "ü": 0xA6,
+           "Á": 0xA7, "É": 0xA8, "Í": 0xA9, "Ó": 0xAA, "Ú": 0xAB, "Ñ": 0xAC, "Ü": 0xAD,
+           "¿": 0xAE, "¡": 0xAF}
+
+
+def load_es():
+    """core/lang/story/<pack>.tsv: English<TAB>Spanish (UTF-8, # comments, \\ = backslash).
+    Returns {(pack, english): spanish in font bytes as a latin-1 str}."""
+    d = os.path.join(CORE, "lang", "story")
+    out = {}
+    if not os.path.isdir(d):
+        return out
+    for fn in sorted(os.listdir(d)):
+        if not fn.endswith(".tsv"):
+            continue
+        pk = fn[:-4]
+        for n, line in enumerate(open(os.path.join(d, fn), encoding="utf-8").read().split("\n"), 1):
+            if not line.strip() or line.startswith("#"):
+                continue
+            f = line.split("\t")
+            if len(f) < 2 or not f[1].strip():
+                continue
+            conv = []
+            for c in f[1].replace("\\\\", "\\"):
+                if c in FONT_ES:
+                    conv.append(chr(FONT_ES[c]))
+                elif ord(c) < 0x80:
+                    conv.append(c)
+                else:
+                    raise Fail("lang/story/%s:%d: character %r is not in the font" % (fn, n, c))
+            out[(pk, f[0].replace("\\\\", "\\"))] = "".join(conv)
+    return out
+
+
+def check_es(s, where, pack, en):
+    for m in re.finditer(r"\{[^}]*\}", s):
+        if not LINE_CODES.fullmatch(m.group(0)):
+            raise Fail("%s: unknown line code %s in %r" % (where, m.group(0), s))
+    if sorted(re.findall(r"\{[^}]*\}", s)) != sorted(re.findall(r"\{[^}]*\}", en)):
+        raise Fail("%s: line codes differ from the English: %r" % (where, s))
+    if len(visible(s).replace("//", "").replace("/", "")) > 199:
+        raise Fail("%s: over 199 characters: %r" % (where, s))
+
+
 def main(argv):
     out_root = ROOT
     bin_out = None
+    dump_es = None
     i = 0
     while i < len(argv):
         if argv[i] == "--out-root":
@@ -1423,6 +1471,9 @@ def main(argv):
         elif argv[i] == "--data":                 # tests: compile another tree of .dsc
             global DATA
             DATA = os.path.abspath(argv[i + 1])
+            i += 2
+        elif argv[i] == "--dump-es":              # translator worksheets: one TSV per pack
+            dump_es = os.path.abspath(argv[i + 1])
             i += 2
         elif argv[i] == "--bin":
             bin_out = os.path.abspath(argv[i + 1])
@@ -1452,7 +1503,29 @@ def main(argv):
             p.beat_spans.append((len(p.all_events), len(b[2])))
             p.all_events.extend(b[2])
     # the codec over all text
+    es_map = load_es()
+    if dump_es:
+        os.makedirs(dump_es, exist_ok=True)
+        for p in packs:
+            seen = set()
+            with open(os.path.join(dump_es, p.name + ".tsv"), "w", encoding="utf-8") as f:
+                f.write("# English<TAB>Spanish<TAB># where. Keep {codes}, ' / ' line breaks, '//' page breaks.\n")
+                for s in p.strings:
+                    if s in seen or not s.strip():
+                        continue
+                    seen.add(s)
+                    f.write("%s\t%s\t# %s\n" % (s.replace("\\", "\\\\"), (es_map.get((p.name, s)) or "").replace("\\", "\\\\") if False else "", p.wheres.get(s, "")))
+    for p in packs:
+        p.es = [es_map.get((p.name, s)) for s in p.strings]
+        for s, e in zip(p.strings, p.es):
+            if e is not None:
+                check_es(e, "%s (pack %s)" % (p.path, p.name), p, s)
+        if not any(e is not None for e in p.es):
+            p.es = None
+        else:
+            p.es = [e if e is not None else s for s, e in zip(p.strings, p.es)]
     all_strings = [s for p in packs for s in p.strings]
+    all_strings += [s for p in packs if p.es for s, e in zip(p.strings, p.es) if e != s for s in (e,)]
     dic = build_dictionary(all_strings)
     by_first = {}
     for k, w in sorted(enumerate(dic), key=lambda kw: (-len(kw[1]), kw[0])):
@@ -1474,6 +1547,16 @@ def main(argv):
         if len(blob) > CAPS[p.kind]:
             raise Fail("%s: pack %s is %d B, over the %s cap of %d B" % (p.path, p.name, len(blob), p.kind, CAPS[p.kind]))
         blobs.append(blob)
+    es_blobs = []
+    for p in packs:
+        if not p.es:
+            es_blobs.append(None)
+            continue
+        streams = [encode(toks[s], codes) for s in p.es]
+        for s, st in zip(p.es, streams):
+            if decode(st, counts, order, dic) != s:
+                raise Fail("%s: codec round trip failed for %r" % (p.path, s))
+        es_blobs.append(pack_bytes(p, streams, p.es))
     gen = os.path.join(out_root, "core", "gen")
     os.makedirs(gen, exist_ok=True)
     head = "/* GENERATED by core/tools/textpack.py from core/data/story/ - do not edit. */\n"
@@ -1486,21 +1569,40 @@ def main(argv):
                      len(p.beats), len(p.all_events)))
             f.write("#include \"doomo/types.h\"\n\n")
             f.write("const uint32_t doomo_text_pack_%s[%d] = {\n%s\n};\n" % (c_ident(p.name), max(1, n), body or "    0"))
+    for p, blob in zip(packs, es_blobs):
+        if blob is None:
+            continue
+        body, n = c_words(blob)
+        with open(os.path.join(gen, "text_es_%s.c" % c_ident(p.name)), "w") as f:
+            f.write(head)
+            f.write("/* pack %d \"%s\", Spanish (core/lang/story/%s.tsv): %d B */\n" % (p.id, p.name, p.name, len(blob)))
+            f.write("#include \"doomo/types.h\"\n\n")
+            f.write("const uint32_t doomo_text_es_%s[%d] = {\n%s\n};\n" % (c_ident(p.name), max(1, n), body or "    0"))
     with open(os.path.join(gen, "text_dir.c"), "w") as f:
         f.write(head)
         f.write("/* The pack directory for ROM platforms (GBA, native): a pack is \"loaded\"\n"
                 " * by pointing at it. The PS1 excludes core/gen/text_*.c (this file\n"
                 " * too) and reads TEXT.BIN into its window instead (ps1/src/txtload.c). */\n")
-        f.write("#include \"doomo/txt.h\"\n\n")
+        f.write("#include \"doomo/txt.h\"\n#include \"doomo/lang.h\"\n\n")
         for p in packs:
             f.write("extern const uint32_t doomo_text_pack_%s[];\n" % c_ident(p.name))
+        for p, blob in zip(packs, es_blobs):
+            if blob is not None:
+                f.write("extern const uint32_t doomo_text_es_%s[];\n" % c_ident(p.name))
         f.write("\nstatic const uint32_t *const packs[%d] = {\n" % max(1, len(packs)))
         for p in packs:
             f.write("    doomo_text_pack_%s,\n" % c_ident(p.name))
         if not packs:
             f.write("    0\n")
+        f.write("};\n\n/* Spanish packs (core/lang/story): same ids, same ops, other strings */\n"
+                "static const uint32_t *const es_packs[%d] = {\n" % max(1, len(packs)))
+        for p, blob in zip(packs, es_blobs):
+            f.write("    %s,\n" % ("doomo_text_es_%s" % c_ident(p.name) if blob is not None else "0"))
+        if not packs:
+            f.write("    0\n")
         f.write("};\n\nconst uint8_t *txt_plat_pack(int pack)\n{\n"
                 "    if (pack < 0 || pack >= %d) return 0;\n"
+                "    if (es_packs[pack] && lang_get() == LANG_ES) return (const uint8_t *)es_packs[pack];\n"
                 "    return (const uint8_t *)packs[pack];\n}\n\n"
                 "int txt_plat_load(int pack)\n{\n"
                 "    return txt_plat_pack(pack) != 0;\n}\n" % len(packs))
@@ -1658,6 +1760,20 @@ def main(argv):
             body += blob + tail + b"\0" * (pad - len(tail))
             # --- end S5 ---
             sec += (len(blob) + pad) // SECTOR
+        # the Spanish half: n more {sector, bytes} entries (0, 0 = none), then
+        # the Spanish packs after the English ones (ps1/src/txtload.c)
+        ed = b""
+        eb = b""
+        for blob in es_blobs:
+            if blob is None:
+                ed += u32(0) + u32(0)
+                continue
+            ed += u32(sec) + u32(len(blob))
+            pad = (-len(blob)) % SECTOR
+            eb += blob + b"\0" * pad
+            sec += (len(blob) + pad) // SECTOR
+        dir_ += ed
+        body += eb
         if len(dir_) > SECTOR:
             raise Fail("TEXT.BIN directory over one sector")
         os.makedirs(os.path.dirname(bin_out), exist_ok=True)

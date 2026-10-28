@@ -1,0 +1,42 @@
+# English<TAB>Spanish<TAB># where. Keep {codes}, ' / ' line breaks, '//' page breaks.
+A new shop by the Wall: Cloud Nine Vapor	Tienda nueva junto al Muro: Cloud Nine Vapor	# core/data/story/ch2/common.dsc:19
+Dr. Bloom wants to see you (hospital)	La Dra. Bloom quiere verte (hospital)	# core/data/story/ch2/common.dsc:20
+Find clues for Dr. Bloom (@0/3)	Busca pistas para la Dra. Bloom (@0/3)	# core/data/story/ch2/common.dsc:21
+Tell Dr. Bloom what you found	Cuéntale a la Dra. Bloom lo que hallaste	# core/data/story/ch2/common.dsc:22
+Night. Go home. (It's fine.)	Es de noche. A casa. (Todo bien.)	# core/data/story/ch2/common.dsc:23
+Go home to bed. (Night two.)	A casa a la cama. (Noche dos.)	# core/data/story/ch2/common.dsc:24
+Go home to bed. (Night three.)	A casa a la cama. (Noche tres.)	# core/data/story/ch2/common.dsc:25
+Steamy is handing out ducks in the plaza	Steamy reparte patos en la plaza	# core/data/story/ch2/common.dsc:26
+Get Father Fuzz (church, W)	Busca al Padre Fuzz (iglesia, O)	# core/data/story/ch2/common.dsc:27
+Meet Father Fuzz in the plaza	Encuentra al Padre Fuzz en la plaza	# core/data/story/ch2/common.dsc:28
+Rivet wants to see you (workshop, NE)	Rivet quiere verte (taller, NE)	# core/data/story/ch2/common.dsc:29
+Go home and get some sleep	Vuelve a casa a dormir un poco	# core/data/story/ch2/common.dsc:30
+The cellar hatch of Cloud Nine Vapor	La trampilla del sótano de Cloud Nine Vapor	# core/data/story/ch2/common.dsc:31
+Has anyone seen my cocoa? / I need cocoa. Lots and lots / of cocoa.	¿Alguien vio mi cacao? / Necesito cacao. Montones / y montones de cacao.	# core/data/story/ch2/common.dsc:34
+Everything is FINE. Look at / all this fine. So much / fine everywhere.	Todo está BIEN. Mira cuánto / bien hay. Bien por todos / lados.	# core/data/story/ch2/common.dsc:35
+Folks keep coming in / smelling of grape. I never / bake with grape, dearie.	La gente entra oliendo a / uva. Yo nunca horneo con / uva, querido.	# core/data/story/ch2/common.dsc:36
+Ah. @E's teething. {..}That's / all it is. Teething.	Ah. @E está echando dientes. {..}/ Eso es todo. Dientes.	# core/data/story/ch2/common.dsc:37
+I'm not allowed near the / purple shop. Mr. Flops says / it smells like lies.	No puedo acercarme a la tienda / morada. El Sr. Flops dice / que huele a mentira.	# core/data/story/ch2/common.dsc:38
+Keep holy water close and / love closer. Both work on / demons, oddly.	Ten agua bendita cerca y el / amor más cerca. Ambos / funcionan con demonios.	# core/data/story/ch2/common.dsc:39
+Sparks are just tiny / fireworks that bite. Don't / be scared of 'em.	Las chispas son fuegos / artificiales que muerden. / No les tengas miedo.	# core/data/story/ch2/common.dsc:40
+Three more purple tongues / today. I don't like this, / @P.	Tres lenguas moradas más hoy. / Esto no me gusta, / @P.	# core/data/story/ch2/common.dsc:41
+Back for more? The first / puff was free. The second / costs a little something.	¿Vuelves por más? La primera / calada fue gratis. La / segunda cuesta algo.	# core/data/story/ch2/common.dsc:42
+One of the kids found a vape / pen at the playground. At a / DAYCARE.	Un niño halló un vapeador en / el parque. En una / GUARDERÍA.	# core/data/story/ch2/common.dsc:43
+Bath house is open again! / Steam only. No vapor. / NEVER vapor.	¡Los baños abrieron de nuevo! / Solo vapor de agua. / NUNCA vapeo.	# core/data/story/ch2/common.dsc:44
+(waters a plant) / (does not look up)	(riega una planta) / (no levanta la vista)	# core/data/story/ch2/common.dsc:45
+My punchlines keep landing / late. Like somebody else is / laughing first.	Mis chistes llegan tarde. / Como si alguien más se / riera primero.	# core/data/story/ch2/common.dsc:46
+Tomatoes taste of grape this / year. Hm. Must be the / weather, Toaster.	Los tomates saben a uva este / año. Mm. Será el clima, / Toaster.	# core/data/story/ch2/common.dsc:47
+(Somebody says "we" where / they meant "I".)	(Alguien dice "nosotros" / donde quiso decir "yo".)	# core/data/story/ch2/common.dsc:50
+(Your shadow catches up with / you a moment late.)	(Tu sombra te alcanza / un momento tarde.)	# core/data/story/ch2/common.dsc:51
+(The air smells like grape. / So does the coffee.)	(El aire huele a uva. / El café también.)	# core/data/story/ch2/common.dsc:52
+(Your reflection in the water / blinks.)	(Tu reflejo en el agua / parpadea.)	# core/data/story/ch2/common.dsc:53
+(The church bell rings / backwards for one bar.)	(La campana de la iglesia / suena al revés un compás.)	# core/data/story/ch2/common.dsc:54
+(A kid's drawing on the / fence: a purple cloud, / wearing a crown.)	(Dibujo de un niño en la / cerca: una nube morada / con corona.)	# core/data/story/ch2/common.dsc:55
+beep?	¿bip?	# core/data/story/ch2/common.dsc:56
+(The cafe jukebox plays two / notes of something low and / wrong.)	(La rocola del café toca dos / notas de algo grave y / equivocado.)	# core/data/story/ch2/common.dsc:57
+(Through your window: a / chair, where you didn't / put one.)	(Por tu ventana: una silla / donde tú no pusiste / ninguna.)	# core/data/story/ch2/common.dsc:58
+(You have seen this shop / before. Or you will.)	(Ya viste esta tienda antes. / O la verás.)	# core/data/story/ch2/common.dsc:82
+We love the weather. / {..}I mean... I.	Amamos el clima. / {..}Digo... yo.	# core/data/story/ch2/common.dsc:61
+(It waves. {.}You didn't.)	(Te saluda. {.}Tú no lo hiciste.)	# core/data/story/ch2/common.dsc:66
+Did the bell just... / un-ring?	¿La campana acaba de... / des-sonar?	# core/data/story/ch2/common.dsc:70
+(hits the jukebox) It does / that.	(golpea la rocola) Hace / eso.	# core/data/story/ch2/common.dsc:77

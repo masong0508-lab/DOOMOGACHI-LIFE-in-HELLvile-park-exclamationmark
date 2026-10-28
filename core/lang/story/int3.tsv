@@ -1,0 +1,40 @@
+# English<TAB>Spanish<TAB># where. Keep {codes}, ' / ' line breaks, '//' page breaks.
+Go home.	Vuelve a casa.	# core/data/story/ch3/int3.dsc:8
+Someone is knocking (@0/7)	Alguien llama a la puerta (@0/7)	# core/data/story/ch3/int3.dsc:9
+(Home. Half the furniture / burned. Half went to the / barricades. The rest fell.)	(Casa. Medio mobiliario / quemado. Medio se fue a las / barricadas. El resto se cayó.)	# core/data/story/ch3/int3.dsc:17
+(The pet bed is empty. Wisp / is quiet in a corner, very / small.)	(La cama de la mascota está / vacía. Wisp, callado en un / rincón, muy pequeño.)	# core/data/story/ch3/int3.dsc:19
+(The only sound is Tock's / clock on the wall.)	(El único sonido es el reloj / de Tock en la pared.)	# core/data/story/ch3/int3.dsc:23
+(You could tidy up. Only / tidy. Take things away.)	(Podrías ordenar. Solo / ordenar. Quitar cosas.)	# core/data/story/ch3/int3.dsc:24
+Look around	Mirar alrededor	# core/data/story/ch3/int3.dsc:24
+Sit on the floor	Sentarte en el suelo	# core/data/story/ch3/int3.dsc:24
+(You sit on the floor.)	(Te sientas en el suelo.)	# core/data/story/ch3/int3.dsc:32
+(The Mayor didn't go home. / He sits on the picnic crate.)	(El Alcalde no se fue a casa. / Se sienta en la caja / del picnic.)	# core/data/story/ch3/int3.dsc:50
+It was mine. The breath. / My fear. Your little @E / ate my fear.	Era mío. El aliento. / Mi miedo. Tu pequeño @E / se comió mi miedo.	# core/data/story/ch3/int3.dsc:55
+I never asked where the sad / went. {..}I know where it went / now.	Nunca pregunté adónde iba / la tristeza. {..}Ahora sé / adónde fue.	# core/data/story/ch3/int3.dsc:57
+I had a cloud once.	Una vez tuve una nube.	# core/data/story/ch3/int3.dsc:62
+He followed me to school.	Me seguía a la escuela.	# core/data/story/ch3/int3.dsc:64
+He rained on bullies. Only / bullies. He was very / precise.	Llovía sobre los matones. / Solo sobre los matones. Era / muy preciso.	# core/data/story/ch3/int3.dsc:66
+I put a stone up. I was / nine. I never told anyone / what it was for.	Levanté una piedra. Tenía / nueve años. Nunca dije / para qué era.	# core/data/story/ch3/int3.dsc:71
+...You saw the stone.	...Viste la piedra.	# core/data/story/ch3/int3.dsc:74
+Go get yours back, @P. / {d}Don't put up a stone.	Ve a recuperar la tuya, @P. / {d}No levantes una piedra.	# core/data/story/ch3/int3.dsc:77
+I'll come with you. Over / there.{..} Tomorrow.	Iré contigo. Allá.{..} / Mañana.	# core/data/story/ch3/int3.dsc:79
+(He goes. The door clicks. / The clock ticks.)	(Se va. La puerta hace clic. / El reloj hace tic.)	# core/data/story/ch3/int3.dsc:82
+*knock knock*	*toc toc*	# core/data/story/ch3/int3.dsc:91
+Open the door	Abrir la puerta	# core/data/story/ch3/int3.dsc:91
+Light's the first thing. / Then soup.	Primero la luz. / Luego la sopa.	# core/data/story/ch3/int3.dsc:92
+(She sets down a lamp. It / lands soft. She doesn't / leave.)	(Deja una lámpara. Aterriza / suave. Ella no se va.)	# core/data/story/ch3/int3.dsc:95
+He's good at being held. / You can borrow him.	Es bueno para que lo / abracen. Puedes tomarlo / prestado.	# core/data/story/ch3/int3.dsc:107
+Not forever. {..}Mostly / forever.	No para siempre. {..}Casi / para siempre.	# core/data/story/ch3/int3.dsc:109
+I reset the sign. One day / since the last fire. Don't / make it weird.	Reinicié el cartel. Un día / desde el último incendio. / No lo hagas raro.	# core/data/story/ch3/int3.dsc:121
+(She makes it weird. A hug / like a vice.)	(Lo hace raro. Un abrazo / de torno.)	# core/data/story/ch3/int3.dsc:125
+A duck. For your bath. / Ducks make everything / warmer. That's science.	Un patito. Para tu baño. / Los patos hacen todo más / cálido. Es ciencia.	# core/data/story/ch3/int3.dsc:137
+(Steamy's ghost, with a duck that is also a ghost.) It still floats. Mostly.	(El fantasma de Steamy, con un pato que también es fantasma.) Todavía flota. Casi.	# core/data/story/ch3/int3.dsc:140
+I didn't bring anything.	No traje nada.	# core/data/story/ch3/int3.dsc:153
+I'm the bit.	Yo soy el detalle.	# core/data/story/ch3/int3.dsc:155
+Cold hands. Warm blanket. / That's the deal.	Manos frías. Manta tibia. / Ese es el trato.	# core/data/story/ch3/int3.dsc:166
+(Mascotty. She has never / been inside anything. She / stands in the doorway.)	(Mascotty. Nunca ha estado / dentro de nada. Se queda / en la puerta.)	# core/data/story/ch3/int3.dsc:178
+(She puts down a single / Hellvile sunflower seed. / She leaves.)	(Deja una sola semilla de / girasol de Hellvile. / Se va.)	# core/data/story/ch3/int3.dsc:180
+(The Mayor. He doesn't / come in.)	(El Alcalde. No / entra.)	# core/data/story/ch3/int3.dsc:194
+Tomorrow, I said.	Mañana, dije.	# core/data/story/ch3/int3.dsc:195
+{big}No.{/} Now.	{big}No.{/} Ahora.	# core/data/story/ch3/int3.dsc:197
+{d}...Hee. Hee. Oh no. Now.	{d}...Hee. Hee. Ay, no. Ahora.	# core/data/story/ch3/int3.dsc:199

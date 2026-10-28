@@ -1,0 +1,87 @@
+# English<TAB>Spanish<TAB># where. Keep {codes}, ' / ' line breaks, '//' page breaks.
+There's a fella in your / house. {.}Three eyes. A bust. / Says 'it's fine' a lot.	Hay un tipo en tu casa. {.}Tres / ojos. Un busto. Dice mucho / 'estoy bien'.	# core/data/story/side_b/x_solo3.dsc:16
+I've got one eye. {..}I'd like / to meet him. Odds are we get / on.	Yo tengo un ojo. {..}Quiero / conocerlo. Seguro nos / llevamos bien.	# core/data/story/side_b/x_solo3.dsc:18
+Introduce them?	¿Presentarlos?	# core/data/story/side_b/x_solo3.dsc:19
+I'll bring Kevin.	Traeré a Kevin.	# core/data/story/side_b/x_solo3.dsc:19
+Later.	Luego.	# core/data/story/side_b/x_solo3.dsc:19
+KEVIN: A hat. {.}For the trip. / Every hat clips the third / eye.	KEVIN: Un sombrero. {.}Para el / viaje. Todos aprietan el / tercer ojo.	# core/data/story/side_b/x_solo3.dsc:27
+(A hat. {.}It pops off.)	(Un sombrero. {.}Sale volando.)	# core/data/story/side_b/x_solo3.dsc:30
+(A bow. {.}It pops off.)	(Un moño. {.}Sale volando.)	# core/data/story/side_b/x_solo3.dsc:33
+(A smaller hat. {.}It pops off.)	(Un sombrero más chico. {.}Sale / volando.)	# core/data/story/side_b/x_solo3.dsc:37
+Last try:	Último intento:	# core/data/story/side_b/x_solo3.dsc:39
+A hat with a hole.	Un sombrero con agujero.	# core/data/story/side_b/x_solo3.dsc:39
+(A hat with a hole in it. / Kevin looks in the mirror.)	(Un sombrero con un agujero. / Kevin se mira en el espejo.)	# core/data/story/side_b/x_solo3.dsc:42
+(Only the third eye blinks.)	(Solo parpadea el tercer ojo.)	# core/data/story/side_b/x_solo3.dsc:44
+KEVIN: ...it's fine.	KEVIN: ...estoy bien.	# core/data/story/side_b/x_solo3.dsc:46
+(He means it, this time.)	(Esta vez lo dice en serio.)	# core/data/story/side_b/x_solo3.dsc:48
+(The market. You set Kevin / down on a crate facing / Oddsball.)	(El mercado. Pones a Kevin / sobre una caja frente a / Oddsball.)	# core/data/story/side_b/x_solo3.dsc:53
+(They stare.)	(Se miran fijamente.)	# core/data/story/side_b/x_solo3.dsc:56
+KEVIN: Yes, three.	KEVIN: Sí, tres.	# core/data/story/side_b/x_solo3.dsc:58
+Yes, one.	Sí, uno.	# core/data/story/side_b/x_solo3.dsc:60
+(They blink at the same time. / {.}That's the friendship.)	(Parpadean a la vez. / {.}Eso es la amistad.)	# core/data/story/side_b/x_solo3.dsc:63
+Odds on which eye blinks / first? {.}I'll take the left.	¿Apuestas a qué ojo parpadea / primero? {.}Yo voy por el / izquierdo.	# core/data/story/side_b/x_solo3.dsc:65
+(The third eye blinks first. / Oddsball loses.)	(El tercer ojo parpadea primero. / Oddsball pierde.)	# core/data/story/side_b/x_solo3.dsc:68
+KEVIN: Nobody ever asks about / the third one.	KEVIN: Nadie pregunta nunca / por el tercero.	# core/data/story/side_b/x_solo3.dsc:70
+KEVIN: {d}It can see Tuesday.	KEVIN: {d}Puede ver el martes.	# core/data/story/side_b/x_solo3.dsc:72
+Four eyes between us. {.}Finally / the right number for cards.	Cuatro ojos entre los dos. {.}Por / fin el número justo para / las cartas.	# core/data/story/side_b/x_solo3.dsc:75
+(Kevin blinks his third eye / with the eye chart. {.}Every / 83 frames, exactly.)	(Kevin parpadea su tercer ojo / con la tabla optométrica. {.}Cada / 83 cuadros, exactos.)	# core/data/story/side_b/x_solo3.dsc:85
+I haul clouds. {.}At night I / hum to them. It helps them / drift.	Arrastro nubes. {.}De noche les / tarareo. Las ayuda a / flotar.	# core/data/story/side_b/x_solo3.dsc:97
+And I want it CONDUCTED. {!}In / the Concert Hall. Tonight.	Y quiero que lo DIRIJAN. {!}En / la Sala de Conciertos. Esta noche.	# core/data/story/side_b/x_solo3.dsc:99
+Play the lullaby?	¿Tocar la canción de cuna?	# core/data/story/side_b/x_solo3.dsc:100
+Shh. Tonight.	Shh. Esta noche.	# core/data/story/side_b/x_solo3.dsc:100
+(The Concert Hall, at night. / Mew lifts his tail.)	(La Sala de Conciertos, de / noche. Mew levanta la cola.)	# core/data/story/side_b/x_solo3.dsc:110
+(It's the lullaby for the / Wall, slowed to a hum. {.}The / one Wisp's mum hums.)	(Es la canción de cuna de la / Pared, en un tarareo lento. {.}La / que tararea la mamá de Wisp.)	# core/data/story/side_b/x_solo3.dsc:113
+(The orchestra follows Mew's / tail. Off the edge of the / stage.)	(La orquesta sigue la cola de / Mew. Hasta el borde del / escenario.)	# core/data/story/side_b/x_solo3.dsc:115
+(In the front row, the jar / cloud on its cushion rains / one pixel. On the beat.)	(En primera fila, la nube del / frasco, en su cojín, llueve / un píxel. Al compás.)	# core/data/story/side_b/x_solo3.dsc:118
+(The hall sleeps.)	(La sala duerme.)	# core/data/story/side_b/x_solo3.dsc:120
+(The jar on your shelf rains / one pixel. {.}The jukebox is / playing the hum.)	(El frasco de tu estante llueve / un píxel. {.}La vitrola toca / el tarareo.)	# core/data/story/side_b/x_solo3.dsc:135
+Two kids. Two plushies. {.}One / frame. {..}The best picture / I'll ever take.	Dos niños. Dos peluches. {.}Un / cuadro. {..}La mejor foto que / tomaré jamás.	# core/data/story/side_b/x_solo3.dsc:147
+Set up the shot?	¿Preparar la toma?	# core/data/story/side_b/x_solo3.dsc:148
+Say cheese!	¡Digan queso!	# core/data/story/side_b/x_solo3.dsc:148
+The bandstand. {.}You take it. / My hands shake.	El quiosco de música. {.}Tómala / tú. Me tiemblan las manos.	# core/data/story/side_b/x_solo3.dsc:157
+(Pip and Wisp, side by side. / Mr. Flops. Flops the 1st, / sticker and all.)	(Pip y Wisp, lado a lado. / Mr. Flops. Flops el 1., / con todo y etiqueta.)	# core/data/story/side_b/x_solo3.dsc:164
+(At the back: a faint shape, / mid-step. {.}The flash caught / Wisp's mum.)	(Al fondo: una forma tenue, a / medio paso. {.}El flash captó a / la mamá de Wisp.)	# core/data/story/side_b/x_solo3.dsc:166
+is mum in it?	¿sale mamá?	# core/data/story/side_b/x_solo3.dsc:168
+She's in it. {..}Trust me.	Sale. {..}Confía en mí.	# core/data/story/side_b/x_solo3.dsc:170
+(In the photo, Mr. Flops / blinks. {.}He has button eyes.)	(En la foto, Mr. Flops / parpadea. {.}Tiene ojos de botón.)	# core/data/story/side_b/x_solo3.dsc:172
+(Wisp's mum has the same / photo on her wall. {..}In hers, / she is in focus.)	(La mamá de Wisp tiene la misma / foto en su pared. {..}En la / suya, sale enfocada.)	# core/data/story/side_b/x_solo3.dsc:186
+I want to hug everyone in / Hellvile! {!}EVERYONE.	¡Quiero abrazar a todos en / Hellvile! {!}A TODOS.	# core/data/story/side_b/x_solo3.dsc:198
+Big Snarl is the bouncer. {..}He / has a rule. A squeaky toy at / the door.	Big Snarl es el portero. {..}Tiene / una regla. Un juguete chillón / en la puerta.	# core/data/story/side_b/x_solo3.dsc:200
+Help Hugsley?	¿Ayudar a Hugsley?	# core/data/story/side_b/x_solo3.dsc:201
+Free hugs!	¡Abrazos gratis!	# core/data/story/side_b/x_solo3.dsc:201
+(A squeaky Plushie for Big / Snarl. He squeezes it.)	(Un Peluche chillón para Big / Snarl. Lo aprieta.)	# core/data/story/side_b/x_solo3.dsc:211
+(Hugsley hugs Big Snarl.)	(Hugsley abraza a Big Snarl.)	# core/data/story/side_b/x_solo3.dsc:214
+...Again.	...Otra vez.	# core/data/story/side_b/x_solo3.dsc:217
+(A hug line forms. {.}Down the / street. Round the corner.)	(Se forma una fila de abrazos. / {.}Calle abajo. Doblando la / esquina.)	# core/data/story/side_b/x_solo3.dsc:220
+Hey, sugar. {.}My turn?	Oye, cielo. {.}¿Me toca?	# core/data/story/side_b/x_solo3.dsc:224
+(Hugsley hugs him.)	(Hugsley lo abraza.)	# core/data/story/side_b/x_solo3.dsc:227
+GURGLE: grrrbl.	GURGLE: grrrbl.	# core/data/story/side_b/x_solo3.dsc:229
+(A tone nobody has heard / before.)	(Un tono que nadie había / oído antes.)	# core/data/story/side_b/x_solo3.dsc:231
+(Hugsley hugs the Gate. {.}It / creaks.)	(Hugsley abraza la Puerta. {.}Cruje.)	# core/data/story/side_b/x_solo3.dsc:234
+Hey.	Oye.	# core/data/story/side_b/x_solo3.dsc:236
+(Hugsley hugs the Gate. {.}It / creaks. {..}Nobody says 'Hey.')	(Hugsley abraza la Puerta. {.}Cruje. / {..}Nadie dice 'Oye'.)	# core/data/story/side_b/x_solo3.dsc:242
+One thousand hugs today. {.}For / the first time in eleven / years.	Mil abrazos hoy. {.}Por primera / vez en once años.	# core/data/story/side_b/x_solo3.dsc:246
+{..}With both sides.	{..}Con ambos lados.	# core/data/story/side_b/x_solo3.dsc:248
+A squeaky toy. {.}A Plushie / squeaks! The shop has them.	Un juguete chillón. {.}¡Un / Peluche chilla! La tienda tiene.	# core/data/story/side_b/x_solo3.dsc:256
+(Big Snarl keeps the squeaky / toy. {.}He squeaks it once at / everyone who crosses.)	(Big Snarl se queda el juguete / chillón. {.}Lo hace chillar una / vez a cada quien que cruza.)	# core/data/story/side_b/x_solo3.dsc:261
+(It means welcome.)	(Significa bienvenido.)	# core/data/story/side_b/x_solo3.dsc:263
+Everyone who tore a page of / my contract must sign this. / {.}An acknowledgment.	Todo el que rompió una página / de mi contrato debe firmar esto. / {.}Un acuse de recibo.	# core/data/story/side_b/x_solo3.dsc:275
+That they tore it. {..}It's nine / hundred pages.	Que la rompió. {..}Son / novecientas páginas.	# core/data/story/side_b/x_solo3.dsc:277
+Plus the appendix.	Más el apéndice.	# core/data/story/side_b/x_solo3.dsc:279
+Collect signatures?	¿Reunir firmas?	# core/data/story/side_b/x_solo3.dsc:280
+Got a pen?	¿Tienes pluma?	# core/data/story/side_b/x_solo3.dsc:280
+Each signs one letter of / their name. {.}It's binding. / Probably.	Cada uno firma una letra de su / nombre. {.}Es vinculante. / Probablemente.	# core/data/story/side_b/x_solo3.dsc:288
+(The Mayor signs a G. {.}A big / loopy G.)	(El Alcalde firma una G. {.}Una / G grande y rizada.)	# core/data/story/side_b/x_solo3.dsc:294
+(Nox signs an N. {.}It's very / neat.)	(Nox firma una N. {.}Muy / prolija.)	# core/data/story/side_b/x_solo3.dsc:300
+(Rivet welds an R onto the / page. {.}It's structural.)	(Rivet suelda una R a la / página. {.}Es estructural.)	# core/data/story/side_b/x_solo3.dsc:306
+(The last line reads / GRUMBLEGUTS. {..}@E signs for / him. A tiny horn.)	(La última línea dice / GRUMBLEGUTS. {..}@E firma / por él. Un cuernito.)	# core/data/story/side_b/x_solo3.dsc:311
+Where do I sign, handsome? / {.}Don't answer. I know where.	¿Dónde firmo, guapo? / {.}No respondas. Ya sé dónde.	# core/data/story/side_b/x_solo3.dsc:316
+(He sits on the page. {r} / A rear-print.)	(Se sienta sobre la página. {r} / Queda la huella de su trasero.)	# core/data/story/side_b/x_solo3.dsc:319
+(@E signs with a beep. A / tiny horn-shaped mark.)	(@E firma con un bip. Una / marca en forma de cuernito.)	# core/data/story/side_b/x_solo3.dsc:322
+...All signed.	...Todo firmado.	# core/data/story/side_b/x_solo3.dsc:327
+This is in breach of / nothing. {..}I don't know what / to do with that.	Esto no incumple nada. {..}No sé / qué hacer con eso.	# core/data/story/side_b/x_solo3.dsc:329
+(His first contract that nobody / regrets.)	(Su primer contrato del que / nadie se arrepiente.)	# core/data/story/side_b/x_solo3.dsc:332
+(He keeps the pen.)	(Se queda con la pluma.)	# core/data/story/side_b/x_solo3.dsc:334
+(A single page of the old / contract is nailed to the / gatehouse door.)	(Una sola página del viejo / contrato está clavada en la / puerta de la caseta.)	# core/data/story/side_b/x_solo3.dsc:343
+(Across it, in gurgly writing: / VOID.)	(Encima, en letra gorgoteante: / NULO.)	# core/data/story/side_b/x_solo3.dsc:346
+(The door is sealed. {..}Someone / has left a takeaway box on / the step.)	(La puerta está sellada. {..}Alguien / dejó una caja de comida / para llevar en el escalón.)	# core/data/story/side_b/x_solo3.dsc:349

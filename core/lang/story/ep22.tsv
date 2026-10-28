@@ -1,0 +1,48 @@
+# English<TAB>Spanish<TAB># where. Keep {codes}, ' / ' line breaks, '//' page breaks.
+@P. Good. Sit. My hands / are cold, it's a doctor / thing.	@P. Bien. Siéntate. Tengo las / manos frías, es cosa de / doctora.	# core/data/story/ch2/ep22.dsc:9
+Five patients this week. All / say everything tastes like / grape.	Cinco pacientes esta semana. / Todos dicen que todo sabe / a uva.	# core/data/story/ch2/ep22.dsc:10
+I'm a doctor, so: that's / weird.	Soy doctora, así que: / qué raro.	# core/data/story/ch2/ep22.dsc:12
+Help me? Look for anything / odd. Tastes. Words. Shadows. / Write it all down.	¿Me ayudas? Busca algo / raro. Sabores. Palabras. / Sombras. Anótalo todo.	# core/data/story/ch2/ep22.dsc:14
+(The quest log has a Clues / board now. Find three.)	(El diario ya tiene un / tablón de Pistas. Halla tres.)	# core/data/story/ch2/ep22.dsc:16
+(That's three. Dr. Bloom / should hear this.)	(Son tres. La Dra. Bloom / debería oírlo.)	# core/data/story/ch2/ep22.dsc:25
+(A clue for Dr. Bloom: @2 / of 3.)	(Una pista para la Dra. / Bloom: @2 de 3.)	# core/data/story/ch2/ep22.dsc:29
+Blind taste test! Three / spoons. Tell me what they / are. Close your eyes!	¡Cata a ciegas! Tres / cucharas. ¡Dime qué son! / ¡Cierra los ojos!	# core/data/story/ch2/ep22.dsc:34
+(Spoon one.)	(Cuchara uno.)	# core/data/story/ch2/ep22.dsc:35
+Strawberry?	¿Fresa?	# core/data/story/ch2/ep22.dsc:35
+Mint?	¿Menta?	# core/data/story/ch2/ep22.dsc:35
+Lemon?	¿Limón?	# core/data/story/ch2/ep22.dsc:35
+Grape.	Uva.	# core/data/story/ch2/ep22.dsc:36
+(Spoon two.)	(Cuchara dos.)	# core/data/story/ch2/ep22.dsc:38
+Cheese?	¿Queso?	# core/data/story/ch2/ep22.dsc:38
+Pickle?	¿Pepinillo?	# core/data/story/ch2/ep22.dsc:38
+Soup?	¿Sopa?	# core/data/story/ch2/ep22.dsc:38
+(Spoon three. It's water.)	(Cuchara tres. Es agua.)	# core/data/story/ch2/ep22.dsc:41
+...Water?	...¿Agua?	# core/data/story/ch2/ep22.dsc:41
+{.}Grape.	{.}Uva.	# core/data/story/ch2/ep22.dsc:43
+Wait. I didn't put grape in / ANY of them.	Espera. No puse uva en / NINGUNA.	# core/data/story/ch2/ep22.dsc:45
+Isn't it a lovely day? We / adore it. We...	¿No es un día precioso? Lo / adoramos. Nosotros...	# core/data/story/ch2/ep22.dsc:52
+(Listen for the slip. Press / A right on it.)	(Atento al desliz. Pulsa A / justo ahí.)	# core/data/story/ch2/ep22.dsc:53
+We-- I. I mean I. Why did I / say we?	Nos-- yo. Quiero decir yo. / ¿Por qué dije nosotros?	# core/data/story/ch2/ep22.dsc:57
+We love the weather. / We love it so much.	Amamos el clima. / Lo amamos tanto.	# core/data/story/ch2/ep22.dsc:62
+(Smoother this time. You / missed it. Try again.)	(Esta vez más fluido. Se te / pasó. Inténtalo otra vez.)	# core/data/story/ch2/ep22.dsc:63
+Clack! Take my picture? My / shadow's been running a / little late. Clack.	¡Clac! ¿Me tomas una foto? / Mi sombra anda un poco / retrasada. Clac.	# core/data/story/ch2/ep22.dsc:68
+(In the photo, his shadow / is still mid-step. He / isn't.)	(En la foto, su sombra sigue / a medio paso. Él no.)	# core/data/story/ch2/ep22.dsc:74
+(Just sky. Try again.)	(Solo cielo. Inténtalo otra / vez.)	# core/data/story/ch2/ep22.dsc:79
+The bells? Lovely bells. / Come back after dark. They / do a little... thing.	¿Las campanas? Qué lindas. / Vuelve de noche. Hacen / una pequeña... cosa.	# core/data/story/ch2/ep22.dsc:86
+(The bell rings. Then it / un-rings, backwards, for / one bar.)	(Suena la campana. Luego se / desuena, al revés, durante / un compás.)	# core/data/story/ch2/ep22.dsc:92
+Did the bell just un-ring?	¿La campana se acaba de / desonar?	# core/data/story/ch2/ep22.dsc:93
+Look. They drew again. / Every single one.	Mira. Volvieron a dibujar. / Todos y cada uno.	# core/data/story/ch2/ep22.dsc:101
+(A crowned purple cloud in / every picture. In one, it / is holding a little hand.)	(Una nube morada con corona / en cada dibujo. En uno, / sostiene una manita.)	# core/data/story/ch2/ep22.dsc:103
+They all drew the same / friend.	Todos dibujaron al mismo / amigo.	# core/data/story/ch2/ep22.dsc:105
+Why did the ghost cross / the road?	¿Por qué cruzó el fantasma / la calle?	# core/data/story/ch2/ep22.dsc:112
+(The laugh comes from the / Wall. Late. Like a giggle / in fog.)	(La risa viene del Muro. / Tarde. Como una risita / entre la niebla.)	# core/data/story/ch2/ep22.dsc:116
+Thank you. You're too kind. / {..}Whoever you are.	Gracias. Eres muy amable. / {..}Seas quien seas.	# core/data/story/ch2/ep22.dsc:117
+Show me.	Muéstrame.	# core/data/story/ch2/ep22.dsc:121
+Grape. "We." Late shadows. / It's not a bug. It's in / the air.	Uva. "Nosotros". Sombras / tardías. No es un fallo. / Está en el aire.	# core/data/story/ch2/ep22.dsc:122
+Let me take your pulse.	Déjame tomarte el pulso.	# core/data/story/ch2/ep22.dsc:123
+(A very cold hand.)	(Una mano muy fría.)	# core/data/story/ch2/ep22.dsc:125
+Sorry. Ghoul.	Perdón. Ghoul... Digo, fría.	# core/data/story/ch2/ep22.dsc:127
+...I mean: COOL hands. It's / a doctor thing.	...Quiero decir: manos / FRESCAS. Es cosa de doctora.	# core/data/story/ch2/ep22.dsc:129
+I've seen this before.{..} / {d}Somewhere else.{punch}	Ya he visto esto antes.{..} / {d}En otro lugar.{punch}	# core/data/story/ch2/ep22.dsc:132
+Go home, @P. Get some / sleep. I'll keep looking.	Ve a casa, @P. Duerme un / poco. Yo sigo buscando.	# core/data/story/ch2/ep22.dsc:134
+Anything odd. Tastes, / words, shadows, bells, / drawings. Three will do.	Algo raro. Sabores, / palabras, sombras, campanas, / dibujos. Con tres basta.	# core/data/story/ch2/ep22.dsc:139

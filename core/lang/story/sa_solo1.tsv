@@ -1,0 +1,75 @@
+# English<TAB>Spanish<TAB># where. Keep {codes}, ' / ' line breaks, '//' page breaks.
+The town sign still says / 500. {.}Under it, scratched / out, it says 1000.	El cartel del pueblo aún dice / 500. {.}Debajo, tachado, dice / 1000.	# core/data/story/side_a/i_solo.dsc:13
+I want to repaint it myself! / {..}I've never held a roller.	¡Quiero repintarlo yo mismo! / {..}Nunca he sostenido un rodillo.	# core/data/story/side_a/i_solo.dsc:15
+Fetch him the paint?	¿Le traes la pintura?	# core/data/story/side_a/i_solo.dsc:16
+Two colours, coming up.	Dos colores, en camino.	# core/data/story/side_a/i_solo.dsc:16
+Later.	Más tarde.	# core/data/story/side_a/i_solo.dsc:16
+Rainbow Ewe has the pink. / Stencilla, over the gate, / has the red.	Oveja Arcoíris tiene el rosa. / Stencilla, junto a la / puerta, tiene el rojo.	# core/data/story/side_a/i_solo.dsc:24
+The pinkest pink! {.}Don't let / him lick it.	¡El rosa más rosa! {.}Que no / lo lama.	# core/data/story/side_a/i_solo.dsc:30
+Hellvile red. It doesn't come / off. {..}That's the point.	Rojo Hellvile. No se quita. / {..}Esa es la gracia.	# core/data/story/side_a/i_solo.dsc:36
+Here goes.	Allá vamos.	# core/data/story/side_a/i_solo.dsc:41
+(He paints the 1. Then he / stops.)	(Pinta el 1. Luego se / detiene.)	# core/data/story/side_a/i_solo.dsc:43
+I painted over this myself. / Ten years ago. {..}With this / roller.	Yo mismo lo tapé. Hace diez / años. {..}Con este rodillo.	# core/data/story/side_a/i_solo.dsc:46
+{..}Help me finish it?	{..}¿Me ayudas a terminar?	# core/data/story/side_a/i_solo.dsc:48
+POPULATION: 1000 lovely / citizens. {.}And @P.	POBLACIÓN: 1000 encantadores / ciudadanos. {.}Y @P.	# core/data/story/side_a/i_solo.dsc:51
+(The last 0 falls off. Tink.)	(El último 0 se cae. Tink.)	# core/data/story/side_a/i_solo.dsc:54
+Don't make it weird.	No lo hagas raro.	# core/data/story/side_a/i_solo.dsc:56
+(Rivet glues it back on.)	(Rivet lo pega de nuevo.)	# core/data/story/side_a/i_solo.dsc:58
+(It falls off again.)	(Se vuelve a caer.)	# core/data/story/side_a/i_solo.dsc:61
+{d}999. I can live with 999.	{d}999. Puedo vivir con 999.	# core/data/story/side_a/i_solo.dsc:63
+(The sign at the edge of / town reads POPULATION: 1000. / {.}The last 0 is taped on.)	(El cartel de la entrada del / pueblo dice POBLACIÓN: 1000. / {.}El último 0 va con cinta.)	# core/data/story/side_a/i_solo.dsc:73
+I catch 'em, I name 'em, I / let 'em go. {.}Captain's / rules.	Los atrapo, les pongo nombre / y los suelto. {.}Reglas del / Capitán.	# core/data/story/side_a/i_solo.dsc:86
+One keeps coming back. {..}I've / run out of names.	Uno siempre vuelve. {..}Ya se / me acabaron los nombres.	# core/data/story/side_a/i_solo.dsc:88
+Fish with the Captain?	¿Pescas con el Capitán?	# core/data/story/side_a/i_solo.dsc:89
+Cast off!	¡Zarpemos!	# core/data/story/side_a/i_solo.dsc:89
+End of the pier. {.}Watch the / float. Pull when it dips.	Al final del muelle. {.}Mira / el flotador. Tira si se hunde.	# core/data/story/side_a/i_solo.dsc:97
+(A fish. It tastes of grape. / {.}Don't ask how you know.)	(Un pez. Sabe a uva. / {.}No preguntes cómo lo sabes.)	# core/data/story/side_a/i_solo.dsc:106
+(Another. On the line, it / turns to face the Wall.)	(Otro. En el sedal, se gira / hacia el Muro.)	# core/data/story/side_a/i_solo.dsc:108
+(The third is purple. {..}It / hums a lullaby.)	(El tercero es morado. {..}Tararea / una nana.)	# core/data/story/side_a/i_solo.dsc:111
+...Let that one go, matey.	...A ese suéltalo, grumete.	# core/data/story/side_a/i_solo.dsc:113
+(The tagged one. Of course.)	(El de la etiqueta. Claro.)	# core/data/story/side_a/i_solo.dsc:119
+Gerald. Gerald II. Gerry. G. / Fish. {.}Forty names, all / crossed out.	Gerald. Gerald II. Gerry. G. / Pez. {.}Cuarenta nombres, todos / tachados.	# core/data/story/side_a/i_solo.dsc:121
+The last one says 'Please / Stop'. {..}He wrote that one / himself.	El último dice 'Por favor / Basta'. {..}Lo escribió él / mismo.	# core/data/story/side_a/i_solo.dsc:123
+Name the fish:	Ponle nombre al pez:	# core/data/story/side_a/i_solo.dsc:124
+Gerald Forever	Gerald por Siempre	# core/data/story/side_a/i_solo.dsc:124
+Steve	Steve	# core/data/story/side_a/i_solo.dsc:124
+Mr. Fish	Sr. Pez	# core/data/story/side_a/i_solo.dsc:124
+Please Stop II	Basta Ya II	# core/data/story/side_a/i_solo.dsc:124
+(You let it go.)	(Lo sueltas.)	# core/data/story/side_a/i_solo.dsc:127
+You let something go forty / times, and it comes back / forty times.	Sueltas algo cuarenta veces / y vuelve cuarenta veces.	# core/data/story/side_a/i_solo.dsc:130
+{..}That's not fishing. That's / a friend.	{..}Eso no es pescar. Es un / amigo.	# core/data/story/side_a/i_solo.dsc:132
+He got away. {.}He'll be back. / He always is.	Se escapó. {.}Volverá. / Siempre vuelve.	# core/data/story/side_a/i_solo.dsc:139
+(A fish waits by the pier. / The tag has a new name on / it: @P.)	(Un pez espera junto al muelle. / La etiqueta tiene un nombre / nuevo: @P.)	# core/data/story/side_a/i_solo.dsc:144
+I read to the whole street / at once. {.}Tonight: 'The Very / Hungry Demon'.	Leo a toda la calle a la vez. / {.}Esta noche: 'El Demonio / Muy Hambriento'.	# core/data/story/side_a/i_solo.dsc:155
+I test every book on a pet / first. {..}Yours will do / nicely.	Pruebo cada libro primero con / una mascota. {..}La tuya / servirá.	# core/data/story/side_a/i_solo.dsc:157
+Lend her @E?	¿Le prestas a @E?	# core/data/story/side_a/i_solo.dsc:158
+Story time!	¡Hora del cuento!	# core/data/story/side_a/i_solo.dsc:158
+First, the pet's bed. By the / window, so it can hear me.	Primero, la cama de la / mascota. Junto a la ventana, / para que me oiga.	# core/data/story/side_a/i_solo.dsc:166
+'The very hungry demon ate / one apple, {.}two pears, {.}three / plums...'	'El demonio muy hambriento / se comió una manzana, {.}dos / peras, {.}tres ciruelas...'	# core/data/story/side_a/i_solo.dsc:170
+'...four Hillvile.'	'...cuatro Hillvile.'	# core/data/story/side_a/i_solo.dsc:172
+It's a classic.	Es un clásico.	# core/data/story/side_a/i_solo.dsc:174
+(@E is asleep by page six.)	(@E se duerme en la página / seis.)	# core/data/story/side_a/i_solo.dsc:176
+(In the dream, the demon is / small. {..}It is crying.)	(En el sueño, el demonio es / pequeño. {..}Está llorando.)	# core/data/story/side_a/i_solo.dsc:179
+(It only eats its own tail.)	(Solo se come su propia cola.)	# core/data/story/side_a/i_solo.dsc:181
+Oh. {..}That's not how it ends.	Oh. {..}Así no termina.	# core/data/story/side_a/i_solo.dsc:185
+'And the very hungry demon / was given one cupcake, and / it was enough.'	'Y al demonio muy hambriento / le dieron un cupcake, y / fue suficiente.'	# core/data/story/side_a/i_solo.dsc:187
+First edit in sixty years.	Primera edición en sesenta años.	# core/data/story/side_a/i_solo.dsc:189
+(The storybook on your shelf / has a new last page: a / cupcake, in crayon.)	(El cuento de tu estante tiene / una última página nueva: un / cupcake, en crayón.)	# core/data/story/side_a/i_solo.dsc:197
+The Whack-an-Imp pops up imps / when it's switched OFF.	El Golpea-Diablillos saca / diablillos cuando está / APAGADO.	# core/data/story/side_a/i_solo.dsc:210
+{!}That's not a feature. {.}Give / it a go?	{!}Eso no es una función. {.}¿Lo / pruebas?	# core/data/story/side_a/i_solo.dsc:212
+Play Whack-an-Imp?	¿Jugar a Golpea-Diablillos?	# core/data/story/side_a/i_solo.dsc:213
+Bonk time.	Hora del porrazo.	# core/data/story/side_a/i_solo.dsc:213
+House rule: do NOT bonk Father / Fuzz.	Regla de la casa: NO golpees / al Padre Fuzz.	# core/data/story/side_a/i_solo.dsc:221
+tsk.	tsk.	# core/data/story/side_a/i_solo.dsc:225
+(He was not in the machine. / He was standing next to it.)	(No estaba en la máquina. / Estaba parado junto a ella.)	# core/data/story/side_a/i_solo.dsc:227
+The top prize is Mr. Huggins? / {.}No. He's not a prize.	¿El premio mayor es el Sr. / Huggins? {.}No. No es un premio.	# core/data/story/side_a/i_solo.dsc:230
+He's STAFF.	Es PERSONAL.	# core/data/story/side_a/i_solo.dsc:232
+Now it's off. {.}Play it again.	Ahora está apagada. {.}Juega / otra vez.	# core/data/story/side_a/i_solo.dsc:235
+(The imps still came. Slower. / {..}Looking at you.)	(Los diablillos siguieron / saliendo. Más lento. / {..}Mirándote.)	# core/data/story/side_a/i_solo.dsc:237
+(The last one said 'beep.' / In @E's voice.)	(El último dijo 'bip.' Con la / voz de @E.)	# core/data/story/side_a/i_solo.dsc:241
+Where does the plug GO?	¿Adónde VA el enchufe?	# core/data/story/side_a/i_solo.dsc:243
+(The cable runs under the / ground. Toward the Wall.)	(El cable va bajo tierra. / Hacia el Muro.)	# core/data/story/side_a/i_solo.dsc:248
+(Squeaker pulls the plug.)	(Squeaker desenchufa.)	# core/data/story/side_a/i_solo.dsc:251
+(Back at the Fun Fair, an imp / pops up anyway.)	(De vuelta en la Feria, sale / un diablillo de todos modos.)	# core/data/story/side_a/i_solo.dsc:254
+{d}It's a very good machine.	{d}Es una máquina muy buena.	# core/data/story/side_a/i_solo.dsc:256
+(The little Whack-an-Imp at / home pops up an imp. {.}It is / unplugged. @E bonks it.)	(El pequeño Golpea-Diablillos / de casa saca un diablillo. / {.}Está desenchufado. @E lo golpea.)	# core/data/story/side_a/i_solo.dsc:265

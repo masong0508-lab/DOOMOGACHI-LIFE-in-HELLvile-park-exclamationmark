@@ -1,0 +1,108 @@
+# English<TAB>Spanish<TAB># where. Keep {codes}, ' / ' line breaks, '//' page breaks.
+Leave a note by the tiny bed:	Deja una nota junto a la camita:	# core/data/story/side_b/r_wisp.dsc:16
+who are you	quién eres	# core/data/story/side_b/r_wisp.dsc:17
+Local child reportedly 'un-floated'. Parents thrilled.	Niño local 'des-flotado', según reportes. Padres felices.	# core/data/story/side_b/r_wisp.dsc:301
+Oh! {.}Hello. Sorry. I'm the / housekeeper. A ghost. Sorry.	¡Oh! {.}Hola. Perdón. Soy la / ama de llaves. Un fantasma. Perdón.	# core/data/story/side_b/r_wisp.dsc:22
+There's a bed in your corner. / {.}A tiny one. Imp-sized.	Hay una cama en tu rincón. / {.}Una pequeña. Tamaño diablillo.	# core/data/story/side_b/r_wisp.dsc:25
+I didn't put it there. {..}I'd / have centred it.	Yo no la puse ahí. {..}La / habría centrado.	# core/data/story/side_b/r_wisp.dsc:27
+The catalogue says 'placed / by: ???'. {.}You can't sell it. / You can try.	El catálogo dice 'colocada / por: ???'. {.}No se puede vender. / Puedes intentarlo.	# core/data/story/side_b/r_wisp.dsc:29
+Look into it?	¿Investigarlo?	# core/data/story/side_b/r_wisp.dsc:30
+Three nights.	Tres noches.	# core/data/story/side_b/r_wisp.dsc:30
+Later.	Luego.	# core/data/story/side_b/r_wisp.dsc:30
+(Night one. You carry the tiny / bed out to the porch.)	(Noche uno. Sacas la camita / al porche.)	# core/data/story/side_b/r_wisp.dsc:40
+(By morning it's back / inside. {.}One step closer to / your bed.)	(Por la mañana está de vuelta / adentro. {.}Un paso más cerca / de tu cama.)	# core/data/story/side_b/r_wisp.dsc:44
+Night two. {.}Put a lamp next / to it. A test. Ghosts hate / being seen.	Noche dos. {.}Pon una lámpara / al lado. Una prueba. Los / fantasmas odian que los vean.	# core/data/story/side_b/r_wisp.dsc:46
+(In decorate mode, for three / frames, the cursor moves by / itself. It places the lamp.)	(En modo decorar, por tres / cuadros, el cursor se mueve / solo. Coloca la lámpara.)	# core/data/story/side_b/r_wisp.dsc:50
+(Then, with nobody on it, a / floorboard creaks. {.}Once. On / no beat at all.)	(Luego, sin nadie encima, / cruje una tabla. {.}Una vez. / Sin ritmo alguno.)	# core/data/story/side_b/r_wisp.dsc:53
+(Morning. The lamp is on. / {.}It's turned toward the tiny / bed. A night-light.)	(Amanece. La lámpara está / encendida. {.}Apunta hacia la / camita. Una luz de noche.)	# core/data/story/side_b/r_wisp.dsc:57
+Night three. {.}Leave it a / note.	Noche tres. {.}Déjale una / nota.	# core/data/story/side_b/r_wisp.dsc:59
+(The tiny bed has a tiny / sign now. // Made from your shopping / list. 'DO NOT SELL'.)	(La camita ya tiene un / letrerito. // Hecho con tu lista de / compras. 'NO VENDER'.)	# core/data/story/side_b/r_wisp.dsc:66
+(The handwriting is terrible. / {..}The spelling is worse.)	(La letra es horrible. / {..}La ortografía, peor.)	# core/data/story/side_b/r_wisp.dsc:68
+beep.	bip.	# core/data/story/side_b/r_wisp.dsc:71
+(Morning. On your note, in / crayon: a house with two / windows.)	(Amanece. En tu nota, con / crayón: una casa con dos / ventanas.)	# core/data/story/side_b/r_wisp.dsc:79
+(It's not your house. {..}It / has a door on the wrong / side.)	(No es tu casa. {..}Tiene / la puerta del lado / equivocado.)	# core/data/story/side_b/r_wisp.dsc:81
+(Wisp's drawing is on your / fridge. {.}You didn't put it / there either.)	(El dibujo de Wisp está en / tu refri. {.}Tampoco lo / pusiste tú.)	# core/data/story/side_b/r_wisp.dsc:91
+it's not the demons. {.}it's / the sky. the red sky.	no son los demonios. {.}es / el cielo. el cielo rojo.	# core/data/story/side_b/r_wisp.dsc:103
+can i have one window that's / always daytime? {..}just / one.	¿puedo tener una ventana que / siempre sea de día? {..}solo / una.	# core/data/story/side_b/r_wisp.dsc:105
+Make Wisp a window?	¿Hacerle una ventana a Wisp?	# core/data/story/side_b/r_wisp.dsc:106
+One daytime window.	Una ventana de día.	# core/data/story/side_b/r_wisp.dsc:106
+lumina has lamp oil. {.}for / the sun part.	lumina tiene aceite de lámpara. {.}para / la parte del sol.	# core/data/story/side_b/r_wisp.dsc:114
+Lamp oil? {.}For a window? / {..}For Wisp. Take two.	¿Aceite de lámpara? {.}¿Para una / ventana? {..}Para Wisp. Llévate dos.	# core/data/story/side_b/r_wisp.dsc:120
+A window box. {.}Bring it. I / weld, you paint.	Una jardinera. {.}Tráela. Yo / sueldo, tú pintas.	# core/data/story/side_b/r_wisp.dsc:122
+Paint the sky:	Pinta el cielo:	# core/data/story/side_b/r_wisp.dsc:125
+Blue.	Azul.	# core/data/story/side_b/r_wisp.dsc:125
+Pink.	Rosa.	# core/data/story/side_b/r_wisp.dsc:125
+Gold.	Dorado.	# core/data/story/side_b/r_wisp.dsc:125
+Mint.	Menta.	# core/data/story/side_b/r_wisp.dsc:125
+(Blue, like a Tuesday.)	(Azul, como un martes.)	# core/data/story/side_b/r_wisp.dsc:127
+(Pink, like the bus.)	(Rosa, como el autobús.)	# core/data/story/side_b/r_wisp.dsc:130
+(Gold, like four o'clock.)	(Dorado, como las cuatro.)	# core/data/story/side_b/r_wisp.dsc:133
+(Mint, like a nice sky that / doesn't exist.)	(Menta, como un cielo lindo / que no existe.)	# core/data/story/side_b/r_wisp.dsc:136
+(You add one cloud.)	(Añades una nube.)	# core/data/story/side_b/r_wisp.dsc:139
+...no crown.	...sin corona.	# core/data/story/side_b/r_wisp.dsc:141
+You:	Tú:	# core/data/story/side_b/r_wisp.dsc:143
+No crown.	Sin corona.	# core/data/story/side_b/r_wisp.dsc:143
+(Wisp adds a tiny sun with a / face. {.}It's the Mayor's face.)	(Wisp añade un solecito con / cara. {.}Es la cara de la Alcaldesa.)	# core/data/story/side_b/r_wisp.dsc:146
+he looks worried.	se ve preocupada.	# core/data/story/side_b/r_wisp.dsc:148
+(It does.)	(Es verdad.)	# core/data/story/side_b/r_wisp.dsc:150
+(You hang it over a boarded / window. // Wisp sits under it all / night, through the waves.)	(La cuelgas sobre una / ventana tapiada. // Wisp se sienta debajo toda / la noche, durante las oleadas.)	# core/data/story/side_b/r_wisp.dsc:153
+(By morning Wisp is slightly / more solid. {.}You can almost / see their freckles.)	(Por la mañana Wisp es un / poco más sólido. {.}Casi se / le ven las pecas.)	# core/data/story/side_b/r_wisp.dsc:155
+at home i cried at the Wall / till i fell out.	en casa lloré junto al Muro / hasta que caí.	# core/data/story/side_b/r_wisp.dsc:158
+{..}i didn't know it was MY sky / i was scared of.	{..}no sabía que era MI cielo / el que me daba miedo.	# core/data/story/side_b/r_wisp.dsc:160
+this one's better. {.}yours / has a sun.	este es mejor. {.}el tuyo / tiene sol.	# core/data/story/side_b/r_wisp.dsc:162
+(The daytime window is / always day. // {.}At three in the morning you / can hear birds in it.)	(La ventana de día siempre / es de día. // {.}A las tres de la mañana / se oyen pájaros en ella.)	# core/data/story/side_b/r_wisp.dsc:171
+can you measure me? {.}against / YOUR door frame.	¿me mides? {.}contra / el marco de TU puerta.	# core/data/story/side_b/r_wisp.dsc:183
+ours has mum's marks from / before. {..}i don't want to go / past them yet.	el nuestro tiene las marcas de mamá / de antes. {..}todavía no quiero / pasarlas.	# core/data/story/side_b/r_wisp.dsc:185
+Measure Wisp?	¿Medir a Wisp?	# core/data/story/side_b/r_wisp.dsc:186
+Stand up straight.	Párate derecho.	# core/data/story/side_b/r_wisp.dsc:186
+(The door frame becomes a / height board.)	(El marco de la puerta se / vuelve una regla de altura.)	# core/data/story/side_b/r_wisp.dsc:195
+(Wisp stands against it. {.}Very / straight.)	(Wisp se para contra él. {.}Muy / derecho.)	# core/data/story/side_b/r_wisp.dsc:197
+(A mark.)	(Una marca.)	# core/data/story/side_b/r_wisp.dsc:200
+Me too! {!}Me too! I'm taller! / I'm WAY taller!	¡Yo también! {!}¡Yo también! ¡Soy más alto! / ¡Soy MUCHO más alto!	# core/data/story/side_b/r_wisp.dsc:202
+(Pip is on tiptoe. {.}Pip is / caught. {r})	(Pip está de puntitas. {.}A Pip / lo pillaron. {r})	# core/data/story/side_b/r_wisp.dsc:204
+(A mark for Pip. {..}Exactly / where Pip's heels are.)	(Una marca para Pip. {..}Justo / donde están los talones de Pip.)	# core/data/story/side_b/r_wisp.dsc:207
+(@E wants one. {.}@E's mark is / one pixel tall.)	(@E quiere una. {.}La marca de @E / mide un píxel.)	# core/data/story/side_b/r_wisp.dsc:210
+(@E looks at it for a long / time.)	(@E la mira un buen rato.)	# core/data/story/side_b/r_wisp.dsc:212
+(Satisfied.)	(Satisfecho.)	# core/data/story/side_b/r_wisp.dsc:217
+(Wisp's mum is at the door. / She adds her own mark. {.}Then, / lower, one more.)	(La mamá de Wisp está en la / puerta. Añade su propia marca. {.}Luego, / más abajo, una más.)	# core/data/story/side_b/r_wisp.dsc:221
+(Where Wisp's head was, two / years ago.)	(Donde estaba la cabeza de / Wisp hace dos años.)	# core/data/story/side_b/r_wisp.dsc:223
+WISP'S MUM: You grew. {.}In our house. / {..}While you were out.	MAMÁ DE WISP: Creciste. {.}En nuestra casa. / {..}Mientras estabas fuera.	# core/data/story/side_b/r_wisp.dsc:225
+(A month later you measure / again. // Wisp's line is higher. @E's / is still one pixel.)	(Un mes después mides otra / vez. // La línea de Wisp es más alta. / La de @E sigue en un píxel.)	# core/data/story/side_b/r_wisp.dsc:238
+i want to throw YOU a / housewarming. {.}at your Hell / Pits flat.	quiero hacerte una / inauguración. {.}en tu piso de / Hell Pits.	# core/data/story/side_b/r_wisp.dsc:250
+you did one for me. {..}you / didn't even know.	tú me hiciste una. {..}ni / siquiera lo sabías.	# core/data/story/side_b/r_wisp.dsc:252
+everyone who knocked, on the / dark night. {.}they're all / coming.	todos los que tocaron, la noche / oscura. {.}todos / vienen.	# core/data/story/side_b/r_wisp.dsc:254
+Have a housewarming?	¿Hacer una inauguración?	# core/data/story/side_b/r_wisp.dsc:255
+Party at mine!	¡Fiesta en mi casa!	# core/data/story/side_b/r_wisp.dsc:255
+make it nice. {.}hellvile / things count double.	que quede bonito. {.}las cosas de / hellvile cuentan doble.	# core/data/story/side_b/r_wisp.dsc:263
+food. one dish from each side. / {.}bone broth. angel cake.	comida. un plato de cada lado. / {.}caldo de hueso. pastel de ángel.	# core/data/story/side_b/r_wisp.dsc:265
+(The guests arrive. Everyone / who knocked on the dark / night. // Each finds the thing they / gave.)	(Llegan los invitados. Todos / los que tocaron la noche / oscura. // Cada uno encuentra lo que / dio.)	# core/data/story/side_b/r_wisp.dsc:269
+(Wisp's parents carry in a / chair. {.}The thinking chair.)	(Los padres de Wisp traen una / silla. {.}La silla de pensar.)	# core/data/story/side_b/r_wisp.dsc:271
+WISP'S DAD: Sit in it, face / the wall, and say one honest / thing. // {..}It's tradition. We just made / it up.	PAPÁ DE WISP: Siéntate, mira / la pared y di una cosa / sincera. // {..}Es tradición. Nos la acabamos / de inventar.	# core/data/story/side_b/r_wisp.dsc:273
+(Mascotty, in the doorway.)	(Mascotty, en la puerta.)	# core/data/story/side_b/r_wisp.dsc:276
+(This time she comes in.)	(Esta vez entra.)	# core/data/story/side_b/r_wisp.dsc:279
+(Everyone cheers.)	(Todos aplauden.)	# core/data/story/side_b/r_wisp.dsc:282
+(She sits in the thinking / chair. Facing the wall. {.}Out / of habit.)	(Se sienta en la silla de / pensar. Mirando la pared. {.}Por / costumbre.)	# core/data/story/side_b/r_wisp.dsc:284
+that's how you use it.	así se usa.	# core/data/story/side_b/r_wisp.dsc:286
+i was in your house when it / was empty.	yo estuve en tu casa cuando / estaba vacía.	# core/data/story/side_b/r_wisp.dsc:290
+{..}it's not empty now.	{..}ya no está vacía.	# core/data/story/side_b/r_wisp.dsc:292
+(HELLVILE HERALD: local / child reportedly / 'un-floated'. // {..}Parents thrilled.)	(HELLVILE HERALD: niño local / 'des-flotado', según / reportes. // {..}Padres felices.)	# core/data/story/side_b/r_wisp.dsc:307
+WISP'S MUM: The candle in / Wisp's window. // {.}It's burned since the night / of the second paper boat.	MAMÁ DE WISP: La vela en / la ventana de Wisp. // {.}Arde desde la noche del / segundo barquito de papel.	# core/data/story/side_b/r_wisp.dsc:320
+WISP'S MUM: They're home. {..}It / can rest. Will you help them / let it go out?	MAMÁ DE WISP: Ya están en casa. {..}Puede / descansar. ¿Ayudas a Wisp / a dejarla apagar?	# core/data/story/side_b/r_wisp.dsc:322
+Help with the candle?	¿Ayudar con la vela?	# core/data/story/side_b/r_wisp.dsc:323
+I'll be there.	Allí estaré.	# core/data/story/side_b/r_wisp.dsc:323
+Not yet.	Todavía no.	# core/data/story/side_b/r_wisp.dsc:323
+(Apartment 13. Dusk. The / candle in the window.)	(Apartamento 13. Anochecer. / La vela en la ventana.)	# core/data/story/side_b/r_wisp.dsc:333
+if i blow it out... {..}is it / giving up?	si la apago... {..}¿es / rendirse?	# core/data/story/side_b/r_wisp.dsc:335
+Is it giving up?	¿Es rendirse?	# core/data/story/side_b/r_wisp.dsc:338
+No.	No.	# core/data/story/side_b/r_wisp.dsc:338
+It's letting it rest.	Es dejarla descansar.	# core/data/story/side_b/r_wisp.dsc:338
+(Say nothing.)	(No digas nada.)	# core/data/story/side_b/r_wisp.dsc:338
+I lied, before.	Mentí, antes.	# core/data/story/side_b/r_wisp.dsc:342
+(I lied, before. {.}Your mum / hummed. That was the true / one.)	(Mentí, antes. {.}Tu mamá / tarareaba. Eso fue lo / verdadero.)	# core/data/story/side_b/r_wisp.dsc:348
+...i know. {..}i heard her too.	...lo sé. {..}yo también / la oí.	# core/data/story/side_b/r_wisp.dsc:350
+(Wisp blows.)	(Wisp sopla.)	# core/data/story/side_b/r_wisp.dsc:355
+(Wisp's mum puts a hand on / their shoulder.)	(La mamá de Wisp le pone una / mano en el hombro.)	# core/data/story/side_b/r_wisp.dsc:357
+WISP'S MUM: There. {.}Now I can SEE out.	MAMÁ DE WISP: Ya. {.}Ahora puedo VER afuera.	# core/data/story/side_b/r_wisp.dsc:359
+I brought a lantern. {.}For the / room. Not the window.	Traje un farol. {.}Para / la habitación. No para la ventana.	# core/data/story/side_b/r_wisp.dsc:362
+(@E beeps once. Very small.)	(@E pita una vez. Muy bajito.)	# core/data/story/side_b/r_wisp.dsc:365
+(Your own window candle has / gone out too. {..}Nobody blew / it.)	(Tu propia vela de la ventana / también se apagó. {..}Nadie / la sopló.)	# core/data/story/side_b/r_wisp.dsc:378

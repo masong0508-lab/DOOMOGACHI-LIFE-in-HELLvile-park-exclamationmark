@@ -3,6 +3,7 @@
  * by pointing at it. The PS1 excludes core/gen/text_*.c (this file
  * too) and reads TEXT.BIN into its window instead (ps1/src/txtload.c). */
 #include "doomo/txt.h"
+#include "doomo/lang.h"
 
 extern const uint32_t doomo_text_pack_ch1[];
 extern const uint32_t doomo_text_pack_ch2[];
@@ -63,6 +64,65 @@ extern const uint32_t doomo_text_pack_sb_tock[];
 extern const uint32_t doomo_text_pack_sb_vex[];
 extern const uint32_t doomo_text_pack_sb_wisp[];
 extern const uint32_t doomo_text_pack_vmtest[];
+extern const uint32_t doomo_text_es_ch1[];
+extern const uint32_t doomo_text_es_ch2[];
+extern const uint32_t doomo_text_es_d1[];
+extern const uint32_t doomo_text_es_ep11[];
+extern const uint32_t doomo_text_es_ep12[];
+extern const uint32_t doomo_text_es_ep13[];
+extern const uint32_t doomo_text_es_ep14[];
+extern const uint32_t doomo_text_es_ep15[];
+extern const uint32_t doomo_text_es_ep16[];
+extern const uint32_t doomo_text_es_ep21[];
+extern const uint32_t doomo_text_es_ep22[];
+extern const uint32_t doomo_text_es_ep23[];
+extern const uint32_t doomo_text_es_ep24[];
+extern const uint32_t doomo_text_es_ep25[];
+extern const uint32_t doomo_text_es_ep26[];
+extern const uint32_t doomo_text_es_ep27[];
+extern const uint32_t doomo_text_es_ep31[];
+extern const uint32_t doomo_text_es_ep33[];
+extern const uint32_t doomo_text_es_ep34[];
+extern const uint32_t doomo_text_es_ep36[];
+extern const uint32_t doomo_text_es_ep41[];
+extern const uint32_t doomo_text_es_ep42[];
+extern const uint32_t doomo_text_es_ep43[];
+extern const uint32_t doomo_text_es_ep44[];
+extern const uint32_t doomo_text_es_ep45[];
+extern const uint32_t doomo_text_es_ep46[];
+extern const uint32_t doomo_text_es_ep47[];
+extern const uint32_t doomo_text_es_epi[];
+extern const uint32_t doomo_text_es_f1[];
+extern const uint32_t doomo_text_es_int1[];
+extern const uint32_t doomo_text_es_int3[];
+extern const uint32_t doomo_text_es_p0[];
+extern const uint32_t doomo_text_es_q49a[];
+extern const uint32_t doomo_text_es_q49b[];
+extern const uint32_t doomo_text_es_quests[];
+extern const uint32_t doomo_text_es_s139[];
+extern const uint32_t doomo_text_es_s179[];
+extern const uint32_t doomo_text_es_s187[];
+extern const uint32_t doomo_text_es_sa_fuzz[];
+extern const uint32_t doomo_text_es_sa_masc[];
+extern const uint32_t doomo_text_es_sa_mayor[];
+extern const uint32_t doomo_text_es_sa_nana[];
+extern const uint32_t doomo_text_es_sa_pip[];
+extern const uint32_t doomo_text_es_sa_rivet[];
+extern const uint32_t doomo_text_es_sa_solo1[];
+extern const uint32_t doomo_text_es_sa_solo2[];
+extern const uint32_t doomo_text_es_sa_sprk[];
+extern const uint32_t doomo_text_es_sa_tower[];
+extern const uint32_t doomo_text_es_sb_bloom[];
+extern const uint32_t doomo_text_es_sb_cloud[];
+extern const uint32_t doomo_text_es_sb_gate[];
+extern const uint32_t doomo_text_es_sb_kids[];
+extern const uint32_t doomo_text_es_sb_solo1[];
+extern const uint32_t doomo_text_es_sb_solo2[];
+extern const uint32_t doomo_text_es_sb_solo3[];
+extern const uint32_t doomo_text_es_sb_tock[];
+extern const uint32_t doomo_text_es_sb_vex[];
+extern const uint32_t doomo_text_es_sb_wisp[];
+extern const uint32_t doomo_text_es_vmtest[];
 
 static const uint32_t *const packs[59] = {
     doomo_text_pack_ch1,
@@ -126,9 +186,73 @@ static const uint32_t *const packs[59] = {
     doomo_text_pack_vmtest,
 };
 
+/* Spanish packs (core/lang/story): same ids, same ops, other strings */
+static const uint32_t *const es_packs[59] = {
+    doomo_text_es_ch1,
+    doomo_text_es_ch2,
+    doomo_text_es_d1,
+    doomo_text_es_ep11,
+    doomo_text_es_ep12,
+    doomo_text_es_ep13,
+    doomo_text_es_ep14,
+    doomo_text_es_ep15,
+    doomo_text_es_ep16,
+    doomo_text_es_ep21,
+    doomo_text_es_ep22,
+    doomo_text_es_ep23,
+    doomo_text_es_ep24,
+    doomo_text_es_ep25,
+    doomo_text_es_ep26,
+    doomo_text_es_ep27,
+    doomo_text_es_ep31,
+    doomo_text_es_ep33,
+    doomo_text_es_ep34,
+    doomo_text_es_ep36,
+    doomo_text_es_ep41,
+    doomo_text_es_ep42,
+    doomo_text_es_ep43,
+    doomo_text_es_ep44,
+    doomo_text_es_ep45,
+    doomo_text_es_ep46,
+    doomo_text_es_ep47,
+    doomo_text_es_epi,
+    doomo_text_es_f1,
+    doomo_text_es_int1,
+    doomo_text_es_int3,
+    doomo_text_es_p0,
+    doomo_text_es_q49a,
+    doomo_text_es_q49b,
+    doomo_text_es_quests,
+    doomo_text_es_s139,
+    doomo_text_es_s179,
+    doomo_text_es_s187,
+    doomo_text_es_sa_fuzz,
+    doomo_text_es_sa_masc,
+    doomo_text_es_sa_mayor,
+    doomo_text_es_sa_nana,
+    doomo_text_es_sa_pip,
+    doomo_text_es_sa_rivet,
+    doomo_text_es_sa_solo1,
+    doomo_text_es_sa_solo2,
+    doomo_text_es_sa_sprk,
+    doomo_text_es_sa_tower,
+    doomo_text_es_sb_bloom,
+    doomo_text_es_sb_cloud,
+    doomo_text_es_sb_gate,
+    doomo_text_es_sb_kids,
+    doomo_text_es_sb_solo1,
+    doomo_text_es_sb_solo2,
+    doomo_text_es_sb_solo3,
+    doomo_text_es_sb_tock,
+    doomo_text_es_sb_vex,
+    doomo_text_es_sb_wisp,
+    doomo_text_es_vmtest,
+};
+
 const uint8_t *txt_plat_pack(int pack)
 {
     if (pack < 0 || pack >= 59) return 0;
+    if (es_packs[pack] && lang_get() == LANG_ES) return (const uint8_t *)es_packs[pack];
     return (const uint8_t *)packs[pack];
 }
 
