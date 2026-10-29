@@ -1,13 +1,13 @@
 # English<TAB>Spanish<TAB># where. Keep {codes}, ' / ' line breaks, '//' page breaks.
 Vex: Fresh Air Lounge Employee of the Month, 3rd month running.	Vex: Empleado del Mes del Salón de Aire Fresco, 3er mes seguido.	# core/data/story/side_b/k_vex.dsc:374
 The frame behind the till. / 'Employee of the Month.' {.}It / never changes.	El marco tras la caja. / 'Empleado del Mes.' {.}Nunca / cambia.	# core/data/story/side_b/k_vex.dsc:24
-Vex says it's a motivational / poster. {..}I want a photo. / For evidence.	Vex dice que es un póster / motivacional. {..}Quiero una foto. / Como evidencia.	# core/data/story/side_b/k_vex.dsc:26
+Vex says it's a motivational / poster. {..}I want a photo. / For evidence.	Vex dice que es un póster motivacional. {..}Quiero una foto. // Como evidencia.	# core/data/story/side_b/k_vex.dsc:26
 Of what, I'll know when I see / it.	De qué, lo sabré cuando lo / vea.	# core/data/story/side_b/k_vex.dsc:28
 Take the photo?	¿Tomar la foto?	# core/data/story/side_b/k_vex.dsc:29
 Say cheese.	Di "cheese".	# core/data/story/side_b/k_vex.dsc:29
 Not now.	Ahora no.	# core/data/story/side_b/k_vex.dsc:29
-I'll hold it up by the door. / {.}Step back till it fits the / frame. Then A.	La sostendré junto a la puerta. / {.}Retrocede hasta que quepa / en el marco. Luego A.	# core/data/story/side_b/k_vex.dsc:37
-(The flash. {.}For one frame / the portrait's eyes slide / toward the lens.)	(El flash. {.}Por un cuadro, los / ojos del retrato se deslizan / hacia el lente.)	# core/data/story/side_b/k_vex.dsc:44
+I'll hold it up by the door. / {.}Step back till it fits the / frame. Then A.	La sostendré junto a la puerta. {.}Retrocede hasta que quepa // en el marco. Luego A.	# core/data/story/side_b/k_vex.dsc:37
+(The flash. {.}For one frame / the portrait's eyes slide / toward the lens.)	(El flash. {.}Por un cuadro, los ojos del retrato se deslizan // hacia el lente.)	# core/data/story/side_b/k_vex.dsc:44
 (The polaroid: the eyes are / looking straight at you.)	(La polaroid: los ojos te / miran de frente.)	# core/data/story/side_b/k_vex.dsc:46
 Hey, hey. Customers only by / the frame.	Eh, eh. Solo clientes junto / al marco.	# core/data/story/side_b/k_vex.dsc:51
 He's very motivational.	Es muy motivacional.	# core/data/story/side_b/k_vex.dsc:53
@@ -16,17 +16,17 @@ Vex always stood right there / and smiled at it.	Vex siempre se paraba ahí y / 
 He's gone. {..}The frame isn't.	Se fue. {..}El marco no.	# core/data/story/side_b/k_vex.dsc:61
 One more thing. {.}I water / three plants out back. / Secretly. Vex hates green.	Una cosa más. {.}Riego tres / plantas atrás. En secreto. / Vex odia lo verde.	# core/data/story/side_b/k_vex.dsc:64
 They need a drink, and I need / to stay at the till.	Necesitan agua, y yo necesito / quedarme en la caja.	# core/data/story/side_b/k_vex.dsc:65
-(A fern in a teacup, hidden / behind the bins. It perks up / at once.)	(Un helecho en una taza, oculto / tras los botes. Se anima / al instante.)	# core/data/story/side_b/k_vex.dsc:71
+(A fern in a teacup, hidden / behind the bins. It perks up / at once.)	(Un helecho en una taza, oculto tras los botes. Se anima // al instante.)	# core/data/story/side_b/k_vex.dsc:71
 (A cactus wearing a little / bow. Someone tied it on.)	(Un cactus con un moñito. / Alguien se lo ató.)	# core/data/story/side_b/k_vex.dsc:77
 (A tomato plant. {.}One of the / tomatoes has an eye.)	(Una planta de tomate. {.}Uno de / los tomates tiene un ojo.)	# core/data/story/side_b/k_vex.dsc:83
 (It blinks.)	(Parpadea.)	# core/data/story/side_b/k_vex.dsc:86
 (You water it anyway.)	(La riegas de todos modos.)	# core/data/story/side_b/k_vex.dsc:88
-A Cloud Nine polaroid? {.}I'll / develop it properly. Give it / a minute.	¿Una polaroid de Cloud Nine? {.}La / revelaré bien. Dame un / minuto.	# core/data/story/side_b/k_vex.dsc:93
+A Cloud Nine polaroid? {.}I'll / develop it properly. Give it / a minute.	¿Una polaroid de Cloud Nine? {.}La revelaré bien. Dame un // minuto.	# core/data/story/side_b/k_vex.dsc:93
 Huh.	Vaya.	# core/data/story/side_b/k_vex.dsc:96
 (In the proper print, the / frame is empty.)	(En la copia buena, el marco / está vacío.)	# core/data/story/side_b/k_vex.dsc:99
 ...Light leak. {..}Probably.	...Fuga de luz. {..}Seguro.	# core/data/story/side_b/k_vex.dsc:101
 Empty.	Vacío.	# core/data/story/side_b/k_vex.dsc:106
-Then whoever's in that frame / isn't on the wall. {..}They're / in the shop.	Entonces quien estaba en ese / marco no está en la pared. {..}Está / en la tienda.	# core/data/story/side_b/k_vex.dsc:108
+Then whoever's in that frame / isn't on the wall. {..}They're / in the shop.	Entonces quien estaba en ese marco no está en la pared. {..}Está // en la tienda.	# core/data/story/side_b/k_vex.dsc:108
 Here. {.}A pen that vapes plain / water. For when the grape / runs out.	Toma. {.}Un lápiz que vapea / agua sola. Para cuando / se acabe la uva.	# core/data/story/side_b/k_vex.dsc:110
 (A new frame is taped to / your mailbox. 'Employee of / the Month.' Nobody sent it.)	(Un marco nuevo está pegado / a tu buzón. 'Empleado del / Mes.' Nadie lo mandó.)	# core/data/story/side_b/k_vex.dsc:119
 (It's facing your door.)	(Mira hacia tu puerta.)	# core/data/story/side_b/k_vex.dsc:121
@@ -35,7 +35,7 @@ Since the sky ripped, I've / been in your closet. {..}It's / a very nice closet.
 I would like a cushion. {.}And / cotton candy. I'm a fox. We / stress-eat.	Quisiera un cojín. {.}Y algodón / de azúcar. Soy un zorro. / Comemos por estrés.	# core/data/story/side_b/k_vex.dsc:137
 Let Vex stay?	¿Dejar que Vex se quede?	# core/data/story/side_b/k_vex.dsc:138
 The closet's yours.	El clóset es tuyo.	# core/data/story/side_b/k_vex.dsc:138
-(Pixie Sugar, spun round a / stick. Close enough to / cotton candy, in a war.)	(Azúcar Pixie, enredada en un / palito. Casi algodón de / azúcar, en tiempo de guerra.)	# core/data/story/side_b/k_vex.dsc:150
+(Pixie Sugar, spun round a / stick. Close enough to / cotton candy, in a war.)	(Azúcar Pixie, enredada en un palito. Casi algodón de // azúcar, en tiempo de guerra.)	# core/data/story/side_b/k_vex.dsc:150
 (Your closet, back home. {.}The / catalogue lists a cushion: / 'placed by: Vex. Please.')	(Tu clóset, en casa. {.}El / catálogo lista un cojín: / 'colocado por: Vex. Porfa.')	# core/data/story/side_b/k_vex.dsc:154
 Cotton candy. {.}Pixie Sugar / from the Shop is close. / Fluffy. Pink. Like me.	Algodón de azúcar. {.}El Azúcar / Pixie de la Tienda sirve. / Esponjoso. Rosa. Como yo.	# core/data/story/side_b/k_vex.dsc:159
 (Wave one. A window breaks / somewhere down the street.)	(Ola uno. Se rompe una / ventana por la calle.)	# core/data/story/side_b/k_vex.dsc:166
@@ -58,7 +58,7 @@ Build a bubble machine?	¿Armar una máquina de burbujas?	# core/data/story/side
 Bubbles for everyone!	¡Burbujas para todos!	# core/data/story/side_b/k_vex.dsc:325
 Later.	Luego.	# core/data/story/side_b/k_vex.dsc:325
 Workshop. {.}Bring the rig.	Taller. {.}Trae el equipo.	# core/data/story/side_b/k_vex.dsc:333
-(Rivet welds the rig to a / soap tank and a fan. Vex / holds the torch. Badly.)	(Rivet suelda el equipo a un / tanque de jabón y un / ventilador. Vex sostiene / la antorcha. Mal.)	# core/data/story/side_b/k_vex.dsc:336
+(Rivet welds the rig to a / soap tank and a fan. Vex / holds the torch. Badly.)	(Rivet suelda el equipo a un tanque de jabón y un ventilador. Vex sostiene // la antorcha. Mal.)	# core/data/story/side_b/k_vex.dsc:336
 (The first bubble floats up.)	(Sube la primera burbuja.)	# core/data/story/side_b/k_vex.dsc:339
 (It's grape.)	(Es de uva.)	# core/data/story/side_b/k_vex.dsc:341
 Residue.	Residuo.	# core/data/story/side_b/k_vex.dsc:344
@@ -66,9 +66,9 @@ Residue.	Residuo.	# core/data/story/side_b/k_vex.dsc:344
 Test run. Fun Fair. {.}Your pet / pops, you count.	Prueba. Feria Divertida. {.}Si / tu mascota las revienta, / cuenta.	# core/data/story/side_b/k_vex.dsc:349
 It WORKS. {!}Nobody coughed! / Nobody bought anything!	¡FUNCIONA! {!}¡Nadie tosió! / ¡Nadie compró nada!	# core/data/story/side_b/k_vex.dsc:352
 Now the real thing. {.}The / Unity Stage. With music.	Ahora la prueba real. {.}El / Escenario de la Unidad. / Con música.	# core/data/story/side_b/k_vex.dsc:354
-(A thousand citizens, both / sides of the park, in a / storm of bubbles. On beat.)	(Mil ciudadanos, de ambos / lados del parque, en una / tormenta de burbujas. Al ritmo.)	# core/data/story/side_b/k_vex.dsc:357
+(A thousand citizens, both / sides of the park, in a / storm of bubbles. On beat.)	(Mil ciudadanos, de ambos lados del parque, en una tormenta de burbujas. Al // ritmo.)	# core/data/story/side_b/k_vex.dsc:357
 They're laughing. {..}Both / sides.	Se están riendo. {..}De ambos / lados.	# core/data/story/side_b/k_vex.dsc:360
 Yeah. {.}That's what it sounds / like.	Sí. {.}Así suena.	# core/data/story/side_b/k_vex.dsc:362
 @E popped them all... {..}or / none? I couldn't look. / Again?	@E las reventó todas... {..}¿o / ninguna? No pude mirar. / ¿Otra vez?	# core/data/story/side_b/k_vex.dsc:371
-(HELLVILE HERALD: Vex, Fresh / Air Lounge employee of the / month, 3rd month running.)	(HELLVILE HERALD: Vex, Empleado / del Mes del Salón de Aire / Fresco, 3er mes seguido.)	# core/data/story/side_b/k_vex.dsc:380
-(The photo: Vex, a bubble on / his nose, trying not to look / pleased.)	(La foto: Vex, con una burbuja / en la nariz, intentando no / verse complacido.)	# core/data/story/side_b/k_vex.dsc:382
+(HELLVILE HERALD: Vex, Fresh / Air Lounge employee of the / month, 3rd month running.)	(HELLVILE HERALD: Vex, Empleado del Mes del Salón de Aire // Fresco, 3er mes seguido.)	# core/data/story/side_b/k_vex.dsc:380
+(The photo: Vex, a bubble on / his nose, trying not to look / pleased.)	(La foto: Vex, con una burbuja en la nariz, intentando no // verse complacido.)	# core/data/story/side_b/k_vex.dsc:382

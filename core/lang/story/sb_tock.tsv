@@ -1,15 +1,15 @@
 # English<TAB>Spanish<TAB># where. Keep {codes}, ' / ' line breaks, '//' page breaks.
-I fix every clock in town. / {.}And I nap through every / chime.	Arreglo todos los relojes del / pueblo. {.}Y me duermo en todas / las campanadas.	# core/data/story/side_b/q_tock.dsc:16
-One clock in Town Hall has / no hands. {..}It ticks anyway. I / want to know why.	Un reloj del Ayuntamiento no / tiene manecillas. {..}Marca igual. / Quiero saber por qué.	# core/data/story/side_b/q_tock.dsc:18
+I fix every clock in town. / {.}And I nap through every / chime.	Arreglo todos los relojes del pueblo. {.}Y me duermo en todas // las campanadas.	# core/data/story/side_b/q_tock.dsc:16
+One clock in Town Hall has / no hands. {..}It ticks anyway. I / want to know why.	Un reloj del Ayuntamiento no tiene manecillas. {..}Marca igual. // Quiero saber por qué.	# core/data/story/side_b/q_tock.dsc:18
 Find the clock?	¿Buscar el reloj?	# core/data/story/side_b/q_tock.dsc:19
 Tick tock.	Tic tac.	# core/data/story/side_b/q_tock.dsc:19
 Later.	Luego.	# core/data/story/side_b/q_tock.dsc:19
-The Mayor's office. {.}Behind / the drawing, I'd guess. / Clocks like to hide.	La oficina del Alcalde. {.}Tras / el dibujo, supongo. A los / relojes les gusta esconderse.	# core/data/story/side_b/q_tock.dsc:27
+The Mayor's office. {.}Behind / the drawing, I'd guess. / Clocks like to hide.	La oficina del Alcalde. {.}Tras el dibujo, supongo. A los relojes les gusta // esconderse.	# core/data/story/side_b/q_tock.dsc:27
 (Behind the drawing: a clock / face with no hands. {.}Tick. / Tick. Tick.)	(Tras el dibujo: una esfera / sin manecillas. {.}Tic. / Tic. Tic.)	# core/data/story/side_b/q_tock.dsc:33
 Three thousand, six hundred / and fifty ticks an hour. / {..}Exactly.	Tres mil seiscientos / cincuenta tics por hora. / {..}Exactos.	# core/data/story/side_b/q_tock.dsc:35
 Which is wrong for a clock / and... {..}and... zzz.	Lo cual está mal para un reloj / y... {..}y... zzz.	# core/data/story/side_b/q_tock.dsc:37
 (Tock is asleep. Mid-sentence. / You poke him.)	(Tock está dormido. A media / frase. Lo picas.)	# core/data/story/side_b/q_tock.dsc:39
-...where was I. {.}Ticking. / Yes. Bring me a Milk. I'll / listen till midnight.	...¿por dónde iba? {.}Tictaqueando. / Sí. Tráeme una Leche. Escucharé / hasta medianoche.	# core/data/story/side_b/q_tock.dsc:41
+...where was I. {.}Ticking. / Yes. Bring me a Milk. I'll / listen till midnight.	...¿por dónde iba? {.}Tictaqueando. Sí. Tráeme una Leche. // Escucharé hasta medianoche.	# core/data/story/side_b/q_tock.dsc:41
 (Midnight. No music. Just the / clock with no hands.)	(Medianoche. Sin música. Solo / el reloj sin manecillas.)	# core/data/story/side_b/q_tock.dsc:51
 (Twelve chimes, each one lower / than the last.)	(Doce campanadas, cada una más / grave que la anterior.)	# core/data/story/side_b/q_tock.dsc:58
 (A thirteenth.)	(Una decimotercera.)	# core/data/story/side_b/q_tock.dsc:61
@@ -21,7 +21,7 @@ Morning. {.}I wrote it down.	Buenos días. {.}Lo anoté.	# core/data/story/side_
 It's counting DOWN now. {..}I / don't know to what.	Ahora cuenta hacia ATRÁS. {..}No / sé hasta qué.	# core/data/story/side_b/q_tock.dsc:80
 I won't fix it. {.}It's / counting something. Let it.	No lo arreglaré. {.}Está / contando algo. Que lo haga.	# core/data/story/side_b/q_tock.dsc:82
 One Milk. {.}For the long / listen. Warm, if they have it.	Una Leche. {.}Para la escucha / larga. Tibia, si hay.	# core/data/story/side_b/q_tock.dsc:90
-(The handless clock on your / wall ticks. {..}You count. / 3,650 an hour. Exactly.)	(El reloj sin manecillas de tu / pared marca. {..}Cuentas. / 3.650 por hora. Exactos.)	# core/data/story/side_b/q_tock.dsc:95
+(The handless clock on your / wall ticks. {..}You count. / 3,650 an hour. Exactly.)	(El reloj sin manecillas de tu pared marca. {..}Cuentas. // 3.650 por hora. Exactos.)	# core/data/story/side_b/q_tock.dsc:95
 My tally wall is full. {.}I / need a second wall.	Mi pared de marcas está llena. / {.}Necesito una segunda pared.	# core/data/story/side_b/q_tock.dsc:108
 Or a reason to stop. {..}I'm / not ready to stop.	O una razón para parar. {..}No / estoy listo para parar.	# core/data/story/side_b/q_tock.dsc:110
 I need chalk. {.}Clinker has / it. She doesn't share.	Necesito tiza. {.}Clinker la / tiene. No comparte.	# core/data/story/side_b/q_tock.dsc:112
@@ -36,14 +36,14 @@ Four.	Cuatro.	# core/data/story/side_b/q_tock.dsc:139
 Too much death.	Demasiada muerte.	# core/data/story/side_b/q_tock.dsc:141
 Seven. {.}The death is in the / right place.	Siete. {.}La muerte está en el / lugar justo.	# core/data/story/side_b/q_tock.dsc:144
 Take the chalk. {..}I'm keeping / the poem.	Toma la tiza. {..}Me quedo con / el poema.	# core/data/story/side_b/q_tock.dsc:148
-A new wall. {.}In the pump-yard / shed. You pick where.	Una pared nueva. {.}En el / cobertizo del patio de bombas. / Tú eliges dónde.	# core/data/story/side_b/q_tock.dsc:153
+A new wall. {.}In the pump-yard / shed. You pick where.	Una pared nueva. {.}En el cobertizo del patio de bombas. // Tú eliges dónde.	# core/data/story/side_b/q_tock.dsc:153
 (He lifts the chalk to make / the first mark.)	(Levanta la tiza para hacer la / primera marca.)	# core/data/story/side_b/q_tock.dsc:158
 (His hand stops.)	(Su mano se detiene.)	# core/data/story/side_b/q_tock.dsc:160
 Maybe tomorrow I'll know what / I'm counting.	Quizá mañana sepa qué estoy / contando.	# core/data/story/side_b/q_tock.dsc:162
-(The mark he does make is a / heart. His hand shook. {..}He / leaves it.)	(La marca que sí hace es un / corazón. Le tembló la mano. {..}Lo / deja.)	# core/data/story/side_b/q_tock.dsc:165
+(The mark he does make is a / heart. His hand shook. {..}He / leaves it.)	(La marca que sí hace es un corazón. Le tembló la mano. {..}Lo // deja.)	# core/data/story/side_b/q_tock.dsc:165
 (Clinker's poem: three lines / in chalk. {.}The death is in / the right place.)	(El poema de Clinker: tres / versos en tiza. {.}La muerte / está en el lugar justo.)	# core/data/story/side_b/q_tock.dsc:177
-The handless clock. {.}I want / to give it hands. And set it / counting down...	El reloj sin manecillas. {.}Quiero / ponerle manecillas. Y que / cuente hacia atrás...	# core/data/story/side_b/q_tock.dsc:189
-...to the next Mingle. {..}And / Tallyworn wants to be the / one who turns it.	...hasta el próximo Mingle. {..}Y / Tallyworn quiere ser quien / le dé cuerda.	# core/data/story/side_b/q_tock.dsc:191
+The handless clock. {.}I want / to give it hands. And set it / counting down...	El reloj sin manecillas. {.}Quiero ponerle manecillas. Y que // cuente hacia atrás...	# core/data/story/side_b/q_tock.dsc:189
+...to the next Mingle. {..}And / Tallyworn wants to be the / one who turns it.	...hasta el próximo Mingle. {..}Y Tallyworn quiere ser quien // le dé cuerda.	# core/data/story/side_b/q_tock.dsc:191
 Give it hands?	¿Ponerle manecillas?	# core/data/story/side_b/q_tock.dsc:192
 Let's set it.	Vamos a ajustarlo.	# core/data/story/side_b/q_tock.dsc:192
 Clock hands don't need to be / structural.	Las manecillas no tienen por / qué ser estructurales.	# core/data/story/side_b/q_tock.dsc:200
@@ -53,13 +53,13 @@ Now carry it. {.}Gently. To the / old gatepost, in Hellvile.	Ahora llévalo. {.}
 Three hundred and sixty-five / days.	Trescientos sesenta y cinco / días.	# core/data/story/side_b/q_tock.dsc:213
 (He turns the hands. {.}Click.)	(Gira las manecillas. {.}Clic.)	# core/data/story/side_b/q_tock.dsc:215
 (The clock chimes.)	(El reloj da la hora.)	# core/data/story/side_b/q_tock.dsc:218
-(Tock dozes on the post. The / crowd whispers, so as not / to wake him.)	(Tock dormita en el poste. La / multitud susurra para no / despertarlo.)	# core/data/story/side_b/q_tock.dsc:220
+(Tock dozes on the post. The / crowd whispers, so as not / to wake him.)	(Tock dormita en el poste. La multitud susurra para no // despertarlo.)	# core/data/story/side_b/q_tock.dsc:220
 Three thousand, six hundred / and sixty-five days, / counting up.	Tres mil seiscientos sesenta / y cinco días, contando / hacia arriba.	# core/data/story/side_b/q_tock.dsc:224
 {..}Day one, counting down.	{..}Día uno, contando hacia atrás.	# core/data/story/side_b/q_tock.dsc:226
-(One last tally mark on the / gatepost, under the key. / Then he stops.)	(Una última marca en el poste, / bajo la llave. Luego / se detiene.)	# core/data/story/side_b/q_tock.dsc:229
+(One last tally mark on the / gatepost, under the key. / Then he stops.)	(Una última marca en el poste, bajo la llave. Luego // se detiene.)	# core/data/story/side_b/q_tock.dsc:229
 My eyes are just doing a rain.	Es que mis ojos están haciendo / una lluvia.	# core/data/story/side_b/q_tock.dsc:231
 (He pockets the chalk.)	(Se guarda la tiza.)	# core/data/story/side_b/q_tock.dsc:233
-(The countdown clock reads / 364. {.}It's the only clock / Tock never naps through.)	(El reloj de cuenta atrás marca / 364. {.}Es el único reloj / en el que Tock nunca dormita.)	# core/data/story/side_b/q_tock.dsc:244
+(The countdown clock reads / 364. {.}It's the only clock / Tock never naps through.)	(El reloj de cuenta atrás marca 364. {.}Es el único reloj // en el que Tock nunca dormita.)	# core/data/story/side_b/q_tock.dsc:244
 (A note on your door, in very / neat handwriting:)	(Una nota en tu puerta, con / letra muy pulcra:)	# core/data/story/side_b/q_tock.dsc:257
 'your crate is a table now. / you're welcome.'	'tu caja ahora es una mesa. / de nada.'	# core/data/story/side_b/q_tock.dsc:259
 (The handwriting is see-through.)	(La letra es transparente.)	# core/data/story/side_b/q_tock.dsc:261
@@ -74,17 +74,17 @@ Six things. {.}Nothing in front / of the door. Then I'll grade / it. Sorry.	Seis
 (She rearranges your chair, / apologising.)	(Reacomoda tu silla, / disculpándose.)	# core/data/story/side_b/q_tock.dsc:294
 (@E moves it back.)	(@E la vuelve a poner.)	# core/data/story/side_b/q_tock.dsc:297
 (She moves it again. {.}Sorry.)	(Ella la mueve otra vez. {.}Perdón.)	# core/data/story/side_b/q_tock.dsc:299
-(She moves the pet bed. {..}@E / sits in it. She gives up on / the pet bed.)	(Mueve la cama de la mascota. / {..}@E se sienta en ella. Ella / se rinde con la cama.)	# core/data/story/side_b/q_tock.dsc:304
+(She moves the pet bed. {..}@E / sits in it. She gives up on / the pet bed.)	(Mueve la cama de la mascota. {..}@E se sienta en ella. Ella // se rinde con la cama.)	# core/data/story/side_b/q_tock.dsc:304
 {big}TIDY.{/} {.}Sorry. It's very / tidy.	{big}ORDENADO.{/} {.}Perdón. Está muy / ordenado.	# core/data/story/side_b/q_tock.dsc:309
 Tidy-ish. {.}I'll keep an eye / on it. Sorry.	Más o menos ordenado. {.}Le echaré / un ojo. Perdón.	# core/data/story/side_b/q_tock.dsc:312
 I haunt empty houses because / someone should keep them / warm...	Ronda casas vacías porque / alguien debe mantenerlas / cálidas...	# core/data/story/side_b/q_tock.dsc:316
 {..}...for whoever's next.	{..}...para quien llegue después.	# core/data/story/side_b/q_tock.dsc:318
-(A note on your chair, in / see-through ink: 'not me. / (i'd have centred it.)')	(Una nota en tu silla, con tinta / transparente: 'yo no fui. / (la habría centrado.)')	# core/data/story/side_b/q_tock.dsc:328
+(A note on your chair, in / see-through ink: 'not me. / (i'd have centred it.)')	(Una nota en tu silla, con tinta transparente: 'yo no fui. // (la habría centrado.)')	# core/data/story/side_b/q_tock.dsc:328
 Someone ELSE is tidying your / house. {..}Badly.	Alguien MÁS está ordenando tu / casa. {..}Mal.	# core/data/story/side_b/q_tock.dsc:340
-Your keys. Your lamp. Your / egg basket. {.}All two inches / to the left. Every night.	Tus llaves. Tu lámpara. Tu / cesta de huevos. {.}Cinco / centímetros a la izquierda. Cada noche.	# core/data/story/side_b/q_tock.dsc:342
+Your keys. Your lamp. Your / egg basket. {.}All two inches / to the left. Every night.	Tus llaves. Tu lámpara. Tu cesta de huevos. {.}Cinco centímetros a la izquierda. // Cada noche.	# core/data/story/side_b/q_tock.dsc:342
 Catch the tidier?	¿Atrapar al ordenador?	# core/data/story/side_b/q_tock.dsc:343
 Stake out tonight.	Vigilar esta noche.	# core/data/story/side_b/q_tock.dsc:343
-(Night one. You lie awake. / {.}In the morning the keys are / two inches to the left.)	(Noche uno. Te desvelas. {.}Por la / mañana las llaves están cinco / centímetros a la izquierda.)	# core/data/story/side_b/q_tock.dsc:353
+(Night one. You lie awake. / {.}In the morning the keys are / two inches to the left.)	(Noche uno. Te desvelas. {.}Por la mañana las llaves están // cinco centímetros a la izquierda.)	# core/data/story/side_b/q_tock.dsc:353
 (Night two. The lamp. Two / inches.)	(Noche dos. La lámpara. Cinco / centímetros.)	# core/data/story/side_b/q_tock.dsc:356
 (And the chair is facing / your bed. {..}Not two inches. / It's just facing you.)	(Y la silla mira hacia tu / cama. {..}No cinco centímetros. / Solo te está mirando.)	# core/data/story/side_b/q_tock.dsc:359
 ...That one wasn't me.	...Esa no fui yo.	# core/data/story/side_b/q_tock.dsc:361
@@ -98,13 +98,13 @@ Two inches is a DRAUGHT.	Cinco centímetros es una / CORRIENTE.	# core/data/stor
 ...Truce. {.}You may move the / vapor detector. Only.	...Tregua. {.}Puedes mover el / detector de vapor. Solo eso.	# core/data/story/side_b/q_tock.dsc:390
 Two inches.	Cinco centímetros.	# core/data/story/side_b/q_tock.dsc:392
 ...Two inches.	...Cinco centímetros.	# core/data/story/side_b/q_tock.dsc:394
-(Wobblewisp's vase is two / inches to the left of where / you left it.)	(El jarrón de Wobblewisp está / cinco centímetros a la / izquierda de donde lo dejaste.)	# core/data/story/side_b/q_tock.dsc:404
+(Wobblewisp's vase is two / inches to the left of where / you left it.)	(El jarrón de Wobblewisp está cinco centímetros a la // izquierda de donde lo dejaste.)	# core/data/story/side_b/q_tock.dsc:404
 (You leave it there. {.}It looks / better.)	(Lo dejas ahí. {.}Se ve / mejor.)	# core/data/story/side_b/q_tock.dsc:406
-Your Annex! {.}Half Hillvile, / half Hellvile. It needs / rating by both traditions.	¡Tu Anexo! {.}Mitad Hillvile, / mitad Hellvile. Necesita / calificación de ambas tradiciones.	# core/data/story/side_b/q_tock.dsc:418
-Pharaohnie. Tomb realtor. / {..}Both traditions is MY / tradition, darling.	Pharaohnie. Agente de tumbas. / {..}Ambas tradiciones es MI / tradición, querido.	# core/data/story/side_b/q_tock.dsc:420
+Your Annex! {.}Half Hillvile, / half Hellvile. It needs / rating by both traditions.	¡Tu Anexo! {.}Mitad Hillvile, mitad Hellvile. Necesita calificación de ambas // tradiciones.	# core/data/story/side_b/q_tock.dsc:418
+Pharaohnie. Tomb realtor. / {..}Both traditions is MY / tradition, darling.	Pharaohnie. Agente de tumbas. {..}Ambas tradiciones es MI // tradición, querido.	# core/data/story/side_b/q_tock.dsc:420
 Get the Annex rated?	¿Calificar el Anexo?	# core/data/story/side_b/q_tock.dsc:421
 Rate away.	Califica.	# core/data/story/side_b/q_tock.dsc:421
-Four Hellvile pieces. A cursed / one. {.}Cosy. Dark. Eternal.	Cuatro piezas de Hellvile. Una / maldita. {.}Acogedor. Oscuro. Eterno.	# core/data/story/side_b/q_tock.dsc:429
+Four Hellvile pieces. A cursed / one. {.}Cosy. Dark. Eternal.	Cuatro piezas de Hellvile. Una maldita. {.}Acogedor. Oscuro. // Eterno.	# core/data/story/side_b/q_tock.dsc:429
 Cosy. {.}Dark.	Acogedor. {.}Oscuro.	# core/data/story/side_b/q_tock.dsc:432
 {..}Where's eternal?	{..}¿Y lo eterno?	# core/data/story/side_b/q_tock.dsc:434
 Not yet. {.}Every tomb needs / something cursed, darling.	Aún no. {.}Toda tumba necesita / algo maldito, querido.	# core/data/story/side_b/q_tock.dsc:436
@@ -115,7 +115,7 @@ I could sell this house to / you, Hauntessa.	Podría venderte esta casa, / Haunt
 ...I'll make an offer.	...Haré una oferta.	# core/data/story/side_b/q_tock.dsc:456
 Accepted.	Aceptada.	# core/data/story/side_b/q_tock.dsc:458
 (Neither of them can hold a / pen.)	(Ninguna de las dos puede / sostener una pluma.)	# core/data/story/side_b/q_tock.dsc:460
-(Hauntessa dusts the Annex, / around the height marks on / the door frame. Not over.)	(Hauntessa desempolva el Anexo, / alrededor de las marcas de / altura del marco. No encima.)	# core/data/story/side_b/q_tock.dsc:463
-I've never been inside a house / someone STAYED in.	Nunca había estado dentro de una / casa donde alguien SE QUEDARA.	# core/data/story/side_b/q_tock.dsc:465
+(Hauntessa dusts the Annex, / around the height marks on / the door frame. Not over.)	(Hauntessa desempolva el Anexo, alrededor de las marcas de // altura del marco. No encima.)	# core/data/story/side_b/q_tock.dsc:463
+I've never been inside a house / someone STAYED in.	Nunca había estado dentro de una casa donde alguien SE // QUEDARA.	# core/data/story/side_b/q_tock.dsc:465
 (The realtor's sign in your / garden has a second line now:)	(El cartel del agente en tu / jardín ahora tiene una / segunda línea:)	# core/data/story/side_b/q_tock.dsc:475
 'SOLD (to a ghost) (she's / keeping it warm)'	'VENDIDA (a un fantasma) (la / mantiene calientita)'	# core/data/story/side_b/q_tock.dsc:477

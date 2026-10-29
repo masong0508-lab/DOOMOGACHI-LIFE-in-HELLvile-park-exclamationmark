@@ -1,7 +1,7 @@
 # English<TAB>Spanish<TAB># where. Keep {codes}, ' / ' line breaks, '//' page breaks.
 Every year, the park had / a potluck.	Cada año, el parque hacía / una comida compartida.	# core/data/story/ch1/p0.dsc:10
 Everybody came.	Todos venían.	# core/data/story/ch1/p0.dsc:14
-Fireworks! The cloud looked / up. It loved fireworks.	¡Fuegos artificiales! La nube / miraba hacia arriba. Los / amaba.	# core/data/story/ch1/p0.dsc:20
+Fireworks! The cloud looked / up. It loved fireworks.	¡Fuegos artificiales! La nube miraba hacia arriba. Los // amaba.	# core/data/story/ch1/p0.dsc:20
 The string slipped. / Nobody noticed.	Se soltó la cuerda. / Nadie lo notó.	# core/data/story/ch1/p0.dsc:29
 Not everybody went home.	No todos volvieron a casa.	# core/data/story/ch1/p0.dsc:33
 {d}Nobody talks about why.	{d}Nadie habla de por qué.	# core/data/story/ch1/p0.dsc:37

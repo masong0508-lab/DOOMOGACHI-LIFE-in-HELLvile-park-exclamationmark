@@ -1,10 +1,10 @@
 # English<TAB>Spanish<TAB># where. Keep {codes}, ' / ' line breaks, '//' page breaks.
-The town sign still says / 500. {.}Under it, scratched / out, it says 1000.	El cartel del pueblo aún dice / 500. {.}Debajo, tachado, dice / 1000.	# core/data/story/side_a/i_solo.dsc:13
+The town sign still says / 500. {.}Under it, scratched / out, it says 1000.	El cartel del pueblo aún dice 500. {.}Debajo, tachado, dice // 1000.	# core/data/story/side_a/i_solo.dsc:13
 I want to repaint it myself! / {..}I've never held a roller.	¡Quiero repintarlo yo mismo! / {..}Nunca he sostenido un rodillo.	# core/data/story/side_a/i_solo.dsc:15
 Fetch him the paint?	¿Le traes la pintura?	# core/data/story/side_a/i_solo.dsc:16
 Two colours, coming up.	Dos colores, en camino.	# core/data/story/side_a/i_solo.dsc:16
 Later.	Más tarde.	# core/data/story/side_a/i_solo.dsc:16
-Rainbow Ewe has the pink. / Stencilla, over the gate, / has the red.	Oveja Arcoíris tiene el rosa. / Stencilla, junto a la / puerta, tiene el rojo.	# core/data/story/side_a/i_solo.dsc:24
+Rainbow Ewe has the pink. / Stencilla, over the gate, / has the red.	Oveja Arcoíris tiene el rosa. Stencilla, junto a la // puerta, tiene el rojo.	# core/data/story/side_a/i_solo.dsc:24
 The pinkest pink! {.}Don't let / him lick it.	¡El rosa más rosa! {.}Que no / lo lama.	# core/data/story/side_a/i_solo.dsc:30
 Hellvile red. It doesn't come / off. {..}That's the point.	Rojo Hellvile. No se quita. / {..}Esa es la gracia.	# core/data/story/side_a/i_solo.dsc:36
 Here goes.	Allá vamos.	# core/data/story/side_a/i_solo.dsc:41
@@ -39,9 +39,9 @@ Please Stop II	Basta Ya II	# core/data/story/side_a/i_solo.dsc:124
 You let something go forty / times, and it comes back / forty times.	Sueltas algo cuarenta veces / y vuelve cuarenta veces.	# core/data/story/side_a/i_solo.dsc:130
 {..}That's not fishing. That's / a friend.	{..}Eso no es pescar. Es un / amigo.	# core/data/story/side_a/i_solo.dsc:132
 He got away. {.}He'll be back. / He always is.	Se escapó. {.}Volverá. / Siempre vuelve.	# core/data/story/side_a/i_solo.dsc:139
-(A fish waits by the pier. / The tag has a new name on / it: @P.)	(Un pez espera junto al muelle. / La etiqueta tiene un nombre / nuevo: @P.)	# core/data/story/side_a/i_solo.dsc:144
-I read to the whole street / at once. {.}Tonight: 'The Very / Hungry Demon'.	Leo a toda la calle a la vez. / {.}Esta noche: 'El Demonio / Muy Hambriento'.	# core/data/story/side_a/i_solo.dsc:155
-I test every book on a pet / first. {..}Yours will do / nicely.	Pruebo cada libro primero con / una mascota. {..}La tuya / servirá.	# core/data/story/side_a/i_solo.dsc:157
+(A fish waits by the pier. / The tag has a new name on / it: @P.)	(Un pez espera junto al muelle. La etiqueta tiene un nombre // nuevo: @P.)	# core/data/story/side_a/i_solo.dsc:144
+I read to the whole street / at once. {.}Tonight: 'The Very / Hungry Demon'.	Leo a toda la calle a la vez. {.}Esta noche: 'El Demonio // Muy Hambriento'.	# core/data/story/side_a/i_solo.dsc:155
+I test every book on a pet / first. {..}Yours will do / nicely.	Pruebo cada libro primero con una mascota. {..}La tuya // servirá.	# core/data/story/side_a/i_solo.dsc:157
 Lend her @E?	¿Le prestas a @E?	# core/data/story/side_a/i_solo.dsc:158
 Story time!	¡Hora del cuento!	# core/data/story/side_a/i_solo.dsc:158
 First, the pet's bed. By the / window, so it can hear me.	Primero, la cama de la / mascota. Junto a la ventana, / para que me oiga.	# core/data/story/side_a/i_solo.dsc:166
@@ -54,7 +54,7 @@ It's a classic.	Es un clásico.	# core/data/story/side_a/i_solo.dsc:174
 Oh. {..}That's not how it ends.	Oh. {..}Así no termina.	# core/data/story/side_a/i_solo.dsc:185
 'And the very hungry demon / was given one cupcake, and / it was enough.'	'Y al demonio muy hambriento / le dieron un cupcake, y / fue suficiente.'	# core/data/story/side_a/i_solo.dsc:187
 First edit in sixty years.	Primera edición en sesenta años.	# core/data/story/side_a/i_solo.dsc:189
-(The storybook on your shelf / has a new last page: a / cupcake, in crayon.)	(El cuento de tu estante tiene / una última página nueva: un / cupcake, en crayón.)	# core/data/story/side_a/i_solo.dsc:197
+(The storybook on your shelf / has a new last page: a / cupcake, in crayon.)	(El cuento de tu estante tiene una última página nueva: un // cupcake, en crayón.)	# core/data/story/side_a/i_solo.dsc:197
 The Whack-an-Imp pops up imps / when it's switched OFF.	El Golpea-Diablillos saca / diablillos cuando está / APAGADO.	# core/data/story/side_a/i_solo.dsc:210
 {!}That's not a feature. {.}Give / it a go?	{!}Eso no es una función. {.}¿Lo / pruebas?	# core/data/story/side_a/i_solo.dsc:212
 Play Whack-an-Imp?	¿Jugar a Golpea-Diablillos?	# core/data/story/side_a/i_solo.dsc:213
@@ -72,4 +72,4 @@ Where does the plug GO?	¿Adónde VA el enchufe?	# core/data/story/side_a/i_solo
 (Squeaker pulls the plug.)	(Squeaker desenchufa.)	# core/data/story/side_a/i_solo.dsc:251
 (Back at the Fun Fair, an imp / pops up anyway.)	(De vuelta en la Feria, sale / un diablillo de todos modos.)	# core/data/story/side_a/i_solo.dsc:254
 {d}It's a very good machine.	{d}Es una máquina muy buena.	# core/data/story/side_a/i_solo.dsc:256
-(The little Whack-an-Imp at / home pops up an imp. {.}It is / unplugged. @E bonks it.)	(El pequeño Golpea-Diablillos / de casa saca un diablillo. / {.}Está desenchufado. @E lo golpea.)	# core/data/story/side_a/i_solo.dsc:265
+(The little Whack-an-Imp at / home pops up an imp. {.}It is / unplugged. @E bonks it.)	(El pequeño Golpea-Diablillos de casa saca un diablillo. // {.}Está desenchufado. @E lo golpea.)	# core/data/story/side_a/i_solo.dsc:265

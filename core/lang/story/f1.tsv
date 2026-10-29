@@ -1,5 +1,5 @@
 # English<TAB>Spanish<TAB># where. Keep {codes}, ' / ' line breaks, '//' page breaks.
-(Twelve years ago. A forge / in Hellvile. A little imp / holds the torch.)	(Hace doce años. Una fragua en / Hellvile. Un diablillo / sostiene la antorcha.)	# core/data/story/ch2/f1.dsc:8
-ANVIL: Two faces, laughing. / Someone laughs here, it / bubbles up over THERE.	ANVIL: Dos caras riendo. / Si alguien ríe aquí, burbujea / hasta ALLÁ.	# core/data/story/ch2/f1.dsc:13
+(Twelve years ago. A forge / in Hellvile. A little imp / holds the torch.)	(Hace doce años. Una fragua en Hellvile. Un diablillo // sostiene la antorcha.)	# core/data/story/ch2/f1.dsc:8
+ANVIL: Two faces, laughing. / Someone laughs here, it / bubbles up over THERE.	ANVIL: Dos caras riendo. Si alguien ríe aquí, burbujea // hasta ALLÁ.	# core/data/story/ch2/f1.dsc:13
 ANVIL: A bow on top. There. / For the Mingle.	ANVIL: Un moño arriba. Listo. / Para el Mingle.	# core/data/story/ch2/f1.dsc:18
 (Now.)	(Ahora.)	# core/data/story/ch2/f1.dsc:23

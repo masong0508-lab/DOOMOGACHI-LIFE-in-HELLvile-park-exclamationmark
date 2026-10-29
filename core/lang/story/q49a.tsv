@@ -31,7 +31,7 @@ She's in the park, / practising 'hi' to a tree. / {..}The tree said no.	Está en
 Give her a little pep / talk? For love?	¿Le das un discursito / de ánimo? ¿Por amor?	# core/data/story/quests49/q49a.dsc:87
 Help Freckles confess?	¿Ayudar a Freckles a confesarse?	# core/data/story/quests49/q49a.dsc:88
 Love is in the air! {..}Or / at least nervous giggling.	¡El amor está en el aire! / {..}O al menos risitas nerviosas.	# core/data/story/quests49/q49a.dsc:93
-Thanks, partner. {.}Here: / smell nice. It's a love / tool. {.}Use it wisely.	Gracias, compañero. {.}Toma: / huele bien. Es una / herramienta de amor. {.}Úsala con cuidado.	# core/data/story/quests49/q49a.dsc:95
+Thanks, partner. {.}Here: / smell nice. It's a love / tool. {.}Use it wisely.	Gracias, compañero. {.}Toma: huele bien. Es una herramienta de amor. {.}Úsala // con cuidado.	# core/data/story/quests49/q49a.dsc:95
 Clack clack! I'm a xylophone / teacher AND a xylophone.	¡Clac clac! Soy profesor / de xilófono Y un xilófono.	# core/data/story/quests49/q49a.dsc:101
 Two Milks keep these bones / ringing true. {..}Calcium. / It's in the brochure.	Dos Leches mantienen estos / huesos afinados. {..}Calcio. / Viene en el folleto.	# core/data/story/quests49/q49a.dsc:103
 Bring Bonejangles 2 Milk?	¿Llevar 2 Leche a Bonejangles?	# core/data/story/quests49/q49a.dsc:104
@@ -78,9 +78,9 @@ It's NOT on my forecast. / {..}Nothing purple is ever / on my forecast.	NO está
 Photograph the cloud?	¿Fotografiar la nube?	# core/data/story/quests49/q49a.dsc:230
 Look at that cloud...	Mira esa nube...	# core/data/story/quests49/q49a.dsc:234
 {..}It's SMILING.	{..}Está SONRIENDO.	# core/data/story/quests49/q49a.dsc:237
-That's not meteorology. / That's evil. {.}Here, a storm / chaser badge. Stay dry.	Eso no es meteorología. / Es maldad. {.}Toma, una / insignia de cazatormentas. Sigue seco.	# core/data/story/quests49/q49a.dsc:239
+That's not meteorology. / That's evil. {.}Here, a storm / chaser badge. Stay dry.	Eso no es meteorología. Es maldad. {.}Toma, una insignia de cazatormentas. // Sigue seco.	# core/data/story/quests49/q49a.dsc:239
 Poor Steamy still smells of / grape after her... ordeal.	La pobre Steamy aún huele a / uva tras su... calvario.	# core/data/story/quests49/q49a.dsc:245
-Bring her my lavender soap? / {.}It's very calming. It / calms me just holding it.	¿Le llevas mi jabón de / lavanda? {.}Es muy calmante. / A mí me calma con solo sostenerlo.	# core/data/story/quests49/q49a.dsc:247
+Bring her my lavender soap? / {.}It's very calming. It / calms me just holding it.	¿Le llevas mi jabón de lavanda? {.}Es muy calmante. A mí me calma con solo // sostenerlo.	# core/data/story/quests49/q49a.dsc:247
 Take Steamy the soap?	¿Llevarle el jabón a Steamy?	# core/data/story/quests49/q49a.dsc:248
 She's back at the bath / house, humming!	¡Ya está en los baños, / tarareando!	# core/data/story/quests49/q49a.dsc:252
 Real humming. {..}Not demon / humming. {.}I checked. / Bless you!	Tarareo de verdad. {..}No de / demonio. {.}Lo comprobé. / ¡Salud!	# core/data/story/quests49/q49a.dsc:254
@@ -113,7 +113,7 @@ Two packs? {.}For morale. / {..}Imp morale.	¿Dos paquetes? {.}Para la / moral. 
 Bring 2 Candy Eyeballs?	¿Llevar 2 Ojos de Caramelo?	# core/data/story/quests49/q49a.dsc:336
 {big}*crunch*{/}	{big}*crunch*{/}	# core/data/story/quests49/q49a.dsc:341
 {..}Just like Mum's.	{..}Igualitos a los de mamá.	# core/data/story/quests49/q49a.dsc:343
-Ahem. Thanks. Have some weld / rods. {.}Don't tell anyone / I'm sentimental.	Ejem. Gracias. Toma unas / varillas de soldar. {.}No le / digas a nadie que soy sentimental.	# core/data/story/quests49/q49a.dsc:345
+Ahem. Thanks. Have some weld / rods. {.}Don't tell anyone / I'm sentimental.	Ejem. Gracias. Toma unas varillas de soldar. {.}No le digas a nadie que soy // sentimental.	# core/data/story/quests49/q49a.dsc:345
 Dame Fluff and Valkyrie / have been sparring for / YEARS, darling.	Dame Fluff y Valkyrie / llevan AÑOS peleando, / querido.	# core/data/story/quests49/q49a.dsc:350
 Every duel ends in a hug / and a nosebleed. {..}It's / obviously love.	Cada duelo acaba en abrazo / y sangrado de nariz. {..}Es / obviamente amor.	# core/data/story/quests49/q49a.dsc:352
 Go nudge Dame Fluff for me. / West lawn!	Ve a empujar un poquito a / Dame Fluff. ¡Césped oeste!	# core/data/story/quests49/q49a.dsc:354

@@ -53,20 +53,20 @@ She's still crying. {.}We'll go / back. I'll bring tissues.	Sigue llorando. {.}V
 ...Grand-Flops.	...Abuelo-Flops.	# core/data/story/side_b/x_solo1.dsc:142
 Give him here. {.}I sewed Mr. / Flops a bed. I can sew his / grandad an ear.	Dámelo. {.}Le cosí una cama al / Sr. Flops. Le coseré una / oreja a su abuelo.	# core/data/story/side_b/x_solo1.dsc:146
 An 1887 ear. {.}I'll do it / tonight. Backstitch. Like / they did then.	Una oreja de 1887. {.}Esta / noche. Pespunte. Como se / hacía entonces.	# core/data/story/side_b/x_solo1.dsc:149
-(By morning the ear is back / on. {.}It's a little crooked. / Pip says that's character.)	(Por la mañana la oreja ya / está puesta. {.}Quedó algo / chueca. Pip dice que es carácter.)	# core/data/story/side_b/x_solo1.dsc:153
-(You leave Grand-Flops on / the last step of Breach 5. / {.}The crying stops.)	(Dejas a Abuelo-Flops en el / último escalón de la Brecha 5. / {.}El llanto cesa.)	# core/data/story/side_b/x_solo1.dsc:158
+(By morning the ear is back / on. {.}It's a little crooked. / Pip says that's character.)	(Por la mañana la oreja ya está puesta. {.}Quedó algo chueca. Pip dice que es // carácter.)	# core/data/story/side_b/x_solo1.dsc:153
+(You leave Grand-Flops on / the last step of Breach 5. / {.}The crying stops.)	(Dejas a Abuelo-Flops en el último escalón de la Brecha 5. // {.}El llanto cesa.)	# core/data/story/side_b/x_solo1.dsc:158
 (The puddles dry, one by one. / The joke ghosts applaud.)	(Los charcos se secan, uno a / uno. Los fantasmas chistosos / aplauden.)	# core/data/story/side_b/x_solo1.dsc:160
 THE WIDOW: I didn't know what / to do with my hands.	LA VIUDA: No sabía qué hacer / con las manos.	# core/data/story/side_b/x_solo1.dsc:163
 (Pip holds Grand-Flops out to / her.)	(Pip le tiende a Abuelo-Flops.)	# core/data/story/side_b/x_solo1.dsc:165
 Hold it.	Tómalo.	# core/data/story/side_b/x_solo1.dsc:167
 (She does.)	(Lo toma.)	# core/data/story/side_b/x_solo1.dsc:169
-(Grand-Flops sits on your / shelf now. {.}Pip visits him. / Pip brings Mr. Flops.)	(Abuelo-Flops ahora está en tu / estante. {.}Pip lo visita. / Pip lleva al Sr. Flops.)	# core/data/story/side_b/x_solo1.dsc:180
+(Grand-Flops sits on your / shelf now. {.}Pip visits him. / Pip brings Mr. Flops.)	(Abuelo-Flops ahora está en tu estante. {.}Pip lo visita. // Pip lleva al Sr. Flops.)	# core/data/story/side_b/x_solo1.dsc:180
 My sourdough starter rolled / down a drain. {.}Into the / candy sewers.	Mi masa madre se fue rodando / por un desagüe. {.}A las / alcantarillas de caramelo.	# core/data/story/side_b/x_solo1.dsc:274
 Thirty years old, that / starter. {..}It has opinions.	Tiene treinta años, esa masa. / {..}Tiene opiniones.	# core/data/story/side_b/x_solo1.dsc:276
 Fetch the starter?	¿Traer la masa madre?	# core/data/story/side_b/x_solo1.dsc:277
 Into the sewers!	¡A las alcantarillas!	# core/data/story/side_b/x_solo1.dsc:277
 (The throne room. The starter, / bubbling, as big as a dog.)	(La sala del trono. La masa / madre, burbujeante, grande / como un perro.)	# core/data/story/side_b/x_solo1.dsc:287
-(And on the throne, made of / ten years of frosting: the / Gumdrop Gutterking.)	(Y en el trono, hecho de diez / años de glaseado: el / Rey de las Cloacas de Gominola.)	# core/data/story/side_b/x_solo1.dsc:289
+(And on the throne, made of / ten years of frosting: the / Gumdrop Gutterking.)	(Y en el trono, hecho de diez años de glaseado: el // Rey de las Cloacas de Gominola.)	# core/data/story/side_b/x_solo1.dsc:289
 GUTTERKING: Don't lick the / floor.	REY DE LAS CLOACAS: No lamas / el suelo.	# core/data/story/side_b/x_solo1.dsc:291
 (He licks the floor.)	(Él lame el suelo.)	# core/data/story/side_b/x_solo1.dsc:294
 GUTTERKING: Do as I say.	REY DE LAS CLOACAS: Haz lo / que digo.	# core/data/story/side_b/x_solo1.dsc:296
@@ -74,13 +74,13 @@ GUTTERKING: Bake me / something that ISN'T sugar. / {.}Then it's yours.	REY DE L
 (Pickle pizza. {.}He eats it. / He cries.)	(Pizza de pepinillo. {.}Se la / come. Llora.)	# core/data/story/side_b/x_solo1.dsc:301
 GUTTERKING: It's so SOUR. / {..}I've never been sad about / something sour before.	REY DE LAS CLOACAS: Es tan / ÁCIDO. {..}Nunca me había / entristecido algo ácido.	# core/data/story/side_b/x_solo1.dsc:303
 (He gives back the starter. And / 'the good sugar'.)	(Devuelve la masa madre. Y / 'el azúcar bueno'.)	# core/data/story/side_b/x_solo1.dsc:305
-Everything sweet we didn't / want went down here, and / grew a king.	Todo lo dulce que nadie quiso / acabó aquí abajo, y creció / un rey.	# core/data/story/side_b/x_solo1.dsc:308
+Everything sweet we didn't / want went down here, and / grew a king.	Todo lo dulce que nadie quiso acabó aquí abajo, y creció // un rey.	# core/data/story/side_b/x_solo1.dsc:308
 GUTTERKING: I'm a very sad / king.	REY DE LAS CLOACAS: Soy un / rey muy triste.	# core/data/story/side_b/x_solo1.dsc:310
 Come up. {.}I'll teach you bread.	Sube. {.}Te enseñaré a hacer pan.	# core/data/story/side_b/x_solo1.dsc:312
 (He can't fit through the door.)	(No cabe por la puerta.)	# core/data/story/side_b/x_solo1.dsc:315
 (Rivet widens the door.)	(Rivet ensancha la puerta.)	# core/data/story/side_b/x_solo1.dsc:318
 Come back up for a cupcake / first. {.}Sugar's good for / courage.	Primero sube por un cupcake. / {.}El azúcar da valor.	# core/data/story/side_b/x_solo1.dsc:326
-(The bakery sells sourdough / now. {.}On Thursdays, a sticky / king sells it with Nana.)	(La panadería ahora vende pan / de masa madre. {.}Los jueves, / un rey pegajoso lo vende con Nana.)	# core/data/story/side_b/x_solo1.dsc:330
+(The bakery sells sourdough / now. {.}On Thursdays, a sticky / king sells it with Nana.)	(La panadería ahora vende pan de masa madre. {.}Los jueves, // un rey pegajoso lo vende con Nana.)	# core/data/story/side_b/x_solo1.dsc:330
 (He licks every loaf. {..}They / sell anyway.)	(Lame cada hogaza. {..}Se / venden igual.)	# core/data/story/side_b/x_solo1.dsc:332
 The Plushie Factory. {.}The / foreman's still running the / conveyor.	La Fábrica de Peluches. {.}El / capataz sigue con la cinta / en marcha.	# core/data/story/side_b/x_solo1.dsc:347
 Nobody's given an order in / weeks. {..}I want that / conveyor.	Hace semanas que nadie da / una orden. {..}Quiero esa / cinta.	# core/data/story/side_b/x_solo1.dsc:349
@@ -104,23 +104,23 @@ I'm asking. {.}Make something / soft.	Yo te lo pido. {.}Haz algo / suave.	# core
 Conveyor's still going. {.}So / are we. Again.	La cinta sigue en marcha. {.}Y / nosotros también. Otra vez.	# core/data/story/side_b/x_solo1.dsc:404
 (The Plushie Press takes / orders now. {.}The first one: / a plush of the Gate.)	(La Prensa de Peluches ahora / recibe pedidos. {.}El primero: / un peluche de la Puerta.)	# core/data/story/side_b/x_solo1.dsc:408
 (Ordered by Grumbleguts. Paid / in full.)	(Pedido por Grumbleguts. Pagado / por completo.)	# core/data/story/side_b/x_solo1.dsc:410
-I have every badge. {.}Even / sewing. EVEN sewing.	Tengo todas las insignias. {.}Hasta / la de costura. HASTA la de costura.	# core/data/story/side_b/x_solo1.dsc:421
+I have every badge. {.}Even / sewing. EVEN sewing.	Tengo todas las insignias. {.}Hasta la de costura. HASTA la de // costura.	# core/data/story/side_b/x_solo1.dsc:421
 There is no badge for 'both / sides of the park'. {..}I need / a map. There's only one.	No hay insignia de 'ambos / lados del parque'. {..}Necesito / un mapa. Solo hay uno.	# core/data/story/side_b/x_solo1.dsc:423
 Sprinklepop's soul left hers / on the Wall. {.}Upside down.	El alma de Sprinklepop dejó el / suyo en el Muro. {.}Al revés.	# core/data/story/side_b/x_solo1.dsc:425
 Find the map?	¿Buscar el mapa?	# core/data/story/side_b/x_solo1.dsc:426
 Be prepared!	¡Siempre listo!	# core/data/story/side_b/x_solo1.dsc:426
 The old gatepost. {.}By the / gate.	El viejo poste. {.}Junto a la / puerta.	# core/data/story/side_b/x_solo1.dsc:434
-(The map, tucked in the / gatepost. Upside down. {.}Drawn / in glitter.)	(El mapa, metido en el poste. / Al revés. {.}Dibujado con / brillantina.)	# core/data/story/side_b/x_solo1.dsc:440
+(The map, tucked in the / gatepost. Upside down. {.}Drawn / in glitter.)	(El mapa, metido en el poste. Al revés. {.}Dibujado con // brillantina.)	# core/data/story/side_b/x_solo1.dsc:440
 (He reads it upside down to / correct it. {..}He gets lost in / his own town.)	(Lo lee al revés para / corregirlo. {..}Se pierde en / su propio pueblo.)	# core/data/story/side_b/x_solo1.dsc:442
 I have a badge for this.	Tengo una insignia para esto.	# core/data/story/side_b/x_solo1.dsc:444
 ...I do not have a badge for / this.	...No tengo una insignia para / esto.	# core/data/story/side_b/x_solo1.dsc:446
-(The landmarks mirror each / other across the old Wall / line. Photograph the pairs.)	(Los lugares se reflejan a / ambos lados de la antigua / línea del Muro. Fotografía los pares.)	# core/data/story/side_b/x_solo1.dsc:448
+(The landmarks mirror each / other across the old Wall / line. Photograph the pairs.)	(Los lugares se reflejan a ambos lados de la antigua línea del Muro. Fotografía // los pares.)	# core/data/story/side_b/x_solo1.dsc:448
 (Nana's bakery. {.}Across the / line, its twin.)	(La panadería de Nana. {.}Al / otro lado, su gemela.)	# core/data/story/side_b/x_solo1.dsc:454
 (Charlotte's bakery. Same / window. Same oven. {.}Black / icing.)	(La panadería de Charlotte. / Misma ventana. Mismo horno. / {.}Glaseado negro.)	# core/data/story/side_b/x_solo1.dsc:460
-(Scaldie's sauna, mirroring / Steamy's bath house. Same / tiles, upside down.)	(El sauna de Scaldie, reflejo / de los baños de Steamy. / Mismos azulejos, al revés.)	# core/data/story/side_b/x_solo1.dsc:466
+(Scaldie's sauna, mirroring / Steamy's bath house. Same / tiles, upside down.)	(El sauna de Scaldie, reflejo de los baños de Steamy. // Mismos azulejos, al revés.)	# core/data/story/side_b/x_solo1.dsc:466
 We planned it together. {.}Forty / years ago.	Lo planeamos juntos. {.}Hace / cuarenta años.	# core/data/story/side_b/x_solo1.dsc:468
 {..}Hee. Hee.	{..}Hee. Hee.	# core/data/story/side_b/x_solo1.dsc:470
 (She has his laugh too.)	(Ella también tiene su risa.)	# core/data/story/side_b/x_solo1.dsc:472
 A badge. {.}Two halves of a / heart. One pastel. One / purple.	Una insignia. {.}Dos mitades de / un corazón. Una pastel. Otra / morada.	# core/data/story/side_b/x_solo1.dsc:475
 (Both wobble. {.}One drips.)	(Ambas se tambalean. {.}Una gotea.)	# core/data/story/side_b/x_solo1.dsc:477
-(@E is wearing the Both / Sides badge. {.}Nobody gave it / to @E.)	(@E lleva la insignia de Ambos / Lados. {.}Nadie se la dio / a @E.)	# core/data/story/side_b/x_solo1.dsc:488
+(@E is wearing the Both / Sides badge. {.}Nobody gave it / to @E.)	(@E lleva la insignia de Ambos Lados. {.}Nadie se la dio // a @E.)	# core/data/story/side_b/x_solo1.dsc:488

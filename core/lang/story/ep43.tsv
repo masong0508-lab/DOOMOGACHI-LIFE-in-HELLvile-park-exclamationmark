@@ -3,34 +3,34 @@ Meet Mother Nox at her chapel (NW)	Conoce a Madre Nox en su capilla (NO)	# core/
 Help Sootkin, Lady Smog and Anvil (@0/3)	Ayuda a Sootkin, Lady Smog y Anvil (@0/3)	# core/data/story/ch4/ep43.dsc:8
 Pick Hillvile flowers for Sootkin	Recoge flores de Hillvile para Sootkin	# core/data/story/ch4/ep43.dsc:9
 Tell Mother Nox (chapel)	Díselo a Madre Nox (capilla)	# core/data/story/ch4/ep43.dsc:10
-(Mother Nox's chapel kitchen. A pot of bone soup. Two bowls set on the table.)	(La cocina de la capilla de Madre Nox. Una olla de sopa de huesos. Dos platos en la mesa.)	# core/data/story/ch4/ep43.dsc:14
+(Mother Nox's chapel kitchen. A pot of bone soup. Two bowls set on the table.)	(La cocina de la capilla de Madre Nox. Una olla de sopa de huesos. Dos platos en la // mesa.)	# core/data/story/ch4/ep43.dsc:14
 (She sets a third without / looking.)	(Pone un tercero sin / mirar.)	# core/data/story/ch4/ep43.dsc:16
 So you are the one who / popped Vapula like a / balloon.	Así que tú eres quien / reventó a Vapula como un / globo.	# core/data/story/ch4/ep43.dsc:18
 Hillvile frosting on your / sleeve. {..}Giggs still bakes / those?	Glaseado de Hillvile en tu / manga. {..}¿Giggs todavía / hornea eso?	# core/data/story/ch4/ep43.dsc:20
 (She turns back to the soup. / That is the whole answer.)	(Vuelve a la sopa. / Esa es toda la respuesta.)	# core/data/story/ch4/ep43.dsc:24
 Three of mine need help / before Hellvile trusts / Hillvile.	Tres de los míos necesitan / ayuda antes de que Hellvile / confíe en Hillvile.	# core/data/story/ch4/ep43.dsc:27
-Sootkin by the gate, who / keeps a secret. Lady Smog, / still full of old smoke.	Sootkin, junto a la puerta, / que guarda un secreto. Lady / Smog, aún llena de humo viejo.	# core/data/story/ch4/ep43.dsc:29
+Sootkin by the gate, who / keeps a secret. Lady Smog, / still full of old smoke.	Sootkin, junto a la puerta, que guarda un secreto. Lady Smog, aún llena de humo // viejo.	# core/data/story/ch4/ep43.dsc:29
 And Anvil at the forge, who sets a plate every night for a daughter who ran.	Y Anvil, en la fragua, que pone un plato cada noche para una hija que huyó.	# core/data/story/ch4/ep43.dsc:31
 (Wisp drifts over to the / second bowl.)	(Wisp flota hasta el / segundo plato.)	# core/data/story/ch4/ep43.dsc:33
 {d}That one's not yours.	{d}Ese no es tuyo.	# core/data/story/ch4/ep43.dsc:35
 Sootkin, Lady Smog, Anvil. / The soup will keep. / It always keeps.	Sootkin, Lady Smog, Anvil. / La sopa esperará. / Siempre espera.	# core/data/story/ch4/ep43.dsc:39
-Oh! A Hillvile person! / Please don't tell. I grow a / sunflower under the gate.	¡Oh! ¡Una persona de Hillvile! / No se lo digas a nadie. Cultivo / un girasol bajo la puerta.	# core/data/story/ch4/ep43.dsc:44
-It has never seen real sun. / Could you bring it some / Hillvile flowers?	Nunca ha visto el sol de verdad. / ¿Podrías traerle unas / flores de Hillvile?	# core/data/story/ch4/ep43.dsc:46
-(Pick flowers from a flower / bed in HaHaland, then bring / them to Sootkin.)	(Recoge flores de un parterre / en HaHaland y llévaselas / a Sootkin.)	# core/data/story/ch4/ep43.dsc:48
+Oh! A Hillvile person! / Please don't tell. I grow a / sunflower under the gate.	¡Oh! ¡Una persona de Hillvile! No se lo digas a nadie. // Cultivo un girasol bajo la puerta.	# core/data/story/ch4/ep43.dsc:44
+It has never seen real sun. / Could you bring it some / Hillvile flowers?	Nunca ha visto el sol de verdad. ¿Podrías traerle unas // flores de Hillvile?	# core/data/story/ch4/ep43.dsc:46
+(Pick flowers from a flower / bed in HaHaland, then bring / them to Sootkin.)	(Recoge flores de un parterre en HaHaland y llévaselas // a Sootkin.)	# core/data/story/ch4/ep43.dsc:48
 Oh! They're so BRIGHT! / Look, sunny, you have / friends now!	¡Oh! ¡Qué BRILLANTES! / ¡Mira, solecito, ya tienes / amigas!	# core/data/story/ch4/ep43.dsc:54
 (In the bunch, a little paper packet of seeds.//GRAMPY'S, it says, in shaky letters.)	(Entre las flores, un paquetito de papel con semillas.//ABUELITO, dice, con letras temblorosas.)	# core/data/story/ch4/ep43.dsc:56
 ...Those are MY seeds. / I threw them over the fence / ten years ago!	...Esas son MIS semillas. / ¡Las tiré por la cerca / hace diez años!	# core/data/story/ch4/ep43.dsc:58
 The mouse! You're the / mouse! You whistled!	¡El ratón! ¡Tú eres el / ratón! ¡Tú silbaste!	# core/data/story/ch4/ep43.dsc:60
 (They whistle together. / Badly. Perfectly.)	(Silban juntos. / Mal. Perfecto.)	# core/data/story/ch4/ep43.dsc:63
 ...Somebody kept them. All / this time. I'll plant them / for him.	...Alguien las guardó. Todo / este tiempo. Las plantaré / por él.	# core/data/story/ch4/ep43.dsc:68
-(The replanted sunflower / turns to face the Hillvile / side. Then slowly back.)	(El girasol replantado / gira hacia el lado de Hillvile. / Luego despacio, de vuelta.)	# core/data/story/ch4/ep43.dsc:76
+(The replanted sunflower / turns to face the Hillvile / side. Then slowly back.)	(El girasol replantado gira hacia el lado de Hillvile. // Luego despacio, de vuelta.)	# core/data/story/ch4/ep43.dsc:76
 {d}It can't decide.	{d}No se decide.	# core/data/story/ch4/ep43.dsc:78
 (Lady Smog coughs out puffs of black vapor.//Father Fuzz came over the gate for this.)	(Lady Smog tose bocanadas de vapor negro.//El Padre Fuzz cruzó la puerta para esto.)	# core/data/story/ch4/ep43.dsc:83
 My first case. Eleven years / ago. My hands won't stop / shaking.	Mi primer caso. Hace once / años. Mis manos no dejan / de temblar.	# core/data/story/ch4/ep43.dsc:85
 You're the stuffed one. We / have the same rite.	Tú eres el de peluche. / Tenemos el mismo rito.	# core/data/story/ch4/ep43.dsc:89
 Ours goes backwards.	El nuestro va al revés.	# core/data/story/ch4/ep43.dsc:91
 Free Lady Smog?	¿Liberar a Lady Smog?	# core/data/story/ch4/ep43.dsc:92
-Begin the two-faith rite!	¡Empezar el rito de dos fes!	# core/data/story/ch4/ep43.dsc:92
+Begin the two-faith rite!	¡Empezar rito de dos fes!	# core/data/story/ch4/ep43.dsc:92
 Not yet...	Todavía no...	# core/data/story/ch4/ep43.dsc:92
 I haven't tasted air in / eleven years.	Llevo once años sin probar / el aire.	# core/data/story/ch4/ep43.dsc:99
 {big}It's / DELICIOUS.{/}	{big}¡Está / DELICIOSO!{/}	# core/data/story/ch4/ep43.dsc:101
@@ -42,7 +42,7 @@ It was for the one holding / the demon.	Fue para quien sostenía / al demonio.	#
 (He plants Mr. Huggins the / 8th at her door, as a guard / of honour.)	(Planta al Sr. Huggins el / 8. en su puerta, como / guardia de honor.)	# core/data/story/ch4/ep43.dsc:117
 (The last puff floats out the window, to//Vex's jar, and goes in with the rest of him.)	(La última bocanada flota por la ventana hasta//el frasco de Vex, y entra con el resto de él.)	# core/data/story/ch4/ep43.dsc:121
 (The smoke clings on. Lady / Smog coughs: ...again... / please...)	(El humo se resiste. Lady / Smog tose: ...otra vez... / por favor...)	# core/data/story/ch4/ep43.dsc:124
-I'm not going in there. / I'm busy. I'm VERY busy. / {.}I'm holding this wall up.	No voy a entrar ahí. / Estoy ocupado. Muy ocupado. / {.}Estoy sosteniendo esta pared.	# core/data/story/ch4/ep43.dsc:130
+I'm not going in there. / I'm busy. I'm VERY busy. / {.}I'm holding this wall up.	No voy a entrar ahí. Estoy ocupado. Muy ocupado. {.}Estoy sosteniendo esta // pared.	# core/data/story/ch4/ep43.dsc:130
 ...Fine. FINE. Come with me. / Walk in front.	...Bien. BIEN. Ven conmigo. / Camina delante.	# core/data/story/ch4/ep43.dsc:134
 (The forge. Anvil at the anvil, back to//the door, hammering. A table set for four.)	(La fragua. Anvil junto al yunque, de espaldas//a la puerta, martilleando. Una mesa puesta para cuatro.)	# core/data/story/ch4/ep43.dsc:136
 (One plate has never been / used. It has been set every / night for ten years.)	(Un plato nunca se ha / usado. Lo ponen cada / noche desde hace diez años.)	# core/data/story/ch4/ep43.dsc:138
@@ -57,7 +57,7 @@ They took my gift and made / it a drain. I couldn't stop / them.	Tomaron mi rega
 (Dinner. Everybody passes / the dishes. Nobody passes / the salt. Nobody needs to.)	(La cena. Todos pasan los / platos. Nadie pasa la sal. / Nadie la necesita.)	# core/data/story/ch4/ep43.dsc:162
 I didn't read your letters.	No leí tus cartas.	# core/data/story/ch4/ep43.dsc:164
 ...I read them every night.	...Yo las leí todas las noches.	# core/data/story/ch4/ep43.dsc:166
-(Bolt drops a wrench. A candle on the table. Rivet's sign, on the wall: 0 days.)	(Bolt suelta una llave inglesa. Una vela en la mesa. El cartel de Rivet, en la pared: 0 días.)	# core/data/story/ch4/ep43.dsc:168
+(Bolt drops a wrench. A candle on the table. Rivet's sign, on the wall: 0 days.)	(Bolt suelta una llave inglesa. Una vela en la mesa. El cartel de Rivet, en // la pared: 0 días.)	# core/data/story/ch4/ep43.dsc:168
 (Rivet's tail is on fire / again.)	(A Rivet se le prende la cola / otra vez.)	# core/data/story/ch4/ep43.dsc:171
 You did it. Sootkin is / singing, Lady Smog is / breathing...	Lo lograste. Sootkin canta, / Lady Smog respira...	# core/data/story/ch4/ep43.dsc:180
 Sootkin is singing. Lady / Smog is resting, at last. / We'll set her a bowl.	Sootkin canta. Lady Smog / descansa, por fin. / Le pondremos un plato.	# core/data/story/ch4/ep43.dsc:183

@@ -73,12 +73,12 @@ Be gentle with them.	Sé amable con ellos.	# core/data/story/side_a/f_fuzz.dsc:2
 Muscle memory.	Memoria muscular.	# core/data/story/side_a/f_fuzz.dsc:242
 Nobody's practice. {..}That's / why I don't charge.	Nadie es práctica. {..}Por eso / no cobro.	# core/data/story/side_a/f_fuzz.dsc:245
 (Fuzz has said the same / thing for ten years. To an / empty church.)	(Fuzz lleva diez años / diciendo lo mismo. A una / iglesia vacía.)	# core/data/story/side_a/f_fuzz.dsc:247
-(At night the Huggins Choir / in your house hums the / church hymn. Slightly flat.)	(De noche el Coro Huggins de / tu casa tararea el himno / de la iglesia. Algo desafinado.)	# core/data/story/side_a/f_fuzz.dsc:257
+(At night the Huggins Choir / in your house hums the / church hymn. Slightly flat.)	(De noche el Coro Huggins de tu casa tararea el himno de la iglesia. Algo // desafinado.)	# core/data/story/side_a/f_fuzz.dsc:257
 One more practice. {.}In / public. With Sutura's / stitching.	Una práctica más. {.}En / público. Con las costuras / de Sutura.	# core/data/story/side_a/f_fuzz.dsc:268
 If this one survives, I'll / believe it.	Si este sobrevive, lo / creeré.	# core/data/story/side_a/f_fuzz.dsc:270
 Gather a crowd?	¿Reunir a la gente?	# core/data/story/side_a/f_fuzz.dsc:271
 Everyone's coming.	Todos vienen.	# core/data/story/side_a/f_fuzz.dsc:271
-(Five festival-goers. Each / has a reason not to come. / Each comes.)	(Cinco asistentes al festival. / Cada uno tiene un motivo / para no venir. Todos vienen.)	# core/data/story/side_a/f_fuzz.dsc:279
+(Five festival-goers. Each / has a reason not to come. / Each comes.)	(Cinco asistentes al festival. Cada uno tiene un motivo // para no venir. Todos vienen.)	# core/data/story/side_a/f_fuzz.dsc:279
 (The crowd flinches at every / part.)	(La multitud se encoge en / cada parte.)	# core/data/story/side_a/f_fuzz.dsc:283
 (Honkers honks.)	(Honkers hace honk.)	# core/data/story/side_a/f_fuzz.dsc:287
 {big}EVERYBODY SCREAMS.{/}	{big}TODOS GRITAN.{/}	# core/data/story/side_a/f_fuzz.dsc:290
@@ -116,7 +116,7 @@ Grampy to 'the mouse who / whistles'.	Abuelito a 'el ratón que / silba'.	# core
 ...I was eleven.	...Tenía once años.	# core/data/story/side_a/f_fuzz.dsc:408
 I'm not reading that one out.	Esa no la leo en voz alta.	# core/data/story/side_a/f_fuzz.dsc:410
 I'll deliver them. All of / them. {.}When the Wall opens.	Las entregaré. Todas. {.}Cuando / el Muro se abra.	# core/data/story/side_a/f_fuzz.dsc:412
-(The mail sack in your house / smells of ten years. {.}And / faintly of lilies.)	(El saco de correo de tu casa / huele a diez años. {.}Y / levemente a lirios.)	# core/data/story/side_a/f_fuzz.dsc:420
+(The mail sack in your house / smells of ten years. {.}And / faintly of lilies.)	(El saco de correo de tu casa huele a diez años. {.}Y // levemente a lirios.)	# core/data/story/side_a/f_fuzz.dsc:420
 Letters. From Hillvile. / {.}Ten years late.	Cartas. De Hillvile. / {.}Diez años tarde.	# core/data/story/side_a/f_fuzz.dsc:433
 I clack at latecomers. {..}I / will be clacking a lot.	Yo hago clac a los rezagados. / {..}Voy a hacer mucho clac.	# core/data/story/side_a/f_fuzz.dsc:436
 Help Lou deliver?	¿Ayudar a Lou a entregar?	# core/data/story/side_a/f_fuzz.dsc:437
@@ -125,7 +125,7 @@ The first stop is Mother Nox. / {.}Stay with me!	La primera parada es Madre / No
 (Six deliveries. Mandible / clacks at every one.)	(Seis entregas. Mandible / hace clac en cada una.)	# core/data/story/side_a/f_fuzz.dsc:452
 {big}ON TIME.{/}	{big}A TIEMPO.{/}	# core/data/story/side_a/f_fuzz.dsc:462
 {d}...Acceptable.	{d}...Aceptable.	# core/data/story/side_a/f_fuzz.dsc:464
-(Nox reads one of Giggs's / ninety. She puts the other / eighty-nine in a drawer.)	(Nox lee una de las noventa / de Giggs. Guarda las otras / ochenta y nueve en un cajón.)	# core/data/story/side_a/f_fuzz.dsc:466
+(Nox reads one of Giggs's / ninety. She puts the other / eighty-nine in a drawer.)	(Nox lee una de las noventa de Giggs. Guarda las otras ochenta y nueve en un // cajón.)	# core/data/story/side_a/f_fuzz.dsc:466
 For later.	Para luego.	# core/data/story/side_a/f_fuzz.dsc:468
 'Dear Nox. I'm sorry. I'm / sorry. I'm'	'Querida Nox. Lo siento. Lo / siento. Lo'	# core/data/story/side_a/f_fuzz.dsc:471
 (The page is wet.)	(La página está mojada.)	# core/data/story/side_a/f_fuzz.dsc:473

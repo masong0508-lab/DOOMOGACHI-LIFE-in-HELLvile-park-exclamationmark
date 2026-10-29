@@ -219,6 +219,7 @@ class Pack:
         self.name, self.kind, self.attrs, self.path = name, kind, attrs, path
         self.id = None
         self.strings = []
+        self.opts = set()         # strings used as choice options (27-char buttons)
         self.wheres = {}          # string -> file:line of its first use (translator worksheets)
         self.str_index = {}
         self.named = []           # (NAME, text, where): string directives
@@ -509,6 +510,7 @@ class Compiler:
                 for o, _ in opts:
                     if len(visible(o)) > OPT_CHARS:
                         die(where, "an option longer than %d characters: %r" % (OPT_CHARS, o))
+                    pack.opts.add(o)
                     ops.append(["OP_DATA", D_OPT, pack.text(o, where)])
                 for _, lab in opts:
                     ops.append(["OP_DATA", D_LABEL, ("label", lab) if lab else TXT_NONE])
@@ -1463,6 +1465,7 @@ def main(argv):
     out_root = ROOT
     bin_out = None
     dump_es = None
+    lint_es = False
     i = 0
     while i < len(argv):
         if argv[i] == "--out-root":
@@ -1472,6 +1475,9 @@ def main(argv):
             global DATA
             DATA = os.path.abspath(argv[i + 1])
             i += 2
+        elif argv[i] == "--lint-es":
+            lint_es = True
+            i += 1
         elif argv[i] == "--dump-es":              # translator worksheets: one TSV per pack
             dump_es = os.path.abspath(argv[i + 1])
             i += 2
@@ -1504,6 +1510,26 @@ def main(argv):
             p.all_events.extend(b[2])
     # the codec over all text
     es_map = load_es()
+    if lint_es:                               # --lint-es: report Spanish lines that overflow the box
+        n = 0
+        for p in packs:
+            for s in p.strings:
+                e = es_map.get((p.name, s))
+                if e is None:
+                    continue
+                msgs = []
+                if s in p.opts and len(visible(e)) > OPT_CHARS:
+                    msgs.append("option %d chars (max %d)" % (len(visible(e)), OPT_CHARS))
+                if not p.legacy:
+                    for page in visible(e).split("//"):
+                        k = wrap_lines(re.sub(r" */ *", "\n", page), BOX_CHARS_240)
+                        if k > BOX_LINES_240:
+                            msgs.append("page of %d lines" % k)
+                if msgs:
+                    n += 1
+                    print("%s\t%s\t%s\t%s" % (p.name, p.wheres.get(s, ""), "; ".join(msgs), e.replace("\t", " ")))
+        print("lint-es: %d line(s) over" % n, file=sys.stderr)
+        return 0
     if dump_es:
         os.makedirs(dump_es, exist_ok=True)
         for p in packs:

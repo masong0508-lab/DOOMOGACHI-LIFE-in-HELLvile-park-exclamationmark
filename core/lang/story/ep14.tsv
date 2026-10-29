@@ -1,18 +1,18 @@
 # English<TAB>Spanish<TAB># where. Keep {codes}, ' / ' line breaks, '//' page breaks.
-A new face! Welcome to the / bath house. Well. The pond. / Same thing, more bubbles.	¡Una cara nueva! Bienvenido a / los baños. Bueno. Al estanque. / Es lo mismo, con más burbujas.	# core/data/story/ch1/ep14.dsc:10
-Help me fill the tubs? Every / tub gets a duck. House / rule.	¿Me ayudas a llenar las tinas? / Cada tina lleva un patito. / Regla de la casa.	# core/data/story/ch1/ep14.dsc:11
+A new face! Welcome to the / bath house. Well. The pond. / Same thing, more bubbles.	¡Una cara nueva! Bienvenido a los baños. Bueno. Al // estanque. Es lo mismo, con más burbujas.	# core/data/story/ch1/ep14.dsc:10
+Help me fill the tubs? Every / tub gets a duck. House / rule.	¿Me ayudas a llenar las tinas? Cada tina lleva un patito. // Regla de la casa.	# core/data/story/ch1/ep14.dsc:11
 (Fill the tubs?)	(¿Llenar las tinas?)	# core/data/story/ch1/ep14.dsc:12
 Fill them!	¡Vamos!	# core/data/story/ch1/ep14.dsc:12
 Maybe later.	Quizá luego.	# core/data/story/ch1/ep14.dsc:12
-Any time! The water's always / warm. That's my whole job.	¡Cuando quieras! El agua siempre / está tibia. Ese es todo mi trabajo.	# core/data/story/ch1/ep14.dsc:14
+Any time! The water's always / warm. That's my whole job.	¡Cuando quieras! El agua siempre está tibia. Ese es todo mi // trabajo.	# core/data/story/ch1/ep14.dsc:14
 (Splash. Splash. Splash.)	(Chap. Chap. Chap.)	# core/data/story/ch1/ep14.dsc:18
 That's Duckworth. That's / Quackers. That's...	Ese es Duckworth. Ese es / Quackers. Y ese es...	# core/data/story/ch1/ep14.dsc:19
 {.}I don't know that one.	{.}Ese no lo conozco.	# core/data/story/ch1/ep14.dsc:21
 (The strange duck squeaks. / By itself. It is facing / the Wall.)	(El pato raro chilla. / Solo. Está mirando / hacia el Muro.)	# core/data/story/ch1/ep14.dsc:25
 (Steamy squeaks a duck back. / Nervously.)	(Steamy le devuelve el chillido. / Con nervios.)	# core/data/story/ch1/ep14.dsc:28
-Come for a soak any time, / @P. Everybody needs to / be warm.	Ven a remojarte cuando quieras, / @P. Todos necesitamos / estar calientitos.	# core/data/story/ch1/ep14.dsc:29
+Come for a soak any time, / @P. Everybody needs to / be warm.	Ven a remojarte cuando quieras, @P. Todos necesitamos // estar calientitos.	# core/data/story/ch1/ep14.dsc:29
 Duckworth says hi. The other / one doesn't say anything. / It just... looks.	Duckworth te saluda. El otro / no dice nada. / Solo... mira.	# core/data/story/ch1/ep14.dsc:36
-Open mic! Well, open bench. / Help me with my timing? A / comic is ALL timing.	¡Micrófono abierto! Bueno, banca / abierta. ¿Me ayudas con el ritmo? / Un cómico es PURO ritmo.	# core/data/story/ch1/ep14.dsc:40
+Open mic! Well, open bench. / Help me with my timing? A / comic is ALL timing.	¡Micrófono abierto! Bueno, banca abierta. ¿Me ayudas con el // ritmo? Un cómico es PURO ritmo.	# core/data/story/ch1/ep14.dsc:40
 Press A on the punchline. / Not before. NEVER before.	Pulsa A en el remate. / Antes no. NUNCA antes.	# core/data/story/ch1/ep14.dsc:41
 (...a cricket.)	(...un grillo.)	# core/data/story/ch1/ep14.dsc:47
 Tough crowd. You ARE the / crowd. Still.	Público difícil. Tú ERES el / público. Aun así.	# core/data/story/ch1/ep14.dsc:48
@@ -33,7 +33,7 @@ Steady, Bunny.	Con calma, Bunny.	# core/data/story/ch1/ep14.dsc:85
 {.}Careful there, Toaster.	{.}Cuidado, Tostadora.	# core/data/story/ch1/ep14.dsc:90
 (The last one.)	(El último.)	# core/data/story/ch1/ep14.dsc:91
 Five! You're a natural, / Toaster. Take a salad / home. Same thing.	¡Cinco! Eres un natural, / Tostadora. Llévate una / ensalada. Es lo mismo.	# core/data/story/ch1/ep14.dsc:93
-These seeds came over the / fence years back. Never / asked who threw 'em.	Estas semillas llegaron por la / cerca hace años. Nunca / pregunté quién las tiró.	# core/data/story/ch1/ep14.dsc:97
+These seeds came over the / fence years back. Never / asked who threw 'em.	Estas semillas llegaron por la cerca hace años. Nunca // pregunté quién las tiró.	# core/data/story/ch1/ep14.dsc:97
 ...where was I?	...¿dónde iba?	# core/data/story/ch1/ep14.dsc:100
 Toaster! Or... no. Hm. / You've got a toaster sort / of face. It's a compliment.	¡Tostadora! O... no. Mm. / Tienes cara de / tostadora. Es un cumplido.	# core/data/story/ch1/ep14.dsc:106
 Clack clack! I teach / xylophone. I AM a / xylophone. Hug?	¡Clac clac! Enseño / xilófono. Yo SOY un / xilófono. ¿Abrazo?	# core/data/story/ch1/ep14.dsc:110

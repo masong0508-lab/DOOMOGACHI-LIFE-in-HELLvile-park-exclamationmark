@@ -10,10 +10,10 @@ Not yet.	Aún no.	# core/data/story/side_a/e_towers.dsc:20
 (You pull it. {.}A sofa.)	(La jalas. {.}Un sofá.)	# core/data/story/side_a/e_towers.dsc:35
 (The sheet, on the floor, is / still shaped like a person.)	(La sábana, en el suelo, sigue / teniendo forma de persona.)	# core/data/story/side_a/e_towers.dsc:37
 {d}It does that.	{d}Hace eso.	# core/data/story/side_a/e_towers.dsc:39
-(Tally chalk under the sill. / Three thousand six hundred / and fifty-one marks.)	(Marcas de tiza bajo el / alféizar. Tres mil / seiscientas cincuenta y una.)	# core/data/story/side_a/e_towers.dsc:42
+(Tally chalk under the sill. / Three thousand six hundred / and fifty-one marks.)	(Marcas de tiza bajo el alféizar. Tres mil seiscientas cincuenta y // una.)	# core/data/story/side_a/e_towers.dsc:42
 (The last one is fresh.)	(La última es reciente.)	# core/data/story/side_a/e_towers.dsc:44
 Keep what you find. {..}They / won't be back.	Quédate con lo que halles. / {..}No volverán.	# core/data/story/side_a/e_towers.dsc:46
-(7B's window is dark. {.}Below / it, on the sill, one fresh / chalk mark.)	(La ventana de 7B está oscura. / {.}Debajo, en el alféizar, una / marca de tiza reciente.)	# core/data/story/side_a/e_towers.dsc:54
+(7B's window is dark. {.}Below / it, on the sill, one fresh / chalk mark.)	(La ventana de 7B está oscura. {.}Debajo, en el alféizar, una // marca de tiza reciente.)	# core/data/story/side_a/e_towers.dsc:54
 The Towers' cosiest-floor / contest! {.}7A and 7C have / never won.	¡El concurso del piso más / acogedor de las Torres! {.}7A / y 7C nunca han ganado.	# core/data/story/side_a/e_towers.dsc:65
 We need 7B. {.}As an ally. / Against the ninth floor.	Necesitamos al 7B. {.}Como / aliado. Contra el piso nueve.	# core/data/story/side_a/e_towers.dsc:67
 Make it cosy. We'll lend you / something each.	Hazlo acogedor. Te prestamos / algo cada uno.	# core/data/story/side_a/e_towers.dsc:69
@@ -28,7 +28,7 @@ Later.	Más tarde.	# core/data/story/side_a/e_towers.dsc:70
 (She nods. {.}Once.)	(Asiente. {.}Una vez.)	# core/data/story/side_a/e_towers.dsc:90
 (Gusty faints.)	(Gusty se desmaya.)	# core/data/story/side_a/e_towers.dsc:93
 She likes the rug.	Le gusta la alfombra.	# core/data/story/side_a/e_towers.dsc:95
-(The ninth floor wins again. / A single ghost with one / candle.)	(El piso nueve gana otra vez. / Un solo fantasma con una / vela.)	# core/data/story/side_a/e_towers.dsc:97
+(The ninth floor wins again. / A single ghost with one / candle.)	(El piso nueve gana otra vez. Un solo fantasma con una // vela.)	# core/data/story/side_a/e_towers.dsc:97
 I didn't want to be a / bother. {..}I leave biscuits. On / the stairs.	No quería ser una molestia. / {..}Dejo galletas. En las / escaleras.	# core/data/story/side_a/e_towers.dsc:100
 (Nobody had ever gone up to / say thank you. {.}You do.)	(Nadie había subido nunca a / dar las gracias. {.}Tú sí.)	# core/data/story/side_a/e_towers.dsc:102
 (Midnight. Rattlecup's / teacup rattles. {.}There's a / biscuit in the saucer.)	(Medianoche. La taza de / Rattlecup repiquetea. {.}Hay / una galleta en el platito.)	# core/data/story/side_a/e_towers.dsc:113
@@ -43,11 +43,11 @@ Can I leave one thing?	¿Puedo dejar una cosa?	# core/data/story/side_a/e_towers
 The chalk. {.}On the sill.	La tiza. {.}En el alféizar.	# core/data/story/side_a/e_towers.dsc:144
 Someone else might need to / count something.	Alguien más podría necesitar / contar algo.	# core/data/story/side_a/e_towers.dsc:147
 Now the brochure! Face me. / Step back. A.	¡Ahora el folleto! Mírame. / Atrás. Una.	# core/data/story/side_a/e_towers.dsc:149
-(The brochure: one photo, / one line. 'Hillvile Towers: / now with a view.')	(El folleto: una foto, una / línea. 'Torres Hillvile: ahora / con vista.')	# core/data/story/side_a/e_towers.dsc:155
+(The brochure: one photo, / one line. 'Hillvile Towers: / now with a view.')	(El folleto: una foto, una línea. 'Torres Hillvile: ahora // con vista.')	# core/data/story/side_a/e_towers.dsc:155
 It used to say 'now with a / Wall'.	Antes decía 'ahora con / Muro'.	# core/data/story/side_a/e_towers.dsc:157
 (The brochure's second / printing has a second line: / 'and a chalk.')	(La segunda edición del / folleto tiene otra línea: / 'y una tiza.')	# core/data/story/side_a/e_towers.dsc:166
 I named every duck I own. / {.}Except this one.	Les puse nombre a todos mis / patos. {.}Menos a este.	# core/data/story/side_a/e_towers.dsc:178
-I don't remember buying it. / {..}And I can't throw out a / duck.	No recuerdo haberlo comprado. / {..}Y no puedo tirar un / pato.	# core/data/story/side_a/e_towers.dsc:180
+I don't remember buying it. / {..}And I can't throw out a / duck.	No recuerdo haberlo comprado. {..}Y no puedo tirar un // pato.	# core/data/story/side_a/e_towers.dsc:180
 Solve the duck mystery?	¿Resuelves el misterio del / pato?	# core/data/story/side_a/e_towers.dsc:181
 On the case.	Voy al caso.	# core/data/story/side_a/e_towers.dsc:181
 (Three suspects. Each squeaks / their own duck as an alibi.)	(Tres sospechosos. Cada uno / hace chillar su pato de / coartada.)	# core/data/story/side_a/e_towers.dsc:189
@@ -61,7 +61,7 @@ At night it squeaks at the / Wall. {.}By itself.	De noche le chilla al Muro. / {
 (The fog giggles. {..}In a / frog's voice.)	(La niebla se ríe. {..}Con voz / de rana.)	# core/data/story/side_a/e_towers.dsc:219
 ...That one's not mine / either.	...Ese tampoco es mío.	# core/data/story/side_a/e_towers.dsc:221
 I'm keeping it. {.}Its name / is Guest.	Me lo quedo. {.}Se llama / Invitado.	# core/data/story/side_a/e_towers.dsc:223
-(Somewhere, a duck squeaks / at the Wall. {..}Three, then / one.)	(En algún lugar, un pato chilla / al Muro. {..}Tres, luego / uno.)	# core/data/story/side_a/e_towers.dsc:232
+(Somewhere, a duck squeaks / at the Wall. {..}Three, then / one.)	(En algún lugar, un pato chilla al Muro. {..}Tres, luego // uno.)	# core/data/story/side_a/e_towers.dsc:232
 The bath house is closed / since Steamy was taken.	Los baños están cerrados / desde que se llevaron a Steamy.	# core/data/story/side_a/e_towers.dsc:244
 I left my soap inside. {.}Just / grab it.	Dejé mi jabón adentro. {.}Solo / tómalo.	# core/data/story/side_a/e_towers.dsc:246
 Don't look at the water.	No mires el agua.	# core/data/story/side_a/e_towers.dsc:248
@@ -88,7 +88,7 @@ Three Soap. {.}Rivet's welding / a sign.	Tres Jabón. {.}Rivet está / soldando 
 (The head floats. {..}Mascotty / does not.)	(La cabeza flota. {..}Mascotty / no.)	# core/data/story/side_a/e_towers.dsc:333
 (Everyone stares at the / surface.)	(Todos miran la superficie.)	# core/data/story/side_a/e_towers.dsc:335
 (She surfaces. Head back on. / Nobody says anything.)	(Emerge. Con la cabeza puesta. / Nadie dice nada.)	# core/data/story/side_a/e_towers.dsc:338
-There was someone in my head / who hadn't been warm in ten / years.	Había alguien en mi cabeza / que no tenía calor hacía diez / años.	# core/data/story/side_a/e_towers.dsc:342
+There was someone in my head / who hadn't been warm in ten / years.	Había alguien en mi cabeza que no tenía calor hacía diez // años.	# core/data/story/side_a/e_towers.dsc:342
 I keep it hotter now.	Ahora la mantengo más caliente.	# core/data/story/side_a/e_towers.dsc:344
 (Steam on the mirror. Letters / appear: WARM ENOUGH?)	(Vapor en el espejo. Aparecen / letras: ¿TIBIA LO BASTANTE?)	# core/data/story/side_a/e_towers.dsc:347
 Warm enough?	¿Tibia lo bastante?	# core/data/story/side_a/e_towers.dsc:349
@@ -100,7 +100,7 @@ Your Steamy wants 'warm'. / {..}The ducks are neutral.	Tu Steamy quiere 'tibia'.
 Broker the bath night?	¿Medias la noche de baño?	# core/data/story/side_a/e_towers.dsc:376
 I'll broker it.	Yo la medio.	# core/data/story/side_a/e_towers.dsc:376
 A diplomatic snack first. / {.}A Coffee. Very hot.	Primero un bocado diplomático. / {.}Un Café. Muy caliente.	# core/data/story/side_a/e_towers.dsc:380
-(One slider. Two hands: / yours and @E's. Every beat, / the water inches warmer.)	(Un control. Dos manos: la / tuya y la de @E. Cada compás, / el agua se calienta más.)	# core/data/story/side_a/e_towers.dsc:387
+(One slider. Two hands: / yours and @E's. Every beat, / the water inches warmer.)	(Un control. Dos manos: la tuya y la de @E. Cada compás, // el agua se calienta más.)	# core/data/story/side_a/e_towers.dsc:387
 {..}Let me test it.	{..}Déjame probar.	# core/data/story/side_a/e_towers.dsc:389
 {big}LUKEWARM!{/}	{big}¡TIBIA!{/}	# core/data/story/side_a/e_towers.dsc:392
 ...I'll allow it.	...Lo permito.	# core/data/story/side_a/e_towers.dsc:394
@@ -109,4 +109,4 @@ You were in my head. {.}You / were so tired.	Estuviste en mi cabeza. {.}Estabas 
 You were so warm.	Estabas tan cálido.	# core/data/story/side_a/e_towers.dsc:402
 (Steam on the big window: / EVERYONE'S HERE.)	(Vapor en la ventana grande: / TODOS ESTÁN AQUÍ.)	# core/data/story/side_a/e_towers.dsc:405
 A Coffee. {.}Hot. HOTTER. / {..}Fine, normal hot.	Un Café. {.}Caliente. MÁS. / {..}Bien, caliente normal.	# core/data/story/side_a/e_towers.dsc:414
-(Scaldie opened a sauna in / the back room. {.}It is on / fire. {..}It's fine.)	(Scaldie abrió un sauna en la / trastienda. {.}Está en llamas. / {..}Está bien.)	# core/data/story/side_a/e_towers.dsc:418
+(Scaldie opened a sauna in / the back room. {.}It is on / fire. {..}It's fine.)	(Scaldie abrió un sauna en la trastienda. {.}Está en llamas. // {..}Está bien.)	# core/data/story/side_a/e_towers.dsc:418

@@ -1,13 +1,13 @@
 # English<TAB>Spanish<TAB># where. Keep {codes}, ' / ' line breaks, '//' page breaks.
 Lend a hand at the festival stalls (@0/4)	Echa una mano en los puestos del festival (@0/4)	# core/data/story/ch4/ep47.dsc:8
 Everyone is gathering at the Unity Stage (N)	Todos se reúnen en el Escenario de la Unidad (N)	# core/data/story/ch4/ep47.dsc:9
-(The Wall is rubble. The / river sparkles. The whole / park is ONE park.)	(El Muro es escombros. El río / brilla. Todo el parque es / UN solo parque.)	# core/data/story/ch4/ep47.dsc:13
+(The Wall is rubble. The / river sparkles. The whole / park is ONE park.)	(El Muro es escombros. El río brilla. Todo el parque es // UN solo parque.)	# core/data/story/ch4/ep47.dsc:13
 (Hillvile and Hellvile pour in from both sides. Somebody started a festival.)	(Hillvile y Hellvile llegan de ambos lados. Alguien empezó un festival.)	# core/data/story/ch4/ep47.dsc:15
 (Four stalls need a hand: / Nana's kitchen, the Lake of / Fire, the photo booth...)	(Cuatro puestos necesitan / ayuda: la cocina de Nana, el / Lago de Fuego, la cabina...)	# core/data/story/ch4/ep47.dsc:17
 (...and the comedy tent.)	(...y la carpa de comedia.)	# core/data/story/ch4/ep47.dsc:19
 Sweet pea! Charlotte brought her cookies. Burnt. On PURPOSE.	¡Corazón! Charlotte trajo sus galletas. Quemadas. A PROPÓSITO.	# core/data/story/ch4/ep47.dsc:23
 Thirty years of burnt cookies through//a loose brick. She always wrote back.	Treinta años de galletas quemadas//por un ladrillo suelto. Siempre contestó.	# core/data/story/ch4/ep47.dsc:25
-(Both kinds of cookie, one / plate. Everybody takes one / of each.)	(Los dos tipos de galleta, un / plato. Todos toman una de / cada una.)	# core/data/story/ch4/ep47.dsc:28
+(Both kinds of cookie, one / plate. Everybody takes one / of each.)	(Los dos tipos de galleta, un plato. Todos toman una de // cada una.)	# core/data/story/ch4/ep47.dsc:28
 (The Lake of Fire. Hillvile kids fish with//Hellvile kids. Nobody catches a thing.)	(El Lago de Fuego. Niños de Hillvile pescan con//niños de Hellvile. Nadie pesca nada.)	# core/data/story/ch4/ep47.dsc:34
 (Gerald the goldfish swims / past, in the lava. He is / fine.)	(Gerald el pez dorado pasa / nadando, en la lava. Está / bien.)	# core/data/story/ch4/ep47.dsc:36
 (He is having a great day.)	(Está teniendo un gran día.)	# core/data/story/ch4/ep47.dsc:38
@@ -22,7 +22,7 @@ Ha!	¡Ja!	# core/data/story/ch4/ep47.dsc:74
 (Everyone stares at him.)	(Todos lo miran fijamente.)	# core/data/story/ch4/ep47.dsc:77
 ...Ha?	...¿Ja?	# core/data/story/ch4/ep47.dsc:79
 (They laugh harder.)	(Se ríen más fuerte.)	# core/data/story/ch4/ep47.dsc:82
-(Grumbleguts at the buffet, back to the crowd. The table empties around him.)	(Grumbleguts en el buffet, de espaldas a la gente. La mesa se vacía a su alrededor.)	# core/data/story/ch4/ep47.dsc:88
+(Grumbleguts at the buffet, back to the crowd. The table empties around him.)	(Grumbleguts en el buffet, de espaldas a la gente. La mesa se vacía a su // alrededor.)	# core/data/story/ch4/ep47.dsc:88
 (Every time you look back, / he is a bit bigger.)	(Cada vez que miras, es un / poco más grande.)	# core/data/story/ch4/ep47.dsc:91
 (Bigger. The whole crowd / is not looking. Very hard.)	(Más grande. Toda la gente / no mira. Con mucho esfuerzo.)	# core/data/story/ch4/ep47.dsc:94
 Napkin?	¿Una servilleta?	# core/data/story/ch4/ep47.dsc:96

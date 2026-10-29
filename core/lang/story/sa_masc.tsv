@@ -20,12 +20,12 @@ Ninth floor. {.}A face. Every / night. It never moves.	Piso nueve. {.}Una cara. 
 HOO.	HUU.	# core/data/story/side_a/h_mascot.dsc:79
 (The head tilts. A little.)	(La cabeza se ladea. Un / poquito.)	# core/data/story/side_a/h_mascot.dsc:88
 (Hootenanny falls off the roof. / He is an owl. He's fine.)	(Hootenanny se cae del techo. / Es un búho. Está bien.)	# core/data/story/side_a/h_mascot.dsc:92
-(Next night the window is / empty. The one beside it / isn't.)	(La noche siguiente la ventana / está vacía. La de al lado / no.)	# core/data/story/side_a/h_mascot.dsc:94
+(Next night the window is / empty. The one beside it / isn't.)	(La noche siguiente la ventana está vacía. La de al lado // no.)	# core/data/story/side_a/h_mascot.dsc:94
 It WAVED?!	¿¡SALUDÓ!?	# core/data/story/side_a/h_mascot.dsc:99
 (Hugsley tries to copy the / slow wave. He can't go slowly.)	(Hugsley intenta copiar el / saludo lento. No sabe ir / despacio.)	# core/data/story/side_a/h_mascot.dsc:102
 {d}I'm a hugger, not a waver.	{d}Soy de abrazar, no de saludar.	# core/data/story/side_a/h_mascot.dsc:104
 (Something at your window: a / mascot head. {..}Then just / the window.)	(Algo en tu ventana: una / cabeza de mascota. {..}Luego / solo la ventana.)	# core/data/story/side_a/h_mascot.dsc:114
-My vapor detector beeps at / everything. {.}But it also / RECORDS the Wall's thumps.	Mi detector de vapor pita por / todo. {.}Pero también GRABA / los golpes del Muro.	# core/data/story/side_a/h_mascot.dsc:127
+My vapor detector beeps at / everything. {.}But it also / RECORDS the Wall's thumps.	Mi detector de vapor pita por todo. {.}Pero también GRABA // los golpes del Muro.	# core/data/story/side_a/h_mascot.dsc:127
 They have a pattern! {!}Three / nights. You hold it, I / write.	¡Tienen un patrón! {!}Tres / noches. Tú lo sostienes, / yo anoto.	# core/data/story/side_a/h_mascot.dsc:129
 Hold the detector?	¿Sostienes el detector?	# core/data/story/side_a/h_mascot.dsc:130
 Beep beep.	Bip bip.	# core/data/story/side_a/h_mascot.dsc:130
@@ -59,7 +59,7 @@ Lamps are for the dark. {.}Come / back after nine.	Las lámparas son para la / o
 (The cup comes back out. / Empty. {..}Washed.)	(La taza vuelve. Vacía. / {..}Lavada.)	# core/data/story/side_a/h_mascot.dsc:247
 (Morning. On the boards, a / '!' and inside it a smiley, / made of little mesh dots.)	(Mañana. En las tablas, un / '!' y dentro una carita, / hecha de puntitos de malla.)	# core/data/story/side_a/h_mascot.dsc:257
 They call me the killer / bunny. {.}I thump until the / neighbours move.	Me llaman el conejo asesino. / {.}Golpeo hasta que los / vecinos se mudan.	# core/data/story/side_a/h_mascot.dsc:276
-Ten years of thumping, so / my sister knew I was here. / {..}I want to walk her home.	Diez años golpeando para que / mi hermana supiera que estaba / aquí. {..}Quiero llevarla a casa.	# core/data/story/side_a/h_mascot.dsc:278
+Ten years of thumping, so / my sister knew I was here. / {..}I want to walk her home.	Diez años golpeando para que mi hermana supiera que estaba // aquí. {..}Quiero llevarla a casa.	# core/data/story/side_a/h_mascot.dsc:278
 What if she keeps the head / on?	¿Y si sigue con la cabeza / puesta?	# core/data/story/side_a/h_mascot.dsc:280
 Walk him to her?	¿Llevarlo con ella?	# core/data/story/side_a/h_mascot.dsc:281
 Let's go.	Vamos.	# core/data/story/side_a/h_mascot.dsc:281

@@ -3,13 +3,13 @@ Flops the 1st: somewhere in the Factory.	Flops el 1ro: en algún lugar de la Fá
 Don't aim at the bunny. He hops away.	No le apuntes al conejito. Se va saltando.	# core/data/story/side_a/a_pip.dsc:163
 Mr. Flops has nightmares. / {..}About the beach.	El Sr. Flops tiene pesadillas. {..}Con la playa.	# core/data/story/side_a/a_pip.dsc:21
 He needs a bed. In YOUR / house. {.}Because yours has a / door that locks.	Necesita una cama. En TU casa. {.}Porque la tuya tiene una puerta con llave.	# core/data/story/side_a/a_pip.dsc:23
-Nana can sew one if we bring / her stuffing. {.}A Plushie / from the shop has loads.	Nana puede coser una si le llevamos relleno. {.}Un Peluche de la tienda tiene un montón.	# core/data/story/side_a/a_pip.dsc:25
+Nana can sew one if we bring / her stuffing. {.}A Plushie / from the shop has loads.	Nana puede coser una si le llevamos relleno. {.}Un Peluche de la tienda tiene un // montón.	# core/data/story/side_a/a_pip.dsc:25
 Help Mr. Flops sleep?	¿Ayudas al Sr. Flops a dormir?	# core/data/story/side_a/a_pip.dsc:26
 Of course!	¡Claro!	# core/data/story/side_a/a_pip.dsc:26
 Not right now.	Ahora no.	# core/data/story/side_a/a_pip.dsc:26
 Mr. Flops says thank you. / {..}He says it very quietly.	El Sr. Flops dice gracias. {..}Lo dice muy bajito.	# core/data/story/side_a/a_pip.dsc:31
 STUFFING! {!}I'll run it to / Nana. {.}Don't move!	¡RELLENO! {!}Se lo llevo corriendo a Nana. {.}¡No te muevas!	# core/data/story/side_a/a_pip.dsc:38
-(Pip is back before you can / blink, holding a shoebox / with a tea-towel blanket.)	(Pip vuelve antes de que parpadees, con una caja de zapatos y una manta de paño de cocina.)	# core/data/story/side_a/a_pip.dsc:42
+(Pip is back before you can / blink, holding a shoebox / with a tea-towel blanket.)	(Pip vuelve antes de que parpadees, con una caja de zapatos y una manta de paño // de cocina.)	# core/data/story/side_a/a_pip.dsc:42
 Nana sewed it! {.}It has a / pillow! The pillow has a / smaller pillow!	¡Nana la cosió! {.}¡Tiene almohada! ¡La almohada tiene una almohada más chiquita!	# core/data/story/side_a/a_pip.dsc:44
 Let me check it.	Déjame revisarla.	# core/data/story/side_a/a_pip.dsc:49
 Too close to the door.	Muy cerca de la puerta.	# core/data/story/side_a/a_pip.dsc:52
@@ -20,10 +20,10 @@ Perfect.	Perfecta.	# core/data/story/side_a/a_pip.dsc:64
 He sleeps better when someone / else is in the room.	Duerme mejor cuando hay alguien más en el cuarto.	# core/data/story/side_a/a_pip.dsc:67
 {..}So do I.	{..}Yo también.	# core/data/story/side_a/a_pip.dsc:69
 One Plushie. From the shop. / {..}Mr. Flops is NOT a / Plushie. He's a bunny.	Un Peluche. De la tienda. {..}El Sr. Flops NO es un Peluche. Es un conejo.	# core/data/story/side_a/a_pip.dsc:75
-(At home, Mr. Flops's bed / sits by the window. The / tea towel is folded twice.)	(En casa, la cama del Sr. Flops está junto a la ventana. El paño está doblado dos veces.)	# core/data/story/side_a/a_pip.dsc:79
+(At home, Mr. Flops's bed / sits by the window. The / tea towel is folded twice.)	(En casa, la cama del Sr. Flops está junto a la ventana. El paño está // doblado dos veces.)	# core/data/story/side_a/a_pip.dsc:79
 (Somebody folded it. {.}You / didn't.)	(Alguien lo dobló. {.}Tú no.)	# core/data/story/side_a/a_pip.dsc:81
 I made a badge. {.}WALL WATCH. / {..}It's a bottle cap.	Hice una insignia. {.}VIGILANTES DEL MURO. {..}Es una chapa de botella.	# core/data/story/side_a/a_pip.dsc:92
-Tonight we patrol Hillvile / Lane. To prove monsters / aren't real.	Esta noche patrullamos Hillvile Lane. Para probar que los monstruos no existen.	# core/data/story/side_a/a_pip.dsc:94
+Tonight we patrol Hillvile / Lane. To prove monsters / aren't real.	Esta noche patrullamos Hillvile Lane. Para probar que los monstruos no // existen.	# core/data/story/side_a/a_pip.dsc:94
 {..}You go first.	{..}Tú primero.	# core/data/story/side_a/a_pip.dsc:96
 Go on night patrol?	¿Salir de patrulla nocturna?	# core/data/story/side_a/a_pip.dsc:97
 Patrol time.	Hora de patrullar.	# core/data/story/side_a/a_pip.dsc:97
@@ -41,7 +41,7 @@ Big, {.}red, {.}fireflies.	Grandes, {.}rojas, {.}luciérnagas.	# core/data/story
 {big}Patrol's over.{/}	{big}Se acabó la patrulla.{/}	# core/data/story/side_a/a_pip.dsc:136
 (On the way back, the fog / giggles. {..}In Pip's voice.)	(De vuelta, la niebla se ríe. {..}Con la voz de Pip.)	# core/data/story/side_a/a_pip.dsc:141
 (Pip doesn't notice. {..}You / do.)	(Pip no lo nota. {..}Tú sí.)	# core/data/story/side_a/a_pip.dsc:143
-(The daycare's drawing wall / has a new crayon page: / FIREFLIES CAN BE RED NOW.)	(En la pared de dibujos de la guardería hay una hoja nueva de crayón: AHORA LAS LUCIÉRNAGAS PUEDEN SER ROJAS.)	# core/data/story/side_a/a_pip.dsc:151
+(The daycare's drawing wall / has a new crayon page: / FIREFLIES CAN BE RED NOW.)	(En la pared de dibujos de la guardería hay una hoja nueva de crayón: AHORA LAS // LUCIÉRNAGAS PUEDEN SER ROJAS.)	# core/data/story/side_a/a_pip.dsc:151
 Mr. Flops is home. {.}But his / twin isn't.	El Sr. Flops ya está en casa. {.}Pero su gemelo no.	# core/data/story/side_a/a_pip.dsc:166
 Flops the 1st. {..}He's still / on the Factory conveyor. / Half bunny. Half demon.	Flops el 1ro. {..}Sigue en la cinta de la Fábrica. Mitad conejo. Mitad demonio.	# core/data/story/side_a/a_pip.dsc:168
 Half bunny is still a / bunny.	Medio conejo sigue siendo conejo.	# core/data/story/side_a/a_pip.dsc:170
@@ -49,17 +49,17 @@ Rescue Flops the 1st?	¿Rescatar a Flops el 1ro?	# core/data/story/side_a/a_pip.
 I'll bring him back.	Lo traeré de vuelta.	# core/data/story/side_a/a_pip.dsc:171
 Not yet.	Todavía no.	# core/data/story/side_a/a_pip.dsc:171
 He hops away when you aim. / {..}Stop aiming and he comes / close.	Se va saltando cuando le apuntas. {..}Deja de apuntar y se acerca.	# core/data/story/side_a/a_pip.dsc:179
-(A half-demon bunny peeks / out of a crate. One ear / stitched, one ear on fire.)	(Un conejo semidemonio se asoma de una caja. Una oreja cosida, una oreja en llamas.)	# core/data/story/side_a/a_pip.dsc:183
+(A half-demon bunny peeks / out of a crate. One ear / stitched, one ear on fire.)	(Un conejo semidemonio se asoma de una caja. Una oreja cosida, una oreja en // llamas.)	# core/data/story/side_a/a_pip.dsc:183
 (@E sniffs him. {.}He sniffs / @E. {..}They are friends / now. That's the rule.)	(@E lo huele. {.}Él huele a @E. {..}Ya son amigos. Esa es la regla.)	# core/data/story/side_a/a_pip.dsc:185
 Ears? {.}Give him here. I / weld, I can stitch.	¿Orejas? {.}Dámelo. Yo soldo, puedo coser.	# core/data/story/side_a/a_pip.dsc:186
-(Rivet sews both ears back. / Pip adds a felt heart. And / one on Mr. Flops.)	(Rivet le cose las dos orejas. Pip le pone un corazón de fieltro. Y otro al Sr. Flops.)	# core/data/story/side_a/a_pip.dsc:189
+(Rivet sews both ears back. / Pip adds a felt heart. And / one on Mr. Flops.)	(Rivet le cose las dos orejas. Pip le pone un corazón de fieltro. Y otro // al Sr. Flops.)	# core/data/story/side_a/a_pip.dsc:189
 He has one demon eye.	Tiene un ojo de demonio.	# core/data/story/side_a/a_pip.dsc:191
 (Pip puts a sticker over it.)	(Pip le pone una calcomanía encima.)	# core/data/story/side_a/a_pip.dsc:193
 (The sticker blinks.)	(La calcomanía parpadea.)	# core/data/story/side_a/a_pip.dsc:196
 {..}He's expressive.	{..}Es expresivo.	# core/data/story/side_a/a_pip.dsc:198
 He's yours. {.}For when I'm / not here to be brave at / you.	Es tuyo. {.}Para cuando yo no esté para ser valiente por ti.	# core/data/story/side_a/a_pip.dsc:201
 He's still in there. {..}He's / waiting. Bunnies are good at / waiting.	Sigue ahí dentro. {..}Está esperando. Los conejos son buenos para esperar.	# core/data/story/side_a/a_pip.dsc:209
-(Flops the 1st sits by @E's / bed. Every so often his / sticker blinks.)	(Flops el 1ro se sienta junto a la cama de @E. De vez en cuando su calcomanía parpadea.)	# core/data/story/side_a/a_pip.dsc:213
+(Flops the 1st sits by @E's / bed. Every so often his / sticker blinks.)	(Flops el 1ro se sienta junto a la cama de @E. De vez en cuando su calcomanía // parpadea.)	# core/data/story/side_a/a_pip.dsc:213
 Whoever did that ear work: / {.}beautiful. {..}Tell them / Sutura said so.	Quien haya hecho ese trabajo de orejas: {.}precioso. {..}Díganle que lo dijo Sutura.	# core/data/story/side_a/a_pip.dsc:215
 I've lost my glasses. And my / trowel. {.}And the thing I / was about to say.	Perdí mis lentes. Y mi palita. {.}Y lo que estaba por decir.	# core/data/story/side_a/a_pip.dsc:226
 {..}It was important.	{..}Era importante.	# core/data/story/side_a/a_pip.dsc:228
@@ -93,14 +93,14 @@ beep.	beep.	# core/data/story/side_a/a_pip.dsc:316
 {w}thank you	{w}gracias	# core/data/story/side_a/a_pip.dsc:323
 You heard that? {.}That's not / my voice.	¿Lo oíste? {.}Esa no es mi voz.	# core/data/story/side_a/a_pip.dsc:325
 {..}Xe's still over there.	{..}Xe sigue allá.	# core/data/story/side_a/a_pip.dsc:327
-(Overnight, sunflowers / sprout along the Wall. All / of them face Hellvile.)	(Durante la noche brotan girasoles a lo largo del Muro. Todos miran a Hellvile.)	# core/data/story/side_a/a_pip.dsc:335
+(Overnight, sunflowers / sprout along the Wall. All / of them face Hellvile.)	(Durante la noche brotan girasoles a lo largo del Muro. Todos miran a // Hellvile.)	# core/data/story/side_a/a_pip.dsc:335
 My sunflower is under a gate / that's coming down.	Mi girasol está bajo una reja que van a derribar.	# core/data/story/side_a/a_pip.dsc:347
-Grampy wants to move it. / To a bed on the old Wall / line. {..}Both sides.	Abuelito quiere moverlo. A un macizo en la antigua línea del Muro. {..}De ambos lados.	# core/data/story/side_a/a_pip.dsc:349
+Grampy wants to move it. / To a bed on the old Wall / line. {..}Both sides.	Abuelito quiere moverlo. A un macizo en la antigua línea del Muro. {..}De ambos // lados.	# core/data/story/side_a/a_pip.dsc:349
 I've never moved it. {.}What if / it doesn't survive?	Nunca lo he movido. {.}¿Y si no sobrevive?	# core/data/story/side_a/a_pip.dsc:351
 Build the shared bed?	¿Construir el macizo compartido?	# core/data/story/side_a/a_pip.dsc:352
 It'll survive.	Sobrevivirá.	# core/data/story/side_a/a_pip.dsc:352
 Give it time.	Dale tiempo.	# core/data/story/side_a/a_pip.dsc:352
-(Hillvile soil. Hellvile / ash. A bed of four tomatoes / and one sunflower.)	(Tierra de Hillvile. Ceniza de Hellvile. Un macizo de cuatro tomates y un girasol.)	# core/data/story/side_a/a_pip.dsc:363
+(Hillvile soil. Hellvile / ash. A bed of four tomatoes / and one sunflower.)	(Tierra de Hillvile. Ceniza de Hellvile. Un macizo de cuatro tomates y un // girasol.)	# core/data/story/side_a/a_pip.dsc:363
 Thank you for the seeds, / Sooty.	Gracias por las semillas, Sooty.	# core/data/story/side_a/a_pip.dsc:367
 Sultry. {.}Toaster.	Sultry. {.}Toaster.	# core/data/story/side_a/a_pip.dsc:369
 {..}Yes?	{..}¿Sí?	# core/data/story/side_a/a_pip.dsc:371

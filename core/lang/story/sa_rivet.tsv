@@ -28,8 +28,8 @@ Get the toolbox back?	¿Recuperar la caja de herramientas?	# core/data/story/sid
 I'll get it.	Yo la traigo.	# core/data/story/side_a/b_rivet.dsc:93
 Not yet.	Todavía no.	# core/data/story/side_a/b_rivet.dsc:93
 Workshop first. See where / they took it.	Primero el taller. A ver adónde se la llevaron.	# core/data/story/side_a/b_rivet.dsc:101
-(Scrape marks lead from the / workshop door to the Cloud / Nine cellar hatch.)	(Marcas de arrastre van de la puerta del taller a la escotilla del sótano de Cloud Nine.)	# core/data/story/side_a/b_rivet.dsc:107
-(The toolbox. A demon was / using it as a stool. {.}It / was a comfy stool.)	(La caja de herramientas. Un demonio la usaba de taburete. {.}Era un taburete cómodo.)	# core/data/story/side_a/b_rivet.dsc:111
+(Scrape marks lead from the / workshop door to the Cloud / Nine cellar hatch.)	(Marcas de arrastre van de la puerta del taller a la escotilla del sótano de // Cloud Nine.)	# core/data/story/side_a/b_rivet.dsc:107
+(The toolbox. A demon was / using it as a stool. {.}It / was a comfy stool.)	(La caja de herramientas. Un demonio la usaba de taburete. {.}Era un taburete // cómodo.)	# core/data/story/side_a/b_rivet.dsc:111
 (The toolbox is still down / there. {..}Rivet will wait. / She's good at waiting.)	(La caja sigue allá abajo. {..}Rivet esperará. Es buena para esperar.)	# core/data/story/side_a/b_rivet.dsc:115
 (Rivet opens the toolbox. 120 / letters.)	(Rivet abre la caja. 120 cartas.)	# core/data/story/side_a/b_rivet.dsc:119
 (All of them begin: 'Dear / Mum and Dad, don't make it / weird.')	(Todas empiezan: 'Queridos Mamá y Papá, no lo hagan raro.')	# core/data/story/side_a/b_rivet.dsc:121
@@ -42,7 +42,7 @@ When it opens.	Cuando se abra.	# core/data/story/side_a/b_rivet.dsc:132
 Your call.	Tú decides.	# core/data/story/side_a/b_rivet.dsc:132
 No.	No.	# core/data/story/side_a/b_rivet.dsc:134
 {..}Yes.	{..}Sí.	# core/data/story/side_a/b_rivet.dsc:136
-(The toolbox in your house / has a letter sticking out. / It isn't addressed yet.)	(La caja de herramientas de tu casa tiene una carta asomando. Aún no tiene destinatario.)	# core/data/story/side_a/b_rivet.dsc:145
+(The toolbox in your house / has a letter sticking out. / It isn't addressed yet.)	(La caja de herramientas de tu casa tiene una carta asomando. Aún no tiene // destinatario.)	# core/data/story/side_a/b_rivet.dsc:145
 The fountain pipes. {.}They / carry my old hammer mark.	Las tuberías de la fuente. {.}Llevan la marca de mi viejo martillo.	# core/data/story/side_a/b_rivet.dsc:156
 I want a new one before they / re-plumb them. {..}Hers and / mine. Together.	Quiero una nueva antes de que las cambien. {..}De ella y mía. Juntas.	# core/data/story/side_a/b_rivet.dsc:158
 Three Scrap. Salvagia has / some, if you can haggle with / a raccoon.	Tres de Chatarra. Salvagia tiene, si sabes regatear con un mapache.	# core/data/story/side_a/b_rivet.dsc:160
@@ -56,21 +56,21 @@ A rivet.	Un remache.	# core/data/story/side_a/b_rivet.dsc:173
 Both, crossed.	Ambos, cruzados.	# core/data/story/side_a/b_rivet.dsc:173
 A heart.	Un corazón.	# core/data/story/side_a/b_rivet.dsc:173
 Good choice. {..}You're / Rivet's hands. I call the / rhythm.	Buena elección. {..}Tú eres las manos de Rivet. Yo marco el ritmo.	# core/data/story/side_a/b_rivet.dsc:174
-(The mark goes into the / first pipe. For one second / the sludge runs clear.)	(La marca entra en la primera tubería. Por un segundo el lodo corre limpio.)	# core/data/story/side_a/b_rivet.dsc:177
+(The mark goes into the / first pipe. For one second / the sludge runs clear.)	(La marca entra en la primera tubería. Por un segundo el lodo corre // limpio.)	# core/data/story/side_a/b_rivet.dsc:177
 (Anvil tests the weld with a / spoon.)	(Anvil prueba la soldadura con una cuchara.)	# core/data/story/side_a/b_rivet.dsc:180
 It's a REALLY good spoon.	Es una cuchara REALMENTE buena.	# core/data/story/side_a/b_rivet.dsc:182
 Mum.	Mamá.	# core/data/story/side_a/b_rivet.dsc:184
 It IS.	Lo ES.	# core/data/story/side_a/b_rivet.dsc:186
 I'm keeping the old mark too.	También me quedo con la marca vieja.	# core/data/story/side_a/b_rivet.dsc:189
-I don't want to forget what / they did with it. {..}I want to / remember what we did after.	No quiero olvidar lo que hicieron con ella. {..}Quiero recordar lo que hicimos después.	# core/data/story/side_a/b_rivet.dsc:191
-Three Scrap. {.}Salvagia's yard / or Rivet's workshop. {..}Say / hi to the raccoon for me.	Tres de Chatarra. {.}El patio de Salvagia o el taller de Rivet. {..}Saluda al mapache de mi parte.	# core/data/story/side_a/b_rivet.dsc:199
-(Everything you weld from / now on carries a tiny stamp: / two marks, crossed.)	(Todo lo que sueldes de ahora en adelante lleva un sello diminuto: dos marcas, cruzadas.)	# core/data/story/side_a/b_rivet.dsc:204
+I don't want to forget what / they did with it. {..}I want to / remember what we did after.	No quiero olvidar lo que hicieron con ella. {..}Quiero recordar lo que hicimos // después.	# core/data/story/side_a/b_rivet.dsc:191
+Three Scrap. {.}Salvagia's yard / or Rivet's workshop. {..}Say / hi to the raccoon for me.	Tres de Chatarra. {.}El patio de Salvagia o el taller de Rivet. {..}Saluda al mapache de // mi parte.	# core/data/story/side_a/b_rivet.dsc:199
+(Everything you weld from / now on carries a tiny stamp: / two marks, crossed.)	(Todo lo que sueldes de ahora en adelante lleva un sello diminuto: dos marcas, // cruzadas.)	# core/data/story/side_a/b_rivet.dsc:204
 I hear your front door / squeaks.	Oigo que la puerta de tu casa chirría.	# core/data/story/side_a/b_rivet.dsc:215
 I'd like to see the hinge.	Me gustaría ver la bisagra.	# core/data/story/side_a/b_rivet.dsc:217
 Show her the door?	¿Enseñarle la puerta?	# core/data/story/side_a/b_rivet.dsc:218
 Come on over.	Pasa.	# core/data/story/side_a/b_rivet.dsc:218
 Some other time.	Otro día.	# core/data/story/side_a/b_rivet.dsc:218
-(Anvil crosses the old Wall / line for the first time in / eleven years. For a hinge.)	(Anvil cruza la antigua línea del Muro por primera vez en once años. Por una bisagra.)	# core/data/story/side_a/b_rivet.dsc:226
+(Anvil crosses the old Wall / line for the first time in / eleven years. For a hinge.)	(Anvil cruza la antigua línea del Muro por primera vez en once años. Por una // bisagra.)	# core/data/story/side_a/b_rivet.dsc:226
 (She crouches by your door. / Looks at the hinge for a / long time.)	(Se agacha junto a tu puerta. Mira la bisagra mucho rato.)	# core/data/story/side_a/b_rivet.dsc:229
 (A tiny anvil, stamped in the / metal.)	(Un yunque diminuto, estampado en el metal.)	# core/data/story/side_a/b_rivet.dsc:231
 I made this. Before the Wall. / {.}For the Mingle houses.	Yo hice esto. Antes del Muro. {.}Para las casas Mingle.	# core/data/story/side_a/b_rivet.dsc:233
@@ -80,7 +80,7 @@ It still squeaks? {..}Good.	¿Todavía chirría? {..}Bien.	# core/data/story/sid
 ...Leave it.	...Déjala.	# core/data/story/side_a/b_rivet.dsc:243
 I left the squeak in on / purpose.	Dejé el chirrido a propósito.	# core/data/story/side_a/b_rivet.dsc:248
 So you'd know when someone / comes home.	Para que supieras cuando alguien vuelve a casa.	# core/data/story/side_a/b_rivet.dsc:250
-(The door squeaks a quarter / beat before the next knock. / Somebody always comes home.)	(La puerta chirría un cuarto de tiempo antes del siguiente toque. Siempre alguien vuelve a casa.)	# core/data/story/side_a/b_rivet.dsc:259
+(The door squeaks a quarter / beat before the next knock. / Somebody always comes home.)	(La puerta chirría un cuarto de tiempo antes del siguiente toque. Siempre // alguien vuelve a casa.)	# core/data/story/side_a/b_rivet.dsc:259
 This is my best spoon.	Esta es mi mejor cuchara.	# core/data/story/side_a/b_rivet.dsc:270
 I can't carry it over there / myself. {..}Don't ask why. / {.}Don't make it weird.	No puedo llevarla yo allá. {..}No preguntes por qué. {.}No lo hagas raro.	# core/data/story/side_a/b_rivet.dsc:272
 Carry the spoon?	¿Llevar la cuchara?	# core/data/story/side_a/b_rivet.dsc:273
@@ -107,9 +107,9 @@ To the forge! {.}I won't light / anything.	¡A la forja! {.}No encenderé nada.	
 Cross-border fire safety.	Seguridad contra incendios transfronteriza.	# core/data/story/side_a/b_rivet.dsc:347
 (A stool. {.}It wobbles. It is / perfect.)	(Un taburete. {.}Cojea. Es perfecto.)	# core/data/story/side_a/b_rivet.dsc:350
 For YOUR house. Yours gets / visitors.	Para TU casa. La tuya recibe visitas.	# core/data/story/side_a/b_rivet.dsc:352
-(Bolt's little sign reads: / DAYS SINCE LAST FIRE: 0. / Xe painted it first.)	(El letrero de Bolt dice: DÍAS DESDE EL ÚLTIMO INCENDIO: 0. Xe lo pintó primero.)	# core/data/story/side_a/b_rivet.dsc:354
+(Bolt's little sign reads: / DAYS SINCE LAST FIRE: 0. / Xe painted it first.)	(El letrero de Bolt dice: DÍAS DESDE EL ÚLTIMO INCENDIO: 0. Xe lo pintó // primero.)	# core/data/story/side_a/b_rivet.dsc:354
 {..}That's my kid.	{..}Ese es mi hije.	# core/data/story/side_a/b_rivet.dsc:356
-(Rivet stands exactly where / she stood at six, holding / the light for Anvil.)	(Rivet está justo donde estuvo a los seis años, sosteniendo la luz para Anvil.)	# core/data/story/side_a/b_rivet.dsc:359
+(Rivet stands exactly where / she stood at six, holding / the light for Anvil.)	(Rivet está justo donde estuvo a los seis años, sosteniendo la luz para // Anvil.)	# core/data/story/side_a/b_rivet.dsc:359
 Look at you. {..}You're the one / holding the light now.	Mírate. {..}Ahora tú eres quien sostiene la luz.	# core/data/story/side_a/b_rivet.dsc:361
 You walked off! {.}I lit a / bush. {..}Ask me again.	¡Te fuiste! {.}Quemé un arbusto. {..}Pídemelo otra vez.	# core/data/story/side_a/b_rivet.dsc:369
 Eat your vegetables, kid.	Cómete las verduras, chico.	# core/data/story/side_a/b_rivet.dsc:374

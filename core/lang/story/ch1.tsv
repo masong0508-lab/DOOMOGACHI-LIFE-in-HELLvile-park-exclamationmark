@@ -12,13 +12,13 @@ Bring the cupcake to Miss Lulla (park)	Lleva el cupcake a la Srta. Lulla (parque
 Go home for six: it's your housewarming!	Ve a casa a las seis: ¡es tu fiesta de casa nueva!	# core/data/story/ch1/common.dsc:21
 Something is thumping at the Wall (E)	Algo golpetea en el Muro (E)	# core/data/story/ch1/common.dsc:22
 Go home. It's late. It's always late.	Ve a casa. Es tarde. Siempre es tarde.	# core/data/story/ch1/common.dsc:23
-Hee hee! Isn't HaHaland just / the HAPPIEST? Say yes. / Please say yes.	¡Jii jii! ¿A que HaHaland es / el lugar más FELIZ? Di que sí. / Por favor di que sí.	# core/data/story/ch1/common.dsc:26
+Hee hee! Isn't HaHaland just / the HAPPIEST? Say yes. / Please say yes.	¡Jii jii! ¿A que HaHaland es el lugar más FELIZ? Di que sí. // Por favor di que sí.	# core/data/story/ch1/common.dsc:26
 I practise my speeches on / the ducks. They laugh at all / the right places.	Ensayo mis discursos con / los patos. Se ríen en los / momentos justos.	# core/data/story/ch1/common.dsc:27
 Fresh cinnamon swirls, sweet / pea! Well, fresh-ish. / Fresh in spirit.	¡Rollos de canela frescos, / corazón! Bueno, frescos-ish. / Frescos en espíritu.	# core/data/story/ch1/common.dsc:28
 Is @E eating well? A growing / Doomogachi needs carbs. / Lots of carbs.	¿@E come bien? Un Doomogachi / en crecimiento necesita / carbos. Muchos carbos.	# core/data/story/ch1/common.dsc:29
 Mr. Flops says hi! He's shy. / He hides behind my ear. / Well. His ear.	¡El Sr. Flops dice hola! Es / tímido. Se esconde tras mi / oreja. Bueno. Su oreja.	# core/data/story/ch1/common.dsc:30
 I counted everyone in town. / I got to twenty and then / I got hungry.	Conté a todos en el pueblo. / Llegué a veinte y me dio / hambre.	# core/data/story/ch1/common.dsc:31
-Bless you, child. The church / doors are always open. / Literally. The hinge broke.	Bendito seas, hijo. Las / puertas de la iglesia siempre / están abiertas. La bisagra se rompió.	# core/data/story/ch1/common.dsc:32
+Bless you, child. The church / doors are always open. / Literally. The hinge broke.	Bendito seas, hijo. Las puertas de la iglesia siempre // están abiertas. La bisagra se rompió.	# core/data/story/ch1/common.dsc:32
 Hello. Sorry about my cold / hands. It's a doctor thing. / {..}A doctor thing.	Hola. Perdón por mis manos / frías. Cosas de doctor. / {..}Cosas de doctor.	# core/data/story/ch1/common.dsc:33
 The little ones are napping. / Shh! Nap time is sacred / time.	Los pequeños duermen la / siesta. ¡Shh! La hora de la / siesta es sagrada.	# core/data/story/ch1/common.dsc:34
 Bath house is open! Steam, / bubbles, ducks. Mostly / ducks.	¡El baño público está / abierto! Vapor, burbujas, / patos. Sobre todo patos.	# core/data/story/ch1/common.dsc:35
@@ -39,12 +39,12 @@ THUMP. THUMP. THUMP. / {..}THUMP.	¡PUM. PUM. PUM. / {..}PUM.	# core/data/story/
 (A row of little graves. One / sign: Rest in pieces, / Mr. Huggins the 1st.)	(Una fila de tumbitas. Un / letrero: Descanse en piezas, / Sr. Huggins el 1ro.)	# core/data/story/ch1/common.dsc:71
 (A small stone at the end, / in a child's hand:)	(Una piedrita al final, con / letra de niño:)	# core/data/story/ch1/common.dsc:73
 {d}FLUFFY THE CLOUD. / DRIFTED.	{d}FLUFFY LA NUBE. / SE FUE A LA DERIVA.	# core/data/story/ch1/common.dsc:76
-(Behind you, a pair of / wings stops flapping. / {..}Then starts again.)	(Detrás de ti, un par de alas / deja de aletear. / {..}Luego vuelve a empezar.)	# core/data/story/ch1/common.dsc:78
-(Fluffy the cloud. Drifted. / Someone has left a cupcake / on the stone.)	(Fluffy la nube. A la deriva. / Alguien dejó un cupcake / sobre la piedra.)	# core/data/story/ch1/common.dsc:83
+(Behind you, a pair of / wings stops flapping. / {..}Then starts again.)	(Detrás de ti, un par de alas deja de aletear. // {..}Luego vuelve a empezar.)	# core/data/story/ch1/common.dsc:78
+(Fluffy the cloud. Drifted. / Someone has left a cupcake / on the stone.)	(Fluffy la nube. A la deriva. Alguien dejó un cupcake // sobre la piedra.)	# core/data/story/ch1/common.dsc:83
 (The Wall. Cold, rusty, very / tall. Something on the other / side giggles.)	(El Muro. Frío, oxidado, muy / alto. Algo del otro lado / se ríe.)	# core/data/story/ch1/common.dsc:88
 (Nobody on this side looks / at it. You notice that.)	(Nadie de este lado lo mira. / Te das cuenta.)	# core/data/story/ch1/common.dsc:90
 (A shop under construction. / CLOUD NINE VAPOR - COMING / SOON!)	(Una tienda en construcción. / CLOUD NINE VAPOR - ¡PRONTO!)	# core/data/story/ch1/common.dsc:95
-(Something purple flickers / inside. It flickers back / when you look.)	(Algo morado parpadea dentro. / Te devuelve el parpadeo / cuando lo miras.)	# core/data/story/ch1/common.dsc:97
+(Something purple flickers / inside. It flickers back / when you look.)	(Algo morado parpadea dentro. Te devuelve el parpadeo // cuando lo miras.)	# core/data/story/ch1/common.dsc:97
 (A huge iron gate, seven / padlocks and one very / stern sign: KEEP OUT.)	(Un enorme portón de hierro, / siete candados y un letrero / muy serio: PROHIBIDO PASAR.)	# core/data/story/ch1/common.dsc:101
 (Underneath, smaller: / FOREVER.)	(Debajo, más pequeño: / PARA SIEMPRE.)	# core/data/story/ch1/common.dsc:103
 (Your new cottage! A pink / door. Locked. Nana has / the key.)	(¡Tu nueva cabaña! Puerta / rosa. Cerrada. Nana tiene / la llave.)	# core/data/story/ch1/common.dsc:107

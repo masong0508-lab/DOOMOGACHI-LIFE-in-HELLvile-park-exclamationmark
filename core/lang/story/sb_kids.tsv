@@ -5,50 +5,50 @@ nobody ever listens to ME	a MÍ nadie me escucha jamás	# core/data/story/side_b
 (you wake up. your pillow is damp.)	(despiertas. tu almohada está húmeda.)	# core/data/story/side_b/o_lulla.dsc:87
 Catch one as it dissipates. Quark wants the sigh.	Atrapa uno mientras se disipa. Quark quiere el suspiro.	# core/data/story/side_b/o_lulla.dsc:338
 They're made of very small sighs.	Están hechos de suspiros muy pequeños.	# core/data/story/side_b/o_lulla.dsc:339
-The kids won't nap. {.}They / say there's a monster under / the cots.	Los niños no quieren la siesta. {.}Dicen / que hay un monstruo bajo / las camitas.	# core/data/story/side_b/o_lulla.dsc:15
-Monsters aren't real, of / course. {..}So you check. Then / I don't have to.	Claro que los monstruos no / existen. {..}Así que revisa tú. Y / yo no tengo que hacerlo.	# core/data/story/side_b/o_lulla.dsc:17
+The kids won't nap. {.}They / say there's a monster under / the cots.	Los niños no quieren la siesta. {.}Dicen que hay un monstruo bajo // las camitas.	# core/data/story/side_b/o_lulla.dsc:15
+Monsters aren't real, of / course. {..}So you check. Then / I don't have to.	Claro que los monstruos no existen. {..}Así que revisa tú. Y // yo no tengo que hacerlo.	# core/data/story/side_b/o_lulla.dsc:17
 Check under the cots?	¿Revisar bajo las camitas?	# core/data/story/side_b/o_lulla.dsc:18
 Monster patrol!	¡Patrulla antimonstruos!	# core/data/story/side_b/o_lulla.dsc:18
 Later.	Luego.	# core/data/story/side_b/o_lulla.dsc:18
-First, the cots. {.}None of / them should face the Wall / window.	Primero, las camitas. {.}Ninguna / debe mirar a la ventana / de la Pared.	# core/data/story/side_b/o_lulla.dsc:26
+First, the cots. {.}None of / them should face the Wall / window.	Primero, las camitas. {.}Ninguna debe mirar a la ventana // del Muro.	# core/data/story/side_b/o_lulla.dsc:26
 Turn the cots:	Gira las camitas:	# core/data/story/side_b/o_lulla.dsc:27
 Toward the toy box.	Hacia el cofre de juguetes.	# core/data/story/side_b/o_lulla.dsc:27
 Toward the window.	Hacia la ventana.	# core/data/story/side_b/o_lulla.dsc:27
-(Six small faces turn, as / one, to look at the window. / {..}You turn the cots back.)	(Seis caritas giran, a la vez, / para mirar la ventana. / {..}Vuelves a girar las camitas.)	# core/data/story/side_b/o_lulla.dsc:30
+(Six small faces turn, as / one, to look at the window. / {..}You turn the cots back.)	(Seis caritas giran, a la vez, para mirar la ventana. // {..}Vuelves a girar las camitas.)	# core/data/story/side_b/o_lulla.dsc:30
 Now under each one, please.	Ahora debajo de cada una, por favor.	# core/data/story/side_b/o_lulla.dsc:33
 (Cot one: a sock.)	(Camita uno: un calcetín.)	# core/data/story/side_b/o_lulla.dsc:35
 (Cot two: a crayon.)	(Camita dos: un crayón.)	# core/data/story/side_b/o_lulla.dsc:38
-(Cot three: a drawing. A / crowned cloud with a speech / bubble: 'we'.)	(Camita tres: un dibujo. Una nube / con corona y un globo de / diálogo: 'nosotros'.)	# core/data/story/side_b/o_lulla.dsc:42
+(Cot three: a drawing. A / crowned cloud with a speech / bubble: 'we'.)	(Camita tres: un dibujo. Una nube con corona y un globo de // diálogo: 'nosotros'.)	# core/data/story/side_b/o_lulla.dsc:42
 (The paper is wet. {..}Nobody / has been near it.)	(El papel está mojado. {..}Nadie / se ha acercado.)	# core/data/story/side_b/o_lulla.dsc:45
 ...Juice.	...Jugo.	# core/data/story/side_b/o_lulla.dsc:47
-Your little @E looks sleepy. / {.}Pop it under the third cot. / Monsters hate a snorer.	Tu pequeño @E parece con sueño. / {.}Ponlo bajo la camita tres. / Los monstruos odian los ronquidos.	# core/data/story/side_b/o_lulla.dsc:49
-(@E naps under cot three. / One by one, the kids nap too.)	(@E duerme bajo la camita tres. / Uno a uno, los niños también.)	# core/data/story/side_b/o_lulla.dsc:52
+Your little @E looks sleepy. / {.}Pop it under the third cot. / Monsters hate a snorer.	Tu pequeño @E parece con sueño. {.}Ponlo bajo la camita tres. // Los monstruos odian los ronquidos.	# core/data/story/side_b/o_lulla.dsc:49
+(@E naps under cot three. / One by one, the kids nap too.)	(@E duerme bajo la camita tres. Uno a uno, los niños // también.)	# core/data/story/side_b/o_lulla.dsc:52
 I can get any baby to nap / in under a minute. {.}Watch.	Puedo dormir a cualquier bebé / en menos de un minuto. {.}Mira.	# core/data/story/side_b/o_lulla.dsc:54
 Shh. {.}Shh. {..}Shhh...	Shh. {.}Shh. {..}Shhh...	# core/data/story/side_b/o_lulla.dsc:56
-(You wake up thirty minutes / later. A blanket. {.}A gold / star on your forehead.)	(Despiertas treinta minutos / después. Una manta. {.}Una / estrella dorada en la frente.)	# core/data/story/side_b/o_lulla.dsc:60
+(You wake up thirty minutes / later. A blanket. {.}A gold / star on your forehead.)	(Despiertas treinta minutos después. Una manta. {.}Una estrella dorada en la // frente.)	# core/data/story/side_b/o_lulla.dsc:60
 Works on everyone.	Funciona con todos.	# core/data/story/side_b/o_lulla.dsc:62
 (@E has learned to nap on / command. You say 'nap'. @E / naps. {..}You say 'stop'.)	(@E aprendió a dormir a la / orden. Dices 'siesta'. @E / duerme. {..}Dices 'basta'.)	# core/data/story/side_b/o_lulla.dsc:72
 (@E does not stop.)	(@E no basta.)	# core/data/story/side_b/o_lulla.dsc:74
-Every kid in the daycare / drew the same friend. / {.}Purple. With a crown.	Todos los niños de la guardería / dibujaron al mismo amigo. / {.}Morado. Con corona.	# core/data/story/side_b/o_lulla.dsc:90
+Every kid in the daycare / drew the same friend. / {.}Purple. With a crown.	Todos los niños de la guardería dibujaron al mismo amigo. // {.}Morado. Con corona.	# core/data/story/side_b/o_lulla.dsc:90
 Who's been telling them / stories? {..}It isn't Story / Owl. I asked.	¿Quién les cuenta cuentos? / {..}No es el Búho Cuentacuentos. / Ya pregunté.	# core/data/story/side_b/o_lulla.dsc:92
 Ask the kids?	¿Preguntar a los niños?	# core/data/story/side_b/o_lulla.dsc:93
 Interview time.	Hora de entrevistas.	# core/data/story/side_b/o_lulla.dsc:93
 Pip, Twinkly, Wobbles. / {.}And Homework, who isn't a / kid and drew it anyway.	Pip, Twinkly, Wobbles. / {.}Y Homework, que no es / niño y lo dibujó igual.	# core/data/story/side_b/o_lulla.dsc:101
 It's a cloud. {.}It comes in / dreams. It listens.	Es una nube. {.}Viene en / sueños. Escucha.	# core/data/story/side_b/o_lulla.dsc:106
 Mr. Flops doesn't like it. / {..}He says it listens TOO / much.	Al Sr. Flops no le gusta. / {..}Dice que escucha DEMASIADO.	# core/data/story/side_b/o_lulla.dsc:108
-The crown cloud! {.}It asked / me what I was scared of. / Nobody ever asks.	¡La nube con corona! {.}Me preguntó / qué me daba miedo. / Nadie pregunta nunca.	# core/data/story/side_b/o_lulla.dsc:113
+The crown cloud! {.}It asked / me what I was scared of. / Nobody ever asks.	¡La nube con corona! {.}Me preguntó qué me daba miedo. // Nadie pregunta nunca.	# core/data/story/side_b/o_lulla.dsc:113
 Cloud. {.}Big cloud. {..}Sad.	Nube. {.}Nube grande. {..}Triste.	# core/data/story/side_b/o_lulla.dsc:118
 (Wobbles is two. That was / his whole statement.)	(Wobbles tiene dos años. Esa / fue toda su declaración.)	# core/data/story/side_b/o_lulla.dsc:120
 I'm not a kid. {.}I drew a / normal cloud. With a hat.	No soy niño. {.}Dibujé una nube / normal. Con sombrero.	# core/data/story/side_b/o_lulla.dsc:125
 {d}The hat has points.	{d}El sombrero tiene picos.	# core/data/story/side_b/o_lulla.dsc:127
 It's a fashion cloud.	Es una nube de moda.	# core/data/story/side_b/o_lulla.dsc:129
-Every one of them dreamed / it. {.}Peek at a dream with / me? Yours, tonight.	Todos la soñaron. {.}¿Te asomas a / un sueño conmigo? El tuyo, / esta noche.	# core/data/story/side_b/o_lulla.dsc:131
+Every one of them dreamed / it. {.}Peek at a dream with / me? Yours, tonight.	Todos la soñaron. {.}¿Te asomas a un sueño conmigo? El tuyo, // esta noche.	# core/data/story/side_b/o_lulla.dsc:131
 Monsters are real.	Los monstruos existen.	# core/data/story/side_b/o_lulla.dsc:140
 {..}Some of them are lonely.	{..}Algunos están solitos.	# core/data/story/side_b/o_lulla.dsc:142
-(Next morning she pins every / drawing up in the church. / A wall of crowned clouds.)	(A la mañana siguiente cuelga / todos los dibujos en la / iglesia. Un muro de nubes con corona.)	# core/data/story/side_b/o_lulla.dsc:144
+(Next morning she pins every / drawing up in the church. / A wall of crowned clouds.)	(A la mañana siguiente cuelga todos los dibujos en la // iglesia. Un muro de nubes con corona.)	# core/data/story/side_b/o_lulla.dsc:144
 (The Mayor sees it, and sits / down.)	(El Alcalde lo ve y se sienta.)	# core/data/story/side_b/o_lulla.dsc:146
-(The cloud drawing on your / wall has a new crayon line. / A tear. {..}Or rain.)	(El dibujo de nube en tu pared / tiene una nueva línea de / crayón. Una lágrima. {..}O lluvia.)	# core/data/story/side_b/o_lulla.dsc:158
-The first joint nap time! / {!}Hillvile kids to Hellvile. / One pink bus.	¡La primera siesta conjunta! / {!}Niños de Hillvile a Hellvile. / Un autobús rosa.	# core/data/story/side_b/o_lulla.dsc:170
+(The cloud drawing on your / wall has a new crayon line. / A tear. {..}Or rain.)	(El dibujo de nube en tu pared tiene una nueva línea de // crayón. Una lágrima. {..}O lluvia.)	# core/data/story/side_b/o_lulla.dsc:158
+The first joint nap time! / {!}Hillvile kids to Hellvile. / One pink bus.	¡La primera siesta conjunta! {!}Niños de Hillvile a Hellvile. // Un autobús rosa.	# core/data/story/side_b/o_lulla.dsc:170
 I have never lost a child. / {..}I would like to keep it / that way.	Nunca he perdido a un niño. / {..}Quiero que siga / siendo así.	# core/data/story/side_b/o_lulla.dsc:172
 Ride the bus?	¿Subir al autobús?	# core/data/story/side_b/o_lulla.dsc:173
 All aboard!	¡Todos a bordo!	# core/data/story/side_b/o_lulla.dsc:173
@@ -59,31 +59,31 @@ Eleven.	Once.	# core/data/story/side_b/o_lulla.dsc:192
 (Pokefork is behind the bus. / Pokefork is always behind / the bus.)	(Pokefork está detrás del / autobús. Pokefork siempre / está detrás del autobús.)	# core/data/story/side_b/o_lulla.dsc:194
 Thirteen.	Trece.	# core/data/story/side_b/o_lulla.dsc:198
 (The thirteenth is @E. {.}In a / tiny bonnet.)	(La decimotercera es @E. {.}Con / un gorrito diminuto.)	# core/data/story/side_b/o_lulla.dsc:201
-(Nox's chapel. Nap mats in / rows. Twenty-four kids, both / sides. Nobody is sleepy.)	(La capilla de Nox. Colchonetas / en filas. Veinticuatro niños, / a cada lado. Nadie tiene sueño.)	# core/data/story/side_b/o_lulla.dsc:204
+(Nox's chapel. Nap mats in / rows. Twenty-four kids, both / sides. Nobody is sleepy.)	(La capilla de Nox. Colchonetas en filas. Veinticuatro // niños, a cada lado. Nadie tiene sueño.)	# core/data/story/side_b/o_lulla.dsc:204
 We can't sleep. {.}There's no / monster under the mat.	No podemos dormir. {.}No hay / monstruo bajo la colchoneta.	# core/data/story/side_b/o_lulla.dsc:206
 Hellvile mats always have a / monster. It's how you know / it's a mat.	Las colchonetas de Hellvile / siempre tienen monstruo. / Así sabes que es colchoneta.	# core/data/story/side_b/o_lulla.dsc:208
 ...Fine. {.}Fine! I'll do it.	...Bueno. {.}¡Bueno! Lo haré yo.	# core/data/story/side_b/o_lulla.dsc:211
 (Grumbleguts lies down under / three mats at once. He is / asleep first.)	(Grumbleguts se acuesta bajo / tres colchonetas a la vez. / Se duerme primero.)	# core/data/story/side_b/o_lulla.dsc:213
-(The belly snores in a / different key from the rest / of him.)	(La panza ronca en una tonalidad / distinta a la del resto / de él.)	# core/data/story/side_b/o_lulla.dsc:216
+(The belly snores in a / different key from the rest / of him.)	(La panza ronca en una tonalidad distinta a la del resto // de él.)	# core/data/story/side_b/o_lulla.dsc:216
 (Big Snarl lies down under / three mats at once. He is / asleep first.)	(Big Snarl se acuesta bajo / tres colchonetas a la vez. / Se duerme primero.)	# core/data/story/side_b/o_lulla.dsc:222
-Now the nap-off. {.}Dozy Doe / against Batty Betty. Breathe / on the beat.	Ahora el duelo de siestas. {.}Dozy / Doe contra Batty Betty. Respiren / al ritmo.	# core/data/story/side_b/o_lulla.dsc:225
+Now the nap-off. {.}Dozy Doe / against Batty Betty. Breathe / on the beat.	Ahora el duelo de siestas. {.}Dozy Doe contra Batty Betty. // Respiren al ritmo.	# core/data/story/side_b/o_lulla.dsc:225
 Two hundred citizens trained. / {..}In. And out.	Doscientos ciudadanos entrenados. / {..}Inhala. Y exhala.	# core/data/story/side_b/o_lulla.dsc:226
 I nap upside down, dear. / {.}It's yoga.	Yo duermo de cabeza, querida. / {.}Es yoga.	# core/data/story/side_b/o_lulla.dsc:227
-(Twenty-four kids. One / gatekeeper. Asleep in under / a minute.)	(Veinticuatro niños. Un guardián / de la puerta. Dormidos en / menos de un minuto.)	# core/data/story/side_b/o_lulla.dsc:232
-(Twenty-four kids. One / bouncer. Asleep in under a / minute.)	(Veinticuatro niños. Un portero. / Dormidos en menos de un / minuto.)	# core/data/story/side_b/o_lulla.dsc:236
+(Twenty-four kids. One / gatekeeper. Asleep in under / a minute.)	(Veinticuatro niños. Un guardián de la puerta. Dormidos en // menos de un minuto.)	# core/data/story/side_b/o_lulla.dsc:232
+(Twenty-four kids. One / bouncer. Asleep in under a / minute.)	(Veinticuatro niños. Un portero. Dormidos en menos de un // minuto.)	# core/data/story/side_b/o_lulla.dsc:236
 {..}They also nap.	{..}Ellos también duermen.	# core/data/story/side_b/o_lulla.dsc:242
-We lost you at the second / stop. {.}Everyone else is here. / Shall we try again?	Te perdimos en la segunda / parada. {.}Los demás están aquí. / ¿Lo intentamos otra vez?	# core/data/story/side_b/o_lulla.dsc:254
+We lost you at the second / stop. {.}Everyone else is here. / Shall we try again?	Te perdimos en la segunda parada. {.}Los demás están aquí. // ¿Lo intentamos otra vez?	# core/data/story/side_b/o_lulla.dsc:254
 ...Is there a snack after nap / time?	...¿Hay merienda después de la / siesta?	# core/data/story/side_b/o_lulla.dsc:259
 There is. {.}I planned for it.	Sí. {.}Lo planeé.	# core/data/story/side_b/o_lulla.dsc:261
 (She hands him a plate the / size of a door. He blushes.)	(Le da un plato del tamaño / de una puerta. Él se sonroja.)	# core/data/story/side_b/o_lulla.dsc:263
-(At home, Lulla writes it on / the daycare wall: MONSTERS / ALSO NAP.)	(En casa, Lulla escribe en la / pared de la guardería: LOS / MONSTRUOS TAMBIÉN DUERMEN.)	# core/data/story/side_b/o_lulla.dsc:266
+(At home, Lulla writes it on / the daycare wall: MONSTERS / ALSO NAP.)	(En casa, Lulla escribe en la pared de la guardería: LOS // MONSTRUOS TAMBIÉN DUERMEN.)	# core/data/story/side_b/o_lulla.dsc:266
 I've timed the fountain's / giggle for a week. {.}It is / late.	Llevo una semana midiendo la / risita de la fuente. {.}Se / retrasa.	# core/data/story/side_b/o_lulla.dsc:278
 Two hundred and sixty-seven / milliseconds. Exactly. {..}Every / time.	Doscientos sesenta y siete / milisegundos. Exactos. {..}Siempre.	# core/data/story/side_b/o_lulla.dsc:280
 Fountains aren't LATE. / Fountains are plumbing.	Las fuentes no se RETRASAN. / Las fuentes son tubería.	# core/data/story/side_b/o_lulla.dsc:282
 Help time it?	¿Ayudar a medir?	# core/data/story/side_b/o_lulla.dsc:283
 Ready, set...	Listos, fuera...	# core/data/story/side_b/o_lulla.dsc:283
 Press A when it giggles. {.}Ten / times. I'll plot it.	Pulsa A cuando se ría. {.}Diez / veces. Yo hago la gráfica.	# core/data/story/side_b/o_lulla.dsc:291
-(The histogram: every press / lands in one bar. {.}All of / them late. By the same.)	(El histograma: todas las / pulsaciones caen en una barra. / {.}Todas tarde. Por igual.)	# core/data/story/side_b/o_lulla.dsc:294
+(The histogram: every press / lands in one bar. {.}All of / them late. By the same.)	(El histograma: todas las pulsaciones caen en una barra. // {.}Todas tarde. Por igual.)	# core/data/story/side_b/o_lulla.dsc:294
 Now a photo. {.}Me, by the / fountain, for scale.	Ahora una foto. {.}Yo, junto a / la fuente, para dar escala.	# core/data/story/side_b/o_lulla.dsc:296
 (The photo: the fountain's / two stone faces. {..}They are / not facing each other.)	(La foto: las dos caras de / piedra de la fuente. {..}No se / miran entre sí.)	# core/data/story/side_b/o_lulla.dsc:302
 Someone TURNED one.	Alguien GIRÓ una.	# core/data/story/side_b/o_lulla.dsc:304
@@ -98,19 +98,19 @@ The demons are made of / something. {.}Very small sighs, / I think.	Los demonios
 Samples from three nests, / please. {..}And one caught in / the act of dissipating.	Muestras de tres nidos, por / favor. {..}Y una atrapada en / pleno acto de disiparse.	# core/data/story/side_b/o_lulla.dsc:344
 Collect samples?	¿Recoger muestras?	# core/data/story/side_b/o_lulla.dsc:345
 Science!	¡Ciencia!	# core/data/story/side_b/o_lulla.dsc:345
-The nests by the Fun Fair, / the beach and the graveyard. / {.}Scrape gently.	Los nidos junto a la Feria, la / playa y el cementerio. / {.}Raspa con suavidad.	# core/data/story/side_b/o_lulla.dsc:353
-(A purple smear in a jar. / It fogs the glass from the / inside.)	(Una mancha morada en un frasco. / Empaña el vidrio desde / dentro.)	# core/data/story/side_b/o_lulla.dsc:359
+The nests by the Fun Fair, / the beach and the graveyard. / {.}Scrape gently.	Los nidos junto a la Feria, la playa y el cementerio. // {.}Raspa con suavidad.	# core/data/story/side_b/o_lulla.dsc:353
+(A purple smear in a jar. / It fogs the glass from the / inside.)	(Una mancha morada en un frasco. Empaña el vidrio desde // dentro.)	# core/data/story/side_b/o_lulla.dsc:359
 (Sample two. {.}It's warm.)	(Muestra dos. {.}Está tibia.)	# core/data/story/side_b/o_lulla.dsc:365
 (Sample three. {.}It hums, very / faintly, a lullaby.)	(Muestra tres. {.}Tararea, muy / bajito, una canción de cuna.)	# core/data/story/side_b/o_lulla.dsc:371
 Now a fresh one. {.}A demon, / right as it goes.	Ahora una fresca. {.}Un demonio, / justo al irse.	# core/data/story/side_b/o_lulla.dsc:373
 (You catch the last wisp of / one in the jar as it goes.)	(Atrapas en el frasco la última / voluta de uno al irse.)	# core/data/story/side_b/o_lulla.dsc:377
 Retreat is data too. {.}Go / again when you're ready.	Retirarse también es un dato. {.}Vuelve / a intentarlo cuando quieras.	# core/data/story/side_b/o_lulla.dsc:381
 Under the microscope, then.	Al microscopio, entonces.	# core/data/story/side_b/o_lulla.dsc:385
-(Magnified, the sigh is two / tiny words in a tiny font: / 'it's fine.')	(Ampliado, el suspiro son dos / palabras diminutas en letra / diminuta: 'estoy bien'.)	# core/data/story/side_b/o_lulla.dsc:387
+(Magnified, the sigh is two / tiny words in a tiny font: / 'it's fine.')	(Ampliado, el suspiro son dos palabras diminutas en letra // diminuta: 'estoy bien'.)	# core/data/story/side_b/o_lulla.dsc:387
 {d}Oh no. It's ours.	{d}Ay, no. Es nuestro.	# core/data/story/side_b/o_lulla.dsc:389
 Each one is somebody's. {..}I / can't tell whose.	Cada uno es de alguien. {..}No / sé de quién.	# core/data/story/side_b/o_lulla.dsc:392
-I've studied tiny things for / forty years. Big things are / frightening.	Llevo cuarenta años estudiando / cosas pequeñas. Las grandes / dan miedo.	# core/data/story/side_b/o_lulla.dsc:394
-This is the first / frightening tiny thing. {.}I'll / keep studying it.	Esta es la primera cosa / pequeña que da miedo. {.}Seguiré / estudiándola.	# core/data/story/side_b/o_lulla.dsc:396
+I've studied tiny things for / forty years. Big things are / frightening.	Llevo cuarenta años estudiando cosas pequeñas. Las grandes // dan miedo.	# core/data/story/side_b/o_lulla.dsc:394
+This is the first / frightening tiny thing. {.}I'll / keep studying it.	Esta es la primera cosa pequeña que da miedo. {.}Seguiré // estudiándola.	# core/data/story/side_b/o_lulla.dsc:396
 (@E has found your / microscope. @E is looking / into it. {..}The wrong end.)	(@E encontró tu microscopio. / @E mira por él. {..}Por el / lado equivocado.)	# core/data/story/side_b/o_lulla.dsc:406
 I build monsters. {!}They come / ALIVE!	Yo construyo monstruos. {!}¡Cobran / VIDA!	# core/data/story/side_b/o_lulla.dsc:418
 (Igorina pulls the big lever. / Thunder.)	(Igorina baja la gran palanca. / Truenos.)	# core/data/story/side_b/o_lulla.dsc:421
@@ -118,8 +118,8 @@ And every one of them wants / to be a florist.	Y todos quieren ser / floristas.	
 A calibration opportunity.	Una oportunidad de calibración.	# core/data/story/side_b/o_lulla.dsc:425
 Help the monsters?	¿Ayudar a los monstruos?	# core/data/story/side_b/o_lulla.dsc:426
 Flowers for all.	Flores para todos.	# core/data/story/side_b/o_lulla.dsc:426
-They're shy. {.}Do me first, / so they can see it's safe. / Apron. A flower.	Son tímidos. {.}Empieza conmigo, / para que vean que es seguro. / Delantal. Una flor.	# core/data/story/side_b/o_lulla.dsc:434
-(Dr. Frankly, in an apron, / a daisy behind his bolt.)	(El Dr. Frankly, con delantal y / una margarita junto al tornillo.)	# core/data/story/side_b/o_lulla.dsc:437
+They're shy. {.}Do me first, / so they can see it's safe. / Apron. A flower.	Son tímidos. {.}Empieza conmigo, para que vean que es seguro. // Delantal. Una flor.	# core/data/story/side_b/o_lulla.dsc:434
+(Dr. Frankly, in an apron, / a daisy behind his bolt.)	(El Dr. Frankly, con delantal y una margarita junto al // tornillo.)	# core/data/story/side_b/o_lulla.dsc:437
 Look at me! {.}I'm ALIVE!	¡Mírenme! {.}¡Estoy VIVO!	# core/data/story/side_b/o_lulla.dsc:439
 (Igorina pulls the lever. / Thunder. Fizz's detector / beeps at the thunder.)	(Igorina baja la palanca. / Truenos. El detector de Fizz / pita con el trueno.)	# core/data/story/side_b/o_lulla.dsc:444
 (The monster copies the / look. It holds the daisy / like a baby bird.)	(El monstruo copia el look. / Sostiene la margarita como / a un pajarito.)	# core/data/story/side_b/o_lulla.dsc:446
@@ -127,9 +127,9 @@ It needs a stall. Two by / two. {.}Flowers on top, a stool / behind.	Necesita un
 (First customer: Grumbleguts. / He buys a dozen roses.)	(Primer cliente: Grumbleguts. / Compra una docena de rosas.)	# core/data/story/side_b/o_lulla.dsc:452
 They're for the Gate. {.}Don't / tell her. I want it to be a / surprise.	Son para la Puerta. {.}No le / digas. Quiero que sea / sorpresa.	# core/data/story/side_b/o_lulla.dsc:454
 (First customer: Mother Nox. / One rose. {..}For a very large / headstone.)	(Primera clienta: Madre Nox. / Una rosa. {..}Para una lápida / muy grande.)	# core/data/story/side_b/o_lulla.dsc:458
-(The monster's first real / bouquet is for Sootkin's / shared flower bed.)	(El primer ramo de verdad del / monstruo es para el jardín / compartido de Sootkin.)	# core/data/story/side_b/o_lulla.dsc:461
+(The monster's first real / bouquet is for Sootkin's / shared flower bed.)	(El primer ramo de verdad del monstruo es para el jardín // compartido de Sootkin.)	# core/data/story/side_b/o_lulla.dsc:461
 (It arranges them badly. / Stems up.)	(Los arregla mal. Con los / tallos hacia arriba.)	# core/data/story/side_b/o_lulla.dsc:463
 It's perfect.	Es perfecto.	# core/data/story/side_b/o_lulla.dsc:466
 (It is not. {..}It is perfect.)	(No lo es. {..}Es perfecto.)	# core/data/story/side_b/o_lulla.dsc:468
-(At the flower stall a sign, / in stitched letters: FLOWERS / FROM A MONSTER. NO REFUNDS.)	(En el puesto de flores hay un / letrero, en letras bordadas: / FLORES DE UN MONSTRUO. SIN REEMBOLSOS.)	# core/data/story/side_b/o_lulla.dsc:478
+(At the flower stall a sign, / in stitched letters: FLOWERS / FROM A MONSTER. NO REFUNDS.)	(En el puesto de flores hay un letrero, en letras bordadas: // FLORES DE UN MONSTRUO. SIN REEMBOLSOS.)	# core/data/story/side_b/o_lulla.dsc:478
 (Everyone gets a refund.)	(A todos les dan reembolso.)	# core/data/story/side_b/o_lulla.dsc:480

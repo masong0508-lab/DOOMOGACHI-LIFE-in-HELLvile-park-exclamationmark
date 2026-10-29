@@ -2,7 +2,7 @@
 The best acoustics in either town.	La mejor acústica de los dos / pueblos.	# core/data/story/side_b/x_solo1.dsc:192
 The Bishop is asleep in the pulpit.	El Obispo duerme en el púlpito.	# core/data/story/side_b/x_solo1.dsc:193
 The Bone Cathedral has the / best acoustics in either / town! {.}And demons.	¡La Catedral de Huesos tiene / la mejor acústica de los / dos pueblos! {.}Y demonios.	# core/data/story/side_b/x_solo1.dsc:197
-I want disco hymns in it. / {..}Dirgelet wants a dirge. / We'll both need it cleared.	Quiero himnos disco en ella. / {..}Dirgelet quiere un / canto fúnebre. Habrá que / desalojarla.	# core/data/story/side_b/x_solo1.dsc:199
+I want disco hymns in it. / {..}Dirgelet wants a dirge. / We'll both need it cleared.	Quiero himnos disco en ella. {..}Dirgelet quiere un canto fúnebre. Habrá que // desalojarla.	# core/data/story/side_b/x_solo1.dsc:199
 Clear the cathedral?	¿Desalojar la catedral?	# core/data/story/side_b/x_solo1.dsc:200
 Sing it loud.	Cántalo fuerte.	# core/data/story/side_b/x_solo1.dsc:200
 Later.	Luego.	# core/data/story/side_b/x_solo1.dsc:200
@@ -16,8 +16,8 @@ All in minor.	Todo en menor.	# core/data/story/side_b/x_solo1.dsc:218
 All in major.	Todo en mayor.	# core/data/story/side_b/x_solo1.dsc:218
 Lovely. {.}Nobody in Hillvile / can find the notes.	Precioso. {.}Nadie en Hillvile / encuentra las notas.	# core/data/story/side_b/x_solo1.dsc:220
 Lovely. {.}Nobody in Hellvile / can stop crying.	Precioso. {.}Nadie en Hellvile / puede dejar de llorar.	# core/data/story/side_b/x_solo1.dsc:223
-One of each! {!}And a chorus / in the middle we all share.	¡Uno de cada! {!}Y un estribillo / en medio que todos compartimos.	# core/data/story/side_b/x_solo1.dsc:226
-(Coo plays at disco speed. / Dirgelet weeps at dirge / speed. It shouldn't work.)	(Coo toca a ritmo disco. / Dirgelet llora a ritmo / fúnebre. No debería funcionar.)	# core/data/story/side_b/x_solo1.dsc:231
+One of each! {!}And a chorus / in the middle we all share.	¡Uno de cada! {!}Y un estribillo en medio que todos // compartimos.	# core/data/story/side_b/x_solo1.dsc:226
+(Coo plays at disco speed. / Dirgelet weeps at dirge / speed. It shouldn't work.)	(Coo toca a ritmo disco. Dirgelet llora a ritmo fúnebre. No debería // funcionar.)	# core/data/story/side_b/x_solo1.dsc:231
 (It works because Riffmaw / tunes the bells by playing / too loud.)	(Funciona porque Riffmaw / afina las campanas tocando / demasiado fuerte.)	# core/data/story/side_b/x_solo1.dsc:233
 (Seraphail sings backwards. / {.}It still sounds lovely.)	(Seraphail canta al revés. / {.}Aun así suena precioso.)	# core/data/story/side_b/x_solo1.dsc:235
 (The Bishop wakes up in the / pulpit. {..}He joins the bass / section.)	(El Obispo despierta en el / púlpito. {..}Se une a la / sección de bajos.)	# core/data/story/side_b/x_solo1.dsc:238

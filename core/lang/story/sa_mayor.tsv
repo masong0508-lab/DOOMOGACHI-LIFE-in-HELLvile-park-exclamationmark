@@ -41,17 +41,17 @@ I'll open it.	Lo abriré.	# core/data/story/side_a/c_mayor.dsc:140
 Not today.	Hoy no.	# core/data/story/side_a/c_mayor.dsc:140
 Keysie has a spare key for / everyone. {.}I asked her to / lose this one.	Keysie tiene una llave de / repuesto de todo. {.}Le pedí / que perdiera esta.	# core/data/story/side_a/c_mayor.dsc:144
 (Keysie works on coffee. Take / her one.)	(Keysie funciona con café. / Llévale uno.)	# core/data/story/side_a/c_mayor.dsc:150
-Keysie only 'finds' things / after coffee. {..}Brimstone / Bites has coffee.	Keysie solo 'encuentra' cosas / después del café. {..}Bocados / de Azufre tiene café.	# core/data/story/side_a/c_mayor.dsc:154
+Keysie only 'finds' things / after coffee. {..}Brimstone / Bites has coffee.	Keysie solo 'encuentra' cosas después del café. {..}Bocados // de Azufre tiene café.	# core/data/story/side_a/c_mayor.dsc:154
 Oh! {.}Look what I found.	¡Oh! {.}Mira lo que encontré.	# core/data/story/side_a/c_mayor.dsc:159
 {..}A key I definitely lost.	{..}Una llave que sin duda / perdí.	# core/data/story/side_a/c_mayor.dsc:161
-(The drawer: a child's / drawing of two kids on a / blanket, and bone flour.)	(El cajón: un dibujo infantil / de dos niños en una manta, / y harina de hueso.)	# core/data/story/side_a/c_mayor.dsc:163
+(The drawer: a child's / drawing of two kids on a / blanket, and bone flour.)	(El cajón: un dibujo infantil de dos niños en una manta, // y harina de hueso.)	# core/data/story/side_a/c_mayor.dsc:163
 (A cupcake eleven years old. / Perfectly preserved. {.}And a / frayed string with a loop.)	(Un cupcake de once años. / Perfectamente conservado. {.}Y / una cuerda raída con lazo.)	# core/data/story/side_a/c_mayor.dsc:164
 (The noise is the cupcake. / {..}It giggles.)	(El ruido es el cupcake. / {..}Se ríe.)	# core/data/story/side_a/c_mayor.dsc:166
 It's a fresh one.	Es uno fresco.	# core/data/story/side_a/c_mayor.dsc:170
 It is not a fresh one.	No es uno fresco.	# core/data/story/side_a/c_mayor.dsc:172
-(The drawing is signed G + / N. He puts it back. He / doesn't lock the drawer.)	(El dibujo está firmado G + N. / Lo devuelve. No cierra / el cajón con llave.)	# core/data/story/side_a/c_mayor.dsc:175
+(The drawing is signed G + / N. He puts it back. He / doesn't lock the drawer.)	(El dibujo está firmado G + N. Lo devuelve. No cierra // el cajón con llave.)	# core/data/story/side_a/c_mayor.dsc:175
 (He puts the string in his / pocket without a word.)	(Se guarda la cuerda en el / bolsillo sin decir nada.)	# core/data/story/side_a/c_mayor.dsc:177
-(A framed child's drawing / in the Mayor's office: two / kids on a blanket.)	(Un dibujo infantil enmarcado / en la oficina del Alcalde: / dos niños en una manta.)	# core/data/story/side_a/c_mayor.dsc:186
+(A framed child's drawing / in the Mayor's office: two / kids on a blanket.)	(Un dibujo infantil enmarcado en la oficina del Alcalde: // dos niños en una manta.)	# core/data/story/side_a/c_mayor.dsc:186
 The Wall's plaque needs a / polish. {.}For appearances.	La placa del Muro necesita / brillo. {.}Por las / apariencias.	# core/data/story/side_a/c_mayor.dsc:197
 Soap will do. {..}Don't read / it. Just polish it.	Con jabón basta. {..}No la / leas. Solo púlela.	# core/data/story/side_a/c_mayor.dsc:199
 Polish the plaque?	¿Pulir la placa?	# core/data/story/side_a/c_mayor.dsc:200
@@ -59,7 +59,7 @@ Just polish it.	Solo púlela.	# core/data/story/side_a/c_mayor.dsc:200
 (The plaque is at the foot of / the Wall, by the lamp.)	(La placa está al pie del / Muro, junto a la farola.)	# core/data/story/side_a/c_mayor.dsc:209
 Soap. {.}The shop. {..}Or the / hospital, it's cheaper there.	Jabón. {.}En la tienda. {..}O en / el hospital, allí es más / barato.	# core/data/story/side_a/c_mayor.dsc:213
 (ERECTED FOR THE SAFETY OF... / The rest is under grime.)	(ERIGIDO PARA LA SEGURIDAD / DE... Lo demás está bajo / la mugre.)	# core/data/story/side_a/c_mayor.dsc:218
-(The polish squeaks. The / fountain answers every / squeak, a beat late.)	(El pulido chirría. La fuente / responde a cada chirrido, / un tiempo tarde.)	# core/data/story/side_a/c_mayor.dsc:230
+(The polish squeaks. The / fountain answers every / squeak, a beat late.)	(El pulido chirría. La fuente responde a cada chirrido, // un tiempo tarde.)	# core/data/story/side_a/c_mayor.dsc:230
 (A hand lands on yours.)	(Una mano cae sobre la tuya.)	# core/data/story/side_a/c_mayor.dsc:234
 That's enough. {.}That's / plenty. {..}Hee.	Ya basta. {.}Es más que / suficiente. {..}Hee.	# core/data/story/side_a/c_mayor.dsc:236
 (You keep polishing. A / corner of a signature. In / crayon- coloured ink.)	(Sigues puliendo. La esquina / de una firma. En tinta color / crayón.)	# core/data/story/side_a/c_mayor.dsc:241
@@ -70,7 +70,7 @@ He can't stop. {.}Tea. Bring / him something warm.	No puede parar. {.}Té. Tráe
 Fetch something warm?	¿Traer algo caliente?	# core/data/story/side_a/c_mayor.dsc:267
 Right away.	Enseguida.	# core/data/story/side_a/c_mayor.dsc:267
 In a bit.	En un rato.	# core/data/story/side_a/c_mayor.dsc:267
-(Mocha Latte brewed it from / the last tin in town. She / drew a cloud in the foam.)	(Mocha Latte lo preparó con la / última lata del pueblo. / Dibujó una nube en la espuma.)	# core/data/story/side_a/c_mayor.dsc:277
+(Mocha Latte brewed it from / the last tin in town. She / drew a cloud in the foam.)	(Mocha Latte lo preparó con la última lata del pueblo. // Dibujó una nube en la espuma.)	# core/data/story/side_a/c_mayor.dsc:277
 (He drinks around the cloud.)	(Bebe rodeando la nube.)	# core/data/story/side_a/c_mayor.dsc:279
 (The cloud is the last thing / in the cup.)	(La nube es lo último que / queda en la taza.)	# core/data/story/side_a/c_mayor.dsc:281
 (The hee stops.)	(El hee se detiene.)	# core/data/story/side_a/c_mayor.dsc:284

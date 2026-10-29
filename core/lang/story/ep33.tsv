@@ -3,7 +3,7 @@ Clear the demon nests (@0/4)	Limpia los nidos de demonios (@0/4)	# core/data/sto
 Beat the nest's heart: the Hell Breach below	Vence al corazón del nido: la Brecha del Infierno	# core/data/story/ch3/ep33.dsc:10
 Rivet wants you at the Workshop (NE)	Rivet te espera en el Taller (NE)	# core/data/story/ch3/ep33.dsc:11
 We were hiding in the bread / oven. Smells great. / Recommend it.	Nos escondimos en el horno / del pan. Huele genial. / Lo recomiendo.	# core/data/story/ch3/ep33.dsc:14
-Nana hit a demon with a / rolling pin. It said sorry. / IT said sorry.	La abuela le pegó a un demonio / con un rodillo. Dijo perdón. / ÉL dijo perdón.	# core/data/story/ch3/ep33.dsc:15
+Nana hit a demon with a / rolling pin. It said sorry. / IT said sorry.	La abuela le pegó a un demonio con un rodillo. Dijo perdón. // ÉL dijo perdón.	# core/data/story/ch3/ep33.dsc:15
 My shop has claw marks. / {..}I'm going to call them / 'rustic'.	Mi tienda tiene arañazos. / {..}Les diré 'rústicos'.	# core/data/story/ch3/ep33.dsc:16
 Is it over? Don't tell me / it's over. Last time it / wasn't over.	¿Ya acabó? No me digas que / acabó. La última vez no / había acabado.	# core/data/story/ch3/ep33.dsc:17
 I hid under the fountain's / rim. The fountain was / humming. Is that normal?	Me escondí bajo el borde de / la fuente. La fuente / zumbaba. ¿Es normal?	# core/data/story/ch3/ep33.dsc:18
@@ -14,7 +14,7 @@ Pip yelled at an imp. The / imp CRIED. Pip said sorry. / Good kid.	Pip le gritó
 Father Fuzz walked past us / and didn't say bless you. / He ALWAYS says bless you.	El Padre Fuzz pasó a nuestro / lado y no dijo salud. / ¡SIEMPRE dice salud!	# core/data/story/ch3/ep33.dsc:23
 My paper boat came back / from over the Wall. With a / sticker on it. A sticker!	Mi barquito de papel volvió / de más allá del Muro. ¡Con / un sticker! ¡Un sticker!	# core/data/story/ch3/ep33.dsc:24
 The gulls are back. They / are very rude. Thank / goodness.	Las gaviotas volvieron. Son / muy groseras. Menos mal.	# core/data/story/ch3/ep33.dsc:25
-The ferris wheel spins / forwards again. I've never / been so happy to be dizzy.	La rueda de la fortuna gira / hacia delante otra vez. Nunca / me alegró tanto marearme.	# core/data/story/ch3/ep33.dsc:26
+The ferris wheel spins / forwards again. I've never / been so happy to be dizzy.	La rueda de la fortuna gira hacia delante otra vez. Nunca // me alegró tanto marearme.	# core/data/story/ch3/ep33.dsc:26
 The teacups had eyes in / them. They winked. I'm / never drinking tea again.	Las tazas tenían ojos. Me / guiñaron. No vuelvo a / tomar té jamás.	# core/data/story/ch3/ep33.dsc:27
 I won a plushie from a / possessed claw machine. / It's warm. Is that bad?	Gané un peluche de una / máquina de garra poseída. / Está tibio. ¿Es malo?	# core/data/story/ch3/ep33.dsc:28
 The bumper cars are / bumping politely again. / As they should.	Los autos chocones chocan / con educación otra vez. / Como debe ser.	# core/data/story/ch3/ep33.dsc:29
@@ -34,8 +34,8 @@ We are SO comfy in here. / Come and breathe with us.	Estamos TAN a gusto aquí. 
 (Not yet. The nests first. / Their eyes follow you all / the way down the street.)	(Todavía no. Primero los / nidos. Sus ojos te siguen / calle abajo.)	# core/data/story/ch3/ep33.dsc:55
 (In the bakery, Nana holds off three demons//with a rolling pin. Two are stuck in the dough.)	(En la panadería, la abuela detiene a tres demonios//con un rodillo. Dos quedan pegados en la masa.)	# core/data/story/ch3/ep33.dsc:63
 Not the STARTER! That / starter is older than the / Mayor!	¡El MASA MADRE no! ¡Esa masa / madre es más vieja que / el Alcalde!	# core/data/story/ch3/ep33.dsc:65
-Thank you, sweet pea. The rest crawled down the drain. The SEWERS. Smells sweet.	Gracias, corazón. El resto se arrastró por el desagüe. Las ALCANTARILLAS. Huele dulce.	# core/data/story/ch3/ep33.dsc:67
-(Hell Breach 3: the Sugar / Rush Sewers. Something / down there is chewing.)	(Brecha del Infierno 3: las / Alcantarillas del Subidón / de Azúcar. Algo roe ahí abajo.)	# core/data/story/ch3/ep33.dsc:69
+Thank you, sweet pea. The rest crawled down the drain. The SEWERS. Smells sweet.	Gracias, corazón. El resto se arrastró por el desagüe. Las ALCANTARILLAS. Huele // dulce.	# core/data/story/ch3/ep33.dsc:67
+(Hell Breach 3: the Sugar / Rush Sewers. Something / down there is chewing.)	(Brecha del Infierno 3: las Alcantarillas del Subidón de Azúcar. Algo roe ahí // abajo.)	# core/data/story/ch3/ep33.dsc:69
 You beat the king of the / sewers! I baked you a map. / Into a pie.	¡Venciste al rey de las / alcantarillas! Te horneé un / mapa. En un pastel.	# core/data/story/ch3/ep33.dsc:75
 Eat it first, read it / second. The other way / round is just rude.	Cómelo primero, léelo / después. Al revés es / de mala educación.	# core/data/story/ch3/ep33.dsc:77
 (The map is in the crust. / It shows the four nests. / Three crosses. One heart.)	(El mapa está en la corteza. / Muestra los cuatro nidos. / Tres cruces. Un corazón.)	# core/data/story/ch3/ep33.dsc:79
@@ -56,12 +56,12 @@ You do them. The exorcisms. / I'll... I'll watch the / kids.	Hazlos tú. Los exo
 (At the beach, Pip catches / Mr. Flops out of the air.)	(En la playa, Pip atrapa al / Mr. Flops en el aire.)	# core/data/story/ch3/ep33.dsc:136
 I was brave!	¡Fui valiente!	# core/data/story/ch3/ep33.dsc:138
 ...I need a nap.	...Necesito una siesta.	# core/data/story/ch3/ep33.dsc:140
-(The church bell rings at / the wrong time. Father Fuzz / is ringing it for the kids.)	(La campana de la iglesia / suena a deshora. El Padre / Fuzz la toca para los niños.)	# core/data/story/ch3/ep33.dsc:148
+(The church bell rings at / the wrong time. Father Fuzz / is ringing it for the kids.)	(La campana de la iglesia suena a deshora. El Padre Fuzz la toca para los // niños.)	# core/data/story/ch3/ep33.dsc:148
 {d}(bedtime.)	{d}(hora de dormir.)	# core/data/story/ch3/ep33.dsc:150
 (The ferris wheel spins / backwards. The teacups are / full of eyes. They blink.)	(La rueda de la fortuna gira / al revés. Las tazas están / llenas de ojos. Parpadean.)	# core/data/story/ch3/ep33.dsc:157
-(A Whack-an-Imp machine / still works. A sign: DO / NOT BONK FATHER FUZZ.)	(Una máquina Whack-an-Imp / aún funciona. Un cartel: / NO LE DES BONK AL PADRE FUZZ.)	# core/data/story/ch3/ep33.dsc:159
+(A Whack-an-Imp machine / still works. A sign: DO / NOT BONK FATHER FUZZ.)	(Una máquina Whack-an-Imp aún funciona. Un cartel: NO LE DES BONK AL PADRE // FUZZ.)	# core/data/story/ch3/ep33.dsc:159
 (You bonk Father Fuzz. / He was standing right next / to the machine.)	(Le das un bonk al Padre / Fuzz. Estaba parado justo / junto a la máquina.)	# core/data/story/ch3/ep33.dsc:164
-Seven hundred years of / training and I lose to a / mallet. {..}Ow. Bless you.	Setecientos años de / entrenamiento y pierdo contra / un mazo. {..}Ay. Salud.	# core/data/story/ch3/ep33.dsc:166
+Seven hundred years of / training and I lose to a / mallet. {..}Ow. Bless you.	Setecientos años de entrenamiento y pierdo contra // un mazo. {..}Ay. Salud.	# core/data/story/ch3/ep33.dsc:166
 ...Ow.	...Ay.	# core/data/story/ch3/ep33.dsc:179
 (He doesn't make the joke. / He rubs his head and goes / back to the kids.)	(No hace el chiste. Se frota / la cabeza y vuelve con / los niños.)	# core/data/story/ch3/ep33.dsc:181
 (The joke graves rise as cute ghosts: Mr.//Wiggles, Grandpa Puff's moustache, a cake.)	(Las tumbas de broma se alzan como fantasmitas: el Sr.//Wiggles, el bigote del Abuelo Puff, un pastel.)	# core/data/story/ch3/ep33.dsc:188
@@ -75,8 +75,8 @@ Clear them off him, / would you.	Quítenle eso de encima, / por favor.	# core/da
 (The nearest imp backs off. / From the grave, the fog / beeps back. Lower.)	(El diablillo más cercano / retrocede. Desde la tumba, / la niebla pita. Más grave.)	# core/data/story/ch3/ep33.dsc:207
 Hose! Hose! I brought a / HOSE! Point me at a demon!	¡Manguera! ¡Manguera! ¡Traje / una MANGUERA! ¡Apúntame a / un demonio!	# core/data/story/ch3/ep33.dsc:211
 (Steamy's ghost keeps the dead warm in a bathtub.)//It's nice, actually. Cold out.	(El fantasma de Steamy mantiene calientes a los muertos en una bañera.)//Es agradable, en realidad. Afuera hace frío.	# core/data/story/ch3/ep33.dsc:214
-(Hell Breach 5: Graveyard / Shift. Somebody down there / is weeping.)	(Brecha del Infierno 5: Turno / de Cementerio. Alguien ahí / abajo está llorando.)	# core/data/story/ch3/ep33.dsc:216
-(The Weeping Widow finds her plushie at last. It was under her the whole time.)	(La Viuda Llorona por fin encuentra su peluche. Estuvo debajo de ella todo el tiempo.)	# core/data/story/ch3/ep33.dsc:222
+(Hell Breach 5: Graveyard / Shift. Somebody down there / is weeping.)	(Brecha del Infierno 5: Turno de Cementerio. Alguien ahí // abajo está llorando.)	# core/data/story/ch3/ep33.dsc:216
+(The Weeping Widow finds her plushie at last. It was under her the whole time.)	(La Viuda Llorona por fin encuentra su peluche. Estuvo debajo de ella todo el // tiempo.)	# core/data/story/ch3/ep33.dsc:222
 Thank you, @P. He's... / it's just a joke stone. / Hee. Hee.	Gracias, @P. Es... solo / una piedra de broma. / Hee. Hee.	# core/data/story/ch3/ep33.dsc:224
 {..}It's just a stone.	{..}Es solo una piedra.	# core/data/story/ch3/ep33.dsc:227
 Psst, @P! Two nests to go. / Swing by the Workshop and / I'll beef up your gear.	¡Psst, @P! Faltan dos nidos. / Pasa por el Taller y te / mejoro el equipo.	# core/data/story/ch3/ep33.dsc:232

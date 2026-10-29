@@ -8,14 +8,14 @@ Eight landmarks. {.}Start with / your own house.	Ocho lugares. {.}Empieza por / 
 (Click. It develops: your / house. Mascotty is in the / window.)	(Clic. Se revela: tu casa. / Mascotty está en la / ventana.)	# core/data/story/side_a/i_solo.dsc:294
 (You were inside.)	(Tú estabas adentro.)	# core/data/story/side_a/i_solo.dsc:296
 {d}Great composition.	{d}Gran composición.	# core/data/story/side_a/i_solo.dsc:298
-(The fountain. The cafe, the / shop, the church, the pier. / Click, click, click, click.)	(La fuente. El café, la / tienda, la iglesia, el muelle. / Clic, clic, clic, clic.)	# core/data/story/side_a/i_solo.dsc:304
-(Each has one wrong thing: a / spare shadow, a crown in a / cloud, a chair on a roof.)	(Cada una tiene algo raro: / una sombra de más, una corona / en una nube, una silla en un tejado.)	# core/data/story/side_a/i_solo.dsc:306
+(The fountain. The cafe, the / shop, the church, the pier. / Click, click, click, click.)	(La fuente. El café, la tienda, la iglesia, el muelle. // Clic, clic, clic, clic.)	# core/data/story/side_a/i_solo.dsc:304
+(Each has one wrong thing: a / spare shadow, a crown in a / cloud, a chair on a roof.)	(Cada una tiene algo raro: una sombra de más, una corona // en una nube, una silla en un tejado.)	# core/data/story/side_a/i_solo.dsc:306
 Last one: the Wall. {.}With me / in it, for scale.	La última: el Muro. {.}Conmigo / en la foto, para la escala.	# core/data/story/side_a/i_solo.dsc:308
 (The Wall's photo develops / slowly.)	(La foto del Muro se revela / despacio.)	# core/data/story/side_a/i_solo.dsc:314
 (A hand, pressed flat on it. / {..}From the other side.)	(Una mano, pegada plana / contra él. {..}Del otro lado.)	# core/data/story/side_a/i_solo.dsc:317
 I'll pin them up as a board. / {.}Somebody should remember / what it looked like.	Las pondré en un tablero. / {.}Alguien debería recordar / cómo era.	# core/data/story/side_a/i_solo.dsc:319
-(Shutterbug's board hangs in / the church now. The only / record of 'before'.)	(El tablero de Shutterbug / cuelga ahora en la iglesia. / El único registro del 'antes'.)	# core/data/story/side_a/i_solo.dsc:327
-The bells un-ring. {.}Always on / the same note. A low E.	Las campanas se des-tocan. {.}Siempre / en la misma nota. Un Mi grave.	# core/data/story/side_a/i_solo.dsc:339
+(Shutterbug's board hangs in / the church now. The only / record of 'before'.)	(El tablero de Shutterbug cuelga ahora en la iglesia. El único registro del // 'antes'.)	# core/data/story/side_a/i_solo.dsc:327
+The bells un-ring. {.}Always on / the same note. A low E.	Las campanas se des-tocan. {.}Siempre en la misma nota. Un Mi // grave.	# core/data/story/side_a/i_solo.dsc:339
 I want a piece that rings / them the right way round. / {..}Write it with me?	Quiero una pieza que las / toque al derecho. / {..}¿La escribes conmigo?	# core/data/story/side_a/i_solo.dsc:341
 Write a lullaby?	¿Escribir una nana?	# core/data/story/side_a/i_solo.dsc:342
 Let's compose.	Vamos a componer.	# core/data/story/side_a/i_solo.dsc:342
@@ -26,7 +26,7 @@ E, F sharp, E.	Mi, Fa sostenido, Mi	# core/data/story/side_a/i_solo.dsc:357
 E, F, E.	Mi, Fa, Mi	# core/data/story/side_a/i_solo.dsc:357
 Just E.	Solo Mi	# core/data/story/side_a/i_solo.dsc:357
 Yes! {!}The fog's tune, turned / kind.	¡Sí! {!}La melodía de la niebla, / vuelta amable.	# core/data/story/side_a/i_solo.dsc:359
-That's the fog's tune. {.}Sharpen / it. E, F sharp, E.	Esa es la melodía de la niebla. / {.}Afílala. Mi, Fa sostenido, Mi.	# core/data/story/side_a/i_solo.dsc:362
+That's the fog's tune. {.}Sharpen / it. E, F sharp, E.	Esa es la melodía de la niebla. {.}Afílala. Mi, Fa sostenido, // Mi.	# core/data/story/side_a/i_solo.dsc:362
 Then B. A, G sharp, F sharp. / {..}And home on E.	Luego Si. La, Sol sostenido, / Fa sostenido. {..}Y a casa, en Mi.	# core/data/story/side_a/i_solo.dsc:365
 (Cantor Coo plays it at the / speed of disco.)	(Cantor Coo la toca a la / velocidad de la disco.)	# core/data/story/side_a/i_solo.dsc:367
 (Mew conducts with his tail / at half speed. The orchestra / follows the tail.)	(Mew dirige con la cola a / media velocidad. La orquesta / sigue la cola.)	# core/data/story/side_a/i_solo.dsc:369
@@ -36,7 +36,7 @@ Rude.	Qué grosero.	# core/data/story/side_a/i_solo.dsc:371
 Keep that. {.}Keep the thump / in.	Déjalo. {.}Deja el golpe / dentro.	# core/data/story/side_a/i_solo.dsc:380
 Someone over there has / rhythm.	Alguien allá tiene ritmo.	# core/data/story/side_a/i_solo.dsc:382
 {..}I'd like to meet the / percussion section.	{..}Me gustaría conocer a la / sección de percusión.	# core/data/story/side_a/i_solo.dsc:384
-(At night, over the Wall, / someone thumps along to the / lullaby. On the beat.)	(De noche, al otro lado del / Muro, alguien golpea al ritmo / de la nana. Al compás.)	# core/data/story/side_a/i_solo.dsc:395
+(At night, over the Wall, / someone thumps along to the / lullaby. On the beat.)	(De noche, al otro lado del Muro, alguien golpea al ritmo // de la nana. Al compás.)	# core/data/story/side_a/i_solo.dsc:395
 Boo. {.}I'm a ghost. {..}I'm / pretending to be a ghost.	Bu. {.}Soy un fantasma. {..}Estoy / fingiendo ser un fantasma.	# core/data/story/side_a/i_solo.dsc:406
 I want a disguise for the / festival. A cute Hillvile / look. {.}Make me one?	Quiero un disfraz para el / festival. Un look lindo de / Hillvile. {.}¿Me haces uno?	# core/data/story/side_a/i_solo.dsc:408
 Make Phantasma a face?	¿Hacerle una cara a Phantasma?	# core/data/story/side_a/i_solo.dsc:409
@@ -51,7 +51,7 @@ I pretend to be a ghost so / people aren't scared when / they find out.	Finjo se
 Say:	Di:	# core/data/story/side_a/i_solo.dsc:434
 Neither was the old one.	La anterior tampoco.	# core/data/story/side_a/i_solo.dsc:434
 (A happy ghost rains upward.)	(Un fantasma feliz llueve / hacia arriba.)	# core/data/story/side_a/i_solo.dsc:437
-(Phantasma hosts the / festival's 'fake seance'. It / is a real one. It's fine.)	(Phantasma presenta la 'falsa / sesión de espiritismo' del / festival. Es de verdad. Está bien.)	# core/data/story/side_a/i_solo.dsc:445
+(Phantasma hosts the / festival's 'fake seance'. It / is a real one. It's fine.)	(Phantasma presenta la 'falsa sesión de espiritismo' del // festival. Es de verdad. Está bien.)	# core/data/story/side_a/i_solo.dsc:445
 Hellvile kids play hopscotch / on lava. {.}In oven mitts.	Los niños de Hellvile juegan / a la rayuela sobre lava. {.}Con / guantes de horno.	# core/data/story/side_a/i_solo.dsc:457
 I want a Hillvile kid to lose / to. {.}PROPERLY.	Quiero un niño de Hillvile / al que perder. {.}BIEN.	# core/data/story/side_a/i_solo.dsc:459
 Play lava hopscotch?	¿Jugar rayuela de lava?	# core/data/story/side_a/i_solo.dsc:460
@@ -66,4 +66,4 @@ HA! You lost! {.}PROPERLY!	¡JA! ¡Perdiste! {.}¡BIEN PERDIDO!	# core/data/stor
 Hillvile kids don't come / here.	Los niños de Hillvile no / vienen aquí.	# core/data/story/side_a/i_solo.dsc:493
 They do now.	Ahora sí.	# core/data/story/side_a/i_solo.dsc:494
 (Pip arrives. Mr. Flops wears / two tiny oven mitts.)	(Llega Pip. Mr. Flops lleva / dos diminutos guantes de horno.)	# core/data/story/side_a/i_solo.dsc:497
-(Hellvile's kids chalk a new / hopscotch. Half the squares / are lava, half lemonade.)	(Los niños de Hellvile / dibujan una nueva rayuela. / La mitad lava, la mitad limonada.)	# core/data/story/side_a/i_solo.dsc:507
+(Hellvile's kids chalk a new / hopscotch. Half the squares / are lava, half lemonade.)	(Los niños de Hellvile dibujan una nueva rayuela. La mitad lava, la mitad // limonada.)	# core/data/story/side_a/i_solo.dsc:507

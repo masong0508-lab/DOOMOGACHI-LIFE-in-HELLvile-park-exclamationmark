@@ -9,7 +9,7 @@ Not tonight.	Esta noche no.	# core/data/story/side_a/d_nana.dsc:19
 (You push the muffin into the / gap.)	(Empujas el muffin en el / hueco.)	# core/data/story/side_a/d_nana.dsc:39
 (You wait anyway.)	(Esperas de todos modos.)	# core/data/story/side_a/d_nana.dsc:42
 (A hand with soot on it / takes the muffin. From the / other side.)	(Una mano manchada de hollín / toma el muffin. Desde el / otro lado.)	# core/data/story/side_a/d_nana.dsc:47
-(A bag of cookies is pushed / back through. {.}Ninety / percent charcoal.)	(Una bolsa de galletas vuelve / a pasar. {.}Noventa por / ciento carbón.)	# core/data/story/side_a/d_nana.dsc:50
+(A bag of cookies is pushed / back through. {.}Ninety / percent charcoal.)	(Una bolsa de galletas vuelve a pasar. {.}Noventa por // ciento carbón.)	# core/data/story/side_a/d_nana.dsc:50
 Every Thursday. {.}She never / missed one.	Todos los jueves. {.}Nunca / faltó a uno.	# core/data/story/side_a/d_nana.dsc:53
 {..}Neither did I.	{..}Yo tampoco.	# core/data/story/side_a/d_nana.dsc:55
 (You had a muffin. {.}You don't / now. {..}Nana will bake / another.)	(Tenías un muffin. {.}Ya no. / {..}Nana horneará otro.)	# core/data/story/side_a/d_nana.dsc:62
@@ -60,7 +60,7 @@ Not today.	Hoy no.	# core/data/story/side_a/d_nana.dsc:205
 (Half a card. Half a melon / bread. Half a name: CHARLO.)	(Media ficha. Medio pan de / melón. Medio nombre: CHARLO.)	# core/data/story/side_a/d_nana.dsc:213
 (Nana goes very still.)	(Nana se queda muy quieta.)	# core/data/story/side_a/d_nana.dsc:219
 (She tapes the two halves / together.)	(Pega las dos mitades con / cinta.)	# core/data/story/side_a/d_nana.dsc:222
-(The old Mingle bagels: / cloud flour AND bone flour. / Warm. {.}Right.)	(Los viejos bagels del / Mingle: harina de nube Y / harina de hueso. Tibios. {.}Bien.)	# core/data/story/side_a/d_nana.dsc:224
+(The old Mingle bagels: / cloud flour AND bone flour. / Warm. {.}Right.)	(Los viejos bagels del Mingle: harina de nube Y harina de hueso. Tibios. // {.}Bien.)	# core/data/story/side_a/d_nana.dsc:224
 (Charlotte puts the perfect / loaf back in the oven. On / purpose.)	(Charlotte vuelve a meter la / hogaza perfecta al horno. / A propósito.)	# core/data/story/side_a/d_nana.dsc:230
 So it tastes like home.	Para que sepa a hogar.	# core/data/story/side_a/d_nana.dsc:232
 {big}CHARLOTTE.{/}	{big}CHARLOTTE.{/}	# core/data/story/side_a/d_nana.dsc:234
@@ -74,14 +74,14 @@ Help bake the Unity Loaf?	¿Ayudas a hornear la Hogaza?	# core/data/story/side_a
 Both sides!	¡Ambos lados!	# core/data/story/side_a/d_nana.dsc:265
 Something sweet from your / side. Something burnt from / mine.	Algo dulce de tu lado. Algo / quemado del mío.	# core/data/story/side_a/d_nana.dsc:269
 (Three grannies shout at / once. The oven is on fire. / That's allowed.)	(Tres abuelas gritan a la / vez. El horno está en / llamas. Está permitido.)	# core/data/story/side_a/d_nana.dsc:280
-(Scorchmello toasts the / crust black. Nana scrapes / it. Charlotte puts it back.)	(Scorchmello tuesta la corteza / hasta ponerla negra. Nana la / raspa. Charlotte la repone.)	# core/data/story/side_a/d_nana.dsc:282
+(Scorchmello toasts the / crust black. Nana scrapes / it. Charlotte puts it back.)	(Scorchmello tuesta la corteza hasta ponerla negra. Nana la // raspa. Charlotte la repone.)	# core/data/story/side_a/d_nana.dsc:282
 (On the Unity Stage, they cut / the loaf.)	(En el Escenario de la Unidad / cortan la hogaza.)	# core/data/story/side_a/d_nana.dsc:284
 {big}*tink*{/} {.}(There's a key / inside.)	{big}*tin*{/} {.}(Hay una llave / adentro.)	# core/data/story/side_a/d_nana.dsc:287
 (Everyone turns to Nana.)	(Todos miran a Nana.)	# core/data/story/side_a/d_nana.dsc:289
 {d}Habit.	{d}Costumbre.	# core/data/story/side_a/d_nana.dsc:291
 I'll hang it on the old / gatepost. Where there's no / lock.	La colgaré en el viejo poste / del portón. Donde no hay / cerradura.	# core/data/story/side_a/d_nana.dsc:294
-In case anyone's ever scared / again. {..}So they can see / it's open.	Por si alguien vuelve a tener / miedo. {..}Para que vean que / está abierto.	# core/data/story/side_a/d_nana.dsc:296
-A Cupcake from Nana's. A / Brimstone Bagel from ours. / {..}Both, or it's just a loaf.	Un Cupcake de lo de Nana. Un / Bagel de Azufre de lo / nuestro. {..}Los dos, o solo es / una hogaza.	# core/data/story/side_a/d_nana.dsc:303
+In case anyone's ever scared / again. {..}So they can see / it's open.	Por si alguien vuelve a tener miedo. {..}Para que vean que // está abierto.	# core/data/story/side_a/d_nana.dsc:296
+A Cupcake from Nana's. A / Brimstone Bagel from ours. / {..}Both, or it's just a loaf.	Un Cupcake de lo de Nana. Un Bagel de Azufre de lo nuestro. {..}Los dos, o solo es // una hogaza.	# core/data/story/side_a/d_nana.dsc:303
 Any leftovers? {.}From the / loaf?	¿Sobró algo? {.}¿De la / hogaza?	# core/data/story/side_a/d_nana.dsc:308
 (There are none.)	(No sobró nada.)	# core/data/story/side_a/d_nana.dsc:310
 {..}Any leftovers?	{..}¿Sobró algo?	# core/data/story/side_a/d_nana.dsc:312

@@ -10,9 +10,9 @@ Don't read it. Everyone has read it.	No lo leas. Todos lo han leído.	# core/dat
 SHRIEKRA: He flirted with my sister.	SHRIEKRA: Coqueteó con mi hermana.	# core/data/story/side_b/l_vapula.dsc:441
 SPEARMINT: He flirted with my DOOR.	SPEARMINT: Coqueteó con mi PUERTA.	# core/data/story/side_b/l_vapula.dsc:442
 KODIAK: It was fine, actually. I'm here for the food.	KODIAK: Estuvo bien, en realidad. Vengo por la comida.	# core/data/story/side_b/l_vapula.dsc:443
-(A small grey cloud, in a / jar on a cushion. {.}It / drizzles politely.)	(Una nubecita gris, en un / frasco sobre un cojín. {.}Llovizna / con educación.)	# core/data/story/side_b/l_vapula.dsc:19
+(A small grey cloud, in a / jar on a cushion. {.}It / drizzles politely.)	(Una nubecita gris, en un frasco sobre un cojín. {.}Llovizna // con educación.)	# core/data/story/side_b/l_vapula.dsc:19
 hello. {..}i was a duke.	hola. {..}fui un duque.	# core/data/story/side_b/l_vapula.dsc:21
-now i'm cushion-sized. {.}and i / rain when i'm sad. {..}i'm / sad a lot.	ahora tengo tamaño de cojín. {.}y / llueve cuando estoy triste. {..}/ estoy triste a menudo.	# core/data/story/side_b/l_vapula.dsc:23
+now i'm cushion-sized. {.}and i / rain when i'm sad. {..}i'm / sad a lot.	ahora tengo tamaño de cojín. {.}y llueve cuando estoy triste. // {..}/ estoy triste a menudo.	# core/data/story/side_b/l_vapula.dsc:23
 i'd like a hobby.	quisiera un pasatiempo.	# core/data/story/side_b/l_vapula.dsc:25
 Find him a hobby?	¿Buscarle un pasatiempo?	# core/data/story/side_b/l_vapula.dsc:26
 Let's try some.	Probemos algunos.	# core/data/story/side_b/l_vapula.dsc:26
@@ -37,7 +37,7 @@ You:	Tú:	# core/data/story/side_b/l_vapula.dsc:77
 You're small now.	Ahora eres pequeño.	# core/data/story/side_b/l_vapula.dsc:77
 ...is that better?	...¿así es mejor?	# core/data/story/side_b/l_vapula.dsc:80
 (@E puts a paw on him.)	(@E le pone una pata encima.)	# core/data/story/side_b/l_vapula.dsc:82
-(Sootkin's sunflower is the / best-watered plant in the / park. {..}Nobody asks why.)	(El girasol de Sootkin es la / planta mejor regada del / parque. {..}Nadie pregunta por qué.)	# core/data/story/side_b/l_vapula.dsc:95
+(Sootkin's sunflower is the / best-watered plant in the / park. {..}Nobody asks why.)	(El girasol de Sootkin es la planta mejor regada del parque. {..}Nadie pregunta por // qué.)	# core/data/story/side_b/l_vapula.dsc:95
 i sent him flowers once. {.}it / wasn't enough.	una vez le mandé flores. {.}no / fue suficiente.	# core/data/story/side_b/l_vapula.dsc:107
 i want to say it. {..}i wrote / a speech.	quiero decírselo. {..}escribí / un discurso.	# core/data/story/side_b/l_vapula.dsc:109
 (The speech is one word.)	(El discurso es una palabra.)	# core/data/story/side_b/l_vapula.dsc:111
@@ -53,16 +53,16 @@ Invoice. {.}Water damage, / municipal, times one.	Factura. {.}Daños por agua, /
 (The Mayor signs it.)	(El Alcalde la firma.)	# core/data/story/side_b/l_vapula.dsc:138
 (Vapula rains on the invoice.)	(Vapula llueve sobre la factura.)	# core/data/story/side_b/l_vapula.dsc:141
 (Two people made of other / people's fear, forgiving / each other. One word each.)	(Dos seres hechos del miedo / ajeno, perdonándose. Una / palabra cada uno.)	# core/data/story/side_b/l_vapula.dsc:145
-(The Mayor's visitor chair / has a cloud-shaped cushion / now. {..}It's a little damp.)	(La silla de visitas del / Alcalde ahora tiene un cojín / con forma de nube. {..}Está algo húmedo.)	# core/data/story/side_b/l_vapula.dsc:157
+(The Mayor's visitor chair / has a cloud-shaped cushion / now. {..}It's a little damp.)	(La silla de visitas del Alcalde ahora tiene un cojín con forma de nube. {..}Está algo // húmedo.)	# core/data/story/side_b/l_vapula.dsc:157
 my old home is still up / there. {.}the ninth cloud. / {..}empty. drifting.	mi antiguo hogar sigue allá / arriba. {.}la novena nube. / {..}vacía. a la deriva.	# core/data/story/side_b/l_vapula.dsc:176
 i want to see it once more. / {.}then i want it gone.	quiero verlo una vez más. / {.}luego quiero que desaparezca.	# core/data/story/side_b/l_vapula.dsc:178
 i'm too small to fly.	soy muy pequeño para volar.	# core/data/story/side_b/l_vapula.dsc:180
 Take him up there?	¿Llevarlo allá arriba?	# core/data/story/side_b/l_vapula.dsc:181
 Updraft has a balloon.	Updraft tiene un globo.	# core/data/story/side_b/l_vapula.dsc:181
 Up we go! {!}Hold onto your / jar.	¡Arriba! {!}Agárrate de tu / frasco.	# core/data/story/side_b/l_vapula.dsc:189
-(The balloon rises over the / park, both sides at once, / and brakes in a cloud.)	(El globo sube sobre el parque, / ambos lados a la vez, y / frena en una nube.)	# core/data/story/side_b/l_vapula.dsc:196
+(The balloon rises over the / park, both sides at once, / and brakes in a cloud.)	(El globo sube sobre el parque, ambos lados a la vez, y // frena en una nube.)	# core/data/story/side_b/l_vapula.dsc:196
 the last scraps of what / nobody felt. // they'll fight. they don't / know they're over.	los últimos restos de lo que / nadie sintió. // pelearán. no saben / que ya terminó.	# core/data/story/side_b/l_vapula.dsc:202
-(At the centre, his tiny / cloud room. A throne made of / 'it's fine's.)	(En el centro, su cuartito de / nube. Un trono hecho de / 'estoy bien'.)	# core/data/story/side_b/l_vapula.dsc:205
+(At the centre, his tiny / cloud room. A throne made of / 'it's fine's.)	(En el centro, su cuartito de nube. Un trono hecho de // 'estoy bien'.)	# core/data/story/side_b/l_vapula.dsc:205
 take one thing?	¿llevas una cosa?	# core/data/story/side_b/l_vapula.dsc:207
 The throne.	El trono.	# core/data/story/side_b/l_vapula.dsc:207
 A letter.	Una carta.	# core/data/story/side_b/l_vapula.dsc:207
@@ -71,7 +71,7 @@ Too windy! {.}We'll try again / tomorrow.	¡Hay mucho viento! {.}Probamos / mañ
 (The letter says: 'dear / anybody.' {..}That's all.)	(La carta dice: 'querido / alguien.' {..}Es todo.)	# core/data/story/side_b/l_vapula.dsc:218
 (He pops the Ninth Cloud.)	(Pincha la Novena Nube.)	# core/data/story/side_b/l_vapula.dsc:226
 (It rains on the whole park / for a day.)	(Llueve sobre todo el parque / por un día.)	# core/data/story/side_b/l_vapula.dsc:229
-(The rain is warm. Every / citizen stands in it. {.}Nobody / runs for cover.)	(La lluvia es tibia. Cada / ciudadano se queda bajo ella. / {.}Nadie corre a cubrirse.)	# core/data/story/side_b/l_vapula.dsc:232
+(The rain is warm. Every / citizen stands in it. {.}Nobody / runs for cover.)	(La lluvia es tibia. Cada ciudadano se queda bajo ella. // {.}Nadie corre a cubrirse.)	# core/data/story/side_b/l_vapula.dsc:232
 First rain in ten years that / wasn't somebody's.	Primera lluvia en diez años / que no era de alguien.	# core/data/story/side_b/l_vapula.dsc:234
 (Grumbleguts sits on the tiny / throne in your house.)	(Grumbleguts se sienta en el / trono diminuto de tu casa.)	# core/data/story/side_b/l_vapula.dsc:243
 VOICE FROM THE THRONE: it's / fine.	VOZ DESDE EL TRONO: estoy / bien.	# core/data/story/side_b/l_vapula.dsc:245
@@ -120,7 +120,7 @@ Is there cheese?	¿Hay queso?	# core/data/story/side_b/l_vapula.dsc:373
 (Somehow it's also all three / poses.)	(De algún modo también son las / tres poses.)	# core/data/story/side_b/l_vapula.dsc:383
 Now the bio. {.}Short. Mysterious. / Me.	Ahora la bio. {.}Corta. Misteriosa. / Yo.	# core/data/story/side_b/l_vapula.dsc:385
 His bio:	Su bio:	# core/data/story/side_b/l_vapula.dsc:386
-Gatekeeper. Open late.	Guardián. Abierto hasta tarde.	# core/data/story/side_b/l_vapula.dsc:386
+Gatekeeper. Open late.	Guardián. Abre hasta tarde.	# core/data/story/side_b/l_vapula.dsc:386
 Big. Loud. Yours.	Grande. Ruidoso. Tuyo.	# core/data/story/side_b/l_vapula.dsc:386
 gate.	puerta.	# core/data/story/side_b/l_vapula.dsc:386
 Ooh. {.}That's going straight on / the profile.	Ooh. {.}Eso va directo al / perfil.	# core/data/story/side_b/l_vapula.dsc:388
@@ -128,7 +128,7 @@ Darlin', you get me.	Cariño, me entiendes.	# core/data/story/side_b/l_vapula.ds
 ...gate. {..}Yeah. That's me.	...puerta. {..}Sí. Ese soy yo.	# core/data/story/side_b/l_vapula.dsc:394
 (First reply: Honkers.)	(Primera respuesta: Honkers.)	# core/data/story/side_b/l_vapula.dsc:398
 Honk.	Honk.	# core/data/story/side_b/l_vapula.dsc:401
-(Second reply: Gatekeep, the / Hillvile robot. 'ERROR 404: / NOT INTERESTED.')	(Segunda respuesta: Gatekeep, el / robot de Hillvile. 'ERROR 404: / NO INTERESADO.')	# core/data/story/side_b/l_vapula.dsc:404
+(Second reply: Gatekeep, the / Hillvile robot. 'ERROR 404: / NOT INTERESTED.')	(Segunda respuesta: Gatekeep, el robot de Hillvile. 'ERROR // 404: NO INTERESADO.')	# core/data/story/side_b/l_vapula.dsc:404
 (Third reply: the Gate's / maintenance notice.)	(Tercera respuesta: el aviso / de mantenimiento de la Puerta.)	# core/data/story/side_b/l_vapula.dsc:407
 That counts.	Eso cuenta.	# core/data/story/side_b/l_vapula.dsc:409
 (Later, alone, he rewrites / the bio.)	(Más tarde, solo, reescribe / la bio.)	# core/data/story/side_b/l_vapula.dsc:412
@@ -137,11 +137,11 @@ That counts.	Eso cuenta.	# core/data/story/side_b/l_vapula.dsc:409
 (Mother Nox's potluck seats / him next to Scaldie.)	(El convivio de Mother Nox lo / sienta junto a Scaldie.)	# core/data/story/side_b/l_vapula.dsc:426
 ...Lukewarm.	...Tibio.	# core/data/story/side_b/l_vapula.dsc:428
 It's a start.	Es un comienzo.	# core/data/story/side_b/l_vapula.dsc:430
-Taking bets! {!}A support group / for Grumbleguts's exes. At / Brimstone Bites. Tonight.	¡Se aceptan apuestas! {!}Un / grupo de apoyo para los ex de / Grumbleguts. En Brimstone Bites. Esta noche.	# core/data/story/side_b/l_vapula.dsc:446
+Taking bets! {!}A support group / for Grumbleguts's exes. At / Brimstone Bites. Tonight.	¡Se aceptan apuestas! {!}Un grupo de apoyo para los ex de // Grumbleguts. En Brimstone Bites. Esta noche.	# core/data/story/side_b/l_vapula.dsc:446
 How many turn up? {.}I've got / zero at ten to one.	¿Cuántos vendrán? {.}Yo tengo / cero a diez contra uno.	# core/data/story/side_b/l_vapula.dsc:448
 Go to the group?	¿Ir al grupo?	# core/data/story/side_b/l_vapula.dsc:449
 This I've got to see.	Esto tengo que verlo.	# core/data/story/side_b/l_vapula.dsc:449
-(Three turn up. All demons. / All adults. {.}All entirely / over it.)	(Llegan tres. Todos demonios. / Todos adultos. {.}Todos / totalmente superados.)	# core/data/story/side_b/l_vapula.dsc:458
+(Three turn up. All demons. / All adults. {.}All entirely / over it.)	(Llegan tres. Todos demonios. Todos adultos. {.}Todos // totalmente superados.)	# core/data/story/side_b/l_vapula.dsc:458
 ...Three. {..}I bet zero.	...Tres. {..}Aposté cero.	# core/data/story/side_b/l_vapula.dsc:460
 He told me I was cute when I / was scared.	Me dijo que era lindo cuando / me asustaba.	# core/data/story/side_b/l_vapula.dsc:462
 He told ME that!	¡A MÍ me dijo eso!	# core/data/story/side_b/l_vapula.dsc:465
@@ -162,9 +162,9 @@ He's a lot.	Es mucho.	# core/data/story/side_b/l_vapula.dsc:501
 (He sucks in his gut.)	(Mete la panza.)	# core/data/story/side_b/l_vapula.dsc:505
 (It springs out. {r})	(Sale de golpe. {r})	# core/data/story/side_b/l_vapula.dsc:508
 (He laughs at himself. {.}The / first time.)	(Se ríe de sí mismo. {.}La / primera vez.)	# core/data/story/side_b/l_vapula.dsc:510
-(Three turn up anyway. All / demons. All adults. {.}They / brought food.)	(Llegan tres de todos modos. / Todos demonios. Todos adultos. / {.}Trajeron comida.)	# core/data/story/side_b/l_vapula.dsc:519
+(Three turn up anyway. All / demons. All adults. {.}They / brought food.)	(Llegan tres de todos modos. Todos demonios. Todos adultos. // {.}Trajeron comida.)	# core/data/story/side_b/l_vapula.dsc:519
 (Honkers wheels the Gate in / on a trolley. {..}It does not / creak.)	(Honkers trae la Puerta en un / carrito. {..}No rechina.)	# core/data/story/side_b/l_vapula.dsc:524
 He never once made anyone / feel small.	Nunca hizo sentir pequeño / a nadie.	# core/data/story/side_b/l_vapula.dsc:527
 {..}He'd hate how quiet this / is.	{..}Odiaría lo callado que / está esto.	# core/data/story/side_b/l_vapula.dsc:529
 (So everyone eats loudly. / {.}For him.)	(Así que todos comen con / ruido. {.}Por él.)	# core/data/story/side_b/l_vapula.dsc:531
-(The FRIENDS page has four / signatures now. {..}One of / them is a hinge.)	(La página de AMIGOS ya tiene / cuatro firmas. {..}Una es / una bisagra.)	# core/data/story/side_b/l_vapula.dsc:541
+(The FRIENDS page has four / signatures now. {..}One of / them is a hinge.)	(La página de AMIGOS ya tiene cuatro firmas. {..}Una es // una bisagra.)	# core/data/story/side_b/l_vapula.dsc:541

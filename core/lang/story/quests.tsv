@@ -102,7 +102,7 @@ Tell @T how I feel? {..}Okay. / {.}Okay! {!}Wish me luck!	¿Decirle a @T lo que 
 {big}It worked!{/} They're blushing / at each other across the park.	{big}¡Funcionó!{/} Se sonrojan / al verse al otro lado del parque.	# core/data/story/quests49/index.dsc:126
 Not perfect... {..}but they / agreed to have tea. / That's a start!	No es perfecto... {..}pero / aceptaron tomar té. / ¡Es un comienzo!	# core/data/story/quests49/index.dsc:127
 @T asked about me? From / across the river? {..}Well. / Time we talked, I suppose.	¿@T preguntó por mí? ¿Desde / el otro lado del río? {..}Bueno. / Ya era hora de hablar.	# core/data/story/quests49/index.dsc:128
-@T's eyes glow red. {..}A voice / that isn't theirs: / {w}Go away, little hero.	Los ojos de @T brillan rojos. {..}Una voz / que no es suya: / {w}Vete, pequeño héroe.	# core/data/story/quests49/index.dsc:129
+@T's eyes glow red. {..}A voice / that isn't theirs: / {w}Go away, little hero.	Los ojos de @T brillan rojos. {..}Una voz que no es suya: // {w}Vete, pequeño héroe.	# core/data/story/quests49/index.dsc:129
 {big}*CLICK!*{/} {.}A perfect shot. / Take it back!	{big}*CLIC!*{/} {.}Toma perfecta. / ¡Llévala de vuelta!	# core/data/story/quests49/index.dsc:130
 Found them! {.}The little / critter wiggles in your / arms. Take them home!	¡Lo encontraste! {.}El pequeño / bicho se retuerce en tus / brazos. ¡Llévalo a casa!	# core/data/story/quests49/index.dsc:131
 {big}Found it!{/} Take it back / to its owner.	{big}¡Lo encontraste!{/} Llévalo / de vuelta a su dueño.	# core/data/story/quests49/index.dsc:132
@@ -116,20 +116,20 @@ Bring Pip a Plushie: Nana will sew Mr. Flops a bed for your house.	Llévale un p
 Night Patrol	Patrulla nocturna	# core/data/story/side_a/a_pip.dsc:88
 Walk Pip to the lamp post by the Wall at night, then take the 'proof' photo.	Lleva a Pip al poste junto al Muro de noche y toma la foto de 'prueba'.	# core/data/story/side_a/a_pip.dsc:88
 Flops the 1st Rides Again	Flops I vuelve a cabalgar	# core/data/story/side_a/a_pip.dsc:159
-Find Mr. Flops's twin in the Plushie Factory (Breach 4); Rivet can mend him.	Busca al gemelo de Mr. Flops en la Fábrica de Peluches (Brecha 4); Rivet lo arregla.	# core/data/story/side_a/a_pip.dsc:159
+Find Mr. Flops's twin in the Plushie Factory (Breach 4); Rivet can mend him.	Busca al gemelo de Mr. Flops en la Fábrica de Peluches (Brecha 4); Rivet lo // arregla.	# core/data/story/side_a/a_pip.dsc:159
 Where Was I?	¿Dónde estaba?	# core/data/story/side_a/a_pip.dsc:222
 Help @E sniff out Grampy's glasses, trowel and seed packet.	Ayuda a @E a olfatear los lentes, la pala y el sobre de semillas de Grampy.	# core/data/story/side_a/a_pip.dsc:222
 The Face Tomatoes	Los tomates con cara	# core/data/story/side_a/a_pip.dsc:287
-Pick Grampy's eyed tomatoes; bury the rest by the Wall, facing Hellvile.	Cosecha los tomates con ojos de Grampy; entierra el resto junto al Muro, hacia Hellvile.	# core/data/story/side_a/a_pip.dsc:287
+Pick Grampy's eyed tomatoes; bury the rest by the Wall, facing Hellvile.	Cosecha los tomates con ojos de Grampy; entierra el resto junto al Muro, hacia // Hellvile.	# core/data/story/side_a/a_pip.dsc:287
 Two Gardens	Dos jardines	# core/data/story/side_a/a_pip.dsc:343
-Bring Sootkin Flowers from Hillvile for the shared bed on the old Wall line.	Lleva Flores Hollín de Hillvile para el huerto compartido en la vieja línea del Muro.	# core/data/story/side_a/a_pip.dsc:343
+Bring Sootkin Flowers from Hillvile for the shared bed on the old Wall line.	Lleva Flores Hollín de Hillvile para el huerto compartido en la vieja línea // del Muro.	# core/data/story/side_a/a_pip.dsc:343
 Green Thumbs	Pulgares verdes	# core/data/story/side_a/a_pip.dsc:343
 Days Since Last Fire	Días sin incendios	# core/data/story/side_a/b_rivet.dsc:9
 Weld a second safety sign with Rivet and hang it in your house.	Suelda un segundo letrero de seguridad con Rivet y cuélgalo en tu casa.	# core/data/story/side_a/b_rivet.dsc:9
 Letters Not Sent	Cartas sin enviar	# core/data/story/side_a/b_rivet.dsc:81
-Get Rivet's toolbox back from the nest in the Vape Cellar.	Recupera la caja de herramientas de Rivet del nido en la Bodega de Vapeo.	# core/data/story/side_a/b_rivet.dsc:81
+Get Rivet's toolbox back from the nest in the Vape Cellar.	Recupera la caja de herramientas de Rivet del nido en la Sótano del Vapeo.	# core/data/story/side_a/b_rivet.dsc:81
 Two Marks	Dos marcas	# core/data/story/side_a/b_rivet.dsc:152
-Bring Anvil 3 Scrap, then weld the new hammer mark to her rhythm.	Llévale 3 de chatarra a Anvil y suelda la nueva marca de martillo a su ritmo.	# core/data/story/side_a/b_rivet.dsc:152
+Bring Anvil 3 Scrap, then weld the new hammer mark to her rhythm.	Llévale 3 de chatarra a Anvil y suelda la nueva marca de martillo a su // ritmo.	# core/data/story/side_a/b_rivet.dsc:152
 The Door	La puerta	# core/data/story/side_a/b_rivet.dsc:211
 Let Anvil look at your cottage's squeaky front door.	Deja que Anvil revise la puerta chirriante de tu casa.	# core/data/story/side_a/b_rivet.dsc:211
 A Spoon for Mum	Una cuchara para mamá	# core/data/story/side_a/b_rivet.dsc:266
@@ -197,7 +197,7 @@ Win Sprinklepop twenty balloons at Twisty's Fun Fair stall.	Gana veinte globos p
 Lost and Found	Objetos perdidos	# core/data/story/side_a/g_party.dsc:80
 Follow the glitter: her stand, the Fun Fair, the pond, then the Wall.	Sigue el brillo: su puesto, la Feria, el estanque y luego el Muro.	# core/data/story/side_a/g_party.dsc:80
 Wheezle's Little Ghosts	Los fantasmitas de Wheezle	# core/data/story/side_a/g_party.dsc:159
-Meet Wheezle's ghosts and catch Sprinkles's sneezes in a jar.	Conoce a los fantasmas de Wheezle y atrapa los estornudos de Sprinkles en un frasco.	# core/data/story/side_a/g_party.dsc:159
+Meet Wheezle's ghosts and catch Sprinkles's sneezes in a jar.	Conoce a los fantasmas de Wheezle y atrapa los estornudos de Sprinkles en // un frasco.	# core/data/story/side_a/g_party.dsc:159
 Bubbles Bounces Back	Bubbles rebota	# core/data/story/side_a/g_party.dsc:218
 Meet the soul at the Wall gate; walk her to the clinic.	Recibe al alma en la puerta del Muro y llévala a la clínica.	# core/data/story/side_a/g_party.dsc:218
 Unfailed	Sin fracasos	# core/data/story/side_a/g_party.dsc:218
@@ -211,18 +211,18 @@ The Head Comes Off	La cabeza sale	# core/data/story/side_a/h_mascot.dsc:265
 Walk Thumpkin through the gate to his sister at the fountain.	Lleva a Thumpkin por la puerta hasta su hermana en la fuente.	# core/data/story/side_a/h_mascot.dsc:265
 Nobody Knows Who	Nadie sabe quién	# core/data/story/side_a/h_mascot.dsc:265
 Population: 1000	Población: 1000	# core/data/story/side_a/i_solo.dsc:9
-Bring the Mayor pink from Rainbow Ewe and red from Stencilla, over the gate.	Lleva al Alcalde rosa de Rainbow Ewe y rojo de Stencilla, por encima de la puerta.	# core/data/story/side_a/i_solo.dsc:9
+Bring the Mayor pink from Rainbow Ewe and red from Stencilla, over the gate.	Lleva al Alcalde rosa de Rainbow Ewe y rojo de Stencilla, por encima de la // puerta.	# core/data/story/side_a/i_solo.dsc:9
 Census	Censo	# core/data/story/side_a/i_solo.dsc:9
 Fishing for Compliments	Pescando cumplidos	# core/data/story/side_a/i_solo.dsc:81
 Fish off the end of the pier until the Captain's tagged fish bites.	Pesca en el extremo del muelle hasta que pique el pez marcado del Capitán.	# core/data/story/side_a/i_solo.dsc:81
 Bedtime for Everyone	Hora de dormir para todos	# core/data/story/side_a/i_solo.dsc:151
 Put your pet's bed by the window for Story Owl's bedtime story.	Pon la cama de tu mascota junto a la ventana para el cuento de Story Owl.	# core/data/story/side_a/i_solo.dsc:151
 Whack-a-Nothing	Golpea-la-nada	# core/data/story/side_a/i_solo.dsc:205
-Play the Whack-an-Imp, on and off. Then find where its plug goes.	Juega al Golpea-un-diablillo, apágalo y enciéndelo. Luego busca dónde se enchufa.	# core/data/story/side_a/i_solo.dsc:205
+Play the Whack-an-Imp, on and off. Then find where its plug goes.	Juega al Golpea-un-diablillo, apágalo y enciéndelo. Luego busca // dónde se enchufa.	# core/data/story/side_a/i_solo.dsc:205
 Say Cheese (Again)	Di whisky (otra vez)	# core/data/story/side_a/i_solo.dsc:272
-Shoot Shutterbug's 'before' set of the town: your house first, the Wall last.	Toma el set 'antes' del pueblo de Shutterbug: tu casa primero, el Muro al final.	# core/data/story/side_a/i_solo.dsc:272
+Shoot Shutterbug's 'before' set of the town: your house first, the Wall last.	Toma el set 'antes' del pueblo de Shutterbug: tu casa primero, el Muro al // final.	# core/data/story/side_a/i_solo.dsc:272
 Lullaby for the Wall	Nana para el Muro	# core/data/story/side_a/i_solo.dsc:334
-Fetch the church bell, write four bars with Mew, play them with Coo.	Trae la campana de la iglesia, escribe cuatro compases con Mew y tócalos con Coo.	# core/data/story/side_a/i_solo.dsc:334
+Fetch the church bell, write four bars with Mew, play them with Coo.	Trae la campana de la iglesia, escribe cuatro compases con Mew y tócalos // con Coo.	# core/data/story/side_a/i_solo.dsc:334
 Make Me a Face	Hazme una cara	# core/data/story/side_a/i_solo.dsc:402
 Make Phantasma a cute Hillvile look for the festival.	Hazle a Phantasma un look tierno de Hillvile para el festival.	# core/data/story/side_a/i_solo.dsc:402
 Hellvile Hopscotch	Rayuela de Hellvile	# core/data/story/side_a/i_solo.dsc:453
@@ -234,7 +234,7 @@ Vex is hiding in your closet. Bring him Pixie Sugar (his 'cotton candy').	Vex se
 Exit Interview	Entrevista de salida	# core/data/story/side_b/k_vex.dsc:211
 Bring 3 Soap to air out Cloud Nine, then redecorate it as the Fresh Air Lounge.	Trae 3 jabones para ventilar Cloud Nine y redecórala como Salón Aire Fresco.	# core/data/story/side_b/k_vex.dsc:211
 The Bubble Machine	La máquina de burbujas	# core/data/story/side_b/k_vex.dsc:316
-Weld Vex's rig into a bubble machine, test it at the Fun Fair, then run it on stage.	Suelda el equipo de Vex en una máquina de burbujas, pruébala en la Feria y úsala en escena.	# core/data/story/side_b/k_vex.dsc:316
+Weld Vex's rig into a bubble machine, test it at the Fun Fair, then run it on stage.	Suelda el equipo de Vex en una máquina de burbujas, pruébala en la Feria y úsala // en escena.	# core/data/story/side_b/k_vex.dsc:316
 Terrible, Actually	Terrible, en serio	# core/data/story/side_b/k_vex.dsc:316
 Small Weather	Clima pequeño	# core/data/story/side_b/l_vapula.dsc:14
 Find the little cloud in the jar a hobby. Then introduce him to @E.	Búscale un pasatiempo a la nubecita del frasco. Luego preséntasela a @E.	# core/data/story/side_b/l_vapula.dsc:14
@@ -255,7 +255,7 @@ Fetch a hot water bottle from Lather's for Dr. Bloom. Don't run.	Trae una bolsa 
 Night Clinic	Clínica nocturna	# core/data/story/side_b/m_bloom.dsc:92
 Walk Dr. Bloom through the plaza at night: three house calls, then demons.	Acompaña a la Dra. Bloom por la plaza de noche: tres visitas y luego demonios.	# core/data/story/side_b/m_bloom.dsc:92
 A Clinic With Two Doors	Una clínica con dos puertas	# core/data/story/side_b/m_bloom.dsc:197
-Bring Graveley 4 Scrap and 2 Medicine. Rivet welds a door; you furnish.	Llévale a Graveley 4 de chatarra y 2 medicinas. Rivet suelda una puerta; tú amueblas.	# core/data/story/side_b/m_bloom.dsc:197
+Bring Graveley 4 Scrap and 2 Medicine. Rivet welds a door; you furnish.	Llévale a Graveley 4 de chatarra y 2 medicinas. Rivet suelda una puerta; tú // amueblas.	# core/data/story/side_b/m_bloom.dsc:197
 Cold Hands, Warm Heart	Manos frías, corazón cálido	# core/data/story/side_b/m_bloom.dsc:197
 Open Mic	Micrófono abierto	# core/data/story/side_b/m_bloom.dsc:298
 Be Hattie's warm-up act at the cafe. Press A on the punchline.	Sé el acto de calentamiento de Hattie en el café. Pulsa A en el remate.	# core/data/story/side_b/m_bloom.dsc:298
@@ -267,18 +267,18 @@ Tough Room	Público difícil	# core/data/story/side_b/m_bloom.dsc:447
 Naptime Monsters	Monstruos de siesta	# core/data/story/side_b/o_lulla.dsc:11
 Check under the daycare cots for Miss Lulla. Monsters aren't real.	Revisa bajo las camas de la guardería para Miss Lulla. Los monstruos no existen.	# core/data/story/side_b/o_lulla.dsc:11
 The Same Friend	El mismo amigo	# core/data/story/side_b/o_lulla.dsc:81
-Ask four kids about the crowned cloud they all drew. Then peek at a dream.	Pregunta a cuatro niños por la nube con corona que dibujaron. Luego asómate a un sueño.	# core/data/story/side_b/o_lulla.dsc:81
+Ask four kids about the crowned cloud they all drew. Then peek at a dream.	Pregunta a cuatro niños por la nube con corona que dibujaron. Luego asómate a // un sueño.	# core/data/story/side_b/o_lulla.dsc:81
 Field Trip	Excursión	# core/data/story/side_b/o_lulla.dsc:166
-Walk Miss Lulla's bus to the gate, then win the nap-off in Nox's chapel.	Lleva el autobús de Miss Lulla a la puerta y gana el concurso de siestas en la capilla de Nox.	# core/data/story/side_b/o_lulla.dsc:166
+Walk Miss Lulla's bus to the gate, then win the nap-off in Nox's chapel.	Lleva el autobús de Miss Lulla a la puerta y gana el concurso de siestas en la // capilla de Nox.	# core/data/story/side_b/o_lulla.dsc:166
 Under a Minute	Menos de un minuto	# core/data/story/side_b/o_lulla.dsc:166
 The Fountain Is Late	La fuente llega tarde	# core/data/story/side_b/o_lulla.dsc:273
 Press A when the fountain giggles, then photograph Fizz by it.	Pulsa A cuando la fuente ría y luego fotografía a Fizz junto a ella.	# core/data/story/side_b/o_lulla.dsc:273
 Tiny Things	Cosas diminutas	# core/data/story/side_b/o_lulla.dsc:335
-Scrape vapor samples off three cleared nests for Dr. Quark, then catch a sigh.	Raspa muestras de vapor de tres nidos limpios para el Dr. Quark y atrapa un suspiro.	# core/data/story/side_b/o_lulla.dsc:335
+Scrape vapor samples off three cleared nests for Dr. Quark, then catch a sigh.	Raspa muestras de vapor de tres nidos limpios para el Dr. Quark y atrapa un // suspiro.	# core/data/story/side_b/o_lulla.dsc:335
 They All Want to Be Florists	Todos quieren ser floristas	# core/data/story/side_b/o_lulla.dsc:414
-Give Dr. Frankly a florist's look in the Creator, then build the monster a stall.	Dale al Dr. Frankly un look de florista en el Creador y construye un puesto al monstruo.	# core/data/story/side_b/o_lulla.dsc:414
+Give Dr. Frankly a florist's look in the Creator, then build the monster a stall.	Dale al Dr. Frankly un look de florista en el Creador y construye un puesto al // monstruo.	# core/data/story/side_b/o_lulla.dsc:414
 A Clock With No Hands	Un reloj sin manecillas	# core/data/story/side_b/q_tock.dsc:11
-Find the handless clock in Town Hall. Bring Tock a Milk. Listen at midnight.	Encuentra el reloj sin manecillas en el Ayuntamiento. Llévale una Leche a Tock. Escucha a medianoche.	# core/data/story/side_b/q_tock.dsc:11
+Find the handless clock in Town Hall. Bring Tock a Milk. Listen at midnight.	Encuentra el reloj sin manecillas en el Ayuntamiento. Llévale una // Leche a Tock. Escucha a medianoche.	# core/data/story/side_b/q_tock.dsc:11
 Day 3,653	Día 3,653	# core/data/story/side_b/q_tock.dsc:103
 Trade Clinker a poem for her chalk, then give Tallyworn a second wall.	Cambia a Clinker un poema por su tiza y dale a Tallyworn un segundo muro.	# core/data/story/side_b/q_tock.dsc:103
 Counting Down	Cuenta regresiva	# core/data/story/side_b/q_tock.dsc:185
@@ -305,30 +305,30 @@ Somebody Left the Light On	Alguien dejó la luz	# core/data/story/side_b/r_wisp.
 First Hellvile Regular	Primer cliente de Hellvile	# core/data/story/side_b/t_gate.dsc:20
 Grumbleguts ordered the whole menu at Brimstone Bites. Help in the kitchen.	Grumbleguts pidió todo el menú en Brimstone Bites. Ayuda en la cocina.	# core/data/story/side_b/t_gate.dsc:20
 Line Cook	Cocinero de línea	# core/data/story/side_b/t_gate.dsc:113
-Two burners, one apprentice who eats the ingredients. Flip on the beat.	Dos hornillas y un aprendiz que se come los ingredientes. Voltea al ritmo.	# core/data/story/side_b/t_gate.dsc:113
+Two burners, one apprentice who eats the ingredients. Flip on the beat.	Dos hornillas y un aprendiz que se come los ingredientes. Voltea al // ritmo.	# core/data/story/side_b/t_gate.dsc:113
 Someone for Dessert	Alguien para el postre	# core/data/story/side_b/t_gate.dsc:183
 Grumbleguts made dessert for two. Find anyone to eat the other one.	Grumbleguts hizo postre para dos. Busca a quien se coma el otro.	# core/data/story/side_b/t_gate.dsc:183
 Come Up and See My Gate	Ven a ver mi puerta	# core/data/story/side_b/t_gate.dsc:253
-Decorate Grumbleguts's gatehouse for visitors, then invite three guests.	Decora la caseta de Grumbleguts para las visitas y luego invita a tres invitados.	# core/data/story/side_b/t_gate.dsc:253
+Decorate Grumbleguts's gatehouse for visitors, then invite three guests.	Decora la caseta de Grumbleguts para las visitas y luego invita a tres // invitados.	# core/data/story/side_b/t_gate.dsc:253
 Come Up Sometime	Ven alguna vez	# core/data/story/side_b/t_gate.dsc:253
 Rest in Pieces	Descansa en piezas	# core/data/story/side_b/x_solo1.dsc:13
-Mr. Solemn wants HaHaland's joke graves done properly. Ask their ghosts.	Mr. Solemn quiere bien hechas las tumbas bromistas de HaHaland. Pregunta a sus fantasmas.	# core/data/story/side_b/x_solo1.dsc:13
+Mr. Solemn wants HaHaland's joke graves done properly. Ask their ghosts.	Mr. Solemn quiere bien hechas las tumbas bromistas de HaHaland. Pregunta a sus // fantasmas.	# core/data/story/side_b/x_solo1.dsc:13
 The Weeping Widow's Plushie	El peluche de la Viuda Llorona	# core/data/story/side_b/x_solo1.dsc:97
 The Weeping Widow lost a plushie in 1887. Pip wants to find it. Breach 5.	La Viuda Llorona perdió un peluche en 1887. Pip quiere hallarlo. Brecha 5.	# core/data/story/side_b/x_solo1.dsc:97
 Bone Cathedral Acoustics	Acústica de la Catedral de Huesos	# core/data/story/side_b/x_solo1.dsc:188
 Clear Breach 6 so two choirs can sing in the Bone Cathedral.	Despeja la Brecha 6 para que dos coros canten en la Catedral de Huesos.	# core/data/story/side_b/x_solo1.dsc:188
 The Sweet Tooth Sewers	Alcantarillas Dulces	# core/data/story/side_b/x_solo1.dsc:267
-Nana's sourdough starter is in the candy sewers. The Gutterking has it.	La masa madre de Nana está en las alcantarillas de dulce. La tiene el Gutterking.	# core/data/story/side_b/x_solo1.dsc:267
+Nana's sourdough starter is in the candy sewers. The Gutterking has it.	La masa madre de Nana está en las alcantarillas de dulce. La tiene el // Gutterking.	# core/data/story/side_b/x_solo1.dsc:267
 Foreman Fluffnuts Retires	Fluffnuts se jubila	# core/data/story/side_b/x_solo1.dsc:340
 Shut the Plushie Factory conveyor down. Give the foreman a new job.	Detén la cinta de la Fábrica de Peluches. Dale un nuevo trabajo al capataz.	# core/data/story/side_b/x_solo1.dsc:340
 The Upside-Down Map	El mapa al revés	# core/data/story/side_b/x_solo1.dsc:417
 Find the upside-down map on the gatepost. Photograph the mirrored pairs.	Halla el mapa al revés en el poste. Fotografía los pares en espejo.	# core/data/story/side_b/x_solo1.dsc:417
 The Sin Bin	El cajón del pecado	# core/data/story/side_b/x_solo2.dsc:13
-Bring Mopsworth 3 Scrap for a bigger bin. Find the sin bubbles in Hellvile.	Llévale 3 de chatarra a Mopsworth para un cajón mayor. Halla las burbujas de pecado en Hellvile.	# core/data/story/side_b/x_solo2.dsc:13
+Bring Mopsworth 3 Scrap for a bigger bin. Find the sin bubbles in Hellvile.	Llévale 3 de chatarra a Mopsworth para un cajón mayor. Halla las burbujas de // pecado en Hellvile.	# core/data/story/side_b/x_solo2.dsc:13
 Sulfur Shanties	Canciones de azufre	# core/data/story/side_b/x_solo2.dsc:106
 The Lake of Fire's fish weep when Barnaby sings. Write xyr a happy shanty.	Los peces del Lago de Fuego lloran cuando Barnaby canta. Escríbele xyr una alegre.	# core/data/story/side_b/x_solo2.dsc:106
 Number Nine	Número nueve	# core/data/story/side_b/x_solo2.dsc:178
-Number Nine has called 'number nine' for eighty years. Find ticket nine.	Número Nueve lleva ochenta años gritando 'número nueve'. Busca el boleto nueve.	# core/data/story/side_b/x_solo2.dsc:178
+Number Nine has called 'number nine' for eighty years. Find ticket nine.	Número Nueve lleva ochenta años gritando 'número nueve'. Busca el boleto // nueve.	# core/data/story/side_b/x_solo2.dsc:178
 Glowbug's Constellation	Constelación de Glowbug	# core/data/story/side_b/x_solo2.dsc:258
 Herd a thousand fireflies with @E's glow, into a shape over the Mingle.	Guía mil luciérnagas con el brillo de @E hasta formar una figura sobre el Mingle.	# core/data/story/side_b/x_solo2.dsc:258
 Constellation	Constelación	# core/data/story/side_b/x_solo2.dsc:258
@@ -337,7 +337,7 @@ Bellwether's saved, but the tower rings backwards at midnight. Go and listen.	Be
 The Hug Audit	La auditoría de abrazos	# core/data/story/side_b/x_solo2.dsc:404
 Hugsley is hugging again. A bit too well. Watch him hug a demon.	Hugsley abraza otra vez. Demasiado bien. Mira cómo abraza a un demonio.	# core/data/story/side_b/x_solo2.dsc:404
 One Eye, Three Eyes	Un ojo, tres ojos	# core/data/story/side_b/x_solo3.dsc:12
-Find Kevin a hat that fits all three eyes. Then carry him over to meet Oddsball.	Busca a Kevin un sombrero para sus tres ojos. Luego llévalo a conocer a Oddsball.	# core/data/story/side_b/x_solo3.dsc:12
+Find Kevin a hat that fits all three eyes. Then carry him over to meet Oddsball.	Busca a Kevin un sombrero para sus tres ojos. Luego llévalo a conocer a // Oddsball.	# core/data/story/side_b/x_solo3.dsc:12
 The Longest Lullaby	La nana más larga	# core/data/story/side_b/x_solo3.dsc:93
 Ploddy hums lullabies to clouds all night. Maestro Mew wants it conducted.	Ploddy tararea nanas a las nubes toda la noche. Maestro Mew quiere dirigirlo.	# core/data/story/side_b/x_solo3.dsc:93
 Two Brave Kids	Dos niños valientes	# core/data/story/side_b/x_solo3.dsc:143

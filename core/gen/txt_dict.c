@@ -82,26 +82,26 @@ const uint16_t doomo_txt_huff_sym[356] = {
     161, 162, 163, 174, 175, 259, 262, 263, 265, 268, 273, 277,
     282, 285, 295, 45, 85, 86, 89, 120, 123, 125, 160, 164,
     165, 264, 266, 269, 275, 278, 279, 288, 293, 294, 296, 309,
-    319, 323, 324, 325, 330, 338, 438, 64, 75, 81, 267, 270,
+    319, 323, 324, 325, 329, 338, 439, 64, 75, 81, 267, 270,
     272, 274, 276, 280, 281, 284, 291, 297, 299, 303, 306, 318,
-    327, 331, 352, 356, 373, 394, 396, 416, 422, 458, 42, 48,
+    327, 331, 352, 356, 373, 395, 397, 416, 422, 458, 42, 48,
     49, 50, 51, 55, 74, 271, 283, 286, 287, 290, 292, 298,
     301, 302, 304, 305, 308, 310, 311, 312, 313, 314, 316, 317,
-    322, 326, 328, 329, 334, 335, 339, 340, 341, 345, 347, 349,
+    322, 326, 328, 330, 334, 335, 339, 340, 341, 345, 347, 349,
     351, 355, 359, 361, 369, 370, 375, 384, 403, 411, 414, 415,
-    434, 435, 436, 440, 449, 453, 454, 455, 465, 472, 477, 483,
+    435, 436, 437, 441, 449, 453, 454, 455, 465, 472, 477, 483,
     491, 494, 34, 52, 53, 54, 56, 57, 88, 90, 289, 300,
     307, 321, 332, 333, 336, 337, 342, 343, 344, 348, 350, 353,
     357, 360, 362, 363, 364, 365, 366, 368, 371, 374, 378, 379,
-    380, 381, 382, 383, 385, 388, 390, 392, 395, 397, 398, 399,
-    400, 401, 404, 405, 408, 409, 410, 412, 413, 417, 419, 420,
-    421, 423, 424, 428, 430, 431, 432, 433, 437, 441, 442, 443,
+    380, 381, 382, 383, 386, 389, 391, 393, 396, 398, 399, 400,
+    401, 402, 404, 405, 408, 409, 410, 412, 413, 417, 419, 420,
+    421, 423, 424, 425, 429, 431, 432, 433, 434, 438, 442, 443,
     444, 445, 446, 447, 448, 452, 457, 460, 461, 462, 463, 464,
     466, 467, 468, 469, 470, 471, 474, 476, 482, 484, 488, 489,
     490, 493, 496, 498, 500, 501, 504, 505, 506, 507, 508, 509,
     510, 511, 59, 167, 168, 169, 170, 320, 346, 354, 358, 367,
-    372, 376, 377, 386, 387, 389, 391, 393, 402, 406, 407, 418,
-    425, 426, 427, 429, 439, 450, 451, 456, 459, 473, 475, 478,
+    372, 376, 377, 385, 387, 388, 390, 392, 394, 406, 407, 418,
+    426, 427, 428, 430, 440, 450, 451, 456, 459, 473, 475, 478,
     479, 480, 481, 485, 486, 487, 492, 495, 497, 499, 502, 503,
     35, 37, 38, 43, 60, 166, 171, 172,
 };
@@ -113,16 +113,16 @@ const uint16_t doomo_txt_dict_off[257] = {
     158, 164, 168, 171, 174, 177, 181, 188, 192, 201, 207, 213,
     217, 223, 229, 233, 241, 247, 250, 256, 262, 268, 273, 278,
     281, 286, 291, 295, 298, 310, 318, 324, 327, 330, 333, 338,
-    342, 348, 353, 356, 359, 369, 375, 380, 384, 390, 396, 399,
+    342, 348, 351, 356, 359, 369, 375, 380, 384, 390, 396, 399,
     404, 408, 412, 419, 427, 435, 440, 450, 454, 460, 465, 473,
     478, 481, 487, 496, 501, 504, 510, 521, 525, 531, 535, 541,
     547, 555, 560, 568, 578, 584, 589, 594, 599, 607, 610, 616,
-    620, 629, 637, 642, 649, 656, 662, 667, 672, 676, 681, 691,
-    703, 710, 718, 724, 734, 740, 749, 752, 757, 760, 765, 771,
-    778, 785, 792, 800, 804, 809, 814, 822, 830, 835, 841, 847,
+    620, 629, 637, 642, 649, 656, 662, 667, 672, 676, 684, 689,
+    699, 711, 718, 726, 732, 742, 748, 757, 760, 765, 768, 773,
+    779, 786, 793, 800, 804, 809, 814, 822, 830, 835, 841, 847,
     851, 856, 861, 865, 869, 872, 878, 886, 891, 897, 902, 905,
-    910, 915, 922, 929, 936, 941, 951, 957, 963, 969, 975, 979,
-    983, 987, 992, 995, 1002, 1006, 1012, 1018, 1024, 1029, 1034, 1039,
+    910, 915, 920, 927, 934, 941, 946, 956, 962, 968, 974, 980,
+    984, 988, 992, 997, 1000, 1007, 1011, 1017, 1023, 1029, 1034, 1039,
     1044, 1049, 1053, 1062, 1072, 1078, 1083, 1087, 1092, 1100, 1106, 1109,
     1116, 1121, 1126, 1131, 1136, 1142, 1145, 1151, 1157, 1163, 1169, 1175,
     1180, 1184, 1195, 1200, 1207, 1212, 1216, 1223, 1231, 1238, 1246, 1251,
@@ -136,19 +136,19 @@ const char doomo_txt_dict_chars[1412] =
     "..That's tiene El Hellvile Nobody Una Todos one of se it por"
     " puerta you Everyone Bring Flops has Nadie Rivet was Huggins"
     " never on Don't every still from {big}es I'll like I'm at Gr"
-    "umbleguts Alguien Three No lo He that Los junto Nana al It H"
+    "umbleguts Alguien Three No lo He that Los junto al Nana It H"
     "ellvile. don't They Mr. Ahora Every no them it. not cuando t"
     "hrough Ll\241vale very Brimstone She sobre Est\240 alguien cada Un"
     " Nunca Mascotty back {d}Cloud Photograph m\240s under are hacia"
     " todos Hugsley have primera Something years it's Hee. Wisp v"
     "entana Es Muro. And Hellvile.doesn't otra Quiero didn't est\240"
-    "n Para this One Fuzz Hillvile. Sprinklepop Steamy They're ab"
-    "out something water Somebody @E Wall it.says hasta You're al"
-    "ways puerta.Alcalde Not Tres Your cupcake demonio want cloud"
+    "n Para this One Alcalde Fuzz Hillvile. Sprinklepop Steamy Th"
+    "ey're about something water Somebody @E Wall it.says hasta Y"
+    "ou're always puerta.Not Tres Your cupcake demonio want cloud"
     " first one.casa dice Las muy my Luego Someone Take Wall. ove"
-    "r tu He's know purple quiere second they Mascotty, casa. hou"
-    "se other sigue For Two her when me Father Sr. demon ni\245os th"
-    "ree Muro.Solo Then como down can fountain Charlotte back. bi"
+    "r tu He's Muro.know purple quiere second they Mascotty, casa"
+    ". house other sigue For Two her when me Father Sr. demon ni\245"
+    "os three Solo Then como down can fountain Charlotte back. bi"
     "en.his one. tambi\241n there Se scared Find otro tiny tres Anvi"
     "l En Later.nadie noche right wants Cada Con Fotograf\242a I've "
     "anyway.been dos house. hundred sienta someone then mi Pip Ta"

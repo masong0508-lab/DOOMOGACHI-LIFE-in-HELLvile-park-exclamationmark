@@ -1,6 +1,6 @@
 # English<TAB>Spanish<TAB># where. Keep {codes}, ' / ' line breaks, '//' page breaks.
 You're the new one! You look / hungry. Everyone looks / hungry to me.	¡Eres el nuevo! Te ves / hambriento. Todos me / parecen hambrientos.	# core/data/story/ch1/ep12.dsc:26
-The key's in a muffin. / Don't ask which. I forgot. / I always forget.	La llave está en un muffin. / No preguntes cuál. Se me / olvidó. Siempre se me olvida.	# core/data/story/ch1/ep12.dsc:27
+The key's in a muffin. / Don't ask which. I forgot. / I always forget.	La llave está en un muffin. No preguntes cuál. Se me olvidó. Siempre se me // olvida.	# core/data/story/ch1/ep12.dsc:27
 Every tray has two of / everything. Habit. / Have a nibble, sweet pea.	Cada charola lleva dos de / todo. Costumbre. Dale una / probadita, corazón.	# core/data/story/ch1/ep12.dsc:28
 (A tray of muffins.)	(Una charola de muffins.)	# core/data/story/ch1/ep12.dsc:30
 Bite one	Morder uno	# core/data/story/ch1/ep12.dsc:30
@@ -21,7 +21,7 @@ Off you go! Keep that egg / warm. Lamps help. My mother / always said lamps help
 <3 <3	<3 <3	# core/data/story/ch1/ep12.dsc:84
 ...is that a crate?	...¿eso es una caja?	# core/data/story/ch1/ep12.dsc:86
 (The crate slides one pixel / to the left, in shame.)	(La caja se desliza un píxel / a la izquierda, avergonzada.)	# core/data/story/ch1/ep12.dsc:89
-(at the door) You put a lamp / by the egg. That's exactly / where my mother put hers.	(en la puerta) Pusiste una / lámpara junto al huevo. Justo / donde mi madre puso la suya.	# core/data/story/ch1/ep12.dsc:91
+(at the door) You put a lamp / by the egg. That's exactly / where my mother put hers.	(en la puerta) Pusiste una lámpara junto al huevo. Justo // donde mi madre puso la suya.	# core/data/story/ch1/ep12.dsc:91
 (Night. Through the window, / far off at the Wall, a tiny / purple glow.)	(Noche. Por la ventana, a lo / lejos en el Muro, un / diminuto brillo morado.)	# core/data/story/ch1/ep12.dsc:97
 (It pulses.)	(Pulsa.)	# core/data/story/ch1/ep12.dsc:99
 (It pulses again.)	(Pulsa otra vez.)	# core/data/story/ch1/ep12.dsc:101

@@ -54,7 +54,7 @@ A HILLVILE florist. {..}Not a / funeral one.	Florista de HILLVILE. {..}No / de f
 Could you ask Bluebell if / she'd take a ghoul / apprentice?	¿Podrías preguntarle a / Bluebell si aceptaría a / un aprendiz ghoul?	# core/data/story/quests49/q49b.dsc:148
 Ask Bluebell for her?	¿Preguntarle a Bluebell?	# core/data/story/quests49/q49b.dsc:149
 She said YES?!	¿¡Dijo que SÍ?!	# core/data/story/quests49/q49b.dsc:154
-I'm going to cry black tears / of joy. {..}Here, flowers, / and a flower friend ribbon!	Voy a llorar lágrimas / negras de alegría. {..}Toma / flores y una cinta de / amigo florista.	# core/data/story/quests49/q49b.dsc:156
+I'm going to cry black tears / of joy. {..}Here, flowers, / and a flower friend ribbon!	Voy a llorar lágrimas negras de alegría. {..}Toma flores y una cinta de // amigo florista.	# core/data/story/quests49/q49b.dsc:156
 I lowered the rent for the / families in my crypts.	Bajé el alquiler a las / familias de mis criptas.	# core/data/story/quests49/q49b.dsc:161
 Don't look at me like that.	No me mires así.	# core/data/story/quests49/q49b.dsc:163
 Now the kids need something / fun. {.}A board game, maybe?	Ahora los niños necesitan / diversión. {.}¿Un juego de / mesa, quizá?	# core/data/story/quests49/q49b.dsc:165
@@ -92,7 +92,7 @@ A real champion would clear / it out. {..}I'm looking at / you. Champion.	Un ver
 Clear the Spire's echo?	¿Limpiar el eco de la Aguja?	# core/data/story/quests49/q49b.dsc:262
 You smell like victory!	¡Hueles a victoria!	# core/data/story/quests49/q49b.dsc:266
 And smoke. {.}Mostly victory. / Take this champion's / buckle, champ.	Y a humo. {.}Más que nada a / victoria. Toma esta hebilla / de campeón, campeón.	# core/data/story/quests49/q49b.dsc:268
-Crumbelina the royal baker / said my marshmallows were / 'a crime'.	Crumbelina, la panadera / real, dijo que mis malvaviscos / eran 'un crimen'.	# core/data/story/quests49/q49b.dsc:273
+Crumbelina the royal baker / said my marshmallows were / 'a crime'.	Crumbelina, la panadera real, dijo que mis malvaviscos // eran 'un crimen'.	# core/data/story/quests49/q49b.dsc:273
 They ARE a crime. {..}A crime / of passion.	SÍ son un crimen. {..}Un / crimen pasional.	# core/data/story/quests49/q49b.dsc:275
 Could you... make peace for / me?	¿Podrías... hacer las paces / por mí?	# core/data/story/quests49/q49b.dsc:277
 Make peace for him?	¿Hacer las paces por él?	# core/data/story/quests49/q49b.dsc:278
@@ -114,7 +114,7 @@ Get up on the Unity Stage / and give 'em an ENCORE! {!}	¡Sube al Escenario de l
 Play the encore?	¿Tocar el bis?	# core/data/story/quests49/q49b.dsc:326
 {big}ENCORE! ENCORE!{/} You rock, / Hillvile!	{big}¡BIS! ¡BIS!{/} ¡Eres una / estrella, Hillvile!	# core/data/story/quests49/q49b.dsc:331
 Take the festival anthem / for your jukebox. {..}Play it / LOUD.	Toma el himno del festival / para tu tocadiscos. {..} / Ponlo FUERTE.	# core/data/story/quests49/q49b.dsc:333
-Warty sings love songs to / the moon. Lily Lou grows / lilies for the pond.	Warty le canta canciones de / amor a la luna. Lily Lou / cultiva lirios para el estanque.	# core/data/story/quests49/q49b.dsc:338
+Warty sings love songs to / the moon. Lily Lou grows / lilies for the pond.	Warty le canta canciones de amor a la luna. Lily Lou cultiva lirios para el // estanque.	# core/data/story/quests49/q49b.dsc:338
 A cross-border frog wedding! / {..}I've already ordered the / flies.	¡Una boda de ranas entre / fronteras! {..}Ya pedí las / moscas.	# core/data/story/quests49/q49b.dsc:340
 Nudge him?	¿Darle un empujoncito?	# core/data/story/quests49/q49b.dsc:342
 Nudge Warty?	¿Empujar a Warty?	# core/data/story/quests49/q49b.dsc:343
@@ -141,4 +141,4 @@ As scout leader I MUST know: / what do they sell at the / Hellvile imp market?	C
 Go look! For science! {.}For / badges! {..}Mostly badges.	¡Ve a ver! ¡Por la ciencia! / {.}¡Por las insignias! {..} / Sobre todo por insignias.	# core/data/story/quests49/q49b.dsc:408
 Scout the imp market?	¿Explorar mercado diablillo?	# core/data/story/quests49/q49b.dsc:409
 Spicy peppers and eyeball / candy?! {!}Incredible.	¿Pimientos picantes y / caramelos de ojo?! {!} / Increíble.	# core/data/story/quests49/q49b.dsc:413
-You've earned the Cross- / Border Explorer badge! {.}I / have one too. {..}Now.	¡Te ganaste la insignia de / Explorador Transfronterizo! / {.}Yo también tengo una. {..} / Ahora.	# core/data/story/quests49/q49b.dsc:415
+You've earned the Cross- / Border Explorer badge! {.}I / have one too. {..}Now.	¡Te ganaste la insignia de Explorador Transfronterizo! {.}Yo también tengo una. {..} // Ahora.	# core/data/story/quests49/q49b.dsc:415

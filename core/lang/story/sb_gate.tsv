@@ -1,7 +1,7 @@
 # English<TAB>Spanish<TAB># where. Keep {codes}, ' / ' line breaks, '//' page breaks.
 (Grumbleguts has sat down at / Brimstone Bites. {.}He has / ordered the menu.)	(Grumbleguts se sentó en / Brimstone Bites. {.}Pidió / el menú.)	# core/data/story/side_b/t_gate.dsc:25
 (The whole menu.)	(Todo el menú.)	# core/data/story/side_b/t_gate.dsc:27
-Brimstone Bites! In / HILLVILE. {.}It's ironic, / sugar. I love ironic.	¡Brimstone Bites! ¡En / HILLVILE! {.}Qué irónico, / cielo. Me encanta lo irónico.	# core/data/story/side_b/t_gate.dsc:29
+Brimstone Bites! In / HILLVILE. {.}It's ironic, / sugar. I love ironic.	¡Brimstone Bites! ¡En HILLVILE! {.}Qué irónico, cielo. Me encanta lo // irónico.	# core/data/story/side_b/t_gate.dsc:29
 We're out of everything. / {..}Since an hour ago. He's / still ordering.	Se nos acabó todo. / {..}Hace una hora. Él sigue / pidiendo.	# core/data/story/side_b/t_gate.dsc:31
 The restaurant would like / him to stay. {.}The kitchen / would like help.	El restaurante quiere que / se quede. {.}La cocina quiere / ayuda.	# core/data/story/side_b/t_gate.dsc:33
 Help in the kitchen?	¿Ayudar en la cocina?	# core/data/story/side_b/t_gate.dsc:34
@@ -29,15 +29,15 @@ He said there'd be a feast / when the gate opened.	Dijo que habría un festín /
 (He looks at the empty plates.)	(Mira los platos vacíos.)	# core/data/story/side_b/t_gate.dsc:86
 Huh. {.}He was right.	Vaya. {.}Tenía razón.	# core/data/story/side_b/t_gate.dsc:88
 (He pays with the gate key. / Taco Yaki frames it.)	(Paga con la llave de la puerta. / Taco Yaki la enmarca.)	# core/data/story/side_b/t_gate.dsc:92
-(The framed gate key in your / house has a second, smaller / key hung on it. {..}By nobody.)	(La llave enmarcada de tu casa / tiene colgada otra llave, / más pequeña. {..}De nadie.)	# core/data/story/side_b/t_gate.dsc:103
+(The framed gate key in your / house has a second, smaller / key hung on it. {..}By nobody.)	(La llave enmarcada de tu casa tiene colgada otra llave, // más pequeña. {..}De nadie.)	# core/data/story/side_b/t_gate.dsc:103
 (It's the key to the / gatehouse.)	(Es la llave de la / caseta de la puerta.)	# core/data/story/side_b/t_gate.dsc:105
 He wants to cook. {.}Not just / eat. COOK.	Quiere cocinar. {.}No solo / comer. COCINAR.	# core/data/story/side_b/t_gate.dsc:117
-I've never had an apprentice / who ate the ingredients. {..}I'm / about to.	Nunca tuve un aprendiz que / se comiera los ingredientes. {..}Estoy / a punto.	# core/data/story/side_b/t_gate.dsc:119
-I'm great with my hands, / darlin'. {.}Ask anyone. Don't / ask anyone.	Soy genial con las manos, / mi vida. {.}Pregunta a quien sea. / No preguntes a nadie.	# core/data/story/side_b/t_gate.dsc:121
+I've never had an apprentice / who ate the ingredients. {..}I'm / about to.	Nunca tuve un aprendiz que se comiera los ingredientes. {..}Estoy // a punto.	# core/data/story/side_b/t_gate.dsc:119
+I'm great with my hands, / darlin'. {.}Ask anyone. Don't / ask anyone.	Soy genial con las manos, mi vida. {.}Pregunta a quien sea. // No preguntes a nadie.	# core/data/story/side_b/t_gate.dsc:121
 Run the duet?	¿Hacemos el dúo?	# core/data/story/side_b/t_gate.dsc:122
 Two burners. Go.	Dos hornillas. Vamos.	# core/data/story/side_b/t_gate.dsc:122
 Flip on the beat. {.}I'll do / the left burner. He does the / right one.	Voltea al ritmo. {.}Yo llevo / la hornilla izquierda. Él / la derecha.	# core/data/story/side_b/t_gate.dsc:130
-(Beep. Beep. Beep. A forklift / backs in with the restock.)	(Bip. Bip. Bip. Un montacargas / entra de reversa con el pedido.)	# core/data/story/side_b/t_gate.dsc:135
+(Beep. Beep. Beep. A forklift / backs in with the restock.)	(Bip. Bip. Bip. Un montacargas entra de reversa con el // pedido.)	# core/data/story/side_b/t_gate.dsc:135
 I only had a light snack.	Yo solo comí un tentempié.	# core/data/story/side_b/t_gate.dsc:137
 That's the week's.	Es el de la semana.	# core/data/story/side_b/t_gate.dsc:139
 (His first dish, served to / someone else: Lady Smog.)	(Su primer plato, servido a / alguien más: Lady Smog.)	# core/data/story/side_b/t_gate.dsc:141
@@ -67,10 +67,10 @@ Someone should.	Alguien debería.	# core/data/story/side_b/t_gate.dsc:218
 Close.	Cerca.	# core/data/story/side_b/t_gate.dsc:227
 To what?	¿De qué?	# core/data/story/side_b/t_gate.dsc:229
 ...Once.	...Una vez.	# core/data/story/side_b/t_gate.dsc:231
-(Next morning he takes Nox's / line-cook job. {.}And wears the / tight shirt.)	(A la mañana siguiente toma el / puesto de cocinero de Nox. {.}Y / usa la camisa ajustada.)	# core/data/story/side_b/t_gate.dsc:234
+(Next morning he takes Nox's / line-cook job. {.}And wears the / tight shirt.)	(A la mañana siguiente toma el puesto de cocinero de Nox. {.}Y // usa la camisa ajustada.)	# core/data/story/side_b/t_gate.dsc:234
 (The Big Chair in your house / creaks. Three citizens fit / in it. {.}They slide off.)	(La Silla Grande de tu casa / cruje. Caben tres vecinos. / {.}Se resbalan.)	# core/data/story/side_b/t_gate.dsc:245
-The gate's fixed. {.}Anvil and / Rivet welded the crack. Come / up and see it sometime.	La puerta está arreglada. {.}Anvil / y Rivet soldaron la grieta. / Sube a verla algún día.	# core/data/story/side_b/t_gate.dsc:257
-I mean it this time. {.}I want / to decorate the gatehouse. / For visitors.	Esta vez lo digo en serio. {.}Quiero / decorar la caseta. / Para las visitas.	# core/data/story/side_b/t_gate.dsc:259
+The gate's fixed. {.}Anvil and / Rivet welded the crack. Come / up and see it sometime.	La puerta está arreglada. {.}Anvil y Rivet soldaron la grieta. // Sube a verla algún día.	# core/data/story/side_b/t_gate.dsc:257
+I mean it this time. {.}I want / to decorate the gatehouse. / For visitors.	Esta vez lo digo en serio. {.}Quiero decorar la caseta. // Para las visitas.	# core/data/story/side_b/t_gate.dsc:259
 Nobody's ever visited. {..}I / have flowers, a heart from / Stencilla, and no idea.	Nadie nos ha visitado. {..}Tengo / flores, un corazón de / Stencilla y ni idea.	# core/data/story/side_b/t_gate.dsc:261
 Decorate the gatehouse?	¿Decorar la caseta?	# core/data/story/side_b/t_gate.dsc:262
 Let's make it nice.	Hagámosla bonita.	# core/data/story/side_b/t_gate.dsc:262
@@ -81,14 +81,14 @@ I have a sermon. {.}And a / headache. {..}...What time?	Tengo un sermón. {.}Y d
 I'm busy. {.}I'll bring soup.	Estoy ocupado. {.}Llevo sopa.	# core/data/story/side_b/t_gate.dsc:286
 I couldn't possibly. {..}I'll / wear the hat.	No podría. {..}Me pondré el / sombrero.	# core/data/story/side_b/t_gate.dsc:291
 (They all come anyway.)	(Vienen todos de todos modos.)	# core/data/story/side_b/t_gate.dsc:294
-(Every seat is sized for / him. The guests sit three to / a chair.)	(Cada asiento es de su talla. / Los invitados se sientan / de tres en tres.)	# core/data/story/side_b/t_gate.dsc:296
-(Fuzz, between Nox and Lady / Smog, is lifted off the / floor by the cushion.)	(Fuzz, entre Nox y Lady Smog, / queda levantado del suelo / por el cojín.)	# core/data/story/side_b/t_gate.dsc:298
+(Every seat is sized for / him. The guests sit three to / a chair.)	(Cada asiento es de su talla. Los invitados se sientan // de tres en tres.)	# core/data/story/side_b/t_gate.dsc:296
+(Fuzz, between Nox and Lady / Smog, is lifted off the / floor by the cushion.)	(Fuzz, entre Nox y Lady Smog, queda levantado del suelo // por el cojín.)	# core/data/story/side_b/t_gate.dsc:298
 ...This is fine.	...Está bien.	# core/data/story/side_b/t_gate.dsc:300
 (Fuzz does not say 'no' once. / {.}Grumbleguts does not ask.)	(Fuzz no dice 'no' ni una vez. / {.}Grumbleguts no pregunta.)	# core/data/story/side_b/t_gate.dsc:302
 So this is it. {.}The gate.	Así que es esto. {.}La puerta.	# core/data/story/side_b/t_gate.dsc:305
 {..}Ten years.	{..}Diez años.	# core/data/story/side_b/t_gate.dsc:307
 It's a good gate.	Es una buena puerta.	# core/data/story/side_b/t_gate.dsc:309
 ...Nobody ever said that.	...Nadie lo había dicho nunca.	# core/data/story/side_b/t_gate.dsc:311
-(Next morning a little heart / is painted on the Gate. / {..}Nobody knows who did that.)	(A la mañana siguiente hay / un corazoncito pintado en la / Puerta. {..}Nadie sabe quién fue.)	# core/data/story/side_b/t_gate.dsc:323
+(Next morning a little heart / is painted on the Gate. / {..}Nobody knows who did that.)	(A la mañana siguiente hay un corazoncito pintado en la Puerta. {..}Nadie sabe quién // fue.)	# core/data/story/side_b/t_gate.dsc:323
 (Everybody knows.)	(Todos lo saben.)	# core/data/story/side_b/t_gate.dsc:325
 (The Gate's maintenance notice: / 'visitors: 4'.)	(Aviso de mantenimiento de la / Puerta: 'visitas: 4'.)	# core/data/story/side_b/t_gate.dsc:327
