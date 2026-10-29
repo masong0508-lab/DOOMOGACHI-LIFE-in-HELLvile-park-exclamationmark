@@ -1,0 +1,623 @@
+A lamp by the bed	Una lámpara junto a la cama	# home_draw.c
+A plushie on the bed	Un peluche en la cama	# home_draw.c
+A mirror catches the window	Un espejo capta la ventana	# home_draw.c
+A pentagram under the bed	Un pentagrama bajo la cama	# home_draw.c
+Tables side by side	Mesas lado a lado	# home_draw.c
+Hill and Hell, in pairs	Colina e Infierno, en parejas	# home_draw.c
+Kitchen things outside the kitchen	Cosas de cocina fuera de cocina	# home_draw.c
+It does nothing	No hace nada	# home_draw.c
+Nobody can reach the bed	Nadie llega a la cama	# home_draw.c
+Too cluttered	Demasiado abarrotado	# home_draw.c
+it's fine.	está bien.	# home_draw.c
+No filter	Sin filtro	# home_draw.c
+VHS		# home_draw.c
+Grey pieces: buy them at HomeMart.	Piezas grises: cómpralas en HomeMart.	# home_draw.c
+Gifts arrived!	¡Llegaron regalos!	# home_draw.c
+...that rug was not there yesterday.	...esa alfombra no estaba ayer.	# home_draw.c
+The lamp is off. Was it?	La lámpara está apagada. ¿Lo estaba?	# home_draw.c
+The crate moved. A little.	La caja se movió. Un poquito.	# home_draw.c
+home: refused arg		# home_draw.c
+...come in. Stay.	...pasa. Quédate.	# home_draw.c
+Oh. You can see me?	Oh. ¿Puedes verme?	# home_draw.c
+Oh. It's you. Come in.	Oh. Eres tú. Pasa.	# home_draw.c
+Welcome! Come in!	¡Bienvenido! ¡Pasa!	# home_draw.c
+A note: "Back soon! %s"	Una nota: "¡Vuelvo pronto! %s"	# home_draw.c
+All three wishes! They gave you a present.	¡Los tres deseos! Te dieron un regalo.	# home_draw.c
+That's what they wanted!	¡Eso era lo que querían!	# home_draw.c
+D-pad move  L/R turn  START more	D-pad mover  L/R girar  START más	# home_draw.c
+L: paint A   R: paint B	L: pintar A   R: pintar B	# home_draw.c
+I wish I had %s.	Ojalá tuviera %s.	# home_draw.c
+\x80 So comfy.	\x80 Qué comodidad.	# home_draw.c
+Snap! It's in the gallery.	¡Clic! Está en la galería.	# home_draw.c
+The album is full (16).	El álbum está lleno (16).	# home_draw.c
+The door gave!	¡La puerta cedió!	# home_draw.c
+...it held.	...aguantó.	# home_draw.c
+The door is going to give!	¡La puerta va a ceder!	# home_draw.c
+Something is in the chimney.	Hay algo en la chimenea.	# home_draw.c
+The last wave!	¡La última oleada!	# home_draw.c
+Here they come!	¡Ahí vienen!	# home_draw.c
+bep?	¿bep?	# home_draw.c
+...it's fine.	...está bien.	# home_draw.c
+Nice.	Qué lindo.	# home_draw.c
+...it's perfect.	...es perfecto.	# home_draw.c
+Storage is empty.	El almacén está vacío.	# home_draw.c
+Saved as your blueprint.	Guardado como tu plano.	# home_draw.c
+Nothing to save.	Nada que guardar.	# home_draw.c
+Copied.	Copiado.	# home_draw.c
+Good morning.	Buenos días.	# home_draw.c
+A:take  L/R:tab  B:back	A:tomar L/R:pestaña B:atrás	# home_draw.c
+Up/Dn:row  L/R:change  A:paint	Arr/Abj:fila L/R:cambiar A:pintar	# home_draw.c
+A:choose  B:back	A:elegir B:atrás	# home_draw.c
+A: repair / wind / comfort / plate	A: reparar / dar cuerda / confort / plato	# home_draw.c
+A: repair/wind/comfort/plate	A: reparar/cuerda/confort/plato	# home_draw.c
+Walk  A:talk/look  START:menu  B:leave	Andar  A:hablar/mirar  START:menú  B:salir	# home_draw.c
+Walk  A:use  START:menu  B:leave	Andar  A:usar  START:menú  B:salir	# home_draw.c
+A:talk/look  START:menu  B:leave	A:hablar/mirar  START:menú  B:salir	# home_draw.c
+A:use  START:menu  B:leave	A:usar  START:menú  B:salir	# home_draw.c
+Group: move  L/R:turn  START:more  A:done	Grupo: mover  L/R:girar  START:más  A:listo	# home_draw.c
+L/R:turn  START:more  A:done	L/R:girar  START:más  A:listo	# home_draw.c
+Recolour: L paint A  R paint B	Recolor: L pintar A  R pintar B	# home_draw.c
+L: paint A  R: paint B	L: pintar A  R: pintar B	# home_draw.c
+%s  A:put  L/R:turn	%s  A:poner  L/R:girar	# home_draw.c
+A:put  L/R:turn  B:back	A:poner  L/R:girar  B:atrás	# home_draw.c
+Grey = Buy at HomeMart  START:menu	Gris = compra en HomeMart  START:menú	# home_draw.c
+Grey: HomeMart  START:menu	Gris: HomeMart  START:menú	# home_draw.c
+A:pick up (hold: paint)  L/R:view  SELECT:undo  START:menu	A:tomar (mantén: pintar)  L/R:vista  SELECT:deshacer  START:menú	# home_draw.c
+A:pick  L/R:view  SEL:undo	A:tomar  L/R:vista  SEL:deshacer	# home_draw.c
+Build mode	Modo construir	# home_draw.c
+NEW! 	¡NUEVO! 	# home_draw.c
+Save room to slot %d	Guardar cuarto en ranura %d	# home_draw.c
+  (here)	  (aquí)	# home_draw.c
+Pieces %d  Lamps %d  Seats %d	Piezas %d  Lámparas %d  Asientos %d	# home_draw.c
+Wallpaper	Papel tapiz	# home_draw.c
+Wall paint	Pintura de pared	# home_draw.c
+Floor	Piso	# home_draw.c
+Floor paint	Pintura de piso	# home_draw.c
+Paint it!	¡Pintar!	# home_draw.c
+Stripes	Rayas	# home_draw.c
+Dots	Puntos	# home_draw.c
+Wainscot	Friso	# home_draw.c
+Panels	Paneles	# home_draw.c
+Hearts	Corazones	# home_draw.c
+Harlequin	Arlequín	# home_draw.c
+Stone	Piedra	# home_draw.c
+Stars	Estrellas	# home_draw.c
+Checker	Ajedrez	# home_draw.c
+Planks	Tablones	# home_draw.c
+Tiles	Baldosas	# home_draw.c
+Herringbone	Espiga	# home_draw.c
+Grass	Césped	# home_draw.c
+Flagstone	Lajas	# home_draw.c
+Lava crack	Grieta de lava	# home_draw.c
+Cloud	Nube	# home_draw.c
+Walls, floor and every piece you haven't painted.	Paredes, piso y toda pieza sin pintar.	# home_draw.c
+Keep this room as one of your two blueprints.	Guarda este cuarto como uno de tus dos planos.	# home_draw.c
+%s, %d pieces	%s, %d piezas	# home_draw.c
+What you own is placed; the rest are grey ghosts.	Lo que tienes se coloca; el resto son fantasmas grises.	# home_draw.c
+%dx%d  %s	%dx%d  %s	# home_draw.c
+Door	Puerta	# home_draw.c
+Win 1	Vent 1	# home_draw.c
+Win 2	Vent 2	# home_draw.c
+Dawn.	Amanecer.	# home_draw.c
+%d of %d kept safe%s	%d de %d a salvo%s	# home_draw.c
+  HELD	  RETENIDO	# home_draw.c
+\x8B go outside	\x8B salir	# home_draw.c
+Wave %d/%d	Oleada %d/%d	# home_draw.c
+Ammo %d	Munición %d	# home_draw.c
+the Picnic Crate	la Caja de Picnic	# home_draw.c
+the Egg Nest	el Nido de Huevos	# home_draw.c
+a lamp	una lámpara	# home_draw.c
+Goal: %s	Meta: %s	# home_draw.c
+Decorate	Decorar	# home_draw.c
+BLUEPRINT	PLANO	# home_draw.c
+DONE!	¡LISTO!	# home_draw.c
+PHOTO	FOTO	# home_draw.c
+A:snap  B:sticker  SEL:filter  L/R:turn  START:done	A:foto  B:sticker  SEL:filtro  L/R:girar  START:listo	# home_draw.c
+A:snap B:sticker SEL:filter START:done	A:foto B:sticker SEL:filtro START:listo	# home_draw.c
+Photo %d%s	Foto %d%s	# home_draw.c
+  (the room has changed since)	  (el cuarto cambió desde entonces)	# home_draw.c
+"%s IS NOT HOME RIGHT NOW."	"%s NO ESTÁ EN CASA AHORA."	# sim_care.c
+"MORE... SPRINKLES... FOR THE PIT..."	"MÁS... CONFETI... PARA EL FOSO..."	# sim_care.c
+*growls in a voice that isn't %s's*	*gruñe con una voz que no es de %s*	# sim_care.c
+"YOUR KINDNESS TICKLES. STOP IT."	"TU BONDAD ME HACE COSQUILLAS. BASTA."	# sim_care.c
+"FATHER FUZZ CAN'T SAVE THIS ONE, HEHEHE."	"EL PADRE FUZZ NO PUEDE SALVAR A ESTE, JEJEJE."	# sim_care.c
+*the eyes glow red. %s twitches.*	*los ojos brillan rojos. %s se contrae.*	# sim_care.c
+...there's nobody here.	...aquí no hay nadie.	# sim_care.c
+...only silence, and a few flowers.	...solo silencio y unas flores.	# sim_care.c
+You don't have any %s!	¡No tienes %s!	# sim_care.c
+My favourite! %s! You remembered!	¡Mi favorito! ¡%s! ¡Lo recordaste!	# sim_care.c
+!!! %s !!! MY FAVOURITE!! I love you!!	¡¡¡ %s !!! ¡¡MI FAVORITO!! ¡Te quiero!	# sim_care.c
+...%s. Okay. You win. Best day ever.	...%s. Está bien. Ganaste. El mejor día.	# sim_care.c
+%s!! My tummy is doing a happy dance!	¡¡%s!! ¡Mi pancita baila de felicidad!	# sim_care.c
+Oh... %s. *gulp* ...thank you anyway.	Oh... %s. *glup* ...gracias igual.	# sim_care.c
+BLEH! %s?! *gag* Why would you DO this?!	¡BLEH! ¡¿%s?! *arcada* ¡¿Por qué haces esto?!	# sim_care.c
+%s. Gross. Are you trying to poison me?	%s. Asco. ¿Intentas envenenarme?	# sim_care.c
+*gag* %s tastes like a sad Tuesday!	*arcada* ¡%s sabe a martes triste!	# sim_care.c
+Yummy! Thank you for the %s.	¡Rico! Gracias por el %s.	# sim_care.c
+Nom nom nom! %s is SO good!	¡Ñam ñam ñam! ¡%s está RICO!	# sim_care.c
+Hm. %s. Not bad.	Mm. %s. Nada mal.	# sim_care.c
+I shall name this %s 'Gerald'. *chomp*	Bautizo a este %s 'Gerald'. *ñam*	# sim_care.c
+I'm so full... but %s is nice.	Estoy llenísimo... pero %s está rico.	# sim_care.c
+One more bite of %s and I'll POP!	¡Un bocado más de %s y EXPLOTO!	# sim_care.c
+I'm stuffed. Save the %s for later.	Estoy lleno. Guarda el %s para luego.	# sim_care.c
+My belly has filed a complaint. %s...	Mi barriga presentó una queja. %s...	# sim_care.c
+I can't eat that!	¡No puedo comer eso!	# sim_care.c
+The %s falls right through me... it's the thought!	El %s me atraviesa... ¡es el detalle!	# sim_care.c
+%s: fuel accepted. Beep boop! Thank you.	%s: combustible aceptado. ¡Bip bup! Gracias.	# sim_care.c
+A %s! It's exactly what I wanted!	¡Un %s! ¡Justo lo que quería!	# sim_care.c
+A %s?!?! AAAAH! I'm gonna CRY!	¡¿Un %s?! ¡AAAAH! ¡Voy a LLORAR!	# sim_care.c
+...A %s. Okay, you actually get me.	...Un %s. Está bien, sí me entiendes.	# sim_care.c
+A %s! It shall sit upon my throne of socks!	¡Un %s! ¡Irá en mi trono de calcetines!	# sim_care.c
+A %s? How thoughtful, thank you!	¿Un %s? ¡Qué detalle, gracias!	# sim_care.c
+Ooh, a %s! Thank you thank you!	¡Ooh, un %s! ¡Gracias gracias!	# sim_care.c
+A %s. Thanks, I guess.	Un %s. Gracias, supongo.	# sim_care.c
+A %s! I will whisper secrets to it.	¡Un %s! Le susurraré secretos.	# sim_care.c
+A %s... um. I'm scared of those...	Un %s... eh. Les tengo miedo...	# sim_care.c
+EEK! A %s! Get it AWAY!	¡IIK! ¡Un %s! ¡ALÉJALO!	# sim_care.c
+A %s. Seriously? You know I hate that.	Un %s. ¿En serio? Sabes que lo odio.	# sim_care.c
+The %s is staring at me. Make it stop.	El %s me está mirando. Que pare.	# sim_care.c
+A %s? Oh! Um... thanks.	¿Un %s? ¡Oh! Eh... gracias.	# sim_care.c
+A %s? Huh! Interesting!	¿Un %s? ¡Vaya! ¡Interesante!	# sim_care.c
+What am I supposed to do with a %s?	¿Qué hago yo con un %s?	# sim_care.c
+A %s. I shall eat it. Wait, no.	Un %s. Me lo comeré. Espera, no.	# sim_care.c
+That's not really a gift...	Eso no es un regalo...	# sim_care.c
+"HSSSS! TAKE YOUR %s AWAY!"	"¡SSSS! ¡LLÉVATE TU %s!"	# sim_care.c
+A ring?! I'll give it to my sweetheart... or keep it?	¡¿Un anillo?! ¿Se lo doy a mi amor... o me lo quedo?	# sim_care.c
+A RING?! For ME?! *faints happily*	¡¿UN ANILLO?! ¡¿PARA MÍ?! *se desmaya feliz*	# sim_care.c
+A ring. ...I'll treasure it. Forever.	Un anillo. ...Lo atesoraré. Siempre.	# sim_care.c
+Ahh, all fresh and fluffy. Thank you!	Ahh, fresquito y esponjoso. ¡Gracias!	# sim_care.c
+Bubbles!! I smell like a CUPCAKE!	¡¡Burbujas!! ¡Huelo a CUPCAKE!	# sim_care.c
+Fine. I was getting a bit ripe.	Bueno. Ya estaba algo maduro.	# sim_care.c
+Scrub-a-dub! I am reborn as foam!	¡Chap chap! ¡Renazco como espuma!	# sim_care.c
+N-not bath time... *shivers*	N-no es hora del baño... *tiembla*	# sim_care.c
+NOOO! NOT BATH TIME! *flails*	¡NOOO! ¡HORA DEL BAÑO NO! *patalea*	# sim_care.c
+Ugh. Water. My nemesis.	Ugh. Agua. Mi némesis.	# sim_care.c
+The tub has teeth! I KNOW it does!	¡La tina tiene dientes! ¡Lo SÉ!	# sim_care.c
+You scrub the air. The ghost giggles.	Frotas el aire. El fantasma se ríe.	# sim_care.c
+I'm already sparkly clean!	¡Ya estoy reluciente!	# sim_care.c
+Squeaky clean! ...still slimy. That's just me!	¡Limpiecito! ...sigo baboso. ¡Soy así!	# sim_care.c
+Polished to a shine. *happy whirr*	Pulido y brillante. *ronroneo feliz*	# sim_care.c
+*shakes off* My fur is SO fluffy now!	*se sacude* ¡Mi pelo está TAN suave!	# sim_care.c
+That was lovely! Let's do %s again soon!	¡Qué lindo! ¡Hagamos %s otra vez pronto!	# sim_care.c
+WHEEE! %s with you is the BEST!	¡WIII! ¡%s contigo es LO MEJOR!	# sim_care.c
+...Fine, %s was fun. Don't tell anyone.	...Bueno, %s estuvo divertido. No le digas a nadie.	# sim_care.c
+%s! I have become one with the fun!	¡%s! ¡Me he vuelto uno con la diversión!	# sim_care.c
+I'm a little too sleepy to play...	Tengo demasiado sueño para jugar...	# sim_care.c
+Five more minutes of nap first! Pleeease?	¡Primero cinco minutitos de siesta! ¿Porfa?	# sim_care.c
+Too tired. Go away. ...Nicely.	Muy cansado. Vete. ...Con cariño.	# sim_care.c
+My legs have gone on strike.	Mis piernas se pusieron en huelga.	# sim_care.c
+Boo! Tag, you're it! *phases through a wall*	¡Bu! ¡Tú la traes! *atraviesa una pared*	# sim_care.c
+Ooooo... I mean, hi! Being dead is chill.	Ooooo... digo, ¡hola! Estar muerto es relax.	# sim_care.c
+Do you think... someone could like me back?	¿Crees que... alguien podría quererme?	# sim_care.c
+Not now. I'm FUMING.	Ahora no. Estoy HUMEANDO.	# sim_care.c
+Hmph! I'm a bit cross.	¡Hmph! Estoy un poco molesto.	# sim_care.c
+I'm feeling a little blue today...	Hoy ando un poco tristón...	# sim_care.c
+Did you hear that?! Something's out there...	¡¿Oíste eso?! Hay algo afuera...	# sim_care.c
+The purple fog... it sings to me...	La niebla morada... me canta...	# sim_care.c
+*yaaawn* Is it bedtime yet?	*buuuostezo* ¿Ya es hora de dormir?	# sim_care.c
+Have you tried %s? It's my favourite!	¿Has probado %s? ¡Es mi favorito!	# sim_care.c
+I've been really into %s lately!	¡Últimamente me encanta %s!	# sim_care.c
+I can't stand %s. Just saying.	No soporto %s. Solo digo.	# sim_care.c
+Don't tell anyone, but I'm scared of %s.	No se lo digas a nadie, pero le temo a %s.	# sim_care.c
+Tonight's %s night at the concert hall!	¡Esta noche es noche de %s en la sala de conciertos!	# sim_care.c
+Hellvile's not so bad. We have snacks.	Hellvile no es tan malo. Hay botanas.	# sim_care.c
+Hellvile Park is the best place ever!	¡Hellvile Park es el mejor lugar!	# sim_care.c
+Thank you... I feel much better.	Gracias... me siento mucho mejor.	# sim_care.c
+I'm CURED! I could run a marathon!	¡Estoy CURADO! ¡Correría un maratón!	# sim_care.c
+Tastes awful. Works, though. Thanks.	Sabe horrible. Pero funciona. Gracias.	# sim_care.c
+My insides are doing a little jig!	¡Mis entrañas bailan una jiga!	# sim_care.c
+That's not medicine!	¡Eso no es medicina!	# sim_care.c
+"HSSS! That stings! You'll need more than that!"	"¡SSS! ¡Eso arde! ¡Necesitas más que eso!"	# sim_care.c
+Is there a NEEDLE?! ...oh, it's syrup. Phew.	¿Hay una AGUJA? ...ah, es jarabe. Uf.	# sim_care.c
+WOAH! I CAN SEE SOUNDS! THANK YOU!	¡GUAU! ¡VEO LOS SONIDOS! ¡GRACIAS!	# sim_care.c
+Mmm... everything is soft and okay now.	Mmm... todo es suave y está bien ahora.	# sim_care.c
+Thank you... I needed that.	Gracias... lo necesitaba.	# sim_care.c
+*sniffle* You're the BEST! Group hug!	*sniff* ¡Eres lo MEJOR! ¡Abrazo grupal!	# sim_care.c
+...Okay. That helped. A little.	...Bueno. Ayudó. Un poquito.	# sim_care.c
+Your hug has the texture of a cloud.	Tu abrazo tiene textura de nube.	# sim_care.c
+...the eyes stare through you. Nobody's home.	...los ojos te atraviesan. No hay nadie.	# sim_care.c
+Ack! Too much hug! ...but thanks.	¡Ay! ¡Demasiado abrazo! ...pero gracias.	# sim_care.c
+I miss them so much... thank you for staying.	Los extraño tanto... gracias por quedarte.	# sim_care.c
+My heart's a mess... but you help.	Mi corazón es un lío... pero tú ayudas.	# sim_care.c
+Your Cottage	Tu cabaña	# story_places.c
+HaHa Mart		# story_places.c
+Church of St. Cuddles	Iglesia de San Mimos	# story_places.c
+HaHaland Hospital	Hospital HaHaland	# story_places.c
+Fun Fair Big Top	Carpa del Circo	# story_places.c
+Cloud Nine Vapor	Cloud Nine Vapor	# story_places.c
+The Pier	El muelle	# story_places.c
+The Wall Gate	La Puerta del Muro	# story_places.c
+Anvil's Forge	Fragua de Anvil	# story_places.c
+The Sealed Gate	La Puerta Sellada	# story_places.c
+Hellvile Arena	Arena de Hellvile	# story_places.c
+Mother Nox's Chapel	Capilla de Madre Nox	# story_places.c
+Vape Factory Ruins	Ruinas de la Fábrica	# story_places.c
+Bone Pier	Muelle de Huesos	# story_places.c
+Imp Market	Mercado Diablillo	# story_places.c
+Unity Stage	Escenario Unidad	# story_places.c
+Festival Stalls	Puestos de Feria	# story_places.c
+Coming soon! The folks here are still setting up. Check back later!	¡Próximamente! Aquí aún están preparando todo. ¡Vuelve luego!	# story_places.c
+What would you like to do?	¿Qué te gustaría hacer?	# story_places.c
+%s %dH$	%s %dH$	# story_places.c
+More...	Más...	# story_places.c
+You have %u H$. Buy something?	Tienes %u H$. ¿Compras algo?	# story_places.c
+Oh dear, you're a little short on H$. Help folks out around town and come back!	Ay, te faltan H$. ¡Ayuda por el pueblo y vuelve!	# story_places.c
+\x83 Bought %s!	\x83 ¡Compraste %s!	# story_places.c
+You sleep like a baby. @E snores tiny snores. Good morning!	Duermes como un bebé. @E ronca bajito. ¡Buenos días!	# story_places.c
+You sleep like a baby. Good morning, HaHaland!	Duermes como un bebé. ¡Buenos días, HaHaland!	# story_places.c
+\x80 Game saved!	\x80 ¡Partida guardada!	# story_places.c
+Couldn't save...	No se pudo guardar...	# story_places.c
+There we go. Fully patched, purple-free and fluffy. Cold hands, warm heart!	Listo. Remendado, sin morado y esponjoso. ¡Manos frías, corazón cálido!	# story_places.c
+Talk to %s	Hablar con %s	# story_places.c
+Buy	Comprar	# story_places.c
+Go inside	Entrar	# story_places.c
+Rest & save	Descansar y guardar	# story_places.c
+Get patched up	Curarte	# story_places.c
+Browse every shelf	Ver todos los estantes	# story_places.c
+Activities	Actividades	# story_places.c
+The shop is closed.	La tienda está cerrada.	# story_places.c
+Nobody's home right now.	No hay nadie en casa.	# story_places.c
+The old hell gate. Sealed tight, and now covered in flowers.	La vieja puerta del infierno. Bien sellada y ahora cubierta de flores.	# story_places.c
+You already picked flowers here today. Let them grow back!	¡Ya recogiste flores hoy! ¡Deja que crezcan!	# story_places.c
+\x80 Picked some Flowers!	\x80 ¡Recogiste unas flores!	# story_places.c
+BUS STOP - Welcome to HaHaland, the happiest place on Earth! Pop. 500 (and counting!)	PARADA - ¡Bienvenido a HaHaland, el lugar más feliz del mundo! Pob. 500 (¡y subiendo!)	# story_places.c
+BRIMSTONE BITES - Today: cinnamon swirls! (Not actually made of brimstone.)	BOCADOS DE AZUFRE - Hoy: ¡rollos de canela! (No son de azufre de verdad.)	# story_places.c
+HAHA MART - Everything you need, nothing you don't, and a few things you might.	HAHA MART - Todo lo que necesitas, nada que no, y algo que quizá.	# story_places.c
+TOWN HALL - Mayor Gigglesworth is IN. (He is always in. He lives upstairs.)	AYUNTAMIENTO - El alcalde Gigglesworth SÍ está. (Siempre está. Vive arriba.)	# story_places.c
+HOSPITAL - Dr. Bloom: gentle hands, cold hands, kind heart.	HOSPITAL - Dra. Bloom: manos gentiles, manos frías, buen corazón.	# story_places.c
+CONCERT HALL - Tonight: The Fluffones! Tomorrow: probably also The Fluffones.	SALA DE CONCIERTOS - Hoy: ¡Los Fluffones! Mañana: probablemente también.	# story_places.c
+LIBRARY - Shhh. Quiet giggling only.	BIBLIOTECA - Shhh. Solo risitas bajitas.	# story_places.c
+DUCK POND - Please do not feed the ducks glitter. They know what they did.	ESTANQUE - No des brillantina a los patos. Saben lo que hicieron.	# story_places.c
+RIVET'S WORKSHOP - Welding, fixing and hugging. Careful with the hugging.	TALLER DE RIVET - Soldamos, arreglamos y abrazamos. Cuidado con abrazar.	# story_places.c
+CLOUD NINE VAPOR - Grand opening soon! Free samples! No refunds! No questions!	CLOUD NINE VAPOR - ¡Gran inauguración pronto! ¡Muestras gratis! ¡Sin reembolsos! ¡Sin preguntas!	# story_places.c
+THE PIER - Fish responsibly. The fish are watching.	EL MUELLE - Pesca con responsabilidad. Los peces vigilan.	# story_places.c
+Here lies Mr. Wiggles. A good worm. The best worm.	Aquí yace el Sr. Wiggles. Un buen gusano. El mejor gusano.	# story_places.c
+Here lies Grandpa Puff's moustache. It had a good run.	Aquí yace el bigote del abuelo Puff. Tuvo buena racha.	# story_places.c
+Here lies the Great Cake of '89. Gone too soon. Delicious.	Aquí yace el Gran Pastel del 89. Se fue muy pronto. Delicioso.	# story_places.c
+Here lies Fluffy. Fluffy was a cloud. We miss Fluffy.	Aquí yace Fluffy. Fluffy era una nube. Extrañamos a Fluffy.	# story_places.c
+Rest in pieces, Mr. Huggins the 1st. You were exorcised with love.	Descanse en piezas, Sr. Huggins I Te exorcizamos con amor.	# story_places.c
+Reserved for Mayor Giggs. "Not yet!" - the Mayor	Reservado para el alcalde Giggs. "¡Aún no!" - el alcalde	# story_places.c
+HELLVILE - Pop. 500. Abandon hope (optional). Wipe your hooves.	HELLVILE - Pob. 500. Abandona la esperanza (opcional). Límpiate las pezuñas.	# story_places.c
+ANVIL'S FORGE - We fix what the Duke broke. Hot soup on Sundays.	FRAGUA DE ANVIL - Arreglamos lo que rompió el Duque. Sopa caliente los domingos.	# story_places.c
+Here lies Count Snoozula. Finally getting some sleep.	Aquí yace el Conde Snoozula. Por fin duerme algo.	# story_places.c
+Crypt for rent. Ask Graveley. Families with kids: half price. Shh.	Cripta en renta. Pregunta a Graveley. Familias con niños: mitad de precio. Shh.	# story_places.c
+UNITY STAGE - Built from the bricks of the old Wall. Dance on it!	ESCENARIO UNIDAD - Hecho con ladrillos del viejo Muro. ¡Baila en él!	# story_places.c
+<- HILLVILE SIDE        HELLVILE SIDE ->   (it's all one park now!)	<- LADO HILLVILE        LADO HELLVILE ->   (¡ahora todo es un parque!)	# story_places.c
+The sign is scorched and dripping. Somebody scrawled on it: "VAPULA WAS HERE".	El letrero está chamuscado y goteando. Alguien garabateó: "VAPULA ESTUVO AQUÍ".	# story_places.c
+CLOUD NINE VAPOR - CLOSED FOREVER. (Thank goodness.)	CLOUD NINE VAPOR - CERRADO PARA SIEMPRE. (Qué alivio.)	# story_places.c
+CLOUD NINE VAPOR - Now open! Today's flavour: purple. Just purple.	CLOUD NINE VAPOR - ¡Ya abrimos! Sabor de hoy: morado. Solo morado.	# story_places.c
+Hillvile Lane	Camino Hillvile	# story_places.c
+Town Hall Hill	Colina del Ayuntamiento	# story_places.c
+Town Plaza	Plaza del Pueblo	# story_places.c
+St. Cuddles Square	Plaza San Mimos	# story_places.c
+The Fun Fair	La Feria	# story_places.c
+Hellvile Park - Hillvile Side	Hellvile Park - Lado Hillvile	# story_places.c
+The East Bank	La Ribera Este	# story_places.c
+HaHa Beach	Playa HaHa	# story_places.c
+Chapel Hill	Colina de la Capilla	# story_places.c
+Gate Plaza	Plaza de la Puerta	# story_places.c
+The Pits	Los Fosos	# story_places.c
+Forge Row	Calle de la Fragua	# story_places.c
+Imp Market Quarter	Barrio Mercado Diablillo	# story_places.c
+Crypt Row	Calle de las Criptas	# story_places.c
+The Lake of Fire	El Lago de Fuego	# story_places.c
+The Unity Stage	El Escenario Unidad	# story_places.c
+Hillvile Meadow	Pradera Hillvile	# story_places.c
+The River	El Río	# story_places.c
+Hellvile Garden	Jardín de Hellvile	# story_places.c
+Parade Road	Calle del Desfile	# story_places.c
+DOOMOGACHI LIFE		# credits.c
+in HELLvile Park!	¡en HELLvile Park!	# credits.c
+A Dippinn Productions game	Un juego de Dippinn Productions	# credits.c
+Made with love, plush stuffing\nand an alarming amount of vapor	Hecho con amor, relleno de peluche\ny una cantidad alarmante de vapor	# credits.c
+Starring	Protagonizan	# credits.c
+@P\nand @E the Doomogachi	@P\ny @E el Doomogachi	# credits.c
+Mayor Gigglesworth		# credits.c
+Mayor Giggs\nwho laughed at every speech	Alcalde Giggs\nque reía en cada discurso	# credits.c
+Nana Pudding		# credits.c
+Head Baker, keeper of keys\nand muffins	Jefa panadera, guardiana de llaves\ny muffins	# credits.c
+Stuffed with love\nand a little buckwheat	Relleno de amor\ny un poco de trigo sarraceno	# credits.c
+Head Welder, runaway imp\nand very good daughter	Jefa soldadora, diablilla fugitiva\ny muy buena hija	# credits.c
+Pip & Mr. Flops		# credits.c
+Bravest kid in HaHaland\n(and their bunny)	El niño más valiente de HaHaland\n(y su conejo)	# credits.c
+Mother Nox		# credits.c
+High Priestess of Hellvile\nand potluck legend	Suma Sacerdotisa de Hellvile\ny leyenda de convivios	# credits.c
+Vex		# credits.c
+Former vape tycoon\nnow selling plain water	Ex magnate del vapor\nahora vende agua simple	# credits.c
+Lord Vapula		# credits.c
+Duke of the Ninth Cloud\n(now pocket-sized)	Duque de la Novena Nube\n(ahora de bolsillo)	# credits.c
+Game Design & Story	Diseño y Guion	# credits.c
+The Doomogachi Team	El equipo Doomogachi	# credits.c
+Music & Sound	Música y Sonido	# credits.c
+30 Hz chiptunes:\ncute, then METAL, then cute	Chiptunes a 30 Hz:\nlindo, luego METAL, luego lindo	# credits.c
+Shooter & Welding	Disparos y Soldadura	# credits.c
+Every gun you could weld\nand a bubble wand	Todas las armas que puedas soldar\ny una varita de burbujas	# credits.c
+500 from Hillvile\n500 from Hellvile\nall of them marching	500 de Hillvile\n500 de Hellvile\ntodos marchando	# credits.c
+Real hardware	Hardware real	# credits.c
+Game Boy Advance cartridge\nPlayStation disc	Cartucho de Game Boy Advance\nDisco de PlayStation	# credits.c
+Special thanks	Agradecimientos	# credits.c
+Everyone who ever\ntore down a wall	A todos los que alguna vez\nderribaron un muro	# credits.c
+And you	Y tú	# credits.c
+Thank you for playing!	¡Gracias por jugar!	# credits.c
+Here comes the parade!	¡Ahí viene el desfile!	# credits.c
+THE END	FIN	# credits.c
+Everyone is together in Hellvile Park.	Todos están juntos en Hellvile Park.	# credits.c
+\x8B Continue	\x8B Continuar	# credits.c
+CREDITS	CRÉDITOS	# credits.c
+Citizens created	Ciudadanos creados	# unlocks.c
+Exorcisms won	Exorcismos ganados	# unlocks.c
+Exorcisms failed	Exorcismos fallidos	# unlocks.c
+Demons defeated	Demonios vencidos	# unlocks.c
+Demons defeated (cute)	Demonios vencidos (lindo)	# unlocks.c
+Demons defeated (brutal)	Demonios vencidos (brutal)	# unlocks.c
+Weapons welded	Armas soldadas	# unlocks.c
+Days lived	Días vividos	# unlocks.c
+Friendships	Amistades	# unlocks.c
+Marriages	Bodas	# unlocks.c
+Babies	Bebés	# unlocks.c
+Ghosts raised	Fantasmas criados	# unlocks.c
+Pet evolutions	Evoluciones de mascota	# unlocks.c
+Gifts given	Regalos dados	# unlocks.c
+Meals served	Comidas servidas	# unlocks.c
+Secrets found	Secretos hallados	# unlocks.c
+Headshots	Tiros a la cabeza	# unlocks.c
+Cross-border friends	Amigos del otro lado	# unlocks.c
+Money earned	Dinero ganado	# unlocks.c
+Arena waves	Oleadas de arena	# unlocks.c
+Best: Cupcake Catch	Mejor: Atrapa Cupcakes	# unlocks.c
+Best: Whack-an-Imp	Mejor: Golpea Diablillos	# unlocks.c
+Best: Vape Cloud Dodge	Mejor: Esquiva Vapor	# unlocks.c
+Best: Bubble Blaster	Mejor: Burbujas	# unlocks.c
+Best: Doomogachi Derby	Mejor: Derby Doomogachi	# unlocks.c
+Best: Memory Match	Mejor: Memorama	# unlocks.c
+Wheel of Fate: last spin day	Rueda del Destino: último giro	# unlocks.c
+Concerts	Conciertos	# unlocks.c
+Hit Parade (packed)	Éxitos (empacado)	# unlocks.c
+Hit Parade 2 (packed)	Éxitos 2 (empacado)	# unlocks.c
+Fish caught	Peces pescados	# unlocks.c
+Hell Breach ranks (packed)	Rangos Hell Breach (emp.)	# unlocks.c
+Creator Part	Pieza de creador	# unlocks.c
+Paint	Pintura	# unlocks.c
+Weapon Part	Pieza de arma	# unlocks.c
+Shop Item	Artículo de tienda	# unlocks.c
+Game Mode	Modo de juego	# unlocks.c
+Cheat	Truco	# unlocks.c
+Pet Form	Forma de mascota	# unlocks.c
+Secret	Secreto	# unlocks.c
+Boss Rush	Jefes Seguidos	# unlocks.c
+Hellvile Visits	Visitas a Hellvile	# unlocks.c
+Tamagotchi Only	Solo Tamagotchi	# unlocks.c
+New Game+	Juego Nuevo+	# unlocks.c
+Cacoblob	Cacoblob	# unlocks.c
+Win 3 exorcisms	Gana 3 exorcismos	# unlocks.c
+Mummy	Momia	# unlocks.c
+Live in town for 7 days	Vive 7 días en el pueblo	# unlocks.c
+Raise a ghost at the graveyard	Cría un fantasma en el cementerio	# unlocks.c
+Noodle Body	Cuerpo Fideo	# unlocks.c
+Serve 50 meals	Sirve 50 comidas	# unlocks.c
+Top-Heavy Body	Cuerpo Cabezón	# unlocks.c
+Weld 5 weapons	Suelda 5 armas	# unlocks.c
+Buff Body	Cuerpo Fornido	# unlocks.c
+Defeat 100 demons	Vence a 100 demonios	# unlocks.c
+Skull Head	Cabeza Calavera	# unlocks.c
+Defeat 50 demons	Vence a 50 demonios	# unlocks.c
+Star Head	Cabeza Estrella	# unlocks.c
+Find 3 secrets	Halla 3 secretos	# unlocks.c
+Diamond Head	Cabeza Diamante	# unlocks.c
+Earn 5,000 H$	Gana 5,000 H$	# unlocks.c
+Spiral Eyes	Ojos Espiral	# unlocks.c
+Fail an exorcism (oops)	Falla un exorcismo (¡ups!)	# unlocks.c
+Void Eyes	Ojos Vacío	# unlocks.c
+Win 10 exorcisms	Gana 10 exorcismos	# unlocks.c
+Hollow Eyes	Ojos Huecos	# unlocks.c
+Fail 3 exorcisms	Falla 3 exorcismos	# unlocks.c
+Compound Eyes	Ojos Compuestos	# unlocks.c
+Create 20 citizens	Crea 20 ciudadanos	# unlocks.c
+X Eyes	Ojos X	# unlocks.c
+Defeat 200 demons	Vence a 200 demonios	# unlocks.c
+Demon Slit Eyes	Ojos Rendija	# unlocks.c
+Defeat 25 demons	Vence a 25 demonios	# unlocks.c
+Glowing Eyes	Ojos Brillantes	# unlocks.c
+Land 10 headshots	Da 10 tiros a la cabeza	# unlocks.c
+Scarred Brows	Cejas Cicatriz	# unlocks.c
+Defeat 150 demons	Vence a 150 demonios	# unlocks.c
+Unibrow	Uniceja	# unlocks.c
+Create 10 citizens	Crea 10 ciudadanos	# unlocks.c
+Clown Nose	Nariz de Payaso	# unlocks.c
+Give 30 gifts	Da 30 regalos	# unlocks.c
+Skull Nose	Nariz Calavera	# unlocks.c
+Defeat 75 demons	Vence a 75 demonios	# unlocks.c
+Piggy Nose	Nariz de Cerdito	# unlocks.c
+Serve 100 meals	Sirve 100 comidas	# unlocks.c
+Void Mouth	Boca Vacío	# unlocks.c
+Win 20 exorcisms	Gana 20 exorcismos	# unlocks.c
+Drooly Mouth	Boca Babosa	# unlocks.c
+Serve 30 meals	Sirve 30 comidas	# unlocks.c
+Shark Mouth	Boca Tiburón	# unlocks.c
+Defeat 40 demons brutally	Vence a 40 demonios con brutalidad	# unlocks.c
+Fangy Mouth	Boca Colmillos	# unlocks.c
+Befriend 3 folks across the wall	Haz 3 amigos al otro lado del muro	# unlocks.c
+Fin Ears	Orejas Aleta	# unlocks.c
+Live in town for 14 days	Vive 14 días en el pueblo	# unlocks.c
+Bat Ears	Orejas Murciélago	# unlocks.c
+Befriend someone from Hellvile	Haz amistad con alguien de Hellvile	# unlocks.c
+Flame Hair	Pelo Llama	# unlocks.c
+Defeat 60 demons	Vence a 60 demonios	# unlocks.c
+Tentacle Hair	Pelo Tentáculo	# unlocks.c
+Fail 5 exorcisms	Falla 5 exorcismos	# unlocks.c
+Slime Drip Hair	Pelo Baba Slime	# unlocks.c
+Defeat 30 demons cutely	Vence a 30 demonios con ternura	# unlocks.c
+Drill Curls	Rizos Taladro	# unlocks.c
+Earn 10,000 H$	Gana 10,000 H$	# unlocks.c
+Liberty Spikes	Pinchos Punk	# unlocks.c
+Weld 10 weapons	Suelda 10 armas	# unlocks.c
+Crown Braid	Trenza Corona	# unlocks.c
+Celebrate 3 weddings	Celebra 3 bodas	# unlocks.c
+Odango Buns	Chongos Odango	# unlocks.c
+Make 10 friendships	Haz 10 amistades	# unlocks.c
+Wizard Beard	Barba de Mago	# unlocks.c
+Live in town for 30 days	Vive 30 días en el pueblo	# unlocks.c
+Handlebar 'Stache	Bigote Manubrio	# unlocks.c
+Earn 3,000 H$	Gana 3,000 H$	# unlocks.c
+So Many Horns	Muchos Cuernos	# unlocks.c
+Defeat 300 demons	Vence a 300 demonios	# unlocks.c
+Halo Horns	Cuernos Aureola	# unlocks.c
+Win 15 exorcisms	Gana 15 exorcismos	# unlocks.c
+Crown Spikes	Pinchos Corona	# unlocks.c
+Survive 10 arena waves	Sobrevive 10 oleadas	# unlocks.c
+Tall Devil Horns	Cuernos Diablo Altos	# unlocks.c
+Defeat 120 demons	Vence a 120 demonios	# unlocks.c
+Flame Tail	Cola de Llama	# unlocks.c
+Defeat 80 demons	Vence a 80 demonios	# unlocks.c
+Tentacle Tail	Cola Tentáculo	# unlocks.c
+Find 5 secrets	Halla 5 secretos	# unlocks.c
+Skeletal Tail	Cola Esquelética	# unlocks.c
+Raise 2 ghosts	Cría 2 fantasmas	# unlocks.c
+Spiked Tail	Cola con Púas	# unlocks.c
+Defeat 50 demons brutally	Vence a 50 demonios con brutalidad	# unlocks.c
+Mech Wings	Alas Mecánicas	# unlocks.c
+Weld 15 weapons	Suelda 15 armas	# unlocks.c
+Flame Wings	Alas de Llama	# unlocks.c
+Survive 20 arena waves	Sobrevive 20 oleadas	# unlocks.c
+Bone Wings	Alas de Hueso	# unlocks.c
+Raise 3 ghosts	Cría 3 fantasmas	# unlocks.c
+Dragon Wings	Alas de Dragón	# unlocks.c
+Defeat 400 demons	Vence a 400 demonios	# unlocks.c
+Flame Ring	Anillo de Llama	# unlocks.c
+Win 25 exorcisms	Gana 25 exorcismos	# unlocks.c
+Thorn Halo	Aureola Espinas	# unlocks.c
+Fail 8 exorcisms	Falla 8 exorcismos	# unlocks.c
+Broken Halo	Aureola Rota	# unlocks.c
+Fail 2 exorcisms	Falla 2 exorcismos	# unlocks.c
+Third Eye	Tercer Ojo	# unlocks.c
+Find 7 secrets	Halla 7 secretos	# unlocks.c
+Pentagram Mark	Marca Pentagrama	# unlocks.c
+Defeat 250 demons	Vence a 250 demonios	# unlocks.c
+Skull Paint	Pintura Calavera	# unlocks.c
+Defeat 20 demons	Vence a 20 demonios	# unlocks.c
+Cracks	Grietas	# unlocks.c
+Land 50 headshots	Da 50 tiros a la cabeza	# unlocks.c
+Clown Paint	Pintura Payaso	# unlocks.c
+Give 50 gifts	Da 50 regalos	# unlocks.c
+Plate Armor	Armadura de Placas	# unlocks.c
+Survive 15 arena waves	Sobrevive 15 oleadas	# unlocks.c
+Spacesuit	Traje Espacial	# unlocks.c
+Find 10 secrets	Halla 10 secretos	# unlocks.c
+Hazmat Suit	Traje Hazmat	# unlocks.c
+Defeat 100 demons cutely	Vence a 100 demonios con ternura	# unlocks.c
+Priest Robes	Túnica de Cura	# unlocks.c
+Win 5 exorcisms	Gana 5 exorcismos	# unlocks.c
+Armor	Armadura	# unlocks.c
+Defeat 70 demons	Vence a 70 demonios	# unlocks.c
+Maid Outfit	Traje de Sirvienta	# unlocks.c
+Serve 75 meals	Sirve 75 comidas	# unlocks.c
+Tutu	Tutú	# unlocks.c
+Make 20 friendships	Haz 20 amistades	# unlocks.c
+Kilt	Kilt	# unlocks.c
+Live in town for 21 days	Vive 21 días en el pueblo	# unlocks.c
+Robe Skirt	Falda Túnica	# unlocks.c
+Win 8 exorcisms	Gana 8 exorcismos	# unlocks.c
+Hooves	Pezuñas	# unlocks.c
+Defeat 90 demons	Vence a 90 demonios	# unlocks.c
+Rollerskates	Patines	# unlocks.c
+Live in town for 10 days	Vive 10 días en el pueblo	# unlocks.c
+Claws	Garras	# unlocks.c
+Defeat 60 demons brutally	Vence a 60 demonios con brutalidad	# unlocks.c
+Traffic Cone	Cono de Tránsito	# unlocks.c
+Find 2 secrets	Halla 2 secretos	# unlocks.c
+Horned Helmet	Casco con Cuernos	# unlocks.c
+Survive 5 arena waves	Sobrevive 5 oleadas	# unlocks.c
+Marine Helmet	Casco Marino	# unlocks.c
+Crown	Corona	# unlocks.c
+Earn 25,000 H$	Gana 25,000 H$	# unlocks.c
+Propeller Cap	Gorra Hélice	# unlocks.c
+Evolve your Doomogachi twice	Evoluciona 2 veces a tu Doomogachi	# unlocks.c
+Bucket Hat	Sombrero Cubeta	# unlocks.c
+Give 10 gifts	Da 10 regalos	# unlocks.c
+Gas Mask	Máscara de Gas	# unlocks.c
+Defeat 35 demons	Vence a 35 demonios	# unlocks.c
+Chains	Cadenas	# unlocks.c
+Defeat 45 demons brutally	Vence a 45 demonios con brutalidad	# unlocks.c
+Pacifier	Chupón	# unlocks.c
+Welcome a baby to town	Recibe un bebé en el pueblo	# unlocks.c
+Cape	Capa	# unlocks.c
+Weld 3 weapons	Suelda 3 armas	# unlocks.c
+Skull Necklace	Collar Calavera	# unlocks.c
+Defeat 10 demons	Vence a 10 demonios	# unlocks.c
+Glitch Aura	Aura Glitch	# unlocks.c
+Find 12 secrets	Halla 12 secretos	# unlocks.c
+Flame Aura	Aura de Llamas	# unlocks.c
+Defeat 180 demons	Vence a 180 demonios	# unlocks.c
+Fly Aura	Aura de Moscas	# unlocks.c
+Serve 150 meals (gross)	Sirve 150 comidas (qué asco)	# unlocks.c
+Smoke Aura	Aura de Humo	# unlocks.c
+Defeat 15 demons	Vence a 15 demonios	# unlocks.c
+Skull Print	Estampado Calavera	# unlocks.c
+Defeat 30 demons	Vence a 30 demonios	# unlocks.c
+Flame Print	Estampado Llamas	# unlocks.c
+Defeat 55 demons	Vence a 55 demonios	# unlocks.c
+Camo Print	Estampado Camuflaje	# unlocks.c
+Survive 3 arena waves	Sobrevive 3 oleadas	# unlocks.c
+Hellfire Paint	Pintura Fuego Infernal	# unlocks.c
+Ectoplasm Paint	Pintura Ectoplasma	# unlocks.c
+Vape Purple Paint	Pintura Morado Vapor	# unlocks.c
+Win your first exorcism	Gana tu primer exorcismo	# unlocks.c
+Blood Paint	Pintura Sangre	# unlocks.c
+Big-Head Mode	Modo Cabezón	# unlocks.c
+Create 25 citizens	Crea 25 ciudadanos	# unlocks.c
+Confetti Everything	Confeti en Todo	# unlocks.c
+Defeat 150 demons cutely	Vence a 150 demonios con ternura	# unlocks.c
+Infinite Candy	Dulces Infinitos	# unlocks.c
+Earn 20,000 H$	Gana 20,000 H$	# unlocks.c
+Cute Demons	Demonios Lindos	# unlocks.c
+Win 30 exorcisms	Gana 30 exorcismos	# unlocks.c
+Brutal Residents	Residentes Brutales	# unlocks.c
+Defeat 500 demons brutally	Vence a 500 demonios con brutalidad	# unlocks.c
+Low Gravity	Gravedad Baja	# unlocks.c
+Find 15 secrets	Halla 15 secretos	# unlocks.c
+Paper Mode	Modo Papel	# unlocks.c
+Live in town for 60 days	Vive 60 días en el pueblo	# unlocks.c
+Plush Armor	Armadura de Peluche	# unlocks.c
+Survive 30 arena waves	Sobrevive 30 oleadas	# unlocks.c
+Bottomless Wallet	Cartera Sin Fondo	# unlocks.c
+Earn 50,000 H$	Gana 50,000 H$	# unlocks.c
+Disco Lights	Luces Disco	# unlocks.c
+Celebrate 5 weddings	Celebra 5 bodas	# unlocks.c
+Tiny Demons	Demonios Mini	# unlocks.c
+Land 200 headshots	Da 200 tiros a la cabeza	# unlocks.c
+Everyone's a Ghost	Todos Son Fantasmas	# unlocks.c
+Raise 5 ghosts	Cría 5 fantasmas	# unlocks.c
+Hellfire Windows	Ventanas Infernales	# unlocks.c
+Midnight Windows	Ventanas Medianoche	# unlocks.c
+Live in town for 5 days	Vive 5 días en el pueblo	# unlocks.c
+Tamagotchi Windows	Ventanas Tamagotchi	# unlocks.c
+Evolve your Doomogachi 4 times	Evoluciona 4 veces a tu Doomogachi	# unlocks.c
+Goth Windows	Ventanas Góticas	# unlocks.c
+Befriend 5 folks across the wall	Haz 5 amigos al otro lado del muro	# unlocks.c
+Candy Storm Title	Título Tormenta de Dulces	# unlocks.c
+Make 15 friendships	Haz 15 amistades	# unlocks.c
+Hellvile Sunset Title	Título Ocaso de Hellvile	# unlocks.c
+Vape Apocalypse Title	Título Apocalipsis de Vapor	# unlocks.c
+United Park Title	Título Parque Unido	# unlocks.c
+See the story's ending	Ve el final de la historia	# unlocks.c
+Cute + Gore Mix	Mezcla Lindo + Gore	# unlocks.c
+Skull Cursor	Cursor Calavera	# unlocks.c
+Defeat 40 demons	Vence a 40 demonios	# unlocks.c
+Fang Cursor	Cursor Colmillo	# unlocks.c
+Win 12 exorcisms	Gana 12 exorcismos	# unlocks.c
+Storybook Filter	Filtro Cuento	# unlocks.c
+Make 5 friendships	Haz 5 amistades	# unlocks.c
+VHS Filter		# unlocks.c
+Weld 8 weapons	Suelda 8 armas	# unlocks.c
+Game Pal Filter	Filtro Game Pal	# unlocks.c
+Evolve your Doomogachi	Evoluciona a tu Doomogachi	# unlocks.c
+Sepia Filter	Filtro Sepia	# unlocks.c
+Live in town for 3 days	Vive 3 días en el pueblo	# unlocks.c
+Nightvision Filter	Filtro Visión Nocturna	# unlocks.c
+Defeat 130 demons	Vence a 130 demonios	# unlocks.c
+Skull Crosshair	Mira Calavera	# unlocks.c
+Land 25 headshots	Da 25 tiros a la cabeza	# unlocks.c
+Paw Crosshair	Mira Huella	# unlocks.c
+Defeat 20 demons cutely	Vence a 20 demonios con ternura	# unlocks.c
+unlocks: duplicate unlock id		# unlocks.c
+\x82 NEW UNLOCK! %s	\x82 ¡NUEVO DESBLOQUEO! %s	# unlocks.c

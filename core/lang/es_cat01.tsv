@@ -1,0 +1,622 @@
+SECRET-ISH		# lib_trophies.c
+All Prizes		# lib_trophies.c
+\x88\x87 next  \x8C close		# lib_trophies.c
+LIB_TROPHIES		# lib_trophies.c
+Textures		# lib_gallery.c
+Skies		# lib_gallery.c
+Sprites		# lib_gallery.c
+Palette		# lib_gallery.c
+Photos		# lib_gallery.c
+Pastel Day		# lib_gallery.c
+Candy Sunset		# lib_gallery.c
+Vape Storm		# lib_gallery.c
+HaHaland on a good day: cotton clouds and a sky the colour of milk.		# lib_gallery.c
+Strawberry, peach and lemon, stirred slowly. Picnic weather.		# lib_gallery.c
+Every star was counted by the owls. They lost count. Twice.		# lib_gallery.c
+What the sky looks like after the Gate opens. Bring a hat.		# lib_gallery.c
+Lord Vapula's weather. It smells of Unholy Grape up there.		# lib_gallery.c
+Clear		# lib_gallery.c
+Black		# lib_gallery.c
+Light grey		# lib_gallery.c
+Grey		# lib_gallery.c
+Dark grey		# lib_gallery.c
+UI pink		# lib_gallery.c
+UI pink (dark)		# lib_gallery.c
+UI mint		# lib_gallery.c
+UI mint (dark)		# lib_gallery.c
+UI cream		# lib_gallery.c
+UI red		# lib_gallery.c
+UI red (dark)		# lib_gallery.c
+UI gold		# lib_gallery.c
+UI purple		# lib_gallery.c
+LCD green		# lib_gallery.c
+Your house		# lib_gallery.c
+'s home		# lib_gallery.c
+%s  %d frame%s		# lib_gallery.c
+Hell		# lib_gallery.c
+Frame %d/%d%s%s%s		# lib_gallery.c
+ glow		# lib_gallery.c
+ float		# lib_gallery.c
+ (II)		# lib_gallery.c
+Paint: %s (%s)		# lib_gallery.c
+Skin: %s %d		# lib_gallery.c
+Ramp: %s %d		# lib_gallery.c
+Brightness %d		# lib_gallery.c
+BGR555 %04x		# lib_gallery.c
+%s tile %s%s		# lib_gallery.c
+x3: seamless!		# lib_gallery.c
+64x64 at 2x.		# lib_gallery.c
+ Animated!		# lib_gallery.c
+%dx%d		# lib_gallery.c
+\x88\x87\x89\x8A pick  L/R room  \x8C back		# lib_gallery.c
+\x89\x8A sky  L/R room  \x8C back		# lib_gallery.c
+Each photo is a recipe: the house builds the room again when you look.		# lib_gallery.c
+Take photos in your house (START > Photo) to fill this wing.		# lib_gallery.c
+\x8B look again  L/R room  \x8C back		# lib_gallery.c
+\x88\x87 next  SEL pause  \x89\x8A step		# lib_gallery.c
+\x8B look  L/R room  SEL pause  \x8C back		# lib_gallery.c
+LIB_GALLERY		# lib_gallery.c
+Songs		# lib_jukebox.c
+Sound FX		# lib_jukebox.c
+The theme! Hum it and a Doomogachi hatches somewhere.		# lib_jukebox.c
+Sunshine, sprinkles and a bassline that skips.		# lib_jukebox.c
+Fireflies, porch lights and sleepy bunnies.		# lib_jukebox.c
+Make a friend! Or forty. The tune won't judge.		# lib_jukebox.c
+Mintworth's till goes ka-ching right on the beat.		# lib_jukebox.c
+Father Fuzz wrote it. The choir is mostly plushies.		# lib_jukebox.c
+Beep. Boop. Beep. Feed me. Beep.		# lib_jukebox.c
+Saxophone, fog and somebody's bad decisions.		# lib_jukebox.c
+Ominous chanting, but make it catchy.		# lib_jukebox.c
+Clang! Hiss! Rivet sings along, badly.		# lib_jukebox.c
+The day the music turned metal.		# lib_jukebox.c
+Shotgun shells for a drum kit.		# lib_jukebox.c
+Three phases. Three key changes. Zero chill.		# lib_jukebox.c
+Ta-daa! Short, sweet and a little smug.		# lib_jukebox.c
+For goodbyes. Have a tissue. Have two.		# lib_jukebox.c
+Everybody, both sides of the Wall, dancing at last.		# lib_jukebox.c
+A thousand citizens, one very long parade.		# lib_jukebox.c
+Too smooth. Too purple. Don't trust it.		# lib_jukebox.c
+The Wall hums this at night. Listen closely.		# lib_jukebox.c
+SE-%02d		# lib_jukebox.c
+Locked song		# lib_jukebox.c
+Keep playing!		# lib_jukebox.c
+%u ms  %u Hz		# lib_jukebox.c
+Heard %d of %d		# lib_jukebox.c
+\x86 %d played		# lib_jukebox.c
+\x8B play  L/R shelf  SEL stop  \x8C back		# lib_jukebox.c
+LIB_JUKEBOX		# lib_jukebox.c
+library: scene scratch lost, closing the wing		# lib_common.c
+\x81 BESTIARY		# lib_common.c
+Bestiary		# lib_common.c
+Every demon from the Gate, pressed like flowers. A few are still wriggling.		# lib_common.c
+\x9A CITIZEN ALMANAC		# lib_common.c
+Citizen Almanac		# lib_common.c
+All our neighbours, both sides of the Wall. Alphabetised. Mostly.		# lib_common.c
+\x96 WEAPON CATALOG		# lib_common.c
+Weapon Catalog		# lib_common.c
+Rivet's blueprints! Please do not weld in the reading room.		# lib_common.c
+\x92 FOOD & ITEM DEX		# lib_common.c
+Food & Item Dex		# lib_common.c
+Snacks, gifts and holy water - and who loves or hates each treat.		# lib_common.c
+\x82 TROPHY WALL		# lib_common.c
+Trophy Wall		# lib_common.c
+Every prize in HaHaland, and a hint for each one you haven't won.		# lib_common.c
+\x86 JUKEBOX		# lib_common.c
+Jukebox		# lib_common.c
+Every tune and every boing. Headphones are on the hook. Shhh!		# lib_common.c
+\x94 ART GALLERY		# lib_common.c
+Art Gallery		# lib_common.c
+Paint, skies and portraits of every critter. No flash photography.		# lib_common.c
+Nothing here...		# lib_common.c
+yet!		# lib_common.c
+Welcome, welcome! Quiet giggling only, please.		# lib_common.c
+I recommend books by smelling you. You smell like an adventure!		# lib_common.c
+Late fees are paid in hugs. Hellvile pays in screams.		# lib_common.c
+Every page is pressed, dusted and lightly blessed.		# lib_common.c
+The Bestiary bites. Turn its pages gently.		# lib_common.c
+Ooh, a new reader! Mind the stairs, the third step yawns.		# lib_common.c
+Hoo! Night owls get the best reading lamps.		# lib_common.c
+Shh... the books are asleep. Read on tippy-toes.		# lib_common.c
+After midnight the Bestiary rattles. Don't worry. Mostly.		# lib_common.c
+THE BOOKS... ARE... OVERDUE. ALL OF THEM. FOREVER.		# lib_common.c
+Hoo... hoo... who reads in MY library? Heh. Heh heh.		# lib_common.c
+Shhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh.		# lib_common.c
+(A note on the desk: "Self-service. Please return books anyway. - Q")		# lib_common.c
+That one's locked!		# lib_common.c
+\x82 THE GRAND LIBRARY \x82		# lib_common.c
+Quillby		# lib_common.c
+\x88\x87 browse  \x8B read  \x8C leave		# lib_common.c
+LIBRARY		# lib_common.c
+Grand Library		# lib_common.c
+Quillby's books: demons, folks & more		# lib_common.c
+Every demon, pressed like a flower		# lib_common.c
+All 1000 neighbours, alphabetised		# lib_common.c
+Every weld part, with blueprints		# lib_common.c
+Snacks, gifts and who loves them		# lib_common.c
+Every unlock and how to earn it		# lib_common.c
+Every song and sound effect		# lib_common.c
+Textures, skies, sprites, paint		# lib_common.c
+500 cozy homes on the good side.		# fp_island.c
+Keysie		# fp_island.c
+Five hundred doors, five hundred keys!		# fp_island.c
+Town Hall		# fp_island.c
+Make citizens, save, options.		# fp_island.c
+Mayor Giggs		# fp_island.c
+Hee hee! Welcome to Town Hall, friend!		# fp_island.c
+Rivet's Workshop		# fp_island.c
+Weld cute or brutal weapons.		# fp_island.c
+Rivet		# fp_island.c
+Mind the sparks! Wanna weld something?		# fp_island.c
+The Wall & Gate		# fp_island.c
+The wall between the two sides.		# fp_island.c
+Halt		# fp_island.c
+HALT! ...Oh, it's you. Hi.		# fp_island.c
+Black Market		# fp_island.c
+Edgy goods. No refunds.		# fp_island.c
+Swipey		# fp_island.c
+Psst. Fell off a hellwagon. Interested?		# fp_island.c
+500 spooky-cute homes.		# fp_island.c
+Gutterworth		# fp_island.c
+Rent's due. Always. Forever. Hehe.		# fp_island.c
+Shop		# fp_island.c
+Food, gifts, care and holy stuff.		# fp_island.c
+Bargain Bun		# fp_island.c
+Welcome, welcome! Today's deals are fresh!		# fp_island.c
+Brimstone Bites		# fp_island.c
+The cafe. Treats and cooking.		# fp_island.c
+Cardamom		# fp_island.c
+Table for one? The cupcakes are warm!		# fp_island.c
+St. Cuddles Church		# fp_island.c
+Exorcisms with Father Fuzz.		# fp_island.c
+Father Fuzz		# fp_island.c
+Bless your fluffy heart. Need help?		# fp_island.c
+Hellvile Square		# fp_island.c
+The bad side's hangout.		# fp_island.c
+DJ Echo		# fp_island.c
+Echo... echo... welcome to the Square.		# fp_island.c
+Demon Arena		# fp_island.c
+Fight waves of demons.		# fp_island.c
+Fangela		# fp_island.c
+Rrrr. Only the brave get past me.		# fp_island.c
+Hospital		# fp_island.c
+Dr. Bloom treats the sick.		# fp_island.c
+Dr. Bloom		# fp_island.c
+Cold hands, warm heart. Who's sick?		# fp_island.c
+Fun Fair		# fp_island.c
+Minigames and prizes!		# fp_island.c
+Ferris		# fp_island.c
+Step right up! Every ride is a winner!		# fp_island.c
+Library		# fp_island.c
+Collections, records, music.		# fp_island.c
+Shushana		# fp_island.c
+Shhh... welcome. Books are friends.		# fp_island.c
+Where both sides could meet.		# fp_island.c
+Rusty		# fp_island.c
+Nice day for the park, eh?		# fp_island.c
+Lake of Fire		# fp_island.c
+Toasty fishing on the bad side.		# fp_island.c
+Capt. Hooky		# fp_island.c
+Arr! The lava's bitin' today!		# fp_island.c
+Beach		# fp_island.c
+Sand, sun and the sea.		# fp_island.c
+Sunny Dunes		# fp_island.c
+Sunscreen on? Let's play!		# fp_island.c
+Concert Hall		# fp_island.c
+Songs, shows and the studio.		# fp_island.c
+Maestro Mew		# fp_island.c
+Mrrrr-aestro! The stage awaits!		# fp_island.c
+Graveyard		# fp_island.c
+Rest, flowers and a ghost or two.		# fp_island.c
+Mr. Solemn		# fp_island.c
+Welcome. Everyone ends up here... visiting.		# fp_island.c
+Doomogachi		# fp_island.c
+Your tamagotchi pet.		# fp_island.c
+Citizens		# fp_island.c
+Everyone on the island.		# fp_island.c
+Menu		# fp_island.c
+Who's here? (%d)		# fp_island.c
+See who's hanging out here right now.		# fp_island.c
+Coming soon!		# fp_island.c
+Something fun is being built here. Check back later!		# fp_island.c
+Browse homes		# fp_island.c
+Peek into the windows of the Pits.		# fp_island.c
+Peek into the windows of the Towers.		# fp_island.c
+Move someone in		# fp_island.c
+Create a brand new citizen for a free home.		# fp_island.c
+Create (Hillvile)		# fp_island.c
+Make a new good-side citizen in the creator.		# fp_island.c
+Create (Hellvile)		# fp_island.c
+Make a new bad-side citizen. Spooky-cute!		# fp_island.c
+Collect rent		# fp_island.c
+Once a day: everyone chips in a little.		# fp_island.c
+Your avatar		# fp_island.c
+Your own look (it fights in the Arena).		# fp_island.c
+Name the island		# fp_island.c
+Give your island a name of its own.		# fp_island.c
+Save / Load		# fp_island.c
+Keep your island safe in a save slot.		# fp_island.c
+Game, shooter, sim, audio, display...		# fp_island.c
+Town records		# fp_island.c
+Population, couples, exorcisms...		# fp_island.c
+Go shopping		# fp_island.c
+Today's stock: food, gifts, care, holy and welding.		# fp_island.c
+Browse the stall		# fp_island.c
+Edgier stuff. Cheaper scrap. No holy water.		# fp_island.c
+Order treats		# fp_island.c
+Fresh cakes and snacks for your citizens.		# fp_island.c
+Exorcise someone!		# fp_island.c
+Exorcise someone		# fp_island.c
+Father Fuzz's ritual: prayer, holy water, true name.		# fp_island.c
+Practice ritual		# fp_island.c
+Rehearse on a plush dummy. No stakes!		# fp_island.c
+Talk to Father Fuzz		# fp_island.c
+Ask how the island's souls are doing.		# fp_island.c
+Holy supplies		# fp_island.c
+Holy water, sage, salt and friends.		# fp_island.c
+Treat someone (H$40)		# fp_island.c
+Dr. Bloom patches up a sick citizen.		# fp_island.c
+Weld & armory		# fp_island.c
+Rivet's welding bench and your weapons.		# fp_island.c
+Fight demon waves		# fp_island.c
+Survive wave after wave. Brutal or cute.		# fp_island.c
+Visit the graves		# fp_island.c
+Flowers, memories, and the ghost rite.		# fp_island.c
+Stroll the park		# fp_island.c
+Stroll HaHaland		# fp_island.c
+Walk around the island yourself.		# fp_island.c
+Throw a picnic (H$120)		# fp_island.c
+Everyone at the park gets snacks and smiles.		# fp_island.c
+Visit Hellvile		# fp_island.c
+Cross the gate and walk the bad side.		# fp_island.c
+Peek over the Wall		# fp_island.c
+What's going on over there?		# fp_island.c
+Unlocks gallery		# fp_island.c
+Everything you've earned, and how to get the rest.		# fp_island.c
+News archive		# fp_island.c
+Everything that's happened lately.		# fp_island.c
+Citizen records		# fp_island.c
+Look up any citizen.		# fp_island.c
+Tonight: %s		# fp_island.c
+Fans of tonight's genre flock to the hall.		# fp_island.c
+Browse every citizen on the island.		# fp_island.c
+News		# fp_island.c
+The island's news feed.		# fp_island.c
+Keep your island safe.		# fp_island.c
+Settings for everything.		# fp_island.c
+Everything you've earned.		# fp_island.c
+Island statistics.		# fp_island.c
+Back to title		# fp_island.c
+Leave the island (save first!).		# fp_island.c
+Leave		# fp_island.c
+\x82 Welcome to %s!		# fp_island.c
+Mochi		# fp_island.c
+Dr. Bloom: "That's H$40, dear. Come back with coins."		# fp_island.c
+A mysterious egg is wobbling on your doorstep... It's a Doomogachi! Give it a name!		# fp_island.c
+Name your Doomogachi		# fp_island.c
+Population: %d in Hillvile, %d in Hellvile. %d ghosts float about.		# fp_island.c
+Couples: %d. Cross-border friendships: %d. Graves: %d.		# fp_island.c
+Possessed right now: %d. Lost souls: %d. Exorcisms won: %u.		# fp_island.c
+Since you arrived: %u weddings, %u babies, %u breakups, %u news stories.		# fp_island.c
+...and people whisper about a MONSTER. Everyone remembers.		# fp_island.c
+All the island's souls are bright and fluffy today. Praise be! Keep them happy and clean.		# fp_island.c
+%d possessed, %d teetering on the edge... and %d lost souls.		# fp_island.c
+Holy water, sage and a well-rested host help the ritual. Three failures and a soul is lost.		# fp_island.c
+A lost soul can only be laid to rest. It's... a kindness. I'll be with you.		# fp_island.c
+You climb up and peek over... Hellvile is empty. Just a few tumbleweeds and a sad bat.		# fp_island.c
+Over the Wall: %d Hellvile citizens. Purple lights, loud music, smells like toast.		# fp_island.c
+%d friendships cross the Wall already. %s		# fp_island.c
+Something is possessing folks over there...		# fp_island.c
+Maybe one day it'll come down.		# fp_island.c
+A picnic costs H$120.		# fp_island.c
+Picnic in Hellvile Park! %d citizens munched sandwiches.		# fp_island.c
+\x80 What a lovely picnic!		# fp_island.c
+You've already collected today's rent. Come back tomorrow!		# fp_island.c
+\x83 Rent collected: +%d H$		# fp_island.c
+Locked!		# fp_island.c
+The gate is locked tight.		# fp_island.c
+Nobody's here right now.		# fp_island.c
+Nobody is possessed. Praise be!		# fp_island.c
+Everyone is healthy!		# fp_island.c
+No vacancies on that side!		# fp_island.c
+Who needs saving?		# fp_island.c
+Who's feeling sick?		# fp_island.c
+Name your island		# fp_island.c
+Back to the title screen? Unsaved changes will be lost!		# fp_island.c
+Tonight is %s night! Fans are lining up.		# fp_island.c
+Welcome to %s! It's very quiet... nobody lives here yet.		# fp_island.c
+Let's create your very first citizen! You can make up to 500 on each side.		# fp_island.c
+Welcome to %s! %d citizens live here. Visit them, feed them, love them!		# fp_island.c
+Thought bubbles show who needs help. A visits a place, START opens the menu.		# fp_island.c
+\x80 %s moved in!		# fp_island.c
+Your first citizen! Visit them in their home, or make some friends for them.		# fp_island.c
+%s: make citizens!		# fp_island.c
+Adopt a pet!		# fp_island.c
+Hi!		# fp_island.c
+Folks		# fp_island.c
+ISLAND		# fp_island.c
+About		# fp_resident.c
+Fun		# fp_resident.c
+Help!		# fp_resident.c
+Feed		# fp_resident.c
+Play		# fp_resident.c
+Heal		# fp_resident.c
+Comfort		# fp_resident.c
+Introduce		# fp_resident.c
+Advice		# fp_resident.c
+Edit look		# fp_resident.c
+Favourite		# fp_resident.c
+Exorcise		# fp_resident.c
+Raise ghost		# fp_resident.c
+Visit grave		# fp_resident.c
+Their home		# fp_resident.c
+Lay to rest		# fp_resident.c
+Create here		# fp_resident.c
+Confess to %s		# fp_resident.c
+Propose to %s		# fp_resident.c
+Break up with %s		# fp_resident.c
+Make up with %s		# fp_resident.c
+Advice? Hmm... I think I'm doing okay right now! But thanks!		# fp_resident.c
+Never mind		# fp_resident.c
+What do you think I should do?		# fp_resident.c
+Go for it!		# fp_resident.c
+Better not...		# fp_resident.c
+Should I tell them how I feel?		# fp_resident.c
+Work it out		# fp_resident.c
+Let them go		# fp_resident.c
+We keep fighting... what should I do?		# fp_resident.c
+Pop the question!		# fp_resident.c
+Take it slow		# fp_resident.c
+I want to propose... is it too soon?		# fp_resident.c
+\x83 +%u H$ thank-you tip!		# fp_resident.c
+\x80 Phew... not today.		# fp_resident.c
+Really? %s will be gone forever, and their friends will grieve.		# fp_resident.c
+IAMAMONSTER		# fp_resident.c
+That's not what a monster would type.		# fp_resident.c
+%s has done nothing wrong. Kill them off anyway? Everyone will remember.		# fp_resident.c
+%s's soul is lost after %d failed exorcisms. Lay them to rest?		# fp_resident.c
+MONSTER MODE: type I AM A MONSTER		# fp_resident.c
+Introduce %s to...		# fp_resident.c
+\x82 Added to favourites!		# fp_resident.c
+Removed from favourites.		# fp_resident.c
+The grave is covered in flowers already.		# fp_resident.c
+You need Flowers (sold at the shop).		# fp_resident.c
+\x80 You leave a little posy.		# fp_resident.c
+They can't join in right now.		# fp_resident.c
+Vacant		# fp_resident.c
+Pits		# fp_resident.c
+Towers		# fp_resident.c
+Unfavourite		# fp_resident.c
+Resting in		# fp_resident.c
+Job: %s		# fp_resident.c
+Type: %s		# fp_resident.c
+Birthday: %s %d		# fp_resident.c
+Falls for: %s		# fp_resident.c
+Loves: %s		# fp_resident.c
+Hates: %s		# fp_resident.c
+Hobby: %s		# fp_resident.c
+Music: %s		# fp_resident.c
+Colour: %s		# fp_resident.c
+Fear: %s		# fp_resident.c
+Born in %s, lives in %s		# fp_resident.c
+Exorcisms: %d tried, %d failed		# fp_resident.c
+Possessed by: %s		# fp_resident.c
+Friendship with you: %d		# fp_resident.c
+Made by: %s		# fp_resident.c
+HaHaland		# fp_resident.c
+An empty, cozy apartment. Make a citizen to move in!		# fp_resident.c
+No friends yet... Introduce them to someone!		# fp_resident.c
+ (across the Wall!)		# fp_resident.c
+New things to do together are on their way to the island.		# fp_resident.c
+Feed what?		# fp_resident.c
+Give what?		# fp_resident.c
+Which remedy?		# fp_resident.c
+\x8B Go shopping  \x8C Back		# fp_resident.c
+Rest in peace, %s.		# fp_resident.c
+The island will never forget this.		# fp_resident.c
+Their friends will miss them.		# fp_resident.c
+\x8B To the graveyard		# fp_resident.c
+\x8B Do it  L/R Tabs  \x8C Back		# fp_resident.c
+\x89\x8A Scroll  L/R Tabs  \x8C Back		# fp_resident.c
+\x8B Visit  L/R Tabs  \x8C Back		# fp_resident.c
+\x8B Play  L/R Tabs  \x8C Back		# fp_resident.c
+RESIDENT		# fp_resident.c
+Corruption		# fp_roster.c
+Unhappiest		# fp_roster.c
+Anyone		# fp_roster.c
+Has a problem		# fp_roster.c
+Made by you		# fp_roster.c
+Favourites		# fp_roster.c
+Premade		# fp_roster.c
+Couples		# fp_roster.c
+Singles		# fp_roster.c
+Cross-border		# fp_roster.c
+All		# fp_roster.c
+Choose a citizen		# fp_roster.c
+Search by name		# fp_roster.c
+Nobody here!		# fp_roster.c
+\x82 Filters & sorting \x82		# fp_roster.c
+District		# fp_roster.c
+Status		# fp_roster.c
+Mood		# fp_roster.c
+Any		# fp_roster.c
+Show		# fp_roster.c
+Sort by		# fp_roster.c
+Name has		# fp_roster.c
+(anything)		# fp_roster.c
+Clear all filters		# fp_roster.c
+Citizens  %d		# fp_roster.c
+Nobody fits...		# fp_roster.c
+Nobody here yet!		# fp_roster.c
+Make citizens at Town Hall		# fp_roster.c
+\x8B Choose  L/R Side  START Filter  \x8C Back		# fp_roster.c
+\x8B Open  L/R Side  START Filter  SEL Find		# fp_roster.c
+\x8B Choose  L/R Side  \x8C Back		# fp_roster.c
+\x8B Open  START Filter  SEL Find		# fp_roster.c
+ROSTER		# fp_roster.c
+PICKER		# fp_roster.c
+Holy		# fp_shop.c
+Snacks		# fp_shop.c
+Trinkets		# fp_shop.c
+Pills		# fp_shop.c
+Treats		# fp_shop.c
+\x80 Bought %d x %s!		# fp_shop.c
+Not in stock yet!		# fp_shop.c
+Your bag is full of those!		# fp_shop.c
+Not enough H$...		# fp_shop.c
+Nrg		# fp_shop.c
+HP		# fp_shop.c
+HaHaland Shop		# fp_shop.c
+Have: %d		# fp_shop.c
+\x8B Buy  L/R Shelf  \x8C Leave		# fp_shop.c
+\x8B Buy  \x8C Leave		# fp_shop.c
+How many %s?		# fp_shop.c
+Total: H$ %d		# fp_shop.c
+SHOP		# fp_shop.c
+Floor %2d  %2d home  \x80%d		# fp_apartments.c
+Floor %2d  %2d home		# fp_apartments.c
+Nobody here needs help right now!		# fp_apartments.c
+\x81 HELLVILE PITS \x81		# fp_apartments.c
+\x80 HILLVILE TOWERS \x80		# fp_apartments.c
+Vacant! \x8B Create a citizen		# fp_apartments.c
+\x8B Visit  L/R 5 floors  START Floor  SEL Help!		# fp_apartments.c
+\x8B Visit  START Floor  SEL Help		# fp_apartments.c
+APARTMENTS		# fp_apartments.c
+Their grave is covered in flowers already.		# fp_graveyard.c
+You need Flowers (the shop sells them).		# fp_graveyard.c
+This one's already up and floating about. Boo!		# fp_graveyard.c
+Leave flowers		# fp_graveyard.c
+Raise as a ghost		# fp_graveyard.c
+Remember them		# fp_graveyard.c
+%s's grave. What will you do?		# fp_graveyard.c
+No graves yet!		# fp_graveyard.c
+Everyone's alive		# fp_graveyard.c
+and fluffy.		# fp_graveyard.c
+%s - risen as a ghost! Boo!		# fp_graveyard.c
+%s - day %u - killed by a MONSTER		# fp_graveyard.c
+%s - day %u - %s		# fp_graveyard.c
+The veil is thin tonight... a rite may work.		# fp_graveyard.c
+\x8B Pay respects  \x8C Back		# fp_graveyard.c
+\x8C Back		# fp_graveyard.c
+GRAVEYARD		# fp_graveyard.c
+Empty Island		# fp_newisland.c
+Hellvile Park Classic		# fp_newisland.c
+Random Island		# fp_newisland.c
+Nobody lives here yet. Create every citizen yourself, up to 500 on each side - just like the original games!		# fp_newisland.c
+All 1000 premade citizens move in: 500 sweethearts in Hillvile and 500 rascals in Hellvile.		# fp_newisland.c
+1000 brand-new random citizens, cooked up from a seed. Same seed, same island!		# fp_newisland.c
+Island seed (number or word)		# fp_newisland.c
+Yes, name it!		# fp_newisland.c
+Maybe later		# fp_newisland.c
+Would you like to give your island a name?		# fp_newisland.c
+A brand-new island!		# fp_newisland.c
+0 citizens		# fp_newisland.c
+1000 premade		# fp_newisland.c
+Seed %u		# fp_newisland.c
+\x88\x87 Pick  \x89 Reroll  SEL Seed  \x8B Go!		# fp_newisland.c
+\x88\x87 Pick  \x8B Let's go!  \x8C Back		# fp_newisland.c
+NEW_ISLAND		# fp_newisland.c
+Headlines		# fp_news.c
+Help wanted		# fp_news.c
+MONSTER		# fp_news.c
+broke up		# fp_news.c
+ate 		# fp_news.c
+Hellvile Herald		# fp_news.c
+Day %u - %s %d %s - only 1 H$		# fp_news.c
+Nobody needs help. Bliss!		# fp_news.c
+No news is good news!		# fp_news.c
+\x8B Visit  L/R Page  \x8C Back		# fp_news.c
+L/R Page  \x8C Back		# fp_news.c
+Parts		# fp_unlocks.c
+Paints		# fp_unlocks.c
+Weapons		# fp_unlocks.c
+Modes		# fp_unlocks.c
+Gallery		# fp_unlocks.c
+Styles		# fp_unlocks.c
+Pets		# fp_unlocks.c
+Secrets		# fp_unlocks.c
+Progress		# fp_unlocks.c
+Unlocks  %d / %d		# fp_unlocks.c
+L/R Category  \x8C Back		# fp_unlocks.c
+\x9C Unlocked!		# fp_unlocks.c
+How: %s		# fp_unlocks.c
+a secret...		# fp_unlocks.c
+Nothing here yet!		# fp_unlocks.c
+%d/%d here  L/R Category  \x8C Back		# fp_unlocks.c
+UNLOCKS		# fp_unlocks.c
+Today		# home_mart.c
+Season		# home_mart.c
+Last Season		# home_mart.c
+Wants		# home_mart.c
+Sell		# home_mart.c
+You need more materials.		# home_mart.c
+That room is already yours.		# home_mart.c
+Expand in order: the next room first.		# home_mart.c
+Not enough H$.		# home_mart.c
+Move in first.		# home_mart.c
+Not yet. Keep playing!		# home_mart.c
+Storage is full.		# home_mart.c
+Knock on a random door		# home_mart.c
+  (new)		# home_mart.c
+Nobody has visited you yet. Invite someone over!		# home_mart.c
+Nothing in storage to sell.		# home_mart.c
+Nothing here today.		# home_mart.c
+Somebody's home. Probably.		# home_mart.c
+You have been here before.		# home_mart.c
+You have never been inside.		# home_mart.c
+%dx%d %s		# home_mart.c
+Yours already.		# home_mart.c
+Expand in order.		# home_mart.c
+The builders knock a wall through. Loudly.		# home_mart.c
+Unlock it somewhere in town.		# home_mart.c
+%s wants %s		# home_mart.c
+Owned: %d		# home_mart.c
+HomeMart		# home_mart.c
+Furniture Bench		# home_mart.c
+Expand the house		# home_mart.c
+Visit a neighbour		# home_mart.c
+CLOSED		# home_mart.c
+Come back after dark.		# home_mart.c
+\x8C leave		# home_mart.c
+WELD! Press A in the middle		# home_mart.c
+Done!		# home_mart.c
+SOLD!		# home_mart.c
+MINE!		# home_mart.c
+\x8B buy  L/R tab  \x8C leave		# home_mart.c
+\x8B weld  \x8C leave		# home_mart.c
+\x8B knock  \x8C leave		# home_mart.c
+\x8B buy  \x8C leave		# home_mart.c
+HOME_MART		# home_mart.c
+Catalog		# home_draw.c
+Live mode		# home_draw.c
+Score		# home_draw.c
+Walls		# home_draw.c
+Themes		# home_draw.c
+Blueprints		# home_draw.c
+Rooms		# home_draw.c
+Give a gift		# home_draw.c
+Done		# home_draw.c
+Copy		# home_draw.c
+Paste		# home_draw.c
+To storage		# home_draw.c
+Spook		# home_draw.c
+Style		# home_draw.c
+Light		# home_draw.c
+Barricade		# home_draw.c
+COSY		# home_draw.c
+LIT		# home_draw.c
+HELD		# home_draw.c
+HOME		# home_draw.c
+ETERNAL		# home_draw.c
+Pastel		# home_draw.c
+Gothic		# home_draw.c
+Hellish		# home_draw.c
+Plush		# home_draw.c
+Kitchen		# home_draw.c
+Tech		# home_draw.c
+Garden		# home_draw.c
+Wall		# home_draw.c
+Rug		# home_draw.c
+Trophy		# home_draw.c
+The fireplace can breathe		# home_draw.c
+The bed is not by the door		# home_draw.c
+The bed faces the door		# home_draw.c

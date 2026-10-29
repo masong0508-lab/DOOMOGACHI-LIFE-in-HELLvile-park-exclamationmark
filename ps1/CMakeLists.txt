@@ -52,7 +52,7 @@ list(SORT PS1_SRCS)
 # are never linked here. TEXT.BIN is a build product, never committed.
 list(FILTER CORE_SRCS EXCLUDE REGEX "/core/gen/text_[a-z0-9_]+\\.c$")
 # the long Spanish strings (option help...) stay out of the PS1 EXE: its RAM is tight
-list(FILTER CORE_SRCS EXCLUDE REGEX "/core/gen/lang_help_es\\.c$")
+list(FILTER CORE_SRCS EXCLUDE REGEX "/core/gen/lang_(help|cat)_es\\.c$")
 file(GLOB_RECURSE DOOMO_DSC CONFIGURE_DEPENDS ${CORE_DIR}/data/story/*.dsc ${CORE_DIR}/data/story/*.txt)
 add_custom_command(
 	OUTPUT  ${CMAKE_CURRENT_BINARY_DIR}/TEXT.BIN

@@ -51,9 +51,10 @@ def fnv(b):
     return h
 
 
-def load():
+def load(path=None):
     ent = {}
-    for n, line in enumerate(open(SRC, encoding="utf-8").read().split("\n"), 1):
+    path = path or SRC
+    for n, line in enumerate(open(path, encoding="utf-8").read().split("\n"), 1):
         if not line.strip() or line.startswith("#"):
             continue
         f = line.split("\t")
@@ -63,8 +64,8 @@ def load():
             k, v = unesc(f[0]), unesc(f[1])
         except ValueError as e:
             raise SystemExit("es.tsv:%d: %s" % (n, e))
-        if len(v) > 120:
-            raise SystemExit("es.tsv:%d: translation over 120 bytes" % n)
+        if len(v) > 250:
+            raise SystemExit("es.tsv:%d: translation over 250 bytes" % n)
         ent[fnv(k)] = v
     return ent
 
@@ -117,6 +118,16 @@ def main(argv):
     long_ = {k: v for k, v in ent.items() if len(v) > LONG}
     write(gen, "lang_ui_es.c", "doomo_lang_ui_es", short)
     write(gen, "lang_help_es.c", "doomo_lang_help_es", long_)
+    # core/lang/es_*.tsv: catalogs, jobs, unlock hints... (not linked on the PS1)
+    cat = {}
+    d = os.path.dirname(SRC)
+    for fn in sorted(os.listdir(d)):
+        if fn.startswith("es_") and fn.endswith(".tsv"):
+            cat.update(load(os.path.join(d, fn)))
+    for k in list(cat):
+        if k in ent:
+            del cat[k]
+    write(gen, "lang_cat_es.c", "doomo_lang_cat_es", cat)
     return 0
 
 

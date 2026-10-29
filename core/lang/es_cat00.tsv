@@ -1,0 +1,622 @@
+Cupcake Tester	Catacupcakes	# fp_common.c
+Florist	Florista	# fp_common.c
+Mail Carrier	Cartero	# fp_common.c
+Baker	Panadero	# fp_common.c
+Nurse	Enfermero	# fp_common.c
+Gardener	Jardinero	# fp_common.c
+Toymaker	Juguetero	# fp_common.c
+Librarian	Bibliotecario	# fp_common.c
+Barista	Barista	# fp_common.c
+Painter	Pintor	# fp_common.c
+Knitter	Tejedor	# fp_common.c
+Lifeguard	Salvavidas	# fp_common.c
+Ice Cream Vendor	Heladero	# fp_common.c
+Choir Singer	Corista	# fp_common.c
+Bus Driver	Chofer	# fp_common.c
+Teacher	Maestro	# fp_common.c
+Beekeeper	Apicultor	# fp_common.c
+Kite Maker	Cometero	# fp_common.c
+Clown	Payaso	# fp_common.c
+Plush Doctor	Doc. Peluches	# fp_common.c
+Chef	Chef	# fp_common.c
+Poet	Poeta	# fp_common.c
+Hairdresser	Peluquero	# fp_common.c
+Dog Walker	Paseaperros	# fp_common.c
+Astronomer	Astrónomo	# fp_common.c
+Yoga Coach	Coach de Yoga	# fp_common.c
+Candle Maker	Cerero	# fp_common.c
+Tailor	Sastre	# fp_common.c
+Juggler	Malabarista	# fp_common.c
+Park Ranger	Guardabosques	# fp_common.c
+Pastry Chef	Repostero	# fp_common.c
+Dance Teacher	Prof. de Baile	# fp_common.c
+Imp Accountant	Contador Diablillo	# fp_common.c
+Ghoul Landlord	Casero Ghoul	# fp_common.c
+Bone Clerk	Empl. de Huesos	# fp_common.c
+Bouncer	Gorila	# fp_common.c
+Bookie	Corr. Apuestas	# fp_common.c
+Vape Clerk	Vendedor Vapes	# fp_common.c
+Edgy Poet	Poeta Emo	# fp_common.c
+Cultist (Part-time)	Sectario (Parcial)	# fp_common.c
+Sulfur Miner	Minero Azufre	# fp_common.c
+Fence	Perista	# fp_common.c
+Cursed Chef	Chef Maldito	# fp_common.c
+Goth DJ	DJ Gótico	# fp_common.c
+Gargoyle Model	Modelo Gárgola	# fp_common.c
+Lava Lifeguard	Salvavidas Lava	# fp_common.c
+Pit Plumber	Plomero Foso	# fp_common.c
+Skull Polisher	Pulecráneos	# fp_common.c
+Nightmare Writer	Autor Pesadillas	# fp_common.c
+Tax Demon	Demonio Fiscal	# fp_common.c
+Sewer Merchant	Mercader Cloaca	# fp_common.c
+Bat Wrangler	Domamurciélagos	# fp_common.c
+Hex Tailor	Sastre Maleficio	# fp_common.c
+Coffin Carpenter	Ataudero	# fp_common.c
+Brimstone Baker	Panadero Azufre	# fp_common.c
+Doom Barber	Barbero Doom	# fp_common.c
+Chain Smith	Herrero Cadenas	# fp_common.c
+Fire Juggler	Malabar. Fuego	# fp_common.c
+Debt Collector	Cobrador	# fp_common.c
+Haunt Consultant	Asesor Embrujos	# fp_common.c
+Spite Gardener	Jardín Rencor	# fp_common.c
+Moat Keeper	Guardafosos	# fp_common.c
+Ember Artist	Artista Brasas	# fp_common.c
+Gloom Merchant	Mercader Tristeza	# fp_common.c
+Made with love. Into %s, scared of %s.	Hecho con amor. Le gusta %s, teme a %s.	# fp_common.c
+Loves %s. Can't stand %s.	Ama %s. Odia %s.	# fp_common.c
+Hellvile		# fp_common.c
+Hillvile		# fp_common.c
+Hellvile Pits		# fp_common.c
+Hillvile Towers		# fp_common.c
+Hellvile Park		# fp_common.c
+\x80 Autosaved!	\x80 ¡Autoguardado!	# fp_common.c
+Day %d  %s %d %s  %s	Día %d  %s %d %s  %s	# fp_common.c
+Day %d %s %s	Día %d %s %s	# fp_common.c
+Only the departed can be raised.	Solo se puede alzar a los difuntos.	# fp_common.c
+He went out full. The rite won't take him.	Se fue satisfecho. El rito no funcionará.	# fp_common.c
+The veil is too thick by day. Come back after 9 PM...	El velo es muy denso de día. Vuelve después de las 9 PM...	# fp_common.c
+The rite needs a Hymn Book and a Sage Bundle.	El rito requiere un Himnario y un Manojo de Salvia.	# fp_common.c
+You chant the old lullaby, the sage smoke curls into a little heart...	Cantas la vieja canción de cuna, el humo de salvia forma un corazoncito...	# fp_common.c
+Ooooo... I'm BACK! Everything is so floaty! Thank you!	Ooooo... ¡HE VUELTO! ¡Todo flota! ¡Gracias!	# fp_common.c
+Not on this island	No en esta isla	# fp_common.c
+Later in the story...	Más adelante en la historia...	# fp_common.c
+%s: who?	%s: ¿quién?	# fp_common.c
+Nothing	Nada	# items.c
+Cupcake	Cupcake	# items.c
+Pink frosting, rainbow sprinkles.	Glaseado rosa y chispas de colores.	# items.c
+Onigiri	Onigiri	# items.c
+Rice ball with a tiny nori smile.	Bola de arroz con sonrisa de nori.	# items.c
+Soul Soup	Sopa de Almas	# items.c
+Warm, comforting, faintly wailing.	Cálida, reconfortante, algo gimiente.	# items.c
+Brimstone Bagel	Bagel de Azufre	# items.c
+Toasted over actual hellfire.	Tostado en fuego infernal de verdad.	# items.c
+Candy Eyeballs	Ojos de Dulce	# items.c
+They look back. Sweetly.	Te miran de vuelta. Con dulzura.	# items.c
+Pudding	Flan	# items.c
+Jiggly custard with caramel top.	Flan tembloroso con caramelo.	# items.c
+Hell Peppers	Chiles Infernales	# items.c
+Spicy enough to see sounds.	Pican tanto que ves los sonidos.	# items.c
+Angel Cake	Pastel de Ángel	# items.c
+So fluffy it floats off the plate.	Tan suave que flota del plato.	# items.c
+Meat Slab	Losa de Carne	# items.c
+A worrying amount of protein.	Una cantidad inquietante de proteína.	# items.c
+Salad	Ensalada	# items.c
+Crunchy greens with a radish face.	Verdes crujientes con cara de rábano.	# items.c
+Milk	Leche	# items.c
+Cold, fresh, comes with a straw.	Fría, fresca, con popote.	# items.c
+Coffee	Café	# items.c
+Bean juice. Wakes the dead (ask).	Jugo de grano. Despierta muertos (pregunta).	# items.c
+A squishy bunny to hug at night.	Un conejito blandito para abrazar de noche.	# items.c
+Flowers	Flores	# items.c
+A posy of pastel daisies.	Un ramito de margaritas pastel.	# items.c
+Love Letter	Carta de Amor	# items.c
+Sealed with a heart sticker.	Sellada con un sticker de corazón.	# items.c
+Video Game	Videojuego	# items.c
+Cartridge: Super Plush Brawl 2.	Cartucho: Super Plush Brawl 2.	# items.c
+Skull Trinket	Baratija Calavera	# items.c
+Tiny, shiny, extremely goth.	Pequeña, brillante, muy gótica.	# items.c
+Perfume	Perfume	# items.c
+Eau de Brimstone. Smells of roses.	Eau de Azufre. Huele a rosas.	# items.c
+Board Game	Juego de Mesa	# items.c
+Snakes & Ladders & Demons.	Serpientes, Escaleras y Demonios.	# items.c
+Ring	Anillo	# items.c
+Sparkly. For the big question.	Brillante. Para la gran pregunta.	# items.c
+Soap	Jabón	# items.c
+Bubblegum scented. Very foamy.	Aroma a chicle. Muy espumoso.	# items.c
+Medicine	Medicina	# items.c
+Cherry flavoured. Mostly.	Sabor cereza. Casi siempre.	# items.c
+Energy Drink	Bebida Energética	# items.c
+Hellraiser Extreme. Fizzy!	Hellraiser Extreme. ¡Burbujeante!	# items.c
+Chill Pill	Pastilla Calma	# items.c
+One tiny marshmallow of calm.	Un malvavisco diminuto de calma.	# items.c
+Holy Water	Agua Bendita	# items.c
+Blessed by Father Fuzz himself.	Bendecida por el mismo Padre Fuzz.	# items.c
+Sage Bundle	Manojo de Salvia	# items.c
+Smudge away the spooky vibes.	Ahuyenta las vibras tenebrosas.	# items.c
+Plush Cross	Cruz de Peluche	# items.c
+Soft, holy and huggable.	Suave, santa y abrazable.	# items.c
+Rosary	Rosario	# items.c
+Beads of candy glass.	Cuentas de cristal de caramelo.	# items.c
+Blessed Salt	Sal Bendita	# items.c
+Draw a circle. Demons hate it.	Dibuja un círculo. Los demonios lo odian.	# items.c
+Hymn Book	Himnario	# items.c
+Lullabies for unholy ears.	Canciones de cuna para oídos impíos.	# items.c
+Scrap	Chatarra	# items.c
+Bent metal bits. Rivet loves it.	Metal doblado. A Rivet le encanta.	# items.c
+Gears	Engranajes	# items.c
+Tiny cogs that go tick-tick.	Ruedas diminutas que hacen tic-tic.	# items.c
+Demon Horn	Cuerno Demonio	# items.c
+Snapped off an impling. Ouch.	Arrancado a un diablillo. Auch.	# items.c
+Glitter	Brillantina	# items.c
+Gets everywhere. Forever.	Llega a todas partes. Para siempre.	# items.c
+Hellsteel	Acero Infernal	# items.c
+Forged in the Ninth Cloud.	Forjado en la Novena Nube.	# items.c
+Plush Stuffing	Relleno Peluche	# items.c
+Fluffy filling for cute guns.	Relleno suave para armas tiernas.	# items.c
+Weld Rod	Varilla Soldar	# items.c
+Keep the bead in the zone!	¡Mantén el cordón en la zona!	# items.c
+Blueprint	Plano	# items.c
+Doodled plans for a new frame.	Garabatos para un nuevo armazón.	# items.c
+House Key	Llave de Casa	# items.c
+Heart-shaped key to your cottage.	Llave con forma de corazón de tu casita.	# items.c
+Doomogachi Egg	Huevo Doomogachi	# items.c
+It wiggles when you sing to it.	Se menea cuando le cantas.	# items.c
+Lost Bunny	Conejito Perdido	# items.c
+Pip's plush. A bit muddy.	El peluche de Pip. Algo sucio.	# items.c
+Vape Pen	Pluma Vape	# items.c
+Unholy Grape. Do NOT inhale.	Uva Impía. NO inhalar.	# items.c
+Cellar Key	Llave del Sótano	# items.c
+Opens the Cloud Nine cellar.	Abre el sótano de Cloud Nine.	# items.c
+Gate Sigil	Sello de la Puerta	# items.c
+Hums near the Hellvile wall.	Zumba cerca del muro de Hellvile.	# items.c
+Blood Orange	Naranja Sangre	# items.c
+Juicy, a bit dramatic. Bleeds.	Jugosa y algo dramática. Sangra.	# items.c
+Pickle Jar	Frasco de Pepinillos	# items.c
+Crunchy, sour, judging you.	Crujiente, ácido y te juzga.	# items.c
+Brussels Sprouts	Coles de Bruselas	# items.c
+Tiny cabbages of pure suspicion.	Repollitos de pura sospecha.	# items.c
+Bone Broth	Caldo de Huesos	# items.c
+Simmered for hours. Hums softly.	Hervido por horas. Tararea suave.	# items.c
+Cloud Flour	Harina de Nube	# items.c
+Floaty flour. For baking, dear!	Harina ligera. ¡Para hornear, querido!	# items.c
+Pixie Sugar	Azúcar de Hada	# items.c
+Sparkles. Makes spoons giggle.	Destella. Hace reír a las cucharas.	# items.c
+Speckled Egg	Huevo Moteado	# items.c
+Laid by a very proud hen.	Puesto por una gallina orgullosa.	# items.c
+Charred Mystery	Misterio Carbonizado	# items.c
+Was dinner. Now a lifestyle.	Era la cena. Ahora es un estilo de vida.	# items.c
+Fish Ramen	Ramen de Pescado	# items.c
+Slurpy noodles in lake broth.	Fideos sorbibles en caldo de lago.	# items.c
+Tempura Roll	Rollo Tempura	# items.c
+Crispy fish roll. Rolls itself.	Rollo de pescado crujiente. Se enrolla solo.	# items.c
+Takoyaki	Takoyaki	# items.c
+Octopus-ish balls. Don't ask.	Bolitas pulposas. No preguntes.	# items.c
+Fluffy Pancakes	Hot Cakes Suaves	# items.c
+A wobbly stack, butter crown.	Pila temblorosa con corona de mantequilla.	# items.c
+Molten Lava Cake	Volcán de Chocolate	# items.c
+Erupts when poked. Worth it.	Hace erupción al picarlo. Vale la pena.	# items.c
+Hellfire Curry	Curry Infernal	# items.c
+Spicy enough to see ancestors.	Pica tanto que ves a los ancestros.	# items.c
+Pickle Pizza	Pizza de Pepinillo	# items.c
+Controversial. Delicious. Both.	Polémica. Deliciosa. Ambas.	# items.c
+Grave Dirt Cake	Pastel Tierra Tumba	# items.c
+Cocoa soil, gummy worms, RIP.	Tierra de cacao, gusanitos, RIP.	# items.c
+Eyeball Jelly	Gelatina de Ojos	# items.c
+Wobbles. Watches. Grape-y.	Tiembla. Observa. Sabe a uva.	# items.c
+Sock Stew	Estofado de Calcetín	# items.c
+A demon lord's sock, slow-cooked.	Calcetín de un señor demonio, a fuego lento.	# items.c
+Frames	Armazones	# lib_weapons.c
+Barrels	Cañones	# lib_weapons.c
+Cores	Núcleos	# lib_weapons.c
+Mods	Mods	# lib_weapons.c
+Sights	Miras	# lib_weapons.c
+Stocks	Culatas	# lib_weapons.c
+Magazines	Cargadores	# lib_weapons.c
+Underbarrels	Bajocañón	# lib_weapons.c
+Charms	Amuletos	# lib_weapons.c
+Old reliable. Fits any paw, any purse.	La de siempre. Para cualquier pata y bolsillo.	# lib_weapons.c
+Six shots and one dramatic spin.	Seis tiros y un giro dramático.	# lib_weapons.c
+Twice the pistol, twice the posing.	Doble pistola, doble pose.	# lib_weapons.c
+A pistol that drank three espressos.	Una pistola que bebió tres espressos.	# lib_weapons.c
+Sprays like a very rude garden hose.	Rocía como manguera muy grosera.	# lib_weapons.c
+The sensible cardigan of guns.	El cárdigan sensato de las armas.	# lib_weapons.c
+Heavier rounds, heavier opinions.	Balas pesadas, opiniones pesadas.	# lib_weapons.c
+The magazine lives in its tail. Cute!	El cargador vive en su cola. ¡Tierno!	# lib_weapons.c
+Belt-fed. Belt-fed. Belt-fed. Belt-fed.	Con cinta. Con cinta. Con cinta. Con cinta.	# lib_weapons.c
+Spin-up time: one prayer. Then: weather.	Giro: una oración. Luego: tormenta.	# lib_weapons.c
+For when they should know it was you.	Para que sepan que fuiste tú.	# lib_weapons.c
+Reach out and boop someone. Hard.	Alcanza y dale un boop a alguien. Fuerte.	# lib_weapons.c
+Goes through demons, walls and Mondays.	Atraviesa demonios, muros y lunes.	# lib_weapons.c
+Quiet, medieval and extremely pointy.	Silenciosa, medieval y muy puntiaguda.	# lib_weapons.c
+Arrows! Like a hug, from far away.	¡Flechas! Como un abrazo a distancia.	# lib_weapons.c
+Chk-chk. The sound demons fear most.	Chk-chk. El sonido que más temen los demonios.	# lib_weapons.c
+Two barrels. Zero subtlety. Pure Doom.	Dos cañones. Cero sutileza. Puro Doom.	# lib_weapons.c
+A shotgun with no patience at all.	Una escopeta sin nada de paciencia.	# lib_weapons.c
+Comes with a cowboy spin. Yeehaw!	Con giro vaquero. ¡Yiija!	# lib_weapons.c
+Lob, bounce, BOOM. Bank shots welcome.	Lanza, rebota, ¡BUM! Se aceptan rebotes.	# lib_weapons.c
+Point away from face. Then from friends.	Apunta lejos de tu cara. Y de tus amigos.	# lib_weapons.c
+Toasts marshmallows and imps alike.	Tuesta malvaviscos y diablillos.	# lib_weapons.c
+Hums happily. Melts unhappily.	Zumba feliz. Derrite infeliz.	# lib_weapons.c
+Construction-grade crowd control.	Control de multitudes de obra.	# lib_weapons.c
+Big. Friendly. Gun. Two of those are lies.	Gran. Amigable. Arma. Dos son mentira.	# lib_weapons.c
+Rated for trees, gates and demon kings.	Apta para árboles, puertas y reyes demonio.	# lib_weapons.c
+Folded a thousand times. Cuts once.	Plegada mil veces. Corta una.	# lib_weapons.c
+For trouble shaped like a nail.	Para problemas con forma de clavo.	# lib_weapons.c
+Free, reusable and always with you.	Gratis, reutilizable y siempre contigo.	# lib_weapons.c
+Pop! A demon's worst nightmare: whimsy.	¡Pop! La peor pesadilla demoníaca: la ternura.	# lib_weapons.c
+Fires teddy bears at alarming speed.	Dispara ositos a velocidad alarmante.	# lib_weapons.c
+Every hit is a surprise party.	Cada golpe es una fiesta sorpresa.	# lib_weapons.c
+Sweet tooth, sweeter swing.	Golosa, y con golpe más dulce.	# lib_weapons.c
+Shoots love. Love hurts. Demons most.	Dispara amor. Duele. A los demonios más.	# lib_weapons.c
+Squeak! Bonk! Squeak! Repeat.	¡Pic! ¡Bonk! ¡Pic! Repite.	# lib_weapons.c
+You will be finding it for months.	La seguirás encontrando por meses.	# lib_weapons.c
+Bless it at church. Watch them hiss.	Bendícela en la iglesia. Míralos sisear.	# lib_weapons.c
+Labels demons GOOD JOB at high speed.	Etiqueta demonios BUEN TRABAJO a toda prisa.	# lib_weapons.c
+Knits a sweater around your problems.	Teje un suéter alrededor de tus problemas.	# lib_weapons.c
+Factory fresh. Does the job.	Recién salida de fábrica. Cumple.	# lib_weapons.c
+Snappy handling, shorter reach.	Manejo ágil, menos alcance.	# lib_weapons.c
+More barrel, more reach, more swagger.	Más cañón, más alcance, más estilo.	# lib_weapons.c
+Thick walls for thick rounds.	Paredes gruesas para balas gruesas.	# lib_weapons.c
+Two holes. Twice the hello.	Dos agujeros. Doble saludo.	# lib_weapons.c
+Three barrels. Rivet said no. We did it.	Tres cañones. Rivet dijo no. Lo hicimos.	# lib_weapons.c
+Twisty! Spins shots into a tight line.	¡Retorcido! Alinea los tiros en fila.	# lib_weapons.c
+A shotgun's very best friend.	El mejor amigo de una escopeta.	# lib_weapons.c
+Illegal in HaHaland. Popular in Hellvile.	Ilegal en HaHaland. Popular en Hellvile.	# lib_weapons.c
+Shhh. Library approved.	Shhh. Aprobado por la biblioteca.	# lib_weapons.c
+Every shot leaves the muzzle in love.	Cada tiro sale del cañón enamorado.	# lib_weapons.c
+Twinkle twinkle, little round.	Brilla brilla, balita.	# lib_weapons.c
+Classic lead. Polite, mostly.	Plomo clásico. Educado, casi siempre.	# lib_weapons.c
+Pierces armour and excuses.	Perfora armaduras y excusas.	# lib_weapons.c
+Every bullet a tiny birthday.	Cada bala, un mini cumpleaños.	# lib_weapons.c
+Pellets! A buffet of hurt.	¡Perdigones! Un bufé de dolor.	# lib_weapons.c
+One big pellet. Very rude.	Un perdigón enorme. Muy grosero.	# lib_weapons.c
+Tiny darts in a big hurry.	Dardos pequeños con mucha prisa.	# lib_weapons.c
+Bottled sunshine, but angry.	Sol embotellado, pero enojado.	# lib_weapons.c
+Self-propelled consequences.	Consecuencias autopropulsadas.	# lib_weapons.c
+Bouncy, bouncy... boom.	Bota, bota... bum.	# lib_weapons.c
+Hammer optional.	Martillo opcional.	# lib_weapons.c
+Magnetic, unstoppable and LOUD.	Magnético, imparable y RUIDOSO.	# lib_weapons.c
+Flammable feelings.	Sentimientos inflamables.	# lib_weapons.c
+Soapy, floaty, bonk.	Jabonoso, flotante, bonk.	# lib_weapons.c
+Sparkle damage over time.	Daño de brillo con el tiempo.	# lib_weapons.c
+Blessed by Father Fuzz. Demons sizzle.	Bendecida por el Padre Fuzz. Los demonios chisporrotean.	# lib_weapons.c
+Borrowed from below. Burns twice.	Prestado del inframundo. Quema doble.	# lib_weapons.c
+Freezes demons mid-tantrum.	Congela demonios en plena berrinche.	# lib_weapons.c
+Charms demons into a hug. Briefly.	Encanta demonios con un abrazo. Breve.	# lib_weapons.c
+Bounces off walls and dignity.	Rebota en muros y en la dignidad.	# lib_weapons.c
+Sticky, gross and effective.	Pegajoso, asqueroso y efectivo.	# lib_weapons.c
+A sugar rush in projectile form.	Subidón de azúcar en proyectil.	# lib_weapons.c
+Soft impact, hard feelings.	Impacto suave, resentimiento duro.	# lib_weapons.c
+Plain and honest.	Simple y honesta.	# lib_weapons.c
+More shots before the click.	Más tiros antes del clic.	# lib_weapons.c
+Pointy bits for close friends.	Puntas para amigos cercanos.	# lib_weapons.c
+A knife on a stick on a gun.	Un cuchillo en un palo en un arma.	# lib_weapons.c
++10 cute, +0 damage, +100 joy.	+10 ternura, +0 daño, +100 alegría.	# lib_weapons.c
+Keeps barrels cool, tempers calm.	Enfría cañones y calma ánimos.	# lib_weapons.c
+Faster! Hotter! Warranty void!	¡Más rápido! ¡Más caliente! ¡Sin garantía!	# lib_weapons.c
+Shots bounce like happy puppies.	Los tiros rebotan como cachorros felices.	# lib_weapons.c
+Shots that know where you live.	Tiros que saben dónde vives.	# lib_weapons.c
+Three-round bursts in harmony.	Ráfagas de tres en armonía.	# lib_weapons.c
+Hold the trigger. Keep holding.	Mantén el gatillo. Sigue manteniendo.	# lib_weapons.c
+Hold... hold... RELEASE!	Aguanta... aguanta... ¡SUELTA!	# lib_weapons.c
+Hits heal you. Vampires approve.	Los golpes te curan. Los vampiros aprueban.	# lib_weapons.c
+Every shot squeaks. Every. One.	Cada tiro rechina. Todos. Y cada uno.	# lib_weapons.c
+Squint and believe.	Entrecierra los ojos y cree.	# lib_weapons.c
+A little red friend on target.	Un amiguito rojo en el blanco.	# lib_weapons.c
+A glowing ring floats on your foe.	Un aro brillante flota sobre tu rival.	# lib_weapons.c
+Close-ups of demons' worst angles.	Primeros planos de lo peor de los demonios.	# lib_weapons.c
+See a pimple across the park.	Ve un grano al otro lado del parque.	# lib_weapons.c
+Demons glow. So does your lunch.	Los demonios brillan. Tu almuerzo también.	# lib_weapons.c
+Aim with love.	Apunta con amor.	# lib_weapons.c
+Points first, asks never.	Apunta primero, nunca pregunta.	# lib_weapons.c
+Light and wild.	Ligera y salvaje.	# lib_weapons.c
+Steady as a church pew.	Firme como banca de iglesia.	# lib_weapons.c
+Tucks away like a nap.	Se guarda como una siesta.	# lib_weapons.c
+Soaks up recoil and arguments.	Absorbe retroceso y discusiones.	# lib_weapons.c
+Spooky, light, calcium-rich.	Tétrica, ligera, rica en calcio.	# lib_weapons.c
+A pillow for your shoulder.	Una almohada para tu hombro.	# lib_weapons.c
+Holds the usual.	Guarda lo de siempre.	# lib_weapons.c
+Holds the usual, plus extra.	Guarda lo de siempre y más.	# lib_weapons.c
+Round, heavy, glorious.	Redondo, pesado, glorioso.	# lib_weapons.c
+Snaps in before you blink.	Entra antes de que parpadees.	# lib_weapons.c
+Never-ending (until it ends).	Interminable (hasta que termina).	# lib_weapons.c
+Feeds sweets to sweet weapons.	Da dulces a armas dulces.	# lib_weapons.c
+Nothing down there. Breezy.	Nada ahí abajo. Ventilado.	# lib_weapons.c
+Steadier aim, sweatier paws.	Puntería firme, patas sudadas.	# lib_weapons.c
+A surprise under the surprise.	Una sorpresa bajo la sorpresa.	# lib_weapons.c
+A shotgun on your gun. Yes.	Una escopeta en tu arma. Sí.	# lib_weapons.c
+See the demon. Regret seeing it.	Ve al demonio. Arrepiéntete de verlo.	# lib_weapons.c
+Brrrrm. Hugs with teeth.	Brrrrm. Abrazos con dientes.	# lib_weapons.c
+Blows bubbles while you work.	Sopla burbujas mientras trabajas.	# lib_weapons.c
+Undecorated. Stoic.	Sin adornos. Estoico.	# lib_weapons.c
+A tiny bear rides along for luck.	Un osito viaja contigo de suerte.	# lib_weapons.c
+Grins at your enemies for you.	Sonríe a tus enemigos por ti.	# lib_weapons.c
+Feeling lucky? It is.	¿Con suerte? Ella sí.	# lib_weapons.c
+Love dangles off the trigger guard.	El amor cuelga del guardamonte.	# lib_weapons.c
+It's watching. Always watching.	Te observa. Siempre te observa.	# lib_weapons.c
+Jingles when you sneak. Oops.	Tintinea cuando sigilas. Ups.	# lib_weapons.c
+Father Fuzz blessed it. Twice.	El Padre Fuzz la bendijo. Dos veces.	# lib_weapons.c
+Fresh from Rivet's bench.	Recién salida del banco de Rivet.	# lib_weapons.c
+DMG	DAÑO	# lib_weapons.c
+RATE	CAD.	# lib_weapons.c
+RANGE	ALC.	# lib_weapons.c
+AIM	PUNT.	# lib_weapons.c
+GRIP	AGAR.	# lib_weapons.c
+MOVE	MOV.	# lib_weapons.c
+??? (locked)	??? (bloq.)	# lib_weapons.c
+Plan	Plano	# lib_weapons.c
+In paw	En pata	# lib_weapons.c
+LOCKED	BLOQ.	# lib_weapons.c
+Keep welding!	¡Sigue soldando!	# lib_weapons.c
+%s  %s  DPS %d	%s  %s  DPS %d	# lib_weapons.c
+Melee	Cuerpo	# lib_weapons.c
+Weld:	Soldar:	# lib_weapons.c
+\x81 Brutal	\x81 Brutal	# lib_weapons.c
+\x80 Cute	\x80 Tierno	# lib_weapons.c
+\x88\x87 next L/R view SEL style \x8C close	\x88\x87 sig. L/R vista SEL estilo \x8C cerrar	# lib_weapons.c
+\x8B open L/R part SEL filter START style	\x8B abrir L/R pieza SEL filtro START estilo	# lib_weapons.c
+LIB_WEAPONS		# lib_weapons.c
+All Items	Todos	# lib_items.c
+Gifts	Regalos	# lib_items.c
+Care	Cuidado	# lib_items.c
+Materials	Materiales	# lib_items.c
+Key Items	Clave	# lib_items.c
+Tastes	Gustos	# lib_items.c
+in bag	en bolsa	# lib_items.c
+not in bag	no en bolsa	# lib_items.c
+most loved	más amado	# lib_items.c
+most hated	más odiado	# lib_items.c
+Gift	Regalo	# lib_items.c
+Material	Material	# lib_items.c
+Key item	Obj. clave	# lib_items.c
+The official snack of HaHaland. The frosting is load-bearing.	El bocadillo oficial de HaHaland. El glaseado es estructural.	# lib_items.c
+A rice triangle of comfort. The plum inside is a secret.	Un triángulo de arroz reconfortante. La ciruela es secreta.	# lib_items.c
+Tastes like nostalgia. Please do not ask whose.	Sabe a nostalgia. No preguntes de quién.	# lib_items.c
+Crunchy, smoky and slightly on fire. A Hellvile breakfast.	Crujiente, ahumado y algo en llamas. Desayuno de Hellvile.	# lib_items.c
+They blink if you stare. So don't stare.	Parpadean si los miras. No los mires.	# lib_items.c
+Wobbly perfection. Nana Puddin's pride and joy.	Perfección temblorosa. Orgullo de Nana Puddin.	# lib_items.c
+Spicy enough to make an Impling cry for its mum.	Pica tanto que un Diablillo llora por su mamá.	# lib_items.c
+So light it floats. Weigh it down with cream.	Tan ligero que flota. Pésalo con crema.	# lib_items.c
+Hellvile's idea of a balanced diet.	La dieta balanceada según Hellvile.	# lib_items.c
+Leaves! Crunchy, green and quietly judging you.	¡Hojas! Crujientes, verdes y te juzgan en silencio.	# lib_items.c
+Builds strong bones. The skeletons drink gallons.	Fortalece huesos. Los esqueletos beben galones.	# lib_items.c
+Liquid motivation. The night shift runs on it.	Motivación líquida. El turno nocturno se mueve con ella.	# lib_items.c
+Hug-rated for all ages and all species.	Abrazable para todas las edades y especies.	# lib_items.c
+Say it with petals. Hellvile says it with thorns.	Dilo con pétalos. Hellvile lo dice con espinas.	# lib_items.c
+Handle with care: contains feelings.	Manejar con cuidado: contiene sentimientos.	# lib_items.c
+Hours of fun, minutes of sleep.	Horas de diversión, minutos de sueño.	# lib_items.c
+A tiny skull. Hellvile folk find it adorable.	Una calaverita. En Hellvile la ven adorable.	# lib_items.c
+Eau de Cupcake. Also available in Brimstone.	Eau de Cupcake. También en versión Azufre.	# lib_items.c
+Friendship-tested. Friendship-ending.	Probado en amistades. Acaba amistades.	# lib_items.c
+A big question in a tiny box.	Una gran pregunta en una cajita.	# lib_items.c
+Bubbles away grime, gloom and goo.	Quita mugre, tristeza y baba con burbujas.	# lib_items.c
+Tastes like cherries and regret.	Sabe a cereza y arrepentimiento.	# lib_items.c
+Zoom! Then crash. Then zoom again.	¡Zum! Luego choque. Luego zum otra vez.	# lib_items.c
+For when somebody needs to calm down. You know who.	Para quien debe calmarse. Ya sabes quién.	# lib_items.c
+Blessed at St. Cuddles. Also great for houseplants.	Bendita en St. Cuddles. Ideal para plantas.	# lib_items.c
+Smells like a forest giving you advice.	Huele a bosque dándote consejos.	# lib_items.c
+A soft cross. Demons hate how cosy it is.	Una cruz suave. Los demonios odian lo acogedora.	# lib_items.c
+Count prayers, count beads, count on it.	Cuenta rezos, cuentas, y cuenta con ello.	# lib_items.c
+Draw a line: demons can't cross it. Neither can snails.	Traza una línea: los demonios no la cruzan. Ni los caracoles.	# lib_items.c
+Sing it loud enough and the walls shake. So do demons.	Cántalo fuerte y tiemblan muros. Y demonios.	# lib_items.c
+One imp's junk is Rivet's treasure.	La basura de un diablillo es el tesoro de Rivet.	# lib_items.c
+Clicky little bits that make things go.	Piezas clicantes que hacen andar cosas.	# lib_items.c
+Shed by a demon. It would like it back.	Lo perdió un demonio. Lo quiere de vuelta.	# lib_items.c
+Impossible to clean up. Totally worth it.	Imposible de limpiar. Vale totalmente la pena.	# lib_items.c
+Forged in the Gate's fire. It rings like a scream.	Forjado en el fuego de la Puerta. Suena como un grito.	# lib_items.c
+The fluffy insides of courage.	Las entrañas suaves del valor.	# lib_items.c
+Melts into everything Rivet makes.	Se funde en todo lo que Rivet hace.	# lib_items.c
+Rivet's scribbles. Mostly genius, partly doodles.	Garabatos de Rivet. Genio, y algo de dibujitos.	# lib_items.c
+Home is wherever this fits.	El hogar está donde esto encaje.	# lib_items.c
+Warm, wobbly and about to change your life.	Cálido, tembloroso y a punto de cambiar tu vida.	# lib_items.c
+Mr. Flops! Pip's best friend. Slightly chewed.	¡Sr. Flops! El mejor amigo de Pip. Algo mordido.	# lib_items.c
+Confiscated. Smells of Unholy Grape. Ew.	Confiscada. Huele a Uva Impía. Puaj.	# lib_items.c
+Opens the Vape Cellar. Maybe... don't?	Abre el Sótano Vape. ¿Mejor... no?	# lib_items.c
+Hums with the voices of the Gate. Shhh.	Zumba con las voces de la Puerta. Shhh.	# lib_items.c
+Sanity	Cordura	# lib_items.c
+Corrupt	Corrupción	# lib_items.c
+Holy %d	Sagrado %d	# lib_items.c
+Fan club: 	Club de fans: 	# lib_items.c
+\x80 Loved by %d	\x80 Amado por %d	# lib_items.c
+\x8E Hated by %d	\x8E Odiado por %d	# lib_items.c
+Biggest fan: %s	Mayor fan: %s	# lib_items.c
+On the menu at Brimstone Bites.	En el menú de Brimstone Bites.	# lib_items.c
+Only found in dreams and daydreams.	Solo en sueños y ensoñaciones.	# lib_items.c
+dream food	comida de sueño	# lib_items.c
+In bag: %d	En bolsa: %d	# lib_items.c
+Not for sale	No se vende	# lib_items.c
+\x80 %d love it  \x8E %d hate it	\x80 %d aman  \x8E %d odian	# lib_items.c
+Quillby: %s	Quillby: %s	# lib_items.c
+\x88\x87 next  \x89\x8A note  \x8C close	\x88\x87 sig.  \x89\x8A nota  \x8C cerrar	# lib_items.c
+\x8B open  L/R shelf  SEL filter  \x8C back	\x8B abrir  L/R estante  SEL filtro  \x8C atrás	# lib_items.c
+LIB_ITEMS		# lib_items.c
+the Pocket Devil	el Diablo de Bolsillo	# lib_bestiary.c
+Fireballs, hug-claws	Bolas de fuego, garras-abrazo	# lib_bestiary.c
+Vape Cellar; everywhere after the Breach	Sótano Vape; todas partes tras la Brecha	# lib_bestiary.c
+Hatched from a cinder in Vapula's ashtray, an Impling is the size of a loaf of bread and twice as crusty. It giggles before it throws a fireball. It giggles after. Some say it giggles in its sleep, in your attic, right above your bed.	Nace de una brasa en el cenicero de Vapula. Se ríe antes y después de lanzar fuego. Incluso dormido.	# lib_bestiary.c
+Tummy rubs, bubbles, and being called "little guy".	Caricias en la panza, burbujas y que le digan "chiquito".	# lib_bestiary.c
+Any shotgun. Honestly, a firm shove.	Cualquier escopeta. Y sinceramente, un buen empujón.	# lib_bestiary.c
+Brimstone Blast, flavoured	Explosión de azufre, con sabor	# lib_bestiary.c
+Vape bolts, chilling drift	Rayos vape, deriva helada	# lib_bestiary.c
+Cloud Nine Vapor's back room, foggy alleys	Trastienda de Cloud Nine Vapor, callejones con niebla	# lib_bestiary.c
+A discarded flavour cartridge that grew a grudge. It drifts through walls trailing the smell of grape candy and burnt hair. If one whispers your name, do not answer: it is collecting voices for its choir.	Cartucho de sabor desechado con rencor. Atraviesa muros. Si susurra tu nombre, no respondas.	# lib_bestiary.c
+Fresh air, a big friendly fan, a spritz of holy water.	Aire fresco, un gran ventilador amigable, un rocío de agua bendita.	# lib_bestiary.c
+Plasma. It hates being split into little wisps.	Plasma. Odia dividirse en volutas.	# lib_bestiary.c
+the Floating Grudge	el Rencor Flotante	# lib_bestiary.c
+Vape bolts, one big chomp	Rayos vape, un gran mordisco	# lib_bestiary.c
+High ceilings, open skies, your peripheral vision	Techos altos, cielos abiertos, tu visión periférica	# lib_bestiary.c
+One enormous eye inside a ball of fluff, like a dandelion that hates you. It is slow, it is patient, and it remembers every face it has ever bitten. The kids call it Mister Puffball. It lets them. For now.	Un ojo enorme en una bola de pelusa. Lento, paciente. Recuerda cada cara que mordió.	# lib_bestiary.c
+Glitter in the eye. It blinks for ages.	Brillantina en el ojo. Parpadea una eternidad.	# lib_bestiary.c
+Rockets. Pop goes the puffball.	Cohetes. Pop y adiós pelusón.	# lib_bestiary.c
+Too Fast, Too Floofy	Muy Veloz, Muy Peludo	# lib_bestiary.c
+Sprint, lunge, chomp	Carrera, salto, mordisco	# lib_bestiary.c
+Hellvile's dog park, anywhere with a ball	Parque canino de Hellvile, donde haya una pelota	# lib_bestiary.c
+A good boy from a very bad place. It fetches anything - sticks, balls, the femurs of the unwary - and brings them back wagging. Its bark sounds like a smoke alarm. So does its bite, but wetter.	Un buen chico de un lugar muy malo. Trae palos, pelotas y fémures. Su mordida suena a alarma.	# lib_bestiary.c
+Belly rubs, squeaky toys, "who's a good boy?"	Caricias en la panza, juguetes chillones, "¿quién es buen chico?"	# lib_bestiary.c
+A chainsaw. It will still try to fetch it.	Una motosierra. Igual intentará traerla.	# lib_bestiary.c
+the Rehearsed Dodger	el Esquivador Ensayado	# lib_bestiary.c
+Homing orbs, cartwheels	Orbes guiados, volteretas	# lib_bestiary.c
+The circus of the damned, haunted stages	El circo de los condenados, escenarios embrujados	# lib_bestiary.c
+A skeleton who joined the circus of the damned and never stopped practising. It juggles homing orbs, dodges on cue and bows to applause that isn't there. Its jokes are terrible. It laughs anyway, with no lungs, which is worse.	Esqueleto de circo que nunca dejó de practicar. Esquiva a la orden y se ríe sin pulmones.	# lib_bestiary.c
+Applause. It stops mid-fight to take a bow.	Aplausos. Se detiene a mitad de pelea para hacer reverencia.	# lib_bestiary.c
+Hitscan. It can't dodge what it can't see coming.	Impacto instantáneo. No esquiva lo que no ve venir.	# lib_bestiary.c
+the Gurgling Gourmet	el Gourmet Gorgoteante	# lib_bestiary.c
+Arcing slime globs	Globos de baba en arco	# lib_bestiary.c
+Bins, sewers, the cafe's back door	Botes, cloacas, la puerta trasera del café	# lib_bestiary.c
+Eats everything: bins, benches, a bicycle once. Then it burps it back at you as a warm green glob. Squishy, smelly and weirdly persistent, like a cold. Never let it near Brimstone Bites. It has a reservation.	Se come todo y lo eructa como baba verde tibia. Que no se acerque a Brimstone Bites.	# lib_bestiary.c
+Breath mints. It is very self-conscious.	Mentas para el aliento. Es muy inseguro.	# lib_bestiary.c
+Flamethrower. It crisps up nicely.	Lanzallamas. Queda crujiente.	# lib_bestiary.c
+Wakes Up Grumpy	Despierta Gruñón	# lib_bestiary.c
+Dive bombs, stone claws	Picada, garras de piedra	# lib_bestiary.c
+Church roofs, clock towers, high ledges	Techos de iglesia, torres de reloj, cornisas altas	# lib_bestiary.c
+A stone bat that naps on church roofs and wakes up furious about it. It dives out of the sky claws-first with its morning breath on. The cherubs once tried to keep one as a pet. We don't talk about the cherubs any more.	Murciélago de piedra que duerme en techos y despierta furioso. Cae con garras y mal aliento.	# lib_bestiary.c
+A warm blanket and a lullaby.	Una manta tibia y una canción de cuna.	# lib_bestiary.c
+Sledgehammer. It is basically gravel already.	Mazo. Ya casi es grava.	# lib_bestiary.c
+Oink.exe		# lib_bestiary.c
+Burst fire from a distance	Ráfagas a distancia	# lib_bestiary.c
+Hellvile's factories, the Spire's walkways	Fábricas de Hellvile, pasarelas de la Aguja	# lib_bestiary.c
+Half pig, half arm cannon, all attitude. It keeps its distance, fires in bursts and squeals in binary. Its curly little tail is reinforced titanium. Its eyes glow red when it is happy, which is never.	Mitad cerdo, mitad cañón. Dispara en ráfagas y chilla en binario. Nunca está feliz.	# lib_bestiary.c
+Truffles. It cannot resist a truffle.	Trufas. No resiste una trufa.	# lib_bestiary.c
+A railgun right through the circuits.	Un cañón de riel directo a los circuitos.	# lib_bestiary.c
+Never Skips Leg Day	Nunca Falta al Gym	# lib_bestiary.c
+Haymakers, acid spit	Puñetazos, escupe ácido	# lib_bestiary.c
+Hell Breach arenas, anywhere with a door to kick	Arenas de la Brecha, donde haya puerta que patear	# lib_bestiary.c
+A wall of furious muscle that punches first and spits acid second. It cannot read, so it eats books instead; this library has banned it twice. When it roars, your whole spine hears it. Deep down it just wants a hug. A very, very strong hug.	Un muro de músculo furioso. Golpea y escupe ácido. En el fondo solo quiere un abrazo.	# lib_bestiary.c
+A plush the size of a car. It will hug it for hours.	Un peluche del tamaño de un auto. Lo abrazará por horas.	# lib_bestiary.c
+The BFG. Everything else just makes it angrier.	La BFG. Todo lo demás solo lo enoja más.	# lib_bestiary.c
+Eight Legs, One Cloud	Ocho Patas, Una Nube	# lib_bestiary.c
+Vape spray volleys, scuttling	Ráfagas de vapor, corretea	# lib_bestiary.c
+Lamp posts, rafters, the underside of bridges	Faroles, vigas, bajo los puentes	# lib_bestiary.c
+It spins webs of solid vapour between lamp posts and waits upside down, humming. Eight legs, one fluffy cloud of a body and far too many eyes, all blinking at different times. Never walk under a lamp that smells of grape.	Teje telarañas de vapor entre faroles y espera boca abajo. Ocho patas, demasiados ojos.	# lib_bestiary.c
+Yarn. It cannot stop knitting once it starts.	Estambre. No puede parar de tejer una vez que empieza.	# lib_bestiary.c
+Auto shotgun. Leg day - for you.	Escopeta automática. Día de piernas, para ti.	# lib_bestiary.c
+Duke of the Ninth Cloud	Duque de la Novena Nube	# lib_bestiary.c
+Smoke rings, vape storms, minions	Aros de humo, tormentas vape, secuaces	# lib_bestiary.c
+Cloud Nine Spire, the top floor, the throne of fog	Aguja de Cloud Nine, el último piso, el trono de niebla	# lib_bestiary.c
+Ruler of the vape-gate, tyrant of Hellvile and inventor of Unholy Grape: three phases of vapour and spite wearing a crown of smoke rings. He kept five hundred citizens prisoner to blow his clouds. He believes this was a good business plan. It was not.	Tirano de Hellvile e inventor de la Uva Impía. Tres fases de vapor y rencor con corona de humo.	# lib_bestiary.c
+Being ignored. He simply cannot stand it.	Que lo ignoren. No lo soporta.	# lib_bestiary.c
+Everything you've got. Three times.	Todo lo que tengas. Tres veces.	# lib_bestiary.c
+All Demons	Demonios	# lib_bestiary.c
+Critters	Bichos	# lib_bestiary.c
+Fliers	Voladores	# lib_bestiary.c
+Bruisers	Matones	# lib_bestiary.c
+Boss	Jefe	# lib_bestiary.c
+Sighted	Avistado	# lib_bestiary.c
+Not sighted	No avistado	# lib_bestiary.c
+Defeated	Derrotado	# lib_bestiary.c
+Prowling	Merodeando	# lib_bestiary.c
+Attack!	¡Ataque!	# lib_bestiary.c
+Ouch!	¡Auch!	# lib_bestiary.c
+Gibbed!	¡Destrozado!	# lib_bestiary.c
+Poof! Bye-bye!	¡Puf! ¡Adiós!	# lib_bestiary.c
+Unknown demon	Demonio incógnito	# lib_bestiary.c
+Not yet sighted	Aún sin avistar	# lib_bestiary.c
+Threat	Amenaza	# lib_bestiary.c
+Threat  ?????		# lib_bestiary.c
+SLAIN	ABATIDO	# lib_bestiary.c
+AT LARGE	SUELTO	# lib_bestiary.c
+No.%02d		# lib_bestiary.c
+Not yet sighted. Spot one in a Hell Breach or in the Arena and this page will fill itself in. (Quillby's quill is enchanted.)	Aún sin avistar. Encuentra uno en una Brecha o la Arena y se llenará sola.	# lib_bestiary.c
+Rumoured: %s	Se rumora: %s	# lib_bestiary.c
+Lore	Historia	# lib_bestiary.c
+Weak	Débil	# lib_bestiary.c
+Stats	Datos	# lib_bestiary.c
+\x80 Cute: %s\n\x81 Brutal: %s	\x80 Tierno: %s\n\x81 Brutal: %s	# lib_bestiary.c
+Zoomy	Veloz	# lib_bestiary.c
+Brisk	Ágil	# lib_bestiary.c
+Steady	Estable	# lib_bestiary.c
+Lumbering	Torpe	# lib_bestiary.c
+Speed	Vel.	# lib_bestiary.c
+Bite	Mordida	# lib_bestiary.c
+Shots	Tiros	# lib_bestiary.c
+Attack: %s	Ataque: %s	# lib_bestiary.c
+Found: %s	Hallado: %s	# lib_bestiary.c
+SLAIN \x9C	ABATIDO \x9C	# lib_bestiary.c
+\x88\x87 page  L/R tab  SEL gore  \x8C close	\x88\x87 pág.  L/R pestaña  SEL gore  \x8C cerrar	# lib_bestiary.c
+\x8B open  L/R kind  SEL filter  \x8C back	\x8B abrir  L/R tipo  SEL filtro  \x8C atrás	# lib_bestiary.c
+LIB_BESTIARY		# lib_bestiary.c
+Everyone	Todos	# lib_almanac.c
+Story Cast	Historia	# lib_almanac.c
+Ghosts	Fantasmas	# lib_almanac.c
+Departed	Difuntos	# lib_almanac.c
+Home	Hogar	# lib_almanac.c
+Name	Nombre	# lib_almanac.c
+Friendship	Amistad	# lib_almanac.c
+Species	Especie	# lib_almanac.c
+Mayor of Hillvile	Alcalde de Hillvile	# lib_almanac.c
+Plushie priest of St. Cuddles	Cura peluche de St. Cuddles	# lib_almanac.c
+Runaway imp welder	Diablillo soldador fugitivo	# lib_almanac.c
+Ghoul doctor, Hospital	Doctor ghoul, Hospital	# lib_almanac.c
+Baker, keeper of the egg	Panadero, guardián del huevo	# lib_almanac.c
+Lost a bunny plush	Perdió un conejo de peluche	# lib_almanac.c
+Owner of Cloud Nine Vapor	Dueño de Cloud Nine Vapor	# lib_almanac.c
+Home Baker	Repostero Casero	# lib_almanac.c
+Stargazer	Mirastrellas	# lib_almanac.c
+Skater	Patinador	# lib_almanac.c
+Gamer	Gamer	# lib_almanac.c
+Singer	Cantante	# lib_almanac.c
+Dancer	Bailarín	# lib_almanac.c
+Bookworm	Ratón de Biblioteca	# lib_almanac.c
+Angler	Pescador	# lib_almanac.c
+Professional Napper	Siestero Profesional	# lib_almanac.c
+Cosplayer	Cosplayer	# lib_almanac.c
+Karaoke Star	Estrella Karaoke	# lib_almanac.c
+Board Gamer	Fan de Mesa	# lib_almanac.c
+Bug Collector	Coleccionabichos	# lib_almanac.c
+Birdwatcher	Observa Aves	# lib_almanac.c
+Yoga Teacher	Maestro de Yoga	# lib_almanac.c
+Potter	Alfarero	# lib_almanac.c
+Origami Artist	Artista Origami	# lib_almanac.c
+Plush Maker	Hace Peluches	# lib_almanac.c
+Cloud Watcher	Mira Nubes	# lib_almanac.c
+Bubble Artist	Artista Burbujas	# lib_almanac.c
+Tarot Reader	Tarotista	# lib_almanac.c
+Ghost Hunter	Cazafantasmas	# lib_almanac.c
+Drummer	Baterista	# lib_almanac.c
+Prankster	Bromista	# lib_almanac.c
+Graffiti Artist	Grafitero	# lib_almanac.c
+Welder	Soldador	# lib_almanac.c
+Skull Collector	Colec. Calaveras	# lib_almanac.c
+You!	¡Tú!	# lib_almanac.c
+Loves %s and %s. Scared of %s. Says "%s" a lot.	Ama %s y %s. Teme a %s. Dice mucho "%s".	# lib_almanac.c
+\x82 Story cast:	\x82 Historia:	# lib_almanac.c
+Job	Trabajo	# lib_almanac.c
+Pronouns	Pronombres	# lib_almanac.c
+Birthday	Cumple	# lib_almanac.c
+Type	Tipo	# lib_almanac.c
+Pace	Paso	# lib_almanac.c
+Speech	Habla	# lib_almanac.c
+Emote	Gesto	# lib_almanac.c
+Quirk	Manía	# lib_almanac.c
+\x92 Food	\x92 Comida	# lib_almanac.c
+\x82 Hobby	\x82 Pasatiempo	# lib_almanac.c
+\x86 Music	\x86 Música	# lib_almanac.c
+\x80 Colour	\x80 Color	# lib_almanac.c
+\x9D Hates	\x9D Odia	# lib_almanac.c
+\x8E Fear	\x8E Miedo	# lib_almanac.c
+Lv%d	Nv%d	# lib_almanac.c
+No ties yet. Introduce them to someone!	Sin lazos aún. ¡Preséntales a alguien!	# lib_almanac.c
+Crush	Flechazo	# lib_almanac.c
+(you)	(tú)	# lib_almanac.c
+HELLVILE		# lib_almanac.c
+Possessed by %s	Poseído por %s	# lib_almanac.c
+Profile	Perfil	# lib_almanac.c
+Likes	Gustos	# lib_almanac.c
+Bonds	Lazos	# lib_almanac.c
+Chat with %s to fill in this page!	¡Charla con %s para llenar esta página!	# lib_almanac.c
+Search by first letter	Buscar por inicial	# lib_almanac.c
+%d citizens	%d ciudadanos	# lib_almanac.c
+by %s	por %s	# lib_almanac.c
+\x88\x87 next  L/R page  SEL face  \x8C close	\x88\x87 sig.  L/R pág.  SEL cara  \x8C cerrar	# lib_almanac.c
+\x8B search  \x8C cancel	\x8B buscar  \x8C cancelar	# lib_almanac.c
+\x8B open L/R shelf SEL sort START find	\x8B abrir L/R estante SEL orden START buscar	# lib_almanac.c
+LIB_ALMANAC		# lib_almanac.c
+to win	para ganar	# lib_trophies.c
+almost there	casi listo	# lib_trophies.c
+Next:	Sigue:	# lib_trophies.c
+Every prize for this one is won!	¡Todos los premios ganados!	# lib_trophies.c
+WON!	¡GANADO!	# lib_trophies.c
+How you won it:	Cómo lo ganaste:	# lib_trophies.c
+How to win it:	Cómo ganarlo:	# lib_trophies.c
+WON \x82	GANADO \x82	# lib_trophies.c
+IN PROGRESS	EN CURSO	# lib_trophies.c
