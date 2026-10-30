@@ -118,16 +118,19 @@ def main(argv):
     long_ = {k: v for k, v in ent.items() if len(v) > LONG}
     write(gen, "lang_ui_es.c", "doomo_lang_ui_es", short)
     write(gen, "lang_help_es.c", "doomo_lang_help_es", long_)
-    # core/lang/es_*.tsv: catalogs, jobs, unlock hints... (not linked on the PS1)
-    cat = {}
+    # core/lang/es_cat*.tsv and es_ui*.tsv: catalogs, jobs, screens, legacy text...
+    # (two tables, each under 64 KB of strings; not linked on the PS1)
     d = os.path.dirname(SRC)
-    for fn in sorted(os.listdir(d)):
-        if fn.startswith("es_") and fn.endswith(".tsv"):
-            cat.update(load(os.path.join(d, fn)))
-    for k in list(cat):
-        if k in ent:
-            del cat[k]
-    write(gen, "lang_cat_es.c", "doomo_lang_cat_es", cat)
+    for prefix, name, sym in (("es_cat", "lang_cat_es.c", "doomo_lang_cat_es"),
+                              ("es_ui", "lang_ui2_es.c", "doomo_lang_ui2_es")):
+        cat = {}
+        for fn in sorted(os.listdir(d)):
+            if fn.startswith(prefix) and fn.endswith(".tsv"):
+                cat.update(load(os.path.join(d, fn)))
+        for k in list(cat):
+            if k in ent:
+                del cat[k]
+        write(gen, name, sym, cat)
     return 0
 
 

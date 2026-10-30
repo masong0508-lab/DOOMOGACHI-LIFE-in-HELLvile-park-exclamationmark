@@ -1,0 +1,609 @@
+Classic: L + D-pad looks. Modern: L/R strafe. Dual stick: left stick moves, right stick looks (DualShock).	Clásico: L + cruceta mira. Moderno: L/R desplaza. Doble stick: izq. mueve, der. mira (DualShock).	# fp_options.c
+How the shooter's health and ammo look. Hidden: crosshair only.	Cómo se ven la salud y la munición. Oculto: solo la mira.	# fp_options.c
+\x81 Monster Mode is ON.	\x81 ¡Modo Monstruo ACTIVADO!	# fp_options.c
+\x80 Monster Mode is off. Phew!	\x80 Modo Monstruo apagado. ¡Uf!	# fp_options.c
+\x8B Select  \x88\x87 Change  \x8C Resume	\x8B Elegir  \x88\x87 Cambiar  \x8C Volver	# fp_options.c
+\x8B Select  \x8C Resume	\x8B Elegir  \x8C Volver	# fp_options.c
+\x80 Saved! (%u KB)	\x80 ¡Guardado! (%u KB)	# fp_saveload.c
+\x80 Loaded! Welcome back.	\x80 ¡Cargado! Bienvenido.	# fp_saveload.c
+%s - Ch.%d	%s - Cap.%d	# fp_saveload.c
+%s island	Isla %s	# fp_saveload.c
+Day %u  %d citizens  H$%u	Día %u  %d ciudadanos  H$%u	# fp_saveload.c
+%u KB of %u KB	%u KB de %u KB	# fp_saveload.c
+\x89\x8A Slot  \x88\x87 Action  \x8B Go	\x89\x8A Ranura  \x88\x87 Acción  \x8B Ir	# fp_saveload.c
+SAVELOAD		# fp_saveload.c
+Pip		# fp_title.c
+Nana Puddin		# fp_title.c
+\x80 Welcome back!	\x80 ¡Bienvenido de nuevo!	# fp_title.c
+More themes: %s	Más temas: %s	# fp_title.c
+keep playing!	¡sigue jugando!	# fp_title.c
+DOOMOGACHI		# fp_title.c
+LIFE		# fp_title.c
+vile Park!		# fp_title.c
+in 		# fp_title.c
+HELL		# fp_title.c
+%s - Chapter %d - Day %u	%s - Capítulo %d - Día %u	# fp_title.c
+%d citizens - Day %u - H$ %u	%d ciudadanos - Día %u - H$ %u	# fp_title.c
+(c) HaHaland		# fp_title.c
+TITLE		# fp_title.c
+ABCDEFGHIJ		# ui_modal.c
+KLMNOPQRST		# ui_modal.c
+UVWXYZ.,!?		# ui_modal.c
+uvwxyz.,!?		# ui_modal.c
+ABC		# ui_modal.c
+Aa		# ui_modal.c
+\x8B Type  \x8C Delete  START Done	\x8B Escribir  \x8C Borrar  START Listo	# ui_modal.c
+TEXT_ENTRY		# ui_modal.c
+cut 		# ui_dialog.c
+ui_say: dialogue queue full, dropping a line		# ui_dialog.c
+ui_choice: too many choices queued, dropping one		# ui_dialog.c
+DIALOG		# ui_dialog.c
+0123456789ABCDEF		# ui_fmt.c
+(null)		# ui_fmt.c
+Windows		# ui_gallery.c
+Text & meters		# ui_gallery.c
+List		# ui_gallery.c
+Paint picker		# ui_gallery.c
+Tabs & options		# ui_gallery.c
+Font & icons		# ui_gallery.c
+Modals		# ui_gallery.c
+Backdrops		# ui_gallery.c
+Confirm		# ui_gallery.c
+Text entry		# ui_gallery.c
+Dialogue + choice		# ui_gallery.c
+Narrator		# ui_gallery.c
+Toasts		# ui_gallery.c
+Hell dialogue		# ui_gallery.c
+\x80 Adopted! So fluffy.	\x80 ¡Adoptado! Qué esponjoso.	# ui_gallery.c
+Maybe next time...	Quizá la próxima...	# ui_gallery.c
+Never mind!	¡Olvídalo!	# ui_gallery.c
+Hello, %s!	¡Hola, %s!	# ui_gallery.c
+\x80 Yay! Cupcake party!	\x80 ¡Yupi! ¡Fiesta de cupcakes!	# ui_gallery.c
+Aww, okay!	¡Ay, bueno!	# ui_gallery.c
+Only a little cursed.	Solo un poquito maldito.	# ui_gallery.c
+Yes please!	¡Sí, por favor!	# ui_gallery.c
+Is it cursed?	¿Está maldito?	# ui_gallery.c
+Adopt this fluffy little demon? It bites, but only cutely.	¿Adoptar a este demonio esponjoso? Muerde, pero con ternura.	# ui_gallery.c
+Name your plush!	¡Ponle nombre a tu peluche!	# ui_gallery.c
+Hiii! I'm Mochi. Welcome to Hellvile Park, the fluffiest place in all of HaHaland!	¡Holaaa! Soy Mochi. ¡Bienvenido a Hellvile Park, el lugar más esponjoso de todo HaHaland!	# ui_gallery.c
+Over the wall is Hellvile. Nana says the folks there are grumpy, but I think they just need hugs. And maybe cupcakes. Lots of cupcakes. Like, a whole mountain of them!	Al otro lado del muro está Hellvile. Nana dice que son gruñones, pero creo que solo necesitan abrazos. Y quizá cupcakes. ¡Montones! ¡Una montaña entera!	# ui_gallery.c
+Wanna share a cupcake?	¿Compartimos un cupcake?	# ui_gallery.c
+Meanwhile, deep beneath the wall, something purple stirred...	Mientras tanto, bajo el muro, algo morado se removió...	# ui_gallery.c
+\x82 NEW UNLOCK! Flame Hair	\x82 ¡NUEVO! Pelo de Llamas	# ui_gallery.c
+The vape cloud... it whispers my name... MOCHIIII...	La nube de vapor... susurra mi nombre... MOCHIIII...	# ui_gallery.c
+CUTE		# ui_gallery.c
+MINT		# ui_gallery.c
+CREAM		# ui_gallery.c
+LCD		# ui_gallery.c
+DARK		# ui_gallery.c
+Hi!\x80	¡Hola!\x80	# ui_gallery.c
+Eye size		# ui_gallery.c
+Ear fluff		# ui_gallery.c
+Tail wag		# ui_gallery.c
+Mochi is a Sweet Sunbeam who loves Cupcakes and fears Thunder.	Mochi es un Rayito Dulce que ama los Cupcakes y teme al Trueno.	# ui_gallery.c
+Yes!		# ui_gallery.c
+Maybe		# ui_gallery.c
+Unlocked!		# ui_gallery.c
+Face		# ui_gallery.c
+Hair		# ui_gallery.c
+Outfit		# ui_gallery.c
+Extras		# ui_gallery.c
+The quick brown fox jumps		# ui_gallery.c
+over the lazy dog. gjpqy!		# ui_gallery.c
+UI %d/%d: %s		# ui_gallery.c
+L/R page  \x8B try  \x8C back		# ui_gallery.c
+UI_GALLERY		# ui_gallery.c
+%u FPS		# combat_hud.c
+Weapons: %s	Armas: %s	# combat_scene.c
+Camera: 1st person	Cámara: 1a persona	# combat_scene.c
+Camera: 3rd person	Cámara: 3a persona	# combat_scene.c
+Quit level	Salir del nivel	# combat_scene.c
+ARMORY	ARSENAL	# combat_scene.c
+\x8B Equip  L/R \x80 Favourite  \x8C Back	\x8B Equipar  L/R \x80 Favorita  \x8C Atrás	# combat_scene.c
+CLEARED!	¡SUPERADO!	# combat_scene.c
+Demons	Demonios	# combat_scene.c
+Best combo	Mejor combo	# combat_scene.c
+Time	Tiempo	# combat_scene.c
++%d H$  + scrap	+%d H$  + chatarra	# combat_scene.c
+\x83 Reward	\x83 Premio	# combat_scene.c
+CUDDLED TO DEATH	ABRAZADO HASTA MORIR	# combat_scene.c
+YOU DIED	HAS MUERTO	# combat_scene.c
+Try again	Reintentar	# combat_scene.c
+Give up	Rendirse	# combat_scene.c
+\x8B Select	\x8B Elegir	# combat_scene.c
+HELL BREACH 1	BRECHA INFERNAL 1	# combat_scene.c
+HELL BREACH 2	BRECHA INFERNAL 2	# combat_scene.c
+FREE PLAY	JUEGO LIBRE	# combat_scene.c
+INVASION!	¡INVASIÓN!	# combat_scene.c
+COMBAT	COMBATE	# combat_scene.c
+Epilogue: %s	Epílogo: %s	# story_questlog.c
+Chapter %d: %s	Capítulo %d: %s	# story_questlog.c
+Arrived in HaHaland	Llegada a HaHaland	# story_questlog.c
+Met Mayor Giggs	Conociste al alcalde Giggs	# story_questlog.c
+Got the house key	Tienes la llave de casa	# story_questlog.c
+Went home	Fuiste a casa	# story_questlog.c
+Hatched @E	Nació @E	# story_questlog.c
+Met Pip	Conociste a Pip	# story_questlog.c
+Found Mr. Flops	Hallaste al Sr. Flops	# story_questlog.c
+Cheered up Pip	Animaste a Pip	# story_questlog.c
+Made friends	Hiciste amigos	# story_questlog.c
+Delivered a cupcake	Entregaste un cupcake	# story_questlog.c
+Saw the purple fog	Viste la niebla morada	# story_questlog.c
+Cloud Nine opened	Abrió Cloud Nine	# story_questlog.c
+Folks got weird	La gente se puso rara	# story_questlog.c
+Steamy screamed	Steamy gritó	# story_questlog.c
+Met Father Fuzz	Conociste al Padre Fuzz	# story_questlog.c
+First exorcism	Primer exorcismo	# story_questlog.c
+Rivet's welding lesson	Clase de soldadura de Rivet	# story_questlog.c
+The Vape Cellar	El Sótano del Vapor	# story_questlog.c
+The gate erupted	La puerta estalló	# story_questlog.c
+Cleared the nests	Limpiaste los nidos	# story_questlog.c
+Cloud Nine Spire	Torre de Cloud Nine	# story_questlog.c
+Crossed the Wall	Cruzaste el Muro	# story_questlog.c
+Met Hellvile	Conociste Hellvile	# story_questlog.c
+Helped Hellvile	Ayudaste a Hellvile	# story_questlog.c
+The summit	La cumbre	# story_questlog.c
+The festival	El festival	# story_questlog.c
+The parade	El desfile	# story_questlog.c
+Free play!	¡Juego libre!	# story_questlog.c
+\x82 goal	\x82 meta	# story_questlog.c
+\x9C you	\x9C tú	# story_questlog.c
+\x80 Hillvile %d  \x80 Hellvile %d		# story_questlog.c
+\x88\x87 Tabs  \x8C Back	\x88\x87 Fichas  \x8C Atrás	# story_questlog.c
+QUESTLOG		# story_questlog.c
+Doomo		# pet_scene.c
+NO	NO	# pet_scene.c
+ON	SÍ	# pet_scene.c
+OFF	NO	# pet_scene.c
+AGE %dd	EDAD %dd	# pet_scene.c
+%dg		# pet_scene.c
+DISCIPL	DISCIP	# pet_scene.c
+BYE	ADIÓS	# pet_scene.c
+ERR %d		# pet_scene.c
+A:NEW EGG	A:HUEVO	# pet_scene.c
+BYE BYE..	ADIÓS..	# pet_scene.c
+PRESS	PULSA	# pet_scene.c
+Doomodex %d/16	Doomodex %d/16	# pet_scene.c
+\x89 %s line \x8A	\x89 Línea %s \x8A	# pet_scene.c
+%s (egg)	%s (huevo)	# pet_scene.c
+%s is watching over you	%s te cuida	# pet_scene.c
+%s the %s	%s el %s	# pet_scene.c
+\x88\x87 Shield  \x8B Feed / hold / play	\x88\x87 Escudo  \x8B Dar / sostener / jugar	# pet_scene.c
+\x88\x87 Pick  \x8B Use  SELECT Doomodex  START Exit	\x88\x87 Elegir  \x8B Usar  SELECT Doomodex  START Salir	# pet_scene.c
+PET	MASCOTA	# pet_scene.c
+Mochiblob		# pet.c
+Puffling		# pet.c
+Sprinkle		# pet.c
+Cupcakeling		# pet.c
+Halopup		# pet.c
+Seraphuff		# pet.c
+Choirbun		# pet.c
+Archangelo		# pet.c
+Scruffle		# pet.c
+Grumblin		# pet.c
+Feralfloof		# pet.c
+Wildbeastie		# pet.c
+Impkin		# pet.c
+Hornlet		# pet.c
+Hellmuffin		# pet.c
+Demogorgoo		# pet.c
+Angel	Ángel	# pet.c
+Feral	Salvaje	# pet.c
+Demon	Demonio	# pet.c
+Egg	Huevo	# pet.c
+Baby	Bebé	# pet.c
+Child	Niño	# pet.c
+Teen	Joven	# pet.c
+Adult	Adulto	# pet.c
++10% damage (cupcake cheer)	+10% daño (ánimo cupcake)	# pet.c
++15% damage (holy blessing)	+15% daño (bendición santa)	# pet.c
++20% damage (feral fury)	+20% daño (furia salvaje)	# pet.c
++25% damage (demonic rage)	+25% daño (rabia demoníaca)	# pet.c
+No Doomogachi yet	Aún sin Doomogachi	# pet.c
+Watching over you	Te cuida	# pet.c
+Grows up to help you fight	Crece para ayudarte a pelear	# pet.c
+\x8B Talk   START Menu   B Run	\x8B Hablar   START Menú   B Correr	# overworld.c
+\x80 @E follows you around!	\x80 ¡@E te sigue a todas partes!	# overworld.c
+\x81 Walk into a nest to fight!	\x81 ¡Entra a un nido para pelear!	# overworld.c
+A cute little sign. Somebody drew a heart on it.	Un cartelito tierno. Alguien le dibujó un corazón.	# overworld.c
+Your mailbox! A letter: "Welcome, neighbour! Love, everyone." Aww.	¡Tu buzón! Una carta: "¡Bienvenido, vecino! Con cariño, todos." Aww.	# overworld.c
+Somebody else's mail. Snooping is not cute. (It's a catalogue for hats.)	Correo ajeno. Husmear no es tierno. (Es un catálogo de sombreros.)	# overworld.c
+The fountain bubbles red and growls at you.	La fuente burbujea roja y te gruñe.	# overworld.c
+The fountain giggles. You toss in a coin and make a wish. It giggles harder.	La fuente se ríe. Lanzas una moneda y pides un deseo. Se ríe más fuerte.	# overworld.c
+Quest Log	Misiones	# overworld.c
+Armory	Arsenal	# overworld.c
+Title Screen	Pantalla título	# overworld.c
+No Doomogachi yet!	¡Aún sin Doomogachi!	# overworld.c
+Rivet hasn't welded you anything yet!	¡Rivet aún no te soldó nada!	# overworld.c
+Strolls aren't saved	Los paseos no se guardan	# overworld.c
+Couldn't save	No se pudo guardar	# overworld.c
+Leave and go back?	¿Salir y volver?	# overworld.c
+Return to the title? Unsaved progress is lost.	¿Volver al título? Perderás lo no guardado.	# overworld.c
+STORY	HISTORIA	# overworld.c
+Free stroll - enjoy the town!	Paseo libre: ¡disfruta el pueblo!	# overworld_fx.c
+\x8B Talk to %s	\x8B Hablar con %s	# overworld_fx.c
+\x8B Look closer	\x8B Mirar de cerca	# overworld_fx.c
+\x8B Enter %s	\x8B Entrar a %s	# overworld_fx.c
+\x8B Read	\x8B Leer	# overworld_fx.c
+\x8B Pick flowers	\x8B Cortar flores	# overworld_fx.c
+\x8B Peek inside	\x8B Asomarse	# overworld_fx.c
+\x8B Make a wish	\x8B Pedir un deseo	# overworld_fx.c
+Paused	Pausa	# overworld_fx.c
+Ch.%d	Cap.%d	# overworld_fx.c
+Day %u	Día %u	# overworld_fx.c
+\x80%d friends  \x82%d/%d quests	\x80%d amigos  \x82%d/%d misiones	# overworld_fx.c
+A proud citizen of Hellvile Park.	Orgulloso ciudadano de Hellvile Park.	# story_talk.c
+Oh, hello there, {P}!	¡Oh, hola, {P}!	# story_talk.c
+Good day to you, {P}!	¡Buen día, {P}!	# story_talk.c
+Why, if it isn't {P}! How lovely.	¡Pero si es {P}! Qué encanto.	# story_talk.c
+Welcome, welcome! Mind the flowers.	¡Bienvenido! Cuidado con las flores.	# story_talk.c
+Hello, dear! Isn't it a fine day?	¡Hola, querido! ¿No es un lindo día?	# story_talk.c
+Hey, {P}!	¡Ey, {P}!	# story_talk.c
+Hi hi!	¡Hola hola!	# story_talk.c
+Oh! Hello!	¡Oh! ¡Hola!	# story_talk.c
+Heya, neighbour!	¡Ey, vecino!	# story_talk.c
+Hi! I'm {N}!	¡Hola! ¡Soy {N}!	# story_talk.c
+Yo.	Ey.	# story_talk.c
+What do YOU want? ...Kidding. Hi.	¿Qué quieres TÚ? ...Es broma. Hola.	# story_talk.c
+Sup.	Qué onda.	# story_talk.c
+Make it quick, I'm busy being fabulous.	Rápido, estoy ocupado siendo fabuloso.	# story_talk.c
+Oh. It's you. The new one.	Ah. Eres tú. El nuevo.	# story_talk.c
+Bonjour, gravity!	¡Bonjour, gravedad!	# story_talk.c
+Greetings, fellow carbon blob!	¡Saludos, colega mancha de carbono!	# story_talk.c
+HELLO. I am a normal citizen.	HOLA. Soy un ciudadano normal.	# story_talk.c
+Shh! The pigeons are listening.	¡Shh! Las palomas escuchan.	# story_talk.c
+Did you hear that? That was my tummy. It says hi.	¿Oíste eso? Fue mi pancita. Te saluda.	# story_talk.c
+I'm the {J} around here. {C}	Soy el {J} de por aquí. {C}	# story_talk.c
+I could eat {F} every single day. Every. Single. Day.	Podría comer {F} todos los días. Todos. Los. Días.	# story_talk.c
+Do you like {H}? It's basically my whole personality.	¿Te gusta {H}? Es básicamente toda mi personalidad.	# story_talk.c
+{M} is the only music that truly understands me.	{M} es la única música que de verdad me entiende.	# story_talk.c
+Don't tell anyone, but I'm scared of {X}. Shh!	No se lo digas a nadie, pero le temo a {X}. ¡Shh!	# story_talk.c
+{C} ...Sorry, I say that a lot.	{C} ...Perdón, lo digo mucho.	# story_talk.c
+If you ever need a {J}, you know where to find me!	Si necesitas un {J}, ¡ya sabes dónde encontrarme!	# story_talk.c
+My dream? A big plate of {F} and a whole day of {H}.	¿Mi sueño? Un platazo de {F} y un día entero de {H}.	# story_talk.c
+Have you met {E}? Your Doomogachi is SO cute!	¿Conoces a {E}? ¡Tu Doomogachi es TAN tierno!	# story_talk.c
+Being a {J} is hard work, but somebody has to do it. {C}	Ser {J} es duro, pero alguien debe hacerlo. {C}	# story_talk.c
+Have you tried the new vapor shop? I had one puff. Then eleven.	¿Probaste la nueva tienda de vapor? Di una calada. Luego once.	# story_talk.c
+Is it just me or is everyone humming the same note? Hmmmmmmmmm...	¿Soy yo o todos tarareamos la misma nota? Hmmmmmmmmm...	# story_talk.c
+I dreamed the Wall was breathing. In. Out. In. Out.	Soñé que el Muro respiraba. Dentro. Fuera. Dentro. Fuera.	# story_talk.c
+Vex says I have a 'very possessable aura'. Isn't that sweet of him?	Vex dice que tengo un "aura muy poseíble". ¿No es un amor?	# story_talk.c
+My {F} tastes like grape now. Everything tastes like grape.	Mi {F} sabe a uva ahora. Todo sabe a uva.	# story_talk.c
+I keep hearing giggles from the drains. Grape-flavoured giggles.	Oigo risitas en las alcantarillas. Risitas de uva.	# story_talk.c
+The sky is RED! Why is the sky RED?!	¡El cielo está ROJO! ¿¡Por qué está ROJO!?	# story_talk.c
+A demon ate my {F}! The whole thing! In one bite!	¡Un demonio se comió mi {F}! ¡Entero! ¡De un bocado!	# story_talk.c
+I'm hiding. You didn't see me. I'm a bush. Rustle rustle.	Me escondo. No me viste. Soy un arbusto. Frufrú.	# story_talk.c
+Thank you for fighting for us, {P}! Go get 'em!	¡Gracias por pelear por nosotros, {P}! ¡Dales su merecido!	# story_talk.c
+My {H} stuff is all singed. But I'm alive! Yay?	Mis cosas de {H} están chamuscadas. ¡Pero vivo! ¿Yupi?	# story_talk.c
+I'm a {J}, not a demon hunter! Please hurry!	¡Soy {J}, no cazademonios! ¡Date prisa!	# story_talk.c
+Vapula made me pump vapor at the gate for {Y} years. My lungs are purple.	Vapula me hizo bombear vapor en la puerta {Y} años. Mis pulmones son morados.	# story_talk.c
+Is it true Hillvile has flowers that smell nice? On PURPOSE?	¿Es cierto que en Hillvile hay flores que huelen bien? ¿A PROPÓSITO?	# story_talk.c
+I'm the {J} here. Well, I was supposed to be. Vapula made everyone a gate laborer.	Soy el {J} aquí. Bueno, debía serlo. Vapula nos volvió a todos obreros de la puerta.	# story_talk.c
+We were never allowed near the Wall. Never. And now you just... walked through it.	Jamás nos dejaron acercarnos al Muro. Jamás. Y tú solo... lo cruzaste.	# story_talk.c
+I've always wanted to try {F}. Real {F}, from the good side.	Siempre quise probar {F}. {F} de verdad, del lado bueno.	# story_talk.c
+Do Hillvile folks really like {H}? Me too! Can we be friends?	¿A la gente de Hillvile de veras le gusta {H}? ¡A mí también! ¿Somos amigos?	# story_talk.c
+{C} ...That's how we say hello here. Sort of.	{C} ...Así saludamos aquí. Más o menos.	# story_talk.c
+I baked you something. It's burnt. It's fine. It's love.	Te horneé algo. Está quemado. Está bien. Es amor.	# story_talk.c
+Please don't tell anyone I'm nice. I have a reputation.	No le digas a nadie que soy amable. Tengo reputación.	# story_talk.c
+I knitted a tiny scarf for every bat on our street. They love it.	Tejí una bufandita para cada murciélago de la calle. Les encanta.	# story_talk.c
+Shh... I water the little plants by the gate when nobody's looking.	Shh... Riego las plantitas de la puerta cuando nadie mira.	# story_talk.c
+Hmph. Vapula was... ugh. Fine. He was AWFUL. Happy now?	Hmph. Vapula era... uf. Bien. Era HORRIBLE. ¿Contento?	# story_talk.c
+I served the Duke for decades. Now I don't know what to do with my hands.	Serví al Duque por décadas. Ahora no sé qué hacer con las manos.	# story_talk.c
+Don't expect a hug, Hillvile. ...Maybe a handshake. A small one.	No esperes un abrazo, Hillvile. ...Quizá un apretón. Pequeñito.	# story_talk.c
+I'm from Hillvile and I just hugged an imp! He was so WARM!	¡Soy de Hillvile y abracé a un diablillo! ¡Estaba tan CALENTITO!	# story_talk.c
+Someone gave me a cupcake and I didn't even have to sign a contract!	¡Alguien me dio un cupcake y ni tuve que firmar un contrato!	# story_talk.c
+Best. Festival. EVER.	El. Mejor. Festival. DEL MUNDO.	# story_talk.c
+Have you seen the fireworks? Hearts AND skulls! Together!	¿Viste los fuegos artificiales? ¡Corazones Y calaveras! ¡Juntos!	# story_talk.c
+{F} AND bone soup on one table! At last!	¡{F} Y sopa de huesos en una mesa! ¡Al fin!	# story_talk.c
+My new best friend lives on the other side of the river. Isn't that wild?	Mi nuevo mejor amigo vive al otro lado del río. ¿No es genial?	# story_talk.c
+I'm going to dance until my horns fall off. Figuratively. Mostly.	Bailaré hasta que se me caigan los cuernos. Figurado. Casi.	# story_talk.c
+*yawn* It's late. Even the ducks are asleep.	*bostezo* Es tarde. Hasta los patos duermen.	# story_talk.c
+The stars are so pretty tonight. Hellvile's stars look the same, did you know?	Las estrellas están preciosas. Las de Hellvile son iguales, ¿lo sabías?	# story_talk.c
+Shouldn't you be in bed, {P}? {E} looks sleepy.	¿No deberías estar en cama, {P}? {E} tiene sueño.	# story_talk.c
+...{P}... the cloud wants you too...	...{P}... la nube también te quiere...	# story_talk.c
+{N} isn't here right now. Leave a message after the scream.	{N} no está ahora. Deja tu mensaje tras el grito.	# story_talk.c
+heh. heh heh. Don't look at my eyes. LOOK AT MY EYES.	je. je je. No mires mis ojos. MIRA MIS OJOS.	# story_talk.c
+We moved in. It's cosy in here. So many memories to chew on.	Nos mudamos. Es acogedor. Hay tantos recuerdos que masticar.	# story_talk.c
+Boo! ...Sorry. Old habit.	¡Bu! ...Perdón. Vieja costumbre.	# story_talk.c
+Being a ghost is fine. I just float through my problems now.	Ser fantasma está bien. Ahora floto sobre mis problemas.	# story_talk.c
+I can see the graveyard from up here. They kept my flowers fresh.	Veo el cementerio desde aquí. Mantuvieron frescas mis flores.	# story_talk.c
+I'm not scared! I'm hiding BRAVELY. There's a difference!	¡No tengo miedo! Me escondo CON VALOR. ¡Es distinto!	# story_talk.c
+A summit! With Hellvile! I've never summited anything in my life!	¡Una cumbre! ¡Con Hellvile! ¡Jamás he coronado nada en mi vida!	# story_talk.c
+Oh my stars, look at everyone! Together! I'm crying again! Happy crying!	¡Ay, estrellas, miren a todos! ¡Juntos! ¡Lloro otra vez! ¡De alegría!	# story_talk.c
+If a demon touches my sourdough starter, I will become the demon.	Si un demonio toca mi masa madre, el demonio seré yo.	# story_talk.c
+I hear Hellvile has a baker who burns everything. I must meet her. For science.	Dicen que en Hellvile hay una panadera que quema todo. Debo conocerla. Por la ciencia.	# story_talk.c
+Charlotte and I are writing a cookbook! 'Burnt and Sweet'. It'll be a hit.	¡Charlotte y yo escribimos un recetario! "Quemado y Dulce". Será un éxito.	# story_talk.c
+Father Fuzz says if we hold hands and hum, the demons can't hear us. Hmmm...	El Padre Fuzz dice que si nos damos la mano y tarareamos, los demonios no nos oyen. Hmmm...	# story_talk.c
+Do kids in Hellvile have plushies? I'm going to bring them ALL plushies.	¿Los niños de Hellvile tienen peluches? Les llevaré peluches a TODOS.	# story_talk.c
+I made a friend from Hellvile! Her name is Morguelet and she likes BUGS too!	¡Hice una amiga de Hellvile! Se llama Morguelet y también le gustan los BICHOS.	# story_talk.c
+We'll keep everyone safe in here. Go on, @P. We'll pray in rhythm for you.	Aquí protegeremos a todos. Ve, @P. Rezaremos al ritmo por ti.	# story_talk.c
+Every soul over the Wall has a name. Learn them, @P. That is how peace begins.	Cada alma del otro lado del Muro tiene nombre. Apréndelos, @P. Así empieza la paz.	# story_talk.c
+Mother Nox and I are co-hosting the potluck. Hymns and bone soup. A fine pair.	Madre Nox y yo organizamos el convivio. Himnos y sopa de huesos. Buena pareja.	# story_talk.c
+Bring me scrap and I'll make your weapon sing. Or scream. Your call.	Tráeme chatarra y haré cantar a tu arma. O gritar. Tú decides.	# story_talk.c
+Mum's forge still smells the same. Hot metal and burnt toast. Home.	La fragua de mamá huele igual. Metal caliente y tostada quemada. Hogar.	# story_talk.c
+Teaching Hellvile kids AND Hillvile kids to weld. Safety goggles for all!	Enseño a soldar a niños de Hellvile Y de Hillvile. ¡Gafas de seguridad para todos!	# story_talk.c
+Bandages, antiseptic, deep breaths. We'll get through this.	Vendas, antiséptico, respiros hondos. Saldremos de esta.	# story_talk.c
+Hellvile's lungs need help after all that vapor. I'm opening a clinic over there.	Los pulmones de Hellvile necesitan ayuda tras tanto vapor. Abriré una clínica allá.	# story_talk.c
+Everyone's healthy, happy and dancing. Best day of my afterlife.	Todos sanos, felices y bailando. El mejor día de mi más allá.	# story_talk.c
+...I lost everything. The shop, the Duke, the cloud. And I feel... lighter?	...Lo perdí todo. La tienda, el Duque, la nube. Y me siento... ¿más ligero?	# story_talk.c
+Plain water vapes! No flavour! No demons! ...No customers, either.	¡Vapes de agua sola! ¡Sin sabor! ¡Sin demonios! ...Sin clientes, tampoco.	# story_talk.c
+Hellvile kids and Hillvile kids in one daycare! The naps are chaos. I love it.	¡Niños de Hellvile y de Hillvile en una guardería! Las siestas son un caos. Me encanta.	# story_talk.c
+I'm opening a second bath house in Hellvile. Lava-heated! Very eco.	Abro unos segundos baños en Hellvile. ¡Calentados con lava! Muy eco.	# story_talk.c
+Day one of freedom. Then day two. I'm going to count these days forever.	Día uno de libertad. Luego el dos. Contaré estos días para siempre.	# story_talk.c
+I stopped counting days. Now I count friends. It's a much bigger number.	Dejé de contar días. Ahora cuento amigos. Es un número mucho mayor.	# story_talk.c
+Have some soup. Everyone who comes to my door gets soup. That is the law.	Toma sopa. Todo el que llega a mi puerta recibe sopa. Es la ley.	# story_talk.c
+The potluck feeds both sides now. We'll need a bigger pot. A MUCH bigger pot.	El convivio alimenta a ambos lados. Necesitaremos una olla mayor. MUCHO mayor.	# story_talk.c
+Look! The sunflower turned toward the gate. It's looking for Hillvile.	¡Mira! El girasol giró hacia la puerta. Busca a Hillvile.	# story_talk.c
+Rivet's room is still just how she left it. Posters of welding torches. Bless her.	El cuarto de Rivet sigue como lo dejó. Pósters de sopletes. Bendita sea.	# story_talk.c
+I'm taking up gardening. Real air for real plants. Smells divine.	Me haré jardinero. Aire de verdad para plantas de verdad. Huele divino.	# story_talk.c
+I hated that shop. I watered its plants every day so SOMETHING there was alive.	Odiaba esa tienda. Regaba sus plantas a diario para que ALGO ahí viviera.	# story_talk.c
+*tiny wheeze* I was a Duke. Now I'm a decorative cloud. It's... relaxing, honestly.	*jadeíto* Fui Duque. Ahora soy una nube decorativa. Es... relajante, la verdad.	# story_talk.c
+({N} the {J}: {B})		# story_talk.c
+\x80 New friend!	\x80 ¡Nuevo amigo!	# story_talk.c
+Lost pet	Mascota perdida	# story_side.c
+Matchmaking	Casamentera	# story_side.c
+Hunt	Caza	# story_side.c
+Reconcile	Reconciliar	# story_side.c
+Visit	Visita	# story_side.c
+Hand in a finished side quest!	¡Entrega una misión secundaria terminada!	# story_side.c
+\x80 Side quest accepted!	\x80 ¡Misión secundaria aceptada!	# story_side.c
+\x82 Side quest complete!	\x82 ¡Misión secundaria completa!	# story_side.c
+Let's go!	¡Vamos!	# story_side.c
+Not yet	Aún no	# story_side.c
+\x9C Delivered! Report back.	\x9C ¡Entregado! Vuelve a informar.	# story_side.c
+Begin the exorcism!	¡Empieza el exorcismo!	# story_side.c
+Perform the exorcism?	¿Hacer el exorcismo?	# story_side.c
+Any luck? I need %d %s. You have %d.	¿Hubo suerte? Necesito %d %s. Tienes %d.	# story_side.c
+Ready to fight? It's dangerous out there!	¿Listo para pelear? ¡Afuera es peligroso!	# story_side.c
+Still on it? %s.	¿Sigues en ello? %s.	# story_side.c
+\x9C Visited! Report back.	\x9C ¡Visitado! Vuelve a informar.	# story_side.c
+\x81 DEMONS! \x81	\x81 ¡DEMONIOS! \x81	# story_script.c
+\x80 You lost them...	\x80 Los perdiste...	# story_verbs.c
+Wait up! (they're falling behind)	¡Espera! (se quedan atrás)	# story_verbs.c
+\x9C Made it!	\x9C ¡Lo lograste!	# story_verbs.c
+Careful! It's fragile!	¡Cuidado! ¡Es frágil!	# story_verbs.c
+\x94 Found it!	\x94 ¡Lo hallaste!	# story_verbs.c
+Cold...	Frío...	# story_verbs.c
+Getting warmer...	Tibio...	# story_verbs.c
+Warmer!	¡Más cerca!	# story_verbs.c
+Hot! It's right here somewhere!	¡Caliente! ¡Está por aquí!	# story_verbs.c
+*click* ...just a picture of the sky.	*clic* ...solo una foto del cielo.	# story_verbs.c
+\x82 Perfectly framed!	\x82 ¡Encuadre perfecto!	# story_verbs.c
+\x9C Got the shot!	\x9C ¡Tienes la foto!	# story_verbs.c
+\x9C Delivered! (a little spilled)	\x9C ¡Entregado! (se derramó algo)	# story_verbs.c
+\x82 Delivered perfectly!	\x82 ¡Entrega perfecta!	# story_verbs.c
+Walk %s there (stay close!)	Lleva a %s allá (¡cerca!)	# story_verbs.c
+Find it! %s	¡Encuéntralo! %s	# story_verbs.c
+(hot!)	(¡caliente!)	# story_verbs.c
+(warmer)	(tibio)	# story_verbs.c
+Photo of %s: face them, step back, A	Foto de %s: míralo, retrocede, A	# story_verbs.c
+Bring it to %s%s	Llévalo a %s%s	# story_verbs.c
+ (don't run!)	 (¡no corras!)	# story_verbs.c
+A sleepy pink bus rolls over the candy-coloured hills...	Un autobús rosa y soñoliento rueda por colinas color caramelo...	# cutscene.c
+Welcome to HaHaland: the happiest place on Earth!	¡Bienvenido a HaHaland: el lugar más feliz del mundo!	# cutscene.c
+Population: 500 lovely citizens. And now, @P!	Población: 500 adorables ciudadanos. ¡Y ahora, @P!	# cutscene.c
+Home sweet home! Your very own cottage on Hillvile Lane.	¡Hogar, dulce hogar! Tu propia casita en Hillvile Lane.	# cutscene.c
+The Doomogachi egg is wiggling... it's warm... it's HATCHING!	El huevo Doomogachi se mueve... está tibio... ¡ESTÁ ECLOSIONANDO!	# cutscene.c
+Purple fog pours over the Wall like spilled grape soda.	Niebla morada cae sobre el Muro como refresco de uva derramado.	# cutscene.c
+Two little lights blink at you from inside it.	Dos lucecitas te parpadean desde dentro.	# cutscene.c
+"Hee hee hee... Hillvile... come and PLAY with us..."	"Ji ji ji... Hillvile... ven a JUGAR con nosotros..."	# cutscene.c
+Somewhere beyond the Wall, an enormous vape cloud starts to swell...	Más allá del Muro, una enorme nube de vapor empieza a hincharse...	# cutscene.c
+It grows. And grows. It blots out the pink sky...	Crece. Y crece. Tapa el cielo rosa...	# cutscene.c
+...and with a sound like the world's biggest cough, it tears the gate WIDE OPEN.	...y con el sonido de la tos más grande del mundo, ¡ABRE DE PAR EN PAR la puerta!	# cutscene.c
+THE DEMONS OF HELL ARE HERE.	LOS DEMONIOS DEL INFIERNO ESTÁN AQUÍ.	# cutscene.c
+Lord Vapula, Duke of the Ninth Cloud, wheezes his last mighty wheeze...	Lord Vapula, Duque de la Novena Nube, suelta su último gran jadeo...	# cutscene.c
+...and deflates. Pfffffffff. With a sad little squeak.	...y se desinfla. Pfffffffff. Con un tristísimo chillido.	# cutscene.c
+The vape cloud dissolves. The sky blushes pink again.	La nube de vapor se disuelve. El cielo se sonroja de rosa otra vez.	# cutscene.c
+The Wall creaks... groans... and comes tumbling down.	El Muro cruje... gime... y se viene abajo.	# cutscene.c
+For the first time, Hillvile and Hellvile see each other.	Por primera vez, Hillvile y Hellvile se ven.	# cutscene.c
+And then, all at once, everybody runs to say hello.	Y entonces, de golpe, todos corren a saludarse.	# cutscene.c
+FREE PLAY UNLOCKED! Visit the united park, Hellvile and HaHaland any time.	¡JUEGO LIBRE DESBLOQUEADO! Visita el parque unido, Hellvile y HaHaland cuando quieras.	# cutscene.c
+Thank you for playing, @P. Hellvile Park is better with you in it.	Gracias por jugar, @P. Hellvile Park es mejor contigo.	# cutscene.c
+Hellvile Park, the Feast of Rebuilding. Gatekeeper Grumbleguts eats with his back to the whole park, so everybody gets the full view. He calls it sharing.	Hellvile Park, Festín de la Reconstrucción. El Guardián Grumbleguts come de espaldas al parque, así todos tienen la vista completa. Lo llama compartir.	# cutscene.c
+Every eye in the park is on one thing, and every course makes it bigger. His exes Shriekra and Spearmint pretend not to look. Nana fans herself with a menu.	Todos miran lo mismo, y cada plato lo agranda. Sus ex Shriekra y Spearmint fingen no mirar. Nana se abanica con el menú.	# cutscene.c
+"Look who's full of himself, now?" The guest beside him jerks a thumb at the seat of the problem. Grumbleguts beams. "Born this way, sugar."	"¿Quién está lleno de sí mismo, eh?" El invitado de al lado señala con el pulgar el origen del problema. Grumbleguts sonríe. "Así nací, cielo."	# cutscene.c
+A hose, impossibly long, fed in hand over hand like a rope climb in reverse. "Surely that's enough?" ...It is not. It keeps going. A mechanic's pat. One big SLAP. "She'll hold."	Una manguera imposiblemente larga, metida mano sobre mano. "¿Ya basta?" ...No. Sigue. Una palmadita de mecánico. Una gran PALMADA. "Aguantará."	# cutscene.c
+The first false alarm: a burp so big it rattles the bunting. "Pardon me." He does not look sorry. He looks hungry.	La primera falsa alarma: un eructo que sacude las banderitas. "Perdón." No parece arrepentido. Parece hambriento.	# cutscene.c
+...pfffrrrt. The second false alarm lifts him an inch off the chair. Minty, he insists. Nobody believes him.	...pfffrrrt. La segunda falsa alarma lo alza un palmo de la silla. Mentolado, insiste. Nadie le cree.	# cutscene.c
+Both ends at once. He sags. The crowd cheers: it's over! ...It is not over. The valve is still turning.	Por ambos lados a la vez. Se desploma. La gente vitorea: ¡terminó! ...No terminó. La válvula sigue girando.	# cutscene.c
+The valve wins. The belly swells, the straps creak, the chair files a complaint. Every camera in the park finds the same angle. By accident. Again.	Gana la válvula. La panza crece, las correas crujen, la silla presenta una queja. Todas las cámaras hallan el mismo ángulo. Sin querer. Otra vez.	# cutscene.c
+POP. Confetti, stuffing and one very surprised halo. High above the bunting a lone pair of cheeks drifts down like a balloon. "...Is there dessert?"	POP. Confeti, relleno y un halo muy sorprendido. Sobre las banderitas, un par de cachetes baja flotando como globo. "...¿Hay postre?"	# cutscene.c
+"...that's hot," says one voice in the silence. Every head turns. The mob is swift, cartoonish and thorough. A single shoe lands in frame.	"...qué caliente", dice una voz en el silencio. Todos voltean. La turba es veloz, caricaturesca y minuciosa. Un zapato aterriza en cuadro.	# cutscene.c
+Later. Moonlight, candles, the crowd lingering by the empty tables. Grumbleguts is back in one piece, mostly, reclined and glowing, digesting at volume.	Más tarde. Luz de luna, velas, la gente entre mesas vacías. Grumbleguts, de una pieza, casi, reclinado y radiante, digiere a todo volumen.	# cutscene.c
+He finds @P in the crowd and holds the look. "Don't be shy, sugar. There's room at my table. There's always room at my table."	Halla a @P entre la gente y sostiene la mirada. "No seas tímido, cielo. Hay lugar en mi mesa. Siempre hay lugar en mi mesa."	# cutscene.c
+Later still, he hauls out a bike pump. "For my posture." The hose goes round the back. The handle goes up and down. Pff. Pff.	Aún más tarde, saca una bomba de bici. "Para mi postura." La manguera va atrás. El mango sube y baja. Pff. Pff.	# cutscene.c
+Pff. Pff. Pff. The belly is not so much round as ambitious. He is inflating himself like a parade balloon and has never been prouder. "...one more."	Pff. Pff. Pff. La panza no es tan redonda como ambiciosa. Se infla como globo de desfile y nunca estuvo más orgulloso. "...una más."	# cutscene.c
+The valve gives a long, wobbling hiss and the whole park goes quiet to listen. Something deep in the belly gurgles back. It has opinions.	La válvula suelta un largo siseo tembloroso y todo el parque calla a escuchar. Algo en la panza gorgotea de vuelta. Tiene opiniones.	# cutscene.c
+BRRRAAAP. It rolls across the park like a tuba falling down the stairs. A brave imp pokes the belly. The belly pokes back.	BRRRAAAP. Rueda por el parque como una tuba bajando escaleras. Un diablillo valiente pica la panza. La panza pica de vuelta.	# cutscene.c
+Out comes a little black book the size of a phone directory. "Shriekra. Spearmint. The waiter, the band, the gazebo..." Every page says NO in a different hand.	Saca un librito negro grueso como guía telefónica. "Shriekra. Spearmint. El mesero, la banda, el quiosco..." Cada página dice NO con otra letra.	# cutscene.c
+A queue snakes round the park and somebody is handing out numbers. It is the queue for the leftovers. He is at the front of it. Twice.	Una fila serpentea por el parque y alguien reparte números. Es la fila de las sobras. Él va al frente. Dos veces.	# cutscene.c
+The pump gets passed down the line and everybody has a go. He calls every helper by the wrong name and thanks each one warmly.	La bomba pasa por la fila y todos prueban. Llama a cada ayudante por el nombre equivocado y a todos les agradece con cariño.	# cutscene.c
+Dawn. Bunting, abandoned shoes and one very smug gazebo. Grumbleguts, flat and glowing, scratches a tally on the fence: forty-seven helpings. "...Brunch?"	Amanecer. Banderitas, zapatos perdidos y un quiosco muy ufano. Grumbleguts, plano y radiante, marca en la cerca: cuarenta y siete raciones. "...¿Brunch?"	# cutscene.c
+Chapter 1	Capítulo 1	# cutscene.c
+Chapter 2	Capítulo 2	# cutscene.c
+Chapter 3	Capítulo 3	# cutscene.c
+Chapter 4	Capítulo 4	# cutscene.c
+Arrival in HaHaland	Llegada a HaHaland	# cutscene.c
+The Purple Fog	La Niebla Morada	# cutscene.c
+The Gate Erupts	La Puerta Estalla	# cutscene.c
+Vapula Deflates	Vapula se Desinfla	# cutscene.c
+The Wall Falls	Cae el Muro	# cutscene.c
+Home Sweet Home	Hogar, Dulce Hogar	# cutscene.c
+What an Ass	Vaya Trasero	# cutscene.c
+Chapter %d	Capítulo %d	# cutscene.c
+hee hee	ji ji	# cutscene.c
+hee hee hee	ji ji ji	# cutscene.c
+*squeak*	*chillido*	# cutscene.c
+*wheeze*	*jadeo*	# cutscene.c
+...of the beginning!	¡...del principio!	# cutscene.c
+pop!	¡pop!	# cutscene.c
+1000 CITIZENS.	1000 CIUDADANOS.	# cutscene.c
+500 GOOD.	500 BUENOS.	# cutscene.c
+500 BAD.	500 MALOS.	# cutscene.c
+1 PARK.	1 PARQUE.	# cutscene.c
+(cozy.)	(acogedor.)	# cutscene.c
+DOOMO		# cutscene.c
+START		# cutscene.c
+Coming to GBA	Pronto en GBA	# cutscene.c
+Yes, the actual handheld.	Sí, la portátil de verdad.	# cutscene.c
+The purple one.	La morada.	# cutscene.c
+CUTSCENE		# cutscene.c
+Living Room	Sala	# home.c
+Bedroom	Dormitorio	# home.c
+Hell-Cellar	Sótano Infernal	# home.c
+Roof Annex	Anexo del Techo	# home.c
+Towers 7B	Torres 7B	# home.c
+Hell Pits Flat	Piso Foso Infernal	# home.c
+Park Plot	Terreno del Parque	# home.c
+Off the grid.	Fuera de la cuadrícula.	# home_edit.c
+Something's already there.	Ya hay algo ahí.	# home_edit.c
+That goes on a wall.	Eso va en la pared.	# home_edit.c
+That goes on the floor.	Eso va en el piso.	# home_edit.c
+The chimney has to breathe.	La chimenea debe respirar.	# home_edit.c
+That one stays put.	Ese se queda quieto.	# home_edit.c
+The room is full.	El cuarto está lleno.	# home_edit.c
+You don't have one spare.	No tienes uno de sobra.	# home_edit.c
+Only fits a window slot.	Solo cabe en una ventana.	# home_edit.c
+Remove only. For now.	Solo quitar. Por ahora.	# home_edit.c
+Keep the door clear.	Deja libre la puerta.	# home_edit.c
+My Blueprint 2	Mi Plano 2	# home_edit.c
+My Blueprint 1	Mi Plano 1	# home_edit.c
+somewhere to sit	dónde sentarme	# home_visit.c
+something pink	algo rosa	# home_visit.c
+a plant	una planta	# home_visit.c
+more light	más luz	# home_visit.c
+a plushie	un peluche	# home_visit.c
+something spooky	algo tenebroso	# home_visit.c
+something cute	algo tierno	# home_visit.c
+a good book	un buen libro	# home_visit.c
+a snack	un bocadillo	# home_visit.c
+some music	algo de música	# home_visit.c
+my hobby	mi pasatiempo	# home_visit.c
+my colour	mi color	# home_visit.c
+a soft rug	una alfombra suave	# home_visit.c
+something for the wall	algo para la pared	# home_visit.c
+a table	una mesa	# home_visit.c
+a game	un juego	# home_visit.c
+Oh! Oh. Oh!	¡Oh! Oh. ¡Oh!	# home_visit.c
+...oh! For me?	...¡oh! ¿Para mí?	# home_visit.c
+oh. a piece.	oh. una pieza.	# home_visit.c
+I love it!	¡Me encanta!	# home_visit.c
+My favourite thing!	¡Mi cosa favorita!	# home_visit.c
+Get it away from me!	¡Aléjalo de mí!	# home_visit.c
+Is that... food?	¿Eso es... comida?	# home_visit.c
+Don't mind if I do.	No digo que no.	# home_visit.c
+Acceptable.	Aceptable.	# home_visit.c
+WHAT. Okay. Yes.	QUÉ. Bien. Sí.	# home_visit.c
+Huh. Yeah.	Mm. Sí.	# home_visit.c
+a thing.	una cosa.	# home_visit.c
+Love. It.	Me. Encanta.	# home_visit.c
+Mine now.	Mío ya.	# home_visit.c
+NOPE.	NEL.	# home_visit.c
+No.	No.	# home_visit.c
+Sitting.	Sentado.	# home_visit.c
+Fine.	Bien.	# home_visit.c
+Under Cloud Nine Vapor: crates,\na crawlspace and a vape wraith.	Bajo Cloud Nine Vapor: cajas,\nun gateadero y un espectro vapeante.	# levels.c
+Smells like Brimstone Blast down here	Aquí huele a Azufre Explosivo	# levels.c
+Vex's tower in the vape storm.\nLord Vapula waits at the top.	La torre de Vex en la tormenta de vapor.\nLord Vapula espera arriba.	# levels.c
+Three phases of vapour and spite.	Tres fases de vapor y rencor.	# levels.c
+Sugar Rush Sewers	Alcantarillas Subidón	# levels.c
+HELL BREACH 3		# levels.c
+Strawberry soda canals... that\nturn into something fleshy.	Canales de refresco de fresa...\nque se vuelven algo carnoso.	# levels.c
+The soda down here tastes... meaty.	El refresco de aquí sabe... a carne.	# levels.c
+Plushie Factory	Fábrica de Peluches	# levels.c
+HELL BREACH 4		# levels.c
+Conveyor belts, stuffing vats\nand plushies with demon eyes.	Bandas, tinas de relleno\ny peluches con ojos demoníacos.	# levels.c
+Now hiring: souls. No experience!	Se buscan almas. ¡Sin experiencia!	# levels.c
+Graveyard Shift	Turno de Cementerio	# levels.c
+HELL BREACH 5		# levels.c
+A night at the cemetery. Crypts,\nghosts, a weeping in the garden.	Una noche en el cementerio. Criptas,\nfantasmas, un llanto en el jardín.	# levels.c
+Somebody is crying in the garden...	Alguien llora en el jardín...	# levels.c
+Bone Cathedral	Catedral de Huesos	# levels.c
+HELL BREACH 6		# levels.c
+A gothic hell church that goes\nUP. Bell tower. Pipe organ.	Una iglesia gótica infernal que\nSUBE. Campanario. Órgano.	# levels.c
+Let us pray. Loudly. With rockets.	Recemos. Fuerte. Con cohetes.	# levels.c
+Hellvile Underbelly	Bajos de Hellvile	# levels.c
+HELL BREACH 7		# levels.c
+Below the bad city: a market,\npipes, pistons, the hell gate.	Bajo la ciudad mala: mercado,\ntubos, pistones, la puerta infernal.	# levels.c
+Mind the gap. He's undressing you.	Cuidado con el hueco. Te desnuda.	# levels.c
+GUMDROP GUTTERKING	REY GOMITA DE ALCANTARILLA	# levels.c
+Sticky Sovereign of the Sewers	Pegajoso Soberano de las Cloacas	# levels.c
+"WHO STIRRED MY SODA?!"	"¡¿QUIÉN REVOLVIÓ MI REFRESCO?!"	# levels.c
+The Gutterking melts into a sad syrup puddle!	¡El Rey se derrite en un triste charco de jarabe!	# levels.c
+FOREMAN FLUFFNUTS	CAPATAZ FLUFFNUTS	# levels.c
+Middle Management of the Damned	Mandos Medios de los Condenados	# levels.c
+"BREAK TIME IS OVER, NEW HIRE!"	"¡SE ACABÓ EL DESCANSO, NOVATO!"	# levels.c
+Foreman Fluffnuts clocks out. Forever.	El Capataz Fluffnuts marca salida. Para siempre.	# levels.c
+THE WEEPING WIDOW	LA VIUDA LLORONA	# levels.c
+She Lost Her Plushie in 1887	Perdió su Peluche en 1887	# levels.c
+"Have you come to... cry with me?"	"¿Vienes a... llorar conmigo?"	# levels.c
+The Widow stops crying, waves, and fades away.	La Viuda deja de llorar, saluda y se desvanece.	# levels.c
+BISHOP BONEBOTTOM	OBISPO CULOHUESO	# levels.c
+The Organ Grinder	El Organillero	# levels.c
+"LET US PRAY... FOR YOU!"	"¡ROGUEMOS... POR TI!"	# levels.c
+The organ plays one last, very sour note.	El órgano toca una última nota muy agria.	# levels.c
+GATEKEEPER GRUMBLEGUTS	GUARDIÁN GRUMBLEGUTS	# levels.c
+Keeper of the Gate. Open Late.	Guardián de la Puerta. Abierto Hasta Tarde.	# levels.c
+"Tense? Good. I love a nervous one."	"¿Tenso? Bien. Me gustan los nerviosos."	# levels.c
+"Best I've had all week." The gate goes limp.	"Lo mejor de la semana." La puerta se afloja.	# levels.c
+THE CELLAR WRAITH	EL ESPECTRO DEL SÓTANO	# levels.c
+Brimstone Blast Flavoured	Sabor Azufre Explosivo	# levels.c
+"Wanna try a puff? ...No?"	"¿Quieres una calada? ...¿No?"	# levels.c
+The Cellar Wraith dissolves into a fruity cloud.	El Espectro se disuelve en una nube frutal.	# levels.c
+LORD VAPULA	LORD VAPULA	# levels.c
+"You dare climb MY spire?"	"¿Osas subir a MI torre?"	# levels.c
+LORD VAPULA IS DEFEATED!	¡LORD VAPULA HA CAÍDO!	# levels.c
+Hell Breach	Brecha Infernal	# levels.c
+Time Trial	Contrarreloj	# levels.c
+Cute-Only Run	Solo Ternura	# levels.c
+Brutal-Only Run	Solo Brutal	# levels.c
+Mmm, rough player. My favourite kind.	Mmm, jugador rudo. Mi tipo favorito.	# levels.c
+Take your time. I last all night, hon.	Sin prisa. Aguanto toda la noche, cielo.	# levels.c
+Go on, touch the gate. It likes that.	Anda, toca la puerta. Le gusta.	# levels.c
+You're sweating. Let me help with that.	Estás sudando. Deja que te ayude.	# levels.c
+Careful, I clench harder than the gate.	Cuidado, aprieto más que la puerta.	# levels.c
+Don't stop now, sugar. I'm almost there.	No pares ahora, cielo. Ya casi llego.	# levels.c
+Stay behind me, friends. Don't tell anyone.	Quédense tras de mí, amigos. No se lo digan a nadie.	# levels.c
+Hell Breach Levels	Niveles Brecha	# levels.c
+Seven levels. Ranks S to C. Go!	Siete niveles. Rangos S a C. ¡Vamos!	# levels.c
+Seven bosses, back to back	Siete jefes, uno tras otro	# levels.c
+Horde Mode	Modo Horda	# levels.c
+Endless waves + shop breaks	Olas sin fin + pausas de tienda	# levels.c
+Speedrun cleared levels for gold	Speedrun de niveles por oro	# levels.c
+Cute weapons only. Confetti!	Solo armas tiernas. ¡Confeti!	# levels.c
+Brutal weapons only. Gibs!	Solo armas brutales. ¡Vísceras!	# levels.c
+Monster Mode Mayhem	Caos Modo Monstruo	# levels.c
+Three minutes of pure chaos	Tres minutos de puro caos	# levels.c
+Underbelly Gate	Puerta de los Bajos	# levels.c
+Down the manhole: Hell Breach 7	Por la alcantarilla: Brecha 7	# levels.c
+Night shift at the cemetery	Turno de noche en el cementerio	# levels.c
+Locked! Clear the one before.	¡Bloqueado! Supera el anterior.	# levels_select.c
+Clear it once to race the clock!	¡Supéralo una vez para correr!	# levels_select.c
+NEW LEVEL UNLOCKED!	¡NUEVO NIVEL DESBLOQUEADO!	# levels_select.c
+More modes unlock as you clear levels.	Más modos al superar niveles.	# levels_select.c
+HELL BREACH LEVELS	NIVELES BRECHA INFERNAL	# levels_select.c
+Clear %s first	Supera antes %s	# levels_select.c
+Clear it once to race the clock	Supéralo una vez para correr	# levels_select.c
+NEW!	¡NUEVO!	# levels_select.c
+\x91 Gold time %s   %s	\x91 Tiempo oro %s   %s	# levels_select.c
+\x82 GOLD!	\x82 ¡ORO!	# levels_select.c
+no medal yet	sin medalla aún	# levels_select.c
+\x82 Par %s   Best %s   %s	\x82 Par %s   Mejor %s   %s	# levels_select.c
+\x80cute only	\x80solo tierno	# levels_select.c
+\x81brutal only	\x81solo brutal	# levels_select.c
+\x88\x87 Level  \x8B Play  SELECT Demo  \x8C Back	\x88\x87 Nivel  \x8B Jugar  SELECT Demo  \x8C Atrás	# levels_select.c
+\x8B Play  SEL Demo  \x8C Back	\x8B Jugar  SEL Demo  \x8C Atrás	# levels_select.c
+LEVEL_SELECT		# levels_select.c
+MINI-BOSS!	¡MINIJEFE!	# levels_draw.c
+Rivet lends you a Bubble Wand!	¡Rivet te presta una Varita de Burbujas!	# levels_play.c
+Rivet lends you a pump shotgun!	¡Rivet te presta una escopeta de bombeo!	# levels_play.c
+Cute weapons only! \x80	¡Solo armas tiernas! \x80	# levels_play.c
+Brutal weapons only! \x81	¡Solo armas brutales! \x81	# levels_play.c
+\x91 Gold time %s	\x91 Tiempo oro %s	# levels_play.c
+\x82 Par time %s	\x82 Tiempo par %s	# levels_play.c
+waiting:	esperando:	# levels_play.c
+DEMO  \x8B Stop	DEMO  \x8B Parar	# levels_play.c
+\x8B GO!	\x8B ¡YA!	# levels_play.c
+GOLD PACE	RITMO ORO	# levels_play.c
+\x80 CUTE ONLY	\x80 SOLO TIERNO	# levels_play.c
+\x81 BRUTAL ONLY	\x81 SOLO BRUTAL	# levels_play.c
+DEMO		# levels_play.c

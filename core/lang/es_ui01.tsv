@@ -1,0 +1,608 @@
+Restart level	Reiniciar nivel	# levels_play.c
+RANK	RANGO	# levels_play.c
+NEW BEST!	¡NUEVO RÉCORD!	# levels_play.c
+Demo run - nothing recorded	Prueba: no se guarda nada	# levels_play.c
+\x82 GOLD MEDAL! \x82	\x82 ¡MEDALLA DE ORO! \x82	# levels_play.c
+\x80 CHALLENGE CLEARED!	\x80 ¡RETO SUPERADO!	# levels_play.c
+\x82 FIRST CLEAR!	\x82 ¡PRIMERA VEZ!	# levels_play.c
+So close to gold!	¡Casi consigues el oro!	# levels_play.c
+\x83 +%d H$ bonus  +%d H$ loot	\x83 +%d H$ bono  +%d H$ botín	# levels_play.c
+%s - %d demons down	%s - %d demonios caídos	# levels_play.c
+BREACH	BRECHA	# levels_play.c
+Sweet	Dulce	# mg.c
+Spicy	Picante	# mg.c
+COMBO x2!	¡COMBO x2!	# mg.c
+COMBO x3!	¡COMBO x3!	# mg.c
+COMBO x4!	¡COMBO x4!	# mg.c
+MAX COMBO x5!	¡COMBO MÁX x5!	# mg.c
+combo dropped	combo perdido	# mg.c
+OUCH!	¡AUCH!	# mg.c
+Fun Fair: new %s record, %d pts!	Feria: ¡nuevo récord de %s, %d pts!	# mg.c
+TIME UP!	¡SE ACABÓ EL TIEMPO!	# mg.c
+minigame: scene scratch lost, back to the title card		# mg.c
+BEST %u	MEJOR %u	# mg.c
+Next medal at %u	Próx. medalla: %u	# mg.c
+All medals won!	¡Todas las medallas!	# mg.c
+\x8B Play  \x88\x87 Tier  \x8C Leave	\x8B Jugar  \x88\x87 Nivel  \x8C Salir	# mg.c
+READY?	¿LISTO?	# mg.c
+GO!	¡YA!	# mg.c
+No medal yet	Sin medalla aún	# mg.c
+BRONZE MEDAL!	¡MEDALLA DE BRONCE!	# mg.c
+SILVER MEDAL!	¡MEDALLA DE PLATA!	# mg.c
+GOLD MEDAL!	¡MEDALLA DE ORO!	# mg.c
+RESULTS	RESULTADOS	# mg.c
+NEW BEST	NUEVO RÉCORD	# mg.c
+%s at %u	%s en %u	# mg.c
+Bronze	Bronce	# mg.c
+Silver	Plata	# mg.c
+Fun Fair champion!	¡Campeón de la Feria!	# mg.c
+Combo %d	Combo %d	# mg.c
+Record %u	Récord %u	# mg.c
+Retry	Reintentar	# mg.c
+Cupcake Catch	Atrapa Cupcakes	# mg.c
+Catch treats, dodge brimstone bagels	Atrapa golosinas, esquiva rosquillas de azufre	# mg.c
+Whack-an-Imp	Golpea al Diablillo	# mg.c
+Bonk imps. Do NOT bonk Father Fuzz	Golpea diablillos. NO al Padre Fuzz	# mg.c
+Memory Match	Memorama	# mg.c
+Pair up citizens. Hellvile cards bite	Une ciudadanos. Las cartas de Hellvile muerden	# mg.c
+Doomogachi Derby	Derbi Doomogachi	# mg.c
+Race your pet against five rivals	Corre contra cinco rivales	# mg.c
+Bubble Blaster Gallery	Galería Pompa-Blaster	# mg.c
+Pop cardboard demons, spare citizens	Revienta demonios de cartón, perdona ciudadanos	# mg.c
+Vape Cloud Dodge	Esquiva Nubes de Vapor	# mg.c
+Dodge Lord Vapula's vape rings	Esquiva los aros de vapor de Lord Vapula	# mg.c
+Wheel of Fate	Rueda del Destino	# mg.c
+One spin a day: prize or curse?	Un giro al día: ¿premio o maldición?	# mg.c
+Tix		# mg_draw.c
+SCORE	PUNTOS	# mg_draw.c
+%d COMBO  x%d	%d COMBO  x%d	# mg_draw.c
+LORD VAPULA ENTERS THE ARENA!	¡LORD VAPULA ENTRA A LA ARENA!	# arena.c
+A VAPE WRAITH APPEARS!	¡APARECE UN ESPECTRO DE VAPOR!	# arena.c
+WAVE CLEARED! \x82	¡OLEADA SUPERADA! \x82	# arena.c
+WAVE %d	OLEADA %d	# arena.c
+DEMON ARENA	ARENA DEMONÍACA	# arena.c
+Next wave in %d	Próx. oleada en %d	# arena.c
+Camera: 1st	Cámara: 1a	# arena.c
+Camera: 3rd	Cámara: 3a	# arena.c
+ARENA OVER	FIN DE LA ARENA	# arena.c
+Waves survived	Oleadas superadas	# arena.c
+Best this visit	Mejor de esta visita	# arena.c
++%d H$ +scrap	+%d H$ +chatarra	# arena.c
+\x83 Rewards	\x83 Premios	# arena.c
+%d arena waves total	%d oleadas de arena en total	# arena.c
+ARENA		# arena.c
+Candy Heart  +50 HP	Corazón de Caramelo  +50 PS	# arena_modes.c
+Plush Armor  +50	Armadura de Peluche  +50	# arena_modes.c
+Ammo Crate  (full)	Caja de Munición  (llena)	# arena_modes.c
+Guardian Angel	Ángel de la Guarda	# arena_modes.c
+Holy Fury  (15 s)	Furia Santa  (15 s)	# arena_modes.c
+Next wave!	¡Siguiente oleada!	# arena_modes.c
+A heart-shaped candy. Tastes like healing.	Un caramelo con forma de corazón. Sabe a curación.	# arena_modes.c
+Stuffed with love and a little kevlar.	Relleno de amor y un poquito de kevlar.	# arena_modes.c
+Every ammo pouch, filled to the brim.	Todas las cartucheras, llenas hasta el tope.	# arena_modes.c
+A plush angel catches you once if you fall.	Un ángel de peluche te atrapa una vez si caes.	# arena_modes.c
+Untouchable for the first 15 s of the next wave.	Intocable los primeros 15 s de la próxima oleada.	# arena_modes.c
+Break's over. Here they come!	Se acabó el descanso. ¡Ahí vienen!	# arena_modes.c
+BOSS RUSH	ASALTO DE JEFES	# arena_modes.c
+HORDE MODE	MODO HORDA	# arena_modes.c
+MONSTER MAYHEM	CAOS MONSTRUOSO	# arena_modes.c
+HOLY FURY! \x84	¡FURIA SANTA! \x84	# arena_modes.c
+MONSTER MODE!! BERSERK! \x81	¡¡MODO MONSTRUO!! ¡FRENESÍ! \x81	# arena_modes.c
+A plush angel catches you! \x80	¡Un ángel de peluche te atrapa! \x80	# arena_modes.c
+ROUND %d/%d	RONDA %d/%d	# arena_modes.c
+HOLY FURY	FURIA SANTA	# arena_modes.c
+BERSERK x2	FRENESÍ x2	# arena_modes.c
+SHOP BREAK	PAUSA DE TIENDA	# arena_modes.c
+\x83 %d loot to spend	\x83 %d de botín por gastar	# arena_modes.c
+\x8B Buy  \x8C Next wave	\x8B Comprar  \x8C Sig. oleada	# arena_modes.c
+TIME'S UP!	¡SE ACABÓ EL TIEMPO!	# arena_modes.c
+VICTORY!	¡VICTORIA!	# arena_modes.c
+OVERRUN!	¡ARRASADO!	# arena_modes.c
+DEFEATED	DERROTADO	# arena_modes.c
+Bosses beaten	Jefes vencidos	# arena_modes.c
+wave %d	oleada %d	# arena_modes.c
+Best ever	Mejor marca	# arena_modes.c
+Town shame meter	Vergüenza del pueblo	# arena_modes.c
+Again!	¡Otra vez!	# arena_modes.c
+180 SECONDS OF	180 SEGUNDOS DE	# arena_modes.c
+THE ARENA PRESENTS	LA ARENA PRESENTA	# arena_modes.c
+Best: wave %d	Mejor: oleada %d	# arena_modes.c
+MINI-BOSS WAVE	OLEADA DE MINIJEFE	# arena_modes.c
+ROUND %d CLEAR!	¡RONDA %d SUPERADA!	# arena_modes.c
+NEXT UP	A CONTINUACIÓN	# arena_modes.c
+ARENA_MODE		# arena_modes.c
+Father Fuzz: %s	Padre Fuzz: %s	# exorcism_scene.c
+Practice Plush	Peluche de Práctica	# exorcism_scene.c
+Nameless One	Sin Nombre	# exorcism_scene.c
+This body is MINE now. So squishy!	¡Este cuerpo es MÍO ahora. Qué blandito!	# exorcism_scene.c
+Your prayers tickle, little lamb.	Tus rezos me hacen cosquillas, corderito.	# exorcism_scene.c
+Hehehe! %s can't hear you!	¡Jejeje! ¡%s no te oye!	# exorcism_scene.c
+Cozy in here. Smells like cupcakes.	Qué acogedor. Huele a cupcakes.	# exorcism_scene.c
+Try harder, Fuzzball!	¡Esfuérzate más, Bolita de Pelusa!	# exorcism_scene.c
+I'll never leave! NEVER!	¡Jamás me iré! ¡JAMÁS!	# exorcism_scene.c
+%s's dreams taste like candy floss.	Los sueños de %s saben a algodón de azúcar.	# exorcism_scene.c
+%s rests in the graveyard now. Let's leave flowers instead.	%s descansa en el cementerio. Mejor dejemos flores.	# exorcism_scene.c
+%s is perfectly fine! No demons here, just good vibes.	¡%s está perfectamente! Aquí no hay demonios, solo buena onda.	# exorcism_scene.c
+Welcome to St. Cuddles! Let's practise the ritual on this old plush.	¡Bienvenido a San Cuddles! Practiquemos el ritual con este viejo peluche.	# exorcism_scene.c
+Don't worry, the demon in it is only a teeny one. Probably.	Tranquilo, el demonio que tiene es chiquitito. Probablemente.	# exorcism_scene.c
+Oh my stars... %s has a demon inside! Quick, to the altar!	¡Santo cielo! ¡%s tiene un demonio dentro! ¡Rápido, al altar!	# exorcism_scene.c
+It's dug in deeper since last time. %s more failure%s and their soul is lost.	Se ha aferrado más que la última vez. Con %s fallo%s más, su alma se pierde.	# exorcism_scene.c
+One	un	# exorcism_scene.c
+Two	dos	# exorcism_scene.c
+We need faith, holy water and the demon's TRUE NAME. Pick your tools!	Necesitamos fe, agua bendita y el NOMBRE VERDADERO del demonio. ¡Elige tus herramientas!	# exorcism_scene.c
+...You SPELLED it. Nobody spells it.	...Lo DELETREASTE. Nadie lo deletrea.	# exorcism_scene.c
+Hee. Hee. Close.	Ji. Ji. Casi.	# exorcism_scene.c
+Type its true name:	Escribe su nombre verdadero:	# exorcism_scene.c
+This one heckles. Pray on the beat with \x8B and don't laugh. Whatever it says, don't laugh.	Este se burla. Reza al ritmo con \x8B y no te rías. Diga lo que diga, no te rías.	# exorcism_scene.c
+My half goes forwards. Mother Nox's half goes backwards: when the prompts turn purple, press the opposite!	Mi mitad va hacia delante. La de Madre Nox va al revés: cuando las flechas se pongan moradas, ¡pulsa lo contrario!	# exorcism_scene.c
+No rite for a wisp. Just one gentle \x8B, when it reaches the heart.	Un fuego fatuo no necesita rito. Solo un suave \x8B cuando llegue al corazón.	# exorcism_scene.c
+Phase one: pray with me! Press each button as it reaches the heart. Keep to the beat!	Fase uno: ¡reza conmigo! Pulsa cada botón al llegar al corazón. ¡Sigue el ritmo!	# exorcism_scene.c
+Come back when you're ready. Hurry though - demons get comfy fast.	Vuelve cuando estés listo. Pero date prisa: los demonios se acomodan rápido.	# exorcism_scene.c
+You don't have any! (Try the shop)	¡No tienes! (Prueba la tienda)	# exorcism_scene.c
+MISSED! Hahaha!	¡FALLASTE! ¡Jajaja!	# exorcism_scene.c
+What's brown and sticky?	¿Qué es marrón y pegajoso?	# exorcism_scene.c
+...A stick.	...Un palo.	# exorcism_scene.c
+Hee. Hee.	Ji. Ji.	# exorcism_scene.c
+Knock knock.	Toc toc.	# exorcism_scene.c
+You're off the beat!	¡Vas fuera de ritmo!	# exorcism_scene.c
+Is this thing on?	¿Esto está encendido?	# exorcism_scene.c
+NOX: Ours goes backwards.	NOX: El nuestro va al revés.	# exorcism_scene.c
+Beautiful! Your faith is blinding!	¡Hermoso! ¡Tu fe deslumbra!	# exorcism_scene.c
+Good, good! The demon is wobbling!	¡Bien, bien! ¡El demonio se tambalea!	# exorcism_scene.c
+Oh dear, a bit off-key... but it's rattled!	Ay, un poco desafinado... ¡pero está asustado!	# exorcism_scene.c
+Phase two: holy water! Aim with the D-pad, throw with \x8B!	Fase dos: ¡agua bendita! Apunta con la cruceta y lanza con \x8B.	# exorcism_scene.c
+It's soaked and shivering! Now for the true name!	¡Está empapado y temblando! ¡Ahora el nombre verdadero!	# exorcism_scene.c
+Drat, it's still slippery... no matter. Its NAME, quickly!	Rayos, sigue resbaloso... no importa. ¡Su NOMBRE, rápido!	# exorcism_scene.c
+AAARGH! I'M MELTING!	¡AAARGH! ¡ME DERRITO!	# exorcism_scene.c
+EEK! COLD! COLD!	¡IIK! ¡FRÍO! ¡FRÍO!	# exorcism_scene.c
+Missed me, missed me!	¡Fallaste, fallaste!	# exorcism_scene.c
+That's what I'm WEARING.	Eso es lo que LLEVO PUESTO.	# exorcism_scene.c
+NOOO! How do you know my NAME?!	¡NOOO! ¿¡Cómo sabes mi NOMBRE!?	# exorcism_scene.c
+Hee. Hee. Wrong ghost.	Ji. Ji. Fantasma equivocado.	# exorcism_scene.c
+WRONG! Hahahaha!	¡MAL! ¡Jajajaja!	# exorcism_scene.c
+Lay %s to rest forever? This cannot be undone.	¿Dejar descansar a %s para siempre? No se puede deshacer.	# exorcism_scene.c
+Not yet...	Aún no...	# exorcism_scene.c
+I'm so sorry. The exorcisms have failed... %s's soul is lost.	Lo lamento. Los exorcismos han fallado... el alma de %s está perdida.	# exorcism_scene.c
+There is one last kindness. We could lay %s to rest, and let them find peace.	Queda un último gesto de bondad. Podemos dejar descansar a %s y que halle la paz.	# exorcism_scene.c
+What should we do?	¿Qué hacemos?	# exorcism_scene.c
+Father Fuzz: What should we do?	Padre Fuzz: ¿Qué hacemos?	# exorcism_scene.c
+PERFECT!	¡PERFECTO!	# exorcism_scene.c
+GOOD	BIEN	# exorcism_scene.c
+MISS...	FALLO...	# exorcism_scene.c
+%d combo!	¡Combo %d!	# exorcism_scene.c
+\x84 Ritual tools	\x84 Herramientas	# exorcism_scene.c
+\x82 Begin the ritual!	\x82 ¡Empezar el ritual!	# exorcism_scene.c
+Father Fuzz is ready.	El Padre Fuzz está listo.	# exorcism_scene.c
+Odds %d%%	Prob. %d%%	# exorcism_scene.c
+\x85 Hand him a memory	\x85 Darle un recuerdo	# exorcism_scene.c
+\x85 Clues about the demon	\x85 Pistas del demonio	# exorcism_scene.c
+??? (pray better for more clues)	??? (reza mejor para más pistas)	# exorcism_scene.c
+Holy power...	Poder sagrado...	# exorcism_scene.c
+Rest well, %s.	Descansa bien, %s.	# exorcism_scene.c
+\x8B Leave flowers and go	\x8B Dejar flores e irse	# exorcism_scene.c
+HIT!	¡ACIERTO!	# exorcism_scene.c
+You'll NEVER guess my true name!	¡JAMÁS adivinarás mi nombre verdadero!	# exorcism_scene.c
+CAST OUT!	¡EXPULSADO!	# exorcism_scene.c
+%s fled from %s!	¡%s huyó de %s!	# exorcism_scene.c
+IT HOLDS ON...	SE AFERRA...	# exorcism_scene.c
+Just practice! Try again anytime.	¡Solo práctica! Inténtalo cuando quieras.	# exorcism_scene.c
+%d %s left before the soul is lost.	Quedan %d %s antes de perder el alma.	# exorcism_scene.c
+The last candle goes out...	Se apaga la última vela...	# exorcism_scene.c
+Prayer %d%%  Water %d%%  Name %s  Chance %d%%	Rezo %d%%  Agua %d%%  Nombre %s  Prob. %d%%	# exorcism_scene.c
+Pray %d%% Water %d%% Name %s	Rezo %d%% Agua %d%% Nombre %s	# exorcism_scene.c
+\x8B Done	\x8B Listo	# exorcism_scene.c
+The exorcisms have failed...	Los exorcismos han fallado...	# exorcism_scene.c
+%s's soul is lost.	El alma de %s está perdida.	# exorcism_scene.c
+\x8B Talk to Father Fuzz  \x8C Leave	\x8B Hablar con Padre Fuzz  \x8C Salir	# exorcism_scene.c
+EXORCISM	EXORCISMO	# exorcism_scene.c
+Chop when the knife kisses the line!	¡Pica cuando el cuchillo bese la línea!	# cook_scene.c
+Spin the pad round and round. Gently!	Gira la cruceta y gira. ¡Con suavidad!	# cook_scene.c
+Pull it out when it's golden. GOLDEN!	Sácalo cuando esté dorado. ¡DORADO!	# cook_scene.c
+Flip it when the bottom's golden-brown!	¡Voltéalo cuando el fondo esté doradito!	# cook_scene.c
+Hold A for heat. Keep it purring!	Mantén A para dar calor. ¡Que ronronee!	# cook_scene.c
+Burn it, dearie! Wait till it's BLACK!	¡Quémalo, cielito! ¡Espera a que esté NEGRO!	# cook_scene.c
+Well... it's crunchy. Hellvile folk love that!	Bueno... está crujiente. ¡A la gente de Hellvile le encanta!	# cook_scene.c
+Edible! Mostly. Probably. Good job, dear!	¡Comestible! Casi. Seguro. ¡Buen trabajo, querido!	# cook_scene.c
+Lovely! Nana Puddin would weep with joy.	¡Precioso! Nana Puddin lloraría de alegría.	# cook_scene.c
+Oh my whiskers! Better than mine! Shh!	¡Por mis bigotes! ¡Mejor que el mío! ¡Shh!	# cook_scene.c
+BAKE!	¡HORNEA!	# cook_scene.c
+FRY!	¡FRÍE!	# cook_scene.c
+SIMMER!	¡HIERVE!	# cook_scene.c
+SCORCH!	¡CHAMUSCA!	# cook_scene.c
+CHOP!	¡PICA!	# cook_scene.c
+STIR!	¡REVUELVE!	# cook_scene.c
+MISS	FALLO	# cook_scene.c
+PERFECT	PERFECTO	# cook_scene.c
+NICE	BIEN	# cook_scene.c
+WOBBLY	TEMBLOROSO	# cook_scene.c
+FLIP!	¡VOLTEA!	# cook_scene.c
+BURNT!	¡QUEMADO!	# cook_scene.c
+early!	¡pronto!	# cook_scene.c
+GREAT!	¡GENIAL!	# cook_scene.c
+OK!	¡OK!	# cook_scene.c
+Oops!	¡Ups!	# cook_scene.c
+Granny's Recipe Book	Recetario de la Abuela	# cook_scene.c
+Secret recipe	Receta secreta	# cook_scene.c
+Ingredients	Ingredientes	# cook_scene.c
+mystery fish	pez misterioso	# cook_scene.c
+cute fish	pez tierno	# cook_scene.c
+hellish fish	pez infernal	# cook_scene.c
+any fish	cualquier pez	# cook_scene.c
+Chop\x87Stir\x87%s	Picar\x87Revolver\x87%s	# cook_scene.c
+Tastes like %s!	¡Sabe a %s!	# cook_scene.c
+Makes %d-%d %s	Rinde %d-%d %s	# cook_scene.c
+Best: %s	Mejor: %s	# cook_scene.c
+That page is stuck together. Earn it first!	Esa página está pegada. ¡Gánatela primero!	# cook_scene.c
+Ooh, this one! Press A to cook, dearie!	¡Ooh, esta! ¡Pulsa A para cocinar, cielito!	# cook_scene.c
+Short a bit? I'll sell you the rest for %d H$.	¿Te falta algo? Te vendo el resto por %d H$.	# cook_scene.c
+This one needs fish, dear. Off to the Lake of Fire!	Esta lleva pescado, querido. ¡Al Lago de Fuego!	# cook_scene.c
+\x88\x87Page \x8BCook START Serve \x8CExit	\x88\x87Pág. \x8B Cocinar START Servir \x8C Salir	# cook_scene.c
+Need a hand? The missing bits are %d H$.	¿Una mano? Lo que falta cuesta %d H$.	# cook_scene.c
+\x8B Buy & cook  \x8C No	\x8B Comprar y cocinar  \x8C No	# cook_scene.c
+Not enough H$!  \x8C Back	¡H$ insuficientes!  \x8C Atrás	# cook_scene.c
+STEP %d	PASO %d	# cook_scene.c
+Too fast!	¡Muy rápido!	# cook_scene.c
+Faster!	¡Más rápido!	# cook_scene.c
+Yum! Just right!	¡Ñam! ¡Perfecto!	# cook_scene.c
+Flip %d of 3	Vuelta %d de 3	# cook_scene.c
+HOT!	¡CALIENTE!	# cook_scene.c
+\x8B Chop on the lines!	\x8B ¡Pica en las líneas!	# cook_scene.c
+Spin the D-pad clockwise!	¡Gira la cruceta a la derecha!	# cook_scene.c
+Hold \x8B for heat	Mantén \x8B para dar calor	# cook_scene.c
+\x8B Flip!	\x8B ¡Voltea!	# cook_scene.c
+Wait for it... \x8B (if you dare)	Espera... \x8B (si te atreves)	# cook_scene.c
+\x8B Take it out!	\x8B ¡Sácalo!	# cook_scene.c
+Again	Otra vez	# cook_scene.c
+Serve	Servir	# cook_scene.c
+Book	Libro	# cook_scene.c
+Uh oh...	Uy, uy...	# cook_scene.c
+Order up!	¡Orden lista!	# cook_scene.c
+\x88\x87 Choose  \x8B OK  \x8C Book	\x88\x87 Elegir  \x8B OK  \x8C Libro	# cook_scene.c
+The Counter  %d served	El Mostrador  %d servidos	# cook_scene.c
+The Counter	El Mostrador	# cook_scene.c
+No customers today... the island's a bit empty, dearie.	Hoy no hay clientes... la isla está algo vacía, cielito.	# cook_scene.c
+Serve what?	¿Servir qué?	# cook_scene.c
+Your bag has no food! Cook something first.	¡Tu bolsa no tiene comida! Cocina algo primero.	# cook_scene.c
+\x8B Serve  \x8C Back	\x8B Servir  \x8C Atrás	# cook_scene.c
+\x8B OK		# cook_scene.c
+\x88\x87 Customer  \x8B Serve  \x8C Back	\x88\x87 Cliente  \x8B Servir  \x8C Atrás	# cook_scene.c
+COOKING	COCINA	# cook_scene.c
+Tired!	¡Cansado!	# fish_scene.c
+SNAP! The line broke...	¡CRAC! Se rompió el sedal...	# fish_scene.c
+It swam off with your bait!	¡Se fue nadando con tu carnada!	# fish_scene.c
+Cooler x%d	Hielera x%d	# fish_scene.c
+Yeet!	¡Zas!	# fish_scene.c
+Bye bye!	¡Adiós!	# fish_scene.c
+PERFECT CAST!	¡LANZAMIENTO PERFECTO!	# fish_scene.c
+Too eager! It swam off.	¡Muy ansioso! Se fue nadando.	# fish_scene.c
+It stole the bait! Sneaky...	¡Se robó la carnada! Qué astuto...	# fish_scene.c
+Lake of Fire  %s	Lago de Fuego  %s	# fish_scene.c
+\x88Bait: none\x87	\x88Carnada: no\x87	# fish_scene.c
+MAX!	¡MÁX!	# fish_scene.c
+EASY!	¡FÁCIL!	# fish_scene.c
+ZONE	ZONA	# fish_scene.c
+REEL	CARRETE	# fish_scene.c
+Keep	Guardar	# fish_scene.c
+Release	Soltar	# fish_scene.c
+%d cm		# fish_scene.c
+RECORD!	¡RÉCORD!	# fish_scene.c
+Best %d cm	Mejor %d cm	# fish_scene.c
+Sell %d	Vender %d	# fish_scene.c
+Toss	Tirar	# fish_scene.c
+Fishdex	Pezdex	# fish_scene.c
+Cooler	Hielera	# fish_scene.c
+Rod	Caña	# fish_scene.c
+Leave the lake	Salir del lago	# fish_scene.c
+Tackle Box	Caja de Pesca	# fish_scene.c
+%d fish	%d peces	# fish_scene.c
+Fishdex  %d/%d	Pezdex  %d/%d	# fish_scene.c
+%s  Best %d.%02d m  x%d	%s  Mejor %d.%02d m  x%d	# fish_scene.c
+%s  Best %d cm  x%d	%s  Mejor %d cm  x%d	# fish_scene.c
+\x88\x87\x89\x8A Browse  \x8C Back	\x88\x87\x89\x8A Ver  \x8C Atrás	# fish_scene.c
+Cooler  %d fish	Hielera  %d peces	# fish_scene.c
+Empty! Keep a catch to cook it.	¡Vacía! Guarda una captura para cocinarla.	# fish_scene.c
+\x8B Sell 1  R Sell all  \x8C Back	\x8B Vender 1  R Vender todo  \x8C Atrás	# fish_scene.c
+\x8B Cast  L/R Bait  START Menu  \x8C Leave	\x8B Lanzar  L/R Carnada  START Menú  \x8C Salir	# fish_scene.c
+Hold \x8B to wind up, let go to cast! Top of the swing = PERFECT.	¡Mantén \x8B para cargar y suelta para lanzar! Punto máximo = PERFECTO.	# fish_scene.c
+Let go of \x8B to cast!	¡Suelta \x8B para lanzar!	# fish_scene.c
+Wait for the big splash...  \x8C Reel in	Espera el gran chapuzón...  \x8C Recoger	# fish_scene.c
+\x8B NOW! Hook it!	\x8B ¡YA! ¡Ánzuelalo!	# fish_scene.c
+Hold \x8B to reel - let go when it pulls!	Mantén \x8B para recoger. ¡Suelta cuando tire!	# fish_scene.c
+\x88\x87 Choose  \x8B OK	\x88\x87 Elegir  \x8B OK	# fish_scene.c
+\x8B Open  \x88\x87 Rod  \x8C Back	\x8B Abrir  \x88\x87 Caña  \x8C Atrás	# fish_scene.c
+FISHING	PESCA	# fish_scene.c
+Solo		# concert_scene.c
+Band	Banda	# concert_scene.c
+Choir	Coro	# concert_scene.c
+Risers	Gradas	# concert_scene.c
+Semicircle	Semicírculo	# concert_scene.c
+Sections	Secciones	# concert_scene.c
+Pyramid	Pirámide	# concert_scene.c
+Nobody is here to sing...	Nadie quiere cantar...	# concert_scene.c
+%s sang "%s" at the Concert Hall! %s	¡%s cantó "%s" en la Sala de Conciertos! %s	# concert_scene.c
+STUDIO	ESTUDIO	# concert_scene.c
+The Music Studio is still being built!	¡El Estudio de Música aún está en construcción!	# concert_scene.c
+Your song book is full!	¡Tu cancionero está lleno!	# concert_scene.c
+\x82 A new single tops the Hit Parade!	\x82 ¡Un nuevo sencillo lidera el Hit Parade!	# concert_scene.c
+Stop the show early?	¿Detener el show antes?	# concert_scene.c
+Already on the Hit Parade!	¡Ya está en el Hit Parade!	# concert_scene.c
+Dropped off the chart.	Salió de la lista.	# concert_scene.c
+That singer has left the island...	Ese cantante dejó la isla...	# concert_scene.c
+concert: scene scratch lost, closing		# concert_scene.c
+\x86 CONCERT HALL \x86	\x86 SALA DE CONCIERTOS \x86	# concert_scene.c
+Auto		# concert_scene.c
+%d voices	%d voces	# concert_scene.c
+Start the show!	¡Empezar el show!	# concert_scene.c
+Act	Acto	# concert_scene.c
+Genre	Género	# concert_scene.c
+Stage	Escenario	# concert_scene.c
+Size	Tamaño	# concert_scene.c
+Layout	Disposición	# concert_scene.c
+Song	Canción	# concert_scene.c
+\x8B Start  \x8C Leave  \x88\x87 Change	\x8B Iniciar  \x8C Salir  \x88\x87 Cambiar	# concert_scene.c
+\x82 TONIGHT ONLY \x82	\x82 SOLO ESTA NOCHE \x82	# concert_scene.c
+fresh from the Music Studio!	¡recién salido del Estudio de Música!	# concert_scene.c
+with %s!	¡con %s!	# concert_scene.c
+and a choir of %d voices!	¡y un coro de %d voces!	# concert_scene.c
+live and solo!	¡en vivo y en solitario!	# concert_scene.c
+a %s spectacular	un espectáculo de %s	# concert_scene.c
+\x8B Raise the curtain!	\x8B ¡Sube el telón!	# concert_scene.c
+\x8B on the beat = cheer!	¡\x8B al ritmo = ovación!	# concert_scene.c
+ENCORE!	¡OTRA!	# concert_scene.c
+Good!	¡Bien!	# concert_scene.c
+a fan	un fan	# concert_scene.c
+Hellvile Howler		# concert_scene.c
+Hillvile Herald		# concert_scene.c
+\x80 %s: happiness +%d	\x80 %s: felicidad +%d	# concert_scene.c
+\x86 The whole choir feels closer!	\x86 ¡Todo el coro se siente más unido!	# concert_scene.c
+\x86 The band is tighter than ever!	\x86 ¡La banda está más afinada que nunca!	# concert_scene.c
+\x82 Best combo: %d  Perfects: %d	\x82 Mejor combo: %d  Perfectos: %d	# concert_scene.c
+Save Single	Guardar Sencillo	# concert_scene.c
+Edit in Studio	Editar en Estudio	# concert_scene.c
+Saved!	¡Guardado!	# concert_scene.c
+\x82 HIT PARADE \x82	\x82 HIT PARADE \x82	# concert_scene.c
+No hits yet! Put on a concert	¡Aún no hay éxitos! Da un concierto	# concert_scene.c
+Your next hit goes here?	¿Aquí va tu próximo éxito?	# concert_scene.c
+\x8B Play  SELECT Remove  \x8C Back	\x8B Tocar  SELECT Quitar  \x8C Atrás	# concert_scene.c
+The crowd wants more!	¡El público quiere más!	# concert_scene.c
+\x8B Encore!  \x8C Take a bow	\x8B ¡Otra!  \x8C Saludar	# concert_scene.c
+Thank you!	¡Gracias!	# concert_scene.c
+CONCERT	CONCIERTO	# concert_scene.c
+Concert	Concierto	# concert_scene.c
+Sing their very own song on stage!	¡Canta su propia canción en el escenario!	# concert_scene.c
+Hit Parade		# concert_scene.c
+Replay the island's top singles	Repite los éxitos de la isla	# concert_scene.c
+Peek at a Dream	Espiar un Sueño	# concert_scene.c
+Tiptoe into a sleeper's dream...	Entra de puntillas en el sueño de alguien...	# concert_scene.c
+Already has a home	Ya tiene hogar	# creator.c
+Keep playing to find out!	¡Sigue jugando para descubrirlo!	# creator.c
+Goo	Baba	# creator.c
+Plating	Blindaje	# creator.c
+Bones	Huesos	# creator.c
+Glow	Brillo	# creator.c
+Hide	Cuero	# creator.c
+Fabric	Tela	# creator.c
+Wraps	Vendas	# creator.c
+Fuzz	Pelusa	# creator.c
+Fur	Pelaje	# creator.c
+Skin	Piel	# creator.c
+Lives in	Vive en	# creator.c
+(tap A!)	(¡toca A!)	# creator.c
+(none)	(nada)	# creator.c
+\x86 Play	\x86 Jugar	# creator.c
+Apply	Aplicar	# creator.c
+Every citizen needs a name!	¡Todo ciudadano necesita un nombre!	# creator.c
+What's your name?	¿Cómo te llamas?	# creator.c
+Name your citizen!	¡Ponle nombre a tu ciudadano!	# creator.c
+Nickname? (empty = none)	¿Apodo? (vacío = ninguno)	# creator.c
+No free homes in %s!	¡No hay casas libres en %s!	# creator.c
+%s got a makeover!	¡%s tiene nuevo look!	# creator.c
+Looking good, %s!	¡Qué guapo, %s!	# creator.c
+Discard your changes?	¿Descartar los cambios?	# creator.c
+Discard this citizen?	¿Descartar este ciudadano?	# creator.c
+Move in!	¡A mudarse!	# creator.c
+All done!	¡Todo listo!	# creator.c
+Randomise (hellish)	Aleatorio (infernal)	# creator.c
+Randomise all	Aleatorio total	# creator.c
+Randomise this tab	Aleatorio en pestaña	# creator.c
+Undo (%d)	Deshacer (%d)	# creator.c
+Redo (%d)	Rehacer (%d)	# creator.c
+Copy a look...	Copiar un look...	# creator.c
+Possessed peek: ON	Vista poseída: SÍ	# creator.c
+Possessed peek: off	Vista poseída: no	# creator.c
+Start over	Empezar de nuevo	# creator.c
+Reset changes	Borrar cambios	# creator.c
+Start this citizen over?	¿Rehacer este ciudadano?	# creator.c
+Undo all changes?	¿Deshacer todos los cambios?	# creator.c
+%s-chan		# creator.c
+Lil %s		# creator.c
+%sy		# creator.c
+%s-pie		# creator.c
+Sir %s		# creator.c
+%sbun		# creator.c
+Big %s		# creator.c
+Pal		# creator.c
+aeiouyAEIOUY		# creator.c
+That one is still locked!	¡Ese sigue bloqueado!	# creator.c
+creator: scene scratch lost, closing		# creator.c
+CREATOR	CREADOR	# creator.c
+Name me!	¡Ponme nombre!	# creator_draw.c
+POSSESSED!	¡POSEÍDO!	# creator_draw.c
+\x8B palette  %s	\x8B paleta  %s	# creator_draw.c
+\x8B type  \x88\x87 idea	\x8B tipo  \x88\x87 idea	# creator_draw.c
+\x8B toggle	\x8B alternar	# creator_draw.c
+Home sweet home!	¡Hogar, dulce hogar!	# creator_draw.c
+Their home stays put	Su casa se queda igual	# creator_draw.c
+\x88\x87 pick a side	\x88\x87 elige lado	# creator_draw.c
+\x8B hear catchphrase	\x8B oír frase	# creator_draw.c
+\x8B hair = fur colour	\x8B pelo = color de pelaje	# creator_draw.c
+\x88\x87 browse  \x8B apply   %d/%d	\x88\x87 ver  \x8B aplicar   %d/%d	# creator_draw.c
+\x88\x87 browse  \x8B apply	\x88\x87 ver  \x8B aplicar	# creator_draw.c
+Your cottage!	¡Tu cabaña!	# creator_draw.c
+Floor %d Room %d	Piso %d Cuarto %d	# creator_draw.c
+No free homes!	¡No hay casas libres!	# creator_draw.c
+%d free	%d libres	# creator_draw.c
+\x8B choose  \x8C back  L/R page	\x8B elegir  \x8C atrás  L/R pág.	# creator_draw.c
+\x8B paint!  \x8C back	\x8B ¡pintar!  \x8C atrás	# creator_draw.c
+Creator menu	Menú del creador	# creator_draw.c
+Copy a look	Copiar un look	# creator_draw.c
+Town	Pueblo	# creator_draw.c
+Nobody lives here yet! Try the premade citizens.	¡Aquí aún no vive nadie! Prueba los ciudadanos prediseñados.	# creator_draw.c
+\x8B copy  SEL/L/R source	\x8B copiar  SEL/L/R origen	# creator_draw.c
+%s, Floor %d Room %d	%s, Piso %d Cuarto %d	# creator_draw.c
+%s %dF Room %d	%s P%d Cuarto %d	# creator_draw.c
+Ready for HaHaland!	¡Listo para HaHaland!	# creator_draw.c
+Ta-da! Looking fabulous!	¡Tachán! ¡Te ves fabuloso!	# creator_draw.c
+\x8B Yay!	\x8B ¡Yupi!	# creator_draw.c
+\x8B Edit  L/R Tab  START Menu	\x8B Editar  L/R Pestaña  START Menú	# creator_draw.c
+\x88\x87 Turn  \x89 Walk  \x8A Spin  \x8B Tumble  \x8C Back	\x88\x87 Girar  \x89 Caminar  \x8A Dar vueltas  \x8B Voltereta  \x8C Atrás	# creator_draw.c
+\x88\x87 Turn \x89 Walk \x8B Roll \x8C Back	\x88\x87 Girar \x89 Andar \x8B Rodar \x8C Atrás	# creator_draw.c
+\x8B Choose  \x8C Back	\x8B Elegir  \x8C Atrás	# creator_draw.c
+\x8B Select  \x8C Close  (X/Y undo/redo)	\x8B Elegir  \x8C Cerrar  (X/Y deshacer/rehacer)	# creator_draw.c
+\x8B Select  \x8C Close	\x8B Elegir  \x8C Cerrar	# creator_draw.c
+SELECT Turn around  Square Undo  Triangle Redo	SELECT Girar  Cuadrado Deshacer  Triángulo Rehacer	# creator_draw.c
+SELECT Turn  SEL+\x8B Undo  SEL+\x8C Redo	SELECT Girar  SEL+\x8B Deshacer  SEL+\x8C Rehacer	# creator_draw.c
+\x88\x87 Adjust  L/R Tab  SELECT Turn  START Menu	\x88\x87 Ajustar  L/R Pestaña  SELECT Girar  START Menú	# creator_draw.c
+\x88\x87 Adjust  L/R Tab  START Menu	\x88\x87 Ajustar  L/R Pestaña  START Menú	# creator_draw.c
+\x8B Edit  \x88\x87 Change  L/R Tab  SELECT Turn  START Menu	\x8B Editar  \x88\x87 Cambiar  L/R Pestaña  SELECT Girar  START Menú	# creator_draw.c
+\x8B Edit \x88\x87 Change L/R Tab START Menu	\x8B Editar \x88\x87 Cambiar L/R Pestaña START Menú	# creator_draw.c
+Notes	Notas	# studio.c
+Order	Orden	# studio.c
+Lyrics	Letra	# studio.c
+File	Archivo	# studio.c
+Locked! Keep making music	¡Bloqueado! Sigue haciendo música	# studio.c
+Who sings?	¿Quién canta?	# studio.c
+Keep writing	Seguir escribiendo	# studio.c
+Leave (unsaved!)	Salir (¡sin guardar!)	# studio.c
+Leave the studio?	¿Salir del estudio?	# studio.c
+Undo! (%d left)	¡Deshacer! (quedan %d)	# studio.c
+Nothing to undo	Nada que deshacer	# studio.c
+Frame	Armazón	# workshop.c
+Barrel	Cañón	# workshop.c
+Core	Núcleo	# workshop.c
+Mod	Mod	# workshop.c
+Sight	Mira	# workshop.c
+Stock	Culata	# workshop.c
+Mag	Cargador	# workshop.c
+Under	Inferior	# workshop.c
+Charm	Amuleto	# workshop.c
+Accent	Acento	# workshop.c
+WELD!	¡SUELDA!	# workshop.c
+Sparks are just tiny fireworks!	¡Las chispas son fuegos artificiales chiquitos!	# workshop.c
+Cute or brutal, a weld's a weld.	Tierna o brutal, una soldadura es una soldadura.	# workshop.c
+Hold the bead steady, keep it hot.	Mantén firme el cordón, que siga caliente.	# workshop.c
+Every combo gets its own name!	¡Cada combinación tiene su propio nombre!	# workshop.c
+Scrap from demons? Bring it here.	¿Chatarra de demonios? Tráela aquí.	# workshop.c
+Back in Hellvile I welded gates.	En Hellvile yo soldaba portones.	# workshop.c
+Try a bubble core in a minigun...	Prueba un núcleo de burbujas en una minigun...	# workshop.c
+Quality 100? You'd be a legend.	¿Calidad 100? Serías una leyenda.	# workshop.c
+Locked paint	Pintura bloqueada	# workshop.c
+The armory is full (scrap one)	Arsenal lleno (desecha un arma)	# workshop.c
+Not enough materials	Materiales insuficientes	# workshop.c
+Rivet: "Here's a starter kit!"	Rivet: "¡Toma un kit de inicio!"	# workshop.c
+Welded: %s!	¡Soldado: %s!	# workshop.c
+Keep at least one weapon!	¡Conserva al menos un arma!	# workshop.c
+Scrapped for parts.	Desechada por piezas.	# workshop.c
+Weld this beauty?	¿Soldar esta belleza?	# workshop.c
+Equipped!	¡Equipado!	# workshop.c
+Design copied to the table.	Diseño copiado a la mesa.	# workshop.c
+Scrap it for half the parts?	¿Desecharla por la mitad de las piezas?	# workshop.c
+RNG	ALC	# workshop.c
+ACC	PRE	# workshop.c
+RLD	REC	# workshop.c
+CTRL		# workshop.c
+MOB	MOV	# workshop.c
+Materials:	Materiales:	# workshop.c
+\x9D LOCKED	\x9D BLOQUEADO	# workshop.c
+Q%d Lv%d%s%s		# workshop.c
+DPS %d  XP %d		# workshop.c
+SEL: furniture	SEL: muebles	# workshop.c
+SEL\x9A		# workshop.c
+\x88\x87Part \x8BWeld X:Random L/R:Tab \x8CExit	\x88\x87Pieza \x8B Soldar X:Azar L/R:Pest. \x8C Salir	# workshop.c
+\x8BEquip \x87\x80 \x88Copy X:Scrap \x8CExit	\x8B Equipar \x87\x80 \x88Copiar X:Desechar \x8C Salir	# workshop.c
+WORKSHOP	TALLER	# workshop.c
+weld game: scene scratch lost, cancelled		# weld_game.c
+HEAT	CALOR	# weld_game.c
+Pass %d/2  Streak %d	Pasada %d/2  Racha %d	# weld_game.c
+Rivet: Keep the bead on the seam with UP/DOWN. Feather \x8B to keep the heat in the green!	Rivet: Mantén el cordón en la costura con ARRIBA/ABAJO. ¡Dosifica \x8B para mantener el calor en verde!	# weld_game.c
+\x8B Start  \x8C Cancel	\x8B Iniciar  \x8C Cancelar	# weld_game.c
+NICE!	¡BIEN!	# weld_game.c
+Quality %d	Calidad %d	# weld_game.c
+Best streak %d	Mejor racha %d	# weld_game.c
+(practice)	(práctica)	# weld_game.c
+LEGENDARY WELD!	¡SOLDADURA LEGENDARIA!	# weld_game.c
+Rivet: "Not bad!"	Rivet: "¡Nada mal!"	# weld_game.c
+\x89\x8A Steer  hold \x8B Heat  \x8C Stop	\x89\x8A Guiar  mantén \x8B Calor  \x8C Parar	# weld_game.c
+WELD_GAME		# weld_game.c
+Snack Rain	Lluvia de Bocadillos	# dream.c
+The Giant Plush	El Peluche Gigante	# dream.c
+Falling Up	Caer Hacia Arriba	# dream.c
+Fear Parade	Desfile del Miedo	# dream.c
+Picnic	Picnic	# dream.c
+Starry Hobby	Pasatiempo Estelar	# dream.c
+Cloud Concert	Concierto de Nubes	# dream.c
+Wobbly Teeth	Dientes Flojos	# dream.c
+Hell University	Universidad Infernal	# dream.c
+The Big Spoon	La Cucharota	# dream.c
+Fluffy Wings	Alas Esponjosas	# dream.c
+Tea Under the Sea	Té Bajo el Mar	# dream.c
+The Mirror	El Espejo	# dream.c
+Giant Doomogachi	Doomogachi Gigante	# dream.c
+Endless Doors	Puertas Infinitas	# dream.c
+Demon Conga	Conga Demoníaca	# dream.c
+It's raining %f over HaHaland!	¡Llueve %f sobre HaHaland!	# dream.c
+...they're smiling. They have TEETH.	...sonríen. Tienen DIENTES.	# dream.c
+%C is a giant, squishy plush!	¡%C es un peluche gigante y blandito!	# dream.c
+The stitches are coming loose...	Las costuras se están soltando...	# dream.c
+%n is falling UP into a purple cloud.	%n cae HACIA ARRIBA a una nube morada.	# dream.c
+It smells like grape. It's breathing.	Huele a uva. Está respirando.	# dream.c
+A parade of %x in tiny party hats!	¡Un desfile de %x con diminutos gorros de fiesta!	# dream.c
+They're marching... toward %n.	Marchan... hacia %n.	# dream.c
+A %c picnic with %F! So cozy.	¡Un picnic %c con %F! Qué acogedor.	# dream.c
+The ants are imps. They want the %f.	Las hormigas son diablillos. Quieren %f.	# dream.c
+%n does %b among the stars.	%n hace %b entre las estrellas.	# dream.c
+The stars are watching. Closely.	Las estrellas miran. De cerca.	# dream.c
+%n sings %m to a flock of sheep!	¡%n canta %m a un rebaño de ovejas!	# dream.c
+The sheep have too many eyes.	Las ovejas tienen demasiados ojos.	# dream.c
+%n's teeth fall out... they're %f!	A %n se le caen los dientes... ¡son %f!	# dream.c
+...and they keep growing back.	...y siguen volviendo a crecer.	# dream.c
+Surprise exam at Hell University!	¡Examen sorpresa en la Universidad Infernal!	# dream.c
+Question 1: what is your TRUE name?	Pregunta 1: ¿cuál es tu nombre VERDADERO?	# dream.c
+%R chases %n with a giant spoon!	¡%R persigue a %n con una cuchara gigante!	# dream.c
+The spoon is getting closer. Hungry.	La cuchara se acerca. Con hambre.	# dream.c
+%n flies over HaHaland on fluffy wings!	¡%n vuela sobre HaHaland con alas esponjosas!	# dream.c
+The wings are bat wings now. Uh oh.	Ahora son alas de murciélago. Uy.	# dream.c
+An underwater tea party! Glub glub.	¡Una fiesta de té bajo el agua! Glub glub.	# dream.c
+The fish have teeth. And opinions.	Los peces tienen dientes. Y opiniones.	# dream.c
+%n waves at the mirror.	%n saluda al espejo.	# dream.c
+The reflection waves first.	El reflejo saluda primero.	# dream.c
+The Doomogachi is as big as a house!	¡El Doomogachi es grande como una casa!	# dream.c
+It's hungry. It's looking at %n.	Tiene hambre. Está mirando a %n.	# dream.c
+Endless doors... each smells of %h.	Puertas infinitas... cada una huele a %h.	# dream.c
+Something knocks. From the inside.	Algo llama. Desde dentro.	# dream.c
+The Wall opens! Demons do the conga!	¡Se abre el Muro! ¡Los demonios bailan la conga!	# dream.c
+%n is in the conga line. Forever.	%n está en la fila de conga. Para siempre.	# dream.c
+a teddy bear	un osito de peluche	# dream.c
+Your Teddy	Tu Osito	# dream.c
+A giant 		# dream.c
+Something	Algo	# dream.c
+ whispers: "MINE."	 susurra: "MÍO."	# dream.c
+ AAAH!		# dream.c
+Nobody is sleeping here.	Aquí no duerme nadie.	# dream.c
+You drift off... Zzz...	Te quedas dormido... Zzz...	# dream.c
+%s yawns and drifts off to sleep...	%s bosteza y se queda dormido...	# dream.c
+%s is fast asleep. Zzz...	%s duerme profundamente. Zzz...	# dream.c
+\x8B Peek into the dream  \x8C Tiptoe away	\x8B Espiar el sueño  \x8C Irse de puntillas	# dream.c
+NIGHTMARE!	¡PESADILLA!	# dream.c
+%s is having a nightmare!	¡%s tiene una pesadilla!	# dream.c
+Wake them up	Despertar	# dream.c
+Let them sleep	Dejar dormir	# dream.c
+A hug and a glass of milk.	Un abrazo y un vaso de leche.	# dream.c
+They'll sleep it off... probably.	Se les pasará durmiendo... probablemente.	# dream.c
+%s smiles in their sleep. Sweet dreams!	%s sonríe dormido. ¡Dulces sueños!	# dream.c
+%s wakes up with a gasp! You give them a big hug.	¡%s despierta sobresaltado! Le das un gran abrazo.	# dream.c
+%s tosses and turns... the nightmare sinks in. (Corruption +6)	%s da vueltas... la pesadilla se le mete dentro. (Corrupción +6)	# dream.c
+The bed is empty...	La cama está vacía...	# dream.c
+You wake up. The room is very quiet.	Despiertas. La habitación está muy silenciosa.	# dream.c
+\x8B Wake up	\x8B Despertar	# dream.c
+DREAM	SUEÑO	# dream.c

@@ -433,67 +433,67 @@ LIB_ITEMS		# lib_items.c
 the Pocket Devil	el Diablo de Bolsillo	# lib_bestiary.c
 Fireballs, hug-claws	Bolas de fuego, garras-abrazo	# lib_bestiary.c
 Vape Cellar; everywhere after the Breach	Sótano Vape; todas partes tras la Brecha	# lib_bestiary.c
-Hatched from a cinder in Vapula's ashtray, an Impling is the size of a loaf of bread and twice as crusty. It giggles before it throws a fireball. It giggles after. Some say it giggles in its sleep, in your attic, right above your bed.	Nace de una brasa en el cenicero de Vapula. Se ríe antes y después de lanzar fuego. Incluso dormido.	# lib_bestiary.c
+Hatched from a cinder in Vapula's ashtray, an Impling is the size of a loaf of bread and twice as crusty. It giggles before it throws a fireball. It giggles after. Some say it giggles in its sleep, in your attic, right above your bed.	Nace de una brasa en el cenicero de Vapula, mide como una hogaza de pan y es el doble de crujiente. Se ríe antes de lanzar una bola de fuego. Y después. Dicen que se ríe dormido, en tu ático, justo sobre tu cama.	# lib_bestiary.c
 Tummy rubs, bubbles, and being called "little guy".	Caricias en la panza, burbujas y que le digan "chiquito".	# lib_bestiary.c
 Any shotgun. Honestly, a firm shove.	Cualquier escopeta. Y sinceramente, un buen empujón.	# lib_bestiary.c
 Brimstone Blast, flavoured	Explosión de azufre, con sabor	# lib_bestiary.c
 Vape bolts, chilling drift	Rayos vape, deriva helada	# lib_bestiary.c
 Cloud Nine Vapor's back room, foggy alleys	Trastienda de Cloud Nine Vapor, callejones con niebla	# lib_bestiary.c
-A discarded flavour cartridge that grew a grudge. It drifts through walls trailing the smell of grape candy and burnt hair. If one whispers your name, do not answer: it is collecting voices for its choir.	Cartucho de sabor desechado con rencor. Atraviesa muros. Si susurra tu nombre, no respondas.	# lib_bestiary.c
+A discarded flavour cartridge that grew a grudge. It drifts through walls trailing the smell of grape candy and burnt hair. If one whispers your name, do not answer: it is collecting voices for its choir.	Un cartucho de sabor desechado que guardó rencor. Atraviesa paredes dejando olor a caramelo de uva y pelo quemado. Si susurra tu nombre, no respondas: está juntando voces para su coro.	# lib_bestiary.c
 Fresh air, a big friendly fan, a spritz of holy water.	Aire fresco, un gran ventilador amigable, un rocío de agua bendita.	# lib_bestiary.c
 Plasma. It hates being split into little wisps.	Plasma. Odia dividirse en volutas.	# lib_bestiary.c
 the Floating Grudge	el Rencor Flotante	# lib_bestiary.c
 Vape bolts, one big chomp	Rayos vape, un gran mordisco	# lib_bestiary.c
 High ceilings, open skies, your peripheral vision	Techos altos, cielos abiertos, tu visión periférica	# lib_bestiary.c
-One enormous eye inside a ball of fluff, like a dandelion that hates you. It is slow, it is patient, and it remembers every face it has ever bitten. The kids call it Mister Puffball. It lets them. For now.	Un ojo enorme en una bola de pelusa. Lento, paciente. Recuerda cada cara que mordió.	# lib_bestiary.c
+One enormous eye inside a ball of fluff, like a dandelion that hates you. It is slow, it is patient, and it remembers every face it has ever bitten. The kids call it Mister Puffball. It lets them. For now.	Un ojo enorme dentro de una bola de pelusa, como un diente de león que te odia. Es lento, paciente y recuerda cada cara que ha mordido. Los niños lo llaman Señor Pompón. Se deja. Por ahora.	# lib_bestiary.c
 Glitter in the eye. It blinks for ages.	Brillantina en el ojo. Parpadea una eternidad.	# lib_bestiary.c
 Rockets. Pop goes the puffball.	Cohetes. Pop y adiós pelusón.	# lib_bestiary.c
 Too Fast, Too Floofy	Muy Veloz, Muy Peludo	# lib_bestiary.c
 Sprint, lunge, chomp	Carrera, salto, mordisco	# lib_bestiary.c
 Hellvile's dog park, anywhere with a ball	Parque canino de Hellvile, donde haya una pelota	# lib_bestiary.c
-A good boy from a very bad place. It fetches anything - sticks, balls, the femurs of the unwary - and brings them back wagging. Its bark sounds like a smoke alarm. So does its bite, but wetter.	Un buen chico de un lugar muy malo. Trae palos, pelotas y fémures. Su mordida suena a alarma.	# lib_bestiary.c
+A good boy from a very bad place. It fetches anything - sticks, balls, the femurs of the unwary - and brings them back wagging. Its bark sounds like a smoke alarm. So does its bite, but wetter.	Un buen chico de un lugar muy malo. Trae lo que sea - palos, pelotas, los fémures de los distraídos - y vuelve moviendo la cola. Su ladrido suena a alarma de humo. Su mordida también, pero más mojada.	# lib_bestiary.c
 Belly rubs, squeaky toys, "who's a good boy?"	Caricias en la panza, juguetes chillones, "¿quién es buen chico?"	# lib_bestiary.c
 A chainsaw. It will still try to fetch it.	Una motosierra. Igual intentará traerla.	# lib_bestiary.c
 the Rehearsed Dodger	el Esquivador Ensayado	# lib_bestiary.c
 Homing orbs, cartwheels	Orbes guiados, volteretas	# lib_bestiary.c
 The circus of the damned, haunted stages	El circo de los condenados, escenarios embrujados	# lib_bestiary.c
-A skeleton who joined the circus of the damned and never stopped practising. It juggles homing orbs, dodges on cue and bows to applause that isn't there. Its jokes are terrible. It laughs anyway, with no lungs, which is worse.	Esqueleto de circo que nunca dejó de practicar. Esquiva a la orden y se ríe sin pulmones.	# lib_bestiary.c
+A skeleton who joined the circus of the damned and never stopped practising. It juggles homing orbs, dodges on cue and bows to applause that isn't there. Its jokes are terrible. It laughs anyway, with no lungs, which is worse.	Un esqueleto que se unió al circo de los condenados y nunca dejó de practicar. Hace malabares con orbes teledirigidos, esquiva a la orden y saluda a aplausos que no existen. Sus chistes son terribles. Se ríe igual, sin pulmones, y eso es peor.	# lib_bestiary.c
 Applause. It stops mid-fight to take a bow.	Aplausos. Se detiene a mitad de pelea para hacer reverencia.	# lib_bestiary.c
 Hitscan. It can't dodge what it can't see coming.	Impacto instantáneo. No esquiva lo que no ve venir.	# lib_bestiary.c
 the Gurgling Gourmet	el Gourmet Gorgoteante	# lib_bestiary.c
 Arcing slime globs	Globos de baba en arco	# lib_bestiary.c
 Bins, sewers, the cafe's back door	Botes, cloacas, la puerta trasera del café	# lib_bestiary.c
-Eats everything: bins, benches, a bicycle once. Then it burps it back at you as a warm green glob. Squishy, smelly and weirdly persistent, like a cold. Never let it near Brimstone Bites. It has a reservation.	Se come todo y lo eructa como baba verde tibia. Que no se acerque a Brimstone Bites.	# lib_bestiary.c
+Eats everything: bins, benches, a bicycle once. Then it burps it back at you as a warm green glob. Squishy, smelly and weirdly persistent, like a cold. Never let it near Brimstone Bites. It has a reservation.	Se come todo: cubos de basura, bancas, una bicicleta una vez. Luego te lo eructa en una baba verde tibia. Blando, apestoso y raramente persistente, como un resfriado. Nunca lo dejes cerca de Brimstone Bites. Tiene reservación.	# lib_bestiary.c
 Breath mints. It is very self-conscious.	Mentas para el aliento. Es muy inseguro.	# lib_bestiary.c
 Flamethrower. It crisps up nicely.	Lanzallamas. Queda crujiente.	# lib_bestiary.c
 Wakes Up Grumpy	Despierta Gruñón	# lib_bestiary.c
 Dive bombs, stone claws	Picada, garras de piedra	# lib_bestiary.c
 Church roofs, clock towers, high ledges	Techos de iglesia, torres de reloj, cornisas altas	# lib_bestiary.c
-A stone bat that naps on church roofs and wakes up furious about it. It dives out of the sky claws-first with its morning breath on. The cherubs once tried to keep one as a pet. We don't talk about the cherubs any more.	Murciélago de piedra que duerme en techos y despierta furioso. Cae con garras y mal aliento.	# lib_bestiary.c
+A stone bat that naps on church roofs and wakes up furious about it. It dives out of the sky claws-first with its morning breath on. The cherubs once tried to keep one as a pet. We don't talk about the cherubs any more.	Un murciélago de piedra que duerme la siesta en techos de iglesia y despierta furioso por eso. Cae del cielo con las garras por delante y el aliento mañanero puesto. Los querubines intentaron tener uno de mascota. Ya no hablamos de los querubines.	# lib_bestiary.c
 A warm blanket and a lullaby.	Una manta tibia y una canción de cuna.	# lib_bestiary.c
 Sledgehammer. It is basically gravel already.	Mazo. Ya casi es grava.	# lib_bestiary.c
 Oink.exe		# lib_bestiary.c
 Burst fire from a distance	Ráfagas a distancia	# lib_bestiary.c
 Hellvile's factories, the Spire's walkways	Fábricas de Hellvile, pasarelas de la Aguja	# lib_bestiary.c
-Half pig, half arm cannon, all attitude. It keeps its distance, fires in bursts and squeals in binary. Its curly little tail is reinforced titanium. Its eyes glow red when it is happy, which is never.	Mitad cerdo, mitad cañón. Dispara en ráfagas y chilla en binario. Nunca está feliz.	# lib_bestiary.c
+Half pig, half arm cannon, all attitude. It keeps its distance, fires in bursts and squeals in binary. Its curly little tail is reinforced titanium. Its eyes glow red when it is happy, which is never.	Mitad cerdo, mitad cañón, todo actitud. Mantiene la distancia, dispara en ráfagas y chilla en binario. Su colita rizada es de titanio reforzado. Sus ojos brillan en rojo cuando está feliz, o sea nunca.	# lib_bestiary.c
 Truffles. It cannot resist a truffle.	Trufas. No resiste una trufa.	# lib_bestiary.c
 A railgun right through the circuits.	Un cañón de riel directo a los circuitos.	# lib_bestiary.c
 Never Skips Leg Day	Nunca Falta al Gym	# lib_bestiary.c
 Haymakers, acid spit	Puñetazos, escupe ácido	# lib_bestiary.c
 Hell Breach arenas, anywhere with a door to kick	Arenas de la Brecha, donde haya puerta que patear	# lib_bestiary.c
-A wall of furious muscle that punches first and spits acid second. It cannot read, so it eats books instead; this library has banned it twice. When it roars, your whole spine hears it. Deep down it just wants a hug. A very, very strong hug.	Un muro de músculo furioso. Golpea y escupe ácido. En el fondo solo quiere un abrazo.	# lib_bestiary.c
+A wall of furious muscle that punches first and spits acid second. It cannot read, so it eats books instead; this library has banned it twice. When it roars, your whole spine hears it. Deep down it just wants a hug. A very, very strong hug.	Un muro de músculo furioso que golpea primero y escupe ácido después. No sabe leer, así que se come los libros; esta biblioteca lo ha vetado dos veces. Cuando ruge, toda tu columna lo oye. En el fondo solo quiere un abrazo. Un abrazo muy, muy fuerte.	# lib_bestiary.c
 A plush the size of a car. It will hug it for hours.	Un peluche del tamaño de un auto. Lo abrazará por horas.	# lib_bestiary.c
 The BFG. Everything else just makes it angrier.	La BFG. Todo lo demás solo lo enoja más.	# lib_bestiary.c
 Eight Legs, One Cloud	Ocho Patas, Una Nube	# lib_bestiary.c
 Vape spray volleys, scuttling	Ráfagas de vapor, corretea	# lib_bestiary.c
 Lamp posts, rafters, the underside of bridges	Faroles, vigas, bajo los puentes	# lib_bestiary.c
-It spins webs of solid vapour between lamp posts and waits upside down, humming. Eight legs, one fluffy cloud of a body and far too many eyes, all blinking at different times. Never walk under a lamp that smells of grape.	Teje telarañas de vapor entre faroles y espera boca abajo. Ocho patas, demasiados ojos.	# lib_bestiary.c
+It spins webs of solid vapour between lamp posts and waits upside down, humming. Eight legs, one fluffy cloud of a body and far too many eyes, all blinking at different times. Never walk under a lamp that smells of grape.	Teje telarañas de vapor sólido entre los faroles y espera boca abajo, tarareando. Ocho patas, un cuerpo de nube esponjosa y demasiados ojos, todos parpadeando a destiempo. Nunca camines bajo un farol que huela a uva.	# lib_bestiary.c
 Yarn. It cannot stop knitting once it starts.	Estambre. No puede parar de tejer una vez que empieza.	# lib_bestiary.c
 Auto shotgun. Leg day - for you.	Escopeta automática. Día de piernas, para ti.	# lib_bestiary.c
 Duke of the Ninth Cloud	Duque de la Novena Nube	# lib_bestiary.c
 Smoke rings, vape storms, minions	Aros de humo, tormentas vape, secuaces	# lib_bestiary.c
 Cloud Nine Spire, the top floor, the throne of fog	Aguja de Cloud Nine, el último piso, el trono de niebla	# lib_bestiary.c
-Ruler of the vape-gate, tyrant of Hellvile and inventor of Unholy Grape: three phases of vapour and spite wearing a crown of smoke rings. He kept five hundred citizens prisoner to blow his clouds. He believes this was a good business plan. It was not.	Tirano de Hellvile e inventor de la Uva Impía. Tres fases de vapor y rencor con corona de humo.	# lib_bestiary.c
+Ruler of the vape-gate, tyrant of Hellvile and inventor of Unholy Grape: three phases of vapour and spite wearing a crown of smoke rings. He kept five hundred citizens prisoner to blow his clouds. He believes this was a good business plan. It was not.	Soberano de la puerta del vape, tirano de Hellvile e inventor de la Uva Impía: tres fases de vapor y rencor con una corona de aros de humo. Tuvo prisioneros a quinientos vecinos para soplar sus nubes. Cree que fue un buen plan de negocios. No lo fue.	# lib_bestiary.c
 Being ignored. He simply cannot stand it.	Que lo ignoren. No lo soporta.	# lib_bestiary.c
 Everything you've got. Three times.	Todo lo que tengas. Tres veces.	# lib_bestiary.c
 All Demons	Demonios	# lib_bestiary.c
@@ -516,7 +516,7 @@ Threat  ?????		# lib_bestiary.c
 SLAIN	ABATIDO	# lib_bestiary.c
 AT LARGE	SUELTO	# lib_bestiary.c
 No.%02d		# lib_bestiary.c
-Not yet sighted. Spot one in a Hell Breach or in the Arena and this page will fill itself in. (Quillby's quill is enchanted.)	Aún sin avistar. Encuentra uno en una Brecha o la Arena y se llenará sola.	# lib_bestiary.c
+Not yet sighted. Spot one in a Hell Breach or in the Arena and this page will fill itself in. (Quillby's quill is enchanted.)	Aún sin avistar. Encuentra uno en una Brecha infernal o en la Arena y esta página se llenará sola. (La pluma de Quillby está encantada.)	# lib_bestiary.c
 Rumoured: %s	Se rumora: %s	# lib_bestiary.c
 Lore	Historia	# lib_bestiary.c
 Weak	Débil	# lib_bestiary.c

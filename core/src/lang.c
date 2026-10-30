@@ -17,6 +17,8 @@ extern const uint32_t doomo_lang_help_es[] __attribute__((weak));
 /* catalogs, jobs, unlock hints...: core/gen/lang_cat_es.c, not linked on the PS1 */
 extern const uint32_t doomo_lang_cat_es[] __attribute__((weak));
 
+extern const uint32_t doomo_lang_ui2_es[] __attribute__((weak));
+
 __attribute__((weak)) const uint32_t *plat_lang_ui(void) { return doomo_lang_ui_es; }
 __attribute__((weak)) void plat_lang_changed(int lang) { (void)lang; }
 
@@ -63,6 +65,7 @@ const char *lang_tr(const char *s)
     r = find(plat_lang_ui(), s, h);
     if (!r) r = find(doomo_lang_help_es, s, h);
     if (!r) r = find(doomo_lang_cat_es, s, h);
+    if (!r) r = find(doomo_lang_ui2_es, s, h);
     return r ? r : s;
 }
 
