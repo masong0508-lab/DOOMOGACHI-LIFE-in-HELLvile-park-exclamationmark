@@ -545,22 +545,18 @@ uint32_t sim_news_save_size(void)
 
 uint32_t sim_news_save(uint8_t *dst, uint32_t cap)
 {
-    uint32_t sz = sim_news_save_size(), o = 4;
+    uint32_t sz = sim_news_save_size(), o = 4, w;
     int i, k;
     if (!dst || cap < sz) return 0;
     dst[0] = news_s.n;
     dst[1] = NEWS_FREE;
     dst[2] = dst[3] = 0;
-    for (i = 0; i < news_s.n; i++, o += 8) {
+    for (i = 0; i < news_s.n; i++) {               /* explicit LE (save.h) */
         const DoomoNewsRec *r = &news_s.rec[i];
-        dst[o] = r->tmpl;
-        dst[o + 1] = r->arg8;
-        dst[o + 2] = (uint8_t)r->day;
-        dst[o + 3] = (uint8_t)(r->day >> 8);
-        dst[o + 4] = (uint8_t)r->v;
-        dst[o + 5] = (uint8_t)(r->v >> 8);
-        dst[o + 6] = (uint8_t)(r->v >> 16);
-        dst[o + 7] = (uint8_t)(r->v >> 24);
+        dst[o++] = r->tmpl;
+        dst[o++] = r->arg8;
+        for (w = r->day, k = 0; k < 2; k++, w >>= 8) dst[o++] = (uint8_t)w;
+        for (w = r->v, k = 0; k < 4; k++, w >>= 8) dst[o++] = (uint8_t)w;
     }
     for (k = 0; k < NEWS_FREE; k++) {
         uint32_t len = (uint32_t)strlen(news_s.pool[k]);
@@ -573,34 +569,23 @@ uint32_t sim_news_save(uint8_t *dst, uint32_t cap)
 
 int sim_news_load(const uint8_t *src, uint32_t len)
 {
-    uint32_t o = 4;
-    int i, k, n, nfree;
+    uint32_t o = 4, l;
+    int i, k, n;
     sim_news_clear();
-    if (!src || len < 4) return 0;
-    n = src[0];
-    nfree = src[1];
-    if (n > NEWS_MAX || o + 8u * (uint32_t)n > len) return 0;
-    for (i = 0; i < n; i++, o += 8) {
-        DoomoNewsRec r;
-        r.tmpl = src[o];
-        r.arg8 = src[o + 1];
-        r.day = (uint16_t)(src[o + 2] | (src[o + 3] << 8));
-        r.v = (uint32_t)src[o + 4] | ((uint32_t)src[o + 5] << 8) |
-              ((uint32_t)src[o + 6] << 16) | ((uint32_t)src[o + 7] << 24);
-        if (r.tmpl >= NT_COUNT || (r.tmpl == NT_FREE && r.arg8 >= NEWS_FREE)) continue;
-        news_s.rec[news_s.n++] = r;       /* an unknown template is dropped */
+    if (!src || len < 4 || src[0] > NEWS_MAX || 4u + 8u * src[0] > len) return 0;
+    for (n = src[0], i = 0; i < n; i++, o += 8) {
+        DoomoNewsRec *r = &news_s.rec[news_s.n];
+        r->tmpl = src[o];
+        r->arg8 = src[o + 1];
+        r->day = (uint16_t)(src[o + 2] | (src[o + 3] << 8));
+        for (r->v = 0, k = 3; k >= 0; k--) r->v = (r->v << 8) | src[o + 4 + k];
+        if (r->tmpl < NT_COUNT && (r->tmpl != NT_FREE || r->arg8 < NEWS_FREE))
+            news_s.n++;                   /* an unknown template is dropped */
     }
-    for (k = 0; k < nfree; k++) {
-        uint32_t l;
-        if (o >= len) break;
+    for (k = 0; k < src[1] && o < len; k++, o += l) {
         l = src[o++];
         if (o + l > len) { sim_news_clear(); return 0; }
-        if (k < NEWS_FREE) {
-            uint32_t c = l < NEWS_LEN - 1 ? l : NEWS_LEN - 1;
-            memcpy(news_s.pool[k], src + o, c);
-            news_s.pool[k][c] = 0;
-        }
-        o += l;
+        if (k < NEWS_FREE) memcpy(news_s.pool[k], src + o, l < NEWS_LEN - 1 ? l : NEWS_LEN - 1);
     }
     news_s.welcomed = 0;                  /* "Welcome back!" after a load */
     return 1;
