@@ -67,8 +67,67 @@ int  sim_problem_for(int resident_id);   /* index or -1 */
 
 /* News feed (newest first). */
 int  sim_news_count(void);
+/* The headline, formatted on demand from its record into one of two
+ * rotating 64 B buffers: a pointer stays valid across one more call. */
 const char *sim_news(int index);
+/* Free text (a story line, a concert, a minigame record): copied into a
+ * small pool (NEWS_FREE lines). When the pool is full the oldest headline
+ * holding a pool line leaves the feed. */
 void sim_news_push(const char *msg);
+
+/* --- LS1: news as records (LIFESIM_PLAN LS1) ----------------------------
+ * A headline is an 8 B record formatted at draw time from a const template
+ * table (sim_events.c), so the feed costs 32 x 8 B instead of 32 x 64 B and
+ * is saved in the 'LIFE' chunk (life.h). Names are read when the line is
+ * drawn: a renamed resident's old headlines show the new name. */
+#define NEWS_FREE 2                  /* free-text lines kept at once     */
+#define NEWS_NONE 0x3FFu             /* an empty 10-bit id slot          */
+typedef struct DoomoNewsRec {
+    uint8_t  tmpl;                   /* NT_*                             */
+    uint8_t  arg8;                   /* a table index (venue, food, ...) */
+    uint16_t day;                    /* the game day it was posted       */
+    uint32_t v;                      /* three 10-bit ids, or a number    */
+} DoomoNewsRec;
+#define NEWS_IDS(a, b, c) ((uint32_t)((unsigned)(a) & 0x3FFu) | \
+                           ((uint32_t)((unsigned)(b) & 0x3FFu) << 10) | \
+                           ((uint32_t)((unsigned)(c) & 0x3FFu) << 20))
+/* Template ids (the record's tmpl). Add-only: saved records keep them. */
+enum {
+    NT_FREE,                         /* arg8 = pool line                 */
+    NT_WELCOME_EMPTY, NT_WELCOME_NEW, NT_WELCOME_BACK,
+    NT_BIRTHDAY_HELL, NT_BIRTHDAY_HILL,
+    NT_POSSESSED, NT_FUZZ_CHASED, NT_STRANGER_CHASED,
+    NT_EXORCISM_OK, NT_EXORCISM_LOST, NT_EXORCISM_FAIL,
+    NT_VANISHED, NT_LAID_TO_REST, NT_TRAGEDY, NT_GHOST,
+    NT_DATING_GRUMBLE, NT_DATING_CROSS, NT_DATING,
+    NT_HEARTBREAK,
+    NT_WED_GRUMBLE, NT_WED_CROSS, NT_WED, NT_PROPOSAL_FIZZLED,
+    NT_SPLIT_MARRIED, NT_BROKE_UP, NT_ITS_OVER,
+    NT_BABY_HELL, NT_BABY_HILL,
+    NT_CRUSH_RUMOUR, NT_BIG_FIGHT, NT_REKINDLED, NT_NEMESES, NT_RIVALS,
+    NT_BFF_CROSS, NT_BFF, NT_FRIENDS_CROSS,
+    NT_DEMONS, NT_RESCUE,
+    NT_NIGHT0, NT_NIGHT1, NT_NIGHT2, NT_NIGHT3,
+    NT_WEATHER0, NT_WEATHER1, NT_WEATHER2, NT_WEATHER3, NT_WEATHER4,
+    NT_ODD0, NT_ODD1, NT_ODD2, NT_ODD3, NT_ODD4, NT_ODD5, NT_ODD6, NT_ODD7,
+    NT_MENU, NT_CONCERT_NIGHT, NT_PIE, NT_SAYS, NT_CLASS, NT_SHARING,
+    NT_STARGAZING, NT_GIGGLING,
+    NT_GOOD_MORNING,
+    NT_WHEEL_SPOOKED,
+    NT_COUNT
+};
+/* Post a headline: template, table index, NEWS_IDS(...) or a number. */
+void sim_news_rec(int tmpl, int arg8, uint32_t v);
+/* The record behind sim_news(index), or NULL. */
+const DoomoNewsRec *sim_news_record(int index);
+/* Format a record (sim_news does this; tests compare). */
+void sim_news_format(const DoomoNewsRec *r, char *out, int cap);
+/* The feed's 'LIFE' section (life.c): exact size, write, read, clear. */
+uint32_t sim_news_save_size(void);
+uint32_t sim_news_save(uint8_t *dst, uint32_t cap);
+int  sim_news_load(const uint8_t *src, uint32_t len);
+void sim_news_clear(void);
+/* --- end LS1 --- */
 
 /* Possession / death rules. */
 void sim_corrupt(int id, int amount);    /* possession at 100              */

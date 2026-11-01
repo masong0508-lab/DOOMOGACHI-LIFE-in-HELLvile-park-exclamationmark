@@ -11,7 +11,6 @@
  * sim writes headlines for its events, and adds charming filler from
  * templates so the ticker always has something to say.
  */
-#include <stdarg.h>
 #include "sim_int.h"
 
 const char *const doomo_problem_names[PROB_COUNT] = {
@@ -29,9 +28,7 @@ const char *sim_last_reaction(void) { return g_reaction; }
 void sim_events_reset(void)
 {
     int i;
-    sim_s.nprob = 0;
-    sim_s.news_head = 0;
-    sim_s.news_n = 0;
+    sim_s.nprob = 0;                     /* (the news feed persists: LS1) */
     for (i = 0; i < DOOMO_MAX_RESIDENTS; i++)
         if (doomo_town.res[i].status == RES_POSSESSED)
             sim_problem_raise(i, PROB_POSSESSED, sim_possessor_of(i), 0);
@@ -314,41 +311,299 @@ void sim_check_problems(int id, DoomoResident *r)
 }
 
 /* ---------------------------------------------------------------------- */
-/* news                                                                     */
+/* news (LS1: records formatted at draw time)                               */
+/* A headline is a DoomoNewsRec: a template id, a table index (arg8) and
+ * three 10-bit resident ids or one number (v). The template's `k` string
+ * says what each %s takes, in order:
+ *   a b c  name of id slot 0 / 1 / 2       p  the possessor name of slot 1
+ *   n      v as a number                   V  venue name (arg8 = ACT_*)
+ *   F      food (arg8)    M  music genre (arg8)    K  catchphrase (arg8)
+ *   H      hobby (arg8)   W  weekday (arg8)        D  death cause (arg8)
+ * Only "%s" (and "%%") appear in the formats. */
+typedef struct NewsTmpl { const char *fmt; const char *k; } NewsTmpl;
+
+static const NewsTmpl news_tmpl[NT_COUNT] = {
+    [NT_FREE]            = { "%s", "" },
+    [NT_WELCOME_EMPTY]   = { "Welcome to your island! It's quiet... make some citizens!", "" },
+    [NT_WELCOME_NEW]     = { "Welcome to Hellvile Park! Population: %s.", "n" },
+    [NT_WELCOME_BACK]    = { "Welcome back! Day %s in Hellvile Park.", "n" },
+    [NT_BIRTHDAY_HELL]   = { "Happy birthday, %s! Cake at Cloud Nine tonight!", "a" },
+    [NT_BIRTHDAY_HILL]   = { "Happy birthday, %s! Cake at Brimstone Bites tonight!", "a" },
+    [NT_POSSESSED]       = { "Uh oh! %s is acting strange... POSSESSED by %s!", "ap" },
+    [NT_FUZZ_CHASED]     = { "Father Fuzz chased %s out of %s! Phew!", "pa" },
+    [NT_STRANGER_CHASED] = { "A kind stranger chased %s out of %s! Phew!", "pa" },
+    [NT_EXORCISM_OK]     = { "St. Cuddles rejoices! %s is free again!", "a" },
+    [NT_EXORCISM_LOST]   = { "The exorcisms have failed... %s's soul is lost.", "a" },
+    [NT_EXORCISM_FAIL]   = { "Exorcism failed! %s still has a demon inside.", "a" },
+    [NT_VANISHED]        = { "%s has... vanished. Folks whisper about a MONSTER.", "a" },
+    [NT_LAID_TO_REST]    = { "Farewell, %s. Laid to rest under the willow.", "a" },
+    [NT_TRAGEDY]         = { "Tragedy: %s is gone (%s). Flowers at the cemetery.", "aD" },
+    [NT_GHOST]           = { "Boo! %s is back... as a friendly GHOST!", "a" },
+    [NT_DATING_GRUMBLE]  = { "%s is dating Grumbleguts. Gate's shut. Don't knock.", "a" },
+    [NT_DATING_CROSS]    = { "Love over the wall! %s and %s are dating!", "ab" },
+    [NT_DATING]          = { "%s confessed to %s... and it's a YES! New couple!", "ab" },
+    [NT_HEARTBREAK]      = { "Heartbreak at %s: %s turned %s down.", "Vab" },
+    [NT_WED_GRUMBLE]     = { "%s wed Grumbleguts! Suite closed till Monday.", "a" },
+    [NT_WED_CROSS]       = { "WEDDING BELLS across the wall: %s + %s!", "ab" },
+    [NT_WED]             = { "%s proposed to %s - and they said YES! Wedding!", "ab" },
+    [NT_PROPOSAL_FIZZLED]= { "Ouch: %s's proposal to %s fizzled.", "ab" },
+    [NT_SPLIT_MARRIED]   = { "%s and %s have split up. The cake is being returned.", "ab" },
+    [NT_BROKE_UP]        = { "%s and %s broke up. Ice cream sales soar.", "ab" },
+    [NT_ITS_OVER]        = { "It's over for %s and %s. Hugs needed.", "ab" },
+    [NT_BABY_HELL]       = { "A hellspawn! %s and %s welcome little %s!", "abc" },
+    [NT_BABY_HILL]       = { "An angel baby! %s and %s welcome little %s!", "abc" },
+    [NT_CRUSH_RUMOUR]    = { "Rumour has it someone has a crush on %s...", "a" },
+    [NT_BIG_FIGHT]       = { "Trouble in paradise? %s and %s had a big fight.", "ab" },
+    [NT_REKINDLED]       = { "Back together! %s and %s rekindled their romance.", "ab" },
+    [NT_NEMESES]         = { "%s and %s are now sworn NEMESES!", "ab" },
+    [NT_RIVALS]          = { "Drama at %s! %s and %s are rivals now.", "Vab" },
+    [NT_BFF_CROSS]       = { "%s and %s: best friends from both sides of the wall!", "ab" },
+    [NT_BFF]             = { "%s and %s are now BEST FRIENDS!", "ab" },
+    [NT_FRIENDS_CROSS]   = { "Hillvile meets Hellvile: %s and %s are friends!", "ab" },
+    [NT_DEMONS]          = { "DEMONS IN THE STREETS! Stay inside, hug a plush.", "" },
+    [NT_RESCUE]          = { "Rescue squads needed! Grab a welded friend.", "" },
+    [NT_NIGHT0]          = { "Strange purple lights seen near the Gate...", "" },
+    [NT_NIGHT1]          = { "Residents report giggling coming from the wall.", "" },
+    [NT_NIGHT2]          = { "Someone left a vape pen by the river. Spooky.", "" },
+    [NT_NIGHT3]          = { "The moon looks extra round tonight. Suspicious.", "" },
+    [NT_WEATHER0]        = { "Weather: 100%% chance of sprinkles over Hillvile.", "" },
+    [NT_WEATHER1]        = { "Weather: fluffy clouds, light giggling from the east.", "" },
+    [NT_WEATHER2]        = { "Weather: a gentle drizzle of glitter. Bring a brolly!", "" },
+    [NT_WEATHER3]        = { "Weather: rainbow spotted over the river. Twice!", "" },
+    [NT_WEATHER4]        = { "Hellvile forecast: sulfur fog, then more sulfur fog.", "" },
+    [NT_ODD0]            = { "Hellvile Pits elevator broken again. Imps blame imps.", "" },
+    [NT_ODD1]            = { "Father Fuzz reminds everyone: hugs are free.", "" },
+    [NT_ODD2]            = { "Lost: one left sock. Last seen being haunted.", "" },
+    [NT_ODD3]            = { "Town Hall approves record budget for sprinkles.", "" },
+    [NT_ODD4]            = { "Mayor Giggs declares this week 'Extra Cozy Week'.", "" },
+    [NT_ODD5]            = { "Duck pond ducks demand better bread. Talks ongoing.", "" },
+    [NT_ODD6]            = { "Hellvile tax office opens 3 new queues. All slow.", "" },
+    [NT_ODD7]            = { "Glitter shortage at the workshop! Rivet in despair.", "" },
+    [NT_MENU]            = { "Brimstone Bites adds %s to the menu!", "F" },
+    [NT_CONCERT_NIGHT]   = { "Tonight at the concert hall: %s night!", "M" },
+    [NT_PIE]             = { "%s won the pie-eating contest. Again.", "a" },
+    [NT_SAYS]            = { "%s says: \"%s\"", "aK" },
+    [NT_CLASS]           = { "%s is teaching a %s class!", "aH" },
+    [NT_SHARING]         = { "%s spotted sharing %s with %s. Cute!", "aFb" },
+    [NT_STARGAZING]      = { "%s and %s caught stargazing together.", "ab" },
+    [NT_GIGGLING]        = { "%s and %s caught giggling at a cloud together.", "ab" },
+    [NT_GOOD_MORNING]    = { "Good morning! It's %s, day %s in Hellvile Park.", "Wn" },
+    [NT_WHEEL_SPOOKED]   = { "%s got spooked by the Wheel of Fate!", "a" },
+};
+
+/* The feed lives outside sim_s: sim_init (a population change, a load)
+ * keeps it; the LIFE chunk saves it; a new town clears it. */
+static struct {
+    DoomoNewsRec rec[NEWS_MAX];          /* newest first                   */
+    char     pool[NEWS_FREE][NEWS_LEN];  /* free-text lines (NT_FREE)      */
+    uint8_t  n;
+    uint8_t  welcomed;                   /* sim_init's greeting is posted  */
+} news_s;
+static char news_out[2][NEWS_LEN];       /* sim_news's rotating buffers    */
+static uint8_t news_flip;
+
+static const char *table_name(const char *const *t, int n, int i)
+{
+    return (i >= 0 && i < n) ? t[i] : "";
+}
+
+void sim_news_format(const DoomoNewsRec *r, char *out, int cap)
+{
+    const NewsTmpl *t;
+    const char *arg[4] = { "", "", "", "" };
+    char num[12];
+    int i;
+    if (!out || cap <= 0) return;
+    out[0] = 0;
+    if (!r || r->tmpl >= NT_COUNT) return;
+    if (r->tmpl == NT_FREE) {
+        doomo_snprintf(out, cap, "%s", r->arg8 < NEWS_FREE ? news_s.pool[r->arg8] : "");
+        return;
+    }
+    t = &news_tmpl[r->tmpl];
+    for (i = 0; i < 4 && t->k[i]; i++) {
+        int a8 = r->arg8, id;
+        switch (t->k[i]) {
+        case 'a': case 'b': case 'c':
+            id = (int)((r->v >> (10 * (t->k[i] - 'a'))) & 0x3FFu);
+            arg[i] = id == (int)NEWS_NONE ? "Someone" : sim_name(id);
+            break;
+        case 'p':
+            id = (int)((r->v >> 10) & 0x3FFu);
+            arg[i] = sim_possessor_name_by(id == (int)NEWS_NONE ? -1 : id);
+            break;
+        case 'n': doomo_snprintf(num, sizeof num, "%d", (int)r->v); arg[i] = num; break;
+        case 'V': arg[i] = sim_venue_name(a8); break;
+        case 'F': arg[i] = table_name(doomo_food_names, FOOD_COUNT, a8); break;
+        case 'M': arg[i] = table_name(doomo_music_names, MUSIC_COUNT, a8); break;
+        case 'K': arg[i] = table_name(doomo_catchphrases, CATCHPHRASE_COUNT, a8); break;
+        case 'H': arg[i] = table_name(doomo_hobby_names, HOBBY_COUNT, a8); break;
+        case 'W': arg[i] = table_name(doomo_weekday_names, 7, a8); break;
+        case 'D': arg[i] = table_name(doomo_death_names, DEATH_COUNT, a8); break;
+        default: break;
+        }
+    }
+    doomo_snprintf(out, cap, t->fmt, arg[0], arg[1], arg[2], arg[3]);
+}
+
 int sim_news_count(void)
 {
     sim_ensure_init();
-    return sim_s.news_n;
+    return news_s.n;
+}
+
+const DoomoNewsRec *sim_news_record(int index)
+{
+    return (index >= 0 && index < news_s.n) ? &news_s.rec[index] : NULL;
 }
 
 const char *sim_news(int index)
 {
-    if (index < 0 || index >= sim_s.news_n) return "";
-    return sim_s.news[(sim_s.news_head + index) % NEWS_MAX];
+    const DoomoNewsRec *r = sim_news_record(index);
+    char *o;
+    if (!r) return "";
+    if (r->tmpl == NT_FREE && r->arg8 < NEWS_FREE) return news_s.pool[r->arg8];
+    news_flip ^= 1;
+    o = news_out[news_flip];
+    sim_news_format(r, o, NEWS_LEN);
+    return o;
+}
+
+static void news_remove(int i)
+{
+    for (; i + 1 < news_s.n; i++) news_s.rec[i] = news_s.rec[i + 1];
+    news_s.n--;
+}
+
+static void news_add(int tmpl, int arg8, uint32_t v)
+{
+    int i;
+    sim_ensure_init();
+    i = news_s.n < NEWS_MAX ? news_s.n : NEWS_MAX - 1;
+    for (; i > 0; i--) news_s.rec[i] = news_s.rec[i - 1];
+    news_s.rec[0].tmpl = (uint8_t)tmpl;
+    news_s.rec[0].arg8 = (uint8_t)arg8;
+    news_s.rec[0].day = (uint16_t)doomo_town.day;
+    news_s.rec[0].v = v;
+    if (news_s.n < NEWS_MAX) news_s.n++;
+    sim_s.stats.news++;
+}
+
+void sim_news_rec(int tmpl, int arg8, uint32_t v)
+{
+    if (tmpl <= NT_FREE || tmpl >= NT_COUNT) return;
+    news_add(tmpl, arg8, v);
 }
 
 void sim_news_push(const char *msg)
 {
-    char *d;
-    int i;
+    unsigned used = 0;
+    int i, k, oldest = -1;
     if (!msg || !msg[0]) return;
     sim_ensure_init();
-    sim_s.news_head = (uint8_t)((sim_s.news_head + NEWS_MAX - 1) % NEWS_MAX);
-    d = sim_s.news[sim_s.news_head];
-    for (i = 0; i < NEWS_LEN - 1 && msg[i]; i++) d[i] = msg[i];
-    d[i] = 0;
-    if (sim_s.news_n < NEWS_MAX) sim_s.news_n++;
-    sim_s.stats.news++;
+    for (i = 0; i < news_s.n; i++)
+        if (news_s.rec[i].tmpl == NT_FREE && news_s.rec[i].arg8 < NEWS_FREE) {
+            used |= 1u << news_s.rec[i].arg8;
+            oldest = i;
+        }
+    for (k = 0; k < NEWS_FREE && (used & (1u << k)); k++) {}
+    if (k == NEWS_FREE) {                 /* every line is in the feed    */
+        k = news_s.rec[oldest].arg8;
+        news_remove(oldest);
+    }
+    for (i = 0; i < NEWS_LEN - 1 && msg[i]; i++) news_s.pool[k][i] = msg[i];
+    news_s.pool[k][i] = 0;
+    news_add(NT_FREE, k, 0);
 }
 
-void sim_newsf(const char *fmt, ...)
+/* sim_init's greeting: once per town or load (sim_init also runs when the
+ * population changes, which used to clear the feed). */
+void sim_news_welcome(int pop)
 {
-    char buf[NEWS_LEN];
-    va_list ap;
-    va_start(ap, fmt);
-    doomo_vsnprintf(buf, sizeof(buf), fmt, ap);
-    va_end(ap);
-    sim_news_push(buf);
+    if (news_s.welcomed) return;
+    news_s.welcomed = 1;
+    if (pop == 0) sim_news_rec(NT_WELCOME_EMPTY, 0, 0);
+    else if (doomo_town.day == 0) sim_news_rec(NT_WELCOME_NEW, 0, (uint32_t)pop);
+    else sim_news_rec(NT_WELCOME_BACK, 0, doomo_town.day + 1u);
+}
+
+/* ---- the LIFE chunk's news section (life.c) ----
+ * u8 n, u8 free lines, u16 0; n x 8 B records (tmpl, arg8, day u16 LE,
+ * v u32 LE), newest first; then each free line as u8 length + bytes. */
+void sim_news_clear(void)
+{
+    memset(&news_s, 0, sizeof(news_s));
+}
+
+uint32_t sim_news_save_size(void)
+{
+    uint32_t sz = 4u + 8u * news_s.n;
+    int k;
+    for (k = 0; k < NEWS_FREE; k++) sz += 1u + (uint32_t)strlen(news_s.pool[k]);
+    return sz;
+}
+
+uint32_t sim_news_save(uint8_t *dst, uint32_t cap)
+{
+    uint32_t sz = sim_news_save_size(), o = 4;
+    int i, k;
+    if (!dst || cap < sz) return 0;
+    dst[0] = news_s.n;
+    dst[1] = NEWS_FREE;
+    dst[2] = dst[3] = 0;
+    for (i = 0; i < news_s.n; i++, o += 8) {
+        const DoomoNewsRec *r = &news_s.rec[i];
+        dst[o] = r->tmpl;
+        dst[o + 1] = r->arg8;
+        dst[o + 2] = (uint8_t)r->day;
+        dst[o + 3] = (uint8_t)(r->day >> 8);
+        dst[o + 4] = (uint8_t)r->v;
+        dst[o + 5] = (uint8_t)(r->v >> 8);
+        dst[o + 6] = (uint8_t)(r->v >> 16);
+        dst[o + 7] = (uint8_t)(r->v >> 24);
+    }
+    for (k = 0; k < NEWS_FREE; k++) {
+        uint32_t len = (uint32_t)strlen(news_s.pool[k]);
+        dst[o++] = (uint8_t)len;
+        memcpy(dst + o, news_s.pool[k], len);
+        o += len;
+    }
+    return o;
+}
+
+int sim_news_load(const uint8_t *src, uint32_t len)
+{
+    uint32_t o = 4;
+    int i, k, n, nfree;
+    sim_news_clear();
+    if (!src || len < 4) return 0;
+    n = src[0];
+    nfree = src[1];
+    if (n > NEWS_MAX || o + 8u * (uint32_t)n > len) return 0;
+    for (i = 0; i < n; i++, o += 8) {
+        DoomoNewsRec r;
+        r.tmpl = src[o];
+        r.arg8 = src[o + 1];
+        r.day = (uint16_t)(src[o + 2] | (src[o + 3] << 8));
+        r.v = (uint32_t)src[o + 4] | ((uint32_t)src[o + 5] << 8) |
+              ((uint32_t)src[o + 6] << 16) | ((uint32_t)src[o + 7] << 24);
+        if (r.tmpl >= NT_COUNT || (r.tmpl == NT_FREE && r.arg8 >= NEWS_FREE)) continue;
+        news_s.rec[news_s.n++] = r;       /* an unknown template is dropped */
+    }
+    for (k = 0; k < nfree; k++) {
+        uint32_t l;
+        if (o >= len) break;
+        l = src[o++];
+        if (o + l > len) { sim_news_clear(); return 0; }
+        if (k < NEWS_FREE) {
+            uint32_t c = l < NEWS_LEN - 1 ? l : NEWS_LEN - 1;
+            memcpy(news_s.pool[k], src + o, c);
+            news_s.pool[k][c] = 0;
+        }
+        o += l;
+    }
+    news_s.welcomed = 0;                  /* "Welcome back!" after a load */
+    return 1;
 }
 
 static int random_citizen(int district)
@@ -363,80 +618,48 @@ static int random_citizen(int district)
 
 void sim_news_fluff(void)
 {
-    static const char *const weather[] = {
-        "Weather: 100%% chance of sprinkles over Hillvile.",
-        "Weather: fluffy clouds, light giggling from the east.",
-        "Weather: a gentle drizzle of glitter. Bring a brolly!",
-        "Weather: rainbow spotted over the river. Twice!",
-        "Hellvile forecast: sulfur fog, then more sulfur fog."
-    };
-    static const char *const odd[] = {
-        "Hellvile Pits elevator broken again. Imps blame imps.",
-        "Father Fuzz reminds everyone: hugs are free.",
-        "Lost: one left sock. Last seen being haunted.",
-        "Town Hall approves record budget for sprinkles.",
-        "Mayor Giggs declares this week 'Extra Cozy Week'.",
-        "Duck pond ducks demand better bread. Talks ongoing.",
-        "Hellvile tax office opens 3 new queues. All slow.",
-        "Glitter shortage at the workshop! Rivet in despair."
-    };
-    static const char *const night[] = {
-        "Strange purple lights seen near the Gate...",
-        "Residents report giggling coming from the wall.",
-        "Someone left a vape pen by the river. Spooky.",
-        "The moon looks extra round tonight. Suspicious."
-    };
     int a, b, k = sim_rand(9);
-    DoomoResident *ra, *rb;
+    DoomoResident *ra;
     if (doomo_town.mode == TOWN_STORY && doomo_town.story.chapter == 3 && sim_chance(50)) {
-        sim_newsf("%s", sim_chance(50) ? "DEMONS IN THE STREETS! Stay inside, hug a plush."
-                                       : "Rescue squads needed! Grab a welded friend.");
+        sim_news_rec(sim_chance(50) ? NT_DEMONS : NT_RESCUE, 0, 0);
         return;
     }
     if (town_is_night() && sim_chance(40)) {
-        sim_newsf(night[sim_rand(DOOMO_COUNTOF(night))]);
+        sim_news_rec(NT_NIGHT0 + sim_rand(4), 0, 0);
         return;
     }
     a = random_citizen(-1);
     b = random_citizen(-1);
     if (a < 0 || b < 0 || a == b) k = sim_chance(50) ? 0 : 1;
     ra = a >= 0 ? &doomo_town.res[a] : NULL;
-    rb = b >= 0 ? &doomo_town.res[b] : NULL;
     switch (k) {
-    case 0: sim_newsf(weather[sim_rand(DOOMO_COUNTOF(weather))]); break;
-    case 1: sim_newsf(odd[sim_rand(DOOMO_COUNTOF(odd))]); break;
+    case 0: sim_news_rec(NT_WEATHER0 + sim_rand(5), 0, 0); break;
+    case 1: sim_news_rec(NT_ODD0 + sim_rand(8), 0, 0); break;
     case 2:
-        sim_newsf("Brimstone Bites adds %s to the menu!",
-                  doomo_food_names[sim_rand(FOOD_COUNT)]);
+        sim_news_rec(NT_MENU, sim_rand(FOOD_COUNT), 0);
         break;
     case 3:
-        sim_newsf("Tonight at the concert hall: %s night!",
-                  doomo_music_names[sim_concert_genre()]);
+        sim_news_rec(NT_CONCERT_NIGHT, sim_concert_genre(), 0);
         break;
     case 4:
-        sim_newsf("%s won the pie-eating contest. Again.", ra->name);
+        sim_news_rec(NT_PIE, 0, NEWS_IDS(a, NEWS_NONE, NEWS_NONE));
         break;
     case 5:
-        sim_newsf("%s says: \"%s\"", ra->name,
-                  doomo_catchphrases[ra->catchphrase % CATCHPHRASE_COUNT]);
+        sim_news_rec(NT_SAYS, ra->catchphrase % CATCHPHRASE_COUNT, NEWS_IDS(a, NEWS_NONE, NEWS_NONE));
         break;
     case 6:
-        sim_newsf("%s is teaching a %s class!", ra->name,
-                  doomo_hobby_names[ra->like_hobby % HOBBY_COUNT]);
+        sim_news_rec(NT_CLASS, ra->like_hobby % HOBBY_COUNT, NEWS_IDS(a, NEWS_NONE, NEWS_NONE));
         break;
     case 7:
-        sim_newsf("%s spotted sharing %s with %s. Cute!", ra->name,
-                  doomo_food_names[ra->like_food % FOOD_COUNT], rb->name);
+        sim_news_rec(NT_SHARING, ra->like_food % FOOD_COUNT, NEWS_IDS(a, b, NEWS_NONE));
         break;
     default:
-        sim_newsf("%s and %s caught %s together.", ra->name, rb->name,
-                  sim_chance(50) ? "stargazing" : "giggling at a cloud");
+        sim_news_rec(sim_chance(50) ? NT_STARGAZING : NT_GIGGLING, 0, NEWS_IDS(a, b, NEWS_NONE));
         break;
     }
 }
 
 void sim_news_daily(void)
 {
-    sim_newsf("Good morning! It's %s, day %d in Hellvile Park.",
-              doomo_weekday_names[doomo_town.weekday % 7], (int)doomo_town.day + 1);
+    sim_news_rec(NT_GOOD_MORNING, doomo_town.weekday % 7, doomo_town.day + 1u);
 }

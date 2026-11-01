@@ -497,3 +497,109 @@ TEST(sim_unlock_table_is_well_formed)
     progress_set(PROG_DAYS_LIVED, 2);
     CHECK(unlock_has(345));
 }
+
+/* ---- LS1: news as 8 B records formatted at draw time ------------------ */
+
+static uint32_t fnv_str(uint32_t h, const char *s)
+{
+    for (; *s; s++) h = (h ^ (uint8_t)*s) * 16777619u;
+    return (h ^ '\n') * 16777619u;
+}
+
+/* The headline stream of a seeded 3-day run, as the ticker prints it
+ * (oldest first), hashed. */
+static uint32_t news_stream(uint32_t h, uint32_t seed, int pop, int days, uint32_t *bytes)
+{
+    char hdr[48];
+    uint32_t last, end, now;
+    int i, k;
+    town_new(TOWN_FREEPLAY, 2024 + seed, pop);
+    fast_clock();
+    sim_init();
+    sim_seed(seed);
+    snprintf(hdr, sizeof hdr, "== seed %u pop %d", (unsigned)seed, pop);
+    h = fnv_str(h, hdr);
+    *bytes += (uint32_t)strlen(hdr) + 1;
+    for (i = sim_news_count() - 1; i >= 0; i--) {
+        h = fnv_str(h, sim_news(i));
+        *bytes += (uint32_t)strlen(sim_news(i)) + 1;
+    }
+    last = sim_stats()->news;
+    end = doomo_town.day + (uint32_t)days;
+    while (doomo_town.day < end) {
+        sim_tick();
+        now = sim_stats()->news;
+        for (k = (int)(now - last), i = k - 1; i >= 0; i--) {
+            h = fnv_str(h, sim_news(i));
+            *bytes += (uint32_t)strlen(sim_news(i)) + 1;
+        }
+        last = now;
+    }
+    return h;
+}
+
+/* The records print exactly what the old 64 B strings held: the stream of
+ * three seeded 3-day runs (two premade islands, one random) hashes to the
+ * value measured on the tree before LS1 (16,859 bytes of headlines). A
+ * deliberate text change updates the constant. */
+TEST(sim_news_records_print_the_old_headlines)
+{
+    uint32_t h = 2166136261u, bytes = 0;
+    h = news_stream(h, 55, TOWN_POP_PREMADE, 3, &bytes);
+    h = news_stream(h, 7, TOWN_POP_PREMADE, 3, &bytes);
+    h = news_stream(h, 9, TOWN_POP_RANDOM, 3, &bytes);
+    printf("    news stream: %u bytes, hash %08x\n", (unsigned)bytes, (unsigned)h);
+    CHECK_EQ_U(bytes, 16859u);
+    CHECK_EQ_U(h, 0xd284fa6eu);
+}
+
+TEST(sim_news_records_and_free_lines)
+{
+    char buf[NEWS_LEN];
+    const char *p0, *p1;
+    DoomoNewsRec r;
+    int t;
+    CHECK_EQ((int)sizeof(DoomoNewsRec), 8);
+    town_new(TOWN_FREEPLAY, 5, TOWN_POP_PREMADE);
+    sim_init();
+    CHECK_EQ(sim_news_count(), 1);                         /* the welcome */
+    /* every template formats to a line with no format codes left */
+    for (t = NT_FREE + 1; t < NT_COUNT; t++) {
+        r.tmpl = (uint8_t)t; r.arg8 = 1; r.day = 0; r.v = NEWS_IDS(3, 4, 5);
+        sim_news_format(&r, buf, sizeof buf);
+        CHECK_MSG(buf[0] && !strstr(buf, "%s"), "template %d: '%s'", t, buf);
+    }
+    /* names are read at draw time: a rename shows in old headlines */
+    sim_news_rec(NT_BFF, 0, NEWS_IDS(3, 4, NEWS_NONE));
+    memcpy(town_res(3)->name, "Zed", 4);
+    p0 = sim_news(0);
+    CHECK(strncmp(p0, "Zed and ", 8) == 0);
+    CHECK_EQ(sim_news_record(0)->tmpl, NT_BFF);
+    CHECK_EQ(sim_news_record(0)->day, (int)doomo_town.day);
+    /* two rotating buffers: the previous pointer survives one more call */
+    p0 = sim_news(0);
+    p1 = sim_news(1);
+    CHECK(p0 != p1);
+    CHECK(strstr(p0, "BEST FRIENDS") != NULL);
+    CHECK(strstr(p1, "Welcome") != NULL);
+    /* free text: NEWS_FREE lines at once; a third drops the oldest */
+    sim_news_push("line one");
+    sim_news_push("line two");
+    CHECK_STR(sim_news(0), "line two");
+    CHECK_STR(sim_news(1), "line one");
+    sim_news_push("line three");
+    CHECK_EQ(sim_news_count(), 4);                   /* welcome, bff, two, three */
+    CHECK_STR(sim_news(0), "line three");
+    CHECK_STR(sim_news(1), "line two");
+    CHECK(strstr(sim_news(2), "BEST FRIENDS") != NULL);
+    /* the feed survives sim_init (a move-in) and gets no second welcome */
+    sim_init();
+    CHECK_EQ(sim_news_count(), 4);
+    /* a full feed keeps NEWS_MAX, newest first */
+    for (t = 0; t < NEWS_MAX + 5; t++) sim_news_rec(NT_PIE, 0, NEWS_IDS(t, NEWS_NONE, NEWS_NONE));
+    CHECK_EQ(sim_news_count(), NEWS_MAX);
+    CHECK_EQ(sim_news_record(0)->v & 0x3FFu, NEWS_MAX + 4);
+    /* a new town clears it */
+    town_new(TOWN_FREEPLAY, 6, TOWN_POP_EMPTY);
+    CHECK(sim_news_record(0) == NULL);
+}

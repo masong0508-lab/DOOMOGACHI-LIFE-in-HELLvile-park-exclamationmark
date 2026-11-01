@@ -277,7 +277,7 @@ static int romance_pair_bad(int a, int b, int married)
     return married ? !life_marriage_pair_ok(sa, sb) : !life_romance_pair_ok(sa, sb);
 }
 
-/* Romance headlines (every sim_newsf in sim_social.c that pairs people or
+/* Romance headlines (every NT_* template sim_social.c posts that pairs people or
  * names a crush) and whether they announce a wedding. */
 static const struct { const char *key; uint8_t wedding; } romance_keys[] = {
     { "crush", 0 }, { "confessed", 0 }, { "New couple", 0 }, { "dating", 0 },

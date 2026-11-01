@@ -47,8 +47,7 @@ typedef struct SimState {
     uint8_t   ring_pos[ACT_COUNT];
     DoomoProblem prob[SIM_MAX_PROBLEMS];
     uint8_t   nprob;
-    char      news[NEWS_MAX][NEWS_LEN];
-    uint8_t   news_head, news_n;
+    /* LS1: the news feed moved out (sim_events.c news_s, 8 B records) */
     int16_t   possessed;                 /* POSSESSED residents right now  */
     uint8_t   new_edges;                 /* new edges made this tick       */
     uint8_t   rough_day;                 /* rough-patch news today         */
@@ -95,7 +94,7 @@ void sim_check_problems(int id, DoomoResident *r);
 void sim_problem_drop_for(int id);       /* forget every problem of id     */
 int  sim_problem_find(int id, int kind); /* index or -1                    */
 void sim_problem_remove(int index);
-void sim_newsf(const char *fmt, ...);
+void sim_news_welcome(int pop);          /* sim_init's greeting (LS1)     */
 void sim_news_fluff(void);               /* ambient town headline          */
 void sim_news_daily(void);
 
@@ -105,5 +104,6 @@ void sim_corrupt_natural(int id, int amount);
 void sim_possess(int id);
 void sim_soul_daily(void);
 void sim_recount_possessed(void);
+const char *sim_possessor_name_by(int p);  /* p from sim_possessor_of     */
 
 #endif

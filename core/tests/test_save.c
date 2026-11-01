@@ -2,6 +2,7 @@
  * corruption handling (owner: foundation). */
 #include <stdlib.h>
 #include "test.h"
+#include "doomo/life.h"
 #include "data/save_v1_fixtures.h"     /* LS0: two real version-1 saves */
 #include "doomo/save_budget.h"
 
@@ -689,7 +690,11 @@ TEST(save_version1_loads_with_life_stages)
     CHECK_EQ(image[4] | (image[5] << 8), DOOMO_SAVE_VERSION);
     printf("      version 1: %u bytes, re-saved as version %d: %u bytes\n",
            (unsigned)sizeof(save_v1_classic), DOOMO_SAVE_VERSION, (unsigned)n);
-    CHECK(n <= sizeof(save_v1_classic) + 32);
+    /* (+ the LIFE chunk LS1 adds: the news feed sim_init wrote, which a
+     * version-1 save never had: its header, its bytes and the bit stream's
+     * flags) */
+    CHECK(n <= sizeof(save_v1_classic) + 32 + SAVE_BUDGET_CHUNK_HDR + 8 +
+               SAVE_BUDGET_LZ_WORST(doomo_save_ext_life->size()));
     CHECK_EQ(RES_STAGE(town_res(V1A_BABY)), LIFE_BABY);
     CHECK_EQ(RES_STAGE(town_res(V1A_KID_MADEOVER)), LIFE_CHILD);
     /* an Empty island of version 1: full records, everyone an adult */
@@ -708,4 +713,70 @@ TEST(save_version1_loads_with_life_stages)
         v0[4] = DOOMO_SAVE_VERSION + 1;
         CHECK(!save_deserialize(v0, sizeof(v0)));
     }
+}
+
+/* --- LS1: the 'LIFE' chunk keeps the news feed ------------------------- */
+TEST(save_life_chunk_keeps_the_news)
+{
+    static char before[NEWS_MAX][NEWS_LEN];
+    static uint8_t sec[64];
+    const DoomoSaveExt *life = doomo_save_ext_life;
+    uint32_t n;
+    int i, count;
+    CHECK(life != NULL);
+    CHECK_EQ_U(life->tag, SAVE_EXT_TAG_LIFE);
+    CHECK_EQ_U(life->max_size, SAVE_EXT_MAX_LIFE);
+    town_new(TOWN_FREEPLAY, 77, TOWN_POP_PREMADE);
+    opt_set(OPT_DAY_LENGTH, 4);
+    opt_set(OPT_SIM_SPEED, 3);
+    sim_init();
+    sim_seed(77);
+    while (doomo_town.day < 2) sim_tick();
+    sim_news_push("Fun Fair: new Whack record, 999 pts!");
+    sim_news_rec(NT_PIE, 0, NEWS_IDS(12, NEWS_NONE, NEWS_NONE));
+    count = sim_news_count();
+    CHECK(count >= 10);
+    for (i = 0; i < count; i++) snprintf(before[i], NEWS_LEN, "%s", sim_news(i));
+    CHECK(life->size() <= LIFE_SEC_HDR + LIFE_SZ_NEWS);
+    n = save_serialize(image, sizeof(image));
+    CHECK(n > 0);
+    /* lose the feed, then load: every headline is back, word for word */
+    sim_news_clear();
+    sim_news_push("junk");
+    CHECK(save_deserialize(image, n));
+    CHECK_EQ(sim_news_count(), count);
+    for (i = 0; i < count; i++) CHECK_STR(sim_news(i), before[i]);
+    /* the first sim_init after a load greets the player again */
+    sim_init();
+    CHECK_EQ(sim_news_count(), DOOMO_MIN(count + 1, NEWS_MAX));
+    CHECK(strstr(sim_news(0), "Welcome back!") != NULL);
+    /* streamed slot saves agree */
+    CHECK(save_game(1));
+    sim_news_clear();
+    CHECK(load_game(1));
+    CHECK(strstr(sim_news(0), "Welcome back!") != NULL);
+    CHECK_STR(sim_news(1), before[0]);
+    /* sections: an unknown one is skipped, a missing one resets, a bad one
+     * resets, a truncated chunk stops at the last whole section */
+    sec[0] = 99; sec[1] = 1; sec[2] = 3; sec[3] = 0; sec[4] = sec[5] = sec[6] = 0xEE;
+    sec[7] = LIFE_SEC_NEWS; sec[8] = 1; sec[9] = 12; sec[10] = 0;
+    sec[11] = 1; sec[12] = 0; sec[13] = 0; sec[14] = 0;              /* 1 record, 0 free lines */
+    sec[15] = NT_PIE; sec[16] = 0; sec[17] = 5; sec[18] = 0;          /* day 5 */
+    sec[19] = 12; sec[20] = 0xFC; sec[21] = 0xFF; sec[22] = 0x3F;     /* ids 12, none, none */
+    CHECK(life->read(sec, 23, 1));
+    CHECK_EQ(sim_news_count(), 1);
+    CHECK_EQ(sim_news_record(0)->day, 5);
+    CHECK(strstr(sim_news(0), "pie-eating") != NULL);
+    CHECK(life->read(sec, 7, 1));                                    /* no news section */
+    CHECK_EQ(sim_news_count(), 0);
+    sec[11] = NEWS_MAX + 1;                                          /* bad count */
+    CHECK(life->read(sec, 23, 1));
+    CHECK_EQ(sim_news_count(), 0);
+    sec[11] = 1;
+    CHECK(life->read(sec, 22, 1));                                   /* truncated */
+    CHECK_EQ(sim_news_count(), 0);
+    /* a new town clears it */
+    sim_news_rec(NT_PIE, 0, NEWS_IDS(1, NEWS_NONE, NEWS_NONE));
+    town_new(TOWN_FREEPLAY, 1, TOWN_POP_EMPTY);
+    CHECK(sim_news_record(0) == NULL);
 }

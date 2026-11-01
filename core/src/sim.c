@@ -670,8 +670,8 @@ static void day_rollover(void)
             sim_stat_add(r, STAT_HAPPY, 25);
             sim_set_transient(i, TR_ECSTATIC, 8);
             if (sim_chance(60) || (r->flags & RF_FAVORITE))
-                sim_newsf("Happy birthday, %s! Cake at %s tonight!", r->name,
-                          (r->flags & RF_HELLBORN) ? "Cloud Nine" : "Brimstone Bites");
+                sim_news_rec((r->flags & RF_HELLBORN) ? NT_BIRTHDAY_HELL : NT_BIRTHDAY_HILL, 0,
+                             NEWS_IDS(i, NEWS_NONE, NEWS_NONE));
         }
     }
     sim_soul_daily();
@@ -754,12 +754,7 @@ void sim_init(void)
         sim_mood_of(i);
     }
     sim_events_reset();
-    {
-        int pop = town_count(-1);
-        if (pop == 0) sim_newsf("Welcome to your island! It's quiet... make some citizens!");
-        else if (doomo_town.day == 0) sim_newsf("Welcome to Hellvile Park! Population: %d.", pop);
-        else sim_newsf("Welcome back! Day %d in Hellvile Park.", (int)doomo_town.day + 1);
-    }
+    sim_news_welcome(town_count(-1));     /* LS1: once per town or load */
 }
 
 void sim_tick(void)

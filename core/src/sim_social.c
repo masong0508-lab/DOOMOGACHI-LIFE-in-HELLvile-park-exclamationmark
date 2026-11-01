@@ -176,20 +176,18 @@ int sim_confess(int from, int to, int bonus)
         sim_stat_add(b, STAT_HAPPY, 20);
         sim_s.stats.dates++;
         if (from == ROSTER_ID_GRUMBLEGUTS || to == ROSTER_ID_GRUMBLEGUTS)
-            sim_newsf("%s is dating Grumbleguts. Gate's shut. Don't knock.",
-                      from == ROSTER_ID_GRUMBLEGUTS ? b->name : a->name);
+            sim_news_rec(NT_DATING_GRUMBLE, 0, NEWS_IDS(from == ROSTER_ID_GRUMBLEGUTS ? to : from, NEWS_NONE, NEWS_NONE));
         else if (cross(from, to))
-            sim_newsf("Love over the wall! %s and %s are dating!", a->name, b->name);
+            sim_news_rec(NT_DATING_CROSS, 0, NEWS_IDS(from, to, NEWS_NONE));
         else
-            sim_newsf("%s confessed to %s... and it's a YES! New couple!", a->name, b->name);
+            sim_news_rec(NT_DATING, 0, NEWS_IDS(from, to, NEWS_NONE));
     } else {
         rel_adjust(from, to, -10);
         sim_set_transient(from, TR_SAD, 10);
         sim_stat_add(a, STAT_HAPPY, -20);
         sim_s.stats.rejections++;
         if (sim_chance(60))
-            sim_newsf("Heartbreak at %s: %s turned %s down.", sim_venue_name(a->activity),
-                      b->name, a->name);
+            sim_news_rec(NT_HEARTBREAK, a->activity, NEWS_IDS(to, from, NEWS_NONE));
     }
     bit_set(sim_s.crush, from, 0);
     return ok;
@@ -218,17 +216,16 @@ int sim_propose(int from, int to, int bonus)
         sim_s.stats.marriages++;
         progress_add(PROG_MARRIAGES, 1);
         if (from == ROSTER_ID_GRUMBLEGUTS || to == ROSTER_ID_GRUMBLEGUTS)
-            sim_newsf("%s wed Grumbleguts! Suite closed till Monday.",
-                      from == ROSTER_ID_GRUMBLEGUTS ? b->name : a->name);
+            sim_news_rec(NT_WED_GRUMBLE, 0, NEWS_IDS(from == ROSTER_ID_GRUMBLEGUTS ? to : from, NEWS_NONE, NEWS_NONE));
         else if (cross(from, to))
-            sim_newsf("WEDDING BELLS across the wall: %s + %s!", a->name, b->name);
+            sim_news_rec(NT_WED_CROSS, 0, NEWS_IDS(from, to, NEWS_NONE));
         else
-            sim_newsf("%s proposed to %s - and they said YES! Wedding!", a->name, b->name);
+            sim_news_rec(NT_WED, 0, NEWS_IDS(from, to, NEWS_NONE));
     } else {
         rel_adjust(from, to, -20);
         sim_set_transient(from, TR_SAD, 12);
         sim_stat_add(a, STAT_HAPPY, -25);
-        sim_newsf("Ouch: %s's proposal to %s fizzled.", a->name, b->name);
+        sim_news_rec(NT_PROPOSAL_FIZZLED, 0, NEWS_IDS(from, to, NEWS_NONE));
         if (rel_value(from, to) < 30 && sim_chance(50)) sim_breakup(from, to, 0);
     }
     return ok;
@@ -252,11 +249,11 @@ void sim_breakup(int a, int b, int quiet)
     sim_s.stats.breakups++;
     if (quiet) return;
     if (k == REL_MARRIED)
-        sim_newsf("%s and %s have split up. The cake is being returned.", ra->name, rb->name);
+        sim_news_rec(NT_SPLIT_MARRIED, 0, NEWS_IDS(a, b, NEWS_NONE));
     else if (sim_chance(50))
-        sim_newsf("%s and %s broke up. Ice cream sales soar.", ra->name, rb->name);
+        sim_news_rec(NT_BROKE_UP, 0, NEWS_IDS(a, b, NEWS_NONE));
     else
-        sim_newsf("It's over for %s and %s. Hugs needed.", ra->name, rb->name);
+        sim_news_rec(NT_ITS_OVER, 0, NEWS_IDS(a, b, NEWS_NONE));
 }
 
 /* ---------------------------------------------------------------------- */
@@ -347,9 +344,7 @@ int sim_make_baby(int pa, int pb)
     sim_set_transient(pb, TR_ECSTATIC, 15);
     sim_s.stats.babies++;
     progress_add(PROG_BABIES, 1);
-    sim_newsf("%s! %s and %s welcome little %s!",
-              hellish ? "A hellspawn" : "An angel baby", a->name, b->name,
-              doomo_town.res[slot].name);
+    sim_news_rec(hellish ? NT_BABY_HELL : NT_BABY_HILL, 0, NEWS_IDS(pa, pb, slot));
     sim_mood_of(slot);
     return slot;
 }
@@ -556,7 +551,7 @@ static void romance_step(DoomoEdge *e, int a, int b, DoomoResident *ra, DoomoRes
             sim_s.stats.crushes++;
             if (sim_chance(55)) sim_problem_raise(from, PROB_CRUSH, to, 0);
             if (sim_chance(25))
-                sim_newsf("Rumour has it someone has a crush on %s...", town_res(to)->name);
+                sim_news_rec(NT_CRUSH_RUMOUR, 0, NEWS_IDS(to, NEWS_NONE, NEWS_NONE));
             return;
         }
     }
@@ -587,7 +582,7 @@ static void romance_step(DoomoEdge *e, int a, int b, DoomoResident *ra, DoomoRes
         sim_set_transient(b, TR_SAD, 4);
         if (sim_s.rough_day < 2) {
             sim_s.rough_day++;
-            sim_newsf("Trouble in paradise? %s and %s had a big fight.", ra->name, rb->name);
+            sim_news_rec(NT_BIG_FIGHT, 0, NEWS_IDS(a, b, NEWS_NONE));
         }
         return;
     }
@@ -624,7 +619,7 @@ static void romance_step(DoomoEdge *e, int a, int b, DoomoResident *ra, DoomoRes
         rel_set_kind(a, b, REL_DATING);
         bit_set(sim_s.taken, a, 1);
         bit_set(sim_s.taken, b, 1);
-        sim_newsf("Back together! %s and %s rekindled their romance.", ra->name, rb->name);
+        sim_news_rec(NT_REKINDLED, 0, NEWS_IDS(a, b, NEWS_NONE));
     }
 }
 
@@ -694,10 +689,9 @@ static void visit_edge(int index)
             if (k != before && (k == REL_RIVAL || k == REL_NEMESIS) && sim_s.args_hour < 2) {
                 sim_s.args_hour++;
                 if (k == REL_NEMESIS)
-                    sim_newsf("%s and %s are now sworn NEMESES!", ra->name, rb->name);
+                    sim_news_rec(NT_NEMESES, 0, NEWS_IDS(a, b, NEWS_NONE));
                 else
-                    sim_newsf("Drama at %s! %s and %s are rivals now.",
-                              sim_venue_name(ra->activity), ra->name, rb->name);
+                    sim_news_rec(NT_RIVALS, ra->activity, NEWS_IDS(a, b, NEWS_NONE));
             }
             return;
         }
@@ -709,14 +703,12 @@ static void visit_edge(int index)
             k = rel_kind(a, b);
             if (k == REL_BEST_FRIEND && before != REL_BEST_FRIEND && sim_chance(40)) {
                 if (cross(a, b))
-                    sim_newsf("%s and %s: best friends from both sides of the wall!",
-                              ra->name, rb->name);
+                    sim_news_rec(NT_BFF_CROSS, 0, NEWS_IDS(a, b, NEWS_NONE));
                 else
-                    sim_newsf("%s and %s are now BEST FRIENDS!", ra->name, rb->name);
+                    sim_news_rec(NT_BFF, 0, NEWS_IDS(a, b, NEWS_NONE));
             }
             if (k == REL_FRIEND && before == REL_ACQUAINTANCE && cross(a, b) && sim_chance(50))
-                sim_newsf("Hillvile meets Hellvile: %s and %s are friends!",
-                          RES_DISTRICT(a) ? rb->name : ra->name, RES_DISTRICT(a) ? ra->name : rb->name);
+                sim_news_rec(NT_FRIENDS_CROSS, 0, NEWS_IDS(RES_DISTRICT(a) ? b : a, RES_DISTRICT(a) ? a : b, NEWS_NONE));
         }
     } else {
         /* out of sight, slowly out of mind */

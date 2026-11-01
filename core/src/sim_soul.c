@@ -87,7 +87,11 @@ int sim_possessor_of(int id)
 
 const char *sim_possessor_name(int id)
 {
-    int p = sim_possessor_of(id);
+    return sim_possessor_name_by(sim_possessor_of(id));
+}
+
+const char *sim_possessor_name_by(int p)
+{
     const DoomoResident *r;
     if (p < 0) return "";
     r = town_res(p);
@@ -110,8 +114,7 @@ void sim_possess(int id)
     sim_s.stats.possessions++;
     sim_set_transient(id, TR_NONE, 0);
     sim_problem_raise(id, PROB_POSSESSED, sim_possessor_of(id), 0);
-    sim_newsf("Uh oh! %s is acting strange... POSSESSED by %s!", r->name,
-              sim_possessor_name(id));
+    sim_news_rec(NT_POSSESSED, 0, NEWS_IDS(id, (unsigned)sim_possessor_of(id), NEWS_NONE));
     portrait_invalidate(id);
     sim_mood_of(id);
     unlock_grant(353);                         /* "Something wicked" */
@@ -214,8 +217,8 @@ void sim_soul_daily(void)
         DoomoResident *r = &doomo_town.res[i];
         if (r->status != RES_POSSESSED) continue;
         if (!sim_chance(fuzz >= 0 ? 7 : 3)) continue;
-        sim_newsf("%s chased %s out of %s! Phew!", fuzz >= 0 ? "Father Fuzz" : "A kind stranger",
-                  sim_possessor_name(i), r->name);
+        sim_news_rec(fuzz >= 0 ? NT_FUZZ_CHASED : NT_STRANGER_CHASED, 0,
+                     NEWS_IDS(i, (unsigned)sim_possessor_of(i), NEWS_NONE));
         r->status = RES_ALIVE;
         r->stat[STAT_CORRUPTION] = 35;
         sim_s.possessed--;
@@ -237,11 +240,11 @@ void sim_on_exorcism(int id, int success)
         sim_problem_remove(pi);
     if (success) {
         sim_set_transient(id, TR_ECSTATIC, 6);
-        sim_newsf("St. Cuddles rejoices! %s is free again!", r->name);
+        sim_news_rec(NT_EXORCISM_OK, 0, NEWS_IDS(id, NEWS_NONE, NEWS_NONE));
     } else if (r->status == RES_SOUL_LOST) {
-        sim_newsf("The exorcisms have failed... %s's soul is lost.", r->name);
+        sim_news_rec(NT_EXORCISM_LOST, 0, NEWS_IDS(id, NEWS_NONE, NEWS_NONE));
     } else {
-        sim_newsf("Exorcism failed! %s still has a demon inside.", r->name);
+        sim_news_rec(NT_EXORCISM_FAIL, 0, NEWS_IDS(id, NEWS_NONE, NEWS_NONE));
     }
     portrait_invalidate(id);
     sim_mood_of(id);
@@ -317,14 +320,13 @@ void sim_lay_to_rest(int id, int cause)
     if (monster) {
         r->flags |= RF_MONSTER_KILL;
         if (doomo_town.monster_meter < 0xFFFF) doomo_town.monster_meter++;
-        sim_newsf("%s has... vanished. Folks whisper about a MONSTER.", r->name);
+        sim_news_rec(NT_VANISHED, 0, NEWS_IDS(id, NEWS_NONE, NEWS_NONE));
         unlock_grant(355);
     } else if (cause == DEATH_LAID_TO_REST) {
-        sim_newsf("Farewell, %s. Laid to rest under the willow.", r->name);
+        sim_news_rec(NT_LAID_TO_REST, 0, NEWS_IDS(id, NEWS_NONE, NEWS_NONE));
         unlock_grant(354);
     } else {
-        sim_newsf("Tragedy: %s is gone (%s). Flowers at the cemetery.", r->name,
-                  doomo_death_names[r->death_cause]);
+        sim_news_rec(NT_TRAGEDY, r->death_cause, NEWS_IDS(id, NEWS_NONE, NEWS_NONE));
     }
 }
 
@@ -346,7 +348,7 @@ int sim_raise_ghost(int id)
     r->exorcism = (uint8_t)(r->exorcism & 0xF0);
     sim_s.stamp[id] = (uint16_t)sim_now();
     progress_add(PROG_GHOSTS_RAISED, 1);
-    sim_newsf("Boo! %s is back... as a friendly GHOST!", r->name);
+    sim_news_rec(NT_GHOST, 0, NEWS_IDS(id, NEWS_NONE, NEWS_NONE));
     portrait_invalidate(id);
     sim_mood_of(id);
     return 1;

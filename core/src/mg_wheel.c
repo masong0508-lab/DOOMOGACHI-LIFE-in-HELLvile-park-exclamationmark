@@ -92,10 +92,8 @@ int mg_wheel_apply(int w)
             if (town_alive(id) && town_res(id)->status == RES_ALIVE) { hit = id; break; }
         }
         if (hit >= 0) {
-            char buf[NEWS_LEN];
             sim_corrupt(hit, 10);
-            doomo_snprintf(buf, sizeof(buf), "%s got spooked by the Wheel of Fate!", town_res(hit)->name);
-            sim_news_push(buf);
+            sim_news_rec(NT_WHEEL_SPOOKED, 0, NEWS_IDS(hit, NEWS_NONE, NEWS_NONE));
         } else {
             int fine = doomo_town.money >= 25 ? 25 : (int)doomo_town.money;
             doomo_town.money -= (uint32_t)fine;
