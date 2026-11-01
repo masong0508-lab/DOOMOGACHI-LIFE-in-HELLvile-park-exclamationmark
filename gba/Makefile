@@ -114,7 +114,7 @@ CORE_OBJS := $(call core_obj,$(CORE_SRCS))
 # over the core's weak stubs, and the core's strong definitions win over both.
 ALL_OBJS  := $(GBA_OBJS) $(CORE_OBJS)
 
-.PHONY: all rom engine-test engine-test-nocore harness test test-et test-game test-save test-coresave test-home test-ow test-speed test-life clean sizes
+.PHONY: all rom engine-test engine-test-nocore harness test test-et test-game test-save test-coresave test-home test-ow test-lang test-speed test-life clean sizes
 .DEFAULT_GOAL := all
 
 # Cartridge size (user decision 2026-11-01): the game ROM is a full 256 Mbit
@@ -189,6 +189,7 @@ test:
 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile test-story
 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile test-home
 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile test-ow
+	@$(MAKE) --no-print-directory -f $(GBA)/Makefile test-lang
 
 test-et: harness
 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile engine-test
@@ -247,6 +248,15 @@ test-ow: harness
 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile rom ENGINE_TEST=0
 	$(HARNESS) $(BUILD)/doomogachi.gba --script $(GBA)/harness/scripts/owsprite.txt --quiet
 # --- end G2 ---
+
+# --- L2a: one text path: the Spanish Options help marquee and the Unlocks
+# header are translated on the GBA too (harness expect-text) ---
+test-lang: harness
+	@$(MAKE) --no-print-directory -f $(GBA)/Makefile rom ENGINE_TEST=0
+	@mkdir -p $(SHOTS)/lang
+	$(HARNESS) $(BUILD)/doomogachi.gba --script $(GBA)/harness/scripts/lang_es.txt \
+	    --shots $(SHOTS)/lang --quiet
+# --- end L2a ---
 
 # --- G1: the speed tour (docs/GBA.md "Speed pass 4"): every target scene's
 # fps (expect-fps floors), screenshots and output-frame hashes, printed as a

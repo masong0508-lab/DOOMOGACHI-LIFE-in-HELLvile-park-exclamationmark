@@ -12,11 +12,19 @@
  * LOOKUP. Code always passes the ENGLISH literal. lang_tr() returns the
  * current language's translation when its table has one, and the very
  * same pointer when not (an untranslated string simply stays English).
- * The hooks sit in the UI text layer (ui.c: ui_text, ui_text_width,
- * ui_textf, ui_text_wrap, ui_text_big; font_text_width) and in the
- * platforms' plat_text, so no call site changes. lang_tr() of a string it
- * returned is that string again (never translated twice), so layers that
- * both translate cost one lookup.
+ * L2a: ONE text path. The hooks sit in the core's text layer only (ui.c:
+ * ui_text, ui_text_width, ui_text_shadow, ui_text_outline, ui_text_center,
+ * ui_textf, ui_text_wrap(_n), ui_text_big, the ui_list rows;
+ * font_text_width; fp_marquee), each translating once at its entry
+ * point. The platforms' plat_text / plat_text_outline (GBA, PS1, native,
+ * Dreamcast) draw bytes as given, so every port shows the same text. A
+ * direct plat_text call with words passes lang_tr(literal); icons and
+ * single symbols are drawn as they are. Text that was translated is never
+ * looked up again (a translation equal to another English key, Spanish
+ * "No" of "Off", stays); text with no translation of its own may still
+ * have translated pieces, looked up one by one: the lines of a centred or
+ * wrapped text and the runs between button icons of a hint. lang_tr() of
+ * a string it returned is that string again (never translated twice).
  *
  * TABLES. core/lang/<code>/ui_*.tsv (UTF-8, English<TAB>translation) ->
  * tools/langpack.py -> core/gen/lang_tab_<id>.c: ONE table per language

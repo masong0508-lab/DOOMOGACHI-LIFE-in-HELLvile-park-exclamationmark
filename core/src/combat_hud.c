@@ -461,10 +461,10 @@ static void ammo_panel(int x, int y, const HudPal *p)
         doomo_snprintf(buf, sizeof(buf), "%d", combat_ammo(combat_ws.ammo_type));
         ui_text_big(x + 30, y + 3, buf, 2, p->text, p->text_out);
     }
-    doomo_snprintf(buf, sizeof(buf), "%s %d", doomo_ammo_names[combat_ws.ammo_type],
+    doomo_snprintf(buf, sizeof(buf), "%s %d", lang_tr(doomo_ammo_names[combat_ws.ammo_type]),
                    combat_ammo(combat_ws.ammo_type));
     if (combat_ws.mag_size) plat_text(x + 30, y + 17, buf, p->dim);
-    else plat_text(x + 30, y + 17, doomo_ammo_names[combat_ws.ammo_type], p->dim);
+    else plat_text(x + 30, y + 17, lang_tr(doomo_ammo_names[combat_ws.ammo_type]), p->dim);
 }
 
 static void health_panel(int x, int y, const HudPal *p)
@@ -615,7 +615,7 @@ static void classic_bar(void)
                                                                  : combat_ammo(combat_ws.ammo_type));
         ui_text_big(6, y + 4, buf, 2, tc, out);
     }
-    plat_text(6, y + 19, "AMMO", PAL_GRAY_L);
+    plat_text(6, y + 19, lang_tr("AMMO"), PAL_GRAY_L);
     doomo_snprintf(buf, sizeof(buf), "%d%%", DOOMO_MAX(doomo_player.hp, 0));
     ui_text_big(sw / 2 - 86 + (sw > 240 ? 0 : 6), y + 4, buf, 2, tc, out);
     {

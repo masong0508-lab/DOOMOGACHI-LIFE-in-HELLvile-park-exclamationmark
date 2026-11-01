@@ -1,0 +1,25 @@
+# L2a: one text path. The GBA draws the same Spanish text as native and
+# PS1: every string is translated once in the core's text layer (ui.c,
+# fp_marquee), and plat_text draws bytes as given. Options over the title:
+# RIGHT on the first row (the language) switches to Spanish; the help
+# marquee under the list (English: scrolled glyph by glyph, untranslated
+# before L2a) and the row labels are then Spanish. Then the Unlocks
+# gallery's header, built from a translated format.
+wait 40
+expect-log doomo: init
+seed 1
+scene TITLE
+wait 2
+push OPTIONS 0
+wait 60
+expect-text language
+press RIGHT
+expect-text idioma
+fps start
+wait 90
+fps options es
+shot lang_es_options
+scene UNLOCKS
+wait 60
+expect-text Logros
+shot lang_es_unlocks

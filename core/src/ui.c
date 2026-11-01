@@ -215,17 +215,33 @@ static void text_run(int x, int y, const char *s, uint8_t color, int fs)
     if (fs == 1) plat_text(x + 1, y, s, color);
 }
 
-void ui_text(int x, int y, const char *s, uint8_t color)
+/* L2a: every user-visible string is translated once, here in the ui_*
+ * entry points; the platforms' plat_text draw bytes as given (lang.h
+ * "LOOKUP"). Text that was translated is never looked up again, so a
+ * translation that happens to be another English key stays as it is
+ * (Spanish "No" of "Off"). Text that had no translation of its own may
+ * still have translated pieces: each line of a centred or wrapped text,
+ * each run between button icons of a hint ("...  [B]Back"). `pieces`
+ * asks text_draw() to look those runs up (it never does for English). */
+static int tr_pieces(const char *tr, const char *src)
+{
+    return tr == src && lang_get() != LANG_EN;
+}
+
+static void text_draw(int x, int y, const char *s, uint8_t color, int pieces)
 {
     char run[128];
-    int n = 0, cx = x, rx = x, fs;
-    if (!s || plat_draw_skipped()) return;
-    s = lang_tr(s);
-    fs = opt_get(OPT_FONT_STYLE);
+    int n = 0, cx = x, rx = x, fs = opt_get(OPT_FONT_STYLE), k = 0;
     for (;; s++) {
         unsigned char c = (unsigned char)*s;
         if (c == 0 || c == '\n' || c == ICON_BTN_A || c == ICON_BTN_B || n == 127) {
-            if (n) { run[n] = 0; text_run(rx, y, run, color, fs); n = 0; }
+            if (n) {
+                run[n] = 0;
+                /* a piece of the text (never all of it: that was looked up) */
+                text_run(rx, y, pieces && (k || c) ? lang_tr(run) : run, color, fs);
+                n = 0;
+            }
+            k++;
             if (c == 0) break;
             if (c == '\n') { cx = x; y += FONT_LINE; rx = cx; continue; }
             if (c == ICON_BTN_A || c == ICON_BTN_B) {
@@ -241,11 +257,17 @@ void ui_text(int x, int y, const char *s, uint8_t color)
     }
 }
 
-int ui_text_width(const char *s)
+void ui_text(int x, int y, const char *s, uint8_t color)
+{
+    const char *t;
+    if (!s || plat_draw_skipped()) return;
+    t = lang_tr(s);
+    text_draw(x, y, t, color, tr_pieces(t, s));
+}
+
+static int width_raw(const char *s)
 {
     int best = 0, cur = 0;
-    if (!s) return 0;
-    s = lang_tr(s);
     for (; *s; s++) {
         unsigned char c = (unsigned char)*s;
         if (c == '\n') { if (cur > best) best = cur; cur = 0; continue; }
@@ -255,12 +277,18 @@ int ui_text_width(const char *s)
     return best ? best - 1 : 0;
 }
 
+int ui_text_width(const char *s)
+{
+    return s ? width_raw(lang_tr(s)) : 0;
+}
+
 void ui_text_shadow(int x, int y, const char *s, uint8_t color, uint8_t shadow)
 {
-    if (plat_draw_skipped()) return;
-    s = lang_tr(s);
-    plat_text(x + 1, y + 1, s, shadow);
-    ui_text(x, y, s, color);
+    const char *t;
+    if (!s || plat_draw_skipped()) return;
+    t = lang_tr(s);
+    plat_text(x + 1, y + 1, t, shadow);
+    text_draw(x, y, t, color, tr_pieces(t, s));
 }
 
 /* Weak default of plat_text_outline (platform.h): the ten passes. */
@@ -284,13 +312,18 @@ void ui_text_outline(int x, int y, const char *s, uint8_t color, uint8_t outline
 void ui_text_center(int cx, int y, const char *s, uint8_t color)
 {
     char line[64];
-    if (!s) return;
+    const char *src = s, *t;
+    int pieces;
+    if (!s || plat_draw_skipped()) return;
     s = lang_tr(s);
+    pieces = tr_pieces(s, src);
     while (*s) {
         int n = 0;
         while (s[n] && s[n] != '\n' && n < 63) { line[n] = s[n]; n++; }
         line[n] = 0;
-        ui_text(cx - ui_text_width(line) / 2, y, line, color);
+        /* a line of an untranslated text may have a translation */
+        t = pieces && (s != src || s[n]) ? lang_tr(line) : line;
+        text_draw(cx - width_raw(t) / 2, y, t, color, pieces && t == line);
         y += FONT_LINE;
         s += n;
         if (*s == '\n') s++;
@@ -301,11 +334,15 @@ void ui_text_center(int cx, int y, const char *s, uint8_t color)
 void ui_textf(int x, int y, uint8_t color, const char *fmt, ...)
 {
     char buf[128];
+    const char *t;
     va_list ap;
+    if (!fmt || plat_draw_skipped()) return;
+    t = lang_tr(fmt);
     va_start(ap, fmt);
-    doomo_vsnprintf(buf, sizeof(buf), lang_tr(fmt), ap);
+    doomo_vsnprintf(buf, sizeof(buf), t, ap);
     va_end(ap);
-    ui_text(x, y, buf, color);
+    if (tr_pieces(t, fmt)) ui_text(x, y, buf, color);   /* "%s": the text may have one */
+    else text_draw(x, y, buf, color, 0);
 }
 
 static int wrap_core(int x, int y, int w, const char *s, uint8_t color, int draw,
@@ -313,9 +350,11 @@ static int wrap_core(int x, int y, int w, const char *s, uint8_t color, int draw
 {
     char line[64];
     int maxc = w / FONT_ADVANCE, lines = 0, shown = 0;
-    const char *p;
+    const char *p, *src = s;
+    int pieces;
     if (!s) return 0;
     p = s = lang_tr(s);
+    pieces = tr_pieces(s, src);
     if (maxc < 1) maxc = 1;
     if (maxc > 63) maxc = 63;
     if (draw && plat_draw_skipped()) draw = 0;          /* lines still count */
@@ -331,9 +370,12 @@ static int wrap_core(int x, int y, int w, const char *s, uint8_t color, int draw
         else { len = n; adv = n; }
         if (draw && shown < limit) {
             int k = DOOMO_MIN(len, limit - shown);
+            const char *t;
             memcpy(line, p, (size_t)k);
             line[k] = 0;
-            ui_text(x, y, line, color);
+            /* a line of an untranslated text may have a translation */
+            t = pieces && (p != s || p[k]) ? lang_tr(line) : line;
+            text_draw(x, y, t, color, pieces && t == line);
         }
         shown += adv;
         lines++;
@@ -606,6 +648,8 @@ void ui_list_draw(const UiList *l, int x, int y, int w, int style)
     int tw = w - 14 - (bar ? 6 : 0);
     int maxc = tw / FONT_ADVANCE;
     char buf[48], line[48];
+    const char *tr;
+    int pieces;
     ui_cur_style = style;
     if (plat_draw_skipped()) return;
     if (maxc > 47) maxc = 47;
@@ -614,15 +658,17 @@ void ui_list_draw(const UiList *l, int x, int y, int w, int style)
         const char *txt = l->items ? l->items[idx] : (l->item_fn ? l->item_fn(idx, buf) : "");
         int locked = ui_list_locked_fn && ui_list_locked_fn(idx);
         if (!txt) txt = "";
-        for (n = 0; txt[n] && n < maxc; n++) line[n] = txt[n];
+        tr = lang_tr(txt);               /* L2a: translate, then cut to the row */
+        for (n = 0; tr[n] && n < maxc; n++) line[n] = tr[n];
         line[n] = 0;
+        pieces = tr_pieces(tr, txt);
         if (idx == l->sel) {
             ui_pill(x + 9, ry, w - 9 - (bar ? 6 : 0), UI_LIST_ROW_H - 1,
                     st->accent_d, ui_darker(st->accent_d), ui_lighter(st->accent_d));
             ui_cursor(x, ry + 2);
-            ui_text(x + 13, ry + 2, line, locked ? st->text_dim : st->text);
+            text_draw(x + 13, ry + 2, line, locked ? st->text_dim : st->text, pieces);
         } else {
-            ui_text(x + 13, ry + 2, line, locked ? st->text_dim : st->text);
+            text_draw(x + 13, ry + 2, line, locked ? st->text_dim : st->text, pieces);
         }
         if (locked) {
             /* little padlock */

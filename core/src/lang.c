@@ -4,9 +4,8 @@
  * lang_tr() is on the draw path of every text call, so:
  *   - English (or a language with no table): a compare and a return;
  *   - a pointer into the current table's strings was translated already:
- *     returned as it is (ui_text_shadow / center and the native and PS1
- *     plat_text translate again what ui_text translated, and a
- *     translation must never be translated a second time);
+ *     returned as it is (a ui_* call handed text another one translated;
+ *     a translation must never be translated a second time);
  *   - a constant string (plat_text_is_const) is looked up once per
  *     language: a 64-entry cache (16 sets of 4) keyed by its address
  *     remembers the answer, misses (untranslated text) included;

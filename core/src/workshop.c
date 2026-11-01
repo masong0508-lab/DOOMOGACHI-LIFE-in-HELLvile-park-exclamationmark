@@ -375,11 +375,14 @@ static void stat_bars(int x, int y, int w, const DoomoWeapon *wp, int compact)
         int cx = x + (compact ? (i / 4) * col_w : 0), cy = y + (compact ? (i % 4) : i) * 8;
         if (compact) {
             /* 3-letter labels in the tiny layout */
+            const char *sn = lang_tr(short_names[i]);
             char l3[4];
-            l3[0] = short_names[i][0]; l3[1] = short_names[i][1]; l3[2] = short_names[i][2]; l3[3] = 0;
+            int k;
+            for (k = 0; k < 3 && sn[k]; k++) l3[k] = sn[k];
+            l3[k] = 0;
             plat_text(cx, cy, l3, PAL_UI_PINK_D);
         } else {
-            plat_text(cx, cy, short_names[i], PAL_UI_PINK_D);
+            plat_text(cx, cy, lang_tr(short_names[i]), PAL_UI_PINK_D);
         }
         ui_bar(cx + lab, cy + 1, col_w - lab - 3, 6, r[i], 100, cols[i]);
     }
@@ -391,12 +394,12 @@ static void cost_box(int x, int y, int w, int rows)
     int n = weld_cost(&weld_pending, items, counts, 12), i;
     char buf[32];
     int cw = w / 2, maxc = cw / FONT_ADVANCE;
-    plat_text(x, y, "Materials:", PAL_UI_PINK_D);
+    plat_text(x, y, lang_tr("Materials:"), PAL_UI_PINK_D);
     for (i = 0; i < n && i < rows * 2; i++) {
         int have = inv_count(items[i]);
         int cx = x + (i % 2) * cw, cy = y + 9 + (i / 2) * 9;
         doomo_snprintf(buf, sizeof(buf), "%c%d/%d %s", doomo_items[items[i]].icon, have, counts[i],
-                       doomo_items[items[i]].name);
+                       lang_tr(doomo_items[items[i]].name));
         if (maxc < (int)sizeof(buf)) buf[maxc] = 0;
         plat_text(cx, cy, buf, have >= counts[i] ? PAL_RAMP(RAMP_GRASS, 1) : PAL_UI_RED);
     }

@@ -415,8 +415,8 @@ UI text call goes through `lang_tr()`. Its state and a 64-entry cache (16
 sets of 4, 512 B) are one 528 B block in EWRAM: a string in the cartridge
 ROM (`plat_text_is_const()`, `src/lang_gba.c`) is looked up once per
 language and then found by its address, and a translation passed in again
-(`ui_text_shadow` and friends translate twice) is recognised by its address
-inside the table; text built in RAM is hashed and searched every time (one
+(a `ui_*` call handed text another one translated) is recognised by its
+address inside the table; text built in RAM is hashed and searched every time (one
 bucket of one table). Measured with the scout's island (seed 7, libmgba
 harness, work per drawn tick, `6714f43` -> L1):
 
@@ -434,6 +434,31 @@ same size missed 742 of 3,536 lookups on that screen (string literals sit
 sets miss only the 20 first sightings. What is left in Spanish is mostly
 the longer text itself (`vid_text`) and, on the Unlocks screen and the
 island, text formatted at run time (L2a / L2b translate it once).
+
+**L2a: one text path.** The GBA's `plat_text` never translated, while the
+native and PS1 ones did, so text drawn straight with `plat_text` (the
+workshop's stat labels and "Materials:", the weld game's HEAT, the combat
+HUD's AMMO, the free-play help marquee, whose `text_clip` drew one glyph
+per call) stayed English on the GBA only. Now no platform translates:
+the core does it once at each text entry point (`doomo/lang.h` "LOOKUP"),
+`fp_marquee` measures and clips the translation, and `text_clip` draws
+each run of glyphs between blanks in one `plat_text` call. `make test-lang`
+(`harness/scripts/lang_es.txt`, part of `make test`) switches the Options
+screen to Spanish and expects the Spanish help marquee and the Unlocks
+header ("Logros") from `plat_text`. Same harness, seed 1, work per drawn
+tick, base `d642736` -> L2a:
+
+| screen | base | L2a |
+|---|---:|---:|
+| Options, English | 25.1 ms | 25.2 ms |
+| Options, Spanish | 26.2 ms | **25.9 ms** (`lang_tr` 0.9% -> 0.8% of cycles) |
+| Unlocks, Spanish | 65.2 ms | 65.5 ms (the header and the card marquee now translated) |
+
+`make test-speed SPEED_BASE=` (`d642736`'s tour): all 16 scenes
+frame-exact; work per drawn tick unchanged except the island hub (96.8 ->
+98.2 ms in the tour, 97.0 -> 97.2 ms measured alone: which ticks get
+drawn shifts; no text in its profile). EWRAM and IWRAM unchanged (12,408 B
+free, 6,308 B stack), ROM +488 B.
 
 Measured main-stack high-water marks (the boot code paints the free IWRAM
 and `gba_stack_used()` scans it): 660 bytes in the game's boot / title /

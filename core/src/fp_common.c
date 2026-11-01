@@ -577,23 +577,32 @@ void fp_tag(int x, int y, const char *s, uint8_t fill, uint8_t text)
     ui_text(x + 4, y + 2, s, text);
 }
 
-/* Text clipped to [x0, x1): one plat_text per glyph that fits. */
+/* Text (translated already) clipped to [x0, x1): the glyphs that fit
+ * whole, one plat_text per run of them between blanks (L2a; was one call
+ * per glyph). Same pixels: every glyph keeps its own x. */
 static void text_clip(int x, int y, const char *s, uint8_t color, int x0, int x1)
 {
-    char g[2];
-    g[1] = 0;
-    for (; *s; s++, x += FONT_ADVANCE) {
-        if (x < x0) continue;
-        if (x + FONT_ADVANCE > x1) break;
-        if (*s == ' ') continue;
-        g[0] = *s;
-        plat_text(x, y, g, color);
+    char run[64];
+    int n = 0, rx = x;
+    for (;; s++, x += FONT_ADVANCE) {
+        unsigned char c = (unsigned char)*s;
+        int stop = c == 0 || x + FONT_ADVANCE > x1;
+        if (stop || c == ' ' || c == '\n' || x < x0 || n == (int)sizeof(run) - 1) {
+            if (n) { run[n] = 0; plat_text(rx, y, run, color); n = 0; }
+            if (stop) break;
+            if (c == ' ' || c == '\n' || x < x0) continue;
+        }
+        if (!n) rx = x;
+        run[n++] = (char)c;
     }
 }
 
 void fp_marquee(int x, int y, int w, const char *s, uint8_t color, int t)
 {
-    int tw = (int)strlen(s) * FONT_ADVANCE;
+    int tw;
+    if (!s) return;
+    s = lang_tr(s);                   /* L2a: measure and clip the translation */
+    tw = (int)strlen(s) * FONT_ADVANCE;
     if (tw <= w) { ui_text(x, y, s, color); return; }
     {
         int span = tw - w + 24, off = (t / 2) % (span + 60);
@@ -606,23 +615,24 @@ void fp_marquee(int x, int y, int w, const char *s, uint8_t color, int t)
 void fp_ticker(int y, int style)
 {
     static char line[300];
-    static int built_at = -1000, built_n = -1;
+    static int built_at = -1000, built_n = -1, built_lang = -1;
     const UiStyle *st = ui_style(style);
     int sw = fp_sw(), t = fp_t(), n = sim_news_count(), i, len, x0 = 30, x1 = sw - 6;
     if (!opt_get(OPT_NEWS_TICKER)) return;
-    if (n != built_n || t - built_at > 600) {
+    if (n != built_n || t - built_at > 600 || lang_get() != built_lang) {
         int k = 0;
         line[0] = 0;
         for (i = 0; i < n && i < 4; i++) {
-            const char *s = sim_news(i);
+            const char *s = lang_tr(sim_news(i));    /* L2a: built from translations */
             if (!s) continue;
             if (k) { fp_strcpy(line + k, "   " STR_ICON_HEART "   ", (int)sizeof(line) - k); k += 7; }
             fp_strcpy(line + k, s, (int)sizeof(line) - k);
             k = (int)strlen(line);
         }
-        if (!k) fp_strcpy(line, "All quiet on the island today...", sizeof(line));
+        if (!k) fp_strcpy(line, lang_tr("All quiet on the island today..."), sizeof(line));
         built_at = t;
         built_n = n;
+        built_lang = lang_get();
     }
     if (plat_draw_skipped()) return;
     /* G7: the bar is a retained panel; the scrolling line's strip is its

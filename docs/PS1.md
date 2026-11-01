@@ -360,6 +360,12 @@ table (about 8 KB) until L6 reads the tables from the disc per overlay
 group: six more would leave about 82 KB, close to the 72 KB gate, so **L6
 must land before the L10-* packages add `ui_main.tsv` rows**.
 
+**L2a (one text path).** `src/gfx2d.c`'s `plat_text` and
+`plat_text_outline` no longer call `lang_tr()`: they draw the bytes they
+are given, like the GBA's, and the core translates each string once in
+its text layer (`doomo/lang.h` "LOOKUP"). Every outline glyph pass and
+every run of a hint used to be looked up again here.
+
 HART (roofs and redrawn furniture, measured against `3706744` built the
 same way): the house's common code grew from 156 to 164 KB (+263
 furniture prims, 2,104 B of `doomo_furn_prims`; the roof's polygons in

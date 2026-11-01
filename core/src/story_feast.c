@@ -851,7 +851,7 @@ static int angle_shot(int panel, uint32_t pt, uint32_t ct, int swell)
     /* letterbox bars + camera tag */
     plat_rect(0, 0, sw, 12, PAL_BLACK);
     plat_rect(0, sh - 12, sw, 12, PAL_BLACK);
-    plat_text(14, 2, shots[k].name, PAL_WHITE);
+    plat_text(14, 2, lang_tr(shots[k].name), PAL_WHITE);
     if ((ct / 12) & 1) gg_ellipse(7, 6, 3, 3, PAL_UI_RED);
     return 1;
 }

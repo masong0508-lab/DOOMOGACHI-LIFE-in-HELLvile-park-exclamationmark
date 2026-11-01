@@ -3,12 +3,10 @@
  * glyph from the 4bpp font page with a per-colour CLUT (exact palette
  * colours, no dithering), images come from the VRAM image cache and are
  * drawn as SPRTs (scale 1) or raw-textured quads (scale 2..4).
+ * Text is drawn as given: the core translates it once (ui.c, L2a).
  */
 #include <string.h>
 #include "ps1.h"
-#ifdef DOOMO_HAVE_CORE
-#include "doomo/lang.h"
-#endif
 
 int plat_screen_w(void) { return SCR_W; }
 int plat_screen_h(void) { return SCR_H; }
@@ -331,9 +329,6 @@ void plat_text(int x, int y, const char *s, uint8_t color)
     int started = 0;
     if (!s)
         return;
-#ifdef DOOMO_HAVE_CORE
-    s = lang_tr(s);
-#endif
     for (; *s; s++) {
         unsigned c = (uint8_t)*s;
         if (c == '\n') {
@@ -374,9 +369,6 @@ void plat_text_outline(int x, int y, const char *s, uint8_t color, uint8_t outli
     int started = 0;
     if (!s)
         return;
-#ifdef DOOMO_HAVE_CORE
-    s = lang_tr(s);
-#endif
     for (p = s; *p; p++) {
         unsigned c = (uint8_t)*p;
         if (c == '\n') {

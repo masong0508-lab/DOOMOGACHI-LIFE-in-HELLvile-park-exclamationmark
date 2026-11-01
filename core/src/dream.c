@@ -195,7 +195,7 @@ int dream_caption(int v, const DreamCast *c, int nightmare, char *buf, int cap)
 {
     int n, split;
     v = DOOMO_CLAMP(v, 0, DREAM_VIGNETTES - 1);
-    n = expand(dream_lines[v].cute, c, buf, 0, cap);
+    n = expand(lang_tr(dream_lines[v].cute), c, buf, 0, cap);   /* L2a: each half translated */
     split = n;
     if (n < cap - 1) buf[n++] = ' ';
     if (nightmare && c->possessed) {
@@ -203,11 +203,11 @@ int dream_caption(int v, const DreamCast *c, int nightmare, char *buf, int cap)
         n = put(buf, n, cap, " whispers: \"MINE.\"", 0);
         buf[n] = 0;
     } else if (nightmare) {
-        n = expand(dream_lines[v].twist, c, buf, n, cap);
+        n = expand(lang_tr(dream_lines[v].twist), c, buf, n, cap);
         n = put(buf, n, cap, " AAAH!", 0);
         buf[n] = 0;
     } else {
-        expand(dream_lines[v].twist, c, buf, n, cap);
+        expand(lang_tr(dream_lines[v].twist), c, buf, n, cap);
     }
     return split;
 }

@@ -63,7 +63,10 @@ docs/                    design, building, modding the roster
 5. **Text is ASCII** plus icon glyphs `0x80..0x9F` (`font.h`) and the
    letters `0xA0..` of the language's glyph page. All strings are `const`,
    and they are always the English text: `lang_tr()` (`lang.h`) swaps in
-   the current language's translation where the text is drawn.
+   the current language's translation where the text is drawn, once, in
+   the core's text layer (`ui_*`, `fp_marquee`). `plat_text` draws bytes as
+   given on every platform, so a direct `plat_text` call with words passes
+   `lang_tr("...")`.
 6. **Never break the contract silently.** You may *add* functions, enums
    (before `*_COUNT`) and fields to headers **you own**. If a header you
    don't own needs a change, make the smallest additive change and list it

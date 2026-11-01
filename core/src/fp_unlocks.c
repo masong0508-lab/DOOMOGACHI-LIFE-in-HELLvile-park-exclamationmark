@@ -191,7 +191,7 @@ static void un_draw(void)
     char buf[64];
     ensure();
     ui_backdrop(WIN_CUTE, (uint32_t)fp_t());
-    doomo_snprintf(buf, sizeof(buf), "Unlocks  %d / %d", own_all, total);
+    doomo_snprintf(buf, sizeof(buf), lang_tr("Unlocks  %d / %d"), own_all, total);
     ui_title(sw / 2, 3, buf, WIN_CUTE);
     ui_bar(sw / 2 - 50, 17, 100, 5, own_all, DOOMO_MAX(total, 1), PAL_UI_GOLD);
     {

@@ -300,7 +300,7 @@ static void heat_gauge(int sw, int sh)
     ui_fill_circle(x + w / 2, y + h + 6, 7, PAL_RAMP(RAMP_STONE, 1));
     ui_fill_circle(x + w / 2, y + h + 6, 6, heat > zone_hi ? PAL_UI_RED : PAL_RAMP(RAMP_LAVA, 5));
     plat_rect(x - 6, hy - 1, 5, 3, PAL_WHITE);
-    plat_text(x - 4, y - 12, "HEAT", PAL_UI_CREAM);
+    plat_text(x - 4, y - 12, lang_tr("HEAT"), PAL_UI_CREAM);
 }
 
 static void wg_draw(void)
