@@ -181,8 +181,9 @@ Romance rules (`sim_romance_ok`, the one gate, checks both sides): adults
 (and elders) with adults; teens only with teens (crushes, confessions and
 dating, never a proposal or a wedding); babies, toddlers and children
 never. `sim_marriage_ok` (proposals, weddings, babies) needs two adults.
-`sim_romance_sweep()` undoes anything an old save or an age change left
-behind. `core/tests/test_life_stage.c` proves it on Empty, Classic and
+`sim_romance_level(a, b)` is the safety half alone (0 none, 1 teens'
+dating, 2 marriage), and `sim_romance_sweep()` uses it to undo anything an
+old save or an age change left behind (it runs on every `sim_init`). `core/tests/test_life_stage.c` proves it on Empty, Classic and
 Random islands.
 
 ## The story cast

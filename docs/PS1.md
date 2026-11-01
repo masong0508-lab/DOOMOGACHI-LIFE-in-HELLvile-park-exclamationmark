@@ -397,6 +397,17 @@ reserve, 27 KB above the 72 KB plan gate). Home fps (harness `home.txt`, PASS, p
 plain 30.17, steady 29.75, orbit 27.91, cellar_full 28.35, defend_stress
 19.51, modal 29.83, defend_w3 30.13, visit 30.17.
 
+LS0 (saved life stage, both-direction romance gate): the gate, the
+romance sweep, the version-1 save migration and the save codec's stage
+field are resident (sim, sim_social, resident, town, save); the creator's
+Age row is in the free-play group. Measured against `226179f` built the
+same way, the disc ends at `0x801e7c60` instead of `0x801e7400`,
+**99,232 B below the stack top** (-2,144 B; 34 KB above the 64 KB
+reserve, 25 KB above the 72 KB plan gate; the LIFESIM plan's "< 1 KB"
+target for LS0 was missed by 1.1 KB, all of it child-safety code: sweep
+0.5 KB, gate + stage helpers 0.6 KB, migration 0.3 KB, codec 0.2 KB).
+The overlay slot keeps its size (166 KB, now from `0x801c7c60`).
+
 The biggest remaining consumers of RAM: resident core code (portraits,
 UI, sim, story engine, ...) ~650 KB, merged string literals of resident
 code ~110 KB, `doomo_town` 107 KB, the display lists 112 KB + OTs 24 KB,

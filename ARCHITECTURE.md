@@ -96,6 +96,14 @@ docs/                    design, building, modding the roster
 
 `platform.h` is shared: foundation, gba and ps1 must all agree on it.
 
+Life stage and romance (LS0, child safety): every resident's saved
+`LIFE_*` stage is in bits 4..6 of `romance` (resident.h: read it with
+`RES_STAGE`, never the raw byte). The life owner's `sim_romance_ok` (both
+sides), `sim_marriage_ok` and `sim_romance_level` (sim.h) are the one
+gate: any later romance, family-partner, mature, ending or play-as hook
+calls them instead of checking ages itself. `test_life_stage.c` is the
+property test that must stay green.
+
 Generated files: every generator writes **one file per producer**
 (`core/gen/art_data.c`, `core/gen/roster_data.c`,
 `core/gen/map_<name>.c`), so owners never collide. `make -C core check-gen`
