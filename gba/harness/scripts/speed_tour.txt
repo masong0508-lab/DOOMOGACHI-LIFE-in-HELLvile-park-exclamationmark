@@ -25,7 +25,11 @@
 #
 # The expect-fps floors are regression gates at about 85% of the speed
 # pass 4 baseline (the harness is deterministic: one ROM always gives the
-# same numbers). A package that makes a scene faster raises its floor.
+# same numbers). A package that makes a scene faster raises its floor:
+# G2 set the overworld visits to its gates (hahaland 24, hellvile and park
+# 29, invaded 15; invaded must also keep its 30 logic ticks/s, which
+# expect-fps cannot check: see the table) and the pause and story map to
+# about 85% of what it measured.
 wait 40
 expect-log doomo: init
 sync on 61
@@ -46,7 +50,7 @@ scene STORY 10
 wait 200
 fps start
 wait 130
-expect-fps 14 hahaland visit
+expect-fps 24 hahaland visit
 shot hahaland
 vhash-seq 30 hahaland visit
 # the overworld pause panel over the same visit
@@ -54,7 +58,7 @@ press START
 wait 30
 fps start
 wait 130
-expect-fps 8.5 overworld pause
+expect-fps 11 overworld pause
 shot pause
 vhash-seq 30 overworld pause
 press B
@@ -65,7 +69,7 @@ scene STORY 11
 wait 200
 fps start
 wait 130
-expect-fps 19 hellvile visit
+expect-fps 29 hellvile visit
 shot hellvile
 vhash-seq 30 hellvile visit
 
@@ -74,7 +78,7 @@ scene STORY 12
 wait 200
 fps start
 wait 130
-expect-fps 18.5 park visit
+expect-fps 29 park visit
 shot park
 vhash-seq 30 park visit
 
@@ -98,7 +102,7 @@ scene STORY 219
 wait 200
 fps start
 wait 130
-expect-fps 7 invaded
+expect-fps 15 invaded
 shot invaded
 vhash-seq 30 invaded
 
@@ -108,7 +112,7 @@ scene STORY 110
 wait 200
 fps start
 wait 130
-expect-fps 12.5 story map + dialogue
+expect-fps 20.5 story map + dialogue
 shot story110
 vhash-seq 30 story map + dialogue
 

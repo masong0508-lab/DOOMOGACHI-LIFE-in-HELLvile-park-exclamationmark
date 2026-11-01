@@ -37,7 +37,7 @@ Make targets (run from anywhere with `make -C gba ...`):
 | `engine-test` | `build/doomogachi_et.gba` | same as `make ENGINE_TEST=1` |
 | `engine-test-nocore` | `build/doomogachi_et_nocore.gba` | renderer only, procedural stand-in art (`NOCORE=1`) |
 | `harness` | `build/harness` | host program linked against libmgba |
-| `test` | - | `test-et`, `test-save`, `test-game` (below) |
+| `test` | - | `test-et`, `test-save`, `test-game`, ..., `test-ow` (section 9) |
 | `rom TILES=0` | `build/doomogachi.gba` | the overworld in Mode 4 only (no tile mode, G5): the reference ROM for a tile-mode frame parity check |
 | `sizes` | - | `arm-none-eabi-size -A` of the game ELF |
 | `clean` | - | removes `gba/build/` |
@@ -379,6 +379,7 @@ against the LAST row, not against a figure from an older base.
 | 8 | HART: roofs, redrawn furniture | `3706744` | 13,088 B | 13,088 B | 0 | 6,728 B | no EWRAM / IWRAM: the roof's tables (up to 5 KB) live in the two 2.5 KB VRAM gaps of the mode 4 pages, which the raycaster refills (`r3d_invalidate()`); the house region stays 16,872 B. ROM 3,710,784 -> 3,721,784 B (+11,000: iso sprites 453,094 -> 455,050 B, roof code in `room_ref.c` / `room.c`); fps: modal 20.0 -> 18.8 (gate 18), rotate 25.4 -> 23.2 (20), steady 29.5, cellar 26.2, defend 12.2 (floor 11) |
 | 9 | C1: show canon (turkey Mayor, animatronic Bonejangles, "Needs salt") | `27de086` | 13,088 B | **13,048 B** | -40 B | 6,728 B | `portrait_turkey.c`'s layer-group state (32 B `.bss`); ROM ROMFIG (the turkey renderer, the animatronic parts, 6 creator presets); IWRAM unchanged |
 | 10 | H4: themed door / window fittings, the designed Towers 7B and Pits flat | `H4` | 13,048 B | **13,048 B** | 0 | 6,728 B | ROM -> 3,774,396 B (about +40.8 KB: 19 pieces in the iso sprites); the Walls panel's skin state is 4 B of `HomeScn` (scene scratch); room parity (the Living Room) and house fps unchanged |
+| 11 | G2: overworld quick wins (Mode 4) | `6714f43` | 13,616 B | **13,576 B** | -40 B | 7,048 B | `owf` pixel classes + 2 tile-cache counters; IWRAM -120 B (`ow_spr_rows` in, the per-pixel C blit out); ROM +4,716 B (3 KB of it the `test-ow` self-test); stack high-water 3,376 B (2 KB table cache on `plat_overworld`'s stack) |
 
 Known claimants still to land (their own packages measure and add rows):
 
@@ -614,6 +615,55 @@ crowd) is generated, and the tour's pinned seed and entry tick give a
 dearer show than the profiling run's. The same ROM measured 15.0 / 51.3
 with a different show while the tour was being written. The overworld
 pause is new (no earlier figure).
+
+#### G2: the overworld in Mode 4, exact (`make -C gba test-speed`)
+
+G2 sped up `plat_overworld` without changing the display mode or a pixel
+(section 6 has the how). `make -C gba test-speed SPEED_BASE=` against its
+merge base (`6714f43`, H6), both ROMs on the same tour:
+
+| scene | logic ticks/s | drawn fps | work avg / max ms | base fps | base avg / max ms |
+|-------|--------------:|----------:|------------------:|---------:|------------------:|
+| hahaland visit | 30.1 | **26.9** | 34.3 / 35.5 | 16.9 | 52.1 / 52.6 |
+| overworld pause | 22.8 | 12.5 | 75.2 / 127.8 | 10.5 | 91.5 / 145.6 |
+| hellvile visit | 30.0 | **30.0** | 23.8 / 24.9 | 22.7 | 37.7 / 39.4 |
+| park visit | 30.0 | **30.0** | 26.6 / 28.4 | 22.1 | 37.5 / 39.8 |
+| invaded | **30.0** | **15.2** | 53.4 / 68.7 | 8.6 (14.9 ticks/s) | 113.6 / 132.3 |
+| story map + dialogue | 30.0 | 24.0 | 36.1 / 37.3 | 15.0 | 53.6 / 55.4 |
+| every other scene | | unchanged | | | |
+
+All 15 scenes' 450 hashed frames are identical to the merge base's. The
+gates (hahaland >= 24 fps, hellvile and park >= 29, invaded >= 15 with 30
+logic ticks/s) hold; the tour's floors are now 24 / 29 / 29 / 15 (and 11
+for the pause, 20.5 for the story map). The invaded map's worst frames
+(68.7 ms) are its core's: every ~18 drawn frames `build_billboards()`
+(`core/src/overworld.c`) takes ~20 ms instead of 4 (a sprite-frame
+rebuild), on top of `plat_overworld`'s 36-38 ms; it is the one thing
+between that map and a steady 15 fps margin (G11). The `shot`s of the
+hahaland, invaded and pause scenes differ from the base's: a `shot` in
+sync mode shows whichever frame the speed put on screen (section 4,
+above), the hashed frames do not.
+
+Where the overworld's time went (temporary `gba_cycles()` marks, per
+drawn frame, base -> G2): hahaland ground 13.7 -> 8.1 ms, sprites 23.7 ->
+13.7 ms (24 sprites, 28,466 px); hellvile sprites 11.0 -> 5.2 ms; park
+sprites 9.8 -> 6.1 ms (31,084 px); invaded sprites 77.2 -> 24.6 ms (47
+sprites, 45,284 px; 4 table builds a frame); the story map's blocks ~30 ->
+~16 ms.
+
+Exactness beyond the tour: a sweep of every story beat (`scene STORY
+100+b` by day and `200+b` at night, b = 0..65, every tick drawn and
+hashed from the scene's entry: `vhash-seq 70`) gives 132 x 70 = 9,240
+frames identical to the merge base's; and `make -C gba test-ow` (part of
+`make -C gba test`) checks 2,400 random sprites, including the mirrored,
+translucent, scaled and clipped cases the maps rarely show. A sweep that
+waits before hashing (`wait 60`, then `vhash-seq 10`) differs in 8 of
+the 132 scenes, in both directions, while every-tick hashing of the same
+scenes matches: the core keeps some state per *drawn* frame (sparkles,
+the invaded portal's animation), so a ROM that skips different catch-up
+ticks before the window draws a different state. That is a core
+property, not a renderer one; parity checks must hash from the scene's
+first tick, as the tour's windows do after its settle.
 
 #### Frame parity between ROMs (`vhash-seq`, `SPEED_BASE`)
 
@@ -853,6 +903,43 @@ frame of ground is mostly 16-pixel block copies; horizontal scrolling
 moves in 2-pixel steps so every copy is halfword aligned. Cells covered by
 a block top + front face skip their ground tile. A frame may instead show
 the world as a tile BG (section 6b).
+
+G2 (Mode 4, exact; numbers in section 4, "G2"):
+
+* Sprites (`ow.iwram.c`, `ow_loops.s`). A sprite pixel is the colormap,
+  then the night dither, then the view-tint dither: one of four classes
+  per 4x4 screen position. `ow_frame_luts()` works out the frame's
+  classes, and `owf_sprite_luts()` composes a colormap with them into
+  256-byte tables once per colormap and frame (an 8-table cache, 2 KB of
+  `plat_overworld`'s stack: 8 colormaps by day, 4 at night or under a
+  tint). Every pixel is then one table lookup. `ow_spr_rows` (ARM, IWRAM)
+  draws all of a sprite's rows: four texels per aligned word read (ROM is
+  a 16-bit bus), transparent quads skipped, opaque pairs stored without a
+  read, two quads per loop, the clipped odd edge columns masked off the
+  first and last quad. Mirrored, scaled and translucent sprites go
+  through it row by row from a texel buffer. The house (`room.c`) calls
+  `ow_sprite` outside `plat_overworld`: no tables, the colormap as is.
+* Ground. One scan of each cell row's visible columns draws the ground
+  tiles (row pointers into the map, a run of equal cells reusing one
+  lookup) and notes the raised cells in a bit mask; the raised pass then
+  visits only those.
+* VRAM tile copies. A lit tile drawn a second time in a frame is first
+  DMA'd into one of 20 slots in the two never-displayed 2,560-byte gaps
+  after the Mode 4 pages (`0x06009600`, `0x06013600`) and copied from
+  there: VRAM reads cost about half of EWRAM's. The raycaster keeps its
+  colormap rows in the same gaps (`r3d_int.h`), so a frame that takes a
+  slot clears `r3d_cmrow[0]` and the next 3D frame rebuilds them (once,
+  ~0.5 ms).
+* Blocks. A front face whose column the next row's top covers (the cell
+  below is raised at least as high) is not drawn: everything drawn there
+  in between, that row's sprites included, was always overwritten by that
+  opaque top. A row's contact lines are shaded as runs, after its blocks
+  and before its sprites (no top or other front reaches that screen row).
+  Fronts and tops reuse the previous lookup when the cell repeats.
+
+IWRAM after G2: 7,048 bytes for the main stack (was 7,168: `ow_sprite`
+shrank, `ow_spr_rows` is new); main stack high-water over the speed tour
+3,376 bytes (was 2,280: the table cache).
 
 ---------------------------------------------------------------------------
 
@@ -1265,6 +1352,7 @@ gba/build/harness ROM.gba [--script FILE] [--shots DIR] [--save FILE]
 | `test-game` | game ROM, `scripts/smoke.txt`: boot, title, START, menu presses, screenshots in `build/shots/game` |
 | `test-coresave` | game ROM, `scripts/coresave1.txt` then `coresave2.txt` with the same `--save` file: the core's streamed saves (worst-case island in slot 1, a too-big save refused in slot 0, a story island in slot 0), loads checked by town CRC, then persistence across a reboot |
 | `test-home` | game ROM, `scripts/home.txt` (H2): `plat_room` parity with the room_ref golden on every path (15 classic frames, 15 shell-frame checks and 12 roof checks required, 29 `xfail` until H2), then `SCENE_HOME` fps gates (section 6a) and a profile, screenshots in `build/shots/home` |
+| `test-ow` | game ROM, `scripts/owsprite.txt` (G2): 2,400 random sprites drawn by `ow_sprite` and by the G1 baseline's per-pixel blit (`src/owtest.c`, mailbox command `GBA_HC_OW_SPRITE_TEST` = 16, posted 150 cases at a time) must leave identical back buffers (section 6) |
 
 `make -C gba test-speed` (G1, not part of `test`): game ROM,
 `scripts/speed_tour.txt`: every target scene's fps with an `expect-fps`

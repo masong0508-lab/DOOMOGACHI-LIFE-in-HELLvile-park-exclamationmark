@@ -16,8 +16,14 @@
  *
  * Speed: ground tiles are cached LIT (per texture frame + light level +
  * tint state) in a small EWRAM cache, so a frame of ground is mostly
- * halfword copies (ow.iwram.c). Front faces and sprites are drawn per
- * pixel through the colormap.
+ * 16-pixel block copies (ow_tile16), from a VRAM copy once a tile is used
+ * twice in a frame (tile_src). (G2) One scan of each cell row's visible
+ * columns draws the ground and notes the raised cells; the raised pass
+ * visits only those, skips front faces the next row's top covers and
+ * shades a row's contact lines as runs. Sprites: one composed table
+ * lookup per pixel (owf_sprite_luts, ow_int.h), four texels per word read
+ * in ARM (ow_spr_rows, ow_loops.s). Exact to the G1 baseline: speed tour
+ * vhash-seq parity, make -C gba test-ow (owtest.c).
  */
 #include "gba_plat.h"
 #include "ow_int.h"
