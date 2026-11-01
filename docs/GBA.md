@@ -388,7 +388,7 @@ against the LAST row, not against a figure from an older base.
 | 11 | G2: overworld quick wins (Mode 4), the tile window retuned | `d5181cb` | 13,048 B | 13,008 B | -40 B | 6,608 B | `owf` pixel classes + 2 tile-cache counters; IWRAM resident +120 B (`ow_spr_rows` in, the per-pixel C blit out), so the overlay slot's largest group may now grow by 464 B (to 10,848 B) within the 6 KB stack rule; ROM 3,774,396 -> 3,779,208 B (+4,812, ~3 KB of it the `test-ow` self-test); main stack high-water over the tour 3,376 B (2 KB table cache on `plat_overworld`'s stack; G5's canvas budget must leave room for it); `CV_TILES_WIN` 250 -> 64 (section 6b); speed tour frame-exact (16 scenes) |
 | 12 | G6: overworld billboards as OBJs | `65209c0` | 13,008 B | **12,952 B** | -56 B | 6,608 B | ROM 3,779,208 -> 3,787,548 B (+8,340); the block table and the frame's billboards (1,700 B) live in the IWRAM overlay slot's tail past the 2D group (asserted >= 1,712 B in `gba.ld`), the OAM entries in a 896 B buffer on `video_flip`'s stack (main-stack high-water 3,704 B with tile frames forced); 2D group 8,224 -> 8,592 B (still below the 3D group); speed tour frame-exact (16 scenes) |
 | 13 | H5: Garden / Park Plot lips, door backdrop, front-edge fences | `54f2983` | 12,952 B | **12,952 B** | 0 | 6,608 B | no EWRAM / IWRAM: `RG` (the frame geometry, on the stack) +26 B for the backdrop and lip colours; ROM 3,779,208 -> 3,782,252 B on G2 (+3,044: lip / backdrop rows, front-edge items, the shared helpers, the frame table), 3,787,548 -> 3,790,592 B after G6 (measured); room parity 46..50 required, house fps unchanged (home_plain 30.0, steady 29.5 drawn) |
-| 14 | G7: retained panels, "3D: Faster / Better" | `17d385b` | 12,952 B | **12,408 B** | -544 B | 6,308 B | the panel table and the 80-rect pool (`panel.c`, 480 B), `ui_dialog.c`'s page-length cache, the panel / pacing state; IWRAM resident +300 B (`pn_span`, `r3d_up2`, the `plat_rect` panel test); ROM 3,787,548 -> 3,795,032 B; speed tour and the 132-scene story sweep frame-exact (section 4b) |
+| 14 | G7: retained panels, "3D: Faster / Better" | `17d385b` | 12,952 B | **12,408 B** | -544 B | 6,308 B | the panel table and the 80-rect pool (`panel.c`, 480 B), `ui_dialog.c`'s page-length cache, the panel / pacing state; IWRAM resident +300 B (`pn_span`, `r3d_up2`, the `plat_rect` panel test); ROM 3,790,592 -> 3,798,164 B (+7,572); speed tour and the 132-scene story sweep frame-exact (section 4b) |
 
 Known claimants still to land (their own packages measure and add rows):
 
@@ -824,12 +824,12 @@ frame is identical, no panel breaks a rule, and most frames keep their
 panels.
 
 **Exactness.** `make test-speed SPEED_BASE=` against the merge base's log
-(`54f2983`, the same tour script): all 16 scenes' 480 hashed frames are
-identical; and the story sweep (`scene STORY 100..165` and `200..265`, seed
+(`54f2983`, the same tour script, and again on `17d385b` after H5): all 16
+scenes' 480 hashed frames are identical; and the story sweep (`scene STORY 100..165` and `200..265`, seed
 7, `vhash-seq 70` from each scene's first tick: 9,240 frames with portrait
 lines, pills, choices and toasts) is identical to the base ROM's.
 
-Measured (libmgba, work per drawn tick, `54f2983` -> G7):
+Measured (libmgba, work per drawn tick, `54f2983` -> G7; the same on `17d385b`):
 
 | scene | drawn fps | work avg ms | base fps | base avg ms |
 |-------|----------:|------------:|---------:|------------:|

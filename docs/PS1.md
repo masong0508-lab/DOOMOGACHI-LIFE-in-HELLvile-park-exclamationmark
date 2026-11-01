@@ -377,6 +377,16 @@ estimate of about 8 KB per further resident language table, six more
 would now leave about 72 KB, right at the plan gate: L6 (tables read
 from the disc per group) matters even more after HART.
 
+G7 (retained panels, `platform.h` `plat_panel_begin`): the PS1 keeps the
+weak default (every panel drawn every frame, `ui.h` `UI_PANELS` 0, so no
+panel keys are built and the pictures are unchanged); the restructured
+dialogue drawing, `ui_dialog.c`'s page-length cache and the small
+`ui.c` helpers add 1,040 B of resident code: measured against
+`17d385b` built the same way, the disc ends at `0x801e6c00` instead of
+`0x801e67f0`, **103,424 B below the stack top** (104,464 B before; still
+39 KB above the 64 KB reserve and 31 KB above the 72 KB plan gate). No
+overlay group changes size.
+
 The biggest remaining consumers of RAM: resident core code (portraits,
 UI, sim, story engine, ...) ~650 KB, merged string literals of resident
 code ~110 KB, `doomo_town` 107 KB, the display lists 112 KB + OTs 24 KB,
