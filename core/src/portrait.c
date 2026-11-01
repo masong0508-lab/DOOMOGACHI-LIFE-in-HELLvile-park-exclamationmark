@@ -132,14 +132,8 @@ static void finish(PCtx *c)
  * re-render over several ticks. */
 #define DL_STEPS 6
 
-static void turkey_step(PCtx *c, int step);
-
 static void draw_step(PCtx *c, int step)
 {
-    if (c->l->species == SPECIES_TURKEY) {
-        turkey_step(c, step);
-        return;
-    }
     switch (step) {
     case 0:
         pb_set_neck(c->h.cy + PCT(c->h.ry, 86));
@@ -234,10 +228,17 @@ static void turkey_step(PCtx *c, int step)
     }
 }
 
+/* one layer group of any look (the sliced cache job and draw_layers) */
+static void draw_group(PCtx *c, int step)
+{
+    if (c->l->species == SPECIES_TURKEY) turkey_step(c, step);
+    else draw_step(c, step);
+}
+
 static void draw_layers(PCtx *c)
 {
     int s;
-    for (s = 0; s < DL_STEPS; s++) draw_step(c, s);
+    for (s = 0; s < DL_STEPS; s++) draw_group(c, s);
 }
 
 static void float_shadow(PCtx *c, int cx, int y, int w)
@@ -805,7 +806,7 @@ static void job_pump(void)
             if (job.kind == CK_FIGURE) setup_figure(&job.c, (uint8_t *)e->img.pix);
             else setup_portrait(&job.c, (uint8_t *)e->img.pix);
         }
-        draw_step(&job.c, job.step);
+        draw_group(&job.c, job.step);
         job.gen = pcv.gen;
         steps_used++;
         if (++job.step >= DL_STEPS) {
