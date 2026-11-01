@@ -21,7 +21,10 @@
  * ray per pixel along the iso view direction (1,1,1) against its prims:
  * boxes, ellipsoid blobs, vertical cylinders and cones. Shading is the
  * 3-tone rule (top light, +y face mid, +x face dark; curved prims by their
- * normal), soft prims dither their tone edges, shiny ones get a highlight;
+ * normal), soft prims dither their tone edges, shiny ones get a highlight,
+ * glow ones a brighter tone (and, H8, their pixels are a GLOW run class:
+ * the renderers keep them at full light; a `pane` prim's pixels are PANE
+ * runs, a window's glass that shows the sky by daylight);
  * then coloured selective outlines (the darkest tone of the local colour,
  * black only on the contact row) and a rim light on the top-left edge.
  * Facings are span encoded (furn.h). Integer maths only (128-bit for the
@@ -467,8 +470,10 @@ typedef struct Prim {
     int x, y, z, w, d, h;        /* box: min + size; blob: centre + radii;
                                     cyl/cone: centre x y, z bottom, w radius, h   */
     int mat, style;              /* MAT_A / MAT_B / a palette index (the dark tone);
-                                    ramp materials store -100 - ramp              */
+                                    ramp materials store -100 - ramp; style:
+                                    FPS_* | FG_GLOW | FG_PANE                     */
 } Prim;
+enum { FG_GLOW = 4, FG_PANE = 8 };   /* (H8) the light classes (furn.h FPL_*) */
 #define FG_MAX_PRIMS 24
 typedef struct Art {
     int has, frames, nprim, line;
@@ -574,8 +579,19 @@ static int parse_art(const char *text, const char *file)
                 if (!lex_next(&L, tok, sizeof tok, &q, &nl)) goto done;
                 if (!strcmp(tok, "soft")) p->style |= FPS_SOFT;
                 else if (!strcmp(tok, "shiny")) p->style |= FPS_SHINY;
-                else if (!strcmp(tok, "glow")) p->style |= 4;
+                else if (!strcmp(tok, "glow")) p->style |= FG_GLOW;
+                else if (!strcmp(tok, "pane")) p->style |= FG_PANE;
                 else break;
+                /* (H8) a pane is a window's glass (the renderers turn it to
+                 * the sky by daylight); glow and pane are two light classes */
+                if ((p->style & FG_GLOW) && (p->style & FG_PANE)) {
+                    fg_err(file, L.line, "a prim is `glow` or `pane`, not both:", rows[cur].key);
+                    return fg_errors - e0;
+                }
+                if ((p->style & FG_PANE) && rows[cur].role != FR_WINDOW) {
+                    fg_err(file, L.line, "`pane` is for windows' glass:", rows[cur].key);
+                    return fg_errors - e0;
+                }
             }
         }
     }
@@ -817,7 +833,7 @@ static int intersect(const Prim *p, int64_t X0, int64_t Y0, Hit *h)
     }
 }
 
-typedef struct Img { int w, h, ox, oy; uint8_t *pix; } Img;
+typedef struct Img { int w, h, ox, oy; uint8_t *pix, *cls; } Img;   /* cls: FPL_* per pixel (H8) */
 
 static int rot_prim(const Prim *in, Prim *out, int W)
 {
@@ -868,7 +884,7 @@ static void bake(int fi, int facing, int frame, Img *out)
                 uint8_t tn[5];
                 int s = best.tone256, tone;
                 mat_tones(pr[best.prim].mat, tn);
-                if (pr[best.prim].style & 4) s += 90;                       /* glow */
+                if (pr[best.prim].style & FG_GLOW) s += 90;                 /* glow */
                 tone = s > 150 ? 2 : s > 95 ? 1 : 0;
                 if ((pr[best.prim].style & FPS_SOFT) && ((x + y) & 1)) {     /* dithered fluff edges */
                     if (s > 135 && s <= 165) tone = 2;
@@ -939,8 +955,14 @@ static void bake(int fi, int facing, int frame, Img *out)
     out->oy = BOY0 - miny;
     if (out->w > 255 || out->h > 255) { fg_err(r->key, 0, "facing larger than 255 px", NULL); out->w = out->h = 1; }
     out->pix = (uint8_t *)malloc((size_t)out->w * out->h);
+    out->cls = (uint8_t *)malloc((size_t)out->w * out->h);
     for (y = 0; y < out->h; y++)
-        for (x = 0; x < out->w; x++) out->pix[y * out->w + x] = buf_c[miny + y][minx + x];
+        for (x = 0; x < out->w; x++) {
+            int m = buf_m[miny + y][minx + x], st = m ? pr[m - 1].style : 0;
+            out->pix[y * out->w + x] = buf_c[miny + y][minx + x];
+            /* (H8) each pixel takes its prim's light class, outline included */
+            out->cls[y * out->w + x] = (uint8_t)((st & FG_GLOW) ? FPL_GLOW : (st & FG_PANE) ? FPL_PANE : FPL_NONE);
+        }
 }
 
 /* (H6) facing 1 of a `mirror` decal: facing 0 flipped, anchored so that it
@@ -953,14 +975,48 @@ static void mirror_img(const Img *src, Img *out)
     out->ox = src->w - src->ox;
     if (out->ox < 0 || out->ox > 255) { fg_err("mirror", 0, "a mirrored facing would start right of its anchor", NULL); out->ox = 0; }
     out->pix = (uint8_t *)malloc((size_t)src->w * src->h);
+    out->cls = (uint8_t *)malloc((size_t)src->w * src->h);
     for (y = 0; y < src->h; y++)
-        for (x = 0; x < src->w; x++) out->pix[y * src->w + x] = src->pix[y * src->w + src->w - 1 - x];
+        for (x = 0; x < src->w; x++) {
+            out->pix[y * src->w + x] = src->pix[y * src->w + src->w - 1 - x];
+            out->cls[y * src->w + x] = src->cls[y * src->w + src->w - 1 - x];
+        }
 }
 
-/* span encode: h u16 row offsets, then [skip][len][pixels].. 0xFF per row */
+/* span encode: h u16 row offsets, then (H8) the light classes, then per row
+ * [skip][len][pixels].. 0xFF. The classes are spans of glow / pane pixels,
+ * [row][x][len][FPL_*] in row and x order and never across a run (a span
+ * ends where its run does), ended by row 0xFF: a renderer that does not
+ * need them (full light, daylight) jumps over them to the rows, so they
+ * cost nothing there (furn.h). */
 static int span_encode(const Img *im, uint8_t *dst)
 {
     int y, n = im->h * 2;
+    for (y = 0; y < im->h; y++) {                      /* the classes, run by run */
+        const uint8_t *row = im->pix + y * im->w, *cls = im->cls + y * im->w;
+        int x = 0;
+        while (x < im->w) {
+            int skip = 0, len = 0, k;
+            while (x + skip < im->w && !row[x + skip]) skip++;
+            if (x + skip >= im->w) break;
+            while (x + skip + len < im->w && row[x + skip + len] && len < 254) len++;
+            for (k = x + skip; k < x + skip + len; ) {
+                int c = cls[k], e = k;
+                while (e < x + skip + len && cls[e] == c && e - k < 255) e++;
+                if (c != FPL_NONE) {
+                    dst[n++] = (uint8_t)y;
+                    dst[n++] = (uint8_t)k;
+                    dst[n++] = (uint8_t)(e - k);
+                    dst[n++] = (uint8_t)c;
+                }
+                k = e;
+            }
+            x += skip + len;
+        }
+    }
+    dst[n++] = 0xFF;
+    dst[n++] = 0xFF;                   /* pad: the rows keep their parity (the GBA
+                                          DMAs halfword-aligned runs straight from ROM) */
     for (y = 0; y < im->h; y++) {
         const uint8_t *row = im->pix + y * im->w;
         int x = 0;
@@ -1286,8 +1342,12 @@ int main(int argc, char **argv)
     for (i = 0; i < nrows; i++)
         for (k = 0; k < arts[i].nprim; k++) {
             const Prim *p = &arts[i].p[k];
-            int mat = p->mat == MAT_A ? FM_A : p->mat == MAT_B ? FM_B :
-                      p->mat <= -100 ? PAL_RAMP(-100 - p->mat, 4) : PAL_PAINT(p->mat, 1);
+            /* (H8) the light class in the mat (furn.h furn_prim_mat) */
+            int cl = (p->style & FG_GLOW) ? FPL_GLOW : (p->style & FG_PANE) ? FPL_PANE : FPL_NONE;
+            int mat = p->mat == MAT_A ? (cl == FPL_GLOW ? FM_A_GLOW : cl == FPL_PANE ? FM_A_PANE : FM_A) :
+                      p->mat == MAT_B ? (cl == FPL_GLOW ? FM_B_GLOW : cl == FPL_PANE ? FM_B_PANE : FM_B) :
+                      p->mat <= -100 ? PAL_RAMP(-100 - p->mat, cl == FPL_GLOW ? 5 : cl == FPL_PANE ? 3 : 4) :
+                      PAL_PAINT(p->mat, cl == FPL_GLOW ? 2 : cl == FPL_PANE ? 0 : 1);
             int w = p->kind == FP_BOX ? p->w : p->w * 2, d = p->kind == FP_BOX ? p->d : p->kind == FP_BLOB ? p->d * 2 : 0;
             int h = p->kind == FP_BLOB ? p->h * 2 : p->h;
             fprintf(o, "    { %d, %d, %d, %d, %d, %d, %d, %d },%s\n",
@@ -1449,7 +1509,7 @@ int main(int argc, char **argv)
     }
     fprintf(o, "#else\ntypedef int doomo_furn_iso_not_on_ps1;\n#endif\n");
     fclose(o);
-    for (i = 0; i < nrows; i++) for (k = 0; k < arts[i].frames * 2; k++) free(imgs[i][k].pix);
+    for (i = 0; i < nrows; i++) for (k = 0; k < arts[i].frames * 2; k++) { free(imgs[i][k].pix); free(imgs[i][k].cls); }
     return 0;
 }
 #endif /* FURNGEN_LIB */

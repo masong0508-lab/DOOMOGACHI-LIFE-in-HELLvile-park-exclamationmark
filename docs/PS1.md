@@ -387,6 +387,16 @@ dialogue drawing, `ui_dialog.c`'s page-length cache and the small
 39 KB above the 64 KB reserve and 31 KB above the 72 KB plan gate). No
 overlay group changes size.
 
+H8 (lamp pools, glow prims, night panes: `room.c` decodes a prim's light
+class from its `mat`, `furn_prim_mat()`; the house group's `room_ref.c`
+gains the shared light code): the house's common code still rounds to
+166 KB but the slot grows one sector, so the disc ends at `0x801e7400`
+instead of G7's `0x801e6c00`, **101,376 B below the stack top** (-2,048 B
+against `1e8a97b`, the same on H5's `17d385b`; 35 KB above the 64 KB
+reserve, 27 KB above the 72 KB plan gate). Home fps (harness `home.txt`, PASS, parity live / backdrop 0 px):
+plain 30.17, steady 29.75, orbit 27.91, cellar_full 28.35, defend_stress
+19.51, modal 29.83, defend_w3 30.13, visit 30.17.
+
 The biggest remaining consumers of RAM: resident core code (portraits,
 UI, sim, story engine, ...) ~650 KB, merged string literals of resident
 code ~110 KB, `doomo_town` 107 KB, the display lists 112 KB + OTs 24 KB,

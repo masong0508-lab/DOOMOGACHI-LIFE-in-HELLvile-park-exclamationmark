@@ -14,6 +14,7 @@
 #define DOOMO_FURN_H
 
 #include "types.h"
+#include "palette.h"
 
 #define FURN_MAX   384          /* ids 0..383, 9 bits in the save          */
 #define FURN_NONE  0x1FF        /* the 9-bit "no piece"                    */
@@ -116,12 +117,51 @@ typedef struct DoomoFurnPrim {
                                          0, height                                     */
 } DoomoFurnPrim;                      /* 8 B */
 extern const DoomoFurnPrim doomo_furn_prims[];
+/* (H8, add-only) A prim's light class rides in its mat. furngen writes a
+ * fixed material as its base tone, PAL_PAINT(p, 1) or PAL_RAMP(r, 4); a
+ * `glow` prim (fire, lava, candle flames, neon: kept at full light at any
+ * daylight) as PAL_PAINT(p, 2) / PAL_RAMP(r, 5), a `pane` (a window's
+ * glass, which shows the sky outside by daylight) as PAL_PAINT(p, 0) /
+ * PAL_RAMP(r, 3), and the paint slots' as FM_A_GLOW / FM_B_GLOW /
+ * FM_A_PANE / FM_B_PANE (indices between the paints and the ramps, which
+ * no material uses). furn_prim_mat() gives the plain material back (FM_A,
+ * FM_B or the base tone) and the class (FPL_*). */
+enum { FM_A_GLOW = 0x70, FM_B_GLOW = 0x71, FM_A_PANE = 0x72, FM_B_PANE = 0x73 };
+enum { FPL_NONE, FPL_GLOW, FPL_PANE };
+static inline int furn_prim_mat(const DoomoFurnPrim *p, int *cls)
+{
+    int m = p->mat;
+    *cls = FPL_NONE;
+    if (m >= FM_A_GLOW && m <= FM_B_PANE) {
+        *cls = m >= FM_A_PANE ? FPL_PANE : FPL_GLOW;
+        return (m & 1) ? FM_B : FM_A;
+    }
+    if (m >= PAL_PAINT_BASE && m < PAL_SKIN_BASE) {      /* PAL_PAINT(p, s) */
+        int s = (m - PAL_PAINT_BASE) % 3;
+        *cls = s == 2 ? FPL_GLOW : s == 0 ? FPL_PANE : FPL_NONE;
+        return m - s + 1;
+    }
+    if (m >= PAL_RAMP_BASE && m != FM_A && m != FM_B) {  /* PAL_RAMP(r, s) */
+        int s = (m - PAL_RAMP_BASE) & 7;
+        *cls = s == 5 ? FPL_GLOW : s == 3 ? FPL_PANE : FPL_NONE;
+        return m - s + 4;
+    }
+    return m;
+}
 
 /* GBA / native iso sprites (furngen -> core/gen/furn_iso.c; the PS1 links an
  * empty table, SPEC C3). Each facing is span encoded: h u16 row offsets
  * (relative to `off`), then per row runs of [skip u8][len u8][len pixels],
- * ended by skip = 0xFF. (ox, oy) is where the footprint's back corner
- * (tile origin, z = 0) lands in the image. Entry of (furn, frame, facing):
+ * ended by skip = 0xFF. (H8) Between the row offsets and the first row
+ * (at off + 2h) lie the facing's light classes: spans [row u8][x u8]
+ * [len u8][class u8] (FPL_GLOW: full light; FPL_PANE: window glass, which
+ * the renderers recolour to the sky by daylight, room_ref.c) in row and x
+ * order, each inside one run, ended by row = FURN_CLASS_END and a pad byte
+ * (so the rows keep the parity they had: the GBA DMAs even runs from ROM).
+ * A renderer
+ * that needs no classes reads the rows through the offsets and never sees
+ * them. (ox, oy) is where the footprint's back corner (tile origin,
+ * z = 0) lands in the image. Entry of (furn, frame, facing):
  * doomo_furn_iso_first[furn] + frame * 2 + facing, facing 0 = rot 0 (front
  * faces +y), 1 = rot 1 (front faces +x); rot 2 / 3 draw facing 1 / 0
  * mirrored (IMG_FLIPX). The second table is the cheap box fallback colours. */
@@ -133,6 +173,7 @@ extern const DoomoFurnIso doomo_furn_iso[];
 extern const uint16_t     doomo_furn_iso_first[];  /* [doomo_furn_count]          */
 extern const uint8_t      doomo_furn_iso_data[];
 extern const uint16_t     doomo_furn_iso_count;    /* 0 on the PS1                 */
+#define FURN_CLASS_END 0xFF                        /* (H8) the class list's end    */
 
 /* Resident grant table (furngen -> core/gen/furn_grant.c, SPEC C3): the
  * pieces an unlock id grants (trophies), their toast names, and which

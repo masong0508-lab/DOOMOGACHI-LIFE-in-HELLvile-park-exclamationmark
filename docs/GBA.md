@@ -195,7 +195,7 @@ the largest claim: 12,288 + the codec's 14,592 + a 112 B window):
 | arena bytes | user |
 |---|---|
 | `[0, claim)` | the scene scratch: `scene_scratch(owner, size)`, size <= 12,288 |
-| `[24,592 - region, 24,592)` | the platform owner that claimed it last (`gba_big_claim()`): the raycaster's 11,840 B (clip checkpoints 6,720, roof table 4,096, sprite order 1,024; it fits beside the largest claim, combat's 12 KB of weapon views; in an update the bottom 4,096 B of the clip checkpoints are the autopilot's BFS, H10 below), the overworld's tile cache 17,152 B (beside the story overworld's 6,472 B claim; beside a claim over 7,440 B it uses only its upper 16 sets), the house's 16,872 B (beside its own 2,828 B) |
+| `[24,592 - region, 24,592)` | the platform owner that claimed it last (`gba_big_claim()`): the raycaster's 11,840 B (clip checkpoints 6,720, roof table 4,096, sprite order 1,024; it fits beside the largest claim, combat's 12 KB of weapon views; in an update the bottom 4,096 B of the clip checkpoints are the autopilot's BFS, H10 below), the overworld's tile cache 17,152 B (beside the story overworld's 6,472 B claim; beside a claim over 7,440 B it uses only its upper 16 sets), the house's 17,200 B (H8: +328 B for the lamp pools' table; beside its own 2,828 B, a claim up to 7,392 B) |
 | `[24,592, 26,992)` | `doomo_frame_bb`: filled and read inside a draw |
 | `[claim, 26,992)` | `plat_save_scratch()` (saves run in an update, never during a draw): 14,704 B beside the largest claim, 1 KB more than the codec needs beside the island's 11,312 B |
 
@@ -232,6 +232,9 @@ they share ONE slot:
               .ovl_2d   8,592 B  section .iwram_2d (G5's canvas loops, G6's
                                  shadow rows); its tail (1,792 B) holds
                                  ow_obj.c's tables while it is in
+              .ovl_room 3,648 B  (H8) section .iwram_room: the dream
+                                 house's lamp-pool rows and LUT copies,
+                                 loaded by plat_room()
 0x030051e4  .iwram_bss         3,868 B  (r3d's .bss stays resident)
 0x03006100  main stack         7,168 B  (>= 6,144 B with the largest group in)
 ```
@@ -389,6 +392,7 @@ against the LAST row, not against a figure from an older base.
 | 12 | G6: overworld billboards as OBJs | `65209c0` | 13,008 B | **12,952 B** | -56 B | 6,608 B | ROM 3,779,208 -> 3,787,548 B (+8,340); the block table and the frame's billboards (1,700 B) live in the IWRAM overlay slot's tail past the 2D group (asserted >= 1,712 B in `gba.ld`), the OAM entries in a 896 B buffer on `video_flip`'s stack (main-stack high-water 3,704 B with tile frames forced); 2D group 8,224 -> 8,592 B (still below the 3D group); speed tour frame-exact (16 scenes) |
 | 13 | H5: Garden / Park Plot lips, door backdrop, front-edge fences | `54f2983` | 12,952 B | **12,952 B** | 0 | 6,608 B | no EWRAM / IWRAM: `RG` (the frame geometry, on the stack) +26 B for the backdrop and lip colours; ROM 3,779,208 -> 3,782,252 B on G2 (+3,044: lip / backdrop rows, front-edge items, the shared helpers, the frame table), 3,787,548 -> 3,790,592 B after G6 (measured); room parity 46..50 required, house fps unchanged (home_plain 30.0, steady 29.5 drawn) |
 | 14 | G7: retained panels, "3D: Faster / Better" | `17d385b` | 12,952 B | **12,408 B** | -544 B | 6,308 B | the panel table and the 80-rect pool (`panel.c`, 480 B), `ui_dialog.c`'s page-length cache, the panel / pacing state; IWRAM resident +300 B (`pn_span`, `r3d_up2`, the `plat_rect` panel test); ROM 3,790,592 -> 3,798,164 B (+7,572); speed tour and the 132-scene story sweep frame-exact (section 4b) |
+| 15 | H8: lamp pools, glow pixels, night windows | `1e8a97b` | 12,408 B | **12,408 B** | 0 | 6,308 B | no EWRAM / IWRAM resident: the house's arena region 16,872 -> 17,200 B (the lamp-pool table `RoomLight`, 316 B, and the walls' 16-colour palette in `RBig`, which may now be 15,808 B), so a claim beside the house may be 7,392 B (the house scene's is 2,828 B); a third IWRAM overlay group, the room group (3,648 B of ARM, the slot stays the 3D group's 10,384 B); ROM 3,790,592 -> 3,811,936 B on H5 (+21,344: iso sprites 489,859 -> 503,183 B with the glow / pane class lists, `room.o` text +6,494 B, `room_ref.o` +2,208 B), 3,798,164 -> 3,819,508 B after G7 (measured, the same +21,344); room parity 4, 34, 36, 40 and 53..57 required on every path; house fps: plain 30.0, steady 29.2, modal 18.3-18.8 (gate 18), rotate 24.1, cellar 26.2 with 4 lamp pools (gate 24), defend 12.1 (floor 11) |
 
 Known claimants still to land (their own packages measure and add rows):
 
@@ -1159,8 +1163,8 @@ bitsets and re-run only for entries that moved.
 
 | Resource | Use |
 |---|---|
-| arena | Claim `GBA_BIG_BY_ROOM` (`gba_plat.h`); the house's region `gba_room` (16,872 B, section 3). State is at most 15,488 B; the harness layouts sit behind it. |
-| IWRAM | 0 B |
+| arena | Claim `GBA_BIG_BY_ROOM` (`gba_plat.h`); the house's region `gba_room` (17,200 B, section 3). State is at most 15,808 B (C7's 15,488 B plus 320 B for H8's lamp-pool table; measured 15,692 B); the harness layouts sit behind it. |
+| IWRAM | No resident bytes. (H8) The IWRAM overlay's room group (3,648 B of ARM, section 3): the lamp pools' floor and wall rows, the glow spans' run copy and the LUT copy loops, loaded by `plat_room()` |
 | `.bss` / `.data` | About 34 B for room.c and 27 B for hcmd.c (budget 64 B) |
 | OBJ VRAM | None of its own. obj.c's four squash slots fill it, and obj.c only copies OAM while a squash shows, so the cursor and the held ghost are bitmap items. |
 | THUMB ROM | About 18.3 KB, of which about 3.7 KB is harness hooks (H1: the shell frame table) |
@@ -1171,13 +1175,52 @@ before G0):
 
 | Scene (`home.txt`) | C-G gate | Measured |
 |---|---|---|
-| `home_plain`: template room, player, cursor | - | 30.0 (room 80k cycles) |
-| `home_steady`: parity room, Live, 4 chibis, 3 animated pieces | >= 28 | 29.8 |
-| `home_modal`: Score panel over the plain room | >= 18 | 20.0 (HART: 18.8) |
-| `home_modal_busy`: Score panel, 3 walkers still moving under it | - | 13.4 |
-| `home_rotate`: two view turns (brake + recompose) | >= 20 | 26.5 (HART: 23.2) |
-| `home_cellar_full`: 8x8, 40 pieces, dim | avg >= 24 | 26.2 |
-| `home_defend_w3`: 10 citizens + player walking, 24 lit pieces | >= 20 | **12.6 (not met)** |
+| `home_plain`: template room, player, cursor | - (H8: >= 28) | 30.0 (room 80k cycles) |
+| `home_steady`: parity room, Live, 4 chibis, 3 animated pieces | >= 28 | 29.8 (H8: 29.2-29.5) |
+| `home_modal`: Score panel over the plain room | >= 18 | 20.0 (HART: 18.8; H5 18.7; H8: 18.3-18.8) |
+| `home_modal_busy`: Score panel, 3 walkers still moving under it | - | 13.4 (H8: 12.0) |
+| `home_rotate`: two view turns (brake + recompose) | >= 20 | 26.5 (HART: 23.2; H8: 24.1) |
+| `home_cellar_full`: 8x8, 40 pieces, dim | avg >= 24 | 26.2 (H8, its lamps now lit: 4 lamp pools, 26.2) |
+| `home_defend_w3`: 10 citizens + player walking, 24 lit pieces | >= 20 | **12.6 (not met; H8: 12.1-12.3)** |
+
+**The light (H8).** `room_ref.c` defines it (HOUSING.md section 9,
+`home_int.h` `RoomLight`) and `room.c` draws the same pixels (golden
+lines 4, 34, 36, 40 and the light frames 53..57 required on the full,
+dirty-rect and UI-restore paths):
+* *Lamp pools.* `room_light_lamps()` finds the up to 4 light sources every
+  frame (cheap); their tables (each floor tile's, each back-wall tile
+  column's and the corner post's level) are refilled into `RBig.light` only
+  when the lamps, the level or the turned size change (`light_key`), and the
+  shell key follows them (a full recompose when a lamp is switched). A
+  floor row with lamps is laid out tile segment by tile segment in a stack
+  buffer at the screen's parity and copied once (`floor_row_lit`: room_ref
+  draws j-major, i-minor, so the upper half of a tile always wins the 2 px
+  it shares with the lower half before it); a lit wall tile is rewritten
+  column by column on top of the ambient strip copy, from the two walls'
+  strips at full light kept in `stage` as indices into their few colours
+  (`wall_strips15`, `RBig.wpal`; rebuilt after a squash used the stage),
+  one halfword per 2 px column. Pieces take the level at their view box's
+  centre (their LUT key).
+* *Glow and panes.* A facing's class spans (furn.h: between the row
+  offsets and the rows) are read only when they change something: a glow
+  span below full light, a pane at dusk or night (`RItem.lt`: `RIL_CLS`, a
+  window's `RPANE_*`). Then the run goes through the piece's LUT into the
+  buffer as usual and the spans are patched there through their own LUT (a
+  full-light one; a pane LUT that maps every index to the sky's shade by its
+  luma), before the one copy; the night panes' stars come from
+  `room_pane_star()` per pixel. LUT slots a run still uses are pinned
+  (`lut_pin`). By day and at full light nothing of this runs: the class
+  lists cost 13,324 B of ROM and no time.
+* *Speed.* The per-row loops are ARM in the IWRAM overlay's room group
+  (`IWRAM_ROOM_CODE`, `iwram_ovl.h`; `render()` loads it, a compare when it
+  is in): `floor_row_lit`, `wall_lit`, `runs_glow` (the class spans without
+  the night panes' stars, which stay in THUMB `runs_cls`) and `lut_copy` /
+  `lut_copy_rev`. As THUMB in ROM the lit rows cost 2-3x the ambient pattern
+  copy (a lit cellar frame 1.05 M cycles, 20.7 fps); in ARM the cellar with
+  its four lamps lit runs at 26.2, as before H8 with its lamps off. The
+  cellar layout's lamps are on now (`test_view`, as `home_obj_view()` has
+  them), so the gate measures the lamp pools' dim case.
+
 
 **Roofs (HART).** `room_ref.c` defines the roof (HOUSING.md section 9) in
 screen space, row d above each wall-top column, and `room.c` draws the

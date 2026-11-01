@@ -391,6 +391,27 @@ tutorials ran, the Black Market found) are set without a toast.
   reference and the GBA used the width before H5, so non-square rooms drew
   off their floor in turned views). The PS1 builds the same in 3D (the
   lip was already a box all round; `draw_backdrop()`, `piece_wall()`).
+* **The light** (H8; `RoomLight`, `room_light_setup()`, `room_pane_*()` in
+  `room_ref.c` / `home_int.h`, shared with the GBA). *Lamp pools:* up to
+  four light sources (a lit `FF_LIGHT` piece, `RO_FULLBRIGHT`, or a hearth
+  with a `light` radius; held ghosts never) in object order raise the
+  level of each floor tile, each back-wall tile column, the corner post and
+  each piece (at its view box's centre) by `k_lamp[32 d^2 / r^2]` x (15 -
+  level) / 128, at most 15 (a pool fades out at 1.41 r; nothing changes in
+  full daylight). A switched-off lamp (`HOS_OFF`) lights nothing: the
+  haunt's lights out keeps only the hearth's pool. *Glow:* the art's `glow`
+  prims (fire, lava, candle flames, neon, screens; furngen) are baked as
+  class spans that keep full light at any daylight, unless their piece is a
+  switched-off lamp; the lava-crack floor's cracks glow too. *Night
+  windows:* the art's `pane` prims (the windows' glass) show the sky by
+  daylight, at the open kinds' thresholds: 13 and up the art's own glass,
+  9..12 a peach dusk, below 9 a navy night with stars (stars at full
+  light, the rest lit like the piece); the roof's dormer and skylight glass
+  follow the same sky. The Daytime Window keeps its day (`glow`, no pane).
+  The PS1 draws the same pools on its floor vertices (room_ref's sources
+  and falloff), glow prims at full light and panes navy / peach (no
+  stars). Golden lines 53..57 (`room_shells.h` `RSF_LAMPS`, `RSF_LAMPS_OFF`)
+  hold the light in the GBA's vocabulary.
 * **GBA** (`gba/src/room.c`, H2): the static iso bitmap and OBJ actors.
   The roof (HART) is drawn from tables in the two 2.5 KB VRAM gaps the
   mode 4 pages leave (the slope's repeating 16-column pattern sheared like

@@ -101,6 +101,8 @@ SECTIONS
      *            data + r3d_loops.s (section .iwram_3d); only plat_view3d()
      *            runs it
      *   .ovl_2d  the tile-mode 2D loops (section .iwram_2d; G5's canvas)
+     *   .ovl_room (H8) the house's lamp-pool loops (section .iwram_room;
+     *            room.c, plat_room() loads it)
      * NOCROSSREFS: code in one group can never reference the other.
      * Data that must survive a swap (.data, .bss) never goes in here. */
     . = ALIGN(4);
@@ -115,6 +117,15 @@ SECTIONS
             *(.iwram_2d .iwram_2d.*)
             . = ALIGN(4);
         }
+        .ovl_room {
+            *(.iwram_room .iwram_room.*)
+            /* never empty: an empty last section of the OVERLAY makes ld
+             * put the location counter (.iwram_bss) at the end of the one
+             * before it, inside the slot (the engine-test ROM links no
+             * room.c) */
+            LONG(0)
+            . = ALIGN(4);
+        }
     } > iwram
     __iwram_ovl_end = .;
     /* OVERLAY stores the groups one after the other in ROM (an empty
@@ -123,7 +134,9 @@ SECTIONS
     __iwram_ovl_3d_size = SIZEOF(.ovl_3d);
     __iwram_ovl_2d_lma = __iwram_ovl_3d_lma + SIZEOF(.ovl_3d);
     __iwram_ovl_2d_size = SIZEOF(.ovl_2d);
-    __iwram_ovl_lma_end = __iwram_ovl_2d_lma + SIZEOF(.ovl_2d);
+    __iwram_ovl_room_lma = __iwram_ovl_2d_lma + SIZEOF(.ovl_2d);
+    __iwram_ovl_room_size = SIZEOF(.ovl_room);
+    __iwram_ovl_lma_end = __iwram_ovl_room_lma + SIZEOF(.ovl_room);
 
     .iwram_bss (NOLOAD) : {
         __iwram_bss_start = .;
@@ -188,7 +201,8 @@ ASSERT(__iwram_bss_end <= __iwram_stack_limit,
        "IWRAM overflow: code/data eat into the 6 KB main stack")
 /* the slot holds the largest group (the stack check above sees it) */
 ASSERT(__iwram_ovl_end - __iwram_ovl_start >= __iwram_ovl_3d_size &&
-       __iwram_ovl_end - __iwram_ovl_start >= __iwram_ovl_2d_size,
+       __iwram_ovl_end - __iwram_ovl_start >= __iwram_ovl_2d_size &&
+       __iwram_ovl_end - __iwram_ovl_start >= __iwram_ovl_room_size,
        "IWRAM overlay slot smaller than a group")
 /* G6: the overworld billboards' tables use the slot's bytes past the 2D
  * group while it is in (ow_obj.c BB_TAIL_BYTES, iwram_ovl_2d_tail): a 2D
@@ -199,6 +213,8 @@ ASSERT(__iwram_ovl_3d_size == 0 || LOADADDR(.ovl_3d) == __iwram_ovl_3d_lma,
        "IWRAM overlay: 3D group ROM copy moved")
 ASSERT(__iwram_ovl_2d_size == 0 || LOADADDR(.ovl_2d) == __iwram_ovl_2d_lma,
        "IWRAM overlay: 2D group ROM copy moved")
+ASSERT(__iwram_ovl_room_size == 0 || LOADADDR(.ovl_room) == __iwram_ovl_room_lma,
+       "IWRAM overlay: room group ROM copy moved")
 /* FL_RAM_WORDS (flash_int.h): the stack copy of the flash routines */
 ASSERT(__flash_ram_end - __flash_ram_start <= 1152,
        "flash_ram.c grew past its 1,152 B stack copy (FL_RAM_WORDS)")

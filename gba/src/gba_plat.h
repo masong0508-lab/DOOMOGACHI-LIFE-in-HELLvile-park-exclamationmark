@@ -100,7 +100,7 @@ void video_flip(void);                   /* wait for vblank pacing + flip */
  * (12 KB: the weapon views of combat), so claims never cost it its roof
  * table; the overworld's tile cache (17 KB) fits beside the story
  * overworld's 6.5 KB and uses only its upper half beside a larger claim;
- * the house needs a claim <= 7.7 KB (the house scene's is 2.8 KB). Measured
+ * the house needs a claim <= 7.2 KB (the house scene's is 2.8 KB). Measured
  * fps-neutral on every scene of the G0 tour (docs/GBA.md section 3). */
 /* (plain integers: bigbuf.c hands them to the assembler too) */
 #define GBA_ARENA_SIZE 26992
@@ -116,7 +116,7 @@ extern uint8_t gba_arena[];
 #define GBA_BIG_CMT    10816            /*   (end of the roof table)      */
 #define GBA_BIG_SPR    10816            /*   sprite order         1,024 B */
 #define GBA_BIG_OW     17152            /* the overworld's lit tiles (32 x 2 x 268) */
-#define GBA_BIG_ROOM   16872            /* the house: RBig + harness RTest */
+#define GBA_BIG_ROOM   17200            /* the house: RBig + harness RTest (H8: +328, the lamp pools) */
 /* the hot regions' bases as plain symbols (bigbuf.c), so the renderers'
  * addressing is the same as with a block of their own */
 extern uint8_t gba_r3d[];               /* == GBA_BIG(GBA_BIG_R3D) */

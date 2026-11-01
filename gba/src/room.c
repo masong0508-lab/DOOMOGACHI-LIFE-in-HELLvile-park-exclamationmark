@@ -44,7 +44,7 @@
  * cached until the object or the geometry changes; the order is room_ref's
  * topological pick over bitsets, re-run only for the entries that moved.
  *
- * THE PIXEL PATHS. No new IWRAM code (SPEC C7.1, task #78). Walls: the
+ * THE PIXEL PATHS. No resident IWRAM code (SPEC C7.1, task #78). Walls: the
  * wallpaper repeats every 16 units, so each wall is one 16 px sheared strip
  * repeated; its rows are re-laid as 8 "phase" rows so that a screen row of
  * a wall is one contiguous copy. Floor: the tiles repeat every 32 x 16 px
@@ -58,9 +58,20 @@
  * when the ROM source is misaligned), fills vid_rect(), actors ow_sprite(),
  * checksums ldmia word reads.
  *
+ * THE LIGHT (H8; room_ref.c, home_int.h RoomLight). Lamp pools: the lit
+ * tiles' floor rows are laid out tile segment by tile segment
+ * (floor_row_lit), the lit wall tiles rewritten from the walls' strips at
+ * full light (wall_lit, wall_strips15), the pieces' LUTs keyed by the level
+ * at their box's centre. Glow spans and the windows' panes (furn.h class
+ * spans) are patched into a run's buffer through their own LUTs, only when
+ * they differ (runs_glow / runs_cls). Those loops and the LUT copies are
+ * ARM in the IWRAM overlay's room group (iwram_ovl.h), loaded by render().
+ *
  * MEMORY. All state lives in the house's region of the arena (bigbuf.c,
  * gba_plat.h GBA_BIG_ROOM; claim GBA_BIG_BY_ROOM; RBig <= 15,488 B, the C7
- * claim, plus the harness layouts behind it), 0 B of IWRAM, ~34 B of .bss
+ * claim, + 320 B for H8's lamp-pool table, plus the harness layouts behind
+ * it), 0 B of resident IWRAM (the room group shares the overlay slot),
+ * ~34 B of .bss
  * / .data (the claim canary, the HUD bands, the same-frame opaque rects).
  * Another claim on the region (overworld, r3d, a save, a new scene scratch
  * claim) is noticed through a canary word, a frame gap or the scratch's
@@ -74,6 +85,7 @@
 #include "ow_int.h"
 #include "video_int.h"
 #include "postfx.h"
+#include "iwram_ovl.h"
 #include "room_int.h"
 #include "canvas_int.h"
 #include "doomo/palette.h"
@@ -88,6 +100,11 @@
  * pixel paths (HOT) keep -O2. */
 #pragma GCC optimize("Os")
 #define HOT __attribute__((optimize("O2")))
+#define ALWAYS_INLINE inline __attribute__((always_inline))
+/* (H8) the lamp pools' per-row loops: ARM in the IWRAM overlay's room group
+ * (iwram_ovl.h; render() loads it), self-contained (they call nothing:
+ * the slot is far from ROM), no memset idiom (that would be a call) */
+#define ROOM_ARM IWRAM_ROOM_CODE __attribute__((optimize("O2", "no-tree-loop-distribute-patterns")))
 
 #define LINE        120                /* halfwords per screen row          */
 #define RB_ITEMS    56                 /* draw list: 41 objects + 14 actors + cursor */
@@ -114,11 +131,14 @@ typedef struct RItem {
     uint32_t lut;                      /* LUT key: pa | pb << 8 | lvl << 16  */
     uint16_t src;                      /* object / actor index               */
     uint16_t iso;                      /* sprite entry, ISO_NONE = the box   */
-    uint8_t  kind, flip, xf, pad;      /* RK_*, mirrored, through plat_image_xform */
+    uint8_t  kind, flip, xf, lt;       /* RK_*, mirrored, through plat_image_xform;
+                                          (H8) RIL_* | a window's panes' RPANE_* << 1 */
     int8_t   bx0, by0, bx1, by1;       /* box fallback: rotated tile box     */
 } RItem;                               /* 32 B */
 
 typedef struct RRec { int16_t x0, y0, x1, y1; uint32_t sig; } RRec;
+enum { RIL_GLOW = 1, RIL_CLS = 8 };    /* (H8) its glow spans keep full light;
+                                          its facing has class spans at all  */
 
 typedef struct RPage {
     uint32_t key;                      /* the shell key it was composed with */
@@ -137,7 +157,9 @@ typedef struct RBig {
     uint32_t magic;                    /* RB_MAGIC ^ rb_epoch: the canary    */
     uint32_t shell_key;
     uint16_t nitem, nsort;
-    uint8_t  lut_next, strip_h, pad[2];
+    uint8_t  lut_next, strip_h, s15, lut_pin;  /* (H8) s15: stage holds the walls'
+                                          strips at full light (lit wall tiles);
+                                          lut_pin: the slots an item holds   */
     uint32_t lut_key[LUT_SLOTS];
     RItem    item[RB_ITEMS];
     RSort    sort[RB_ITEMS];
@@ -161,6 +183,11 @@ typedef struct RBig {
     uint8_t  pat[16][PAT_W + 4];       /* floor rows: (q, parity)            */
     uint8_t  wall[2][8][WROW + 4];     /* walls A, B: 8 phase rows each      */
     uint8_t  stage[STAGE_BYTES + 4];
+    RoomLight light;                   /* (H8) the lamp pools, room_ref's    */
+    uint32_t light_key;                /* (H8) what `light`'s tables are of (0:
+                                          refill them; reset_state)           */
+    uint8_t  wpal[16], nwp, pad3[3];   /* (H8) the colours wall_strips15's indices
+                                          stand for (full light)              */
     RoomStats stats;
 } RBig;
 /* the harness layouts (room_hc_parity, room_hc_test) live behind it */
@@ -169,7 +196,8 @@ typedef struct RTest {
     DoomoRoomObj objs[HOME_OBJ_MAX + 2], objs2[HOME_OBJ_MAX + 2];
     DoomoRoomActor acts[12];
 } RTest;
-DOOMO_STATIC_ASSERT(sizeof(RBig) <= 15488u, room_state_fits_the_c7_claim);
+/* SPEC C7's 15,488 B plus (H8) the lamp pools' table (RoomLight) */
+DOOMO_STATIC_ASSERT(sizeof(RBig) <= 15488u + 320u, room_state_fits_the_c7_claim);
 /* (HART) the roof's tables, in the two 2.5 KB VRAM gaps the mode 4 pages
  * leave (the raycaster keeps its colormaps there: r3d_invalidate() makes it
  * copy them again when it claims the arena after the house; the house
@@ -231,6 +259,11 @@ typedef struct RG {
     RoomRoof roof;
     RoomBackdrop bd;                   /* (H5) the door's backdrop (open kinds) */
     uint8_t lipc[5];                   /* (H5) room_lip_colours                 */
+    const RoomLight *L;                /* (H8) the lamp pools, the panes' sky:
+                                          B->light, refilled when they change */
+    uint8_t lcol[16][4];               /* (H8) the floor's grout, fill A, fill B
+                                          at each level (when L->n)          */
+    uint8_t wcol[16][16];              /* (H8) B->wpal at each level (walls lit) */
 } RG;
 
 /* (HART) the slope's row d of column p (side B's corner column p = 0
@@ -303,6 +336,7 @@ static void reset_state(void)
 {
     rb_epoch = (rb_epoch * 1103515245u + 12345u + gba_frames) | 1u;
     memset(B, 0, offsetof(RBig, lut));             /* caches rebuild on demand */
+    B->light_key = 0;                              /* (H8) refill the lamp pools */
     B->magic = RB_MAGIC ^ rb_epoch;
     B->shell_key = 0xFFFFFFFFu;
     B->ocache_key = 0xFFFFFFFFu;
@@ -421,7 +455,34 @@ __attribute__((noinline)) static void geometry(RG *g, const DoomoRoomView *v)
     g->bx1 = (g->vx + g->vw) >> 4;
     g->nby = DOOMO_MIN((g->my1 - g->my0 + 7) >> 3, RB_BY);
     g->bg = g->walls ? PAL_RAMP(RAMP_VAPE, 1) : lit(g, PAL_RAMP(RAMP_SKY, 5));
-    g->corner = lit(g, PAL_PAINT(v->wall_paint < 32 ? v->wall_paint : PAINT_BUBBLEGUM, 0));
+    /* (H8) room_ref's light: the lamps every frame (cheap), their tables
+     * (the tile, wall and corner levels) only when the lamps, the level or
+     * the room's turned size change */
+    {
+        RoomLight *L = &B->light;
+        uint32_t lk = 2166136261u;
+        int i;
+        room_light_lamps(L, v, g->k, g->level);
+        lk = mix(lk, (uint32_t)L->n | (uint32_t)L->level << 8 | (uint32_t)g->W << 16 | (uint32_t)g->D << 24);
+        for (i = 0; i < L->n; i++)
+            lk = mix(mix(lk, (uint32_t)(L->lx[i] & 0xFFFF) | (uint32_t)(L->ly[i] & 0xFFFF) << 16), L->inv[i]);
+        lk |= 1u;                                 /* 0 = never filled (reset_state) */
+        if (lk != B->light_key) {
+            room_light_fill(L, g->W, g->D);
+            B->light_key = lk;
+        }
+        g->L = L;
+        if (L->n) {
+            int fpl = v->floor_paint < 32 ? v->floor_paint : PAINT_CARAMEL;
+            for (i = L->level; i < 16; i++) {
+                const uint8_t *cm = doomo_colormap[i];
+                g->lcol[i][0] = cm[PAL_PAINT(fpl, 0)];
+                g->lcol[i][1] = cm[PAL_PAINT(fpl, 2)];
+                g->lcol[i][2] = cm[PAL_PAINT(fpl, 1)];
+            }
+        }
+    }
+    g->corner = doomo_colormap[g->L->corner][PAL_PAINT(v->wall_paint < 32 ? v->wall_paint : PAINT_BUBBLEGUM, 0)];
     fp = v->floor_paint < 32 ? v->floor_paint : PAINT_CARAMEL;
     g->fl_a = lit(g, PAL_PAINT(fp, 1));
     g->fl_b = lit(g, PAL_PAINT(fp, 2));
@@ -492,6 +553,7 @@ static uint32_t shell_key(const RG *g)
 {
     const DoomoRoomView *v = g->v;
     uint32_t h = 2166136261u;
+    int i;
     h = mix(h, (uint32_t)g->W | (uint32_t)g->D << 8 | (uint32_t)g->k << 16 | (uint32_t)g->walls << 20);
     h = mix(h, (uint32_t)(g->ox & 0xFFFF) | (uint32_t)(g->oy & 0xFFFF) << 16);
     h = mix(h, (uint32_t)g->wall_h | (uint32_t)g->level << 8 | (uint32_t)v->room_kind << 16);
@@ -499,6 +561,10 @@ static uint32_t shell_key(const RG *g)
                (uint32_t)v->floor_paint << 24);
     h = mix(h, (uint32_t)g->vx | (uint32_t)g->vy << 8 | (uint32_t)g->vw << 16 | (uint32_t)g->vh << 24);
     h = mix(h, (uint32_t)g->dy0 | (uint32_t)g->dy1 << 8);
+    h = mix(h, (uint32_t)g->L->pane | (uint32_t)g->L->n << 8 | (uint32_t)g->L->corner << 16);
+    for (i = 0; i < g->L->n; i++)    /* (H8) the lamps: every level follows */
+        h = mix(mix(h, (uint32_t)(g->L->lx[i] & 0xFFFF) | (uint32_t)(g->L->ly[i] & 0xFFFF) << 16),
+                g->L->inv[i]);
     if (g->bd.style)                    /* (H5) the door's backdrop */
         h = mix(mix(h, (uint32_t)g->bd.style | (uint32_t)g->bd.side << 8 | (uint32_t)g->bd.h << 16),
                 (uint32_t)(g->bd.u0 & 0xFFFF) | (uint32_t)(g->bd.u1 & 0xFFFF) << 16);
@@ -570,6 +636,7 @@ __attribute__((noinline)) static void build_shell(RG *g)
             }
         B->strip_h = (uint8_t)(g->wall_h + 8);
     }
+    B->s15 = 0;                                     /* (H8) the stage was scratch */
     if (g->roof_on && g->roof_tab) {                /* (HART) the roof's tables */
         const RoomRoof *f = &g->roof;
         uint16_t tmp[ROOM_ROOF_EAVE + 128];
@@ -620,6 +687,62 @@ __attribute__((noinline)) static void build_shell(RG *g)
 }
 
 /* ---- the shell, row by row ---------------------------------------------------- */
+/* (H8) the lit wall tiles of row y: tile i of wall A' is strip i, tile i of
+ * wall B' strip i on the other side (room_ref lights a wall per tile
+ * column); on this row every column c of the tile reads strip row
+ * s = tA - 8i of the full-light strips in the stage (wall_strips15: indices
+ * into their colours), its two pixels through the tile level's g->wcol
+ * row. Columns are 2 px wide and start at even x (ox is even), so a whole
+ * column is one halfword. */
+/* put_px for the room group's ARM code (inlined there) */
+static ALWAYS_INLINE void arm_px(int x, int y, uint8_t c)
+{
+    vu16_t *p = (vu16_t *)(gba_back + y * LINE + (x >> 1));
+    if (x & 1) *p = (uint16_t)((*p & 0x00FF) | (c << 8));
+    else *p = (uint16_t)((*p & 0xFF00) | c);
+}
+
+ROOM_ARM static void wall_lit(const RG *g, int y, int x0, int x1)
+{
+    const RoomLight *L = g->L;
+    const int H = g->wall_h, tA = y - g->oy + H;
+    int side, i, c;
+    vu16_t *row = (vu16_t *)(gba_back + y * LINE);
+    for (side = 0; side < 2; side++) {
+        const int n = DOOMO_MIN(side ? g->D : g->W, ROOM_LIGHT_N);
+        const uint8_t *S = B->stage + side * STRIP_ROWS * 16;
+        /* only the tiles over [x0, x1): A's tile i at ox + 16i, B's at ox - 16i - 16 */
+        int ie = side ? ((g->ox - x0) >> 4) + 1 : ((x1 - 1 - g->ox) >> 4) + 1;
+        i = side ? (g->ox - x1) >> 4 : (x0 - g->ox) >> 4;
+        if (i < 0) i = 0;
+        if (ie > n) ie = n;
+        for (; i < ie; i++) {
+            int st = tA - 8 * i, lv = L->wall[side][i], ca, cb, fa, fb;
+            const int tx = side ? g->ox - 16 * i - 16 : g->ox + 16 * i;     /* the tile's 16 px */
+            const uint8_t *wc, *sr;
+            if (lv == g->level || st < 0 || st >= STRIP_ROWS || tx >= x1 || tx + 16 <= x0) continue;
+            /* A: column c is on rows st in [c, c + H); B: [8 - c, 8 - c + H) */
+            if (!side) { ca = DOOMO_MAX(0, st - H + 1); cb = DOOMO_MIN(7, st); }
+            else { ca = DOOMO_MAX(0, 8 - st); cb = DOOMO_MIN(7, 7 - st + H); }
+            wc = g->wcol[lv];
+            sr = S + st * 16;
+            /* whole columns (x and x + 1 inside [x0, x1)), then the halves */
+            fa = DOOMO_MAX(ca, (x0 - tx + 1) >> 1);
+            fb = DOOMO_MIN(cb, (x1 - tx - 2) >> 1);
+            for (c = fa; c <= fb; c++)
+                row[(tx >> 1) + c] = (uint16_t)(wc[sr[2 * c]] | wc[sr[2 * c + 1]] << 8);
+            if (fa > ca && fa - 1 <= cb) {                  /* x0 cuts column fa - 1 */
+                int x = tx + 2 * (fa - 1);
+                if (x + 1 >= x0 && x + 1 < x1) arm_px(x + 1, y, wc[sr[2 * (fa - 1) + 1]]);
+            }
+            if (fb < cb && fb + 1 >= ca) {                  /* x1 cuts column fb + 1 */
+                int x = tx + 2 * (fb + 1);
+                if (x >= x0 && x < x1) arm_px(x, y, wc[sr[2 * (fb + 1)]]);
+            }
+        }
+    }
+}
+
 HOT static void wall_rows(const RG *g, int y, int x0, int x1)
 {
     const int H = g->wall_h, tA = y - g->oy + H, a = tA >> 3, r = tA & 7;
@@ -653,10 +776,77 @@ HOT static void wall_rows(const RG *g, int y, int x0, int x1)
         if (xb > x1) xb = x1;
         if (xa < xb) row_copy(y, xa, xb, B->wall[1][r] + (xa - (g->ox - 16 * (a + 1))));
     }
+    if (g->L->n && B->s15) wall_lit(g, y, x0, x1);
     /* the corner post */
     if (y >= g->oy - H && y < g->oy) {
         if (g->ox - 1 >= x0 && g->ox - 1 < x1) put_px(g->ox - 1, y, g->corner);
         if (g->ox >= x0 && g->ox < x1) put_px(g->ox, y, g->corner);
+    }
+}
+
+/* (H8) a floor row under lamp pools, tile by tile in each tile's light.
+ * Row t = 8s + q crosses the upper halves of the tiles i + j = s (row q:
+ * [cu - h1, cu + h1), cu = ox + 16(2i - s), a grout pixel at both ends)
+ * and the lower halves of the tiles i + j = s - 1 (row q + 8), whose 2 px
+ * ends the upper tiles beside them cover (room_ref draws j-major, i-minor:
+ * the upper tile is always the later one) unless there is none (the front
+ * edges, where the lower tile's own grout shows): from left to right they
+ * tile [xL, xR) exactly as floor_row's pattern rows do. The row is laid
+ * out in a stack buffer at the screen's parity and copied once. */
+ROOM_ARM static void floor_row_lit(const RG *g, int y, int t, int x0, int x1)
+{
+    const uint8_t (*tl)[ROOM_LIGHT_N] = g->L->tile;
+    const int W = g->W, D = g->D, s = t >> 3, q = t & 7, h1 = 2 * (q + 1);
+    const int prow = g->plank ? ((q >> 2) & 1) : -1;          /* the plank row's shade */
+    int i = (x0 - g->ox + 16 * s - 32) >> 5, ie = ((x1 - g->ox + 16 * s + 16) >> 5) + 1, cu;
+    int xa = x1, xb = x0;
+    uint32_t bufw[(SCREEN_W + 8) / 4];
+    uint8_t *buf = (uint8_t *)bufw;
+    if (i < s - D) i = s - D;
+    if (i < 0) i = 0;
+    if (ie > W) ie = W;
+    if (ie > s + 1) ie = s + 1;
+    for (cu = g->ox + 16 * (2 * i - s); i < ie; i++, cu += 32) {
+        int j = s - i, lo, hi, a, b;
+        const uint8_t *c;
+        if (j < D) {                                          /* the upper half (i, s - i) */
+            c = g->lcol[tl[j][i]];
+            lo = cu - h1; hi = cu + h1;
+            a = lo > x0 ? lo : x0; b = hi < x1 ? hi : x1;
+            if (a < b) {
+                uint8_t f = c[(prow >= 0 ? prow : (i + j) & 1) ? 2 : 1], *d = buf + a, *e = buf + b;
+                while (d < e) *d++ = f;
+                if (lo >= x0) buf[lo] = c[0];
+                if (hi <= x1) buf[hi - 1] = c[0];
+                if (a < xa) xa = a;
+                if (b > xb) xb = b;
+            }
+        }
+        if (--j >= 0 && j < D) {                              /* the lower half (i, s - 1 - i) */
+            const int up = j + 1 < D, upr = i + 1 < W;        /* the upper tiles beside it */
+            c = g->lcol[tl[j][i]];
+            lo = up ? cu + h1 : cu + h1 - 2;
+            hi = upr ? cu + 32 - h1 : cu + 34 - h1;
+            a = lo > x0 ? lo : x0; b = hi < x1 ? hi : x1;
+            if (a < b) {
+                uint8_t f = c[(prow >= 0 ? prow : (i + j) & 1) ? 2 : 1], *d = buf + a, *e = buf + b;
+                while (d < e) *d++ = f;
+                if (!up && lo >= x0) buf[lo] = c[0];
+                if (!upr && hi <= x1) buf[hi - 1] = c[0];
+                if (a < xa) xa = a;
+                if (b > xb) xb = b;
+            }
+        }
+    }
+    if (xa < xb) {                                          /* row_copy, inlined */
+        uint16_t *row = gba_back + y * LINE;
+        if (xa & 1) { arm_px(xa, y, buf[xa]); xa++; }
+        if (xb - xa >= 2) {
+            REG_DMA3SAD = (uint32_t)(uintptr_t)(buf + xa);
+            REG_DMA3DAD = (uint32_t)(uintptr_t)(row + (xa >> 1));
+            REG_DMA3CNT = (uint32_t)((xb - xa) >> 1) | DMA_16 | DMA_ENABLE;
+        }
+        if ((xb - xa) & 1) arm_px(xb - 1, y, buf[xb - 1]);
     }
 }
 
@@ -667,6 +857,7 @@ HOT static void floor_row(const RG *g, int y, int x0, int x1)
     uint8_t fl;
     const uint8_t *pat;
     if (t < 0 || t >= 8 * (W + D)) return;
+    if (g->L->n) { floor_row_lit(g, y, t, x0, x1); return; }   /* (H8) lamp pools */
     s = t >> 3;
     q = t & 7;
     h1 = 2 * (q + 1);
@@ -681,13 +872,13 @@ HOT static void floor_row(const RG *g, int y, int x0, int x1)
     p0 = g->ox - 16 * s - h1;                      /* an upper tile's left grout */
     a = DOOMO_MAX(xL, x0);
     b = DOOMO_MIN(xR, x1);
+    if (g->plank) fl = ((q >> 2) & 1) ? g->fl_a : g->fl_b;
+    else fl = ((s - 1) & 1) ? g->fl_a : g->fl_b;
     while (a < b) {
         int o = (a - p0) & 31, n = DOOMO_MIN(b - a, PAT_W - o);
         row_copy(y, a, a + n, pat + o);
         a += n;
     }
-    if (g->plank) fl = ((q >> 2) & 1) ? g->fl_a : g->fl_b;
-    else fl = ((s - 1) & 1) ? g->fl_a : g->fl_b;
     if (lp) {
         if (xL >= x0 && xL < x1) put_px(xL, y, g->fl_g);
         if (xL + 1 >= x0 && xL + 1 < x1) put_px(xL + 1, y, fl);
@@ -749,7 +940,6 @@ HOT static void backdrop_row(const RG *g, int y, int x0, int x1)
 
 /* (HART) a run of row y from a VRAM table: one halfword DMA when it is
  * even-aligned at both ends (it nearly always is), else row_copy */
-#define ALWAYS_INLINE inline __attribute__((always_inline))
 static inline void dma16(uint16_t *dst, const void *src, int halves);
 static ALWAYS_INLINE void roof_copy(int y, int x0, int x1, const uint8_t *src)
 {
@@ -888,12 +1078,48 @@ NOIPA HOT static void roof_row(const RG *g, int y, int x0, int x1)
     }
 }
 
+/* (H8) the two walls' strips at full light in the stage (build_shell's
+ * layout, before it re-lays them as phase rows), for wall_lit(); the stage
+ * also holds the squash images, so this is redone after one */
+static void wall_strips15(const RG *g)
+{
+    RG f = *g;
+    int c;
+    f.level = 15;
+    memset(B->stage, 0, 2 * STRIP_ROWS * 16);
+    for (c = 0; c < 8; c++) {
+        strip_col(&f, B->stage, c, 2 * c, 0, c);
+        strip_col(&f, B->stage + STRIP_ROWS * 16, c, (16 - 2 * c) & 15, 1, 8 - c);
+    }
+    /* as indices into B->wpal (a wall has a handful of colours), so a lit
+     * pixel is g->wcol[level][index], two IWRAM loads */
+    B->nwp = 1;
+    B->wpal[0] = 0;
+    for (c = 0; c < 2 * STRIP_ROWS * 16; c++) {
+        uint8_t v = B->stage[c];
+        int k;
+        for (k = 0; k < B->nwp && B->wpal[k] != v; k++) {}
+        if (k == B->nwp) {
+            if (k == 16) { B->s15 = 0; return; }      /* never: then no lit walls */
+            B->wpal[B->nwp++] = v;
+        }
+        B->stage[c] = (uint8_t)k;
+    }
+    B->s15 = 1;
+}
+
 HOT static void draw_shell(const RG *g, int x0, int y0, int x1, int y1)
 {
     const int fy0 = g->oy, fy1 = g->oy + 8 * (g->W + g->D);
     const int wy0 = g->oy - g->wall_h, wy1 = g->oy + 8 * DOOMO_MAX(g->W, g->D) + 1;
     const int walls = g->walls && B->strip_h == g->wall_h + 8;
     int y;
+    if (walls && g->L->n) {
+        int lv, k;
+        if (!B->s15) wall_strips15(g);
+        for (lv = g->level; lv < 16; lv++)              /* (H8) the walls' colours by level */
+            for (k = 0; k < B->nwp; k++) ((RG *)g)->wcol[lv][k] = doomo_colormap[lv][B->wpal[k]];
+    }
     /* the background: the viewport only (room_ref's plat_rect) */
     fill(DOOMO_MAX(x0, g->vx), DOOMO_MAX(y0, g->vy), DOOMO_MIN(x1, g->vx + g->vw),
          DOOMO_MIN(y1, g->vy + g->vh), g->bg);
@@ -921,7 +1147,9 @@ static uint8_t recolour(uint8_t c, int pa, int pb)
     return c;
 }
 
-/* key: pa | pb << 8 | lvl << 16, paints 0xFF when they change nothing */
+/* key: pa | pb << 8 | lvl << 16 | pane << 24, paints 0xFF when they change
+ * nothing; (H8) pane = RPANE_* turns every index into the sky first (the
+ * windows' glass runs: room_pane_colour) */
 static uint32_t lut_key(int pa, int pb, int lvl)
 {
     if (pa < 0 || pa >= 32 || pa == FURN_MARK_A) pa = 0xFF;
@@ -931,16 +1159,24 @@ static uint32_t lut_key(int pa, int pb, int lvl)
 
 static const uint8_t *lut_get(uint32_t key)
 {
-    int pa = (int)(key & 0xFF), pb = (int)((key >> 8) & 0xFF), lvl = (int)(key >> 16), i, s;
+    int pa = (int)(key & 0xFF), pb = (int)((key >> 8) & 0xFF), lvl = (int)((key >> 16) & 0xFF), i, s;
+    int pane = (int)(key >> 24);
     const uint8_t *cm = doomo_colormap[lvl > 15 ? 15 : lvl];
     uint8_t *l;
     static const uint8_t marks[2] = { FURN_MARK_A, FURN_MARK_B };
-    if (pa == 0xFF && pb == 0xFF) return cm;      /* the colormap row itself */
+    if (pa == 0xFF && pb == 0xFF && !pane) return cm;   /* the colormap row itself */
     for (i = 0; i < LUT_SLOTS; i++)
-        if (B->lut_key[i] == key + 1u) return B->lut[i];
-    i = B->lut_next++ % LUT_SLOTS;
+        if (B->lut_key[i] == key + 1u) { B->lut_pin |= (uint8_t)(1u << i); return B->lut[i]; }
+    /* never one an item's other runs still use (item_luts pins them) */
+    do i = B->lut_next++ % LUT_SLOTS; while (B->lut_pin & (1u << i));
+    B->lut_pin |= (uint8_t)(1u << i);
     l = B->lut[i];
     B->lut_key[i] = key + 1u;
+    if (pane) {                                   /* (H8) the sky in the glass */
+        for (s = 0; s < 256; s++)
+            l[s] = cm[room_pane_colour(recolour((uint8_t)s, pa == 0xFF ? -1 : pa, pb == 0xFF ? -1 : pb), pane)];
+        return l;
+    }
     memcpy(l, cm, 256);
     for (s = 0; s < 2; s++) {
         int m = marks[s], k;
@@ -964,10 +1200,14 @@ static void piece_item(const RG *g, RItem *it, const DoomoRoomObj *o, int rot, i
     const DoomoFurn *f = furn_of(o->furn);
     int facing = rot & 1, flip = rot >= 2, frames, e;
     int sx = g->ox + 16 * (x0 - y0), sy = g->oy + 8 * (x0 + y0) - o->z;
-    int lvl = (o->flags & RO_FULLBRIGHT) ? 15 : g->level;
+    /* (H8) room_ref's light: a lit lamp at full light, the rest in the
+     * pools; a switched-off lamp's glow goes dark; the panes' sky */
+    int lvl = (o->flags & RO_FULLBRIGHT) ? 15 : room_light_at(g->L, (x0 + x1) * 8, (y0 + y1) * 8);
     uint32_t h;
     if (o->jitter) sx += (int)((g->v->time >> 1) & 1) * o->jitter - o->jitter / 2;
     it->lut = lut_key(o->paint_a == 0xFF ? -1 : o->paint_a, o->paint_b == 0xFF ? -1 : o->paint_b, lvl);
+    it->lt = (uint8_t)(((f->flags & FF_LIGHT) && !(o->flags & RO_FULLBRIGHT) ? 0 : RIL_GLOW) |
+                       (f->role == FR_WINDOW ? g->L->pane << 1 : 0));
     it->flip = (uint8_t)flip;
     it->iso = ISO_NONE;
     frames = f->frames ? f->frames : 1;
@@ -977,6 +1217,8 @@ static void piece_item(const RG *g, RItem *it, const DoomoRoomObj *o, int rot, i
     }
     if (it->iso != ISO_NONE) {
         const DoomoFurnIso *im = &doomo_furn_iso[it->iso];
+        if (doomo_furn_iso_data[im->off + im->h * 2] != FURN_CLASS_END) it->lt |= RIL_CLS;
+        else it->lt = 0;                          /* no class spans: nothing to switch */
         it->px = (int16_t)(sx - (flip ? im->w - im->ox : im->ox));
         it->py = (int16_t)(sy - im->oy);
         it->x0 = it->px; it->y0 = it->py;
@@ -995,7 +1237,7 @@ static void piece_item(const RG *g, RItem *it, const DoomoRoomObj *o, int rot, i
     h = mix(2166136261u, (uint32_t)it->kind | (uint32_t)o->furn << 8 | (uint32_t)it->flip << 20);
     h = mix(h, it->iso | (uint32_t)(o->flags & (RO_GHOST | RO_FULLBRIGHT)) << 16);
     h = mix(h, (uint32_t)(it->px & 0xFFFF) | (uint32_t)(it->py & 0xFFFF) << 16);
-    h = mix(h, it->lut);
+    h = mix(h, it->lut ^ (uint32_t)it->lt << 24);
     h = mix(h, (uint32_t)(uint8_t)o->sq_x | (uint32_t)(uint8_t)o->sq_y << 8 |
                (uint32_t)(x0 & 0xFF) << 16 | (uint32_t)(y0 & 0xFF) << 24);
     if (it->iso == ISO_NONE) h = mix(h, (uint32_t)(x1 & 0xFF) | (uint32_t)(y1 & 0xFF) << 8 | (uint32_t)f->fh << 16 |
@@ -1260,7 +1502,8 @@ static void clip_set(int x0, int y0, int x1, int y1)
  * a halfword DMA. */
 #define RUNBUF 128
 
-HOT static void lut_copy(uint8_t *d, const uint8_t *s, int n, const uint8_t *lut)
+/* (H8) ARM in the room group (render() loads it): the pieces' hot loop */
+ROOM_ARM static void lut_copy(uint8_t *d, const uint8_t *s, int n, const uint8_t *lut)
 {
     while (n >= 4) {
         d[0] = lut[s[0]]; d[1] = lut[s[1]]; d[2] = lut[s[2]]; d[3] = lut[s[3]];
@@ -1270,7 +1513,7 @@ HOT static void lut_copy(uint8_t *d, const uint8_t *s, int n, const uint8_t *lut
 }
 
 /* mirrored: d[k] = s[-k] */
-HOT static void lut_copy_rev(uint8_t *d, const uint8_t *s, int n, const uint8_t *lut)
+ROOM_ARM static void lut_copy_rev(uint8_t *d, const uint8_t *s, int n, const uint8_t *lut)
 {
     if (lut) {
         while (n >= 4) {
@@ -1323,17 +1566,140 @@ HOT static void runs_plain(const DoomoFurnIso *im, int px, int py, int r0, int r
     }
 }
 
-/* rows [r0, r1) through the LUT and / or mirrored, clipped: each run goes
- * through a stack buffer laid out at the destination's pixel parity, so
- * the copy to VRAM is always a halfword DMA */
-HOT static void runs_lut(const DoomoFurnIso *im, int px, int py, int flip, const uint8_t *lut,
-                     int r0, int r1, int cx0, int cx1)
+/* (H8) runs_lut() for a facing whose class spans need their own LUTs (glow
+ * spans below full light, panes by dusk or night): each run goes through
+ * luts[0] into the buffer as usual and its spans (furn.h) are patched in
+ * there before the one copy (cutting the run at them would cost a copy per
+ * piece). Out of line, so runs_lut() keeps its tight loop. */
+__attribute__((noinline)) HOT static void runs_cls(const DoomoFurnIso *im, int px, int py, int flip,
+                                                   const uint8_t *const *luts, int night, int r0, int r1,
+                                                   int cx0, int cx1)
 {
-    const uint8_t *base = doomo_furn_iso_data + im->off;
+    const uint8_t *base = doomo_furn_iso_data + im->off, *cl = base + im->h * 2;
     const int w = im->w;
     uint32_t bufw[(RUNBUF + 4) / 4];
     uint8_t *buf = (uint8_t *)bufw;
     int r;
+    while (*cl != FURN_CLASS_END && *cl < r0) cl += 4;
+    for (r = r0; r < r1; r++) {
+        const uint8_t *p = base + (base[r * 2] | (base[r * 2 + 1] << 8));
+        uint16_t *row = gba_back + (py + r) * LINE;
+        int x = 0, skip;
+        while ((skip = p[0]) != 0xFF) {
+            int len = p[1], n, a, b;
+            const uint8_t *run = p + 2, *sp;
+            x += skip;
+            p += 2 + len;
+            n = DOOMO_MIN(len, w - x);
+            for (sp = cl; *sp == r && sp[1] < x + n; sp += 4) {}   /* the run's spans: [cl, sp) */
+            if (!flip) { a = px + x; b = px + x + n; }
+            else { a = px + w - x - n; b = px + w - x; }
+            if (a < cx0) a = cx0;
+            if (b > cx1) b = cx1;
+            while (a < b) {
+                int m = DOOMO_MIN(b - a, RUNBUF), k, ca, cb;
+                const uint8_t *q;
+                uint8_t *d = buf + (a & 1);
+                if (!flip) { lut_copy(d, run + (a - px - x), m, luts[0]); ca = a - px; cb = ca + m; }
+                else { lut_copy_rev(d, run + ((px + w - 1 - a) - x), m, luts[0]); cb = px + w - a; ca = cb - m; }
+                /* image columns [ca, cb) are in d: each span's part again */
+                for (q = cl; q < sp; q += 4) {
+                    int kk = q[3] == FPL_GLOW ? 1 : 2, c, c0 = DOOMO_MAX(q[1], ca), c1 = DOOMO_MIN(q[1] + q[2], cb);
+                    const uint8_t *lt = luts[kk];
+                    int st = kk == 2 && night;
+                    if (lt == luts[0] && !st) continue;
+                    for (c = c0; c < c1; c++) {
+                        int j = flip ? (px + w - 1 - c) - a : px + c - a;
+                        d[j] = (st && room_pane_star(c, r)) ? ROOM_STAR_COLOUR : lt[run[c - x]];
+                    }
+                }
+                k = a;
+                if (k & 1) { put_px(k, py + r, *d++); k++; }
+                if (a + m - k >= 2) { dma16(row + (k >> 1), d, (a + m - k) >> 1); d += (a + m - k) & ~1; k += (a + m - k) & ~1; }
+                if (k < a + m) put_px(k, py + r, *d);
+                a += m;
+            }
+            cl = sp;
+            x += len;
+        }
+    }
+}
+
+/* (H8) runs_cls() without the night panes' stars (glow spans, panes at
+ * dusk): ARM in the room group, the dim house's common case */
+ROOM_ARM static void runs_glow(const DoomoFurnIso *im, int px, int py, int flip,
+                                                   const uint8_t *const *luts, int r0, int r1,
+                                                   int cx0, int cx1)
+{
+    const uint8_t *base = doomo_furn_iso_data + im->off, *cl = base + im->h * 2;
+    const int w = im->w;
+    uint32_t bufw[(RUNBUF + 4) / 4];
+    uint8_t *buf = (uint8_t *)bufw;
+    int r;
+    while (*cl != FURN_CLASS_END && *cl < r0) cl += 4;
+    for (r = r0; r < r1; r++) {
+        const uint8_t *p = base + (base[r * 2] | (base[r * 2 + 1] << 8));
+        uint16_t *row = gba_back + (py + r) * LINE;
+        int x = 0, skip;
+        while ((skip = p[0]) != 0xFF) {
+            int len = p[1], n, a, b;
+            const uint8_t *run = p + 2, *sp;
+            x += skip;
+            p += 2 + len;
+            n = DOOMO_MIN(len, w - x);
+            for (sp = cl; *sp == r && sp[1] < x + n; sp += 4) {}   /* the run's spans: [cl, sp) */
+            if (!flip) { a = px + x; b = px + x + n; }
+            else { a = px + w - x - n; b = px + w - x; }
+            if (a < cx0) a = cx0;
+            if (b > cx1) b = cx1;
+            while (a < b) {
+                int m = DOOMO_MIN(b - a, RUNBUF), k, ca, cb;
+                const uint8_t *q;
+                uint8_t *d = buf + (a & 1);
+                if (!flip) { lut_copy(d, run + (a - px - x), m, luts[0]); ca = a - px; cb = ca + m; }
+                else { lut_copy_rev(d, run + ((px + w - 1 - a) - x), m, luts[0]); cb = px + w - a; ca = cb - m; }
+                /* image columns [ca, cb) are in d: each span's part again */
+                for (q = cl; q < sp; q += 4) {
+                    int kk = q[3] == FPL_GLOW ? 1 : 2, c, c0 = DOOMO_MAX(q[1], ca), c1 = DOOMO_MIN(q[1] + q[2], cb);
+                    const uint8_t *lt = luts[kk];
+                    if (lt == luts[0]) continue;
+                    for (c = c0; c < c1; c++) d[flip ? (px + w - 1 - c) - a : px + c - a] = lt[run[c - x]];
+                }
+                k = a;
+                if (k & 1) { arm_px(k, py + r, *d++); k++; }
+                if (a + m - k >= 2) {
+                    REG_DMA3SAD = (uint32_t)(uintptr_t)d;
+                    REG_DMA3DAD = (uint32_t)(uintptr_t)(row + (k >> 1));
+                    REG_DMA3CNT = (uint32_t)((a + m - k) >> 1) | DMA_16 | DMA_ENABLE;
+                    d += (a + m - k) & ~1; k += (a + m - k) & ~1;
+                }
+                if (k < a + m) arm_px(k, py + r, *d);
+                a += m;
+            }
+            cl = sp;
+            x += len;
+        }
+    }
+}
+
+/* rows [r0, r1) through the LUT and / or mirrored, clipped: each run goes
+ * through a stack buffer laid out at the destination's pixel parity, so
+ * the copy to VRAM is always a halfword DMA. (H8) luts[0] is the piece's;
+ * when its glow spans (luts[1]) or panes (luts[2]) differ: runs_cls() */
+HOT static void runs_lut(const DoomoFurnIso *im, int px, int py, int flip, const uint8_t *const *luts,
+                     int night, int r0, int r1, int cx0, int cx1)
+{
+    const uint8_t *base = doomo_furn_iso_data + im->off;
+    const int w = im->w;
+    const uint8_t *lut = luts[0];
+    uint32_t bufw[(RUNBUF + 4) / 4];
+    uint8_t *buf = (uint8_t *)bufw;
+    int r;
+    if (luts[1] != lut || luts[2] != lut) {
+        if (night && luts[2] != lut) runs_cls(im, px, py, flip, luts, night, r0, r1, cx0, cx1);
+        else runs_glow(im, px, py, flip, luts, r0, r1, cx0, cx1);
+        return;
+    }
     for (r = r0; r < r1; r++) {
         const uint8_t *p = base + (base[r * 2] | (base[r * 2 + 1] << 8));
         uint16_t *row = gba_back + (py + r) * LINE;
@@ -1364,12 +1730,13 @@ HOT static void runs_lut(const DoomoFurnIso *im, int px, int py, int flip, const
     }
 }
 
-/* decode a facing into a w x h image (index 0 transparent), through the LUT */
-static void runs_image(const DoomoFurnIso *im, const uint8_t *lut, uint8_t *dst)
+/* decode a facing into a w x h image (index 0 transparent), through the
+ * LUTs of its classes (runs_lut) */
+static void runs_image(const DoomoFurnIso *im, const uint8_t *const *luts, int night, uint8_t *dst)
 {
-    const uint8_t *base = doomo_furn_iso_data + im->off;
+    const uint8_t *base = doomo_furn_iso_data + im->off, *cl = base + im->h * 2;
     const int w = im->w;
-    int r;
+    int r, j;
     for (r = 0; r < im->h; r++) {
         const uint8_t *p = base + (base[r * 2] | (base[r * 2 + 1] << 8));
         int x = 0, skip;
@@ -1377,11 +1744,34 @@ static void runs_image(const DoomoFurnIso *im, const uint8_t *lut, uint8_t *dst)
             int len = p[1], n;
             x += skip;
             n = DOOMO_MIN(len, w - x);
-            if (n > 0) lut_copy(dst + r * w + x, p + 2, n, lut ? lut : doomo_colormap[15]);
+            if (n > 0) lut_copy(dst + r * w + x, p + 2, n, luts[0]);
             p += 2 + len;
             x += len;
         }
+        for (; *cl != FURN_CLASS_END && *cl == r; cl += 4) {   /* (H8) the class spans again */
+            int k = cl[3] == FPL_GLOW ? 1 : 2, x0 = cl[1], n = DOOMO_MIN(cl[2], w - x0);
+            const uint8_t *q = base + (base[r * 2] | (base[r * 2 + 1] << 8));
+            int xr = 0;
+            if (luts[k] == luts[0] && !(k == 2 && night)) continue;
+            while (q[0] != 0xFF && xr + q[0] + q[1] <= x0) { xr += q[0] + q[1]; q += 2 + q[1]; }
+            if (q[0] == 0xFF) continue;
+            q += 2 + (x0 - xr - q[0]);                              /* the span's first pixel */
+            lut_copy(dst + r * w + x0, q, n, luts[k]);
+            if (k == 2 && night)
+                for (j = 0; j < n; j++) if (room_pane_star(x0 + j, r)) dst[r * w + x0 + j] = ROOM_STAR_COLOUR;
+        }
     }
+}
+
+/* (H8) an item's LUTs: [0] its paints at its level, [1] its glow runs'
+ * (full light unless a switched-off lamp), [2] its panes' (the sky) */
+static void item_luts(const RItem *it, const uint8_t **luts)
+{
+    uint32_t key = it->lut, pane = (uint32_t)((it->lt >> 1) & 3);
+    B->lut_pin = 0;
+    luts[0] = key == LUT_PLAIN ? doomo_colormap[15] : lut_get(key);
+    luts[1] = (it->lt & RIL_GLOW) && ((key >> 16) & 0xFF) != 15 ? lut_get((key & 0xFFFFu) | 15u << 16) : luts[0];
+    luts[2] = pane ? lut_get(key | pane << 24) : luts[0];
 }
 
 static void draw_box_item(const RG *g, const RItem *it, int cx0, int cy0, int cx1, int cy1)
@@ -1389,6 +1779,9 @@ static void draw_box_item(const RG *g, const RItem *it, int cx0, int cy0, int cx
     const DoomoRoomObj *o = &g->v->objs[it->src];
     int pa2 = o->paint_a < 32 ? o->paint_a : PAINT_CARAMEL;
     uint8_t base = PAL_PAINT(pa2, 1);
+    RG gl = *g;                                   /* (H8) the item's own level */
+    gl.level = (int)((it->lut >> 16) & 0xFF);
+    g = &gl;
     int x0 = it->bx0 * 16 + 1, y0 = it->by0 * 16 + 1, x1 = it->bx1 * 16 - 1, y1 = it->by1 * 16 - 1;
     int z = it->px, h = it->py, uB = x0 - y0, uR = x1 - y0, uF = x1 - y1, uL = x0 - y1, u;
     uint8_t top = lit(g, palette_lighter(base)), left = lit(g, base), right = lit(g, palette_darker(base));
@@ -1442,10 +1835,14 @@ HOT static void draw_item(const RG *g, const RItem *it, int cx0, int cy0, int cx
     {
         const DoomoFurnIso *im = iso_of(it);
         int r0 = DOOMO_MAX(0, cy0 - it->py), r1 = DOOMO_MIN(im->h, cy1 - it->py);
+        const uint8_t *luts[3];
         if (r0 >= r1 || it->px >= cx1 || it->px + im->w <= cx0) return;
-        if (!it->flip && it->lut == LUT_PLAIN) runs_plain(im, it->px, it->py, r0, r1, cx0, cx1);
-        else runs_lut(im, it->px, it->py, it->flip, it->lut == LUT_PLAIN ? doomo_colormap[15] : lut_get(it->lut),
-                      r0, r1, cx0, cx1);
+        if (!it->flip && it->lut == LUT_PLAIN && !((it->lt >> 1) & 3)) {
+            runs_plain(im, it->px, it->py, r0, r1, cx0, cx1);
+            return;
+        }
+        item_luts(it, luts);
+        runs_lut(im, it->px, it->py, it->flip, luts, ((it->lt >> 1) & 3) == RPANE_NIGHT, r0, r1, cx0, cx1);
     }
 }
 
@@ -1453,13 +1850,17 @@ HOT static void draw_item(const RG *g, const RItem *it, int cx0, int cy0, int cx
 static void draw_xform(const RItem *it, const DoomoRoomObj *o)
 {
     const DoomoFurnIso *im = iso_of(it);
+    const uint8_t *luts[3];
     DoomoImage img;
     if ((uint32_t)im->w * im->h > STAGE_BYTES) return;
+    B->s15 = 0;                                   /* (H8) the stage's strips are gone */
     memset(B->stage, 0, (size_t)(im->w * im->h));
-    runs_image(im, it->lut == LUT_PLAIN ? NULL : lut_get(it->lut), B->stage);
+    item_luts(it, luts);
+    runs_image(im, luts, ((it->lt >> 1) & 3) == RPANE_NIGHT, B->stage);
     img.w = im->w; img.h = im->h; img.pix = B->stage;
     img.uid = 0xF0A00000u ^ ((uint32_t)o->furn << 6) ^ (uint32_t)(it->iso << 1) ^
-              ((it->lut & 31) << 20) ^ (((it->lut >> 8) & 31) << 25) ^ ((it->lut >> 16) << 15);
+              ((it->lut & 31) << 20) ^ (((it->lut >> 8) & 31) << 25) ^ ((it->lut >> 16) << 15) ^
+              ((uint32_t)it->lt << 29);
     plat_image_xform(it->px + im->w / 2, it->py + im->h, &img, 256 + o->sq_x * 2, 256 + o->sq_y * 2,
                      it->flip ? IMG_FLIPX : 0, 0);
 }
@@ -1686,6 +2087,7 @@ static void render(const DoomoRoomView *v)
         return;
     }
     claim();
+    iwram_ovl_use(OVL_ROOM);             /* (H8) the lamp pools' ARM loops */
     rb_last_frame = gba_frames;
     band_cur[0] = band_pend[0];
     band_cur[1] = band_pend[1];
@@ -1905,6 +2307,9 @@ static DoomoRoomView *test_view(const DoomoRoomView *v, DoomoRoomView *tv, Doomo
             objs[n].rot_anim = RO_ROT_ANIM(i & 3, cellar_set[i & 7] == FURN_BUNNY_BEANBAG ? 0 : (t >> 3) & 1);
             objs[n].paint_a = (uint8_t)(i % 5 == 0 ? PAINT_MINT : 0xFF);
             objs[n].paint_b = 0xFF;
+            /* (H8) lamps are on, as home_obj_view() has them: the dim
+             * cellar is the lamp pools' case (at most 4 of them light) */
+            if (doomo_furn[cellar_set[i & 7]].flags & FF_LIGHT) objs[n].flags = RO_FULLBRIGHT;
             n++;
         }
         tv->daylight = 6;

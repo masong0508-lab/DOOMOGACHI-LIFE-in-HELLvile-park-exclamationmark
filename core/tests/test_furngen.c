@@ -82,10 +82,12 @@ TEST(furngen_marker_paints_respected)
     bake(0, 0, 0, &im);
     for (i = 0; i < im.w * im.h; i++) if (im.pix[i] && reserved(im.pix[i])) fixed_ok = 0;
     free(im.pix);
+    free(im.cls);
     CHECK(fixed_ok);
     bake(1, 1, 0, &im);
     for (i = 0; i < im.w * im.h; i++) if (im.pix[i] && reserved(im.pix[i])) painted++;
     free(im.pix);
+    free(im.cls);
     CHECK(painted > im.w);           /* the paint slots are recolourable */
 }
 
@@ -112,6 +114,9 @@ static int facing_bytes(const DoomoFurnIso *im)
 {
     const uint8_t *b = doomo_furn_iso_data + im->off;
     int y, n = im->h * 2;
+    const uint8_t *c = b + n;                      /* (H8) the light classes */
+    while (*c != FURN_CLASS_END) c += 4;
+    n += (int)(c - (b + im->h * 2)) + 2;                  /* the end and the pad */
     for (y = 0; y < im->h; y++) {
         const uint8_t *p = b + (b[y * 2] | (b[y * 2 + 1] << 8));
         const uint8_t *s = p;
@@ -186,6 +191,7 @@ TEST(furngen_span_roundtrip_and_placeholder)
     CHECK(im.w > 16 && im.h > 8);
     n = span_encode(&im, enc);
     CHECK(n > im.h * 3);
+    CHECK_EQ(enc[im.h * 2], FURN_CLASS_END);              /* (H8) a placeholder has no glow / pane */
     for (y = 0; y < im.h; y++) {
         const uint8_t *p = enc + (enc[y * 2] | (enc[y * 2 + 1] << 8));
         uint8_t row[256];
@@ -195,7 +201,86 @@ TEST(furngen_span_roundtrip_and_placeholder)
         if (memcmp(row, im.pix + y * im.w, (size_t)im.w) != 0) ok = 0;
     }
     free(im.pix);
+    free(im.cls);
     CHECK(ok);
+}
+
+/* (H8) glow and pane prims: their pixels come out as GLOW / PANE runs that
+ * never mix classes, the round trip keeps every pixel and its class, the
+ * prim records carry the class in mat (furn_prim_mat), a pane is for
+ * windows only and a prim is not both */
+TEST(furngen_light_classes)
+{
+    static uint8_t enc[64 * 1024];
+    Img im;
+    int y, x, ok = 1, n, cls, glow = 0, pane = 0, k;
+    memset(arts, 0, sizeof(arts));
+    fg_errors = 0;
+    CHECK_EQ(parse_catalog("[a_win] WALL 10 \"W\"\n  foot 1 1 6  flags WALL  role WINDOW\n"
+                           "[a_lamp] PASTEL 10 \"L\"\n  foot 1 1 6  flags LIGHT  role LAMP\n", "t"), 0);
+    CHECK(parse_art("[a_lamp]\nbox 1 1 0 4 4 4 A pane\n", "t") > 0);          /* not a window */
+    CHECK(strstr(fg_lasterr, "windows") != NULL);
+    memset(arts, 0, sizeof(arts));
+    CHECK(parse_art("[a_win]\nbox 1 1 0 4 2 4 A glow pane\n", "t") > 0);      /* both */
+    CHECK(strstr(fg_lasterr, "not both") != NULL);
+    memset(arts, 0, sizeof(arts));
+    CHECK_EQ(parse_art("[a_win]\nbox 1 0 0 14 3 3 A\nbox 3 0 3 10 2 17 B shiny pane\n", "t"), 0);
+    CHECK_EQ(parse_art("[a_lamp]\ncyl 8 8 0 3 12 A\nblob 8 8 16 4 4 4 LEMON glow\n", "t"), 0);
+    for (k = 0; k < 2; k++) {
+        bake(k, 0, 0, &im);
+        n = span_encode(&im, enc);
+        CHECK(n > 0);
+        {
+            const uint8_t *c = enc + im.h * 2;
+            int py = -1, px = -1;
+            for (y = 0; y < im.h; y++) {
+                const uint8_t *p = enc + (enc[y * 2] | (enc[y * 2 + 1] << 8));
+                uint8_t row[256], rc[256];
+                memset(row, 0, sizeof(row));
+                memset(rc, 0, sizeof(rc));
+                x = 0;
+                while (*p != 0xFF) { x += p[0]; memcpy(row + x, p + 2, p[1]); x += p[1]; p += 2 + p[1]; }
+                for (; *c != FURN_CLASS_END && *c == y; c += 4) {
+                    int i;
+                    if (y == py && c[1] < px) ok = 0;             /* in x order */
+                    py = y; px = c[1] + c[2];
+                    if (c[3] != FPL_GLOW && c[3] != FPL_PANE) ok = 0;
+                    for (i = 0; i < c[2]; i++) {
+                        if (!row[c[1] + i]) ok = 0;                /* never over a gap */
+                        rc[c[1] + i] = c[3];
+                    }
+                    glow += c[3] == FPL_GLOW;
+                    pane += c[3] == FPL_PANE;
+                }
+                if (memcmp(row, im.pix + y * im.w, (size_t)im.w) != 0) ok = 0;
+                for (x = 0; x < im.w; x++) if (row[x] && rc[x] != im.cls[y * im.w + x]) ok = 0;
+            }
+            if (*c != FURN_CLASS_END) ok = 0;                     /* in row order, all used */
+        }
+        free(im.pix);
+        free(im.cls);
+    }
+    CHECK(ok);
+    CHECK(glow > 0 && pane > 0);
+    /* the generated records: every window with a pane prim, the hearth's fire */
+    CHECK_EQ(load_real(), 0);
+    for (k = 0, glow = pane = 0; k < doomo_furn_count; k++) {
+        const DoomoFurn *f = &doomo_furn[k];
+        int j, g = 0, pn = 0;
+        for (j = 0; j < f->nprim; j++) {
+            const DoomoFurnPrim *p = &doomo_furn_prims[f->prim0 + j];
+            int m = furn_prim_mat(p, &cls), a = arts[k].p[j].style;
+            CHECK_MSG(cls == ((a & FG_GLOW) ? FPL_GLOW : (a & FG_PANE) ? FPL_PANE : FPL_NONE), "%s prim %d", rows[k].key, j);
+            CHECK(m == FM_A || m == FM_B || (m >= PAL_PAINT_BASE && m < PAL_SKIN_BASE) || m >= PAL_RAMP_BASE);
+            g += cls == FPL_GLOW;
+            pn += cls == FPL_PANE;
+        }
+        if (k == FURN_COTTAGE_HEARTH) CHECK_MSG(g > 0, "the hearth's fire glows");
+        if (f->role == FR_WINDOW) pane += pn > 0;
+        glow += g > 0;
+    }
+    CHECK_MSG(pane >= 10, "%d windows with panes", pane);
+    CHECK(glow >= 40);
 }
 
 /* (H1 M3 data, H4's joiner) themes, blueprints and layouts are checked by key,
@@ -364,7 +449,9 @@ TEST(furngen_mirror_decal)
             if (b.pix[y * a.w + x] != a.pix[y * a.w + a.w - 1 - x]) ok = 0;
     CHECK(ok);
     free(a.pix);
+    free(a.cls);
     free(b.pix);
+    free(b.cls);
     first = doomo_furn_iso_first[FURN_HEART_WALLPAPER_EYE];
     CHECK_EQ(doomo_furn[FURN_HEART_WALLPAPER_EYE].frames, 2);
     CHECK(doomo_furn[FURN_HEART_WALLPAPER_EYE].flags2 & FF_MIRROR);

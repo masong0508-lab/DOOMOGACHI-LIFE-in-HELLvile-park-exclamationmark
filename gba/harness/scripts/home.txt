@@ -122,6 +122,24 @@ room-parity 0x2e200 46
 room-parity 0x2f200 47
 room-parity 0x31200 49
 
+# 1e. (H8) The light (golden lines 53..57): lamp pools on the floor tiles,
+#    the back walls' tile columns and the pieces, glow pixels at full light,
+#    window panes by daylight (navy and stars, peach at dusk), the roof's
+#    glass at dusk, lamps switched off (the hearth's pool alone). All in the
+#    GBA's vocabulary: required on the full, dirty-rect and UI-restore paths.
+room-parity 0x35000 53
+room-parity 0x36000 54
+room-parity 0x37000 55
+room-parity 0x38000 56
+room-parity 0x39000 57
+room-parity 0x35100 53
+room-parity 0x37100 55
+room-parity 0x38100 56
+room-parity 0x35200 53
+room-parity 0x36200 54
+room-parity 0x37200 55
+room-parity 0x39200 57
+
 # --- the live scene: the Living Room template, the player, the cursor ---
 scene HOME -1
 wait 30

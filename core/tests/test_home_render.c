@@ -74,13 +74,13 @@ static uint32_t render(const HomeRoom *r, int k, int daylight)
 static void line_label(int line, char *buf, size_t n)
 {
     static const char *const kinds[3] = { "walls", "garden", "open" };
-    static const char *const furn[4] = { "parity", "floor", "empty", "fenced" };
+    static const char *const furn[6] = { "parity", "floor", "empty", "fenced", "lamps", "lamps-off" };
     const RoomShell *f;
     if (line < 4) { snprintf(buf, n, "classic view %d", line); return; }
     if (line < ROOM_SHELL_FIRST) { snprintf(buf, n, "classic view 0 night"); return; }
     f = &room_shells[line - ROOM_SHELL_FIRST];
     snprintf(buf, n, "%dx%d %s %s wp %d fl %d ce %d paint %s/%s tint %s %d light %d view %d", f->w, f->d,
-             kinds[f->kind < 3 ? f->kind : 0], furn[f->furn < 4 ? f->furn : 0], f->wallpaper, f->floor,
+             kinds[f->kind < 3 ? f->kind : 0], furn[f->furn < 6 ? f->furn : 0], f->wallpaper, f->floor,
              f->ceiling, doomo_paint_names[f->wall_paint & 31], doomo_paint_names[f->floor_paint & 31],
              doomo_tint_names[f->tint < TINT_COUNT ? f->tint : 0], f->tint_level, f->daylight, f->view);
     if (f->roof) {
@@ -249,4 +249,64 @@ TEST(home_scene_enters_and_places)
     scene_set(&SCENE_HOME, 0);               /* reserved arg: refused */
     doomo_frame(0);
     CHECK(scene_depth() == 0 || scene_top() != &SCENE_HOME);
+}
+
+/* (H8) the light: lamp pools brighten what is near a lit lamp and nothing
+ * at full daylight, at most ROOM_LAMPS light, a switched-off lamp lights
+ * nothing (the hearth still does), glow pixels keep full light at night
+ * unless their lamp is off, window panes turn navy with stars at night and
+ * peach at dusk */
+TEST(room_ref_light_pools_glow_and_panes)
+{
+    static DoomoRoomObj objs[HOME_OBJ_MAX];
+    HomeRoom r;
+    DoomoRoomView v;
+    RoomLight L;
+    int line = -1, line_off = -1, i, n, near, far;
+    static uint8_t a[64 * 64], b[64 * 64];
+    DoomoImage img;
+    int ox, oy, glow_kept = 0, glow_dark = 0, stars = 0, navy = 0, peach = 0;
+    for (i = 0; i < ROOM_SHELL_COUNT; i++) {
+        if (room_shells[i].furn == RSF_LAMPS && line < 0) line = ROOM_SHELL_FIRST + i;
+        if (room_shells[i].furn == RSF_LAMPS_OFF) line_off = ROOM_SHELL_FIRST + i;
+    }
+    CHECK(line >= 0 && line_off >= 0);
+    rs_shell_room(line - ROOM_SHELL_FIRST, &r);
+    rs_view(&v, objs, &r, line);
+    n = room_light_setup(&L, &v, 0, v.w, v.d, 7);
+    CHECK_EQ(n, ROOM_LAMPS);                                  /* five sources, four light */
+    near = L.tile[1][0];                                      /* the cupcake lamp's tile */
+    far = L.tile[5][5];
+    CHECK(near == 15 && far >= 7 && far < near);
+    CHECK(L.wall[0][2] > 7 && L.wall[0][2] <= 15);            /* the hearth's wall */
+    CHECK_EQ(room_light_setup(&L, &v, 0, v.w, v.d, 15), 0);  /* daylight: nothing to add */
+    CHECK_EQ(room_light_at(&L, 0, 0), 15);
+    rs_shell_room(line_off - ROOM_SHELL_FIRST, &r);
+    rs_view(&v, objs, &r, line_off);
+    CHECK_EQ(room_light_setup(&L, &v, 0, v.w, v.d, 7), 1);   /* lights out: only the hearth */
+    CHECK_EQ(L.tile[1][0] < near ? 1 : 0, 1);
+    /* glow: the hearth's fire at level 7 keeps its full-light colours; a
+     * switched-off lamp's glow goes dark with it */
+    CHECK(room_ref_sprite(FURN_COTTAGE_HEARTH, 0, 0, -1, -1, 15, a, sizeof(a), &img, &ox, &oy));
+    CHECK(room_ref_sprite(FURN_COTTAGE_HEARTH, 0, 0, -1, -1, 7, b, sizeof(b), &img, &ox, &oy));
+    for (i = 0; i < img.w * img.h; i++) glow_kept += a[i] && a[i] == b[i] && palette_shade(a[i], 7) != a[i];
+    CHECK(glow_kept > 10);
+    CHECK(room_ref_sprite(FURN_LAVA_LAMP, 0, 0, -1, -1, 15, a, sizeof(a), &img, &ox, &oy));
+    CHECK(room_ref_sprite(FURN_LAVA_LAMP, 0, 0, -1, -1, 7 | RR_SPR_DARK, b, sizeof(b), &img, &ox, &oy));
+    for (i = 0; i < img.w * img.h; i++) glow_dark += a[i] && b[i] != palette_shade(a[i], 7);
+    CHECK_EQ(glow_dark, 0);
+    /* panes: navy and stars at night, peach at dusk, the art by day */
+    CHECK(room_ref_sprite(FURN_WOOD_WINDOW, 0, 0, -1, -1, 15, a, sizeof(a), &img, &ox, &oy));
+    CHECK(room_ref_sprite(FURN_WOOD_WINDOW, 0, 0, -1, -1, 15 | RR_SPR_NIGHT, b, sizeof(b), &img, &ox, &oy));
+    for (i = 0; i < img.w * img.h; i++) {
+        stars += b[i] == ROOM_STAR_COLOUR && a[i] != b[i];
+        navy += b[i] >= PAL_RAMP(RAMP_SKY, 0) && b[i] <= PAL_RAMP(RAMP_SKY, 3) && a[i] != b[i];
+    }
+    CHECK(stars > 0 && navy > stars);
+    CHECK(room_ref_sprite(FURN_WOOD_WINDOW, 0, 0, -1, -1, 15 | RR_SPR_DUSK, b, sizeof(b), &img, &ox, &oy));
+    for (i = 0; i < img.w * img.h; i++) peach += b[i] >= PAL_RAMP(RAMP_PEACH, 4) && b[i] <= PAL_RAMP(RAMP_PEACH, 7);
+    CHECK(peach > 20);
+    CHECK_EQ(room_pane_mode(15), RPANE_DAY);
+    CHECK_EQ(room_pane_mode(10), RPANE_DUSK);
+    CHECK_EQ(room_pane_mode(5), RPANE_NIGHT);
 }

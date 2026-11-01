@@ -39,10 +39,15 @@
  *  - characters: the player (RA_PLAYER) is model.c's 3D chibi, facing where
  *    it walks; every other actor is a camera-facing billboard of its image
  *    with its own x / y squash, standing on its feet.
- *  - light: ambient = the overworld's day colour, up to 4 lamp pools (lit
- *    FF_LIGHT pieces, 1 / (1 + d^2/r^2) from a 64-entry table) on the floor
- *    vertices, darker floor along the wall seams, blob contact shadows under
- *    pieces and actors; the hell tint is the overworld's full-view TILE.
+ *  - light: ambient = the overworld's day colour, up to 4 lamp pools on the
+ *    floor vertices (H8: room_ref's light sources, a lit FF_LIGHT piece or a
+ *    hearth, with its falloff, room_ref's k_lamp table at 32 d^2 / r^2; none
+ *    at full daylight), darker floor along the wall seams, blob contact
+ *    shadows under pieces and actors; the hell tint is the overworld's
+ *    full-view TILE. (H8) A `glow` prim (furn.h furn_prim_mat) is lit at
+ *    full light whatever the day (unless its lamp is off); a `pane` takes
+ *    the sky's ramp by daylight (navy at night, peach at dusk; the 2D
+ *    renderers add stars).
  *  - camera: pitch 35 degrees down, yaw 45 + 90k degrees on a TW_BOING
  *    spring (any other yaw the core sends - L2/R2 free orbit - is followed
  *    the same way), the room fitted to the viewport from the target view,
@@ -196,6 +201,7 @@ typedef struct RC {
     int amb_r, amb_g, amb_b;        /* day colour, 128 = 1.0                      */
     int nlamp;
     int32_t lamp_x[4], lamp_y[4], lamp_r2[4];
+    int pane;                       /* (H8) RPANE_*: the windows' sky             */
     int wall_h[4];                  /* current height of each wall                */
     /* the piece being drawn */
     int32_t m00, m01, m10, m11, m22;  /* local Q4 -> world, Q8                    */
@@ -748,7 +754,7 @@ static uint32_t floor_light(RC *c, int32_t wx, int32_t wy, int seam)
     for (i = 0; i < c->nlamp; i++) {
         int32_t dx = wx - c->lamp_x[i], dy = wy - c->lamp_y[i];
         int32_t d2 = dx * dx + dy * dy;
-        int k = (int)((d2 << 4) / c->lamp_r2[i]);
+        int k = (int)((d2 << 5) / c->lamp_r2[i]);   /* (H8) room_ref's falloff */
         if (k < 64) {
             int a = k_lamp[k];
             r += (a * 120) >> 7;
@@ -1621,11 +1627,23 @@ static void draw_piece(RC *c, const DoomoRoomObj *o, const DoomoFurn *f, int par
             prim_sbox(c, p, &b);
             if (off_clip(c, b.x0, b.y0, b.x1, b.y1)) continue;
         }
-        mat_tones(p->mat, o, t);
-        t[0] = rgb_q7(t[0], c->ar, c->ag, c->ab);
-        t[1] = rgb_q7(t[1], c->ar, c->ag, c->ab);
-        t[2] = rgb_q7(t[2], c->ar, c->ag, c->ab);
-        t[3] = rgb_q7(t[3], c->ar, c->ag, c->ab);
+        {
+            /* (H8) the prim's light class (furn.h): glow keeps full light
+             * (not a switched-off lamp's), a pane shows the sky */
+            int cls, mat = furn_prim_mat(p, &cls), ar = c->ar, ag = c->ag, ab = c->ab;
+            mat_tones(mat, o, t);
+            if (cls == FPL_GLOW && !((f->flags & FF_LIGHT) && !(o->flags & RO_FULLBRIGHT))) {
+                ar = 136; ag = 130; ab = 120;
+            } else if (cls == FPL_PANE && c->pane != RPANE_DAY) {
+                int r = c->pane == RPANE_NIGHT ? RAMP_SKY : RAMP_PEACH, b0 = c->pane == RPANE_NIGHT ? 0 : 4;
+                t[0] = g_rgb[PAL_RAMP(r, b0)]; t[1] = g_rgb[PAL_RAMP(r, b0 + 1)];
+                t[2] = g_rgb[PAL_RAMP(r, b0 + 2)]; t[3] = g_rgb[PAL_RAMP(r, b0 + 3)];
+            }
+            t[0] = rgb_q7(t[0], ar, ag, ab);
+            t[1] = rgb_q7(t[1], ar, ag, ab);
+            t[2] = rgb_q7(t[2], ar, ag, ab);
+            t[3] = rgb_q7(t[3], ar, ag, ab);
+        }
         c->bias = c->bias0 - (k >> 1);
         switch (FURN_PRIM_KIND(p)) {
         case FP_BOX: prim_box(c, p, t); break;
@@ -1985,8 +2003,11 @@ static void lamps(RC *c)
         const DoomoRoomObj *o = &v->objs[i];
         const DoomoFurn *f = furn_of(o);
         int W, D;
-        if (!f || !(f->flags & FF_LIGHT) || (o->flags & RO_GHOST)) continue;
-        if (!(o->flags & RO_FULLBRIGHT) && v->daylight >= 9) continue;
+        /* (H8) room_ref's light sources (home_int.h RoomLight): a lit lamp or
+         * a hearth; a switched-off lamp lights nothing, and full daylight
+         * (room_ref's level 15) needs no pools */
+        if (!f || (o->flags & (RO_GHOST | RO_SEMI)) || v->daylight >= 15) continue;
+        if ((f->flags & FF_LIGHT) ? !(o->flags & RO_FULLBRIGHT) : (f->role != FR_HEARTH || !f->light_r)) continue;
         W = (RO_ROT(o) & 1) ? f->fd : f->fw;
         D = (RO_ROT(o) & 1) ? f->fw : f->fd;
         c->lamp_x[c->nlamp] = o->x * RT + (W ? W : 1) * RT / 2;
@@ -2613,6 +2634,7 @@ void room_render(const DoomoRoomView *v, int force)
         c.lz = 200;                     /* Q8: shade() gives -256..256 */
     }
     lamps(&c);
+    c.pane = room_pane_mode(v->daylight > 15 ? 15 : v->daylight);
     /* the player at rest (Build mode stands it by the door, mostly behind
      * the furniture): after 2 frames on one spot it joins the backdrop with
      * its pose held (model.c g_model_hold), so what stands in front of it

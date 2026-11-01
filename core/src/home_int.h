@@ -526,6 +526,59 @@ void    room_lip_colours(const DoomoRoomView *v, int level, int tint, uint8_t c[
  * a walled room; the door and windows on an open kind's front). */
 int     room_wall_side(const DoomoRoomView *v, const DoomoRoomObj *o, int k);
 
+/* ---- H8: the light ---------------------------------------------------------------
+ * Lamp pools: up to ROOM_LAMPS light sources (a lit FF_LIGHT piece, i.e.
+ * RO_FULLBRIGHT, or a hearth with a `light` radius; held ghosts never) in
+ * object order raise the level of the floor tiles, the back walls' tile
+ * columns and the pieces around them: at a point (X, Y) in view units (16
+ * a tile), lamp i adds k_lamp[d^2 * 32 / r_i^2] (1 / (1 + 2 d^2/r^2) less
+ * its tail, 0..128, zero from d = 1.41 r: the PS1's table, which lights its
+ * floor vertices the same way), and the level becomes
+ * level + (sum * (15 - level) + 64) / 128, at most 15. A tile takes its
+ * centre, wall A' column i the point (16i + 8, 0), wall B' column j
+ * (0, 16j + 8), the corner post (0, 0), a piece the centre of its view box.
+ * Nothing changes at level 15 (n = 0).
+ * Glow pixels (furn.h FPL_GLOW class spans) keep full light unless their
+ * piece is a switched-off lamp; the lava-crack floor's cracks glow too.
+ * Window panes (FPL_PANE) show the sky by daylight (the open kinds'
+ * thresholds: 13 and up day, the art's own glass; 9..12 a peach dusk;
+ * below 9 a navy night with stars), lit like the rest of the piece but for
+ * the stars; the roof's
+ * dormer and skylight glass follow the same sky. room_ref_draw() and the
+ * GBA (gba/src/room.c) both use these, so the two match pixel for pixel. */
+#define ROOM_LAMPS   4
+#define ROOM_LIGHT_N 16                  /* the largest turned room side         */
+enum { RPANE_DAY, RPANE_DUSK, RPANE_NIGHT };
+typedef struct RoomLight {
+    uint8_t  n, level, pane, corner;     /* lamps, ambient level, RPANE_*, the post */
+    int16_t  lx[ROOM_LAMPS], ly[ROOM_LAMPS];   /* centres, view units            */
+    uint16_t inv[ROOM_LAMPS];            /* (32 << 16) / r^2 (r in units)        */
+    uint8_t  wall[2][ROOM_LIGHT_N];      /* wall A' column i, wall B' column j   */
+    uint8_t  tile[ROOM_LIGHT_N][ROOM_LIGHT_N];  /* [j][i] in the turned view    */
+} RoomLight;
+/* Sets L up for view k (W x D turned) at the ambient level; returns the
+ * number of lamps (0: every level is `level`). It is room_light_lamps()
+ * (the lamps, the level and the panes' sky; every field but the tables)
+ * then room_light_fill() (the tile, wall and corner levels, which follow
+ * from those and W, D only: the GBA refills them only when they change). */
+int     room_light_setup(RoomLight *L, const DoomoRoomView *v, int k, int W, int D, int level);
+int     room_light_lamps(RoomLight *L, const DoomoRoomView *v, int k, int level);
+void    room_light_fill(RoomLight *L, int W, int D);
+/* The level at (X, Y), view units. */
+int     room_light_at(const RoomLight *L, int X, int Y);
+/* RPANE_* of a daylight 0..15 */
+int     room_pane_mode(int daylight);
+/* A pane pixel's colour under the sky (c recoloured, unlit), and whether
+ * pixel (x, y) of a facing (unmirrored) is a star at night. */
+uint8_t room_pane_colour(uint8_t c, int pane);
+int     room_pane_star(int x, int y);
+#define ROOM_STAR_COLOUR PAL_RAMP(RAMP_CANDY, 7)
+/* room_ref_sprite()'s lvl flags (H8): a switched-off lamp (its glow pixels
+ * shade too), the panes' sky */
+#define RR_SPR_DARK  0x10
+#define RR_SPR_DUSK  0x20
+#define RR_SPR_NIGHT 0x40
+
 /* Fill a render-ready DoomoRoomObj from a room object (catalog paints
  * resolved, z in px). */
 void home_obj_view(const HomeObj *o, DoomoRoomObj *out);

@@ -18,7 +18,10 @@
 # Materials: A / B (the two paint slots, recolourable), a PAINT_* name
 # (fixed; BUBBLEGUM and MINT are reserved for the markers), or ~RAMP (fixed,
 # an environment ramp: ~WOOD ~STONE ~STEEL ~BONERAMP ~LAVA ...).
-# Styles: soft (dithered fluff), shiny (a highlight), glow (lit from inside).
+# Styles: soft (dithered fluff), shiny (a highlight), glow (lit from inside:
+# H8, its pixels keep full light at night, unless the piece is a lamp that
+# is switched off), pane (H8, windows only: the glass, which the renderers
+# turn to the sky by daylight: a peach dusk, a navy night with stars).
 
 [pink_door]
 box  1 0 0   14 3 52   B
@@ -34,9 +37,9 @@ box  0 0 0   32 11 5   ~STONE
 box  2 0 5   28 9 33   ~STONE
 box  6 0 5   20 10 22  ~STONE
 box  9 3 5   14 8 16   JET
-blob 16 9 9  5 2 4     HELLFIRE glow
-blob 12 9 8  3 2 3     LEMON glow
-blob 20 9 8  3 2 3     TANGERINE glow
+blob 16 11 9 5 2 4     HELLFIRE glow
+blob 12 11 8 3 2 3     LEMON glow
+blob 20 11 8 3 2 3     TANGERINE glow
 box  0 0 38  32 13 4   ~WOOD
 box  4 0 42  24 6 3    ~STONE
 cyl  6 8 42  1 4       WHITE

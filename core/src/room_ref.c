@@ -37,17 +37,29 @@
  *    RO_HALF_X / Y shift a piece +8 units in room space. Actors scale
  *    about their feet when sx / sy != 256 and BB_TRANSLUCENT dithers them.
  *    The open kinds' sky follows `daylight`.
+ *  - (H8) the light (home_int.h RoomLight): up to 4 lamp pools raise the
+ *    level of each floor tile, each back-wall tile column (and the corner
+ *    post) and each piece (at its view box's centre); glow pixels keep full
+ *    light (a switched-off lamp's go dark), the lava crack's cracks glow,
+ *    window panes and the roof's glass show the sky by daylight.
  */
 #include "home_int.h"
 
 typedef struct RR {
     int ox, oy, W, D, k, wall_h, level, tint;
     const DoomoRoomView *v;
+    const struct RoomLight *L;        /* (H8) lamp pools, panes */
 } RR;
 
 static uint8_t lit(const RR *r, uint8_t c)
 {
     c = r->level >= 15 ? c : palette_shade(c, r->level);
+    return r->tint ? doomo_tintmap[r->tint][c] : c;
+}
+
+/* (H8) a glowing colour: full light, still tinted */
+static uint8_t glow(const RR *r, uint8_t c)
+{
     return r->tint ? doomo_tintmap[r->tint][c] : c;
 }
 
@@ -70,6 +82,99 @@ static void rot_box(int k, int w, int d, int *x0, int *y0, int *x1, int *y1)
     }
 }
 
+/* ---- H8: the light (home_int.h) ------------------------------------------------- */
+/* 1 / (1 + k / 16), minus its value at k = 64, as 0..128 (the PS1's table);
+ * k = 32 d^2 / r^2, so a pool fades out at d = 1.41 r */
+static const uint8_t k_lamp[64] = {
+    128, 118, 110, 102, 96, 89, 84, 79, 74, 70, 66, 62, 59, 56, 53, 50, 48, 45, 43, 41, 39,
+    37, 35, 33, 32, 30, 28, 27, 26, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 12,
+    11, 10, 9, 9, 8, 8, 7, 6, 6, 5, 5, 4, 4, 3, 3, 2, 2, 1, 1, 0, 0 };
+
+int room_light_at(const RoomLight *L, int X, int Y)
+{
+    int i, a = 0, lv;
+    for (i = 0; i < L->n; i++) {
+        int32_t dx = X - L->lx[i], dy = Y - L->ly[i];
+        uint32_t kk = ((uint32_t)(dx * dx + dy * dy) * L->inv[i]) >> 16;
+        if (kk < 64) a += k_lamp[kk];
+    }
+    if (!a) return L->level;
+    lv = L->level + ((a * (15 - L->level) + 64) >> 7);
+    return lv > 15 ? 15 : lv;
+}
+
+int room_pane_mode(int daylight)
+{
+    return daylight >= 13 ? RPANE_DAY : daylight >= 9 ? RPANE_DUSK : RPANE_NIGHT;
+}
+
+int room_light_lamps(RoomLight *L, const DoomoRoomView *v, int k, int level)
+{
+    int i;
+    memset(L->lx, 0, sizeof(L->lx));
+    memset(L->ly, 0, sizeof(L->ly));
+    memset(L->inv, 0, sizeof(L->inv));
+    L->n = 0;
+    L->level = (uint8_t)level;
+    L->pane = (uint8_t)room_pane_mode(v->daylight > 15 ? 15 : v->daylight);
+    if (level >= 15) { L->corner = (uint8_t)level; return 0; }
+    for (i = 0; i < v->nobj && L->n < ROOM_LAMPS; i++) {
+        const DoomoRoomObj *o = &v->objs[i];
+        const DoomoFurn *f = home_furn(o->furn);
+        int x0, y0, x1, y1, w, d, r;
+        if (!f || (o->flags & (RO_GHOST | RO_SEMI))) continue;
+        if ((f->flags & FF_LIGHT) ? !(o->flags & RO_FULLBRIGHT) : (f->role != FR_HEARTH || !f->light_r)) continue;
+        if (f->flags & FF_WALL) {
+            w = (RO_ROT(o) & 1) ? 1 : (f->fw ? f->fw : 1);
+            d = (RO_ROT(o) & 1) ? (f->fw ? f->fw : 1) : 1;
+        } else {
+            home_footprint(f, RO_ROT(o), &w, &d);
+        }
+        x0 = o->x; y0 = o->y; x1 = x0 + w; y1 = y0 + d;
+        rot_box(k, v->w, v->d, &x0, &y0, &x1, &y1);
+        r = 16 * (f->light_r ? f->light_r : 2);
+        L->lx[L->n] = (int16_t)((x0 + x1) * 8);
+        L->ly[L->n] = (int16_t)((y0 + y1) * 8);
+        L->inv[L->n] = (uint16_t)((32u << 16) / (uint32_t)(r * r));
+        L->n++;
+    }
+    if (!L->n) L->corner = (uint8_t)level;           /* else room_light_fill() sets it */
+    return L->n;
+}
+
+void room_light_fill(RoomLight *L, int W, int D)
+{
+    int i, j;
+    if (!L->n) return;
+    if (W > ROOM_LIGHT_N) W = ROOM_LIGHT_N;
+    if (D > ROOM_LIGHT_N) D = ROOM_LIGHT_N;
+    for (j = 0; j < D; j++)
+        for (i = 0; i < W; i++) L->tile[j][i] = (uint8_t)room_light_at(L, i * 16 + 8, j * 16 + 8);
+    for (i = 0; i < W; i++) L->wall[0][i] = (uint8_t)room_light_at(L, i * 16 + 8, 0);
+    for (j = 0; j < D; j++) L->wall[1][j] = (uint8_t)room_light_at(L, 0, j * 16 + 8);
+    L->corner = (uint8_t)room_light_at(L, 0, 0);
+}
+
+int room_light_setup(RoomLight *L, const DoomoRoomView *v, int k, int W, int D, int level)
+{
+    if (room_light_lamps(L, v, k, level)) room_light_fill(L, W, D);
+    return L->n;
+}
+
+/* the sky in a pane: the glass's luma picks the shade */
+uint8_t room_pane_colour(uint8_t c, int pane)
+{
+    int l = palette_luma(c), t = l > 170 ? 3 : l > 120 ? 2 : l > 80 ? 1 : 0;
+    if (pane == RPANE_DUSK) return PAL_RAMP(RAMP_PEACH, 4 + t);
+    if (pane == RPANE_NIGHT) return PAL_RAMP(RAMP_SKY, t);
+    return c;
+}
+
+int room_pane_star(int x, int y)
+{
+    return rr_hash(x + 31, y + 57) % 23u == 0;
+}
+
 static int scr_x(const RR *r, int X, int Y) { return r->ox + X - Y; }
 static int scr_y(const RR *r, int X, int Y, int Z) { return r->oy + ((X + Y) >> 1) - Z; }
 
@@ -84,7 +189,7 @@ static uint8_t floor_cell(const RR *r, int pat, int i, int j, int cx, int cy, ui
     case 3: return (((i + j) & 1) ? (cy & 1) : (cx & 1)) ? a : b;               /* herringbone */
     case 4: return (h & 7) == 0 ? lit(r, PAL_RAMP(RAMP_GRASS, 6)) : ((h >> 3) & 3) == 0 ? b : a;
     case 5: return (rr_hash(i, j) & 1) ? a : b;                                 /* flagstone */
-    case 6: return (h % 11) == 0 ? lit(r, PAL_RAMP(RAMP_LAVA, 5)) : (h % 11) == 1 ? lit(r, PAL_RAMP(RAMP_LAVA, 3)) : b;
+    case 6: return (h % 11) == 0 ? glow(r, PAL_RAMP(RAMP_LAVA, 5)) : (h % 11) == 1 ? glow(r, PAL_RAMP(RAMP_LAVA, 3)) : b;  /* (H8) the cracks glow */
     default: return (h & 3) == 0 ? lit(r, PAL_PAINT(PAINT_WHITE, 0)) : a;       /* cloud */
     }
 }
@@ -315,19 +420,33 @@ static void draw_backdrop(const RR *r, const RoomBackdrop *b)
 static void draw_room_shell(const RR *r, const RoomBackdrop *bd)
 {
     const DoomoRoomView *v = r->v;
+    const RoomLight *L = r->L;
     int i, j, u;
     int fp = v->floor_paint < 32 ? v->floor_paint : PAINT_CARAMEL;
     uint8_t a = lit(r, PAL_PAINT(fp, 1)), b = lit(r, PAL_PAINT(fp, 2)), g = lit(r, PAL_PAINT(fp, 0));
+    RR t = *r;                                             /* (H8) a tile's / column's light */
     if (bd->style) draw_backdrop(r, bd);
     if (v->room_kind == ROOMK_WALLS) {
-        for (u = 0; u < r->W * 16; u += 2)                 /* wall A': y' = 0 */
-            wall_column(r, r->ox + u, r->oy + (u >> 1), u, 0);
-        for (u = 2; u <= r->D * 16; u += 2)                /* wall B': x' = 0 */
-            wall_column(r, r->ox - u, r->oy + (u >> 1), u, 1);
-        plat_rect(r->ox - 1, r->oy - r->wall_h, 2, r->wall_h, lit(r, PAL_PAINT(v->wall_paint < 32 ? v->wall_paint : PAINT_BUBBLEGUM, 0)));
+        for (u = 0; u < r->W * 16; u += 2) {               /* wall A': y' = 0 */
+            t.level = L->n ? L->wall[0][DOOMO_MIN(u >> 4, ROOM_LIGHT_N - 1)] : r->level;
+            wall_column(&t, r->ox + u, r->oy + (u >> 1), u, 0);
+        }
+        for (u = 2; u <= r->D * 16; u += 2) {              /* wall B': x' = 0 */
+            t.level = L->n ? L->wall[1][DOOMO_MIN((u - 2) >> 4, ROOM_LIGHT_N - 1)] : r->level;
+            wall_column(&t, r->ox - u, r->oy + (u >> 1), u, 1);
+        }
+        t.level = L->corner;
+        plat_rect(r->ox - 1, r->oy - r->wall_h, 2, r->wall_h, lit(&t, PAL_PAINT(v->wall_paint < 32 ? v->wall_paint : PAINT_BUBBLEGUM, 0)));
     }
     for (j = 0; j < r->D; j++)
-        for (i = 0; i < r->W; i++) floor_tile(r, i, j, a, b, g);
+        for (i = 0; i < r->W; i++) {
+            if (L->n && i < ROOM_LIGHT_N && j < ROOM_LIGHT_N && L->tile[j][i] != r->level) {
+                t.level = L->tile[j][i];
+                floor_tile(&t, i, j, lit(&t, PAL_PAINT(fp, 1)), lit(&t, PAL_PAINT(fp, 2)), lit(&t, PAL_PAINT(fp, 0)));
+            } else {
+                floor_tile(r, i, j, a, b, g);
+            }
+        }
     if (v->room_kind != ROOMK_WALLS) {                     /* (H5) the lip on both front edges */
         uint8_t c[5];
         room_lip_colours(v, r->level, r->tint, c);
@@ -414,6 +533,11 @@ int room_roof_setup(RoomRoof *f, const DoomoRoomView *v, int k, int W, int D, in
     c[RFC_F_CAP] = PAL_RAMP(RAMP_STONE, 5);
     c[RFC_GLASS] = PAL_RAMP(RAMP_SKY, 4);
     c[RFC_GLINT] = PAL_RAMP(RAMP_SKY, 7);
+    switch (room_pane_mode(v->daylight > 15 ? 15 : v->daylight)) {   /* (H8) the sky in the glass */
+    case RPANE_DUSK: c[RFC_GLASS] = PAL_RAMP(RAMP_PEACH, 4); c[RFC_GLINT] = PAL_RAMP(RAMP_PEACH, 6); break;
+    case RPANE_NIGHT: c[RFC_GLASS] = PAL_RAMP(RAMP_SKY, 1); c[RFC_GLINT] = PAL_RAMP(RAMP_SKY, 3); break;
+    default: break;
+    }
     c[RFC_SPIKE_L] = PAL_PAINT(PAINT_BONE, 2);
     c[RFC_SPIKE_D] = PAL_PAINT(PAINT_BONE, 0);
     c[RFC_SIDING] = PAL_PAINT(PAINT_BONE, 2);
@@ -744,10 +868,11 @@ static void iso_box(const RR *r, int x0, int y0, int x1, int y1, int z, int h, u
 /* ---- the maquette: a piece's prims as iso blocks (no sprites: the PS1) ---- */
 static uint8_t prim_base(const DoomoFurn *f, const DoomoFurnPrim *p, int pa, int pb)
 {
-    int paint = p->mat == FM_A ? (pa >= 0 && pa < 32 ? pa : f->paint_a) :
-                p->mat == FM_B ? (pb >= 0 && pb < 32 ? pb : f->paint_b) : -1;
-    if (p->mat == FM_A || p->mat == FM_B) return PAL_PAINT(paint >= 0 && paint < 32 ? paint : PAINT_CARAMEL, 1);
-    return p->mat;
+    int cls, m = furn_prim_mat(p, &cls);               /* (H8) the light class rides in mat */
+    int paint = m == FM_A ? (pa >= 0 && pa < 32 ? pa : f->paint_a) :
+                m == FM_B ? (pb >= 0 && pb < 32 ? pb : f->paint_b) : -1;
+    if (m == FM_A || m == FM_B) return PAL_PAINT(paint >= 0 && paint < 32 ? paint : PAINT_CARAMEL, 1);
+    return (uint8_t)m;
 }
 
 /* the prim's box in units (z, h in px): boxes from their min corner, the
@@ -823,8 +948,10 @@ int room_ref_sprite(int furn, int facing, int frame, int pa, int pb, int lvl,
 {
     const DoomoFurn *f = home_furn(furn);
     const DoomoFurnIso *im;
-    const uint8_t *base;
-    int frames, e, y;
+    const uint8_t *base, *cl;
+    uint8_t raw[256];
+    int frames, e, y, fl = lvl & ~15, pane = (fl & RR_SPR_NIGHT) ? RPANE_NIGHT : (fl & RR_SPR_DUSK) ? RPANE_DUSK : RPANE_DAY;
+    lvl &= 15;
     if (!f || !buf || !FURN_ISO_COUNT || furn >= doomo_furn_count) return 0;
     frames = f->frames ? f->frames : 1;
     e = doomo_furn_iso_first[furn] + (frame % frames) * 2 + (facing & 1);
@@ -832,9 +959,11 @@ int room_ref_sprite(int furn, int facing, int frame, int pa, int pb, int lvl,
     im = &doomo_furn_iso[e];
     if ((unsigned)(im->w * im->h) > cap || !im->w || !im->h) return 0;
     base = doomo_furn_iso_data + im->off;
+    cl = base + im->h * 2;                               /* (H8) the light classes */
     memset(buf, 0, (size_t)im->w * im->h);
     for (y = 0; y < im->h; y++) {
         const uint8_t *p = base + (base[y * 2] | (base[y * 2 + 1] << 8));
+        uint8_t *d = buf + y * im->w;
         int x = 0;
         while (*p != 0xFF) {
             int skip = p[0], len = p[1], i;
@@ -842,15 +971,32 @@ int room_ref_sprite(int furn, int facing, int frame, int pa, int pb, int lvl,
             x += skip;
             for (i = 0; i < len && x + i < im->w; i++) {
                 uint8_t c = recolour(p[i], pa, pb);
-                buf[y * im->w + x + i] = lvl >= 15 ? c : palette_shade(c, lvl);
+                raw[x + i] = c;
+                d[x + i] = lvl >= 15 ? c : palette_shade(c, lvl);
             }
             p += len;
             x += len;
         }
+        /* glow spans at full light (not a switched-off lamp's), panes the sky */
+        for (; *cl != FURN_CLASS_END && *cl == y; cl += 4) {
+            int i, x0 = cl[1], n = DOOMO_MIN(cl[2], im->w - x0);
+            for (i = 0; i < n; i++) {
+                uint8_t c = raw[x0 + i];
+                if (cl[3] == FPL_GLOW) {
+                    if (!(fl & RR_SPR_DARK)) d[x0 + i] = c;
+                } else if (pane != RPANE_DAY) {
+                    if (pane == RPANE_NIGHT && room_pane_star(x0 + i, y)) d[x0 + i] = ROOM_STAR_COLOUR;
+                    else {
+                        c = room_pane_colour(c, pane);
+                        d[x0 + i] = lvl >= 15 ? c : palette_shade(c, lvl);
+                    }
+                }
+            }
+        }
     }
     img->w = im->w; img->h = im->h; img->pix = buf;
     img->uid = 0xF0A00000u ^ ((uint32_t)furn << 6) ^ (uint32_t)(e << 1) ^ ((uint32_t)(pa & 31) << 20) ^
-               ((uint32_t)(pb & 31) << 25) ^ ((uint32_t)lvl << 15);
+               ((uint32_t)(pb & 31) << 25) ^ ((uint32_t)(lvl | fl) << 15);
     *ox = im->ox;
     *oy = im->oy;
     return 1;
@@ -887,9 +1033,14 @@ static void draw_piece(const RR *r, const DoomoRoomObj *o, const Item *it)
     int rot = (RO_ROT(o) - r->k) & 3, facing = rot & 1, flip = rot >= 2;
     int sx = scr_x(r, it->x0 * 16, it->y0 * 16), sy = scr_y(r, it->x0 * 16, it->y0 * 16, o->z);
     DoomoImage img;
-    int ox, oy, lvl = (o->flags & RO_FULLBRIGHT) ? 15 : r->level;
+    int ox, oy, lvl, fl;
     int pa = o->paint_a == 0xFF ? -1 : o->paint_a, pb = o->paint_b == 0xFF ? -1 : o->paint_b;
     if (!f) return;
+    /* (H8) a lit lamp at full light; anything else in the lamps' pools;
+     * a switched-off lamp's glow goes dark; the panes take the sky */
+    lvl = (o->flags & RO_FULLBRIGHT) ? 15 : room_light_at(r->L, (it->x0 + it->x1) * 8, (it->y0 + it->y1) * 8);
+    fl = ((f->flags & FF_LIGHT) && !(o->flags & RO_FULLBRIGHT) ? RR_SPR_DARK : 0) |
+         (r->L->pane == RPANE_NIGHT ? RR_SPR_NIGHT : r->L->pane == RPANE_DUSK ? RR_SPR_DUSK : 0);
     if (o->flags & (RO_HALF_X | RO_HALF_Y)) {           /* the half-tile, turned with the view */
         int hx = (o->flags & RO_HALF_X) ? 8 : 0, hy = (o->flags & RO_HALF_Y) ? 8 : 0, k, t;
         for (k = 0; k < r->k; k++) { t = hx; hx = -hy; hy = t; }
@@ -897,7 +1048,7 @@ static void draw_piece(const RR *r, const DoomoRoomObj *o, const Item *it)
         sy += (hx + hy) >> 1;
     }
     if (o->jitter) sx += (int)((r->v->time >> 1) & 1) * o->jitter - o->jitter / 2;
-    if (room_ref_sprite(o->furn, facing, RO_ANIM(o), pa, pb, lvl, (uint8_t *)r->v->plat_cache,
+    if (room_ref_sprite(o->furn, facing, RO_ANIM(o), pa, pb, lvl | fl, (uint8_t *)r->v->plat_cache,
                         (unsigned)r->v->plat_cache_cap, &img, &ox, &oy)) {
         int flags = flip ? IMG_FLIPX : 0;
         uint8_t col = 0;
@@ -914,7 +1065,9 @@ static void draw_piece(const RR *r, const DoomoRoomObj *o, const Item *it)
     {
         int h = f->fh ? f->fh * 4 : 2, pa2 = o->paint_a < 32 ? o->paint_a : PAINT_CARAMEL;
         uint8_t base = (o->flags & RO_SEMI) ? PAL_RAMP(RAMP_STONE, 5) : PAL_PAINT(pa2, 1);
-        iso_box(r, it->x0 * 16 + 1, it->y0 * 16 + 1, it->x1 * 16 - 1, it->y1 * 16 - 1, o->z, h, base);
+        RR t = *r;
+        t.level = lvl;
+        iso_box(&t, it->x0 * 16 + 1, it->y0 * 16 + 1, it->x1 * 16 - 1, it->y1 * 16 - 1, o->z, h, base);
     }
 }
 
@@ -968,8 +1121,10 @@ void room_ref_draw(const DoomoRoomView *v)
     int16_t front_idx[RR_MAX_ITEMS];
     int n = 0, nf = 0, i, j, total, vw, vh;
     RoomBackdrop bd;
+    RoomLight L;
     if (!v || plat_draw_skipped()) return;
     r.v = v;
+    r.L = &L;
     r.k = ((v->yaw + 512) >> 10) & 3;
     r.W = (r.k & 1) ? v->d : v->w;
     r.D = (r.k & 1) ? v->w : v->d;
@@ -979,6 +1134,7 @@ void room_ref_draw(const DoomoRoomView *v)
     r.level = 6 + (v->daylight > 15 ? 15 : v->daylight) * 9 / 15;
     r.tint = (v->tint && v->tint < TINT_COUNT && v->tint_level >= 4) ? v->tint : 0;
     room_backdrop_setup(&bd, v, r.k, r.W, r.D, r.wall_h, r.level, r.tint);
+    room_light_setup(&L, v, r.k, r.W, r.D, r.level);
     total = (v->room_kind == ROOMK_WALLS || bd.style ? r.wall_h : 8) + (r.W + r.D) * 8;
     r.ox = v->vx + vw / 2 - (r.W - r.D) * 8 + v->pan_x;
     if (total + 4 <= vh) r.oy = v->vy + (vh - total) / 2 + (total - (r.W + r.D) * 8) + v->pan_y;

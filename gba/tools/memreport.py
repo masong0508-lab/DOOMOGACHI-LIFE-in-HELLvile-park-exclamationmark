@@ -22,7 +22,7 @@ SYMS = ("__iwram_start", "__iwram_end", "__iwram_bss_start", "__iwram_bss_end",
         "__bss_start", "__bss_end", "__ewram_end", "__rom_end",
         "__flash_ram_start", "__flash_ram_end",
         "__iwram_ovl_start", "__iwram_ovl_end", "__iwram_ovl_3d_size",
-        "__iwram_ovl_2d_size")
+        "__iwram_ovl_2d_size", "__iwram_ovl_room_size")
 STACK_MIN = 6144        # gba.ld GBA_STACK_SIZE
 
 
@@ -54,10 +54,11 @@ def main():
               (iw_used, iw_code, ovl, iw_bss, stack))
         g3 = val.get("__iwram_ovl_3d_size", 0)
         g2 = val.get("__iwram_ovl_2d_size", 0)
+        gr = val.get("__iwram_ovl_room_size", 0)
         print("memreport:   overlay slot %d bytes at 0x%08x: 3D group %d bytes "
-              "(%d free), 2D group %d bytes (%d free); main stack %d bytes with "
-              "the largest group in (>= %d: %s)" %
-              (ovl, val["__iwram_ovl_start"], g3, ovl - g3, g2, ovl - g2, stack,
+              "(%d free), 2D group %d bytes (%d free), room group %d bytes (%d free); "
+              "main stack %d bytes with the largest group in (>= %d: %s)" %
+              (ovl, val["__iwram_ovl_start"], g3, ovl - g3, g2, ovl - g2, gr, ovl - gr, stack,
                STACK_MIN, "ok" if stack >= STACK_MIN else "FAIL"))
     else:
         print("memreport: IWRAM %7d / 32768 used (code+data %d, bss %d); "

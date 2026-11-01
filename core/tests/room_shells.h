@@ -26,8 +26,12 @@ enum {
     RSF_PARITY,     /* the classic layout (Living Room template + 12 pieces), resized */
     RSF_FLOOR,      /* a bare room (no door / windows) + the 9 floor-standing pieces  */
     RSF_EMPTY,      /* a bare room: only the shell                                   */
-    RSF_FENCED      /* (H5) the kind's own template (the Garden's / the Park Plot's
+    RSF_FENCED,     /* (H5) the kind's own template (the Garden's / the Park Plot's
                        door) + fences on all four edges (rot 2 / 3 on the front)   */
+    RSF_LAMPS,      /* (H8) a bare room lit at night: the hearth, three lamps, a
+                       chandelier, the TV's glowing screen, a rug, two windows    */
+    RSF_LAMPS_OFF   /* (H8) the same with every lamp switched off (the haunt's
+                       lights out: only the hearth glows)                         */
 };
 
 typedef struct RoomShell {
@@ -114,6 +118,16 @@ static const RoomShell room_shells[] = {
     {10, 8, ROOMK_OPEN,   RSF_FENCED, 0, 1, 0, PAINT_SKY,        PAINT_FOREST,    0, 0, 15, 1, 0 },
     { 8, 6, ROOMK_GARDEN, RSF_FENCED, 4, 4, 0, PAINT_SKY,        PAINT_LIME,      0, 0, 10, 0, 0 },
     {10, 8, ROOMK_OPEN,   RSF_FENCED, 4, 5, 0, PAINT_SKY,        PAINT_FOREST,    0, 0,  3, 3, 0 },
+    /* 53..57 (H8): the light, in the GBA's vocabulary: lamp pools on the
+     * floor, the back walls and the pieces, glow pixels at full light, the
+     * windows' panes by daylight (a navy night with stars, a peach dusk) and
+     * the roof's glass; the 8x8 cellar at its dim 6 turned; dusk under the
+     * cottage roof; the lamps switched off (only the hearth's pool) */
+    { 6, 6, ROOMK_WALLS, RSF_LAMPS,  0, 0, 0, PAINT_BUBBLEGUM,   PAINT_CARAMEL,   0, 0,  3, 0, 0 },
+    { 6, 6, ROOMK_WALLS, RSF_LAMPS,  2, 1, 0, PAINT_MINT,        PAINT_HONEY,     0, 0,  5, 3, 0 },
+    { 8, 8, ROOMK_WALLS, RSF_LAMPS,  3, 1, 0, PAINT_CHARCOAL,    PAINT_RUST,      0, 0,  6, 1, 0 },
+    { 6, 6, ROOMK_WALLS, RSF_LAMPS,  1, 0, 0, PAINT_LAVENDER,    PAINT_HONEY,     0, 0, 10, 2, ROOF_COTTAGE },
+    { 6, 6, ROOMK_WALLS, RSF_LAMPS_OFF, 0, 0, 0, PAINT_BUBBLEGUM, PAINT_CARAMEL,  0, 0,  3, 0, 0 },
 };
 #define ROOM_SHELL_COUNT ((int)(sizeof(room_shells) / sizeof(room_shells[0])))
 #define ROOM_SHELL_LINES (ROOM_SHELL_FIRST + ROOM_SHELL_COUNT)   /* golden lines in all */
@@ -135,6 +149,21 @@ static const RoomShellPiece room_shell_pieces[] = {
     { FURN_JELLYBEAN_JAR,      2, 2, 0, 5, RS_DEF,         RS_DEF, 0 },
     { FURN_HORNED_POOP_PLUSH,  0, 5, 0, 0, RS_DEF,         RS_DEF, 0 },
     { FURN_POTTED_FERN,        5, 2, 0, 0, RS_DEF,         RS_DEF, 0 },
+};
+
+/* (H8) the lit room's pieces (RSF_LAMPS): the first four light sources in
+ * object order light (the hearth, the cupcake lamp, the chandelier, the
+ * lava lamp); the honey lamp is the fifth, over the cap */
+static const RoomShellPiece room_shell_lamps[] = {
+    { FURN_COTTAGE_HEARTH,     2, 0, 0, 0, RS_DEF,         RS_DEF, 0 },
+    { FURN_CUPCAKE_LAMP,       0, 1, 0, 0, RS_DEF,         RS_DEF, 0 },
+    { FURN_CRYSTAL_CHANDELIER, 5, 0, 0, 10, RS_DEF,        RS_DEF, 1 },
+    { FURN_LAVA_LAMP,          4, 4, 0, 0, RS_DEF,         RS_DEF, 0 },
+    { FURN_HONEY_LAMP,         1, 5, 0, 0, RS_DEF,         RS_DEF, 0 },
+    { FURN_TUBE_TV,            4, 2, 3, 0, RS_DEF,         RS_DEF, 0 },
+    { FURN_DAISY_RUG,          2, 2, 0, 0, RS_DEF,         RS_DEF, 0 },
+    { FURN_WOOD_WINDOW,        0, 3, 1, 0, RS_DEF,         RS_DEF, 1 },
+    { FURN_GOTH_WINDOW,        1, 0, 0, 0, RS_DEF,         RS_DEF, 1 },
 };
 
 static inline void rs_put(HomeRoom *r, const RoomShellPiece *p)
@@ -178,6 +207,16 @@ static inline void rs_shell_room(int s, HomeRoom *r)
             p.y = (uint8_t)(fy[i] == 0xF0 ? f->d - 1 : fy[i] == 0xF1 ? f->d - 2 : fy[i]);
             p.rot = fr[i]; p.z = 0; p.pa = p.pb = RS_DEF; p.hung = 1;
             rs_put(r, &p);
+        }
+    } else if (f->furn == RSF_LAMPS || f->furn == RSF_LAMPS_OFF) {
+        memset(r, 0, sizeof(*r));
+        r->wallpaper = r->floor = r->wall_paint = r->floor_paint = 0xFF;
+        r->flags = HRF_OPEN | HRF_LIGHTS;
+        for (i = 0; i < (int)(sizeof(room_shell_lamps) / sizeof(room_shell_lamps[0])); i++) {
+            const DoomoFurn *df = home_furn(room_shell_lamps[i].furn);
+            rs_put(r, &room_shell_lamps[i]);
+            if (f->furn == RSF_LAMPS_OFF && df && (df->flags & FF_LIGHT))
+                r->obj[r->nobj - 1].pa |= HOS_OFF;           /* switched off */
         }
     } else {
         memset(r, 0, sizeof(*r));
