@@ -23,14 +23,14 @@ L_BUTTON:
 end
 
 script e12_nana
-  say nana HAPPY "You're the new one! You look / hungry. Everyone looks / hungry to me."
+  say nana HAPPY "You're the new one! You / look hungry. Everyone looks / hungry to me. It's a gift."
   say nana "The key's in a muffin. / Don't ask which. I forgot. / I always forget."
-  say nana HAPPY "Every tray has two of / everything. Habit. / Have a nibble, sweet pea."
+  say nana HAPPY "I bake two of everything. / Habit. {.}Have a nibble, / sweet pea."
   [R13]
-  choice nar "(A tray of muffins.)" { "Bite one" ; "Bite them ALL" }
-  say nar "(Raisin. Raisin. And... / that's a button.)"
+  choice nar "A tray of muffins. One of them is a door key." { "Bite one" ; "Bite them ALL" }
+  say nar "Raisin. Raisin. {..}That's / a button."
   runbeat b12_muffins
-  say nar "(CRUNCH. A key!)"
+  say nar "CRUNCH! A key! Your teeth / would like a word."
   [R13]
   [R8]
   say nana SAD "{..}And this. An egg. It's / been waiting for someone."
@@ -48,8 +48,8 @@ script e12_nana
   setf SF_EGG_GIVEN
   befriend nana 3
   sfx SFX_PICKUP
-  say nar "(You got the House Key and / a warm Doomogachi egg.)"
-  say nana "Hillvile Lane. The pink / door. Up the stairs, / north-west!"
+  say nar "GOT: House Key! GOT: / Doomogachi Egg (warm, / possibly judging you)."
+  say nana "Your house is the pink door / on Hillvile Lane. Up the / stairs, north-west. Shoo!"
   [R13]
   beat C1_HOME
 end
@@ -69,8 +69,8 @@ end
 script e12_cottage
   runbeat b12_door
   setf SF_HOME_SEEN
-  say nar "(Your very own cottage. / It smells like fresh paint / and cinnamon.)"
-  say nar "(Empty, except for a crate / and a window. Let's make it / yours.)"
+  say nar "NEW HOME! Smells like: / fresh paint, cinnamon, / and a little bit of crate."
+  say nar "(It's empty except for a / crate and a window. Time to / make it yours.)"
   [R13]
   home GRANT furn=cupcake_lamp
   push home 0x4000
@@ -79,7 +79,7 @@ script e12_cottage
   say nar "{big}COSY: B+{/}"
   [R8]
   [R13]
-  say nar "(Imaginary visitors:) / <3"
+  say nar "Imaginary visitors: / <3"
   [R13]
   say nar "<3 <3"
   [R13]
@@ -88,7 +88,7 @@ script e12_cottage
   sfx SFX_SQUEAK
   say nar "(The crate slides one pixel / to the left, in shame.)"
   [R26]
-  say nana NEUTRAL "(at the door) You put a lamp / by the egg. That's exactly / where my mother put hers." [HEART]
+  say nana NEUTRAL "You put a lamp by the egg. / That's exactly where my / mother put hers." [HEART]
   [R26]
   [NIGHT]
   music SONG_HAHALAND_NIGHT
@@ -96,9 +96,9 @@ script e12_cottage
   [HOLD 21]
   say nar "(Night. Through the window, / far off at the Wall, a tiny / purple glow.)"
   [R21]
-  say nar "(It pulses.)"
+  say nar "(It pulses. Like it's / waiting for applause.)"
   [R21]
-  say nar "(It pulses again.)"
+  say nar "It pulses again. Nobody / claps. It seems hurt."
   [MUTE 26]
   [HOLD 26]
   [DAY 2]
@@ -107,5 +107,5 @@ script e12_cottage
 end
 
 script e12_locked
-  say nar "(Your new cottage! A pink / door. Locked. Nana has / the key.)"
+  say nar "(Your new cottage! The pink / door is locked. Nana at the / bakery has the key.)"
 end

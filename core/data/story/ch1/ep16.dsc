@@ -24,9 +24,9 @@ script e16_thump
   [MUTE 26]
   [HOLD 26]
   runbeat b16_thump
-  say nar "(THUMP. THUMP. THUMP. / {..}THUMP.)"
+  say nar "THUMP. THUMP. THUMP. / {..}THUMP. It's coming / from the Wall."
   [R13]
-  say nar "(It's coming from the Wall.)"
+  say nar "bep?"
   native CB_C12 C12A_STEP 1
 end
 
@@ -63,7 +63,7 @@ end
 
 # the purple fog at the Wall: Peek or Back away; either way the Mayor
 script e16_fog
-  choice nar "(Purple fog seeps through / the Wall. It smells like / grape candy.)" { "Peek" -> peek ; "Back away" -> away }
+  choice nar "Purple fog seeps through the Wall. It smells like grape. Why GRAPE?" { "Peek" -> peek ; "Back away" -> away }
 peek:
   setf SF_FOG_SEEN
   push cutscene CUTV_FOG
@@ -78,22 +78,21 @@ away:
 mayor:
   say mayor SHOCK "{big}NOPE.{/} Nope! Home! It's / bedtime! It's always / bedtime!"
   [R13]
-  say mayor NEUTRAL "It's just...{..} weather. / Hellvile weather."
+  say mayor NEUTRAL "It's just weather! Purple, / giggly weather! Totally / normal! {.}Gobble gobble!"
   [R21]
   music SONG_MINGLE
-  say nar "(He walks you home. Quietly, / he hums a little tune.)"
+  say nar "(He walks you home, humming / a little tune under his / breath.)"
   [R21]
   [MUTE 13]
   [HOLD 13]
-  say nar "(He stops when he notices.)"
+  say mayor NEUTRAL "I wasn't humming. Turkeys / don't hum. Look it up."
   say mayor SAD "{d}Please don't go near there / again." [HEART]
   native CB_C12 C12A_HOME_DOOR
   [MUTE 21]
   [HOLD 21]
-  say nar "(Home. @E is at the window, / staring at the Wall.)"
-  say nar "(You turn @E around.)"
+  say nar "(Home. @E is at the / window, staring at the / Wall.)"
   [R13]
-  say nar "(@E is facing the Wall / again.)"
+  say nar "You turn @E around. You / blink. @E is facing the / Wall again. Hate that."
   duck 140 13
   sfx SFX_BEEP
   say nar "beep."
@@ -101,11 +100,12 @@ mayor:
   sfx SFX_SQUEAK
   say nar "(Under the door: a second / paper boat, and a note in / Pip's handwriting.)"
   say pip "ANOTHER ONE CAME. IT SAYS / HELLO. I DIDN'T OPEN IT. / (I opened it.)"
+  say pip "P.S. MR. FLOPS SAYS DON'T / LIGHT THE CANDLE. MR. / FLOPS IS A BIG BABY."
   [R13]
   say nar "(Inside: a candle, unlit, / and the same house. This / time a light in a window.)" [HEART]
   home GRANT furn=window_candle
   sfx SFX_PICKUP
-  say nar "(You put the candle in your / window and light it.)"
+  say nar "COSY: A-! (You lit the / candle in your window. / The house approves.)"
   runbeat b16_glow
   [HOLD 26]
   iris off

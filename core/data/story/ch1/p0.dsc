@@ -7,17 +7,17 @@
 
 beatscript p0_egg
   +0 music SONG_MINGLE ; pal PAL_CRAYON 16 0 ; shot 0 ; iris_in 0 0
-  +2 caption "Every year, the park had / a potluck."
+  +2 caption "Every year, the whole park / had a potluck. Both sides."
   +8 sfx SFX_SPARKLE
   +13 waita S1 12 150
 S1:
-  +0 shot 1 ; caption "Everybody came."
+  +0 shot 1 ; caption "Everybody came. Even a / little turkey and his cloud."
   +3 sfx SFX_HAPPY
   +8 label RUN
   +21 sfx SFX_BOING
   +26 waita S2 12 150
 S2:
-  +0 shot 2 ; caption "Fireworks! The cloud looked / up. It loved fireworks."
+  +0 shot 2 ; caption "Fireworks! The cloud LOVED / fireworks."
   +5 sfx SFX_EXPLODE
   +13 sfx SFX_SPARKLE
   +21 sfx SFX_EXPLODE
@@ -26,7 +26,7 @@ SLIP:
   +8 label L_PUNCH ; sfx SFX_PLUCK
   +21 label L_BUTTON
 L_BUTTON:
-  +0 hold LET 13 ; caption "The string slipped. / Nobody noticed."
+  +0 hold LET 13 ; caption "The string slipped. / Everybody was looking up."
 LET:
   +0 waita S3 12 120
 S3:
@@ -34,14 +34,14 @@ S3:
   +8 sfx SFX_WHOOSH
   +29 waita S4 12 120
 S4:
-  +0 shot 4 ; sfx SFX_THUD ; shake SHK_RUMBLE ; caption "{d}Nobody talks about why."
+  +0 shot 4 ; sfx SFX_THUD ; shake SHK_RUMBLE ; caption "{d}Then came the Wall. / Nobody talks about why."
   +13 sfx SFX_CREAK
   +26 waita S5 12 150
 S5:
   +0 shot 5 ; caption "Except Nana. Nana sends / eggs." ; sfx SFX_SPLASH
   +26 label BOAT
 BOAT:
-  +0 sfx SFX_SPLASH ; caption "A boat comes back the other / way: burnt cookies."
+  +0 sfx SFX_SPLASH ; caption "A boat comes back: burnt / cookies. She eats one / anyway."
   +21 sfx SFX_EAT
   +26 sfx SFX_LOVE
   +34 waita S6 12 150

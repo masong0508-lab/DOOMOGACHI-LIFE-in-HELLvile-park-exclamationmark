@@ -12,7 +12,7 @@ script e15_nana
   give ITEM_CUPCAKE
   setf SF_CUPCAKE_GIVEN
   sfx SFX_PICKUP
-  say nar "(You got a cupcake. It has / a little sugar heart.)"
+  say nar "GOT: Cupcake (with a little / sugar heart). Do not eat / it. We're watching."
   [R13]
   [R8]
   say nana HAPPY "And be home at six! / {.}No reason! Shoo!"
@@ -20,23 +20,23 @@ script e15_nana
 end
 
 script e15_lulla
-  say lulla SHOCK "Is that... a Nana Pudding / cupcake? With the little / sugar heart?"
+  say lulla SHOCK "Is that... a Nana Puddin / cupcake? With the little / sugar heart?"
   take ITEM_CUPCAKE
   sfx SFX_EAT
   say lulla LOVE "*nom* ...I'm going to cry. / I'm crying. Thank you, @P."
-  say lulla NEUTRAL "The children drew pictures / today. Look."
+  say lulla NEUTRAL "The children drew pictures / today. Look. {.}No, really / look. It's a lot."
   [R13]
   say nar "(Eleven drawings. Every one / has a purple cloud in it, / wearing a crown.)"
   [R8]
   say lulla NEUTRAL "They all drew the same / friend. I don't know who / he is."
-  say lulla "And the fog by the Wall / giggles at night. Fog / shouldn't giggle."
+  say lulla "And the fog by the Wall / giggles at night. Fog / shouldn't giggle. Rude."
   befriend lulla 4
   reward 40
   native CB_C12 C12A_STEP 2
 end
 
 script e15_early
-  say nar "(The curtains are drawn. / Somebody inside goes / SHHH.)"
+  say nar "(The curtains are drawn. / Somebody inside goes SHHH. / Somebody else giggles.)"
 end
 
 # nine guests at 8 frames each, then the ripple
@@ -82,7 +82,7 @@ script e15_party
   cast bloom 4 9
   runbeat b15_arrivals
   home PLACE_GIFT furn=nanas_rug
-  say nana HAPPY "A rug. Every home needs one / thing that's been walked / on with love."
+  say nana HAPPY "A rug! Every home needs / one thing that's been / walked on with love."
   home PLACE_GIFT furn=pips_bee_drawing
   say pip HAPPY "I drew you a bee! It's you. / You're the bee."
   home PLACE_GIFT furn=fuzz_cushion
@@ -103,10 +103,10 @@ script e15_party
   say bloom NEUTRAL "A thermometer. Decorative. / {..}Mostly decorative."
   [R13]
   home PLACE_GIFT furn=rivet_coat_hook
-  say nar "(On the step: a welded coat / hook, and a note: don't / make it weird.)"
-  say nar "(Put your presents where / you like. Everyone wants / to see where theirs goes.)"
+  say nar "NOTE ON A WELDED COAT HOOK: / don't make it weird. / -R"
+  say nar "Place your presents! Every / guest is watching where / theirs goes. No pressure."
   push home -1
-  say nar "(@E climbs onto Kevin's bust / and sits there like it / was always the plan.)"
+  say nar "(@E climbs onto Kevin's / bust and sits there like / it was always the plan.)"
   [R13]
   say mayor HAPPY "A toast! To @P! To new / friends! To fluffy--"
   npc mayor FREEZE
@@ -118,7 +118,7 @@ script e15_party
   say nar "(Nana looks at him for / exactly as long as it takes / him to notice.)"
   [R13]
   npc mayor RIPPLE 6
-  say nar "(Everybody waves goodbye in / a ripple, and goes home.)"
+  say nar "(Everybody waves goodbye in / one big stadium ripple, and / goes home.)"
   cast mayor 0 0 0x80
   cast nana 0 0 0x80
   cast pip 0 0 0x80

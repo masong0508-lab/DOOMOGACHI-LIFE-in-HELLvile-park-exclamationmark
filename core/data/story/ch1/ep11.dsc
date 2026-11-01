@@ -28,22 +28,22 @@ end
 
 script e11_mayor
   runbeat b11_welcome
-  say mayor HAPPY "Welcome, welcome! Mayor / Gigglesworth. Friends call / me Giggs."
+  say mayor HAPPY "Gobble gobble, welcome! / Mayor Gigglesworth. Friends / call me Giggs."
   say mayor HAPPY "Enemies don't exist!"
   [R13]
-  say mayor SHOCK "Ooh, a new face! We get so / few. We had a whole fence / of them once."
+  say mayor SHOCK "Ooh, a new face! We never / get new faces. We had a / whole fence of them once."
   [R5]
-  say mayor SHOCK "{..}Not a fence OF faces. / Faces AT a fence. / Hee. Hee."
-  say mayor HAPPY "Try Brimstone Bites! Named / for a joke. It's ironic! / Hee. Hee."
+  say mayor SHOCK "{..}Not a fence OF faces! / Faces AT a fence. / Hee. Hee."
+  say mayor HAPPY "That's Brimstone Bites, / Nana's bakery! The name is / ironic! Please laugh."
   [R21]
   cam CREEP 10
-  say mayor HAPPY "There's the bakery! The / fountain! The flowers! / The lovely, lovely sky!"
+  say mayor HAPPY "The fountain! The flowers! / The hat shop! I own it. I'm / also its only customer!"
   [R21]
   sfx SFX_WHOOSH
   cam PAN_TO cell=33,25
   say mayor SHOCK "And this is Hellvile Park. / Two sides. This one, / and..."
   [HOLD 13]
-  say mayor NEUTRAL "...the weather side."
+  say mayor NEUTRAL "...the weather side! / Lovely weather. Never go."
   [MUTE 13]
   [HOLD 13]
   say mayor NEUTRAL "{d}We don't talk about the / other side.{punch}"
@@ -52,11 +52,11 @@ script e11_mayor
   [R8]
   cam FOLLOW
   jifn SF_NGPLUS menu
-  say nar "(He will say it twice more.)"
+  say nar "(Second time round? He says / that line twice more this / game. Mouth along.)"
 menu:
-  choice nar "(What do you say?)" { "Nice to meet you!" -> nice ; "What's on the other side?" -> other ; "Why is the mascot staring?" -> mascot }
+  choice nar "What do you say?" { "Nice to meet you!" -> nice ; "What's on the other side?" -> other ; "Why is the mascot staring?" -> mascot }
 nice:
-  say mayor LOVE "Manners! We'll keep you."
+  say mayor LOVE "Manners! Oh, I LOVE you. / You can stay forever! In / a nice way!"
   [R13]
   jmp key
 other:
@@ -67,12 +67,12 @@ other:
   say mayor HAPPY "Hee. Hee."
   jmp key
 mascot:
-  say mayor NEUTRAL "Ignore that one."
+  say mayor NEUTRAL "Ignore that one. {.}It came / with the park."
   [R21]
   native CB_C12 C12A_MASCOTTY
-  say nar "(The mascot waves. Very, / very slowly.)"
+  say nar "(The mascot waves. Very, / very slowly. Like it's / buffering.)"
 key:
-  say mayor HAPPY "Your key is with Nana! / Follow the smell of / nutmeg!"
+  say mayor HAPPY "Your house key is with / Nana at the bakery! Just / follow the nutmeg!"
   [R21]
   befriend mayor 3
   beat C1_KEY
@@ -86,8 +86,8 @@ end
 # a bus stop sign by the plaza (C1_ARRIVE / C1_MAYOR)
 script e11_sign
   sfx SFX_TINK
-  say nar "(HaHaland! Population: 500 / lovely citizens.)"
+  say nar "SIGN: WELCOME TO HAHALAND! / POPULATION: 500 LOVELY / CITIZENS."
   [R8]
-  say nar "(Someone has added, in / pencil: and @P.)"
+  say nar "(Under it, in pencil: / '+ @P (new!) -Pip')"
   [R13]
 end

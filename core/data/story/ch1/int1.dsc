@@ -9,16 +9,16 @@
 script i1_night
   [MUTE 21]
   [HOLD 21]
-  say nar "(Later. @E's tummy rumbles. / Loudly. Only a cupcake will / fix this.)"
+  say nar "CARE ALERT! @E is / HUNGRY. Recommended / snack: one (1) cupcake."
   give ITEM_CUPCAKE
   push pet
   sfx SFX_EAT
-  say nar "(@E eats the cupcake. All / of it. At once.)"
+  say nar "(@E eats the cupcake. / All of it. At once. / Paper included.)"
   [R8]
-  say nar "(Strain...)"
+  say nar "CARE ALERT! @E needs / to go. Right now. Right / here. Sorry."
   [R8]
   sfx SFX_POOP
-  say nar "(plop.)"
+  say nar "plop."
   [R13]
   mute 4
   pal PAL_HELLIFY 16
@@ -33,7 +33,7 @@ script i1_night
   [R8]
   say nar "{d}...it's fine."
   [R13]
-  say nar "(@E has two tiny horn nubs. / They were not there a / minute ago.)"
+  say nar "NEW LOOK! @E grew two / tiny horn nubs. Cuteness / +1. Evil +1. Neat!"
   [MUTE 26]
   [HOLD 26]
   [DAY 4]

@@ -21,13 +21,13 @@ L_BUTTON:
 end
 
 script e13_hatch
-  say nar "(Morning. The egg is / wobbling.)"
+  say nar "GOOD MORNING! Today's / forecast: one egg, / wobbling. With intent."
   runbeat b13_wobble
   push pet
   jlt v0 1 notyet
   take ITEM_DOOMOGACHI_EGG
-  say nar "(@E blinks at you with two / enormous, glossy eyes.)"
-  say nar "(@E hops to the lamp and / sits in the light.)"
+  say nar "IT HATCHED! Meet @E: / two enormous, glossy / eyes and zero plans."
+  say nar "(@E hops to the lamp / and sits in the light, / like it read the manual.)"
   [MUTE 21]
   [HOLD 21]
   duck 140 6
@@ -39,14 +39,14 @@ script e13_hatch
   wait 1
   pal PAL_HELLIFY 0
   [R13]
-  say nar "(@E will follow you around. / START: check on it. Feed / it. Love it.)"
-  say nar "(Somewhere outside, a little / kid is crying.)"
+  say nar "TUTORIAL: @E follows / you now. START: feed it. / Feeding is mandatory."
+  say nar "(Somewhere outside, a little / kid is crying. Loudly. / Professionally.)"
   [R21]
   native CB_C12 C12A_EP_DONE BEAT_EP1_3
   beat C1_PIP
   end
 notyet:
-  say nar "(The egg is still warm. / Step inside again when / you're ready.)"
+  say nar "(The egg is still warm. / Step inside again when / you're ready. It'll wait.)"
 end
 
 script e13_pip
@@ -57,23 +57,22 @@ script e13_pip
   npc pip EMOTE EMO_SWEAT
   say pip SAD "I lost Mr. Flops. He's a / bunny. I'm a bunny. / We match."
   say pip SAD "My eyes are just doing a / rain. It's fine."
-  say pip "A big wave went WHOOSH and / took him. The sea goes all / the way to the Wall."
-  say pip "Mr. Flops loves sand. / Maybe the beach?"
+  say pip "A big wave went WHOOSH and / took him! Patrol rules say / I can't go in the sea."
+  say pip "Can you check the beach? / Mr. Flops loves sand. He / has a sand problem."
   [R13]
   befriend pip 2
   beat C1_BUNNY
 end
 
 script e13_pip_wait
-  say pip SAD "Did you find him? He has one / floppy ear and one / not-floppy ear."
+  say pip SAD "Did you find him? He has / one floppy ear and one / brave ear."
 end
 
 script e13_flops
   sfx SFX_SPLASH
-  say nar "(Something fluffy in the / surf, bobbing up and down / with every wave.)"
-  say nar "(Mr. Flops. Face down. / Staring at the Wall.)"
+  say nar "(Something fluffy in the / surf: Mr. Flops! Face down, / one button eye on the Wall.)"
   [R13]
-  say nar "(You turn him over. The / stitched smile.)"
+  say nar "You turn him over. His / stitched smile says: / about time."
   sfx SFX_FANFARE
   say nar "{big}FOUND!{/}"
   [R13]
@@ -82,32 +81,30 @@ script e13_flops
   [R3]
   duck 140 13
   sfx SFX_BEEP
-  say nar "(@E beeps at the sea.)"
+  say nar "(@E beeps at the sea. The / sea does not beep back.)"
   [R13]
-  say nar "(A second shape in the surf: / a little paper boat.)"
   [MUTE 18]
   [HOLD 18]
-  say nar "(Inside, a crayon drawing: a / house, a candle in the / window, two little imps.)" [HEART]
-  say nar "(Along the bottom, in / backwards letters: / ERAHT UOY ERA)"
+  say nar "(A paper boat bobs behind / him. Inside, in crayon: a / house, a candle, two imps.)" [HEART]
+  say nar "Along the bottom, in wobbly / kid letters: ARE YOU / THERE?"
   [HOLD 13]
-  say nar "(@E sits on the drawing / and will not move.)"
+  say nar "beep. {.}(@E sits on the / drawing. It's @E's now. / Those are the rules.)"
   beat C1_BUNNY_RETURN
 end
 
 script e13_pip_return
   say pip HAPPY "MR. FLOPS! You're damp! / Were you scared?"
   [R8]
-  say pip NEUTRAL "{d}...He says he saw the / Wall breathe."
-  say nar "(You show Pip the boat.)"
-  say pip SHOCK "That's not my drawing. / That's somebody's HOUSE."
+  say pip NEUTRAL "{d}...He says he saw the / Wall breathe. {.}He also / says carrots can talk."
+  say pip SHOCK "What's that boat? That's / not my drawing. That's / somebody's HOUSE!"
   [MUTE 13]
   [HOLD 13]
   say pip HAPPY "I'll keep it safe. Like / Mr. Flops." [HEART]
   take ITEM_LOST_BUNNY
   reward 30 ITEM_SKULL_TRINKET
   befriend pip 4
-  say pip HAPPY "Here. My best sticker. It's / a skull. Skulls are cute."
+  say pip HAPPY "Here! My best sticker. It's / a skull. Skulls are cute. / Patrol rules."
   [R13]
-  say pip "Make friends with EVERYONE! / Steamy at the pond, Hattie, / Grampy in his garden!"
+  say pip "New mission: make friends! / Steamy at the pond, Hattie / and Grampy Bean. Go go go!"
   beat C1_FRIENDS
 end

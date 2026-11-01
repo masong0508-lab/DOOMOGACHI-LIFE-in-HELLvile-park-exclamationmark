@@ -8,24 +8,24 @@
 
 script e14_steamy
   say steamy HAPPY "A new face! Welcome to the / bath house. Well. The pond. / Same thing, more bubbles."
-  say steamy "Help me fill the tubs? Every / tub gets a duck. House / rule."
-  choice nar "(Fill the tubs?)" { "Fill them!" -> fill ; "Maybe later." -> later }
+  say steamy "Help me fill the tubs? / Every tub gets a duck. / That's the law. Duck law."
+  choice nar "Fill the tubs?" { "Fill them!" -> fill ; "Maybe later." -> later }
 later:
-  say steamy "Any time! The water's always / warm. That's my whole job."
+  say steamy "Any time! The water's / always warm. That's my / whole job. That and ducks."
   end
 fill:
   sfx SFX_SPLASH
-  say nar "(Splash. Splash. Splash.)"
+  say nar "(You fill three tubs. Three / ducks bob up, proud as / admirals.)"
   say steamy HAPPY "That's Duckworth. That's / Quackers. That's..."
   [R5]
   say steamy SHOCK "{.}I don't know that one."
   [MUTE 13]
   [HOLD 13]
   sfx SFX_SQUEAK
-  say nar "(The strange duck squeaks. / By itself. It is facing / the Wall.)"
+  say nar "(The strange duck squeaks / all by itself. It's facing / the Wall.)"
   [R8]
   sfx SFX_SQUEAK
-  say nar "(Steamy squeaks a duck back. / Nervously.)"
+  say nar "Steamy squeaks a duck back / at it. Politely. Duck / diplomacy."
   say steamy HAPPY "Come for a soak any time, / @P. Everybody needs to / be warm."  [HEART]
   [R21]
   befriend steamy 4
@@ -33,7 +33,7 @@ fill:
 end
 
 script e14_steamy_again
-  say steamy HAPPY "Duckworth says hi. The other / one doesn't say anything. / It just... looks."
+  say steamy HAPPY "Duckworth says hi! The / other one doesn't say / anything. It just looks."
 end
 
 script e14_hattie
@@ -44,51 +44,51 @@ script e14_hattie
   jge v0 3 great
   jge v0 1 okay
   sfx SFX_TIK
-  say nar "(...a cricket.)"
-  say hattie SAD "Tough crowd. You ARE the / crowd. Still."
+  say nar "(One cricket chirps. It's / heckling you.)"
+  say hattie SAD "Tough crowd. You ARE the / crowd. {.}You're fired."
   jmp closer
 great:
   sfx SFX_HAPPY
   say nar "(A snort-laugh ripples all / the way to the back row.)"
   jmp closer
 okay:
-  say nar "(A polite chuckle.)"
+  say nar "(A polite chuckle. The kind / you give a dentist.)"
 closer:
   say hattie HAPPY "My closer! So I said, / 'Mayor, what's on the / other side?'"
   say hattie HAPPY "He said: 'Hee. Hee.'"
   [R8]
   sfx SFX_HAPPY
-  say nar "(Big laugh.)"
+  say nar "(The whole bench howls.)"
   [MUTE 21]
   [R13]
-  say nar "(In the back row, the mascot / does not laugh.)"
+  say nar "(In the back row, the mascot / doesn't laugh. Hattie's / taking that personally.)"
   befriend hattie 4
   native CB_C12 C12A_BIT C12_MET_HATTIE
 end
 
 script e14_hattie_again
-  say hattie HAPPY "Knock knock. {.}Who's there? / {..}See, that's the trick. / Nobody ever says."
+  say hattie HAPPY "Knock knock. Who's there? / {..}See, that's the trick. / Nobody ever says."
 end
 
 script e14_grampy
-  say grampy HAPPY "Sunny! Help an old bean pick / tomatoes? Five. My back / says five."
-  choice nar "(A fat red tomato.)" { "Pick it" }
+  say grampy HAPPY "Sunny! Help an old bean / pick tomatoes? Five. My / back says five."
+  choice nar "A fat red tomato." { "Pick it" }
   sfx SFX_POP2
   say grampy HAPPY "Good, Sunny."
   [R8]
-  choice nar "(Another one.)" { "Pick it" }
+  choice nar "Another one." { "Pick it" }
   sfx SFX_POP2
   say grampy HAPPY "Lovely, Sonny."
   [R8]
-  choice nar "(Another one.)" { "Pick it" }
+  choice nar "Another one." { "Pick it" }
   sfx SFX_POP2
   say grampy "Steady, Bunny."
   [R8]
-  choice nar "(Another one.)" { "Pick it" }
+  choice nar "Another one." { "Pick it" }
   sfx SFX_POP2
   [R5]
   say grampy NEUTRAL "{.}Careful there, Toaster."
-  choice nar "(The last one.)" { "Pick it" }
+  choice nar "The last one. It's ugly. It's trying." { "Pick it" }
   sfx SFX_POP2
   say grampy HAPPY "Five! You're a natural, / Toaster. Take a salad / home. Same thing."
   [R13]
@@ -107,20 +107,20 @@ script e14_grampy_again
 end
 
 script e14_bonejangles
-  say bonejangles HAPPY "Clack clack! I teach / xylophone. I AM a / xylophone. Hug?"
-  choice nar "(Hug Bonejangles?)" { "Hug!" -> hug ; "Wave" -> wave }
+  say bonejangles HAPPY "Clack clack! Bonejangles! / I teach xylophone. I AM a / xylophone. *whirr* Hug?"
+  choice nar "Hug Bonejangles?" { "Hug!" -> hug ; "Wave" -> wave }
 hug:
   sfx SFX_PLUCK
   [R3]
   sfx SFX_PLUCK
   [R3]
   sfx SFX_PLUCK
-  say nar "(He plays a chord.)"
+  say nar "(He plays a chord on his / ribs, then a little jingle / he can't switch off.)"
   [R13]
   befriend bonejangles 3
   end
 wave:
-  say bonejangles "Clack."
+  say bonejangles "Clack! Waves are also / covered by my warranty."
   [R8]
 end
 
@@ -128,17 +128,18 @@ script e14_lulla
   say lulla HAPPY "Hello! Shh, the little ones / are... oh. They've seen / your Doomogachi."
   npc lulla RIPPLE 6
   sfx SFX_BEEP
-  say nar "(Eleven small voices:) / BEEP!"
+  say nar "Eleven small voices: / BEEP!"
   [R8]
   sfx SFX_BEEP
-  say nar "(@E, very quietly:) / beep."
+  say nar "@E, very quietly: / beep."
+  say lulla NEUTRAL "Well. Nobody's napping / now. {.}Thanks SO much."
   befriend lulla 2
 end
 
 script e14_done
   [R13]
   sfx SFX_BLIP
-  say nar "(Your phone buzzes. A text / from Nana:)"
-  say nana HAPPY "You've made friends! Come / get a cupcake to share. / xo"
+  say nar "BZZT. A text from Nana:"
+  say nana HAPPY "You made friends! Come to / the bakery for a cupcake. / xo, Nana"
   beat C1_CUPCAKE
 end

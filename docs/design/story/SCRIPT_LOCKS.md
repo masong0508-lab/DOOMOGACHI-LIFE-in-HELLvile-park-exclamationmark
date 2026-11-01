@@ -137,6 +137,7 @@ together with `exorcism.c`.
 | `[NO GAG]` on S206 and S211, no `[PUNCH]`, `{d}`, `{r}`, `SHK_` or `[GURGLE]` in them | `sb_*` | `test_side_b.c` `no_comic_beat` |
 | `[NO BUTTON]` / `[NO GAG]` never twice in a row in a chain; Grumbleguts' LOVE lines never in a child's conversation; exactly 4 ticker Laters | side packs | `test_side_table.c` |
 | The Herald ticker | `story_grumble.c`, at most 63 characters | C |
+| `OBJ_C1_MAYOR`, `OBJ_C1_KEY` (`ch1`), `VEX_PA1` (`ep27`): the decoder's known lines, compared whole | `core/tests/test_textpack.c` (`textpack_decodes_known_lines`, `textpack_stash_keeps_lines_for_a_pushed_scene`); `OBJ_C1_MAYOR` must start with "Say hi " (the truncation check) | `test_textpack.c`; W1 updated the two `ch1` lines |
 
 ## 5. Runner pins (74)
 
