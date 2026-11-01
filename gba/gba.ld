@@ -1,7 +1,7 @@
 /* gba.ld - linker script for the DOOMOGACHI LIFE GBA ROM (owner: gba).
  *
  *   ROM    0x08000000  32 MB  header (.crt0), code (THUMB), const data
- *   EWRAM  0x02000000 256 KB  mailbox (64 bytes, test harness), .data +
+ *   EWRAM  0x02000000 256 KB  mailbox (80 bytes, test harness), .data +
  *                             .bss (core state: doomo_town,
  *                             doomo_map, ...) + platform caches
  *   IWRAM  0x03000000  32 KB  .iwram (ARM hot code + fast data, copied
@@ -97,7 +97,7 @@ SECTIONS
 
     /* ---- EWRAM: everything else ------------------------------------- */
     /* Test-harness mailbox, fixed at 0x02000000 (gba/harness reads the
-     * logic tick counter from here and posts commands). 64 bytes. */
+     * logic tick counter from here and posts commands). 80 bytes. */
     .mailbox (NOLOAD) : {
         KEEP(*(.mailbox))
         . = ALIGN(16);

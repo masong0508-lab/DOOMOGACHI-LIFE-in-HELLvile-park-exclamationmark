@@ -26,6 +26,7 @@
  *                          night a & 0x10, path a >> 8); must equal the
  *                          room_ref golden (core/tests/golden/room_ref.txt)
  *   GBA_HC_ROOM_TEST m     SCENE_HOME draws test layout m (ROOM_TEST_*)
+ * and the tick hold of the harness's "sync on" (G1, gba_harness_hold).
  */
 #include "gba_plat.h"
 #include "hcmd.h"
@@ -120,6 +121,16 @@ static uint32_t town_crc(void)
     c = crc_more(c, t->unlocks, sizeof(t->unlocks));
     c = crc_more(c, t->progress, sizeof(t->progress));
     return c;
+}
+
+/* G1: "sync on" scripts hold the loop at an exact tick boundary (before
+ * the pad is read) and post their commands there; the harness releases
+ * the hold by moving hold_at to the next stop */
+void gba_harness_hold(void)
+{
+    while (gba_mailbox.hold_at == gba_frames) {
+        if (gba_mailbox.cmd) gba_harness_cmd();
+    }
 }
 
 void gba_harness_cmd(void)

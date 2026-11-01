@@ -29,4 +29,10 @@ extern uint32_t gba_entropy_pin;
 extern uint8_t gba_text_armed;
 void gba_text_probe(const char *s);
 
+/* harness "sync on" (G1): called at the top of the game loop; while the
+ * mailbox's hold_at equals the tick count it waits there, running posted
+ * commands, so the harness sets keys and posts commands on an exact tick
+ * boundary (one compare per tick otherwise). */
+void gba_harness_hold(void);
+
 #endif

@@ -40,6 +40,14 @@ typedef struct GbaMailbox {
      * drawn ticks: sum, count, worst; the harness reads and resets them */
     uint32_t work_sum, work_n, work_max;
     char name[20];                       /* GBA_HC_SCENE / _PUSH argument   */
+    /* harness "sync on" (G1): the game loop stops at its top once
+     * hold_at ticks have run (gba_harness_hold) and runs the harness's
+     * commands there until the harness moves hold_at on, so scripts act
+     * on exact ticks whatever the frame rate. ~0 (set at boot) = never. */
+    uint32_t hold_at;
+    /* harness "vhash-seq" (G1): nonzero = draw every tick (no catch-up
+     * ticks), so every tick's frame can be hashed */
+    uint32_t draw_all;
 } GbaMailbox;
 extern volatile GbaMailbox gba_mailbox;
 enum { GBA_HC_NONE, GBA_HC_SAVE, GBA_HC_LOAD, GBA_HC_EXISTS, GBA_HC_TOWN_FILL,

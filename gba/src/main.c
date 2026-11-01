@@ -166,7 +166,7 @@ void plat_begin_frame(void)
         logic_base_vbl = gba_vblanks - gba_frames * 2;
         due = gba_frames;
     }
-    if (due > gba_frames + 1 && !skipped_in_row) {
+    if (due > gba_frames + 1 && !skipped_in_row && !gba_mailbox.draw_all) {
         gba_nodraw = 1;
         skipped_in_row = 1;
     } else {
@@ -235,6 +235,8 @@ void plat_init_hw(void)
     gba_mailbox.magic = GBA_MAILBOX_MAGIC;
     gba_mailbox.ticks = 0;
     gba_mailbox.drawn = 0;
+    gba_mailbox.hold_at = 0xFFFFFFFFu;      /* harness sync: no hold */
+    gba_mailbox.draw_all = 0;
     timers_init();
     video_init();
     gba_irq_init();
@@ -270,6 +272,7 @@ int main(void)
     gba_pacing_reset();
     for (;;) {
         uint32_t b;
+        gba_harness_hold();
         if (gba_mailbox.cmd) gba_harness_cmd();
         b = read_pad();
         plat_begin_frame();
