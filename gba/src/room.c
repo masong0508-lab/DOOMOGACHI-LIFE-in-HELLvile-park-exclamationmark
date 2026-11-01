@@ -73,6 +73,7 @@
 #include "video_int.h"
 #include "postfx.h"
 #include "room_int.h"
+#include "canvas_int.h"
 #include "doomo/palette.h"
 #include "doomo/furn.h"
 #include "doomo/home.h"
@@ -1397,7 +1398,9 @@ static void render(const DoomoRoomView *v)
 void plat_room(const DoomoRoomView *v)
 {
     if (!v) return;
-    if (gba_nodraw) {                       /* a catch-up tick: nothing drawn */
+    if (gba_nodraw == GBA_NODRAW_CANVAS) cv_need_m4();   /* G5: the house draws into a page */
+    if (gba_nodraw == GBA_NODRAW_FIRST) gba_nodraw = 0;
+    if (gba_nodraw == 1) {                  /* a catch-up tick: nothing drawn */
         rb_last_frame = gba_frames;
         return;
     }

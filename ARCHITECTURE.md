@@ -5,7 +5,7 @@ front-ends render it, and a native runner tests it:
 
 | Target | What | Toolchain | Output |
 |---|---|---|---|
-| `gba/` | Real Game Boy Advance ROM. Mode 4 8bpp; a **height raycaster** with real 3D elements (variable floor/ceiling heights, step faces, textured floors/ceilings, look up/down, jumping, lifts, doors, z-sorted billboards); first- and third-person; PSG + DirectSound audio; 128 KB flash save | `arm-none-eabi-gcc` + newlib (apt `gcc-arm-none-eabi`), our own crt0 / linker script / header fixer | `gba/build/doomogachi.gba` |
+| `gba/` | Real Game Boy Advance ROM. Mode 4 8bpp (overworld frames may show a Mode 0 tile world + canvas, docs/GBA.md 6b); a **height raycaster** with real 3D elements (variable floor/ceiling heights, step faces, textured floors/ceilings, look up/down, jumping, lifts, doors, z-sorted billboards); first- and third-person; PSG + DirectSound audio; 128 KB flash save | `arm-none-eabi-gcc` + newlib (apt `gcc-arm-none-eabi`), our own crt0 / linker script / header fixer | `gba/build/doomogachi.gba` |
 | `ps1/` | Real PlayStation disc. GPU + **GTE true-3D polygon engine** (same maps as real geometry, perspective, subdivision against affine warp, gouraud + fog, 3D overworld camera, optional low-poly player model); SPU audio; memory card saves | PSn00bSDK (built from source) + `mipsel-linux-gnu-gcc` (apt) | `ps1/build/doomogachi.exe`, `.bin/.cue` |
 | `core/native/` | Headless runner: software 8bpp framebuffer, scripted input, PNG screenshots, a reference software raycaster for `plat_view3d` | host `gcc` | `core/build/runner` |
 

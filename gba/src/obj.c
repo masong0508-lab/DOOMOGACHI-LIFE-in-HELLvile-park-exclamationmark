@@ -29,6 +29,7 @@
  * RAM: 128 B shadow + 4 x 24 B slots + 8 B = 232 B of .bss and .data.
  */
 #include "postfx.h"
+#include "canvas_int.h"
 
 #define OBJ_VRAM      ((vu16 *)0x06014000)
 #define SLOT_BYTES    4096u
@@ -132,6 +133,14 @@ static uint32_t box_sum(int x, int y, int w, int h)
 {
     uint32_t s = 0x9E3779B9u;
     int yy, xx, x0 = x >> 1, x1 = (x + w + 1) >> 1;
+    if (gba_nodraw == GBA_NODRAW_CANVAS) {
+        /* G5: a tile frame - the pixels the screen will show (canvas over
+         * world), the same values a Mode 4 page holds */
+        for (yy = y; yy < y + h; yy += SAMPLE_STEP_Y)
+            for (xx = x0; xx < x1; xx++)
+                s = (s << 5) + s + (cv_read_px(2 * xx, yy) | (cv_read_px(2 * xx + 1, yy) << 8));
+        return s;
+    }
     for (yy = y; yy < y + h; yy += SAMPLE_STEP_Y) {
         const uint16_t *row = gba_back + yy * (SCREEN_W / 2);
         for (xx = x0; xx < x1; xx++) s = (s << 5) + s + row[xx];
@@ -165,7 +174,7 @@ void plat_image_xform(int ax, int ay, const DoomoImage *img, int sx_q8, int sy_q
     int asx, k, W, H, st;
     XfSlot *x;
     uint32_t key;
-    if (gba_nodraw || !img || !img->pix || !img->w || !img->h || sx_q8 == 0 || sy_q8 <= 0) return;
+    if (gba_nodraw == 1 || !img || !img->pix || !img->w || !img->h || sx_q8 == 0 || sy_q8 <= 0) return;
     asx = sx_q8 < 0 ? -sx_q8 : sx_q8;
     if (flags & IMG_FLIPX) sx_q8 = -sx_q8;
     flags &= ~IMG_FLIPX;

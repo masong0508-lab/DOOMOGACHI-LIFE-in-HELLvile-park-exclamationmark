@@ -128,7 +128,7 @@ void vid_text(int x, int y, const char *s, uint32_t color)
         if (ch == '\n') { cx = x; cy += FONT_LINE; continue; }
         if (ch >= FONT_FIRST && ch <= FONT_LAST && ch != ' ' &&
             cx > -FONT_ADVANCE && cx < SCREEN_W && cy > -8 && cy < SCREEN_H) {
-            const uint8_t *g = gba_font_rows[ch - FONT_FIRST];
+            const uint8_t *g = vid_glyph_rows(ch);
             int r;
             if (cx >= 0 && cx + 5 <= SCREEN_W && cy >= 0 && cy + 8 <= SCREEN_H) {
                 glyph(g, cx, cy, c4);
@@ -253,10 +253,29 @@ void vid_blit(int x, int y, const DoomoImage *img, int scale, int flags, uint32_
 
 /* 50% checkerboard: pixel (x+i, y+j) when i + j is even. Each row's
  * pixels all sit in the same byte of consecutive halfwords. */
+/* G5: a nonzero gba_nodraw (a skipped tick, a tile frame, the estimate)
+ * takes the slow path in ROM (canvas.c), which calls back the *_m4 body */
+void plat_checker_slow(int x, int y, int w, int h, uint8_t color) ROM_CALL;
+void plat_line_slow(int x0, int y0, int x1, int y1, uint8_t color) ROM_CALL;
+void plat_checker_m4(int x, int y, int w, int h, uint8_t color) IWRAM_CALL;
+void plat_line_m4(int x0, int y0, int x1, int y1, uint8_t color) IWRAM_CALL;
+
 void plat_checker(int x, int y, int w, int h, uint8_t color)
 {
+    if (!gba_nodraw) plat_checker_m4(x, y, w, h, color);
+    else if (gba_nodraw != 1) plat_checker_slow(x, y, w, h, color);
+}
+
+void plat_line(int x0, int y0, int x1, int y1, uint8_t color)
+{
+    if (!gba_nodraw) plat_line_m4(x0, y0, x1, y1, color);
+    else if (gba_nodraw != 1) plat_line_slow(x0, y0, x1, y1, color);
+}
+
+void plat_checker_m4(int x, int y, int w, int h, uint8_t color)
+{
     int x1 = x + w, y1 = y + h, yy, par;
-    if (gba_nodraw || w <= 0 || h <= 0) return;
+    if (w <= 0 || h <= 0) return;
     if (!color) color = PAL_BLACK;
     par = (x + y) & 1;                         /* drawn: ((px + py) & 1) == par */
     if (x < 0) x = 0;
@@ -280,10 +299,9 @@ void plat_checker(int x, int y, int w, int h, uint8_t color)
 }
 
 
-void plat_line(int x0, int y0, int x1, int y1, uint8_t color)
+void plat_line_m4(int x0, int y0, int x1, int y1, uint8_t color)
 {
     int dx, dy, sx, sy, err, n;
-    if (gba_nodraw) return;
     if (!color) color = PAL_BLACK;
     if (y0 == y1) {
         if (y0 >= 0 && y0 < SCREEN_H) {

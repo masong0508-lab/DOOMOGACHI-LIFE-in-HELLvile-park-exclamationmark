@@ -15,6 +15,7 @@
 #include "postfx.h"
 #include "doomo/palette.h"
 #include "doomo/font.h"
+#include "canvas_int.h"
 
 uint16_t *gba_back = (uint16_t *)VRAM_PAGE1;
 /* the font, transposed: rows[ch][r] bit c = pixel (c, r) */
@@ -42,7 +43,7 @@ static void build_font_rows(void)
  * 1-pixel neighbours and at (+1, +2), as 11 rows of a 7-wide box whose
  * origin is (-1, -1) from the glyph's (bit c = column c). Computed per
  * glyph drawn (a few dozen ops) rather than kept as a 2 KB EWRAM table. */
-static void glyph_dilate(const uint8_t *g, uint16_t out[11])
+void vid_glyph_dilate(const uint8_t *g, uint16_t out[11])
 {
     int r;
     for (r = 0; r < 11; r++) {
@@ -83,7 +84,8 @@ IWRAM_BSS static volatile uint32_t gba_fill;
 
 void plat_clear(uint8_t color)
 {
-    if (gba_nodraw) return;
+    if (gba_nodraw == 1) return;
+    if (gba_nodraw && vid_route(0, 0, SCREEN_W, SCREEN_H) != 1) return;   /* never the canvas: big */
     if (!color) color = PAL_BLACK;            /* index 0 is "transparent" */
     gba_fill = color * 0x01010101u;
     dma3_fill32(gba_back, &gba_fill, SCREEN_W * SCREEN_H / 4);
@@ -133,7 +135,7 @@ void vid_text_dil(int x, int y, const char *s, uint32_t color)
             cx > -FONT_ADVANCE - 1 && cx < SCREEN_W + 1 && cy > -10 && cy < SCREEN_H + 1) {
             uint16_t g[11];
             int bx = cx - 1, by = cy - 1, r;
-            glyph_dilate(gba_font_rows[ch - FONT_FIRST], g);
+            vid_glyph_dilate(vid_glyph_rows(ch), g);
             if (bx >= 0 && bx + 7 <= SCREEN_W && by >= 0 && by + 11 <= SCREEN_H) {
                 glyph_dil(g, bx, by, c4);
             } else {
@@ -156,7 +158,7 @@ void vid_text_dil(int x, int y, const char *s, uint32_t color)
 void plat_shade_rect(int x, int y, int w, int h, int level)
 {
     int x1 = x + w, y1 = y + h;
-    if (gba_nodraw) return;
+    if (gba_nodraw == 1) return;
     if (level < 0) level = 0;
     if (level > 15) level = 15;
     if (level == 15) return;
@@ -165,14 +167,34 @@ void plat_shade_rect(int x, int y, int w, int h, int level)
     if (x1 > SCREEN_W) x1 = SCREEN_W;
     if (y1 > SCREEN_H) y1 = SCREEN_H;
     if (x >= x1 || y >= y1) return;
+    if (gba_nodraw) {
+        int k = vid_route(x, y, x1, y1);
+        if (k == 2) cv_shade(x, y, x1, y1, doomo_colormap[level]);
+        if (k != 1) return;
+    }
     vid_shade(x, y, x1, y1, doomo_colormap[level]);
+}
+
+/* the slow path of the text calls: 1 = Mode 4, 2 = canvas, 0 = nothing */
+static int text_route(int x, int y, const char *s, int pad)
+{
+    int x0, y0, x1, y1;
+    cv_text_box(x, y, s, pad, &x0, &y0, &x1, &y1);
+    if (x0 >= x1 || y0 >= y1)                  /* off screen: nothing to draw */
+        return (gba_nodraw == 1 || gba_nodraw == GBA_NODRAW_CANVAS) ? 0 : 1;
+    return vid_route(x0, y0, x1, y1);
 }
 
 void plat_text(int x, int y, const char *s, uint8_t color)
 {
     if (gba_text_armed && s) gba_text_probe(s);   /* harness expect-text */
-    if (gba_nodraw || !s) return;
+    if (gba_nodraw == 1 || !s) return;
     if (!color) color = PAL_BLACK;
+    if (gba_nodraw) {
+        int k = text_route(x, y, s, 0);
+        if (k == 2) cv_text(x, y, s, color, 0);
+        if (k != 1) return;
+    }
     vid_text(x, y, s, color);
 }
 
@@ -181,9 +203,14 @@ void plat_text(int x, int y, const char *s, uint8_t color)
 void plat_text_outline(int x, int y, const char *s, uint8_t color, uint8_t outline)
 {
     if (gba_text_armed && s) gba_text_probe(s);   /* harness expect-text */
-    if (gba_nodraw || !s) return;
+    if (gba_nodraw == 1 || !s) return;
     if (!color) color = PAL_BLACK;
     if (!outline) outline = PAL_BLACK;
+    if (gba_nodraw) {
+        int k = text_route(x, y, s, 2);
+        if (k == 2) { cv_text(x, y, s, outline, 1); cv_text(x, y, s, color, 0); }
+        if (k != 1) return;
+    }
     vid_text_dil(x, y, s, outline);
     vid_text(x, y, s, color);
 }
@@ -192,10 +219,22 @@ void plat_text_outline(int x, int y, const char *s, uint8_t color, uint8_t outli
 void plat_image(int x, int y, const DoomoImage *img, int scale, int flags,
                 uint8_t color)
 {
-    if (gba_nodraw || !img || !img->pix || !img->w || !img->h) return;
+    if (gba_nodraw == 1 || !img || !img->pix || !img->w || !img->h) return;
     if (scale < 1) scale = 1;
     if (scale > 4) scale = 4;
     if (!color) color = PAL_BLACK;
+    if (gba_nodraw) {
+        int sh = (flags & IMG_SHADOW) ? 1 : 0, k;
+        int x0 = DOOMO_MAX(x, 0), y0 = DOOMO_MAX(y, 0);
+        int x1 = DOOMO_MIN(x + img->w * scale + sh, SCREEN_W), y1 = DOOMO_MIN(y + img->h * scale + sh, SCREEN_H);
+        if (x0 >= x1 || y0 >= y1) return;
+        k = vid_route(x0, y0, x1, y1);
+        if (k == 2) {
+            if (sh) cv_blit(x + 1, y + 1, img, scale, (flags & IMG_FLIPX) | IMG_SILHOUETTE, PAL_BLACK);
+            cv_blit(x, y, img, scale, flags & (IMG_FLIPX | IMG_SILHOUETTE), color);
+        }
+        if (k != 1) return;
+    }
     if (flags & IMG_SHADOW)
         vid_blit(x + 1, y + 1, img, scale, (flags & IMG_FLIPX) | IMG_SILHOUETTE, PAL_BLACK);
     vid_blit(x, y, img, scale, flags & (IMG_FLIPX | IMG_SILHOUETTE), color);

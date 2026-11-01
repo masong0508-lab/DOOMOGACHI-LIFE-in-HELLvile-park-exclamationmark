@@ -34,4 +34,15 @@ void ow_shade(int x0, int x1, int y0, int y1, const uint8_t *cm) IWRAM_CALL;
 void ow_sprite(const DoomoImage *img, int x0, int y0, int s, int flags,
                const uint8_t *cm) IWRAM_CALL;
 
+/* overworld.c, for the tile mode (ow_tiles.c, G5): the lit 16x16 tile
+ * (front 0) or 16 x front block face of lit_cached(), the texture frame
+ * of tex this frame (tex normalised like lit_cached does), a cell's light
+ * level and the night / tint state of the frame */
+const uint8_t *ow_lit(int tex, int lvl, int front);
+const uint8_t *ow_tex_frame(int *tex);
+int  ow_cell_level(const DoomoCell *c);
+uint32_t ow_tint_state(void);
+const DoomoCell *ow_cell(const DoomoMap *m, int tx, int ty);
+#define OW_BLOCK_H 10
+
 #endif

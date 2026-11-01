@@ -25,7 +25,7 @@
  * affine composition with the frame's shake / zoom). postfx_vblank(): in
  * the vblank right after the page flip (registers, OAM DMA, palette). */
 void postfx_pre_flip(void);
-void postfx_vblank(void);
+void postfx_vblank(int tiles);       /* tiles: Mode 0 (G5): blend BG0 too */
 
 /* The frame's post transform, for the OBJ composition: screen p of bitmap
  * point q is c + s * (q - c) + d. Returns 0 when there is none. */

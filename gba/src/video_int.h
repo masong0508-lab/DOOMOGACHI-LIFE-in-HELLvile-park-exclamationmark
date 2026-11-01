@@ -7,6 +7,19 @@
 #include "doomo/font.h"
 
 extern uint8_t gba_font_rows[FONT_LAST - FONT_FIRST + 1][8];   /* bit c = column c */
+/* The glyph rows of character ch (FONT_FIRST..FONT_LAST, bit c = column
+ * c): every text path (Mode 4 vid_text / vid_text_dil and the G5 canvas)
+ * reads glyphs through this. Today it is the core font transposed at boot
+ * (gba_font_rows). Hook for L4's per-language glyph pages: when a
+ * language brings its own page for 0xB0..0xFF, map ch to that page's rows
+ * here, and both display modes follow. */
+static inline const uint8_t *vid_glyph_rows(unsigned ch)
+{
+    return gba_font_rows[ch - FONT_FIRST];
+}
+/* the outline mask of one glyph for plat_text_outline: 11 rows of a 7-wide
+ * box at (-1, -1) from the glyph (video.c) */
+void vid_glyph_dilate(const uint8_t *g, uint16_t out[11]) __attribute__((long_call));
 
 /* clipped: x0 < x1 <= 240, y0 < y1 <= 160 (vid_rect_full: x0 = 0, x1 = 240) */
 void vid_rect_full(int x0, int y0, int x1, int y1, uint32_t color) IWRAM_CALL;

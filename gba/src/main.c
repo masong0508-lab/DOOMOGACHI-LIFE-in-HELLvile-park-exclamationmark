@@ -14,6 +14,7 @@
 #include "gba_plat.h"
 #include "hcmd.h"
 #include "postfx.h"
+#include "canvas_int.h"
 #include "doomo/game.h"
 #include "doomo/input.h"
 
@@ -170,16 +171,31 @@ void plat_begin_frame(void)
         gba_nodraw = 1;
         skipped_in_row = 1;
     } else {
+#if defined(ENGINE_TEST)
         gba_nodraw = 0;
+#else
+        gba_nodraw = GBA_NODRAW_FIRST;          /* G5: the first draw call decides */
+#endif
         skipped_in_row = 0;
     }
+    cv_frame_begin();
+}
+
+/* G5 (canvas.c): a tile frame that cannot be shown after all (its pool
+ * overflowed while the screen shows page 1) is not presented: the rest of
+ * its drawing is skipped like a catch-up tick's, and the next tick is not
+ * skipped on top of it */
+void gba_drop_frame(void)
+{
+    gba_nodraw = 1;
+    skipped_in_row = 1;
 }
 
 /* platform.h: a catch-up tick's drawing is skipped (all 2D/3D calls are
  * no-ops then), so the core may skip its own drawing work too */
 int plat_draw_skipped(void)
 {
-    return gba_nodraw;
+    return gba_nodraw == 1;
 }
 
 void plat_end_frame(void)
@@ -194,7 +210,8 @@ void plat_end_frame(void)
         }
     }
     gba_mailbox.ticks = gba_frames;
-    if (!gba_nodraw) {
+    if (gba_nodraw == GBA_NODRAW_CANVAS && cv.overflow) cv_drop();   /* G5 */
+    if (gba_nodraw != 1) {
         uint32_t w = gba_cycles() - work_c0;
         gba_mailbox.work_sum += w;
         gba_mailbox.work_n++;
@@ -206,17 +223,40 @@ void plat_end_frame(void)
 
 void video_flip(void)
 {
-    int waited = 0;
+    int waited = 0, tiles;
+    cv_pre_flip();              /* G5: finish a tile frame (or convert it) */
     postfx_pre_flip();          /* S1: squash OBJ checks + OAM (postfx.h) */
     while (gba_vblanks - last_flip_vbl < 2) {
         vblank_intr_wait();
         waited = 1;
     }
     if (!waited && REG_VCOUNT < 160) vblank_intr_wait();
-    REG_DISPCNT ^= DCNT_PAGE;
-    postfx_vblank();            /* S1: BG2 affine, BLDY, palette, OAM DMA */
-    gba_back = (REG_DISPCNT & DCNT_PAGE) ? (uint16_t *)VRAM_PAGE0
-                                         : (uint16_t *)VRAM_PAGE1;
+    /* G5: a tile frame copies its canvas into VRAM the screen shows: that
+     * must start and end inside one vblank (lines 160..227), or the top
+     * rows of the next picture show the old tiles. A frame that arrives
+     * late in a vblank, or after it (the VBlank IRQ's mixer can take most
+     * of one), waits for the next. */
+    {
+        int need = cv_vblank_lines();
+        while (need) {
+            uint32_t vc = REG_VCOUNT;
+            if (vc >= 160 && vc + (uint32_t)need <= 227) break;
+            vblank_intr_wait();
+        }
+    }
+    /* G5: a tile frame shows Mode 0 (maps + canvas copied in now); a Mode 4
+     * frame shows the page it was drawn into */
+    tiles = cv_vblank();
+    if (!tiles) {
+        int page = gba_back == (uint16_t *)VRAM_PAGE1;
+        REG_BG2CNT = 0;
+        REG_DISPCNT = (uint16_t)(DCNT_MODE4 | DCNT_BG2 | DCNT_OBJ | DCNT_OBJ_1D | (page ? DCNT_PAGE : 0));
+        cv_shown_m4(page);
+        gba_back = page ? (uint16_t *)VRAM_PAGE0 : (uint16_t *)VRAM_PAGE1;
+    } else {
+        gba_back = (uint16_t *)VRAM_PAGE1;      /* the next Mode 4 frame: page 1 */
+    }
+    postfx_vblank(tiles);       /* S1: BG2 affine, BLDY, palette, OAM DMA */
     last_flip_vbl = gba_vblanks;
 }
 

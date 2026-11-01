@@ -15,7 +15,9 @@ plat_rect:
     ldr     r12, =gba_nodraw
     ldr     r12, [r12]
     cmp     r12, #0
-    bxne    lr
+    bne     plat_rect_nz                @ (not taken on the Mode 4 path)
+    .global plat_rect_m4
+plat_rect_m4:                           @ the Mode 4 path (plat_rect_slow)
     add     r2, r0, r2                  @ x1
     add     r3, r1, r3                  @ y1
     bic     r0, r0, r0, asr #31         @ x0 = max(x, 0)
@@ -36,6 +38,17 @@ plat_rect:
     ldreq   r12, =vid_rect_full         @ ROM (THUMB): interworking jump
     bxeq    r12
     b       vid_rect
+@ gba_nodraw != 0: a skipped catch-up tick draws nothing; G5: a tile frame
+@ (GBA_NODRAW_CANVAS) fills into the canvas (ARM, the IWRAM 2D group, loaded
+@ then); the estimate and a frame's first draw take the slow path (ROM,
+@ THUMB: canvas.c), which calls plat_rect_m4 back
+plat_rect_nz:
+    cmp     r12, #1
+    bxeq    lr
+    cmp     r12, #2
+    ldreq   r12, =cv_rect_fast
+    ldrne   r12, =plat_rect_slow
+    bx      r12
     .size   plat_rect, . - plat_rect
     .ltorg
 

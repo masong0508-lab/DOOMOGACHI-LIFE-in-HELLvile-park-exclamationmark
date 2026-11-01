@@ -21,6 +21,7 @@
  */
 #include "gba_plat.h"
 #include "ow_int.h"
+#include "canvas_int.h"
 #include "doomo/textures.h"
 #include "doomo/palette.h"
 #include "doomo/map.h"
@@ -69,13 +70,15 @@ void ow_invalidate(void)
 {
     if (lc.hi) memset(cache[CACHE_SETS / 2], 0, OW_SET_BYTES * CACHE_SETS / 2);
     else memset(cache, 0, OW_SET_BYTES * CACHE_SETS);
+    cv_invalidate();                    /* G5: the tile metadata, too */
 }
 
 /* after the claim: the whole cache, or its upper half beside a claim that
- * reaches into the lower one */
-static void cache_fit(void)
+ * reaches into the lower one - or while tiles are on (G5): the lower half
+ * then holds the tile frame's metadata (canvas_int.h cv_meta) */
+static void cache_fit(int tiles)
 {
-    uint32_t hi = gba_big_fits(GBA_BIG_OW) ? 0u : CACHE_SETS / 2u;
+    uint32_t hi = (gba_big_fits(GBA_BIG_OW) && !tiles) ? 0u : CACHE_SETS / 2u;
     if (hi != lc.hi) {
         lc.hi = hi;
         ow_invalidate();
@@ -152,6 +155,23 @@ static const OwTile *lit_cached(int tex, int lvl, int front)
 
 static const OwTile *lit_tile(int tex, int lvl) { return lit_cached(tex, lvl, 0); }
 
+/* ---- for the tile mode (ow_tiles.c, G5) ---- */
+const uint8_t *ow_lit(int tex, int lvl, int front) { return lit_cached(tex, lvl, front)->pix; }
+
+const uint8_t *ow_tex_frame(int *tex)
+{
+    int t = *tex;
+    if (t <= 0 || t >= TEX_COUNT) t = TEX_GRASS;
+    *tex = t;
+    if (!lc.frame_tex_ok[t]) {
+        lc.frame_tex[t] = texture_pixels(t, owf.time);
+        lc.frame_tex_ok[t] = 1;
+    }
+    return lc.frame_tex[t];
+}
+
+uint32_t ow_tint_state(void) { return lc.tint_state; }
+
 static int cell_level(const DoomoCell *c)
 {
     int l = owf.day_level;
@@ -212,6 +232,11 @@ static void draw_sprite(const DoomoBillboard *b)
     y0 = owf.oy + (int)((b->y >> 16) / UNITS_PER_PX) - owf.scrolly - h -
          (int)((b->z >> 16) / UNITS_PER_PX);
     lvl = (b->flags & BB_FULLBRIGHT) ? 15 : DOOMO_CLAMP(owf.day_level + b->light, 2, 15);
+    if (gba_nodraw == GBA_NODRAW_MEASURE) {        /* G5: the canvas estimate */
+        int a0 = DOOMO_MAX(x0, 0), a1 = DOOMO_MIN(x0 + w, SCREEN_W);
+        int b0 = DOOMO_MAX(y0, 0), b1 = DOOMO_MIN(y0 + h + 1, SCREEN_H);
+        if (a0 < a1 && b0 < b1) cv_note(a0, b0, a1, b1);
+    }
     if (b->flags & BB_SHADOW) {
         int fy = owf.oy + (int)((b->y >> 16) / UNITS_PER_PX) - owf.scrolly;
         int half = w / 3 + 1, cx = x0 + w / 2;
@@ -229,7 +254,8 @@ static void draw_sprite(const DoomoBillboard *b)
     ow_sprite(img, x0, y0, s, b->flags, doomo_colormap[lvl]);
 }
 
-static int16_t order[128];
+int16_t ow_order[128];          /* billboards by feet y (ow_tiles.c too) */
+#define order ow_order
 
 static inline const DoomoCell *cell_at(const DoomoMap *m, int tx, int ty)
 {
@@ -238,13 +264,28 @@ static inline const DoomoCell *cell_at(const DoomoMap *m, int tx, int ty)
     return map_cell_safe(m, tx, ty);
 }
 
+const DoomoCell *ow_cell(const DoomoMap *m, int tx, int ty) { return cell_at(m, tx, ty); }
+int ow_cell_level(const DoomoCell *c) { return cell_level(c); }
+
+/* G5: the tile mode is for frames that start with a full-screen overworld
+ * (canvas_int.h); the engine-test ROM keeps Mode 4 (its test-et CRCs hash
+ * the Mode 4 page) */
+#if defined(ENGINE_TEST) || (defined(GBA_TILES) && !GBA_TILES)
+#define OW_TILES 0                       /* (make TILES=0: Mode 4 only) */
+#else
+#define OW_TILES 1
+#endif
+
 void plat_overworld(const DoomoOverworldView *v)
 {
     const DoomoMap *m;
-    int tx0, ty0, tx1, ty1, tx, ty, i, n, si;
-    if (gba_nodraw || !v) return;
+    int tx0, ty0, tx1, ty1, tx, ty, i, n, si, mode;
+    if (gba_nodraw == 1 || !v) return;
+    if (gba_nodraw == GBA_NODRAW_CANVAS) {      /* a second world this frame */
+        cv_need_m4();
+        if (gba_nodraw == 1) return;
+    }
     gba_big_claim(GBA_BIG_BY_OW);
-    cache_fit();
     m = v->map;
     owf.ox = v->vw > 0 ? v->vx : 0;
     owf.oy = v->vh > 0 ? v->vy : 0;
@@ -254,6 +295,10 @@ void plat_overworld(const DoomoOverworldView *v)
     if (owf.oy < 0) { owf.oh += owf.oy; owf.oy = 0; }
     if (owf.ox + owf.ow > SCREEN_W) owf.ow = SCREEN_W - owf.ox;
     if (owf.oy + owf.oh > SCREEN_H) owf.oh = SCREEN_H - owf.oy;
+    /* G5: Mode 0 world + canvas, or Mode 4 (canvas_int.h) */
+    mode = cv_ow_begin(OW_TILES && m && owf.ox == 0 && owf.oy == 0 && owf.ow == SCREEN_W &&
+                       owf.oh == SCREEN_H && gba_big_fits(GBA_BIG_OW));
+    cache_fit(mode != CV_OFF);
     if (owf.ow <= 0 || owf.oh <= 0) return;
     owf.day_level = 5 + DOOMO_CLAMP(v->daylight, 0, 15) * 10 / 15;
     owf.time = v->time;
@@ -281,6 +326,15 @@ void plat_overworld(const DoomoOverworldView *v)
     ty0 = (owf.scrolly >= 0 ? owf.scrolly / TILE : (owf.scrolly - TILE + 1) / TILE) - 1;
     tx1 = tx0 + owf.ow / TILE + 3;
     ty1 = ty0 + owf.oh / TILE + 4;
+
+    if (mode != CV_OFF) {
+        /* the world is BG2 (ow_tiles.c), the billboards go to the canvas */
+        if (ow_tiles_world(m)) {
+            ow_tiles_sprites(v, ty0, ty1);
+            return;
+        }
+        cv_ow_failed();                         /* this frame is Mode 4 */
+    }
 
     /* ground: every visible cell's lit tile (16-pixel block copies; the
      * clipped edge tiles go through ow_blit). Blocks and raised floors

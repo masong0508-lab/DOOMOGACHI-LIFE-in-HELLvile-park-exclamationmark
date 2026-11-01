@@ -38,6 +38,7 @@ Make targets (run from anywhere with `make -C gba ...`):
 | `engine-test-nocore` | `build/doomogachi_et_nocore.gba` | renderer only, procedural stand-in art (`NOCORE=1`) |
 | `harness` | `build/harness` | host program linked against libmgba |
 | `test` | - | `test-et`, `test-save`, `test-game` (below) |
+| `rom TILES=0` | `build/doomogachi.gba` | the overworld in Mode 4 only (no tile mode, G5): the reference ROM for a tile-mode frame parity check |
 | `sizes` | - | `arm-none-eabi-size -A` of the game ELF |
 | `clean` | - | removes `gba/build/` |
 
@@ -128,11 +129,14 @@ PS1 build has the same viewer (`ps1/src/cutview.c`, hold SELECT at boot).
 | main stack | `0x03007D00` down | >= 6 KB reserved (linker `ASSERT`) | system mode |
 | VRAM page 0/1 | `0x06000000` / `0x0600A000` | 2 x 37.5 KB | Mode 4 double buffer |
 | VRAM gaps | `0x06009600` / `0x06013600` | 2 x 2.5 KB | the 3D view's 16 colormap rows + tint map (behind the two Mode 4 pages; byte reads as fast as IWRAM) |
-| VRAM OBJ area | `0x06014000` | 16 KB | 3D texture cache: 4 textures (unused by the display: no hardware sprites) |
+| VRAM OBJ area | `0x06014000` | 16 KB | 3D texture cache: 4 textures; squash and title-figure OBJs (`obj.c`) |
+| VRAM in a tile frame (G5) | `0x06000000` | 37.5 KB | canvas map (SB 0), world map (SB 1), 36 cell composites at `0x1000`, the 392-tile canvas pool at `0x3400`; the dense build canvas is page 1's bytes (`0x0600A000`, 600 tiles, the last 216 in OBJ VRAM below `0x06013600`). The 3D gaps are never touched (section 6b) |
 | palette | `0x05000000` | 512 B | BG + OBJ palettes = `doomo_palette` |
 | flash | `0x0E000000` | 128 KB in 2 banks | saves |
 
-Display: Mode 4 (240x160, 8 bpp) with two pages flipped in vblank.
+Display: Mode 4 (240x160, 8 bpp) with two pages flipped in vblank; an
+overworld frame may instead show Mode 0 (a world BG and a canvas BG,
+section 6b).
 Interrupts: VBlank only (frame counter + audio mixer). Timer 0 drives the
 DirectSound FIFO, DMA 1 feeds it, timers 2+3 cascade into a free-running
 32-bit cycle counter (`gba_cycles()`, used for profiling). DMA 3 does block
@@ -225,7 +229,7 @@ they share ONE slot:
                                         irq.iwram.c (mixer), video.iwram.c
 0x03002954  overlay slot      10,384 B  ONE of:
               .ovl_3d  10,384 B  r3d.iwram.c code + const data, r3d_loops.s
-              .ovl_2d       0 B  section .iwram_2d (G5's canvas loops)
+              .ovl_2d   8,224 B  section .iwram_2d (G5's canvas loops)
 0x030051e4  .iwram_bss         3,868 B  (r3d's .bss stays resident)
 0x03006100  main stack         7,168 B  (>= 6,144 B with the largest group in)
 ```
@@ -370,7 +374,8 @@ against the LAST row, not against a figure from an older base.
 | 3 | H6: furniture animation frames, prop art | `ffbc039` | 13,616 B | 13,616 B | 0 | 7,168 B | ROM 3,669,044 -> 3,675,732 B (iso sprites 447,309 -> 453,094 B); room parity and house fps unchanged |
 | 4 | G4: IWRAM code overlay | `7dcb273` | 13,616 B | 13,616 B | 0 | 7,168 B | ROM +196 B; IWRAM resident 10,580 B + overlay slot 10,384 B (3D group; 2D group 0 B, up to 11,408 B fits the 6 KB rule); speed tour frame-exact |
 | 5 | H1: room-shell parity frames | `738261b` | 13,616 B | 13,616 B | 0 | 7,168 B | no RAM (the frames build on the stack and in the arena's harness tail, as before); ROM +996 B (`room.o` text 17,786 -> 18,782 B: the shared frame table `core/tests/room_shells.h` and its harness hook); house fps unchanged |
-| 6 | L1: N-language lookup (state + 64-entry cache, below) | `883cf3b` | 13,616 B | **13,088 B** | -528 B | 7,168 B | ROM 3,681,980 -> 3,689,948 B (+7,968: one LNG2 table per language, Spanish 111,516 B, was four tables of 104,476 B); Options in Spanish 28.2 -> 25.8 ms per drawn tick |
+| 6 | L1: N-language lookup (state + 64-entry cache, below) | `883cf3b` | 13,616 B | 13,088 B | -528 B | 7,168 B | ROM 3,681,980 -> 3,689,948 B (+7,968: one LNG2 table per language, Spanish 111,516 B, was four tables of 104,476 B); Options in Spanish 28.2 -> 25.8 ms per drawn tick |
+| 7 | G5: tile-mode overworld (Mode 0 world + canvas) | `f010771` | 13,088 B | **13,088 B** | 0 | 6,728 B | ROM 3,689,948 -> 3,710,784 B (+20,836); IWRAM resident +228 B (routing in the 2D entry points), `.iwram_bss` +212 B (`cv`, the canvas state); 2D group 8,224 B in the slot (3D group still the larger); the tile metadata lives in the lower half of the overworld's arena region; speed tour frame-exact (16 scenes) |
 
 Known claimants still to land (their own packages measure and add rows):
 
@@ -564,6 +569,12 @@ Baseline, `959acc8` + G1 (game ROM 3,668,820 bytes):
 | island hub | the New Island keys of `fp_island.txt` | 12.5 | 7.5 | 96.8 / 97.3 |
 | island town hall menu | the hub, A | 11.1 | 6.7 | 108.7 / 131.0 |
 | pet | `push PET` over the island, A, START | 17.4 | 10.3 | 67.4 / 94.9 |
+
+G5 added a scene after the park visit, the map walk (the park visit with
+RIGHT + DOWN held, so the camera scrolls on both axes while the frames are
+measured and hashed): every later scene starts on other ticks than in the
+table above, so a parity base must be recorded with the current script
+(below). Section 6b has the G5 numbers.
 
 Where the time goes (the profiling pass of 2026-11-01 on `959acc8`:
 `harness fps` and `profile`, plus temporary `gba_cycles()` marks around
@@ -837,7 +848,8 @@ Speed: ground tiles are cached *lit* (per texture frame, light level,
 front height and tint state) in a 2-way, 32-set cache in the arena, so a
 frame of ground is mostly 16-pixel block copies; horizontal scrolling
 moves in 2-pixel steps so every copy is halfword aligned. Cells covered by
-a block top + front face skip their ground tile.
+a block top + front face skip their ground tile. A frame may instead show
+the world as a tile BG (section 6b).
 
 ---------------------------------------------------------------------------
 
@@ -951,6 +963,121 @@ The remaining levers, in order:
    `plat_room_ui_opaque` before `plat_room`, which removes the per-frame
    restore under a static modal.
 
+## 6b. The tile mode: Mode 0 world + overlay canvas (G5)
+
+Files: `src/canvas_int.h` (layout, state, contract between the files),
+`src/canvas.c` (THUMB: frame policy, flip, conversion, the 2D calls' slow
+path), `src/canvas_2d.c` (ARM in the IWRAM overlay's 2D group: the canvas
+pixel loops), `src/ow_tiles.c` (THUMB: the world composites, the world
+map, the billboards in order). `overworld.c` decides per frame; `main.c`
+(`video_flip`), `video*.c`, `video_loops.s`, `postfx.c`, `obj.c`,
+`r3d.c` and `room.c` route through it.
+
+**What is shown.** A frame whose first drawing call is a full-screen
+`plat_overworld()` may be shown in Mode 0:
+
+* BG2 (priority 1) is the world. Every visible cell is a 16x16
+  *composite*: what the Mode 4 renderer leaves in that cell's square
+  before any billboard (its ground, or its block's top rows and front face
+  with the contact line, then the lifted top of a raised cell below it).
+  A composite depends only on the cell, the cell below, the daylight
+  level, the night / tint state and the frame of animated textures, and it
+  is made from the same `lit_cached()` tiles as Mode 4, so it is the same
+  bytes. 36 composites (4 tiles each) are cached in VRAM, keyed by the two
+  cells' raw 8 bytes, the light / tint state and an animated-texture
+  epoch; a slot the screen shows is never rewritten. The world map pass is
+  skipped when the visible cells, the scroll origin and the key state hash
+  to last frame's 64-bit signature. Scrolling is BG2HOFS/VOFS (the 2-pixel
+  horizontal step of Mode 4 is kept).
+* BG0 (priority 0) is the canvas: every 2D call after the world
+  (billboards with their shadows, `owfx` particles, the HUD, dialogue,
+  toasts) in 8bpp tiles, colour 0 transparent. The palette has no
+  colourmap or tint entry that maps a colour to 0, and colour 0 equals
+  `PAL_BLACK`, so transparency is exact. Billboards are drawn in Mode 4
+  order; the raised cells that Mode 4 paints over a billboard later (the
+  rows below its feet) are clipped out of it, using a lift grid of the
+  visible cells. Shadows and `plat_shade_rect` read the world pixel under
+  a transparent canvas pixel.
+* OBJs (squash actors, title figures) stay above everything, as in Mode 4.
+  A shake moves BG0 and BG2 by their offsets; window 0 cuts out what an
+  affine Mode 4 page would leave as backdrop. `plat_post_blend`'s BLDY
+  also targets BG0.
+
+**VRAM.** Both BGs use charblock 0. `0x0000` SB 0 (canvas map), `0x0800`
+SB 1 (world map), `0x1000` the composites, `0x3400` the canvas pool (392
+tiles; pool tile 0 is all zero), up to `0x9600`. The raycaster's colormap
+rows in the two 2.5 KB gaps (`0x9600`, `0x13600`) are never touched (it
+caches them). The frame being built draws its canvas *dense* into page 1's
+bytes: screen tile `t` at `0x0600A000 + 64 t`, zeroed on first touch.
+
+**Frame kinds** (`cv.mode`):
+
+| screen shows | this frame | how it ends |
+|---|---|---|
+| a tile frame | dense canvas in page 1's bytes, world composites in free slots | the used tiles are planned into the pool (identical tiles shared when they would not fit) and copied in the vblank with the two maps; if they still do not fit, or the frame zooms (`plat_post_scale`), page 1 is converted in place into a Mode 4 page (each 1,920-byte band of 30 tiles holds exactly the bytes of its 8 screen rows), and the rest of the frame is Mode 4 |
+| Mode 4 page 1 | sparse canvas straight into the pool (page 0 is not shown) | shown as tiles; a pool overflow drops the frame (not presented, like a catch-up tick) |
+| Mode 4 page 0, or not eligible | Mode 4, as before G5 | |
+
+Anything that needs a bitmap page during a tile frame (`plat_view3d`,
+`plat_room`, a second `plat_overworld`, a call covering half the screen
+or more: the pause panel, a fade, a flash) first leaves the canvas the
+same way (a dense frame converts, a sparse frame is dropped). Every path
+draws the same pixels: the speed tour's frame parity (below) holds on
+every scene with tiles on and off.
+
+**Routing.** `gba_nodraw` keeps its meaning (1 = a skipped tick, the only
+value `plat_draw_skipped()` reports) and gains three values: 4 = nothing
+drawn yet this frame (set by `plat_begin_frame`), 2 = a tile frame, 3 = a
+Mode 4 frame that measures the canvas estimate. Every 2D entry point's
+fast path tests `gba_nodraw == 0` as before; the others take `vid_route()`
+(`canvas.c`). `plat_rect` in a tile frame goes straight from the asm entry
+to an ARM fill in the 2D group.
+
+**The flip.** The canvas copy has to happen inside one vblank (lines
+160..227); a frame that arrives late in a vblank, or after it (the VBlank
+IRQ's mixer can take most of one), waits for the next vblank
+(`cv_vblank_lines()`), or the top rows of the next picture would show the
+previous canvas.
+
+**When it is used.** A canvas tile costs more than the same pixels drawn
+into a Mode 4 page (tile addressing, read-modify-writes, the plan and the
+vblank copy), while the world saves a fixed ~11 ms. Measured on the tour:
+hahaland (321 canvas tiles) 48.0 ms tiled against 43.8 ms in Mode 4,
+hellvile (~200 tiles) 35.0 against 38.6. So a tile frame with more than
+250 canvas tiles hands the next frames to Mode 4 (`CV_TILES_WIN`), and an
+entry from Mode 4 needs the last Mode 4 frame's estimate (the tiles its 2D
+calls and billboards covered, measured every 16 frames, not on every
+frame: measuring takes every 2D call through the slow path) to fit the
+pool and to undercut the estimate that sent it to Mode 4 by 10%, with a
+backoff that doubles on each failed attempt. Measured on the G5 tour:
+hellvile 204 tile frames of 208, park 141, the map walk 108; hahaland,
+invaded, the story map with dialogue and the pause stay in Mode 4 (1 tile
+frame, 1 conversion and no drop in the whole tour).
+
+**Text.** Every text path reads glyphs through `vid_glyph_rows()`
+(`video_int.h`), today the core font transposed at boot. That is the hook
+for L4's per-language glyph pages: mapping a character to its language's
+page there changes both display modes at once.
+
+**Memory.** EWRAM unchanged: the tile metadata (`CvMeta`: the two map
+shadows, the composite keys and hash, the copy runs, the dedupe table, the
+lift grid, the animated-texture table; asserted <= 8,576 B) lives in the
+lower half of the overworld's arena region, and the lit-tile cache keeps
+the upper half while tiles are on (`cache_fit`). IWRAM: `cv` (212 B of
+`.iwram_bss`), 228 B more resident code (routing), the 2D group 8,224 B.
+
+Measured (libmgba, `make test-speed SPEED_BASE=` with `f010771`'s log of
+the G5 tour script; the tour gained the map walk, RIGHT + DOWN held on
+the park visit): all 16 scenes frame-exact (30 frames each); hellvile
+37.7 -> 34.6 ms (22.7 -> 23.3 fps), every other scene within 1 ms of the
+base. The plan's gates (hahaland >= 25 fps,
+STORY 110 >= 25, hellvile and park >= 30) are not met: with billboards
+still drawn by the CPU, the canvas costs about what the world saves. They
+need G6 (billboards as hardware sprites: 24 ms of hahaland's frame) and
+G7 (retained HUD panels).
+
+---------------------------------------------------------------------------
+
 ## 7. Audio
 
 * `plat_tone(ch, hz, vol, wave)` uses the PSG: channels 0/1 are the
@@ -1038,6 +1165,9 @@ gba/build/harness ROM.gba [--script FILE] [--shots DIR] [--save FILE]
 ```
 
 * Prints the ROM's debug log (`plat_log`) to stdout.
+* With `HARNESS_VHASH_SHOTS=1` in the environment, `vhash-seq` also writes
+  every hashed frame as `SHOTS/vh_TICK.png` (G5): two ROMs' frames of a
+  failing parity window can then be compared pixel by pixel.
 * Script format = the core native runner's: `wait N` (logic ticks, read
   from the mailbox, so scripts behave the same however fast the ROM
   renders), `press BTN..`, `hold BTN.. N`, `shot NAME`, `log TEXT`,

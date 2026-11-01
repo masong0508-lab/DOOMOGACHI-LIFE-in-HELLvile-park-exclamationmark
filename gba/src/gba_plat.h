@@ -19,6 +19,13 @@ extern uint32_t gba_keys;                  /* raw KEYINPUT bits (1 = held)  */
  * skipped (the renderer could not keep 30 fps). All plat_* drawing calls
  * return immediately when set. */
 extern int gba_nodraw;
+/* gba_nodraw values other than 0 (draw in Mode 4) and 1 (a skipped tick;
+ * the only value plat_draw_skipped() reports): every 2D call's fast path
+ * tests gba_nodraw == 0 only, and its slow path (vid_route, canvas.c)
+ * tells these apart (G5, docs/GBA.md section 6b) */
+#define GBA_NODRAW_CANVAS  2     /* a tile frame: 2D goes to the canvas  */
+#define GBA_NODRAW_MEASURE 3     /* Mode 4 + the canvas tile estimate    */
+#define GBA_NODRAW_FIRST   4     /* nothing drawn yet this frame         */
 uint32_t gba_read_pad(void);             /* BTN_* mask incl. SYNTH_XY flag */
 void cutview_enter(void);                 /* debug cutscene viewer (cutview.c) */
 void gba_pacing_reset(void);             /* forget frame debt (after loads) */

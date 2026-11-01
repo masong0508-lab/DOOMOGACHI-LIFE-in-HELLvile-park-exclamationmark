@@ -19,6 +19,7 @@
  * RAM: 36 B of .bss and .data (+ obj.c).
  */
 #include "postfx.h"
+#include "canvas_int.h"
 #include "doomo/camfx.h"
 #include "doomo/palette.h"
 
@@ -40,7 +41,7 @@ static struct {
 /* ---- the plat_post_* hooks (camfx_apply) ------------------------------- */
 void plat_post_offset(int dx, int dy)
 {
-    if (gba_nodraw) return;
+    if (gba_nodraw == 1) return;
     pf.dx = (int16_t)DOOMO_CLAMP(dx, -64, 64);
     pf.dy = (int16_t)DOOMO_CLAMP(dy, -64, 64);
     pf.set |= PF_OFFSET;
@@ -49,8 +50,10 @@ void plat_post_offset(int dx, int dy)
 void plat_post_scale(int sx_q8, int sy_q8, int cx, int cy)
 {
     int s = (sx_q8 + sy_q8) / 2;              /* BG2 zooms uniformly */
-    if (gba_nodraw) return;
+    if (gba_nodraw == 1) return;
     if (s == 256 || s <= 0) return;
+    cv_scale();                               /* G5: the zoom needs a bitmap */
+    if (gba_nodraw == 1) return;              /* (a dropped tile frame) */
     pf.s = (int16_t)DOOMO_CLAMP(s, 64, 1024);
     pf.cx = (int16_t)cx;
     pf.cy = (int16_t)cy;
@@ -59,7 +62,7 @@ void plat_post_scale(int sx_q8, int sy_q8, int cx, int cy)
 
 void plat_post_blend(uint8_t color, int level16)
 {
-    if (gba_nodraw || level16 <= 0) return;
+    if (gba_nodraw == 1 || level16 <= 0) return;
     pf.blend_c = color;
     pf.blend_l = (uint8_t)DOOMO_MIN(level16, 16);
     pf.set |= PF_BLEND;
@@ -67,7 +70,7 @@ void plat_post_blend(uint8_t color, int level16)
 
 void plat_pal_lerp(int pal_id, int level16)
 {
-    if (gba_nodraw || pal_id <= PAL_LERP_NONE || pal_id >= PAL_LERP_COUNT || level16 <= 0) return;
+    if (gba_nodraw == 1 || pal_id <= PAL_LERP_NONE || pal_id >= PAL_LERP_COUNT || level16 <= 0) return;
     pf.pal_id = (uint8_t)pal_id;
     pf.pal_l = (uint8_t)DOOMO_MIN(level16, 16);
     pf.set |= PF_PAL;
@@ -124,7 +127,7 @@ static void palette_write(int id, int l, uint8_t c, int cl)
     }
 }
 
-void postfx_vblank(void)
+void postfx_vblank(int tiles)
 {
     int pid = 0, pl = 0, cl = 0, bldcnt = 0, bldy = 0;
     uint8_t c = 0;
@@ -145,6 +148,7 @@ void postfx_vblank(void)
     if (pf.set & PF_BLEND) {
         if (is_white(pf.blend_c) || is_black(pf.blend_c)) {
             bldcnt = 0x0004 | 0x0010 | (is_white(pf.blend_c) ? 0x0080 : 0x00C0);   /* BG2 + OBJ */
+            if (tiles) bldcnt |= 0x0001;         /* G5: + the canvas (BG0) */
             bldy = pf.blend_l;
         } else {
             c = pf.blend_c;
