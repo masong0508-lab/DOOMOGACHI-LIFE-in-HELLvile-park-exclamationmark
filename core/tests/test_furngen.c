@@ -378,3 +378,42 @@ TEST(furngen_mirror_decal)
         if (x & 1) CHECK_EQ(im->ox, im->w - doomo_furn_iso[first + x - 1].ox);
     }
 }
+
+/* (H4) every theme names its fittings: a door and a window skin of the right
+ * role; anything else is refused */
+TEST(furngen_theme_fittings)
+{
+    char path[700];
+    char *text;
+    FILE *f;
+    long n;
+    int k;
+    CHECK_EQ(load_real(), 0);
+    snprintf(path, sizeof(path), "%s/../../data/home/themes.txt", test_golden_dir);
+    f = fopen(path, "rb");
+    CHECK(f != NULL);
+    if (!f) return;
+    fseek(f, 0, SEEK_END);
+    n = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    text = (char *)malloc((size_t)n + 1);
+    if (fread(text, 1, (size_t)n, f) != (size_t)n) n = 0;
+    text[n] = 0;
+    fclose(f);
+    memset(themes, 0, sizeof(themes));
+    CHECK_EQ(parse_themes(text, path), 0);
+    free(text);
+    for (k = 0; k < THEME_COUNT; k++) {
+        CHECK(themes[k].has);
+        CHECK_MSG(themes[k].door >= 0 && rows[themes[k].door].role == FR_DOOR, "theme %d door", k);
+        CHECK_MSG(themes[k].window >= 0 && rows[themes[k].window].role == FR_WINDOW, "theme %d window", k);
+        CHECK_EQ(doomo_home_themes[k].door, themes[k].door);       /* and the generated table agrees */
+        CHECK_EQ(doomo_home_themes[k].window, themes[k].window);
+    }
+    memset(themes, 0, sizeof(themes));
+    CHECK(parse_themes("[theme PASTEL] \"P\"\n  door cupcake_lamp\n", "t") > 0);   /* not a door */
+    memset(themes, 0, sizeof(themes));
+    CHECK(parse_themes("[theme PASTEL] \"P\"\n  window pink_door\n", "t") > 0);    /* a door, not a window */
+    memset(themes, 0, sizeof(themes));
+    CHECK(parse_themes("[theme PASTEL] \"P\"\n  door no_such_door\n", "t") > 0);
+}

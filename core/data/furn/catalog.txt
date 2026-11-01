@@ -1370,3 +1370,85 @@
   desc "VOID, in GURGLE's handwriting."
   foot 1 1 3  flags SMALL  flags2 UNSELLABLE|GIFT
   paints BUBBLEGUM HELLFIRE  score 5 2 0  theme LAVA  giver 567  reward S217
+
+# ---- (H4) the themed fittings: every theme's door and window skin, and the
+# doors of the Towers and the Pits (core/data/home/themes.txt `door` /
+# `window`, home.c home_room_defs[]). They come with the theme: the Walls
+# menu offers them for free, so they never go on sale. The Heart Door and the
+# Round / Stained-Glass / Bone-Rimmed windows above stay HomeMart's.
+[cloud_door] WALL 0 "Cloud Door"
+  desc "Opens onto a nap. Mind the step."
+  foot 1 1 13  flags WALL  flags2 PORTAL|UNSELLABLE  role DOOR
+  paints WHITE SKY  score 3 0 1  theme CLOUD
+[candy_door] WALL 0 "Candy Door"
+  desc "Do not lick the door. Again."
+  foot 1 1 13  flags WALL  flags2 PORTAL|UNSELLABLE  role DOOR
+  paints CHERRY WHITE  score 4 0 0  theme CANDY
+[cottage_door] WALL 0 "Cottage Door"
+  desc "Oak, iron and a draught. Authentic."
+  foot 1 1 13  flags WALL  flags2 PORTAL|UNSELLABLE  role DOOR
+  paints HONEY FOREST  score 2 0 1  theme COTTAGE
+[goth_door] WALL 0 "Gothic Door"
+  desc "Creaks in a minor key."
+  foot 1 1 13  flags WALL  flags2 PORTAL|UNSELLABLE  role DOOR
+  paints GRAPE CHARCOAL  score 0 3 0  theme GOTH
+[bone_door] WALL 0 "Bone Door"
+  desc "The knocker knocks back."
+  foot 1 1 13  flags WALL|HELL  flags2 PORTAL|UNSELLABLE  role DOOR
+  paints BONE CHARCOAL  score 0 4 0  theme BONE
+[lava_door] WALL 0 "Furnace Door"
+  desc "Warm to the touch. Do not touch."
+  foot 1 1 13  flags WALL|HELL  flags2 PORTAL|UNSELLABLE  role DOOR
+  paints CHARCOAL HELLFIRE  score 0 4 0  theme LAVA
+[vapor_door] WALL 0 "Neon Slider"
+  desc "Whooshes, hums, judges your shoes."
+  foot 1 1 13  flags WALL  flags2 PORTAL|UNSELLABLE  role DOOR
+  paints VAPE_PURPLE CYAN  score 2 1 0  theme VAPOR
+[picnic_door] WALL 0 "Screen Door"
+  desc "Keeps out flies. Lets in ants."
+  foot 1 1 13  flags WALL  flags2 PORTAL|UNSELLABLE  role DOOR
+  paints CHERRY WHITE  score 3 0 1  theme PICNIC
+[workshop_door] WALL 0 "Hatch Door"
+  desc "Rated for three explosions. Two so far."
+  foot 1 1 13  flags WALL  flags2 PORTAL|UNSELLABLE  role DOOR
+  paints SILVER TANGERINE  score 1 0 0  theme WORKSHOP
+[apartment_door] WALL 0 "Apartment Door"
+  desc "Peephole. Chain. Nobody uses either."
+  foot 1 1 13  flags WALL  flags2 PORTAL|UNSELLABLE  role DOOR
+  paints WHITE CARAMEL  score 1 0 1  theme COTTAGE
+[pastel_window] WALL 0 "Pastel Window"
+  desc "Scalloped, like a cake that can see."
+  foot 1 1 6  flags WALL  flags2 PORTAL|UNSELLABLE  role WINDOW
+  paints BUBBLEGUM SKY  score 3 0 1  theme PASTEL
+[cloud_window] WALL 0 "Cloud Window"
+  desc "Weather: soft, all day."
+  foot 1 1 6  flags WALL  flags2 PORTAL|UNSELLABLE  role WINDOW
+  paints WHITE SKY  score 3 0 1  theme CLOUD
+[candy_window] WALL 0 "Candy Window"
+  desc "Sugar-glass panes. Gumdrops on the sill."
+  foot 1 1 6  flags WALL  flags2 PORTAL|UNSELLABLE  role WINDOW
+  paints CHERRY WHITE  score 3 0 0  theme CANDY
+[goth_window] WALL 0 "Lancet Window"
+  desc "Long, thin and disappointed in you."
+  foot 1 1 6  flags WALL  flags2 PORTAL|UNSELLABLE  role WINDOW
+  paints CHARCOAL GRAPE  score 0 3 0  theme GOTH
+[skull_window] WALL 0 "Ossuary Window"
+  desc "Somebody's ribs. Somebody's view."
+  foot 1 1 6  flags WALL|HELL  flags2 PORTAL|UNSELLABLE  role WINDOW
+  paints BONE CHARCOAL  score 0 4 0  theme BONE
+[lava_window] WALL 0 "Grate Window"
+  desc "The bars are on the inside. Hm."
+  foot 1 1 6  flags WALL|HELL  flags2 PORTAL|UNSELLABLE  role WINDOW
+  paints CHARCOAL HELLFIRE  score 0 3 0  theme LAVA
+[vapor_window] WALL 0 "Neon Window"
+  desc "The blinds are always half shut."
+  foot 1 1 6  flags WALL  flags2 PORTAL|UNSELLABLE  role WINDOW
+  paints VAPE_PURPLE CYAN  score 2 1 0  theme VAPOR
+[picnic_window] WALL 0 "Gingham Window"
+  desc "Curtains, a flower box, one ant."
+  foot 1 1 6  flags WALL  flags2 PORTAL|UNSELLABLE  role WINDOW
+  paints CHERRY WHITE  score 3 0 1  theme PICNIC
+[workshop_window] WALL 0 "Wired Window"
+  desc "Wired glass. Wired owner."
+  foot 1 1 6  flags WALL  flags2 PORTAL|UNSELLABLE  role WINDOW
+  paints SILVER TANGERINE  score 1 0 0  theme WORKSHOP

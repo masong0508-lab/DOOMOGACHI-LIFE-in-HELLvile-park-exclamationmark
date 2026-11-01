@@ -201,3 +201,30 @@ TEST(home_visit_gifts_wants_reactions)
     CHECK_EQ(home_visit_recent(2), -1);
     CHECK(home_visited(id) && home_visited(5) && !home_visited(6));
 }
+
+/* (H4) every Hillvile home is a Towers flat, every Hellvile one a Pits flat:
+ * their fittings come with the template */
+TEST(home_visit_fittings)
+{
+    HomeRoom a;
+    HomeVisit v;
+    int id, i, door, win, seen[2] = { 0, 0 };
+    town_new(TOWN_FREEPLAY, 77, TOWN_POP_RANDOM);
+    home_reset();
+    for (id = 0; id < DOOMO_MAX_RESIDENTS; id += 37) {
+        DoomoResident *r = town_res(id);
+        int hell = RES_DISTRICT(id);
+        if (!r || r->status == RES_EMPTY) continue;
+        CHECK(home_visit_gen(id, &a, &v));
+        door = win = -1;
+        for (i = 0; i < a.nobj; i++) {
+            const DoomoFurn *f = home_furn(HO_FURN(&a.obj[i]));
+            if (f && f->role == FR_DOOR && (f->flags2 & FF_PORTAL)) door = HO_FURN(&a.obj[i]);
+            if (f && f->role == FR_WINDOW && (f->flags2 & FF_PORTAL)) win = HO_FURN(&a.obj[i]);
+        }
+        CHECK_EQ(door, hell ? FURN_GOTH_DOOR : FURN_APARTMENT_DOOR);
+        CHECK_EQ(win, hell ? FURN_GOTH_WINDOW : FURN_WOOD_WINDOW);
+        seen[hell] = 1;
+    }
+    CHECK(seen[0] && seen[1]);
+}

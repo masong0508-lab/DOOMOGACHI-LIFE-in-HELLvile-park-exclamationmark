@@ -294,7 +294,7 @@ fail:
  * core/data/home/themes.txt and blueprints.txt (H1), layouts_<owner>.txt (the
  * content packages). Joined with the catalog by key; every key, role, room
  * and paint is checked, and every piece must lie inside its room's grid. */
-typedef struct Theme { int has, wp, fl, wpaint, fpaint, pa, pb, ceil, accent; char name[24]; } Theme;
+typedef struct Theme { int has, wp, fl, wpaint, fpaint, pa, pb, ceil, accent, door, window, line; char name[24]; } Theme;
 static Theme themes[THEME_COUNT];
 typedef struct SetPiece { int furn, x, y, rot, pa, pb, sub; } SetPiece;
 #define FG_MAX_SETS 64
@@ -338,6 +338,8 @@ static int parse_themes(const char *text, const char *file)
             if (t->has) { fg_err(file, L.line, "theme defined twice:", tok); break; }
             memset(t, 0, sizeof(*t));
             t->has = 1;
+            t->door = t->window = -1;
+            t->line = L.line;
             if (!TNEXT() || !q || strlen(tok) > 20) { fg_err(file, L.line, "expected a quoted name (<= 20)", tok); break; }
             scopy(t->name, sizeof t->name, tok);
             continue;
@@ -355,6 +357,16 @@ static int parse_themes(const char *text, const char *file)
             if (!TNEXT() || !to_int(tok, &t->ceil) || t->ceil < 0 || t->ceil > 7) { fg_err(file, L.line, "ceiling 0..7", tok); break; }
         } else if (!strcmp(tok, "accent")) {
             if (!TNEXT() || (t->accent = name_find(paint_names, tok)) < 0) { fg_err(file, L.line, "bad paint", tok); break; }
+        } else if (!strcmp(tok, "door") || !strcmp(tok, "window")) {
+            /* (H4) the fittings: a door / window skin, an FF_PORTAL piece
+             * with that role (catalog.txt) */
+            int win = tok[0] == 'w', f;
+            if (!TNEXT() || (f = row_find(tok)) < 0) { fg_err(file, L.line, "theme fitting not in catalog.txt:", tok); break; }
+            if (!(rows[f].flags2 & FF_PORTAL) || rows[f].role != (win ? FR_WINDOW : FR_DOOR)) {
+                fg_err(file, L.line, win ? "not a window skin (PORTAL, role WINDOW):" : "not a door skin (PORTAL, role DOOR):", tok);
+                break;
+            }
+            if (win) t->window = f; else t->door = f;
         } else {
             fg_err(file, L.line, "unknown theme attribute", tok);
             break;
@@ -1179,8 +1191,11 @@ int main(int argc, char **argv)
     if ((text = read_file(path)) != NULL) {
         parse_themes(text, "home/themes.txt");
         free(text);
-        for (k = 0; k < THEME_COUNT; k++)
+        for (k = 0; k < THEME_COUNT; k++) {
             if (!themes[k].has) fg_err("home/themes.txt", 0, "missing theme", theme_names[k].n);
+            else if (themes[k].door < 0 || themes[k].window < 0)
+                fg_err("home/themes.txt", themes[k].line, "a theme needs its `door` and `window`:", theme_names[k].n);
+        }
     }
     snprintf(path, sizeof path, "%s/core/data/home/blueprints.txt", repo);
     if ((text = read_file(path)) != NULL) { parse_sets(text, "home/blueprints.txt", 0); free(text); }
@@ -1348,8 +1363,8 @@ int main(int argc, char **argv)
         const Theme *t = &themes[k];
         fprintf(o, "    { ");
         cstr(o, t->has ? t->name : theme_names[k].n);
-        fprintf(o, ", %d, %d, %d, %d, %d, %d, %d, %d },\n", t->wp, t->fl, t->wpaint, t->fpaint, t->pa, t->pb,
-                t->ceil, t->accent);
+        fprintf(o, ", %d, %d, %d, %d, %d, %d, %d, %d, %d, %d },\n", t->wp, t->fl, t->wpaint, t->fpaint, t->pa, t->pb,
+                t->ceil, t->accent, t->door < 0 ? 0 : t->door, t->window < 0 ? 0 : t->window);
     }
     fprintf(o, "};\n\nconst DoomoHomePiece doomo_home_pieces[] = {\n");
     {

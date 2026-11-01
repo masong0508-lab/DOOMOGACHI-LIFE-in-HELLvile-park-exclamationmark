@@ -4,7 +4,8 @@
 # mid-squash, the squash-flip of a held piece, the nope at an occupied
 # tile, the four views, undo, Live mode and the Score panel; then (M2) a
 # recolour, the walls with the paint-roller runner, a rubber-band group
-# move, a theme, a blueprint with its grey ghosts and a photo.
+# move, a theme, a blueprint with its grey ghosts and a photo; (H4) the theme's
+# door and windows, then the Walls panel's Door and Windows rows.
 scene HOME -1
 wait 3
 shot home_iris
@@ -159,7 +160,7 @@ wait 20
 press SELECT
 wait 8
 shot home_undo3
-# a theme (the roller again)
+# a theme (the roller again): Cloud brings its door and windows (H4)
 press START
 wait 14
 press DOWN
@@ -175,6 +176,29 @@ shot home_themes
 press A
 wait 24
 shot home_theme_applied
+# (H4) the Walls panel's Door and Windows rows: the next door skin and the
+# next window skin (the 320x240 panel shows both), painted on as one step
+press START
+wait 14
+press DOWN
+press DOWN
+press DOWN
+wait 2
+press A
+wait 14
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press RIGHT
+wait 2
+press DOWN
+press RIGHT
+wait 4
+shot home_walls_fittings
+press A
+wait 24
+shot home_fittings_done
 # a blueprint: what is owned drops in, the rest are grey ghosts
 press START
 wait 14

@@ -1,9 +1,10 @@
 # core/data/home/themes.txt - the house's 10 themes (owner: H1; HF sec.2.3).
 # furngen (H4) joins this into core/gen/furn_data.c (doomo_home_themes[]).
 #
-# "Apply theme" repaints the walls and the floor, tints the ceiling and
-# recolours every free paint slot (a slot still on its catalog default) to
-# the theme's two paints. It is one undo step.
+# "Apply theme" repaints the walls and the floor, tints the ceiling, puts the
+# theme's fittings on the fixed door and window slots and recolours every
+# free paint slot (a slot still on its catalog default) to the theme's two
+# paints. It is one undo step.
 #
 #   [theme THEME_ID] "Name (<= 20)"
 #     walls PATTERN PAINT     wallpaper pattern 0..31 and its paint
@@ -11,6 +12,12 @@
 #     paints A B              what free paint slots A / B become
 #     ceiling N               ceiling tint 0..7 (the cornice; PS1: the ceiling)
 #     accent PAINT            trims, frames, the HUD's highlight in the room
+#     door KEY                (H4) the door skin it puts on: a catalog.txt
+#                             PORTAL piece with role DOOR
+#     window KEY              (H4) the window skin for every window slot:
+#                             a PORTAL piece with role WINDOW
+# A theme's fittings come with it: the Walls menu offers them in every
+# room, free (home_edit.c home_skin_free).
 #
 # Wallpaper patterns: 0 stripes, 1 dots, 2 wainscot, 3 panels, 4 hearts,
 # 5 harlequin, 6 stone, 7 stars. Floors: 0 checker, 1 planks, 2 tiles,
@@ -23,6 +30,8 @@
   paints BUBBLEGUM MINT
   ceiling 0
   accent LEMON
+  door pink_door
+  window pastel_window
 
 [theme CLOUD] "Cloud"
   walls 7 SKY
@@ -30,6 +39,8 @@
   paints WHITE SKY
   ceiling 1
   accent LAVENDER
+  door cloud_door
+  window cloud_window
 
 [theme CANDY] "Candy"
   walls 4 ROSE
@@ -37,6 +48,8 @@
   paints CHERRY LEMON
   ceiling 2
   accent MINT
+  door candy_door
+  window candy_window
 
 [theme COTTAGE] "Cottage"
   walls 2 HONEY
@@ -44,6 +57,8 @@
   paints HONEY FOREST
   ceiling 3
   accent CHERRY
+  door cottage_door
+  window wood_window
 
 [theme GOTH] "Goth"
   walls 3 GRAPE
@@ -51,6 +66,8 @@
   paints GRAPE LAVENDER
   ceiling 4
   accent BLOOD
+  door goth_door
+  window goth_window
 
 [theme BONE] "Bone"
   walls 6 BONE
@@ -58,6 +75,8 @@
   paints BONE CHARCOAL
   ceiling 5
   accent JET
+  door bone_door
+  window skull_window
 
 [theme LAVA] "Lava"
   walls 6 RUST
@@ -65,6 +84,8 @@
   paints HELLFIRE CHARCOAL
   ceiling 6
   accent TANGERINE
+  door lava_door
+  window lava_window
 
 [theme VAPOR] "Vapor"
   walls 5 VAPE_PURPLE
@@ -72,6 +93,8 @@
   paints VAPE_PURPLE CYAN
   ceiling 7
   accent MAGENTA
+  door vapor_door
+  window vapor_window
 
 [theme PICNIC] "Picnic"
   walls 0 LIME
@@ -79,6 +102,8 @@
   paints CHERRY WHITE
   ceiling 0
   accent HONEY
+  door picnic_door
+  window picnic_window
 
 [theme WORKSHOP] "Workshop"
   walls 3 SILVER
@@ -86,3 +111,5 @@
   paints TANGERINE SILVER
   ceiling 3
   accent RUST
+  door workshop_door
+  window workshop_window

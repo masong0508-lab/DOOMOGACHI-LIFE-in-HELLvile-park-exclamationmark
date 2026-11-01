@@ -240,6 +240,8 @@ enum { OA_NONE, OA_DROP, OA_RIPPLE_NEAR, OA_RIPPLE_FAR, OA_SPLAT, OA_HIDDEN };
 /* actor slots */
 enum { AC_PLAYER, AC_HOST, AC_PET, AC_RUNNER, AC_VISITOR0, AC_GUEST0 = AC_VISITOR0 + 3,
        AC_DEMON0 = AC_GUEST0 + HDG_COUNT, AC_MAX = AC_DEMON0 + 8 };
+/* (H4) the Walls panel's rows */
+enum { WR_WALLPAPER, WR_WALL_PAINT, WR_FLOOR, WR_FLOOR_PAINT, WR_DOOR, WR_WINDOWS, WR_PAINT, WR_COUNT };
 /* covered cuts for the walls / themes */
 enum { CUT_NONE, CUT_WALLS, CUT_THEME, CUT_ROOM, CUT_BLUEPRINT };
 /* the haunting night's beat */
@@ -273,6 +275,7 @@ typedef struct HomeScn {
     uint8_t  cat_tab, cat_tabs[FCAT_COUNT], ncat_tabs;
     uint16_t rows[128];              /* catalog / blueprint / room rows             */
     uint8_t  wall_row, wall_v[4];    /* the Walls panel: pattern, paint x 2         */
+    int16_t  wall_skin[2];           /* (H4) ... the door and window skins, -1 none  */
     /* the score panel */
     uint16_t score_gen;
     HomeScore score;
@@ -629,8 +632,13 @@ static void open_menu(int menu)
         H->wall_v[1] = r->wall_paint == 0xFF ? d->wall_paint : r->wall_paint;
         H->wall_v[2] = (uint8_t)((r->floor == 0xFF ? d->floor : r->floor) & 7);
         H->wall_v[3] = r->floor_paint == 0xFF ? d->floor_paint : r->floor_paint;
+        {   /* (H4) the fittings: the door's and the first window slot's piece */
+            int di = home_room_door(r), wi = home_room_window(r);
+            H->wall_skin[0] = (int16_t)(di < 0 ? -1 : HO_FURN(&r->obj[di]));
+            H->wall_skin[1] = (int16_t)(wi < 0 ? -1 : HO_FURN(&r->obj[wi]));
+        }
         H->wall_row = 0;
-        H->nrows = 5;
+        H->nrows = WR_COUNT;
     } else if (menu == HMN_GROUP) {
         H->nrows = GI_COUNT;
     } else if (menu == HMN_SCORE) {
@@ -678,7 +686,8 @@ static void apply_cut(void)
 {
     switch (H->cut) {
     case CUT_WALLS:
-        home_edit_walls(&H->ed, H->cut_v[0], H->cut_v[2] & 7, H->cut_v[1], H->wall_v[3]);
+        home_edit_fixtures(&H->ed, H->cut_v[0], H->cut_v[2] & 7, H->cut_v[1], H->wall_v[3], H->wall_skin[0],
+                           H->wall_skin[1]);
         break;
     case CUT_THEME:
         home_edit_theme(&H->ed, H->cut_arg);
@@ -1268,7 +1277,9 @@ static void live_use(void)
         if (!f) return;
         if (f->role == FR_DOOR) {
             if (H->kind == HK_VISIT) { leave_now(); return; }
-            if (H->kind == HK_OWN) {
+            /* the cottage's doors go room to room; (H4) a flat's (Towers 7B,
+             * the Pits flat, the Park Plot) is its front door: out */
+            if (H->kind == HK_OWN && H->room < HOME_COTTAGE_ROOMS) {
                 int r = H->room, n;
                 for (n = 0; n < HOME_COTTAGE_ROOMS; n++) {
                     r = (r + 1) % HOME_COTTAGE_ROOMS;
@@ -1624,12 +1635,20 @@ static void update_menu(void)
     }
     if (H->menu == HMN_WALLS) {
         static const uint8_t vmax[4] = { 8, 32, 8, 32 };
-        if (btn_repeat(BTN_UP)) { H->wall_row = (uint8_t)((H->wall_row + 4) % 5); audio_sfx(SFX_CURSOR); }
-        if (btn_repeat(BTN_DOWN)) { H->wall_row = (uint8_t)((H->wall_row + 1) % 5); audio_sfx(SFX_CURSOR); }
-        if (H->wall_row < 4 && (btn_repeat(BTN_LEFT) || btn_repeat(BTN_RIGHT))) {
+        if (btn_repeat(BTN_UP)) { H->wall_row = (uint8_t)((H->wall_row + WR_COUNT - 1) % WR_COUNT); audio_sfx(SFX_CURSOR); }
+        if (btn_repeat(BTN_DOWN)) { H->wall_row = (uint8_t)((H->wall_row + 1) % WR_COUNT); audio_sfx(SFX_CURSOR); }
+        if (H->wall_row < WR_DOOR && (btn_repeat(BTN_LEFT) || btn_repeat(BTN_RIGHT))) {
             int m = vmax[H->wall_row];
             H->wall_v[H->wall_row] = (uint8_t)((H->wall_v[H->wall_row] + (btn_repeat(BTN_RIGHT) ? 1 : m - 1)) % m);
             audio_sfx(SFX_CURSOR);
+        } else if (H->wall_row < WR_PAINT && (btn_repeat(BTN_LEFT) || btn_repeat(BTN_RIGHT))) {
+            /* (H4) the door / window skins you may put on (home_skin_ok) */
+            int k = H->wall_row - WR_DOOR, cur = H->wall_skin[k];
+            if (cur >= 0) {
+                int nx = home_skin_next(k ? FR_WINDOW : FR_DOOR, cur, btn_repeat(BTN_RIGHT) ? 1 : -1);
+                H->wall_skin[k] = (int16_t)nx;
+                audio_sfx(nx == cur ? SFX_ERROR : SFX_CURSOR);
+            }
         }
         if (btn_pressed(BTN_A)) {
             memcpy(H->cut_v, H->wall_v, 3);
@@ -2245,17 +2264,31 @@ static int label_group(int i, char *buf, int cap)
     return i == GI_PASTE && !H->clip.n ? PAL_GRAY : 0;
 }
 
-static void draw_sprite_preview(int furn, int px, int py, int pw, int ph, uint8_t *cache, uint32_t cap)
+static void draw_preview_paints(int furn, int pa, int pb, int px, int py, int pw, int ph, uint8_t *cache, uint32_t cap)
 {
     DoomoImage img;
     int ox, oy;
-    if (room_ref_sprite(furn, (H->t >> 6) & 1, (H->t >> 3) & 3, -1, -1, 15, cache, cap, &img, &ox, &oy)) {
+    if (room_ref_sprite(furn, (H->t >> 6) & 1, (H->t >> 3) & 3, pa, pb, 15, cache, cap, &img, &ox, &oy)) {
         /* 2x where the panel has the room for it (the PS1's 320x240 panel) */
         int sc = img.w * 2 + 8 <= pw && img.h * 2 + 8 <= ph ? 2 : 1, bob = ui_wave(H->t, ht[HT_GHOST_PERIOD], 1) * sc;
         plat_image(px + (pw - img.w * sc) / 2, py + (ph - img.h * sc) / 2 + bob, &img, sc, IMG_SHADOW, 0);
     } else {
-        room_ref_maquette(furn, -1, -1, px, py, pw, ph);    /* no sprites (the PS1): the prims */
+        room_ref_maquette(furn, pa, pb, px, py, pw, ph);    /* no sprites (the PS1): the prims */
     }
+}
+
+static void draw_sprite_preview(int furn, int px, int py, int pw, int ph, uint8_t *cache, uint32_t cap)
+{
+    draw_preview_paints(furn, -1, -1, px, py, pw, ph, cache, cap);
+}
+
+/* (H4) a door / window skin as it will hang: in its own catalog paints */
+static void draw_fitting_preview(int furn, int px, int py, int pw, int ph, uint8_t *cache, uint32_t cap)
+{
+    const DoomoFurn *f = home_furn(furn);
+    if (!f) return;
+    draw_preview_paints(furn, f->paint_a == 0xFF ? -1 : f->paint_a, f->paint_b == 0xFF ? -1 : f->paint_b,
+                        px, py, pw, ph, cache, cap);
 }
 
 static void draw_menu(uint8_t *cache, uint32_t cap)
@@ -2312,16 +2345,33 @@ static void draw_menu(uint8_t *cache, uint32_t cap)
         return;
     }
     if (H->menu == HMN_WALLS) {
-        static const char *const rown[5] = { "Wallpaper", "Wall paint", "Floor", "Floor paint", "Paint it!" };
+        static const char *const rown[WR_COUNT] = { "Wallpaper", "Wall paint", "Floor", "Floor paint", "Door",
+                                                    "Windows", "Paint it!" };
         static const char *const wpn[8] = { "Stripes", "Dots", "Wainscot", "Panels", "Hearts", "Harlequin", "Stone", "Stars" };
         static const char *const fln[8] = { "Checker", "Planks", "Tiles", "Herringbone", "Grass", "Flagstone", "Lava crack", "Cloud" };
-        int w = sw >= 300 ? 200 : 170, h = 5 * 14 + 20, x = (sw - w) / 2, y = 20, i;
+        /* (H4) the fittings: on the 320x240 panel the two skins stand below
+         * the rows (the PS1, which links no sprites, shows their maquettes) */
+        int big = sh >= 200, w = sw >= 300 ? 214 : 200, ph = big ? 64 : 0, h = WR_COUNT * 14 + 20 + ph;
+        int x = (sw - w) / 2, y = big ? 18 : 16, i;
         if (!ui_window_pop(x, y, w, h, WIN_CUTE, (int)H->t)) return;
-        for (i = 0; i < 5; i++) {
-            const char *v = i == 0 ? wpn[H->wall_v[0] & 7] : i == 2 ? fln[H->wall_v[2] & 7] :
-                            i == 1 ? doomo_paint_names[H->wall_v[1] & 31] : i == 3 ? doomo_paint_names[H->wall_v[3] & 31] : "";
+        for (i = 0; i < WR_COUNT; i++) {
+            const char *v = "";
+            if (i == WR_WALLPAPER) v = wpn[H->wall_v[0] & 7];
+            else if (i == WR_FLOOR) v = fln[H->wall_v[2] & 7];
+            else if (i == WR_WALL_PAINT || i == WR_FLOOR_PAINT) v = doomo_paint_names[H->wall_v[i] & 31];
+            else if (i == WR_DOOR || i == WR_WINDOWS) {
+                const DoomoFurn *f = home_furn(H->wall_skin[i - WR_DOOR]);
+                v = f ? doomo_furn_text(f->name, buf, sizeof(buf)) : "-";
+            }
             ui_value_row(x + 6, y + 8 + i * 14, (i == 1 || i == 3) ? w - 26 : w - 12, rown[i], v, i == H->wall_row);
             if (i == 1 || i == 3) ui_round_rect(x + w - 17, y + 9 + i * 14, 10, 9, 2, PAL_PAINT(H->wall_v[i] & 31, 1));
+        }
+        if (big) {
+            int py = y + 10 + WR_COUNT * 14, pw = (w - 18) / 2;
+            for (i = 0; i < 2; i++) {
+                plat_rect(x + 6 + i * (pw + 6), py, pw, ph - 4, st->fill_lo);
+                if (H->wall_skin[i] >= 0) draw_fitting_preview(H->wall_skin[i], x + 6 + i * (pw + 6), py, pw, ph - 4, cache, cap);
+            }
         }
         return;
     }
@@ -2361,10 +2411,17 @@ static void draw_menu(uint8_t *cache, uint32_t cap)
         if (H->nrows <= 0) return;
         if (H->menu == HMN_THEMES) {
             const DoomoHomeTheme *t = &doomo_home_themes[H->sel];
-            int k, sx = px + 6;
+            int k, sx = px + 6, ty;
             const uint8_t pp[4] = { t->wall_paint, t->floor_paint, t->paint_a, t->paint_b };
             for (k = 0; k < 4; k++) { ui_round_rect(sx + k * 18, top + 10, 14, 14, 3, PAL_PAINT(pp[k] & 31, 1)); }
-            ui_text_wrap(px + 4, top + 32, pw - 8, "Walls, floor and every piece you haven't painted.", st->text, 1);
+            ty = top + 32 + ui_text_wrap(px + 4, top + 32, pw - 8, "Walls, floor and every piece you haven't painted.",
+                                        st->text, 1) * FONT_LINE;
+            /* (H4) the fittings it brings, where the panel has the room */
+            if (h - 52 - (ty - top) >= 40) {
+                int bw = (pw - 12) / 2, bh = top + h - 52 - ty - 4;
+                draw_fitting_preview(t->door, px + 4, ty + 2, bw, bh, cache, cap);
+                draw_fitting_preview(t->window, px + 8 + bw, ty + 2, bw, bh, cache, cap);
+            }
         } else if (H->menu == HMN_BLUEPRINTS) {
             int r = H->rows[H->sel];
             if (r & 0x8000) ui_text_wrap(px + 4, top + 8, pw - 8, "Keep this room as one of your two blueprints.", st->text, 1);

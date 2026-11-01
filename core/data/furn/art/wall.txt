@@ -193,3 +193,321 @@ blob 10 3 39 2 1 2     B
 blob 8 3 18  2 1 2     WHITE
 blob 11 4 24 1 1 1     HONEY shiny
 box  1 0 0   14 5 2    ~WOOD
+
+# ---- (H4) the themed fittings: a door and a window per theme, the Towers'
+# and the Pits' doors (catalog.txt; themes.txt `door` / `window`). Jambs,
+# lintel and leaf are separate boxes a unit apart in depth, so no two prims
+# of different materials share a face (the PS1 orders such faces the other
+# way round from furngen, H6).
+
+[cloud_door]
+box  3 0 0   10 2 44   B
+blob 8 1 44  5 1 5     B
+blob 2 2 6   2 2 5     A soft
+blob 2 2 18  2 2 5     A soft
+blob 2 2 30  2 2 5     A soft
+blob 14 2 12 2 2 5     A soft
+blob 14 2 24 2 2 5     A soft
+blob 14 2 36 2 2 5     A soft
+blob 3 2 44  3 2 4     A soft
+blob 8 2 50  4 2 4     A soft
+blob 13 2 44 3 2 4     A soft
+box  5 2 6   6 1 18    B
+blob 8 2 34  3 1 3     WHITE shiny
+blob 8 3 34  2 1 2     SKY shiny
+blob 11 3 25 1 1 1     SILVER shiny
+box  0 3 0   16 2 1    WHITE
+
+[candy_door]
+box  1 0 0   2 3 8     A
+box  1 0 8   2 3 8     B
+box  1 0 16  2 3 8     A
+box  1 0 24  2 3 8     B
+box  1 0 32  2 3 8     A
+box  1 0 40  2 3 10    B
+box  13 0 0  2 3 8     B
+box  13 0 8  2 3 8     A
+box  13 0 16 2 3 8     B
+box  13 0 24 2 3 8     A
+box  13 0 32 2 3 8     B
+box  13 0 40 2 3 10    A
+box  1 0 50  14 3 3    A
+box  3 0 0   10 2 50   ROSE
+box  4 2 4   8 1 16    PEACH
+blob 8 2 35  4 1 4     WHITE
+blob 8 3 35  2 1 2     A
+blob 11 3 25 1 1 1     LEMON shiny
+box  0 3 0   16 2 1    CHERRY
+
+[cottage_door]
+box  1 0 0   2 3 50    B
+box  13 0 0  2 3 50    B
+box  1 0 50  14 3 3    B
+box  3 0 0   10 2 50   A
+box  5 2 0   1 1 33    CHOCOLATE
+box  8 2 0   1 1 33    CHOCOLATE
+box  10 2 0  1 1 33    CHOCOLATE
+box  3 3 8   10 1 2    CHARCOAL
+box  3 3 26  10 1 2    CHARCOAL
+box  4 2 35  8 1 12    B
+box  5 3 36  6 1 10    SKY shiny
+box  7 4 36  1 1 10    B
+box  5 4 40  6 1 1     B
+blob 11 3 20 1 1 1     LEMON shiny
+box  0 3 0   16 2 1    ~STONE
+
+[goth_door]
+box  1 0 0   2 3 40    B
+box  13 0 0  2 3 40    B
+box  2 0 40  2 3 5     B
+box  12 0 40 2 3 5     B
+box  3 0 45  3 3 4     B
+box  10 0 45 3 3 4     B
+box  5 0 49  6 3 4     B
+box  3 0 0   10 2 40   A
+box  4 0 40  8 2 5     A
+box  6 0 45  4 2 4     A
+box  7 2 0   2 1 47    JET
+blob 4 3 10  1 1 1     SILVER shiny
+blob 4 3 30  1 1 1     SILVER shiny
+blob 12 3 10 1 1 1     SILVER shiny
+blob 12 3 30 1 1 1     SILVER shiny
+blob 10 3 21 2 1 2     SILVER shiny
+blob 10 4 21 1 1 1     JET
+box  0 3 0   16 2 1    ~STONE
+
+[bone_door]
+box  3 0 0   10 2 46   B
+cyl  2 2 0   1 47      A
+blob 2 2 1   2 1 2     A
+blob 2 2 46  2 1 2     A
+cyl  14 2 0  1 47      A
+blob 14 2 1  2 1 2     A
+blob 14 2 46 2 1 2     A
+box  3 2 45  10 1 2    A
+blob 8 2 49  4 2 4     A
+box  6 3 45  4 1 2     A
+blob 6 4 50  1 1 1     JET
+blob 10 4 50 1 1 1     JET
+blob 8 4 47  1 1 1     JET
+box  4 2 8   8 1 2     A
+box  4 2 15  8 1 2     A
+box  4 2 22  8 1 2     A
+box  7 2 6   2 1 32    A
+blob 11 3 30 1 1 1     SILVER shiny
+box  0 3 0   16 2 1    ~STONE
+
+[lava_door]
+box  1 0 0   2 3 50    JET
+box  13 0 0  2 3 50    JET
+box  1 0 50  14 3 3    JET
+box  3 0 0   10 2 50   A
+box  5 2 4   1 1 12    B glow
+box  5 2 16  4 1 1     B glow
+box  8 2 17  1 1 11    B glow
+box  8 2 28  3 1 1     B glow
+box  10 2 29 1 1 9     B glow
+box  6 2 40  4 1 4     JET
+box  7 3 41  2 1 1     LEMON glow
+blob 4 3 4   1 1 1     SILVER shiny
+blob 12 3 4  1 1 1     SILVER shiny
+blob 4 3 46  1 1 1     SILVER shiny
+blob 12 3 46 1 1 1     SILVER shiny
+cone 3 2 53  2 5       BONE
+cone 13 2 53 2 5       BONE
+box  0 3 0   16 2 1    ~LAVA glow
+
+[vapor_door]
+box  2 0 0   12 2 48   A
+box  1 2 0   1 1 50    MAGENTA glow
+box  14 2 0  1 1 50    MAGENTA glow
+box  1 2 50  14 1 1    MAGENTA glow
+box  4 2 10  8 1 28    B shiny
+box  4 3 23  8 1 1     A
+box  12 3 16 1 1 12    SILVER shiny
+blob 8 3 44  2 1 1     CYAN glow
+box  0 3 0   16 2 1    CHARCOAL
+
+[picnic_door]
+box  1 0 0   2 3 50    B
+box  13 0 0  2 3 50    B
+box  1 0 50  14 3 3    B
+box  3 0 22  10 1 28   SILVER
+box  3 0 0   10 2 22   B
+box  3 2 3   2 1 5     A
+box  7 2 3   2 1 5     A
+box  11 2 3  2 1 5     A
+box  5 2 8   2 1 5     A
+box  9 2 8   2 1 5     A
+box  3 2 13  2 1 5     A
+box  7 2 13  2 1 5     A
+box  11 2 13 2 1 5     A
+box  3 1 20  10 2 2    B
+box  3 1 36  10 2 2    B
+blob 11 3 27 1 1 2     A
+box  0 3 0   16 2 1    ~WOOD
+
+[workshop_door]
+box  1 0 0   2 3 50    CHARCOAL
+box  13 0 0  2 3 50    CHARCOAL
+box  1 0 50  14 3 3    CHARCOAL
+box  3 0 0   10 2 50   A
+box  3 2 2   10 1 6    B
+box  4 3 2   2 1 6     JET
+box  8 3 2   2 1 6     JET
+blob 4 3 12  1 1 1     CHARCOAL
+blob 12 3 12 1 1 1     CHARCOAL
+blob 4 3 47  1 1 1     CHARCOAL
+blob 12 3 47 1 1 1     CHARCOAL
+blob 8 2 40  3 1 3     SKY shiny
+blob 8 3 26  4 1 4     CHARCOAL
+blob 8 4 26  2 1 2     A
+box  8 4 21  1 1 10    B
+box  3 4 26  10 1 1    B
+box  0 3 0   16 2 1    ~STEEL
+
+[apartment_door]
+box  1 0 0   2 3 50    B
+box  13 0 0  2 3 50    B
+box  1 0 50  14 3 3    B
+box  3 0 0   10 2 50   A
+box  4 2 4   8 1 18    A
+box  4 2 26  8 1 15    A
+box  6 3 43  4 1 4     HONEY shiny
+blob 8 3 37  1 1 1     JET
+blob 11 3 24 1 1 1     HONEY shiny
+box  11 3 28 1 1 3     SILVER
+box  0 3 0   16 2 1    ~WOOD
+
+[pastel_window]
+box  1 0 0   14 4 3    A
+box  1 0 3   2 3 17    A
+box  13 0 3  2 3 17   A
+box  3 0 3   10 2 17   B shiny
+box  7 2 3   2 1 17    A
+box  3 2 11  10 1 2    A
+box  0 0 20  16 3 2    WHITE
+blob 3 3 19  2 1 2     WHITE soft
+blob 8 3 19  2 1 2     WHITE soft
+blob 13 3 19 2 1 2     WHITE soft
+blob 8 3 12  1 1 1     CHERRY
+
+[cloud_window]
+box  2 0 0   12 4 2    A
+box  2 0 2   2 3 14    A
+box  12 0 2  2 3 14    A
+box  4 0 2   8 2 14    B shiny
+blob 8 1 16  5 2 5     A
+blob 8 2 16  3 1 3     B shiny
+box  7 2 2   2 1 14    A
+blob 2 3 3   2 1 2     A soft
+blob 14 3 3  2 1 2     A soft
+blob 4 3 20  3 1 2     A soft
+blob 9 3 22  4 1 2     A soft
+blob 13 3 19 2 1 2     A soft
+
+[candy_window]
+box  1 0 0   2 3 5     A
+box  1 0 5   2 3 5     B
+box  1 0 10  2 3 5     A
+box  1 0 15  2 3 5     B
+box  13 0 0  2 3 5     B
+box  13 0 5  2 3 5     A
+box  13 0 10 2 3 5     B
+box  13 0 15 2 3 5     A
+box  1 0 20  14 3 3    A
+box  3 0 0   10 4 3    B
+box  3 0 3   10 2 17   SKY shiny
+box  7 2 3   2 1 17    B
+blob 5 4 4   1 1 1     LIME shiny
+blob 8 4 4   1 1 1     MAGENTA shiny
+blob 11 4 4  1 1 1     LEMON shiny
+
+[goth_window]
+box  1 0 0   14 4 2    A
+box  2 0 2   2 3 15    A
+box  12 0 2  2 3 15    A
+box  3 0 17  2 3 3     A
+box  11 0 17 2 3 3     A
+box  4 0 20  3 3 2     A
+box  9 0 20  3 3 2     A
+box  6 0 22  4 3 2     A
+box  4 0 2   8 2 15    B shiny
+box  5 0 17  6 2 3     B shiny
+box  7 0 20  2 2 2     B shiny
+box  7 2 2   2 1 18    A
+box  4 2 8   8 1 1     A
+box  4 2 13  8 1 1     A
+
+[skull_window]
+box  2 0 0   12 4 2    A
+box  4 0 2   8 2 17    B shiny
+blob 3 2 5   2 1 2     A
+blob 3 2 11  2 1 2     A
+blob 3 2 17  2 1 2     A
+blob 13 2 5  2 1 2     A
+blob 13 2 11 2 1 2     A
+blob 13 2 17 2 1 2     A
+box  4 2 8   8 1 1     A
+box  4 2 13  8 1 1     A
+box  7 2 2   2 1 17    A
+blob 8 2 22  3 2 3     A
+blob 7 4 23  1 1 1     JET
+blob 9 4 23  1 1 1     JET
+
+[lava_window]
+box  1 0 0   14 4 3    A
+box  1 0 3   2 3 17    A
+box  13 0 3  2 3 17   A
+box  1 0 20  14 3 3    A
+box  3 0 3   10 2 17   B glow
+box  5 2 3   1 1 17    JET
+box  10 2 3  1 1 17   JET
+box  3 2 11  10 1 1    JET
+cone 4 1 23  1 3       A
+cone 8 1 23  1 4       A
+cone 12 1 23 1 3       A
+
+[vapor_window]
+box  1 0 0   14 4 1    A
+box  2 0 1   12 1 20   B shiny
+box  1 1 1   1 1 21    MAGENTA glow
+box  14 1 1  1 1 21    MAGENTA glow
+box  2 1 21  12 1 1    MAGENTA glow
+box  2 1 1   12 1 1    MAGENTA glow
+box  3 1 12  10 1 1    A
+box  3 1 15  10 1 1    A
+box  3 1 18  10 1 1    A
+blob 5 2 6   1 1 1     WHITE glow
+
+[picnic_window]
+box  2 0 3   12 1 19   SKY shiny
+box  1 0 3   1 3 20    WHITE
+box  14 0 3  1 3 20    WHITE
+box  1 0 22  14 3 2    WHITE
+box  2 1 7   3 1 15    B
+box  2 2 10  3 1 3     A
+box  2 2 16  3 1 3     A
+box  11 1 7  3 1 15    B
+box  11 2 10 3 1 3     A
+box  11 2 16 3 1 3     A
+box  1 1 0   14 3 3    ~WOOD
+blob 4 3 4   1 1 1     A
+blob 8 3 4   1 1 1     LEMON
+blob 12 3 4  1 1 1     LAVENDER
+
+[workshop_window]
+box  1 0 0   14 4 3    A
+box  1 0 3   2 3 17    A
+box  13 0 3  2 3 17   A
+box  1 0 20  14 3 3    A
+box  3 0 3   10 1 17   SKY shiny
+box  3 1 8   10 1 1    SILVER
+box  3 1 13  10 1 1    SILVER
+box  6 1 3   1 1 17    SILVER
+box  10 1 3  1 1 17   SILVER
+box  1 3 21  14 1 1    B
+blob 2 3 1   1 1 1     CHARCOAL
+blob 14 3 1  1 1 1     CHARCOAL
+blob 2 3 22  1 1 1     CHARCOAL
+blob 14 3 22 1 1 1     CHARCOAL

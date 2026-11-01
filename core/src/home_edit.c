@@ -405,10 +405,12 @@ int home_edit_undo(HomeEdit *e)
         e->undo_n--;
         u->op = HU_NONE;
         while (n-- > 0 && e->undo_n) undo_one(e);
+        home_room_skins_sync(&e->room);         /* (H4) a theme's fittings came back */
         e->gen++;
         return 1;
     }
     undo_one(e);
+    home_room_skins_sync(&e->room);
     e->gen++;
     return 1;
 }
@@ -511,12 +513,130 @@ int home_edit_paint(HomeEdit *e, int idx, int pa, int pb)
 
 int home_edit_walls(HomeEdit *e, int wallpaper, int floor, int wall_paint, int floor_paint)
 {
+    return home_edit_fixtures(e, wallpaper, floor, wall_paint, floor_paint, -1, -1);
+}
+
+/* ---- H4: door and window skins ----------------------------------------------------- */
+static int is_skin(const DoomoFurn *f, int role)
+{
+    return f && f->role == role && (f->flags2 & FF_PORTAL);
+}
+
+int home_skin_free(int furn)
+{
+    const DoomoFurn *f = home_furn(furn);
+    int k;
+    if (!f || !(f->flags2 & FF_PORTAL)) return 0;
+    for (k = 0; k < HOME_ROOM_COUNT; k++)
+        if (home_room_defs[k].door_furn == furn || home_room_defs[k].win_furn == furn) return 1;
+    for (k = 0; k < THEME_COUNT; k++)
+        if (doomo_home_themes[k].door == furn || doomo_home_themes[k].window == furn) return 1;
+    return home_furn_by_role(f->role) == furn;          /* the catalog's first: the default */
+}
+
+int home_skin_ok(int furn, int role)
+{
+    if (!is_skin(home_furn(furn), role)) return 0;
+    return !home_state() || home_skin_free(furn) || home_owned(furn) > 0;
+}
+
+int home_skin_next(int role, int cur, int dir)
+{
+    int n = home_furn_count(), k, f;
+    if (n <= 0) return cur;
+    if (cur < 0 || cur >= n) cur = dir > 0 ? n - 1 : 0;
+    for (k = 1; k <= n; k++) {
+        f = ((cur + (dir > 0 ? k : -k)) % n + n) % n;
+        if (home_skin_ok(f, role)) return f;
+    }
+    return cur;
+}
+
+static int find_role(const HomeRoom *r, int role)
+{
+    int i;
+    for (i = 0; i < r->nobj && i < HOME_OBJ_MAX; i++)
+        if (is_skin(home_furn(HO_FURN(&r->obj[i])), role)) return i;
+    return -1;
+}
+
+int home_room_door(const HomeRoom *r) { return find_role(r, FR_DOOR); }
+int home_room_window(const HomeRoom *r) { return find_role(r, FR_WINDOW); }
+
+int home_skin_code(int furn, int role)
+{
+    int i, rank = 0;
+    if (!is_skin(home_furn(furn), role)) return HSK_NONE;
+    for (i = 0; i < furn; i++)
+        if (is_skin(home_furn(i), role)) rank++;
+    return rank < HSK_NONE ? rank : HSK_NONE;
+}
+
+int home_skin_from_code(int code, int role)
+{
+    int i, n = home_furn_count();
+    if (code < 0 || code >= HSK_NONE) return -1;
+    for (i = 0; i < n; i++)
+        if (is_skin(home_furn(i), role) && code-- == 0) return i;
+    return -1;
+}
+
+void home_room_skins_sync(HomeRoom *r)
+{
+    int d = home_room_door(r), w = home_room_window(r);
+    r->door_skin = (uint8_t)(d < 0 ? HSK_NONE : home_skin_code(HO_FURN(&r->obj[d]), FR_DOOR));
+    r->window_skins = (uint8_t)(w < 0 ? HSK_NONE : home_skin_code(HO_FURN(&r->obj[w]), FR_WINDOW));
+}
+
+/* swap the door's / every window slot's piece (-1: keep), one HU_MOVE each:
+ * the slot, the height and a lamp-like state bit stay, the paints go back to
+ * the new piece's own; returns the undo entries pushed */
+static int skin_moves(HomeEdit *e, int door, int window)
+{
+    int i, n = 0;
+    if (!is_skin(home_furn(door), FR_DOOR)) door = -1;
+    if (!is_skin(home_furn(window), FR_WINDOW)) window = -1;
+    for (i = 0; i < e->room.nobj && i < HOME_OBJ_MAX; i++) {
+        HomeObj *o = &e->room.obj[i];
+        const DoomoFurn *f = home_furn(HO_FURN(o));
+        int to = is_skin(f, FR_DOOR) ? door : is_skin(f, FR_WINDOW) ? window : -1;
+        if (to < 0 || HO_FURN(o) == to) continue;
+        push_undo(e, HU_MOVE, i, o);
+        o->w0 = (uint16_t)((o->w0 & ~0x1FFu) | (unsigned)to);
+        o->pa = (uint8_t)((o->pa & 0xE0) | FURN_PAINT_DEFAULT);
+        o->pb = (uint8_t)((o->pb & 0xE0) | FURN_PAINT_DEFAULT);
+        n++;
+    }
+    if (n) home_room_skins_sync(&e->room);
+    return n;
+}
+
+int home_edit_skins(HomeEdit *e, int door, int window)
+{
+    int n;
     if (e->remove_only) return 0;
+    if (door >= 0 && !home_skin_ok(door, FR_DOOR)) door = -1;
+    if (window >= 0 && !home_skin_ok(window, FR_WINDOW)) window = -1;
+    n = skin_moves(e, door, window);
+    if (n > 1) push_group(e, n);
+    if (n) e->gen++;
+    return n;
+}
+
+int home_edit_fixtures(HomeEdit *e, int wallpaper, int floor, int wall_paint, int floor_paint,
+                       int door, int window)
+{
+    int n;
+    if (e->remove_only) return 0;
+    if (door >= 0 && !home_skin_ok(door, FR_DOOR)) door = -1;
+    if (window >= 0 && !home_skin_ok(window, FR_WINDOW)) window = -1;
     push_wall(e);
     if (wallpaper >= 0) e->room.wallpaper = (uint8_t)(wallpaper & 31);
     if (floor >= 0) e->room.floor = (uint8_t)(floor & 31);
     if (wall_paint >= 0) e->room.wall_paint = (uint8_t)(wall_paint & 31);
     if (floor_paint >= 0) e->room.floor_paint = (uint8_t)(floor_paint & 31);
+    n = skin_moves(e, door, window);
+    if (n) push_group(e, n + 1);                /* the walls and the fittings: one step */
     e->gen++;
     return 1;
 }
@@ -528,7 +648,7 @@ int home_edit_theme(HomeEdit *e, int theme)
 {
     const DoomoHomeTheme *t;
     uint64_t ma = 0, mb = 0;
-    int i;
+    int i, k;
     HomeState *s = home_state();
     if (theme < 0 || theme >= THEME_COUNT || e->remove_only) return 0;
     t = &doomo_home_themes[theme];
@@ -538,6 +658,7 @@ int home_edit_theme(HomeEdit *e, int theme)
     e->room.wall_paint = t->wall_paint;
     e->room.floor_paint = t->floor_paint;
     e->room.flags = (uint8_t)((e->room.flags & ~HRF_CEIL_MASK) | ((t->ceiling & 7) << HRF_CEIL_SHIFT));
+    k = skin_moves(e, t->door, t->window);        /* (H4) the theme's fittings come with it */
     for (i = 0; i < e->room.nobj && i < 40; i++) {
         HomeObj *o = &e->room.obj[i];
         const DoomoFurn *f = home_furn(HO_FURN(o));
@@ -553,7 +674,7 @@ int home_edit_theme(HomeEdit *e, int theme)
     }
     push_mask(e, HU_TMASK_A, ma);
     push_mask(e, HU_TMASK_B, mb);
-    push_group(e, 3);
+    push_group(e, 3 + k);
     if (s) s->theme = (uint8_t)theme;
     e->gen++;
     return 1;
@@ -810,6 +931,9 @@ int home_blueprint_save(int slot, const HomeRoom *r)
     s->bp[slot].nobj = 0;
     for (i = 0; i < r->nobj; i++)
         if (!home_obj_is_fixed(r, i)) s->bp[slot].obj[s->bp[slot].nobj++] = r->obj[i];
+    /* (H4) it has no fixed pieces: the header keeps the room's fittings */
+    s->bp[slot].door_skin = r->door_skin;
+    s->bp[slot].window_skins = r->window_skins;
     s->ver_flags |= HVF_TOUCHED;
     return s->bp[slot].nobj > 0;
 }
@@ -855,13 +979,17 @@ int home_edit_blueprint(HomeEdit *e, int bp, HomePlan *plan)
     for (i = e->room.nobj - 1; i >= 0; i--)
         if (!home_obj_is_fixed(&e->room, i)) remove_at(&e->room, i);
     if (saved) {
+        int d = home_skin_from_code(saved->door_skin, FR_DOOR), w = home_skin_from_code(saved->window_skins, FR_WINDOW);
         e->room.wallpaper = saved->wallpaper; e->room.floor = saved->floor;
         e->room.wall_paint = saved->wall_paint; e->room.floor_paint = saved->floor_paint;
+        /* (H4) the fittings it was saved with, where you still may */
+        skin_moves(e, d >= 0 && home_skin_ok(d, FR_DOOR) ? d : -1, w >= 0 && home_skin_ok(w, FR_WINDOW) ? w : -1);
     } else if (theme < THEME_COUNT) {
         const DoomoHomeTheme *t = &doomo_home_themes[theme];
         e->room.wallpaper = t->wallpaper; e->room.floor = t->floor;
         e->room.wall_paint = t->wall_paint; e->room.floor_paint = t->floor_paint;
         e->room.flags = (uint8_t)((e->room.flags & ~HRF_CEIL_MASK) | ((t->ceiling & 7) << HRF_CEIL_SHIFT));
+        skin_moves(e, t->door, t->window);       /* (H4) and the theme's fittings */
         if (s) s->theme = (uint8_t)theme;
     }
     plan->first = e->room.nobj;

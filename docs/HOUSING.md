@@ -30,6 +30,41 @@ Park Plot (10x8, open). Each room has fixed slots from `home_room_defs[]`:
 the door (wall A), up to two windows and the Living Room's hearth. A room
 record is 10 B plus 6 B per object (at most 40).
 
+**The flats (H4).** Towers 7B and the Hell Pits flat are designed rooms, not
+the cottage's template with the pattern index as its shell. 7B is a
+ten-years-empty Hillvile flat: sky wainscot over a caramel herringbone
+parquet, a peach cornice, the Apartment Door and one window on wall A at
+x = 2 (it faces the Wall), so wall B is free for S116's tally wall
+(`layouts_a.txt` `towers_7b`). It comes **furnished in dust**: the tenant's
+wardrobe, sofa (its dust sheet shaped like a person), teacup table,
+armchair and bed under silver-and-white sheets, the bed where S116 wants
+it. Five pieces, so it is not COSY until S115's contest makes it so. The
+Pits flat is Hellvile goth: grape stone over charcoal flagstones, a
+vape-purple cornice, the Gothic Door and a Lancet Window on wall B at
+y = 2 (Mascotty's window, `mascotty_room`), with the landlord's basics: a
+Hellvile welcome mat inside the door, an ember brazier where Mascotty
+wants her lamp, a tombstone end table and an imp stool.
+`home_room_default()` is the template plus these pieces;
+`home_room_load()` opens either flat the first time it loads (S114's
+`push home -2`, Ep 4.4's flat) and `home_unlock_room()` grants every piece
+it places, so what S114's remove mode clears lands in storage ("Keep what
+you find"). Visits keep the bare templates: every Hillvile home is a Towers
+flat (the Apartment Door, a wood window on wall A) and every Hellvile home
+a Pits flat (the Gothic Door and a lancet window). A flat's door is its
+front door: in Live mode it leads out, not into the cottage.
+
+**Fittings (H4).** The door and the window slots keep their place and
+change their piece: any `FF_PORTAL` piece with role `DOOR` / `WINDOW`. The
+rooms' own fittings and each theme's (`themes.txt` `door` / `window`) are
+free in every room; the others (HomeMart's Heart Door and Round,
+Stained-Glass and Bone-Rimmed windows; Wisp's Daytime Window) once you own
+one, and one owned skin dresses any number of slots (`home_skin_ok()`).
+The pieces in the room are the truth; the header's `door_skin` and
+`window_skins` record them (`home_room_skins_sync()`: the piece's rank among
+the catalog's doors / windows, 0 = the Pink Front Door / the Wood Window,
+0xFF = no such slot; the window slots are skinned alike, the first one's is
+kept), so a saved blueprint, which keeps no fixed pieces, carries them.
+
 `HOME` v2 (SPEC R9, R10, C9) worst case **3,432 B**: header 8, 9 rooms,
 `owned` nibbles 192, `seen_new` 48, 32 gifts, 1000 visited bits, the haunt
 16 B, **two saved blueprints** (room records), **16 photo recipes** (8 B
@@ -51,7 +86,8 @@ surface at one of four half-tile sub-positions; wall pieces only on wall A
 (y = 0) or B (x = 0), never overlapping another in both span and height;
 the Garden takes fence pieces only on its edges. Kevin's rule: nothing
 stands on the two tiles in front of the hearth and nothing hangs over its
-mouth. The door's own tile stays clear. Windows swap into window slots.
+mouth. The door's own tile stays clear. Windows swap into window slots
+(the Walls panel re-skins them all at once, H4).
 Ch3's Shelter pieces: a **welded plate** snaps over a window slot that has
 a window (and no plate yet); the **toaster turret** stands on a window
 slot's floor tile. `FF_FIXED` decals (the wallpaper eye) are placed only by
@@ -73,9 +109,14 @@ own are placed.
 ## 3. Themes, blueprints, photos, decorate-for
 
 **Themes** (`themes.txt`, 10): wallpaper and floor patterns with their
-paints, the two furniture paints, a ceiling tint and an accent. Applying a
-theme recolours only the *free* paint slots (those still on the catalog
-default), so a piece the player painted keeps its colour.
+paints, the two furniture paints, a ceiling tint, an accent and (H4) the
+theme's fittings, a door and a window skin made for it (Cloud Door,
+Candy Door, Cottage Door, Gothic Door, Bone Door, Furnace Door, Neon
+Slider, Screen Door, Hatch Door; Pastel keeps the Pink Front Door, Cottage
+the Wood Window). Applying a theme puts them on the door and every window
+slot and recolours only the *free* paint slots (those still on the catalog
+default), so a piece the player painted keeps its colour; walls, fittings
+and paints undo as one step.
 
 **Blueprints** (`blueprints.txt`, 12 in ROM: one per theme, "Nana's
 Starter" and "Shelter"; plus two slots saved in `HOME`). Applying one puts
@@ -84,7 +125,9 @@ you own (floor pieces, then wall pieces, then smalls); the rest come back
 as ghosts (`HomePlan.ghost[]`, status MISSING or BLOCKED), which the scene
 draws as grey outlines with a "Buy at HomeMart" hint. A complete one grants
 the "full blueprint" trophy. Every ROM blueprint applies in its own room
-with nothing blocked (`home_blueprints_apply`).
+with nothing blocked (`home_blueprints_apply`). A themed ROM blueprint puts
+its theme's fittings on; a saved one the fittings it was saved with,
+where you still may (H4).
 
 **Photos** are 8-byte recipes, never pixels: place (a citizen 0..999 or
 1000 + room), view, zoom, camera filter, daylight, three stickers (kind,
@@ -170,6 +213,12 @@ One scene, five modes over one working room (`HomeEdit` and its undo ring):
 The START menu: Catalog, Live / Build mode, Score, then (Build) Walls,
 Themes, Blueprints, then Photo, Rooms (own home), Leave. A visit's menu is
 Give a gift, Photo, Leave (no gift in the sealed room or a vacant flat).
+The Walls panel's rows: Wallpaper, Wall paint, Floor, Floor paint, Door,
+Windows, Paint it!; L / R on Door and Windows step through the skins you
+may put on, and the 320x240 panel shows both below the rows (the PS1 draws
+their maquettes). "Paint it!" is one undo step. The Themes list shows each
+theme's swatches and, where the panel has room, its door and window. The
+rubber band is the owner's: a visit has none.
 
 **Arguments** (`home.h`): `HOME_ARG_OWN(k)` (-1 = the cottage),
 `HOME_ARG_VISIT(id)`, `HOME_ARG_VISIT_AS(id, kind)` (a visit shown as
@@ -349,7 +398,8 @@ tutorials ran, the Black Market found) are set without a toast.
   other platforms read the plain strings).
 * **Runner scripts** (`core/tests/scripts/home_*.txt`, both resolutions):
   `home_tutorial`, `home_editor`, `home_rooms`, `home_visit`,
-  `home_haunt`, `home_defend`, `home_mart`, `home_gallery`. The runner's
+  `home_haunt`, `home_defend`, `home_mart`, `home_gallery`, `home_flats`
+  (H4: 7B in dust, a theme's fittings, the Pits flat's Walls panel). The runner's
   `home-room R` (move in and open a room), `clock H M` and `money N` set
   the scene up; the PS1 harness plays `clock` and `money` too
   (`home-room` is native-only: it would pull `home.c` resident).

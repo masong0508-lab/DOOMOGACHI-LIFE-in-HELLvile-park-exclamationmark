@@ -1,0 +1,64 @@
+# assert-no-stubs
+# (H4) the designed flats (home.c home_room_defs[], home_room_default): Towers
+# 7B is a ten-years-empty Hillvile flat furnished in dust (S114 clears it in
+# remove mode), the Hell Pits flat is Hellvile goth with the landlord's
+# basics. The first time each one opens it is yours, pieces and all; then a
+# theme on 7B and the Walls panel on the Pits flat (its fittings).
+scene HOME -2
+wait 3
+shot towers_iris
+wait 20
+expect-scene HOME
+shot towers_dust
+# the view turned once
+press R
+wait 14
+shot towers_view1
+press L
+wait 14
+# the Lava theme: its Furnace Door and Grate Window
+press START
+wait 14
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+wait 2
+press A
+wait 14
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+wait 4
+shot towers_theme_lava
+press A
+wait 24
+shot towers_lava
+# the Pits flat
+scene HOME -3
+wait 23
+expect-scene HOME
+shot pits_flat
+press START
+wait 14
+press DOWN
+press DOWN
+press DOWN
+wait 2
+press A
+wait 14
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+wait 4
+shot pits_walls_door
+press LEFT
+wait 4
+shot pits_walls_door_prev
+press B
+wait 6
+expect-scene HOME

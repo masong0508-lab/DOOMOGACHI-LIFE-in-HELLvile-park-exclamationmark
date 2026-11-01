@@ -20,18 +20,53 @@ HomeState *home_state(void) { return NULL; }
 #endif
 
 /* ---- the rooms (HF sec.1.1, R10) ----------------------------------------------
- *              name             w  d  kind          door        nwin  windows            hearth  wp fl wall_paint      floor_paint   dim */
+ * (H4) Towers 7B and the Hell Pits flat have shells and fittings of their own:
+ * 7B is a ten-years-empty Hillvile flat (sky wainscot over a caramel parquet,
+ * the apartment door, one window on wall A that faces the Wall, so the tally
+ * wall goes on wall B: layouts_a.txt `towers_7b`); the Pits flat is Hellvile
+ * goth (grape stone over charcoal flagstones, the Gothic door, a lancet window
+ * on wall B for Mascotty's room, layouts_a.txt `mascotty_room`). Visits use
+ * these two templates for every Hillvile / Hellvile home.
+ *              name             w  d  kind          door        nwin  windows            hearth  wp fl wall_paint      floor_paint   dim  door                 window              ceiling */
 const HomeRoomDef home_room_defs[HOME_ROOM_COUNT] = {
-    { "Living Room",    6, 6, ROOMK_WALLS,  HW_A, 4, 2, { HW_A, HW_B }, { 1, 4 }, 1,   0, 0, PAINT_BUBBLEGUM, PAINT_CARAMEL, 0 },
-    { "Bedroom",        6, 6, ROOMK_WALLS,  HW_A, 4, 1, { HW_B, 0 },    { 2, 0 }, 0xFF, 1, 1, PAINT_LAVENDER, PAINT_HONEY, 0 },
-    { "Kitchen",        8, 6, ROOMK_WALLS,  HW_A, 6, 1, { HW_A, 0 },    { 2, 0 }, 0xFF, 2, 2, PAINT_MINT, PAINT_WHITE, 0 },
-    { "Hell-Cellar",    8, 8, ROOMK_WALLS,  HW_A, 1, 0, { 0, 0 },       { 0, 0 }, 0xFF, 3, 3, PAINT_CHARCOAL, PAINT_RUST, 6 },
-    { "Garden",         8, 6, ROOMK_GARDEN, HW_A, 3, 0, { 0, 0 },       { 0, 0 }, 0xFF, 4, 4, PAINT_SKY, PAINT_LIME, 0 },
-    { "Roof Annex",     6, 6, ROOMK_WALLS,  HW_A, 4, 1, { HW_B, 0 },    { 2, 0 }, 0xFF, 5, 5, PAINT_BONE, PAINT_CHOCOLATE, 0 },
-    { "Towers 7B",      6, 6, ROOMK_WALLS,  HW_A, 4, 1, { HW_B, 0 },    { 2, 0 }, 0xFF, 6, 6, PAINT_SILVER, PAINT_CARAMEL, 0 },
-    { "Hell Pits Flat", 6, 6, ROOMK_WALLS,  HW_A, 4, 1, { HW_B, 0 },    { 2, 0 }, 0xFF, 7, 7, PAINT_GRAPE, PAINT_CHARCOAL, 0 },
-    { "Park Plot",     10, 8, ROOMK_OPEN,   HW_A, 5, 0, { 0, 0 },       { 0, 0 }, 0xFF, 4, 4, PAINT_SKY, PAINT_FOREST, 0 },
+    { "Living Room",    6, 6, ROOMK_WALLS,  HW_A, 4, 2, { HW_A, HW_B }, { 1, 4 }, 1,   0, 0, PAINT_BUBBLEGUM, PAINT_CARAMEL, 0, FURN_PINK_DOOR,      FURN_WOOD_WINDOW,   0 },
+    { "Bedroom",        6, 6, ROOMK_WALLS,  HW_A, 4, 1, { HW_B, 0 },    { 2, 0 }, 0xFF, 1, 1, PAINT_LAVENDER, PAINT_HONEY, 0,   FURN_PINK_DOOR,      FURN_WOOD_WINDOW,   0 },
+    { "Kitchen",        8, 6, ROOMK_WALLS,  HW_A, 6, 1, { HW_A, 0 },    { 2, 0 }, 0xFF, 2, 2, PAINT_MINT, PAINT_WHITE, 0,       FURN_PINK_DOOR,      FURN_WOOD_WINDOW,   0 },
+    { "Hell-Cellar",    8, 8, ROOMK_WALLS,  HW_A, 1, 0, { 0, 0 },       { 0, 0 }, 0xFF, 3, 3, PAINT_CHARCOAL, PAINT_RUST, 6,    FURN_PINK_DOOR,      FURN_WOOD_WINDOW,   0 },
+    { "Garden",         8, 6, ROOMK_GARDEN, HW_A, 3, 0, { 0, 0 },       { 0, 0 }, 0xFF, 4, 4, PAINT_SKY, PAINT_LIME, 0,         FURN_PINK_DOOR,      FURN_WOOD_WINDOW,   0 },
+    { "Roof Annex",     6, 6, ROOMK_WALLS,  HW_A, 4, 1, { HW_B, 0 },    { 2, 0 }, 0xFF, 5, 5, PAINT_BONE, PAINT_CHOCOLATE, 0,   FURN_PINK_DOOR,      FURN_WOOD_WINDOW,   0 },
+    { "Towers 7B",      6, 6, ROOMK_WALLS,  HW_A, 4, 1, { HW_A, 0 },    { 2, 0 }, 0xFF, 2, 3, PAINT_SKY, PAINT_CARAMEL, 0,      FURN_APARTMENT_DOOR, FURN_WOOD_WINDOW,   3 },
+    { "Hell Pits Flat", 6, 6, ROOMK_WALLS,  HW_A, 4, 1, { HW_B, 0 },    { 2, 0 }, 0xFF, 6, 5, PAINT_GRAPE, PAINT_CHARCOAL, 0,   FURN_GOTH_DOOR,      FURN_GOTH_WINDOW,   4 },
+    { "Park Plot",     10, 8, ROOMK_OPEN,   HW_A, 5, 0, { 0, 0 },       { 0, 0 }, 0xFF, 4, 4, PAINT_SKY, PAINT_FOREST, 0,       FURN_PINK_DOOR,      FURN_WOOD_WINDOW,   0 },
 };
+
+/* (H4) the designed pieces of the two flats (home_room_default): x, y, the
+ * save's rotation (0 S, 1 E, 2 N, 3 W) and paints (FURN_PAINT_DEFAULT = the
+ * catalog's). 7B is "furnished in dust" (S114: remove mode clears it, "Keep
+ * what you find"): the tenant's sofa, armchair, table, bed and wardrobe under
+ * silver-and-white dust sheets (the one on the sofa is shaped like a person);
+ * the bed stands where the S116 layout wants it. Five pieces: COSY wants six
+ * (home_score.c), and making 7B cosy is S115's job.
+ * The Pits flat comes with the landlord's basics: the welcome mat inside the
+ * door, a brazier where Mascotty wants her lamp, a stool and an end table. */
+typedef struct HomeDefPiece { uint16_t furn; uint8_t x, y, rot, dust; } HomeDefPiece;
+static const HomeDefPiece def_towers[] = {
+    { FURN_PASTEL_WARDROBE, 0, 0, 1, 1 }, { FURN_MARSHMALLOW_SOFA, 0, 3, 1, 1 },
+    { FURN_TEACUP_TABLE, 2, 3, 0, 1 },    { FURN_COMFY_ARMCHAIR, 2, 5, 2, 1 },
+    { FURN_SINGLE_BED, 4, 1, 0, 1 },
+};
+static const HomeDefPiece def_pits[] = {
+    { FURN_HELL_WELCOME_MAT, 4, 1, 0, 0 }, { FURN_EMBER_BRAZIER, 5, 4, 0, 0 },
+    { FURN_TOMBSTONE_TABLE, 0, 5, 1, 0 },  { FURN_IMP_STOOL, 1, 5, 3, 0 },
+};
+
+static int def_pieces(int room, const HomeDefPiece **out)
+{
+    if (room == HOME_ROOM_TOWERS_7B) { *out = def_towers; return (int)(sizeof(def_towers) / sizeof(def_towers[0])); }
+    if (room == HOME_ROOM_PITS_FLAT) { *out = def_pits; return (int)(sizeof(def_pits) / sizeof(def_pits[0])); }
+    *out = NULL;
+    return 0;
+}
 
 /* ---- ownership ------------------------------------------------------------- */
 int home_owned(int furn)
@@ -73,9 +108,12 @@ int home_room_open(int room)
     return (s->room[room].flags & HRF_OPEN) != 0;
 }
 
-static void put_fixed(HomeRoom *out, int role, int wall, int at, int z)
+/* the room's own fitting `furn`, or the catalog's first piece with the role
+ * (a hand-written test catalog has no FURN_* ids) */
+static void put_fixed(HomeRoom *out, int furn, int role, int wall, int at, int z)
 {
-    int f = home_furn_by_role(role);
+    const DoomoFurn *g = home_furn(furn);
+    int f = g && g->role == role && (g->flags2 & FF_PORTAL) ? furn : home_furn_by_role(role);
     HomeObj *o;
     if (f < 0 || out->nobj >= HOME_OBJ_MAX) return;
     o = &out->obj[out->nobj++];
@@ -103,19 +141,54 @@ void home_room_template(int room, HomeRoom *out)
     out->floor = 0xFF;
     out->wall_paint = 0xFF;
     out->floor_paint = 0xFF;
-    out->flags = HRF_OPEN | HRF_LIGHTS;
+    out->flags = (uint8_t)(HRF_OPEN | HRF_LIGHTS | ((d->ceiling & 7) << HRF_CEIL_SHIFT));
     out->name = (uint8_t)room;
-    put_fixed(out, FR_DOOR, d->door_wall, d->door_at, 0);
-    for (i = 0; i < d->nwin && i < 2; i++) put_fixed(out, FR_WINDOW, d->win_wall[i], d->win_at[i], 6);
-    if (d->hearth_at != 0xFF) put_fixed(out, FR_HEARTH, HW_B, d->hearth_at, 0);
+    put_fixed(out, d->door_furn, FR_DOOR, d->door_wall, d->door_at, 0);
+    for (i = 0; i < d->nwin && i < 2; i++) put_fixed(out, d->win_furn, FR_WINDOW, d->win_wall[i], d->win_at[i], 6);
+    if (d->hearth_at != 0xFF) put_fixed(out, FURN_COTTAGE_HEARTH, FR_HEARTH, HW_B, d->hearth_at, 0);
+    home_room_skins_sync(out);
+}
+
+/* the designed pieces on the template (floor pieces and rugs; the tests check
+ * that each one fits); `grant` gives the player each one. A hand-written test
+ * catalog has none of these ids: nothing is placed. */
+static void furnish(int room, HomeRoom *out, int grant)
+{
+    const HomeDefPiece *p;
+    int n = def_pieces(room, &p), i;
+    for (i = 0; i < n && out->nobj < HOME_OBJ_MAX; i++) {
+        const DoomoFurn *f = home_furn(p[i].furn);
+        HomeObj *o;
+        if (!f) continue;
+        o = &out->obj[out->nobj++];
+        o->w0 = HO_W0(p[i].furn, p[i].rot, 0);
+        o->pos = HO_POS(p[i].x, p[i].y);
+        o->z = 0;
+        /* a dust sheet: silver over white wherever the piece takes paint */
+        o->pa = (uint8_t)(p[i].dust && f->paint_a != 0xFF ? PAINT_SILVER : FURN_PAINT_DEFAULT);
+        o->pb = (uint8_t)(p[i].dust && f->paint_b != 0xFF ? PAINT_WHITE : FURN_PAINT_DEFAULT);
+        if (grant) home_grant(p[i].furn);
+    }
+}
+
+void home_room_default(int room, HomeRoom *out)
+{
+    if (room < 0 || room >= HOME_ROOM_COUNT) room = 0;
+    home_room_template(room, out);
+    furnish(room, out, 0);
 }
 
 void home_room_load(int room, HomeRoom *out)
 {
     HomeState *s = home_state();
     if (room < 0 || room >= HOME_ROOM_COUNT) room = 0;
+    /* (H4) the flats are yours the moment you walk in (S114, Ep 4.4): they
+     * open with their designed pieces, granted */
+    if (s && !(s->room[room].flags & HRF_OPEN) && (room == HOME_ROOM_TOWERS_7B || room == HOME_ROOM_PITS_FLAT))
+        home_unlock_room(room);
     if (s && (s->room[room].flags & HRF_OPEN)) *out = s->room[room];
-    else home_room_template(room, out);
+    else if (s) home_room_template(room, out);
+    else home_room_default(room, out);           /* the GBA showroom: as designed */
 }
 
 void home_room_store(int room, const HomeRoom *in)
@@ -124,6 +197,7 @@ void home_room_store(int room, const HomeRoom *in)
     if (!s || room < 0 || room >= HOME_ROOM_COUNT) return;
     s->room[room] = *in;
     s->room[room].flags |= HRF_OPEN;
+    home_room_skins_sync(&s->room[room]);
     s->ver_flags |= HVF_TOUCHED;
 }
 
@@ -131,7 +205,10 @@ void home_unlock_room(int room)
 {
     HomeState *s = home_state();
     if (!s || room < 0 || room >= HOME_ROOM_COUNT) return;
-    if (!(s->room[room].flags & HRF_OPEN)) home_room_template(room, &s->room[room]);
+    if (!(s->room[room].flags & HRF_OPEN)) {
+        home_room_template(room, &s->room[room]);
+        furnish(room, &s->room[room], 1);
+    }
     s->ver_flags |= HVF_TOUCHED;
 }
 

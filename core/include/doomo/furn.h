@@ -152,6 +152,10 @@ typedef struct DoomoHomeTheme {
     uint8_t wall_paint, floor_paint;   /* PAINT_*                                   */
     uint8_t paint_a, paint_b;          /* what free paint slots are recoloured to    */
     uint8_t ceiling, accent;           /* ceiling tint 0..7, an accent PAINT_*      */
+    /* (H4, add-only) the theme's fittings: the door and window skins it puts
+     * on the room's fixed door and window slots (FR_DOOR / FR_WINDOW
+     * FF_PORTAL pieces; themes.txt `door` / `window`) */
+    uint16_t door, window;
 } DoomoHomeTheme;
 /* One piece of a blueprint or a layout. furn is a furniture id, or
  * HOME_PIECE_ROLE | FR_* for "any piece with this role" (layouts). rot uses

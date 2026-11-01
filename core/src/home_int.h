@@ -49,6 +49,13 @@ typedef struct HomeObj {
 #define HOS_OFF       0x20  /* pa state: a lamp switched off                     */
 #define HOS_OPEN      0x40  /* pa state: a door open / curtains drawn            */
 
+/* (H4) door_skin / window_skins record the fittings: the rank of the door
+ * piece among the catalog's FR_DOOR pieces (0 = the first, the Pink Front
+ * Door) and of the windows' piece among the FR_WINDOW pieces (0 = the Wood
+ * Window; the Walls menu and the themes skin every window slot alike, the
+ * first slot's is the one kept), HSK_NONE where the room has no such slot.
+ * The pieces in the room are the truth; home_room_skins_sync() writes the
+ * bytes, and a saved blueprint (no fixed pieces) carries them. */
 typedef struct HomeRoom {
     uint8_t wallpaper, floor;        /* pattern 0..31, 0xFF = the room's default    */
     uint8_t wall_paint, floor_paint; /* PAINT_*, 0xFF = default                     */
@@ -58,6 +65,7 @@ typedef struct HomeRoom {
     HomeObj obj[HOME_OBJ_MAX];
 } HomeRoom;                          /* 250 B in RAM; nobj x 6 + 10 on disk          */
 DOOMO_STATIC_ASSERT(sizeof(HomeRoom) == HOME_SZ_ROOM_MAX, home_room_is_250_bytes);
+#define HSK_NONE 0xFF                /* door_skin / window_skins: no such slot      */
 enum { HRF_LIGHTS = 1, HRF_CURTAINS = 2, HRF_HAUNTED = 4, HRF_PLATED = 8,
        HRF_CEIL_SHIFT = 4, HRF_CEIL_MASK = 0x70, HRF_OPEN = 0x80 /* unlocked */ };
 #define HR_W(r) (((r)->size & 15) + 1)
@@ -123,6 +131,10 @@ typedef struct HomeRoomDef {
     uint8_t hearth_at;               /* along wall B, 0xFF = none (the Living Room)  */
     uint8_t wallpaper, floor, wall_paint, floor_paint;   /* defaults                 */
     uint8_t dim;                     /* light level before lamps (Cellar 6), 0 = day */
+    /* (H4) the fittings the room comes with: its door and window skins
+     * (FR_DOOR / FR_WINDOW FF_PORTAL pieces) and its ceiling tint 0..7 */
+    uint16_t door_furn, win_furn;
+    uint8_t ceiling;
 } HomeRoomDef;
 extern const HomeRoomDef home_room_defs[HOME_ROOM_COUNT];
 
@@ -142,6 +154,12 @@ void home_room_store(int room, const HomeRoom *in);
 /* An empty room of `room`'s template with its fixed pieces (door, windows,
  * hearth) placed. */
 void home_room_template(int room, HomeRoom *out);
+/* (H4) The room as the player first gets it: the template plus the designed
+ * pieces of Towers 7B (the tenant's things under dust sheets, S114) and the
+ * Hell Pits flat (the landlord's basics). home_unlock_room() places them and
+ * grants each one, so what you clear goes to storage; home_room_load() opens
+ * those two homes the first time they load. Visits keep the bare template. */
+void home_room_default(int room, HomeRoom *out);
 /* Owned count of `furn` (0..15) and how many are placed in the rooms
  * (the working copy `work` of room `work_room` replaces that room). */
 int  home_owned(int furn);
@@ -231,6 +249,27 @@ int  home_edit_group_remove(HomeEdit *e, const uint8_t *idx, int n);   /* to sto
 typedef struct HomeClip { uint8_t n; HomeObj o[HOME_SEL_MAX]; } HomeClip;   /* relative pos */
 int  home_edit_copy(const HomeEdit *e, const uint8_t *idx, int n, HomeClip *c);
 int  home_edit_paste(HomeEdit *e, const HomeClip *c, int x, int y);    /* pieces placed */
+
+/* ---- H4: door and window skins (themes.txt `door` / `window`) -------------------
+ * The fixed door and the window slots keep their place but change their piece:
+ * any FF_PORTAL piece with role FR_DOOR / FR_WINDOW. The rooms' own fittings
+ * (home_room_defs[]) and the themes' are free; the others (HomeMart's Heart
+ * Door and windows, gifts) once you own one. Without a house state (the GBA
+ * showroom) every skin is free. */
+int  home_skin_free(int furn);                 /* a room's or a theme's fitting  */
+int  home_skin_ok(int furn, int role);         /* may go on that slot now        */
+int  home_skin_next(int role, int cur, int dir);   /* the next one (wraps), cur when alone */
+int  home_room_door(const HomeRoom *r);         /* index of the door piece, -1    */
+int  home_room_window(const HomeRoom *r);       /* index of the first window, -1  */
+int  home_skin_code(int furn, int role);        /* rank among the role's pieces, HSK_NONE */
+int  home_skin_from_code(int code, int role);   /* the piece, -1                  */
+void home_room_skins_sync(HomeRoom *r);         /* door_skin / window_skins       */
+/* Re-skin the door and every window slot (-1 keeps it) as one undo step;
+ * returns the pieces changed. */
+int  home_edit_skins(HomeEdit *e, int door, int window);
+/* The Walls menu's "Paint it!": walls, floor and both fittings, one undo step. */
+int  home_edit_fixtures(HomeEdit *e, int wallpaper, int floor, int wall_paint, int floor_paint,
+                        int door, int window);
 
 /* ---- H1 M3: blueprints (12 ROM + 2 saved) ---------------------------------- */
 enum { HPS_PLACED, HPS_MISSING, HPS_BLOCKED };

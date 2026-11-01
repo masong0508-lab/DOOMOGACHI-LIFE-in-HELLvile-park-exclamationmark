@@ -6,6 +6,7 @@
  * real catalog gets its own validity test. */
 #include "test.h"
 #include "../src/home_int.h"
+#include "../gen/furn_ids.h"
 
 /* ---- a tiny catalog ------------------------------------------------------- */
 enum { T_DOOR, T_WINDOW, T_HEARTH, T_TABLE, T_CHAIR, T_VASE, T_RUG, T_POSTER,
@@ -424,7 +425,7 @@ TEST(home_catalog_valid)
 {
     int i, n = doomo_furn_count, door = 0, window = 0, hearth = 0, starters = 0;
     if (n == 0) return;                      /* furngen (H4) not linked yet */
-    CHECK(n >= 306 && n <= 330 && n <= FURN_MAX);
+    CHECK(n >= 349 && n <= FURN_MAX);
     for (i = 0; i < n; i++) {
         const DoomoFurn *f = &doomo_furn[i];
         CHECK_MSG(f->name && f->name[0] && strlen(f->name) <= 20, "row %d name", i);
@@ -445,10 +446,21 @@ TEST(home_catalog_valid)
     }
     CHECK(door >= 1 && window >= 1 && hearth >= 1 && starters >= 2);
     CHECK_EQ(home_furn_by_role(FR_DOOR), 0);     /* the first door is the default */
+    /* (H4) the fittings: every room's and every theme's door and window is a
+     * skin of its role, free, and never on sale (they come with the theme) */
+    for (i = 0; i < HOME_ROOM_COUNT + THEME_COUNT; i++) {
+        int d = i < HOME_ROOM_COUNT ? home_room_defs[i].door_furn : doomo_home_themes[i - HOME_ROOM_COUNT].door;
+        int w = i < HOME_ROOM_COUNT ? home_room_defs[i].win_furn : doomo_home_themes[i - HOME_ROOM_COUNT].window;
+        CHECK_MSG(d < n && doomo_furn[d].role == FR_DOOR && (doomo_furn[d].flags2 & FF_PORTAL), "fitting %d door", i);
+        CHECK_MSG(w < n && doomo_furn[w].role == FR_WINDOW && (doomo_furn[w].flags2 & FF_PORTAL), "fitting %d window", i);
+        CHECK(home_skin_free(d) && home_skin_free(w));
+        CHECK_MSG(!doomo_furn[d].price && !doomo_furn[w].price, "fitting %d is for sale", i);
+    }
+    CHECK(!home_skin_free(FURN_PINK_DOOR_HEARTS) && doomo_furn[FURN_PINK_DOOR_HEARTS].price > 0);
+    CHECK(!home_skin_free(FURN_STAINED_WINDOW) && !home_skin_free(FURN_CUPCAKE_LAMP));
 }
 
 /* ---- H1 M3: themes, blueprints, photos, groups, half tiles, the haunting ------------ */
-#include "../gen/furn_ids.h"
 
 static void own_set(const DoomoHomeSet *b)
 {
@@ -746,4 +758,206 @@ TEST(home_decorate_for_layouts)
     CHECK_EQ(p_full, 8);
     CHECK_EQ(home_decorate_for(1, 1), 8);           /* house_api serves the cache */
     CHECK_EQ(home_decorate_for(2, 1), 0);
+}
+
+/* ---- H4: the fittings (door and window skins) and the designed flats -------------- */
+static int count_role(const HomeRoom *r, int role, int furn)
+{
+    int i, n = 0;
+    for (i = 0; i < r->nobj; i++) {
+        const DoomoFurn *f = home_furn(HO_FURN(&r->obj[i]));
+        if (f && f->role == role && (f->flags2 & FF_PORTAL)) n += furn < 0 || HO_FURN(&r->obj[i]) == furn;
+    }
+    return n;
+}
+
+TEST(home_theme_fittings)
+{
+    static HomeEdit e;
+    HomeRoom before;
+    HomePlan plan;
+    int t, d;
+    test_reset();
+    home_reset();
+    home_move_in();
+    home_edit_begin(&e, HOME_ROOM_LIVING);
+    before = e.room;
+    d = home_room_door(&e.room);
+    CHECK(d >= 0 && HO_FURN(&e.room.obj[d]) == FURN_PINK_DOOR);
+    CHECK_EQ(count_role(&e.room, FR_WINDOW, FURN_WOOD_WINDOW), 2);
+    CHECK_EQ(e.room.door_skin, 0);                     /* the first of each role */
+    CHECK_EQ(e.room.window_skins, 0);
+    for (t = 0; t < THEME_COUNT; t++) {
+        const DoomoHomeTheme *th = &doomo_home_themes[t];
+        CHECK(home_edit_theme(&e, t));
+        CHECK_EQ(HO_FURN(&e.room.obj[d]), th->door);  /* the same slot, the theme's piece */
+        CHECK_EQ(e.room.obj[d].pos, before.obj[d].pos);
+        CHECK_EQ(count_role(&e.room, FR_WINDOW, th->window), 2);
+        CHECK_EQ(home_skin_from_code(e.room.door_skin, FR_DOOR), th->door);
+        CHECK_EQ(home_skin_from_code(e.room.window_skins, FR_WINDOW), th->window);
+        CHECK(home_edit_undo(&e));                     /* walls, fittings, paints: one step */
+        CHECK(memcmp(&before, &e.room, sizeof(before)) == 0);
+    }
+    /* a themed blueprint (Bone Parlour) brings its theme's fittings */
+    CHECK_EQ(doomo_home_blueprints[6].theme, THEME_BONE);
+    home_edit_blueprint(&e, 6, &plan);
+    CHECK_EQ(count_role(&e.room, FR_DOOR, FURN_BONE_DOOR), 1);
+    CHECK_EQ(count_role(&e.room, FR_WINDOW, FURN_SKULL_WINDOW), 2);
+    /* the Cellar has no window slot: the theme re-skins the door alone */
+    home_unlock_room(HOME_ROOM_CELLAR);
+    home_edit_begin(&e, HOME_ROOM_CELLAR);
+    CHECK_EQ(e.room.window_skins, HSK_NONE);
+    CHECK(home_edit_theme(&e, THEME_LAVA));
+    CHECK_EQ(count_role(&e.room, FR_DOOR, FURN_LAVA_DOOR), 1);
+    CHECK_EQ(count_role(&e.room, FR_WINDOW, -1), 0);
+    CHECK_EQ(e.room.window_skins, HSK_NONE);
+}
+
+TEST(home_walls_skins)
+{
+    static HomeEdit e, b;
+    HomeRoom before;
+    HomePlan plan;
+    int f, k, free_doors = 0, nrom = doomo_home_blueprint_count;
+    test_reset();
+    home_reset();
+    home_move_in();
+    /* the Walls menu offers the free fittings; HomeMart's skins once owned */
+    CHECK(home_skin_ok(FURN_GOTH_DOOR, FR_DOOR) && home_skin_ok(FURN_APARTMENT_DOOR, FR_DOOR));
+    CHECK(!home_skin_ok(FURN_PINK_DOOR_HEARTS, FR_DOOR));
+    CHECK(!home_skin_ok(FURN_GOTH_DOOR, FR_WINDOW) && !home_skin_ok(FURN_CUPCAKE_LAMP, FR_DOOR));
+    for (f = home_skin_next(FR_DOOR, FURN_PINK_DOOR, 1), k = 0; f != FURN_PINK_DOOR && k < 60;
+         f = home_skin_next(FR_DOOR, f, 1), k++) {
+        CHECK(home_skin_ok(f, FR_DOOR));
+        free_doors++;
+    }
+    CHECK_EQ(free_doors, 10);                          /* the pink door's ten siblings */
+    CHECK_EQ(home_skin_next(FR_DOOR, FURN_PINK_DOOR, -1), FURN_APARTMENT_DOOR);   /* it wraps */
+    home_edit_begin(&e, HOME_ROOM_LIVING);
+    before = e.room;
+    /* a skin you do not own: the walls change, the fittings stay */
+    CHECK(home_edit_fixtures(&e, 3, 1, PAINT_GRAPE, -1, FURN_PINK_DOOR_HEARTS, FURN_STAINED_WINDOW));
+    CHECK_EQ(e.room.wallpaper, 3);
+    CHECK_EQ(count_role(&e.room, FR_DOOR, FURN_PINK_DOOR), 1);
+    CHECK_EQ(count_role(&e.room, FR_WINDOW, FURN_WOOD_WINDOW), 2);
+    CHECK(home_edit_undo(&e));
+    CHECK(memcmp(&before, &e.room, sizeof(before)) == 0);
+    /* bought: one Heart Door skins any door; one window skins every slot */
+    home_grant(FURN_PINK_DOOR_HEARTS);
+    home_grant(FURN_STAINED_WINDOW);
+    CHECK(home_skin_ok(FURN_PINK_DOOR_HEARTS, FR_DOOR) && home_skin_ok(FURN_STAINED_WINDOW, FR_WINDOW));
+    CHECK(home_edit_fixtures(&e, 3, -1, -1, -1, FURN_PINK_DOOR_HEARTS, FURN_STAINED_WINDOW));
+    CHECK_EQ(count_role(&e.room, FR_DOOR, FURN_PINK_DOOR_HEARTS), 1);
+    CHECK_EQ(count_role(&e.room, FR_WINDOW, FURN_STAINED_WINDOW), 2);
+    CHECK_EQ(e.room.door_skin, home_skin_code(FURN_PINK_DOOR_HEARTS, FR_DOOR));
+    CHECK(e.room.door_skin > 0 && e.room.window_skins > 0);
+    CHECK(home_edit_undo(&e));                         /* the walls and both fittings: one step */
+    CHECK(memcmp(&before, &e.room, sizeof(before)) == 0);
+    CHECK_EQ(home_edit_skins(&e, FURN_PINK_DOOR_HEARTS, -1), 1);
+    CHECK_EQ(home_edit_skins(&e, FURN_PINK_DOOR_HEARTS, -1), 0);     /* already on */
+    CHECK_EQ(home_edit_skins(&e, -1, FURN_STAINED_WINDOW), 2);
+    /* the save keeps them; a saved blueprint carries them to another room */
+    home_grant(FURN_TEACUP_TABLE);
+    CHECK(home_edit_place(&e, FURN_TEACUP_TABLE, 3, 3, 0, -1, -1) >= 0);
+    home_room_store(HOME_ROOM_LIVING, &e.room);
+    {
+        static uint8_t buf[DOOMO_SAVE_EXT_MAX];
+        uint32_t len = home_chunk_write(buf, sizeof(buf));
+        home_reset();
+        CHECK(home_chunk_read(buf, len, HOME_CHUNK_VERSION));
+    }
+    home_edit_begin(&e, HOME_ROOM_LIVING);
+    CHECK_EQ(count_role(&e.room, FR_DOOR, FURN_PINK_DOOR_HEARTS), 1);
+    CHECK_EQ(home_skin_from_code(home_state()->room[HOME_ROOM_LIVING].window_skins, FR_WINDOW), FURN_STAINED_WINDOW);
+    CHECK(home_blueprint_save(0, &e.room));
+    CHECK_EQ(home_state()->bp[0].door_skin, home_skin_code(FURN_PINK_DOOR_HEARTS, FR_DOOR));
+    home_unlock_room(HOME_ROOM_BEDROOM);
+    home_edit_begin(&b, HOME_ROOM_BEDROOM);
+    CHECK_EQ(home_edit_blueprint(&b, nrom, &plan), 0);  /* the table is in use in the Living Room */
+    CHECK_EQ(count_role(&b.room, FR_DOOR, FURN_PINK_DOOR_HEARTS), 1);
+    CHECK_EQ(count_role(&b.room, FR_WINDOW, FURN_STAINED_WINDOW), 1);
+    /* Interlude III's remove-only mode re-skins nothing */
+    b.remove_only = 1;
+    CHECK_EQ(home_edit_skins(&b, FURN_GOTH_DOOR, -1), 0);
+    CHECK(!home_edit_fixtures(&b, -1, -1, -1, -1, FURN_GOTH_DOOR, -1));
+    CHECK(!home_edit_theme(&b, THEME_GOTH));
+}
+
+TEST(home_default_flats)
+{
+    static HomeEdit e;
+    HomeRoom r, t;
+    const DoomoHomeSet *l;
+    int i, d, w, sofa = -1, fixed = 0;
+    test_reset();
+    home_reset();
+    home_move_in();
+    /* Towers 7B: its own shell and fittings, furnished in dust (S114) */
+    home_room_default(HOME_ROOM_TOWERS_7B, &r);
+    d = home_room_door(&r);
+    w = home_room_window(&r);
+    CHECK(d >= 0 && HO_FURN(&r.obj[d]) == FURN_APARTMENT_DOOR);
+    CHECK(w >= 0 && r.obj[w].pos == HO_POS(2, 0) && !(HO_ROT(&r.obj[w]) & 1));   /* wall A, facing the Wall */
+    CHECK_EQ(count_role(&r, FR_WINDOW, -1), 1);
+    CHECK_EQ((r.flags & HRF_CEIL_MASK) >> HRF_CEIL_SHIFT, home_room_defs[HOME_ROOM_TOWERS_7B].ceiling);
+    CHECK(home_room_defs[HOME_ROOM_TOWERS_7B].wallpaper != 6 || home_room_defs[HOME_ROOM_TOWERS_7B].floor != 6);
+    CHECK(home_room_defs[HOME_ROOM_PITS_FLAT].wallpaper != 7 || home_room_defs[HOME_ROOM_PITS_FLAT].floor != 7);
+    CHECK_EQ(r.nobj, 2 + 5);
+    {   /* dusty, not cosy: making 7B cosy is S115's contest */
+        HomeScore sc;
+        home_score_room(&r, HOME_ROOM_TOWERS_7B, 0, &sc);
+        CHECK(!(sc.stamps & HOME_STAMP(HG_COSY)));
+    }
+    for (i = 0; i < r.nobj; i++) {
+        const HomeObj *o = &r.obj[i];
+        const DoomoFurn *f = home_furn(HO_FURN(o));
+        if (home_obj_is_fixed(&r, i)) { fixed++; continue; }
+        CHECK_MSG(home_fit(&r, HOME_ROOM_TOWERS_7B, HO_FURN(o), HO_X(o), HO_Y(o), HO_ROT(o), i, NULL) == HPR_OK,
+                  "7B: %s does not fit", f->name);
+        if (f->paint_a != 0xFF) CHECK_EQ(o->pa & 0x1F, PAINT_SILVER);       /* a dust sheet */
+        if (f->paint_b != 0xFF) CHECK_EQ(o->pb & 0x1F, PAINT_WHITE);
+        if (HO_FURN(o) == FURN_MARSHMALLOW_SOFA) sofa = i;
+    }
+    CHECK_EQ(fixed, 2);
+    CHECK(sofa >= 0);
+    /* visits use the bare template (every Hillvile home) */
+    home_room_template(HOME_ROOM_TOWERS_7B, &t);
+    CHECK_EQ(t.nobj, 2);
+    /* the first time it loads it is yours, and so is what you find */
+    CHECK(!home_room_open(HOME_ROOM_TOWERS_7B));
+    CHECK_EQ(home_owned(FURN_MARSHMALLOW_SOFA), 0);
+    home_edit_begin(&e, HOME_ROOM_TOWERS_7B);
+    CHECK(home_room_open(HOME_ROOM_TOWERS_7B));
+    CHECK(memcmp(&e.room, &r, sizeof(r)) == 0);
+    CHECK_EQ(home_owned(FURN_MARSHMALLOW_SOFA), 1);
+    CHECK_EQ(home_edit_avail(&e, FURN_MARSHMALLOW_SOFA), 0);
+    /* S114's remove mode clears it into storage */
+    e.remove_only = 1;
+    CHECK_EQ(home_edit_pickup(&e, sofa), FURN_MARSHMALLOW_SOFA);
+    CHECK_EQ(home_edit_avail(&e, FURN_MARSHMALLOW_SOFA), 1);
+    home_room_store(HOME_ROOM_TOWERS_7B, &e.room);
+    home_edit_begin(&e, HOME_ROOM_TOWERS_7B);          /* furnished once only */
+    CHECK_EQ(e.room.nobj, 2 + 4);
+    CHECK_EQ(home_owned(FURN_MARSHMALLOW_SOFA), 1);
+    /* S116's layout: the window slot and the bed count; the tally wall fits wall B */
+    l = home_layout_find(6);
+    CHECK(l != NULL && l->room == HOME_ROOM_TOWERS_7B);
+    CHECK_EQ(home_layout_progress(&e.room, 6, -1), 2 * 8 / l->need);
+    home_grant(FURN_TALLY_WALL);
+    CHECK(home_edit_place(&e, FURN_TALLY_WALL, 0, 2, 1, -1, -1) >= 0);
+    CHECK_EQ(home_layout_progress(&e.room, 6, -1), 8);
+    /* the Hell Pits flat: Hellvile goth, the landlord's basics, Mascotty's window */
+    home_room_default(HOME_ROOM_PITS_FLAT, &r);
+    CHECK_EQ(HO_FURN(&r.obj[home_room_door(&r)]), FURN_GOTH_DOOR);
+    w = home_room_window(&r);
+    CHECK(w >= 0 && HO_FURN(&r.obj[w]) == FURN_GOTH_WINDOW && r.obj[w].pos == HO_POS(0, 2));
+    CHECK_EQ(r.nobj, 2 + 4);
+    for (i = 0; i < r.nobj; i++)
+        if (!home_obj_is_fixed(&r, i))
+            CHECK(home_fit(&r, HOME_ROOM_PITS_FLAT, HO_FURN(&r.obj[i]), HO_X(&r.obj[i]), HO_Y(&r.obj[i]),
+                           HO_ROT(&r.obj[i]), i, NULL) == HPR_OK);
+    home_edit_begin(&e, HOME_ROOM_PITS_FLAT);
+    CHECK(home_room_open(HOME_ROOM_PITS_FLAT));
+    CHECK(home_owned(FURN_EMBER_BRAZIER) >= 1);
+    CHECK(home_layout_progress(&e.room, 7, -1) > 0);   /* the window and the lamp already */
 }

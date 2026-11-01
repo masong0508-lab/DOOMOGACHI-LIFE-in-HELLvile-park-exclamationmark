@@ -333,7 +333,26 @@
 #define FURN_CLOUD_CUSHION              327   /* S214 */
 #define FURN_TWO_BRAVE_KIDS             328   /* S215 */
 #define FURN_CONTRACT_CONFETTI_JAR      329   /* S217 */
+#define FURN_CLOUD_DOOR                 330
+#define FURN_CANDY_DOOR                 331
+#define FURN_COTTAGE_DOOR               332
+#define FURN_GOTH_DOOR                  333
+#define FURN_BONE_DOOR                  334
+#define FURN_LAVA_DOOR                  335
+#define FURN_VAPOR_DOOR                 336
+#define FURN_PICNIC_DOOR                337
+#define FURN_WORKSHOP_DOOR              338
+#define FURN_APARTMENT_DOOR             339
+#define FURN_PASTEL_WINDOW              340
+#define FURN_CLOUD_WINDOW               341
+#define FURN_CANDY_WINDOW               342
+#define FURN_GOTH_WINDOW                343
+#define FURN_SKULL_WINDOW               344
+#define FURN_LAVA_WINDOW                345
+#define FURN_VAPOR_WINDOW               346
+#define FURN_PICNIC_WINDOW              347
+#define FURN_WORKSHOP_WINDOW            348
 
-#define FURN_GEN_COUNT 330
+#define FURN_GEN_COUNT 349
 
 #endif
