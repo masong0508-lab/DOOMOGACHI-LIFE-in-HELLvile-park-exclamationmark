@@ -581,8 +581,8 @@ Header (8 B)
   u8   flags                      bit0 lights on, bit1 curtains, bit2 haunted, bit3 plated, bits4-6 ceiling tint
   u8   nobj
   u8   name                       room-name table index
-  u8   window_skins               2 bits per window slot (4 slots)
-  u8   door_skin                  0..5 lo, bits 3-7 reserved
+  u8   window_skins               rank among the catalog's WINDOW portal pieces (0 Wood Window, 0xFF none); all slots alike (H4, see docs/HOUSING.md)
+  u8   door_skin                  rank among the catalog's DOOR portal pieces (0 Pink Front Door, 0xFF none) (H4)
   nobj x Obj (6 B)
     u16 w0                        bits0-8 furn (0..319), bits9-10 rot, bit11 on_surface, bits12-15 sub-pos (half-tile x,y)
     u8  pos                       lo nibble x, hi nibble y

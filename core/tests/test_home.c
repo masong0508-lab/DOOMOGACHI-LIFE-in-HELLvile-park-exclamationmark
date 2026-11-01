@@ -425,7 +425,7 @@ TEST(home_catalog_valid)
 {
     int i, n = doomo_furn_count, door = 0, window = 0, hearth = 0, starters = 0;
     if (n == 0) return;                      /* furngen (H4) not linked yet */
-    CHECK(n >= 349 && n <= FURN_MAX);
+    CHECK(n >= 349 && n <= 370 && n <= FURN_MAX);   /* 370: catches runaway growth */
     for (i = 0; i < n; i++) {
         const DoomoFurn *f = &doomo_furn[i];
         CHECK_MSG(f->name && f->name[0] && strlen(f->name) <= 20, "row %d name", i);
