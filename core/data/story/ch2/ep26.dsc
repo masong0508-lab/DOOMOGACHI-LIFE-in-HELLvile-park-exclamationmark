@@ -20,7 +20,7 @@ end
 
 script e26_rivet
   say rivet NEUTRAL "So YOU'RE the one poking / demons with holy water. / Nice. I'm Rivet."
-  say rivet "Yeah. Imp. Ran away from / Hellvile years ago."
+  say rivet "Yeah, I'm an imp. Ran away / from Hellvile years ago. / The snacks bit back."
   say nar "(You tell her you're glad / she's here.)"
   [R13]
   say rivet SHOCK "Don't make it weird."
@@ -33,7 +33,7 @@ script e26_rivet
   say rivet ANGRY "DON'T. Make. It. Weird."
   [R13]
   say rivet NEUTRAL "Listen. I know that vapor. / Holy water won't cut it / if things go sideways."
-  choice rivet "I weld. Cute or brutal, I / don't judge. What's your / style?" { "Cute! (Bubble Wand)" -> cute ; "Brutal! (Pump Shotgun)" -> brutal ; "Can you fix a lock?" -> lock }
+  choice rivet "I weld. Cute or brutal, I don't judge. What's your style?" { "Cute! (Bubble Wand)" -> cute ; "Brutal! (Pump Shotgun)" -> brutal ; "Can you fix a lock?" -> lock }
 lock:
   npc rivet FREEZE
   [MUTE 13]
@@ -68,8 +68,8 @@ weld:
   say rivet NEUTRAL "I was ten."
   [R21]
   [R13]
-  say rivet "Lord Vapula's cooking / something big. And your / Vex guy..."
-  say rivet "...slipped into his cellar / with a glowing crate. Imps / know a portal crate."
+  say rivet "Lord Vapula's cooking / something big. And that / fox from the vape shop..."
+  say rivet "...took a glowing crate / down to the cellar. Imps / know a portal crate."
   reward 0 furn=toaster_turret
   say rivet HAPPY "Here. A toaster turret. For / the house.{.} For nothing."
   [R13]
@@ -88,7 +88,7 @@ script e26_sleep
   [NIGHT]
   [MUTE 21]
   [HOLD 21]
-  say nar "(You fall asleep the moment / you lie down.)"
+  say nar "You fall asleep the moment / you lie down. Welding is / cardio."
   call d1_dream
   native CB_C12 C12A_SLEEP
   say nar "(You wake. The chair is / tucked into your bed again. / You are both in it.)"

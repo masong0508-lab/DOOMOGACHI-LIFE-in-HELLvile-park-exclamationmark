@@ -38,17 +38,17 @@ S2:
   +0 shot 2 ; sfx SFX_SQUEAK ; caption "GURGLE: gurgle. / GRUMBLEGUTS: He says hello."
   +26 waita S3 12 120
 S3:
-  +0 shot 3 ; caption "(He stands. He sucks the / gut in.)"
+  +0 shot 3 ; caption "GRUMBLEGUTS: (sucking it / in) Nobody look. I'm / svelte."
   +13 hold POP 13
 POP:
-  +0 sfx SFX_SCRATCH ; shake SHK_TAP ; caption "(It springs back out.)"
+  +0 sfx SFX_SCRATCH ; shake SHK_TAP ; caption "GURGLE: nope. / GRUMBLEGUTS: He's right."
   +26 waita S4 12 120
 S4:
-  +0 shot 4 ; sfx SFX_CREAK ; caption "(A dramatic sigh. The belt / comes off.) Don't be like / that. I'll be gentle."
+  +0 shot 4 ; sfx SFX_CREAK ; caption "GRUMBLEGUTS: (belt off) / Don't be like that, sugar. / I'll be gentle."
   +21 sfx SFX_CREAK
   +26 waita S5 12 150
 S5:
-  +0 shot 5 ; sfx SFX_WHOOSH ; caption "(The belly-flop.)"
+  +0 shot 5 ; sfx SFX_WHOOSH ; caption "GRUMBLEGUTS: Incoming, / darlin'!"
   +3 hitstop 3
   +5 label L_PUNCH
 L_PUNCH:
@@ -56,7 +56,7 @@ L_PUNCH:
   +13 caption "(The gate cracks.)"
   +26 waita S6 12 120
 S6:
-  +0 shot 6 ; caption "(He squeezes through rear / first. He is stuck.)"
+  +0 shot 6 ; caption "GRUMBLEGUTS: Rear first. / Always rear first. {.}Oh. / I'm stuck."
   +13 hold BOING 13
 BOING:
   +0 sfx SFX_BOING ; shake SHK_STAMP ; caption "BOING."
@@ -73,8 +73,8 @@ END:
 end
 
 script e27_hatch
-  say haze NEUTRAL "(looks up, for the first / time) It's unlocked. It / was always unlocked."
-  choice nar "(The hatch. Purple light. It / smells of grape and / sulfur.)" { "Go down! (Hell Breach)" -> down ; "Not yet" -> no }
+  say haze NEUTRAL "It's unlocked. (looks up) / It was always unlocked. / Nobody ever asked."
+  choice nar "The cellar hatch. Purple light. A smell of grape and sulfur. Bad combo." { "Go down! (Hell Breach)" -> down ; "Not yet" -> no }
 no:
   end
 down:
@@ -83,13 +83,13 @@ down:
   reward 100 ITEM_SCRAP 3
   say nar "(You smash the portal crate. / The vape wraith pops like a / soap bubble.)"
   [R13]
-  say nar "(Vex is gone. Only a note, in / curly purple writing:)"
+  say nar "Vex is gone. There's only a / note, in curly purple ink:"
   say vex HAPPY "Too late, Hillvile. The big / cloud is already rising. / Kisses! - V"
   [R13]
   [R8]
-  say nar "(Smaller, underneath: / get your pet indoors)"
+  say nar "(Smaller, underneath: / 'get your pet indoors'. / Then a little heart.)"
   [R21]
-  say nar "(Outside. Daylight. Birds.)"
+  say nar "Outside: daylight. Birds. / A nice, normal afternoon."
   [R21]
   runbeat b27_birds
   [SILENCE]
@@ -98,8 +98,8 @@ down:
   push cutscene CUT_ERUPTION
   shake SHK_POW
   sfx SFX_DOOR
-  say nar "(You sprint home. The door / slams behind you.)"
-  say nar "(@E hides under the bed. / Red light in the window.)"
+  say nar "You sprint home. The door / slams. You lock it twice. / The second lock is a chair."
+  say nar "@E hides under the bed. / The window glows red. The / chair hides too."
   [R13]
   sfx SFX_BEEP
   say nar "beep."
@@ -107,9 +107,9 @@ down:
   beat C3_ERUPTION
   end
 lost:
-  say nar "(You stumble back up the / stairs, coughing purple. / Catch your breath.)"
+  say nar "You stumble back up the / stairs, coughing purple. / Breathe. Then try again."
 end
 
 script e27_hatch_locked
-  say nar "(A heavy hatch. A padlock / shaped like a little skull. / Locked. For now.)"
+  say nar "A heavy hatch. A padlock / shaped like a little skull. / Locked. The skull winks."
 end

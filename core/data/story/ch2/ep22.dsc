@@ -6,14 +6,14 @@
 @pack ep22 kind=episode chapter=2 minutes=30
 
 script e22_bloom
-  say bloom NEUTRAL "@P. Good. Sit. My hands / are cold, it's a doctor / thing."
-  say bloom "Five patients this week. All / say everything tastes like / grape."
+  say bloom NEUTRAL "@P. Good. Sit. Ignore my / hands, they're cold. It's / a doctor thing."
+  say bloom "Five patients this week. / Every one says EVERYTHING / tastes like grape."
   [R8]
-  say bloom NEUTRAL "I'm a doctor, so: that's / weird."
+  say bloom NEUTRAL "I'm a doctor, so let me / be technical: that's weird."
   [R13]
-  say bloom "Help me? Look for anything / odd. Tastes. Words. Shadows. / Write it all down."
+  say bloom "Find me three odd things. / Weird tastes, weird words, / weird shadows. Go."
   sfx SFX_PICKUP
-  say nar "(The quest log has a Clues / board now. Find three.)"
+  say nar "NEW! The quest log has a / CLUES board. Find 3 clues. / Detective hat not included."
   native CB_C12 C12A_STEP 1
 end
 
@@ -22,27 +22,27 @@ script e22_counted
   native CB_C12 C12A_CLUES
   jlt v2 3 more
   [R13]
-  say nar "(That's three. Dr. Bloom / should hear this.)"
+  say nar "Three clues! That's a / pattern. Take them to / Dr. Bloom at the hospital."
   native CB_C12 C12A_STEP 2
   end
 more:
-  say nar "(A clue for Dr. Bloom: @2 / of 3.)"
+  say nar "CLUE FOUND! That's @2 of 3 / for Dr. Bloom."
 end
 
 # 1: grape tongue - Sandwichy's blind taste test
 script e22_taste
-  say sandwichy HAPPY "Blind taste test! Three / spoons. Tell me what they / are. Close your eyes!"
-  choice nar "(Spoon one.)" { "Strawberry?" ; "Mint?" ; "Lemon?" }
+  say sandwichy HAPPY "Blind taste test! Three / spoons, three flavours. / Eyes shut. No peeking!"
+  choice nar "Spoon one. It tastes like...?" { "Strawberry?" ; "Mint?" ; "Lemon?" }
   say sandwichy "Grape."
   [R8]
-  choice nar "(Spoon two.)" { "Cheese?" ; "Pickle?" ; "Soup?" }
+  choice nar "Spoon two. It tastes like...?" { "Cheese?" ; "Pickle?" ; "Soup?" }
   say sandwichy "Grape."
   [R8]
-  choice nar "(Spoon three. It's water.)" { "...Water?" }
+  choice nar "Spoon three. It's clearly water. It tastes like...?" { "...Water?" }
   [R5]
   say sandwichy NEUTRAL "{.}Grape."
   [R13]
-  say sandwichy SHOCK "Wait. I didn't put grape in / ANY of them."
+  say sandwichy SHOCK "Wait. I didn't PUT grape / in any of them. {..}That's / a clue! Write that down!"
   native CB_C12 C12A_CLUE 0
   call e22_counted
 end
@@ -50,33 +50,33 @@ end
 # 2: "we" - catch a customer mid-slip (a timing check)
 script e22_we
   say ribbonetta HAPPY "Isn't it a lovely day? We / adore it. We..."
-  say nar "(Listen for the slip. Press / A right on it.)"
+  say nar "Listen for the slip! Press / A the moment she says \"we\"."
   push timing pattern=three skin=thump
   jlt v0 1 missed
   sfx SFX_TINK
-  say ribbonetta SHOCK "We-- I. I mean I. Why did I / say we?"
+  say ribbonetta SHOCK "We-- I. I mean I! Why did / I say \"we\"? There's only / one of me. I checked."
   native CB_C12 C12A_CLUE 1
   call e22_counted
   end
 missed:
   say ribbonetta HAPPY "We love the weather. / We love it so much."
-  say nar "(Smoother this time. You / missed it. Try again.)"
+  say nar "Missed it. She said it / smoother that time. Try / again."
 end
 
 # 3: lagging shadows - photograph one
 script e22_shadow
-  say bonejangles HAPPY "Clack! Take my picture? My / shadow's been running a / little late. Clack."
+  say bonejangles HAPPY "Clack! Take my picture? / My shadow's been running / late. It's off the beat!"
   verb photo bonejangles then=e22_shadow_done
 end
 
 script e22_shadow_done
   jlt v1 1 nope
-  say nar "(In the photo, his shadow / is still mid-step. He / isn't.)"
+  say bonejangles SHOCK "Look! In the photo my / shadow's still mid-step. / It missed the downbeat!"
   native CB_C12 C12A_CLUE 2
   call e22_counted
   end
 nope:
-  say nar "(Just sky. Try again.)"
+  say nar "Just sky. Lovely sky. / Not a clue. Try again."
 end
 
 # 4: the bells ring backwards (the church, at night)
@@ -89,8 +89,8 @@ night:
   sfx SFX_BELL
   [R5]
   sfx SFX_BELL
-  say nar "(The bell rings. Then it / un-rings, backwards, for / one bar.)"
-  say cantor SHOCK "Did the bell just un-ring?"
+  say nar "(The bell rings. Then it / un-rings, backwards, like / it wants the note back.)"
+  say cantor SHOCK "Did it just UN-ring? / Bells can't do that. Tell / the doctor! It's a clue!"
   [R13]
   native CB_C12 C12A_CLUE 3
   call e22_counted
@@ -98,11 +98,11 @@ end
 
 # 5: the daycare drawings
 script e22_drawings
-  say lulla NEUTRAL "Look. They drew again. / Every single one."
+  say lulla NEUTRAL "Look at today's drawings. / Every kid drew the same / thing. Every. Single. Kid."
   [R13]
   say nar "(A crowned purple cloud in / every picture. In one, it / is holding a little hand.)"
   [R21]
-  say lulla NEUTRAL "They all drew the same / friend."
+  say lulla NEUTRAL "They say it's their new / friend. {.}That's a clue. / And a parent meeting."
   native CB_C12 C12A_CLUE 4
   call e22_counted
 end
@@ -113,16 +113,16 @@ script e22_hattie
   [R8]
   [R8]
   sfx SFX_HAPPY
-  say nar "(The laugh comes from the / Wall. Late. Like a giggle / in fog.)"
+  say nar "(A laugh comes from the / Wall. Before the punchline. / Hattie hasn't said it yet.)"
   say hattie NEUTRAL "Thank you. You're too kind. / {..}Whoever you are."
 end
 
 script e22_report
-  say bloom NEUTRAL "Show me."
+  say bloom NEUTRAL "Show me what you've got. / Slowly. I'm writing."
   say bloom "Grape. \"We.\" Late shadows. / It's not a bug. It's in / the air."
   say bloom "Let me take your pulse."
   sfx SFX_TIK
-  say nar "(A very cold hand.)"
+  say nar "(Her hand is VERY cold. / Like a fridge with a / medical degree.)"
   [R8]
   say bloom SHOCK "Sorry. Ghoul."
   [R8]
@@ -136,5 +136,5 @@ script e22_report
 end
 
 script e22_bloom_wait
-  say bloom NEUTRAL "Anything odd. Tastes, / words, shadows, bells, / drawings. Three will do."
+  say bloom NEUTRAL "Three odd things, @P. / Tastes, words, shadows, / bells, drawings. Go!"
 end

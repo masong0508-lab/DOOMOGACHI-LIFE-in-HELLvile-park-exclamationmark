@@ -5,7 +5,7 @@
 @pack f1 kind=episode chapter=2 minutes=1
 
 beatscript bv_f1
-  +0 pal PAL_SEPIA 16 13 ; music SONG_MINGLE ; shot 0 ; caption "(Twelve years ago. A forge / in Hellvile. A little imp / holds the torch.)"
+  +0 pal PAL_SEPIA 16 13 ; music SONG_MINGLE ; shot 0 ; caption "TWELVE YEARS AGO. A forge / in Hellvile. A little imp / holds the torch."
   +13 sfx SFX_WELD
   +21 sfx SFX_SPARKLE
   +26 waita S1 12 160
@@ -20,7 +20,7 @@ S2:
 S3:
   +0 label L_PUNCH
 L_PUNCH:
-  +0 pal PAL_SEPIA 0 0 ; shot 3 ; sfx SFX_THUD ; mute 26 ; caption "(Now.)" ; nobutton
+  +0 pal PAL_SEPIA 0 0 ; shot 3 ; sfx SFX_THUD ; mute 26 ; caption "NOW." ; nobutton
   +26 waita END 12 60
 END:
   +0 end

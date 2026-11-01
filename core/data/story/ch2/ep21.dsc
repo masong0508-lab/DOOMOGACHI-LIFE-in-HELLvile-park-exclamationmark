@@ -15,47 +15,47 @@ end
 
 script e21_mornings
   [DAY 5]
-  say nar "(A few days pass.)"
+  say nar "A few days pass. Fast. / Like a montage, but cheaper."
   runbeat b21_mornings
   [DAY 7]
-  say nar "(Three mornings. Each one, / @E's nubs are a tiny bit / longer.)"
-  say nar "(Each one, the purple glow / at the Wall is a little / closer.)"
+  say nar "(Each morning, @E's nubs / are a bit longer. @E is / VERY proud of them.)"
+  say nar "Each morning, the purple / glow at the Wall is a bit / closer. Nobody mentions it."
   [R13]
-  say nar "(And this morning there is a / new shop by the Wall. It was / not there yesterday.)"
+  say nar "(This morning there's a new / shop by the Wall. Yesterday / it was a bush.)"
   [R13]
   sfx SFX_BLIP
-  say nana NEUTRAL "(a text) Saw @E at your / window. Little nubs! / Ah. {..}He's teething."
+  say nana NEUTRAL "Texting you, sweet pea! / Saw @E's little nubs! / {..}Teething. Definitely."
   jifn SF_NGPLUS done
-  say nar "(You have seen this shop / before. Or you will.)"
+  say nar "(You have seen this shop / before. Or you will. Your / loyalty card remembers.)"
 done:
 end
 
 script e21_ribbon
-  say ribbonetta HAPPY "Grand opening! I cut ribbons / professionally. Stand back!"
+  say ribbonetta HAPPY "Grand opening! I cut / ribbons professionally. / Stand BACK, amateurs!"
   sfx SFX_TINK
-  say nar "(Snip.)"
+  say ribbonetta HAPPY "And... SNIP! Flawless. / Thank you. No photos."
   [R8]
   sfx SFX_SPARKLE
   say ribbonetta HAPPY "Achoo!"
   [R13]
-  say nar "(The sneeze is purple.)"
+  say ribbonetta SHOCK "Is my sneeze PURPLE? Is / that normal? Is that a / promotion?"
   [R8]
   [R21]
   say nar "(In the window, framed: a / crowned purple cloud. / EMPLOYEE OF THE MONTH.)"
   [R8]
-  say nar "(Its eyes follow you.)"
+  say nar "Its eyes follow you. It's / won every month since the / shop opened. This morning."
   [R13]
 end
 
 script e21_sprinkle
-  say sprinklepop HAPPY "First in line! Grape? I LOVE / grape. I love everything!"
+  say sprinklepop HAPPY "First in line! Grape? I / LOVE grape! I love / everything! I love LINES!"
   sfx SFX_SPARKLE
-  say nar "(She sneezes. Glitter. / The doctors say it's fine.)"
+  say sprinklepop HAPPY "Achoo! {.}Glitter. Don't / worry, I always sneeze / glitter. Pink, usually!"
   [R13]
 end
 
 script e21_haze
-  say haze NEUTRAL "(waters a plant, does not / look up)"
+  say haze NEUTRAL "Welcome to Cloud Nine. / (does not look up) Leave / a bad review. Please."
 end
 
 # the free sample: the inhale (a 10-frame stretch, a 5-frame hold), the
@@ -75,7 +75,7 @@ end
 
 script e21_vex
   npc vex HOP
-  say vex HAPPY "WELCOME to Cloud Nine! Where / every breath is a hug from / the inside!"
+  say vex HAPPY "WELCOME to Cloud Nine! / Where every breath is a / hug from the inside!"
   [R3]
   npc vex HOP
   say vex HAPPY "Grape! Cherry! Sunset / Serenity! Mystery Mauve!"
@@ -88,9 +88,9 @@ script e21_vex
   say vex HAPPY "That's the business model."
   npc vex STILL
   [R8]
-  say haze NEUTRAL "(not looking up) The plants / hate it too."
+  say haze NEUTRAL "The plants hate it too."
   npc vex THAW
-  choice vex "So! One little puff?" { "No thanks." -> no ; "...Just one puff." -> puff ; "Where are you from?" -> where }
+  choice vex "So, sweetie! One little puff? For the brand?" { "No thanks." -> no ; "...Just one puff." -> puff ; "Where are you from?" -> where }
 no:
   npc vex STILL
   [MUTE 21]
@@ -99,15 +99,15 @@ no:
   [R13]
   npc vex THAW
   npc haze EMOTE EMO_HEART
-  say nar "(Behind the counter, the / clerk gives you a tiny / thumbs-up.)"
+  say nar "(Behind the counter, Haze / gives you a tiny thumbs-up. / Very tiny. Deniable.)"
   jmp out
 puff:
   setf SF_VAPE_SAMPLE
   give ITEM_VAPE_PEN
   native CB_C12 C12A_PUFF
   runbeat b21_puff
-  say vex HAPPY "There it is. The Cloud Nine / feeling. We'll be seeing / you, @P."
-  say nar "(Somewhere, the fountain / giggles. A little louder / than before.)"
+  say vex HAPPY "There it is! The Cloud / Nine feeling! We'll be / seeing you, @P. A LOT."
+  say nar "Somewhere, the fountain / giggles. Louder than last / time. Nobody told a joke."
   jmp out
 where:
   npc vex FREEZE
@@ -117,13 +117,13 @@ where:
   npc vex THAW
   [R21]
   sfx SFX_TIK
-  say nar "(In the window, the crowned / cloud in the frame blinks.)"
+  say nar "In the window, the crowned / cloud in the frame blinks. / That's not in its contract."
 out:
   befriend vex 1
-  say nar "(People leave the shop / humming. All the same / note.)"
+  say nar "(Customers leave humming. / All the same note. It's / not even a good note.)"
   beat C2_WEIRD
 end
 
 script e21_vex_closed
-  say nar "(BACK IN 5 MINUTES - VEX. / The sign has said that for / an hour.)"
+  say nar "'BACK IN 5 MINUTES! - V' / The sign has said that for / three days."
 end

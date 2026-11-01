@@ -413,6 +413,7 @@ come from these (J3).
 | **With a portrait** | The box is **27 characters** wide at 240×160 (`ui_dialog.c`: 162 px / 6 px a glyph). A 28-character line wraps and pushes the page's last line onto an extra page. **Write to 27** | `story_stats.py`'s `box27` column (a count, report only: 89 lines in the game today; drive your pack's to 0). The lint still allows 28 |
 | A line | 199 visible characters | `textpack.py` |
 | A choice option | 27 characters | `textpack.py` |
+| A choice question (`choice`, `player_line`) | **No `/` or `//`**: `ui_choice` takes the question as plain text, so a `/` prints as a slash. Write one sentence run and let the box word-wrap it (at most 3 lines at 27 columns). W2 measured it; 5 questions outside Ch2 still have one (`ep16`, `ep34`, `int3`, `ep44`, `ep46`) | reading the shots |
 | A quest-log hint | 95 characters (the HUD objective) | `textpack.py` |
 | A trophy name | 27 characters | `textpack.py` |
 | Characters | ASCII plus the icon glyphs 0x80-0x9F | `textpack.py` |

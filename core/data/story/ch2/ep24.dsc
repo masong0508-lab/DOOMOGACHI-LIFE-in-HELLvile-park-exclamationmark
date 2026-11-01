@@ -33,7 +33,7 @@ L_BUTTON:
 end
 
 script e24_scream
-  say steamy HAPPY "Ducks! Free ducks! One for / you, one for you, and one / for--"
+  say steamy HAPPY "Free ducks! That's Puddle. / That's Sir Quacks. And / this one's--"
   sfx SFX_SQUEAK
   [R8]
   runbeat b24_freeze
@@ -46,11 +46,11 @@ script e24_scream
   say steamy POSSESSED "Leave a message after the / scream."
   [R21]
   runbeat b24_scream
-  say mayor SHOCK "(under a bench) Get Father / Fuzz! Get Father Fuzz! I'll / ...get behind you!"
+  say mayor SHOCK "GOBBLE GOBBLE! Get Father / Fuzz! I'll be right behind / you! (under a bench)"
   resume_on_beat
   say sprinklepop POSSESSED "I'm fine! {.}We're fine!"
   sfx SFX_SPARKLE
-  say nar "(Sprinklepop sneezes. The / glitter is purple.)"
+  say nar "(Sprinklepop sneezes. The / glitter is purple. It used / to be pink.)"
   [R13]
   beat C2_FUZZ
 end
@@ -60,7 +60,7 @@ script e24_steamy_wait
 end
 
 script e24_fuzz
-  say fuzz HAPPY "Bless you, child. I felt it / too. A darkness has moved / into our Steamy."
+  say fuzz HAPPY "Bless you, child. I felt / it too. A darkness has / moved into our Steamy."
   say fuzz "I am Father Fuzz. Stuffed / with love and a little bit / of buckwheat."
   say fuzz HAPPY "Nothing is unhuggable, @P. / Nothing. Some things just / need holy water first."
   say fuzz "Let's practise. Meet Mr. / Huggins the 2nd. (The 1st / has a little grave.)"
@@ -75,7 +75,7 @@ script e24_fuzz
   say fuzz NEUTRAL "Part two: holy water. / Gently!"
   sfx SFX_THUD
   shake SHK_SLAM
-  say nar "(The other arm.)"
+  say nar "(The other arm pops off. / Mr. Huggins takes it well.)"
   [R8]
   [R13]
   say fuzz "Part three: the name. Say / what it IS, not what it's / wearing..."
@@ -98,6 +98,6 @@ script e24_fuzz
   befriend fuzz 3
   say fuzz HAPPY "Splendid! You have the paws / of a healer."
   [R13]
-  say fuzz "Now, the real thing. Meet me / by poor Steamy in the / plaza. Hurry!"
+  say fuzz "Now, the real thing! Meet / me by poor Steamy in the / plaza. Bring a towel."
   beat C2_EXORCISE
 end

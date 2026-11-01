@@ -57,7 +57,7 @@ END:
 end
 
 script e25_rite
-  say fuzz NEUTRAL "Sprinklepop first. Her demon / is smaller. A warm-up."
+  say fuzz NEUTRAL "Sprinklepop first. Her / demon's smaller. A warm-up. / How hard can it be?"
   say fuzz HAPPY "Hold the holy water like / you mean it!"
   push cutscene CUTV_RITE_FAIL
   native CB_C12 C12A_SOUL_LOST
@@ -65,16 +65,16 @@ script e25_rite
   say nar "(Sprinklepop's body falls / asleep, smiling. They carry / her to the clinic.)"
   [MUTE 21]
   [HOLD 21]
-  say fuzz SAD "We'll find her. Souls don't / go far.{..} {d}They go exactly / as far as they're scared to." [HEART]
+  say fuzz SAD "We'll find her. Souls don't / go far.{..} {d}They go exactly as / far as they're scared to." [HEART]
   [R26]
   call e25_steamy
 end
 
 script e25_steamy
   native CB_C12 C12A_ODDS
-  choice fuzz "Steamy now. The odds look / like @1%. Hold the water / like you mean it." { "Begin the exorcism!" -> go ; "Not yet..." -> wait }
+  choice fuzz "Steamy now. The odds look like @1%. I've prayed on worse. Not MUCH worse." { "Begin the exorcism!" -> go ; "Not yet..." -> wait }
 wait:
-  say fuzz "Rest. Pray. Come back to me / when you're ready."
+  say fuzz "Rest. Pray. Have a snack. / Come back when you're ready."
   end
 go:
   push exorcism 2
