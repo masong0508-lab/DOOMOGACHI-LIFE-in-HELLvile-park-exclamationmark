@@ -29,7 +29,11 @@ static void confirm_finish(int yes)
     void (*done)(int) = cf_done;
     cf_done = NULL;
     scene_pop();
-    if (done) done(yes);
+    if (done) {                         /* with the opener's code (scene.h) */
+        int t = scene_callback_begin();
+        done(yes);
+        scene_callback_end(t);
+    }
 }
 
 static void confirm_update(void)
@@ -133,7 +137,11 @@ static void te_finish(int ok)
     }
     te_done = NULL;
     scene_pop();
-    if (done) done(ok);
+    if (done) {                         /* with the opener's code (scene.h) */
+        int t = scene_callback_begin();
+        done(ok);
+        scene_callback_end(t);
+    }
 }
 
 static void te_type(int c)

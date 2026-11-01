@@ -149,8 +149,11 @@ overworld 4.2 + fx 3.3 + NPCs 3.0 KB, free play ~7.6 KB, library 2.1 KB,
 minigames 2.6 KB, concert 1.1 KB, ...) add ~43 KB of `.bss`, which the
 GBA game ROM cannot hold (EWRAM was over by ~27 KB). Almost all of it is
 state that only matters while its own scene runs. With everything in the
-scratch the game ROM links with 7.5 KB of EWRAM free and the full 6 KB
-IWRAM stack (docs/GBA.md section 3). `scene_scratch(owner, size)` hands out ONE shared 12 KB block
+scratch the game ROM links (docs/GBA.md section 3; at `959acc8` 9,536 B
+of EWRAM free and a 7,168 B IWRAM stack; on the GBA the
+scratch is the bottom of one 27 KB arena that it shares with the
+platform's renderer caches, the billboards and the save window).
+`scene_scratch(owner, size)` hands out ONE shared 12 KB block
 (`DOOMO_SCENE_SCRATCH`) to the scene that claims it: claim and initialise
 it in `enter()`, check `scene_scratch_mine(owner)` where the scene can
 resume after a pushed scene, and rebuild if another owner took it.
@@ -223,7 +226,16 @@ pointer to a scene module's const data (a string, a table, a callback)
 after that scene has gone - copy it, as `ui_say()` / `ui_confirm()` do.
 Whatever ovl_plan.py cannot prove is only reached through a scene's entry
 points (a function whose address is taken, anything two scenes use)
-simply stays resident.
+simply stays resident. The exception (G0): a modal (`ui_confirm`,
+`ui_text_entry`, `ui_choice`, `ui_say_done`) calls the callback it was
+given through `scene_callback_begin()` / `scene_callback_end()` (scene.h),
+which load the code of the scene it was opened over, so such callbacks
+may stay in their scene's overlay (ovl_plan.py `MODAL_CALLBACKS`, a
+reviewed list). A new modal that calls back into scene code must do the
+same, and a new modal callback in a scene file goes into that list only
+after checking that the modal is always opened while the callback's own
+scene is the top non-overlay scene. G0 left the game disc 131,808 B
+(128.7 KB) below the stack top (docs/PS1.md section 3).
 
 ## Art direction (all teams)
 

@@ -191,13 +191,26 @@ disc no longer fitted (`0x802ec0b4`, 1.1 MB over the limit), so:
     checks every reader and keeps the cut only if all of them are in the
     group and none is resident (the S4 story minigames: 11 KB out of
     resident RAM into the `storymg` group);
+  - (G0) the callbacks a scene hands to the resident modals (`ui_confirm`,
+    `ui_text_entry`, `ui_choice`, `ui_say_done`; `MODAL_CALLBACKS`, each
+    entry reviewed against its call sites) do not escape: the modals call
+    them through `scene_callback_begin()` / `scene_callback_end()`
+    (scene.h), which load the group of the scene the modal was opened
+    over. The same holds for the callbacks the studio keeps in its own
+    state (`st_popup`, `st_pick_citizen`). Callbacks given to `fp_pick()`
+    stay resident (the picker is a freeplay scene, so the caller's group
+    is not in the slot when it calls back), and so do the combat group's
+    (combat is the biggest group). This took 60 KB of the studio, concert,
+    free play, creator, exorcism, workshop and gallery code out of
+    resident RAM;
   - it writes the linker script (every group is an output section of one
     `OVERLAY` at the slot, `NOCROSSREFS`) and the scene -> group table.
 
   `ovl_pack.py` writes the groups' bytes to `OVL.BIN` on the disc
   (`elf2exe.py` leaves them out of the EXE; their RAM slot counts). At
   boot `overlay_init()` initialises the CD and reads its header; a scene
-  of another group costs one CD read (~0.3 s for 70 KB at 2x). When a
+  of another group costs one CD read (~0.3 s for 70 KB at 2x; the studio
+  group, 74 KB since G0, loads in 241 ms). When a
   scene switches scenes from inside its own update (enter / leave run
   inside the call), the caller's group is read back before the call
   returns, so the caller's code is always there: a switch from one
@@ -245,23 +258,55 @@ Measured (all core modules, fishing / cooking and Hell Breach included):
 | game disc | ends `0x802ec0b4`: 1.1 MB over the limit | EXE 1,224 KB + BSS 511 KB + overlay slot 108 KB, ends `0x801dd310`: **139 KB below the stack top** (75 KB more than the 64 KB stack reserve); `OVL.BIN` 778 KB in 15 groups |
 | engine-test disc | ends `0x80178b1c`, 541 KB below the stack top | ends `0x801088d0`, 989 KB below the stack top |
 
-| overlay group | KB | | overlay group | KB |
-|---|---:|---|---|---:|
-| combat (combat, actors, arena, levels, weapon view) | 109 | | island | 40 |
-| fishing + cooking | 88 | | dream | 37 |
-| minigames | 86 | | exorcism | 28 |
-| free play screens | 70 | | pet | 21 |
-| library | 63 | | workshop + welding game | 14 |
-| concert | 51 | | UI gallery | 4 |
-| creator | 50 | | | |
-| cutscenes (cutscene.c, story_feast.c, grumbleguts_gfx.c) | 69 | | resident code + const data | 1,097 |
-| studio | 44 | | | |
-| story overworld, credits | 37 | | | |
+**G0 memory pass (task #79; landed as H0, 2026-11-01).** The story,
+house, side-mission, music and Spanish-text work had grown resident RAM
+until the game disc no longer linked: at `959acc8` it ended at
+`0x801f08c0`, **63,280 B below the stack top, 2,240 B into `elf2exe.py`'s
+64 KB stack reserve**, with a 126,976 B slot. G0 (paused as
+`docs/wip/g0_m2_wip.patch` on 2026-10-25, applied unchanged by H0, the
+patch then deleted):
+
+| step | below the stack top | how |
+|---|---:|---|
+| `959acc8` | 63,280 B (does not link) | slot 126,976 B, set by the house group's end (it loads 45,572 B lower, over BORROW); resident text + rodata 1,128 KB |
+| modal callbacks stay in their groups | +60,336 B | `MODAL_CALLBACKS` + `scene_callback_begin/end` (above): resident text + rodata 1,128 -> 1,068 KB |
+| the house borrows the card's block buffer | +8,192 B | `memcard.c`'s 8 KB `s_blk` joins BORROW (`memcard.c` calls `ovl_borrow_take()` before each card read / write): the house loads 53,764 B lower and ends 8 KB lower, the slot is the combat / cutscene / story groups' 118,784 B |
+| **after G0** | **131,808 B (128.7 KB)**, ends `0x801dfd10` | EXE 1,190 KB + BSS 549 KB + slot 116 KB; 66,288 B above the 64 KB stack reserve; `OVL.BIN` 1,002 KB packed (1,278 KB) in 19 groups + 4 house parts |
+
+| overlay group (bytes) | `959acc8` | G0 | | overlay group (bytes) | `959acc8` | G0 |
+|---|---:|---:|---|---|---:|---:|
+| cutscene | 118,444 | 118,444 | | island | 56,212 | 56,644 |
+| story | 117,992 | 118,172 | | creator | 51,972 | 55,696 |
+| combat | 117,760 | 117,760 | | dream | 39,956 | 39,956 |
+| home (from `__ovl_borrow`) + biggest part | 159,968 + 11,984 | same, 8 KB lower | | storymg | 37,860 | 37,884 |
+| fishcook | 93,052 | 93,052 | | exorcism | 31,852 | 34,820 |
+| minigame | 88,136 | 88,136 | | pet | 23,876 | 24,020 |
+| freeplay | 74,340 | 80,256 | | workshop | 15,012 | 15,468 |
+| library | 71,432 | 71,432 | | cutx | 14,024 | 14,024 |
+| studio | 45,524 | 76,648 | | gallery | 5,096 | 5,352 |
+| concert | 56,336 | 71,860 | | **slot** | **126,976** | **118,784** |
+
+Checked on the G0 disc (PCSX-Redux harness): `game_smoke`, the core's
+`boot` / `ui_gallery` / `saves`, `home.txt` (parity and fps gates) and,
+for the modal callbacks of each moved group, the core scripts
+`fp_screens`, `studio`, `life_exorcism`, `action_workshop` and `creator`
+(no `ovl: ERROR` in any TTY log); the engine-test disc's `memcard.txt`
+self test.
+
+The slot is now exactly the three biggest groups (cutscene 118,444,
+story 118,172, combat 117,760 B, rounded up to whole sectors): any growth
+of them moves the slot again, 2 KB at a time (story SPEC C4). The story
+group is far above its 75 KB cap (C4); the levers are content-level
+(story_script.c's legacy glue, story_talk.c), parts for SCENE_QUESTLOG /
+SCENE_CREDITS (PARTS work only for BORROW groups today) and, for the
+cutscene group (cap 100 KB), the Feast's 77 KB (story_feast.c +
+grumbleguts_gfx.c) as a part of its own.
 
 The biggest remaining consumers of RAM: resident core code (portraits,
-UI, sim, story engine, ...) ~700 KB, `doomo_town` 107 KB, the display
-lists 112 KB + OTs 24 KB, the roster 164 KB, packed art 195 KB, the
-overlay slot 108 KB.
+UI, sim, story engine, ...) ~650 KB, merged string literals of resident
+code ~110 KB, `doomo_town` 107 KB, the display lists 112 KB + OTs 24 KB,
+the roster 164 KB, packed art 195 KB, SFX PCM 47 KB (customisation P3
+moves it to SPU RAM), the overlay slot 116 KB.
 
 `plat_save_scratch()` is the display-list memory of both frames (one
 contiguous 112 KB block): after `DrawSync()` the previous frame's list is

@@ -44,6 +44,17 @@ enum { PLAT_PART_NONE, PLAT_PART_HOME_VISIT, PLAT_PART_HOME_DEFEND, PLAT_PART_HO
        PLAT_PART_HOME_ROOMTEST /* the PS1 renderer's harness layouts */ };
 void plat_code_part(int part);
 /* --- end H4 --- */
+/* --- G0 (additive, task #79): a modal scene (an overlay: SCENE_CONFIRM,
+ * SCENE_TEXT_ENTRY, SCENE_DIALOG) calls the callback it was given by the
+ * scene it was opened over from its own (resident) code. It brackets that
+ * call with
+ *     t = scene_callback_begin();  done(...);  scene_callback_end(t);
+ * which makes the code of the first non-overlay scene of the stack (the
+ * opener) present for the call, as scene.c does for a scene's own entry
+ * points. So such a callback may live in its scene's PS1 overlay
+ * (ps1/tools/ovl_plan.py MODAL_CALLBACKS). --- */
+int  scene_callback_begin(void);
+void scene_callback_end(int token);
 
 /* ---- shared scene scratch (perf pass, additive) --------------------------
  * On the GBA every byte of .bss is EWRAM, and most scenes' big buffers

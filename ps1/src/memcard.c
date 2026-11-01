@@ -274,6 +274,13 @@ static uint8_t s_hdr[HDR_BYTES] __attribute__((aligned(4)));
  * middle of a block and crosses into the next one (it writes to the
  * physically adjacent block instead of following the file's block chain). */
 static uint8_t s_blk[BLOCK] __attribute__((aligned(4)));
+/* G0: the house's overlay group borrows s_blk while no card I/O runs
+ * (ovl_plan.py BORROW): take it back before every use */
+static void blk_take(void)
+{
+    static uint32_t seen;
+    (void)ovl_borrow_take(&seen);
+}
 
 /* the file image byte at offset o is header (o < HDR_BYTES) or payload */
 static void stage_block(int k, const uint8_t *data, uint32_t size)
@@ -296,6 +303,7 @@ static int write_file(const char *path, const uint8_t *data, uint32_t size, int 
     int fd = open(path, O_WRONLY_), k, ok = 1;
     if (fd < 0)
         return 0;
+    blk_take();
     ls_progress(0, blocks);
     for (k = 0; ok && k < blocks; k++) {
         stage_block(k, data, size);
@@ -411,6 +419,7 @@ static int read_file(const char *path, void *data, uint32_t cap, uint32_t *out_s
     int ok = 0, total_blocks = 0;
     if (fd < 0)
         return 0;
+    blk_take();
     ls_progress(0, 0);
     for (k = 0; ; k++) {
         uint32_t o0 = (uint32_t)k * BLOCK, from, n;

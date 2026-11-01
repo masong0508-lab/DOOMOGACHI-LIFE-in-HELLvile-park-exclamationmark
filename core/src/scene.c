@@ -146,6 +146,17 @@ const DoomoScene *scene_top(void)
 
 int scene_depth(void) { return depth; }
 
+/* G0 (scene.h): the code of the first non-overlay scene of the stack, for
+ * a modal's callback */
+int scene_callback_begin(void)
+{
+    int i = depth - 1;
+    while (i > 0 && stack[i].s->overlay) i--;
+    return plat_scene_code(i >= 0 ? stack[i].s : NULL);
+}
+
+void scene_callback_end(int token) { plat_scene_code_end(token); }
+
 uint32_t scene_ticks(void)
 {
     return depth > 0 ? stack[depth - 1].ticks : 0;

@@ -313,8 +313,12 @@ static void advance(int choice)
     d_dead = 0;
     d_serial++;
     if (dq_n == 0) scene_pop();
-    if (done.kind == DK_CHOICE && done.choice_done) done.choice_done(choice);
-    if (done.say_done) done.say_done();
+    if ((done.kind == DK_CHOICE && done.choice_done) || done.say_done) {
+        int t = scene_callback_begin();   /* the opener's code (scene.h) */
+        if (done.kind == DK_CHOICE && done.choice_done) done.choice_done(choice);
+        if (done.say_done) done.say_done();
+        scene_callback_end(t);
+    }
 }
 
 /* Apply the codes at text position pos (page-relative glyph about to show). */

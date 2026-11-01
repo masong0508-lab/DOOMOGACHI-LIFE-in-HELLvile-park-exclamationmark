@@ -93,7 +93,13 @@ BORROW = (("world", (".bss.g_world_wtop", ".bss.g_world_corner")),
           ("view3d", (".bss.s_vis", ".bss.s_vlist")),
           # H4: the combat bot's path search (combat_bot.c): scratch that
           # every search clears and fills, and only combat searches
-          ("combat_bot", (".bss.first_dir", ".bss.queue", ".bss.target_bits")))
+          ("combat_bot", (".bss.first_dir", ".bss.queue", ".bss.target_bits")),
+          # G0: the memory card's block buffer (memcard.c): scratch that
+          # every card read / write fills first. Card I/O runs only from
+          # save_game() / load_game() and the harness, never from the
+          # house's code (its group is out first: ovl_borrow_take()), and
+          # the 8 KB it lends cut the slot to the combat group's size
+          ("memcard", (".bss.s_blk",)))
 BORROW_GROUPS = ("home",)
 # --- end H3 ---
 
@@ -146,6 +152,51 @@ LOCAL_CALLBACKS = {
     "home_draw": ("label_main", "label_catalog", "label_theme", "label_bp",
                   "label_room", "label_group"),
 }
+
+# --- G0 (task #79): callbacks of a scene's modals. A function whose address
+# is handed to a resident modal scene (ui_modal.c: ui_confirm, ui_text_entry;
+# ui_dialog.c: ui_choice, ui_say_done) is called back by that modal once it
+# closes - from resident code, but only through scene_callback_begin() /
+# scene_callback_end() (scene.h), which load the code of the scene the modal
+# was opened over (the first non-overlay scene of the stack: the modals are
+# the only overlay scenes) for the call. A function whose address the group
+# keeps in state only its own code reads and calls (the studio's st_popup /
+# st_pick_citizen / ask_dirty: studio.pop_done, pk.done) is just as safe.
+# So these do not escape. Every entry is reviewed by hand against its call
+# sites; the planner still checks that every taker of the address is code of
+# the function's own group, and keeps the function resident otherwise. Not
+# listed (they stay resident): callbacks given to fp_pick / fp_pick_act (the
+# picker is a scene of the freeplay group: the caller's group is not in the
+# slot when it calls back), to ui_list hooks kept in resident variables
+# (ui_list_locked_fn), to a registry or to the harness (hcmd.c), and the
+# combat group's (combat is the biggest group: what it would take in makes
+# the slot bigger).
+#   object base -> function names
+MODAL_CALLBACKS = {
+    "concert_scene": ("confirm_stop",),
+    "creator": ("cb_discard", "cb_name", "cb_nick", "cb_reset"),
+    "exorcism_scene": ("cb_exit", "cb_name", "cb_prayer", "cb_to_tools", "cb_water",
+                       "cb_lost_choice", "cb_lost_confirm", "cb_typed"),
+    "fp_graveyard": ("cb_grave",),
+    "fp_island": ("cb_name_island", "cb_pet_name", "cb_title"),
+    "fp_newisland": ("cb_ask_name", "cb_name", "cb_seed"),
+    "fp_options": ("cb_defaults", "cb_monster_final", "cb_monster_typed"),
+    "fp_resident": ("cb_advice", "cb_help_choice", "cb_monster_typed", "cb_rest_final",
+                    "cb_rest_first"),
+    "fp_roster": ("cb_search",),
+    "fp_saveload": ("cb_erase1", "cb_erase2", "cb_load", "cb_overwrite"),
+    "overworld": ("title_yes",),
+    "pet_scene": ("on_named",),
+    "story_mg": ("te_cb",),
+    "studio": ("leave_choice",),
+    "studio_edit": ("notes_tools", "order_tools", "song_tools", "title_done"),
+    "studio_file": ("confirm_delete", "confirm_load", "confirm_overwrite", "do_new",
+                    "do_template", "slot_menu", "muse_done"),
+    "studio_words": ("fill_menu", "lyric_tools", "member_menu", "lyric_done", "pick_done"),
+    "ui_gallery": ("on_choice", "on_confirm", "on_hell_done", "on_name"),
+    "workshop": ("scrap_done", "weld_go"),
+}
+# --- end G0 ---
 
 # --- S4: registries read only by their own group (object base -> symbol).
 # doomo_story_mg_a / _b point at the S4 / S5 story minigames; their only
@@ -312,10 +363,11 @@ def main(argv):
             if typ in ("R_MIPS_HI16", "R_MIPS_LO16", "R_MIPS_32") and is_code(tgt):
                 escaped.add(tgt)
                 takers[tgt].add(src)
-    # LOCAL_CALLBACKS (above): not escaped when every taker is in their group
+    # LOCAL_CALLBACKS / MODAL_CALLBACKS (above): not escaped when every taker
+    # is in their group
     for f in sorted(escaped):
         o = objs[f[0]]
-        names = LOCAL_CALLBACKS.get(base(o.path), ())
+        names = LOCAL_CALLBACKS.get(base(o.path), ()) + MODAL_CALLBACKS.get(base(o.path), ())
         if not names or f[1] not in tuple(".text." + n for n in names):
             continue
         g = group_of(o.path)
