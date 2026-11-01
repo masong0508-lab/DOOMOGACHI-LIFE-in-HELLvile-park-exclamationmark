@@ -328,7 +328,7 @@ static void stamp(int cx, int cy, const char *txt, int age, int col)
 
 /* ======================================================================
  * P0 "The Egg Crossing" (crayon; PAL_CRAYON lerp from the script)
- * shots: 0 the potluck  1 everybody came (the bridge, the cherub and the
+ * shots: 0 the potluck  1 everybody came (the bridge, young Giggs and the
  * cloud on a string)  2 fireworks; the string slips at L_PUNCH  3 the pan
  * south with the cloud  4 SMASH: the Wall through the bandstand  5 fog,
  * Nana and the boats (the cookies come back; she eats one 21 frames into
@@ -354,9 +354,22 @@ static const Prim P0_BOWLS[] = {
     PE(-7, -15, 6, 3, RP(RAMP_STEEL, 4)), PE(-7, -17, 5, 1, RP(RAMP_LAVA, 5)),
     PE(7, -15, 6, 3, RP(RAMP_STEEL, 4)), PE(7, -17, 5, 1, RP(RAMP_LAVA, 5)), PEND
 };
-static const Prim P0_CHERUB[] = {
-    PE(-5, -12, 3, 2, PAL_WHITE), PE(5, -12, 3, 2, PAL_WHITE), PT(-4, 0, 4, 0, 0, -10, RP(RAMP_PASTEL_PINK, 6)),
-    PC(0, -13, 4, RP(RAMP_PEACH, 6)), PE(0, -19, 4, 1, PAL_UI_GOLD), PR(-2, -14, 1, 1, PAL_BLACK), PR(1, -14, 1, 1, PAL_BLACK), PEND
+/* young Giggs (show canon, C1): a little crayon turkey with his tail fan,
+ * teal coat, magenta bow tie, peach head on a long neck, beak, red wattle,
+ * white tufts and the tall lavender hat with its magenta band (no card);
+ * the cloud's string is tied to his wing at (4, -8) */
+static const Prim P0_GIGGS[] = {
+    PC(-6, -7, 3, PAL_PAINT(PAINT_RUST, 1)), PC(-4, -11, 3, PAL_PAINT(PAINT_CARAMEL, 1)),
+    PC(0, -12, 3, PAL_PAINT(PAINT_RUST, 1)), PC(4, -11, 3, PAL_PAINT(PAINT_CARAMEL, 1)),
+    PC(6, -7, 3, PAL_PAINT(PAINT_RUST, 1)),
+    PT(-4, 0, 4, 0, 0, -9, PAL_PAINT(PAINT_TEAL, 1)), PR(-1, -8, 3, 1, PAL_PAINT(PAINT_MAGENTA, 1)),
+    PC(4, -8, 1, PAL_PAINT(PAINT_CHOCOLATE, 1)),
+    PR(0, -12, 1, 4, RP(RAMP_PEACH, 6)), PC(0, -14, 3, RP(RAMP_PEACH, 6)),
+    PC(-3, -15, 1, PAL_WHITE), PC(3, -15, 1, PAL_WHITE),
+    PT(-1, -13, 2, -13, 0, -11, PAL_PAINT(PAINT_TANGERINE, 1)), PR(1, -12, 1, 2, PAL_PAINT(PAINT_CHERRY, 1)),
+    PR(-2, -15, 1, 1, PAL_BLACK), PR(1, -15, 1, 1, PAL_BLACK),
+    PR(-3, -17, 7, 1, PAL_PAINT(PAINT_LAVENDER, 1)), PR(-2, -21, 4, 4, PAL_PAINT(PAINT_LAVENDER, 2)),
+    PR(-1, -23, 4, 2, PAL_PAINT(PAINT_LAVENDER, 2)), PR(-2, -18, 4, 1, PAL_PAINT(PAINT_MAGENTA, 1)), PEND
 };
 static const Prim P0_CROWN[] = {
     PT(-4, -6, 4, -6, -3, -11, PAL_UI_GOLD), PT(-4, -6, 4, -6, 0, -12, PAL_UI_GOLD), PT(-4, -6, 4, -6, 3, -11, PAL_UI_GOLD), PEND
@@ -521,7 +534,7 @@ static void draw_p0(void)
                 int dir = (i & 1) ? -1 : 1, x = cx + dir * (((t * 2 + i * 23) % (100 * s)) - 50 * s);
                 p0_kid(x, by - 1 - (IABS(x - cx) < 24 * s ? 2 * s : 0), i & 1, (t / 4 + i) & 1);
             }
-            prims_at(P0_CHERUB, sw - 44 * s, gy - 2 * s, 1);
+            prims_at(P0_GIGGS, sw - 44 * s, gy - 2 * s, 1);
             p0_cloud(sw - 30 * s, gy - 50 * s + ui_wave(t, 30, 2), 0, sw - 40 * s, gy - 10 * s);
         }
         break;
@@ -534,7 +547,7 @@ static void draw_p0(void)
         p0_firework(sw / 2 + 30 * s, sh / 5, t - 34, PAL_UI_GOLD);
         p0_hill(RP(RAMP_GRASS, 2), RP(RAMP_GRASS, 1));
         prims_at(P0_BANDSTAND, cx - 40 * s, gy, 1);
-        prims_at(P0_CHERUB, ux, uy, 1);
+        prims_at(P0_GIGGS, ux, uy, 1);
         if (a >= 0) { ccx += a * s / 4; ccy -= a * s / 2; }
         p0_cloud(ccx, ccy, t >= 8, a < 0 ? ux + 4 * s : -1, uy - 8 * s);
         break; }
