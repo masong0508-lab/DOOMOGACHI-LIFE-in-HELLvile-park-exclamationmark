@@ -34,3 +34,7 @@ dream        0x4000..0x40FF # DREAM_ARG_SCRIPTED(n): S2's scripted dreams (dream
 timing       0..0xFFFF      # pattern | skin << 8 (scenes.h SCENE_STORY_TIMING)
 minigame     0..0xFFFF      # a story_mg registry id (story_vm.h)
 other        0
+# --- E0: the endings and the mature scene slots (LIFESIM_PLAN E0) ---
+ending       0..14          # ENDING_E01..E14, ENDING_NOPE (ending.h; `push ending E03`)
+mslot        0..63          # a mature scene slot, 0..MSLOT_MAX - 1 (pack.h; E2 names them)
+# --- end E0 ---

@@ -39,6 +39,13 @@ compile everything the same way but write nothing to core/gen:
     --es-dir DIR    read (and with --sync-es write) the TSVs from DIR
                     instead of core/lang/story (tests, scratch copies)
 
+(E0) A user pack: a content pack's scene scripts (pack.h, E2, E7), one
+.dsc file into one raw pack image, nothing written to core/gen:
+
+    --user FILE.dsc --out PACK.bin [--pack-id 112..127]
+                    TXF_RAW strings (no shared dictionary), only the ops of
+                    pack.h PACK_OPS_LO/HI, no reference to a built-in script
+
 Deterministic: the same inputs give byte-identical outputs (check-gen).
 Every lint failure names the .dsc file and line; fix the input, never
 core/gen/.
@@ -46,7 +53,8 @@ core/gen/.
 THE PACK (little endian, 4-aligned sections, offsets from the pack start)
     0  u16 magic 'TX', u8 version (1), u8 pack id
     4  u16 n_strings, n_scripts, n_ops, n_beats
-   12  u16 n_events, u16 flags (1 = legacy text: no box lint; kind << 4)
+   12  u16 n_events, u16 flags (1 = legacy text: no box lint; 2 = TXF_RAW, the
+       strings are plain NUL-terminated bytes: --user packs only; kind << 4)
    16  u32 off_strings, off_scripts, off_ops, off_beats, off_events, off_streams
    40  sections: u16 str_off[n] (into the streams) | StoryScript[n] (6 B:
        u16 first_op, u16 n_ops, u8 n_labels, u8 pack) | StoryOp[n] (4 B) |
@@ -114,6 +122,7 @@ HEADERS = [
     "types.h", "town.h", "roster.h", "items.h", "audio.h", "camfx.h", "beat.h", "portrait.h",
     "story.h", "story_vm.h", "map.h", "palette.h", "txt.h", "scenes.h", "tween.h", "unlocks.h",
     "unlock_ids.h", "home.h", "house_api.h", "exorcism.h",
+    "ending.h", "pack.h",      # (E0) ENDING_*, MATURE_*, PK_KIND_*, PACK_OPS_*
 ]
 EXTRA_HEADERS = [os.path.join(CORE, "src", "story_int.h"), os.path.join(CORE, "src", "overworld_int.h"),
                  os.path.join(CORE, "src", "story_ch12.h")]
@@ -197,7 +206,14 @@ PEND = {"creator": "PEND_CREATOR", "pet": "PEND_PET", "exo_practice": "PEND_EXO_
         "exorcism": "PEND_EXORCISM", "workshop": "PEND_WORKSHOP", "combat": "PEND_COMBAT",
         "cutscene": "PEND_CUTSCENE", "credits": "PEND_CREDITS", "other": "PEND_OTHER",
         "home": "PEND_HOME", "cooking": "PEND_COOKING", "concert": "PEND_CONCERT", "dream": "PEND_DREAM",
-        "timing": "PEND_TIMING", "minigame": "PEND_MINIGAME_SIDE"}
+        "timing": "PEND_TIMING", "minigame": "PEND_MINIGAME_SIDE",
+        "ending": "PEND_ENDING", "mslot": "PEND_MSLOT"}           # (E0)
+# (E0) jmat / jmatn levels (ending.h MATURE_*); a bare jmat means "On"
+JMAT_LEVELS = {"censored": "MATURE_CENSORED", "on": "MATURE_ON", "pack": "MATURE_PACK"}
+# (E0) show KIND: the content pack's entry kinds (pack.h PK_KIND_*)
+SHOW_KINDS = {"cg": "PK_KIND_CG", "portrait": "PK_KIND_PORTRAIT", "figure": "PK_KIND_FIGURE"}
+# (E0) pack roles (@pack ... role=): `show` is for mslot and ending packs only
+ROLES = ("ending", "mslot")
 EXPRS = ("NEUTRAL", "HAPPY", "SAD", "ANGRY", "LOVE", "SHOCK", "SICK", "SLEEPY", "SURPRISE", "SMUG",
          "POSSESSED", "SCARED", "WINK")
 # Bracket notation in scripts (SPEC sec.5, C14). The list is closed: any
@@ -244,6 +260,8 @@ class Pack:
         self.scripts = []         # [name, body, compiled]
         self.beats = []
         self.legacy = attrs.get("lint") == "legacy" or kind == "legacy"
+        self.role = attrs.get("role")         # (E0) ending | mslot: may `show` art
+        self.raw = False                      # (E0) a --user pack: TXF_RAW strings
         self.minutes = int(attrs.get("minutes", "0"))
         self.chapter = int(attrs.get("chapter", "0"))
 
@@ -344,6 +362,7 @@ class Compiler:
         self.armed = []           # @armed: when an authored possession is the story's
         self.spots = []           # (S4) the givers' cells (@mission at=), in first-use order
         self.push_args = load_push_args()
+        self.user = None          # (E0) --user: the user pack's id (112..127)
 
     def sym(self, name, where, prefix=None):
         if re.match(r"^-?\d+$", name) or re.match(r"^0x[0-9a-fA-F]+$", name):
@@ -404,12 +423,20 @@ class Compiler:
                 pack = Pack(parts[1], attrs.get("kind", "episode"), attrs, rel)
                 if pack.kind not in CAPS:
                     die(where, "unknown pack kind %s" % pack.kind)
+                if pack.role is not None and pack.role not in ROLES:
+                    die(where, "unknown pack role %s (role=%s)" % (pack.role, "|".join(ROLES)))
+                if self.user:
+                    if self.packs:
+                        die(where, "a user pack file holds exactly one @pack")
+                    pack.role, pack.raw = "mslot", True
                 if not re.match(r"^[a-z][a-z0-9_]{0,7}$", pack.name):
                     die(where, "pack names are 1-8 characters [a-z0-9_]")
                 self.packs.append(pack)
                 continue
             if pack is None:
                 die(where, "content before @pack")
+            if self.user and t.startswith(("@mission", "@possessor", "@armed", "beatscript ")):
+                die(where, "a user pack holds strings and scripts only")
             if t.startswith("@mission"):
                 self.missions.append((where, self.attrs(t[len("@mission"):], where), pack))
                 continue
@@ -548,6 +575,33 @@ class Compiler:
                 need(3)
                 ops.append(["OP_JLT" if cmd == "jlt" else "OP_JGE", self.var(words[0], where), ("label", words[2])])
                 ops.append(["OP_DATA", D_CMP, self.sym(words[1], where) & 0xFFFF])
+            elif cmd in ("jmat", "jmatn"):
+                # (E0) jmat [censored|on|pack] LABEL: jump if the Mature option is at
+                # least that level (bare: On); jmatn: jump if it is below
+                need(1)
+                lv = self.syms["MATURE_ON"]
+                if len(words) > 1:
+                    if words[0].lower() not in JMAT_LEVELS:
+                        die(where, "%s [censored|on|pack] LABEL" % cmd)
+                    lv = self.syms[JMAT_LEVELS[words[0].lower()]]
+                a = lv | (self.syms["JMAT_NOT"] if cmd == "jmatn" else 0)
+                ops.append(["OP_JMAT", a, ("label", words[-1])])
+            elif cmd == "show":
+                # (E0) show cg|portrait|figure N / show off: art for the mslot or
+                # ending card host (VM_EXT); mslot / ending packs only
+                need(1)
+                if pack.role not in ROLES:
+                    die(where, "show is for mslot and ending packs only (@pack ... role=mslot|ending)")
+                if words[0].lower() == "off":
+                    ops.append(["OP_SHOW", self.syms["SHOW_OFF"], 0])
+                else:
+                    need(2)
+                    if words[0].lower() not in SHOW_KINDS:
+                        die(where, "show cg|portrait|figure N, or show off")
+                    n = self.sym(words[1], where)
+                    if not 0 <= n <= 0xFFFF:
+                        die(where, "show: the art index is 0..65535")
+                    ops.append(["OP_SHOW", self.syms[SHOW_KINDS[words[0].lower()]], n])
             elif cmd in ("jmp", "goto"):
                 need(1)
                 ops.append(["OP_JMP", 0, ("label", words[0])])
@@ -612,6 +666,8 @@ class Compiler:
                         tskin = (tskin or 0) | self.syms["TIMING_DRIFT"]
                     elif w in ("->",) or "," in w:
                         pass
+                    elif arg == 0 and words[0].lower() == "ending":
+                        arg = self.sym(w.upper(), where, "ENDING_")      # (E0) push ending E03|NOPE
                     elif arg == 0 and not w.startswith(("ok", "fail")):
                         arg = self.arg_value(w, where)
                 if tpat is not None or tskin is not None:
@@ -1031,9 +1087,11 @@ class Compiler:
         names = set()
         for i, p in enumerate(sorted(self.packs, key=lambda p: p.name)):
             names.add(p.name)
-            p.id = i
-            if i >= MAX_PACKS:
-                die(p.path, "more than %d packs" % MAX_PACKS)
+            p.id = i if self.user is None else self.user
+            if self.user is None and i >= self.syms.get("TXT_PACK_USER_FIRST", MAX_PACKS):
+                # (E0) 112..127 are the user packs' (txt.h); a built-in pack never takes one
+                die(p.path, "more than %d built-in packs (ids %d..%d are reserved for user packs)" %
+                    (self.syms["TXT_PACK_USER_FIRST"], self.syms["TXT_PACK_USER_FIRST"], MAX_PACKS - 1))
         self.packs.sort(key=lambda p: p.id)
         self.string_names = {}
         for p in self.packs:
@@ -1248,7 +1306,7 @@ def pack_bytes(p, streams, strs=None):
     for sec in (str_off, scripts, ops, beats, evs, data):
         offs.append(hdr_len + len(body))
         body = align4(body + sec)
-    flags = (1 if p.legacy else 0) | (KINDS[p.kind] << 4)
+    flags = (1 if p.legacy else 0) | (2 if p.raw else 0) | (KINDS[p.kind] << 4)   # TXF_LEGACY, TXF_RAW
     hdr = u16(0x5854) + bytes((1, p.id)) + u16(len(p.strings)) + u16(len(p.script_spans)) + \
         u16(len(p.all_ops)) + u16(len(p.beat_spans)) + u16(len(p.all_events)) + u16(flags)
     for o in offs:
@@ -1707,8 +1765,61 @@ def script_guards(guard, packs, blobs, es_blobs, es_map):
 # --- end P0 ---
 
 
+def load_pack_ops(syms):
+    """(E0) pack.h's PACK_OPS_LO / PACK_OPS_HI: the ops a user pack script may
+    use (load_symbols skips a #define whose value starts with a parenthesis)"""
+    env = dict(syms)
+    src = strip_comments(open(os.path.join(INC, "pack.h")).read())
+    for m in re.finditer(r"#define[ \t]+(PACK_OPS_[A-Z_]+)[ \t]+([^\n]+)", src):
+        v = c_eval(m.group(2), env)
+        if v is None:
+            raise Fail("core/include/doomo/pack.h: cannot evaluate %s" % m.group(1))
+        env[m.group(1)] = v
+    return env["PACK_OPS_LO"], env["PACK_OPS_HI"]
+
+
+def build_user(path, out, pid):
+    """(E0) --user: compile one user pack .dsc (a content pack's scene scripts,
+    docs/STORY_ENGINE.md) into a TXF_RAW pack image with id pid (112..127).
+    Raw strings (no shared dictionary), only the ops pack.h allows, no
+    reference to a built-in script."""
+    syms = load_symbols()
+    first = syms["TXT_PACK_USER_FIRST"]
+    if not first <= pid < MAX_PACKS:
+        raise Fail("--pack-id %d: user packs are %d..%d" % (pid, first, MAX_PACKS - 1))
+    comp = Compiler(syms)
+    comp.user = pid
+    comp.read(os.path.abspath(path))
+    if not comp.packs:
+        raise Fail("%s: no @pack" % path)
+    comp.build()
+    p = comp.packs[0]
+    lo, hi = load_pack_ops(syms)
+    names = {v: k for k, v in syms.items() if k.startswith("OP_") and k != "OP_COUNT"}
+    p.all_ops, p.script_spans = [], []
+    for sc in p.scripts:
+        for op, a, b in sc[2]:
+            ok = (lo >> op) & 1 if op < 32 else (hi >> (op - 32)) & 1 if op < 64 else 0
+            if not ok:
+                die(sc[3], "script %s: a user pack may not use %s (pack.h PACK_OPS_*)" %
+                    (sc[0], names.get(op, op)))
+        p.script_spans.append((len(p.all_ops), len(sc[2]), 0))
+        p.all_ops.extend(sc[2])
+    p.all_events, p.beat_spans = [], []
+    blob = pack_bytes(p, [st.encode("latin-1") + b"\0" for st in p.strings])
+    if len(blob) > CAPS[p.kind]:
+        raise Fail("%s: pack %s is %d B, over the %s cap of %d B" % (p.path, p.name, len(blob), p.kind, CAPS[p.kind]))
+    with open(out, "wb") as f:
+        f.write(blob)
+    print("textpack: user pack %s (id %d): %d B, %d strings, %d scripts, %d ops" %
+          (p.name, pid, len(blob), len(p.strings), len(p.scripts), len(p.all_ops)))
+    return 0
+
+
 def main(argv):
     out_root = ROOT
+    user_in = user_out = None
+    user_id = 112
     bin_out = None
     dump_es = None
     lint_es = False
@@ -1731,6 +1842,17 @@ def main(argv):
         elif argv[i] == "--bin":
             bin_out = os.path.abspath(argv[i + 1])
             i += 2
+        # --- E0: a user pack (a content pack's scene scripts) ---
+        elif argv[i] == "--user":
+            user_in = argv[i + 1]
+            i += 2
+        elif argv[i] == "--out":
+            user_out = os.path.abspath(argv[i + 1])
+            i += 2
+        elif argv[i] == "--pack-id":
+            user_id = int(argv[i + 1], 0)
+            i += 2
+        # --- end E0 ---
         # --- P0: the script-rewrite guardrails (no core/gen output) ---
         elif argv[i] in ("--check-es", "--sync-es", "--sizes", "--allow-missing", "--allow-stale"):
             guard[argv[i][2:]] = True
@@ -1743,6 +1865,11 @@ def main(argv):
         else:
             print("textpack: unknown argument %s" % argv[i], file=sys.stderr)
             return 2
+    if user_in or user_out:
+        if not (user_in and user_out):
+            print("textpack: --user FILE.dsc --out PACK.bin [--pack-id 112..127]", file=sys.stderr)
+            return 2
+        return build_user(user_in, user_out, user_id)
     syms = load_symbols()
     comp = Compiler(syms)
     files = []

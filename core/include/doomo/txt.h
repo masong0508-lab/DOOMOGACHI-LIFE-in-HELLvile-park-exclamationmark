@@ -74,6 +74,27 @@ int  txt_pack_scripts(int pack);
 int  txt_pack_beats(int pack);
 int  txt_pack_kind(int pack);
 int  txt_pack_flags(int pack);
+/* --- E0: pack flags and the user packs (LIFESIM_PLAN E0, E2, E7) ---
+ * The header's flags word (txt_pack_flags): bit 0 legacy text (no box
+ * lint), bit 1 TXF_RAW, bits 4..7 the kind. A TXF_RAW pack stores its
+ * strings as plain NUL-terminated bytes instead of the shared Huffman
+ * code (a user pack is built outside the game, by textpack.py --user, so
+ * it cannot use the game's dictionary). Built-in packs are never raw.
+ * Pack ids TXT_PACK_USER_FIRST..TXT_PACK_MAX - 1 are reserved for user
+ * packs (textpack.py refuses a built-in pack there): their bytes come
+ * from a content pack (E2's pack.c registers each PK_KIND_SCRIPT entry
+ * with txt_user_set), never from the generated directory. */
+#define TXF_LEGACY          1u
+#define TXF_RAW             2u
+#define TXT_PACK_USER_FIRST 112
+#define TXT_PACK_USER_COUNT (TXT_PACK_MAX - TXT_PACK_USER_FIRST)
+/* Make user pack `pack` (TXT_PACK_USER_FIRST..) read from `bytes` (a pack
+ * image textpack.py --user wrote; validated by the caller), or forget it
+ * with NULL. 1 ok, 0 for a pack id outside the user range or bytes that
+ * are not a TXF_RAW pack with that id. */
+int  txt_user_set(int pack, const uint8_t *bytes);
+/* --- end E0 --- */
+
 /* The generated directory (core/gen/txt_dict.c). */
 extern const uint16_t doomo_txt_npacks;
 extern const char doomo_txt_pack_names[][9];

@@ -85,8 +85,22 @@ enum {
                         the legacy port's beat logic, story_script.c)                     */
     OP_STASH,        /* slot (0..3)            text id: decode into the resident caption
                         stash (txt_stash, SPEC C5) for the scene pushed next              */
+    /* ---- E0 additions (append only; LIFESIM_PLAN E0) ---- */
+    OP_JMAT,         /* level | JMAT_NOT       label: jump if opt_mature() >= level (the
+                        Mature option, ending.h MATURE_*); with JMAT_NOT if it is below */
+    OP_SHOW,         /* PK_KIND_* | SHOW_OFF   art index: show a content pack's or an
+                        ending's art (VM_EXT; mslot / ending packs only)                */
     OP_COUNT
 };
+/* OP_JMAT a: the level in the low bits, JMAT_NOT inverts the test. */
+#define JMAT_LEVEL_MASK 0x03
+#define JMAT_NOT        0x80
+/* OP_SHOW a: SHOW_OFF hides the shown art (b unused). */
+#define SHOW_OFF        0xFF
+/* (E0) The JMAT test, pure: 1 if an OP_JMAT with operand `a` jumps when
+ * the Mature option is at `level` (ending.h MATURE_*). The VM calls it
+ * with opt_mature(). */
+int vm_jmat_hit(int a, int level);
 
 /* OP_DATA tags (a): what the inline operand b is for. */
 enum { VMD_CMP,          /* JLT / JGE: the value compared with                     */
@@ -119,6 +133,9 @@ enum { PEND_NONE, PEND_CREATOR, PEND_PET, PEND_EXO_PRACTICE, PEND_EXORCISM,
        PEND_COOKING, PEND_CONCERT, PEND_DREAM,
        PEND_TIMING,        /* SCENE_STORY_TIMING (S2, story_timing.c)            */
        PEND_MINIGAME_SIDE, /* SCENE_STORY_MG, arg = a story_mg registry id       */
+       /* ---- E0 additions (append only) ---- */
+       PEND_ENDING,        /* SCENE_ENDING_CARD (E1), arg = ENDING_* (ending.h)   */
+       PEND_MSLOT,         /* SCENE_MSLOT (E2), arg = the slot, 0..MSLOT_MAX - 1  */
        PEND_COUNT };
 #endif
 

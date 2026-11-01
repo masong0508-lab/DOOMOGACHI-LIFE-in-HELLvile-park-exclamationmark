@@ -9,7 +9,9 @@
  * BEAT, TINT, NATIVE, the quest UI, REWARD, BEFRIEND, SET_BEAT, POSSESS)
  * come back to the host scene as VM_EXT, and PUSH / HOME DEFEND / VISIT as
  * VM_PUSHED. Everything else runs here: text, flags, vars, waits, audio,
- * camfx, inventory, the house's resident API, time, LATER and the RNG.
+ * camfx, inventory, the house's resident API, time, LATER, the RNG and
+ * (E0) the Mature guard JMAT; (E0) SHOW is a host kind (E2's mslot scene,
+ * E1's ending card draw the art).
  *
  * Dialogue: SAY lines are queued into the dialogue box at once (the
  * decoded, formatted line is copied into the queue entry; nothing resident
@@ -30,6 +32,7 @@
 #include "doomo/camfx.h"
 #include "doomo/house_api.h"
 #include "doomo/unlock_ids.h"
+#include "doomo/ending.h"
 
 enum { ST_IDLE, ST_RUN, ST_WAIT, ST_HOLD, ST_WAIT_A, ST_DLG, ST_ROOM, ST_CHOICE,
        ST_PUSHED, ST_BEAT };
@@ -315,6 +318,7 @@ static int no_wait(int op)
     case OP_JIF: case OP_JIFN: case OP_JLT: case OP_JGE: case OP_JMP:
     case OP_SETF: case OP_CLRF: case OP_SETV: case OP_ADDV: case OP_CALL: case OP_RET:
     case OP_RNG: case OP_LATER: case OP_GIVE: case OP_TAKE: case OP_QUEST: case OP_STASH:
+    case OP_JMAT:
         return 1;
     default:
         return 0;
@@ -344,6 +348,13 @@ static void home_op(int sub, uint16_t b)
     case HOME_PROP_GAG: home_prop_gag(b); break;
     default: break;
     }
+}
+
+/* (E0) the Mature option's guard: at least the level, or below it with NOT */
+int vm_jmat_hit(int a, int level)
+{
+    int hit = level >= (a & JMAT_LEVEL_MASK);
+    return (a & JMAT_NOT) ? !hit : hit;
 }
 
 /* ---- the interpreter ---------------------------------------------------------------- */
@@ -436,6 +447,7 @@ int vm_tick(void)
         case OP_JLT: if (vm_var(o->a) < (int16_t)data_at((uint16_t)(pc + 1), VMD_CMP, 0)) vm.pc = o->b; break;
         case OP_JGE: if (vm_var(o->a) >= (int16_t)data_at((uint16_t)(pc + 1), VMD_CMP, 0)) vm.pc = o->b; break;
         case OP_JMP: vm.pc = o->b; break;
+        case OP_JMAT: if (vm_jmat_hit(o->a, opt_mature())) vm.pc = o->b; break;   /* (E0) */
         case OP_SETF: set_flag(o->a, 1); break;
         case OP_CLRF: set_flag(o->a, 0); break;
         case OP_SETV: vm_set_var(o->a, (int16_t)o->b); break;
@@ -499,6 +511,7 @@ int vm_tick(void)
         case OP_BEAT:
             vm.state = ST_BEAT;
             return ext(o, (uint16_t)(pc + 1), VM_EXT);
+        case OP_SHOW:                                    /* (E0) the mslot / card host draws it */
         default:                                         /* host kinds (C6) */
             return ext(o, (uint16_t)(pc + 1), VM_EXT);
         }

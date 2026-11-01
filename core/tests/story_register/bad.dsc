@@ -90,7 +90,26 @@ script rb_cap
   say hattie ANGRY "What a fuck-up." # expect: C1
 end
 
+# K3: a mature-guarded branch (E0's jmat) in Pip's scene, at any level
+script rb_jmat
+  say pip HAPPY "Hi!"
+  jmat censored rb_jmat_lewd # expect: K3
+  end
+rb_jmat_lewd:
+  say nar "(A curtain does its job.)"
+end
+
 # ---- controls: none of these may be reported ----------------------------
+# a jmat guard in an adults' scene is what it is for (SCRIPT_STYLE 12.2)
+script rb_ok_jmat
+  say vex HAPPY "Hi, handsome."
+  jmat rb_ok_jmat_on
+  say nar "(Meanwhile: a sign.)"
+  end
+rb_ok_jmat_on:
+  say nar "(A fade to black.)"
+end
+
 # adults may swear and flirt (within R1-R2 and the caps)
 script rb_ok_adults
   say grumble LOVE "Come up and see my gate, / handsome. {.}Damn."

@@ -7,6 +7,8 @@
 #include "doomo/txt.h"
 #include "doomo/beat.h"
 #include "doomo/home.h"
+#include "doomo/ending.h"
+#include "doomo/pack.h"
 #include "../src/story_int.h"
 #include "../src/ui_internal.h"
 
@@ -564,4 +566,179 @@ TEST(story_side_walker_gates_and_trophies)
     CHECK_EQ(out[1], 4);
 #undef ROW
 #undef ST
+}
+
+/* ---- E0: JMAT, SHOW, PEND_ENDING / PEND_MSLOT and TXF_RAW user packs ------
+ * core/tests/fixtures/e0_user.pack is textpack.py --user's build of
+ * e0_user.dsc (story-check keeps it byte-identical); the push test builds
+ * its raw pack in C, since a user pack may not push (pack.h PACK_OPS_*). */
+static uint8_t e0_pack[1024];
+
+static int e0_load_fixture(void)
+{
+    char path[512];
+    FILE *f;
+    size_t n;
+    snprintf(path, sizeof(path), "%s/../fixtures/e0_user.pack", test_golden_dir);
+    f = fopen(path, "rb");
+    if (!f) return 0;
+    n = fread(e0_pack, 1, sizeof(e0_pack), f);
+    fclose(f);
+    return n > 40 && n < sizeof(e0_pack);
+}
+
+static void e0_put16(uint8_t *p, unsigned v) { p[0] = (uint8_t)v; p[1] = (uint8_t)(v >> 8); }
+static void e0_put32(uint8_t *p, uint32_t v) { e0_put16(p, v & 0xFFFF); e0_put16(p + 2, v >> 16); }
+
+/* a raw pack (textpack.py's layout) with one string and script 1 = ops */
+static void e0_build(uint8_t *b, int id, const char *str, const StoryOp *ops, int nops)
+{
+    uint32_t at = 40;
+    int i;
+    memset(b, 0, 512);
+    e0_put16(b, 0x5854);
+    b[2] = 1; b[3] = (uint8_t)id;
+    e0_put16(b + 4, 1);                          /* strings      */
+    e0_put16(b + 6, 2);                          /* scripts 0, 1 */
+    e0_put16(b + 8, (unsigned)nops);
+    e0_put16(b + 14, TXF_RAW | (TXT_KIND_SIDE << 4));
+    e0_put32(b + 16, at);                        /* str_off[1]   */
+    at += 4;
+    e0_put32(b + 20, at);                        /* scripts      */
+    e0_put16(b + at, 0); e0_put16(b + at + 2, 0); b[at + 5] = (uint8_t)id;
+    e0_put16(b + at + 6, 0); e0_put16(b + at + 8, (unsigned)nops); b[at + 11] = (uint8_t)id;
+    at += 12;
+    e0_put32(b + 24, at);                        /* ops          */
+    for (i = 0; i < nops; i++) {
+        b[at] = ops[i].op; b[at + 1] = ops[i].a; e0_put16(b + at + 2, ops[i].b);
+        at += 4;
+    }
+    e0_put32(b + 28, at);                        /* beats (none) */
+    e0_put32(b + 32, at);                        /* events       */
+    e0_put32(b + 36, at);                        /* streams      */
+    memcpy(b + at, str, strlen(str) + 1);
+}
+
+TEST(story_vm_e0_txf_raw_user_pack_round_trip)
+{
+    char buf[200];
+    uint8_t copy[1024];
+    fresh();
+    CHECK(e0_load_fixture());
+    /* only the user range, only the pack's own id, only raw packs */
+    CHECK_EQ(txt_user_set(TXT_PACK_USER_FIRST - 1, e0_pack), 0);
+    CHECK_EQ(txt_user_set(TXT_PACK_USER_FIRST + 1, e0_pack), 0);
+    memcpy(copy, e0_pack, sizeof(copy));
+    copy[14] &= (uint8_t)~TXF_RAW;
+    CHECK_EQ(txt_user_set(TXT_PACK_USER_FIRST, copy), 0);
+    CHECK_EQ(txt_get(TXT_ID(TXT_PACK_USER_FIRST, 0), buf, (int)sizeof(buf)), -1);
+    CHECK_EQ(txt_user_set(TXT_PACK_USER_FIRST, e0_pack), 1);
+    CHECK(txt_pack_is_live(TXT_PACK_USER_FIRST));
+    CHECK_EQ(txt_pack_strings(TXT_PACK_USER_FIRST), 2);
+    CHECK_EQ(txt_pack_scripts(TXT_PACK_USER_FIRST), 5);
+    CHECK(txt_pack_flags(TXT_PACK_USER_FIRST) & TXF_RAW);
+    /* the bytes as written: the line codes stay for vm_fmt */
+    CHECK_EQ(txt_get(TXT_ID(TXT_PACK_USER_FIRST, 0), buf, (int)sizeof(buf)), 41);
+    CHECK(strcmp(buf, "A tasteful pan to the window. @P blushes.") == 0);
+    CHECK_EQ(txt_get(TXT_ID(TXT_PACK_USER_FIRST, 0), buf, 9), 8);   /* capped */
+    CHECK(strcmp(buf, "A tastef") == 0);
+    CHECK_EQ(txt_get(TXT_ID(TXT_PACK_USER_FIRST, 2), buf, (int)sizeof(buf)), -1);
+    /* the built-in packs still decode through the Huffman code */
+    CHECK(txt_get(TXT_VMT_HELLO, buf, (int)sizeof(buf)) > 0);
+    CHECK(strcmp(buf, "Hello, @P! You have @1 hats.") == 0);
+    /* forgotten: the id reads as missing again */
+    CHECK_EQ(txt_user_set(TXT_PACK_USER_FIRST, NULL), 1);
+    CHECK(!txt_pack_is_live(TXT_PACK_USER_FIRST));
+    CHECK_EQ(txt_get(TXT_ID(TXT_PACK_USER_FIRST, 0), buf, (int)sizeof(buf)), -1);
+}
+
+TEST(story_vm_e0_jmat_levels)
+{
+    int lv;
+    for (lv = MATURE_OFF; lv < MATURE_LEVELS; lv++) {
+        CHECK_EQ(vm_jmat_hit(MATURE_OFF, lv), 1);
+        CHECK_EQ(vm_jmat_hit(MATURE_CENSORED, lv), lv >= MATURE_CENSORED);
+        CHECK_EQ(vm_jmat_hit(MATURE_ON, lv), lv >= MATURE_ON);
+        CHECK_EQ(vm_jmat_hit(MATURE_PACK, lv), lv >= MATURE_PACK);
+        CHECK_EQ(vm_jmat_hit(MATURE_ON | JMAT_NOT, lv), lv < MATURE_ON);
+        CHECK_EQ(vm_jmat_hit(MATURE_PACK | JMAT_NOT, lv), lv < MATURE_PACK);
+    }
+}
+
+TEST(story_vm_e0_jmat_follows_the_mature_option)
+{
+    int lv;
+    fresh();
+    CHECK(e0_load_fixture());
+    CHECK(txt_user_set(TXT_PACK_USER_FIRST, e0_pack));
+    lv = opt_mature();
+    vm_set_var(3, 0);
+    vm_start(TXT_ID(TXT_PACK_USER_FIRST, 1));     /* e0u_guard */
+    CHECK(vm_running());
+    CHECK_EQ(run(5), VM_IDLE);
+    /* on -> the implied version, censored -> the mosaic, off -> the cutaway */
+    CHECK_EQ(vm_var(2), lv >= MATURE_ON ? 3 : lv >= MATURE_CENSORED ? 2 : 1);
+    if (lv < MATURE_CENSORED) CHECK_EQ(vm_var(3), 7);   /* jmatn pack: below On + pack */
+    txt_user_set(TXT_PACK_USER_FIRST, NULL);
+}
+
+TEST(story_vm_e0_show_is_a_host_op_after_the_box)
+{
+    const StoryOp *o;
+    int i, r = VM_RUN;
+    fresh();
+    CHECK(e0_load_fixture());
+    CHECK(txt_user_set(TXT_PACK_USER_FIRST, e0_pack));
+    vm_set_var(4, 0);
+    vm_start(TXT_ID(TXT_PACK_USER_FIRST, 2));     /* e0u_show */
+    CHECK_EQ(vm_tick(), VM_RUN);                  /* the line is queued; SHOW waits */
+    CHECK(ui_dialog_active());
+    CHECK(vm_ext_op() == NULL);
+    for (i = 0; i < 400 && ui_dialog_active(); i++) { frame(BTN_A); frame(0); }
+    CHECK(!ui_dialog_active());
+    for (i = 0; i < 4 && (r = vm_tick()) != VM_EXT; i++) frame(0);
+    CHECK_EQ(r, VM_EXT);
+    o = vm_ext_op();
+    CHECK(o && o->op == OP_SHOW && o->a == PK_KIND_CG && o->b == 7);
+    for (i = 0; i < 60 && (r = vm_tick()) != VM_EXT; i++) frame(0);   /* [R10], then show off */
+    CHECK_EQ(r, VM_EXT);
+    o = vm_ext_op();
+    CHECK(o && o->op == OP_SHOW && o->a == SHOW_OFF);
+    CHECK_EQ(run(5), VM_IDLE);
+    CHECK_EQ(vm_var(4), 1);
+    /* a call stays inside the user pack */
+    vm_start(TXT_ID(TXT_PACK_USER_FIRST, 3));     /* e0u_call */
+    CHECK_EQ(run(5), VM_IDLE);
+    CHECK_EQ(vm_var(5), 41);
+    txt_user_set(TXT_PACK_USER_FIRST, NULL);
+}
+
+TEST(story_vm_e0_push_ending_and_mslot)
+{
+    static const StoryOp ops[] = {
+        { OP_PUSH, PEND_ENDING, ENDING_E03 },
+        { OP_SETV, 8, 1 },
+        { OP_PUSH, PEND_MSLOT, 5 },
+        { OP_END, 0, 0 },
+    };
+    const StoryOp *o;
+    fresh();
+    e0_build(e0_pack, TXT_PACK_USER_FIRST + 3, "x", ops, (int)DOOMO_COUNTOF(ops));
+    CHECK(txt_user_set(TXT_PACK_USER_FIRST + 3, e0_pack));
+    vm_set_var(8, 0);
+    vm_start(TXT_ID(TXT_PACK_USER_FIRST + 3, 1));
+    CHECK_EQ(vm_tick(), VM_PUSHED);
+    o = vm_ext_op();
+    CHECK(o && o->op == OP_PUSH && o->a == PEND_ENDING && o->b == ENDING_E03);
+    CHECK_EQ(vm_tick(), VM_PUSHED);               /* waits for the card */
+    CHECK(vm_ext_op() == NULL);
+    vm_resume(1);
+    CHECK_EQ(vm_tick(), VM_PUSHED);
+    o = vm_ext_op();
+    CHECK(o && o->op == OP_PUSH && o->a == PEND_MSLOT && o->b == 5);
+    CHECK_EQ(vm_var(8), 1);
+    vm_resume(0);                                 /* the slot's result -> var 0 */
+    CHECK_EQ(vm_tick(), VM_IDLE);
+    CHECK_EQ(vm_var(0), 0);
+    txt_user_set(TXT_PACK_USER_FIRST + 3, NULL);
 }

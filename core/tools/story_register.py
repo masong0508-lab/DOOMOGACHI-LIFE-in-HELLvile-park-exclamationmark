@@ -443,8 +443,8 @@ def main(argv):
                 print("story_register: selftest: %s: unexpected %s: %s" % (w, r, msg))
         if missing or extra or not want:
             return 1
-        # K3 cannot be seeded in a .dsc until E0 adds the jmat op (textpack
-        # rejects an unknown command), so feed the scanner a scene directly
+        # K3 is seeded in bad.dsc (rb_jmat) since E0 added the jmat op; the
+        # scanner is also fed scenes directly (jmatn, the control case)
         k3 = []
         for body, cast_line in (([("k3:1", '  say pip HAPPY "Hi!"'), ("k3:2", "  jmat lewd")], True),
                                 ([("k3:1", '  say nar "beep."'), ("k3:2", "  jmatn tame")], True),

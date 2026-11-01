@@ -57,14 +57,14 @@ flags, vars, jumps, calls, waits, audio, camfx, inventory, the house's
 resident API (`house_api.h`), `TIME`, `LATER`, `RNG` and `STASH` itself.
 Everything that needs scene code comes back as `VM_EXT`: `CAST`, `NPC`,
 `CAM`, `TELEPORT`, `BEAT`, `INSERT`, `CUT`, `FREEZE_CAP`, `TINT`, `REWARD`,
-`BEFRIEND`, `SET_BEAT`, `POSSESS`, `UNPOSSESS`, `NATIVE`. The overworld
+`BEFRIEND`, `SET_BEAT`, `POSSESS`, `UNPOSSESS`, `NATIVE`, (E0) `SHOW`. The overworld
 (`story.c host_ext`) is the host today; a cutscene, the house or combat
 host the same way.
 
 **Dialogue.** `SAY` decodes the line, formats it and copies it into the
 dialogue queue entry at once (nothing resident points into a pack), so a
 script's lines queue in order. Every op that is not a line, a choice, a
-flag, a var, a jump, a call, `LATER`, `RNG`, `GIVE`/`TAKE`, `QUEST` or
+flag, a var, a jump (`JMAT` too), a call, `LATER`, `RNG`, `GIVE`/`TAKE`, `QUEST` or
 `STASH` waits until the box has closed: a sting or a push lands after the
 reader dismissed the line before it.
 
@@ -73,6 +73,26 @@ reader dismissed the line before it.
 day, `@0..@9` a VM var, `@@`. The typewriter codes are S1's (`{.} {..}
 {...} {d} {!} {big}…{/} {w} {r} {punch} {p n} {cut n}`, `/` a line break,
 `//` a page break); `textpack.py` rejects any other `{code}`.
+
+**Endings, mature slots and the Mature guard (E0; `ending.h`, `pack.h`).**
+Two ops and two push kinds, appended (ids are stored in packs):
+
+| Op / kind | Operands | What happens |
+|---|---|---|
+| `OP_JMAT` (56) | a = level (`MATURE_CENSORED` 1, `MATURE_ON` 2, `MATURE_PACK` 3) \| `JMAT_NOT`, b = label | the VM jumps if `opt_mature()` is at least the level (with `JMAT_NOT`: below it); pure rule `vm_jmat_hit(a, level)`. Runs in the VM, no wait |
+| `OP_SHOW` (57) | a = `PK_KIND_CG` / `PORTRAIT` / `FIGURE` or `SHOW_OFF`, b = the art index | `VM_EXT`: the mature-slot scene (E2) or the ending card (E1) draws the pack's or the ending's art; the overworld host ignores it |
+| `PEND_ENDING` (16) | arg = `ENDING_*` (0..14) | `VM_PUSHED`: `SCENE_ENDING_CARD` (E1). Until E1 hosts it, `story.c` resumes at once with 1 |
+| `PEND_MSLOT` (17) | arg = the slot, 0..63 | `VM_PUSHED`: `SCENE_MSLOT` (E2): the pack's scene or the fade-to-black fallback; result in var 0 |
+
+`opt_mature()` is U0's (OPT_MATURE: Off / Censored / On / On + pack); until
+U0 lands its weak default in `core/src/weak_endings.c` says Off, so every
+guard takes its cutaway. The endings contract (`ending.h`): 14 endings
+`ENDING_E01..E14` (4 good, 4 bad, 3 secret, 3 sexy; the sexy ones hidden
+while Mature is Off) and the very secret bonus `ENDING_NOPE` (index 14,
+not one of the 14), unlock ids `UL_STORY_END(k)` = 711 + k, the 32-byte
+`DoomoEnds` record of the `ENDS` chunk, the romance routes and
+`mature_adult_ok()`; every function is weak in `weak_endings.c` (nothing
+seen, nobody qualifies, no pack) until E1 / E2 define the strong ones.
 
 **Determinism (C18).** `story_rng(ctx)` is an xorshift of `doomo_town.seed ^
 day ^ beat ^ ctx`; every caller passes its own documented ctx (`RNG` ops:
@@ -127,6 +147,14 @@ end
   `npc WHO NACT_* [arg]`, `cam CAM_* [arg]`, `teleport MAPID_* x y`,
   `home HOME_* [arg]`, `quest S1xx offered|active|done`, `time day|night|advance n`,
   `rng vN pool`, `later Nm SCRIPT`, `call SCRIPT`, `ret`, `runbeat BEATSCRIPT`, `end`.
+* **(E0) Endings and mature content.** `jmat [censored|on|pack] L` jumps when
+  the Mature option is at least that level (bare: On); `jmatn [...] L` when
+  it is below. A guarded moment reads (SCRIPT_STYLE §12.2):
+  `jmat full` / `jmat censored mosaic` / the cutaway; the register lint
+  (K3) refuses any `jmat` in a kid's or the pet's scene.
+  `push ending E03|NOPE|ENDING_*` and `push mslot N` (both in
+  `push_args.txt`). `show cg|portrait|figure N` and `show off` are only
+  for packs marked `@pack NAME kind=... role=mslot|ending`.
 * **Bracket codes** (the closed list, C14; anything else fails the build):
   `[R2]..[R26]` (a wait on the ladder), `[HOLD n]`, `[MUTE n]`, `[DUCK g n]`,
   `[TAPESTOP]`, `[SCRATCH]` (tape-stop 5 + `SHK_BRAKE` + mute 14),
@@ -141,7 +169,9 @@ end
   page automatically and are exempt), more than one `{d}` in a script, a
   jump to an undefined label, an unknown name, a pack over its cap, a
   mission without `later=`, "Ten years I" outside Ep 4.1 / S139 / S179 /
-  S187, an option over 27 characters, an unlisted push arg.
+  S187, an option over 27 characters, an unlisted push arg, (E0) `show`
+  outside a `role=mslot|ending` pack, a built-in pack past id 111 (ids
+  112..127 are the user packs').
 
 `make -C core gen` runs `textpack.py`; `make -C core check-gen` regenerates
 everything byte-identical. Fix a failing lint in the `.dsc`, never in
@@ -163,6 +193,28 @@ points into its window and `txt_plat_load(p)` reads the pack from
 `TEXT.BIN` (a build product, never committed: sector 0 = `{'TEXT', n, n x
 {sector, bytes}}`, then every pack sector-aligned; CMake runs `textpack.py
 --bin` and `iso.xml` puts it on the disc).
+
+**(E0) Flags and user packs.** The header's flags word is `TXF_LEGACY` (1),
+`TXF_RAW` (2) and the kind in bits 4..7. A `TXF_RAW` pack stores its
+strings as plain NUL-terminated bytes (the streams section; `txt_get`
+copies them, one flag test on the decode path): that is what a **user
+pack** is, the scene scripts of a player's content pack (E2, E7), built
+outside the game where the shared dictionary is not available:
+
+    python3 core/tools/textpack.py --user SCENE.dsc --out SCENE.bin [--pack-id 112..127]
+
+One `@pack` per file, strings and scripts only (no beat scripts, missions
+or possessors), only the ops of `pack.h`'s `PACK_OPS_LO/HI` whitelist (say,
+choice, waits, vars and their jumps, story flags read-only, sound, screen
+effects, `call` inside the pack, `jmat`, `show`; never a flag write, an
+item, a push, a callback, time or a built-in script), the usual box and
+cap lints. Pack ids 112..127 are reserved for them: a content pack's
+`PK_KIND_SCRIPT` entry is registered with `txt_user_set(id, bytes)`
+(checks the id, the magic and the raw flag), after which script
+`TXT_ID(id, k)` runs in the VM like any other. Built-in packs are never
+raw. The fixture `core/tests/fixtures/e0_user.dsc` is rebuilt by
+`make -C core story-check` and compared byte for byte with
+`e0_user.pack`; the eight `core/tests/fixtures/e0_bad/*.dsc` must fail.
 
 **The caption stash (C5).** `txt_stash(slot, id)` decodes a line into one
 of 4 resident 64-byte slots; `stash` ops and `push ... captions=` fill it
@@ -552,7 +604,7 @@ guide) and [`design/story/SCRIPT_LOCKS.md`](design/story/SCRIPT_LOCKS.md)
 
 | Command | What it does |
 |---|---|
-| `make -C core story-check` | Runs the checks below (the Spanish TSVs, the locks, the sizes and the register lint with its self test); part of `make -C core test`. `STORY_ES=strict` makes stale or missing Spanish fatal (the default, `STORY_ES=rewrite`, only reports them while the English is rewritten) |
+| `make -C core story-check` | Runs the checks below (the Spanish TSVs, the locks, the sizes, the register lint with its self test and (E0) the user pack fixtures); part of `make -C core test`. `STORY_ES=strict` makes stale or missing Spanish fatal (the default, `STORY_ES=rewrite`, only reports them while the English is rewritten) |
 | `python3 core/tools/textpack.py --check-es [--allow-missing] [--allow-stale]` | The Spanish story TSVs against the packs. Exit 1 on: a stale row (its English is no longer a string of the pack; listed by file and line), a missing translation (unless `--allow-missing`; **every** pack is translated, so a pack with no TSV or with every Spanish cell empty counts as all missing), a Spanish line over the box (option over 27 characters, a page over 3 × 28, a line over 199), a Spanish pack too big for any PS1 slot, or an **English** side or common pack that falls out of its PS1 slot (side over 8,192 B, common over 2,048 B) into the episode slot, where it would evict the running episode's pack (`ps1/src/txtload.c`). Warnings only: a Spanish pack over its kind's cap, and a Spanish pack out of its PS1 slot. (The plan's "a Spanish blob over its English cap fails" is deliberately a warning: a Spanish pack over its cap loads from slot E, the hard Spanish limit, 12 KB; the L8 Spanish batches keep every pack under its cap.) Baseline (P0): 0 stale, 0 missing, 0 overflow, 0 out of slot, 2 warnings (the Spanish `quests` pack, 8,560 B). Since W5 shortened the quest index (English `quests` 7,968 -> 7,552 B) the Spanish `quests` pack is under slot S again (7,824 B) and the warnings are 0 |
 | `python3 core/tools/textpack.py --sync-es` | Rewrites every `core/lang/story/<pack>.tsv` in pack string order: keeps every translation, refreshes the `# where` column, moves stale rows into a trailing `# STALE (reuse when retranslating)` block (`#~ ` lines, which the compiler ignores) and appends new strings as `TODO` rows. A pack with no TSV yet gets one, every row `TODO`. On the unchanged tree it rewrites every file byte-identical |
 | `python3 core/tools/textpack.py --sizes` | Every pack: English and Spanish bytes, the cap, the English headroom (keep 5%), the PS1 slot and what is left in it. Flags the English under 5% headroom, a side or common pack within 10% of its own PS1 slot, and every slot fallback (at P0: `quests`, 176 B of English headroom and of slot S, its Spanish fell back to slot E; `ch1`'s Spanish, 164 B left in slot C. After W5: `quests` 640 B of English headroom, both languages in slot S) |

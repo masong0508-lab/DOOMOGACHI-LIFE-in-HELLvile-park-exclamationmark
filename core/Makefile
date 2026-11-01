@@ -127,6 +127,21 @@ story-check:
 	@# --- E5: the PG-21 register lint (nothing adult near a kid) and its seeded bad tree ---
 	@$(PYTHON) $(CORE)/tools/story_register.py
 	@$(PYTHON) $(CORE)/tools/story_register.py --selftest
+	@# --- E0: user packs (textpack --user): the SFW fixture rebuilds byte for byte,
+	@# every seeded bad one fails, `show` stays in role=mslot|ending packs ---
+	@mkdir -p "$(BUILD)/e0pack"
+	@$(PYTHON) $(CORE)/tools/textpack.py --user $(CORE)/tests/fixtures/e0_user.dsc --out "$(BUILD)/e0pack/e0_user.pack" >/dev/null
+	@cmp "$(BUILD)/e0pack/e0_user.pack" $(CORE)/tests/fixtures/e0_user.pack || \
+	    { echo "story-check: core/tests/fixtures/e0_user.pack is stale (textpack.py --user)"; exit 1; }
+	@for f in $(CORE)/tests/fixtures/e0_bad/*.dsc; do \
+	    if $(PYTHON) $(CORE)/tools/textpack.py --user $$f --out "$(BUILD)/e0pack/bad.pack" >/dev/null 2>&1; then \
+	        echo "story-check: $$f compiled, but a user pack may not do that"; exit 1; fi; done
+	@if $(PYTHON) $(CORE)/tools/textpack.py --data $(CORE)/tests/fixtures/e0_show_builtin \
+	    --out-root "$(BUILD)/e0pack/neg" >/dev/null 2>&1; then \
+	    echo "story-check: show compiled in a pack without role=mslot|ending"; exit 1; fi
+	@$(PYTHON) $(CORE)/tools/textpack.py --data $(CORE)/tests/fixtures/e0_builtin_ok \
+	    --out-root "$(BUILD)/e0pack/ok" >/dev/null
+	@echo "story-check: user packs OK (fixture byte-identical, $$(ls $(CORE)/tests/fixtures/e0_bad/*.dsc | wc -l) seeded refusals)"
 # --- end P0 ---
 
 # ---- generators ---------------------------------------------------------------

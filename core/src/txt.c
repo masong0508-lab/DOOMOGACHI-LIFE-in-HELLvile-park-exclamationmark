@@ -14,7 +14,7 @@
  * cycles per bit, ~15k cycles for a 200-character line, once, when the
  * line opens (SF sec.16.6).
  *
- * RAM: the stash (4 x 64 B) only.
+ * RAM: the stash (4 x 64 B) and (E0) the user pack table (16 pointers).
  */
 #include "doomo/doomo.h"
 #include "doomo/txt.h"
@@ -35,10 +35,25 @@ enum { O_STR, O_SCR, O_OPS, O_BEAT, O_EV, O_STREAM };
 #define PACK_MAGIC 0x5854u
 
 static char stash[TXT_STASH_LINES][TXT_STASH_LEN];
+/* (E0) the user packs a content pack registered (txt_user_set): 64 B */
+static const uint8_t *user_packs[TXT_PACK_USER_COUNT];
+
+static unsigned hdr16(const uint8_t *b, int i) { return ((const uint16_t *)b)[i]; }
+static uint32_t off32(const uint8_t *b, int i) { return ((const uint32_t *)(b + 16))[i]; }
+
+int txt_user_set(int pack, const uint8_t *bytes)
+{
+    if (pack < TXT_PACK_USER_FIRST || pack >= TXT_PACK_MAX) return 0;
+    if (bytes && (hdr16(bytes, H_MAGIC) != PACK_MAGIC || (hdr16(bytes, H_VER_ID) >> 8) != (unsigned)pack ||
+                  !(hdr16(bytes, H_FLAGS) & TXF_RAW))) return 0;
+    user_packs[pack - TXT_PACK_USER_FIRST] = bytes;
+    return 1;
+}
 
 static const uint8_t *live_base(int pack)
 {
     const uint8_t *b;
+    if (pack >= TXT_PACK_USER_FIRST && pack < TXT_PACK_MAX) return user_packs[pack - TXT_PACK_USER_FIRST];
     if (pack < 0 || pack >= (int)doomo_txt_npacks) return NULL;
     b = txt_plat_pack(pack);
     if (!b || ((const uint16_t *)b)[H_MAGIC] != PACK_MAGIC) return NULL;
@@ -54,9 +69,6 @@ static const uint8_t *pack_base(int pack)
     if (!b || ((const uint16_t *)b)[H_MAGIC] != PACK_MAGIC) return NULL;
     return b;
 }
-
-static unsigned hdr16(const uint8_t *b, int i) { return ((const uint16_t *)b)[i]; }
-static uint32_t off32(const uint8_t *b, int i) { return ((const uint32_t *)(b + 16))[i]; }
 
 int txt_pack_count(void) { return (int)doomo_txt_npacks; }
 int txt_pack_is_live(int pack) { return live_base(pack) != NULL; }
@@ -103,6 +115,11 @@ int txt_get(uint16_t id, char *out, int cap)
     out[0] = 0;
     if (id == TXT_NONE || !(b = pack_base(TXT_PACK(id))) || idx >= hdr16(b, H_NSTR)) return -1;
     s = b + off32(b, O_STREAM) + ((const uint16_t *)(b + off32(b, O_STR)))[idx];
+    if (hdr16(b, H_FLAGS) & TXF_RAW) {           /* (E0) a user pack: plain bytes */
+        while (s[n] && n < cap - 1) { out[n] = (char)s[n]; n++; }
+        out[n] = 0;
+        return n;
+    }
     for (;;) {
         int sym = next_symbol(s, &pos);
         if (sym == 0) break;
