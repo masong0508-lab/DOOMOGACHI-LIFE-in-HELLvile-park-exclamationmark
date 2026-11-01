@@ -127,7 +127,10 @@ static void stats(const char *label)
  * press is 1 press + 2 ticks) and each typed letter counts 1 typed. depth
  * is the deepest the scene stack went above where the journey began
  * (pushed scenes and modals), screens the number of times the top scene
- * changed. */
+ * changed. Setup commands that change the game's state without a press
+ * (scene, push, money, item, problem, ...: jr_setup_cmd) are refused while
+ * a journey runs, so a journey cannot skip presses it would otherwise
+ * count; set the state up before journey-begin. */
 #define JNAME 48
 static struct {
     int on;
@@ -148,6 +151,18 @@ static void jr_frame(void)
     jr.ticks++;
     if (d > jr.depth) jr.depth = d;
     if (t != jr.top) { jr.screens++; jr.top = t; }
+}
+
+static int jr_setup_cmd(const char *cmd)
+{
+    static const char *const setup[] = {
+        "scene", "push", "save", "load", "seed", "lang", "story-fp", "side",
+        "talk", "cell", "home-room", "clock", "money", "item", "problem",
+    };
+    size_t k;
+    for (k = 0; k < sizeof(setup) / sizeof(setup[0]); k++)
+        if (strcmp(cmd, setup[k]) == 0) return 1;
+    return 0;
 }
 
 static void jr_press(void)
@@ -306,6 +321,10 @@ static void run_line(char *line)
     const char *cmd;
     if (argc == 0) return;
     cmd = argv[0];
+    if (jr.on && jr_setup_cmd(cmd)) {   /* M0: no teleports inside a journey */
+        fail("setup command inside a journey (move it before journey-begin):", cmd);
+        return;
+    }
     if (strcmp(cmd, "wait") == 0) {
         step(argc > 1 ? atoi(argv[1]) : 1);
     } else if (strcmp(cmd, "press") == 0) {

@@ -7,8 +7,10 @@
 #   * a script fails (a journey over its budget fails in the runner),
 #   * a journey takes a different number of presses at the two sizes,
 #   * a journey has no budget row, or a budget row (not "-") no journey,
-#   * the meter's own check fails: j1_boot_menu replayed against a copy of
-#     the budgets with its row lowered by one press must fail.
+#   * the meter's own checks fail: j1_boot_menu replayed against a copy of
+#     the budgets with its row lowered by one press must fail, and so must
+#     a journey that uses a setup command (scene) between journey-begin and
+#     journey-end (a teleport past presses the meter would not count).
 # Logs and shots: OUT_DIR/<w>x<h>/<journey>/. (owner: M0)
 RUNNER=$1
 DIR=$2
@@ -43,7 +45,7 @@ awk -v budfile="$BUD" '
 BEGIN {
     while ((getline line < budfile) > 0) {
         if (line ~ /^#/ || line ~ /^[ \t]*$/) continue
-        n = split(line, f, /\t+/)
+        n = split(line, f, /[ \t]+/)   # blanks or tabs, as the runner reads it
         bp[f[1]] = f[2]; bt[f[1]] = f[3]; order[++nb] = f[1]
     }
 }
@@ -84,6 +86,15 @@ if "$RUNNER" --quiet --script "$DIR/j1_boot_menu.txt" --shots "$neg" --saves "$n
     fail=1
 elif ! grep -q "over budget" "$neg/log.txt"; then
     echo "FAIL  the lowered j1_boot_menu budget failed for another reason (see $neg/log.txt)"
+    fail=1
+fi
+printf 'journey-begin j1_boot_menu\nscene TITLE\njourney-end j1_boot_menu\n' > "$neg/teleport.txt"
+if "$RUNNER" --quiet --script "$neg/teleport.txt" --shots "$neg" --saves "$neg/saves" \
+        --budgets "$BUD" > "$neg/teleport.log" 2>&1; then
+    echo "FAIL  the meter passed a journey that teleports with 'scene' inside it"
+    fail=1
+elif ! grep -q "setup command inside a journey" "$neg/teleport.log"; then
+    echo "FAIL  the teleporting journey failed for another reason (see $neg/teleport.log)"
     fail=1
 fi
 if [ $fail -ne 0 ]; then echo "journeys: FAILED"; exit 1; fi

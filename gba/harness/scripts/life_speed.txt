@@ -9,7 +9,9 @@
 # A Hellvile Park Classic island (core/tests/journeys/life_new_island.txt).
 # The expect-fps floors are regression gates at about 85% of M0's baseline
 # (the harness is deterministic); a package that makes a screen faster
-# raises its floor.
+# raises its floor. Each screen is checked with expect-scene after its
+# shot (the town hall menu is drawn inside ISLAND, so it has none), so a
+# broken press fails the tour instead of measuring the wrong screen.
 wait 40
 expect-log doomo: init
 seed 1
@@ -49,8 +51,10 @@ fps start
 wait 130
 expect-fps 17 life: news
 shot news
+expect-scene NEWS
 press B
 wait 60
+expect-scene ISLAND
 
 # ---- the town hall's menu (A on the hub) --------------------------------------
 latency A 120 hub -> town hall menu (A)
@@ -70,6 +74,7 @@ fps start
 wait 130
 expect-fps 21.5 life: roster
 shot roster
+expect-scene ROSTER
 latency DOWN 120 roster cursor (DOWN)
 latency A 120 roster -> resident (A)
 wait 200
@@ -77,11 +82,13 @@ fps start
 wait 130
 expect-fps 19 life: resident
 shot resident
+expect-scene RESIDENT
 latency DOWN 120 resident cursor (DOWN)
 press B
 wait 60
 press B
 wait 60
+expect-scene ISLAND
 
 # ---- Hillvile Towers: Browse homes ---------------------------------------------
 press LEFT
@@ -94,4 +101,5 @@ fps start
 wait 130
 expect-fps 17.5 life: apartments
 shot apartments
+expect-scene APARTMENTS
 latency RIGHT 120 apartments cursor (RIGHT)

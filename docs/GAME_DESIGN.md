@@ -213,6 +213,19 @@ commit; nobody raises a row without saying why. Depth is how many scenes
 or modals deep the journey went, screens how often the top scene changed;
 typed letters (names in a search) are counted apart from presses.
 
+Two limits of the meter. Depth and screens count the scene stack only: a
+menu a scene draws inside itself (the story overworld's pause menu, the
+island's location and START menus) is depth 0 and no screen change, so J6
+reads depth 0 although it opens the pause menu, and a package that flattens
+such a menu shows it in presses, not depth. The ticks column is the
+script's own waits plus 2 per press, a ceiling on how long the script
+waits rather than a measure of the game's speed (a slower transition fails
+the script's `expect-scene` instead); a package that adds a wait to a
+journey updates its ticks. Setup commands that move the game without a
+press (`scene`, `push`, `money`, `item`, `problem` and the like) are
+refused between `journey-begin` and `journey-end`; put a journey's setup
+before it begins.
+
 | Journey | Presses | Depth | Target (owner) |
 |---|---|---|---|
 | J1 boot -> title menu | 2 | 0 | (U5/U6) |
