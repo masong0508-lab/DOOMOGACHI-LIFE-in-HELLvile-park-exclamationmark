@@ -926,10 +926,15 @@ static int run_script(const char *path)
             }
         /* --- H2: the house renderer --- */
         } else if (!strcmp(argv[0], "room-parity") && argc >= 2) {
-            /* room-parity ARG [INDEX]: the parity frame's FNV (view ARG & 3,
-             * night ARG & 0x10, path ARG >> 8) against line INDEX of the
-             * room_ref golden (--golden FILE) */
+            /* room-parity ARG [INDEX [xfail]]: the parity frame's FNV against
+             * line INDEX of the room_ref golden (--golden FILE). ARG: bits
+             * 12-19 the golden line of a shell frame (core/tests/room_shells.h,
+             * 5..), else the classic layout in view ARG & 3 (night: ARG &
+             * 0x10); bits 8-11 the path (0 full, 1 dirty rects, 2 UI restore).
+             * `xfail`: the GBA does not draw this frame yet (H2): a mismatch
+             * is reported, not failed, and a match fails (drop the xfail). */
             uint32_t r, want;
+            int xfail = argc >= 4 && !strcmp(argv[3], "xfail");
             if (!hcmd(HC_ROOM_PARITY, (uint32_t)strtoul(argv[1], NULL, 0), &r)) failed = 1;
             else {
                 printf("harness: room-parity %s: fnv %08x\n", argv[1], (unsigned)r);
@@ -938,6 +943,16 @@ static int run_script(const char *path)
                         fprintf(stderr, "harness: %s:%d no golden line %s (--golden %s)\n", path,
                                 lineno, argv[2], golden_path ? golden_path : "missing");
                         failed = 1;
+                    } else if (xfail) {
+                        if (r == want) {
+                            fprintf(stderr, "harness: %s:%d room-parity %s: matches golden line %s "
+                                    "but is marked xfail (make it required)\n", path, lineno, argv[1],
+                                    argv[2]);
+                            failed = 1;
+                        } else {
+                            printf("harness: room-parity %s: xfail (%08x, golden %08x)\n", argv[1],
+                                   (unsigned)r, (unsigned)want);
+                        }
                     } else if (r != want) {
                         fprintf(stderr, "harness: %s:%d room-parity %s: %08x, golden %08x\n",
                                 path, lineno, argv[1], (unsigned)r, (unsigned)want);

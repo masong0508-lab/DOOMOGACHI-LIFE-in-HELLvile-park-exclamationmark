@@ -368,7 +368,8 @@ against the LAST row, not against a figure from an older base.
 | 1 | G1: speed tour | `959acc8` | 9,536 B | 9,520 B | -16 B | 7,168 B | harness mailbox 64 -> 80 B |
 | 2 | H10: autopilot BFS in the arena | `091aa2b` | 9,520 B | 13,616 B | +4,096 B | 7,168 B | ROM +80 B; speed tour frame-exact, fps unchanged (above) |
 | 3 | H6: furniture animation frames, prop art | `ffbc039` | 13,616 B | 13,616 B | 0 | 7,168 B | ROM 3,669,044 -> 3,675,732 B (iso sprites 447,309 -> 453,094 B); room parity and house fps unchanged |
-| 4 | G4: IWRAM code overlay | `7dcb273` | 13,616 B | **13,616 B** | 0 | 7,168 B | ROM +196 B; IWRAM resident 10,580 B + overlay slot 10,384 B (3D group; 2D group 0 B, up to 11,408 B fits the 6 KB rule); speed tour frame-exact |
+| 4 | G4: IWRAM code overlay | `7dcb273` | 13,616 B | 13,616 B | 0 | 7,168 B | ROM +196 B; IWRAM resident 10,580 B + overlay slot 10,384 B (3D group; 2D group 0 B, up to 11,408 B fits the 6 KB rule); speed tour frame-exact |
+| 5 | H1: room-shell parity frames | `738261b` | 13,616 B | **13,616 B** | 0 | 7,168 B | no RAM (the frames build on the stack and in the arena's harness tail, as before); ROM +996 B (`room.o` text 17,786 -> 18,782 B: the shared frame table `core/tests/room_shells.h` and its harness hook); house fps unchanged |
 
 Known claimants still to land (their own packages measure and add rows):
 
@@ -826,6 +827,19 @@ layout of `core/tests/test_home_render.c` against
 `core/tests/golden/room_ref.txt` hash for hash: views 0-3 and night, a
 full recompose, the dirty-rect path and the UI-restore path.
 
+Since H1 the golden also holds the shell frames of
+`core/tests/room_shells.h` (lines 5-37; the table is shared by the native
+test and `room_hc_parity`, so the two cannot drift): every wallpaper,
+floor and ceiling ramp, the five tints, the Garden and Park Plot kinds by
+day, dusk and night, and the 8x6 room turned. The GBA draws only
+wallpapers 0-3, floors 0-1, the wood cornice, no tint and the noon sky
+(the H2 gap), so those frames are `xfail` in `scripts/home.txt`: the
+harness prints their mismatch and fails if one starts to match. Lines 5
+and 33-37 stay in the vocabulary the GBA draws (the non-square room
+turned, an open kind, dim light) and are required on every path. As of
+H1, 6 of the 33 shell frames match (`room-parity` probe: the tinted
+frames hash the same as the untinted classic view, the tint is ignored).
+
 **A static bitmap with dirty rects.** Each mode-4 page remembers what it
 shows: the shell key (room, view, light, paints, viewport, HUD bands),
 the draw list (screen box + signature per item) and a checksum of every
@@ -872,7 +886,7 @@ bitsets and re-run only for entries that moved.
 | IWRAM | 0 B |
 | `.bss` / `.data` | About 34 B for room.c and 27 B for hcmd.c (budget 64 B) |
 | OBJ VRAM | None of its own. obj.c's four squash slots fill it, and obj.c only copies OAM while a squash shows, so the cursor and the held ghost are bitmap items. |
-| THUMB ROM | About 17.6 KB, of which about 2.7 KB is harness hooks |
+| THUMB ROM | About 18.3 KB, of which about 3.7 KB is harness hooks (H1: the shell frame table) |
 
 **Speed** (libmgba, game ROM, `harness fps`, drawn frames per second;
 `room-test` swaps in fixed layouts because this ROM keeps no HOME state
@@ -1049,10 +1063,14 @@ gba/build/harness ROM.gba [--script FILE] [--shots DIR] [--save FILE]
   logic tick for 20 s of emulated time; 60 s at boot), failed
   expectations, and with `--fail-on-stub` on `STUB:` log lines.
 * Screenshots are PNG (own encoder, `png.c`), optionally scaled.
-* House commands (H2, game ROM): `room-parity ARG [INDEX]` hashes the
-  parity room frame (view `ARG & 3`, night `ARG & 0x10`, path `ARG >> 8`:
-  0 full, 1 dirty rects, 2 UI restore) and compares it with line INDEX of
-  `--golden FILE` (`core/tests/golden/room_ref.txt`); `room-test MODE`
+* House commands (H2, game ROM): `room-parity ARG [INDEX [xfail]]` hashes
+  a parity frame (bits 12-19 of ARG: the golden line of a shell frame of
+  `core/tests/room_shells.h`, 5 and up; otherwise the classic layout in
+  view `ARG & 3`, night `ARG & 0x10`; path `(ARG >> 8) & 15`: 0 full, 1
+  dirty rects, 2 UI restore) and compares it with line INDEX of
+  `--golden FILE` (`core/tests/golden/room_ref.txt`). `xfail` marks a
+  frame the GBA does not draw yet: a mismatch is printed, a match fails
+  (so the mark is dropped once it passes); `room-test MODE`
   swaps the house test layouts into `SCENE_HOME` (0 off, 1 steady, 2
   cellar, 3 defend crowd); `expect-fps MIN [LABEL]` is `fps` that fails
   below MIN drawn frames a second.
@@ -1065,7 +1083,7 @@ gba/build/harness ROM.gba [--script FILE] [--shots DIR] [--save FILE]
 | `test-save` | engine-test ROM twice with the same `--save` file and SELECT held at boot: first run "no previous data / write ok", second run "persisted ok" (both 30 KB slots verified byte for byte, slot 1 erased and rewritten) |
 | `test-game` | game ROM, `scripts/smoke.txt`: boot, title, START, menu presses, screenshots in `build/shots/game` |
 | `test-coresave` | game ROM, `scripts/coresave1.txt` then `coresave2.txt` with the same `--save` file: the core's streamed saves (worst-case island in slot 1, a too-big save refused in slot 0, a story island in slot 0), loads checked by town CRC, then persistence across a reboot |
-| `test-home` | game ROM, `scripts/home.txt` (H2): `plat_room` parity with the room_ref golden on every path (15 frames), then `SCENE_HOME` fps gates (section 6a) and a profile, screenshots in `build/shots/home` |
+| `test-home` | game ROM, `scripts/home.txt` (H2): `plat_room` parity with the room_ref golden on every path (15 classic frames, 15 shell-frame checks required and 27 `xfail` until H2), then `SCENE_HOME` fps gates (section 6a) and a profile, screenshots in `build/shots/home` |
 
 `make -C gba test-speed` (G1, not part of `test`): game ROM,
 `scripts/speed_tour.txt`: every target scene's fps with an `expect-fps`

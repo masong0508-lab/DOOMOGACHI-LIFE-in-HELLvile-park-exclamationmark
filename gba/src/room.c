@@ -79,6 +79,7 @@
 #include "doomo/doomo.h"
 #include "../../core/src/home_int.h"      /* HomeRoom, the parity layout (harness only) */
 #include "../../core/gen/furn_ids.h"
+#include "../../core/tests/room_shells.h"   /* the parity frames (harness only) */
 
 /* Size: the file is built for size (-Os, SPEC H2: <= 12 KB of THUMB); the
  * pixel paths (HOT) keep -O2. */
@@ -1409,55 +1410,15 @@ void plat_room(const DoomoRoomView *v)
 }
 
 /* ============================ harness ============================================ */
-/* The parity layout of core/tests/test_home_render.c (keep in step): the
- * Living Room template plus 12 pieces, recoloured, lit, stacked, on both
- * walls. */
-
-static void put(HomeRoom *r, int furn, int x, int y, int rot, int z4, int pa, int pb)
+/* The parity frames of core/tests/test_home_render.c, built from the
+ * shared table (core/tests/room_shells.h): golden line 0..4 is the classic
+ * layout (the Living Room template plus 12 pieces, recoloured, lit,
+ * stacked, on both walls), lines ROOM_SHELL_FIRST.. the shell frames. */
+static void parity_view(DoomoRoomView *v, DoomoRoomObj *objs, HomeRoom *r, int line)
 {
-    HomeObj *o = &r->obj[r->nobj++];
-    o->w0 = HO_W0(furn, rot, z4 > 0);
-    o->pos = HO_POS(x, y);
-    o->z = (uint8_t)z4;
-    o->pa = (uint8_t)(pa < 0 ? FURN_PAINT_DEFAULT : pa);
-    o->pb = (uint8_t)(pb < 0 ? FURN_PAINT_DEFAULT : pb);
-}
-
-static void parity_room(HomeRoom *r)
-{
-    home_room_template(HOME_ROOM_LIVING, r);
-    put(r, FURN_CLOUD_BED, 4, 1, 0, 0, -1, -1);
-    put(r, FURN_MARSHMALLOW_SOFA, 1, 4, 0, 0, PAINT_LAVENDER, -1);
-    put(r, FURN_TEACUP_TABLE, 2, 2, 0, 0, -1, -1);
-    put(r, FURN_CUPCAKE_LAMP, 5, 4, 0, 0, -1, -1);
-    put(r, FURN_DAISY_RUG, 3, 3, 0, 0, -1, -1);
-    put(r, FURN_BUNNY_BEANBAG, 4, 4, 1, 0, PAINT_SKY, -1);
-    put(r, FURN_RAINBOW_BOOKCASE, 2, 0, 0, 0, -1, -1);
-    put(r, FURN_HEART_MIRROR, 3, 0, 0, 6, -1, -1);
-    put(r, FURN_PIPS_BEE_DRAWING, 0, 3, 1, 8, -1, -1);
-    put(r, FURN_JELLYBEAN_JAR, 2, 2, 0, 5, -1, -1);
-    put(r, FURN_HORNED_POOP_PLUSH, 0, 5, 0, 0, -1, -1);
-    put(r, FURN_POTTED_FERN, 5, 2, 0, 0, -1, -1);
-}
-
-static void parity_view(DoomoRoomView *v, DoomoRoomObj *objs, const HomeRoom *r, int k, int daylight)
-{
-    int i;
-    memset(v, 0, sizeof(*v));
-    for (i = 0; i < r->nobj; i++) home_obj_view(&r->obj[i], &objs[i]);
-    v->w = (uint8_t)HR_W(r);
-    v->d = (uint8_t)HR_D(r);
-    v->wallpaper = home_room_defs[HOME_ROOM_LIVING].wallpaper;
-    v->floor = home_room_defs[HOME_ROOM_LIVING].floor;
-    v->wall_paint = home_room_defs[HOME_ROOM_LIVING].wall_paint;
-    v->floor_paint = home_room_defs[HOME_ROOM_LIVING].floor_paint;
-    v->room_kind = ROOMK_WALLS;
-    v->objs = objs;
-    v->nobj = r->nobj;
-    v->yaw = (int16_t)(k * 1024);
-    v->punch_q8 = 256;
-    v->daylight = (uint8_t)daylight;
-    v->cursor_x = v->cursor_y = -1;
+    if (line < ROOM_SHELL_FIRST) rs_parity_room(r);
+    else rs_shell_room(line - ROOM_SHELL_FIRST, r);
+    rs_view(v, objs, r, line);
     v->vy = 12;
     v->vw = SCREEN_W;
     v->vh = SCREEN_H - 24;
@@ -1488,14 +1449,21 @@ uint32_t room_hc_parity(uint32_t arg)
     HomeRoom r;
     DoomoRoomObj *objs = TEST->objs;
     DoomoRoomView v;
-    int k = (int)(arg & 3), day = (arg & 0x10) ? 3 : 15, path = (int)((arg >> 8) & 15);
+    int k = (int)(arg & 3), path = (int)((arg >> 8) & 15), line = (int)((arg >> 12) & 0xFF);
     uint8_t keep_test = rb_test;
     int keep_nodraw = gba_nodraw;
     uint32_t h;
     rb_test = 0;
     gba_nodraw = 0;                       /* the last tick may have been a catch-up */
-    parity_room(&r);
-    parity_view(&v, objs, &r, k, day);
+    if (line < ROOM_SHELL_FIRST || line >= ROOM_SHELL_LINES) {
+        line = (arg & 0x10) ? 4 : k;              /* the classic layout: any view, day or night */
+        parity_view(&v, objs, &r, line);
+        v.yaw = (int16_t)(k * 1024);
+        v.daylight = (uint8_t)((arg & 0x10) ? 3 : 15);
+    } else {
+        parity_view(&v, objs, &r, line);
+    }
+    if (path == 1 && r.nobj < 12) path = 0;   /* the busy frame moves the parity pieces */
     room_invalidate();
     band_pend[0] = 0;
     band_pend[1] = SCREEN_H;
@@ -1545,8 +1513,8 @@ uint32_t room_hc_parity(uint32_t arg)
     room_invalidate();
     rb_test = keep_test;
     gba_nodraw = keep_nodraw;
-    gba_logf("room: parity k%d %s path %d: fnv %x (%u cycles, %u rects)", k, day < 15 ? "night" : "day",
-             path, h, room_stats.cycles, room_stats.rects);
+    gba_logf("room: parity %x line %d path %d: fnv %x (%u cycles, %u rects)", (unsigned)arg, line, path, h,
+             room_stats.cycles, room_stats.rects);
     return h;
 }
 
@@ -1572,7 +1540,7 @@ static DoomoRoomView *test_view(const DoomoRoomView *v, DoomoRoomView *tv, Doomo
     int i, n = 0, na = 0, walkers = 0;
     *tv = *v;
     if (rb_test == ROOM_TEST_STEADY) {
-        parity_room(rr);
+        rs_parity_room(rr);
         for (i = 0; i < rr->nobj; i++) home_obj_view(&rr->obj[i], &objs[n++]);
         /* 3 animated pieces: the TV, a lava lamp, the nightlight */
         {
