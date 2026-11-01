@@ -8,8 +8,8 @@
 #include "doomo/doomo.h"
 #include "doomo/save_budget.h"
 
-/* 2 x 32 B of .bss (only linked once something asks for a budget; 2 x 24 B
- * before K0 raised SAVE_EXT_SLOTS 7 -> 11): chunk sizes are kept by registry
+/* 2 x 36 B of .bss (only linked once something asks for a budget; 2 x 24 B
+ * before K0 raised SAVE_EXT_SLOTS 7 -> 12): chunk sizes are kept by registry
  * position (stable in a build) and fit 16 bits (each chunk <=
  * DOOMO_SAVE_EXT_MAX). */
 typedef struct BudgetSnap {
@@ -126,7 +126,8 @@ int save_budget_fits(int slot, uint32_t extra)
     return left >= 0 && (int64_t)extra * 129 / 128 + 1 <= (int64_t)left;
 }
 
-/* K0 (save_budget.h): the declared worst cases of LIFE, PLAY, ENDS, OPT2 */
+/* K0 (save_budget.h): the declared worst cases of LIFE, PLAY, ENDS, OPT2,
+ * PROF */
 uint32_t save_budget_declared_max(uint32_t tag)
 {
     switch (tag) {
@@ -134,6 +135,7 @@ uint32_t save_budget_declared_max(uint32_t tag)
     case SAVE_EXT_TAG_PLAY: return SAVE_EXT_MAX_PLAY;
     case SAVE_EXT_TAG_ENDS: return SAVE_EXT_MAX_ENDS;
     case SAVE_EXT_TAG_OPT2: return SAVE_EXT_MAX_OPT2;
+    case SAVE_EXT_TAG_PROF: return SAVE_EXT_MAX_PROF;
     default: return 0;
     }
 }

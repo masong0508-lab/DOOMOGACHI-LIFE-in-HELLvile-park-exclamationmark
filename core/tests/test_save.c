@@ -435,7 +435,7 @@ TEST(save_streamed_limits_and_failures)
 
 /* ---- extension chunks (save_ext.h) and the work area (save.h) ------------ */
 /* the tests-only registry slot: a chunk of ext_len bytes of ext_data */
-static uint8_t ext_data[3000];
+static uint8_t ext_data[DOOMO_SAVE_EXT_MAX];
 static uint32_t ext_len, ext_size_override;
 static int ext_resets, ext_reads, ext_reject;
 static uint32_t t_ext_size(void) { return ext_size_override ? ext_size_override : ext_len; }
@@ -529,30 +529,30 @@ TEST(save_extension_chunks_round_trip)
     t_ext_reset();
 }
 
-/* --- K0 (LIFESIM_PLAN 2.5): the joint worst case on the real codec. The
- * four chunks K0 registers (LIFE, PLAY, ENDS, OPT2) are weak until their
- * owners land, so the test slot carries what they would add at their
- * declared maxima: incompressible bytes, the four maxima plus the three
- * extra chunk headers. (The computed bound with HOME: test_save_budget.c.) */
+/* --- K0 (LIFESIM_PLAN 2.5, section 6): the joint worst case on the real
+ * codec. The five chunks K0 registers (LIFE, PLAY, ENDS, OPT2, PROF) are
+ * weak until their owners land, so the test slot carries what they would
+ * add at their declared maxima: incompressible bytes, the five maxima plus
+ * the four extra chunk headers. (The computed bound with HOME: test_save_budget.c.) */
 static void ext_fill_k0(uint32_t seed)
 {
     DoomoRng r;
     uint32_t i;
     rng_seed(&r, seed);
-    ext_len = SAVE_BUDGET_K0_RAW + 3 * SAVE_BUDGET_CHUNK_HDR;
+    ext_len = SAVE_BUDGET_K0_RAW + (SAVE_BUDGET_K0_CHUNKS - 1) * SAVE_BUDGET_CHUNK_HDR;
     for (i = 0; i < ext_len; i++) ext_data[i] = (uint8_t)rng_next(&r);
 }
 
 TEST(save_k0_joint_worst_case)
 {
     uint32_t base, n;
-    CHECK(SAVE_BUDGET_K0_RAW + 3 * SAVE_BUDGET_CHUNK_HDR <= sizeof(ext_data));
+    CHECK(SAVE_BUDGET_K0_RAW + (SAVE_BUDGET_K0_CHUNKS - 1) * SAVE_BUDGET_CHUNK_HDR <= sizeof(ext_data));
     /* the story slot: a lived-in premade story island */
     town_new(TOWN_STORY, 5, TOWN_POP_PREMADE);
     scribble_misc(7);
     base = roundtrip("story, no K0 chunks");
     ext_fill_k0(11);
-    n = roundtrip("story + LIFE/PLAY/ENDS/OPT2 at max");
+    n = roundtrip("story + LIFE/PLAY/ENDS/OPT2/PROF at max");
     CHECK(base > 0 && n > base);
     CHECK(n - base >= SAVE_BUDGET_K0_RAW);          /* nothing compressed away */
     CHECK(n - base <= SAVE_BUDGET_K0_WORST);         /* ... and the bound holds */
@@ -561,7 +561,7 @@ TEST(save_k0_joint_worst_case)
     CHECK_EQ(save_last_size(), n);
     t_ext_reset();
     CHECK(load_game(0));
-    CHECK_EQ(ext_len, SAVE_BUDGET_K0_RAW + 3 * SAVE_BUDGET_CHUNK_HDR);
+    CHECK_EQ(ext_len, SAVE_BUDGET_K0_RAW + (SAVE_BUDGET_K0_CHUNKS - 1) * SAVE_BUDGET_CHUNK_HDR);
     /* the free play slot: the codec's worst island (1000 random custom +
      * 2048 edges) */
     fill_random_custom(4242, 1);

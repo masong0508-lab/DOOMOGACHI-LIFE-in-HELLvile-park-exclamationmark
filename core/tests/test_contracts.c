@@ -146,12 +146,19 @@ TEST(contracts_unlock_ranges_disjoint)
     CHECK_EQ(UL_STORY_SONG2_FIRST, UL_STORY_CUT2_LAST + 1);
     CHECK_EQ(UL_STORY_MISC2_FIRST, UL_STORY_SONG2_LAST + 1);
     CHECK_EQ(UL_STORY_MISC2_LAST - UL_STORY_MISC2_FIRST + 1, 13);
-    /* K0 (LIFESIM_PLAN R7): the 14 endings right after misc, then the spare */
+    /* K0 (LIFESIM_PLAN R7 + section 6): the 14 endings and the very secret
+     * 15th ("Nope.") right after misc, then the spare */
     CHECK_EQ(UL_STORY_END_FIRST, 711);
     CHECK_EQ(UL_STORY_END_FIRST, UL_STORY_MISC2_LAST + 1);
-    CHECK_EQ(UL_STORY_END_LAST - UL_STORY_END_FIRST + 1, 14);
+    CHECK_EQ(UL_STORY_END_LAST - UL_STORY_END_FIRST + 1, 15);
     CHECK_EQ(UL_STORY_END(0), UL_STORY_END_FIRST);
-    CHECK_EQ(UL_STORY_END(13), UL_STORY_END_LAST);
+    CHECK_EQ(UL_STORY_END(14), UL_STORY_END_LAST);
+    /* K0 (section 6): the family ids at the top of the life range */
+    CHECK_EQ(UL_LIFE_HOUSEHOLD_T1, 379);
+    CHECK_EQ(UL_LIFE_HOUSEHOLD_T2, UL_LIFE_HOUSEHOLD_T1 + 1);
+    CHECK_EQ(UL_LIFE_PET_UPLIFT, UL_LIFE_HOUSEHOLD_T2 + 1);
+    CHECK_EQ(UL_LIFE_FAMILY_SPARE_FIRST, UL_LIFE_PET_UPLIFT + 1);
+    CHECK_EQ(UL_LIFE_FAMILY_SPARE_LAST, UL_IDS_LIFE_LAST);
     CHECK(UL_STORY_SPARE_FIRST == UL_STORY_END_LAST + 1 && UL_STORY_SPARE_FIRST <= UL_IDS_STORY_LAST);
     /* nothing registered today sits in the reserve, the custom reserve or
      * the story's new sub-blocks (their owners fill them) */
@@ -160,6 +167,9 @@ TEST(contracts_unlock_ranges_disjoint)
         if (!u) continue;
         CHECK_MSG(!(id >= UL_IDS_RESERVE_FIRST && id <= UL_IDS_RESERVE_LAST), "unlock %d in the reserve", id);
         CHECK_MSG(!(id >= UL_IDS_CUSTOM_FIRST && id <= UL_IDS_CUSTOM_LAST), "unlock %d in the custom reserve", id);
+        /* K0's reserved ids: their owners (E1, F1/F4, F5) fill them */
+        CHECK_MSG(!(id >= UL_STORY_END_FIRST && id <= UL_STORY_END_LAST), "unlock %d in the endings", id);
+        CHECK_MSG(!(id >= UL_LIFE_HOUSEHOLD_T1 && id <= UL_LIFE_FAMILY_SPARE_LAST), "unlock %d in the family ids", id);
     }
 }
 
@@ -174,7 +184,7 @@ TEST(contracts_registries_read_through_volatile)
         doomo_save_ext_home, doomo_save_ext_story2,
         /* K0 */
         doomo_save_ext_life, doomo_save_ext_playas, doomo_save_ext_endings,
-        doomo_save_ext_opt2 };
+        doomo_save_ext_opt2, doomo_save_ext_profiles };
     const DoomoActivity *const acts[] = {
         doomo_activities_minigames, doomo_activities_concert, doomo_activities_collections,
         doomo_activities_combat, doomo_activities_extra, doomo_activities_studio,
@@ -213,6 +223,7 @@ TEST(contracts_registries_read_through_volatile)
     CHECK(scene_by_name("ENDING_CARD") == &SCENE_ENDING_CARD);
     CHECK(scene_by_name("MSLOT") == &SCENE_MSLOT);
     CHECK(scene_by_name("SCENE_LANG_PICK") == &SCENE_LANG_PICK);
+    CHECK(scene_by_name("SECURITY_CODE") == &SCENE_SECURITY_CODE);
     /* a declared max_size never exceeds the staging cap */
     for (i = 0; i < save_ext_count(); i++) CHECK(save_ext_at(i)->max_size <= DOOMO_SAVE_EXT_MAX);
 }

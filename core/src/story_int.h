@@ -238,10 +238,12 @@ enum { CB_SIDE_NEWS = 80,       /* the Later's headline (stash slot 0) goes to t
  *   CB_LIFE_*   16 ids: life sim hooks the story calls (LS5)
  *   CB_END_*     8 ids: the ending picker (E1, CB_END_PICK)
  *   CB_ROUTE_*   8 ids: romance routes (E1/E4)
- * (PA7's play-as declarations live in playas.h, not here.) --- */
+ *   CB_FAM_*     8 ids: pets, uplift, loss (F5, F6; LIFESIM_PLAN section 6)
+ * 124..127 stay free. (PA7's play-as declarations live in playas.h.) --- */
 enum { CB_LIFE_FIRST  = CB_SIDE_BRANCH + 1,  CB_LIFE_LAST  = CB_LIFE_FIRST + 15,
        CB_END_FIRST   = CB_LIFE_LAST + 1,    CB_END_LAST   = CB_END_FIRST + 7,
-       CB_ROUTE_FIRST = CB_END_LAST + 1,     CB_ROUTE_LAST = CB_ROUTE_FIRST + 7 };
+       CB_ROUTE_FIRST = CB_END_LAST + 1,     CB_ROUTE_LAST = CB_ROUTE_FIRST + 7,
+       CB_FAM_FIRST   = CB_ROUTE_LAST + 1,   CB_FAM_LAST   = CB_FAM_FIRST + 7 };
 /* --- end K0 --- */
 enum { GRB_DISH = 1,            /* a dish fed (+1, capped at 15)                 */
        GRB_EXES,                /* the exes met so far = value (0..7)            */

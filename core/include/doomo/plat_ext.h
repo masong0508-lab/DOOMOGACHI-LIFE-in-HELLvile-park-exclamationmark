@@ -54,8 +54,11 @@ uint32_t plat_features(void);
  *       bytes read, 0 when there is no record (the default) or it cannot
  *       be read. The caller validates the bytes (magic, CRC).
  * write: stores `len` bytes (len <= PLAT_CONFIG_MAX); 1 ok, 0 failed or
- *       not supported (the default). */
-#define PLAT_CONFIG_MAX 32u
+ *       not supported (the default).
+ * 48 B: U0's 32 B settings record + 16 B for the adults' security code
+ * (parental PIN, U5 / E11; life_contract.h CONFIG_SZ_*). A GBA flash sector
+ * (4 KB) and a PS1 card block (8 KB) both hold it with room to spare. */
+#define PLAT_CONFIG_MAX 48u
 int  plat_config_read(uint8_t *dst, uint32_t cap);
 int  plat_config_write(const uint8_t *src, uint32_t len);
 

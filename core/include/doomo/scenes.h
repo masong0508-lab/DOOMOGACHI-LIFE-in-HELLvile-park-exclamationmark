@@ -105,9 +105,13 @@ extern const DoomoScene SCENE_HOME, SCENE_HOME_MART, SCENE_STORY_MG, SCENE_STORY
  * SCENE_ENDING_CARD  an ending's title card (E1)
  * SCENE_MSLOT        a reserved scene slot: a content pack's scene or the
  *                    safe fade-to-black fallback (E2)
- * SCENE_LANG_PICK    the first-boot language picker (U5) */
+ * SCENE_LANG_PICK    the first-boot language picker (U5; with the amendments
+ *                    it also asks about Mature content and sets the code)
+ * SCENE_SECURITY_CODE the adults' security code (parental PIN) entry: set it
+ *                    (U5, first boot) or ask for it before Mature turns on
+ *                    (E11); arg: U5 defines (LIFESIM_PLAN section 6) */
 extern const DoomoScene SCENE_FAMILY, SCENE_PLAYAS, SCENE_ENDING_CARD, SCENE_MSLOT,
-       SCENE_LANG_PICK;
+       SCENE_LANG_PICK, SCENE_SECURITY_CODE;
 /* 1 if `s` is still one of the K0 placeholders above (weak_scenes.c). */
 int scene_is_reserved_stub(const DoomoScene *s);
 /* --- end K0 --- */

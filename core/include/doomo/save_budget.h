@@ -61,24 +61,33 @@ void    save_budget_reset(void);
 int32_t save_budget_compute(uint32_t cap, uint32_t last_total,
                             const uint32_t *now, const uint32_t *at_io, int n);
 
-/* --- K0: the declared worst cases of the four chunks K0 registers in
- * save_ext.h (LIFESIM_PLAN R1, section 2.5). Their owners' strong
- * descriptors set max_size to at most these (core/tests/test_save_budget.c
- * checks it); raising one is a change to this contract, with the joint
- * worst case re-checked. --- */
-#define SAVE_EXT_MAX_LIFE    2432u    /* 'LIFE' (LS1; F1, LS3 add sections) */
-#define SAVE_EXT_MAX_PLAY      32u    /* 'PLAY' (PA1)                        */
+/* --- K0: the declared worst cases of the five chunks K0 registers in
+ * save_ext.h (LIFESIM_PLAN R1, section 2.5, section 6 amendments). Their
+ * owners' strong descriptors set max_size to at most these
+ * (core/tests/test_save_budget.c checks it); raising one is a change to
+ * this contract, with the joint worst case re-checked. LIFE and PLAY
+ * include the section 6 amendments (F5 pets, F6 loss, household tiers,
+ * per-villager money / items / health) and PROF the player profiles (MP0);
+ * their split is in life_contract.h. --- */
+#define SAVE_EXT_MAX_LIFE    2688u    /* 'LIFE' (LS1; F1, LS3, F5, F6 add sections;
+                                         life_contract.h LIFE_SZ_TOTAL)      */
+#define SAVE_EXT_MAX_PLAY     800u    /* 'PLAY' (PA1; per-villager pockets:
+                                         life_contract.h PLAY_SZ_TOTAL)      */
 #define SAVE_EXT_MAX_ENDS      32u    /* 'ENDS' (E1)                         */
 #define SAVE_EXT_MAX_OPT2      40u    /* 'OPT2' (U0)                         */
+#define SAVE_EXT_MAX_PROF    2336u    /* 'PROF' (MP0; 3 guest profiles:
+                                         life_contract.h PROF_SZ_TOTAL)      */
 #define SAVE_BUDGET_K0_RAW \
-    (SAVE_EXT_MAX_LIFE + SAVE_EXT_MAX_PLAY + SAVE_EXT_MAX_ENDS + SAVE_EXT_MAX_OPT2)
+    (SAVE_EXT_MAX_LIFE + SAVE_EXT_MAX_PLAY + SAVE_EXT_MAX_ENDS + SAVE_EXT_MAX_OPT2 + \
+     SAVE_EXT_MAX_PROF)
+#define SAVE_BUDGET_K0_CHUNKS 5u
 /* What a chunk of `raw` bytes can cost in the file (the LZ's worst case),
- * and the four together, a header each: 2,598 B. */
+ * and the five together, a header each: 5,995 B. */
 #define SAVE_BUDGET_LZ_WORST(raw) (((raw) * 129u + 127u) / 128u)
 #define SAVE_BUDGET_K0_WORST \
     (SAVE_BUDGET_LZ_WORST(SAVE_EXT_MAX_LIFE) + SAVE_BUDGET_LZ_WORST(SAVE_EXT_MAX_PLAY) + \
      SAVE_BUDGET_LZ_WORST(SAVE_EXT_MAX_ENDS) + SAVE_BUDGET_LZ_WORST(SAVE_EXT_MAX_OPT2) + \
-     4u * SAVE_BUDGET_CHUNK_HDR)
+     SAVE_BUDGET_LZ_WORST(SAVE_EXT_MAX_PROF) + SAVE_BUDGET_K0_CHUNKS * SAVE_BUDGET_CHUNK_HDR)
 /* The story slot once U1g carves the GBA's 4 KB config sector out of it
  * (SAVE_SLOT_STORY_CAP becomes this then); the joint worst case is held
  * against both. */

@@ -285,7 +285,9 @@ chapter); every verb used. What batch B added:
 * **Reserved callback blocks (K0, LIFESIM_PLAN R6)** right after
   `CB_SIDE_BRANCH`, still in `side_callback`'s 64..127: `CB_LIFE_FIRST..+15`
   (84..99, LS5's life sim hooks), `CB_END_FIRST..+7` (100..107, E1's ending
-  picker) and `CB_ROUTE_FIRST..+7` (108..115, romance routes). A package
+  picker), `CB_ROUTE_FIRST..+7` (108..115, romance routes) and
+  `CB_FAM_FIRST..+7` (116..123, F5 pets / uplift and F6 loss; LIFESIM_PLAN
+  section 6); 124..127 stay free. A package
   names its callbacks inside its own block only; an unfilled id does
   nothing (`test_contracts_k0.c`).
 * **Decorate-for with its layout as the param** (`push_args.txt`): `push home

@@ -1,6 +1,8 @@
 /* test_contracts_k0.c - the cross-area registry changes K0 lands once
- * (LIFESIM_PLAN R3, R5, R6): the reserved story callback blocks, the weak
- * plat_ext.h hooks and the five placeholder scenes. Owner: K0 contract.
+ * (LIFESIM_PLAN R3, R5, R6 + section 6): the reserved story callback
+ * blocks, the weak plat_ext.h hooks, the six placeholder scenes and the
+ * shared life / play-as / profile numbers (life_contract.h). Owner: K0
+ * contract.
  * (The save registry and the joint worst case: test_save_budget.c; the
  * endings' unlock ids: test_contracts.c.)
  *
@@ -11,6 +13,8 @@
 #include "test.h"
 #include "doomo/doomo.h"
 #include "doomo/plat_ext.h"
+#include "doomo/life_contract.h"
+#include "doomo/save_budget.h"
 #include "../src/story_int.h"
 
 /* side_callback()'s range (story_int.h: story_script.c 1..63, story_side.c
@@ -28,14 +32,17 @@ TEST(k0_story_callback_blocks)
     CHECK_EQ(CB_END_LAST - CB_END_FIRST + 1, 8);
     CHECK_EQ(CB_ROUTE_FIRST, CB_END_LAST + 1);
     CHECK_EQ(CB_ROUTE_LAST - CB_ROUTE_FIRST + 1, 8);
+    CHECK_EQ(CB_FAM_FIRST, CB_ROUTE_LAST + 1);              /* section 6 */
+    CHECK_EQ(CB_FAM_LAST - CB_FAM_FIRST + 1, 8);
+    CHECK_EQ(CB_FAM_LAST, 123);
     /* all inside story_side.c's dispatch range, so side_callback gets them */
-    CHECK(CB_LIFE_FIRST >= SIDE_CB_FIRST && CB_ROUTE_LAST <= SIDE_CB_LAST);
+    CHECK(CB_LIFE_FIRST >= SIDE_CB_FIRST && CB_FAM_LAST <= SIDE_CB_LAST);
     /* the ids the older side blocks use stay below the reserved ones */
     CHECK((int)CB_SIDE_CHAPTER < (int)CB_LIFE_FIRST && (int)CB_SIDE_NEWS < (int)CB_LIFE_FIRST);
     /* an unfilled block's id does nothing (no crash, no VM write) */
     {
         int cb;
-        for (cb = CB_LIFE_FIRST; cb <= CB_ROUTE_LAST; cb++) side_callback(cb, 0);
+        for (cb = CB_LIFE_FIRST; cb <= CB_FAM_LAST; cb++) side_callback(cb, 0);
         CHECK(1);
     }
 }
@@ -56,7 +63,9 @@ TEST(k0_plat_ext_weak_defaults)
         all |= bits[i];
     }
     CHECK_EQ_U(all, PLATF_ALL_KNOWN);
-    CHECK_EQ(PLAT_CONFIG_MAX, 32);
+    /* U0's settings record + the adults' security code (section 6) */
+    CHECK_EQ(PLAT_CONFIG_MAX, 48);
+    CHECK_EQ(PLAT_CONFIG_MAX, CONFIG_SZ_SETTINGS + CONFIG_SZ_SECURITY);
     CHECK_EQ_U(PLAT_TEST_NO_PICKER, 1u);
     /* the native runner implements none of them yet (U0, U4, E2 will):
      * the defaults answer "not here" and never touch their buffers */
@@ -81,8 +90,9 @@ TEST(k0_plat_ext_weak_defaults)
 TEST(k0_reserved_scenes_pop_themselves)
 {
     const DoomoScene *const k0[] = { &SCENE_FAMILY, &SCENE_PLAYAS, &SCENE_ENDING_CARD,
-                                     &SCENE_MSLOT, &SCENE_LANG_PICK };
-    static const char *const names[] = { "FAMILY", "PLAYAS", "ENDING_CARD", "MSLOT", "LANG_PICK" };
+                                     &SCENE_MSLOT, &SCENE_LANG_PICK, &SCENE_SECURITY_CODE };
+    static const char *const names[] = { "FAMILY", "PLAYAS", "ENDING_CARD", "MSLOT", "LANG_PICK",
+                                         "SECURITY_CODE" };
     int i, j, k;
     for (i = 0; i < DOOMO_COUNTOF(k0); i++) {
         char want[48];
@@ -114,4 +124,27 @@ TEST(k0_reserved_scenes_pop_themselves)
         for (j = 0; j < i; j++) CHECK(k0[j] != k0[i]);
     }
     scene_set(&SCENE_UI_GALLERY, 0);
+}
+
+/* The shared numbers (life_contract.h, LIFESIM_PLAN section 6): the
+ * chunk sections add up to the budget save_budget.h declares, and the
+ * household tiers are the user's 3 -> 10 -> 20 (GBA 3 -> 6 -> 10). */
+TEST(k0_life_contract_sizes)
+{
+    CHECK_EQ(LIFE_SZ_TOTAL, SAVE_EXT_MAX_LIFE);
+    CHECK_EQ(LIFE_SZ_LS1_PLAN, 2432);                       /* LS1's plan, unchanged */
+    CHECK_EQ(PLAY_SZ_TOTAL, SAVE_EXT_MAX_PLAY);
+    CHECK(PLAY_POCKET_ITEMS * 2 + 16 <= PLAY_SZ_POCKET);    /* items + stats fit a pocket */
+    CHECK_EQ(PROF_SZ_TOTAL, SAVE_EXT_MAX_PROF);
+    CHECK_EQ(PROF_PROFILES_MAX, PROF_GUESTS + 1);
+    CHECK_EQ(HOUSEHOLD_TIER_COUNT, 3);
+    CHECK_EQ(HOUSEHOLD_CAP(0, HOUSEHOLD_TIER_START), 3);
+    CHECK_EQ(HOUSEHOLD_CAP(0, HOUSEHOLD_TIER_GAME_DONE), 10);
+    CHECK_EQ(HOUSEHOLD_CAP(0, HOUSEHOLD_TIER_NGPLUS_DONE), 20);
+    CHECK_EQ(HOUSEHOLD_CAP(1, HOUSEHOLD_TIER_START), 3);
+    CHECK_EQ(HOUSEHOLD_CAP(1, HOUSEHOLD_TIER_GAME_DONE), 6);
+    CHECK_EQ(HOUSEHOLD_CAP(1, HOUSEHOLD_TIER_NGPLUS_DONE), 10);
+    CHECK_EQ(HOUSEHOLD_CAP_MAX, 20);
+    /* 8 B memorial per member of the largest household */
+    CHECK_EQ(LIFE_SZ_F6_LOSS, HOUSEHOLD_CAP_MAX * 8);
 }

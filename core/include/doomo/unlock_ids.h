@@ -45,6 +45,14 @@
 #define UL_IDS_CREATOR_LAST      319
 #define UL_IDS_LIFE_FIRST        320
 #define UL_IDS_LIFE_LAST         383
+/* (K0, LIFESIM_PLAN section 6) the last free ids of the life range, for the
+ * family packages: household tiers (F1/F4: the cap after the game and after
+ * NG+), the pet uplift item/spell (F5), two spare (F5/F6). */
+#define UL_LIFE_HOUSEHOLD_T1     379     /* cap 3 -> 10 (GBA 6): game completed */
+#define UL_LIFE_HOUSEHOLD_T2     380     /* cap -> 20 (GBA 10): NG+ completed   */
+#define UL_LIFE_PET_UPLIFT       381     /* F5: the late-game uplift            */
+#define UL_LIFE_FAMILY_SPARE_FIRST 382
+#define UL_LIFE_FAMILY_SPARE_LAST  383
 #define UL_IDS_LIBRARY_FIRST     384
 #define UL_IDS_LIBRARY_LAST      415
 #define UL_IDS_ACTION_FIRST      416
@@ -71,9 +79,10 @@
  *   689..697  the 9 new songs:      UL_STORY_SONG2(s) = 689 + (s - SONG_MINGLE)
  *   698..710  misc: 3 title variants, 6 Breach variants, 2 arena modes,
  *             2 creator parts (UL_STORY_MISC2_FIRST + k)
- *   711..724  (K0, LIFESIM_PLAN R7) the 14 endings: UL_STORY_END(k) =
- *             711 + k for ending k = 0..13 (E1 fills them)
- *   725..735  spare
+ *   711..725  (K0, LIFESIM_PLAN R7 + amendments) the 14 endings and the
+ *             very secret 15th ("Nope."): UL_STORY_END(k) = 711 + k for
+ *             ending k = 0..14 (E1 fills them)
+ *   726..735  spare
  * (Trophies are not unlock ids: SPEC R8.) */
 #define UL_STORY_CUT2_FIRST      677
 #define UL_STORY_CUT2_LAST       688
@@ -81,10 +90,10 @@
 #define UL_STORY_SONG2_LAST      697
 #define UL_STORY_MISC2_FIRST     698
 #define UL_STORY_MISC2_LAST      710
-#define UL_STORY_END_FIRST       711     /* K0: the 14 endings (E1) */
-#define UL_STORY_END_LAST        724
-#define UL_STORY_END(k)   (UL_STORY_END_FIRST + (k))                  /* k 0..13  */
-#define UL_STORY_SPARE_FIRST     725
+#define UL_STORY_END_FIRST       711     /* K0: the 14 + 1 secret endings (E1) */
+#define UL_STORY_END_LAST        725
+#define UL_STORY_END(k)   (UL_STORY_END_FIRST + (k))                  /* k 0..14  */
+#define UL_STORY_SPARE_FIRST     726
 #define UL_STORY_CUT2(c)  (UL_STORY_CUT2_FIRST + ((c) - CUT_P0))      /* story.h  */
 #define UL_STORY_SONG2(s) (UL_STORY_SONG2_FIRST + ((s) - SONG_MINGLE)) /* audio.h  */
 /* --- end S0 --- */

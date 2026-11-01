@@ -1,6 +1,7 @@
 /* weak_scenes.c - weak placeholders for the scenes K0 declares in scenes.h
  * (owner: K0 contract, LIFESIM_PLAN R5): SCENE_FAMILY (F2), SCENE_PLAYAS
- * (PA5), SCENE_ENDING_CARD (E1), SCENE_MSLOT (E2), SCENE_LANG_PICK (U5).
+ * (PA5), SCENE_ENDING_CARD (E1), SCENE_MSLOT (E2), SCENE_LANG_PICK and
+ * SCENE_SECURITY_CODE (U5).
  * Each owner defines the strong scene in its own file; nobody edits
  * stubs.c or this file to do it.
  *
@@ -39,6 +40,7 @@ K0_SCENE(SCENE_PLAYAS, "PLAYAS");
 K0_SCENE(SCENE_ENDING_CARD, "ENDING_CARD");
 K0_SCENE(SCENE_MSLOT, "MSLOT");
 K0_SCENE(SCENE_LANG_PICK, "LANG_PICK");
+K0_SCENE(SCENE_SECURITY_CODE, "SECURITY_CODE");
 
 /* 1 if `s` is still one of the placeholders above (tests; stubs.c's
  * scene_is_stub() covers the older placeholders). */
