@@ -102,15 +102,15 @@ blob 10 3 12 1 1 1     JET
 box  6 3 8   5 1 1     JET
 
 [welded_plate]
-box  1 0 0   14 4 24   A shiny
-box  1 1 0   14 3 1    B
-box  1 1 23  14 3 1    B
-box  1 1 0   1 3 24    B
-box  14 1 0  1 3 24    B
-box  1 3 10  14 2 3    B
-blob 4 5 13  1 1 1     TANGERINE glow
-blob 8 5 13  1 1 1     TANGERINE glow
-blob 12 5 13 1 1 1     TANGERINE glow
+box  2 0 1   12 4 22   A shiny
+box  1 0 0   14 5 1    B
+box  1 0 23  14 5 1    B
+box  1 0 1   1 5 22    B
+box  14 0 1  1 5 22    B
+box  0 3 10  16 3 3    B
+blob 4 6 13  1 1 1     TANGERINE glow
+blob 8 6 13  1 1 1     TANGERINE glow
+blob 12 6 13 1 1 1     TANGERINE glow
 blob 10 4 18 2 1 2     CHARCOAL soft
 blob 3 4 3   1 1 1     B
 blob 13 4 3  1 1 1     B
@@ -121,9 +121,9 @@ blob 13 4 21 1 1 1     B
 # is drawn upright like room_ref's wallpaper hearts: one box per column, each
 # column raised half a unit per unit of x against wall A's shear (`mirror`
 # keeps it upright on wall B). Frame 0 the open eye (it stays open after
-# LIT), frame 1 the blink: a lid over it (frame prims only on the blink, so
-# the PS1 keeps the open eye in its backdrop). On a shared face the prim
-# listed first wins, so the glint and the iris come before the white.
+# LIT), frame 1 the blink: just the heart with a lash line. The white, the
+# iris and the glint are stepped a unit apart: no prim shares a face (the
+# PS1 orders coplanar faces the other way round from furngen).
 [heart_wallpaper_eye]
 frames 2
 mirror
@@ -140,17 +140,14 @@ box  11 0 6  1 1 8     A
 box  12 0 8  1 1 7     A
 box  13 0 9  1 1 5     A
 box  14 0 11 1 1 3     A
-box  8 1 9   1 1 1     WHITE
-box  8 1 7   2 1 3     JET
-box  4 1 6   3 1 2     WHITE
-box  7 1 7   3 1 4     WHITE
-box  10 1 9  3 1 2     WHITE
-box@1 4 2 6  3 1 1     JET
-box@1 7 2 7  3 1 1     JET
-box@1 10 2 9 3 1 1     JET
-box@1 4 2 6  3 1 2     A
-box@1 7 2 7  3 1 4     A
-box@1 10 2 9 3 1 2     A
+box@0 4 1 6  3 1 2     WHITE
+box@0 7 1 7  3 1 4     WHITE
+box@0 10 1 9 3 1 2     WHITE
+box@0 8 2 7  2 1 3     JET
+box@0 8 3 9  1 1 1     WHITE
+box@1 4 1 6  3 1 1     JET
+box@1 7 1 7  3 1 1     JET
+box@1 10 1 9 3 1 1     JET
 
 [counter_board]
 box  1 0 1   14 2 18   A

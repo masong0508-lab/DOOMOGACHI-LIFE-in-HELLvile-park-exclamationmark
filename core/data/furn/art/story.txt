@@ -1,27 +1,30 @@
 # core/data/furn/art/story.txt - recipes of the story and gift pieces (owner:
 # H4). Format: pastel.txt.
 
-# (H6) a slatted crate under a gingham cloth (it read as a first-aid box):
-# the red squares come before the white cloth so they win the shared faces.
+# (H6) a slatted crate under a gingham cloth (it read as a first-aid box).
+# No two prims share a face: the PS1 orders coplanar faces the other way
+# round from furngen, so the checks sit a unit proud of the cloth.
 [picnic_crate]
 box  1 1 0   14 14 18  A
 box  0 0 3   16 16 2   CHOCOLATE
 box  0 0 9   16 16 2   CHOCOLATE
-box  0 0 18  4 4 2     CHERRY
-box  8 0 18  4 4 2     CHERRY
-box  4 4 18  4 4 2     CHERRY
-box  12 4 18 4 4 2     CHERRY
-box  0 8 18  4 4 2     CHERRY
-box  8 8 18  4 4 2     CHERRY
-box  4 12 18 4 4 2     CHERRY
-box  12 12 18 4 4 2    CHERRY
-box  0 0 14  4 4 4     CHERRY
-box  12 12 14 4 4 4    CHERRY
-box  4 15 14 4 1 4     CHERRY
-box  15 4 14 1 4 4     CHERRY
-box  8 0 14  4 1 4     CHERRY
-box  0 8 14  1 4 4     CHERRY
 box  0 0 14  16 16 6   WHITE
+box  0 0 20  4 4 1     CHERRY
+box  8 0 20  4 4 1     CHERRY
+box  4 4 20  4 4 1     CHERRY
+box  12 4 20 4 4 1     CHERRY
+box  0 8 20  4 4 1     CHERRY
+box  8 8 20  4 4 1     CHERRY
+box  4 12 20 4 4 1     CHERRY
+box  12 12 20 4 4 1    CHERRY
+box  4 16 14 4 1 6     CHERRY
+box  12 16 14 4 1 6    CHERRY
+box  16 4 14 1 4 6     CHERRY
+box  16 12 14 1 4 6    CHERRY
+box  0 -1 14 4 1 6     CHERRY
+box  8 -1 14 4 1 6     CHERRY
+box  -1 0 14 1 4 6     CHERRY
+box  -1 8 14 1 4 6     CHERRY
 
 [egg_nest]
 blob 8 8 3   7 7 3     A soft
@@ -103,19 +106,19 @@ blob 6 8 7   2 2 1     WHITE soft
 [days_since_fire]
 frames 2
 box  1 0 2   14 2 16   A
-box  1 1 14  14 2 4    B
-box  3 2 15  3 1 1     WHITE
-box  7 2 15  2 1 1     WHITE
-box  10 2 15 3 1 1     WHITE
-box  5 1 4   2 2 7     JET
-box  9 1 4   2 2 7     JET
-box  5 1 4   6 2 1     JET
-box  5 1 10  6 2 1     JET
-box@1 5 2 4  2 2 7     CHERRY
-box@1 9 2 4  2 2 7     CHERRY
-box@1 5 2 4  6 2 1     CHERRY
-box@1 5 2 10 6 2 1     CHERRY
-box  2 1 2   12 1 1    ~WOOD
+box  0 1 14  16 3 5    B
+box  3 4 15  3 1 1     WHITE
+box  7 4 15  2 1 1     WHITE
+box  10 4 15 3 1 1     WHITE
+box@0 5 1 4  2 2 7     JET
+box@0 9 1 4  2 2 7     JET
+box@0 5 1 4  6 2 1     JET
+box@0 5 1 10 6 2 1     JET
+box@1 5 1 4  2 2 7     CHERRY
+box@1 9 1 4  2 2 7     CHERRY
+box@1 5 1 4  6 2 1     CHERRY
+box@1 5 1 10 6 2 1     CHERRY
+box  2 1 2   12 2 1    ~WOOD
 
 # ---- the side missions' and chapters' rewards (H4 M2) ----------------------------
 

@@ -118,8 +118,8 @@ when the house opens (`home_haunt_apply`), once per night:
 2. the lamp is off, and one heart of the wallpaper is an eye (a fixed
    decal on wall A; it never leaves, it blinks until LIT). The decal is a
    cherry heart drawn upright like room_ref's wallpaper hearts (a furngen
-   `mirror` decal), with an open eye in frame 0 and a closed lid in the
-   blink frame, so after LIT it stays an eye;
+   `mirror` decal), with an open eye in frame 0 and a closed one (a lash
+   line) in the blink frame, so after LIT it stays an eye;
 3. two pieces move toward the cellar hatch, and Vex's pentagram rug is
    under the bed, though nobody put it there.
 

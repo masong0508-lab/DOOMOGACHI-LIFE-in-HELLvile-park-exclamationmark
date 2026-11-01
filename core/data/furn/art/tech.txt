@@ -27,8 +27,8 @@ box  10 13 1 2 1 2     SILVER
 cyl  8 8 0   5 2       A
 cyl  8 8 2   2 4       A
 box  3 4 6   10 9 10   B
-box  3 4 6   10 9 1    A
-box  4 6 16  3 5 1     CHARCOAL
+box  2 3 6   12 11 1   A
+box  3 6 16  5 5 1     CHARCOAL
 box  9 6 16  3 5 1     CHARCOAL
 box  4 7 16  3 3 4     HONEY soft
 box  9 7 19  3 3 4     HONEY soft
