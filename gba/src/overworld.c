@@ -167,6 +167,24 @@ found:
         if (owf.slot[c] != 0xFF) lc[c] = tab + owf.slot[c] * 256;
 }
 
+/* (G2) the classes of owf.night / owf.tint_level and an empty table cache
+ * in L for this frame's sprites (ow_int.h) */
+void ow_frame_luts(OwLuts *L)
+{
+    int present = 0, nc = 0, c, i;
+    for (i = 0; i < 16; i++) {
+        c = (ow_bayer[i] < owf.night) | ((ow_bayer[i] < owf.tint_level) << 1);
+        owf.cls[i] = (uint8_t)c;
+        present |= 1 << c;
+    }
+    for (c = 0; c < 4; c++) owf.slot[c] = (uint8_t)(((present >> c) & 1) ? nc++ : 0xFF);
+    owf.nc = (uint8_t)nc;
+    L->ways = (uint8_t)(OW_LUT_TABLES / nc);
+    L->victim = 0;
+    memset(L->key, 0, sizeof(L->key));
+    owf.luts = L;
+}
+
 /* lit 16x16 tile (front == 0) or 16 x front block front face, cached */
 static const OwTile *lit_cached(int tex, int lvl, int front)
 {
@@ -471,21 +489,7 @@ void plat_overworld(const DoomoOverworldView *v)
         cv_ow_failed();                         /* this frame is Mode 4 */
     }
 
-    /* (G2) the sprites' pixel classes and their composed tables (ow_int.h) */
-    {
-        int present = 0, nc = 0, c;
-        for (i = 0; i < 16; i++) {
-            c = (ow_bayer[i] < owf.night) | ((ow_bayer[i] < owf.tint_level) << 1);
-            owf.cls[i] = (uint8_t)c;
-            present |= 1 << c;
-        }
-        for (c = 0; c < 4; c++) owf.slot[c] = (uint8_t)(((present >> c) & 1) ? nc++ : 0xFF);
-        owf.nc = (uint8_t)nc;
-        luts.ways = (uint8_t)(OW_LUT_TABLES / nc);
-        luts.victim = 0;
-        memset(luts.key, 0, sizeof(luts.key));
-        owf.luts = &luts;
-    }
+    ow_frame_luts(&luts);            /* (G2) the sprites' pixel classes */
 
     /* ground: every visible cell's lit tile (16-pixel block copies; the
      * clipped edge tiles go through ow_blit). Blocks and raised floors

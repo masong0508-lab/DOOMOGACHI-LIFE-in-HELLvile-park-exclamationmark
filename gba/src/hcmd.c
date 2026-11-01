@@ -26,6 +26,12 @@
  *                          night a & 0x10, path a >> 8); must equal the
  *                          room_ref golden (core/tests/golden/room_ref.txt)
  *   GBA_HC_ROOM_TEST m     SCENE_HOME draws test layout m (ROOM_TEST_*)
+ * and the overworld sprite blit's (G2, owtest.c):
+ *   GBA_HC_OW_SPRITE_TEST set << 16 | n
+ *                          n random sprites (random set `set`) drawn by
+ *                          ow_sprite and by the G1 baseline's per-pixel blit
+ *                          must leave the same back buffer; logs the count
+ *                          of mismatches
  * and the tick hold of the harness's "sync on" (G1, gba_harness_hold).
  */
 #include "gba_plat.h"
@@ -208,6 +214,9 @@ void gba_harness_cmd(void)
         r = 1;
         break;
     /* --- end H2 --- */
+    case GBA_HC_OW_SPRITE_TEST:            /* G2: owtest.c */
+        r = ow_sprite_selftest(arg);
+        break;
     default:
         break;
     }

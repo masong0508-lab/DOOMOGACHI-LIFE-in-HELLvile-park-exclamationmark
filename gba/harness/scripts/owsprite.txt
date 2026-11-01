@@ -1,0 +1,58 @@
+# owsprite.txt - the overworld sprite blit against its baseline (G2,
+# gba/src/owtest.c, `make -C gba test-ow`): 2,400 random sprites (size,
+# scale, source alignment, transparency, mirrored, translucent, clipped on
+# every side, odd viewports, night / view tint / colormap levels, the
+# house's no-table way in), each drawn by ow_sprite and by the G1
+# baseline's per-pixel blit onto the same back buffer: the two buffers
+# must hash the same. 16 random sets of 150 (post 16 = set << 16 | 150;
+# one post runs ~12 s of emulated time, under the 20 s hang limit).
+wait 40
+expect-log doomo: init
+post 16 150
+wait 2
+expect-log ow sprite test: set 0, 150 cases, 0 mismatches
+post 16 65686
+wait 2
+expect-log ow sprite test: set 1, 150 cases, 0 mismatches
+post 16 131222
+wait 2
+expect-log ow sprite test: set 2, 150 cases, 0 mismatches
+post 16 196758
+wait 2
+expect-log ow sprite test: set 3, 150 cases, 0 mismatches
+post 16 262294
+wait 2
+expect-log ow sprite test: set 4, 150 cases, 0 mismatches
+post 16 327830
+wait 2
+expect-log ow sprite test: set 5, 150 cases, 0 mismatches
+post 16 393366
+wait 2
+expect-log ow sprite test: set 6, 150 cases, 0 mismatches
+post 16 458902
+wait 2
+expect-log ow sprite test: set 7, 150 cases, 0 mismatches
+post 16 524438
+wait 2
+expect-log ow sprite test: set 8, 150 cases, 0 mismatches
+post 16 589974
+wait 2
+expect-log ow sprite test: set 9, 150 cases, 0 mismatches
+post 16 655510
+wait 2
+expect-log ow sprite test: set 10, 150 cases, 0 mismatches
+post 16 721046
+wait 2
+expect-log ow sprite test: set 11, 150 cases, 0 mismatches
+post 16 786582
+wait 2
+expect-log ow sprite test: set 12, 150 cases, 0 mismatches
+post 16 852118
+wait 2
+expect-log ow sprite test: set 13, 150 cases, 0 mismatches
+post 16 917654
+wait 2
+expect-log ow sprite test: set 14, 150 cases, 0 mismatches
+post 16 983190
+wait 2
+expect-log ow sprite test: set 15, 150 cases, 0 mismatches

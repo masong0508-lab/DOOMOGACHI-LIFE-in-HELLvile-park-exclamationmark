@@ -15,8 +15,11 @@ enum {
     GBA_HC_TEXT_HIT = 12,     /* -> 1 if the needle was drawn since the arm         */
     GBA_HC_STORY_FP = 13,     /* -> story_fingerprint()                            */
     GBA_HC_ROOM_PARITY = 14,  /* arg view | path: -> FNV of the parity frame (room.c) */
-    GBA_HC_ROOM_TEST = 15     /* arg ROOM_TEST_*: the house test layout (room.c)   */
+    GBA_HC_ROOM_TEST = 15,    /* arg ROOM_TEST_*: the house test layout (room.c)   */
+    GBA_HC_OW_SPRITE_TEST = 16  /* (G2) arg set << 16 | n: n random ow_sprite cases
+                                 * against the baseline blit -> mismatches (owtest.c) */
 };
+uint32_t ow_sprite_selftest(uint32_t n);
 
 /* "seed N": plat_entropy() returns the pinned value while gba_entropy_pinned
  * (like the native runner's fixed entropy), so the next town_new() and every

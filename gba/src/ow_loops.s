@@ -90,25 +90,24 @@ ow_tile16:
 @ A sprite's rows (ow.iwram.c ow_sprite): j->rows rows of j->n pixels
 @ (even, > 0) to VRAM from j->dst (halfword aligned, + 240 bytes per row),
 @ texels from j->src (any alignment, + j->stride per row). A row's texels
-@ are read four per word (aligned loads, shifted together) and ANDed with
-@ j->tmask[y & 1] (the translucency checker); the row's first texel is
-@ dropped when j->head is 0xFF and its last quad (or pair) is ANDed with
-@ j->tail (the clipped odd edge columns). Pixel k of row y goes through
-@ table j->q[y & 3][k & 3] (its 4x4 class, ow_int.h); texel 0 is
-@ transparent. A quad of transparent texels costs one word read, an
+@ are read four per word (aligned loads, shifted together); the row's
+@ first texel is dropped when j->head is 0xFF and its last quad (or pair)
+@ is ANDed with j->tail (the clipped odd edge columns). Pixel k of row y
+@ goes through table j->q[y & 3][k & 3] (its 4x4 class, ow_int.h); texel 0
+@ is transparent. A quad of transparent texels costs one word read, an
 @ opaque pair is one halfword store, a half-opaque one a read-modify-
-@ write. j->dst, j->src, j->rows and j->phase (y & 3) are consumed. Reads
-@ up to 4 bytes before and 8 bytes past a row.
+@ write. The quads before the last go two per loop (the word registers
+@ trade places, no moves). j->dst, j->src, j->rows and j->phase (y & 3)
+@ are consumed. Reads up to 4 bytes before and 8 bytes past a row.
     .equ    OSJ_DST, 0
     .equ    OSJ_SRC, 4
     .equ    OSJ_N, 8
     .equ    OSJ_ROWS, 12
     .equ    OSJ_STRIDE, 16
     .equ    OSJ_PHASE, 20
-    .equ    OSJ_TMASK, 24
-    .equ    OSJ_Q, 32
-    .equ    OSJ_HEAD, 96
-    .equ    OSJ_TAIL, 100
+    .equ    OSJ_Q, 24
+    .equ    OSJ_HEAD, 88
+    .equ    OSJ_TAIL, 92
 
     @ one pixel pair from the low 16 bits of r11 (a = bits 0-7, b = 8-15)
     @ to [r0, #off]; the half-opaque cases are out of line (OW_PAIR_COLD)
@@ -142,6 +141,9 @@ ow_tile16:
     b       \lbl\()_done
     .endm
 
+    @ r0 dst, r1 the next source word, r2 quads before the last one, r3 the
+    @ first texel's bit offset, r10 32 - r3 (offset 0: lsl #32 gives 0),
+    @ r4 / r5 the source words, r6-r9 the row's tables, r11 four texels
     .global ow_spr_rows
     .type   ow_spr_rows, %function
 ow_spr_rows:
@@ -152,37 +154,62 @@ ow_spr_rows:
     add     r6, lr, #OSJ_Q
     add     r6, r6, r12, lsl #4
     ldmia   r6, {r6-r9}                 @ this row's four tables
-    and     r5, r12, #1
-    add     r5, lr, r5, lsl #2
-    ldr     r5, [r5, #OSJ_TMASK]
     ldr     r0, [lr, #OSJ_DST]
     ldr     r1, [lr, #OSJ_SRC]
     ldr     r2, [lr, #OSJ_N]
     ldr     r11, [lr, #OSJ_HEAD]
     and     r3, r1, #3
-    mov     r3, r3, lsl #3              @ the first texel's bit offset
+    mov     r3, r3, lsl #3
     bic     r1, r1, #3
-    rsb     r10, r3, #32                @ (offset 0: lsl #32 gives 0)
+    rsb     r10, r3, #32
+    add     r2, r2, #3
+    mov     r2, r2, lsr #2
+    subs    r2, r2, #1                  @ quads before the last
     ldr     r4, [r1], #4                @ the word holding texel 0
     bic     r4, r4, r11, lsl r3         @ (head: texel 0 dropped)
-1:  ldr     r12, [r1], #4
+    beq     .Lsr_last
+    @ quad A: texels from r4:r5
+1:  ldr     r5, [r1], #4
     mov     r11, r4, lsr r3
-    orr     r11, r11, r12, lsl r10      @ texels k..k+3
-    mov     r4, r12
-    and     r11, r11, r5
-    cmp     r2, #4
-    ble     .Lsr_tail                   @ the last quad or pair
-.Lsr_body:
-    cmp     r11, #0
-    beq     8f
-    OW_PAIR r6, r7, 0, .Lsp0
+    orrs    r11, r11, r5, lsl r10
+.Lsr_a:
+    beq     3f
+    OW_PAIR r6, r7, 0, .Lsa0
     movs    r11, r11, lsr #16
-    beq     8f
-    OW_PAIR r8, r9, 2, .Lsp1
-8:  add     r0, r0, #4
-    subs    r2, r2, #4
-    bgt     1b
+    beq     3f
+    OW_PAIR r8, r9, 2, .Lsa1
+3:  subs    r2, r2, #1
+    bmi     .Lsr_next                   @ that was the row's last quad
+    beq     .Lsr_last_b
+    @ quad B: texels from r5:r4
+    ldr     r4, [r1], #4
+    mov     r11, r5, lsr r3
+    orrs    r11, r11, r4, lsl r10
+    beq     4f
+    OW_PAIR r6, r7, 4, .Lsb0
+    movs    r11, r11, lsr #16
+    beq     4f
+    OW_PAIR r8, r9, 6, .Lsb1
+4:  add     r0, r0, #8
+    subs    r2, r2, #1
+    bne     1b
+    @ the last quad (or pair): texels from r4, ANDed with the tail mask,
+    @ drawn by quad A's code (r2 = 0: it then leaves the row)
+.Lsr_last:
+    ldr     r5, [r1]
+    mov     r11, r4, lsr r3
+    orr     r11, r11, r5, lsl r10
+    ldr     lr, [sp]
+    ldr     lr, [lr, #OSJ_TAIL]
+    ands    r11, r11, lr
+    mov     r2, #0
+    b       .Lsr_a
+.Lsr_last_b:
+    mov     r4, r5
+    add     r0, r0, #4
+    b       .Lsr_last
     @ next row
+.Lsr_next:
     ldr     lr, [sp]
     ldmia   lr, {r0-r5}                 @ dst, src, n, rows, stride, phase
     add     r0, r0, #240
@@ -194,11 +221,8 @@ ow_spr_rows:
     bgt     .Lsr_row
     ldmfd   sp!, {r0, r4-r11, lr}
     bx      lr
-.Lsr_tail:
-    ldr     lr, [sp]
-    ldr     lr, [lr, #OSJ_TAIL]
-    and     r11, r11, lr
-    b       .Lsr_body
-    OW_PAIR_COLD r7, 0, .Lsp0
-    OW_PAIR_COLD r9, 2, .Lsp1
+    OW_PAIR_COLD r7, 0, .Lsa0
+    OW_PAIR_COLD r9, 2, .Lsa1
+    OW_PAIR_COLD r7, 4, .Lsb0
+    OW_PAIR_COLD r9, 6, .Lsb1
     .size   ow_spr_rows, . - ow_spr_rows

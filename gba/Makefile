@@ -112,7 +112,7 @@ CORE_OBJS := $(call core_obj,$(CORE_SRCS))
 # over the core's weak stubs, and the core's strong definitions win over both.
 ALL_OBJS  := $(GBA_OBJS) $(CORE_OBJS)
 
-.PHONY: all rom engine-test engine-test-nocore harness test test-et test-game test-save test-coresave test-home test-speed clean sizes
+.PHONY: all rom engine-test engine-test-nocore harness test test-et test-game test-save test-coresave test-home test-ow test-speed clean sizes
 .DEFAULT_GOAL := all
 
 all: rom
@@ -176,6 +176,7 @@ test:
 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile test-coresave
 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile test-story
 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile test-home
+	@$(MAKE) --no-print-directory -f $(GBA)/Makefile test-ow
 
 test-et: harness
 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile engine-test
@@ -227,6 +228,13 @@ test-home: harness
 	    --shots $(SHOTS)/home --golden $(ROOT)/core/tests/golden/room_ref.txt \
 	    --nm $(BUILD)/doomogachi.nm --quiet
 # --- end H2 ---
+
+# --- G2: the overworld sprite blit against the G1 baseline's per-pixel
+# blit, 2,400 random cases in the game ROM (gba/src/owtest.c) ---
+test-ow: harness
+	@$(MAKE) --no-print-directory -f $(GBA)/Makefile rom ENGINE_TEST=0
+	$(HARNESS) $(BUILD)/doomogachi.gba --script $(GBA)/harness/scripts/owsprite.txt --quiet
+# --- end G2 ---
 
 # --- G1: the speed tour (docs/GBA.md "Speed pass 4"): every target scene's
 # fps (expect-fps floors), screenshots and output-frame hashes, printed as a

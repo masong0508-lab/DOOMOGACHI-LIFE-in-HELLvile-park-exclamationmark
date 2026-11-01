@@ -10,10 +10,11 @@
  * one of four classes per 4x4 screen position (bit 0 night, bit 1 tint).
  * ow_sprite composes the classes a frame uses into 256-byte tables, one
  * lookup per pixel, cached per colormap for the frame in plat_overworld's
- * stack frame (OW_LUT_TABLES tables, shared out among the classes).
+ * stack frame (OW_LUT_TABLES tables, 2 KB, shared out among the classes:
+ * 8 colormaps by day, 4 at night or under a view tint, 2 under both).
  * Outside plat_overworld owf.luts is NULL and ow_sprite uses the colormap
  * as it is: the caller (the house, room.c) sets night = tint_level = 0. */
-#define OW_LUT_TABLES 6
+#define OW_LUT_TABLES 8
 typedef struct OwLuts {
     uint32_t tab[OW_LUT_TABLES][64];       /* way w, class slot s: [w * nc + s] (words: built 4 at a time) */
     const uint8_t *key[OW_LUT_TABLES];     /* the colormap a way holds */
@@ -57,12 +58,15 @@ typedef struct OwSprJob {
     int32_t rows;                  /* +12 > 0                              */
     int32_t stride;                /* +16 texels per image row             */
     uint32_t phase;                /* +20 the first row's y & 3            */
-    uint32_t tmask[2];             /* +24 by y & 1: all ones, or the checker */
-    const uint8_t *q[4][4];        /* +32 [y & 3][k & 3]: pixel k's table  */
-    uint32_t head;                 /* +96 0xFF: drop each row's first texel */
-    uint32_t tail;                 /* +100 the mask of each row's last quad */
+    const uint8_t *q[4][4];        /* +24 [y & 3][k & 3]: pixel k's table  */
+    uint32_t head;                 /* +88 0xFF: drop each row's first texel */
+    uint32_t tail;                 /* +92 the mask of each row's last quad */
 } OwSprJob;
 void ow_spr_rows(OwSprJob *j) IWRAM_CALL;
+/* (G2) set up owf's pixel classes from owf.night / owf.tint_level and
+ * point owf.luts at L, emptied (overworld.c; plat_overworld per frame,
+ * owtest.c per case) */
+void ow_frame_luts(OwLuts *L);
 /* (G2) lc[c]: colormap cm composed for each class c the frame uses
  * (overworld.c, THUMB; cached per frame in owf.luts) */
 void owf_sprite_luts(const uint8_t *cm, const uint8_t **lc) IWRAM_CALL;

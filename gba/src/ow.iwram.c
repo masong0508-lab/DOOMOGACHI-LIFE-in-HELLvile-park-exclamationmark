@@ -7,9 +7,9 @@
 #define LINE 120
 
 /* ow_loops.s reads OwSprJob at these offsets */
-DOOMO_STATIC_ASSERT(offsetof(OwSprJob, phase) == 20 && offsetof(OwSprJob, tmask) == 24 &&
-                    offsetof(OwSprJob, q) == 32 && offsetof(OwSprJob, head) == 96 &&
-                    offsetof(OwSprJob, tail) == 100, ow_spr_job_layout);
+DOOMO_STATIC_ASSERT(offsetof(OwSprJob, phase) == 20 && offsetof(OwSprJob, q) == 24 &&
+                    offsetof(OwSprJob, head) == 88 && offsetof(OwSprJob, tail) == 92,
+                    ow_spr_job_layout);
 
 /* VRAM is accessed through volatile halfword pointers in read-modify-
  * writes: GCC would otherwise turn "(*p & 0xFF00) | c" into a byte store,
@@ -132,11 +132,11 @@ void ow_sprite(const DoomoImage *img, int x0, int y0, int s, int flags, const ui
     else lc[0] = lc[1] = lc[2] = lc[3] = cm;    /* the house: no night, no tint */
     {
         /* every row in ow_spr_rows (ow_loops.s), from the even column xa to
-         * xb, the clipped odd edge columns masked off (head / tail);
-         * translucent: only pixels with (x + y) even. At scale 1, not
-         * mirrored (nearly every sprite), all rows in one call straight
-         * from the image; else row by row through a row buffer, from
-         * col[]: the texel column of each screen pixel */
+         * xb, the clipped odd edge columns masked off (head / tail). At
+         * scale 1, not mirrored, opaque (nearly every sprite), all rows in
+         * one call straight from the image; else row by row through a row
+         * buffer, from col[]: the texel column of each screen pixel, with
+         * the translucency checker applied (only pixels with x + y even) */
         const int iw = img->w;
         const int xa = cx0 & ~1, xb = (cx1 + 1) & ~1;
         uint8_t col[256 + 2];
@@ -145,14 +145,12 @@ void ow_sprite(const DoomoImage *img, int x0, int y0, int s, int flags, const ui
         int k;
         j.n = xb - xa;
         j.stride = iw;
-        j.tmask[0] = trans ? 0x00FF00FFu : 0xFFFFFFFFu;
-        j.tmask[1] = trans ? 0xFF00FF00u : 0xFFFFFFFFu;
         j.head = (cx0 & 1) ? 0xFFu : 0u;
         j.tail = (j.n & 2) ? 0x0000FFFFu : 0xFFFFFFFFu;
         if (cx1 & 1) j.tail &= ~(0xFFu << ((j.n & 2) ? 8 : 24));
         for (k = 0; k < 16; k++)
             j.q[k >> 2][k & 3] = lc[owf.cls[(k & ~3) | ((xa + k) & 3)]];
-        if (s == 1 && !flip) {
+        if (s == 1 && !flip && !trans) {
             j.dst = gba_back + cy0 * LINE + (xa >> 1);
             j.src = img->pix + (cy0 - y0) * iw + (xa - x0);
             j.rows = cy1 - cy0;
@@ -169,6 +167,8 @@ void ow_sprite(const DoomoImage *img, int x0, int y0, int s, int flags, const ui
             const uint8_t *srow = img->pix + (int)(((uint32_t)(y - y0) * inv) >> 16) * iw;
             uint8_t *d = (uint8_t *)buf;
             for (k = 0; k < j.n; k++) d[k] = srow[col[k]];
+            if (trans)
+                for (k = (xa + y + 1) & 1; k < j.n; k += 2) d[k] = 0;
             j.dst = gba_back + y * LINE + (xa >> 1);
             j.src = d;
             j.rows = 1;
