@@ -158,11 +158,13 @@ void plat_end_frame(void)
 /* ---- boot ------------------------------------------------------------------------------ */
 void plat_init_hw(void)
 {
-    dc_mailbox.magic = DC_MAILBOX_MAGIC;
     dc_mailbox.ticks = 0;
     dc_mailbox.drawn = 0;
     dc_mailbox.hold_at = 0xFFFFFFFFu;  /* harness sync: no hold */
     dc_mailbox.draw_all = 0;
+    /* the magic last: a harness that sees it may post a hold_at at once */
+    __asm__ __volatile__("" ::: "memory");
+    dc_mailbox.magic = DC_MAILBOX_MAGIC;
     vblank_handler_add(on_vblank, NULL);
     video_init();
     dc_log("DOOMOGACHI DC: boot ok");

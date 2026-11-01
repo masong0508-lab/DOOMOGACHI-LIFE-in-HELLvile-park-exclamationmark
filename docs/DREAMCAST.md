@@ -265,7 +265,7 @@ and `-lkallisti -lm -lc -lgcc`; the link writes `dc/build/doomogachi.map`.
 
 `KOS_INIT_FLAGS(INIT_DEFAULT)`: IRQs, threads, the file systems, Maple and
 the CD drive. `plat_init_hw()` sets up the mailbox, adds a vblank handler
-(the vblank counter, also in the mailbox) and calls
+(a vblank counter the loop idles on) and calls
 `vid_set_mode(DM_640x480, PM_RGB565)`, which gives 480p on a VGA cable and
 interlaced 640x480 on RGB/composite, then `pvr_init_defaults()`. The core
 runs on a 320x240 logical screen (`plat_screen_w/h`), which DC3 draws at
@@ -325,10 +325,12 @@ Log lines also go to `dbgio` (the serial port on hardware, the emulator's
 console). Harness commands (`dc/src/hcmd.c`) keep the GBA's ids and
 meaning: 1 save, 2 load, 3 exists, 4 town-fill, 5 town-crc, 6 verify,
 7 scene, 8 push, 9 seed (pins `plat_entropy`), 10 story flag, 11/12 the
-text probe (expect-text), 13 story fingerprint. The harness writes `arg`
+text probe (dcrun has no expect-text yet), 13 story fingerprint.
+Results follow the GBA: nonzero means success (dc_mailbox.h). The harness writes `arg`
 (and `name`), then `cmd`; the game runs it between two logic ticks.
 `dc/tests/boot.txt` is the first harness script: boot, `scene: set BOOT`,
-`scene: set TITLE`, then 300 video frames (5 s) for the 30 Hz tick check.
+`scene: set TITLE`, then 300 video frames (5 s) that must advance the tick count by
+149..151 (`expect-ticks`, the 30 Hz check).
 `make -C dc test` runs it on the ELF and on the CDI once
 `dc/harness/build/flycast_libretro.so` is built; until then it runs the
 harness's self-test only and says so.
@@ -365,8 +367,14 @@ doomogachi.iso --cdi4dc--> doomogachi.cdi   (audio/data, self-booting)
 `dc/ip.txt` holds our own title ("DOOMOGACHI LIFE IN HELLVILE PARK"), maker
 ("DOOMOGACHI TEAM"), product number T-DOOMO and version. makeip adds the
 hardware and maker identifiers the boot ROM requires in every bootstrap
-(`SEGA SEGAKATANA`, `SEGA ENTERPRISES`); they are not shown anywhere, and
-the disc has no logo or jingle of anyone's. The image is 6.9 MB. A GDI
+(`SEGA SEGAKATANA`, `SEGA ENTERPRISES`). The IP.BIN bootstrap that makeip
+writes also contains the standard license text ("PRODUCED BY OR UNDER
+LICENSE FROM SEGA ENTERPRISES, LTD."), which the console's boot screen
+draws when a disc starts: it is part of what makes a disc self-boot, not
+something the game draws, but it does mean the boot shows Sega's name.
+Whether that is acceptable for a release (trademark question) is open for
+the user to decide; the game itself draws no logo or jingle of anyone's.
+The image is 6.9 MB. A GDI
 or CHD release (DECISIONS.md) can be made from the same 1ST_READ.BIN and
 IP.BIN, which the build copies next to the CDI.
 
