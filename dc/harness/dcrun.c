@@ -25,6 +25,7 @@
  *   press BTN.. | hold BTN.. N | down BTN.. | release [BTN..]
  *   shot NAME                   SHOTS/NAME.png (640x480, or 320x240 --half)
  *   log TEXT | expect-log TEXT | expect-scene NAME
+ *   mark-ticks | expect-ticks LO HI   ticks since mark-ticks in [LO, HI]
  *   save N | load N | expect-save N | verify N   (mailbox commands)
  *   scene NAME [ARG] | push NAME [ARG] | seed N | expect-flag F [V]
  *   audio-reset | audio [LABEL] | expect-audio MIN [LABEL]
@@ -503,6 +504,7 @@ static void wav_header(void)
 
 static int rumble_seen[4];
 static unsigned long tick_now(void);
+static unsigned long tick_mark;    /* mark-ticks */
 
 static bool RETRO_CALLCONV set_rumble(unsigned port, enum retro_rumble_effect e,
                                       uint16_t strength)
@@ -982,6 +984,13 @@ static int run_script(FILE *f)
             if (!run_ticks(strtoul(v[1], NULL, 0))) return 0;
         } else if (!strcmp(c, "frames") && n >= 2) {
             for (unsigned long i = strtoul(v[1], NULL, 0); i; i--) run_frame();
+        } else if (!strcmp(c, "mark-ticks")) {
+            tick_mark = tick_now();
+        } else if (!strcmp(c, "expect-ticks") && n >= 3) {
+            unsigned long d = tick_now() - tick_mark;
+            unsigned long lo = strtoul(v[1], NULL, 0), hi = strtoul(v[2], NULL, 0);
+            printf("ticks: %lu since mark-ticks (want %lu..%lu)\n", d, lo, hi);
+            if (d < lo || d > hi) fail("line %d: expect-ticks %lu..%lu got %lu", lineno, lo, hi, d);
         } else if (!strcmp(c, "press") && n >= 2) {
             if (!parse_buttons(v + 1, n - 1, &m, &lt, &rt)) return 0;
             buttons_down(m, lt, rt);
@@ -1018,12 +1027,12 @@ static int run_script(FILE *f)
             uint32_t id = c[0] == 's' ? DC_HC_SAVE : c[0] == 'l' ? DC_HC_LOAD :
                           c[0] == 'e' ? DC_HC_EXISTS : DC_HC_VERIFY;
             if (!mb_cmd(id, (uint32_t)strtoul(v[1], NULL, 0), NULL, &r)) return 0;
-            if (id == DC_HC_EXISTS ? !r : r != 0)
+            if (!r)   /* GBA convention: nonzero = success / exists */
                 fail("line %d: %s %s gave %u", lineno, c, v[1], r);
         } else if ((!strcmp(c, "scene") || !strcmp(c, "push")) && n >= 2) {
             if (!mb_cmd(c[0] == 's' ? DC_HC_SCENE : DC_HC_PUSH,
                         n >= 3 ? (uint32_t)strtoul(v[2], NULL, 0) : 0, v[1], &r)) return 0;
-            if (r) fail("line %d: %s %s: unknown scene", lineno, c, v[1]);
+            if (!r) fail("line %d: %s %s: unknown scene", lineno, c, v[1]);
         } else if (!strcmp(c, "seed") && n >= 2) {
             if (!mb_cmd(DC_HC_SEED, (uint32_t)strtoul(v[1], NULL, 0), NULL, NULL)) return 0;
         } else if (!strcmp(c, "expect-flag") && n >= 2) {

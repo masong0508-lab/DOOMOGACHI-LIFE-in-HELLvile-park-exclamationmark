@@ -1,6 +1,9 @@
 # selftest.txt - dcrun against tests/mockcore.c (make -C dc/harness test).
 wait 20
 expect-scene TITLE
+mark-ticks
+frames 60
+expect-ticks 29 31
 expect-log scene: set BOOT
 expect-log mock: boot (rtc 1767225600)
 shot title

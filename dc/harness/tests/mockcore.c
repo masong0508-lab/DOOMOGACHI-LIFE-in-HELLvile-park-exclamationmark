@@ -162,12 +162,12 @@ static void run_cmd(void)
     for (int i = 0; i < 20; i++) name[i] = mb->name[i];
     name[19] = 0;
     switch (cmd) {
-    case DC_HC_SAVE: if (arg < 8) saved[arg] = 1; mlog("save %u", arg); break;
-    case DC_HC_LOAD: r = arg < 8 && saved[arg] ? 0 : 1; break;
+    case DC_HC_SAVE: if (arg < 8) saved[arg] = 1; r = arg < 8; mlog("save %u", arg); break;
+    case DC_HC_LOAD: r = arg < 8 && saved[arg]; break;
     case DC_HC_EXISTS: r = arg < 8 && saved[arg]; break;
-    case DC_HC_VERIFY: r = arg < 8 && saved[arg] ? 0 : 1; break;
+    case DC_HC_VERIFY: r = arg < 8 && saved[arg]; break;
     case DC_HC_SCENE: case DC_HC_PUSH:
-        if (!strcmp(name, "NOPE")) r = 1; else set_scene(name);
+        if (strcmp(name, "NOPE")) { set_scene(name); r = 1; }
         break;
     case DC_HC_SEED: seed_pinned = 1; seed_val = arg; mlog("seed %u", arg); break;
     case DC_HC_FLAG: r = arg == 7; break;

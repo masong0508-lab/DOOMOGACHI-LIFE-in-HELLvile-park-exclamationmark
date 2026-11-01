@@ -23,6 +23,8 @@ cmp -s "$out/a/title.png" "$out/a/held_up.png" && { echo "selftest: title and he
 run --script "$here/selftest.txt" --shots "$out/h" --half --quiet >/dev/null 2>&1; check $? 0 "--half run"
 run --script "$here/fail_log.txt" --quiet >/dev/null 2>&1; check $? 1 "expect-log failure"
 run --script "$here/fail_scene.txt" --quiet >/dev/null 2>&1; check $? 1 "expect-scene failure"
+run --script "$here/fail_ticks.txt" --quiet >/dev/null 2>&1; check $? 1 "expect-ticks failure"
+run --script "$here/fail_load.txt" --quiet >/dev/null 2>&1; check $? 1 "failed load"
 run --frames 100000 --timeout 1 --quiet >/dev/null 2>&1; check $? 1 "timeout"
 "$B/dcrun" "$B/mockcore.so" mock.elf --mailbox 8c020000 --run-dir "$out/run" --frames 30 --quiet >/dev/null 2>&1
 check $? 1 "no mailbox magic"

@@ -97,7 +97,8 @@ frames, and the log is what the core logs.
 | `shot NAME` | write `SHOTS/NAME.png` |
 | `log TEXT` / `expect-log TEXT` | print / fail unless TEXT is in the game's log so far |
 | `expect-scene NAME` | the mailbox's last scene, or a `scene: set NAME` log line |
-| `save N` / `load N` / `expect-save N` / `verify N` | mailbox commands, run in the game |
+| `mark-ticks` / `expect-ticks LO HI` | fail unless the game's tick count advanced by LO..HI since `mark-ticks` (the 30 Hz check: `frames 300` must give about 150) |
+| `save N` / `load N` / `expect-save N` / `verify N` | mailbox commands, run in the game; a result of 0 fails (the GBA convention: nonzero = success) |
 | `scene NAME [ARG]` / `push NAME [ARG]` / `seed N` / `expect-flag F [V]` | mailbox commands |
 | `audio-reset` / `audio [LABEL]` / `expect-audio MIN [LABEL]` | peak-to-peak of the 16-bit output since `audio-reset` |
 | `port N` | later button, stick and trigger commands act on port N (1-4) |

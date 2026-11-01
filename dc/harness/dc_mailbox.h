@@ -28,7 +28,9 @@ typedef struct DcMailbox {
     uint32_t drawn;                      /* frames actually presented       */
     uint32_t fps10;                      /* engine test: fps x 10           */
     /* harness commands: the harness writes arg (and name), then cmd; the
-     * game runs it between two logic ticks, writes result and clears cmd */
+     * game runs it between two logic ticks, writes result and clears cmd.
+     * result follows the GBA: save/load/verify/scene/push/seed give
+     * nonzero on success, exists gives nonzero when the slot holds a save */
     uint32_t cmd, arg, result, cycles;
     /* profiling: microseconds of the logic ticks' work, sum/count/worst */
     uint32_t work_sum, work_n, work_max;

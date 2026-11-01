@@ -1,0 +1,5 @@
+# expect-ticks must fail: 60 video frames are 30 mock ticks, not 60
+wait 1
+mark-ticks
+frames 60
+expect-ticks 59 61
