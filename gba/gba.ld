@@ -5,7 +5,9 @@
  *                             .bss (core state: doomo_town,
  *                             doomo_map, ...) + platform caches
  *   IWRAM  0x03000000  32 KB  .iwram (ARM hot code + fast data, copied
- *                             from ROM at boot), .iwram_bss, stacks
+ *                             from ROM at boot), the overlay slot (one
+ *                             code group at a time, iwram_ovl.c; G4),
+ *                             .iwram_bss, stacks
  *
  * IWRAM layout (top):
  *   0x03007FF0..0x03007FFF  BIOS (IRQ vector, IF mirror, ...)
@@ -18,6 +20,9 @@
  * Whole translation units named *.iwram.c (compiled -marm) land in IWRAM
  * (.text/.rodata/.data -> .iwram, .bss -> .iwram_bss). Single functions
  * elsewhere use IWRAM_CODE (gba_hw.h) = section(".iwram").
+ * Exceptions (the overlay slot, below): r3d.iwram.c's code + const data
+ * and section .iwram_3d (r3d_loops.s) form the 3D group, section
+ * .iwram_2d (IWRAM_2D_CODE, iwram_ovl.h) the 2D group.
  */
 OUTPUT_FORMAT("elf32-littlearm")
 OUTPUT_ARCH(arm)
@@ -80,12 +85,45 @@ SECTIONS
     .iwram : {
         __iwram_start = .;
         *(.iwram .iwram.*)
-        *.iwram.o(.text .text.* .rodata .rodata.* .data .data.*)
+        EXCLUDE_FILE(*r3d.iwram.o) *.iwram.o(.text .text.* .rodata .rodata.* .data .data.*)
+        *.iwram.o(.data .data.*)
         *(.iwram_data .iwram_data.*)
         . = ALIGN(4);
         __iwram_end = .;
     } > iwram AT > rom
     __iwram_lma = LOADADDR(.iwram);
+
+    /* ---- IWRAM code overlay (G4, iwram_ovl.c) ------------------------
+     * One slot, right after the resident code, holds ONE group at a time;
+     * iwram_ovl_use() DMAs a group in from ROM on a mode change (crt0
+     * copies none of them). The slot is as big as the largest group.
+     *   .ovl_3d  the raycaster's hot code: r3d.iwram.c's code and const
+     *            data + r3d_loops.s (section .iwram_3d); only plat_view3d()
+     *            runs it
+     *   .ovl_2d  the tile-mode 2D loops (section .iwram_2d; G5's canvas)
+     * NOCROSSREFS: code in one group can never reference the other.
+     * Data that must survive a swap (.data, .bss) never goes in here. */
+    . = ALIGN(4);
+    __iwram_ovl_start = .;
+    OVERLAY : NOCROSSREFS AT (__iwram_lma + SIZEOF(.iwram)) {
+        .ovl_3d {
+            *r3d.iwram.o(.text .text.* .rodata .rodata.*)
+            *(.iwram_3d .iwram_3d.*)
+            . = ALIGN(4);
+        }
+        .ovl_2d {
+            *(.iwram_2d .iwram_2d.*)
+            . = ALIGN(4);
+        }
+    } > iwram
+    __iwram_ovl_end = .;
+    /* OVERLAY stores the groups one after the other in ROM (an empty
+     * group has no LOADADDR of its own, so the addresses are summed) */
+    __iwram_ovl_3d_lma = __iwram_lma + SIZEOF(.iwram);
+    __iwram_ovl_3d_size = SIZEOF(.ovl_3d);
+    __iwram_ovl_2d_lma = __iwram_ovl_3d_lma + SIZEOF(.ovl_3d);
+    __iwram_ovl_2d_size = SIZEOF(.ovl_2d);
+    __iwram_ovl_lma_end = __iwram_ovl_2d_lma + SIZEOF(.ovl_2d);
 
     .iwram_bss (NOLOAD) : {
         __iwram_bss_start = .;
@@ -103,13 +141,15 @@ SECTIONS
         . = ALIGN(16);
     } > ewram
 
-    .data : {
+    /* after the overlay groups' ROM copies (OVERLAY ... AT() does not
+     * advance the rom region, so AT > rom would land on top of them) */
+    .data : AT (__iwram_ovl_lma_end) {
         __data_start = .;
         *(EXCLUDE_FILE(*.iwram.o) .data EXCLUDE_FILE(*.iwram.o) .data.* .gnu.linkonce.d.*)
         *(.ewram_data .ewram_data.*)
         . = ALIGN(4);
         __data_end = .;
-    } > ewram AT > rom
+    } > ewram
     __data_lma = LOADADDR(.data);
 
     .bss (NOLOAD) : {
@@ -146,6 +186,14 @@ SECTIONS
 
 ASSERT(__iwram_bss_end <= __iwram_stack_limit,
        "IWRAM overflow: code/data eat into the 6 KB main stack")
+/* the slot holds the largest group (the stack check above sees it) */
+ASSERT(__iwram_ovl_end - __iwram_ovl_start >= __iwram_ovl_3d_size &&
+       __iwram_ovl_end - __iwram_ovl_start >= __iwram_ovl_2d_size,
+       "IWRAM overlay slot smaller than a group")
+ASSERT(__iwram_ovl_3d_size == 0 || LOADADDR(.ovl_3d) == __iwram_ovl_3d_lma,
+       "IWRAM overlay: 3D group ROM copy moved")
+ASSERT(__iwram_ovl_2d_size == 0 || LOADADDR(.ovl_2d) == __iwram_ovl_2d_lma,
+       "IWRAM overlay: 2D group ROM copy moved")
 /* FL_RAM_WORDS (flash_int.h): the stack copy of the flash routines */
 ASSERT(__flash_ram_end - __flash_ram_start <= 1152,
        "flash_ram.c grew past its 1,152 B stack copy (FL_RAM_WORDS)")

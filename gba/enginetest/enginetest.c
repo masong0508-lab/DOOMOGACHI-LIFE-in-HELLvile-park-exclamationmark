@@ -10,6 +10,9 @@
  *   corridor, hell room with demons, then the overworld view; then the
  *   core's Hell Breach maps (MAPID_VAPE_CELLAR, MAPID_CLOUD_NINE_SPIRE) if
  *   the registry has them: spin, look up/down, third-person orbit.
+ * The overworld view stands in for a tile-mode scene (G4): each of its
+ * frames loads the IWRAM overlay's 2D group and runs a function from it,
+ * and the next 3D frame must load the 3D group back (logged "ET ovl:").
  * Any key takes manual control: D-pad walk/turn, L/R strafe, hold A +
  * UP/DOWN look, B jump, SELECT first/third person, START resumes the tour.
  * Holding SELECT at boot runs the flash save self-test first.
@@ -17,6 +20,7 @@
 #include "gba_plat.h"
 #include "doomo/doomo.h"
 #include "enginetest.h"
+#include "iwram_ovl.h"
 
 void doomo_palette_fallback(void);
 extern uint32_t r3d_dbg[4];
@@ -102,6 +106,7 @@ static uint32_t ticks;
 static int map_is_own = 1;
 static int core_map_idx = -1;            /* -1 = own map */
 static const char *phase = "boot";
+static int ovl_2d_seen;                  /* G4: the 2D group's probe ran */
 static uint32_t fps_vbl0, fps_drawn0, fps10;
 static uint32_t r3d_acc, r3d_n, r3d_max;
 static int show_overworld;
@@ -482,6 +487,14 @@ void enginetest_main(void)
 
         if (show_overworld) {
             DoomoOverworldView ov;
+            /* G4: the 2D group replaces the 3D one in the IWRAM slot */
+            iwram_ovl_use(OVL_2D);
+            if (!ovl_2d_seen) {
+                uint32_t r = iwram_ovl_probe(ticks);
+                ovl_2d_seen = 1;
+                gba_logf("ET ovl: 2D group %s (slot %d)",
+                         r == ticks * 3u + 0x2Du ? "ok" : "BAD", iwram_ovl_current());
+            }
             memset(&ov, 0, sizeof(ov));
             ov.map = &doomo_map;
             ov.cx = (int32_t)(4 * 64 + (int)ow_t * 4) << 16;
@@ -528,7 +541,12 @@ void enginetest_main(void)
             }
             v.sprites = bb;
             v.sprite_count = n;
-            plat_view3d(&v);
+            {
+                int was = iwram_ovl_current();
+                plat_view3d(&v);
+                if (was == OVL_2D && iwram_ovl_current() == OVL_3D)
+                    gba_logf("ET ovl: 3D group back after 2D (tick %u)", ticks);
+            }
             if (!gba_nodraw) {
                 r3d_acc += r3d_stats.cycles_total;
                 r3d_n++;

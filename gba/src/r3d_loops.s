@@ -3,8 +3,10 @@
 @ halfword (both bytes the same colour), so VRAM never needs a
 @ read-modify-write. Loads are interleaved so no ldrb result is used by
 @ the very next instruction.
+@ Section .iwram_3d: the IWRAM overlay's 3D group (G4, iwram_ovl.h),
+@ loaded by plat_view3d(); never call these from outside it.
 
-    .section .iwram, "ax", %progbits
+    .section .iwram_3d, "ax", %progbits
     .arm
     .align 2
 

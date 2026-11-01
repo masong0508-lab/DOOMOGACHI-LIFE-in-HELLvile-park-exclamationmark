@@ -6,7 +6,9 @@
 @   * stacks: IRQ 0x03007FA0 (BIOS default), user/system 0x03007D00
 @     (gives the IRQ handler 672 bytes; see gba.ld __iwram_stack_limit)
 @   * copies .iwram (ARM hot code + IWRAM data) and .data (EWRAM) from ROM,
-@     clears .bss (EWRAM) and .iwram_bss
+@     clears .bss (EWRAM) and .iwram_bss; the IWRAM overlay slot between
+@     .iwram and .iwram_bss (gba.ld, G4) is NOT loaded here:
+@     iwram_ovl_use() (iwram_ovl.c) DMAs a group in when a mode needs it
 @   * installs the master IRQ handler (ARM, IWRAM) that acknowledges the
 @     interrupt for VBlankIntrWait and dispatches to C handlers
 @   * jumps to main() (THUMB, ROM)
@@ -69,7 +71,8 @@ rom_start:
     add     r2, r0, #0x200
     strh    r1, [r2, #4]
 
-    @ copy .iwram (code + data) ROM -> IWRAM
+    @ copy .iwram (resident code + data) ROM -> IWRAM; the overlay
+    @ groups (.ovl_3d / .ovl_2d) stay in ROM until iwram_ovl_use()
     ldr     r0, =__iwram_lma
     ldr     r1, =__iwram_start
     ldr     r2, =__iwram_end

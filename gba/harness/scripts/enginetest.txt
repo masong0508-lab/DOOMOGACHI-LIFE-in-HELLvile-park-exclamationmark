@@ -46,3 +46,10 @@ wait 60
 shot et16_overworld_scroll
 expect-log ET phase: overworld
 expect-log ET fps=
+# G4: the overworld frames ran the IWRAM overlay's 2D group; the next 3D
+# map (core Vape Cellar) must load the 3D group back into the slot
+expect-log ET ovl: 2D group ok (slot 2)
+wait 100
+expect-log ET phase: core_vape_cellar
+expect-log ET ovl: 3D group back after 2D
+shot et17_core_after_2d_group

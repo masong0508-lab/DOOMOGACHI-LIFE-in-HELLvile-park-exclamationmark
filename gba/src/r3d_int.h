@@ -4,6 +4,10 @@
  *   r3d.c        THUMB  camera setup, colormaps, texture cache, sprites
  *   r3d.iwram.c  ARM    column pass (DDA, step faces, walls, sky),
  *                       visplanes -> horizontal spans, sprite columns
+ * r3d.iwram.c's code and r3d_loops.s are the IWRAM overlay's 3D group
+ * (G4, iwram_ovl.h): callable only after plat_view3d()'s
+ * iwram_ovl_use(OVL_3D), i.e. from inside plat_view3d(). Their .bss
+ * (r3f, r3d_texc, ...) stays resident.
  */
 #ifndef GBA_R3D_INT_H
 #define GBA_R3D_INT_H

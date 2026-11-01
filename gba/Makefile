@@ -17,7 +17,8 @@
 # Code generation:
 #   *.c          THUMB, ROM (-mthumb -O2)
 #   *.iwram.c    ARM, copied to IWRAM at boot (renderer inner loops, IRQ,
-#                mixer, flash routines)
+#                mixer, flash routines); r3d.iwram.c is the IWRAM code
+#                overlay's 3D group instead (gba.ld, src/iwram_ovl.c)
 #   IWRAM_CODE   single ARM functions inside THUMB files (gba_hw.h)
 
 GBA  := $(abspath $(patsubst %/,%,$(dir $(lastword $(MAKEFILE_LIST)))))

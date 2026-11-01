@@ -6,10 +6,13 @@
 
 Reads the linker-script symbols out of the GNU ld map file and prints
 IWRAM (ARM code + data + bss, stack) and EWRAM (.data + .bss + .noinit)
-usage, the arena (bigbuf.c: the scene scratch, the platform caches, the
-billboards and the save window share one block, gba_plat.h), the flash
-routines' stack copy (flash_ram.c, G0), plus the biggest EWRAM / IWRAM
-objects. Exit status 0 always (the hard limits are ASSERTs in gba.ld).
+usage, the IWRAM code overlay (G4, iwram_ovl.c: one slot, as big as the
+largest group, holding the 3D or the 2D group), the arena (bigbuf.c: the
+scene scratch, the platform caches, the billboards and the save window
+share one block, gba_plat.h), the flash routines' stack copy (flash_ram.c,
+G0), plus the biggest EWRAM / IWRAM objects. Exit status 1 if the main
+stack is under 6 KB with the largest overlay group loaded (gba.ld ASSERTs
+the same at link time), else 0.
 """
 import re
 import sys
@@ -17,7 +20,10 @@ import sys
 SYMS = ("__iwram_start", "__iwram_end", "__iwram_bss_start", "__iwram_bss_end",
         "__iwram_stack_limit", "__sp_usr", "__data_start", "__data_end",
         "__bss_start", "__bss_end", "__ewram_end", "__rom_end",
-        "__flash_ram_start", "__flash_ram_end")
+        "__flash_ram_start", "__flash_ram_end",
+        "__iwram_ovl_start", "__iwram_ovl_end", "__iwram_ovl_3d_size",
+        "__iwram_ovl_2d_size")
+STACK_MIN = 6144        # gba.ld GBA_STACK_SIZE
 
 
 def main():
@@ -41,9 +47,22 @@ def main():
     bss = val["__bss_end"] - val["__bss_start"]
     rom = val.get("__rom_end", 0x08000000) - 0x08000000
     print("memreport: ROM   %7d bytes (%.1f KB)" % (rom, rom / 1024.0))
-    print("memreport: IWRAM %7d / 32768 used (code+data %d, bss %d); "
-          "%d bytes left for the main stack (+672 IRQ stack)" %
-          (iw_used, iw_code, iw_bss, stack))
+    ovl = val.get("__iwram_ovl_end", 0) - val.get("__iwram_ovl_start", 0)
+    if "__iwram_ovl_start" in val:
+        print("memreport: IWRAM %7d / 32768 used (resident code+data %d, overlay slot %d, "
+              "bss %d); %d bytes left for the main stack (+672 IRQ stack)" %
+              (iw_used, iw_code, ovl, iw_bss, stack))
+        g3 = val.get("__iwram_ovl_3d_size", 0)
+        g2 = val.get("__iwram_ovl_2d_size", 0)
+        print("memreport:   overlay slot %d bytes at 0x%08x: 3D group %d bytes "
+              "(%d free), 2D group %d bytes (%d free); main stack %d bytes with "
+              "the largest group in (>= %d: %s)" %
+              (ovl, val["__iwram_ovl_start"], g3, ovl - g3, g2, ovl - g2, stack,
+               STACK_MIN, "ok" if stack >= STACK_MIN else "FAIL"))
+    else:
+        print("memreport: IWRAM %7d / 32768 used (code+data %d, bss %d); "
+              "%d bytes left for the main stack (+672 IRQ stack)" %
+              (iw_used, iw_code, iw_bss, stack))
     if "__flash_ram_end" in val:
         fl = val["__flash_ram_end"] - val["__flash_ram_start"]
         print("memreport:   flash routines: %d bytes, copied onto the stack while saving "
@@ -65,6 +84,9 @@ def main():
     objs.sort(reverse=True)
     for size, addr, sec, obj in objs[:12]:
         print("memreport:   %6d  0x%08x  %-28s %s" % (size, addr, sec[:28], obj))
+    if stack < STACK_MIN:
+        print("memreport: FAIL: main stack %d < %d bytes" % (stack, STACK_MIN))
+        return 1
     return 0
 
 

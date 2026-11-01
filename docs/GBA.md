@@ -48,7 +48,9 @@ How it is put together:
   the platform's strong definitions override the core's weak stubs.
 * `*.c` compile as THUMB `-O2` and run from ROM; `*.iwram.c` compile as
   ARM and are copied to IWRAM by `crt0.s`; `*.s` hand-written ARM lives in
-  the `.iwram` section. GBA sources build with `-Werror`; core sources do
+  the `.iwram` section. Exception: the raycaster's ARM code
+  (`r3d.iwram.c`, `r3d_loops.s` in section `.iwram_3d`) is a group of the
+  IWRAM code overlay (section 3), loaded by `plat_view3d()`, not at boot. GBA sources build with `-Werror`; core sources do
   not (their warnings are the core's business).
 * `-mcpu=arm7tdmi -ffunction-sections -fdata-sections -Wl,--gc-sections`.
 * `tools/mktables.py` generates `build/gen/gba_tables.c` (1/x table for
@@ -121,7 +123,7 @@ PS1 build has the same viewer (`ps1/src/cutview.c`, hold SELECT at boot).
 |--------|---------|------|-----|
 | ROM | `0x08000000` | 762 KB game / 794 KB ET (padded to 1 MB) | THUMB code, art, tables; WS0 3/1 + prefetch |
 | EWRAM | `0x02000000` | 256 KB | 80 B harness mailbox, `.data`, `.bss` (core state, the arena `gba_arena`) |
-| IWRAM | `0x03000000` | 32 KB | ARM hot code + data (`.iwram`), `.iwram_bss`, stacks |
+| IWRAM | `0x03000000` | 32 KB | ARM hot code + data (`.iwram`), the code overlay slot (G4: 3D or 2D group), `.iwram_bss`, stacks |
 | IRQ stack | `0x03007FA0` down | 672 B | the master IRQ handler (`crt0.s`) |
 | main stack | `0x03007D00` down | >= 6 KB reserved (linker `ASSERT`) | system mode |
 | VRAM page 0/1 | `0x06000000` / `0x0600A000` | 2 x 37.5 KB | Mode 4 double buffer |
@@ -154,6 +156,7 @@ has the figure every later package must start from.
 ```
 ROM   3,669,044 bytes
 IWRAM    24,832 / 32,768  (code+data 20,964, bss 3,868)  7,168 bytes left for the main stack
+  since G4: resident code+data 10,580 + overlay slot 10,384 (3D group 10,384, 2D group 0)
   flash routines: 1,092 bytes, copied onto the stack while saving
 EWRAM   248,528 / 262,144 (.data 544, .bss 247,904)     13,616 bytes free
   109,524  doomo_town      core (town.o)
@@ -207,6 +210,77 @@ identical.
 
 IWRAM: the flash chip routines (`flash_ram.c`, section 8) moved from IWRAM
 to a copy on the stack while saving: +1,092 B for the main stack.
+
+### IWRAM code overlay (G4, `src/iwram_ovl.c`)
+
+IWRAM is code + data + `.iwram_bss` + a main stack of at least 6 KB
+(`gba.ld` `ASSERT`), which left about 1 KB for new ARM loops. The
+raycaster's ARM code is 10.4 KB but runs only inside `plat_view3d()`; the
+tile-mode 2D loops (G5's overlay canvas) will run only in tile mode. So
+they share ONE slot:
+
+```
+0x03000000  resident .iwram   10,580 B  crt0's IRQ handler, div.s, mem.s,
+                                        video loops, ow loops, portrait,
+                                        irq.iwram.c (mixer), video.iwram.c
+0x03002954  overlay slot      10,384 B  ONE of:
+              .ovl_3d  10,384 B  r3d.iwram.c code + const data, r3d_loops.s
+              .ovl_2d       0 B  section .iwram_2d (G5's canvas loops)
+0x030051e4  .iwram_bss         3,868 B  (r3d's .bss stays resident)
+0x03006100  main stack         7,168 B  (>= 6,144 B with the largest group in)
+```
+
+* `gba.ld`: an `OVERLAY ... NOCROSSREFS` of `.ovl_3d` and `.ovl_2d` right
+  after `.iwram`: both linked at the same IWRAM address, stored one after
+  the other in ROM (the 3D group at `__iwram_ovl_3d_lma`), the slot as big
+  as the larger group. `crt0.s` copies only `.iwram`, so neither group
+  is in IWRAM after boot. `NOCROSSREFS` makes any reference from one group
+  into the other a link error. `.data` / `.bss` never go in a group
+  (a swap would lose them): `r3f`, `r3d_texc`, the fade table and the other
+  raycaster state stay resident in `.iwram_bss`.
+* `iwram_ovl_use(OVL_3D | OVL_2D)` (`iwram_ovl.h`): a compare when the
+  group is already in, else one DMA 3 copy from ROM: the 3D group takes
+  13,121 cycles (0.78 ms), once per mode change. `plat_view3d()` calls it
+  at its top (after the no-draw early return); G5's tile-mode entry calls
+  it with `OVL_2D`. Rules: call it from each mode's entry point every time
+  (so a 3D frame inside a tile-mode scene reloads 3D, and the next tile
+  frame reloads 2D), never from an IRQ handler (it halts with a log line
+  if it finds itself on the IRQ stack) and never from code inside the
+  slot; IRQ handlers never call slot code (`irq.iwram.c` is resident).
+  Its state is one byte of `.bss` (it fits the old `.bss` padding: EWRAM
+  unchanged).
+* `IWRAM_2D_CODE` (`iwram_ovl.h`) puts a single ARM function in the 2D
+  group (like `IWRAM_CODE` for resident code); hand-written loops use
+  `.section .iwram_2d, "ax", %progbits`.
+* `tools/memreport.py` prints the slot, both groups and their free bytes,
+  and fails the build if the main stack is under 6,144 B with the largest
+  group in (`gba.ld` asserts the same).
+* The harness profiler (`profile N` with `--nm`) maps a PC to the nearest
+  symbol below it: once the 2D group has code, both groups' symbols share
+  the slot's addresses, so read slot samples knowing which mode ran.
+* Room for the 2D group: the whole slot (10,384 B) plus the 1,024 B the
+  stack has over 6 KB = 11,408 B before the 6 KB rule breaks. A 2D group
+  bigger than the 3D group grows the slot and takes the difference from
+  the stack.
+* Test: the engine-test ROM stands its overworld view in for a tile-mode
+  scene. Each of its frames calls `iwram_ovl_use(OVL_2D)` and runs a 12 B
+  probe from the 2D group (`ET ovl: 2D group ok`), and the next map
+  (`core_vape_cellar`) loads the 3D group back (`ET ovl: 3D group back
+  after 2D`; `test-et` expects both lines and shoots
+  `et17_core_after_2d_group`). In that ROM a load fills the rest of the
+  slot with undefined instructions, so a call into a group that is not
+  loaded traps instead of running stale code.
+
+Measured (libmgba, `7dcb273` against `7dcb273` + G4): ROM +196 B, EWRAM
+13,616 B free (unchanged), main stack 7,168 B (unchanged). `make test-speed
+SPEED_BASE=` with the base's log: all 15 scenes frame-exact (30 frames
+each), every fps and work figure the same (combat first person 84.7 ->
+84.7 ms, third person 84.3 -> 84.4 ms). Engine test: the 16 tour
+screenshots byte-identical to the base, and `vhash-seq 400` from tick 992
+(overworld with the 2D group in, then the core map with the 3D group
+reloaded at tick 1023) gives the same 400 frames as the base (sequence
+`02521a25`). Per-phase `r3d` times move by 1-2 us (the ROM code after
+`iwram_ovl.c` shifted; the 3D group's IWRAM timing is unchanged).
 
 How EWRAM got here:
 
@@ -293,7 +367,8 @@ against the LAST row, not against a figure from an older base.
 | 0 | baseline | `959acc8` | | 9,536 B | | 7,168 B | `docs/GBA.md` still said 9,952 (G0) |
 | 1 | G1: speed tour | `959acc8` | 9,536 B | 9,520 B | -16 B | 7,168 B | harness mailbox 64 -> 80 B |
 | 2 | H10: autopilot BFS in the arena | `091aa2b` | 9,520 B | 13,616 B | +4,096 B | 7,168 B | ROM +80 B; speed tour frame-exact, fps unchanged (above) |
-| 3 | H6: furniture animation frames, prop art | `ffbc039` | 13,616 B | **13,616 B** | 0 | 7,168 B | ROM 3,669,044 -> 3,675,732 B (iso sprites 447,309 -> 453,094 B); room parity and house fps unchanged |
+| 3 | H6: furniture animation frames, prop art | `ffbc039` | 13,616 B | 13,616 B | 0 | 7,168 B | ROM 3,669,044 -> 3,675,732 B (iso sprites 447,309 -> 453,094 B); room parity and house fps unchanged |
+| 4 | G4: IWRAM code overlay | `7dcb273` | 13,616 B | **13,616 B** | 0 | 7,168 B | ROM +196 B; IWRAM resident 10,580 B + overlay slot 10,384 B (3D group; 2D group 0 B, up to 11,408 B fits the 6 KB rule); speed tour frame-exact |
 
 Known claimants still to land (their own packages measure and add rows):
 
@@ -576,7 +651,9 @@ counter, vblank count, scanline and keys.
 
 Files: `src/r3d.c` (THUMB setup), `src/r3d.iwram.c` (ARM column pass,
 sprites), `src/r3d_loops.s` (hand-scheduled ARM: column walk + boundary
-handling, flat/face/sky/sprite loops), `src/r3d_int.h`.
+handling, flat/face/sky/sprite loops), `src/r3d_int.h`. The ARM code of
+`r3d.iwram.c` and `r3d_loops.s` is the IWRAM overlay's 3D group (section
+3, G4): `plat_view3d()` loads it first, and nothing else may call it.
 
 Semantics follow the native reference renderer (`core/native/raycast.c`,
 `core/native/README.md`): field of view from `OPT_FOV` (tan 0.55 / 0.66 /
@@ -1014,7 +1091,9 @@ hell room with flesh pillars and a raised pentagram dais), props and
 demons as billboards, then the overworld view of the same map, then the
 core's Hell Breach maps if `map_load()` provides them. It logs
 `ET phase: <name>` at each phase and `ET fps=.. r3d avg=..` every 2
-seconds.
+seconds. The overworld view also swaps the IWRAM code overlay's 2D group
+in and the next 3D map swaps the 3D group back (`ET ovl:` lines; section
+3, G4).
 
 `NOCORE=1` links only the core's palette/font/fixmath plus procedural
 stand-ins (`enginetest/standalone/`), for renderer work while the core is

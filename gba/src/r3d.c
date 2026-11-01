@@ -7,7 +7,9 @@
  *   1. setup (THUMB, here): camera basis, y-shearing horizon for pitch,
  *      distance fade for the map's ambient light, composed colormaps for
  *      tints, per-frame texture cache (animated textures resolve once).
- *   2. column pass (ARM/IWRAM, r3d.iwram.c): 120 rays (2-pixel columns),
+ *   2. column pass (ARM/IWRAM, r3d.iwram.c; with r3d_loops.s it is the
+ *      IWRAM overlay's 3D group, loaded by iwram_ovl_use(OVL_3D) at the
+ *      top of plat_view3d, G4): 120 rays (2-pixel columns),
  *      front to back with Doom-style per-column clip windows; risers,
  *      upper faces, walls and blocks drawn as textured columns, sky as
  *      the background, floors/ceilings collected into visplanes, and a
@@ -22,6 +24,7 @@
  */
 #include "r3d_int.h"
 #include "postfx.h"
+#include "iwram_ovl.h"
 #include "doomo/palette.h"
 #include "doomo/textures.h"
 #include "doomo/map.h"
@@ -415,6 +418,8 @@ void plat_view3d(const DoomoView3D *v)
     int a;
     const DoomoMap *m;
     if (gba_nodraw || !v || !v->map) return;
+    /* r3d.iwram.c + r3d_loops.s live in the IWRAM overlay slot (G4) */
+    iwram_ovl_use(OVL_3D);
     gba_big_claim(GBA_BIG_BY_R3D);
     t0 = gba_cycles();
     m = v->map;
