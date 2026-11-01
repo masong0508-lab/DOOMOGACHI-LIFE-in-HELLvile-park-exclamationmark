@@ -22,6 +22,7 @@
 #include "gba_plat.h"
 #include "ow_int.h"
 #include "canvas_int.h"
+#include "r3d_int.h"                 /* r3d_cmrow: its colormap rows share the VRAM gaps */
 #include "doomo/textures.h"
 #include "doomo/palette.h"
 #include "doomo/map.h"
@@ -36,7 +37,9 @@ typedef struct OwTile {
     uint8_t  pix[TILE * TILE];   /* first: word aligned for ow_ground */
     const uint8_t *src;          /* texture frame it was built from   */
     uint32_t key;                /* level | front h << 4 | tint << 8   */
-    uint8_t  tex, used, pad[2];
+    uint8_t  tex, used;
+    uint8_t  vslot;              /* (G2) this frame's VRAM copy + 1, or 0 */
+    uint8_t  uses;               /* (G2) copies drawn from it this frame */
 } OwTile;
 
 /* The cache is the overworld's region of the arena (bigbuf.c, G0): the
@@ -56,6 +59,7 @@ typedef struct OwLit {
     uint32_t tick;
     uint32_t tint_state;         /* changes invalidate by key        */
     uint32_t builds;             /* (G2) tiles built (cache misses)  */
+    uint32_t vused;              /* (G2) VRAM tile slots taken this frame */
     /* this frame's texture pixels per id (animated textures change frame);
      * ids >= TEX_COUNT (textures.h: <= 64) fall back to TEX_GRASS below */
     const uint8_t *frame_tex[TEX_COUNT];
@@ -193,6 +197,8 @@ static const OwTile *lit_cached(int tex, int lvl, int front)
     }
     t = victim;
     L->builds++;
+    t->vslot = 0;                /* its VRAM copy (if any) is stale now */
+    t->uses = 0;
     t->src = tp;
     t->key = key;
     t->tex = (uint8_t)tex;
@@ -215,6 +221,31 @@ static const OwTile *lit_cached(int tex, int lvl, int front)
         }
     }
     return t;
+}
+
+/* (G2) VRAM copies of this frame's busiest lit tiles. Copying a tile row
+ * from EWRAM (16-bit bus, 2 wait states) costs about twice what it does
+ * from VRAM, so a tile drawn a second time in a frame is first copied
+ * (DMA) into one of 20 slots in the two 2,560-byte gaps the Mode 4 pages
+ * leave (0x06009600, 0x06013600: never displayed) and drawn from there.
+ * The raycaster keeps its colormap rows in the same gaps (r3d_int.h), so
+ * an overworld frame that takes a slot makes it rebuild them. The slots
+ * are per frame: plat_overworld clears every tile's vslot first, and a
+ * tile rebuilt in the frame drops its slot. */
+#define OW_VSLOTS 20
+
+static const uint8_t *tile_src(const OwTile *ct)
+{
+    OwTile *t = (OwTile *)(uintptr_t)ct;
+    uint8_t *d;
+    if (t->vslot) return t->vslot <= 10 ? (const uint8_t *)0x06009600 + (t->vslot - 1) * 256
+                                        : (const uint8_t *)0x06013600 + (t->vslot - 11) * 256;
+    if (!t->uses++ || lc.vused >= OW_VSLOTS) return t->pix;
+    if (!lc.vused) r3d_cmrow[0] = 0;             /* the raycaster's rows are gone */
+    d = lc.vused < 10 ? (uint8_t *)0x06009600 + lc.vused * 256 : (uint8_t *)0x06013600 + (lc.vused - 10) * 256;
+    dma3_copy32(d, t->pix, TILE * TILE / 4);
+    t->vslot = (uint8_t)++lc.vused;
+    return d;
 }
 
 /* (G2) the last lookup of one kind (ground, front, top) in this frame: a
@@ -268,19 +299,19 @@ static int cell_level(const DoomoCell *c)
 /* tile at screen (px, py) lifted by `lift` pixels, clipped to the view */
 static void draw_tile(int px, int py, int tex, int lvl, int lift, OwMemo *mo)
 {
-    const OwTile *t;
+    const uint8_t *src;
     int x0 = px, x1 = px + TILE, y0 = py - lift, y1 = py - lift + TILE;
     if (x0 < owf.ox) x0 = owf.ox;
     if (x1 > owf.ox + owf.ow) x1 = owf.ox + owf.ow;
     if (y0 < owf.oy) y0 = owf.oy;
     if (y1 > owf.oy + owf.oh) y1 = owf.oy + owf.oh;
     if (x0 >= x1 || y0 >= y1) return;
-    t = lit_memo(mo, tex, lvl, 0);
+    src = tile_src(lit_memo(mo, tex, lvl, 0));
     if (x0 == px && x1 == px + TILE && !(px & 1))
         ow_tile16(gba_back + y0 * (SCREEN_W / 2) + (px >> 1),
-                  t->pix + (y0 - (py - lift)) * TILE, y1 - y0);
+                  src + (y0 - (py - lift)) * TILE, y1 - y0);
     else
-        ow_blit(x0, x1, y0, y1, t->pix + (y0 - (py - lift)) * TILE + (x0 - px), TILE);
+        ow_blit(x0, x1, y0, y1, src + (y0 - (py - lift)) * TILE + (x0 - px), TILE);
 }
 
 /* front face of a block: h rows at the bottom of the cell (cached, lit
@@ -290,16 +321,16 @@ static void draw_tile(int px, int py, int tex, int lvl, int lift, OwMemo *mo)
  * before the row's sprites; *cx0 / *cx1 get its columns. */
 static void draw_front(int px, int py, int tex, int lvl, int h, int *cx0, int *cx1, OwMemo *mo)
 {
-    const OwTile *t = lit_memo(mo, tex, DOOMO_CLAMP(lvl - 4, 1, 15), h);
+    const uint8_t *src = tile_src(lit_memo(mo, tex, DOOMO_CLAMP(lvl - 4, 1, 15), h));
     int sy0 = py + TILE - h, y0 = sy0, y1 = sy0 + h, x0 = px, x1 = px + TILE;
     if (y0 < owf.oy) y0 = owf.oy;
     if (y1 > owf.oy + owf.oh) y1 = owf.oy + owf.oh;
     if (x0 < owf.ox) x0 = owf.ox;
     if (x1 > owf.ox + owf.ow) x1 = owf.ox + owf.ow;
     if (y0 < y1 && x0 == px && x1 == px + TILE && !(px & 1))
-        ow_tile16(gba_back + y0 * (SCREEN_W / 2) + (px >> 1), t->pix + (y0 - sy0) * TILE, y1 - y0);
+        ow_tile16(gba_back + y0 * (SCREEN_W / 2) + (px >> 1), src + (y0 - sy0) * TILE, y1 - y0);
     else if (y0 < y1 && x0 < x1)
-        ow_blit(x0, x1, y0, y1, t->pix + (y0 - sy0) * TILE + (x0 - px), TILE);
+        ow_blit(x0, x1, y0, y1, src + (y0 - sy0) * TILE + (x0 - px), TILE);
     *cx0 = x0;
     *cx1 = x1;
 }
@@ -413,6 +444,15 @@ void plat_overworld(const DoomoOverworldView *v)
     }
     lc.tick++;
     memset(lc.frame_tex_ok, 0, sizeof(lc.frame_tex_ok));
+    {
+        /* (G2) no VRAM tile copies yet this frame (only the sets in use:
+         * beside a large scratch claim the lower half is the scene's) */
+        uint32_t set;
+        int w;
+        lc.vused = 0;
+        for (set = lc.hi; set < CACHE_SETS; set++)
+            for (w = 0; w < CACHE_WAYS; w++) cache[set][w].vslot = cache[set][w].uses = 0;
+    }
 
     /* horizontal scroll in 2-pixel steps: every row copy is then halfword
      * aligned with VRAM (DMA / halfword copies, no byte shuffling) */
@@ -473,20 +513,20 @@ void plat_overworld(const DoomoOverworldView *v)
                 const int tx = txa + k;
                 const DoomoCell *c = row && (unsigned)tx < (unsigned)m->w ? row + tx
                                                                          : map_cell_safe(m, tx, ty);
-                const OwTile *t;
+                const uint8_t *t;
                 int lvl, x0, x1;
                 if (c->wall || c->floor_h > 0) { mask |= 1u << k; continue; }
                 if (ya >= yb) continue;
                 lvl = cell_level(c);
                 if (c->floor_h < 0) lvl -= 3;
-                t = lit_memo(&gm, c->floor_tex, lvl, 0);
+                t = tile_src(lit_memo(&gm, c->floor_tex, lvl, 0));
                 x0 = DOOMO_MAX(px, owf.ox);
                 x1 = DOOMO_MIN(px + TILE, owf.ox + owf.ow);
                 if (x0 == px && x1 == px + TILE)
-                    ow_tile16(gba_back + ya * (SCREEN_W / 2) + (px >> 1), t->pix + (ya - py) * TILE,
+                    ow_tile16(gba_back + ya * (SCREEN_W / 2) + (px >> 1), t + (ya - py) * TILE,
                               yb - ya);
                 else
-                    ow_blit(x0, x1, ya, yb, t->pix + (ya - py) * TILE + (x0 - px), TILE);
+                    ow_blit(x0, x1, ya, yb, t + (ya - py) * TILE + (x0 - px), TILE);
             }
             rmask[ty - ty0] = mask;
         }

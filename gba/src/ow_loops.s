@@ -87,17 +87,18 @@ ow_tile16:
     .size   ow_tile16, . - ow_tile16
 
 @ (G2) void ow_spr_rows(OwSprJob *j)
-@ The middles of a sprite's rows at scale 1, not mirrored (ow.iwram.c):
-@ j->rows rows of j->n pixels (even, > 0) to VRAM from j->dst (halfword
-@ aligned, + 240 bytes per row), texels from j->src (any alignment,
-@ + j->stride per row). A row's texels are read four per word (aligned
-@ loads, shifted together) and ANDed with j->tmask[y & 1] (the
-@ translucency checker); pixel k of row y goes through table
-@ j->q[y & 3][k & 3] (its 4x4 class, ow_int.h); texel 0 is transparent. A
-@ quad of transparent texels costs one word read, an opaque pair is one
-@ halfword store, a half-opaque one a read-modify-write. j->dst, j->src,
-@ j->rows and j->phase (y & 3) are consumed. Reads up to 8 bytes past a
-@ row.
+@ A sprite's rows (ow.iwram.c ow_sprite): j->rows rows of j->n pixels
+@ (even, > 0) to VRAM from j->dst (halfword aligned, + 240 bytes per row),
+@ texels from j->src (any alignment, + j->stride per row). A row's texels
+@ are read four per word (aligned loads, shifted together) and ANDed with
+@ j->tmask[y & 1] (the translucency checker); the row's first texel is
+@ dropped when j->head is 0xFF and its last quad (or pair) is ANDed with
+@ j->tail (the clipped odd edge columns). Pixel k of row y goes through
+@ table j->q[y & 3][k & 3] (its 4x4 class, ow_int.h); texel 0 is
+@ transparent. A quad of transparent texels costs one word read, an
+@ opaque pair is one halfword store, a half-opaque one a read-modify-
+@ write. j->dst, j->src, j->rows and j->phase (y & 3) are consumed. Reads
+@ up to 4 bytes before and 8 bytes past a row.
     .equ    OSJ_DST, 0
     .equ    OSJ_SRC, 4
     .equ    OSJ_N, 8
@@ -106,6 +107,8 @@ ow_tile16:
     .equ    OSJ_PHASE, 20
     .equ    OSJ_TMASK, 24
     .equ    OSJ_Q, 32
+    .equ    OSJ_HEAD, 96
+    .equ    OSJ_TAIL, 100
 
     @ one pixel pair from the low 16 bits of r11 (a = bits 0-7, b = 8-15)
     @ to [r0, #off]; the half-opaque cases are out of line (OW_PAIR_COLD)
@@ -155,19 +158,21 @@ ow_spr_rows:
     ldr     r0, [lr, #OSJ_DST]
     ldr     r1, [lr, #OSJ_SRC]
     ldr     r2, [lr, #OSJ_N]
+    ldr     r11, [lr, #OSJ_HEAD]
     and     r3, r1, #3
     mov     r3, r3, lsl #3              @ the first texel's bit offset
     bic     r1, r1, #3
     rsb     r10, r3, #32                @ (offset 0: lsl #32 gives 0)
     ldr     r4, [r1], #4                @ the word holding texel 0
+    bic     r4, r4, r11, lsl r3         @ (head: texel 0 dropped)
 1:  ldr     r12, [r1], #4
     mov     r11, r4, lsr r3
     orr     r11, r11, r12, lsl r10      @ texels k..k+3
     mov     r4, r12
     and     r11, r11, r5
     cmp     r2, #4
-    movlt   r11, r11, lsl #16           @ the last pair only
-    movlt   r11, r11, lsr #16
+    ble     .Lsr_tail                   @ the last quad or pair
+.Lsr_body:
     cmp     r11, #0
     beq     8f
     OW_PAIR r6, r7, 0, .Lsp0
@@ -189,6 +194,11 @@ ow_spr_rows:
     bgt     .Lsr_row
     ldmfd   sp!, {r0, r4-r11, lr}
     bx      lr
+.Lsr_tail:
+    ldr     lr, [sp]
+    ldr     lr, [lr, #OSJ_TAIL]
+    and     r11, r11, lr
+    b       .Lsr_body
     OW_PAIR_COLD r7, 0, .Lsp0
     OW_PAIR_COLD r9, 2, .Lsp1
     .size   ow_spr_rows, . - ow_spr_rows

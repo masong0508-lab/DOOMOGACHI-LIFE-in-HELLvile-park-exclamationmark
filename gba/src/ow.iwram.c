@@ -6,6 +6,11 @@
 
 #define LINE 120
 
+/* ow_loops.s reads OwSprJob at these offsets */
+DOOMO_STATIC_ASSERT(offsetof(OwSprJob, phase) == 20 && offsetof(OwSprJob, tmask) == 24 &&
+                    offsetof(OwSprJob, q) == 32 && offsetof(OwSprJob, head) == 96 &&
+                    offsetof(OwSprJob, tail) == 100, ow_spr_job_layout);
+
 /* VRAM is accessed through volatile halfword pointers in read-modify-
  * writes: GCC would otherwise turn "(*p & 0xFF00) | c" into a byte store,
  * and VRAM writes a byte to BOTH halves of its halfword. */
@@ -102,18 +107,6 @@ static inline uint8_t post(uint8_t c, int x, int y)
     return c;
 }
 
-/* one screen pixel pair at d: texels a (even x) and b, 0 = transparent */
-static inline void put_pair(uint16_t *d, uint32_t a, uint32_t b, const uint8_t *qa,
-                            const uint8_t *qb)
-{
-    if (a) {
-        if (b) *d = (uint16_t)(qa[a] | (qb[b] << 8));
-        else put_lo(d, qa[a]);
-    } else if (b) {
-        put_hi(d, qb[b]);
-    }
-}
-
 /* A sprite at screen (x0, y0), integer scale s, clipped to the viewport;
  * texel of pixel x = src[(x - x0) * inv >> 16] (flip: mirrored). Every
  * pixel is one lookup in its 4x4 position's composed table
@@ -137,73 +130,50 @@ void ow_sprite(const DoomoImage *img, int x0, int y0, int s, int flags, const ui
     if (cx0 >= cx1 || cy0 >= cy1 || cx1 - cx0 > 256) return;
     if (owf.luts) owf_sprite_luts(cm, lc);
     else lc[0] = lc[1] = lc[2] = lc[3] = cm;    /* the house: no night, no tint */
-    if (s == 1 && !flip) {
-        /* the middle columns [xs, xe) in ow_spr_rows (ow_loops.s), the odd
-         * edge columns here; translucent: only pixels with (x + y) even */
-        const int iw = img->w;
-        const int xs = (cx0 + 1) & ~1, xe = cx1 & ~1;
-        int k;
-        if (xe > xs) {
-            OwSprJob j;
-            j.dst = gba_back + cy0 * LINE + (xs >> 1);
-            j.src = img->pix + (cy0 - y0) * iw + (xs - x0);
-            j.n = xe - xs;
-            j.rows = cy1 - cy0;
-            j.stride = iw;
-            j.phase = (uint32_t)cy0 & 3u;
-            j.tmask[0] = trans ? 0x00FF00FFu : 0xFFFFFFFFu;
-            j.tmask[1] = trans ? 0xFF00FF00u : 0xFFFFFFFFu;
-            for (k = 0; k < 16; k++)
-                j.q[k >> 2][k & 3] = lc[owf.cls[(k & ~3) | ((xs + k) & 3)]];
-            ow_spr_rows(&j);
-        }
-        if ((cx0 | cx1) & 1) {
-            for (y = cy0; y < cy1; y++) {
-                const uint8_t *srow = img->pix + (y - y0) * iw;
-                uint16_t *row = gba_back + y * LINE;
-                const uint8_t *cl = owf.cls + ((y & 3) << 2);
-                if (cx0 & 1) {
-                    uint32_t t = srow[cx0 - x0];
-                    if (t && !(trans && ((cx0 + y) & 1))) put_hi(row + (cx0 >> 1), lc[cl[cx0 & 3]][t]);
-                }
-                if (cx1 & 1) {
-                    int xl = cx1 - 1;
-                    uint32_t t = srow[xl - x0];
-                    if (t && !(trans && ((xl + y) & 1))) put_lo(row + (xl >> 1), lc[cl[xl & 3]][t]);
-                }
-            }
-        }
-        return;
-    }
-    /* scaled or mirrored: texel column of every screen pixel (pairs
-     * aligned to even x) */
     {
-        uint8_t lut[256 + 2];                           /* texel index per pixel */
-        int xa = cx0 & ~1, xb = (cx1 + 1) & ~1;
+        /* every row in ow_spr_rows (ow_loops.s), from the even column xa to
+         * xb, the clipped odd edge columns masked off (head / tail);
+         * translucent: only pixels with (x + y) even. At scale 1, not
+         * mirrored (nearly every sprite), all rows in one call straight
+         * from the image; else row by row through a row buffer, from
+         * col[]: the texel column of each screen pixel */
+        const int iw = img->w;
+        const int xa = cx0 & ~1, xb = (cx1 + 1) & ~1;
+        uint8_t col[256 + 2];
+        uint32_t buf[(256 + 2) / 4 + 3];            /* + what ow_spr_rows over-reads */
+        OwSprJob j;
+        int k;
+        j.n = xb - xa;
+        j.stride = iw;
+        j.tmask[0] = trans ? 0x00FF00FFu : 0xFFFFFFFFu;
+        j.tmask[1] = trans ? 0xFF00FF00u : 0xFFFFFFFFu;
+        j.head = (cx0 & 1) ? 0xFFu : 0u;
+        j.tail = (j.n & 2) ? 0x0000FFFFu : 0xFFFFFFFFu;
+        if (cx1 & 1) j.tail &= ~(0xFFu << ((j.n & 2) ? 8 : 24));
+        for (k = 0; k < 16; k++)
+            j.q[k >> 2][k & 3] = lc[owf.cls[(k & ~3) | ((xa + k) & 3)]];
+        if (s == 1 && !flip) {
+            j.dst = gba_back + cy0 * LINE + (xa >> 1);
+            j.src = img->pix + (cy0 - y0) * iw + (xa - x0);
+            j.rows = cy1 - cy0;
+            j.phase = (uint32_t)cy0 & 3u;
+            ow_spr_rows(&j);
+            return;
+        }
         for (x = xa; x < xb; x++) {
-            int tx;
-            if (x < cx0 || x >= cx1) { lut[x - xa] = 0xFF; continue; }
-            tx = (int)(((uint32_t)(x - x0) * inv) >> 16);
-            if (flip) tx = img->w - 1 - tx;
-            lut[x - xa] = (uint8_t)tx;
+            /* the masked-off edge pixels just repeat a neighbour's column */
+            int tx = (int)(((uint32_t)(DOOMO_CLAMP(x, cx0, cx1 - 1) - x0) * inv) >> 16);
+            col[x - xa] = (uint8_t)(flip ? iw - 1 - tx : tx);
         }
         for (y = cy0; y < cy1; y++) {
-            const uint8_t *src = img->pix + (((uint32_t)(y - y0) * inv) >> 16) * img->w;
-            uint16_t *row = gba_back + y * LINE + (xa >> 1);
-            const uint8_t *cl = owf.cls + ((y & 3) << 2);
-            const uint8_t *q0 = lc[cl[xa & 3]], *q1 = lc[cl[(xa + 1) & 3]];
-            const uint8_t *q2 = lc[cl[(xa + 2) & 3]], *q3 = lc[cl[(xa + 3) & 3]];
-            const uint8_t *l = lut;
-            int k, npairs = (xb - xa) >> 1;
-            for (k = 0; k < npairs; k++, l += 2, row++) {
-                uint32_t a = l[0] != 0xFF ? src[l[0]] : 0;
-                uint32_t b = l[1] != 0xFF ? src[l[1]] : 0;
-                if (trans) {
-                    int px = xa + 2 * k;
-                    if ((px + y) & 1) a = 0; else b = 0;
-                }
-                put_pair(row, a, b, (k & 1) ? q2 : q0, (k & 1) ? q3 : q1);
-            }
+            const uint8_t *srow = img->pix + (int)(((uint32_t)(y - y0) * inv) >> 16) * iw;
+            uint8_t *d = (uint8_t *)buf;
+            for (k = 0; k < j.n; k++) d[k] = srow[col[k]];
+            j.dst = gba_back + y * LINE + (xa >> 1);
+            j.src = d;
+            j.rows = 1;
+            j.phase = (uint32_t)y & 3u;
+            ow_spr_rows(&j);
         }
     }
 }

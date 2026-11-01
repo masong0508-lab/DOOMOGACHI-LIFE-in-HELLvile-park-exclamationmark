@@ -48,8 +48,8 @@ void ow_front(int px, int sy0, int h, int y0, int y1, const uint8_t *tp, uint8_t
               const uint8_t *cm) IWRAM_CALL;
 /* darken screen x [x0, x1), rows [y0, y1) through cm */
 void ow_shade(int x0, int x1, int y0, int y1, const uint8_t *cm) IWRAM_CALL;
-/* (G2) the middles of a sprite's rows at scale 1 (ow_loops.s ow_spr_rows;
- * the offsets are .equ'd there) */
+/* (G2) a sprite's rows for ow_spr_rows (ow_loops.s; the offsets are
+ * .equ'd there and asserted in ow.iwram.c) */
 typedef struct OwSprJob {
     uint16_t *dst;                 /* +0  the first row's first pixel pair */
     const uint8_t *src;            /* +4  its first texel                  */
@@ -59,6 +59,8 @@ typedef struct OwSprJob {
     uint32_t phase;                /* +20 the first row's y & 3            */
     uint32_t tmask[2];             /* +24 by y & 1: all ones, or the checker */
     const uint8_t *q[4][4];        /* +32 [y & 3][k & 3]: pixel k's table  */
+    uint32_t head;                 /* +96 0xFF: drop each row's first texel */
+    uint32_t tail;                 /* +100 the mask of each row's last quad */
 } OwSprJob;
 void ow_spr_rows(OwSprJob *j) IWRAM_CALL;
 /* (G2) lc[c]: colormap cm composed for each class c the frame uses
