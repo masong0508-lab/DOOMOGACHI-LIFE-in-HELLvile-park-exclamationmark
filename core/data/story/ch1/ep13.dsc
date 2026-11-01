@@ -39,7 +39,7 @@ script e13_hatch
   wait 1
   pal PAL_HELLIFY 0
   [R13]
-  say nar "TUTORIAL: @E follows / you now. START: feed it. / Feeding is mandatory."
+  say nar "TUTORIAL: @E follows / you now. START: feed it. / Daily. Legal made us say."
   say nar "(Somewhere outside, a little / kid is crying. Loudly. / Professionally.)"
   [R21]
   native CB_C12 C12A_EP_DONE BEAT_EP1_3

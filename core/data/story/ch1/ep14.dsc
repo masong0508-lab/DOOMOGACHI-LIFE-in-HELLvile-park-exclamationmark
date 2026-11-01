@@ -7,7 +7,7 @@
 @pack ep14 kind=episode chapter=1 minutes=30
 
 script e14_steamy
-  say steamy HAPPY "A new face! Welcome to the / bath house. Well. The pond. / Same thing, more bubbles."
+  say steamy HAPPY "Welcome to the bath house! / Towels optional. {.}Kidding. / Towels are the LAW."
   say steamy "Help me fill the tubs? / Every tub gets a duck. / That's the law. Duck law."
   choice nar "Fill the tubs?" { "Fill them!" -> fill ; "Maybe later." -> later }
 later:
@@ -45,7 +45,7 @@ script e14_hattie
   jge v0 1 okay
   sfx SFX_TIK
   say nar "(One cricket chirps. It's / heckling you.)"
-  say hattie SAD "Tough crowd. You ARE the / crowd. {.}You're fired."
+  say hattie SAD "Holy shit. Tough crowd. / You ARE the crowd. {.}You're / fired."
   jmp closer
 great:
   sfx SFX_HAPPY
@@ -67,14 +67,14 @@ closer:
 end
 
 script e14_hattie_again
-  say hattie HAPPY "Knock knock. Who's there? / {..}See, that's the trick. / Nobody ever says."
+  say hattie HAPPY "My act's like my love / life: short, loud, and / {.}nobody claps after."
 end
 
 script e14_grampy
-  say grampy HAPPY "Sunny! Help an old bean / pick tomatoes? Five. My / back says five."
+  say grampy HAPPY "@P! Help an old bean / pick tomatoes? Five. My / back says five."
   choice nar "A fat red tomato." { "Pick it" }
   sfx SFX_POP2
-  say grampy HAPPY "Good, Sunny."
+  say grampy HAPPY "Good, @P."
   [R8]
   choice nar "Another one." { "Pick it" }
   sfx SFX_POP2
@@ -115,12 +115,12 @@ hug:
   sfx SFX_PLUCK
   [R3]
   sfx SFX_PLUCK
-  say nar "(He plays a chord on his / ribs, then a little jingle / he can't switch off.)"
+  say nar "(A rib chord, then a / tinny jingle from a tape / labelled DO NOT PLAY.)"
   [R13]
   befriend bonejangles 3
   end
 wave:
-  say bonejangles "Clack! Waves are also / covered by my warranty."
+  say bonejangles "Clack! Waves are also / covered by my warranty. / The exorcism wasn't."
   [R8]
 end
 

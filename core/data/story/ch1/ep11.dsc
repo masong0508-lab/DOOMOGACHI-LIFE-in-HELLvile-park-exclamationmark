@@ -29,7 +29,7 @@ end
 script e11_mayor
   runbeat b11_welcome
   say mayor HAPPY "Gobble gobble, welcome! / Mayor Gigglesworth. Friends / call me Giggs."
-  say mayor HAPPY "Enemies don't exist!"
+  say mayor HAPPY "Enemies don't exist! / We had them composted."
   [R13]
   say mayor SHOCK "Ooh, a new face! We never / get new faces. We had a / whole fence of them once."
   [R5]
@@ -56,7 +56,7 @@ script e11_mayor
 menu:
   choice nar "What do you say?" { "Nice to meet you!" -> nice ; "What's on the other side?" -> other ; "Why is the mascot staring?" -> mascot }
 nice:
-  say mayor LOVE "Manners! Oh, I LOVE you. / You can stay forever! In / a nice way!"
+  say mayor LOVE "Manners! Oh, I LOVE you. / Not like THAT. {.}Unless... / No. Not like that."
   [R13]
   jmp key
 other:
@@ -67,10 +67,10 @@ other:
   say mayor HAPPY "Hee. Hee."
   jmp key
 mascot:
-  say mayor NEUTRAL "Ignore that one. {.}It came / with the park."
+  say mayor NEUTRAL "Ignore that one. {.}It came / with the park. Like the / mould. And the lawsuit."
   [R21]
   native CB_C12 C12A_MASCOTTY
-  say nar "(The mascot waves. Very, / very slowly. Like it's / buffering.)"
+  say nar "(The mascot waves. Its / costume was designed by / someone TOLD about arms.)"
 key:
   say mayor HAPPY "Your house key is with / Nana at the bakery! Just / follow the nutmeg!"
   [R21]

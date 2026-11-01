@@ -15,7 +15,7 @@ script i1_night
   sfx SFX_EAT
   say nar "(@E eats the cupcake. / All of it. At once. / Paper included.)"
   [R8]
-  say nar "CARE ALERT! @E needs / to go. Right now. Right / here. Sorry."
+  say nar "CARE ALERT! @E needs / to poop. Right here. / It chose violence."
   [R8]
   sfx SFX_POOP
   say nar "plop."

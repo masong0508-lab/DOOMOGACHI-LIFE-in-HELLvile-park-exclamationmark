@@ -30,7 +30,7 @@ script e12_nana
   choice nar "A tray of muffins. One of them is a door key." { "Bite one" ; "Bite them ALL" }
   say nar "Raisin. Raisin. {..}That's / a button."
   runbeat b12_muffins
-  say nar "CRUNCH! A key! Your teeth / would like a word."
+  say nar "CRUNCH! A key! Your / dentist just bought / a boat."
   [R13]
   [R8]
   say nana SAD "{..}And this. An egg. It's / been waiting for someone."
@@ -98,7 +98,7 @@ script e12_cottage
   [R21]
   say nar "(It pulses. Like it's / waiting for applause.)"
   [R21]
-  say nar "It pulses again. Nobody / claps. It seems hurt."
+  say nar "It pulses again. Nobody / claps. It's a bit of a / drama queen, honestly."
   [MUTE 26]
   [HOLD 26]
   [DAY 2]
