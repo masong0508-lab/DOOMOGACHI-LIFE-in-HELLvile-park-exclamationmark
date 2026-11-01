@@ -354,8 +354,10 @@ const DoomoSpeciesInfo doomo_species_info[SPECIES_COUNT] = {
     { PSKIN(PAINT_CARAMEL),   30,   2, 100,  40,   5,  60, 0 },              /* OWLKIN */
     /* TURKEY: Mayor Giggs' kind keeps his old cherub resistance (95 + the
      * halo, clamped to 90 by sim_soul.c), so the Mayor's town life is as
-     * before; ANIMATRONIC: Bonejangles' kind keeps the skeleton's numbers,
-     * plus the robots' fuel-and-polish care lines */
+     * before; ANIMATRONIC: Bonejangles' kind keeps the skeleton's table
+     * numbers, but SPF_MECHANICAL makes sim.c's needs run at the robots'
+     * rates (hunger 30%, was 50% as undead; hygiene 60%, was 100%) and
+     * gives him their fuel-and-polish care lines */
     { SKIN_PEACH,             40,   0, 100,   0,   0,  90, 0 },              /* TURKEY */
     { PSKIN(PAINT_BONE),       5,   5,   0,   0,  30,  25, SPF_MECHANICAL | SPF_UNDEAD | SPF_NO_SKIN_SHADE } /* ANIMATRONIC */
 };
