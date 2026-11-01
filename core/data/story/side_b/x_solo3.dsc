@@ -9,7 +9,7 @@
 # in your house) - Ch5 - deliver, talk (grafted hearts S51 + S122)
 # =============================================================================
 @pack quests kind=side
-@mission S213 giver=522 side=hell ch=5-5 at=17,18 verbs=deliver later=6m reward=40 offer=s213_offer active=s213_again title="One Eye, Three Eyes" hint="Find Kevin a hat that fits all three eyes. Then carry him over to meet Oddsball."
+@mission S213 giver=522 side=hell ch=5-5 at=17,18 verbs=deliver later=6m reward=40 offer=s213_offer active=s213_again title="One Eye, Three Eyes" hint="Find Kevin a hat for all three eyes. Take him to meet Oddsball."
 @pack sb_solo3 kind=side minutes=85
 
 script s213_offer
@@ -90,7 +90,7 @@ end
 # Ch5 - concert (grafted heart S128)
 # =============================================================================
 @pack quests kind=side
-@mission S214 giver=701 side=hell ch=5-5 at=8,21 verbs=concert later=6m reward=0 offer=s214_offer active=s214_again title="The Longest Lullaby" hint="Ploddy hums lullabies to clouds all night. Maestro Mew wants it conducted."
+@mission S214 giver=701 side=hell ch=5-5 at=8,21 verbs=concert later=6m reward=0 offer=s214_offer active=s214_again title="The Longest Lullaby" hint="Help Maestro Mew conduct Ploddy's all-night cloud lullaby."
 @pack sb_solo3 kind=side
 
 script s214_offer
@@ -191,7 +191,7 @@ end
 # fetch, minigame (grafted heart S131)
 # =============================================================================
 @pack quests kind=side
-@mission S216 giver=20 side=hill ch=5-5 at=30,28 verbs=fetch,minigame later=6m reward=50 offer=s216_offer active=s216_again title="Free Hugs (Both Sides)" hint="Hugsley wants to hug all of Hellvile. Bring Big Snarl a Plushie (his rule)."
+@mission S216 giver=20 side=hill ch=5-5 at=30,28 verbs=fetch,minigame later=6m reward=50 offer=s216_offer active=s216_again title="Free Hugs (Both Sides)" hint="Hugsley wants to hug all Hellvile. Big Snarl's price: a Plushie."
 @pack sb_solo3 kind=side
 
 script s216_offer
@@ -268,7 +268,7 @@ end
 # deliver, talk (grafted heart S117)
 # =============================================================================
 @pack quests kind=side
-@mission S217 giver=567 side=hell ch=5-5 at=38,13 verbs=deliver later=6m reward=50 offer=s217_offer active=s217_again title="Signhere's Receipt" hint="Everyone who tore a page in Ep 4.5 must sign Signhere's acknowledgment."
+@mission S217 giver=567 side=hell ch=5-5 at=38,13 verbs=deliver later=6m reward=50 offer=s217_offer active=s217_again title="Signhere's Receipt" hint="Get everyone who tore a page in Ep 4.5 to sign Signhere's form."
 @pack sb_solo3 kind=side
 
 script s217_offer

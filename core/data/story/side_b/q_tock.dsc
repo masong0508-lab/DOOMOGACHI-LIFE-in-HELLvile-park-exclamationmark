@@ -8,7 +8,7 @@
 # S163 "A Clock With No Hands" - Tock (104) - Ch2-3 - fetch, find (S77)
 # =============================================================================
 @pack quests kind=side
-@mission S163 giver=104 side=hill ch=2-3 after=BEAT_EP2_2 at=33,10 verbs=fetch,find chain=Q step=1 later=6m reward=30 offer=s163_offer active=s163_again title="A Clock With No Hands" hint="Find the handless clock in Town Hall. Bring Tock a Milk. Listen at midnight."
+@mission S163 giver=104 side=hill ch=2-3 after=BEAT_EP2_2 at=33,10 verbs=fetch,find chain=Q step=1 later=6m reward=30 offer=s163_offer active=s163_again title="A Clock With No Hands" hint="Find the handless clock in Town Hall. Bring Tock Milk. Wait for midnight."
 @pack sb_tock kind=side minutes=105
 
 script s163_offer
@@ -100,7 +100,7 @@ end
 # housing (Clinker's poem rating)
 # =============================================================================
 @pack quests kind=side
-@mission S164 giver=712 side=hell ch=4-5 after=BEAT_EP4_1 at=9,30 verbs=fetch,minigame,housing chain=Q step=2 later=6m reward=50 offer=s164_offer active=s164_again title="Day 3,653" hint="Trade Clinker a poem for her chalk, then give Tallyworn a second wall."
+@mission S164 giver=712 side=hell ch=4-5 after=BEAT_EP4_1 at=9,30 verbs=fetch,minigame,housing chain=Q step=2 later=6m reward=50 offer=s164_offer active=s164_again title="Day 3,653" hint="Trade Clinker a poem for chalk. Give Tallyworn a second wall."
 @pack sb_tock kind=side
 
 script s164_offer
@@ -182,7 +182,7 @@ end
 # weld, deliver, housing
 # =============================================================================
 @pack quests kind=side
-@mission S165 giver=104 side=hill ch=5-5 at=33,10 verbs=weld,deliver chain=Q step=3 later=6m reward=150 offer=s165_offer active=s165_again title="Counting Down" trophy="Day One" hint="Weld hands onto the handless clock, then carry it to Tallyworn's gatepost."
+@mission S165 giver=104 side=hill ch=5-5 at=33,10 verbs=weld,deliver chain=Q step=3 later=6m reward=150 offer=s165_offer active=s165_again title="Counting Down" trophy="Day One" hint="Weld hands onto the clock. Carry it to Tallyworn's gatepost."
 @pack sb_tock kind=side
 
 script s165_offer
@@ -249,7 +249,7 @@ end
 # housing, find (grafted heart S54)
 # =============================================================================
 @pack quests kind=side
-@mission S208 giver=109 side=hill ch=1-2 after=BEAT_EP1_4 at=6,8 verbs=find,housing chain=V step=1 later=5m reward=40 offer=s208_offer active=s208_again title="Notes From the Housekeeper" hint="Find the housekeeper's three notes round your cottage. Then tidy up."
+@mission S208 giver=109 side=hill ch=1-2 after=BEAT_EP1_4 at=6,8 verbs=find,housing chain=V step=1 later=5m reward=40 offer=s208_offer active=s208_again title="The Housekeeper's Notes" hint="Find the housekeeper's 3 notes round your cottage. Tidy up."
 @pack sb_tock kind=side
 
 script s208_offer
@@ -333,7 +333,7 @@ end
 # housing, find (grafted heart S68)
 # =============================================================================
 @pack quests kind=side
-@mission S209 giver=109 side=hill ch=2-2 after=BEAT_EP2_3 at=6,8 verbs=find,housing chain=V step=2 later=6m reward=40 offer=s209_offer active=s209_again title="Two Inches to the Left" hint="Somebody else is tidying your house, badly. Wait up at night and catch them."
+@mission S209 giver=109 side=hill ch=2-2 after=BEAT_EP2_3 at=6,8 verbs=find,housing chain=V step=2 later=6m reward=40 offer=s209_offer active=s209_again title="Two Inches to the Left" hint="Someone's tidying your house, badly. Wait up at night. Catch them."
 @pack sb_tock kind=side
 
 script s209_offer
@@ -411,7 +411,7 @@ end
 # after the Annex - housing (grafted heart S115)
 # =============================================================================
 @pack quests kind=side
-@mission S210 giver=109 side=hill ch=4-5 after=BEAT_EP4_4 at=6,8 verbs=housing chain=V step=3 later=6m reward=0 offer=s210_offer active=s210_again title="Cosy, Dark, Eternal" hint="Furnish the Annex to the ETERNAL grade: Hellvile pieces and one cursed thing."
+@mission S210 giver=109 side=hill ch=4-5 after=BEAT_EP4_4 at=6,8 verbs=housing chain=V step=3 later=6m reward=0 offer=s210_offer active=s210_again title="Cosy, Dark, Eternal" hint="Furnish the Annex to ETERNAL: Hellvile pieces, one cursed thing."
 @pack sb_tock kind=side
 
 script s210_offer

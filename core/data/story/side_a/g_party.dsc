@@ -77,7 +77,7 @@ end
 # find, photo, pet
 # =============================================================================
 @pack quests kind=side
-@mission S131 giver=111 side=hill ch=2-3 after=BEAT_EP2_5 at=17,23 verbs=find,photo,pet chain=I step=2 later=6m reward=50 offer=s131_offer active=s131_again title="Lost and Found" hint="Follow the glitter: her stand, the Fun Fair, the pond, then the Wall."
+@mission S131 giver=111 side=hill ch=2-3 after=BEAT_EP2_5 at=17,23 verbs=find,photo,pet chain=I step=2 later=6m reward=50 offer=s131_offer active=s131_again title="Lost and Found" hint="Follow the glitter: her stand, the Fun Fair, the pond, the Wall."
 @pack sa_sprk kind=side
 
 script s131_offer
@@ -156,7 +156,7 @@ end
 # talk, find, timing
 # =============================================================================
 @pack quests kind=side
-@mission S132 giver=707 side=hell ch=4-5 after=BEAT_EP4_2 at=53,17 verbs=timing chain=I step=3 later=6m reward=80 offer=s132_offer active=s132_again title="Wheezle's Little Ghosts" hint="Meet Wheezle's ghosts and catch Sprinkles's sneezes in a jar."
+@mission S132 giver=707 side=hell ch=4-5 after=BEAT_EP4_2 at=53,17 verbs=timing chain=I step=3 later=6m reward=80 offer=s132_offer active=s132_again title="Wheezle's Little Ghosts" hint="Meet Wheezle's ghosts. Catch Sprinkles's sneezes in a jar."
 @pack sa_sprk kind=side
 
 script s132_offer
@@ -215,7 +215,7 @@ end
 # Ch4-5 - escort, exorcism (reverse)
 # =============================================================================
 @pack quests kind=side
-@mission S133 giver=111 side=hill ch=4-5 after=BEAT_EP4_2 at=17,23 verbs=escort,exorcism chain=I step=4 later=7m reward=150 offer=s133_offer active=s133_again title="Bubbles Bounces Back" trophy="Unfailed" hint="Meet the soul at the Wall gate; walk her to the clinic."
+@mission S133 giver=111 side=hill ch=4-5 after=BEAT_EP4_2 at=17,23 verbs=escort,exorcism chain=I step=4 later=7m reward=150 offer=s133_offer active=s133_again title="Bubbles Bounces Back" trophy="Unfailed" hint="Walk the soul from the Wall gate to the clinic."
 @pack sa_sprk kind=side
 
 string S133_ASK "Her name. From memory:"

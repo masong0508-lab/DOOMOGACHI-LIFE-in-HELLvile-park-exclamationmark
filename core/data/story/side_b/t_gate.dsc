@@ -17,7 +17,7 @@
 # Brimstone Bites - Ch4 after Ep 4.6 - cooking, talk (absorbs heart S104)
 # =============================================================================
 @pack quests kind=side
-@mission S183 giver=729 side=hill ch=4-5 after=BEAT_EP4_6 at=27,17 verbs=cooking chain=T step=1 later=6m reward=80 offer=s183_offer active=s183_again title="First Hellvile Regular" hint="Grumbleguts ordered the whole menu at Brimstone Bites. Help in the kitchen."
+@mission S183 giver=729 side=hill ch=4-5 after=BEAT_EP4_6 at=27,17 verbs=cooking chain=T step=1 later=6m reward=80 offer=s183_offer active=s183_again title="First Hellvile Regular" hint="Help cook the whole menu Grumbleguts ordered at Brimstone Bites."
 @pack sb_gate kind=side minutes=95
 
 script s183_offer
@@ -110,7 +110,7 @@ end
 # cooking, minigame, timing
 # =============================================================================
 @pack quests kind=side
-@mission S184 giver=128 side=hill ch=4-5 after=BEAT_EP4_6 at=23,17 verbs=minigame,timing chain=T step=2 later=6m reward=100 offer=s184_offer active=s184_again title="Line Cook" hint="Two burners, one apprentice who eats the ingredients. Flip on the beat."
+@mission S184 giver=128 side=hill ch=4-5 after=BEAT_EP4_6 at=23,17 verbs=minigame,timing chain=T step=2 later=6m reward=100 offer=s184_offer active=s184_again title="Line Cook" hint="Run two burners at Brimstone Bites. Flip on the beat."
 @pack sb_gate kind=side
 
 script s184_offer
@@ -250,7 +250,7 @@ end
 # housing, deliver, talk
 # =============================================================================
 @pack quests kind=side
-@mission S185 giver=729 side=hell ch=5-5 at=38,27 verbs=housing,deliver chain=T step=4 later=6m reward=150 offer=s185_offer active=s185_again title="Come Up and See My Gate" trophy="Come Up Sometime" hint="Decorate Grumbleguts's gatehouse for visitors, then invite three guests."
+@mission S185 giver=729 side=hell ch=5-5 at=38,27 verbs=housing,deliver chain=T step=4 later=6m reward=150 offer=s185_offer active=s185_again title="Come Up and See My Gate" trophy="Come Up Sometime" hint="Decorate Grumbleguts's gatehouse. Invite 3 guests."
 @pack sb_gate kind=side
 
 script s185_offer

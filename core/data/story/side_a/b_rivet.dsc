@@ -6,7 +6,7 @@
 # S103 "Days Since Last Fire" - Rivet (13) - Ch2 after Ep 2.6 - weld, housing
 # =============================================================================
 @pack quests kind=side
-@mission S103 giver=13 side=hill ch=2-2 after=BEAT_EP2_6 at=53,10 verbs=weld,housing chain=B step=1 later=10m reward=0 offer=s103_offer active=s103_again title="Days Since Last Fire" hint="Weld a second safety sign with Rivet and hang it in your house."
+@mission S103 giver=13 side=hill ch=2-2 after=BEAT_EP2_6 at=53,10 verbs=weld,housing chain=B step=1 later=10m reward=0 offer=s103_offer active=s103_again title="Days Since Last Fire" hint="Weld a second safety sign with Rivet. Hang it in your house."
 @pack sa_rivet kind=side minutes=110
 
 script s103_offer
@@ -78,7 +78,7 @@ end
 # S104 "Letters Not Sent" - Rivet (13) - Ch3 (the church) - find, combat, deliver
 # =============================================================================
 @pack quests kind=side
-@mission S104 giver=13 side=hill ch=3-3 after=BEAT_EP3_1 at=53,10 verbs=find,combat,deliver chain=B step=2 later=6m reward=60 offer=s104_offer active=s104_again title="Letters Not Sent" hint="Get Rivet's toolbox back from the nest in the Vape Cellar."
+@mission S104 giver=13 side=hill ch=3-3 after=BEAT_EP3_1 at=53,10 verbs=find,combat,deliver chain=B step=2 later=6m reward=60 offer=s104_offer active=s104_again title="Letters Not Sent" hint="Get Rivet's toolbox back from the Vape Cellar nest."
 @pack sa_rivet kind=side
 
 string S104_C1 "A toolbox. A demon is sitting on it."
@@ -149,7 +149,7 @@ end
 # S105 "Two Marks" - Anvil (595, Hellvile) - Ch4 after Ep 4.3 - weld, fetch
 # =============================================================================
 @pack quests kind=side
-@mission S105 giver=595 side=hell ch=4-5 after=BEAT_EP4_3 at=31,9 verbs=fetch,weld,timing chain=B step=3 later=5m reward=100 offer=s105_offer active=s105_again title="Two Marks" hint="Bring Anvil 3 Scrap, then weld the new hammer mark to her rhythm."
+@mission S105 giver=595 side=hell ch=4-5 after=BEAT_EP4_3 at=31,9 verbs=fetch,weld,timing chain=B step=3 later=5m reward=100 offer=s105_offer active=s105_again title="Two Marks" hint="Bring Anvil 3 Scrap. Weld the new hammer mark to her rhythm."
 @pack sa_rivet kind=side
 
 script s105_offer
@@ -208,7 +208,7 @@ end
 # S202 "The Door" - Anvil (595) - Ch4 after Ep 4.3 - housing, talk
 # =============================================================================
 @pack quests kind=side
-@mission S202 giver=595 side=hell ch=4-5 after=BEAT_EP4_3 at=31,9 verbs=housing chain=B step=4 later=5m reward=0 offer=s202_offer active=s202_again title="The Door" hint="Let Anvil look at your cottage's squeaky front door."
+@mission S202 giver=595 side=hell ch=4-5 after=BEAT_EP4_3 at=31,9 verbs=housing chain=B step=4 later=5m reward=0 offer=s202_offer active=s202_again title="The Door" hint="Let Anvil look at your cottage's squeaky door."
 @pack sa_rivet kind=side
 
 script s202_offer
@@ -316,7 +316,7 @@ end
 # S106 "Bolt's First Weld" - Bolt (597, Hellvile, KID) - Ch4-5 - escort, weld
 # =============================================================================
 @pack quests kind=side
-@mission S106 giver=597 side=hell ch=4-5 after=BEAT_EP4_6 at=35,11 verbs=escort,weld,housing chain=B step=6 later=7m reward=50 offer=s106_offer active=s106_again title="Bolt's First Weld" hint="Walk Bolt to the forge without xem lighting anything. Then weld."
+@mission S106 giver=597 side=hell ch=4-5 after=BEAT_EP4_6 at=35,11 verbs=escort,weld,housing chain=B step=6 later=7m reward=50 offer=s106_offer active=s106_again title="Bolt's First Weld" hint="Walk Bolt to the forge without xem lighting anything. Weld."
 @pack sa_rivet kind=side
 
 script s106_offer

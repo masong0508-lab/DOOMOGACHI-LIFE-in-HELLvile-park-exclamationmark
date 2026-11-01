@@ -7,7 +7,7 @@
 # S117 "Buckwheat Run" - Father Fuzz (77) - Ch2 after Ep 2.4 - fetch, talk
 # =============================================================================
 @pack quests kind=side
-@mission S117 giver=77 side=hill ch=2-2 after=BEAT_EP2_4 at=7,28 verbs=fetch,timing chain=E step=1 later=5m reward=30 offer=s117_offer active=s117_again title="Buckwheat Run" hint="Farmer Bram only talks to his carrots. Get Fuzz two sacks of buckwheat."
+@mission S117 giver=77 side=hill ch=2-2 after=BEAT_EP2_4 at=7,28 verbs=fetch,timing chain=E step=1 later=5m reward=30 offer=s117_offer active=s117_again title="Buckwheat Run" hint="Get Fuzz 2 sacks of buckwheat from Farmer Bram. Talk to the carrots."
 @pack sa_fuzz kind=side minutes=95
 
 script s117_offer
@@ -74,7 +74,7 @@ end
 # Ch3 (before the beach nest) - fetch, exorcism (practice), timing
 # =============================================================================
 @pack quests kind=side
-@mission S118 giver=77 side=hill ch=3-3 after=BEAT_EP3_1 at=7,28 verbs=find,exorcism,timing chain=E step=2 later=6m reward=50 offer=s118_offer active=s118_again title="Holy Water, Hold the Water" hint="Fetch water from the bath house; Fuzz needs someone to keep the beat."
+@mission S118 giver=77 side=hill ch=3-3 after=BEAT_EP3_1 at=7,28 verbs=find,exorcism,timing chain=E step=2 later=6m reward=50 offer=s118_offer active=s118_again title="Holy Water, Hold the Water" hint="Fetch water from the bath house. Keep the beat for Fuzz."
 @pack sa_fuzz kind=side
 
 script s118_offer
@@ -138,7 +138,7 @@ end
 # S201 "Buckwheat" - Father Fuzz (77) - Ch3 (after the beach nest) - fetch, deliver
 # =============================================================================
 @pack quests kind=side
-@mission S201 giver=77 side=hill ch=3-3 after=BEAT_EP3_3 at=7,28 verbs=fetch,deliver chain=E step=3 later=5m reward=40 offer=s201_offer active=s201_again title="Buckwheat" hint="Get two sacks of buckwheat from Nana for Fuzz's 'recipe'."
+@mission S201 giver=77 side=hill ch=3-3 after=BEAT_EP3_3 at=7,28 verbs=fetch,deliver chain=E step=3 later=5m reward=40 offer=s201_offer active=s201_again title="Buckwheat" hint="Get 2 sacks of buckwheat from Nana for Fuzz's 'recipe'."
 @pack sa_fuzz kind=side
 
 script s201_offer
@@ -198,7 +198,7 @@ end
 # deliver, fetch, housing
 # =============================================================================
 @pack quests kind=side
-@mission S119 giver=542 side=hell ch=4-5 after=BEAT_EP4_2 at=24,36 verbs=deliver,timing chain=E step=4 later=6m reward=100 offer=s119_offer active=s119_again title="The Plush Surgeon" hint="Bring Sutura Father Fuzz's drawer of Mr. Huggins heads."
+@mission S119 giver=542 side=hell ch=4-5 after=BEAT_EP4_2 at=24,36 verbs=deliver,timing chain=E step=4 later=6m reward=100 offer=s119_offer active=s119_again title="The Plush Surgeon" hint="Bring Sutura Fuzz's drawer of spare Mr. Huggins heads."
 @pack sa_fuzz kind=side
 
 script s119_offer
@@ -261,7 +261,7 @@ end
 # S120 "Mr. Huggins the 9th" - Father Fuzz (77) - Ch5 - exorcism, talk
 # =============================================================================
 @pack quests kind=side
-@mission S120 giver=77 side=hill ch=5-5 at=7,28 verbs=exorcism chain=E step=5 later=6m reward=150 offer=s120_offer active=s120_again title="Mr. Huggins the 9th" trophy="Nobody Is Practice" hint="One more practice rite, in public. With Sutura's stitches."
+@mission S120 giver=77 side=hill ch=5-5 at=7,28 verbs=exorcism chain=E step=5 later=6m reward=150 offer=s120_offer active=s120_again title="Mr. Huggins the 9th" trophy="Nobody Is Practice" hint="Do one last practice rite with Fuzz. In public."
 @pack sa_fuzz kind=side
 
 script s120_offer
@@ -312,7 +312,7 @@ end
 # S121 "Return to Sender" - Lilypad Lou (97) - Ch1-2 - find, deliver
 # =============================================================================
 @pack quests kind=side
-@mission S121 giver=97 side=hill ch=1-2 after=BEAT_EP1_3 at=20,20 verbs=find,deliver chain=F step=1 later=6m reward=30 offer=s121_offer active=s121_again title="Return to Sender" hint="Bring Lou the junk mail 'from The Other Side' in your mailbox."
+@mission S121 giver=97 side=hill ch=1-2 after=BEAT_EP1_3 at=20,20 verbs=find,deliver chain=F step=1 later=6m reward=30 offer=s121_offer active=s121_again title="Return to Sender" hint="Take Lou the junk mail 'from The Other Side' (your mailbox)."
 @pack sa_fuzz kind=side
 
 script s121_offer
@@ -367,7 +367,7 @@ end
 # S122 "Dead Letter Office" - Lilypad Lou (97) - Ch3 - find, combat, deliver
 # =============================================================================
 @pack quests kind=side
-@mission S122 giver=97 side=hill ch=3-3 after=BEAT_EP3_1 at=20,20 verbs=combat,deliver chain=F step=2 later=6m reward=60 offer=s122_offer active=s122_again title="Dead Letter Office" hint="The mail sack went down the chute to the Sugar Rush Sewers. Get it."
+@mission S122 giver=97 side=hill ch=3-3 after=BEAT_EP3_1 at=20,20 verbs=combat,deliver chain=F step=2 later=6m reward=60 offer=s122_offer active=s122_again title="Dead Letter Office" hint="Get Lou's mail sack back from the Sugar Rush Sewers."
 @pack sa_fuzz kind=side
 
 string S122_C1 "The mail sack is down here somewhere."
@@ -425,7 +425,7 @@ end
 # deliver, talk, escort
 # =============================================================================
 @pack quests kind=side
-@mission S123 giver=528 side=hell ch=4-5 after=BEAT_EP4_2 at=22,14 verbs=escort,deliver chain=F step=3 later=7m reward=100 offer=s123_offer active=s123_again title="First Post" trophy="Mail Carrier" hint="Walk Lou and her sack to Mother Nox's chapel. Mandible keeps time."
+@mission S123 giver=528 side=hell ch=4-5 after=BEAT_EP4_2 at=22,14 verbs=escort,deliver chain=F step=3 later=7m reward=100 offer=s123_offer active=s123_again title="First Post" trophy="Mail Carrier" hint="Walk Lou and her sack to Mother Nox's chapel."
 @pack sa_fuzz kind=side
 
 script s123_offer

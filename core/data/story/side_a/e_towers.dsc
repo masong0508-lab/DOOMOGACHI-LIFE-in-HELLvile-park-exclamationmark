@@ -7,7 +7,7 @@
 # S114 "Apartment 7B" - Keysie (21) - Ch2 - find, housing
 # =============================================================================
 @pack quests kind=side
-@mission S114 giver=21 side=hill ch=2-3 after=BEAT_EP2_1 at=39,9 verbs=find,housing chain=S step=1 later=6m reward=0 offer=s114_offer active=s114_again title="Apartment 7B" hint="Keysie has the key to 7B in Hillvile Towers. Clear the dust."
+@mission S114 giver=21 side=hill ch=2-3 after=BEAT_EP2_1 at=39,9 verbs=find,housing chain=S step=1 later=6m reward=0 offer=s114_offer active=s114_again title="Apartment 7B" hint="Get Keysie's key to 7B, Hillvile Towers. Clear the dust."
 @pack sa_tower kind=side minutes=90
 
 script s114_offer
@@ -58,7 +58,7 @@ end
 # S115 "Neighbours" - Gusty (92) and Curlicue (44) - Ch2-3 - housing, talk
 # =============================================================================
 @pack quests kind=side
-@mission S115 giver=92 side=hill ch=2-3 after=BEAT_EP2_2 at=37,9 verbs=housing chain=S step=2 later=6m reward=60 offer=s115_offer active=s115_again title="Neighbours" hint="Make 7B cosy for the Towers' cosiest-floor contest. Mascotty judges."
+@mission S115 giver=92 side=hill ch=2-3 after=BEAT_EP2_2 at=37,9 verbs=housing chain=S step=2 later=6m reward=60 offer=s115_offer active=s115_again title="Neighbours" hint="Furnish 7B for the Towers' cosiest-floor contest."
 @pack sa_tower kind=side
 
 script s115_offer
@@ -117,7 +117,7 @@ end
 # S116 "Room With a View" - Keysie (21) - Ch4-5 - housing, photo, talk
 # =============================================================================
 @pack quests kind=side
-@mission S116 giver=21 side=hill ch=4-5 after=BEAT_EP4_1 at=39,9 verbs=housing,photo chain=S step=3 later=6m reward=100 offer=s116_offer active=s116_again title="Room With a View" trophy="Landlord" hint="Get 7B ready for its old tenant, then take Keysie's brochure photo."
+@mission S116 giver=21 side=hill ch=4-5 after=BEAT_EP4_1 at=39,9 verbs=housing,photo chain=S step=3 later=6m reward=100 offer=s116_offer active=s116_again title="Room With a View" trophy="Landlord" hint="Get 7B ready for its old tenant. Snap Keysie's brochure photo."
 @pack sa_tower kind=side
 
 script s116_offer
@@ -170,7 +170,7 @@ end
 # S127 "Every Duck Has a Name" - Steamy (2) - Ch1-2 - find, talk
 # =============================================================================
 @pack quests kind=side
-@mission S127 giver=2 side=hill ch=1-2 after=BEAT_EP1_4 at=27,43 verbs=find chain=H step=1 later=5m reward=30 offer=s127_offer active=s127_again title="Every Duck Has a Name" hint="One of Steamy's ducks isn't hers. Take it to the Wall after dark."
+@mission S127 giver=2 side=hill ch=1-2 after=BEAT_EP1_4 at=27,43 verbs=find chain=H step=1 later=5m reward=30 offer=s127_offer active=s127_again title="Every Duck Has a Name" hint="One of Steamy's ducks isn't hers. Take it to the Wall at night."
 @pack sa_tower kind=side
 
 script s127_offer
@@ -237,7 +237,7 @@ end
 # find; no music for the whole quest; [NO GAG]
 # =============================================================================
 @pack quests kind=side
-@mission S200 giver=41 side=hill ch=2-2 after=BEAT_EP2_4 at=21,26 verbs=find chain=H step=2 later=8m reward=30 offer=s200_offer active=s200_again title="Night Shift at the Bath-House" hint="Fetch Lather's soap from the closed bath house. Don't look at the water."
+@mission S200 giver=41 side=hill ch=2-2 after=BEAT_EP2_4 at=21,26 verbs=find chain=H step=2 later=8m reward=30 offer=s200_offer active=s200_again title="Bath House Night Shift" hint="Fetch Lather's soap from the shut bath house. Don't look at the water."
 @pack sa_tower kind=side
 
 script s200_offer
@@ -297,7 +297,7 @@ end
 # ghost - Ch3 - fetch, cooking (soap), housing (her bath house)
 # =============================================================================
 @pack quests kind=side
-@mission S128 giver=41 side=hill ch=3-3 after=BEAT_EP3_1 at=21,26 verbs=fetch,housing chain=H step=3 later=6m reward=60 offer=s128_offer active=s128_again title="Grand Re-Opening" hint="Bring 3 Soap to reopen the bath house for the people in the church."
+@mission S128 giver=41 side=hill ch=3-3 after=BEAT_EP3_1 at=21,26 verbs=fetch,housing chain=H step=3 later=6m reward=60 offer=s128_offer active=s128_again title="Grand Re-Opening" hint="Bring 3 Soap to reopen the bath house for the church folk."
 @pack sa_tower kind=side
 
 script s128_offer
@@ -366,7 +366,7 @@ end
 # Ch4-5 - talk, fetch, concert
 # =============================================================================
 @pack quests kind=side
-@mission S129 giver=513 side=hell ch=4-5 after=BEAT_EP4_2 at=44,19 verbs=fetch,timing chain=H step=4 later=6m reward=120 offer=s129_offer active=s129_again title="Mixed Bathing" hint="Bring Scaldie a Coffee and settle the bath temperature: on the beat."
+@mission S129 giver=513 side=hell ch=4-5 after=BEAT_EP4_2 at=44,19 verbs=fetch,timing chain=H step=4 later=6m reward=120 offer=s129_offer active=s129_again title="Mixed Bathing" hint="Bring Scaldie a Coffee. Set the bath temperature on the beat."
 @pack sa_tower kind=side
 
 script s129_offer

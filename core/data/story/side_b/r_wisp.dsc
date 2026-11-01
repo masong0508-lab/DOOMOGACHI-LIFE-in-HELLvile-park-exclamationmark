@@ -10,7 +10,7 @@
 # housing, find (absorbs Creakster's uncued creak)
 # =============================================================================
 @pack quests kind=side
-@mission S166 giver=109 side=hill ch=2-2 after=BEAT_EP2_3 at=6,8 verbs=housing,find chain=R step=1 later=5m reward=0 offer=s166_offer active=s166_again title="Placed By: ???" hint="A tiny bed nobody placed is in your corner. Watch it for three nights."
+@mission S166 giver=109 side=hill ch=2-2 after=BEAT_EP2_3 at=6,8 verbs=housing,find chain=R step=1 later=5m reward=0 offer=s166_offer active=s166_again title="Placed By: ???" hint="A tiny bed nobody placed is in your corner. Watch it 3 nights."
 @pack sb_wisp kind=side minutes=115
 
 string S166_Q "Leave a note by the tiny bed:"
@@ -96,7 +96,7 @@ end
 # housing, fetch, weld
 # =============================================================================
 @pack quests kind=side
-@mission S167 giver=563 side=hill ch=3-3 after=BEAT_EP3_2 at=3,8 verbs=fetch,weld,housing chain=R step=2 later=6m reward=40 offer=s167_offer active=s167_again title="Night Light" hint="Get lamp oil from Lumina for Wisp's window box. Paint it a sky."
+@mission S167 giver=563 side=hill ch=3-3 after=BEAT_EP3_2 at=3,8 verbs=fetch,weld,housing chain=R step=2 later=6m reward=40 offer=s167_offer active=s167_again title="Night Light" hint="Get Lumina's lamp oil for Wisp's window box. Paint it a sky."
 @pack sb_wisp kind=side
 
 script s167_offer
@@ -243,7 +243,7 @@ end
 # housing, cooking, talk
 # =============================================================================
 @pack quests kind=side
-@mission S168 giver=563 side=hell ch=4-5 after=BEAT_EP4_4 at=20,10 verbs=housing,cooking chain=R step=4 later=7m reward=150 offer=s168_offer active=s168_again title="The Housewarming" trophy="Placed By: Wisp" hint="Decorate your Hell Pits flat, cook two dishes, and let Wisp throw you a party."
+@mission S168 giver=563 side=hell ch=4-5 after=BEAT_EP4_4 at=20,10 verbs=housing,cooking chain=R step=4 later=7m reward=150 offer=s168_offer active=s168_again title="The Housewarming" trophy="Placed By: Wisp" hint="Decorate your Hell Pits flat. Cook 2 dishes. Let Wisp throw a party."
 @pack sb_wisp kind=side
 
 script s168_offer

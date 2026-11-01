@@ -10,7 +10,7 @@
 # find, talk (the graveyard)
 # =============================================================================
 @pack quests kind=side
-@mission S176 giver=555 side=hell ch=4-5 after=BEAT_EP4_2 at=13,37 verbs=find,housing later=6m reward=80 offer=s176_offer active=s176_again title="Rest in Pieces" hint="Mr. Solemn wants HaHaland's joke graves done properly. Ask their ghosts."
+@mission S176 giver=555 side=hell ch=4-5 after=BEAT_EP4_2 at=13,37 verbs=find,housing later=6m reward=80 offer=s176_offer active=s176_again title="Rest in Pieces" hint="Fix HaHaland's joke graves for Mr. Solemn. Ask their ghosts."
 @pack sb_solo1 kind=side minutes=135
 
 script s176_offer
@@ -94,7 +94,7 @@ end
 # (Breach 5's boss) - Ch3-4 after the graveyard nest - combat, find, deliver
 # =============================================================================
 @pack quests kind=side
-@mission S178 giver=42 side=hill ch=3-4 after=BEAT_EP3_3 at=10,47 verbs=combat,find,deliver later=6m reward=120 offer=s178_offer active=s178_again title="The Weeping Widow's Plushie" hint="The Weeping Widow lost a plushie in 1887. Pip wants to find it. Breach 5."
+@mission S178 giver=42 side=hill ch=3-4 after=BEAT_EP3_3 at=10,47 verbs=combat,find,deliver later=6m reward=120 offer=s178_offer active=s178_again title="The Widow's Plushie" hint="Help Pip find the Weeping Widow's plushie from 1887 (Breach 5)."
 @pack sb_solo1 kind=side
 
 string S178_C1 "Don't hurt her. Dodge the tears."
@@ -264,7 +264,7 @@ end
 # (Breach 3's boss) - Ch3-5 - combat (Breach 3), cooking
 # =============================================================================
 @pack quests kind=side
-@mission S180 giver=1 side=hill ch=3-5 after=BEAT_EP3_3 at=25,17 verbs=combat,cooking later=6m reward=100 offer=s180_offer active=s180_again title="The Sweet Tooth Sewers" hint="Nana's sourdough starter is in the candy sewers. The Gutterking has it."
+@mission S180 giver=1 side=hill ch=3-5 after=BEAT_EP3_3 at=25,17 verbs=combat,cooking later=6m reward=100 offer=s180_offer active=s180_again title="The Sweet Tooth Sewers" hint="Get Nana's starter back from the Gutterking (candy sewers)."
 @pack sb_solo1 kind=side
 
 string S180_C1 "The starter is bubbling in the throne room."
@@ -337,7 +337,7 @@ end
 # (Breach 4's boss) - Ch4-5 - combat (Breach 4), timing, weld
 # =============================================================================
 @pack quests kind=side
-@mission S181 giver=13 side=hill ch=4-5 after=BEAT_EP4_3 at=53,10 verbs=combat,timing,weld later=6m reward=120 offer=s181_offer active=s181_again title="Foreman Fluffnuts Retires" hint="Shut the Plushie Factory conveyor down. Give the foreman a new job."
+@mission S181 giver=13 side=hill ch=4-5 after=BEAT_EP4_3 at=53,10 verbs=combat,timing,weld later=6m reward=120 offer=s181_offer active=s181_again title="Foreman Fluffnuts Retires" hint="Shut down the Plushie Factory conveyor. Find the foreman a new job."
 @pack sb_solo1 kind=side
 
 string S181_C1 "The conveyor is still running."
@@ -414,7 +414,7 @@ end
 # S182 "The Upside-Down Map" - Scoutmaster (15) - Ch4-5 - find, photo
 # =============================================================================
 @pack quests kind=side
-@mission S182 giver=15 side=hill ch=4-5 after=BEAT_EP4_2 at=8,10 verbs=find,photo later=6m reward=80 offer=s182_offer active=s182_again title="The Upside-Down Map" hint="Find the upside-down map on the gatepost. Photograph the mirrored pairs."
+@mission S182 giver=15 side=hill ch=4-5 after=BEAT_EP4_2 at=8,10 verbs=find,photo later=6m reward=80 offer=s182_offer active=s182_again title="The Upside-Down Map" hint="Find the upside-down map on the gatepost. Snap the mirrored pairs."
 @pack sb_solo1 kind=side
 
 script s182_offer

@@ -7,7 +7,7 @@
 # S199 "The Loose Brick" - Nana Puddin (1) - Ch1-2 (night) - deliver, find
 # =============================================================================
 @pack quests kind=side
-@mission S199 giver=1 side=hill ch=1-2 after=BEAT_EP1_5 at=25,17 verbs=deliver,find chain=D step=1 later=7m reward=30 offer=s199_offer active=s199_again title="The Loose Brick" hint="After dark, put Nana's muffin in the brick that wiggles, by the Wall."
+@mission S199 giver=1 side=hill ch=1-2 after=BEAT_EP1_5 at=25,17 verbs=deliver,find chain=D step=1 later=7m reward=30 offer=s199_offer active=s199_again title="The Loose Brick" hint="After dark, put Nana's muffin in the wiggly brick by the Wall."
 @pack sa_nana kind=side minutes=95
 
 script s199_offer
@@ -71,7 +71,7 @@ end
 # S110 "The Secret Ingredient" - Nana Puddin (1) - Ch1 - cooking, fetch
 # =============================================================================
 @pack quests kind=side
-@mission S110 giver=1 side=hill ch=1-2 after=BEAT_EP1_4 at=25,17 verbs=cooking chain=D step=2 later=5m reward=30 offer=s110_offer active=s110_again title="The Secret Ingredient" hint="Bake with Nana, then taste every batch of her melon bread."
+@mission S110 giver=1 side=hill ch=1-2 after=BEAT_EP1_4 at=25,17 verbs=cooking chain=D step=2 later=5m reward=30 offer=s110_offer active=s110_again title="The Secret Ingredient" hint="Bake with Nana. Taste every batch of melon bread."
 @pack sa_nana kind=side
 
 script s110_offer
@@ -130,7 +130,7 @@ end
 # S111 "Muffin Recall" - Nana Puddin (1) - Ch2 - fetch, find, talk
 # =============================================================================
 @pack quests kind=side
-@mission S111 giver=1 side=hill ch=2-2 after=BEAT_EP2_1 at=25,17 verbs=find chain=D step=3 later=5m reward=40 offer=s111_offer active=s111_again title="Muffin Recall" hint="Get the purple muffins back from Oma Fluff and Zoomzoom before they bite."
+@mission S111 giver=1 side=hill ch=2-2 after=BEAT_EP2_1 at=25,17 verbs=find chain=D step=3 later=5m reward=40 offer=s111_offer active=s111_again title="Muffin Recall" hint="Get the purple muffins off Oma Fluff and Zoomzoom. They bite."
 @pack sa_nana kind=side
 
 script s111_offer
@@ -195,7 +195,7 @@ end
 # deliver, cooking
 # =============================================================================
 @pack quests kind=side
-@mission S112 giver=566 side=hell ch=4-5 after=BEAT_EP4_2 at=20,22 verbs=deliver,cooking chain=D step=4 later=6m reward=80 offer=s112_offer active=s112_again title="The Other Half of the Card" hint="Carry Charlotte's half of the recipe card to Nana. Then bake."
+@mission S112 giver=566 side=hell ch=4-5 after=BEAT_EP4_2 at=20,22 verbs=deliver,cooking chain=D step=4 later=6m reward=80 offer=s112_offer active=s112_again title="The Other Half" hint="Take Charlotte's half of the recipe card to Nana. Bake."
 @pack sa_nana kind=side
 
 script s112_offer
@@ -255,7 +255,7 @@ end
 # cooking, fetch, minigame
 # =============================================================================
 @pack quests kind=side
-@mission S113 giver=669 side=hell ch=5-5 at=17,40 verbs=fetch,cooking chain=D step=5 later=6m reward=200 offer=s113_offer active=s113_again title="Bake for a Thousand" trophy="Three Bakers" hint="Bring a Cupcake from Hillvile and a Brimstone Bagel from Hellvile."
+@mission S113 giver=669 side=hell ch=5-5 at=17,40 verbs=fetch,cooking chain=D step=5 later=6m reward=200 offer=s113_offer active=s113_again title="Bake for a Thousand" trophy="Three Bakers" hint="Bring a Hillvile Cupcake and a Hellvile Brimstone Bagel."
 @pack sa_nana kind=side
 
 script s113_offer

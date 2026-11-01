@@ -119,7 +119,7 @@ end
 # find, timing, fetch (absorbs S160) - three nights at the Wall
 # =============================================================================
 @pack quests kind=side
-@mission S135 giver=69 side=hill ch=2-3 after=BEAT_EP2_1 at=50,12 verbs=find,timing chain=J step=2 later=6m reward=50 offer=s135_offer active=s135_again title="Three Thumps and One" hint="Three nights at the Wall with Fizz's vapor detector. Press A on every thump."
+@mission S135 giver=69 side=hill ch=2-3 after=BEAT_EP2_1 at=50,12 verbs=find,timing chain=J step=2 later=6m reward=50 offer=s135_offer active=s135_again title="Three Thumps and One" hint="Watch the Wall 3 nights with Fizz's detector. Press A on each thump."
 @pack sa_masc kind=side
 
 script s135_offer
@@ -207,7 +207,7 @@ end
 # S204 "Cocoa Through the Boards" - Lumina (76) - Ch3 (night) - deliver
 # =============================================================================
 @pack quests kind=side
-@mission S204 giver=76 side=hill ch=3-3 after=BEAT_EP3_1 at=36,42 verbs=deliver chain=J step=3 later=5m reward=30 offer=s204_offer active=s204_again title="Cocoa Through the Boards" hint="At night, carry Lumina's cocoa to the boarded window at the Towers."
+@mission S204 giver=76 side=hill ch=3-3 after=BEAT_EP3_1 at=36,42 verbs=deliver chain=J step=3 later=5m reward=30 offer=s204_offer active=s204_again title="Cocoa Through the Boards" hint="At night, take Lumina's cocoa to the boarded window (Towers)."
 @pack sa_masc kind=side
 
 script s204_offer

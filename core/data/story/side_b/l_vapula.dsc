@@ -11,7 +11,7 @@
 # pet, talk
 # =============================================================================
 @pack quests kind=side
-@mission S169 giver=999 side=park ch=5-5 at=45,30 verbs=pet chain=L step=1 later=5m reward=50 offer=s169_offer active=s169_again title="Small Weather" hint="Find the little cloud in the jar a hobby. Then introduce him to @E."
+@mission S169 giver=999 side=park ch=5-5 at=45,30 verbs=pet chain=L step=1 later=5m reward=50 offer=s169_offer active=s169_again title="Small Weather" hint="Find the jar cloud a hobby. Then introduce him to @E."
 @pack sb_cloud kind=side minutes=120
 
 script s169_offer
@@ -162,7 +162,7 @@ end
 # combat (Breach 7), dream, housing
 # =============================================================================
 @pack quests kind=side
-@mission S171 giver=999 side=park ch=5-5 at=45,30 verbs=combat,dream,housing chain=L step=3 later=8m reward=200 offer=s171_offer active=s171_again title="The Ninth Cloud" trophy="Duke of Nothing" hint="Ride Updraft's balloon to the Ninth Cloud with Vapula, one last time."
+@mission S171 giver=999 side=park ch=5-5 at=45,30 verbs=combat,dream,housing chain=L step=3 later=8m reward=200 offer=s171_offer active=s171_again title="The Ninth Cloud" trophy="Duke of Nothing" hint="Ride Updraft's balloon to the Ninth Cloud with Vapula."
 @pack sb_cloud kind=side
 
 string S171_D1 "mist, and unsent letters"
@@ -258,7 +258,7 @@ end
 # combat (the Underbelly), deliver, talk
 # =============================================================================
 @pack quests kind=side
-@mission S172 giver=729 side=hell ch=4-5 after=BEAT_EP4_6 at=38,27 verbs=combat,deliver chain=U step=1 later=6m reward=60 offer=s172_offer active=s172_again title="The Little Black Book" hint="Bring Grumbleguts's little black book back from the Underbelly. Don't read it."
+@mission S172 giver=729 side=hell ch=4-5 after=BEAT_EP4_6 at=38,27 verbs=combat,deliver chain=U step=1 later=6m reward=60 offer=s172_offer active=s172_again title="The Little Black Book" hint="Get Grumbleguts's little black book from the Underbelly. Don't read it."
 @pack sb_cloud kind=side
 
 string S172_C1 "A demon is using his book as a doorstop."
@@ -342,7 +342,7 @@ end
 # photo, talk
 # =============================================================================
 @pack quests kind=side
-@mission S173 giver=729 side=hell ch=5-5 at=38,27 verbs=photo chain=U step=2 later=6m reward=80 offer=s173_offer active=s173_again title="Profile Picture" hint="Shutterbug will take ONE photo of Grumbleguts for his dating profile."
+@mission S173 giver=729 side=hell ch=5-5 at=38,27 verbs=photo chain=U step=2 later=6m reward=80 offer=s173_offer active=s173_again title="Profile Picture" hint="Get Grumbleguts ONE good dating photo, with Shutterbug."
 @pack sb_cloud kind=side
 
 script s173_offer
@@ -435,7 +435,7 @@ end
 # combat (the Arena), cooking, talk (absorbs heart S95)
 # =============================================================================
 @pack quests kind=side
-@mission S174 giver=522 side=hell ch=5-5 at=17,18 verbs=combat,cooking chain=U step=3 later=6m reward=150 offer=s174_offer active=s174_again title="The Exes" trophy="Playing Hard to Get" hint="Oddsball bets on how many exes turn up. Feed them, or fight them."
+@mission S174 giver=522 side=hell ch=5-5 at=17,18 verbs=combat,cooking chain=U step=3 later=6m reward=150 offer=s174_offer active=s174_again title="The Exes" trophy="Playing Hard to Get" hint="Grumbleguts's exes turn up. Feed them or fight them."
 @pack sb_cloud kind=side
 
 string S174_C1 "SHRIEKRA: He flirted with my sister."

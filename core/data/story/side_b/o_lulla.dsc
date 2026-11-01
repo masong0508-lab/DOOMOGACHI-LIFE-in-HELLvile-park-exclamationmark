@@ -78,7 +78,7 @@ end
 # S158 "The Same Friend" - Miss Lulla (36) - Ch2-3 - find, deliver, dream
 # =============================================================================
 @pack quests kind=side
-@mission S158 giver=36 side=hill ch=2-3 after=BEAT_EP2_2 at=30,42 verbs=deliver,dream chain=O step=2 later=6m reward=40 offer=s158_offer active=s158_again title="The Same Friend" hint="Ask four kids about the crowned cloud they all drew. Then peek at a dream."
+@mission S158 giver=36 side=hill ch=2-3 after=BEAT_EP2_2 at=30,42 verbs=deliver,dream chain=O step=2 later=6m reward=40 offer=s158_offer active=s158_again title="The Same Friend" hint="Ask 4 kids about the crowned cloud they drew. Peek at a dream."
 @pack sb_kids kind=side
 
 string S158_D1 "a cloud with a crown"
@@ -163,7 +163,7 @@ end
 # escort, minigame (the nap-off) - absorbs heart S125
 # =============================================================================
 @pack quests kind=side
-@mission S159 giver=36 side=hill ch=4-5 after=BEAT_EP4_2 at=30,42 verbs=escort,minigame chain=O step=3 later=6m reward=100 offer=s159_offer active=s159_again title="Field Trip" trophy="Under a Minute" hint="Walk Miss Lulla's bus to the gate, then win the nap-off in Nox's chapel."
+@mission S159 giver=36 side=hill ch=4-5 after=BEAT_EP4_2 at=30,42 verbs=escort,minigame chain=O step=3 later=6m reward=100 offer=s159_offer active=s159_again title="Field Trip" trophy="Under a Minute" hint="Walk Miss Lulla's bus to the gate. Win the nap-off in Nox's chapel."
 @pack sb_kids kind=side
 
 script s159_offer
@@ -270,7 +270,7 @@ end
 # S142 "The Fountain Is Late" - Prof. Fizz (69) - Ch1 - timing, photo
 # =============================================================================
 @pack quests kind=side
-@mission S142 giver=69 side=hill ch=1-2 after=BEAT_EP1_3 at=50,12 verbs=timing,photo chain=P step=1 later=5m reward=20 offer=s142_offer active=s142_again title="The Fountain Is Late" hint="Press A when the fountain giggles, then photograph Fizz by it."
+@mission S142 giver=69 side=hill ch=1-2 after=BEAT_EP1_3 at=50,12 verbs=timing,photo chain=P step=1 later=5m reward=20 offer=s142_offer active=s142_again title="The Fountain Is Late" hint="Press A when the fountain giggles. Photograph Fizz by it."
 @pack sb_kids kind=side
 
 script s142_offer
@@ -332,7 +332,7 @@ end
 # S161 "Tiny Things" - Dr. Quark (24) - Ch3 - find, combat
 # =============================================================================
 @pack quests kind=side
-@mission S161 giver=24 side=hill ch=3-3 after=BEAT_EP3_2 at=47,13 verbs=find,combat chain=P step=2 later=6m reward=60 offer=s161_offer active=s161_again title="Tiny Things" hint="Scrape vapor samples off three cleared nests for Dr. Quark, then catch a sigh."
+@mission S161 giver=24 side=hill ch=3-3 after=BEAT_EP3_2 at=47,13 verbs=find,combat chain=P step=2 later=6m reward=60 offer=s161_offer active=s161_again title="Tiny Things" hint="Scrape vapor off 3 cleared nests for Dr. Quark. Catch a sigh."
 @pack sb_kids kind=side
 
 string S161_C1 "Catch one as it dissipates. Quark wants the sigh."
@@ -411,7 +411,7 @@ end
 # Ch4-5 - creator, housing
 # =============================================================================
 @pack quests kind=side
-@mission S162 giver=556 side=hell ch=4-5 after=BEAT_EP4_2 at=45,18 verbs=creator,housing chain=P step=3 later=6m reward=100 offer=s162_offer active=s162_again title="They All Want to Be Florists" hint="Give Dr. Frankly a florist's look in the Creator, then build the monster a stall."
+@mission S162 giver=556 side=hell ch=4-5 after=BEAT_EP4_2 at=45,18 verbs=creator,housing chain=P step=3 later=6m reward=100 offer=s162_offer active=s162_again title="Everyone's a Florist" hint="Give Dr. Frankly a florist look (Creator). Build the monster a stall."
 @pack sb_kids kind=side
 
 script s162_offer

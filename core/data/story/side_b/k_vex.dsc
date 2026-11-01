@@ -125,7 +125,7 @@ end
 # S138 "Closet Space" - Vex (666) - Ch3 after Ep 3.1 - housing, fetch, talk
 # =============================================================================
 @pack quests kind=side
-@mission S138 giver=666 side=hill ch=3-3 after=BEAT_EP3_1 at=54,37 verbs=housing,fetch chain=K step=2 later=6m reward=40 offer=s138_offer active=s138_again title="Closet Space" hint="Vex is hiding in your closet. Bring him Pixie Sugar (his 'cotton candy')."
+@mission S138 giver=666 side=hill ch=3-3 after=BEAT_EP3_1 at=54,37 verbs=housing,fetch chain=K step=2 later=6m reward=40 offer=s138_offer active=s138_again title="Closet Space" hint="Vex is in your closet. Bring him Pixie Sugar ('cotton candy')."
 @pack sb_vex kind=side
 
 script s138_offer
@@ -208,7 +208,7 @@ end
 # S139 "Exit Interview" - Vex (666) + Haze (709) - Ch4 - fetch, housing
 # =============================================================================
 @pack quests kind=side
-@mission S139 giver=666 side=hill ch=4-5 after=BEAT_EP4_1 at=54,37 verbs=fetch,housing chain=K step=3 later=6m reward=100 offer=s139_offer active=s139_again title="Exit Interview" hint="Bring 3 Soap to air out Cloud Nine, then redecorate it as the Fresh Air Lounge."
+@mission S139 giver=666 side=hill ch=4-5 after=BEAT_EP4_1 at=54,37 verbs=fetch,housing chain=K step=3 later=6m reward=100 offer=s139_offer active=s139_again title="Exit Interview" hint="Bring 3 Soap to air out Cloud Nine. Make it the Fresh Air Lounge."
 # S139 is its own pack: Haze's "Ten years I..." is one of the four the game
 # allows (SF sec.7.11), and textpack.py allows it only in packs named s139.
 @pack s139 kind=side minutes=25
@@ -313,7 +313,7 @@ end
 # S140 "The Bubble Machine" - Vex (666) - Ch5 - weld, minigame, concert
 # =============================================================================
 @pack quests kind=side
-@mission S140 giver=666 side=hill ch=5-5 at=54,37 verbs=weld,minigame,concert chain=K step=4 later=8m reward=100 offer=s140_offer active=s140_again title="The Bubble Machine" trophy="Terrible, Actually" hint="Weld Vex's rig into a bubble machine, test it at the Fun Fair, then run it on stage."
+@mission S140 giver=666 side=hill ch=5-5 at=54,37 verbs=weld,minigame,concert chain=K step=4 later=8m reward=100 offer=s140_offer active=s140_again title="The Bubble Machine" trophy="Terrible, Actually" hint="Weld Vex a bubble machine. Test it at the Fun Fair. Run it on stage."
 @pack sb_vex kind=side
 
 script s140_offer

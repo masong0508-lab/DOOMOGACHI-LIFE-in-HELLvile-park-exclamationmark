@@ -6,7 +6,7 @@
 # S143 "Population: 1000" - Mayor Giggs (0) - Ch5 - fetch, minigame
 # =============================================================================
 @pack quests kind=side
-@mission S143 giver=0 side=hill ch=5-5 at=29,8 verbs=fetch,minigame later=7m reward=100 offer=s143_offer active=s143_again title="Population: 1000" trophy="Census" hint="Bring the Mayor pink from Rainbow Ewe and red from Stencilla, over the gate."
+@mission S143 giver=0 side=hill ch=5-5 at=29,8 verbs=fetch,minigame later=7m reward=100 offer=s143_offer active=s143_again title="Population: 1000" trophy="Census" hint="Get the Mayor pink paint from Rainbow Ewe, red from Stencilla."
 @pack sa_solo1 kind=side minutes=60
 
 script s143_offer
@@ -78,7 +78,7 @@ end
 # (absorbs heart S65 as its Ch2 variant)
 # =============================================================================
 @pack quests kind=side
-@mission S144 giver=48 side=hill ch=1-5 after=BEAT_EP1_3 at=40,50 verbs=fishing later=6m reward=0 offer=s144_offer active=s144_again title="Fishing for Compliments" hint="Fish off the end of the pier until the Captain's tagged fish bites."
+@mission S144 giver=48 side=hill ch=1-5 after=BEAT_EP1_3 at=40,50 verbs=fishing later=6m reward=0 offer=s144_offer active=s144_again title="Fishing for Compliments" hint="Fish off the pier until the Captain's tagged fish bites."
 @pack sa_solo1 kind=side
 
 script s144_offer
@@ -202,7 +202,7 @@ end
 # (absorbs heart S59's "STAFF" beat)
 # =============================================================================
 @pack quests kind=side
-@mission S146 giver=64 side=hill ch=2-2 at=6,42 verbs=minigame,find later=5m reward=30 offer=s146_offer active=s146_again title="Whack-a-Nothing" hint="Play the Whack-an-Imp, on and off. Then find where its plug goes."
+@mission S146 giver=64 side=hill ch=2-2 at=6,42 verbs=minigame,find later=5m reward=30 offer=s146_offer active=s146_again title="Whack-a-Nothing" hint="Play Whack-an-Imp on and off. Then find where its plug goes."
 @pack sa_solo1 kind=side
 
 script s146_offer
@@ -269,7 +269,7 @@ end
 # S147 "Say Cheese (Again)" - Shutterbug (46) - Ch2-3 - photo, find
 # =============================================================================
 @pack quests kind=side
-@mission S147 giver=46 side=hill ch=2-3 at=37,24 verbs=photo,find later=6m reward=50 offer=s147_offer active=s147_again title="Say Cheese (Again)" hint="Shoot Shutterbug's 'before' set of the town: your house first, the Wall last."
+@mission S147 giver=46 side=hill ch=2-3 at=37,24 verbs=photo,find later=6m reward=50 offer=s147_offer active=s147_again title="Say Cheese (Again)" hint="Shoot Shutterbug's 'before' photos: your house first, Wall last."
 @pack sa_solo2 kind=side minutes=60
 
 script s147_offer
@@ -331,7 +331,7 @@ end
 # S148 "Lullaby for the Wall" - Maestro Mew (3) - Ch2-3 - concert, studio, fetch
 # =============================================================================
 @pack quests kind=side
-@mission S148 giver=3 side=hill ch=2-3 at=27,36 verbs=find,concert later=6m reward=40 offer=s148_offer active=s148_again title="Lullaby for the Wall" hint="Fetch the church bell, write four bars with Mew, play them with Coo."
+@mission S148 giver=3 side=hill ch=2-3 at=27,36 verbs=find,concert later=6m reward=40 offer=s148_offer active=s148_again title="Lullaby for the Wall" hint="Fetch the church bell. Write 4 bars with Mew. Play them with Coo."
 @pack sa_solo2 kind=side
 
 script s148_offer

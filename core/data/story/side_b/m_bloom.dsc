@@ -8,7 +8,7 @@
 # S151 "Cold Hands" - Dr. Bloom (111) - Ch1-2 - fetch, deliver, talk
 # =============================================================================
 @pack quests kind=side
-@mission S151 giver=111 side=hill ch=1-2 after=BEAT_EP1_3 at=17,23 verbs=fetch,deliver chain=M step=1 later=5m reward=30 offer=s151_offer active=s151_again title="Cold Hands" hint="Fetch a hot water bottle from Lather's for Dr. Bloom. Don't run."
+@mission S151 giver=111 side=hill ch=1-2 after=BEAT_EP1_3 at=17,23 verbs=fetch,deliver chain=M step=1 later=5m reward=30 offer=s151_offer active=s151_again title="Cold Hands" hint="Fetch Dr. Bloom a hot water bottle from Lather's. Don't run."
 @pack sb_bloom kind=side minutes=110
 
 script s151_offer
@@ -89,7 +89,7 @@ end
 # S152 "Night Clinic" - Dr. Bloom (111) - Ch3 - escort, combat, deliver
 # =============================================================================
 @pack quests kind=side
-@mission S152 giver=111 side=hill ch=3-3 after=BEAT_EP3_1 at=17,23 verbs=escort,combat,deliver chain=M step=2 later=6m reward=60 offer=s152_offer active=s152_again title="Night Clinic" hint="Walk Dr. Bloom through the plaza at night: three house calls, then demons."
+@mission S152 giver=111 side=hill ch=3-3 after=BEAT_EP3_1 at=17,23 verbs=escort,combat,deliver chain=M step=2 later=6m reward=60 offer=s152_offer active=s152_again title="Night Clinic" hint="Walk Dr. Bloom round the plaza at night: 3 calls, then demons."
 @pack sb_bloom kind=side
 
 string S152_C1 "Bloom holds the lantern. Her hands don't shake."
@@ -194,7 +194,7 @@ end
 # housing, fetch, weld, talk
 # =============================================================================
 @pack quests kind=side
-@mission S153 giver=730 side=hell ch=4-5 after=BEAT_EP4_1 at=3,33 verbs=fetch,weld,housing chain=M step=3 later=6m reward=120 offer=s153_offer active=s153_again title="A Clinic With Two Doors" trophy="Cold Hands, Warm Heart" hint="Bring Graveley 4 Scrap and 2 Medicine. Rivet welds a door; you furnish."
+@mission S153 giver=730 side=hell ch=4-5 after=BEAT_EP4_1 at=3,33 verbs=fetch,weld,housing chain=M step=3 later=6m reward=120 offer=s153_offer active=s153_again title="A Clinic With Two Doors" trophy="Cold Hands, Warm Heart" hint="Bring Graveley 4 Scrap and 2 Medicine. Then furnish the clinic."
 @pack sb_bloom kind=side
 
 script s153_offer
@@ -361,7 +361,7 @@ end
 # after Ep 3.5 - timing, find
 # =============================================================================
 @pack quests kind=side
-@mission S155 giver=71 side=hill ch=3-4 after=BEAT_EP3_5 at=21,18 verbs=timing,find chain=N step=2 later=6m reward=60 offer=s155_offer active=s155_again title="No Punchlines" hint="Three timing sessions with Hattie, then find her old notebook at the cafe."
+@mission S155 giver=71 side=hill ch=3-4 after=BEAT_EP3_5 at=21,18 verbs=timing,find chain=N step=2 later=6m reward=60 offer=s155_offer active=s155_again title="No Punchlines" hint="Practise timing with Hattie 3 times. Find her old notebook (cafe)."
 @pack sb_bloom kind=side
 
 script s155_offer
@@ -444,7 +444,7 @@ end
 # timing, talk
 # =============================================================================
 @pack quests kind=side
-@mission S156 giver=501 side=hell ch=4-5 after=BEAT_EP4_2 at=16,19 verbs=timing chain=N step=3 later=7m reward=150 offer=s156_offer active=s156_again title="The Hellvile Set" trophy="Tough Room" hint="Rehearse Honkers and Hattie's double act, then play the comedy tent."
+@mission S156 giver=501 side=hell ch=4-5 after=BEAT_EP4_2 at=16,19 verbs=timing chain=N step=3 later=7m reward=150 offer=s156_offer active=s156_again title="The Hellvile Set" trophy="Tough Room" hint="Rehearse Honkers and Hattie's double act. Play the comedy tent."
 @pack sb_bloom kind=side
 
 script s156_offer

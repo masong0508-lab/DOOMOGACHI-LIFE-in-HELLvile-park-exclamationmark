@@ -13,7 +13,7 @@
 # S100 "A Bed for Mr. Flops" - Pip (42) - Ch1 after Ep 1.3 - fetch, housing
 # =============================================================================
 @pack quests kind=side
-@mission S100 giver=42 side=hill ch=1-2 after=BEAT_EP1_3 at=10,47 verbs=fetch,housing chain=A step=1 later=5m reward=30 offer=s100_offer active=s100_again title="A Bed for Mr. Flops" hint="Bring Pip a Plushie: Nana will sew Mr. Flops a bed for your house."
+@mission S100 giver=42 side=hill ch=1-2 after=BEAT_EP1_3 at=10,47 verbs=fetch,housing chain=A step=1 later=5m reward=30 offer=s100_offer active=s100_again title="A Bed for Mr. Flops" hint="Bring Pip a Plushie. Nana sews Mr. Flops a bed for your house."
 @pack sa_pip kind=side minutes=95
 
 script s100_offer
@@ -85,7 +85,7 @@ end
 # S101 "Night Patrol" - Pip (42) - Ch2 - escort, photo, timing
 # =============================================================================
 @pack quests kind=side
-@mission S101 giver=42 side=hill ch=2-2 at=10,47 verbs=escort,photo chain=A step=2 later=4m reward=40 offer=s101_offer active=s101_again title="Night Patrol" hint="Walk Pip to the lamp post by the Wall at night, then take the 'proof' photo."
+@mission S101 giver=42 side=hill ch=2-2 at=10,47 verbs=escort,photo chain=A step=2 later=4m reward=40 offer=s101_offer active=s101_again title="Night Patrol" hint="At night, walk Pip to the lamp by the Wall. Snap the 'proof' photo."
 @pack sa_pip kind=side
 
 script s101_offer
@@ -156,7 +156,7 @@ end
 # combat (Breach 4), pet, weld, housing
 # =============================================================================
 @pack quests kind=side
-@mission S102 giver=42 side=hill ch=3-4 after=BEAT_EP3_3 at=10,47 verbs=combat,pet,weld,housing chain=A step=3 later=6m reward=80 offer=s102_offer active=s102_again title="Flops the 1st Rides Again" hint="Find Mr. Flops's twin in the Plushie Factory (Breach 4); Rivet can mend him."
+@mission S102 giver=42 side=hill ch=3-4 after=BEAT_EP3_3 at=10,47 verbs=combat,pet,weld,housing chain=A step=3 later=6m reward=80 offer=s102_offer active=s102_again title="Flops the 1st Rides Again" hint="Find Mr. Flops's twin in the Plushie Factory (Breach 4). Rivet mends him."
 @pack sa_pip kind=side
 
 string S102_C1 "Flops the 1st: somewhere in the Factory."
@@ -219,7 +219,7 @@ end
 # S124 "Where Was I?" - Grampy Bean (88) - Ch1-2 - find, talk, pet
 # =============================================================================
 @pack quests kind=side
-@mission S124 giver=88 side=hill ch=1-2 after=BEAT_EP1_4 at=40,47 verbs=find,pet chain=G step=1 later=5m reward=20 offer=s124_offer active=s124_again title="Where Was I?" hint="Help @E sniff out Grampy's glasses, trowel and seed packet."
+@mission S124 giver=88 side=hill ch=1-2 after=BEAT_EP1_4 at=40,47 verbs=find,pet chain=G step=1 later=5m reward=20 offer=s124_offer active=s124_again title="Where Was I?" hint="Let @E sniff out Grampy's glasses, trowel and seeds."
 @pack sa_pip kind=side
 
 script s124_offer
@@ -284,7 +284,7 @@ end
 # S125 "The Face Tomatoes" - Grampy Bean (88) - Ch3 after Ep 3.5 (saved)
 # =============================================================================
 @pack quests kind=side
-@mission S125 giver=88 side=hill ch=3-3 after=BEAT_EP3_5 at=40,47 verbs=fetch,find chain=G step=2 later=5m reward=50 offer=s125_offer active=s125_again title="The Face Tomatoes" hint="Pick Grampy's eyed tomatoes; bury the rest by the Wall, facing Hellvile."
+@mission S125 giver=88 side=hill ch=3-3 after=BEAT_EP3_5 at=40,47 verbs=fetch,find chain=G step=2 later=5m reward=50 offer=s125_offer active=s125_again title="The Face Tomatoes" hint="Pick Grampy's face tomatoes. Bury the rest by the Wall, facing Hellvile."
 @pack sa_pip kind=side
 
 script s125_offer
@@ -340,7 +340,7 @@ end
 # fetch, housing (the Park Plot), talk
 # =============================================================================
 @pack quests kind=side
-@mission S126 giver=525 side=hell ch=4-5 at=41,35 verbs=fetch,housing chain=G step=3 later=8m reward=100 offer=s126_offer active=s126_again title="Two Gardens" trophy="Green Thumbs" hint="Bring Sootkin Flowers from Hillvile for the shared bed on the old Wall line."
+@mission S126 giver=525 side=hell ch=4-5 at=41,35 verbs=fetch,housing chain=G step=3 later=8m reward=100 offer=s126_offer active=s126_again title="Two Gardens" trophy="Green Thumbs" hint="Bring Sootkin Flowers for the shared bed on the old Wall line."
 @pack sa_pip kind=side
 
 script s126_offer

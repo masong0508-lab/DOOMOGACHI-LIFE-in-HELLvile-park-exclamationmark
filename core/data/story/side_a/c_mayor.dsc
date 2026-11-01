@@ -7,7 +7,7 @@
 # S196 "Flowers for a Cloud" - Mayor Giggs (0) - Ch1 - fetch, deliver
 # =============================================================================
 @pack quests kind=side
-@mission S196 giver=0 side=hill ch=1-2 after=BEAT_EP1_2 at=29,8 verbs=fetch,deliver chain=C step=1 later=6m reward=30 offer=s196_offer active=s196_again title="Flowers for a Cloud" hint="Bring Flowers to the little grave in the graveyard for the Mayor."
+@mission S196 giver=0 side=hill ch=1-2 after=BEAT_EP1_2 at=29,8 verbs=fetch,deliver chain=C step=1 later=6m reward=30 offer=s196_offer active=s196_again title="Flowers for a Cloud" hint="Put Flowers on the little grave in the graveyard for the Mayor."
 @pack sa_mayor kind=side minutes=100
 
 script s196_offer
@@ -65,7 +65,7 @@ end
 # S107 "Speech Notes" - Mayor Giggs (0) - Ch1 - find, talk
 # =============================================================================
 @pack quests kind=side
-@mission S107 giver=0 side=hill ch=1-2 after=BEAT_EP1_4 at=29,8 verbs=find chain=C step=2 later=5m reward=20 offer=s107_offer active=s107_again title="Speech Notes" hint="Find the Mayor's speech pages: the fountain, the bakery, Mascotty."
+@mission S107 giver=0 side=hill ch=1-2 after=BEAT_EP1_4 at=29,8 verbs=find chain=C step=2 later=5m reward=20 offer=s107_offer active=s107_again title="Speech Notes" hint="Find the Mayor's 3 speech pages: fountain, bakery, Mascotty."
 @pack sa_mayor kind=side
 
 script s107_offer
@@ -128,7 +128,7 @@ end
 # S108 "The Locked Drawer" - Mayor Giggs (0) - Ch2 - find, fetch, talk
 # =============================================================================
 @pack quests kind=side
-@mission S108 giver=0 side=hill ch=2-2 after=BEAT_EP2_1 at=29,8 verbs=fetch,deliver chain=C step=3 later=5m reward=40 offer=s108_offer active=s108_again title="The Locked Drawer" hint="Keysie has the spare key to the Mayor's drawer. She likes Coffee."
+@mission S108 giver=0 side=hill ch=2-2 after=BEAT_EP2_1 at=29,8 verbs=fetch,deliver chain=C step=3 later=5m reward=40 offer=s108_offer active=s108_again title="The Locked Drawer" hint="Get the Mayor's drawer key from Keysie. She takes Coffee."
 @pack sa_mayor kind=side
 
 script s108_offer
@@ -190,7 +190,7 @@ end
 # S197 "The Plaque" - Mayor Giggs (0) - Ch2 - fetch, find
 # =============================================================================
 @pack quests kind=side
-@mission S197 giver=0 side=hill ch=2-2 after=BEAT_EP2_3 at=29,8 verbs=fetch,find chain=C step=4 later=6m reward=30 offer=s197_offer active=s197_again title="The Plaque" hint="Polish the Wall's foundation plaque with Soap. For appearances."
+@mission S197 giver=0 side=hill ch=2-2 after=BEAT_EP2_3 at=29,8 verbs=fetch,find chain=C step=4 later=6m reward=30 offer=s197_offer active=s197_again title="The Plaque" hint="Polish the Wall's plaque with Soap. For appearances."
 @pack sa_mayor kind=side
 
 script s197_offer
@@ -255,7 +255,7 @@ end
 # S198 "Tea for a Tic" - Mayor Giggs (0) - Ch3 (the church) - fetch, talk
 # =============================================================================
 @pack quests kind=side
-@mission S198 giver=0 side=hill ch=3-3 after=BEAT_EP3_2 at=29,8 verbs=fetch chain=C step=5 later=5m reward=40 offer=s198_offer active=s198_again title="Tea for a Tic" hint="Bring the Mayor something warm to drink. Nana says tea. Coffee will do."
+@mission S198 giver=0 side=hill ch=3-3 after=BEAT_EP3_2 at=29,8 verbs=fetch chain=C step=5 later=5m reward=40 offer=s198_offer active=s198_again title="Tea for a Tic" hint="Bring the Mayor a warm drink. Nana says tea. Coffee will do."
 @pack sa_mayor kind=side
 
 script s198_offer
@@ -304,7 +304,7 @@ end
 # escort, talk, cooking
 # =============================================================================
 @pack quests kind=side
-@mission S109 giver=0 side=hill ch=4-5 after=BEAT_EP4_6 at=29,8 verbs=cooking,deliver chain=C step=6 later=8m reward=150 offer=s109_offer active=s109_again title="The Apology Tour" hint="Bake with the Mayor, then take his first apology cupcake to Tallyworn."
+@mission S109 giver=0 side=hill ch=4-5 after=BEAT_EP4_6 at=29,8 verbs=cooking,deliver chain=C step=6 later=8m reward=150 offer=s109_offer active=s109_again title="The Apology Tour" hint="Bake with the Mayor. Take his apology cupcake to Tallyworn."
 @pack sa_mayor kind=side
 
 script s109_offer

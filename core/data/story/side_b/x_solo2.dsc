@@ -10,7 +10,7 @@
 # fetch, weld, find
 # =============================================================================
 @pack quests kind=side
-@mission S187 giver=547 side=hell ch=5-5 at=26,41 verbs=fetch,weld,find later=6m reward=60 offer=s187_offer active=s187_again title="The Sin Bin" hint="Bring Mopsworth 3 Scrap for a bigger bin. Find the sin bubbles in Hellvile."
+@mission S187 giver=547 side=hell ch=5-5 at=26,41 verbs=fetch,weld,find later=6m reward=60 offer=s187_offer active=s187_again title="The Sin Bin" hint="Bring Mopsworth 3 Scrap. Find Hellvile's sin bubbles."
 # S187 is its own pack: Mopsworth's "Ten years I..." (SF sec.7.11).
 @pack s187 kind=side minutes=30
 
@@ -103,7 +103,7 @@ end
 # fishing, studio, concert
 # =============================================================================
 @pack quests kind=side
-@mission S191 giver=768 side=hell ch=5-5 at=31,42 verbs=fishing,concert later=7m reward=80 offer=s191_offer active=s191_again title="Sulfur Shanties" hint="The Lake of Fire's fish weep when Barnaby sings. Write xyr a happy shanty."
+@mission S191 giver=768 side=hell ch=5-5 at=31,42 verbs=fishing,concert later=7m reward=80 offer=s191_offer active=s191_again title="Sulfur Shanties" hint="Write Barnaby a happy shanty so the Lake of Fire's fish stop crying."
 @pack sb_solo2 kind=side minutes=110
 
 script s191_offer
@@ -175,7 +175,7 @@ end
 # timing
 # =============================================================================
 @pack quests kind=side
-@mission S192 giver=514 side=hell ch=5-5 at=23,18 verbs=deliver,escort,timing later=6m reward=50 offer=s192_offer active=s192_again title="Number Nine" hint="Number Nine has called 'number nine' for eighty years. Find ticket nine."
+@mission S192 giver=514 side=hell ch=5-5 at=23,18 verbs=deliver,escort,timing later=6m reward=50 offer=s192_offer active=s192_again title="Number Nine" hint="Find ticket nine. Number Nine has called it for 80 years."
 @pack sb_solo2 kind=side
 
 script s192_offer
@@ -255,7 +255,7 @@ end
 # pet, minigame, photo
 # =============================================================================
 @pack quests kind=side
-@mission S195 giver=12 side=park ch=5-5 at=24,28 verbs=pet,minigame,photo later=10m reward=200 offer=s195_offer active=s195_again title="Glowbug's Constellation" trophy="Constellation" hint="Herd a thousand fireflies with @E's glow, into a shape over the Mingle."
+@mission S195 giver=12 side=park ch=5-5 at=24,28 verbs=pet,minigame,photo later=10m reward=200 offer=s195_offer active=s195_again title="Glowbug's Constellation" trophy="Constellation" hint="Herd fireflies with @E's glow into a shape over the Mingle."
 @pack sb_solo2 kind=side
 
 script s195_offer
@@ -320,7 +320,7 @@ end
 # find, timing (grafted heart S87; the whole quest is the scare: no gag)
 # =============================================================================
 @pack quests kind=side
-@mission S211 giver=426 side=hill ch=3-3 after=BEAT_EP3_2 at=10,28 verbs=find,timing later=6m reward=50 offer=s211_offer active=s211_again title="Thirteen Bells" hint="Bellwether's saved, but the tower rings backwards at midnight. Go and listen."
+@mission S211 giver=426 side=hill ch=3-3 after=BEAT_EP3_2 at=10,28 verbs=find,timing later=6m reward=50 offer=s211_offer active=s211_again title="Thirteen Bells" hint="The bell tower rings backwards at midnight. Go and listen."
 @pack sb_solo2 kind=side
 
 script s211_offer
@@ -401,7 +401,7 @@ end
 # (grafted heart S93)
 # =============================================================================
 @pack quests kind=side
-@mission S212 giver=43 side=hill ch=3-3 after=BEAT_EP3_2 at=23,40 verbs=combat later=5m reward=50 offer=s212_offer active=s212_again title="The Hug Audit" hint="Hugsley is hugging again. A bit too well. Watch him hug a demon."
+@mission S212 giver=43 side=hill ch=3-3 after=BEAT_EP3_2 at=23,40 verbs=combat later=5m reward=50 offer=s212_offer active=s212_again title="The Hug Audit" hint="Hugsley's hugs are too good again. Watch him hug a demon."
 @pack sb_solo2 kind=side
 
 string S212_C1 "Hugsley hugs. Things pop."
