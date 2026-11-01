@@ -17,8 +17,8 @@
  *                            DC ports (X0 bits)
  *   plat_config_read/write   U0 (native file), U1g (GBA flash sector),
  *                            U1p (PS1 memory card file)
- *   plat_option_changed      U0 calls it from opt_set; U8 (GBA 3D quality),
- *                            DC display packages implement it
+ *   plat_option_changed      U0 calls it from opt_set; U8 (GBA, for G7's
+ *                            OPT_3D_FAST), DC display packages implement it
  *   plat_test_flags          U0/U5 (native runner, harnesses)
  *   plat_hold_frame          U4 (held-frame pause backdrop)
  *   plat_pack_blob/read      E0 declares the pack format (pack.h, which
@@ -33,21 +33,25 @@
 /* ---- features ------------------------------------------------------------
  * What this platform can do beyond platform.h, as a bit mask. Option rows,
  * menu entries and content that depend on a feature check its bit; nothing
- * may assume a platform by name. Bits are append-only. */
+ * may assume a platform by name. Bits are append-only.
+ * There is ONE 3D quality option: G7's OPT_3D_FAST (town.h, id < 64).
+ * U0 moves its row test (today fp_options.c's
+ * plat_name()[0] == 'G') to PLATF_3D_QUALITY and may mirror the value into
+ * the machine config record; no package adds a second 3D quality OPT_*. */
 #define PLATF_VMU_LCD     (1u << 0)   /* a second 48x32 1bpp status screen (DC VMU) */
 #define PLATF_RUMBLE      (1u << 1)   /* a rumble motor (DC Puru Puru, PS1 DualShock) */
 #define PLATF_POINTER     (1u << 2)   /* a mouse / pointer                          */
 #define PLATF_KEYBOARD    (1u << 3)   /* a keyboard for text entry                  */
 #define PLATF_MULTIPAD    (1u << 4)   /* more than one pad (party modes)            */
 #define PLATF_EXCLUSIVE   (1u << 5)   /* platform-exclusive content (DC side area)  */
-#define PLATF_3D_QUALITY  (1u << 6)   /* the "Faster / Better 3D" option means something */
+#define PLATF_3D_QUALITY  (1u << 6)   /* G7's "3D: Faster / Better" row (OPT_3D_FAST) means something */
 #define PLATF_DC_DISPLAY  (1u << 7)   /* DC video / picture / HD text option rows   */
 #define PLATF_CONFIG      (1u << 8)   /* plat_config_read/write persist (machine settings) */
 #define PLATF_ALL_KNOWN   0x1FFu
 uint32_t plat_features(void);
 
 /* ---- machine config record -----------------------------------------------
- * One small record of machine-wide settings (language, volumes, 3D quality,
+ * One small record of machine-wide settings (language, volumes, OPT_3D_FAST,
  * Mature...; its layout belongs to U0's options_store.c) kept outside the
  * save slots: a GBA flash sector, a PS1 memory card file, a native file.
  * read: copies at most `cap` bytes into dst and returns the number of
@@ -64,7 +68,7 @@ int  plat_config_write(const uint8_t *src, uint32_t len);
 
 /* ---- option side effects ---------------------------------------------------
  * opt_set (U0) tells the platform about the options a platform applies
- * itself (OPT_3D_QUALITY, the DC display rows, vibration). `opt` is an
+ * itself (OPT_3D_FAST, the DC display rows, vibration). `opt` is an
  * OPT_* id (town.h), `value` its new value. Default: nothing. */
 void plat_option_changed(int opt, int value);
 

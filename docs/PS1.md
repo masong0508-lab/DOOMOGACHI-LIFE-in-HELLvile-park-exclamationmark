@@ -409,6 +409,23 @@ target for LS0 was missed by 1.1 KB, all of it child-safety code: sweep
 0.5 KB, gate + stage helpers 0.6 KB, migration 0.3 KB, codec 0.2 KB).
 The overlay slot keeps its size (166 KB, now from `0x801c7c60`).
 
+K0 (the shared registry, LIFESIM_PLAN R1-R7 and section 6): resident
++544 B, all of it resident by design (no overlay group owns these files):
+the six placeholder scenes (`weak_scenes.c`: 6 `const DoomoScene` + names
++ the two tiny entry points, about 450 B of text and rodata), the five
+weak NULL save-chunk pointers in `.sdata` (20 B) and `save_budget.c`'s
+snapshot growing with the registry (7 -> 12 slots: `.bss` +24 B). The
+`plat_ext.h` defaults are discarded by `--gc-sections` until something
+calls them. Measured against LS0's tree (`a29e375`) built the same way,
+the disc ends at `0x801e7e80` instead of `0x801e7c60`, **98,688 B below
+the stack top** (-544 B; 32 KB above the 64 KB reserve, 24 KB above the
+72 KB plan gate and 2,432 B above the 94 KB combined K0 gate); the slot
+keeps its size (166 KB, it only moves up by the same 544 B) and `OVL.BIN`
+keeps its 24 groups (1,302 KB unpacked; 948 -> 950 KB packed, the groups
+relinked at the moved slot). On `d642736` (before LS0) the same K0 cost
+528 B. This is 288 B above the plan's 256 B estimate for K0 (the
+placeholder scenes' code and names).
+
 The biggest remaining consumers of RAM: resident core code (portraits,
 UI, sim, story engine, ...) ~650 KB, merged string literals of resident
 code ~110 KB, `doomo_town` 107 KB, the display lists 112 KB + OTs 24 KB,
