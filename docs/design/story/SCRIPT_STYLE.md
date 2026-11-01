@@ -2,8 +2,12 @@
 
 **Status: DRAFT for the user's approval (P0, 1 November 2026; revised for
 the user's correction: the game's indie-game parody stays the backbone,
-and "the quiet part out loud" is one tool, §0, §1.0, §1.1).** Every
-package that rewrites game text (W1-W19, C1, L7, X7) writes to this guide.
+and "the quiet part out loud" is one tool, §0, §1.0, §1.1). Register
+raised to PG-21 by package E5 (1 November 2026: DECISIONS "REGISTER RAISED
+AGAIN", "NUDITY", "MATURE ART OVERRIDE", "RESERVED SLOTS" and the LIFESIM
+answers 5, 7, 15, 20-24; §0, §1.1, §5, §5b, §7, §10-§12).** Every
+package that rewrites game text (W1-W19, C1, L7, X7, and the PG-21
+punch-ups E6a-E6d) writes to this guide.
 Locked lines, ids and test pins are in [`SCRIPT_LOCKS.md`](SCRIPT_LOCKS.md);
 the tools are in [`docs/STORY_ENGINE.md`](../../STORY_ENGINE.md#script-tools).
 
@@ -31,8 +35,12 @@ the laughs come from that collision (§1.0): **the cute-vs-brutal switch**,
 tutorials and pixels, Grumbleguts' **gag book**, and the running gags. They
 land as **abrupt, laugh-out-loud comedy**: hard cuts, absurd escalation,
 and punchlines that arrive from nowhere and leave before you can recover.
-It is **edgy but PG-13**: mean, quick, a little filthy around the edges,
-never explicit.
+It is **PG-21: adult comedy** (§5): mean, quick, crude and raunchy where
+adults are concerned, suggestive up to an implied fade-to-black, and
+**never explicit**. Swearing stays **sparse**; the adult edge is in the
+themes, the innuendo and the raunch, not in the swear count. Nothing adult
+ever comes near a kid, a teen or the pet (R3), and a machine checks that
+(`make -C core story-check`, §5).
 
 On top of that backbone the rewrite adds the user's three references (§1):
 a **faster, cruder comic register**, a **cute surface that cracks for a
@@ -132,6 +140,13 @@ and never a scene's only joke.
 * **The hard cut.** The scene does not wind down. It stops. `[SCRATCH]`,
   `{r}`, `[MUTE]`, a smash to the next box. The button is the last thing
   said and nobody reacts to it.
+* **Raunch, for adults (PG-21).** The register may go crude and
+  suggestive wherever only adults are in the scene (§5 R2): a come-on that
+  is really a joke about the speaker, a double meaning on a game word, a
+  hangover played as a boss fight. It is the same speed and the same
+  sincerity: one box, the dirty turn word last, and the scene moves on.
+  Raunch is seasoning on the game's own jokes (§1.0), not a replacement
+  for them; a scene whose only joke is innuendo needs a game-y joke too.
 
 ### 1.2 The cute surface (Poochee & Pansy)
 
@@ -321,38 +336,129 @@ seasoning, not a course.
 
 ---------------------------------------------------------------------------
 
-## 5. Register: edgy, PG-13
+## 5. Register: PG-21
 
-DECISIONS: **edgy but PG-13** (sharp and mean, mild swearing, innuendo
-limited to Grumbleguts and a few adults). This **overrides** the
-"PG-13-to-R, the odd f-bomb on BRUTAL" line in `GRUMBLEGUTS_TONE.md`: there
-are no f-bombs, on any setting.
+DECISIONS: **PG-21**, adult-oriented comedy (overrides the earlier
+"edgy but PG-13" and "PG-16" lines): crude and raunchy humour, adult
+innuendo, suggestive adult-only romance and "sexy" endings that stop at
+an implied fade-to-black. The user's later answer 23 sets the swearing:
+**sparse**. PG-21 is mostly about adult themes, innuendo and raunch, not
+about a swear count. The hard limits never move: no explicit sex acts, no
+nudity of genitals, **adults only**, minors never in suggestive content,
+no real-world hate (§5b, §12). This guide **overrides** the
+"PG-13-to-R, the odd f-bomb on BRUTAL" line in `GRUMBLEGUTS_TONE.md`: the
+f-word is rationed for the whole game (R1), on every setting, and the gore
+setting never changes the words.
 
-* **R1. Swearing.** Allowed, rarely and for rhythm: *damn, hell, ass,
-  crap, sucks, screw it, pissed, bastard* (adults only, and *bastard* at
-  most a handful of times in the game). Not allowed: the f-word, the
-  s-word, slurs of any kind, sexual swear words. Hellvile's own oaths are
-  better jokes anyway ("brimstone and BISCUITS").
-* **R2. Innuendo.** Grumbleguts is the game's innuendo character
-  (`GRUMBLEGUTS_TONE.md`: teasing first, implication only, cartoon-modest,
-  consensual, every suggestive beat ends on a joke or a deflation). A few
-  other adults may land **one** innuendo line a scene: Vex, Hattie Haha,
-  Kevin, Dr. Bloom and the Hellvile bar crowd. Nobody else.
-* **R3. Never with, near or about kids or teens.** Pip, Wisp, the
-  daycare and imp kids, Miss Lulla's kids, the storybook kids: no
-  innuendo, no adult swearing, no adult joke in their scenes or about
-  them. `test_side_table.c` checks part of this; reviewers check the rest
-  by reading.
+* **R1. Swearing: sparse, adults only, for rhythm.**
+  * Everyday swears (*damn, hell* as an oath, *ass, crap, pissed, sucks,
+    screw it*): an adult may use one when the line needs the punch, about
+    one a scene at most. Hellvile's own oaths are still the better joke
+    ("brimstone and BISCUITS").
+  * *bastard*: a handful in the whole game (at most 5).
+  * **The s-word: a few times in the whole game** (at most 3). Each one
+    is a chosen moment, not a habit.
+  * **The f-word: exactly twice in the whole game.** Once **cut off
+    mid-word** (the hard cut eats it: *"Oh, f-"* `[SCRATCH]`), and once **in
+    full, near the end of the game**, where it lands as the biggest laugh
+    of its scene. The ending packages (E3, E4, E6d) pick the two moments and
+    say so in their commit messages.
+  * Never: slurs of any kind, real-world hate, swear words that name
+    genitals (N2), and any swearing in a kid's or teen's scene (R3).
+  * `register.tsv`'s caps hold these counts over the whole game (the lint's
+    rule C1; the cut-off f-word is a reviewer's check, no list can see it).
+* **R2. Crude adult innuendo, for any adult.** Any adult may be crude,
+  bawdy or suggestive, about adults and to adults (the player included,
+  premade adults included: answer 24, any premade adult is datable).
+  Grumbleguts stays the game's lead come-on (`GRUMBLEGUTS_TONE.md`: slow
+  purr, pet names, every sincere beat undercut); Vex, Hattie Haha, Kevin,
+  Dr. Bloom and the Hellvile bar crowd are the regulars; anyone adult may
+  land one. Rules that do not move:
+  * **Every suggestive beat ends on a joke** (a deflation, a rejection, a
+    record scratch, a belly gurgle). The joke is the setup, never the act.
+  * **Implication only.** Double meanings, looks, a door closing, a
+    fade-to-black (§12). Never a description of a sex act, never anatomy.
+  * **Consent is not a joke.** An advance gets a yes or a no from its
+    target; a no ends it on the spot (the advancer steps back, and the
+    rejection is the punchline); silence or a look is never a yes. The
+    running gag is that everyone turns Grumbleguts down; the joke is on
+    him, never on the person saying no.
+  * Outside Grumbleguts' own scenes, about one innuendo beat a scene, so
+    the game's own comedy (§1.0) stays first.
+* **R3. Never with, near or about kids, teens, the kid-coded cast or the
+  pet.** Pip, Wisp, Bolt, the daycare and imp kids, Miss Lulla's kids, the
+  storybook kids, every KID- or TEEN-flagged citizen, every non-adult life
+  stage (baby, toddler, child, teen; LS0) and the hero's pet: no swearing,
+  no innuendo, no crude adult joke, no LOVE face, no mature variant in
+  their scenes, and no adult joke about them. The pet is with the hero in
+  most scenes, so for the pet the bar is the sexual class and mature
+  content (a swear or a LOVE face at the hero is fine with it there).
+  **Checked by machine**:
+  `python3 core/tools/story_register.py` (part of `make -C core
+  story-check`) lints every script with its cast, and
+  `core/tests/test_story_register.c` holds the same rules over the
+  compiled packs:
+  * **K1** no word from `core/data/story/register.tsv` (strong / crude /
+    sexual) in a script whose cast has a kid (the pet: no sexual word);
+  * **K2** no LOVE expression in a kid's script;
+  * **K3** no mature-guarded branch (E0's `jmat`) in a kid's or the pet's
+    script;
+  * **K4** every KID citizen a script names is on
+    `core/data/story/kid_cast.txt`, the one list of the story's kid cast
+    (LS0's romance test and E1's adult gate read it too). Kids' scenes with
+    no named kid in them (a daycare, a child's crayon flashback) are listed
+    there as `@scene` entries;
+  * **C1** the game-wide caps of R1.
+  "The cast" is everyone a script names (speakers, `npc`, `cast`,
+  `befriend`, `possess`, `verb`, the beat scripts it runs, the mission's
+  giver) plus the pet when a line is its "beep." or names it (`@E`). The
+  lint reads words, not intent: reviewers still read every kid's scene for
+  innuendo that uses no listed word. `test_side_table.c` keeps its own
+  check that Grumbleguts' LOVE lines are never in a child's conversation.
 * **R4. Mean is fine; cruel is not.** Characters can insult each other,
   the town and the player. Punch up or sideways. No jokes at real groups,
   real people or real tragedies (J7). No slurs. No jokes that need the
   player to agree with something hateful.
-* **R5. Gore stays cartoon in text.** The CUTE/BRUTAL filter owns what is
-  shown. Text describes it the way a cartoon would: "blood to the elbows"
-  is the ceiling, said once.
-* **R6. Death is a joke subject, grief is not a punchline.** Death,
-  ghosts, graves and exorcisms are the game's material. A character's real
-  grief gets a sincere line first (J5), and the joke goes after it.
+* **R5. Gore stays cartoon in text** (unchanged). The CUTE/BRUTAL filter
+  owns what is shown, and the filter is **always on with a kid in the
+  scene**. Text describes gore the way a cartoon would: "blood to the
+  elbows" is the ceiling, said once, and only on adults, demons and
+  monsters. Children never take gore and are never shown dying (§12.5).
+* **R6. Death is a joke subject, grief is not a punchline** (unchanged).
+  Death, ghosts, graves and exorcisms are the game's material. A
+  character's real grief gets a sincere line first (J5), and the joke goes
+  after it.
+
+---------------------------------------------------------------------------
+
+## 5b. Nudity (N1-N4)
+
+DECISIONS ("NUDITY"): the user asked for some nudity, "tasteful or
+otherwise". What the game's text and built-in art may do:
+
+* **N1. Allowed: comedic, non-explicit nudity of adults.** Cartoon bare
+  backsides (Grumbleguts' famous rear, a ghost who forgot the sheet),
+  strategically covered gags (a towel, bubbles, a potted plant, a sign
+  held at exactly the right height), the censor bar or mosaic **as the
+  joke** (it is too big, it is pixelated in the wrong place, it slides),
+  implied nudity (clothes on the floor, a towel landing off-frame, a
+  character reacting to what we don't see), swimsuit and towel gags, and
+  the fade-to-black. Text names what is visible and stops: *"(Grumbleguts,
+  in a towel. {.}Mostly.)"*
+* **N2. Never: genitals or explicit sexual acts.** Not drawn, not shown,
+  not described, not named in text (no anatomy word for them, as a swear
+  or otherwise). The built-in art stays cartoon-modest (Grumbleguts'
+  smooth front). Explicit material can only ever come from a user's own
+  pack (§12.3), never from the game or from Claude.
+* **N3. Never anyone child-coded, never a kids' context.** No nudity of,
+  near or about kids, teens, the kid cast, chibi kids, any non-adult life
+  stage or the pet, and none in a cute-filter kids' context (a kids'
+  scene, the daycare, a family scene with a non-adult member present).
+* **N4. It follows the Mature setting** (§12.1). A nudity gag is
+  Mature-On content: the script guards it with `jmat` (E0) and gives it a
+  cutaway for Off (the camera finds something else: a sign, the pet's
+  face, *"Meanwhile..."*); Censored plays the censor-bar version. The
+  line before the guard must work as a setup either way.
 
 ---------------------------------------------------------------------------
 
@@ -387,12 +493,12 @@ come from these (J3).
 | **Pip** (they; a child) | Fast and official ("Patrol rules."), narrates their own bravery, euphemises crying ("My eyes are doing a rain."). Never the target of an adult joke (R3) |
 | **Father Fuzz** (he) | Earnest youth-group energy, hug theology, a sincere battle cry ("THE POWER OF CUDDLES COMPELS YOU!"), doubt underneath. The jokes come from his literalness and the dummies. Never ironic, never mocked for his faith |
 | **Rivet** (she) | Gruff, shows love through tools and threats. "Don't make it weird" (rationed: at most 3 more uses in the rewrite) |
-| **Dr. Bloom** (she) | Clinical fact, then a dry button ("No pulse." / "He never has one."). One of the few adults allowed one innuendo line a scene |
+| **Dr. Bloom** (she) | Clinical fact, then a dry button ("No pulse." / "He never has one."). Clinical innuendo, deadpan, about one a scene (R2) |
 | **Steamy** (she) | Lilting host who names every duck. "I don't know that one." |
-| **Hattie Haha** (she) | Stand-up structure, subverted knock-knocks, waits for the laugh. Adult; may do one blue line a scene |
-| **Vex** (she) | Influencer fox: brand-speak, "sweetie", signs off "- V". The house cynic: merch, sponsorships, engagement. One innuendo line a scene at most |
+| **Hattie Haha** (she) | Stand-up structure, subverted knock-knocks, waits for the laugh. Adult; works blue: her set is where the crude jokes live (R2), never with a kid in the tent |
+| **Vex** (she) | Influencer fox: brand-speak, "sweetie", signs off "- V". The house cynic: merch, sponsorships, engagement. Flirts like it's a brand deal ("Kisses! - V"), about one innuendo line a scene (R2) |
 | **Vapula / Fluffy** | Lowercase, small, sulky weather puns; menace as a tantrum |
-| **Grumbleguts** (he) | Slow purr, pet names (darlin', sugar, hon), vain about belly and butt, innuendo (R2). Every sincere moment is undercut by a smirk. Sign-off "Open late, darlin'." Ratings: "Six. {.}Needs salt." |
+| **Grumbleguts** (he) | Slow purr, pet names (darlin', sugar, hon), vain about belly and butt, the game's lead come-on (R2; no ration in his own scenes, always ending on a joke, never with a kid or teen in the scene: a grumpy uncle to them). Every sincere moment is undercut by a smirk. Sign-off "Open late, darlin'." Ratings: "Six. {.}Needs salt." |
 | **GURGLE** | Plain text, hungry and honest, sides with the player about half the time |
 | **Wisp** (they; a kid ghost) | Lowercase, apologetic. Never the target of an adult joke (R3) |
 | **Mother Nox** | Terse, soup, withholding |
@@ -400,7 +506,7 @@ come from these (J3).
 | **Kevin** | "Yes, three eyes." Says the quiet part out loud, cheerfully |
 | **Bonejangles** (he; animatronic) | Musical, "Clack!", rhythm and bone puns, and now the animatronic layer: servo noises, a dance routine he can't stop, a cassette jingle, a warranty. Tells his horrifying origin like a funny anecdote. The Walten-parody voice (§1.3) |
 | **The narrator** | Present tense, concrete, wry ("The crate slides one pixel to the left, in shame."). A comic voice, not a horror trailer. At most 25% of a script (C3) |
-| **@E, the pet** | "beep." / "bep?" only |
+| **@E, the pet** | "beep." / "bep?" only. Never in sexual or mature content (R3, N3) |
 | **@P, the player** | Silent. The player's three spoken lines (`story_final.md` §8.4) stay. Every other choice is an action |
 
 ---------------------------------------------------------------------------
@@ -476,14 +582,22 @@ come from these (J3).
    out loud is one tool, about once a scene at most (§1.1).
 3. Parentheticals ≤ 25%, pauses ≤ 0.25 a line, no fragment pairs (C3-C5).
 4. At most one eerie beat a scene, optional, not a clue (§3).
-5. Swearing and innuendo inside R1-R3; nothing adult near a kid.
+5. Swearing inside R1 (sparse; the s-word and f-word only where their
+   ration says), innuendo inside R2 (ends on a joke, adults only,
+   consent), nudity inside N1-N4, mature content behind its guard (§12);
+   nothing adult near a kid, a teen or the pet (R3).
+   `python3 core/tools/story_register.py` is clean (it runs in
+   `make -C core story-check`), and a new kid in a script is on
+   `kid_cast.txt`.
 6. Turkey Mayor, "Needs salt", animatronic Bonejangles, Sunny lives (§6).
 7. The Walten parody lands on a joke and asks the player to decode nothing (§1.3).
 8. Lines written to 27 characters where a portrait shows (§8).
 9. `make -C core story-check` passes (save lock untouched; flow lock
    regenerated with a reason if the structure changed).
 10. `make -C core gen && make -C core check-gen`, `make -C core -j2 test`.
-11. `story_stats.py` before/after table in the commit message.
+11. `story_stats.py` before/after table in the commit message (its
+    `strong`, `crude` and `sexual` columns count the register words a pack
+    uses).
 
 ---------------------------------------------------------------------------
 
@@ -501,6 +615,110 @@ come from these (J3).
 4. **Sunny's show death in the game.** Proposed: one post-game easter
    egg at most, played as a joke (a "Season 4" poster nobody wants to
    talk about). Or none?
-5. **The swear list** in R1 (*bastard* included or not).
-6. **Innuendo cast** in R2 (Vex, Hattie, Kevin, Dr. Bloom and the
-   Hellvile bar crowd, one line a scene). Add or remove anyone?
+5. ~~**The swear list** in R1 (*bastard* included or not).~~
+   **Superseded** (E5): PG-21 plus the user's answer 23 (swearing sparse:
+   the s-word a few times, the f-word exactly twice, once cut off and once
+   in full near the end). *bastard* stays, a handful (R1).
+6. ~~**Innuendo cast** in R2 (Vex, Hattie, Kevin, Dr. Bloom and the
+   Hellvile bar crowd, one line a scene). Add or remove anyone?~~
+   **Superseded** (E5): PG-21 opens innuendo to any adult (R2), with
+   Grumbleguts as the lead and the old five as the regulars.
+7. **The two f-words' moments** (R1): proposed, the cut-off one in a
+   Ch2-3 blow-up and the full one in the last boss fight or the ending
+   that earns it. The ending packages (E3, E4, E6d) propose the lines.
+
+---------------------------------------------------------------------------
+
+## 12. Mature content: the option, the slots and the packs
+
+How the game carries its suggestive and nude moments, and the room it
+leaves for a player's own content. Packages: U0/U2/U5/E11 (the option and
+its gate), E0 (the `jmat` guard), E1/E3/E4 (endings and romance routes),
+E2 (mature slots), E7-E10 (packs and the ROM/disc variants), F1-F6 (the
+family).
+
+### 12.1 The Mature option
+
+* `OPT_MATURE` (U0): **Off / Censored / On / On + pack** (the last only
+  when a pack is present, E11). Default On, with an adults' confirmation
+  (answer 20). The **first-boot screen** asks about it and sets an adults'
+  **security code** (a parental PIN) that turning it on later requires
+  (U5).
+* **Off**: no suggestive scene plays; every guarded moment takes its
+  cutaway; the "sexy" endings are **hidden** (answer 21: reachable only
+  with Mature on). The rest of the PG-21 text (R1, R2's spoken innuendo)
+  stays: the option gates scenes, not the script's voice.
+* **Censored**: guarded moments play their censor-bar / mosaic version
+  (N4); fades still fade.
+* **On**: the built-in implied versions (§12.2). **On + pack**: as On,
+  plus the player's own pack fills the mature slots (§12.3).
+
+### 12.2 What the built-in text does with it
+
+* **Built-in text is never explicit, at any setting.** The most it does
+  is the PG-21 implied version: the look, the line, the door, the
+  **fade-to-black**, and the joke on the other side of the fade.
+* A suggestive moment in a script is **guarded** by E0's `jmat` (jump if
+  Mature is on): the guarded branch holds the implied version, the
+  unguarded path holds a **cutaway** that is its own joke (a hard cut to
+  a sign, to the pet, to *"Meanwhile..."*, or a character walking in on
+  nothing). Both paths rejoin; neither may need the other to make sense.
+* **Fade-to-black is the ceiling and the fallback.** Every mature slot
+  (§12.3) and every "sexy" ending has a built-in fade-to-black version, so
+  the game is whole with no pack present.
+* The "WooHoo" of DECISIONS (answer 5): with Mature on, an adult couple's
+  implied fade-to-black before a stork or adoption baby; with Mature off,
+  the stork just arrives. The baby always comes by stork or adoption.
+
+### 12.3 Mature slots and content packs
+
+* **Mature slots** (`mslot`, E2) are empty scene hooks in the story,
+  ending and romance flow (the "sexy" endings included) that call into an
+  optional content pack when the setting is On + pack; empty, or with the
+  setting anything else, they play their built-in fade-to-black fallback.
+* **Packs are user-supplied** (DECISIONS "MATURE ART OVERRIDE",
+  "RESERVED SLOTS"): scene scripts in the `.dsc` language, art through the
+  override system, validated by `mpack.py` (E7). Custom pack art shows
+  **only in mature scenes** (answer 22). The repository and the tests
+  carry only the SFW example pack.
+* **Claude never authors explicit art or explicit text** for a pack or
+  for the game. The built-in content, the templates and the example pack
+  stay within this guide.
+* A pack's scenes obey the same gate as the built-in ones (§12.4): a
+  pack cannot put a kid, a teen or the pet into a mature slot.
+
+### 12.4 Who may be in a mature or romance scene
+
+* **One chain of gates** (LIFESIM_PLAN R10): LS0's life stage and
+  `sim_romance_ok` (both directions), PA9's `playas_romance_ok`, E1's
+  `mature_adult_ok` (life stage ADULT **and** the premade allow-list:
+  a premade id whose name still matches, **not on `kid_cast.txt`**, not a
+  custom or sim-born resident). Every mature slot, sexy ending, override
+  art lookup, family spouse/partner role and play-as romance hook calls
+  one of them.
+* **Teens**: romance only with same-age peers, never adult-minor, never
+  marriage, and **never mature** (answer 15: nothing mature for kids or
+  teens, whoever the player is playing as).
+* **Partners** must be befriended and engaged first; refusals come
+  funny, neutral or offended (answer 2), and a refusal is final for the
+  scene (R2's consent rule).
+
+### 12.5 The family and the life stages
+
+* **The cute filter goes where the kids go.** A family scene, event or
+  ticker line with any non-adult member (baby, toddler, child, teen; LS0
+  stages) present is a kids' scene: R3 and N3 apply, the gore filter is
+  forced on, and no suggestive line, mature slot or `jmat` branch may sit
+  in it. A WooHoo fade needs the non-adults out of the scene first.
+* **No suggestive content near any non-adult stage**, including a
+  grown-up character's own childhood flashback (the prologue P0 is listed
+  as a kids' scene in `kid_cast.txt`).
+* **Loss and death** (answer 7, F6): adults, elders and pets may die,
+  non-graphically, with R6's sincere line first. **Children never take
+  gore and are never shown dying**: a neglected child is taken away (the
+  social-services gag), not killed on screen.
+* Kids grow up (answer 1). A citizen on `kid_cast.txt` stays kid-coded for
+  the story and the gates whatever their age later; a sim kid who grows
+  into an adult life stage is an adult for R2 from then on, never
+  retroactively in a scene written for their childhood.
+
