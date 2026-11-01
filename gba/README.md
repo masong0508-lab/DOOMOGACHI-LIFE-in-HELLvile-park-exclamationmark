@@ -8,6 +8,7 @@ performance): **[docs/GBA.md](../docs/GBA.md)**.
 make -C gba                 # build/doomogachi.gba        the game
 make -C gba engine-test     # build/doomogachi_et.gba     3D showcase tour (ENGINE_TEST=1)
 make -C gba test            # headless mGBA tests: engine tour, flash save round trip, game smoke
+make -C gba test-speed      # speed tour: every scene's fps (gated) + frame hashes, as a table
 make -C gba clean
 mgba-qt gba/build/doomogachi.gba     # save type: Flash 1Mb (auto-detected)
 ```
@@ -31,4 +32,4 @@ Layout:
 | `src/bigbuf.c` | the shared 17 KB EWRAM buffer (renderer caches, the core's save window: `plat_save_scratch()`) |
 | `enginetest/` | ENGINE_TEST=1 tour, showcase map, save / division self-tests |
 | `harness/` | headless libmgba runner (`build/harness`), test scripts |
-| `tools/` | `gbafix.py` (header), `mktables.py` (tables), `memreport.py` (RAM budget) |
+| `tools/` | `gbafix.py` (header), `mktables.py` (tables), `memreport.py` (RAM budget), `speedtable.py` (speed tour table, frame parity) |

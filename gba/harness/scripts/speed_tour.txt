@@ -1,0 +1,209 @@
+# speed_tour.txt - the GBA speed tour (G1, docs/GBA.md "Speed pass 4"):
+# every target scene of the game ROM in turn, `make -C gba test-speed`.
+#
+# Each scene settles (wait 200), is measured over 130 logic ticks
+# (fps start .. expect-fps), shot, and then the frames of the next 30
+# ticks are hashed (vhash-seq: the emulator's output frame, so it holds in
+# any display mode; the ROM draws every one of those ticks).
+# gba/tools/speedtable.py turns the log into the table; --compare (or
+# `make -C gba test-speed SPEED_BASE=LOG`) matches two ROMs' frames tick by
+# tick.
+#
+# `sync on` makes every wait end on an exact logic tick, so keys and
+# commands land on the same tick in any ROM however fast it draws, and
+# `seed 1` before every scene pins plat_entropy() and the RNG: equal ticks
+# are equal game states, and a scene's content does not depend on code
+# timing.
+#
+# The expect-fps floors are regression gates at about 85% of the speed
+# pass 4 baseline (the harness is deterministic: one ROM always gives the
+# same numbers). A package that makes a scene faster raises its floor.
+wait 60
+expect-log doomo: init
+sync on
+
+# ---- title ------------------------------------------------------------------
+seed 1
+scene TITLE
+wait 200
+fps start
+wait 130
+expect-fps 23 title
+shot title
+vhash-seq 30 title
+
+# ---- story overworld visits (beats 10/11/12: no dialogue) -------------------
+seed 1
+scene STORY 10
+wait 200
+fps start
+wait 130
+expect-fps 14 hahaland visit
+shot hahaland
+vhash-seq 30 hahaland visit
+# the overworld pause panel over the same visit
+press START
+wait 30
+fps start
+wait 130
+expect-fps 8.5 overworld pause
+shot pause
+vhash-seq 30 overworld pause
+press B
+wait 10
+
+seed 1
+scene STORY 11
+wait 200
+fps start
+wait 130
+expect-fps 19 hellvile visit
+shot hellvile
+vhash-seq 30 hellvile visit
+
+seed 1
+scene STORY 12
+wait 200
+fps start
+wait 130
+expect-fps 18.5 park visit
+shot park
+vhash-seq 30 park visit
+
+# invaded Hahaland: 47 tinted billboards, logic below 30 ticks/s
+seed 1
+scene STORY 219
+wait 200
+fps start
+wait 130
+expect-fps 7 invaded
+shot invaded
+vhash-seq 30 invaded
+
+# a story map with the HUD and the dialogue box
+seed 1
+scene STORY 110
+wait 200
+fps start
+wait 130
+expect-fps 12.5 story map + dialogue
+shot story110
+vhash-seq 30 story map + dialogue
+
+# ---- concert: Nana's solo (setup keys of core/tests/scripts/concert_solo.txt) ---
+seed 1
+scene CONCERT -2
+wait 20
+press DOWN
+press RIGHT
+wait 6
+press LEFT
+press UP
+wait 4
+press A
+wait 200
+fps start
+wait 130
+expect-fps 10 concert
+shot concert
+vhash-seq 30 concert
+
+# ---- combat: Vape Cellar (COMBAT 3), first then third person ----------------
+seed 1
+scene TITLE
+wait 2
+push COMBAT 3
+wait 200
+fps start
+wait 130
+expect-fps 8 combat first person
+shot combat_fp
+vhash-seq 30 combat first person
+seed 1
+scene TITLE
+wait 2
+push COMBAT 3
+wait 2
+press SELECT
+wait 200
+fps start
+wait 130
+expect-fps 8 combat third person
+shot combat_tp
+vhash-seq 30 combat third person
+
+# ---- the dream house, plain -------------------------------------------------
+seed 1
+scene HOME -1
+wait 200
+fps start
+wait 130
+expect-fps 25 house plain
+shot house
+vhash-seq 30 house plain
+
+# ---- options (pushed over the title) ----------------------------------------
+seed 1
+scene TITLE
+wait 2
+push OPTIONS 0
+wait 200
+fps start
+wait 130
+expect-fps 25 options
+shot options
+vhash-seq 30 options
+
+# ---- free play last (it replaces the boot town the scenes above use): a
+# Hellvile Park Classic island (core/tests/scripts/fp_island.txt) ------------
+seed 1
+scene NEW_ISLAND
+wait 10
+press A
+wait 10
+press A
+wait 10
+press DOWN
+wait 2
+press A
+wait 20
+press A
+wait 2
+press A
+wait 2
+press A
+wait 2
+press A
+wait 10
+expect-scene ISLAND
+wait 200
+fps start
+wait 130
+expect-fps 6.3 island hub
+shot island
+vhash-seq 30 island hub
+
+# the town hall's menu over the island
+press A
+wait 200
+fps start
+wait 130
+expect-fps 5.5 island town hall menu
+shot island_menu
+vhash-seq 30 island town hall menu
+press B
+wait 30
+
+# ---- the pet (pushed over the island) ---------------------------------------
+seed 1
+push PET
+wait 30
+press A
+wait 20
+press START
+wait 200
+fps start
+wait 130
+expect-fps 8.5 pet
+shot pet
+vhash-seq 30 pet

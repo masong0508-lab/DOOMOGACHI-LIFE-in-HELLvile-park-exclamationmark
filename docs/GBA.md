@@ -120,7 +120,7 @@ PS1 build has the same viewer (`ps1/src/cutview.c`, hold SELECT at boot).
 | region | address | size | use |
 |--------|---------|------|-----|
 | ROM | `0x08000000` | 762 KB game / 794 KB ET (padded to 1 MB) | THUMB code, art, tables; WS0 3/1 + prefetch |
-| EWRAM | `0x02000000` | 256 KB | 16 B harness mailbox, `.data`, `.bss` (core state, the arena `gba_arena`) |
+| EWRAM | `0x02000000` | 256 KB | 80 B harness mailbox, `.data`, `.bss` (core state, the arena `gba_arena`) |
 | IWRAM | `0x03000000` | 32 KB | ARM hot code + data (`.iwram`), `.iwram_bss`, stacks |
 | IRQ stack | `0x03007FA0` down | 672 B | the master IRQ handler (`crt0.s`) |
 | main stack | `0x03007D00` down | >= 6 KB reserved (linker `ASSERT`) | system mode |
@@ -136,9 +136,12 @@ DirectSound FIFO, DMA 1 feeds it, timers 2+3 cascade into a free-running
 32-bit cycle counter (`gba_cycles()`, used for profiling). DMA 3 does block
 copies/fills.
 
-The `.mailbox` section (first 16 bytes of EWRAM) holds
-`{ "DMGB", logic ticks, drawn frames, fps*10 }`; the test harness reads it
-to count logic ticks and frame rates.
+The `.mailbox` section (the first 80 bytes of EWRAM, `GbaMailbox` in
+`gba_plat.h`) holds `{ "DMGB", logic ticks, drawn frames, fps*10 }`, the
+harness command words (cmd, arg, result, cycles), the work counters of
+`fps`, the 20-byte name argument, and (G1) `hold_at` and `draw_all` for
+the harness's `sync on` and `vhash-seq` (section 9); the test harness reads
+it to count logic ticks and frame rates and posts its commands there.
 
 ### RAM usage (measured, `tools/memreport.py`)
 
@@ -216,6 +219,8 @@ How EWRAM got here:
 | smaller UI shape cache | 15.2 KB | `sc_pool` 1,024 -> 640 rects, 48 -> 40 entries (1.7 KB); the UI gallery / dialog fps are unchanged |
 | story, house, side missions, music (S1-S5, H1-H4, MU1) | 4.8 KB | `9d4d915` |
 | G0: the arena | 9.7 KB | scene scratch + `gba_big` + billboards in one 26,992 B block (-5,104 B) |
+| measured at `959acc8` (2026-11-01) | 9,536 B | modules landed since G0 (-416 B) |
+| G1: speed tour | 9,520 B | harness mailbox 64 -> 80 B (`hold_at`, `draw_all`; section 9) |
 
 The engine-test ROM (no game scenes): ROM 1,146,352 bytes, IWRAM 20,800
 (10.9 KB for the stack), EWRAM 168,608 (91.3 KB free).
@@ -344,6 +349,110 @@ a static land layer for the island drawn once (needs ~31 KB that EWRAM
 and VRAM do not have at once), dirty-rect redraws of the static parts
 of the dialogue / pet / concert stages, and a stand-in image while a
 chibi's new expression renders in slices.
+
+### Speed pass 4: baseline (G1, `make -C gba test-speed`)
+
+One command measures every target scene: `make -C gba test-speed` plays
+`harness/scripts/speed_tour.txt` on the game ROM (about 21 s of wall
+time), fails if a scene drops below its `expect-fps` floor (about 85% of
+the numbers below), writes `build/speed_tour.log` and
+`build/shots/speed/*.png`, and prints the table with
+`tools/speedtable.py` (standard-library Python). It is not part of
+`make -C gba test`. Every scene settles for 200 logic ticks, is measured
+over 130, is shot, and then the frames of the next 30 ticks are hashed
+(`vhash-seq`, below). The tour runs `sync on` with `seed 1` before every
+scene, so a ROM gives byte-identical numbers and hashes on every run.
+
+Baseline, `959acc8` + G1 (game ROM 3,668,820 bytes):
+
+| scene | how the tour gets there | logic ticks/s | drawn fps | work avg / max ms |
+|-------|-------------------------|--------------:|----------:|------------------:|
+| title | `scene TITLE` | 29.9 | 27.6 | 27.7 / 62.4 |
+| hahaland visit | `scene STORY 10` | 29.8 | 16.9 | 52.1 / 52.6 |
+| overworld pause | the visit, START | 18.4 | 10.5 | 91.5 / 145.6 |
+| hellvile visit | `scene STORY 11` | 30.1 | 22.7 | 37.7 / 39.5 |
+| park visit | `scene STORY 12` | 29.9 | 22.1 | 37.5 / 39.8 |
+| invaded | `scene STORY 219` | 14.9 | 8.6 | 113.6 / 132.3 |
+| story map + dialogue | `scene STORY 110` | 30.0 | 15.0 | 53.6 / 55.4 |
+| concert | `scene CONCERT -2` + the setup keys of `concert_solo.txt` | 21.3 | 12.0 | 59.8 / 76.7 |
+| combat first person | `scene TITLE`, `push COMBAT 3` | 16.4 | 9.8 | 84.7 / 162.7 |
+| combat third person | the same, SELECT | 16.2 | 9.6 | 84.3 / 186.1 |
+| house plain | `scene HOME -1` | 30.0 | 30.0 | 10.0 / 12.0 |
+| options | `scene TITLE`, `push OPTIONS 0` | 30.0 | 30.0 | 25.1 / 27.2 |
+| island hub | the New Island keys of `fp_island.txt` | 12.5 | 7.5 | 96.8 / 97.3 |
+| island town hall menu | the hub, A | 11.1 | 6.7 | 108.7 / 131.0 |
+| pet | `push PET` over the island, A, START | 17.4 | 10.3 | 67.4 / 94.9 |
+
+Where the time goes (the profiling pass of 2026-11-01 on `959acc8`:
+`harness fps` and `profile`, plus temporary `gba_cycles()` marks around
+the draw regions; the marks are a local patch and are not in the tree):
+
+| scene | fps / work ms | breakdown |
+|-------|--------------:|-----------|
+| title | 28.4 / 27.2 | |
+| hahaland visit | 16.6 / 52.7 | ground 13.7, billboards 23.7 (24 sprites, 28,466 px, only 7 distinct images), blocks ~6, HUD 4.1 (objective pill 2.5, clock 1.5), logic 3.1 |
+| hellvile visit | 22.2 / 38.1 | ground 13.0, sprites 11.0 (16, all on the tinted slow path), HUD 4.1 |
+| park visit | 21.9 / 38.0 | ground 15.0, sprites 9.8 (31k px), `owfx_world` 1.5, HUD 4.1 |
+| invaded | 8.3 / 114.7, logic 14.4 ticks/s | `ow_sprite` 77.2 for 47 tinted sprites (45,293 px, 23 distinct images, 20.8 KB as padded 8bpp, max 46x49), ground 15.2, HUD 4.3, toast 2.7, logic 6.9 (`ownpc` 2.5, `find_interactables` 1.8) |
+| story map + dialogue | 15.0 / 54.0 | blocks / raised cells ~30, sprites 9.9, HUD 4.4, `dlg_draw` 5.5 |
+| island hub | 7.5 / 94, logic 12.5 ticks/s | `fp_island_draw_map` ~100 per drawn frame, `town_count(-1)` 3.0 every frame, `fp_ticker` 2.3, `fp_hud` 3.3; profile: `vid_rect_narrow` 9.7%, `fp_island_draw_map` 9.6%, `put` 8.2%, `town_count` 6.2%, `vid_blit` 5.7%, `vm_span`/`vm_flush` 9% |
+| island town hall menu | 6.7 / 107 | map 82 + menu window 41.5 |
+| combat first person | 9.5 / 86, logic 15.8 ticks/s | r3d 46-50, HUD 22.7-28 (weapon view 10.3, health + ammo panels 12.3, top left/right 5.5), other drawing ~20, logic 9 (`fx_dist` 10.9%, `__muldi3`, `__udivmoddi4`) |
+| combat third person | 9.5 | HUD 9.8 |
+| concert | 15.0 / 51.5 | `vid_blit` 32%, `plat_checker` 12% |
+| pet | 10.6 / 65.6 | `lcd_rect` 19%, `fx_isqrt` 14.5% (per pixel), `lcd_sprite` 8%, `egg_fill` 6.7% |
+| house plain | 30 / 10.0 | |
+| options | 30 / 24.9 | |
+
+On the maps the HUD costs 4-5.5 ms and the dialogue box 5.5 ms; the maps
+themselves cost 28-98 ms (the per-pixel billboard blit, ~0.8 us/px and
+~1.7 us/px on the tint / night path; ~190 cached 16x16 ground tiles copied
+per frame at ~74 us each with no cache misses; the block fronts and tops).
+In combat the HUD is a third of the frame. The pacing never skips two
+ticks in a row, so a frame over 66 ms slows the game itself: the island,
+the invaded map, the pause panel and combat run below 30 logic ticks/s.
+
+The tour agrees with the profiling pass within 5% on every scene except
+the concert (12.0 fps / 59.8 ms against 15.0 / 51.5): its show (lyrics,
+crowd) is generated, and the tour's pinned seed and entry tick give a
+dearer show than the profiling run's. The same ROM measured 15.0 / 51.3
+with a different show while the tour was being written. The overworld
+pause is new (no earlier figure).
+
+#### Frame parity between ROMs (`vhash-seq`, `SPEED_BASE`)
+
+A speed package must not change a pixel. The harness hashes the frame
+mGBA puts out (`vhash`: FNV-1a of the 240x160 output as BGR555), which is
+the same whatever the display mode, unlike a CRC of a Mode 4 VRAM page.
+`vhash-seq 30 LABEL` hashes the frames of the next 30 logic ticks: the ROM
+draws every tick meanwhile (mailbox `draw_all`, no catch-up ticks), and
+every frame is tagged with the tick that drew it. With `sync on` the
+harness holds the ROM at the end of every wait (mailbox `hold_at`, see
+section 9), so keys and commands land on the same tick in every ROM
+however fast it draws; with `seed 1` equal ticks are equal game states,
+and two ROMs' frames compare tick for tick.
+
+To prove a package exact, build its merge base in the same worktree, run
+the tour, keep the log, and run the package against it:
+
+```sh
+git checkout --detach $(git merge-base HEAD <target branch>)
+make -C gba test-speed; cp gba/build/speed_tour.log /tmp/base.log
+git checkout -                       # back to the package
+make -C gba test-speed SPEED_BASE=/tmp/base.log
+```
+
+The table then shows the base's fps and the change per scene, and every
+hashed frame must be identical (`parity ... ok: 30 frames identical`);
+`tools/speedtable.py --compare A.log B.log` prints only the parity. Use
+the merge base, not a fixed baseline ROM: script and text changes alter
+dialogue frames.
+
+Checked when G1 landed: two runs of one ROM give byte-identical `vhash`
+lines (15 scenes, 450 frames); a ROM slowed by 8.9 ms per drawn tick (a
+temporary busy loop) drew 6-12% fewer frames, yet all 450 hashed frames
+were identical to the base ROM's; a ROM that flips two pixels on one tick
+in 64 failed in the 6 scenes whose 30-tick window holds such a tick.
 
 ### Frame pacing
 
@@ -704,7 +813,26 @@ gba/build/harness ROM.gba [--script FILE] [--shots DIR] [--save FILE]
   `expect-log TEXT`, `expect-scene NAME`, `type` (warning only), plus GBA
   extensions `down`/`release`, `frames N` (raw video frames), `fps
   [LABEL]`, `audio-reset` / `audio` / `expect-audio MIN`, `profile N
-  [FUNC]`.
+  [FUNC]`, `vhash`, `vhash-seq`, `sync` (below). The LABEL of `fps` /
+  `expect-fps`, `vhash` and `vhash-seq`, and the TEXT of `log`, are the
+  whole rest of the line (before G1 only the first word was printed).
+* Frame hashes (G1): `vhash [LABEL]` prints the FNV-1a of the frame mGBA
+  put out (240x160 as BGR555, after BG / OBJ composition, blending and
+  the affine scale), so it means the same in any display mode;
+  `vhash-seq N [LABEL]` hashes the frames of the next N logic ticks (the
+  ROM draws every tick meanwhile: mailbox `draw_all`, no catch-up ticks)
+  and prints a sequence digest plus `TICK:HASH` per frame, TICK being the
+  tick that drew it. `tools/speedtable.py --compare` matches two logs
+  tick by tick (section 4, "Speed pass 4").
+* `sync on|off` (G1, game ROM): tick-exact scripts. The game loop waits at
+  its top while the mailbox's `hold_at` equals its tick count
+  (`gba_harness_hold()`, `hcmd.c`, running posted commands meanwhile);
+  every wait moves `hold_at` on and runs the CPU an event slice (under a
+  scanline) at a time until the ROM holds again. Keys and commands then
+  land on the same tick in every ROM however fast it draws; without
+  `sync` a wait ends on a video frame and may overrun by a tick. In sync
+  mode `shot` and `vhash` first finish the video frame (the ROM stays
+  held), and `profile` releases the hold while it samples.
 * `--save FILE` backs the 128 KB flash with FILE (created if missing),
   like a frontend's `.sav`, so persistence can be tested across runs.
 * `profile N [FUNC]` steps N instructions and charges each one's emulated
@@ -732,6 +860,14 @@ gba/build/harness ROM.gba [--script FILE] [--shots DIR] [--save FILE]
 | `test-game` | game ROM, `scripts/smoke.txt`: boot, title, START, menu presses, screenshots in `build/shots/game` |
 | `test-coresave` | game ROM, `scripts/coresave1.txt` then `coresave2.txt` with the same `--save` file: the core's streamed saves (worst-case island in slot 1, a too-big save refused in slot 0, a story island in slot 0), loads checked by town CRC, then persistence across a reboot |
 | `test-home` | game ROM, `scripts/home.txt` (H2): `plat_room` parity with the room_ref golden on every path (15 frames), then `SCENE_HOME` fps gates (section 6a) and a profile, screenshots in `build/shots/home` |
+
+`make -C gba test-speed` (G1, not part of `test`): game ROM,
+`scripts/speed_tour.txt`: every target scene's fps with an `expect-fps`
+floor, a shot and a 30-tick `vhash-seq`, in `sync on`; the log goes to
+`build/speed_tour.log` (`SPEED_LOG=`), the shots to `build/shots/speed`,
+and `tools/speedtable.py` prints the table. With `SPEED_BASE=LOG` (another
+ROM's tour log) it also prints that ROM's fps and fails unless every
+hashed frame is identical (section 4, "Speed pass 4").
 
 ---------------------------------------------------------------------------
 

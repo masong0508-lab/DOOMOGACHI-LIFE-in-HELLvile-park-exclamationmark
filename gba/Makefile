@@ -5,6 +5,8 @@
 #                             boots straight into the 3D showcase map)
 #   make -C gba harness       build/harness  (libmgba headless runner)
 #   make -C gba test          both ROMs + harness + smoke scripts
+#   make -C gba test-speed    the speed tour: fps gates + table of every
+#                             target scene (SPEED_BASE=LOG: + frame parity)
 #   make -C gba clean
 #
 # Toolchain: arm-none-eabi-gcc + newlib from apt (no devkitPro). Our own
@@ -103,7 +105,7 @@ CORE_OBJS := $(call core_obj,$(CORE_SRCS))
 # over the core's weak stubs, and the core's strong definitions win over both.
 ALL_OBJS  := $(GBA_OBJS) $(CORE_OBJS)
 
-.PHONY: all rom engine-test engine-test-nocore harness test test-et test-game test-save test-coresave test-home clean sizes
+.PHONY: all rom engine-test engine-test-nocore harness test test-et test-game test-save test-coresave test-home test-speed clean sizes
 .DEFAULT_GOAL := all
 
 all: rom
@@ -218,6 +220,25 @@ test-home: harness
 	    --shots $(SHOTS)/home --golden $(ROOT)/core/tests/golden/room_ref.txt \
 	    --nm $(BUILD)/doomogachi.nm --quiet
 # --- end H2 ---
+
+# --- G1: the speed tour (docs/GBA.md "Speed pass 4"): every target scene's
+# fps (expect-fps floors), screenshots and output-frame hashes, printed as a
+# table by tools/speedtable.py. SPEED_BASE=LOG (another ROM's
+# build/speed_tour.log, e.g. the merge base's) adds its numbers beside and
+# fails unless every hashed frame is identical. Not part of `test`. ---
+SPEED_LOG ?= $(BUILD)/speed_tour.log
+SPEED_BASE ?=
+test-speed: harness
+	@$(MAKE) --no-print-directory -f $(GBA)/Makefile rom ENGINE_TEST=0
+	@mkdir -p $(SHOTS)/speed
+	@rc=0; \
+	$(HARNESS) $(BUILD)/doomogachi.gba --script $(GBA)/harness/scripts/speed_tour.txt \
+	    --shots $(SHOTS)/speed --quiet > $(SPEED_LOG) 2>&1 || rc=1; \
+	$(PYTHON) $(GBA)/tools/speedtable.py $(SPEED_LOG) \
+	    $(if $(SPEED_BASE),--base $(SPEED_BASE) --parity) || rc=1; \
+	echo "test-speed: log $(SPEED_LOG), shots $(SHOTS)/speed"; \
+	exit $$rc
+# --- end G1 ---
 
 sizes: $(ELF)
 	$(SIZE) -A $(ELF)

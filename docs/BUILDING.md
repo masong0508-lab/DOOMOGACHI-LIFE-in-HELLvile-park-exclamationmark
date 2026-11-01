@@ -262,7 +262,9 @@ trailer/assemble.sh trailer/build/trailer out.mp4    # 1080p cut with the Dippin
    is stale.
 5. `make -C gba test`: the ROMs in headless mGBA (libmgba, no window): the
    engine tour, a flash save written in one run and read back in the next,
-   and a game smoke test. Screenshots go to `gba/build/shots/`.
+   and a game smoke test. Screenshots go to `gba/build/shots/`. (The GBA
+   speed tour, `make -C gba test-speed`, is separate: every scene's fps
+   and frame hashes, docs/GBA.md "Speed pass 4".)
 6. The PS1 harness, if PCSX-Redux is installed: disc boot, memory card
    save checks, the core's scripts on the PS1 build, the engine tour, the
    ADPCM encoder test and the 3D citizen model. Screenshots and TTY logs go
