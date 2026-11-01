@@ -1,0 +1,8 @@
+# kos_example.txt - boot a KallistiOS example (no mailbox: a tick is 2
+# video frames) and take a picture. Used for DC1's checks:
+#   dcrun build/flycast_libretro.so $KOS_BASE/examples/dreamcast/pvr/plasma/plasma.elf \
+#         --script scripts/kos_example.txt --shots SHOTS
+wait 90
+shot example_3s
+wait 30
+shot example_4s

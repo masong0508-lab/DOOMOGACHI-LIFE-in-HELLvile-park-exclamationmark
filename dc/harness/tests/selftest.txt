@@ -1,0 +1,46 @@
+# selftest.txt - dcrun against tests/mockcore.c (make -C dc/harness test).
+wait 20
+expect-scene TITLE
+expect-log scene: set BOOT
+expect-log mock: boot (rtc 1767225600)
+shot title
+press START
+expect-log pad 1: buttons 0008
+hold A 3
+expect-rumble 1
+audio-reset
+hold START 4
+expect-audio 15000 start-tone
+port 2
+stick 100 0
+trigger R 255
+wait 2
+expect-log pad 2: stick x 25855
+expect-log pad 2: trigger r 32767
+stick 0 0
+trigger R 0
+port 1
+device 3 keyboard
+type "Hi\n"
+expect-log key: H
+expect-log key: i
+expect-log key: RETURN
+device 4 mouse
+port 4
+mouse 5 -3 L
+expect-log mouse 4: 5 -3 L
+port 1
+seed 1234
+expect-log seed 1234
+save 1
+expect-save 1
+load 1
+expect-flag 7
+scene LIBRARY
+expect-scene LIBRARY
+down UP
+wait 1
+shot held_up
+release
+wait 1
+vmu-shot vmu

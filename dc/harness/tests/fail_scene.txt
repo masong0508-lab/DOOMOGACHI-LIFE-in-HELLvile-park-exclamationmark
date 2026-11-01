@@ -1,0 +1,3 @@
+# must fail: wrong scene
+wait 20
+expect-scene CREDITS

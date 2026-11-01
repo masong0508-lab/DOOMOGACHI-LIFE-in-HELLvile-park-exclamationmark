@@ -1,0 +1,3 @@
+# must fail: the log line never appears
+wait 20
+expect-log this line is never logged

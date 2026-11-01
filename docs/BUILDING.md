@@ -32,6 +32,7 @@ Contents:
 | run the PS1 harness (`make test`) | the above plus PCSX-Redux, OpenBIOS and `xvfb-run` |
 | run the Dreamcast (SH4) leg of `xcheck` (`make test`) | `sh-elf-gcc` + newlib headers (apt `gcc-sh-elf binutils-sh-elf libnewlib-sh-elf-dev`), or a KallistiOS toolchain on `PATH`. Compile only: no KallistiOS needed |
 | build for the **Dreamcast** (port in progress) | the KallistiOS toolchain + KallistiOS, installed at pinned versions by `dc/tools/setup_kos.sh` (about 3.4 GB of disk while it builds, 278 MB after; see [KallistiOS](#kallistios-dreamcast) and docs/DREAMCAST.md) |
+| run the **Dreamcast harness** (`dc/harness`, `make -C dc/harness test`) | host `cc` + EGL/GL headers and Mesa (apt `libegl-dev libgl-dev libegl-mesa0 libgl1-mesa-dri`); the Flycast core itself needs `g++` and `git` (`dc/harness/build_flycast.sh`). See dc/harness/README.md |
 | render the **trailer** (`make trailer`) | `gcc`, `python3`, `ffmpeg` (with libx264) |
 
 There are no devkitPro, Sony SDK or BIOS dependencies. Everything is free

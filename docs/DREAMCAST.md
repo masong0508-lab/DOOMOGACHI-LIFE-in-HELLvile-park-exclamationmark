@@ -5,6 +5,8 @@ project plan). This document grows with it. Right now it covers:
 
 1. The toolchain: the sh-elf cross compiler and KallistiOS, installed by
    `dc/tools/setup_kos.sh` at pinned versions.
+2. The headless harness: `dc/harness/dcrun`, a libretro frontend for the
+   Flycast core (details in `dc/harness/README.md`).
 
 The SH4 compile check that runs today, with no KallistiOS at all, is the
 `sh-elf-gcc` leg of `core/tools/xcheck.sh` (docs/BUILDING.md, "Tests").
@@ -185,3 +187,42 @@ before or in DC2.
 | `kos-chain failed: make build-...` | the last lines of each kos-chain log are printed; the full logs stay in `<prefix>/.setup_kos/kos-chain.log` and `<prefix>/kos/utils/kos-chain/logs/`. Rerun to resume |
 | `<prefix>/kos has local changes to tracked files` | the KallistiOS tree was edited; commit or discard the edits, or `--force` |
 | `sh-elf-gcc --version` says 13.2 after sourcing `environ.sh` | an older shell already had another `sh-elf-gcc` first in `PATH`; open a new shell, or run `$KOS_CC_BASE/bin/sh-elf-gcc` |
+
+---------------------------------------------------------------------------
+
+## 2. Headless harness
+
+`dc/harness/` holds the test harness the port's scripts will run on, the
+Dreamcast counterpart of `gba/harness` and the PS1 harness:
+
+- `build_flycast.sh` builds the Flycast libretro core
+  (`libretro/flycast` at `e7085e20fe8d81257e11aea5f19a9c1ca2b1bd55`,
+  2026-10-31; `make platform=unix HAVE_OPENMP=0`) into
+  `dc/harness/build/flycast_libretro.so`, then deletes its source tree.
+- `dcrun` loads the core, boots an `.elf`/`.cdi`/`.gdi`/`.chd` with
+  Flycast's HLE BIOS (no Sega files), renders through an EGL surfaceless
+  GL context (Mesa llvmpipe, GL 4.5 core) into an FBO, and plays the
+  runner's script language on 4 ports with the Dreamcast extensions
+  (`port`, `device`, `stick`, `trigger`, `type`, `mouse`,
+  `expect-rumble`, `vmu-shot`, `expect-audio`).
+- `dc_mailbox.h` is the contract with the game: the GBA mailbox's fields
+  plus a 4 KB `plat_log` ring and the last scene name, found through the
+  `dc_mailbox` symbol (`sh-elf-nm`) and read through the core's
+  `RETRO_MEMORY_SYSTEM_RAM`. The game side (`dc/src`) arrives in DC2.
+- Runs repeat: the core options are pinned by `dcrun` (threaded rendering
+  off, 1x, VGA, NTSC, ...), OpenMP is off in the core build, and the
+  Dreamcast clock boots at a fixed time (`--rtc`).
+
+`make -C dc/harness test` checks `dcrun` itself against a stand-in core
+(`dc/harness/tests/mockcore.c`): every script command, the mailbox,
+PNG output at 640x480 and 320x240, byte-identical PNGs over two runs, and
+the exit status for failed `expect-log`/`expect-scene`, timeouts and a
+game that never writes the mailbox. It needs no emulator and no
+KallistiOS.
+
+Status (2026-11-01): `dcrun` and its self-test are done and pass (also
+under ASan/UBSan). The Flycast core has not been built in the development
+sandbox yet (building third-party code there needs the user's approval),
+so booting KallistiOS examples and the determinism check on real
+Dreamcast frames are still to do: `make -C dc/harness flycast`, then
+`dcrun build/flycast_libretro.so $KOS_BASE/examples/dreamcast/pvr/plasma/plasma.elf --script dc/harness/scripts/kos_example.txt` twice and `cmp` the PNGs.
