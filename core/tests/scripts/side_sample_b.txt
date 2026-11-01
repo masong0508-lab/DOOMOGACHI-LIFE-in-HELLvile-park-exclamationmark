@@ -109,7 +109,7 @@ press DOWN
 wait 4
 press DOWN
 wait 8
-shot b_poem_grave
+shot b_poem_salt
 press A
 wait 4
 press A

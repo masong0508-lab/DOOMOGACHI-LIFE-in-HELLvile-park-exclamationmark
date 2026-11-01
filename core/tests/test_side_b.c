@@ -213,9 +213,10 @@ TEST(side_b_minigames_run)
 {
     static const int ids[7] = { SMG_B_BUBBLES, SMG_B_BUBBLES_STAGE, SMG_B_FIREFLY, SMG_B_NAPOFF, SMG_B_POEM,
                                 SMG_B_DUET, SMG_B_HUGS };
-    static const uint8_t none_dead[9] = { 0, 0, 0, 1, 0, 0, 0, 1, 0 };   /* "Small bells", "a day" */
-    static const uint8_t one_dead[9] = { 0, 0, 0, 0, 0, 0, 0, 1, 0 };    /* "A skull" stays */
-    static const uint8_t two_dead[9] = { 0 };                            /* "A skull", "the dead" */
+    /* Clinker's board (show canon, C1): she counts the lines with salt in */
+    static const uint8_t none_salted[9] = { 0, 0, 0, 1, 0, 0, 0, 1, 0 }; /* "A small bell", "a day" */
+    static const uint8_t one_salted[9] = { 0, 0, 0, 0, 0, 0, 0, 1, 0 };  /* "A shaker" stays */
+    static const uint8_t two_salted[9] = { 0 };                          /* "A shaker", "the chips" */
     static const uint16_t queue[8] = { 855, 42, 1, 666, 77, 13, 111, ROSTER_ID_GRUMBLEGUTS };
     static const uint8_t hold[8] = { 33, 10, 21, 21, 21, 33, 10, 55 };   /* firm, gentler, gentle, all */
     int k, r;
@@ -231,12 +232,12 @@ TEST(side_b_minigames_run)
     CHECK_EQ(play_mg(SMG_B_FIREFLY, right_then_idle), 2); /* two faces */
     r = play_mg(SMG_B_NAPOFF, mash);
     CHECK(r == 0 || r == 1);
-    poem_downs = none_dead;
-    CHECK_EQ(play_mg(SMG_B_POEM, poem), 1);               /* "Six. Needs death." */
-    poem_downs = one_dead;
-    CHECK_EQ(play_mg(SMG_B_POEM, poem), 2);               /* "Seven. The death is in the right place." */
-    poem_downs = two_dead;
-    CHECK_EQ(play_mg(SMG_B_POEM, poem), 3);               /* "Four. Too much death." */
+    poem_downs = none_salted;
+    CHECK_EQ(play_mg(SMG_B_POEM, poem), 1);               /* "Six. Needs salt." */
+    poem_downs = one_salted;
+    CHECK_EQ(play_mg(SMG_B_POEM, poem), 2);               /* "Seven. The salt is in the right place." */
+    poem_downs = two_salted;
+    CHECK_EQ(play_mg(SMG_B_POEM, poem), 3);               /* "Four. Too much salt." */
     CHECK_EQ(play_mg(SMG_B_POEM, idle), 3);               /* it writes itself, slowly */
     r = play_mg(SMG_B_DUET, mash);
     CHECK(r == 0 || r == 1);

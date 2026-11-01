@@ -24,7 +24,8 @@
  *          ate it).
  *   CHALK  S164 Clinker's board: the poem is a 3-line text entry in chalk
  *          words (up / down picks, A writes, B rubs out); result 1 + the
- *          lines with a death in them (she wants exactly one).
+ *          lines with salt in them (she wants exactly one: show canon, C1,
+ *          her rating is "Needs salt").
  *   SQUEEZE S216 the hug line: hold A to hug, let go in the hugger's zone
  *          (gentle, gentler, firm; Grumbleguts: all the way, rear first,
  *          with the record scratch); the counter reaches 1,000 on the last
@@ -674,23 +675,25 @@ static void duet_draw(int sw, int sh)
 }
 
 /* ---- CHALK: Clinker's board ------------------------------------------------- */
-/* three lines of three slots; each slot has four words, one of them death */
+/* three lines of three slots; each slot has four words, one of them salt
+ * (show canon, C1: "Needs salt" is the rating catchphrase; the salt words
+ * sit where the death words were, so a line's score is unchanged) */
 static const char *const poem_word[9][4] = {
-    { "The moon", "My gate", "A kettle", "The grave" },
-    { "is", "hums", "rots", "waits" },
-    { "so round", "with bones", "all night", "for tea" },
-    { "A skull", "A small bell", "The pump", "Your hand" },
-    { "sings", "counts", "shines", "dies" },
-    { "at noon", "for you", "in dust", "like rain" },
-    { "I keep", "We count", "I bury", "You chalk" },
-    { "the dead", "a day", "the hours", "one more" },
-    { "on walls.", "in tens.", "and smile.", "in a tomb." },
+    { "The moon", "My gate", "A kettle", "The salt" },
+    { "is", "hums", "brines", "waits" },
+    { "so round", "with salt", "all night", "for tea" },
+    { "A shaker", "A small bell", "The pump", "Your hand" },
+    { "sings", "counts", "shines", "salts" },
+    { "at noon", "for you", "in brine", "like rain" },
+    { "I keep", "We count", "I salt", "You chalk" },
+    { "the chips", "a day", "the hours", "one more" },
+    { "on walls.", "in tens.", "and smile.", "to taste." },
 };
-static const uint8_t poem_death[9] = { 3, 2, 1, 0, 3, 2, 2, 0, 3 };
+static const uint8_t poem_salt[9] = { 3, 2, 1, 0, 3, 2, 2, 0, 3 };
 
-static int line_dead(int l)
+static int line_salted(int l)
 {
-    const uint8_t *w = G->word + l * 3, *d = poem_death + l * 3;
+    const uint8_t *w = G->word + l * 3, *d = poem_salt + l * 3;
     return w[0] == d[0] || w[1] == d[1] || w[2] == d[2];
 }
 
@@ -714,7 +717,7 @@ static void poem_update(void)
         g->idle = 0;
         g->shake = 10;
         audio_sfx(SFX_SHWIP);
-        if (g->cur >= 9) finish(1 + line_dead(0) + line_dead(1) + line_dead(2));
+        if (g->cur >= 9) finish(1 + line_salted(0) + line_salted(1) + line_salted(2));
     }
 }
 
@@ -753,9 +756,13 @@ static void poem_draw(int sw, int sh)
             }
             x += w + 6;
         }
-        if (g->cur > l * 3 + 2 && line_dead(l)) {             /* a little skull doodle */
-            ui_fill_circle(x + 4, y + 3, 4, PAL_WHITE);
-            ui_text(x + 1, y, STR_ICON_SKULL, PNT(FOREST, 0));
+        if (g->cur > l * 3 + 2 && line_salted(l)) {           /* a little salt-shaker doodle */
+            ui_round_rect(x + 1, y - 1, 7, 10, 2, PAL_WHITE);
+            plat_rect(x + 1, y - 1, 7, 2, PAL_GRAY_L);
+            plat_rect(x + 3, y - 1, 1, 1, PNT(FOREST, 0));
+            plat_rect(x + 5, y - 1, 1, 1, PNT(FOREST, 0));
+            plat_rect(x + 3, y + 3, 3, 1, PNT(FOREST, 0));    /* an S, nearly */
+            plat_rect(x + 9, y + 1 + (g->t / 6) % 4, 1, 1, PAL_WHITE);
         }
     }
     plat_rect(cx, cy - 4, 9, 3, PAL_WHITE);                    /* the chalk, and its dust */

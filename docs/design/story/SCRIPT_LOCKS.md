@@ -131,7 +131,7 @@ together with `exorcism.c`.
 |---|---|---|
 | "deceased" | `story_grumble.c` `obit_line` (Grumbleguts' dating-profile obituary) | `test_side_b.c` |
 | "full" | `fp_common.c` the ghost rite's blocker line ("He went out full. ...") | `test_side_b.c` |
-| The S164 poem's death words | `story_mg_b.c` `poem_death[]` marks which word of each slot is a death; the verdicts ("Six. Needs death.", "Seven. The death is in the right place.", "Four. Too much death.") are what `test_side_b.c` scores | `test_side_b.c` (`play_mg(SMG_B_POEM)` returns 1, 2, 3); C1 moves the verdict text to "Needs salt" together with the test comments |
+| The S164 poem's salt words | `story_mg_b.c` `poem_salt[]` marks which word of each slot is salt (C1 moved the board from death words to salt words at the same slots, so the scores are unchanged); the verdicts the result picks are 1 "Six. Needs salt.", 2 "Seven. The salt is in the right place.", 3 "Four. Too much salt." | `test_side_b.c` (`play_mg(SMG_B_POEM)` returns 1, 2, 3; its comments already quote the salt verdicts). The `sb_tock` verdict lines (and `s164_later`) still say "death": their owner (the side_b W package) rewords them to salt |
 | "EXORCISM UNFAILED x1" | `sa_sprk` (Chain I, Sprinklepop's soul) | `test_side_a.c`, `test_exorcism_authored.c` (comments name it; the state is checked) |
 | "POPULATION: 1000" / "999. I can live with 999." | `sa_solo1` (S143) | `side_sample_a.txt` pins |
 | `[NO GAG]` on S206 and S211, no `[PUNCH]`, `{d}`, `{r}`, `SHK_` or `[GURGLE]` in them | `sb_*` | `test_side_b.c` `no_comic_beat` |
