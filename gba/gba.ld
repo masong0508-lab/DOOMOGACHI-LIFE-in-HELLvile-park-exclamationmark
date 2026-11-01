@@ -190,6 +190,11 @@ ASSERT(__iwram_bss_end <= __iwram_stack_limit,
 ASSERT(__iwram_ovl_end - __iwram_ovl_start >= __iwram_ovl_3d_size &&
        __iwram_ovl_end - __iwram_ovl_start >= __iwram_ovl_2d_size,
        "IWRAM overlay slot smaller than a group")
+/* G6: the overworld billboards' tables use the slot's bytes past the 2D
+ * group while it is in (ow_obj.c BB_TAIL_BYTES, iwram_ovl_2d_tail): a 2D
+ * group that grows into them must shrink ow_obj.c's tables first */
+ASSERT(__iwram_ovl_end - __iwram_ovl_start - __iwram_ovl_2d_size >= 1712,
+       "IWRAM overlay: the 2D group leaves under 1,712 B for ow_obj.c (BB_TAIL_BYTES)")
 ASSERT(__iwram_ovl_3d_size == 0 || LOADADDR(.ovl_3d) == __iwram_ovl_3d_lma,
        "IWRAM overlay: 3D group ROM copy moved")
 ASSERT(__iwram_ovl_2d_size == 0 || LOADADDR(.ovl_2d) == __iwram_ovl_2d_lma,

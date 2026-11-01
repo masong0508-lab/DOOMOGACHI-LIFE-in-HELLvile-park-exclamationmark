@@ -129,7 +129,7 @@ PS1 build has the same viewer (`ps1/src/cutview.c`, hold SELECT at boot).
 | main stack | `0x03007D00` down | >= 6 KB reserved (linker `ASSERT`) | system mode |
 | VRAM page 0/1 | `0x06000000` / `0x0600A000` | 2 x 37.5 KB | Mode 4 double buffer |
 | VRAM gaps | `0x06009600` / `0x06013600` | 2 x 2.5 KB | the 3D view's 16 colormap rows + tint map (behind the two Mode 4 pages; byte reads as fast as IWRAM) |
-| VRAM OBJ area | `0x06014000` | 16 KB | 3D texture cache: 4 textures; squash and title-figure OBJs (`obj.c`) |
+| VRAM OBJ area | `0x06014000` | 16 KB | 3D texture cache: 4 textures; squash and title-figure OBJs (`obj.c`); in a tile frame, the overworld billboards as OBJs (G6, `ow_obj.c`, section 6c) |
 | VRAM in a tile frame (G5) | `0x06000000` | 37.5 KB | canvas map (SB 0), world map (SB 1), 36 cell composites at `0x1000`, the 392-tile canvas pool at `0x3400`; the dense build canvas is page 1's bytes (`0x0600A000`, 600 tiles, the last 216 in OBJ VRAM below `0x06013600`). The 3D gaps are never touched (section 6b) |
 | palette | `0x05000000` | 512 B | BG + OBJ palettes = `doomo_palette` |
 | flash | `0x0E000000` | 128 KB in 2 banks | saves |
@@ -229,7 +229,9 @@ they share ONE slot:
                                         irq.iwram.c (mixer), video.iwram.c
 0x03002954  overlay slot      10,384 B  ONE of:
               .ovl_3d  10,384 B  r3d.iwram.c code + const data, r3d_loops.s
-              .ovl_2d   8,224 B  section .iwram_2d (G5's canvas loops)
+              .ovl_2d   8,592 B  section .iwram_2d (G5's canvas loops, G6's
+                                 shadow rows); its tail (1,792 B) holds
+                                 ow_obj.c's tables while it is in
 0x030051e4  .iwram_bss         3,868 B  (r3d's .bss stays resident)
 0x03006100  main stack         7,168 B  (>= 6,144 B with the largest group in)
 ```
@@ -383,13 +385,14 @@ against the LAST row, not against a figure from an older base.
 | 8 | HART: roofs, redrawn furniture | `3706744` | 13,088 B | 13,088 B | 0 | 6,728 B | no EWRAM / IWRAM: the roof's tables (up to 5 KB) live in the two 2.5 KB VRAM gaps of the mode 4 pages, which the raycaster refills (`r3d_invalidate()`); the house region stays 16,872 B. ROM 3,710,784 -> 3,721,784 B (+11,000: iso sprites 453,094 -> 455,050 B, roof code in `room_ref.c` / `room.c`); fps: modal 20.0 -> 18.8 (gate 18), rotate 25.4 -> 23.2 (20), steady 29.5, cellar 26.2, defend 12.2 (floor 11) |
 | 9 | C1: show canon (turkey Mayor, animatronic Bonejangles, "Needs salt") | `27de086` | 13,088 B | **13,048 B** | -40 B | 6,728 B | `portrait_turkey.c`'s layer-group state (32 B `.bss`); ROM ROMFIG (the turkey renderer, the animatronic parts, 6 creator presets); IWRAM unchanged |
 | 10 | H4: themed door / window fittings, the designed Towers 7B and Pits flat | `H4` | 13,048 B | **13,048 B** | 0 | 6,728 B | ROM -> 3,774,396 B (about +40.8 KB: 19 pieces in the iso sprites); the Walls panel's skin state is 4 B of `HomeScn` (scene scratch); room parity (the Living Room) and house fps unchanged |
-| 11 | G2: overworld quick wins (Mode 4), the tile window retuned | `d5181cb` | 13,048 B | **13,008 B** | -40 B | 6,608 B | `owf` pixel classes + 2 tile-cache counters; IWRAM resident +120 B (`ow_spr_rows` in, the per-pixel C blit out), so the overlay slot's largest group may now grow by 464 B (to 10,848 B) within the 6 KB stack rule; ROM 3,774,396 -> 3,779,208 B (+4,812, ~3 KB of it the `test-ow` self-test); main stack high-water over the tour 3,376 B (2 KB table cache on `plat_overworld`'s stack; G5's canvas budget must leave room for it); `CV_TILES_WIN` 250 -> 64 (section 6b); speed tour frame-exact (16 scenes) |
+| 11 | G2: overworld quick wins (Mode 4), the tile window retuned | `d5181cb` | 13,048 B | 13,008 B | -40 B | 6,608 B | `owf` pixel classes + 2 tile-cache counters; IWRAM resident +120 B (`ow_spr_rows` in, the per-pixel C blit out), so the overlay slot's largest group may now grow by 464 B (to 10,848 B) within the 6 KB stack rule; ROM 3,774,396 -> 3,779,208 B (+4,812, ~3 KB of it the `test-ow` self-test); main stack high-water over the tour 3,376 B (2 KB table cache on `plat_overworld`'s stack; G5's canvas budget must leave room for it); `CV_TILES_WIN` 250 -> 64 (section 6b); speed tour frame-exact (16 scenes) |
+| 12 | G6: overworld billboards as OBJs | `65209c0` | 13,008 B | **12,952 B** | -56 B | 6,608 B | ROM 3,779,208 -> 3,787,548 B (+8,340); the block table and the frame's billboards (1,700 B) live in the IWRAM overlay slot's tail past the 2D group (asserted >= 1,712 B in `gba.ld`), the OAM entries in a 896 B buffer on `video_flip`'s stack (main-stack high-water 3,704 B with tile frames forced); 2D group 8,224 -> 8,592 B (still below the 3D group); speed tour frame-exact (16 scenes) |
 
 Known claimants still to land (their own packages measure and add rows):
 
 | package | EWRAM | gate it must meet (against the last row) |
 |---|---:|---|
-| H11: `HOME` `.bss` on the GBA (`HOME_PERSIST`) | +3,432 B | free >= 12,352 B before it (SPEC C9) and >= 8,192 B after it; after G1, H10, L1 and C1: 13,048 -> 9,616 B |
+| H11: `HOME` `.bss` on the GBA (`HOME_PERSIST`) | +3,432 B | free >= 12,352 B before it (SPEC C9) and >= 8,192 B after it; after G1, H10, L1, C1, G2 and G6: 12,952 -> 9,520 B |
 | L4: Latin glyph pages | 0 (`const` rows in ROM) | |
 | G3: the island's run layer | 0 `.bss` (from the arena) | free >= 9,000 B |
 | H2: room.c shell patterns | record EWRAM / IWRAM | |
@@ -1112,9 +1115,10 @@ Files: `src/canvas_int.h` (layout, state, contract between the files),
 `src/canvas.c` (THUMB: frame policy, flip, conversion, the 2D calls' slow
 path), `src/canvas_2d.c` (ARM in the IWRAM overlay's 2D group: the canvas
 pixel loops), `src/ow_tiles.c` (THUMB: the world composites, the world
-map, the billboards in order). `overworld.c` decides per frame; `main.c`
-(`video_flip`), `video*.c`, `video_loops.s`, `postfx.c`, `obj.c`,
-`r3d.c` and `room.c` route through it.
+map), `src/ow_obj.c` (G6: the billboards in order, as OBJs, section
+6c). `overworld.c` decides per frame; `main.c` (`video_flip`), `video*.c`,
+`video_loops.s`, `postfx.c`, `obj.c`, `r3d.c` and `room.c` route through
+it.
 
 **What is shown.** A frame whose first drawing call is a full-screen
 `plat_overworld()` may be shown in Mode 0:
@@ -1142,6 +1146,7 @@ map, the billboards in order). `overworld.c` decides per frame; `main.c`
   visible cells. Shadows and `plat_shade_rect` read the world pixel under
   a transparent canvas pixel.
 * OBJs (squash actors, title figures) stay above everything, as in Mode 4.
+  Since G6 the billboards are OBJs too, between the two BGs (section 6c).
   A shake moves BG0 and BG2 by their offsets; window 0 cuts out what an
   affine Mode 4 page would leave as backdrop. `plat_post_blend`'s BLDY
   also targets BG0.
@@ -1206,8 +1211,8 @@ estimate to be at or under it, and an estimate above it is measured again
 only every 64 frames (`CV_REMEASURE_FAR`; measuring every 16 cost the
 story map 0.5 fps). The tour now shows no tile frame (counted with a
 temporary log line); every tour scene runs within 0.1 ms of a `TILES=0`
-ROM. G6 (billboards as OBJs) must measure again and raise the window;
-until then the tile path's exactness is not exercised by the tour.
+ROM. G6 (billboards as OBJs) measured again and kept the window (section
+6c); the tile path's exactness is checked with the window forced open.
 
 **Text.** Every text path reads glyphs through `vid_glyph_rows()`
 (`video_int.h`), today the core font transposed at boot. That is the hook
@@ -1230,6 +1235,96 @@ STORY 110 >= 25, hellvile and park >= 30) are not met: with billboards
 still drawn by the CPU, the canvas costs about what the world saves. They
 need G6 (billboards as hardware sprites: 24 ms of hahaland's frame) and
 G7 (retained HUD panels).
+
+## 6c. Overworld billboards as hardware sprites (G6)
+
+File: `src/ow_obj.c` (THUMB, with its per-pixel loops in the 2D group);
+`obj.c` hands it OAM entries 16..127 and the free parts of OBJ VRAM;
+`canvas.c` / `video.c` call it where a tile frame leaves the canvas or
+shades it. Mode 4 frames are unchanged.
+
+**What is shown.** In a tile frame every billboard becomes one or more
+8bpp OBJs of priority 1: above the world (BG2, priority 1), below the
+canvas (BG0, priority 0). Pieces are 8..64 px (a 46x49 sprite is a 32 + 16
+by 32 + 32 grid), so images up to 255 px work. Among themselves they keep
+the Mode 4 order: the billboard drawn last gets the lowest OAM entry. A
+piece's tiles hold the final screen pixels: the texels through
+`doomo_colormap[level]`, translucency as the Mode 4 checker, the night /
+view tint dither at the screen pixel (the dither phase `(x & 3, y & 3)` is
+part of the key, so the pixels are Mode 4's exactly; sprite-anchored
+dither is allowed by DECISIONS but not used yet, see below), and the raised
+cells that Mode 4 paints over the sprite later (the rows below its feet)
+cleared from the tiles. The shadow blobs stay in the canvas (they darken
+the canvas, an earlier billboard's OBJ pixel or the world, and stay
+transparent where a later billboard's OBJ is opaque), so does every
+billboard that gets no OBJ (OAM entries, VRAM or the per-line OBJ cycle
+budget ran out, or over 255 px), together with every later billboard
+whose box meets one of those. A shake hides OBJs outside window 0 when a
+billboard piece crosses the screen edge (the billboards move with the
+picture).
+
+**VRAM.** OBJ VRAM `0x06014000..0x06018000`: 256 tiles (the dense canvas
+holds the rest of the Mode 0 OBJ area). Squash slot k owns its 4 KB region
+while in use, the title figures regions 2 and 3; billboards allocate blocks
+from the top of what is left. A block is one image under one key (image,
+scale, flip, light level, dither phase and tint state, checker parity,
+occlusion mask), uploaded when the key is new and kept LRU; the tiles the
+screen shows are never rewritten (a bitmap of them is kept from the flip
+on), and a squash slot that needs its region while a billboard there is
+still on screen draws unsquashed for that frame.
+
+**Leaving the canvas.** `cv_to_m4` (a pause panel, a fade, 3D, a zoom)
+first draws every OBJ billboard into the canvas under its pixels, back to
+front, so the conversion to Mode 4 keeps every pixel; `plat_shade_rect`
+does the same for the billboards under the rect (and the later ones
+meeting them) before it shades. `cv_read_px` (squash checksums) sees them.
+
+**Memory.** The block table (32 blocks), the frame's billboards (64) and
+the unit bitmap (1,700 B) live in the IWRAM overlay slot's bytes past the
+2D group: scratch that exists while the 2D group is in (every tile frame
+loads it); a load of the 3D group wipes it, which `iwram_ovl_loads()`
+detects (the table is rebuilt; OBJ VRAM was the 3D view's anyway).
+`gba.ld` asserts that the slot keeps 1,712 B past the 2D group: a 2D group
+that grows into them must shrink the tables first. The OAM entries are
+built at the flip into a 896 B buffer on `video_flip`'s stack and DMA'd in
+its vblank (OAM keeps them until the next flip). EWRAM: 56 B less free
+(the shown-tile bitmap and the state; 12,952 B free, the H11 gate of
+12,352 B holds).
+
+**Place keys.** Each block also keeps its last *place key* (a hash of
+the image, the billboard's world position, map row, light, scale, flags,
+dither phase, tint state and the frame's lift grid): a billboard that has
+not moved finds its block by one word and skips the occlusion mask and
+the content key.
+
+**Policy and measurements.** Measured first on G5's tree (`3706744`, Mode
+4 billboards still per pixel), with `CV_TILES_WIN` raised to 360: all 16
+tour scenes frame-exact against that merge base; work per drawn tick
+hahaland 52.4 -> 37.0 ms (17.1 -> 20.2 fps), hellvile 34.6 -> 25.3 (23.3 ->
+29.4), park 37.7 -> 30.7 (22.1 -> 25.7), the map walk 37.6 -> 30.9, the
+story map with dialogue 55.5 -> 50.4 (15.0 -> 17.5); invaded stayed in Mode
+4. Then G2 landed (Mode 4 billboards, ground and blocks much cheaper) and
+on its tree (`65209c0`) the tile frames with OBJ billboards still lose,
+measured with the window forced to 360 (frame-exact there too): hahaland
+35.6 ms tiled against 34.7 in Mode 4 (21.2 against 26.1 drawn fps: a tile
+frame also waits for a vblank its copy fits in), hellvile 25.9 / 24.1, park
+31.9 / 27.0, the map walk 32.2 / 28.4, the story map with dialogue 51.7 /
+37.8. So the window stays at G2's 64 tiles and the tour shows Mode 4 frames
+only, at the base's numbers (all 16 scenes frame-exact against `65209c0`,
+every scene within 0.1 ms); so do the synced story scenes (STORY 155, 154
+and the P0 opening: identical frames and fps). The Mode 4 estimate now
+counts only the billboards' shadows (their OBJs take no canvas tiles).
+
+What a tile frame of hahaland still pays (profile, forced tiles): the world
+pass `ow_tiles_world` ~10% (every visible cell is re-keyed when an
+animated texture changes frame), the canvas HUD and text ~17% (G7's
+retained panels), the shadow rows ~10% with their reads, the billboard
+bookkeeping and OAM ~15%, and the copy's vblank alignment. Those, not the
+billboards, decide the window now; G7 should measure again and raise it.
+Invaded cannot be tiled exactly: its 47 tinted billboards each need a
+block under screen-anchored dither and overflow the 16 KB (15 spill, the
+frame converts); the sprite-anchored dither DECISIONS allows (one block
+per image, the native reference changed the same way) is the way there.
 
 ---------------------------------------------------------------------------
 

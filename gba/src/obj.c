@@ -26,7 +26,16 @@
  * when the image changes. OAM: entries 0..3 + affine groups 0..3, through
  * a 16-entry own shadow (128 B), DMA'd in the vblank of the flip.
  *
- * RAM: 128 B shadow + 4 x 24 B slots + 8 B = 232 B of .bss and .data.
+ * G6: the overworld billboards of a tile frame (ow_obj.c) are OBJs too:
+ * OAM entries 16..127, built at the flip into a buffer on video_flip's
+ * stack (obj_bb_buffer) and DMA'd with the rest (OAM keeps them until the
+ * next flip); tiles in the parts of the same VRAM that no squash slot /
+ * figure holds (region k = slot k's 4 KB, reserved while the slot is not
+ * free; obj_bb_reserved). A slot that must upload into its region while a
+ * billboard there is still on screen draws unsquashed for that frame
+ * (bb_region_take).
+ *
+ * RAM: 128 B shadow + 4 x 24 B slots + 14 B of .bss and .data.
  */
 #include "postfx.h"
 #include "canvas_int.h"
@@ -56,7 +65,8 @@ enum { M_NONE, M_PROBE, M_OBJ };                       /* this frame            
 static uint16_t own_shadow[OBJ_SHADOW_N * 4] __attribute__((aligned(4)));
 static uint16_t *shadow = own_shadow;
 static uint8_t  shadow_n = OBJ_SHADOW_N;
-static uint8_t  slots_used, any_shown;
+static uint8_t  slots_used, any_shown, bb_n, bb_n_last;
+static uint16_t *bb_buf;                 /* G6: the flip's buffer, entries 16.. */
 static XfSlot   xs[OBJ_XF_SLOTS];
 
 /* the OBJ size table: shape 0 square, 1 wide, 2 tall; size 0..3 */
@@ -76,8 +86,10 @@ void obj_set_shadow(uint16_t *buf, int n)
     int i;
     if (!buf || n <= 0) { buf = own_shadow; n = OBJ_SHADOW_N; }
     if (n > 128) n = 128;
-    /* entries the new shadow does not cover go hidden in OAM */
-    for (i = n; i < shadow_n; i++) ((vu16 *)MEM_OAM)[i * 4] = 0x0200;
+    /* entries the new shadow does not cover go hidden in OAM (G6: and
+     * the billboards, which only the own shadow shows) */
+    for (i = n; i < DOOMO_MAX(shadow_n, OBJ_SHADOW_N + bb_n_last); i++) ((vu16 *)MEM_OAM)[i * 4] = 0x0200;
+    bb_n_last = 0;
     shadow = buf;
     shadow_n = (uint8_t)n;
 }
@@ -206,6 +218,11 @@ void plat_image_xform(int ax, int ay, const DoomoImage *img, int sx_q8, int sy_q
     key = (img->uid ? img->uid : (uint32_t)(uintptr_t)img->pix) * 2654435761u;
     key ^= content_hash(img) ^ ((uint32_t)W << 8) ^ (uint32_t)H;
     key |= 1u;                                 /* 0 = nothing uploaded */
+    if (x->key != key && bb_region_take(k)) {   /* G6: a billboard is still shown there */
+        draw_unsquashed(ax, ay, img, sx_q8, sy_q8, flags, color);
+        SET_ST(x, st, M_NONE);
+        return;
+    }
     if (x->key != key) {
         upload(k, img, W, H);
         x->key = key;
@@ -262,6 +279,7 @@ int plat_figure_obj(int k, int x, int y, const DoomoImage *img)
         xs[0].key = xs[1].key = 0;
     }
     if (fig[k].pix != img->pix || fig[k].uid != img->uid) {
+        if (bb_region_take(2) | bb_region_take(3)) return 0;   /* G6: billboards still shown */
         fig_upload(k, img);
         fig[k].pix = img->pix;
         fig[k].uid = img->uid;
@@ -309,6 +327,7 @@ void obj_pre_flip(void)
         if (k >= slots_used) {                 /* not used this frame */
             if (x->idle < 255) x->idle++;
             SET_ST(x, x->idle >= IDLE_FREE ? S_FREE : ST(x), M_NONE);
+            if (ST(x) == S_FREE) x->key = 0;   /* G6: billboards may use its VRAM now */
             hide(k);
             continue;
         }
@@ -345,8 +364,34 @@ void obj_pre_flip(void)
         shadow[(k * 4 + 3) * 4 + 3] = (uint16_t)pd;
         any_shown = 1;
     }
+    bb_n = 0;
     if (shadow == own_shadow) fig_pre_flip();
+    /* G6: the billboard OBJs of a tile frame (none for Mode 4 or another
+     * shadow), and the last flip's other entries hidden */
+    if (shadow == own_shadow && bb_buf) {
+        int i;
+        bb_n = (uint8_t)bb_emit(bb_buf, cv.mode != CV_OFF);
+        for (i = bb_n; i < bb_n_last; i++) bb_buf[i * 4] = 0x0200;
+    } else {
+        bb_emit(NULL, 0);
+    }
     slots_used = 0;
+}
+
+void obj_bb_buffer(uint16_t *buf)
+{
+    bb_buf = buf;
+}
+
+/* G6: the VRAM regions (bit k = squash slot k's 4 KB) billboards may not use */
+uint32_t obj_bb_reserved(void)
+{
+    uint32_t m = 0;
+    int k;
+    for (k = 0; k < OBJ_XF_SLOTS; k++)
+        if (ST(&xs[k]) != S_FREE) m |= 1u << k;
+    if (fig[0].pix || fig[1].pix) m |= 12u;
+    return m;
 }
 
 void obj_vblank(void)
@@ -354,4 +399,10 @@ void obj_vblank(void)
     static uint8_t was_shown;
     if (any_shown || was_shown) dma3_copy32((void *)MEM_OAM, shadow, (uint32_t)shadow_n * 2u);
     was_shown = any_shown;
+    /* G6: the billboards' entries (OAM keeps them until the next flip) */
+    if (shadow == own_shadow && bb_buf) {
+        int n = DOOMO_MAX(bb_n, bb_n_last);
+        if (n) dma3_copy32((void *)((vu16 *)MEM_OAM + OBJ_SHADOW_N * 4), bb_buf, (uint32_t)n * 2u);
+        bb_n_last = bb_n;
+    }
 }

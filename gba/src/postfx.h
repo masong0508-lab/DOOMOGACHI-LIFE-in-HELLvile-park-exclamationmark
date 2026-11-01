@@ -46,12 +46,19 @@ int      gba_objvram_owner(void);
 /* ---- OAM (obj.c) --------------------------------------------------------- */
 #define OBJ_XF_SLOTS 4                /* squashed hero actors per frame     */
 #define OBJ_SHADOW_N 16               /* own shadow: entries + affine 0..3  */
+#define OBJ_BB_ENT_N 112              /* G6: OAM entries 16..127, billboards */
 void obj_init(void);                  /* hide all 128 OAM entries (boot)    */
 /* Use buf (n entries of 4 halfwords, n <= 128) as the OAM shadow; NULL
- * returns to the own 16-entry shadow. A buffer in gba_big must be dropped
+ * returns to the own 16-entry shadow. With the own shadow, entries 16..127
+ * hold the overworld billboards of a tile frame (G6, ow_obj.c), written
+ * from a buffer on the flip's stack (obj_bb_buffer); another shadow shows
+ * none. A buffer in gba_big must be dropped
  * (obj_set_shadow(NULL, 0)) before the block changes hands (C7.8). Entries 0..OBJ_XF_SLOTS-1 and the attr3 words of entries
  * 0..15 (affine groups 0..3) belong to plat_image_xform; others are free. */
 void obj_set_shadow(uint16_t *buf, int n);
+/* G6 (main.c video_flip): the flip's OAM buffer for entries 16..127
+ * (OBJ_BB_ENT_N x 4 halfwords) from obj_pre_flip to obj_vblank; NULL after */
+void obj_bb_buffer(uint16_t *buf);
 uint16_t *obj_shadow(int *n);
 void obj_pre_flip(void);              /* postfx_pre_flip's OBJ half         */
 void obj_vblank(void);                /* OAM DMA                            */

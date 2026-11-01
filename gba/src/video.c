@@ -169,7 +169,10 @@ void plat_shade_rect(int x, int y, int w, int h, int level)
     if (x >= x1 || y >= y1) return;
     if (gba_nodraw) {
         int k = vid_route(x, y, x1, y1);
-        if (k == 2) cv_shade(x, y, x1, y1, doomo_colormap[level]);
+        if (k == 2) {
+            bb_flatten(x, y, x1, y1);           /* G6: shade the billboards too */
+            cv_shade(x, y, x1, y1, doomo_colormap[level]);
+        }
         if (k != 1) return;
     }
     vid_shade(x, y, x1, y1, doomo_colormap[level]);

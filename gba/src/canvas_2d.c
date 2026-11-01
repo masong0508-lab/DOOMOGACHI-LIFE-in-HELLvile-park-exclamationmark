@@ -168,32 +168,6 @@ void cv_shade(int x0, int y0, int x1, int y1, const uint8_t *cm)
     }
 }
 
-/* the bits of the 8 columns at screen x (a multiple of 8) of screen row y
- * that no raised cell of map rows > row covers (the frame's lift grid) */
-INL uint32_t occ_free(int x, int y, int row)
-{
-    const CvMeta *M = cv_meta;
-    uint32_t bits = 0xFF;
-    const int wy = y + cv.sy, cyr = wy >> 4, j = cyr - M->gy0;
-    int cx = (x + cv.sx) >> 4, cx1 = (x + 7 + cv.sx) >> 4;
-    for (; cx <= cx1; cx++) {
-        int i = cx - M->gx0, cover = 0, a, b;
-        if ((unsigned)i >= M->gw) continue;
-        if (cyr > row && (unsigned)j < M->gh && M->lift[j][i]) cover = 1;
-        else if (cyr + 1 > row && (unsigned)(j + 1) < M->gh) {
-            int l = M->lift[j + 1][i];
-            cover = l && wy >= (cyr + 1) * 16 - l;
-        }
-        if (!cover) continue;
-        a = cx * 16 - cv.sx - x;
-        b = a + 16;
-        if (a < 0) a = 0;
-        if (b > 8) b = 8;
-        if (a < b) bits &= ~colbits(a, b);
-    }
-    return bits;
-}
-
 /* 1 if a raised cell of map rows > row covers any of [x0,x1) x [y0,y1) */
 INL int occ_any(int x0, int y0, int x1, int y1, int row)
 {
@@ -249,17 +223,6 @@ INL uint32_t keep8(uint32_t mk, int tx, int cxa)
     return ~clear & 0xFFu;
 }
 
-void cv_shade_occ(int x0, int x1, int y, const uint8_t *cm, int row)
-{
-    int tx, occ = occ_any(x0, y, x1, y + 1, row);
-    for (tx = x0 >> 3; tx <= (x1 - 1) >> 3; tx++) {
-        int a = (x0 > tx * 8 ? x0 : tx * 8) - tx * 8;
-        int b = (x1 < tx * 8 + 8 ? x1 : tx * 8 + 8) - tx * 8;
-        uint32_t bits = colbits(a, b);
-        if (occ) bits &= occ_free(tx * 8, y, row);
-        if (bits) shade8(tile_at(tx, y >> 3) + (y & 7) * 2, tx * 8, y, bits, cm);
-    }
-}
 
 /* plat_checker: pixel (x, y) where ((x + y) & 1) == par */
 void cv_checker(int x0, int y0, int x1, int y1, int par, uint32_t color)

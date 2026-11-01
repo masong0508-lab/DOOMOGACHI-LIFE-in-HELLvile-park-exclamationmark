@@ -32,6 +32,11 @@ enum { OVL_NONE = 0, OVL_3D = 1, OVL_2D = 2 };
 void iwram_ovl_use(int g);
 /* The group in the slot now (OVL_NONE after boot). */
 int iwram_ovl_current(void);
+/* Loads so far: a change means the slot was rewritten. The bytes of the
+ * slot past the 2D group (iwram_ovl_2d_tail) are scratch while the 2D
+ * group is in, and are lost on the next load (G6: ow_obj.c). */
+uint32_t iwram_ovl_loads(void);
+uint8_t *iwram_ovl_2d_tail(uint32_t *bytes);
 
 /* A single ARM function of the 2D group (like IWRAM_CODE for resident
  * code). Callers must have called iwram_ovl_use(OVL_2D). */

@@ -224,6 +224,8 @@ void plat_end_frame(void)
 void video_flip(void)
 {
     int waited = 0, tiles;
+    uint16_t bb_oam[OBJ_BB_ENT_N * 4] __attribute__((aligned(4)));  /* G6: obj.c */
+    obj_bb_buffer(bb_oam);
     cv_pre_flip();              /* G5: finish a tile frame (or convert it) */
     postfx_pre_flip();          /* S1: squash OBJ checks + OAM (postfx.h) */
     while (gba_vblanks - last_flip_vbl < 2) {
@@ -257,6 +259,7 @@ void video_flip(void)
         gba_back = (uint16_t *)VRAM_PAGE1;      /* the next Mode 4 frame: page 1 */
     }
     postfx_vblank(tiles);       /* S1: BG2 affine, BLDY, palette, OAM DMA */
+    obj_bb_buffer(NULL);
     last_flip_vbl = gba_vblanks;
 }
 

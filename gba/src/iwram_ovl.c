@@ -13,6 +13,7 @@ extern const uint8_t __iwram_ovl_3d_lma[], __iwram_ovl_2d_lma[];
 extern const uint8_t __iwram_ovl_3d_size[], __iwram_ovl_2d_size[];
 
 static uint8_t ovl_cur;                  /* OVL_*: the group in the slot */
+static uint32_t ovl_loads;               /* groups loaded since boot     */
 
 #if defined(ENGINE_TEST)
 /* the test ROM fills the slot's unused tail with undefined instructions,
@@ -24,6 +25,19 @@ static const uint32_t ovl_poison = 0xE7FFDEFEu;
 int iwram_ovl_current(void)
 {
     return ovl_cur;
+}
+
+uint32_t iwram_ovl_loads(void)
+{
+    return ovl_loads;
+}
+
+/* the slot's bytes after the 2D group (gba.ld asserts the size G6 needs) */
+uint8_t *iwram_ovl_2d_tail(uint32_t *bytes)
+{
+    uint32_t size = (uint32_t)(uintptr_t)__iwram_ovl_2d_size;
+    if (bytes) *bytes = (uint32_t)(__iwram_ovl_end - __iwram_ovl_start) - size;
+    return __iwram_ovl_start + size;
 }
 
 void iwram_ovl_use(int g)
@@ -55,6 +69,7 @@ void iwram_ovl_use(int g)
     if (words) dma3_copy32(__iwram_ovl_start, src, words);
 #endif
     ovl_cur = (uint8_t)g;
+    ovl_loads++;
 }
 
 #if defined(ENGINE_TEST)

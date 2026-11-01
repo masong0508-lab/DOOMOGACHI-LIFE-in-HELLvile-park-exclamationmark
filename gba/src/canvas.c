@@ -35,7 +35,11 @@ IWRAM_BSS CvState cv;
  * frame until G6 moves the billboards to OBJs. A frame above this goes
  * to Mode 4; a Mode 4 estimate above it does not enter and is looked at
  * again only every CV_REMEASURE_FAR frames (measuring costs). Exact
- * either way. */
+ * either way. G6 moved the billboards to OBJs (ow_obj.c), but measured
+ * on G2's Mode 4 a tile frame still loses with a full canvas (hahaland
+ * 35.6 ms tiled against 34.7, hellvile 25.9 / 24.1, the story map with
+ * its dialogue 51.7 / 37.8: the canvas HUD and text, the world pass and
+ * the vblank-aligned copy), so the window stays until G7. */
 #define CV_TILES_WIN 64
 #define CV_BACKOFF_MIN 30u
 #define CV_REMEASURE   16u
@@ -130,6 +134,7 @@ static void backoff_grow(void)
 void cv_to_m4(void)
 {
     if (cv.mode != CV_DENSE) return;
+    bb_flatten(0, 0, SCREEN_W, SCREEN_H);       /* G6: the OBJ billboards too */
     cv_convert();
     cv.mode = CV_OFF;
     gba_nodraw = 0;                             /* gba_back is page 1 */
@@ -141,6 +146,7 @@ void cv_to_m4(void)
 void cv_drop(void)
 {
     cv.mode = CV_OFF;
+    bb_drop();
     cv.n_drop++;
     cv.pending_ref = 1;
     backoff_grow();
@@ -207,6 +213,7 @@ uint32_t cv_read_px(int x, int y)
             if (e != CV_ZERO_TILE) p = (const volatile uint8_t *)(CV_VRAM + e * 64u);
         }
         if (p) v = p[((y & 7) << 3) | (x & 7)];
+        if (!v) v = bb_read_px(x, y);           /* G6: an OBJ billboard */
         if (!v) {
             int wx = x + (cv.sx & 7), wy = y + (cv.sy & 7);
             uint32_t e = cv_meta->wmap[(wy >> 3) * CV_WMAP_W + (wx >> 3)];
@@ -302,7 +309,9 @@ int cv_vblank(void)
         REG_WIN0H = (uint16_t)((wx0 << 8) | wx1);
         REG_WIN0V = (uint16_t)((wy0 << 8) | wy1);
         REG_WININ = 0x0035;                     /* BG0, BG2, OBJ, blend   */
-        REG_WINOUT = 0x0030;                    /* OBJ, blend             */
+        /* (G6: no OBJ outside when a billboard OBJ would show there:
+         * the billboards belong to the moved picture) */
+        REG_WINOUT = bb_edge ? 0x0020 : 0x0030; /* OBJ, blend             */
         REG_DISPCNT = (uint16_t)(DCNT_MODE0 | DCNT_BG0 | DCNT_BG2 | DCNT_OBJ | DCNT_OBJ_1D |
                                  ((dx | dy) ? DCNT_WIN0 : 0));
     }

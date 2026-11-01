@@ -160,9 +160,23 @@ void cv_text_box(int x, int y, const char *s, int pad, int *x0, int *y0, int *x1
  * set from its scroll); 0 = not possible this frame (the slots the screen
  * shows leave too few for the new view, or the keys were lost) */
 int  ow_tiles_world(const DoomoMap *m);
+
+/* ---- ow_obj.c (THUMB, G6): the billboards as hardware sprites ------------ */
 /* the billboards in Mode 4 order (after raised row ty0..ty1, by their
- * feet), into the canvas, each minus the raised cells drawn after it */
+ * feet): OBJs (priority 1, between the world and the canvas) minus the
+ * raised cells drawn after them; shadows and the leftovers in the canvas */
 void ow_tiles_sprites(const DoomoOverworldView *v, int ty0, int ty1);
+/* the OBJ billboards over a rect (and the later ones meeting them) into
+ * the canvas under its pixels: before a conversion or a shade rect */
+void bb_flatten(int x0, int y0, int x1, int y1);
+void bb_drop(void);                       /* a dropped frame: none shown  */
+uint32_t bb_read_px(int x, int y);        /* the OBJ billboard pixel, 0   */
+/* obj.c obj_pre_flip: the OAM entries 16.. of a tile frame (tiles = 1)
+ * into buf (entry 16 first), none for a Mode 4 one; returns the entries
+ * written. The frame's billboards are done with after it. */
+int  bb_emit(uint16_t *buf, int tiles);
+int  bb_region_take(int k);               /* obj.c: squash slot k's VRAM  */
+extern int bb_edge;                       /* a shake + a piece over an edge */
 
 /* ---- canvas_2d.c (ARM, the IWRAM 2D group): pixel loops ------------------ */
 #include "iwram_ovl.h"
@@ -184,8 +198,9 @@ void cv_blit(int x, int y, const DoomoImage *img, int scale, int flags, uint32_t
  * grid (cv_meta) in map rows > row (row < -32768: none) */
 void cv_sprite(const DoomoImage *img, int x0, int y0, int s, int flags, const uint8_t *cm,
                int row) CV_ARM;
-/* ow_shade over the canvas (a shadow blob row), minus the occluders */
-void cv_shade_occ(int x0, int x1, int y, const uint8_t *cm, int row) CV_ARM;
+/* the canvas tile at screen tile (tx, ty), allocated (zeroed) on first
+ * touch (sparse: overflow points it at a sink and drops the frame) */
+volatile uint32_t *cv_tile(int tx, int ty) CV_ARM;
 #define CV_ROW_NONE 0x7FFF                /* cv_sprite: drawn after all rows */
 /* the world's screen row y (240 px) into dst (halfword aligned) */
 void cv_world_row(uint8_t *line, int y) CV_ROM;

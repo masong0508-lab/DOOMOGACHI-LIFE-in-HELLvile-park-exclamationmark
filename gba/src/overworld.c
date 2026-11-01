@@ -384,9 +384,12 @@ static void draw_sprite(const DoomoBillboard *b)
     y0 = owf.oy + (int)((b->y >> 16) / UNITS_PER_PX) - owf.scrolly - h -
          (int)((b->z >> 16) / UNITS_PER_PX);
     lvl = (b->flags & BB_FULLBRIGHT) ? 15 : DOOMO_CLAMP(owf.day_level + b->light, 2, 15);
-    if (gba_nodraw == GBA_NODRAW_MEASURE) {        /* G5: the canvas estimate */
-        int a0 = DOOMO_MAX(x0, 0), a1 = DOOMO_MIN(x0 + w, SCREEN_W);
-        int b0 = DOOMO_MAX(y0, 0), b1 = DOOMO_MIN(y0 + h + 1, SCREEN_H);
+    if (gba_nodraw == GBA_NODRAW_MEASURE && (b->flags & BB_SHADOW)) {
+        /* G5: the canvas estimate; G6: a tile frame shows the billboard
+         * as OBJs, only its shadow takes canvas tiles */
+        int fy = owf.oy + (int)((b->y >> 16) / UNITS_PER_PX) - owf.scrolly, half = w / 3 + 1;
+        int a0 = DOOMO_MAX(x0 + w / 2 - half, 0), a1 = DOOMO_MIN(x0 + w / 2 + half + 1, SCREEN_W);
+        int b0 = DOOMO_MAX(fy - 1, 0), b1 = DOOMO_MIN(fy + 1, SCREEN_H);
         if (a0 < a1 && b0 < b1) cv_note(a0, b0, a1, b1);
     }
     if (b->flags & BB_SHADOW) {

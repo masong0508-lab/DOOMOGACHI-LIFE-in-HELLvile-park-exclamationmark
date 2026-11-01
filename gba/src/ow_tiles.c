@@ -17,11 +17,13 @@
  * Composites are cached in VRAM (36 slots of 4 tiles); a slot the screen
  * shows (used by the last shown frame) is never rewritten.
  *
- * Billboards go to the canvas in Mode 4 order. In Mode 4 a billboard is
- * drawn right after the raised row its feet are in, so the raised cells of
- * the rows below it (their top and front: x [px, px+16), y [py - h,
- * py + 16)) paint over it; in the canvas those parts are clipped out
- * (occluders), which leaves exactly the Mode 4 pixels.
+ * The billboards (ow_obj.c, G6) are OBJs over this world, in Mode 4
+ * order. In Mode 4 a billboard is drawn right after the raised row its
+ * feet are in, so the raised cells of the rows below it (their top and
+ * front: x [px, px+16), y [py - h, py + 16)) paint over it; in its OBJ
+ * tiles (or in the canvas, for one that gets no OBJ) those parts are
+ * cleared (occluders: the lift grid below), which leaves exactly the Mode
+ * 4 pixels.
  */
 #include "canvas_int.h"
 #include "ow_int.h"
@@ -318,61 +320,4 @@ int ow_tiles_world(const DoomoMap *m)
      * dither state of the lit tiles */
     return world_map(m, ow_tint_state() | ((uint32_t)owf.day_level << 16) | 0x80000000u);
 }
-/* ---- billboards -------------------------------------------------------------- */
-extern int16_t ow_order[128];   /* overworld.c */
-#define order ow_order
-
-void ow_tiles_sprites(const DoomoOverworldView *v, int ty0, int ty1)
-{
-    int n = v->sprites ? DOOMO_MIN(v->sprite_count, 128) : 0, i, si = 0, r;
-    for (i = 0; i < n; i++) {                   /* sort by feet y (stable) */
-        int j = i;
-        while (j > 0 && v->sprites[order[j - 1]].y > v->sprites[i].y) {
-            order[j] = order[j - 1];
-            j--;
-        }
-        order[j] = (int16_t)i;
-    }
-    /* Mode 4: after raised row r, the billboards with feet y < (r + 1) *
-     * cell; the rest after the last row (nothing is drawn after them) */
-    for (r = ty0; r <= ty1 + 1 && si < n; r++) {
-        int32_t row_bottom = (int32_t)(r + 1) * DOOMO_CELL_UNITS;
-        while (si < n && (r > ty1 || (v->sprites[order[si]].y >> 16) < row_bottom)) {
-            const DoomoBillboard *b = &v->sprites[order[si++]];
-            const DoomoImage *img = b->img;
-            int s, w, h, x0, y0, lvl, row;
-            int bx0, by0, bx1, by1, fy = 0, half = 0, cx = 0, shadow = 0;
-            if (!img || !img->pix || !img->w || !img->h) continue;
-            s = DOOMO_CLAMP((b->scale ? b->scale : 256) / 256, 1, 4);
-            w = img->w * s;
-            h = img->h * s;
-            x0 = (int)((b->x >> 16) / UNITS_PER_PX) - owf.scrollx - w / 2;
-            y0 = (int)((b->y >> 16) / UNITS_PER_PX) - owf.scrolly - h - (int)((b->z >> 16) / UNITS_PER_PX);
-            lvl = (b->flags & BB_FULLBRIGHT) ? 15 : DOOMO_CLAMP(owf.day_level + b->light, 2, 15);
-            bx0 = x0; by0 = y0; bx1 = x0 + w; by1 = y0 + h;
-            if (b->flags & BB_SHADOW) {
-                shadow = 1;
-                fy = (int)((b->y >> 16) / UNITS_PER_PX) - owf.scrolly;
-                half = w / 3 + 1;
-                cx = x0 + w / 2;
-                if (cx - half < bx0) bx0 = cx - half;
-                if (cx + half + 1 > bx1) bx1 = cx + half + 1;
-                if (fy - 1 < by0) by0 = fy - 1;
-                if (fy + 1 > by1) by1 = fy + 1;
-            }
-            bx0 = DOOMO_MAX(bx0, 0); by0 = DOOMO_MAX(by0, 0);
-            bx1 = DOOMO_MIN(bx1, SCREEN_W); by1 = DOOMO_MIN(by1, SCREEN_H);
-            if (bx0 >= bx1 || by0 >= by1) continue;
-            row = r <= ty1 ? r : CV_ROW_NONE;
-            if (shadow) {
-                int a0 = DOOMO_MAX(cx - half, 0), a1 = DOOMO_MIN(cx + half + 1, SCREEN_W);
-                if (fy >= 0 && fy < SCREEN_H && a0 < a1)
-                    cv_shade_occ(a0, a1, fy, doomo_colormap[8], row);
-                a0 = DOOMO_MAX(cx - half + 1, 0); a1 = DOOMO_MIN(cx + half, SCREEN_W);
-                if (fy - 1 >= 0 && fy - 1 < SCREEN_H && a0 < a1)
-                    cv_shade_occ(a0, a1, fy - 1, doomo_colormap[8], row);
-            }
-            cv_sprite(img, x0, y0, s, b->flags, doomo_colormap[lvl], row);
-        }
-    }
-}
+/* ---- billboards: ow_obj.c (G6) ---- */
