@@ -11,18 +11,18 @@ string O44_SLEEP "Sleep in your new flat (Hell Pits)"
 string D2_L0 "Dear Nox, I'm sorry. I'm / sorry. I'm"
 string D2_L1 "I miss the bone-flour / bread. - N."
 string D2_L2 "I should have held on / longer. - F."
-string D2_WAKE "(Morning. The jar on your / shelf is very quiet.)"
+string D2_WAKE "Morning. The jar on your / shelf is very, very quiet."
 
 script s44_room
   sfx SFX_DOOR
-  say nar "(Hell Pits, apartment 13. / Graveley's building. A tiny / imp body asleep in a bed.)"
+  say nar "Hell Pits 13, in Graveley's / building. A tiny imp body / is asleep in a bed."
   [MUTE 26]
   [HOLD 21]
-  say nar "(Exactly the bed that turned up in your house. The one you never placed.)" [HEART]
+  say nar "It's the bed that turned / up in your house. The one / you never placed." [HEART]
   [R13]
-  say nar "(Wisp's parents sit beside it. Two years in. Wisp's mum is humming.)"
+  say nar "Wisp's parents sit by the / bed. Two years now. Wisp's / mum is humming."
   sfx SFX_PLUCK
-  say nar "(The lullaby Steamy hummed / wrong. This is the right / way.)"
+  say nar "It's the lullaby Steamy / hummed wrong. This is how / it really goes."
   [R13]
   say nar "WISP'S DAD: We cleared the / room out. To make it less / sad. {.}It didn't work."
   [R5]
@@ -33,12 +33,12 @@ end
 
 script s44_wake
   [MUTE 40]
-  say nar "(The room is right. The / thinking chair faces the / wall. The rug is turned.)"
+  say nar "The room is right. The / thinking chair faces the / wall. The rug is turned."
   [HOLD 21]
-  say nar "(Wisp lies down in their own / body.)" [HEART]
+  say nar "Wisp lies down in their / own body." [HEART]
   [HOLD 21]
   sfx SFX_TIK
-  say nar "(Fingers twitch.)"
+  say nar "A finger twitches."
   [R13]
   say nar "WISP'S MUM: ...Wisp?"
   [R21]
@@ -49,8 +49,8 @@ script s44_wake
 end
 
 script s44_ask
-  say nar "(The parents go to fetch / soup. Wisp sits up, and / looks at you.)"
-  player_line ID_WISP "Did they talk to me? While / I was out?" { "Your mum hummed." ; "Your name, every night." ; "They kept your chair." }
+  say nar "The parents go to fetch / soup. Wisp sits up and / looks at you."
+  player_line ID_WISP "Did they talk to me? While I was out?" { "Your mum hummed." ; "Your name, every night." ; "They kept your chair." }
   native CB_C34 C34A_WISP
   [R13]
   say ID_WISP HAPPY "...okay. okay. {..}i'm going / to remember that."
@@ -58,30 +58,30 @@ end
 
 script s44_penpals
   sfx SFX_SPLASH
-  say nar "(Wisp spots the paper boat / in your bag. The crayon / house. From the beach.)"
+  say nar "Wisp spots the paper boat / in your bag: the crayon / house, from the beach."
   [R5]
-  say ID_WISP SHOCK "That's MY house. You / KEPT it?"
+  say ID_WISP SHOCK "that's MY house. you / KEPT it?"
   [R13]
-  say nar "(Pip has come through the gate with Nana. The two kids look at each other.)"
+  say nar "Pip has come through the / gate with Nana. The two / kids size each other up."
   [R5]
-  say pip NEUTRAL "He's good at scary. Mr. / Flops. One night."
+  say pip NEUTRAL "This is Mr. Flops. He's / good at scary. Patrol / loan. One night only."
   [R5]
-  say pip SAD "I'll be fine. My eyes might / do a rain."
+  say pip SAD "I'll be fine. My eyes / might do a rain."
   [R5]
   say ID_WISP HAPPY "can Mr. Flops stay? he's / good at scary."
   [R21]
-  say nar "(Mr. Flops's stitched heart / and the candle in Wisp's / drawing: the same pink.)"
+  say nar "Mr. Flops's stitched heart / and the candle in Wisp's / drawing: the same pink."
   reward 0 furn=wisp_drawing_1
   [R13]
   sfx SFX_WELD
-  say nar "(The flat next door is yours. And back home,//Rivet welds a Hellvile Annex onto the cottage.)"
+  say nar "GOT: the flat next door! / A second home. In Hell.//Back home, Rivet welds a / Hellvile Annex onto the / cottage."
   [R8]
-  say nar "(The seam is a visible, ugly bead. She is very proud of it.)"
+  say nar "The seam is a big, ugly / bead. COSY: C-. Rivet / rates it A+."
   reward 0 furn=pentagram_rug
-  say nar "(Charlotte sends a housewarming gift://a pentagram rug. Cursed. Plush.)"
+  say nar "A housewarming gift from / Charlotte: a pentagram / rug. Cursed, but plush."
   insert 4 4
   [R8]
-  say nar "(Your lamp has grown horns.)"
+  say nar "Your lamp has grown horns. / CURSED ITEM! It's not a / bug. It's a feature."
   [R8]
   say nar "KEVIN: ...it's fine."
 end
@@ -89,7 +89,7 @@ end
 # ---- D2 "The Ninth Cloud": night in the Hell Pits flat ----
 script s44_d2
   [NIGHT]
-  say nar "(Your first night in the flat. The bed is hard and cosy. You sleep.)"
+  say nar "Your first night in the / flat. The bed is hard, and / somehow cosy. You sleep."
   stash 0 D2_L0
   stash 1 D2_L1
   stash 2 D2_L2

@@ -10,32 +10,32 @@ string O47_STAGE "Everyone is gathering at the Unity Stage (N)"
 
 script s47_open
   music SONG_FESTIVAL
-  say nar "(The Wall is rubble. The / river sparkles. The whole / park is ONE park.)"
+  say nar "The Wall is rubble. The / river sparkles. The whole / park is ONE park."
   [R5]
-  say nar "(Hillvile and Hellvile pour in from both sides. Somebody started a festival.)"
+  say nar "Hillvile and Hellvile pour / in from both sides. Someone / has started a festival."
   [R13]
-  say nar "(Four stalls need a hand: / Nana's kitchen, the Lake of / Fire, the photo booth...)"
+  say nar "Four stalls need a hand: / Nana's kitchen, the Lake of / Fire, the photo booth..."
   [R5]
-  say nar "(...and the comedy tent.)"
+  say nar "...and the comedy tent. / Hattie has been 'warming / up' since dawn."
 end
 
 script s47_cook
-  say nana HAPPY "Sweet pea! Charlotte brought her cookies. Burnt. On PURPOSE."
+  say nana HAPPY "Sweet pea! Charlotte / brought cookies. Burnt. / On PURPOSE. Bless her."
   [R5]
-  say ID_CHARLOTTE HAPPY "Thirty years of burnt cookies through//a loose brick. She always wrote back."
+  say ID_CHARLOTTE HAPPY "Thirty years of burnt / cookies through a loose / brick.//She always wrote back."
   push cooking 0
   [R8]
-  say nar "(Both kinds of cookie, one / plate. Everybody takes one / of each.)"
+  say nar "Both kinds of cookie on / one plate. Everybody takes / one of each. CRUNCH."
   native CB_C34 C34A_BIT C34_ST_COOK
 end
 
 script s47_fish
   sfx SFX_SPLASH
-  say nar "(The Lake of Fire. Hillvile kids fish with//Hellvile kids. Nobody catches a thing.)"
+  say nar "The Lake of Fire. Hillvile / kids fish beside Hellvile / kids. Nothing bites."
   [R8]
-  say nar "(Gerald the goldfish swims / past, in the lava. He is / fine.)"
+  say nar "Gerald the goldfish swims / past. In the lava. He is / fine."
   [R13]
-  say nar "(He is having a great day.)"
+  say nar "He's having a great day. / Better than yours, frankly."
   native CB_C34 C34A_BIT C34_ST_FISH
 end
 
@@ -44,9 +44,10 @@ script s47_photo
   say ID_SHUTTERBUG HAPPY "Everybody squeeze in! Both / sides! Big smiles! Bigger! / Horns in!"
   [R8]
   sfx SFX_TIK
-  say nar "(The festival polaroid. You / get a copy. It's still / developing.)"
+  say nar "Flash! You get a copy of / the festival polaroid. It's / still developing."
+  say bonejangles HAPPY "Clack! Am I in it? My eyes / glow in every photo. {.}It's / a feature. Not a curse."
   [R5]
-  say nar "(Sprinklepop's little soul / bounces in at the edge, map / held upside down.)"
+  say nar "Sprinklepop's little soul / bounces in at the edge. Map / upside down, as usual."
   native CB_C34 C34A_BIT C34_ST_PHOTO
 end
 
@@ -56,9 +57,10 @@ script s47_photo_home
   say ID_SHUTTERBUG HAPPY "Everybody squeeze in! Both / sides! Big smiles! Bigger! / Horns in!"
   [R8]
   sfx SFX_TIK
-  say nar "(The festival polaroid. You / get a copy. It's still / developing.)"
+  say nar "Flash! You get a copy of / the festival polaroid. It's / still developing."
+  say bonejangles HAPPY "Clack! Am I in it? My eyes / glow in every photo. {.}It's / a feature. Not a curse."
   [R5]
-  say nar "(Sprinklepop bounces in with a heart balloon, map the right way up.)"
+  say nar "Sprinklepop bounces in / with a heart balloon. Map / the right way up. Growth!"
   native CB_C34 C34A_BIT C34_ST_PHOTO
 end
 
@@ -69,38 +71,38 @@ script s47_joke
   say hattie HAPPY "{big}Because we're STANDING / in it!{/}"
   npc hattie RIPPLE 6
   sfx SFX_HAPPY
-  say nar "(Both sides laugh. Haze / snorts. The Mayor goes:)"
+  say nar "Both sides laugh. Haze / snorts. The Mayor goes:"
   [R5]
   say mayor HAPPY "Ha!"
   [MUTE 21]
   [HOLD 21]
-  say nar "(Everyone stares at him.)"
+  say nar "Everyone stares at him."
   [R5]
   say mayor SHOCK "...Ha?"
   [R8]
   sfx SFX_HAPPY
-  say nar "(They laugh harder.)"
+  say nar "They laugh harder. Hattie / writes that down."
   native CB_C34 C34A_BIT C34_ST_JOKE
 end
 
 script s47_buffet
   [SCRATCH]
-  say nar "(Grumbleguts at the buffet, back to the crowd. The table empties around him.)"
+  say nar "Grumbleguts at the buffet, / back to the crowd. The / table empties around him."
   [R13]
   [SCRATCH]
-  say nar "(Every time you look back, / he is a bit bigger.)"
+  say nar "Every time you look back, / he's a bit bigger."
   [R13]
   [SCRATCH]
-  say nar "(Bigger. The whole crowd / is not looking. Very hard.)"
+  say nar "Bigger. The whole crowd is / not looking. Very hard."
   [R13]
   say ID_HONKERS NEUTRAL "Napkin?"
   [R5]
-  say grumble HAPPY "For you, sweetheart, I'll / use it. {..}Nice fold."
+  say grumble HAPPY "For you, sweetheart, I'll / use it. Nice fold. {.}Seven. / Needs salt."
   [R5]
-  say nar "(The napkin is not / interested.)"
+  say nar "The napkin is not / interested."
   [R21]
   sfx SFX_BOING
-  say nar "(His belt pings off. It sails across the//park and knocks off the Mayor's hat. {r})"
+  say nar "His belt pings off, sails / across the park, and knocks / off the Mayor's hat. {r}"
   [R8]
   say mayor SHOCK "MY HEAD."
 end
@@ -112,7 +114,7 @@ script s47_stage
   [R5]
   say mayor HAPPY "Population: one thousand / and one." [HEART]
   [R5]
-  say nar "(@E, horned, sits on his / hat. Beeps once.)"
+  say nar "@E, horned, sits on his / hat. Beeps once. The hat / allows it."
   [R5]
   say nox NEUTRAL "Tonight there is no Wall. / There is only the park. / OUR park."
   [R5]
@@ -120,11 +122,12 @@ script s47_stage
   [R5]
   say ID_WISP HAPPY "and my chair."
   [R5]
-  say fuzz HAPPY "Bless this park. Bless every single one of you. Even you, Vex."
+  say fuzz HAPPY "Bless this park! Bless / every one of you! Even / you, Vex."
   [R5]
   say vex NEUTRAL "...thanks for saying Vex."
   [R5]
   say vex SAD "I'm selling plain water / vapes now. They're terrible."
+  say bonejangles HAPPY "Clack! I'm booking kids' / parties again! Pizza, cake, / a dance I can't stop."
   [R5]
   say tallyworn HAPPY "Day one."
   jif SF_WEAPON_BRUTAL bonk
@@ -135,5 +138,5 @@ bonk:
 end
 
 script s47_stall_idle
-  say nar "(This stall is done. The / festival goes on without / needing you. Nice.)"
+  say nar "STALL COMPLETE! The / festival runs fine without / you now. Rude, but nice."
 end

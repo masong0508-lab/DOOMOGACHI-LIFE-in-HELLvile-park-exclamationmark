@@ -14,13 +14,13 @@ script s41_dawn
   [DAY 0]
   music SONG_HAHALAND_DAY
   duck 255 1
-  say nar "(Morning. A real one. The / sky is pink and does not / know what it did.)"
+  say nar "Morning. A real one. The / sky is pink and has no idea / what it did last night."
   [R13]
-  say nar "(The Days Since sign at the / Workshop says 0. Somebody / drew a flower on it.)"
+  say nar "The DAYS SINCE LAST FIRE / sign at the Workshop says / 0. Someone drew a flower."
   [R8]
-  say mayor NEUTRAL "@P. We're going over. All / of us. To the gate."
+  say mayor NEUTRAL "@P! Big day! We're / going over. All of us. / Hats on. To the gate!"
   [R5]
-  say mayor SAD "{..}I'll be the one in the / back. Shaking. Hee. Hee."
+  say mayor SAD "{..}I'll be at the back. / Shaking. Gobbling a bit. / Hee. Hee."
 end
 
 script s41_gate
@@ -28,18 +28,18 @@ script s41_gate
   [R8]
   say rivet HAPPY "It's a REALLY good lock."
   [R26]
-  say rivet NEUTRAL "Hold this."
+  say rivet NEUTRAL "Hold this. Pointy end / AWAY from your face."
   sfx SFX_WELD
-  say nar "(The torch. You cut your / own bead through Rivet's / lock: short, ugly, yours.)"
+  say nar "You cut your own bead / through Rivet's lock. WELD / RANK: D. Ugly. Yours."
   push timing pattern=rimshot skin=thump
   sfx SFX_CREAK
   [R13]
-  say nar "(The gate swings open. / Behind it: a belly.)"
+  say nar "The gate swings open. / Behind it: a belly."
   [SCRATCH]
-  say nar "(Gatekeeper Grumbleguts, leaning on the gate, reading a little black book.)"
+  say nar "The belly has a gatekeeper / attached: Grumbleguts, / reading a little black book."
   [R13]
   [SCRATCH]
-  say nar "(He turns round. Slowly. / Rear first. Of course.)"
+  say nar "He turns round. Slowly. / Rear first. It takes a / while. There's a lot of it."
   [R5]
   say grumble HAPPY "Well HELLO, Hillvile. Come up and see my gate sometime. This is my gate."
   [R5]
@@ -50,7 +50,7 @@ fake:
   say grumble HAPPY "Five, five, five... that's / the BAKERY. {..}I love the / bakery."
   jmp cake
 crop:
-  say grumble NEUTRAL "It's for pointing. At things. / Like exits. And snacks."
+  say grumble NEUTRAL "It's for pointing, sugar. / At exits. At snacks. {.}At / more snacks."
   jmp toll
 cake:
   say nar "GURGLE: gurgle. {r}" [GURGLE]
@@ -67,10 +67,10 @@ end
 beatscript b41_cross
   +0 tapestop 5 ; mute 14 ; cam CAM_BRAKE 8 ; sfx SFX_SCRATCH
   +13 music SONG_HELLVILE
-  +21 caption "(Hellvile. Grim AND cosy.//Bone lamps, soup steam, laundry lines of black lace.)"
+  +21 caption "HELLVILE. Grim AND cosy. / COSY RATING: A+.//Bone lamps, soup steam, laundry lines of black lace."
   +26 label L_PUNCH
 L_PUNCH:
-  +0 caption "(Kids play hopscotch on lava, / in oven mitts.)" ; sfx SFX_SPLASH
+  +0 caption "Kids play hopscotch on / lava. In oven mitts. On / a school night." ; sfx SFX_SPLASH
   +13 label L_BUTTON ; sfx SFX_HAPPY
   +21 end
 end
@@ -81,14 +81,14 @@ script s41_cross
 end
 
 script s41_tally
-  say nar "(Tallyworn at the Pump, / chalk in hand. He looks at / the open gate.)"
+  say nar "Tallyworn, at the Pump, / chalk in hand, looks at the / open gate like it's a bill."
   npc tallyworn STILL
   [MUTE 26]
   [HOLD 26]
-  say nar "(He puts the chalk down.)"
+  say nar "He puts the chalk down."
   [R13]
   sfx SFX_TIK
-  say nar "(He picks it up again and / writes 3,661 anyway.)"
+  say nar "He picks it back up and / writes 3,661 anyway."
   [R5]
   say tallyworn NEUTRAL "{d}Habit."
   [R21]
@@ -102,7 +102,7 @@ script s41_tally_name
   say tallyworn SAD "Some days back... someone / shouted my name over the / Wall."
   [R5]
   say tallyworn SAD "First time in ten years / anyone said it. {..}I sat down / and had a little cry."
-  choice nar "(Tell him?)" { "That was me." -> me ; "(say nothing)" -> quiet }
+  choice nar "Tell him it was you?" { "That was me." -> me ; "(say nothing)" -> quiet }
 me:
   setf SF_TALLY_THAT_WAS_ME
   befriend tallyworn 3
@@ -116,7 +116,7 @@ quiet:
 beep:
   [R21]
   sfx SFX_BEEP
-  say nar "(Far off, from the north, / from under the town: / beep.)"
+  say nar "From far off, under the / town, to the north: / beep."
   [R8]
-  say tallyworn NEUTRAL "That came from the Underbelly. Below the pumps.//Nobody goes down there. Except shifts."
+  say tallyworn NEUTRAL "That's from the Underbelly. / Under the pumps. Nobody / goes down there.//Except the night shift. / {.}It has great dental."
 end

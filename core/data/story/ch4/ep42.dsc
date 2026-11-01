@@ -9,33 +9,33 @@ string O42_SWAP "Swap shifts at the pumps (@0/5)"
 
 script s42_yard
   sfx SFX_THUD
-  say nar "(The pump yard. Rows of Hellvile folk working bellows, in, out, in, out.)"
+  say nar "The pump yard. Rows of / Hellvile folk on bellows. / In, out. In, out. Forever."
   [R5]
-  say nar "(Up on a crate, a loyalist / with a foghorn: Hazey. He / does not look sure of much.)"
+  say nar "On a crate: Hazey, a / loyalist with a foghorn. / He's only sure of the horn."
   [R8]
-  say tallyworn NEUTRAL "Swap a shift or two. Give / their arms a rest. They'll / talk. Nobody asks them to."
+  say tallyworn NEUTRAL "Swap shifts with five of / them. Rest their arms. / They'll talk. Nobody asks."
 end
 
 script s42_clinker
-  say nar "(You take Clinker's bellows. / In, out. In, out.)"
+  say nar "You take Clinker's bellows. / In, out. He stretches like / a cat who got a day off."
   push timing pattern=three skin=thump
   say ID_CLINKER NEUTRAL "I write poems on the pumps. / With chalk. Forty, so far."
   [R8]
-  say ID_CLINKER HAPPY "This one's about you. It / doesn't rhyme yet."
+  say ID_CLINKER HAPPY "This one's about you. It / doesn't rhyme yet. {.}Five. / Needs salt."
   befriend ID_CLINKER 2
 end
 
 script s42_ploddy
-  say nar "(You take Ploddy's bellows. / In, out. In, out.)"
+  say nar "You take Ploddy's bellows. / He sniffs the air like / there's bread in it."
   push timing pattern=three skin=thump
-  say ID_PLODDY NEUTRAL "Before the Wall I baked bone bread. Over the river, for both sides."
+  say ID_PLODDY NEUTRAL "Before the Wall I baked / bone bread. By the river. / For both sides."
   [R8]
-  say ID_PLODDY SAD "I still smell it in my sleep. / {..}Smells like mornings."
+  say ID_PLODDY SAD "I still smell it in my / sleep. {..}Smells like / mornings."
   befriend ID_PLODDY 2
 end
 
 script s42_wheezle
-  say nar "(You take Wheezle's bellows. / In, out. In, cough.)"
+  say nar "You take Wheezle's bellows. / In, out. In, cough. Cough. / Hack. Wheeze. Cough."
   push timing pattern=three skin=thump
   say ID_WHEEZLE NEUTRAL "I cough little ghosts out. / I name them. One went over / the Wall."
   [R13]
@@ -44,7 +44,7 @@ script s42_wheezle
 end
 
 script s42_haze
-  say nar "(You take Haze's bellows. In, out.//She coughs at the smoke like it owes her money.)"
+  say nar "You take Haze's bellows. / She coughs at the smoke / like it owes her money."
   push timing pattern=three skin=thump
   say haze ANGRY "I HATE the smoke. Ten years / of it. I water the plants / when nobody's looking."
   [R8]
@@ -53,7 +53,7 @@ script s42_haze
 end
 
 script s42_thumpkin
-  say nar "(You take Thumpkin's bellows. In, out.//Thumpkin thumps the pipe. Three, then one.)"
+  say nar "You take Thumpkin's / bellows. He thumps the / pipe: three, then one."
   push timing pattern=three skin=thump
   say ID_THUMPKIN NEUTRAL "That's for my sister. She's / on the other side. In a / bunny suit, last I heard."
   [R13]
@@ -66,7 +66,7 @@ script s42_done
   jmp foghorn
 met:
   jif SF_HATTIE_LOST foghorn
-  say nar "(Hattie walks into the yard. / She stops in front of Haze.)"
+  say nar "Hattie walks into the / yard and stops dead in / front of Haze."
   [R5]
   say hattie SHOCK "You. You were in my head. / You have GREAT timing."
   [R5]
@@ -79,7 +79,7 @@ met:
   say hattie HAPPY "Fresh air."
   [R8]
   sfx SFX_POP2
-  say nar "(Haze snorts. The first laugh in ten years. The pumps stop, one at a time.)" [HEART]
+  say nar "Haze snorts. Her first / laugh in ten years. The / pumps stop, one by one." [HEART]
   [R3]
   sfx SFX_THUD
   [R3]
@@ -90,7 +90,7 @@ foghorn:
   say nar "HAZEY: LORD VAPULA WILL... / um. Is he... coming?"
   [MUTE 26]
   [HOLD 26]
-  say nar "(Vex walks past, carrying a / jar at head height. From / inside: ...squeak.)"
+  say nar "Vex walks past with a jar / held up like a trophy. / From inside: ...squeak."
   [R8]
   say nar "HAZEY: {d}...Oh."
   [R13]
@@ -98,5 +98,5 @@ foghorn:
 end
 
 script s42_worker_idle
-  say nar "(They are still pumping. The pumps don't know yet that nobody has to.)"
+  say nar "They keep pumping. Nobody / has told the pumps they / can stop. Somebody should."
 end

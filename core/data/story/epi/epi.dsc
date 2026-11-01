@@ -40,29 +40,29 @@ end
 
 script se1_after
   sfx SFX_FANFARE
-  say nar "(Free play is open: the / united park is yours. Both / sides. Every day.)"
+  say nar "FREE PLAY UNLOCKED! The / united park is yours. Both / sides. Every day."
   [R5]
-  say nar "(Keep helping folks, hunting secrets, making friends on both sides of the river.)"
+  say nar "Help folks. Hunt secrets. / Make friends on both sides / of the river. Pet the pet."
   [R13]
-  say nar "(Oh. And your suitcase is / still packed. It's been / packed since the bus.)"
+  say nar "Oh, and your suitcase is / still packed. Since the bus. / It's been judging you."
 end
 
 script se2_suitcase
   sfx SFX_DOOR
   [SILENCE]
-  say nar "(You open the suitcase. / At last.)"
+  say nar "You open the suitcase. / At last."
   [HOLD 26]
-  say nar "(Inside: a single photo frame. / Empty.)" [HEART]
+  say nar "Inside: a single photo / frame. Empty." [HEART]
   [R21]
-  say nar "(Shutterbug's festival / polaroid fits it perfectly. / You write on the back:)"
+  say nar "Shutterbug's festival / polaroid fits it perfectly. / You write on the back:"
   native CB_C34 C34A_E2
   [HOLD 26]
   reward 0 furn=gallery_frame
-  say nar "(Put it anywhere. It's / your place.)"
+  say nar "Put it anywhere. It's / your place."
   home SET_PHASE HP_DREAM
   [R26]
   music SONG_HAHALAND_DAY
-  say nar "(Town Hall has a letter for you: the Park Plot is yours. Build whatever you like.)"
+  say nar "Town Hall sends a letter, / signed with a feather: the / Park Plot is yours. Build!"
 end
 
 # ---- morning 17: Days Since ----
@@ -79,19 +79,19 @@ script se_rivet
 end
 
 script se_wisp_lie
-  say ID_WISP NEUTRAL "I know she didn't say it / every night. {..}Thanks / anyway." [HEART]
+  say ID_WISP NEUTRAL "i know she didn't say it / every night. {..}thanks / anyway." [HEART]
 end
 
 script se_wisp_hum
-  say ID_WISP HAPPY "She still hums it. On / purpose now." [HEART]
+  say ID_WISP HAPPY "she still hums it. on / purpose now." [HEART]
 end
 
 script se_wisp_chair
-  say ID_WISP HAPPY "I sat in it. It's a good / chair." [HEART]
+  say ID_WISP HAPPY "i sat in it. it's a good / chair." [HEART]
 end
 
 script se_grumble
-  say grumble HAPPY "New kid! Come up and see my / gate sometime. {..}It's a / trolley now. Long story."
+  say grumble HAPPY "Sugar! Come up and see my / gate sometime. {..}It's a / dessert trolley now."
 end
 
 script se_mayor

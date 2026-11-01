@@ -11,9 +11,9 @@ string O43_BACK "Tell Mother Nox (chapel)"
 
 script s43_nox
   sfx SFX_DOOR
-  say nar "(Mother Nox's chapel kitchen. A pot of bone soup. Two bowls set on the table.)"
+  say nar "Mother Nox's chapel / kitchen. A pot of bone soup. / Two bowls on the table."
   sfx SFX_TINK
-  say nar "(She sets a third without / looking.)"
+  say nar "She sets a third bowl / without looking up."
   [R5]
   say nox NEUTRAL "So you are the one who / popped Vapula like a / balloon."
   [R5]
@@ -21,16 +21,16 @@ script s43_nox
   npc nox STILL
   [MUTE 21]
   [HOLD 21]
-  say nar "(She turns back to the soup. / That is the whole answer.)"
+  say nar "She turns back to the / soup. That's her whole / answer. It's a big pot."
   npc nox THAW
   [R8]
-  say nox NEUTRAL "Three of mine need help / before Hellvile trusts / Hillvile."
+  say nox NEUTRAL "Three of mine need help. / Do it, and Hellvile might / trust Hillvile. Might."
   [R5]
   say nox NEUTRAL "Sootkin by the gate, who / keeps a secret. Lady Smog, / still full of old smoke."
   [R5]
-  say nox SAD "And Anvil at the forge, who sets a plate every night for a daughter who ran."
+  say nox SAD "And Anvil, at the forge. / Sets a plate each night / for a daughter who ran."
   [R13]
-  say nar "(Wisp drifts over to the / second bowl.)"
+  say nar "Wisp drifts over to the / second bowl and sniffs it."
   [R5]
   say nox NEUTRAL "{d}That one's not yours."
 end
@@ -45,7 +45,7 @@ script s43_sootkin_ask
   [R5]
   say sootkin SAD "It has never seen real sun. / Could you bring it some / Hillvile flowers?"
   [R5]
-  say nar "(Pick flowers from a flower / bed in HaHaland, then bring / them to Sootkin.)"
+  say nar "QUEST: pick flowers from a / bed in HaHaland. Bring them / to Sootkin. Don't eat them."
 end
 
 script s43_sootkin
@@ -53,14 +53,14 @@ script s43_sootkin
   sfx SFX_SPARKLE
   say sootkin HAPPY "Oh! They're so BRIGHT! / Look, sunny, you have / friends now!"
   [R8]
-  say nar "(In the bunch, a little paper packet of seeds.//GRAMPY'S, it says, in shaky letters.)"
+  say nar "Tucked in the bunch: a / paper packet of seeds. It / says GRAMPY'S, in shaky pen."
   [R13]
   say sootkin SHOCK "...Those are MY seeds. / I threw them over the fence / ten years ago!"
   jif SF_GRAMPY_LOST alone
   say grampy HAPPY "The mouse! You're the / mouse! You whistled!"
   [R8]
   sfx SFX_PLUCK
-  say nar "(They whistle together. / Badly. Perfectly.)" [HEART]
+  say nar "They whistle together. / Badly. Perfectly." [HEART]
   [HOLD 21]
   jmp done
 alone:
@@ -73,14 +73,14 @@ end
 
 script s43_sunflower
   sfx SFX_CREAK
-  say nar "(The replanted sunflower / turns to face the Hillvile / side. Then slowly back.)"
+  say nar "The replanted sunflower / turns to face Hillvile. / Then, slowly, back."
   [R13]
   say sootkin NEUTRAL "{d}It can't decide."
 end
 
 # ---- 2. Lady Smog: the two-faith rite ----
 script s43_smog
-  say nar "(Lady Smog coughs out puffs of black vapor.//Father Fuzz came over the gate for this.)"
+  say nar "Lady Smog coughs out puffs / of black vapor. Father Fuzz / came over the gate for this."
   [R5]
   say fuzz SAD "My first case. Eleven years / ago. My hands won't stop / shaking."
   insert 3 3
@@ -89,7 +89,7 @@ script s43_smog
   say nox NEUTRAL "You're the stuffed one. We / have the same rite."
   [R5]
   say nox HAPPY "Ours goes backwards."
-  choice nar "Free Lady Smog?" { "Begin the two-faith rite!" -> go ; "Not yet..." -> no }
+  choice nar "Start the rite for Lady Smog?" { "Begin the two-faith rite!" -> go ; "Not yet..." -> no }
 go:
   push exorcism ID_LADY_SMOG
   jlt v0 0 lost
@@ -112,16 +112,16 @@ go:
 lost:
   setf SF_C4_LADY_SMOG
   [MUTE 26]
-  say nar "(Her spirit drifts out, smog in a gown. She curtsies to Father Fuzz.)" [HEART]
+  say nar "Her spirit drifts out: / smog in a ball gown. She / curtsies to Father Fuzz." [HEART]
   [HOLD 21]
-  say nar "(He plants Mr. Huggins the / 8th at her door, as a guard / of honour.)"
+  say nar "He plants Mr. Huggins the / 8th at her door. A guard / of honour. A soft one."
 jar:
   [R13]
   sfx SFX_TINK
-  say nar "(The last puff floats out the window, to//Vex's jar, and goes in with the rest of him.)"
+  say nar "The last puff drifts out / the window and into Vex's / jar, with the rest of him."
   end
 holds:
-  say nar "(The smoke clings on. Lady / Smog coughs: ...again... / please...)"
+  say nar "The smoke clings on. Lady / Smog coughs: ...again... / please..."
 no:
 end
 
@@ -131,25 +131,25 @@ script s43_rivet_no
 end
 
 script s43_anvil
-  say rivet SAD "...Fine. FINE. Come with me. / Walk in front."
+  say rivet SAD "...Fine. FINE. I'll go. / You walk in front. I'll / be behind you. Hiding."
   sfx SFX_WELD
-  say nar "(The forge. Anvil at the anvil, back to//the door, hammering. A table set for four.)"
+  say nar "The forge. Anvil, at the / anvil, back to the door. / A table is set for four."
   [R8]
-  say nar "(One plate has never been / used. It has been set every / night for ten years.)" [HEART]
+  say nar "One plate has never been / used. It's been set every / night for ten years." [HEART]
   npc rivet STILL
   [MUTE 64]
   [HOLD 26]
   say rivet SAD "...Mum?"
   npc anvil FREEZE
   [HOLD 21]
-  say nar "(The hammer stops mid-swing / and stays up.)"
+  say nar "The hammer stops mid-swing. / It stays up there."
   [R5]
   say anvil SHOCK "...RIVET?!"
   npc anvil THAW
   npc rivet THAW
   shake SHK_POW
   sfx SFX_THUD
-  say nar "(They hug like two vices closing. Sparks. The welding mask falls off.)"
+  say nar "They hug like two vices / closing. Sparks fly. The / welding mask falls off."
   [R13]
   say rivet SAD "I saw the pipes. Under the / fountain. Your mark."
   [R5]
@@ -159,16 +159,16 @@ script s43_anvil
   [R13]
   say rivet LOVE "{d}...It's a REALLY good / spoon."
   [R21]
-  say nar "(Dinner. Everybody passes / the dishes. Nobody passes / the salt. Nobody needs to.)"
+  say nar "Dinner. Everybody passes / the dishes. Nobody passes / the salt. Nobody needs to."
   [R5]
   say ID_SPROCKET NEUTRAL "I didn't read your letters."
   [R8]
   say ID_SPROCKET SAD "...I read them every night."
   sfx SFX_TINK
-  say nar "(Bolt drops a wrench. A candle on the table. Rivet's sign, on the wall: 0 days.)"
+  say nar "Bolt drops a wrench. On the / wall, Rivet's sign: DAYS / SINCE LAST FIRE: 0."
   [R13]
   sfx SFX_SCRATCH
-  say nar "(Rivet's tail is on fire / again.)"
+  say nar "Rivet's tail is on fire / again. The sign was right."
   setf SF_C4_RIVET_HOME
   befriend anvil 4
   befriend rivet 2
@@ -184,5 +184,5 @@ lost:
 anvil:
   say nox HAPPY "...and Anvil is crying / into a spoon."
   [R13]
-  say nox NEUTRAL "Wisp has been tugging at my / sleeve all day. Hell Pits, / number 13. Go."
+  say nox NEUTRAL "Wisp has tugged my sleeve / all day. Hell Pits, number / 13. Go. Take some soup."
 end

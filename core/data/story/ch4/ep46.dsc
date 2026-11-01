@@ -20,20 +20,20 @@ string P46_04 "I broke the vase. In 1999."
 string P46_05 "I don't know how to swim."
 string P46_06 "I cry at weddings. Every / wedding."
 string P46_07 "I wanted to be a painter."
-string P46_08 "I still sleep with the light / on."
+string P46_08 "I still sleep with the / light on."
 string P46_09 "I'm not as happy as I look."
 string P46_10 "I miss my mum's cooking."
 string P46_11 "I talk to my plants. They / talk back. Quietly."
 string P46_12 "I never said sorry to my / best friend."
 string P46_13 "I'm scared of being boring."
-string P46_14 "I don't like parties. I come / anyway."
+string P46_14 "I don't like parties. I / come anyway."
 string P46_15 "I'm lonely on Sundays."
 string P46_16 "I'm afraid of getting old."
 string P46_17 "I pretend to read the news."
 string P46_18 "I wanted to go over there. / My whole life."
-string P46_19 "I failed my driving test six / times."
+string P46_19 "I failed my driving test. / Six times."
 string P46_20 "I hate my laugh."
-string P46_21 "I'm scared of the Wall. Even / now it's coming down."
+string P46_21 "I'm scared of the Wall. / Even now it's coming down."
 string P46_22 "I lied about my age."
 string P46_23 "I don't know what I want."
 string P46_24 "I'm jealous of my sister."
@@ -46,7 +46,7 @@ string P46_30 "I can't sing. I sing anyway."
 string P46_31 "I don't like my job."
 string P46_32 "I miss the old park."
 string P46_33 "I think about the other side / every day."
-string P46_34 "I'm scared I'm not a good / parent."
+string P46_34 "I'm scared I'm not a / good parent."
 string P46_35 "I have no idea what I'm / doing. Ever."
 string P46_36 "I hid in the bathroom at my / own birthday."
 string P46_37 "I never forgave myself."
@@ -59,7 +59,7 @@ string P46_43 "I'm afraid I'll be forgotten."
 string P46_44 "I keep my dad's hat. It / still smells like him."
 string P46_45 "I'm happy. Really happy. / Today. It scares me."
 string P46_46 "I kept a soot sprite in a / jar. I let it go today."
-string P46_47 "I thought I was the only / one."
+string P46_47 "I thought I was the / only one."
 
 # ---- the cast's own unsaid things (story_summit.c's table) ----
 string C46_NANA "I'm older than I tell you. / I'm tired. I bake anyway."
@@ -77,7 +77,7 @@ string C46_TALLY "I don't know what to do / with my hands."
 string C46_SOOTKIN "I wanted something to grow / where nothing grows."
 string C46_SMOG "I was afraid of air."
 string C46_ANVIL "I thought she hated me."
-string C46_WISP "i was scared i'd never wake / up."
+string C46_WISP "i was scared i'd never / wake up."
 string C46_MASCOTTY "..."
 string C46_HAZE "I like the smell of rain."
 string C46_WHEEZLE "I name every ghost I cough. / I miss them."
@@ -95,14 +95,14 @@ string C46_CHARLOTTE "The cookies were burnt on / purpose. So she'd write."
 
 # ---- F4: fetch the Mayor ----
 script sf4_fetch
-  say mayor SHOCK "Meet Nox? On the OTHER side? Me? Properly? In the daylight?"
+  say mayor SHOCK "Meet Nox? On the OTHER / side? Me? In DAYLIGHT? / Gobble gobble gobble."
   [R13]
-  say mayor SAD "...You walked through demons for us. I can walk through a gate."
+  say mayor SAD "...You walked through / demons for us. I can walk / through a gate."
   [R5]
   say mayor HAPPY "I'll bring cupcakes. Nana / made them. Everyone likes / cupcakes."
   native CB_C34 C34A_TRAVEL 1
   [R8]
-  say nar "(His hands shake on the gate handle. Rivet's bead is still warm.)"
+  say nar "His wings shake on the / gate handle. Rivet's weld / is still warm."
   [R5]
   say grumble HAPPY "Mayor. Love the hat."
   [R5]
@@ -289,7 +289,7 @@ script s46_summit
   push timing pattern=three skin=bell
   sfx SFX_BUBBLE
   push cutscene CUT_SAYIT
-  player_line me "Your turn. What did you / never say?" { "I was lonely." ; "I was scared too." ; "I like it here." ; "I'm home." }
+  player_line me "Your turn. What did you never say?" { "I was lonely." ; "I was scared too." ; "I like it here." ; "I'm home." }
   native CB_C34 C34A_SAYIT
   [HOLD 26]
   push cutscene CUT_WALL_FALLS
