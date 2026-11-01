@@ -292,7 +292,15 @@ tutorials ran, the Black Market found) are set without a toast.
 
 * **Native** (`room_ref.c`): the reference renderer (HF sec.11.5): the
   same `DoomoRoomView` as an iso bitmap from `furngen`'s sprites;
-  `test_home_render.c` holds its parity golden (`room_ref.txt`).
+  `test_home_render.c` holds its parity golden (`room_ref.txt`): the
+  classic parity room (lines 0-4) and the shell frames of
+  `core/tests/room_shells.h` (lines 5 and up: every wallpaper, floor,
+  ceiling ramp, tint and room kind; the GBA harness builds the same
+  frames from the same table). `test_home_sheets.c` (houseshot) renders
+  every room in 4 views, every blueprint (views and light levels), every
+  theme, the catalog pages and the golden frames; with
+  `DOOMO_HOUSESHOT=DIR core/build/tests home_sheets` it writes them and
+  their contact sheets (`DIR/<w>x<h>/sheet_*.png`) at 240x160 and 320x240.
 * **GBA** (`gba/src/room.c`, H2): the static iso bitmap and OBJ actors.
 * **PS1** (`ps1/src/room.c`, H3): a GTE diorama with the backdrop and the
   clipped passes (docs/PS1.md, section 7). H4 adds the resting player:

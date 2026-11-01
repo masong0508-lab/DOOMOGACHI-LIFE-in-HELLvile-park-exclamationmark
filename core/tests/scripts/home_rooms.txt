@@ -89,3 +89,35 @@ press A
 wait 20
 shot home_rooms_jump
 expect-scene HOME
+# The other homes' rooms (H1): Towers 7B, the Hell Pits flat and the Park
+# Plot (10x8, open), opened as the story / HomeMart would, entered with
+# their own-home args, each in view 0 and a turned view (R in Build mode).
+home-room 6
+home-room 7
+home-room 8
+clock 12 0
+scene HOME -2
+wait 20
+expect-scene HOME
+shot home_towers7b
+press R
+wait 14
+shot home_towers7b_v1
+scene HOME -3
+wait 20
+expect-scene HOME
+shot home_pits_flat
+press R
+wait 14
+shot home_pits_flat_v1
+scene HOME -4
+wait 20
+expect-scene HOME
+shot home_park_plot
+press R
+wait 14
+shot home_park_plot_v1
+clock 21 0
+wait 2
+shot home_park_plot_night
+expect-scene HOME
