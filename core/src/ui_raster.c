@@ -700,7 +700,9 @@ static void ellipse_draw(int cx, int cy, int rx, int ry, uint8_t c)
         int sh = plat_screen_h();
         uint32_t A = rx == ry ? 1u : (uint32_t)(rx * rx), B = rx == ry ? 1u : (uint32_t)(ry * ry);
         int fast = ellq_ok(A, ry), d = 0;
-        EllQ e;
+        /* zeroed: only read when `fast`, but gcc 15 (the Dreamcast's KOS
+         * toolchain) cannot see that (-Wmaybe-uninitialized) */
+        EllQ e = {0};
         if (fast) {
             ellq_init(&e, A, B, ry, ry);                 /* the top row */
             d = (int)(fx_isqrt(e.q) / 2);
