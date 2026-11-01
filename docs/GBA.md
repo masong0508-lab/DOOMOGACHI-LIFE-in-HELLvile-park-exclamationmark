@@ -234,6 +234,10 @@ they share ONE slot:
 0x03006100  main stack         7,168 B  (>= 6,144 B with the largest group in)
 ```
 
+Since then (ledger below): resident code+data 10,928 B after G5 (+228 B
+routing) and G2 (+120 B `ow_spr_rows`), `.iwram_bss` 4,080 B, the 2D group
+8,224 B: 6,608 B for the main stack with the 3D group in.
+
 * `gba.ld`: an `OVERLAY ... NOCROSSREFS` of `.ovl_3d` and `.ovl_2d` right
   after `.iwram`: both linked at the same IWRAM address, stored one after
   the other in ROM (the 3D group at `__iwram_ovl_3d_lma`), the slot as big
@@ -379,7 +383,7 @@ against the LAST row, not against a figure from an older base.
 | 8 | HART: roofs, redrawn furniture | `3706744` | 13,088 B | 13,088 B | 0 | 6,728 B | no EWRAM / IWRAM: the roof's tables (up to 5 KB) live in the two 2.5 KB VRAM gaps of the mode 4 pages, which the raycaster refills (`r3d_invalidate()`); the house region stays 16,872 B. ROM 3,710,784 -> 3,721,784 B (+11,000: iso sprites 453,094 -> 455,050 B, roof code in `room_ref.c` / `room.c`); fps: modal 20.0 -> 18.8 (gate 18), rotate 25.4 -> 23.2 (20), steady 29.5, cellar 26.2, defend 12.2 (floor 11) |
 | 9 | C1: show canon (turkey Mayor, animatronic Bonejangles, "Needs salt") | `27de086` | 13,088 B | **13,048 B** | -40 B | 6,728 B | `portrait_turkey.c`'s layer-group state (32 B `.bss`); ROM ROMFIG (the turkey renderer, the animatronic parts, 6 creator presets); IWRAM unchanged |
 | 10 | H4: themed door / window fittings, the designed Towers 7B and Pits flat | `H4` | 13,048 B | **13,048 B** | 0 | 6,728 B | ROM -> 3,774,396 B (about +40.8 KB: 19 pieces in the iso sprites); the Walls panel's skin state is 4 B of `HomeScn` (scene scratch); room parity (the Living Room) and house fps unchanged |
-| 11 | G2: overworld quick wins (Mode 4) | `6714f43` | 13,616 B | **13,576 B** | -40 B | 7,048 B | `owf` pixel classes + 2 tile-cache counters; IWRAM -120 B (`ow_spr_rows` in, the per-pixel C blit out); ROM +4,716 B (3 KB of it the `test-ow` self-test); stack high-water 3,376 B (2 KB table cache on `plat_overworld`'s stack) |
+| 11 | G2: overworld quick wins (Mode 4), the tile window retuned | `d5181cb` | 13,048 B | **13,008 B** | -40 B | 6,608 B | `owf` pixel classes + 2 tile-cache counters; IWRAM resident +120 B (`ow_spr_rows` in, the per-pixel C blit out), so the overlay slot's largest group may now grow by 464 B (to 10,848 B) within the 6 KB stack rule; ROM 3,774,396 -> 3,779,208 B (+4,812, ~3 KB of it the `test-ow` self-test); main stack high-water over the tour 3,376 B (2 KB table cache on `plat_overworld`'s stack; G5's canvas budget must leave room for it); `CV_TILES_WIN` 250 -> 64 (section 6b); speed tour frame-exact (16 scenes) |
 
 Known claimants still to land (their own packages measure and add rows):
 
@@ -632,7 +636,28 @@ merge base (`6714f43`, H6), both ROMs on the same tour:
 | story map + dialogue | 30.0 | 24.0 | 36.1 / 37.3 | 15.0 | 53.6 / 55.4 |
 | every other scene | | unchanged | | | |
 
-All 15 scenes' 450 hashed frames are identical to the merge base's. The
+All 15 scenes' 450 hashed frames are identical to the merge base's.
+
+After the rebase onto G5, HART, C1 and H4 (`d5181cb`, the 16-scene tour with
+the map walk), against that tip's ROM, with `CV_TILES_WIN` retuned
+(section 6b; at G5's 250 the tile frames held hellvile at 23.3 fps and
+park at 25.2):
+
+| scene | logic ticks/s | drawn fps | work avg / max ms | base fps | base avg ms |
+|-------|--------------:|----------:|------------------:|---------:|------------:|
+| hahaland visit | 30.0 | **26.1** | 34.7 / 38.1 | 17.1 | 52.4 |
+| overworld pause | 22.5 | 12.3 | 74.8 / 128.3 | 10.4 | 92.4 |
+| hellvile visit | 30.0 | **30.0** | 24.1 / 26.6 | 23.3 | 34.6 |
+| park visit | 30.0 | **30.0** | 27.0 / 31.7 | 22.1 | 37.7 |
+| map walk | 30.0 | 29.0 | 28.4 / 47.7 | 23.3 | 37.6 |
+| invaded | 29.5 | **15.2** | 54.3 / 69.2 | 8.5 (14.7 ticks/s) | 114.3 |
+| story map + dialogue | 30.1 | 22.7 | 37.8 / 42.6 | 15.0 | 55.5 |
+| every other scene | | unchanged | | | |
+
+All 16 scenes' 480 hashed frames are identical to the tip's. The invaded
+map's logic rate reads 29.5 ticks/s here (30.0 on G2's own base): the
+tip's content costs the core a little more there, and the worst frame
+(69.2 ms, `build_billboards()`) still decides it (G11). The
 gates (hahaland >= 24 fps, hellvile and park >= 29, invaded >= 15 with 30
 logic ticks/s) hold; the tour's floors are now 24 / 29 / 29 / 15 (and 11
 for the pause, 20.5 for the story map). The invaded map's worst frames
@@ -929,7 +954,11 @@ G2 (Mode 4, exact; numbers in section 4, "G2"):
   there: VRAM reads cost about half of EWRAM's. The raycaster keeps its
   colormap rows in the same gaps (`r3d_int.h`), so a frame that takes a
   slot clears `r3d_cmrow[0]` and the next 3D frame rebuilds them (once,
-  ~0.5 ms).
+  ~0.5 ms). The house's roof tables (HART, section 6a) live there too:
+  `plat_room` and `plat_overworld` are never drawn in the same frame (no
+  core scene calls both), and the house rebuilds its tables after any
+  frame it did not draw. Tile frames (section 6b) never touch the gaps;
+  the copies are made only by Mode 4 frames.
 * Blocks. A front face whose column the next row's top covers (the cell
   below is raised at least as high) is not drawn: everything drawn there
   in between, that row's sprites included, was always overwritten by that
@@ -937,9 +966,10 @@ G2 (Mode 4, exact; numbers in section 4, "G2"):
   and before its sprites (no top or other front reaches that screen row).
   Fronts and tops reuse the previous lookup when the cell repeats.
 
-IWRAM after G2: 7,048 bytes for the main stack (was 7,168: `ow_sprite`
-shrank, `ow_spr_rows` is new); main stack high-water over the speed tour
-3,376 bytes (was 2,280: the table cache).
+IWRAM after G2: 120 bytes more resident code (`ow_sprite` shrank,
+`ow_spr_rows` is new): 6,608 bytes for the main stack on top of G5
+(was 6,728); main stack high-water over the speed tour 3,376 bytes (was
+2,280: the table cache).
 
 ---------------------------------------------------------------------------
 
@@ -1166,6 +1196,18 @@ backoff that doubles on each failed attempt. Measured on the G5 tour:
 hellvile 204 tile frames of 208, park 141, the map walk 108; hahaland,
 invaded, the story map with dialogue and the pause stay in Mode 4 (1 tile
 frame, 1 conversion and no drop in the whole tour).
+
+**After G2** (Mode 4 sprites, ground and blocks much cheaper; the canvas
+still draws billboards per pixel) a tile frame loses on every map of the
+tour: hellvile 35.0 ms tiled against 24.1 ms in Mode 4, park 31.4 (mixed)
+against 27.0, the map walk 29.2 against 28.4. So `CV_TILES_WIN` is now 64
+canvas tiles (about a HUD's worth), the entry also requires the Mode 4
+estimate to be at or under it, and an estimate above it is measured again
+only every 64 frames (`CV_REMEASURE_FAR`; measuring every 16 cost the
+story map 0.5 fps). The tour now shows no tile frame (counted with a
+temporary log line); every tour scene runs within 0.1 ms of a `TILES=0`
+ROM. G6 (billboards as OBJs) must measure again and raise the window;
+until then the tile path's exactness is not exercised by the tour.
 
 **Text.** Every text path reads glyphs through `vid_glyph_rows()`
 (`video_int.h`), today the core font transposed at boot. That is the hook

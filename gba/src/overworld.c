@@ -253,9 +253,12 @@ static const OwTile *lit_cached(int tex, int lvl, int front)
  * (DMA) into one of 20 slots in the two 2,560-byte gaps the Mode 4 pages
  * leave (0x06009600, 0x06013600: never displayed) and drawn from there.
  * The raycaster keeps its colormap rows in the same gaps (r3d_int.h), so
- * an overworld frame that takes a slot makes it rebuild them. The slots
- * are per frame: plat_overworld clears every tile's vslot first, and a
- * tile rebuilt in the frame drops its slot. */
+ * an overworld frame that takes a slot makes it rebuild them. The house's
+ * roof tables (room.c, HART) live there too: no scene draws the house and
+ * a map in one frame, and the house rebuilds them after any frame it did
+ * not draw. Only Mode 4 frames copy (tile frames, canvas_int.h, never
+ * touch the gaps). The slots are per frame: plat_overworld clears every
+ * tile's vslot first, and a tile rebuilt in the frame drops its slot. */
 #define OW_VSLOTS 20
 
 static const uint8_t *tile_src(const OwTile *ct)

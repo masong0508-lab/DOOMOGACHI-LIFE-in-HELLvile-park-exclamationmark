@@ -26,13 +26,20 @@ IWRAM_BSS CvState cv;
 #define CV_ENTRY_SLACK 16
 /* A canvas tile costs more than the same pixels in Mode 4 (tile
  * addressing, read-modify-writes, the vblank copy), and the world saves a
- * fixed ~11 ms: measured on the speed tour, a frame with more than about
- * 250 canvas tiles is faster in Mode 4 (hahaland 321 tiles: 48.0 ms tiled,
- * 43.8 ms Mode 4; hellvile ~200: 35.0 / 38.6). Above this the next frames
- * are Mode 4 (exact either way). */
-#define CV_TILES_WIN 250
+ * fixed cost. G5 measured the break-even at about 250 canvas tiles
+ * (hahaland 321 tiles: 48.0 ms tiled, 43.8 ms Mode 4; hellvile ~200:
+ * 35.0 / 38.6). G2 made Mode 4 much cheaper (ground, blocks and above all
+ * the billboards, which the canvas still draws per pixel): hellvile is
+ * now 35.0 ms tiled against 24.1 ms in Mode 4, park and the map walk lose
+ * too, so only a nearly empty canvas (a HUD's worth) is worth a tile
+ * frame until G6 moves the billboards to OBJs. A frame above this goes
+ * to Mode 4; a Mode 4 estimate above it does not enter and is looked at
+ * again only every CV_REMEASURE_FAR frames (measuring costs). Exact
+ * either way. */
+#define CV_TILES_WIN 64
 #define CV_BACKOFF_MIN 30u
 #define CV_REMEASURE   16u
+#define CV_REMEASURE_FAR 64u
 #define CV_BACKOFF_MAX 480u
 
 void cv_invalidate(void)
@@ -85,7 +92,7 @@ int cv_ow_begin(int eligible)
         return CV_DENSE;
     }
     if (cv.disp == DISP_M4_P1 && !cv.backoff && cv.ow_last && !cv.last_big &&
-        cv.est_last + CV_ENTRY_SLACK <= (int)CV_POOL_N - 1 &&
+        cv.est_last + CV_ENTRY_SLACK <= (int)CV_POOL_N - 1 && cv.est_last <= CV_TILES_WIN &&
         (!cv.ref || cv.est_last * 10u <= cv.ref * 9u)) {
         iwram_ovl_use(OVL_2D);
         cv.meta_ok = 0;                         /* page 0 held a Mode 4 frame */
@@ -238,6 +245,8 @@ void cv_pre_flip(void)
         if (cv.big || cv.est_last + CV_ENTRY_SLACK > (int)CV_POOL_N - 1 ||
             (cv.ref && cv.est_last * 10u > cv.ref * 9u) || gba_back != (uint16_t *)VRAM_PAGE1)
             if (cv.backoff < CV_REMEASURE) cv.backoff = CV_REMEASURE;
+        /* (G2) a frame Mode 4 draws faster: look again only now and then */
+        if (cv.est_last > CV_TILES_WIN && cv.backoff < CV_REMEASURE_FAR) cv.backoff = CV_REMEASURE_FAR;
     } else {
         cv.est_last = 0xFFFF;                   /* no estimate: no entry */
     }
