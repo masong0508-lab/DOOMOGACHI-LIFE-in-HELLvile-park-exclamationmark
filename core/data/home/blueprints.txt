@@ -12,7 +12,9 @@
 #     theme THEME_ID                  (optional) the walls and floor
 #     piece KEY X Y F                 a catalog.txt key at tile (X, Y), facing
 #                                     F: S (+y), E (+x), N, W. Wall pieces: S on
-#                                     wall A (Y = 0), E on wall B (X = 0)
+#                                     wall A (Y = 0), E on wall B (X = 0); in the
+#                                     open kinds also N on the front edge
+#                                     Y = D - 1, W on X = W - 1 (H5)
 #     small KEY X Y F SUB             a small on the surface at (X, Y), at
 #                                     half-tile SUB 0..3 (bit 0 +x, bit 1 +y)
 #     paints A B                      (optional, after a piece) PAINT_* or DEFAULT
@@ -183,6 +185,16 @@
   piece picket_fence 5 0 S
   piece picket_fence 6 0 S
   piece picket_fence 0 4 E
+  piece picket_fence 0 5 N
+  piece picket_fence 1 5 N
+  piece picket_fence 2 5 N
+  piece picket_fence 5 5 N
+  piece picket_fence 6 5 N
+  piece picket_fence 7 5 N
+  piece picket_fence 7 1 W
+  piece picket_fence 7 2 W
+  piece picket_fence 7 3 W
+  piece picket_fence 7 4 W
   small cake_stand 3 2 S 0
 
 [bp workshop] ANNEX "Rivet's Workshop"

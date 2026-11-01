@@ -200,8 +200,9 @@ int home_edit_select(const HomeEdit *e, int x0, int y0, int x1, int y1, uint8_t 
         HomeBox b;
         if (home_obj_is_fixed(r, i) || HO_ONSURF(&r->obj[i])) continue;
         if (home_obj_layer(&r->obj[i]) == HOL_WALL) {
-            int a0, a1, z0, z1, wb = home_wall_span(&r->obj[i], &a0, &a1, &z0, &z1);
-            b.x0 = wb ? 0 : a0; b.x1 = wb ? 1 : a1; b.y0 = wb ? a0 : 0; b.y1 = wb ? a1 : 1;
+            int a0, a1, z0, z1, e = home_wall_span(r, &r->obj[i], &a0, &a1, &z0, &z1), wb = e & 1;
+            int at = e == HE_FRONT_A ? HR_D(r) - 1 : e == HE_FRONT_B ? HR_W(r) - 1 : 0;
+            b.x0 = wb ? at : a0; b.x1 = wb ? at + 1 : a1; b.y0 = wb ? a0 : at; b.y1 = wb ? a1 : at + 1;
         } else {
             b = home_obj_box(&r->obj[i]);
         }
@@ -275,8 +276,9 @@ int home_edit_group_move(HomeEdit *e, const uint8_t *idx, int n, int dx, int dy)
     for (k = 0; k < n; k++) {
         const HomeObj *o = &e->room.obj[idx[k]];
         int x = HO_X(o) + dx, y = HO_Y(o) + dy;
-        if (home_obj_layer(o) == HOL_WALL) {         /* wall pieces slide along their wall */
-            if (HO_ROT(o) & 1) x = 0; else y = 0;
+        if (home_obj_layer(o) == HOL_WALL) {         /* wall pieces slide along their edge */
+            int ed = home_wall_edge(HO_ROT(o), HO_X(o), HO_Y(o), HR_W(&e->room), HR_D(&e->room));
+            if (ed & 1) x = HO_X(o); else y = HO_Y(o);
         }
         if (x < 0 || y < 0 || x > 15 || y > 15) return -HPR_OFFGRID;
         pos[k][0] = (uint8_t)x; pos[k][1] = (uint8_t)y; pos[k][2] = (uint8_t)HO_ROT(o);
@@ -383,7 +385,14 @@ int home_edit_paste(HomeEdit *e, const HomeClip *c, int x, int y)
             const DoomoFurn *f = home_furn(HO_FURN(o));
             int px = x + HO_X(o), py = y + HO_Y(o), r;
             if ((pass == 0) == (HO_ONSURF(o) != 0)) continue;
-            if (f && (f->flags & FF_WALL)) { if (HO_ROT(o) & 1) px = 0; else py = 0; }
+            if (f && (f->flags & FF_WALL)) {
+                /* back walls snap to 0; (H5) rot 2 / 3 in an open kind to the front */
+                int open = home_room_defs[(unsigned)e->room_id < HOME_ROOM_COUNT ? e->room_id : 0].kind != ROOMK_WALLS;
+                if (open && HO_ROT(o) == 2) py = HR_D(&e->room) - 1;
+                else if (open && HO_ROT(o) == 3) px = HR_W(&e->room) - 1;
+                else if (HO_ROT(o) & 1) px = 0;
+                else py = 0;
+            }
             r = home_edit_place_sub(e, HO_FURN(o), px, py, HO_ROT(o), HO_SUB(o),
                                     (o->pa & 0x1F) == FURN_PAINT_DEFAULT ? -1 : (o->pa & 0x1F),
                                     (o->pb & 0x1F) == FURN_PAINT_DEFAULT ? -1 : (o->pb & 0x1F));

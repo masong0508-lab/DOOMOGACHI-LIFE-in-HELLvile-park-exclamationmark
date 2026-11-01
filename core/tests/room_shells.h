@@ -25,7 +25,9 @@
 enum {
     RSF_PARITY,     /* the classic layout (Living Room template + 12 pieces), resized */
     RSF_FLOOR,      /* a bare room (no door / windows) + the 9 floor-standing pieces  */
-    RSF_EMPTY       /* a bare room: only the shell                                   */
+    RSF_EMPTY,      /* a bare room: only the shell                                   */
+    RSF_FENCED      /* (H5) the kind's own template (the Garden's / the Park Plot's
+                       door) + fences on all four edges (rot 2 / 3 on the front)   */
 };
 
 typedef struct RoomShell {
@@ -98,6 +100,20 @@ static const RoomShell room_shells[] = {
     { 6, 6, ROOMK_WALLS, RSF_EMPTY,  2, 1, 0, PAINT_GRAPE,       PAINT_CHARCOAL,  0, 0,  6, 3, ROOF_SPIKE },
     { 6, 6, ROOMK_WALLS, RSF_PARITY, 1, 2, 4, PAINT_LAVENDER,    PAINT_MINT,      0, 0, 15, 0, ROOF_COTTAGE },
     { 6, 6, ROOMK_WALLS, RSF_PARITY, 6, 6, 6, PAINT_GRAPE,       PAINT_CHARCOAL,  TINT_RED,    4, 15, 1, ROOF_SPIKE },
+    /* 46..52 (H5): the open kinds fenced on every edge, the lip on both front
+     * edges, the door's backdrop (the Garden: the cottage's back wall; the
+     * Park Plot: a gate's posts). 46..50 in the GBA's vocabulary: the Garden
+     * with the door on wall A' (view 0), on wall B' (view 3), cut away on
+     * the front (view 2); the Park Plot in views 0 and 1 (its door cut away).
+     * 51..52 the Garden on grass, dimmer, and the Park Plot on flagstones at
+     * night */
+    { 8, 6, ROOMK_GARDEN, RSF_FENCED, 0, 1, 0, PAINT_SKY,        PAINT_LIME,      0, 0, 15, 0, 0 },
+    { 8, 6, ROOMK_GARDEN, RSF_FENCED, 0, 1, 0, PAINT_SKY,        PAINT_LIME,      0, 0, 15, 3, 0 },
+    { 8, 6, ROOMK_GARDEN, RSF_FENCED, 0, 0, 0, PAINT_SKY,        PAINT_LIME,      0, 0, 13, 2, 0 },
+    {10, 8, ROOMK_OPEN,   RSF_FENCED, 0, 0, 0, PAINT_SKY,        PAINT_FOREST,    0, 0, 15, 0, 0 },
+    {10, 8, ROOMK_OPEN,   RSF_FENCED, 0, 1, 0, PAINT_SKY,        PAINT_FOREST,    0, 0, 15, 1, 0 },
+    { 8, 6, ROOMK_GARDEN, RSF_FENCED, 4, 4, 0, PAINT_SKY,        PAINT_LIME,      0, 0, 10, 0, 0 },
+    {10, 8, ROOMK_OPEN,   RSF_FENCED, 4, 5, 0, PAINT_SKY,        PAINT_FOREST,    0, 0,  3, 3, 0 },
 };
 #define ROOM_SHELL_COUNT ((int)(sizeof(room_shells) / sizeof(room_shells[0])))
 #define ROOM_SHELL_LINES (ROOM_SHELL_FIRST + ROOM_SHELL_COUNT)   /* golden lines in all */
@@ -147,6 +163,22 @@ static inline void rs_shell_room(int s, HomeRoom *r)
     int i;
     if (f->furn == RSF_PARITY) {
         rs_parity_room(r);
+    } else if (f->furn == RSF_FENCED) {
+        /* (H5) fences on every edge: wall A at x 5, 6; wall B at y 2, 3;
+         * the front y = d - 1 (rot 2) at x 1, 2, w - 2; x = w - 1 (rot 3) at
+         * y 1, d - 2 */
+        static const uint8_t fx[9] = { 5, 6, 0, 0, 1, 2, 0xF1, 0xF0, 0xF0 };
+        static const uint8_t fy[9] = { 0, 0, 2, 3, 0xF0, 0xF0, 0xF0, 1, 0xF1 };
+        static const uint8_t fr[9] = { 0, 0, 1, 1, 2, 2, 2, 3, 3 };
+        home_room_template(f->kind == ROOMK_GARDEN ? HOME_ROOM_GARDEN : HOME_ROOM_PARK_PLOT, r);
+        for (i = 0; i < 9; i++) {
+            RoomShellPiece p;
+            p.furn = f->kind == ROOMK_GARDEN ? FURN_PICKET_FENCE : FURN_BONE_FENCE;
+            p.x = (uint8_t)(fx[i] == 0xF0 ? f->w - 1 : fx[i] == 0xF1 ? f->w - 2 : fx[i]);
+            p.y = (uint8_t)(fy[i] == 0xF0 ? f->d - 1 : fy[i] == 0xF1 ? f->d - 2 : fy[i]);
+            p.rot = fr[i]; p.z = 0; p.pa = p.pb = RS_DEF; p.hung = 1;
+            rs_put(r, &p);
+        }
     } else {
         memset(r, 0, sizeof(*r));
         r->wallpaper = r->floor = r->wall_paint = r->floor_paint = 0xFF;

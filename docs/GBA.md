@@ -1488,7 +1488,7 @@ gba/build/harness ROM.gba [--script FILE] [--shots DIR] [--save FILE]
 | `test-save` | engine-test ROM twice with the same `--save` file and SELECT held at boot: first run "no previous data / write ok", second run "persisted ok" (both 30 KB slots verified byte for byte, slot 1 erased and rewritten) |
 | `test-game` | game ROM, `scripts/smoke.txt`: boot, title, START, menu presses, screenshots in `build/shots/game` |
 | `test-coresave` | game ROM, `scripts/coresave1.txt` then `coresave2.txt` with the same `--save` file: the core's streamed saves (worst-case island in slot 1, a too-big save refused in slot 0, a story island in slot 0), loads checked by town CRC, then persistence across a reboot |
-| `test-home` | game ROM, `scripts/home.txt` (H2): `plat_room` parity with the room_ref golden on every path (15 classic frames, 15 shell-frame checks and 12 roof checks required, 29 `xfail` until H2), then `SCENE_HOME` fps gates (section 6a) and a profile, screenshots in `build/shots/home` |
+| `test-home` | game ROM, `scripts/home.txt` (H2): `plat_room` parity with the room_ref golden on every path (15 classic frames, 15 shell-frame checks, 12 roof checks and 8 open-kind checks (H5: lip, backdrop, front-edge fences) required, 31 `xfail` until H2), then `SCENE_HOME` fps gates (section 6a) and a profile, screenshots in `build/shots/home` |
 | `test-ow` | game ROM, `scripts/owsprite.txt` (G2): 2,400 random sprites drawn by `ow_sprite` and by the G1 baseline's per-pixel blit (`src/owtest.c`, mailbox command `GBA_HC_OW_SPRITE_TEST` = 16, posted 150 cases at a time) must leave identical back buffers (section 6) |
 
 `make -C gba test-speed` (G1, not part of `test`): game ROM,

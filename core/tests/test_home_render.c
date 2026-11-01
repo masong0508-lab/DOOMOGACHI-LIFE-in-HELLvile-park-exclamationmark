@@ -74,13 +74,13 @@ static uint32_t render(const HomeRoom *r, int k, int daylight)
 static void line_label(int line, char *buf, size_t n)
 {
     static const char *const kinds[3] = { "walls", "garden", "open" };
-    static const char *const furn[3] = { "parity", "floor", "empty" };
+    static const char *const furn[4] = { "parity", "floor", "empty", "fenced" };
     const RoomShell *f;
     if (line < 4) { snprintf(buf, n, "classic view %d", line); return; }
     if (line < ROOM_SHELL_FIRST) { snprintf(buf, n, "classic view 0 night"); return; }
     f = &room_shells[line - ROOM_SHELL_FIRST];
     snprintf(buf, n, "%dx%d %s %s wp %d fl %d ce %d paint %s/%s tint %s %d light %d view %d", f->w, f->d,
-             kinds[f->kind < 3 ? f->kind : 0], furn[f->furn < 3 ? f->furn : 0], f->wallpaper, f->floor,
+             kinds[f->kind < 3 ? f->kind : 0], furn[f->furn < 4 ? f->furn : 0], f->wallpaper, f->floor,
              f->ceiling, doomo_paint_names[f->wall_paint & 31], doomo_paint_names[f->floor_paint & 31],
              doomo_tint_names[f->tint < TINT_COUNT ? f->tint : 0], f->tint_level, f->daylight, f->view);
     if (f->roof) {

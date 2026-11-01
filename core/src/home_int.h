@@ -239,7 +239,7 @@ typedef struct HomeBox { int x0, y0, x1, y1; } HomeBox;
 enum { HOL_RUG, HOL_FLOOR, HOL_STACK, HOL_WALL };
 HomeBox home_obj_box(const HomeObj *o);
 int  home_obj_layer(const HomeObj *o);
-int  home_wall_span(const HomeObj *o, int *a0, int *a1, int *z0, int *z1);
+int  home_wall_span(const HomeRoom *r, const HomeObj *o, int *a0, int *a1, int *z0, int *z1); /* the edge, HE_* (H5) */
 void home_edit_push(HomeEdit *e, int op, int idx, const HomeObj *old);
 void home_room_remove(HomeRoom *r, int idx);
 int  home_is_skin(const DoomoFurn *f, int role);   /* an FF_PORTAL piece of that role */
@@ -487,6 +487,44 @@ int     room_roof_feature_row(const RoomRoof *f, int y, int x0, int x1, uint8_t 
 #define ROOM_ROOF_EAVE 4                 /* px the eaves overhang the walls' ends */
 /* The roof style of a room of the player's house (ROOF_*). */
 int  home_room_roof(int room);
+
+/* ---- H5: the open kinds' plot edge and the door's backdrop ----------------------
+ * The lip (ROOMK_GARDEN / ROOMK_OPEN): a soil band under BOTH front edges, a
+ * 2 px column per 2 units, ROOM_LIP_H rows from the edge row: row 0 the
+ * floor's grout shade (the turf's cut edge), then soil (front A' face the
+ * lighter, front B' the darker), the last row darker still. Column u = 0, 2,
+ * .. 16W - 2 of front A' (the line y' = D) sits at x = ox - 16D + u, row
+ * oy + ((u + 16D) >> 1); column u = 0, 2, .. 16D - 2 of front B' (x' = W) at
+ * x = ox + 16W - u - 2, row oy + ((u + 16W) >> 1). A' is drawn first.
+ * The backdrop: behind the fixed door when it stands on a back wall of the
+ * view, the Garden shows a strip of the cottage's back wall (clapboard
+ * siding, a trim, a stone footing; the door span plus a tile each side) and
+ * the Park Plot a gate's two stone posts. Column u (even, [u0, u1)) of side
+ * A' is at x = ox + u with its bottom (exclusive) at oy + (u >> 1), of side
+ * B' at x = ox - u - 2 with its bottom at oy + ((u + 2) >> 1); its rows t =
+ * 0 .. h - 1 run down from bottom - h. room_backdrop_px() is 0 where the
+ * sky shows. A frame with a backdrop is laid out as a walled room (wall_h
+ * counts in the height that centres it). */
+#define ROOM_LIP_H 6
+enum { RBD_NONE, RBD_WALL, RBD_POSTS };
+enum { RBC_TRIM_D, RBC_TRIM, RBC_SIDING, RBC_SIDING_D, RBC_CORNER, RBC_STONE, RBC_STONE_D,
+       RBC_CAP, RBC_COUNT };
+typedef struct RoomBackdrop {
+    uint8_t style, side, h, pad;     /* RBD_*, 0 = A' / 1 = B', rows               */
+    int16_t u0, u1, p0, p1;          /* columns [u0, u1); the posts' first columns */
+    uint8_t c[RBC_COUNT];            /* lit colours                                */
+} RoomBackdrop;
+/* RBD_NONE (0) when the view shows none. k, W, D: the view and turned size. */
+int     room_backdrop_setup(RoomBackdrop *b, const DoomoRoomView *v, int k, int W, int D,
+                            int wall_h, int level, int tint);
+uint8_t room_backdrop_px(const RoomBackdrop *b, int u, int t);
+/* The lip's colours for a view: [0] the turf edge, [1] / [2] soil on front
+ * A' / B', [3] / [4] the bottom row on A' / B'. */
+void    room_lip_colours(const DoomoRoomView *v, int level, int tint, uint8_t c[5]);
+/* (H5) a wall piece's place in view k: 0 / 1 on back wall A' / B', 2 / 3 on
+ * the front edge y' = D / x' = W of an open kind, -1 cut away (the front of
+ * a walled room; the door and windows on an open kind's front). */
+int     room_wall_side(const DoomoRoomView *v, const DoomoRoomObj *o, int k);
 
 /* Fill a render-ready DoomoRoomObj from a room object (catalog paints
  * resolved, z in px). */

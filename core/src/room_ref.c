@@ -64,7 +64,7 @@ static void rot_box(int k, int w, int d, int *x0, int *y0, int *x1, int *y1)
 {
     int i;
     for (i = 0; i < k; i++) {
-        int nx0 = w - *y1, nx1 = w - *y0, ny0 = *x0, ny1 = *x1, t;
+        int nx0 = d - *y1, nx1 = d - *y0, ny0 = *x0, ny1 = *x1, t;   /* (H5) the turned width is d */
         *x0 = nx0; *x1 = nx1; *y0 = ny0; *y1 = ny1;
         t = w; w = d; d = t;
     }
@@ -196,12 +196,129 @@ static void wall_column(const RR *r, int x, int bottom, int u, int side)
     plat_rect(x, bottom - skirt, 2, skirt, lit(r, sk));
 }
 
-static void draw_room_shell(const RR *r)
+/* ---- H5: the plot edge, the door's backdrop, the wall pieces' edges ------------- */
+static uint8_t lt(uint8_t c, int level, int tint)
+{
+    c = level >= 15 ? c : palette_shade(c, level);
+    return tint ? doomo_tintmap[tint][c] : c;
+}
+
+void room_lip_colours(const DoomoRoomView *v, int level, int tint, uint8_t c[5])
+{
+    int fp = v->floor_paint < 32 ? v->floor_paint : PAINT_CARAMEL;
+    c[0] = lt(PAL_PAINT(fp, 0), level, tint);
+    c[1] = lt(PAL_RAMP(RAMP_PEACH, 2), level, tint);
+    c[2] = lt(PAL_RAMP(RAMP_PEACH, 1), level, tint);
+    c[3] = lt(PAL_RAMP(RAMP_PEACH, 1), level, tint);
+    c[4] = lt(PAL_RAMP(RAMP_PEACH, 0), level, tint);
+}
+
+int room_wall_side(const DoomoRoomView *v, const DoomoRoomObj *o, int k)
+{
+    const DoomoFurn *f = home_furn(o->furn);
+    int e = home_wall_edge(RO_ROT(o), o->x, o->y, v->w, v->d), dx, dy, i, side;
+    static const int8_t ex[4] = { 0, -1, 0, 1 }, ey[4] = { -1, 0, 1, 0 };
+    dx = ex[e]; dy = ey[e];
+    for (i = 0; i < k; i++) { int t = dx; dx = -dy; dy = t; }
+    side = dy == -1 ? 0 : dx == -1 ? 1 : dy == 1 ? 2 : 3;
+    if (side >= 2 && (v->room_kind == ROOMK_WALLS || !f || (f->flags2 & FF_PORTAL))) return -1;
+    return side;
+}
+
+int room_backdrop_setup(RoomBackdrop *b, const DoomoRoomView *v, int k, int W, int D,
+                        int wall_h, int level, int tint)
+{
+    int i, s;
+    memset(b, 0, sizeof(*b));
+    if (!v || v->room_kind == ROOMK_WALLS) return RBD_NONE;
+    for (i = 0; i < v->nobj; i++) {
+        const DoomoRoomObj *o = &v->objs[i];
+        const DoomoFurn *f = home_furn(o->furn);
+        int x0, y0, x1, y1, a0, a1, L, side;
+        if (!f || f->role != FR_DOOR || !(f->flags2 & FF_PORTAL) || (o->flags & (RO_GHOST | RO_SEMI))) continue;
+        side = room_wall_side(v, o, k);
+        if (side < 0 || side > 1) return RBD_NONE;       /* on the front: cut away */
+        x0 = o->x; y0 = o->y;
+        if (RO_ROT(o) & 1) { x1 = x0 + 1; y1 = y0 + (f->fw ? f->fw : 1); }
+        else { x1 = x0 + (f->fw ? f->fw : 1); y1 = y0 + 1; }
+        rot_box(k, v->w, v->d, &x0, &y0, &x1, &y1);
+        a0 = side ? y0 : x0; a1 = side ? y1 : x1;
+        L = 16 * (side ? D : W);
+        b->side = (uint8_t)side;
+        if (v->room_kind == ROOMK_GARDEN) {
+            b->style = RBD_WALL;
+            b->h = (uint8_t)wall_h;
+            b->u0 = (int16_t)(a0 > 0 ? 16 * (a0 - 1) : 0);
+            b->u1 = (int16_t)(16 * (a1 + 1) < L ? 16 * (a1 + 1) : L);
+        } else {
+            b->style = RBD_POSTS;
+            b->h = (uint8_t)(wall_h * 3 / 4);
+            b->p0 = (int16_t)(16 * a0 - 4);
+            b->p1 = (int16_t)(16 * a1);
+            b->u0 = (int16_t)(b->p0 > 0 ? b->p0 : 0);
+            b->u1 = (int16_t)(b->p1 + 4 < L ? b->p1 + 4 : L);
+        }
+        if (b->u1 <= b->u0) { b->style = RBD_NONE; return RBD_NONE; }
+        s = side;
+        b->c[RBC_TRIM_D] = lt(PAL_RAMP(RAMP_WOOD, 1), level, tint);
+        b->c[RBC_TRIM] = lt(PAL_RAMP(RAMP_WOOD, 4 - s), level, tint);
+        b->c[RBC_SIDING] = lt(PAL_PAINT(PAINT_BONE, 2 - s), level, tint);
+        b->c[RBC_SIDING_D] = lt(PAL_PAINT(PAINT_BONE, s ? 0 : 1), level, tint);
+        b->c[RBC_CORNER] = lt(PAL_RAMP(RAMP_WOOD, 3 - s), level, tint);
+        b->c[RBC_STONE] = lt(PAL_RAMP(RAMP_STONE, 4 - s), level, tint);
+        b->c[RBC_STONE_D] = lt(PAL_RAMP(RAMP_STONE, 2 - s), level, tint);
+        b->c[RBC_CAP] = lt(PAL_RAMP(RAMP_STONE, 6), level, tint);
+        return b->style;
+    }
+    return RBD_NONE;
+}
+
+uint8_t room_backdrop_px(const RoomBackdrop *b, int u, int t)
+{
+    int h = b->h;
+    if (u < b->u0 || u >= b->u1 || t < 0 || t >= h) return 0;
+    if (b->style == RBD_WALL) {
+        if (t == 0) return b->c[RBC_TRIM_D];
+        if (t < 3) return b->c[RBC_TRIM];
+        if (t == h - 1 || t == h - 6) return b->c[RBC_STONE_D];
+        if (t > h - 6) return ((u + (t > h - 3 ? 4 : 0)) & 7) == 0 ? b->c[RBC_STONE_D] : b->c[RBC_STONE];
+        if (u == b->u0 || u == b->u1 - 2) return b->c[RBC_CORNER];
+        return (t - 3) % 5 == 4 ? b->c[RBC_SIDING_D] : b->c[RBC_SIDING];
+    }
+    if (b->style == RBD_POSTS) {
+        int q = u >= b->p1 ? u - b->p1 : u - b->p0;
+        if (q < 0 || q >= 4) return 0;
+        if (t < 2) return b->c[RBC_CAP];
+        if (t < 4) return b->c[RBC_STONE];
+        if (t == h - 1) return b->c[RBC_STONE_D];
+        return q < 2 ? b->c[RBC_STONE] : b->c[RBC_STONE_D];
+    }
+    return 0;
+}
+
+static void draw_backdrop(const RR *r, const RoomBackdrop *b)
+{
+    int u, t;
+    for (u = b->u0; u < b->u1; u += 2) {
+        int x = b->side ? r->ox - u - 2 : r->ox + u;
+        int top = r->oy + (b->side ? (u + 2) >> 1 : u >> 1) - b->h;
+        for (t = 0; t < b->h; ) {
+            uint8_t c = room_backdrop_px(b, u, t);
+            int n = 1;
+            while (t + n < b->h && room_backdrop_px(b, u, t + n) == c) n++;
+            if (c) plat_rect(x, top + t, 2, n, c);
+            t += n;
+        }
+    }
+}
+
+static void draw_room_shell(const RR *r, const RoomBackdrop *bd)
 {
     const DoomoRoomView *v = r->v;
     int i, j, u;
     int fp = v->floor_paint < 32 ? v->floor_paint : PAINT_CARAMEL;
     uint8_t a = lit(r, PAL_PAINT(fp, 1)), b = lit(r, PAL_PAINT(fp, 2)), g = lit(r, PAL_PAINT(fp, 0));
+    if (bd->style) draw_backdrop(r, bd);
     if (v->room_kind == ROOMK_WALLS) {
         for (u = 0; u < r->W * 16; u += 2)                 /* wall A': y' = 0 */
             wall_column(r, r->ox + u, r->oy + (u >> 1), u, 0);
@@ -211,9 +328,21 @@ static void draw_room_shell(const RR *r)
     }
     for (j = 0; j < r->D; j++)
         for (i = 0; i < r->W; i++) floor_tile(r, i, j, a, b, g);
-    if (v->room_kind != ROOMK_WALLS) {                     /* a lip for the plot edges */
-        for (u = 0; u < r->W * 16; u += 2)
-            plat_rect(r->ox + u - r->D * 16, r->oy + ((u + r->D * 16) >> 1) + 8, 2, 3, lit(r, PAL_RAMP(RAMP_PEACH, 2)));
+    if (v->room_kind != ROOMK_WALLS) {                     /* (H5) the lip on both front edges */
+        uint8_t c[5];
+        room_lip_colours(v, r->level, r->tint, c);
+        for (u = 0; u < r->W * 16; u += 2) {
+            int x = r->ox + u - r->D * 16, y = r->oy + ((u + r->D * 16) >> 1);
+            plat_rect(x, y, 2, 1, c[0]);
+            plat_rect(x, y + 1, 2, ROOM_LIP_H - 2, c[1]);
+            plat_rect(x, y + ROOM_LIP_H - 1, 2, 1, c[3]);
+        }
+        for (u = 0; u < r->D * 16; u += 2) {
+            int x = r->ox + r->W * 16 - u - 2, y = r->oy + ((u + r->W * 16) >> 1);
+            plat_rect(x, y, 2, 1, c[0]);
+            plat_rect(x, y + 1, 2, ROOM_LIP_H - 2, c[2]);
+            plat_rect(x, y + ROOM_LIP_H - 1, 2, 1, c[4]);
+        }
     }
 }
 
@@ -795,10 +924,10 @@ static void draw_actor(const RR *r, const DoomoRoomActor *a)
 {
     const DoomoRoomView *v = r->v;
     fix16 ax = a->x, ay = a->y;
-    int k, t, u, vv, fl = a->flags & BB_FLIPX ? IMG_FLIPX : 0;
+    int k, t, u, vv, w, d, fl = a->flags & BB_FLIPX ? IMG_FLIPX : 0;
     DoomoImage img;
     if (!a->img) return;
-    for (k = 0; k < r->k; k++) { t = ax; ax = INT2FIX(v->w) - ay; ay = t; }
+    for (k = 0, w = v->w, d = v->d; k < r->k; k++) { t = ax; ax = INT2FIX(d) - ay; ay = t; t = w; w = d; d = t; }
     u = scr_x(r, FIX2INT(ax * 16), FIX2INT(ay * 16));
     vv = scr_y(r, FIX2INT(ax * 16), FIX2INT(ay * 16), a->z);
     img = *a->img;
@@ -834,9 +963,11 @@ static void draw_cursor(const RR *r, int cx, int cy)
 void room_ref_draw(const DoomoRoomView *v)
 {
     RR r;
-    Item items[RR_MAX_ITEMS];
+    Item items[RR_MAX_ITEMS], front[RR_MAX_ITEMS];
     uint8_t done[RR_MAX_ITEMS];
-    int n = 0, i, j, total, vw, vh;
+    int16_t front_idx[RR_MAX_ITEMS];
+    int n = 0, nf = 0, i, j, total, vw, vh;
+    RoomBackdrop bd;
     if (!v || plat_draw_skipped()) return;
     r.v = v;
     r.k = ((v->yaw + 512) >> 10) & 3;
@@ -847,7 +978,8 @@ void room_ref_draw(const DoomoRoomView *v)
     r.wall_h = vh >= 200 ? 64 : 48;
     r.level = 6 + (v->daylight > 15 ? 15 : v->daylight) * 9 / 15;
     r.tint = (v->tint && v->tint < TINT_COUNT && v->tint_level >= 4) ? v->tint : 0;
-    total = (v->room_kind == ROOMK_WALLS ? r.wall_h : 8) + (r.W + r.D) * 8;
+    room_backdrop_setup(&bd, v, r.k, r.W, r.D, r.wall_h, r.level, r.tint);
+    total = (v->room_kind == ROOMK_WALLS || bd.style ? r.wall_h : 8) + (r.W + r.D) * 8;
     r.ox = v->vx + vw / 2 - (r.W - r.D) * 8 + v->pan_x;
     if (total + 4 <= vh) r.oy = v->vy + (vh - total) / 2 + (total - (r.W + r.D) * 8) + v->pan_y;
     else r.oy = v->vy + vh - (r.W + r.D) * 8 - 4 + v->pan_y;
@@ -867,7 +999,7 @@ void room_ref_draw(const DoomoRoomView *v)
         }
     }
     if (v->room_kind == ROOMK_WALLS && v->roof) draw_roof(&r);
-    draw_room_shell(&r);
+    draw_room_shell(&r, &bd);
     /* the rubber band of a multi-select (room-space bits y * w + x) */
     for (j = 0; j < v->d; j++)
         for (i = 0; i < v->w; i++) {
@@ -883,28 +1015,35 @@ void room_ref_draw(const DoomoRoomView *v)
                 plat_line(bx - 14, by + 8, bx, by + 1, PAL_UI_GOLD);
             }
         }
-    /* wall pieces on the two visible walls */
+    /* wall pieces on the two visible walls; (H5) an open kind's front-edge
+     * pieces stand on the lines y' = D / x' = W, drawn after everything */
     for (i = 0; i < v->nobj; i++) {
         const DoomoRoomObj *o = &v->objs[i];
         const DoomoFurn *f = home_furn(o->furn);
-        int side, x0, y0, x1, y1, k;
+        int side, x0, y0, x1, y1;
         Item it;
         if (!f || !(f->flags & FF_WALL)) continue;
-        /* the wall it hangs on, as a direction: A = (0,-1), B = (-1,0) */
-        {
-            int dx = (RO_ROT(o) & 1) ? -1 : 0, dy = (RO_ROT(o) & 1) ? 0 : -1;
-            for (k = 0; k < r.k; k++) { int t = dx; dx = -dy; dy = t; }
-            if (dx == 0 && dy == -1) side = 0; else if (dx == -1 && dy == 0) side = 1; else continue;
-        }
+        side = room_wall_side(v, o, r.k);
+        if (side < 0) continue;
         x0 = o->x; y0 = o->y;
         if (RO_ROT(o) & 1) { x1 = x0 + 1; y1 = y0 + (f->fw ? f->fw : 1); }
         else { x1 = x0 + (f->fw ? f->fw : 1); y1 = y0 + 1; }
         rot_box(r.k, v->w, v->d, &x0, &y0, &x1, &y1);
         it.x0 = (int8_t)x0; it.y0 = (int8_t)y0; it.x1 = (int8_t)x1; it.y1 = (int8_t)y1;
-        if (side == 0) it.y0 = 0; else it.x0 = 0;
+        if (side == 0) it.y0 = 0;
+        else if (side == 1) it.x0 = 0;
+        else if (side == 2) it.y0 = (int8_t)r.D;
+        else it.x0 = (int8_t)r.W;
+        if (side >= 2) {
+            if (nf >= RR_MAX_ITEMS) continue;
+            it.layer = (uint8_t)(side & 1);
+            front[nf] = it;
+            front_idx[nf++] = (int16_t)i;
+            continue;
+        }
         {
             DoomoRoomObj tmp = *o;
-            tmp.rot_anim = RO_ROT_ANIM((side == 0 ? 0 : 1) + r.k, RO_ANIM(o));
+            tmp.rot_anim = RO_ROT_ANIM(side + r.k, RO_ANIM(o));
             draw_piece(&r, &tmp, &it);
         }
     }
@@ -956,6 +1095,11 @@ void room_ref_draw(const DoomoRoomView *v)
         } else {
             draw_actor(&r, &v->actors[-1 - items[pick].idx]);
         }
+    }
+    for (i = 0; i < nf; i++) {                          /* (H5) the front edges, in object order */
+        DoomoRoomObj tmp = v->objs[front_idx[i]];
+        tmp.rot_anim = RO_ROT_ANIM(front[i].layer + r.k, RO_ANIM(&v->objs[front_idx[i]]));
+        draw_piece(&r, &tmp, &front[i]);
     }
     if (v->cursor_x >= 0 && v->cursor_y >= 0) draw_cursor(&r, v->cursor_x, v->cursor_y);
 }

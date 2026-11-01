@@ -104,4 +104,20 @@ enum { HDT_AUTO, HDT_TUTORIAL, HDT_SIEGE, HDT_RAID, HDT_ARENA, HDT_COUNT };
 /* In free play the chunk is this small while nobody has moved in (R13). */
 #define HOME_CHUNK_EMPTY      10
 
+/* ---- H5: the edge a wall piece (FF_WALL) stands on ------------------------
+ * rot even = wall A (y = 0), odd = wall B (x = 0), as ever. In the open
+ * kinds (the Garden's fences, any wall piece on the Park Plot) rot 2 at
+ * y = d - 1 is the front edge HE_FRONT_A (the line y = d) and rot 3 at
+ * x = w - 1 is HE_FRONT_B (the line x = w). A walled room only ever holds
+ * wall pieces at y = 0 / x = 0, so the position alone tells an old rot 2 / 3
+ * piece on a back wall from a front one: saves keep their meaning. */
+enum { HE_A, HE_B, HE_FRONT_A, HE_FRONT_B };
+static inline int home_wall_edge(int rot, int x, int y, int w, int d)
+{
+    rot &= 3;
+    if (rot == 2 && d > 1 && y == d - 1) return HE_FRONT_A;
+    if (rot == 3 && w > 1 && x == w - 1) return HE_FRONT_B;
+    return rot & 1;
+}
+
 #endif

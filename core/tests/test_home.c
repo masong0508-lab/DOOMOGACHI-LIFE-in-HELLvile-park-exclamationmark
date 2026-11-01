@@ -11,7 +11,7 @@
 /* ---- a tiny catalog ------------------------------------------------------- */
 enum { T_DOOR, T_WINDOW, T_HEARTH, T_TABLE, T_CHAIR, T_VASE, T_RUG, T_POSTER,
        T_BED, T_LAMP, T_PLUSH, T_PENTA, T_MIRROR, T_HELLCHAIR, T_FRIDGE, T_WINDOW2,
-       T_STARTER, T_N };
+       T_STARTER, T_FENCE, T_N };
 #define ROW(name, cat, fl, fl2, fi, w, d, h, cute, spook, comfy, lr, theme, mass, role) \
     { name, "", 10, 0xFFFF, 0xFFFF, cat, fl, fl2, fi, w, d, h, 0xFF, 0xFF, cute, spook, comfy, \
       0xFF, 0, lr, theme, mass, 0, 0, 1, role }
@@ -33,6 +33,7 @@ static const DoomoFurn tcat[T_N] = {
     ROW("Fridge", FCAT_KITCHEN, 0, 0, FI_EAT, 1, 1, 13, 5, 0, 2, 0, THEME_CANDY, 18, FR_NONE),
     ROW("Round window", FCAT_WALL, FF_WALL, FF_PORTAL, FI_NONE, 1, 1, 6, 3, 0, 1, 0, THEME_CLOUD, 0, FR_WINDOW),
     ROW("Crate", FCAT_STORY, FF_SURFACE, FF_STARTER | FF_UNSELLABLE, FI_NONE, 1, 1, 5, 2, 0, 1, 0, THEME_COTTAGE, 8, FR_TABLE),
+    ROW("Fence", FCAT_WALL, FF_WALL, 0, FI_NONE, 1, 1, 5, 3, 0, 0, 0, THEME_PICNIC, 0, FR_FENCE),
 };
 
 static void use_tcat(void)
@@ -111,6 +112,59 @@ TEST(home_place_rules)
     e.remove_only = 1;
     CHECK_EQ(home_edit_place(&e, T_CHAIR, 5, 5, 0, -1, -1), -HPR_REMOVE_ONLY);
     CHECK(home_edit_pickup(&e, e.room.nobj - 1) == T_TABLE);
+    done_tcat();
+}
+
+/* ---- (H5) the open kinds: wall pieces on every edge ------------------------------ */
+TEST(home_place_open_edges)
+{
+    HomeEdit e;
+    HomeFit fit;
+    int i, k;
+    use_tcat();
+    home_move_in();
+    own_all(6);
+    /* the Garden (8x6): fences on all four edges, rot 2 / 3 on the front */
+    home_edit_begin(&e, HOME_ROOM_GARDEN);
+    CHECK_EQ(home_fit(&e.room, HOME_ROOM_GARDEN, T_FENCE, 2, 5, 2, -1, &fit), HPR_OK);
+    CHECK_EQ(fit.z, 0);                                         /* fences stand on the ground */
+    CHECK_EQ(home_fit(&e.room, HOME_ROOM_GARDEN, T_FENCE, 7, 3, 3, -1, NULL), HPR_OK);
+    CHECK_EQ(home_fit(&e.room, HOME_ROOM_GARDEN, T_FENCE, 5, 0, 0, -1, NULL), HPR_OK);
+    CHECK_EQ(home_fit(&e.room, HOME_ROOM_GARDEN, T_FENCE, 0, 2, 1, -1, NULL), HPR_OK);
+    CHECK_EQ(home_fit(&e.room, HOME_ROOM_GARDEN, T_FENCE, 5, 0, 2, -1, NULL), HPR_OK); /* an old rot 2 on A */
+    CHECK_EQ(home_fit(&e.room, HOME_ROOM_GARDEN, T_FENCE, 2, 3, 2, -1, NULL), HPR_WALL_ONLY);
+    CHECK_EQ(home_fit(&e.room, HOME_ROOM_GARDEN, T_FENCE, 3, 3, 3, -1, NULL), HPR_WALL_ONLY);
+    CHECK_EQ(home_fit(&e.room, HOME_ROOM_GARDEN, T_FENCE, 8, 5, 2, -1, NULL), HPR_OFFGRID);
+    /* only fences in the Garden, front edge or back */
+    CHECK_EQ(home_fit(&e.room, HOME_ROOM_GARDEN, T_POSTER, 2, 5, 2, -1, NULL), HPR_FLOOR_ONLY);
+    CHECK_EQ(home_fit(&e.room, HOME_ROOM_GARDEN, T_POSTER, 5, 0, 0, -1, NULL), HPR_FLOOR_ONLY);
+    k = home_edit_place(&e, T_FENCE, 2, 5, 2, -1, -1);
+    CHECK(k >= 0);
+    CHECK_EQ(home_wall_edge(HO_ROT(&e.room.obj[k]), HO_X(&e.room.obj[k]), HO_Y(&e.room.obj[k]), 8, 6), HE_FRONT_A);
+    CHECK_EQ(home_obj_at(&e.room, 2, 5), k);
+    CHECK_EQ(home_fit(&e.room, HOME_ROOM_GARDEN, T_FENCE, 2, 5, 2, -1, NULL), HPR_OCCUPIED);
+    CHECK_EQ(home_fit(&e.room, HOME_ROOM_GARDEN, T_FENCE, 2, 0, 0, -1, NULL), HPR_OK);  /* the back edge is another edge */
+    CHECK(home_edit_place(&e, T_FENCE, 7, 2, 3, -1, -1) >= 0);
+    /* a front fence slides along its edge */
+    {
+        uint8_t idx[1];
+        idx[0] = (uint8_t)k;
+        CHECK_EQ(home_edit_group_move(&e, idx, 1, 2, 0), 1);
+        CHECK_EQ(HO_X(&e.room.obj[k]), 4);
+        CHECK_EQ(HO_Y(&e.room.obj[k]), 5);
+    }
+    /* the Park Plot (10x8): any wall piece on any edge */
+    home_edit_begin(&e, HOME_ROOM_PARK_PLOT);
+    CHECK_EQ(home_fit(&e.room, HOME_ROOM_PARK_PLOT, T_POSTER, 4, 7, 2, -1, NULL), HPR_OK);
+    CHECK_EQ(home_fit(&e.room, HOME_ROOM_PARK_PLOT, T_MIRROR, 9, 4, 3, -1, NULL), HPR_OK);
+    CHECK_EQ(home_fit(&e.room, HOME_ROOM_PARK_PLOT, T_FENCE, 0, 6, 1, -1, NULL), HPR_OK);
+    CHECK_EQ(home_fit(&e.room, HOME_ROOM_PARK_PLOT, T_POSTER, 4, 6, 2, -1, NULL), HPR_WALL_ONLY);
+    /* a walled room keeps its back walls: rot 2 / 3 there means walls A / B */
+    home_edit_begin(&e, HOME_ROOM_LIVING);
+    CHECK_EQ(home_fit(&e.room, HOME_ROOM_LIVING, T_POSTER, 2, 5, 2, -1, NULL), HPR_WALL_ONLY);
+    CHECK_EQ(home_fit(&e.room, HOME_ROOM_LIVING, T_POSTER, 5, 2, 3, -1, NULL), HPR_WALL_ONLY);
+    CHECK_EQ(home_fit(&e.room, HOME_ROOM_LIVING, T_POSTER, 2, 0, 2, -1, NULL), HPR_OK);
+    for (i = 0; i < 4; i++) CHECK_EQ(home_wall_edge(i, 0, 0, 6, 6), i & 1);
     done_tcat();
 }
 

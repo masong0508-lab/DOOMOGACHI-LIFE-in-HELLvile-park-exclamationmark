@@ -6,7 +6,7 @@
 2 c75266b3
 3 d16f0ded
 4 ec77901b
-# 5..45: the shell frames of core/tests/room_shells.h (every wallpaper,
+# 5..52: the shell frames of core/tests/room_shells.h (every wallpaper,
 # floor, ceiling ramp, tint, room kind and roof)
 5 d1224be4  6x6 walls parity wp 0 fl 0 ce 0 paint Rose/Honey tint None 0 light 15 view 0
 6 1eff7f94  6x6 walls parity wp 1 fl 1 ce 1 paint Lavender/Chocolate tint None 0 light 15 view 1
@@ -29,23 +29,30 @@
 23 84c0429d  6x6 walls parity wp 0 fl 0 ce 0 paint Bubblegum/Caramel tint Red 16 light 15 view 0
 24 fa65b6d0  6x6 walls parity wp 5 fl 2 ce 5 paint Bone/Mint tint Gold 12 light 9 view 2
 25 c8efbd26  6x6 walls parity wp 1 fl 3 ce 6 paint Sky/Honey tint Green 8 light 15 view 3
-26 339454ca  8x6 garden floor wp 4 fl 4 ce 0 paint Sky/Lime tint None 0 light 15 view 0
-27 a8ee2220  8x6 garden floor wp 4 fl 5 ce 0 paint Sky/Silver tint None 0 light 3 view 1
-28 c87f151f  10x8 open floor wp 4 fl 4 ce 0 paint Sky/Forest tint None 0 light 15 view 1
-29 1bee45d9  10x8 open empty wp 4 fl 6 ce 0 paint Sky/Charcoal tint None 0 light 10 view 2
-30 ec32af37  8x6 walls parity wp 2 fl 2 ce 0 paint Mint/White tint None 0 light 15 view 1
-31 a2e6d559  8x6 walls parity wp 2 fl 2 ce 0 paint Mint/White tint None 0 light 15 view 2
-32 f0a783f6  8x6 walls parity wp 6 fl 3 ce 2 paint Rose/Cobalt tint Purple 8 light 15 view 3
-33 4c7d6bfd  8x6 walls parity wp 1 fl 1 ce 0 paint Lavender/Honey tint None 0 light 15 view 1
-34 fd2a1a85  8x6 walls parity wp 0 fl 0 ce 0 paint Bubblegum/Caramel tint None 0 light 9 view 2
-35 89b2c054  8x6 garden floor wp 0 fl 1 ce 0 paint Sky/Lime tint None 0 light 15 view 3
-36 f59f95a1  10x8 open floor wp 0 fl 0 ce 0 paint Sky/Forest tint None 0 light 13 view 0
+26 e7349542  8x6 garden floor wp 4 fl 4 ce 0 paint Sky/Lime tint None 0 light 15 view 0
+27 77e45787  8x6 garden floor wp 4 fl 5 ce 0 paint Sky/Silver tint None 0 light 3 view 1
+28 a683ef69  10x8 open floor wp 4 fl 4 ce 0 paint Sky/Forest tint None 0 light 15 view 1
+29 1b244c7d  10x8 open empty wp 4 fl 6 ce 0 paint Sky/Charcoal tint None 0 light 10 view 2
+30 0c09592c  8x6 walls parity wp 2 fl 2 ce 0 paint Mint/White tint None 0 light 15 view 1
+31 5b0a6773  8x6 walls parity wp 2 fl 2 ce 0 paint Mint/White tint None 0 light 15 view 2
+32 7baf2e04  8x6 walls parity wp 6 fl 3 ce 2 paint Rose/Cobalt tint Purple 8 light 15 view 3
+33 9b4368b4  8x6 walls parity wp 1 fl 1 ce 0 paint Lavender/Honey tint None 0 light 15 view 1
+34 cd040208  8x6 walls parity wp 0 fl 0 ce 0 paint Bubblegum/Caramel tint None 0 light 9 view 2
+35 2d1cd437  8x6 garden floor wp 0 fl 1 ce 0 paint Sky/Lime tint None 0 light 15 view 3
+36 f5c89f5f  10x8 open floor wp 0 fl 0 ce 0 paint Sky/Forest tint None 0 light 13 view 0
 37 7f1c9b48  6x6 walls empty wp 3 fl 1 ce 0 paint Cobalt/Chocolate tint None 0 light 6 view 1
 38 a04c29c8  6x6 walls parity wp 0 fl 0 ce 0 paint Bubblegum/Caramel tint None 0 light 15 view 0 roof cottage
 39 db828a50  6x6 walls parity wp 0 fl 0 ce 0 paint Bubblegum/Caramel tint None 0 light 15 view 1 roof cottage
 40 e8ffe98a  6x6 walls parity wp 1 fl 1 ce 0 paint Lavender/Honey tint None 0 light 9 view 2 roof cottage
-41 ddb7d28d  8x6 walls parity wp 1 fl 1 ce 0 paint Bone/Chocolate tint None 0 light 12 view 1 roof attic
+41 3d8a1051  8x6 walls parity wp 1 fl 1 ce 0 paint Bone/Chocolate tint None 0 light 12 view 1 roof attic
 42 08d43209  6x6 walls empty wp 3 fl 0 ce 0 paint Silver/Caramel tint None 0 light 15 view 0 roof flat
 43 73c459e1  6x6 walls empty wp 2 fl 1 ce 0 paint Grape/Charcoal tint None 0 light 6 view 3 roof spike
 44 6e08a80e  6x6 walls parity wp 1 fl 2 ce 4 paint Lavender/Mint tint None 0 light 15 view 0 roof cottage
 45 dd3270fa  6x6 walls parity wp 6 fl 6 ce 6 paint Grape/Charcoal tint Red 4 light 15 view 1 roof spike
+46 52e30985  8x6 garden fenced wp 0 fl 1 ce 0 paint Sky/Lime tint None 0 light 15 view 0
+47 2d71ec08  8x6 garden fenced wp 0 fl 1 ce 0 paint Sky/Lime tint None 0 light 15 view 3
+48 d27043d0  8x6 garden fenced wp 0 fl 0 ce 0 paint Sky/Lime tint None 0 light 13 view 2
+49 a6901637  10x8 open fenced wp 0 fl 0 ce 0 paint Sky/Forest tint None 0 light 15 view 0
+50 619d5b1d  10x8 open fenced wp 0 fl 1 ce 0 paint Sky/Forest tint None 0 light 15 view 1
+51 973df155  8x6 garden fenced wp 4 fl 4 ce 0 paint Sky/Lime tint None 0 light 10 view 0
+52 73142584  10x8 open fenced wp 4 fl 5 ce 0 paint Sky/Forest tint None 0 light 3 view 3

@@ -75,17 +75,19 @@ int home_obj_layer(const HomeObj *o)
     return HOL_FLOOR;
 }
 
-/* Wall pieces: rot even = wall A (y = 0), odd = wall B (x = 0); they span
- * fw tiles along the wall and fh*4 px from z*4. */
+/* Wall pieces: rot even = wall A (y = 0), odd = wall B (x = 0), and in the
+ * open kinds rot 2 / 3 on the front edges (H5, home_wall_edge); they span
+ * fw tiles along the edge and fh*4 px from z*4. */
 static int wall_z_default(const DoomoFurn *f)
 {
     int h = f->fh * 4;
     if (f->role == FR_WINDOW) return 6;
+    if (f->role == FR_FENCE) return 0;          /* (H5) fences stand on the ground */
     if (h >= 40) return 0;
     return ((64 - h) / 2) / 4;
 }
 
-int home_wall_span(const HomeObj *o, int *a0, int *a1, int *z0, int *z1)
+int home_wall_span(const HomeRoom *r, const HomeObj *o, int *a0, int *a1, int *z0, int *z1)
 {
     const DoomoFurn *f = home_furn(HO_FURN(o));
     int along = (HO_ROT(o) & 1) ? HO_Y(o) : HO_X(o);
@@ -93,7 +95,7 @@ int home_wall_span(const HomeObj *o, int *a0, int *a1, int *z0, int *z1)
     *a1 = along + (f && f->fw ? f->fw : 1);
     *z0 = o->z * 4;
     *z1 = *z0 + (f ? f->fh * 4 : 16);
-    return HO_ROT(o) & 1;
+    return home_wall_edge(HO_ROT(o), HO_X(o), HO_Y(o), HR_W(r), HR_D(r));
 }
 
 int home_obj_is_fixed(const HomeRoom *r, int idx)
@@ -125,9 +127,10 @@ int home_obj_at(const HomeRoom *r, int x, int y)
         const HomeObj *o = &r->obj[i];
         int ly = home_obj_layer(o), k = 0;
         if (ly == HOL_WALL) {
-            int a0, a1, z0, z1, wb = home_wall_span(o, &a0, &a1, &z0, &z1);
+            int a0, a1, z0, z1, e = home_wall_span(r, o, &a0, &a1, &z0, &z1), wb = e & 1;
             int along = wb ? y : x, edge = wb ? x : y;
-            if (edge == 0 && along >= a0 && along < a1) k = 2;
+            int at = e == HE_FRONT_A ? HR_D(r) - 1 : e == HE_FRONT_B ? HR_W(r) - 1 : 0;
+            if (edge == at && along >= a0 && along < a1) k = 2;
         } else {
             HomeBox b = home_obj_box(o);
             if (x >= b.x0 && x < b.x1 && y >= b.y0 && y < b.y1)
@@ -203,19 +206,22 @@ int home_fit_sub(const HomeRoom *r, int room, int furn, int x, int y, int rot, i
         }
     }
     if (f->flags & FF_WALL) {
+        /* (H5) the open kinds take wall pieces on every edge: the Garden
+         * only its fences, the Park Plot anything (rot 2 / 3 on the front) */
         int wb = rot & 1, a0 = wb ? y : x, a1 = a0 + (f->fw ? f->fw : 1);
-        int z0 = wall_z_default(f) * 4, z1 = z0 + f->fh * 4;
+        int z0 = wall_z_default(f) * 4, z1 = z0 + f->fh * 4, e = wb;
         if (def->kind == ROOMK_GARDEN && f->role != FR_FENCE) return HPR_FLOOR_ONLY;
-        if ((wb ? x : y) != 0) return HPR_WALL_ONLY;
+        if (def->kind != ROOMK_WALLS) e = home_wall_edge(rot, x, y, W, D);
+        if (e < HE_FRONT_A && (wb ? x : y) != 0) return HPR_WALL_ONLY;
         if (a0 < 0 || a1 > (wb ? D : W)) return HPR_OFFGRID;
         for (i = 0; i < r->nobj; i++) {
             int b0, b1, c0, c1;
             if (i == ignore || home_obj_layer(&r->obj[i]) != HOL_WALL) continue;
-            if (home_wall_span(&r->obj[i], &b0, &b1, &c0, &c1) != wb) continue;
+            if (home_wall_span(r, &r->obj[i], &b0, &b1, &c0, &c1) != e) continue;
             if (a0 < b1 && b0 < a1 && z0 < c1 && c0 < z1) return HPR_OCCUPIED;
         }
         /* the hearth stands against wall B: nothing hangs over its mouth */
-        if (wb && def->hearth_at != 0xFF && a0 < def->hearth_at + 2 && def->hearth_at < a1 && z0 < 48)
+        if (e == HE_B && def->hearth_at != 0xFF && a0 < def->hearth_at + 2 && def->hearth_at < a1 && z0 < 48)
             return HPR_FIREPLACE;
         out->z = (uint8_t)(z0 / 4);
         return HPR_OK;

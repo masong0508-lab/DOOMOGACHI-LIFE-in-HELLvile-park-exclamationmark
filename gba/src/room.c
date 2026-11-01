@@ -13,8 +13,10 @@
  * (plat_post_offset / plat_post_scale) instead of a recompose; a squashed
  * piece that nothing covers goes through plat_image_xform (S1's affine OBJs,
  * obj.c), a covered one draws unsquashed in order (as room_ref's software
- * default does at scale 1); actors rotate with the rotated room size (the
- * reference uses v->w on every step: wrong for non-square rooms at k 2-3).
+ * default does at scale 1). (H5) A quarter turn maps (x, y) to (d - 1 - y,
+ * x), d the depth before the turn, here and in the reference alike (both
+ * used the width before: non-square rooms drew off their floor in turned
+ * views).
  *
  * HOW (a static bitmap with dirty rects, HF sec.6.4). Mode 4 keeps two
  * pages; each page remembers what it shows: the shell key (room, view,
@@ -129,7 +131,7 @@ typedef struct RSort { int8_t x0, y0, x1, y1; uint8_t layer, z; int16_t idx; } R
 typedef struct RRect { int16_t x0, y0, x1, y1; } RRect;
 #define RB_RECTS 24
 #define RB_OBJS  (HOME_OBJ_MAX + 1)
-enum { OK_NONE, OK_WALL, OK_FLOOR, OK_GHOST, OK_SKIP };
+enum { OK_NONE, OK_WALL, OK_FLOOR, OK_GHOST, OK_SKIP, OK_FRONT };
 
 typedef struct RBig {
     uint32_t magic;                    /* RB_MAGIC ^ rb_epoch: the canary    */
@@ -218,7 +220,7 @@ typedef struct RG {
     int dy0, dy1;                      /* drawable rows: between the HUD bands */
     int my0, my1;                      /* managed rows: viewport and bands    */
     int bx0, bx1, nby;                 /* managed block columns / rows        */
-    uint8_t bg, corner, lip, fl_g;     /* shell colours (lit)                 */
+    uint8_t bg, corner, pad0, fl_g;    /* shell colours (lit)                 */
     uint8_t fl_a, fl_b, plank, pad;
     int roof_on, ry0, ry1;             /* (HART) the roof and its rows         */
     int roof_tab, nsp[2];              /* the tables hold it; special ranges:   */
@@ -227,6 +229,8 @@ typedef struct RG {
     int fy1, ftab, ftw;                /* the feature's rows end here; its rows
                                           are in RROOF_FEAT, ftw bytes each      */
     RoomRoof roof;
+    RoomBackdrop bd;                   /* (H5) the door's backdrop (open kinds) */
+    uint8_t lipc[5];                   /* (H5) room_lip_colours                 */
 } RG;
 
 /* (HART) the slope's row d of column p (side B's corner column p = 0
@@ -366,7 +370,7 @@ static void rot_box(int k, int w, int d, int *x0, int *y0, int *x1, int *y1)
 {
     int i;
     for (i = 0; i < k; i++) {
-        int nx0 = w - *y1, nx1 = w - *y0, ny0 = *x0, ny1 = *x1, t;
+        int nx0 = d - *y1, nx1 = d - *y0, ny0 = *x0, ny1 = *x1, t;   /* (H5) the turned width is d */
         *x0 = nx0; *x1 = nx1; *y0 = ny0; *y1 = ny1;
         t = w; w = d; d = t;
     }
@@ -398,7 +402,9 @@ __attribute__((noinline)) static void geometry(RG *g, const DoomoRoomView *v)
     g->walls = v->room_kind == ROOMK_WALLS;
     /* the view brake's 2 px wobble is a BG2 offset, not a recompose */
     if (pan_x >= -4 && pan_x <= 4 && pan_y >= -4 && pan_y <= 4) pan_x = pan_y = 0;
-    total = (g->walls ? g->wall_h : 8) + (g->W + g->D) * 8;
+    room_backdrop_setup(&g->bd, v, g->k, g->W, g->D, g->wall_h, g->level, 0);
+    if (!g->walls) room_lip_colours(v, g->level, 0, g->lipc);
+    total = (g->walls || g->bd.style ? g->wall_h : 8) + (g->W + g->D) * 8;
     g->ox = v->vx + vw / 2 - (g->W - g->D) * 8 + pan_x;
     if (total + 4 <= vh) g->oy = v->vy + (vh - total) / 2 + (total - (g->W + g->D) * 8) + pan_y;
     else g->oy = v->vy + vh - (g->W + g->D) * 8 - 4 + pan_y;
@@ -416,7 +422,6 @@ __attribute__((noinline)) static void geometry(RG *g, const DoomoRoomView *v)
     g->nby = DOOMO_MIN((g->my1 - g->my0 + 7) >> 3, RB_BY);
     g->bg = g->walls ? PAL_RAMP(RAMP_VAPE, 1) : lit(g, PAL_RAMP(RAMP_SKY, 5));
     g->corner = lit(g, PAL_PAINT(v->wall_paint < 32 ? v->wall_paint : PAINT_BUBBLEGUM, 0));
-    g->lip = lit(g, PAL_RAMP(RAMP_PEACH, 2));
     fp = v->floor_paint < 32 ? v->floor_paint : PAINT_CARAMEL;
     g->fl_a = lit(g, PAL_PAINT(fp, 1));
     g->fl_b = lit(g, PAL_PAINT(fp, 2));
@@ -494,6 +499,9 @@ static uint32_t shell_key(const RG *g)
                (uint32_t)v->floor_paint << 24);
     h = mix(h, (uint32_t)g->vx | (uint32_t)g->vy << 8 | (uint32_t)g->vw << 16 | (uint32_t)g->vh << 24);
     h = mix(h, (uint32_t)g->dy0 | (uint32_t)g->dy1 << 8);
+    if (g->bd.style)                    /* (H5) the door's backdrop */
+        h = mix(mix(h, (uint32_t)g->bd.style | (uint32_t)g->bd.side << 8 | (uint32_t)g->bd.h << 16),
+                (uint32_t)(g->bd.u0 & 0xFFFF) | (uint32_t)(g->bd.u1 & 0xFFFF) << 16);
     if (g->roof_on) {                   /* (HART) its style, colours, chimney, dormer */
         h = mix(h, (uint32_t)g->roof.style | (uint32_t)v->ceiling << 8 | (uint32_t)(g->roof.fx0 & 0xFFFF) << 16);
         h = mix(h, (uint32_t)(g->roof.ftop & 0xFFFF) | (uint32_t)(g->roof.dp & 0xFFFF) << 16);
@@ -690,16 +698,51 @@ HOT static void floor_row(const RG *g, int y, int x0, int x1)
     }
 }
 
-/* the plot edge lip of open rooms: 2x3 rects along the front-left edge */
+/* (H5) the plot edge lip of open rooms, room_ref's: on each front edge a
+ * 2 px column per 2 units, ROOM_LIP_H rows from the edge row (row 0 the
+ * turf edge, then soil, the last row darker). Column u of front A' covers
+ * rows [oy + ((u + 16D) >> 1), + ROOM_LIP_H): on row y the columns with
+ * (u + 16D) >> 1 in [t - LIP_H + 1, t], t = y - oy, i.e. u in
+ * [2(t - LIP_H + 1) - 16D, 2t + 1 - 16D]; the row index r = t - ((u + 16D)
+ * >> 1) is constant over each pair of columns. Front A' first, then B'. */
 HOT static void lip_row(const RG *g, int y, int x0, int x1)
 {
-    int t = y - g->oy - 8 * g->D - 8, u0 = 2 * (t - 2), u1 = 2 * t, xa, xb;
-    u0 = DOOMO_MAX(u0, 0);
-    u1 = DOOMO_MIN(u1, 16 * g->W - 2);
-    if (u0 > u1) return;
-    xa = DOOMO_MAX(g->ox - 16 * g->D + u0, x0);
-    xb = DOOMO_MIN(g->ox - 16 * g->D + u1 + 2, x1);
-    if (xa < xb) fill(xa, y, xb, y + 1, g->lip);
+    int t = y - g->oy, side;
+    for (side = 0; side < 2; side++) {
+        int L = side ? 16 * g->D : 16 * g->W, off = side ? 16 * g->W : 16 * g->D, u;
+        int ua = DOOMO_MAX(2 * (t - ROOM_LIP_H + 1) - off, 0), ub = DOOMO_MIN(2 * t + 1 - off, L - 1);
+        ua &= ~1;
+        for (u = ua; u <= ub; u += 2) {
+            int r = t - ((u + off) >> 1), x = side ? g->ox + 16 * g->W - u - 2 : g->ox - 16 * g->D + u, xa, xb;
+            uint8_t c;
+            if (r < 0 || r >= ROOM_LIP_H) continue;
+            c = r == 0 ? g->lipc[0] : r == ROOM_LIP_H - 1 ? g->lipc[3 + side] : g->lipc[1 + side];
+            xa = DOOMO_MAX(x, x0);
+            xb = DOOMO_MIN(x + 2, x1);
+            if (xa < xb) fill(xa, y, xb, y + 1, c);
+        }
+    }
+}
+
+/* (H5) the door's backdrop on row y: column u of side A' at x = ox + u
+ * spans rows [oy + (u >> 1) - h, oy + (u >> 1)), of side B' at x = ox -
+ * u - 2 rows [oy + ((u + 2) >> 1) - h, ...): room_backdrop_px per pixel
+ * pair (only the Garden's / the Park Plot's few dozen columns) */
+HOT static void backdrop_row(const RG *g, int y, int x0, int x1)
+{
+    const RoomBackdrop *b = &g->bd;
+    int u;
+    for (u = b->u0; u < b->u1; u += 2) {
+        int x = b->side ? g->ox - u - 2 : g->ox + u;
+        int t = y - (g->oy + (b->side ? (u + 2) >> 1 : u >> 1) - b->h), xa, xb;
+        uint8_t c;
+        if (t < 0 || t >= b->h || x + 2 <= x0 || x >= x1) continue;
+        c = room_backdrop_px(b, u, t);
+        if (!c) continue;
+        xa = DOOMO_MAX(x, x0);
+        xb = DOOMO_MIN(x + 2, x1);
+        fill(xa, y, xb, y + 1, c);
+    }
 }
 
 
@@ -856,6 +899,7 @@ HOT static void draw_shell(const RG *g, int x0, int y0, int x1, int y1)
          DOOMO_MIN(y1, g->vy + g->vh), g->bg);
     for (y = y0; y < y1; y++) {
         if (g->roof_on && y >= g->ry0 && y < g->ry1) roof_row(g, y, x0, x1);
+        if (g->bd.style) backdrop_row(g, y, x0, x1);
         if (walls && y >= wy0 && y < wy1) wall_rows(g, y, x0, x1);
         if (y >= fy0 && y < fy1) floor_row(g, y, x0, x1);
         if (!g->walls) lip_row(g, y, x0, x1);
@@ -1060,7 +1104,7 @@ __attribute__((noinline)) static void object_item(const RG *g, const DoomoRoomVi
     const DoomoFurn *f = furn_of(o->furn);
     RItem *it = &B->oitem[i];
     RSort *s = &B->osort[i];
-    int k, x0, y0, x1, y1, w, d;
+    int x0, y0, x1, y1, w, d;
     B->ocache[i] = *o;
     B->okind[i] = OK_SKIP;
     if (!f) return;
@@ -1074,19 +1118,22 @@ __attribute__((noinline)) static void object_item(const RG *g, const DoomoRoomVi
         piece_item(g, it, o, (RO_ROT(o) - g->k) & 3, x0, y0, x1, y1);
         B->okind[i] = OK_GHOST;
     } else if (f->flags & FF_WALL) {
-        /* on one of the two visible walls, or cut away */
-        int dx = (RO_ROT(o) & 1) ? -1 : 0, dy = (RO_ROT(o) & 1) ? 0 : -1, side;
-        for (k = 0; k < g->k; k++) { int t = dx; dx = -dy; dy = t; }
-        if (dx == 0 && dy == -1) side = 0; else if (dx == -1 && dy == 0) side = 1; else return;
+        /* on one of the two visible walls, (H5) an open kind's front edge
+         * (drawn after everything, as room_ref does), or cut away */
+        int side = room_wall_side(v, o, g->k);
+        if (side < 0) return;
         x0 = o->x; y0 = o->y;
         if (RO_ROT(o) & 1) { x1 = x0 + 1; y1 = y0 + (f->fw ? f->fw : 1); }
         else { x1 = x0 + (f->fw ? f->fw : 1); y1 = y0 + 1; }
         rot_box(g->k, v->w, v->d, &x0, &y0, &x1, &y1);
-        if (side == 0) y0 = 0; else x0 = 0;
+        if (side == 0) y0 = 0;
+        else if (side == 1) x0 = 0;
+        else if (side == 2) y0 = g->D;
+        else x0 = g->W;
         it->kind = RK_WALL;
         it->src = (uint16_t)i;
-        piece_item(g, it, o, side, x0, y0, x1, y1);
-        B->okind[i] = OK_WALL;
+        piece_item(g, it, o, side & 1, x0, y0, x1, y1);
+        B->okind[i] = side >= 2 ? OK_FRONT : OK_WALL;
     } else {
         footprint(f, RO_ROT(o), &w, &d);
         x0 = o->x; y0 = o->y; x1 = x0 + w; y1 = y0 + d;
@@ -1141,7 +1188,7 @@ __attribute__((noinline)) static int build_items(const RG *g, const DoomoRoomVie
             int u, vv;
             uint32_t h;
             if (!a->img || !a->img->pix || !a->img->w || !a->img->h) continue;
-            for (i = 0; i < g->k; i++) { t = ax; ax = w - ay; ay = t; t = w; w = d; d = t; }
+            for (i = 0; i < g->k; i++) { t = ax; ax = d - ay; ay = t; t = w; w = d; d = t; }
             u = g->ox + FIX2INT(ax * 16) - FIX2INT(ay * 16);
             vv = g->oy + ((FIX2INT(ax * 16) + FIX2INT(ay * 16)) >> 1) - a->z;
             L[n].kind = RK_ACTOR;
@@ -1160,6 +1207,9 @@ __attribute__((noinline)) static int build_items(const RG *g, const DoomoRoomVie
             n++;
         }
     }
+    /* (H5) an open kind's front-edge pieces, in object order */
+    for (i = 0; i < nobj && n < RB_ITEMS; i++)
+        if (B->okind[i] == OK_FRONT) L[n++] = B->oitem[i];
     /* 3. the cursor (under the held ghost, as OBJs would stack) */
     if (v->cursor_x >= 0 && v->cursor_y >= 0 && n < RB_ITEMS) {
         int x0 = v->cursor_x, y0 = v->cursor_y, x1 = x0 + 1, y1 = y0 + 1, bx, by;

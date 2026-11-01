@@ -604,7 +604,7 @@ static int wall_taken(const HomeRoom *r, int x)
         const HomeObj *o = &r->obj[i];
         const DoomoFurn *f = home_furn(HO_FURN(o));
         int z0, z1;
-        if (!f || !(f->flags & FF_WALL) || (HO_ROT(o) & 1)) continue;
+        if (!f || !(f->flags & FF_WALL) || home_wall_edge(HO_ROT(o), HO_X(o), HO_Y(o), HR_W(r), HR_D(r)) != HE_A) continue;
         z0 = o->z * 4;
         z1 = z0 + (f->fh ? f->fh * 4 : 16);
         if (x >= HO_X(o) && x < HO_X(o) + (f->fw ? f->fw : 1) && z0 < 48 && 36 < z1) return 1;

@@ -84,8 +84,13 @@ and native builds keep it (`HomeState` is 3.4 KB of `.bss`).
 `home_fit()` / `home_fit_sub()` decide; the scene only animates. Floor
 pieces may not overlap; rugs live under everything; smalls stack on a
 surface at one of four half-tile sub-positions; wall pieces only on wall A
-(y = 0) or B (x = 0), never overlapping another in both span and height;
-the Garden takes fence pieces only on its edges. Kevin's rule: nothing
+(y = 0) or B (x = 0), never overlapping another on the same edge in both
+span and height. (H5) The open kinds take wall pieces on every grid edge:
+the Garden only fences, the Park Plot anything. A front edge is rot 2 at
+y = d - 1 (the line y = d) or rot 3 at x = w - 1 (`home_wall_edge()`,
+home.h); a walled room only ever holds wall pieces at y = 0 / x = 0, so an
+old rot 2 / 3 piece there keeps meaning wall A / B. Fences stand on the
+ground (z 0). Blueprints write the front edges as `N` / `W`. Kevin's rule: nothing
 stands on the two tiles in front of the hearth and nothing hangs over its
 mouth. The door's own tile stays clear. Windows swap into window slots
 (the Walls panel re-skins them all at once, H4).
@@ -362,7 +367,8 @@ tutorials ran, the Black Market found) are set without a toast.
   skylight instead), Towers 7B `ROOF_FLAT` (a parapet, a gravel roof, a
   water tank and its antenna), the Hell Pits flat `ROOF_SPIKE` (slate,
   bone spikes along the ridge, a blood-red gutter and a lava-lit dormer
-  window); the Cellar and the open kinds have none. Visits use their
+  window); the Cellar and the open kinds have none (H5: their door gets a
+  backdrop instead, below). Visits use their
   template's style. A hearth that backs onto a visible wall gets a brick
   chimney over it. The shingles follow the room's `ceiling` ramp, so a
   theme recolours the roof (wood: raspberry, sky: cobalt, pink, peach:
@@ -371,6 +377,20 @@ tutorials ran, the Black Market found) are set without a toast.
   `room_ref.c` (rows d above each wall-top column): room_ref draws it, the
   GBA draws the same pixels from tables of it (below), the PS1 builds it
   from polygons. Golden lines 38..45 (`room_shells.h`) hold every style.
+* **The open kinds** (H5; `room_backdrop_setup()` / `room_backdrop_px()`,
+  `room_lip_colours()`, `room_wall_side()` in `room_ref.c`, shared with the
+  GBA). The Garden and the Park Plot sit on a soil lip along both front
+  edges (the turf's cut edge, soil, a darker bottom row). While the fixed
+  door stands on a back wall of the view, the Garden shows a strip of the
+  cottage's back wall behind it (clapboard siding, a wood trim, a stone
+  footing; the door's span and a tile each side) and the Park Plot a gate's
+  two stone posts; a frame with a backdrop is laid out like a walled room.
+  Wall pieces on a front edge are drawn on the line y' = D / x' = W after
+  everything else; the door and its backdrop are cut away when their edge
+  faces the camera. A quarter turn maps (x, y) to (d - 1 - y, x) (both the
+  reference and the GBA used the width before H5, so non-square rooms drew
+  off their floor in turned views). The PS1 builds the same in 3D (the
+  lip was already a box all round; `draw_backdrop()`, `piece_wall()`).
 * **GBA** (`gba/src/room.c`, H2): the static iso bitmap and OBJ actors.
   The roof (HART) is drawn from tables in the two 2.5 KB VRAM gaps the
   mode 4 pages leave (the slope's repeating 16-column pattern sheared like
