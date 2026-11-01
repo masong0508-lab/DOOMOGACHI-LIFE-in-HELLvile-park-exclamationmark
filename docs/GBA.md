@@ -58,7 +58,11 @@ How it is put together:
   the raycaster, sine table, ...).
 * The ELF is converted with `objcopy -O binary`, then `tools/gbafix.py`
   fills the header (Nintendo logo, title `DOOMOGACHI`, game code `BDME`,
-  maker `DM`, complement check) and pads the ROM to a power of two.
+  maker `DM`, complement check). The game ROM is a full **256 Mbit (32 MB)
+  cartridge**, the most the GBA can address (0x08000000-0x09FFFFFF):
+  `gbafix.py --pad-to 33554432` pads it to exactly 32 MB and
+  fails the build if the code and data outgrow that (`CART_BYTES` in the
+  Makefile). The engine-test ROM is padded to the next power of two.
   `tools/memreport.py` prints the RAM budget after every link.
 
 ---------------------------------------------------------------------------

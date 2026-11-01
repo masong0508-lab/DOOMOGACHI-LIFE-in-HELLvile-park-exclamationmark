@@ -117,6 +117,16 @@ ALL_OBJS  := $(GBA_OBJS) $(CORE_OBJS)
 .PHONY: all rom engine-test engine-test-nocore harness test test-et test-game test-save test-coresave test-home test-ow test-speed test-life clean sizes
 .DEFAULT_GOAL := all
 
+# Cartridge size (user decision 2026-11-01): the game ROM is a full 256 Mbit
+# (32 MB, the GBA maximum) cartridge. gbafix pads to exactly this size and fails the build if
+# the ROM outgrows it. The engine-test ROM keeps power-of-two padding.
+CART_BYTES ?= 33554432
+ifeq ($(ENGINE_TEST),1)
+ROM_PAD := --pad
+else
+ROM_PAD := --pad-to $(CART_BYTES)
+endif
+
 all: rom
 rom: $(ROM)
 
@@ -128,7 +138,7 @@ engine-test-nocore:
 
 $(ROM): $(ELF) $(GBA)/tools/gbafix.py
 	$(OBJCOPY) -O binary $< $@
-	$(PYTHON) $(GBA)/tools/gbafix.py $@ --title DOOMOGACHI --code BDME --maker DM --pad
+	$(PYTHON) $(GBA)/tools/gbafix.py $@ --title DOOMOGACHI --code BDME --maker DM $(ROM_PAD) || { rm -f $@; exit 1; }
 	@$(PYTHON) $(GBA)/tools/memreport.py $(MAP) $(ELF)
 
 $(ELF): $(ALL_OBJS) $(GBA)/gba.ld

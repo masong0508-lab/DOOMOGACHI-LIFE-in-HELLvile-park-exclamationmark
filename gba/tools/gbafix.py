@@ -3,6 +3,7 @@
 
     python3 gba/tools/gbafix.py ROM.gba [--title DOOMOGACHI] [--code BDME]
                                 [--maker DM] [--version 0] [--pad]
+                                [--pad-to BYTES]
 
 * writes the Nintendo logo, title (12 chars), game code (4), maker code (2),
   the fixed 0x96 byte and the software version
@@ -10,6 +11,9 @@
       chk = -(sum(bytes[0xA0:0xBD]) + 0x19) & 0xFF
 * --pad pads the file with 0xFF to the next power of two (>= 256 KB), the
   way real carts and flashers like it
+* --pad-to BYTES pads the file with 0xFF to exactly BYTES and fails (exit 1)
+  if the ROM is already bigger, so the cartridge size is a build gate. The
+  game ROM uses 33554432: a full 256 Mbit / 32 MB cartridge, the GBA maximum
 * --check only verifies (exit status 1 on a bad header)
 """
 import argparse
@@ -55,6 +59,7 @@ def main():
     ap.add_argument("--maker", default="DM")
     ap.add_argument("--version", type=int, default=0)
     ap.add_argument("--pad", action="store_true")
+    ap.add_argument("--pad-to", type=int, default=0, metavar="BYTES")
     ap.add_argument("--check", action="store_true")
     a = ap.parse_args()
     with open(a.rom, "rb") as f:
@@ -65,7 +70,16 @@ def main():
         print("gbafix: header %s" % ("OK" if ok else "BAD"))
         return 0 if ok else 1
     fix(data, a.title, a.code, a.maker, a.version)
-    if a.pad:
+    if a.pad_to:
+        if len(data) > a.pad_to:
+            print("gbafix: %s is %d B, over the %d B (%d Mbit) cartridge budget"
+                  % (a.rom, len(data), a.pad_to, a.pad_to * 8 // (1 << 20)),
+                  file=sys.stderr)
+            return 1
+        print("gbafix: cartridge %d Mbit, %d B used, %d B free" %
+              (a.pad_to * 8 // (1 << 20), len(data), a.pad_to - len(data)))
+        data += b"\xff" * (a.pad_to - len(data))
+    elif a.pad:
         size = 256 * 1024
         while size < len(data):
             size *= 2
