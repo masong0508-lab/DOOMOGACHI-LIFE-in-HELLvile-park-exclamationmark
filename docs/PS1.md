@@ -458,6 +458,14 @@ decoded symbol, so the Huffman hot loop is unchanged. Measured against
 (-256 B; 33 KB above the 64 KB reserve, 26 KB above the 72 KB plan gate,
 the plan's E0 budget is +1.5 KB); `OVL.BIN` keeps its 24 groups and the
 slot its size (166 KB).
+PA0 (the play-as contract, `playas.h`, and the save header's byte 47):
+resident +32 B (`save.c` writes `playas_profile_flags()` and reads
+`DoomoSaveInfo.flags`, the weak default is linked; the other weak
+`playas_*` defaults are discarded by `--gc-sections` until called).
+Measured against `16b6929` built the same way, the disc ends at
+`0x801e7ea0` instead of `0x801e7e80`, **98,656 B below the stack top**
+(within the plan's 64 B); the slot keeps its 166 KB (now from
+`0x801c7ea0`) and `OVL.BIN` its 24 groups (950 KB packed).
 
 The biggest remaining consumers of RAM: resident core code (portraits,
 UI, sim, story engine, ...) ~650 KB, merged string literals of resident
