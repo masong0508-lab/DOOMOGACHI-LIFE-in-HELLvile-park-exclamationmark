@@ -37,6 +37,30 @@ script rb_runs_beat
   say mayor HAPPY "Lovely day!"
 end
 
+# K1 + K2 in a beat script no script runs (C code plays it, like the
+# cutscene stages): the beat script is a scene of its own
+beatscript rb_cutscene
+  +0 npc ID_WISP HOP ; caption "The bar, after hours."
+  +5 caption "Everybody got drunk." # expect: K1
+  +8 expr 1 LOVE # expect: K2
+  +13 end
+end
+
+# K1: the pet's cutscene, the sexual class
+beatscript rb_pet_beat
+  +0 caption "@E: beep."
+  +5 caption "(Lingerie sale, upstairs.)" # expect: K1
+  +13 end
+end
+
+# K1: hyphenated and cut-off words are words (the matcher's hyphen rule)
+script rb_hyphen
+  say pip HAPPY "Patrol report!"
+  say rivet ANGRY "Piss-poor patrol." # expect: K1
+  say rivet ANGRY "Shit- I mean, shoot." # expect: K1
+  say rivet NEUTRAL "Damn- no. Fine." # expect: K1
+end
+
 # K1 via the giver of a mission: Pip gives it, nobody names Pip inside
 @mission S100 giver=42 side=hill ch=1-1 at=1,1 verbs=find later=5m reward=0 offer=rb_offer active=rb_offer title="Bad" hint="Bad."
 script rb_offer
@@ -59,11 +83,11 @@ script rb_unlisted
   say 18 HAPPY "Hi!" # expect: K4
 end
 
-# C1: the f-word over its cap of two in the whole game (adults only: no K1)
+# C1: the f-word in full over its cap of one in the whole game (the other
+# of the two is cut off before the word is out); adults only: no K1
 script rb_cap
   say vex ANGRY "Oh, for fuck's sake."
-  say hattie ANGRY "What the fuck."
-  say bloom NEUTRAL "Fucking marvellous." # expect: C1
+  say hattie ANGRY "What a fuck-up." # expect: C1
 end
 
 # ---- controls: none of these may be reported ----------------------------
@@ -79,8 +103,16 @@ script rb_ok_pet
   say mayor LOVE "Manners! Oh, I LOVE you. / Damn, I'm emotional."
 end
 
-# the place is not the oath; sugar and darlin' are not on the list
+# the place is not the oath; sugar and darlin' are not on the list; the
+# damned are Hell's lore, not a swear; a first-class pass is not "ass"
 script rb_ok_kid
   say pip HAPPY "The Hell Breach! {.}Patrol / goes everywhere."
   say nana HAPPY "Sugar, darlin', a cookie / for the brave one."
+  say pip HAPPY "The damned souls sing in / Damnation Pit! First-class!"
+end
+
+# a beat script with no kid in it may be adult (R2)
+beatscript rb_ok_beat
+  +0 npc grumble STILL ; caption "Booze o'clock, handsome."
+  +13 end
 end

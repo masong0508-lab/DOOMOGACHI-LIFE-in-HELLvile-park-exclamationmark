@@ -17,8 +17,10 @@
 #                      branches, not the LOVE face or swearing)
 #   @scene<TAB>GLOB    a kids' scene with no kid citizen in its cast (a
 #                      daycare full of unnamed children, a child's crayon
-#                      flashback): every script whose name, or whose pack's
-#                      name, matches GLOB counts as having a kid in it
+#                      flashback): every script or beat script whose name,
+#                      or whose pack's name, matches GLOB counts as having
+#                      a kid in it. A glob that matches nothing fails the
+#                      lint (S1): rename the entry with the scene
 #
 # Every KID citizen a script names must be listed here (the lint checks
 # it), so E1 and LS0 see the whole story's kid cast. Teens are not listed:
@@ -40,7 +42,7 @@
 @E	the pet
 
 # kids' scenes without a named kid
-@scene	p0	# the prologue: a child's crayon flashback of the potluck
+@scene	p0	# the prologue: a child's crayon flashback of the potluck (pack p0: beat script p0_egg)
 @scene	e14_lulla	# Ep 1.4: the daycare, eleven small voices
 @scene	e22_drawings	# Ep 2.2: the daycare drawings
 @scene	q17_*	# old quest #17 "No Vapes at Daycare"

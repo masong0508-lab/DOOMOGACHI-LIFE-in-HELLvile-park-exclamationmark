@@ -261,8 +261,8 @@ over the compiled packs. Two data files sit next to the scripts:
 
 | File | What it holds | What a rewrite must keep |
 |---|---|---|
-| `core/data/story/register.tsv` | The register words, each strong / crude / sexual, and the game-wide caps (the f-word 2, the s-word 3, *bastard* 5) | A line may not push a word over its cap. Raise a cap only with the user's answer quoted in the commit (DECISIONS 23 set these) |
-| `core/data/story/kid_cast.txt` | The story's kid cast (roster id and name), the pet (`@E`) and the kids' scenes with no named kid (`@scene GLOB`). LS0's romance test and E1's adult gate read it too | A script that names a KID citizen not on the list fails (K4): add them, with a comment saying where they appear. Renaming or renumbering a listed citizen fails until the list follows. Never take a child off the list to make a line pass |
+| `core/data/story/register.tsv` | The register words, each strong / crude / sexual, and the game-wide caps over the English packs (the full f-word 1, its other use being cut off before the word is out; the s-word 3; *bastard* 5) | A line may not push a word over its cap. Raise a cap only with the user's answer quoted in the commit (DECISIONS 23 set these) |
+| `core/data/story/kid_cast.txt` | The story's kid cast (roster id and name), the pet (`@E`) and the kids' scenes with no named kid (`@scene GLOB`, over script, beat-script and pack names; a glob that matches nothing fails, S1). LS0's romance test and E1's adult gate read it too | A script that names a KID citizen not on the list fails (K4): add them, with a comment saying where they appear. Renaming or renumbering a listed citizen fails until the list follows. Never take a child off the list to make a line pass |
 
 A kid's scene can never carry a register word, a LOVE face or a
 mature-guarded branch (K1-K3); the fix is always the line, never the list.

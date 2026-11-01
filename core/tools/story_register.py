@@ -12,7 +12,10 @@ any adult text is written: **nothing adult near a kid** (rule R3).
 
 It compiles every core/data/story/**/*.dsc the way textpack.py does
 (nothing is written to core/gen), then checks each script (a
-conversation) together with the beat scripts it runs:
+conversation) together with the beat scripts it runs, and every beat
+script on its own as well (C code runs the cutscene beat scripts directly,
+P0's p0_egg, the F2-F4 stages, the summit, E1, with no script's runbeat
+in between):
 
   K1  a script whose cast includes a kid has no register word
       (core/data/story/register.tsv: strong / crude / sexual) in any of
@@ -25,8 +28,10 @@ conversation) together with the beat scripts it runs:
       and neither does a scene the pet is in;
   K4  every KID citizen a script names is on kid_cast.txt, so the story's
       kid cast is one list (LS0's romance test and E1's adult gate read it);
-  C1  game-wide caps from register.tsv's cap column (the f-word at most
-      twice in the whole game, the s-word a few times; DECISIONS 23).
+  S1  every @scene glob of kid_cast.txt matches a script, beat script or
+      pack (not in --selftest: the seeded tree holds few scripts);
+  C1  game-wide caps from register.tsv's cap column, over the English
+      packs (the full f-word once, the s-word a few times; DECISIONS 23).
 
 "The cast" of a script is every resident it names: the speakers of say,
 choice and player_line, the residents of npc / cast / befriend / possess /
@@ -42,6 +47,9 @@ daycare of unnamed children, a child's crayon flashback).
 --selftest compiles the seeded bad tree core/tests/story_register/ (or
 --data DIR) and passes only when every line marked `# expect: RULE` is
 reported with that rule and nothing else is: the lint must fail on it.
+It also feeds K3 and S1 a scene and a stale glob directly, and runs the
+matcher over the same cases as test_story_register.c (hyphenated words,
+cut-off dashes, "the damned" that is not an oath).
 
 Exit status: 0 clean, 1 findings (or a failed self test), 2 usage.
 """
@@ -67,13 +75,21 @@ WHO_CMDS = ("say", "choice", "player_line", "befriend", "possess", "unpossess", 
 JMAT = ("jmat", "jmatn")                  # E0's mature-guarded jumps (K3)
 
 
+# A word character, for the matcher: a letter, digit or _, or a hyphen that
+# joins two words ("fuck-up", "mother-fucker", "piss-poor"). A hyphen with
+# no word character after it is the dash of a cut-off ("Shit- I mean",
+# "Oh, fuck-") and ends the word. test_story_register.c's wordch_at() is
+# the same rule.
+WCH = r"(?:\w|-(?=\w))"
+
+
 class Word:
     def __init__(self, text, cls, cap, note, where):
         self.text, self.cls, self.cap, self.note, self.where = text, cls, cap, note, where
         body = re.escape(text.strip("*")).replace(r"\ ", r"[\s/]+")
-        head = r"\w*" if text.startswith("*") else ""
-        tail = r"\w*" if text.endswith("*") else ""
-        self.rx = re.compile(r"(?<![\w-])" + head + body + tail + r"(?![\w-])", re.I)
+        head = WCH + "*" if text.startswith("*") else ""
+        tail = WCH + "*" if text.endswith("*") else ""
+        self.rx = re.compile(r"(?<![\w-])" + head + body + tail + r"(?!\w|-\w)", re.I)
 
 
 def load_register(path=REGISTER):
@@ -167,9 +183,9 @@ class KidCast:
 
 
 class Scene:
-    """one script and what it pulls in"""
-    def __init__(self, pack, name, where):
-        self.pack, self.name, self.where = pack, name, where
+    """one script (or one beat script) and what it pulls in"""
+    def __init__(self, pack, name, where, kind="script"):
+        self.pack, self.name, self.where, self.kind = pack, name, where, kind
         self.cast = {}            # id -> first where
         self.lines = []           # (where, text)
         self.love = []            # where
@@ -231,7 +247,12 @@ def _scan(comp, sc, body, beats, seen_beats, beat_body=False):
 
 
 def scenes(comp):
-    """every script of every pack as a Scene (after comp.build())"""
+    """every script and every beat script of every pack as a Scene (after
+    comp.build()). A script is scanned with the beat scripts it runs; every
+    beat script is ALSO scanned on its own, because C code runs many of them
+    directly (the cutscene stages: p0_egg, b_f2, b_summit, b_e1...) and no
+    script's runbeat ever reaches those. A beat script's cast is its npc /
+    say / headturn rows and the pet when a line is the pet's."""
     beats = {}
     for p in comp.packs:
         for b in p.beats:
@@ -256,6 +277,22 @@ def scenes(comp):
                 if 0 <= rid < 1000:
                     sc.cast.setdefault(rid, where)
             out.append(sc)
+        for b in p.beats:
+            sc = Scene(p, b[0], b[3], "beatscript")
+            _scan(comp, sc, b[1], beats, {b[0]}, beat_body=True)
+            out.append(sc)
+    return out
+
+
+def stale_scenes(scs, kc):
+    """S1: every @scene glob of kid_cast.txt matches at least one script, beat
+    script or pack, so a script renamed in the rewrite cannot quietly lose its
+    kids'-scene protection"""
+    out = []
+    for g, where in kc.scenes:
+        if not any(fnmatch.fnmatchcase(sc.name, g) or fnmatch.fnmatchcase(sc.pack.name, g) for sc in scs):
+            out.append((where, "S1", "@scene %s matches no script, beat script or pack: rename it with the "
+                        "scene it protects (never drop a kids' scene to make a line pass)" % g))
     return out
 
 
@@ -264,9 +301,12 @@ def hits(words, text):
     return [(w, m.group(0)) for w in words for m in w.rx.finditer(v)]
 
 
-def lint(comp, words, roster, kc):
-    """[(where, rule, message)]; roster = {id: name} of KID/TEEN citizens"""
-    return lint_scenes(scenes(comp), words, roster, kc) + caps(comp, words)
+def lint(comp, words, roster, kc, globs=True):
+    """[(where, rule, message)]; roster = {id: name} of KID/TEEN citizens;
+    globs: check kid_cast.txt's @scene globs against this tree (S1; off for
+    a seeded tree, which holds only a few of the story's scripts)"""
+    scs = scenes(comp)
+    return lint_scenes(scs, words, roster, kc) + (stale_scenes(scs, kc) if globs else []) + caps(comp, words)
 
 
 def caps(comp, words):
@@ -293,34 +333,37 @@ def lint_scenes(scs, words, roster, kc):
         kid = sorted(k for k in sc.cast if k in roster or k in kc.ids)
         glob = kc.scene(sc)
         pet = kc.pet and PET in sc.cast
+        what = "%s %s" % (sc.kind, sc.name)
         who = "whose cast includes " + ", ".join("%s (%d)" % (roster.get(k) or kc.ids[k], k) for k in kid[:3])
         if glob:
             who = "%s kid_cast.txt marks a kids' scene (@scene %s)" % ("which" if not kid else who + ", and", glob)
         for k in kid:
             if k in roster and k not in kc.ids and "TEEN" not in roster_traits.get(k, ""):
-                out.append((sc.cast[k], "K4", "%s (%d) is a KID citizen in script %s: list them in "
-                            "core/data/story/kid_cast.txt" % (roster[k], k, sc.name)))
+                out.append((sc.cast[k], "K4", "%s (%d) is a KID citizen in %s: list them in "
+                            "core/data/story/kid_cast.txt" % (roster[k], k, what)))
         kids = bool(kid) or bool(glob)
         for where, s in sc.lines:
             for w, got in hits(words, s):
                 if kids:
-                    out.append((where, "K1", "%s word %r in script %s, %s" %
-                                (w.cls, got, sc.name, who)))
+                    out.append((where, "K1", "%s word %r in %s, %s" %
+                                (w.cls, got, what, who)))
                 elif pet and w.cls == "sexual":
-                    out.append((where, "K1", "%s word %r in script %s, which the pet is in (%s)" %
-                                (w.cls, got, sc.name, sc.cast[PET])))
+                    out.append((where, "K1", "%s word %r in %s, which the pet is in (%s)" %
+                                (w.cls, got, what, sc.cast[PET])))
         if kids:
             for where in sc.love:
-                out.append((where, "K2", "LOVE expression in script %s, %s" % (sc.name, who)))
+                out.append((where, "K2", "LOVE expression in %s, %s" % (what, who)))
         if kids or pet:
             for where in sc.jmat:
-                out.append((where, "K3", "mature-guarded branch in script %s, %s" %
-                            (sc.name, who if kids else "which the pet is in")))
-    # one finding per (line, rule, message)
+                out.append((where, "K3", "mature-guarded branch in %s, %s" %
+                            (what, who if kids else "which the pet is in")))
+    # one finding per (line, rule, word): a beat line is seen from every
+    # script that runs it and again on its own; the first message wins
     seen, uniq = set(), []
     for f in out:
-        if f not in seen:
-            seen.add(f)
+        key = (f[0], f[1], f[2].split(" in ", 1)[0])
+        if key not in seen:
+            seen.add(key)
             uniq.append(f)
     return uniq
 
@@ -381,13 +424,14 @@ def main(argv):
         else:
             print(__doc__)
             return 2
-    if selftest and tp.DATA == os.path.join(tp.ROOT, "core", "data", "story"):
+    story = os.path.join(tp.ROOT, "core", "data", "story")
+    if selftest and tp.DATA == story:
         tp.DATA = SELFTEST
     words = load_register()
     roster, names = roster_kids()
     kc = KidCast(names)
     comp = compile_tree()
-    found = lint(comp, words, roster, kc)
+    found = lint(comp, words, roster, kc, globs=not selftest)
     if selftest:
         want = expected(tp.DATA)
         got = {(w, r) for w, r, _ in found}
@@ -414,6 +458,32 @@ def main(argv):
             print("story_register: selftest: K3 wrong for a scene with %r and a jmat" % b)
         if k3:
             return 1
+        # S1 needs the whole story tree, so feed it a stale glob directly
+        stale = KidCast.__new__(KidCast)
+        stale.ids, stale.pet = {}, True
+        stale.scenes = [("e14_lulla", "kid_cast:1"), ("p0", "kid_cast:2"), ("rb_cut*", "kid_cast:3"),
+                        ("zz_gone_*", "kid_cast:4")]      # a script, a pack, a beat script, nothing
+        got1 = stale_scenes(scenes(comp), stale)
+        if [f[0] for f in got1] != ["kid_cast:4"]:
+            print("story_register: selftest: S1 wrong: %r" % (got1,))
+            return 1
+        # the matcher, the same cases as test_story_register.c's
+        bad = []
+        for text, want in (("Oh, for fuck's sake.", "fuck"), ("What a fuck-up.", "fuck-up"),
+                           ("You mother-fucker!", "mother-fucker"), ("Oh, fuck-", "fuck"),
+                           ("Shit- I mean, shoot.", "Shit"), ("Shit-faced again.", "Shit-faced"),
+                           ("Piss-poor work.", "Piss-poor"), ("Damn- no.", "Damn"),
+                           ("What the / hell?", "What the / hell"),
+                           ("The damned souls sing.", None), ("Damnation Pit!", None),
+                           ("The Hell Breach!", None), ("A first-class pass.", None),
+                           ("Essex is lovely.", None), ("Twenty shots, wasted.", None)):
+            got = [g for _, g in hits(words, text)]
+            if (want is None and got) or (want is not None and want not in got):
+                bad.append((text, want, got))
+        for b in bad:
+            print("story_register: selftest: matcher: %r: wanted %r, got %r" % b)
+        if bad:
+            return 1
         if not quiet:
             print("story_register: selftest: the seeded tree fails as marked (%d findings: %s)" %
                   (len(found), ", ".join("%s x%d" % (r, sum(1 for f in found if f[1] == r))
@@ -423,11 +493,12 @@ def main(argv):
         print("%s: %s: %s" % (where, rule, msg))
     if not quiet or found:
         sc = scenes(comp)
-        nk = sum(1 for s in sc if kc.scene(s) or any(k in roster or k in kc.ids for k in s.cast))
-        npet = sum(1 for s in sc if PET in s.cast)
-        print("story_register: %d scripts, %d with a kid in the cast, %d with the pet; %d register words, "
-              "%d kid-cast citizens, %d kids' scenes; %d finding(s)" %
-              (len(sc), nk, npet, len(words), len(kc.ids), len(kc.scenes), len(found)),
+        kidsc = [s for s in sc if kc.scene(s) or any(k in roster or k in kc.ids for k in s.cast)]
+        nb = sum(1 for s in sc if s.kind == "beatscript")
+        print("story_register: %d scripts and %d beat scripts, %d with a kid in the cast (%d beat scripts), "
+              "%d with the pet; %d register words, %d kid-cast citizens, %d kids' scenes; %d finding(s)" %
+              (len(sc) - nb, nb, len(kidsc), sum(1 for s in kidsc if s.kind == "beatscript"),
+               sum(1 for s in sc if PET in s.cast), len(words), len(kc.ids), len(kc.scenes), len(found)),
               file=sys.stderr if found else sys.stdout)
     return 1 if found else 0
 

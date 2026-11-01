@@ -9,15 +9,25 @@
 #        text (line codes, @P and @E removed; '/' line breaks count as
 #        spaces). A space matches any run of spaces or '/'. A trailing *
 #        matches any ending (shit* = shit, shitty, shits), a leading *
-#        any beginning (*shit* also = bullshit, horseshit).
+#        any beginning (*shit* also = bullshit, horseshit). A hyphen
+#        between two words joins them into one word (shit-faced, fuck-up
+#        and mother-fucker match *shit* / *fuck*; ass-kicking is not "ass");
+#        a hyphen with no word after it is a cut-off dash and ends the word
+#        ("Shit- I mean", "Oh, fuck-" and "Damn- no" all match).
 # CLASS  strong  swearing (R1)
 #        crude   adult crude humour: booze, hangovers, adult body talk (R2)
 #        sexual  sexual or suggestive words (R2, §5b, §12)
-# CAP    optional: the most uses in the WHOLE game (every pack, every
-#        language source), checked by the lint (rule C1). DECISIONS 23:
+# CAP    optional: the most uses in the WHOLE game, counted over every
+#        English pack (the lint's rule C1 and test_story_register.c; the
+#        Spanish and later languages follow the English lines and are not
+#        counted: an English list cannot read them). DECISIONS 23:
 #        swearing is sparse, the s-word a few times in all, the f-word
-#        exactly twice (once cut off mid-word, which no list can catch:
-#        "Oh, f-" is a reviewer's check; once in full near the end).
+#        exactly twice: once cut off mid-word, before the word is complete
+#        ("Oh, f-" / "Oh, fu-", which no list can tell from a stammer, so
+#        it is a reviewer's check), and once in full near the end. So the
+#        full word's cap is 1, which holds the total at 2: a second full
+#        f-word, or a cut-off that gets the whole word out ("Oh, fuck-"),
+#        fails C1.
 #
 # Every listed word is banned from any script whose cast includes a kid, a
 # teen, the kid-coded cast or (sexual class only) the pet
@@ -32,9 +42,10 @@
 # darlin', handsome (Grumbleguts' pet names are fine, his innuendo is not:
 # R2 keeps him away from kids by cast), escort (a mission verb), strip
 # alone (a strip of tape).
-*fuck*	strong	2	# the f-word: exactly twice in the game (DECISIONS 23)
+*fuck*	strong	1	# the f-word in full: once; the other of the two is cut off (DECISIONS 23)
 *shit*	strong	3	# the s-word: a few times in the whole game (DECISIONS 23)
-damn*	strong
+damn	strong	# not damn*: "the damned" and "damnation" are Hell's own lore words
+damnit	strong
 dammit	strong
 goddamn*	strong
 bastard*	strong	5	# a handful of times (R1)

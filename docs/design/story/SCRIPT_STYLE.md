@@ -365,8 +365,14 @@ setting never changes the words.
     say so in their commit messages.
   * Never: slurs of any kind, real-world hate, swear words that name
     genitals (N2), and any swearing in a kid's or teen's scene (R3).
-  * `register.tsv`'s caps hold these counts over the whole game (the lint's
-    rule C1; the cut-off f-word is a reviewer's check, no list can see it).
+  * `register.tsv`'s caps hold these counts over the whole game's English
+    packs (the lint's rule C1). The cut-off f-word stops **before the word
+    is out** (*"Oh, f-"*, *"Oh, fu-"*): no list can tell that from a
+    stammer, so it is a reviewer's check, and the full word's cap is
+    **1**, which holds the total at two. A second full f-word, or a
+    "cut-off" that gets the whole word out (*"Oh, fuck-"*), fails C1.
+    Hyphenated and cut-off forms of any listed word count (*fuck-up*,
+    *shit-faced*, *"Shit- I mean"*).
 * **R2. Crude adult innuendo, for any adult.** Any adult may be crude,
   bawdy or suggestive, about adults and to adults (the player included,
   premade adults included: answer 24, any premade adult is datable).
@@ -407,11 +413,18 @@ setting never changes the words.
     `core/data/story/kid_cast.txt`, the one list of the story's kid cast
     (LS0's romance test and E1's adult gate read it too). Kids' scenes with
     no named kid in them (a daycare, a child's crayon flashback) are listed
-    there as `@scene` entries;
+    there as `@scene` entries, each a glob over script, beat-script and
+    pack names (P0 is listed by its pack: its one beat script is all it
+    has);
+  * **S1** every `@scene` glob matches something: a renamed kids' scene
+    fails until its entry is renamed with it;
   * **C1** the game-wide caps of R1.
   "The cast" is everyone a script names (speakers, `npc`, `cast`,
   `befriend`, `possess`, `verb`, the beat scripts it runs, the mission's
-  giver) plus the pet when a line is its "beep." or names it (`@E`). The
+  giver) plus the pet when a line is its "beep." or names it (`@E`). Every
+  beat script is also a scene **on its own**, with the `npc` / `say` /
+  `headturn` rows and pet lines it holds: C code plays the cutscene beat
+  scripts (P0, F2-F4, the summit, E1) without any script's `runbeat`. The
   lint reads words, not intent: reviewers still read every kid's scene for
   innuendo that uses no listed word. `test_side_table.c` keeps its own
   check that Grumbleguts' LOVE lines are never in a child's conversation.
