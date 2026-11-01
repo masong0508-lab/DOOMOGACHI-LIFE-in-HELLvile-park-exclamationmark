@@ -6,15 +6,40 @@
  * unfired trigger - and it turns to and shoots any demon it can see.
  * Fills the same CombatCtl the pad does, so it exercises the real code.
  * Only linked into a build that calls combat_autopilot().
+ *
+ * (H10) The BFS's 4 KB work area holds data only inside one plan() call,
+ * which runs in an update (combat_tick). On the GBA, where every byte of
+ * .bss is EWRAM, it is not a static: it is the raycaster's clip
+ * checkpoints in the arena (gba/src/bigbuf.c gba_bot_work), which hold
+ * data only inside plat_view3d(), a draw; plan() claims them first.
+ * Elsewhere it is three statics, as before (the PS1's ps1/tools/
+ * ovl_plan.py BORROW lends their sections to the house group by name).
  */
 #include "combat_int.h"
 
-#define BOT_Q 768
+#define BOT_Q          768
+#define BOT_DIR_BYTES  (DOOMO_MAP_MAX_W * DOOMO_MAP_MAX_H / 2)   /* nibble per cell */
+#define BOT_BITS_BYTES (DOOMO_MAP_MAX_W * DOOMO_MAP_MAX_H / 8)   /* bit per cell    */
+/* the size the GBA lends (gba/src/gba_plat.h GBA_BIG_BOT; bigbuf.c asserts
+ * that it stays inside the clip checkpoints) */
+DOOMO_STATIC_ASSERT(BOT_DIR_BYTES + BOT_BITS_BYTES + BOT_Q * 2 == 4096, bot_work_is_4k);
+
+#if defined(DOOMO_PLATFORM_GBA)
+extern uint8_t gba_bot_work[];                         /* gba/src/bigbuf.c */
+void gba_bot_claim(void);
+#define BOT_DIR   gba_bot_work
+#define BOT_BITS  (gba_bot_work + BOT_DIR_BYTES)
+#define BOT_QUEUE ((uint16_t *)(void *)(gba_bot_work + BOT_DIR_BYTES + BOT_BITS_BYTES))
+#else
+static uint8_t  first_dir[BOT_DIR_BYTES];
+static uint8_t  target_bits[BOT_BITS_BYTES];
+static uint16_t queue[BOT_Q];
+#define BOT_DIR   first_dir
+#define BOT_BITS  target_bits
+#define BOT_QUEUE queue
+#endif
 
 static int      bot_on;
-static uint8_t  first_dir[DOOMO_MAP_MAX_W * DOOMO_MAP_MAX_H / 2];   /* nibble per cell */
-static uint8_t  target_bits[DOOMO_MAP_MAX_W * DOOMO_MAP_MAX_H / 8];
-static uint16_t queue[BOT_Q];
 static int      way_x = -1, way_y = -1, replan_t, stuck_t, unstick_t, strafe_dir = 1;
 static fix16    last_x, last_y;
 static int      wait_lift;
@@ -22,10 +47,10 @@ static int      wait_lift;
 static const int8_t ddx[4] = { 1, 0, -1, 0 };
 static const int8_t ddy[4] = { 0, 1, 0, -1 };
 
-static int nib_get(int i) { return (first_dir[i >> 1] >> ((i & 1) * 4)) & 15; }
+static int nib_get(int i) { return (BOT_DIR[i >> 1] >> ((i & 1) * 4)) & 15; }
 static void nib_set(int i, int v)
 {
-    first_dir[i >> 1] = (uint8_t)((first_dir[i >> 1] & ~(15 << ((i & 1) * 4))) | (v << ((i & 1) * 4)));
+    BOT_DIR[i >> 1] = (uint8_t)((BOT_DIR[i >> 1] & ~(15 << ((i & 1) * 4))) | (v << ((i & 1) * 4)));
 }
 
 static void floor_range(int cx, int cy, int *lo, int *hi)
@@ -65,13 +90,13 @@ static int bfs_to_targets(int allow_lava)
     int w = doomo_map.w, h = doomo_map.h;
     int px = FIX2INT(doomo_player.x) / CELLU, py = FIX2INT(doomo_player.y) / CELLU;
     int head = 0, tail = 0, start = py * w + px;
-    memset(first_dir, 0, sizeof(first_dir));
+    memset(BOT_DIR, 0, BOT_DIR_BYTES);
     nib_set(start, 15);
-    queue[tail++] = (uint16_t)start;
+    BOT_QUEUE[tail++] = (uint16_t)start;
     while (head != tail) {
-        int c = queue[head], cx = c % w, cy = c / w, k;
+        int c = BOT_QUEUE[head], cx = c % w, cy = c / w, k;
         head = (head + 1) % BOT_Q;
-        if (c != start && (target_bits[c >> 3] & (1 << (c & 7)))) {
+        if (c != start && (BOT_BITS[c >> 3] & (1 << (c & 7)))) {
             int d = nib_get(c) - 1;
             way_x = px + ddx[d];
             way_y = py + ddy[d];
@@ -85,7 +110,7 @@ static int bfs_to_targets(int allow_lava)
             if (!passable(cx, cy, nx, ny, allow_lava)) continue;
             nib_set(ni, c == start ? k + 1 : nib_get(c));
             if ((tail + 1) % BOT_Q == head) continue;          /* queue full */
-            queue[tail] = (uint16_t)ni;
+            BOT_QUEUE[tail] = (uint16_t)ni;
             tail = (tail + 1) % BOT_Q;
         }
     }
@@ -97,7 +122,7 @@ static void mark1(int cx, int cy)
     int i;
     if (cx < 0 || cy < 0 || cx >= doomo_map.w || cy >= doomo_map.h) return;
     i = cy * doomo_map.w + cx;
-    target_bits[i >> 3] |= (uint8_t)(1 << (i & 7));
+    BOT_BITS[i >> 3] |= (uint8_t)(1 << (i & 7));
 }
 
 /* mark a target cell; things over lava (or flying above it) are marked
@@ -117,8 +142,11 @@ static void mark(int cx, int cy)
 static int plan(void)
 {
     int i, n, kind;
+#if defined(DOOMO_PLATFORM_GBA)
+    gba_bot_claim();               /* the clip checkpoints are ours until the draw */
+#endif
     for (kind = -1; kind < 5; kind++) {
-        memset(target_bits, 0, sizeof(target_bits));
+        memset(BOT_BITS, 0, BOT_BITS_BYTES);
         n = 0;
         if (kind == -1) {
             /* hurt: go for health first */

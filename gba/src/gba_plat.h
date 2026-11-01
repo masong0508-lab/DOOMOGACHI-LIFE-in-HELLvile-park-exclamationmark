@@ -103,6 +103,7 @@ extern uint8_t gba_arena[];
 #define GBA_BIG(bytes) (gba_arena + GBA_ARENA_BB - (bytes))
 #define GBA_BIG_R3D    11840            /* the raycaster's region:        */
 #define GBA_BIG_CLIPS  0                /*   clip checkpoints     6,720 B */
+#define GBA_BIG_BOT    4096             /*   (in an update: the autopilot's BFS, H10) */
 #define GBA_BIG_ROOF   6720             /*   roof table           4,096 B */
 #define GBA_BIG_CMT    10816            /*   (end of the roof table)      */
 #define GBA_BIG_SPR    10816            /*   sprite order         1,024 B */
@@ -115,6 +116,15 @@ extern uint8_t gba_ow[];                /* == GBA_BIG(GBA_BIG_OW)  */
 extern uint8_t gba_room[];              /* == GBA_BIG(GBA_BIG_ROOM) */
 enum { GBA_BIG_FREE, GBA_BIG_BY_OW, GBA_BIG_BY_R3D, GBA_BIG_BY_SAVE, GBA_BIG_BY_ROOM };
 void gba_big_claim(int who);
+/* (H10) the autopilot's BFS work area (core/src/combat_bot.c, demo mode
+ * and tests): GBA_BIG_BOT bytes at the bottom of the raycaster's clip
+ * checkpoints, which hold data only inside plat_view3d() (a draw); the BFS
+ * runs in an update. gba_bot_claim() claims the region as the raycaster
+ * (its roof table stays valid; any other owner rebuilds its cache). A
+ * symbol of its own like gba_r3d, so the BFS addresses it as it did its
+ * statics. 4,096 B of EWRAM .bss less. */
+extern uint8_t gba_bot_work[];          /* == gba_r3d + GBA_BIG_CLIPS */
+void gba_bot_claim(void);
 /* 1 if a region of `bytes` clears the scene scratch's current claim */
 int  gba_big_fits(uint32_t bytes);
 /* scene_scratch.c: the claimed size (0: none) and a counter that changes

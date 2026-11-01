@@ -16,6 +16,8 @@
  * previous owner's cache - it is rebuilt in a frame), the save above the
  * scratch's claim. A scene owns the bytes it claimed (scene.h); a new claim
  * changes scene_scratch_gen(), which invalidates the platform cache too.
+ * (H10) The raycaster's clip checkpoints also serve the autopilot's BFS
+ * (core/src/combat_bot.c) inside an update: gba_bot_work, gba_bot_claim().
  */
 #include "gba_plat.h"
 #include "doomo/save.h"
@@ -31,7 +33,10 @@ DoomoBillboard *const doomo_frame_bb = (DoomoBillboard *)(void *)(gba_arena + GB
 #define ARENA_STR(x) ARENA_STR_(x)
 __asm__(".global gba_r3d\n\t.set gba_r3d, gba_arena + " ARENA_STR(GBA_ARENA_BB - GBA_BIG_R3D) "\n\t"
         ".global gba_ow\n\t.set gba_ow, gba_arena + " ARENA_STR(GBA_ARENA_BB - GBA_BIG_OW) "\n\t"
-        ".global gba_room\n\t.set gba_room, gba_arena + " ARENA_STR(GBA_ARENA_BB - GBA_BIG_ROOM));
+        ".global gba_room\n\t.set gba_room, gba_arena + " ARENA_STR(GBA_ARENA_BB - GBA_BIG_ROOM) "\n\t"
+        /* (H10) the autopilot's BFS: the bottom of the clip checkpoints */
+        ".global gba_bot_work\n\t.set gba_bot_work, gba_arena + "
+        ARENA_STR(GBA_ARENA_BB - GBA_BIG_R3D + GBA_BIG_CLIPS));
 
 DOOMO_STATIC_ASSERT(GBA_BB_BYTES == DOOMO_FRAME_BB_MAX * sizeof(DoomoBillboard), bb_bytes);
 DOOMO_STATIC_ASSERT(GBA_ARENA_SIZE % 8 == 0 && GBA_ARENA_BB % 8 == 0, arena_aligned);
@@ -45,6 +50,11 @@ DOOMO_STATIC_ASSERT(GBA_ARENA_SIZE - DOOMO_SCENE_SCRATCH >= DOOMO_SAVE_STREAM_MI
 /* ... and a 1 KB window beside the free-play island's 11.3 KB (its
  * autosave) */
 DOOMO_STATIC_ASSERT(GBA_ARENA_SIZE - 11312u >= DOOMO_SAVE_STREAM_MIN + 1024u, island_save_window);
+/* (H10) the autopilot's BFS (combat_bot.c asserts its size is GBA_BIG_BOT)
+ * stays inside the clip checkpoints: the roof table is a cache that must
+ * survive it */
+DOOMO_STATIC_ASSERT(GBA_BIG_CLIPS + GBA_BIG_BOT <= GBA_BIG_ROOF && (GBA_ARENA_BB - GBA_BIG_R3D + GBA_BIG_CLIPS) % 4 == 0,
+                    bot_in_clips);
 
 static int big_owner = GBA_BIG_FREE;
 static uint32_t big_gen;
@@ -68,6 +78,14 @@ void gba_big_claim(int who)
 int gba_big_fits(uint32_t bytes)
 {
     return bytes <= (uint32_t)GBA_ARENA_BB && scene_scratch_used() <= (uint32_t)GBA_ARENA_BB - bytes;
+}
+
+/* (H10) the autopilot's BFS borrows the clip checkpoints during an update
+ * (gba_plat.h gba_bot_work): they are filled and read inside plat_view3d()
+ * only */
+void gba_bot_claim(void)
+{
+    gba_big_claim(GBA_BIG_BY_R3D);
 }
 
 void *plat_save_scratch(uint32_t *cap)
