@@ -1,8 +1,12 @@
 #!/bin/sh
 # core/tools/xcheck.sh - compile EVERY portable core source (core/src/*.c,
-# core/gen/*.c) with the three -Werror toolchains from the team rules:
-# host gcc, arm-none-eabi-gcc (GBA) and mipsel-linux-gnu-gcc (PS1).
+# core/gen/*.c) with the -Werror toolchains from the team rules:
+# host gcc, arm-none-eabi-gcc (GBA), mipsel-linux-gnu-gcc (PS1) and
+# sh-elf-gcc (Dreamcast SH4; compile only, so apt's gcc-sh-elf +
+# libnewlib-sh-elf-dev is enough, and a KOS sh-elf-gcc on PATH works too).
+# A missing cross compiler skips its leg with a WARNING line (CI fails on it).
 # Usage: sh core/tools/xcheck.sh [file.c ...]   (default: all core sources)
+#        JOBS=N sh core/tools/xcheck.sh          (parallel compiles, default: CPU count)
 # Exit status is non-zero if any compile fails. Owner: foundation.
 CORE=$(cd "$(dirname "$0")/.." && pwd)
 INC="$CORE/include"
@@ -13,7 +17,7 @@ if [ $# -gt 0 ]; then FILES="$*"; else FILES=$(ls "$CORE"/src/*.c "$CORE"/gen/*.
 if [ -n "$PSN00BSDK_INCLUDE" ]; then PSN=$PSN00BSDK_INCLUDE
 elif [ -n "$PSN00BSDK_LIBS" ]; then PSN=$PSN00BSDK_LIBS/../../include/libpsn00b
 else PSN=/opt/psn00bsdk/include/libpsn00b; fi
-JOBS=$(nproc 2>/dev/null || echo 2)
+case "$JOBS" in ''|*[!0-9]*|0) JOBS=$(nproc 2>/dev/null || echo 2) ;; esac
 TMP=${TMPDIR:-/tmp}/doomo-xcheck.$$
 mkdir -p "$TMP"
 trap 'rm -rf "$TMP"' EXIT
@@ -23,6 +27,16 @@ MIPS_INC=""
 MIPS=""
 if have mipsel-linux-gnu-gcc && [ -f "$PSN/string.h" ]; then
     MIPS=1; MIPS_INC=$(mipsel-linux-gnu-gcc -print-file-name=include)
+fi
+# SH4 (Dreamcast): little-endian (-ml) with KallistiOS's FPU precision ABI:
+# $KOS_SH4_PRECISION when a KOS environ.sh is sourced, else -m4-single, the
+# KOS default since 2.2.0 (-m4-single-only is the older ABI; both are apt
+# multilibs). Needs newlib's libc headers (libnewlib-sh-elf-dev on apt).
+SH_FLAGS="-ml ${KOS_SH4_PRECISION:--m4-single}"
+SH=""
+if have sh-elf-gcc && printf '#include <string.h>\n' |
+        sh-elf-gcc $SH_FLAGS -E -x c - -o /dev/null >/dev/null 2>&1; then
+    SH=1
 fi
 
 check_one() {
@@ -45,11 +59,18 @@ check_one() {
             echo "FAIL mipsel $f"; cat "$TMP/$b.mips"; ok=0
         fi
     fi
+    if [ -n "$SH" ]; then
+        if ! sh-elf-gcc -std=c99 -Wall -Wextra -Werror $SH_FLAGS -O2 \
+                -ffunction-sections -fdata-sections -fno-builtin \
+                -I"$INC" -c "$f" -o /dev/null 2>"$TMP/$b.sh4"; then
+            echo "FAIL sh4    $f"; cat "$TMP/$b.sh4"; ok=0
+        fi
+    fi
     [ $ok -eq 1 ] && echo "ok          $f"
     [ $ok -eq 1 ]
 }
 
-export INC PSN TMP MIPS_INC
+export INC PSN TMP MIPS_INC SH SH_FLAGS
 fail=0
 n=0
 for f in $FILES; do
@@ -74,5 +95,11 @@ done
 have arm-none-eabi-gcc || echo "WARNING: arm-none-eabi-gcc not found (GBA check skipped)"
 if ! have mipsel-linux-gnu-gcc; then echo "WARNING: mipsel-linux-gnu-gcc not found (PS1 check skipped)"
 elif [ -z "$MIPS" ]; then echo "WARNING: PSn00bSDK headers not found in $PSN (set PSN00BSDK_LIBS or PSN00BSDK_INCLUDE; PS1 check skipped)"; fi
+if ! have sh-elf-gcc; then echo "WARNING: sh-elf-gcc not found (Dreamcast SH4 check skipped; apt install gcc-sh-elf libnewlib-sh-elf-dev)"
+elif [ -z "$SH" ]; then echo "WARNING: sh-elf-gcc cannot find newlib's <string.h> for $SH_FLAGS (install libnewlib-sh-elf-dev; SH4 check skipped)"; fi
 if [ $fail -ne 0 ]; then echo "xcheck: FAILED"; exit 1; fi
-echo "xcheck: $n files OK on all compilers"
+legs="gcc"
+have arm-none-eabi-gcc && legs="$legs arm"
+[ -n "$MIPS" ] && legs="$legs mipsel"
+[ -n "$SH" ] && legs="$legs sh4"
+echo "xcheck: $n files OK on all compilers ($legs)"

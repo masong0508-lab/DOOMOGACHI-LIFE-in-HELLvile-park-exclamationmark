@@ -6,7 +6,7 @@
 #   make all        core tests + GBA ROMs + PS1 discs (the PS1 part is skipped,
 #                   with a note, when PSn00bSDK or a MIPS compiler is missing)
 #   make test       everything that can run on this machine: core tests,
-#                   core tests under ASan/UBSan, xcheck (gcc/arm/mipsel -Werror),
+#                   core tests under ASan/UBSan, xcheck (gcc/arm/mipsel/sh4 -Werror),
 #                   check-gen, the GBA mGBA harness and the PS1 PCSX-Redux harness
 #                   (each platform part is skipped, with a note, if its tools are missing)
 #   make core       native unit tests + headless playthrough (make -C core test)
@@ -40,6 +40,11 @@ PYTHON3 := $(call have,python3)
 ARM_GCC := $(call have,arm-none-eabi-gcc)
 # newlib: without it -print-file-name echoes the bare name back
 ARM_LIBC := $(if $(ARM_GCC),$(filter /%,$(shell arm-none-eabi-gcc -print-file-name=libc.a 2>/dev/null)))
+# Dreamcast SH4 compiler for xcheck's compile-only leg (apt gcc-sh-elf, or a
+# KOS toolchain on PATH) and newlib's headers for it, probed the way xcheck
+# does (deferred: only `make doctor` runs the probe)
+SH_GCC   := $(call have,sh-elf-gcc)
+SH_LIBC   = $(if $(SH_GCC),$(shell printf '\043include <string.h>\n' | sh-elf-gcc -ml $(or $(KOS_SH4_PRECISION),-m4-single) -E -x c - -o /dev/null >/dev/null 2>&1 && echo yes))
 MGBA_HDR := $(if $(HOST_CC),$(shell printf '\043include <mgba/core/core.h>\n' | gcc -E -x c - >/dev/null 2>&1 && echo yes))
 CMAKE    := $(call have,cmake)
 NINJA    := $(or $(call have,ninja),$(call have,ninja-build))
@@ -71,6 +76,7 @@ PS1_HARNESS_WHY := $(strip $(PS1_WHY) \
 
 HINT_HOST := Ubuntu/Debian: sudo apt install build-essential python3   macOS: xcode-select --install && brew install python
 HINT_ARM  := Ubuntu/Debian: sudo apt install gcc-arm-none-eabi libnewlib-arm-none-eabi   macOS: brew install --cask gcc-arm-embedded
+HINT_SH4  := sudo apt install gcc-sh-elf binutils-sh-elf libnewlib-sh-elf-dev
 HINT_MGBA := Ubuntu/Debian: sudo apt install libmgba-dev (0.10)   macOS: build libmgba from source (docs/BUILDING.md)
 HINT_FFMPEG := Ubuntu/Debian: sudo apt install ffmpeg   macOS: brew install ffmpeg
 
@@ -106,7 +112,7 @@ core-san: need-host
 	$(MAKE) -C core $(J) test SAN=1 BUILD=build-san
 
 xcheck: need-host
-	$(if $(PSN00BSDK_OK),PSN00BSDK_LIBS="$(PSN00BSDK_ABS)") sh core/tools/xcheck.sh
+	$(if $(PSN00BSDK_OK),PSN00BSDK_LIBS="$(PSN00BSDK_ABS)") JOBS=$(JOBS) sh core/tools/xcheck.sh
 
 check-gen: need-host
 	$(MAKE) -C core check-gen
@@ -219,6 +225,8 @@ doctor:
 	@echo "  libmgba headers     $(if $(MGBA_HDR),found,MISSING (GBA harness only))"
 	@echo "  MIPS compiler       $(if $(PS1_TARGET),found   $(PS1_TARGET)-gcc,MISSING)"
 	@echo "  PSn00bSDK           $(if $(PSN00BSDK_OK),found   $(PSN00BSDK_LIBS),MISSING (set PSN00BSDK_LIBS=<prefix>/lib/libpsn00b))"
+	@echo "  sh-elf-gcc (SH4)    $(if $(SH_GCC),found   $(SH_GCC),MISSING (xcheck Dreamcast leg only: $(HINT_SH4)))"
+	@echo "  newlib (sh4)        $(if $(SH_LIBC),found,$(if $(SH_GCC),MISSING (xcheck Dreamcast leg only: $(HINT_SH4)),-))"
 	@echo "  cmake               $(call found,$(CMAKE))"
 	@echo "  ninja               $(call found,$(NINJA))"
 	@echo "  PCSX-Redux          $(if $(wildcard $(PCSX_REDUX)),found   $(PCSX_REDUX),MISSING (PS1 harness only))"

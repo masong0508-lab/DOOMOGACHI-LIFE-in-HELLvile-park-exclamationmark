@@ -7,8 +7,8 @@
 #   make -C core test         unit tests + runner scripts at 240x160 and 320x240
 #   make -C core gen          run every generator (tolerates missing ones)
 #   make -C core check-gen    regenerate into a temp dir and diff vs the repo
-#   make -C core xcheck       compile all core sources with gcc, arm and mipsel
-#                             -Werror (core/tools/xcheck.sh)
+#   make -C core xcheck       compile all core sources with gcc, arm, mipsel and
+#                             sh4 -Werror (core/tools/xcheck.sh)
 #   make -C core sizes        .bss/.data/.text of each core object (arm)
 #
 #   BUILD=dir   build directory (default core/build)

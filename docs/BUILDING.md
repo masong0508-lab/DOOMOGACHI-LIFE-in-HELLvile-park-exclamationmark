@@ -29,6 +29,7 @@ Contents:
 | run the GBA harness (`make test`) | the above plus `libmgba-dev` 0.10 |
 | build the **PS1 disc** (`make ps1`) | `mipsel-linux-gnu-gcc` (or `mipsel-none-elf-gcc`), **PSn00bSDK** built from source, CMake ≥ 3.21, Ninja, `python3` |
 | run the PS1 harness (`make test`) | the above plus PCSX-Redux, OpenBIOS and `xvfb-run` |
+| run the Dreamcast (SH4) leg of `xcheck` (`make test`) | `sh-elf-gcc` + newlib headers (apt `gcc-sh-elf binutils-sh-elf libnewlib-sh-elf-dev`), or a KallistiOS toolchain on `PATH`. Compile only: no KallistiOS needed |
 | render the **trailer** (`make trailer`) | `gcc`, `python3`, `ffmpeg` (with libx264) |
 
 There are no devkitPro, Sony SDK or BIOS dependencies. Everything is free
@@ -54,6 +55,7 @@ Versions that are known to work (Ubuntu 24.04 packages, the same as the CI runne
 | gcc (host) | 13.3 |
 | arm-none-eabi-gcc / newlib | 13.2.1 / 4.4.0 |
 | mipsel-linux-gnu-gcc | 12.4 |
+| sh-elf-gcc / newlib (xcheck SH4 leg) | 13.2.0 / 3.3.0 |
 | PSn00bSDK | commit `5d9aa2d3dfc7d6e51c2eb942ab4cdbae5571a40a` (0.24) |
 | CMake / Ninja | 3.28 / 1.11 |
 | libmgba | 0.10.2 |
@@ -77,6 +79,8 @@ sudo apt install libmgba-dev
 # PS1 toolchain (then build PSn00bSDK, next section)
 sudo apt install gcc-mipsel-linux-gnu g++-mipsel-linux-gnu binutils-mipsel-linux-gnu \
                  cmake ninja-build git
+# Dreamcast SH4 compile check in xcheck (compile only; CI runs it)
+sudo apt install gcc-sh-elf binutils-sh-elf libnewlib-sh-elf-dev
 # trailer (optional)
 sudo apt install ffmpeg
 ```
@@ -162,6 +166,8 @@ brew install --cask mgba                   # to play the ROM
   is GNU make 3.81 from 2006, and the Makefiles are only tested with 4.x.
 * On macOS, `gcc` is Apple clang. The core is plain C99 and is meant to
   build with it, but CI only checks GCC.
+* Homebrew has no `sh-elf-gcc`, so `xcheck` skips its Dreamcast SH4 leg
+  with a warning unless a KallistiOS toolchain is on `PATH`. CI runs it.
 * The headless GBA harness needs the libmgba development library, which
   Homebrew doesn't package. Build mGBA 0.10 from source with
   `-DBUILD_SHARED=ON` and install it, or let CI run the harness. The ROM
@@ -243,8 +249,14 @@ trailer/assemble.sh trailer/build/trailer out.mp4    # 1080p cut with the Dippin
 2. The same tests under AddressSanitizer + UBSan (`SAN=1`, in
    `core/build-san/`).
 3. `core/tools/xcheck.sh`: every core source compiled with `-Werror` by
-   gcc, arm-none-eabi-gcc and mipsel-linux-gnu-gcc against the PSn00bSDK
-   headers.
+   gcc, arm-none-eabi-gcc, mipsel-linux-gnu-gcc against the PSn00bSDK
+   headers, and sh-elf-gcc for the Dreamcast's SH4 (`-ml -m4-single`, the
+   KallistiOS default ABI, or `$KOS_SH4_PRECISION` when a KallistiOS
+   `environ.sh` is sourced). The SH4 leg is compile only: apt's
+   `gcc-sh-elf` + `libnewlib-sh-elf-dev` are enough, and a KallistiOS
+   `sh-elf-gcc` on `PATH` works too. `JOBS=N` sets the parallel compiles
+   (default: CPU count). A compiler that is missing skips its leg with a
+   `WARNING` line.
 4. `make -C core check-gen`: regenerates every generated file (art,
    roster, maps) into a temporary directory and fails if the committed copy
    is stale.
@@ -349,7 +361,7 @@ Run workflow*):
 
 | job | steps | artifacts |
 |---|---|---|
-| core | `make -C core test`, the same with `SAN=1`, `xcheck.sh` (with the pinned PSn00bSDK headers), `make -C core check-gen` | `core-native-screenshots` |
+| core | `make -C core test`, the same with `SAN=1`, `xcheck.sh` (with the pinned PSn00bSDK headers and apt's `gcc-sh-elf`; any skipped leg fails the job), `make -C core check-gen` | `core-native-screenshots` |
 | gba | `make -C gba`, `make -C gba engine-test`, `make -C gba test` (headless libmgba, no display needed) | `doomogachi-gba`, `gba-harness-screenshots` |
 | ps1 | PSn00bSDK (cached), `cmake --preset ps1` + build, `cmake --preset ps1-enginetest` + build | `doomogachi-ps1`, `doomogachi-ps1-enginetest` |
 | trailer | only when `trailer/`, the game palette (`palette.c` / `palette.h`) or `ci.yml` changed, or on a manual run: `make -C trailer build/trailer.mp4`. A manual run with *trailer_1080p* also builds the 1080p logo cut, which adds about 3-6 minutes. | `doomogachi-trailer` |
@@ -394,5 +406,6 @@ pre-release. *Run workflow* with an existing tag rebuilds that release.
 | GBA harness: `mgba/core/core.h: No such file` | install `libmgba-dev` (0.10) |
 | ASan aborts at start with `DEADLYSIGNAL` | newer kernels randomise mmap more than ASan supports: `sudo sysctl -w vm.mmap_rnd_bits=28` (CI does this) |
 | `xcheck: WARNING: PSn00bSDK headers not found` | the PS1 leg was skipped. Set `PSN00BSDK_LIBS` or `PSN00BSDK_INCLUDE` |
+| `xcheck: WARNING: sh-elf-gcc not found` or `cannot find newlib's <string.h>` | the Dreamcast SH4 leg was skipped. `sudo apt install gcc-sh-elf binutils-sh-elf libnewlib-sh-elf-dev` |
 | mGBA does not keep saves | delete the stale `.sav` or force *Save type: Flash 1Mb* |
 | PS1 disc boots to the BIOS screen on a console | the console can't boot unlicensed discs. See [Real hardware](#playstation) |

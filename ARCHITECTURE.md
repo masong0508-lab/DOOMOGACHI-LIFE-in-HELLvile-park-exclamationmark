@@ -37,7 +37,8 @@ docs/                    design, building, modding the roster
 
 1. **C99, no floating point, no malloc, no stdio.** Only `<stdint.h>`,
    `<stddef.h>`, `<string.h>`. Use `fix16` and `fixmath.h`. Build with
-   `-std=c99 -Wall -Wextra -Werror` on all three compilers.
+   `-std=c99 -Wall -Wextra -Werror` on all three compilers, plus the
+   Dreamcast's sh-elf-gcc (SH4), which `core/tools/xcheck.sh` also runs.
 2. **Deterministic.** Anything generated from a seed uses a local `DoomoRng`.
    The native, GBA and PS1 builds must produce identical results
    (`resident_fingerprint` parity test).

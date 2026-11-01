@@ -1,7 +1,8 @@
 # CI for DOOMOGACHI LIFE in HELLvile Park! (owner: ci)
 #
 #   core     native unit tests + headless playthrough (also under ASan/UBSan),
-#            -Werror cross-compile of every core source for gcc / arm / mipsel,
+#            -Werror cross-compile of every core source for gcc / arm / mipsel /
+#            sh4 (Dreamcast, compile only),
 #            generated-file freshness check
 #   gba      the GBA ROM + engine-test ROM, headless mGBA harness (libmgba)
 #   ps1      PSn00bSDK built from source (cached), the PS1 disc + engine-test disc
@@ -47,16 +48,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install compilers (host gcc, arm-none-eabi + newlib, mipsel-linux-gnu)
+      - name: Install compilers (host gcc, arm-none-eabi + newlib, mipsel-linux-gnu, sh-elf + newlib)
         run: |
           sudo apt-get update -q
           sudo apt-get install -y -q --no-install-recommends \
             gcc make python3 \
             gcc-arm-none-eabi libnewlib-arm-none-eabi \
-            gcc-mipsel-linux-gnu
+            gcc-mipsel-linux-gnu \
+            gcc-sh-elf binutils-sh-elf libnewlib-sh-elf-dev
           gcc --version | head -n 1
           arm-none-eabi-gcc --version | head -n 1
           mipsel-linux-gnu-gcc --version | head -n 1
+          sh-elf-gcc --version | head -n 1
 
       # The mipsel leg of xcheck compiles freestanding against the PSn00bSDK
       # libc headers; only that header directory is needed, not the SDK build.
@@ -78,7 +81,7 @@ jobs:
           sudo sysctl -w vm.mmap_rnd_bits=28
           make -C core test SAN=1 BUILD=build-san -j"$(nproc)"
 
-      - name: Cross-compile check (gcc + arm-none-eabi + mipsel, -Werror)
+      - name: Cross-compile check (gcc + arm-none-eabi + mipsel + sh-elf, -Werror)
         env:
           PSN00BSDK_INCLUDE: ${{ github.workspace }}/.psn00bsdk-headers/libpsn00b/include
         run: |
