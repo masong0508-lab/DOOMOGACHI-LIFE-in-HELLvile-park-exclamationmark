@@ -9,4 +9,5 @@ wait 20
 press A
 wait 2
 journey-end j1_boot_menu
+expect-presses j1_boot_menu <= 2
 shot menu
