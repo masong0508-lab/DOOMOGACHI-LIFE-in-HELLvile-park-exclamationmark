@@ -63,7 +63,7 @@ Free play loop (real-time clock, day and night, adjustable sim speed):
 You create **yourself** (a dedicated player record) and move to HaHaland.
 
 **Ch.1 "Welcome to HaHaland"** (extremely cutesy open world, top-down)
-* Mayor Gigglesworth (cherub) welcomes you; quest for your house key.
+* Mayor Gigglesworth (a Mad-Hatter turkey, show canon) welcomes you; quest for your house key.
 * Nana Pudding (baker) gives you a **Doomogachi egg**. Hatch tutorial:
   feed, clean, play, sleep.
 * Pip lost their bunny plush. Explore the park, the beach, the playground.

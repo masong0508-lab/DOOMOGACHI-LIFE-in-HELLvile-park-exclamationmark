@@ -408,6 +408,7 @@ class Schema:
             "PLUSHIE": ("BEAR", "BEAR_NUB", "BUTTON", "STITCHED", "BUBBLEGUM"),
             "GHOUL": ("ELF", "NONE", "DOT", "TEETH", "MINT"),
             "MUMMY": ("NORMAL", "NONE", "DOT", "FLAT", "BONE"),
+            "ANIMATRONIC": ("NONE", "NONE", "SKULL", "TEETH", "SILVER"),
         }
         if species_name in coherent:
             ears, tail, nose, mouth, skin = coherent[species_name]
@@ -420,12 +421,21 @@ class Schema:
             d["skin"] = self.skins["PEACH"]
             d["wings"] = E["wings"]["ANGEL"]
             d["halo"] = E["halo"]["HALO"]
+        elif species_name == "TURKEY":
+            # show canon (C1): bare peach head, red snood and wattle
+            # (marking_color), beak, the turkey's tail fan
+            d["skin"] = self.skins["PEACH"]
+            d["ears"] = E["ears"]["NONE"]
+            d["tail"] = E["tail"]["FEATHER_FAN"]
+            d["nose"] = E["nose"]["NONE"]
+            d["mouth"] = E["mouth"]["BEAK"]
+            d["marking_color"] = P["CHERRY"]
         else:
             d["skin"] = self.skins["FAIR"]
         if species_name == "CACOBLOB":
             d["eye_count"] = 1
             d["head"] = E["head"]["BLOB"]
-        if species_name == "SKELETON":
+        if species_name in ("SKELETON", "ANIMATRONIC"):
             d["head"] = E["head"]["SKULL"]
             d["hair"] = E["hair"]["BALD"]
         if species_name == "MUMMY":

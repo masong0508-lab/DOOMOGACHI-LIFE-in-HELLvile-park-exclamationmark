@@ -31,7 +31,7 @@ extern const uint16_t  doomo_roster_edge_count;
 
 /* Fixed story cast (ids into the roster). */
 enum {
-    NPC_MAYOR,        /* Mayor Gigglesworth - cherub mayor of Hillvile     */
+    NPC_MAYOR,        /* Mayor Gigglesworth - turkey mayor of Hillvile     */
     NPC_FATHER_FUZZ,  /* plushie priest, does the exorcisms                */
     NPC_RIVET,        /* imp welder who ran away from Hellvile; workshop   */
     NPC_DR_BLOOM,     /* ghoul doctor, hospital                            */
@@ -53,7 +53,7 @@ extern const uint16_t doomo_story_npc[NPC_COUNT];
  * modules may use them in const tables; test_roster checks they agree).
  * Resident names are limited to 11 characters, so two of the cast go by
  * shortened names in the roster: "Mayor Giggs" and "Nana Puddin". */
-#define ROSTER_ID_MAYOR         0    /* "Mayor Giggs"  cherub, Hillvile      */
+#define ROSTER_ID_MAYOR         0    /* "Mayor Giggs"  turkey, Hillvile      */
 #define ROSTER_ID_NANA_PUDDING  1    /* "Nana Puddin"  sheepkin baker        */
 #define ROSTER_ID_RIVET         13   /* "Rivet"  imp welder, HELLBORN but
                                         lives in Hillvile (district 0)      */

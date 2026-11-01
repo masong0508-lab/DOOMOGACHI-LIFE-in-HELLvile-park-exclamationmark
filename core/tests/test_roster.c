@@ -178,7 +178,7 @@ TEST(roster_flags_and_districts)
 TEST(roster_story_cast)
 {
     static const struct { int npc, id; const char *name; int species, district; } cast[] = {
-        { NPC_MAYOR, ROSTER_ID_MAYOR, "Mayor Giggs", SPECIES_CHERUB, DISTRICT_HILLVILE },
+        { NPC_MAYOR, ROSTER_ID_MAYOR, "Mayor Giggs", SPECIES_TURKEY, DISTRICT_HILLVILE },
         { NPC_FATHER_FUZZ, ROSTER_ID_FATHER_FUZZ, "Father Fuzz", SPECIES_PLUSHIE, DISTRICT_HILLVILE },
         { NPC_RIVET, ROSTER_ID_RIVET, "Rivet", SPECIES_IMP, DISTRICT_HILLVILE },
         { NPC_DR_BLOOM, ROSTER_ID_DR_BLOOM, "Dr. Bloom", SPECIES_GHOUL, DISTRICT_HILLVILE },

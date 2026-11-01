@@ -22,14 +22,18 @@ job: Mayor of Hillvile
 bio: Laughs at his own speeches. So does everyone else.
 story=MAYOR traits=HOLY flags=STORY_NPC
 pronoun=HE romance=ANY birthday=APR-01
-species=CHERUB body=ROUND height=4 build=13 skin=SKIN_PEACH head=MOCHI head_size=14
-eyes=HAPPY_ARC eye_color=SKY eye_size=7 eye_spacing=9 eye_height=10 eye_tilt=9 eye_count=2
-brows=RAISED brow_height=10 nose=BUTTON nose_size=7 mouth=BIG_GRIN mouth_size=9 fangs=0 cheeks=BLUSH,DIMPLES
-hair=POMPADOUR hair_color=LEMON highlight=WHITE facial_hair=HANDLEBAR
-ears=NORMAL horns=NONE horn_color=LEMON horn_size=9 tail=NONE wings=ANGEL halo=HALO
-marking=CHEEK_HEARTS marking_color=ROSE aura=SPARKLES
-top=SUIT top_color=SKY pattern=STRIPES pattern_color=WHITE bottom=PANTS bottom_color=NAVY
-shoes=SNEAKERS shoes_color=WHITE hat=TOP_HAT hat_color=LEMON accessory=BOWTIE accessory_color=ROSE
+# show canon (C1): a Mad-Hatter turkey. Lavender top hat with a magenta
+# band and no card (pattern_color = the band, horn_size = the crown), wild
+# white hair, peach head, red snood and wattle (marking_color), teal tail
+# coat, magenta bow tie, tail fan (portrait_turkey.c draws the turkey parts)
+species=TURKEY body=LANKY height=10 build=5 skin=SKIN_PEACH head=ROUND head_size=8
+eyes=ROUND eye_color=SKY eye_size=6 eye_spacing=10 eye_height=0 eye_tilt=8 eye_count=2
+brows=THICK brow_height=8 nose=NONE nose_size=8 mouth=BEAK mouth_size=10 fangs=0 cheeks=NONE
+hair=WILD hair_color=WHITE highlight=NONE facial_hair=NONE
+ears=NONE horns=NONE horn_color=BONE horn_size=10 tail=FEATHER_FAN wings=NONE halo=NONE
+marking=NONE marking_color=CHERRY aura=NONE
+top=SUIT top_color=TEAL pattern=SOLID pattern_color=MAGENTA bottom=PANTS bottom_color=CHARCOAL
+shoes=CLAWS shoes_color=TANGERINE hat=TOP_HAT hat_color=LAVENDER accessory=BOWTIE accessory_color=MAGENTA
 movement=9 speech=3 expression=15 attitude=14 quirk=9
 pitch=22 speed=16 quality=16 intonation=29 accent=3
 food="Cupcakes" hates="Brussels Sprouts" hobby="Karaoke" music="Bubblegum Pop" color=LEMON fear="Public Speaking"
@@ -127,14 +131,18 @@ job: Xylophone Teacher
 bio: Skeleton xylophone teacher. Plays his own ribs.
 flags=NONE
 pronoun=HE romance=SHE birthday=SEP-14
-species=SKELETON body=AVERAGE height=5 build=3 skin=SILVER head=SKULL head_size=12
+# show canon (C1): a possessed animatronic skeleton built as a tribute to
+# a death-obsessed artist. Silver skull casing on a steel frame, hinged jaw,
+# eye-lights, a wind-up crank, and the ribcage is a six-bar xylophone (no
+# top, so it shows); the bandleader's bow tie replaces the glasses
+species=ANIMATRONIC body=AVERAGE height=5 build=3 skin=SILVER head=SKULL head_size=12
 eyes=HOLLOW eye_color=CHARTREUSE eye_size=12 eye_spacing=9 eye_height=7 eye_tilt=7 eye_count=2
 brows=DOTS brow_height=7 nose=SKULL nose_size=7 mouth=LIPSTICK mouth_size=7 fangs=0 cheeks=BLUSH,SPARKLES,BEAUTY_MARK
 hair=BALD hair_color=CARAMEL highlight=NONE facial_hair=NONE
 ears=NONE horns=NONE horn_color=CARAMEL horn_size=12 tail=NONE wings=NONE halo=NONE
 marking=NONE marking_color=HONEY aura=NONE
-top=SWEATER_VEST top_color=NAVY pattern=SOLID pattern_color=WHITE bottom=PANTS bottom_color=HONEY
-shoes=BOOTS shoes_color=WHITE hat=NONE hat_color=WHITE accessory=GLASSES accessory_color=NAVY
+top=NONE top_color=NAVY pattern=SOLID pattern_color=WHITE bottom=PANTS bottom_color=HONEY
+shoes=BOOTS shoes_color=WHITE hat=NONE hat_color=WHITE accessory=BOWTIE accessory_color=ROSE
 movement=4 speech=2 expression=10 attitude=10 quirk=2
 pitch=8 speed=17 quality=10 intonation=29 accent=16
 food="Melon Bread" hates="Curry" hobby="Skull Collecting" music="Classical" color=NAVY fear="Thunder"

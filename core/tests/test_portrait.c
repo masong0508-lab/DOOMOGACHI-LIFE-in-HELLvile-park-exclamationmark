@@ -500,6 +500,151 @@ TEST(portrait_sliced_rerenders_show_only_whole_frames)
     town_free(id);
 }
 
+/* ---- show canon (C1): Mayor Giggs the turkey, Bonejangles the animatronic */
+static int has_paint(const uint8_t *pix, int n, int paint)
+{
+    int i;
+    for (i = 0; i < n; i++)
+        if (pix[i] >= PAL_PAINT(paint, 0) && pix[i] <= PAL_PAINT(paint, 2)) return 1;
+    return 0;
+}
+
+TEST(portrait_canon_turkey_mayor_and_animatronic_bonejangles)
+{
+    static uint8_t buf[PAD + FIGURE_W * FIGURE_H + PAD], a[FIGURE_W * FIGURE_H];
+    const DoomoLook *mayor = &roster_premade(ROSTER_ID_MAYOR)->look;
+    const DoomoLook *bones = &roster_premade(5)->look;
+    const DoomoLook *looks[2];
+    uint32_t h[35];
+    int i, k, st, e, bad = 0;
+    CHECK_EQ(mayor->species, SPECIES_TURKEY);
+    CHECK_EQ(bones->species, SPECIES_ANIMATRONIC);
+    CHECK_STR(roster_premade(5)->name, "Bonejangles");
+    /* the locked show look: lavender top hat with a magenta band (no card),
+     * wild white hair, peach head, red snood and wattle, teal tail coat,
+     * magenta bow tie, tail fan */
+    CHECK_EQ(mayor->hat, HAT_TOP_HAT);
+    CHECK_EQ(mayor->hat_color, PAINT_LAVENDER);
+    CHECK_EQ(mayor->pattern_color, PAINT_MAGENTA);
+    CHECK_EQ(mayor->hair_style, HAIR_WILD);
+    CHECK_EQ(mayor->hair_color, PAINT_WHITE);
+    CHECK_EQ(mayor->skin, SKIN_PEACH);
+    CHECK_EQ(mayor->marking_color, PAINT_CHERRY);
+    CHECK_EQ(mayor->top, TOP_SUIT);
+    CHECK_EQ(mayor->top_color, PAINT_TEAL);
+    CHECK_EQ(mayor->accessory, ACC_BOWTIE);
+    CHECK_EQ(mayor->accessory_color, PAINT_MAGENTA);
+    CHECK_EQ(mayor->tail, TAIL_FEATHER_FAN);
+    CHECK_EQ(mayor->wings, WINGS_NONE);
+    CHECK_EQ(mayor->halo, HALO_NONE);
+    /* ...and it is what the renderer shows: the bust has the hat, the coat,
+     * the wattle and the beak; the figure the fan */
+    portrait_render(mayor, RES_ALIVE, EXPR_NEUTRAL, 0, a);
+    CHECK(has_paint(a, PORTRAIT_W * PORTRAIT_H, PAINT_LAVENDER));
+    CHECK(has_paint(a, PORTRAIT_W * PORTRAIT_H, PAINT_MAGENTA));
+    CHECK(has_paint(a, PORTRAIT_W * PORTRAIT_H, PAINT_TEAL));
+    CHECK(has_paint(a, PORTRAIT_W * PORTRAIT_H, PAINT_CHERRY));
+    CHECK(has_paint(a, PORTRAIT_W * PORTRAIT_H, PAINT_TANGERINE));
+    figure_render(mayor, RES_ALIVE, EXPR_NEUTRAL, 0, a);
+    CHECK(has_paint(a, FIGURE_W * FIGURE_H, PAINT_RUST));
+    CHECK(has_paint(a, FIGURE_W * FIGURE_H, PAINT_BONE));
+    /* Bonejangles: no top, so the xylophone ribcage shows */
+    CHECK_EQ(bones->top, TOP_NONE);
+    figure_render(bones, RES_ALIVE, EXPR_NEUTRAL, 0, a);
+    CHECK(has_paint(a, FIGURE_W * FIGURE_H, PAINT_CHERRY));
+    CHECK(has_paint(a, FIGURE_W * FIGURE_H, PAINT_LEMON));
+    CHECK(has_paint(a, FIGURE_W * FIGURE_H, PAINT_SKY));
+    looks[0] = mayor;
+    looks[1] = bones;
+    for (i = 0; i < 2; i++) {
+        const DoomoLook *l = looks[i];
+        /* every view, expression and status stays in its buffer, is
+         * deterministic and stays inside the render budget */
+        for (st = 0; st < 6; st++)
+            for (e = 0; e < EXPR_COUNT; e++) {
+                memset(buf, CANARY, sizeof(buf));
+                portrait_render(l, st, e, e * 8, buf + PAD);
+                if (!canary_ok(buf, PORTRAIT_W * PORTRAIT_H)) bad++;
+                if (portrait_last_ops() >= 12000) bad++;
+                portrait_render(l, st, e, e * 8, a);
+                if (memcmp(a, buf + PAD, PORTRAIT_W * PORTRAIT_H)) bad++;
+                memset(buf, CANARY, sizeof(buf));
+                figure_render(l, st, e, e * 8, buf + PAD);
+                if (!canary_ok(buf, FIGURE_W * FIGURE_H)) bad++;
+                if (portrait_last_ops() >= 12000) bad++;
+            }
+        CHECK_MSG(bad == 0, "look %d: %d bad renders", i, bad);
+        /* the walk cycle moves and the four directions differ */
+        for (k = 0; k < 16; k++) {
+            memset(buf, CANARY, sizeof(buf));
+            bodyspr_render(l, RES_ALIVE, k >> 2, k & 3, buf + PAD);
+            CHECK(canary_ok(buf, BODYSPR_W * BODYSPR_H));
+            h[k] = fnv(buf + PAD, BODYSPR_W * BODYSPR_H, 2166136261u);
+        }
+        for (k = 0; k < 4; k++) {
+            CHECK(h[k * 4] != h[k * 4 + 1] && h[k * 4 + 1] != h[k * 4 + 3]);
+            if (k) CHECK(h[k * 4] != h[0]);
+        }
+        /* all 35 fighter view/anim combinations differ */
+        for (k = 0; k < 35; k++) {
+            int j;
+            memset(buf, CANARY, sizeof(buf));
+            fighter_render(l, RES_ALIVE, k % 5, k / 5, WFRAME_ASSAULT_RIFLE, buf + PAD);
+            CHECK(canary_ok(buf, FIGHTER_W * FIGHTER_H));
+            h[k] = fnv(buf + PAD, FIGHTER_W * FIGHTER_H, 2166136261u);
+            for (j = 0; j < k; j++) CHECK_MSG(h[j] != h[k], "look %d fighter %d == %d", i, k, j);
+        }
+    }
+    /* the two new species look like nothing else on the base citizen */
+    {
+        DoomoLook l = base_look();
+        uint32_t ht, hn;
+        l.species = SPECIES_TURKEY;
+        ht = look_render_hash(&l, RES_ALIVE, EXPR_NEUTRAL);
+        l.species = SPECIES_ANIMATRONIC;
+        hn = look_render_hash(&l, RES_ALIVE, EXPR_NEUTRAL);
+        CHECK(ht != hn);
+        for (k = 0; k < SPECIES_TURKEY; k++) {
+            l.species = (uint8_t)k;
+            hn = look_render_hash(&l, RES_ALIVE, EXPR_NEUTRAL);
+            CHECK_MSG(hn != ht, "species %d renders like a turkey", k);
+        }
+    }
+}
+
+/* The turkey's wattle wobbles on the fx clock, and its layer groups share
+ * state (portrait_turkey.c): GBA-style slices with other renders between
+ * them must still only ever show whole, correct frames. */
+TEST(portrait_turkey_sliced_rerenders_show_only_whole_frames)
+{
+    enum { N = 240 };
+    static uint32_t ha[N], ua[N], hb[N], ub[N];
+    DoomoResident *r;
+    int id, fig;
+    id = town_alloc(DISTRICT_HILLVILE);
+    CHECK(id >= 0);
+    r = town_res(id);
+    *r = *roster_premade(ROSTER_ID_MAYOR);
+    r->status = RES_ALIVE;
+    portrait_invalidate(id);
+    for (fig = 0; fig < 2; fig++) {
+        int t, k, ok = 1, uid_ok = 1, changes = 0;
+        run_anim(id, fig, 99, 0, N, ha, ua);
+        run_anim(id, fig, 1, 1, N, hb, ub);
+        for (t = 0; t < N; t++) {
+            int found = 0;
+            for (k = 0; k < N && !found; k++) found = hb[t] == ha[k];
+            if (!found) ok = 0;
+            if (t && hb[t] != hb[t - 1]) changes++;
+            if (t && hb[t] != hb[t - 1] && ub[t] == ub[t - 1]) uid_ok = 0;
+        }
+        CHECK_MSG(ok, "turkey %s: a sliced frame matches no whole render", fig ? "figure" : "portrait");
+        CHECK_MSG(uid_ok, "turkey %s: pixels changed but the uid did not", fig ? "figure" : "portrait");
+        CHECK_MSG(changes >= 10, "turkey %s: only %d frame changes", fig ? "figure" : "portrait", changes);
+    }
+    town_free(id);
+}
+
 /* the shade band table is exactly what its documented formula gives */
 extern const uint8_t pl_bandlut[3][65 * 65];
 

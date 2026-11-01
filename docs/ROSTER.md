@@ -94,10 +94,10 @@ so new catalog options work in the text right away.
 
 | key | values |
 |---|---|
-| `species` (required) | `SPECIES_*`: HUMAN IMP CHERUB GHOUL SKELETON SLIME HELLHOUND CACOBLOB BATLING ROBOT PLUSHIE GHOST MUMMY MOTHKIN FROGLING BUNNYKIN CATFOLK FOXKIN BEARKIN PUPKIN MOUSEKIN SHEEPKIN RACCOONKIN OWLKIN |
+| `species` (required) | `SPECIES_*`: HUMAN IMP CHERUB GHOUL SKELETON SLIME HELLHOUND CACOBLOB BATLING ROBOT PLUSHIE GHOST MUMMY MOTHKIN FROGLING BUNNYKIN CATFOLK FOXKIN BEARKIN PUPKIN MOUSEKIN SHEEPKIN RACCOONKIN OWLKIN TURKEY ANIMATRONIC (the last two are the show canon's: Mayor Giggs and Bonejangles, see docs/PORTRAIT.md) |
 | `body` `head` | `BODY_*`, `HEAD_*` |
 | `height` `build` `head_size` | 0..15 |
-| `skin` | a paint name for fur or skin (`CARAMEL`, `SLIME`, ...), or a natural tone `SKIN_PORCELAIN` .. `SKIN_EBONY` (humans and cherubs) |
+| `skin` | a paint name for fur or skin (`CARAMEL`, `SLIME`, ...), or a natural tone `SKIN_PORCELAIN` .. `SKIN_EBONY` (humans, cherubs and turkeys' bare heads) |
 | `eyes` `eye_color` | `EYE_*`, paint |
 | `eye_size` `eye_spacing` `eye_height` `eye_tilt` | 0..15 (tilt 8 = level) |
 | `eye_count` | 1..3 (cacoblobs have 1) |
@@ -162,7 +162,7 @@ Story NPCs sit at fixed, memorable ids. `roster.h` exposes these as
 
 | NPC | id | name | who |
 |---|---|---|---|
-| `NPC_MAYOR` | 0 | Mayor Giggs | cherub mayor of Hillvile, laughs at his own speeches |
+| `NPC_MAYOR` | 0 | Mayor Giggs | Mad-Hatter turkey mayor of Hillvile (show canon), laughs at his own speeches |
 | `NPC_NANA_PUDDING` | 1 | Nana Puddin | sheepkin head baker, gives you the Doomogachi egg |
 | `NPC_RIVET` | 13 | Rivet | imp welder who ran away from Hellvile: lives in Hillvile but `HELLBORN`, with her family (Anvil, Sprocket, Bolt, Nana Clank) across the Wall |
 | `NPC_PIP` | 42 | Pip | bunnykin kid (they/them) who lost their bunny plush, Mr. Flops |
