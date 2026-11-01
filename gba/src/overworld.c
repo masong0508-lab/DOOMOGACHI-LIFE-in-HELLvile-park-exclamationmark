@@ -373,7 +373,8 @@ int ow_cell_level(const DoomoCell *c) { return cell_level(c); }
 void plat_overworld(const DoomoOverworldView *v)
 {
     const DoomoMap *m;
-    int tx0, ty0, tx1, ty1, tx, ty, i, n, si, mode;
+    int ty0, ty1, ty, i, n, si, txa, pxa, nt, mode;
+    uint32_t rmask[SCREEN_H / TILE + 5];   /* (G2) raised cells per row (bit k: txa + k) */
     OwLuts luts;                     /* (G2) this frame's sprite tables */
     OwMemo fm, tm;                   /* (G2) block fronts, block tops */
     if (gba_nodraw == 1 || !v) return;
@@ -418,9 +419,7 @@ void plat_overworld(const DoomoOverworldView *v)
     owf.ox &= ~1;
     owf.scrollx = ((int)((v->cx >> 16) / UNITS_PER_PX) - owf.ow / 2) & ~1;
     owf.scrolly = (int)((v->cy >> 16) / UNITS_PER_PX) - owf.oh / 2;
-    tx0 = (owf.scrollx >= 0 ? owf.scrollx / TILE : (owf.scrollx - TILE + 1) / TILE) - 1;
     ty0 = (owf.scrolly >= 0 ? owf.scrolly / TILE : (owf.scrolly - TILE + 1) / TILE) - 1;
-    tx1 = tx0 + owf.ow / TILE + 3;
     ty1 = ty0 + owf.oh / TILE + 4;
 
     if (mode != CV_OFF) {
@@ -451,25 +450,33 @@ void plat_overworld(const DoomoOverworldView *v)
     /* ground: every visible cell's lit tile (16-pixel block copies; the
      * clipped edge tiles go through ow_blit). Blocks and raised floors
      * are skipped: their lifted top plus front face cover the whole cell
-     * (drawn in the next pass). (G2) Row by row over the visible cells
-     * only, a run of equal cells reusing one tile lookup. */
+     * (drawn in the next pass). (G2) One scan of the visible columns per
+     * row, through the row's cells: a run of equal cells reuses one tile
+     * lookup, and the raised cells are noted (rmask) for the next pass,
+     * which then visits only them. The scan covers every row the next
+     * pass draws in: a lifted top shows up to 16 px above its cell. */
+    txa = owf.scrollx >= 0 ? owf.scrollx / TILE : (owf.scrollx - TILE + 1) / TILE;
+    pxa = owf.ox + txa * TILE - owf.scrollx;     /* <= ox, even */
+    nt = (owf.ox + owf.ow - pxa + TILE - 1) / TILE;
     {
-        const int txa = owf.scrollx >= 0 ? owf.scrollx / TILE : (owf.scrollx - TILE + 1) / TILE;
-        const int pxa = owf.ox + txa * TILE - owf.scrollx;     /* <= ox, even */
-        const int nt = (owf.ox + owf.ow - pxa + TILE - 1) / TILE;
         OwMemo gm;
         gm.t = 0;
         for (ty = ty0; ty <= ty1; ty++) {
             const int py = owf.oy + ty * TILE - owf.scrolly;
             const int ya = DOOMO_MAX(py, owf.oy), yb = DOOMO_MIN(py + TILE, owf.oy + owf.oh);
-            const DoomoCell *c;
+            const DoomoCell *row = (unsigned)ty < (unsigned)m->h ? m->cells + ty * m->w : 0;
+            uint32_t mask = 0;
             int k, px;
-            if (ya >= yb) continue;
+            rmask[ty - ty0] = 0;
+            if (py - 16 >= owf.oy + owf.oh || py + TILE <= owf.oy) continue;
             for (k = 0, px = pxa; k < nt; k++, px += TILE) {
+                const int tx = txa + k;
+                const DoomoCell *c = row && (unsigned)tx < (unsigned)m->w ? row + tx
+                                                                         : map_cell_safe(m, tx, ty);
                 const OwTile *t;
                 int lvl, x0, x1;
-                c = cell_at(m, txa + k, ty);
-                if (c->wall || c->floor_h > 0) continue;
+                if (c->wall || c->floor_h > 0) { mask |= 1u << k; continue; }
+                if (ya >= yb) continue;
                 lvl = cell_level(c);
                 if (c->floor_h < 0) lvl -= 3;
                 t = lit_memo(&gm, c->floor_tex, lvl, 0);
@@ -481,6 +488,7 @@ void plat_overworld(const DoomoOverworldView *v)
                 else
                     ow_blit(x0, x1, ya, yb, t->pix + (ya - py) * TILE + (x0 - px), TILE);
             }
+            rmask[ty - ty0] = mask;
         }
     }
 
@@ -503,14 +511,15 @@ void plat_overworld(const DoomoOverworldView *v)
         int sy = owf.oy + ty * TILE - owf.scrolly + TILE - 1;   /* contact lines */
         int sy_on = sy >= owf.oy && sy < owf.oy + owf.oh;
         int rx0 = 0, rx1 = 0, cx0, cx1;
-        for (tx = tx0; tx <= tx1; tx++) {
-            const DoomoCell *c = cell_at(m, tx, ty);
-            int px = owf.ox + tx * TILE - owf.scrollx, py = owf.oy + ty * TILE - owf.scrolly;
+        uint32_t mask = rmask[ty - ty0];
+        int k;
+        for (k = 0; mask; k++, mask >>= 1) {
+            const int tx = txa + k;
+            const DoomoCell *c;
+            int px = pxa + k * TILE, py = owf.oy + ty * TILE - owf.scrolly;
             int lvl, h;
-            if (!c->wall && c->floor_h <= 0) continue;
-            if (px >= owf.ox + owf.ow || px + TILE <= owf.ox || py - 16 >= owf.oy + owf.oh ||
-                py + TILE <= owf.oy)
-                continue;
+            if (!(mask & 1)) continue;
+            c = cell_at(m, tx, ty);
             lvl = cell_level(c);
             h = raise_h(c);
             /* (G2) a front face the next row's top covers (the cell below is

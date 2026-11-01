@@ -85,3 +85,110 @@ ow_tile16:
     ldmfd   sp!, {r4-r8}
     bx      lr
     .size   ow_tile16, . - ow_tile16
+
+@ (G2) void ow_spr_rows(OwSprJob *j)
+@ The middles of a sprite's rows at scale 1, not mirrored (ow.iwram.c):
+@ j->rows rows of j->n pixels (even, > 0) to VRAM from j->dst (halfword
+@ aligned, + 240 bytes per row), texels from j->src (any alignment,
+@ + j->stride per row). A row's texels are read four per word (aligned
+@ loads, shifted together) and ANDed with j->tmask[y & 1] (the
+@ translucency checker); pixel k of row y goes through table
+@ j->q[y & 3][k & 3] (its 4x4 class, ow_int.h); texel 0 is transparent. A
+@ quad of transparent texels costs one word read, an opaque pair is one
+@ halfword store, a half-opaque one a read-modify-write. j->dst, j->src,
+@ j->rows and j->phase (y & 3) are consumed. Reads up to 8 bytes past a
+@ row.
+    .equ    OSJ_DST, 0
+    .equ    OSJ_SRC, 4
+    .equ    OSJ_N, 8
+    .equ    OSJ_ROWS, 12
+    .equ    OSJ_STRIDE, 16
+    .equ    OSJ_PHASE, 20
+    .equ    OSJ_TMASK, 24
+    .equ    OSJ_Q, 32
+
+    @ one pixel pair from the low 16 bits of r11 (a = bits 0-7, b = 8-15)
+    @ to [r0, #off]; the half-opaque cases are out of line (OW_PAIR_COLD)
+    .macro OW_PAIR qa, qb, off, lbl
+    ands    r12, r11, #0xFF
+    beq     \lbl\()_a0
+    tst     r11, #0xFF00
+    ldrb    r12, [\qa, r12]
+    beq     \lbl\()_b0
+    and     lr, r11, #0xFF00
+    ldrb    lr, [\qb, lr, lsr #8]
+    orr     r12, r12, lr, lsl #8
+    strh    r12, [r0, #\off]
+\lbl\()_done:
+    .endm
+    .macro OW_PAIR_COLD qb, off, lbl
+\lbl\()_b0:                             @ a only (r12 = qa[a])
+    ldrh    lr, [r0, #\off]
+    and     lr, lr, #0xFF00
+    orr     r12, r12, lr
+    strh    r12, [r0, #\off]
+    b       \lbl\()_done
+\lbl\()_a0:                             @ b only, or neither
+    ands    lr, r11, #0xFF00
+    beq     \lbl\()_done
+    ldrb    lr, [\qb, lr, lsr #8]
+    ldrh    r12, [r0, #\off]
+    and     r12, r12, #0xFF
+    orr     r12, r12, lr, lsl #8
+    strh    r12, [r0, #\off]
+    b       \lbl\()_done
+    .endm
+
+    .global ow_spr_rows
+    .type   ow_spr_rows, %function
+ow_spr_rows:
+    stmfd   sp!, {r0, r4-r11, lr}       @ [sp] = j
+.Lsr_row:
+    ldr     lr, [sp]
+    ldr     r12, [lr, #OSJ_PHASE]
+    add     r6, lr, #OSJ_Q
+    add     r6, r6, r12, lsl #4
+    ldmia   r6, {r6-r9}                 @ this row's four tables
+    and     r5, r12, #1
+    add     r5, lr, r5, lsl #2
+    ldr     r5, [r5, #OSJ_TMASK]
+    ldr     r0, [lr, #OSJ_DST]
+    ldr     r1, [lr, #OSJ_SRC]
+    ldr     r2, [lr, #OSJ_N]
+    and     r3, r1, #3
+    mov     r3, r3, lsl #3              @ the first texel's bit offset
+    bic     r1, r1, #3
+    rsb     r10, r3, #32                @ (offset 0: lsl #32 gives 0)
+    ldr     r4, [r1], #4                @ the word holding texel 0
+1:  ldr     r12, [r1], #4
+    mov     r11, r4, lsr r3
+    orr     r11, r11, r12, lsl r10      @ texels k..k+3
+    mov     r4, r12
+    and     r11, r11, r5
+    cmp     r2, #4
+    movlt   r11, r11, lsl #16           @ the last pair only
+    movlt   r11, r11, lsr #16
+    cmp     r11, #0
+    beq     8f
+    OW_PAIR r6, r7, 0, .Lsp0
+    movs    r11, r11, lsr #16
+    beq     8f
+    OW_PAIR r8, r9, 2, .Lsp1
+8:  add     r0, r0, #4
+    subs    r2, r2, #4
+    bgt     1b
+    @ next row
+    ldr     lr, [sp]
+    ldmia   lr, {r0-r5}                 @ dst, src, n, rows, stride, phase
+    add     r0, r0, #240
+    add     r1, r1, r4
+    add     r5, r5, #1
+    and     r5, r5, #3
+    subs    r3, r3, #1
+    stmia   lr, {r0-r5}
+    bgt     .Lsr_row
+    ldmfd   sp!, {r0, r4-r11, lr}
+    bx      lr
+    OW_PAIR_COLD r7, 0, .Lsp0
+    OW_PAIR_COLD r9, 2, .Lsp1
+    .size   ow_spr_rows, . - ow_spr_rows

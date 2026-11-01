@@ -116,10 +116,11 @@ static inline void put_pair(uint16_t *d, uint32_t a, uint32_t b, const uint8_t *
 
 /* A sprite at screen (x0, y0), integer scale s, clipped to the viewport;
  * texel of pixel x = src[(x - x0) * inv >> 16] (flip: mirrored). Every
- * pixel is one lookup in its 4x4 position's composed table (sprite_luts).
- * (G2) At scale 1 a row's middle is read four texels per word (ROM is a
- * 16-bit bus: one word read instead of four byte reads), all-transparent
- * words are skipped, and opaque pairs are stored without a read. */
+ * pixel is one lookup in its 4x4 position's composed table
+ * (owf_sprite_luts). (G2) At scale 1, not mirrored (nearly every sprite),
+ * the rows' middles go to ow_spr_rows: four texels per word read (ROM is a
+ * 16-bit bus: one word instead of four byte reads), transparent words
+ * skipped, opaque pairs stored without a read. */
 void ow_sprite(const DoomoImage *img, int x0, int y0, int s, int flags, const uint8_t *cm)
 {
     const int w = img->w * s, h = img->h * s;
@@ -136,59 +137,46 @@ void ow_sprite(const DoomoImage *img, int x0, int y0, int s, int flags, const ui
     if (cx0 >= cx1 || cy0 >= cy1 || cx1 - cx0 > 256) return;
     if (owf.luts) owf_sprite_luts(cm, lc);
     else lc[0] = lc[1] = lc[2] = lc[3] = cm;    /* the house: no night, no tint */
-    if (s == 1) {
+    if (s == 1 && !flip) {
+        /* the middle columns [xs, xe) in ow_spr_rows (ow_loops.s), the odd
+         * edge columns here; translucent: only pixels with (x + y) even */
         const int iw = img->w;
         const int xs = (cx0 + 1) & ~1, xe = cx1 & ~1;
-        /* the middle's texels: forward from pixel xs, or mirrored (pixel xs
-         * is texel i, the next ones i - 1, ..: the word at i - 3 holds a
-         * quad's texels backwards) */
-        const int base = flip ? iw - 1 - (xs - x0) - 3 : xs - x0;
-        const int step = flip ? -1 : 1;
-        for (y = cy0; y < cy1; y++) {
-            const uint8_t *srow = img->pix + (y - y0) * iw;
-            uint16_t *row = gba_back + y * LINE;
-            const uint8_t *cl = owf.cls + ((y & 3) << 2);
-            const uint8_t *q0 = lc[cl[xs & 3]], *q1 = lc[cl[(xs + 1) & 3]];
-            const uint8_t *q2 = lc[cl[(xs + 2) & 3]], *q3 = lc[cl[(xs + 3) & 3]];
-            /* translucent: only pixels with (x + y) even, a checker */
-            const uint32_t tmask = !trans ? 0xFFFFFFFFu : (y & 1) ? 0xFF00FF00u : 0x00FF00FFu;
-            const uint8_t *sp = srow + base;
-            const uint32_t sh = ((uint32_t)sp & 3u) << 3;
-            const uint32_t *wp = (const uint32_t *)(const void *)((uint32_t)sp & ~3u);
-            uint32_t prev;
-            int n = xe - xs;
-            /* the odd edge pixels */
-            if (cx0 & 1) {
-                uint32_t t = srow[flip ? iw - 1 - (cx0 - x0) : cx0 - x0];
-                if (t && !(trans && ((cx0 + y) & 1))) put_hi(row + (cx0 >> 1), lc[cl[cx0 & 3]][t]);
-            }
-            if (cx1 & 1) {
-                int xl = cx1 - 1;
-                uint32_t t = srow[flip ? iw - 1 - (xl - x0) : xl - x0];
-                if (t && !(trans && ((xl + y) & 1))) put_lo(row + (xl >> 1), lc[cl[xl & 3]][t]);
-            }
-            row += xs >> 1;
-            if (flip) prev = wp[1];
-            else prev = *wp++;
-            for (; n > 0; n -= 4, row += 2) {
-                uint32_t nw = *wp, lo, hi, t;
-                wp += step;
-                if (flip) { lo = nw; hi = prev; }
-                else { lo = prev; hi = nw; }
-                prev = nw;
-                t = sh ? (lo >> sh) | (hi << (32 - sh)) : lo;
-                if (flip)
-                    t = (t << 24) | ((t << 8) & 0x00FF0000u) | ((t >> 8) & 0x0000FF00u) | (t >> 24);
-                t &= tmask;
-                if (n < 4) t &= 0xFFFFu;           /* the last pair */
-                if (!t) continue;
-                put_pair(row, t & 0xFF, (t >> 8) & 0xFF, q0, q1);
-                put_pair(row + 1, (t >> 16) & 0xFF, t >> 24, q2, q3);
+        int k;
+        if (xe > xs) {
+            OwSprJob j;
+            j.dst = gba_back + cy0 * LINE + (xs >> 1);
+            j.src = img->pix + (cy0 - y0) * iw + (xs - x0);
+            j.n = xe - xs;
+            j.rows = cy1 - cy0;
+            j.stride = iw;
+            j.phase = (uint32_t)cy0 & 3u;
+            j.tmask[0] = trans ? 0x00FF00FFu : 0xFFFFFFFFu;
+            j.tmask[1] = trans ? 0xFF00FF00u : 0xFFFFFFFFu;
+            for (k = 0; k < 16; k++)
+                j.q[k >> 2][k & 3] = lc[owf.cls[(k & ~3) | ((xs + k) & 3)]];
+            ow_spr_rows(&j);
+        }
+        if ((cx0 | cx1) & 1) {
+            for (y = cy0; y < cy1; y++) {
+                const uint8_t *srow = img->pix + (y - y0) * iw;
+                uint16_t *row = gba_back + y * LINE;
+                const uint8_t *cl = owf.cls + ((y & 3) << 2);
+                if (cx0 & 1) {
+                    uint32_t t = srow[cx0 - x0];
+                    if (t && !(trans && ((cx0 + y) & 1))) put_hi(row + (cx0 >> 1), lc[cl[cx0 & 3]][t]);
+                }
+                if (cx1 & 1) {
+                    int xl = cx1 - 1;
+                    uint32_t t = srow[xl - x0];
+                    if (t && !(trans && ((xl + y) & 1))) put_lo(row + (xl >> 1), lc[cl[xl & 3]][t]);
+                }
             }
         }
         return;
     }
-    /* scaled: texel column of every screen pixel (pairs aligned to even x) */
+    /* scaled or mirrored: texel column of every screen pixel (pairs
+     * aligned to even x) */
     {
         uint8_t lut[256 + 2];                           /* texel index per pixel */
         int xa = cx0 & ~1, xb = (cx1 + 1) & ~1;
