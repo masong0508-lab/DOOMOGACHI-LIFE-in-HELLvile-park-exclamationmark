@@ -4,6 +4,7 @@
  *   gba/build/harness ROM.gba [--script FILE] [--shots DIR] [--save FILE]
  *                     [--frames N] [--scale S] [--fail-on-stub] [--quiet]
  *                     [--nm NMFILE]   (arm-none-eabi-nm -n output, for profile)
+ *                     [--no-fps-gates] (expect-fps reports, never fails)
  *
  * Runs the ROM in mGBA (no BIOS needed: HLE), feeds scripted input, prints
  * the ROM's mGBA debug log (plat_log) to stdout and writes PNG screenshots.
@@ -33,14 +34,20 @@
  *                       log's TEXT) is the whole rest of the line
  *   expect-fps MIN [LABEL]  fps that fails below MIN drawn frames/s
  *   vhash [LABEL]       print the FNV-1a of the emulator's output frame
- *                       (240x160 as BGR555; display-mode independent)
+ *                       (240x160 as BGR555; display-mode independent).
+ *                       The last frame presented, which depends on the
+ *                       ROM's speed (catch-up ticks): for parity between
+ *                       ROMs use vhash-seq
  *   vhash-seq N [LABEL] hash the frames of the next N logic ticks (the ROM
  *                       draws every tick meanwhile): a sequence digest plus
  *                       "TICK:HASH" per frame, TICK = the logic tick that
- *                       drew it (gba/tools/speedtable.py --compare)
- *   sync on|off         tick-exact waits (game ROM): the ROM holds at the
- *                       end of every wait, so keys and commands land on the
- *                       same tick in any ROM, however fast it draws
+ *                       drew it (gba/tools/speedtable.py --compare); fails
+ *                       unless every tick of the window gave one frame
+ *   sync on [TICK] | off  tick-exact waits (game ROM): the ROM holds at
+ *                       the end of every wait, so keys and commands land on
+ *                       the same tick in any ROM, however fast it draws;
+ *                       the first hold is at absolute tick TICK (default:
+ *                       the next tick)
  *   profile N           sample the PC over N instructions and print the
  *                       hottest functions (needs --nm, see below)
  *   save N / load N / expect-save N / verify N / save-must-fail N
@@ -209,6 +216,7 @@ static void run_frame(void);
 #define HOLD_NONE 0xFFFFFFFFu
 static int sync_mode;
 static uint32_t sync_tick;      /* the tick boundary the ROM is held at */
+static int no_fps_gates;        /* --no-fps-gates: expect-fps only reports */
 
 /* mailbox command (game ROM, gba/src/hcmd.c): post, run frames until the
  * ROM clears it; 0 if it never answered */
@@ -554,21 +562,45 @@ static uint32_t fnv_word(uint32_t h, uint32_t w)
  * leaves on the same tick. Prints the sequence digest (FNV over every
  * frame's tick and hash) and the per-frame list "TICK:HASH ..." (TICK =
  * the logic tick that drew it), which gba/tools/speedtable.py --compare
- * matches tick by tick; with "sync on" equal ticks are equal game states. */
+ * matches tick by tick; with "sync on" equal ticks are equal game states.
+ * Fails unless exactly the ticks START+1 .. START+N each presented one
+ * frame (a short or gapped sequence would compare only part of the
+ * window), and on a ROM without draw_all (built before G1). */
 #define MAILBOX_DRAW_ALL (MAILBOX_ADDR + 68)
 static void vhash_seq(int n, const char *label, const char *path, int lineno)
 {
     size_t cap = (size_t)(n > 0 ? n : 1) * 20 + 1, len = 0;
-    char *list = malloc(cap);
+    char *list;
     uint32_t seq = 2166136261u, first = 0, last = 0, idle = 0, held = 0;
-    uint32_t start = sync_mode ? sync_tick : ticks();
-    uint32_t end = start + (uint32_t)(n > 0 ? n : 0);
-    /* a ROM from before G1 has neither the hold nor draw_all */
-    int g1_rom = sync_mode || core->busRead32(core, MAILBOX_HOLD_AT) == HOLD_NONE;
-    int got = 0;
+    uint32_t start, end, prev;
+    int got = 0, gapped = 0;
+    /* a ROM from before G1 has neither the hold nor draw_all: without
+     * draw_all it skips catch-up ticks, so its frames would not cover the
+     * window (and +64/+68 are not the mailbox's there) */
+    if (!sync_mode && (core->busRead32(core, MAILBOX_ADDR) != MAILBOX_MAGIC ||
+                       core->busRead32(core, MAILBOX_HOLD_AT) != HOLD_NONE)) {
+        fprintf(stderr, "harness: %s:%d vhash-seq %s: the ROM has no draw_all "
+                "(not the game ROM, or built before it)\n", path, lineno, label);
+        failed = 1;
+        return;
+    }
+    if (n <= 0) {
+        fprintf(stderr, "harness: %s:%d vhash-seq: N must be > 0\n", path, lineno);
+        failed = 1;
+        return;
+    }
+    list = malloc(cap);
     if (!list) return;
     list[0] = 0;
-    if (g1_rom) core->busWrite32(core, MAILBOX_DRAW_ALL, 1);
+    core->busWrite32(core, MAILBOX_DRAW_ALL, 1);
+    /* sync: the ROM is held (or flipping the held tick's frame), so every
+     * tick of the window starts after draw_all; without sync a tick that
+     * already began may be a catch-up tick, so the window starts after
+     * the next tick ends */
+    if (!sync_mode) run_ticks(1);
+    start = sync_mode ? sync_tick : ticks();
+    end = start + (uint32_t)n;
+    prev = start;
     if (sync_mode) core->busWrite32(core, MAILBOX_HOLD_AT, end);   /* release */
     while (!failed && got < n) {
         uint32_t tick = 0;
@@ -578,7 +610,8 @@ static void vhash_seq(int n, const char *label, const char *path, int lineno)
             uint32_t h = frame_fnv();
             idle = 0;
             if (!got) first = tick;
-            last = tick;
+            if (tick != prev + 1) gapped = 1;
+            prev = last = tick;
             seq = fnv_word(fnv_word(seq, tick), h);
             len += (size_t)snprintf(list + len, cap - len, "%s%u:%08x", got ? " " : "",
                                     (unsigned)tick, (unsigned)h);
@@ -592,14 +625,17 @@ static void vhash_seq(int n, const char *label, const char *path, int lineno)
         }
     }
     if (!sync_mode) while (!failed && (int32_t)(ticks() - end) < 0) run_frame();
-    if (g1_rom) core->busWrite32(core, MAILBOX_DRAW_ALL, 0);
+    core->busWrite32(core, MAILBOX_DRAW_ALL, 0);
     if (sync_mode) sync_tick = end;
-    if (got < n && !failed)
-        fprintf(stderr, "harness: %s:%d vhash-seq %s: %d frames in %d ticks\n",
-                path, lineno, label, got, n);
-    printf("harness: vhash-seq %s: %d frames, ticks %u-%u, seq %08x\n", label, got,
+    printf("harness: vhash-seq %s: %d of %d frames, ticks %u-%u, seq %08x\n", label, got, n,
            (unsigned)first, (unsigned)last, (unsigned)seq);
     printf("harness: vhash-frames %s: %s\n", label, list);
+    if (!failed && (got != n || gapped || first != start + 1 || last != end)) {
+        fprintf(stderr, "harness: %s:%d vhash-seq %s: %d frames from ticks %u-%u, "
+                "expected one from each tick %u-%u\n", path, lineno, label, got,
+                (unsigned)first, (unsigned)last, (unsigned)(start + 1), (unsigned)end);
+        failed = 1;
+    }
     free(list);
 }
 
@@ -729,9 +765,14 @@ static int run_script(const char *path)
                        wn > wn0 ? (ws - ws0) / 16777.216 / (wn - wn0) : 0.0, wm / 16777.216,
                        (unsigned)(t - t0), (unsigned)(v - v0));
             if (expect && dfps < atof(argv[1])) {
-                fprintf(stderr, "harness: %s:%d %s: %.1f drawn frames/s, expected >= %s\n",
-                        path, lineno, label, dfps, argv[1]);
-                failed = 1;
+                if (no_fps_gates)   /* --no-fps-gates: report, go on */
+                    fprintf(stderr, "harness: %s:%d %s: %.1f drawn frames/s, under the "
+                            "floor %s (gates off)\n", path, lineno, label, dfps, argv[1]);
+                else {
+                    fprintf(stderr, "harness: %s:%d %s: %.1f drawn frames/s, expected >= %s\n",
+                            path, lineno, label, dfps, argv[1]);
+                    failed = 1;
+                }
             }
             t0 = t; v0 = v; d0 = d;
             core->busWrite32(core, MAILBOX_ADDR + 40, 0);
@@ -747,16 +788,25 @@ static int run_script(const char *path)
                 if (sync_mode) run_until_tick(ticks() + 1);
             }
         } else if (!strcmp(argv[0], "sync") && argc >= 2) {
-            /* sync on|off: tick-exact waits (see run_until_tick) */
+            /* sync on [TICK] | off: tick-exact waits (see run_until_tick).
+             * The hold starts at absolute tick TICK (default: the next
+             * one), so scripts that start syncing after an unsynced wait
+             * (which may overrun by a tick, differently in a faster ROM)
+             * still reach the same tick in every ROM */
             if (!strcmp(argv[1], "on") && !sync_mode) {
+                uint32_t at = argc >= 3 ? (uint32_t)strtoul(argv[2], NULL, 10) : ticks() + 1;
                 if (core->busRead32(core, MAILBOX_ADDR) != MAILBOX_MAGIC ||
                     core->busRead32(core, MAILBOX_HOLD_AT) != HOLD_NONE) {
                     fprintf(stderr, "harness: %s:%d sync: the ROM has no tick hold "
                             "(not the game ROM, or built before it)\n", path, lineno);
                     failed = 1;
+                } else if ((int32_t)(at - ticks()) <= 0) {
+                    fprintf(stderr, "harness: %s:%d sync on %u: the ROM is already at "
+                            "tick %u\n", path, lineno, (unsigned)at, (unsigned)ticks());
+                    failed = 1;
                 } else {
                     sync_mode = 1;
-                    run_until_tick(ticks() + 1);
+                    run_until_tick(at);
                 }
             } else if (!strcmp(argv[1], "off") && sync_mode) {
                 core->busWrite32(core, MAILBOX_HOLD_AT, HOLD_NONE);
@@ -960,6 +1010,7 @@ int main(int argc, char **argv)
         else if (!strcmp(argv[i], "--scale") && i + 1 < argc) scale = atoi(argv[++i]);
         else if (!strcmp(argv[i], "--fail-on-stub")) fail_on_stub = 1;
         else if (!strcmp(argv[i], "--quiet")) quiet = 1;
+        else if (!strcmp(argv[i], "--no-fps-gates")) no_fps_gates = 1;          /* G1 */
         else if (!strcmp(argv[i], "--nm") && i + 1 < argc) load_nm(argv[++i]);
         else if (!strcmp(argv[i], "--golden") && i + 1 < argc) golden_path = argv[++i];   /* H2 */
         else if (argv[i][0] != '-' && !rom) rom = argv[i];
@@ -969,7 +1020,8 @@ int main(int argc, char **argv)
     if (scale > 4) scale = 4;
     if (!rom) {
         fprintf(stderr, "usage: harness ROM.gba [--script F] [--shots DIR] "
-                "[--save F] [--frames N] [--scale S] [--fail-on-stub] [--quiet]\n");
+                "[--save F] [--frames N] [--scale S] [--fail-on-stub] [--quiet] "
+                "[--no-fps-gates]\n");
         return 2;
     }
     mkdir(shots_dir, 0755);

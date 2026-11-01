@@ -224,15 +224,21 @@ test-home: harness
 # --- G1: the speed tour (docs/GBA.md "Speed pass 4"): every target scene's
 # fps (expect-fps floors), screenshots and output-frame hashes, printed as a
 # table by tools/speedtable.py. SPEED_BASE=LOG (another ROM's
-# build/speed_tour.log, e.g. the merge base's) adds its numbers beside and
-# fails unless every hashed frame is identical. Not part of `test`. ---
+# build/speed_tour.log, e.g. the merge base's, made with the same script)
+# adds its numbers beside and fails unless every scene hashed the same
+# ticks with identical frames. SPEED_SCRIPT=FILE plays another tour script
+# (a package's, on its merge base), SPEED_GATES=0 only reports the floors.
+# Not part of `test`. ---
 SPEED_LOG ?= $(BUILD)/speed_tour.log
 SPEED_BASE ?=
+SPEED_SCRIPT ?= $(GBA)/harness/scripts/speed_tour.txt
+SPEED_GATES ?= 1
 test-speed: harness
 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile rom ENGINE_TEST=0
 	@mkdir -p $(SHOTS)/speed
 	@rc=0; \
-	$(HARNESS) $(BUILD)/doomogachi.gba --script $(GBA)/harness/scripts/speed_tour.txt \
+	$(HARNESS) $(BUILD)/doomogachi.gba --script $(SPEED_SCRIPT) \
+	    $(if $(filter 0,$(SPEED_GATES)),--no-fps-gates) \
 	    --shots $(SHOTS)/speed --quiet > $(SPEED_LOG) 2>&1 || rc=1; \
 	$(PYTHON) $(GBA)/tools/speedtable.py $(SPEED_LOG) \
 	    $(if $(SPEED_BASE),--base $(SPEED_BASE) --parity) || rc=1; \

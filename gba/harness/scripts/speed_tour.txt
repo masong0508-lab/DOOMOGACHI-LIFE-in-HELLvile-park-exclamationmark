@@ -9,18 +9,26 @@
 # `make -C gba test-speed SPEED_BASE=LOG`) matches two ROMs' frames tick by
 # tick.
 #
-# `sync on` makes every wait end on an exact logic tick, so keys and
-# commands land on the same tick in any ROM however fast it draws, and
-# `seed 1` before every scene pins plat_entropy() and the RNG: equal ticks
-# are equal game states, and a scene's content does not depend on code
-# timing.
+# `sync on 61` makes every wait end on an exact logic tick, from absolute
+# tick 61 on (the unsynced boot wait before it may end a tick late in one
+# ROM and not in another), so keys and commands land on the same tick in
+# any ROM however fast it draws, and `seed 1` before every scene pins
+# plat_entropy() and the RNG: equal ticks are equal game states, and a
+# scene's content does not depend on code timing.
+#
+# Every scene's ticks are absolute: a scene's numbers and frames depend on
+# the tick it starts on and on the scenes before it (the town, the show
+# generator). Adding or removing scenes or waits moves every later scene,
+# so a parity base log must come from this same script (docs/GBA.md
+# "Frame parity between ROMs": SPEED_SCRIPT, SPEED_GATES=0). Changing an
+# expect-fps floor moves nothing.
 #
 # The expect-fps floors are regression gates at about 85% of the speed
 # pass 4 baseline (the harness is deterministic: one ROM always gives the
 # same numbers). A package that makes a scene faster raises its floor.
-wait 60
+wait 40
 expect-log doomo: init
-sync on
+sync on 61
 
 # ---- title ------------------------------------------------------------------
 seed 1

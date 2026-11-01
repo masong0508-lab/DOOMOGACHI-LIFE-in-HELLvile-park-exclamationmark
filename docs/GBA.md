@@ -360,8 +360,17 @@ the numbers below), writes `build/speed_tour.log` and
 `tools/speedtable.py` (standard-library Python). It is not part of
 `make -C gba test`. Every scene settles for 200 logic ticks, is measured
 over 130, is shot, and then the frames of the next 30 ticks are hashed
-(`vhash-seq`, below). The tour runs `sync on` with `seed 1` before every
-scene, so a ROM gives byte-identical numbers and hashes on every run.
+(`vhash-seq`, below). The tour runs `sync on 61` (tick-exact from
+absolute tick 61 on) with `seed 1` before every scene, so a ROM gives
+byte-identical numbers and hashes on every run.
+
+The numbers belong to this exact script: every scene's ticks are
+absolute, and a scene's cost depends on the tick it starts on and on the
+scenes before it (the town, the concert's generated show: `wait 7` before
+the concert moves it from 12.0 to 12.9 fps, and playing the concert first
+drops the hahaland visit from 16.9 to 13.6). Adding or removing scenes or
+waits therefore moves every later scene's numbers and frames; changing an
+`expect-fps` floor moves nothing.
 
 Baseline, `959acc8` + G1 (game ROM 3,668,820 bytes):
 
@@ -426,33 +435,57 @@ mGBA puts out (`vhash`: FNV-1a of the 240x160 output as BGR555), which is
 the same whatever the display mode, unlike a CRC of a Mode 4 VRAM page.
 `vhash-seq 30 LABEL` hashes the frames of the next 30 logic ticks: the ROM
 draws every tick meanwhile (mailbox `draw_all`, no catch-up ticks), and
-every frame is tagged with the tick that drew it. With `sync on` the
-harness holds the ROM at the end of every wait (mailbox `hold_at`, see
-section 9), so keys and commands land on the same tick in every ROM
-however fast it draws; with `seed 1` equal ticks are equal game states,
-and two ROMs' frames compare tick for tick.
+every frame is tagged with the tick that drew it; the harness fails the
+run unless each of the 30 ticks presented exactly one frame. With `sync
+on` the harness holds the ROM at the end of every wait (mailbox
+`hold_at`, see section 9), so keys and commands land on the same tick in
+every ROM however fast it draws; with `seed 1` equal ticks are equal game
+states, and two ROMs' frames compare tick for tick. A single `vhash` is
+not for parity: it hashes the last frame presented, which depends on the
+ROM's speed (catch-up ticks), and in sync mode it shows the frame before
+the held tick's flip (`shot` too).
 
-To prove a package exact, build its merge base in the same worktree, run
-the tour, keep the log, and run the package against it:
+The parity check (`tools/speedtable.py --parity` / `--compare`) is exact:
+for every hashed scene of either log, both logs must hold all 30 frames
+(no gap, no vhash-seq error), the same ticks, and identical hashes. A ROM
+that enters a scene a tick late, drops a presented frame or freezes the
+display fails; so does a base log from an older harness (no frame count)
+or from a different tour script (other ticks: the report names a tick
+shift under which the frames would match, as a hint).
+
+To prove a package exact, run the package's own tour script on its merge
+base, keep the log, and run the package against it:
 
 ```sh
+cp gba/harness/scripts/speed_tour.txt /tmp/tour.txt   # the package's tour
 git checkout --detach $(git merge-base HEAD <target branch>)
-make -C gba test-speed; cp gba/build/speed_tour.log /tmp/base.log
+make -C gba test-speed SPEED_SCRIPT=/tmp/tour.txt SPEED_GATES=0 SPEED_LOG=/tmp/base.log
 git checkout -                       # back to the package
 make -C gba test-speed SPEED_BASE=/tmp/base.log
 ```
 
-The table then shows the base's fps and the change per scene, and every
-hashed frame must be identical (`parity ... ok: 30 frames identical`);
-`tools/speedtable.py --compare A.log B.log` prints only the parity. Use
-the merge base, not a fixed baseline ROM: script and text changes alter
-dialogue frames.
+`SPEED_SCRIPT` plays the package's script on the base ROM, so both logs
+hash the same ticks even when the package added scenes or waits;
+`SPEED_GATES=0` (harness `--no-fps-gates`) reports a floor the base ROM
+misses (a package that sped a scene up raises its floor) instead of
+stopping the tour. The table then shows the base's fps and the change per
+scene, and every hashed frame must be identical (`parity ... ok: 30
+frames identical`); `tools/speedtable.py --compare A.log B.log` prints
+only the parity. Use the merge base, not a fixed baseline ROM: script and
+text changes alter dialogue frames. The base needs G1's harness (and its
+fixes: `SPEED_SCRIPT`, `SPEED_GATES`, the exact check); a ROM from before
+G1 has no `hold_at` / `draw_all`, and `sync on` and `vhash-seq` refuse it.
 
-Checked when G1 landed: two runs of one ROM give byte-identical `vhash`
-lines (15 scenes, 450 frames); a ROM slowed by 8.9 ms per drawn tick (a
-temporary busy loop) drew 6-12% fewer frames, yet all 450 hashed frames
-were identical to the base ROM's; a ROM that flips two pixels on one tick
-in 64 failed in the 6 scenes whose 30-tick window holds such a tick.
+Checked when G1 landed, on the committed tour: two runs of one ROM give
+byte-identical logs (15 scenes, 450 frames); a ROM with a busy loop at
+boot and 8.9 ms of extra work per drawn tick (a temporary patch) drew
+7-12% fewer frames, yet all 450 hashed frames matched the base ROM's at
+the same ticks; a ROM that flips two pixels on one tick in 64 failed in
+the 9 scenes whose 30-tick window holds such a tick and passed the other
+6; a ROM that skips presenting one tick in 64 even under `draw_all` failed
+the harness at the first such window ("29 frames from ticks ..."); and
+logs edited to shift a scene's frames by one tick, or to keep 10 of its 30
+frames, fail the parity check.
 
 ### Frame pacing
 
@@ -823,16 +856,30 @@ gba/build/harness ROM.gba [--script FILE] [--shots DIR] [--save FILE]
   ROM draws every tick meanwhile: mailbox `draw_all`, no catch-up ticks)
   and prints a sequence digest plus `TICK:HASH` per frame, TICK being the
   tick that drew it. `tools/speedtable.py --compare` matches two logs
-  tick by tick (section 4, "Speed pass 4").
-* `sync on|off` (G1, game ROM): tick-exact scripts. The game loop waits at
-  its top while the mailbox's `hold_at` equals its tick count
+  tick by tick (section 4, "Speed pass 4"). Only `vhash-seq` compares
+  across ROMs: `vhash` hashes the last frame presented, which depends on
+  the ROM's speed (catch-up ticks).
+* `sync on [TICK]|off` (G1, game ROM): tick-exact scripts. The game loop
+  waits at its top while the mailbox's `hold_at` equals its tick count
   (`gba_harness_hold()`, `hcmd.c`, running posted commands meanwhile);
   every wait moves `hold_at` on and runs the CPU an event slice (under a
   scanline) at a time until the ROM holds again. Keys and commands then
   land on the same tick in every ROM however fast it draws; without
-  `sync` a wait ends on a video frame and may overrun by a tick. In sync
-  mode `shot` and `vhash` first finish the video frame (the ROM stays
-  held), and `profile` releases the hold while it samples.
+  `sync` a wait ends on a video frame and may overrun by a tick. The
+  first hold is at absolute tick TICK (default: the next tick; an error
+  if the ROM is already there), so a script whose unsynced boot wait
+  overruns differently in two ROMs still reaches the same ticks (the
+  speed tour: `wait 40`, `sync on 61`). In sync mode `shot` and `vhash`
+  first finish the video frame (the ROM stays held), and `profile`
+  releases the hold while it samples. A ROM from before G1 has no hold:
+  `sync on` and `vhash-seq` refuse it.
+* `vhash-seq N` fails the run unless each of the N ticks of its window
+  presented exactly one frame; its summary line is `vhash-seq LABEL: N of
+  N frames, ticks T0-T1, seq HASH`.
+* `--no-fps-gates` (G1): `expect-fps` prints a missed floor ("under the
+  floor MIN (gates off)") and goes on instead of failing; for running a
+  newer tour script on an older ROM (`make -C gba test-speed
+  SPEED_GATES=0`).
 * `--save FILE` backs the 128 KB flash with FILE (created if missing),
   like a frontend's `.sav`, so persistence can be tested across runs.
 * `profile N [FUNC]` steps N instructions and charges each one's emulated
@@ -866,8 +913,10 @@ gba/build/harness ROM.gba [--script FILE] [--shots DIR] [--save FILE]
 floor, a shot and a 30-tick `vhash-seq`, in `sync on`; the log goes to
 `build/speed_tour.log` (`SPEED_LOG=`), the shots to `build/shots/speed`,
 and `tools/speedtable.py` prints the table. With `SPEED_BASE=LOG` (another
-ROM's tour log) it also prints that ROM's fps and fails unless every
-hashed frame is identical (section 4, "Speed pass 4").
+ROM's tour log, made with the same script) it also prints that ROM's fps
+and fails unless every scene hashed the same ticks with identical frames;
+`SPEED_SCRIPT=FILE` plays another tour script and `SPEED_GATES=0` only
+reports the floors (the merge-base recipe, section 4, "Speed pass 4").
 
 ---------------------------------------------------------------------------
 
