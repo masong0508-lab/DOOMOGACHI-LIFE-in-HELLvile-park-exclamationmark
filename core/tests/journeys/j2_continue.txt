@@ -1,0 +1,25 @@
+# J2 (M0): boot -> back in the story where the last save left off
+# (title, Story Mode, Continue). Budget: budgets.tsv j2_continue.
+seed 4242
+scene TITLE
+wait 2
+scene STORY 108
+wait 60
+save 0
+scene BOOT
+wait 1
+journey-begin j2_continue
+wait 5
+press A
+wait 1
+expect-scene TITLE
+wait 20
+press A
+wait 2
+press A
+wait 2
+press A
+wait 30
+expect-scene STORY
+journey-end j2_continue
+shot continued

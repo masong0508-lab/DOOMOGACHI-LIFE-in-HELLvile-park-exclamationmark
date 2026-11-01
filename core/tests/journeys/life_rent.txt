@@ -1,0 +1,33 @@
+# life_rent (M0): the island hub -> today's rent collected (Town Hall,
+# Collect rent). Budget: budgets.tsv life_rent.
+scene NEW_ISLAND
+wait 10
+press A
+wait 10
+press A
+wait 10
+press DOWN
+wait 2
+press A
+wait 20
+press A
+wait 2
+press A
+wait 2
+press A
+wait 2
+press A
+wait 10
+expect-scene ISLAND
+wait 30
+money 500
+journey-begin life_rent
+press A
+wait 1
+press DOWN
+press DOWN
+press A
+wait 1
+expect-money 551
+journey-end life_rent
+shot rent

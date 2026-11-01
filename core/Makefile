@@ -5,6 +5,9 @@
 #   make -C core runner       $(BUILD)/runner  (see core/native/README.md)
 #   make -C core lib          compile every core object (src + gen)
 #   make -C core test         unit tests + runner scripts at 240x160 and 320x240
+#                             + the journey budgets (journeys)
+#   make -C core journeys     the journey and tap meter: core/tests/journeys/
+#                             against budgets.tsv at both sizes (M0)
 #   make -C core gen          run every generator (tolerates missing ones)
 #   make -C core check-gen    regenerate into a temp dir and diff vs the repo
 #   make -C core xcheck       compile all core sources with gcc, arm, mipsel and
@@ -61,7 +64,7 @@ PLAT_OBJS   := $(call obj,$(NATIVE_PLAT))
 MAIN_OBJ    := $(call obj,$(NATIVE_MAIN))
 TEST_OBJS   := $(call obj,$(TEST_SRCS))
 
-.PHONY: all lib runner test unit scripts gen check-gen xcheck sizes clean story-check
+.PHONY: all lib runner test unit scripts journeys gen check-gen xcheck sizes clean story-check
 .DEFAULT_GOAL := runner
 
 all: runner $(BUILD)/tests
@@ -95,13 +98,18 @@ $(BUILD)/tests: $(CORE_OBJS) $(PLAT_OBJS) $(TEST_OBJS)
 	$(CC) $(LDFLAGS_SAN) -o $@ $^
 
 # ---- tests ------------------------------------------------------------------
-test: story-check unit scripts
+test: story-check unit scripts journeys
 
 unit: $(BUILD)/tests
 	$(BUILD)/tests --golden $(CORE)/tests/golden --tmp $(BUILD)/testtmp
 
 scripts: $(BUILD)/runner
 	sh $(CORE)/tests/run_scripts.sh $(BUILD)/runner $(CORE)/tests/scripts $(BUILD)/shots
+
+# --- M0: the journey and tap meter (docs/GAME_DESIGN.md "UX budgets") ---
+journeys: $(BUILD)/runner
+	sh $(CORE)/tests/run_journeys.sh $(BUILD)/runner $(CORE)/tests/journeys $(BUILD)/journeys
+# --- end M0 ---
 
 # --- P0: the script-rewrite guardrails (docs/STORY_ENGINE.md "Script tools") ---
 # The Spanish story TSVs against the packs, the save and flow locks, and the

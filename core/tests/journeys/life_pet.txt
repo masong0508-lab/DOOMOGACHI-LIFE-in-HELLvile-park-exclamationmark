@@ -1,0 +1,37 @@
+# life_pet (M0): the island hub -> the Doomogachi (SELECT), once the egg
+# has been named. Budget: budgets.tsv life_pet.
+scene NEW_ISLAND
+wait 10
+press A
+wait 10
+press A
+wait 10
+press DOWN
+wait 2
+press A
+wait 20
+press A
+wait 2
+press A
+wait 2
+press A
+wait 2
+press A
+wait 10
+expect-scene ISLAND
+wait 30
+push PET
+wait 20
+press A
+wait 10
+type "Mochi\n"
+wait 30
+press START
+wait 10
+expect-scene ISLAND
+journey-begin life_pet
+press SELECT
+wait 1
+expect-scene PET
+journey-end life_pet
+shot pet

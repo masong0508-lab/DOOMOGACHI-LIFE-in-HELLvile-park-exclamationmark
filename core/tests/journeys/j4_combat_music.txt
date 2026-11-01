@@ -1,0 +1,28 @@
+# J4 (M0): in a fight, pause, turn the music volume down one step in
+# Options and get back into the fight. Budget: budgets.tsv j4_combat_music.
+scene TITLE
+wait 2
+push COMBAT 3
+wait 70
+expect-scene COMBAT
+journey-begin j4_combat_music
+press START
+wait 1
+press DOWN
+press DOWN
+press DOWN
+press A
+wait 1
+expect-scene OPTIONS
+press R
+press R
+press R
+shot audio
+press LEFT
+press B
+wait 1
+expect-scene COMBAT
+press B
+wait 1
+journey-end j4_combat_music
+shot resumed

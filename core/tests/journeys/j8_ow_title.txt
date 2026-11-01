@@ -1,0 +1,18 @@
+# J8 (M0): from the story overworld back to the title screen (pause,
+# Title Screen, confirm Yes). Budget: budgets.tsv j8_ow_title.
+seed 4242
+scene STORY 108
+wait 60
+expect-scene STORY
+journey-begin j8_ow_title
+press START
+wait 1
+press UP
+press A
+wait 1
+expect-scene CONFIRM
+press LEFT
+press A
+wait 1
+expect-scene TITLE
+journey-end j8_ow_title

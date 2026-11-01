@@ -4,6 +4,9 @@
  *   runner [--script FILE] [--shots DIR] [--w 240 --h 160] [--frames N]
  *          [--saves DIR] [--seed N] [--zoom N] [--gba-input] [--save-stream N]
  *          [--assert-no-stubs] [--quiet] [--verbose] [--wav FILE]
+ *          [--budgets FILE]
+ * --budgets FILE (M0) the journey budgets (core/tests/journeys/budgets.tsv):
+ * journey-end fails when a journey takes more presses or ticks than its row.
  * --wav FILE records the game's audio (22,050 Hz stereo, musrender: the
  * music SPEC's listening renders, core/native/plat_music_native.c).
  *
@@ -42,6 +45,23 @@
  *                       on the Options page: opt_set(OPT_LANGUAGE) ->
  *                       lang_changed(); the session keeps it across loads
  *   expect-lang CODE    (P0) fail unless lang_get() is that language
+ *   journey-begin NAME  (M0) start the journey meter (alias: mark NAME)
+ *   journey-end [NAME]  (M0) stop it and print "journey: NAME presses=P
+ *                       ticks=T depth=D screens=S typed=C"; with --budgets
+ *                       fail over that row's presses or ticks (alias:
+ *                       report [NAME])
+ *   expect-presses NAME [<=] N  (M0) fail unless journey NAME took <= N
+ *                       presses
+ *   problem WHO KIND [ITEM]  (M0) sim_problem_raise() for the citizen named
+ *                       WHO; KIND hungry/dirty/bored/sick/item/fight/lonely
+ *                       or a PROB_* number, ITEM an item name or number
+ *   item ITEM [N]       (M0) inv_add(ITEM, N) (default 1; the bag)
+ *   expect-item ITEM N  (M0) fail unless the bag holds exactly N of ITEM
+ *   expect-problem WHO [0|1]  (M0) fail unless WHO has (1, default) or has
+ *                       no (0) open problem
+ *   expect-money MIN    (M0) fail unless the purse holds at least MIN H$
+ *   expect-rel WHO OTHER [0|1]  (M0) fail unless the two know each other
+ *                       (1, default: any relationship) or do not (0)
  * Buttons: UP DOWN LEFT RIGHT A B L R START SELECT X Y L2 R2.
  * Exit status: 0 ok, 1 script failure, 2 stubs ran with --assert-no-stubs.
  */
@@ -57,6 +77,8 @@
 #include "doomo/music.h"              /* music: music-hash */
 #include "../src/ui_internal.h"       /* S2: ui_dialog_debug (expect-text) */
 #include "doomo/lang.h"               /* P0: lang CODE */
+#include "doomo/items.h"              /* M0: item, problem (journey setups) */
+#include "doomo/sim.h"
 void story_verbs_cell(int cx, int cy);    /* S4: "cell", "skip-talk" (core/src/story_int.h) */
 int  story_talking(void);
 void home_move_in(void);                  /* H4: "home-room" (core/src/home_int.h) */
@@ -98,12 +120,99 @@ static void stats(const char *label)
     t0 = t; h0 = hits; m0 = misses; r0 = resets; p0 = rep; b0 = blt; d0 = drw;
 }
 
+/* --- M0: the journey meter (core/tests/journeys/, run_journeys.sh) ---
+ * Between journey-begin and journey-end every script command that presses
+ * a button counts 1 press (press, hold, down, each A of skip-talk /
+ * skip-to, the OK "\n" of a typed text), every frame run counts 1 tick (a
+ * press is 1 press + 2 ticks) and each typed letter counts 1 typed. depth
+ * is the deepest the scene stack went above where the journey began
+ * (pushed scenes and modals), screens the number of times the top scene
+ * changed. */
+#define JNAME 48
+static struct {
+    int on;
+    char name[JNAME];
+    uint32_t presses, ticks, typed;
+    int base, depth, screens;
+    const DoomoScene *top;
+} jr;
+static struct { char name[JNAME]; uint32_t presses; } jdone[64];
+static int njdone;
+static struct { char name[JNAME]; long presses, ticks; } jbud[128];
+static int njbud, have_budgets;
+
+static void jr_frame(void)
+{
+    const DoomoScene *t = scene_top();
+    int d = scene_depth() - jr.base;
+    jr.ticks++;
+    if (d > jr.depth) jr.depth = d;
+    if (t != jr.top) { jr.screens++; jr.top = t; }
+}
+
+static void jr_press(void)
+{
+    if (jr.on) jr.presses++;
+}
+
+/* journey setups: a citizen by name, an item by name, a problem kind */
+static int res_named(const char *nm)
+{
+    int i;
+    for (i = 0; i < DOOMO_MAX_RESIDENTS; i++)
+        if (doomo_town.res[i].status != RES_EMPTY && strcmp(doomo_town.res[i].name, nm) == 0) return i;
+    return -1;
+}
+
+static int item_named(const char *nm)
+{
+    int i;
+    if (isdigit((unsigned char)nm[0])) return atoi(nm);
+    for (i = 1; i < ITEM_COUNT; i++)
+        if (doomo_items[i].name && strcmp(doomo_items[i].name, nm) == 0) return i;
+    return -1;
+}
+
+static int problem_kind(const char *nm)
+{
+    static const struct { const char *n; int k; } kinds[] = {
+        { "hungry", PROB_HUNGRY }, { "dirty", PROB_DIRTY }, { "bored", PROB_BORED },
+        { "sick", PROB_SICK }, { "item", PROB_WANTS_ITEM }, { "fight", PROB_FIGHT },
+        { "lonely", PROB_LONELY }
+    };
+    size_t i;
+    if (isdigit((unsigned char)nm[0])) return atoi(nm);
+    for (i = 0; i < sizeof(kinds) / sizeof(kinds[0]); i++)
+        if (strcmp(kinds[i].n, nm) == 0) return kinds[i].k;
+    return -1;
+}
+
+static int load_budgets(const char *path)
+{
+    FILE *f = fopen(path, "r");
+    char line[256];
+    if (!f) return 0;
+    while (fgets(line, sizeof(line), f) && njbud < (int)(sizeof(jbud) / sizeof(jbud[0]))) {
+        char name[JNAME], p[32], t[32];
+        if (line[0] == '#' || sscanf(line, "%47s %31s %31s", name, p, t) != 3) continue;
+        snprintf(jbud[njbud].name, JNAME, "%s", name);
+        jbud[njbud].presses = p[0] == '-' ? -1 : atol(p);   /* "-": reserved row */
+        jbud[njbud].ticks = t[0] == '-' ? -1 : atol(t);
+        njbud++;
+    }
+    fclose(f);
+    have_budgets = 1;
+    return 1;
+}
+/* --- end M0 --- */
+
 static void step(int n)
 {
     while (n-- > 0) {
         plat_begin_frame();
         doomo_frame(held | (gba_input ? DOOMO_INPUT_SYNTH_XY : 0));
         plat_end_frame();
+        if (jr.on) jr_frame();   /* M0 */
     }
 }
 
@@ -206,6 +315,7 @@ static void run_line(char *line)
             if (!one) fail("unknown button", argv[i]);
             b |= one;
         }
+        jr_press();
         held |= b;
         step(1);
         held &= ~b;
@@ -213,12 +323,14 @@ static void run_line(char *line)
     } else if (strcmp(cmd, "hold") == 0) {
         uint32_t b = argc > 1 ? button(argv[1]) : 0;
         if (!b) { fail("unknown button", argc > 1 ? argv[1] : ""); return; }
+        jr_press();
         held |= b;
         step(argc > 2 ? atoi(argv[2]) : 1);
         held &= ~b;
     } else if (strcmp(cmd, "down") == 0) {
         uint32_t b = argc > 1 ? button(argv[1]) : 0;
         if (!b) fail("unknown button", argc > 1 ? argv[1] : "");
+        else if (!(held & b)) jr_press();
         held |= b;
     } else if (strcmp(cmd, "up") == 0) {
         held &= ~(argc > 1 ? button(argv[1]) : 0u);
@@ -230,6 +342,8 @@ static void run_line(char *line)
         const char *s = argc > 1 ? argv[1] : "";
         for (; *s; s++) {
             if (!ui_text_entry_feed((unsigned char)*s)) { fail("no text entry open for", argv[1]); break; }
+            if (*s == '\n') jr_press();        /* M0: OK is a press, letters are typed */
+            else if (jr.on) jr.typed++;
             step(1);
         }
     } else if (strcmp(cmd, "expect-scene") == 0) {
@@ -316,6 +430,7 @@ static void run_line(char *line)
         /* press A until the conversation is over and the overworld is back */
         int max = argc > 1 ? atoi(argv[1]) : 120, k;
         for (k = 0; (story_talking() || scene_top() != &SCENE_STORY) && k < max; k++) {
+            jr_press();
             held |= BTN_A;
             step(1);
             held &= ~(uint32_t)BTN_A;
@@ -336,6 +451,7 @@ static void run_line(char *line)
             ui_dialog_debug(&d);
             if (scene ? (scene_top() && strcmp(scene_top()->name, want) == 0) : (d.text && strstr(d.text, want) != NULL)) break;
             if (k == max) { fail(scene ? "never reached the scene" : "the dialogue never said", want); break; }
+            jr_press();
             held |= BTN_A;
             step(1);
             held &= ~(uint32_t)BTN_A;
@@ -374,6 +490,80 @@ static void run_line(char *line)
         int cue = argc > 1 ? atoi(argv[1]) : 0, min = argc > 2 ? atoi(argv[2]) : 2;
         printf("music-hash %d %d: 0x%08x\n", cue, min, (unsigned)music_hash(cue, min));
     /* --- end music --- */
+    /* --- M0: the journey meter (see jr above; core/tests/journeys/) --- */
+    } else if (strcmp(cmd, "journey-begin") == 0 || strcmp(cmd, "mark") == 0) {
+        if (jr.on) { fail("journey already running:", jr.name); return; }
+        memset(&jr, 0, sizeof(jr));
+        snprintf(jr.name, JNAME, "%s", argc > 1 ? argv[1] : "journey");
+        jr.on = 1;
+        jr.base = scene_depth();
+        jr.top = scene_top();
+    } else if (strcmp(cmd, "journey-end") == 0 || strcmp(cmd, "report") == 0) {
+        int k;
+        if (!jr.on) { fail("no journey running for", argc > 1 ? argv[1] : cmd); return; }
+        if (argc > 1 && strcmp(argv[1], jr.name) != 0) fail("journey-end does not match the running journey", jr.name);
+        jr.on = 0;
+        printf("journey: %s presses=%u ticks=%u depth=%d screens=%d typed=%u\n", jr.name,
+               (unsigned)jr.presses, (unsigned)jr.ticks, jr.depth, jr.screens, (unsigned)jr.typed);
+        if (njdone < (int)(sizeof(jdone) / sizeof(jdone[0]))) {
+            snprintf(jdone[njdone].name, JNAME, "%s", jr.name);
+            jdone[njdone++].presses = jr.presses;
+        }
+        if (!have_budgets) return;
+        for (k = 0; k < njbud && strcmp(jbud[k].name, jr.name) != 0; k++) {}
+        if (k == njbud || jbud[k].presses < 0) { fail("no budget row (budgets.tsv) for journey", jr.name); return; }
+        if ((long)jr.presses > jbud[k].presses || (jbud[k].ticks >= 0 && (long)jr.ticks > jbud[k].ticks)) {
+            char msg[160];
+            snprintf(msg, sizeof(msg), "over budget: %u presses / %u ticks, the budget is %ld / %ld, journey",
+                     (unsigned)jr.presses, (unsigned)jr.ticks, jbud[k].presses, jbud[k].ticks);
+            fail(msg, jr.name);
+        }
+    } else if (strcmp(cmd, "expect-presses") == 0) {
+        const char *nm = argc > 1 ? argv[1] : "";
+        long max = argc > 2 ? atol(argv[argc - 1]) : -1;
+        int k;
+        long got = -1;
+        if (jr.on && strcmp(jr.name, nm) == 0) got = (long)jr.presses;
+        for (k = njdone - 1; got < 0 && k >= 0; k--)
+            if (strcmp(jdone[k].name, nm) == 0) got = (long)jdone[k].presses;
+        if (got < 0 || max < 0) fail("expect-presses needs a measured journey and a count, got", nm);
+        else if (got > max) {
+            char msg[96];
+            snprintf(msg, sizeof(msg), "%ld presses, more than %ld, in journey", got, max);
+            fail(msg, nm);
+        }
+    } else if (strcmp(cmd, "problem") == 0 || strcmp(cmd, "expect-problem") == 0) {
+        int who = res_named(argc > 1 ? argv[1] : "");
+        if (who < 0) { fail("no citizen named", argc > 1 ? argv[1] : ""); return; }
+        if (cmd[0] == 'p') {
+            int kind = problem_kind(argc > 2 ? argv[2] : ""), it = argc > 3 ? item_named(argv[3]) : 0;
+            if (kind <= PROB_NONE || kind >= PROB_COUNT || it < 0 || it >= ITEM_COUNT) fail("problem needs WHO KIND [ITEM], got", argc > 2 ? argv[2] : "");
+            else if (sim_problem_raise(who, kind, 0xFFFF, it) < 0) fail("could not raise a problem for", argv[1]);
+        } else if ((sim_problem_for(who) >= 0) != (argc > 2 ? atoi(argv[2]) != 0 : 1)) {
+            fail(sim_problem_for(who) >= 0 ? "a problem is still open for" : "no open problem for", argv[1]);
+        }
+    } else if (strcmp(cmd, "item") == 0 || strcmp(cmd, "expect-item") == 0) {
+        int it = item_named(argc > 1 ? argv[1] : ""), n = argc > 2 ? atoi(argv[2]) : 1;
+        if (it <= ITEM_NONE || it >= ITEM_COUNT) fail("unknown item", argc > 1 ? argv[1] : "");
+        else if (cmd[0] == 'i') inv_add(it, n);
+        else if (inv_count(it) != n) {
+            char msg[64];
+            snprintf(msg, sizeof(msg), "expected %d in the bag but there are %d of", n, inv_count(it));
+            fail(msg, argv[1]);
+        }
+    } else if (strcmp(cmd, "expect-rel") == 0) {
+        int a = res_named(argc > 1 ? argv[1] : ""), b = res_named(argc > 2 ? argv[2] : "");
+        int want = argc > 3 ? atoi(argv[3]) != 0 : 1;
+        if (a < 0 || b < 0) fail("expect-rel needs two citizens' names, got", argc > 2 ? argv[2] : "");
+        else if ((rel_kind(a, b) >= 0) != want) fail(want ? "these two have never met:" : "these two already know each other:", argv[1]);
+    } else if (strcmp(cmd, "expect-money") == 0) {
+        uint32_t min = (uint32_t)strtoul(argc > 1 ? argv[1] : "0", NULL, 0);
+        if (doomo_town.money < min) {
+            char got[24];
+            snprintf(got, sizeof(got), "%u", (unsigned)doomo_town.money);
+            fail(argc > 1 ? "the purse holds less than the expected H$, it has" : "", got);
+        }
+    /* --- end M0 --- */
     } else {
         fail("unknown command", cmd);
     }
@@ -384,7 +574,8 @@ static void usage(void)
     fprintf(stderr,
             "usage: runner [--script FILE] [--shots DIR] [--w N --h N] [--frames N]\n"
             "              [--saves DIR] [--seed N] [--zoom N] [--gba-input] [--save-stream N]\n"
-            "              [--assert-no-stubs] [--quiet] [--verbose] [--wav FILE]\n");
+            "              [--assert-no-stubs] [--quiet] [--verbose] [--wav FILE]\n"
+            "              [--budgets FILE]\n");
 }
 
 int main(int argc, char **argv)
@@ -416,6 +607,12 @@ int main(int argc, char **argv)
             i++;
         }
         /* --- end music --- */
+        /* --- M0: journey budgets --- */
+        else if (strcmp(a, "--budgets") == 0 && val) {
+            if (!load_budgets(val)) { fprintf(stderr, "runner: cannot read %s\n", val); return 1; }
+            i++;
+        }
+        /* --- end M0 --- */
         else if (strcmp(a, "--help") == 0 || strcmp(a, "-h") == 0) { usage(); return 0; }
         else { fprintf(stderr, "runner: unknown option %s\n", a); usage(); return 1; }
     }
@@ -441,6 +638,7 @@ int main(int argc, char **argv)
     }
     if (frames > 0) step(frames);
     else if (!script) step(300);
+    if (jr.on) { fprintf(stderr, "runner: journey %s never ended\n", jr.name); failures++; }   /* M0 */
     if (assert_no_stubs && stub_check("during the run")) return 2;
     if (failures) {
         fprintf(stderr, "runner: %d failure(s)\n", failures);

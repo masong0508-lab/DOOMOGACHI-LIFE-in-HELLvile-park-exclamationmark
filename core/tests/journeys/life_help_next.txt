@@ -1,0 +1,48 @@
+# life_help_next (M0): the island hub -> the next citizen with a problem
+# helped, the wanted item already in the bag (Citizens, START filters,
+# Tag: Has a problem, open them, Help!). Budget: budgets.tsv life_help_next.
+scene NEW_ISLAND
+wait 10
+press A
+wait 10
+press A
+wait 10
+press DOWN
+wait 2
+press A
+wait 20
+press A
+wait 2
+press A
+wait 2
+press A
+wait 2
+press A
+wait 10
+expect-scene ISLAND
+wait 30
+problem Fiddlestick item Perfume
+item Perfume -99
+item Perfume 1
+expect-problem Fiddlestick
+journey-begin life_help_next
+press R
+wait 1
+expect-scene ROSTER
+press START
+press DOWN
+press DOWN
+press DOWN
+press RIGHT
+press B
+wait 1
+shot problems
+press A
+wait 1
+expect-scene RESIDENT
+press A
+wait 1
+expect-problem Fiddlestick 0
+expect-item Perfume 0
+journey-end life_help_next
+shot helped

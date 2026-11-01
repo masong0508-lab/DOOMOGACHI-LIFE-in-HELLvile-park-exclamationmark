@@ -1,0 +1,43 @@
+# life_feed (M0): the island hub -> a citizen fed, found by name
+# (Citizens, SELECT search, open, Feed, the first food). The name's
+# letters are reported as typed, not presses. Budget: budgets.tsv life_feed.
+scene NEW_ISLAND
+wait 10
+press A
+wait 10
+press A
+wait 10
+press DOWN
+wait 2
+press A
+wait 20
+press A
+wait 2
+press A
+wait 2
+press A
+wait 2
+press A
+wait 10
+expect-scene ISLAND
+wait 30
+item Cupcake -99
+item Cupcake 1
+journey-begin life_feed
+press R
+wait 1
+expect-scene ROSTER
+press SELECT
+wait 1
+type "Sandwichy\n"
+wait 1
+press A
+wait 1
+expect-scene RESIDENT
+press A
+wait 1
+press A
+wait 1
+expect-item Cupcake 0
+journey-end life_feed
+shot fed

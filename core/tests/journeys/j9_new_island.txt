@@ -1,0 +1,38 @@
+# J9 (M0): boot -> a new Hellvile Park Classic island's hub (title, Free
+# Play, New island, the New Island screen's choices with their defaults).
+# Budget: budgets.tsv j9_new_island.
+expect-scene BOOT
+journey-begin j9_new_island
+wait 5
+press A
+wait 1
+expect-scene TITLE
+wait 20
+press A
+wait 2
+press DOWN
+press A
+wait 2
+press A
+wait 2
+expect-scene NEW_ISLAND
+wait 10
+press A
+wait 10
+press A
+wait 10
+press DOWN
+wait 2
+press A
+wait 20
+press A
+wait 2
+press A
+wait 2
+press A
+wait 2
+press A
+wait 10
+expect-scene ISLAND
+journey-end j9_new_island
+shot hub

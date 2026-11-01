@@ -200,6 +200,46 @@ accessibility.
 | Strafe / lock-on | L / R | L1 / R2-lock, Square roll, Triangle weapon |
 | Look up/down | hold L + D-pad (classic) | L2/R2 or D-pad (modern) |
 
+### 4.1 UX budgets: presses per journey
+
+Every common journey has a press budget, measured by the journey meter
+(`make -C core journeys`, part of `make -C core test`): the scripts in
+`core/tests/journeys/` play each journey with the fewest presses the
+game allows today, at 240x160 and 320x240, and fail when a journey takes
+more presses or logic ticks than its row in
+`core/tests/journeys/budgets.tsv`, or a different number of presses at the
+two sizes. A package that shortens a journey lowers its row in the same
+commit; nobody raises a row without saying why. Depth is how many scenes
+or modals deep the journey went, screens how often the top scene changed;
+typed letters (names in a search) are counted apart from presses.
+
+| Journey | Presses | Depth | Target (owner) |
+|---|---|---|---|
+| J1 boot -> title menu | 2 | 0 | (U5/U6) |
+| J2 boot -> story continued | 4 | 0 | 3 (U6, Continue first) |
+| J3 title -> music volume -1 in Options -> title | 9 | 1 | 5 (U2) |
+| J4 combat pause -> music volume -1 -> back in the fight | 11 | 1 | 4 (U3a) |
+| J5 title -> language to Spanish -> title | 5 | 1 | (U5) |
+| J6 story overworld: save from the pause menu, walk on | 9 | 0 | (U3b) |
+| J7 island: save from the START menu, back to the hub | 7 | 1 | 3 (U3c quick save) |
+| J8 story overworld -> title screen | 5 | 1 | (U3b) |
+| J9 boot -> a new Classic island's hub | 13 | 1 | 10 (U6) |
+| new island: New Island screen -> hub | 8 | 1 | (U6/LS6) |
+| help the next citizen with a problem (item in the bag) | 9 | 3 | 2 (LS-QA: B = next problem) |
+| a problem that needs an item not in the bag: find, shop, help | 26 | 3 | 3 (LS-QA: buy on the spot) |
+| feed a citizen found by name | 6 + name | 3 | (LS-QA) |
+| introduce two citizens found by name | 13 + 2 names | 4 | (LS-QA) |
+| collect today's rent | 4 | 0 | 0 (LS-QA: automatic) |
+| save the island | 7 (= J7) | 1 | 3 (U3c) |
+| open the news | 1 | 1 | |
+| open the Doomogachi | 1 | 1 | |
+| add a household member | reserved | | 6 (F2) |
+| care for the whole household | reserved | | 1 (F2) |
+
+Frame rates and the latency of each life-sim screen's opening press are
+measured on the consoles by `make -C gba test-life` (docs/GBA.md "Life
+tour") and `ps1/harness/scripts/perf_life.txt` (docs/PS1.md).
+
 ## 5. Look & feel
 **Premium, not cheap pixel art: cute, lively, constantly animated, and
 vaguely furry.** Most citizens are soft plush critter-folk (cat, fox,

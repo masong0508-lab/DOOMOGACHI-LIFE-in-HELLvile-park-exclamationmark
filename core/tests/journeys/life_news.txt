@@ -1,0 +1,28 @@
+# life_news (M0): the island hub -> the news feed (L).
+# Budget: budgets.tsv life_news.
+scene NEW_ISLAND
+wait 10
+press A
+wait 10
+press A
+wait 10
+press DOWN
+wait 2
+press A
+wait 20
+press A
+wait 2
+press A
+wait 2
+press A
+wait 2
+press A
+wait 10
+expect-scene ISLAND
+wait 30
+journey-begin life_news
+press L
+wait 1
+expect-scene NEWS
+journey-end life_news
+shot news

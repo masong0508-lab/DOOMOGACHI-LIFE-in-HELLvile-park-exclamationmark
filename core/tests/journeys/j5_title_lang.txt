@@ -1,0 +1,21 @@
+# J5 (M0): from the title's main menu, switch the language to Spanish in
+# Options and come back. Budget: budgets.tsv j5_title_lang.
+wait 5
+press A
+wait 20
+press A
+wait 2
+expect-scene TITLE
+expect-lang en
+journey-begin j5_title_lang
+press DOWN
+press DOWN
+press A
+wait 1
+expect-scene OPTIONS
+press RIGHT
+expect-lang es
+press B
+wait 1
+expect-scene TITLE
+journey-end j5_title_lang

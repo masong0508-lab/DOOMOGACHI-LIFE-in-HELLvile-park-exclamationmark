@@ -1,0 +1,24 @@
+# J3 (M0): from the title's main menu, turn the music volume down one
+# step in Options and come back. Budget: budgets.tsv j3_title_music.
+wait 5
+press A
+wait 20
+press A
+wait 2
+expect-scene TITLE
+journey-begin j3_title_music
+press DOWN
+press DOWN
+press A
+wait 1
+expect-scene OPTIONS
+press R
+press R
+press R
+press R
+shot audio
+press LEFT
+press B
+wait 1
+expect-scene TITLE
+journey-end j3_title_music

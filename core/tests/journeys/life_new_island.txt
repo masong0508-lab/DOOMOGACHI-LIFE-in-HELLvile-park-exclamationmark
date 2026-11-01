@@ -1,0 +1,26 @@
+# life_new_island (M0): the New Island screen -> a Hellvile Park Classic
+# island's hub with every default (the free-play part of J9).
+# Budget: budgets.tsv life_new_island.
+scene NEW_ISLAND
+wait 10
+expect-scene NEW_ISLAND
+journey-begin life_new_island
+press A
+wait 10
+press A
+wait 10
+press DOWN
+wait 2
+press A
+wait 20
+press A
+wait 2
+press A
+wait 2
+press A
+wait 2
+press A
+wait 10
+expect-scene ISLAND
+journey-end life_new_island
+shot hub

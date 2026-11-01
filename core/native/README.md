@@ -20,7 +20,7 @@ CI use, and how every team looks at its screens. It implements every
 make -C core runner                 # -> core/build/runner (BUILD=dir to move it)
 core/build/runner --script FILE --shots DIR [--w 240 --h 160]
        [--frames N] [--saves DIR] [--seed N] [--zoom N] [--gba-input]
-       [--assert-no-stubs] [--quiet] [--verbose]
+       [--assert-no-stubs] [--quiet] [--verbose] [--budgets FILE]
 ```
 
 * `--gba-input` sets `DOOMO_INPUT_SYNTH_XY` like the GBA does (SELECT+A = X,
@@ -48,6 +48,14 @@ One command per line; `#` starts a comment.
 | `save SLOT` / `load SLOT` / `expect-save SLOT` | exercise the save system |
 | `log TEXT` | print a line |
 | `no-stubs` | fail now if any stub has run |
+| `journey-begin NAME` / `mark NAME` | (M0) start the journey meter: from here every press (`press`, `hold`, `down`, each A of `skip-talk`/`skip-to`, the `\n` OK of `type`) counts 1 press, every frame 1 tick, every typed letter 1 typed; depth = scene pushes + modals above the start |
+| `journey-end [NAME]` / `report [NAME]` | (M0) stop it and print `journey: NAME presses=P ticks=T depth=D screens=S typed=C`; with `--budgets FILE` fail when the journey's row is missing or exceeded |
+| `expect-presses NAME [<=] N` | (M0) fail unless journey NAME took at most N presses |
+| `problem WHO KIND [ITEM]` | (M0) raise a problem for the citizen named WHO (`hungry dirty bored sick item fight lonely` or a `PROB_*` number; ITEM by name, e.g. `Flowers`) |
+| `item ITEM [N]` / `expect-item ITEM N` | (M0) add N (may be negative) of ITEM to the bag / fail unless it holds exactly N |
+| `expect-problem WHO [0\|1]` | (M0) fail unless WHO has (1) / has no (0) open problem |
+| `expect-rel WHO OTHER [0\|1]` | (M0) fail unless the two know each other (1) / have never met (0) |
+| `expect-money MIN` | (M0) fail unless the purse holds at least MIN H$ |
 
 Buttons: `UP DOWN LEFT RIGHT A B L R START SELECT X Y L2 R2`.
 
@@ -55,6 +63,15 @@ Buttons: `UP DOWN LEFT RIGHT A B L R START SELECT X Y L2 R2`.
 240x160 and 320x240 (screenshots in `$(BUILD)/shots/<w>x<h>/<script>/`).
 A script whose first line is `# assert-no-stubs` also gets that flag.
 Look at the PNGs — every team verifies its screens visually.
+
+`core/tests/run_journeys.sh` (`make -C core journeys`, part of `test`)
+plays every `core/tests/journeys/*.txt` the same way with
+`--budgets core/tests/journeys/budgets.tsv`, prints one table row per
+journey (presses, ticks, depth, screens, typed, the budget) and fails on a
+journey over budget, a press count that differs between 240x160 and
+320x240, a journey without a budget row or a row without a journey, and
+when the meter itself lets j1 through with its row lowered by one press.
+See docs/GAME_DESIGN.md "UX budgets".
 
 ## plat_view3d: the height raycaster (reference semantics)
 
