@@ -31,9 +31,9 @@ also needs `git` and `g++`.
 
 `build_flycast.sh` pins Flycast to `e7085e20fe8d81257e11aea5f19a9c1ca2b1bd55`
 (2026-10-31), fetches it with a shallow `git fetch`, builds with
-`make platform=unix HAVE_OPENMP=0` (one texture-decoding thread, so frames
-repeat) and copies the `.so` to `build/`. It deletes the source and object
-trees afterwards unless `--keep` is given, and it is a no-op when the `.so`
+`make platform=unix` and copies the upstream output (`parallel_dc_libretro.so`,
+the pinned Makefile's `TARGET_NAME`) to `build/flycast_libretro.so`. It deletes the source and object
+trees afterwards (also when the build fails) unless `--keep` is given, and it is a no-op when the `.so`
 of the pinned commit is already there.
 
 ## Running

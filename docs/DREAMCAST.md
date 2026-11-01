@@ -197,8 +197,8 @@ Dreamcast counterpart of `gba/harness` and the PS1 harness:
 
 - `build_flycast.sh` builds the Flycast libretro core
   (`libretro/flycast` at `e7085e20fe8d81257e11aea5f19a9c1ca2b1bd55`,
-  2026-10-31; `make platform=unix HAVE_OPENMP=0`) into
-  `dc/harness/build/flycast_libretro.so`, then deletes its source tree.
+  2026-10-31; `make platform=unix`, whose output `parallel_dc_libretro.so`
+  is copied to `dc/harness/build/flycast_libretro.so`), then deletes its source tree.
 - `dcrun` loads the core, boots an `.elf`/`.cdi`/`.gdi`/`.chd` with
   Flycast's HLE BIOS (no Sega files), renders through an EGL surfaceless
   GL context (Mesa llvmpipe, GL 4.5 core) into an FBO, and plays the
@@ -210,8 +210,9 @@ Dreamcast counterpart of `gba/harness` and the PS1 harness:
   `dc_mailbox` symbol (`sh-elf-nm`) and read through the core's
   `RETRO_MEMORY_SYSTEM_RAM`. The game side (`dc/src`) arrives in DC2.
 - Runs repeat: the core options are pinned by `dcrun` (threaded rendering
-  off, 1x, VGA, NTSC, ...), OpenMP is off in the core build, and the
-  Dreamcast clock boots at a fixed time (`--rtc`).
+  off, 1x, VGA, NTSC, ...), and the Dreamcast clock boots at a fixed
+  time (`--rtc`, with `TZ=UTC0` pinned because Flycast adds the host's
+  local-time offset).
 
 `make -C dc/harness test` checks `dcrun` itself against a stand-in core
 (`dc/harness/tests/mockcore.c`): every script command, the mailbox,

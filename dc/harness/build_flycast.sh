@@ -4,8 +4,9 @@
 #   dc/harness/build_flycast.sh [--jobs N] [--clean]
 #
 # Fetches libretro/flycast at the pinned commit (git, shallow) into
-# dc/harness/build/flycast and builds flycast_libretro.so there (OpenGL
-# renderer, no OpenMP so frames repeat). Output:
+# dc/harness/build/flycast and builds it there (OpenGL renderer). Upstream
+# names the output parallel_dc_libretro.so (TARGET_NAME in its Makefile); it
+# is copied under a fixed name. Output:
 #   dc/harness/build/flycast_libretro.so
 # The source and object trees are deleted afterwards unless --keep is given
 # (about 15 MB stays). Running it again with the .so present is a no-op.
@@ -43,6 +44,11 @@ if [ "$free_mb" -lt 1500 ]; then
 fi
 
 mkdir -p "$build"
+# Delete the source/object tree on any exit (success or failure) unless --keep,
+# so a failed build never leaves ~600 MB behind.
+cleanup() { if [ "$keep" = 0 ]; then rm -rf "$src"; fi; }
+trap cleanup EXIT
+trap 'exit 1' INT TERM HUP
 if [ ! -d "$src/.git" ]; then
     git init -q "$src"
     git -C "$src" remote add origin "$FLYCAST_REPO"
@@ -53,17 +59,18 @@ if [ "$(git -C "$src" rev-parse -q --verify HEAD 2>/dev/null)" != "$FLYCAST_COMM
 fi
 
 t0=$(date +%s)
-# HAVE_OPENMP=0: texture decoding in one thread, so runs are repeatable.
-make -C "$src" -j"$jobs" platform=unix HAVE_OPENMP=0 HAVE_LTCG=0 >"$build/flycast_build.log" 2>&1 || {
+make -C "$src" -j"$jobs" platform=unix HAVE_LTCG=0 >"$build/flycast_build.log" 2>&1 || {
     tail -n 40 "$build/flycast_build.log" >&2
     echo "flycast build failed; full log: $build/flycast_build.log" >&2
     exit 1
 }
 t1=$(date +%s)
-cp "$src/flycast_libretro.so" "$out"
+set -- "$src"/*_libretro.so
+if [ $# -ne 1 ] || [ ! -f "$1" ]; then
+    echo "expected exactly one *_libretro.so in $src, found: $*" >&2
+    exit 1
+fi
+cp "$1" "$out"
 echo "$FLYCAST_COMMIT" >"$stamp"
 peak=$(du -sm "$src" | cut -f1)
-echo "built $out in $((t1 - t0)) s; source+objects $peak MB"
-if [ "$keep" = 0 ]; then
-    rm -rf "$src"
-fi
+echo "built $out (from $(basename "$1")) in $((t1 - t0)) s; source+objects $peak MB"

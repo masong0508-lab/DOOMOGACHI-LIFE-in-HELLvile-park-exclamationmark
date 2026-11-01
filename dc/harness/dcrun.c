@@ -1189,6 +1189,10 @@ int main(int argc, char **argv)
     SYM(init); SYM(deinit); SYM(get_system_av_info); SYM(set_controller_port_device);
     SYM(load_game); SYM(unload_game); SYM(run); SYM(get_memory_data); SYM(get_memory_size);
 
+    /* Flycast's RTC adds the host's local-time offset to time(); pin TZ so
+       the Dreamcast clock is the same on every machine. */
+    setenv("TZ", "UTC0", 1);
+    tzset();
     core.set_environment(environment);
     core.init();
     core.set_video_refresh(video_refresh);
