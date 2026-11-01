@@ -33,6 +33,62 @@ reviewed, then landed on `claude/nice-allen-gr6czm`.
   until then the Dreamcast build is never actually booted in tests.
 - W15 (Bonejangles origin thread in the game) needs a yes/no.
 
+## By effort: smallest first
+
+Sizes: **S** = small (hours), **M** = medium (about a day), **L** = large (a few days),
+**XL** = extra large (a week or more). Within each size, do the top lines first;
+a package can only start once the ones it depends on (see the sections below) have landed.
+
+### Tiny: finish what's already built (saved on branches)
+1. U0 settings core (branch `fut-u0`): fix one GBA fps test failure, then land.
+2. Re-run the PS1 harness after LS1.
+3. Approve and build the Flycast core (`make -C dc/harness flycast`), boot DC2.
+4. Resume and land the saved branches: G3, G9, G11, H7, L4, W6, W7.
+
+### S: small
+- Life sim: PA0 follow-ups, U1g (GBA config sector), U1p (PS1 config file),
+  E11 (mature filter + 18+ confirm), LS-IN (press latch), PA9 (romance/mature
+  gates for heroes), U3b (story pause), U3c (island START menu), PA3b (Spanish
+  gender fixes), PA8 (house/activities follow the avatar), E10 (Dreamcast pack
+  adapter), E12 (endings integration), Z1 (joint gate).
+- House: H11 (turn the GBA house state on).
+- Script: W14 (minigame/shop/unlock text), W15 (Bonejangles origin; needs your yes/no).
+- Languages: L9 (language picker), L11 (docs).
+- Dreamcast extras: X0 (contracts), X2 (rumble), X3 (VGA/display options), X8 (boot easter egg).
+
+### M: medium
+- Life sim: E7 (content-pack format), U3a (pause shell), U5 (first-boot language
+  picker), PA3a (gender-aware text), PA5 (character switcher), PA2 (hero choice:
+  SUNNY / MARVIN / your own), U6 (Continue-first title and flow), E6c (Ch3
+  punch-up), LS-QA (fewer taps), E6d (Ch4 + epilogue punch-up), LS6 (streamlined
+  progression), E8 (GBA mature ROM), E9 (PS1 mature disc), LS5 (story/combat ties),
+  PA6 (new life as a villager), PA7 (play-as content), U4 (held-frame backdrop),
+  F4 (family events), F3 (house occupancy), PA10 (play-as integration),
+  F5 (pets + uplift), F6 (loss/death), FREE (free mode), MP0 (profiles).
+- GBA speed: G10 (pet, concert, title, dialogue), G12 (60 Hz, optional).
+- Script: W8 (side_a part 3), W12 (free-play chatter), W13 (library flavour), W16 (integration).
+- Languages: L8a, L8b, L8c (Spanish batches), L8f (Spanish polish).
+- Dreamcast: DC4 (input + VMU saves), DC7 (overworld), DC9 (full game + CI);
+  extras X1 (VMU live pet), X4 (sharp 640x480 text), X5 (keyboard + mouse), X10 (VMU card trading).
+
+### L: large
+- Life sim: PA1 (play-as core), U2 (options screen redesign), E2 (mature scene
+  slots), F1 (family core), E1 (ending engine), LS3 (life event engine),
+  E3 (good + secret endings), E4 (bad + sexy endings, romance routes),
+  PA4 (overworld handoff), LS4 (event and family content), F2 (family UI),
+  U8 (GBA 3D Faster/Better done properly), S-HOUSE (story house unlock + tiers), MP1 (multiplayer + co-op heroes).
+- GBA speed: G8 (tile backend: island hub and menus at 30 fps).
+- House: H3 (PS1 room shells).
+- Script: W9, W10, W11 (side_b rewrites).
+- Languages: L2b (formatted text), L3 (tooling), L5 (story text for N languages),
+  L7 (grammar-aware generators), L8d, L8e (big Spanish batches).
+- Dreamcast: DC3 (PVR 2D), DC5 (AICA audio), DC8 (house renderer); extra X7 (DC-only area + costumes).
+
+### XL: extra large
+- Languages: L6 (PS1 language tables on disc), L10-pt, L10-fr, L10-de, L10-it
+  (+ Dutch and Polish), then Chinese and Japanese (new font path).
+- Dreamcast: DC6 (PVR 3D); extras X6 (VMU pocket pet), X9 (4-player party).
+
 ## 1. Priority 1: make the life sim playable on every build
 
 Goal: Tomodachi-style life sim that is responsive, replayable and part of the
