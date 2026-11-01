@@ -599,7 +599,8 @@ lamp pools and contact shadows, a camera on a `TW_BOING` spring with the
   (`doomo_furn_text()`), and `gfx_upload_now()` stages its rows in the
   other frame's display list instead of 4 KB of its own `.bss`.
 * **Harness.** `harness/scripts/home.txt`: `room-test N` (hcmd.c) swaps in
-  fixed layouts, `seed N` pins `plat_entropy()`, `expect-fps`, and
+  fixed layouts (H5: 10..13 the fenced Garden, 14..17 the fenced Park Plot,
+  in views 0..3: shots `garden_v*`, `plot_v*`), `seed N` pins `plat_entropy()`, `expect-fps`, and
   `expect-same A B MAX` (the parity pairs); then the real Hold the Door
   wave 3, a visit and HomeMart, each checking its part loaded
   (`expect-log ovl: home.defend`). `clock H M` and `money N` play the

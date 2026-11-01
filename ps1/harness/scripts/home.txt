@@ -89,6 +89,35 @@ press R
 wait 30
 shot home_view0
 
+# --- (H5) the open kinds fenced on every edge (room_ref golden lines 51 /
+#     49): the soil lip all round, the Garden's cottage wall strip behind
+#     its door, the Park Plot's gate posts, front-edge fences, in the four
+#     views (the door and its backdrop cut away while
+#     their wall faces the camera); room-test 10 + view, 14 + view ---
+room-test 10
+wait 30
+shot garden_v0
+room-test 11
+wait 30
+shot garden_v1
+room-test 12
+wait 30
+shot garden_v2
+room-test 13
+wait 30
+shot garden_v3
+room-test 14
+wait 30
+shot plot_v0
+room-test 15
+wait 30
+shot plot_v1
+room-test 17
+wait 30
+shot plot_v3
+room-test 1
+wait 30
+
 # --- home_cellar_full (C-G >= 24): 8x8, 40 pieces, dim ---
 room-test 3
 wait 30

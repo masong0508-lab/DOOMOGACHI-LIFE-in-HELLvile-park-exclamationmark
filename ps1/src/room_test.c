@@ -18,6 +18,7 @@
 #include "../../core/src/home_int.h"      /* HomeRoom, templates */
 #include "../../core/gen/furn_ids.h"
 #include "room_int.h"
+#include "../../core/tests/room_shells.h"   /* (H5) the fenced open kinds */
 
 #pragma GCC optimize ("Os")          /* harness only: small, not fast */
 
@@ -69,12 +70,29 @@ void room_test_render(const DoomoRoomView *v)
     DoomoRoomView tv = *v;
     uint32_t t = v->time;
     int i, n = 0, na = 0, walkers = 0, mode = g_room_test, force = -1;
-    int parity = mode >= ROOM_TEST_PARITY_LIVE;
+    int parity = mode >= ROOM_TEST_PARITY_LIVE && mode < ROOM_TEST_GARDEN;
     if (parity) {
         t = mode >= ROOM_TEST_PARITY2_LIVE ? 97 : 40;
         force = (mode == ROOM_TEST_PARITY_LIVE || mode == ROOM_TEST_PARITY2_LIVE) ? RM_LIVE : RM_FILL;
     }
-    if (mode == ROOM_TEST_CELLAR || mode == ROOM_TEST_DEFEND) {
+    if (mode >= ROOM_TEST_GARDEN && mode < ROOM_TEST_PLOT + 4) {
+        /* (H5) room_ref golden lines 51 / 49: the Garden on grass (the
+         * cottage wall behind the door) and the Park Plot (the gate posts),
+         * fenced on every edge, in view (mode - first) & 3 */
+        DoomoRoomView sv;
+        int line = mode < ROOM_TEST_PLOT ? 51 : 49;
+        tv.yaw = (int16_t)(((mode - ROOM_TEST_GARDEN) & 3) * 1024);
+        rs_shell_room(line - ROOM_SHELL_FIRST, &rr);
+        rs_view(&sv, objs, &rr, line);
+        n = rr.nobj;
+        tv.w = sv.w; tv.d = sv.d;
+        tv.wallpaper = sv.wallpaper; tv.floor = sv.floor; tv.ceiling = sv.ceiling;
+        tv.wall_paint = sv.wall_paint; tv.floor_paint = sv.floor_paint;
+        tv.room_kind = sv.room_kind;
+        tv.daylight = 15;
+        tv.roof = 0;
+        walkers = 0;
+    } else if (mode == ROOM_TEST_CELLAR || mode == ROOM_TEST_DEFEND) {
         int want = mode == ROOM_TEST_CELLAR ? HOME_OBJ_MAX : 24;
         tv.w = tv.d = 8;
         home_room_template(HOME_ROOM_CELLAR, &rr);

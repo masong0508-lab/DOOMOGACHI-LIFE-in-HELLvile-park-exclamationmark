@@ -15,7 +15,8 @@
 extern volatile uint8_t g_room_test;
 enum { ROOM_TEST_OFF, ROOM_TEST_STEADY, ROOM_TEST_ORBIT, ROOM_TEST_CELLAR, ROOM_TEST_DROP,
        ROOM_TEST_DEFEND, ROOM_TEST_PARITY_LIVE, ROOM_TEST_PARITY_BD, ROOM_TEST_PARITY2_LIVE,
-       ROOM_TEST_PARITY2_BD, ROOM_TEST_COUNT };
+       ROOM_TEST_PARITY2_BD, ROOM_TEST_GARDEN /* + view 0..3 */, ROOM_TEST_PLOT = ROOM_TEST_GARDEN + 4,
+       ROOM_TEST_COUNT = ROOM_TEST_PLOT + 4 };
 
 /* the frame's render path: one full pass, the backdrop drawn again, or
  * drawn back (room.c); force: one of them for the parity pairs, -1 = choose */

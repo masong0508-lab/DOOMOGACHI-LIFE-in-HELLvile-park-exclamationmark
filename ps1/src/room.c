@@ -898,6 +898,99 @@ static void draw_wall(RC *c, int w, const TexRef *t)
     }
 }
 
+static const DoomoFurn *furn_of(const DoomoRoomObj *o);
+
+/* (H5) the wall (0..3, wall_frame's) a wall piece stands on: the back
+ * walls by rot parity, an open kind's front edges by home_wall_edge */
+static int piece_wall(const RC *c, const DoomoRoomObj *o)
+{
+    if (c->v->room_kind == ROOMK_WALLS) return RO_ROT(o) & 1;
+    return home_wall_edge(RO_ROT(o), o->x, o->y, c->W, c->D);   /* HE_* == the wall's index */
+}
+
+/* (H5) a quad seen from either side (f4 culls the back) */
+static void f4_2(RC *c, int a, int b, int d, int e, uint32_t col, int slot)
+{
+    f4(c, a, b, d, e, col, slot);
+    f4(c, b, a, e, d, col, slot);
+}
+
+/* (H5) a box on wall w from s0 to s1 (world units along it), WALL_T thick
+ * outwards, z0..z1: the face, the top, the outer face and the two ends */
+static void bd_box(RC *c, int w, int32_t s0, int32_t s1, int32_t z0, int32_t z1,
+                   uint32_t face, uint32_t top, uint32_t side)
+{
+    int32_t ox, oy;
+    int rx, ry, len, nx, ny, i;
+    wall_frame(c, w, &ox, &oy, &rx, &ry, &len);
+    nx = -ry; ny = rx;                                 /* inward */
+    for (i = 0; i < 8; i++) {
+        int32_t sv = (i & 1) ? s1 : s0, t = (i & 4) ? -WALL_T : 0;
+        vset(c, i, ox + rx * sv + nx * t, oy + ry * sv + ny * t, (i & 2) ? z1 : z0);
+    }
+    if (!group(c, 8)) return;
+    f4_2(c, 2, 3, 0, 1, face, SLOT_WALL);              /* inner face   */
+    f4_2(c, 6, 7, 2, 3, top, SLOT_TRIM);               /* top          */
+    f4_2(c, 7, 6, 5, 4, side, SLOT_WALL);              /* outer face   */
+    f4_2(c, 6, 2, 4, 0, side, SLOT_WALL);              /* the s0 end   */
+    f4_2(c, 3, 7, 1, 5, side, SLOT_WALL);              /* the s1 end   */
+}
+
+/* (H5) room_ref's backdrop in 3D: behind the fixed door, while its wall is
+ * a back wall, the Garden's strip of the cottage's back wall (a stone
+ * footing, clapboard siding with its courses, a wood trim) and the Park
+ * Plot's two stone gate posts. Cut away with the door on the front. */
+static void draw_backdrop(RC *c)
+{
+    const DoomoRoomView *v = c->v;
+    int i;
+    for (i = 0; i < v->nobj; i++) {
+        const DoomoRoomObj *o = &v->objs[i];
+        const DoomoFurn *f = furn_of(o);
+        int w, a0, a1, len, k, fw;
+        int32_t s0, s1, L;
+        int qin, qout;
+        if (!f || f->role != FR_DOOR || !(f->flags2 & FF_PORTAL) || (o->flags & (RO_GHOST | RO_SEMI))) continue;
+        w = piece_wall(c, o);
+        if (!R.wall_back[w]) return;
+        fw = f->fw ? f->fw : 1;
+        a0 = (w & 1) ? o->y : o->x;
+        a1 = a0 + fw;
+        len = (w & 1) ? c->D : c->W;
+        /* along the wall from its origin (wall_frame): walls 1 and 2 run backwards */
+        if (w == 1 || w == 2) { int t = len - a1; a1 = len - a0; a0 = t; }
+        L = len * RT;
+        {
+            int32_t nx = (w == 1) ? 1 : (w == 3) ? -1 : 0, ny = (w == 0) ? 1 : (w == 2) ? -1 : 0;
+            qin = face_q7(c, nx, ny);
+            qout = face_q7(c, -nx, -ny);
+        }
+#define BDC(pal, q) rgb_q7(g_rgb[pal], (c->amb_r * (q)) >> 7, (c->amb_g * (q)) >> 7, (c->amb_b * (q)) >> 7)
+        c->fx = 0;
+        c->bias = 0;
+        if (v->room_kind == ROOMK_GARDEN) {
+            uint32_t sid = BDC(PAL_PAINT(PAINT_BONE, 2), qin), sid_d = BDC(PAL_PAINT(PAINT_BONE, 1), qin);
+            uint32_t stone = BDC(PAL_RAMP(RAMP_STONE, 4), qin), trim = BDC(PAL_RAMP(RAMP_WOOD, 4), qin);
+            uint32_t cap = BDC(PAL_RAMP(RAMP_WOOD, 2), 116), out = BDC(PAL_PAINT(PAINT_BONE, 1), qout);
+            s0 = a0 > 0 ? (int32_t)(a0 - 1) * RT : 0;
+            s1 = (int32_t)(a1 + 1) * RT < L ? (int32_t)(a1 + 1) * RT : L;
+            bd_box(c, w, s0, s1, 0, 12, stone, stone, out);
+            bd_box(c, w, s0, s1, 12, WALL_H - 8, sid, sid, out);
+            for (k = 12 + 14; k < WALL_H - 12; k += 14)          /* the siding's courses */
+                bd_box(c, w, s0, s1, k, k + 2, sid_d, sid_d, out);
+            bd_box(c, w, s0, s1, WALL_H - 8, WALL_H, trim, cap, out);
+        } else {
+            uint32_t st = BDC(PAL_RAMP(RAMP_STONE, 4), qin), sd = BDC(PAL_RAMP(RAMP_STONE, 3), qout);
+            uint32_t cap = BDC(PAL_RAMP(RAMP_STONE, 6), 116);
+            int32_t h = WALL_H * 3 / 4, p0 = (int32_t)a0 * RT - 8, p1 = (int32_t)a1 * RT;
+            if (p0 >= 0) bd_box(c, w, p0, p0 + 8, 0, h, st, cap, sd);
+            if (p1 + 8 <= L) bd_box(c, w, p1, p1 + 8, 0, h, st, cap, sd);
+        }
+#undef BDC
+        return;
+    }
+}
+
 /* garden plots: a soil lip around the floor */
 static void draw_lip(RC *c)
 {
@@ -1297,10 +1390,14 @@ static int has_shadow(const DoomoRoomObj *o, const DoomoFurn *f)
     return !((f->flags & (FF_RUG | FF_WALL | FF_SMALL)) || o->z);
 }
 
-/* where the walls' pieces hang: rot even -> wall 0 (y = 0), odd -> wall 1 (x = 0) */
+/* where the walls' pieces hang: rot even -> wall 0 (y = 0), odd -> wall 1
+ * (x = 0); (H5) an open kind's pieces on every edge (piece_wall), all
+ * shown but the door, cut away with its backdrop on the front */
 static int piece_hidden(const RC *c, const DoomoRoomObj *o, const DoomoFurn *f)
 {
-    if (!(f->flags & FF_WALL) || c->v->room_kind != ROOMK_WALLS) return 0;
+    if (!(f->flags & FF_WALL)) return 0;
+    if (c->v->room_kind != ROOMK_WALLS)
+        return (f->flags2 & FF_PORTAL) && !R.wall_back[piece_wall(c, o)];
     {
         int w = RO_ROT(o) & 1;
         return !R.wall_back[w] || c->wall_h[w] < WALL_H - 16;
@@ -1312,7 +1409,8 @@ static int piece_hidden(const RC *c, const DoomoRoomObj *o, const DoomoFurn *f)
 COLD_BEGIN
 static void piece_setup(RC *c, const DoomoRoomObj *o, const DoomoFurn *f, int *pW, int *pD)
 {
-    int rot = (f->flags & FF_WALL) ? (RO_ROT(o) & 1) : RO_ROT(o);
+    int pw = (f->flags & FF_WALL) ? piece_wall(c, o) : -1;
+    int rot = pw >= 0 ? pw : RO_ROT(o);         /* (H5) walls 2 / 3: turned to face in */
     int W = (f->fw ? f->fw : 1) * 16, D = (f->fd ? f->fd : 1) * 16;     /* iso units */
     int Wr = (rot & 1) ? D : W, Dr = (rot & 1) ? W : D;
     int32_t ox = o->x * 16, oy = o->y * 16, oz = o->z;
@@ -1322,8 +1420,11 @@ static void piece_setup(RC *c, const DoomoRoomObj *o, const DoomoFurn *f, int *p
     if (o->flags & RH_HALF_X) ox += 8;
     if (o->flags & RH_HALF_Y) oy += 8;
     if (f->flags & FF_WALL) {
-        /* hang on the wall's inner face */
-        if (rot & 1) ox = 0; else oy = 0;
+        /* hang on the wall's inner face (H5: the front edges' too) */
+        if (rot == 1) ox = 0;
+        else if (rot == 0) oy = 0;
+        else if (rot == 2) oy = c->D * 16 - D;
+        else ox = c->W * 16 - D;
     }
     if (o->jitter) jit = (int)((c->v->time >> 1) & 1) * o->jitter - o->jitter / 2;
     /* local (iso units) -> room (iso units): rotation + where local (0,0) lands */
@@ -1922,6 +2023,7 @@ static void draw_set(RC *c, const TexRef *wt, const TexRef *ft, int resting_only
         if (v->roof) draw_roof(c);
     } else {
         draw_lip(c);
+        draw_backdrop(c);
     }
     for (i = 0; i < v->nobj; i++) {
         const DoomoRoomObj *o = &v->objs[i];
