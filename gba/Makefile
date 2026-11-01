@@ -7,6 +7,8 @@
 #   make -C gba test          both ROMs + harness + smoke scripts
 #   make -C gba test-speed    the speed tour: fps gates + table of every
 #                             target scene (SPEED_BASE=LOG: + frame parity)
+#   make -C gba test-life     the life tour (M0): the free-play screens' fps,
+#                             work ms and press-to-picture latency
 #   make -C gba clean
 #
 # Toolchain: arm-none-eabi-gcc + newlib from apt (no devkitPro). Our own
@@ -112,7 +114,7 @@ CORE_OBJS := $(call core_obj,$(CORE_SRCS))
 # over the core's weak stubs, and the core's strong definitions win over both.
 ALL_OBJS  := $(GBA_OBJS) $(CORE_OBJS)
 
-.PHONY: all rom engine-test engine-test-nocore harness test test-et test-game test-save test-coresave test-home test-ow test-speed clean sizes
+.PHONY: all rom engine-test engine-test-nocore harness test test-et test-game test-save test-coresave test-home test-ow test-speed test-life clean sizes
 .DEFAULT_GOAL := all
 
 all: rom
@@ -260,6 +262,22 @@ test-speed: harness
 	echo "test-speed: log $(SPEED_LOG), shots $(SHOTS)/speed"; \
 	exit $$rc
 # --- end G1 ---
+
+# --- M0: the life tour (docs/GBA.md "Life tour"): the island hub, news,
+# island menu, roster, resident and apartments: fps and work ms (expect-fps
+# floors) and the latency of the press that opens each one. Not part of
+# `test` (like test-speed). ---
+LIFE_LOG ?= $(BUILD)/life_speed.log
+test-life: harness
+	@$(MAKE) --no-print-directory -f $(GBA)/Makefile rom ENGINE_TEST=0
+	@mkdir -p $(SHOTS)/life
+	@rc=0; \
+	$(HARNESS) $(BUILD)/doomogachi.gba --script $(GBA)/harness/scripts/life_speed.txt \
+	    --shots $(SHOTS)/life --quiet > $(LIFE_LOG) 2>&1 || rc=1; \
+	grep -E "harness: (fps|latency)|expected|HANG|FAIL" $(LIFE_LOG); \
+	echo "test-life: log $(LIFE_LOG), shots $(SHOTS)/life"; \
+	exit $$rc
+# --- end M0 ---
 
 sizes: $(ELF)
 	$(SIZE) -A $(ELF)

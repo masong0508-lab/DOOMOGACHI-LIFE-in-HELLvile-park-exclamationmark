@@ -25,7 +25,8 @@ core/data/maps/          ASCII map sources
 core/lang/               languages.tsv (the language registry, doomo/lang.h) and
                          each language's UI strings, <code>/ui_*.tsv
 core/native/             native platform (runner + PNG writer + soft raycaster)
-core/tests/              native unit/integration tests
+core/tests/              native unit/integration tests; core/tests/journeys/ the
+                         press budgets of the common journeys (M0, budgets.tsv)
 core/Makefile            make -C core {test,runner,gen,check-gen}
 core/sources.mk          CORE_SRCS list used by gba/ and ps1/ builds
 gba/                     GBA platform layer + Makefile + libmgba headless harness
@@ -104,10 +105,12 @@ regenerates everything into a temp dir and diffs it, and CI runs this.
 
 ```
 make -C core test          # native unit tests + headless playthrough + parity
+make -C core journeys      # the journey and tap meter (in test; docs/GAME_DESIGN.md 4.1)
 make -C core runner        # core/build/runner (see core/native/README.md)
 make -C core gen           # regenerate core/gen/*
 make -C gba                # gba/build/doomogachi.gba
 make -C gba test           # libmgba headless harness: boot, script input, PNGs
+make -C gba test-life      # the life tour: free-play fps + press latency (M0)
 cmake --preset ps1 ...     # see ps1/README.md -> ps1/build/doomogachi.{exe,bin,cue}
 make test                  # everything that can run locally
 ```

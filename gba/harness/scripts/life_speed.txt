@@ -1,0 +1,97 @@
+# life_speed.txt - the GBA life tour (M0, `make -C gba test-life`;
+# docs/GBA.md "Life tour"): the free-play screens the life sim lives on,
+# each settled (wait 200) and measured over 130 logic ticks (fps: logic
+# ticks/s, drawn frames/s, average and worst work ms per drawn tick), shot,
+# and the press that opens the next one timed with `latency` (video frames
+# from the press until the picture first differs from the same ROM's
+# unpressed frames, from a save state).
+#
+# A Hellvile Park Classic island (core/tests/journeys/life_new_island.txt).
+# The expect-fps floors are regression gates at about 85% of M0's baseline
+# (the harness is deterministic); a package that makes a screen faster
+# raises its floor.
+wait 40
+expect-log doomo: init
+seed 1
+scene NEW_ISLAND
+wait 10
+press A
+wait 10
+press A
+wait 10
+press DOWN
+wait 2
+press A
+wait 20
+press A
+wait 2
+press A
+wait 2
+press A
+wait 2
+press A
+wait 10
+expect-scene ISLAND
+
+# ---- the island hub ---------------------------------------------------------
+wait 200
+fps start
+wait 130
+expect-fps 6.3 life: island hub
+shot hub
+latency DOWN 120 hub cursor (DOWN)
+latency UP 120 hub cursor back (UP)
+
+# ---- the news feed (L) -------------------------------------------------------
+latency L 120 hub -> news (L)
+wait 200
+fps start
+wait 130
+expect-fps 17 life: news
+shot news
+press B
+wait 60
+
+# ---- the town hall's menu (A on the hub) --------------------------------------
+latency A 120 hub -> town hall menu (A)
+wait 200
+fps start
+wait 130
+expect-fps 5.5 life: island menu
+shot island_menu
+latency DOWN 120 island menu cursor (DOWN)
+press B
+wait 60
+
+# ---- Citizens (R) and a citizen ------------------------------------------------
+latency R 120 hub -> citizens (R)
+wait 200
+fps start
+wait 130
+expect-fps 21.5 life: roster
+shot roster
+latency DOWN 120 roster cursor (DOWN)
+latency A 120 roster -> resident (A)
+wait 200
+fps start
+wait 130
+expect-fps 19 life: resident
+shot resident
+latency DOWN 120 resident cursor (DOWN)
+press B
+wait 60
+press B
+wait 60
+
+# ---- Hillvile Towers: Browse homes ---------------------------------------------
+press LEFT
+wait 10
+press A
+wait 30
+latency A 120 towers menu -> apartments (A)
+wait 200
+fps start
+wait 130
+expect-fps 17.5 life: apartments
+shot apartments
+latency RIGHT 120 apartments cursor (RIGHT)

@@ -69,6 +69,13 @@
  *   story-fp [HEX]      print story_fingerprint(); with HEX, fail unless equal
  *   post CMD ARG        post mailbox command CMD (hcmd.c numbers) without
  *                       waiting, e.g. to "profile" a save while it runs
+ *   latency BTN [MAX] [LABEL]  (M0) press-to-picture latency: press BTN
+ *                       (held 2 ticks, like press) and count the video
+ *                       frames until the output frame first differs from
+ *                       the same ROM's frames without the press (a save
+ *                       state replays the run unpressed first); prints
+ *                       frames, ms and logic ticks, fails if nothing
+ *                       changed within MAX video frames (default 120)
  * Buttons: A B L R START SELECT UP DOWN LEFT RIGHT, X (=SELECT+A),
  * Y (=SELECT+B).
  *
@@ -113,6 +120,11 @@ static int vhash_shots;
 static char *logbuf;
 static size_t log_len, log_cap;
 static char last_scene[64];
+/* M0: set while latency() loads its save state back: mGBA replays the DMA
+ * registers before their source addresses and logs "Invalid DMA source
+ * address 0", which is not the ROM's doing (a replay from the state gives
+ * the very same frames) */
+static int state_loading;
 #define SCENE_STACK_MAX 8
 static char scene_stack[SCENE_STACK_MAX][64];   /* [0] is the scene underneath all pushes */
 static int scene_depth;
@@ -169,6 +181,7 @@ static void on_log(struct mLogger *logger, int category, enum mLogLevel level,
         if (strncmp(msg, "FATAL", 5) == 0) failed = 1;
         return;
     }
+    if (state_loading && !(level & mLOG_FATAL)) return;   /* M0: latency's state reload */
     if (level & (mLOG_FATAL | mLOG_GAME_ERROR)) {
         fprintf(stderr, "harness: mGBA %s: %s\n", cat ? cat : "?", msg);
         if (strstr(msg, "invalid") || strstr(msg, "Invalid") ||
@@ -681,6 +694,44 @@ static const char *line_rest(const char *raw, char *const *argv, int argc,
     return out;
 }
 
+/* ---- M0: "latency BTN [MAX] [LABEL]". The scene may animate on its own,
+ * so a changed frame alone says nothing: the run is first played MAX video
+ * frames without the press from a save state (the reference), then again
+ * from the same state with BTN held for 2 logic ticks; the latency is the
+ * first video frame whose output differs from the reference. The pressed
+ * run is the one that goes on. Video frames are 16.74 ms (59.73 Hz). */
+#define LAT_MAX 600
+static int latency(uint32_t bits, int max, const char *label)
+{
+    static uint32_t ref[LAT_MAX];
+    size_t sz = core->stateSize(core);
+    void *st = malloc(sz);
+    uint32_t t0, k0 = keys;
+    int i, hit = -1, held = 1;
+    if (!st || max < 1) { free(st); return -1; }
+    if (max > LAT_MAX) max = LAT_MAX;
+    if (sync_mode) core->busWrite32(core, MAILBOX_HOLD_AT, HOLD_NONE);
+    if (!core->saveState(core, st)) { free(st); return -1; }
+    for (i = 0; i < max; i++) { run_frame(); ref[i] = frame_fnv(); }
+    state_loading = 1;              /* mGBA logs DMA errors while it restores */
+    core->loadState(core, st);
+    state_loading = 0;
+    free(st);
+    t0 = ticks();
+    keys = k0 | bits;
+    for (i = 0; i < max; i++) {
+        run_frame();
+        if (held && ticks() - t0 >= 2) { keys = k0; held = 0; }
+        if (hit < 0 && frame_fnv() != ref[i]) { hit = i + 1; break; }
+    }
+    keys = k0;
+    if (hit < 0) printf("harness: latency %s: nothing changed within %d video frames\n", label, max);
+    else printf("harness: latency %s: %d video frames, %.1f ms, %u logic ticks\n", label, hit,
+                hit * 1000.0 / 59.7275, (unsigned)(ticks() - t0));
+    if (sync_mode) run_until_tick(ticks() + 1);
+    return hit;
+}
+
 static int run_script(const char *path)
 {
     FILE *f = fopen(path, "r");
@@ -785,6 +836,15 @@ static int run_script(const char *path)
             t0 = t; v0 = v; d0 = d;
             core->busWrite32(core, MAILBOX_ADDR + 40, 0);
             ws0 = ws; wn0 = wn;
+        } else if (!strcmp(argv[0], "latency") && argc >= 2) {
+            /* --- M0: press-to-picture latency (see latency()) --- */
+            uint32_t b = button_bits(argv[1]);
+            int max = argc >= 3 && isdigit((unsigned char)argv[2][0]) ? atoi(argv[2]) : 120;
+            char label_buf[1024];
+            const char *label = argc >= 4 ? line_rest(raw, argv, argc, line, 3, label_buf, sizeof(label_buf))
+                                          : argv[1];
+            if (!b) fprintf(stderr, "harness: %s:%d unknown button %s\n", path, lineno, argv[1]);
+            if (!b || latency(b, max, label) < 0) failed = 1;
         } else if (!strcmp(argv[0], "profile") && argc >= 2) {
             if (!nsyms) fprintf(stderr, "harness: profile needs --nm FILE\n");
             else {

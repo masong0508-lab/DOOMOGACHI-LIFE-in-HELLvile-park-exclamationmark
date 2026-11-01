@@ -759,6 +759,33 @@ the harness at the first such window ("29 frames from ticks ..."); and
 logs edited to shift a scene's frames by one tick, or to keep 10 of its 30
 frames, fail the parity check.
 
+### Life tour (M0, `make -C gba test-life`)
+
+The free-play screens the life sim lives on, in the game ROM
+(`gba/harness/scripts/life_speed.txt`, a Hellvile Park Classic island
+with seed 1): each screen settles for 200 ticks and is measured over 130
+(`fps`), and the press that opens it is timed with `latency` (section 9):
+video frames from the press until the output first differs from the same
+ROM's unpressed frames. The `expect-fps` floors are about 85% of these
+numbers. Not part of `make -C gba test`, like the speed tour. The press
+budgets of the same journeys are native (docs/GAME_DESIGN.md 4.1).
+
+| Screen | logic ticks/s | drawn fps | work avg / max ms | opening press | latency |
+|---|---|---|---|---|---|
+| island hub | 12.5 | 7.5 | 97.0 / 100.5 | (cursor DOWN / UP) | 13 / 9 frames (218 / 151 ms) |
+| news (L) | 30.0 | 20.1 | 38.2 / 40.5 | L on the hub | 7 frames (117 ms) |
+| island menu (Town Hall) | 10.9 | 6.5 | 109.7 / 131.2 | A on the hub | 13 frames (218 ms); its cursor 11 (184 ms) |
+| Citizens (roster) | 29.9 | 25.5 | 35.6 / 52.0 | R on the hub | 13 frames (218 ms); its cursor 6 (101 ms) |
+| a citizen (resident) | 30.1 | 22.5 | 37.4 / 54.8 | A in the roster | 4 frames (67 ms); its cursor 3 (50 ms) |
+| Hillvile Towers (apartments) | 28.5 | 20.6 | 38.6 / 56.7 | A on Browse homes | 8 frames (134 ms); its cursor 3 (50 ms) |
+
+The island hub and its location menu are the slow ones: they draw the
+whole bitmap map every tick (about 100 ms of work, 6.5-7.5 fps, and the
+logic falls to 11-12.5 ticks/s), so a press there shows up 150-220 ms
+later; every screen pushed over the island runs at 30 logic ticks/s and
+answers within 50-135 ms. G8 (the island on the tile backend) and LS-IN
+(the press latch) are the packages that move these numbers.
+
 ### Frame pacing
 
 The core logic runs at 30 Hz (`plat_begin_frame` / `plat_end_frame`, one
@@ -1587,7 +1614,10 @@ gba/build/harness ROM.gba [--script FILE] [--shots DIR] [--save FILE]
   `expect-log TEXT`, `expect-scene NAME`, `type` (warning only), plus GBA
   extensions `down`/`release`, `frames N` (raw video frames), `fps
   [LABEL]`, `audio-reset` / `audio` / `expect-audio MIN`, `profile N
-  [FUNC]`, `vhash`, `vhash-seq`, `sync` (below). The LABEL of `fps` /
+  [FUNC]`, `vhash`, `vhash-seq`, `sync` (below), `latency BTN [MAX]
+  [LABEL]` (M0: press BTN and count the video frames until the output
+  first differs from a replay of the same frames without the press, taken
+  from a save state; fails if nothing changes within MAX frames). The LABEL of `fps` /
   `expect-fps`, `vhash` and `vhash-seq`, and the TEXT of `log`, are the
   whole rest of the line (before G1 only the first word was printed).
 * Frame hashes (G1): `vhash [LABEL]` prints the FNV-1a of the frame mGBA
