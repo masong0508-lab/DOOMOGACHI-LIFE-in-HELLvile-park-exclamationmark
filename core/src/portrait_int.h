@@ -245,6 +245,17 @@ int  ph_top_extent(const DoomoLook *l);   /* how far up things reach (Q8) */
 int  species_has_muzzle(int sp);
 void ph_heart(int cx, int cy, int r, uint8_t c, uint8_t hi);
 void ph_star(int cx, int cy, int r, uint8_t c);
+/* SPECIES_TURKEY, Mayor Giggs' kind (portrait_turkey.c): portrait.c draws
+ * a turkey through these instead of the head/face/hat groups */
+void ptk_place(PCtx *c);         /* group 0: neck, head and hat placement    */
+void ptk_tail_fan(PCtx *c);      /* TAIL_FEATHER_FAN as the turkey's fan     */
+void ptk_coat_tails(PCtx *c);    /* TOP_SUIT's long tails (figure)           */
+void ptk_head(PCtx *c);          /* group 2: neck, wattle, tufts, head       */
+void ptk_face(PCtx *c);          /* group 3: lapels, bow tie, eyes, beak     */
+void ptk_hat(PCtx *c);           /* HAT_TOP_HAT as the tall crooked hat      */
+void ptk_brows(PCtx *c);         /* group 4: brows over the brim             */
+int  ptk_tufts(const DoomoLook *l);   /* the hair is the Hatter's tufts      */
+int  ptk_hatter(const DoomoLook *l);  /* the hat is the tall crooked one     */
 /* body (portrait_body.c) */
 void pb_layout(PCtx *c, int view_kind, int byaw, int step, int anim);
 void pb_draw_behind(PCtx *c);    /* wings, tail, cape, long hair behind body */

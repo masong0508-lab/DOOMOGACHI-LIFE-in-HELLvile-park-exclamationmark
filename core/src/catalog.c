@@ -13,7 +13,7 @@ const char *const doomo_species_names[SPECIES_COUNT] = {
     "Human", "Imp", "Cherub", "Ghoul", "Skeleton", "Slime", "Hellhound",
     "Cacoblob", "Batling", "Robot", "Plushie", "Ghost", "Mummy", "Mothkin",
     "Frogling", "Bunnykin", "Catfolk", "Foxkin", "Bearkin", "Pupkin",
-    "Mousekin", "Sheepkin", "Raccoonkin", "Owlkin"
+    "Mousekin", "Sheepkin", "Raccoonkin", "Owlkin", "Turkey", "Animatronic"
 };
 
 const char *const doomo_body_names[BODY_COUNT] = {
@@ -351,5 +351,11 @@ const DoomoSpeciesInfo doomo_species_info[SPECIES_COUNT] = {
     { PSKIN(PAINT_SILVER),    60,   2, 100,   2,   5,  55, 0 },              /* MOUSEKIN */
     { PSKIN(PAINT_WHITE),     85,   2, 100,   2,   2,  75, 0 },              /* SHEEPKIN */
     { PSKIN(PAINT_SILVER),    60,   2, 100,   2,  15,  40, 0 },              /* RACCOONKIN */
-    { PSKIN(PAINT_CARAMEL),   30,   2, 100,  40,   5,  60, 0 }               /* OWLKIN */
+    { PSKIN(PAINT_CARAMEL),   30,   2, 100,  40,   5,  60, 0 },              /* OWLKIN */
+    /* TURKEY: Mayor Giggs' kind keeps his old cherub resistance (95 + the
+     * halo, clamped to 90 by sim_soul.c), so the Mayor's town life is as
+     * before; ANIMATRONIC: Bonejangles' kind keeps the skeleton's numbers,
+     * plus the robots' fuel-and-polish care lines */
+    { SKIN_PEACH,             40,   0, 100,   0,   0,  90, 0 },              /* TURKEY */
+    { PSKIN(PAINT_BONE),       5,   5,   0,   0,  30,  25, SPF_MECHANICAL | SPF_UNDEAD | SPF_NO_SKIN_SHADE } /* ANIMATRONIC */
 };

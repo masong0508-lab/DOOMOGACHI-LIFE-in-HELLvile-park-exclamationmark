@@ -398,6 +398,42 @@ static void species_head(PCtx *c, int big)
             phs.s = 1;
         }
         break; }
+    case SPECIES_ANIMATRONIC: {
+        /* Bonejangles' kind: a skull-faced animatronic. Dark sockets for the
+         * eye-lights, a nasal cavity, a ventriloquist's jaw on hinges (two
+         * seams down to the chin, a steel bolt at each corner), a row of
+         * piano-key teeth and a riveted forehead plate. */
+        PMat st;
+        pm_ramp(&st, RAMP_STEEL, 4);
+        eye_ring(c, PAL_PAINT(PAINT_CHARCOAL, 0), hr(56), hry(40), 6);
+        v = fpt(0, F.ny + 10, &X, &Y);
+        if (v > 0) {
+            pm_flat(&m, PAL_PAINT(PAINT_CHARCOAL, 0));
+            pc_decal(&m, SH_FLAT);
+            pc_tri(X - hr(36), Y - hry(16), X + hr(36), Y - hry(16), X, Y + hry(30));
+        }
+        v = fpt(0, F.my + 26, &X, &Y);
+        if (v > 0) {
+            int w = hr(90) >> 4;
+            pm_flat(&m, PAL_WHITE);
+            pc_decal(&m, SH_FLAT);
+            pc_rrect(X, Y, hr(96), hry(30), 12);
+            for (k = -w; k <= w; k += 2) pc_px((X >> 4) + k, Y >> 4, PAL_GRAY_D);
+        }
+        for (phs.s = -1; phs.s <= 1; phs.s += 2) {
+            if (big) {
+                hL(130, F.my + 10, 110, 236, c->skin.line);          /* the jaw seams */
+                hL(-200, -170, 200, -170, c->skin.c[1]);             /* forehead plate */
+                hP(160, -186, st.c[4]);                               /* plate rivets */
+            }
+            v = fpt(176, F.my + 36, &X, &Y);                          /* jaw hinge bolts */
+            if (v > 40) {
+                pc_part(&st, SH_GLOSS, 0);
+                pc_ellipse(X, Y, big ? hr(26) : 8, big ? hry(26) : 8);
+            }
+        }
+        phs.s = 1;
+        break; }
     case SPECIES_GHOUL:
         eye_ring(c, c->skin.c[0], hr(40), hry(30), 12);
         if (big) {
@@ -553,6 +589,19 @@ void ph_species_over(PCtx *c)
         hC(30, -300, 70, -270, 22, 18);
         hC(70, -270, 40, -240, 18, 14);
         break; }
+    case SPECIES_ANIMATRONIC:
+        /* the wind-up crank on the side of the skull: a tribute machine */
+        if (l->ears == EARS_NONE && phs.h->yaw < 3) {
+            PMat st, br;
+            pm_ramp(&st, RAMP_STEEL, 4);
+            pm_paint(&br, PAINT_HONEY);
+            pc_part(&st, SH_GLOSS, 0);
+            hC(250, 10, 330, -10, 16, 14);
+            pc_part(&br, SH_GLOSS, 0);
+            hE(340, -60, 26, 60);
+            hE(340, 40, 26, 44);
+        }
+        break;
     case SPECIES_CACOBLOB:
         pc_part(&c->skin, SH_BALL, 0);
         hHeadFrame(0);

@@ -26,7 +26,7 @@ a glitch and smoke aura, and drained colour. GHOST residents are pale,
 translucent cyan with a wispy tail, and DEAD ones get X eyes.
 
 Every option of every catalog list visibly changes the image, and the
-tests enforce it. The catalog lists are 24 species, 10 bodies, 12 heads,
+tests enforce it. The catalog lists are 26 species, 10 bodies, 12 heads,
 24 eyes, 12 brows, 12 noses, 20 mouths, 32 hair styles, 8 facial hair,
 16 ears, 16 horns, 16 tails, 10 wings, 6 halos, 23 markings, 24 tops,
 12 bottoms, 12 shoes, 24 hats, 20 accessories, 8 auras and 8 patterns.
@@ -47,6 +47,7 @@ are also visible.
 | `core/src/portrait_body.c` | body layout (`pb_layout`), legs, shoes, bottoms, torso, tops, collars, arms and paws, tails, wings, neck and back accessories, chest fluff |
 | `core/src/portrait_fx.c` | auras (behind and in front), expression effects (tears, hearts, sweat, zzz, vein, sick tint, soul wisp, sparkles, talk lines), possessed / soul-lost effects, ghost and creepy recolouring |
 | `core/src/portrait_gun.c` | the 39 `WFRAME_*` weapons in hand for the fighter views, plus the muzzle flash |
+| `core/src/portrait_turkey.c` | `SPECIES_TURKEY` (Mayor Giggs' kind, show canon): the long neck, bare head, beak, snood and wattle, bulging eyes, the Hatter's feather tufts (`HAIR_WILD`), the tall crooked top hat (`HAT_TOP_HAT`), the tail coat's lapels and tails (`TOP_SUIT`), the floppy bow tie (`ACC_BOWTIE`) and the turkey fan (`TAIL_FEATHER_FAN`); portrait.c's `turkey_step()` draws a turkey through these and the engine's own parts for everything else |
 | `core/src/portrait_int.h` | internal model shared by the above (canvas, materials, head space, context) |
 | `core/tools/portrait_sheet.c` | host tool that writes PNG contact sheets |
 | `core/tests/test_portrait.c` | unit tests |
@@ -114,6 +115,37 @@ polka, plaid, stars, hearts, skulls and so on) come from `p_pattern_tiles`.
 - EXPR_TALK mouth flaps every 4 ticks
 
 The fighter and chibi animate through their `anim` and `frame` arguments.
+
+## Show canon species (C1)
+
+Two species exist for the show's canon (DECISIONS: adopt the show canon in
+the game). The random generators never roll them; the roster and the
+creator use them (3 presets each).
+
+* **Turkey** (`SPECIES_TURKEY`, Mayor Giggs, roster 0). The show's locked
+  Mad-Hatter turkey (show/art/parts/show_parts.c, ported into the engine):
+  a lavender top hat with a magenta band and no card, wild white hair,
+  peach head, orange beak, red snood and wattle, teal tail coat, magenta
+  bow tie and a tail fan. The look's own fields drive it: `skin` is the
+  bare head, neck, legs and hands, `marking_color` the snood and wattle
+  (`nose_size` their size), `eye_size` how far the eyes bulge, `hair_color`
+  the tufts, `hat_color` / `pattern_color` the hat and its band (`horn_size`
+  the crown). Other hair styles, hats, tops, tails and accessories are the
+  engine's own, so any turkey can wear anything; a bare torso is bronze
+  plumage. The wattle, snood, tufts and fan wobble on the fx phase
+  (`phase_of`), twice as much in EXPR_SHOCK.
+* **Animatronic** (`SPECIES_ANIMATRONIC`, Bonejangles, roster 5): a
+  skull-faced animatronic built as a tribute to a death-obsessed artist.
+  Skull sockets for the eye-lights, a hinged ventriloquist's jaw with steel
+  bolts, a riveted forehead plate, a brass wind-up crank on the side of the
+  skull, steel limbs with servo joints, and a ribcage that is a toy
+  xylophone (bright bars on the dark steel frame) whenever the torso is
+  bare. Possession stays a status (`RES_POSSESSED`), never a look.
+
+`test_portrait.c` checks both: the locked look's fields and colours, every
+view, expression and status in bounds, deterministic and inside the render
+budget, distinct walk directions and fighter views, and whole frames only
+under sliced re-renders.
 
 ## The image cache
 

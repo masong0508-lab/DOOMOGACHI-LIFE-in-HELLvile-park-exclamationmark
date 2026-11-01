@@ -60,7 +60,9 @@ TEST(generate_20000_seeds_valid_and_sane)
     CHECK_MSG(hellish > 20000 * 30 / 100, "only %d demonic hellborn", hellish);
     for (seed = 0; seed < SPECIES_COUNT; seed++)
         CHECK_MSG(species_hits[seed] > 0 || seed == SPECIES_SKELETON || seed == SPECIES_HELLHOUND ||
-                  seed == SPECIES_CACOBLOB || seed == SPECIES_MUMMY,
+                  seed == SPECIES_CACOBLOB || seed == SPECIES_MUMMY ||
+                  /* show canon (C1): creator and roster only, never rolled */
+                  seed == SPECIES_TURKEY || seed == SPECIES_ANIMATRONIC,
                   "species %d never generated", seed);
 }
 

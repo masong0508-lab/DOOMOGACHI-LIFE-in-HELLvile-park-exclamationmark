@@ -514,6 +514,7 @@ const char *cr_row_label(const CrRow *row)
         case SPECIES_PLUSHIE:  return "Fabric";
         case SPECIES_MUMMY:    return "Wraps";
         case SPECIES_MOTHKIN:  return "Fuzz";
+        case SPECIES_ANIMATRONIC: return "Casing";
         default: return is_critter_like(cr.draft.look.species) ? "Fur" : "Skin";
         }
     }

@@ -469,6 +469,7 @@ static void legs(PCtx *c)
     int long_top = top_is_long(l->top);
     if (B.nolegs || B.view == VK_PORTRAIT) return;
     if (l->species == SPECIES_SKELETON) pm_paint(&skin, PAINT_BONE);
+    if (l->species == SPECIES_ANIMATRONIC) pm_ramp(&skin, RAMP_STEEL, 4);   /* steel shins */
     for (s = 0; s < 2; s++) {
         int x0 = B.hpx[s], y0 = B.hpy[s], x1 = B.ftx[s], y1 = B.fty[s];
         int r = B.leg_r, cover = 0;    /* 0 skin, 1 full, 2 upper half */
@@ -481,8 +482,8 @@ static void legs(PCtx *c)
         }
         if (l->top == TOP_OVERALLS || l->top == TOP_HAZMAT || l->top == TOP_SPACESUIT ||
             l->top == TOP_PAJAMAS) { cover = 1; bm = c->top; if (l->top == TOP_SPACESUIT) pm_paint(&bm, PAINT_WHITE); }
-        if (l->species == SPECIES_SKELETON && cover != 1) {
-            pc_part(&skin, SH_BALL, 0);
+        if ((l->species == SPECIES_SKELETON || l->species == SPECIES_ANIMATRONIC) && cover != 1) {
+            pc_part(&skin, l->species == SPECIES_ANIMATRONIC ? SH_GLOSS : SH_BALL, 0);
             pc_capsule(x0, y0, x1, y1, r / 2 + 2, r / 2 + 2);
             pc_ellipse(x0 + (x1 - x0) / 2, y0 + (y1 - y0) / 2, r / 2 + 8, r / 2 + 6);
         } else {
@@ -1022,6 +1023,71 @@ static void hood_back(PCtx *c)
     pc_ellipse(B.cx, B.ty + 8, PCT(B.sw, 80), B.view == VK_CHIBI ? 24 : PX(4));
 }
 
+/* SPECIES_TURKEY: the bare-skinned head sits on a feathered body. The
+ * plumage is a bronze turkey brown with a little of the skin's warmth. */
+/* a soul-lost resident's colours drain out (as pctx_init does for clothes) */
+static void drain_mat(const PCtx *c, PMat *m)
+{
+    int k;
+    if (c->creepy < 2) return;
+    for (k = 0; k < 5; k++) m->c[k] = doomo_tintmap[TINT_NIGHT][m->c[k]];
+    m->line = pm_line_of(m->c[1]);
+}
+
+static void plumage(PCtx *c, PMat *m)
+{
+    pm_paint(m, PAINT_CHOCOLATE);
+    drain_mat(c, m);
+}
+
+/* rows of small feather "v"s down a turkey's chest or wing */
+static void feather_scallops(PCtx *c, const PMat *m, int y0, int y1, int hw)
+{
+    int x, y, row = 0, step = B.lod == LOD_BIG ? PX(2) : PX(3);
+    (void)c;
+    if (B.lod == LOD_TINY) return;
+    for (y = y0; y < y1; y += step, row++)
+        for (x = -hw + ((row & 1) ? PX(1) : 0); x <= hw; x += PX(2)) {
+            int px = (B.cx + x) >> 4, py = y >> 4;
+            if (pc_idat(px, py) != pcv.part) continue;
+            pc_px(px - 1, py, m->c[1]);
+            pc_px(px, py + 1, m->c[1]);
+            pc_px(px + 1, py, m->c[1]);
+            pc_px(px, py, m->c[3]);
+        }
+}
+
+/* SPECIES_ANIMATRONIC: Bonejangles' ribcage IS the xylophone. Bright bars
+ * on the dark steel frame with the frame showing between them, longest at
+ * the top like a toy xylophone, each held by two pins; the spine runs down
+ * behind them. */
+static void xylophone_ribs(PCtx *c, int H)
+{
+    static const uint8_t bar_paint[6] = { PAINT_CHERRY, PAINT_TANGERINE, PAINT_LEMON,
+                                          PAINT_LIME, PAINT_SKY, PAINT_GRAPE };
+    PMat bar, pin;
+    int tiny = B.lod == LOD_TINY, big = B.lod == LOD_BIG;
+    int k, n = tiny ? 3 : (big && B.view == VK_FIGURE ? 5 : 4);
+    int y0 = B.ty + (tiny ? 8 : PCT(H, 14)), y1 = B.by - (tiny ? 4 : PCT(H, 4));
+    int gap = (y1 - y0) / n;
+    pm_ramp(&pin, RAMP_STEEL, 5);
+    drain_mat(c, &pin);
+    pc_decal(&pin, SH_FLAT);
+    pc_line(B.cx >> 4, (B.ty >> 4) + 1, B.cx >> 4, (B.by >> 4) - 1, pin.c[1]);     /* the spine */
+    for (k = 0; k < n; k++) {
+        int y = y0 + k * gap + gap / 2, hw = PCT(B.sw, 84 - k * 36 / n);
+        int hh = tiny ? 8 : DOOMO_MAX(gap * 3 / 10, 10);
+        pm_paint(&bar, bar_paint[k * 6 / n]);
+        drain_mat(c, &bar);
+        pc_part(&bar, SH_SOFT, 0);
+        pc_rrect(B.cx, y, hw, hh, tiny ? 0 : 6);
+        if (!tiny) {
+            pc_px((B.cx - hw + PX(1)) >> 4, y >> 4, pin.c[4]);
+            pc_px((B.cx + hw - PX(1)) >> 4, y >> 4, pin.c[4]);
+        }
+    }
+}
+
 static void torso(PCtx *c)
 {
     const DoomoLook *l = c->l;
@@ -1033,7 +1099,10 @@ static void torso(PCtx *c)
     if (t == TOP_NONE || t == TOP_TANK || t == TOP_CROP_TOP || sp == SPECIES_SLIME ||
         sp == SPECIES_GHOST || c->ghost) {
         int sh = sp == SPECIES_SLIME ? SH_GLOSS : SH_BALL;
-        pc_part(&c->skin, sh, c->critter ? PF_FUZZ : 0);
+        PMat bm = c->skin;
+        if (sp == SPECIES_TURKEY) plumage(c, &bm);          /* bare head, feathered body */
+        if (sp == SPECIES_ANIMATRONIC) pm_ramp(&bm, RAMP_STEEL, 1);   /* the frame */
+        pc_part(&bm, sh, c->critter || sp == SPECIES_TURKEY ? PF_FUZZ : 0);
         if (B.nolegs && B.view != VK_PORTRAIT) {
             /* slime goo / ghost wisp / floaty caco body */
             pc_frame(B.cx, (B.ty + B.ground) / 2, B.hw + 24, (B.ground - B.ty) / 2 + 16);
@@ -1059,6 +1128,10 @@ static void torso(PCtx *c)
                 for (y = B.ty + PX(3); y < B.by - PX(2); y += PX(2))
                     pc_line((B.cx - PCT(B.sw, 60)) >> 4, y >> 4, (B.cx + PCT(B.sw, 60)) >> 4, y >> 4, sk.c[0]);
                 pc_line(B.cx >> 4, (B.ty >> 4) + 2, B.cx >> 4, (B.by >> 4) - 2, sk.c[1]);
+            } else if (sp == SPECIES_ANIMATRONIC) {
+                xylophone_ribs(c, H);
+            } else if (sp == SPECIES_TURKEY) {
+                feather_scallops(c, &bm, B.ty + PX(2), B.by - PX(1), PCT(B.sw, 70));
             } else if (sp == SPECIES_ROBOT) {
                 PMat pn;
                 pm_ramp(&pn, RAMP_STEEL, 2);
@@ -1165,6 +1238,8 @@ static void arm(PCtx *c, int s, int behind)
     int r = B.arm_r, kind;
     PMat sl, sk = c->skin;
     if (l->species == SPECIES_SKELETON) pm_paint(&sk, PAINT_BONE);
+    if (l->species == SPECIES_TURKEY) plumage(c, &sk);              /* wings */
+    if (l->species == SPECIES_ANIMATRONIC) pm_ramp(&sk, RAMP_STEEL, 4);
     kind = sleeve_mat(c, &sl);
     if (l->top == TOP_CLOAK && B.view != VK_PORTRAIT) return;
     /* the arm itself */
@@ -1172,9 +1247,11 @@ static void arm(PCtx *c, int s, int behind)
         pc_part(&sl, SH_BALL, 0);
         pc_capsule(x0, y0, x1, y1, r + (kind == 3 ? 6 : 2), r + (kind == 3 ? 18 : 2));
     } else {
-        if (l->species == SPECIES_SKELETON) {
-            pc_part(&sk, SH_BALL, 0);
+        if (l->species == SPECIES_SKELETON || l->species == SPECIES_ANIMATRONIC) {
+            pc_part(&sk, l->species == SPECIES_ANIMATRONIC ? SH_GLOSS : SH_BALL, 0);
             pc_capsule(x0, y0, x1, y1, r / 2 + 2, r / 2 + 2);
+            if (l->species == SPECIES_ANIMATRONIC && B.lod == LOD_BIG)      /* the elbow servo */
+                pc_px(((x0 + x1) / 2) >> 4, ((y0 + y1) / 2) >> 4, sk.c[4]);
         } else {
             pc_part(&sk, SH_BALL, c->critter ? PF_FUZZ : 0);
             pc_capsule(x0, y0, x1, y1, r, r);
@@ -1682,6 +1759,8 @@ void pb_draw_body(PCtx *c)
         for (s = 0; s < 2; s++) {
             PMat sl, sk = c->skin;
             int kind = sleeve_mat(c, &sl);
+            if (l->species == SPECIES_TURKEY) plumage(c, &sk);
+            if (l->species == SPECIES_ANIMATRONIC) pm_ramp(&sk, RAMP_STEEL, 4);
             int x0 = B.shx[s], y0 = B.shy[s] + PX(2);
             if (l->top == TOP_CLOAK) { sl = c->top; kind = 2; }
             pc_part(kind >= 2 ? &sl : &sk, kind >= 2 ? top_shade(l->top) : SH_BALL,

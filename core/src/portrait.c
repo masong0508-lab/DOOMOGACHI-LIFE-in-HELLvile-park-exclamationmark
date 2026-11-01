@@ -132,8 +132,14 @@ static void finish(PCtx *c)
  * re-render over several ticks. */
 #define DL_STEPS 6
 
+static void turkey_step(PCtx *c, int step);
+
 static void draw_step(PCtx *c, int step)
 {
+    if (c->l->species == SPECIES_TURKEY) {
+        turkey_step(c, step);
+        return;
+    }
     switch (step) {
     case 0:
         pb_set_neck(c->h.cy + PCT(c->h.ry, 86));
@@ -162,6 +168,64 @@ static void draw_step(PCtx *c, int step)
         ph_horns(c);
         ph_face_acc(c);
         pb_draw_front(c);
+        weapon_layer(c, 1);
+        break;
+    default:
+        finish(c);
+        break;
+    }
+}
+
+/* SPECIES_TURKEY (portrait_turkey.c): the same six groups, with the
+ * turkey's own neck, head, face and Hatter pieces in place of the engine's
+ * head, face and hair; everything else (body, outfit, other hats, hair,
+ * ears, horns, face accessories, weapons, effects) is the engine's. The
+ * engine draws a look without its turkey-replaced parts (look copies). */
+static void turkey_step(PCtx *c, int step)
+{
+    const DoomoLook *own = c->l;
+    DoomoLook t = *own;
+    int tufts = ptk_tufts(own), engine_hair = own->hair_style != HAIR_BALD && !tufts;
+    if (t.tail == TAIL_FEATHER_FAN) t.tail = TAIL_NONE;     /* the turkey fan instead */
+    switch (step) {
+    case 0:
+        ptk_place(c);
+        pf_aura_back(c);
+        weapon_layer(c, 0);
+        if (c->byaw < 3) ptk_tail_fan(c);
+        ptk_coat_tails(c);
+        c->l = &t;
+        pb_draw_behind(c);
+        c->l = own;
+        if (engine_hair) ph_hair_back(c);
+        if (own->ears != EARS_NONE) ph_ears(c, 0);
+        break;
+    case 1:
+        pb_draw_body(c);
+        break;
+    case 2:
+        ptk_head(c);
+        break;
+    case 3:
+        if (t.top == TOP_SUIT) t.top = TOP_NONE;            /* lapels instead of the collar */
+        if (t.accessory == ACC_BOWTIE) t.accessory = ACC_NONE;  /* the floppy bow */
+        c->l = &t;
+        pb_draw_neck(c);
+        c->l = own;
+        ptk_face(c);
+        if (engine_hair) ph_hair_front(c);
+        if (own->ears != EARS_NONE) ph_ears(c, 1);
+        break;
+    case 4:
+        if (ptk_hatter(own)) ptk_hat(c);
+        else ph_hat(c);
+        ptk_brows(c);
+        ph_horns(c);
+        ph_face_acc(c);
+        if (c->byaw >= 3) ptk_tail_fan(c);
+        c->l = &t;
+        pb_draw_front(c);
+        c->l = own;
         weapon_layer(c, 1);
         break;
     default:
@@ -634,7 +698,8 @@ static uint32_t phase_of(int kind, int rid, int expr, int status, const DoomoLoo
                expr == EXPR_SAD || expr == EXPR_LOVE || expr == EXPR_SLEEPY || expr == EXPR_ANGRY ||
                expr == EXPR_HAPPY || expr == EXPR_DEAD || expr == EXPR_POSSESSED ||
                l->halo == HALO_FLAME_RING || l->halo == HALO_STARS || (l->cheeks & CHEEK_SPARKLES) ||
-               l->hair_style == HAIR_FLAME;
+               l->hair_style == HAIR_FLAME ||
+               l->species == SPECIES_TURKEY;    /* the wattle wobbles (portrait_turkey.c) */
     memset(p, 0, sizeof(*p));
     if (status == RES_EMPTY) return 0;
     /* portrait_hold() (title figures): one still pose per expression, so

@@ -19,6 +19,10 @@ enum {
     /* fluffy critter-folk (the vaguely furry heart of the cast) */
     SPECIES_CATFOLK, SPECIES_FOXKIN, SPECIES_BEARKIN, SPECIES_PUPKIN,
     SPECIES_MOUSEKIN, SPECIES_SHEEPKIN, SPECIES_RACCOONKIN, SPECIES_OWLKIN,
+    /* show canon (C1): Mayor Giggs' Mad-Hatter turkeys and Bonejangles'
+     * animatronics. Creator and roster only: resident_generate() never
+     * rolls them, so seeded towns stay as they were. */
+    SPECIES_TURKEY, SPECIES_ANIMATRONIC,
     SPECIES_COUNT
 };
 

@@ -1,6 +1,6 @@
 /* creator_data.c - the creator's const tables (owner: creator): the nine
  * tabs and their rows (every byte of DoomoLook and every identity field of
- * DoomoResident), 72 species presets (3 per species), outfit and voice
+ * DoomoResident), 78 species presets (3 per species), outfit and voice
  * presets, personality texts, tab icons and the creator's own
  * unlockables (ids 256..319). All of it stays in ROM.
  */
@@ -499,6 +499,31 @@ const CrPreset cr_species_presets[SPECIES_COUNT * CR_PRESETS_PER_SPECIES] = {
     { "Starlight Owl", { SP(SPECIES_OWLKIN), K(skin, SK(PAINT_LAVENDER)), K(wings, WINGS_ANGEL),
         K(eye_style, EYE_ANIME), K(eye_color, PAINT_SKY), K(marking_color, PAINT_SKY),
         K(cheeks, CHEEK_SPARKLES), END } },
+    /* ---- turkey (show canon: Mayor Giggs' kind; portrait_turkey.c) ---- */
+    { "Mad Hatter", { SP(SPECIES_TURKEY), K(skin, SKIN_PEACH), K(ears, EARS_NONE),
+        K(tail, TAIL_FEATHER_FAN), K(nose_style, NOSE_NONE), K(mouth_style, MOUTH_BEAK),
+        K(marking_color, PAINT_CHERRY), K(eye_style, EYE_ROUND), K(eye_color, PAINT_SKY),
+        K(brow_style, BROW_THICK), K(hair_style, HAIR_WILD), K(hair_color, PAINT_WHITE),
+        K(hat, HAT_TOP_HAT), K(hat_color, PAINT_LAVENDER), K(pattern_color, PAINT_MAGENTA), END } },
+    { "Gobbler", { SP(SPECIES_TURKEY), K(skin, SKIN_TAN), K(ears, EARS_NONE), K(tail, TAIL_FEATHER_FAN),
+        K(mouth_style, MOUTH_BEAK), K(marking_color, PAINT_ROSE), K(eye_color, PAINT_CHOCOLATE),
+        K(nose_size, 13), K(eye_size, 10), K(hair_style, HAIR_BALD), END } },
+    { "Harvest Tom", { SP(SPECIES_TURKEY), K(skin, SKIN_PORCELAIN), K(ears, EARS_NONE), K(tail, TAIL_FEATHER_FAN),
+        K(mouth_style, MOUTH_BEAK), K(marking_color, PAINT_HELLFIRE), K(eye_color, PAINT_FOREST),
+        K(brow_style, BROW_BUSHY), K(hair_style, HAIR_WILD), K(hair_color, PAINT_CARAMEL), END } },
+    /* ---- animatronic (show canon: Bonejangles' kind; xylophone ribs) ---- */
+    { "Bandleader", { SP(SPECIES_ANIMATRONIC), K(skin, SK(PAINT_SILVER)), K(head_shape, HEAD_SKULL),
+        K(ears, EARS_NONE), K(nose_style, NOSE_SKULL), K(mouth_style, MOUTH_TEETH),
+        K(eye_style, EYE_HOLLOW), K(eye_color, PAINT_CHARTREUSE), K(hair_style, HAIR_BALD),
+        K(top, TOP_NONE), K(accessory, ACC_BOWTIE), K(accessory_color, PAINT_ROSE), END } },
+    { "Pizzeria Pal", { SP(SPECIES_ANIMATRONIC), K(skin, SK(PAINT_BONE)), K(head_shape, HEAD_SKULL),
+        K(ears, EARS_BEAR), K(nose_style, NOSE_CLOWN), K(mouth_style, MOUTH_BIG_GRIN),
+        K(eye_style, EYE_GLOW), K(eye_color, PAINT_LEMON), K(hair_style, HAIR_BALD),
+        K(top, TOP_NONE), K(hat, HAT_TOP_HAT), K(hat_color, PAINT_GRAPE), END } },
+    { "Training Tape", { SP(SPECIES_ANIMATRONIC), K(skin, SK(PAINT_CHARCOAL)), K(head_shape, HEAD_SQUARE),
+        K(ears, EARS_NONE), K(nose_style, NOSE_NONE), K(mouth_style, MOUTH_STITCHED),
+        K(eye_style, EYE_VOID), K(eye_color, PAINT_CHERRY), K(hair_style, HAIR_BALD),
+        K(top, TOP_NONE), K(aura, AURA_GLITCH), END } },
 };
 
 /* ====================================================================== */

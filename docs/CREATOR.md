@@ -8,7 +8,7 @@ creator module.
 |---|---|
 | `core/src/creator.c` | the scene: state, input, rows, undo timeline, pickers, randomiser, presets, locks, nicknames, writing into the town |
 | `core/src/creator_draw.c` | all drawing: tab strip, preview stage, option list, pickers, START menu, copy picker, turntable, the "moving in!" finale |
-| `core/src/creator_data.c` | const tables: tabs and rows, 72 species presets, 20 outfit sets, 12 voice types, personality texts, tab icons, the creator's unlockables |
+| `core/src/creator_data.c` | const tables: tabs and rows, 78 species presets (Turkey and Animatronic are the show canon's), 20 outfit sets, 12 voice types, personality texts, tab icons, the creator's unlockables |
 | `core/src/creator_int.h` | private glue between the three |
 | `core/tests/test_creator.c` | headless tests (19) |
 | `core/tests/scripts/creator.txt`, `creator_hellvile.txt` | runner walkthroughs (47 screenshots per resolution) |
