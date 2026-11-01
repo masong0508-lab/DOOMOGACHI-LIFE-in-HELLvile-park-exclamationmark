@@ -9,16 +9,22 @@ box  7 21 9  2 7 1     SILVER shiny
 box  5 23 9  6 2 1     SILVER shiny
 
 [bone_chandelier]
-box  7 0 20  2 2 4     A
-cyl  8 3 14  1 7       A
-blob 8 3 13  6 2 2     A
-blob 3 3 14  1 1 3     WHITE
-blob 13 3 14 1 1 3     WHITE
-blob 8 3 14  1 1 3     WHITE
-blob 3 3 18  1 1 1     LEMON glow
-blob 13 3 18 1 1 1     LEMON glow
-blob 8 3 18  1 1 1     LEMON glow
-blob 8 3 9   2 1 2     A
+box  7 0 20  2 2 4     ~STEEL
+box  8 2 15  1 1 6     ~STEEL
+blob 8 3 12  6 2 1     A
+blob 8 3 13  4 1 1     ~STONE
+blob 2 3 12  1 1 1     A
+blob 14 3 12 1 1 1     A
+blob 8 5 12  1 1 1     A
+cyl  3 3 13  1 4       WHITE
+cyl  13 3 13 1 4       WHITE
+cyl  8 4 13  1 4       WHITE
+blob 3 3 18  1 1 2     LEMON glow
+blob 13 3 18 1 1 2     LEMON glow
+blob 8 4 18  1 1 2     LEMON glow
+blob 8 3 8   2 2 2     A
+blob 7 5 8   1 1 1     JET
+blob 9 5 8   1 1 1     JET
 
 [candelabra]
 frames 2
@@ -69,15 +75,27 @@ blob 3 4 1   1 1 1     HONEY shiny
 blob 29 4 1  1 1 1     HONEY shiny
 
 [cobweb_curtains]
-box  0 0 33  16 3 2    CHARCOAL
-box  1 1 4   4 2 29    A soft
-box  11 1 4  4 2 29    A soft
-cyl  3 2 3   2 2       A soft
-cyl  13 2 3  2 2       A soft
-box  5 1 20  6 1 1     WHITE
-box  5 1 26  6 1 1     WHITE
-box  7 1 16  1 1 14    WHITE
-blob 8 2 23  1 1 1     JET
+box  0 1 33   16 2 2    CHARCOAL
+blob 0 2 34   1 1 1     CHARCOAL
+blob 16 2 34  1 1 1     CHARCOAL
+box  5 0 6    6 1 26    NAVY
+box  7 0 6    1 1 26    ~STEEL
+box  1 1 16   5 2 17    A soft
+box  2 1 4    3 2 12    A soft
+blob 3 2 5    2 1 2     A soft
+box  10 1 16  5 2 17    A soft
+box  11 1 4   3 2 12    A soft
+blob 13 2 5   2 1 2     A soft
+box  1 3 15   5 1 1     BLOOD
+box  10 3 15  5 1 1     BLOOD
+box  1 3 31   6 1 1     WHITE
+box  1 3 26   1 1 5     WHITE
+box  2 3 29   1 1 1     WHITE
+box  3 3 28   1 1 1     WHITE
+box  4 3 27   1 1 1     WHITE
+box  4 3 30   1 1 1     WHITE
+box  8 3 20   1 1 12    WHITE
+blob 8 3 19   1 1 1     JET
 
 [skull_planter]
 blob 8 8 4   4 4 4     A
@@ -113,17 +131,25 @@ box  1 3 18  14 10 2   A
 
 [bat_mobile]
 frames 2
-box  7 0 14  2 2 2     B
-box  8 2 8   1 1 6     SILVER
-box  2 2 8   12 1 1    SILVER
-blob@0 3 3 5  2 1 1    A
-blob@0 13 3 6 2 1 1    A
-blob@0 8 3 4  2 1 1    A
-blob@1 3 3 6  2 1 1    A
-blob@1 13 3 5 2 1 1    A
-blob@1 8 3 5  2 1 1    A
-blob 3 3 6   1 1 1     CHERRY
-blob 13 3 6  1 1 1     CHERRY
+box  7 0 18  2 2 2     B
+box  8 2 16  1 1 3     ~STEEL
+box  2 2 15  13 1 1    B
+box  4 2 11  1 1 4     ~STEEL
+box  12 2 9  1 1 6     ~STEEL
+blob 4 3 9   1 1 2     A
+blob 12 3 7  1 1 2     A
+cone 4 3 10  1 2       A
+cone 12 3 8  1 2       A
+blob 4 4 9   1 1 1     CHERRY glow
+blob 12 4 7  1 1 1     CHERRY glow
+blob@0 2 3 10 2 1 2   A
+blob@0 6 3 10 2 1 2   A
+blob@0 10 3 8 2 1 2   A
+blob@0 14 3 8 2 1 2   A
+blob@1 2 3 8  2 1 1   A
+blob@1 6 3 8  2 1 1   A
+blob@1 10 3 6 2 1 1   A
+blob@1 14 3 6 2 1 1   A
 
 [stained_window]
 box  1 0 0   14 4 3    CHARCOAL

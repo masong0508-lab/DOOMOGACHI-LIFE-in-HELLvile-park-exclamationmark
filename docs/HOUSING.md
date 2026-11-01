@@ -301,9 +301,39 @@ tutorials ran, the Black Market found) are set without a toast.
   theme, the catalog pages and the golden frames; with
   `DOOMO_HOUSESHOT=DIR core/build/tests home_sheets` it writes them and
   their contact sheets (`DIR/<w>x<h>/sheet_*.png`) at 240x160 and 320x240.
+* **Roofs** (HART; `DoomoRoomView.roof`, `ROOF_*` in platform.h). A walled
+  room shows the house's main roof behind its two back walls: on each wall
+  a slope rises away from the room from a gutter, in shingle courses (dark
+  butt rows, joints staggered half a tab per course), to a ridge cap; the
+  two slopes meet in a valley over the back corner and the eaves overhang
+  the walls' outer ends to a hip cap. `home_room_roof()` picks the style:
+  the cottage's Living Room, Bedroom and Kitchen `ROOF_COTTAGE` (a dormer
+  gable with a window on the longer wall), the Roof Annex `ROOF_ATTIC` (a
+  skylight instead), Towers 7B `ROOF_FLAT` (a parapet, a gravel roof, a
+  water tank and its antenna), the Hell Pits flat `ROOF_SPIKE` (slate,
+  bone spikes along the ridge, a blood-red gutter and a lava-lit dormer
+  window); the Cellar and the open kinds have none. Visits use their
+  template's style. A hearth that backs onto a visible wall gets a brick
+  chimney over it. The shingles follow the room's `ceiling` ramp, so a
+  theme recolours the roof (wood: raspberry, sky: cobalt, pink, peach:
+  terracotta, vape: grape, bone, lava: charcoal, steel: silver). The roof
+  is defined in screen space by `room_roof_setup()` / `room_roof_row()` in
+  `room_ref.c` (rows d above each wall-top column): room_ref draws it, the
+  GBA draws the same pixels from tables of it (below), the PS1 builds it
+  from polygons. Golden lines 38..45 (`room_shells.h`) hold every style.
 * **GBA** (`gba/src/room.c`, H2): the static iso bitmap and OBJ actors.
+  The roof (HART) is drawn from tables in the two 2.5 KB VRAM gaps the
+  mode 4 pages leave (the slope's repeating 16-column pattern sheared like
+  the walls' strips, the valley / hip / dormer / skylight columns as the
+  screen rows they cover, the chimney's rows), so a roof row is a few
+  halfword DMAs; `r3d_invalidate()` makes the raycaster copy its colormaps
+  back into the gaps when it next claims the arena.
 * **PS1** (`ps1/src/room.c`, H3): a GTE diorama with the backdrop and the
-  clipped passes (docs/PS1.md, section 7). H4 adds the resting player:
+  clipped passes (docs/PS1.md, section 7). The roof (HART) is polygons in
+  the static layer behind every full wall: the slope as gutter, course and
+  ridge bands rising 32 units over a 32-unit run (a valley or a hip at each
+  end), the chimney, dormer, skylight, spikes, parapet and tank as boxes and
+  faces; `fit()` leaves 44 units of headroom for it. H4 adds the resting player:
   the chibi joins the static layer while it stands still.
 * **The PS1 overlay group.** Everything of the house is one group,
   `home`, linked over the 3D views' and the arena bot's tables below the

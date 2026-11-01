@@ -35,19 +35,22 @@ blob 7 10 12 1 1 1     SKY
 
 [fuzz_cushion]
 blob 8 8 3   7 6 3     A soft
-blob 8 14 4  2 1 2     B
-blob 2 8 3   1 1 1     B
-blob 14 8 3  1 1 1     B
+blob 8 8 5   1 1 1     B
+blob 2 3 2   1 1 1     B
+blob 14 3 2  1 1 1     B
+blob 2 13 2  1 1 1     B
+blob 14 13 2 1 1 1     B
+blob 8 14 4  2 1 2     WHITE
 
 [kevins_bust]
 frames 2
 box  5 5 0   6 6 4     ~STONE
-blob 8 8 6   3 3 2     SILVER
-blob 8 8 11  4 4 5     SILVER shiny
+blob 8 8 6   3 3 2     A
+blob 8 8 11  4 4 5     A shiny
 blob 7 12 11 1 1 1     JET
 blob 9 12 11 1 1 1     JET
-blob@0 8 12 14 1 1 1   CHERRY shiny
-box@1 7 12 14 2 1 1    SILVER
+blob@0 8 12 14 1 1 1  CHERRY shiny
+box@1 7 12 14 2 1 1   A
 
 [xylophone_table]
 cyl  3 3 0   1 10      A
@@ -71,12 +74,18 @@ blob@1 8 8 6  3 3 4    A
 blob 10 9 8  1 1 1     WHITE glow
 
 [mayor_photo]
-box  3 0 2   10 2 14   A
-box  4 1 3   8 2 12    SKY
-blob 8 2 8   2 1 2     PEACH
-blob 8 2 5   3 1 2     CHERRY
-box  7 2 10  2 1 2     JET
-box  6 2 12  4 1 1     JET
+box  3 0 2   10 1 15   A
+box  4 1 3   8 1 13    SKY
+blob 6 2 9   2 1 3     RUST
+blob 10 2 9  2 1 3     TANGERINE
+blob 8 2 8   2 1 3     CHOCOLATE
+blob 8 2 12  1 1 1     PEACH
+blob 9 2 11  1 1 1     LEMON
+blob 8 2 10  1 1 1     CHERRY
+box  7 2 13  3 1 3     JET
+box  6 2 13  5 1 1     JET
+box  7 2 14  3 1 1     CHERRY
+box  4 2 3   8 1 1     HONEY
 
 [bloom_thermometer]
 box  6 0 2   4 1 20    A
@@ -85,23 +94,29 @@ box  7 1 4   2 2 8     B
 blob 8 1 4   2 1 2     B shiny
 
 [rivet_coat_hook]
-box  2 0 4   12 1 4    SILVER
-box  4 1 3   1 3 1     SILVER shiny
-box  8 1 3   1 3 1     SILVER shiny
-box  12 1 3  1 3 1     SILVER shiny
-blob 8 1 6   4 1 1     ~STEEL
+box  2 0 4   12 1 4    A
+box  4 1 3   1 3 1     A shiny
+box  8 1 3   1 3 1     A shiny
+box  12 1 3  1 3 1     A shiny
+blob 3 1 7   1 1 1     ~STEEL
+blob 13 1 7  1 1 1     ~STEEL
+box  7 3 0   3 1 4     CHERRY soft
+box  8 3 0   1 1 1     WHITE
 
 [window_candle]
 frames 2
 cyl  8 8 0   3 2       HONEY
-cyl  8 8 2   2 7       WHITE
-blob@0 8 8 11 1 1 2    LEMON glow
-blob@1 8 8 11 1 1 3    TANGERINE glow
+cyl  8 8 2   2 7       A
+blob@0 8 8 11 1 1 2   LEMON glow
+blob@1 8 8 11 1 1 3   TANGERINE glow
 
 [mr_flops_bed]
-blob 8 8 3   7 6 3     A soft
-blob 8 9 5   5 4 2     B soft
-blob 6 8 7   2 2 1     WHITE soft
+cyl  8 8 0   6 3       A soft
+blob 8 8 3   5 5 1     B soft
+blob 6 8 5   2 2 1     WHITE soft
+blob 5 4 7   1 1 3     A soft
+blob 8 4 7   1 1 3     A soft
+blob 10 10 4 3 2 1     B
 
 [days_since_fire]
 frames 2
@@ -126,6 +141,9 @@ box  2 1 2   12 2 1    ~WOOD
 blob 8 1 10  4 1 4     A shiny
 blob 8 2 10  2 1 2     SKY
 cone 8 1 13  2 2       A
+box  6 1 3   2 1 4     CHERRY
+box  9 1 3   2 1 4     COBALT
+blob 8 3 10  1 1 1     LEMON shiny
 
 [flops_the_1st]
 frames 2
@@ -160,10 +178,15 @@ box  13 29 0 2 2 10    A
 blob 8 2 20  2 1 1     RUST glow
 
 [anvils_hinge]
-box  3 0 4   10 2 3    A shiny
-cyl  8 1 2   2 7       A
-box  3 1 5   2 1 1     CHARCOAL
-box  11 1 5  2 1 1     CHARCOAL
+box  2 0 3   5 1 7     A
+box  10 0 3  5 1 7     A
+cyl  8 1 2   2 9       A shiny
+blob 8 1 11  1 1 1     ~STEEL
+blob 3 1 8   1 1 1     CHARCOAL
+blob 5 1 4   1 1 1     CHARCOAL
+blob 12 1 8  1 1 1     CHARCOAL
+blob 14 1 4  1 1 1     CHARCOAL
+blob 11 1 6  1 1 1     RUST
 
 [two_spoons]
 box  2 0 1   12 2 14   ~WOOD
@@ -201,6 +224,8 @@ box  4 2 4   5 1 1     CHARCOAL
 cyl  8 8 0   4 4       A shiny
 cyl  8 8 4   4 1       CHARCOAL
 blob 8 8 5   2 2 1     A shiny
+box  4 11 1  8 1 2     CHERRY
+box  11 4 0  3 2 1     WHITE
 
 [cloud_foam_teacup]
 cyl  8 8 0   4 1       A
@@ -236,11 +261,14 @@ blob 11 2 4 1 1 1 B
 blob 11 2 11 2 1 1     B
 
 [unity_loaf]
-cyl  8 8 0   5 1       ~WOOD
-blob 8 8 4   4 3 3     A
-box  6 10 5  1 1 1     CHOCOLATE
-box  9 10 5  1 1 1     CHOCOLATE
-blob 8 8 6   5 5 6     B shiny
+cyl  8 8 0   2 3       B shiny
+cyl  8 8 3   6 1       B shiny
+blob 7 8 6   4 3 3     A
+box  6 6 8   1 3 1     CHOCOLATE
+box  8 6 8   1 3 1     CHOCOLATE
+box  12 6 4  1 4 4     BONE
+box  13 6 4  1 4 4     A
+box  3 12 4  4 1 1     WHITE
 
 [bone_lamp]
 cyl  8 8 0   4 2       A
@@ -276,7 +304,10 @@ blob 25 2 9  2 1 2     CHERRY
 box  5 6 0   6 4 1     CHOCOLATE
 box  6 7 1   4 2 5     A
 blob 8 8 6   2 1 2     A
+box  7 9 4   2 1 1     ~STONE
 blob 4 10 1  1 1 1     LIME
+blob 11 10 1 1 1 1     CHERRY
+blob 12 9 1  1 1 1     LEMON
 
 [buckwheat_sack]
 blob 8 8 6   5 5 6     A soft
@@ -345,11 +376,15 @@ blob 10 7 11 2 2 2     A shiny
 
 [eye_tomato]
 frames 2
-blob 8 8 4   4 4 4     A shiny
-box  7 7 8   2 2 1     FOREST
-blob@0 8 12 4 2 1 2    WHITE
-blob@0 8 12 4 1 1 1    JET
-box@1 6 12 4 4 1 1     JET
+blob 8 8 4   4 4 3     A shiny
+box  7 7 7   2 2 1     FOREST
+box  5 7 7   2 1 1     FOREST
+box  9 9 7   1 2 1     FOREST
+box  8 7 8   1 1 2     FOREST
+blob@0 10 10 5 2 2 2  WHITE
+blob@0 11 11 6 1 1 1  JET
+blob@1 10 10 5 2 2 1  A
+box@1 9 11 5 3 1 1    JET
 
 [shared_flower_bed]
 box  1 1 0   30 14 5   ~WOOD
@@ -450,9 +485,12 @@ cyl  10 7 7  1 5       A
 blob 10 7 12 1 1 1     CHERRY glow
 
 [washed_cup]
-cyl  8 8 0   4 1       A
+cyl  8 8 0   5 1       A
 cyl  8 8 1   3 5       A shiny
 blob 12 8 4  2 1 2     A
+blob 8 8 6   2 2 1     ~STONE
+blob 6 10 4  1 1 1     WHITE glow
+blob 11 5 8  1 1 1     WHITE glow
 
 [mascot_head]
 blob 8 8 11  7 7 10    A soft
@@ -466,14 +504,22 @@ blob 8 14 7  3 1 2     B
 
 [haze_frame]
 box  2 0 1   12 2 14   A shiny
-box  3 1 2   10 1 12   WHITE
-blob 8 2 8   2 1 3     SKY shiny
+box  3 1 2   10 2 12   WHITE
+blob 8 3 8   2 1 3     SKY shiny
+box  4 3 4   8 1 1     SKY
+box  5 3 6   6 1 1     SKY
 
 [vex_cushion]
-blob 8 8 3   6 6 3     A soft
-blob 8 8 3   5 5 2     B
-cone 4 8 4   1 3       A
-cone 12 8 4  1 3       A
+blob 8 8 3   7 6 3     A soft
+blob 8 8 5   1 1 1     B
+blob 2 3 2   1 1 1     B
+blob 14 3 2  1 1 1     B
+blob 2 13 2  1 1 1     B
+blob 14 13 2 1 1 1     B
+cone 4 8 4   1 4       BLOOD
+cone 12 8 4  1 4       BLOOD
+blob 7 12 4  1 1 1     JET
+blob 10 12 4 1 1 1     JET
 
 [fresh_air_neon]
 frames 2
@@ -508,6 +554,9 @@ box  6 3 12  4 4 4     A
 blob 8 8 2   5 4 2     A soft
 box  7 3 2   2 3 3     A
 cyl  8 3 5   1 1       WHITE
+box  5 8 3   6 1 1     ~BLOODRAMP
+box  5 10 3  6 1 1     ~BLOODRAMP
+blob 6 9 4   1 1 1     WHITE
 
 [blooms_lantern]
 cyl  8 8 0   4 2       B
@@ -564,6 +613,10 @@ cone 10 1 15 1 2       LEMON
 box  1 1 0   14 30 2   A soft
 box  1 1 2   14 6 2    B soft
 blob 8 4 4   4 2 1     A soft
+box  2 29 2  12 1 1    B
+box  2 8 2   1 21 1    B
+box  13 8 2  1 21 1    B
+blob 6 18 2  2 2 1     WHITE
 
 [fizz_histogram]
 box  1 0 1   14 2 18   A
@@ -658,9 +711,13 @@ blob 9 8 11  1 1 2     SILVER soft
 [vapula_cushion]
 frames 2
 blob 8 8 3   6 6 3     A soft
-blob@0 8 8 7 4 4 2     B soft
-blob@1 8 8 8 4 4 2     B soft
-blob@1 6 10 3 1 1 1    SKY
+blob@0 8 8 7 4 4 2    B soft
+blob@1 8 8 8 4 4 2    B soft
+blob 5 8 6   2 2 2     B soft
+blob 11 8 6  2 2 2     B soft
+blob@1 6 10 2 1 1 1   SKY
+blob@1 10 11 1 1 1 1  SKY
+blob@0 12 9 2 1 1 1   SKY
 
 [framed_invoice]
 box  2 0 1   12 2 15   ~WOOD
@@ -683,6 +740,9 @@ box  3 3 0   10 10 6   A
 box  3 4 1   1 8 4     WHITE
 box  12 3 2  1 10 2    B
 box  6 12 3  4 1 1     B
+box  7 6 6   2 4 1     B
+box  6 7 6   4 2 1     B
+box  10 12 0 1 2 5     CHERRY
 
 [profile_photo]
 box  1 0 1   14 2 18   A shiny
@@ -779,10 +839,16 @@ box  3 9 10  10 1 3    B
 box  4 10 11 7 1 1     CHARCOAL
 
 [very_hungry_demon]
-box  3 3 0   10 10 2   A
-box  3 3 2   10 10 1   B
-blob 8 8 4   3 3 1     BLOOD
-blob 7 9 5   1 1 1     WHITE
+box  3 3 0   10 12 1   A
+box  3 3 1   9 11 1    WHITE
+box  3 3 2   10 12 1   A
+blob 8 9 3   3 3 1     B
+cone 6 7 3   1 2       B
+cone 10 7 3  1 2       B
+blob 7 10 4  1 1 1     WHITE
+blob 10 10 4 1 1 1     WHITE
+box  7 12 3  3 1 1     JET
+box  4 4 3   8 1 1     LEMON
 
 [mini_whack_an_imp]
 frames 2
@@ -804,9 +870,11 @@ box  20 2 6  3 1 8     PEACH
 blob 25 2 10 2 1 2     ROSE
 
 [conductors_baton]
-box  2 7 0   12 2 1    A
-box  2 7 1   3 2 1     CHOCOLATE
-blob 13 8 1  1 1 1     LEMON
+box  4 6 0   8 4 1     ~WOOD
+box  2 7 1   12 2 1    A
+box  2 7 2   3 2 1     CHOCOLATE
+blob 13 8 2  1 1 1     LEMON shiny
+blob 6 9 1   1 1 1     CHERRY
 
 [phantasma_portrait]
 box  1 0 1   14 2 20   ~WOOD
@@ -862,6 +930,9 @@ box  3 9 0   4 4 2     WHITE
 blob 8 1 9   4 1 4     A
 blob 6 2 9   2 1 2     A shiny
 blob 10 2 9  2 1 2     B glow
+box  6 1 2   2 1 4     A
+box  9 1 2   2 1 4     B
+cone 10 2 12 1 2       B
 
 [sin_bin_planter]
 box  2 2 0   12 12 10  A

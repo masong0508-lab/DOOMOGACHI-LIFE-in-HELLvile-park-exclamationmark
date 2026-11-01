@@ -217,6 +217,353 @@ static void draw_room_shell(const RR *r)
     }
 }
 
+/* ---- the roof (HART) -------------------------------------------------------------
+ * The house's main roof seen behind the cut-away room: on each visible back
+ * wall a slope rises away from the camera from the wall's top (the gutter),
+ * in shingle courses, to a ridge cap; the two slopes meet in a valley over
+ * the back corner, and the eaves overhang the walls' outer ends by RF_EAVE px
+ * to a hip cap. A slope rising away at 45 degrees climbs straight up the
+ * screen at the same 1:2 as the wall top, so everything is measured in rows
+ * d above the wall top of the pixel's column (p: px from the corner along
+ * the wall): the courses are rows of d, the shingle joints climb one pixel
+ * sideways per two rows. A chimney stands over a hearth that backs onto a
+ * visible wall (bricks, a cap), Towers 7B has a flat roof with a parapet and
+ * a water tank, the Hell Pits a slate roof with bone spikes on the ridge,
+ * the Roof Annex a skylight. Colours follow the ceiling ramp (the theme). */
+#define RF_EAVE ROOM_ROOF_EAVE
+static const uint8_t roof_paint[8] = { PAINT_CHERRY, PAINT_COBALT, PAINT_BUBBLEGUM, PAINT_TANGERINE,
+                                       PAINT_GRAPE, PAINT_BONE, PAINT_CHARCOAL, PAINT_SILVER };
+
+int home_room_roof(int room)
+{
+    static const uint8_t rr[HOME_ROOM_COUNT] = { ROOF_COTTAGE, ROOF_COTTAGE, ROOF_COTTAGE, ROOF_NONE,
+                                                 ROOF_NONE, ROOF_ATTIC, ROOF_FLAT, ROOF_SPIKE, ROOF_NONE };
+    return room >= 0 && room < HOME_ROOM_COUNT ? rr[room] : ROOF_NONE;
+}
+
+/* the wall top row of column p (px from the corner) on side `side` */
+int room_roof_base(const RoomRoof *f, int side, int p)
+{
+    return f->top + (side ? (p ? (p + 2) >> 1 : 0) : p >> 1);
+}
+
+int room_roof_setup(RoomRoof *f, const DoomoRoomView *v, int k, int W, int D, int ox, int oy,
+                    int wall_h, int level, int tint)
+{
+    int i, paint, sh, side = -1, u = 0, cw;
+    uint8_t c[RFC_COUNT];
+    memset(f, 0, sizeof(*f));
+    if (!v || v->room_kind != ROOMK_WALLS || !v->roof || v->roof >= ROOF_COUNT) return 0;
+    f->style = v->roof;
+    f->ox = (int16_t)ox;
+    f->top = (int16_t)(oy - wall_h);
+    f->LA = (int16_t)(W * 16);
+    f->LB = (int16_t)(D * 16);
+    f->ch = (uint8_t)(wall_h >= 64 ? 4 : 3);
+    f->band = (uint8_t)(4 + 6 * f->ch);
+    paint = roof_paint[v->ceiling & 7];
+    if (f->style == ROOF_SPIKE && !(v->ceiling & 7)) paint = PAINT_CHARCOAL;
+    if (f->style == ROOF_FLAT) paint = PAINT_SILVER;
+    /* the slopes: A (facing +y) a shade lighter than B (facing +x) */
+    for (sh = 0; sh < 2; sh++) {
+        uint8_t l = PAL_PAINT(paint, 2 - sh), m = PAL_PAINT(paint, 1 - sh);
+        uint8_t d = sh ? palette_darker(PAL_PAINT(paint, 0)) : PAL_PAINT(paint, 0);
+        c[RFC_A_D + sh * 4] = palette_darker(d);
+        c[RFC_A_M + sh * 4] = m;
+        c[RFC_A_L + sh * 4] = l;
+        c[RFC_A_X + sh * 4] = d;
+    }
+    c[RFC_GUT_D] = PAL_RAMP(RAMP_STONE, 2);
+    c[RFC_GUT_L] = PAL_PAINT(PAINT_BONE, 2);
+    c[RFC_RIDGE_D] = palette_darker(PAL_PAINT(paint, 0));
+    c[RFC_RIDGE_L] = PAL_PAINT(PAINT_BONE, 1);
+    c[RFC_VALLEY] = PAL_RAMP(RAMP_STEEL, 3);
+    c[RFC_HIP] = PAL_PAINT(PAINT_BONE, 1);
+    c[RFC_F_L] = PAL_PAINT(PAINT_RUST, 2);
+    c[RFC_F_D] = PAL_PAINT(PAINT_RUST, 0);
+    c[RFC_F_M] = PAL_RAMP(RAMP_STONE, 6);
+    c[RFC_F_CAP] = PAL_RAMP(RAMP_STONE, 5);
+    c[RFC_GLASS] = PAL_RAMP(RAMP_SKY, 4);
+    c[RFC_GLINT] = PAL_RAMP(RAMP_SKY, 7);
+    c[RFC_SPIKE_L] = PAL_PAINT(PAINT_BONE, 2);
+    c[RFC_SPIKE_D] = PAL_PAINT(PAINT_BONE, 0);
+    c[RFC_SIDING] = PAL_PAINT(PAINT_BONE, 2);
+    c[RFC_SIDING_D] = PAL_PAINT(PAINT_BONE, 1);
+    if (f->style == ROOF_SPIKE) {
+        c[RFC_GUT_L] = PAL_PAINT(PAINT_BLOOD, 1);
+        c[RFC_GUT_D] = PAL_PAINT(PAINT_BLOOD, 0);
+        c[RFC_RIDGE_L] = PAL_PAINT(PAINT_BLOOD, 1);
+        c[RFC_HIP] = PAL_PAINT(PAINT_BLOOD, 1);
+        c[RFC_VALLEY] = PAL_RAMP(RAMP_LAVA, 4);
+        c[RFC_F_L] = PAL_PAINT(PAINT_CHARCOAL, 1);
+        c[RFC_F_D] = PAL_PAINT(PAINT_JET, 1);
+        c[RFC_F_M] = PAL_PAINT(PAINT_HELLFIRE, 1);
+        c[RFC_SIDING] = PAL_PAINT(PAINT_CHARCOAL, 1);
+        c[RFC_SIDING_D] = PAL_PAINT(PAINT_CHARCOAL, 0);
+        c[RFC_GLASS] = PAL_RAMP(RAMP_LAVA, 4);
+        c[RFC_GLINT] = PAL_RAMP(RAMP_LAVA, 6);
+    } else if (f->style == ROOF_FLAT) {
+        c[RFC_GUT_L] = PAL_RAMP(RAMP_STONE, 6);
+        c[RFC_RIDGE_L] = PAL_RAMP(RAMP_STONE, 6);
+        c[RFC_F_L] = PAL_RAMP(RAMP_STEEL, 5);
+        c[RFC_F_D] = PAL_RAMP(RAMP_STEEL, 3);
+        c[RFC_F_M] = PAL_RAMP(RAMP_STEEL, 1);
+        c[RFC_F_CAP] = PAL_RAMP(RAMP_STEEL, 6);
+    }
+    for (i = 0; i < RFC_COUNT; i++) {
+        uint8_t x = level >= 15 ? c[i] : palette_shade(c[i], level);
+        f->c[i] = tint ? doomo_tintmap[tint][x] : x;
+    }
+    /* the feature: a chimney over a hearth on a visible wall; the tower's tank */
+    if (f->style == ROOF_FLAT) {
+        side = 0;
+        u = f->LA * 3 / 4;
+    } else {
+        for (i = 0; i < v->nobj; i++) {
+            const DoomoRoomObj *o = &v->objs[i];
+            const DoomoFurn *fu = home_furn(o->furn);
+            int fw, fd, x0, y0, x1, y1;
+            if (!fu || fu->role != FR_HEARTH || (o->flags & (RO_GHOST | RO_SEMI))) continue;
+            home_footprint(fu, RO_ROT(o), &fw, &fd);
+            x0 = o->x; y0 = o->y; x1 = x0 + fw; y1 = y0 + fd;
+            rot_box(k, v->w, v->d, &x0, &y0, &x1, &y1);
+            if (y0 == 0) { side = 0; u = (x0 + x1) * 8; }
+            else if (x0 == 0) { side = 1; u = (y0 + y1) * 8; }
+            break;
+        }
+    }
+    if (side >= 0) {
+        int b;
+        f->fkind = (uint8_t)(f->style == ROOF_FLAT ? 2 : 1);
+        cw = f->fkind == 2 ? 16 : 12;
+        f->fx0 = (int16_t)(side ? ox - u - cw / 2 : ox + u - cw / 2);
+        f->fx1 = (int16_t)(f->fx0 + cw);
+        b = room_roof_base(f, side, u);
+        f->ffoot = (uint8_t)(f->band / 2);
+        f->ftop = (int16_t)(b - f->band - (f->fkind == 2 ? 6 : 3 * f->ch + 2));
+    }
+    /* a dormer gable on the longer wall, clear of the chimney */
+    if (f->style == ROOF_COTTAGE || f->style == ROOF_SPIKE) {
+        int L;
+        f->dside = (uint8_t)(f->LB > f->LA);
+        L = f->dside ? f->LB : f->LA;
+        f->dw = (uint8_t)(f->ch * 4);
+        f->dh = (uint8_t)(f->band - f->ch);
+        f->dp = (int16_t)(L * 5 / 8);
+        if (side == (int)f->dside && f->dp + f->dw + 8 > u - 8 && f->dp - f->dw - 8 < u + 8)
+            f->dp = (int16_t)(u > L / 2 ? L * 5 / 16 : L * 13 / 16);
+        if (f->dp - f->dw < 6 || f->dp + f->dw + 4 > L) f->dp = 0;
+    }
+    f->dmax = (uint8_t)(f->band + (f->style == ROOF_SPIKE ? 6 : 0));
+    if (f->dp && f->dh + f->dw + 1 > f->dmax) f->dmax = (uint8_t)(f->dh + f->dw + 1);
+    if (f->style == ROOF_ATTIC) {
+        f->sky_side = (uint8_t)(f->LB > f->LA);
+        u = (f->sky_side ? f->LB : f->LA) / 2;
+        if (side == (int)f->sky_side && u > 32) u = u / 2;   /* clear of the chimney */
+        f->sky0 = (int16_t)(u - 10);
+        f->sky1 = (int16_t)(u + 10);
+    }
+    return 1;
+}
+
+void room_roof_rows(const RoomRoof *f, int *y0, int *y1)
+{
+    int a = f->top - f->band - f->dw - 8;
+    if (f->fx1 > f->fx0 && f->ftop - 12 < a) a = f->ftop - 12;
+    *y0 = a;
+    *y1 = f->top + ((DOOMO_MAX(f->LA, f->LB) + RF_EAVE + 2) >> 1);
+}
+
+void room_roof_cols(const RoomRoof *f, int *x0, int *x1)
+{
+    *x0 = f->ox - f->LB - RF_EAVE;
+    *x1 = f->ox + f->LA + RF_EAVE;
+    if (f->fx1 > f->fx0) {                      /* the chimney's cap may stand out */
+        if (f->fx0 - 1 < *x0) *x0 = f->fx0 - 1;
+        if (f->fx1 + 1 > *x1) *x1 = f->fx1 + 1;
+    }
+}
+
+/* The slope's repeating pattern: column pp = p & 15 (everything here
+ * repeats every 16 px along the wall), d rows above the wall top. The GBA
+ * caches it as a table (room_roof_pattern); room_roof_slope() adds what
+ * does not repeat (the valley, the hip, the dormer, the skylight, the ends
+ * of the spike row) in the ranges room_roof_specials() lists. */
+uint8_t room_roof_pattern(const RoomRoof *f, int side, int pp, int d)
+{
+    const int band = f->band, s4 = side * 4;
+    if (d < 1) return 0;
+    if (d > band) {
+        /* the Hell Pits' bone spikes along the ridge, one per 16 px */
+        if (f->style == ROOF_SPIKE && d <= band + 6) {
+            int m = ((pp + 6) & 15) - 6, hw = (band + 6 - d) >> 1;
+            if (m >= -hw && m <= hw) return f->c[m < 0 || (m == 0 && side) ? RFC_SPIKE_D : RFC_SPIKE_L];
+        }
+        return 0;
+    }
+    if (f->style == ROOF_FLAT) {
+        if (d == 1) return f->c[RFC_GUT_D];
+        if (d <= 4) return f->c[(pp == 15 ? RFC_A_D : RFC_A_M) + s4];   /* the parapet */
+        if (d == 5) return f->c[RFC_GUT_L];
+        if (d == 6) return f->c[RFC_A_D + s4];
+        if (d == band) return f->c[RFC_RIDGE_L];
+        if (((pp * 7 + d * 13) & 15) == 0) return f->c[RFC_A_L + s4];   /* gravel */
+        if (((pp * 5 + d * 11) & 31) == 7) return f->c[RFC_A_D + s4];
+        return f->c[RFC_A_M + s4];
+    }
+    if (d == 1) return f->c[RFC_GUT_D];
+    if (d == 2) return f->c[RFC_GUT_L];
+    if (d >= band - 1) return f->c[d == band ? RFC_RIDGE_L : RFC_RIDGE_D];
+    {
+        /* shingles: course cc, row r above its butt edge; joints every 8 px,
+         * half a tab staggered per course, climbing with d; every other tab
+         * of every other pair of courses a shade darker */
+        int e = d - 3, cc = f->ch == 4 ? e >> 2 : (e * 11) >> 5, r = e - cc * f->ch;
+        int q = pp - (d >> 1) + (cc & 1) * 4 + 64;
+        if (r == 0 || (q & 7) == 0) return f->c[RFC_A_D + s4];
+        if (((q >> 3) & 1) && ((cc + 1) & 2)) return f->c[RFC_A_X + s4];
+        return f->c[(r == f->ch - 1 ? RFC_A_L : RFC_A_M) + s4];
+    }
+}
+
+/* The p ranges [r[2i], r[2i + 1]) of a side where the pattern does not
+ * hold (sorted, may overlap); returns how many. */
+int room_roof_specials(const RoomRoof *f, int side, int16_t r[8])
+{
+    int L = side ? f->LB : f->LA, n = 0;
+    r[n++] = 0; r[n++] = 6;                                  /* valley, spike row start */
+    if (f->dp && side == f->dside) { r[n++] = (int16_t)(f->dp - f->dw - 2); r[n++] = (int16_t)(f->dp + f->dw + 3); }
+    if (f->style == ROOF_ATTIC && side == f->sky_side) { r[n++] = f->sky0; r[n++] = f->sky1; }
+    r[n++] = (int16_t)(L - 2); r[n++] = (int16_t)(L + RF_EAVE);   /* spike row end, hip */
+    return n / 2;
+}
+
+/* the colour of slope pixel (side, p) d rows above its wall top, 0 = none */
+uint8_t room_roof_slope(const RoomRoof *f, int side, int p, int d)
+{
+    const int band = f->band, L = side ? f->LB : f->LA;
+    if (f->dp && side == f->dside && d >= 3) {
+        /* the dormer gable: a little wall face in the back wall's plane (so
+         * a triangle in (p, d)), a window, its roof's edge on top */
+        int a = p - f->dp, m = a < 0 ? -a : a, dt = f->dh + f->dw - m;
+        if (m <= f->dw + 2 && d <= dt + 1 && d >= dt - 2)
+            return f->c[d == dt + 1 ? RFC_RIDGE_L : d == dt - 2 ? RFC_RIDGE_D :
+                        ((m + d) & 1) ? RFC_A_M + side * 4 : RFC_A_D + side * 4];
+        if (m < f->dw && d < dt - 2) {
+            int wy = d - 4, wh = f->ch * 3, ww = f->ch + 1;
+            if (d == 3) return f->c[RFC_SIDING_D];
+            if (m <= ww && wy >= 1 && wy <= wh) {
+                if (m == ww || wy == 1 || wy == wh || a == 0 || wy == (wh + 1) >> 1) return f->c[RFC_HIP];
+                return f->c[(wy == 2 && a < 0) ? RFC_GLINT : RFC_GLASS];
+            }
+            return f->c[(d & 1) ? RFC_SIDING : RFC_SIDING_D];
+        }
+    }
+    if (p >= L + RF_EAVE || d < 1) return 0;
+    if (d > band) return (p >= 6 && p < L - 2) ? room_roof_pattern(f, side, p & 15, d) : 0;
+    if (f->style == ROOF_FLAT) {
+        if (p >= L + RF_EAVE - 1) return f->c[RFC_GUT_D];
+    } else if (d >= 3) {
+        if (p >= L + RF_EAVE - 2) return f->c[(p == L + RF_EAVE - 1) ? RFC_GUT_D : RFC_HIP];
+        if (d < band - 1 && p == 0) return f->c[RFC_VALLEY];
+        if (f->style == ROOF_ATTIC && side == f->sky_side && p >= f->sky0 && p < f->sky1 && d >= 5 && d <= band - 3) {
+            if (p < f->sky0 + 2 || p >= f->sky1 - 2 || d == 5 || d == band - 3) return f->c[RFC_HIP];
+            return f->c[((p + 64 - (d >> 1) * 3) & 7) == 0 ? RFC_GLINT : RFC_GLASS];
+        }
+    }
+    return room_roof_pattern(f, side, p & 15, d);
+}
+
+/* the chimney / tank (in front of the slope, the antenna above) on row y:
+ * the row's constants first (the GBA calls this for every roof row) */
+int room_roof_feature_row(const RoomRoof *f, int y, int x0, int x1, uint8_t *out)
+{
+    int x, n = 0, w = f->fx1 - f->fx0, r = y - f->ftop, w35 = w * 3 / 5, rb = r - 2;
+    uint8_t lit_c, dark_c, mort = f->c[RFC_F_M];
+    if (f->fx1 <= f->fx0 || y < f->ftop - 12) return 0;
+    /* the row's two faces: the tank's (cap, hoop or body), the chimney's
+     * (cap or bricks: 4 rows a course, the lit face's joints staggered) */
+    if (f->fkind == 2) {
+        lit_c = r < 3 ? f->c[RFC_F_CAP] : ((r - 3) & 7) == 6 ? mort : f->c[RFC_F_L];
+        dark_c = r < 3 ? f->c[RFC_F_CAP] : ((r - 3) & 7) == 6 ? mort : f->c[RFC_F_D];
+    } else {
+        lit_c = r < 2 ? f->c[RFC_F_CAP] : (rb & 3) == 3 ? mort : f->c[RFC_F_L];
+        dark_c = r < 2 ? f->c[RFC_F_CAP] : (rb & 3) == 3 ? mort : f->c[RFC_F_D];
+    }
+    for (x = DOOMO_MAX(x0, f->fx0 - 1); x <= f->fx1 && x < x1; x++) {
+        int sd = x < f->ox, p = sd ? f->ox - 1 - x : x - f->ox, fx = x - f->fx0;
+        int base = f->top + (sd ? (p ? (p + 2) >> 1 : 0) : p >> 1);
+        uint8_t c = 0;
+        if (y >= f->ftop && y < base - f->ffoot) {
+            if (fx >= 0 && fx < w) {
+                if (f->fkind == 2) {
+                    if (r < 3) c = (fx == 0 || fx == w - 1) ? 0 : lit_c;
+                    else c = fx < w / 2 ? lit_c : fx < w - 2 ? dark_c : mort;
+                } else if (r < 2) {
+                    c = lit_c;
+                } else if (fx >= w35) {
+                    c = dark_c;
+                } else {
+                    c = ((fx + ((rb >> 2) & 1) * 2) & 3) == 3 ? mort : lit_c;
+                }
+            } else if (f->fkind == 1 && y < f->ftop + 2) {
+                c = f->c[RFC_F_CAP];
+            }
+        } else if (f->fkind == 2 && y < f->ftop) {
+            if (fx == 3 || ((y == f->ftop - 9 || y == f->ftop - 5) && fx >= 1 && fx <= 5)) c = mort;
+        }
+        if (c) { n += !out[x - x0]; out[x - x0] = c; }
+    }
+    return n;
+}
+
+/* Row y, [x0, x1): only the columns whose rows above the wall top can reach
+ * y are looked at (two spans of 2 * dmax px), then the feature on top. */
+int room_roof_row(const RoomRoof *f, int y, int x0, int x1, uint8_t *out)
+{
+    int x, n = 0, side, rel = y - f->top;
+    memset(out, 0, (size_t)(x1 - x0));
+    for (side = 0; side < 2; side++) {
+        int L = side ? f->LB : f->LA, p0 = 2 * rel - 2, p1 = 2 * (rel + f->dmax) + 2, p;
+        if (p0 < 0) p0 = 0;
+        if (p1 > L + RF_EAVE) p1 = L + RF_EAVE;
+        for (p = p0; p < p1; p++) {
+            uint8_t c;
+            x = side ? f->ox - 1 - p : f->ox + p;
+            if (x < x0 || x >= x1) continue;
+            c = room_roof_slope(f, side, p, room_roof_base(f, side, p) - y);
+            if (c) { out[x - x0] = c; n++; }
+        }
+    }
+    return n + room_roof_feature_row(f, y, x0, x1, out);
+}
+
+static void draw_roof(const RR *r)
+{
+    RoomRoof f;
+    uint8_t row[512];
+    int y, y0, y1, x0, x1;
+    if (!room_roof_setup(&f, r->v, r->k, r->W, r->D, r->ox, r->oy, r->wall_h, r->level, r->tint)) return;
+    room_roof_rows(&f, &y0, &y1);
+    room_roof_cols(&f, &x0, &x1);
+    if (x0 < 0) x0 = 0;
+    if (x1 > plat_screen_w()) x1 = plat_screen_w();
+    if (y0 < 0) y0 = 0;
+    if (y1 > plat_screen_h()) y1 = plat_screen_h();
+    if (x1 - x0 > (int)sizeof(row)) x1 = x0 + (int)sizeof(row);
+    for (y = y0; y < y1; y++) {
+        int x = x0;
+        if (!room_roof_row(&f, y, x0, x1, row)) continue;
+        while (x < x1) {                              /* runs of one colour */
+            int e = x + 1;
+            uint8_t c = row[x - x0];
+            while (e < x1 && row[e - x0] == c) e++;
+            if (c) plat_rect(x, y, e - x, 1, c);
+            x = e;
+        }
+    }
+}
+
 /* ---- pieces ---------------------------------------------------------------------- */
 typedef struct Item {
     int8_t x0, y0, x1, y1;
@@ -519,6 +866,7 @@ void room_ref_draw(const DoomoRoomView *v)
             }
         }
     }
+    if (v->room_kind == ROOMK_WALLS && v->roof) draw_roof(&r);
     draw_room_shell(&r);
     /* the rubber band of a multi-select (room-space bits y * w + x) */
     for (j = 0; j < v->d; j++)

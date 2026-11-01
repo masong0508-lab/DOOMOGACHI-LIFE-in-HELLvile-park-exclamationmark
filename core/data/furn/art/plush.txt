@@ -29,9 +29,15 @@ blob 7 11 6  1 1 1     WHITE
 blob 9 11 6  1 1 1     WHITE
 
 [plain_human]
-cyl  8 8 0   2 1       ~STONE
-box  7 7 1   2 2 6     SILVER
-blob 8 8 8   1 1 1     SILVER
+cyl  8 8 0   3 1       ~STONE
+box  7 7 1   1 2 4     CARAMEL
+box  9 7 1   1 2 4     CARAMEL
+box  6 7 5   4 2 4     WHITE
+box  5 7 6   1 2 3     PEACH
+box  10 7 6  1 2 3     PEACH
+blob 8 8 11  2 2 2     PEACH
+blob 8 7 12  2 1 1     CHOCOLATE
+blob 8 9 11  1 1 1     JET
 
 [vapula_plush]
 frames 2

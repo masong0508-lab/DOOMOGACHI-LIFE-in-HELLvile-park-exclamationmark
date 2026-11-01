@@ -273,6 +273,11 @@ typedef struct DoomoRoomActor {
     uint8_t flags;                    /* BB_FLIPX, BB_TRANSLUCENT, BB_SHADOW, RA_PLAYER */
 } DoomoRoomActor;
 enum { ROOMK_WALLS, ROOMK_GARDEN, ROOMK_OPEN };   /* DoomoRoomView.room_kind */
+/* (HART) DoomoRoomView.roof: the main roof drawn behind the two back walls
+ * of a ROOMK_WALLS room (room_ref.c, the GBA and PS1 room.c). 0 = none (the
+ * Cellar, the open kinds, every older caller); the colours follow
+ * `ceiling` (the theme). */
+enum { ROOF_NONE, ROOF_COTTAGE, ROOF_ATTIC, ROOF_FLAT, ROOF_SPIKE, ROOF_COUNT };
 typedef struct DoomoRoomView {
     uint8_t  w, d, wallpaper, floor, wall_paint, floor_paint, ceiling, room_kind;
     const DoomoRoomObj *objs; int nobj;
@@ -283,6 +288,7 @@ typedef struct DoomoRoomView {
     int16_t  punch_q8;                /* 256 = none                                      */
     int8_t   pan_x, pan_y;            /* tiles*16                                        */
     uint8_t  daylight, tint, tint_level, weather;
+    uint8_t  roof;                    /* ROOF_* (HART)                                   */
     int8_t   cursor_x, cursor_y;      /* -1 = hidden (GBA: OBJ)                          */
     uint8_t  sel_mask[16];            /* multi-select rubber band, 1 bit per tile row    */
     uint16_t time;

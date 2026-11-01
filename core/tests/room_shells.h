@@ -33,57 +33,71 @@ typedef struct RoomShell {
     uint8_t wallpaper, floor, ceiling;        /* patterns 0..7, ramp 0..7        */
     uint8_t wall_paint, floor_paint;          /* PAINT_*                         */
     uint8_t tint, tint_level, daylight, view; /* TINT_*, 0..16, 0..15, k 0..3    */
+    uint8_t roof;                             /* ROOF_* (HART), 0 = none         */
 } RoomShell;
 
 #define ROOM_SHELL_FIRST 5                    /* golden line of room_shells[0]  */
 
 static const RoomShell room_shells[] = {
     /* 5..12: wallpaper k, floor k, ceiling k on the parity layout, view k & 3 */
-    { 6, 6, ROOMK_WALLS, RSF_PARITY, 0, 0, 0, PAINT_ROSE,        PAINT_HONEY,     0, 0, 15, 0 },
-    { 6, 6, ROOMK_WALLS, RSF_PARITY, 1, 1, 1, PAINT_LAVENDER,    PAINT_CHOCOLATE, 0, 0, 15, 1 },
-    { 6, 6, ROOMK_WALLS, RSF_PARITY, 2, 2, 2, PAINT_MINT,        PAINT_WHITE,     0, 0, 15, 2 },
-    { 6, 6, ROOMK_WALLS, RSF_PARITY, 3, 3, 3, PAINT_CHARCOAL,    PAINT_RUST,      0, 0, 15, 3 },
-    { 6, 6, ROOMK_WALLS, RSF_PARITY, 4, 4, 4, PAINT_BUBBLEGUM,   PAINT_LIME,      0, 0, 15, 0 },
-    { 6, 6, ROOMK_WALLS, RSF_PARITY, 5, 5, 5, PAINT_BONE,        PAINT_SILVER,    0, 0, 15, 1 },
-    { 6, 6, ROOMK_WALLS, RSF_PARITY, 6, 6, 6, PAINT_SILVER,      PAINT_CARAMEL,   0, 0, 15, 2 },
-    { 6, 6, ROOMK_WALLS, RSF_PARITY, 7, 7, 7, PAINT_GRAPE,       PAINT_CHARCOAL,  0, 0, 15, 3 },
+    { 6, 6, ROOMK_WALLS, RSF_PARITY, 0, 0, 0, PAINT_ROSE,        PAINT_HONEY,     0, 0, 15, 0, 0 },
+    { 6, 6, ROOMK_WALLS, RSF_PARITY, 1, 1, 1, PAINT_LAVENDER,    PAINT_CHOCOLATE, 0, 0, 15, 1, 0 },
+    { 6, 6, ROOMK_WALLS, RSF_PARITY, 2, 2, 2, PAINT_MINT,        PAINT_WHITE,     0, 0, 15, 2, 0 },
+    { 6, 6, ROOMK_WALLS, RSF_PARITY, 3, 3, 3, PAINT_CHARCOAL,    PAINT_RUST,      0, 0, 15, 3, 0 },
+    { 6, 6, ROOMK_WALLS, RSF_PARITY, 4, 4, 4, PAINT_BUBBLEGUM,   PAINT_LIME,      0, 0, 15, 0, 0 },
+    { 6, 6, ROOMK_WALLS, RSF_PARITY, 5, 5, 5, PAINT_BONE,        PAINT_SILVER,    0, 0, 15, 1, 0 },
+    { 6, 6, ROOMK_WALLS, RSF_PARITY, 6, 6, 6, PAINT_SILVER,      PAINT_CARAMEL,   0, 0, 15, 2, 0 },
+    { 6, 6, ROOMK_WALLS, RSF_PARITY, 7, 7, 7, PAINT_GRAPE,       PAINT_CHARCOAL,  0, 0, 15, 3, 0 },
     /* 13..20: the off-diagonal pairs on a bare room (wallpaper k, floor k + 3,
      * ceiling k + 5, view k + 2), light falling from 15 to 3 */
-    { 6, 6, ROOMK_WALLS, RSF_EMPTY,  0, 3, 5, PAINT_SKY,         PAINT_TANGERINE, 0, 0, 15, 2 },
-    { 6, 6, ROOMK_WALLS, RSF_EMPTY,  1, 4, 6, PAINT_PEACH,       PAINT_FOREST,    0, 0, 15, 3 },
-    { 6, 6, ROOMK_WALLS, RSF_EMPTY,  2, 5, 7, PAINT_TEAL,        PAINT_JET,       0, 0, 15, 0 },
-    { 6, 6, ROOMK_WALLS, RSF_EMPTY,  3, 6, 0, PAINT_COBALT,      PAINT_BLOOD,     0, 0, 15, 1 },
-    { 6, 6, ROOMK_WALLS, RSF_EMPTY,  4, 7, 1, PAINT_LEMON,       PAINT_NAVY,      0, 0, 12, 2 },
-    { 6, 6, ROOMK_WALLS, RSF_EMPTY,  5, 0, 2, PAINT_CHERRY,      PAINT_BONE,      0, 0,  9, 3 },
-    { 6, 6, ROOMK_WALLS, RSF_EMPTY,  6, 1, 3, PAINT_VAPE_PURPLE, PAINT_HELLFIRE,  0, 0,  6, 0 },
-    { 6, 6, ROOMK_WALLS, RSF_EMPTY,  7, 2, 4, PAINT_SLIME,       PAINT_MAGENTA,   0, 0,  3, 1 },
+    { 6, 6, ROOMK_WALLS, RSF_EMPTY,  0, 3, 5, PAINT_SKY,         PAINT_TANGERINE, 0, 0, 15, 2, 0 },
+    { 6, 6, ROOMK_WALLS, RSF_EMPTY,  1, 4, 6, PAINT_PEACH,       PAINT_FOREST,    0, 0, 15, 3, 0 },
+    { 6, 6, ROOMK_WALLS, RSF_EMPTY,  2, 5, 7, PAINT_TEAL,        PAINT_JET,       0, 0, 15, 0, 0 },
+    { 6, 6, ROOMK_WALLS, RSF_EMPTY,  3, 6, 0, PAINT_COBALT,      PAINT_BLOOD,     0, 0, 15, 1, 0 },
+    { 6, 6, ROOMK_WALLS, RSF_EMPTY,  4, 7, 1, PAINT_LEMON,       PAINT_NAVY,      0, 0, 12, 2, 0 },
+    { 6, 6, ROOMK_WALLS, RSF_EMPTY,  5, 0, 2, PAINT_CHERRY,      PAINT_BONE,      0, 0,  9, 3, 0 },
+    { 6, 6, ROOMK_WALLS, RSF_EMPTY,  6, 1, 3, PAINT_VAPE_PURPLE, PAINT_HELLFIRE,  0, 0,  6, 0, 0 },
+    { 6, 6, ROOMK_WALLS, RSF_EMPTY,  7, 2, 4, PAINT_SLIME,       PAINT_MAGENTA,   0, 0,  3, 1, 0 },
     /* 21..25: the tints (home_draw.c: a possessed visit is red at level 4, a
      * ghost visit night at 8, the hell insert red at 16) */
-    { 6, 6, ROOMK_WALLS, RSF_PARITY, 4, 0, 0, PAINT_BUBBLEGUM,   PAINT_CARAMEL,   TINT_RED,    4, 15, 0 },
-    { 6, 6, ROOMK_WALLS, RSF_PARITY, 7, 7, 7, PAINT_GRAPE,       PAINT_CHARCOAL,  TINT_NIGHT,  8, 15, 1 },
-    { 6, 6, ROOMK_WALLS, RSF_PARITY, 0, 0, 0, PAINT_BUBBLEGUM,   PAINT_CARAMEL,   TINT_RED,   16, 15, 0 },
-    { 6, 6, ROOMK_WALLS, RSF_PARITY, 5, 2, 5, PAINT_BONE,        PAINT_MINT,      TINT_GOLD,  12,  9, 2 },
-    { 6, 6, ROOMK_WALLS, RSF_PARITY, 1, 3, 6, PAINT_SKY,         PAINT_HONEY,     TINT_GREEN,  8, 15, 3 },
+    { 6, 6, ROOMK_WALLS, RSF_PARITY, 4, 0, 0, PAINT_BUBBLEGUM,   PAINT_CARAMEL,   TINT_RED,    4, 15, 0, 0 },
+    { 6, 6, ROOMK_WALLS, RSF_PARITY, 7, 7, 7, PAINT_GRAPE,       PAINT_CHARCOAL,  TINT_NIGHT,  8, 15, 1, 0 },
+    { 6, 6, ROOMK_WALLS, RSF_PARITY, 0, 0, 0, PAINT_BUBBLEGUM,   PAINT_CARAMEL,   TINT_RED,   16, 15, 0, 0 },
+    { 6, 6, ROOMK_WALLS, RSF_PARITY, 5, 2, 5, PAINT_BONE,        PAINT_MINT,      TINT_GOLD,  12,  9, 2, 0 },
+    { 6, 6, ROOMK_WALLS, RSF_PARITY, 1, 3, 6, PAINT_SKY,         PAINT_HONEY,     TINT_GREEN,  8, 15, 3, 0 },
     /* 26..29: the open kinds: the Garden (8x6) at noon and at night, the Park
      * Plot (10x8) at noon and at dusk */
-    { 8, 6, ROOMK_GARDEN, RSF_FLOOR, 4, 4, 0, PAINT_SKY,         PAINT_LIME,      0, 0, 15, 0 },
-    { 8, 6, ROOMK_GARDEN, RSF_FLOOR, 4, 5, 0, PAINT_SKY,         PAINT_SILVER,    0, 0,  3, 1 },
-    {10, 8, ROOMK_OPEN,   RSF_FLOOR, 4, 4, 0, PAINT_SKY,         PAINT_FOREST,    0, 0, 15, 1 },
-    {10, 8, ROOMK_OPEN,   RSF_EMPTY, 4, 6, 0, PAINT_SKY,         PAINT_CHARCOAL,  0, 0, 10, 2 },
+    { 8, 6, ROOMK_GARDEN, RSF_FLOOR, 4, 4, 0, PAINT_SKY,         PAINT_LIME,      0, 0, 15, 0, 0 },
+    { 8, 6, ROOMK_GARDEN, RSF_FLOOR, 4, 5, 0, PAINT_SKY,         PAINT_SILVER,    0, 0,  3, 1, 0 },
+    {10, 8, ROOMK_OPEN,   RSF_FLOOR, 4, 4, 0, PAINT_SKY,         PAINT_FOREST,    0, 0, 15, 1, 0 },
+    {10, 8, ROOMK_OPEN,   RSF_EMPTY, 4, 6, 0, PAINT_SKY,         PAINT_CHARCOAL,  0, 0, 10, 2, 0 },
     /* 30..32: the 8x6 Kitchen shell turned (w != d), and the purple tint */
-    { 8, 6, ROOMK_WALLS, RSF_PARITY, 2, 2, 0, PAINT_MINT,        PAINT_WHITE,     0, 0, 15, 1 },
-    { 8, 6, ROOMK_WALLS, RSF_PARITY, 2, 2, 0, PAINT_MINT,        PAINT_WHITE,     0, 0, 15, 2 },
-    { 8, 6, ROOMK_WALLS, RSF_PARITY, 6, 3, 2, PAINT_ROSE,        PAINT_COBALT,    TINT_PURPLE, 8, 15, 3 },
+    { 8, 6, ROOMK_WALLS, RSF_PARITY, 2, 2, 0, PAINT_MINT,        PAINT_WHITE,     0, 0, 15, 1, 0 },
+    { 8, 6, ROOMK_WALLS, RSF_PARITY, 2, 2, 0, PAINT_MINT,        PAINT_WHITE,     0, 0, 15, 2, 0 },
+    { 8, 6, ROOMK_WALLS, RSF_PARITY, 6, 3, 2, PAINT_ROSE,        PAINT_COBALT,    TINT_PURPLE, 8, 15, 3, 0 },
     /* 33..37: the vocabulary the GBA draws today (wallpapers 0..3, floors
      * 0..1, the wood cornice, no tint) on the non-square room, the open
      * kinds (the noon sky: the GBA has no dusk / night sky yet) and a dim
  * light, so its turned / open / dim paths stay checked
      * while the H2 frames above are expected to fail there */
-    { 8, 6, ROOMK_WALLS, RSF_PARITY, 1, 1, 0, PAINT_LAVENDER,    PAINT_HONEY,     0, 0, 15, 1 },
-    { 8, 6, ROOMK_WALLS, RSF_PARITY, 0, 0, 0, PAINT_BUBBLEGUM,   PAINT_CARAMEL,   0, 0,  9, 2 },
-    { 8, 6, ROOMK_GARDEN, RSF_FLOOR, 0, 1, 0, PAINT_SKY,         PAINT_LIME,      0, 0, 15, 3 },
-    {10, 8, ROOMK_OPEN,   RSF_FLOOR, 0, 0, 0, PAINT_SKY,         PAINT_FOREST,    0, 0, 13, 0 },
-    { 6, 6, ROOMK_WALLS, RSF_EMPTY,  3, 1, 0, PAINT_COBALT,      PAINT_CHOCOLATE, 0, 0,  6, 1 },
+    { 8, 6, ROOMK_WALLS, RSF_PARITY, 1, 1, 0, PAINT_LAVENDER,    PAINT_HONEY,     0, 0, 15, 1, 0 },
+    { 8, 6, ROOMK_WALLS, RSF_PARITY, 0, 0, 0, PAINT_BUBBLEGUM,   PAINT_CARAMEL,   0, 0,  9, 2, 0 },
+    { 8, 6, ROOMK_GARDEN, RSF_FLOOR, 0, 1, 0, PAINT_SKY,         PAINT_LIME,      0, 0, 15, 3, 0 },
+    {10, 8, ROOMK_OPEN,   RSF_FLOOR, 0, 0, 0, PAINT_SKY,         PAINT_FOREST,    0, 0, 13, 0, 0 },
+    { 6, 6, ROOMK_WALLS, RSF_EMPTY,  3, 1, 0, PAINT_COBALT,      PAINT_CHOCOLATE, 0, 0,  6, 1, 0 },
+    /* 38..45 (HART): the roofs. 38..43 in the GBA's vocabulary (the wood
+     * cornice): the cottage roof with the chimney over the hearth (wall B in
+     * view 0, wall A in view 1, cut away in view 2), the Annex's skylight on
+     * the turned 8x6 room, the tower's flat roof and tank, the Pits' spikes;
+     * 44..45 a themed roof colour and a tinted spiky one */
+    { 6, 6, ROOMK_WALLS, RSF_PARITY, 0, 0, 0, PAINT_BUBBLEGUM,   PAINT_CARAMEL,   0, 0, 15, 0, ROOF_COTTAGE },
+    { 6, 6, ROOMK_WALLS, RSF_PARITY, 0, 0, 0, PAINT_BUBBLEGUM,   PAINT_CARAMEL,   0, 0, 15, 1, ROOF_COTTAGE },
+    { 6, 6, ROOMK_WALLS, RSF_PARITY, 1, 1, 0, PAINT_LAVENDER,    PAINT_HONEY,     0, 0,  9, 2, ROOF_COTTAGE },
+    { 8, 6, ROOMK_WALLS, RSF_PARITY, 1, 1, 0, PAINT_BONE,        PAINT_CHOCOLATE, 0, 0, 12, 1, ROOF_ATTIC },
+    { 6, 6, ROOMK_WALLS, RSF_EMPTY,  3, 0, 0, PAINT_SILVER,      PAINT_CARAMEL,   0, 0, 15, 0, ROOF_FLAT },
+    { 6, 6, ROOMK_WALLS, RSF_EMPTY,  2, 1, 0, PAINT_GRAPE,       PAINT_CHARCOAL,  0, 0,  6, 3, ROOF_SPIKE },
+    { 6, 6, ROOMK_WALLS, RSF_PARITY, 1, 2, 4, PAINT_LAVENDER,    PAINT_MINT,      0, 0, 15, 0, ROOF_COTTAGE },
+    { 6, 6, ROOMK_WALLS, RSF_PARITY, 6, 6, 6, PAINT_GRAPE,       PAINT_CHARCOAL,  TINT_RED,    4, 15, 1, ROOF_SPIKE },
 };
 #define ROOM_SHELL_COUNT ((int)(sizeof(room_shells) / sizeof(room_shells[0])))
 #define ROOM_SHELL_LINES (ROOM_SHELL_FIRST + ROOM_SHELL_COUNT)   /* golden lines in all */
@@ -179,6 +193,7 @@ static inline void rs_view(DoomoRoomView *v, DoomoRoomObj *objs, const HomeRoom 
         v->tint_level = f->tint_level;
         v->daylight = f->daylight;
         v->yaw = (int16_t)(f->view * 1024);
+        v->roof = f->roof;
     }
 }
 

@@ -1894,6 +1894,7 @@ static int build_view(DoomoRoomView *v, uint8_t *cache, uint32_t cap)
     v->floor_paint = r->floor_paint == 0xFF ? d->floor_paint : r->floor_paint;
     v->ceiling = (uint8_t)((r->flags & HRF_CEIL_MASK) >> HRF_CEIL_SHIFT);
     v->room_kind = d->kind;
+    v->roof = (uint8_t)home_room_roof(H->room);
     for (i = 0; i < r->nobj && n < HOME_OBJ_MAX; i++) {
         home_obj_view(&r->obj[i], &H->objs[n]);
         obj_fx(&H->objs[n], i);

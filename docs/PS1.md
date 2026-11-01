@@ -335,6 +335,23 @@ table (about 8 KB) until L6 reads the tables from the disc per overlay
 group: six more would leave about 82 KB, close to the 72 KB gate, so **L6
 must land before the L10-* packages add `ui_main.tsv` rows**.
 
+HART (roofs and redrawn furniture, measured against `3706744` built the
+same way): the house's common code grew from 156 to 164 KB (+263
+furniture prims, 2,104 B of `doomo_furn_prims`; the roof's polygons in
+`room.c`, -Os, about 1.9 KB with `draw_roof`; `room_roof_setup()` 1.7 KB;
+the 2D roof rows are dead code here and dropped by the linker), so the
+house now sets the slot's end: the disc ends at `0x801e2c40` instead of
+`0x801e0440`, **116 KB below the stack top** (126 KB before; 10,240 B
+less, still 52 KB above the 64 KB stack reserve and 44 KB above the
+72 KB plan gate). No VRAM: the roof is
+flat-shaded polygons (no texture page, no CLUT row). Home fps (harness
+`home.txt`, PASS): plain 30.17, steady 29.88, orbit 27.38 (28.46),
+cellar_full 28.80 (30.00), defend_stress 19.89 (20.75), modal 29.83,
+defend_w3 30.13, visit 30.17; parity live / backdrop 0 px. With L1's
+estimate of about 8 KB per further resident language table, six more
+would now leave about 72 KB, right at the plan gate: L6 (tables read
+from the disc per group) matters even more after HART.
+
 The biggest remaining consumers of RAM: resident core code (portraits,
 UI, sim, story engine, ...) ~650 KB, merged string literals of resident
 code ~110 KB, `doomo_town` 107 KB, the display lists 112 KB + OTs 24 KB,

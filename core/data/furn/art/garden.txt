@@ -190,6 +190,11 @@ blob 8 8 9   7 7 9     A soft
 blob 5 6 14  3 3 3     B soft
 blob 11 10 12 3 3 3    B soft
 blob 7 11 16 2 2 2     B soft
+blob 4 11 8  3 3 3     A soft
+blob 12 5 11 3 3 3     A soft
+blob 9 12 10 1 1 1     LEMON
+blob 12 9 15 1 1 1     CHERRY
+blob 5 9 15  1 1 1     WHITE
 
 [garden_bench]
 box  2 3 0   2 2 9     ~STEEL

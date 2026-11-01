@@ -168,6 +168,29 @@ typedef struct RTest {
     DoomoRoomActor acts[12];
 } RTest;
 DOOMO_STATIC_ASSERT(sizeof(RBig) <= 15488u, room_state_fits_the_c7_claim);
+/* (HART) the roof's tables, in the two 2.5 KB VRAM gaps the mode 4 pages
+ * leave (the raycaster keeps its colormaps there: r3d_invalidate() makes it
+ * copy them again when it claims the arena after the house; the house
+ * rebuilds these with its shell after any frame gap). Laid out so that a
+ * screen row of the roof is a few straight copies, like the walls' strips:
+ *  - the repeating pattern: column p = 16m + j of row rel = y - top lies in
+ *    strip row rel - 8m (side B's rows stored right to left, as the screen
+ *    runs), 16 bytes a row;
+ *  - each special range [a, b) (valley, hip, dormer, skylight: where the
+ *    pattern does not hold) as the screen rows it covers, b - a bytes each
+ *    (side B right to left).
+ * Both keep a column's parity equal to its screen x's (ox is even, ranges
+ * start on even columns), so the copies are halfword DMAs. VRAM takes
+ * halfword writes only; byte reads cost what IWRAM's do. */
+#define RPH_S0   40                     /* S = s + 40, s = rel - 8m in -34 .. 7 */
+#define RPH_G    6                      /* S >> 3 in 0 .. 5                   */
+#define RPH_W    (RPH_G * 16)           /* a phase row: 6 strip rows of 16 B   */
+#define RROOF_PHASE ((uint8_t (*)[8][RPH_W])0x06013600)          /* gap B: 1,536 of 2,560 B */
+#define RROOF_SPEC  ((uint8_t *)0x06009600)                      /* gap A: the ranges' rows */
+#define RROOF_SPEC_MAX 2560
+#define RROOF_FEAT  ((uint8_t *)0x06013600 + 2 * 8 * RPH_W)     /* gap B: the chimney's rows */
+#define RROOF_FEAT_MAX (2560 - 2 * 8 * RPH_W)
+DOOMO_STATIC_ASSERT(2 * 8 * RPH_W <= 2560, roof_phase_rows_fit_gap_b);
 DOOMO_STATIC_ASSERT(((sizeof(RBig) + 7u) & ~7u) + sizeof(RTest) <= GBA_BIG_ROOM, room_test_fits_its_region);
 /* the house's region of the arena (bigbuf.c, G0): GBA_BIG_ROOM bytes below
  * the billboards, beside the house scene's 2.8 KB of scene scratch */
@@ -197,7 +220,22 @@ typedef struct RG {
     int bx0, bx1, nby;                 /* managed block columns / rows        */
     uint8_t bg, corner, lip, fl_g;     /* shell colours (lit)                 */
     uint8_t fl_a, fl_b, plank, pad;
+    int roof_on, ry0, ry1;             /* (HART) the roof and its rows         */
+    int roof_tab, nsp[2];              /* the tables hold it; special ranges:   */
+    int16_t sp[2][4][5];               /*   sorted, disjoint [a, b) (even ends),
+                                          VRAM offset, rel of its row 0, rows */
+    int fy1, ftab, ftw;                /* the feature's rows end here; its rows
+                                          are in RROOF_FEAT, ftw bytes each      */
+    RoomRoof roof;
 } RG;
+
+/* (HART) the slope's row d of column p (side B's corner column p = 0
+ * stands on the corner post's top). The roof's helpers are `noipa`: with
+ * this file's mixed -Os / -O2 functions, GCC 13's IPA register allocation
+ * once assumed a callee kept r1 (the side) across its call and the next
+ * call read a code address as the side. */
+#define roof_d(f, side, p, y) ((f)->top - (y) + ((side) ? ((p) ? ((p) + 2) >> 1 : 0) : (p) >> 1))
+#define NOIPA __attribute__((noipa))
 
 static inline uint8_t lit(const RG *g, uint8_t c)
 {
@@ -384,6 +422,65 @@ __attribute__((noinline)) static void geometry(RG *g, const DoomoRoomView *v)
     g->fl_b = lit(g, PAL_PAINT(fp, 2));
     g->fl_g = lit(g, PAL_PAINT(fp, 0));
     g->plank = (v->floor & 3) == 1;
+    /* (HART) room_ref's roof, same code (the reference ignores no tint the
+     * GBA draws: 0 here, like the rest of the shell) */
+    g->roof_on = g->walls && room_roof_setup(&g->roof, v, g->k, g->W, g->D, g->ox, g->oy, g->wall_h, g->level, 0);
+    if (g->roof_on) {
+        const RoomRoof *f = &g->roof;
+        int side, off = 0;
+        room_roof_rows(&g->roof, &g->ry0, &g->ry1);
+        g->roof_tab = f->dmax < ROOM_ROOF_PAT_ROWS && f->dmax <= 34;
+        /* the special ranges: merged, sorted, widened to even ends, clipped
+         * to the slope; each with the screen rows it covers (d in [1, the
+         * band], or up to dmax where the dormer stands up) */
+        for (side = 0; side < 2; side++) {
+            int16_t r[8];
+            int n = room_roof_specials(f, side, r), L = side ? f->LB : f->LA, i, k, m = 0;
+            for (i = 0; i < n; i++) {                          /* insertion by start */
+                int a = DOOMO_MAX(r[2 * i] & ~1, 0), b = DOOMO_MIN((r[2 * i + 1] + 1) & ~1, L + ROOM_ROOF_EAVE);
+                if (a >= b) continue;
+                for (k = m; k > 0 && g->sp[side][k - 1][0] > a; k--) {
+                    g->sp[side][k][0] = g->sp[side][k - 1][0];
+                    g->sp[side][k][1] = g->sp[side][k - 1][1];
+                }
+                g->sp[side][k][0] = (int16_t)a;
+                g->sp[side][k][1] = (int16_t)b;
+                m++;
+            }
+            for (i = k = 0; i < m; i++) {                      /* merge overlaps */
+                if (k && g->sp[side][i][0] <= g->sp[side][k - 1][1]) {
+                    if (g->sp[side][i][1] > g->sp[side][k - 1][1]) g->sp[side][k - 1][1] = g->sp[side][i][1];
+                } else {
+                    g->sp[side][k][0] = g->sp[side][i][0];
+                    g->sp[side][k][1] = g->sp[side][i][1];
+                    k++;
+                }
+            }
+            for (i = 0; i < k; i++) {
+                int a = g->sp[side][i][0], b = g->sp[side][i][1], hi = f->band;
+                int b0 = roof_d(f, side, a, f->top), b1 = roof_d(f, side, b - 1, f->top);
+                if (f->dp && side == f->dside && a < f->dp + f->dw + 3 && b > f->dp - f->dw - 2) hi = f->dmax;
+                /* d = base_off(p) - rel in [1, hi]: rel in [b0 - hi, b1 - 1] */
+                g->sp[side][i][2] = (int16_t)off;
+                g->sp[side][i][3] = (int16_t)(b0 - hi);
+                g->sp[side][i][4] = (int16_t)(b1 - 1 - (b0 - hi) + 1);
+                off += (b - a) * g->sp[side][i][4];
+            }
+            g->nsp[side] = k;
+        }
+        if (off > RROOF_SPEC_MAX) g->roof_tab = 0;
+        /* the feature's last row (its lowest foot) and its table */
+        g->fy1 = f->ftop;
+        if (f->fx1 > f->fx0) {
+            int x;
+            for (x = f->fx0; x < f->fx1; x++) {
+                int sd = x < f->ox, p = sd ? f->ox - 1 - x : x - f->ox, e = roof_d(f, sd, p, 0) - f->ffoot;
+                if (e > g->fy1) g->fy1 = e;
+            }
+            g->ftw = f->fx1 - f->fx0 + 2;
+            g->ftab = g->ftw * (g->fy1 - (f->ftop - 12)) <= RROOF_FEAT_MAX && !(g->ftw & 1);
+        }
+    }
 }
 
 static uint32_t shell_key(const RG *g)
@@ -397,6 +494,10 @@ static uint32_t shell_key(const RG *g)
                (uint32_t)v->floor_paint << 24);
     h = mix(h, (uint32_t)g->vx | (uint32_t)g->vy << 8 | (uint32_t)g->vw << 16 | (uint32_t)g->vh << 24);
     h = mix(h, (uint32_t)g->dy0 | (uint32_t)g->dy1 << 8);
+    if (g->roof_on) {                   /* (HART) its style, colours, chimney, dormer */
+        h = mix(h, (uint32_t)g->roof.style | (uint32_t)v->ceiling << 8 | (uint32_t)(g->roof.fx0 & 0xFFFF) << 16);
+        h = mix(h, (uint32_t)(g->roof.ftop & 0xFFFF) | (uint32_t)(g->roof.dp & 0xFFFF) << 16);
+    }
     return h;
 }
 
@@ -460,6 +561,43 @@ __attribute__((noinline)) static void build_shell(RG *g)
                 memcpy(B->wall[1][r] + 16 * j, S + STRIP_ROWS * 16 + (8 * j + r) * 16, 16);
             }
         B->strip_h = (uint8_t)(g->wall_h + 8);
+    }
+    if (g->roof_on && g->roof_tab) {                /* (HART) the roof's tables */
+        const RoomRoof *f = &g->roof;
+        uint16_t tmp[ROOM_ROOF_EAVE + 128];
+        uint8_t *t8 = (uint8_t *)tmp;
+        for (c = 0; c < 2; c++) {
+            int i, p, w;
+            for (r = 0; r < 8 * RPH_G; r++) {         /* S = r: s = r - 40 */
+                int st = r - RPH_S0, gi = r >> 3;
+                volatile uint16_t *d = (volatile uint16_t *)(RROOF_PHASE[c][r & 7] + 16 * (c ? gi : RPH_G - 1 - gi));
+                for (j = 0; j < 16; j++) {
+                    if (!c) t8[j] = room_roof_pattern(f, 0, j, (j >> 1) - st);
+                    else t8[15 - j] = room_roof_pattern(f, 1, j, ((j + 2) >> 1) - st);
+                }
+                for (j = 0; j < 8; j++) d[j] = tmp[j];
+            }
+            if (!c && g->ftab) {                     /* the chimney / tank rows */
+                int y;
+                for (y = f->ftop - 12; y < g->fy1; y++) {
+                    volatile uint16_t *d = (volatile uint16_t *)(RROOF_FEAT + (y - (f->ftop - 12)) * g->ftw);
+                    memset(t8, 0, (size_t)g->ftw);
+                    room_roof_feature_row(f, y, f->fx0 - 1, f->fx1 + 1, t8);
+                    for (j = 0; j < g->ftw / 2; j++) d[j] = tmp[j];
+                }
+            }
+            for (i = 0; i < g->nsp[c]; i++) {
+                const int16_t *e = g->sp[c][i];
+                w = e[1] - e[0];
+                for (r = 0; r < e[4]; r++) {
+                    volatile uint16_t *d = (volatile uint16_t *)(RROOF_SPEC + e[2] + r * w);
+                    int rel = e[3] + r;
+                    for (p = e[0]; p < e[1]; p++)
+                        t8[c ? e[1] - 1 - p : p - e[0]] = room_roof_slope(f, c, p, roof_d(f, c, p, f->top + rel));
+                    for (j = 0; j < w / 2; j++) d[j] = tmp[j];
+                }
+            }
+        }
     }
     for (q = 0; q < 8; q++)
         for (par = 0; par < 2; par++) {
@@ -564,6 +702,149 @@ HOT static void lip_row(const RG *g, int y, int x0, int x1)
     if (xa < xb) fill(xa, y, xb, y + 1, g->lip);
 }
 
+
+
+/* (HART) a run of row y from a VRAM table: one halfword DMA when it is
+ * even-aligned at both ends (it nearly always is), else row_copy */
+#define ALWAYS_INLINE inline __attribute__((always_inline))
+static inline void dma16(uint16_t *dst, const void *src, int halves);
+static ALWAYS_INLINE void roof_copy(int y, int x0, int x1, const uint8_t *src)
+{
+    if (!((x0 | x1 | (int)(uintptr_t)src) & 1)) {
+        if (x1 > x0) dma16(gba_back + y * LINE + (x0 >> 1), src, (x1 - x0) >> 1);
+    } else {
+        row_copy(y, x0, x1, src);
+    }
+}
+
+/* (HART) columns [*p0, *p1) of a side clipped to [c0, c1) and narrowed until
+ * the end columns' d is in [lo, hi] (d falls by one every two columns) */
+static ALWAYS_INLINE int roof_span(const RoomRoof *f, int side, int y, int c0, int c1, int lo, int hi,
+                                   int *p0, int *p1)
+{
+    int L = side ? f->LB : f->LA, rel = y - f->top, a, b;
+    a = DOOMO_MAX(DOOMO_MAX(2 * (rel + lo) - 3, 0), c0);
+    b = DOOMO_MIN(DOOMO_MIN(2 * (rel + hi) + 3, L + ROOM_ROOF_EAVE), c1);
+    while (a < b && roof_d(f, side, a, y) < lo) a++;
+    while (a < b && roof_d(f, side, b - 1, y) > hi) b--;
+    *p0 = a;
+    *p1 = b;
+    return a < b;
+}
+
+/* (HART) one side's columns [p0, p1) of row y, every d in [1, band]:
+ * straight copies, the pattern's phase row in one run between the special
+ * ranges, whose stored rows are copied as they are - the same pixels as
+ * room_roof_row() */
+static ALWAYS_INLINE void roof_band(const RG *g, int side, int y, int p0, int p1)
+{
+    const RoomRoof *f = &g->roof;
+    const int n = g->nsp[side], rel = y - f->top, ox = f->ox;
+    int p = p0, k = 0;
+    while (p < p1) {
+        int nb = p1;
+        while (k < n && g->sp[side][k][1] <= p) k++;
+        if (k < n && p >= g->sp[side][k][0]) {
+            const int16_t *e = g->sp[side][k];
+            const uint8_t *row = RROOF_SPEC + e[2] + (rel - e[3]) * (e[1] - e[0]);
+            nb = DOOMO_MIN(nb, e[1]);
+            if (!side) roof_copy(y, ox + p, ox + nb, row + (p - e[0]));
+            else roof_copy(y, ox - nb, ox - p, row + (e[1] - nb));
+            p = nb;
+            continue;
+        }
+        if (k < n) nb = DOOMO_MIN(nb, g->sp[side][k][0]);
+        if (!side) {
+            int S = rel - 8 * (p >> 4) + RPH_S0;
+            roof_copy(y, ox + p, ox + nb, RROOF_PHASE[0][S & 7] + 16 * (RPH_G - 1 - (S >> 3)) + (p & 15));
+        } else {
+            int q = nb - 1, S = rel - 8 * (q >> 4) + RPH_S0;
+            roof_copy(y, ox - nb, ox - p, RROOF_PHASE[1][S & 7] + 16 * (S >> 3) + (15 - (q & 15)));
+        }
+        p = nb;
+    }
+}
+
+/* (HART) one side's columns [p0, p1) of row y above the band (the dormer's
+ * gable, the spikes): pixel by pixel from the same tables, into o[] (o[0]
+ * is column p0; side B runs leftwards); 0 where the background shows */
+NOIPA HOT static void roof_above(const RG *g, int side, int y, int p0, int p1, uint8_t *o)
+{
+    const RoomRoof *f = &g->roof;
+    const int n = g->nsp[side], rel = y - f->top;
+    int p, k = 0;
+    for (p = p0; p < p1; p++) {
+        uint8_t c = 0;
+        int d = roof_d(f, side, p, y);
+        while (k < n && g->sp[side][k][1] <= p) k++;
+        if (k < n && p >= g->sp[side][k][0]) {
+            const int16_t *e = g->sp[side][k];
+            if (rel >= e[3] && rel < e[3] + e[4])
+                c = RROOF_SPEC[e[2] + (rel - e[3]) * (e[1] - e[0]) + (side ? e[1] - 1 - p : p - e[0])];
+        } else if ((unsigned)(rel - 8 * (p >> 4) + RPH_S0) < 8 * RPH_G && d >= 1) {
+            int S = rel - 8 * (p >> 4) + RPH_S0;
+            c = side ? RROOF_PHASE[1][S & 7][16 * (S >> 3) + 15 - (p & 15)]
+                     : RROOF_PHASE[0][S & 7][16 * (RPH_G - 1 - (S >> 3)) + (p & 15)];
+        }
+        o[side ? p1 - 1 - p : p - p0] = c;
+    }
+}
+
+/* the non-zero runs of buf (screen x [x0, x1)) on row y */
+NOIPA HOT static void roof_runs(int y, int x0, int x1, const uint8_t *buf)
+{
+    int a = x0, b;
+    while (a < x1) {
+        while (a < x1 && !buf[a - x0]) a++;
+        for (b = a; b < x1 && buf[b - x0]; b++) {}
+        if (a < b) row_copy(y, a, b, buf + (a - x0));
+        a = b;
+    }
+}
+
+/* (HART) the roof's pixels on row y within [x0, x1): per side the band
+ * (every pixel opaque: copies), what stands above it (the dormer's gable,
+ * the spikes), then the chimney / tank */
+NOIPA HOT static void roof_row(const RG *g, int y, int x0, int x1)
+{
+    uint8_t buf[SCREEN_W + 4];
+    const RoomRoof *f = &g->roof;
+    int side, p0, p1, xa;
+    if (x0 < 0) x0 = 0;
+    if (x1 > SCREEN_W) x1 = SCREEN_W;
+    if (x0 >= x1) return;
+    if (!g->roof_tab) {
+        if (room_roof_row(f, y, x0, x1, buf)) roof_runs(y, x0, x1, buf);
+        return;
+    }
+    for (side = 0; side < 2; side++) {
+        /* the rect: side A x = ox + p, side B x = ox - 1 - p */
+        int c0 = side ? f->ox - x1 : x0 - f->ox, c1 = side ? f->ox - x0 : x1 - f->ox;
+        if (roof_span(f, side, y, c0, c1, 1, f->band, &p0, &p1)) roof_band(g, side, y, p0, p1);
+        if (f->dmax <= f->band) continue;
+        if (f->style != ROOF_SPIKE) {                   /* only the dormer stands up */
+            if (!f->dp || side != f->dside) continue;
+            c0 = DOOMO_MAX(c0, f->dp - f->dw - 2);
+            c1 = DOOMO_MIN(c1, f->dp + f->dw + 3);
+        }
+        if (roof_span(f, side, y, c0, c1, f->band + 1, f->dmax, &p0, &p1)) {
+            roof_above(g, side, y, p0, p1, buf);
+            xa = side ? f->ox - p1 : f->ox + p0;
+            roof_runs(y, xa, xa + (p1 - p0), buf);
+        }
+    }
+    if (f->fx1 > f->fx0 && y >= f->ftop - 12 && y < g->fy1) {
+        int fa = DOOMO_MAX(x0, f->fx0 - 1), fb = DOOMO_MIN(x1, f->fx1 + 1);
+        if (fa >= fb) return;
+        if (g->ftab) {
+            roof_runs(y, fa, fb, RROOF_FEAT + (y - (f->ftop - 12)) * g->ftw + (fa - (f->fx0 - 1)));
+        } else {
+            memset(buf, 0, (size_t)(fb - fa));
+            if (room_roof_feature_row(f, y, fa, fb, buf)) roof_runs(y, fa, fb, buf);
+        }
+    }
+}
+
 HOT static void draw_shell(const RG *g, int x0, int y0, int x1, int y1)
 {
     const int fy0 = g->oy, fy1 = g->oy + 8 * (g->W + g->D);
@@ -574,6 +855,7 @@ HOT static void draw_shell(const RG *g, int x0, int y0, int x1, int y1)
     fill(DOOMO_MAX(x0, g->vx), DOOMO_MAX(y0, g->vy), DOOMO_MIN(x1, g->vx + g->vw),
          DOOMO_MIN(y1, g->vy + g->vh), g->bg);
     for (y = y0; y < y1; y++) {
+        if (g->roof_on && y >= g->ry0 && y < g->ry1) roof_row(g, y, x0, x1);
         if (walls && y >= wy0 && y < wy1) wall_rows(g, y, x0, x1);
         if (y >= fy0 && y < fy1) floor_row(g, y, x0, x1);
         if (!g->walls) lip_row(g, y, x0, x1);

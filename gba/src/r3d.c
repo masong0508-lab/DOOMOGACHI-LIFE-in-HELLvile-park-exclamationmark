@@ -339,6 +339,7 @@ void r3d_invalidate(void)
 {
     cache_mapdef = 0;
     frame_no = 0;
+    cm_sig = 0;          /* (HART) the house's roof tables borrow the VRAM gaps */
 }
 
 void r3d_init(void)

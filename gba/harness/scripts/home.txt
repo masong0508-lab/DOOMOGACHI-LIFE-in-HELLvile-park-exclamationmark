@@ -13,6 +13,12 @@
 #    measured against them. Screenshots go to gba/build/shots/home.
 wait 30
 expect-log doomo: init
+# (HART) the parity frames run inside the house scene: its region (the
+# roof tables) needs the house's own small scratch claim beside it, not
+# the title's logo cache
+scene HOME -1
+wait 30
+expect-scene HOME
 room-parity 0x000 0
 room-parity 0x001 1
 room-parity 0x002 2
@@ -78,6 +84,26 @@ room-parity 0x22100 34
 room-parity 0x23200 35
 room-parity 0x24200 36
 room-parity 0x25200 37
+
+# 1c. (HART) The roofs (golden lines 38..45): room_ref's roof code
+#    (room_roof_setup / room_roof_row) runs on the GBA too. 38..43 are in the
+#    GBA's vocabulary (the wood cornice): required on the full, dirty-rect
+#    and UI-restore paths; 44 (a themed cornice) and 45 (a tint) stay xfail
+#    with the H2 frames.
+room-parity 0x26000 38
+room-parity 0x27000 39
+room-parity 0x28000 40
+room-parity 0x29000 41
+room-parity 0x2a000 42
+room-parity 0x2b000 43
+room-parity 0x2c000 44 xfail
+room-parity 0x2d000 45 xfail
+room-parity 0x26100 38
+room-parity 0x26200 38
+room-parity 0x27100 39
+room-parity 0x29200 41
+room-parity 0x2a200 42
+room-parity 0x2b200 43
 
 # --- the live scene: the Living Room template, the player, the cursor ---
 scene HOME -1

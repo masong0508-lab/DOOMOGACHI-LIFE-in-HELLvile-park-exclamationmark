@@ -3,11 +3,15 @@
 
 [lava_lamp]
 frames 2
-cyl  8 8 0   3 6       B
-cyl  8 8 6   2 14      A glow
-blob@0 8 8 12 2 2 3    LEMON glow
-blob@1 8 8 16 2 2 3    LEMON glow
-cyl  8 8 20  2 3       B
+cone 8 8 0   4 7       B
+cyl  8 8 4   2 2       B shiny
+blob 8 8 12  3 3 6     A glow
+cone 8 8 17  2 5       B
+cyl  8 8 21  1 1       B shiny
+blob@0 10 10 9 1 1 2   LEMON glow
+blob@0 9 10 15 1 1 1   LEMON glow
+blob@1 10 10 13 1 1 2  LEMON glow
+blob@1 10 9 8 1 1 1    LEMON glow
 
 [brimstone_hearth]
 frames 2
@@ -110,14 +114,23 @@ blob@1 8 8 10 1 1 3    TANGERINE glow
 blob 6 10 5  1 1 2     A
 
 [smog_curtains]
-box  0 0 33  16 3 2    CHARCOAL
-box  1 1 3   5 2 30    A soft
-box  10 1 3  5 2 30    A soft
-cyl  3 2 2   2 2       A soft
-cyl  12 2 2  2 2       A soft
-blob 8 2 30  3 1 2     B soft
-blob 6 2 24  2 1 2     B soft
-blob 10 2 18 2 1 2     B soft
+box  0 1 33   16 2 2    JET
+blob 0 2 34   1 1 1     JET
+blob 16 2 34  1 1 1     JET
+box  5 0 6    6 1 26    ~VAPE
+box  7 0 6    1 1 26    ~STEEL
+box  1 1 16   5 2 17    A soft
+box  2 1 4    3 2 12    A soft
+blob 3 2 5    2 1 2     A soft
+box  10 1 16  5 2 17    A soft
+box  11 1 4   3 2 12    A soft
+blob 13 2 5   2 1 2     A soft
+box  1 3 15   5 1 1     B
+box  10 3 15  5 1 1     B
+blob 8 3 28   3 1 2     B soft
+blob 6 3 22   2 1 2     B soft
+blob 10 3 16  2 1 2     B soft
+blob 7 3 10   1 1 1     B soft
 
 [hell_couch]
 box  2 3 0   28 11 6   A
@@ -154,13 +167,16 @@ blob 8 9 30  3 1 3     B glow
 blob 8 9 12  2 1 2     B glow
 
 [nox_desk_lamp]
-cyl  8 8 0   4 2       A
-cyl  8 8 2   1 10      A
-box  7 7 11  2 2 2     B
-box  8 7 12  5 2 2     A
-cone 12 8 4  4 9       A
-blob 12 9 5  3 3 1     B glow
-blob 8 8 13  1 1 1     B
+cyl  6 8 0   4 2       A shiny
+box  5 7 2   2 2 14    A
+blob 6 8 16  2 2 2     B
+box  6 7 16  7 2 2     A
+cone 12 8 8  4 8       A
+cone 10 8 14 1 3       B
+cone 14 8 14 1 3       B
+blob 12 9 8  3 3 1     B glow
+blob 13 10 6 2 2 1     LEMON glow
+
 [torture_rack_bed]
 box  1 1 0   14 30 3   A
 box  1 1 3   2 30 4    A
@@ -173,10 +189,10 @@ box  1 1 3   14 2 14   A
 box  2 1 17  12 2 2    SILVER
 
 [skull_pile]
-blob 5 6 3   3 3 3     BONE
-blob 11 6 3  3 3 3     BONE
-blob 8 11 3  3 3 3     BONE
-blob 8 8 8   3 3 3     BONE
+blob 5 6 3   3 3 3     A
+blob 11 6 3  3 3 3     A
+blob 8 11 3  3 3 3     A
+blob 8 8 8   3 3 3     A
 blob 4 9 4   1 1 1     JET
 blob 10 9 4  1 1 1     JET
 blob 7 14 4  1 1 1     JET

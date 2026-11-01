@@ -114,6 +114,7 @@ static void hs_draw(const HomeRoom *r, int room, int k, int daylight, const char
     v.floor_paint = r->floor_paint == 0xFF ? d->floor_paint : r->floor_paint;
     v.ceiling = (uint8_t)((r->flags & HRF_CEIL_MASK) >> HRF_CEIL_SHIFT);
     v.room_kind = d->kind;
+    v.roof = (uint8_t)home_room_roof(room);
     v.objs = hs_objs;
     v.nobj = r->nobj < HOME_OBJ_MAX ? r->nobj : HOME_OBJ_MAX;
     v.yaw = (int16_t)(k * 1024);

@@ -385,6 +385,55 @@ int  room_ref_sprite(int furn, int facing, int frame, int pa, int pb, int lvl,
  * none): the piece's prims as shaded iso blocks, a little maquette, centred
  * in (x, y, w, h) at 1x or 2x. 0 = nothing to draw. */
 int  room_ref_maquette(int furn, int pa, int pb, int x, int y, int w, int h);
+/* (HART) The main roof behind the two back walls (DoomoRoomView.roof), in
+ * screen space: room_ref_draw() and the GBA (gba/src/room.c) both set it up
+ * with room_roof_setup() and draw it row by row with room_roof_row(), so
+ * the two match pixel for pixel. Its colours are lit at `level` (6..15) and
+ * pushed through doomo_tintmap[tint] (0 = none). */
+enum { RFC_GUT_D, RFC_GUT_L, RFC_RIDGE_D, RFC_RIDGE_L, RFC_VALLEY, RFC_HIP,
+       RFC_A_D, RFC_A_M, RFC_A_L, RFC_A_X, RFC_B_D, RFC_B_M, RFC_B_L, RFC_B_X,
+       RFC_F_L, RFC_F_D, RFC_F_M, RFC_F_CAP, RFC_GLASS, RFC_GLINT, RFC_SPIKE_L, RFC_SPIKE_D,
+       RFC_SIDING, RFC_SIDING_D, RFC_COUNT };
+typedef struct RoomRoof {
+    int16_t ox, top, LA, LB;         /* the back corner's x, the walls' top row there,
+                                        the visible walls' lengths in px            */
+    int16_t fx0, fx1, ftop;          /* the feature (chimney / water tank): screen x
+                                        [fx0, fx1) from row ftop; fx1 <= fx0: none   */
+    int16_t sky0, sky1;              /* ROOF_ATTIC: the skylight's columns p          */
+    uint8_t style, band, ch, ffoot;  /* ROOF_*, rows above the wall top, course rows,
+                                        the feature stands ffoot rows above the top   */
+    int16_t dp;                      /* the dormer's centre column p, 0 = none        */
+    uint8_t fkind, sky_side, dside, dw; /* 1 chimney, 2 water tank; the skylight's and
+                                        the dormer's walls, its half width            */
+    uint8_t dh, dmax, pad[2];        /* the dormer's face height to the eaves; the
+                                        highest row d any slope pixel reaches        */
+    uint8_t c[RFC_COUNT];            /* lit colours                                  */
+} RoomRoof;
+/* 0 when the view has no roof. k, W, D, ox, oy, wall_h: the frame's view,
+ * turned room size, back corner and wall height (room_ref's projection). */
+int  room_roof_setup(RoomRoof *f, const DoomoRoomView *v, int k, int W, int D, int ox, int oy,
+                     int wall_h, int level, int tint);
+/* The rows and the columns the roof may touch: [*y0, *y1), [*x0, *x1). */
+void room_roof_rows(const RoomRoof *f, int *y0, int *y1);
+void room_roof_cols(const RoomRoof *f, int *x0, int *x1);
+/* Row y, pixels [x0, x1): out[i] = the colour of x0 + i, 0 where the roof
+ * leaves the background. Returns the number of roof pixels. */
+int  room_roof_row(const RoomRoof *f, int y, int x0, int x1, uint8_t *out);
+/* The pieces room_roof_row() is made of, for a renderer that caches the
+ * repeating part (the GBA): the wall top row of column p, the pattern at
+ * column p & 15 (0..15) d rows above it, the p ranges where it does not
+ * hold (pairs [r[2i], r[2i+1]), returns the count), the slope pixel
+ * anywhere, and the chimney / tank row (over what out[] holds). */
+int     room_roof_base(const RoomRoof *f, int side, int p);
+uint8_t room_roof_pattern(const RoomRoof *f, int side, int pp, int d);
+int     room_roof_specials(const RoomRoof *f, int side, int16_t r[8]);
+uint8_t room_roof_slope(const RoomRoof *f, int side, int p, int d);
+int     room_roof_feature_row(const RoomRoof *f, int y, int x0, int x1, uint8_t *out);
+#define ROOM_ROOF_PAT_ROWS 34            /* d 0..33: band + spikes, the dormer's apex at wall_h 48 */
+#define ROOM_ROOF_EAVE 4                 /* px the eaves overhang the walls' ends */
+/* The roof style of a room of the player's house (ROOF_*). */
+int  home_room_roof(int room);
+
 /* Fill a render-ready DoomoRoomObj from a room object (catalog paints
  * resolved, z in px). */
 void home_obj_view(const HomeObj *o, DoomoRoomObj *out);

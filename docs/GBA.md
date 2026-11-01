@@ -376,6 +376,7 @@ against the LAST row, not against a figure from an older base.
 | 5 | H1: room-shell parity frames | `738261b` | 13,616 B | 13,616 B | 0 | 7,168 B | no RAM (the frames build on the stack and in the arena's harness tail, as before); ROM +996 B (`room.o` text 17,786 -> 18,782 B: the shared frame table `core/tests/room_shells.h` and its harness hook); house fps unchanged |
 | 6 | L1: N-language lookup (state + 64-entry cache, below) | `883cf3b` | 13,616 B | 13,088 B | -528 B | 7,168 B | ROM 3,681,980 -> 3,689,948 B (+7,968: one LNG2 table per language, Spanish 111,516 B, was four tables of 104,476 B); Options in Spanish 28.2 -> 25.8 ms per drawn tick |
 | 7 | G5: tile-mode overworld (Mode 0 world + canvas) | `f010771` | 13,088 B | **13,088 B** | 0 | 6,728 B | ROM 3,689,948 -> 3,710,784 B (+20,836); IWRAM resident +228 B (routing in the 2D entry points), `.iwram_bss` +212 B (`cv`, the canvas state); 2D group 8,224 B in the slot (3D group still the larger); the tile metadata lives in the lower half of the overworld's arena region; speed tour frame-exact (16 scenes) |
+| 8 | HART: roofs, redrawn furniture | `3706744` | 13,088 B | **13,088 B** | 0 | 6,728 B | no EWRAM / IWRAM: the roof's tables (up to 5 KB) live in the two 2.5 KB VRAM gaps of the mode 4 pages, which the raycaster refills (`r3d_invalidate()`); the house region stays 16,872 B. ROM 3,710,784 -> 3,721,784 B (+11,000: iso sprites 453,094 -> 455,050 B, roof code in `room_ref.c` / `room.c`); fps: modal 20.0 -> 18.8 (gate 18), rotate 25.4 -> 23.2 (20), steady 29.5, cellar 26.2, defend 12.2 (floor 11) |
 
 Known claimants still to land (their own packages measure and add rows):
 
@@ -933,11 +934,34 @@ before G0):
 |---|---|---|
 | `home_plain`: template room, player, cursor | - | 30.0 (room 80k cycles) |
 | `home_steady`: parity room, Live, 4 chibis, 3 animated pieces | >= 28 | 29.8 |
-| `home_modal`: Score panel over the plain room | >= 18 | 20.0 |
+| `home_modal`: Score panel over the plain room | >= 18 | 20.0 (HART: 18.8) |
 | `home_modal_busy`: Score panel, 3 walkers still moving under it | - | 13.4 |
-| `home_rotate`: two view turns (brake + recompose) | >= 20 | 26.5 |
+| `home_rotate`: two view turns (brake + recompose) | >= 20 | 26.5 (HART: 23.2) |
 | `home_cellar_full`: 8x8, 40 pieces, dim | avg >= 24 | 26.2 |
 | `home_defend_w3`: 10 citizens + player walking, 24 lit pieces | >= 20 | **12.6 (not met)** |
+
+**Roofs (HART).** `room_ref.c` defines the roof (HOUSING.md section 9) in
+screen space, row d above each wall-top column, and `room.c` draws the
+same pixels (golden lines 38..43 required on the full, dirty-rect and
+UI-restore paths; 44..45 `xfail` with the H2 cornice / tint frames). A
+full recompose redraws the roof's ~40 visible rows, so the per-pixel code
+was too slow (+36 ms on the modal's full recomposes); it is drawn from
+tables built with the shell (`build_shell`) in the two 2,560 B VRAM gaps
+after the mode 4 pages (byte reads as cheap as IWRAM's, halfword writes):
+gap B holds the slope's repeating 16-column pattern as 8 phase rows of 6
+sheared 16-byte strips (like the walls: the pattern part of a screen row
+is one copy) and the chimney's rows; gap A holds every column of the
+special ranges (valley, hip, dormer, skylight) stored as the screen rows
+it covers. A roof row is then a few halfword DMAs (the above-the-band
+dormer and spike pixels and the chimney go through `roof_runs`): about
+2.5 ms per full recompose. The raycaster keeps its colormaps in the same
+gaps; `r3d_invalidate()` (called when it claims the arena after the
+house) now clears its signature so it copies them again, and the house
+rebuilds its tables after any frame gap. The parity frames run inside the
+house scene (`home.txt` enters `HOME -1` first). The roof's helpers are
+`noipa`: GCC 13's IPA register allocation across this file's mixed
+-Os / -O2 functions once kept the side in r1 across a call that clobbered
+it.
 
 Since H6 the cellar layout (`room.c` `test_view`) holds the bunny beanbag
 on frame 0, as it was before H6 (one frame): the beanbag now sinks only
@@ -1238,7 +1262,7 @@ gba/build/harness ROM.gba [--script FILE] [--shots DIR] [--save FILE]
 | `test-save` | engine-test ROM twice with the same `--save` file and SELECT held at boot: first run "no previous data / write ok", second run "persisted ok" (both 30 KB slots verified byte for byte, slot 1 erased and rewritten) |
 | `test-game` | game ROM, `scripts/smoke.txt`: boot, title, START, menu presses, screenshots in `build/shots/game` |
 | `test-coresave` | game ROM, `scripts/coresave1.txt` then `coresave2.txt` with the same `--save` file: the core's streamed saves (worst-case island in slot 1, a too-big save refused in slot 0, a story island in slot 0), loads checked by town CRC, then persistence across a reboot |
-| `test-home` | game ROM, `scripts/home.txt` (H2): `plat_room` parity with the room_ref golden on every path (15 classic frames, 15 shell-frame checks required and 27 `xfail` until H2), then `SCENE_HOME` fps gates (section 6a) and a profile, screenshots in `build/shots/home` |
+| `test-home` | game ROM, `scripts/home.txt` (H2): `plat_room` parity with the room_ref golden on every path (15 classic frames, 15 shell-frame checks and 12 roof checks required, 29 `xfail` until H2), then `SCENE_HOME` fps gates (section 6a) and a profile, screenshots in `build/shots/home` |
 
 `make -C gba test-speed` (G1, not part of `test`): game ROM,
 `scripts/speed_tour.txt`: every target scene's fps with an `expect-fps`

@@ -117,6 +117,7 @@
 #include "doomo/portrait.h"
 #include "../../core/gen/furn_ids.h"
 #include "room_int.h"
+#include "../../core/src/home_int.h"   /* (HART) room_roof_setup, home_footprint */
 
 /* ---- scale, camera, ordering ------------------------------------------------ */
 #define RT          32              /* world units per tile                       */
@@ -917,6 +918,203 @@ static void draw_lip(RC *c)
 }
 COLD_END
 
+/* ---- the roof (HART) ----------------------------------------------------------------
+ * room_ref's roof as polygons, behind every full (back) wall: a slope rising
+ * away from the room at 45 degrees from the wall's outer top edge, in
+ * shingle courses (a body and a dark butt strip each), a gutter and a ridge
+ * cap; at a corner shared with the other back wall the slope runs on along
+ * the valley diagonal, else it closes in a hip. A chimney box stands over a
+ * hearth that backs onto a back wall, a dormer gable (with its window) on
+ * the longer back wall, a skylight on the Annex, bone spikes on the Pits'
+ * ridge, and Towers 7B gets a parapet, a flat roof and a water tank. The
+ * colours and the style come from room_roof_setup() (the 2D renderers' own
+ * table, lit here by the day colour). Everything goes in the static layer
+ * (the backdrop), behind the walls; -Os like the rest of the set-up code. */
+COLD_BEGIN
+#define RF_RUN   32                     /* the slope's run and rise (one tile)   */
+#define RF_EAVE  8
+#define RF_FIT   44                     /* the roof's height for fit()           */
+#define RF_COURSES 6
+
+typedef struct RfW { int32_t ox, oy; int rx, ry, nx, ny, len, v0, v1; } RfW;
+
+/* a point of wall frame W: s along the wall, t outward from its outer face */
+static void rf_pt(RC *c, int i, const RfW *W, int32_t s, int32_t t, int32_t z)
+{
+    vset(c, i, W->ox + W->rx * s - W->nx * (WALL_T + t), W->oy + W->ry * s - W->ny * (WALL_T + t), z);
+}
+
+/* the 4 transformed points 0..3 as a quad seen from the room (a b / d e),
+ * either winding (two-sided) */
+static void rf_quad(RC *c, uint32_t col, int slot)
+{
+    if (!group(c, 4)) return;
+    f4(c, 0, 1, 2, 3, col, slot);
+    f4(c, 1, 0, 3, 2, col, slot);
+}
+
+static uint32_t rf_col(const RC *c, uint8_t idx, int q)
+{
+    return rgb_q7(g_rgb[idx], (c->amb_r * q) >> 7, (c->amb_g * q) >> 7, (c->amb_b * q) >> 7);
+}
+
+/* the slope's s range at outward distance t (valley: grows, hip: shrinks) */
+static int32_t rf_s0(const RfW *W, int32_t t) { return W->v0 ? -WALL_T - t : -RF_EAVE + t; }
+static int32_t rf_s1(const RfW *W, int32_t t)
+{
+    int32_t L = W->len * RT;
+    return W->v1 ? L + WALL_T + t : L + RF_EAVE - t;
+}
+
+/* a band of the slope between t0 and t1 (z rises with t) */
+static void rf_band(RC *c, const RfW *W, int32_t t0, int32_t t1, uint32_t col)
+{
+    int h = WALL_H;
+    rf_pt(c, 0, W, rf_s0(W, t1), t1, h + t1);
+    rf_pt(c, 1, W, rf_s1(W, t1), t1, h + t1);
+    rf_pt(c, 2, W, rf_s0(W, t0), t0, h + t0);
+    rf_pt(c, 3, W, rf_s1(W, t0), t0, h + t0);
+    rf_quad(c, col, SLOT_FLOOR);
+}
+
+/* an upright rectangle in the wall's outer plane (t = tt): s [s0, s1), z [z0, z1) */
+static void rf_face(RC *c, const RfW *W, int32_t s0, int32_t s1, int32_t tt, int32_t z0, int32_t z1,
+                    uint32_t col, int slot)
+{
+    rf_pt(c, 0, W, s0, tt, z1);
+    rf_pt(c, 1, W, s1, tt, z1);
+    rf_pt(c, 2, W, s0, tt, z0);
+    rf_pt(c, 3, W, s1, tt, z0);
+    rf_quad(c, col, slot);
+}
+
+/* a box on the roof: s [s0, s1), t [t0, t1), z [z0, z1): the faces the camera
+ * can see (the room side, both ends, the top) */
+static void rf_box(RC *c, const RfW *W, int32_t s0, int32_t s1, int32_t t0, int32_t t1, int32_t z0,
+                   int32_t z1, uint32_t front, uint32_t side, uint32_t top)
+{
+    rf_face(c, W, s0, s1, t0, z0, z1, front, SLOT_WALL);
+    rf_pt(c, 0, W, s0, t1, z1); rf_pt(c, 1, W, s0, t0, z1); rf_pt(c, 2, W, s0, t1, z0); rf_pt(c, 3, W, s0, t0, z0);
+    rf_quad(c, side, SLOT_WALL);
+    rf_pt(c, 0, W, s1, t0, z1); rf_pt(c, 1, W, s1, t1, z1); rf_pt(c, 2, W, s1, t0, z0); rf_pt(c, 3, W, s1, t1, z0);
+    rf_quad(c, side, SLOT_WALL);
+    rf_pt(c, 0, W, s0, t1, z1); rf_pt(c, 1, W, s1, t1, z1); rf_pt(c, 2, W, s0, t0, z1); rf_pt(c, 3, W, s1, t0, z1);
+    rf_quad(c, top, SLOT_WALL);
+}
+
+static void draw_roof(RC *c)
+{
+    const DoomoRoomView *v = c->v;
+    RoomRoof f;
+    int w, hw = -1, hs = 0, longest = -1, i;
+    int q = 120;
+    if (!room_roof_setup(&f, v, 0, v->w, v->d, 0, 0, 64, 15, 0)) return;
+    c->fx = 0;
+    c->bias = 0;
+    /* the hearth on a wall: which wall, where along it (world units) */
+    for (i = 0; i < v->nobj; i++) {
+        const DoomoRoomObj *o = &v->objs[i];
+        const DoomoFurn *fu = home_furn(o->furn);
+        int fw, fd;
+        if (!fu || fu->role != FR_HEARTH || (o->flags & (RO_GHOST | RO_SEMI))) continue;
+        home_footprint(fu, RO_ROT(o), &fw, &fd);
+        if (o->y == 0) { hw = 0; hs = (o->x * 2 + fw) * RT / 2; }
+        else if (o->x == 0) { hw = 1; hs = c->D * RT - (o->y * 2 + fd) * RT / 2; }
+        else if (o->y + fd == c->D) { hw = 2; hs = c->W * RT - (o->x * 2 + fw) * RT / 2; }
+        else if (o->x + fw == c->W) { hw = 3; hs = (o->y * 2 + fd) * RT / 2; }
+        break;
+    }
+    for (w = 0; w < 4; w++)
+        if (R.wall_back[w] && c->wall_h[w] == WALL_H && (longest < 0 || ((w & 1) ? c->D : c->W) > ((longest & 1) ? c->D : c->W)))
+            longest = w;
+    for (w = 0; w < 4; w++) {
+        RfW W;
+        int k, s4 = (w & 1) * 4, L;
+        uint32_t body, dark, light;
+        if (!R.wall_back[w] || c->wall_h[w] != WALL_H) continue;
+        wall_frame(c, w, &W.ox, &W.oy, &W.rx, &W.ry, &W.len);
+        W.nx = -W.ry; W.ny = W.rx;
+        W.v0 = R.wall_back[(w + 1) & 3] && c->wall_h[(w + 1) & 3] == WALL_H;
+        W.v1 = R.wall_back[(w + 3) & 3] && c->wall_h[(w + 3) & 3] == WALL_H;
+        L = W.len * RT;
+        q = (face_q7(c, W.nx, W.ny) + 136) >> 1;
+        body = rf_col(c, f.c[RFC_A_M + s4], q);
+        dark = rf_col(c, f.c[RFC_A_D + s4], q);
+        light = rf_col(c, f.c[RFC_A_L + s4], q);
+        if (f.style == ROOF_FLAT) {
+            /* a parapet over the wall, the flat roof behind it, a water tank */
+            rf_face(c, &W, rf_s0(&W, 0), rf_s1(&W, 0), 0, WALL_H, WALL_H + 10, body, SLOT_FLOOR);
+            rf_face(c, &W, rf_s0(&W, 0), rf_s1(&W, 0), -2, WALL_H + 10, WALL_H + 13, rf_col(c, f.c[RFC_GUT_L], q), SLOT_FLOOR);
+            rf_pt(c, 0, &W, rf_s0(&W, RF_RUN), RF_RUN, WALL_H + 6);
+            rf_pt(c, 1, &W, rf_s1(&W, RF_RUN), RF_RUN, WALL_H + 6);
+            rf_pt(c, 2, &W, rf_s0(&W, 0), 0, WALL_H + 6);
+            rf_pt(c, 3, &W, rf_s1(&W, 0), 0, WALL_H + 6);
+            rf_quad(c, rf_col(c, f.c[RFC_A_X + s4], q), SLOT_FLOOR);
+            if (w == longest)
+                rf_box(c, &W, L * 3 / 4 - 14, L * 3 / 4 + 14, 6, 30, WALL_H + 6, WALL_H + 40,
+                       rf_col(c, f.c[RFC_F_L], q), rf_col(c, f.c[RFC_F_D], q), rf_col(c, f.c[RFC_F_CAP], 128));
+            continue;
+        }
+        /* gutter, courses, ridge */
+        rf_band(c, &W, 0, 3, rf_col(c, f.c[RFC_GUT_L], q));
+        for (k = 0; k < RF_COURSES; k++) {
+            int32_t t0 = 3 + k * (RF_RUN - 6) / RF_COURSES, t1 = 3 + (k + 1) * (RF_RUN - 6) / RF_COURSES;
+            rf_band(c, &W, t0, t0 + 1, dark);
+            rf_band(c, &W, t0 + 1, t1, (k & 1) ? body : light);
+        }
+        rf_band(c, &W, RF_RUN - 3, RF_RUN, rf_col(c, f.c[RFC_RIDGE_L], q));
+        if (f.style == ROOF_SPIKE) {
+            int32_t s;
+            uint32_t bone = rf_col(c, f.c[RFC_SPIKE_L], 128);
+            for (s = 24; s < L - 8; s += 32) {
+                rf_pt(c, 0, &W, s, RF_RUN, WALL_H + RF_RUN + 14);
+                rf_pt(c, 1, &W, s - 5, RF_RUN, WALL_H + RF_RUN);
+                rf_pt(c, 2, &W, s + 5, RF_RUN, WALL_H + RF_RUN);
+                if (group(c, 3)) { f3(c, 0, 2, 1, bone, SLOT_WALL); f3(c, 0, 1, 2, bone, SLOT_WALL); }
+            }
+        }
+        if (f.style == ROOF_ATTIC && w == longest) {
+            /* a skylight set in the slope */
+            int32_t m = L / 2;
+            rf_pt(c, 0, &W, m - 16, 22, WALL_H + 22); rf_pt(c, 1, &W, m + 16, 22, WALL_H + 22);
+            rf_pt(c, 2, &W, m - 16, 8, WALL_H + 8); rf_pt(c, 3, &W, m + 16, 8, WALL_H + 8);
+            rf_quad(c, rf_col(c, f.c[RFC_HIP], 128), SLOT_WALL);
+            rf_pt(c, 0, &W, m - 13, 20, WALL_H + 21); rf_pt(c, 1, &W, m + 13, 20, WALL_H + 21);
+            rf_pt(c, 2, &W, m - 13, 10, WALL_H + 11); rf_pt(c, 3, &W, m + 13, 10, WALL_H + 11);
+            rf_quad(c, rf_col(c, f.c[RFC_GLASS], 128), SLOT_WALL);
+        }
+        if ((f.style == ROOF_COTTAGE || f.style == ROOF_SPIKE) && w == longest &&
+            !(w == hw && hs > L * 3 / 8 && hs < L * 7 / 8)) {
+            /* the dormer gable: a face in the wall's plane, a window, its roof edge */
+            int32_t m = L * 5 / 8, dw = 24, dh = 30;
+            uint32_t sid = rf_col(c, f.c[RFC_SIDING], q), edge = rf_col(c, f.c[RFC_RIDGE_D], q);
+            rf_face(c, &W, m - dw, m + dw, -1, WALL_H, WALL_H + dh, sid, SLOT_WALL);
+            rf_pt(c, 0, &W, m, -1, WALL_H + dh + dw);
+            rf_pt(c, 1, &W, m - dw, -1, WALL_H + dh);
+            rf_pt(c, 2, &W, m + dw, -1, WALL_H + dh);
+            if (group(c, 3)) { f3(c, 0, 2, 1, sid, SLOT_WALL); f3(c, 0, 1, 2, sid, SLOT_WALL); }
+            for (k = 0; k < 2; k++) {
+                int sg = k ? 1 : -1;
+                rf_pt(c, 0, &W, m, -2, WALL_H + dh + dw + 4);
+                rf_pt(c, 1, &W, m + sg * (dw + 4), -2, WALL_H + dh);
+                rf_pt(c, 2, &W, m, -2, WALL_H + dh + dw - 2);
+                rf_pt(c, 3, &W, m + sg * (dw + 4), -2, WALL_H + dh - 6);
+                rf_quad(c, edge, SLOT_WALL);
+            }
+            rf_face(c, &W, m - 9, m + 9, -2, WALL_H + 6, WALL_H + 26, rf_col(c, f.c[RFC_HIP], 128), SLOT_WALL);
+            rf_face(c, &W, m - 7, m + 7, -3, WALL_H + 8, WALL_H + 24, rf_col(c, f.c[RFC_GLASS], 128), SLOT_WALL);
+        }
+        if (w == hw) {
+            /* the chimney over the hearth: bricks, a cap */
+            rf_box(c, &W, hs - 12, hs + 12, 6, 24, WALL_H + 4, WALL_H + RF_RUN + 26,
+                   rf_col(c, f.c[RFC_F_L], q), rf_col(c, f.c[RFC_F_D], q), rf_col(c, f.c[RFC_F_M], q));
+            rf_box(c, &W, hs - 14, hs + 14, 4, 26, WALL_H + RF_RUN + 26, WALL_H + RF_RUN + 30,
+                   rf_col(c, f.c[RFC_F_CAP], 128), rf_col(c, f.c[RFC_F_CAP], 100), rf_col(c, f.c[RFC_F_CAP], 140));
+        }
+    }
+}
+COLD_END
+
 /* ---- furniture -------------------------------------------------------------------- */
 /* tones of a material: dark, base, light, highlight (0x00BBGGRR) */
 static void mat_tones(int mat, const DoomoRoomObj *o, uint32_t t[4])
@@ -1593,11 +1791,12 @@ static void fit(RC *c, int k)
 {
     const DoomoRoomView *v = c->v;
     uint32_t key = mix(mix(mix(mix(0x51u, (uint32_t)c->W), (uint32_t)c->D), (uint32_t)k),
-                       (uint32_t)(c->vw | (c->vh << 10) | (v->room_kind << 20)));
+                       (uint32_t)(c->vw | (c->vh << 10) | (v->room_kind << 20) | (v->roof ? 1u << 24 : 0)));
     int32_t ex, ey, ez, lx = (c->W * RT) << 15, ly = (c->D * RT) << 15, lz = LOOK_Z << 16;
     int ang = (YAW_BASE - k * 1024) & 4095, i, H0 = 600, top = v->room_kind == ROOMK_WALLS ? WALL_H : 8;
     int minx = 9999, maxx = -9999, miny = 9999, maxy = -9999, bw, bh, s;
     if (key == R.fit_key) return;
+    if (v->room_kind == ROOMK_WALLS && v->roof) top += RF_FIT;   /* (HART) the roof on screen */
     look_from(ang, lx, ly, lz, &ex, &ey, &ez);
     r3_camera(ex, ey, ez, ang, CAM_PITCH, 0, 0, c->vw, c->vh, H0, CAM_FAR, CAM_FAR, 0);
     c->cx = g_cam.px; c->cy = g_cam.py; c->cz = g_cam.pz;
@@ -1720,6 +1919,7 @@ static void draw_set(RC *c, const TexRef *wt, const TexRef *ft, int resting_only
     draw_floor(c, ft);
     if (v->room_kind == ROOMK_WALLS) {
         for (i = 0; i < 4; i++) draw_wall(c, i, wt);
+        if (v->roof) draw_roof(c);
     } else {
         draw_lip(c);
     }
@@ -2181,7 +2381,7 @@ static uint32_t static_key(const RC *c, int a, int H)
     key = mix(key, (uint32_t)(v->daylight | (c->wall_h[0] << 4) | (c->wall_h[1] << 12) | (c->wall_h[2] << 20)));
     key = mix(key, (uint32_t)(c->wall_h[3] | (R.wall_back[0] << 8) | (R.wall_back[1] << 9) |
                               (R.wall_back[2] << 10) | (R.wall_back[3] << 11)));
-    key = mix(key, (uint32_t)(v->vx | (v->vy << 10)));
+    key = mix(key, (uint32_t)(v->vx | (v->vy << 10) | ((uint32_t)v->roof << 20) | ((uint32_t)v->ceiling << 24)));
     /* the palette (camfx lerps it): a few entries the backdrop uses */
     key = mix(mix(key, g_rgb[PAL_PAINT(PAINT_BUBBLEGUM, 1)] ^ g_rgb[PAL_RAMP(RAMP_WOOD, 4)]),
               g_rgb[PAL_RAMP(RAMP_VAPE, 1)] ^ (g_rgb[PAL_RAMP(RAMP_SKY, 5)] << 1));

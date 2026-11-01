@@ -83,6 +83,11 @@ static void line_label(int line, char *buf, size_t n)
              kinds[f->kind < 3 ? f->kind : 0], furn[f->furn < 3 ? f->furn : 0], f->wallpaper, f->floor,
              f->ceiling, doomo_paint_names[f->wall_paint & 31], doomo_paint_names[f->floor_paint & 31],
              doomo_tint_names[f->tint < TINT_COUNT ? f->tint : 0], f->tint_level, f->daylight, f->view);
+    if (f->roof) {
+        static const char *const roofs[ROOF_COUNT] = { "none", "cottage", "attic", "flat", "spike" };
+        size_t l = strlen(buf);
+        snprintf(buf + l, n - l, " roof %s", roofs[f->roof < ROOF_COUNT ? f->roof : 0]);
+    }
 }
 
 TEST(room_ref_golden)
@@ -112,7 +117,7 @@ TEST(room_ref_golden)
         for (k = 0; k < ROOM_SHELL_LINES; k++) {
             if (k == ROOM_SHELL_FIRST)
                 fprintf(f, "# %d..%d: the shell frames of core/tests/room_shells.h (every wallpaper,\n"
-                           "# floor, ceiling ramp, tint and room kind)\n", ROOM_SHELL_FIRST, ROOM_SHELL_LINES - 1);
+                           "# floor, ceiling ramp, tint, room kind and roof)\n", ROOM_SHELL_FIRST, ROOM_SHELL_LINES - 1);
             if (k < ROOM_SHELL_FIRST) {
                 fprintf(f, "%d %08x\n", k, h[k]);
                 continue;

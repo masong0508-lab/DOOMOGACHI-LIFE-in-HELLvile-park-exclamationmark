@@ -30,16 +30,26 @@ blob 11 8 7  2 1 1     A shiny
 blob 8 8 10  1 1 1     WHITE glow
 
 [wheel_wedge]
-cyl  8 8 0   3 2       ~WOOD
-box  6 7 2   5 2 8     A
-box  7 7 6   2 2 4     LEMON
-blob 8 9 4   1 1 1     WHITE
+cyl  8 8 0   4 2       ~WOOD
+box  7 7 2   2 2 2     A
+box  6 7 4   4 2 2     A
+box  5 7 6   6 2 2     A
+box  4 7 8   8 2 2     A
+box  4 6 10  8 3 1     LEMON shiny
+box  7 9 6   2 1 2     WHITE
+blob 8 9 3   1 1 1     LEMON shiny
 
 [memory_heart]
-cyl  8 8 0   3 2       ~WOOD
-blob 6 8 6   3 2 3     A shiny
-blob 10 8 6  3 2 3     A shiny
-cone 8 8 2   4 4       A shiny
+cyl  8 8 0   4 2       ~WOOD
+box  6 7 2   4 2 1     LEMON shiny
+blob 6 8 8   3 2 3     A shiny
+blob 10 8 8  3 2 3     A shiny
+blob 8 8 5   3 2 3     A shiny
+blob 8 8 3   1 1 1     A shiny
+blob 6 10 9  1 1 1     WHITE
+box  2 10 0  3 2 1     WHITE
+box  11 11 0 3 2 1     WHITE
+blob 12 12 1 1 1 1     CHERRY
 
 [gallery_frame]
 box  1 0 1   14 2 18   A shiny
@@ -87,10 +97,15 @@ blob 6 2 8   2 1 1     CHERRY
 blob 10 2 5  2 1 1     LEMON
 
 [golden_hook]
-cyl  8 8 0   3 2       ~WOOD
-box  8 8 2   1 1 8     A shiny
-blob 8 9 3   2 1 2     A shiny
-blob 9 10 5  1 1 1     A shiny
+cyl  8 8 0   4 2       ~WOOD
+box  6 7 2   4 2 1     CHOCOLATE
+box  8 8 5   1 1 7     A shiny
+box  8 8 4   4 1 1     A shiny
+box  11 8 5  1 1 3     A shiny
+box  10 8 7  1 1 1     A shiny
+cyl  8 8 12  1 1       A shiny
+box  8 8 13  1 1 3     WHITE
+box  8 8 3   1 1 1     A
 
 [gold_record]
 box  1 0 1   14 2 18   ~WOOD
@@ -100,11 +115,16 @@ blob 8 3 10  1 1 1     JET
 
 [choir_bell]
 frames 2
-cyl  8 8 0   3 1       ~WOOD
-cone@0 8 8 1 4 9      A shiny
-cone@1 9 8 1 4 9      A shiny
-blob 8 8 10  1 1 1     A shiny
+cyl  8 8 10  1 3       ~WOOD
+blob 8 8 13  1 1 1     ~WOOD
+cone@0 8 8 1 4 10     A shiny
+cone@1 9 8 1 4 10     A shiny
+cyl@0 8 8 0  5 1      A shiny
+cyl@1 9 8 0  5 1      A shiny
+blob@0 9 10 1 1 1 1   CHARCOAL
+blob@1 11 9 1 1 1 1   CHARCOAL
 blob@1 3 8 8 1 1 1    WHITE glow
+blob@1 14 6 9 1 1 1   WHITE glow
 
 [concert_poster]
 box  1 0 0   14 2 24   HONEY shiny
@@ -160,7 +180,11 @@ box  6 10 6  4 1 1     CHARCOAL
 blob 8 10 15 2 1 1     ROSE
 
 [runner_up_ribbon]
-blob 8 1 11  4 1 4     A
-blob 8 2 11  2 1 2     WHITE
-box  5 1 0   2 1 7     A
-box  9 1 0   2 1 7     A
+box  5 1 2   2 1 7     COBALT
+box  9 1 3   2 1 7     COBALT
+box  5 1 2   1 1 1     A
+box  10 1 3  1 1 1     A
+blob 8 1 12  5 1 5     COBALT
+blob 8 2 12  4 1 4     A shiny
+blob 8 3 12  2 1 2     WHITE
+box  8 4 11  1 1 3     CHARCOAL
