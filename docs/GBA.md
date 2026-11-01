@@ -243,25 +243,28 @@ claims the region as the raycaster: a no-op in combat, where the
 raycaster already owns it; any other owner rebuilds its cache, as after
 any claim. `bigbuf.c` asserts that the work area stays below the roof
 table, which is a cache that must survive; `combat_bot.c` asserts that
-its three arrays add up to exactly `GBA_BIG_BOT`. The raycaster's region
-clears the largest scene scratch claim (asserted), so the BFS never
-touches the weapon views. Native and PS1 keep the three statics: the
-PS1's `ovl_plan.py` BORROW lends their sections to the house group by
-name, and both compile to the same code as before (identical
-disassembly; the PS1 image ends at the same address).
+its three arrays add up to exactly 4,096 B and `bigbuf.c` pins
+`GBA_BIG_BOT` to the same size. The raycaster's region clears the
+largest scene scratch claim (asserted), so the BFS never touches the
+weapon views. Native and PS1 keep the three statics: the PS1's
+`ovl_plan.py` BORROW lends their sections to the house group by name,
+and both compile to the same code as before (identical disassembly; the
+PS1 image ends at the same address).
 Measured (libmgba, `959acc8` against `959acc8` + H10, `plat_entropy`
 pinned with `seed 7`): EWRAM 9,536 -> 13,632 B free, ROM +80 B, IWRAM
 unchanged. The scout fps tour (title, 8 overworld scenes, combat first /
-third person, concert, house, options, pet) plus 600 ticks of the demo:
-every scene's fps and work per drawn tick identical to 0.1 ms and every
-screenshot byte-identical. A whole demo of the Vape Cellar (6,420 ticks:
-17/17 demons, the exit, the results screen): the results screen (time
-3:22, score 55, rank B) byte-identical in all 14 frames shot, kills, HP
-and ammo the same at every checkpoint, work per drawn tick within 2 ms
-per segment (which ticks get drawn shifts; 3 of 10 mid-run shots differ
-in the weapon bob or the haze phase only), main-stack high-water 2,056 B
-both. `smoke.txt` (`make test-game`) now plays that demo to the
-end: all 17 demons down, back at the level select.
+third person, concert, house, options, pet): every scene's fps and work
+per drawn tick identical to 0.1 ms and every screenshot byte-identical;
+600 ticks of the demo: the same fps (6.4), work per drawn tick 122.5 ->
+121.9 ms (which ticks get drawn shifts), screenshot byte-identical. A
+whole demo of the Vape Cellar (6,420 ticks: 17/17 demons, the exit, the
+results screen): the results screen (time 3:22, score 55, rank B)
+byte-identical in all 14 frames shot, kills, HP and ammo the same at
+every checkpoint, work per drawn tick within 2 ms per segment (which
+ticks get drawn shifts; 3 of 10 mid-run shots differ in the weapon bob
+or the haze phase only), main-stack high-water 2,056 B both. `smoke.txt`
+(`make test-game`) now plays that demo to the end: all 17 demons down,
+back at the level select.
 
 Levers left for the >= 24 KB goal (task #77), none of them fps-free or
 G0's: the customisation package's P0 shrinks the resident record 96 -> 76

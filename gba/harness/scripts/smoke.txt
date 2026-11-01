@@ -22,7 +22,7 @@ wait 30
 shot game05_menu
 # (H10) demo mode: the autopilot (core/src/combat_bot.c) plays the Vape
 # Cellar by itself. On the GBA its BFS's 4 KB work area is the raycaster's
-# clip checkpoints (gba/src/bigbuf.c gba_bot_scratch), not EWRAM .bss, so
+# clip checkpoints (gba/src/bigbuf.c gba_bot_work), not EWRAM .bss, so
 # this checks that it still finds its way through the level. With
 # plat_entropy pinned (seed) the run is the same every time: all 17 demons
 # are down by tick ~4,700 of the run, the bot reaches the exit at ~6,190

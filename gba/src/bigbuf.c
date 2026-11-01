@@ -50,9 +50,11 @@ DOOMO_STATIC_ASSERT(GBA_ARENA_SIZE - DOOMO_SCENE_SCRATCH >= DOOMO_SAVE_STREAM_MI
 /* ... and a 1 KB window beside the free-play island's 11.3 KB (its
  * autosave) */
 DOOMO_STATIC_ASSERT(GBA_ARENA_SIZE - 11312u >= DOOMO_SAVE_STREAM_MIN + 1024u, island_save_window);
-/* (H10) the autopilot's BFS (combat_bot.c asserts its size is GBA_BIG_BOT)
- * stays inside the clip checkpoints: the roof table is a cache that must
- * survive it */
+/* (H10) the autopilot's BFS stays inside the clip checkpoints: the roof
+ * table is a cache that must survive it. combat_bot.c asserts that its
+ * three arrays add up to 4,096 B; GBA_BIG_BOT is pinned to the same size
+ * so neither side can change alone */
+DOOMO_STATIC_ASSERT(GBA_BIG_BOT == 4096, bot_work_is_4k);
 DOOMO_STATIC_ASSERT(GBA_BIG_CLIPS + GBA_BIG_BOT <= GBA_BIG_ROOF && (GBA_ARENA_BB - GBA_BIG_R3D + GBA_BIG_CLIPS) % 4 == 0,
                     bot_in_clips);
 
