@@ -445,6 +445,19 @@ assumed story lines kept as text ids (no free-text pool) and did not
 count the code; the LS area's combined allowance (+8 KB code) holds. The
 harness (`game_smoke` memory card write + `memcard_check`, the core's
 `boot`, `ui_gallery` and `saves` scripts) passes.
+E0 (the endings / content pack / VM contracts, LIFESIM_PLAN E0): resident
++256 B, all of it in resident files by design (`scriptvm.c`, `txt.c`,
+`weak_endings.c`): `.bss` +64 B (`txt.c`'s table of the 16 user text
+packs) and +196 B of text and rodata (the JMAT rule, `txt_user_set`, the raw-string
+branch in `txt_get`, and the weak ending / pack / `opt_mature` /
+`mature_adult_ok` defaults that something references). The `TXF_RAW`
+test costs one header load and a branch per `txt_get` call, never per
+decoded symbol, so the Huffman hot loop is unchanged. Measured against
+`d81b95e` built the same way, the disc ends at `0x801e7fa0` instead of
+`0x801e7ea0`, **98,400 B below the stack top**
+(-256 B; 33 KB above the 64 KB reserve, 26 KB above the 72 KB plan gate,
+the plan's E0 budget is +1.5 KB); `OVL.BIN` keeps its 24 groups and the
+slot its size (166 KB).
 
 The biggest remaining consumers of RAM: resident core code (portraits,
 UI, sim, story engine, ...) ~650 KB, merged string literals of resident
