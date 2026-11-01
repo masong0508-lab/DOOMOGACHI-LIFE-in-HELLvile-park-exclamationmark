@@ -14,14 +14,14 @@ script si3_home
   home SET_PHASE HP_EMPTY
   sfx SFX_DOOR
   [HOLD 26]
-  say nar "(Home. Half the furniture / burned. Half went to the / barricades. The rest fell.)"
+  say nar "Home. Half the furniture / burned. Half went to the / barricades. The rest fell."
   [R13]
   say nar "(The pet bed is empty. Wisp / is quiet in a corner, very / small.)" [HEART]
   sfx SFX_TIK
   [R26]
   sfx SFX_TIK
-  say nar "(The only sound is Tock's / clock on the wall.)"
-  choice nar "(You could tidy up. Only / tidy. Take things away.)" { "Look around" -> look ; "Sit on the floor" -> sit }
+  say nar "The only sound is the / clock. Tick. Tick. Tick."
+  choice nar "You could tidy up. Only tidy: take things away." { "Tidy up" -> look ; "Sit on the floor" -> sit }
 look:
   home REMOVE_ONLY 1
   push home -1
@@ -29,7 +29,7 @@ look:
 sit:
   cam CAM_CREEP 10
   [HOLD 26]
-  say nar "(You sit on the floor.)"
+  say nar "You sit down on the floor."
   sfx SFX_TIK
   [R26]
   cam CAM_RESET
@@ -47,12 +47,12 @@ end
 
 script si3_mayor
   sfx SFX_CREAK
-  say nar "(The Mayor didn't go home. / He sits on the picnic crate.)"
+  say nar "The Mayor didn't go home. / He's sitting on your picnic / crate, hat in his wings."
   [R21]
   pal PAL_CRAYON 8
   [R2]
   pal PAL_CRAYON 0
-  say mayor SAD "It was mine. The breath. / My fear. Your little @E / ate my fear." [HEART]
+  say mayor SAD "It was mine, that fog. My / fear. Your little @E / ate my fear." [HEART]
   [R13]
   say mayor SAD "I never asked where the sad / went. {..}I know where it went / now."
   [HOLD 26]
@@ -79,7 +79,7 @@ nostone:
   say mayor NEUTRAL "I'll come with you. Over / there.{..} Tomorrow."
   sfx SFX_DOOR
   [R13]
-  say nar "(He goes. The door clicks. / The clock ticks.)"
+  say nar "He goes. The door clicks. / The clock ticks."
 end
 
 # ---- the seven knocks: each one a separate visitor, R26 or more apart ----
@@ -89,7 +89,7 @@ script si3_k1
   [R13]
   sfx SFX_THUD
   choice nar "*knock knock*" { "Open the door" }
-  say nana NEUTRAL "Light's the first thing. / Then soup."
+  say nana NEUTRAL "A lamp, sweet pea. Light's / the first thing. Then / soup."
   sfx SFX_THUD
   reward 0 furn=honey_lamp
   say nar "(She sets down a lamp. It / lands soft. She doesn't / leave.)" [HEART]
@@ -104,7 +104,7 @@ script si3_k2
   [R13]
   sfx SFX_THUD
   choice nar "*knock knock*" { "Open the door" }
-  say pip NEUTRAL "He's good at being held. / You can borrow him."
+  say pip NEUTRAL "Mr. Flops is good at being / held. You can borrow him."
   [R8]
   say pip SAD "Not forever. {..}Mostly / forever."
   reward 0 furn=mr_flops_plush
@@ -118,11 +118,11 @@ script si3_k3
   [R13]
   sfx SFX_THUD
   choice nar "*knock knock*" { "Open the door" }
-  say rivet NEUTRAL "I reset the sign. One day / since the last fire. Don't / make it weird."
+  say rivet NEUTRAL "I reset the fire sign. ONE / day since the last fire. / Don't make it weird."
   reward 0 furn=days_since_fire
   [R13]
   sfx SFX_THUD
-  say nar "(She makes it weird. A hug / like a vice.)"
+  say nar "She makes it weird: a hug / like a vice."
   native CB_C34 C34A_KNOCK 2
   duck 100 32000
 end
@@ -137,7 +137,7 @@ script si3_k4
   say steamy HAPPY "A duck. For your bath. / Ducks make everything / warmer. That's science."
   jmp gift
 ghost:
-  say steamy SAD "(Steamy's ghost, with a duck that is also a ghost.) It still floats. Mostly."
+  say steamy SAD "I brought you a duck. It's / a ghost too, now. It still / floats. Mostly."
 gift:
   reward 0 furn=rubber_duck_guest
   native CB_C34 C34A_KNOCK 3
@@ -163,7 +163,7 @@ script si3_k6
   [R13]
   sfx SFX_THUD
   choice nar "*knock knock*" { "Open the door" }
-  say bloom NEUTRAL "Cold hands. Warm blanket. / That's the deal."
+  say bloom NEUTRAL "A hot water bottle. Cold / hands, warm feet. Doctor's / orders."
   reward 0 furn=hot_water_bottle
   native CB_C34 C34A_KNOCK 5
   duck 200 32000
@@ -175,7 +175,7 @@ script si3_k7
   [R13]
   sfx SFX_THUD
   choice nar "*knock knock*" { "Open the door" }
-  say nar "(Mascotty. She has never / been inside anything. She / stands in the doorway.)"
+  say nar "It's Mascotty, the town / mascot. The big head never / comes inside. Not even now."
   [HOLD 21]
   say nar "(She puts down a single / Hellvile sunflower seed. / She leaves.)" [HEART]
   reward 0 furn=sunflower
@@ -191,7 +191,7 @@ script si3_now
   [R26]
   sfx SFX_THUD
   choice nar "*knock knock*" { "Open the door" }
-  say nar "(The Mayor. He doesn't / come in.)"
+  say nar "It's the Mayor again. He / doesn't come in."
   say mayor SAD "Tomorrow, I said."
   [R26]
   say mayor ANGRY "{big}No.{/} Now."

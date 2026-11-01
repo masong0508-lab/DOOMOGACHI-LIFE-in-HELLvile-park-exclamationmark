@@ -4,7 +4,7 @@
 # sec.12). CUT_F3 is drawn by core/src/cutstage.c from b_f3 below.
 @pack ep34 kind=episode chapter=3 minutes=40
 
-string O34_FOUNTAIN "The fountain is shaking (plaza)"
+string O34_FOUNTAIN "Check the shaking fountain (plaza)"
 string O35_RITES "Free Hattie and Grampy (@0/2)"
 
 # ---- Ep 3.4: the fountain cracks ----
@@ -15,33 +15,36 @@ script s34_fountain
   [FLASH W10,5]
   sfx SFX_EXPLODE
   [R5]
-  say nar "(The Giggling Fountain cracks / down the middle.)"
+  say nar "The Giggling Fountain cracks / down the middle. It stops / giggling."
   [R8]
-  say nar "(Underneath: pipes. Purple / sludge pulses through them, / toward the Wall.)"
+  say nar "Under it: pipes. Purple / sludge pumps through them, / south, under the Wall."
   [R8]
-  say nar "(A note on the rim, in Dr. / Quark's hand: TWO-WAY? / CHECK THE VALVES.)"
+  say nar "A note on the rim, in Dr. / Quark's writing: 'TWO-WAY? / CHECK THE VALVES.'"
   [R8]
-  say nar "(Every pipe is stamped with / the same little hammer.)"
+  say nar "Every pipe is stamped with / the same little hammer."
   npc rivet STILL
   [MUTE 26]
   [HOLD 21]
   say rivet SHOCK "{d}...That's Mum's mark." [HEART]
   [R13]
   npc rivet THAW
-  say rivet ANGRY "Who re-plumbed this? This was a GIFT. It was a TWO-WAY fountain!"
+  say rivet ANGRY "Who re-plumbed this? This / was a GIFT! A TWO-WAY / fountain!"
+  say rivet ANGRY "Mum built it to SHARE. You / laugh here, it bubbles up / over there. Both ways!"
   [R13]
   npc rivet RIPPLE 6
   [R3]
-  say nar "(Everyone turns, slowly, / to the Mayor.)"
+  say nar "Everyone turns, slowly, / to the Mayor. The Mayor / turns, slowly, to a wall."
   [R21]
   push cutscene CUT_F3
 end
 
 script s34_confess
   duck 120 300
-  say mayor SAD "Everyone was so sad after / the Mingle. So scared."
+  say mayor SAD "Everyone was so sad after / the Mingle went wrong. / So scared."
   [R8]
   say mayor SAD "I just wanted the sad to / go... away."
+  say mayor SAD "So I had the fountain / re-plumbed. Every frown, / every bad dream in town..."
+  say mayor SAD "...down the pipes, under / the Wall, and gone. Ten / years of it."
   [HOLD 13]
   say mayor NEUTRAL "We don't talk about the / other side.{..} That was the / whole point."
   [R13]
@@ -50,14 +53,14 @@ script s34_confess
   [HOLD 26]
   sfx SFX_BELL
   [R5]
-  say fuzz SAD "{..}It went to them. / And it grew."
+  say fuzz SAD "{..}It went to them, Giggs. / And it grew."
   [R21]
   music SONG_INVASION
   say bloom SAD "I'm from over there."
   [R8]
   say bloom SAD "I've been here ten years. / I was too scared to say." [HEART]
   [R21]
-  say nar "(Nana takes her hand. Nobody says anything. It's the right thing to say.)"
+  say nar "(Nana takes her hand. Nobody / says anything. It's the / right thing to say.)"
 end
 
 # F3 "The Plumber's Order" (40 s, sepia; CUT_F3): ten years ago
@@ -66,7 +69,7 @@ beatscript b_f3
   +2 caption "Ten years ago."
   +13 waita F1 12 120
 F1:
-  +0 shot 1 ; caption "A young Mayor in a too-big / sash signs a form."
+  +0 shot 1 ; caption "A young Mayor, in a top hat / two sizes too big, signs / a form."
   +5 sfx SFX_TIK
   +13 waita F2 12 150
 F2:
@@ -83,7 +86,7 @@ L_PUNCH:
   +13 label L_BUTTON
   +26 waita F5 12 120
 F5:
-  +0 shot 5 ; caption "(The signature is the same / loopy hand as the speech / in the Town Hall drawer.)"
+  +0 shot 5 ; caption "(He dots the i in Giggs / with a little heart. He / signs everything that way.)"
   +13 sfx SFX_CREAK
   +26 waita F6 12 150
 F6:
@@ -95,7 +98,7 @@ end
 script s35_hattie
   sfx SFX_GLITCH
   [R5]
-  say nar "(In the burning cafe, Hattie does stand-up for nobody. She laughs a beat late.)"
+  say nar "In the burning cafe, Hattie / does stand-up for nobody. / She laughs a beat late."
   [R8]
   say hattie POSSESSED "What's brown and sticky?"
   [R13]
@@ -104,8 +107,8 @@ script s35_hattie
   [R8]
   say hattie POSSESSED "{..}Hee. Hee."
   [R8]
-  say nar "(A clue in the smoke: WE / HATE THE SMOKE. WE WATER / PLANTS WHEN NOBODY LOOKS.)"
-  choice nar "Free Hattie from the / smoke?" { "Begin the rite!" -> go ; "Not yet..." -> no }
+  say nar "CLUE (written in the smoke): / 'WE HATE THE SMOKE. WE WATER / PLANTS WHEN NO ONE LOOKS.'"
+  choice nar "Free Hattie from the smoke?" { "Begin the rite!" -> go ; "Not yet..." -> no }
 go:
   push exorcism ID_HATTIE
   jlt v0 0 lost
@@ -125,10 +128,10 @@ lost:
   [HOLD 21]
   sfx SFX_TIK
   [R5]
-  say nar "(Mascotty, in the doorway, / claps. Once.)"
+  say nar "Mascotty, the town mascot, / is in the doorway. The big / head claps. Once."
   end
 holds:
-  say nar "(The demon holds on. Try / again when you're ready.)"
+  say nar "The demon hangs on. Try / again when you're ready."
 no:
 end
 
@@ -136,11 +139,11 @@ end
 script s35_grampy
   sfx SFX_SQUEAK
   [R5]
-  say nar "(Grampy's garden. Every / tomato has an eye. Every / eye is looking at you.)"
+  say nar "Grampy's garden. Every / tomato has an eye. Every / eye is judging you."
   [R8]
   say grampy POSSESSED "Sonny? {.}Toaster? / Do I know you, toaster?"
   [R8]
-  say nar "(Hand him tomatoes, one / memory each. The seeds came / over the fence...)"
+  say nar "Hand him his tomatoes, one / memory each. Start with the / seeds from over the fence."
   choice nar "Help Grampy remember?" { "Begin the rite!" -> go ; "Not yet..." -> no }
 go:
   push exorcism ID_GRAMPY
@@ -159,7 +162,7 @@ lost:
   [HOLD 21]
   end
 holds:
-  say nar "(The demon holds on. Try / again when you're ready.)"
+  say nar "The demon hangs on. Try / again when you're ready."
 no:
 end
 

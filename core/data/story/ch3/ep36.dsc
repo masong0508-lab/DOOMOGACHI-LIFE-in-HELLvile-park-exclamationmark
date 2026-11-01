@@ -5,27 +5,27 @@
 @pack ep36 kind=episode chapter=3 minutes=55
 
 string O36_SPIRE "Climb Cloud Nine Spire (E)"
-string O37_PARTY "The party moves to your house"
+string O37_PARTY "Go home: the party's at your house"
 string O37_TRAIL "Follow the trail to the Wall gate (E)"
 
 # the Spire's floor captions (stashed before the climb, SPEC C5; combat's HUD
 # shows one per floor cleared: story_ch34.c C34A_SPIRE_CAPS picks four)
 string V36_F1 "COME UP, LITTLE SNACK."
-string V36_F2 "You smell like Hillvile. Like / frosting over a frown."
+string V36_F2 "You smell like frosting over a frown."
 string V36_F3P "Ooh. I KNOW your flavour."
 string V36_F3N "You didn't even TRY me. Rude."
-string V36_F4A "You ASKED. Nobody ever ASKS. / ...thank you."
-string V36_F4N "Nobody ever asks. Nobody / ever ASKED."
-string V36_F5 "Every sigh. Every it's fine. / That's ME."
-string V36_F6 "I am every sigh you swallowed. / And I am SO. HUNGRY."
+string V36_F4A "You ASKED. Nobody ASKS. ...thank you."
+string V36_F4N "Nobody ever asks. Nobody ever ASKED."
+string V36_F5 "Every 'it's fine' you said? That's ME."
+string V36_F6 "Every sigh you swallowed. SO. HUNGRY."
 
 # ---- Ep 3.6: the climb ----
 script s36_base
   sfx SFX_WHOOSH
   [R5]
-  say nar "(Cloud Nine Vapor is a tower of churning vapor now.//Cloud stairs spiral into the storm.)"
+  say nar "Cloud Nine Vapor isn't a / shop anymore. It's a tower / of storm, with stairs."
   [R13]
-  say nar "(From far above, a voice / like a thunderhead: / COME UP, LITTLE SNACK.)"
+  say nar "From the top, a voice like a / thunderhead: COME UP, / LITTLE SNACK."
   choice nar "Climb Cloud Nine Spire?" { "Climb! (Hell Breach 2)" -> go ; "Not yet" -> no }
 go:
   native CB_C34 C34A_SPIRE_CAPS
@@ -37,7 +37,7 @@ go:
   native CB_C34 C34A_DONE
   end
 lost:
-  say nar "(Lord Vapula's laughter rolls down the cloud stairs.//Catch your breath and climb again.)"
+  say nar "Lord Vapula's laugh rolls / down the stairs. Catch your / breath and climb again."
 no:
 end
 
@@ -46,17 +46,17 @@ script s36_jar
   [HOLD 13]
   say nar "(He does not die. A small grey cloud, the//size of a cupcake, drifts to the floor.)" [HEART]
   [R13]
-  say nar "(On floor 4 you untied Vex / from a chair, with his own / shop ribbon.)"
+  say nar "On floor 4, you untied Vex / from a chair. The rope: / Vex's own shop ribbon."
   [R8]
   say vex SAD "I left the hatch unlocked. / Don't make it weird."
   [R8]
   sfx SFX_TINK
   [R5]
-  say nar "(Vex scoops the little cloud into a jar. He puts the lid on. He pokes air holes.)"
+  say nar "Vex scoops the little cloud / into a jar. Lid on. Then, / carefully: air holes."
   [R21]
   sfx SFX_SAD
   [R5]
-  say nar "(The jar sighs.)"
+  say nar "The jar sighs. Big sigh. / Small jar."
   [R8]
   say vex SAD "He's small now."
   [HOLD 26]
@@ -65,41 +65,41 @@ script s36_jar
   music SONG_VICTORY
   sfx SFX_CONFETTI
   [R5]
-  say nar "(At the church: confetti, / fireworks, Nana's emergency / cake. Everyone cheers.)"
+  say nar "At the church: confetti, / fireworks, Nana's emergency / cake. Everyone cheers."
   [R8]
-  say nar "(Too early.)"
+  say nar "Spoiler: too early."
 end
 
 # ---- Ep 3.7: the party, the siege, the chimney ----
 script s37_party
   [NIGHT]
-  say mayor HAPPY "Party! At @P's! It's the / only house still standing / with a door!"
+  say mayor HAPPY "PARTY! At @P's! Gobble / gobble! It's the only house / left with a door!"
   [R8]
   say mayor NEUTRAL "I'll stand at the window. / As a decoy. I'm very / decorative."
   [R8]
-  say nar "(Pip and Mr. Flops. Miss / Lulla and two sleepy kids. / Nana with a casserole.)"
+  say nar "Guests: Pip and Mr. Flops. / Miss Lulla, two sleepy kids. / Nana, with a casserole."
   [R8]
-  say nar "(Kevin, who nobody invited, / with a bust of himself. / It has three eyes.)"
+  say nar "Kevin, who nobody invited, / brought a bust of himself. / Yes, three eyes."
   [R8]
   say ID_WISP HAPPY "GUESTS! real ones! i'll / fluff the cushions!"
   sfx SFX_BOING
   [R5]
-  say nar "(@E bounces off every wall. / Somebody starts taking the / boards down.)"
+  say nar "@E bounces off every wall. / Somebody starts taking the / boards down. Brave. Dumb."
   [R13]
   [MUTE 30]
   [HOLD 21]
   sfx SFX_BEEP
   [R5]
-  say nar "(The sky beeps.)"
+  say nar "Outside, the sky beeps."
   [R21]
   music SONG_INVASION
   shake SHK_ROAR
   sfx SFX_DEMON_ROAR
   [R5]
-  say nar "(Every demon left in town / is coming up Hillvile Lane. / Something is driving them.)"
+  say nar "Every demon left in town is / coming up Hillvile Lane. / Something is driving them."
   home DEFEND 2
   [R8]
-  say nar "(Wave three. The quiet. / Kevin's third eye watches / the chimney.)"
+  say nar "Wave three. Then: quiet. / Kevin's third eye is / watching the chimney."
 end
 
 beatscript b37_chimney
@@ -125,51 +125,51 @@ script s37_fog
   say nar "???: Grape. {..}I know you."
 nograpes:
   [R13]
-  say nar "(It is the Mayor's voice. It goes for you: the newest, emptiest heart in town.)" [HEART]
+  say nar "(It is the Mayor's voice. It / goes for you: the newest, / emptiest heart in town.)" [HEART]
   [HOLD 21]
-  say nar "(Everyone is frozen. / Everyone but @E.)"
+  say nar "Everyone is frozen stiff. / Everyone except @E."
   [R8]
   say nar "@E: bep?"
   [R13]
-  say nar "(The fog, in @E's voice, / lower:) beep."
+  say nar "The fog answers in @E's / voice, but lower: beep."
   [R8]
   sfx SFX_WHOOSH
   [R5]
-  say nar "(@E steps between you and / the fog, and breathes in. / All of it.)"
+  say nar "@E steps between you and / the fog, and breathes in. / ALL of it."
   [HOLD 5]
   sfx SFX_EAT
   insert 2 4
   native CB_C34 C34A_PET 2
   [R8]
-  say nar "(@E looks at you. Two / little horns.)"
+  say nar "@E looks at you. @E has / two little horns now."
   [R8]
   say nar "@E: beep."
   [R13]
   [FLASH W7,4]
   sfx SFX_SHWIP
   [R5]
-  say nar "(And then @E runs. Up the / chimney, and gone.)"
+  say nar "Then @E runs. Up the / chimney, and gone."
   music SONG_INVASION
   shake SHK_ROAR
-  say nar "(Everyone thaws. Everyone / panics. The longest wave / of the night.)"
+  say nar "Everyone thaws. Everyone / panics. Here comes the / longest wave of the night."
   native CB_C34 C34A_HELD
   jlt v0 1 dawn
-  say nar "(Dawn. Four guests, safe. / Not a scratch.)"
+  say nar "Dawn. Four guests, safe. / Not one scratch."
   [R8]
   say nana SAD "Held, sweet pea. We held."
 dawn:
   native CB_C34 C34A_WALL_GONE
-  say nar "(Dawn. A wall is gone. The / Garden's sky shows through / the hole.)"
+  say nar "Dawn. A wall of your house / is gone. The sky shows / through the hole."
   [R13]
   say nar "(The egg nest is empty.)" [HEART]
   [R21]
-  say nar "(Outside, a trail of tiny horned poops. One every four steps. Toward the Wall.)"
+  say nar "Outside: a trail of tiny / horned poops, one every four / steps. Toward the Wall."
 end
 
 # ---- the gate: the first of your three lines ----
 script s37_gate
   duck 100 200
-  say nar "(The gate is shut. Something small squeezed under it. A scrape in the mud.)"
+  say nar "The Wall's gate is shut. / Something small squeezed / under it. The mud says so."
   [HOLD 21]
   [HOLD 13]
   [MUTE 5]
@@ -190,7 +190,7 @@ end
 # F2 "Mingle Night" (60 s; CUT_F2): eleven years ago, the full version
 beatscript b_f2
   +0 shot 0 ; music SONG_MINGLE ; pal PAL_SEPIA 12 8 ; sfx SFX_SPARKLE
-  +13 caption "The Midsummer Mingle. / Eleven years ago."
+  +13 caption "The Midsummer Mingle: both / towns' one party a year. / Eleven years ago."
   +26 waita M1 12 150
 M1:
   +0 shot 1 ; caption "Lanterns. Both sides of the / park, dancing. Baby Pip. / Rivet, six, with a torch."
@@ -209,7 +209,7 @@ M4:
   +8 sfx SFX_SAD
   +21 waita M5 12 150
 M5:
-  +0 shot 5 ; caption "Young Giggs stands between / the two sides, shaking." ; mute 60
+  +0 shot 5 ; caption "Young Giggs stands between / the two sides. His feathers / are shaking." ; mute 60
   +13 hold M6 13
 M6:
   +0 shot 6 ; caption "He looks up at the cloud. / He does not recognise it."

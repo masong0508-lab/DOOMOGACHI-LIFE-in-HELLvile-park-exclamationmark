@@ -413,8 +413,9 @@ come from these (J3).
 | **With a portrait** | The box is **27 characters** wide at 240×160 (`ui_dialog.c`: 162 px / 6 px a glyph). A 28-character line wraps and pushes the page's last line onto an extra page. **Write to 27** | `story_stats.py`'s `box27` column (a count, report only: 89 lines in the game today; drive your pack's to 0). The lint still allows 28 |
 | A line | 199 visible characters | `textpack.py` |
 | A choice option | 27 characters | `textpack.py` |
-| A choice question (`choice`, `player_line`) | **No `/` or `//`**: `ui_choice` takes the question as plain text, so a `/` prints as a slash. Write one sentence run and let the box word-wrap it (at most 3 lines at 27 columns). W2 measured it; W1 fixed Ch1's (`ep12`, `ep14`, `ep16`); 4 questions outside Ch1-2 still have one (`ep34`, `int3`, `ep44`, `ep46`) | reading the shots |
-| An idle line (`string IDLE_*`) | **No `/` or `//`** either: `ch12_idle` hands it to `story_say` -> `ui_say`, which takes plain text, so a `/` prints as a slash. One run, at most 3 lines at 27 columns (W1 measured it on Grampy's line; Ch1's are fixed, the 14 in `ch2/common.dsc` still have one) | reading the shots |
+| A choice question (`choice`, `player_line`) | **No `/` or `//`**: `ui_choice` takes the question as plain text, so a `/` prints as a slash. Write one sentence run and let the box word-wrap it (at most 3 lines at 27 columns). W2 measured it; W1 fixed Ch1's (`ep12`, `ep14`, `ep16`) and W3 Ch3's (`ep34`, `int3`); 2 questions still have one (`ep44`, `ep46`) | reading the shots |
+| An idle line (`string IDLE_*`) | **No `/` or `//`** either: `ch12_idle` hands it to `story_say` -> `ui_say`, which takes plain text, so a `/` prints as a slash. One run, at most 3 lines at 27 columns (W1 measured it on Grampy's line; Ch1's are fixed, the 14 in `ch2/common.dsc` still have one). The same holds for any string C hands to `story_say_txt` (W3 fixed Ch3's nest lines, `N33_*`) | reading the shots |
+| A Spire floor caption (`V36_*`) | **One line, no `/`, at most 37 characters**: `combat_hud.c` `story_caption` draws it as one outlined, centred run with no wrap (W3) | reading the code |
 | A quest-log hint | 95 characters (the HUD objective) | `textpack.py` |
 | A trophy name | 27 characters | `textpack.py` |
 | Characters | ASCII plus the icon glyphs 0x80-0x9F | `textpack.py` |

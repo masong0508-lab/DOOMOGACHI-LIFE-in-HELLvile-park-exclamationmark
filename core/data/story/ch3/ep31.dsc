@@ -11,12 +11,12 @@
 @armed grampy row=3 from=C3_ERUPTION to=C3_NESTS unless=41       # SOOTKIN
 
 # ---- the HUD (story_ch34.c) ----
-string O31_WAKE "Survive!"
+string O31_WAKE "Get up and get outside!"
 string O31_RUN "Run to the church! (S)"
 string O31_CHURCH "Get inside the church (S)"
-string O31_RIVET "Rivet is at the church door"
+string O31_RIVET "Talk to Rivet at the church door"
 string O32_BOARD "Go home and board up the windows"
-string O32_NIGHT "Hold the door!"
+string O32_NIGHT "Hold your front door till dawn!"
 
 # ---- Ep 3.1: you wake on your floor ----
 script s31_wake
@@ -24,7 +24,7 @@ script s31_wake
   [HOLD 13]
   sfx SFX_THUD
   [R5]
-  say nar "(You wake up on the floor. / The door is buzzing like / a wasp in a jar.)"
+  say nar "You wake up on the floor. / The front door is buzzing / like a wasp in a jar."
   [R8]
   shake SHK_RUMBLE
   music SONG_INVASION
@@ -32,16 +32,16 @@ script s31_wake
   [R13]
   sfx SFX_DEMON_ROAR
   [R5]
-  say nar "(Somewhere in town, a demon is screaming.//Somewhere else, a clown is honking back.)"
+  say nar "Somewhere in town, a demon / screams. Somewhere else, a / clown honks back. Rudely."
   [R8]
-  say nar "(The church. Everyone goes / to the church. RUN.)"
+  say nar "Everyone in town is running / to the church. Good plan. / Copy it. RUN."
 end
 
 # Squeaker the clown versus a demon pack: the honk wins
 script s31_squeaker
   sfx SFX_DEMON_ROAR
   [R5]
-  say ID_SQUEAKER SHOCK "Stay back! I am a / PROFESSIONAL!"
+  say ID_SQUEAKER SHOCK "Stay back! I have done / FOUR HUNDRED birthday / parties!"
   [R5]
   sfx SFX_KAZOO
   [R5]
@@ -49,9 +49,9 @@ script s31_squeaker
   [R8]
   sfx SFX_WHOOSH
   [R5]
-  say nar "(The demons flee from the / honk. All of them. In a / tidy line.)"
+  say nar "The whole demon pack flees / the honk. Single file. Very / well behaved."
   [R13]
-  say ID_SQUEAKER HAPPY "Twenty years of birthday / parties. Nothing scares me / now."
+  say ID_SQUEAKER HAPPY "Hell's got nothing on a / room full of six-year-olds / on cake."
 end
 
 # Hattie and Grampy in the road: possessions three and four, staged
@@ -71,7 +71,7 @@ end
 script s31_knock
   runbeat b31_knock
   [R8]
-  say nar "(You do not ask who's there. / You RUN.)"
+  say nar "You do not ask who's there. / For once, you skip the bit. / You RUN."
   native CB_C34 C34A_STEP 2
 end
 
@@ -80,15 +80,15 @@ script s31_church
   sfx SFX_DOOR
   music SONG_CHURCH
   duck 120 400
-  say nar "(The church is a pastel island in the red.//The kids watch a shadow-puppet bunny show.)"
+  say nar "The church is a pastel / island in the red. Inside: / a shadow-puppet bunny show."
   [R8]
-  say lulla HAPPY "Everybody say it with me! / What is it?"
+  say lulla HAPPY "Okay, little ones! Who / knows the magic words? / Everybody say it!"
   [R8]
   say nar "KIDS: IT'S FINE!"
   [R8]
-  say fuzz SHOCK "...Oh. @P. You made it."
+  say fuzz SHOCK "@P! You made it! Praise / be. Also: cardio."
   [R8]
-  say nar "(Father Fuzz, out of breath, holds a hymnal. There is a cloud spider stuck to it.)"
+  say nar "Father Fuzz is out of / breath. His hymnal has a / squashed cloud spider on it."
   [MUTE 18]
   [HOLD 18]
   say nar "(He does not look at the / hymnal. He puts it down / very, very carefully.)" [HEART]
@@ -97,44 +97,44 @@ script s31_church
   [R8]
   say mayor SAD "Everyone's here. Nearly / everyone. {..}Steamy's duck is / here."
   [R8]
-  say fuzz NEUTRAL "Four nests. One spire. And / our friends, wearing bad / tenants."
+  say fuzz NEUTRAL "Four nests, one tower, and / our friends are possessed. / Bad tenants, all of them."
   [R8]
   say mayor NEUTRAL "And it's fine! {..}{d}It's fine.{punch}"
   [R13]
-  say nar "(Somebody has painted it on / the barricade, in big pink / letters: IT'S FINE.)"
+  say nar "Somebody has painted it on / the barricade in pink: / IT'S FINE! (with a smiley)"
 end
 
 script s31_window
   [SCRATCH]
-  say nar "(Through the window: a huge / red belly walks past. / Backwards. Eating.)"
+  say nar "Through the window: a huge / red belly walks past. / Backwards. Eating a bagel."
   [R5]
   [SCRATCH]
-  say nar "(It bends over to pick up a / dropped bagel. The whole / window is just... rear.)"
+  say nar "It drops the bagel. It bends / to get it. The whole window / is now just... rear."
   [R8]
-  say grumble HAPPY "Evening, sugar. Nice buns."
+  say grumble HAPPY "Evening, sugar. Are those / muffins? For the big guy?"
   [R8]
-  say nana ANGRY "They're MUFFINS."
+  say nana ANGRY "They're for the CHILDREN."
   [R8]
-  say grumble HAPPY "I'll allow it."
+  say grumble HAPPY "I'm somebody's child."
   [R8]
   say nar "KIDS: BEEP! BEEP! BEEP!"
   [R8]
-  say grumble ANGRY "Go home. Eat something. / {d}Not THAT."
+  say grumble ANGRY "Fine! Keep your muffins. / {d}I'll eat a demon. They're / mostly crust."
   sfx SFX_BOING
   [R5]
-  say nar "(He bounces off into the red / night, still chewing.)"
+  say nar "He bounces off into the red / night, belly first, chewing."
 end
 
 script s31_rivet
   sfx SFX_WELD
   [R5]
-  say rivet HAPPY "@P! Don't stand there, / help me carry these!"
+  say rivet HAPPY "@P! Quit gawking and grab / a plate. They're heavy. / That's the point."
   give ITEM_HELLSTEEL 3
-  say rivet NEUTRAL "Three welded plates. They / snap onto your windows. / The house has a Shelter tab."
+  say rivet NEUTRAL "Three welded plates. They / snap onto your windows. / Check your Shelter tab."
   [R8]
   say rivet HAPPY "And THIS. A toaster turret. / Fires every twelve frames. / Wind it every twenty shots."
   [R8]
-  say rivet NEUTRAL "The door's HP is how much / stuff you brace it with. / Tap A on it to fix it."
+  say rivet NEUTRAL "The door's HP is however / much junk you pile on it. / Tap A on it to fix it."
   [R8]
   jif SF_WEAPON_BRUTAL brutal
   say rivet HAPPY "Your bubble wand? Bring it. / Demons HATE bubbles."
@@ -146,7 +146,7 @@ done:
   setf SF_HOUSE_PLATED
   setf SF_HOUSE_TURRET
   [R8]
-  say rivet NEUTRAL "Go home. Board up. I'll be / right behind you with the / torch."
+  say rivet NEUTRAL "Go home and board up. I'm / right behind you with the / torch. The WELDING torch."
 end
 
 # ---- Ep 3.2: board up the windows; the first wave; Wisp ----
@@ -154,45 +154,45 @@ script s32_board
   [NIGHT]
   sfx SFX_WELD
   [R5]
-  say rivet NEUTRAL "Boards on the windows. Now / the door needs bracing."
+  say rivet NEUTRAL "Windows are done. Now the / door. Brace it with heavy / furniture."
   [R8]
-  say rivet HAPPY "Pick a dresser. Not the cute / one. {..}Fine. The cute one."
+  say rivet HAPPY "Pick a dresser. Not the / cute one. {..}Fine. The / cute one."
   [R8]
   sfx SFX_DEMON_ROAR
   shake SHK_ROAR
-  say nar "(Three imps at the door. / Two at the windows. One / tries the chimney.)"
+  say nar "Three imps at the door. Two / at the windows. One tries / the chimney. Ambitious."
   home DEFEND 1
   [R5]
   sfx SFX_THUD
   shake SHK_SLAM
-  say nar "(Mid-wave, the dresser slides across the//room BY ITSELF and blocks a broken window.)"
+  say nar "Mid-wave, the dresser slides / across the room BY ITSELF / and blocks a broken window."
   [MUTE 21]
   [R8]
   say nar "{w}not in MY room."
   [R13]
   sfx SFX_CHOIR
   [R5]
-  say nar "(A small shape flickers in the corner://an imp kid, see-through, ears twitching.)"
+  say nar "In the corner, a small imp / kid flickers. You can see / right through them."
   [R8]
   say ID_WISP SHOCK "you can SEE me??"
   [R8]
-  say ID_WISP SAD "sorry about the chair. i was / trying to make it like home."
+  say ID_WISP SAD "sorry about the chair. and / the dresser. and the rug. i / was making it like home."
   [R8]
   say ID_WISP SAD "my home's over the Wall. i / cried there so long i... / fell out of myself." [HEART]
   [MUTE 8]
   [HOLD 21]
-  say nar "(Wisp stays. From now on, / Wisp follows you around / the house.)"
+  say nar "NEW ROOMMATE: Wisp (ghost). / Rent: none. From now on, / Wisp follows you at home."
   [R8]
   say rivet NEUTRAL "...Is the dresser haunted? / Don't answer that. I don't / want to know."
 end
 
 # idle lines this episode (story_ch34.c: talking to the cast at the church)
 script s31_mayor_idle
-  say mayor SAD "Hee. Hee. {.}I'm fine. / Everybody's fine. Go on, / sweetheart."
+  say mayor SAD "Hee. Hee. I'm fine! I've / had three cups of tea and / {.}one small gobble. Fine!"
 end
 
 script s31_nana_idle
-  say nana NEUTRAL "I brought the sourdough / starter. Priorities, / sweet pea."
+  say nana NEUTRAL "I saved the sourdough / starter. And the kids. / {.}In that order, sweet pea."
 end
 
 script s31_pip_idle
