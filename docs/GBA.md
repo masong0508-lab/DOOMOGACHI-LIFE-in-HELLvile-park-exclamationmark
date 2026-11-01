@@ -292,7 +292,8 @@ against the LAST row, not against a figure from an older base.
 |---|---|---|---:|---:|---:|---:|---|
 | 0 | baseline | `959acc8` | | 9,536 B | | 7,168 B | `docs/GBA.md` still said 9,952 (G0) |
 | 1 | G1: speed tour | `959acc8` | 9,536 B | 9,520 B | -16 B | 7,168 B | harness mailbox 64 -> 80 B |
-| 2 | H10: autopilot BFS in the arena | `091aa2b` | 9,520 B | **13,616 B** | +4,096 B | 7,168 B | ROM +80 B; speed tour frame-exact, fps unchanged (above) |
+| 2 | H10: autopilot BFS in the arena | `091aa2b` | 9,520 B | 13,616 B | +4,096 B | 7,168 B | ROM +80 B; speed tour frame-exact, fps unchanged (above) |
+| 3 | H6: furniture animation frames, prop art | `ffbc039` | 13,616 B | **13,616 B** | 0 | 7,168 B | ROM 3,669,044 -> 3,675,732 B (iso sprites 447,309 -> 453,094 B); room parity and house fps unchanged |
 
 Known claimants still to land (their own packages measure and add rows):
 
