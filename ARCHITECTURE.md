@@ -22,6 +22,8 @@ core/tools/              host tools written in C (artgen, ...)
 core/gen/*.c             GENERATED const data (art, roster, maps). Committed.
 core/data/roster/        human-editable source for the 1000 premade citizens
 core/data/maps/          ASCII map sources
+core/lang/               languages.tsv (the language registry, doomo/lang.h) and
+                         each language's UI strings, <code>/ui_*.tsv
 core/native/             native platform (runner + PNG writer + soft raycaster)
 core/tests/              native unit/integration tests
 core/Makefile            make -C core {test,runner,gen,check-gen}
@@ -57,8 +59,10 @@ docs/                    design, building, modding the roster
    the core logic gets about 6 ms of that, and the renderer gets the rest.
    Simulate the 1000 residents in round-robin batches. Never loop over
    all of them every tick doing heavy work.
-5. **Text is ASCII** plus icon glyphs `0x80..0x9F` (`font.h`). All strings
-   are `const`.
+5. **Text is ASCII** plus icon glyphs `0x80..0x9F` (`font.h`) and the
+   letters `0xA0..` of the language's glyph page. All strings are `const`,
+   and they are always the English text: `lang_tr()` (`lang.h`) swaps in
+   the current language's translation where the text is drawn.
 6. **Never break the contract silently.** You may *add* functions, enums
    (before `*_COUNT`) and fields to headers **you own**. If a header you
    don't own needs a change, make the smallest additive change and list it

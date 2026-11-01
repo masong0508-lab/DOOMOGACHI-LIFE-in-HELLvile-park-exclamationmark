@@ -369,17 +369,42 @@ against the LAST row, not against a figure from an older base.
 | 2 | H10: autopilot BFS in the arena | `091aa2b` | 9,520 B | 13,616 B | +4,096 B | 7,168 B | ROM +80 B; speed tour frame-exact, fps unchanged (above) |
 | 3 | H6: furniture animation frames, prop art | `ffbc039` | 13,616 B | 13,616 B | 0 | 7,168 B | ROM 3,669,044 -> 3,675,732 B (iso sprites 447,309 -> 453,094 B); room parity and house fps unchanged |
 | 4 | G4: IWRAM code overlay | `7dcb273` | 13,616 B | 13,616 B | 0 | 7,168 B | ROM +196 B; IWRAM resident 10,580 B + overlay slot 10,384 B (3D group; 2D group 0 B, up to 11,408 B fits the 6 KB rule); speed tour frame-exact |
-| 5 | H1: room-shell parity frames | `738261b` | 13,616 B | **13,616 B** | 0 | 7,168 B | no RAM (the frames build on the stack and in the arena's harness tail, as before); ROM +996 B (`room.o` text 17,786 -> 18,782 B: the shared frame table `core/tests/room_shells.h` and its harness hook); house fps unchanged |
+| 5 | H1: room-shell parity frames | `738261b` | 13,616 B | 13,616 B | 0 | 7,168 B | no RAM (the frames build on the stack and in the arena's harness tail, as before); ROM +996 B (`room.o` text 17,786 -> 18,782 B: the shared frame table `core/tests/room_shells.h` and its harness hook); house fps unchanged |
+| 6 | L1: N-language lookup (state + 64-entry cache, below) | `883cf3b` | 13,616 B | **13,088 B** | -528 B | 7,168 B | ROM ROMBEFORE -> ROMAFTER B (+ROMDELTA: one LNG2 table per language, Spanish 111,516 B, was four tables of 104,476 B); Options in Spanish 28.2 -> 25.8 ms per drawn tick |
 
 Known claimants still to land (their own packages measure and add rows):
 
 | package | EWRAM | gate it must meet (against the last row) |
 |---|---:|---|
-| H11: `HOME` `.bss` on the GBA (`HOME_PERSIST`) | +3,432 B | free >= 12,352 B before it (SPEC C9) and >= 8,192 B after it; after G1 and H10: 13,616 -> 10,184 B |
-| L1: language lookup cache | <= 0.6 KB, or 0 in IWRAM-free storage | must leave H11's 12,352 B gate intact if it lands first |
+| H11: `HOME` `.bss` on the GBA (`HOME_PERSIST`) | +3,432 B | free >= 12,352 B before it (SPEC C9) and >= 8,192 B after it; after G1, H10 and L1: 13,088 -> 9,656 B |
 | L4: Latin glyph pages | 0 (`const` rows in ROM) | |
 | G3: the island's run layer | 0 `.bss` (from the arena) | free >= 9,000 B |
 | H2: room.c shell patterns | record EWRAM / IWRAM | |
+
+**L1: the language lookup** (`core/src/lang.c`, `doomo/lang.h`). Every
+UI text call goes through `lang_tr()`. Its state and a 64-entry cache (16
+sets of 4, 512 B) are one 528 B block in EWRAM: a string in the cartridge
+ROM (`plat_text_is_const()`, `src/lang_gba.c`) is looked up once per
+language and then found by its address, and a translation passed in again
+(`ui_text_shadow` and friends translate twice) is recognised by its address
+inside the table; text built in RAM is hashed and searched every time (one
+bucket of one table). Measured with the scout's island (seed 7, libmgba
+harness, work per drawn tick, `6714f43` -> L1):
+
+| screen | English | Spanish | `lang_tr` + search (profile) |
+|---|---:|---:|---:|
+| Options, Game page | 25.7 -> 25.4 ms | 28.2 -> **25.8 ms** | Spanish 6.7% -> 0.8% |
+| Unlocks | 63.2 -> 63.1 ms | 66.8 -> 65.4 ms | |
+| island | 94.0 -> 93.9 ms | 96.4 -> 95.6 ms | |
+
+The Options screen also passes its value names to `ui_value_row()` as the
+constant strings they are (they were copied into a buffer first, so each
+was hashed and searched twice per frame). A direct-mapped cache of the
+same size missed 742 of 3,536 lookups on that screen (string literals sit
+4-byte aligned, and pairs of them shared a slot every frame); the 4-way
+sets miss only the 20 first sightings. What is left in Spanish is mostly
+the longer text itself (`vid_text`) and, on the Unlocks screen and the
+island, text formatted at run time (L2a / L2b translate it once).
 
 Measured main-stack high-water marks (the boot code paints the free IWRAM
 and `gba_stack_used()` scans it): 660 bytes in the game's boot / title /

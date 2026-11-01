@@ -315,6 +315,22 @@ SCENE_CREDITS (PARTS work only for BORROW groups today) and, for the
 cutscene group (cap 100 KB), the Feast's 77 KB (story_feast.c +
 grumbleguts_gfx.c) as a part of its own.
 
+**L1 (the N-language lookup, `doomo/lang.h`).** The PS1 links no full
+UI table of any language (`core/gen/lang_tab_<id>.c`, about 110 KB each
+once a language is complete; `CMakeLists.txt` leaves them out): it links
+each language's resident table `core/gen/lang_res_<id>.c` instead, the
+strings of `core/lang/<code>/ui_main.tsv` of at most 48 bytes, and
+`src/lang_ps1.c` hands those to `lang_tr()` (`plat_lang_table()`).
+Spanish: 362 strings in 7,848 B (the old `lang_ui_es.c` was 7,768 B; LNG2
+tables under 64 KB keep 16-bit string offsets). `lang.c` keeps 528 B of
+state and cache, and only text in the resident `.text` / `.rodata`
+(`[__text_start, __CTOR_LIST__)`) is cached by address: strings in the
+overlay slot are looked up each time, so a group load never leaves a
+stale entry. The disc ends at `0x801e0420`, **130,000 B below the stack
+top** (-1,824 B; slot unchanged). Every further language with a
+`ui_main.tsv` adds its resident table (about 8 KB) until L6 reads the
+tables from the disc per overlay group.
+
 The biggest remaining consumers of RAM: resident core code (portraits,
 UI, sim, story engine, ...) ~650 KB, merged string literals of resident
 code ~110 KB, `doomo_town` 107 KB, the display lists 112 KB + OTs 24 KB,
