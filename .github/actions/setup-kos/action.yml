@@ -1,0 +1,89 @@
+# Build (or restore from the cache) the Dreamcast toolchain and KallistiOS at
+# the versions pinned in dc/tools/kos_pins.env, then export the KallistiOS
+# environment (KOS_BASE, KOS_CC_BASE, KOS_CFLAGS, ...) and PATH for the
+# following steps of the job.
+#
+# The build itself is dc/tools/setup_kos.sh, the same script developers run.
+# A cache miss costs about 30-45 minutes on a standard runner; a hit restores
+# the finished prefix in well under a minute. The cache key hashes the pins
+# file and the setup script, plus the runner image and the host gcc version,
+# so changing any pin, the script or the image rebuilds it.
+#
+# The caller must have checked out the repository first. Host packages are
+# installed here with apt-get (texinfo, flex, libgmp-dev, ...). Owner: ci.
+name: Set up KallistiOS
+description: Build (or restore from cache) the pinned sh-elf toolchain + KallistiOS and export the KOS environment.
+
+inputs:
+  prefix:
+    description: Install prefix for the toolchain, KallistiOS and host tools.
+    required: false
+    default: ~/dc
+  jobs:
+    description: Parallel make jobs for a cache-miss build.
+    required: false
+    default: '4'
+
+outputs:
+  prefix:
+    description: Absolute install prefix.
+    value: ${{ steps.key.outputs.prefix }}
+  cache-hit:
+    description: "'true' when the toolchain was restored from the cache."
+    value: ${{ steps.cache.outputs.cache-hit }}
+
+runs:
+  using: composite
+  steps:
+    - name: Install host packages for KallistiOS
+      shell: bash
+      run: |
+        set -euo pipefail
+        sudo apt-get update -q
+        sudo apt-get install -y -q --no-install-recommends \
+          build-essential git curl make gawk patch bzip2 xz-utils tar texinfo flex bison \
+          libelf-dev libgmp-dev libmpfr-dev libmpc-dev libpng-dev libjpeg-dev cmake genisoimage
+
+    - name: Compute the KallistiOS cache key
+      id: key
+      shell: bash
+      env:
+        KOS_PREFIX: ${{ inputs.prefix }}
+      run: |
+        set -euo pipefail
+        prefix="${KOS_PREFIX/#\~/$HOME}"
+        pins=$(sha256sum dc/tools/kos_pins.env dc/tools/setup_kos.sh | sha256sum | cut -c1-16)
+        hostv=$(gcc -dumpfullversion)
+        {
+          echo "prefix=$prefix"
+          echo "key=kos-v1-${pins}-${ImageOS:-linux}-${RUNNER_ARCH}-host${hostv}"
+        } >> "$GITHUB_OUTPUT"
+        echo "KallistiOS pins ${pins} (host gcc ${hostv}) -> ${prefix}"
+
+    - name: Restore the KallistiOS install
+      id: cache
+      uses: actions/cache@v4
+      with:
+        path: ${{ steps.key.outputs.prefix }}
+        key: ${{ steps.key.outputs.key }}
+
+    - name: Build the toolchain and KallistiOS
+      if: steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      env:
+        KOS_PREFIX: ${{ steps.key.outputs.prefix }}
+        KOS_JOBS: ${{ inputs.jobs }}
+      run: dc/tools/setup_kos.sh --prefix "$KOS_PREFIX" --jobs "$KOS_JOBS"
+
+    - name: Check the install and export the KallistiOS environment
+      shell: bash
+      env:
+        KOS_PREFIX: ${{ steps.key.outputs.prefix }}
+      run: |
+        set -euo pipefail
+        dc/tools/setup_kos.sh --prefix "$KOS_PREFIX" --check --verify
+        # Everything environ.sh exports (KOS_*, DC_*), then the bin directories.
+        ( set +u; . "$KOS_PREFIX/kos/environ.sh" >/dev/null; env ) |
+          grep -E '^(KOS_|DC_)[A-Za-z0-9_]*=' >> "$GITHUB_ENV"
+        echo "$KOS_PREFIX/bin" >> "$GITHUB_PATH"
+        echo "$KOS_PREFIX/sh-elf/bin" >> "$GITHUB_PATH"
