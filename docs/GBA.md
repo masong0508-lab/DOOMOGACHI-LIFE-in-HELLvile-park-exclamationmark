@@ -147,13 +147,15 @@ it to count logic ticks and frame rates and posts its commands there.
 
 Every build prints this report; the linker script `ASSERT`s the limits.
 Game ROM (`build/doomogachi.gba`) with every core module linked, after
-the G0 memory pass (tasks #77/#78, 2026-10-25):
+H10 (the autopilot's BFS in the arena, below; measured 2026-11-01 on
+`959acc8` + H10). The shared ledger at the end of this section has the
+figure every later package must start from.
 
 ```
-ROM   3,379,276 bytes
-IWRAM    24,588 / 32,768  (code+data 20,720, bss 3,868)  7,412 bytes left for the main stack
+ROM   3,668,828 bytes
+IWRAM    24,832 / 32,768  (code+data 20,964, bss 3,868)  7,168 bytes left for the main stack
   flash routines: 1,092 bytes, copied onto the stack while saving
-EWRAM   252,192 / 262,144 (.data 536, .bss 251,592)      9,952 bytes free
+EWRAM   248,512 / 262,144 (.data 544, .bss 247,904)     13,632 bytes free
   109,524  doomo_town      core (town.o)
    32,780  doomo_map       core (map.o, the live map)
    26,992  gba_arena       platform + core: the arena (bigbuf.c, below)
@@ -162,10 +164,10 @@ EWRAM   252,192 / 262,144 (.data 536, .bss 251,592)      9,952 bytes free
     6,144  doomo_actors    core (actor.o)
     5,352  doomo_song_book core (song_book.o, saved)
     4,480  pcv             core (portrait_gfx.o)
-    4,096  first_dir/queue/target_bits  core (combat_bot.o, the autopilot's BFS)
     2,560  sc_pool         core (ui_raster.o: the UI shape cache)
     2,048  ul_by_id        core (unlocks.o)
     1,984  dq              core (ui_dialog.o)
+    1,856  studio          core (studio.o)
 ```
 
 | | before G0 (`9d4d915`) | after G0 |
@@ -186,7 +188,7 @@ the largest claim: 12,288 + the codec's 14,592 + a 112 B window):
 | arena bytes | user |
 |---|---|
 | `[0, claim)` | the scene scratch: `scene_scratch(owner, size)`, size <= 12,288 |
-| `[24,592 - region, 24,592)` | the platform owner that claimed it last (`gba_big_claim()`): the raycaster's 11,840 B (clip checkpoints 6,720, roof table 4,096, sprite order 1,024; it fits beside the largest claim, combat's 12 KB of weapon views), the overworld's tile cache 17,152 B (beside the story overworld's 6,472 B claim; beside a claim over 7,440 B it uses only its upper 16 sets), the house's 16,872 B (beside its own 2,828 B) |
+| `[24,592 - region, 24,592)` | the platform owner that claimed it last (`gba_big_claim()`): the raycaster's 11,840 B (clip checkpoints 6,720, roof table 4,096, sprite order 1,024; it fits beside the largest claim, combat's 12 KB of weapon views; in an update the bottom 4,096 B of the clip checkpoints are the autopilot's BFS, H10 below), the overworld's tile cache 17,152 B (beside the story overworld's 6,472 B claim; beside a claim over 7,440 B it uses only its upper 16 sets), the house's 16,872 B (beside its own 2,828 B) |
 | `[24,592, 26,992)` | `doomo_frame_bb`: filled and read inside a draw |
 | `[claim, 26,992)` | `plat_save_scratch()` (saves run in an update, never during a draw): 14,704 B beside the largest claim, 1 KB more than the codec needs beside the island's 11,312 B |
 
@@ -221,17 +223,78 @@ How EWRAM got here:
 | G0: the arena | 9.7 KB | scene scratch + `gba_big` + billboards in one 26,992 B block (-5,104 B) |
 | measured at `959acc8` (2026-11-01) | 9,536 B | modules landed since G0 (-416 B) |
 | G1: speed tour | 9,520 B | harness mailbox 64 -> 80 B (`hold_at`, `draw_all`; section 9) |
+| H10: the autopilot's BFS in the arena | **13,616 B** | `combat_bot.c`'s 4,096 B work area is the raycaster's clip checkpoints during the update (below) |
 
 The engine-test ROM (no game scenes): ROM 1,146,352 bytes, IWRAM 20,800
 (10.9 KB for the stack), EWRAM 168,608 (91.3 KB free).
+
+**H10: the autopilot's BFS borrows the clip checkpoints.** The debug
+autopilot (`core/src/combat_bot.c`: demo mode, "Watch demo" on the level
+select, and the core tests) kept a 4,096 B BFS work area in `.bss`: a
+direction nibble and a target bit per map cell (64 x 64) and a 768-cell
+queue. It holds data only inside one `plan()` call, which runs in an
+update (`combat_tick`). The raycaster's clip checkpoints (6,720 B at the
+bottom of its arena region) hold data only inside `plat_view3d()`, a
+draw. So on the GBA the BFS works in `gba_bot_work`, the clip
+checkpoints' first 4,096 B (`GBA_BIG_BOT`, `gba_plat.h`; a symbol of its
+own like `gba_r3d`, so the BFS addresses it exactly as it did its
+statics), and `plan()` first calls `gba_bot_claim()` (`bigbuf.c`), which
+claims the region as the raycaster: a no-op in combat, where the
+raycaster already owns it; any other owner rebuilds its cache, as after
+any claim. `bigbuf.c` asserts that the work area stays below the roof
+table, which is a cache that must survive; `combat_bot.c` asserts that
+its three arrays add up to exactly `GBA_BIG_BOT`. The raycaster's region
+clears the largest scene scratch claim (asserted), so the BFS never
+touches the weapon views. Native and PS1 keep the three statics: the
+PS1's `ovl_plan.py` BORROW lends their sections to the house group by
+name, and both compile to the same code as before (identical
+disassembly; the PS1 image ends at the same address).
+Measured (libmgba, `959acc8` against `959acc8` + H10, `plat_entropy`
+pinned with `seed 7`): EWRAM 9,536 -> 13,632 B free, ROM +80 B, IWRAM
+unchanged. The scout fps tour (title, 8 overworld scenes, combat first /
+third person, concert, house, options, pet) plus 600 ticks of the demo:
+every scene's fps and work per drawn tick identical to 0.1 ms and every
+screenshot byte-identical. A whole demo of the Vape Cellar (6,420 ticks:
+17/17 demons, the exit, the results screen): the results screen (time
+3:22, score 55, rank B) byte-identical in all 14 frames shot, kills, HP
+and ammo the same at every checkpoint, work per drawn tick within 2 ms
+per segment (which ticks get drawn shifts; 3 of 10 mid-run shots differ
+in the weapon bob or the haze phase only), main-stack high-water 2,056 B
+both. `smoke.txt` (`make test-game`) now plays that demo to the
+end: all 17 demons down, back at the level select.
 
 Levers left for the >= 24 KB goal (task #77), none of them fps-free or
 G0's: the customisation package's P0 shrinks the resident record 96 -> 76
 B (-20,020 B, docs/design/customization/SPEC.md section 2.1, CF-1); the
 portrait cache 48 -> 36 blocks (-5,040 B) costs fps (G0 tour: dialogue
 10.6 -> 8.4 fps; 42 blocks: breach third person 100.7 -> 103.0 ms), so it
-stays at 48; the autopilot's BFS (4 KB, demo mode only) could borrow the
-raycaster's per-frame clip buffers during the update.
+stays at 48. If the HOME state needs more room later: keep the two saved
+blueprint rooms (500 B) and the photo recipes (128 B) out of `HomeState`
+on the GBA and stream them from flash when their menus open, or shrink
+`sc_pool` (fps cost, section 4).
+
+### EWRAM ledger (shared; every package that changes GBA RAM adds a row)
+
+Packages that land on the shared branch in parallel each assumed the
+headroom the others use. This ledger is the one place that adds them up:
+when a package changes EWRAM (or IWRAM) it appends a row in merge order
+with the `memreport` lines of the merged tree, and gates are checked
+against the LAST row, not against a figure from an older base.
+
+| # | package (merge order) | base | EWRAM free before | after | change | IWRAM stack | notes |
+|---|---|---|---:|---:|---:|---:|---|
+| 0 | baseline | `959acc8` | | 9,536 B | | 7,168 B | `docs/GBA.md` still said 9,952 (G0) |
+| 1 | H10: autopilot BFS in the arena | `959acc8` | 9,536 B | **13,632 B** | +4,096 B | 7,168 B | ROM +80 B; fps and shots identical (above) |
+
+Known claimants still to land (their own packages measure and add rows):
+
+| package | EWRAM | gate it must meet (against the last row) |
+|---|---:|---|
+| H11: `HOME` `.bss` on the GBA (`HOME_PERSIST`) | +3,432 B | free >= 12,352 B before it (SPEC C9) and >= 8,192 B after it; with only H10 landed: 13,632 -> 10,200 B |
+| L1: language lookup cache | <= 0.6 KB, or 0 in IWRAM-free storage | must leave H11's 12,352 B gate intact if it lands first |
+| L4: Latin glyph pages | 0 (`const` rows in ROM) | |
+| G3: the island's run layer | 0 `.bss` (from the arena) | free >= 9,000 B |
+| H2: room.c shell patterns | record EWRAM / IWRAM | |
 
 Measured main-stack high-water marks (the boot code paints the free IWRAM
 and `gba_stack_used()` scans it): 660 bytes in the game's boot / title /
