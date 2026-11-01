@@ -51,7 +51,27 @@ extern const DoomoSaveExt *const doomo_save_ext_home;
  * from doomo_town.story.quest (SPEC C19). */
 extern const DoomoSaveExt *const doomo_save_ext_story2;
 /* --- end S0 --- */
-#define SAVE_EXT_SLOTS 7
+/* --- K0: the life sim / play-as / endings / settings chunks (LIFESIM_PLAN
+ * R1). Registered once here so no later package edits this registry; each
+ * is a weak NULL in save_ext.c (no chunk written, a save stream stays
+ * byte-identical) until its owner defines the strong descriptor. Their
+ * worst cases are declared in save_budget.h (SAVE_EXT_MAX_*), and a strong
+ * descriptor's max_size stays within them. Later systems (a content pack's
+ * state, ...) add sections inside LIFE or ENDS, never a 12th slot. --- */
+#define SAVE_EXT_TAG_LIFE SAVE_EXT_TAG('L', 'I', 'F', 'E')
+#define SAVE_EXT_TAG_PLAY SAVE_EXT_TAG('P', 'L', 'A', 'Y')
+#define SAVE_EXT_TAG_ENDS SAVE_EXT_TAG('E', 'N', 'D', 'S')
+#define SAVE_EXT_TAG_OPT2 SAVE_EXT_TAG('O', 'P', 'T', '2')
+/* (LS1) 'LIFE': news ring, life events, the family (core/src/life.c) */
+extern const DoomoSaveExt *const doomo_save_ext_life;
+/* (PA1) 'PLAY': the avatar and play-as state (core/src/playas.c) */
+extern const DoomoSaveExt *const doomo_save_ext_playas;
+/* (E1) 'ENDS': endings seen, routes (core/src/ending.c) */
+extern const DoomoSaveExt *const doomo_save_ext_endings;
+/* (U0) 'OPT2': the options with ids 64 and up (core/src/options_store.c) */
+extern const DoomoSaveExt *const doomo_save_ext_opt2;
+/* --- end K0 --- */
+#define SAVE_EXT_SLOTS 11
 int save_ext_count(void);
 const DoomoSaveExt *save_ext_at(int i);
 void save_ext_reset_all(void);   /* called by town_new() */

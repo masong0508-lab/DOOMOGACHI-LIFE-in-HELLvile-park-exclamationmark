@@ -95,6 +95,23 @@ extern const DoomoScene SCENE_LEVEL_SELECT, SCENE_BREACH, SCENE_ARENA_MODE;
 extern const DoomoScene SCENE_HOME, SCENE_HOME_MART, SCENE_STORY_MG, SCENE_STORY_TIMING;
 /* --- end S0 --- */
 
+/* --- K0: the life sim / play-as / endings / settings scenes (LIFESIM_PLAN
+ * R5). Declared and registered once here; core/src/weak_scenes.c gives
+ * each a weak placeholder that logs "STUB: SCENE_<name>" and pops itself on
+ * its first update (no result: the caller's "nothing happened" path). The
+ * owner defines the strong scene in its own file.
+ * SCENE_FAMILY       the family dashboard / add-member wizard (F2)
+ * SCENE_PLAYAS       the character switcher (PA5)
+ * SCENE_ENDING_CARD  an ending's title card (E1)
+ * SCENE_MSLOT        a reserved scene slot: a content pack's scene or the
+ *                    safe fade-to-black fallback (E2)
+ * SCENE_LANG_PICK    the first-boot language picker (U5) */
+extern const DoomoScene SCENE_FAMILY, SCENE_PLAYAS, SCENE_ENDING_CARD, SCENE_MSLOT,
+       SCENE_LANG_PICK;
+/* 1 if `s` is still one of the K0 placeholders above (weak_scenes.c). */
+int scene_is_reserved_stub(const DoomoScene *s);
+/* --- end K0 --- */
+
 /* Registry (scene.c, foundation): every scene above, NULL-terminated. */
 extern const DoomoScene *const doomo_all_scenes[];
 /* Find a scene by its name ("TITLE"); also accepts "SCENE_TITLE". */

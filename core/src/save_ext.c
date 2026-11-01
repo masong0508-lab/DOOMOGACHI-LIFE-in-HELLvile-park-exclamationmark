@@ -10,6 +10,12 @@ __attribute__((weak)) const DoomoSaveExt *const doomo_save_ext_fishcook = 0;
 __attribute__((weak)) const DoomoSaveExt *const doomo_save_ext_home = 0;
 __attribute__((weak)) const DoomoSaveExt *const doomo_save_ext_story2 = 0;
 /* --- end S0 --- */
+/* --- K0: LIFE, PLAY, ENDS, OPT2 (LIFESIM_PLAN R1); owners LS1, PA1, E1, U0 --- */
+__attribute__((weak)) const DoomoSaveExt *const doomo_save_ext_life = 0;
+__attribute__((weak)) const DoomoSaveExt *const doomo_save_ext_playas = 0;
+__attribute__((weak)) const DoomoSaveExt *const doomo_save_ext_endings = 0;
+__attribute__((weak)) const DoomoSaveExt *const doomo_save_ext_opt2 = 0;
+/* --- end K0 --- */
 
 /* The defaults above are weak CONSTANTS: without the volatile read GCC
  * folds their value (0) into this file and never sees a module's strong
@@ -25,6 +31,10 @@ static const DoomoSaveExt *slot(int i) {
     case 4: return EXT_SLOT(doomo_save_ext_fishcook);
     case 5: return EXT_SLOT(doomo_save_ext_home);      /* S0 */
     case 6: return EXT_SLOT(doomo_save_ext_story2);    /* S0 */
+    case 7: return EXT_SLOT(doomo_save_ext_life);      /* K0 */
+    case 8: return EXT_SLOT(doomo_save_ext_playas);    /* K0 */
+    case 9: return EXT_SLOT(doomo_save_ext_endings);   /* K0 */
+    case 10: return EXT_SLOT(doomo_save_ext_opt2);     /* K0 */
     default: return 0;
     }
 }

@@ -71,7 +71,9 @@
  *   689..697  the 9 new songs:      UL_STORY_SONG2(s) = 689 + (s - SONG_MINGLE)
  *   698..710  misc: 3 title variants, 6 Breach variants, 2 arena modes,
  *             2 creator parts (UL_STORY_MISC2_FIRST + k)
- *   711..735  spare
+ *   711..724  (K0, LIFESIM_PLAN R7) the 14 endings: UL_STORY_END(k) =
+ *             711 + k for ending k = 0..13 (E1 fills them)
+ *   725..735  spare
  * (Trophies are not unlock ids: SPEC R8.) */
 #define UL_STORY_CUT2_FIRST      677
 #define UL_STORY_CUT2_LAST       688
@@ -79,7 +81,10 @@
 #define UL_STORY_SONG2_LAST      697
 #define UL_STORY_MISC2_FIRST     698
 #define UL_STORY_MISC2_LAST      710
-#define UL_STORY_SPARE_FIRST     711
+#define UL_STORY_END_FIRST       711     /* K0: the 14 endings (E1) */
+#define UL_STORY_END_LAST        724
+#define UL_STORY_END(k)   (UL_STORY_END_FIRST + (k))                  /* k 0..13  */
+#define UL_STORY_SPARE_FIRST     725
 #define UL_STORY_CUT2(c)  (UL_STORY_CUT2_FIRST + ((c) - CUT_P0))      /* story.h  */
 #define UL_STORY_SONG2(s) (UL_STORY_SONG2_FIRST + ((s) - SONG_MINGLE)) /* audio.h  */
 /* --- end S0 --- */

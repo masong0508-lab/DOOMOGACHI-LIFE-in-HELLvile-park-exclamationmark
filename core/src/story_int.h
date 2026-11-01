@@ -230,6 +230,19 @@ enum { CB_SIDE_NEWS = 80,       /* the Later's headline (stash slot 0) goes to t
        CB_SIDE_BRANCH };        /* ARG = 0 Wisp's answer (Ep 4.4: 1 hummed, 2 the
                                    kind lie, 3 the chair), 1 the Say It line,
                                    2 the Feast: that 2-bit field of STRY.branch */
+/* --- K0: reserved callback blocks (LIFESIM_PLAN R6), after CB_SIDE_BRANCH
+ * inside story_side.c's range (64..127, side_callback). Each package names
+ * its callbacks inside its own block only (`enum { CB_LIFE_FAMILY_ADD =
+ * CB_LIFE_FIRST, ... }`, at most up to its _LAST) and handles them in its
+ * own hunk of side_callback; ids of an unfilled block do nothing there.
+ *   CB_LIFE_*   16 ids: life sim hooks the story calls (LS5)
+ *   CB_END_*     8 ids: the ending picker (E1, CB_END_PICK)
+ *   CB_ROUTE_*   8 ids: romance routes (E1/E4)
+ * (PA7's play-as declarations live in playas.h, not here.) --- */
+enum { CB_LIFE_FIRST  = CB_SIDE_BRANCH + 1,  CB_LIFE_LAST  = CB_LIFE_FIRST + 15,
+       CB_END_FIRST   = CB_LIFE_LAST + 1,    CB_END_LAST   = CB_END_FIRST + 7,
+       CB_ROUTE_FIRST = CB_END_LAST + 1,     CB_ROUTE_LAST = CB_ROUTE_FIRST + 7 };
+/* --- end K0 --- */
 enum { GRB_DISH = 1,            /* a dish fed (+1, capped at 15)                 */
        GRB_EXES,                /* the exes met so far = value (0..7)            */
        GRB_PACIFIST };          /* he was never hit (Ep 4.5, S174)              */

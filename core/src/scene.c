@@ -63,6 +63,9 @@ const DoomoScene *const doomo_all_scenes[] = {
     /* --- S0: story + house scenes (SPEC sec.4, C14) --- */
     &SCENE_HOME, &SCENE_HOME_MART, &SCENE_STORY_MG, &SCENE_STORY_TIMING,
     /* --- end S0 --- */
+    /* --- K0: life sim / play-as / endings / settings (LIFESIM_PLAN R5) --- */
+    &SCENE_FAMILY, &SCENE_PLAYAS, &SCENE_ENDING_CARD, &SCENE_MSLOT, &SCENE_LANG_PICK,
+    /* --- end K0 --- */
     NULL
 };
 

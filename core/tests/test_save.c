@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include "test.h"
 #include "data/save_v1_fixtures.h"     /* LS0: two real version-1 saves */
+#include "doomo/save_budget.h"
 
 static DoomoTown snapshot;
 static uint8_t image[256 * 1024];
@@ -525,6 +526,48 @@ TEST(save_extension_chunks_round_trip)
     ext_len = 0;
     CHECK(load_game(0));
     CHECK_EQ(ext_len, 100u);
+    t_ext_reset();
+}
+
+/* --- K0 (LIFESIM_PLAN 2.5): the joint worst case on the real codec. The
+ * four chunks K0 registers (LIFE, PLAY, ENDS, OPT2) are weak until their
+ * owners land, so the test slot carries what they would add at their
+ * declared maxima: incompressible bytes, the four maxima plus the three
+ * extra chunk headers. (The computed bound with HOME: test_save_budget.c.) */
+static void ext_fill_k0(uint32_t seed)
+{
+    DoomoRng r;
+    uint32_t i;
+    rng_seed(&r, seed);
+    ext_len = SAVE_BUDGET_K0_RAW + 3 * SAVE_BUDGET_CHUNK_HDR;
+    for (i = 0; i < ext_len; i++) ext_data[i] = (uint8_t)rng_next(&r);
+}
+
+TEST(save_k0_joint_worst_case)
+{
+    uint32_t base, n;
+    CHECK(SAVE_BUDGET_K0_RAW + 3 * SAVE_BUDGET_CHUNK_HDR <= sizeof(ext_data));
+    /* the story slot: a lived-in premade story island */
+    town_new(TOWN_STORY, 5, TOWN_POP_PREMADE);
+    scribble_misc(7);
+    base = roundtrip("story, no K0 chunks");
+    ext_fill_k0(11);
+    n = roundtrip("story + LIFE/PLAY/ENDS/OPT2 at max");
+    CHECK(base > 0 && n > base);
+    CHECK(n - base >= SAVE_BUDGET_K0_RAW);          /* nothing compressed away */
+    CHECK(n - base <= SAVE_BUDGET_K0_WORST);         /* ... and the bound holds */
+    CHECK_MSG(n <= SAVE_SLOT_STORY_CAP_CFG, "%u > the 36 KB story slot", (unsigned)n);
+    CHECK(save_game(0));
+    CHECK_EQ(save_last_size(), n);
+    t_ext_reset();
+    CHECK(load_game(0));
+    CHECK_EQ(ext_len, SAVE_BUDGET_K0_RAW + 3 * SAVE_BUDGET_CHUNK_HDR);
+    /* the free play slot: the codec's worst island (1000 random custom +
+     * 2048 edges) */
+    fill_random_custom(4242, 1);
+    ext_fill_k0(12);
+    n = roundtrip("worst free play + K0 at max");
+    CHECK_MSG(n > 0 && n <= SAVE_SLOT_FP_CAP, "%u > slot 1", (unsigned)n);
     t_ext_reset();
 }
 

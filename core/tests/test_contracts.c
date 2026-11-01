@@ -146,7 +146,13 @@ TEST(contracts_unlock_ranges_disjoint)
     CHECK_EQ(UL_STORY_SONG2_FIRST, UL_STORY_CUT2_LAST + 1);
     CHECK_EQ(UL_STORY_MISC2_FIRST, UL_STORY_SONG2_LAST + 1);
     CHECK_EQ(UL_STORY_MISC2_LAST - UL_STORY_MISC2_FIRST + 1, 13);
-    CHECK(UL_STORY_SPARE_FIRST == UL_STORY_MISC2_LAST + 1 && UL_STORY_SPARE_FIRST <= UL_IDS_STORY_LAST);
+    /* K0 (LIFESIM_PLAN R7): the 14 endings right after misc, then the spare */
+    CHECK_EQ(UL_STORY_END_FIRST, 711);
+    CHECK_EQ(UL_STORY_END_FIRST, UL_STORY_MISC2_LAST + 1);
+    CHECK_EQ(UL_STORY_END_LAST - UL_STORY_END_FIRST + 1, 14);
+    CHECK_EQ(UL_STORY_END(0), UL_STORY_END_FIRST);
+    CHECK_EQ(UL_STORY_END(13), UL_STORY_END_LAST);
+    CHECK(UL_STORY_SPARE_FIRST == UL_STORY_END_LAST + 1 && UL_STORY_SPARE_FIRST <= UL_IDS_STORY_LAST);
     /* nothing registered today sits in the reserve, the custom reserve or
      * the story's new sub-blocks (their owners fill them) */
     for (id = 0; id < DOOMO_UNLOCK_BITS; id++) {
@@ -165,7 +171,10 @@ TEST(contracts_registries_read_through_volatile)
     const DoomoSaveExt *const exts[SAVE_EXT_SLOTS] = {
         doomo_save_ext_studio, doomo_save_ext_extra, doomo_save_ext_test,
         doomo_save_ext_freeplay, doomo_save_ext_fishcook,
-        doomo_save_ext_home, doomo_save_ext_story2 };
+        doomo_save_ext_home, doomo_save_ext_story2,
+        /* K0 */
+        doomo_save_ext_life, doomo_save_ext_playas, doomo_save_ext_endings,
+        doomo_save_ext_opt2 };
     const DoomoActivity *const acts[] = {
         doomo_activities_minigames, doomo_activities_concert, doomo_activities_collections,
         doomo_activities_combat, doomo_activities_extra, doomo_activities_studio,
@@ -198,6 +207,12 @@ TEST(contracts_registries_read_through_volatile)
     CHECK(scene_by_name("HOME_MART") == &SCENE_HOME_MART);
     CHECK(scene_by_name("STORY_MG") == &SCENE_STORY_MG);
     CHECK(scene_by_name("SCENE_STORY_TIMING") == &SCENE_STORY_TIMING);
+    /* K0 (LIFESIM_PLAN R5) */
+    CHECK(scene_by_name("FAMILY") == &SCENE_FAMILY);
+    CHECK(scene_by_name("PLAYAS") == &SCENE_PLAYAS);
+    CHECK(scene_by_name("ENDING_CARD") == &SCENE_ENDING_CARD);
+    CHECK(scene_by_name("MSLOT") == &SCENE_MSLOT);
+    CHECK(scene_by_name("SCENE_LANG_PICK") == &SCENE_LANG_PICK);
     /* a declared max_size never exceeds the staging cap */
     for (i = 0; i < save_ext_count(); i++) CHECK(save_ext_at(i)->max_size <= DOOMO_SAVE_EXT_MAX);
 }
