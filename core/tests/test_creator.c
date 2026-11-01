@@ -183,6 +183,10 @@ TEST(creator_presets_are_valid)
                               "species %d brought a locked %s", cr.draft.look.species, row->label);
             }
     }
+    /* the show canon's species (C1) can be made from day one: their first
+     * presets (Mad Hatter, Tribute Bot) use no locked option */
+    CHECK(!cr_preset_locked(&cr_species_presets[SPECIES_TURKEY * CR_PRESETS_PER_SPECIES], NULL));
+    CHECK(!cr_preset_locked(&cr_species_presets[SPECIES_ANIMATRONIC * CR_PRESETS_PER_SPECIES], NULL));
 }
 
 TEST(creator_unlock_table_is_in_range)

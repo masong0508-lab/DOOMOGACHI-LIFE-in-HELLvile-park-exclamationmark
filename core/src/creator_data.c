@@ -499,19 +499,28 @@ const CrPreset cr_species_presets[SPECIES_COUNT * CR_PRESETS_PER_SPECIES] = {
     { "Starlight Owl", { SP(SPECIES_OWLKIN), K(skin, SK(PAINT_LAVENDER)), K(wings, WINGS_ANGEL),
         K(eye_style, EYE_ANIME), K(eye_color, PAINT_SKY), K(marking_color, PAINT_SKY),
         K(cheeks, CHEEK_SPARKLES), END } },
-    /* ---- turkey (show canon: Mayor Giggs' kind; portrait_turkey.c) ---- */
+    /* ---- turkey (show canon: Mayor Giggs' kind; portrait_turkey.c). Like
+     * every species, the first preset (the species change's base) uses no
+     * locked option: the Mayor's magenta band is a wedding unlock, so
+     * the Mad Hatter's band is grape ---- */
     { "Mad Hatter", { SP(SPECIES_TURKEY), K(skin, SKIN_PEACH), K(ears, EARS_NONE),
         K(tail, TAIL_FEATHER_FAN), K(nose_style, NOSE_NONE), K(mouth_style, MOUTH_BEAK),
         K(marking_color, PAINT_CHERRY), K(eye_style, EYE_ROUND), K(eye_color, PAINT_SKY),
         K(brow_style, BROW_THICK), K(hair_style, HAIR_WILD), K(hair_color, PAINT_WHITE),
-        K(hat, HAT_TOP_HAT), K(hat_color, PAINT_LAVENDER), K(pattern_color, PAINT_MAGENTA), END } },
+        K(hat, HAT_TOP_HAT), K(hat_color, PAINT_LAVENDER), K(pattern_color, PAINT_GRAPE), END } },
     { "Gobbler", { SP(SPECIES_TURKEY), K(skin, SKIN_TAN), K(ears, EARS_NONE), K(tail, TAIL_FEATHER_FAN),
         K(mouth_style, MOUTH_BEAK), K(marking_color, PAINT_ROSE), K(eye_color, PAINT_CHOCOLATE),
         K(nose_size, 13), K(eye_size, 10), K(hair_style, HAIR_BALD), END } },
     { "Harvest Tom", { SP(SPECIES_TURKEY), K(skin, SKIN_PORCELAIN), K(ears, EARS_NONE), K(tail, TAIL_FEATHER_FAN),
-        K(mouth_style, MOUTH_BEAK), K(marking_color, PAINT_HELLFIRE), K(eye_color, PAINT_FOREST),
+        K(mouth_style, MOUTH_BEAK), K(marking_color, PAINT_RUST), K(eye_color, PAINT_FOREST),
         K(brow_style, BROW_BUSHY), K(hair_style, HAIR_WILD), K(hair_color, PAINT_CARAMEL), END } },
-    /* ---- animatronic (show canon: Bonejangles' kind; xylophone ribs) ---- */
+    /* ---- animatronic (show canon: Bonejangles' kind; xylophone ribs). The
+     * skull head, hollow eyes and bow tie of Bonejangles' own look are
+     * unlocks, so they wait in the second preset ---- */
+    { "Tribute Bot", { SP(SPECIES_ANIMATRONIC), K(skin, SK(PAINT_SILVER)), K(head_shape, HEAD_OVAL),
+        K(ears, EARS_NONE), K(nose_style, NOSE_NONE), K(mouth_style, MOUTH_TEETH),
+        K(eye_style, EYE_DOT), K(eye_color, PAINT_CHARTREUSE), K(hair_style, HAIR_BALD),
+        K(top, TOP_NONE), END } },
     { "Bandleader", { SP(SPECIES_ANIMATRONIC), K(skin, SK(PAINT_SILVER)), K(head_shape, HEAD_SKULL),
         K(ears, EARS_NONE), K(nose_style, NOSE_SKULL), K(mouth_style, MOUTH_TEETH),
         K(eye_style, EYE_HOLLOW), K(eye_color, PAINT_CHARTREUSE), K(hair_style, HAIR_BALD),
@@ -520,10 +529,6 @@ const CrPreset cr_species_presets[SPECIES_COUNT * CR_PRESETS_PER_SPECIES] = {
         K(ears, EARS_BEAR), K(nose_style, NOSE_CLOWN), K(mouth_style, MOUTH_BIG_GRIN),
         K(eye_style, EYE_GLOW), K(eye_color, PAINT_LEMON), K(hair_style, HAIR_BALD),
         K(top, TOP_NONE), K(hat, HAT_TOP_HAT), K(hat_color, PAINT_GRAPE), END } },
-    { "Training Tape", { SP(SPECIES_ANIMATRONIC), K(skin, SK(PAINT_CHARCOAL)), K(head_shape, HEAD_SQUARE),
-        K(ears, EARS_NONE), K(nose_style, NOSE_NONE), K(mouth_style, MOUTH_STITCHED),
-        K(eye_style, EYE_VOID), K(eye_color, PAINT_CHERRY), K(hair_style, HAIR_BALD),
-        K(top, TOP_NONE), K(aura, AURA_GLITCH), END } },
 };
 
 /* ====================================================================== */
