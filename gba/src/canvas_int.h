@@ -155,6 +155,22 @@ void gba_drop_frame(void);                /* main.c: no flip this tick  */
 /* the screen rect a string covers, grown by pad, clipped */
 void cv_text_box(int x, int y, const char *s, int pad, int *x0, int *y0, int *x1, int *y1);
 
+/* ---- panel.c (THUMB, G7): retained panels -------------------------------- */
+/* the kind of the 2D call routing now (set around vid_route by its caller) */
+enum { PN_OP_OTHER, PN_OP_RECT, PN_OP_SHADE, PN_OP_TEXT };
+extern uint8_t pn_op;
+int  pn_active(void);                     /* a panel drawn or shown this frame */
+extern int32_t pn_box[4];                 /* what a call must touch to concern one */
+/* panels up but rows [y0, y1) cannot touch them: the Mode 4 fast path */
+static inline int pn_clear_rows(int y0, int y1)
+{
+    return gba_nodraw == GBA_NODRAW_PANEL && (y0 >= pn_box[3] || y1 <= pn_box[1]);
+}
+void pn_route(int x0, int y0, int x1, int y1);   /* vid_route: every 2D call */
+void pn_nokeep(void);                     /* a call a panel cannot keep  */
+void pn_frame_begin(void);                /* plat_begin_frame            */
+void pn_flipped(int page);                /* video_flip: page shown, -1 tiles */
+
 /* ---- ow_tiles.c (THUMB): the world of a tile frame ------------------------ */
 /* the composites and the world map shadow for the view in owf (cv.sx/sy
  * set from its scroll); 0 = not possible this frame (the slots the screen

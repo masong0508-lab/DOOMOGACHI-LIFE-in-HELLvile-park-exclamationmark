@@ -8,6 +8,7 @@ CI use, and how every team looks at its screens. It implements every
 | File | What |
 |---|---|
 | `plat_native.c` | 8bpp software framebuffer (any size up to 640x480; default 240x160, `--w 320 --h 240` for PS1 layouts), 2D drawing (`plat_rect`, `plat_shade_rect`, `plat_line`, `plat_text`, `plat_image` with flip, silhouette and drop shadow), file-backed saves (`<saves>/slot0.sav`, `slot1.sav`, written atomically), counted audio calls, `plat_log` (records every `STUB:` line), a fixed `plat_entropy()` so runs are reproducible |
+| `panel.c` | (G7) the retained-panel cache behind `plat_panel_begin` / `plat_panel_end` (platform.h): off by default (`nat_panel_cache = 0`, every panel drawn every frame, so screenshots never depend on it); `core/tests/test_panel.c` turns it on and compares every frame with the cache off. It keeps panels the GBA's way: body = `plat_rect` / straight `plat_line` pixels, everything else must land on body, shading is redrawn by the core |
 | `raycast.c` | the **reference software height raycaster** behind `plat_view3d` (semantics below) |
 | `overworld.c` | the top-down `plat_overworld` (semantics below) |
 | `png.c` | dependency-free PNG writer (indexed colour, stored deflate, zlib Adler-32, CRC-32) |

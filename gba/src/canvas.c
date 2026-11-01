@@ -39,7 +39,8 @@ IWRAM_BSS CvState cv;
  * on G2's Mode 4 a tile frame still loses with a full canvas (hahaland
  * 35.6 ms tiled against 34.7, hellvile 25.9 / 24.1, the story map with
  * its dialogue 51.7 / 37.8: the canvas HUD and text, the world pass and
- * the vblank-aligned copy), so the window stays until G7. */
+ * the vblank-aligned copy), so the window stays. (G7's retained panels are
+ * kept in Mode 4 frames only, panel.c: a tile frame still draws its HUD.) */
 #define CV_TILES_WIN 64
 #define CV_BACKOFF_MIN 30u
 #define CV_REMEASURE   16u
@@ -259,7 +260,8 @@ void cv_pre_flip(void)
     }
     cv.last_big = cv.big;
     cv.measure = 0;
-    if (gba_nodraw == GBA_NODRAW_MEASURE || gba_nodraw == GBA_NODRAW_FIRST) gba_nodraw = 0;
+    if (gba_nodraw == GBA_NODRAW_MEASURE || gba_nodraw == GBA_NODRAW_FIRST ||
+        gba_nodraw == GBA_NODRAW_PANEL) gba_nodraw = 0;
     /* a scene without the overworld forgets the history */
     if (!cv.ow_now) { cv.ref = 0; cv.pending_ref = 0; cv.backoff = 0; cv.backoff_len = 0; cv.prefer_m4 = 0; }
     cv.ow_last = cv.ow_now;
@@ -333,7 +335,11 @@ int vid_route(int x0, int y0, int x1, int y1)
     switch (gba_nodraw) {
     case 0: return 1;
     case GBA_NODRAW_FIRST: gba_nodraw = 0; return 1;
-    case GBA_NODRAW_MEASURE: cv_note(x0, y0, x1, y1); return 1;
+    case GBA_NODRAW_MEASURE:
+        cv_note(x0, y0, x1, y1);
+        if (pn_active()) pn_route(x0, y0, x1, y1);   /* G7 */
+        return 1;
+    case GBA_NODRAW_PANEL: pn_route(x0, y0, x1, y1); return 1;   /* G7: panels up */
     case GBA_NODRAW_CANVAS:
         if (cv_op(x0, y0, x1, y1)) return 2;
         return gba_nodraw ? 0 : 1;              /* dropped / converted   */
@@ -383,7 +389,9 @@ void plat_line_slow(int x0, int y0, int x1, int y1, uint8_t color)
     a = DOOMO_MAX(a, 0); c = DOOMO_MAX(c, 0);
     b = DOOMO_MIN(b, SCREEN_W - 1); d = DOOMO_MIN(d, SCREEN_H - 1);
     if (a > b || c > d) return;
+    pn_op = (x0 == x1 || y0 == y1) ? PN_OP_RECT : PN_OP_OTHER;   /* G7 */
     k = vid_route(a, c, b + 1, d + 1);
+    pn_op = PN_OP_OTHER;
     if (k == 1) { plat_line_m4(x0, y0, x1, y1, color); return; }
     if (k != 2) return;
     if (!color) color = PAL_BLACK;
@@ -413,7 +421,9 @@ void plat_rect_slow(int x, int y, int w, int h, uint8_t color)
     int x0 = x < 0 ? 0 : x, y0 = y < 0 ? 0 : y, k;
     int x1 = x + w > SCREEN_W ? SCREEN_W : x + w, y1 = y + h > SCREEN_H ? SCREEN_H : y + h;
     if (x0 >= x1 || y0 >= y1) return;
+    pn_op = PN_OP_RECT;                         /* G7: a panel's body */
     k = vid_route(x0, y0, x1, y1);
+    pn_op = PN_OP_OTHER;
     if (k == 2) cv_fill(x0, y0, x1, y1, color ? color : PAL_BLACK);
     else if (k == 1) plat_rect_m4(x, y, w, h, color);
 }

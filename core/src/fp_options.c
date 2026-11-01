@@ -75,7 +75,8 @@ static const char *const opt_help[OPT_COUNT] = {
     /* EFFECTS */ "Low: fewer, shorter-lived gibs and confetti. Smoother in big fights.",
     /* DRAW_DIST */ "How far the 3D view reaches. Near is faster in big open maps.",
     /* SHOW_FPS */ "Show how many frames per second the shooter draws.",
-    /* LANGUAGE */ "The language of menus and story text. Cambia el idioma del juego."
+    /* LANGUAGE */ "The language of menus and story text. Cambia el idioma del juego.",
+    /* 3D_FAST */ "Faster: the 3D view at half resolution, scaled up, for a smoother shooter. Better: full resolution, up to 20 fps."
 };
 
 static struct {
@@ -99,8 +100,8 @@ static void build_rows(void)
     if (O.page == OPTPAGE_GAME) O.rows[O.nrows++] = OPT_LANGUAGE;      /* first row */
     for (i = 0; i < OPT_COUNT && O.nrows < ROWS_MAX; i++)
         if (doomo_option_info[i].page == O.page && i != OPT_LANGUAGE &&
-            (i != OPT_DRAW_DIST || input_feel()))
-            O.rows[O.nrows++] = i;       /* draw distance: PS1 3D only */
+            (i != OPT_DRAW_DIST || input_feel()) && (i != OPT_3D_FAST || plat_name()[0] == 'G'))
+            O.rows[O.nrows++] = i;       /* draw distance: PS1 3D only; 3D quality: GBA only */
     O.sel = DOOMO_MIN(O.sel, O.nrows);       /* last row = "Defaults" */
 }
 

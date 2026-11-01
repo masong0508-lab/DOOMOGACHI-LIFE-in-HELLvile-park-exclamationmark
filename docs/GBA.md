@@ -388,12 +388,13 @@ against the LAST row, not against a figure from an older base.
 | 11 | G2: overworld quick wins (Mode 4), the tile window retuned | `d5181cb` | 13,048 B | 13,008 B | -40 B | 6,608 B | `owf` pixel classes + 2 tile-cache counters; IWRAM resident +120 B (`ow_spr_rows` in, the per-pixel C blit out), so the overlay slot's largest group may now grow by 464 B (to 10,848 B) within the 6 KB stack rule; ROM 3,774,396 -> 3,779,208 B (+4,812, ~3 KB of it the `test-ow` self-test); main stack high-water over the tour 3,376 B (2 KB table cache on `plat_overworld`'s stack; G5's canvas budget must leave room for it); `CV_TILES_WIN` 250 -> 64 (section 6b); speed tour frame-exact (16 scenes) |
 | 12 | G6: overworld billboards as OBJs | `65209c0` | 13,008 B | **12,952 B** | -56 B | 6,608 B | ROM 3,779,208 -> 3,787,548 B (+8,340); the block table and the frame's billboards (1,700 B) live in the IWRAM overlay slot's tail past the 2D group (asserted >= 1,712 B in `gba.ld`), the OAM entries in a 896 B buffer on `video_flip`'s stack (main-stack high-water 3,704 B with tile frames forced); 2D group 8,224 -> 8,592 B (still below the 3D group); speed tour frame-exact (16 scenes) |
 | 13 | H5: Garden / Park Plot lips, door backdrop, front-edge fences | `54f2983` | 12,952 B | **12,952 B** | 0 | 6,608 B | no EWRAM / IWRAM: `RG` (the frame geometry, on the stack) +26 B for the backdrop and lip colours; ROM 3,779,208 -> 3,782,252 B on G2 (+3,044: lip / backdrop rows, front-edge items, the shared helpers, the frame table), 3,787,548 -> 3,790,592 B after G6 (measured); room parity 46..50 required, house fps unchanged (home_plain 30.0, steady 29.5 drawn) |
+| 14 | G7: retained panels, "3D: Faster / Better" | `17d385b` | 12,952 B | **12,408 B** | -544 B | 6,308 B | the panel table and the 80-rect pool (`panel.c`, 480 B), `ui_dialog.c`'s page-length cache, the panel / pacing state; IWRAM resident +300 B (`pn_span`, `r3d_up2`, the `plat_rect` panel test); ROM 3,787,548 -> 3,795,032 B; speed tour and the 132-scene story sweep frame-exact (section 4b) |
 
 Known claimants still to land (their own packages measure and add rows):
 
 | package | EWRAM | gate it must meet (against the last row) |
 |---|---:|---|
-| H11: `HOME` `.bss` on the GBA (`HOME_PERSIST`) | +3,432 B | free >= 12,352 B before it (SPEC C9) and >= 8,192 B after it; after G1, H10, L1, C1, G2 and G6: 12,952 -> 9,520 B |
+| H11: `HOME` `.bss` on the GBA (`HOME_PERSIST`) | +3,432 B | free >= 12,352 B before it (SPEC C9) and >= 8,192 B after it; after G1, H10, L1, C1, G2, G6 and G7: 12,408 -> 8,976 B |
 | L4: Latin glyph pages | 0 (`const` rows in ROM) | |
 | G3: the island's run layer | 0 `.bss` (from the arena) | free >= 9,000 B |
 | H2: room.c shell patterns | record EWRAM / IWRAM | |
@@ -765,6 +766,121 @@ loading or saving (`gba_pacing_reset()`) the debt is forgotten.
 counter, vblank count, scanline and keys.
 
 ---------------------------------------------------------------------------
+
+## 4b. Retained panels (G7, `src/panel.c`)
+
+The core draws its HUD pills, dialogue box, toasts and island HUD as
+*panels* (`platform.h` `plat_panel_begin` / `plat_panel_end`): a panel id,
+the rect it draws in and a key of everything its pixels depend on (text,
+style, animation phases, the language and its glyph page: `ui.h`
+`ui_panel_key`). When the GBA still has a panel from the last frame drawn
+with the same id, rect and key, `plat_panel_begin` returns 0: the core
+draws only the panel's drop shadows, and `plat_panel_end` puts the panel
+back.
+
+**Where a kept panel comes from.** Mode 4 draws into the back page while
+the front page shows the last frame, so a panel drawn (or put back) last
+frame is still in the front page, pixel for pixel. Putting it back is a
+copy of its body from the front page to the back page: `pn_span`
+(`video_loops.s`, ARM in IWRAM) per row, odd edge pixels as halfword
+read-modify-writes and the rest as one 16-bit DMA. The body is what the
+first frame drew with `plat_rect` / straight `plat_line` inside the panel,
+kept as a list of rects (a rect inside one already listed is skipped; an
+80-rect pool shared by all panels). Text, images and checkers lie on that
+body (the `platform.h` rule), and shading is not body: the core shades the
+new picture again before the copy. A panel's *hole* (`plat_panel_hole`) is
+left out of the copy: the news ticker's scrolling line, and the dialogue
+box's text area, which `PANEL_DIALOG_TEXT` repaints (the box's rows under
+the text through `ui_window_rows`, the text, the heart), so the
+typewriter redraws only that.
+
+**When it is valid.** Only on the frame right after the one that showed
+it, from the page that frame was shown from (`pn_flipped` in
+`video_flip`), and only if nothing drawn after it on that frame touched
+its rect outside its hole. While a panel is drawn, put back or shown,
+`gba_nodraw` is `GBA_NODRAW_PANEL` (5): `plat_rect`'s ARM entry tests the
+call's rect against `pn_box` (the shown panels' bounding box) and the C
+entries test their rows, so calls that cannot touch a panel keep the
+Mode 4 fast path; the others go through `vid_route` and `pn_route`, which
+marks a panel they touch spoiled. Once nothing is left to watch,
+`gba_nodraw` goes back to 0. Not kept: tile frames (section 6b: the canvas
+draws as before), skipped ticks (nothing is drawn), the harness's armed
+`expect-text`, and a panel that used `plat_clear`, a squash or figure OBJ,
+drew outside its rect or overflowed the pool. A panel missed twice in a
+row (it changes or is drawn over on every frame: the typewriter, a toast
+over the clock, the pause panel) is drawn uncaptured for 2, 4, then 8
+frames between tries, so it costs nothing.
+
+**The adopted panels** (`core/src`): the overworld objective, clock and
+action prompt (`overworld_fx.c`), the dialogue box with its portrait, name
+pill and choices plus its text area (`ui_dialog.c`), the toast (`ui.c`),
+the island HUD pills and the news ticker (`fp_common.c`). Their keys are
+checked on the native platform: `core/native/panel.c` keeps panels the
+same way (with memory instead of a front page), and
+`core/tests/test_panel.c` plays the overworld HUD, a narration, portrait
+lines with a shout, the pill and a choice, toasts, the island and a
+language switch at 240x160 and 320x240 with the cache on and off: every
+frame is identical, no panel breaks a rule, and most frames keep their
+panels.
+
+**Exactness.** `make test-speed SPEED_BASE=` against the merge base's log
+(`54f2983`, the same tour script): all 16 scenes' 480 hashed frames are
+identical; and the story sweep (`scene STORY 100..165` and `200..265`, seed
+7, `vhash-seq 70` from each scene's first tick: 9,240 frames with portrait
+lines, pills, choices and toasts) is identical to the base ROM's.
+
+Measured (libmgba, work per drawn tick, `54f2983` -> G7):
+
+| scene | drawn fps | work avg ms | base fps | base avg ms |
+|-------|----------:|------------:|---------:|------------:|
+| hahaland visit | **29.4** | 33.3 | 26.1 | 34.4 |
+| hellvile visit | 30.0 | 22.7 | 30.0 | 24.1 |
+| park visit | 30.0 | 25.6 | 30.0 | 27.0 |
+| map walk | 29.0 | 27.0 | 29.0 | 28.5 |
+| story map + dialogue | **25.3** | 35.8 | 22.7 | 37.8 |
+| invaded | 15.1 | 55.9 | 15.2 | 54.2 |
+| overworld pause | 12.3 | 75.9 | 12.3 | 74.7 |
+| island hub | 7.5 | 96.8 | 7.5 | 96.8 |
+| island town hall menu | 6.5 | 109.9 | 6.5 | 107.7 |
+| every other scene | | within 0.1 ms | | |
+
+The visits' work per drawn tick drops by 1.1-1.5 ms (the HUD, drawn every
+frame, cost ~4 ms there), the story map with its narration box by 2.0 ms
+(the profile's 2D share of that frame went from ~18% to ~9%, about a third
+of it the copies); the story map's world (~30 ms of blocks, ground and
+sprites) is what keeps it below 30 fps. The invaded map, the pause panel and the town hall menu draw over
+their panels on every frame (a toast over the HUD, the full-screen shade,
+the menu window over the island HUD): they gain nothing and pay the key
+and the rare capture, 1-2 ms. The plan's tile-mode figures (HUD ~0.3 ms,
+STORY 110 at 30 fps with work <= 12 ms) assume tile frames, which the
+tour does not show (section 6b, `CV_TILES_WIN`): a tile frame draws its
+panels into the canvas as before, and keeping them there (canvas tiles a
+panel owns across frames) is still open.
+
+Memory: EWRAM -544 B (the panel table 8 x 20 B, the 80-rect pool 320 B,
+the page-length cache of `ui_dialog.c` and the box / state words), IWRAM
+resident code +300 B (`pn_span`, `r3d_up2`, the `plat_rect` panel test):
+main stack 6,308 B (>= 6,144).
+
+### "3D: Faster / Better" (Options, Performance page)
+
+`OPT_3D_FAST` (`town.h`; the row shows on the GBA only, default Better):
+
+* **Better** (0): the 3D view at full resolution; `video_flip` shows a
+  frame with a 3D view at most every third vblank (20 fps), so it holds
+  steady once the view is fast enough (today it is slower: combat runs at
+  ~10 fps, so nothing changes there).
+* **Faster** (1): `plat_view3d` renders the view at half resolution (half
+  width and height, the same field of view) into the top left quarter of
+  its rect, and `r3d_up2` (`video_loops.s`, ARM in IWRAM) doubles it in
+  place, from the bottom right so no source pixel is overwritten before it
+  is read; the HUD is drawn afterwards at full resolution. Measured on the
+  tour's Vape Cellar (COMBAT 3, 130 ticks): first person 9.9 -> 11.8 drawn
+  fps, logic 16.4 -> 21.3 ticks/s, work 83.5 -> 62.4 ms; third person 10.5
+  -> 12.6 fps, 78.7 -> 55.0 ms. This is the minimal version: the plan's
+  hardware scaling (BG2 affine 2x with the HUD as OBJs) and the 30 fps
+  target are G9's, which moves the combat HUD and the weapon to OBJs and
+  cuts the logic cost.
 
 ## 5. `plat_view3d`: the height raycaster
 
@@ -1322,6 +1438,8 @@ animated texture changes frame), the canvas HUD and text ~17% (G7's
 retained panels), the shadow rows ~10% with their reads, the billboard
 bookkeeping and OAM ~15%, and the copy's vblank alignment. Those, not the
 billboards, decide the window now; G7 should measure again and raise it.
+(G7 kept it: its panels are kept in Mode 4 frames only, section 4b; a
+tile frame still draws its HUD into the canvas every frame.)
 Invaded cannot be tiled exactly: its 47 tinted billboards each need a
 block under screen-anchored dither and overflow the 16 KB (15 spill, the
 frame converts); the sprite-anchored dither DECISIONS allows (one block

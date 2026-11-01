@@ -36,6 +36,19 @@ __attribute__((weak)) int plat_figure_obj(int k, int x, int y, const DoomoImage 
     return 0;
 }
 
+/* Weak defaults of the retained panels (platform.h, G7): nothing is kept,
+ * every panel is drawn on every frame. */
+__attribute__((weak)) int plat_panel_begin(int id, int x, int y, int w, int h, uint32_t key)
+{
+    (void)id; (void)x; (void)y; (void)w; (void)h; (void)key;
+    return 1;
+}
+__attribute__((weak)) void plat_panel_end(void) { }
+__attribute__((weak)) void plat_panel_hole(int x, int y, int w, int h)
+{
+    (void)x; (void)y; (void)w; (void)h;
+}
+
 /* Weak default of plat_checker (platform.h): one pixel per call. */
 __attribute__((weak)) void plat_checker(int x, int y, int w, int h, uint8_t color)
 {
@@ -277,6 +290,18 @@ static int si_draw(SEnt *e, int ax, int ay)
     return 1;
 }
 #endif
+
+/* (G7) an image that is a cached shape's bitmap (its opaque pixels are
+ * the shape's rects: the native panel cache counts them as panel body) */
+int ur_shape_image(const DoomoImage *img)
+{
+#if SC_IMAGES
+    return img && img->pix >= si_pool && img->pix < si_pool + SI_POOL;
+#else
+    (void)img;
+    return 0;
+#endif
+}
 
 int ur_cache_draw(uint32_t k0, uint32_t k1, uint32_t k2, int ax, int ay)
 {

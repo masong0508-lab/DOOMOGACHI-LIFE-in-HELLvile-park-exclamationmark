@@ -70,6 +70,43 @@ int  plat_draw_skipped(void);
  * slot k (0..1) for this frame, above the whole bitmap: returns 0 when the
  * platform cannot (then draw it with plat_image). Weak default: 0. */
 int  plat_figure_obj(int k, int x, int y, const DoomoImage *img);
+/* Retained panels (G7, foundation, additive). A panel is a part of the 2D
+ * picture (a HUD pill, the dialogue box, a toast) that the core draws
+ * between plat_panel_begin() and plat_panel_end(): `id` names it (PANEL_*),
+ * (x, y, w, h) bounds everything it draws, and `key` is a hash of
+ * everything its pixels depend on (text, style, animation phases, the
+ * language and its glyph page: ui.h ui_panel_key). plat_panel_begin()
+ * returns 1 when the core must draw the panel, and 0 when the platform
+ * still has it from the last frame drawn with the same id, rect and key:
+ * the core then draws only the panel's shading of what lies under it
+ * (its drop shadows: the same plat_shade_rect calls, in the same order,
+ * nothing else), and the platform puts the panel back over them in
+ * plat_panel_end(). begin and end always come in pairs. What a panel
+ * draws, so that a platform can keep it (docs/GBA.md section 4b):
+ *   - its body is what plat_rect and straight plat_line calls fill; text,
+ *     images, checkers and other lines go only on body drawn earlier in
+ *     the same panel;
+ *   - plat_shade_rect may darken anything (drop shadows); what it darkens
+ *     outside the body is drawn again by the core on kept frames;
+ *   - no plat_clear, plat_image_xform, plat_figure_obj or 3D view inside
+ *     (a platform does not keep a panel that uses one);
+ *   - the same id, rect and key always give the same pixels.
+ * plat_panel_hole() inside a panel marks a rect of its body that the core
+ * redraws itself, opaquely, after plat_panel_end() on every frame (a
+ * scrolling ticker line): a platform does not keep those pixels, and that
+ * later drawing inside the hole does not spoil the panel. Anything else
+ * the core draws over a panel later in the same frame is fine too: the
+ * platform just draws the panel again on the next frame. Weak defaults
+ * (core/src/ui_raster.c): begin returns 1, end and hole do nothing, so
+ * every frame draws everything (native, PS1). */
+enum {
+    PANEL_OW_OBJECTIVE, PANEL_OW_CLOCK, PANEL_OW_PROMPT, PANEL_DIALOG, PANEL_DIALOG_TEXT,
+    PANEL_TOAST, PANEL_FP_HUD, PANEL_FP_TICKER,
+    PANEL_COUNT                         /* add new ids before this */
+};
+int  plat_panel_begin(int id, int x, int y, int w, int h, uint32_t key);
+void plat_panel_end(void);
+void plat_panel_hole(int x, int y, int w, int h);
 
 /* ---- 3D views ------------------------------------------------------------ */
 /* A billboard sprite placed in the world. */

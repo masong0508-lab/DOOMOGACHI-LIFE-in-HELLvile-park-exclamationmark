@@ -384,10 +384,10 @@ static void draw_objective(int style)
 {
     const char *o = ow.visit ? "Free stroll - enjoy the town!" : story_objective();
     char buf[96];
-    int sw = plat_screen_w(), maxw = sw - 92, w, x = 3, y = 3, lines;
+    int sw = plat_screen_w(), maxw = sw - 92, w, x = 3, y = 3, lines, bob;
     const UiStyle *st = ui_style(style);
-    uint32_t t = doomo_frame_count();
-    if (!o || !o[0]) return;
+    uint32_t t = doomo_frame_count(), key;
+    if (!o || !o[0] || plat_draw_skipped()) return;
     doomo_snprintf(buf, sizeof(buf), "%s", o);
     if (ui_text_width(buf) <= maxw) {
         lines = 1;
@@ -397,10 +397,18 @@ static void draw_objective(int style)
         if (lines > 2) { fit(buf, o, sizeof(buf), maxw * 2 - 12); lines = 2; }
         w = maxw + 20;
     }
+    bob = ui_wave((int)t, 40, 1);
+    if (UI_PANELS) {
+        /* G7: a retained panel; the star's bob is its only motion */
+        key = ui_key_str(ui_panel_key(), buf);
+        key = ui_key_int(key, style | lines << 4 | (ow.visit != 0) << 8 | (bob + 8) << 12 | maxw << 16);
+        if (!plat_panel_begin(PANEL_OW_OBJECTIVE, x, y, w, lines * FONT_LINE + 5, key)) { plat_panel_end(); return; }
+    }
     pill(x, y, w, lines * FONT_LINE + 4, style);
-    ui_star(x + 8, y + 6 + ui_wave((int)t, 40, 1), 4, ow.visit ? PAL_UI_MINT : PAL_UI_GOLD);
+    ui_star(x + 8, y + 6 + bob, 4, ow.visit ? PAL_UI_MINT : PAL_UI_GOLD);
     if (lines == 1) ui_text(x + 15, y + 3, buf, st->text);
     else ui_text_wrap(x + 15, y + 3, maxw, buf, st->text, 1);
+    if (UI_PANELS) plat_panel_end();
 }
 
 static void draw_clock(int style)
@@ -409,10 +417,17 @@ static void draw_clock(int style)
     int sw = plat_screen_w(), w, x, y = 3;
     const UiStyle *st = ui_style(style);
     int night = town_is_night();
+    uint32_t key;
+    if (plat_draw_skipped()) return;
     town_time_str(tbuf, sizeof(tbuf));
     doomo_snprintf(mbuf, sizeof(mbuf), "%u", (unsigned)doomo_town.money);
     w = DOOMO_MAX(ui_text_width(tbuf), ui_text_width(mbuf) + 8) + 16;
     x = sw - w - 3;
+    if (UI_PANELS) {                            /* G7: a retained panel */
+        key = ui_key_str(ui_key_str(ui_panel_key(), tbuf), mbuf);
+        key = ui_key_int(key, style | (night != 0) << 4);
+        if (!plat_panel_begin(PANEL_OW_CLOCK, x, y, w, 23, key)) { plat_panel_end(); return; }
+    }
     pill(x, y, w, 22, style);
     if (night) {
         ui_fill_circle(x + 7, y + 6, 3, PAL_RAMP(RAMP_CANDY, 6));
@@ -424,6 +439,7 @@ static void draw_clock(int style)
     ui_text(x + 13, y + 3, tbuf, st->text);
     plat_text(x + 4, y + 12, STR_ICON_COIN, PAL_UI_GOLD);
     ui_text(x + 13, y + 12, mbuf, st->text);
+    if (UI_PANELS) plat_panel_end();
 }
 
 static void draw_prompt(int style)
@@ -451,12 +467,19 @@ static void draw_prompt(int style)
         default: break;
         }
     }
-    if (!what) return;
+    if (!what || plat_draw_skipped()) return;
     w = ui_text_width(what) + 14;
     x = (sw - w) / 2;
     y = sh - 17 + ui_wave((int)doomo_frame_count(), 50, 1);
+    /* G7: the bob moves the panel's rect, so it is not in the key */
+    if (UI_PANELS && !plat_panel_begin(PANEL_OW_PROMPT, x, y, w, 14,
+                                       ui_key_int(ui_key_str(ui_panel_key(), what), style))) {
+        plat_panel_end();
+        return;
+    }
     pill(x, y, w, 13, style);
     ui_text(x + 7, y + 3, what, st->text);
+    if (UI_PANELS) plat_panel_end();
 }
 
 static void draw_banner(int style)

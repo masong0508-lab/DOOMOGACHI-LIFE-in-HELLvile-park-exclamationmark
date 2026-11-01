@@ -213,10 +213,16 @@ void ui_heart(int cx, int cy, int size, uint8_t fill)
     ui_heart_squash(cx, cy, size, 256, 256, fill);
 }
 
-void ui_sparkle(int cx, int cy, int phase, uint8_t c)
+/* ui_sparkle's size at a phase (0 = not drawn; G7 panel keys) */
+int ui_sparkle_size(int phase)
 {
     static const uint8_t sz[16] = { 0, 1, 2, 3, 3, 3, 2, 2, 1, 1, 0, 0, 0, 0, 0, 0 };
-    int s = sz[phase & 15];
+    return sz[phase & 15];
+}
+
+void ui_sparkle(int cx, int cy, int phase, uint8_t c)
+{
+    int s = ui_sparkle_size(phase);
     if (s == 0 || plat_draw_skipped()) return;
     plat_rect(cx - s, cy, 2 * s + 1, 1, c);
     plat_rect(cx, cy - s, 1, 2 * s + 1, c);

@@ -35,6 +35,13 @@ R3DStats r3d_stats;
 uint32_t r3d_dbg[4];
 extern const uint8_t gba_missing_tex[64 * 64];
 
+/* (G7) the frame's 3D view: 0 none, 1 full resolution, 2 half (main.c's
+ * pacing: a full-resolution view is shown at most 20 times a second) */
+int gba_view3d_frame;
+/* video_loops.s: the half-resolution view at base (vh2 rows of hw
+ * halfwords) doubled in place to 2 hw x 2 vh2 */
+void r3d_up2(uint16_t *base, int hw, int vh2) IWRAM_CALL;
+
 static int cache_vw = -1, cache_vh = -1;
 static int cache_amb = -1;
 static uint32_t cm_sig;
@@ -416,7 +423,7 @@ static void vtex_update(void)
 void plat_view3d(const DoomoView3D *v)
 {
     uint32_t t0, t1, t2, t3;
-    int vx, vy, vw, vh;
+    int vx, vy, vw, vh, half = 0;
     int a;
     const DoomoMap *m;
     if (gba_nodraw == 1 || !v || !v->map) return;
@@ -441,6 +448,13 @@ void plat_view3d(const DoomoView3D *v)
     if (vx + vw > SCREEN_W) vw = SCREEN_W - vx;
     if (vy + vh > SCREEN_H) vh = SCREEN_H - vy;
     if (vw < 8 || vh < 8) return;
+    /* (G7) Options "3D: Faster": the view at half resolution into the top
+     * left quarter of its rect, then doubled in place (r3d_up2) */
+#if !defined(ENGINE_TEST)
+    half = opt_get(OPT_3D_FAST) && !(vx & 3) && !(vw & 3) && !(vh & 1) && vw >= 32 && vh >= 32;
+#endif
+    if (half) { vw >>= 1; vh >>= 1; }
+    gba_view3d_frame = half ? 2 : 1;
     {
         int fov = opt_get(OPT_FOV);
         if (vw != cache_vw || vh != cache_vh || fov != cache_fov) setup_viewport(vw, vh, fov);
@@ -506,6 +520,7 @@ void plat_view3d(const DoomoView3D *v)
     draw_sprites(v);
     if (v->tint > TINT_NONE && v->tint < TINT_COUNT && v->tint_level > 0)
         r3d_tint_pass(doomo_tintmap[v->tint], v->tint_level > 16 ? 16 : v->tint_level);
+    if (half) r3d_up2(r3f.dst, vw >> 1, vh);
     t3 = gba_cycles();
 
     r3d_stats.cycles_cols = t1 - t0;

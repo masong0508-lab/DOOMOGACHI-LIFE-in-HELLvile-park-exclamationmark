@@ -90,6 +90,7 @@ static uint16_t d_rev[HOP_RING];       /* d_line_t when glyph i appeared     */
 static uint8_t d_pill_seen;            /* the pill has popped in this run    */
 static uint32_t d_pill_draws;          /* tests                              */
 static uint16_t d_serial;              /* bumps with every line shown        */
+static uint16_t d_gen;                 /* (G7) bumps whenever a queued line or dq[0] changes */
 
 void ui_dialog_style(int style) { d_style = style; }
 int ui_dialog_active(void) { return d_open; }
@@ -114,6 +115,7 @@ static const struct { char kw[7]; uint8_t op, arg; } code_kw[] = {
 
 static void add_code(DlgEntry *e, int pos, int op, int arg)
 {
+    d_gen++;
     if (e->ncode >= DLG_CODES) return;
     e->code[e->ncode].pos = (uint8_t)DOOMO_MIN(pos, 255);
     e->code[e->ncode].op = (uint8_t)op;
@@ -144,6 +146,7 @@ static int parse_code(DlgEntry *e, const char *src, int pos)
 static void parse_text(DlgEntry *e, const char *src, int story)
 {
     int o = 0, n;
+    d_gen++;
     if (!src) src = "";
     while (*src && o < DLG_TEXT - 1) {
         if (*src == '{' && (n = parse_code(e, src, o)) != 0) { src += n; continue; }
@@ -264,10 +267,23 @@ static int next_page_code(const DlgEntry *e)
     return best;
 }
 
+/* (G7) the update and the draw ask for the page's length several times a
+ * tick, and wrapping it is a tenth of a dialogue frame on the GBA: the
+ * last answer is kept, keyed by the queue's generation (d_gen: any line
+ * parsed, coded or advanced), the page, the box and the language */
 static int page_len(const DlgEntry *e, const DlgBox *b)
 {
-    int n = ui_wrap_skip(e->text + d_page, b->tw, b->lines), pg = next_page_code(e);
+    static uint32_t k0, k1;
+    static const DlgEntry *ke;
+    static int kv = -1;
+    uint32_t a = (uint32_t)d_gen | (uint32_t)d_page << 16;
+    uint32_t c = (uint32_t)b->tw | (uint32_t)b->lines << 10 | (uint32_t)lang_get() << 16;
+    int n, pg;
+    if (kv >= 0 && ke == e && k0 == a && k1 == c) return kv;
+    n = ui_wrap_skip(e->text + d_page, b->tw, b->lines);
+    pg = next_page_code(e);
     if (pg >= 0 && pg - d_page < n) n = pg - d_page;
+    ke = e; k0 = a; k1 = c; kv = n;
     return n;
 }
 
@@ -308,6 +324,7 @@ static void advance(int choice)
     if (done.opt_slot >= 0) d_opt_used &= (uint8_t)~(1 << done.opt_slot);
     for (i = 1; i < dq_n; i++) dq[i - 1] = dq[i];
     dq_n--;
+    d_gen++;
     reset_page(0);
     if (d_dead) audio_music_duck(256, 0);
     d_dead = 0;
@@ -500,10 +517,10 @@ static void dlg_update(void)
 /* ---- drawing ------------------------------------------------------------ */
 /* The portrait: ui_portrait's frame and image, the image squashed (Q8,
  * anchored at its feet) through plat_image_xform while it squashes. */
-static void dlg_portrait(int x, int y, int id, int expr, int sx, int sy)
+static void dlg_portrait(int x, int y, int id, int expr, int sx, int sy, const DoomoImage *pimg)
 {
     const DoomoImage *img;
-    ui_portrait(x, y, id, 1, expr);
+    ui_portrait_img(x, y, pimg, 1);           /* (asked for once a frame: dlg_draw) */
     if (sx == 256 && sy == 256) return;
     img = portrait_image(id, expr);
     if (!img) return;
@@ -551,35 +568,52 @@ static void dlg_text(const DlgEntry *e, const DlgBox *b, int by, uint8_t col, ui
     }
 }
 
+/* (G7) the top row of the page's text as dlg_text() draws it this frame */
+static int text_top(const DlgEntry *e, const DlgBox *b, int shown, int by)
+{
+    const char *p = e->text + d_page;
+    int n = ui_wrap_skip(p, b->tw, 1), k, top = by;
+    uint8_t c;
+    if (n > shown) n = shown;
+    for (k = 0; k < n; k++) {
+        int dy = glyph_dy(k, shown, &c, 0);
+        if (by + dy < top) top = by + dy;
+    }
+    return top;
+}
+
 static void dlg_draw(void)
 {
     static const int16_t jelly[7] = { 270, 248, 262, 252, 258, 254, 256 };
     DlgEntry *e;
     DlgBox b;
     const UiStyle *st;
-    int t = (int)scene_ticks(), len, slide, portrait, pill;
+    int t = (int)scene_ticks(), len, slide, portrait, pill, shown, done, last;
+    int expr = 0, bob = 0, sx = 256, sy = 256, px = 0, talking = 0, pop = 256;
+    int heart = 0, hbob = 0, choice = 0, cw = 0, ch = 0, cx = 0, cy = 0, top, i, use;
+    int hx0, hx1, hy0, hy1;
+    const DoomoImage *pimg = NULL, *img;
+    uint32_t key;
     if (dq_n == 0) return;
     e = &dq[0];
     dlg_box(e, &b);
     len = page_len(e, &b);
+    shown = d_shown / 2;
+    last = page_is_last(e, &b);
     portrait = has_portrait(e->speaker);
     /* the box slides up with a little overshoot when the dialogue opens */
     slide = t < 8 ? (8 - t) * (8 - t) / 2 - (t >= 5 ? 2 : 0) : 0;
     b.y += slide;
     if (d_box_hop) b.y += d_box_hop == 3 ? -2 : d_box_hop == 2 ? 1 : 0;   /* '!' hops the box */
-    ui_window(b.x, b.y, b.w, b.h, portrait ? d_style : WIN_CREAM);
     st = ui_style(portrait ? d_style : WIN_CREAM);
-    dlg_text(e, &b, b.y + 8, st->text, st->accent);
-
     pill = (e->eflags & EF_LEGACY) || (e->flags & DL_PILL);
     if (portrait) {
         const DoomoResident *r = town_res(e->speaker);
-        int talking = d_shown / 2 < len;
         int clock = d_dead ? 0 : d_line_t;
-        int expr = talking && (clock / 4) % 2 ? EXPR_TALK : e->expr;
-        int bob = d_dead ? 0 : talking ? ((d_line_t / 4) % 2) : (ui_wave(t, 60, 1) > 0);
-        int sx = 256, sy = 256, px = b.x + 2;
-        int nw = font_text_width(r->name) + 14;
+        talking = shown < len;
+        expr = talking && (clock / 4) % 2 ? EXPR_TALK : e->expr;
+        bob = d_dead ? 0 : talking ? ((d_line_t / 4) % 2) : (ui_wave(t, 60, 1) > 0);
+        px = b.x + 2;
         if (r->status == RES_POSSESSED) {
             expr = EXPR_POSSESSED;
             if (!d_dead && (d_line_t % 7) < 3) px += 1;                 /* TWITCH */
@@ -592,40 +626,20 @@ static void dlg_draw(void)
         if (d_tilt) px += (d_tilt & 2) ? 1 : -1;                       /* '?' tilts */
         sx = 256 + (sx - 256) * tw_bounce_amount() / 256;
         sy = 256 + (sy - 256) * tw_bounce_amount() / 256;
-        dlg_portrait(px, b.y - 22 - bob, e->speaker, expr, sx, sy);
-        if (e->flags & DL_GURGLE) {                    /* GURGLE's slot: the belly talks */
-            ui_fill_circle(b.x + 50, b.y + 8, 9, PAL_RAMP(RAMP_BLOOD, 4));
-            ui_fill_ellipse(b.x + 50, b.y + 11, 4, talking && (d_line_t & 2) ? 2 : 1, PAL_RAMP(RAMP_BLOOD, 0));
-        }
-        if (d_bang >= 0) {
-            int s = tw_tab(&TW_POP_BUBBLE, d_bang);
-            ui_text_outline(b.x + 26, b.y - 34 - (s - 256) / 16, "!", PAL_UI_GOLD, PAL_BLACK);
-        }
-        /* name plate (legacy lines) / the name pill (PILL lines) */
-        if (pill) {
-            int pop = 256, w2, x2;
-            if (!(e->eflags & EF_LEGACY)) {
-                if (!d_pill_seen && d_line_t == 1) d_pill_seen = 1;
-                pop = d_page == 0 ? tw_tab(&TW_POP_BUBBLE, d_line_t) : 256;
-                d_pill_draws++;
-            }
-            w2 = nw * pop / 256;
-            x2 = b.x + 60 + (nw - w2) / 2;
-            if (w2 > 6) {
-                ui_pill_shadow(x2 + 1, b.y - 8, w2, 12, x2, b.y - 10, w2, 12);
-                ui_pill(x2, b.y - 10, w2, 12, st->title_bg, st->outline, ui_lighter(st->title_bg));
-                if (pop >= 230) ui_text_shadow(b.x + 67, b.y - 8, r->name, st->title, st->outline);
-            }
+        /* the name pill's pop (and the tests' counters: every drawn tick) */
+        if (pill && !(e->eflags & EF_LEGACY)) {
+            if (!d_pill_seen && d_line_t == 1) d_pill_seen = 1;
+            pop = d_page == 0 ? tw_tab(&TW_POP_BUBBLE, d_line_t) : 256;
+            d_pill_draws++;
         }
     }
-
-    if (d_shown / 2 >= len && !(line_punch(e) && d_hold)) {
-        if (!page_is_last(e, &b) || e->kind == DK_SAY) {
-            int bx = b.x + b.w - 12, by = b.y + b.h - 10 + (ui_wave(t, 18, 2) > 0);
-            ui_heart(bx, by, 3, st->accent);
-        }
-        if (page_is_last(e, &b) && e->kind == DK_CHOICE) {
-            int i, ow = 0, cw, ch, cx, cy;
+    done = shown >= len && !(line_punch(e) && d_hold);
+    if (done) {
+        heart = !last || e->kind == DK_SAY;
+        hbob = ui_wave(t, 18, 2) > 0;
+        if (last && e->kind == DK_CHOICE) {
+            int ow = 0;
+            choice = 1;
             for (i = 0; i < e->nopts; i++)
                 ow = DOOMO_MAX(ow, font_text_width(opt_text(e, i)));
             cw = ow + 28;
@@ -633,20 +647,133 @@ static void dlg_draw(void)
             cx = b.x + b.w - cw - 2;
             cy = b.y - ch - 4;
             if (cy < 2) cy = 2;
-            if (ui_window_pop(cx, cy, cw, ch, d_style, d_line_t - len / 2)) {
-                const UiStyle *cs = ui_style(d_style);
-                for (i = 0; i < e->nopts; i++) {
-                    int ry = cy + 5 + i * UI_LIST_ROW_H;
-                    if (i == d_sel) {
-                        ui_pill(cx + 13, ry, cw - 18, UI_LIST_ROW_H - 1, cs->accent_d,
-                                ui_darker(cs->accent_d), ui_lighter(cs->accent_d));
-                        ui_cursor(cx + 4, ry + 2);
-                    }
-                    ui_text(cx + 17, ry + 2, opt_text(e, i), cs->text);
+        }
+    }
+    /* (G7) two retained panels. PANEL_DIALOG is the box with everything
+     * around it (portrait, name pill, choices); its hole is the box's text
+     * area, which PANEL_DIALOG_TEXT repaints (the box's rows there, the
+     * text, the heart): the typewriter redraws only that. A key is all its
+     * pixels depend on; while something in a panel moves the line's clock
+     * is in its key, so it is drawn every frame, as before. Not panels on
+     * a frame with the "!" bang (outlined text over the picture), a squash
+     * (a hardware sprite on the GBA) or text hopping above the hole (the
+     * first line of a portrait line): those frames are drawn as before. */
+    hx0 = portrait ? b.tx : b.x + 4;
+    hx1 = b.x + b.w - 5;
+    hy0 = b.y + 5;
+    hy1 = b.y + b.h - 1;
+    use = UI_PANELS && d_bang < 0 && sx == 256 && sy == 256 && text_top(e, &b, shown, b.y + 8) >= hy0;
+    if (portrait && !plat_draw_skipped()) {
+        /* the portrait animates by itself (blinks, breathing): its image's
+         * uid changes with its pixels (types.h). It is asked for once a
+         * drawn frame, here, and drawn from this pointer, exactly as often
+         * as ui_portrait() asked before (the portrait cache renders and
+         * pumps its sliced jobs on the call) */
+        pimg = portrait_image(e->speaker, expr);
+    }
+    key = 0;
+    if (use) {
+        key = ui_key_int(ui_panel_key(), e->speaker | e->kind << 16 | e->flags << 20 | e->eflags << 28);
+        key = ui_key_int(key, d_style | portrait << 4 | pill << 5 | choice << 8 | (b.y & 0xFF) << 9 |
+                              (b.h & 0xFF) << 17);
+        key = ui_key_int(key, expr | bob << 8 | (px & 0xFF) << 9 | pop << 17);
+        key = ui_key_int(key, ui_window_glint(b.x, b.y, b.w, b.h));
+        if (portrait) {
+            img = pimg;
+            key = ui_key_int(key, img ? (int32_t)img->uid : -1);
+            key = ui_key_int(key, img ? (int32_t)(uintptr_t)img->pix : -1);
+            key = ui_key_str(key, town_res(e->speaker)->name);
+            if ((e->flags & DL_GURGLE) && talking) key = ui_key_int(key, d_line_t & 2);
+        }
+        if (choice) {
+            int popping = d_line_t - len / 2 < 12;
+            key = ui_key_int(key, d_sel | e->nopts << 8 | cw << 12 | cy << 20);
+            for (i = 0; i < e->nopts; i++) key = ui_key_str(key, opt_text(e, i));
+            key = ui_key_int(key, ui_wave((int)doomo_frame_count(), 20, 2));      /* the cursor */
+            key = ui_key_int(key, ui_window_glint(cx, cy, cw, ch));
+            if (popping) key = ui_key_int(key, d_line_t - len / 2);
+        }
+    }
+    top = b.y - 2;
+    if (portrait) top = b.y - 48;
+    if (choice && cy - ch / 8 - 2 < top) top = cy - ch / 8 - 2;   /* its pop overshoots */
+    if (top < 0) top = 0;
+    if (use && !plat_panel_begin(PANEL_DIALOG, 0, top, plat_screen_w(), b.y + b.h + 4 - top, key)) {
+        /* kept: only the drop shadows, in the drawing's order */
+        ui_window_shadow(b.x, b.y, b.w, b.h);
+        if (portrait) {
+            const DoomoResident *r = town_res(e->speaker);
+            int nw = font_text_width(r->name) + 14, w2 = nw * pop / 256, x2 = b.x + 60 + (nw - w2) / 2;
+            ui_portrait_shadow(px, b.y - 22 - bob, pimg, 1);
+            if (pill && w2 > 6) ui_pill_shadow(x2 + 1, b.y - 8, w2, 12, x2, b.y - 10, w2, 12);
+        }
+        if (choice) ui_window_shadow(cx, cy, cw, ch);    /* kept only when fully popped */
+        plat_panel_end();
+    } else {
+        ui_window(b.x, b.y, b.w, b.h, portrait ? d_style : WIN_CREAM);
+        if (!use) dlg_text(e, &b, b.y + 8, st->text, st->accent);
+
+        if (portrait) {
+            const DoomoResident *r = town_res(e->speaker);
+            int nw = font_text_width(r->name) + 14;
+            dlg_portrait(px, b.y - 22 - bob, e->speaker, expr, sx, sy, pimg);
+            if (e->flags & DL_GURGLE) {                    /* GURGLE's slot: the belly talks */
+                ui_fill_circle(b.x + 50, b.y + 8, 9, PAL_RAMP(RAMP_BLOOD, 4));
+                ui_fill_ellipse(b.x + 50, b.y + 11, 4, talking && (d_line_t & 2) ? 2 : 1, PAL_RAMP(RAMP_BLOOD, 0));
+            }
+            if (d_bang >= 0) {
+                int s2 = tw_tab(&TW_POP_BUBBLE, d_bang);
+                ui_text_outline(b.x + 26, b.y - 34 - (s2 - 256) / 16, "!", PAL_UI_GOLD, PAL_BLACK);
+            }
+            /* name plate (legacy lines) / the name pill (PILL lines) */
+            if (pill) {
+                int w2 = nw * pop / 256, x2 = b.x + 60 + (nw - w2) / 2;
+                if (w2 > 6) {
+                    ui_pill_shadow(x2 + 1, b.y - 8, w2, 12, x2, b.y - 10, w2, 12);
+                    ui_pill(x2, b.y - 10, w2, 12, st->title_bg, st->outline, ui_lighter(st->title_bg));
+                    if (pop >= 230) ui_text_shadow(b.x + 67, b.y - 8, r->name, st->title, st->outline);
                 }
             }
         }
+        if (!use && heart) ui_heart(b.x + b.w - 12, b.y + b.h - 10 + hbob, 3, st->accent);
+        if (choice && ui_window_pop(cx, cy, cw, ch, d_style, d_line_t - len / 2)) {
+            const UiStyle *cs = ui_style(d_style);
+            for (i = 0; i < e->nopts; i++) {
+                int ry = cy + 5 + i * UI_LIST_ROW_H;
+                if (i == d_sel) {
+                    ui_pill(cx + 13, ry, cw - 18, UI_LIST_ROW_H - 1, cs->accent_d,
+                            ui_darker(cs->accent_d), ui_lighter(cs->accent_d));
+                    ui_cursor(cx + 4, ry + 2);
+                }
+                ui_text(cx + 17, ry + 2, opt_text(e, i), cs->text);
+            }
+        }
+        if (use) {
+            plat_panel_hole(hx0, hy0, hx1 - hx0, hy1 - hy0);
+            plat_panel_end();
+        }
     }
+    ui_cur_style = choice ? d_style : portrait ? d_style : WIN_CREAM;   /* as ui_window() leaves it */
+    if (!use) return;
+    /* the text area: the box's rows under it, the text and the heart (none
+     * of the box's other parts reach into it: the portrait, the gurgle and
+     * the pill's shadow stay left of / above it) */
+    key = ui_key_str(ui_panel_key(), e->text);
+    key = ui_key_int(key, d_page | shown << 8 | len << 16);
+    key = ui_key_int(key, d_style | portrait << 4 | heart << 6 | hbob << 7 | (b.h & 0xFF) << 8 |
+                          (d_dead != 0) << 17);
+    {
+        /* a glyph still hopping or popping, a wave */
+        int fresh = !d_dead && shown > 0 && d_line_t - d_rev[(shown - 1) & (HOP_RING - 1)] >= 0 &&
+                    d_line_t - d_rev[(shown - 1) & (HOP_RING - 1)] < 10;
+        if (fresh || (d_wave_from != 0xFF && shown > d_wave_from)) key = ui_key_int(key, d_line_t);
+    }
+    if (plat_panel_begin(PANEL_DIALOG_TEXT, hx0, hy0, hx1 - hx0, hy1 - hy0, key)) {
+        ui_window_rows(b.x, b.y, b.w, b.h, portrait ? d_style : WIN_CREAM, hx0, hx1, hy0, hy1);
+        dlg_text(e, &b, b.y + 8, st->text, st->accent);
+        if (heart) ui_heart(b.x + b.w - 12, b.y + b.h - 10 + hbob, 3, st->accent);
+    }
+    plat_panel_end();
 }
 
 /* ---- S1 hooks for hosts and tests ------------------------------------------- */

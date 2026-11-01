@@ -199,6 +199,32 @@ void ui_dialog_style(int style);
 int  ui_toast_pending(void);
 void ui_toast_clear(void);
 
+/* Retained panels (G7, platform.h plat_panel_begin): a panel's key starts
+ * from ui_panel_key() (the current language and its glyph page, so a
+ * language switch never shows a kept panel) and mixes in everything else
+ * its pixels depend on with ui_key_int() / ui_key_str() (the text as it
+ * will be drawn, its translation included). */
+uint32_t ui_panel_key(void);
+/* A platform that keeps no panels (the PS1: platform.h's weak default)
+ * builds none of the keys: the core tests UI_PANELS around them. */
+#if defined(DOOMO_PLATFORM_PS1)
+#define UI_PANELS 0
+#else
+#define UI_PANELS 1
+#endif
+uint32_t ui_key_int(uint32_t h, int32_t v);
+uint32_t ui_key_str(uint32_t h, const char *s);
+/* Where ui_window(x, y, w, h)'s sliding glint is this frame, -1 = none. */
+int ui_window_glint(int x, int y, int w, int h);
+/* The drop shadows of ui_window() and ui_portrait() alone: what a kept
+ * panel draws (platform.h plat_panel_begin). */
+void ui_window_shadow(int x, int y, int w, int h);
+/* ui_window()'s body pixels in an inner rect (see ui.c), for a panel hole */
+void ui_window_rows(int x, int y, int w, int h, int style, int cx0, int cx1, int ry0, int ry1);
+void ui_portrait_shadow(int x, int y, const DoomoImage *img, int scale);
+void ui_portrait_img(int x, int y, const DoomoImage *img, int scale);
+int ui_sparkle_size(int phase);          /* ui_sparkle's size, 0 = none */
+
 /* Shared pause menu (combat, levels, arena, minigames): a "PAUSED" window
  * of n button rows, the same look, cursor and hints everywhere. Rows in
  * lr_mask (bit i) show < > arrows when selected (left/right changes them).

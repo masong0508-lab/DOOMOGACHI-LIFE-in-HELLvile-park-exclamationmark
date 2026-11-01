@@ -179,6 +179,7 @@ void plat_begin_frame(void)
         skipped_in_row = 0;
     }
     cv_frame_begin();
+    pn_frame_begin();                           /* G7 */
 }
 
 /* G5 (canvas.c): a tile frame that cannot be shown after all (its pool
@@ -228,9 +229,19 @@ void video_flip(void)
     obj_bb_buffer(bb_oam);
     cv_pre_flip();              /* G5: finish a tile frame (or convert it) */
     postfx_pre_flip();          /* S1: squash OBJ checks + OAM (postfx.h) */
-    while (gba_vblanks - last_flip_vbl < 2) {
-        vblank_intr_wait();
-        waited = 1;
+    {
+        /* (G7) Options "3D: Better": a full-resolution 3D view is shown at
+         * most 20 times a second (three vblanks), so it holds steady */
+        extern int gba_view3d_frame;
+        uint32_t need = gba_view3d_frame == 1 ? 3u : 2u;
+#if defined(ENGINE_TEST)
+        need = 2u;
+#endif
+        gba_view3d_frame = 0;
+        while (gba_vblanks - last_flip_vbl < need) {
+            vblank_intr_wait();
+            waited = 1;
+        }
     }
     if (!waited && REG_VCOUNT < 160) vblank_intr_wait();
     /* G5: a tile frame copies its canvas into VRAM the screen shows: that
@@ -254,8 +265,10 @@ void video_flip(void)
         REG_BG2CNT = 0;
         REG_DISPCNT = (uint16_t)(DCNT_MODE4 | DCNT_BG2 | DCNT_OBJ | DCNT_OBJ_1D | (page ? DCNT_PAGE : 0));
         cv_shown_m4(page);
+        pn_flipped(page);                       /* G7: kept panels are in it */
         gba_back = page ? (uint16_t *)VRAM_PAGE0 : (uint16_t *)VRAM_PAGE1;
     } else {
+        pn_flipped(-1);
         gba_back = (uint16_t *)VRAM_PAGE1;      /* the next Mode 4 frame: page 1 */
     }
     postfx_vblank(tiles);       /* S1: BG2 affine, BLDY, palette, OAM DMA */

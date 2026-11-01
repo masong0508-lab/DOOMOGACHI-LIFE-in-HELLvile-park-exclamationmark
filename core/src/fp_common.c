@@ -511,6 +511,19 @@ int fp_hud(int style)
         doomo_snprintf(buf, sizeof(buf), "Day %d %s %s", (int)doomo_town.day + 1,
                        doomo_weekday_names[doomo_town.weekday % 7], clock);
     w = ui_text_width(buf) + 24;
+    if (plat_draw_skipped()) return 16;
+    if (UI_PANELS) {
+        /* G7: the two pills are one retained panel; what moves in it is the
+         * sun's pulse, the night sparkle and the coin's rare sparkle */
+        char mbuf[20];
+        uint32_t key = ui_key_str(ui_panel_key(), buf);
+        doomo_snprintf(mbuf, sizeof(mbuf), "H$ %u", (unsigned)doomo_town.money);
+        key = ui_key_str(key, mbuf);
+        key = ui_key_int(key, style | (night != 0) << 4 | (ui_wave(t, 60, 1) > 0) << 5 |
+                              ui_sparkle_size((t / 4) & 15) << 6 |
+                              ((t / 6) % 24 == 0 ? ui_sparkle_size((t / 2) & 15) : 0) << 9);
+        if (!plat_panel_begin(PANEL_FP_HUD, 0, y - 2, sw, 15, key)) { plat_panel_end(); return 16; }
+    }
     fp_pill(x, y, w, 12, st->title_bg, st->outline, ui_lighter(st->title_bg));
     /* sun / moon */
     if (night) {
@@ -525,6 +538,7 @@ int fp_hud(int style)
     }
     ui_text_shadow(x + 16, y + 2, buf, st->title, st->outline);
     fp_money_pill(sw - 3, y, 1);
+    if (UI_PANELS) plat_panel_end();
     return 16;
 }
 
@@ -610,9 +624,22 @@ void fp_ticker(int y, int style)
         built_at = t;
         built_n = n;
     }
-    fp_pill(2, y, sw - 4, 12, st->fill_hi, st->outline, PAL_WHITE);
-    fp_pill(3, y + 1, 26, 10, PAL_UI_RED, PAL_UI_RED_D, PP(PAINT_ROSE, 2));
-    ui_text(6, y + 2, "NEWS", PAL_WHITE);
+    if (plat_draw_skipped()) return;
+    /* G7: the bar is a retained panel; the scrolling line's strip is its
+     * hole, refilled (the pill's flat fill there) and redrawn every frame */
+    if (!UI_PANELS || plat_panel_begin(PANEL_FP_TICKER, 2, y, sw - 4, 12,
+                                       ui_key_int(ui_panel_key(), style | sw << 8))) {
+        fp_pill(2, y, sw - 4, 12, st->fill_hi, st->outline, PAL_WHITE);
+        fp_pill(3, y + 1, 26, 10, PAL_UI_RED, PAL_UI_RED_D, PP(PAINT_ROSE, 2));
+        ui_text(6, y + 2, "NEWS", PAL_WHITE);
+        if (UI_PANELS) {
+            plat_panel_hole(x0, y + 2, x1 - x0, 8);
+            plat_panel_end();
+        }
+    } else {
+        plat_panel_end();
+        plat_rect(x0, y + 2, x1 - x0, 8, st->fill_hi);
+    }
     len = (int)strlen(line) * FONT_ADVANCE + 60;
     text_clip(x1 - (t % (len + (x1 - x0))), y + 2, line, st->text, x0, x1);
 }

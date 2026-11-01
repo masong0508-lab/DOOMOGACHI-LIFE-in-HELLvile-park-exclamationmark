@@ -168,7 +168,10 @@ void plat_shade_rect(int x, int y, int w, int h, int level)
     if (y1 > SCREEN_H) y1 = SCREEN_H;
     if (x >= x1 || y >= y1) return;
     if (gba_nodraw) {
-        int k = vid_route(x, y, x1, y1);
+        int k;
+        pn_op = PN_OP_SHADE;                    /* G7: not a panel's body */
+        k = vid_route(x, y, x1, y1);
+        pn_op = PN_OP_OTHER;
         if (k == 2) {
             bb_flatten(x, y, x1, y1);           /* G6: shade the billboards too */
             cv_shade(x, y, x1, y1, doomo_colormap[level]);
@@ -181,11 +184,14 @@ void plat_shade_rect(int x, int y, int w, int h, int level)
 /* the slow path of the text calls: 1 = Mode 4, 2 = canvas, 0 = nothing */
 static int text_route(int x, int y, const char *s, int pad)
 {
-    int x0, y0, x1, y1;
+    int x0, y0, x1, y1, k;
     cv_text_box(x, y, s, pad, &x0, &y0, &x1, &y1);
     if (x0 >= x1 || y0 >= y1)                  /* off screen: nothing to draw */
         return (gba_nodraw == 1 || gba_nodraw == GBA_NODRAW_CANVAS) ? 0 : 1;
-    return vid_route(x0, y0, x1, y1);
+    pn_op = PN_OP_TEXT;
+    k = vid_route(x0, y0, x1, y1);
+    pn_op = PN_OP_OTHER;
+    return k;
 }
 
 void plat_text(int x, int y, const char *s, uint8_t color)
@@ -193,7 +199,7 @@ void plat_text(int x, int y, const char *s, uint8_t color)
     if (gba_text_armed && s) gba_text_probe(s);   /* harness expect-text */
     if (gba_nodraw == 1 || !s) return;
     if (!color) color = PAL_BLACK;
-    if (gba_nodraw) {
+    if (gba_nodraw && !pn_clear_rows(y, SCREEN_H)) {    /* (G7: text runs down from y) */
         int k = text_route(x, y, s, 0);
         if (k == 2) cv_text(x, y, s, color, 0);
         if (k != 1) return;
@@ -209,7 +215,7 @@ void plat_text_outline(int x, int y, const char *s, uint8_t color, uint8_t outli
     if (gba_nodraw == 1 || !s) return;
     if (!color) color = PAL_BLACK;
     if (!outline) outline = PAL_BLACK;
-    if (gba_nodraw) {
+    if (gba_nodraw && !pn_clear_rows(y - 2, SCREEN_H)) {
         int k = text_route(x, y, s, 2);
         if (k == 2) { cv_text(x, y, s, outline, 1); cv_text(x, y, s, color, 0); }
         if (k != 1) return;
@@ -226,7 +232,7 @@ void plat_image(int x, int y, const DoomoImage *img, int scale, int flags,
     if (scale < 1) scale = 1;
     if (scale > 4) scale = 4;
     if (!color) color = PAL_BLACK;
-    if (gba_nodraw) {
+    if (gba_nodraw && !pn_clear_rows(y, y + img->h * scale + 1)) {
         int sh = (flags & IMG_SHADOW) ? 1 : 0, k;
         int x0 = DOOMO_MAX(x, 0), y0 = DOOMO_MAX(y, 0);
         int x1 = DOOMO_MIN(x + img->w * scale + sh, SCREEN_W), y1 = DOOMO_MIN(y + img->h * scale + sh, SCREEN_H);

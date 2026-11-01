@@ -57,7 +57,7 @@ void ui_window(int x, int y, int w, int h, int style)
         plat_rect(x, y, w, h, st->fill);
         return;
     }
-    ui_drop_shadow_under(x + 2, y + 3, w, h, r, x, y, w, h, r);
+    ui_window_shadow(x, y, w, h);
     /* Layers: outline round rect, lower band (inner round rect), main fill
      * (inner round rect lo rows shorter), the upper glossy band. Each layer
      * is only drawn where the later ones do not cover it - the same
@@ -87,14 +87,64 @@ void ui_window(int x, int y, int w, int h, int style)
     /* inner rim shadow on the right edge */
     plat_rect(x + w - 2, y + r + 1, 1, DOOMO_MAX(h - 2 * r - 2, 0), st->fill_lo);
     /* a glint that slides along the glossy band every few seconds */
-    if (opt_get(OPT_UI_BOUNCE) && w > 24) {
-        int span = w - 2 * r - 8, pos = (frame_t() * 4 + x * 13 + y * 7) % (span + 240);
-        if (pos < span) {
+    {
+        int pos = ui_window_glint(x, y, w, h);
+        if (pos >= 0) {
             plat_rect(x + r + 2 + pos, y + 2, 3, 1, PAL_WHITE);
             plat_rect(x + r + 1 + pos, y + 3, 2, 1, PAL_WHITE);
             plat_rect(x + r + pos, y + 4, 1, 1, st->gloss);
         }
     }
+}
+
+/* ui_window(x, y, w, h, style)'s body pixels in [cx0, cx1) x [ry0, ry1),
+ * a rect clear of its edges, corners, rim and gloss row (cx0 >= x + 4,
+ * cx1 <= x + w - 4, ry0 >= y + 5, ry1 <= y + h - 1): what a retained
+ * panel's hole repaints under redrawn text (G7, ui_dialog.c). */
+void ui_window_rows(int x, int y, int w, int h, int style, int cx0, int cx1, int ry0, int ry1)
+{
+    const UiStyle *st = ui_style(style);
+    int band = DOOMO_CLAMP(h / 6, 3, 8), lo = DOOMO_CLAMP(h / 8, 2, 5);
+    int g1 = y + 1 + DOOMO_MIN(band, h - 2), a, b, row;
+    (void)w;
+    if (plat_draw_skipped() || cx0 >= cx1 || ry0 >= ry1) return;
+    /* the gloss rows, the main fill, the lower band (ui_window's layers) */
+    a = DOOMO_MAX(ry0, y + 1); b = DOOMO_MIN(ry1, g1);
+    if (a < b) plat_rect(cx0, a, cx1 - cx0, b - a, st->fill_hi);
+    a = DOOMO_MAX(ry0, g1); b = DOOMO_MIN(ry1, y + h - 1 - lo);
+    if (a < b) plat_rect(cx0, a, cx1 - cx0, b - a, st->fill);
+    a = DOOMO_MAX(ry0, DOOMO_MAX(g1, y + h - 1 - lo)); b = DOOMO_MIN(ry1, y + h - 1);
+    if (a < b) plat_rect(cx0, a, cx1 - cx0, b - a, st->fill_lo);
+    /* the two seams, in phase with ui_window's checkers */
+    row = y + 1 + band;
+    if (row >= ry0 && row < ry1) {
+        int s0 = cx0 + ((cx0 - (x + 2)) & 1);
+        if (s0 < cx1) plat_checker(s0, row, cx1 - s0, 1, st->fill_hi);
+    }
+    row = y + h - 2 - lo;
+    if (row >= ry0 && row < ry1) {
+        int s0 = cx0 + ((cx0 - (x + 3)) & 1);
+        if (s0 < cx1) plat_checker(s0, row, cx1 - s0, 1, st->fill_lo);
+    }
+}
+
+/* ui_window(x, y, w, h)'s drop shadow alone (a kept panel's shading, G7) */
+void ui_window_shadow(int x, int y, int w, int h)
+{
+    int r = (w >= 24 && h >= 20) ? 4 : 2;
+    if (w < 6 || h < 6) return;
+    ui_drop_shadow_under(x + 2, y + 3, w, h, r, x, y, w, h, r);
+}
+
+/* Where ui_window(x, y, w, h)'s glint is this frame, -1 = not on it (a
+ * retained panel's key, G7). */
+int ui_window_glint(int x, int y, int w, int h)
+{
+    int r = (w >= 24 && h >= 20) ? 4 : 2, span, pos;
+    if (w < 6 || h < 6 || !opt_get(OPT_UI_BOUNCE) || w <= 24) return -1;
+    span = w - 2 * r - 8;
+    pos = (frame_t() * 4 + x * 13 + y * 7) % (span + 240);
+    return pos < span ? pos : -1;
 }
 
 /* The rect and corner radius of ui_window(x, y, w, h)'s opaque body. */
@@ -721,14 +771,26 @@ void ui_toast_draw(void)
         d = t - TOAST_IN - TOAST_SHOW;
         x = xf + d * d * (sw - xf) / (TOAST_OUT * TOAST_OUT);
     }
-    ui_drop_shadow_under(x + 2, y + 2, w, 15, 4, x, y, w, 15, 4);
-    ui_round_rect(x, y, w, 15, 4, PAL_RAMP(RAMP_CANDY, 3));
-    ui_round_rect(x + 1, y + 1, w - 2, 13, 3, st->fill_hi);
-    plat_rect(x + 3, y + 10, w - 6, 3, st->fill);
-    plat_rect(x + 5, y + 2, DOOMO_MAX(w / 4, 4), 1, PAL_WHITE);
-    ui_star(x + 8, y + 7, 4, PAL_UI_GOLD);
-    ui_text(x + 15, y + 4, toast_msg[0], st->text);
-    ui_sparkle(x + w - 4, y + 2, (t / 2) & 15, PAL_UI_GOLD);
+    /* G7: a retained panel (it holds still for TOAST_SHOW ticks; the
+     * sparkle is off for 14 of every 32); a kept toast draws its shadow */
+    if (plat_draw_skipped()) {
+        /* nothing */
+    } else if (UI_PANELS && !plat_panel_begin(PANEL_TOAST, x, y - 1, w + 2, 18,
+                                              ui_key_int(ui_key_str(ui_panel_key(), toast_msg[0]),
+                                                         ui_sparkle_size((t / 2) & 15)))) {
+        ui_drop_shadow_under(x + 2, y + 2, w, 15, 4, x, y, w, 15, 4);
+        plat_panel_end();
+    } else {
+        ui_drop_shadow_under(x + 2, y + 2, w, 15, 4, x, y, w, 15, 4);
+        ui_round_rect(x, y, w, 15, 4, PAL_RAMP(RAMP_CANDY, 3));
+        ui_round_rect(x + 1, y + 1, w - 2, 13, 3, st->fill_hi);
+        plat_rect(x + 3, y + 10, w - 6, 3, st->fill);
+        plat_rect(x + 5, y + 2, DOOMO_MAX(w / 4, 4), 1, PAL_WHITE);
+        ui_star(x + 8, y + 7, 4, PAL_UI_GOLD);
+        ui_text(x + 15, y + 4, toast_msg[0], st->text);
+        ui_sparkle(x + w - 4, y + 2, (t / 2) & 15, PAL_UI_GOLD);
+        if (UI_PANELS) plat_panel_end();
+    }
     ui_cur_style = saved;
     if (toast_t >= TOAST_IN + TOAST_SHOW + TOAST_OUT) {
         int i;
@@ -743,13 +805,21 @@ void ui_toast_draw(void)
 void ui_portrait(int x, int y, int resident_id, int scale, int expression)
 {
     if (plat_draw_skipped()) return;
-    const DoomoImage *img = portrait_image(resident_id, expression);
+    ui_portrait_img(x, y, portrait_image(resident_id, expression), scale);
+}
+
+/* ui_portrait() with its image already asked for (portrait_image() renders
+ * and animates on the call, so a caller that needs the image first asks
+ * only once: G7, ui_dialog.c) */
+void ui_portrait_img(int x, int y, const DoomoImage *img, int scale)
+{
     const UiStyle *st = ui_style(WIN_MINT);
     int w, h;
+    if (plat_draw_skipped()) return;
     if (scale < 1) scale = 1;
     w = (img ? img->w : PORTRAIT_W) * scale + 6;
     h = (img ? img->h : PORTRAIT_H) * scale + 6;
-    ui_drop_shadow_under(x + 2, y + 2, w, h, 4, x, y, w, h, 4);
+    ui_portrait_shadow(x, y, img, scale);
     ui_round_rect(x, y, w, h, 4, st->outline);
     ui_round_rect(x + 1, y + 1, w - 2, h - 2, 3, st->fill_hi);
     plat_rect(x + 2, y + h * 2 / 3, w - 4, h / 3 - 2, st->fill);
@@ -757,6 +827,16 @@ void ui_portrait(int x, int y, int resident_id, int scale, int expression)
     ui_heart(x + w - 8, y + 8, 2, PAL_RAMP(RAMP_MINT, 5));
     ui_heart(x + 7, y + h / 2, 2, PAL_RAMP(RAMP_MINT, 5));
     if (img) plat_image(x + 3, y + 3, img, scale, 0, 0);
+}
+
+/* ui_portrait()'s drop shadow alone, for its image img (G7) */
+void ui_portrait_shadow(int x, int y, const DoomoImage *img, int scale)
+{
+    int w, h;
+    if (scale < 1) scale = 1;
+    w = (img ? img->w : PORTRAIT_W) * scale + 6;
+    h = (img ? img->h : PORTRAIT_H) * scale + 6;
+    ui_drop_shadow_under(x + 2, y + 2, w, h, 4, x, y, w, h, 4);
 }
 
 void ui_title(int cx, int y, const char *s, int style)
@@ -839,4 +919,31 @@ int ui_tabs(int x, int y, const char *const *names, int count, int sel, int styl
         cx += tw + 2;
     }
     return cx - x - 2;
+}
+
+/* ====================================================================== */
+/* retained panels' keys (G7, ui.h)                                         */
+uint32_t ui_key_int(uint32_t h, int32_t v)
+{
+    h ^= (uint32_t)v;
+    h *= 16777619u;
+    return h ^ (h >> 15);
+}
+
+uint32_t ui_key_str(uint32_t h, const char *s)
+{
+    if (!s) return ui_key_int(h, -1);
+    for (; *s; s++) h = (h ^ (uint8_t)*s) * 16777619u;
+    return ui_key_int(h, 0x5EED);
+}
+
+uint32_t ui_panel_key(void)
+{
+    int l = lang_get();
+    uint32_t h = ui_key_int(2166136261u, l);
+    if (l >= 0 && l < LANG_COUNT) h = ui_key_int(h, doomo_lang_info[l].page);
+    /* the options every UI drawing reads */
+    h = ui_key_int(h, opt_get(OPT_FONT_STYLE) | opt_get(OPT_UI_BOUNCE) << 4 |
+                      opt_get(OPT_WINDOW_SKIN) << 8 | opt_get(OPT_CURSOR) << 12);
+    return h;
 }

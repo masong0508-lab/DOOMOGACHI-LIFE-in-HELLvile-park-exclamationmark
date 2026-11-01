@@ -202,6 +202,23 @@ screens went from 3 - 9 fps to 26 - 30 fps on the GBA and from 13 - 30 to
 30 fps on the PS1, pixel-identical (docs/GBA.md section 4, docs/PS1.md
 section 12).
 
+**Retained panels (G7).** UI that holds still for many frames (the
+overworld HUD pills, the dialogue box and its text area, toasts, the
+island HUD and news ticker) is drawn as a *panel*: `plat_panel_begin(id,
+rect, key)` ... `plat_panel_end()` (platform.h), with a key of everything
+the pixels depend on, starting from `ui_panel_key()` (the language, its
+glyph page and the UI options). A platform that still has the panel from
+the last frame returns 0, and the core then draws only the panel's drop
+shadows (the GBA copies the panel back from the front page: docs/GBA.md
+section 4b). A panel's body is what `plat_rect` / straight `plat_line`
+fill; text, images and checkers go on that body; nothing outside its rect;
+no `plat_clear` or OBJ calls inside. Native and PS1 keep the weak default
+(draw every frame); `core/tests/test_panel.c` turns on the native panel
+cache (core/native/panel.c, which keeps panels the GBA's way) and checks
+that every frame of the adopted panels is pixel-identical with it on and
+off. A new panel needs such a test scene, and anything animated in it
+(a wave, a sparkle, a portrait's blink: an image's `uid`) in its key.
+
 **Weak defaults of registries.** A weak *constant* default such as
 `__attribute__((weak)) const T *const x = 0;` is folded by GCC into the
 file that defines it, so that file never sees a module's strong

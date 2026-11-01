@@ -55,7 +55,9 @@ uint32_t nat_calls[NC_N];
 void plat_clear(uint8_t color)
 {
     nat_calls[NC_CLEAR]++;
+    nat_panel_op(NP_CLEAR, 0, 0, nat_w, nat_h);
     memset(nat_fb, color, (size_t)(nat_w * nat_h));
+    nat_panel_op_end();
 }
 
 static int clip(int *x, int *y, int *w, int *h)
@@ -70,14 +72,15 @@ static int clip(int *x, int *y, int *w, int *h)
 void plat_rect(int x, int y, int w, int h, uint8_t color)
 {
     nat_calls[NC_RECT]++;
-    int j;
-    if (!clip(&x, &y, &w, &h)) return;
-    for (j = 0; j < h; j++) memset(&nat_fb[(y + j) * nat_w + x], color, (size_t)w);
+    int j, op = w > 0 && h > 0;
+    if (op) nat_panel_op(NP_RECT, x, y, x + w, y + h);
+    if (clip(&x, &y, &w, &h))
+        for (j = 0; j < h; j++) memset(&nat_fb[(y + j) * nat_w + x], color, (size_t)w);
+    if (op) nat_panel_op_end();
 }
 
-void plat_shade_rect(int x, int y, int w, int h, int level)
+static void nat_shade_px(int x, int y, int w, int h, int level)
 {
-    nat_calls[NC_SHADE]++;
     int i, j;
     const uint8_t *map;
     level = DOOMO_CLAMP(level, 0, DOOMO_LIGHT_LEVELS - 1);
@@ -89,12 +92,22 @@ void plat_shade_rect(int x, int y, int w, int h, int level)
     }
 }
 
+void plat_shade_rect(int x, int y, int w, int h, int level)
+{
+    nat_calls[NC_SHADE]++;
+    nat_panel_op(NP_SHADE, x, y, x + w, y + h);
+    nat_shade_px(x, y, w, h, level);
+    nat_panel_op_end();
+}
+
 void plat_checker(int x, int y, int w, int h, uint8_t color)
 {
     nat_calls[NC_CHECKER]++;
     int i, j;
+    nat_panel_op(NP_OTHER, x, y, x + w, y + h);
     for (j = 0; j < h; j++)
         for (i = j & 1; i < w; i += 2) nat_px(x + i, y + j, color);
+    nat_panel_op_end();
 }
 
 void plat_line(int x0, int y0, int x1, int y1, uint8_t color)
@@ -103,6 +116,8 @@ void plat_line(int x0, int y0, int x1, int y1, uint8_t color)
     int dx = x1 > x0 ? x1 - x0 : x0 - x1, sx = x0 < x1 ? 1 : -1;
     int dy = y1 > y0 ? y0 - y1 : y1 - y0, sy = y0 < y1 ? 1 : -1;
     int err = dx + dy, n = 0;
+    nat_panel_op((x0 == x1 || y0 == y1) ? NP_RECT : NP_OTHER, DOOMO_MIN(x0, x1), DOOMO_MIN(y0, y1),
+                 DOOMO_MAX(x0, x1) + 1, DOOMO_MAX(y0, y1) + 1);
     for (;;) {
         nat_px(x0, y0, color);
         if ((x0 == x1 && y0 == y1) || ++n > 4096) break;
@@ -112,6 +127,7 @@ void plat_line(int x0, int y0, int x1, int y1, uint8_t color)
             if (e2 <= dx) { err += dx; y0 += sy; }
         }
     }
+    nat_panel_op_end();
 }
 
 void plat_text(int x, int y, const char *s, uint8_t color)
@@ -120,6 +136,16 @@ void plat_text(int x, int y, const char *s, uint8_t color)
     int cx = x;
     if (!s) return;
     s = lang_tr(s);
+    {
+        /* the box the glyphs can touch (G7 panels) */
+        int cols = 0, w = 0, lines = 1;
+        const char *q;
+        for (q = s; *q; q++) {
+            if (*q == '\n') { lines++; cols = 0; continue; }
+            if (++cols > w) w = cols;
+        }
+        nat_panel_op(NP_OTHER, x, y, x + w * FONT_ADVANCE - 1, y + (lines - 1) * FONT_LINE + 8);
+    }
     for (; *s; s++) {
         unsigned ch = (unsigned char)*s;
         int col, row;
@@ -134,6 +160,7 @@ void plat_text(int x, int y, const char *s, uint8_t color)
         }
         cx += FONT_ADVANCE;
     }
+    nat_panel_op_end();
 }
 
 void plat_image(int x, int y, const DoomoImage *img, int scale, int flags,
@@ -144,6 +171,13 @@ void plat_image(int x, int y, const DoomoImage *img, int scale, int flags,
     if (!img || !img->pix || !img->w || !img->h) return;
     scale = DOOMO_CLAMP(scale, 1, 4);
     w = img->w; h = img->h;
+    if (ur_shape_image(img) && !(flags & (IMG_SHADOW | IMG_SILHOUETTE))) {
+        nat_panel_op(NP_SHAPE, x, y, x + w * scale, y + h * scale);
+        nat_panel_body_image(x, y, img, scale, flags);
+    } else {
+        int sh = (flags & IMG_SHADOW) ? scale : 0;
+        nat_panel_op(NP_OTHER, x, y, x + w * scale + sh, y + h * scale + sh);
+    }
     if (flags & IMG_SHADOW) {
         /* soft 1 px drop shadow down-right of every opaque pixel */
         for (iy = 0; iy < h; iy++)
@@ -171,6 +205,7 @@ void plat_image(int x, int y, const DoomoImage *img, int scale, int flags,
             else plat_rect(x + ix * scale, y + iy * scale, scale, scale, c);
         }
     }
+    nat_panel_op_end();
 }
 
 /* ---- audio: counted, optionally logged ----------------------------------- */

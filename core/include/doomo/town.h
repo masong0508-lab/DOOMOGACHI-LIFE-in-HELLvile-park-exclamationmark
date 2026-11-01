@@ -122,6 +122,8 @@ enum {
     OPT_DRAW_DIST,       /* PS1 3D view distance cap: 0 near / 1 normal     */
     OPT_SHOW_FPS,        /* 1 = frames-drawn counter in the shooter         */
     OPT_LANGUAGE,        /* a LANG_* id (lang.h, core/lang/languages.tsv; shown first on the Game page) */
+    OPT_3D_FAST,         /* (G7) GBA 3D view: 0 Better (full resolution, at most 20 fps),
+                            1 Faster (half resolution, scaled up); the row shows on the GBA only */
     OPT_COUNT
 };
 DOOMO_STATIC_ASSERT(OPT_COUNT <= 64, options_fit);

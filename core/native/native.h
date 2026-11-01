@@ -40,6 +40,29 @@ extern int nat_last_sample;
 enum { NC_RECT, NC_TEXT, NC_IMAGE, NC_CHECKER, NC_SHADE, NC_LINE, NC_CLEAR, NC_VIEW, NC_N };
 extern uint32_t nat_calls[NC_N];
 
+/* (G7) retained panels (panel.c): off by default, so every panel is
+ * drawn on every frame; tests turn it on and compare. nat_panel_op() is
+ * called by every 2D call of plat_native.c before it draws (NP_* kind,
+ * the box it touches, exclusive); nat_panel_op_end() after it. */
+enum { NP_RECT, NP_OTHER, NP_SHADE, NP_CLEAR, NP_SHAPE };
+typedef struct NatPanelStats {
+    uint32_t begins, kept, drawn;  /* plat_panel_begin calls, kept (returned 0), drawn */
+    uint32_t spoiled;              /* drawn over later on their frame   */
+    uint32_t rule;                 /* captures that broke a panel rule  */
+    int      rule_panel;           /* the last one's id                 */
+    const char *first_rule;        /* the first rule broken             */
+} NatPanelStats;
+extern int nat_panel_cache;
+extern NatPanelStats nat_panel_stats;
+void nat_panel_reset(void);
+int  nat_panel_op(int kind, int x0, int y0, int x1, int y1);
+void nat_panel_op_end(void);
+void nat_panel_bad(const char *why);
+/* a plat_image that is the bitmap of a cached UI shape (core/src/ui_raster.c):
+ * its opaque pixels are panel body, as the shape's rects are on the GBA */
+int  ur_shape_image(const DoomoImage *img);
+void nat_panel_body_image(int x, int y, const DoomoImage *img, int scale, int flags);
+
 /* PNG writer: 8bpp indexed image -> indexed PNG with the master palette,
  * optionally zoomed by an integer factor. Returns 1 on success. */
 int nat_png_write(const char *path, const uint8_t *pix, int w, int h, int zoom);

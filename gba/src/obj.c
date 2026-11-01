@@ -187,6 +187,7 @@ void plat_image_xform(int ax, int ay, const DoomoImage *img, int sx_q8, int sy_q
     XfSlot *x;
     uint32_t key;
     if (gba_nodraw == 1 || !img || !img->pix || !img->w || !img->h || sx_q8 == 0 || sy_q8 <= 0) return;
+    pn_nokeep();                               /* G7: an OBJ is not a panel's pixels */
     asx = sx_q8 < 0 ? -sx_q8 : sx_q8;
     if (flags & IMG_FLIPX) sx_q8 = -sx_q8;
     flags &= ~IMG_FLIPX;
@@ -273,6 +274,7 @@ static void fig_upload(int k, const DoomoImage *img)
 int plat_figure_obj(int k, int x, int y, const DoomoImage *img)
 {
     if (k < 0 || k >= FIG_N || !img || !img->pix || img->w != 48 || img->h != 80) return 0;
+    pn_nokeep();                               /* G7 */
     if (shadow != own_shadow || gba_frames - gba_objvram_r3d_frame() <= 1u || slots_used > 2) return 0;
     if (gba_objvram_claim(OBJV_OBJ) != OBJV_OBJ) {           /* r3d's tiles were there */
         fig[0].pix = fig[1].pix = NULL;

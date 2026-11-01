@@ -47,7 +47,24 @@ plat_rect_nz:
     bxeq    lr
     cmp     r12, #2
     ldreq   r12, =cv_rect_fast
-    ldrne   r12, =plat_rect_slow
+    bxeq    r12
+    @ G7: panels up (GBA_NODRAW_PANEL, panel.c): a rect that cannot touch
+    @ them (pn_box, their bounding box; the whole screen while one is drawn)
+    @ takes the Mode 4 path as if nothing were up
+    cmp     r12, #5
+    bne     2f
+    push    {r4-r7}
+    ldr     r12, =pn_box
+    ldmia   r12, {r4-r7}                @ x0, y0, x1, y1
+    add     r12, r0, r2                 @ x + w
+    cmp     r12, r4
+    cmpgt   r6, r0                      @ x + w > x0 && x1 > x
+    addgt   r12, r1, r3                 @ y + h
+    cmpgt   r12, r5
+    cmpgt   r7, r1                      @ && y + h > y0 && y1 > y
+    pop     {r4-r7}
+    ble     plat_rect_m4
+2:  ldr     r12, =plat_rect_slow
     bx      r12
     .size   plat_rect, . - plat_rect
     .ltorg
@@ -275,3 +292,90 @@ vid_rect_narrow:
     bx      lr
     .size   vid_rect_narrow, . - vid_rect_narrow
     .ltorg
+
+@ void pn_span(volatile uint16_t *d, const volatile uint16_t *s, int x0, int x1)
+@ G7 (panel.c): pixels [x0, x1) of one row, from the front page's row s
+@ to the back page's row d. VRAM ignores byte stores: an odd first / last
+@ pixel is a halfword read-modify-write, the halfwords between are one
+@ 16-bit DMA (the CPU waits for it).
+    .section .iwram, "ax", %progbits
+    .arm
+    .align 2
+    .global pn_span
+    .type   pn_span, %function
+pn_span:
+    push    {r4-r6}
+    mov     r4, r2, asr #1              @ a = x0 / 2
+    mov     r5, r3, asr #1              @ b = x1 / 2
+    tst     r2, #1
+    beq     1f
+    mov     r6, r4, lsl #1              @ odd x0: the high byte of d[a]
+    ldrh    r12, [r1, r6]
+    ldrh    r2, [r0, r6]
+    and     r12, r12, #0xFF00
+    and     r2, r2, #0xFF
+    orr     r2, r2, r12
+    strh    r2, [r0, r6]
+    add     r4, r4, #1
+1:  subs    r6, r5, r4                  @ halfwords [a, b)
+    ble     2f
+    ldr     r12, =0x040000D4            @ DMA3SAD, DAD, CNT
+    add     r2, r1, r4, lsl #1
+    str     r2, [r12]
+    add     r2, r0, r4, lsl #1
+    str     r2, [r12, #4]
+    orr     r6, r6, #0x80000000         @ enable, 16-bit, immediate
+    str     r6, [r12, #8]
+2:  tst     r3, #1
+    beq     3f
+    mov     r6, r5, lsl #1              @ odd x1: the low byte of d[b]
+    ldrh    r12, [r1, r6]
+    ldrh    r2, [r0, r6]
+    and     r12, r12, #0xFF
+    and     r2, r2, #0xFF00
+    orr     r2, r2, r12
+    strh    r2, [r0, r6]
+3:  pop     {r4-r6}
+    bx      lr
+    .size   pn_span, . - pn_span
+    .ltorg
+
+@ void r3d_up2(uint16_t *base, int hw, int vh2)
+@ G7 (r3d.c, Options "3D: Faster"): the 3D view drawn at half resolution
+@ into the top left of its rect (vh2 rows of hw halfwords, row stride 240
+@ bytes, base word aligned) doubled in place: source row r goes to rows 2r
+@ and 2r + 1, each pixel twice. Rows from the bottom up and pixels from the
+@ right, so no source pixel is overwritten before it is read.
+    .section .iwram, "ax", %progbits
+    .arm
+    .align 2
+    .global r3d_up2
+    .type   r3d_up2, %function
+r3d_up2:
+    push    {r4-r8, lr}
+    subs    r3, r2, #1                  @ r = vh2 - 1
+    blt     9f
+    mov     lr, #240
+1:  mla     r5, r3, lr, r0              @ source row r
+    add     r6, r3, r3
+    mla     r6, r6, lr, r0              @ row 2r
+    add     r7, r6, #240                @ row 2r + 1
+    add     r5, r5, r1, lsl #1          @ their ends
+    add     r6, r6, r1, lsl #2
+    add     r7, r7, r1, lsl #2
+    mov     r8, r1
+2:  ldrh    r12, [r5, #-2]!             @ pixels a (low), b (high)
+    and     r4, r12, #0xFF
+    orr     r4, r4, r4, lsl #8          @ a a
+    mov     r12, r12, lsr #8
+    orr     r12, r12, r12, lsl #8       @ b b
+    orr     r4, r4, r12, lsl #16        @ a a b b
+    str     r4, [r6, #-4]!
+    str     r4, [r7, #-4]!
+    subs    r8, r8, #1
+    bne     2b
+    subs    r3, r3, #1
+    bge     1b
+9:  pop     {r4-r8, lr}
+    bx      lr
+    .size   r3d_up2, . - r3d_up2
