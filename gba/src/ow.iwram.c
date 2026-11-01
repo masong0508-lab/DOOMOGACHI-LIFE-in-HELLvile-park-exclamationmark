@@ -102,44 +102,95 @@ static inline uint8_t post(uint8_t c, int x, int y)
     return c;
 }
 
-/* One sprite row: screen pixels [cx0, cx1) of row y (dst = that row),
- * texel of pixel x = src[(x - x0) * inv >> 16] (flip: mirrored). */
+/* one screen pixel pair at d: texels a (even x) and b, 0 = transparent */
+static inline void put_pair(uint16_t *d, uint32_t a, uint32_t b, const uint8_t *qa,
+                            const uint8_t *qb)
+{
+    if (a) {
+        if (b) *d = (uint16_t)(qa[a] | (qb[b] << 8));
+        else put_lo(d, qa[a]);
+    } else if (b) {
+        put_hi(d, qb[b]);
+    }
+}
+
+/* A sprite at screen (x0, y0), integer scale s, clipped to the viewport;
+ * texel of pixel x = src[(x - x0) * inv >> 16] (flip: mirrored). Every
+ * pixel is one lookup in its 4x4 position's composed table (sprite_luts).
+ * (G2) At scale 1 a row's middle is read four texels per word (ROM is a
+ * 16-bit bus: one word read instead of four byte reads), all-transparent
+ * words are skipped, and opaque pairs are stored without a read. */
 void ow_sprite(const DoomoImage *img, int x0, int y0, int s, int flags, const uint8_t *cm)
 {
     const int w = img->w * s, h = img->h * s;
     int cx0 = x0, cx1 = x0 + w, cy0 = y0, cy1 = y0 + h, y;
-    const int post_on = owf.night || owf.tint_level;
     const int trans = flags & BB_TRANSLUCENT;
     const int flip = flags & BB_FLIPX;
     const uint32_t inv = 65536u / (uint32_t)s + 1u;     /* x / s = (x * inv) >> 16 */
-    uint8_t lut[256 + 2];                               /* texel index per pixel */
+    const uint8_t *lc[4];
     int x;
     if (cx0 < owf.ox) cx0 = owf.ox;
     if (cx1 > owf.ox + owf.ow) cx1 = owf.ox + owf.ow;
     if (cy0 < owf.oy) cy0 = owf.oy;
     if (cy1 > owf.oy + owf.oh) cy1 = owf.oy + owf.oh;
     if (cx0 >= cx1 || cy0 >= cy1 || cx1 - cx0 > 256) return;
-    if (s == 1 && !flip && !trans && !post_on) {
-        /* the common case: 1:1, opaque texels through the colormap,
-         * walked in VRAM halfword pairs */
-        int xa = cx0 & ~1, xb = (cx1 + 1) & ~1;
+    if (owf.luts) owf_sprite_luts(cm, lc);
+    else lc[0] = lc[1] = lc[2] = lc[3] = cm;    /* the house: no night, no tint */
+    if (s == 1) {
+        const int iw = img->w;
+        const int xs = (cx0 + 1) & ~1, xe = cx1 & ~1;
+        /* the middle's texels: forward from pixel xs, or mirrored (pixel xs
+         * is texel i, the next ones i - 1, ..: the word at i - 3 holds a
+         * quad's texels backwards) */
+        const int base = flip ? iw - 1 - (xs - x0) - 3 : xs - x0;
+        const int step = flip ? -1 : 1;
         for (y = cy0; y < cy1; y++) {
-            const uint8_t *src = img->pix + (y - y0) * img->w + (xa - x0);
-            uint16_t *row = gba_back + y * LINE + (xa >> 1);
-            int px;
-            for (px = xa; px < xb; px += 2, src += 2, row++) {
-                uint32_t a = (px >= cx0) ? src[0] : 0;
-                uint32_t b = (px + 1 < cx1) ? src[1] : 0;
-                if (!(a | b)) continue;
-                if (a && b) *row = (uint16_t)(cm[a] | (cm[b] << 8));
-                else if (a) put_lo(row, cm[a]);
-                else put_hi(row, cm[b]);
+            const uint8_t *srow = img->pix + (y - y0) * iw;
+            uint16_t *row = gba_back + y * LINE;
+            const uint8_t *cl = owf.cls + ((y & 3) << 2);
+            const uint8_t *q0 = lc[cl[xs & 3]], *q1 = lc[cl[(xs + 1) & 3]];
+            const uint8_t *q2 = lc[cl[(xs + 2) & 3]], *q3 = lc[cl[(xs + 3) & 3]];
+            /* translucent: only pixels with (x + y) even, a checker */
+            const uint32_t tmask = !trans ? 0xFFFFFFFFu : (y & 1) ? 0xFF00FF00u : 0x00FF00FFu;
+            const uint8_t *sp = srow + base;
+            const uint32_t sh = ((uint32_t)sp & 3u) << 3;
+            const uint32_t *wp = (const uint32_t *)(const void *)((uint32_t)sp & ~3u);
+            uint32_t prev;
+            int n = xe - xs;
+            /* the odd edge pixels */
+            if (cx0 & 1) {
+                uint32_t t = srow[flip ? iw - 1 - (cx0 - x0) : cx0 - x0];
+                if (t && !(trans && ((cx0 + y) & 1))) put_hi(row + (cx0 >> 1), lc[cl[cx0 & 3]][t]);
+            }
+            if (cx1 & 1) {
+                int xl = cx1 - 1;
+                uint32_t t = srow[flip ? iw - 1 - (xl - x0) : xl - x0];
+                if (t && !(trans && ((xl + y) & 1))) put_lo(row + (xl >> 1), lc[cl[xl & 3]][t]);
+            }
+            row += xs >> 1;
+            if (flip) prev = wp[1];
+            else prev = *wp++;
+            for (; n > 0; n -= 4, row += 2) {
+                uint32_t nw = *wp, lo, hi, t;
+                wp += step;
+                if (flip) { lo = nw; hi = prev; }
+                else { lo = prev; hi = nw; }
+                prev = nw;
+                t = sh ? (lo >> sh) | (hi << (32 - sh)) : lo;
+                if (flip)
+                    t = (t << 24) | ((t << 8) & 0x00FF0000u) | ((t >> 8) & 0x0000FF00u) | (t >> 24);
+                t &= tmask;
+                if (n < 4) t &= 0xFFFFu;           /* the last pair */
+                if (!t) continue;
+                put_pair(row, t & 0xFF, (t >> 8) & 0xFF, q0, q1);
+                put_pair(row + 1, (t >> 16) & 0xFF, t >> 24, q2, q3);
             }
         }
         return;
     }
-    /* texel column of every screen pixel (pairs aligned to even x) */
+    /* scaled: texel column of every screen pixel (pairs aligned to even x) */
     {
+        uint8_t lut[256 + 2];                           /* texel index per pixel */
         int xa = cx0 & ~1, xb = (cx1 + 1) & ~1;
         for (x = xa; x < xb; x++) {
             int tx;
@@ -151,6 +202,9 @@ void ow_sprite(const DoomoImage *img, int x0, int y0, int s, int flags, const ui
         for (y = cy0; y < cy1; y++) {
             const uint8_t *src = img->pix + (((uint32_t)(y - y0) * inv) >> 16) * img->w;
             uint16_t *row = gba_back + y * LINE + (xa >> 1);
+            const uint8_t *cl = owf.cls + ((y & 3) << 2);
+            const uint8_t *q0 = lc[cl[xa & 3]], *q1 = lc[cl[(xa + 1) & 3]];
+            const uint8_t *q2 = lc[cl[(xa + 2) & 3]], *q3 = lc[cl[(xa + 3) & 3]];
             const uint8_t *l = lut;
             int k, npairs = (xb - xa) >> 1;
             for (k = 0; k < npairs; k++, l += 2, row++) {
@@ -160,12 +214,7 @@ void ow_sprite(const DoomoImage *img, int x0, int y0, int s, int flags, const ui
                     int px = xa + 2 * k;
                     if ((px + y) & 1) a = 0; else b = 0;
                 }
-                if (!(a | b)) continue;
-                if (a) { a = cm[a]; if (post_on) a = post((uint8_t)a, xa + 2 * k, y); }
-                if (b) { b = cm[b]; if (post_on) b = post((uint8_t)b, xa + 2 * k + 1, y); }
-                if (a && b) *row = (uint16_t)(a | (b << 8));
-                else if (a) put_lo(row, a);
-                else put_hi(row, b);
+                put_pair(row, a, b, (k & 1) ? q2 : q0, (k & 1) ? q3 : q1);
             }
         }
     }

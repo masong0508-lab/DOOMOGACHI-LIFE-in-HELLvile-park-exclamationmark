@@ -5,6 +5,21 @@
 
 #include "gba_plat.h"
 
+/* (G2) A sprite's pixel goes through the colormap, then the night tint
+ * where ow_bayer < night, then the view tint where ow_bayer < tint_level:
+ * one of four classes per 4x4 screen position (bit 0 night, bit 1 tint).
+ * ow_sprite composes the classes a frame uses into 256-byte tables, one
+ * lookup per pixel, cached per colormap for the frame in plat_overworld's
+ * stack frame (OW_LUT_TABLES tables, shared out among the classes).
+ * Outside plat_overworld owf.luts is NULL and ow_sprite uses the colormap
+ * as it is: the caller (the house, room.c) sets night = tint_level = 0. */
+#define OW_LUT_TABLES 6
+typedef struct OwLuts {
+    uint32_t tab[OW_LUT_TABLES][64];       /* way w, class slot s: [w * nc + s] (words: built 4 at a time) */
+    const uint8_t *key[OW_LUT_TABLES];     /* the colormap a way holds */
+    uint8_t ways, victim;
+} OwLuts;
+
 typedef struct OwFrame {
     int ox, oy, ow, oh;            /* viewport (screen pixels)          */
     int scrollx, scrolly;          /* world pixel at the viewport origin */
@@ -13,6 +28,10 @@ typedef struct OwFrame {
     int tint_level;                /* 0..15: view tint dither density    */
     const uint8_t *night_map, *tint_map;
     uint16_t time;
+    /* (G2) the classes: cls[(y & 3) * 4 + (x & 3)] of a screen pixel, the
+     * table slot of each class present (nc of them), the table cache */
+    uint8_t cls[16], slot[4], nc, pad;
+    OwLuts *luts;
 } OwFrame;
 
 extern OwFrame owf;
@@ -29,6 +48,9 @@ void ow_front(int px, int sy0, int h, int y0, int y1, const uint8_t *tp, uint8_t
               const uint8_t *cm) IWRAM_CALL;
 /* darken screen x [x0, x1), rows [y0, y1) through cm */
 void ow_shade(int x0, int x1, int y0, int y1, const uint8_t *cm) IWRAM_CALL;
+/* (G2) lc[c]: colormap cm composed for each class c the frame uses
+ * (overworld.c, THUMB; cached per frame in owf.luts) */
+void owf_sprite_luts(const uint8_t *cm, const uint8_t **lc) IWRAM_CALL;
 /* sprite at screen (x0, y0), integer scale s, BB_* flags, lit through cm,
  * then the night / view tint dither, clipped to the viewport */
 void ow_sprite(const DoomoImage *img, int x0, int y0, int s, int flags,
