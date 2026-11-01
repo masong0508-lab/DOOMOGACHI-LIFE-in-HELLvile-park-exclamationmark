@@ -1597,7 +1597,9 @@ static DoomoRoomView *test_view(const DoomoRoomView *v, DoomoRoomView *tv, Doomo
             memset(&objs[n], 0, sizeof(objs[n]));
             objs[n].furn = cellar_set[i & 7];
             objs[n].x = (uint8_t)x; objs[n].y = (uint8_t)y;
-            objs[n].rot_anim = RO_ROT_ANIM(i & 3, (t >> 3) & 1);
+            /* the looping pieces animate; the beanbag moves only while
+             * someone sits on it (home_draw.c anim_frame) */
+            objs[n].rot_anim = RO_ROT_ANIM(i & 3, cellar_set[i & 7] == FURN_BUNNY_BEANBAG ? 0 : (t >> 3) & 1);
             objs[n].paint_a = (uint8_t)(i % 5 == 0 ? PAINT_MINT : 0xFF);
             objs[n].paint_b = 0xFF;
             n++;

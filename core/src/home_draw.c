@@ -65,7 +65,7 @@ enum { HT_IRIS, HT_LIFT, HT_DROP_FALL, HT_DROP_LAND, HT_NOPE, HT_FLIP, HT_FLIP_S
        HT_REACT_COOL, HT_HOP, HT_HOP_GAP, HT_SLEEP_FADE, HT_SLEEP_MOON, HT_SLEEP_BLACK,
        HT_FREEZE_SIL, HT_FREEZE_POST, HT_LIGHTS_HOLD, HT_LIGHTS_FADE, HT_DUCK, HT_TAPE,
        HT_ARRIVE_GAP, HT_RATE_GAP, HT_BREATH, HT_BLINK_EVERY, HT_BLINK_LEN, HT_TV,
-       HT_FAN, HT_BUBBLES, HT_GOAL_HOLD, HT_DAWN_CARD, HT_FLEE, HT_SIT_PLOP, HT_COUNT };
+       HT_FAN, HT_BUBBLES, HT_GOAL_HOLD, HT_DAWN_CARD, HT_FLEE, HT_SIT_PLOP, HT_SIGH, HT_COUNT };
 static const uint8_t ht[HT_COUNT] = {
     6,      /* HT_IRIS          heart iris in, r = 6 + 250 smooth(a/6)^2           */
     3,      /* HT_LIFT          the lift after a 2-frame anticipation              */
@@ -132,6 +132,7 @@ static const uint8_t ht[HT_COUNT] = {
     90,     /* HT_DAWN_CARD     the defence's result card                          */
     16,     /* HT_FLEE          a frightened guest's 4-hop flee                    */
     2,      /* HT_SIT_PLOP      sitting: the plop squash                           */
+    24,     /* HT_SIGH          (H6) the bunny beanbag's sigh after you stand up   */
 };
 static const int8_t nope_dx[4] = { 2, -2, 2, -2 };
 static const int16_t flip_sx[6] = { 256, 128, 0, -128, -266, -256 };   /* Q8 */
@@ -264,6 +265,8 @@ typedef struct HomeScn {
     DoomoRoomObj undo_obj;           /* the piece an undo took away                 */
     fix16    px, py;                 /* the player chibi                           */
     uint8_t  pdir, pwalk, sitting, paint_mode, paint_slot;
+    uint8_t  sit_obj, sigh_obj;      /* (H6) the seat in use; the one that sighs     */
+    uint16_t sigh_at;                /* ... from this H->t                           */
     /* menus */
     uint8_t  mi[MI_COUNT], nmi;
     int16_t  sel, top, nrows;
@@ -433,6 +436,7 @@ static void clear_fx(void)
     H->nsel = 0;
     H->band = 0;
     H->plan.nghost = 0;
+    H->sigh_obj = 0xFF;
 }
 
 /* ---- the projection (room_ref's rules; the GBA matches it exactly) ------------- */
@@ -1285,6 +1289,7 @@ static void live_use(void)
             H->px = INT2FIX(HO_X(&H->ed.room.obj[idx])) + FIX_ONE / 2;
             H->py = INT2FIX(HO_Y(&H->ed.room.obj[idx])) + FIX_ONE / 2;
             H->sitting = 1;
+            H->sit_obj = (uint8_t)idx;
             H->oa_k[idx] = OA_RIPPLE_NEAR;                /* the cushion gives */
             H->oa_t[idx] = 0;
             tw_spring_punch(&H->rip, 10 * 16);
@@ -1306,6 +1311,7 @@ static void update_live(void)
     if (dx || dy) {
         fix16 nx, ny;
         int vdx = dx, vdy = dy;
+        if (H->sitting) { H->sigh_obj = H->sit_obj; H->sigh_at = H->t; }   /* "Sighs when you leave." */
         H->sitting = 0;
         view_to_room(H->view_k, &dx, &dy);
         nx = H->px + dx * (FIX_ONE / 10);
@@ -1820,6 +1826,10 @@ static int anim_frame(const DoomoFurn *f, int furn, int idx)
     if (furn == FURN_KEVINS_BUST) return (t % ht[HT_BLINK_EVERY]) < ht[HT_BLINK_LEN];
     if (furn == FURN_HEART_WALLPAPER_EYE) return home_haunt_eye_blinks() && (t % ht[HT_BLINK_EVERY]) < ht[HT_BLINK_LEN];
     if (furn == FURN_DAYS_SINCE_FIRE) return home_days_since_fire() == 0 ? (t >> 2) & 1 : 0;
+    /* (H6) "Sinks when sat on. Sighs when you leave.": frame 1 while the
+     * player sits on it and for HT_SIGH after, never on a loop */
+    if (furn == FURN_BUNNY_BEANBAG)
+        return (H->sitting && H->sit_obj == idx) || (H->sigh_obj == idx && (uint16_t)(H->t - H->sigh_at) < ht[HT_SIGH]);
     if (f->interact == FI_WATCH) return (t / ht[HT_TV]) % frames;
     if (furn == FURN_SUMMER_FAN) return (t / ht[HT_FAN]) % frames;
     if (furn == FURN_WEEPING_FISH_TANK) return (t % ht[HT_BUBBLES]) < ht[HT_BLINK_LEN];

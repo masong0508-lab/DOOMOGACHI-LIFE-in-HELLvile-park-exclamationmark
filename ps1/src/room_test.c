@@ -84,7 +84,9 @@ void room_test_render(const DoomoRoomView *v)
             objs[n].furn = cellar_set[i & 7];
             objs[n].x = (uint8_t)(1 + (i % 7));
             objs[n].y = (uint8_t)(1 + (i / 7) % 7);
-            objs[n].rot_anim = RO_ROT_ANIM(i & 3, (t >> 3) & 1);
+            /* the looping pieces animate; the beanbag moves only while
+             * someone sits on it (home_draw.c anim_frame) */
+            objs[n].rot_anim = RO_ROT_ANIM(i & 3, cellar_set[i & 7] == FURN_BUNNY_BEANBAG ? 0 : (t >> 3) & 1);
             objs[n].paint_a = (uint8_t)(i % 5 == 0 ? PAINT_MINT : 0xFF);
             objs[n].paint_b = 0xFF;
             n++;

@@ -198,7 +198,11 @@ between the lamp, the bed's plushie and the nest, idle breathing, and the
 open house's arrivals. Furniture loops come from the art's frames:
 furngen fails the build when an FF_ANIM piece has no `frames N` (or its
 frames do not differ) and when a piece with frames is not FF_ANIM, whose
-other frames `anim_frame()` would never show (H6).
+other frames `anim_frame()` would never show (H6). Most pieces loop at
+the default cadence; the event pieces do not: the eye blinks, the Days
+Since Fire sign flashes at 0, and the bunny beanbag sinks only while the
+player sits on it and sighs for `HT_SIGH` after (the GBA / PS1 harness
+layouts leave it still).
 
 **State.** The scene scratch (`'HOME'`, `HomeScn` about 2.9 KB on 32-bit;
 the house's budget is 4 KB, SPEC C9); its tail is the view's
