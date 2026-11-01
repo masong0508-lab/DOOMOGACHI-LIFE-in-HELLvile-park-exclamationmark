@@ -78,6 +78,20 @@ expect-fps 18.5 park visit
 shot park
 vhash-seq 30 park visit
 
+# a map walk (G5): the park visit with RIGHT + DOWN held, so the camera
+# scrolls on both axes and the world streams in while it is measured and
+# hashed
+seed 1
+scene STORY 12
+wait 200
+down RIGHT DOWN
+fps start
+wait 60
+expect-fps 19 map walk
+shot walk
+vhash-seq 30 map walk
+release
+
 # invaded Hahaland: 47 tinted billboards, logic below 30 ticks/s
 seed 1
 scene STORY 219

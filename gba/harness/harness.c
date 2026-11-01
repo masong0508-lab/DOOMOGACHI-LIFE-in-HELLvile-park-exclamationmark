@@ -107,6 +107,9 @@ static int fail_on_stub;
 static int failed;
 static int scale = 1;
 static const char *shots_dir = ".";
+/* env HARNESS_VHASH_SHOTS=1: vhash-seq also writes each hashed frame as
+ * SHOTS/vh_TICK.png (to see which pixels differ between two ROMs) */
+static int vhash_shots;
 static char *logbuf;
 static size_t log_len, log_cap;
 static char last_scene[64];
@@ -611,6 +614,11 @@ static void vhash_seq(int n, const char *label, const char *path, int lineno)
             idle = 0;
             if (!got) first = tick;
             if (tick != prev + 1) gapped = 1;
+            if (vhash_shots) {                 /* HARNESS_VHASH_SHOTS: every hashed frame */
+                char nm[64];
+                snprintf(nm, sizeof(nm), "vh_%u", (unsigned)tick);
+                shot(nm);
+            }
             prev = last = tick;
             seq = fnv_word(fnv_word(seq, tick), h);
             len += (size_t)snprintf(list + len, cap - len, "%s%u:%08x", got ? " " : "",
@@ -1040,6 +1048,7 @@ int main(int argc, char **argv)
         return 2;
     }
     mkdir(shots_dir, 0755);
+    vhash_shots = getenv("HARNESS_VHASH_SHOTS") != NULL;
     /* whole lines even when stdout and stderr go to one file (test-speed) */
     setvbuf(stdout, NULL, _IOLBF, 0);
     mLogSetDefaultLogger(&logger);

@@ -69,6 +69,12 @@ CUTVIEW ?= 1
 ifeq ($(CUTVIEW),1)
 DEFS    += -DDOOMO_CUTSCENE_VIEWER=1
 endif
+# G5: `make TILES=0` builds the overworld in Mode 4 only (no tile mode):
+# the reference for frame parity checks of the tile mode
+TILES ?= 1
+ifeq ($(TILES),0)
+DEFS    += -DGBA_TILES=0
+endif
 GBA_CFLAGS  := $(ARCH) $(COMMON) $(DEFS) -Werror
 # Core code must also be warning-free (ARCHITECTURE.md), but a warning in
 # a module that is still landing must not stop the ROM from building.
