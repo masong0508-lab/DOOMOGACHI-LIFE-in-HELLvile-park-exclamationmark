@@ -1,6 +1,8 @@
 # The game's script style guide
 
-**Status: DRAFT for the user's approval (P0, 1 November 2026).** Every
+**Status: DRAFT for the user's approval (P0, 1 November 2026; revised for
+the user's correction: the game's indie-game parody stays the backbone,
+and "the quiet part out loud" is one tool, §0, §1.0, §1.1).** Every
 package that rewrites game text (W1-W19, C1, L7, X7) writes to this guide.
 Locked lines, ids and test pins are in [`SCRIPT_LOCKS.md`](SCRIPT_LOCKS.md);
 the tools are in [`docs/STORY_ENGINE.md`](../../STORY_ENGINE.md#script-tools).
@@ -18,17 +20,31 @@ guide says so explicitly.
 
 ## 0. The brief in one breath
 
-The whole game is being rewritten to be **sharper and funnier**. It reads
-like a cute cartoon that keeps getting interrupted by the truth. Most of it
-is **abrupt, laugh-out-loud comedy**: hard cuts, absurd escalation, and
-punchlines that arrive from nowhere and leave before you can recover. It is
-**edgy but PG-13**: mean, quick, a little filthy around the edges, never
-explicit. Its favourite target is **the haunted-animatronic-restaurant,
-lore-tape, frame-decoding genre**, and specifically *The Walten Files*. We
-make fun of that genre. We never become it. Now and then, and always
-optionally, something is **just slightly wrong**, and nobody explains it.
-The game keeps **its own story** (Sunny lives), told in **the show's canon**
-(the Mayor is a turkey, ratings "need salt", Bonejangles is a possessed
+The whole game is being rewritten to be **sharper and funnier**, and it
+stays **the game it already is: an indie game that parodies its own
+genres**. It is a tamagotchi, a Tomodachi Life and DOOM sewn into one plush
+toy, and **the mash-up is the joke**. A pastel life sim plays its pet care,
+its neighbours and its furniture ratings completely straight, then turns
+into a metal shooter that plays its gibs completely straight too. Most of
+the laughs come from that collision (§1.0): **the cute-vs-brutal switch**,
+**sight gags and signs**, **game-y jokes** about meters, ratings, menus,
+tutorials and pixels, Grumbleguts' **gag book**, and the running gags. They
+land as **abrupt, laugh-out-loud comedy**: hard cuts, absurd escalation,
+and punchlines that arrive from nowhere and leave before you can recover.
+It is **edgy but PG-13**: mean, quick, a little filthy around the edges,
+never explicit.
+
+On top of that backbone the rewrite adds the user's three references (§1):
+a **faster, cruder comic register**, a **cute surface that cracks for a
+beat**, and one new **outside parody target**: the
+haunted-animatronic-restaurant, lore-tape, frame-decoding genre, and
+specifically *The Walten Files*. We make fun of that genre. We never become
+it, and it does not take over: it lives mostly in Bonejangles' thread.
+**A character saying the quiet part out loud** is one tool in the kit
+(§2.1), not the game's engine. Now and then, and always optionally,
+something is **just slightly wrong**, and nobody explains it. The game
+keeps **its own story** (Sunny lives), told in **the show's canon** (the
+Mayor is a turkey, ratings "need salt", Bonejangles is a possessed
 animatronic).
 
 **The order of priorities for every line:** clear on first read, then funny,
@@ -37,14 +53,53 @@ joke next to it, or a very good reason (§3).
 
 ---------------------------------------------------------------------------
 
-## 1. The three references: what we take and what we leave
+## 1. Where the jokes come from
+
+**The game's own comedy comes first (§1.0).** The user's three references
+(the table below, §1.1-1.3) sharpen it; they do not replace it. If a
+scene's only jokes are a Walten parody or a character blurting the truth,
+it has lost the game's own voice: add a game-y joke, a sight gag or a
+cute/brutal switch.
+
+### 1.0 The backbone: the indie-game parody
+
+The pitch is the comic premise: *Tamagotchi × Tomodachi Life × DOOM*
+(`README.md`; `story_final.md` §0's tone target is "Shaun of the Dead,
+Gravity Falls, Undertale and DOOM, sewn into a plush toy"). Each genre in
+the mash-up takes itself completely seriously, and the joke is that they
+have to share one cartridge.
+
+| Tool | How it plays in text | Example (style sample) |
+|---|---|---|
+| **The mash-up** | One genre's problem handled by another genre's rules, straight-faced: an invasion as a life-sim chore, a possession as a care-meter alert, a funeral as a furniture rating | *"Neighbour POSSESSED! / Mood: spooky. Hunger: / souls. Try a gift!"* |
+| **Cute vs. brutal** | The same thing twice: once through the CUTE filter, once as it is. The switch is the punchline (`GAG_BIBLE.md` §1 "the switch", §4.15). The game's own tag: "We don't judge. (We judge a little.)" Weapon names flip with it (PARTY PUMP / SLAUGHTER) | *"It's confetti. {.}It's / mostly confetti."* |
+| **Sight gags and signs** | A sign or a short narrator line sets up a picture, and the picture is the joke (`GAG_BIBLE.md` §8.4). A sign is the cheapest laugh a 3 × 27 box can buy | *"(A sign: 'NOTHING INSIDE! / (we checked) -Mayor')"*; the crate that slides one pixel to the left, in shame |
+| **Game-y jokes** | The game knows it is a game, and so does everyone who works in it: meters, ratings ("COSY: B+"), tutorials, quest markers, trophies, save points, unlock pop-ups, the HUD, the box itself. Absurd game logic, played straight | *"(The tutorial arrow points / at the demon. Then, / slowly, at you.)"* |
+| **The indie-art joke** | The game's own look is material: plush critter-folk, chunky LCD pixels, a palette that rots to hell red, "premium, not cheap pixel art" said a little too proudly | *"(The demon is drawn in / four colours. Three of / them are panic.)"* |
+| **The gag book** | Grumbleguts' appetite, belly and rating gags (`GAG_BIBLE.md` §7.4), inside R2 | *"Six. {.}Needs salt."* |
+| **Running gags** | "beep.", "...it's fine.", "Hee. Hee.", Population: 500 (and the "1"), Mr. Huggins the Nth, DAYS SINCE LAST FIRE (`story_final.md` §5, `GAG_BIBLE.md` §6). Each comes back changed by one word | *"(The sign: 'Population / 501.' The 1 falls off. / {.}Tink.)"* |
+
+* **Most jokes come from here.** A rough mix for a chapter: about two
+  jokes in three from the tools above, the rest from the references, the
+  quiet-part-out-loud line and the eerie seasoning. The Walten parody is
+  concentrated in Bonejangles' thread and the restaurant's leftovers
+  (§1.3), not sprinkled over every scene.
+* **The text sets up, the picture lands.** A sight gag in text is a
+  short, concrete parenthetical (C3) that the screen can show. It never
+  explains itself.
+* **Parody genres, not a real game.** No real game, studio or person is
+  named in game text (J7). "DOOM", "Tamagotchi" and "Tomodachi Life" are
+  pitch words for this guide; the game's own words (Doomogachi, Hellvile,
+  HaHaland) are the script's.
+
+### The three references: what we take and what we leave
 
 The user named three references. Two of them set **how the game feels**.
 One is **what the game makes fun of**. Do not mix up the roles.
 
 | Reference | Its role here | Take | Leave |
 |---|---|---|---|
-| **Princess Robot Bubblegum** (the in-universe anime parody from the GTA series) | **The comic register.** How fast, how crude, how cynical | Rapid-fire, deadpan-stupid sincerity. Characters say the quiet part out loud. Merch and fandom gags. Melodrama played completely straight until it collapses. Each joke lasts one box and then it is over | Mockery of a real nationality or culture. Cruelty with no joke shape. It parodies anime fandom; we parody the analog-horror ARG fandom |
+| **Princess Robot Bubblegum** (the in-universe anime parody from the GTA series) | **The comic register.** How fast, how crude, how cynical, applied to the game's own jokes (§1.0) first | Rapid-fire, deadpan-stupid sincerity. Merch and fandom gags. Melodrama played completely straight until it collapses. Each joke lasts one box and then it is over. Now and then a character says the quiet part out loud (one tool, §2.1) | Mockery of a real nationality or culture. Cruelty with no joke shape. It parodies anime fandom; we parody the analog-horror ARG fandom |
 | **Poochee & Pansy** (a cute 2000s web cartoon that was a front for a horror ARG) | **The shape.** A cute surface with something wrong underneath | Sugary kids'-show surfaces (jingles, mascots, pastel signs) that crack for one beat. A smile held one frame too long. A cheerful song that ends one note off | The ARG machinery (a recruitment front, hidden messages, a hunt). Real gore. The user also asked us not to call it "gross": the "gross-looking show" is the next row |
 | **The Walten Files** (an analog-horror ARG: found VHS training tapes from an animatronic family-restaurant company, grief and trauma lore, a frame-decoding fandom) | **The parody target. The butt of the jokes.** | Its haunted restaurant. Its solemn VHS-tape lore. Its fans who freeze-frame everything. Its famously ugly art. Bonejangles carries most of it (§1.3) | Any real mechanic: no ciphers, no frame-decoding, no clue you must find, no lore you must assemble. Its real names, characters and text. Its real creator: parody the work, never the person (rule J7) |
 
@@ -55,8 +110,18 @@ One is **what the game makes fun of**. Do not mix up the roles.
 
 ### 1.1 The comic register (Princess Robot Bubblegum)
 
+The register is **how** the game's jokes are told, not **what** they are
+about. It makes the mash-up, the cute/brutal switch, the sight gags and
+the game-y jokes of §1.0 faster and cruder; it does not swap them for
+truth-telling. A character blurting the uncomfortable truth is one tool of
+the register (§2.1), rationed like any other: about one a scene at most,
+and never a scene's only joke.
+
 * **Speed.** One box, one idea. A setup and its turn fit in one box
   (3 × 28 at 240×160), or across three boxes at most for a rule of three.
+* **Played straight.** Every genre in the game believes in itself. The
+  pet-care screen is sincere about hunger while the town burns; the
+  shooter is sincere about gibs at a bake sale. Nobody winks.
 * **Sincere stupidity.** The funniest characters believe every word. The
   Mayor really thinks a tablecloth makes him invisible. Fuzz really thinks
   a hug can fix a demon. The joke is that they mean it.
@@ -70,8 +135,9 @@ One is **what the game makes fun of**. Do not mix up the roles.
 
 ### 1.2 The cute surface (Poochee & Pansy)
 
-* Hillvile is a kids' cartoon that has not been told it is in a horror
-  game. Signs are pastel, songs are jingles, everyone is "sweet pea".
+* Hillvile is a sugary life sim that has not been told it is also a DOOM
+  game (and, now and then, a horror game). Signs are pastel, songs are
+  jingles, everyone is "sweet pea".
 * The wrongness is **one detail**, not a mood: a mascot's wave that is too
   slow, a jingle missing its last note, a birthday banner for a party that
   was forty years ago. Then the cartoon carries on.
@@ -151,15 +217,23 @@ are marked, and earn their place.
 
 ### 2.1 The shapes that work in a 3 × 28 box
 
+The first four shapes are the game's own (§1.0); the rest are general
+craft. "The quiet part, out loud" is last on purpose: one tool, rationed
+(§1.1).
+
 | Shape | How | Example (style sample) |
 |---|---|---|
+| **The switch** | Cute first, then the truth of it (or the reverse), on the turn word (§1.0) | Rivet: *"It shoots hearts. {.}Out / of the demon. Mostly / the demon's own."* |
+| **The sign** | A sign or prop line does the joke; nobody comments | *"(A banner: 'GRAND OPENING! / NO REFUNDS! NO EXITS!')"* |
+| **The game-y joke** | A game system taken literally by the people inside it | Nana: *"Your hunger meter's / blinking, sweet pea. {.}So / is the demon's."* |
+| **The genre swap** | One genre's rules on another genre's problem | *"(You place the shotgun by / the window. COSY: C-. / It clashes with the gore.)"* |
 | **The hard cut** | A scene ends on a line nobody answers. Cut, scratch, next | Mayor: *"Nothing bad has ever / happened here!"* `[SCRATCH]` *(A headstone in the / back falls over.)* Mayor: *"Recently!"* |
 | **The escalation ladder** | Three steps, each bigger, the last absurd (rule of three, `story_final.md` §7.5) | *"Two balloons." / "Twenty balloons." / "Do you know a guy / with a helium tank AND / no questions?"* |
 | **Wrong, with confidence** | A character states a terrible conclusion as fact | Fuzz: *"Demons are just friends / who haven't been hugged / hard enough. {.}Yet."* |
-| **The quiet part, out loud** | Someone says what everybody is avoiding, in a normal voice | Kevin: *"Yes, three eyes. {.}No, / I won't tell you what the / third one has seen."* |
 | **The setup and the turn** | One box, one pause, the turn word last (J4) | *"I baked you a map. {..}/ Into a pie."* |
 | **The callback** | A refrain from earlier, changed by one word | *"We don't talk about the / other side. {.}We SING about / it. Badly."* |
 | **The deflation** | A big moment answered by something tiny | `[MUTE 13]` The pet: *"beep."* |
+| **The quiet part, out loud** | Someone says what everybody is avoiding, in a normal voice. One tool: about one a scene at most, never the scene's only joke (§1.1) | Kevin: *"Yes, three eyes. {.}No, / I won't tell you what the / third one has seen."* |
 
 ### 2.2 Density and placement (J1-J5)
 
@@ -292,7 +366,7 @@ not the game's plot.
 |---|---|---|
 | **Mayor Giggs** | A cherub with busy little wings | A **Mad-Hatter turkey**: top hat, feather fan, bow tie, tea-party patter. "Gobble gobble, welcome!" His wings **flap** (never buzz). No halo, no cherub. His story stays: the showman who won't look at the sad thing, the lost pet cloud, "I had a cloud once." Art and data: package C1 |
 | **Ratings** | Clinker rates poems "Six. Needs death." | **"Needs salt."** is the rating catchphrase (Grumbleguts, Clinker, GURGLE's "...needs salt."). S164's death-counting scoring is a mechanic: package C1 moves its verdicts to salt; the text never says "Needs death" again |
-| **Bonejangles** | "Skeleton xylophone teacher. Plays his own ribs." | A **semi-living animatronic skeleton**, built as a tribute to an eccentric visual artist obsessed with death. The artist was possessed; the exorcism **failed**; the possession passed into the animatronic. Still the xylophone teacher, still plays his own ribs, still "Clack!". The exorcist was **not Father Fuzz** (Lady Smog, eleven years ago, is Fuzz's only failed rite and his wound); W15 names one or leaves it unnamed. He is the Walten-parody vehicle (§1.3) |
+| **Bonejangles** | "Skeleton xylophone teacher. Plays his own ribs." | A **semi-living animatronic skeleton**, built as a tribute to an eccentric visual artist obsessed with death. The artist was possessed; the exorcism **failed**; the possession passed into the animatronic. Still the xylophone teacher, still plays his own ribs, still "Clack!". **Who performed the failed exorcism is open** (§11 Q3): W15 decides it with the user, consistently with Lady Smog (eleven years ago) being Father Fuzz's established failed rite and wound. Until then no line names the exorcist. He is the Walten-parody vehicle (§1.3) |
 | **Sunny** | Grampy Bean calls the player "Sunny" | In the show, Sunny is the lead and dies in Season 4. **In the game Sunny lives.** No game text treats Sunny's death as fact. Light foreshadowing or an easter egg is allowed (at most a line or two, post-game, played as a joke) |
 | **Everything else** | | The game's plot, its 27 episodes and 8 specials, the 109 side missions, flags, endings and the house. Show gags may be borrowed as callbacks where they fit (`SERIES_OVERVIEW.md` "Show nods in the game") |
 
@@ -336,7 +410,7 @@ come from these (J3).
 | Limit | Value | Checked by |
 |---|---|---|
 | A page | 3 lines × 28 characters at 240×160; `/` breaks a line, `//` a page | `textpack.py` |
-| **With a portrait** | The box is **27 characters** wide at 240×160 (`ui_dialog.c`: 162 px / 6 px a glyph). A 28-character line wraps and pushes the page's last line onto an extra page. **Write to 27** | Reading the screenshots (the lint allows 28) |
+| **With a portrait** | The box is **27 characters** wide at 240×160 (`ui_dialog.c`: 162 px / 6 px a glyph). A 28-character line wraps and pushes the page's last line onto an extra page. **Write to 27** | `story_stats.py`'s `box27` column (a count, report only: 89 lines in the game today; drive your pack's to 0). The lint still allows 28 |
 | A line | 199 visible characters | `textpack.py` |
 | A choice option | 27 characters | `textpack.py` |
 | A quest-log hint | 95 characters (the HUD objective) | `textpack.py` |
@@ -346,7 +420,7 @@ come from these (J3).
 | `{d}` | At most one a script; fewer than 80 in the game | `textpack.py`, `test_story_lint.c` |
 | "Ten years I" | Only in `ep41`, `s139`, `s179`, `s187` (4 in the game) | `textpack.py`, `test_story_lint.c` |
 | Pack bytes (English) | episode 12 KB, common 6 KB, side 8 KB; **keep 5% headroom** (translations run longer) | `textpack.py`, `--sizes` |
-| PS1 slots | common pack ≤ 2,048 B, side pack ≤ 8,192 B, or it falls back to the episode slot | `--check-es` / `--sizes` warnings |
+| PS1 slots | common pack ≤ 2,048 B, side pack ≤ 8,192 B, or it falls back to the episode slot and evicts the running episode's pack | `--check-es`: the **English** out of its slot fails; the Spanish only warns. `--sizes` flags a pack within 10% of its slot (today `ch1` and `quests`) |
 | Herald ticker (`story_grumble.c`) | 63 characters | C |
 
 ---------------------------------------------------------------------------
@@ -380,7 +454,9 @@ come from these (J3).
   every C-pinned word (`SCRIPT_LOCKS.md` §4) in the same commit.
 * **M6. Regenerate `core/gen` with `make -C core gen`.** On a merge
   conflict in `core/gen`, take either side and regenerate. Never
-  hand-merge.
+  hand-merge. A conflict in `flow.lock` is different: never re-run
+  `--write` blind after a merge; confirm that `--check` names only your
+  own restructures first (`SCRIPT_LOCKS.md` §2).
 * **M7. Measure before and after** with `python3 core/tools/story_stats.py
   PACK...` and put the table in the commit message.
 * **M8. Review from the reading script**: `python3 core/tools/story_read.py
@@ -392,6 +468,9 @@ come from these (J3).
 
 1. Every offer's first box says who, what and why (C1).
 2. A joke every 3-6 boxes; every turn-in ends on a button or a marker (J1).
+   Most of them are the game's own (§1.0: the mash-up, cute vs. brutal,
+   sight gags, game-y jokes, the gag book, running gags); the quiet part
+   out loud is one tool, about once a scene at most (§1.1).
 3. Parentheticals ≤ 25%, pauses ≤ 0.25 a line, no fragment pairs (C3-C5).
 4. At most one eerie beat a scene, optional, not a clue (§3).
 5. Swearing and innuendo inside R1-R3; nothing adult near a kid.
@@ -414,7 +493,8 @@ come from these (J3).
    Bonejangles' thread and the restaurant's leftovers (menus, costumes,
    tape graphics), about one joke a scene there and none elsewhere.
 3. **Bonejangles' failed exorcist.** Unnamed, a new character, or an
-   existing one (not Father Fuzz)?
+   existing one? Father Fuzz is possible only if it fits Lady Smog
+   staying his established failed rite and wound (§6; W15 owns it).
 4. **Sunny's show death in the game.** Proposed: one post-game easter
    egg at most, played as a joke (a "Season 4" poster nobody wants to
    talk about). Or none?

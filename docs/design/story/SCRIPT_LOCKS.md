@@ -74,6 +74,16 @@ every pack's kind, chapter and minutes.
   chapter muted), `story_style_rations` (`{d}`, "Ten years I", `[NO
   BUTTON]`), `story_length_budget`, the side-table rules. Retune one only
   with the reason in the commit, never just to make a rewrite pass.
+* **A merge or rebase conflict in `flow.lock`** (two packages restructured
+  in parallel): never pick a side and never re-run `--write` blind, which
+  would silently accept the other branch's restructures without review.
+  Resolve the `.dsc` files first. Then take the other branch's
+  `flow.lock`, run `--check`, and confirm that every script it names is
+  one of **your** restructures (each listed in your commit message) and
+  that the other branch's commits list theirs. Only then run `--write`.
+  A script you did not restructure that `--check` still names is a
+  mis-merged `.dsc`: fix the merge, not the lock. `save.lock` never
+  conflicts in a rewrite; if it does, stop (§1).
 
 ## 3. Refrains, callbacks and true names
 

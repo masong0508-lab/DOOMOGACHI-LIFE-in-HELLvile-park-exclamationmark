@@ -6,9 +6,12 @@
 # It pins NO Spanish (or English) words on purpose: while the English is
 # being rewritten (W1-W14) a rewritten line has no Spanish row yet and must
 # fall back to its English, cleanly, in the same box. Look at the shots:
-# the text must sit inside the box with nothing clipped.
+# the text must sit inside the box with nothing clipped. What it does check,
+# with no words: the language took (expect-lang, again after every scene
+# load) and a dialogue line is up at every dialogue shot (expect-text "").
 seed 4242
 lang es
+expect-lang es
 # ---- Ep 1.1: the Mayor's welcome -------------------------------------------
 scene STORY 101
 wait 150
@@ -16,6 +19,8 @@ expect-scene STORY
 skip-talk 200
 talk 0
 wait 150
+expect-lang es
+expect-text ""
 shot es_ep11_mayor
 press A
 wait 150
@@ -27,6 +32,8 @@ wait 150
 skip-talk 200
 talk 111
 wait 150
+expect-lang es
+expect-text ""
 shot es_ep22_bloom
 skip-talk 200
 # ---- S117 "Buckwheat Run": the offer ----------------------------------------
@@ -35,6 +42,8 @@ wait 150
 skip-talk 200
 talk 77
 wait 150
+expect-lang es
+expect-text ""
 shot es_s117_offer
 press A
 wait 150
@@ -49,6 +58,7 @@ wait 4
 expect-scene STORY
 # ---- and back: English again ------------------------------------------------
 lang en
+expect-lang en
 push QUESTLOG
 wait 24
 shot en_questlog

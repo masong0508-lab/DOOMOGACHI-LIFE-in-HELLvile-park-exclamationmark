@@ -26,8 +26,11 @@ compile everything the same way but write nothing to core/gen:
 
     --check-es [--allow-missing] [--allow-stale]
                     the Spanish story TSVs against the packs: stale rows,
-                    missing translations, box overflow, Spanish blobs over
-                    their cap (exit 1), PS1 slot fallbacks (warnings)
+                    missing translations (every pack; a pack without a
+                    TSV is all missing), box overflow, a Spanish blob too
+                    big for any PS1 slot, an English side or common pack
+                    out of its PS1 slot (exit 1); a Spanish blob over its
+                    kind's cap or out of its PS1 slot (warnings)
     --sync-es       rewrite core/lang/story/<pack>.tsv in pack order, keep
                     every translation, move stale rows to a trailing
                     "# STALE" block, append new strings as TODO rows
@@ -1567,8 +1570,8 @@ def script_guards(guard, packs, blobs, es_blobs, es_map):
         for p in packs:
             path = os.path.join(ES_DIR, p.name + ".tsv")
             rows, stale = read_tsv_rows(path)
-            if not rows and not stale and not os.path.exists(path):
-                continue                      # a pack nobody has started translating
+            # a pack with no TSV yet (a new pack) gets one, every row TODO:
+            # every pack is translated (--check-es counts it as missing)
             have = {}
             for _, en, es, _ in stale + rows:   # live rows win over old stale ones
                 if es.strip() or en not in have:
@@ -1600,8 +1603,9 @@ def script_guards(guard, packs, blobs, es_blobs, es_map):
     if guard.get("check-es"):
         allow_missing = guard.get("allow-missing")
         allow_stale = guard.get("allow-stale")
-        nstale = nmiss = nover = ncap = nwarn = 0
+        nstale = nmiss = nover = ncap = nslot = nwarn = 0
         files = sorted(f for f in os.listdir(ES_DIR) if f.endswith(".tsv")) if os.path.isdir(ES_DIR) else []
+        have_tsv = set(f[:-4] for f in files)
         for fn in files:
             pk = fn[:-4]
             rows, _ = read_tsv_rows(os.path.join(ES_DIR, fn))
@@ -1622,10 +1626,16 @@ def script_guards(guard, packs, blobs, es_blobs, es_map):
                     print("warning\t%s/%s:%d\tduplicate row: %s" % (rel_es, fn, n, en))
                 seen.add(en)
         for p, blob, eb in zip(packs, blobs, es_blobs):
-            translated = [s for s in pack_keys(p) if (p.name, s) in es_map]
-            if not translated:
-                continue                      # a pack with no Spanish at all is English-only by design
-            for s in pack_keys(p):
+            # every pack is translated: no pack is English-only, so a pack
+            # with no TSV, or a TSV with every Spanish cell empty (a whole
+            # pack rewritten, then --sync-es), is all missing, never skipped
+            keys = pack_keys(p)
+            if p.name not in have_tsv:
+                nmiss += len(keys)
+                print("missing\t%s/%s.tsv\t(no TSV for pack '%s': %d string(s); --sync-es creates it)" %
+                      (rel_es, p.name, p.name, len(keys)))
+                keys = []
+            for s in keys:
                 e = es_map.get((p.name, s))
                 if e is None:
                     nmiss += 1
@@ -1648,16 +1658,20 @@ def script_guards(guard, packs, blobs, es_blobs, es_map):
                     nwarn += 1
                     print("warning\t%s\tSpanish %d B > PS1 slot %s (%d B): loads into slot E and evicts the episode pack" %
                           (p.name, len(eb), ps1_slot(p.kind, 0), ps1_slot_cap(p.kind)))
+            # the English must stay in its own PS1 slot: a side or common
+            # pack in slot E evicts the running episode's pack and the two
+            # reload each other from the CD (ps1/src/txtload.c). Spanish
+            # fallbacks only warn (above): the L8 batches fit them later.
             if ps1_slot(p.kind, len(blob)) != ps1_slot(p.kind, 0):
-                nwarn += 1
-                print("warning\t%s\tEnglish %d B > PS1 slot %s (%d B): loads into slot E and evicts the episode pack" %
+                nslot += 1
+                print("slot\t%s\tEnglish %d B > PS1 slot %s (%d B): would load into slot E and evict the episode pack" %
                       (p.name, len(blob), ps1_slot(p.kind, 0), ps1_slot_cap(p.kind)))
-        fail = nover or ncap or (nstale and not allow_stale) or (nmiss and not allow_missing)
+        fail = nover or ncap or nslot or (nstale and not allow_stale) or (nmiss and not allow_missing)
         mode = "rewrite phase (stale and missing allowed)" if allow_missing and allow_stale else \
             "strict" if not (allow_missing or allow_stale) else \
             "allow-%s" % ("missing" if allow_missing else "stale")
-        print("check-es: %d stale, %d missing, %d overflow, %d over cap, %d warning(s) [%s]: %s" %
-              (nstale, nmiss, nover, ncap, nwarn, mode, "FAIL" if fail else "ok"))
+        print("check-es: %d stale, %d missing, %d overflow, %d over cap, %d out of slot, %d warning(s) [%s]: %s" %
+              (nstale, nmiss, nover, ncap, nslot, nwarn, mode, "FAIL" if fail else "ok"))
         if fail:
             status = 1
     if guard.get("sizes"):
@@ -1676,8 +1690,14 @@ def script_guards(guard, packs, blobs, es_blobs, es_map):
                 notes.append("Spanish over the cap")
             home = ps1_slot(p.kind, 0)
             for lang, b in (("English", blob), ("Spanish", eb)):
-                if b is not None and ps1_slot(p.kind, len(b)) != home:
+                if b is None:
+                    continue
+                if ps1_slot(p.kind, len(b)) != home:
                     notes.append("%s falls back to PS1 slot E" % lang)
+                elif home != "E" and ps1_slot_cap(p.kind) - len(b) < ps1_slot_cap(p.kind) // 10:
+                    # a side or common pack close to its own slot: a rewrite
+                    # that grows it pushes it into slot E (--check-es fails)
+                    notes.append("%s under 10%% PS1 slot %s headroom" % (lang, home))
             print("%-9s %-7s %6d %6s %6d %7d %4s %9d  %s" % (
                 p.name, p.kind, len(blob), len(eb) if eb else "-", cap, cap - len(blob), home,
                 ps1_slot_cap(p.kind) - big, "; ".join(notes)))

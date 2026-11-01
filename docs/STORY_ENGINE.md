@@ -432,7 +432,8 @@ letters. No stats change and the dream journal is not written.
 * **Runner commands** (`core/native/runner_main.c`): `seed N` (the town seed
   and `plat_entropy()` from now), `expect-text "..."` (the dialogue line
   contains it), `expect-flag F [V]`, `story-fp [HEX]`, and (P0) `lang
-  CODE` (`en`, `es`: the language, as if picked on the Options page). The
+  CODE` (`en`, `es`: the language, as if picked on the Options page) and
+  `expect-lang CODE` (fails unless that is the language now). The
   GBA / PS1 harnesses get the same commands from H2 / H3 (SPEC C2).
 
 ## Chapters 1-2 (S2 content)
@@ -534,13 +535,13 @@ guide) and [`design/story/SCRIPT_LOCKS.md`](design/story/SCRIPT_LOCKS.md)
 | Command | What it does |
 |---|---|
 | `make -C core story-check` | Runs the three checks below; part of `make -C core test`. `STORY_ES=strict` makes stale or missing Spanish fatal (the default, `STORY_ES=rewrite`, only reports them while the English is rewritten) |
-| `python3 core/tools/textpack.py --check-es [--allow-missing] [--allow-stale]` | The Spanish story TSVs against the packs. Exit 1 on: a stale row (its English is no longer a string of the pack; listed by file and line), a missing translation (unless `--allow-missing`), a Spanish line over the box (option over 27 characters, a page over 3 × 28, a line over 199), or a Spanish pack too big for any PS1 slot. Warnings: a Spanish pack over its kind's cap, and any pack that falls back from its PS1 slot (side over 8,192 B, common over 2,048 B) into the episode slot. Baseline: 0 stale, 0 missing, 0 overflow, 2 warnings (the Spanish `quests` pack, 8,560 B) |
-| `python3 core/tools/textpack.py --sync-es` | Rewrites every `core/lang/story/<pack>.tsv` in pack string order: keeps every translation, refreshes the `# where` column, moves stale rows into a trailing `# STALE (reuse when retranslating)` block (`#~ ` lines, which the compiler ignores) and appends new strings as `TODO` rows. On the unchanged tree it rewrites every file byte-identical |
-| `python3 core/tools/textpack.py --sizes` | Every pack: English and Spanish bytes, the cap, the English headroom (keep 5%), the PS1 slot and what is left in it. Flags the English under 5% headroom and every slot fallback (today: `quests`, 176 B of English headroom; its Spanish falls back to slot E) |
+| `python3 core/tools/textpack.py --check-es [--allow-missing] [--allow-stale]` | The Spanish story TSVs against the packs. Exit 1 on: a stale row (its English is no longer a string of the pack; listed by file and line), a missing translation (unless `--allow-missing`; **every** pack is translated, so a pack with no TSV or with every Spanish cell empty counts as all missing), a Spanish line over the box (option over 27 characters, a page over 3 × 28, a line over 199), a Spanish pack too big for any PS1 slot, or an **English** side or common pack that falls out of its PS1 slot (side over 8,192 B, common over 2,048 B) into the episode slot, where it would evict the running episode's pack (`ps1/src/txtload.c`). Warnings only: a Spanish pack over its kind's cap, and a Spanish pack out of its PS1 slot. (The plan's "a Spanish blob over its English cap fails" is deliberately a warning: the Spanish `quests` pack is over today and loads from slot E; the L8 Spanish batches bring it back under. The hard Spanish limit is slot E, 12 KB.) Baseline: 0 stale, 0 missing, 0 overflow, 0 out of slot, 2 warnings (the Spanish `quests` pack, 8,560 B) |
+| `python3 core/tools/textpack.py --sync-es` | Rewrites every `core/lang/story/<pack>.tsv` in pack string order: keeps every translation, refreshes the `# where` column, moves stale rows into a trailing `# STALE (reuse when retranslating)` block (`#~ ` lines, which the compiler ignores) and appends new strings as `TODO` rows. A pack with no TSV yet gets one, every row `TODO`. On the unchanged tree it rewrites every file byte-identical |
+| `python3 core/tools/textpack.py --sizes` | Every pack: English and Spanish bytes, the cap, the English headroom (keep 5%), the PS1 slot and what is left in it. Flags the English under 5% headroom, a side or common pack within 10% of its own PS1 slot, and every slot fallback (today: `quests`, 176 B of English headroom and of slot S, its Spanish falls back to slot E; `ch1`'s Spanish, 164 B left in slot C) |
 | `textpack.py --es-dir DIR`, `--data DIR` | Read the TSVs / the `.dsc` tree from elsewhere (tests and scratch copies) |
 | `python3 core/tools/story_opslock.py --check` | The two locks next to the `.dsc` sources. **`save.lock`** (hard): pack ids, the ids of every `later` target (`STRY.later` holds script ids), the mission rows, the possessor rows and the 587 `SCR_`/`BSCR_`/`TXT_`/`PACK_` names the C code uses. **`flow.lock`** (soft): every script's ops without its `say` lines, text masked, jumps as positions, plus the beat scripts, the `@` rows and the pack attributes. Prints the first differing op per script |
 | `story_opslock.py --write` / `--write-save` | Regenerate `flow.lock` (a deliberate restructure, with the reason in the commit) / `save.lock` (only with a save-format change: never to make a rewrite pass) |
-| `python3 core/tools/story_stats.py [PACK...] [--csv FILE]` | Style metrics per pack: lines, words, words a line, narrator parentheticals %, two-word non-option lines %, pause codes a line, ominous keywords %, `{d}`, HEART and PUNCH counts. For the before/after table in every rewrite commit |
+| `python3 core/tools/story_stats.py [PACK...] [--csv FILE]` | Style metrics per pack: lines, words, words a line, narrator parentheticals %, two-word non-option lines %, pause codes a line, ominous keywords %, `{d}`, HEART and PUNCH counts, and `box27`: lines said beside a portrait (any speaker but the narrator) that need a 4th line at the real 27-column width (`ui_dialog.c`; the lint allows 28; report only, 89 in the game today). For the before/after table in every rewrite commit |
 | `python3 core/tools/story_read.py PACK... [--ops]` | The reading script: each script in file order with speaker names resolved (cast names and roster ids), expressions, lines broken at `/` and `//`, tags, choices with their labels, and the waits, beats, pushes, flags and quests between them. The rewrite is reviewed from this |
 | `python3 tools/langstale.py [--quiet]` | UI translations (`core/lang/es*.tsv`) whose English no longer matches any C string literal in `core/src`, `core/gen` or `core/include` (a reworded literal silently drops its Spanish). Report only. Baseline: 3 of 3,275 rows (`es.tsv` 167, 168, 199) |
 
@@ -548,7 +549,10 @@ Runner: `core/tests/scripts/story_es.txt` switches to Spanish (`lang es`),
 shoots Ep 1.1, Ep 2.2, the S117 offer and the quest log at both
 resolutions, then switches back. It pins no words on purpose: while the
 English is rewritten, a line without a Spanish row must fall back to its
-English in the same box.
+English in the same box. It checks, without words, that the language took
+and survives every scene load (`expect-lang`) and that a dialogue line is
+up at each dialogue shot (`expect-text ""`); the box fit is read from the
+shots.
 
 ## Memory
 
