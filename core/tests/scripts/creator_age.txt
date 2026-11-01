@@ -1,0 +1,62 @@
+# SCENE_CREATOR (creator): the Age row (LS0). A new citizen's saved life
+# stage is picked on the Personality tab (Adult, Baby, Toddler, Child, Teen,
+# Elder); a child moves in. Then the story protagonist, whose Age row only
+# offers grown-up stages ("The hero is a grown-up").
+scene CREATOR -1
+expect-scene CREATOR
+wait 30
+# ---- Personality: the Age row is the last one -----------------------------
+press R
+press R
+press R
+press R
+press R
+press R
+wait 10
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+wait 6
+shot 01_age_adult
+press RIGHT
+wait 4
+press RIGHT
+wait 4
+press RIGHT
+wait 8
+shot 02_age_child
+# ---- move the child in -------------------------------------------------------
+press START
+wait 10
+press A
+wait 18
+type "Sprout\n"
+wait 45
+shot 03_child_moving_in
+wait 40
+press A
+wait 10
+# ---- the story protagonist: kid stages are locked ----------------------------
+scene CREATOR -3
+wait 25
+press R
+press R
+press R
+press R
+press R
+press R
+wait 10
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press RIGHT
+wait 4
+press RIGHT
+wait 4
+press RIGHT
+wait 8
+shot 04_player_age_locked
