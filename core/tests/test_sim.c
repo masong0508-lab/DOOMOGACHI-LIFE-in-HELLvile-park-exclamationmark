@@ -353,19 +353,19 @@ TEST(sim_romance_rules)
     a = town_res(1);
     b = town_res(2);
     a->status = b->status = RES_ALIVE;
-    a->romance = ROMANCE_ANY;
+    resident_set_romance(a, ROMANCE_ANY);
     b->pronoun = PRONOUN_SHE;
     CHECK(sim_romance_ok(1, 2));
-    a->romance = ROMANCE_HE;
+    resident_set_romance(a, ROMANCE_HE);
     CHECK(!sim_romance_ok(1, 2));
     b->pronoun = PRONOUN_HE;
     CHECK(sim_romance_ok(1, 2));
-    a->romance = ROMANCE_THEY;
+    resident_set_romance(a, ROMANCE_THEY);
     b->pronoun = PRONOUN_XE;
     CHECK(sim_romance_ok(1, 2));
-    a->romance = ROMANCE_NONE;
+    resident_set_romance(a, ROMANCE_NONE);
     CHECK(!sim_romance_ok(1, 2));
-    a->romance = ROMANCE_ANY;
+    resident_set_romance(a, ROMANCE_ANY);
     rel_set_kind(1, 2, REL_FAMILY);
     CHECK(!sim_romance_ok(1, 2));                    /* never family */
     /* kids never, teens only with teens (premade traits) */
@@ -376,7 +376,7 @@ TEST(sim_romance_rules)
         for (i = 0; i < DOOMO_DISTRICT_SIZE && (kid < 0 || adult < 0); i++) {
             int t = roster_traits(i);
             if ((t & ROSTER_T_KID) && kid < 0) kid = i;
-            if (!(t & (ROSTER_T_KID | ROSTER_T_TEEN)) && adult < 0 && town_res(i)->romance == ROMANCE_ANY) adult = i;
+            if (!(t & (ROSTER_T_KID | ROSTER_T_TEEN)) && adult < 0 && RES_ROMANCE(town_res(i)) == ROMANCE_ANY) adult = i;
         }
         if (kid >= 0 && adult >= 0) {
             CHECK(!sim_romance_ok(adult, kid));
@@ -396,7 +396,8 @@ TEST(sim_confession_dating_wedding)
     rel_remove_all(30);
     rel_remove_all(31);
     sim_init();
-    a->romance = b->romance = ROMANCE_ANY;
+    resident_set_romance(a, ROMANCE_ANY);
+    resident_set_romance(b, ROMANCE_ANY);
     rel_adjust(30, 31, 90);
     rel_set_crush(31, 30, 1);
     for (tries = 0; tries < 20 && !ok; tries++) ok = sim_confess(30, 31, 40);
@@ -442,7 +443,8 @@ TEST(sim_babies_blend_their_parents)
     CHECK(k->look.species == a->look.species || k->look.species == b->look.species);
     CHECK(k->look.skin == a->look.skin || k->look.skin == b->look.skin);
     CHECK_EQ(k->look.body, BODY_TINY);
-    CHECK_EQ(k->romance, ROMANCE_NONE);
+    CHECK_EQ(RES_ROMANCE(k), ROMANCE_NONE);
+    CHECK_EQ(RES_STAGE(k), LIFE_BABY);               /* LS0 */
     CHECK_EQ(rel_kind(40, baby), REL_FAMILY);
     CHECK_EQ(rel_kind(41, baby), REL_FAMILY);
     CHECK_EQ(progress_get(PROG_BABIES), 1);

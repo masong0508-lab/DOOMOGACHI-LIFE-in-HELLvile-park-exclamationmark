@@ -23,7 +23,9 @@ enum {
     RK_HEADER,      /* section caption, never selected                       */
     RK_ENUM,        /* value = base + index, index < count; names[index] (or
                        a number when names == NULL); clist = CLIST_* unlock
-                       list or CR_NOLIST                                      */
+                       list or CR_NOLIST; aux = 0 (the whole byte) or the
+                       bit mask of a field that shares its byte (`romance`:
+                       ROMANCE_PREF_MASK "Crushes on", LIFE_STAGE_MASK "Age") */
     RK_SLIDER,      /* 0..count-1; names = { low end, high end }             */
     RK_PAINT,       /* paint colour 0..31 (swatch picker)                    */
     RK_PAINT_NONE,  /* index 0 = LOOK_NO_COLOR, 1..32 = paint (hair highlight) */
@@ -47,6 +49,8 @@ typedef struct CrRow {
     const char *label;
     const char *const *names;
 } CrRow;
+/* The Age row (LS0): an RK_ENUM on the life-stage bits of `romance`. */
+#define CR_IS_AGE_ROW(row) ((row)->kind == RK_ENUM && (row)->aux == LIFE_STAGE_MASK)
 
 typedef struct CrTab {
     const char *name;           /* "Head & Face"                         */

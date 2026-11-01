@@ -253,7 +253,8 @@ static void open_advice(void)
         doomo_snprintf(adv_txt[adv_n], 28, "Confess to %s", doomo_town.res[crush].name);
         adv_n++;
     }
-    if (partner >= 0 && partner < DOOMO_MAX_RESIDENTS && rel_kind(R.id, partner) == REL_DATING) {
+    if (partner >= 0 && partner < DOOMO_MAX_RESIDENTS && rel_kind(R.id, partner) == REL_DATING &&
+        sim_marriage_ok(R.id, partner)) {                    /* LS0: teens never */
         adv_kind[adv_n] = ADV_PROPOSE; adv_target[adv_n] = (int16_t)partner;
         doomo_snprintf(adv_txt[adv_n], 28, "Propose to %s", doomo_town.res[partner].name);
         adv_n++;
@@ -812,7 +813,7 @@ static int about_line(int i, char *buf, int cap, uint8_t *icon)
     case 2: *icon = ICON_SPARK; doomo_snprintf(buf, cap, "%s, %s", doomo_species_names[r->look.species % SPECIES_COUNT],
                                         doomo_pronoun_names[r->pronoun % PRONOUN_COUNT]); return 1;
     case 3: *icon = ICON_EGG; doomo_snprintf(buf, cap, "Birthday: %s %d", doomo_month_names[m], r->bday_day); return 1;
-    case 4: *icon = ICON_HEART; doomo_snprintf(buf, cap, "Falls for: %s", doomo_romance_names[r->romance % ROMANCE_COUNT]); return 1;
+    case 4: *icon = ICON_HEART; doomo_snprintf(buf, cap, "Falls for: %s", doomo_romance_names[RES_ROMANCE(r) % ROMANCE_COUNT]); return 1;
     case 5: *icon = ICON_FOOD; doomo_snprintf(buf, cap, "Loves: %s", doomo_food_names[r->like_food % FOOD_COUNT]); return 1;
     case 6: *icon = ICON_X; doomo_snprintf(buf, cap, "Hates: %s", doomo_food_names[r->hate_food % FOOD_COUNT]); return 1;
     case 7: *icon = ICON_STAR; doomo_snprintf(buf, cap, "Hobby: %s", doomo_hobby_names[r->like_hobby % HOBBY_COUNT]); return 1;

@@ -126,8 +126,28 @@ int sim_traits(int id)
     if (!n[0] || strncmp(n, r->name, DOOMO_NAME_LEN) != 0) return 0;
     return roster_traits(id);
 }
-int sim_is_kid(int id) { return (sim_traits(id) & ROSTER_T_KID) != 0; }
-int sim_is_teen(int id) { return (sim_traits(id) & ROSTER_T_TEEN) != 0; }
+int sim_life_stage(int id)
+{
+    const DoomoResident *r = town_res(id);
+    int s, rs;
+    const char *n;
+    if (!r) return LIFE_ADULT;
+    s = RES_STAGE(r);
+    if (s >= LIFE_COUNT) s = LIFE_CHILD;                   /* fail safe   */
+    /* a premade citizen who still carries their roster name is still that
+     * person: a makeover (RF_CUSTOM) or a saved stage never makes them
+     * older than the roster says (a canon kid stays a kid) */
+    if (id < DOOMO_MAX_RESIDENTS && doomo_town.population == TOWN_POP_PREMADE) {
+        n = roster_name(id);
+        if (n[0] && strncmp(n, r->name, DOOMO_NAME_LEN) == 0) {
+            rs = roster_stage(id);
+            if (life_stage_youth(rs) > life_stage_youth(s)) s = rs;
+        }
+    }
+    return s;
+}
+int sim_is_kid(int id) { return life_stage_youth(sim_life_stage(id)) >= 2; }   /* baby, toddler, child */
+int sim_is_teen(int id) { return sim_life_stage(id) == LIFE_TEEN; }
 
 int sim_alive_ok(const DoomoResident *r)
 {
@@ -214,20 +234,34 @@ static int pronoun_group(int p)
     return p == PRONOUN_SHE ? ROMANCE_SHE : p == PRONOUN_HE ? ROMANCE_HE : ROMANCE_THEY;
 }
 
+/* The one romance gate (LS0). The safety half is checked for BOTH sides
+ * here, so a caller that asks about one direction only (a one-way crush)
+ * can never pair a non-adult with anyone: both alive, and the life stages
+ * of both allow it (adults with adults, teens with teens, babies and kids
+ * never). Then `from`'s preference must accept `to`'s pronoun (a crush is
+ * one-way, so `to`'s own preference only decides the answer to a
+ * confession), and family never. */
 int sim_romance_ok(int from, int to)
 {
     const DoomoResident *a = town_res(from), *b = town_res(to);
-    int ta, tb;
+    int pa;
     if (!a || !b || from == to) return 0;
     if (a->status != RES_ALIVE || b->status != RES_ALIVE) return 0;
-    if (a->romance == ROMANCE_NONE) return 0;
-    if (a->romance != ROMANCE_ANY && a->romance != pronoun_group(b->pronoun)) return 0;
-    ta = sim_traits(from);
-    tb = sim_traits(to);
-    if ((ta | tb) & ROSTER_T_KID) return 0;              /* never kids   */
-    if (((ta & ROSTER_T_TEEN) != 0) != ((tb & ROSTER_T_TEEN) != 0)) return 0;
+    if (!life_romance_pair_ok(sim_life_stage(from), sim_life_stage(to))) return 0;
+    pa = RES_ROMANCE(a);
+    if (pa == ROMANCE_NONE) return 0;
+    if (pa != ROMANCE_ANY && pa != pronoun_group(b->pronoun)) return 0;
     if (rel_kind(from, to) == REL_FAMILY) return 0;
     return 1;
+}
+
+int sim_marriage_ok(int a, int b)
+{
+    /* the safety half only: a dating couple got past sim_romance_ok when
+     * they got together, and adult couples propose exactly as before LS0 */
+    if (!town_res(a) || !town_res(b) || a == b) return 0;
+    if (rel_kind(a, b) == REL_FAMILY) return 0;
+    return life_marriage_pair_ok(sim_life_stage(a), sim_life_stage(b));
 }
 
 /* ---------------------------------------------------------------------- */
@@ -319,7 +353,7 @@ static int decide_activity(int id, const DoomoResident *r)
     int h = town_hour(), wd = doomo_town.weekday, weekend = wd >= 5;
     uint32_t hh = doomo_hash32((uint32_t)id * 2654435761u ^ doomo_town.seed ^
                                (doomo_town.day * 0x9E3779B1u) ^ ((uint32_t)h * 0x85EBCA6Bu));
-    int traits = sim_traits(id);
+    int traits = sim_traits(id), stage = RES_STAGE(r);
     int hell = RES_DISTRICT(id) || (r->flags & RF_HELLBORN);
     int sleep_at, wake_at, asleep, w[ACT_COUNT], total, i, pick;
     const uint8_t *p = r->persona;
@@ -333,6 +367,12 @@ static int decide_activity(int id, const DoomoResident *r)
         if (sim_s.night) return (hh & 3) ? ACT_HAUNTING : ACT_WANDERING;
         return (hh & 1) ? ACT_HOME : ((hh >> 1) & 1) ? ACT_PARK : ACT_CHURCH;
     }
+
+    /* the saved life stage (LS0) counts as much as the roster's traits:
+     * creator kids and sim babies keep kids' hours */
+    if (life_stage_youth(stage) >= 2) traits |= ROSTER_T_KID;     /* baby, toddler, child */
+    else if (stage == LIFE_TEEN && !(traits & ROSTER_T_KID)) traits |= ROSTER_T_TEEN;
+    else if (stage == LIFE_ELDER && !(traits & (ROSTER_T_KID | ROSTER_T_TEEN))) traits |= ROSTER_T_ELDER;
 
     /* chronotype */
     sleep_at = 22; wake_at = 6;

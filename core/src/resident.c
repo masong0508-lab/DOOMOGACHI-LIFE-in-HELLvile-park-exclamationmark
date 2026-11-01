@@ -851,7 +851,18 @@ int resident_sanitize(DoomoResident *r)
     for (i = 0; i < STAT_COUNT; i++) n += fix_max(&r->stat[i], 100);
     n += fix_enum(&r->status, RES_GHOST + 1, RES_ALIVE);
     n += fix_enum(&r->pronoun, PRONOUN_COUNT, PRONOUN_THEY);
-    n += fix_enum(&r->romance, ROMANCE_COUNT, ROMANCE_ANY);
+    {
+        /* romance = preference (bits 0..2) + life stage (bits 4..6); the
+         * reserved bits are cleared. A stage outside LIFE_* fails safe: it
+         * becomes LIFE_CHILD (no romance) rather than an adult. */
+        int pref = r->romance & ROMANCE_PREF_MASK;
+        int stage = (r->romance & LIFE_STAGE_MASK) >> LIFE_STAGE_SHIFT;
+        int bad = (r->romance & ~(ROMANCE_PREF_MASK | LIFE_STAGE_MASK)) != 0;
+        if (pref >= ROMANCE_COUNT) { pref = ROMANCE_ANY; bad = 1; }
+        if (stage >= LIFE_COUNT) { stage = LIFE_CHILD; bad = 1; }
+        r->romance = (uint8_t)(pref | (stage << LIFE_STAGE_SHIFT));
+        n += bad;
+    }
     n += fix_enum(&r->bday_month, 12, 0);
     n += fix_range(&r->bday_day, 1, 28, 1);
     n += fix_enum(&r->like_food, FOOD_COUNT, 0);
@@ -910,6 +921,59 @@ void resident_default(DoomoResident *r)
     r->like_food = 0; r->hate_food = 46; r->like_hobby = 0; r->like_music = 0;
     r->like_color = PAINT_BUBBLEGUM; r->fear = 0; r->catchphrase = 0;
     r->mood = MOOD_HAPPY; r->activity = ACT_HOME;
+}
+
+/* ---- life stage (resident.h) ---------------------------------------------- */
+const char *const doomo_life_stage_names[LIFE_COUNT] = {
+    "Adult", "Baby", "Toddler", "Child", "Teen", "Elder"
+};
+
+void resident_set_romance(DoomoResident *r, int romance)
+{
+    if (romance < 0 || romance >= ROMANCE_COUNT) romance = ROMANCE_ANY;
+    r->romance = (uint8_t)((r->romance & LIFE_STAGE_MASK) | (unsigned)romance);
+}
+
+void resident_set_stage(DoomoResident *r, int stage)
+{
+    if (stage < 0 || stage >= LIFE_COUNT) stage = LIFE_ADULT;
+    r->romance = (uint8_t)((r->romance & ROMANCE_PREF_MASK) | ((unsigned)stage << LIFE_STAGE_SHIFT));
+}
+
+int life_romance_pair_ok(int sa, int sb)
+{
+    if (sa < 0 || sa >= LIFE_COUNT || sb < 0 || sb >= LIFE_COUNT) return 0;
+    if (LIFE_IS_ADULT(sa) && LIFE_IS_ADULT(sb)) return 1;
+    return sa == LIFE_TEEN && sb == LIFE_TEEN;        /* teens: romance only */
+}
+
+int life_stage_youth(int stage)
+{
+    switch (stage) {
+    case LIFE_BABY:    return 4;
+    case LIFE_TODDLER: return 3;
+    case LIFE_CHILD:   return 2;
+    case LIFE_TEEN:    return 1;
+    default:           return 0;
+    }
+}
+
+int life_stage_next(int stage)
+{
+    switch (stage) {
+    case LIFE_BABY:    return LIFE_TODDLER;
+    case LIFE_TODDLER: return LIFE_CHILD;
+    case LIFE_CHILD:   return LIFE_TEEN;
+    case LIFE_TEEN:    return LIFE_ADULT;
+    case LIFE_ELDER:   return LIFE_ELDER;
+    default:           return stage == LIFE_ADULT ? LIFE_ELDER : LIFE_ADULT;
+    }
+}
+
+int life_marriage_pair_ok(int sa, int sb)
+{
+    if (sa < 0 || sa >= LIFE_COUNT || sb < 0 || sb >= LIFE_COUNT) return 0;
+    return LIFE_IS_ADULT(sa) && LIFE_IS_ADULT(sb);
 }
 
 int persona_type(const DoomoResident *r)

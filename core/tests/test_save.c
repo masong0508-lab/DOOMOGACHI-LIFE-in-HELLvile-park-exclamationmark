@@ -2,6 +2,7 @@
  * corruption handling (owner: foundation). */
 #include <stdlib.h>
 #include "test.h"
+#include "data/save_v1_fixtures.h"     /* LS0: two real version-1 saves */
 
 static DoomoTown snapshot;
 static uint8_t image[256 * 1024];
@@ -545,4 +546,123 @@ TEST(save_work_area_is_the_scratch_tail)
     CHECK(save_game(0));
     CHECK(load_game(0));
     nat_save_stream = 0;
+}
+
+/* ---- LS0: the life stage in saves ---------------------------------------- */
+TEST(save_life_stage_round_trips)
+{
+    uint32_t n0, n1;
+    int i;
+    /* an untouched Classic island: every premade's stage is its base
+     * record's (from the ROM), so re-stating it costs nothing */
+    town_new(TOWN_FREEPLAY, 7, TOWN_POP_PREMADE);
+    n0 = roundtrip("Classic, untouched (LS0)");
+    CHECK(n0 > 0);
+    for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) {
+        CHECK_EQ(RES_STAGE(town_res(i)), roster_stage(i));
+        resident_set_stage(town_res(i), roster_stage(i));
+    }
+    CHECK_EQ(roundtrip("Classic, stages re-stated"), n0);
+    /* changed stages ride in delta records and come back */
+    resident_set_stage(town_res(3), LIFE_TEEN);
+    resident_set_stage(town_res(ROSTER_ID_PIP), LIFE_ADULT);
+    resident_set_romance(town_res(ROSTER_ID_PIP), ROMANCE_HE);
+    n1 = roundtrip("Classic, two stages changed");
+    CHECK(n1 > 0 && n1 <= n0 + 16);
+    CHECK_EQ(RES_STAGE(town_res(3)), LIFE_TEEN);
+    CHECK_EQ(RES_STAGE(town_res(ROSTER_ID_PIP)), LIFE_ADULT);
+    CHECK_EQ(RES_ROMANCE(town_res(ROSTER_ID_PIP)), ROMANCE_HE);
+    /* full records (Empty island) and the player keep every stage */
+    town_new(TOWN_FREEPLAY, 3, TOWN_POP_EMPTY);
+    for (i = 0; i < LIFE_COUNT * ROMANCE_COUNT; i++) {
+        DoomoResident *r = town_res(i * 7);
+        resident_generate(r, 900u + (uint32_t)i);
+        resident_set_stage(r, i % LIFE_COUNT);
+        resident_set_romance(r, i / LIFE_COUNT);
+    }
+    resident_set_stage(&doomo_town.player, LIFE_ELDER);
+    CHECK(roundtrip("Empty, every stage x preference") > 0);
+    for (i = 0; i < LIFE_COUNT * ROMANCE_COUNT; i++) {
+        CHECK_EQ(RES_STAGE(town_res(i * 7)), i % LIFE_COUNT);
+        CHECK_EQ(RES_ROMANCE(town_res(i * 7)), i / LIFE_COUNT);
+    }
+    CHECK_EQ(RES_STAGE(&doomo_town.player), LIFE_ELDER);
+    /* Random island deltas */
+    town_new(TOWN_FREEPLAY, 31337, TOWN_POP_RANDOM);
+    resident_set_stage(town_res(10), LIFE_CHILD);
+    resident_set_stage(town_res(900), LIFE_BABY);
+    CHECK(roundtrip("Random, two stages changed") > 0);
+    CHECK_EQ(RES_STAGE(town_res(10)), LIFE_CHILD);
+    CHECK_EQ(RES_STAGE(town_res(900)), LIFE_BABY);
+    CHECK_EQ(RES_STAGE(town_res(11)), LIFE_ADULT);
+}
+
+/* Real version-1 saves (made by the pre-LS0 codec, data/save_v1_fixtures.h)
+ * still load: residents with no known stage are adults, the roster's kids,
+ * teens and elders and the sim's babies get theirs back, and the romance
+ * the old one-way hole let in is undone when the sim starts. */
+TEST(save_version1_loads_with_life_stages)
+{
+    DoomoResident *r;
+    uint32_t n;
+    int i;
+    CHECK_EQ(save_v1_classic[4], 1);                       /* really version 1 */
+    CHECK(save_deserialize(save_v1_classic, sizeof(save_v1_classic)));
+    CHECK_EQ(doomo_town.population, TOWN_POP_PREMADE);
+    CHECK_EQ(RES_STAGE(town_res(V1A_KID_UNTOUCHED)), LIFE_CHILD);
+    r = town_res(V1A_KID_RENAMED);
+    CHECK_STR(r->name, "Kiddo");
+    CHECK_EQ(RES_STAGE(r), LIFE_CHILD);                      /* the delta kept its base's */
+    r = town_res(V1A_KID_MADEOVER);
+    CHECK(r->flags & RF_CUSTOM);
+    CHECK_EQ(RES_ROMANCE(r), ROMANCE_ANY);
+    CHECK_EQ(RES_STAGE(r), LIFE_CHILD);
+    CHECK_EQ(RES_ROMANCE(town_res(V1A_TEEN)), ROMANCE_ANY);
+    CHECK_EQ(RES_STAGE(town_res(V1A_TEEN)), LIFE_TEEN);
+    CHECK_EQ(RES_STAGE(town_res(V1A_ELDER)), LIFE_ELDER);
+    CHECK_EQ(RES_STAGE(town_res(V1A_ADULT1)), LIFE_ADULT);
+    CHECK_EQ(RES_STAGE(town_res(V1A_ADULT2)), LIFE_ADULT);
+    CHECK_EQ(RES_STAGE(town_res(V1A_BABY)), LIFE_BABY);    /* a pre-LS0 sim baby */
+    CHECK_EQ(RES_ROMANCE(town_res(V1A_BABY)), ROMANCE_NONE);
+    for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) {
+        if (town_res(i)->status == RES_EMPTY) continue;
+        CHECK_MSG(resident_sanitize(town_res(i)) == 0, "resident %d", i);
+        if (i != V1A_BABY && i != V1A_KID_RENAMED)
+            CHECK_MSG(RES_STAGE(town_res(i)) == roster_stage(i), "resident %d stage %d", i,
+                      RES_STAGE(town_res(i)));
+    }
+    /* the stored illegal romance is still on the graph... */
+    CHECK_EQ(rel_kind(V1A_KID_MADEOVER, V1A_ADULT1), REL_DATING);
+    CHECK(rel_has_crush(V1A_ADULT2, V1A_KID_RENAMED));
+    /* ...until the sim starts (every load does sim_init) */
+    sim_init();
+    CHECK_EQ(rel_kind(V1A_KID_MADEOVER, V1A_ADULT1), REL_FRIEND);
+    CHECK(!rel_has_crush(V1A_ADULT2, V1A_KID_RENAMED));
+    CHECK_EQ(rel_kind(V1A_ADULT1, V1A_ADULT3), REL_MARRIED);   /* adults untouched */
+    /* saved again it is a version-2 save of about the same size, and the
+     * stages survive the round trip */
+    n = roundtrip("version-1 Classic re-saved");
+    CHECK(n > 0);
+    CHECK_EQ(image[4] | (image[5] << 8), DOOMO_SAVE_VERSION);
+    printf("      version 1: %u bytes, re-saved as version %d: %u bytes\n",
+           (unsigned)sizeof(save_v1_classic), DOOMO_SAVE_VERSION, (unsigned)n);
+    CHECK(n <= sizeof(save_v1_classic) + 32);
+    CHECK_EQ(RES_STAGE(town_res(V1A_BABY)), LIFE_BABY);
+    CHECK_EQ(RES_STAGE(town_res(V1A_KID_MADEOVER)), LIFE_CHILD);
+    /* an Empty island of version 1: full records, everyone an adult */
+    CHECK(save_deserialize(save_v1_empty, sizeof(save_v1_empty)));
+    CHECK_EQ(town_count(-1), 2);
+    CHECK_EQ(RES_STAGE(town_res(0)), LIFE_ADULT);
+    CHECK_EQ(RES_STAGE(town_res(DOOMO_DISTRICT_SIZE)), LIFE_ADULT);
+    CHECK_EQ(RES_ROMANCE(town_res(DOOMO_DISTRICT_SIZE)), ROMANCE_SHE);
+    CHECK(town_res(0)->flags & RF_CUSTOM);
+    /* versions outside 1..DOOMO_SAVE_VERSION are refused */
+    {
+        static uint8_t v0[sizeof(save_v1_empty)];
+        memcpy(v0, save_v1_empty, sizeof(v0));
+        v0[4] = 0;
+        CHECK(!save_deserialize(v0, sizeof(v0)));
+        v0[4] = DOOMO_SAVE_VERSION + 1;
+        CHECK(!save_deserialize(v0, sizeof(v0)));
+    }
 }

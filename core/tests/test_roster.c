@@ -28,7 +28,7 @@ static int is_demonic(int sp)
 /* romance preference of `who` accepts `other`'s pronoun group */
 static int accepts(const DoomoResident *who, const DoomoResident *other)
 {
-    switch (who->romance) {
+    switch (RES_ROMANCE(who)) {
     case ROMANCE_ANY:  return 1;
     case ROMANCE_NONE: return 0;
     case ROMANCE_SHE:  return other->pronoun == PRONOUN_SHE;
@@ -168,8 +168,16 @@ TEST(roster_flags_and_districts)
         else if (r->flags & RF_HELLBORN) hellborn_in_hill++;
         if (r->flags & RF_STORY_NPC) story++;
         if (roster_traits(i) & ROSTER_T_SOFTIE) CHECK(r->flags & RF_HELLBORN);
-        if (roster_traits(i) & ROSTER_T_KID) CHECK(r->romance == ROMANCE_NONE);
+        if (roster_traits(i) & ROSTER_T_KID) CHECK(RES_ROMANCE(r) == ROMANCE_NONE);
+        /* LS0: the ROM record carries the life stage its traits give */
+        CHECK_MSG(RES_STAGE(r) == roster_stage(i), "[%d] stage %d, traits say %d", i,
+                  RES_STAGE(r), roster_stage(i));
+        CHECK_MSG((r->romance & ~(ROMANCE_PREF_MASK | LIFE_STAGE_MASK)) == 0, "[%d] reserved romance bits", i);
     }
+    CHECK_EQ(roster_stage(-1), LIFE_ADULT);
+    CHECK_EQ(roster_stage(ROSTER_ID_PIP), LIFE_CHILD);
+    CHECK_EQ(roster_stage(ROSTER_ID_NANA_PUDDING), LIFE_ELDER);
+    CHECK_EQ(roster_stage(ROSTER_ID_GRUMBLEGUTS), LIFE_ADULT);
     CHECK_EQ(story, NPC_COUNT);
     CHECK_EQ(hellborn_in_hill, 1);                       /* Rivet, the runaway */
     CHECK_EQ(roster_traits(-1), 0);
@@ -234,7 +242,7 @@ TEST(roster_uses_every_catalog_option)
         const int v[24] = { l->species, l->body, l->head_shape, l->eye_style, l->brow_style,
             l->nose_style, l->mouth_style, l->ears, l->hair_style, l->facial_hair, l->horns,
             l->tail, l->wings, l->halo, l->marking, l->top, l->bottom, l->shoes, l->hat,
-            l->accessory, l->aura, l->pattern, r->pronoun, r->romance };
+            l->accessory, l->aura, l->pattern, r->pronoun, RES_ROMANCE(r) };
         for (k = 0; k < 24; k++) seen[k][v[k]] = 1;
         food[r->like_food] = hobby[r->like_hobby] = music[r->like_music] = 1;
         fear[r->fear] = phrase[r->catchphrase] = month[r->bday_month] = 1;

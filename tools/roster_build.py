@@ -38,6 +38,20 @@ MONTHS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN",
 TRAIT_NAMES = ["SOFTIE", "KID", "ELDER", "VAPER", "HOLY", "LOYALIST",
                "INFILTRATOR", "NIGHT_OWL", "TEEN"]
 
+# LIFE_* (core/include/doomo/resident.h): the life stage a premade citizen's
+# traits give, stored in bits 4..6 of the record's `romance` byte.
+LIFE_ADULT, LIFE_BABY, LIFE_TODDLER, LIFE_CHILD, LIFE_TEEN, LIFE_ELDER = 0, 1, 2, 3, 4, 5
+
+
+def life_stage(traits):
+    if traits & (1 << TRAIT_NAMES.index("KID")):
+        return LIFE_CHILD
+    if traits & (1 << TRAIT_NAMES.index("TEEN")):
+        return LIFE_TEEN
+    if traits & (1 << TRAIT_NAMES.index("ELDER")):
+        return LIFE_ELDER
+    return LIFE_ADULT
+
 # critter-folk species (the vaguely furry heart of the cast)
 CRITTERS = {"CATFOLK", "FOXKIN", "BUNNYKIN", "BEARKIN", "PUPKIN", "MOUSEKIN",
             "SHEEPKIN", "RACCOONKIN", "OWLKIN", "FROGLING", "MOTHKIN"}
@@ -954,7 +968,11 @@ def emit(schema, by_id, edges, story):
         pers = ",".join(str(v[k]) for k in ("movement", "speech", "expression", "attitude", "quirk"))
         stats = ",".join(str(v[k]) for k in ("hunger", "happy", "hygiene", "energy", "health",
                                              "sanity", "corruption", "social"))
-        rest = [v_status, v["flags"], v["pronoun"], v["romance"], v["birthday"][0],
+        # LS0: `romance` packs the ROMANCE_* preference (bits 0..2) and the
+        # LIFE_* stage (bits 4..6, resident.h) the traits give: KID -> CHILD 3,
+        # TEEN 4, ELDER 5, else LIFE_ADULT 0. roster_stage() reads the same traits.
+        rest = [v_status, v["flags"], v["pronoun"], v["romance"] | (life_stage(v["traits"]) << 4),
+                v["birthday"][0],
                 v["birthday"][1], v["food"], v["hobby"], v["music"], v["color"], v["hates"],
                 v["fear"], v["phrase"], 0, 0, v["mood"], v["activity"], 0]
         w("    /* %3d */ { {%s}, %s, {%s}, {%s}, {%s}, %s }," % (

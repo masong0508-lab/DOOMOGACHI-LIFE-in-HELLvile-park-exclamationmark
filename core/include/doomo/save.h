@@ -16,7 +16,11 @@
 #include "types.h"
 
 #define DOOMO_SAVE_MAGIC   0x4F4F4D44u  /* "DMOO" */
-#define DOOMO_SAVE_VERSION 1
+/* 2 (LS0): every resident record carries a 3-bit life stage (resident.h).
+ * Version-1 saves still load: their residents get the stage the roster or
+ * a sim baby implies, everyone else is an adult (town_life_migrate_v1). */
+#define DOOMO_SAVE_VERSION 2
+#define DOOMO_SAVE_VERSION_MIN 1   /* oldest version save_deserialize reads */
 
 /* Serialise doomo_town into buf. Returns bytes written or 0 if cap too small.
  * (The codec's work area is the tail of plat_save_scratch(), so buf must

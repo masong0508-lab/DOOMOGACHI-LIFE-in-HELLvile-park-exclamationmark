@@ -104,7 +104,7 @@ typedef struct DoomoResident {
     uint8_t   status;               /* 79  RES_* */
     uint8_t   flags;                /* 80  RF_* */
     uint8_t   pronoun;              /* 81  PRONOUN_* */
-    uint8_t   romance;              /* 82  ROMANCE_* */
+    uint8_t   romance;              /* 82  ROMANCE_* bits 0..2, LIFE_* bits 4..6 */
     uint8_t   bday_month;           /* 83  0..11 */
     uint8_t   bday_day;             /* 84  1..28 */
     uint8_t   like_food;            /* 85  0..FOOD_COUNT-1 */
@@ -123,6 +123,55 @@ typedef struct DoomoResident {
 
 DOOMO_STATIC_ASSERT(sizeof(DoomoLook) == 48, look_is_48_bytes);
 DOOMO_STATIC_ASSERT(sizeof(DoomoResident) == 96, resident_is_96_bytes);
+
+/* ---- life stage (LS0) ----------------------------------------------------
+ * Every resident has an explicit, saved life stage. It lives in bits 4..6 of
+ * `romance` (the ROMANCE_* preference keeps bits 0..2; bits 3 and 7 are
+ * reserved and always 0), so DoomoResident stays 96 bytes. Never compare
+ * `romance` directly: use RES_ROMANCE() / RES_STAGE() and the setters.
+ *
+ * Stages (user decision 2026-11-01): BABY (newborn: stork, adoption, sim
+ * births), TODDLER, CHILD, TEEN, ADULT, ELDER. Kids grow up over time:
+ * life_stage_next() is the order; the timing (Aging option) is F4's.
+ * LIFE_ADULT stays 0 so every old record (stage bits 0) is an adult.
+ *
+ * Romance rules (sim_romance_ok, sim.h, is the one gate everybody calls):
+ *   BABY, TODDLER, CHILD  never any romance, in either direction.
+ *   TEEN        crushes, confessions and dating with same-age peers (other
+ *               TEENs) only; never adult-minor, never a proposal or a
+ *               wedding, never anything suggestive or mature.
+ *   ADULT/ELDER romance with each other (ELDER counts as an adult).
+ * Premade citizens carry the stage their roster traits give (KID -> CHILD,
+ * TEEN, ELDER) in their ROM record (tools/roster_build.py), so an untouched
+ * Classic island saves no extra bit. Custom citizens pick theirs in the
+ * creator (Age row), sim-born babies start as LIFE_BABY. Old saves (version
+ * 1) load as LIFE_ADULT except where the roster or a sim baby says
+ * otherwise (town_life_migrate_v1). */
+enum { LIFE_ADULT = 0, LIFE_BABY, LIFE_TODDLER, LIFE_CHILD, LIFE_TEEN, LIFE_ELDER,
+       LIFE_COUNT };
+#define ROMANCE_PREF_MASK  0x07u
+#define LIFE_STAGE_SHIFT   4
+#define LIFE_STAGE_MASK    0x70u
+#define RES_ROMANCE(r)     ((int)((r)->romance & ROMANCE_PREF_MASK))
+#define RES_STAGE(r)       ((int)(((r)->romance & LIFE_STAGE_MASK) >> LIFE_STAGE_SHIFT))
+#define LIFE_IS_ADULT(s)   ((s) == LIFE_ADULT || (s) == LIFE_ELDER)
+#define LIFE_IS_MINOR(s)   (!LIFE_IS_ADULT(s))
+/* Set one half of `romance`, keeping the other. Out-of-range values clamp
+ * to ROMANCE_ANY / LIFE_ADULT like resident_sanitize. */
+void resident_set_romance(DoomoResident *r, int romance);
+void resident_set_stage(DoomoResident *r, int stage);
+/* Pair rules on stages alone (no preference, status or kin): may a and b
+ * have any romance at all (crush, confession, dating)? May they marry? */
+int  life_romance_pair_ok(int stage_a, int stage_b);
+int  life_marriage_pair_ok(int stage_a, int stage_b);
+/* How young a stage is: 0 ADULT / ELDER, 1 TEEN, 2 CHILD, 3 TODDLER, 4 BABY
+ * ("the younger of two stages" rules). */
+int  life_stage_youth(int stage);
+/* The stage a resident grows into: BABY -> TODDLER -> CHILD -> TEEN ->
+ * ADULT -> ELDER (ELDER stays). Bad values give LIFE_ADULT. */
+int  life_stage_next(int stage);
+/* "Adult", "Baby", "Toddler", "Child", "Teen", "Elder" (creator Age row). */
+extern const char *const doomo_life_stage_names[LIFE_COUNT];
 
 /* Hellvile Park sits at the heart of HaHaland (the good place) and is split
  * in two: Hillvile, the good side, and Hellvile, the bad side (built on the

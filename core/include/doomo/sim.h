@@ -132,7 +132,27 @@ int  sim_problem_raise(int resident, int kind, int other, int item);
 
 /* Social helpers (also used by the UI to show hearts / warnings). */
 int  sim_compat(int a, int b);            /* -6..+6 personality + likes   */
-int  sim_romance_ok(int from, int to);    /* from could fall for to       */
+/* from could fall for to. The ONE romance gate (LS0): checks both sides
+ * (alive; life stages: adults with adults, teens with teens, never a baby
+ * or kid; never family) and from's preference against to's pronoun. Every
+ * crush, confession, date and rekindle goes through it (proposals,
+ * weddings and babies through sim_marriage_ok), and so must any later
+ * romance, family-partner or mature hook. */
+int  sim_romance_ok(int from, int to);
+/* May a and b get engaged / married / have a baby: both adults (an ELDER
+ * counts; teens never marry, babies and kids never anything) and not
+ * family. The safety half only (no preference or status: the couple met
+ * the full gate when they got together). */
+int  sim_marriage_ok(int a, int b);
+/* The LIFE_* stage (resident.h) the sim uses for a resident: the saved
+ * stage, made younger by the roster for a premade citizen who still has
+ * their roster name (a makeover never ages a canon kid up). */
+int  sim_life_stage(int id);
+/* Quietly undo every romance the gate no longer allows (crush bits, dating
+ * and married edges become friends, crush / confession / proposal problems
+ * go): after a load and after the creator changes someone's age. id = -1
+ * sweeps the whole town. Returns how many things it undid. */
+int  sim_romance_sweep(int id);
 int  sim_partner_of(int id);              /* dating / married partner, -1 */
 /* Ask a dating resident to propose to their partner right now (player
  * advice); returns the reaction. */

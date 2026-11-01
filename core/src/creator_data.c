@@ -15,6 +15,8 @@
 #define HDR(lbl)                    { RK_HEADER, CR_NOFIELD, 0, 0, CR_NOLIST, 0, lbl, NULL }
 #define ENUM_L(lbl, m, n, nm, cl)   { RK_ENUM, LK(m), n, 0, cl, 0, lbl, nm }
 #define ENUM_R(lbl, m, n, nm)       { RK_ENUM, OFS(m), n, 0, CR_NOLIST, 0, lbl, nm }
+/* an enum on the bits `mask` of a shared byte (romance: preference + age) */
+#define ENUM_RM(lbl, m, n, nm, mask) { RK_ENUM, OFS(m), n, 0, CR_NOLIST, mask, lbl, nm }
 #define SLIDE_L(lbl, m, n, nm)      { RK_SLIDER, LK(m), n, 0, CR_NOLIST, 0, lbl, nm }
 #define SLIDE_R(lbl, m, n, nm)      { RK_SLIDER, OFS(m), n, 0, CR_NOLIST, 0, lbl, nm }
 #define PAINT_L(lbl, m)             { RK_PAINT, LK(m), PAL_PAINT_COUNT, 0, CR_NOLIST, 0, lbl, NULL }
@@ -151,13 +153,16 @@ static const CrRow rows_persona[] = {
     SLIDE_R("Expression", persona[PERS_EXPRESSION], 16, n_expr),
     SLIDE_R("Attitude", persona[PERS_ATTITUDE], 16, n_attitude),
     SLIDE_R("Quirk", persona[PERS_QUIRK], 16, n_quirk),
+    /* LS0: the saved life stage. Babies and kids never get romance, teens
+     * only with teens (sim.h sim_romance_ok); the story hero stays grown */
+    ENUM_RM("Age", romance, LIFE_COUNT, doomo_life_stage_names, LIFE_STAGE_MASK),
 };
 
 static const CrRow rows_profile[] = {
     { RK_NAME, OFS(name), 0, 0, CR_NOLIST, 0, "Name", NULL },
     { RK_NICK, CR_NOFIELD, 0, 0, CR_NOLIST, 0, "Nickname", NULL },
     ENUM_R("Pronouns", pronoun, PRONOUN_COUNT, doomo_pronoun_names),
-    ENUM_R("Crushes on", romance, ROMANCE_COUNT, doomo_romance_names),
+    ENUM_RM("Crushes on", romance, ROMANCE_COUNT, doomo_romance_names, ROMANCE_PREF_MASK),
     HDR("Birthday"),
     ENUM_R("Month", bday_month, 12, doomo_month_names),
     { RK_ENUM, OFS(bday_day), 28, 1, CR_NOLIST, 0, "Day", NULL },

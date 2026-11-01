@@ -12,8 +12,8 @@
  *
  * The ticker ("Hell's Biggest Flirt", S173's reward): once a day at 13:00
  * the Hellvile Herald runs one line about him - a flirt with an ADULT
- * citizen (never a KID or a TEEN: the sim's own romance age gate, plus the
- * roster traits checked again here), the Gate, Father Fuzz's horror, his
+ * citizen (never a baby, KID or TEEN: the sim's own romance gate, plus the
+ * saved life stage and the roster traits checked again here), the Gate, Father Fuzz's horror, his
  * little black book - and he is turned down kindly every single time
  * (story_final.md: "he is rejected kindly every time").
  *
@@ -109,14 +109,16 @@ static void copy(char *out, int cap, const char *s)
     out[i] = 0;
 }
 
-/* An adult he may flirt with: alive, not him, never a kid or a teen (the
- * sim's romance gate says the same; the traits are checked again here so a
- * change there can never put a child in his ticker). */
+/* An adult he may flirt with: alive, not him, never a baby, kid or teen
+ * (the sim's romance gate says the same; the saved life stage and the
+ * roster traits are checked again here so a change there can never put a
+ * child in his ticker). */
 static int adult_ok(int id)
 {
     const DoomoResident *r = town_res(id);
     if (id == ROSTER_ID_GRUMBLEGUTS || !r || r->status != RES_ALIVE) return 0;
     if (roster_traits(id) & (ROSTER_T_KID | ROSTER_T_TEEN)) return 0;
+    if (!LIFE_IS_ADULT(RES_STAGE(r)) || !LIFE_IS_ADULT(sim_life_stage(id))) return 0;
     return sim_romance_ok(ROSTER_ID_GRUMBLEGUTS, id);
 }
 

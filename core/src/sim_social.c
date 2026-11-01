@@ -3,8 +3,10 @@
  *   meeting at the same venue -> acquaintance -> friend -> best friend
  *   (rel_adjust promotes / demotes the casual kinds and counts
  *   PROG_FRIENDSHIPS itself), arguments -> rivals -> nemeses (the player
- *   can make up), crushes (romance preference, pronoun groups, kids never,
- *   teens only with teens), confessions (player advice sways them),
+ *   can make up), crushes (romance preference, pronoun groups, life stage:
+ *   babies and kids never, teens only with teens and never married - all
+ *   through sim_romance_ok / sim_marriage_ok, see sim.h and LS0 in
+ *   resident.h), confessions (player advice sways them),
  *   dating, proposals, weddings, breakups, exes, cross-border Hillvile <->
  *   Hellvile bonds, and - rarely - babies.
  *
@@ -50,7 +52,8 @@ void sim_edge_remove(int index)
     doomo_town.edge_count = (uint16_t)(n - 1);
 }
 
-void sim_social_init(void)
+/* taken / crush bitsets from the graph */
+static void rebuild_bits(void)
 {
     int i;
     memset(sim_s.taken, 0, sizeof(sim_s.taken));
@@ -67,6 +70,60 @@ void sim_social_init(void)
     }
     memcpy(sim_s.taken_nx, sim_s.taken, sizeof(sim_s.taken));
     memcpy(sim_s.crush_nx, sim_s.crush, sizeof(sim_s.crush));
+}
+
+/* ---------------------------------------------------------------------- */
+/* the life-stage sweep (LS0)                                               */
+/* May a and b keep a romance of this kind? Only the life stages and kin
+ * count here (not status or preference: a possessed partner stays a
+ * partner), so the sweep never undoes ordinary adult romance. */
+static int keep_romance(int a, int b, int married)
+{
+    int sa = sim_life_stage(a), sb = sim_life_stage(b);
+    if (rel_kind(a, b) == REL_FAMILY) return 0;
+    return married ? life_marriage_pair_ok(sa, sb) : life_romance_pair_ok(sa, sb);
+}
+
+int sim_romance_sweep(int id)
+{
+    int i, n = 0;
+    for (i = 0; i < doomo_town.edge_count; i++) {
+        DoomoEdge *e = &doomo_town.edges[i];
+        int a = e->a, b = e->b, k = e->kind & REL_KIND_MASK;
+        if (id >= 0 && a != id && b != id) continue;
+        if ((e->kind & (REL_CRUSH_AB | REL_CRUSH_BA)) && !keep_romance(a, b, 0)) {
+            e->kind &= (uint8_t)~(REL_CRUSH_AB | REL_CRUSH_BA);
+            n++;
+        }
+        if (k == REL_MARRIED && !keep_romance(a, b, 1)) {
+            /* teens who somehow married go back to dating; anyone else
+             * the stages forbid stays (just) friends */
+            e->kind = (uint8_t)((e->kind & ~REL_KIND_MASK) |
+                                (keep_romance(a, b, 0) ? REL_DATING : REL_FRIEND));
+            n++;
+        } else if (k == REL_DATING && !keep_romance(a, b, 0)) {
+            e->kind = (uint8_t)((e->kind & ~REL_KIND_MASK) | REL_FRIEND);
+            n++;
+        }
+    }
+    for (i = sim_problem_count() - 1; i >= 0; i--) {
+        const DoomoProblem *p = sim_problem(i);
+        int k = p ? p->kind : PROB_NONE;
+        if (k != PROB_CRUSH && k != PROB_CONFESS_HELP && k != PROB_PROPOSAL) continue;
+        if (id >= 0 && p->resident != id && p->other != id) continue;
+        if (p->other > DOOMO_PLAYER_ID || keep_romance(p->resident, p->other, k == PROB_PROPOSAL))
+            continue;
+        sim_problem_remove(i);
+        n++;
+    }
+    if (n) rebuild_bits();
+    return n;
+}
+
+void sim_social_init(void)
+{
+    rebuild_bits();
+    sim_romance_sweep(-1);          /* LS0: an old or edited save is made safe */
     sim_s.edge_cursor = 0;
 }
 
@@ -94,6 +151,15 @@ int sim_confess(int from, int to, int bonus)
     int chance, ok, v;
     if (!a || !b || from >= DOOMO_MAX_RESIDENTS || to >= DOOMO_MAX_RESIDENTS) return 0;
     rel_set_crush(from, to, 0);
+    if (!sim_romance_ok(from, to)) {
+        /* LS0: a pair the gate forbids never gets a confession, an answer
+         * or a headline - the crush (and its problems) just quietly go */
+        int pi;
+        if ((pi = sim_problem_find(from, PROB_CRUSH)) >= 0) sim_problem_remove(pi);
+        if ((pi = sim_problem_find(from, PROB_CONFESS_HELP)) >= 0) sim_problem_remove(pi);
+        bit_set(sim_s.crush, from, 0);
+        return 0;
+    }
     sim_s.stats.confessions++;
     v = rel_value(from, to);
     chance = 12 + v / 2 + sim_compat(from, to) * 4 + bonus;
@@ -147,6 +213,7 @@ int sim_propose(int from, int to, int bonus)
     if (!a || !b || from >= DOOMO_MAX_RESIDENTS || to >= DOOMO_MAX_RESIDENTS) return 0;
     if (rel_kind(from, to) != REL_DATING) return 0;
     if ((pi = sim_problem_find(from, PROB_PROPOSAL)) >= 0) sim_problem_remove(pi);
+    if (!sim_marriage_ok(from, to)) return 0;   /* LS0: teens never marry, quietly */
     sim_s.stats.proposals++;
     v = rel_value(from, to);
     chance = v - 20 + sim_compat(from, to) * 3 + bonus;
@@ -214,6 +281,8 @@ int sim_make_baby(int pa, int pb)
     uint32_t seed;
     if (!a || !b || pa >= DOOMO_MAX_RESIDENTS || pb >= DOOMO_MAX_RESIDENTS) return -1;
     if (a->status == RES_EMPTY || b->status == RES_EMPTY) return -1;
+    /* LS0: only two adults ever have a baby */
+    if (!life_marriage_pair_ok(sim_life_stage(pa), sim_life_stage(pb))) return -1;
     /* same district -> there; across the wall -> the more devilish parent
      * decides (hellspawn vs angel baby) */
     if (RES_DISTRICT(pa) == RES_DISTRICT(pb)) district = RES_DISTRICT(pa);
@@ -257,7 +326,8 @@ int sim_make_baby(int pa, int pb)
     baby.look.accessory = sim_chance(50) ? ACC_PACIFIER : ACC_NONE;
     baby.look.top = TOP_PAJAMAS;
     baby.look.hat = HAT_NONE;
-    baby.romance = ROMANCE_NONE;                       /* far too young  */
+    resident_set_romance(&baby, ROMANCE_NONE);        /* far too young  */
+    resident_set_stage(&baby, LIFE_BABY);             /* LS0            */
     {
         int i;
         for (i = 0; i < PERS_COUNT; i++)
@@ -313,6 +383,12 @@ const char *sim_advise_confess(int id, int target, int encourage)
         return r->persona[PERS_EXPRESSION] >= 8 ? "You're right... I'll keep it in my heart. *sniff*"
                                                 : "Okay. Forget I said anything.";
     }
+    if (!sim_romance_ok(id, target)) {
+        /* LS0: a pair the gate forbids (a kid, an adult and a teen) gets no
+         * confession and no romantic answer: the crush just quietly goes */
+        sim_confess(id, target, 0);
+        return "...Never mind. Let's go get ice cream.";
+    }
     r->level = (uint8_t)DOOMO_MIN(99, r->level + 2);
     if (sim_confess(id, target, 18)) {
         sim_stat_add(r, STAT_HAPPY, 10);
@@ -328,6 +404,11 @@ const char *sim_advise_propose(int id, int encourage)
     DoomoResident *r = town_res(id);
     int partner = sim_partner_of(id), pi;
     if (!r || partner < 0 || rel_kind(id, partner) != REL_DATING) return "Propose? To who?!";
+    if (!sim_marriage_ok(id, partner)) {
+        /* LS0: teens date, they never marry */
+        if ((pi = sim_problem_find(id, PROB_PROPOSAL)) >= 0) sim_problem_remove(pi);
+        return "Married?! We're way too young. Ask again in ten years.";
+    }
     if (!encourage) {
         if ((pi = sim_problem_find(id, PROB_PROPOSAL)) >= 0) sim_problem_remove(pi);
         return "You're right. We'll take it slow.";
@@ -534,7 +615,7 @@ static void romance_step(DoomoEdge *e, int a, int b, DoomoResident *ra, DoomoRes
             if (p->age > 480) sim_propose(p->resident, p->other, 0);
             return;
         }
-        if (e->value >= 88 && sim_rand(1000) < 2) {
+        if (e->value >= 88 && sim_rand(1000) < 2 && sim_marriage_ok(a, b)) {
             int from = sim_chance(50) ? a : b;
             if (sim_problem_raise(from, PROB_PROPOSAL, from == a ? b : a, ITEM_RING) < 0)
                 sim_propose(from, from == a ? b : a, 0);
@@ -544,7 +625,7 @@ static void romance_step(DoomoEdge *e, int a, int b, DoomoResident *ra, DoomoRes
     if (k == REL_MARRIED) {
         if (e->value < -20) { sim_breakup(a, b, 0); return; }
         if (ra->status == RES_ALIVE && rb->status == RES_ALIVE && e->value >= 50 &&
-            !sim_is_kid(a) && !sim_is_kid(b) && !sim_is_teen(a) && !sim_is_teen(b) &&
+            life_marriage_pair_ok(sim_life_stage(a), sim_life_stage(b)) &&
             sim_rand(5000) == 0)
             sim_make_baby(a, b);
         return;

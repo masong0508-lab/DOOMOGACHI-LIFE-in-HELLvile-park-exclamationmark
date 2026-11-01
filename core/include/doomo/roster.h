@@ -82,6 +82,9 @@ enum {
 };
 /* ROSTER_T_* bits of a premade citizen (0 for bad ids). */
 int roster_traits(int id);
+/* The LIFE_* stage (resident.h) the roster gives a premade citizen: KID,
+ * TEEN or ELDER from the traits, else LIFE_ADULT (also for bad ids). */
+int roster_stage(int id);
 /* Premade record's name ("" for bad ids). */
 const char *roster_name(int id);
 /* Premade citizen id by name (case-insensitive), or -1. */

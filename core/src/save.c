@@ -18,7 +18,11 @@
  *     (group mask + field masks + changed fields), 3 = full record.
  *   Every resident field is bit-packed with a fixed width (see rfields[]),
  *   so a fully custom citizen costs ~57 bytes and an untouched premade
- *   citizen a fraction of a bit.
+ *   citizen a fraction of a bit. `romance` is two fields: the ROMANCE_*
+ *   preference (3 bits, in its old place) and, appended as the last field
+ *   since version 2, the LIFE_* stage (3 bits). Version-1 records have no
+ *   stage field: full records read one field less, and a version-1 delta
+ *   that changed the preference keeps the base record's stage.
  *   The base of slot i is its premade roster record on a Hellvile Park
  *   Classic island, its seeded random record on a Random Island, and
  *   nothing (full records only) on an Empty Island.
@@ -77,7 +81,8 @@ DOOMO_STATIC_ASSERT(ACC_COUNT <= 64, sv_acc);
 DOOMO_STATIC_ASSERT(AURA_COUNT <= 16, sv_aura);
 DOOMO_STATIC_ASSERT(PATTERN_COUNT <= 16, sv_pattern);
 DOOMO_STATIC_ASSERT(PRONOUN_COUNT <= 8, sv_pronoun);
-DOOMO_STATIC_ASSERT(ROMANCE_COUNT <= 8, sv_romance);
+DOOMO_STATIC_ASSERT(ROMANCE_COUNT <= 8 && ROMANCE_PREF_MASK == 7, sv_romance);
+DOOMO_STATIC_ASSERT(LIFE_COUNT <= 8 && (LIFE_STAGE_MASK >> LIFE_STAGE_SHIFT) == 7, sv_life);
 DOOMO_STATIC_ASSERT(FOOD_COUNT <= 64, sv_food);
 DOOMO_STATIC_ASSERT(HOBBY_COUNT <= 64, sv_hobby);
 DOOMO_STATIC_ASSERT(MUSIC_COUNT <= 32, sv_music);
@@ -225,8 +230,10 @@ static struct {
     uint8_t *lit;           /* 128: the pending literal run              */
     uint8_t *stage;         /* DOOMO_SAVE_EXT_MAX: one extension chunk   */
     int ext_err;
+    int ld_ver;             /* version of the save being decoded         */
 } Z = { 0, 0, 0, NULL, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, NULL, NULL,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, NULL, NULL, NULL, NULL, 0 };
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, NULL, NULL, NULL, NULL, 0,
+        DOOMO_SAVE_VERSION };
 
 #define lz_ring Z.ring
 #define lz_head Z.head
@@ -538,11 +545,20 @@ static const RField rfields[] = {
     { RO(like_hobby), 6 }, { RO(like_music), 5 }, { RO(like_color), 5 },
     { RO(hate_food), 6 }, { RO(fear), 5 }, { RO(catchphrase), 7 },
     { RO(exorcism), 8 }, { RO(level), 7 }, { RO(mood), 5 }, { RO(activity), 5 },
-    { RO(death_cause), 4 }
+    { RO(death_cause), 4 },
+    { RO(romance), 3 }      /* F_STAGE: the LIFE_* stage (version 2+), always last */
 };
 #define NFIELDS ((int)(sizeof(rfields) / sizeof(rfields[0])))
 #define NGROUPS ((NFIELDS + 7) / 8)
-DOOMO_STATIC_ASSERT(sizeof(rfields) / sizeof(rfields[0]) == 48 + 1 + 5 + 5 + 8 + 18, sv_nfields);
+#define F_STAGE (NFIELDS - 1)
+/* fields a version-1 full record holds (no stage) */
+#define NFIELDS_V1 (NFIELDS - 1)
+DOOMO_STATIC_ASSERT(sizeof(rfields) / sizeof(rfields[0]) == 48 + 1 + 5 + 5 + 8 + 18 + 1, sv_nfields);
+/* the stage field joined the last group: version-1 group masks still fit */
+DOOMO_STATIC_ASSERT((48 + 1 + 5 + 5 + 8 + 18 + 7) / 8 == (48 + 1 + 5 + 5 + 8 + 18 + 1 + 7) / 8, sv_groups);
+
+/* the ROMANCE_* preference half of `romance` (field index != F_STAGE) */
+#define IS_ROMANCE_PREF(i) (rfields[i].off == RO(romance) && (i) != F_STAGE)
 
 static int name_len(const DoomoResident *r)
 {
@@ -555,23 +571,33 @@ static uint32_t field_get(const DoomoResident *r, int i)
 {
     uint8_t v = ((const uint8_t *)r)[rfields[i].off];
     if (rfields[i].off == LO(hair_highlight) && v == LOOK_NO_COLOR) return 32;
+    if (i == F_STAGE) return (uint32_t)RES_STAGE(r);
+    if (IS_ROMANCE_PREF(i)) return (uint32_t)RES_ROMANCE(r);
     return v;
 }
 
 static void field_set(DoomoResident *r, int i, uint32_t v)
 {
     if (rfields[i].off == LO(hair_highlight) && v == 32) v = LOOK_NO_COLOR;
+    if (i == F_STAGE) {
+        r->romance = (uint8_t)((r->romance & ~LIFE_STAGE_MASK) | ((v << LIFE_STAGE_SHIFT) & LIFE_STAGE_MASK));
+        return;
+    }
+    if (IS_ROMANCE_PREF(i)) {    /* keeps the stage (a version-1 delta keeps its base's) */
+        r->romance = (uint8_t)((r->romance & ~ROMANCE_PREF_MASK) | (v & ROMANCE_PREF_MASK));
+        return;
+    }
     ((uint8_t *)r)[rfields[i].off] = (uint8_t)v;
 }
 
-/* field_get(a, i) == field_get(b, i), raw bytes first (the only mapped
- * value is hair_highlight's "no colour") */
+/* field_get(a, i) == field_get(b, i), raw bytes first (the mapped values:
+ * hair_highlight's "no colour" and the two halves of `romance`) */
 static inline int field_eq(const DoomoResident *a, const DoomoResident *b, int i)
 {
     uint8_t off = rfields[i].off;
     if (rfields[i].bits == NAME_FIELD) return memcmp(a->name, b->name, DOOMO_NAME_LEN) == 0;
     if (((const uint8_t *)a)[off] == ((const uint8_t *)b)[off]) return 1;
-    return off == LO(hair_highlight) && field_get(a, i) == field_get(b, i);
+    return (off == LO(hair_highlight) || off == RO(romance)) && field_get(a, i) == field_get(b, i);
 }
 
 static int field_cost(const DoomoResident *r, int i)
@@ -610,9 +636,9 @@ static void write_full(const DoomoResident *r)
 
 static void read_full(DoomoResident *r)
 {
-    int i;
-    memset(r, 0, sizeof(*r));
-    for (i = 0; i < NFIELDS; i++) field_read(r, i);
+    int i, n = Z.ld_ver >= 2 ? NFIELDS : NFIELDS_V1;
+    memset(r, 0, sizeof(*r));             /* version 1: LIFE_ADULT */
+    for (i = 0; i < n; i++) field_read(r, i);
 }
 
 /* The fields of r that differ from base (fm[g] bit k = field 8g + k) and
@@ -1142,8 +1168,8 @@ int save_info_from(const uint8_t *buf, uint32_t size, DoomoSaveInfo *out)
     DoomoSaveInfo info;
     int i;
     if (!buf || size < HDR) return 0;
-    if (get32(buf) != DOOMO_SAVE_MAGIC || get16(buf + 4) != DOOMO_SAVE_VERSION ||
-        get16(buf + 6) != HDR)
+    if (get32(buf) != DOOMO_SAVE_MAGIC || get16(buf + 4) < DOOMO_SAVE_VERSION_MIN ||
+        get16(buf + 4) > DOOMO_SAVE_VERSION || get16(buf + 6) != HDR)
         return 0;
     memset(&info, 0, sizeof(info));
     info.mode = buf[20];
@@ -1185,7 +1211,9 @@ static int decode(const uint8_t *h, const uint8_t *body, int apply)
     int ok;
     ld_reset(body, total - HDR);
     Z.br_acc = 0; Z.br_n = 0;
+    Z.ld_ver = (int)get16(h + 4);
     ok = read_town(apply) && read_exts(raw, apply);
+    Z.ld_ver = DOOMO_SAVE_VERSION;
     return ok && !Z.ld_err && Z.ld_out == raw && Z.ld_pos == total - HDR;
 }
 
@@ -1198,6 +1226,7 @@ static int load_decoded(const uint8_t *h, const uint8_t *body)
         return 0;
     }
     decode(h, body, 1);
+    if (get16(h + 4) < 2) town_life_migrate_v1();    /* LS0: stages for old saves */
     for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) {
         if (doomo_town.res[i].status != RES_EMPTY) resident_sanitize(&doomo_town.res[i]);
         portrait_invalidate(i);

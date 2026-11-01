@@ -177,6 +177,38 @@ int creator_last_result(void) { return last_result; }
 static uint8_t *fbyte(DoomoResident *r, int field) { return (uint8_t *)r + field; }
 static uint8_t cbyte(const DoomoResident *r, int field) { return ((const uint8_t *)r)[field]; }
 
+/* RK_ENUM rows on part of a byte (aux = bit mask, creator_int.h) */
+static int mask_shift(int mask)
+{
+    int sh = 0;
+    while (mask && !(mask & 1)) { mask >>= 1; sh++; }
+    return sh;
+}
+static int enum_get(const DoomoResident *r, const CrRow *row)
+{
+    int v = cbyte(r, row->field);
+    return row->aux ? (v & row->aux) >> mask_shift(row->aux) : v;
+}
+static void enum_put(DoomoResident *r, const CrRow *row, int v)
+{
+    uint8_t *p = fbyte(r, row->field);
+    if (!row->aux) { *p = (uint8_t)v; return; }
+    *p = (uint8_t)((*p & ~row->aux) | ((v << mask_shift(row->aux)) & row->aux));
+}
+
+/* LS0: the youngest stage the Age row may NOT go older than. The story
+ * hero is a grown-up; a premade citizen who still carries their roster
+ * name keeps the roster's youth (sim_life_stage would anyway). */
+static int age_locked(int stage)
+{
+    if (cr.mode == CR_PLAYER) return !LIFE_IS_ADULT(stage);
+    if (cr.mode == CR_EDIT && cr.target >= 0 && cr.target < DOOMO_MAX_RESIDENTS &&
+        doomo_town.population == TOWN_POP_PREMADE && roster_name(cr.target)[0] &&
+        strncmp(roster_name(cr.target), cr.draft.name, DOOMO_NAME_LEN) == 0)
+        return life_stage_youth(stage) < life_stage_youth(roster_stage(cr.target));
+    return 0;
+}
+
 const CrRow *cr_row_at(int tab, int i)
 {
     if (tab < 0 || tab >= CR_TAB_COUNT || i < 0 || i >= cr_tabs[tab].nrows) return NULL;
@@ -394,7 +426,7 @@ int cr_row_value(const DoomoResident *r, const CrRow *row)
     if (!row) return 0;
     switch (row->kind) {
     case RK_ENUM:
-        v = cbyte(r, row->field) - row->base;
+        v = enum_get(r, row) - row->base;
         return DOOMO_CLAMP(v, 0, row->count - 1);
     case RK_SLIDER: case RK_PAINT: case RK_SKIN:
         v = cbyte(r, row->field);
@@ -427,7 +459,7 @@ void cr_row_set(DoomoResident *r, const CrRow *row, int index)
         if (row->field == offsetof(DoomoResident, look.species)) {
             if (r->look.species != row->base + index) species_change(r, row->base + index);
         } else {
-            *p = (uint8_t)(row->base + index);
+            enum_put(r, row, row->base + index);
         }
         break;
     case RK_SLIDER: case RK_PAINT: case RK_SKIN:
@@ -450,6 +482,7 @@ int cr_value_locked(const CrRow *row, int index)
     if (!row) return 0;
     switch (row->kind) {
     case RK_ENUM:
+        if (CR_IS_AGE_ROW(row)) return age_locked(row->base + index);
         if (row->clist == CR_NOLIST) return 0;
         v = row->base + index;
         if (unlock_option_ok(row->clist, v)) return 0;
@@ -477,6 +510,8 @@ const char *cr_lock_hint(const CrRow *row, int index)
     const DoomoUnlock *u = NULL;
     const char *h = "";
     if (!row || !cr_value_locked(row, index)) return "";
+    if (CR_IS_AGE_ROW(row))
+        return cr.mode == CR_PLAYER ? "The hero is a grown-up" : "Canon says: still young!";
     switch (row->kind) {
     case RK_ENUM:
         u = unlock_find(UL_CAT_PART, row->clist, row->base + index);
@@ -825,7 +860,9 @@ static void copy_editable(DoomoResident *dst, const DoomoResident *src, int keep
     memcpy(dst->voice, src->voice, VOICE_COUNT);
     memcpy(dst->persona, src->persona, PERS_COUNT);
     dst->pronoun = src->pronoun;
-    dst->romance = src->romance;
+    /* the preference only: the life stage (Age row) is never rolled or
+     * copied by accident; write_town() stores the draft's on purpose */
+    resident_set_romance(dst, RES_ROMANCE(src));
     dst->bday_month = src->bday_month;
     dst->bday_day = src->bday_day;
     dst->like_food = src->like_food;
@@ -866,7 +903,11 @@ static void randomise_tab(void)
     for (i = 0; i < cr_tabs[cr.tab].nrows; i++) {
         const CrRow *row = &cr_tabs[cr.tab].rows[i];
         switch (row->kind) {
-        case RK_ENUM: case RK_SLIDER: case RK_PAINT: case RK_PAINT_NONE:
+        case RK_ENUM:
+            if (CR_IS_AGE_ROW(row)) break;         /* LS0: age is chosen, never rolled */
+            enum_put(&cr.draft, row, enum_get(&r, row));
+            break;
+        case RK_SLIDER: case RK_PAINT: case RK_PAINT_NONE:
         case RK_SKIN: case RK_FLAG:
             *fbyte(&cr.draft, row->field) = cbyte(&r, row->field);
             break;
@@ -1086,15 +1127,22 @@ static int write_town(void)
                                    (rec.flags & (RF_HELLBORN | RF_FAVORITE)));
         }
         dst->flags |= RF_PLAYER | RF_CUSTOM;
+        /* LS0: the story hero is always a grown-up */
+        if (!LIFE_IS_ADULT(RES_STAGE(&rec))) resident_set_stage(&rec, LIFE_ADULT);
+        resident_set_stage(dst, RES_STAGE(&rec));
     } else {
         id = cr.target;
         dst = town_res(id);
         if (!dst) return -1;
         copy_editable(dst, &rec, 0);
+        resident_set_stage(dst, RES_STAGE(&rec));
         dst->flags = (uint8_t)((dst->flags & ~(RF_HELLBORN | RF_FAVORITE)) |
                                (rec.flags & (RF_HELLBORN | RF_FAVORITE)) | RF_CUSTOM);
     }
     resident_sanitize(dst);
+    /* LS0: a new age may forbid a romance they already had (a dating adult
+     * made a kid): undo it quietly before the sim sees it */
+    if (cr.mode != CR_NEW) sim_romance_sweep(id);
     portrait_invalidate(id);
     nick_set(id, dst->name, cr.nick);
     if (first) progress_add(PROG_CITIZENS_CREATED, 1);

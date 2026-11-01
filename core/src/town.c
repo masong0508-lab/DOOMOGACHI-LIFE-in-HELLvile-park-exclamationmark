@@ -103,6 +103,8 @@ int town_find_by_name(const char *name)
 void town_premade_record(int id, DoomoResident *out)
 {
     const DoomoResident *p = (id >= 0 && id < DOOMO_MAX_RESIDENTS) ? roster_premade(id) : NULL;
+    /* (LS0: the ROM record already carries its life stage, roster_build.py,
+     * so an untouched premade costs 0 save bits) */
     if (p) { *out = *p; return; }
     if (id < DOOMO_DISTRICT_SIZE) resident_generate(out, 0xD00D0000u + (uint32_t)id);
     else resident_generate_hellborn(out, 0xD00D0000u + (uint32_t)id);
@@ -113,6 +115,33 @@ void town_random_record(uint32_t seed, int id, DoomoResident *out)
     uint32_t s = doomo_hash32(seed * 2654435761u + (uint32_t)id * 40503u + 0x51ED270Bu);
     if (id < DOOMO_DISTRICT_SIZE) resident_generate(out, s);
     else resident_generate_hellborn(out, s);
+}
+
+/* ====================================================================== */
+/* life stage of old saves (LS0)                                            */
+static int v1_newborn(const DoomoResident *r)
+{
+    /* sim_make_baby() before LS0: ROMANCE_NONE, tiny body, pyjamas, no
+     * beard and never RF_CUSTOM (a creator edit sets it) */
+    return !(r->flags & RF_CUSTOM) && RES_ROMANCE(r) == ROMANCE_NONE &&
+           r->look.body == BODY_TINY && r->look.top == TOP_PAJAMAS &&
+           r->look.facial_hair == FHAIR_NONE;
+}
+
+int town_life_migrate_v1(void)
+{
+    int i, n = 0;
+    for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) {
+        DoomoResident *r = &doomo_town.res[i];
+        int stage = LIFE_ADULT;
+        if (r->status == RES_EMPTY || RES_STAGE(r) != LIFE_ADULT) continue;
+        if (doomo_town.population == TOWN_POP_PREMADE && roster_name(i)[0] &&
+            strncmp(roster_name(i), r->name, DOOMO_NAME_LEN) == 0)
+            stage = roster_stage(i);
+        if (stage == LIFE_ADULT && v1_newborn(r)) stage = LIFE_BABY;
+        if (stage != LIFE_ADULT) { resident_set_stage(r, stage); n++; }
+    }
+    return n;
 }
 
 /* ====================================================================== */

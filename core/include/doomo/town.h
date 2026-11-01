@@ -237,6 +237,12 @@ int  town_is_night(void);                 /* 21:00..05:59 */
 void town_premade_record(int id, DoomoResident *out);
 /* The record a Random Island citizen starts as for a town seed. */
 void town_random_record(uint32_t seed, int id, DoomoResident *out);
+/* LS0: after loading a version-1 save (no life stage yet), give every
+ * citizen the stage that is known: premade citizens who still carry their
+ * roster name get the roster's (KID / TEEN / ELDER), sim-born babies (their
+ * unmistakable newborn look and no romance) become LIFE_BABY; everyone else
+ * stays LIFE_ADULT. Returns how many stages were set. */
+int  town_life_migrate_v1(void);
 /* Starting money for a new island (H$). */
 #define DOOMO_START_MONEY 500
 /* Re-sort / validate the edge list (after loading or bulk edits): drops

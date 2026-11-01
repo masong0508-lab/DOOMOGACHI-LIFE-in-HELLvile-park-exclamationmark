@@ -35,6 +35,15 @@ int roster_traits(int id)
     return valid(id) ? doomo_roster_traits[id] : 0;
 }
 
+int roster_stage(int id)
+{
+    int t = roster_traits(id);
+    if (t & ROSTER_T_KID) return LIFE_CHILD;
+    if (t & ROSTER_T_TEEN) return LIFE_TEEN;
+    if (t & ROSTER_T_ELDER) return LIFE_ELDER;
+    return LIFE_ADULT;
+}
+
 static int lower(int c) { return (c >= 'A' && c <= 'Z') ? c + ('a' - 'A') : c; }
 
 int roster_find(const char *name)
