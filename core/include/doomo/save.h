@@ -76,6 +76,8 @@ typedef struct DoomoSaveInfo {
     uint32_t money;
     uint32_t size;          /* bytes on the medium                      */
     char     player[DOOMO_NAME_LEN];
+    uint8_t  flags;         /* header byte 47: playas.h PLAYAS_HF_* (PA0);
+                               0 in every save made before it            */
 } DoomoSaveInfo;
 /* Read just the 48-byte header of a slot (cheap enough for menus: no
  * scratch buffer, no CRC). 1 if a save with a valid header exists. */

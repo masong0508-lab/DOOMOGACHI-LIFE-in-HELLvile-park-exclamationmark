@@ -6,7 +6,8 @@
  *     8 u32 total file size    12 u32 CRC-32 of bytes [16, total)
  *    16 u32 raw stream size    20 u8 mode, chapter, population, weekday
  *    24 u16 residents, minute  28 u32 day          32 u32 money
- *    36 char player name[12]
+ *    36 char player name[11]  47 u8 play-as flags (playas.h PLAYAS_HF_*;
+ *                                  0 before PA0, so old headers read fine)
  *   body: an LZ-compressed bit stream (below)
  *
  * Bit stream (LSB-first; byte-aligned u8/u16/u32 are therefore LE):
@@ -55,6 +56,7 @@
  * Either way the bytes on the medium are identical.
  */
 #include "doomo/doomo.h"
+#include "doomo/playas.h"
 
 /* Every enum must fit the bit width the format gives it. Growing past a
  * width needs a new DOOMO_SAVE_VERSION. */
@@ -1115,6 +1117,7 @@ static void make_header(uint8_t *h, uint32_t total, uint32_t raw)
     put32(h + 32, doomo_town.money);
     for (i = 0; i < DOOMO_NAME_LEN - 1 && doomo_town.player.name[i]; i++)
         h[36 + i] = (uint8_t)doomo_town.player.name[i];
+    h[47] = playas_profile_flags();   /* 0 with PA0's weak default (R9) */
 }
 
 static void too_big(uint32_t total, uint32_t cap)
@@ -1181,6 +1184,7 @@ int save_info_from(const uint8_t *buf, uint32_t size, DoomoSaveInfo *out)
     info.day = get32(buf + 28);
     info.money = get32(buf + 32);
     info.size = get32(buf + 8);
+    info.flags = buf[47];
     for (i = 0; i < DOOMO_NAME_LEN - 1; i++) {
         uint8_t c = buf[36 + i];
         info.player[i] = (char)((c >= 0x20 && c <= 0x7E) ? c : 0);
