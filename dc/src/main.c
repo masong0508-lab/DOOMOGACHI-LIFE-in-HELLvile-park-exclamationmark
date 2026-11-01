@@ -50,7 +50,6 @@ static void on_vblank(uint32_t code, void *data)
 {
     (void)code; (void)data;
     dc_vblanks++;
-    dc_mailbox.vblanks = dc_vblanks;
 }
 
 /* ---- video ----------------------------------------------------------------------- */
@@ -71,7 +70,6 @@ static void apply_clear(void)
 static void video_init(void)
 {
     int cable = vid_check_cable();
-    dc_mailbox.video = (uint32_t)cable;
     vid_set_mode(DM_640x480, PM_RGB565);
     pvr_init_defaults();
     apply_clear();
@@ -161,7 +159,6 @@ void plat_end_frame(void)
 void plat_init_hw(void)
 {
     dc_mailbox.magic = DC_MAILBOX_MAGIC;
-    dc_mailbox.version = DC_MAILBOX_VERSION;
     dc_mailbox.ticks = 0;
     dc_mailbox.drawn = 0;
     dc_mailbox.hold_at = 0xFFFFFFFFu;  /* harness sync: no hold */
@@ -178,8 +175,7 @@ int main(int argc, char **argv)
     plat_init_hw();
     doomo_init();
     dc_pacing_reset();
-    dc_mailbox.boot_us = dc_us();
-    dc_logf("DC: core up in %u us, loop at 30 Hz", (unsigned)dc_mailbox.boot_us);
+    dc_logf("DC: core up in %u us, loop at 30 Hz", (unsigned)dc_us());
     for (;;) {
         uint32_t b;
         dc_harness_hold();

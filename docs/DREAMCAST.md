@@ -301,22 +301,25 @@ background colour. The other placeholders are in `dc/src/plat_stub.c`:
 `make -C dc check-elf` lists the core's weak platform defaults still in the
 link, so each package can see what it has left.
 
-### The harness mailbox (`dc_mailbox`, `dc/src/dc_plat.h`)
+### The harness mailbox (`dc_mailbox`, `dc/harness/dc_mailbox.h`)
 
-The Flycast harness (DC1) finds the `dc_mailbox` symbol in the ELF
-(`sh-elf-nm`, shown as `_dc_mailbox`) and reads and writes it through
-libretro's `RETRO_MEMORY_SYSTEM_RAM` region at `address & 0xFFFFFF`.
-`check-elf` prints that offset. It is 32-byte aligned and 4212 bytes:
+The layout is one header shared by the game and the Flycast harness (DC1):
+`dc/harness/dc_mailbox.h`, which `_Static_assert`s its size on both
+compilers. The harness finds the `dc_mailbox` symbol in the ELF
+(`sh-elf-nm`; the SH ABI prints C names with a leading `_`, so
+`dc/src/misc.c` also exports the plain name as an alias) and reads and
+writes it through libretro's `RETRO_MEMORY_SYSTEM_RAM` region at
+`address & 0xFFFFFF`. `check-elf` checks the size and the alias and prints
+the offset. It is 32-byte aligned and 4196 bytes:
 
 | field | what |
 |---|---|
-| `magic` ... `draw_all` | the GBA's `GbaMailbox`, field for field and at the same offsets: magic `"DMDC"` (0x43444D44), logic ticks, drawn frames, fps x 10, cmd/arg/result, the command's time (microseconds), work time sum/count/worst, `name[20]`, the "sync on" `hold_at`, `draw_all` |
-| `version` | 1 (`DC_MAILBOX_VERSION`; `check-elf` checks the size) |
-| `vblanks` | vblank interrupts since boot |
-| `video` | `vid_check_cable()`: 0 VGA, 2 RGB, 3 composite |
-| `boot_us` | microseconds from `main()` to the first loop tick |
+| `magic` ... `draw_all` | the GBA's `GbaMailbox`, field for field: magic `"DCMB"` (0x424D4344), logic ticks, drawn frames, fps x 10, cmd/arg/result, the command's time (microseconds), work time sum/count/worst, `name[20]`, the "sync on" `hold_at`, `draw_all` |
 | `scene[24]` | the scene on top of the stack (from the core's `scene: set/push/pop` log lines) |
-| `log_head`, `log[4096]` | the log ring: every `plat_log()` line plus `\n`, at `log_head % 4096`; `log_head` counts every byte ever written |
+| `log_wr`, `log[4096]` | the log ring: every `plat_log()` line plus `\n`, at `log_wr % 4096`; `log_wr` counts every byte ever written |
+
+The cable type and the boot time are log lines (`DC: video 640x480 VGA`,
+`DC: core up in N us`), not mailbox fields.
 
 Log lines also go to `dbgio` (the serial port on hardware, the emulator's
 console). Harness commands (`dc/src/hcmd.c`) keep the GBA's ids and
@@ -325,7 +328,10 @@ meaning: 1 save, 2 load, 3 exists, 4 town-fill, 5 town-crc, 6 verify,
 text probe (expect-text), 13 story fingerprint. The harness writes `arg`
 (and `name`), then `cmd`; the game runs it between two logic ticks.
 `dc/tests/boot.txt` is the first harness script: boot, `scene: set BOOT`,
-`scene: set TITLE`, the text probe on the title.
+`scene: set TITLE`, then 300 video frames (5 s) for the 30 Hz tick check.
+`make -C dc test` runs it on the ELF and on the CDI once
+`dc/harness/build/flycast_libretro.so` is built; until then it runs the
+harness's self-test only and says so.
 
 ### RAM
 

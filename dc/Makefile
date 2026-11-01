@@ -64,7 +64,7 @@ CDI   := $(BUILD)/doomogachi.cdi
 # The core keeps to C99 (ARCHITECTURE.md); gnu99 is for the KOS headers.
 DEFS   := -DDOOMO_PLATFORM_DC=1
 CFLAGS := -std=gnu99 -Wall -Wextra -Werror -fno-strict-aliasing -MMD -MP \
-          -I$(CORE_INC) -I$(DC)/src $(DEFS)
+          -I$(CORE_INC) -I$(DC)/src -I$(DC)/harness $(DEFS)
 LDFLAGS := -Wl,-Map,$(MAP)
 
 DC_SRCS   := $(sort $(wildcard $(DC)/src/*.c))
@@ -108,14 +108,32 @@ sizes: $(ELF)
 check-elf: $(ELF)
 	@sh $(DC)/tools/check_elf.sh $(ELF) $(NM)
 
-# The Flycast harness (DC1) lives in dc/harness; until it lands the test
-# target builds everything and runs the ELF checks only, and says so.
+# The Flycast harness (DC1) lives in dc/harness. When its Makefile is in
+# the tree, harness-test runs its self-test (no emulator); when the Flycast
+# core has been built (make -C dc/harness flycast) it also boots the ELF and
+# the CDI with dc/tests/boot.txt. Missing parts are skipped with a note.
+HARNESS := $(DC)/harness
+FLYCAST := $(HARNESS)/build/flycast_libretro.so
+DCRUN   := $(HARNESS)/build/dcrun
+SHOTS   := $(BUILD)/shots
 harness-test: $(ELF) $(CDI)
-	@if [ -f $(DC)/harness/Makefile ]; then \
-	    $(MAKE) --no-print-directory -C $(DC)/harness test ELF=$(ELF) CDI=$(CDI); \
-	else \
-	    echo "note: dc/harness (the Flycast harness, DC1) is not in this tree: boot scripts skipped"; \
-	fi
+	@if [ ! -f $(HARNESS)/Makefile ]; then \
+	    echo "note: dc/harness (the Flycast harness, DC1) is not in this tree: boot scripts skipped"; exit 0; \
+	fi; \
+	$(MAKE) --no-print-directory -C $(HARNESS) test || exit 1; \
+	if [ ! -f $(FLYCAST) ]; then \
+	    echo "note: $(FLYCAST) not built (make -C dc/harness flycast): boot scripts skipped"; exit 0; \
+	fi; \
+	for img in $(ELF) $(CDI); do \
+	    n=$$(basename $$img | tr . _); \
+	    $(DCRUN) $(FLYCAST) $$img --nm $(BUILD)/doomogachi.nm --fresh \
+	        --run-dir $(BUILD)/run --script $(DC)/tests/boot.txt --shots $(SHOTS)/$$n \
+	        --timeout 300 || exit 1; \
+	done
+
+$(BUILD)/doomogachi.nm: $(ELF)
+	$(NM) $(ELF) >$@
+harness-test: $(BUILD)/doomogachi.nm
 
 test: all-disc check-elf harness-test
 

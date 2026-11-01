@@ -18,14 +18,18 @@
 
 /* in .bss like everything else; the harness finds it by symbol */
 __attribute__((used, aligned(32))) volatile DcMailbox dc_mailbox;
+/* sh-elf-nm prints C symbols with the SH ABI's '_' prefix (_dc_mailbox);
+ * this alias makes the plain name `dc_mailbox` appear in the symbol table
+ * too, for tools that look it up as the C name */
+__asm__(".global dc_mailbox\n.set dc_mailbox, _dc_mailbox");
 
 static void ring_put(const char *s)
 {
-    uint32_t h = dc_mailbox.log_head;
-    for (; *s; s++, h++) dc_mailbox.log[h & (DC_LOG_RING - 1)] = *s;
-    dc_mailbox.log[h & (DC_LOG_RING - 1)] = '\n';
+    uint32_t h = dc_mailbox.log_wr;
+    for (; *s; s++, h++) dc_mailbox.log[h & (DC_MB_LOG_SIZE - 1)] = *s;
+    dc_mailbox.log[h & (DC_MB_LOG_SIZE - 1)] = '\n';
     h++;
-    dc_mailbox.log_head = h;
+    dc_mailbox.log_wr = h;
 }
 
 static void scene_name(const char *nm)
