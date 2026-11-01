@@ -342,12 +342,12 @@ budget (`dc/tools/elfsize.sh`) and fails if less than 4 MB
 
 | part | bytes | MB |
 |---|---|---|
-| code (`.text .init .fini`) | 1,580,784 | 1.51 |
-| constant data (`.rodata` ...) | 2,815,836 | 2.69 |
+| code (`.text .init .fini`) | 1,580,720 | 1.51 |
+| constant data (`.rodata` ...) | 2,815,780 | 2.69 |
 | `.data` | 6,272 | 0.01 |
 | `.bss` | 537,892 | 0.51 |
-| **image** | **4,940,784** | **4.71** |
-| free above `_end` (heap, stacks) | 11,770,396 | 11.23 |
+| **image** | **4,940,664** | **4.71** |
+| free above `_end` (heap, stacks) | 11,770,428 | 11.23 |
 
 `.bss` includes the RAM-disk saves (128 KB) and the save scratch (136 KB)
 that DC4 replaces. The ELF file is 16 MB because of debug info; the
