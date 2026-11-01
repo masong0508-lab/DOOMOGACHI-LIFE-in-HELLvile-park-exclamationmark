@@ -432,6 +432,20 @@ relinked at the moved slot). On `d642736` (before LS0) the same K0 cost
 528 B. This is 288 B above the plan's 256 B estimate for K0 (the
 placeholder scenes' code and names).
 
+LS1 (news as 8-byte records, the `LIFE` chunk): the feed's `.bss` falls
+from 2,050 B to 388 + 128 B (`sim_s` 7,084 -> 5,032 B; `news_s`, the two
+rotating buffers), but the formatter (756 B at -Os), the record codec and
+`life.c` add 2,272 B of resident code and 776 B of `.rodata` (the
+template table), all resident (sim). Measured against the wave-1 tree
+(K0 + LS0 + E5 on `d642736`) built the same way, the disc ends at
+`0x801e8420` instead of `0x801e7e80`, **97,248 B below the stack top**
+(98,688 B on the wave-1 tree; -1,440 B; 31 KB above the 64 KB reserve,
+23 KB above the 72 KB plan gate). The plan's "resident delta at most 0 B" is missed by 1.4 KB: it
+assumed story lines kept as text ids (no free-text pool) and did not
+count the code; the LS area's combined allowance (+8 KB code) holds. The
+harness (`game_smoke` memory card write + `memcard_check`, the core's
+`boot`, `ui_gallery` and `saves` scripts) passes.
+
 The biggest remaining consumers of RAM: resident core code (portraits,
 UI, sim, story engine, ...) ~650 KB, merged string literals of resident
 code ~110 KB, `doomo_town` 107 KB, the display lists 112 KB + OTs 24 KB,

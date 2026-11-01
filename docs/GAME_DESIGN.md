@@ -53,6 +53,12 @@ Free play loop (real-time clock, day and night, adjustable sim speed):
   cross-border Hillvile ↔ Hellvile romances), dating, proposals, marriage,
   rivals, nemeses, families, breakups, babies ("hellspawn" or "angel
   babies", which take a free slot), arguments you resolve, a news ticker.
+  (LS1) The ticker's last 32 headlines are saved with the island, in the
+  `LIFE` chunk: each is an 8-byte record (a template, a table index, the
+  day, up to three resident ids) printed when it is read, so a renamed
+  resident's old headlines show the new name; up to two free-text lines
+  (a concert, a fun-fair record, a story line) are kept as text. A move-in
+  no longer wipes the feed; loading greets you with "Welcome back!".
 * **Doomogachi**: a tamagotchi pet on an LCD-green screen (see 2.3).
 * **Possession**: at night, corruption creeps up (vape exposure, Hellvile
   visits, nightmares, nemeses). At 100 a resident becomes **POSSESSED** by
