@@ -1,0 +1,23 @@
+# boot.txt - the dc/ skeleton (DC2): the ELF or the CDI boots, the core
+# starts, the 30 Hz loop runs and the scenes change BOOT -> TITLE.
+# For the Flycast harness (dc/harness, DC1); the syntax is the GBA
+# harness's (gba/harness/scripts/smoke.txt), and `wait` counts logic ticks
+# read from the mailbox (dc_mailbox.ticks), not video frames.
+#
+# Nothing is drawn yet except the clear colour (2D arrives with DC3), so
+# the checks use the mailbox log ring, its scene name and the text probe.
+# The harness also checks that dc_mailbox.ticks advances by 30 (+-1) per
+# second of emulated time (the loop is scheduled on the SH4 timer).
+seed 1234
+wait 1
+expect-log DOOMOGACHI DC: boot ok
+expect-log doomo: init
+expect-log scene: set BOOT
+expect-scene BOOT
+shot dc_boot
+# the boot splash hands over to TITLE at tick 123 on the native runner
+wait 160
+expect-log scene: set TITLE
+expect-scene TITLE
+expect-text PRESS START
+shot dc_title

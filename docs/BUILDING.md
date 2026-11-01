@@ -31,7 +31,7 @@ Contents:
 | build the **PS1 disc** (`make ps1`) | `mipsel-linux-gnu-gcc` (or `mipsel-none-elf-gcc`), **PSn00bSDK** built from source, CMake ≥ 3.21, Ninja, `python3` |
 | run the PS1 harness (`make test`) | the above plus PCSX-Redux, OpenBIOS and `xvfb-run` |
 | run the Dreamcast (SH4) leg of `xcheck` (`make test`) | `sh-elf-gcc` + newlib headers (apt `gcc-sh-elf binutils-sh-elf libnewlib-sh-elf-dev`), or a KallistiOS toolchain on `PATH`. Compile only: no KallistiOS needed |
-| build for the **Dreamcast** (port in progress) | the KallistiOS toolchain + KallistiOS, installed at pinned versions by `dc/tools/setup_kos.sh` (about 3.4 GB of disk while it builds, 278 MB after; see [KallistiOS](#kallistios-dreamcast) and docs/DREAMCAST.md) |
+| build for the **Dreamcast** (`make dc`, port in progress) | the KallistiOS toolchain + KallistiOS, installed at pinned versions by `dc/tools/setup_kos.sh` (about 3.4 GB of disk while it builds, 278 MB after; see [KallistiOS](#kallistios-dreamcast) and docs/DREAMCAST.md), plus `genisoimage` (or `mkisofs` / `xorriso`) for the disc image |
 | run the **Dreamcast harness** (`dc/harness`, `make -C dc/harness test`) | host `cc` + EGL/GL headers and Mesa (apt `libegl-dev libgl-dev libegl-mesa0 libgl1-mesa-dri`); the Flycast core itself needs `g++` and `git` (`dc/harness/build_flycast.sh`). See dc/harness/README.md |
 | render the **trailer** (`make trailer`) | `gcc`, `python3`, `ffmpeg` (with libx264) |
 
@@ -152,6 +152,14 @@ first run builds binutils, gcc 15.2.0 (C only, `m4-single` +
 build trees as it goes, and leaves 278 MB installed. Running it again is a no-op. `dc/tools/setup_kos.sh --check --verify`
 checks an install and builds the KallistiOS hello example. Details, measured
 numbers and how to move the pins: docs/DREAMCAST.md section 1.
+
+With it installed, `make dc` builds `dc/build/doomogachi.elf` and the
+self-booting `dc/build/doomogachi.cdi`, and `make dc-test` adds the ELF
+checks (and the Flycast harness scripts once `dc/harness` exists).
+`dc/Makefile` sources `<prefix>/kos/environ.sh` itself, so no shell setup
+is needed; `DC_PREFIX=<dir>` picks another install. `make all` and
+`make test` leave the Dreamcast out for now. Details: docs/DREAMCAST.md
+section 2.
 
 ### PCSX-Redux and OpenBIOS (only for the PS1 harness)
 
@@ -410,7 +418,8 @@ The Dreamcast toolchain has a local action too, `.github/actions/setup-kos`:
 it runs `dc/tools/setup_kos.sh` on a cache miss and caches the whole
 prefix, keyed on `dc/tools/kos_pins.env`, the script, the runner image and
 the host gcc version, then exports the KallistiOS environment. No job uses
-it yet; the Dreamcast CI job comes with the `dc/` build.
+it yet; the `dc/` build exists now (`make dc-test`), and a CI job that
+runs it through this action is still to be added.
 
 Pushes to the same branch, and to the same pull request, cancel older runs
 that are still in progress, except on the default branch.

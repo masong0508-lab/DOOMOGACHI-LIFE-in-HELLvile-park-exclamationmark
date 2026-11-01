@@ -7,6 +7,9 @@ project plan). This document grows with it. Right now it covers:
    `dc/tools/setup_kos.sh` at pinned versions.
 2. The headless harness: `dc/harness/dcrun`, a libretro frontend for the
    Flycast core (details in `dc/harness/README.md`).
+3. The `dc/` build (DC2): the skeleton that links the whole core, boots,
+   runs the 30 Hz loop and changes scenes, the harness mailbox, the RAM
+   budget and the self-booting CDI.
 
 The SH4 compile check that runs today, with no KallistiOS at all, is the
 `sh-elf-gcc` leg of `core/tools/xcheck.sh` (docs/BUILDING.md, "Tests").
@@ -165,19 +168,18 @@ then runs `setup_kos.sh --check --verify` and exports everything
 later steps of the job. No workflow uses it yet: the Dreamcast CI job
 arrives with the `dc/` build.
 
-### Known issue: the core under gcc 15
+### The core under gcc 15
 
 With `kos/environ.sh` sourced, `core/tools/xcheck.sh` compiles the core
 with the KallistiOS gcc 15.2.0 instead of apt's gcc 13.2. On 2026-11-01
-that leg passed 345 of 346 files: gcc 15 reports a false
+that leg passed 345 of 346 files: gcc 15 reported a false
 `-Wmaybe-uninitialized` on the `EllQ e` quadrant state in
 `ellipse_draw()` (`core/src/ui_raster.c`), which is only read when `fast`
-is set and is always initialised then. Initialising it (`EllQ e = {0};`)
-silences it. The default xcheck leg (apt gcc 13.2, what CI runs) passes.
-The `dc/` build will compile the core with gcc 15, so this needs fixing
-before or in DC2.
+is set and is always initialised then. DC2 initialises it
+(`EllQ e = {0};`), since the `dc/` build compiles the core with gcc 15 and
+`-Werror`; every core file now compiles warning-free there.
 
-### Troubleshooting
+### Troubleshooting (toolchain)
 
 | symptom | fix |
 |---|---|
@@ -227,3 +229,148 @@ sandbox yet (building third-party code there needs the user's approval),
 so booting KallistiOS examples and the determinism check on real
 Dreamcast frames are still to do: `make -C dc/harness flycast`, then
 `dcrun build/flycast_libretro.so $KOS_BASE/examples/dreamcast/pvr/plasma/plasma.elf --script dc/harness/scripts/kos_example.txt` twice and `cmp` the PNGs.
+
+## 3. The dc/ build (DC2: the skeleton)
+
+```sh
+make dc                 # from the repo root: dc/build/doomogachi.elf + .cdi
+make dc-test            # + check-elf (+ the Flycast harness scripts once dc/harness exists)
+make -C dc              # the ELF only (+ .map and the RAM report)
+make -C dc disc         # the CDI (+ 1ST_READ.BIN, IP.BIN)
+make -C dc check-elf    # ELF checks, no emulator
+make -C dc clean
+```
+
+`dc/Makefile` sources `<prefix>/kos/environ.sh` itself when `KOS_BASE` is
+not set (prefix: `DC_PREFIX`, else `/opt/toolchains/dc`, else `~/dc`) and
+prints how to install KallistiOS when there is none. The root Makefile's
+`make dc` / `make dc-test` check the toolchain, `cdi4dc` and mkisofs first
+(friendly message, as for the PS1), and `make doctor` lists them with the
+Flycast libretro core of the harness. `make all` and `make test` do not
+build the Dreamcast yet.
+
+### Compile and link
+
+Every core source from `core/sources.mk` and every `dc/src/*.c` is compiled
+by KallistiOS' `kos-cc` wrapper, which adds `KOS_CFLAGS` (`-O2 -m4-single
+-ml -mfsrra -mfsca -ffunction-sections -fdata-sections -g -Wall`, the KOS
+include paths) to our `-std=gnu99 -Wextra -Werror -fno-strict-aliasing`.
+The core keeps to C99; gnu99 is for the KallistiOS headers. Unlike the
+GBA build, core files are built with `-Werror` too. The objects are linked
+directly (never through an archive, so the core's weak stubs are
+overridden) by `kos-cc`, which adds KOS' linker script, `--gc-sections`
+and `-lkallisti -lm -lc -lgcc`; the link writes `dc/build/doomogachi.map`.
+
+### Boot and the frame loop (`dc/src/main.c`)
+
+`KOS_INIT_FLAGS(INIT_DEFAULT)`: IRQs, threads, the file systems, Maple and
+the CD drive. `plat_init_hw()` sets up the mailbox, adds a vblank handler
+(the vblank counter, also in the mailbox) and calls
+`vid_set_mode(DM_640x480, PM_RGB565)`, which gives 480p on a VGA cable and
+interlaced 640x480 on RGB/composite, then `pvr_init_defaults()`. The core
+runs on a 320x240 logical screen (`plat_screen_w/h`), which DC3 draws at
+2x.
+
+The loop is the platform.h protocol. Logic runs at 30 Hz on the SH4's
+microsecond timer (`timer_us_gettime64`), not on vblanks, so the game runs
+at the same speed on 60 Hz and 50 Hz (PAL) displays. A drawn tick is one
+PVR scene: `plat_begin_frame()` waits for the PVR (`pvr_wait_ready`) and
+opens a scene, `plat_end_frame()` finishes it (KOS submits blank lists for
+lists nothing was drawn into) and the PVR shows it at the next vblank;
+then the loop sleeps on vblanks until the next tick is due. When the game
+falls more than a tick behind, the next tick skips its drawing
+(`plat_draw_skipped()` = 1), never two in a row; more than 6 ticks behind
+(loading) forgets the debt. Each drawn tick's work time (begin to end, in
+microseconds) goes to the mailbox's `work_sum/work_n/work_max`.
+
+The controller (DC4 adds the analog stick, the keyboard and pads 2-4):
+D-pad, A, B, X, Y as themselves, L/R triggers past half as L/R, START,
+and START+Y as SELECT (DECISIONS.md; the pad has no SELECT).
+
+What the skeleton draws: only `plat_clear()`'s colour, as the PVR's
+background colour. The other placeholders are in `dc/src/plat_stub.c`:
+
+| group | today | replaced by |
+|---|---|---|
+| 2D (`plat_rect`, `plat_text`, `plat_image`, ...) | no-ops; `plat_text` feeds the harness text probe | DC3 |
+| post effects, panels, `plat_figure_obj` | the core's weak software defaults | DC3 |
+| saves | a RAM disk (one buffer per slot, lost at power-off) and a static 136 KB scratch | DC4 (VMU) |
+| `plat_tone`, `plat_sample` | silent; the core's weak music bridge drives `plat_tone` | DC5 |
+| `plat_view3d`, `plat_overworld`, `plat_room` | no-ops / weak defaults | DC6, DC7, DC8 |
+
+`make -C dc check-elf` lists the core's weak platform defaults still in the
+link, so each package can see what it has left.
+
+### The harness mailbox (`dc_mailbox`, `dc/src/dc_plat.h`)
+
+The Flycast harness (DC1) finds the `dc_mailbox` symbol in the ELF
+(`sh-elf-nm`, shown as `_dc_mailbox`) and reads and writes it through
+libretro's `RETRO_MEMORY_SYSTEM_RAM` region at `address & 0xFFFFFF`.
+`check-elf` prints that offset. It is 32-byte aligned and 4212 bytes:
+
+| field | what |
+|---|---|
+| `magic` ... `draw_all` | the GBA's `GbaMailbox`, field for field and at the same offsets: magic `"DMDC"` (0x43444D44), logic ticks, drawn frames, fps x 10, cmd/arg/result, the command's time (microseconds), work time sum/count/worst, `name[20]`, the "sync on" `hold_at`, `draw_all` |
+| `version` | 1 (`DC_MAILBOX_VERSION`; `check-elf` checks the size) |
+| `vblanks` | vblank interrupts since boot |
+| `video` | `vid_check_cable()`: 0 VGA, 2 RGB, 3 composite |
+| `boot_us` | microseconds from `main()` to the first loop tick |
+| `scene[24]` | the scene on top of the stack (from the core's `scene: set/push/pop` log lines) |
+| `log_head`, `log[4096]` | the log ring: every `plat_log()` line plus `\n`, at `log_head % 4096`; `log_head` counts every byte ever written |
+
+Log lines also go to `dbgio` (the serial port on hardware, the emulator's
+console). Harness commands (`dc/src/hcmd.c`) keep the GBA's ids and
+meaning: 1 save, 2 load, 3 exists, 4 town-fill, 5 town-crc, 6 verify,
+7 scene, 8 push, 9 seed (pins `plat_entropy`), 10 story flag, 11/12 the
+text probe (expect-text), 13 story fingerprint. The harness writes `arg`
+(and `name`), then `cmd`; the game runs it between two logic ticks.
+`dc/tests/boot.txt` is the first harness script: boot, `scene: set BOOT`,
+`scene: set TITLE`, the text probe on the title.
+
+### RAM
+
+The whole program loads into the 16 MB of main RAM at 0x8c010000; what is
+above `_end` is the heap and the thread stacks. `make -C dc` prints the
+budget (`dc/tools/elfsize.sh`) and fails if less than 4 MB
+(`DC_RAM_MIN_FREE`) would be left. Measured 2026-11-01 (DC2):
+
+| part | bytes | MB |
+|---|---|---|
+| code (`.text .init .fini`) | 1,580,784 | 1.51 |
+| constant data (`.rodata` ...) | 2,815,836 | 2.69 |
+| `.data` | 6,272 | 0.01 |
+| `.bss` | 537,892 | 0.51 |
+| **image** | **4,940,784** | **4.71** |
+| free above `_end` (heap, stacks) | 11,770,396 | 11.23 |
+
+`.bss` includes the RAM-disk saves (128 KB) and the save scratch (136 KB)
+that DC4 replaces. The ELF file is 16 MB because of debug info; the
+scrambled `1ST_READ.BIN` is 4.4 MB.
+
+### Disc image (`dc/tools/mkcdi.sh`)
+
+```
+doomogachi.elf --objcopy -O binary--> doomogachi.bin --scramble--> 1ST_READ.BIN
+dc/ip.txt --makeip--> IP.BIN
+1ST_READ.BIN + IP.BIN --genisoimage -C 0,11702 -G IP.BIN--> doomogachi.iso
+doomogachi.iso --cdi4dc--> doomogachi.cdi   (audio/data, self-booting)
+```
+
+`dc/ip.txt` holds our own title ("DOOMOGACHI LIFE IN HELLVILE PARK"), maker
+("DOOMOGACHI TEAM"), product number T-DOOMO and version. makeip adds the
+hardware and maker identifiers the boot ROM requires in every bootstrap
+(`SEGA SEGAKATANA`, `SEGA ENTERPRISES`); they are not shown anywhere, and
+the disc has no logo or jingle of anyone's. The image is 6.9 MB. A GDI
+or CHD release (DECISIONS.md) can be made from the same 1ST_READ.BIN and
+IP.BIN, which the build copies next to the CDI.
+
+### Verification so far
+
+Without the Flycast harness (DC1) in the tree, DC2 was checked with the
+KallistiOS build only: every core file compiles with gcc 15 and `-Werror`,
+the ELF links with no undefined symbols, `check-elf` passes (SH
+little-endian, entry 0x8c010000, the mailbox present, aligned and of the
+right size) and the CDI builds. Booting the ELF and the CDI in Flycast
+(`dc/tests/boot.txt`: BOOT then TITLE, 30 ticks per emulated second) is
+the first thing to run once `dc/harness` lands.
+

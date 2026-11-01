@@ -12,6 +12,10 @@
 #   make core       native unit tests + headless playthrough (make -C core test)
 #   make gba        gba/build/doomogachi.gba + doomogachi_et.gba (engine test)
 #   make ps1        ps1/build/doomogachi.{exe,bin,cue} + ps1/build-enginetest/
+#   make dc         dc/build/doomogachi.elf + doomogachi.cdi (Dreamcast; needs
+#                   KallistiOS, dc/tools/setup_kos.sh)
+#   make dc-test    the Dreamcast build + its ELF checks + the Flycast harness
+#                   scripts (when dc/harness is in the tree)
 #   make trailer    trailer/build/trailer.mp4 (needs ffmpeg)
 #   make dist       copy the ROMs / zip the discs into dist/ (release names)
 #   make doctor     show which toolchains and tools were found
@@ -22,6 +26,7 @@
 #                   /opt/psn00bsdk, /usr/local, ~/psn00bsdk, ~/.local)
 #   PS1_TARGET=mipsel-linux-gnu|mipsel-none-elf   (auto-detected)
 #   PCSX_REDUX=/path/to/pcsx-redux  PS1_BIOS=/path/to/openbios.bin   (PS1 harness)
+#   DC_PREFIX=<dir> KallistiOS prefix (default /opt/toolchains/dc, then ~/dc)
 #   JOBS=N          parallel jobs for the sub-builds (default: CPU count)
 
 .NOTPARALLEL:
@@ -58,6 +63,21 @@ PSN00BSDK_OK   := $(if $(PSN00BSDK_LIBS),$(wildcard $(PSN00BSDK_LIBS)/cmake/sdk.
 PSN00BSDK_ABS  := $(abspath $(PSN00BSDK_LIBS))
 PSN00BSDK_BIN  := $(if $(PSN00BSDK_OK),$(abspath $(PSN00BSDK_LIBS)/../../bin))
 
+# Dreamcast: KallistiOS installed by dc/tools/setup_kos.sh (environ.sh in
+# <prefix>/kos), plus the Flycast libretro core of the harness (DC1)
+DC_PREFIX  ?= $(firstword $(patsubst %/kos/environ.sh,%,$(wildcard /opt/toolchains/dc/kos/environ.sh $(HOME)/dc/kos/environ.sh)))
+DC_KOS_OK  := $(if $(DC_PREFIX),$(wildcard $(DC_PREFIX)/kos/environ.sh))
+DC_KOS_CC  := $(if $(DC_PREFIX),$(wildcard $(DC_PREFIX)/sh-elf/bin/sh-elf-gcc))
+DC_CDI4DC  := $(if $(DC_PREFIX),$(wildcard $(DC_PREFIX)/bin/cdi4dc))
+DC_ISO     := $(or $(call have,genisoimage),$(call have,mkisofs),$(call have,xorriso))
+DC_FLYCAST := $(wildcard dc/harness/build/flycast_libretro.so)
+DC_WHY := $(strip \
+  $(if $(DC_KOS_OK),,KallistiOS not found (no /opt/toolchains/dc or ~/dc; set DC_PREFIX=<prefix>);) \
+  $(if $(DC_KOS_OK),$(if $(DC_KOS_CC),,no sh-elf-gcc in $(DC_PREFIX)/sh-elf;)) \
+  $(if $(DC_KOS_OK),$(if $(DC_CDI4DC),,no cdi4dc in $(DC_PREFIX)/bin;)) \
+  $(if $(DC_ISO),,no genisoimage / mkisofs / xorriso;))
+HINT_DC := run dc/tools/setup_kos.sh --install-deps (about 40 min, 3.4 GB peak disk; docs/DREAMCAST.md section 1)
+
 PCSX_REDUX ?= /opt/ps1emu/pcsx-redux
 PS1_BIOS   ?= /opt/ps1emu/openbios.bin
 XVFB_RUN   := $(call have,xvfb-run)
@@ -90,8 +110,8 @@ PS1_ENV := PSN00BSDK_LIBS="$(PSN00BSDK_ABS)" PATH="$(PSN00BSDK_BIN):$$PATH"
 PS1_CFG := -DPSN00BSDK_TARGET=$(PS1_TARGET) -DDOOMO_EMU=$(PCSX_REDUX) -DDOOMO_BIOS=$(PS1_BIOS)
 
 .PHONY: all test core core-test core-san xcheck check-gen gba gba-test ps1 ps1-test \
-        ps1-optional gba-test-optional ps1-test-optional trailer dist doctor clean \
-        need-host need-arm need-mgba need-ps1
+        ps1-optional gba-test-optional ps1-test-optional dc dc-test trailer dist doctor clean \
+        need-host need-arm need-mgba need-ps1 need-dc
 
 # ---- aggregate targets --------------------------------------------------------------
 all: core gba ps1-optional
@@ -188,6 +208,19 @@ ifneq ($(PS1_WHY),)
 	$(call fail,Cannot build the PS1 disc: $(PS1_WHY),Ubuntu/Debian: sudo apt install gcc-mipsel-linux-gnu g++-mipsel-linux-gnu binutils-mipsel-linux-gnu cmake ninja-build - then build PSn00bSDK (docs/BUILDING.md).)
 endif
 
+# ---- Dreamcast -------------------------------------------------------------------------
+# (not part of `all` / `test` yet: the port is a skeleton until DC3-DC6 land)
+dc: need-dc
+	$(MAKE) -C dc $(J) all-disc DC_PREFIX=$(DC_PREFIX)
+
+dc-test: need-dc
+	$(MAKE) -C dc $(J) test DC_PREFIX=$(DC_PREFIX)
+
+need-dc:
+ifneq ($(DC_WHY),)
+	$(call fail,Cannot build the Dreamcast disc: $(DC_WHY),$(HINT_DC))
+endif
+
 # ---- trailer ----------------------------------------------------------------------------
 trailer: need-host
 ifeq ($(FFMPEG),)
@@ -232,13 +265,18 @@ doctor:
 	@echo "  PCSX-Redux          $(if $(wildcard $(PCSX_REDUX)),found   $(PCSX_REDUX),MISSING (PS1 harness only))"
 	@echo "  xvfb-run            $(if $(XVFB_RUN),found   $(XVFB_RUN),MISSING (PS1 harness only))"
 	@echo "  ffmpeg              $(if $(FFMPEG),found   $(FFMPEG),MISSING (trailer only))"
+	@echo "  KallistiOS (DC)     $(if $(DC_KOS_OK),found   $(DC_PREFIX)/kos,MISSING (Dreamcast only: dc/tools/setup_kos.sh))"
+	@echo "  KOS sh-elf-gcc      $(if $(DC_KOS_CC),found   $(DC_KOS_CC),$(if $(DC_KOS_OK),MISSING,-))"
+	@echo "  cdi4dc + mkisofs    $(if $(and $(DC_CDI4DC),$(DC_ISO)),found   $(DC_CDI4DC) $(DC_ISO),MISSING (Dreamcast disc image only))"
+	@echo "  Flycast libretro    $(if $(DC_FLYCAST),found   $(DC_FLYCAST),MISSING (Dreamcast harness only: dc/harness, DC1))"
 	@echo ""
 	@echo "  make gba : $(if $(ARM_GCC),$(if $(ARM_LIBC),ready,needs newlib),needs arm-none-eabi-gcc)"
 	@echo "  make ps1 : $(if $(PS1_WHY),$(PS1_WHY),ready)"
+	@echo "  make dc  : $(if $(DC_WHY),$(DC_WHY),ready)"
 
 # ---- clean ------------------------------------------------------------------------------
 clean:
 	$(MAKE) -C core clean
 	$(MAKE) -C gba clean
 	$(MAKE) -C trailer clean
-	rm -rf core/build-san ps1/build ps1/build-enginetest ps1/build-pal ps1/build-plat dist
+	rm -rf core/build-san ps1/build ps1/build-enginetest ps1/build-pal ps1/build-plat dc/build dist
