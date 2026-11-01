@@ -401,7 +401,8 @@ LS0 (saved life stage, both-direction romance gate): the gate, the
 romance sweep, the version-1 save migration and the save codec's stage
 field are resident (sim, sim_social, resident, town, save); the creator's
 Age row is in the free-play group. Measured against `226179f` built the
-same way, the disc ends at `0x801e7c60` instead of `0x801e7400`,
+same way, the disc ends at `0x801e7c60` instead of `0x801e7400`
+(re-checked after the rebase onto `d642736`: still `0x801e7c60`),
 **99,232 B below the stack top** (-2,144 B; 34 KB above the 64 KB
 reserve, 25 KB above the 72 KB plan gate; the LIFESIM plan's "< 1 KB"
 target for LS0 was missed by 1.1 KB, all of it child-safety code: sweep
