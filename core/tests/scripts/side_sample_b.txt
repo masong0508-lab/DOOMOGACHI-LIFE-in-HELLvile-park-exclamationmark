@@ -6,7 +6,7 @@
 #   SMG_B_BUBBLES_STAGE  S140's Unity Stage (pop on the beat)
 #   SMG_B_FIREFLY        S195 (two faces; Glowbug finishes the shape)
 #   SMG_B_NAPOFF         S159 (Doe, Betty upside down, the gatekeeper)
-#   SMG_B_POEM           S164 Clinker's board (one death, "Seven.")
+#   SMG_B_POEM           S164 Clinker's board (one salted line, "Seven.")
 #   SMG_B_DUET           S184 two burners (he eats every third one)
 #   SMG_B_HUGS           S216 the hug line to 1,000 (rear first)
 #   S164 "Day 3,653"     the poem in its conversation, Clinker's verdict

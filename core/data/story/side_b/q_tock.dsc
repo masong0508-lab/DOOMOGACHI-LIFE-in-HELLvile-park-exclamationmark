@@ -127,21 +127,21 @@ script s164_clinker
   push minigame SMG_B_POEM
   jge v0 3 much
   jge v0 2 good
-  say 753 NEUTRAL "Six. {d}Needs death." [PUNCH]
+  say 753 NEUTRAL "Six. {d}Needs salt." [PUNCH]
   [R13]
-  say 753 NEUTRAL "Try again. {.}Add death."
+  say 753 NEUTRAL "Try again. {.}Add salt."
   push minigame SMG_B_POEM
   jge v0 3 much
   jge v0 2 good
-  say 753 NEUTRAL "Five. {.}Still needs death."
+  say 753 NEUTRAL "Five. {.}Still needs salt."
   jmp chalk
 much:
   say 753 NEUTRAL "Four." [PUNCH]
   [R8]
-  say 753 NEUTRAL "Too much death."
+  say 753 NEUTRAL "Too much salt."
   jmp chalk
 good:
-  say 753 HAPPY "Seven. {.}The death is in the / right place."
+  say 753 HAPPY "Seven. {.}The salt is in the / right place."
 chalk:
   [R13]
   sfx SFX_PICKUP
@@ -174,7 +174,7 @@ script s164_wall
 end
 
 script s164_later
-  say nar "(Clinker's poem: three lines / in chalk. {.}The death is in / the right place.)"
+  say nar "(Clinker's poem: three lines / in chalk. {.}The salt is in / the right place.)"
 end
 
 # =============================================================================
