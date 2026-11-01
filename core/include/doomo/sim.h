@@ -144,6 +144,10 @@ int  sim_romance_ok(int from, int to);
  * family. The safety half only (no preference or status: the couple met
  * the full gate when they got together). */
 int  sim_marriage_ok(int a, int b);
+/* The safety half of both on its own (stages and kin only, no status or
+ * preference): 0 no romance at all, 1 crushes and dating (teens), 2 also
+ * marriage (adults). sim_romance_sweep keeps what this allows. */
+int  sim_romance_level(int a, int b);
 /* The LIFE_* stage (resident.h) the sim uses for a resident: the saved
  * stage, made younger by the roster for a premade citizen who still has
  * their roster name (a makeover never ages a canon kid up). */

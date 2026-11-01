@@ -10,6 +10,7 @@
 #include "doomo/portrait.h"
 #include "doomo/ui.h"
 #include "doomo/save_ext.h"
+#include "doomo/sim.h"                 /* sim_life_stage (LS0 migration) */
 
 DoomoTown doomo_town;
 
@@ -133,11 +134,9 @@ int town_life_migrate_v1(void)
     int i, n = 0;
     for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) {
         DoomoResident *r = &doomo_town.res[i];
-        int stage = LIFE_ADULT;
+        int stage;
         if (r->status == RES_EMPTY || RES_STAGE(r) != LIFE_ADULT) continue;
-        if (doomo_town.population == TOWN_POP_PREMADE && roster_name(i)[0] &&
-            strncmp(roster_name(i), r->name, DOOMO_NAME_LEN) == 0)
-            stage = roster_stage(i);
+        stage = sim_life_stage(i);          /* the roster's, while they keep its name */
         if (stage == LIFE_ADULT && v1_newborn(r)) stage = LIFE_BABY;
         if (stage != LIFE_ADULT) { resident_set_stage(r, stage); n++; }
     }

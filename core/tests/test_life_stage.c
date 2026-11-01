@@ -150,6 +150,8 @@ TEST(life_stage_gate_both_directions)
             CHECK_MSG(sim_romance_ok(b, a) == want, "%s <- %s", doomo_life_stage_names[sa],
                       doomo_life_stage_names[sb]);
             CHECK_EQ(sim_marriage_ok(a, b), life_marriage_pair_ok(sa, sb));
+            CHECK_EQ(sim_romance_level(a, b), life_marriage_pair_ok(sa, sb) ? 2 : want);
+            CHECK_EQ(sim_romance_level(a, b), sim_romance_level(b, a));
             /* the preference of the asking side still matters */
             resident_set_romance(town_res(a), ROMANCE_SHE);
             CHECK(!sim_romance_ok(a, b));
@@ -664,6 +666,9 @@ TEST(life_stage_romance_calls_refuse_minors)
     CHECK(!sim_romance_ok(adult2, baby) && !sim_romance_ok(baby, adult2));
     /* the gate needs both alive residents */
     CHECK(!sim_romance_ok(adult, -1) && !sim_romance_ok(-1, adult) && !sim_romance_ok(adult, adult));
+    CHECK(!sim_marriage_ok(adult, -1) && !sim_marriage_ok(adult, adult));
+    CHECK_EQ(sim_romance_level(-1, adult), 0);
+    CHECK_EQ(sim_romance_level(adult, DOOMO_MAX_RESIDENTS + 1), 0);
 }
 
 static int has_problem(int id, int kind)

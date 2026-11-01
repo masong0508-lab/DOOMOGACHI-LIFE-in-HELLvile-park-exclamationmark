@@ -147,6 +147,12 @@ static const CrRow rows_voice[] = {
     ACTION("Test it!", CA_TEST_VOICE),
 };
 
+/* resident.h (LS0); here, with its only UI, to keep it out of resident RAM
+ * on the PS1 */
+const char *const doomo_life_stage_names[LIFE_COUNT] = {
+    "Adult", "Baby", "Toddler", "Child", "Teen", "Elder"
+};
+
 static const CrRow rows_persona[] = {
     SLIDE_R("Movement", persona[PERS_MOVEMENT], 16, n_move),
     SLIDE_R("Speech", persona[PERS_SPEECH], 16, n_speech),

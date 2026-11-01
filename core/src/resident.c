@@ -924,10 +924,6 @@ void resident_default(DoomoResident *r)
 }
 
 /* ---- life stage (resident.h) ---------------------------------------------- */
-const char *const doomo_life_stage_names[LIFE_COUNT] = {
-    "Adult", "Baby", "Toddler", "Child", "Teen", "Elder"
-};
-
 void resident_set_romance(DoomoResident *r, int romance)
 {
     if (romance < 0 || romance >= ROMANCE_COUNT) romance = ROMANCE_ANY;
@@ -940,40 +936,33 @@ void resident_set_stage(DoomoResident *r, int stage)
     r->romance = (uint8_t)((r->romance & ROMANCE_PREF_MASK) | ((unsigned)stage << LIFE_STAGE_SHIFT));
 }
 
-int life_romance_pair_ok(int sa, int sb)
-{
-    if (sa < 0 || sa >= LIFE_COUNT || sb < 0 || sb >= LIFE_COUNT) return 0;
-    if (LIFE_IS_ADULT(sa) && LIFE_IS_ADULT(sb)) return 1;
-    return sa == LIFE_TEEN && sb == LIFE_TEEN;        /* teens: romance only */
-}
+/* youth 0 ADULT / ELDER .. 4 BABY (a bad stage counts as a child: fail
+ * safe), and what each stage grows into */
+static const uint8_t life_youth[LIFE_COUNT] = { 0, 4, 3, 2, 1, 0 };
+static const uint8_t life_next[LIFE_COUNT] = {
+    LIFE_ELDER, LIFE_TODDLER, LIFE_CHILD, LIFE_TEEN, LIFE_ADULT, LIFE_ELDER
+};
 
 int life_stage_youth(int stage)
 {
-    switch (stage) {
-    case LIFE_BABY:    return 4;
-    case LIFE_TODDLER: return 3;
-    case LIFE_CHILD:   return 2;
-    case LIFE_TEEN:    return 1;
-    default:           return 0;
-    }
+    return (unsigned)stage < LIFE_COUNT ? life_youth[stage] : 2;
 }
 
 int life_stage_next(int stage)
 {
-    switch (stage) {
-    case LIFE_BABY:    return LIFE_TODDLER;
-    case LIFE_TODDLER: return LIFE_CHILD;
-    case LIFE_CHILD:   return LIFE_TEEN;
-    case LIFE_TEEN:    return LIFE_ADULT;
-    case LIFE_ELDER:   return LIFE_ELDER;
-    default:           return stage == LIFE_ADULT ? LIFE_ELDER : LIFE_ADULT;
-    }
+    return (unsigned)stage < LIFE_COUNT ? life_next[stage] : LIFE_ADULT;
 }
 
 int life_marriage_pair_ok(int sa, int sb)
 {
-    if (sa < 0 || sa >= LIFE_COUNT || sb < 0 || sb >= LIFE_COUNT) return 0;
-    return LIFE_IS_ADULT(sa) && LIFE_IS_ADULT(sb);
+    return (unsigned)sa < LIFE_COUNT && (unsigned)sb < LIFE_COUNT &&
+           LIFE_IS_ADULT(sa) && LIFE_IS_ADULT(sb);
+}
+
+int life_romance_pair_ok(int sa, int sb)
+{
+    return life_marriage_pair_ok(sa, sb) ||
+           (sa == LIFE_TEEN && sb == LIFE_TEEN);              /* teens: romance only */
 }
 
 int persona_type(const DoomoResident *r)

@@ -73,45 +73,33 @@ static void rebuild_bits(void)
 }
 
 /* ---------------------------------------------------------------------- */
-/* the life-stage sweep (LS0)                                               */
-/* May a and b keep a romance of this kind? Only the life stages and kin
- * count here (not status or preference: a possessed partner stays a
- * partner), so the sweep never undoes ordinary adult romance. */
-static int keep_romance(int a, int b, int married)
-{
-    int sa = sim_life_stage(a), sb = sim_life_stage(b);
-    if (rel_kind(a, b) == REL_FAMILY) return 0;
-    return married ? life_marriage_pair_ok(sa, sb) : life_romance_pair_ok(sa, sb);
-}
-
+/* the life-stage sweep (LS0): keeps what sim_romance_level allows (only
+ * stages and kin, so ordinary adult romance is never undone)              */
 int sim_romance_sweep(int id)
 {
     int i, n = 0;
     for (i = 0; i < doomo_town.edge_count; i++) {
         DoomoEdge *e = &doomo_town.edges[i];
-        int a = e->a, b = e->b, k = e->kind & REL_KIND_MASK;
-        if (id >= 0 && a != id && b != id) continue;
-        if ((e->kind & (REL_CRUSH_AB | REL_CRUSH_BA)) && !keep_romance(a, b, 0)) {
-            e->kind &= (uint8_t)~(REL_CRUSH_AB | REL_CRUSH_BA);
-            n++;
-        }
-        if (k == REL_MARRIED && !keep_romance(a, b, 1)) {
-            /* teens who somehow married go back to dating; anyone else
-             * the stages forbid stays (just) friends */
-            e->kind = (uint8_t)((e->kind & ~REL_KIND_MASK) |
-                                (keep_romance(a, b, 0) ? REL_DATING : REL_FRIEND));
-            n++;
-        } else if (k == REL_DATING && !keep_romance(a, b, 0)) {
-            e->kind = (uint8_t)((e->kind & ~REL_KIND_MASK) | REL_FRIEND);
-            n++;
-        }
+        int k = e->kind & REL_KIND_MASK, lv;
+        uint8_t nk = e->kind;
+        if (id >= 0 && e->a != id && e->b != id) continue;
+        if (!(nk & (REL_CRUSH_AB | REL_CRUSH_BA)) && k != REL_DATING && k != REL_MARRIED)
+            continue;
+        if ((lv = sim_romance_level(e->a, e->b)) >= 2) continue;
+        /* teens who somehow married go back to dating; anyone else the
+         * stages forbid loses their crushes and stays (just) friends */
+        if (!lv) nk &= (uint8_t)~(REL_CRUSH_AB | REL_CRUSH_BA);
+        if (k == REL_MARRIED || (k == REL_DATING && !lv))
+            nk = (uint8_t)((nk & ~REL_KIND_MASK) | (lv ? REL_DATING : REL_FRIEND));
+        if (nk != e->kind) { e->kind = nk; n++; }
     }
     for (i = sim_problem_count() - 1; i >= 0; i--) {
         const DoomoProblem *p = sim_problem(i);
         int k = p ? p->kind : PROB_NONE;
         if (k != PROB_CRUSH && k != PROB_CONFESS_HELP && k != PROB_PROPOSAL) continue;
         if (id >= 0 && p->resident != id && p->other != id) continue;
-        if (p->other > DOOMO_PLAYER_ID || keep_romance(p->resident, p->other, k == PROB_PROPOSAL))
+        /* crushes need romance, a proposal needs marriage */
+        if (p->other > DOOMO_PLAYER_ID || sim_romance_level(p->resident, p->other) > (k == PROB_PROPOSAL))
             continue;
         sim_problem_remove(i);
         n++;
@@ -148,30 +136,31 @@ static int cross_border_pct(void)
 int sim_confess(int from, int to, int bonus)
 {
     DoomoResident *a = town_res(from), *b = town_res(to);
-    int chance, ok, v;
+    int chance, ok, v, allowed;
     if (!a || !b || from >= DOOMO_MAX_RESIDENTS || to >= DOOMO_MAX_RESIDENTS) return 0;
     rel_set_crush(from, to, 0);
-    if (!sim_romance_ok(from, to)) {
-        /* LS0: a pair the gate forbids never gets a confession, an answer
-         * or a headline - the crush (and its problems) just quietly go */
-        int pi;
-        if ((pi = sim_problem_find(from, PROB_CRUSH)) >= 0) sim_problem_remove(pi);
-        if ((pi = sim_problem_find(from, PROB_CONFESS_HELP)) >= 0) sim_problem_remove(pi);
-        bit_set(sim_s.crush, from, 0);
-        return 0;
+    /* LS0: a pair the gate forbids never gets a confession, an answer or a
+     * headline - the crush (and its problems) just quietly go */
+    allowed = sim_romance_ok(from, to);
+    ok = 0;
+    if (allowed) {
+        sim_s.stats.confessions++;
+        v = rel_value(from, to);
+        chance = 12 + v / 2 + sim_compat(from, to) * 4 + bonus;
+        if (rel_has_crush(to, from)) chance += 45;
+        if (!sim_romance_ok(to, from) || is_taken(to) || is_taken(from))
+            chance = 0;
+        chance = DOOMO_CLAMP(chance, 0, 97);
+        ok = sim_chance(chance);
     }
-    sim_s.stats.confessions++;
-    v = rel_value(from, to);
-    chance = 12 + v / 2 + sim_compat(from, to) * 4 + bonus;
-    if (rel_has_crush(to, from)) chance += 45;
-    if (!sim_romance_ok(to, from) || !sim_romance_ok(from, to) || is_taken(to) || is_taken(from))
-        chance = 0;
-    chance = DOOMO_CLAMP(chance, 0, 97);
-    ok = sim_chance(chance);
     {
         int pi;
         if ((pi = sim_problem_find(from, PROB_CRUSH)) >= 0) sim_problem_remove(pi);
         if ((pi = sim_problem_find(from, PROB_CONFESS_HELP)) >= 0) sim_problem_remove(pi);
+    }
+    if (!allowed) {
+        bit_set(sim_s.crush, from, 0);
+        return 0;
     }
     if (ok) {
         rel_set_crush(to, from, 0);
@@ -387,7 +376,7 @@ const char *sim_advise_confess(int id, int target, int encourage)
         /* LS0: a pair the gate forbids (a kid, an adult and a teen) gets no
          * confession and no romantic answer: the crush just quietly goes */
         sim_confess(id, target, 0);
-        return "...Never mind. Let's go get ice cream.";
+        return "...Never mind. Ice cream?";
     }
     r->level = (uint8_t)DOOMO_MIN(99, r->level + 2);
     if (sim_confess(id, target, 18)) {
@@ -407,7 +396,7 @@ const char *sim_advise_propose(int id, int encourage)
     if (!sim_marriage_ok(id, partner)) {
         /* LS0: teens date, they never marry */
         if ((pi = sim_problem_find(id, PROB_PROPOSAL)) >= 0) sim_problem_remove(pi);
-        return "Married?! We're way too young. Ask again in ten years.";
+        return "Married?! We're way too young!";
     }
     if (!encourage) {
         if ((pi = sim_problem_find(id, PROB_PROPOSAL)) >= 0) sim_problem_remove(pi);

@@ -114,35 +114,35 @@ void bit_set(uint8_t *b, int i, int on)
     else b[i >> 3] &= (uint8_t)~(1 << (i & 7));
 }
 
-int sim_traits(int id)
+/* id is a premade citizen on a Classic island who still carries their
+ * roster name (made over or not) */
+static int roster_named(int id)
 {
-    const DoomoResident *r;
     const char *n;
     if (id < 0 || id >= DOOMO_MAX_RESIDENTS) return 0;
     if (doomo_town.population != TOWN_POP_PREMADE) return 0;
-    r = &doomo_town.res[id];
-    if (r->flags & RF_CUSTOM) return 0;
     n = roster_name(id);
-    if (!n[0] || strncmp(n, r->name, DOOMO_NAME_LEN) != 0) return 0;
+    return n[0] && strncmp(n, doomo_town.res[id].name, DOOMO_NAME_LEN) == 0;
+}
+
+int sim_traits(int id)
+{
+    if (!roster_named(id) || (doomo_town.res[id].flags & RF_CUSTOM)) return 0;
     return roster_traits(id);
 }
 int sim_life_stage(int id)
 {
     const DoomoResident *r = town_res(id);
     int s, rs;
-    const char *n;
     if (!r) return LIFE_ADULT;
     s = RES_STAGE(r);
     if (s >= LIFE_COUNT) s = LIFE_CHILD;                   /* fail safe   */
     /* a premade citizen who still carries their roster name is still that
      * person: a makeover (RF_CUSTOM) or a saved stage never makes them
      * older than the roster says (a canon kid stays a kid) */
-    if (id < DOOMO_MAX_RESIDENTS && doomo_town.population == TOWN_POP_PREMADE) {
-        n = roster_name(id);
-        if (n[0] && strncmp(n, r->name, DOOMO_NAME_LEN) == 0) {
-            rs = roster_stage(id);
-            if (life_stage_youth(rs) > life_stage_youth(s)) s = rs;
-        }
+    if (roster_named(id)) {
+        rs = roster_stage(id);
+        if (life_stage_youth(rs) > life_stage_youth(s)) s = rs;
     }
     return s;
 }
@@ -255,14 +255,18 @@ int sim_romance_ok(int from, int to)
     return 1;
 }
 
-int sim_marriage_ok(int a, int b)
+int sim_romance_level(int a, int b)
 {
-    /* the safety half only: a dating couple got past sim_romance_ok when
-     * they got together, and adult couples propose exactly as before LS0 */
-    if (!town_res(a) || !town_res(b) || a == b) return 0;
-    if (rel_kind(a, b) == REL_FAMILY) return 0;
-    return life_marriage_pair_ok(sim_life_stage(a), sim_life_stage(b));
+    int sa, sb;
+    if (!town_res(a) || !town_res(b) || a == b || rel_kind(a, b) == REL_FAMILY) return 0;
+    sa = sim_life_stage(a);
+    sb = sim_life_stage(b);
+    return life_marriage_pair_ok(sa, sb) ? 2 : life_romance_pair_ok(sa, sb);
 }
+
+/* the safety half only: a dating couple got past sim_romance_ok when they
+ * got together, and adult couples propose exactly as before LS0 */
+int sim_marriage_ok(int a, int b) { return sim_romance_level(a, b) == 2; }
 
 /* ---------------------------------------------------------------------- */
 /* daily routines                                                           */
@@ -348,6 +352,11 @@ static int story_vape_open(void)
 
 /* Pick what resident `id` is doing this hour. Deterministic for (town,
  * id, day, hour) so it stays put within the hour, then bent by needs. */
+/* the roster trait whose hours a LIFE_* stage keeps */
+static const uint16_t stage_hours[LIFE_COUNT] = {
+    0, ROSTER_T_KID, ROSTER_T_KID, ROSTER_T_KID, ROSTER_T_TEEN, ROSTER_T_ELDER
+};
+
 static int decide_activity(int id, const DoomoResident *r)
 {
     int h = town_hour(), wd = doomo_town.weekday, weekend = wd >= 5;
@@ -370,9 +379,7 @@ static int decide_activity(int id, const DoomoResident *r)
 
     /* the saved life stage (LS0) counts as much as the roster's traits:
      * creator kids and sim babies keep kids' hours */
-    if (life_stage_youth(stage) >= 2) traits |= ROSTER_T_KID;     /* baby, toddler, child */
-    else if (stage == LIFE_TEEN && !(traits & ROSTER_T_KID)) traits |= ROSTER_T_TEEN;
-    else if (stage == LIFE_ELDER && !(traits & (ROSTER_T_KID | ROSTER_T_TEEN))) traits |= ROSTER_T_ELDER;
+    if (stage < LIFE_COUNT) traits |= stage_hours[stage];
 
     /* chronotype */
     sleep_at = 22; wake_at = 6;
