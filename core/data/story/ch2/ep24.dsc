@@ -61,7 +61,7 @@ end
 
 script e24_fuzz
   say fuzz HAPPY "Bless you, child. I felt / it too. A darkness has / moved into our Steamy."
-  say fuzz "I am Father Fuzz. Stuffed / with love and a little bit / of buckwheat."
+  say fuzz "I am Father Fuzz. Stuffed / with buckwheat. Celibate, / by popular demand."
   say fuzz HAPPY "Nothing is unhuggable, @P. / Nothing. Some things just / need holy water first."
   say fuzz "Let's practise. Meet Mr. / Huggins the 2nd. (The 1st / has a little grave.)"
   sfx SFX_CHOIR

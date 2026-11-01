@@ -74,7 +74,7 @@ script e25_steamy
   native CB_C12 C12A_ODDS
   choice fuzz "Steamy now. The odds look like @1%. I've prayed on worse. Not MUCH worse." { "Begin the exorcism!" -> go ; "Not yet..." -> wait }
 wait:
-  say fuzz "Rest. Pray. Have a snack. / Come back when you're ready."
+  say fuzz "Rest. Pray. Snack. Pray / about the snack. Then / come back."
   end
 go:
   push exorcism 2

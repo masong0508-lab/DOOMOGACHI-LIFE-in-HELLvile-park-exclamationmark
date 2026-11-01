@@ -38,12 +38,12 @@ string IDLE_NANA_2B "@E chewed a table leg. Teething! {..}It's just teething. ..
 string IDLE_PIP_2A "Patrol rules: no purple shop. Mr. Flops sniffed it. It smells like lies."
 string IDLE_FUZZ_2A "Holy water and hugs. Both work on demons. Hugs also work on me. Hint, hint."
 string IDLE_RIVET_2A "Sparks are tiny fireworks that bite. Don't flinch. They can smell it."
-string IDLE_BLOOM_2A "Three more purple tongues today. Clinically: gross. Personally: also gross."
-string IDLE_VEX_2A "Back already, sweetie? The first puff's free. The second's a subscription."
+string IDLE_BLOOM_2A "Three more purple tongues. Clinically: gross. I've licked worse. For science."
+string IDLE_VEX_2A "Back, sweetie? One puff's free. Two's a plan. Three, we're dating."
 string IDLE_LULLA_2A "Somebody left a vape pen in the sandbox. At a DAYCARE. I'm making a SIGN."
 string IDLE_STEAMY_2A "Bath house is open! Steam only. No vapor. Quackers here bites vapor."
-string IDLE_HAZE_2A "Don't buy the grape. (waters a plant) Don't buy any of it."
-string IDLE_HATTIE_2A "My punchlines land late now. Somebody laughs before me. I hate a heckler."
+string IDLE_HAZE_2A "Don't buy the grape. (waters a plant) This fern's on its third life."
+string IDLE_HATTIE_2A "My punchlines land late now. Somebody laughs before me. I dated that guy."
 string IDLE_GRAMPY_2A "My tomatoes taste of grape. GRAPE, Toaster! I'm writing to the council."
 
 # ---- wrongness W7-W15 (captions appear, never pop) ----

@@ -6,14 +6,14 @@
 @pack ep22 kind=episode chapter=2 minutes=30
 
 script e22_bloom
-  say bloom NEUTRAL "@P. Good. Sit. Ignore my / hands, they're cold. It's / a doctor thing."
+  say bloom NEUTRAL "@P. Sit. Strip to the / waist. {.}Kidding. I'm a / ghoul, not a pervert."
   say bloom "Five patients this week. / Every one says EVERYTHING / tastes like grape."
   [R8]
-  say bloom NEUTRAL "I'm a doctor, so let me / be technical: that's weird."
+  say bloom NEUTRAL "Let me be technical: / that is some weird shit."
   [R13]
   say bloom "Find me three odd things. / Weird tastes, weird words, / weird shadows. Go."
   sfx SFX_PICKUP
-  say nar "NEW! The quest log has a / CLUES board. Find 3 clues. / Detective hat not included."
+  say nar "NEW! The quest log has a / CLUES board. Find 3 clues. / Detective hat: paid DLC."
   native CB_C12 C12A_STEP 1
 end
 
@@ -76,7 +76,7 @@ script e22_shadow_done
   call e22_counted
   end
 nope:
-  say nar "Just sky. Lovely sky. / Not a clue. Try again."
+  say nar "Just sky. Some fan will / freeze-frame it and find / a face anyway. Again!"
 end
 
 # 4: the bells ring backwards (the church, at night)
@@ -126,7 +126,7 @@ script e22_report
   [R8]
   say bloom SHOCK "Sorry. Ghoul."
   [R8]
-  say bloom HAPPY "...I mean: COOL hands. It's / a doctor thing."
+  say bloom HAPPY "...I mean: COOL hands. / My last date called them / 'a bold choice.'"
   [MUTE 13]
   [HOLD 13]
   say bloom SAD "I've seen this before.{..} / {d}Somewhere else.{punch}" [HEART]

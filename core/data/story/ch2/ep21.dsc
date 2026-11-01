@@ -15,7 +15,7 @@ end
 
 script e21_mornings
   [DAY 5]
-  say nar "A few days pass. Fast. / Like a montage, but cheaper."
+  say nar "A few days pass. Fast. / A montage! The budget / covered three frames."
   runbeat b21_mornings
   [DAY 7]
   say nar "(Each morning, @E's nubs / are a bit longer. @E is / VERY proud of them.)"
@@ -85,17 +85,17 @@ script e21_vex
   say vex HAPPY "First puff's free. Second / puff's free. All the puffs / are free."
   [R13]
   [R5]
-  say vex HAPPY "That's the business model."
+  say vex HAPPY "That's the business model. / Investors LOVE it. We / don't have investors."
   npc vex STILL
   [R8]
-  say haze NEUTRAL "The plants hate it too."
+  say haze NEUTRAL "The plants hate it too. / One of them unionised."
   npc vex THAW
   choice vex "So, sweetie! One little puff? For the brand?" { "No thanks." -> no ; "...Just one puff." -> puff ; "Where are you from?" -> where }
 no:
   npc vex STILL
   [MUTE 21]
   [HOLD 21]
-  say vex NEUTRAL "...Suit yourself."
+  say vex NEUTRAL "...Suit yourself. Prude."
   [R13]
   npc vex THAW
   npc haze EMOTE EMO_HEART
@@ -106,7 +106,7 @@ puff:
   give ITEM_VAPE_PEN
   native CB_C12 C12A_PUFF
   runbeat b21_puff
-  say vex HAPPY "There it is! The Cloud / Nine feeling! We'll be / seeing you, @P. A LOT."
+  say vex HAPPY "Ooh, look at you, all / glassy-eyed. Call me. / {.}Or don't. You WILL."
   say nar "Somewhere, the fountain / giggles. Louder than last / time. Nobody told a joke."
   jmp out
 where:

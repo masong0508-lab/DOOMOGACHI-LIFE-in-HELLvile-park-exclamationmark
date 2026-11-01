@@ -47,7 +47,7 @@ cute:
   jmp weld
 brutal:
   native CB_C12 C12A_WEAPON 1
-  say rivet HAPPY "Ohhh yes. A boomstick. / Hellsteel stock, pink grip. / Classy."
+  say rivet HAPPY "Ohhh yes. A boomstick. / Pink grip. Compensating? / {.}Don't answer."
 weld:
   befriend rivet 4
   say rivet "There's your bench. Weld / something. Mind the sparks!"

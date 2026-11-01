@@ -84,7 +84,7 @@ down:
   say nar "(You smash the portal crate. / The vape wraith pops like a / soap bubble.)"
   [R13]
   say nar "Vex is gone. There's only a / note, in curly purple ink:"
-  say vex HAPPY "Too late, Hillvile. The big / cloud is already rising. / Kisses! - V"
+  say vex HAPPY "Too late, Hillvile. The big / cloud is already rising. / Kisses! Tongue! - V"
   [R13]
   [R8]
   say nar "(Smaller, underneath: / 'get your pet indoors'. / Then a little heart.)"
