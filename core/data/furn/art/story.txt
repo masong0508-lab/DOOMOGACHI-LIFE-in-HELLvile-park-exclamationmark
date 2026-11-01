@@ -107,14 +107,14 @@ box  1 1 14  14 2 4    B
 box  3 2 15  3 1 1     WHITE
 box  7 2 15  2 1 1     WHITE
 box  10 2 15 3 1 1     WHITE
-box@0 5 1 4  2 2 7     JET
-box@0 9 1 4  2 2 7     JET
-box@0 5 1 4  6 2 1     JET
-box@0 5 1 10 6 2 1     JET
-box@1 5 1 4  2 2 7     CHERRY
-box@1 9 1 4  2 2 7     CHERRY
-box@1 5 1 4  6 2 1     CHERRY
-box@1 5 1 10 6 2 1     CHERRY
+box  5 1 4   2 2 7     JET
+box  9 1 4   2 2 7     JET
+box  5 1 4   6 2 1     JET
+box  5 1 10  6 2 1     JET
+box@1 5 2 4  2 2 7     CHERRY
+box@1 9 2 4  2 2 7     CHERRY
+box@1 5 2 4  6 2 1     CHERRY
+box@1 5 2 10 6 2 1     CHERRY
 box  2 1 2   12 1 1    ~WOOD
 
 # ---- the side missions' and chapters' rewards (H4 M2) ----------------------------
