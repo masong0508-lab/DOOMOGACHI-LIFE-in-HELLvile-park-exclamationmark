@@ -51,4 +51,5 @@ def main(a):
     with open(out, "w", encoding="utf-8") as o:
         for k, f in rows: o.write("%s\t\t# %s\n" % (k, f))
     print(len(rows), "strings")
-main(sys.argv[1:])
+if __name__ == "__main__":   # tools/langstale.py imports the parser
+    main(sys.argv[1:])

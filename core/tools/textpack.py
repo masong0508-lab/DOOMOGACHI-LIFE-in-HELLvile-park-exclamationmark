@@ -21,6 +21,21 @@ committed): a 2 KB directory sector, then every pack sector-aligned.
 
     python3 core/tools/textpack.py [--out-root DIR] [--bin TEXT.BIN]
 
+The script-rewrite guardrails (P0; docs/STORY_ENGINE.md "Script tools")
+compile everything the same way but write nothing to core/gen:
+
+    --check-es [--allow-missing] [--allow-stale]
+                    the Spanish story TSVs against the packs: stale rows,
+                    missing translations, box overflow, Spanish blobs over
+                    their cap (exit 1), PS1 slot fallbacks (warnings)
+    --sync-es       rewrite core/lang/story/<pack>.tsv in pack order, keep
+                    every translation, move stale rows to a trailing
+                    "# STALE" block, append new strings as TODO rows
+    --sizes         every pack's English / Spanish bytes, cap, PS1 slot and
+                    headroom
+    --es-dir DIR    read (and with --sync-es write) the TSVs from DIR
+                    instead of core/lang/story (tests, scratch copies)
+
 Deterministic: the same inputs give byte-identical outputs (check-gen).
 Every lint failure names the .dsc file and line; fix the input, never
 core/gen/.
@@ -1422,10 +1437,13 @@ FONT_ES = {"á": 0xA0, "é": 0xA1, "í": 0xA2, "ó": 0xA3, "ú": 0xA4, "ñ": 0xA
            "¿": 0xAE, "¡": 0xAF}
 
 
+ES_DIR = os.path.join(CORE, "lang", "story")
+
+
 def load_es():
     """core/lang/story/<pack>.tsv: English<TAB>Spanish (UTF-8, # comments, \\ = backslash).
     Returns {(pack, english): spanish in font bytes as a latin-1 str}."""
-    d = os.path.join(CORE, "lang", "story")
+    d = ES_DIR
     out = {}
     if not os.path.isdir(d):
         return out
@@ -1461,11 +1479,220 @@ def check_es(s, where, pack, en):
         raise Fail("%s: over 199 characters: %r" % (where, s))
 
 
+# --- P0: the script-rewrite guardrails (--check-es, --sync-es, --sizes) ---
+# The PS1 text window (ps1/src/txtload.c): a side pack loads into slot S
+# (8 KB) and a chapter-common pack into slot C (2 KB) when it fits in whole
+# sectors; anything bigger falls back to slot E (12 KB) and evicts the
+# running episode's pack.
+PS1_SLOT_S = 8 * 1024
+PS1_SLOT_C = 2 * 1024
+PS1_SLOT_E = 12 * 1024
+STALE_HEAD = "# STALE (reuse when retranslating): rows whose English is no longer in the pack"
+TSV_HEAD = "# English<TAB>Spanish<TAB># where. Keep {codes}, ' / ' line breaks, '//' page breaks."
+
+
+def ps1_slot(kind, nbytes):
+    """the PS1 slot a pack of this kind and size loads into: 'S', 'C' or 'E'"""
+    n = (nbytes + SECTOR - 1) // SECTOR * SECTOR
+    if kind == "side":
+        return "S" if n <= PS1_SLOT_S else "E"
+    if kind == "common":
+        return "C" if n <= PS1_SLOT_C else "E"
+    return "E"
+
+
+def ps1_slot_cap(kind):
+    return {"side": PS1_SLOT_S, "common": PS1_SLOT_C}.get(kind, PS1_SLOT_E)
+
+
+def tsv_unesc(f):
+    return f.replace("\\\\", "\\")
+
+
+def tsv_esc(f):
+    return f.replace("\\", "\\\\")
+
+
+def read_tsv_rows(path):
+    """one story TSV -> (rows, stale): rows are (line, english, spanish_raw,
+    where_raw) for every live row (an empty Spanish counts as untranslated),
+    stale are the rows of an earlier --sync-es's STALE block ('#~ ' lines)"""
+    rows, stale = [], []
+    if not os.path.exists(path):
+        return rows, stale
+    for n, line in enumerate(open(path, encoding="utf-8").read().split("\n"), 1):
+        if line.startswith("#~ "):
+            f = line[3:].split("\t")
+            stale.append((n, tsv_unesc(f[0]), f[1] if len(f) > 1 else "", f[2] if len(f) > 2 else ""))
+            continue
+        if not line.strip() or line.startswith("#"):
+            continue
+        f = line.split("\t")
+        rows.append((n, tsv_unesc(f[0]), f[1] if len(f) > 1 else "", f[2] if len(f) > 2 else ""))
+    return rows, stale
+
+
+def pack_keys(p):
+    """the strings of a pack a translator sees, in pack order, without repeats"""
+    seen, out = set(), []
+    for s in p.strings:
+        if s in seen or not s.strip():
+            continue
+        seen.add(s)
+        out.append(s)
+    return out
+
+
+def es_overflow(p, s, e):
+    """--lint-es's box rules for one Spanish line: a list of messages"""
+    msgs = []
+    if s in p.opts and len(visible(e)) > OPT_CHARS:
+        msgs.append("option %d chars (max %d)" % (len(visible(e)), OPT_CHARS))
+    if len(visible(e).replace("//", "").replace("/", "")) > 199:
+        msgs.append("line over 199 characters")
+    if not p.legacy:
+        for page in visible(e).split("//"):
+            k = wrap_lines(re.sub(r" */ *", "\n", page), BOX_CHARS_240)
+            if k > BOX_LINES_240:
+                msgs.append("page of %d lines (max %d x %d)" % (k, BOX_LINES_240, BOX_CHARS_240))
+    return msgs
+
+
+def script_guards(guard, packs, blobs, es_blobs, es_map):
+    rel_es = os.path.relpath(ES_DIR, ROOT) if ES_DIR.startswith(ROOT + os.sep) else ES_DIR
+    by_name = {p.name: p for p in packs}
+    status = 0
+    if guard.get("sync-es"):
+        nst = nnew = 0
+        for p in packs:
+            path = os.path.join(ES_DIR, p.name + ".tsv")
+            rows, stale = read_tsv_rows(path)
+            if not rows and not stale and not os.path.exists(path):
+                continue                      # a pack nobody has started translating
+            have = {}
+            for _, en, es, _ in stale + rows:   # live rows win over old stale ones
+                if es.strip() or en not in have:
+                    have[en] = es
+            keys = pack_keys(p)
+            live = set(keys)
+            out = [TSV_HEAD]
+            for s in keys:
+                es = have.get(s, "")
+                where = "# %s" % p.wheres.get(s, "")
+                if not es.strip():
+                    where += " TODO"
+                    nnew += 1 if s not in have else 0
+                out.append("%s\t%s\t%s" % (tsv_esc(s), es, where))
+            old = []
+            seen = set()
+            for _, en, es, wh in rows + stale:
+                if en in live or en in seen or not es.strip():
+                    continue
+                seen.add(en)
+                old.append("#~ %s\t%s\t%s" % (tsv_esc(en), es, wh or "#"))
+            if old:
+                out.append(STALE_HEAD)
+                out.extend(old)
+                nst += len(old)
+            with open(path, "w", encoding="utf-8") as f:
+                f.write("\n".join(out) + "\n")
+        print("sync-es: %s: %d new untranslated row(s), %d row(s) in STALE blocks" % (rel_es, nnew, nst))
+    if guard.get("check-es"):
+        allow_missing = guard.get("allow-missing")
+        allow_stale = guard.get("allow-stale")
+        nstale = nmiss = nover = ncap = nwarn = 0
+        files = sorted(f for f in os.listdir(ES_DIR) if f.endswith(".tsv")) if os.path.isdir(ES_DIR) else []
+        for fn in files:
+            pk = fn[:-4]
+            rows, _ = read_tsv_rows(os.path.join(ES_DIR, fn))
+            p = by_name.get(pk)
+            if p is None:
+                if rows:
+                    nstale += len(rows)
+                    print("stale\t%s/%s\t(no pack '%s'; %d row(s))" % (rel_es, fn, pk, len(rows)))
+                continue
+            live = set(p.strings)
+            seen = set()
+            for n, en, es, _ in rows:
+                if en not in live:
+                    nstale += 1
+                    print("stale\t%s/%s:%d\t%s" % (rel_es, fn, n, en))
+                elif en in seen and es.strip():
+                    nwarn += 1
+                    print("warning\t%s/%s:%d\tduplicate row: %s" % (rel_es, fn, n, en))
+                seen.add(en)
+        for p, blob, eb in zip(packs, blobs, es_blobs):
+            translated = [s for s in pack_keys(p) if (p.name, s) in es_map]
+            if not translated:
+                continue                      # a pack with no Spanish at all is English-only by design
+            for s in pack_keys(p):
+                e = es_map.get((p.name, s))
+                if e is None:
+                    nmiss += 1
+                    print("missing\t%s\t%s\t%s" % (p.name, p.wheres.get(s, ""), s))
+                    continue
+                for m in es_overflow(p, s, e):
+                    nover += 1
+                    print("overflow\t%s\t%s\t%s\t%s" % (p.name, p.wheres.get(s, ""), m, e))
+            if eb is not None:
+                # the hard limit is the biggest PS1 slot (E): a Spanish pack
+                # over its kind's cap still loads there (with a warning below)
+                hard = max(CAPS[p.kind], PS1_SLOT_E)
+                if len(eb) > hard:
+                    ncap += 1
+                    print("over-cap\t%s\tSpanish %d B > %d B (PS1 slot E; it cannot load)" % (p.name, len(eb), hard))
+                elif len(eb) > CAPS[p.kind]:
+                    nwarn += 1
+                    print("warning\t%s\tSpanish %d B > the %s cap of %d B" % (p.name, len(eb), p.kind, CAPS[p.kind]))
+                if ps1_slot(p.kind, len(eb)) != ps1_slot(p.kind, 0):
+                    nwarn += 1
+                    print("warning\t%s\tSpanish %d B > PS1 slot %s (%d B): loads into slot E and evicts the episode pack" %
+                          (p.name, len(eb), ps1_slot(p.kind, 0), ps1_slot_cap(p.kind)))
+            if ps1_slot(p.kind, len(blob)) != ps1_slot(p.kind, 0):
+                nwarn += 1
+                print("warning\t%s\tEnglish %d B > PS1 slot %s (%d B): loads into slot E and evicts the episode pack" %
+                      (p.name, len(blob), ps1_slot(p.kind, 0), ps1_slot_cap(p.kind)))
+        fail = nover or ncap or (nstale and not allow_stale) or (nmiss and not allow_missing)
+        mode = "rewrite phase (stale and missing allowed)" if allow_missing and allow_stale else \
+            "strict" if not (allow_missing or allow_stale) else \
+            "allow-%s" % ("missing" if allow_missing else "stale")
+        print("check-es: %d stale, %d missing, %d overflow, %d over cap, %d warning(s) [%s]: %s" %
+              (nstale, nmiss, nover, ncap, nwarn, mode, "FAIL" if fail else "ok"))
+        if fail:
+            status = 1
+    if guard.get("sizes"):
+        # en head = the English headroom under the kind's cap (the rewrite
+        # packages keep at least 5%: translations run longer); slot head =
+        # what is left in the pack's own PS1 slot by the bigger language
+        print("%-9s %-7s %6s %6s %6s %7s %4s %9s  %s" %
+              ("pack", "kind", "en B", "es B", "cap", "en head", "slot", "slot head", "notes"))
+        for p, blob, eb in zip(packs, blobs, es_blobs):
+            cap = CAPS[p.kind]
+            big = max(len(blob), len(eb) if eb else 0)
+            notes = []
+            if cap - len(blob) < cap // 20:
+                notes.append("English under 5% headroom")
+            if eb and len(eb) > cap:
+                notes.append("Spanish over the cap")
+            home = ps1_slot(p.kind, 0)
+            for lang, b in (("English", blob), ("Spanish", eb)):
+                if b is not None and ps1_slot(p.kind, len(b)) != home:
+                    notes.append("%s falls back to PS1 slot E" % lang)
+            print("%-9s %-7s %6d %6s %6d %7d %4s %9d  %s" % (
+                p.name, p.kind, len(blob), len(eb) if eb else "-", cap, cap - len(blob), home,
+                ps1_slot_cap(p.kind) - big, "; ".join(notes)))
+        print("sizes: %d packs, English %d B, Spanish %d B" % (
+            len(packs), sum(len(b) for b in blobs), sum(len(b) for b in es_blobs if b)))
+    return status
+# --- end P0 ---
+
+
 def main(argv):
     out_root = ROOT
     bin_out = None
     dump_es = None
     lint_es = False
+    guard = {}
     i = 0
     while i < len(argv):
         if argv[i] == "--out-root":
@@ -1484,6 +1711,15 @@ def main(argv):
         elif argv[i] == "--bin":
             bin_out = os.path.abspath(argv[i + 1])
             i += 2
+        # --- P0: the script-rewrite guardrails (no core/gen output) ---
+        elif argv[i] in ("--check-es", "--sync-es", "--sizes", "--allow-missing", "--allow-stale"):
+            guard[argv[i][2:]] = True
+            i += 1
+        elif argv[i] == "--es-dir":
+            global ES_DIR
+            ES_DIR = os.path.abspath(argv[i + 1])
+            i += 2
+        # --- end P0 ---
         else:
             print("textpack: unknown argument %s" % argv[i], file=sys.stderr)
             return 2
@@ -1583,6 +1819,8 @@ def main(argv):
             if decode(st, counts, order, dic) != s:
                 raise Fail("%s: codec round trip failed for %r" % (p.path, s))
         es_blobs.append(pack_bytes(p, streams, p.es))
+    if guard.get("check-es") or guard.get("sync-es") or guard.get("sizes"):
+        return script_guards(guard, packs, blobs, es_blobs, es_map)
     gen = os.path.join(out_root, "core", "gen")
     os.makedirs(gen, exist_ok=True)
     head = "/* GENERATED by core/tools/textpack.py from core/data/story/ - do not edit. */\n"

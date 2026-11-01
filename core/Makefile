@@ -61,7 +61,7 @@ PLAT_OBJS   := $(call obj,$(NATIVE_PLAT))
 MAIN_OBJ    := $(call obj,$(NATIVE_MAIN))
 TEST_OBJS   := $(call obj,$(TEST_SRCS))
 
-.PHONY: all lib runner test unit scripts gen check-gen xcheck sizes clean
+.PHONY: all lib runner test unit scripts gen check-gen xcheck sizes clean story-check
 .DEFAULT_GOAL := runner
 
 all: runner $(BUILD)/tests
@@ -95,13 +95,28 @@ $(BUILD)/tests: $(CORE_OBJS) $(PLAT_OBJS) $(TEST_OBJS)
 	$(CC) $(LDFLAGS_SAN) -o $@ $^
 
 # ---- tests ------------------------------------------------------------------
-test: unit scripts
+test: story-check unit scripts
 
 unit: $(BUILD)/tests
 	$(BUILD)/tests --golden $(CORE)/tests/golden --tmp $(BUILD)/testtmp
 
 scripts: $(BUILD)/runner
 	sh $(CORE)/tests/run_scripts.sh $(BUILD)/runner $(CORE)/tests/scripts $(BUILD)/shots
+
+# --- P0: the script-rewrite guardrails (docs/STORY_ENGINE.md "Script tools") ---
+# The Spanish story TSVs against the packs, the save and flow locks, and the
+# pack sizes. STORY_ES=rewrite (the default while the English is rewritten,
+# DECISIONS: Spanish is redone after the rewrite) reports stale and missing
+# Spanish rows without failing; STORY_ES=strict fails on them. Overflow,
+# a Spanish pack that cannot load and any lock break always fail.
+STORY_ES ?= rewrite
+STORY_ES_FLAGS_rewrite := --allow-missing --allow-stale
+STORY_ES_FLAGS_strict  :=
+story-check:
+	@$(PYTHON) $(CORE)/tools/textpack.py --check-es $(STORY_ES_FLAGS_$(STORY_ES))
+	@$(PYTHON) $(CORE)/tools/story_opslock.py --check
+	@$(PYTHON) $(CORE)/tools/textpack.py --sizes
+# --- end P0 ---
 
 # ---- generators ---------------------------------------------------------------
 GEN_ROOT ?= $(ROOT)
