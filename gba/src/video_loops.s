@@ -358,7 +358,7 @@ r3d_up2:
     mov     lr, #240
 1:  mla     r5, r3, lr, r0              @ source row r
     add     r6, r3, r3
-    mla     r6, r6, lr, r0              @ row 2r
+    mla     r6, lr, r6, r0              @ row 2r (Rd != Rm: ARMv4 MLA rule)
     add     r7, r6, #240                @ row 2r + 1
     add     r5, r5, r1, lsl #1          @ their ends
     add     r6, r6, r1, lsl #2
