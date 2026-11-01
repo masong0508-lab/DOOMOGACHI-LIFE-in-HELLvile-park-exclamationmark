@@ -1,6 +1,8 @@
-# core/lang/es.tsv - Spanish UI strings: English<TAB>Spanish (UTF-8).
+# core/lang/es/ui_main.tsv - Spanish UI strings: English<TAB>Spanish (UTF-8).
 # Keys are the exact English text the code draws; \n = newline, \xHH = icon byte.
-# Built into core/gen/lang_ui_es.c by tools/langpack.py. Missing = stays English.
+# Every core/lang/es/ui_*.tsv is built into core/gen/lang_tab_es.c by
+# tools/langpack.py (lang.h); this file's short strings also make the PS1's
+# resident table (lang_res_es.c). Missing = stays English.
 Story Mode	Modo historia
 Free Play	Juego libre
 Options	Opciones

@@ -23,9 +23,10 @@ static const char *const main_items[I_MAIN_N] = {
 /* the Language row only fits the big (PS1 / 320x240) layout */
 static int main_n(void) { return fp_big() ? I_MAIN_N : I_MAIN_N - 1; }
 
-static void cycle_lang(void)
+/* the languages offered to players (lang.h: the registry's ready ones) */
+static void cycle_lang(int dir)
 {
-    opt_set(OPT_LANGUAGE, (opt_get(OPT_LANGUAGE) + 1) % LANG_COUNT);
+    opt_set(OPT_LANGUAGE, lang_next(opt_get(OPT_LANGUAGE), dir));
     audio_sfx(SFX_CURSOR);
 }
 
@@ -182,7 +183,8 @@ static void title_update(void)
         if (btn_repeat(BTN_DOWN)) { T.sel = (uint8_t)((T.sel + 1) % main_n()); audio_sfx(SFX_CURSOR); }
         if (T.sel == I_THEME && btn_repeat(BTN_LEFT)) cycle_theme(-1);
         if (T.sel == I_THEME && btn_repeat(BTN_RIGHT)) cycle_theme(1);
-        if (T.sel == I_LANG && (btn_repeat(BTN_LEFT) || btn_repeat(BTN_RIGHT))) cycle_lang();
+        if (T.sel == I_LANG && btn_repeat(BTN_LEFT)) cycle_lang(-1);
+        if (T.sel == I_LANG && btn_repeat(BTN_RIGHT)) cycle_lang(1);
         if (btn_pressed(BTN_B)) { T.started = 0; audio_sfx(SFX_CANCEL); return; }
         if (!btn_pressed(BTN_A)) return;
         switch (T.sel) {
@@ -191,7 +193,7 @@ static void title_update(void)
         case I_OPTIONS: audio_sfx(SFX_SELECT); scene_push(&SCENE_OPTIONS, 0); break;
         case I_UNLOCKS: audio_sfx(SFX_SELECT); scene_push(&SCENE_UNLOCKS, 0); break;
         case I_CREDITS: audio_sfx(SFX_SELECT); scene_push(&SCENE_CREDITS, 0); break;
-        case I_LANG: cycle_lang(); break;
+        case I_LANG: cycle_lang(1); break;
         default: cycle_theme(1); break;
         }
         return;

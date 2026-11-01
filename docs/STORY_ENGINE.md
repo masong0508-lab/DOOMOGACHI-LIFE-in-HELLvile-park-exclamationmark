@@ -432,7 +432,8 @@ letters. No stats change and the dream journal is not written.
 * **Runner commands** (`core/native/runner_main.c`): `seed N` (the town seed
   and `plat_entropy()` from now), `expect-text "..."` (the dialogue line
   contains it), `expect-flag F [V]`, `story-fp [HEX]`, and (P0) `lang
-  CODE` (`en`, `es`: the language, as if picked on the Options page) and
+  CODE` (any code of `core/lang/languages.tsv`, L1: `en`, `es`, `pt-BR`,
+  ..., ready or not: the language, as if picked on the Options page) and
   `expect-lang CODE` (fails unless that is the language now). The
   GBA / PS1 harnesses get the same commands from H2 / H3 (SPEC C2).
 
@@ -543,7 +544,7 @@ guide) and [`design/story/SCRIPT_LOCKS.md`](design/story/SCRIPT_LOCKS.md)
 | `story_opslock.py --write` / `--write-save` | Regenerate `flow.lock` (a deliberate restructure, with the reason in the commit) / `save.lock` (only with a save-format change: never to make a rewrite pass) |
 | `python3 core/tools/story_stats.py [PACK...] [--csv FILE]` | Style metrics per pack: lines, words, words a line, narrator parentheticals %, two-word non-option lines %, pause codes a line, ominous keywords %, `{d}`, HEART and PUNCH counts, and `box27`: lines said beside a portrait (any speaker but the narrator) that need a 4th line at the real 27-column width (`ui_dialog.c`; the lint allows 28; report only, 89 in the game today). For the before/after table in every rewrite commit |
 | `python3 core/tools/story_read.py PACK... [--ops]` | The reading script: each script in file order with speaker names resolved (cast names and roster ids), expressions, lines broken at `/` and `//`, tags, choices with their labels, and the waits, beats, pushes, flags and quests between them. The rewrite is reviewed from this |
-| `python3 tools/langstale.py [--quiet]` | UI translations (`core/lang/es*.tsv`) whose English no longer matches any C string literal in `core/src`, `core/gen` or `core/include` (a reworded literal silently drops its Spanish). Report only. Baseline: 3 of 3,275 rows (`es.tsv` 167, 168, 199) |
+| `python3 tools/langstale.py [--quiet] [--lang CODE]` | UI translations (`core/lang/<code>/ui_*.tsv`, default `es`) whose English no longer matches any C string literal in `core/src`, `core/gen` or `core/include` (a reworded literal silently drops its Spanish). Report only. Baseline: 3 of 3,275 rows (`es/ui_main.tsv` 169, 170, 201) |
 
 Runner: `core/tests/scripts/story_es.txt` switches to Spanish (`lang es`),
 shoots Ep 1.1, Ep 2.2, the S117 offer and the quest log at both

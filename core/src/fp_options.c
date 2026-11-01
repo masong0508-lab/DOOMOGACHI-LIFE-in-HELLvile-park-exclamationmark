@@ -86,6 +86,7 @@ static struct {
 
 static int value_ok(int opt, int v)
 {
+    if (opt == OPT_LANGUAGE) return doomo_lang_info[v].ready;    /* lang.h: offered languages */
     if (opt >= OPT_CHEAT_BIG_HEAD && opt <= OPT_CHEAT_ALL_GHOSTS && v > 0)
         return unlock_ok(UL_CAT_CHEAT, 0, opt);
     return unlock_ok(UL_CAT_SKIN, opt, v);
@@ -237,15 +238,18 @@ static void opt_draw(void)
         {
             int opt = O.rows[row], v = opt_get(opt);
             const DoomoOptionInfo *oi = &doomo_option_info[opt];
-            if (oi->values) doomo_snprintf(val, sizeof(val), "%s", oi->values[v]);
-            else doomo_snprintf(val, sizeof(val), "%d", v);
+            /* a value name is passed as it is (constant text: lang_tr()
+             * remembers its translation, L1); numbers are built in val */
+            const char *shown = oi->values ? oi->values[v] : val;
+            if (!oi->values) doomo_snprintf(val, sizeof(val), "%d", v);
             if (opt >= OPT_MUSIC_VOL && opt <= OPT_VOICE_VOL) {
                 int k;
                 val[0] = 0;
                 for (k = 0; k < 10; k++) val[k] = k < v ? '|' : '.';
                 val[10] = 0;
+                shown = val;
             }
-            ui_value_row(x + 12, y, w - 18, oi->name, val, row == O.sel);
+            ui_value_row(x + 12, y, w - 18, oi->name, shown, row == O.sel);
             if (opt == OPT_MONSTER_MODE && v) fp_icon(x + w - 10, y, ICON_SKULL, PAL_UI_RED);
         }
     }

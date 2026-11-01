@@ -37,7 +37,8 @@
  *                       story / HomeMart would
  *   clock H M           (H4) the island clock (the house's daylight)
  *   money N             (H4) the purse (HomeMart's deals)
- *   lang CODE           (P0) the language by its code (en, es), as if picked
+ *   lang CODE           (P0) the language by its code (en, es, pt-BR...:
+ *                       core/lang/languages.tsv, ready or not), as if picked
  *                       on the Options page: opt_set(OPT_LANGUAGE) ->
  *                       lang_changed(); the session keeps it across loads
  *   expect-lang CODE    (P0) fail unless lang_get() is that language
@@ -265,22 +266,17 @@ static void run_line(char *line)
         doomo_town.seed = v;
         nat_set_entropy(v);
     /* --- P0: lang CODE. Codes, not numbers, so scripts survive the language
-     * registry (L1/L3 add codes to this table, or replace it). --- */
+     * registry; L1: any code of core/lang/languages.tsv (lang_find), ready
+     * or not. --- */
     } else if (strcmp(cmd, "lang") == 0 || strcmp(cmd, "expect-lang") == 0) {
-        static const struct { const char *code; int lang; } codes[] = { { "en", LANG_EN }, { "es", LANG_ES } };
         const char *want = argc > 1 ? argv[1] : "";
-        int k, found = -1, now;
-        for (k = 0; k < (int)(sizeof(codes) / sizeof(codes[0])); k++)
-            if (strcmp(want, codes[k].code) == 0) found = codes[k].lang;
-        if (found < 0) fail("lang needs a language code (en, es), got", want);
+        int found = lang_find(want), now;
+        if (found < 0) fail("lang needs a code of core/lang/languages.tsv (en, es, pt-BR...), got", want);
         else if (cmd[0] == 'l') opt_set(OPT_LANGUAGE, found);
         else if ((now = lang_get()) != found) {
-            const char *got = "another language";
             char msg[64];
-            for (k = 0; k < (int)(sizeof(codes) / sizeof(codes[0])); k++)
-                if (codes[k].lang == now) got = codes[k].code;
             snprintf(msg, sizeof(msg), "expected the language to be %s but it is", want);
-            fail(msg, got);
+            fail(msg, doomo_lang_info[now].code);
         }
     /* --- end P0 --- */
     } else if (strcmp(cmd, "expect-text") == 0) {

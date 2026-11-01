@@ -171,6 +171,8 @@ check-gen:
 	done; \
 	if [ $$status -eq 0 ]; then echo "check-gen: all generated files up to date"; fi; \
 	exit $$status
+	@# --- L1: also no left-over language table (a language that lost its strings) ---
+	@$(PYTHON) $(ROOT)/tools/langpack.py --check
 
 # ---- cross compile check --------------------------------------------------------
 xcheck:

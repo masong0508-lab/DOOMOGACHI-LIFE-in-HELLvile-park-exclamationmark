@@ -1,0 +1,48 @@
+# core/lang/languages.tsv - the language registry (L1; contract in
+# core/include/doomo/lang.h). tools/langpack.py builds core/gen/lang_ids.h
+# (the LANG_* enum) and core/gen/lang_registry.c (doomo_lang_info[], the
+# names the Options row shows, the table of each language) from it.
+#
+# Columns (TAB separated, UTF-8):
+#   code    BCP 47 tag; the UI strings live in core/lang/<code>/ui_*.tsv
+#           (English is the source text: it has no directory). The C name
+#           is the code in lower case with '-' -> '_' (pt-BR: LANG_PT_BR,
+#           core/gen/lang_tab_pt_br.c, doomo_lang_pt_br).
+#   save    the byte saved in the island's options (OPT_LANGUAGE) and the
+#           enum value. APPEND-ONLY: rows stay in save order, a new
+#           language takes the next byte, a byte is never reused or
+#           reordered (a save made with it would load as another
+#           language). Retire a language by setting ready to 0, never by
+#           deleting its row. At most LANG_SLOTS (10) languages: the file
+#           directories that hold one entry per language (TEXT.BIN,
+#           LANG.BIN) reserve 10 slots, so adding one never moves them.
+#   name    the language's name in itself, as the Options row and the
+#           title screen show it (never translated). Letters the font
+#           does not have yet are drawn without their accent until the
+#           glyph pages (L4) add them; a ready language's name must be
+#           drawable as it is.
+#   glyphs  how the text is encoded: latin = one byte per glyph, ASCII
+#           plus the letters at 0xA0..0xFF of its glyph page. cjk2 is
+#           reserved for Japanese and Chinese and NOT implemented yet
+#           (lang.h "LATER: CJK"); langpack refuses it.
+#   page    the glyph page that fills 0xA0..0xFF for this language. 0 is
+#           the page that exists today (the Spanish letters, font.h
+#           STR_ES_*); L4 adds per-language pages.
+#   plural  the plural rule (lang_plural()): one = 1 is singular (2 forms),
+#           zero_one = 0 and 1 are singular (2 forms), pl = Polish (one /
+#           few / many: 3 forms), none = no plural (1 form, CJK later).
+#   ready   1 = offered on the Options row and the title screen; 0 = known
+#           to the engine (saves, the runner's `lang CODE`, tables) but not
+#           offered to players yet (its translation is not done).
+#
+# code	save	name	glyphs	page	plural	ready
+en	0	English	latin	0	one	1
+es	1	Español	latin	0	one	1
+pt-BR	2	Português (BR)	latin	0	zero_one	0
+fr	3	Français	latin	0	zero_one	0
+de	4	Deutsch	latin	0	one	0
+it	5	Italiano	latin	0	one	0
+nl	6	Nederlands	latin	0	one	0
+pl	7	Polski	latin	0	pl	0
+# Reserved, later (do not reuse these bytes): ja 8 and zh 9, glyphs cjk2,
+# plural none.

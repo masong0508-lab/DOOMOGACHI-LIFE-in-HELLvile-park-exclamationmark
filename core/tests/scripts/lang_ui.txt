@@ -1,0 +1,97 @@
+# The language registry and the UI string lookup (L1, doomo/lang.h) in the
+# real screens, at both resolutions. Options RIGHT walks the languages that
+# are offered (ready in core/lang/languages.tsv: English, Spanish today);
+# then the Spanish free-play screens (news, unlocks, save/load, options
+# pages, graveyard); then a language the engine knows but has no strings
+# for yet (pt-BR: every text falls back to its English, the row shows its
+# name), and English again. It pins no translated words: look at the shots.
+seed 7
+scene TITLE
+wait 2
+expect-lang en
+push OPTIONS 0
+wait 10
+press RIGHT
+wait 6
+expect-lang es
+shot es_options_game
+press R
+wait 4
+shot es_options_controls
+press B
+wait 10
+scene NEW_ISLAND
+wait 10
+press A
+wait 10
+press A
+wait 10
+press DOWN
+wait 2
+press A
+wait 20
+press A
+wait 2
+press A
+wait 2
+press A
+wait 2
+press A
+wait 10
+expect-scene ISLAND
+expect-lang es
+push NEWS 0
+wait 30
+expect-scene NEWS
+shot es_news
+press B
+wait 10
+push UNLOCKS 0
+wait 30
+expect-scene UNLOCKS
+shot es_unlocks_all
+press B
+wait 10
+push SAVELOAD 0
+wait 30
+expect-scene SAVELOAD
+press A
+wait 30
+shot es_saveload_saved
+press B
+wait 10
+push OPTIONS 4
+wait 20
+shot es_options_display
+press B
+wait 10
+push GRAVEYARD 0
+wait 30
+shot es_graveyard_empty
+press B
+wait 10
+# a language with no strings yet: English text, its own name on the row
+lang pt-BR
+expect-lang pt-BR
+push OPTIONS 0
+wait 20
+shot ptbr_options_game
+press B
+wait 10
+# the Options row offers only ready languages: from pt-BR, RIGHT -> English
+push OPTIONS 0
+wait 10
+press RIGHT
+wait 6
+expect-lang en
+shot en_options_game
+press B
+wait 10
+# the title menu (its Language row is in the 320x240 layout only)
+lang es
+scene TITLE
+wait 30
+press A
+wait 30
+expect-lang es
+shot es_title_menu

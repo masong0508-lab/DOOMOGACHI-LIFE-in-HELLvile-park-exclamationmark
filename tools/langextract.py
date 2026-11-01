@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """langextract.py - list the English string literals of core/src files that
-core/lang/es*.tsv do not cover yet, as translator worksheets.
-    python3 tools/langextract.py OUT.tsv file.c [file.c ...]
-Keys are written like es.tsv keys (\\n, \\\\, \\xHH)."""
+core/lang/<code>/ui_*.tsv do not cover yet, as translator worksheets.
+    python3 tools/langextract.py [--lang CODE] OUT.tsv file.c [file.c ...]
+CODE is a language of core/lang/languages.tsv (default es). Keys are
+written like the TSV keys (\\n, \\\\, \\xHH)."""
 import os, re, subprocess, sys
 ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 LIT = re.compile(r'(?:"(?:[^"\\\n]|\\.)*"\s*)+')
@@ -28,17 +29,23 @@ def unesc(s):
     return bytes(out)
 def esc(b):
     return "".join("\\n" if x == 10 else "\\\\" if x == 92 else chr(x) if 32 <= x < 127 else "\\x%02X" % x for x in b)
-def have():
+def ui_tsvs(code="es"):
+    """the UI translation files of a language (L1: core/lang/<code>/ui_*.tsv)"""
+    d = os.path.join(ROOT, "core", "lang", code)
+    if not os.path.isdir(d): return []
+    return [os.path.join(d, f) for f in sorted(os.listdir(d)) if f.startswith("ui_") and f.endswith(".tsv")]
+def have(code="es"):
     h = set()
-    d = os.path.join(ROOT, "core", "lang")
-    for f in os.listdir(d):
-        if f.startswith("es") and f.endswith(".tsv"):
-            for l in open(os.path.join(d, f), encoding="utf-8"):
-                if l.strip() and not l.startswith("#"): h.add(l.split("\t")[0])
+    for p in ui_tsvs(code):
+        for l in open(p, encoding="utf-8"):
+            if l.strip() and not l.startswith("#"): h.add(l.split("\t")[0])
     return h
 def main(a):
+    code = "es"
+    if "--lang" in a:
+        i = a.index("--lang"); code = a[i + 1]; a = a[:i] + a[i + 2:]
     out, files = a[0], a[1:]
-    got = have(); seen = set(); rows = []
+    got = have(code); seen = set(); rows = []
     for f in files:
         src = subprocess.run(["gcc", "-E", "-P", "-I", os.path.join(ROOT, "core", "include"), os.path.join(ROOT, "core", "src", f)],
                              capture_output=True, text=True).stdout
