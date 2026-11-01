@@ -9,6 +9,7 @@ Contents:
 [What you need](#what-you-need) ·
 [Ubuntu / Debian](#ubuntu--debian) ·
 [PSn00bSDK](#psn00bsdk-from-source) ·
+[KallistiOS](#kallistios-dreamcast) ·
 [macOS](#macos-homebrew) ·
 [Windows (WSL2)](#windows-wsl2) ·
 [Building](#building) ·
@@ -30,6 +31,7 @@ Contents:
 | build the **PS1 disc** (`make ps1`) | `mipsel-linux-gnu-gcc` (or `mipsel-none-elf-gcc`), **PSn00bSDK** built from source, CMake ≥ 3.21, Ninja, `python3` |
 | run the PS1 harness (`make test`) | the above plus PCSX-Redux, OpenBIOS and `xvfb-run` |
 | run the Dreamcast (SH4) leg of `xcheck` (`make test`) | `sh-elf-gcc` + newlib headers (apt `gcc-sh-elf binutils-sh-elf libnewlib-sh-elf-dev`), or a KallistiOS toolchain on `PATH`. Compile only: no KallistiOS needed |
+| build for the **Dreamcast** (port in progress) | the KallistiOS toolchain + KallistiOS, installed at pinned versions by `dc/tools/setup_kos.sh` (about 3.4 GB of disk while it builds, 278 MB after; see [KallistiOS](#kallistios-dreamcast) and docs/DREAMCAST.md) |
 | render the **trailer** (`make trailer`) | `gcc`, `python3`, `ffmpeg` (with libx264) |
 
 There are no devkitPro, Sony SDK or BIOS dependencies. Everything is free
@@ -56,6 +58,9 @@ Versions that are known to work (Ubuntu 24.04 packages, the same as the CI runne
 | arm-none-eabi-gcc / newlib | 13.2.1 / 4.4.0 |
 | mipsel-linux-gnu-gcc | 12.4 |
 | sh-elf-gcc / newlib (xcheck SH4 leg) | 13.2.0 / 3.3.0 |
+| KallistiOS | commit `d81aa3fda0520b6ca64098ce9d1d43e7562142d9` (`dc/tools/kos_pins.env`) |
+| KallistiOS sh-elf binutils / gcc / newlib | 2.45.1 / 15.2.0 / 4.6.0.20260123 (kos-chain `stable`) |
+| img4dc (`cdi4dc`) | commit `d28df15db97db1b410e52191eeb45534dcbba252` |
 | PSn00bSDK | commit `5d9aa2d3dfc7d6e51c2eb942ab4cdbae5571a40a` (0.24) |
 | CMake / Ninja | 3.28 / 1.11 |
 | libmgba | 0.10.2 |
@@ -81,6 +86,9 @@ sudo apt install gcc-mipsel-linux-gnu g++-mipsel-linux-gnu binutils-mipsel-linux
                  cmake ninja-build git
 # Dreamcast SH4 compile check in xcheck (compile only; CI runs it)
 sudo apt install gcc-sh-elf binutils-sh-elf libnewlib-sh-elf-dev
+# Dreamcast toolchain build (then run dc/tools/setup_kos.sh, see KallistiOS below)
+sudo apt install texinfo flex bison gawk libelf-dev libgmp-dev libmpfr-dev libmpc-dev \
+                 libpng-dev libjpeg-dev genisoimage
 # trailer (optional)
 sudo apt install ffmpeg
 ```
@@ -122,6 +130,27 @@ The top-level Makefile finds the SDK by itself in `/opt/psn00bsdk`,
 `/usr/local`, `~/psn00bsdk` and `~/.local`. Set `PSN00BSDK_LIBS` for any
 other location. `core/tools/xcheck.sh` reads the same variable for its
 PlayStation compile check.
+
+### KallistiOS (Dreamcast)
+
+The Dreamcast port uses [KallistiOS](https://github.com/KallistiOS/KallistiOS)
+and the sh-elf GCC built by its `kos-chain` builder. One script installs
+both at the versions pinned in `dc/tools/kos_pins.env`:
+
+```sh
+dc/tools/setup_kos.sh --install-deps     # apt-get the host packages, then build
+source /opt/toolchains/dc/kos/environ.sh # KOS_BASE, KOS_CC_BASE, PATH, ...
+```
+
+It installs into `/opt/toolchains/dc` when that is writable, otherwise
+`$HOME/dc` (or `--prefix DIR`), with `-j2` by default (`--jobs N`). The
+first run builds binutils, gcc 15.2.0 (C only, `m4-single` +
+`m4-single-only`, `--enable-threads=kos`), newlib and KallistiOS, plus
+`makeip`, `scramble` and `cdi4dc`. It took 39 minutes at `-j2` on a shared
+4-core machine, peaks at about 3.4 GB of disk, deletes its sources and
+build trees as it goes, and leaves 278 MB installed. Running it again is a no-op. `dc/tools/setup_kos.sh --check --verify`
+checks an install and builds the KallistiOS hello example. Details, measured
+numbers and how to move the pins: docs/DREAMCAST.md section 1.
 
 ### PCSX-Redux and OpenBIOS (only for the PS1 harness)
 
@@ -376,6 +405,12 @@ the commit, the target, the runner image and the gcc, g++ and cmake
 versions, so a toolchain update rebuilds it. To move to a newer SDK,
 change `PSN00BSDK_COMMIT` in both workflows.
 
+The Dreamcast toolchain has a local action too, `.github/actions/setup-kos`:
+it runs `dc/tools/setup_kos.sh` on a cache miss and caches the whole
+prefix, keyed on `dc/tools/kos_pins.env`, the script, the runner image and
+the host gcc version, then exports the KallistiOS environment. No job uses
+it yet; the Dreamcast CI job comes with the `dc/` build.
+
 Pushes to the same branch, and to the same pull request, cancel older runs
 that are still in progress, except on the default branch.
 
@@ -409,5 +444,6 @@ pre-release. *Run workflow* with an existing tag rebuilds that release.
 | ASan aborts at start with `DEADLYSIGNAL` | newer kernels randomise mmap more than ASan supports: `sudo sysctl -w vm.mmap_rnd_bits=28` (CI does this) |
 | `xcheck: WARNING: PSn00bSDK headers not found` | the PS1 leg was skipped. Set `PSN00BSDK_LIBS` or `PSN00BSDK_INCLUDE` |
 | `xcheck: WARNING: sh-elf-gcc not found` or `cannot find newlib's <string.h>` | the Dreamcast SH4 leg was skipped. `sudo apt install gcc-sh-elf binutils-sh-elf libnewlib-sh-elf-dev` |
+| `setup_kos: error: ...` | see the troubleshooting table in docs/DREAMCAST.md section 1 |
 | mGBA does not keep saves | delete the stale `.sav` or force *Save type: Flash 1Mb* |
 | PS1 disc boots to the BIOS screen on a console | the console can't boot unlicensed discs. See [Real hardware](#playstation) |
