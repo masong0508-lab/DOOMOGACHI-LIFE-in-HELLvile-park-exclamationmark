@@ -76,7 +76,7 @@ PS1_HARNESS_WHY := $(strip $(PS1_WHY) \
 
 HINT_HOST := Ubuntu/Debian: sudo apt install build-essential python3   macOS: xcode-select --install && brew install python
 HINT_ARM  := Ubuntu/Debian: sudo apt install gcc-arm-none-eabi libnewlib-arm-none-eabi   macOS: brew install --cask gcc-arm-embedded
-HINT_SH4  := sudo apt install gcc-sh-elf binutils-sh-elf libnewlib-sh-elf-dev
+HINT_SH4  := Ubuntu/Debian: sudo apt install gcc-sh-elf binutils-sh-elf libnewlib-sh-elf-dev   macOS: no Homebrew package; put a KallistiOS sh-elf-gcc on PATH
 HINT_MGBA := Ubuntu/Debian: sudo apt install libmgba-dev (0.10)   macOS: build libmgba from source (docs/BUILDING.md)
 HINT_FFMPEG := Ubuntu/Debian: sudo apt install ffmpeg   macOS: brew install ffmpeg
 

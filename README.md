@@ -212,7 +212,8 @@ Short version, on Ubuntu 24.04 / Debian (or WSL2):
 
 ```sh
 sudo apt install build-essential python3 gcc-arm-none-eabi libnewlib-arm-none-eabi libmgba-dev \
-                 gcc-mipsel-linux-gnu g++-mipsel-linux-gnu binutils-mipsel-linux-gnu cmake ninja-build ffmpeg
+                 gcc-mipsel-linux-gnu g++-mipsel-linux-gnu binutils-mipsel-linux-gnu cmake ninja-build ffmpeg \
+                 gcc-sh-elf binutils-sh-elf libnewlib-sh-elf-dev
 make doctor      # what was found, what is missing
 make             # core tests + GBA ROM (+ PS1 disc once PSn00bSDK is installed)
 make test        # every test this machine can run
@@ -238,8 +239,9 @@ documents its own build: [core](core/native/README.md),
 * [`ci.yml`](.github/workflows/ci.yml) runs on every push and pull request,
   and can be started by hand:
   * **core**: native tests, the same tests under ASan/UBSan, a `-Werror`
-    compile of every core file with gcc, arm-none-eabi-gcc and
-    mipsel-linux-gnu-gcc, and a check that generated files are up to date
+    compile of every core file with gcc, arm-none-eabi-gcc,
+    mipsel-linux-gnu-gcc and sh-elf-gcc (Dreamcast SH4), and a check that
+    generated files are up to date
   * **gba**: both ROMs, plus the headless mGBA harness (engine tour, flash
     save round trip, game smoke test)
   * **ps1**: PSn00bSDK built from source at a pinned commit (cached), then

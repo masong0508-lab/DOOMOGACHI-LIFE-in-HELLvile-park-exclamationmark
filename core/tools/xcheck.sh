@@ -17,7 +17,9 @@ if [ $# -gt 0 ]; then FILES="$*"; else FILES=$(ls "$CORE"/src/*.c "$CORE"/gen/*.
 if [ -n "$PSN00BSDK_INCLUDE" ]; then PSN=$PSN00BSDK_INCLUDE
 elif [ -n "$PSN00BSDK_LIBS" ]; then PSN=$PSN00BSDK_LIBS/../../include/libpsn00b
 else PSN=/opt/psn00bsdk/include/libpsn00b; fi
-case "$JOBS" in ''|*[!0-9]*|0) JOBS=$(nproc 2>/dev/null || echo 2) ;; esac
+# JOBS must be a plain positive number: empty, non-numeric or leading-zero
+# values (0, 00, 08: zero or octal in $((...))) fall back to the CPU count
+case "$JOBS" in ''|*[!0-9]*|0*) JOBS=$(nproc 2>/dev/null || echo 2) ;; esac
 TMP=${TMPDIR:-/tmp}/doomo-xcheck.$$
 mkdir -p "$TMP"
 trap 'rm -rf "$TMP"' EXIT
