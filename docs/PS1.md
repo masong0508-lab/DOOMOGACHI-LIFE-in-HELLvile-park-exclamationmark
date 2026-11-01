@@ -954,7 +954,7 @@ journeys are native (docs/GAME_DESIGN.md 4.1).
 
 | screen | fps | CPU per frame (the nearest `perf:` line, every 150 frames) |
 |---|---|---|
-| island hub | 24.6 | 41 ms |
+| island hub | 25.0 | 40 ms |
 | news | 30.2 | 10 ms |
 | island menu (Town Hall) | 25.6 | 61 ms |
 | Citizens (roster) | 30.2 | 12 ms |

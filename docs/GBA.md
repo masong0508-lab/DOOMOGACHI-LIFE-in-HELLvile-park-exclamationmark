@@ -772,18 +772,19 @@ budgets of the same journeys are native (docs/GAME_DESIGN.md 4.1).
 
 | Screen | logic ticks/s | drawn fps | work avg / max ms | opening press | latency |
 |---|---|---|---|---|---|
-| island hub | 12.5 | 7.5 | 97.0 / 100.5 | (cursor DOWN / UP) | 13 / 9 frames (218 / 151 ms) |
-| news (L) | 30.0 | 20.1 | 38.2 / 40.5 | L on the hub | 7 frames (117 ms) |
-| island menu (Town Hall) | 10.9 | 6.5 | 109.7 / 131.2 | A on the hub | 13 frames (218 ms); its cursor 11 (184 ms) |
-| Citizens (roster) | 29.9 | 25.5 | 35.6 / 52.0 | R on the hub | 13 frames (218 ms); its cursor 6 (101 ms) |
-| a citizen (resident) | 30.1 | 22.5 | 37.4 / 54.8 | A in the roster | 4 frames (67 ms); its cursor 3 (50 ms) |
-| Hillvile Towers (apartments) | 28.5 | 20.6 | 38.6 / 56.7 | A on Browse homes | 8 frames (134 ms); its cursor 3 (50 ms) |
+| island hub | 12.5 | 7.5 | 97.0 / 103.8 | (cursor DOWN / UP) | 13 / 9 frames (218 / 151 ms) |
+| news (L) | 30.0 | 20.1 | 38.3 / 40.5 | L on the hub | 7 frames (117 ms) |
+| island menu (Town Hall) | 10.8 | 6.4 | 110.5 / 131.5 | A on the hub | 13 frames (218 ms); its cursor 11 (184 ms) |
+| Citizens (roster) | 30.1 | 25.0 | 35.6 / 52.0 | R on the hub | 13 frames (218 ms); its cursor 3 (50 ms) |
+| a citizen (resident) | 30.1 | 22.2 | 38.0 / 54.7 | A in the roster | 3 frames (50 ms); its cursor 3 (50 ms) |
+| Hillvile Towers (apartments) | 28.5 | 20.8 | 38.6 / 60.6 | A on Browse homes | 8 frames (134 ms); its cursor 6 (101 ms) |
 
 The island hub and its location menu are the slow ones: they draw the
 whole bitmap map every tick (about 100 ms of work, 6.5-7.5 fps, and the
 logic falls to 11-12.5 ticks/s), so a press there shows up 150-220 ms
 later; every screen pushed over the island runs at 30 logic ticks/s and
-answers within 50-135 ms. G8 (the island on the tile backend) and LS-IN
+answers within 50-135 ms. (Measured on G7's tree; a cursor's latency
+moves by a frame or three with where its press lands in the 30 Hz tick.) G8 (the island on the tile backend) and LS-IN
 (the press latch) are the packages that move these numbers.
 
 ### Frame pacing
