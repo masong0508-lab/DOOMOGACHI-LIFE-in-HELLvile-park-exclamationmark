@@ -66,6 +66,13 @@ static NOINL int tk_pxx(int v) { return T.yaw == 2 ? T.ox - tk_s(v) : T.ox + tk_
 #define HX(v)  tk_hx(v)
 #define HY(v)  tk_hy(v)
 #define PXX(v) tk_pxx(v)
+/* the shapes most parts are made of, in design units (PXX: profile-mirrored) */
+static NOINL void tk_ell(int x, int y, int rx, int ry) { pc_ellipse(HX(x), HY(y), S(rx), S(ry)); }
+static NOINL void tk_tri(int ax, int ay, int bx, int by, int cx, int cy)
+{
+    pc_tri(PXX(ax), HY(ay), PXX(bx), HY(by), PXX(cx), HY(cy));
+}
+static NOINL void tk_dot(int x, int y, uint8_t c) { pc_px(HX(x) >> 4, HY(y) >> 4, c); }
 
 #define INK   PAL_PAINT(PAINT_JET, 0)
 #define INK2  PAL_PAINT(PAINT_JET, 1)
@@ -227,11 +234,11 @@ static void head(PCtx *c)
     c->head_id = pcv.part;
     pc_frame(HX(0), HY(0), S(104), S(120));
     if (T.yaw == 2) {
-        pc_ellipse(HX(0), HY(4), S(92), S(112));
+        tk_ell(0, 4, 92, 112);
         pc_ellipse(PXX(30), HY(-24), S(70), S(80));
     } else {
-        pc_ellipse(HX(0), HY(0), S(100), S(116));
-        pc_ellipse(HX(0), HY(-40), S(92), S(86));     /* the dome under the hat */
+        tk_ell(0, 0, 100, 116);
+        tk_ell(0, -40, 92, 86);     /* the dome under the hat */
     }
     pc_noframe();
     /* a few bristles on the crown of the head (a bare-skinned bird) */
@@ -295,8 +302,8 @@ static void eyes(PCtx *c)
         if (T.yaw == 2) {
             pc_px(PXX(32) >> 4, HY(-30) >> 4, shut ? c->skin.c[0] : INK);
         } else {
-            pc_px(HX(-36) >> 4, HY(-30) >> 4, shut ? c->skin.c[0] : INK);
-            pc_px(HX(36) >> 4, HY(-30) >> 4, shut ? c->skin.c[0] : INK);
+            tk_dot(-36, -30, shut ? c->skin.c[0] : INK);
+            tk_dot(36, -30, shut ? c->skin.c[0] : INK);
         }
         return;
     }
@@ -393,8 +400,8 @@ static void brows(PCtx *c)
     if (c->creepy) { in = -76; out = -116; mid = -96; }
     if (T.tiny) {
         if (c->expr == EXPR_ANGRY || c->expr == EXPR_SHOCK) {
-            pc_px(HX(-36) >> 4, (HY(in) >> 4), col);
-            pc_px(HX(36) >> 4, (HY(in) >> 4), col);
+            tk_dot(-36, in, col);
+            tk_dot(36, in, col);
         }
         return;
     }
@@ -426,8 +433,8 @@ static void beak(void)
     if (T.tiny) {
         int bx = T.yaw == 2 ? PXX(96) : HX(0), by = HY(30);
         pc_part(&up, SH_FLAT, PF_NOCAST);
-        if (T.yaw == 2) pc_tri(PXX(70), HY(0), PXX(70), HY(50), PXX(140), HY(40));
-        else pc_tri(HX(-26), HY(0), HX(26), HY(0), HX(0), HY(56));
+        if (T.yaw == 2) tk_tri(70, 0, 70, 50, 140, 40);
+        else tk_tri(-26, 0, 26, 0, 0, 56);
         if (T.open >= 2) pc_px(bx >> 4, (by >> 4) + 1, MOUTHIN_C);
         return;
     }
@@ -435,25 +442,25 @@ static void beak(void)
         /* profile: a short hooked cone pointing at the viewer's left */
         if (d) {
             pc_part(&in, SH_FLAT, PF_NOCAST);
-            pc_tri(PXX(60), HY(10), PXX(60), HY(46 + d), PXX(130), HY(30 + d / 2));
+            tk_tri(60, 10, 60, 46 + d, 130, 30 + d / 2);
         }
         pc_part(&lo, SH_BALL, 0);
-        pc_tri(PXX(60), HY(30 + d / 2), PXX(60), HY(46 + d), PXX(120), HY(38 + d));
+        tk_tri(60, 30 + d / 2, 60, 46 + d, 120, 38 + d);
         pc_part(&up, SH_BALL, 0);
-        pc_tri(PXX(56), HY(-10), PXX(60), HY(34), PXX(150), HY(30));
+        tk_tri(56, -10, 60, 34, 150, 30);
         pc_capsule(PXX(140), HY(28), PXX(146), HY(40), 10, 6);     /* the hook */
         return;
     }
     /* mouth cavity behind */
     if (d) {
         pc_part(&in, SH_FLAT, PF_NOCAST);
-        if (T.narrow) pc_ellipse(HX(0), HY(42 + d / 2), S(w - 4), S(24 + d / 2));
-        else pc_ellipse(HX(0), HY(40 + d / 2), S(w), S(22 + d / 2));
+        if (T.narrow) tk_ell(0, 42 + d / 2, w - 4, 24 + d / 2);
+        else tk_ell(0, 40 + d / 2, w, 22 + d / 2);
         if (T.tongue || (T.open >= 2 && !T.dark)) {
             PMat tg;
             pm_flat(&tg, TONGUE_C);
             pc_decal(&tg, SH_FLAT);
-            pc_ellipse(HX(T.tongue == 1 ? 10 : 0), HY(54 + d / 2), S(18), S(T.tongue == 1 ? 26 : 10));
+            tk_ell(T.tongue == 1 ? 10 : 0, 54 + d / 2, 18, T.tongue == 1 ? 26 : 10);
         }
         if (T.dark) {
             /* possessed: a jagged rim */
@@ -463,17 +470,17 @@ static void beak(void)
     }
     /* lower mandible (drops with the expression) */
     pc_part(&lo, SH_BALL, 0);
-    pc_tri(HX(-w + 10), HY(46 + d), HX(w - 10), HY(46 + d), HX(0), HY(70 + d));
-    pc_ellipse(HX(0), HY(50 + d), S(w - 10), S(12));
+    tk_tri(-w + 10, 46 + d, w - 10, 46 + d, 0, 70 + d);
+    tk_ell(0, 50 + d, w - 10, 12);
     /* upper mandible: a wide rounded wedge, the grin line curls at its corners */
     pc_part(&up, SH_BALL, 0);
     pc_frame(HX(0), HY(30), S(w + 6), S(40));
-    pc_ellipse(HX(0), HY(base + 18), S(w), S(26));
-    pc_tri(HX(-w + 2), HY(base + 18), HX(w - 2), HY(base + 18), HX(0), HY(tipy - (d ? 6 : 0)));
+    tk_ell(0, base + 18, w, 26);
+    tk_tri(-w + 2, base + 18, w - 2, base + 18, 0, tipy - (d ? 6 : 0));
     pc_noframe();
     /* nostrils and the grin line */
-    pc_px(HX(-12) >> 4, HY(base + 10) >> 4, ink);
-    pc_px(HX(12) >> 4, HY(base + 10) >> 4, ink);
+    tk_dot(-12, base + 10, ink);
+    tk_dot(12, base + 10, ink);
     if (!d) {
         int y = HY(46) >> 4, xl = HX(-w + 6) >> 4, xr = HX(w - 6) >> 4;
         pc_line(xl + 1, y, xr - 1, y, ink);
