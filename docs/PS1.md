@@ -159,7 +159,7 @@ is still opaque, and index 0 maps to 0x0000 (transparent) in the CLUTs.
 | `0x80000000-0x8000FFFF` | BIOS / kernel |
 | `0x80010000-...` | the EXE: resident code, read-only data (art, roster, packed textures / sprites / map cells), data |
 | after it | BSS: the two display lists (2 x 56 KB prims + 2 OTs of 1536 entries per view), core state (`doomo_town` 107 KB, `doomo_map` 32 KB), caches |
-| after the BSS (game disc) | the **scene overlay slot** (108 KB): the code + const data of the scene that runs, read from `OVL.BIN` |
+| after the BSS (game disc) | the **scene overlay slot** (116 KB): the code + const data of the scene that runs, read from `OVL.BIN` |
 | `...-0x801FFFF0` | stack (grows down) |
 
 Everything - code, const data and BSS - is loaded into these 2 MB, and
@@ -291,7 +291,11 @@ Checked on the G0 disc (PCSX-Redux harness): `game_smoke`, the core's
 for the modal callbacks of each moved group, the core scripts
 `fp_screens`, `studio`, `life_exorcism`, `action_workshop` and `creator`
 (no `ovl: ERROR` in any TTY log); the engine-test disc's `memcard.txt`
-self test.
+self test; and, for the borrowed `s_blk`, a save and a load with the
+house group in RAM (scene HOME, harness `save 0` / `load 0`, back into
+the house: the group is evicted, read again and draws correctly). Only
+the engine-test disc runs `memcard.txt`, where overlays are off, so a
+save-from-the-house step in `home.txt` is still to add.
 
 The slot is now exactly the three biggest groups (cutscene 118,444,
 story 118,172, combat 117,760 B, rounded up to whole sectors): any growth
@@ -481,15 +485,23 @@ lamp pools and contact shadows, a camera on a `TW_BOING` spring with the
   over it, without its contact shadow. The Hell-Cellar with the player at
   the back went from 17 to 30 fps with it.
 * **Memory.** `room.c` belongs to the `home` overlay group. That group is
-  linked 45,572 B *below* the slot, over the `.bss` tables of `world.c`
-  and `view3d.c` and the arena bot's path-search scratch (`combat_bot.c`:
-  cleared and refilled by every search) (`ovl_plan.py` BORROW, `OVL.BIN`
-  v3 with a load address per group): it can be 45 KB bigger than the slot
-  allows without moving the slot. `world_sync()` and `plat_view3d()` call
-  `ovl_borrow_take()` before they touch those tables. It marks the group
-  gone (it is read again when a house scene runs next); `world_sync()`
-  then rebuilds its tables and `plat_view3d()` clears its visibility
-  stamps. The resting pieces' boxes (5 KB) go in
+  linked 53,764 B *below* the slot, over the `.bss` tables of `world.c`
+  and `view3d.c`, the arena bot's path-search scratch (`combat_bot.c`:
+  cleared and refilled by every search) and, since G0, `memcard.c`'s
+  8 KB card block buffer `s_blk` (`ovl_plan.py` BORROW, `OVL.BIN`
+  v3 with a load address per group): it can be 53 KB bigger than the slot
+  allows without moving the slot. `world_sync()`, `plat_view3d()` and
+  every card read / write call `ovl_borrow_take()` before they touch
+  those tables. It marks the group gone (it is read again when a house
+  scene runs next); `world_sync()` then rebuilds its tables and
+  `plat_view3d()` clears its visibility stamps. So house-group code
+  (`home*.c`, `room_ref.c`, `furn_data.c`) must never itself call
+  `save_game()`, `load_game()`, `plat_save_read()` or `plat_save_write()`:
+  the card I/O would overwrite the house code still on the stack
+  (`ovl_borrow_take()` only logs `ovl: ERROR`). A "save from the house" feature first moves `s_blk`
+  out of BORROW (8 KB more resident RAM). `overlay_init()` refuses a
+  group that loads more than 65,536 B below the slot, so 11,772 B are
+  left for further BORROW entries. The resting pieces' boxes (5 KB) go in
   `DoomoRoomView.plat_cache`.
 * **Parts (H4).** The group's mode-only code is linked into PARTS that
   share one range after its common code (`ovl_plan.py` PARTS, `OVL.BIN`

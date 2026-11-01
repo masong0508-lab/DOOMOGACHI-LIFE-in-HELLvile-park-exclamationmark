@@ -235,7 +235,12 @@ reviewed list). A new modal that calls back into scene code must do the
 same, and a new modal callback in a scene file goes into that list only
 after checking that the modal is always opened while the callback's own
 scene is the top non-overlay scene. G0 left the game disc 131,808 B
-(128.7 KB) below the stack top (docs/PS1.md section 3).
+(128.7 KB) below the stack top (docs/PS1.md section 3). On the PS1 the
+house group (`home*.c`, `room_ref.c`, `furn_data.c`) loads over borrowed
+`.bss` that includes the memory card's block buffer, so house code must
+never call `save_game()` / `load_game()` / `plat_save_read()` /
+`plat_save_write()` itself (move `s_blk` out of ovl_plan.py `BORROW`
+first; docs/PS1.md section 7, Memory).
 
 ## Art direction (all teams)
 
