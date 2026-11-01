@@ -201,6 +201,8 @@ typedef struct RC {
     int32_t tx, ty, tz;             /* its origin, world rel. camera, Q8          */
     int rot, fx, slot, bias, bias0; /* fx: FX_* effects                           */
     int plx, ply;                   /* the key light in the piece's frame         */
+    int mir;                        /* (H6) an FF_MIRROR decal seen from the far
+                                       side: its local x -> mir - x (else 0)      */
     int gmode;                      /* the GTE holds camera x piece: vloc is local */
     int ar, ag, ab;                 /* its ambient (fullbright or day)            */
     /* where the polygons go */
@@ -1145,6 +1147,13 @@ static void piece_setup(RC *c, const DoomoRoomObj *o, const DoomoFurn *f, int *p
     case 3: c->plx = c->ly; c->ply = -c->lx; break;
     default: c->plx = c->lx; c->ply = c->ly; break;
     }
+    /* (H6) an FF_MIRROR wall decal's prims counter wall A's shear (furngen
+     * `mirror`): where its local +x runs away from the camera the shear
+     * would double, so its x is mirrored, as the sprite ports draw facing 0
+     * flipped there. The key light turns with the camera (16 degrees off its
+     * heading), so plx < 0 says it: the same choice as room_ref's in every
+     * view. Mirrored prims keep their winding (prim_mir moves them). */
+    c->mir = ((f->flags2 & FF_MIRROR) && c->plx < 0) ? W : 0;
     c->m00 = (r00 * sx * RU) >> 4; c->m01 = (r01 * sx * RU) >> 4;
     c->m10 = (r10 * sx * RU) >> 4; c->m11 = (r11 * sx * RU) >> 4;
     c->m22 = (sz * RU) >> 4;
@@ -1166,6 +1175,14 @@ static void piece_setup(RC *c, const DoomoRoomObj *o, const DoomoFurn *f, int *p
     *pD = D;
 }
 COLD_END
+
+/* (H6) prim p of a mirrored decal (c->mir): the copy m, moved to x' = mir - x */
+static const DoomoFurnPrim *prim_mir(const RC *c, const DoomoFurnPrim *p, DoomoFurnPrim *m)
+{
+    *m = *p;
+    m->x = (int8_t)(c->mir - p->x - (FURN_PRIM_KIND(p) == FP_BOX ? p->w : 0));
+    return m;
+}
 
 /* a prim's local bounds (iso units x 16): x0 x1 y0 y1 z0 z1 */
 static void prim_ext(const DoomoFurnPrim *p, int32_t e[6])
@@ -1212,10 +1229,12 @@ static int piece_box(RC *c, const DoomoRoomObj *o, const DoomoFurn *f, int parts
     }
     for (k = 0; k < f->nprim; k++) {
         const DoomoFurnPrim *p = &doomo_furn_prims[f->prim0 + k];
+        DoomoFurnPrim pm;
         int32_t e[6];
         int fm = FURN_PRIM_FRAMES(p);
         if (fm ? (!(parts & DP_ANIM) || !(fm & (1 << anim))) : !(parts & DP_BODY)) continue;
         any = 1;
+        if (c->mir) p = prim_mir(c, p, &pm);
         prim_ext(p, e);
         if (e[0] < x0) x0 = e[0];
         if (e[1] > x1) x1 = e[1];
@@ -1288,9 +1307,11 @@ static void draw_piece(RC *c, const DoomoRoomObj *o, const DoomoFurn *f, int par
     }
     for (k = 0; k < f->nprim; k++) {
         const DoomoFurnPrim *p = &doomo_furn_prims[f->prim0 + k];
+        DoomoFurnPrim pm;
         uint32_t t[4];
         int fm = FURN_PRIM_FRAMES(p);
         if (fm ? (!(parts & DP_ANIM) || !(fm & (1 << anim))) : !(parts & DP_BODY)) continue;
+        if (c->mir) p = prim_mir(c, p, &pm);
         /* orbiting: the smallest details wait for the camera to rest */
         if (c->lod && p->w < 3 && p->h < 3 && (FURN_PRIM_KIND(p) != FP_BOX || p->d < 3)) continue;
         /* in a pass, only the prims that reach the clip */
@@ -1798,11 +1819,13 @@ static int static_boxes(RC *c, STab *t)
             PBox *q = &t->pb[t->npb];
             for (j = 0; j < f->nprim; j++) {
                 const DoomoFurnPrim *p = &doomo_furn_prims[f->prim0 + j];
+                DoomoFurnPrim pm;
                 SBox b;
                 int32_t zmin = 0x7fffffff;
                 int e;
                 q[j].x0 = 1; q[j].x1 = 0; q[j].y0 = q[j].y1 = 0; q[j].s0 = OT_LEN;
                 if (FURN_PRIM_FRAMES(p)) continue;
+                if (c->mir) p = prim_mir(c, p, &pm);
                 prim_sbox(c, p, &b);
                 for (e = 0; e < 8; e++) if (c->sz[e] < zmin) zmin = c->sz[e];
                 q[j].x0 = (int16_t)(b.x0 - 2); q[j].y0 = (int16_t)(b.y0 - 2);

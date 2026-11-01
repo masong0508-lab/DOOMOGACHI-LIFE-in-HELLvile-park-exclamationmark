@@ -290,6 +290,9 @@ TEST(furngen_anim_frames_checked)
     CHECK(anim_case(still, "[a]\nframes 2\nbox 2 2 0 12 12 8 A\nbox@1 4 4 8 8 8 2 B\n") > 0);  /* not FF_ANIM */
     CHECK(anim_case(anim, "[a]\nframes 2\nbox 2 2 0 12 12 8 A\nbox@2 4 4 8 8 8 2 B\n") > 0);   /* frame 2 of 2 */
     CHECK(anim_case(anim, "[a]\nframes 2\nbox 2 2 0 12 12 8 A\n") > 0);                       /* all the same */
+    CHECK(anim_case(anim, "[a]\nframes 2\nbox@01 2 2 0 12 12 8 A\nbox@01 4 4 8 8 8 2 B\n") > 0); /* ... tagged */
+    CHECK(anim_case(anim, "[a]\nframes 3\nbox 2 2 0 12 12 8 A\nbox@012 4 4 8 8 8 2 B\n") > 0);
+    CHECK_EQ(anim_case(anim, "[a]\nframes 3\nbox 2 2 0 12 12 8 A\nbox@01 4 4 8 8 8 2 B\n"), 0);
     CHECK_EQ(anim_case(still, "[a]\nbox 2 2 0 12 12 8 A\n"), 0);
     /* the real art: every FF_ANIM piece animates (the 6 pieces H6 drew), and
      * the generated tables agree */
@@ -304,13 +307,46 @@ TEST(furngen_anim_frames_checked)
     }
 }
 
+/* the box (w x h) of a baked sprite's pixels that are not slot A's paint
+ * (its 3 marker shades and its outline): on the haunting's eye, the eye
+ * drawn into the slot-A heart */
+static void not_a_extent(const DoomoFurnIso *im, int *w, int *h)
+{
+    const uint8_t *base = doomo_furn_iso_data + im->off;
+    int x0 = 255, y0 = 255, x1 = -1, y1 = -1, y, s;
+    for (y = 0; y < im->h; y++) {
+        const uint8_t *p = base + (base[y * 2] | (base[y * 2 + 1] << 8));
+        int x = 0;
+        while (*p != 0xFF) {
+            int skip = p[0], len = p[1], i;
+            p += 2;
+            x += skip;
+            for (i = 0; i < len; i++) {
+                int c = p[i], mark = c == palette_darker(PAL_PAINT(FURN_MARK_A, 0));
+                for (s = 0; s < 3; s++) mark |= c == PAL_PAINT(FURN_MARK_A, s);
+                if (mark) continue;
+                if (x + i < x0) x0 = x + i;
+                if (x + i > x1) x1 = x + i;
+                if (y < y0) y0 = y;
+                if (y > y1) y1 = y;
+            }
+            p += len;
+            x += len;
+        }
+    }
+    *w = x1 < 0 ? 0 : x1 - x0 + 1;
+    *h = y1 < 0 ? 0 : y1 - y0 + 1;
+}
+
 /* (H6) a `mirror` wall decal: facing 1 is facing 0 flipped, anchored where
- * rot 3 draws; other pieces may not use it. The haunting's eye is one, with
- * an eye of at least 8x6 px in each of its 2 frames. */
+ * rot 3 draws, and the row is FF_MIRROR (the PS1 mirrors the prims); other
+ * pieces may not use it. The haunting's eye is one: in frame 0 the open eye
+ * itself (the white and the iris inside the heart) is at least 8x6 px, in
+ * the blink frame the lash line is at least 8 px wide. */
 TEST(furngen_mirror_decal)
 {
     Img a, b;
-    int x, y, ok = 1, first;
+    int x, y, i, ok = 1, first, ew, eh;
     memset(arts, 0, sizeof(arts));
     fg_errors = 0;
     CHECK_EQ(parse_catalog("[w] WALL 1 \"W\"\n  foot 1 1 3  flags WALL\n[p] PASTEL 1 \"P\"\n  foot 1 1 4\n", "t"), 0);
@@ -331,9 +367,14 @@ TEST(furngen_mirror_decal)
     free(b.pix);
     first = doomo_furn_iso_first[FURN_HEART_WALLPAPER_EYE];
     CHECK_EQ(doomo_furn[FURN_HEART_WALLPAPER_EYE].frames, 2);
+    CHECK(doomo_furn[FURN_HEART_WALLPAPER_EYE].flags2 & FF_MIRROR);
+    for (i = 0; i < doomo_furn_count; i++)
+        if (doomo_furn[i].flags2 & FF_MIRROR) CHECK_MSG(doomo_furn[i].flags & FF_WALL, "%d: FF_MIRROR off a wall", i);
     for (x = 0; x < 4; x++) {
         const DoomoFurnIso *im = &doomo_furn_iso[first + x];
-        CHECK_MSG(im->w >= 8 && im->h >= 6, "eye facing %d is %dx%d", x, im->w, im->h);
+        not_a_extent(im, &ew, &eh);
+        if (x < 2) CHECK_MSG(ew >= 8 && eh >= 6, "the open eye (facing %d) is %dx%d px", x, ew, eh);
+        else CHECK_MSG(ew >= 8 && eh >= 1, "the blink (facing %d) is %dx%d px", x & 1, ew, eh);
         if (x & 1) CHECK_EQ(im->ox, im->w - doomo_furn_iso[first + x - 1].ox);
     }
 }

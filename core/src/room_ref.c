@@ -332,6 +332,16 @@ int room_ref_maquette(int furn, int pa, int pb, int x, int y, int w, int h)
     return 1;
 }
 
+/* (H6) The PS1 links no iso sprites (SPEC C3: doomo_furn_iso_count is 0
+ * there) and its callers fall back to room_ref_maquette(). A constant 0
+ * lets the compiler drop the dead decoder from the PS1 house group (1 KB
+ * of its RAM slot). */
+#ifdef DOOMO_PLATFORM_PS1
+#define FURN_ISO_COUNT 0
+#else
+#define FURN_ISO_COUNT doomo_furn_iso_count
+#endif
+
 int room_ref_sprite(int furn, int facing, int frame, int pa, int pb, int lvl,
                     uint8_t *buf, unsigned cap, DoomoImage *img, int *ox, int *oy)
 {
@@ -339,7 +349,7 @@ int room_ref_sprite(int furn, int facing, int frame, int pa, int pb, int lvl,
     const DoomoFurnIso *im;
     const uint8_t *base;
     int frames, e, y;
-    if (!f || !buf || !doomo_furn_iso_count || furn >= doomo_furn_count) return 0;
+    if (!f || !buf || !FURN_ISO_COUNT || furn >= doomo_furn_count) return 0;
     frames = f->frames ? f->frames : 1;
     e = doomo_furn_iso_first[furn] + (frame % frames) * 2 + (facing & 1);
     if (e >= doomo_furn_iso_count) return 0;

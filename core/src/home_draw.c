@@ -1707,6 +1707,9 @@ static void home_update(void)
     plat_code_part(H->part);                    /* the mode's code (scene.h): first */
     camfx_tick();
     H->t++;
+    /* (H6) the beanbag's sigh is over: forget it (t is 16-bit, so it would
+     * sigh again when t comes round) */
+    if (H->sigh_obj != 0xFF && (uint16_t)(H->t - H->sigh_at) >= ht[HT_SIGH]) H->sigh_obj = 0xFF;
     if (H->msg_age != 0xFFFF && ++H->msg_age > ht[HT_MSG]) H->msg_age = 0xFFFF;
     if (H->nope_age != 0xFF && ++H->nope_age >= ht[HT_NOPE]) H->nope_age = 0xFF;
     if (H->flip_age != 0xFF && ++H->flip_age >= ht[HT_FLIP]) H->flip_age = 0xFF;

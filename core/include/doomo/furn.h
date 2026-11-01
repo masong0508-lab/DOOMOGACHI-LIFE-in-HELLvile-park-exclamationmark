@@ -33,8 +33,14 @@ enum { FF_PORTAL = 1,       /* a door: fixed slot, re-skin only            */
        FF_UNSELLABLE = 8,   /* gifts, trophies, story pieces (cap 1)       */
        FF_GIFT = 16,        /* placed by a citizen; `giver` is valid       */
        FF_STARTER = 32,     /* (H1) granted when the player moves in       */
-       FF_FIXED = 64 };     /* (H1 M3) a decal nobody places or picks up: the
+       FF_FIXED = 64,       /* (H1 M3) a decal nobody places or picks up: the
                                Ch2 wallpaper eye (it still scores)          */
+       FF_MIRROR = 128 };   /* (H6) set by furngen from the art's `mirror`: a
+                               flat wall decal drawn upright on screen (its
+                               prims counter wall A's shear). The sprites'
+                               facing 1 is facing 0 flipped; the PS1, which
+                               draws the prims, mirrors their local x when
+                               local +x runs away from the camera          */
 
 /* Interactions (FI_*): what Live mode does with a piece. */
 enum { FI_NONE, FI_SIT, FI_SLEEP, FI_EAT, FI_COOK, FI_PLAY, FI_WATCH, FI_MUSIC,

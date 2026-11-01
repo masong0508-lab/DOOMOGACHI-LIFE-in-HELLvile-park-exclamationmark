@@ -447,7 +447,7 @@ box  5 10 2  6 1 3     CHARCOAL
 blob@0 6 11 3 1 1 1    B glow
 blob@1 10 11 3 1 1 1   B glow
 cyl  10 7 7  1 5       A
-blob 10 7 12 1 1 1     CHERRY
+blob 10 7 12 1 1 1     CHERRY glow
 
 [washed_cup]
 cyl  8 8 0   4 1       A

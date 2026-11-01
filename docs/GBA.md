@@ -810,6 +810,16 @@ before G0):
 | `home_cellar_full`: 8x8, 40 pieces, dim | avg >= 24 | 26.2 |
 | `home_defend_w3`: 10 citizens + player walking, 24 lit pieces | >= 20 | **12.6 (not met)** |
 
+Since H6 the cellar layout (`room.c` `test_view`) holds the bunny beanbag
+on frame 0, as it was before H6 (one frame): the beanbag now sinks only
+while someone sits on it and sighs for `HT_SIGH` after (`home_draw.c`
+`anim_frame()`). As a 2-frame loop on the layout's beat it took the cellar
+from 26.3 to 20.9 fps, under the gate; the layout's other looping pieces
+still flip every 8 ticks. H6 measured: steady 29.8, modal 20.0, rotate
+25.4, cellar 26.3, defend 12.4. The pieces H6 animated in real rooms (the
+neon, bubble chair, kettle, record player, Mr. Flops) are in no stress
+layout yet.
+
 A full recompose of the parity room costs about 0.95 M cycles (about
 57 ms): 250k for the shell, 420k for the pieces, 63k for the checksums.
 Running THUMB code from ROM costs about 400 cycles of loop and DMA setup

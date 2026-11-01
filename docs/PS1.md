@@ -299,7 +299,16 @@ save-from-the-house step in `home.txt` is still to add.
 
 The slot is now exactly the three biggest groups (cutscene 118,444,
 story 118,172, combat 117,760 B, rounded up to whole sectors): any growth
-of them moves the slot again, 2 KB at a time (story SPEC C4). The story
+of them moves the slot again, 2 KB at a time (story SPEC C4). The house
+group must stay under it too: from `__ovl_borrow`, its common code plus
+its biggest part rounded up to whole sectors (`mart`, 11,984 -> 12,288 B)
+may end at most at the slot's end. H6 (furniture animation frames and the
+haunt eye, gingham crate and defend props: 69 prims, +552 B; the
+`FF_MIRROR` decals below) would have ended it 376 B past the slot (slot
+120,832 B, 129,760 B free); `room_ref_sprite()` now compiles to `return 0`
+on the PS1 (it links no iso sprites, SPEC C3: 1,088 B of dead decoder), so
+the common code ends 308 B below that limit and the disc ends at
+`0x801dfd00`, **131,824 B below the stack top** with the 118,784 B slot. The story
 group is far above its 75 KB cap (C4); the levers are content-level
 (story_script.c's legacy glue, story_talk.c), parts for SCENE_QUESTLOG /
 SCENE_CREDITS (PARTS work only for BORROW groups today) and, for the
@@ -479,6 +488,13 @@ lamp pools and contact shadows, a camera on a `TW_BOING` spring with the
   drawing area. `room-test 6..9` compares this path with the single full
   pass pixel for pixel (1 pixel differs per layout, where two equal-depth
   polygons meet at a clip edge).
+* **Mirrored decals (H6).** A furngen `mirror` wall decal (`FF_MIRROR`,
+  the haunt's wallpaper eye) is drawn upright on screen: its prims counter
+  wall A's shear. Where its local +x runs away from the camera (the key
+  light, which turns with the camera, says so: `plx < 0` in
+  `piece_setup()`) that counter-shear would double into a diagonal sliver,
+  so `prim_mir()` mirrors the prims' x across the footprint, as the sprite
+  ports draw facing 0 flipped there: the same choice in every view.
 * **The resting player (H4).** While the chibi stands still it is drawn
   into the backdrop with the furniture (`model.c` `g_model_hold` keeps its
   walk cycle where it was) and again only inside the clips of what moves
@@ -533,6 +549,13 @@ lamp pools and contact shadows, a camera on a `TW_BOING` spring with the
 | `home_defend_stress` (8x8, 24 lit pieces, 10 walkers) | - | 21.1 | 20.8 | 19 (floor) |
 | `home_defend_w3` (Hold the Door, the siege's wave 3) | - | - | 30.1 | 22 |
 | `home_visit` (Nana Puddin's flat) | - | - | 30.2 | 28 |
+
+Since H6 the cellar layout (`room_test.c`) holds the bunny beanbag on frame
+0, as it was before H6 (one frame): the beanbag now sinks only while
+someone sits on it and sighs for `HT_SIGH` after (`home_draw.c`
+`anim_frame()`), never on the layout's loop. The other looping pieces
+still flip every 8 ticks. With H6: cellar 30.0, defend stress 20.7 (the
+other rows as H4).
 
 ## 8. Audio
 

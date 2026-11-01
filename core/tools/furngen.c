@@ -517,7 +517,9 @@ static int parse_art(const char *text, const char *file)
         if (!strcmp(tok, "mirror")) {
             /* (H6) a flat wall decal drawn upright in screen space (its prims
              * counter the wall's shear): facing 1 (wall B) is facing 0 mirrored,
-             * as the wallpaper's own hearts are. Wall pieces only. */
+             * as the wallpaper's own hearts are. Wall pieces only. The row
+             * gets FF_MIRROR, so the PS1 (which draws the prims) mirrors
+             * them as well, by the camera (ps1/src/room.c piece_setup). */
             if (!(rows[cur].flags & FF_WALL)) { fg_err(file, L.line, "mirror is for wall pieces:", rows[cur].key); return fg_errors - e0; }
             arts[cur].mirror = 1;
             if (!lex_next(&L, tok, sizeof tok, &q, &nl)) break;
@@ -590,15 +592,21 @@ static int check_paint_slots(void)
 /* (H6) The animation frames agree with the catalog: an FF_ANIM piece has
  * `frames N` (N > 1) and prims that differ between them, a piece with frames
  * is FF_ANIM (home_draw.c anim_frame() shows only frame 0 otherwise, so the
- * other frames would be dead ROM), and no prim names a frame past N. */
+ * other frames would be dead ROM), and no prim names a frame past N. The
+ * frames differ when some prim is in some of them but not all (a prim
+ * tagged with every frame is in every frame, like an untagged one). */
 static int check_anim_frames(void)
 {
     int i, k, e0 = fg_errors;
     for (i = 0; i < nrows; i++) {
         const Art *a = &arts[i];
-        int masks = 0, all = (1 << a->frames) - 1;
+        int masks = 0, differ = 0, all = (1 << a->frames) - 1;
         if (!a->has) continue;
-        for (k = 0; k < a->nprim; k++) masks |= a->p[k].frames;
+        for (k = 0; k < a->nprim; k++) {
+            int m = a->p[k].frames & all;
+            masks |= a->p[k].frames;
+            if (m && m != all) differ = 1;
+        }
         if ((rows[i].flags & FF_ANIM) && a->frames < 2)
             fg_err(a->file, a->line, "FF_ANIM piece without animation frames (add `frames N` and kind@F prims):",
                    rows[i].key);
@@ -607,8 +615,9 @@ static int check_anim_frames(void)
                    rows[i].key);
         else if (masks & ~all)
             fg_err(a->file, a->line, "a prim names a frame past `frames` in", rows[i].key);
-        else if (a->frames > 1 && !masks)
-            fg_err(a->file, a->line, "`frames` without any kind@F prim (every frame is the same):", rows[i].key);
+        else if (a->frames > 1 && !differ)
+            fg_err(a->file, a->line, "`frames` but no kind@F prim in only some frames (every frame is the same):",
+                   rows[i].key);
     }
     return fg_errors - e0;
 }
@@ -1325,7 +1334,9 @@ int main(int argc, char **argv)
         cstr(o, r->desc);
         fprintf(o, ", %d)", ht.desc_off[i]);
         fprintf(o, ", %d, 0x%04X, 0x%04X, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d },\n",
-                r->price, r->unlock, r->giver, r->cat, r->flags, r->flags2, r->fi, r->fw, r->fd, r->fh,
+                r->price, r->unlock, r->giver, r->cat, r->flags,
+                r->flags2 | (arts[i].mirror ? FF_MIRROR : 0),          /* (H6) the PS1 mirrors it too */
+                r->fi, r->fw, r->fd, r->fh,
                 r->pa, r->pb, r->cute, r->spooky, r->comfy, r->need, r->seat, r->light, r->theme, r->mass,
                 arts[i].nprim, nprims, arts[i].frames, r->role);
         nprims += arts[i].nprim;

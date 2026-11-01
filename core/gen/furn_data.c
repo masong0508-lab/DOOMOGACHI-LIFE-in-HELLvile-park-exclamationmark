@@ -2959,7 +2959,7 @@ const DoomoFurn doomo_furn[330] = {
     { FT("Bone-Rimmed Window", 4356), FT("Ribs for a frame.", 4369), 240, 0xFFFF, 0xFFFF, 8, 65, 1, 0, 1, 1, 6, 28, 255, 1, 4, 0, 255, 0, 0, 5, 0, 10, 1307, 1, 2 },
     { FT("Boarded Window", 4380), FT("Boarded up, with a smiley.", 4390), 0, 0xFFFF, 0xFFFF, 8, 1, 9, 0, 1, 1, 6, 27, 255, 3, 2, 0, 255, 0, 0, 9, 0, 10, 1317, 1, 2 },
     { FT("Welded Plate", 4407), FT("A battle scar. Kept.", 4415), 0, 0xFFFF, 0xFFFF, 8, 1, 0, 0, 1, 1, 6, 1, 10, 0, 1, 0, 255, 0, 0, 9, 0, 14, 1327, 1, 14 },
-    { FT("Wallpaper Eye", 4428), FT("One heart is an eye. It blinks.", 4438), 0, 0xFFFF, 0xFFFF, 8, 33, 74, 0, 1, 1, 3, 4, 255, 0, 7, 0, 255, 0, 0, 0, 0, 21, 1341, 2, 0 },
+    { FT("Wallpaper Eye", 4428), FT("One heart is an eye. It blinks.", 4438), 0, 0xFFFF, 0xFFFF, 8, 33, 202, 0, 1, 1, 3, 4, 255, 0, 7, 0, 255, 0, 0, 0, 0, 21, 1341, 2, 0 },
     { FT("Counter Board", 4457), FT("Counts something. Nobody says what.", 4466), 80, 0xFFFF, 0xFFFF, 8, 1, 0, 0, 1, 1, 5, 2, 0, 2, 1, 0, 255, 0, 0, 9, 0, 7, 1362, 1, 0 },
     { FT("Badge Board", 4488), FT("Every badge you never earned.", 4496), 90, 0xFFFF, 0xFFFF, 8, 1, 0, 0, 1, 1, 5, 27, 7, 4, 0, 0, 255, 0, 0, 3, 0, 6, 1369, 1, 0 },
     { FT("Tomato Review Board", 4514), FT("Five stars. Five tomatoes.", 4527), 70, 0xFFFF, 0xFFFF, 8, 1, 0, 8, 1, 1, 5, 4, 14, 4, 0, 0, 255, 0, 0, 8, 0, 9, 1375, 1, 0 },
