@@ -940,6 +940,30 @@ upload failed silently every frame. `view3d.c` now fetches the sky
 a map has shown sky cells; the upload then happens once per sky frame as
 designed (verified with a harness screenshot of the arena).
 
+### Life tour (M0, `harness/scripts/perf_life.txt`)
+
+The free-play screens the life sim lives on, on the game disc (made by
+`harness/mkperf.py` like the other `perf_*.txt`; the same screens as the
+GBA's `make -C gba test-life`, docs/GBA.md "Life tour"): a Hellvile Park
+Classic island's hub, the news (L), the Town Hall menu (A), Citizens (R),
+a citizen and Hillvile Towers, each measured with `fps` / `fpsend` over 90
+frames. `python3 ps1/harness/run.py --exe ps1/build/doomogachi.exe --cue
+ps1/build/doomogachi.cue --script ps1/harness/scripts/perf_life.txt --out
+DIR` (or `ps1/harness/perfall.sh DIR life`). The press budgets of the same
+journeys are native (docs/GAME_DESIGN.md 4.1).
+
+| screen | fps | CPU per frame (the nearest `perf:` line, every 150 frames) |
+|---|---|---|
+| island hub | 24.6 | 41 ms |
+| news | 30.2 | 10 ms |
+| island menu (Town Hall) | 25.6 | 61 ms |
+| Citizens (roster) | 30.2 | 12 ms |
+| a citizen (resident) | 30.2 | 11 ms |
+| Hillvile Towers (apartments) | 30.2 | 10 ms |
+
+Like on the GBA, the island map and its location menu are the only life
+screens under 30 fps; everything pushed over the island holds 30.
+
 ## 13. Notes for the core
 
 * The 2D layer is fastest with few, large rectangles: one `plat_rect` per

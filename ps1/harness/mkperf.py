@@ -41,6 +41,15 @@ PERF = {
     "pet": upto("life_pet.txt", "scene PET") + ["wait 30"] + meas("pet"),
     "exorcism": upto("life_exorcism.txt", "scene EXORCISM -1") + ["wait 40"]
     + meas("exorcism"),
+    # M0: the life tour (gba/harness/scripts/life_speed.txt's screens)
+    "life": upto("fp_island.txt", "shot island_day") + meas("life_hub", 90)
+    + ["press L", "wait 30"] + meas("life_news", 90) + ["press B", "wait 30"]
+    + ["press A", "wait 30"] + meas("life_menu", 90) + ["press B", "wait 30"]
+    + ["press R", "wait 30"] + meas("life_roster", 90)
+    + ["press A", "wait 30"] + meas("life_resident", 90)
+    + ["press B", "wait 20", "press B", "wait 30"]
+    + ["press LEFT", "wait 10", "press A", "wait 20", "press A", "wait 30"]
+    + meas("life_apartments", 90),
 }
 
 for k, v in PERF.items():
