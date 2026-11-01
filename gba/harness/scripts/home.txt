@@ -37,39 +37,38 @@ room-parity 0x210 4
 
 # 1b. The shell frames (core/tests/room_shells.h, golden lines 5..37, H1):
 #    ARG bits 12-19 = the golden line. Every wallpaper, floor, ceiling ramp,
-#    tint and room kind. The GBA draws wallpapers 0..3, floors 0..1, the wood
-#    cornice, no tint and only the noon sky (room.c strip_col / build_shell),
-#    so every other frame is `xfail` until H2 ports them; H2 drops the marks.
-#    Lines 5 and 33..37 are the vocabulary the GBA draws today: required, on
-#    the full, dirty-rect (parity furniture only) and UI-restore paths.
+#    tint and room kind, all required (H2: wallpapers 4..7 through wall_cols,
+#    floors 2..7 through floor_row_pat, the ceiling ramps, the five tints,
+#    the dusk / night skies), on the full path, and on the dirty-rect
+#    (parity furniture only) and UI-restore paths for a sample of each.
 room-parity 0x5000 5
-room-parity 0x6000 6 xfail
-room-parity 0x7000 7 xfail
-room-parity 0x8000 8 xfail
-room-parity 0x9000 9 xfail
-room-parity 0xa000 10 xfail
-room-parity 0xb000 11 xfail
-room-parity 0xc000 12 xfail
-room-parity 0xd000 13 xfail
-room-parity 0xe000 14 xfail
-room-parity 0xf000 15 xfail
-room-parity 0x10000 16 xfail
-room-parity 0x11000 17 xfail
-room-parity 0x12000 18 xfail
-room-parity 0x13000 19 xfail
-room-parity 0x14000 20 xfail
-room-parity 0x15000 21 xfail
-room-parity 0x16000 22 xfail
-room-parity 0x17000 23 xfail
-room-parity 0x18000 24 xfail
-room-parity 0x19000 25 xfail
-room-parity 0x1a000 26 xfail
-room-parity 0x1b000 27 xfail
-room-parity 0x1c000 28 xfail
-room-parity 0x1d000 29 xfail
-room-parity 0x1e000 30 xfail
-room-parity 0x1f000 31 xfail
-room-parity 0x20000 32 xfail
+room-parity 0x6000 6
+room-parity 0x7000 7
+room-parity 0x8000 8
+room-parity 0x9000 9
+room-parity 0xa000 10
+room-parity 0xb000 11
+room-parity 0xc000 12
+room-parity 0xd000 13
+room-parity 0xe000 14
+room-parity 0xf000 15
+room-parity 0x10000 16
+room-parity 0x11000 17
+room-parity 0x12000 18
+room-parity 0x13000 19
+room-parity 0x14000 20
+room-parity 0x15000 21
+room-parity 0x16000 22
+room-parity 0x17000 23
+room-parity 0x18000 24
+room-parity 0x19000 25
+room-parity 0x1a000 26
+room-parity 0x1b000 27
+room-parity 0x1c000 28
+room-parity 0x1d000 29
+room-parity 0x1e000 30
+room-parity 0x1f000 31
+room-parity 0x20000 32
 room-parity 0x21000 33
 room-parity 0x22000 34
 room-parity 0x23000 35
@@ -84,20 +83,30 @@ room-parity 0x22100 34
 room-parity 0x23200 35
 room-parity 0x24200 36
 room-parity 0x25200 37
+room-parity 0x9100 9
+room-parity 0xa200 10
+room-parity 0xc100 12
+room-parity 0xc200 12
+room-parity 0x11200 17
+room-parity 0x15100 21
+room-parity 0x16200 22
+room-parity 0x18100 24
+room-parity 0x1a200 26
+room-parity 0x1b200 27
+room-parity 0x1d200 29
 
 # 1c. (HART) The roofs (golden lines 38..45): room_ref's roof code
 #    (room_roof_setup / room_roof_row) runs on the GBA too. 38..43 are in the
 #    GBA's vocabulary (the wood cornice): required on the full, dirty-rect
-#    and UI-restore paths; 44 (a themed cornice) and 45 (a tint) stay xfail
-#    with the H2 frames.
+#    and UI-restore paths; 44 (a themed cornice) and 45 (a tint) since H2.
 room-parity 0x26000 38
 room-parity 0x27000 39
 room-parity 0x28000 40
 room-parity 0x29000 41
 room-parity 0x2a000 42
 room-parity 0x2b000 43
-room-parity 0x2c000 44 xfail
-room-parity 0x2d000 45 xfail
+room-parity 0x2c000 44
+room-parity 0x2d000 45
 room-parity 0x26100 38
 room-parity 0x26200 38
 room-parity 0x27100 39
@@ -108,16 +117,19 @@ room-parity 0x2b200 43
 # 1d. (H5) The open kinds fenced on every edge (golden lines 46..52): the
 #    lip on both front edges, the door's backdrop (room_backdrop_px: the
 #    cottage wall strip, the gate posts), front-edge wall pieces after
-#    everything. 46..50 are in the GBA's vocabulary (floors 0..1, the noon
-#    sky): required on the full and UI-restore paths; 51..52 (grass and
-#    flagstone floors, dusk / night skies) stay xfail with the H2 frames.
+#    everything. All required on the full path, 46..50 also on the UI-restore
+#    path; 51..52 (grass and flagstone floors, dusk / night skies) since H2.
 room-parity 0x2e000 46
 room-parity 0x2f000 47
 room-parity 0x30000 48
 room-parity 0x31000 49
 room-parity 0x32000 50
-room-parity 0x33000 51 xfail
-room-parity 0x34000 52 xfail
+room-parity 0x33000 51
+room-parity 0x34000 52
+room-parity 0x2c200 44
+room-parity 0x2d200 45
+room-parity 0x33200 51
+room-parity 0x34200 52
 room-parity 0x2e200 46
 room-parity 0x2f200 47
 room-parity 0x31200 49

@@ -400,6 +400,7 @@ against the LAST row, not against a figure from an older base.
 | 16 | H9: back facings for every piece | `226179f` | 12,408 B | **12,408 B** | 0 | 6,308 B | no EWRAM / IWRAM resident; the room overlay group 3,648 -> 3,248 B (the mirrored run copies are gone: nothing is drawn flipped). ROM 3,819,508 -> 4,201,300 B (+381,792: iso sprites 503,183 -> 878,496 B, 1,744 facing records instead of 872; 209 facings share an earlier one's bytes), so the padded ROM file is 8 MB instead of 4 MB (the cartridge map is 32 MB; the user approved about +450 KB, DECISIONS). Room parity: golden lines 1-3, 6-8, 10-12, 22, 24, 25, 27, 28, 30-35, 39-41, 45-53, 55-57 regenerated (turned views, fenced front edges), every required line passes on every path; house fps: plain 30.0, steady 29.5 (29.2), modal 19.0 (18.8), rotate 24.7 (24.1), cellar 26.3 (26.2), defend 12.6 (12.1); speed tour frame-exact against `226179f` (16 scenes) |
 | 17 | LS0: saved life stage + both-direction romance gate | `d642736` | 12,408 B | **12,408 B** | 0 | 6,308 B | no EWRAM / IWRAM: the stage lives in bits 4..6 of the resident record's `romance` byte (`DoomoResident` stays 96 B, `doomo_town` unchanged); ROM 4,201,244 -> 4,203,444 B (+2,200, measured on `d642736` after H9 and the 32 MB cartridge: the gate, the sweep, the version-1 save migration, the creator's Age row); `test-coresave` passes with the version-2 stream (worst-case free-play island 59,204 -> 60,244 B native, slot 1 cap 90,112 B) |
 | 18 | K0: shared registry (save chunks 7 -> 12 slots, 6 placeholder scenes, `plat_ext.h`, `life_contract.h`) | `ae9d159` | 12,408 B | **12,384 B** | -24 B | 6,308 B | `save_budget.c`'s per-slot snapshot keeps one 16-bit size per registry slot: `snap` 48 -> 72 B (the plan's "0 B" missed it); the five new chunks (LIFE, PLAY, ENDS, OPT2, PROF) are weak NULL until LS1 / PA1 / E1 / U0 / MP0 (nothing written, save files byte-identical); the 6 placeholder scenes are `const` (ROM); the `plat_ext.h` defaults are gc'd until called. ROM 4,203,444 -> 4,203,604 B (+160, measured against LS0's tree `a29e375` built the same way; +160 on `d642736` too); IWRAM and the overlay slot unchanged |
+| 19 | H2: room.c shell patterns, ceiling ramps, tints, skies | `16b6929` | 12,384 B | **12,384 B** | 0 | 6,308 B | no EWRAM / IWRAM: `RBig` unchanged, the room overlay group unchanged (3,248 B); `RG` (on the stack) +16 B, `floor_row_pat` a 248 B row buffer on the stack (as `floor_row_lit`); `.bss` 34 B. ROM 4,203,604 -> 4,206,996 B (+3,392: `room.o` text 24,632 -> 27,986 B). Room parity: golden lines 5..57 all required (the 32 `xfail` checks flipped), plus 15 new dirty-rect / UI-restore checks; house fps: plain 30.0 (30.0), steady 29.5 (29.5), modal 18.5 (19.0, gate 18), rotate 24.8 (24.7), cellar 26.2 (26.3; its herringbone floor now drawn), defend 12.6 (12.6) |
 
 Known claimants still to land (their own packages measure and add rows):
 
@@ -408,7 +409,6 @@ Known claimants still to land (their own packages measure and add rows):
 | H11: `HOME` `.bss` on the GBA (`HOME_PERSIST`) | +3,432 B | free >= 12,352 B before it (SPEC C9) and >= 8,192 B after it; after G1, H10, L1, C1, G2, G6, G7, LS0 and K0: 12,384 -> 8,952 B |
 | L4: Latin glyph pages | 0 (`const` rows in ROM) | |
 | G3: the island's run layer | 0 `.bss` (from the arena) | free >= 9,000 B |
-| H2: room.c shell patterns | record EWRAM / IWRAM | |
 
 **L1: the language lookup** (`core/src/lang.c`, `doomo/lang.h`). Every
 UI text call goes through `lang_tr()`. Its state and a 64-entry cache (16
@@ -1172,14 +1172,12 @@ Since H1 the golden also holds the shell frames of
 `core/tests/room_shells.h` (lines 5-37; the table is shared by the native
 test and `room_hc_parity`, so the two cannot drift): every wallpaper,
 floor and ceiling ramp, the five tints, the Garden and Park Plot kinds by
-day, dusk and night, and the 8x6 room turned. The GBA draws only
-wallpapers 0-3, floors 0-1, the wood cornice, no tint and the noon sky
-(the H2 gap), so those frames are `xfail` in `scripts/home.txt`: the
-harness prints their mismatch and fails if one starts to match. Lines 5
-and 33-37 stay in the vocabulary the GBA draws (the non-square room
-turned, an open kind, dim light) and are required on every path. As of
-H1, 6 of the 33 shell frames match (`room-parity` probe: the tinted
-frames hash the same as the untinted classic view, the tint is ignored).
+day, dusk and night, and the 8x6 room turned. Since H2 the GBA draws all
+of it (every wallpaper, floor and ceiling ramp, the five tints, the dusk
+and night skies with their stars), so every golden line is required in
+`scripts/home.txt`: each on a full recompose, and a sample of each kind
+(patterned walls and floors, tints, the open kinds, the themed roofs) on
+the dirty-rect and UI-restore paths too. No line is `xfail` any more.
 
 **A static bitmap with dirty rects.** Each mode-4 page remembers what it
 shows: the shell key (room, view, light, paints, viewport, HUD bands),
@@ -1208,8 +1206,9 @@ the existing ARM loops or DMA.
 
 | Part | How it is drawn |
 |---|---|
-| Walls | The wallpaper repeats every 16 units, so a wall is one sheared 16 px strip. It is cached as 8 phase rows, so a wall's screen row is one DMA. |
-| Floor | The tiles repeat every 32x16 px (upper-half tiles win the 2 px overlaps). A floor row is one or two DMAs from 16 cached pattern rows, plus at most 2 px patches on the two front edges. |
+| Walls | Wallpapers 0-3 repeat every 16 units, so a wall is one sheared 16 px strip. It is cached as 8 phase rows, so a wall's screen row is one DMA. (H2) Hearts and harlequin repeat every 32 units and stone and stars hash per tile, so wallpapers 4-7 are drawn column by column (`wall_cols`: room_ref's `wall_column`, its rects clipped to the region), after the roof's rows and before the floor's. |
+| Floor | Floors 0-1 repeat every 32x16 px (upper-half tiles win the 2 px overlaps). A floor row is one or two DMAs from 16 cached pattern rows, plus at most 2 px patches on the two front edges. (H2) Floors 2-7 (tiles, herringbone, grass, flagstone, lava crack, cloud) are cut into cells and hash per tile: each row is laid out tile by tile in room_ref's order into a stack buffer, each tile in its own light, and copied once (`floor_row_pat`). |
+| Ceiling, tint, sky | (H2) The cornice takes `ceil_ramp[ceiling]`. A view tint (`tint_level` >= 4) composes `doomo_tintmap` after the light into every shell colour, the roof, the lip and backdrop, the pieces' LUTs (key bit 20-23; a tinted plain piece goes through a LUT too) and the actors' colormap. The open kinds' sky follows daylight (noon, peach dusk, navy night with room_ref's 12 stars). Tint, daylight and ceiling are in the shell key. |
 | Plain pieces | No paint, full light: each opaque run goes straight from ROM. (H9) Nothing is mirrored: a piece turned away from the camera draws its own back facing (furn.h), so the turned views take the same paths as view 0. |
 | Other pieces | Each run goes through a 256-byte LUT (paint recolour composed with `doomo_colormap[light]`) into a stack buffer laid out at the destination's pixel parity, so the copy is always a halfword DMA. |
 | Actors | `ow_sprite`. |
@@ -1285,7 +1284,7 @@ dirty-rect and UI-restore paths):
 **Roofs (HART).** `room_ref.c` defines the roof (HOUSING.md section 9) in
 screen space, row d above each wall-top column, and `room.c` draws the
 same pixels (golden lines 38..43 required on the full, dirty-rect and
-UI-restore paths; 44..45 `xfail` with the H2 cornice / tint frames). A
+UI-restore paths; 44..45, the themed cornice and the tint, since H2). A
 full recompose redraws the roof's ~40 visible rows, so the per-pixel code
 was too slow (+36 ms on the modal's full recomposes); it is drawn from
 tables built with the shell (`build_shell`) in the two 2,560 B VRAM gaps
@@ -1713,7 +1712,7 @@ gba/build/harness ROM.gba [--script FILE] [--shots DIR] [--save FILE]
 | `test-save` | engine-test ROM twice with the same `--save` file and SELECT held at boot: first run "no previous data / write ok", second run "persisted ok" (both 30 KB slots verified byte for byte, slot 1 erased and rewritten) |
 | `test-game` | game ROM, `scripts/smoke.txt`: boot, title, START, menu presses, screenshots in `build/shots/game` |
 | `test-coresave` | game ROM, `scripts/coresave1.txt` then `coresave2.txt` with the same `--save` file: the core's streamed saves (worst-case island in slot 1, a too-big save refused in slot 0, a story island in slot 0), loads checked by town CRC, then persistence across a reboot |
-| `test-home` | game ROM, `scripts/home.txt` (H2): `plat_room` parity with the room_ref golden on every path (15 classic frames, 15 shell-frame checks, 12 roof checks and 8 open-kind checks (H5: lip, backdrop, front-edge fences) required, 31 `xfail` until H2), then `SCENE_HOME` fps gates (section 6a) and a profile, screenshots in `build/shots/home` |
+| `test-home` | game ROM, `scripts/home.txt` (H2): `plat_room` parity with the room_ref golden on every path (15 classic frames, 15 shell-frame checks, 12 roof checks and 8 open-kind checks (H5: lip, backdrop, front-edge fences); since H2 every line required, none `xfail`), then `SCENE_HOME` fps gates (section 6a) and a profile, screenshots in `build/shots/home` |
 | `test-ow` | game ROM, `scripts/owsprite.txt` (G2): 2,400 random sprites drawn by `ow_sprite` and by the G1 baseline's per-pixel blit (`src/owtest.c`, mailbox command `GBA_HC_OW_SPRITE_TEST` = 16, posted 150 cases at a time) must leave identical back buffers (section 6) |
 
 `make -C gba test-speed` (G1, not part of `test`): game ROM,
