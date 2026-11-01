@@ -315,7 +315,13 @@ scene draws portraits, plus the animatronic's parts in `portrait_body.c` /
 text+rodata` 1,068 -> 1,083 KB; the turkey file is 11,960 B at `-Os`
 after its coordinate helpers went out of line, from 17,060 B inlined):
 the disc ends at `0x801e38a0`, **116,560 B below the stack top** (51,024 B
-above the 64 KB reserve). The slot and every group's size are unchanged
+above the 64 KB reserve; measured on `6714f43`). Rebased on L1
+(`f010771`) the disc ends at `0x801e3fe0`, **114,704 B below the stack
+top** (-15,264 B against L1's 129,968 B; 49,168 B above the 64 KB
+reserve, still above the 72 KB plan gate). That leaves L1's "six more
+resident language tables" estimate at about 67 KB, under the 72 KB gate,
+so L6 is now required before even the first L10-* language adds a
+`ui_main.tsv`. The slot and every group's size are unchanged
 (the prologue's crayon turkey adds 88 B to the cutscene group). The story
 group is far above its 75 KB cap (C4); the levers are content-level
 (story_script.c's legacy glue, story_talk.c), parts for SCENE_QUESTLOG /
