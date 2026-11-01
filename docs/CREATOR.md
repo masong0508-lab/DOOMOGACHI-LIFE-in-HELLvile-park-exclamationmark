@@ -52,7 +52,7 @@ test `creator_rows_cover_every_field` checks it). Section captions
 | Supernatural | horns, horn colour, horn size; tail, wings, halo; marking, marking colour; aura |
 | Outfit | outfit preset; top, top colour, print, print colour; bottom + colour; shoes + colour; hat + colour; accessory + colour |
 | Voice | voice preset; pitch, speed, quality, intonation, accent (0-31); "Test it!" plays the catchphrase as voice babble in a speech bubble |
-| Personality | movement, speech, expression, attitude, quirk (0-15) with a live panel: personality type name, description, quirk level and how they say hello |
+| Personality | movement, speech, expression, attitude, quirk (0-15) with a live panel: personality type name, description, quirk level and how they say hello; Age (Adult, Baby, Toddler, Child, Teen, Elder: the saved life stage, see ROSTER.md. Never randomised; the story hero is locked to Adult/Elder, and a premade citizen who keeps their roster name cannot be made older than canon) |
 | Profile | name and nickname (on-screen keyboard), pronouns, who they crush on, birthday month and day, favourite food, hated food, hobby, music, favourite colour, fear, catchphrase |
 | Home | moves to Hillvile / Hellvile (new citizens only, and in the story only once the wall is down), born in (heritage, `RF_HELLBORN`), favourite (`RF_FAVORITE`), plus a live preview of the apartment block with their window lit up (floor / room of the slot, free homes) - or the protagonist's HaHaland cottage |
 

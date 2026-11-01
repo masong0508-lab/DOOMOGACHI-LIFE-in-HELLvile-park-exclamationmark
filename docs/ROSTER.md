@@ -155,6 +155,36 @@ Traits describe who a premade citizen *is*. They are not stored in
 | `INFILTRATOR` | A Hellvile agent working among Hillvile (Vex's crew) |
 | `NIGHT_OWL` | Keeps night hours (night shift, ghosts, gamers) |
 
+### Life stage (saved, `RES_STAGE(r)`)
+
+Every resident also has a saved life stage (LS0): `LIFE_ADULT` (0),
+`LIFE_BABY`, `LIFE_TODDLER`, `LIFE_CHILD`, `LIFE_TEEN`, `LIFE_ELDER`
+(resident.h). It lives in bits 4..6 of `DoomoResident.romance` (the
+`ROMANCE_*` preference keeps bits 0..2), so the record stays 96 bytes.
+Never read `romance` directly: use `RES_ROMANCE(r)` and `RES_STAGE(r)`,
+and `resident_set_romance()` / `resident_set_stage()` to write.
+
+* Premade citizens: `roster_build.py` stores the stage the traits give in
+  the ROM record (`KID` -> CHILD, `TEEN` -> TEEN, `ELDER` -> ELDER, else
+  ADULT), and `roster_stage(id)` returns the same. An untouched premade
+  costs no save bits for it.
+* While a premade citizen still carries their roster name,
+  `sim_life_stage()` never lets a makeover or a stored stage make them
+  older than the roster says (a canon kid stays a kid).
+* Creator citizens pick theirs on the Age row (Personality tab). The story
+  hero is always a grown-up. Sim-born babies start as `LIFE_BABY`.
+* Generated (Random Island) citizens are adults.
+* Version-1 saves (before LS0) load with the stage the roster or a
+  sim-born baby implies; everyone else is an adult.
+
+Romance rules (`sim_romance_ok`, the one gate, checks both sides): adults
+(and elders) with adults; teens only with teens (crushes, confessions and
+dating, never a proposal or a wedding); babies, toddlers and children
+never. `sim_marriage_ok` (proposals, weddings, babies) needs two adults.
+`sim_romance_sweep()` undoes anything an old save or an age change left
+behind. `core/tests/test_life_stage.c` proves it on Empty, Classic and
+Random islands.
+
 ## The story cast
 
 Story NPCs sit at fixed, memorable ids. `roster.h` exposes these as
