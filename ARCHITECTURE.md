@@ -93,6 +93,11 @@ docs/                    design, building, modding the roster
 | gba | — | gba/** |
 | ps1 | — | ps1/** |
 | ci | — | .github/**, Makefile, README.md, docs/BUILDING.md |
+| K0 contract (LIFESIM_PLAN R1-R7; add-only after K0) | plat_ext; the K0 blocks of save_ext, save_budget, scenes, unlock_ids (endings 711..724) and story_int.h (CB_LIFE/END/ROUTE) | plat_weak_ext.c (weak hook defaults), weak_scenes.c (weak FAMILY, PLAYAS, ENDING_CARD, MSLOT, LANG_PICK), core/tests/test_save_budget.c, test_contracts_k0.c. No later package edits save_ext.h/.c, save_budget.c, platform.h or stubs.c for these |
+| life sim (LS1, then F1, LS3, LS5, F4) | life (LS1) | life*.c, weak_life.c; the 'LIFE' chunk (strong doomo_save_ext_life, max 2,432 B); family_* (F1, SCENE_FAMILY: F2) |
+| play-as (PA0, PA1, ...) | playas (PA0) | playas*.c, weak_playas.c; the 'PLAY' chunk (doomo_save_ext_playas, max 32 B; the only owner of the avatar id); SCENE_PLAYAS (PA5) |
+| endings / content packs (E0, E1, E2, ...) | ending, pack (E0) | ending*.c, mslot.c, pack.c, weak_endings.c; the 'ENDS' chunk (doomo_save_ext_endings, max 32 B); SCENE_ENDING_CARD (E1), SCENE_MSLOT (E2); unlock ids 711..724 (E1) |
+| options store (U0, U1g, U1p) | (town.h OPT_* >= 64, U0) | options_store.c, weak_ui.c; the 'OPT2' chunk (doomo_save_ext_opt2, max 40 B) and the 32 B machine config record (plat_config_read/write); SCENE_LANG_PICK (U5) |
 
 `platform.h` is shared: foundation, gba and ps1 must all agree on it.
 

@@ -282,6 +282,12 @@ chapter); every verb used. What batch B added:
   GRB_DISH|GRB_EXES n|GRB_PACIFIST` (Grumbleguts' story-only counters),
   `CB_SIDE_FRIENDS`, `CB_SIDE_BRANCH 0|1|2` (Wisp's answer in Ep 4.4, the
   Say It line, the Feast: that 2-bit field of `STRY.branch`).
+* **Reserved callback blocks (K0, LIFESIM_PLAN R6)** right after
+  `CB_SIDE_BRANCH`, still in `side_callback`'s 64..127: `CB_LIFE_FIRST..+15`
+  (84..99, LS5's life sim hooks), `CB_END_FIRST..+7` (100..107, E1's ending
+  picker) and `CB_ROUTE_FIRST..+7` (108..115, romance routes). A package
+  names its callbacks inside its own block only; an unfilled id does
+  nothing (`test_contracts_k0.c`).
 * **Decorate-for with its layout as the param** (`push_args.txt`): `push home
   0x4A04` = `HOME_ARG_STORY(HSM_DECORATE_FOR) | 10 << 8`, then `home
   DECORATE_FOR 10`; layouts 10-13 in `core/data/home/layouts_b.txt` (the
