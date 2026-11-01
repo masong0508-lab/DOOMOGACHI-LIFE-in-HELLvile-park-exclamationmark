@@ -231,7 +231,22 @@ int  home_edit_undo(HomeEdit *e);          /* 1 undone, 0 ring empty            
 /* Available to place: owned minus placed (fixed slot pieces are free). */
 int  home_edit_avail(const HomeEdit *e, int furn);
 
-/* ---- H1 M3: half tiles, recolours, walls, themes, groups, the clipboard ------- */
+/* (H4) home_edit.c's helpers that home_build.c (the Build-mode operations,
+ * the PS1's `build` part) shares: a footprint box in tiles (x1 / y1
+ * exclusive), the layer an object lives in, a wall piece's span (returns 1
+ * on wall B), one undo entry, and taking object idx out of a room */
+typedef struct HomeBox { int x0, y0, x1, y1; } HomeBox;
+enum { HOL_RUG, HOL_FLOOR, HOL_STACK, HOL_WALL };
+HomeBox home_obj_box(const HomeObj *o);
+int  home_obj_layer(const HomeObj *o);
+int  home_wall_span(const HomeObj *o, int *a0, int *a1, int *z0, int *z1);
+void home_edit_push(HomeEdit *e, int op, int idx, const HomeObj *old);
+void home_room_remove(HomeRoom *r, int idx);
+int  home_is_skin(const DoomoFurn *f, int role);   /* an FF_PORTAL piece of that role */
+
+/* ---- H1 M3: half tiles, recolours, walls, themes, groups, the clipboard -------
+ * (H4: the walls, themes, groups, the clipboard and the blueprints live in
+ * home_build.c; the PS1 loads them as a part, PLAT_PART_HOME_BUILD) */
 int  home_fit_sub(const HomeRoom *r, int room, int furn, int x, int y, int rot, int sub,
                   int ignore, HomeFit *out);
 int  home_edit_place_sub(HomeEdit *e, int furn, int x, int y, int rot, int sub, int pa, int pb);

@@ -306,7 +306,7 @@ typedef struct HomeScn {
     /* Hold the Door */
     HomeDefend def;
     uint8_t  def_card;
-    uint8_t  part;                   /* PLAT_PART_*: the visit / defence code (scene.h) */
+    uint8_t  part;                   /* PLAT_PART_*: the visit / defence / build code (scene.h) */
     /* the view */
     DoomoRoomObj objs[HOME_OBJ_MAX + 1 + HD_GHOSTS];
     DoomoRoomActor act[AC_MAX];
@@ -587,8 +587,21 @@ static void build_catalog(void)
     if (H->sel >= H->nrows) H->sel = 0;
 }
 
+/* (H4) the Build-mode operations (home_build.c) are a part on the PS1: asked
+ * for the first time the owner opens Walls, Themes, Blueprints or a group,
+ * then kept as the mode's part (H->part: update and draw ask again after
+ * another group ran). Never on a visit or in Hold the Door, whose menus
+ * have none of these; the harness's room-test layouts (the roomtest part)
+ * open none either, so the two never take turns */
+static void want_build(void)
+{
+    H->part = PLAT_PART_HOME_BUILD;
+    plat_code_part(H->part);
+}
+
 static void open_menu(int menu)
 {
+    if (menu == HMN_WALLS || menu == HMN_THEMES || menu == HMN_BLUEPRINTS || menu == HMN_GROUP) want_build();
     H->menu = (uint8_t)menu;
     H->sel = H->top = 0;
     H->nrows = 0;
@@ -1130,12 +1143,14 @@ static void update_build(void)
     int dx, dy;
     const HomeObj *under;
     if (H->nsel) { update_group(); return; }
-    /* hold SELECT: the rubber band */
-    if (btn_down(BTN_SELECT) && H->held < 0) {
+    /* hold SELECT: the rubber band (the owner's: not on a visit, whose code
+     * part leaves home_build.c out on the PS1) */
+    if (btn_down(BTN_SELECT) && H->held < 0 && H->kind != HK_VISIT) {
         if (++H->sel_hold == ht[HT_BAND_HOLD]) { H->band = 1; H->band_x = (uint8_t)H->cx; H->band_y = (uint8_t)H->cy; audio_sfx(SFX_BLIP); }
     }
     if (btn_released(BTN_SELECT)) {
         if (H->band) {
+            want_build();
             H->nsel = (uint8_t)home_edit_select(&H->ed, H->band_x, H->band_y, H->cx, H->cy, H->sel_idx, HOME_SEL_MAX);
             H->band = 0;
             if (H->nsel) say("D-pad move  L/R turn  START more"); else audio_sfx(SFX_CANCEL);

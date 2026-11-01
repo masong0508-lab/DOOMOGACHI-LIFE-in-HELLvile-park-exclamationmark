@@ -11,7 +11,8 @@ visits and HomeMart (H4).
 | `core/include/doomo/home.h`, `furn.h`, `house_api.h` | H1 (add-only) | the contract: homes, rooms, stats, grades, phases, the `SCENE_HOME` arg, the chunk sizes, the catalog record, themes / blueprints / layouts |
 | `core/src/home.c` | H1 | the state, the `HOME` v2 chunk, room templates, moving in, grants, the cache, photos, the Ch2 haunting |
 | `core/src/house_api.c` | H1 | the **resident** getters the story uses (reads and writes `HOME` `.bss` only, SPEC C6) |
-| `core/src/home_edit.c` | H1 | catalog access, placement rules, the undo ring, half tiles, recolours, themes, multi-select, the clipboard, blueprints, decorate-for |
+| `core/src/home_edit.c` | H1 | catalog access, placement rules, the undo ring, half tiles, recolours, the fittings' record, decorate-for |
+| `core/src/home_build.c` | H1 / H4 | the Build-mode operations, split out for the PS1's `build` part (H4): walls, themes, door / window skins, multi-select, the clipboard, blueprints |
 | `core/src/home_score.c` | H1 | Comfort / Spook / Style-Harmony / Light / Barricade, the feng-shui rules, the stamps |
 | `core/src/home_defend.c` | H1 | Hold the Door |
 | `core/src/unlocks_home.c` | H1 | the 20 house trophies (564..583) |
@@ -389,7 +390,11 @@ tutorials ran, the Black Market found) are set without a toast.
   slot (`ovl_plan.py` BORROW, 45,572 B). Its mode-only code is in PARTS
   that share one range after the common code: `visit`
   (`home_visit.c`), `defend` (`home_defend.c`), `mart` (`home_mart.c`,
-  a scene of its own) and `roomtest` (the renderer's harness layouts).
+  a scene of its own), `roomtest` (the renderer's harness layouts) and
+  (H4) `build` (`home_build.c`: the walls, themes, door / window skins,
+  rubber-band groups, the clipboard and the blueprints; `home_draw.c`
+  `want_build()` asks for it when the owner opens Walls, Themes,
+  Blueprints or a group, never on a visit or in Hold the Door).
   The common code asks for a part (`plat_code_part(PLAT_PART_*)`, scene.h;
   a no-op elsewhere) before it calls into it, and `home_draw.c` keeps the
   mode's part in `HomeScn.part` so update and draw ask again after

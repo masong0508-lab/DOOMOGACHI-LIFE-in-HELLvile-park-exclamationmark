@@ -322,7 +322,18 @@ reserve, still above the 72 KB plan gate). That leaves L1's "six more
 resident language tables" estimate at about 67 KB, under the 72 KB gate,
 so L6 is now required before even the first L10-* language adds a
 `ui_main.tsv`. The slot and every group's size are unchanged
-(the prologue's crayon turkey adds 88 B to the cutscene group). The story
+(the prologue's crayon turkey adds 88 B to the cutscene group).
+H4 (the themed door / window fittings: 19 pieces, 274 prims, the Walls
+panel's skin rows and previews, the designed Towers 7B and Pits flat)
+added 7,096 B to the common code, which would have moved the slot four
+sectors (+8 KB, 123,632 B free). Instead the Build-mode operations moved
+out of `home_edit.c` into `home_build.c`, a fifth part (`build`, 8,656 B;
+`PLAT_PART_HOME_BUILD`, asked for by `home_draw.c` `want_build()` when
+the owner opens Walls, Themes, Blueprints or a group): the common code is
+158,868 B (from 159,964), the house ends 1,404 B under the slot (from
+308) and the resident cost is the overlay directory's fifth part entry
+(16 B; measured on `6714f43`: the disc then ended at `0x801dfd10`,
+131,808 B below the stack top). The story
 group is far above its 75 KB cap (C4); the levers are content-level
 (story_script.c's legacy glue, story_talk.c), parts for SCENE_QUESTLOG /
 SCENE_CREDITS (PARTS work only for BORROW groups today) and, for the
@@ -575,7 +586,10 @@ lamp pools and contact shadows, a camera on a `TW_BOING` spring with the
   entries after the groups): `visit` (`home_visit.c`, 8 KB), `defend`
   (`home_defend.c`, 7 KB), `mart` (`home_mart.c`, 11 KB, `SCENE_HOME_MART`'s
   entry points: loaded with the scene) and `roomtest` (the harness layouts,
-  `room_test.c`, 2 KB). The house's common code asks for a part with
+  `room_test.c`, 2 KB) and (H4) `build` (`home_build.c`, 8 KB: walls,
+  themes, door / window skins, groups, the clipboard, blueprints; asked
+  for lazily, so the harness's room-test layouts never trade places with
+  it). The house's common code asks for a part with
   `plat_code_part()` (scene.h; `overlay.c`) before it calls into it; a
   part's section that another part reaches becomes common, the parts are
   `NOCROSSREFS`, and `--report` (with `OVL_PART_EDGES=1`) lists every call

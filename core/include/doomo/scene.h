@@ -41,7 +41,10 @@ void plat_scene_code_end(int token);
  * after that, only while that mode runs, may it call the part's functions.
  * The default (weak, scene.c) does nothing. --- */
 enum { PLAT_PART_NONE, PLAT_PART_HOME_VISIT, PLAT_PART_HOME_DEFEND, PLAT_PART_HOME_MART,
-       PLAT_PART_HOME_ROOMTEST /* the PS1 renderer's harness layouts */ };
+       PLAT_PART_HOME_ROOMTEST /* the PS1 renderer's harness layouts */,
+       PLAT_PART_HOME_BUILD    /* (H4) home_build.c: the own house's Build-mode
+                                  operations (walls, themes, fittings, groups,
+                                  blueprints) */ };
 void plat_code_part(int part);
 /* --- end H4 --- */
 /* --- G0 (additive, task #79): a modal scene (an overlay: SCENE_CONFIRM,

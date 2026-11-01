@@ -117,7 +117,11 @@ BORROW_GROUPS = ("home",)
 # edges for review. Only for BORROW_GROUPS (linked last). ---
 PARTS = {
     "home": (("visit", r"home_visit$"), ("defend", r"home_defend$"), ("mart", r"home_mart$"),
-             ("roomtest", r"room_test$")),
+             ("roomtest", r"room_test$"),
+             # H4: the own house's Build-mode operations (home_build.c: walls,
+             # themes, the door / window skins, groups, blueprints), asked for
+             # by home_draw.c (want_build) when the owner opens one of them
+             ("build", r"home_build$")),
 }
 # --- end H4 ---
 
