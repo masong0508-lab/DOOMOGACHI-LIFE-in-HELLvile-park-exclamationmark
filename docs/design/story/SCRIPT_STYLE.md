@@ -414,6 +414,7 @@ come from these (J3).
 | A line | 199 visible characters | `textpack.py` |
 | A choice option | 27 characters | `textpack.py` |
 | A choice question (`choice`, `player_line`) | **No `/` or `//`**: `ui_choice` takes the question as plain text, so a `/` prints as a slash. Write one sentence run and let the box word-wrap it (at most 3 lines at 27 columns). W2 measured it; W1 fixed Ch1's (`ep12`, `ep14`, `ep16`); 4 questions outside Ch1-2 still have one (`ep34`, `int3`, `ep44`, `ep46`) | reading the shots |
+| An idle line (`string IDLE_*`) | **No `/` or `//`** either: `ch12_idle` hands it to `story_say` -> `ui_say`, which takes plain text, so a `/` prints as a slash. One run, at most 3 lines at 27 columns (W1 measured it on Grampy's line; Ch1's are fixed, the 14 in `ch2/common.dsc` still have one) | reading the shots |
 | A quest-log hint | 95 characters (the HUD objective) | `textpack.py` |
 | A trophy name | 27 characters | `textpack.py` |
 | Characters | ASCII plus the icon glyphs 0x80-0x9F | `textpack.py` |
