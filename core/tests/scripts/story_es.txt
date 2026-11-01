@@ -1,0 +1,57 @@
+# assert-no-stubs
+# Spanish story text in the real dialogue box (P0, the script-rewrite
+# guardrails; docs/STORY_ENGINE.md "Script tools"). `lang es` switches the
+# language as the Options page would; then Ep 1.1 (the Mayor), Ep 2.2's
+# clue hunt, an S117 offer and the quest log, at both resolutions.
+# It pins NO Spanish (or English) words on purpose: while the English is
+# being rewritten (W1-W14) a rewritten line has no Spanish row yet and must
+# fall back to its English, cleanly, in the same box. Look at the shots:
+# the text must sit inside the box with nothing clipped.
+seed 4242
+lang es
+# ---- Ep 1.1: the Mayor's welcome -------------------------------------------
+scene STORY 101
+wait 150
+expect-scene STORY
+skip-talk 200
+talk 0
+wait 150
+shot es_ep11_mayor
+press A
+wait 150
+shot es_ep11_mayor2
+skip-talk 200
+# ---- Ep 2.2 "Grape": the clue hunt -----------------------------------------
+scene STORY 112
+wait 150
+skip-talk 200
+talk 111
+wait 150
+shot es_ep22_bloom
+skip-talk 200
+# ---- S117 "Buckwheat Run": the offer ----------------------------------------
+scene STORY 140
+wait 150
+skip-talk 200
+talk 77
+wait 150
+shot es_s117_offer
+press A
+wait 150
+shot es_s117_offer2
+skip-talk 200
+# ---- the quest log ----------------------------------------------------------
+push QUESTLOG
+wait 24
+shot es_questlog
+press B
+wait 4
+expect-scene STORY
+# ---- and back: English again ------------------------------------------------
+lang en
+push QUESTLOG
+wait 24
+shot en_questlog
+press B
+wait 4
+expect-scene STORY

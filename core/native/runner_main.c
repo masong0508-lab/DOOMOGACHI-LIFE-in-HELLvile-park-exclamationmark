@@ -37,6 +37,9 @@
  *                       story / HomeMart would
  *   clock H M           (H4) the island clock (the house's daylight)
  *   money N             (H4) the purse (HomeMart's deals)
+ *   lang CODE           (P0) the language by its code (en, es), as if picked
+ *                       on the Options page: opt_set(OPT_LANGUAGE) ->
+ *                       lang_changed(); the session keeps it across loads
  * Buttons: UP DOWN LEFT RIGHT A B L R START SELECT X Y L2 R2.
  * Exit status: 0 ok, 1 script failure, 2 stubs ran with --assert-no-stubs.
  */
@@ -51,6 +54,7 @@
 #include "doomo/story_vm.h"           /* S2: story_fingerprint */
 #include "doomo/music.h"              /* music: music-hash */
 #include "../src/ui_internal.h"       /* S2: ui_dialog_debug (expect-text) */
+#include "doomo/lang.h"               /* P0: lang CODE */
 void story_verbs_cell(int cx, int cy);    /* S4: "cell", "skip-talk" (core/src/story_int.h) */
 int  story_talking(void);
 void home_move_in(void);                  /* H4: "home-room" (core/src/home_int.h) */
@@ -259,6 +263,17 @@ static void run_line(char *line)
         uint32_t v = argc > 1 ? (uint32_t)strtoul(argv[1], NULL, 0) : 0;
         doomo_town.seed = v;
         nat_set_entropy(v);
+    /* --- P0: lang CODE. Codes, not numbers, so scripts survive the language
+     * registry (L1/L3 add codes to this table, or replace it). --- */
+    } else if (strcmp(cmd, "lang") == 0) {
+        static const struct { const char *code; int lang; } codes[] = { { "en", LANG_EN }, { "es", LANG_ES } };
+        const char *want = argc > 1 ? argv[1] : "";
+        int k, found = -1;
+        for (k = 0; k < (int)(sizeof(codes) / sizeof(codes[0])); k++)
+            if (strcmp(want, codes[k].code) == 0) found = codes[k].lang;
+        if (found < 0) fail("lang needs a language code (en, es), got", want);
+        else opt_set(OPT_LANGUAGE, found);
+    /* --- end P0 --- */
     } else if (strcmp(cmd, "expect-text") == 0) {
         UiDialogDebug d;
         const char *want = argc > 1 ? argv[1] : "";
