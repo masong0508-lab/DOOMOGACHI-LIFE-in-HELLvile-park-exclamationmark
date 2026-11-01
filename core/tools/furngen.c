@@ -16,7 +16,8 @@
  * draws 60 pieces; M2 all of them) gets a placeholder box from its
  * footprint and paints; `--strict` makes that an error.
  *
- * Every piece is baked into two facings (rot 0 and rot 1) by casting one
+ * Every piece is baked into two facings (rot 0 and rot 1; a `mirror` wall
+ * decal's facing 1 is its facing 0 flipped, H6) by casting one
  * ray per pixel along the iso view direction (1,1,1) against its prims:
  * boxes, ellipsoid blobs, vertical cylinders and cones. Shading is the
  * 3-tone rule (top light, +y face mid, +x face dark; curved prims by their
@@ -459,6 +460,7 @@ typedef struct Prim {
 #define FG_MAX_PRIMS 24
 typedef struct Art {
     int has, frames, nprim, line;
+    int mirror;                  /* (H6) facing 1 = facing 0 mirrored (screen-space decals) */
     Prim p[FG_MAX_PRIMS];
     char file[64];
 } Art;
@@ -509,6 +511,15 @@ static int parse_art(const char *text, const char *file)
             int v;
             if (!lex_next(&L, tok, sizeof tok, &q, &nl) || !to_int(tok, &v) || v < 1 || v > 4) { fg_err(file, L.line, "frames 1..4", tok); return fg_errors - e0; }
             arts[cur].frames = v;
+            if (!lex_next(&L, tok, sizeof tok, &q, &nl)) break;
+            continue;
+        }
+        if (!strcmp(tok, "mirror")) {
+            /* (H6) a flat wall decal drawn upright in screen space (its prims
+             * counter the wall's shear): facing 1 (wall B) is facing 0 mirrored,
+             * as the wallpaper's own hearts are. Wall pieces only. */
+            if (!(rows[cur].flags & FF_WALL)) { fg_err(file, L.line, "mirror is for wall pieces:", rows[cur].key); return fg_errors - e0; }
+            arts[cur].mirror = 1;
             if (!lex_next(&L, tok, sizeof tok, &q, &nl)) break;
             continue;
         }
@@ -911,6 +922,20 @@ static void bake(int fi, int facing, int frame, Img *out)
         for (x = 0; x < out->w; x++) out->pix[y * out->w + x] = buf_c[miny + y][minx + x];
 }
 
+/* (H6) facing 1 of a `mirror` decal: facing 0 flipped, anchored so that it
+ * draws exactly where the renderers put rot 3 (facing 0 with IMG_FLIPX):
+ * left = x - (w - ox). */
+static void mirror_img(const Img *src, Img *out)
+{
+    int x, y;
+    *out = *src;
+    out->ox = src->w - src->ox;
+    if (out->ox < 0 || out->ox > 255) { fg_err("mirror", 0, "a mirrored facing would start right of its anchor", NULL); out->ox = 0; }
+    out->pix = (uint8_t *)malloc((size_t)src->w * src->h);
+    for (y = 0; y < src->h; y++)
+        for (x = 0; x < src->w; x++) out->pix[y * src->w + x] = src->pix[y * src->w + src->w - 1 - x];
+}
+
 /* span encode: h u16 row offsets, then [skip][len][pixels].. 0xFF per row */
 static int span_encode(const Img *im, uint8_t *dst)
 {
@@ -1170,7 +1195,8 @@ int main(int argc, char **argv)
         for (f = 0; f < arts[i].frames; f++)
             for (k = 0; k < 2; k++) {
                 Img *im = &imgs[i][f * 2 + k];
-                bake(i, k, f, im);
+                if (k == 1 && arts[i].mirror) mirror_img(&imgs[i][f * 2], im);
+                else bake(i, k, f, im);
                 off[i][f * 2 + k] = (uint32_t)ndata;
                 ndata += span_encode(im, data + ndata);
             }

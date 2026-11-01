@@ -24,15 +24,18 @@ box  4 13 1  2 1 2     SILVER
 box  10 13 1 2 1 2     SILVER
 
 [toaster_turret]
-cyl  8 8 0   5 3       A
-cyl  8 8 3   2 4       A
-box  3 4 7   10 9 10   B
-box  4 6 17  3 5 2     CHARCOAL
-box  9 6 17  3 5 2     CHARCOAL
-box  4 6 19  3 5 4     HONEY soft
+cyl  8 8 0   5 2       A
+cyl  8 8 2   2 4       A
+box  3 4 6   10 9 10   B
+box  3 4 6   10 9 1    A
+box  4 6 16  3 5 1     CHARCOAL
+box  9 6 16  3 5 1     CHARCOAL
+box  4 7 16  3 3 4     HONEY soft
+box  9 7 19  3 3 4     HONEY soft
+box  6 13 9  4 2 4     CHARCOAL
+box  7 15 10 2 1 2     HONEY soft
 box  13 8 10 2 2 1     A
 cyl  14 9 11 1 3       A
-box  5 15 9  6 1 4     A
 
 [jukebox]
 frames 2

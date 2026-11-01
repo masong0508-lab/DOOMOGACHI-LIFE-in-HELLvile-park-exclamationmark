@@ -12,6 +12,8 @@
 #   cone x y z  r h        cone: base centre x y, bottom z, radius, height
 #   kind@01 ...            only on animation frames 0 and 1 (`frames N` first;
 #                          furngen: FF_ANIM <=> frames > 1, H6)
+#   mirror                 (wall decals) facing 1 = facing 0 flipped: prims that
+#                          counter the wall's shear stay upright on wall B too
 #
 # Materials: A / B (the two paint slots, recolourable), a PAINT_* name
 # (fixed; BUBBLEGUM and MINT are reserved for the markers), or ~RAMP (fixed,

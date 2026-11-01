@@ -697,7 +697,7 @@
 [heart_wallpaper_eye] WALL 0 "Wallpaper Eye"
   desc "One heart is an eye. It blinks."
   foot 1 1 3  flags WALL|ANIM  flags2 CURSED|UNSELLABLE|FIXED
-  paints BUBBLEGUM FIXED  score 0 7 0  theme PASTEL
+  paints CHERRY FIXED  score 0 7 0  theme PASTEL
 [counter_board] WALL 80 "Counter Board"
   desc "Counts something. Nobody says what."
   foot 1 1 5  flags WALL

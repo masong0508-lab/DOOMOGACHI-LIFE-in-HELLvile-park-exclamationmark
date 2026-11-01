@@ -1,17 +1,27 @@
 # core/data/furn/art/story.txt - recipes of the story and gift pieces (owner:
 # H4). Format: pastel.txt.
 
+# (H6) a slatted crate under a gingham cloth (it read as a first-aid box):
+# the red squares come before the white cloth so they win the shared faces.
 [picnic_crate]
-box  1 1 0   14 14 18  ~WOOD
-box  1 15 4  14 1 2    CHOCOLATE
-box  1 15 11 14 1 2    CHOCOLATE
-box  15 1 4  1 14 2    CHOCOLATE
-box  15 1 11 1 14 2    CHOCOLATE
-box  0 0 18  16 16 1   CHERRY
-box  2 2 19  4 4 1     WHITE
-box  10 10 19 4 4 1    WHITE
-box  10 2 19 4 4 1     WHITE
-box  2 10 19 4 4 1     WHITE
+box  1 1 0   14 14 18  A
+box  0 0 3   16 16 2   CHOCOLATE
+box  0 0 9   16 16 2   CHOCOLATE
+box  0 0 18  4 4 2     CHERRY
+box  8 0 18  4 4 2     CHERRY
+box  4 4 18  4 4 2     CHERRY
+box  12 4 18 4 4 2     CHERRY
+box  0 8 18  4 4 2     CHERRY
+box  8 8 18  4 4 2     CHERRY
+box  4 12 18 4 4 2     CHERRY
+box  12 12 18 4 4 2    CHERRY
+box  0 0 14  4 4 4     CHERRY
+box  12 12 14 4 4 4    CHERRY
+box  4 15 14 4 1 4     CHERRY
+box  15 4 14 1 4 4     CHERRY
+box  8 0 14  4 1 4     CHERRY
+box  0 8 14  1 4 4     CHERRY
+box  0 0 14  16 16 6   WHITE
 
 [egg_nest]
 blob 8 8 3   7 7 3     A soft

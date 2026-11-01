@@ -11,6 +11,7 @@
 #include "../tools/furngen.c"
 #include "test.h"
 #include "../src/home_int.h"
+#include "../gen/furn_ids.h"
 
 static int load_real(void)
 {
@@ -300,5 +301,39 @@ TEST(furngen_anim_frames_checked)
     for (i = 0; i < doomo_furn_count; i++) {
         const DoomoFurn *f = &doomo_furn[i];
         CHECK_MSG(((f->flags & FF_ANIM) != 0) == (f->frames > 1), "%s: FF_ANIM vs %d frames", f->name, f->frames);
+    }
+}
+
+/* (H6) a `mirror` wall decal: facing 1 is facing 0 flipped, anchored where
+ * rot 3 draws; other pieces may not use it. The haunting's eye is one, with
+ * an eye of at least 8x6 px in each of its 2 frames. */
+TEST(furngen_mirror_decal)
+{
+    Img a, b;
+    int x, y, ok = 1, first;
+    memset(arts, 0, sizeof(arts));
+    fg_errors = 0;
+    CHECK_EQ(parse_catalog("[w] WALL 1 \"W\"\n  foot 1 1 3  flags WALL\n[p] PASTEL 1 \"P\"\n  foot 1 1 4\n", "t"), 0);
+    CHECK_EQ(parse_art("[w]\nmirror\nbox 2 0 2 3 1 4 A\nbox 9 0 6 2 1 2 CHERRY\n", "t"), 0);
+    CHECK(arts[0].mirror);
+    CHECK(parse_art("[p]\nmirror\nbox 2 2 0 12 12 8 A\n", "t") > 0);
+    bake(0, 0, 0, &a);
+    mirror_img(&a, &b);
+    CHECK_EQ(b.w, a.w);
+    CHECK_EQ(b.h, a.h);
+    CHECK_EQ(b.oy, a.oy);
+    CHECK_EQ(b.ox, a.w - a.ox);
+    for (y = 0; y < a.h; y++)
+        for (x = 0; x < a.w; x++)
+            if (b.pix[y * a.w + x] != a.pix[y * a.w + a.w - 1 - x]) ok = 0;
+    CHECK(ok);
+    free(a.pix);
+    free(b.pix);
+    first = doomo_furn_iso_first[FURN_HEART_WALLPAPER_EYE];
+    CHECK_EQ(doomo_furn[FURN_HEART_WALLPAPER_EYE].frames, 2);
+    for (x = 0; x < 4; x++) {
+        const DoomoFurnIso *im = &doomo_furn_iso[first + x];
+        CHECK_MSG(im->w >= 8 && im->h >= 6, "eye facing %d is %dx%d", x, im->w, im->h);
+        if (x & 1) CHECK_EQ(im->ox, im->w - doomo_furn_iso[first + x - 1].ox);
     }
 }
