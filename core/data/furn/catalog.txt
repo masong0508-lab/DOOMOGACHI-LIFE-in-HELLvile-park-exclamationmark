@@ -1132,7 +1132,7 @@
   paints VAPE_PURPLE BLOOD  score 4 3 4  theme VAPOR  mass 2  seat 4  giver 666  reward S138
 [fresh_air_neon] STORY 0 "Fresh Air Neon"
   desc "FRESH AIR. In grape."
-  foot 2 1 4  flags WALL|LIGHT|HELL  flags2 UNSELLABLE|GIFT
+  foot 2 1 4  flags WALL|LIGHT|HELL|ANIM  flags2 UNSELLABLE|GIFT
   paints VAPE_PURPLE FIXED  score 3 3 0  theme VAPOR  light 1  giver 666  reward S139
 [employee_vex] STORY 0 "Employee of Month"
   desc "Vex. Third month running."

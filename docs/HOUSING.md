@@ -192,7 +192,10 @@ diagonal), the Score counter and SLAM stamp, the shutter, the reactions
 (the double take: look 8, SHOCK 16 with jitter, stare at the lens 8; the
 dawning "!", hearts, the bang, the sweat drop, the flee), the pet hopping
 between the lamp, the bed's plushie and the nest, idle breathing, and the
-open house's arrivals.
+open house's arrivals. Furniture loops come from the art's frames:
+furngen fails the build when an FF_ANIM piece has no `frames N` (or its
+frames do not differ) and when a piece with frames is not FF_ANIM, whose
+other frames `anim_frame()` would never show (H6).
 
 **State.** The scene scratch (`'HOME'`, `HomeScn` about 2.9 KB on 32-bit;
 the house's budget is 4 KB, SPEC C9); its tail is the view's

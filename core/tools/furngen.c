@@ -576,6 +576,32 @@ static int check_paint_slots(void)
     return fg_errors - e0;
 }
 
+/* (H6) The animation frames agree with the catalog: an FF_ANIM piece has
+ * `frames N` (N > 1) and prims that differ between them, a piece with frames
+ * is FF_ANIM (home_draw.c anim_frame() shows only frame 0 otherwise, so the
+ * other frames would be dead ROM), and no prim names a frame past N. */
+static int check_anim_frames(void)
+{
+    int i, k, e0 = fg_errors;
+    for (i = 0; i < nrows; i++) {
+        const Art *a = &arts[i];
+        int masks = 0, all = (1 << a->frames) - 1;
+        if (!a->has) continue;
+        for (k = 0; k < a->nprim; k++) masks |= a->p[k].frames;
+        if ((rows[i].flags & FF_ANIM) && a->frames < 2)
+            fg_err(a->file, a->line, "FF_ANIM piece without animation frames (add `frames N` and kind@F prims):",
+                   rows[i].key);
+        else if (!(rows[i].flags & FF_ANIM) && a->frames > 1)
+            fg_err(a->file, a->line, "`frames` on a piece that is not FF_ANIM (only frame 0 is ever shown):",
+                   rows[i].key);
+        else if (masks & ~all)
+            fg_err(a->file, a->line, "a prim names a frame past `frames` in", rows[i].key);
+        else if (a->frames > 1 && !masks)
+            fg_err(a->file, a->line, "`frames` without any kind@F prim (every frame is the same):", rows[i].key);
+    }
+    return fg_errors - e0;
+}
+
 /* A placeholder for a row without art: its footprint as a box. */
 static void art_default(int i)
 {
@@ -1131,6 +1157,7 @@ int main(int argc, char **argv)
         if ((text = read_file(path)) != NULL) { parse_sets(text, name, 1); free(text); }
     }
     check_paint_slots();
+    check_anim_frames();
     for (i = 0; i < nrows; i++)
         if (!arts[i].has) {
             if (strict) fg_err("catalog.txt", rows[i].line, "no art for", rows[i].key);

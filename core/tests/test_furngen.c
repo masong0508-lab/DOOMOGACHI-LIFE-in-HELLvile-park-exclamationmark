@@ -268,3 +268,37 @@ TEST(furngen_all_art_and_paint_slots)
     CHECK_EQ(parse_art("[f]\nbox 2 2 0 12 12 10 A\nblob 8 8 14 4 4 4 B\n", "t"), 0);
     CHECK(check_paint_slots() > 0);
 }
+
+/* (H6) the animation frames agree with the catalog: FF_ANIM <=> frames > 1,
+ * no prim names a frame past `frames`, and the frames differ */
+static int anim_case(const char *cat, const char *art)
+{
+    memset(arts, 0, sizeof(arts));
+    fg_errors = 0;
+    if (parse_catalog(cat, "t") || parse_art(art, "t")) return -1;
+    return check_anim_frames();
+}
+
+TEST(furngen_anim_frames_checked)
+{
+    static const char *const anim = "[a] PASTEL 1 \"A\"\n  foot 1 1 4  flags ANIM\n";
+    static const char *const still = "[a] PASTEL 1 \"A\"\n  foot 1 1 4\n";
+    int i, e;
+    CHECK(anim_case(anim, "[a]\nbox 2 2 0 12 12 8 A\n") > 0);                                  /* no frames */
+    CHECK_EQ(anim_case(anim, "[a]\nframes 2\nbox 2 2 0 12 12 8 A\nbox@1 4 4 8 8 8 2 B\n"), 0);
+    CHECK(anim_case(still, "[a]\nframes 2\nbox 2 2 0 12 12 8 A\nbox@1 4 4 8 8 8 2 B\n") > 0);  /* not FF_ANIM */
+    CHECK(anim_case(anim, "[a]\nframes 2\nbox 2 2 0 12 12 8 A\nbox@2 4 4 8 8 8 2 B\n") > 0);   /* frame 2 of 2 */
+    CHECK(anim_case(anim, "[a]\nframes 2\nbox 2 2 0 12 12 8 A\n") > 0);                       /* all the same */
+    CHECK_EQ(anim_case(still, "[a]\nbox 2 2 0 12 12 8 A\n"), 0);
+    /* the real art: every FF_ANIM piece animates (the 6 pieces H6 drew), and
+     * the generated tables agree */
+    e = load_real();
+    CHECK_MSG(e == 0, "the real catalog / art failed to parse (%d errors: %s)", e, fg_lasterr);
+    CHECK_EQ(check_anim_frames(), 0);
+    for (i = 0; i < nrows; i++)
+        if (rows[i].flags & FF_ANIM) CHECK_MSG(arts[i].frames > 1, "%s is FF_ANIM with %d frame", rows[i].key, arts[i].frames);
+    for (i = 0; i < doomo_furn_count; i++) {
+        const DoomoFurn *f = &doomo_furn[i];
+        CHECK_MSG(((f->flags & FF_ANIM) != 0) == (f->frames > 1), "%s: FF_ANIM vs %d frames", f->name, f->frames);
+    }
+}

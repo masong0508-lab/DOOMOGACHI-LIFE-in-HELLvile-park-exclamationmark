@@ -10,7 +10,8 @@
 #   blob x y z  rx ry rz   ellipsoid: centre + radii
 #   cyl  x y z  r h        vertical cylinder: centre x y, bottom z, radius, height
 #   cone x y z  r h        cone: base centre x y, bottom z, radius, height
-#   kind@01 ...            only on animation frames 0 and 1 (`frames N` first)
+#   kind@01 ...            only on animation frames 0 and 1 (`frames N` first;
+#                          furngen: FF_ANIM <=> frames > 1, H6)
 #
 # Materials: A / B (the two paint slots, recolourable), a PAINT_* name
 # (fixed; BUBBLEGUM and MINT are reserved for the markers), or ~RAMP (fixed,
@@ -40,15 +41,24 @@ cyl  6 8 42  1 4       WHITE
 blob 6 8 47  1 1 1     LEMON glow
 
 [bunny_beanbag]
-blob 8 9 6   7 6 6     A soft
+frames 2
+blob@0 8 9 6   7 6 6     A soft
+blob@1 8 9 5   8 6 5     A soft
 blob 8 8 3   7 7 3     A soft
-blob 4 5 14  2 2 5     A soft
-blob 12 5 14 2 2 5     A soft
-blob 4 6 15  1 1 3     B
-blob 12 6 15 1 1 3     B
-blob 6 15 8  1 1 1     JET
-blob 10 15 8 1 1 1     JET
-blob 8 15 6  1 1 1     B
+blob@0 4 5 14  2 2 5     A soft
+blob@1 3 5 11  2 2 5     A soft
+blob@0 12 5 14 2 2 5     A soft
+blob@1 13 5 11 2 2 5     A soft
+blob@0 4 6 15  1 1 3     B
+blob@1 3 6 12  1 1 3     B
+blob@0 12 6 15 1 1 3     B
+blob@1 13 6 12 1 1 3     B
+blob@0 6 15 8  1 1 1     JET
+blob@0 10 15 8 1 1 1     JET
+blob@0 8 15 6  1 1 1     B
+box@1 5 14 7  2 1 1     JET
+box@1 9 14 7  2 1 1     JET
+blob@1 8 15 5  1 1 1     B
 
 [cloud_bed]
 box  1 1 0   14 30 5   ~WOOD
@@ -129,11 +139,14 @@ cyl  8 8 15  7 2       B
 blob 15 8 12 2 1 3     A
 
 [bubble_chair]
+frames 2
 cyl  8 8 0   4 1       SILVER
 cyl  8 8 1   1 4       SILVER
 blob 8 8 13  7 7 9     A shiny
-blob 8 11 9  5 4 2     B soft
-blob 8 6 14  4 2 4     B soft
+blob@0 8 11 14 6 5 7   CHARCOAL
+blob@1 9 11 14 6 5 7   CHARCOAL
+blob@0 8 12 11 5 5 4   B soft
+blob@1 9 12 11 5 5 4   B soft
 
 [rainbow_bookcase]
 box  1 1 0   14 2 48   A
