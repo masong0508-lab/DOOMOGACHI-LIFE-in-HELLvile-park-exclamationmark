@@ -1,0 +1,101 @@
+# core/data/story/register.tsv - the PG-21 register words (owner: E5;
+# docs/design/story/SCRIPT_STYLE.md §5 R1-R3, §12; read by
+# core/tools/story_register.py, core/tools/story_stats.py and
+# core/tests/test_story_register.c).
+#
+#   WORD<TAB>CLASS[<TAB>CAP][<TAB># note]
+#
+# WORD   lowercase; matched case-insensitively as a whole word in the visible
+#        text (line codes, @P and @E removed; '/' line breaks count as
+#        spaces). A space matches any run of spaces or '/'. A trailing *
+#        matches any ending (shit* = shit, shitty, shits), a leading *
+#        any beginning (*shit* also = bullshit, horseshit).
+# CLASS  strong  swearing (R1)
+#        crude   adult crude humour: booze, hangovers, adult body talk (R2)
+#        sexual  sexual or suggestive words (R2, §5b, §12)
+# CAP    optional: the most uses in the WHOLE game (every pack, every
+#        language source), checked by the lint (rule C1). DECISIONS 23:
+#        swearing is sparse, the s-word a few times in all, the f-word
+#        exactly twice (once cut off mid-word, which no list can catch:
+#        "Oh, f-" is a reviewer's check; once in full near the end).
+#
+# Every listed word is banned from any script whose cast includes a kid, a
+# teen, the kid-coded cast or (sexual class only) the pet
+# (core/data/story/kid_cast.txt). It is NOT a list of words adults may not
+# say: adults may say any of them within R1-R2 and the caps.
+#
+# Deliberately NOT listed (they are cartoon-safe, or too ambiguous to lint
+# without false positives; reviewers read for them): butt, fart, burp,
+# poop, "hell" alone (the place: Hell Pits, Hell Breach, Hellvile), kiss and
+# smooch (grannies kiss foreheads; romance is the LOVE face, rule K2), the
+# "WooHoo" of DECISIONS (also a cheer), bloody (gore wording, R5), sugar,
+# darlin', handsome (Grumbleguts' pet names are fine, his innuendo is not:
+# R2 keeps him away from kids by cast), escort (a mission verb), strip
+# alone (a strip of tape).
+*fuck*	strong	2	# the f-word: exactly twice in the game (DECISIONS 23)
+*shit*	strong	3	# the s-word: a few times in the whole game (DECISIONS 23)
+damn*	strong
+dammit	strong
+goddamn*	strong
+bastard*	strong	5	# a handful of times (R1)
+bitch*	strong
+piss*	strong
+asshole*	strong
+ass	strong
+arse*	strong
+crap*	strong
+what the hell	strong
+hell no	strong
+hell yes	strong
+go to hell	strong
+to hell with	strong
+booze*	crude
+boozy	crude
+drunk*	crude
+hangover*	crude
+hungover	crude
+boob*	sexual
+tits	sexual
+titties	sexual
+knockers	sexual
+booty	sexual
+nipple*	sexual
+crotch*	sexual
+groin*	sexual
+genital*	sexual
+boner*	sexual
+sexy	sexual
+sex	sexual
+sexual*	sexual
+horny	sexual
+naked	sexual
+nude*	sexual
+nudity	sexual
+topless	sexual
+lingerie	sexual
+panties	sexual
+thong*	sexual
+stripper*	sexual
+striptease	sexual
+strip club	sexual
+lap dance*	sexual
+seduc*	sexual
+aroused	sexual
+arousal	sexual
+kinky	sexual
+frisky	sexual
+flirt*	sexual
+make love	sexual
+making love	sexual
+one-night stand*	sexual
+hanky-panky	sexual
+hubba hubba	sexual
+bow-chicka*	sexual
+hottie*	sexual
+foreplay	sexual
+orgasm*	sexual
+erotic*	sexual
+porn*	sexual
+condom*	sexual
+aphrodisiac*	sexual
+hooker*	sexual

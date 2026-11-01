@@ -124,6 +124,9 @@ story-check:
 	@$(PYTHON) $(CORE)/tools/textpack.py --check-es $(STORY_ES_FLAGS_$(STORY_ES))
 	@$(PYTHON) $(CORE)/tools/story_opslock.py --check
 	@$(PYTHON) $(CORE)/tools/textpack.py --sizes
+	@# --- E5: the PG-21 register lint (nothing adult near a kid) and its seeded bad tree ---
+	@$(PYTHON) $(CORE)/tools/story_register.py
+	@$(PYTHON) $(CORE)/tools/story_register.py --selftest
 # --- end P0 ---
 
 # ---- generators ---------------------------------------------------------------

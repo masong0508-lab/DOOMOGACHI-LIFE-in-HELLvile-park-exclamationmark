@@ -25,6 +25,11 @@ reads), like the scout's numbers in the plan:
             240x160 box beside a portrait (ui_dialog.c: 162 px / 6 px), one
             column narrower than textpack's 28-column lint. Report only;
             the rewrite drives it to 0 (SCRIPT_STYLE.md §8)
+  strong    (E5) register words per class, from core/data/story/register.tsv
+  crude     (story_register.py): swearing, adult crude, sexual or suggestive.
+  sexual    Counted per unique string, every match. Report only; the lint
+            (make -C core story-check) is what keeps them away from kids
+            and holds the game-wide caps (SCRIPT_STYLE.md §5)
 """
 import csv
 import os
@@ -35,11 +40,12 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import textpack as tp  # noqa: E402
+import story_register as sr  # noqa: E402
 
 OMIN = re.compile(r"\b(grape|tally|wall|ten years|counting|whisper|watch|stare|slowly|still|the other side|cold)\b", re.I)
 PAUSE = re.compile(r"\{(\.|\.\.|\.\.\.)\}")
 COLS = ("pack", "lines", "words", "w/line", "paren%", "short%", "pause/l", "omin%", "deadpan", "heart", "punch",
-        "box27")
+        "box27", "strong", "crude", "sexual")
 PORTRAIT_CHARS = 27                   # ui_dialog.c: tw = w - 70 = 162 px at 240x160, 6 px a glyph
 NARRATOR = ("nar", "narrator")        # no portrait: the box is wider
 
@@ -73,7 +79,7 @@ def tags(comp):
     return out
 
 
-def measure(p, tg):
+def measure(p, tg, reg):
     strs = tp.pack_keys(p)
     n = len(strs)
     vis = [re.sub(r"@\w", "X", tp.visible(s)).replace("/", " ") for s in strs]
@@ -87,13 +93,15 @@ def measure(p, tg):
     return {"pack": p.name, "lines": n, "words": sum(words), "w/line": sum(words) / n if n else 0.0,
             "paren%": pc(paren), "short%": pc(short), "pause/l": pause / n if n else 0.0, "omin%": pc(omin),
             "deadpan": dead, "heart": tg[0], "punch": tg[1], "box27": tg[2],
-            "_raw": (n, sum(words), paren, short, pause, omin, dead, tg[0], tg[1], tg[2])}
+            "strong": reg["strong"], "crude": reg["crude"], "sexual": reg["sexual"],
+            "_raw": (n, sum(words), paren, short, pause, omin, dead, tg[0], tg[1], tg[2], reg["strong"], reg["crude"],
+                     reg["sexual"])}
 
 
 def row_text(r):
-    return "%-9s %5d %6d %6.1f %6.0f%% %6.0f%% %7.2f %5.0f%% %7d %5d %5d %5d" % (
+    return "%-9s %5d %6d %6.1f %6.0f%% %6.0f%% %7.2f %5.0f%% %7d %5d %5d %5d %6d %5d %6d" % (
         r["pack"], r["lines"], r["words"], r["w/line"], r["paren%"], r["short%"], r["pause/l"], r["omin%"],
-        r["deadpan"], r["heart"], r["punch"], r["box27"])
+        r["deadpan"], r["heart"], r["punch"], r["box27"], r["strong"], r["crude"], r["sexual"])
 
 
 def main(argv):
@@ -128,16 +136,17 @@ def main(argv):
             print("story_stats: no pack %s" % n, file=sys.stderr)
             return 1
     packs = [by[n] for n in names] if names else [p for p in comp.packs if p.name != "vmtest"]
-    rows = [measure(p, tg[p.name]) for p in packs]
-    print("%-9s %5s %6s %6s %7s %7s %7s %6s %7s %5s %5s %5s" % COLS)
+    reg = sr.counts(comp, sr.load_register())
+    rows = [measure(p, tg[p.name], reg[p.name]) for p in packs]
+    print("%-9s %5s %6s %6s %7s %7s %7s %6s %7s %5s %5s %5s %6s %5s %6s" % COLS)
     for r in rows:
         print(row_text(r))
     if len(rows) > 1:
-        t = [sum(r["_raw"][k] for r in rows) for k in range(10)]
+        t = [sum(r["_raw"][k] for r in rows) for k in range(13)]
         n = t[0] or 1
         tot = {"pack": "TOTAL", "lines": t[0], "words": t[1], "w/line": t[1] / n, "paren%": 100.0 * t[2] / n,
                "short%": 100.0 * t[3] / n, "pause/l": t[4] / n, "omin%": 100.0 * t[5] / n, "deadpan": t[6],
-               "heart": t[7], "punch": t[8], "box27": t[9]}
+               "heart": t[7], "punch": t[8], "box27": t[9], "strong": t[10], "crude": t[11], "sexual": t[12]}
         print(row_text(tot))
         rows.append(tot)
     if csv_out:

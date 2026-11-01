@@ -1,0 +1,49 @@
+# core/data/story/kid_cast.txt - the kid-coded cast (owner: E5;
+# docs/design/story/SCRIPT_STYLE.md §5 R3, §5b N3, §12).
+#
+# Who is never near adult material, on top of the roster's own KID and
+# TEEN citizens (core/data/roster/, traits=KID / TEEN). Read by
+#   core/tools/story_register.py      the register lint (K1-K3)
+#   core/tests/test_story_register.c  the same rules over the compiled packs
+#   core/tests/test_life_stage.c      LS0: nobody here is ever in a romance
+#   E1's adult gate (mature_adult_ok): nobody here is ever in a mature scene
+#
+# Format, one entry a line, '#' comments:
+#   ID<TAB>Name        a premade citizen; the name must match the roster
+#                      (so a renumbered or renamed citizen fails the lint)
+#   @E<TAB>the pet     the hero's pet: never in sexual or mature content
+#                      (DECISIONS: nudity rule; it is with the hero in most
+#                      scenes, so it bars the sexual class and mature
+#                      branches, not the LOVE face or swearing)
+#   @scene<TAB>GLOB    a kids' scene with no kid citizen in its cast (a
+#                      daycare full of unnamed children, a child's crayon
+#                      flashback): every script whose name, or whose pack's
+#                      name, matches GLOB counts as having a kid in it
+#
+# Every KID citizen a script names must be listed here (the lint checks
+# it), so E1 and LS0 see the whole story's kid cast. Teens are not listed:
+# a teen may date a teen (LS0), and the TEEN trait already bars adult
+# material from their scenes.
+
+# the story's children
+42	Pip	# Ch1-4 and chain A: the bunny-plush kid
+563	Wisp	# the imp-kid ghost (chain R, Ch3-4, the epilogue)
+72	Twinkly	# Miss Lulla's daycare (S158)
+127	Wobbles	# daycare (S158), old quest #25
+530	Tantrum	# Hellvile hopscotch (S150), the field trip (S159)
+540	Pokefork	# Hellvile hopscotch (S150), the field trip (S159)
+582	Morguelet	# old quest #33
+597	Bolt	# Rivet's apprentice (S106, S203)
+820	Biscuitfang	# old quest #41
+
+# the pet
+@E	the pet
+
+# kids' scenes without a named kid
+@scene	p0	# the prologue: a child's crayon flashback of the potluck
+@scene	e14_lulla	# Ep 1.4: the daycare, eleven small voices
+@scene	e22_drawings	# Ep 2.2: the daycare drawings
+@scene	q17_*	# old quest #17 "No Vapes at Daycare"
+@scene	s157_*	# chain O: Miss Lulla's daycare
+@scene	s158_*
+@scene	s159_*	# the field trip with the Hellvile kids
