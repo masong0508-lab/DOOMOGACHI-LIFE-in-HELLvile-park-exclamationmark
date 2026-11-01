@@ -377,12 +377,13 @@ against the LAST row, not against a figure from an older base.
 | 6 | L1: N-language lookup (state + 64-entry cache, below) | `883cf3b` | 13,616 B | 13,088 B | -528 B | 7,168 B | ROM 3,681,980 -> 3,689,948 B (+7,968: one LNG2 table per language, Spanish 111,516 B, was four tables of 104,476 B); Options in Spanish 28.2 -> 25.8 ms per drawn tick |
 | 7 | G5: tile-mode overworld (Mode 0 world + canvas) | `f010771` | 13,088 B | **13,088 B** | 0 | 6,728 B | ROM 3,689,948 -> 3,710,784 B (+20,836); IWRAM resident +228 B (routing in the 2D entry points), `.iwram_bss` +212 B (`cv`, the canvas state); 2D group 8,224 B in the slot (3D group still the larger); the tile metadata lives in the lower half of the overworld's arena region; speed tour frame-exact (16 scenes) |
 | 8 | HART: roofs, redrawn furniture | `3706744` | 13,088 B | **13,088 B** | 0 | 6,728 B | no EWRAM / IWRAM: the roof's tables (up to 5 KB) live in the two 2.5 KB VRAM gaps of the mode 4 pages, which the raycaster refills (`r3d_invalidate()`); the house region stays 16,872 B. ROM 3,710,784 -> 3,721,784 B (+11,000: iso sprites 453,094 -> 455,050 B, roof code in `room_ref.c` / `room.c`); fps: modal 20.0 -> 18.8 (gate 18), rotate 25.4 -> 23.2 (20), steady 29.5, cellar 26.2, defend 12.2 (floor 11) |
+| 9 | C1: show canon (turkey Mayor, animatronic Bonejangles, "Needs salt") | `27de086` | 13,088 B | **13,048 B** | -40 B | 6,728 B | `portrait_turkey.c`'s layer-group state (32 B `.bss`); ROM ROMFIG (the turkey renderer, the animatronic parts, 6 creator presets); IWRAM unchanged |
 
 Known claimants still to land (their own packages measure and add rows):
 
 | package | EWRAM | gate it must meet (against the last row) |
 |---|---:|---|
-| H11: `HOME` `.bss` on the GBA (`HOME_PERSIST`) | +3,432 B | free >= 12,352 B before it (SPEC C9) and >= 8,192 B after it; after G1, H10 and L1: 13,088 -> 9,656 B |
+| H11: `HOME` `.bss` on the GBA (`HOME_PERSIST`) | +3,432 B | free >= 12,352 B before it (SPEC C9) and >= 8,192 B after it; after G1, H10, L1 and C1: 13,048 -> 9,616 B |
 | L4: Latin glyph pages | 0 (`const` rows in ROM) | |
 | G3: the island's run layer | 0 `.bss` (from the arena) | free >= 9,000 B |
 | H2: room.c shell patterns | record EWRAM / IWRAM | |

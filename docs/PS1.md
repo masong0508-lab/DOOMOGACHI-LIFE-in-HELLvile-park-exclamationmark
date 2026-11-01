@@ -308,7 +308,15 @@ haunt eye, gingham crate and defend props: 69 prims, +552 B; the
 120,832 B, 129,760 B free); `room_ref_sprite()` now compiles to `return 0`
 on the PS1 (it links no iso sprites, SPEC C3: 1,088 B of dead decoder), so
 the common code ends 308 B below that limit and the disc ends at
-`0x801dfd00`, **131,824 B below the stack top** with the 118,784 B slot. The story
+`0x801dfd00`, **131,824 B below the stack top** with the 118,784 B slot. C1
+(the show canon: `portrait_turkey.c`, which is resident because every
+scene draws portraits, plus the animatronic's parts in `portrait_body.c` /
+`portrait_head.c`) adds 15,264 B of resident code and data (`resident
+text+rodata` 1,068 -> 1,083 KB; the turkey file is 11,960 B at `-Os`
+after its coordinate helpers went out of line, from 17,060 B inlined):
+the disc ends at `0x801e38a0`, **116,560 B below the stack top** (51,024 B
+above the 64 KB reserve). The slot and every group's size are unchanged
+(the prologue's crayon turkey adds 88 B to the cutscene group). The story
 group is far above its 75 KB cap (C4); the levers are content-level
 (story_script.c's legacy glue, story_talk.c), parts for SCENE_QUESTLOG /
 SCENE_CREDITS (PARTS work only for BORROW groups today) and, for the
