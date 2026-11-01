@@ -148,14 +148,14 @@ it to count logic ticks and frame rates and posts its commands there.
 Every build prints this report; the linker script `ASSERT`s the limits.
 Game ROM (`build/doomogachi.gba`) with every core module linked, after
 H10 (the autopilot's BFS in the arena, below; measured 2026-11-01 on
-`959acc8` + H10). The shared ledger at the end of this section has the
-figure every later package must start from.
+`091aa2b` + H10, after G1). The shared ledger at the end of this section
+has the figure every later package must start from.
 
 ```
-ROM   3,668,828 bytes
+ROM   3,669,044 bytes
 IWRAM    24,832 / 32,768  (code+data 20,964, bss 3,868)  7,168 bytes left for the main stack
   flash routines: 1,092 bytes, copied onto the stack while saving
-EWRAM   248,512 / 262,144 (.data 544, .bss 247,904)     13,632 bytes free
+EWRAM   248,528 / 262,144 (.data 544, .bss 247,904)     13,616 bytes free
   109,524  doomo_town      core (town.o)
    32,780  doomo_map       core (map.o, the live map)
    26,992  gba_arena       platform + core: the arena (bigbuf.c, below)
@@ -225,8 +225,9 @@ How EWRAM got here:
 | G1: speed tour | 9,520 B | harness mailbox 64 -> 80 B (`hold_at`, `draw_all`; section 9) |
 | H10: the autopilot's BFS in the arena | **13,616 B** | `combat_bot.c`'s 4,096 B work area is the raycaster's clip checkpoints during the update (below) |
 
-The engine-test ROM (no game scenes): ROM 1,146,352 bytes, IWRAM 20,800
-(10.9 KB for the stack), EWRAM 168,608 (91.3 KB free).
+The engine-test ROM (no game scenes; measured with the game ROM above):
+ROM 1,152,172 bytes, IWRAM 19,636 (12.1 KB for the stack), EWRAM 178,840
+(81.4 KB free).
 
 **H10: the autopilot's BFS borrows the clip checkpoints.** The debug
 autopilot (`core/src/combat_bot.c`: demo mode, "Watch demo" on the level
@@ -264,7 +265,10 @@ every checkpoint, work per drawn tick within 2 ms per segment (which
 ticks get drawn shifts; 3 of 10 mid-run shots differ in the weapon bob
 or the haze phase only), main-stack high-water 2,056 B both. `smoke.txt`
 (`make test-game`) now plays that demo to the end: all 17 demons down,
-back at the level select.
+back at the level select. Rebased onto G1 (`091aa2b`, whose mailbox is
+16 B bigger): EWRAM 9,520 -> 13,616 B free, ROM +80 B, IWRAM unchanged,
+and `make test-speed SPEED_BASE=` (G1's tour, `091aa2b` as the base):
+all 15 scenes frame-exact (30 frames each) with the same fps and work.
 
 Levers left for the >= 24 KB goal (task #77), none of them fps-free or
 G0's: the customisation package's P0 shrinks the resident record 96 -> 76
@@ -287,13 +291,14 @@ against the LAST row, not against a figure from an older base.
 | # | package (merge order) | base | EWRAM free before | after | change | IWRAM stack | notes |
 |---|---|---|---:|---:|---:|---:|---|
 | 0 | baseline | `959acc8` | | 9,536 B | | 7,168 B | `docs/GBA.md` still said 9,952 (G0) |
-| 1 | H10: autopilot BFS in the arena | `959acc8` | 9,536 B | **13,632 B** | +4,096 B | 7,168 B | ROM +80 B; fps and shots identical (above) |
+| 1 | G1: speed tour | `959acc8` | 9,536 B | 9,520 B | -16 B | 7,168 B | harness mailbox 64 -> 80 B |
+| 2 | H10: autopilot BFS in the arena | `091aa2b` | 9,520 B | **13,616 B** | +4,096 B | 7,168 B | ROM +80 B; speed tour frame-exact, fps unchanged (above) |
 
 Known claimants still to land (their own packages measure and add rows):
 
 | package | EWRAM | gate it must meet (against the last row) |
 |---|---:|---|
-| H11: `HOME` `.bss` on the GBA (`HOME_PERSIST`) | +3,432 B | free >= 12,352 B before it (SPEC C9) and >= 8,192 B after it; with only H10 landed: 13,632 -> 10,200 B |
+| H11: `HOME` `.bss` on the GBA (`HOME_PERSIST`) | +3,432 B | free >= 12,352 B before it (SPEC C9) and >= 8,192 B after it; after G1 and H10: 13,616 -> 10,184 B |
 | L1: language lookup cache | <= 0.6 KB, or 0 in IWRAM-free storage | must leave H11's 12,352 B gate intact if it lands first |
 | L4: Latin glyph pages | 0 (`const` rows in ROM) | |
 | G3: the island's run layer | 0 `.bss` (from the arena) | free >= 9,000 B |
