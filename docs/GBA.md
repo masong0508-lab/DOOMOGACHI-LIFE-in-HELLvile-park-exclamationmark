@@ -122,7 +122,7 @@ PS1 build has the same viewer (`ps1/src/cutview.c`, hold SELECT at boot).
 
 | region | address | size | use |
 |--------|---------|------|-----|
-| ROM | `0x08000000` | 762 KB game / 794 KB ET (padded to 1 MB) | THUMB code, art, tables; WS0 3/1 + prefetch |
+| ROM | `0x08000000` | 4,201,300 B game after H9 (padded to 8 MB; the furniture's iso sprites are 878 KB of it) / about 1.1 MB ET | THUMB code, art, tables; WS0 3/1 + prefetch |
 | EWRAM | `0x02000000` | 256 KB | 80 B harness mailbox, `.data`, `.bss` (core state, the arena `gba_arena`) |
 | IWRAM | `0x03000000` | 32 KB | ARM hot code + data (`.iwram`), the code overlay slot (G4: 3D or 2D group), `.iwram_bss`, stacks |
 | IRQ stack | `0x03007FA0` down | 672 B | the master IRQ handler (`crt0.s`) |
@@ -234,7 +234,7 @@ they share ONE slot:
                                  ow_obj.c's tables while it is in
               .ovl_room 3,648 B  (H8) section .iwram_room: the dream
                                  house's lamp-pool rows and LUT copies,
-                                 loaded by plat_room()
+                                 loaded by plat_room() (H9: 3,248 B)
 0x030051e4  .iwram_bss         3,868 B  (r3d's .bss stays resident)
 0x03006100  main stack         7,168 B  (>= 6,144 B with the largest group in)
 ```
@@ -393,6 +393,7 @@ against the LAST row, not against a figure from an older base.
 | 13 | H5: Garden / Park Plot lips, door backdrop, front-edge fences | `54f2983` | 12,952 B | **12,952 B** | 0 | 6,608 B | no EWRAM / IWRAM: `RG` (the frame geometry, on the stack) +26 B for the backdrop and lip colours; ROM 3,779,208 -> 3,782,252 B on G2 (+3,044: lip / backdrop rows, front-edge items, the shared helpers, the frame table), 3,787,548 -> 3,790,592 B after G6 (measured); room parity 46..50 required, house fps unchanged (home_plain 30.0, steady 29.5 drawn) |
 | 14 | G7: retained panels, "3D: Faster / Better" | `17d385b` | 12,952 B | **12,408 B** | -544 B | 6,308 B | the panel table and the 80-rect pool (`panel.c`, 480 B), `ui_dialog.c`'s page-length cache, the panel / pacing state; IWRAM resident +300 B (`pn_span`, `r3d_up2`, the `plat_rect` panel test); ROM 3,790,592 -> 3,798,164 B (+7,572); speed tour and the 132-scene story sweep frame-exact (section 4b) |
 | 15 | H8: lamp pools, glow pixels, night windows | `1e8a97b` | 12,408 B | **12,408 B** | 0 | 6,308 B | no EWRAM / IWRAM resident: the house's arena region 16,872 -> 17,200 B (the lamp-pool table `RoomLight`, 316 B, and the walls' 16-colour palette in `RBig`, which may now be 15,808 B), so a claim beside the house may be 7,392 B (the house scene's is 2,828 B); a third IWRAM overlay group, the room group (3,648 B of ARM, the slot stays the 3D group's 10,384 B); ROM 3,790,592 -> 3,811,936 B on H5 (+21,344: iso sprites 489,859 -> 503,183 B with the glow / pane class lists, `room.o` text +6,494 B, `room_ref.o` +2,208 B), 3,798,164 -> 3,819,508 B after G7 (measured, the same +21,344); room parity 4, 34, 36, 40 and 53..57 required on every path; house fps: plain 30.0, steady 29.2, modal 18.3-18.8 (gate 18), rotate 24.1, cellar 26.2 with 4 lamp pools (gate 24), defend 12.1 (floor 11) |
+| 16 | H9: back facings for every piece | `226179f` | 12,408 B | **12,408 B** | 0 | 6,308 B | no EWRAM / IWRAM resident; the room overlay group 3,648 -> 3,248 B (the mirrored run copies are gone: nothing is drawn flipped). ROM 3,819,508 -> 4,201,300 B (+381,792: iso sprites 503,183 -> 878,496 B, 1,744 facing records instead of 872; 209 facings share an earlier one's bytes), so the padded ROM file is 8 MB instead of 4 MB (the cartridge map is 32 MB; the user approved about +450 KB, DECISIONS). Room parity: golden lines 1-3, 6-8, 10-12, 22, 24, 25, 27, 28, 30-35, 39-41, 45-53, 55-57 regenerated (turned views, fenced front edges), every required line passes on every path; house fps: plain 30.0, steady 29.5 (29.2), modal 19.0 (18.8), rotate 24.7 (24.1), cellar 26.3 (26.2), defend 12.6 (12.1); speed tour frame-exact against `226179f` (16 scenes) |
 
 Known claimants still to land (their own packages measure and add rows):
 
@@ -1150,7 +1151,7 @@ the existing ARM loops or DMA.
 |---|---|
 | Walls | The wallpaper repeats every 16 units, so a wall is one sheared 16 px strip. It is cached as 8 phase rows, so a wall's screen row is one DMA. |
 | Floor | The tiles repeat every 32x16 px (upper-half tiles win the 2 px overlaps). A floor row is one or two DMAs from 16 cached pattern rows, plus at most 2 px patches on the two front edges. |
-| Plain pieces | No paint, full light, not mirrored: each opaque run goes straight from ROM. |
+| Plain pieces | No paint, full light: each opaque run goes straight from ROM. (H9) Nothing is mirrored: a piece turned away from the camera draws its own back facing (furn.h), so the turned views take the same paths as view 0. |
 | Other pieces | Each run goes through a 256-byte LUT (paint recolour composed with `doomo_colormap[light]`) into a stack buffer laid out at the destination's pixel parity, so the copy is always a halfword DMA. |
 | Actors | `ow_sprite`. |
 | Squash | `plat_image_xform` (S1's affine OBJs) when nothing covers the piece; otherwise drawn unsquashed in order. |
@@ -1164,7 +1165,7 @@ bitsets and re-run only for entries that moved.
 | Resource | Use |
 |---|---|
 | arena | Claim `GBA_BIG_BY_ROOM` (`gba_plat.h`); the house's region `gba_room` (17,200 B, section 3). State is at most 15,808 B (C7's 15,488 B plus 320 B for H8's lamp-pool table; measured 15,692 B); the harness layouts sit behind it. |
-| IWRAM | No resident bytes. (H8) The IWRAM overlay's room group (3,648 B of ARM, section 3): the lamp pools' floor and wall rows, the glow spans' run copy and the LUT copy loops, loaded by `plat_room()` |
+| IWRAM | No resident bytes. (H8) The IWRAM overlay's room group (3,648 B of ARM, section 3; 3,248 B after H9): the lamp pools' floor and wall rows, the glow spans' run copy and the LUT copy loops, loaded by `plat_room()` |
 | `.bss` / `.data` | About 34 B for room.c and 27 B for hcmd.c (budget 64 B) |
 | OBJ VRAM | None of its own. obj.c's four squash slots fill it, and obj.c only copies OAM while a squash shows, so the cursor and the held ghost are bitmap items. |
 | THUMB ROM | About 18.3 KB, of which about 3.7 KB is harness hooks (H1: the shell frame table) |
@@ -1214,8 +1215,8 @@ dirty-rect and UI-restore paths):
 * *Speed.* The per-row loops are ARM in the IWRAM overlay's room group
   (`IWRAM_ROOM_CODE`, `iwram_ovl.h`; `render()` loads it, a compare when it
   is in): `floor_row_lit`, `wall_lit`, `runs_glow` (the class spans without
-  the night panes' stars, which stay in THUMB `runs_cls`) and `lut_copy` /
-  `lut_copy_rev`. As THUMB in ROM the lit rows cost 2-3x the ambient pattern
+  the night panes' stars, which stay in THUMB `runs_cls`) and `lut_copy`
+  (H9 dropped `lut_copy_rev`: no piece is drawn mirrored). As THUMB in ROM the lit rows cost 2-3x the ambient pattern
   copy (a lit cellar frame 1.05 M cycles, 20.7 fps); in ARM the cellar with
   its four lamps lit runs at 26.2, as before H8 with its lamps off. The
   cellar layout's lamps are on now (`test_view`, as `home_obj_view()` has

@@ -412,6 +412,28 @@ tutorials ran, the Black Market found) are set without a toast.
   and falloff), glow prims at full light and panes navy / peach (no
   stars). Golden lines 53..57 (`room_shells.h` `RSF_LAMPS`, `RSF_LAMPS_OFF`)
   hold the light in the GBA's vocabulary.
+* **The back facings** (H9; furngen, `furn.h`). Every piece has four
+  facings per animation frame, one per view rot: 0 and 1 its front (front
+  +y / +x), 2 and 3 its back (front -y / -x), baked from its prims turned
+  a half and three quarter turns about the footprint, so the image's
+  anchor is still the footprint's back corner. A piece turned away from the
+  camera (the Living Room's hearth in views 2 and 3, a sofa facing the back
+  wall) shows its back: the hearth's stone back and mantel, no fire.
+  Nothing is drawn mirrored any more (before H9 rot 2 / 3 were a front
+  facing flipped). A flat `mirror` decal (`FF_MIRROR`) has no back: its
+  facings 2 / 3 are its facings 0 / 1. Facings with identical bytes share
+  them (209 of 1,744: pieces that look the same turned a half turn, the
+  decals' repeats). An open kind's front-edge wall piece (a fence on the
+  Garden's front lip) stands on the tile inside the edge with its back to
+  the camera (`room_wall_box()`, shared by room_ref and the GBA; a decal
+  keeps its front on the edge line, as before). The catalog and HomeMart
+  previews turn through all four facings (`room_ref_turn()`; a wall piece
+  through its two walls). Cost: the GBA's iso sprites grow 503,183 ->
+  878,496 B (the ROM 3.82 -> 4.20 MB, padded to 8 MB; the user approved
+  about +450 KB); the PS1 draws the prims in 3D and links no sprites, so
+  it is unchanged. Golden lines 1-3, 6-8, 10-12, 22, 24, 25, 27, 28,
+  30-35, 39-41, 45-53 and 55-57 changed with it (turned views, fenced
+  front edges).
 * **GBA** (`gba/src/room.c`, H2): the static iso bitmap and OBJ actors.
   The roof (HART) is drawn from tables in the two 2.5 KB VRAM gaps the
   mode 4 pages leave (the slope's repeating 16-column pattern sheared like
