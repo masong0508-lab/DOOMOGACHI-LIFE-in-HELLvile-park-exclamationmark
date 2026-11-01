@@ -370,7 +370,7 @@ against the LAST row, not against a figure from an older base.
 | 3 | H6: furniture animation frames, prop art | `ffbc039` | 13,616 B | 13,616 B | 0 | 7,168 B | ROM 3,669,044 -> 3,675,732 B (iso sprites 447,309 -> 453,094 B); room parity and house fps unchanged |
 | 4 | G4: IWRAM code overlay | `7dcb273` | 13,616 B | 13,616 B | 0 | 7,168 B | ROM +196 B; IWRAM resident 10,580 B + overlay slot 10,384 B (3D group; 2D group 0 B, up to 11,408 B fits the 6 KB rule); speed tour frame-exact |
 | 5 | H1: room-shell parity frames | `738261b` | 13,616 B | 13,616 B | 0 | 7,168 B | no RAM (the frames build on the stack and in the arena's harness tail, as before); ROM +996 B (`room.o` text 17,786 -> 18,782 B: the shared frame table `core/tests/room_shells.h` and its harness hook); house fps unchanged |
-| 6 | L1: N-language lookup (state + 64-entry cache, below) | `883cf3b` | 13,616 B | **13,088 B** | -528 B | 7,168 B | ROM ROMBEFORE -> ROMAFTER B (+ROMDELTA: one LNG2 table per language, Spanish 111,516 B, was four tables of 104,476 B); Options in Spanish 28.2 -> 25.8 ms per drawn tick |
+| 6 | L1: N-language lookup (state + 64-entry cache, below) | `883cf3b` | 13,616 B | **13,088 B** | -528 B | 7,168 B | ROM 3,681,980 -> 3,689,948 B (+7,968: one LNG2 table per language, Spanish 111,516 B, was four tables of 104,476 B); Options in Spanish 28.2 -> 25.8 ms per drawn tick |
 
 Known claimants still to land (their own packages measure and add rows):
 

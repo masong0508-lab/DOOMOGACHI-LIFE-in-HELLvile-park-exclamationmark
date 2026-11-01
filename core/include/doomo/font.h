@@ -2,7 +2,7 @@
  * row; drawn in a 6x8 cell. Covers ASCII 0x20..0x7E plus 32 icon glyphs
  * at 0x80..0x9F (use the ICON_* string macros in text) and the 16 Spanish
  * letters at 0xA0..0xAF (the STR_ES_* macros; core/lang/es/ui_*.tsv are UTF-8 and
- * tools/langpack.py maps it onto these bytes). */
+ * tools/langpack.py maps them onto these bytes). */
 #ifndef DOOMO_FONT_H
 #define DOOMO_FONT_H
 

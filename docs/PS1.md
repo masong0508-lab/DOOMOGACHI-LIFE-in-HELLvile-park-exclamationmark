@@ -327,9 +327,13 @@ state and cache, and only text in the resident `.text` / `.rodata`
 (`[__text_start, __CTOR_LIST__)`) is cached by address: strings in the
 overlay slot are looked up each time, so a group load never leaves a
 stale entry. The disc ends at `0x801e0420`, **130,000 B below the stack
-top** (-1,824 B; slot unchanged). Every further language with a
-`ui_main.tsv` adds its resident table (about 8 KB) until L6 reads the
-tables from the disc per overlay group.
+top** (-1,824 B against `6714f43`; slot unchanged; `0x801e0440`, 129,968 B,
+once rebased on `883cf3b`). That is under the 128 KiB (131,072 B) the G0
+pass reached, though the 64 KB `elf2exe` reserve and the 72 KB plan gate
+still pass. Every further language with a `ui_main.tsv` adds its resident
+table (about 8 KB) until L6 reads the tables from the disc per overlay
+group: six more would leave about 82 KB, close to the 72 KB gate, so **L6
+must land before the L10-* packages add `ui_main.tsv` rows**.
 
 The biggest remaining consumers of RAM: resident core code (portraits,
 UI, sim, story engine, ...) ~650 KB, merged string literals of resident
