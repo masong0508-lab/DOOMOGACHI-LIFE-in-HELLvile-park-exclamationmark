@@ -2283,7 +2283,8 @@ static void draw_preview_paints(int furn, int pa, int pb, int px, int py, int pw
 {
     DoomoImage img;
     int ox, oy;
-    if (room_ref_sprite(furn, (H->t >> 6) & 1, (H->t >> 3) & 3, pa, pb, 15, cache, cap, &img, &ox, &oy)) {
+    if (room_ref_sprite(furn, room_ref_turn(home_furn(furn), H->t), (H->t >> 3) & 3, pa, pb, 15, cache, cap,
+                        &img, &ox, &oy)) {
         /* 2x where the panel has the room for it (the PS1's 320x240 panel) */
         int sc = img.w * 2 + 8 <= pw && img.h * 2 + 8 <= ph ? 2 : 1, bob = ui_wave(H->t, ht[HT_GHOST_PERIOD], 1) * sc;
         plat_image(px + (pw - img.w * sc) / 2, py + (ph - img.h * sc) / 2 + bob, &img, sc, IMG_SHADOW, 0);

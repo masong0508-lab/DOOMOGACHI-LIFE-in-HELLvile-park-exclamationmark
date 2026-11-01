@@ -590,7 +590,7 @@ static void draw_preview(int x, int y, int w, int h, const UiStyle *st)
         dy = fy - 3 - ui_text_wrap(x + 4, 0, w - 8, desc, 0, 0) * FONT_LINE;
         ui_text_wrap(x + 4, dy, w - 8, desc, st->text, 1);
         ah = dy - 3 - y;
-        if (room_ref_sprite(r->furn, (M->t >> 6) & 1, (M->t >> 3) & 3, -1, -1, 15, cache, cap, &img, &ox, &oy)) {
+        if (room_ref_sprite(r->furn, room_ref_turn(f, M->t), (M->t >> 3) & 3, -1, -1, 15, cache, cap, &img, &ox, &oy)) {
             /* 2x where the panel has the room for it (the PS1's 320x240) */
             int sc = img.w * 2 + 8 <= w && img.h * 2 + 4 <= ah ? 2 : 1, bob = ui_wave((int)M->t, 39, 1) * sc;
             plat_image(x + (w - img.w * sc) / 2, y + 1 + (ah - img.h * sc) / 2 + bob, &img, sc, IMG_SHADOW, 0);

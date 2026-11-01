@@ -435,6 +435,13 @@ void room_ref_draw(const DoomoRoomView *v);
  * none) or too big for buf. */
 int  room_ref_sprite(int furn, int facing, int frame, int pa, int pb, int lvl,
                      uint8_t *buf, unsigned cap, DoomoImage *img, int *ox, int *oy);
+/* (H9) the catalog / HomeMart turntable: a quarter turn every 64 ticks
+ * through a piece's four facings, its back included; a wall piece only
+ * swaps between its two walls (its back is never seen hung) */
+static inline int room_ref_turn(const DoomoFurn *f, unsigned t)
+{
+    return (int)((t >> 6) & (f && (f->flags & FF_WALL) ? 1u : 3u));
+}
 /* The catalog / HomeMart preview where there is no sprite (the PS1 links
  * none): the piece's prims as shaded iso blocks, a little maquette, centred
  * in (x, y, w, h) at 1x or 2x. 0 = nothing to draw. */
@@ -525,6 +532,14 @@ void    room_lip_colours(const DoomoRoomView *v, int level, int tint, uint8_t c[
  * the front edge y' = D / x' = W of an open kind, -1 cut away (the front of
  * a walled room; the door and windows on an open kind's front). */
 int     room_wall_side(const DoomoRoomView *v, const DoomoRoomObj *o, int k);
+/* (H9) a wall piece's view-space tile box on side `side` of view k (shared
+ * by room_ref and the GBA) and the view rot to draw it at: on a back wall
+ * the tile against it, rot = side (its front); on an open kind's front
+ * edge the tile inside the edge with its back to the camera, rot = side
+ * (2 / 3); a flat FF_MIRROR decal has no back: its front on the edge line
+ * (rot = side & 1, as before H9). */
+int     room_wall_box(const DoomoRoomView *v, const DoomoRoomObj *o, int k, int side,
+                      int *x0, int *y0, int *x1, int *y1);
 
 /* ---- H8: the light ---------------------------------------------------------------
  * Lamp pools: up to ROOM_LAMPS light sources (a lit FF_LIGHT piece, i.e.

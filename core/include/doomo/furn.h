@@ -39,7 +39,8 @@ enum { FF_PORTAL = 1,       /* a door: fixed slot, re-skin only            */
        FF_MIRROR = 128 };   /* (H6) set by furngen from the art's `mirror`: a
                                flat wall decal drawn upright on screen (its
                                prims counter wall A's shear). The sprites'
-                               facing 1 is facing 0 flipped; the PS1, which
+                               facing 1 is facing 0 flipped (H9: facings
+                               2 / 3 repeat 0 / 1); the PS1, which
                                draws the prims, mirrors their local x when
                                local +x runs away from the camera          */
 
@@ -162,9 +163,13 @@ static inline int furn_prim_mat(const DoomoFurnPrim *p, int *cls)
  * that needs no classes reads the rows through the offsets and never sees
  * them. (ox, oy) is where the footprint's back corner (tile origin,
  * z = 0) lands in the image. Entry of (furn, frame, facing):
- * doomo_furn_iso_first[furn] + frame * 2 + facing, facing 0 = rot 0 (front
- * faces +y), 1 = rot 1 (front faces +x); rot 2 / 3 draw facing 1 / 0
- * mirrored (IMG_FLIPX). The second table is the cheap box fallback colours. */
+ * doomo_furn_iso_first[furn] + frame * FURN_ISO_FACINGS + facing, facing =
+ * the piece's rot in view space: 0 (front faces +y), 1 (front faces +x),
+ * (H9) 2 and 3 its back views (front -y / -x: the prims turned about the
+ * footprint, so (ox, oy) is still its back corner); nothing is mirrored.
+ * Facings with the same bytes share them (the same `off`). A `mirror`
+ * decal's facings 2 / 3 are its facings 0 / 1. */
+#define FURN_ISO_FACINGS 4                         /* (H9) facings per frame       */
 typedef struct DoomoFurnIso {
     uint8_t  w, h, ox, oy;
     uint32_t off;                     /* into doomo_furn_iso_data[]                    */

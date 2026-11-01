@@ -3,8 +3,8 @@
  *
  * The tool's parser and baker are compiled in (FURNGEN_LIB drops its main),
  * so the checks run on the real code: unmatched keys fail, marker paints
- * are respected, and the generated tables obey the ROM budget (art total
- * <= 0.8 MB, average <= 2.1 KB per piece). `make -C core check-gen` checks
+ * are respected, and the generated tables obey the ROM budget (H9: art
+ * total <= 1.25 MB, average <= 3.6 KB per piece; the four facings). `make -C core check-gen` checks
  * that core/gen/furn_*.c match the inputs byte for byte.
  */
 #define FURNGEN_LIB 1
@@ -126,25 +126,140 @@ static int facing_bytes(const DoomoFurnIso *im)
     return n;
 }
 
+/* The tables: FURN_ISO_FACINGS facings per frame, every one a picture;
+ * facings that share bytes (H9) are counted once. The budget: SPEC H4's
+ * 0.8 MB / 2.1 KB per piece for the front facings, plus the back facings
+ * the user approved for every piece (DECISIONS: about +450 KB of GBA ROM):
+ * 1.25 MB in all, 3.6 KB per piece on average. */
 TEST(furngen_iso_tables_and_budget)
 {
-    int i, k, total = 0, bad = 0;
+    static uint8_t seen[4 * 1024 * 1024 / 8];
+    int i, k, total = 0, bad = 0, shared = 0;
     CHECK(doomo_furn_count > 0);
     CHECK(doomo_furn_iso_count > 0);
+    memset(seen, 0, sizeof(seen));
     for (i = 0; i < doomo_furn_count; i++) {
         const DoomoFurn *f = &doomo_furn[i];
         int frames = f->frames ? f->frames : 1, first = doomo_furn_iso_first[i];
-        CHECK_MSG(first + frames * 2 <= doomo_furn_iso_count, "%s: facings out of range", f->name);
-        if (i + 1 < doomo_furn_count) CHECK_EQ(doomo_furn_iso_first[i + 1], first + frames * 2);
-        for (k = 0; k < frames * 2; k++) {
+        CHECK_MSG(first + frames * FURN_ISO_FACINGS <= doomo_furn_iso_count, "%s: facings out of range", f->name);
+        if (i + 1 < doomo_furn_count) CHECK_EQ(doomo_furn_iso_first[i + 1], first + frames * FURN_ISO_FACINGS);
+        else CHECK_EQ(doomo_furn_iso_count, first + frames * FURN_ISO_FACINGS);
+        for (k = 0; k < frames * FURN_ISO_FACINGS; k++) {
             const DoomoFurnIso *im = &doomo_furn_iso[first + k];
             if (!im->w || !im->h || im->ox > im->w + 64 || im->oy > im->h + 64) bad++;
+            if (im->off / 8 >= sizeof(seen)) { bad++; continue; }
+            if (seen[im->off / 8] & (1 << (im->off & 7))) { shared++; continue; }
+            seen[im->off / 8] |= (uint8_t)(1 << (im->off & 7));
             total += facing_bytes(im);
         }
     }
     CHECK_EQ(bad, 0);
-    CHECK_MSG(total <= 800 * 1024, "art ROM %d B > 0.8 MB", total);
-    CHECK_MSG(total / doomo_furn_count <= 2150, "average %d B per piece > 2.1 KB", total / doomo_furn_count);
+    CHECK(shared > 0);                                   /* the decals' repeats at least */
+    CHECK_MSG(total <= 1280 * 1024, "art ROM %d B > 1.25 MB", total);
+    CHECK_MSG(total / doomo_furn_count <= 3600, "average %d B per piece > 3.6 KB", total / doomo_furn_count);
+}
+
+/* the box (x0, y0)-(x1, y1) of a baked image's opaque pixels */
+static void img_extent(const Img *im, int *x0, int *y0, int *x1, int *y1)
+{
+    int x, y;
+    *x0 = *y0 = 9999; *x1 = *y1 = -1;
+    for (y = 0; y < im->h; y++)
+        for (x = 0; x < im->w; x++)
+            if (im->pix[y * im->w + x]) {
+                if (x < *x0) *x0 = x;
+                if (x > *x1) *x1 = x;
+                if (y < *y0) *y0 = y;
+                if (y > *y1) *y1 = y;
+            }
+}
+
+static int img_same(const Img *a, const Img *b)
+{
+    return a->w == b->w && a->h == b->h && a->ox == b->ox && a->oy == b->oy &&
+           !memcmp(a->pix, b->pix, (size_t)a->w * a->h) && !memcmp(a->cls, b->cls, (size_t)a->w * a->h);
+}
+
+static void img_free(Img *im)
+{
+    free(im->pix);
+    free(im->cls);
+}
+
+/* (H9) the back facings are the prims turned about the footprint: rot 2 of
+ * a piece is rot 0 of the same prims authored a half turn round (x' = W -
+ * x - w, y' = D - y - d), rot 3 is rot 1 of them, anchored on the same back
+ * corner; so a piece that looks the same turned a half turn has rot 2 ==
+ * rot 0, and a lopsided one shows something new (not its front mirrored) */
+TEST(furngen_back_facings)
+{
+    Img a[FURN_ISO_FACINGS], b[FURN_ISO_FACINGS], c[FURN_ISO_FACINGS];
+    int k, ok, x0, y0, x1, y1, u0, v0, u1, v1;
+    memset(arts, 0, sizeof(arts));
+    fg_errors = 0;
+    CHECK_EQ(parse_catalog("[p] PASTEL 1 \"P\"\n  foot 2 1 6\n[q] PASTEL 1 \"Q\"\n  foot 2 1 6\n"
+                           "[r] PASTEL 1 \"R\"\n  foot 1 1 4\n", "t"), 0);
+    /* a tall post at the back left and a low cushion over the front right, a
+     * ball on top; then the same a half turn round (W 32, D 16) */
+    CHECK_EQ(parse_art("[p]\nbox 0 0 0 6 4 20 A\nbox 12 10 0 20 6 4 B\nblob 20 4 8 6 4 4 CHERRY\ncyl 26 3 0 2 10 LIME\n", "t"), 0);
+    CHECK_EQ(parse_art("[q]\nbox 26 12 0 6 4 20 A\nbox 0 0 0 20 6 4 B\nblob 12 12 8 6 4 4 CHERRY\ncyl 6 13 0 2 10 LIME\n", "t"), 0);
+    CHECK_EQ(parse_art("[r]\nbox 2 2 0 12 12 8 A\ncyl 8 8 8 3 6 B\n", "t"), 0);
+    for (k = 0; k < FURN_ISO_FACINGS; k++) {
+        bake_facing(0, 0, k, a);
+        bake_facing(1, 0, k, b);
+        bake_facing(2, 0, k, c);
+    }
+    CHECK(img_same(&a[2], &b[0]));                       /* p turned a half turn == q */
+    CHECK(img_same(&a[3], &b[1]));
+    CHECK(img_same(&b[2], &a[0]));                       /* and back again */
+    CHECK(img_same(&c[2], &c[0]));                       /* r is the same all round */
+    CHECK(img_same(&c[3], &c[1]));
+    CHECK(!img_same(&a[2], &a[0]) && !img_same(&a[3], &a[1]));
+    /* not the front mirrored: facing 2 is no flip of facing 1 */
+    ok = a[2].w == a[1].w && a[2].h == a[1].h;
+    if (ok) {
+        int x, y, same = 1;
+        for (y = 0; y < a[1].h && same; y++)
+            for (x = 0; x < a[1].w && same; x++)
+                if (a[2].pix[y * a[1].w + x] != a[1].pix[y * a[1].w + a[1].w - 1 - x]) same = 0;
+        CHECK(!same);
+    }
+    /* the footprint's back corner stays the anchor: a full-footprint box
+     * spans the same screen box from it in every facing of its turn */
+    img_extent(&a[0], &x0, &y0, &x1, &y1);
+    img_extent(&b[2], &u0, &v0, &u1, &v1);
+    CHECK_EQ(x0 - a[0].ox, u0 - b[2].ox);
+    CHECK_EQ(y1 - a[0].oy, v1 - b[2].oy);
+    for (k = 0; k < FURN_ISO_FACINGS; k++) { img_free(&a[k]); img_free(&b[k]); img_free(&c[k]); }
+}
+
+/* the glow pixels of a facing (its class spans, furn.h) */
+static int glow_px(const DoomoFurnIso *im)
+{
+    const uint8_t *c = doomo_furn_iso_data + im->off + im->h * 2;
+    int n = 0;
+    for (; *c != FURN_CLASS_END; c += 4) if (c[3] == FPL_GLOW) n += c[2];
+    return n;
+}
+
+/* (H9) on the real data: the cottage hearth (a fireplace that stands
+ * with its back to a wall, so a turned view shows that back) has back
+ * facings of their own, neither its front nor its front mirrored */
+TEST(furngen_real_back_facings)
+{
+    int first = doomo_furn_iso_first[FURN_COTTAGE_HEARTH], k;
+    const DoomoFurnIso *im = &doomo_furn_iso[first];
+    for (k = 0; k < 2; k++) {
+        CHECK(im[k + 2].w && im[k + 2].h);
+        CHECK(im[k + 2].off != im[k].off && im[k + 2].off != im[1 - k].off);
+        CHECK(facing_bytes(&im[k + 2]) != facing_bytes(&im[k]) || im[k + 2].w != im[k].w);
+    }
+    /* the hearth's back hides the fire: only the mantel's candle flames
+     * glow there (a few px), the front shows the fire's dozens */
+    for (k = 0; k < 2; k++) {
+        int front = glow_px(&im[k]), back = glow_px(&im[k + 2]);
+        CHECK_MSG(front >= 30 && back < front / 3, "facing %d glows %d px, its back %d", k, front, back);
+    }
 }
 
 TEST(furngen_prims_match_catalog)
@@ -424,13 +539,14 @@ static void not_a_extent(const DoomoFurnIso *im, int *w, int *h)
 }
 
 /* (H6) a `mirror` wall decal: facing 1 is facing 0 flipped, anchored where
- * rot 3 draws, and the row is FF_MIRROR (the PS1 mirrors the prims); other
- * pieces may not use it. The haunting's eye is one: in frame 0 the open eye
- * itself (the white and the iris inside the heart) is at least 8x6 px, in
- * the blink frame the lash line is at least 8 px wide. */
+ * an IMG_FLIPX draw of facing 0 sits, and the row is FF_MIRROR (the PS1
+ * mirrors the prims); other pieces may not use it; (H9) its facings 2 / 3
+ * are facings 0 / 1 again (the same bytes). The haunting's eye is one: in
+ * frame 0 the open eye itself (the white and the iris inside the heart) is
+ * at least 8x6 px, in the blink frame the lash line is at least 8 px wide. */
 TEST(furngen_mirror_decal)
 {
-    Img a, b;
+    Img a, b, fr[FURN_ISO_FACINGS];
     int x, y, i, ok = 1, first, ew, eh;
     memset(arts, 0, sizeof(arts));
     fg_errors = 0;
@@ -452,17 +568,27 @@ TEST(furngen_mirror_decal)
     free(a.cls);
     free(b.pix);
     free(b.cls);
+    for (x = 0; x < FURN_ISO_FACINGS; x++) bake_facing(0, 0, x, fr);
+    CHECK(img_same(&fr[2], &fr[0]));
+    CHECK(img_same(&fr[3], &fr[1]));
+    for (x = 0; x < FURN_ISO_FACINGS; x++) img_free(&fr[x]);
     first = doomo_furn_iso_first[FURN_HEART_WALLPAPER_EYE];
     CHECK_EQ(doomo_furn[FURN_HEART_WALLPAPER_EYE].frames, 2);
     CHECK(doomo_furn[FURN_HEART_WALLPAPER_EYE].flags2 & FF_MIRROR);
     for (i = 0; i < doomo_furn_count; i++)
         if (doomo_furn[i].flags2 & FF_MIRROR) CHECK_MSG(doomo_furn[i].flags & FF_WALL, "%d: FF_MIRROR off a wall", i);
-    for (x = 0; x < 4; x++) {
+    for (x = 0; x < 2 * FURN_ISO_FACINGS; x++) {          /* frame x / 4, facing x % 4 */
         const DoomoFurnIso *im = &doomo_furn_iso[first + x];
+        int fc = x % FURN_ISO_FACINGS;
         not_a_extent(im, &ew, &eh);
-        if (x < 2) CHECK_MSG(ew >= 8 && eh >= 6, "the open eye (facing %d) is %dx%d px", x, ew, eh);
-        else CHECK_MSG(ew >= 8 && eh >= 1, "the blink (facing %d) is %dx%d px", x & 1, ew, eh);
-        if (x & 1) CHECK_EQ(im->ox, im->w - doomo_furn_iso[first + x - 1].ox);
+        if (x < FURN_ISO_FACINGS) CHECK_MSG(ew >= 8 && eh >= 6, "the open eye (facing %d) is %dx%d px", fc, ew, eh);
+        else CHECK_MSG(ew >= 8 && eh >= 1, "the blink (facing %d) is %dx%d px", fc, ew, eh);
+        if (fc == 1) CHECK_EQ(im->ox, im->w - doomo_furn_iso[first + x - 1].ox);
+        if (fc >= 2) {
+            CHECK_EQ(im->off, im[-2].off);
+            CHECK_EQ(im->ox, im[-2].ox);
+            CHECK_EQ(im->w, im[-2].w);
+        }
     }
 }
 

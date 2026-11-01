@@ -16,8 +16,10 @@
  * draws 60 pieces; M2 all of them) gets a placeholder box from its
  * footprint and paints; `--strict` makes that an error.
  *
- * Every piece is baked into two facings (rot 0 and rot 1; a `mirror` wall
- * decal's facing 1 is its facing 0 flipped, H6) by casting one
+ * Every piece is baked into four facings, one per rot (H9: rot 2 and 3 are
+ * its back views, the prims turned a half and three quarter turns about the
+ * footprint; a `mirror` wall decal's facing 1 is its facing 0 flipped, H6,
+ * and its facings 2 / 3 are its facings 0 / 1 again), by casting one
  * ray per pixel along the iso view direction (1,1,1) against its prims:
  * boxes, ellipsoid blobs, vertical cylinders and cones. Shading is the
  * 3-tone rule (top light, +y face mid, +x face dark; curved prims by their
@@ -27,8 +29,11 @@
  * runs, a window's glass that shows the sky by daylight);
  * then coloured selective outlines (the darkest tone of the local colour,
  * black only on the contact row) and a rim light on the top-left edge.
- * Facings are span encoded (furn.h). Integer maths only (128-bit for the
- * quadratics), so the output is byte-identical on every host.
+ * Facings are span encoded (furn.h); a facing whose encoding equals an
+ * earlier one's (a piece that looks the same turned a half turn, a decal's
+ * repeated facings, a frame that only changes another facing) shares its
+ * bytes (H9). Integer maths only (128-bit for the quadratics), so the
+ * output is byte-identical on every host.
  *
  * This tool may use stdio and malloc: it never ships in a ROM.
  */
@@ -835,6 +840,8 @@ static int intersect(const Prim *p, int64_t X0, int64_t Y0, Hit *h)
 
 typedef struct Img { int w, h, ox, oy; uint8_t *pix, *cls; } Img;   /* cls: FPL_* per pixel (H8) */
 
+#define FG_FACINGS 4    /* (H9) baked facings per frame: rot 0..3 (furn.h) */
+
 static int rot_prim(const Prim *in, Prim *out, int W)
 {
     /* rot 1: x' = y, y' = W - x (front +y becomes +x) */
@@ -856,16 +863,24 @@ static uint8_t buf_c[BH][BW];
 static uint8_t buf_m[BH][BW];   /* prim + 1 */
 static int32_t buf_z[BH][BW];
 
+/* facing = rot 0..3: the prims turned rot quarter turns about the footprint
+ * (the x extent is W, then D, then W again), so the footprint's back corner
+ * stays the origin. (H9) Rot 2 / 3 are the back views: front -y / -x. */
 static void bake(int fi, int facing, int frame, Img *out)
 {
     const Row *r = &rows[fi];
     const Art *a = &arts[fi];
     Prim pr[FG_MAX_PRIMS];
-    int np = 0, i, x, y, minx = BW, miny = BH, maxx = -1, maxy = -1;
-    int W = r->fw * 16;
+    int np = 0, i, s, x, y, minx = BW, miny = BH, maxx = -1, maxy = -1;
+    int W = r->fw * 16, D = r->fd * 16;
     for (i = 0; i < a->nprim; i++) {
         if (a->p[i].frames && !(a->p[i].frames & (1 << frame))) continue;
-        if (facing) rot_prim(&a->p[i], &pr[np], W); else pr[np] = a->p[i];
+        pr[np] = a->p[i];
+        for (s = 0; s < (facing & 3); s++) {
+            Prim t;
+            rot_prim(&pr[np], &t, (s & 1) ? D : W);
+            pr[np] = t;
+        }
         np++;
     }
     memset(buf_c, 0, sizeof buf_c);
@@ -965,9 +980,8 @@ static void bake(int fi, int facing, int frame, Img *out)
         }
 }
 
-/* (H6) facing 1 of a `mirror` decal: facing 0 flipped, anchored so that it
- * draws exactly where the renderers put rot 3 (facing 0 with IMG_FLIPX):
- * left = x - (w - ox). */
+/* (H6) facing 1 of a `mirror` decal: facing 0 flipped, anchored where an
+ * IMG_FLIPX draw of facing 0 would sit: left = x - (w - ox). */
 static void mirror_img(const Img *src, Img *out)
 {
     int x, y;
@@ -981,6 +995,29 @@ static void mirror_img(const Img *src, Img *out)
             out->pix[y * src->w + x] = src->pix[y * src->w + src->w - 1 - x];
             out->cls[y * src->w + x] = src->cls[y * src->w + src->w - 1 - x];
         }
+}
+
+/* (H9) a copy of a facing (a `mirror` decal's facings 2 / 3) */
+static void copy_img(const Img *src, Img *out)
+{
+    size_t n = (size_t)src->w * src->h;
+    *out = *src;
+    out->pix = (uint8_t *)malloc(n);
+    out->cls = (uint8_t *)malloc(n);
+    memcpy(out->pix, src->pix, n);
+    memcpy(out->cls, src->cls, n);
+}
+
+/* (H9) facing k (rot 0..3) of frame `frame` into fr[k], fr[0 .. k-1] baked
+ * already. A `mirror` decal: facing 1 is facing 0 flipped (H6); a flat
+ * decal has no back, and rot 2 / 3 hang along the same axes as rot 0 / 1,
+ * so facings 2 / 3 are facings 0 / 1 again. Anything else: its prims
+ * turned. */
+static void bake_facing(int fi, int frame, int k, Img *fr)
+{
+    if (arts[fi].mirror && k == 1) mirror_img(&fr[0], &fr[1]);
+    else if (arts[fi].mirror && k >= 2) copy_img(&fr[k - 2], &fr[k]);
+    else bake(fi, k, frame, &fr[k]);
 }
 
 /* span encode: h u16 row offsets, then (H8) the light classes, then per row
@@ -1213,10 +1250,12 @@ int main(int argc, char **argv)
     int check = 0, strict = 0, sheet_order = 0, i, f, k, ndefault = 0;
     char path[1024];
     char *text;
-    static Img imgs[FG_MAX][8];
+    static Img imgs[FG_MAX][4 * FG_FACINGS];
     static uint8_t data[4 * 1024 * 1024];
-    uint32_t off[FG_MAX][8];
-    int ndata = 0, nprims = 0;
+    static uint32_t off[FG_MAX][4 * FG_FACINGS];
+    static uint32_t blob_off[FG_MAX * 4 * FG_FACINGS];
+    static int blob_len[FG_MAX * 4 * FG_FACINGS];
+    int ndata = 0, nprims = 0, nblob = 0, nshared = 0;
     FILE *o;
     for (i = 1; i < argc; i++) {
         if (!strcmp(argv[i], "--out-root") && i + 1 < argc) out_root = argv[++i];
@@ -1273,18 +1312,29 @@ int main(int argc, char **argv)
     /* bake */
     for (i = 0; i < nrows; i++)
         for (f = 0; f < arts[i].frames; f++)
-            for (k = 0; k < 2; k++) {
-                Img *im = &imgs[i][f * 2 + k];
-                if (k == 1 && arts[i].mirror) mirror_img(&imgs[i][f * 2], im);
-                else bake(i, k, f, im);
-                off[i][f * 2 + k] = (uint32_t)ndata;
-                ndata += span_encode(im, data + ndata);
+            for (k = 0; k < FG_FACINGS; k++) {
+                Img *im = &imgs[i][f * FG_FACINGS + k];
+                int n, b;
+                bake_facing(i, f, k, &imgs[i][f * FG_FACINGS]);
+                n = span_encode(im, data + ndata);
+                /* (H9) the same bytes as an earlier facing: share them */
+                for (b = 0; b < nblob; b++)
+                    if (blob_len[b] == n && !memcmp(data + blob_off[b], data + ndata, (size_t)n)) break;
+                if (b < nblob) {
+                    off[i][f * FG_FACINGS + k] = blob_off[b];
+                    nshared++;
+                } else {
+                    blob_off[nblob] = (uint32_t)ndata;
+                    blob_len[nblob++] = n;
+                    off[i][f * FG_FACINGS + k] = (uint32_t)ndata;
+                    ndata += n;
+                }
             }
     if (fg_errors) return 1;
     if (sheet) {
         /* the pieces with art first, then the placeholder boxes */
         static int order[FG_MAX];
-        int no = 0, j, cols = 12, cw = 72, ch = 88, rowsn, W, H, x, y;
+        int no = 0, j, cols = 6, cw = 142, ch = 88, rowsn, W, H, x, y;
         uint8_t *pix, pal[768];
         for (j = 0; j < nrows; j++) if (arts[j].has || sheet_order) order[no++] = j;
         for (j = 0; j < nrows && !sheet_order; j++) if (!arts[j].has) order[no++] = j;
@@ -1295,7 +1345,7 @@ int main(int argc, char **argv)
         for (j = 0; j < nrows; j++) {
             int bx = (j % cols) * cw, by = (j / cols) * ch;
             i = order[j];
-            for (k = 0; k < 2; k++) {
+            for (k = 0; k < FG_FACINGS; k++) {
                 Img *im = &imgs[i][k];
                 int dx = bx + 2 + k * 35 + (34 - im->w) / 2, dy = by + 84 - im->h;
                 for (y = 0; y < im->h; y++)
@@ -1310,7 +1360,8 @@ int main(int argc, char **argv)
         nat_png_encode(sheet, pix, W, H, pal);
         free(pix);
     }
-    fprintf(stderr, "furngen: %d pieces (%d placeholder boxes), %d bytes of iso sprites\n", nrows, ndefault, ndata);
+    fprintf(stderr, "furngen: %d pieces (%d placeholder boxes), %d bytes of iso sprites (%d facings share an earlier one's bytes)\n",
+            nrows, ndefault, ndata, nshared);
     if (!out_root) return 0;
 
     /* ---- furn_ids.h ---- */
@@ -1496,11 +1547,11 @@ int main(int argc, char **argv)
         fprintf(o, "const uint16_t doomo_furn_iso_first[%d] = {", nrows);
         for (i = 0; i < nrows; i++) {
             fprintf(o, "%s%d,", (i % 16) ? " " : "\n    ", nimg);
-            nimg += arts[i].frames * 2;
+            nimg += arts[i].frames * FG_FACINGS;
         }
         fprintf(o, "\n};\nconst uint16_t doomo_furn_iso_count = %d;\nconst DoomoFurnIso doomo_furn_iso[%d] = {\n", nimg, nimg);
         for (i = 0; i < nrows; i++)
-            for (k = 0; k < arts[i].frames * 2; k++)
+            for (k = 0; k < arts[i].frames * FG_FACINGS; k++)
                 fprintf(o, "    { %d, %d, %d, %d, %u },\n", imgs[i][k].w, imgs[i][k].h, imgs[i][k].ox, imgs[i][k].oy,
                         (unsigned)off[i][k]);
         fprintf(o, "};\nconst uint8_t doomo_furn_iso_data[%d] = {", ndata);
@@ -1509,7 +1560,7 @@ int main(int argc, char **argv)
     }
     fprintf(o, "#else\ntypedef int doomo_furn_iso_not_on_ps1;\n#endif\n");
     fclose(o);
-    for (i = 0; i < nrows; i++) for (k = 0; k < arts[i].frames * 2; k++) { free(imgs[i][k].pix); free(imgs[i][k].cls); }
+    for (i = 0; i < nrows; i++) for (k = 0; k < arts[i].frames * FG_FACINGS; k++) { free(imgs[i][k].pix); free(imgs[i][k].cls); }
     return 0;
 }
 #endif /* FURNGEN_LIB */

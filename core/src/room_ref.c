@@ -19,11 +19,13 @@
  *  - order: background, walls, floor, wall pieces, rugs, then floor
  *    pieces, stacked smalls and actors in a topological back-to-front
  *    order of their footprints, then the cursor.
- *  - a piece's facing: rot 0 = facing 0, 1 = facing 1, 2 = facing 1
- *    mirrored, 3 = facing 0 mirrored (furn.h); the image's (ox, oy) sits
- *    on its footprint's back corner. Paint slots A / B replace the marker
- *    shades; the light level comes from `daylight` (6..15); RO_FULLBRIGHT
- *    pieces (lit lamps) ignore it.
+ *  - a piece's facing is its view rot (furn.h): 0 / 1 its front, (H9)
+ *    2 / 3 its back, never mirrored; the image's (ox, oy) sits on its
+ *    footprint's back corner. (H5, H9) An open kind's front-edge wall
+ *    piece stands on the tile inside the edge with its back to the camera
+ *    (a flat `mirror` decal: its front on the edge line), room_wall_box().
+ *    Paint slots A / B replace the marker shades; the light level comes
+ *    from `daylight` (6..15); RO_FULLBRIGHT pieces (lit lamps) ignore it.
  *  - the sprites are decoded into the view's plat_cache (the scene scratch
  *    tail). Without a cache or without sprites (the PS1 links none) each
  *    piece is drawn as a shaded box of its footprint and height.
@@ -327,6 +329,25 @@ int room_wall_side(const DoomoRoomView *v, const DoomoRoomObj *o, int k)
     for (i = 0; i < k; i++) { int t = dx; dx = -dy; dy = t; }
     side = dy == -1 ? 0 : dx == -1 ? 1 : dy == 1 ? 2 : 3;
     if (side >= 2 && (v->room_kind == ROOMK_WALLS || !f || (f->flags2 & FF_PORTAL))) return -1;
+    return side;
+}
+
+int room_wall_box(const DoomoRoomView *v, const DoomoRoomObj *o, int k, int side,
+                  int *x0, int *y0, int *x1, int *y1)
+{
+    const DoomoFurn *f = home_furn(o->furn);
+    int fw = f && f->fw ? f->fw : 1, W = (k & 1) ? v->d : v->w, D = (k & 1) ? v->w : v->d;
+    *x0 = o->x; *y0 = o->y;
+    if (RO_ROT(o) & 1) { *x1 = *x0 + 1; *y1 = *y0 + fw; }
+    else { *x1 = *x0 + fw; *y1 = *y0 + 1; }
+    rot_box(k, v->w, v->d, x0, y0, x1, y1);
+    if (side == 0) *y0 = 0;
+    else if (side == 1) *x0 = 0;
+    else if (f && (f->flags2 & FF_MIRROR)) {           /* a flat decal: no back to show */
+        if (side == 2) *y0 = D; else *x0 = W;
+        return side & 1;
+    } else if (side == 2) { *y0 = D - 1; *y1 = D; }    /* (H9) its back on the edge line */
+    else { *x0 = W - 1; *x1 = W; }
     return side;
 }
 
@@ -954,7 +975,7 @@ int room_ref_sprite(int furn, int facing, int frame, int pa, int pb, int lvl,
     lvl &= 15;
     if (!f || !buf || !FURN_ISO_COUNT || furn >= doomo_furn_count) return 0;
     frames = f->frames ? f->frames : 1;
-    e = doomo_furn_iso_first[furn] + (frame % frames) * 2 + (facing & 1);
+    e = doomo_furn_iso_first[furn] + (frame % frames) * FURN_ISO_FACINGS + (facing & 3);
     if (e >= doomo_furn_iso_count) return 0;
     im = &doomo_furn_iso[e];
     if ((unsigned)(im->w * im->h) > cap || !im->w || !im->h) return 0;
@@ -1030,7 +1051,7 @@ static void sprite_fx(const RR *r, uint8_t *pix, int w, int h, int flags)
 static void draw_piece(const RR *r, const DoomoRoomObj *o, const Item *it)
 {
     const DoomoFurn *f = home_furn(o->furn);
-    int rot = (RO_ROT(o) - r->k) & 3, facing = rot & 1, flip = rot >= 2;
+    int rot = (RO_ROT(o) - r->k) & 3;
     int sx = scr_x(r, it->x0 * 16, it->y0 * 16), sy = scr_y(r, it->x0 * 16, it->y0 * 16, o->z);
     DoomoImage img;
     int ox, oy, lvl, fl;
@@ -1048,17 +1069,16 @@ static void draw_piece(const RR *r, const DoomoRoomObj *o, const Item *it)
         sy += (hx + hy) >> 1;
     }
     if (o->jitter) sx += (int)((r->v->time >> 1) & 1) * o->jitter - o->jitter / 2;
-    if (room_ref_sprite(o->furn, facing, RO_ANIM(o), pa, pb, lvl | fl, (uint8_t *)r->v->plat_cache,
+    if (room_ref_sprite(o->furn, rot, RO_ANIM(o), pa, pb, lvl | fl, (uint8_t *)r->v->plat_cache,
                         (unsigned)r->v->plat_cache_cap, &img, &ox, &oy)) {
-        int flags = flip ? IMG_FLIPX : 0;
         uint8_t col = 0;
         sprite_fx(r, (uint8_t *)r->v->plat_cache, img.w, img.h, o->flags);
         img.uid ^= (uint32_t)(o->flags & 0x1B) << 27 ^ (uint32_t)r->tint << 9;
         if (o->sq_x || o->sq_y) {
-            int ax = sx - (flip ? img.w - ox : ox) + img.w / 2, ay = sy - oy + img.h;
-            plat_image_xform(ax, ay, &img, 256 + o->sq_x * 2, 256 + o->sq_y * 2, flags, col);
+            int ax = sx - ox + img.w / 2, ay = sy - oy + img.h;
+            plat_image_xform(ax, ay, &img, 256 + o->sq_x * 2, 256 + o->sq_y * 2, 0, col);
         } else {
-            plat_image(sx - (flip ? img.w - ox : ox), sy - oy, &img, 1, flags, col);
+            plat_image(sx - ox, sy - oy, &img, 1, 0, col);
         }
         return;
     }
@@ -1172,34 +1192,28 @@ void room_ref_draw(const DoomoRoomView *v)
             }
         }
     /* wall pieces on the two visible walls; (H5) an open kind's front-edge
-     * pieces stand on the lines y' = D / x' = W, drawn after everything */
+     * pieces stand along the lines y' = D / x' = W, drawn after everything
+     * (H9: their backs to the camera, room_wall_box) */
     for (i = 0; i < v->nobj; i++) {
         const DoomoRoomObj *o = &v->objs[i];
         const DoomoFurn *f = home_furn(o->furn);
-        int side, x0, y0, x1, y1;
+        int side, rot, x0, y0, x1, y1;
         Item it;
         if (!f || !(f->flags & FF_WALL)) continue;
         side = room_wall_side(v, o, r.k);
         if (side < 0) continue;
-        x0 = o->x; y0 = o->y;
-        if (RO_ROT(o) & 1) { x1 = x0 + 1; y1 = y0 + (f->fw ? f->fw : 1); }
-        else { x1 = x0 + (f->fw ? f->fw : 1); y1 = y0 + 1; }
-        rot_box(r.k, v->w, v->d, &x0, &y0, &x1, &y1);
+        rot = room_wall_box(v, o, r.k, side, &x0, &y0, &x1, &y1);
         it.x0 = (int8_t)x0; it.y0 = (int8_t)y0; it.x1 = (int8_t)x1; it.y1 = (int8_t)y1;
-        if (side == 0) it.y0 = 0;
-        else if (side == 1) it.x0 = 0;
-        else if (side == 2) it.y0 = (int8_t)r.D;
-        else it.x0 = (int8_t)r.W;
         if (side >= 2) {
             if (nf >= RR_MAX_ITEMS) continue;
-            it.layer = (uint8_t)(side & 1);
+            it.layer = (uint8_t)rot;
             front[nf] = it;
             front_idx[nf++] = (int16_t)i;
             continue;
         }
         {
             DoomoRoomObj tmp = *o;
-            tmp.rot_anim = RO_ROT_ANIM(side + r.k, RO_ANIM(o));
+            tmp.rot_anim = RO_ROT_ANIM(rot + r.k, RO_ANIM(o));
             draw_piece(&r, &tmp, &it);
         }
     }
@@ -1252,7 +1266,7 @@ void room_ref_draw(const DoomoRoomView *v)
             draw_actor(&r, &v->actors[-1 - items[pick].idx]);
         }
     }
-    for (i = 0; i < nf; i++) {                          /* (H5) the front edges, in object order */
+    for (i = 0; i < nf; i++) {                          /* (H5) the front edges, in object order (layer: the rot) */
         DoomoRoomObj tmp = v->objs[front_idx[i]];
         tmp.rot_anim = RO_ROT_ANIM(front[i].layer + r.k, RO_ANIM(&v->objs[front_idx[i]]));
         draw_piece(&r, &tmp, &front[i]);
