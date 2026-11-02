@@ -273,6 +273,22 @@ int  family_freewill_daily(void);
  * hits on you do family_grief_hurt_pct() percent (150 at first). Derived from
  * the memorials, so nothing new is saved. 100 = no effect. */
 #define FAMILY_GRIEF_DAYS 14
+/* ---- F7/F8: bond and mood (one byte per member, in table order) -------------
+ * low nibble bond 0..15 (default 3), high nibble mood 0..15 (default 8). A care
+ * act (yours or a housemate's) raises the bond; days nobody cares for a pool
+ * member wear it down slowly (only while free will is not Off). Saved in
+ * LIFE_SEC_BOND (length = member count; omitted while everyone is default). */
+#define FAMILY_BOND_MAX 15
+int  family_bond(int id);                  /* 0..15; 0 for a non-member */
+int  family_mood(int id);                  /* 0..15 */
+void family_bond_add(int id, int delta);   /* clamped */
+const char *family_bond_line(int id);      /* "Close to you" / "Wants more time with you" / NULL */
+uint32_t family_bond_save_size(void);
+uint32_t family_bond_save(uint8_t *dst, uint32_t cap);
+int      family_bond_load(const uint8_t *src, uint32_t len);
+void     family_bond_clear(void);
+#define FAMILY_BOND_SZ_WORST 20u
+
 int  family_grief_days_left(void);        /* 0 = not grieving */
 int  family_grief_damage_pct(void);
 int  family_grief_hurt_pct(void);

@@ -112,5 +112,17 @@ skipping `playas_avatar()`.
   `docs/design/story/SCRIPT_STYLE.md` still says children never die: it needs the
   same amendment before any story beat uses this.
 
+## Done in this step (Phase 2/3 core)
+- `LIFE_SEC_BOND` (id 9): one byte per household member in table order, low
+  nibble bond 0..15 (default 3), high nibble mood 0..15 (default 8). Length = member
+  count (20 B worst, 10 B on GBA, 4 B header); omitted while all are default. It
+  uses exactly the 24 B `LIFE_SZ_SPARE`; test_save_budget passes.
+- A care act (yours or a housemate's, `family_care`) raises bond and mood by 1.
+  Each day a pool member nobody cared for loses a bond point 25% of the time
+  (only while free will is not Off). The Family list shows "Close to you"
+  (bond 10+) or "Wants more time with you" (bond 0-1).
+
 ## Still open
-- Pool bonds (Phase 2/3 `LIFE_SEC_BOND`) are untouched.
+- Bond gating events (a child confides, siblings squabble and make up) and
+  `life_ending_facts`; bond between members (only member-to-player so far).
+- Phase 5 disasters, Phase 4 story contributions, the SCRIPT_STYLE amendment.

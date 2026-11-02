@@ -18,6 +18,8 @@
 
 static uint8_t will_ = 2;   /* F7 free will level (FAMILY_WILL_NORMAL), saved in the family section's spare byte */
 static FamilyMember fam_[FAMILY_MAX];
+#define BOND_DEFAULT 0x83u
+static uint8_t bond_[FAMILY_MAX];   /* F7/F8: low nibble bond, high nibble mood, parallel to fam_ */
 static uint8_t fam_n_;
 static uint8_t neglect_grace_;   /* F6: skip the first neglect pass after a load */
 static uint8_t loss_on_ = 1;     /* F6: the daily loss passes */
@@ -212,6 +214,7 @@ int family_add(int id, int role, int stage)
     m->stage = (uint8_t)st;
     m->since = (uint16_t)(doomo_town.day > 0xFFFFu ? 0xFFFFu : doomo_town.day);
     if (is_pool(id)) make_ident(id, default_seed(id), NULL, -1);   /* never a stale identity */
+    bond_[fam_n_] = BOND_DEFAULT;
     return fam_n_++;
 }
 
@@ -280,6 +283,8 @@ int family_remove(int id)
     if (i < 0) return 0;
     ident_drop(id);
     memmove(&fam_[i], &fam_[i + 1], (size_t)(fam_n_ - i - 1) * sizeof(fam_[0]));
+    memmove(&bond_[i], &bond_[i + 1], (size_t)(fam_n_ - i - 1));
+    bond_[fam_n_ - 1] = BOND_DEFAULT;
     fam_n_--;
     memset(&fam_[fam_n_], 0, sizeof(fam_[0]));
     return 1;
@@ -290,6 +295,7 @@ void family_clear(void)
     neglect_grace_ = 0;
     will_ = FAMILY_WILL_NORMAL;
     memset(fam_, 0, sizeof(fam_));
+    memset(bond_, BOND_DEFAULT, sizeof(bond_));
     fam_n_ = 0;
     family_pool_reset();
 }
@@ -468,6 +474,7 @@ int family_load(const uint8_t *src, uint32_t len)
     }
     memset(fam_, 0, sizeof(fam_));
     memcpy(fam_, tmp, (size_t)n * sizeof(tmp[0]));
+    memset(bond_, BOND_DEFAULT, sizeof(bond_));
     fam_n_ = (uint8_t)n;
     will_ = (uint8_t)((src[1] >= 1 && src[1] <= 5) ? src[1] - 1 : FAMILY_WILL_NORMAL);
     neglect_grace_ = 1;                 /* F6: a load never costs a day of care */
@@ -646,6 +653,8 @@ void family_care(int id)
     int i = find_slot(id);
     if (i < 0) return;
     fam_[i].spare = 1;
+    if ((bond_[i] & 15u) < FAMILY_BOND_MAX) bond_[i]++;
+    if ((bond_[i] >> 4) < 15u) bond_[i] = (uint8_t)(bond_[i] + 0x10u);
     fam_[i].flags = (uint8_t)(fam_[i].flags & ~FAMILY_FL_NEGLECT);
 }
 
@@ -690,6 +699,63 @@ int family_loss_daily(void)
         i++;
     }
     return lost;
+}
+
+/* ---- F7/F8: bond and mood -------------------------------------------------------- */
+int family_bond(int id) { int i = find_slot(id); return i < 0 ? 0 : bond_[i] & 15; }
+int family_mood(int id) { int i = find_slot(id); return i < 0 ? 0 : bond_[i] >> 4; }
+
+void family_bond_add(int id, int delta)
+{
+    int i = find_slot(id), b;
+    if (i < 0) return;
+    b = (bond_[i] & 15) + delta;
+    b = b < 0 ? 0 : b > FAMILY_BOND_MAX ? FAMILY_BOND_MAX : b;
+    bond_[i] = (uint8_t)((bond_[i] & 0xF0u) | (unsigned)b);
+}
+
+const char *family_bond_line(int id)
+{
+    int b = family_bond(id);
+    if (!family_find(id) || id == playas_avatar()) return NULL;
+    if (b >= 10) return "Close to you";
+    if (b <= 1) return "Wants more time with you";
+    return NULL;
+}
+
+uint32_t family_bond_save_size(void)
+{
+    int i;
+    for (i = 0; i < fam_n_; i++) if (bond_[i] != BOND_DEFAULT) return (uint32_t)fam_n_;
+    return 0;
+}
+
+uint32_t family_bond_save(uint8_t *dst, uint32_t cap)
+{
+    uint32_t n = family_bond_save_size();
+    if (!n || cap < n) return 0;
+    memcpy(dst, bond_, n);
+    return n;
+}
+
+int family_bond_load(const uint8_t *src, uint32_t len)
+{
+    if (len != (uint32_t)fam_n_ || len == 0) return 0;     /* the family section comes first */
+    memcpy(bond_, src, len);
+    return 1;
+}
+
+void family_bond_clear(void) { memset(bond_, BOND_DEFAULT, sizeof(bond_)); }
+
+/* A day nobody cared for a pool member wears the bond down a little. */
+static void bond_daily_(void)
+{
+    int i;
+    if (will_ == FAMILY_WILL_OFF) return;
+    for (i = 0; i < fam_n_; i++) {
+        if (!is_pool(fam_[i].id) || fam_[i].spare || fam_[i].id == playas_avatar()) continue;
+        if ((bond_[i] & 15u) > 0 && sim_chance(25)) bond_[i]--;
+    }
 }
 
 /* ---- grief (derived from the memorials: nothing saved) ---------------------- */
@@ -753,6 +819,7 @@ int family_freewill_daily(void)
 {
     static const uint8_t pct[5] = { 0, 25, 50, 80, 100 };
     int lvl = will_, acts, done = 0, a;
+    bond_daily_();                       /* before today's care marks are cleared */
     if (lvl == FAMILY_WILL_OFF || fam_n_ < 2) return 0;
     acts = lvl >= FAMILY_WILL_HIGH ? 2 : 1;
     for (a = 0; a < acts; a++) {

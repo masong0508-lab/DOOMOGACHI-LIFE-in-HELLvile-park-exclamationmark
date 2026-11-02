@@ -546,3 +546,29 @@ TEST(family_freewill_default_save_and_off)
     family_freewill_set(99);
     CHECK_EQ(family_freewill_level(), FAMILY_WILL_SUBCONSCIOUS);    /* clamped */
 }
+
+TEST(family_bond_care_decay_and_save)
+{
+    uint8_t buf[FAMILY_BOND_SZ_WORST + 8];
+    uint32_t n;
+    int a, b;
+    fresh();
+    CHECK_EQ(family_bond_save_size(), 0u);                           /* all default: nothing saved */
+    a = family_pool_add(FAMROLE_SIBLING, LIFE_ADULT, 5u, "Ann", PRONOUN_SHE);
+    b = family_pool_add(FAMROLE_CHILD, LIFE_CHILD, 6u, "Pip", PRONOUN_HE);
+    CHECK(a >= 0 && b >= 0);
+    CHECK_EQ(family_bond(b), 3);
+    family_care(b);
+    CHECK_EQ(family_bond(b), 4);
+    family_bond_add(b, 100);
+    CHECK_EQ(family_bond(b), FAMILY_BOND_MAX);
+    CHECK(family_bond_line(b) != NULL);
+    n = family_bond_save(buf, sizeof(buf));
+    CHECK_EQ_U(n, (uint32_t)family_count());
+    family_bond_add(b, -100);
+    CHECK(family_bond_load(buf, n));
+    CHECK_EQ(family_bond(b), FAMILY_BOND_MAX);
+    CHECK(!family_bond_load(buf, n + 1));                            /* wrong length rejected */
+    family_remove(a);                                                /* bond follows its member */
+    CHECK_EQ(family_bond(b), FAMILY_BOND_MAX);
+}

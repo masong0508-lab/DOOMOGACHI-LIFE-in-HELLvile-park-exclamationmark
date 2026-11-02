@@ -38,7 +38,7 @@ enum { HOUSEHOLD_TIER_START = 0, HOUSEHOLD_TIER_GAME_DONE, HOUSEHOLD_TIER_NGPLUS
 #define LIFE_SZ_F5_PETS       64   /* F5: per pet member: species, uplift state  */
 #define LIFE_SZ_F6_LOSS      160   /* F6: the lost / deceased: 20 x 8 B memorial */
 #define LIFE_SZ_TIER           8   /* the household tier, cap flags              */
-#define LIFE_SZ_SPARE         24   /* later sections (a content pack's state ...) */
+#define LIFE_SZ_SPARE         24   /* the F7/F8 bond section (4 + 20) takes all of it */   /* later sections (a content pack's state ...) */
 #define LIFE_SZ_TOTAL (LIFE_SZ_LS1_PLAN + LIFE_SZ_F5_PETS + LIFE_SZ_F6_LOSS + LIFE_SZ_TIER + \
                        LIFE_SZ_SPARE)
 
