@@ -305,6 +305,7 @@ Worked example (U6c):
 | H7 | `doomo-h7-defend-frame-nov02p` | `H7: test that Hold the Door wave 3 draws a real frame` | the panel, guests and captions were already in home_defend.c / home_draw.c; adds `home_defend_scene_draws_a_frame` (not black). The PS1 black-frame check on PCSX-Redux is still to run |
 | F3 | `doomo-f3-house-occupancy-nov02q` | `F3: household members stand in your own house (Live mode)` | up to 3 members of the household stand on free floor tiles (never the avatar you play); core only, not yet measured on GBA EWRAM / PS1 |
 | docs | `doomo-roadmap-gba-house-nov02r` | `docs: roadmap records the real-house GBA run as passed` | docs only; the PS1 black-frame run on PCSX-Redux is still to do |
+| E6a/E6b | `doomo-e6ab-ch12-punchup-nov02s` | `E6a/E6b: four more adult-only beats in Ch1-2 (Grampy, Haze, Sandwichy, Father Fuzz)` | text only: ep14, ep21, ep22, ep24; `make -C core test` passes, register lint 0 findings, save/flow locks ok; Spanish and the other languages are missing for L8 |
 
 How the owner applies patches (so nobody has to ask again): from Termux, one pasted line per patch, oldest first, each line
 is the full template above (`cd` repo, `git pull --ff-only`, `rm -rf ~/vs && mkdir ~/vs`, `unzip -qo` the zip from
@@ -320,3 +321,4 @@ and the reply gives the line with NAME and MESSAGE filled in, plus a ROADMAP row
 <!-- doomo-h7-defend-frame-nov02p -->
 <!-- doomo-f3-house-occupancy-nov02q -->
 <!-- doomo-roadmap-gba-house-nov02r -->
+<!-- doomo-e6ab-ch12-punchup-nov02s -->

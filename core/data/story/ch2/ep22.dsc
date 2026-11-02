@@ -32,6 +32,7 @@ end
 # 1: grape tongue - Sandwichy's blind taste test
 script e22_taste
   say sandwichy HAPPY "Blind taste test! Three / spoons, three flavours. / Eyes shut. No peeking!"
+  say sandwichy HAPPY "Mouth open, please. {.}It's / health code. Not a line. / I get asked."
   choice nar "Spoon one. It tastes like...?" { "Strawberry?" ; "Mint?" ; "Lemon?" }
   say sandwichy "Grape."
   [R8]

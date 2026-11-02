@@ -105,6 +105,7 @@ end
 
 script e14_grampy_again
   say grampy SLEEPY "Toaster! Or... no. Hm. / You've got a toaster sort / of face. It's a compliment."
+  say grampy HAPPY "Back in my day I was a / heartbreaker. {.}Mostly / the hip."
 end
 
 script e14_bonejangles

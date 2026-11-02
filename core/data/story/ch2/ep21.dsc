@@ -89,6 +89,7 @@ script e21_vex
   npc vex STILL
   [R8]
   say haze NEUTRAL "The plants hate it too. / One of them unionised."
+  say haze NEUTRAL "Vex winks at every / customer. {.}Not a tic. / A loyalty program."
   npc vex THAW
   choice vex "So, sweetie! One little puff? For the brand?" { "No thanks." -> no ; "...Just one puff." -> puff ; "Where are you from?" -> where }
 no:

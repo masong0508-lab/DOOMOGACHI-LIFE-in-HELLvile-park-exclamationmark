@@ -97,6 +97,7 @@ script e24_fuzz
   setf SF_FUZZ_PRACTICE
   befriend fuzz 3
   say fuzz HAPPY "Splendid! You have the paws / of a healer."
+  say fuzz HAPPY "My confession booth has a / waiting list. {.}Don't read / into it."
   [R13]
   say fuzz "Now, the real thing! Meet / me by poor Steamy in the / plaza. Bring a towel."
   beat C2_EXORCISE
