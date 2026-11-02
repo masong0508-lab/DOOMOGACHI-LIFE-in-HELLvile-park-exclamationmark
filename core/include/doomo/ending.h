@@ -129,6 +129,10 @@ int  ending_take_pending(void);
 void ending_finale_reached(void);
 /* Reach E04 if a partner, a household and an ETERNAL house room exist. */
 void ending_check_family(void);
+/* E09 "Bonejangles Bows": once the Feast is over (SF_FEAST_DONE), whatever its outcome, and the
+ * machine-heart piece is found (SF_BONE_HEART), reach E09. The Feast scenes call this when they
+ * set SF_FEAST_DONE; the finale calls it too. Safe to call any time. */
+void ending_check_bonejangles(void);
 
 /* ---- the adult gate (R10; E1 strong, weak refuses everyone) -------------
  * 1 only if resident `id` may appear in a mature or romance scene: life

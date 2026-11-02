@@ -75,7 +75,8 @@ TEST(contracts_ids_are_appended)
     /* flags: the hot one-shots live in 228..255 */
     CHECK_EQ(SF_ASKED_OTHER_SIDE, 228);
     CHECK_EQ(SF_NGPLUS, 252);
-    CHECK(SF_SPARE_253 < 256);
+    CHECK_EQ(SF_BONE_HEART, 253);
+    CHECK(SF_SPARE_254 < 256);
     /* knocks + wrongness use the spare met/nest/possessed bits, disjointly,
      * never the two used met bits (56 Tallyworn, 57 Mother Nox) */
     {

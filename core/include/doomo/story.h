@@ -249,7 +249,8 @@ enum {
     SF_HOUSE_PLATED, SF_HOUSE_TURRET, SF_HOUSE_HELD, SF_HOUSE_WALL_GONE,
     SF_WISP_AWAKE, SF_FOUNTAIN_TWOWAY, SF_MASCOTTY_HEAD_OFF, SF_FEAST_DONE,
     SF_SUITCASE_OPEN, SF_SIGN_1000, SF_BOTTLE_SEEN, SF_NGPLUS,
-    SF_SPARE_253                     /* 253..255 spare */
+    SF_BONE_HEART,                   /* 253: E09, the machine-heart piece for Bonejangles */
+    SF_SPARE_254                     /* 254..255 spare */
 };
 /* The spare "met"/nest/possessed bits (SF sec.17.1): 36..39, 42..47, 48..55 and
  * 58..63 (24 bits; 56/57 are Tallyworn and Mother Nox). They hold the

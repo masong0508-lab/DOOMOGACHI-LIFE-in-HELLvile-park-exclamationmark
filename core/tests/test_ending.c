@@ -8,6 +8,7 @@
 #include "doomo/save_ext.h"
 #include "doomo/save_budget.h"
 #include "doomo/scenes.h"
+#include "doomo/story.h"
 
 static void fresh(void) { doomo_save_ext_endings->reset(); }
 
@@ -96,4 +97,27 @@ TEST(ending_retired_slots_never_trigger_count_or_show)
     CHECK_EQ(ending_pending(), ENDING_NONE);
     CHECK(!ending_visible(ENDING_E03) && !ending_visible(ENDING_E05) && !ending_visible(ENDING_E07));
     CHECK(ending_visible(ENDING_E06));                 /* a live one is still listed */
+}
+
+TEST(ending_e09_needs_the_feast_over_and_the_heart_found)
+{
+    fresh();
+    story_set_flag(SF_FEAST_DONE, 0);
+    story_set_flag(SF_BONE_HEART, 0);
+    ending_check_bonejangles();                         /* neither */
+    CHECK(!ending_seen(ENDING_E09));
+    story_set_flag(SF_FEAST_DONE, 1);
+    ending_check_bonejangles();                         /* the Feast alone is not enough */
+    CHECK(!ending_seen(ENDING_E09));
+    story_set_flag(SF_FEAST_DONE, 0);
+    story_set_flag(SF_BONE_HEART, 1);
+    ending_check_bonejangles();                         /* nor the heart alone */
+    CHECK(!ending_seen(ENDING_E09));
+    story_set_flag(SF_FEAST_DONE, 1);
+    ending_check_bonejangles();                         /* both: E09, queued for its card */
+    CHECK(ending_seen(ENDING_E09));
+    CHECK_EQ(ending_pending(), ENDING_E09);
+    CHECK_EQ(ending_count_seen(), 1);
+    story_set_flag(SF_FEAST_DONE, 0);
+    story_set_flag(SF_BONE_HEART, 0);
 }

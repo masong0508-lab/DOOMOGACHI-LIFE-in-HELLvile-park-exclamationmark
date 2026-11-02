@@ -10,10 +10,10 @@ string VMT_CAP_A "Boss caption one"
 string VMT_CAP_B "Boss caption two"
 
 script vmt_flags
-  clrf SF_SPARE_253
-  jif SF_SPARE_253 no
-  setf SF_SPARE_253
-  jifn SF_SPARE_253 no
+  clrf SF_BONE_HEART
+  jif SF_BONE_HEART no
+  setf SF_BONE_HEART
+  jifn SF_BONE_HEART no
   setv v2 7
   addv v2 -2
   jlt v2 5 no

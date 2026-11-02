@@ -24,6 +24,7 @@
 #include "doomo/save_ext.h"
 #include "doomo/unlock_ids.h"
 #include "doomo/unlocks.h"
+#include "doomo/story.h"
 
 static DoomoEnds E;
 
@@ -117,6 +118,13 @@ void ending_finale_reached(void)
     ends()->flags |= ENDF_FINALE_DONE;
     ending_reach(ending_resolve_finale());
     ending_check_family();
+    ending_check_bonejangles();
+}
+
+/* E09 "Bonejangles Bows": the Feast is over (any outcome) and the machine-heart piece is found. */
+void ending_check_bonejangles(void)
+{
+    if (story_flag(SF_FEAST_DONE) && story_flag(SF_BONE_HEART)) ending_reach(ENDING_E09);
 }
 
 /* E04 "Family Portrait": a partner, a household and an ETERNAL house room. */

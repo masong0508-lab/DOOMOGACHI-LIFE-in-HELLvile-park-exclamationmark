@@ -41,7 +41,7 @@ TEST(story_vm_flags_vars_and_jumps)
     vm_start(SCR_VMT_FLAGS);
     CHECK(vm_running());
     CHECK_EQ(run(5), VM_IDLE);
-    CHECK(story_flag(SF_SPARE_253));
+    CHECK(story_flag(SF_BONE_HEART));
     CHECK_EQ(vm_var(2), 5);
     CHECK_EQ(vm_var(3), 42);
     CHECK(!vm_running());
