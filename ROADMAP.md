@@ -10,6 +10,7 @@ reviewed, then landed on `claude/nice-allen-gr6czm`.
 **Focus on the PS1 build from now on, until the owner says otherwise.** Pick PS1 work first (disc build, harness, `docs/PS1.md`
 budgets, PS1-side timing and memory) and only take GBA, Dreamcast, show or script work when the owner asks for it by name.
 Small shared-core patches that already fit the patch pattern (like U3b) are fine when asked for.
+The PS1 life-sim status checklist (what is verified, written, or missing on that build) is `docs/PS1_LIFESIM.md`.
 
 ## 0. Status at a glance
 
@@ -271,3 +272,4 @@ Worked example (U6c):
 | U6d | (none) | (no patch) | `creator_hellvile` already passes; the note is dropped by U6e |
 | U3c | `doomo-u3c-island-quicksave-nov02g` | `U3c: START, START quick-saves the island (J7 7 -> 2 presses)` | this patch |
 | U3b | `doomo-u3b-story-quicksave-nov02h` | `U3b: START, START quick-saves the story (J6 9 -> 2 presses)` | this patch |
+| PS1 | `doomo-ps1-lifesim-checklist-nov02i` | `docs: PS1 life sim status checklist` | docs only: adds `docs/PS1_LIFESIM.md`, links it from the roadmap focus note |
