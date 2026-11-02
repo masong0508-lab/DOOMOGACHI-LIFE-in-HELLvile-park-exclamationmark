@@ -32,6 +32,8 @@ reviewed, then landed on `claude/nice-allen-gr6czm`.
   (needs a PS1 harness run to confirm on PCSX-Redux).
 - Life sim F1 part 1 (family table): `family.h` / `family.c`, household cap by tier, roles with the
   partner's LS0 gate, the LIFE chunk's family section; no UI yet (F2), no babies / ageing (F4).
+- Life sim F1 part 2 (pool members): a 20 B identity each (look seed, name, pronoun), `family_resident()`
+  builds the full resident on demand, the LIFE chunk's POOL section; pets are drawn by F5.
 - Life sim wave 1: shared registry/contracts incl. 15 endings, security code,
   family, pockets and profiles (K0), life stages + two-way adult-only romance
   gate (LS0), journey/tap meter (M0), PG-21 register + lint (E5).

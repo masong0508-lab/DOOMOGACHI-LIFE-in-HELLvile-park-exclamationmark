@@ -29,7 +29,8 @@ enum {
                                never written (PLAY owns the avatar)        */
     LIFE_SEC_PETS = 5,      /* F5                                          */
     LIFE_SEC_LOSS = 6,      /* F6                                          */
-    LIFE_SEC_TIER = 7       /* the household tier (F1-F4)                  */
+    LIFE_SEC_TIER = 7,      /* the household tier (F1-F4)                  */
+    LIFE_SEC_POOL = 8       /* F1: the pool members' identities            */
 };
 #define LIFE_SEC_HDR 4u
 /* The news section's worst case: 4 B header, NEWS_MAX records, NEWS_FREE

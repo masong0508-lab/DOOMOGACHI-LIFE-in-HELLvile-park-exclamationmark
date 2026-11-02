@@ -8,8 +8,13 @@
  * F4; pets' uplift is F5; loss is F6. They add rows and flags here.
  *
  * A member is either a resident (id 0..DOOMO_MAX_RESIDENTS-1, someone who
- * moved in) or a family pool member (PLAYAS_ID_FAMILY_FIRST..LAST, 1001..
- * 1020: a person or pet who exists only in the household). Roles are
+ * moved in) or a family pool member (PLAYAS_ID_FAMILY_FIRST.., 1001..1020:
+ * a person or pet who exists only in the household; the GBA's pool is its
+ * first 10 ids). A pool member is a small identity (FamilyIdentity: a look
+ * seed, a name, a pronoun and who they can fall for, 20 B), not a 96 B
+ * DoomoResident: family_resident() builds the full resident on demand, the
+ * same on every platform (resident_generate), so a household of 20 costs
+ * 400 B of RAM and 440 B of save. Roles are
  * chosen by the player, Sims style (any person may be a child, a parent, a
  * sibling or a housemate), with two rules that are not a choice: a PARTNER
  * must pass the life stage gate of LS0 (adults only, both ways, never
@@ -50,7 +55,8 @@ enum {
     FAM_ERR_ID = -3,        /* no such resident / pool id, or not alive      */
     FAM_ERR_ROLE = -4,      /* bad role, a pet that is not a pool member,    */
                             /* or a second partner                           */
-    FAM_ERR_GATE = -5       /* the partner failed the LS0 life stage gate    */
+    FAM_ERR_GATE = -5,      /* the partner failed the LS0 life stage gate    */
+    FAM_ERR_NAME = -6       /* an empty, too long or undrawable name         */
 };
 
 typedef struct FamilyMember {
@@ -63,13 +69,27 @@ typedef struct FamilyMember {
     uint16_t since;     /* town day when the member joined (saturates)       */
 } FamilyMember;         /* 8 bytes, as saved */
 
-#define FAMILY_SEC_HEAD 2u          /* the section: count u8, reserved u8     */
+/* A pool member's identity (saved in the POOL section; add-only). */
+typedef struct FamilyIdentity {
+    uint32_t seed;                  /* resident_generate() seed: the look and the rest */
+    char     name[DOOMO_NAME_LEN];  /* 1..11 printable ASCII chars, NUL padded         */
+    uint8_t  pronoun;               /* PRONOUN_*                                       */
+    uint8_t  romance;               /* ROMANCE_* (who they can fall for)               */
+    uint8_t  spare[2];              /* 0                                               */
+} FamilyIdentity;                   /* 20 bytes */
+
+#define FAMILY_SEC_HEAD 2u          /* the sections: count u8, reserved u8    */
 #define FAMILY_SZ_WORST (FAMILY_SEC_HEAD + 8u * HOUSEHOLD_CAP_MAX)
+#define FAMILY_POOL_REC (2u + 20u)  /* pool section: id u16 + an identity      */
+#define FAMILY_POOL_SZ_WORST (FAMILY_SEC_HEAD + FAMILY_POOL_REC * HOUSEHOLD_CAP_MAX)
 #ifdef DOOMO_PLATFORM_GBA
 #define FAMILY_MAX HOUSEHOLD_CAP_SMALL_T2
 #else
 #define FAMILY_MAX HOUSEHOLD_CAP_FULL_T2
 #endif
+/* The pool ids this platform has: FIRST .. FIRST + FAMILY_MAX - 1. */
+#define FAMILY_POOL_FIRST (DOOMO_PLAYER_ID + 1)
+#define FAMILY_POOL_LAST  (DOOMO_PLAYER_ID + FAMILY_MAX)
 
 /* The cap of the household now (tier from the unlocks; the GBA's smaller
  * numbers on the GBA). */
@@ -89,6 +109,20 @@ const FamilyMember *family_find(int id);
 int  family_role(int id);
 /* How many members have this role. */
 int  family_count_role(int role);
+/* A new pool member in one step: the first free pool id, with this look
+ * seed (resident_generate), name (NULL = the generated one) and pronoun
+ * (-1 = the generated one). Returns the pool id or FAM_ERR_* (nothing is
+ * changed on an error). family_add() on a pool id does the same with a seed
+ * made from the town seed and the id. */
+int  family_pool_add(int role, int stage, uint32_t seed, const char *name, int pronoun);
+/* The identity of a pool member (always filled in), NULL for anyone else. */
+const FamilyIdentity *family_identity(int id);
+/* Rename a pool member (FAM_ERR_NAME / FAM_ERR_ID); 0 on success. */
+int  family_set_name(int id, const char *name);
+/* The full resident of a member: a copy of the town's resident, or for a
+ * pool person one built from the identity (alive, with the member's life
+ * stage). 1 on success; 0 for a non-member and for a pet (F5 draws pets). */
+int  family_resident(int id, DoomoResident *out);
 /* The first free pool id (1001..), or -1 when every pool id in range is used. */
 int  family_pool_alloc(void);
 /* Forget the household (a new town does this through the LIFE chunk). */
@@ -98,5 +132,11 @@ void family_clear(void);
 uint32_t family_save_size(void);
 uint32_t family_save(uint8_t *dst, uint32_t cap);
 int      family_load(const uint8_t *src, uint32_t len);
+/* ... and the POOL section: the identities of the pool members (life.c). A
+ * member whose identity is not in the save gets the default one. */
+uint32_t family_pool_save_size(void);
+uint32_t family_pool_save(uint8_t *dst, uint32_t cap);
+int      family_pool_load(const uint8_t *src, uint32_t len);
+void     family_pool_reset(void);
 
 #endif
