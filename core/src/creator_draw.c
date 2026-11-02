@@ -1245,10 +1245,21 @@ static void draw_hint(void)
 }
 
 /* ====================================================================== */
-static void draw_hero(void)
+/* PA2: the card texts, shared with the width test (tests/test_creator.c) */
+const char *cr_hero_name(int i)
 {
     static const char *const nm[3] = { "Sunny", "Marvin", "Make your own" };
-    static const char *const tg[3] = { "She, a bunny. The lead.", "He, a fox.", "Pick every detail" };
+    return nm[i < 0 ? 0 : i > 2 ? 2 : i];
+}
+
+const char *cr_hero_tag(int i)
+{
+    static const char *const tg[3] = { "A bunny. She/her.", "A fox. He/him.", "Pick every detail" };
+    return tg[i < 0 ? 0 : i > 2 ? 2 : i];
+}
+
+static void draw_hero(void)
+{
     const UiStyle *st = ui_style(WIN_CUTE);
     int i, ch = (crl.lh - 22) / 3, y0 = crl.ly + 19;
     ui_window(crl.lx, crl.ly, crl.lw + 2, crl.lh + 3, WIN_CUTE);
@@ -1256,8 +1267,8 @@ static void draw_hero(void)
     for (i = 0; i < 3; i++) {
         int y = y0 + i * ch;
         if (i == cr.hero_sel) ui_cursor(crl.lx + 4, y + ch / 2 - 4);
-        ui_text(crl.lx + 16, y + ch / 2 - 9, nm[i], st->text);
-        ui_text(crl.lx + 16, y + ch / 2 + 1, tg[i], st->text_dim);
+        ui_text(crl.lx + 16, y + ch / 2 - 9, cr_hero_name(i), st->text);
+        ui_text(crl.lx + 16, y + ch / 2 + 1, cr_hero_tag(i), st->text_dim);
     }
 }
 

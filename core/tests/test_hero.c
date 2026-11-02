@@ -6,6 +6,7 @@
 #include "doomo/story.h"
 #include "doomo/town.h"
 #include "doomo/sim.h"
+#include "doomo/save.h"
 
 TEST(hero_presets_exist_for_sunny_and_marvin_only)
 {
@@ -47,5 +48,25 @@ TEST(hero_created_name_is_never_overwritten)
     playas_set_hero_kind(HERO_MARVIN);
     story_new_game();
     CHECK(strcmp(doomo_town.player.name, "Zed") == 0);
+    playas_set_hero_kind(HERO_CUSTOM);
+}
+
+/* the hero kind rides in header byte 47 so menus can say Sunny / Marvin
+ * without loading the save; an old (custom) hero reads 0 there */
+TEST(hero_kind_is_in_the_save_header_byte)
+{
+    DoomoSaveInfo info;
+    int k;
+    static const int kinds[3] = { HERO_SUNNY, HERO_MARVIN, HERO_CUSTOM };
+    for (k = 0; k < 3; k++) {
+        town_new(TOWN_STORY, 80 + (uint32_t)k, TOWN_POP_PREMADE);
+        sim_init();
+        playas_set_hero_kind(kinds[k]);
+        story_new_game();
+        CHECK(save_game(0));
+        CHECK(save_peek(0, &info));
+        CHECK_EQ(PLAYAS_HF_HERO(info.flags), kinds[k]);
+        CHECK_STR(info.player, kinds[k] == HERO_SUNNY ? "Sunny" : kinds[k] == HERO_MARVIN ? "Marvin" : info.player);
+    }
     playas_set_hero_kind(HERO_CUSTOM);
 }

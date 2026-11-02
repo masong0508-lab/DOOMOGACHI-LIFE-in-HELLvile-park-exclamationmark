@@ -462,6 +462,16 @@ TEST(creator_hero_cards_sunny_and_marvin)
     playas_set_hero_kind(HERO_CUSTOM);
 }
 
+TEST(creator_hero_card_texts_fit_the_small_screen)
+{
+    int i;
+    /* the card text starts 16 px into the window; the GBA screen is 240 wide */
+    for (i = 0; i < 3; i++) {
+        CHECK_MSG(ui_text_width(cr_hero_name(i)) + 16 + 12 <= 240, "card name %d too wide", i);
+        CHECK_MSG(ui_text_width(cr_hero_tag(i)) + 16 + 12 <= 240, "card tagline %d too wide", i);
+    }
+}
+
 TEST(creator_hero_cards_back_leaves_and_named_hero_skips_them)
 {
     town_new(TOWN_STORY, 95, TOWN_POP_PREMADE);

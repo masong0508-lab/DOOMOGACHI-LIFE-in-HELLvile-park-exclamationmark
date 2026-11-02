@@ -261,4 +261,8 @@ extern CrLayout crl;
 /* Rows of the copy picker / option picker that fit. */
 int  cr_pick_rows(void);
 
+/* PA2 hero-card texts (creator_draw.c) */
+const char *cr_hero_name(int i);
+const char *cr_hero_tag(int i);
+
 #endif
