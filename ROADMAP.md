@@ -185,4 +185,7 @@ X10 VMU card trading.
   anything suggestive, never minors; mature art comes only from user-supplied
   override packs into reserved slots.
 - Show plan: 5 seasons, Sunny dies in S4; the game keeps its own story where Sunny lives.
+- Show swearing curve: lightest in season 1, rising each season, heavy in season 4,
+  and the most explicit in season 5 (double length + TV-movie finale). The game keeps
+  its own sparse budget (s-word a few times, f-word exactly twice).
 - GBA cartridge: 256 Mbit / 32 MB (the hardware maximum), enforced at build time.
