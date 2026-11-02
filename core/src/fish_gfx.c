@@ -8,6 +8,7 @@
  * two-highlight eyes, blush, and something always moving (tail wag, fin
  * flap, blinking, bubbles, flames, sparkles). */
 #include "fishcook_int.h"
+#include "doomo/playas.h"
 
 static uint8_t g_sil;               /* silhouette colour, 0 = normal      */
 static int     g_dir;               /* +1 faces right, -1 left            */
@@ -804,7 +805,7 @@ void lake_draw_angler(const LakeView *v, int x, int y, int pose, int bend, int r
     if (pose == 3) frame = (t / 4) & 3;
     if (pose == 4) bob = ui_wave(t * 3, 30, 3) > 0 ? -3 : 0;
     else bob = ui_wave(t, 60, 1) > 0 ? -1 : 0;
-    img = bodyspr_image(DOOMO_PLAYER_ID, 2, frame);
+    img = bodyspr_image(playas_avatar(), 2, frame);
     hx = x + 22;
     hy = y + 28 + bob;
     switch (pose) {

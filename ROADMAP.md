@@ -112,7 +112,7 @@ a package can only start once the ones it depends on (see the sections below) ha
 - Life sim: PA0 follow-ups, U1g (GBA config sector),
   E11 (mature filter + 18+ confirm), LS-IN (press latch), PA9 (romance/mature
   gates for heroes), PA3b (Spanish
-  gender fixes), PA8 (house/activities follow the avatar), E10 (Dreamcast pack
+  gender fixes), PA8 (house body, cuts and fishing now follow the avatar; other activities still to check), E10 (Dreamcast pack
   adapter), E12 (endings integration), Z1 (joint gate).
 - Script: W15 (Bonejangles origin; needs your yes/no).
 - Languages: L9 (language picker).

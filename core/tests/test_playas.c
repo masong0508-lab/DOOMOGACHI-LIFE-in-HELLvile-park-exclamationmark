@@ -3,6 +3,7 @@
 #include <string.h>
 #include "test.h"
 #include "doomo/doomo.h"
+#include "doomo/home.h"
 #include "doomo/family.h"
 #include "doomo/playas.h"
 #include "doomo/save_ext.h"
@@ -11,6 +12,7 @@
 #include "doomo/sim.h"
 #include "doomo/story_vm.h"
 #include "../src/story_int.h"
+#include "../src/home_int.h"
 
 static void fresh(void)
 {
@@ -182,4 +184,33 @@ TEST(playas_scene_lists_and_switches)
     CHECK(playas_switch(a, PLAYAS_SWITCH_INSTANT));   /* the list now offers the hero first */
     plat_begin_frame(); scene_draw();
     scene_pop();
+}
+
+/* (PA8) your own house draws whoever you play: the Live-mode frame with a
+ * family member as the avatar differs from the hero's. */
+static uint32_t own_house_live_frame(void)
+{
+    static const int seq[] = { BTN_START, 0, BTN_DOWN, 0, BTN_A, 0, 0, 0, 0, 0 };
+    uint32_t h = 2166136261u;
+    int i;
+    home_reset();
+    scene_set(&SCENE_HOME, HOME_ARG_OWN(HOME_COTTAGE));
+    for (i = 0; i < 10; i++) { plat_begin_frame(); doomo_frame(seq[i]); plat_end_frame(); }
+    for (i = 0; i < 10; i++) doomo_frame(0);
+    for (i = 0; i < nat_w * nat_h; i++) { h ^= nat_fb[i]; h *= 16777619u; }
+    return h;
+}
+
+TEST(playas_house_draws_the_avatar_body)
+{
+    int a;
+    uint32_t hero, other;
+    fresh();
+    a = family_pool_add(FAMROLE_SIBLING, LIFE_ADULT, 5u, "Ann", PRONOUN_SHE);
+    CHECK(a >= 0);
+    cleared();
+    hero = own_house_live_frame();
+    CHECK(playas_switch(a, PLAYAS_SWITCH_INSTANT));
+    other = own_house_live_frame();
+    CHECK(hero != other);
 }
