@@ -1,0 +1,62 @@
+# Family: "Play as them" on a fresh Classic island is locked until the story
+# is finished. The member menu says so up front, picking it explains why, and
+# nobody is switched. (Playtest #7 was this: the dialog, not a failed switch.)
+scene NEW_ISLAND
+wait 10
+press A
+wait 10
+press A
+wait 20
+press A
+wait 2
+press A
+wait 2
+press A
+wait 10
+expect-scene ISLAND
+wait 30
+press START
+wait 10
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press A
+wait 2
+expect-scene FAMILY
+# add a neighbour: Add row, kind "neighbour", first resident, first role
+press DOWN
+press A
+wait 10
+press A
+wait 60
+press A
+wait 10
+press A
+wait 40
+shot role_menu
+press A
+wait 30
+shot household_has_member
+# open the member (the cursor sits below the list), pick "Play as them (locked)"
+press UP
+press A
+wait 90
+shot member_menu_locked
+press DOWN
+wait 4
+press DOWN
+wait 4
+press DOWN
+wait 4
+shot play_as_row
+press A
+wait 60
+shot locked_explained
+press A
+wait 40
+expect-scene FAMILY
+press B
+wait 2
+expect-scene ISLAND

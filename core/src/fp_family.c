@@ -382,7 +382,11 @@ static void open_member(int id)
     if (m->role != FAMROLE_PET) { W.acts[n] = MA_ROLE; W.opts[n++] = "Change role"; }
     if (id >= FAMILY_POOL_FIRST) { W.acts[n] = MA_RENAME; W.opts[n++] = "Rename"; }
     else { W.acts[n] = MA_PROFILE; W.opts[n++] = "Open profile"; }
-    if (id != playas_avatar()) { W.acts[n] = MA_PLAYAS; W.opts[n++] = "Play as them"; }
+    if (id != playas_avatar()) {
+        /* say up front when the story still locks it, instead of a dialog after the pick */
+        W.acts[n] = MA_PLAYAS;
+        W.opts[n++] = playas_available() ? "Play as them" : "Play as them (locked)";
+    }
     W.acts[n] = MA_REMOVE; W.opts[n++] = "Move out";
     W.acts[n] = -1; W.opts[n++] = "Never mind";
     doomo_snprintf(q, sizeof(q), "%s (%s)", member_name(id, nm), role_names[m->role % FAMROLE_COUNT]);
