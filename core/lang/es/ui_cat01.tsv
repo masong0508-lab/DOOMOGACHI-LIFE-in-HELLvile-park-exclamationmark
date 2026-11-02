@@ -326,7 +326,7 @@ Tonight is %s night! Fans are lining up.	¡Hoy es noche de %s! Los fans hacen fi
 Welcome to %s! It's very quiet... nobody lives here yet.	¡Bienvenido a %s! Hay mucha calma... aún no vive nadie aquí.	# fp_island.c
 Let's create your very first citizen! You can make up to 500 on each side.	¡Creemos a tu primer ciudadano! Puedes hacer hasta 500 de cada lado.	# fp_island.c
 Welcome to %s! %d citizens live here. Visit them, feed them, love them!	¡Bienvenido a %s! Aquí viven %d ciudadanos. ¡Visítalos, aliméntalos, quiérelos!	# fp_island.c
-Thought bubbles show who needs help. A visits a place, START opens the menu.	Los globos de pensamiento muestran quién necesita ayuda. A visita un lugar, START abre el menú.	# fp_island.c
+A visits a place, START opens the menu.	A visita un lugar, START abre el menú.	# fp_island.c
 \x80 %s moved in!	\x80 ¡%s se mudó!	# fp_island.c
 Your first citizen! Visit them in their home, or make some friends for them.	¡Tu primer ciudadano! Visítalo en su casa o hazle amigos.	# fp_island.c
 %s: make citizens!	%s: ¡crea ciudadanos!	# fp_island.c

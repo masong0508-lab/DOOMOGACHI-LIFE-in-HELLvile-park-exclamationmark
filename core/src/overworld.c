@@ -369,6 +369,7 @@ static void after_subscene(void)
 static int auto_events(void)
 {
     int b = story_beat();
+    if (!playas_is_hero()) return 0;     /* PA4: plot offers itself only to the hero */
     if (b == BEAT_C1_ARRIVE) {
         if (!story_flag(SF_TITLE_CH1)) {
             story_set_flag(SF_TITLE_CH1, 1);
@@ -564,14 +565,14 @@ int ow_player_facing(void) { return ow.dir; }      /* S2: the photo verb */
 
 static void press_a(void)
 {
-    if (!ow.visit && story_verbs_press_a()) return; /* S2: the photo verb */
+    if (!ow.visit && playas_is_hero() && story_verbs_press_a()) return; /* S2: the photo verb */
     if (ow.near_npc >= 0) {
         OwNpc *n = &ow_npcs[ow.near_npc];
         ownpc_face_player(ow.near_npc);
         n->state = NS_TALK;
         n->timer = 60;
         audio_sfx(SFX_BLIP);
-        if (ow.visit) talk_ambient(n->id);
+        if (ow.visit || !playas_is_hero()) talk_ambient(n->id);   /* PA4: no plot for an avatar */
         else {
             const DoomoResident *r = town_res(n->id);
             if (r && r->status == RES_POSSESSED && !story_debug_autowin_on()) {
@@ -585,7 +586,7 @@ static void press_a(void)
         }
         return;
     }
-    if (ow.near_spot >= 0 && !ow.visit) {
+    if (ow.near_spot >= 0 && !ow.visit && playas_is_hero()) {
         side_trigger_spot(ow.map, ow.px / OW_CELL, ow.py / OW_CELL, 1);
         return;
     }
@@ -847,7 +848,7 @@ static void story_update(void)
     }
     if (btn_pressed(BTN_A)) { press_a(); return; }
     /* chapter 3: walking into a demon nest */
-    if (!ow.visit && ow.map == MAPID_HAHALAND_INVADED && story_beat() == BEAT_C3_NESTS && !story_talking()) {
+    if (!ow.visit && playas_is_hero() && ow.map == MAPID_HAHALAND_INVADED && story_beat() == BEAT_C3_NESTS && !story_talking()) {
         int nest = ownpc_nest_near(ow.px, ow.py);
         if (nest >= 0) {
             ow_shake(8);
@@ -916,8 +917,8 @@ static void build_billboards(void)
         add_bb(x, y + 8 * OWQ, z, sprite_image(spr, frame), fl, 0);
     }
     ownpc_add_billboards(vx0, vy0, vx1, vy1);
-    /* side quest spots */
-    if (!ow.visit) {
+    /* side quest spots (the hero's) */
+    if (!ow.visit && playas_is_hero()) {
         SideSpot sp[8];
         int n = side_spots(ow.map, sp, 8);
         for (i = 0; i < n; i++) {

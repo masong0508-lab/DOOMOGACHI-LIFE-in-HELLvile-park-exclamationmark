@@ -11,7 +11,9 @@ reviewed, then landed on `claude/nice-allen-gr6czm`.
 - U6a (Continue-first title): with a story save the title's first row is Continue; boot -> story is 3 presses (J2).
   U6b (2026-11-02): Free Play with no island saved goes straight to New Island, and the "name your island?" prompt
   starts on "Maybe later": J9 13 -> 11 presses, New Island -> hub 8 -> 7. Budgets lowered (j9, life_new_island, j10, j11).
-  `creator_hellvile` already failed before U6b (text entry not open at line 106); not caused by it.
+  U6e (2026-11-02): the island welcome's controls hint is a toast, not a second dialogue box: J9 11 -> 9 presses,
+  New Island -> hub 7 -> 5. `creator_hellvile` passes (checked on the tree with PA4 + U6c); no U6d patch was needed.
+  PA4: plot content now offers itself only to the hero (auto story beats, plot talk, side spots, nest fights).
 - Script: style guide + locks (P0), Chapters 1-4 + epilogue rewritten (W1-W4),
   the 49 old quests rewritten (W5).
 - House: golden coverage (H1), themed doors/windows + Towers 7B / Hell Pits rooms (H4),
@@ -251,4 +253,4 @@ safe to run twice, no network). Use a NEW name for every patch. One-liner (repla
 | U6a | `doomo-u6a-continue-first-nov02b` | `U6a: Continue-first title` | already in the tree |
 | U6b | `doomo-u6b-quick-island-nov02c` | `U6b: quick island start (J9 13 -> 11 presses)` | this patch |
 | U6c | `doomo-u6c-continue-island-nov02d` | `U6c: Continue row also leads with a saved island (J9 target 10)` | this patch: with no story save but an island save, the lead row continues the island; try one fewer welcome-dialog press |
-| U6d | `doomo-u6d-fix-creator-hellvile-nov02e` | `U6d: fix creator_hellvile script (text entry at line 106)` | then: repair the pre-existing failing script |
+| U6d | (none) | (no patch) | `creator_hellvile` already passes; the note is dropped by U6e |

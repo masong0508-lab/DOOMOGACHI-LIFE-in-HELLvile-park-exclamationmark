@@ -18,8 +18,8 @@ j5_title_lang		5	12	U5: title -> language Spanish -> title
 j6_ow_save		9	21	U3b: story overworld pause -> Save -> walk on
 j7_island_save		7	56	U3c: island START menu -> Save -> hub (also the life "save" row; target 3)
 j8_ow_title		5	13	U3b: story overworld -> title screen
-j9_new_island		11	110	U6: boot -> new Classic island hub (target 10)
-life_new_island		7	62	U6/LS6: New Island screen -> hub
+j9_new_island		9	110	U6: boot -> new Classic island hub (target 10, met by U6e)
+life_new_island		5	62	U6/LS6: New Island screen -> hub
 life_help_next		9	22	LS-QA: hub -> next problem helped, item in the bag (target 2)
 life_missing_item	26	71	LS-QA: hub -> problem needing an item not in the bag, bought, helped (target 3)
 life_feed		6	26	LS-QA: hub -> a citizen found by name and fed (+ the name typed)

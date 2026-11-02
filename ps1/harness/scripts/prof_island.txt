@@ -15,8 +15,6 @@ wait 2
 press A
 wait 2
 press A
-wait 2
-press A
 wait 10
 expect-scene ISLAND
 wait 30

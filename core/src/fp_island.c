@@ -687,7 +687,8 @@ static void island_enter(int arg)
             doomo_snprintf(fp_tmp, sizeof(fp_tmp), "Welcome to %s! %d citizens live here. Visit them, feed them, love them!",
                            nm, town_count(-1));
             ui_say(-1, fp_tmp);
-            ui_say(-1, "Thought bubbles show who needs help. A visits a place, START opens the menu.");
+            /* one dialogue press fewer: the controls hint is a toast, not a second box */
+            ui_toast("A visits a place, START opens the menu.");
         }
         fp_fx_burst(fp_sw() / 2, fp_sh() / 3, FX_CONFETTI, 30);
     }
