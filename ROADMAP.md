@@ -30,6 +30,8 @@ The PS1 life-sim status checklist (what is verified, written, or missing on that
 - House: golden coverage (H1), themed doors/windows + Towers 7B / Hell Pits rooms (H4),
   garden/plot (H5), animations (H6), lighting (H8), back facings (H9), 57 furniture
   pieces redrawn + roofs, GBA EWRAM for HOME (H10). PS1 disc links again (H0).
+- House H3 (PS1 room shells, `ps1/src/room.c`): built and measured earlier (docs/PS1.md section 7; H4 took the Hell-Cellar from 17 to 30 fps).
+  The H3 PS1 room shells are done; this line replaces the old "H3 open" entries (2026-11-02 reconcile). Not re-run since LS1.
 - GBA speed: speed tour (G1), Mode 4 quick wins (G2), IWRAM overlay (G4),
   tile-mode overworld (G5), billboards as sprites (G6), retained HUD panels +
   "3D: Faster/Better" (G7). Cartridge is now a full 256 Mbit / 32 MB.
@@ -132,7 +134,6 @@ a package can only start once the ones it depends on (see the sections below) ha
   PA4 (overworld handoff), LS4 (event and family content), F2 (family UI),
   U8 (GBA 3D Faster/Better done properly), S-HOUSE (story house unlock + tiers), MP1 (multiplayer + co-op heroes).
 - GBA speed: G8 (tile backend: island hub and menus at 30 fps).
-- House: H3 (PS1 room shells).
 - Script: W9, W10, W11 (side_b rewrites).
 - Languages: L2b (formatted text), L3 (tooling), L5 (story text for N languages),
   L7 (grammar-aware generators), L8d, L8e (big Spanish batches).
@@ -193,7 +194,7 @@ EWRAM stays tight (10,120 B free after H11, floor 8,192 B); free RAM before spen
 
 ## 3. Priority 3: house finish
 
-H2 (GBA room shells at pixel parity; clears 33 expected-fail frames), H3 (PS1
+H2 (GBA room shells at pixel parity; clears 33 expected-fail frames), H3 (done, PS1
 room shells), H7 (Hold the Door panel, guests, captions, PS1 black frame),
 H11's code part is done (the GBA keeps and saves the house state; the real-house GBA run, `make -C gba test-home`, is still to do).
 

@@ -49,7 +49,7 @@ after a real PS1 run, not before.
 | Island START menu + quick save (U3c) | Verified (J7) | Script ready (J7 on the disc, not yet run) |
 | Story pause + quick save (U3b) | Verified (J6) | Script ready (J6 on the disc, not yet run) |
 | Family table, ageing, births, loss (F1/F4/F6 core) | Native only | Written; no UI yet (F2) so a PS1 run has nothing to press |
-| House (H3 `room.c`) | Native only | docs/PS1.md section 7 describes it as built; ROADMAP section 3 still lists H3 open. Reconcile. |
+| House (H3 `room.c`) | Native only | Documented as built and measured (docs/PS1.md section 7, `harness/scripts/home.txt`); ROADMAP reconciled 2026-11-02; not re-run since LS1 |
 | Mature disc variant (E9), language tables on disc (L6) | Missing | later waves |
 
 ## 4. Suggested PS1-first order
