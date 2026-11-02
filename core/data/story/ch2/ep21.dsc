@@ -107,6 +107,7 @@ puff:
   native CB_C12 C12A_PUFF
   runbeat b21_puff
   say vex HAPPY "Ooh, look at you, all / glassy-eyed. Call me. / {.}Or don't. You WILL."
+  say vex HAPPY "I'd flirt, sweetie, but / my brand says {.}invoice / first. Kisses! - V"
   say nar "Somewhere, the fountain / giggles. Louder than last / time. Nobody told a joke."
   jmp out
 where:

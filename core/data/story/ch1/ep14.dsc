@@ -54,6 +54,7 @@ great:
 okay:
   say nar "(A polite chuckle. The kind / you give a dentist.)"
 closer:
+  say hattie HAPPY "Guy at the bar asked if I / do private shows. {.}I do. / My cat's a harsh critic."
   say hattie HAPPY "My closer! So I said, / 'Mayor, what's on the / other side?'"
   say hattie HAPPY "He said: 'Hee. Hee.'"
   [R8]
