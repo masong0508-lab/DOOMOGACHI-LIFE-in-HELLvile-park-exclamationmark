@@ -1,0 +1,102 @@
+/* family.h - the household: who lives with the player (owner: life; F1 part 1,
+ * LIFESIM_PLAN R4, R12, R13 + section 6 AMENDMENTS; add-only after F1).
+ *
+ * This is the data model only: the table, the cap by tier, the rules for
+ * who may join and in what role, the 'LIFE' chunk's family section and the
+ * strong versions of life.h's family_* / life_* functions. The dashboard
+ * and the add-member wizard are F2; babies, ageing and family events are
+ * F4; pets' uplift is F5; loss is F6. They add rows and flags here.
+ *
+ * A member is either a resident (id 0..DOOMO_MAX_RESIDENTS-1, someone who
+ * moved in) or a family pool member (PLAYAS_ID_FAMILY_FIRST..LAST, 1001..
+ * 1020: a person or pet who exists only in the household). Roles are
+ * chosen by the player, Sims style (any person may be a child, a parent, a
+ * sibling or a housemate), with two rules that are not a choice: a PARTNER
+ * must pass the life stage gate of LS0 (adults only, both ways, never
+ * kin; a minor is never a partner) and there is at most one.
+ *
+ * The cap counts members, not the player, and pets count: 3 at first, then
+ * 10 (GBA 6) after the game is completed and 20 (GBA 10) after New Game+
+ * (life_contract.h HOUSEHOLD_CAP, unlock ids UL_LIFE_HOUSEHOLD_T1 / T2).
+ * The GBA table is sized for its own cap (10), the others for 20.
+ *
+ * Nothing is written to the save while the household is empty, so an
+ * island without a family loads and saves byte for byte as before.
+ */
+#ifndef DOOMO_FAMILY_H
+#define DOOMO_FAMILY_H
+
+#include "types.h"
+#include "life.h"
+#include "life_contract.h"
+
+/* Roles (saved; add-only). */
+enum {
+    FAMROLE_NONE = 0,
+    FAMROLE_PARTNER,        /* the life partner (at most one; adults only)   */
+    FAMROLE_CHILD,
+    FAMROLE_PARENT,
+    FAMROLE_SIBLING,
+    FAMROLE_GRANDPARENT,
+    FAMROLE_HOUSEMATE,      /* a friend who lives with you                   */
+    FAMROLE_PET,            /* a pet (pool ids only); counts toward the cap  */
+    FAMROLE_COUNT
+};
+
+/* Results of family_add() / family_set_role() (0 or a member's slot is OK). */
+enum {
+    FAM_ERR_FULL = -1,      /* the household is at its cap                   */
+    FAM_ERR_DUP = -2,       /* already a member                              */
+    FAM_ERR_ID = -3,        /* no such resident / pool id, or not alive      */
+    FAM_ERR_ROLE = -4,      /* bad role, a pet that is not a pool member,    */
+                            /* or a second partner                           */
+    FAM_ERR_GATE = -5       /* the partner failed the LS0 life stage gate    */
+};
+
+typedef struct FamilyMember {
+    uint16_t id;        /* resident id, or pool id 1001..1020                */
+    uint8_t  role;      /* FAMROLE_*                                         */
+    uint8_t  stage;     /* LIFE_* (a resident's is read from the sim when
+                           the member is added)                              */
+    uint8_t  flags;     /* reserved (F4 / F5 / F6), 0                        */
+    uint8_t  spare;     /* 0                                                 */
+    uint16_t since;     /* town day when the member joined (saturates)       */
+} FamilyMember;         /* 8 bytes, as saved */
+
+#define FAMILY_SEC_HEAD 2u          /* the section: count u8, reserved u8     */
+#define FAMILY_SZ_WORST (FAMILY_SEC_HEAD + 8u * HOUSEHOLD_CAP_MAX)
+#ifdef DOOMO_PLATFORM_GBA
+#define FAMILY_MAX HOUSEHOLD_CAP_SMALL_T2
+#else
+#define FAMILY_MAX HOUSEHOLD_CAP_FULL_T2
+#endif
+
+/* The cap of the household now (tier from the unlocks; the GBA's smaller
+ * numbers on the GBA). */
+int  family_cap(void);
+/* Is id a household id at all (a resident slot or a pool id)? */
+int  family_id_ok(int id);
+/* Add a member. stage is only read for a pool member (a resident's comes
+ * from the sim). Returns the slot (>= 0) or FAM_ERR_*. */
+int  family_add(int id, int role, int stage);
+/* Remove a member; 1 if it was one. */
+int  family_remove(int id);
+/* Change a member's role under the same rules as family_add; 0 or FAM_ERR_*. */
+int  family_set_role(int id, int role);
+/* The member record of id, or NULL. */
+const FamilyMember *family_find(int id);
+/* A member's role, FAMROLE_NONE if id is not a member. */
+int  family_role(int id);
+/* How many members have this role. */
+int  family_count_role(int role);
+/* The first free pool id (1001..), or -1 when every pool id in range is used. */
+int  family_pool_alloc(void);
+/* Forget the household (a new town does this through the LIFE chunk). */
+void family_clear(void);
+
+/* The LIFE chunk's family section (life.c's table). */
+uint32_t family_save_size(void);
+uint32_t family_save(uint8_t *dst, uint32_t cap);
+int      family_load(const uint8_t *src, uint32_t len);
+
+#endif

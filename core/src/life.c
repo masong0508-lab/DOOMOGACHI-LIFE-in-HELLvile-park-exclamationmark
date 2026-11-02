@@ -12,6 +12,7 @@
 #include "doomo/doomo.h"
 #include "doomo/life.h"
 #include "doomo/life_contract.h"
+#include "doomo/family.h"
 #include "doomo/save_budget.h"
 
 typedef struct LifeSection {
@@ -24,6 +25,7 @@ typedef struct LifeSection {
 
 static const LifeSection sections[] = {
     { LIFE_SEC_NEWS, 1, sim_news_save_size, sim_news_save, sim_news_load, sim_news_clear },
+    { LIFE_SEC_FAMILY, 1, family_save_size, family_save, family_load, family_clear },   /* F1 */
 };
 #define NSEC ((int)DOOMO_COUNTOF(sections))
 
