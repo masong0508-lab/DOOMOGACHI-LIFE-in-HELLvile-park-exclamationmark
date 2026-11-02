@@ -16,7 +16,7 @@ j3_title_music		9	20	U2: title -> Options music volume -1 -> title (target 5)
 j4_combat_music		11	26	U3a: combat pause -> music volume -1 -> fight (target 4)
 j5_title_lang		5	12	U5: title -> language Spanish -> title
 j6_ow_save		9	21	U3b: story overworld pause -> Save -> walk on
-j7_island_save		7	56	U3c: island START menu -> Save -> hub (also the life "save" row; target 3)
+j7_island_save		3	56	U3c: START, START quick-saves from the island menu (met: 2; the Save/Load row still works)
 j8_ow_title		5	13	U3b: story overworld -> title screen
 j9_new_island		9	110	U6: boot -> new Classic island hub (target 10, met by U6e)
 life_new_island		5	62	U6/LS6: New Island screen -> hub

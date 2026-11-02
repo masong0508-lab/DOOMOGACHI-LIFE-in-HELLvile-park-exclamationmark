@@ -240,7 +240,7 @@ before it begins.
 | J4 combat pause -> music volume -1 -> back in the fight | 11 | 1 | 4 (U3a) |
 | J5 title -> language to Spanish -> title | 5 | 1 | (U5) |
 | J6 story overworld: save from the pause menu, walk on | 9 | 0 | (U3b) |
-| J7 island: save from the START menu, back to the hub | 7 | 1 | 3 (U3c quick save) |
+| J7 island: save from the START menu, back to the hub | 2 | 1 | 3 (U3c quick save: done, START twice) |
 | J8 story overworld -> title screen | 5 | 1 | (U3b) |
 | J9 boot -> a new Classic island's hub | 11 | 1 | 10 (U6c) |
 | new island: New Island screen -> hub | 7 | 1 | (U6/LS6) |
@@ -249,7 +249,7 @@ before it begins.
 | feed a citizen found by name | 6 + name | 3 | (LS-QA) |
 | introduce two citizens found by name | 13 + 2 names | 4 | (LS-QA) |
 | collect today's rent | 4 | 0 | 0 (LS-QA: automatic) |
-| save the island | 7 (= J7) | 1 | 3 (U3c) |
+| save the island | 2 (= J7) | 1 | 3 (U3c: done) |
 | open the news | 1 | 1 | |
 | open the Doomogachi | 1 | 1 | |
 | add a household member | reserved | | 6 (F2) |

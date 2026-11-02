@@ -325,6 +325,26 @@ static void build_menu(const Loc *L)
 /* callbacks                                                                */
 static void cb_title(int yes) { if (yes) scene_set(&SCENE_TITLE, 0); }
 
+/* U3c: START inside the START menu saves the island to its slot and closes the menu
+ * (J7: START, START = 2 presses, was 7). No row moved, so every menu script still lines up. */
+static void quick_save(void)
+{
+    char buf[96];
+    if (save_game(1)) {
+        fp_autosave_bind(1);
+        I.menu_open = 0;
+        doomo_snprintf(buf, sizeof(buf), STR_ICON_HEART " Saved! (%u KB)", (unsigned)((save_last_size() + 1023) / 1024));
+        ui_toast(buf);
+        audio_sfx(SFX_SPARKLE);
+        fp_fx_burst(fp_sw() / 2, fp_sh() / 2, FX_HEART, 12);
+    } else {
+        audio_sfx(SFX_ERROR);
+        doomo_snprintf(buf, sizeof(buf), "Couldn't save: %s. Your old save is safe.",
+                       save_last_error()[0] ? save_last_error() : "unknown error");
+        ui_say(-1, buf);
+    }
+}
+
 static void cb_name_island(int ok)
 {
     if (!ok) return;
@@ -732,6 +752,7 @@ static void menu_update(void)
     if (I.esel < I.etop) I.etop = I.esel;
     if (I.esel >= I.etop + vis) I.etop = I.esel - vis + 1;
     if (btn_pressed(BTN_A)) { run_entry(&isl()->ent[I.esel]); return; }
+    if (btn_pressed(BTN_START) && I.mloc == &menu_loc && fp_is_freeplay()) { quick_save(); return; }
     if (btn_pressed(BTN_B)) { I.menu_open = 0; audio_sfx(SFX_CANCEL); }
 }
 

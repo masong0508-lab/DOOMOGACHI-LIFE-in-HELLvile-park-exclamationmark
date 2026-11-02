@@ -1,5 +1,5 @@
-# J7 (M0): save the free-play island from its START menu and get back to
-# the hub. Budget: budgets.tsv j7_island_save.
+# J7 (M0, U3c): save the free-play island from its START menu and get back to
+# the hub. Budget: budgets.tsv j7_island_save. U3c: START in the open START menu quick-saves.
 scene NEW_ISLAND
 wait 10
 press A
@@ -17,17 +17,9 @@ wait 30
 journey-begin j7_island_save
 press START
 wait 10
-press DOWN
-press DOWN
-press DOWN
-press A
-wait 1
-expect-scene SAVELOAD
-press A
+press START
 wait 30
 expect-save 1
-press B
-wait 1
 expect-scene ISLAND
 journey-end j7_island_save
 shot saved

@@ -13,6 +13,8 @@ reviewed, then landed on `claude/nice-allen-gr6czm`.
   starts on "Maybe later": J9 13 -> 11 presses, New Island -> hub 8 -> 7. Budgets lowered (j9, life_new_island, j10, j11).
   U6e (2026-11-02): the island welcome's controls hint is a toast, not a second dialogue box: J9 11 -> 9 presses,
   New Island -> hub 7 -> 5. `creator_hellvile` passes (checked on the tree with PA4 + U6c); no U6d patch was needed.
+  U3c (2026-11-02): START pressed inside the island's START menu quick-saves slot 1 and closes the menu (no row moved):
+  J7 7 -> 2 presses, budget 3. `make -C core test` 677/677 on this tree (also confirms F4 parts 1-2, F6 and the life stage forms build and pass).
   PA4: plot content now offers itself only to the hero (auto story beats, plot talk, side spots, nest fights).
 - Script: style guide + locks (P0), Chapters 1-4 + epilogue rewritten (W1-W4),
   the 49 old quests rewritten (W5).
@@ -92,7 +94,7 @@ a package can only start once the ones it depends on (see the sections below) ha
 ### S: small
 - Life sim: PA0 follow-ups, U1g (GBA config sector),
   E11 (mature filter + 18+ confirm), LS-IN (press latch), PA9 (romance/mature
-  gates for heroes), U3b (story pause), U3c (island START menu), PA3b (Spanish
+  gates for heroes), U3b (story pause), PA3b (Spanish
   gender fixes), PA8 (house/activities follow the avatar), E10 (Dreamcast pack
   adapter), E12 (endings integration), Z1 (joint gate).
 - Script: W15 (Bonejangles origin; needs your yes/no).
@@ -254,3 +256,4 @@ safe to run twice, no network). Use a NEW name for every patch. One-liner (repla
 | U6b | `doomo-u6b-quick-island-nov02c` | `U6b: quick island start (J9 13 -> 11 presses)` | this patch |
 | U6c | `doomo-u6c-continue-island-nov02d` | `U6c: Continue row also leads with a saved island (J9 target 10)` | this patch: with no story save but an island save, the lead row continues the island; try one fewer welcome-dialog press |
 | U6d | (none) | (no patch) | `creator_hellvile` already passes; the note is dropped by U6e |
+| U3c | `doomo-u3c-island-quicksave-nov02g` | `U3c: START, START quick-saves the island (J7 7 -> 2 presses)` | this patch |
