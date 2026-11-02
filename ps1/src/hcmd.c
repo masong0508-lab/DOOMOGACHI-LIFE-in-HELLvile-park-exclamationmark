@@ -20,6 +20,7 @@
  * works (and fails cleanly) in bring-up builds.
  */
 #include <string.h>
+#include <stdlib.h>
 #include <psxapi.h>
 #include <psxgpu.h>
 #include "ps1.h"
@@ -39,7 +40,18 @@ extern int ui_text_entry_feed(int c) WEAKFN;
 /* --- H3: the story / house runner commands (SPEC R20, C2, C18) --- */
 #if !defined(DOOMO_ENGINE_TEST) && defined(DOOMO_HAVE_CORE)
 #include "../../core/src/ui_internal.h"     /* UiDialogDebug (expect-text) */
+#include "doomo/items.h"
+#include "doomo/sim.h"
+#include "doomo/lang.h"
 extern int story_flag(int f) WEAKFN;
+extern int inv_count(int item) WEAKFN;
+extern int inv_add(int item, int n) WEAKFN;
+extern int rel_kind(int a, int b) WEAKFN;
+extern int sim_problem_for(int resident_id) WEAKFN;
+extern int sim_problem_raise(int resident, int kind, int other, int item) WEAKFN;
+extern int lang_find(const char *code) WEAKFN;
+extern int lang_get(void) WEAKFN;
+extern void opt_set(int opt, int value) WEAKFN;
 extern uint32_t story_fingerprint(void) WEAKFN;
 extern void ui_dialog_debug(UiDialogDebug *o) WEAKFN;
 #endif
@@ -115,6 +127,113 @@ static const char *save_err(void)
     const char *e = HAVE(save_last_error) ? save_last_error() : NULL;
     return e ? e : "?";
 }
+#endif
+
+#if !defined(DOOMO_ENGINE_TEST) && defined(DOOMO_HAVE_CORE)
+/* --- M0 journeys on the disc: the native runner's item / problem / expect-rel /
+ *     expect-money / lang setups and checks (core/native/runner_main.c). The harness
+ *     sends the rest of the script line as `arg`; w[] are its words. --- */
+static int is_digit(char c) { return c >= '0' && c <= '9'; }
+
+static int res_named(const char *nm)
+{
+    int i;
+    for (i = 0; i < DOOMO_MAX_RESIDENTS; i++)
+        if (doomo_town.res[i].status != RES_EMPTY && !strcmp(doomo_town.res[i].name, nm)) return i;
+    return -1;
+}
+
+static int item_named(const char *nm)
+{
+    int i;
+    if (is_digit(nm[0])) return atoi(nm);
+    for (i = 1; i < ITEM_COUNT; i++)
+        if (doomo_items[i].name && !strcmp(doomo_items[i].name, nm)) return i;
+    return -1;
+}
+
+static int problem_kind(const char *nm)
+{
+    static const struct { const char *n; int k; } kinds[] = {
+        { "hungry", PROB_HUNGRY }, { "dirty", PROB_DIRTY }, { "bored", PROB_BORED },
+        { "sick", PROB_SICK }, { "item", PROB_WANTS_ITEM }, { "fight", PROB_FIGHT },
+        { "lonely", PROB_LONELY }
+    };
+    unsigned i;
+    if (is_digit(nm[0])) return atoi(nm);
+    for (i = 0; i < sizeof(kinds) / sizeof(kinds[0]); i++)
+        if (!strcmp(kinds[i].n, nm)) return kinds[i].k;
+    return -1;
+}
+
+/* split a copy of `a` into up to 4 words; returns the count */
+static int words(const char *a, char *buf, size_t bn, char *w[4])
+{
+    int n = 0;
+    strncpy(buf, a, bn - 1);
+    buf[bn - 1] = 0;
+    while (*buf && n < 4) {
+        while (*buf == ' ') *buf++ = 0;
+        if (!*buf) break;
+        w[n++] = buf;
+        while (*buf && *buf != ' ') buf++;
+    }
+    return n;
+}
+
+/* returns 1 if it handled `c` (and replied) */
+static int run_m0(const char *c, const char *a)
+{
+    char buf[64], *w[4] = { "", "", "", "" };
+    int n = words(a, buf, sizeof(buf), w);
+    if (!strcmp(c, "expect-money")) {
+        uint32_t min = (uint32_t)strtoul(w[0][0] ? w[0] : "0", NULL, 0);
+        reply(doomo_town.money >= min, doomo_town.money >= min ? "purse ok" : "purse too small", NULL);
+    } else if (!strcmp(c, "item") || !strcmp(c, "expect-item")) {
+        int it = item_named(w[0]), k = n > 1 ? atoi(w[1]) : 1;
+        if (!HAVE(inv_add) || !HAVE(inv_count) || it <= ITEM_NONE || it >= ITEM_COUNT) {
+            reply(0, "unknown item", w[0]);
+        } else if (c[0] == 'i') {
+            inv_add(it, k);
+            reply(1, "item", w[0]);
+        } else {
+            reply(inv_count(it) == k, "in the bag:", w[0]);
+        }
+    } else if (!strcmp(c, "problem") || !strcmp(c, "expect-problem")) {
+        int who = res_named(w[0]);
+        if (who < 0 || !HAVE(sim_problem_for) || !HAVE(sim_problem_raise)) {
+            reply(0, "no citizen named", w[0]);
+        } else if (c[0] == 'p') {
+            int kind = problem_kind(w[1]), it = n > 2 ? item_named(w[2]) : 0;
+            if (kind <= PROB_NONE || kind >= PROB_COUNT || it < 0 || it >= ITEM_COUNT)
+                reply(0, "bad problem", w[1]);
+            else
+                reply(sim_problem_raise(who, kind, 0xFFFF, it) >= 0, "problem", w[0]);
+        } else {
+            int want = n > 1 ? atoi(w[1]) != 0 : 1;
+            reply((sim_problem_for(who) >= 0) == want, want ? "no open problem for" : "a problem is still open for", w[0]);
+        }
+    } else if (!strcmp(c, "expect-rel")) {
+        int x = res_named(w[0]), y = res_named(w[1]), want = n > 2 ? atoi(w[2]) != 0 : 1;
+        if (x < 0 || y < 0 || !HAVE(rel_kind))
+            reply(0, "expect-rel needs two citizens' names:", w[1]);
+        else
+            reply((rel_kind(x, y) >= 0) == want, want ? "never met:" : "already know each other:", w[0]);
+    } else if (!strcmp(c, "lang") || !strcmp(c, "expect-lang")) {
+        int found = HAVE(lang_find) ? lang_find(w[0]) : -1;
+        if (found < 0)
+            reply(0, "unknown language code", w[0]);
+        else if (c[0] == 'l' && HAVE(opt_set)) {
+            opt_set(OPT_LANGUAGE, found);
+            reply(1, "lang", w[0]);
+        } else
+            reply(HAVE(lang_get) && lang_get() == found, "language is", w[0]);
+    } else {
+        return 0;
+    }
+    return 1;
+}
+/* --- end M0 --- */
 #endif
 
 static void run(void)
@@ -207,6 +326,8 @@ static void run(void)
         doomo_town.money = (uint32_t)n;
         reply(1, "money", a);
     /* --- end H3 --- */
+    } else if (run_m0(c, a)) {
+        /* answered */
     } else {
         reply(0, "unknown command", c);
     }

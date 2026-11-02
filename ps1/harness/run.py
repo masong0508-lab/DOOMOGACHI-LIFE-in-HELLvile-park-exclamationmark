@@ -38,6 +38,14 @@ when a scene renders below 30 fps:
     room-test N        SCENE_HOME draws house test layout N (room.c)
     expect-fps MIN NAME  fail if the last `fpsend NAME` measured below MIN
   Journeys (core/tests/journeys/*.txt play unchanged, UX press meter):
+    item NAME [N] / expect-item NAME N      bag: add N (default 1) / fail unless N
+    problem WHO KIND [ITEM] / expect-problem WHO [0|1]   raise / check a citizen's problem
+    expect-rel WHO OTHER [0|1]   fail unless the two know each other (1) / never met (0)
+    expect-money MIN   fail unless the purse holds at least MIN H$
+    lang CODE / expect-lang CODE   set / check the language
+    expect-presses NAME [<=] N     fail unless the last journey NAME took at most N presses
+                    (all of these run in the game through the g_hcmd mailbox,
+                    with the native runner's meaning; src/hcmd.c)
     journey-begin N / journey-end N   count the `press` lines between them
                     and fail the script (before the emulator starts) when
                     the count is over presses in budgets.tsv's row N
@@ -220,6 +228,7 @@ def compile_script(lines, lockstep=True):
     Returns (commands, warnings, expected TTY texts)."""
     cmds, warnings, expect = ([] if lockstep else ["waitframe 2"]), [], []
     jname, jpress = None, 0
+    jdone = {}
     for ln, line in enumerate(lines, 1):
         parts = split_words(line)
         if not parts:
@@ -286,7 +295,20 @@ def compile_script(lines, lockstep=True):
                 raise SystemExit("line %d: journey %s took %d presses, budget %d"
                                  % (ln, arg, jpress, budget))
             cmds.append(hcmd("log", 0, "journey: %s presses %d budget %d" % (arg, jpress, budget)))
+            jdone[arg] = jpress
             jname = None
+        elif op == "expect-presses":
+            # expect-presses NAME [<=] N: checked here, from the presses counted above
+            want = int(parts[-1]) if len(parts) > 2 else -1
+            got = jpress if jname == arg else jdone.get(arg, -1)
+            if got < 0 or want < 0:
+                raise SystemExit("line %d: expect-presses needs a measured journey and a count, got %s" % (ln, arg))
+            if got > want:
+                raise SystemExit("line %d: %d presses, more than %d, in journey %s" % (ln, got, want, arg))
+        elif op in ("item", "expect-item", "problem", "expect-problem", "expect-rel",
+                    "expect-money", "lang", "expect-lang"):
+            # the whole rest of the line goes to the game (63 chars), split there
+            cmds.append(hcmd(op, 0, " ".join(parts[1:])[:63]))
         elif op == "no-stubs":
             cmds.append("mark no-stubs line %d" % ln)
         elif op == "expect-log":

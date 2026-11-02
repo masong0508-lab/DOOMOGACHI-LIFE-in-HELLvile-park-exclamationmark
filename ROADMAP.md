@@ -281,6 +281,7 @@ Worked example (U6c):
 | PS1 | `doomo-ps1-journeys-nov02j` | `PS1: harness plays the press journeys (J6, J7) on the disc` | PS1 focus step 2: `run.py` handles `journey-begin/end` and checks `budgets.tsv` presses; game harness target runs J6 + J7; not yet run on PCSX-Redux |
 | PS1 | `doomo-ps1-h3-reconcile-nov02k` | `docs: reconcile H3 (PS1 room shells) as done` | docs only: H3 leaves the open lists |
 | docs | `doomo-roadmap-done-nov02l` | `docs: roadmap records PA2, U6, PS1 journeys, H3 as done` | docs only (marker: roadmap-done-nov02l) |
+| PS1 | `doomo-ps1-journeys-all-nov02m` | `PS1: harness plays 15 core journeys (item, problem, rel, money, lang)` | PS1 focus step 2: mailbox + run.py learn the missing journey commands; not yet run on PCSX-Redux |
 
 How the owner applies patches (so nobody has to ask again): from Termux, one pasted line per patch, oldest first, each line
 is the full template above (`cd` repo, `git pull --ff-only`, `rm -rf ~/vs && mkdir ~/vs`, `unzip -qo` the zip from

@@ -65,3 +65,9 @@ Step 2 started (2026-11-02): `ps1/harness/run.py` now understands `journey-begin
 files play on the disc unchanged and fail before the emulator starts if the presses go over `budgets.tsv`. The game
 `harness` target runs J6 and J7. Still to do: run them on PCSX-Redux (nothing here was run on the emulator), then
 J9, rent, feed (they need the boot flow or typed names, which the PS1 harness has not been checked with).
+
+Step 2 widened (2026-11-02, patch doomo-ps1-journeys-all-nov02m): the PS1 mailbox now also runs `item`, `expect-item`, `problem`,
+`expect-problem`, `expect-rel`, `expect-money`, `lang` and `expect-lang`, and `run.py` checks `expect-presses`. The game
+`harness` target plays 15 core journeys on the disc (j2, j4, j6, j7, j8, j10, j11 and the eight `life_*`). Left out: j1, j3,
+j5, j9, which start at BOOT. Written and checked on the host only (hcmd.c syntax-checked, every journey compiles in run.py);
+nothing has run on PCSX-Redux, so the Rent / Feed / Introduce / Help rows stay "Missing" until that run passes.

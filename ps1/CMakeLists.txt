@@ -279,6 +279,16 @@ if(DOOMO_HOST_CC)
 else()
 	set(_adpcm "")
 endif()
+# The core press journeys (core/tests/journeys, UX budgets) that start from a scene, not from
+# the boot splash: run.py checks their press budgets and plays them on the disc.
+# Left out: j1, j3, j5, j9 start at BOOT (the disc boots through the card splash and the launcher).
+set(_journeys "")
+foreach(_j j2_continue j4_combat_music j6_ow_save j7_island_save j8_ow_title j10_family j11_family_care
+           life_new_island life_news life_pet life_rent life_feed life_help_next life_introduce life_missing_item)
+	list(APPEND _journeys
+		COMMAND ${_run} --exe ${_exe} --cue ${_cue} --script ${CORE_DIR}/tests/journeys/${_j}.txt
+		        --out ${_shots}/journey_${_j})
+endforeach()
 if(DOOMO_ENGINE_TEST)
 	add_custom_target(harness
 		${_adpcm}
@@ -307,10 +317,7 @@ else()
 		        --out ${_shots}/core_ui_gallery
 		COMMAND ${_run} --exe ${_exe} --cue ${_cue} --script ${CORE_DIR}/tests/scripts/saves.txt
 		        --out ${_shots}/core_saves
-		COMMAND ${_run} --exe ${_exe} --cue ${_cue} --script ${CORE_DIR}/tests/journeys/j6_ow_save.txt
-		        --out ${_shots}/journey_j6
-		COMMAND ${_run} --exe ${_exe} --cue ${_cue} --script ${CORE_DIR}/tests/journeys/j7_island_save.txt
-		        --out ${_shots}/journey_j7
+		${_journeys}
 		DEPENDS disc
 		COMMENT "PCSX-Redux harness: game"
 		VERBATIM USES_TERMINAL)
