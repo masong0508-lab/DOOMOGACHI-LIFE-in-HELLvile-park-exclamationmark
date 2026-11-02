@@ -16,6 +16,7 @@
 #include "doomo/camfx.h"
 #include "doomo/txt.h"
 #include "doomo/family.h"
+#include "doomo/playas.h"
 
 OwState ow;
 int ow_bb_count;                        /* ow_bb = the shared doomo_frame_bb */
@@ -500,7 +501,7 @@ static void find_interactables(void)
     for (i = 0; i < ow_npc_count; i++) {
         const OwNpc *n = &ow_npcs[i];
         int32_t ddx = n->x - ow.px, ddy = n->y - ow.py, d;
-        if (n->kind != NK_RESIDENT) continue;
+        if (n->kind != NK_RESIDENT || n->id == playas_avatar()) continue;
         if (ddx > 64 * OWQ || ddx < -64 * OWQ || ddy > 64 * OWQ || ddy < -64 * OWQ) continue;
         d = ddx * ddx + ddy * ddy;
         /* prefer whoever is in front */
@@ -725,6 +726,68 @@ static void pause_update(void)
 /* ---- update / draw ------------------------------------------------------------------ */
 static int music_tick;
 
+/* ---- PA4: the play-as handoff (docs/PLAYAS.md) -------------------------------
+ * Whoever switches the avatar (the L/R ring below, SCENE_PLAYAS, the family
+ * screen), the overworld notices the change on its next frame: the hero is
+ * left standing where the switch happened (playas_set_hero_pos, saved in the
+ * PLAY chunk) and drawn as a stand-in; switching back walks the hero in from
+ * there with the camera panning. No state of its own is saved. */
+static int16_t pa_seen = -2;           /* the avatar last handled; -2 = none yet */
+static PlayasPos pa_hero;              /* a copy: playas_hero_pos() is 0 once the hero is back */
+static uint8_t pa_hero_ok;
+
+static const char *pa_name(int id)
+{
+    const FamilyIdentity *fi = family_identity(id);
+    const DoomoResident *r = town_res(id);
+    return fi ? fi->name : (r && r->name[0]) ? r->name : "?";
+}
+
+static void pa_update(void)
+{
+    int a = playas_avatar();
+    if (!ow.started || ow.visit) return;
+    if (pa_seen == -2) pa_seen = (int16_t)a;
+    if (a != pa_seen) {
+        if (pa_seen == PLAYAS_ID_HERO) {
+            playas_set_hero_pos(ow.px / OWQ, ow.py / OWQ, ow.map, ow.dir);     /* the hero stays here */
+        } else if (a == PLAYAS_ID_HERO && pa_hero_ok && pa_hero.map == ow.map) {
+            int32_t cx = ow.camx, cy = ow.camy;
+            place_player((int32_t)pa_hero.x * OWQ, (int32_t)pa_hero.y * OWQ);
+            ow.camx = cx;                                                       /* the camera pans over */
+            ow.camy = cy;
+            ow.dir = (uint8_t)(pa_hero.dir & 3);
+        }
+        if (a == PLAYAS_ID_HERO) pa_hero_ok = 0;
+        pa_seen = (int16_t)a;
+        ow_flash(PAL_WHITE, 6);
+        audio_sfx(SFX_SELECT);
+    }
+    if (a != PLAYAS_ID_HERO) pa_hero_ok = (uint8_t)playas_hero_pos(&pa_hero);
+}
+
+/* L = back to who you played before (or the hero), R = the switcher */
+static int pa_ring(void)
+{
+    int id;
+    if (ow.visit || !playas_available() || story_talking()) return 0;
+    if (btn_pressed(BTN_R)) {
+        audio_sfx(SFX_SELECT);
+        scene_push(&SCENE_PLAYAS, 0);
+        return 1;
+    }
+    if (btn_pressed(BTN_L)) {
+        id = playas_recent(0);
+        if (id == PLAYAS_ID_NONE && !playas_is_hero()) id = PLAYAS_ID_HERO;
+        if (id != PLAYAS_ID_NONE && playas_switch(id, PLAYAS_SWITCH_TAGIN)) {
+            ow_banner(pa_name(playas_avatar()));
+            return 1;
+        }
+        audio_sfx(SFX_CANCEL);
+    }
+    return 0;
+}
+
 static void story_update(void)
 {
     ow.t++;
@@ -737,7 +800,7 @@ static void story_update(void)
         start_story();
         return;
     }
-    if (!ow.started) return;
+    if (!ow.started) { pa_seen = -2; pa_hero_ok = 0; return; }
     if (story_pending.kind != PEND_NONE) {
         after_subscene();
         story_resume();
@@ -769,6 +832,8 @@ static void story_update(void)
         return;
     }
     if (btn_pressed(BTN_SELECT)) { ow.minimap ^= 1; audio_sfx(SFX_CURSOR); }
+    pa_update();
+    if (pa_ring()) return;
     player_update();
     if (scene_top() != &SCENE_STORY) return;       /* a door opened a scene */
     pet_update();
@@ -882,7 +947,13 @@ static void build_billboards(void)
         cy = ow.py / OW_CELL;
         z = ow_floor_h(cx, cy) * DOOMO_HEIGHT_STEP;
         if (!ow.moving && ((t / 20) & 1)) z += 2;        /* breathing */
-        add_bb(ow.px, ow.py, z, bodyspr_image(DOOMO_PLAYER_ID, ow.dir, f), BB_SHADOW, 1);
+        add_bb(ow.px, ow.py, z, bodyspr_image(playas_avatar(), ow.dir, f), BB_SHADOW, 1);
+    }
+    /* PA4: the hero, left where you switched away */
+    if (!ow.visit && !playas_is_hero() && pa_hero_ok && pa_hero.map == ow.map) {
+        int32_t hx = (int32_t)pa_hero.x * OWQ, hy = (int32_t)pa_hero.y * OWQ;
+        z = ow_floor_h(hx / OW_CELL, hy / OW_CELL) * DOOMO_HEIGHT_STEP;
+        add_bb(hx, hy, z, bodyspr_image(DOOMO_PLAYER_ID, pa_hero.dir & 3, 0), BB_SHADOW, 1);
     }
 }
 

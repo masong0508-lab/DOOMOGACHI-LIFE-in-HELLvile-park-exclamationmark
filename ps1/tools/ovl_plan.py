@@ -53,7 +53,7 @@ GROUPS = [
     ("combat",   r"levels(_\w+)?$|arena(_modes)?$|combat(_\w+)?$|actor(_\w+)?$|weld_gfx$"),
     ("workshop", r"workshop$|weld_game$"),
     ("island",   r"fp_island(_gfx)?$"),
-    ("freeplay", r"fp_(apartments|graveyard|newisland|news|options|resident|roster|saveload|shop|title|unlocks)$"),
+    ("freeplay", r"fp_(apartments|family|graveyard|newisland|news|options|resident|roster|saveload|shop|title|unlocks)$|playas_scene$"),
     # the story's cutscenes with their Grumbleguts renderer are a group of
     # their own: story.c only pushes SCENE_CUTSCENE (a scene edge), so the
     # story group stays under the slot with them out

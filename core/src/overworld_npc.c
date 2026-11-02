@@ -10,6 +10,7 @@
  * Everyone is a chibi bodyspr_image billboard; only on-screen citizens ask
  * the portrait cache for images.
  */
+#include "doomo/playas.h"
 #include "overworld_int.h"
 
 /* ow_npcs / ow_props live in the scene scratch (overworld_int.h) */
@@ -388,7 +389,7 @@ void ownpc_add_billboards(int32_t vx0, int32_t vy0, int32_t vx1, int32_t vy1)
         {
             const DoomoResident *r = town_res(n->id);
             int fl = BB_SHADOW;
-            if (!r) continue;
+            if (!r || n->id == playas_avatar()) continue;
             uint32_t tc = (uint32_t)ownpc_clock(n);          /* S1: frozen / 2x / still clocks */
             int32_t bx = n->x;
             if (r->status == RES_GHOST) fl |= BB_TRANSLUCENT;

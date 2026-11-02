@@ -20,7 +20,7 @@ only to the hero (PA4).
 | PA5 | W4 | `SCENE_PLAYAS`, the character switcher. **Landed (2 Nov 2026)**: `core/src/playas_scene.c`; PA4 pushes it from the L/R ring |
 | PA2 | W5 | the hero choice: SUNNY, MARVIN or your own (`hero.c`, `hero_preset`). **Presets + new-game default landed (2 Nov 2026)**: `core/src/hero.c`, `story.c default_player`; the creator's three-card first page landed (2 Nov 2026; card texts checked to fit 240 px) |
 | PA9 | W6 | `playas_romance_ok`: the hero rule on top of LS0's gate |
-| PA4 | W7 | the overworld handoff (tag-in, the hero NPC, the L/R ring) |
+| PA4 | W7 | the overworld handoff (tag-in, the hero NPC, the L/R ring). **Landed (2 Nov 2026)** in `overworld.c` (`pa_update`, `pa_ring`): L = back to the last avatar (or the hero), R = SCENE_PLAYAS; the hero stands where you left them and walks back in when you return. Not yet: plot content offered only to the hero, `PLAYAS_SWITCH_FADE` across maps, a family member's own body sprite (family ids draw the default body) |
 | PA6 | W8 | New life |
 | PA7, PA8 | W8 | play-as lines; house, activities and almanac follow the avatar |
 | PA10 | W10 | integration, the stress save, the ledgers |
