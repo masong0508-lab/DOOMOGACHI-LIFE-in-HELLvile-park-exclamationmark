@@ -1,6 +1,6 @@
 # DOOMOGACHI roadmap (what's left)
 
-Last updated 2026-11-01 (evening: F4 parts 1-2, E6a/E6b start). The decisions behind this list (tone, PG-21 register,
+Last updated 2026-11-01 (evening: F4 parts 1-2, F6 core, life stage forms, E6a/E6b start). The decisions behind this list (tone, PG-21 register,
 show canon, life-sim answers, 32 MB GBA cartridge) are summarised at the end.
 Package IDs match the planning files; each package is built in its own worktree,
 reviewed, then landed on `claude/nice-allen-gr6czm`.
@@ -45,8 +45,16 @@ reviewed, then landed on `claude/nice-allen-gr6czm`.
   `day_rollover`, progress in the low 5 bits of `FamilyMember.flags`), residents mirror the sim's stage, pets and adults do not age.
 - Life sim F4 part 2 (births + toast): one "grew up!" toast per member that changes stage; `family_birth()` makes a BABY pool member
   with the CHILD role (needs the player's partner and room under the cap; `FAM_ERR_NOPARTNER`). Still to do in F4: family events,
-  the birth/growing-up UI (F2's wizard), old age (F6). F4 parts 1 and 2 were written without compiling or testing: build and run
+  the birth/growing-up UI (F2's wizard), old age (F6). F4 parts 1 and 2, F6 and the life stage forms were written without compiling or testing: build and run
   `make -C core test` before relying on them.
+- Life sim F6 (loss), core part: pool members can be lost: neglect (`family_care()` resets the count, a warning at 4 days, lost at 7),
+  old age (a pool ELDER passes after 31 days in the household), `family_lose(id, cause)`, a memorial of the newest 18 losses
+  (`family_memorial*()`), the LIFE chunk's LOSS section, `family_loss_set()` for the future "Loss" option (U0). A child is never lost
+  (R5): minors only ever "move away". Still to do: the graveyard / memorial screen, the care-all UI (F2) that calls
+  `family_care()`, `life_ending_facts().neglect_deaths` (LS5), a resident member's death in the sim, pets' own needs (F5).
+- Life stage forms (F4): `look_for_stage()` (`core/src/portrait_age.c`): baby to elder body and face proportions on every portrait,
+  body sprite and fighter image (docs/PORTRAIT.md "Life stages"). Still to do: baby outfits, a baby body shape, elder stoop and
+  wrinkles, and a look on real hardware.
 - Script E6a/E6b (started): PG-21 adult beats in Ch1-2 added so far: Hattie's "private shows" bit (`ch1/ep14.dsc`) and Vex's
   invoice line (`ch2/ep21.dsc`). More adult-only beats for Ch1-2 remain; run `make -C core story-check` after adding them.
 - Life sim wave 1: shared registry/contracts incl. 15 endings, security code,

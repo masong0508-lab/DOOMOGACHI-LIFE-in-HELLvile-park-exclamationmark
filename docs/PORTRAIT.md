@@ -288,3 +288,32 @@ $B/portrait_sheet --out DIR --bust LIST [--fig]     # e.g. --bust species
 3. Run `make -C core unit`. `portrait_every_catalog_option_is_visible`
    fails if the new option renders the same as another. Then look at
    `opt_<list>.png`.
+
+## Life stages: body and face forms by age (F4)
+
+`look_for_stage(in, stage, out)` (`core/src/portrait_age.c`, declared in
+`portrait.h`) gives the look to DRAW for a life stage. The saved look never
+changes; a baby who grows up gets the same face back at adult proportions.
+It only moves fields the renderer already has, so every species, body type
+and outfit keeps working, and the portrait cache (keyed by the look's hash)
+holds one image per stage with no other change.
+
+| Stage | Height | Build | Head | Eyes | Nose / mouth | Else |
+|---|---|---|---|---|---|---|
+| BABY | 0 | (build + 13) / 2, round | 15 | at least 13 | nose at most 1, mouth at most 3 | blush, no scar, no fangs, no beard |
+| TODDLER | at most 3 | (build + 11) / 2 | at least 14 | at least 12 | nose at most 2, mouth at most 5 | blush, no scar, no fangs, no beard |
+| CHILD | 3..6 | (build + 8) / 2 | at least 11 | at least 10 | nose at most 4, mouth at most 8 | blush, fangs at most 1, no beard |
+| TEEN | 1..12 | as saved | at least 8 | at least 8 | as saved | fangs at most 2, no beard |
+| ADULT | as saved | | | | | |
+| ELDER | one shorter | as saved | as saved | as saved | nose + 2 | silver hair, white highlight |
+
+`portrait_image`, `bodyspr_image` and `fighter_image` apply it by the
+resident's own stage (`RES_STAGE`); for a look you hold yourself (a family
+pool member from `family_resident()`, the creator preview) call
+`look_for_stage()` or `figure_image_stage()`. `family_age_daily()` calls
+`portrait_invalidate()` for a member that changed stage. Hair, outfit, horns,
+wings and species are never touched. Not yet done: baby-specific outfits
+(an onesie), a dedicated baby body shape (a swaddle), wrinkles and a stoop
+for ELDER (BODY_HUNCHED is the player's choice), and a look at the Q4
+proportions of each stage on real hardware.
+

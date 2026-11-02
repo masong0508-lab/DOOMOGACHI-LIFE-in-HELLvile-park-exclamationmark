@@ -892,10 +892,12 @@ const DoomoImage *portrait_image(int resident_id, int expr)
 {
     int status;
     const DoomoResident *r;
+    DoomoLook al;
     cache_init();
     r = res_of(resident_id, &status);
     if (expr < 0 || expr >= EXPR_COUNT) expr = EXPR_NEUTRAL;
-    return animated(CK_PORTRAIT, resident_id, &r->look, status, expr);
+    look_for_stage(&r->look, RES_STAGE(r), &al);       /* F4: the face of their age */
+    return animated(CK_PORTRAIT, resident_id, &al, status, expr);
 }
 
 const DoomoImage *figure_image(const DoomoLook *l, int status, int expr)
@@ -924,13 +926,13 @@ const DoomoImage *bodyspr_image(int resident_id, int dir, int frame)
     r = res_of(resident_id, &status);
     dir &= 3;
     frame &= 3;
-    lh = look_hash(&r->look);
+    look_for_stage(&r->look, RES_STAGE(r), &L);        /* F4: the body of their age */
+    lh = look_hash(&L);
     key = (uint32_t)(dir | (frame << 2)) | ((uint32_t)status << 12);
     e = cache_find(CK_BODY, resident_id, key, lh, 0xFFFFFFFFu);
     if (e) return &e->img;
     job_reap();
     e = cache_alloc(CK_BODY, resident_id, key, lh, BODYSPR_W, BODYSPR_H, 0);
-    L = r->look;
     sanitize(&L);
     pctx_init(&c, &L, status == RES_EMPTY ? RES_ALIVE : status, EXPR_NEUTRAL, frame * 8);
     render_body_ctx(&c, dir, frame, (uint8_t *)e->img.pix);
@@ -950,13 +952,13 @@ const DoomoImage *fighter_image(int resident_id, int view, int anim, int weapon_
     view = DOOMO_CLAMP(view, 0, 4);
     anim = DOOMO_CLAMP(anim, 0, 6);
     if (weapon_frame < 0 || weapon_frame >= 64) weapon_frame = 0;
-    lh = look_hash(&r->look);
+    look_for_stage(&r->look, RES_STAGE(r), &L);        /* F4: the body of their age */
+    lh = look_hash(&L);
     key = (uint32_t)(view | (anim << 3) | (weapon_frame << 6)) | ((uint32_t)status << 12);
     e = cache_find(CK_FIGHTER, resident_id, key, lh, 0xFFFFFFFFu);
     if (e) return &e->img;
     job_reap();
     e = cache_alloc(CK_FIGHTER, resident_id, key, lh, FIGHTER_W, FIGHTER_H, 0);
-    L = r->look;
     sanitize(&L);
     pctx_init(&c, &L, status == RES_EMPTY ? RES_ALIVE : status, EXPR_NEUTRAL, anim * 8);
     render_fighter_ctx(&c, view, anim, weapon_frame, (uint8_t *)e->img.pix);

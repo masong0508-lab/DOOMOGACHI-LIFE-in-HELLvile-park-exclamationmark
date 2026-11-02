@@ -184,4 +184,67 @@ int  family_stage_progress(int id);
  * stage and the CHILD role. */
 int  family_birth(const char *name, int pronoun);
 
+/* ---- F6: loss ---------------------------------------------------------------
+ * A pool member (a person or a pet) can be lost; a resident member is the
+ * sim's, so family_lose() only takes them out of the household. Rules
+ * (SCRIPT_STYLE R5, R6: a child is never shown dying, grief is not a joke):
+ *   - NEGLECT: a pool member nobody cared for (family_care) for
+ *     FAMILY_NEGLECT_LOSS town days is lost; a warning toast comes at
+ *     FAMILY_NEGLECT_WARN. The count is the top 3 bits of FamilyMember.flags.
+ *     A MINOR is never lost this way: the count stops at FAMILY_NEGLECT_WARN + 2
+ *     and they stay sad.
+ *   - OLD AGE: a pool ELDER passes peacefully after FAMILY_ELDER_DAYS town
+ *     days in the household (counted in the age bits). Pets and minors do not.
+ *   - family_loss_set(0) turns loss off for the daily passes (the "Loss"
+ *     option U0 will add); an explicit family_lose() still works, but a minor
+ *     can only "move away" (FAMLOSS_GONE), never die.
+ * Every loss leaves a memorial (8 B, the newest FAMILY_MEMORIAL_MAX kept) for
+ * the graveyard screen and the endings. A saved memorial keeps no name: a
+ * resident's comes from the town, a pool member's is regenerated when it was
+ * never renamed (FAMILY_MEM_DEFNAME); otherwise family_memorial_name()
+ * returns 0 and the screen says "your child", "your pet", ... */
+enum { FAMLOSS_AGE = 1, FAMLOSS_ILLNESS, FAMLOSS_NEGLECT, FAMLOSS_DEMON, FAMLOSS_GONE,
+       FAMLOSS_COUNT };
+#define FAMILY_FL_NEGLECT       0xE0u
+#define FAMILY_NEGLECT_SHIFT    5
+#define FAMILY_NEGLECT_WARN     4
+#define FAMILY_NEGLECT_LOSS     7
+#define FAMILY_ELDER_DAYS       31
+#define FAMILY_MEMORIAL_MAX     18
+#define FAMILY_MEM_POOL         0x40u   /* bits: stage 0-2, role 3-5, pool, default name */
+#define FAMILY_MEM_DEFNAME      0x80u
+typedef struct FamilyMemorial {
+    uint16_t id;        /* resident id or pool id                           */
+    uint16_t day;       /* town day of the loss (saturates)                 */
+    uint8_t  cause;     /* FAMLOSS_*                                        */
+    uint8_t  bits;      /* stage | role << 3 | FAMILY_MEM_*                 */
+    uint8_t  spare[2];  /* 0                                                */
+} FamilyMemorial;       /* 8 bytes, as saved */
+#define FAMILY_LOSS_SZ_WORST (2u + 8u * FAMILY_MEMORIAL_MAX)
+
+void family_loss_set(int on);
+int  family_loss_enabled(void);
+/* Lose a member now (an event, a script, the daily passes). Shows a toast
+ * and leaves a memorial. 1 if it happened, 0 for a non-member or a refused
+ * cause (see above). */
+int  family_lose(int id, int cause);
+/* Someone cared for this member today (feed, play, talk): the count resets. */
+void family_care(int id);
+/* Once per town day, after family_age_daily(): neglect and old age. Returns
+ * how many members were lost. */
+int  family_loss_daily(void);
+/* The memorials, newest first. */
+int  family_memorial_count(void);
+const FamilyMemorial *family_memorial(int n);
+int  family_memorial_stage(int n);
+int  family_memorial_role(int n);
+/* Copy the name (DOOMO_NAME_LEN bytes) of the n-th memorial into out; 0 when
+ * it is not known. */
+int  family_memorial_name(int n, char *out);
+/* The LIFE chunk's LOSS section (life.c's table). */
+uint32_t family_loss_save_size(void);
+uint32_t family_loss_save(uint8_t *dst, uint32_t cap);
+int      family_loss_load(const uint8_t *src, uint32_t len);
+void     family_loss_clear(void);
+
 #endif

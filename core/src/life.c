@@ -27,6 +27,7 @@ static const LifeSection sections[] = {
     { LIFE_SEC_NEWS, 1, sim_news_save_size, sim_news_save, sim_news_load, sim_news_clear },
     { LIFE_SEC_FAMILY, 1, family_save_size, family_save, family_load, family_clear },   /* F1 */
     { LIFE_SEC_POOL, 1, family_pool_save_size, family_pool_save, family_pool_load, family_pool_reset },   /* F1 */
+    { LIFE_SEC_LOSS, 1, family_loss_save_size, family_loss_save, family_loss_load, family_loss_clear },   /* F6 */
 };
 #define NSEC ((int)DOOMO_COUNTOF(sections))
 

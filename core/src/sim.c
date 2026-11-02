@@ -678,6 +678,7 @@ static void day_rollover(void)
     sim_soul_daily();
     sim_news_daily();
     family_age_daily();                  /* F4: the household grows up */
+    family_loss_daily();                 /* F6: neglect and old age */
 }
 
 static void minute_step(void)

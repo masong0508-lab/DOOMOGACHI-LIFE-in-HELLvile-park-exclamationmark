@@ -11,9 +11,12 @@
 #include "doomo/font.h"
 #include "doomo/ui.h"
 #include "doomo/audio.h"
+#include "doomo/portrait.h"
 
 static FamilyMember fam_[FAMILY_MAX];
 static uint8_t fam_n_;
+static uint8_t neglect_grace_;   /* F6: skip the first neglect pass after a load */
+static uint8_t loss_on_ = 1;     /* F6: the daily loss passes */
 /* pool identities, by pool index (id - FAMILY_POOL_FIRST); a set bit = filled in */
 static FamilyIdentity ident_[FAMILY_MAX];
 static uint32_t ident_mask_;
@@ -280,6 +283,7 @@ int family_remove(int id)
 
 void family_clear(void)
 {
+    neglect_grace_ = 0;
     memset(fam_, 0, sizeof(fam_));
     fam_n_ = 0;
     family_pool_reset();
@@ -355,7 +359,10 @@ int family_age_daily(void)
         m->flags = (uint8_t)(m->flags & ~FAMILY_FL_AGE);
         aged_note_(m);
     }
-    for (i = 0; i < aged_n_; i++) aged_toast_(i);
+    for (i = 0; i < aged_n_; i++) {
+        aged_toast_(i);
+        portrait_invalidate(aged_id_[i]);     /* their old face and body are stale */
+    }
     return aged_n_;
 }
 
@@ -457,6 +464,7 @@ int family_load(const uint8_t *src, uint32_t len)
     memset(fam_, 0, sizeof(fam_));
     memcpy(fam_, tmp, (size_t)n * sizeof(tmp[0]));
     fam_n_ = (uint8_t)n;
+    neglect_grace_ = 1;                 /* F6: a load never costs a day of care */
     return 1;
 }
 
@@ -554,3 +562,198 @@ typedef char family_worst_fits_[(LIFE_SEC_HDR + FAMILY_SZ_WORST <= LIFE_SZ_LS1_P
 typedef char family_rec_is_8_[(sizeof(FamilyMember) == 8) ? 1 : -1];
 typedef char family_pool_fits_[(LIFE_SEC_HDR + FAMILY_SZ_WORST + LIFE_SEC_HDR + FAMILY_POOL_SZ_WORST + LIFE_SEC_HDR + LIFE_SZ_NEWS + 8u <= LIFE_SZ_LS1_PLAN) ? 1 : -1];
 typedef char family_ident_is_20_[(sizeof(FamilyIdentity) == 20) ? 1 : -1];
+
+/* ---- F6: loss (family.h) --------------------------------------------------------- */
+static FamilyMemorial mem_[FAMILY_MEMORIAL_MAX];   /* oldest first */
+static uint8_t mem_n_;
+
+void family_loss_set(int on) { loss_on_ = (uint8_t)(on != 0); }
+int  family_loss_enabled(void) { return loss_on_; }
+
+static int is_minor_member_(const FamilyMember *m)
+{
+    return m->role != FAMROLE_PET && LIFE_IS_MINOR(m->stage);
+}
+
+/* does the pool member keep the name its id would be generated with? */
+static int default_name_(int id)
+{
+    DoomoResident r;
+    const FamilyIdentity *f = ident_for(id);
+    if (f->seed != default_seed(id)) return 0;
+    resident_generate(&r, f->seed);
+    resident_sanitize(&r);
+    return strncmp(f->name, r.name, DOOMO_NAME_LEN) == 0;
+}
+
+static void memorial_add_(const FamilyMember *m, int cause)
+{
+    FamilyMemorial *e;
+    if (mem_n_ >= FAMILY_MEMORIAL_MAX) {
+        memmove(&mem_[0], &mem_[1], (size_t)(FAMILY_MEMORIAL_MAX - 1) * sizeof(mem_[0]));
+        mem_n_ = FAMILY_MEMORIAL_MAX - 1;
+    }
+    e = &mem_[mem_n_++];
+    memset(e, 0, sizeof(*e));
+    e->id = m->id;
+    e->day = (uint16_t)(doomo_town.day > 0xFFFFu ? 0xFFFFu : doomo_town.day);
+    e->cause = (uint8_t)cause;
+    e->bits = (uint8_t)((m->stage & 7) | ((m->role & 7) << 3));
+    if (is_pool(m->id)) {
+        e->bits |= FAMILY_MEM_POOL;
+        if (default_name_(m->id)) e->bits |= FAMILY_MEM_DEFNAME;
+    }
+}
+
+int family_lose(int id, int cause)
+{
+    char msg[64], name[DOOMO_NAME_LEN + 1];
+    int i = find_slot(id);
+    if (i < 0 || cause < FAMLOSS_AGE || cause >= FAMLOSS_COUNT) return 0;
+    if (is_minor_member_(&fam_[i]) && cause != FAMLOSS_GONE) return 0;   /* R5: never a child dying */
+    memcpy(name, member_name_(id), DOOMO_NAME_LEN);
+    name[DOOMO_NAME_LEN] = 0;
+    memorial_add_(&fam_[i], cause);
+    family_remove(id);
+    switch (cause) {
+    case FAMLOSS_AGE:      doomo_snprintf(msg, sizeof(msg), "%s passed peacefully. Rest well.", name); break;
+    case FAMLOSS_NEGLECT:  doomo_snprintf(msg, sizeof(msg), "%s didn't make it. Look after the others.", name); break;
+    case FAMLOSS_DEMON:    doomo_snprintf(msg, sizeof(msg), "%s was lost to Hell. They're missed.", name); break;
+    case FAMLOSS_GONE:     doomo_snprintf(msg, sizeof(msg), "%s moved away. Visit soon!", name); break;
+    default:               doomo_snprintf(msg, sizeof(msg), "%s passed away. They're missed.", name); break;
+    }
+    ui_toast(msg);
+    return 1;
+}
+
+void family_care(int id)
+{
+    int i = find_slot(id);
+    if (i < 0) return;
+    fam_[i].spare = 1;
+    fam_[i].flags = (uint8_t)(fam_[i].flags & ~FAMILY_FL_NEGLECT);
+}
+
+int family_loss_daily(void)
+{
+    int i, lost = 0;
+    if (neglect_grace_) {                       /* the day a save was loaded */
+        neglect_grace_ = 0;
+        for (i = 0; i < fam_n_; i++) fam_[i].spare = 0;
+        return 0;
+    }
+    for (i = 0; i < fam_n_; ) {
+        FamilyMember *m = &fam_[i];
+        int lvl, cap;
+        if (!is_pool(m->id)) { m->spare = 0; i++; continue; }   /* residents: the sim's */
+        /* neglect: the count rises a day at a time unless someone cared */
+        lvl = (int)((m->flags & FAMILY_FL_NEGLECT) >> FAMILY_NEGLECT_SHIFT);
+        cap = is_minor_member_(m) ? FAMILY_NEGLECT_WARN + 2 : FAMILY_NEGLECT_LOSS;
+        if (m->spare) lvl = 0;
+        else if (lvl < cap) lvl++;
+        m->spare = 0;
+        m->flags = (uint8_t)((m->flags & ~FAMILY_FL_NEGLECT) | ((unsigned)lvl << FAMILY_NEGLECT_SHIFT));
+        if (loss_on_ && lvl >= FAMILY_NEGLECT_LOSS) {
+            lost += family_lose(m->id, FAMLOSS_NEGLECT);   /* removes the slot: do not advance */
+            continue;
+        }
+        if (loss_on_ && lvl == FAMILY_NEGLECT_WARN) {
+            char msg[64];
+            doomo_snprintf(msg, sizeof(msg), STR_ICON_HEART " %s needs you! Go and care for them.",
+                           member_name_(m->id));
+            ui_toast(msg);
+        }
+        /* old age: a pool ELDER (not a pet) spends FAMILY_ELDER_DAYS here */
+        if (loss_on_ && m->role != FAMROLE_PET && m->stage == LIFE_ELDER) {
+            int p = (int)(m->flags & FAMILY_FL_AGE) + 1;
+            if (p >= FAMILY_ELDER_DAYS) {
+                lost += family_lose(m->id, FAMLOSS_AGE);
+                continue;
+            }
+            m->flags = (uint8_t)((m->flags & ~FAMILY_FL_AGE) | (unsigned)p);
+        }
+        i++;
+    }
+    return lost;
+}
+
+int family_memorial_count(void) { return mem_n_; }
+const FamilyMemorial *family_memorial(int n)
+{
+    return (n >= 0 && n < mem_n_) ? &mem_[mem_n_ - 1 - n] : NULL;
+}
+int family_memorial_stage(int n) { const FamilyMemorial *e = family_memorial(n); return e ? (e->bits & 7) : -1; }
+int family_memorial_role(int n)  { const FamilyMemorial *e = family_memorial(n); return e ? ((e->bits >> 3) & 7) : -1; }
+
+int family_memorial_name(int n, char *out)
+{
+    const FamilyMemorial *e = family_memorial(n);
+    DoomoResident r;
+    if (!e || !out) return 0;
+    memset(out, 0, DOOMO_NAME_LEN);
+    if (e->id < DOOMO_MAX_RESIDENTS) {
+        memcpy(out, town_res(e->id)->name, DOOMO_NAME_LEN);
+        return out[0] != 0;
+    }
+    if (!(e->bits & FAMILY_MEM_DEFNAME)) return 0;
+    resident_generate(&r, default_seed(e->id));
+    resident_sanitize(&r);
+    memcpy(out, r.name, DOOMO_NAME_LEN);
+    return out[0] != 0;
+}
+
+/* LOSS section: [count u8][reserved u8], then per memorial, oldest first,
+ * [id u16][day u16][cause u8][bits u8][0][0] */
+uint32_t family_loss_save_size(void) { return mem_n_ ? 2u + 8u * mem_n_ : 0u; }
+
+uint32_t family_loss_save(uint8_t *dst, uint32_t cap)
+{
+    uint32_t o = 2;
+    int i;
+    if (!mem_n_ || cap < family_loss_save_size()) return 0;
+    dst[0] = mem_n_;
+    dst[1] = 0;
+    for (i = 0; i < mem_n_; i++, o += 8) {
+        dst[o] = (uint8_t)mem_[i].id;
+        dst[o + 1] = (uint8_t)(mem_[i].id >> 8);
+        dst[o + 2] = (uint8_t)mem_[i].day;
+        dst[o + 3] = (uint8_t)(mem_[i].day >> 8);
+        dst[o + 4] = mem_[i].cause;
+        dst[o + 5] = mem_[i].bits;
+        dst[o + 6] = 0;
+        dst[o + 7] = 0;
+    }
+    return o;
+}
+
+int family_loss_load(const uint8_t *src, uint32_t len)
+{
+    FamilyMemorial tmp[FAMILY_MEMORIAL_MAX];
+    int n, i;
+    if (len < 2) return 0;
+    n = src[0];
+    if (n < 1 || n > FAMILY_MEMORIAL_MAX || len != 2u + 8u * (uint32_t)n) return 0;
+    for (i = 0; i < n; i++) {
+        const uint8_t *p = src + 2 + 8 * i;
+        memset(&tmp[i], 0, sizeof(tmp[i]));
+        tmp[i].id = (uint16_t)(p[0] | (p[1] << 8));
+        tmp[i].day = (uint16_t)(p[2] | (p[3] << 8));
+        tmp[i].cause = p[4];
+        tmp[i].bits = p[5];
+        if (!family_id_ok(tmp[i].id) || tmp[i].cause < FAMLOSS_AGE || tmp[i].cause >= FAMLOSS_COUNT) return 0;
+        if ((tmp[i].bits & 7) >= LIFE_COUNT || ((tmp[i].bits >> 3) & 7) >= FAMROLE_COUNT) return 0;
+    }
+    memset(mem_, 0, sizeof(mem_));
+    memcpy(mem_, tmp, (size_t)n * sizeof(tmp[0]));
+    mem_n_ = (uint8_t)n;
+    return 1;
+}
+
+void family_loss_clear(void)
+{
+    memset(mem_, 0, sizeof(mem_));
+    mem_n_ = 0;
+}
+
+typedef char family_loss_fits_[(LIFE_SEC_HDR + FAMILY_LOSS_SZ_WORST <= LIFE_SZ_F6_LOSS) ? 1 : -1];
+typedef char family_mem_8b_[(sizeof(FamilyMemorial) == 8) ? 1 : -1];

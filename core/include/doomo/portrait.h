@@ -108,4 +108,16 @@ void portrait_cache_clock(uint32_t tick, int steps);
 #define PORTRAIT_POOL_IMAGE_MAX (PORTRAIT_W * PORTRAIT_H)
 const DoomoImage *portrait_pool_image(uint32_t key, int w, int h, int *fresh);
 
+
+/* ---- body and face forms by life stage (portrait_age.c, F4) ---------------
+ * The look to DRAW for a life stage (LIFE_*, resident.h): the saved look
+ * with the proportion fields moved (baby: tiny, round, big head and eyes;
+ * toddler, child, teen: growing; adult: as saved; elder: silver hair, a
+ * little shorter, a bigger nose). portrait_image / bodyspr_image /
+ * fighter_image apply it to a resident by their own stage; for a look you
+ * hold yourself (a family pool member, the creator preview) call this, or
+ * figure_image_stage(). in and out may be the same struct. */
+void look_for_stage(const DoomoLook *in, int stage, DoomoLook *out);
+const DoomoImage *figure_image_stage(const DoomoLook *l, int stage, int status, int expr);
+
 #endif
