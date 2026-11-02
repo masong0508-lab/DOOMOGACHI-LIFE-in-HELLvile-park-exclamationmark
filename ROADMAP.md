@@ -83,7 +83,7 @@ The PS1 life-sim status checklist (what is verified, written, or missing on that
   family, pockets and profiles (K0), life stages + two-way adult-only romance
   gate (LS0), journey/tap meter (M0), PG-21 register + lint (E5).
 
-**Started, saved on branches, not landed** (resume these first)
+**Started, saved on branches, not landed** (resume these first). CHECKED 2026-11-02: `git branch -a` shows only `claude/nice-allen-gr6czm`, so the branches named here (fut-u0, fut-g3, fut-g9, fut-g11, fut-h2, fut-h7, fut-l4, fut-w6, fut-w7, ...) are NOT in the repo; treat every item below as not started unless you can recover the branch. Hold the Door itself (waves, guests, panel, captions) is already built in `core/src/home_defend.c` / `home_draw.c`; what H7 still needs is only the PS1 black frame, which needs a PS1 run
 - Life sim wave 2: LS1, U0, E0, PA0, E6a, E6b (may land before the session ends).
 - G3, G9, H2, W6 (branches fut-g3 / fut-g9 / fut-h2 / fut-w6).
 - G11, L4, H7, W7 (branches fut-g11 / fut-l4 / fut-h7 / fut-w7).
@@ -100,10 +100,10 @@ Sizes: **S** = small (hours), **M** = medium (about a day), **L** = large (a few
 a package can only start once the ones it depends on (see the sections below) have landed.
 
 ### Tiny: finish what's already built (saved on branches)
-1. U0 settings core (branch `fut-u0`): fix one GBA fps test failure, then land.
+1. U0 settings core (branch `fut-u0`, not in the repo, see section 0): fix one GBA fps test failure, then land.
 2. Re-run the PS1 harness after LS1.
 3. Approve and build the Flycast core (`make -C dc/harness flycast`), boot DC2.
-4. Resume and land the saved branches: G3, G9, G11, H7, L4, W6, W7.
+4. Recover or redo the saved branches: G3, G9, G11, H7, L4, W6, W7 (not in the repo, see section 0).
 
 ### S: small
 - Life sim: PA0 follow-ups, U1g (GBA config sector),
@@ -282,6 +282,7 @@ Worked example (U6c):
 | PS1 | `doomo-ps1-h3-reconcile-nov02k` | `docs: reconcile H3 (PS1 room shells) as done` | docs only: H3 leaves the open lists |
 | docs | `doomo-roadmap-done-nov02l` | `docs: roadmap records PA2, U6, PS1 journeys, H3 as done` | docs only (marker: roadmap-done-nov02l) |
 | PS1 | `doomo-ps1-journeys-all-nov02m` | `PS1: harness plays 15 core journeys (item, problem, rel, money, lang)` | PS1 focus step 2: mailbox + run.py learn the missing journey commands; not yet run on PCSX-Redux |
+| docs | `doomo-roadmap-branches-nov02n` | `docs: roadmap notes that the saved branches are not in the repo` | docs only |
 
 How the owner applies patches (so nobody has to ask again): from Termux, one pasted line per patch, oldest first, each line
 is the full template above (`cd` repo, `git pull --ff-only`, `rm -rf ~/vs && mkdir ~/vs`, `unzip -qo` the zip from
@@ -290,3 +291,5 @@ Rules for whoever builds a patch: a NEW zip name every time (`doomo-<id>-<what>-
 the zip holds one folder of the same name with `apply.sh` in it, `apply.sh` runs from the repo root, is safe to run twice
 (guard with `grep -q` or `git apply --reverse --check`), needs no network and no python (sed, grep, cat, git apply only),
 and the reply gives the line with NAME and MESSAGE filled in, plus a ROADMAP row (the apply.sh adds it) for each patch.
+
+<!-- roadmap-branches-nov02n -->
