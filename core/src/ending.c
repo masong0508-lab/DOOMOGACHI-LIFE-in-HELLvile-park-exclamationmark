@@ -70,9 +70,13 @@ int ending_count_seen(void)
 
 int ending_resolve_finale(void)
 {
-    /* secret > bad > good (ending.h). The rules for the other finales (E02, E06, E07 and the
-     * secret ones) are the content packages' (E3 / E4): until they land every finale is E01. */
-    return ENDING_E01;
+    /* secret > bad > good (ending.h). Provisional until E3 / E4 land their rules: the better
+     * good ending E02 needs a real household (3+ members, the player included) and nobody
+     * lost to neglect; otherwise the default E01. E06 / E07 (the parade) and the secret
+     * finales stay with their content packages. */
+    LifeEndingFacts f;
+    life_ending_facts(&f);
+    return (f.household >= 3 && f.neglect_deaths == 0) ? ENDING_E02 : ENDING_E01;
 }
 
 int ending_partner(void)

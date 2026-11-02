@@ -438,6 +438,17 @@ void life_ending_facts(LifeEndingFacts *out)
         if (fam_[i].role == FAMROLE_CHILD) kids++;
     out->household = (uint8_t)life_family_count();
     out->kids = (uint8_t)kids;
+    for (i = 0; i < family_memorial_count(); i++) {
+        const FamilyMemorial *m = family_memorial(i);
+        if (m && m->cause == FAMLOSS_NEGLECT && out->neglect_deaths < 255) out->neglect_deaths++;
+    }
+    {
+        const DoomoSimStats *st = sim_stats();
+        if (st) {
+            out->couples = (uint8_t)(st->marriages > 255 ? 255 : st->marriages);
+            out->exorcisms_won = (uint8_t)(st->exorcisms_auto > 255 ? 255 : st->exorcisms_auto);
+        }
+    }
 }
 
 /* ---- the LIFE chunk's section: [count u8][reserved u8] then 8 B per member ------ */

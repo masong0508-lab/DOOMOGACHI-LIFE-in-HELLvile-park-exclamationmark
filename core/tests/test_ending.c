@@ -4,6 +4,7 @@
 #include "test.h"
 #include "doomo/doomo.h"
 #include "doomo/ending.h"
+#include "doomo/life.h"
 #include "doomo/save_ext.h"
 #include "doomo/save_budget.h"
 #include "doomo/scenes.h"
@@ -71,4 +72,14 @@ TEST(ending_family_check_needs_partner_and_eternal_house)
     fresh();
     ending_check_family();                 /* no partner, no house: nothing */
     CHECK(!ending_seen(ENDING_E04));
+}
+
+TEST(ending_finale_is_e01_for_an_empty_household_and_facts_are_sane)
+{
+    LifeEndingFacts f;
+    fresh();
+    life_ending_facts(&f);
+    CHECK_EQ(f.partner, -1);
+    CHECK_EQ(f.neglect_deaths, 0);
+    CHECK_EQ(ending_resolve_finale(), ENDING_E01);
 }
