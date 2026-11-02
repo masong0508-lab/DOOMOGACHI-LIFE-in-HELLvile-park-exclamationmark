@@ -17,6 +17,14 @@ static const char *const cat_names[ENDCAT_COUNT] = {
     "A good ending", "A bad ending", "A secret ending", "A grown-ups' ending", "A very secret ending"
 };
 
+/* The written endings so far (E1 stand-in text; E3 / E4 replace these with the content
+ * packages' titles and epilogues). Short lines: the card is 240 px wide. */
+static const struct { const char *title, *l1, *l2; } story[ENDING_COUNT] = {
+    /* E01 */ { "Home, Sweet Hell", "The park is quiet again.", "Your door is open. Come in." },
+    /* E02 */ { "A Full House", "Every chair has someone in it.", "Hell has never felt so warm." },
+    /* E03 */ { 0, 0, 0 }, /* E04 */ { "Family Portrait", "One frame. Everyone you love.", "Nobody is looking away." },
+};
+
 static void ec_enter(int arg)
 {
     memset(&C, 0, sizeof C);
@@ -39,9 +47,10 @@ static void ec_draw(void)
     int sw = plat_screen_w(), sh = plat_screen_h(), cat = ending_category(C.k), y;
     char buf[48];
     ui_backdrop(WIN_CUTE, (uint32_t)doomo_frame_count());
-    ui_window(8, sh / 2 - 46, sw - 16, 92, WIN_CUTE);
-    y = sh / 2 - 38;
+    ui_window(8, sh / 2 - 50, sw - 16, 108, WIN_CUTE);
+    y = sh / 2 - 44;
     if (C.k == ENDING_NOPE) doomo_snprintf(buf, sizeof buf, "Nope.");
+    else if (C.k < 4 && story[C.k].title) doomo_snprintf(buf, sizeof buf, "%s", story[C.k].title);
     else doomo_snprintf(buf, sizeof buf, "ENDING %d", C.k + 1);
     ui_text_center(sw / 2, y, buf, st->text);
     ui_text_center(sw / 2, y + 14, cat >= 0 ? cat_names[cat] : "?", st->text_dim);
@@ -53,7 +62,11 @@ static void ec_draw(void)
         doomo_snprintf(buf, sizeof buf, n > 1 ? "Reached %d times" : "First time!", n);
         ui_text_center(sw / 2, y + 50, buf, st->text_dim);
     }
-    if (C.t > 20 && ((C.t >> 4) & 1)) ui_text_center(sw / 2, y + 70, STR_ICON_A " Continue", st->text_dim);
+    if (C.k < 4 && story[C.k].l1) {
+        ui_text_center(sw / 2, y + 62, story[C.k].l1, st->text);
+        ui_text_center(sw / 2, y + 74, story[C.k].l2, st->text);
+    }
+    if (C.t > 20 && ((C.t >> 4) & 1)) ui_text_center(sw / 2, y + 88, STR_ICON_A " Continue", st->text_dim);
 }
 
 const DoomoScene SCENE_ENDING_CARD = { "ENDING_CARD", ec_enter, NULL, ec_update, ec_draw, 0 };
