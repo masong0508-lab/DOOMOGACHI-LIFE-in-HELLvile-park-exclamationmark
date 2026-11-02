@@ -65,3 +65,10 @@ TEST(ending_chunk_round_trips_within_budget)
     CHECK_EQ(ending_count_seen(), 2);
     CHECK_EQ(ending_pending(), ENDING_E05);
 }
+
+TEST(ending_family_check_needs_partner_and_eternal_house)
+{
+    fresh();
+    ending_check_family();                 /* no partner, no house: nothing */
+    CHECK(!ending_seen(ENDING_E04));
+}

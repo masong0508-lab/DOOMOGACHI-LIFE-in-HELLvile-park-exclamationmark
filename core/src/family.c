@@ -427,6 +427,19 @@ int life_player_partner(void)
 
 int life_family_count(void) { return fam_n_ ? fam_n_ + 1 : 0; }
 
+/* life.h: the facts the ending resolver reads (partner, household, kids). */
+void life_ending_facts(LifeEndingFacts *out)
+{
+    int i, kids = 0;
+    if (!out) return;
+    memset(out, 0, sizeof(*out));
+    out->partner = (int16_t)life_player_partner();
+    for (i = 0; i < fam_n_; i++)
+        if (fam_[i].role == FAMROLE_CHILD) kids++;
+    out->household = (uint8_t)life_family_count();
+    out->kids = (uint8_t)kids;
+}
+
 /* ---- the LIFE chunk's section: [count u8][reserved u8] then 8 B per member ------ */
 uint32_t family_save_size(void)
 {

@@ -123,6 +123,8 @@ int  ending_take_pending(void);
 /* The credits of the story rolled: reach ending_resolve_finale(). Sets
  * ENDF_FINALE_DONE. Called from story_ch34.c where the story completes. */
 void ending_finale_reached(void);
+/* Reach E04 if a partner, a household and an ETERNAL house room exist. */
+void ending_check_family(void);
 
 /* ---- the adult gate (R10; E1 strong, weak refuses everyone) -------------
  * 1 only if resident `id` may appear in a mature or romance scene: life

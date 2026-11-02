@@ -18,6 +18,8 @@
 #include "doomo/doomo.h"
 #include "doomo/ending.h"
 #include "doomo/life.h"
+#include "doomo/family.h"
+#include "doomo/house_api.h"
 #include "doomo/save_budget.h"
 #include "doomo/save_ext.h"
 #include "doomo/unlock_ids.h"
@@ -110,6 +112,16 @@ void ending_finale_reached(void)
 {
     ends()->flags |= ENDF_FINALE_DONE;
     ending_reach(ending_resolve_finale());
+    ending_check_family();
+}
+
+/* E04 "Family Portrait": a partner, a household and an ETERNAL house room. */
+void ending_check_family(void)
+{
+    int r;
+    if (ending_partner() < 0 || family_count() < 1) return;
+    for (r = 0; r < HOME_ROOM_COUNT; r++)
+        if (home_grade(r) == HG_ETERNAL) { ending_reach(ENDING_E04); return; }
 }
 
 /* ---- the 'ENDS' chunk (little endian, 32 B, DoomoEnds' own layout) ---- */
