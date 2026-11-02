@@ -256,13 +256,13 @@ X10 VMU card trading.
 
 One zip per patch in `~/storage/downloads/`, unpacking to a same-named folder with `apply.sh` (run from the repo root,
 safe to run twice, no network). Use a NEW name for every patch. **The kind of command to send the owner** (replace NAME and
-MESSAGE; it pulls first, unpacks into a scratch folder, applies, cleans the scratch folder up, then commits and pushes):
+MESSAGE; it pulls first, unpacks into a scratch folder, applies, commits and pushes; ~/vs is left in place and the next patch's `rm -rf ~/vs` clears it):
 
-    cd ~/DOOMOGACHI-LIFE-in-HELLvile-park-exclamationmark && git pull --ff-only && rm -rf ~/vs && mkdir ~/vs && unzip -qo ~/storage/downloads/NAME.zip -d ~/vs && sh ~/vs/NAME/apply.sh && rm -rf ~/vs && git add -A && git commit -m "MESSAGE" && git push
+    cd ~/DOOMOGACHI-LIFE-in-HELLvile-park-exclamationmark && git pull --ff-only && rm -rf ~/vs && mkdir ~/vs && unzip -qo ~/storage/downloads/NAME.zip -d ~/vs && sh ~/vs/NAME/apply.sh && git add -A && git commit -m "MESSAGE" && git push
 
 Worked example (U6c):
 
-    cd ~/DOOMOGACHI-LIFE-in-HELLvile-park-exclamationmark && git pull --ff-only && rm -rf ~/vs && mkdir ~/vs && unzip -qo ~/storage/downloads/doomo-u6c-continue-island-nov02f.zip -d ~/vs && sh ~/vs/doomo-u6c-continue-island-nov02f/apply.sh && rm -rf ~/vs && git add -A && git commit -m "U6c: Continue row also leads with a saved island" && git push
+    cd ~/DOOMOGACHI-LIFE-in-HELLvile-park-exclamationmark && git pull --ff-only && rm -rf ~/vs && mkdir ~/vs && unzip -qo ~/storage/downloads/doomo-u6c-continue-island-nov02f.zip -d ~/vs && sh ~/vs/doomo-u6c-continue-island-nov02f/apply.sh && git add -A && git commit -m "U6c: Continue row also leads with a saved island" && git push
 
 | Patch | NAME | Commit message | What |
 |---|---|---|---|
@@ -273,3 +273,13 @@ Worked example (U6c):
 | U3c | `doomo-u3c-island-quicksave-nov02g` | `U3c: START, START quick-saves the island (J7 7 -> 2 presses)` | this patch |
 | U3b | `doomo-u3b-story-quicksave-nov02h` | `U3b: START, START quick-saves the story (J6 9 -> 2 presses)` | this patch |
 | PS1 | `doomo-ps1-lifesim-checklist-nov02i` | `docs: PS1 life sim status checklist` | docs only: adds `docs/PS1_LIFESIM.md`, links it from the roadmap focus note |
+| PA2 | `doomo-pa2-hero-cards-nov02d` | `PA2: hero cards finished (tagline fit, header-byte test, creator script fix)` | applied by the owner 2026-11-02 |
+| PS1 | `doomo-ps1-journeys-nov02j` | `PS1: harness plays the press journeys (J6, J7) on the disc` | PS1 focus step 2: `run.py` handles `journey-begin/end` and checks `budgets.tsv` presses; game harness target runs J6 + J7; not yet run on PCSX-Redux |
+
+How the owner applies patches (so nobody has to ask again): from Termux, one pasted line per patch, oldest first, each line
+is the full template above (`cd` repo, `git pull --ff-only`, `rm -rf ~/vs && mkdir ~/vs`, `unzip -qo` the zip from
+`~/storage/downloads/` into `~/vs`, `sh ~/vs/NAME/apply.sh`, `git add -A`, `git commit -m`, `git push`). No cleanup step at the end.
+Rules for whoever builds a patch: a NEW zip name every time (`doomo-<id>-<what>-nov02<letter>`; the letter keeps counting up),
+the zip holds one folder of the same name with `apply.sh` in it, `apply.sh` runs from the repo root, is safe to run twice
+(guard with `grep -q` or `git apply --reverse --check`), needs no network and no python (sed, grep, cat, git apply only),
+and the reply gives the line with NAME and MESSAGE filled in, plus a ROADMAP row (the apply.sh adds it) for each patch.

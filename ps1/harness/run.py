@@ -37,6 +37,11 @@ when a scene renders below 30 fps:
     story-fp [HEX]     print story_fingerprint(); with HEX, fail unless equal
     room-test N        SCENE_HOME draws house test layout N (room.c)
     expect-fps MIN NAME  fail if the last `fpsend NAME` measured below MIN
+  Journeys (core/tests/journeys/*.txt play unchanged, UX press meter):
+    journey-begin N / journey-end N   count the `press` lines between them
+                    and fail the script (before the emulator starts) when
+                    the count is over presses in budgets.tsv's row N
+                    (ticks are not checked: the PS1 clock is the game's)
 
 Buttons: A B X Y L R L2 R2 START SELECT UP DOWN LEFT RIGHT
 (PS1: Cross Circle Square Triangle L1 R1 L2 R2 Start Select D-pad).
@@ -83,6 +88,21 @@ BUTTONS = {
 VSYNC_PER_TICK = 2
 FPS_GATES = []      # (line, min fps, name) from expect-fps (H3)
 SAME_SHOTS = []     # (line, a, b, max differing pixels) from expect-same (H3)
+JOURNEY_BUDGETS = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                               "..", "..", "core", "tests", "journeys", "budgets.tsv")
+
+
+def journey_budget(name):
+    """the presses column of budgets.tsv for journey NAME (None = no row,
+    -1 = reserved "-")"""
+    try:
+        for line in open(JOURNEY_BUDGETS):
+            p = line.split()
+            if len(p) >= 2 and not line.lstrip().startswith("#") and p[0] == name:
+                return -1 if p[1] == "-" else int(p[1])
+    except OSError:
+        pass
+    return None
 
 
 def write_png(path, w, h, rgb):
@@ -199,6 +219,7 @@ def compile_script(lines, lockstep=True):
     the script starts at loop frame 2 (after the memory card boot splash).
     Returns (commands, warnings, expected TTY texts)."""
     cmds, warnings, expect = ([] if lockstep else ["waitframe 2"]), [], []
+    jname, jpress = None, 0
     for ln, line in enumerate(lines, 1):
         parts = split_words(line)
         if not parts:
@@ -219,6 +240,8 @@ def compile_script(lines, lockstep=True):
         elif op == "press":
             # native: press BTN [BTN..] = hold for 1 frame, then 1 frame up
             names = [btn(i) for i in range(1, len(parts))]
+            if jname is not None:
+                jpress += 1
             cmds += ["down " + b for b in names]
             cmds.append("waitf 1")
             cmds += ["up " + b for b in names]
@@ -249,6 +272,21 @@ def compile_script(lines, lockstep=True):
                 cmds += [hcmd(op, 0, ch), "waitf 1"]
         elif op == "log":
             cmds.append(hcmd(op, 0, " ".join(parts[1:])[:63]))
+        elif op == "journey-begin":
+            jname, jpress = arg, 0
+            cmds.append(hcmd("log", 0, "journey-begin " + arg))
+        elif op == "journey-end":
+            if jname is None or arg != jname:
+                raise SystemExit("line %d: journey-end %s without a matching journey-begin" % (ln, arg))
+            budget = journey_budget(arg)
+            if budget is None or budget < 0:
+                raise SystemExit("line %d: journey %s has no presses budget in %s"
+                                 % (ln, arg, JOURNEY_BUDGETS))
+            if jpress > budget:
+                raise SystemExit("line %d: journey %s took %d presses, budget %d"
+                                 % (ln, arg, jpress, budget))
+            cmds.append(hcmd("log", 0, "journey: %s presses %d budget %d" % (arg, jpress, budget)))
+            jname = None
         elif op == "no-stubs":
             cmds.append("mark no-stubs line %d" % ln)
         elif op == "expect-log":

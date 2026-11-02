@@ -307,6 +307,10 @@ else()
 		        --out ${_shots}/core_ui_gallery
 		COMMAND ${_run} --exe ${_exe} --cue ${_cue} --script ${CORE_DIR}/tests/scripts/saves.txt
 		        --out ${_shots}/core_saves
+		COMMAND ${_run} --exe ${_exe} --cue ${_cue} --script ${CORE_DIR}/tests/journeys/j6_ow_save.txt
+		        --out ${_shots}/journey_j6
+		COMMAND ${_run} --exe ${_exe} --cue ${_cue} --script ${CORE_DIR}/tests/journeys/j7_island_save.txt
+		        --out ${_shots}/journey_j7
 		DEPENDS disc
 		COMMENT "PCSX-Redux harness: game"
 		VERBATIM USES_TERMINAL)
