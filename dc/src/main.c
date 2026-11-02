@@ -175,6 +175,7 @@ int main(int argc, char **argv)
     (void)argc; (void)argv;
     boot_us = timer_us_gettime64();
     plat_init_hw();
+    dc_boot_egg();                      /* X8: hold A+B+X+Y+START at power-on */
     doomo_init();
     dc_pacing_reset();
     dc_logf("DC: core up in %u us, loop at 30 Hz", (unsigned)dc_us());

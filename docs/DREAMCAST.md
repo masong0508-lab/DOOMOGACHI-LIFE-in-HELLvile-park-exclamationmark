@@ -402,3 +402,12 @@ ticks N` for the harness. `plat_features()` reports `PLATF_RUMBLE` while a
 pack is plugged in. No pack, no effect. The core's other platforms keep the
 weak no-op (the PS1 DualShock motor is not wired yet). The option table is
 full, so a rumble-only on/off row waits for U0's ids >= 64.
+
+## Boot easter egg (X8)
+
+Hold A + B + X + Y + START on controller 1 while the console boots and the
+game opens with a one-second rainbow (`dc/src/egg.c`, `dc_boot_egg()`,
+called from `main()` right after `plat_init_hw()`): the PVR background steps
+through eight colours every four vblanks, over empty scenes, and the log
+shows `DC: boot easter egg`. It touches no saves and no options. Without the
+buttons it only waits (at most 90 vblanks) for the controller to appear.

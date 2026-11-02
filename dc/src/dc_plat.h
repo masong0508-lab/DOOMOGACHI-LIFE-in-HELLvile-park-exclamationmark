@@ -54,6 +54,11 @@ void dc_text_probe(const char *s);
 void dc_log(const char *msg);            /* misc.c: dbgio + the mailbox ring    */
 void dc_logf(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
 
+/* ---- boot easter egg (egg.c, X8) ------------------------------------------
+ * Called once from main() after the video mode is up: a short rainbow when
+ * A+B+X+Y+START are held at power-on. No effect otherwise. */
+void dc_boot_egg(void);
+
 /* ---- video (main.c) ------------------------------------------------------------ */
 /* The background colour the PVR fills the frame with (plat_clear); the 2D
  * layer of DC3 draws over it. */
