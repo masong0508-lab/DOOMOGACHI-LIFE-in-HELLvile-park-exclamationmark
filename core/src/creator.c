@@ -17,6 +17,7 @@
  * Drawing lives in creator_draw.c. See docs/CREATOR.md.
  */
 #include "creator_int.h"
+#include "doomo/playas.h"
 
 CrState *cr_sp;                         /* the scene scratch (creator_int.h) */
 DOOMO_STATIC_ASSERT(sizeof(CrState) <= DOOMO_SCENE_SCRATCH, creator_state_fits_the_scratch);
@@ -1703,6 +1704,43 @@ static void update_turn(void)
     }
 }
 
+/* PA2: the three-card first page of a brand-new hero: SUNNY, MARVIN or
+ * make your own. The preview shows the highlighted card; A on a preset
+ * saves it as the hero (and the hero kind) and moves in, A on "make your
+ * own" opens the editor on the blank template. B leaves. */
+static void hero_preview(void)
+{
+    const DoomoResident *p = cr.hero_sel < 2 ? hero_preset(cr.hero_sel == 0 ? HERO_SUNNY : HERO_MARVIN) : NULL;
+    cr.draft = p ? *p : cr.orig;
+    cr.browse = -1;
+    cr.happy = 20;
+}
+
+static void update_hero(void)
+{
+    if (btn_pressed(BTN_B)) { audio_sfx(SFX_CANCEL); leave_scene(-1); return; }
+    if (btn_repeat(BTN_UP) || btn_repeat(BTN_LEFT)) {
+        cr.hero_sel = (uint8_t)((cr.hero_sel + 2) % 3); audio_sfx(SFX_CURSOR); hero_preview();
+    }
+    if (btn_repeat(BTN_DOWN) || btn_repeat(BTN_RIGHT)) {
+        cr.hero_sel = (uint8_t)((cr.hero_sel + 1) % 3); audio_sfx(SFX_CURSOR); hero_preview();
+    }
+    if (btn_pressed(BTN_A)) {
+        audio_sfx(SFX_SELECT);
+        if (cr.hero_sel < 2) {
+            playas_set_hero_kind(cr.hero_sel == 0 ? HERO_SUNNY : HERO_MARVIN);
+            hero_preview();
+            cr.name_ok = 1;
+            finish();
+        } else {
+            playas_set_hero_kind(HERO_CUSTOM);
+            hero_preview();
+            cr_sparkle_burst(8, -1);
+            go_phase(CRP_MAIN);
+        }
+    }
+}
+
 static void update_movein(void)
 {
     if ((cr.phase_t % 14) == 0 && cr.phase_t < 80) cr_sparkle_burst(5, 3);
@@ -1740,6 +1778,8 @@ static void cr_enter(int arg)
             cr.draft.pronoun = PRONOUN_THEY;
         }
         nick_copy(cr.nick, creator_nickname(DOOMO_PLAYER_ID));
+        /* PA2: a hero nobody has made or named yet starts on the cards */
+        if (!cr.name_ok) cr.phase = CRP_HERO;
     } else if (arg >= 0 && arg < DOOMO_MAX_RESIDENTS) {
         r = town_res(arg);
         cr.target = (int16_t)arg;
@@ -1771,6 +1811,7 @@ static void cr_enter(int arg)
     for (i = 0; i < CR_TAB_COUNT; i++) cr.row[i] = (uint8_t)cr_first_selectable(i);
     cr.preset_i = 0;
     refresh_home();
+    if (cr.phase == CRP_HERO) hero_preview();
     cr.shown = cr.draft.look;
     cr.img.uid = 0;
     audio_music(SONG_CREATOR);
@@ -1803,6 +1844,7 @@ static void cr_update(void)
     case CRP_COPY:   update_copy(); break;
     case CRP_TURN:   update_turn(); break;
     case CRP_MOVEIN: update_movein(); break;
+    case CRP_HERO:   update_hero(); break;
     default: break;
     }
     if (scene_top() == &SCENE_CREATOR) preview_update();

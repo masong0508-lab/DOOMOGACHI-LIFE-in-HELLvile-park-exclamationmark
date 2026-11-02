@@ -79,7 +79,16 @@ wait 10
 # ---- the story protagonist -------------------------------------------------
 scene CREATOR -3
 wait 25
+shot 10_player_cards
+press DOWN
+press DOWN
+press A
+wait 10
 shot 10_player_open
+press DOWN
+press DOWN
+press A
+wait 10
 press L
 wait 10
 shot 11_player_home

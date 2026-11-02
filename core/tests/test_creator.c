@@ -9,6 +9,7 @@
  */
 #include "test.h"
 #include "../src/creator_int.h"
+#include "doomo/playas.h"
 
 static void frames(int n, uint32_t b)
 {
@@ -424,6 +425,10 @@ TEST(creator_story_protagonist)
     open_creator(-3);
     CHECK_EQ(cr.mode, CR_PLAYER);
     CHECK(!cr.name_ok);                 /* "You" is only a placeholder */
+    CHECK_EQ(cr.phase, CRP_HERO);       /* PA2: the three cards come first */
+    press_n(BTN_DOWN, 2);               /* "make your own" */
+    press(BTN_A);
+    CHECK_EQ(cr.phase, CRP_MAIN);
     press(BTN_START);
     press(BTN_A);
     CHECK(scene_top() == &SCENE_TEXT_ENTRY);
@@ -433,6 +438,41 @@ TEST(creator_story_protagonist)
     CHECK(doomo_town.player.flags & RF_PLAYER);
     CHECK(doomo_town.player.flags & RF_CUSTOM);
     CHECK_EQ(count_living(), 0);        /* the player is not a resident slot */
+}
+
+TEST(creator_hero_cards_sunny_and_marvin)
+{
+    int k;
+    for (k = 0; k < 2; k++) {
+        town_new(TOWN_STORY, 90 + (uint32_t)k, TOWN_POP_PREMADE);
+        open_creator(-3);
+        CHECK_EQ(cr.phase, CRP_HERO);
+        CHECK_EQ(cr.hero_sel, 0);
+        if (k) press(BTN_DOWN);
+        CHECK_STR(cr.draft.name, k ? "Marvin" : "Sunny");
+        press(BTN_A);
+        CHECK_EQ(cr.phase, CRP_MOVEIN);
+        CHECK_EQ(playas_hero_kind() == (k ? HERO_MARVIN : HERO_SUNNY), 1);
+        CHECK_STR(doomo_town.player.name, k ? "Marvin" : "Sunny");
+        CHECK_EQ(doomo_town.player.pronoun, k ? PRONOUN_HE : PRONOUN_SHE);
+        CHECK_EQ(doomo_town.player.look.species, k ? SPECIES_FOXKIN : SPECIES_BUNNYKIN);
+        CHECK(doomo_town.player.flags & RF_PLAYER);
+        CHECK_EQ(creator_last_result(), DOOMO_PLAYER_ID);
+    }
+    playas_set_hero_kind(HERO_CUSTOM);
+}
+
+TEST(creator_hero_cards_back_leaves_and_named_hero_skips_them)
+{
+    town_new(TOWN_STORY, 95, TOWN_POP_PREMADE);
+    open_creator(-3);
+    CHECK_EQ(cr.phase, CRP_HERO);
+    press(BTN_B);
+    CHECK(scene_top() == &base_scene);
+    memcpy(doomo_town.player.name, "Zed", 4);
+    doomo_town.player.status = RES_ALIVE;
+    open_creator(-3);
+    CHECK_EQ(cr.phase, CRP_MAIN);
 }
 
 /* ---------------------------------------------------------------------- */

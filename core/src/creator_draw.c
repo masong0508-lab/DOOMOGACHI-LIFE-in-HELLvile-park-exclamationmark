@@ -1216,6 +1216,9 @@ static void draw_hint(void)
                     : STR_ICON_ARROW_L STR_ICON_ARROW_R " Turn " STR_ICON_ARROW_U " Walk "
                       STR_ICON_A " Roll " STR_ICON_B " Back";
         break;
+    case CRP_HERO:
+        s = STR_ICON_ARROW_U STR_ICON_ARROW_D " Look  " STR_ICON_A " Choose  " STR_ICON_B " Back";
+        break;
     case CRP_PICK: case CRP_COLOR: case CRP_COPY:
         s = STR_ICON_A " Choose  " STR_ICON_B " Back";
         break;
@@ -1242,15 +1245,32 @@ static void draw_hint(void)
 }
 
 /* ====================================================================== */
+static void draw_hero(void)
+{
+    static const char *const nm[3] = { "Sunny", "Marvin", "Make your own" };
+    static const char *const tg[3] = { "She, a bunny. The lead.", "He, a fox.", "Pick every detail" };
+    const UiStyle *st = ui_style(WIN_CUTE);
+    int i, ch = (crl.lh - 22) / 3, y0 = crl.ly + 19;
+    ui_window(crl.lx, crl.ly, crl.lw + 2, crl.lh + 3, WIN_CUTE);
+    ui_text_center(crl.lx + crl.lw / 2, crl.ly + 6, "Who are you?", st->text);
+    for (i = 0; i < 3; i++) {
+        int y = y0 + i * ch;
+        if (i == cr.hero_sel) ui_cursor(crl.lx + 4, y + ch / 2 - 4);
+        ui_text(crl.lx + 16, y + ch / 2 - 9, nm[i], st->text);
+        ui_text(crl.lx + 16, y + ch / 2 + 1, tg[i], st->text_dim);
+    }
+}
+
 void cr_draw(void)
 {
     if (!scene_scratch_mine(CR_SCRATCH_TAG)) { plat_clear(PAL_UI_PINK); return; }
     cr_layout();
     if (cr.phase == CRP_MOVEIN) { draw_movein(); return; }
     ui_backdrop(cr_is_hellish() ? WIN_DARK : WIN_CUTE, cr.t);
-    draw_tabs();
+    if (cr.phase != CRP_HERO) draw_tabs();
     draw_pane();
     switch (cr.phase) {
+    case CRP_HERO:  draw_hero(); break;
     case CRP_PICK:  draw_list(); draw_pick(); break;
     case CRP_COLOR: draw_list(); draw_color(); break;
     case CRP_COPY:  draw_list(); draw_copy(); break;

@@ -106,7 +106,7 @@ enum { CRU_MOVE_TO_HELLVILE = 270, CRU_MAKEOVER, CRU_SELF_PORTRAIT,
 
 enum { CR_NEW, CR_EDIT, CR_PLAYER };
 enum { CRP_MAIN, CRP_PICK, CRP_COLOR, CRP_MENU, CRP_COPY, CRP_TURN,
-       CRP_MOVEIN };
+       CRP_MOVEIN, CRP_HERO };
 /* START menu entries */
 enum { CM_DONE, CM_RANDOM_ALL, CM_RANDOM_TAB, CM_UNDO, CM_REDO, CM_COPY,
        CM_SPOOKY, CM_RESET, CM_QUIT, CM_COUNT };
@@ -136,6 +136,7 @@ typedef struct CrState {
     uint8_t  district_fixed;        /* district can't be changed             */
     uint8_t  name_ok;               /* the player typed / confirmed a name   */
 
+    uint8_t  hero_sel;              /* PA2 first page: 0 Sunny 1 Marvin 2 own */
     uint8_t  tab, phase;
     uint8_t  row[CR_TAB_COUNT], top[CR_TAB_COUNT];
     int16_t  browse;                /* locked choice being looked at, or -1  */
