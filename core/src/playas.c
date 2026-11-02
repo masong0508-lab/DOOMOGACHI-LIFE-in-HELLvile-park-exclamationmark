@@ -119,6 +119,19 @@ uint8_t playas_profile_flags(void)
     return f;
 }
 
+int playas_new_life_ok(void)
+{
+    return !(P.flags & PF_NEWLIFE) && doomo_town.mode == TOWN_STORY && doomo_town.story.chapter == STORY_CH_DONE;
+}
+
+int playas_new_life(int id)
+{
+    if (!playas_new_life_ok() || id == PLAYAS_ID_HERO || !playas_can_be(id)) return 0;
+    P.flags |= PF_NEWLIFE;
+    if (!playas_switch(id, PLAYAS_SWITCH_FADE)) { P.flags &= (uint8_t)~PF_NEWLIFE; return 0; }
+    return 1;
+}
+
 int playas_switch(int id, int how)
 {
     int from = playas_avatar();

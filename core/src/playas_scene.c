@@ -12,7 +12,8 @@
 #include "doomo/input.h"
 #include "doomo/platform.h"
 
-static struct { int16_t sel, top, count; } S;
+static struct { int16_t sel, top, count; uint8_t nl; int16_t rows; } S;          /* nl: picking who the New life starts as */
+static char nl_q[48];
 
 static int in_recent(int id)
 {
@@ -61,6 +62,7 @@ static void recount(void)
     int c = 0;
     nth_id(-1, &c);
     S.count = (int16_t)c;
+    S.rows = (int16_t)(c + (!S.nl && playas_new_life_ok() ? 1 : 0));
 }
 
 static void ps_enter(int arg)
@@ -70,11 +72,33 @@ static void ps_enter(int arg)
     recount();
 }
 
+static void nl_done(int yes)
+{
+    int id = nth_id(S.sel, NULL);
+    if (!yes) { S.nl = 0; recount(); return; }
+    if (id >= 0 && playas_new_life(id)) {
+        ui_toast(STR_ICON_STAR " A new life begins!");
+        scene_pop();
+    } else { S.nl = 0; recount(); }
+}
+
+static void nl_start(int yes)
+{
+    if (!yes) return;
+    S.nl = 1;
+    S.sel = S.top = 0;
+    recount();
+}
+
 static void ps_update(void)
 {
     int n;
-    if (btn_pressed(BTN_B)) { audio_sfx(SFX_CANCEL); scene_pop(); return; }
-    n = S.count;
+    if (btn_pressed(BTN_B)) {
+        audio_sfx(SFX_CANCEL);
+        if (S.nl) { S.nl = 0; S.sel = S.top = 0; recount(); } else scene_pop();
+        return;
+    }
+    n = S.rows;
     if (n <= 0) return;
     if (btn_repeat(BTN_UP)) { S.sel = (S.sel + n - 1) % n; audio_sfx(SFX_CURSOR); }
     if (btn_repeat(BTN_DOWN)) { S.sel = (S.sel + 1) % n; audio_sfx(SFX_CURSOR); }
@@ -83,9 +107,15 @@ static void ps_update(void)
     if (S.sel < S.top) S.top = S.sel;
     if (S.sel >= S.top + vis()) S.top = S.sel - vis() + 1;
     if (btn_pressed(BTN_A)) {
-        int id = nth_id(S.sel, NULL);
+        int id = S.sel < S.count ? nth_id(S.sel, NULL) : -1;
         audio_sfx(SFX_SELECT);
-        if (id >= 0 && playas_switch(id, PLAYAS_SWITCH_TAGIN)) {
+        if (S.sel >= S.count) {                  /* PA6: the "Start a new life" row */
+            ui_confirm("Start a new life? The story stays finished. You pick a villager to be.", nl_start);
+        } else if (S.nl && id >= 0) {
+            char nm[DOOMO_NAME_LEN];
+            doomo_snprintf(nl_q, sizeof nl_q, "Start a new life as %s?", name_of(id, nm));
+            ui_confirm(nl_q, nl_done);
+        } else if (id >= 0 && playas_switch(id, PLAYAS_SWITCH_TAGIN)) {
             ui_toast(STR_ICON_STAR " Now playing!");
             scene_pop();
         } else recount();                    /* someone changed under us */
@@ -99,21 +129,26 @@ static void ps_draw(void)
     char nm[DOOMO_NAME_LEN];
     ui_backdrop(WIN_CUTE, (uint32_t)doomo_frame_count());
     ui_window(4, 3, sw - 8, 24, WIN_CUTE);
-    ui_text_center(sw / 2, 9, "Play as...", st->text);
+    ui_text_center(sw / 2, 9, S.nl ? "New life: who are you?" : "Play as...", st->text);
     ui_window(6, y0 - 2, w + 4, vis() * rh + 4, WIN_CUTE);
-    if (S.count <= 0) {
+    if (S.rows <= 0) {
         ui_text_center(sw / 2, y0 + 16, playas_available() ? "Nobody else right now." :
                        "Unlocks after the story.", st->text_dim);
         return;
     }
-    for (i = 0; i < vis() && S.top + i < S.count; i++) {
-        int id = nth_id(S.top + i, NULL), y = y0 + i * rh;
-        if (id < 0) break;
+    for (i = 0; i < vis() && S.top + i < S.rows; i++) {
+        int id = S.top + i < S.count ? nth_id(S.top + i, NULL) : -1, y = y0 + i * rh;
         if (S.top + i == S.sel) ui_cursor(10, y + 4);
+        if (S.top + i >= S.count) {
+            ui_text(24, y, "Start a new life...", st->text);
+            ui_text(24, y + 9, "Begin again as a villager", st->text_dim);
+            continue;
+        }
+        if (id < 0) break;
         ui_text(24, y, name_of(id, nm), st->text);
         ui_text(24, y + 9, kind_of(id), st->text_dim);
     }
-    if (S.count > vis()) ui_scroll_arrows(sw - 10, y0 - 6, y0 + vis() * rh - 2, S.top > 0, S.top + vis() < S.count);
+    if (S.rows > vis()) ui_scroll_arrows(sw - 10, y0 - 6, y0 + vis() * rh - 2, S.top > 0, S.top + vis() < S.rows);
 }
 
 const DoomoScene SCENE_PLAYAS = { "PLAYAS", ps_enter, NULL, ps_update, ps_draw, 0 };

@@ -147,6 +147,14 @@ int  playas_profile_hero(int profile);
 /* Switch to id; how = PLAYAS_SWITCH_*. 1 on success; 0 (nothing changed)
  * if play-as is unavailable or playas_can_be(id) fails. */
 int  playas_switch(int id, int how);
+/* PA6 New life: 1 when a finished story save may start a new life as a
+ * villager (story mode at STORY_CH_DONE, not already a New life). */
+int  playas_new_life_ok(void);
+/* Start the New life as id (a villager or family member, never the hero):
+ * sets the New life flag (header byte 47 bit 2, play-as stays open for good)
+ * and switches to id. 1 on success; 0 and nothing changed otherwise. The
+ * story stays finished and the hero stays a resident you can switch back to. */
+int  playas_new_life(int id);
 /* The new-game hero choice (PA2 calls it once, before the story starts). */
 void playas_set_hero_kind(int kind);
 

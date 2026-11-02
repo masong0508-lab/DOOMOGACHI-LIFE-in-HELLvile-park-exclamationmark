@@ -23,6 +23,14 @@ WEAK int playas_is_hero(void) { return playas_avatar() == PLAYAS_ID_HERO; }
 
 WEAK int playas_story_locked(void) { return 0; }
 
+WEAK int playas_new_life_ok(void) { return 0; }
+
+WEAK int playas_new_life(int id)
+{
+    (void)id;
+    return 0;
+}
+
 WEAK int playas_available(void) { return 0; }
 
 WEAK int playas_can_be(int id)

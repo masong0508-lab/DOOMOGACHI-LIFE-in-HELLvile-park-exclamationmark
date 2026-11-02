@@ -221,3 +221,15 @@ owners land too: it tests a fresh town and compares byte 47 with
 * **Family screen**: "Play as them" switches for real; a "Switch back" row
   shows while you play someone else.
 * **Not here**: how a switch is shown (PA4/PA5). Tests: `core/tests/test_playas.c`.
+
+## 8. PA6: New life (`core/src/playas.c`, `playas_scene.c`, 2 Nov 2026)
+
+* `playas_new_life_ok()`: story mode at `STORY_CH_DONE` and not already a New life.
+* `playas_new_life(id)`: sets the New life flag (`PLAYAS_HF_NEW_LIFE`, header byte 47 bit 2; it replaces
+  `PLAYAS_HF_STORY_CLEARED`), then switches to `id` with a fade. Refuses the hero, a pet, an unplayable id,
+  or an unfinished story; on a refused switch the flag is rolled back.
+* After a New life play-as stays open for good, the story barrier still holds while you are not the hero, and the
+  hero can be switched back to like anyone else.
+* UI: `SCENE_PLAYAS` gets a last row "Start a new life..." while `playas_new_life_ok()`. Confirm, pick a name from the
+  list (the same rows as Play as), confirm again. B steps back.
+* Not built: a title-screen entry, and starting a brand-new world as a villager.

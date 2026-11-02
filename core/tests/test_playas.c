@@ -260,3 +260,29 @@ TEST(playas_care_bonds_with_the_avatar)
     CHECK(rel_find(o, v) != NULL);
     CHECK(rel_find(o, DOOMO_PLAYER_ID) == NULL);
 }
+
+/* (PA6) New life: only from a finished story, starts as a villager, sets the
+ * header flag, and keeps play-as open and the hero switchable. */
+TEST(playas_new_life_starts_as_a_villager)
+{
+    int v = -1, i;
+    fresh();
+    doomo_town.mode = TOWN_STORY;
+    doomo_town.story.chapter = STORY_CH3;
+    CHECK(!playas_new_life_ok());
+    CHECK(!playas_new_life(0));                      /* story not finished */
+    cleared();
+    CHECK(playas_new_life_ok());
+    CHECK(!playas_new_life(PLAYAS_ID_HERO));         /* never the hero */
+    CHECK_EQ(playas_profile_flags() & PLAYAS_HF_NEW_LIFE, 0);
+    for (i = 0; i < DOOMO_PLAYER_ID && v < 0; i++) if (playas_can_be(i)) v = i;
+    CHECK(v >= 0);
+    CHECK(playas_new_life(v));
+    CHECK_EQ(playas_avatar(), v);
+    CHECK(playas_profile_flags() & PLAYAS_HF_NEW_LIFE);
+    CHECK(!playas_new_life_ok());                    /* only once */
+    CHECK(playas_story_locked());
+    CHECK(playas_can_be(PLAYAS_ID_HERO));            /* the hero is a resident now */
+    CHECK(playas_switch(PLAYAS_ID_HERO, PLAYAS_SWITCH_INSTANT));
+    CHECK(playas_available());
+}

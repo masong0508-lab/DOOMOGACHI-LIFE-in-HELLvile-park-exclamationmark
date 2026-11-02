@@ -29,6 +29,11 @@ The PS1 life-sim status checklist (what is verified, written, or missing on that
   Platforms that answer 0 (the default) redraw as before. The native runner implements it (`plat_native.c`) and
   `story_overworld_walks_and_collides` checks it. GBA/PS1/DC still need their own `plat_hold_frame` (not built here); other
   menus (island START, town hall) still redraw their backdrop. `make -C core test` 706/706.
+  PA6 (2026-11-02, New life): `playas_new_life_ok()` (story finished, not already a New life) and `playas_new_life(id)` (sets the
+  New life flag = header byte 47 bit 2, then switches to a villager or family member, never the hero). The character switcher
+  (`SCENE_PLAYAS`) shows a "Start a new life..." row once the story is finished: confirm, pick who, confirm again. The story stays
+  finished, the hero stays a resident you can switch back to. Still open: a title-screen entry and a fresh-world New life (new
+  island) are not built; this keeps the finished island. `make -C core test` 707/707.
   PA4: plot content now offers itself only to the hero (auto story beats, plot talk, side spots, nest fights).
 - Script: style guide + locks (P0), Chapters 1-4 + epilogue rewritten (W1-W4),
   the 49 old quests rewritten (W5).
@@ -129,7 +134,7 @@ a package can only start once the ones it depends on (see the sections below) ha
   SUNNY / MARVIN / your own), U6 (done 2026-11-02: U6a-U6e; Continue-first title and flow), E6c (Ch3
   punch-up), LS-QA (fewer taps), E6d (Ch4 + epilogue punch-up), LS6 (streamlined
   progression), E8 (GBA mature ROM), E9 (PS1 mature disc), LS5 (story/combat ties),
-  PA6 (new life as a villager), PA7 (play-as content),
+  PA7 (play-as content),
   F4 (family events), F3 (house occupancy), PA10 (play-as integration),
   F5 (pets + uplift), F6 (loss/death), FREE (free mode), MP0 (profiles).
 - GBA speed: G10 (pet, concert, title, dialogue), G12 (60 Hz, optional).
@@ -168,7 +173,7 @@ main game, working on native, GBA, PS1 and (later) Dreamcast.
 | W5 | LS3, PA2, U6, E11, E3, E6c | life event engine; **hero choice: SUNNY (female), MARVIN (male fox), make-your-own**; Continue-first title + flow; mature filter + 18+ confirm; good/secret endings; Ch3 punch-up |
 | W6 | LS-QA, LS-IN, PA9, U3b, E4, E6d | fewer taps; press latch; romance/mature gates for heroes; story pause; bad + sexy endings and romance routes; Ch4 + epilogue punch-up |
 | W7 | PA4, U3c, LS4, LS6, E8, E9 | overworld handoff; island START menu; event + family content; streamlined progression; GBA mature ROM variant; PS1 mature disc |
-| W8 | F2, LS5, PA6, PA7, ~~PA8~~, ~~U4~~ | family dashboard + add-member wizard + care-all; story/combat/endings ties; **post-game "new life" as a villager**; play-as content; house/activities follow the avatar; held-frame backdrop |
+| W8 | F2, LS5, ~~PA6~~, PA7, ~~PA8~~, ~~U4~~ | family dashboard + add-member wizard + care-all; story/combat/endings ties; **post-game "new life" as a villager**; play-as content; house/activities follow the avatar; held-frame backdrop |
 | W9 | F4, PA3b, U8, E10 | family events + life cycle; Spanish gender fixes; GBA 3D Faster/Better done properly; Dreamcast pack adapter |
 | W10 | F3, PA10, E12 | house occupancy; play-as integration; endings + mature integration |
 | W11 | Z1 | joint gate across all four areas |
