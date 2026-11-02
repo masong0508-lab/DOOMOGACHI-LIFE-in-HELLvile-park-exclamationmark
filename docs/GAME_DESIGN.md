@@ -239,7 +239,7 @@ before it begins.
 | J3 title -> music volume -1 in Options -> title | 9 | 1 | 5 (U2) |
 | J4 combat pause -> music volume -1 -> back in the fight | 11 | 1 | 4 (U3a) |
 | J5 title -> language to Spanish -> title | 5 | 1 | (U5) |
-| J6 story overworld: save from the pause menu, walk on | 9 | 0 | (U3b) |
+| J6 story overworld: save from the pause menu, walk on | 2 | 0 | 3 (U3b quick save: done, START twice) |
 | J7 island: save from the START menu, back to the hub | 2 | 1 | 3 (U3c quick save: done, START twice) |
 | J8 story overworld -> title screen | 5 | 1 | (U3b) |
 | J9 boot -> a new Classic island's hub | 11 | 1 | 10 (U6c) |

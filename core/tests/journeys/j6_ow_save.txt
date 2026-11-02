@@ -1,5 +1,6 @@
-# J6 (M0): save from the story overworld's pause menu and walk on (a
+# J6 (M0, U3b): save from the story overworld's pause menu and walk on (a
 # story beat: strolls are not saved). Budget: budgets.tsv j6_ow_save.
+# U3b: START in the open pause menu quick-saves and closes it (the Save row still works).
 seed 4242
 scene STORY 108
 wait 60
@@ -7,17 +8,9 @@ expect-scene STORY
 journey-begin j6_ow_save
 press START
 wait 1
-press DOWN
-press DOWN
-press DOWN
-press DOWN
-press DOWN
-press DOWN
-press A
-wait 1
-expect-save 0
 press START
 wait 1
+expect-save 0
 expect-scene STORY
 journey-end j6_ow_save
 shot saved

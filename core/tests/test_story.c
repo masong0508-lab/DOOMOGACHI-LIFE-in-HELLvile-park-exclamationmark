@@ -550,6 +550,11 @@ TEST(story_overworld_walks_and_collides)
     CHECK(ow.pause);
     press(BTN_B);
     CHECK(!ow.pause);
+    /* U3b: START in the open panel quick-saves and closes it */
+    press(BTN_START);
+    CHECK(ow.pause);
+    press(BTN_START);
+    CHECK(!ow.pause);
     story_debug_autowin(0);
 }
 

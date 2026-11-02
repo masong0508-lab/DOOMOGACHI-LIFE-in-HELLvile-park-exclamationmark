@@ -5,6 +5,12 @@ show canon, life-sim answers, 32 MB GBA cartridge) are summarised at the end.
 Package IDs match the planning files; each package is built in its own worktree,
 reviewed, then landed on `claude/nice-allen-gr6czm`.
 
+## Current focus (standing instruction, set 2026-11-02)
+
+**Focus on the PS1 build from now on, until the owner says otherwise.** Pick PS1 work first (disc build, harness, `docs/PS1.md`
+budgets, PS1-side timing and memory) and only take GBA, Dreamcast, show or script work when the owner asks for it by name.
+Small shared-core patches that already fit the patch pattern (like U3b) are fine when asked for.
+
 ## 0. Status at a glance
 
 **Done and on the branch**
@@ -15,6 +21,8 @@ reviewed, then landed on `claude/nice-allen-gr6czm`.
   New Island -> hub 7 -> 5. `creator_hellvile` passes (checked on the tree with PA4 + U6c); no U6d patch was needed.
   U3c (2026-11-02): START pressed inside the island's START menu quick-saves slot 1 and closes the menu (no row moved):
   J7 7 -> 2 presses, budget 3. `make -C core test` 677/677 on this tree (also confirms F4 parts 1-2, F6 and the life stage forms build and pass).
+  U3b (2026-11-02): START pressed inside the story overworld's pause menu quick-saves and closes it (no row moved; strolls
+  still aren't saved, there START just closes): J6 9 -> 2 presses, budget 3. `make -C core test` 677/677 on this tree.
   PA4: plot content now offers itself only to the hero (auto story beats, plot talk, side spots, nest fights).
 - Script: style guide + locks (P0), Chapters 1-4 + epilogue rewritten (W1-W4),
   the 49 old quests rewritten (W5).
@@ -94,7 +102,7 @@ a package can only start once the ones it depends on (see the sections below) ha
 ### S: small
 - Life sim: PA0 follow-ups, U1g (GBA config sector),
   E11 (mature filter + 18+ confirm), LS-IN (press latch), PA9 (romance/mature
-  gates for heroes), U3b (story pause), PA3b (Spanish
+  gates for heroes), PA3b (Spanish
   gender fixes), PA8 (house/activities follow the avatar), E10 (Dreamcast pack
   adapter), E12 (endings integration), Z1 (joint gate).
 - Script: W15 (Bonejangles origin; needs your yes/no).
@@ -246,9 +254,14 @@ X10 VMU card trading.
 ## Patch workflow (Termux) and the next patches
 
 One zip per patch in `~/storage/downloads/`, unpacking to a same-named folder with `apply.sh` (run from the repo root,
-safe to run twice, no network). Use a NEW name for every patch. One-liner (replace NAME and MESSAGE):
+safe to run twice, no network). Use a NEW name for every patch. **The kind of command to send the owner** (replace NAME and
+MESSAGE; it pulls first, unpacks into a scratch folder, applies, cleans the scratch folder up, then commits and pushes):
 
-    cd ~/DOOMOGACHI-LIFE-in-HELLvile-park-exclamationmark && git pull --ff-only && rm -rf ~/vs && mkdir ~/vs && unzip -qo ~/storage/downloads/NAME.zip -d ~/vs && sh ~/vs/NAME/apply.sh && git add -A && git commit -m "MESSAGE" && git push
+    cd ~/DOOMOGACHI-LIFE-in-HELLvile-park-exclamationmark && git pull --ff-only && rm -rf ~/vs && mkdir ~/vs && unzip -qo ~/storage/downloads/NAME.zip -d ~/vs && sh ~/vs/NAME/apply.sh && rm -rf ~/vs && git add -A && git commit -m "MESSAGE" && git push
+
+Worked example (U6c):
+
+    cd ~/DOOMOGACHI-LIFE-in-HELLvile-park-exclamationmark && git pull --ff-only && rm -rf ~/vs && mkdir ~/vs && unzip -qo ~/storage/downloads/doomo-u6c-continue-island-nov02f.zip -d ~/vs && sh ~/vs/doomo-u6c-continue-island-nov02f/apply.sh && rm -rf ~/vs && git add -A && git commit -m "U6c: Continue row also leads with a saved island" && git push
 
 | Patch | NAME | Commit message | What |
 |---|---|---|---|
@@ -257,3 +270,4 @@ safe to run twice, no network). Use a NEW name for every patch. One-liner (repla
 | U6c | `doomo-u6c-continue-island-nov02d` | `U6c: Continue row also leads with a saved island (J9 target 10)` | this patch: with no story save but an island save, the lead row continues the island; try one fewer welcome-dialog press |
 | U6d | (none) | (no patch) | `creator_hellvile` already passes; the note is dropped by U6e |
 | U3c | `doomo-u3c-island-quicksave-nov02g` | `U3c: START, START quick-saves the island (J7 7 -> 2 presses)` | this patch |
+| U3b | `doomo-u3b-story-quicksave-nov02h` | `U3b: START, START quick-saves the story (J6 9 -> 2 presses)` | this patch |

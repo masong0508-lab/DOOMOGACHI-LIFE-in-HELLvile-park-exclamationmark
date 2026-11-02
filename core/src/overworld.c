@@ -685,6 +685,19 @@ static void title_yes(int yes)
     if (yes) { ow_sync_to_save(); scene_set(&SCENE_TITLE, 0); }
 }
 
+/* U3b: START inside the pause panel saves the story and closes the panel (J6: START, START = 2
+ * presses, was 9). The Save row still works and does the same; a stroll (visit) is not saved, so
+ * there START still just closes the panel. Returns 1 when the game was saved. */
+static int pause_save(void)
+{
+    ow_sync_to_save();
+    if (ow.visit) { ui_toast("Strolls aren't saved"); return 0; }
+    if (save_game(0)) { ui_toast(STR_ICON_HEART " Game saved!"); audio_sfx(SFX_SELECT); return 1; }
+    ui_toast(save_last_error()[0] ? save_last_error() : "Couldn't save");
+    audio_sfx(SFX_ERROR);
+    return 0;
+}
+
 static void pause_activate(int sel)
 {
     switch (sel) {
@@ -703,10 +716,7 @@ static void pause_activate(int sel)
     case PM_MAP: ow.pause = 0; story_push_scene(&SCENE_QUESTLOG, 3, PEND_OTHER, CTX_FREE, 0); break;
     case PM_OPTIONS: ow.pause = 0; story_push_scene(&SCENE_OPTIONS, 0, PEND_OTHER, CTX_FREE, 0); break;
     case PM_SAVE:
-        ow_sync_to_save();
-        if (ow.visit) { ui_toast("Strolls aren't saved"); break; }
-        if (save_game(0)) { ui_toast(STR_ICON_HEART " Game saved!"); audio_sfx(SFX_SELECT); }
-        else { ui_toast(save_last_error()[0] ? save_last_error() : "Couldn't save"); audio_sfx(SFX_ERROR); }
+        if (pause_save()) ow.pause = 0;
         break;
     case PM_TITLE:
         ui_confirm(ow.visit ? "Leave and go back?" : "Return to the title? Unsaved progress is lost.", title_yes);
@@ -718,6 +728,7 @@ static void pause_activate(int sel)
 static void pause_update(void)
 {
     ow.pause_t++;
+    if (btn_pressed(BTN_START) && !ow.visit) { if (pause_save()) ow.pause = 0; return; }   /* U3b */
     if (btn_pressed(BTN_B) || btn_pressed(BTN_START)) { ow.pause = 0; audio_sfx(SFX_CANCEL); return; }
     if (btn_repeat(BTN_UP)) { ow.pause_sel = (uint8_t)((ow.pause_sel + PM_COUNT - 1) % PM_COUNT); audio_sfx(SFX_CURSOR); }
     if (btn_repeat(BTN_DOWN)) { ow.pause_sel = (uint8_t)((ow.pause_sel + 1) % PM_COUNT); audio_sfx(SFX_CURSOR); }
