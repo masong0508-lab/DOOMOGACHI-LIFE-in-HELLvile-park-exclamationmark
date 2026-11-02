@@ -48,6 +48,10 @@ enum {
     ENDING_COUNT
 };
 #define ENDING_MAIN_COUNT 14          /* the "n/14" of the card and the list   */
+/* Retired slots: E03, E05 and E07 have no design, so they never trigger, never count and are
+ * never listed. Their numbers stay reserved (save bits, unlock ids 711+k) so nothing shifts. */
+#define ENDING_ACTIVE_COUNT 11        /* the "n/11" of the card and the list   */
+#define ENDING_IS_RETIRED(k) ((k) == ENDING_E03 || (k) == ENDING_E05 || (k) == ENDING_E07)
 #define ENDING_NONE       0xFF        /* DoomoEnds.last / .pending: none        */
 DOOMO_STATIC_ASSERT(ENDING_COUNT == 15, endings_are_14_plus_the_bonus);
 DOOMO_STATIC_ASSERT(ENDING_NOPE == ENDING_MAIN_COUNT, the_bonus_follows_the_14);

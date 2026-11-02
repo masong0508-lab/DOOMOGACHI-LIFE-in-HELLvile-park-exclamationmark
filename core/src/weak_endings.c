@@ -41,7 +41,7 @@ WEAK int ending_category(int k)
 WEAK int ending_visible(int k)
 {
     int c = ending_category(k);
-    if (c < 0) return 0;
+    if (c < 0 || ENDING_IS_RETIRED(k)) return 0;                  /* retired slots are never listed */
     if (c == ENDCAT_SEXY) return opt_mature() != MATURE_OFF;      /* answer 21 */
     if (c == ENDCAT_BONUS) return ending_seen(k);                 /* answer 19 */
     return 1;

@@ -22,11 +22,11 @@ static const char *const cat_names[ENDCAT_COUNT] = {
 static const struct { const char *title, *l1, *l2; } story[ENDING_COUNT] = {
     /* E01 */ { "Home, Sweet Hell", "The park is quiet again.", "Your door is open. Come in." },
     /* E02 */ { "A Full House", "Every chair has someone in it.", "Hell has never felt so warm." },
-    /* E03 */ { "The Long Table", "Everyone shared the Feast.", "Nobody left hungry. Not once." },
+    /* E03 */ { "Retired", "", "" },
     /* E04 */ { "Family Portrait", "One frame. Everyone you love.", "Nobody is looking away." },
-    /* E05 */ { "Leftovers", "The Feast went cold too soon.", "The table kept your seat." },
+    /* E05 */ { "Retired", "", "" },
     /* E06 */ { "The Empty Parade", "The music played. Streets were", "bare. Next year, then." },
-    /* E07 */ { "Half a Parade", "Some came. Some did not.", "The band played louder." },
+    /* E07 */ { "Retired", "", "" },
     /* E08 */ { "Lights Out", "The park went dark early.", "Even so, a lamp stayed lit." },
     /* E09 */ { "Bonejangles Bows", "One more bow. One more joke.", "The ribs rattled with pride." },
     /* E10 */ { "Every Sparkle", "You found them all. Each one.", "The sky has your name in it." },
@@ -66,7 +66,7 @@ static void ec_draw(void)
     else doomo_snprintf(buf, sizeof buf, "ENDING %d", C.k + 1);
     ui_text_center(sw / 2, y, buf, st->text);
     ui_text_center(sw / 2, y + 14, cat >= 0 ? cat_names[cat] : "?", st->text_dim);
-    doomo_snprintf(buf, sizeof buf, "Endings found: %d / %d", ending_count_seen(), ENDING_MAIN_COUNT);
+    doomo_snprintf(buf, sizeof buf, "Endings found: %d / %d", ending_count_seen(), ENDING_ACTIVE_COUNT);
     ui_text_center(sw / 2, y + 36, buf, st->text);
     {
         const DoomoEnds *e = ending_state();

@@ -23,13 +23,13 @@ TEST(ending_default_state_writes_no_chunk)
 TEST(ending_reach_marks_counts_and_queues_the_card)
 {
     fresh();
-    CHECK_EQ(ending_reach(ENDING_E03), 1);
-    CHECK_EQ(ending_reach(ENDING_E03), 0);          /* not new the second time */
-    CHECK(ending_seen(ENDING_E03));
-    CHECK_EQ(ending_state()->times[ENDING_E03], 2);
+    CHECK_EQ(ending_reach(ENDING_E06), 1);
+    CHECK_EQ(ending_reach(ENDING_E06), 0);          /* not new the second time */
+    CHECK(ending_seen(ENDING_E06));
+    CHECK_EQ(ending_state()->times[ENDING_E06], 2);
     CHECK_EQ(ending_count_seen(), 1);
-    CHECK_EQ(ending_pending(), ENDING_E03);
-    CHECK_EQ(ending_take_pending(), ENDING_E03);
+    CHECK_EQ(ending_pending(), ENDING_E06);
+    CHECK_EQ(ending_take_pending(), ENDING_E06);
     CHECK_EQ(ending_pending(), ENDING_NONE);
     CHECK_EQ(ending_reach(99), 0);                  /* out of range is ignored */
 }
@@ -56,15 +56,15 @@ TEST(ending_chunk_round_trips_within_budget)
     uint32_t n;
     fresh();
     ending_reach(ENDING_E01);
-    ending_reach(ENDING_E05);
+    ending_reach(ENDING_E08);
     n = doomo_save_ext_endings->write(buf, sizeof buf);
     CHECK_EQ(n, 32u);
     CHECK(n <= SAVE_EXT_MAX_ENDS);
     fresh();
     CHECK(doomo_save_ext_endings->read(buf, n, ENDS_VERSION));
-    CHECK(ending_seen(ENDING_E01) && ending_seen(ENDING_E05));
+    CHECK(ending_seen(ENDING_E01) && ending_seen(ENDING_E08));
     CHECK_EQ(ending_count_seen(), 2);
-    CHECK_EQ(ending_pending(), ENDING_E05);
+    CHECK_EQ(ending_pending(), ENDING_E08);
 }
 
 TEST(ending_family_check_needs_partner_and_eternal_house)
@@ -82,4 +82,18 @@ TEST(ending_finale_is_e01_for_an_empty_household_and_facts_are_sane)
     CHECK_EQ(f.partner, -1);
     CHECK_EQ(f.neglect_deaths, 0);
     CHECK_EQ(ending_resolve_finale(), ENDING_E01);
+}
+
+TEST(ending_retired_slots_never_trigger_count_or_show)
+{
+    fresh();
+    CHECK_EQ(ENDING_ACTIVE_COUNT, 11);
+    CHECK_EQ(ending_reach(ENDING_E03), 0);
+    CHECK_EQ(ending_reach(ENDING_E05), 0);
+    CHECK_EQ(ending_reach(ENDING_E07), 0);
+    CHECK(!ending_seen(ENDING_E03) && !ending_seen(ENDING_E05) && !ending_seen(ENDING_E07));
+    CHECK_EQ(ending_count_seen(), 0);
+    CHECK_EQ(ending_pending(), ENDING_NONE);
+    CHECK(!ending_visible(ENDING_E03) && !ending_visible(ENDING_E05) && !ending_visible(ENDING_E07));
+    CHECK(ending_visible(ENDING_E06));                 /* a live one is still listed */
 }

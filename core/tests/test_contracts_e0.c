@@ -65,7 +65,7 @@ TEST(e0_ending_visibility_rules)
         else if (c == ENDCAT_BONUS)               /* only once found (answer 19) */
             CHECK_EQ(ending_visible(k), ending_seen(k));
         else
-            CHECK_EQ(ending_visible(k), 1);
+            CHECK_EQ(ending_visible(k), ENDING_IS_RETIRED(k) ? 0 : 1);
     }
     CHECK_EQ(ending_visible(-1), 0);
     CHECK_EQ(ending_visible(ENDING_COUNT), 0);

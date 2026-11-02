@@ -64,7 +64,7 @@ void ending_mark(int k)
 int ending_count_seen(void)
 {
     int k, n = 0;
-    for (k = 0; k < ENDING_MAIN_COUNT; k++) n += ending_seen(k);    /* the bonus never counts */
+    for (k = 0; k < ENDING_MAIN_COUNT; k++) if (!ENDING_IS_RETIRED(k)) n += ending_seen(k);    /* the bonus and the retired never count */
     return n;
 }
 
@@ -95,7 +95,7 @@ int ending_partner(void)
 int ending_reach(int k)
 {
     int fresh;
-    if (k < 0 || k >= ENDING_COUNT) return 0;
+    if (k < 0 || k >= ENDING_COUNT || ENDING_IS_RETIRED(k)) return 0;   /* retired: never reached */
     fresh = !ending_seen(k);
     ending_mark(k);
     ends()->pending = (uint8_t)k;
