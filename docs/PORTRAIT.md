@@ -316,4 +316,3 @@ wings and species are never touched. Not yet done: baby-specific outfits
 (an onesie), a dedicated baby body shape (a swaddle), wrinkles and a stoop
 for ELDER (BODY_HUNCHED is the player's choice), and a look at the Q4
 proportions of each stage on real hardware.
-
