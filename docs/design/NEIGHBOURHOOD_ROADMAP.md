@@ -12,13 +12,13 @@ it behaves like the apartment room does today: empty lot -> "This house is empty
 1000-person limit is reached, the surplus lot models vanish and the street is **truncated** to
 the length the limit allows, and it grows back as you delete people.
 
-## Interpretation (check this first; it changes M3)
+## Interpretation (decided by the owner, 2 Nov 2026)
 The street has one lot per slot. "Limit reached" = all 1000 slots are used. Then no empty lots
 remain, the "free house" models are gone, and the street's far end is capped with a wall and
 gate. Delete a person and their slot becomes an empty lot again at its fixed address, and the
-street lengthens to include it. Open question for the owner: is the capped length "occupied
-lots only" (street shrinks as people leave) or "occupied + a few free lots"? Default below:
-occupied + free lots, up to 1000 total, with the street never shorter than one chunk.
+street lengthens to include it.
+**Decided: the street is the occupied lots plus a few free lots** (`FREE_LOTS`, default 10, up
+to 1000 total), never shorter than one chunk. It does not shrink to occupied lots only.
 
 ## Hard facts this plan is built on
 | Fact | Where | Consequence |
@@ -107,7 +107,7 @@ length = max(1 chunk, ceil(lots / 50) chunks) per district
 - Tests: fill all 1000 slots in a unit test -> street length matches the formula and no free
   lot exists; delete one -> exactly one lot is free and the gate moves; delete 500 -> length
   halves. Journey: reach the cap, walk to the end wall, delete someone, walk on.
-- Exit: the owner's rule verified, including the open question above.
+- Exit: the "occupied + a few free lots" rule verified at every size.
 
 ### M4 - Hub integration and travel (M)
 - A door "Home Row" beside the hub (new place in `story.h`, free play only, hidden in a story
