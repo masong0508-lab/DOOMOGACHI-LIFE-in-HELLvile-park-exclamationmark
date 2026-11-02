@@ -59,7 +59,8 @@ static struct {
     DoomoSaveInfo info[2];   /* save headers, read once on entering the title */
 } T;
 
-static int lead_row(void) { return T.has_story ? 1 : 0; }
+/* U6c: a saved island alone also earns the lead row (story wins if both) */
+static int lead_row(void) { return (T.has_story || T.has_free) ? 1 : 0; }
 
 static int row_id(int pos)
 {
@@ -211,7 +212,7 @@ static void title_update(void)
         if (btn_pressed(BTN_B)) { T.started = 0; audio_sfx(SFX_CANCEL); return; }
         if (!btn_pressed(BTN_A)) return;
         switch (row_id(T.sel)) {
-        case I_CONTINUE: continue_story(); break;
+        case I_CONTINUE: if (T.has_story) continue_story(); else continue_free(); break;
         case I_STORY: T.menu = M_STORY; T.sub_sel = (uint8_t)(T.has_story ? 1 : 0); T.menu_t = 0; audio_sfx(SFX_SELECT); break;
         case I_FREE:
             /* U6b: no island saved yet -> straight to the New Island screen */
@@ -671,7 +672,7 @@ static void draw_menu(void)
             int id = row_id(i);
             if (pop <= 0) continue;
             if (id == I_CONTINUE) {
-                doomo_snprintf(label, sizeof(label), "Continue");
+                doomo_snprintf(label, sizeof(label), T.has_story ? "Continue" : "Continue island");
             } else if (id == I_LANG) {
                 const DoomoOptionInfo *oi = &doomo_option_info[OPT_LANGUAGE];
                 doomo_snprintf(label, sizeof(label), STR_ICON_ARROW_L " %s " STR_ICON_ARROW_R,

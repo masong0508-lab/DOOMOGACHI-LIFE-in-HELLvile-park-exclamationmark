@@ -250,5 +250,5 @@ safe to run twice, no network). Use a NEW name for every patch. One-liner (repla
 |---|---|---|---|
 | U6a | `doomo-u6a-continue-first-nov02b` | `U6a: Continue-first title` | already in the tree |
 | U6b | `doomo-u6b-quick-island-nov02c` | `U6b: quick island start (J9 13 -> 11 presses)` | this patch |
-| U6c | `doomo-u6c-continue-island-nov02d` | `U6c: Continue row also leads with a saved island (J9 target 10)` | next: with no story save but an island save, the lead row continues the island; try one fewer welcome-dialog press |
+| U6c | `doomo-u6c-continue-island-nov02d` | `U6c: Continue row also leads with a saved island (J9 target 10)` | this patch: with no story save but an island save, the lead row continues the island; try one fewer welcome-dialog press |
 | U6d | `doomo-u6d-fix-creator-hellvile-nov02e` | `U6d: fix creator_hellvile script (text entry at line 106)` | then: repair the pre-existing failing script |
