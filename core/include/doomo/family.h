@@ -278,7 +278,8 @@ int  family_freewill_daily(void);
  * an adult, elder or teen brings home some Hell-Bucks, a younger child leaves a
  * small gift in your bag (cupcake, flowers or plushie); babies and toddlers only
  * give a smile (news line). Never required by the story. Not when free will is
- * Off; silent at Subconscious. Returns 1 if someone helped. family_help_do()
+ * Off; silent at Subconscious. In a STORY island the daily pass waits until the
+ * ending was seen (STORY_CH_DONE); free play has no such wait. Returns 1 if someone helped. family_help_do()
  * is the one act (used by the daily pass and the tests): 0 = none, 1 = money,
  * 2 = gift, 3 = a smile. */
 int  family_help_do(int id);

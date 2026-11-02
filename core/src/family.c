@@ -15,6 +15,7 @@
 #include "doomo/sim.h"
 #include "doomo/items.h"
 #include "doomo/town.h"
+#include "doomo/story.h"
 #include "sim_int.h"
 
 static uint8_t will_ = 2;   /* F7 free will level (FAMILY_WILL_NORMAL), saved in the family section's spare byte */
@@ -950,7 +951,10 @@ int family_help_daily(void)
 {
     static const uint8_t pct[5] = { 0, 3, 6, 10, 14 };
     int cands[FAMILY_MAX], nc = 0, i;
-    if (will_ == FAMILY_WILL_OFF || !fam_n_ || !sim_chance(pct[will_])) return 0;   /* no household: no RNG draw */
+    if (will_ == FAMILY_WILL_OFF || !fam_n_) return 0;
+    /* a bonus once the story is cleared; free play has no story to wait for */
+    if (doomo_town.mode == TOWN_STORY && story_chapter() != STORY_CH_DONE) return 0;
+    if (!sim_chance(pct[will_])) return 0;   /* no household: no RNG draw */
     for (i = 0; i < fam_n_; i++)
         if (fam_[i].id != playas_avatar() && fam_[i].role != FAMROLE_PET && (bond_[i] & 15u) >= 5) cands[nc++] = i;
     return nc ? family_help_do(fam_[cands[sim_rand(nc)]].id) != 0 : 0;

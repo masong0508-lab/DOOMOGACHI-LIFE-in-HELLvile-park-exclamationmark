@@ -652,3 +652,19 @@ TEST(family_helpers)
     family_freewill_set(FAMILY_WILL_OFF);
     CHECK_EQ(family_help_daily(), 0);
 }
+
+TEST(family_helpers_wait_for_the_story)
+{
+    int a, i, n = 0;
+    fresh();
+    a = family_pool_add(FAMROLE_SIBLING, LIFE_ADULT, 5u, "Ann", PRONOUN_SHE);
+    CHECK(a >= 0);
+    family_bond_add(a, 12);
+    family_freewill_set(FAMILY_WILL_SUBCONSCIOUS);
+    doomo_town.mode = TOWN_STORY;                                    /* the story is not cleared */
+    for (i = 0; i < 300; i++) n += family_help_daily();
+    CHECK_EQ(n, 0);
+    doomo_town.mode = TOWN_FREEPLAY;                                 /* free play: no wait */
+    for (i = 0; i < 300; i++) n += family_help_daily();
+    CHECK(n > 0);
+}

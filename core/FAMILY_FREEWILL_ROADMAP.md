@@ -142,12 +142,13 @@ skipping `playas_avatar()`.
   lend a hand. Adult, elder or teen: brings home H$20-60. Child: leaves a
   cupcake, flowers or plushie in your bag. Baby or toddler: a smile (news only).
   3-14% a day by free will level, silent at Subconscious, never when Off, never
-  pets or the avatar. Not yet gated on the story being cleared (no clean flag
-  exists) and not yet wired to the LS3 life-event engine / `CB_LIFE_*` callbacks.
+  pets or the avatar. In a STORY island it waits until the ending was seen
+  (`STORY_CH_DONE`); free play has no wait. Not yet wired to the LS3 life-event engine / `CB_LIFE_*` callbacks.
 - No household = no RNG draw in any of these passes (test_sim's news hash).
 - `SCRIPT_STYLE.md` now carries the owner's child-loss amendment.
 
 ## Still open
 - `life_ending_facts` (kids, best friends; LS5's, still a weak default); bond between members (only member-to-player so far).
-- Phase 4 via LS3 (away helping, item returns), story-cleared gate, disaster
-  story hooks, a tone review of the disaster lines.
+- Phase 4 via LS3 (away helping, item returns), disaster story hooks (hand-written
+  scripts, Loss Off = rescue), and an owner tone check of the disaster, loss and
+  event lines (a first read found them kid-safe and non-graphic).
