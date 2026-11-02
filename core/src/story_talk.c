@@ -8,6 +8,7 @@
  * cast has its own idle chatter per chapter. Talking to someone new makes
  * a friend.
  */
+#include "doomo/playas.h"
 #include "story_int.h"
 #include "story_ch12.h"
 
@@ -276,7 +277,7 @@ void talk_ambient(int id)
     const char *cast;
     int before, newf = 0, fresh, castable;
     static uint16_t variant;
-    if (!r || r->status == RES_EMPTY || id == DOOMO_PLAYER_ID) return;
+    if (!r || r->status == RES_EMPTY || id == playas_slot()) return;   /* PA7: not yourself */
     fresh = !talked_recently(id);
     before = r->level;
     castable = roster_npc_of(id) >= 0 || (r->flags & RF_STORY_NPC) || id == ID_LULLA || id == ID_STEAMY ||

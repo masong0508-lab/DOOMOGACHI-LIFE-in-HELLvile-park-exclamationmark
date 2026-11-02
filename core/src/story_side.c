@@ -14,6 +14,8 @@
  * HUD, so the PS1's single side slot never thrashes).
  */
 #include "story_int.h"
+#include "doomo/family.h"
+#include "doomo/life.h"
 #include "overworld_int.h"   /* S4: ownpc_find / ownpc_cast (a verb's resident) */
 #include "doomo/unlock_ids.h" /* S4: UL_STORY_SONG2 (CB_SIDE_ONCE) */
 
@@ -1056,6 +1058,17 @@ void side_callback(int cb, int choice)
     case CB_SIDE_FRIENDS: vm_set_var(0, story_friend_count(-1)); break;
     case CB_SIDE_BRANCH: vm_set_var(0, (story_stry()->branch >> (2 * (choice & 3))) & 3); break;
     /* --- end S5 --- */
+    /* --- LS5: life sim hooks (story_int.h CB_LIFE_*) --- */
+    case CB_LIFE_FAMILY_ADD: {
+        const DoomoResident *r = town_res(choice);
+        int e = r && r->status != RES_EMPTY ? family_add(choice, FAMROLE_PARTNER, sim_life_stage(choice)) : FAM_ERR_ID;
+        vm_set_var(0, e < 0 ? e : 0);
+        break;
+    }
+    case CB_LIFE_HOUSEHOLD: vm_set_var(0, life_family_count()); break;
+    case CB_LIFE_KIDS: { LifeEndingFacts f; life_ending_facts(&f); vm_set_var(0, f.kids); break; }
+    case CB_LIFE_PARTNER: vm_set_var(0, life_player_partner()); break;
+    /* --- end LS5 --- */
     default: break;
     }
 }

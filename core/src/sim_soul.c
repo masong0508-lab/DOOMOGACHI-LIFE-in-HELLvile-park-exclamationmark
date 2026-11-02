@@ -15,6 +15,7 @@
  * anyone can, it is marked RF_MONSTER_KILL, raises the monster meter and
  * the victim's friends remember who did it.
  */
+#include "doomo/playas.h"
 #include "sim_int.h"
 
 /* corruption per game hour by venue (before scaling) */
@@ -281,7 +282,7 @@ static void grieve(int id, int monster)
         sim_stat_add(o, STAT_HAPPY, -(10 + v / 5));
         sim_stat_add(o, STAT_SANITY, -(5 + v / 10));
         sim_set_transient(other, TR_GRIEF, 6 + v / 12);
-        if (monster) rel_adjust(other, DOOMO_PLAYER_ID, -(10 + v / 4));
+        if (monster) rel_adjust(other, playas_slot(), -(10 + v / 4));
         if (v >= 70 && o->status == RES_ALIVE) sim_problem_raise(other, PROB_LONELY, id, 0);
         if (k == REL_DATING || k == REL_MARRIED) bit_set(sim_s.taken, other, 0);
     }

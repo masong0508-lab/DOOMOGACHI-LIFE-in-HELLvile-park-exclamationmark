@@ -10,6 +10,7 @@
  * fish from the cooler (a species, or any cute / hellish / fish at all).
  * A dish keeps its recipe's flavour: serving a Fish Ramen to a citizen
  * who loves Ramen counts as their favourite (cook_serve). */
+#include "doomo/playas.h"
 #include "fishcook_int.h"
 
 #define P(p)  PAL_PAINT(PAINT_##p, 1)
@@ -354,7 +355,7 @@ int cook_serve(int i, int item, char *buf, int cap, int *tip)
             r->stat[STAT_HAPPY] = (uint8_t)DOOMO_MIN(100, r->stat[STAT_HAPPY] + 25);
             r->level = (uint8_t)DOOMO_MIN(99, r->level + 3);
             r->mood = MOOD_ECSTATIC;
-            rel_adjust(id, DOOMO_PLAYER_ID, 5);
+            rel_adjust(id, playas_slot(), 5);
             doomo_snprintf(buf, cap, love[k], food);
         } else {
             r->stat[STAT_HAPPY] = (uint8_t)DOOMO_MAX(0, r->stat[STAT_HAPPY] - 12);

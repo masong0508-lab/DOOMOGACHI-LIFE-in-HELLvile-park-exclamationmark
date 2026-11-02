@@ -14,6 +14,7 @@
 #include "../src/story_int.h"
 #include "../src/home_int.h"
 #include "../src/lib_int.h"
+#include "../src/story_int.h"
 
 static void fresh(void)
 {
@@ -285,4 +286,28 @@ TEST(playas_new_life_starts_as_a_villager)
     CHECK(playas_can_be(PLAYAS_ID_HERO));            /* the hero is a resident now */
     CHECK(playas_switch(PLAYAS_ID_HERO, PLAYAS_SWITCH_INSTANT));
     CHECK(playas_available());
+}
+
+/* (LS5 / PA7) the ending facts read the household; the story's life hooks
+ * answer; a side effect on you hits the avatar, not the hero. */
+TEST(ls5_life_hooks_and_facts)
+{
+    LifeEndingFacts f;
+    int a;
+    fresh();
+    a = family_pool_add(FAMROLE_CHILD, LIFE_CHILD, 7u, "Kit", PRONOUN_THEY);
+    CHECK(a >= 0);
+    life_ending_facts(&f);
+    CHECK_EQ(f.kids, 1);
+    CHECK(f.household >= 2);
+    CHECK(f.happiness <= 100);
+    CHECK_EQ(f.partner_adult, 0);                    /* no partner */
+    side_callback(CB_LIFE_KIDS, 0);
+    CHECK_EQ(vm_var(0), 1);
+    side_callback(CB_LIFE_HOUSEHOLD, 0);
+    CHECK_EQ(vm_var(0), f.household);
+    side_callback(CB_LIFE_PARTNER, 0);
+    CHECK_EQ(vm_var(0), -1);
+    side_callback(CB_LIFE_FAMILY_ADD, 99999);        /* nobody there */
+    CHECK(vm_var(0) < 0);
 }

@@ -4,6 +4,7 @@
  * is a binary search. When the graph is full, the weakest bond (smallest
  * |value|, special kinds protected) is evicted to make room.
  */
+#include "doomo/playas.h"
 #include "doomo/town.h"
 #include "doomo/roster.h"
 #include "doomo/rng.h"
@@ -184,7 +185,7 @@ static int edge_strength(const DoomoEdge *e)
     default: break;
     }
     if (e->kind & (REL_CRUSH_AB | REL_CRUSH_BA)) v += 60;
-    if (e->a == DOOMO_PLAYER_ID || e->b == DOOMO_PLAYER_ID) v += 200;
+    if (e->a == playas_slot() || e->b == playas_slot()) v += 200;   /* PA7: the avatar */
     return v;
 }
 

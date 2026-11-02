@@ -247,6 +247,12 @@ enum { CB_LIFE_FIRST  = CB_SIDE_BRANCH + 1,  CB_LIFE_LAST  = CB_LIFE_FIRST + 15,
        CB_END_FIRST   = CB_LIFE_LAST + 1,    CB_END_LAST   = CB_END_FIRST + 7,
        CB_ROUTE_FIRST = CB_END_LAST + 1,     CB_ROUTE_LAST = CB_ROUTE_FIRST + 7,
        CB_FAM_FIRST   = CB_ROUTE_LAST + 1,   CB_FAM_LAST   = CB_FAM_FIRST + 7 };
+/* LS5: the life sim hooks a side script can call (CB_LIFE block). */
+enum { CB_LIFE_FAMILY_ADD = CB_LIFE_FIRST,  /* ARG = resident: join the household as the partner (adult gate);
+                                               VAR0 = 0 on success, else FAM_ERR_* */
+       CB_LIFE_HOUSEHOLD,                    /* VAR0 = household size, the player included */
+       CB_LIFE_KIDS,                         /* VAR0 = children in the household           */
+       CB_LIFE_PARTNER };                    /* VAR0 = the partner's resident id, -1 if none */
 /* --- end K0 --- */
 enum { GRB_DISH = 1,            /* a dish fed (+1, capped at 15)                 */
        GRB_EXES,                /* the exes met so far = value (0..7)            */

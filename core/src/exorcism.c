@@ -6,6 +6,7 @@
  * DOOMO_EXORCISM_FAILS_TO_LOSE_SOUL (3) the host becomes RES_SOUL_LOST and
  * only then may be laid to rest (sim_can_lay_to_rest).
  */
+#include "doomo/playas.h"
 #include "sim_int.h"
 
 /* --- S3: authored possessors (SPEC S3 M1, story_final.md sec.1, sec.15.11) ---
@@ -366,7 +367,7 @@ void exorcism_apply(int resident_id, int success)
         r->stat[STAT_SANITY] = (uint8_t)DOOMO_MAX(r->stat[STAT_SANITY] + 25, 60);
         r->stat[STAT_HAPPY] = (uint8_t)DOOMO_MIN(100, r->stat[STAT_HAPPY] + 30);
         r->level = (uint8_t)DOOMO_MIN(99, r->level + 10);
-        rel_adjust(resident_id, DOOMO_PLAYER_ID, 20);
+        rel_adjust(resident_id, playas_slot(), 20);
         if (doomo_town.exorcisms_won < 0xFFFF) doomo_town.exorcisms_won++;
         progress_add(PROG_EXORCISMS_WON, 1);
         exo_disarm(resident_id);                               /* S3 */

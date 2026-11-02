@@ -438,6 +438,16 @@ void life_ending_facts(LifeEndingFacts *out)
     out->partner = (int16_t)life_player_partner();
     for (i = 0; i < fam_n_; i++)
         if (fam_[i].role == FAMROLE_CHILD) kids++;
+    if (out->partner >= 0)
+        out->partner_adult = (uint8_t)(LIFE_IS_ADULT(sim_life_stage(out->partner)) && LIFE_IS_ADULT(sim_life_stage(DOOMO_PLAYER_ID)));
+    {   /* island happiness: the mean HAPPY of everyone alive */
+        int n = 0, sum = 0, k;
+        for (k = 0; k < DOOMO_MAX_RESIDENTS; k++) {
+            const DoomoResident *r = &doomo_town.res[k];
+            if (r->status == RES_ALIVE) { sum += r->stat[STAT_HAPPY]; n++; }
+        }
+        out->happiness = (uint8_t)(n ? DOOMO_CLAMP(sum / n, 0, 100) : 0);
+    }
     out->household = (uint8_t)life_family_count();
     for (i = 0; i < fam_n_; i++)             /* housemates who have a closest housemate */
         if (family_close_id(fam_[i].id) >= 0 && out->best_friends < 255) out->best_friends++;

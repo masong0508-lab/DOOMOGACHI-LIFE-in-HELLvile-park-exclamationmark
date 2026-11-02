@@ -34,6 +34,13 @@ The PS1 life-sim status checklist (what is verified, written, or missing on that
   (`SCENE_PLAYAS`) shows a "Start a new life..." row once the story is finished: confirm, pick who, confirm again. The story stays
   finished, the hero stays a resident you can switch back to. Still open: a title-screen entry and a fresh-world New life (new
   island) are not built; this keeps the finished island. `make -C core test` 707/707.
+  W8 closed in the core (2026-11-02, `make -C core test` 708/708). F2 (family UI) was already built in `fp_family.c`: dashboard,
+  add-member wizard (neighbour / new person / pet / birth), care-all with the weakest-need pass, the Remembered tab, play-as and
+  remove; the roadmap list was stale. LS5: `life_ending_facts` now also fills `partner_adult` (both adults, LS0 gate) and
+  `happiness` (mean HAPPY of the living); story scripts get `CB_LIFE_FAMILY_ADD` (ARG = resident, VAR0 = 0 or `FAM_ERR_*`),
+  `CB_LIFE_HOUSEHOLD`, `CB_LIFE_KIDS`, `CB_LIFE_PARTNER`. PA7: the ACTOR sites now use `playas_slot()` (grief hit in `sim_soul.c`,
+  cooking and exorcism bonds, the edge-eviction bonus in `town.c`, the "not yourself" test in `story_talk.c`). Not built: the
+  combat/ending art ties beyond those facts, F2 on GBA/PS1 screens (not run here).
   PA4: plot content now offers itself only to the hero (auto story beats, plot talk, side spots, nest fights).
 - Script: style guide + locks (P0), Chapters 1-4 + epilogue rewritten (W1-W4),
   the 49 old quests rewritten (W5).
@@ -133,9 +140,8 @@ a package can only start once the ones it depends on (see the sections below) ha
   picker), PA3a (gender-aware text), PA5 (character switcher), PA2 (done 2026-11-02; hero choice:
   SUNNY / MARVIN / your own), U6 (done 2026-11-02: U6a-U6e; Continue-first title and flow), E6c (Ch3
   punch-up), LS-QA (fewer taps), E6d (Ch4 + epilogue punch-up), LS6 (streamlined
-  progression), E8 (GBA mature ROM), E9 (PS1 mature disc), LS5 (story/combat ties),
-  PA7 (play-as content),
-  F4 (family events), F3 (house occupancy), PA10 (play-as integration),
+  progression), E8 (GBA mature ROM), E9 (PS1 mature disc),
+    F4 (family events), F3 (house occupancy), PA10 (play-as integration),
   F5 (pets + uplift), F6 (loss/death), FREE (free mode), MP0 (profiles).
 - GBA speed: G10 (pet, concert, title, dialogue), G12 (60 Hz, optional).
 - Script: W8 (side_a part 3), W12 (free-play chatter), W16 (integration).
@@ -147,8 +153,7 @@ a package can only start once the ones it depends on (see the sections below) ha
 - Life sim: PA1 (play-as core), U2 (options screen redesign), E2 (mature scene
   slots), F1 (family core), E1 (ending engine), LS3 (life event engine),
   E3 (good + secret endings), E4 (bad + sexy endings, romance routes),
-  PA4 (overworld handoff), LS4 (event and family content), F2 (family UI),
-  U8 (GBA 3D Faster/Better done properly), S-HOUSE (story house unlock + tiers), MP1 (multiplayer + co-op heroes).
+  PA4 (overworld handoff), LS4 (event and family content), U8 (GBA 3D Faster/Better done properly), S-HOUSE (story house unlock + tiers), MP1 (multiplayer + co-op heroes).
 - GBA speed: G8 (tile backend: island hub and menus at 30 fps).
 - Script: W9, W10, W11 (side_b rewrites).
 - Languages: L2b (formatted text), L3 (tooling), L5 (story text for N languages),
@@ -173,7 +178,7 @@ main game, working on native, GBA, PS1 and (later) Dreamcast.
 | W5 | LS3, PA2, U6, E11, E3, E6c | life event engine; **hero choice: SUNNY (female), MARVIN (male fox), make-your-own**; Continue-first title + flow; mature filter + 18+ confirm; good/secret endings; Ch3 punch-up |
 | W6 | LS-QA, LS-IN, PA9, U3b, E4, E6d | fewer taps; press latch; romance/mature gates for heroes; story pause; bad + sexy endings and romance routes; Ch4 + epilogue punch-up |
 | W7 | PA4, U3c, LS4, LS6, E8, E9 | overworld handoff; island START menu; event + family content; streamlined progression; GBA mature ROM variant; PS1 mature disc |
-| W8 | F2, LS5, ~~PA6~~, PA7, ~~PA8~~, ~~U4~~ | family dashboard + add-member wizard + care-all; story/combat/endings ties; **post-game "new life" as a villager**; play-as content; house/activities follow the avatar; held-frame backdrop |
+| W8 (done in the core 2026-11-02) | ~~F2~~, ~~LS5~~, ~~PA6~~, ~~PA7~~, ~~PA8~~, ~~U4~~ | family dashboard + add-member wizard + care-all; story/combat/endings ties; **post-game "new life" as a villager**; play-as content; house/activities follow the avatar; held-frame backdrop |
 | W9 | F4, PA3b, U8, E10 | family events + life cycle; Spanish gender fixes; GBA 3D Faster/Better done properly; Dreamcast pack adapter |
 | W10 | F3, PA10, E12 | house occupancy; play-as integration; endings + mature integration |
 | W11 | Z1 | joint gate across all four areas |
