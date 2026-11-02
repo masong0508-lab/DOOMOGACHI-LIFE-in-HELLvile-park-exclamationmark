@@ -41,25 +41,25 @@ extern const DoomoScene SCENE_LIB_BESTIARY, SCENE_LIB_ALMANAC, SCENE_LIB_WEAPONS
 
 const LibWingInfo lib_wings[LIB_WING_COUNT] = {
     { STR_ICON_SKULL " BESTIARY", "Bestiary",
-      "Every demon from the Gate, pressed like flowers. A few are still wriggling.",
+      "Every demon from the Gate, pressed like flowers. A few still wriggle. Do not tap the glass.",
       ICON_SKULL, PAINT_BLOOD, WIN_CREAM, WIN_HELL, &SCENE_LIB_BESTIARY },
     { STR_ICON_HOUSE " CITIZEN ALMANAC", "Citizen Almanac",
-      "All our neighbours, both sides of the Wall. Alphabetised. Mostly.",
+      "All our neighbours, both sides of the Wall. Alphabetised. The Mayor is filed under T.",
       ICON_HOUSE, PAINT_TEAL, WIN_MINT, WIN_MINT, &SCENE_LIB_ALMANAC },
     { STR_ICON_GUN " WEAPON CATALOG", "Weapon Catalog",
-      "Rivet's blueprints! Please do not weld in the reading room.",
+      "Rivet's blueprints. Please do not weld in the reading room. Rivet, that means you.",
       ICON_GUN, PAINT_COBALT, WIN_CREAM, WIN_DARK, &SCENE_LIB_WEAPONS },
     { STR_ICON_FOOD " FOOD & ITEM DEX", "Food & Item Dex",
-      "Snacks, gifts and holy water - and who loves or hates each treat.",
+      "Snacks, gifts and holy water - and who loves or hates each treat. Mostly needs salt.",
       ICON_FOOD, PAINT_TANGERINE, WIN_CUTE, WIN_CREAM, &SCENE_LIB_ITEMS },
     { STR_ICON_STAR " TROPHY WALL", "Trophy Wall",
-      "Every prize in HaHaland, and a hint for each one you haven't won.",
+      "Every prize in HaHaland, and a hint for each one you haven't won. We saw your score.",
       ICON_STAR, PAINT_HONEY, WIN_CREAM, WIN_CREAM, &SCENE_LIB_TROPHIES },
     { STR_ICON_NOTE " JUKEBOX", "Jukebox",
-      "Every tune and every boing. Headphones are on the hook. Shhh!",
+      "Every tune and every boing. Headphones on the hook. The last track is not on the list.",
       ICON_NOTE, PAINT_GRAPE, WIN_DARK, WIN_DARK, &SCENE_LIB_JUKEBOX },
     { STR_ICON_SPARK " ART GALLERY", "Art Gallery",
-      "Paint, skies and portraits of every critter. No flash photography.",
+      "Paint, skies and portraits of every critter. No flash. They remember faces.",
       ICON_SPARK, PAINT_ROSE, WIN_CREAM, WIN_CUTE, &SCENE_LIB_GALLERY },
 };
 
@@ -603,16 +603,16 @@ static struct {
 
 static const char *const quips_day[] = {
     "Welcome, welcome! Quiet giggling only, please.",
-    "I recommend books by smelling you. You smell like an adventure!",
-    "Late fees are paid in hugs. Hellvile pays in screams.",
-    "Every page is pressed, dusted and lightly blessed.",
-    "The Bestiary bites. Turn its pages gently.",
-    "Ooh, a new reader! Mind the stairs, the third step yawns.",
+    "I recommend books by smelling you. You smell like an adventure! And a little like soup.",
+    "Late fees are paid in hugs. Hellvile pays in screams. Both accepted.",
+    "Every page is pressed, dusted and lightly blessed. Terms apply.",
+    "The Bestiary bites. Page 12 especially. We have a form for that.",
+    "Ooh, a new reader! Mind the stairs. The third step is a mimic.",
 };
 static const char *const quips_night[] = {
-    "Hoo! Night owls get the best reading lamps.",
-    "Shh... the books are asleep. Read on tippy-toes.",
-    "After midnight the Bestiary rattles. Don't worry. Mostly.",
+    "Hoo! Night owls get the best reading lamps. Do not ask where we get the oil.",
+    "Shh... the books are asleep. Read on tippy-toes. Do not wake the dictionary.",
+    "After midnight the Bestiary rattles. Don't worry. It is only stretching. Mostly.",
 };
 static const char *const quips_creepy[] = {
     "THE BOOKS... ARE... OVERDUE. ALL OF THEM. FOREVER.",

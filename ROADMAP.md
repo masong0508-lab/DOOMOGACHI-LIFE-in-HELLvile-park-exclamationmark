@@ -25,6 +25,8 @@ reviewed, then landed on `claude/nice-allen-gr6czm`.
 - Script W14: the Fun Fair medal/feat hints (29 lines in `unlocks_minigames.c`) and the shop toasts
   (`fp_shop.c`) punched up in the game's voice; names, ids and thresholds unchanged. Spanish and the
   other languages need a re-translation pass (L8).
+- Script W13: library flavour punched up (wing blurbs, Quillby's quips, 4 jukebox notes, 12 library trophy hints);
+  same counts and order, English only until the L8 re-translation.
 - Dreamcast boot easter egg (X8): hold A+B+X+Y+START at power-on for a one-second rainbow (`dc/src/egg.c`).
 - PS1 config file (U1p): `bu00:BASLUS-DOOMOC` behind `plat_config_read/write`, `PLATF_CONFIG`
   (needs a PS1 harness run to confirm on PCSX-Redux).
@@ -75,7 +77,7 @@ a package can only start once the ones it depends on (see the sections below) ha
   F4 (family events), F3 (house occupancy), PA10 (play-as integration),
   F5 (pets + uplift), F6 (loss/death), FREE (free mode), MP0 (profiles).
 - GBA speed: G10 (pet, concert, title, dialogue), G12 (60 Hz, optional).
-- Script: W8 (side_a part 3), W12 (free-play chatter), W13 (library flavour), W16 (integration).
+- Script: W8 (side_a part 3), W12 (free-play chatter), W16 (integration).
 - Languages: L8a, L8b, L8c (Spanish batches), L8f (Spanish polish).
 - Dreamcast: DC4 (input + VMU saves), DC7 (overworld), DC9 (full game + CI);
   extras X1 (VMU live pet), X4 (sharp 640x480 text), X5 (keyboard + mouse), X10 (VMU card trading).
@@ -154,7 +156,7 @@ H11 (turn the GBA house state on and test the real house).
 ## 4. Priority 4: script
 
 - Side quests: W6-W8 (side_a), W9-W11 (side_b), W12 free-play chatter,
-  W13 library flavour, W15 (needs a decision), W16 integration.
+  W15 (needs a decision), W16 integration.
 - PG-21 punch-ups E6a-E6d (life-sim waves). Swearing budget for the whole game:
   the s-word a few times; the f-word exactly twice (once cut off, once in full near the end).
 - Known gap: four choice questions outside Ch1-2 still need checking for "/" breaks.
