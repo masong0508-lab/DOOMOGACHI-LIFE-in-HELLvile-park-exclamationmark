@@ -46,6 +46,8 @@ int family_cap(void)
 
 int family_tier(void)
 {
+    /* Free play has no story to clear first: the full household room from day one. */
+    if (doomo_town.mode == TOWN_FREEPLAY) return HOUSEHOLD_TIER_NGPLUS_DONE;
     return unlock_has(UL_LIFE_HOUSEHOLD_T2) ? HOUSEHOLD_TIER_NGPLUS_DONE
          : unlock_has(UL_LIFE_HOUSEHOLD_T1) ? HOUSEHOLD_TIER_GAME_DONE
          : HOUSEHOLD_TIER_START;

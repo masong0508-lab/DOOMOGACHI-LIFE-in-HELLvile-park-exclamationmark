@@ -11,8 +11,8 @@
 
 static void fresh(void)
 {
-    town_new(TOWN_FREEPLAY, 31, TOWN_POP_PREMADE);   /* resets the LIFE chunk: no household */
-    sim_init();
+    town_new(TOWN_STORY, 31, TOWN_POP_PREMADE);      /* resets the LIFE chunk: no household */
+    sim_init();                                      /* (story: the tiers follow the unlocks) */
 }
 
 /* an alive resident of this stage who is open to romance with anyone, so the
@@ -689,4 +689,22 @@ TEST(family_close_to_housemate)
     CHECK_EQ(family_close_id(-5), -1);
     family_bond_clear();                                            /* nothing saved: a reload starts fresh */
     CHECK_EQ(family_close_id(a), -1);
+}
+
+TEST(family_free_play_has_the_full_household_and_play_as_from_day_one)
+{
+    int i;
+    fresh();
+    clear_tiers();
+    town_new(TOWN_FREEPLAY, 31, TOWN_POP_PREMADE);
+    sim_init();
+    CHECK_EQ(family_tier(), HOUSEHOLD_TIER_NGPLUS_DONE);
+    CHECK_EQ(family_cap(), HOUSEHOLD_CAP_FULL_T2);
+    for (i = 0; i < HOUSEHOLD_CAP_FULL_T2; i++)
+        CHECK(family_add(PLAYAS_ID_FAMILY_FIRST + i, FAMROLE_HOUSEMATE, LIFE_ADULT) >= 0);
+    CHECK(playas_available());
+    CHECK(playas_can_be(PLAYAS_ID_FAMILY_FIRST));
+    town_new(TOWN_STORY, 31, TOWN_POP_PREMADE);        /* a story island still earns it */
+    CHECK_EQ(family_cap(), HOUSEHOLD_CAP_FULL_T0);
+    CHECK(!playas_available());
 }

@@ -1,0 +1,38 @@
+# Free play: pick an empty house in the apartments and you get a menu for it;
+# "Make a family here" opens the creator for that house's first person.
+scene NEW_ISLAND
+wait 20
+press LEFT
+wait 16
+press A
+wait 10
+press A
+wait 16
+press DOWN
+press A
+wait 20
+expect-scene TEXT_ENTRY
+type "Mochi Isle\n"
+wait 20
+expect-scene DIALOG
+press A
+wait 2
+press A
+wait 2
+press A
+wait 2
+press A
+wait 40
+expect-scene CREATOR
+press B
+wait 20
+push APARTMENTS 0
+wait 40
+expect-scene APARTMENTS
+press A
+wait 20
+shot empty_house_menu
+press A
+wait 30
+expect-scene CREATOR
+shot make_family_creator

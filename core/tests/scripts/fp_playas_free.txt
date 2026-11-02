@@ -1,6 +1,6 @@
-# Family: "Play as them" on a fresh Classic island is locked until the story
-# is finished. The member menu says so up front, picking it explains why, and
-# nobody is switched. (Playtest #7 was this: the dialog, not a failed switch.)
+# Family: "Play as them" on a fresh free play island works from day one (a story
+# island keeps it locked until the story is finished: test_playas covers that).
+# The member menu offers it, picking it switches, and the list tags who you are.
 scene NEW_ISLAND
 wait 10
 press A
@@ -43,7 +43,7 @@ shot household_has_member
 press UP
 press A
 wait 90
-shot member_menu_locked
+shot member_menu
 press DOWN
 wait 4
 press DOWN
@@ -53,10 +53,7 @@ wait 4
 shot play_as_row
 press A
 wait 60
-shot locked_explained
-press A
-wait 40
-expect-scene FAMILY
+shot switched_to_member
 press B
 wait 2
 expect-scene ISLAND

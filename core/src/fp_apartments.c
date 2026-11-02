@@ -22,6 +22,8 @@ static struct {
     int district, floor, room;        /* floor 1..50, room 1..10 */
     int scroll;                       /* pixel scroll of the facade (x16) */
     int t, wait, jump_open;
+    int house;                        /* the empty room picked for "Make a family here" (-1 none) */
+    int family;                       /* 1: the creator is making this house's first person */
     UiList jump;
     uint8_t seen[DOOMO_DISTRICT_SIZE * 2 / 8];
     int seen_n;
@@ -112,14 +114,26 @@ static void next_problem(void)
     ui_toast("Nobody here needs help right now!");
 }
 
+/* An empty house: pick what to make there. "Make a family here" creates the first person into
+ * this house, then takes you straight to the Family menu to add the rest of the household. */
+static const char *const house_opts[3] = { "Make a family here", "Create one person", "Never mind" };
+
+static void house_pick(int c)
+{
+    if (c < 0 || c > 1 || A.house < 0) return;
+    A.family = (c == 0);
+    A.wait = FP_WAIT_CREATOR;
+    scene_push(&SCENE_CREATOR, A.house);
+}
+
 static void open_room(void)
 {
     int id = slot_of(A.floor, A.room);
     const DoomoResident *r = &doomo_town.res[id];
     if (r->status == RES_EMPTY) {
         audio_sfx(SFX_SELECT);
-        A.wait = FP_WAIT_CREATOR;
-        scene_push(&SCENE_CREATOR, id);
+        A.house = id;
+        ui_choice(-1, "This house is empty", house_opts, 3, house_pick);
         return;
     }
     if (!(A.seen[id >> 3] & (1 << (id & 7)))) {
@@ -144,7 +158,9 @@ static void ap_update(void)
             audio_sfx(SFX_HAPPY);
             if (fp_is_freeplay()) fp_achieve(UL_FP_FIRST_CITIZEN);
             fp_check_island_achievements();
+            if (A.family) { A.family = 0; scene_push(&SCENE_FAMILY, 1); return; }   /* on to the family menu */
         }
+        A.family = 0;
     }
     if (A.jump_open) {
         int r = ui_list_update(&A.jump);

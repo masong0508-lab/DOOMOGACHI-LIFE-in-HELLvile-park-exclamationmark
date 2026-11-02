@@ -396,8 +396,8 @@ static void open_member(int id)
 /* ---- scene --------------------------------------------------------------- */
 static void fam_enter(int arg)
 {
-    (void)arg;
     memset(&W, 0, sizeof(W));
+    if (arg == 1 && family_count() < family_cap()) add_member();   /* from a new house: build the family */
 }
 
 static void fam_update(void)

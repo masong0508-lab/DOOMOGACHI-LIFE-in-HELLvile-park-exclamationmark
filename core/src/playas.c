@@ -38,7 +38,7 @@ int playas_available(void)
 {
     if (P.flags & PF_NEWLIFE) return 1;
     if (doomo_town.mode == TOWN_STORY) return doomo_town.story.chapter == STORY_CH_DONE;
-    return ending_count_seen() > 0;
+    return 1;                                   /* free play: switch from the first day */
 }
 
 /* the id is a valid avatar (ignoring availability and "already them") */
