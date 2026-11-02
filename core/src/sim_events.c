@@ -11,6 +11,7 @@
  * sim writes headlines for its events, and adds charming filler from
  * templates so the ticker always has something to say.
  */
+#include "doomo/playas.h"
 #include "sim_int.h"
 
 const char *const doomo_problem_names[PROB_COUNT] = {
@@ -145,7 +146,7 @@ static void reward(DoomoResident *r, int id, int cash)
         progress_add(PROG_MONEY_EARNED, cash);
     }
     r->level = (uint8_t)DOOMO_MIN(99, r->level + 3);
-    rel_adjust(id, DOOMO_PLAYER_ID, 4);
+    rel_adjust(id, playas_slot(), 4);
 }
 
 /* A compatible stranger for a lonely resident (bounded sampling). */

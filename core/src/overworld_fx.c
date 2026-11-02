@@ -12,6 +12,7 @@
  *    prompt, a compass arrow toward the current goal, the mini-map
  *  - the pause panel
  */
+#include "doomo/playas.h"
 #include "overworld_int.h"
 
 /* ---- generated bubble images ------------------------------------------------------- */
@@ -634,7 +635,7 @@ void owfx_draw_pause(void)
     int sw = plat_screen_w(), sh = plat_screen_h(), style = hud_style();
     int big = sh >= 200, w = big ? 236 : 196, h = big ? 196 : 138;
     int x = (sw - w) / 2, y = (sh - h) / 2 + 4, i, bh = big ? 16 : 13, by;
-    const DoomoResident *p = town_res(DOOMO_PLAYER_ID);
+    const DoomoResident *p = town_res(playas_slot());
     const UiStyle *st = ui_style(style);
     char buf[48];
     uint32_t t = doomo_frame_count();

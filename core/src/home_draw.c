@@ -679,19 +679,10 @@ static void hand_from_catalog(int furn)
     audio_sfx_synth(SFX_POP2);
 }
 
-/* PA8: whose body walks the house. The resident slot that holds the avatar's
- * needs (a family pool id has no town slot, so it borrows the hero's). The body
- * picture takes the avatar id itself (bodyspr_image accepts pool ids too). */
-static int avatar_slot(void)
-{
-    int a = playas_avatar();
-    return a >= 0 && a <= DOOMO_PLAYER_ID ? a : DOOMO_PLAYER_ID;
-}
-
 /* ---- the covered cuts: the paint-roller runner or an iris ------------------------- */
 static void start_cut(int cut, int arg)
 {
-    DoomoResident *me = town_res(avatar_slot());
+    DoomoResident *me = town_res(playas_slot());
     H->cut = (uint8_t)cut;
     H->cut_arg = (uint8_t)arg;
     H->cut_age = 0;
@@ -1262,7 +1253,7 @@ static int walkable(int tx, int ty)
 
 static void start_sleep(void)
 {
-    DoomoResident *me = town_res(avatar_slot());
+    DoomoResident *me = town_res(playas_slot());
     H->sleep_age = 0;
     audio_music_duck(0, ht[HT_SLEEP_FADE] + ht[HT_SLEEP_MOON] + ht[HT_SLEEP_BLACK]);
     camfx_fade_to(16, ht[HT_SLEEP_FADE]);
@@ -2077,7 +2068,7 @@ static void build_actors(DoomoRoomView *v)
     if (H->mode == HM_VIEW) { v->actors = H->act; v->nact = 0; return; }
     /* the player: Live, visits, the defence, Build (standing by the door) */
     if (H->mode != HM_PHOTO || H->kind == HK_VISIT) {
-        DoomoResident *me = town_res(avatar_slot());
+        DoomoResident *me = town_res(playas_slot());
         if (me && me->status != RES_EMPTY) {
             int frame = H->pwalk ? (H->pwalk / ht[HT_WALK_FRAME]) & 3 : 0;
             a = add_actor(bodyspr_image(playas_avatar(), H->pdir, frame), H->px, H->py, H->sitting ? 4 : 0);

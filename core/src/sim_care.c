@@ -10,6 +10,7 @@
  * Items are taken from the inventory here (OPT_CHEAT_INFINITE_CANDY
  * skips that). Reaction strings live in two rotating static buffers.
  */
+#include "doomo/playas.h"
 #include "sim_int.h"
 
 enum { TONE_SWEET, TONE_BUBBLY, TONE_BLUNT, TONE_ODD, TONE_COUNT };
@@ -66,7 +67,7 @@ static DoomoResident *care_target(int id, const char **fail)
 static void cared(int id, DoomoResident *r, int level, int bond)
 {
     r->level = (uint8_t)DOOMO_MIN(99, r->level + level);
-    if (bond) rel_adjust(id, DOOMO_PLAYER_ID, bond);
+    if (bond) rel_adjust(id, playas_slot(), bond);
     sim_mood_of(id);
 }
 

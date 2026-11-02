@@ -107,6 +107,13 @@ typedef struct PlayasPos {
 /* ---- queries (quiet) ------------------------------------------------------ */
 int  playas_avatar(void);          /* the id you control (PLAYAS_ID_HERO by default) */
 int  playas_is_hero(void);         /* 1 while you play the hero                       */
+/* PA8: the town slot of the avatar's needs and ties. A family pool id has no
+ * town slot, so it borrows the hero's. */
+static inline int playas_slot(void)
+{
+    int a = playas_avatar();
+    return a >= 0 && a <= PLAYAS_ID_HERO ? a : PLAYAS_ID_HERO;
+}
 int  playas_story_locked(void);    /* 1 while story writes are refused (not the hero) */
 int  playas_available(void);       /* the post-game unlock (story cleared, or a New
                                       life save, or Free play after completion)       */

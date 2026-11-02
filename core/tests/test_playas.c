@@ -238,3 +238,25 @@ TEST(playas_almanac_follows_the_avatar)
     CHECK(playas_switch(v, PLAYAS_SWITCH_INSTANT));
     CHECK(lib_known(o));
 }
+
+/* (PA8) care bonds go to whoever you play, not always the hero. */
+TEST(playas_care_bonds_with_the_avatar)
+{
+    int v = -1, o = -1, i;
+    fresh();
+    cleared();
+    CHECK_EQ(playas_slot(), DOOMO_PLAYER_ID);
+    for (i = 0; i < DOOMO_PLAYER_ID && v < 0; i++)
+        if (playas_can_be(i)) v = i;
+    CHECK(v >= 0);
+    for (i = 0; i < DOOMO_PLAYER_ID; i++) {
+        const DoomoResident *r = town_res(i);
+        if (i != v && r && r->status == RES_ALIVE && !rel_find(i, v) && !rel_find(i, DOOMO_PLAYER_ID)) { o = i; break; }
+    }
+    CHECK(o >= 0);
+    CHECK(playas_switch(v, PLAYAS_SWITCH_INSTANT));
+    CHECK_EQ(playas_slot(), v);
+    sim_play(o);
+    CHECK(rel_find(o, v) != NULL);
+    CHECK(rel_find(o, DOOMO_PLAYER_ID) == NULL);
+}
