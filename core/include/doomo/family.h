@@ -273,6 +273,17 @@ int  family_freewill_daily(void);
  * hits on you do family_grief_hurt_pct() percent (150 at first). Derived from
  * the memorials, so nothing new is saved. 100 = no effect. */
 #define FAMILY_GRIEF_DAYS 14
+/* ---- F9: household helpers (Phase 4, a bonus; nothing saved) ---------------------
+ * A member with bond 5+ (not the avatar, not a pet) may lend a hand for the day:
+ * an adult, elder or teen brings home some Hell-Bucks, a younger child leaves a
+ * small gift in your bag (cupcake, flowers or plushie); babies and toddlers only
+ * give a smile (news line). Never required by the story. Not when free will is
+ * Off; silent at Subconscious. Returns 1 if someone helped. family_help_do()
+ * is the one act (used by the daily pass and the tests): 0 = none, 1 = money,
+ * 2 = gift, 3 = a smile. */
+int  family_help_do(int id);
+int  family_help_daily(void);
+
 /* ---- F8: bond-gated events (nothing saved) --------------------------------------
  * Run daily after free will (not when it is Off; silent at Subconscious). A member
  * you are close to (bond 10+) may CONFIDE in you: a kind news line and a mood lift.

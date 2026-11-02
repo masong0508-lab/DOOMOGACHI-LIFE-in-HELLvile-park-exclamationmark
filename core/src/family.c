@@ -13,6 +13,7 @@
 #include "doomo/audio.h"
 #include "doomo/portrait.h"
 #include "doomo/sim.h"
+#include "doomo/items.h"
 #include "doomo/town.h"
 #include "sim_int.h"
 
@@ -919,6 +920,40 @@ int family_events_daily(void)
         }
     }
     return shown;
+}
+
+/* ---- F9: household helpers ------------------------------------------------------- */
+int family_help_do(int id)
+{
+    int i = find_slot(id), kind;
+    char msg[NEWS_LEN];
+    if (i < 0 || fam_[i].role == FAMROLE_PET || fam_[i].id == playas_avatar() || (bond_[i] & 15u) < 5) return 0;
+    if (fam_[i].stage == LIFE_BABY || fam_[i].stage == LIFE_TODDLER) {
+        doomo_snprintf(msg, sizeof(msg), "%s gave you a big smile today.", member_name_(id));
+        kind = 3;
+    } else if (fam_[i].stage == LIFE_CHILD) {
+        static const uint8_t gifts[3] = { ITEM_CUPCAKE, ITEM_FLOWERS, ITEM_PLUSHIE };
+        inv_add(gifts[sim_rand(3)], 1);
+        doomo_snprintf(msg, sizeof(msg), "%s left a little gift in your bag!", member_name_(id));
+        kind = 2;
+    } else {
+        int h = 20 + sim_rand(41);
+        doomo_town.money += (uint32_t)h;
+        doomo_snprintf(msg, sizeof(msg), "%s helped out and brought home H$%d.", member_name_(id), h);
+        kind = 1;
+    }
+    if (will_ != FAMILY_WILL_SUBCONSCIOUS) sim_news_push(msg);
+    return kind;
+}
+
+int family_help_daily(void)
+{
+    static const uint8_t pct[5] = { 0, 3, 6, 10, 14 };
+    int cands[FAMILY_MAX], nc = 0, i;
+    if (will_ == FAMILY_WILL_OFF || !fam_n_ || !sim_chance(pct[will_])) return 0;   /* no household: no RNG draw */
+    for (i = 0; i < fam_n_; i++)
+        if (fam_[i].id != playas_avatar() && fam_[i].role != FAMROLE_PET && (bond_[i] & 15u) >= 5) cands[nc++] = i;
+    return nc ? family_help_do(fam_[cands[sim_rand(nc)]].id) != 0 : 0;
 }
 
 /* ---- F7: free will -------------------------------------------------------------- */

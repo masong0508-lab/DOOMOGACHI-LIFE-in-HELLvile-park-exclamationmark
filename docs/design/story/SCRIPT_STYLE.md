@@ -728,8 +728,12 @@ family).
   as a kids' scene in `kid_cast.txt`).
 * **Loss and death** (answer 7, F6): adults, elders and pets may die,
   non-graphically, with R6's sincere line first. **Children never take
-  gore and are never shown dying**: a neglected child is taken away (the
-  social-services gag), not killed on screen.
+  gore and are never shown on screen dying**: a neglected child is taken away
+  (the social-services gag). *Amended by the owner (1 Nov 2026, F10):* a child
+  can be lost to illness or Hell, but only while the Loss option is on, never to
+  old age or neglect, always off-screen and gentle (a sincere toast, a
+  memorial), never as a joke; with Loss off they are rescued. `family_lose()`
+  enforces it. Story beats follow the same rule and still take no gore.
 * Kids grow up (answer 1). A citizen on `kid_cast.txt` stays kid-coded for
   the story and the gates whatever their age later; a sim kid who grows
   into an adult life stage is an adult for R2 from then on, never

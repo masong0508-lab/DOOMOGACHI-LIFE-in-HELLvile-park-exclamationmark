@@ -632,3 +632,23 @@ TEST(family_bond_events)
     CHECK_EQ(family_events_daily(), 0);                             /* Off: no events, pending dropped */
     CHECK(!family_squabble_pending());
 }
+
+TEST(family_helpers)
+{
+    int a, k, b;
+    uint32_t m0;
+    fresh();
+    a = family_pool_add(FAMROLE_SIBLING, LIFE_ADULT, 5u, "Ann", PRONOUN_SHE);
+    k = family_pool_add(FAMROLE_CHILD, LIFE_CHILD, 6u, "Pip", PRONOUN_HE);
+    b = family_pool_add(FAMROLE_CHILD, LIFE_BABY, 8u, "Bo", PRONOUN_THEY);
+    CHECK(a >= 0 && k >= 0 && b >= 0);
+    CHECK_EQ(family_help_do(a), 0);                                 /* bond 3: not yet */
+    family_bond_add(a, 2); family_bond_add(k, 2); family_bond_add(b, 2);
+    m0 = doomo_town.money;
+    CHECK_EQ(family_help_do(a), 1);
+    CHECK(doomo_town.money > m0);                                   /* an adult earns */
+    CHECK_EQ(family_help_do(k), 2);                                 /* a child leaves a gift */
+    CHECK_EQ(family_help_do(b), 3);                                 /* a baby smiles, nothing else */
+    family_freewill_set(FAMILY_WILL_OFF);
+    CHECK_EQ(family_help_daily(), 0);
+}
