@@ -67,12 +67,14 @@ to 1000 total), never shorter than one chunk. It does not shrink to occupied lot
 
 ## Truncation rule (the limit)
 ```
-used   = count of slots with status != RES_EMPTY
-cap    = DOOMO_MAX_RESIDENTS (1000)
-lots   = min(cap, used + FREE_LOTS)      FREE_LOTS = 10 by default
-length = max(1 chunk, ceil(lots / 50) chunks) per district
+extent = last occupied lot + 1 in the district      (0 if nobody lives there)
+lots   = min(500, extent + STREET_FREE_LOTS)        STREET_FREE_LOTS = 10
+chunks = max(1, ceil(lots / 50))
 ```
-- At `used == cap` there are no free lots: free-house models are not built, the last chunk is
+Lot addresses are permanent, so the street must reach the *last occupied* lot (the extent),
+not just count people; empty lots in the middle are free lots too. New people take the first
+free slot (`town_alloc`), so in practice the street stays compact.
+- At 500 of 500 in a district there are no free lots: free-house models are not built, the last chunk is
   cut at the last used lot and ends in a gate wall ("Home Row is full").
 - When `used < cap`, the end of the street shows `FREE_LOTS` empty lots, then the end wall.
 - Deleting a resident rebuilds the affected chunk on the next visit (chunk cache is invalidated
@@ -80,12 +82,14 @@ length = max(1 chunk, ceil(lots / 50) chunks) per district
 
 ## Phases
 
-### M0 - Contract and tests first (S)
+### M0 - Contract and tests first (S) - DONE 2 Nov 2026
 - `street.h`: `street_chunk_of(slot)`, `street_lot_of(slot)`, `street_length(district)`,
   `street_build(district, chunk, DoomoMap *)`, `street_slot_at(district, cell_x, cell_y)`.
 - Tests: address round trip for all 1000 slots; length for used = 0, 1, 499, 500, 999, 1000;
   deleting a person never changes another slot's address.
 - Exit: `make -C core test` green with the new unit tests and no map code yet.
+- Landed: `core/include/doomo/street.h`, `core/src/street.c`, `core/tests/test_street.c` (6 tests).
+  `street_extent/lots/chunks/free_lots/is_full` read the live town; the `_for` forms are pure.
 
 ### M1 - One walkable chunk (M)
 - `MAPID_HOME_ROW`, a single chunk built by `street_build`, walkable in 3D with the existing
