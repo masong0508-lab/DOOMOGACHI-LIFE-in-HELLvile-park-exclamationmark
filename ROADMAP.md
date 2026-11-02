@@ -191,5 +191,8 @@ X10 VMU card trading.
   - Season 3: f-words here and there.
   - Season 4: ramps up hard, especially around Sunny's death early-to-mid season.
   - Season 5 (double length + TV-movie finale): constant, Vivziepop-level
-    (Hazbin Hotel / Helluva Boss) swearing.
+    (Hazbin Hotel / Helluva Boss) swearing in frequency only.
+  - Craft rule (all seasons and the game): every swear has a purpose: a punchline,
+    a character beat or a real emotional hit. No filler swearing; that
+    sloppiness is part of what the show parodies.
 - GBA cartridge: 256 Mbit / 32 MB (the hardware maximum), enforced at build time.
