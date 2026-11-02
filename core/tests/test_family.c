@@ -668,3 +668,25 @@ TEST(family_helpers_wait_for_the_story)
     for (i = 0; i < 300; i++) n += family_help_daily();
     CHECK(n > 0);
 }
+
+TEST(family_close_to_housemate)
+{
+    int a, k, b;
+    fresh();
+    a = family_pool_add(FAMROLE_SIBLING, LIFE_ADULT, 5u, "Ann", PRONOUN_SHE);
+    k = family_pool_add(FAMROLE_CHILD, LIFE_CHILD, 6u, "Pip", PRONOUN_HE);
+    b = family_pool_add(FAMROLE_CHILD, LIFE_CHILD, 8u, "Bo", PRONOUN_THEY);
+    CHECK(a >= 0 && k >= 0 && b >= 0);
+    CHECK_EQ(family_close_id(a), -1);                               /* bond 3: nobody yet */
+    CHECK(family_close_line(a) == NULL);
+    family_bond_add(a, 6); family_bond_add(k, 6);                   /* both 9 */
+    CHECK_EQ(family_close_id(a), k);
+    CHECK_EQ(family_close_id(k), a);
+    CHECK_EQ(family_close_id(b), -1);                               /* b is still a stranger */
+    CHECK(strcmp(family_close_line(a), "Close to Pip") == 0);
+    family_bond_add(b, 10);                                         /* b at 13 */
+    CHECK_EQ(family_close_id(a), b);                                /* higher combined bond wins */
+    CHECK_EQ(family_close_id(-5), -1);
+    family_bond_clear();                                            /* nothing saved: a reload starts fresh */
+    CHECK_EQ(family_close_id(a), -1);
+}

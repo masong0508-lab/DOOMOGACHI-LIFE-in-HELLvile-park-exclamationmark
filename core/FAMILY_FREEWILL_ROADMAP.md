@@ -147,8 +147,18 @@ skipping `playas_avatar()`.
 - No household = no RNG draw in any of these passes (test_sim's news hash).
 - `SCRIPT_STYLE.md` now carries the owner's child-loss amendment.
 
+## Done: Phase 3 "Close to Pip" (member-to-member, derived)
+- `family_close_id(id)` / `family_close_line(id)`: the housemate a member is
+  closest to is derived from the two members' bonds with the player (both 8+,
+  highest combined bond wins, lower table slot breaks a tie; the avatar is never
+  a candidate). No new saved byte (the bond section is full), no RNG, so a load
+  always agrees with what was shown. The Family list shows "Close to Pip" when
+  the member has no player-bond line to show ("Close to you" / "Wants more time
+  with you" still come first). LS5 can read `family_close_id` for best friends.
+
 ## Still open
-- `life_ending_facts` (kids, best friends; LS5's, still a weak default); bond between members (only member-to-player so far).
+- `life_ending_facts` (kids, best friends; LS5's, still a weak default, now has `family_close_id` to read).
+- Phase 1 switching is still waiting on PA1 (no `playas.c` in the tree yet; `weak_playas.c` is the stand-in).
 - Phase 4 via LS3 (away helping, item returns), disaster story hooks (hand-written
   scripts, Loss Off = rescue), and an owner tone check of the disaster, loss and
   event lines (a first read found them kid-safe and non-graphic).

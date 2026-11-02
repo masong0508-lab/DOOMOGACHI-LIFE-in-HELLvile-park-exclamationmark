@@ -324,6 +324,8 @@ int  family_bond(int id);                  /* 0..15; 0 for a non-member */
 int  family_mood(int id);                  /* 0..15 */
 void family_bond_add(int id, int delta);   /* clamped */
 const char *family_bond_line(int id);      /* "Close to you" / "Wants more time with you" / NULL */
+int  family_close_id(int id);              /* the housemate this member is closest to, or -1 (derived, not saved) */
+const char *family_close_line(int id);     /* "Close to Pip" or NULL (static buffer) */
 uint32_t family_bond_save_size(void);
 uint32_t family_bond_save(uint8_t *dst, uint32_t cap);
 int      family_bond_load(const uint8_t *src, uint32_t len);

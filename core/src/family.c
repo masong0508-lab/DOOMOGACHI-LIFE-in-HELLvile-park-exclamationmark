@@ -733,6 +733,33 @@ const char *family_bond_line(int id)
     return NULL;
 }
 
+/* F8: who a member is closest to among the housemates. Derived from the two
+ * members' bonds with the player (nothing is saved, no RNG): the housemate with
+ * the highest combined bond, both at 8+, the lower table slot winning a tie.
+ * The player's own character is not a candidate (their bond is not tracked). */
+int family_close_id(int id)
+{
+    int i = find_slot(id), j, best = -1, score = 0;
+    if (i < 0 || id == playas_avatar()) return -1;
+    if ((bond_[i] & 15) < 8) return -1;
+    for (j = 0; j < fam_n_; j++) {
+        int s;
+        if (j == i || fam_[j].id == playas_avatar() || (bond_[j] & 15) < 8) continue;
+        s = (bond_[i] & 15) + (bond_[j] & 15);
+        if (s > score) { score = s; best = fam_[j].id; }
+    }
+    return best;
+}
+
+const char *family_close_line(int id)
+{
+    static char line[DOOMO_NAME_LEN + 12];
+    int o = family_close_id(id);
+    if (o < 0) return NULL;
+    doomo_snprintf(line, sizeof(line), "Close to %s", member_name_(o));
+    return line;
+}
+
 uint32_t family_bond_save_size(void)
 {
     int i;
