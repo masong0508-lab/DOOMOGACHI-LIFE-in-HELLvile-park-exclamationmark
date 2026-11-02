@@ -41,6 +41,9 @@ reviewed, then landed on `claude/nice-allen-gr6czm`.
   credits finish (`story_ch34.c`), shows one toast and keeps K0's rule of no table entry (`unlock_grant_quiet()`).
   `family_tier_sync()` gives tier 1 to a story save that was finished before the tiers. Tier 2 only becomes reachable
   once NG+ can actually start a second run (nothing does yet: `MODE_NEW_GAME_PLUS` is unlocked, never read).
+- Life sim F4 part 1 (life cycle): pool members grow BABY 4 / TODDLER 6 / CHILD 10 / TEEN 10 town days into ADULT (`family_age_daily()` from
+  `day_rollover`, progress in the low 5 bits of `FamilyMember.flags`), residents mirror the sim's stage, pets and adults do not age;
+  no babies being born yet, no events or toasts (F4 part 2), no old age (F6). Not compiled or tested yet.
 - Life sim wave 1: shared registry/contracts incl. 15 endings, security code,
   family, pockets and profiles (K0), life stages + two-way adult-only romance
   gate (LS0), journey/tap meter (M0), PG-21 register + lint (E5).

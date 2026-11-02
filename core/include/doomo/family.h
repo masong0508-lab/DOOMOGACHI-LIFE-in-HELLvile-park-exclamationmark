@@ -151,4 +151,25 @@ uint32_t family_pool_save(uint8_t *dst, uint32_t cap);
 int      family_pool_load(const uint8_t *src, uint32_t len);
 void     family_pool_reset(void);
 
+/* ---- F4 part 1: the life cycle ------------------------------------------
+ * A pool member grows up with the town's days: BABY -> TODDLER -> CHILD ->
+ * TEEN -> ADULT (life_stage_next), one step per town day counted in the low
+ * 5 bits of FamilyMember.flags (FAMILY_FL_AGE; reset to 0 on every stage
+ * change, so an old save's 0 means "just arrived"). An ADULT or ELDER does
+ * not age here (growing old is F6's). A resident member's stage is the
+ * sim's: it is copied over, and the change is reported like a pool one. A
+ * pet has no life stage and is skipped. Roles never change by themselves:
+ * a CHILD who grows up is still the family's child. */
+#define FAMILY_FL_AGE 0x1Fu
+/* Days a stage lasts here (0 = it does not end). */
+int  family_stage_days(int stage);
+/* Once per town day (sim.c's day_rollover). Returns how many members
+ * changed stage today; the list below stays valid until the next call. */
+int  family_age_daily(void);
+int  family_aged_count(void);
+int  family_aged_id(int n);        /* the n-th member that changed stage, or -1 */
+int  family_aged_stage(int n);     /* the stage it grew into, or -1             */
+/* Days a member has spent in its present stage (0 for a non-member). */
+int  family_stage_progress(int id);
+
 #endif

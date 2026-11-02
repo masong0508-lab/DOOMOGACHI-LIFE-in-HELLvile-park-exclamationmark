@@ -14,6 +14,7 @@
  * of the frame rate, OPT_DAY_LENGTH and OPT_SIM_SPEED.
  */
 #include "sim_int.h"
+#include "doomo/family.h"
 
 SimState sim_s;
 
@@ -676,6 +677,7 @@ static void day_rollover(void)
     }
     sim_soul_daily();
     sim_news_daily();
+    family_age_daily();                  /* F4: the household grows up */
 }
 
 static void minute_step(void)

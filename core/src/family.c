@@ -285,6 +285,74 @@ void family_clear(void)
     family_pool_reset();
 }
 
+/* ---- F4 part 1: the life cycle (family.h) ------------------------------------- */
+static const uint8_t stage_days_[LIFE_COUNT] = {
+    0,      /* ADULT: does not age here  */
+    4,      /* BABY                      */
+    6,      /* TODDLER                   */
+    10,     /* CHILD                     */
+    10,     /* TEEN                      */
+    0       /* ELDER                     */
+};
+static uint16_t aged_id_[FAMILY_MAX];
+static uint8_t  aged_st_[FAMILY_MAX];
+static uint8_t  aged_n_;
+
+int family_stage_days(int stage)
+{
+    return (unsigned)stage < LIFE_COUNT ? stage_days_[stage] : 0;
+}
+
+static void aged_note_(const FamilyMember *m)
+{
+    if (aged_n_ < FAMILY_MAX) {
+        aged_id_[aged_n_] = m->id;
+        aged_st_[aged_n_] = m->stage;
+        aged_n_++;
+    }
+}
+
+int family_age_daily(void)
+{
+    int i;
+    aged_n_ = 0;
+    for (i = 0; i < fam_n_; i++) {
+        FamilyMember *m = &fam_[i];
+        int days, p;
+        if (m->role == FAMROLE_PET) continue;
+        if (m->id < DOOMO_MAX_RESIDENTS) {              /* a resident: the sim owns the stage */
+            int st = sim_life_stage(m->id);
+            if (st != m->stage) {
+                m->stage = (uint8_t)st;
+                m->flags = (uint8_t)(m->flags & ~FAMILY_FL_AGE);
+                aged_note_(m);
+            }
+            continue;
+        }
+        days = family_stage_days(m->stage);
+        if (days <= 0) continue;
+        p = (int)(m->flags & FAMILY_FL_AGE) + 1;
+        if (p < days) {
+            m->flags = (uint8_t)((m->flags & ~FAMILY_FL_AGE) | (unsigned)p);
+            continue;
+        }
+        m->stage = (uint8_t)life_stage_next(m->stage);
+        m->flags = (uint8_t)(m->flags & ~FAMILY_FL_AGE);
+        aged_note_(m);
+    }
+    return aged_n_;
+}
+
+int family_aged_count(void) { return aged_n_; }
+int family_aged_id(int n) { return (n >= 0 && n < aged_n_) ? (int)aged_id_[n] : -1; }
+int family_aged_stage(int n) { return (n >= 0 && n < aged_n_) ? (int)aged_st_[n] : -1; }
+
+int family_stage_progress(int id)
+{
+    int i = find_slot(id);
+    return i < 0 ? 0 : (int)(fam_[i].flags & FAMILY_FL_AGE);
+}
+
 /* ---- life.h: the strong versions ------------------------------------------------ */
 int family_count(void) { return fam_n_; }
 
