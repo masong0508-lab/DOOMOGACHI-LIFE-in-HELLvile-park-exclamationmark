@@ -56,7 +56,8 @@ enum {
     FAM_ERR_ROLE = -4,      /* bad role, a pet that is not a pool member,    */
                             /* or a second partner                           */
     FAM_ERR_GATE = -5,      /* the partner failed the LS0 life stage gate    */
-    FAM_ERR_NAME = -6       /* an empty, too long or undrawable name         */
+    FAM_ERR_NAME = -6,      /* an empty, too long or undrawable name         */
+    FAM_ERR_NOPARTNER = -7  /* a birth needs the player's life partner (F4)  */
 };
 
 typedef struct FamilyMember {
@@ -171,5 +172,16 @@ int  family_aged_id(int n);        /* the n-th member that changed stage, or -1 
 int  family_aged_stage(int n);     /* the stage it grew into, or -1             */
 /* Days a member has spent in its present stage (0 for a non-member). */
 int  family_stage_progress(int id);
+
+/* ---- F4 part 2: births and the growing-up toast ----------------------------
+ * family_age_daily() shows one toast per member that grew up ("Mo grew up!
+ * Now: Toddler"). A birth is a new BABY pool member with the role CHILD:
+ * the player must be an adult with a life partner (FAMROLE_PARTNER, so the
+ * LS0 gate already held), and the household needs room (family_cap(); a
+ * pet counts as a member). name NULL = the generated one, pronoun -1 = the
+ * generated one. Returns the pool id or FAM_ERR_* (nothing is changed on an
+ * error); shows its own toast. Adopting stays family_pool_add() with any
+ * stage and the CHILD role. */
+int  family_birth(const char *name, int pronoun);
 
 #endif

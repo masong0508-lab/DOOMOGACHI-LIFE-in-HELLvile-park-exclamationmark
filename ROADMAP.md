@@ -1,6 +1,6 @@
 # DOOMOGACHI roadmap (what's left)
 
-Last updated 2026-11-01. The decisions behind this list (tone, PG-21 register,
+Last updated 2026-11-01 (evening: F4 parts 1-2, E6a/E6b start). The decisions behind this list (tone, PG-21 register,
 show canon, life-sim answers, 32 MB GBA cartridge) are summarised at the end.
 Package IDs match the planning files; each package is built in its own worktree,
 reviewed, then landed on `claude/nice-allen-gr6czm`.
@@ -31,7 +31,7 @@ reviewed, then landed on `claude/nice-allen-gr6czm`.
 - PS1 config file (U1p): `bu00:BASLUS-DOOMOC` behind `plat_config_read/write`, `PLATF_CONFIG`
   (needs a PS1 harness run to confirm on PCSX-Redux).
 - Life sim F1 part 1 (family table): `family.h` / `family.c`, household cap by tier, roles with the
-  partner's LS0 gate, the LIFE chunk's family section; no UI yet (F2), no babies / ageing (F4).
+  partner's LS0 gate, the LIFE chunk's family section; no UI yet (F2), babies and ageing are F4 (below).
 - Life sim F1 part 2 (pool members): a 20 B identity each (look seed, name, pronoun), `family_resident()`
   builds the full resident on demand, the LIFE chunk's POOL section; pets are drawn by F5.
 - House H11: the GBA keeps and saves the HOME state (`HOME_PERSIST` is on for every build; `-DDOOMO_HOME_OFF_GBA=1` is
@@ -42,8 +42,13 @@ reviewed, then landed on `claude/nice-allen-gr6czm`.
   `family_tier_sync()` gives tier 1 to a story save that was finished before the tiers. Tier 2 only becomes reachable
   once NG+ can actually start a second run (nothing does yet: `MODE_NEW_GAME_PLUS` is unlocked, never read).
 - Life sim F4 part 1 (life cycle): pool members grow BABY 4 / TODDLER 6 / CHILD 10 / TEEN 10 town days into ADULT (`family_age_daily()` from
-  `day_rollover`, progress in the low 5 bits of `FamilyMember.flags`), residents mirror the sim's stage, pets and adults do not age;
-  no babies being born yet, no events or toasts (F4 part 2), no old age (F6). Not compiled or tested yet.
+  `day_rollover`, progress in the low 5 bits of `FamilyMember.flags`), residents mirror the sim's stage, pets and adults do not age.
+- Life sim F4 part 2 (births + toast): one "grew up!" toast per member that changes stage; `family_birth()` makes a BABY pool member
+  with the CHILD role (needs the player's partner and room under the cap; `FAM_ERR_NOPARTNER`). Still to do in F4: family events,
+  the birth/growing-up UI (F2's wizard), old age (F6). F4 parts 1 and 2 were written without compiling or testing: build and run
+  `make -C core test` before relying on them.
+- Script E6a/E6b (started): PG-21 adult beats in Ch1-2 added so far: Hattie's "private shows" bit (`ch1/ep14.dsc`) and Vex's
+  invoice line (`ch2/ep21.dsc`). More adult-only beats for Ch1-2 remain; run `make -C core story-check` after adding them.
 - Life sim wave 1: shared registry/contracts incl. 15 endings, security code,
   family, pockets and profiles (K0), life stages + two-way adult-only romance
   gate (LS0), journey/tap meter (M0), PG-21 register + lint (E5).

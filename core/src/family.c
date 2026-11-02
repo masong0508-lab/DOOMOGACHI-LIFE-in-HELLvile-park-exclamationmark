@@ -312,6 +312,21 @@ static void aged_note_(const FamilyMember *m)
     }
 }
 
+static const char *member_name_(int id)
+{
+    if (id < DOOMO_MAX_RESIDENTS) return town_res(id)->name;
+    return is_pool(id) ? ident_for(id)->name : "";
+}
+
+/* "Mo grew up! Now: Toddler" */
+static void aged_toast_(int n)
+{
+    char msg[64];
+    doomo_snprintf(msg, sizeof(msg), STR_ICON_STAR " %s grew up! Now: %s",
+                   member_name_(aged_id_[n]), doomo_life_stage_names[aged_st_[n]]);
+    ui_toast(msg);
+}
+
 int family_age_daily(void)
 {
     int i;
@@ -340,7 +355,25 @@ int family_age_daily(void)
         m->flags = (uint8_t)(m->flags & ~FAMILY_FL_AGE);
         aged_note_(m);
     }
+    for (i = 0; i < aged_n_; i++) aged_toast_(i);
     return aged_n_;
+}
+
+int family_birth(const char *name, int pronoun)
+{
+    int id, r;
+    char msg[64];
+    if (family_count_role(FAMROLE_PARTNER) < 1) return FAM_ERR_NOPARTNER;
+    if (!LIFE_IS_ADULT(sim_life_stage(DOOMO_PLAYER_ID))) return FAM_ERR_GATE;
+    id = family_pool_alloc();
+    if (id < 0) return FAM_ERR_FULL;
+    r = family_pool_add(FAMROLE_CHILD, LIFE_BABY,
+                        default_seed(id) ^ ((uint32_t)doomo_town.day * 0x85EBCA6Bu), name, pronoun);
+    if (r < 0) return r;
+    doomo_snprintf(msg, sizeof(msg), STR_ICON_HEART " It's a baby! Welcome, %s!", family_identity(r)->name);
+    ui_toast(msg);
+    audio_sfx(SFX_SPARKLE);
+    return r;
 }
 
 int family_aged_count(void) { return aged_n_; }
