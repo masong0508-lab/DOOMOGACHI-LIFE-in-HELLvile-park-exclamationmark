@@ -197,10 +197,10 @@ static void shop_update(void)
         if (S.locked[S.sel]) {
             const DoomoUnlock *u = unlock_find(UL_CAT_ITEM, 0, it);
             audio_sfx(SFX_ERROR);
-            ui_toast(u && u->how ? u->how : "Not in stock yet!");
+            ui_toast(u && u->how ? u->how : "Not in stock. Yet. Probably.");
         } else if (max_qty(it, price) <= 0) {
             audio_sfx(SFX_ERROR);
-            ui_toast(inv_count(it) >= 99 ? "Your bag is full of those!" : "Not enough H$...");
+            ui_toast(inv_count(it) >= 99 ? "Bag full. Seriously, stop." : "Not enough H$. Awkward.");
         } else {
             S.qty_open = 1;
             S.qty = 1;

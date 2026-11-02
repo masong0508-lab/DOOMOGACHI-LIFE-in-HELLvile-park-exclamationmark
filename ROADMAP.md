@@ -22,6 +22,9 @@ reviewed, then landed on `claude/nice-allen-gr6czm`.
 - Dreamcast rumble (X2): `plat_rumble()` hook, called by every camera shake with its strength and length
   (Screen shake Off = no rumble), Puru Puru driver in `dc/src/rumble.c`. A separate
   rumble on/off row waits for U0 (the option table is full at 64).
+- Script W14: the Fun Fair medal/feat hints (29 lines in `unlocks_minigames.c`) and the shop toasts
+  (`fp_shop.c`) punched up in the game's voice; names, ids and thresholds unchanged. Spanish and the
+  other languages need a re-translation pass (L8).
 - Dreamcast boot easter egg (X8): hold A+B+X+Y+START at power-on for a one-second rainbow (`dc/src/egg.c`).
 - PS1 config file (U1p): `bu00:BASLUS-DOOMOC` behind `plat_config_read/write`, `PLATF_CONFIG`
   (needs a PS1 harness run to confirm on PCSX-Redux).
@@ -58,7 +61,7 @@ a package can only start once the ones it depends on (see the sections below) ha
   gender fixes), PA8 (house/activities follow the avatar), E10 (Dreamcast pack
   adapter), E12 (endings integration), Z1 (joint gate).
 - House: H11 (turn the GBA house state on).
-- Script: W14 (minigame/shop/unlock text), W15 (Bonejangles origin; needs your yes/no).
+- Script: W15 (Bonejangles origin; needs your yes/no).
 - Languages: L9 (language picker), L11 (docs).
 - Dreamcast extras: X0 (contracts), X3 (VGA/display options).
 
@@ -151,7 +154,7 @@ H11 (turn the GBA house state on and test the real house).
 ## 4. Priority 4: script
 
 - Side quests: W6-W8 (side_a), W9-W11 (side_b), W12 free-play chatter,
-  W13 library flavour, W14 minigame/shop/unlock text, W15 (needs a decision), W16 integration.
+  W13 library flavour, W15 (needs a decision), W16 integration.
 - PG-21 punch-ups E6a-E6d (life-sim waves). Swearing budget for the whole game:
   the s-word a few times; the f-word exactly twice (once cut off, once in full near the end).
 - Known gap: four choice questions outside Ch1-2 still need checking for "/" breaks.
