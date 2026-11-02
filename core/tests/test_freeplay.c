@@ -74,10 +74,7 @@ TEST(freeplay_new_island_scene_classic)
     press(BTN_A);                               /* Classic is preselected */
     frames(0, 10);
     CHECK(top_is(&SCENE_DIALOG));
-    press(BTN_A);                               /* finish typing */
-    frames(0, 2);
-    press(BTN_DOWN);                            /* "Maybe later" */
-    press(BTN_A);
+    press(BTN_A);                               /* "Maybe later" is first (U6b) */
     frames(0, 3);
     while (!top_is(&SCENE_ISLAND) && guard++ < 20) { press(BTN_A); frames(0, 2); }
     CHECK(top_is(&SCENE_ISLAND));
@@ -93,10 +90,7 @@ TEST(freeplay_empty_island_opens_creator)
     press(BTN_LEFT);                            /* Empty Island */
     press(BTN_A);
     frames(0, 10);
-    press(BTN_A);
-    frames(0, 2);
-    press(BTN_DOWN);
-    press(BTN_A);
+    press(BTN_A);                               /* "Maybe later" is first (U6b) */
     frames(0, 3);
     while (!top_is(&SCENE_CREATOR) && guard++ < 20) { press(BTN_A); frames(0, 2); }
     CHECK_EQ(town_count(-1), 0);

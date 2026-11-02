@@ -61,7 +61,7 @@ static void cb_name(int ok)
 
 static void cb_ask_name(int c)
 {
-    if (c == 0) {
+    if (c == 1) {   /* U6b: "Maybe later" is first, so A, A skips naming */
         N.namebuf[0] = 0;
         ui_text_entry("Name your island", N.namebuf, FP_ISLAND_NAME_LEN, cb_name);
     } else {
@@ -103,7 +103,7 @@ static void ni_update(void)
         return;
     }
     if (btn_pressed(BTN_A)) {
-        static const char *const opts[2] = { "Yes, name it!", "Maybe later" };
+        static const char *const opts[2] = { "Maybe later", "Yes, name it!" };
         audio_sfx(SFX_SELECT);
         fp_fx_burst(fp_sw() / 2, fp_sh() / 2, FX_CONFETTI, 16);
         ui_choice(-1, "Would you like to give your island a name?", opts, 2, cb_ask_name);

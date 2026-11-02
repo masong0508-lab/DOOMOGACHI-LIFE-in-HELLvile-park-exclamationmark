@@ -11,6 +11,7 @@ wait 10
 press A
 wait 16
 shot new_island_name_question
+press DOWN
 press A
 wait 20
 expect-scene TEXT_ENTRY

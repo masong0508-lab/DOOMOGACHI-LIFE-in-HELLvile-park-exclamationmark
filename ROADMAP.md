@@ -8,6 +8,10 @@ reviewed, then landed on `claude/nice-allen-gr6czm`.
 ## 0. Status at a glance
 
 **Done and on the branch**
+- U6a (Continue-first title): with a story save the title's first row is Continue; boot -> story is 3 presses (J2).
+  U6b (2026-11-02): Free Play with no island saved goes straight to New Island, and the "name your island?" prompt
+  starts on "Maybe later": J9 13 -> 11 presses, New Island -> hub 8 -> 7. Budgets lowered (j9, life_new_island, j10, j11).
+  `creator_hellvile` already failed before U6b (text entry not open at line 106); not caused by it.
 - Script: style guide + locks (P0), Chapters 1-4 + epilogue rewritten (W1-W4),
   the 49 old quests rewritten (W5).
 - House: golden coverage (H1), themed doors/windows + Towers 7B / Hell Pits rooms (H4),
@@ -234,3 +238,17 @@ X10 VMU card trading.
     a character beat or a real emotional hit. No filler swearing; that
     sloppiness is part of what the show parodies.
 - GBA cartridge: 256 Mbit / 32 MB (the hardware maximum), enforced at build time.
+
+## Patch workflow (Termux) and the next patches
+
+One zip per patch in `~/storage/downloads/`, unpacking to a same-named folder with `apply.sh` (run from the repo root,
+safe to run twice, no network). Use a NEW name for every patch. One-liner (replace NAME and MESSAGE):
+
+    cd ~/DOOMOGACHI-LIFE-in-HELLvile-park-exclamationmark && git pull --ff-only && rm -rf ~/vs && mkdir ~/vs && unzip -qo ~/storage/downloads/NAME.zip -d ~/vs && sh ~/vs/NAME/apply.sh && git add -A && git commit -m "MESSAGE" && git push
+
+| Patch | NAME | Commit message | What |
+|---|---|---|---|
+| U6a | `doomo-u6a-continue-first-nov02b` | `U6a: Continue-first title` | already in the tree |
+| U6b | `doomo-u6b-quick-island-nov02c` | `U6b: quick island start (J9 13 -> 11 presses)` | this patch |
+| U6c | `doomo-u6c-continue-island-nov02d` | `U6c: Continue row also leads with a saved island (J9 target 10)` | next: with no story save but an island save, the lead row continues the island; try one fewer welcome-dialog press |
+| U6d | `doomo-u6d-fix-creator-hellvile-nov02e` | `U6d: fix creator_hellvile script (text entry at line 106)` | then: repair the pre-existing failing script |

@@ -18,9 +18,15 @@ wait 4
 press DOWN
 press A
 wait 16
+expect-scene NEW_ISLAND
 shot title_freeplay_menu
 press B
-wait 4
+wait 10
+expect-scene TITLE
+wait 150
+press START
+wait 24
+press DOWN
 press DOWN
 press A
 wait 20

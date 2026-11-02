@@ -242,8 +242,8 @@ before it begins.
 | J6 story overworld: save from the pause menu, walk on | 9 | 0 | (U3b) |
 | J7 island: save from the START menu, back to the hub | 7 | 1 | 3 (U3c quick save) |
 | J8 story overworld -> title screen | 5 | 1 | (U3b) |
-| J9 boot -> a new Classic island's hub | 13 | 1 | 10 (U6) |
-| new island: New Island screen -> hub | 8 | 1 | (U6/LS6) |
+| J9 boot -> a new Classic island's hub | 11 | 1 | 10 (U6c) |
+| new island: New Island screen -> hub | 7 | 1 | (U6/LS6) |
 | help the next citizen with a problem (item in the bag) | 9 | 3 | 2 (LS-QA: B = next problem) |
 | a problem that needs an item not in the bag: find, shop, help | 26 | 3 | 3 (LS-QA: buy on the spot) |
 | feed a citizen found by name | 6 + name | 3 | (LS-QA) |

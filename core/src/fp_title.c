@@ -213,7 +213,10 @@ static void title_update(void)
         switch (row_id(T.sel)) {
         case I_CONTINUE: continue_story(); break;
         case I_STORY: T.menu = M_STORY; T.sub_sel = (uint8_t)(T.has_story ? 1 : 0); T.menu_t = 0; audio_sfx(SFX_SELECT); break;
-        case I_FREE: T.menu = M_FREE; T.sub_sel = (uint8_t)(T.has_free ? 1 : 0); T.menu_t = 0; audio_sfx(SFX_SELECT); break;
+        case I_FREE:
+            /* U6b: no island saved yet -> straight to the New Island screen */
+            if (!T.has_free) { audio_sfx(SFX_SELECT); scene_set(&SCENE_NEW_ISLAND, 0); break; }
+            T.menu = M_FREE; T.sub_sel = (uint8_t)(T.has_free ? 1 : 0); T.menu_t = 0; audio_sfx(SFX_SELECT); break;
         case I_OPTIONS: audio_sfx(SFX_SELECT); scene_push(&SCENE_OPTIONS, 0); break;
         case I_UNLOCKS: audio_sfx(SFX_SELECT); scene_push(&SCENE_UNLOCKS, 0); break;
         case I_CREDITS: audio_sfx(SFX_SELECT); scene_push(&SCENE_CREDITS, 0); break;

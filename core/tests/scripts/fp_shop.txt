@@ -4,11 +4,9 @@ wait 10
 press A
 wait 10
 press A
-wait 10
-press DOWN
-wait 2
-press A
 wait 20
+press A
+wait 2
 press A
 wait 2
 press A
