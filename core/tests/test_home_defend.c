@@ -249,3 +249,25 @@ TEST(home_defend_result_and_rules)
     CHECK(HOME_ARG_IS_STORY(HOME_ARG_DEFEND(HDT_ARENA)));
     done_dcat();
 }
+
+/* (H7) the real scene draws, it never shows a black frame: Hold the Door's
+ * siege from wave 3 (the PS1 harness's home_defend_w3) is entered, run for a
+ * second and drawn. The room, the lane strip and the guests' panel must put
+ * colour on the screen: well over a third of the pixels are not black, and
+ * the panel's centre-top band is not blank. The PS1 black frame check
+ * (ps1/harness/scripts/home.txt, shot home_defend_w3) is the same claim on
+ * the disc. */
+TEST(home_defend_scene_draws_a_frame)
+{
+    int i, lit = 0, band = 0, total;
+    test_reset();
+    home_reset();
+    scene_set(&SCENE_HOME, HOME_ARG_DEFEND_AT(HDT_SIEGE, 2));
+    for (i = 0; i < 60; i++) doomo_frame(0);
+    CHECK(scene_top() == &SCENE_HOME);
+    total = nat_w * nat_h;
+    for (i = 0; i < total; i++) if (nat_fb[i] != PAL_BLACK) lit++;
+    CHECK(lit * 3 > total);
+    for (i = nat_w / 4; i < nat_w * 3 / 4; i++) if (nat_fb[(nat_h / 4) * nat_w + i] != PAL_BLACK) band++;
+    CHECK(band > 0);
+}
