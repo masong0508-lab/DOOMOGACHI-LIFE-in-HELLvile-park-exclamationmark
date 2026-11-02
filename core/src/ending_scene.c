@@ -22,7 +22,19 @@ static const char *const cat_names[ENDCAT_COUNT] = {
 static const struct { const char *title, *l1, *l2; } story[ENDING_COUNT] = {
     /* E01 */ { "Home, Sweet Hell", "The park is quiet again.", "Your door is open. Come in." },
     /* E02 */ { "A Full House", "Every chair has someone in it.", "Hell has never felt so warm." },
-    /* E03 */ { 0, 0, 0 }, /* E04 */ { "Family Portrait", "One frame. Everyone you love.", "Nobody is looking away." },
+    /* E03 */ { "The Long Table", "Everyone shared the Feast.", "Nobody left hungry. Not once." },
+    /* E04 */ { "Family Portrait", "One frame. Everyone you love.", "Nobody is looking away." },
+    /* E05 */ { "Leftovers", "The Feast went cold too soon.", "The table kept your seat." },
+    /* E06 */ { "The Empty Parade", "The music played. Streets were", "bare. Next year, then." },
+    /* E07 */ { "Half a Parade", "Some came. Some did not.", "The band played louder." },
+    /* E08 */ { "Lights Out", "The park went dark early.", "Even so, a lamp stayed lit." },
+    /* E09 */ { "Bonejangles Bows", "One more bow. One more joke.", "The ribs rattled with pride." },
+    /* E10 */ { "Every Sparkle", "You found them all. Each one.", "The sky has your name in it." },
+    /* E11 */ { "One More Time", "A bottle, a suitcase, a map.", "Round two starts at the door." },
+    /* E12 */ { "Grumbleguts' Kitchen", "Soup on the stove, two bowls.", "He pretends he did not smile." },
+    /* E13 */ { "Vex After Dark", "She stayed for the quiet part.", "The rest is not for the camera." },
+    /* E14 */ { "Together", "You chose each other, slowly.", "The porch light stays on." },
+    /* NOPE*/ { "Nope.", "", "" },
 };
 
 static void ec_enter(int arg)
@@ -50,7 +62,7 @@ static void ec_draw(void)
     ui_window(8, sh / 2 - 50, sw - 16, 108, WIN_CUTE);
     y = sh / 2 - 44;
     if (C.k == ENDING_NOPE) doomo_snprintf(buf, sizeof buf, "Nope.");
-    else if (C.k < 4 && story[C.k].title) doomo_snprintf(buf, sizeof buf, "%s", story[C.k].title);
+    else if (story[C.k].title) doomo_snprintf(buf, sizeof buf, "%s", story[C.k].title);
     else doomo_snprintf(buf, sizeof buf, "ENDING %d", C.k + 1);
     ui_text_center(sw / 2, y, buf, st->text);
     ui_text_center(sw / 2, y + 14, cat >= 0 ? cat_names[cat] : "?", st->text_dim);
@@ -62,7 +74,7 @@ static void ec_draw(void)
         doomo_snprintf(buf, sizeof buf, n > 1 ? "Reached %d times" : "First time!", n);
         ui_text_center(sw / 2, y + 50, buf, st->text_dim);
     }
-    if (C.k < 4 && story[C.k].l1) {
+    if (story[C.k].l1 && story[C.k].l1[0]) {
         ui_text_center(sw / 2, y + 62, story[C.k].l1, st->text);
         ui_text_center(sw / 2, y + 74, story[C.k].l2, st->text);
     }
