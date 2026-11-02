@@ -17,7 +17,7 @@ only to the hero (PA4).
 | **PA0** | W2 | this contract: `playas.h`, the weak defaults, the header byte 47 |
 | PA1 | W3 | `playas.c`: the `PLAY` chunk, the story barrier, the sim hooks, ACTOR sites. **State half landed (2 Nov 2026)**, see section 7 |
 | PA3a | W4 | `@( m \| f \| n )` text codes picked by `playas_you_gender()`. **Landed (2 Nov 2026)** in `vm_fmt_n`: `@(he\|she\|they)` = M \| F \| N, a missing variant falls back to the first; `@P` is the avatar's name while played |
-| PA5 | W4 | `SCENE_PLAYAS`, the character switcher |
+| PA5 | W4 | `SCENE_PLAYAS`, the character switcher. **Landed (2 Nov 2026)**: `core/src/playas_scene.c`; PA4 pushes it from the L/R ring |
 | PA2 | W5 | the hero choice: SUNNY, MARVIN or your own (`hero.c`, `hero_preset`) |
 | PA9 | W6 | `playas_romance_ok`: the hero rule on top of LS0's gate |
 | PA4 | W7 | the overworld handoff (tag-in, the hero NPC, the L/R ring) |

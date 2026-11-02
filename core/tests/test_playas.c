@@ -165,3 +165,21 @@ TEST(playas_gender_codes_and_avatar_name)
     vm_fmt(o, sizeof o, "@(a) and @@");
     CHECK(strcmp(o, "a and @") == 0);
 }
+
+TEST(playas_scene_lists_and_switches)
+{
+    int a;
+    fresh();
+    a = family_pool_add(FAMROLE_SIBLING, LIFE_ADULT, 5u, "Ann", PRONOUN_SHE);
+    cleared();
+    CHECK(!scene_is_reserved_stub(&SCENE_PLAYAS));
+    CHECK(playas_can_be(a));
+    scene_set(&SCENE_UI_GALLERY, 0);
+    scene_push(&SCENE_PLAYAS, 0);
+    CHECK(scene_top() == &SCENE_PLAYAS);
+    plat_begin_frame(); scene_update(); scene_draw();
+    CHECK(scene_top() == &SCENE_PLAYAS);              /* it stays (not a stub) */
+    CHECK(playas_switch(a, PLAYAS_SWITCH_INSTANT));   /* the list now offers the hero first */
+    plat_begin_frame(); scene_draw();
+    scene_pop();
+}
