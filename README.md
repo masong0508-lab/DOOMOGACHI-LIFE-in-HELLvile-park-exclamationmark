@@ -232,7 +232,8 @@ The PS1 disc needs **PSn00bSDK**, built from source at a pinned commit.
 [docs/BUILDING.md](docs/BUILDING.md) walks through it, along with macOS
 (Homebrew), Windows (WSL2), emulators and real hardware. Each module also
 documents its own build: [core](core/native/README.md),
-[GBA](docs/GBA.md), [PS1](docs/PS1.md), [trailer](trailer/README.md).
+[GBA](docs/GBA.md), [PS1](docs/PS1.md), [trailer](trailer/README.md);
+translators: [docs/LANGUAGES.md](docs/LANGUAGES.md).
 
 ## Continuous integration
 

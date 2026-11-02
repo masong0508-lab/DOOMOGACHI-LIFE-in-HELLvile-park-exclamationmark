@@ -16,7 +16,7 @@ reviewed, then landed on `claude/nice-allen-gr6czm`.
 - GBA speed: speed tour (G1), Mode 4 quick wins (G2), IWRAM overlay (G4),
   tile-mode overworld (G5), billboards as sprites (G6), retained HUD panels +
   "3D: Faster/Better" (G7). Cartridge is now a full 256 Mbit / 32 MB.
-- Languages: N-language engine (L1), one text path everywhere (L2a).
+- Languages: N-language engine (L1), one text path everywhere (L2a), language docs (L11: `docs/LANGUAGES.md`).
 - Dreamcast: SH4 cross-check (DC0a), KOS toolchain script (DC0b),
   headless harness (DC1, not yet run on real Flycast), dc/ skeleton (DC2).
 - Dreamcast rumble (X2): `plat_rumble()` hook, called by every camera shake with its strength and length
@@ -64,7 +64,7 @@ a package can only start once the ones it depends on (see the sections below) ha
   adapter), E12 (endings integration), Z1 (joint gate).
 - House: H11 (turn the GBA house state on).
 - Script: W15 (Bonejangles origin; needs your yes/no).
-- Languages: L9 (language picker), L11 (docs).
+- Languages: L9 (language picker).
 - Dreamcast extras: X0 (contracts), X3 (VGA/display options).
 
 ### M: medium
@@ -166,7 +166,7 @@ H11 (turn the GBA house state on and test the real house).
 L2b formatted text, L3 tooling, L4 accented font, L5 story text for N
 languages, L6 PS1 language tables on disc, L7 grammar-aware generators,
 L8a-L8f Spanish content + polish (re-translate everything the rewrite touched),
-L9 language picker, L10 pt-BR / fr / de / it (+ nl, pl), L11 docs.
+L9 language picker, L10 pt-BR / fr / de / it (+ nl, pl). L11 docs: done (`docs/LANGUAGES.md`).
 Later: Chinese and Japanese as languages 9 and 10 (need a new font path).
 
 ## 6. Priority 6: Dreamcast port + extras
