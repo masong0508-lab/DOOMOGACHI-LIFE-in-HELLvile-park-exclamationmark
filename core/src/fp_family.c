@@ -9,6 +9,7 @@
  */
 #include "fp_int.h"
 #include "doomo/family.h"
+#include "doomo/playas.h"
 
 static struct {
     int tab, sel, top, t;
@@ -22,7 +23,7 @@ static struct {
     const char *opts[6];
 } W;
 
-enum { MA_CARE, MA_ROLE, MA_RENAME, MA_PROFILE, MA_REMOVE };
+enum { MA_CARE, MA_ROLE, MA_RENAME, MA_PROFILE, MA_REMOVE, MA_PLAYAS };
 enum { CARE_PLAY, CARE_TALK, CARE_CLEAN, CARE_COMFORT };
 
 static const char *const tabs[2] = { "Household", "Remembered" };
@@ -40,6 +41,8 @@ static const char *const pron_opts[4] = { "they/them", "she/her", "he/him", "Nev
 static const uint8_t pron_pick[3] = { PRONOUN_THEY, PRONOUN_SHE, PRONOUN_HE };
 static const char *const kind_opts[5] = { "A neighbour moves in", "A new person", "A new pet",
                                           "A baby is born", "Never mind" };
+static const char *const care_top[4] = { "Quick care", "Choose the care...",
+                                         "Check on everyone", "Never mind" };
 static const char *const care_opts[5] = { "Play with everyone", "Talk to everyone",
                                           "Clean everyone up", "Comfort everyone", "Never mind" };
 static const char *const cause_names[FAMLOSS_COUNT] = {
@@ -178,30 +181,145 @@ static void add_member(void)
 }
 
 /* ---- care for everyone -------------------------------------------------- */
+#define NEED_LOW 40
+/* The weakest need of a resident member (0 = none worth mentioning). */
+static int weakest_need(const DoomoResident *r, int *value)
+{
+    static const uint8_t needs[6] = { STAT_HUNGER, STAT_HAPPY, STAT_HYGIENE, STAT_ENERGY,
+                                      STAT_HEALTH, STAT_SANITY };
+    int i, best = -1, bv = 101;
+    for (i = 0; i < 6; i++)
+        if (r->stat[needs[i]] < bv) { bv = r->stat[needs[i]]; best = needs[i]; }
+    if (value) *value = bv;
+    return bv < NEED_LOW ? best : -1;
+}
+
+/* Days a pool member went without care (0 for anyone else). */
+static int days_uncared(int id)
+{
+    const FamilyMember *m = family_find(id);
+    if (!m || id < FAMILY_POOL_FIRST) return 0;
+    return (m->flags & FAMILY_FL_NEGLECT) >> FAMILY_NEGLECT_SHIFT;
+}
+
+static int needs_care(int id)
+{
+    const DoomoResident *r = id < DOOMO_MAX_RESIDENTS ? fp_res(id) : NULL;
+    if (r) return fp_alive(id) && weakest_need(r, NULL) >= 0;
+    return days_uncared(id) >= 2;
+}
+
+static void care_one(int id, int kind)
+{
+    if (id < DOOMO_MAX_RESIDENTS && fp_alive(id)) {
+        switch (kind) {
+        case CARE_PLAY: sim_play(id); break;
+        case CARE_TALK: sim_talk(id); break;
+        case CARE_CLEAN: sim_clean(id); break;
+        default: sim_comfort(id); break;
+        }
+    }
+    family_care(id);
+}
+
+static void care_done(int n, int helped, int kind)
+{
+    char buf[56];
+    if (!n) { ui_say(-1, "Nobody lives with you yet. Add someone!"); return; }
+    audio_sfx(SFX_HAPPY);
+    fp_fx_burst(fp_sw() / 2, 70, kind == CARE_PLAY ? FX_STAR : FX_HEART, 14);
+    if (helped) doomo_snprintf(buf, sizeof(buf), STR_ICON_HEART " Looked after %d (%d needed it most)", n, helped);
+    else doomo_snprintf(buf, sizeof(buf), STR_ICON_HEART " Looked after %d of the family", n);
+    ui_toast(buf);
+}
+
 static void care_all(int c)
 {
-    int i, n = 0, m = family_count();
-    char buf[48];
+    int i, n = 0, helped = 0, m = family_count();
     if (c < 0 || c > 3) return;                 /* 4 = never mind */
     for (i = 0; i < m; i++) {
         int id = family_member(i);
         if (id < 0) continue;
-        if (id < DOOMO_MAX_RESIDENTS && fp_alive(id)) {
-            switch (c) {
-            case CARE_PLAY: sim_play(id); break;
-            case CARE_TALK: sim_talk(id); break;
-            case CARE_CLEAN: sim_clean(id); break;
-            default: sim_comfort(id); break;
-            }
-        }
-        family_care(id);
+        helped += needs_care(id);
+        care_one(id, c);
         n++;
     }
-    if (!n) { ui_say(-1, "Nobody lives with you yet. Add someone!"); return; }
-    audio_sfx(SFX_HAPPY);
-    fp_fx_burst(fp_sw() / 2, 70, c == CARE_PLAY ? FX_STAR : FX_HEART, 14);
-    doomo_snprintf(buf, sizeof(buf), STR_ICON_HEART " Looked after %d of the family", n);
-    ui_toast(buf);
+    care_done(n, helped, c);
+}
+
+/* Quick care: each member gets the kind of care they need most. */
+static void care_quick(void)
+{
+    int i, n = 0, helped = 0, m = family_count();
+    for (i = 0; i < m; i++) {
+        int id = family_member(i), kind = CARE_TALK;
+        const DoomoResident *r;
+        if (id < 0) continue;
+        r = id < DOOMO_MAX_RESIDENTS ? fp_res(id) : NULL;
+        if (r) {
+            int need = weakest_need(r, NULL);
+            helped += need >= 0;
+            switch (need) {
+            case STAT_HYGIENE: kind = CARE_CLEAN; break;
+            case STAT_HAPPY: kind = CARE_PLAY; break;
+            case STAT_SANITY: case STAT_HEALTH: case STAT_HUNGER: case STAT_ENERGY: kind = CARE_COMFORT; break;
+            default: kind = CARE_TALK; break;
+            }
+        } else {
+            helped += days_uncared(id) >= 2;
+            kind = CARE_PLAY;
+        }
+        care_one(id, kind);
+        n++;
+    }
+    care_done(n, helped, CARE_TALK);
+}
+
+/* "Check on everyone": who needs what, in a few kind lines. */
+static void care_report(void)
+{
+    int i, m = family_count(), said = 0, fine = 0;
+    char buf[88], nm[DOOMO_NAME_LEN];
+    if (!m) { ui_say(-1, "Nobody lives with you yet. Add someone!"); return; }
+    for (i = 0; i < m; i++) {
+        int id = family_member(i), v = 0, need;
+        const DoomoResident *r;
+        if (id < 0) continue;
+        member_name(id, nm);
+        r = id < DOOMO_MAX_RESIDENTS ? fp_res(id) : NULL;
+        if (r && fp_alive(id) && (need = weakest_need(r, &v)) >= 0) {
+            if (said < 4) {
+                doomo_snprintf(buf, sizeof(buf), "%s is low on %s (%d%%).", nm, fp_stat_names[need], v);
+                ui_say(-1, buf);
+            }
+            said++;
+        } else if (!r && days_uncared(id) >= 2) {
+            if (said < 4) {
+                doomo_snprintf(buf, sizeof(buf), "%s hasn't had attention for %d days.", nm, days_uncared(id));
+                ui_say(-1, buf);
+            }
+            said++;
+        } else fine++;
+    }
+    if (said > 4) {
+        doomo_snprintf(buf, sizeof(buf), "...and %d more could use some love.", said - 4);
+        ui_say(-1, buf);
+    }
+    if (!said) ui_say(-1, "Everyone is doing fine. What a happy household!");
+    else if (fine) {
+        doomo_snprintf(buf, sizeof(buf), "The other %d are doing fine.", fine);
+        ui_say(-1, buf);
+    }
+}
+
+static void care_top_pick(int c)
+{
+    switch (c) {
+    case 0: care_quick(); break;
+    case 1: ui_choice(-1, "Which kind of care?", care_opts, 5, care_all); break;
+    case 2: care_report(); break;
+    default: break;
+    }
 }
 
 /* ---- member menu --------------------------------------------------------- */
@@ -230,6 +348,11 @@ static void member_act(int c)
         ui_text_entry("New name?", W.name, DOOMO_NAME_LEN, do_renamed);
         break;
     case MA_PROFILE: fp_open_resident(W.target); break;
+    case MA_PLAYAS:
+        if (!playas_available()) ui_say(-1, "Playing as your family unlocks after you finish the story.");
+        else if (!playas_can_be(W.target)) ui_say(-1, "You can't play as them right now.");
+        else if (playas_switch(W.target, PLAYAS_SWITCH_TAGIN)) ui_toast(STR_ICON_STAR " Now playing as them!");
+        break;
     default: ui_confirm("Move them out of the household?", do_remove); break;
     }
 }
@@ -245,6 +368,7 @@ static void open_member(int id)
     if (m->role != FAMROLE_PET) { W.acts[n] = MA_ROLE; W.opts[n++] = "Change role"; }
     if (id >= FAMILY_POOL_FIRST) { W.acts[n] = MA_RENAME; W.opts[n++] = "Rename"; }
     else { W.acts[n] = MA_PROFILE; W.opts[n++] = "Open profile"; }
+    if (id != playas_avatar()) { W.acts[n] = MA_PLAYAS; W.opts[n++] = "Play as them"; }
     W.acts[n] = MA_REMOVE; W.opts[n++] = "Move out";
     W.acts[n] = -1; W.opts[n++] = "Never mind";
     doomo_snprintf(q, sizeof(q), "%s (%s)", member_name(id, nm), role_names[m->role % FAMROLE_COUNT]);
@@ -276,7 +400,7 @@ static void fam_update(void)
         int m = family_count();
         audio_sfx(SFX_SELECT);
         if (W.sel < m) open_member(family_member(W.sel));
-        else if (W.sel == m) ui_choice(-1, "Care for everyone", care_opts, 5, care_all);
+        else if (W.sel == m) ui_choice(-1, "Care for everyone", care_top, 4, care_top_pick);
         else add_member();
         return;
     }
@@ -337,6 +461,8 @@ static void fam_draw(void)
                 doomo_snprintf(l2, sizeof(l2), "%s - %s", role_names[f->role % FAMROLE_COUNT],
                                f->role == FAMROLE_PET ? "Pet" : doomo_life_stage_names[f->stage % LIFE_COUNT]);
                 draw_row(x, y, w, rh, sel, role_icon(f->role), PP(PAINT_ROSE, 1), member_name(id, nm), l2);
+                if (id == playas_avatar()) fp_tag(x + w - 30, y + 3, "you", PAL_UI_GOLD, PAL_WHITE);
+                else if (needs_care(id)) fp_bubble(x + w - 16, y + 12, ICON_CLOUD, PAL_UI_RED, W.t / 6);
             } else if (idx == m) {
                 draw_row(x, y, w, rh, sel, ICON_HEART, PAL_UI_RED, "Care for everyone", "Play, talk, clean, comfort");
             } else {

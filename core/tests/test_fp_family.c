@@ -21,6 +21,11 @@ TEST(fp_family_scene_is_strong_and_draws_a_household)
     for (r = 0; r < DOOMO_MAX_RESIDENTS; r++)
         if (town_res(r)->status == RES_ALIVE && family_add(r, FAMROLE_HOUSEMATE, 0) >= 0) break;
     CHECK(family_count() >= 3);
+    /* a hungry member gets the need marker; a neglected pet is drawn too */
+    for (i = 0; i < family_count(); i++) {
+        DoomoResident *m = town_res(family_member(i));
+        if (m && m->status == RES_ALIVE) m->stat[STAT_HUNGER] = 5;
+    }
     scene_push(&SCENE_FAMILY, 0);
     CHECK(scene_top() == &SCENE_FAMILY);
     for (i = 0; i < 3; i++) {

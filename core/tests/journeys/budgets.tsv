@@ -30,3 +30,4 @@ life_pet		1	3	hub -> the Doomogachi
 life_add_member		-	-	F2: hub -> a new household member (reserved; target 6)
 life_care_all		-	-	F2: hub -> everyone in the household cared for (reserved; target 1)
 j10_family		25	300	F2: island START menu -> Family -> Remembered -> add wizard -> back
+j11_family_care		16	300	F2: island START menu -> Family -> Care for everyone -> Check on everyone -> back
