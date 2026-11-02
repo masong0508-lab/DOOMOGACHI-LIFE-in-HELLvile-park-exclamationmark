@@ -9,6 +9,7 @@
 #include "doomo/story.h"
 #include "doomo/town.h"
 #include "doomo/sim.h"
+#include "doomo/story_vm.h"
 #include "../src/story_int.h"
 
 static void fresh(void)
@@ -145,4 +146,22 @@ TEST(playas_chunk_round_trips_and_clamps)
     CHECK(!doomo_save_ext_playas->read(buf, 10, 1));  /* short chunk resets */
     CHECK(playas_is_hero());
     CHECK_EQ(playas_hero_kind(), HERO_CUSTOM);
+}
+
+TEST(playas_gender_codes_and_avatar_name)
+{
+    char o[64];
+    int a;
+    fresh();
+    a = family_pool_add(FAMROLE_SIBLING, LIFE_ADULT, 5u, "Ann", PRONOUN_SHE);
+    cleared();
+    vm_fmt(o, sizeof o, "He said @( he | she | they ) won. @P!");
+    CHECK(strstr(o, "won.") != NULL);                         /* hero default */
+    CHECK(playas_switch(a, PLAYAS_SWITCH_INSTANT));
+    vm_fmt(o, sizeof o, "@(he|she|they) won, @P.");
+    CHECK(strcmp(o, "she won, Ann.") == 0);
+    vm_fmt(o, sizeof o, "@(a|b) @(x");
+    CHECK(strcmp(o, "b @(x") == 0);
+    vm_fmt(o, sizeof o, "@(a) and @@");
+    CHECK(strcmp(o, "a and @") == 0);
 }

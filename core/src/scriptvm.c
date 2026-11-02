@@ -33,6 +33,8 @@
 #include "doomo/house_api.h"
 #include "doomo/unlock_ids.h"
 #include "doomo/ending.h"
+#include "doomo/playas.h"
+#include "doomo/family.h"
 
 enum { ST_IDLE, ST_RUN, ST_WAIT, ST_HOLD, ST_WAIT_A, ST_DLG, ST_ROOM, ST_CHOICE,
        ST_PUSHED, ST_BEAT };
@@ -70,6 +72,51 @@ static int put_s(char *out, int cap, int n, const char *s)
     return n;
 }
 
+/* PA3a: "@( m | f | n )" picks a variant by playas_you_gender(); parses t
+ * (at the '@'), writes the chosen variant (spaces trimmed) and returns the
+ * bytes consumed, or 0 if it is not a well-formed code (printed literally).
+ * A missing variant falls back to the first. English never genders the hero. */
+static int put_gender(char *out, int cap, int *np, const char *t)
+{
+    const char *v[GENDER_COUNT], *e[GENDER_COUNT], *p = t + 2, *s0 = p;
+    int k = 0, want, i;
+    for (i = 0; i < GENDER_COUNT; i++) v[i] = e[i] = NULL;
+    v[0] = p;
+    for (;; p++) {
+        if (!*p) return 0;
+        if (*p == '|' || *p == ')') {
+            e[k] = p;
+            if (*p == ')') break;
+            if (++k >= GENDER_COUNT) return 0;
+            v[k] = p + 1;
+        }
+    }
+    (void)s0;
+    want = playas_you_gender() == GENDER_M ? 0 : playas_you_gender() == GENDER_F ? 1 : 2;   /* m | f | n */
+    if (want > k) want = 0;
+    {
+        const char *a = v[want], *b = e[want];
+        while (a < b && *a == ' ') a++;
+        while (b > a && b[-1] == ' ') b--;
+        while (a < b && *np < cap - 1) out[(*np)++] = *a++;
+    }
+    return (int)(p - t) + 1;
+}
+
+/* the name of whoever you play, for @P while the story is locked */
+static const char *avatar_name(void)
+{
+    int id = playas_avatar();
+    const DoomoResident *r;
+    const FamilyIdentity *fi;
+    if (id != DOOMO_PLAYER_ID) {
+        if ((fi = family_identity(id)) != NULL && fi->name[0]) return fi->name;
+        if ((r = town_res(id)) != NULL && r->name[0]) return r->name;
+    }
+    r = town_res(DOOMO_PLAYER_ID);
+    return (r && r->name[0]) ? r->name : "Friend";
+}
+
 static int put_n(char *out, int cap, int n, int v)
 {
     char d[8];
@@ -95,8 +142,12 @@ void vm_fmt_n(char *out, int cap, const char *t, const int *nums, int nn)
                 int k = c - '0';
                 n = put_n(out, cap, n, nums ? (k < nn ? nums[k] : 0) : (k < VM_VARS ? vm.var[k] : 0));
             } else if (c == 'P') {
-                r = town_res(DOOMO_PLAYER_ID);
-                n = put_s(out, cap, n, (r && r->name[0]) ? r->name : "Friend");
+                n = put_s(out, cap, n, avatar_name());
+            } else if (c == '(') {
+                int used = put_gender(out, cap, &n, t);
+                if (used) { t += used; continue; }
+                out[n++] = '@';
+                if (n < cap - 1) out[n++] = c;
             } else if (c == 'E') {
                 n = put_s(out, cap, n, doomo_town.pet.name[0] ? doomo_town.pet.name : "your egg");
             } else if (c == 'D') {
