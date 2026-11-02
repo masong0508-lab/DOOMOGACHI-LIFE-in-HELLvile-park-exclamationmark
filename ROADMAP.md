@@ -32,6 +32,9 @@ The PS1 life-sim status checklist (what is verified, written, or missing on that
   pieces redrawn + roofs, GBA EWRAM for HOME (H10). PS1 disc links again (H0).
 - House H3 (PS1 room shells, `ps1/src/room.c`): built and measured earlier (docs/PS1.md section 7; H4 took the Hell-Cellar from 17 to 30 fps).
   The H3 PS1 room shells are done; this line replaces the old "H3 open" entries (2026-11-02 reconcile). Not re-run since LS1.
+- PA2 (hero choice cards): finished with the tagline fit, a header-byte test and the creator script fix (patch `doomo-pa2-hero-cards-nov02d`).
+- PS1 journey meter: `ps1/harness/run.py` plays the native journey files and fails a journey over its `budgets.tsv` presses;
+  the game `harness` target runs J6 + J7 (patch `doomo-ps1-journeys-nov02j`; not yet run on PCSX-Redux).
 - GBA speed: speed tour (G1), Mode 4 quick wins (G2), IWRAM overlay (G4),
   tile-mode overworld (G5), billboards as sprites (G6), retained HUD panels +
   "3D: Faster/Better" (G7). Cartridge is now a full 256 Mbit / 32 MB.
@@ -114,8 +117,8 @@ a package can only start once the ones it depends on (see the sections below) ha
 
 ### M: medium
 - Life sim: E7 (content-pack format), U3a (pause shell), U5 (first-boot language
-  picker), PA3a (gender-aware text), PA5 (character switcher), PA2 (hero choice:
-  SUNNY / MARVIN / your own), U6 (Continue-first title and flow), E6c (Ch3
+  picker), PA3a (gender-aware text), PA5 (character switcher), PA2 (done 2026-11-02; hero choice:
+  SUNNY / MARVIN / your own), U6 (done 2026-11-02: U6a-U6e; Continue-first title and flow), E6c (Ch3
   punch-up), LS-QA (fewer taps), E6d (Ch4 + epilogue punch-up), LS6 (streamlined
   progression), E8 (GBA mature ROM), E9 (PS1 mature disc), LS5 (story/combat ties),
   PA6 (new life as a villager), PA7 (play-as content), U4 (held-frame backdrop),
@@ -276,6 +279,8 @@ Worked example (U6c):
 | PS1 | `doomo-ps1-lifesim-checklist-nov02i` | `docs: PS1 life sim status checklist` | docs only: adds `docs/PS1_LIFESIM.md`, links it from the roadmap focus note |
 | PA2 | `doomo-pa2-hero-cards-nov02d` | `PA2: hero cards finished (tagline fit, header-byte test, creator script fix)` | applied by the owner 2026-11-02 |
 | PS1 | `doomo-ps1-journeys-nov02j` | `PS1: harness plays the press journeys (J6, J7) on the disc` | PS1 focus step 2: `run.py` handles `journey-begin/end` and checks `budgets.tsv` presses; game harness target runs J6 + J7; not yet run on PCSX-Redux |
+| PS1 | `doomo-ps1-h3-reconcile-nov02k` | `docs: reconcile H3 (PS1 room shells) as done` | docs only: H3 leaves the open lists |
+| docs | `doomo-roadmap-done-nov02l` | `docs: roadmap records PA2, U6, PS1 journeys, H3 as done` | docs only (marker: roadmap-done-nov02l) |
 
 How the owner applies patches (so nobody has to ask again): from Termux, one pasted line per patch, oldest first, each line
 is the full template above (`cd` repo, `git pull --ff-only`, `rm -rf ~/vs && mkdir ~/vs`, `unzip -qo` the zip from
