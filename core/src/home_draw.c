@@ -50,6 +50,8 @@
 #include "doomo/portrait.h"
 #include "doomo/story_vm.h"
 #include "doomo/font.h"
+#include "doomo/life.h"
+#include "doomo/playas.h"
 #include "../gen/furn_ids.h"
 
 #define HD_TAG SAVE_EXT_TAG('H', 'O', 'M', 'E')
@@ -2020,6 +2022,24 @@ static int build_view(DoomoRoomView *v, uint8_t *cache, uint32_t cap)
 }
 
 /* the actors: the player, a host, the pet, the runner, visitors, guests, demons */
+/* floor pieces block a tile; rugs, small things and wall pieces do not */
+static void home_floor_occupancy(const HomeRoom *r, uint16_t occ[16])
+{
+    int i, x, y;
+    memset(occ, 0, 16 * sizeof(uint16_t));
+    for (i = 0; i < r->nobj; i++) {
+        const HomeObj *o = &r->obj[i];
+        const DoomoFurn *f = home_furn(HO_FURN(o));
+        int fw, fd;
+        if (!f || (f->flags & (FF_WALL | FF_RUG | FF_SMALL)) || HO_ONSURF(o)) continue;
+        home_footprint(f, HO_ROT(o), &fw, &fd);
+        for (y = HO_Y(o); y < HO_Y(o) + fd && y < 16; y++)
+            for (x = HO_X(o); x < HO_X(o) + fw && x < 16; x++) occ[y] |= (uint16_t)(1u << x);
+    }
+}
+
+#define HOME_HOUSEMATES 3
+
 static DoomoRoomActor *add_actor(const DoomoImage *img, fix16 x, fix16 y, int z)
 {
     DoomoRoomActor *a;
@@ -2080,6 +2100,27 @@ static void build_actors(DoomoRoomView *v)
             if (H->react == HVR_EW && age != 0xFF && age < 12) { a->sx = 282; a->sy = 230; }   /* 1.10 / 0.90 */
             else if (H->react == HVR_DEADPAN || H->visit.kind == HVK_POSSESSED) { /* bob = 0 */ }
             else if (breath) a->sy = 262;
+        }
+    }
+    /* F3: the household lives here. Up to HOME_HOUSEMATES members stand on free
+     * floor tiles of your own house (never the avatar you are playing): a member's tile starts at its id and moves on to the
+     * next free one, so the same person keeps the same spot between frames. */
+    if (H->kind == HK_OWN && H->mode == HM_LIVE) {
+        uint16_t occ[16];
+        int i, n = family_count(), put = 0, w = room_w(), dd = room_d();
+        home_floor_occupancy(&H->ed.room, occ);
+        for (i = 0; i < n && put < HOME_HOUSEMATES; i++) {
+            int id = family_member(i), t, tiles = w * dd, start;
+            if (id < 0 || id == playas_avatar()) continue;
+            start = (id * 7 + 3) % (tiles > 0 ? tiles : 1);
+            for (t = 0; t < tiles; t++) {
+                int c = (start + t) % tiles, cx = c % w, cy = c / w;
+                if ((occ[cy] >> cx) & 1) continue;
+                occ[cy] |= (uint16_t)(1u << cx);     /* nobody shares a tile */
+                add_actor(bodyspr_image(id, 0, 0), INT2FIX(cx) + FIX_ONE / 2, INT2FIX(cy) + FIX_ONE / 2, 0);
+                put++;
+                break;
+            }
         }
     }
     /* the pet, hopping between its places */

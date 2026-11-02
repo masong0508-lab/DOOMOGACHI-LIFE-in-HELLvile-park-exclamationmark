@@ -288,6 +288,7 @@ Worked example (U6c):
 | U0 | `doomo-u0-settings-core-nov02o` | `U0: settings core (OPT_MATURE/LOSS/RUMBLE, OPT2 chunk, machine config record)` | rebuilt: the old fut-u0 branch is not in the repo; core + tests only, not yet built for GBA/PS1 |
 | docs | `doomo-roadmap-branches-nov02n` | `docs: roadmap notes that the saved branches are not in the repo` | docs only |
 | H7 | `doomo-h7-defend-frame-nov02p` | `H7: test that Hold the Door wave 3 draws a real frame` | the panel, guests and captions were already in home_defend.c / home_draw.c; adds `home_defend_scene_draws_a_frame` (not black). The PS1 black-frame check on PCSX-Redux is still to run |
+| F3 | `doomo-f3-house-occupancy-nov02q` | `F3: household members stand in your own house (Live mode)` | up to 3 members of the household stand on free floor tiles (never the avatar you play); core only, not yet measured on GBA EWRAM / PS1 |
 
 How the owner applies patches (so nobody has to ask again): from Termux, one pasted line per patch, oldest first, each line
 is the full template above (`cd` repo, `git pull --ff-only`, `rm -rf ~/vs && mkdir ~/vs`, `unzip -qo` the zip from
@@ -301,3 +302,4 @@ and the reply gives the line with NAME and MESSAGE filled in, plus a ROADMAP row
 
 <!-- doomo-u0-settings-core-nov02o -->
 <!-- doomo-h7-defend-frame-nov02p -->
+<!-- doomo-f3-house-occupancy-nov02q -->

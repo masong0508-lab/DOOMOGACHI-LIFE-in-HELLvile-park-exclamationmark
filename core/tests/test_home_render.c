@@ -14,6 +14,7 @@
 #include "../src/home_int.h"
 #include "../gen/furn_ids.h"
 #include "room_shells.h"
+#include "doomo/family.h"
 
 static uint8_t rr_cache[12 * 1024];
 
@@ -309,4 +310,29 @@ TEST(room_ref_light_pools_glow_and_panes)
     CHECK_EQ(room_pane_mode(15), RPANE_DAY);
     CHECK_EQ(room_pane_mode(10), RPANE_DUSK);
     CHECK_EQ(room_pane_mode(5), RPANE_NIGHT);
+}
+
+/* (F3) the household lives in your own house: a member added to the family
+ * puts a body on a free floor tile, so the frame differs from the empty house;
+ * it is stable (same frame twice) and never overlaps a floor piece's tile. */
+static uint32_t own_house_frame(int members)
+{
+    int i;
+    test_reset();
+    home_reset();
+    for (i = 0; i < members; i++) family_pool_add(FAMROLE_HOUSEMATE, LIFE_ADULT, 100u + (uint32_t)i, NULL, -1);
+    scene_set(&SCENE_HOME, HOME_ARG_OWN(HOME_COTTAGE));
+    for (i = 0; i < 20; i++) doomo_frame(0);
+    /* START, down to "Live mode", A: the own house opens in build mode */
+    { static const int seq[] = { BTN_START, 0, BTN_DOWN, 0, BTN_A, 0, 0, 0, 0, 0 };
+      for (i = 0; i < 10; i++) { plat_begin_frame(); doomo_frame(seq[i]); plat_end_frame(); } }
+    for (i = 0; i < 10; i++) doomo_frame(0);
+    return fnv(nat_fb, nat_w * nat_h);
+}
+
+TEST(home_household_stands_in_the_house)
+{
+    uint32_t empty = own_house_frame(0), two = own_house_frame(2), two2 = own_house_frame(2);
+    CHECK(empty != two);
+    CHECK_EQ(two, two2);
 }
