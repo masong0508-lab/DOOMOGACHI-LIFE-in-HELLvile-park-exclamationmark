@@ -15,6 +15,7 @@
 #include "audio_int.h"
 #include "doomo/camfx.h"
 #include "doomo/txt.h"
+#include "doomo/family.h"
 
 OwState ow;
 int ow_bb_count;                        /* ow_bb = the shared doomo_frame_bb */
@@ -337,6 +338,7 @@ static void story_enter(int arg)
     }
     sim_init();
     ow.started = 1;
+    family_tier_sync(story_chapter() == STORY_CH_DONE);   /* a story finished before the tiers */
     story_rearm_possessors();                      /* S2: a load re-arms the authored possessors */
     continue_on_saved_map();
 }

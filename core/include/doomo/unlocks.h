@@ -107,6 +107,10 @@ const DoomoUnlock *unlock_at(int i);
 int  unlock_has(int id);
 /* Grants and queues a "NEW UNLOCK!" toast. Returns 1 if newly granted. */
 int  unlock_grant(int id);
+/* Grants without the "NEW UNLOCK!" toast or sound, for ids that have no table
+ * entry and announce themselves (the household tiers, family.h). Returns 1 if
+ * newly granted. */
+int  unlock_grant_quiet(int id);
 /* Is this creator/weapon option available? (1 if it has no unlock entry
  * or its unlock is owned). Creator & workshop UIs show locked options as
  * silhouettes with the `how` hint. */

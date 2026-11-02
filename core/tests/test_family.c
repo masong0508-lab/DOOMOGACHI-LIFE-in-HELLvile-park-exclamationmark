@@ -7,6 +7,7 @@
 #include "doomo/playas.h"
 #include "doomo/roster.h"
 #include "doomo/save_budget.h"
+#include "doomo/ui.h"
 
 static void fresh(void)
 {
@@ -28,6 +29,59 @@ static int adult_open(int from)
         }
     }
     return -1;
+}
+
+/* town_new keeps the unlocks, so tests of the tiers start from "neither tier" */
+static void clear_tiers(void)
+{
+    doomo_town.unlocks[UL_LIFE_HOUSEHOLD_T1 >> 3] &= (uint8_t)~(1u << (UL_LIFE_HOUSEHOLD_T1 & 7));
+    doomo_town.unlocks[UL_LIFE_HOUSEHOLD_T2 >> 3] &= (uint8_t)~(1u << (UL_LIFE_HOUSEHOLD_T2 & 7));
+}
+
+TEST(family_tiers_follow_the_story_finishes)
+{
+    fresh();
+    clear_tiers();
+    CHECK_EQ(family_tier(), HOUSEHOLD_TIER_START);
+    CHECK_EQ(family_cap(), HOUSEHOLD_CAP_FULL_T0);
+    /* the first finish: 3 -> 10, with one toast and no table entry */
+    ui_toast_clear();
+    CHECK_EQ(family_tier_story_done(), HOUSEHOLD_TIER_GAME_DONE);
+    CHECK(unlock_has(UL_LIFE_HOUSEHOLD_T1) && !unlock_has(UL_LIFE_HOUSEHOLD_T2));
+    CHECK_EQ(family_cap(), HOUSEHOLD_CAP_FULL_T1);
+    CHECK(ui_toast_pending());
+    ui_toast_clear();
+    /* a new story keeps the unlocks; finishing it again: 10 -> 20 */
+    town_new(TOWN_STORY, 77, TOWN_POP_PREMADE);
+    CHECK_EQ(family_tier(), HOUSEHOLD_TIER_GAME_DONE);
+    CHECK_EQ(family_tier_story_done(), HOUSEHOLD_TIER_NGPLUS_DONE);
+    CHECK_EQ(family_cap(), HOUSEHOLD_CAP_FULL_T2);
+    CHECK(ui_toast_pending());
+    ui_toast_clear();
+    /* nothing above 20, and nothing to say about it */
+    CHECK_EQ(family_tier_story_done(), 0);
+    CHECK_EQ(family_cap(), HOUSEHOLD_CAP_FULL_T2);
+    CHECK(!ui_toast_pending());
+    CHECK(unlock_by_id(UL_LIFE_HOUSEHOLD_T1) == NULL);     /* K0: no table entry */
+    clear_tiers();
+}
+
+TEST(family_tier_sync_is_a_catch_up_for_tier_one_only)
+{
+    fresh();
+    clear_tiers();
+    ui_toast_clear();
+    CHECK_EQ(family_tier_sync(0), 0);                      /* an unfinished story: nothing */
+    CHECK_EQ(family_tier(), HOUSEHOLD_TIER_START);
+    CHECK(!ui_toast_pending());
+    CHECK_EQ(family_tier_sync(1), 1);                      /* finished before the tiers */
+    CHECK_EQ(family_tier(), HOUSEHOLD_TIER_GAME_DONE);
+    CHECK(ui_toast_pending());
+    ui_toast_clear();
+    CHECK_EQ(family_tier_sync(1), 0);                      /* once, and never tier 2 */
+    CHECK_EQ(family_tier(), HOUSEHOLD_TIER_GAME_DONE);
+    CHECK(!ui_toast_pending());
+    clear_tiers();
 }
 
 TEST(family_empty_household_is_silent)

@@ -94,6 +94,18 @@ typedef struct FamilyIdentity {
 /* The cap of the household now (tier from the unlocks; the GBA's smaller
  * numbers on the GBA). */
 int  family_cap(void);
+/* The household tiers (S-HOUSE): 0 at the start, 1 once the story is
+ * finished (UL_LIFE_HOUSEHOLD_T1), 2 once it is finished again in New Game+
+ * (UL_LIFE_HOUSEHOLD_T2). The tier ids have no unlock table entry (K0's
+ * contract), so these grant them quietly and show their own toast. */
+int  family_tier(void);
+/* The story's credits just rolled (once per run): the first finish grants
+ * tier 1, a later finish (unlocks outlive a new story) tier 2. Returns the
+ * tier newly reached, 0 if none. */
+int  family_tier_story_done(void);
+/* Catch-up when a story save is loaded: a story that was finished before
+ * the tiers existed gets tier 1. Never grants tier 2. Returns 1 if granted. */
+int  family_tier_sync(int story_done);
 /* Is id a household id at all (a resident slot or a pool id)? */
 int  family_id_ok(int id);
 /* Add a member. stage is only read for a pool member (a resident's comes

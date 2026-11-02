@@ -351,6 +351,8 @@ int unlock_grant(int id)
     return 1;
 }
 
+int unlock_grant_quiet(int id) { return grant_bit(id); }
+
 int unlock_grant_match(int cat, int list, int index)
 {
     const DoomoUnlock *u = unlock_find(cat, list, index);

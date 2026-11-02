@@ -8,6 +8,9 @@
 #include "doomo/doomo.h"
 #include "doomo/family.h"
 #include "doomo/playas.h"
+#include "doomo/font.h"
+#include "doomo/ui.h"
+#include "doomo/audio.h"
 
 static FamilyMember fam_[FAMILY_MAX];
 static uint8_t fam_n_;
@@ -18,14 +21,44 @@ static uint32_t ident_mask_;
 /* ---- ids and the cap ------------------------------------------------------ */
 int family_cap(void)
 {
-    int tier = unlock_has(UL_LIFE_HOUSEHOLD_T2) ? HOUSEHOLD_TIER_NGPLUS_DONE
-             : unlock_has(UL_LIFE_HOUSEHOLD_T1) ? HOUSEHOLD_TIER_GAME_DONE
-             : HOUSEHOLD_TIER_START;
+    int tier = family_tier();
 #ifdef DOOMO_PLATFORM_GBA
     return HOUSEHOLD_CAP(1, tier);
 #else
     return HOUSEHOLD_CAP(0, tier);
 #endif
+}
+
+int family_tier(void)
+{
+    return unlock_has(UL_LIFE_HOUSEHOLD_T2) ? HOUSEHOLD_TIER_NGPLUS_DONE
+         : unlock_has(UL_LIFE_HOUSEHOLD_T1) ? HOUSEHOLD_TIER_GAME_DONE
+         : HOUSEHOLD_TIER_START;
+}
+
+/* one toast for a new tier, with the cap this platform now has */
+static void tier_toast_(void)
+{
+    char msg[64];
+    doomo_snprintf(msg, sizeof(msg), STR_ICON_STAR " NEW UNLOCK! Household: room for %d", family_cap());
+    ui_toast(msg);
+    audio_sfx(SFX_SPARKLE);
+}
+
+int family_tier_story_done(void)
+{
+    int id = !unlock_has(UL_LIFE_HOUSEHOLD_T1) ? UL_LIFE_HOUSEHOLD_T1
+           : !unlock_has(UL_LIFE_HOUSEHOLD_T2) ? UL_LIFE_HOUSEHOLD_T2 : -1;
+    if (id < 0 || !unlock_grant_quiet(id)) return 0;
+    tier_toast_();
+    return id == UL_LIFE_HOUSEHOLD_T1 ? HOUSEHOLD_TIER_GAME_DONE : HOUSEHOLD_TIER_NGPLUS_DONE;
+}
+
+int family_tier_sync(int story_done)
+{
+    if (!story_done || !unlock_grant_quiet(UL_LIFE_HOUSEHOLD_T1)) return 0;
+    tier_toast_();
+    return 1;
 }
 
 /* alive or a ghost (play-as.h: both can be played and may live in the house) */

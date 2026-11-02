@@ -160,6 +160,8 @@ TEST(story_ch34_playthrough_through_the_new_scripts)
 {
     int k;
     story_town(4343);
+    doomo_town.unlocks[UL_LIFE_HOUSEHOLD_T1 >> 3] &= (uint8_t)~(1u << (UL_LIFE_HOUSEHOLD_T1 & 7));
+    doomo_town.unlocks[UL_LIFE_HOUSEHOLD_T2 >> 3] &= (uint8_t)~(1u << (UL_LIFE_HOUSEHOLD_T2 & 7));
     story_debug_jump(0, BEAT_EP3_1);
     frames(5, 0);
     for (k = 0; k < NEP; k++) {
@@ -174,6 +176,7 @@ TEST(story_ch34_playthrough_through_the_new_scripts)
     CHECK(story_flag(SF_CREDITS_SEEN));
     CHECK(unlock_has(USTORY_UNITED_PARK) && unlock_has(USTORY_NEW_GAME_PLUS) && unlock_has(USTORY_HELLVILE_VISITS));
     CHECK(unlock_has(UL_STORY_MISC2_FIRST + 0) && unlock_has(UL_STORY_MISC2_FIRST + 8));
+    CHECK(unlock_has(UL_LIFE_HOUSEHOLD_T1) && !unlock_has(UL_LIFE_HOUSEHOLD_T2));   /* S-HOUSE: tier 1 */
     CHECK(story_flag(SF_PET_HORNS) && (story_stry()->pet_form & 2));
     CHECK(story_flag(SF_HOUSE_PLATED));
     CHECK(story_flag(SF_C3_EXO0) && story_flag(SF_C3_EXO0 + 1));

@@ -34,6 +34,11 @@ reviewed, then landed on `claude/nice-allen-gr6czm`.
   partner's LS0 gate, the LIFE chunk's family section; no UI yet (F2), no babies / ageing (F4).
 - Life sim F1 part 2 (pool members): a 20 B identity each (look seed, name, pronoun), `family_resident()`
   builds the full resident on demand, the LIFE chunk's POOL section; pets are drawn by F5.
+- Household tiers (S-HOUSE, tiers part): `family_cap()` now has its grants. Finishing the story gives tier 1
+  (cap 3 -> 10, GBA 6) and finishing it again gives tier 2 (-> 20, GBA 10); `family_tier_story_done()` runs where the
+  credits finish (`story_ch34.c`), shows one toast and keeps K0's rule of no table entry (`unlock_grant_quiet()`).
+  `family_tier_sync()` gives tier 1 to a story save that was finished before the tiers. Tier 2 only becomes reachable
+  once NG+ can actually start a second run (nothing does yet: `MODE_NEW_GAME_PLUS` is unlocked, never read).
 - Life sim wave 1: shared registry/contracts incl. 15 endings, security code,
   family, pockets and profiles (K0), life stages + two-way adult-only romance
   gate (LS0), journey/tap meter (M0), PG-21 register + lint (E5).
@@ -125,7 +130,8 @@ main game, working on native, GBA, PS1 and (later) Dreamcast.
 Added from the user's 30 answers (fold into the waves above):
 - **F5 pets + uplift**: real (non-talking) pets that count toward the cap; late-game uplift.
 - **F6 loss / death**: members can be lost, incl. starvation/deprivation.
-- **S-HOUSE**: story unlocks the house; cap 3 -> 10 after completion -> 20 after NG+;
+- **S-HOUSE**: story unlocks the house; cap 3 -> 10 after completion -> 20 after NG+ (the tier grants are done, see
+  section 0; the NG+ restart that reaches tier 2 and the story house unlock are not);
   deeper house build-up with better fetch quests.
 - **FREE**: improved free mode; play-as anyone after completion; gated features.
 - **MP0 / MP1 profiles + multiplayer**: per-player profiles inside one save
