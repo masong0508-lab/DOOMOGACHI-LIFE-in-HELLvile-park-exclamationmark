@@ -185,7 +185,11 @@ X10 VMU card trading.
   anything suggestive, never minors; mature art comes only from user-supplied
   override packs into reserved slots.
 - Show plan: 5 seasons, Sunny dies in S4; the game keeps its own story where Sunny lives.
-- Show swearing curve: lightest in season 1, rising each season, heavy in season 4,
-  and the most explicit in season 5 (double length + TV-movie finale). The game keeps
-  its own sparse budget (s-word a few times, f-word exactly twice).
+- Show swearing curve (the game keeps its own sparse budget: s-word a few times, f-word exactly twice):
+  - Season 1: no f-word; it almost drops once and gets cut off.
+  - Season 2: the first full f-word, near the end of the season.
+  - Season 3: f-words here and there.
+  - Season 4: ramps up hard, especially around Sunny's death early-to-mid season.
+  - Season 5 (double length + TV-movie finale): constant, Vivziepop-level
+    (Hazbin Hotel / Helluva Boss) swearing.
 - GBA cartridge: 256 Mbit / 32 MB (the hardware maximum), enforced at build time.
