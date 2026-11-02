@@ -82,7 +82,7 @@ enum { E_APTS, E_MOVE_IN, E_SHOP, E_CAFE_SHOP, E_BLACK_MARKET, E_EXORCISE, E_PRA
        E_FUZZ_TALK, E_TREAT, E_WORKSHOP, E_ARENA, E_GRAVES, E_STROLL, E_PICNIC,
        E_VISIT_HELL, E_PEEK_WALL, E_CREATE_HILL, E_CREATE_HELL, E_RENT, E_AVATAR,
        E_NAME_ISLAND, E_SAVELOAD, E_OPTIONS, E_UNLOCKS, E_RECORDS, E_TITLE,
-       E_NEWS, E_ROSTER, E_PET, E_HERE, E_ACTIVITY, E_SOON, E_GENRE, E_CLOSE };
+       E_NEWS, E_ROSTER, E_FAMILY, E_PET, E_HERE, E_ACTIVITY, E_SOON, E_GENRE, E_CLOSE };
 
 #define MENU_MAX 24
 typedef struct {
@@ -220,6 +220,7 @@ static void build_menu(const Loc *L)
         e = add(E_CREATE_HELL, ICON_PENTAGRAM, "Create (Hellvile)", "Make a new bad-side citizen. Spooky-cute!");
         if (e) e->enabled = (uint8_t)free_hell;
         add(E_RENT, ICON_COIN, "Collect rent", "Once a day: everyone chips in a little.");
+        add(E_FAMILY, ICON_HOUSE, "Family", "Your household: care, add members, remember.");
         add(E_AVATAR, ICON_SMILE, "Your avatar", "Your own look (it fights in the Arena).");
         add(E_NAME_ISLAND, ICON_STAR, "Name the island", "Give your island a name of its own.");
         add(E_SAVELOAD, ICON_HEART, "Save / Load", "Keep your island safe in a save slot.");
@@ -310,6 +311,7 @@ static void build_menu(const Loc *L)
         add(E_PET, ICON_EGG, "Doomogachi", "Your tamagotchi pet.");
         add(E_SAVELOAD, ICON_HEART, "Save / Load", "Keep your island safe.");
         add(E_OPTIONS, ICON_WRENCH, "Options", "Settings for everything.");
+        add(E_FAMILY, ICON_HOUSE, "Family", "Your household: care, add members, remember.");
         add(E_UNLOCKS, ICON_STAR, "Unlocks", "Everything you've earned.");
         add(E_RECORDS, ICON_CHECK, "Town records", "Island statistics.");
         add(E_TITLE, ICON_ARROW_L, "Back to title", "Leave the island (save first!).");
@@ -559,6 +561,7 @@ static void run_entry(const Entry *e)
     case E_TITLE: ui_confirm("Back to the title screen? Unsaved changes will be lost!", cb_title); break;
     case E_NEWS: scene_push(&SCENE_NEWS, 0); break;
     case E_ROSTER: scene_push(&SCENE_ROSTER, FP_ROSTER_ARG_BROWSE); break;
+    case E_FAMILY: scene_push(&SCENE_FAMILY, 0); break;
     case E_PET: open_pet(); break;
     case E_HERE:
         doomo_snprintf(fp_tmp, sizeof(fp_tmp), "%s", fp_activity_name(e->arg));
