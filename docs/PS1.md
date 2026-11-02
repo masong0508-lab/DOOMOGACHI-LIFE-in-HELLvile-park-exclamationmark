@@ -847,6 +847,12 @@ UI gallery, save + load on the card), `enginetest.txt` (the full engine
 tour with screenshots and its frame rate), `thirdperson.txt`,
 `overworld.txt`, `model.txt` (3D citizens), `memcard.txt` (card self test).
 
+`plat_test_flags()` (plat_ext.h) returns `PLAT_TEST_NO_PICKER` while the
+harness holds the lockstep `lock` in `g_hcmd` (every `run.py` script run),
+so first-boot steps that wait for a person, such as U5's language picker,
+are skipped exactly as in the native runner. A console never writes the
+mailbox and gets 0.
+
 ## 11. Engine-test build
 
 `cmake --preset ps1-enginetest && cmake --build --preset ps1-enginetest`
