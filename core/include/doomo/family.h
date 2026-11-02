@@ -196,8 +196,11 @@ int  family_birth(const char *name, int pronoun);
  *   - OLD AGE: a pool ELDER passes peacefully after FAMILY_ELDER_DAYS town
  *     days in the household (counted in the age bits). Pets and minors do not.
  *   - family_loss_set(0) turns loss off for the daily passes (the "Loss"
- *     option U0 will add); an explicit family_lose() still works, but a minor
- *     can only "move away" (FAMLOSS_GONE), never die.
+ *     option U0 will add); an explicit family_lose() still works for adults
+ *     and pets. A MINOR (amended by the owner, F10) can be lost to ILLNESS or
+ *     DEMON (a disaster, an illness, the story), never to old age or neglect,
+ *     and only while Loss is on; with Loss off they are safe (a rescue).
+ *     Always off-screen and gentle: a toast and a memorial, no detail.
  * Every loss leaves a memorial (8 B, the newest FAMILY_MEMORIAL_MAX kept) for
  * the graveyard screen and the endings. A saved memorial keeps no name: a
  * resident's comes from the town, a pool member's is regenerated when it was
@@ -246,5 +249,32 @@ uint32_t family_loss_save_size(void);
 uint32_t family_loss_save(uint8_t *dst, uint32_t cap);
 int      family_loss_load(const uint8_t *src, uint32_t len);
 void     family_loss_clear(void);
+
+/* ---- F7: free will ---------------------------------------------------------
+ * While you are not controlling them, household members look after each other:
+ * once per town day a capable member (teen, adult or elder, not the avatar)
+ * cares for whoever needs it most. Levels: 0 Off, 1 Min, 2 Normal (default),
+ * 3 High, 4 Subconscious (the most, and silent: no news line). Called once a
+ * day from sim.c, before family_loss_daily(). Returns the acts done.
+ * Saved in the family section's spare header byte (0 = default Normal). */
+#define FAMILY_WILL_OFF 0
+#define FAMILY_WILL_MIN 1
+#define FAMILY_WILL_NORMAL 2
+#define FAMILY_WILL_HIGH 3
+#define FAMILY_WILL_SUBCONSCIOUS 4
+int  family_freewill_level(void);
+void family_freewill_set(int level);       /* clamped; saved with the household */
+int  family_freewill_daily(void);
+
+/* ---- grief: losing your life partner -----------------------------------------
+ * After a PARTNER is lost (any cause but FAMLOSS_GONE) you grieve for
+ * FAMILY_GRIEF_DAYS town days. While grieving your shots do only
+ * family_grief_damage_pct() percent damage (50 at first, easing back to 100) and
+ * hits on you do family_grief_hurt_pct() percent (150 at first). Derived from
+ * the memorials, so nothing new is saved. 100 = no effect. */
+#define FAMILY_GRIEF_DAYS 14
+int  family_grief_days_left(void);        /* 0 = not grieving */
+int  family_grief_damage_pct(void);
+int  family_grief_hurt_pct(void);
 
 #endif

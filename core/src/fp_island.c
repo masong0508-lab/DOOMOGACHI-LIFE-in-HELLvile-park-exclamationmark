@@ -10,7 +10,7 @@
  *
  *   A       visit             START  menu (save, options, unlocks ...)
  *   R       citizens          L      news
- *   SELECT  Doomogachi        B      menu
+ *   SELECT  Family            B      menu
  */
 #include "fp_island.h"
 
@@ -779,7 +779,7 @@ static void island_update(void)
     if (btn_pressed(BTN_START | BTN_B)) { open_menu(&menu_loc); return; }
     if (btn_pressed(BTN_R)) { audio_sfx(SFX_SELECT); scene_push(&SCENE_ROSTER, 0); return; }
     if (btn_pressed(BTN_L)) { audio_sfx(SFX_SELECT); scene_push(&SCENE_NEWS, 0); return; }
-    if (btn_pressed(BTN_SELECT)) { audio_sfx(SFX_SELECT); open_pet(); return; }
+    if (btn_pressed(BTN_SELECT)) { audio_sfx(SFX_SELECT); scene_push(&SCENE_FAMILY, 0); return; }
 }
 
 /* ====================================================================== */

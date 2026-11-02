@@ -92,9 +92,25 @@ skipping `playas_avatar()`.
 3. Phase 5 disasters without story hooks (random events are self-contained).
 4. Phase 4 and the story hooks of Phase 5 with the LS3/LS4 writing.
 
-## Open questions for the owner
-- Hub shortcut for Family (reserved journey `life_care_all`, target 1 press):
-  which button gives way? L, R and SELECT are all taken.
-- Default autonomy: Gentle or Off for existing saves?
-- Should a lost adult partner end the "partner" ending route, or leave a
-  grieving-partner state? (F6 owns grief tone.)
+## Decisions (owner, 1 Nov 2026)
+- **Hub shortcut**: SELECT on the island hub now opens Family (reserved journey
+  `life_care_all`). The Doomogachi moves to the START menu (journey `life_pet`
+  is now START, Down, Down, A). Inside Family, SELECT/L/R still flip the tab.
+- **Autonomy**: a "Family free will" level, default **Normal**: Off, Min,
+  Normal, High, Subconscious (the most, and silent). Set from Family >
+  Care for everyone > Family free will. Saved in the family section's spare
+  header byte (0 = Normal), so the default costs nothing and old saves load as
+  Normal. Daily pass: `family_freewill_daily()` in sim.c `day_rollover`, before
+  `family_loss_daily()`.
+- **Lost partner**: leaves a **grieving** state for 14 town days (derived from
+  the memorial, nothing saved): your shots do 50% damage rising back to 100%,
+  and hits on you do 125% falling back to 100%. The partner ending route is not
+  ended (F6 can still tune the tone).
+- **Children**: amended R5. A minor can be lost to illness or Hell (never old
+  age or neglect), only while Loss is on, always off-screen and gentle (toast
+  "has gone to rest", a memorial). Loss Off keeps them safe (a rescue).
+  `docs/design/story/SCRIPT_STYLE.md` still says children never die: it needs the
+  same amendment before any story beat uses this.
+
+## Still open
+- Pool bonds (Phase 2/3 `LIFE_SEC_BOND`) are untouched.

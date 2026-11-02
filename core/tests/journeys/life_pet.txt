@@ -1,4 +1,4 @@
-# life_pet (M0): the island hub -> the Doomogachi (SELECT), once the egg
+# life_pet (M0): the island hub -> START menu -> the Doomogachi, once the egg
 # has been named. Budget: budgets.tsv life_pet.
 scene NEW_ISLAND
 wait 10
@@ -30,7 +30,13 @@ press START
 wait 10
 expect-scene ISLAND
 journey-begin life_pet
-press SELECT
+press START
+wait 2
+press DOWN
+wait 1
+press DOWN
+wait 1
+press A
 wait 1
 expect-scene PET
 journey-end life_pet

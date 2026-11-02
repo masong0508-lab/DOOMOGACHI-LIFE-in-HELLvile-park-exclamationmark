@@ -12,7 +12,11 @@
 #include "doomo/ui.h"
 #include "doomo/audio.h"
 #include "doomo/portrait.h"
+#include "doomo/sim.h"
+#include "doomo/town.h"
+#include "sim_int.h"
 
+static uint8_t will_ = 2;   /* F7 free will level (FAMILY_WILL_NORMAL), saved in the family section's spare byte */
 static FamilyMember fam_[FAMILY_MAX];
 static uint8_t fam_n_;
 static uint8_t neglect_grace_;   /* F6: skip the first neglect pass after a load */
@@ -284,6 +288,7 @@ int family_remove(int id)
 void family_clear(void)
 {
     neglect_grace_ = 0;
+    will_ = FAMILY_WILL_NORMAL;
     memset(fam_, 0, sizeof(fam_));
     fam_n_ = 0;
     family_pool_reset();
@@ -420,7 +425,7 @@ uint32_t family_save(uint8_t *dst, uint32_t cap)
     int i;
     if (!fam_n_ || cap < family_save_size()) return 0;
     dst[0] = fam_n_;
-    dst[1] = 0;
+    dst[1] = will_ == FAMILY_WILL_NORMAL ? 0 : (uint8_t)(will_ + 1);   /* 0 = the default */
     for (i = 0; i < fam_n_; i++, o += 8) {
         dst[o] = (uint8_t)fam_[i].id;
         dst[o + 1] = (uint8_t)(fam_[i].id >> 8);
@@ -464,6 +469,7 @@ int family_load(const uint8_t *src, uint32_t len)
     memset(fam_, 0, sizeof(fam_));
     memcpy(fam_, tmp, (size_t)n * sizeof(tmp[0]));
     fam_n_ = (uint8_t)n;
+    will_ = (uint8_t)((src[1] >= 1 && src[1] <= 5) ? src[1] - 1 : FAMILY_WILL_NORMAL);
     neglect_grace_ = 1;                 /* F6: a load never costs a day of care */
     return 1;
 }
@@ -608,14 +614,23 @@ static void memorial_add_(const FamilyMember *m, int cause)
 int family_lose(int id, int cause)
 {
     char msg[64], name[DOOMO_NAME_LEN + 1];
+    int minor_gone;
     int i = find_slot(id);
     if (i < 0 || cause < FAMLOSS_AGE || cause >= FAMLOSS_COUNT) return 0;
-    if (is_minor_member_(&fam_[i]) && cause != FAMLOSS_GONE) return 0;   /* R5: never a child dying */
+    /* R5 (amended by the owner): a child can be lost to illness or Hell, only while Loss is on,
+     * never to old age or neglect; always off-screen and gentle. */
+    if (is_minor_member_(&fam_[i]) && cause != FAMLOSS_GONE &&
+        (!loss_on_ || (cause != FAMLOSS_ILLNESS && cause != FAMLOSS_DEMON))) return 0;
+    if (fam_[i].role == FAMROLE_PARTNER && cause != FAMLOSS_GONE)
+        sim_news_push("You are grieving. Your strength is down for a while.");
+    minor_gone = is_minor_member_(&fam_[i]) && cause != FAMLOSS_GONE;
     memcpy(name, member_name_(id), DOOMO_NAME_LEN);
     name[DOOMO_NAME_LEN] = 0;
     memorial_add_(&fam_[i], cause);
     family_remove(id);
-    switch (cause) {
+    if (minor_gone) {
+        doomo_snprintf(msg, sizeof(msg), "%s has gone to rest. Always remembered.", name);
+    } else switch (cause) {
     case FAMLOSS_AGE:      doomo_snprintf(msg, sizeof(msg), "%s passed peacefully. Rest well.", name); break;
     case FAMLOSS_NEGLECT:  doomo_snprintf(msg, sizeof(msg), "%s didn't make it. Look after the others.", name); break;
     case FAMLOSS_DEMON:    doomo_snprintf(msg, sizeof(msg), "%s was lost to Hell. They're missed.", name); break;
@@ -675,6 +690,98 @@ int family_loss_daily(void)
         i++;
     }
     return lost;
+}
+
+/* ---- grief (derived from the memorials: nothing saved) ---------------------- */
+int family_grief_days_left(void)
+{
+    int n;
+    for (n = 0; n < mem_n_; n++) {                 /* newest first */
+        const FamilyMemorial *e = family_memorial(n);
+        int days;
+        if (!e || e->cause == FAMLOSS_GONE || family_memorial_role(n) != FAMROLE_PARTNER) continue;
+        days = (int)doomo_town.day - (int)e->day;
+        if (days < 0) days = 0;
+        return days < FAMILY_GRIEF_DAYS ? FAMILY_GRIEF_DAYS - days : 0;   /* the newest one decides */
+    }
+    return 0;
+}
+
+int family_grief_damage_pct(void)
+{
+    int left = family_grief_days_left();
+    return left ? 50 + 50 * (FAMILY_GRIEF_DAYS - left) / FAMILY_GRIEF_DAYS : 100;
+}
+
+int family_grief_hurt_pct(void)
+{
+    return 100 + (100 - family_grief_damage_pct()) / 2;
+}
+
+/* ---- F7: free will -------------------------------------------------------------- */
+int family_freewill_level(void) { return will_; }
+
+void family_freewill_set(int level)
+{
+    will_ = (uint8_t)(level < 0 ? 0 : level > FAMILY_WILL_SUBCONSCIOUS ? FAMILY_WILL_SUBCONSCIOUS : level);
+}
+
+/* How well a member is doing (0 = needs care badly, 100 = fine). */
+static int wellbeing_(int id)
+{
+    const FamilyMember *m = family_find(id);
+    const DoomoResident *r = id < DOOMO_MAX_RESIDENTS ? town_res(id) : NULL;
+    int i, best = 100;
+    if (r) {
+        for (i = 0; i < STAT_COUNT; i++) if (r->stat[i] < best) best = r->stat[i];
+        return best;
+    }
+    if (!m) return 100;
+    return 100 - 15 * (int)((m->flags & FAMILY_FL_NEGLECT) >> FAMILY_NEGLECT_SHIFT);
+}
+
+static int can_care_(const FamilyMember *m)
+{
+    const DoomoResident *r;
+    if (m->role == FAMROLE_PET || m->id == playas_avatar()) return 0;
+    if (m->stage != LIFE_ADULT && m->stage != LIFE_ELDER && m->stage != LIFE_TEEN) return 0;
+    r = m->id < DOOMO_MAX_RESIDENTS ? town_res(m->id) : NULL;
+    return !r || r->status == RES_ALIVE;
+}
+
+int family_freewill_daily(void)
+{
+    static const uint8_t pct[5] = { 0, 25, 50, 80, 100 };
+    int lvl = will_, acts, done = 0, a;
+    if (lvl == FAMILY_WILL_OFF || fam_n_ < 2) return 0;
+    acts = lvl >= FAMILY_WILL_HIGH ? 2 : 1;
+    for (a = 0; a < acts; a++) {
+        int cands[FAMILY_MAX], nc = 0, i, who, to = -1, worst = 101;
+        if (!sim_chance(pct[lvl])) continue;
+        for (i = 0; i < fam_n_; i++) if (can_care_(&fam_[i])) cands[nc++] = i;
+        if (!nc) continue;
+        who = cands[sim_rand(nc)];
+        for (i = 0; i < fam_n_; i++) {
+            int w;
+            if (i == who) continue;
+            w = wellbeing_(fam_[i].id);
+            if (w < worst) { worst = w; to = i; }
+        }
+        if (to < 0) continue;
+        if (fam_[to].id < DOOMO_MAX_RESIDENTS && town_res(fam_[to].id)->status == RES_ALIVE)
+            (void)sim_talk(fam_[to].id);
+        family_care(fam_[to].id);
+        done++;
+        if (lvl != FAMILY_WILL_SUBCONSCIOUS) {
+            char msg[NEWS_LEN];
+            char n1[DOOMO_NAME_LEN + 1], n2[DOOMO_NAME_LEN + 1];
+            memcpy(n1, member_name_(fam_[who].id), DOOMO_NAME_LEN); n1[DOOMO_NAME_LEN] = 0;
+            memcpy(n2, member_name_(fam_[to].id), DOOMO_NAME_LEN); n2[DOOMO_NAME_LEN] = 0;
+            doomo_snprintf(msg, sizeof(msg), "%s looked after %s today.", n1, n2);
+            sim_news_push(msg);
+        }
+    }
+    return done;
 }
 
 int family_memorial_count(void) { return mem_n_; }

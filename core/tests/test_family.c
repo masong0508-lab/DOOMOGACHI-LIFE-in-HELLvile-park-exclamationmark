@@ -480,3 +480,69 @@ TEST(family_pool_load_rejects_bad_sections)
     }
     CHECK_STR(family_identity(x)->name, "Pip");                      /* every refusal left it alone */
 }
+
+/* ---- owner amendments: kids can be lost (gently), grief, free will ---------- */
+TEST(family_minor_loss_rules)
+{
+    int kid;
+    fresh();
+    family_loss_set(1);
+    kid = family_pool_add(FAMROLE_CHILD, LIFE_CHILD, 99u, "Pip", PRONOUN_HE);
+    CHECK(kid >= 0);
+    CHECK(!family_lose(kid, FAMLOSS_AGE));          /* never old age */
+    CHECK(!family_lose(kid, FAMLOSS_NEGLECT));      /* never neglect */
+    family_loss_set(0);
+    CHECK(!family_lose(kid, FAMLOSS_ILLNESS));      /* Loss off: safe */
+    CHECK(!family_lose(kid, FAMLOSS_DEMON));
+    family_loss_set(1);
+    CHECK(family_lose(kid, FAMLOSS_ILLNESS));       /* Loss on: illness or Hell only */
+    CHECK_EQ(family_memorial_count(), 1);
+    CHECK_EQ(family_count(), 0);
+    kid = family_pool_add(FAMROLE_CHILD, LIFE_BABY, 98u, "Bo", PRONOUN_THEY);
+    CHECK(family_lose(kid, FAMLOSS_GONE));          /* moving away always works */
+}
+
+TEST(family_grief_after_partner_loss)
+{
+    int p;
+    fresh();
+    family_loss_set(1);
+    CHECK_EQ(family_grief_days_left(), 0);
+    CHECK_EQ(family_grief_damage_pct(), 100);
+    CHECK_EQ(family_grief_hurt_pct(), 100);
+    p = family_pool_add(FAMROLE_PARTNER, LIFE_ADULT, 77u, "Sol", PRONOUN_THEY);
+    if (p < 0) return;                              /* gate closed in this setup */
+    CHECK(family_lose(p, FAMLOSS_ILLNESS));
+    CHECK_EQ(family_grief_days_left(), FAMILY_GRIEF_DAYS);
+    CHECK_EQ(family_grief_damage_pct(), 50);
+    CHECK_EQ(family_grief_hurt_pct(), 125);
+    doomo_town.day += 7;
+    CHECK(family_grief_damage_pct() > 50 && family_grief_damage_pct() < 100);
+    doomo_town.day += FAMILY_GRIEF_DAYS;
+    CHECK_EQ(family_grief_days_left(), 0);
+    CHECK_EQ(family_grief_damage_pct(), 100);
+}
+
+TEST(family_freewill_default_save_and_off)
+{
+    uint8_t sec[FAMILY_SEC_HEAD + 8 * FAMILY_MAX];
+    uint32_t n;
+    int a, b;
+    fresh();
+    CHECK_EQ(family_freewill_level(), FAMILY_WILL_NORMAL);          /* default Normal */
+    a = family_pool_add(FAMROLE_SIBLING, LIFE_ADULT, 5u, "Ann", PRONOUN_SHE);
+    b = family_pool_add(FAMROLE_CHILD, LIFE_CHILD, 6u, "Pip", PRONOUN_HE);
+    CHECK(a >= 0 && b >= 0);
+    n = family_save(sec, sizeof(sec));
+    CHECK_EQ(sec[1], 0);                                            /* the default costs nothing */
+    family_freewill_set(FAMILY_WILL_SUBCONSCIOUS);
+    n = family_save(sec, sizeof(sec));
+    CHECK_EQ(sec[1], FAMILY_WILL_SUBCONSCIOUS + 1);
+    family_freewill_set(FAMILY_WILL_OFF);
+    CHECK(family_load(sec, n));
+    CHECK_EQ(family_freewill_level(), FAMILY_WILL_SUBCONSCIOUS);
+    family_freewill_set(FAMILY_WILL_OFF);
+    CHECK_EQ(family_freewill_daily(), 0);                           /* Off = today's behaviour */
+    family_freewill_set(99);
+    CHECK_EQ(family_freewill_level(), FAMILY_WILL_SUBCONSCIOUS);    /* clamped */
+}

@@ -41,8 +41,9 @@ static const char *const pron_opts[4] = { "they/them", "she/her", "he/him", "Nev
 static const uint8_t pron_pick[3] = { PRONOUN_THEY, PRONOUN_SHE, PRONOUN_HE };
 static const char *const kind_opts[5] = { "A neighbour moves in", "A new person", "A new pet",
                                           "A baby is born", "Never mind" };
-static const char *const care_top[4] = { "Quick care", "Choose the care...",
-                                         "Check on everyone", "Never mind" };
+static const char *const care_top[5] = { "Quick care", "Choose the care...",
+                                         "Check on everyone", "Family free will...", "Never mind" };
+static const char *const will_opts[5] = { "Off", "Min", "Normal", "High", "Subconscious" };
 static const char *const care_opts[5] = { "Play with everyone", "Talk to everyone",
                                           "Clean everyone up", "Comfort everyone", "Never mind" };
 static const char *const cause_names[FAMLOSS_COUNT] = {
@@ -312,12 +313,18 @@ static void care_report(void)
     }
 }
 
+static void will_pick(int c)
+{
+    if (c >= 0 && c < 5) { family_freewill_set(c); ui_toast(STR_ICON_HEART " Family free will set."); }
+}
+
 static void care_top_pick(int c)
 {
     switch (c) {
     case 0: care_quick(); break;
     case 1: ui_choice(-1, "Which kind of care?", care_opts, 5, care_all); break;
     case 2: care_report(); break;
+    case 3: ui_choice(-1, "How much do they look after each other?", will_opts, 5, will_pick); break;
     default: break;
     }
 }
@@ -400,7 +407,7 @@ static void fam_update(void)
         int m = family_count();
         audio_sfx(SFX_SELECT);
         if (W.sel < m) open_member(family_member(W.sel));
-        else if (W.sel == m) ui_choice(-1, "Care for everyone", care_top, 4, care_top_pick);
+        else if (W.sel == m) ui_choice(-1, "Care for everyone", care_top, 5, care_top_pick);
         else add_member();
         return;
     }

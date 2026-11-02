@@ -9,6 +9,7 @@
  * the first- / third-person camera handed to plat_view3d().
  */
 #include "combat_int.h"
+#include "doomo/family.h"
 
 DoomoPlayerState  doomo_player;
 CombatSession     combat_s;
@@ -419,6 +420,7 @@ void combat_hurt_player(int dmg, int src_angle, int knock, int src)
     if (opt_get(OPT_CHEAT_GOD_MODE)) { doomo_player.hurt_flash = 4; return; }
     dmg = d == DIFF_PLUSHIE ? (dmg + 1) / 2 : d == DIFF_NIGHTMARE ? dmg * 3 / 2 : d >= DIFF_ULTRA_HELLVILE ? dmg * 2 : dmg;
     if (pet_combat_buff() > 0) dmg = dmg * 9 / 10;
+    dmg = dmg * family_grief_hurt_pct() / 100;       /* grieving: you take more */
     if (doomo_player.armor > 0) {
         absorbed = DOOMO_MIN(dmg / 3, doomo_player.armor);
         doomo_player.armor = (int16_t)(doomo_player.armor - absorbed);
@@ -934,6 +936,7 @@ static void fire_weapon(int charge_mul16)
     shot_origin(&ox, &oy, &oz, &ang, &slope);
     dmg = s->damage * charge_mul16 / 16;
     if (pet_combat_buff() > 0) dmg = dmg * (100 + DOOMO_MIN(pet_combat_buff(), 50)) / 100;
+    dmg = dmg * family_grief_damage_pct() / 100;     /* grieving: your shots are weaker */
     if (dmg < 1) dmg = 1;
     combat_st.shots++;
     combat_px.shots_fired++;
