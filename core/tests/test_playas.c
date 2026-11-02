@@ -13,6 +13,7 @@
 #include "doomo/story_vm.h"
 #include "../src/story_int.h"
 #include "../src/home_int.h"
+#include "../src/lib_int.h"
 
 static void fresh(void)
 {
@@ -213,4 +214,27 @@ TEST(playas_house_draws_the_avatar_body)
     CHECK(playas_switch(a, PLAYAS_SWITCH_INSTANT));
     other = own_house_live_frame();
     CHECK(hero != other);
+}
+
+/* (PA8) the almanac's "known" test follows the avatar: a villager you play
+ * knows the people they have ties with, not the hero's. */
+TEST(playas_almanac_follows_the_avatar)
+{
+    int v = -1, o = -1, i;
+    fresh();
+    cleared();
+    for (i = 0; i < DOOMO_PLAYER_ID && v < 0; i++)
+        if (playas_can_be(i)) v = i;
+    CHECK(v >= 0);
+    for (i = 0; i < DOOMO_PLAYER_ID; i++) {
+        const DoomoResident *r = town_res(i);
+        if (i != v && r && r->status != RES_EMPTY && r->level == 0 && !(r->flags & (RF_FAVORITE | RF_PLAYER)) &&
+            !rel_find(i, DOOMO_PLAYER_ID) && !rel_find(i, v)) { o = i; break; }
+    }
+    CHECK(o >= 0);
+    CHECK(!lib_known(o));
+    rel_adjust(o, v, 10);
+    CHECK(!lib_known(o));                   /* still the hero's almanac */
+    CHECK(playas_switch(v, PLAYAS_SWITCH_INSTANT));
+    CHECK(lib_known(o));
 }

@@ -14,6 +14,7 @@
  * a portrait is the expensive part on the GBA).
  */
 #include "lib_int.h"
+#include "doomo/playas.h"
 
 #define A (lib_w.alm)
 
@@ -60,12 +61,20 @@ static int cast_of(int id)
     return is_premade(id) ? roster_npc_of(id) : -1;
 }
 
+/* PA8: "you" in the almanac is whoever you play. A family pool id has no town
+ * slot and no ties, so it falls back to the hero's. */
+static int you_id(void)
+{
+    int a = playas_avatar();
+    return a >= 0 && a <= DOOMO_PLAYER_ID ? a : DOOMO_PLAYER_ID;
+}
+
 int lib_known(int id)
 {
     const DoomoResident *r = res(id);
     if (!r || r->status == RES_EMPTY) return 0;
     if (r->level > 0 || (r->flags & (RF_FAVORITE | RF_PLAYER))) return 1;
-    return rel_find(id, DOOMO_PLAYER_ID) != NULL;
+    return rel_find(id, you_id()) != NULL;
 }
 
 int lib_almanac_known(void)
@@ -79,7 +88,7 @@ int lib_almanac_known(void)
      * did not count (edges are unique per pair) */
     for (i = 0; i < doomo_town.edge_count; i++) {
         const DoomoEdge *e = &doomo_town.edges[i];
-        int o = e->b == DOOMO_PLAYER_ID ? e->a : e->a == DOOMO_PLAYER_ID ? e->b : -1;
+        int o = e->b == you_id() ? e->a : e->a == you_id() ? e->b : -1;
         const DoomoResident *r;
         if (o < 0 || o >= DOOMO_MAX_RESIDENTS) continue;
         r = &doomo_town.res[o];
@@ -507,14 +516,14 @@ static void page_bonds(int id, int x, int y, int w, int bottom, const UiStyle *s
     for (i = 0; i < A.rel_n && ly + FONT_LINE <= bottom - FONT_LINE; i++, ly += FONT_LINE) {
         const DoomoResident *o = res(A.rel_id[i]);
         int k = A.rel_kind[i] == 0xFF ? REL_ACQUAINTANCE : A.rel_kind[i] & REL_KIND_MASK;
-        const char *kn = A.rel_id[i] == DOOMO_PLAYER_ID ? "You" :
+        const char *kn = A.rel_id[i] == you_id() ? "You" :
                          k < REL_KIND_COUNT ? doomo_rel_kind_names[k] : "?";
         uint8_t kc = (k == REL_RIVAL || k == REL_NEMESIS) ? PAL_PAINT(PAINT_BLOOD, 1) :
                      (k == REL_DATING || k == REL_MARRIED) ? PAL_PAINT(PAINT_ROSE, 1) :
                      k == REL_FAMILY ? PAL_PAINT(PAINT_HONEY, 1) : st->text_dim;
         if (!o) continue;
         if (rel_has_crush(id, A.rel_id[i])) kn = "Crush";
-        ui_text(x, ly, A.rel_id[i] == DOOMO_PLAYER_ID ? "(you)" : o->name, st->text);
+        ui_text(x, ly, A.rel_id[i] == you_id() ? "(you)" : o->name, st->text);
         ui_text(x + w - ui_text_width(kn), ly, kn, kc);
     }
     doomo_snprintf(v, sizeof(v), STR_ICON_HEART "%d  " STR_ICON_HOUSE "%d  " STR_ICON_SKULL "%d",
