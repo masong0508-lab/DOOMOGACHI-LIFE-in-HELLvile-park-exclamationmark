@@ -119,7 +119,7 @@ THING_FLAGS = {
     "ambush": ENUMS["THF_AMBUSH"], "not_easy": ENUMS["THF_NOT_EASY"],
     "hard": ENUMS["THF_HARD"], "dormant": ENUMS["THF_DORMANT"],
     "boss": ENUMS["THF_BOSS"], "kill_event": ENUMS["THF_KILL_EVENT"],
-    "secret": ENUMS["THF_SECRET"],
+    "secret": ENUMS["THF_SECRET"], "heart": ENUMS["THF_MACHINE_HEART"],
 }
 KINDS = {"overworld": "MAP_OVERWORLD", "dungeon": "MAP_DUNGEON", "arena": "MAP_ARENA"}
 DEMONS = set(range(ENUMS["THING_IMPLING"], ENUMS["THING_LORD_VAPULA"] + 1))

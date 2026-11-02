@@ -238,6 +238,7 @@ thing 5 17 SOUL_ORB
 thing 35 21 SLIME_BELCHER angle=0
 thing 36 24 BONE_JESTER angle=180
 thing 43 21 SOUL_ORB
+thing 43 19 SCRAP tflags=heart                          # Bonejangles' machine heart, deep in the reliquary (E09)
 thing 42 20 ARMOR
 thing 34 18 HEALTH_SMALL
 thing 10 25 AMMO_SHELLS

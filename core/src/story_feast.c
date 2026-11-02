@@ -32,6 +32,7 @@
  */
 #include "story_int.h"
 #include "grumbleguts_gfx.h"
+#include "doomo/ending.h"
 
 #define F_CUTE  (opt_get(OPT_GORE) != GORE_BRUTAL)
 #define F_CULPRIT ID_HATTIE          /* the possessed guest (comedian)   */
@@ -1531,4 +1532,16 @@ void feast_draw(int panel, uint32_t pt, uint32_t ct)
         plat_rect(cx, g.floor - 4 * s, 1, 10 * s, GG_LINE);
         if (cute) gg_ellipse(cx, g.floor - 18 * s + ui_wave((int)ct, 30, 2), 10, 2, PAL_UI_GOLD);
     }
+}
+
+/* E09 "Bonejangles Bows": the Feast is over once its cutscene ends, whatever the outcome, and the
+ * story is complete (BEAT_DONE). Then SF_FEAST_DONE is set and Bonejangles' rule is checked, so
+ * the ending card shows with the machine heart in hand. CUT_FEAST_SAVE ("Saved by the Bell") is
+ * listed here for when its cutscene lands; both go through this one door. */
+void feast_cut_done(int cut)
+{
+    if (cut != CUT_FEAST_POP && cut != CUT_FEAST_SAVE) return;
+    if (story_beat() != BEAT_DONE) return;
+    story_set_flag(SF_FEAST_DONE, 1);
+    ending_check_bonejangles();
 }

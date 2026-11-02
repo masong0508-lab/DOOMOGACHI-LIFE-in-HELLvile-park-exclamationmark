@@ -132,6 +132,9 @@ void story_fmt(char *out, int cap, const char *tmpl);
 void feast_tick(int panel, uint32_t pt);
 void feast_draw(int panel, uint32_t pt, uint32_t ct);
 int  feast_front_shot(int panel, uint32_t pt);
+/* E09: a Feast cutscene (any outcome) just ended: once the story is complete, set SF_FEAST_DONE
+ * and let the endings engine check Bonejangles' rule. Other cutscenes are ignored. */
+void feast_cut_done(int cut);
 /* cutscene.c: screen y of the top of the current caption box (sh if none) */
 int  cutscene_caption_y(void);
 #define story_fmt_target vm_fmt_target              /* @T / @D subject (scriptvm.c) */

@@ -150,7 +150,9 @@ enum {
     THF_BOSS       = 0x10,  /* boss / mini-boss: more HP, boss bar         */
     THF_KILL_EVENT = 0x20,  /* when every demon of this group is dead, fire
                                event `arg` (`arg + 1` if also DORMANT)     */
-    THF_SECRET     = 0x40   /* pickup counts as a secret item              */
+    THF_SECRET     = 0x40,  /* pickup counts as a secret item              */
+    THF_MACHINE_HEART = 0x80 /* a THING_SCRAP that is Bonejangles' machine heart:
+                               picking it up sets SF_BONE_HEART (E09)       */
 };
 
 /* Display title of a map ("The Vape Cellar"), "" if unknown. */

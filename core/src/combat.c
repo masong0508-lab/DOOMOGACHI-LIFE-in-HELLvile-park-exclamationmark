@@ -1168,7 +1168,14 @@ static void pickups_tick(void)
         case THING_CANDY: ammo_add(AMMO_CANDY, 25); msg = "Candy ammo"; break;
         case THING_KEY_RED: doomo_player.keys |= 1; msg = "Got the RED heart key!"; break;
         case THING_KEY_BLUE: doomo_player.keys |= 2; msg = "Got the BLUE heart key!"; break;
-        case THING_SCRAP: inv_add(ITEM_SCRAP, 1); if (rng_chance(&doomo_rng, 30)) inv_add(ITEM_GEARS, 1);
+        case THING_SCRAP:
+            if (a->tflags & THF_MACHINE_HEART) {            /* E09: Bonejangles' missing piece */
+                story_set_flag(SF_BONE_HEART, 1);
+                msg = "A MACHINE HEART?! It's still warm...";
+                doomo_player.pickup_flash = 12;
+                break;
+            }
+            inv_add(ITEM_SCRAP, 1); if (rng_chance(&doomo_rng, 30)) inv_add(ITEM_GEARS, 1);
             msg = "Scrap for welding"; break;
         default: got = 0; break;
         }

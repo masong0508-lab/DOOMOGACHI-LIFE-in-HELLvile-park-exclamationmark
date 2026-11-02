@@ -9,6 +9,8 @@
 #include "doomo/save_budget.h"
 #include "doomo/scenes.h"
 #include "doomo/story.h"
+#include "doomo/map.h"
+#include "../src/story_int.h"
 
 static void fresh(void) { doomo_save_ext_endings->reset(); }
 
@@ -120,4 +122,48 @@ TEST(ending_e09_needs_the_feast_over_and_the_heart_found)
     CHECK_EQ(ending_count_seen(), 1);
     story_set_flag(SF_FEAST_DONE, 0);
     story_set_flag(SF_BONE_HEART, 0);
+}
+
+TEST(ending_e09_feast_cutscene_end_sets_the_flag_only_once_the_story_is_done)
+{
+    int saved = story_beat();
+    fresh();
+    story_set_flag(SF_FEAST_DONE, 0);
+    story_set_flag(SF_BONE_HEART, 1);
+    story_set_beat(BEAT_C4_FESTIVAL);
+    feast_cut_done(CUT_FEAST_POP);                      /* story not complete yet */
+    CHECK(!story_flag(SF_FEAST_DONE));
+    CHECK(!ending_seen(ENDING_E09));
+    story_set_beat(BEAT_DONE);
+    feast_cut_done(CUT_CHAPTER1);                       /* some other cutscene */
+    CHECK(!story_flag(SF_FEAST_DONE));
+    feast_cut_done(CUT_FEAST_POP);                      /* the Feast ends, heart in hand */
+    CHECK(story_flag(SF_FEAST_DONE));
+    CHECK(ending_seen(ENDING_E09));
+    CHECK_EQ(ending_pending(), ENDING_E09);
+    fresh();
+    story_set_flag(SF_FEAST_DONE, 0);
+    story_set_flag(SF_BONE_HEART, 0);
+    feast_cut_done(CUT_FEAST_POP);                      /* no heart: the Feast is done, no E09 */
+    CHECK(story_flag(SF_FEAST_DONE));
+    CHECK(!ending_seen(ENDING_E09));
+    story_set_flag(SF_FEAST_DONE, 0);
+    story_set_beat(saved);
+}
+
+TEST(ending_e09_the_heart_is_hidden_once_in_bone_cathedral_only)
+{
+    int id, i, hearts = 0;
+    for (id = 0; id < MAPID_COUNT; id++) {
+        const DoomoMapDef *d = doomo_maps[id];
+        if (!d) continue;
+        for (i = 0; i < d->thing_count; i++)
+            if (d->things[i].flags & THF_MACHINE_HEART) {
+                CHECK_EQ(id, MAPID_BONE_CATHEDRAL);
+                CHECK_EQ(d->things[i].type, THING_SCRAP);
+                CHECK(!(d->things[i].flags & THF_SECRET));   /* does not shift the secret count */
+                hearts++;
+            }
+    }
+    CHECK_EQ(hearts, 1);
 }

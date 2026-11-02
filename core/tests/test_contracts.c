@@ -76,6 +76,7 @@ TEST(contracts_ids_are_appended)
     CHECK_EQ(SF_ASKED_OTHER_SIDE, 228);
     CHECK_EQ(SF_NGPLUS, 252);
     CHECK_EQ(SF_BONE_HEART, 253);
+    CHECK_EQ(THF_MACHINE_HEART, 0x80);
     CHECK(SF_SPARE_254 < 256);
     /* knocks + wrongness use the spare met/nest/possessed bits, disjointly,
      * never the two used met bits (56 Tallyworn, 57 Mother Nox) */

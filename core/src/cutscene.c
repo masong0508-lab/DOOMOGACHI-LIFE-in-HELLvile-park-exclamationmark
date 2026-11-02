@@ -220,6 +220,7 @@ static void cs_end(void)
         return;
     }
     if (cut > CUT_CHAPTER4 && cut < CUT_COUNT) story_unlock_quiet(USTORY_CUT_FIRST + cut);
+    feast_cut_done(cut);
     if (scene_depth() > 1) scene_pop();
     else scene_set(&SCENE_STORY, STORY_ARG_CONTINUE);
 }
