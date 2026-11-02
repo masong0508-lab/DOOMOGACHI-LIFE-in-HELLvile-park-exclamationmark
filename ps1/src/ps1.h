@@ -267,6 +267,7 @@ void     audio_hw_hush(int on);      /* silence the SPU while the BIOS blocks th
 int      audio_selftest(void);       /* SPU checks, PASS/FAIL on the TTY */
 void     memcard_early(void);
 void     memcard_init(void);
+int      memcard_config_erase(void);  /* U1p self test: remove bu00:BASLUS-DOOMOC */
 void     timer_init(void);
 uint32_t timer_us(void);                 /* microseconds since boot (wraps) */
 

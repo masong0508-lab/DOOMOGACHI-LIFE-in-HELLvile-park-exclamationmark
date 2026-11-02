@@ -780,6 +780,25 @@ frames 5..   the core's save stream, zero padded
   handler is installed, and the directory scan (`_bu_init`, ~3 s for both
   slots) runs behind a pink "Checking MEMORY CARD" splash.
 
+### Machine config file (U1p)
+
+`bu00:BASLUS-DOOMOC` (title "DOOMOGACHI LIFE Settings") holds the core's
+machine config record (`plat_config_read` / `plat_config_write`, at most
+`PLAT_CONFIG_MAX` = 48 B: U0's 32 B settings + the 16 B adults' code). It
+lives outside both save slots so language, volumes and the code survive
+erasing or replacing a save. `plat_features()` now reports `PLATF_CONFIG`.
+
+* Same header and info frame as a save (slot index 2), always exactly one
+  8 KB block, so it never grows: it is created once and then rewritten in
+  place. The CRC in the info frame makes a torn write read back as "no
+  record" and the core falls back to its defaults.
+* It costs one of the card's 15 blocks; the save code's room check counts
+  it like any other file, so a nearly full card still fails cleanly.
+* Read and write take about a second (one block), behind the usual corner
+  banner / audio hush. A write retries once after re-reading the directory.
+* The engine-test card self test (SELECT+START) also writes 48 B, reads it
+  back, rewrites 32 B in place, and erases it (`memcard selftest: config ...`).
+
 ## 10. Test harness (`ps1/harness`)
 
 `harness/run.py` boots the EXE (`--exe`) or the disc (`--cue`) headless in

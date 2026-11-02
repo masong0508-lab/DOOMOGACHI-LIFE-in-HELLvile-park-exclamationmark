@@ -19,6 +19,8 @@ reviewed, then landed on `claude/nice-allen-gr6czm`.
 - Languages: N-language engine (L1), one text path everywhere (L2a).
 - Dreamcast: SH4 cross-check (DC0a), KOS toolchain script (DC0b),
   headless harness (DC1, not yet run on real Flycast), dc/ skeleton (DC2).
+- PS1 config file (U1p): `bu00:BASLUS-DOOMOC` behind `plat_config_read/write`, `PLATF_CONFIG`
+  (needs a PS1 harness run to confirm on PCSX-Redux).
 - Life sim wave 1: shared registry/contracts incl. 15 endings, security code,
   family, pockets and profiles (K0), life stages + two-way adult-only romance
   gate (LS0), journey/tap meter (M0), PG-21 register + lint (E5).
@@ -46,7 +48,7 @@ a package can only start once the ones it depends on (see the sections below) ha
 4. Resume and land the saved branches: G3, G9, G11, H7, L4, W6, W7.
 
 ### S: small
-- Life sim: PA0 follow-ups, U1g (GBA config sector), U1p (PS1 config file),
+- Life sim: PA0 follow-ups, U1g (GBA config sector),
   E11 (mature filter + 18+ confirm), LS-IN (press latch), PA9 (romance/mature
   gates for heroes), U3b (story pause), U3c (island START menu), PA3b (Spanish
   gender fixes), PA8 (house/activities follow the avatar), E10 (Dreamcast pack

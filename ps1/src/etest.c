@@ -21,6 +21,7 @@
 #include <psxgte.h>
 #include "r3d.h"
 #include "world.h"
+#include "doomo/plat_ext.h"
 
 #define C64 DOOMO_CELL_UNITS
 #define FX(v) ((int32_t)((v) * 65536))
@@ -642,6 +643,30 @@ static void memcard_selftest(void)
     r = plat_save_erase(1);
     dbg("memcard selftest: erase slot1 -> %d\n", r);
     ok &= !plat_save_read(1, s_mc_rd, MC_TEST_MAX, &sz);
+    /* U1p: the machine config record (own file, 48 B max, rewritten in place) */
+    {
+        uint8_t cw[PLAT_CONFIG_MAX], cr[PLAT_CONFIG_MAX];
+        uint32_t i;
+        for (i = 0; i < PLAT_CONFIG_MAX; i++)
+            cw[i] = (uint8_t)(0xA5u ^ (i * 7u));
+        ok &= (plat_features() & PLATF_CONFIG) != 0;
+        r = plat_config_write(cw, PLAT_CONFIG_MAX);
+        dbg("memcard selftest: config write 48B -> %d\n", r);
+        ok &= r;
+        memset(cr, 0, sizeof(cr));
+        r = plat_config_read(cr, sizeof(cr));
+        dbg("memcard selftest: config read -> %d\n", r);
+        ok &= r == (int)PLAT_CONFIG_MAX && memcmp(cr, cw, PLAT_CONFIG_MAX) == 0;
+        cw[0] ^= 0xFFu;                     /* rewrite in place, shorter record */
+        r = plat_config_write(cw, 32);
+        memset(cr, 0, sizeof(cr));
+        r = r && plat_config_read(cr, sizeof(cr)) == 32 && memcmp(cr, cw, 32) == 0;
+        dbg("memcard selftest: config rewrite 32B -> %d\n", r);
+        ok &= r;
+        r = memcard_config_erase();
+        ok &= r && plat_config_read(cr, sizeof(cr)) == 0;
+        dbg("memcard selftest: config erase -> %d\n", r);
+    }
     /* leave a save in slot 0 for the emulator's card manager */
     dbg("memcard selftest: %s\n", ok ? "PASS" : "FAIL");
 }

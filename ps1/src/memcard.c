@@ -10,6 +10,11 @@
  *   frame 4      our info frame: magic "DMPS", payload size, CRC32
  *   frames 5..   payload (save.c's stream), zero padded to 128 bytes
  *
+ * U1p adds a third file, bu00:BASLUS-DOOMOC: the machine config record
+ * (plat_config_read/write, 48 B max) in one fixed 8 KB block, same header
+ * layout, kept outside both save slots so language / volumes / the adults'
+ * code survive deleting a save. It never grows, so it is rewritten in place.
+ *
  * The BIOS cannot resize a file, so a save that needs more blocks than the
  * existing file has is written as a second copy (BASLUS-DOOMO<n>B) first;
  * only once that succeeded is the old file erased - an old save is never
@@ -24,6 +29,7 @@
 #include <psxgpu.h>
 #include <hwregs_c.h>
 #include "ps1.h"
+#include "doomo/plat_ext.h"
 
 #define O_RDONLY_  0x0001
 #define O_WRONLY_  0x0002
@@ -33,6 +39,7 @@
 #define HDR_FRAMES 5
 #define HDR_BYTES  (HDR_FRAMES * FRAME)
 #define INFO_MAGIC 0x53504d44u   /* "DMPS" */
+#define CONFIG_SLOT 2            /* U1p: header title index + file name (...DOOMOC) */
 
 
 static int s_card_ok;
@@ -202,8 +209,9 @@ static uint16_t rgb15(int r, int g, int b)
 
 static void build_header(uint8_t *h, int slot, uint32_t size, uint32_t crc, int blocks)
 {
-    static const char *const titles[2] = { "DOOMOGACHI LIFE Story", "DOOMOGACHI LIFE Free Play" };
-    const char *t = titles[slot & 1];
+    static const char *const titles[3] = {
+        "DOOMOGACHI LIFE Story", "DOOMOGACHI LIFE Free Play", "DOOMOGACHI LIFE Settings" };
+    const char *t = titles[slot >= 0 && slot < 3 ? slot : 0];
     uint16_t *clut;
     int f, x, y, n = 0;
     memset(h, 0, HDR_BYTES);
@@ -255,7 +263,7 @@ static uint32_t crc32(const uint8_t *p, uint32_t n)
 static void slot_name(char *out, int slot, int alt)
 {
     strcpy(out, "bu00:BASLUS-DOOMO0");
-    out[17] = (char)('0' + (slot & 1));
+    out[17] = slot == CONFIG_SLOT ? 'C' : (char)('0' + (slot & 1));
     if (alt) { out[18] = 'B'; out[19] = 0; }
 }
 
@@ -552,4 +560,85 @@ int plat_save_erase(int slot)
     bios_io_end();
     gfx_busy_end();
     return r;
+}
+
+/* ---- U1p: machine config record (plat_ext.h) ---------------------------------
+ * One block, one file, rewritten in place. A torn write only costs the
+ * settings: the CRC in the info frame fails on the next read, read_file()
+ * reports "no record" and the core falls back to its defaults. */
+static int config_write_card(const uint8_t *src, uint32_t len)
+{
+    char name[24];
+    int have;
+    if (!s_card_ok || !src || !len || len > PLAT_CONFIG_MAX)
+        return 0;
+    slot_name(name, CONFIG_SLOT, 0);
+    have = file_size(name);
+    if (have >= 0 && have < BLOCK) {        /* not ours / damaged: start over */
+        erase(name);
+        have = -1;
+    }
+    if (have < 0) {
+        if (used_blocks() + 1 > 15 || !create_file(name, 1)) {
+            dbg("memcard: cannot create %s\n", name);
+            return 0;
+        }
+    }
+    build_header(s_hdr, CONFIG_SLOT, len, crc32(src, len), 1);
+    return write_file(name, src, len, 1);
+}
+
+uint32_t plat_features(void)
+{
+    return PLATF_CONFIG;
+}
+
+int plat_config_write(const uint8_t *src, uint32_t len)
+{
+    int r;
+    bios_io_begin();
+    r = config_write_card(src, len);
+    if (!r) {                               /* card swapped after boot: re-scan once */
+        _bu_init();
+        r = config_write_card(src, len);
+    }
+    bios_io_end();
+    dbg("memcard: config write %u B -> %d\n", (unsigned)len, r);
+    return r;
+}
+
+int plat_config_read(uint8_t *dst, uint32_t cap)
+{
+    uint8_t tmp[PLAT_CONFIG_MAX] __attribute__((aligned(4)));
+    char name[24];
+    uint32_t sz = 0;
+    int r = 0;
+    if (!dst || !cap || !s_card_ok)
+        return 0;
+    slot_name(name, CONFIG_SLOT, 0);
+    gfx_busy_banner("Checking MEMORY CARD...");
+    bios_io_begin();
+    if (file_size(name) >= 0 && read_file(name, tmp, sizeof(tmp), &sz) && sz > 0) {
+        if (sz > cap)
+            sz = cap;
+        memcpy(dst, tmp, sz);
+        r = (int)sz;
+    }
+    bios_io_end();
+    gfx_busy_end();
+    return r;
+}
+
+/* the engine-test self test removes its record again */
+int memcard_config_erase(void)
+{
+    char name[24];
+    int existed;
+    slot_name(name, CONFIG_SLOT, 0);
+    bios_io_begin();
+    existed = file_size(name) >= 0;
+    if (existed)
+        erase(name);
+    bios_io_end();
+    return existed && file_size(name) < 0;
 }
