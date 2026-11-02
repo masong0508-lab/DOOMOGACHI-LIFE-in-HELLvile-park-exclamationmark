@@ -17,12 +17,14 @@
 #include "doomo/house_api.h"
 #include "doomo/save_budget.h"
 
-/* The HOME .bss lands on the GBA only once the memory pass (task #77, G0)
- * has freed EWRAM (SPEC C9: post-G0 >= 12,352 B free; risk 2: "H1 M1 can
- * land behind a build flag"). Until then the GBA keeps no house state: the
- * scene edits a starter room in the scene scratch and nothing is saved.
- * Build with -DDOOMO_HOME_ON_GBA=1 to link it anyway. */
-#if defined(DOOMO_PLATFORM_GBA) && !defined(DOOMO_HOME_ON_GBA)
+/* (H11) The HOME .bss is on every platform, the GBA included: the memory
+ * pass (G0) freed the EWRAM it needs (SPEC C9: >= 12,352 B free before it,
+ * >= 8,192 B after; docs/GBA.md section 5). The GBA no longer edits a starter
+ * room in the scene scratch that is never saved: the house state is kept
+ * and saved like on the other builds. HOME_PERSIST stays as the one switch
+ * the code tests; build with -DDOOMO_HOME_OFF_GBA=1 to take the state off the
+ * GBA again if EWRAM ever gets that tight. */
+#if defined(DOOMO_PLATFORM_GBA) && defined(DOOMO_HOME_OFF_GBA)
 #define HOME_PERSIST 0
 #else
 #define HOME_PERSIST 1

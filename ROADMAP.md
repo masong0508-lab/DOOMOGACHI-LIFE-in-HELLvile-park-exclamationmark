@@ -34,6 +34,8 @@ reviewed, then landed on `claude/nice-allen-gr6czm`.
   partner's LS0 gate, the LIFE chunk's family section; no UI yet (F2), no babies / ageing (F4).
 - Life sim F1 part 2 (pool members): a 20 B identity each (look seed, name, pronoun), `family_resident()`
   builds the full resident on demand, the LIFE chunk's POOL section; pets are drawn by F5.
+- House H11: the GBA keeps and saves the HOME state (`HOME_PERSIST` is on for every build; `-DDOOMO_HOME_OFF_GBA=1` is
+  the way back). GBA EWRAM free 13,552 -> 10,120 B (+3,432 B; gate 12,352 B before, 8,192 B after), ROM +5.6 KB, build clean.
 - Household tiers (S-HOUSE, tiers part): `family_cap()` now has its grants. Finishing the story gives tier 1
   (cap 3 -> 10, GBA 6) and finishing it again gives tier 2 (-> 20, GBA 10); `family_tier_story_done()` runs where the
   credits finish (`story_ch34.c`), shows one toast and keeps K0's rule of no table entry (`unlock_grant_quiet()`).
@@ -71,7 +73,6 @@ a package can only start once the ones it depends on (see the sections below) ha
   gates for heroes), U3b (story pause), U3c (island START menu), PA3b (Spanish
   gender fixes), PA8 (house/activities follow the avatar), E10 (Dreamcast pack
   adapter), E12 (endings integration), Z1 (joint gate).
-- House: H11 (turn the GBA house state on).
 - Script: W15 (Bonejangles origin; needs your yes/no).
 - Languages: L9 (language picker).
 - Dreamcast extras: X0 (contracts), X3 (VGA/display options).
@@ -155,13 +156,13 @@ island hub 7.5, town hall 6.5, pet 10, concert 13.
 4. G10: pet, concert, title and dialogue stages on the fast paths.
 5. G12 (optional): 60 Hz presentation in tile mode.
 Use the free ~28 MB of cartridge for precomputed tables and pre-tiled art.
-EWRAM stays tight (H11 needs 12,352 B free); free RAM before spending it.
+EWRAM stays tight (10,120 B free after H11, floor 8,192 B); free RAM before spending it.
 
 ## 3. Priority 3: house finish
 
 H2 (GBA room shells at pixel parity; clears 33 expected-fail frames), H3 (PS1
 room shells), H7 (Hold the Door panel, guests, captions, PS1 black frame),
-H11 (turn the GBA house state on and test the real house).
+H11's code part is done (the GBA keeps and saves the house state; the real-house GBA run, `make -C gba test-home`, is still to do).
 
 ## 4. Priority 4: script
 

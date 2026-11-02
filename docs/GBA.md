@@ -409,7 +409,7 @@ Known claimants still to land (their own packages measure and add rows):
 
 | package | EWRAM | gate it must meet (against the last row) |
 |---|---:|---|
-| H11: `HOME` `.bss` on the GBA (`HOME_PERSIST`) | +3,432 B | free >= 12,352 B before it (SPEC C9) and >= 8,192 B after it; after G1, H10, L1, C1, G2, G6, G7, LS0, K0, LS1 and E0: 13,856 -> 10,424 B |
+| H11: `HOME` `.bss` on the GBA (`HOME_PERSIST`) | +3,432 B | free >= 12,352 B before it (SPEC C9) and >= 8,192 B after it; after G1, H10, L1, C1, G2, G6, G7, LS0, K0, LS1 and E0: 13,856 -> 10,424 B **Done (2026-11-01):** measured on the tree after the household tiers, 13,552 -> 10,120 B free (+3,432 B), ROM 4,213,788 -> 4,219,424 B |
 | L4: Latin glyph pages | 0 (`const` rows in ROM) | |
 | G3: the island's run layer | 0 `.bss` (from the arena) | free >= 9,000 B |
 
