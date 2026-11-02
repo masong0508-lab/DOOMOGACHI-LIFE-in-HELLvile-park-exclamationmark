@@ -19,6 +19,7 @@
  *                            U1p (PS1 memory card file)
  *   plat_option_changed      U0 calls it from opt_set; U8 (GBA, for G7's
  *                            OPT_3D_FAST), DC display packages implement it
+ *   plat_rumble              X2 (DC Puru Puru); camfx_shake calls it
  *   plat_test_flags          U0/U5 (native runner, harnesses)
  *   plat_hold_frame          U4 (held-frame pause backdrop)
  *   plat_pack_blob/read      E0 declares the pack format (pack.h, which
@@ -71,6 +72,15 @@ int  plat_config_write(const uint8_t *src, uint32_t len);
  * itself (OPT_3D_FAST, the DC display rows, vibration). `opt` is an
  * OPT_* id (town.h), `value` its new value. Default: nothing. */
 void plat_option_changed(int opt, int value);
+
+/* ---- rumble ------------------------------------------------------------------
+ * A short motor pulse (PLATF_RUMBLE platforms): strength 0..255, length in
+ * 30 Hz ticks. camfx_shake() calls it with the shake's own strength and
+ * length, already scaled by OPT_SCREEN_SHAKE, so "Screen shake: Off" also
+ * silences the motor (a separate option arrives with U0). It may be called
+ * every tick (a held gun); a platform without a motor ignores it.
+ * Default: nothing. */
+void plat_rumble(int strength, int ticks);
 
 /* ---- test flags ------------------------------------------------------------
  * Set by a test harness (native runner, GBA/PS1/DC harnesses) to switch off

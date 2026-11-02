@@ -27,6 +27,8 @@ WEAK int plat_config_write(const uint8_t *src, uint32_t len)
 
 WEAK void plat_option_changed(int opt, int value) { (void)opt; (void)value; }
 
+WEAK void plat_rumble(int strength, int ticks) { (void)strength; (void)ticks; }
+
 WEAK uint32_t plat_test_flags(void) { return 0; }
 
 WEAK int plat_hold_frame(int on) { (void)on; return 0; }

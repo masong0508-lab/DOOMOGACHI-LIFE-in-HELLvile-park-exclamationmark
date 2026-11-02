@@ -388,3 +388,17 @@ right size) and the CDI builds. Booting the ELF and the CDI in Flycast
 (`dc/tests/boot.txt`: BOOT then TITLE, 30 ticks per emulated second) is
 the first thing to run once `dc/harness` lands.
 
+
+## Rumble (X2)
+
+`plat_rumble(strength 0..255, ticks)` (plat_ext.h) is the core's rumble hook.
+`camfx_shake()` calls it for every shake profile with the profile's strongest
+frame (amp 1..7 -> 36..252) and its own length at 30 Hz, both scaled by
+`OPT_SCREEN_SHAKE`, so "Screen shake: Off" silences the motor as well. The
+Dreamcast driver (`dc/src/rumble.c`) sends one KOS Puru Puru effect to the
+pack in controller 1's first slot (intensity 1..7, duration from the tick
+count; a new pulse replaces the running one) and logs `DC: rumble strength N
+ticks N` for the harness. `plat_features()` reports `PLATF_RUMBLE` while a
+pack is plugged in. No pack, no effect. The core's other platforms keep the
+weak no-op (the PS1 DualShock motor is not wired yet). The option table is
+full, so a rumble-only on/off row waits for U0's ids >= 64.

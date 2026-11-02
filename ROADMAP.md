@@ -19,6 +19,9 @@ reviewed, then landed on `claude/nice-allen-gr6czm`.
 - Languages: N-language engine (L1), one text path everywhere (L2a).
 - Dreamcast: SH4 cross-check (DC0a), KOS toolchain script (DC0b),
   headless harness (DC1, not yet run on real Flycast), dc/ skeleton (DC2).
+- Dreamcast rumble (X2): `plat_rumble()` hook, called by every camera shake with its strength and length
+  (Screen shake Off = no rumble), Puru Puru driver in `dc/src/rumble.c`. A separate
+  rumble on/off row waits for U0 (the option table is full at 64).
 - PS1 config file (U1p): `bu00:BASLUS-DOOMOC` behind `plat_config_read/write`, `PLATF_CONFIG`
   (needs a PS1 harness run to confirm on PCSX-Redux).
 - Life sim wave 1: shared registry/contracts incl. 15 endings, security code,
@@ -56,7 +59,7 @@ a package can only start once the ones it depends on (see the sections below) ha
 - House: H11 (turn the GBA house state on).
 - Script: W14 (minigame/shop/unlock text), W15 (Bonejangles origin; needs your yes/no).
 - Languages: L9 (language picker), L11 (docs).
-- Dreamcast extras: X0 (contracts), X2 (rumble), X3 (VGA/display options), X8 (boot easter egg).
+- Dreamcast extras: X0 (contracts), X3 (VGA/display options), X8 (boot easter egg).
 
 ### M: medium
 - Life sim: E7 (content-pack format), U3a (pause shell), U5 (first-boot language

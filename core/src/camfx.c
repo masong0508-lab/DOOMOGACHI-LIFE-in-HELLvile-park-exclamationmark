@@ -25,6 +25,7 @@
  */
 #include "doomo/doomo.h"
 #include "doomo/camfx.h"
+#include "doomo/plat_ext.h"
 #include "doomo/tween.h"
 #include "doomo/beat.h"
 
@@ -113,12 +114,32 @@ static int ramp(int from, int to, uint16_t t, int frames)
 }
 
 /* ---- shake + punch ------------------------------------------------------- */
+static int shake_pct(void);
+
+/* X2: a shake is also a rumble pulse where the platform has a motor. The
+ * strength is the profile's strongest frame (amp 1..7 -> 36..252 of 255),
+ * scaled by OPT_SCREEN_SHAKE like the picture is (0% = no rumble either),
+ * the length is the profile's own frame count at 30 Hz. */
+static void shake_rumble(int profile)
+{
+    const ShakeProf *p = &SHAKE[profile];
+    int f, m = 0, pct = shake_pct(), s;
+    if (!pct) return;
+    for (f = 0; f < p->frames; f++) {
+        int a = p->amp[f] < 0 ? -p->amp[f] : p->amp[f];
+        if (a > m) m = a;
+    }
+    s = m * 36;
+    plat_rumble((s > 255 ? 255 : s) * pct / 100, p->frames);
+}
+
 void camfx_shake(int profile)
 {
     ensure_init();
     if (profile < 0 || profile >= SHK_COUNT) return;
     cf.shk = (int8_t)profile;
     cf.shk_t = cf.now;
+    shake_rumble(profile);
 }
 
 int camfx_shaking(void)
