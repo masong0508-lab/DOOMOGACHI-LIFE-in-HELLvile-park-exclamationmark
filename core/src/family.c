@@ -437,6 +437,8 @@ void life_ending_facts(LifeEndingFacts *out)
     for (i = 0; i < fam_n_; i++)
         if (fam_[i].role == FAMROLE_CHILD) kids++;
     out->household = (uint8_t)life_family_count();
+    for (i = 0; i < fam_n_; i++)             /* housemates who have a closest housemate */
+        if (family_close_id(fam_[i].id) >= 0 && out->best_friends < 255) out->best_friends++;
     out->kids = (uint8_t)kids;
     for (i = 0; i < family_memorial_count(); i++) {
         const FamilyMemorial *m = family_memorial(i);
