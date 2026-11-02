@@ -235,7 +235,7 @@ before it begins.
 | Journey | Presses | Depth | Target (owner) |
 |---|---|---|---|
 | J1 boot -> title menu | 2 | 0 | (U5/U6) |
-| J2 boot -> story continued | 4 | 0 | 3 (U6, Continue first) |
+| J2 boot -> story continued | 3 | 0 | 3 (U6, Continue first: done) |
 | J3 title -> music volume -1 in Options -> title | 9 | 1 | 5 (U2) |
 | J4 combat pause -> music volume -1 -> back in the fight | 11 | 1 | 4 (U3a) |
 | J5 title -> language to Spanish -> title | 5 | 1 | (U5) |

@@ -13,15 +13,27 @@
 #include "fp_int.h"
 
 enum { M_MAIN, M_STORY, M_FREE };
-enum { I_STORY, I_FREE, I_OPTIONS, I_UNLOCKS, I_CREDITS, I_THEME, I_LANG, I_MAIN_N };
+enum { I_STORY, I_FREE, I_OPTIONS, I_UNLOCKS, I_CREDITS, I_THEME, I_LANG, I_MAIN_N, I_CONTINUE = I_MAIN_N };
 enum { THEME_DAWN, THEME_NIGHT, THEME_CANDY, THEME_SUNSET, THEME_VAPE, THEME_UNITED, THEME_N };
 
 static const char *const main_items[I_MAIN_N] = {
     "Story Mode", "Free Play", "Options", "Unlocks", "Credits", "Theme", "Language"
 };
 
+/* U6 (Continue first): with a story save the main menu leads with a Continue
+ * row (the cursor starts on it), so boot -> back in the story is three
+ * presses. Rows are positions; row_id() turns a position into an item id. */
+static int lead_row(void);
+
 /* the Language row only fits the big (PS1 / 320x240) layout */
-static int main_n(void) { return fp_big() ? I_MAIN_N : I_MAIN_N - 1; }
+/* On the small (240x160) layout the Continue row takes the Theme row's place
+ * (the theme is still in Options, Display), so the menu keeps its height. */
+static int main_n(void)
+{
+    if (fp_big()) return I_MAIN_N + lead_row();
+    return I_MAIN_N - 1;
+}
+static int row_id(int pos);
 
 /* the languages offered to players (lang.h: the registry's ready ones) */
 static void cycle_lang(int dir)
@@ -46,6 +58,17 @@ static struct {
     uint8_t has_story, has_free;
     DoomoSaveInfo info[2];   /* save headers, read once on entering the title */
 } T;
+
+static int lead_row(void) { return T.has_story ? 1 : 0; }
+
+static int row_id(int pos)
+{
+    if (lead_row()) {
+        if (pos == 0) return I_CONTINUE;
+        pos--;
+    }
+    return pos;
+}
 
 static int theme(void) { return opt_get(OPT_TITLE_THEME) % THEME_N; }
 
@@ -181,13 +204,14 @@ static void title_update(void)
     if (T.menu == M_MAIN) {
         if (btn_repeat(BTN_UP)) { T.sel = (uint8_t)((T.sel + main_n() - 1) % main_n()); audio_sfx(SFX_CURSOR); }
         if (btn_repeat(BTN_DOWN)) { T.sel = (uint8_t)((T.sel + 1) % main_n()); audio_sfx(SFX_CURSOR); }
-        if (T.sel == I_THEME && btn_repeat(BTN_LEFT)) cycle_theme(-1);
-        if (T.sel == I_THEME && btn_repeat(BTN_RIGHT)) cycle_theme(1);
-        if (T.sel == I_LANG && btn_repeat(BTN_LEFT)) cycle_lang(-1);
-        if (T.sel == I_LANG && btn_repeat(BTN_RIGHT)) cycle_lang(1);
+        if (row_id(T.sel) == I_THEME && btn_repeat(BTN_LEFT)) cycle_theme(-1);
+        if (row_id(T.sel) == I_THEME && btn_repeat(BTN_RIGHT)) cycle_theme(1);
+        if (row_id(T.sel) == I_LANG && btn_repeat(BTN_LEFT)) cycle_lang(-1);
+        if (row_id(T.sel) == I_LANG && btn_repeat(BTN_RIGHT)) cycle_lang(1);
         if (btn_pressed(BTN_B)) { T.started = 0; audio_sfx(SFX_CANCEL); return; }
         if (!btn_pressed(BTN_A)) return;
-        switch (T.sel) {
+        switch (row_id(T.sel)) {
+        case I_CONTINUE: continue_story(); break;
         case I_STORY: T.menu = M_STORY; T.sub_sel = (uint8_t)(T.has_story ? 1 : 0); T.menu_t = 0; audio_sfx(SFX_SELECT); break;
         case I_FREE: T.menu = M_FREE; T.sub_sel = (uint8_t)(T.has_free ? 1 : 0); T.menu_t = 0; audio_sfx(SFX_SELECT); break;
         case I_OPTIONS: audio_sfx(SFX_SELECT); scene_push(&SCENE_OPTIONS, 0); break;
@@ -641,23 +665,26 @@ static void draw_menu(void)
             int pop = ui_pop_scale(T.menu_t - i * 2), w = bw * pop / 256;
             int x = (sw - w) / 2, y = y0 + i * bh;
             char label[40];
+            int id = row_id(i);
             if (pop <= 0) continue;
-            if (i == I_LANG) {
+            if (id == I_CONTINUE) {
+                doomo_snprintf(label, sizeof(label), "Continue");
+            } else if (id == I_LANG) {
                 const DoomoOptionInfo *oi = &doomo_option_info[OPT_LANGUAGE];
                 doomo_snprintf(label, sizeof(label), STR_ICON_ARROW_L " %s " STR_ICON_ARROW_R,
                                oi->values[opt_get(OPT_LANGUAGE)]);
-            } else if (i == I_THEME) {
+            } else if (id == I_THEME) {
                 const DoomoOptionInfo *oi = &doomo_option_info[OPT_TITLE_THEME];
                 doomo_snprintf(label, sizeof(label), STR_ICON_ARROW_L " %s " STR_ICON_ARROW_R,
                                oi->values ? oi->values[theme()] : "?");
             } else {
-                doomo_snprintf(label, sizeof(label), "%s", main_items[i]);
+                doomo_snprintf(label, sizeof(label), "%s", main_items[id]);
             }
             if (pop < 250) {
                 fp_pill(x, y, w, bh - 2, st->fill_hi, st->outline, PAL_WHITE);
                 continue;
             }
-            ui_button(x, y, bw, label, i == T.sel, (i == I_THEME || i == I_LANG) ? WIN_MINT : WIN_CUTE);
+            ui_button(x, y, bw, label, i == T.sel, (id == I_THEME || id == I_LANG) ? WIN_MINT : WIN_CUTE);
         }
         return;
     }

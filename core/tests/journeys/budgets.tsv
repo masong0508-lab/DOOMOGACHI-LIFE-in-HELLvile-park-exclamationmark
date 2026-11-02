@@ -11,7 +11,7 @@
 #
 # name			presses	ticks	owner: what (target)
 j1_boot_menu		2	32	U5/U6: boot -> title menu
-j2_continue		4	68	U6: boot -> story continued (target 3)
+j2_continue		3	64	U6: boot -> story continued (Continue first, done)
 j3_title_music		9	20	U2: title -> Options music volume -1 -> title (target 5)
 j4_combat_music		11	26	U3a: combat pause -> music volume -1 -> fight (target 4)
 j5_title_lang		5	12	U5: title -> language Spanish -> title
