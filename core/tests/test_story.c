@@ -548,8 +548,16 @@ TEST(story_overworld_walks_and_collides)
     settle();
     press(BTN_START);
     CHECK(ow.pause);
-    press(BTN_B);
-    CHECK(!ow.pause);
+    {   /* U4: while paused the held frame stands in for the world */
+        uint32_t views = nat_calls[NC_VIEW];
+        frames(6, 0);
+        CHECK(ow.pause);
+        CHECK_EQ_U(nat_calls[NC_VIEW], views);
+        press(BTN_B);
+        CHECK(!ow.pause);
+        frames(2, 0);
+        CHECK(nat_calls[NC_VIEW] > views);                /* released: the world draws again */
+    }
     /* U3b: START in the open panel quick-saves and closes it */
     press(BTN_START);
     CHECK(ow.pause);

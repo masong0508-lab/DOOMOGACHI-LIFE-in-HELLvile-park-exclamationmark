@@ -67,7 +67,7 @@ TEST(k0_plat_ext_weak_defaults)
     CHECK_EQ(PLAT_CONFIG_MAX, 48);
     CHECK_EQ(PLAT_CONFIG_MAX, CONFIG_SZ_SETTINGS + CONFIG_SZ_SECURITY);
     CHECK_EQ_U(PLAT_TEST_NO_PICKER, 1u);
-    /* the native runner implements none of them yet (U0, U4, E2 will):
+    /* the native runner implements none of them yet (U0, E2 will; U4 is done):
      * the defaults answer "not here" and never touch their buffers */
     CHECK_EQ_U(plat_features() & ~PLATF_ALL_KNOWN, 0u);
     memset(buf, 0xA5, sizeof(buf));

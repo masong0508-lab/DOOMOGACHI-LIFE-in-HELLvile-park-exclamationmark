@@ -9,6 +9,7 @@
 #include "doomo/scenes.h"
 #include "doomo/input.h"
 #include "doomo/platform.h"
+#include "doomo/plat_ext.h"
 
 typedef struct {
     const DoomoScene *s;
@@ -103,6 +104,7 @@ static void log_scene(const char *what, const DoomoScene *s)
 
 void scene_set(const DoomoScene *s, int arg)
 {
+    plat_hold_frame(0);                       /* U4: any scene_set releases a held frame */
     while (depth > 0) {
         const DoomoScene *top = stack[--depth].s;
         call_leave(top);

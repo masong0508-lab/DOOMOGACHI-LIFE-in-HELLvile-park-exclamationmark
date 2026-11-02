@@ -43,7 +43,20 @@ const char *nat_stub_name(int i) { return (i >= 0 && i < stub_n) ? stub_names[i]
 /* ---- display ------------------------------------------------------------ */
 int plat_screen_w(void) { return nat_w; }
 int plat_screen_h(void) { return nat_h; }
-void plat_begin_frame(void) { }
+/* U4: the held frame. plat_hold_frame(1) copies the picture just shown; every
+ * plat_begin_frame then restores it, so the core repaints only its own rects. */
+static uint8_t held_fb[NAT_MAX_W * NAT_MAX_H];
+static int held, held_n;
+int plat_hold_frame(int on)
+{
+    held = 0;
+    if (!on) return 0;
+    held_n = nat_w * nat_h;
+    memcpy(held_fb, nat_fb, (size_t)held_n);
+    held = 1;
+    return 1;
+}
+void plat_begin_frame(void) { if (held) memcpy(nat_fb, held_fb, (size_t)held_n); }
 void plat_end_frame(void)
 {
     ticks++;

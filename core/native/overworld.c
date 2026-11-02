@@ -120,6 +120,7 @@ static int16_t order[256];
 
 void plat_overworld(const DoomoOverworldView *v)
 {
+    nat_calls[NC_VIEW]++;
     const DoomoMap *m;
     int tx0, ty0, tx1, ty1, tx, ty, i, n, si;
     if (!v) return;

@@ -17,6 +17,7 @@
 #include "doomo/txt.h"
 #include "doomo/family.h"
 #include "doomo/playas.h"
+#include "doomo/plat_ext.h"
 #include "doomo/ending.h"
 
 OwState ow;
@@ -703,25 +704,31 @@ static int pause_save(void)
     return 0;
 }
 
+/* U4: the pause menu asks the platform to keep the frame it just showed as the
+ * backdrop, so the 3D world is not redrawn every paused frame. A platform that
+ * cannot answers 0 and the world is redrawn as before. */
+static uint8_t pause_held;
+#define PAUSE_OFF() do { ow.pause = 0; if (pause_held) { plat_hold_frame(0); pause_held = 0; } } while (0)
+
 static void pause_activate(int sel)
 {
     switch (sel) {
-    case PM_RESUME: ow.pause = 0; break;
-    case PM_LOG: ow.pause = 0; story_push_scene(&SCENE_QUESTLOG, 0, PEND_OTHER, CTX_FREE, 0); break;
+    case PM_RESUME: PAUSE_OFF(); break;
+    case PM_LOG: PAUSE_OFF(); story_push_scene(&SCENE_QUESTLOG, 0, PEND_OTHER, CTX_FREE, 0); break;
     case PM_PET:
         if (!pet_exists()) { ui_toast("No Doomogachi yet!"); audio_sfx(SFX_ERROR); break; }
-        ow.pause = 0;
+        PAUSE_OFF();
         story_push_scene(&SCENE_PET, 0, PEND_OTHER, CTX_FREE, 0);
         break;
     case PM_ARMORY:
         if (!story_flag(SF_WEAPON_CHOSEN)) { ui_toast("Rivet hasn't welded you anything yet!"); audio_sfx(SFX_ERROR); break; }
-        ow.pause = 0;
+        PAUSE_OFF();
         story_push_scene(&SCENE_WORKSHOP, 0, PEND_OTHER, CTX_FREE, 0);
         break;
-    case PM_MAP: ow.pause = 0; story_push_scene(&SCENE_QUESTLOG, 3, PEND_OTHER, CTX_FREE, 0); break;
-    case PM_OPTIONS: ow.pause = 0; story_push_scene(&SCENE_OPTIONS, 0, PEND_OTHER, CTX_FREE, 0); break;
+    case PM_MAP: PAUSE_OFF(); story_push_scene(&SCENE_QUESTLOG, 3, PEND_OTHER, CTX_FREE, 0); break;
+    case PM_OPTIONS: PAUSE_OFF(); story_push_scene(&SCENE_OPTIONS, 0, PEND_OTHER, CTX_FREE, 0); break;
     case PM_SAVE:
-        if (pause_save()) ow.pause = 0;
+        if (pause_save()) PAUSE_OFF();
         break;
     case PM_TITLE:
         ui_confirm(ow.visit ? "Leave and go back?" : "Return to the title? Unsaved progress is lost.", title_yes);
@@ -733,8 +740,8 @@ static void pause_activate(int sel)
 static void pause_update(void)
 {
     ow.pause_t++;
-    if (btn_pressed(BTN_START) && !ow.visit) { if (pause_save()) ow.pause = 0; return; }   /* U3b */
-    if (btn_pressed(BTN_B) || btn_pressed(BTN_START)) { ow.pause = 0; audio_sfx(SFX_CANCEL); return; }
+    if (btn_pressed(BTN_START) && !ow.visit) { if (pause_save()) PAUSE_OFF(); return; }   /* U3b */
+    if (btn_pressed(BTN_B) || btn_pressed(BTN_START)) { PAUSE_OFF(); audio_sfx(SFX_CANCEL); return; }
     if (btn_repeat(BTN_UP)) { ow.pause_sel = (uint8_t)((ow.pause_sel + PM_COUNT - 1) % PM_COUNT); audio_sfx(SFX_CURSOR); }
     if (btn_repeat(BTN_DOWN)) { ow.pause_sel = (uint8_t)((ow.pause_sel + 1) % PM_COUNT); audio_sfx(SFX_CURSOR); }
     if (btn_pressed(BTN_A)) { audio_sfx(SFX_SELECT); pause_activate(ow.pause_sel); }
@@ -843,6 +850,7 @@ static void story_update(void)
     if (ow.pause) { pause_update(); return; }
     if (btn_pressed(BTN_START)) {
         ow.pause = 1;
+        pause_held = (uint8_t)(plat_hold_frame(1) != 0);   /* U4 */
         ow.pause_t = 0;
         ow.pause_sel = 0;
         audio_sfx(SFX_SELECT);
@@ -1024,6 +1032,7 @@ static void story_draw(void)
     if (ow.banner_t) ow.banner_t--;
     if (!ow.visit && ui_dialog_active()) ow_spawn_under_dialog();   /* --- S1 M5: "beep." --- */
     if (plat_draw_skipped()) return;
+    if (ow.pause && pause_held) { owfx_draw_pause(); return; }   /* U4: the world is the held frame */
     build_billboards();
     ow_view_fill(&v);
     plat_overworld(&v);
