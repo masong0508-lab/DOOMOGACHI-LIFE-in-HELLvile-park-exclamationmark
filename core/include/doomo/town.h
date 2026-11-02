@@ -127,6 +127,18 @@ enum {
     OPT_COUNT
 };
 DOOMO_STATIC_ASSERT(OPT_COUNT <= 64, options_fit);
+/* (U0) the options with ids 64 and up. They do not live in doomo_town.opt (its 64 B are full);
+ * core/src/options_store.c keeps them in the 'OPT2' save chunk and, for the machine-wide ones,
+ * in the 48 B machine config record. opt_get / opt_set / opt_defaults take these ids too.
+ * Add-only: a new option goes at the end, before OPT2_END. */
+#define OPT2_FIRST 64
+enum {
+    OPT_MATURE = OPT2_FIRST,  /* Off / Censored / On / On + pack (ending.h MATURE_*); machine-wide */
+    OPT_LOSS,                 /* family loss (F6): 0 off, 1 on; family_loss_set() follows          */
+    OPT_RUMBLE,               /* controller rumble, apart from Screen shake: 0 off, 1 on; machine-wide */
+    OPT2_END
+};
+#define OPT2_COUNT (OPT2_END - OPT2_FIRST)
 /* Option pages (DoomoOptionInfo.page). */
 enum { OPTPAGE_GAME, OPTPAGE_CONTROLS, OPTPAGE_SHOOTER, OPTPAGE_SIM, OPTPAGE_AUDIO,
        OPTPAGE_DISPLAY, OPTPAGE_PERF, OPTPAGE_ACCESS, OPTPAGE_CHEATS, OPTPAGE_COUNT };

@@ -5,6 +5,7 @@
 #include "doomo/ui.h"
 #include "doomo/font.h"
 #include "doomo/lang.h"
+#include "doomo/options_store.h"
 
 const char *const doomo_option_page_names[OPTPAGE_COUNT] = {
     "Game", "Controls", "Shooter", "Life Sim", "Audio", "Display",
@@ -135,6 +136,7 @@ const DoomoOptionInfo doomo_option_info[OPT_COUNT] = {
 int opt_get(int opt)
 {
     int v;
+    if (opt >= OPT2_FIRST) return opt2_get(opt);         /* (U0) options_store.c */
     if (opt < 0 || opt >= OPT_COUNT) return 0;
     v = doomo_town.opt[opt];
     if (v >= doomo_option_info[opt].count) v = doomo_option_info[opt].def;
@@ -143,10 +145,12 @@ int opt_get(int opt)
 
 void opt_set(int opt, int value)
 {
+    if (opt >= OPT2_FIRST) { opt2_set(opt, value); return; }   /* (U0) */
     if (opt < 0 || opt >= OPT_COUNT) return;
     value = DOOMO_CLAMP(value, 0, doomo_option_info[opt].count - 1);
     doomo_town.opt[opt] = (uint8_t)value;
     if (opt == OPT_LANGUAGE) lang_changed();
+    opt_machine_changed(opt, value);                     /* (U0) the machine config record */
 }
 
 void opt_defaults(void)
@@ -154,4 +158,5 @@ void opt_defaults(void)
     int i;
     memset(doomo_town.opt, 0, sizeof(doomo_town.opt));
     for (i = 0; i < OPT_COUNT; i++) doomo_town.opt[i] = doomo_option_info[i].def;
+    opt2_defaults();                                     /* (U0) */
 }

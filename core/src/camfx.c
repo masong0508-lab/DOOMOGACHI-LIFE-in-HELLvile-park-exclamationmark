@@ -124,7 +124,7 @@ static void shake_rumble(int profile)
 {
     const ShakeProf *p = &SHAKE[profile];
     int f, m = 0, pct = shake_pct(), s;
-    if (!pct) return;
+    if (!pct || !opt_get(OPT_RUMBLE)) return;     /* U0: its own on/off row */
     for (f = 0; f < p->frames; f++) {
         int a = p->amp[f] < 0 ? -p->amp[f] : p->amp[f];
         if (a > m) m = a;

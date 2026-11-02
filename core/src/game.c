@@ -5,6 +5,7 @@
  *              plat_end_frame(); }
  */
 #include "doomo/doomo.h"
+#include "doomo/options_store.h"
 
 static uint32_t frames;
 static uint8_t  inited;
@@ -39,6 +40,7 @@ void doomo_init(void)
     input_reset();
     ui_toast_clear();
     opt_defaults();
+    opt_config_load();                  /* U0: machine-wide settings (language, volumes, Mature ...) */
     town_new(TOWN_FREEPLAY, rng_next(&doomo_rng), TOWN_POP_EMPTY);
     frames = 0;
     inited = 1;

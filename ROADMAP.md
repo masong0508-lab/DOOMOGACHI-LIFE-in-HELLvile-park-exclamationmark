@@ -35,6 +35,9 @@ The PS1 life-sim status checklist (what is verified, written, or missing on that
 - PA2 (hero choice cards): finished with the tagline fit, a header-byte test and the creator script fix (patch `doomo-pa2-hero-cards-nov02d`).
 - PS1 journey meter: `ps1/harness/run.py` plays the native journey files and fails a journey over its `budgets.tsv` presses;
   the game `harness` target runs J6 + J7 (patch `doomo-ps1-journeys-nov02j`; not yet run on PCSX-Redux).
+- U0 settings core (rebuilt 2026-11-02, patch `doomo-u0-settings-core-nov02o`): options with ids 64+ (`OPT_MATURE`, `OPT_LOSS`, `OPT_RUMBLE`) in
+  `core/src/options_store.c`, the OPT2 save chunk, the 48 B machine config record (kept when `PLATF_CONFIG`), a real `opt_mature()`, Rumble row
+  gates `plat_rumble`. `make -C core test` 701/701 + journeys OK. Still to do: show the rows (U2), GBA/PS1 builds + the GBA fps test (never built here), native config file.
 - GBA speed: speed tour (G1), Mode 4 quick wins (G2), IWRAM overlay (G4),
   tile-mode overworld (G5), billboards as sprites (G6), retained HUD panels +
   "3D: Faster/Better" (G7). Cartridge is now a full 256 Mbit / 32 MB.
@@ -282,6 +285,7 @@ Worked example (U6c):
 | PS1 | `doomo-ps1-h3-reconcile-nov02k` | `docs: reconcile H3 (PS1 room shells) as done` | docs only: H3 leaves the open lists |
 | docs | `doomo-roadmap-done-nov02l` | `docs: roadmap records PA2, U6, PS1 journeys, H3 as done` | docs only (marker: roadmap-done-nov02l) |
 | PS1 | `doomo-ps1-journeys-all-nov02m` | `PS1: harness plays 15 core journeys (item, problem, rel, money, lang)` | PS1 focus step 2: mailbox + run.py learn the missing journey commands; not yet run on PCSX-Redux |
+| U0 | `doomo-u0-settings-core-nov02o` | `U0: settings core (OPT_MATURE/LOSS/RUMBLE, OPT2 chunk, machine config record)` | rebuilt: the old fut-u0 branch is not in the repo; core + tests only, not yet built for GBA/PS1 |
 | docs | `doomo-roadmap-branches-nov02n` | `docs: roadmap notes that the saved branches are not in the repo` | docs only |
 
 How the owner applies patches (so nobody has to ask again): from Termux, one pasted line per patch, oldest first, each line
@@ -293,3 +297,5 @@ the zip holds one folder of the same name with `apply.sh` in it, `apply.sh` runs
 and the reply gives the line with NAME and MESSAGE filled in, plus a ROADMAP row (the apply.sh adds it) for each patch.
 
 <!-- roadmap-branches-nov02n -->
+
+<!-- doomo-u0-settings-core-nov02o -->
