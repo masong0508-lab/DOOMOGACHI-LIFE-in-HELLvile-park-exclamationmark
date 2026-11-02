@@ -111,6 +111,19 @@ int  ending_category(int k);
  * seen. Pure rule over ending_category, ending_seen and opt_mature. */
 int  ending_visible(int k);
 
+/* ---- E1 additions (strong only: ending.c; no weak default) ----------------
+ * Reach ending k: ending_mark(k) and queue its card. Returns 1 if k was new.
+ * The card (SCENE_ENDING_CARD, ending_scene.c) is pushed by the story overworld
+ * the next time it is idle (overworld.c auto_events), so a trigger never has to
+ * be in a state where a scene may be pushed. */
+int  ending_reach(int k);
+/* The queued ending (ENDING_NONE if none); _take also clears it. */
+int  ending_pending(void);
+int  ending_take_pending(void);
+/* The credits of the story rolled: reach ending_resolve_finale(). Sets
+ * ENDF_FINALE_DONE. Called from story_ch34.c where the story completes. */
+void ending_finale_reached(void);
+
 /* ---- the adult gate (R10; E1 strong, weak refuses everyone) -------------
  * 1 only if resident `id` may appear in a mature or romance scene: life
  * stage ADULT (LS0) AND the premade allow-list (a premade id whose name

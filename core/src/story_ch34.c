@@ -25,6 +25,7 @@
 #include "doomo/house_api.h"
 #include "doomo/unlock_ids.h"
 #include "doomo/family.h"
+#include "doomo/ending.h"
 
 #define NAR (-1)
 
@@ -249,6 +250,7 @@ static void finish(void)
         unlock_grant(UL_STORY_MISC2_FIRST + 0);   /* Title: On Fire */
         unlock_grant(UL_STORY_MISC2_FIRST + 8);   /* Breach 3-7 post-story */
         family_tier_story_done();                 /* household room: 3 -> 10, and 20 in NG+ */
+        ending_finale_reached();                  /* E1: record the finale's ending; its card shows on the idle overworld */
         break;
     default: break;
     }

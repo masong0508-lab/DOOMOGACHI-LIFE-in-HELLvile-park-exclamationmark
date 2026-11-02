@@ -17,6 +17,7 @@
 #include "doomo/txt.h"
 #include "doomo/family.h"
 #include "doomo/playas.h"
+#include "doomo/ending.h"
 
 OwState ow;
 int ow_bb_count;                        /* ow_bb = the shared doomo_frame_bb */
@@ -370,6 +371,10 @@ static int auto_events(void)
 {
     int b = story_beat();
     if (!playas_is_hero()) return 0;     /* PA4: plot offers itself only to the hero */
+    if (ending_pending() != ENDING_NONE) {   /* E1: an ending was reached; show its card now */
+        scene_push(&SCENE_ENDING_CARD, ending_take_pending());
+        return 1;
+    }
     if (b == BEAT_C1_ARRIVE) {
         if (!story_flag(SF_TITLE_CH1)) {
             story_set_flag(SF_TITLE_CH1, 1);
