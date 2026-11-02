@@ -18,6 +18,8 @@
 
 static uint8_t will_ = 2;   /* F7 free will level (FAMILY_WILL_NORMAL), saved in the family section's spare byte */
 static FamilyMember fam_[FAMILY_MAX];
+static uint16_t sq_a_, sq_b_;      /* F8 pending squabble */
+static uint8_t sq_on_;
 static uint8_t dis_kind_;          /* F10 pending disaster (not saved) */
 static uint16_t dis_id_;
 #define BOND_DEFAULT 0x83u
@@ -295,6 +297,7 @@ int family_remove(int id)
 void family_clear(void)
 {
     neglect_grace_ = 0;
+    sq_on_ = 0;
     dis_kind_ = 0;
     will_ = FAMILY_WILL_NORMAL;
     memset(fam_, 0, sizeof(fam_));
@@ -481,6 +484,7 @@ int family_load(const uint8_t *src, uint32_t len)
     fam_n_ = (uint8_t)n;
     will_ = (uint8_t)((src[1] >= 1 && src[1] <= 5) ? src[1] - 1 : FAMILY_WILL_NORMAL);
     dis_kind_ = 0;
+    sq_on_ = 0;
     neglect_grace_ = 1;                 /* F6: a load never costs a day of care */
     return 1;
 }
@@ -843,6 +847,78 @@ int family_disaster_daily(void)
         if (nc) family_disaster_start(FAMDIS_ILLNESS + sim_rand(FAMDIS_COUNT - 1), fam_[cands[sim_rand(nc)]].id);
     }
     return 0;
+}
+
+/* ---- F8: bond-gated events ---------------------------------------------------- */
+static void mood_add_(int i, int d)
+{
+    int m = (bond_[i] >> 4) + d;
+    m = m < 0 ? 0 : m > 15 ? 15 : m;
+    bond_[i] = (uint8_t)((bond_[i] & 15u) | ((unsigned)m << 4));
+}
+
+static void news2_(const char *fmt, int a, int b)
+{
+    char msg[NEWS_LEN], n1[DOOMO_NAME_LEN + 1], n2[DOOMO_NAME_LEN + 1];
+    memcpy(n1, member_name_(a), DOOMO_NAME_LEN); n1[DOOMO_NAME_LEN] = 0;
+    memcpy(n2, member_name_(b), DOOMO_NAME_LEN); n2[DOOMO_NAME_LEN] = 0;
+    doomo_snprintf(msg, sizeof(msg), fmt, n1, n2);
+    sim_news_push(msg);
+}
+
+int family_squabble_pending(void) { return sq_on_; }
+
+int family_squabble_start(int a, int b)
+{
+    int i = find_slot(a), j = find_slot(b);
+    if (sq_on_ || a == b || i < 0 || j < 0 || fam_[i].role == FAMROLE_PET || fam_[j].role == FAMROLE_PET) return 0;
+    sq_on_ = 1; sq_a_ = (uint16_t)a; sq_b_ = (uint16_t)b;
+    mood_add_(i, -3); mood_add_(j, -3);
+    if (will_ != FAMILY_WILL_SUBCONSCIOUS) news2_("%s and %s had a little squabble.", a, b);
+    return 1;
+}
+
+int family_events_daily(void)
+{
+    static const uint8_t pct[5] = { 0, 5, 10, 16, 20 };
+    int i, shown = 0;
+    if (will_ == FAMILY_WILL_OFF) { sq_on_ = 0; return 0; }
+    if (sq_on_) {                                           /* the day after: make up */
+        int a = find_slot(sq_a_), b = find_slot(sq_b_);
+        sq_on_ = 0;
+        if (a >= 0 && b >= 0) {
+            mood_add_(a, 5); mood_add_(b, 5);
+            if (will_ != FAMILY_WILL_SUBCONSCIOUS) news2_("%s and %s made up. Hugs all round!", sq_a_, sq_b_);
+            shown++;
+        }
+        return shown;
+    }
+    if (fam_n_ >= 1 && sim_chance(pct[will_])) {            /* a confidence from someone close */
+        int cands[FAMILY_MAX], nc = 0;
+        for (i = 0; i < fam_n_; i++)
+            if (fam_[i].id != playas_avatar() && fam_[i].role != FAMROLE_PET && (bond_[i] & 15u) >= 10) cands[nc++] = i;
+        if (nc) {
+            i = cands[sim_rand(nc)];
+            mood_add_(i, 3);
+            if (will_ != FAMILY_WILL_SUBCONSCIOUS) {
+                char msg[NEWS_LEN];
+                doomo_snprintf(msg, sizeof(msg), "%s has a secret to tell you. They trust you!", member_name_(fam_[i].id));
+                sim_news_push(msg);
+            }
+            return 1;
+        }
+    }
+    if (fam_n_ >= 2 && sim_chance(pct[will_] / 2)) {        /* two housemates squabble */
+        int cands[FAMILY_MAX], nc = 0;
+        for (i = 0; i < fam_n_; i++)
+            if (fam_[i].id != playas_avatar() && fam_[i].role != FAMROLE_PET) cands[nc++] = i;
+        if (nc >= 2) {
+            int x = sim_rand(nc), y = sim_rand(nc - 1);
+            if (y >= x) y++;
+            if (family_squabble_start(fam_[cands[x]].id, fam_[cands[y]].id)) shown++;
+        }
+    }
+    return shown;
 }
 
 /* ---- F7: free will -------------------------------------------------------------- */

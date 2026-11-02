@@ -607,3 +607,28 @@ TEST(family_disasters)
     CHECK_EQ(family_disaster_pending(), FAMDIS_NONE);
     family_loss_set(1);
 }
+
+TEST(family_bond_events)
+{
+    int a, b, pet, m0;
+    fresh();
+    a = family_pool_add(FAMROLE_SIBLING, LIFE_ADULT, 5u, "Ann", PRONOUN_SHE);
+    b = family_pool_add(FAMROLE_CHILD, LIFE_CHILD, 6u, "Pip", PRONOUN_HE);
+    pet = family_pool_add(FAMROLE_PET, LIFE_ADULT, 7u, "Rex", PRONOUN_IT);
+    CHECK(a >= 0 && b >= 0 && pet >= 0);
+    CHECK(!family_squabble_start(a, pet));                          /* pets do not squabble */
+    CHECK(!family_squabble_start(a, a));
+    m0 = family_mood(b);
+    CHECK(family_squabble_start(a, b));
+    CHECK(family_squabble_pending());
+    CHECK(!family_squabble_start(a, b));                            /* one at a time */
+    CHECK(family_mood(b) < m0);
+    family_freewill_set(FAMILY_WILL_NORMAL);
+    CHECK_EQ(family_events_daily(), 1);                             /* the day after: they make up */
+    CHECK(!family_squabble_pending());
+    CHECK(family_mood(b) > m0 - 3);
+    family_freewill_set(FAMILY_WILL_OFF);
+    CHECK(family_squabble_start(a, b));
+    CHECK_EQ(family_events_daily(), 0);                             /* Off: no events, pending dropped */
+    CHECK(!family_squabble_pending());
+}

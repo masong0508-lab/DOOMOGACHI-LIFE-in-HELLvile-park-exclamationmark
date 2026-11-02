@@ -131,7 +131,12 @@ skipping `playas_avatar()`.
   (else they pull through); storm/fire/power only drop mood. Nothing is saved
   (a load cancels a pending one). Loss off: no disasters.
 
+## Done: Phase 3 bond-gated events
+- `family_events_daily()` (after free will, before disasters; Off = none,
+  Subconscious = silent): a member you are close to (bond 10+) may confide in
+  you (news line, mood +3); two non-pet housemates may squabble (moods -3) and
+  make up the next day (moods +5). Words only, kid-safe, nothing saved.
+
 ## Still open
-- Bond gating events (a child confides, siblings squabble and make up) and
-  `life_ending_facts`; bond between members (only member-to-player so far).
+- `life_ending_facts` (kids, best friends; LS5's, still a weak default); bond between members (only member-to-player so far).
 - Phase 4 story contributions, disaster story hooks, a tone review of the\n  disaster lines, the SCRIPT_STYLE amendment.

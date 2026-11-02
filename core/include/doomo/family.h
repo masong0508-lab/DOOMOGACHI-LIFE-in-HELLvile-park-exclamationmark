@@ -273,6 +273,16 @@ int  family_freewill_daily(void);
  * hits on you do family_grief_hurt_pct() percent (150 at first). Derived from
  * the memorials, so nothing new is saved. 100 = no effect. */
 #define FAMILY_GRIEF_DAYS 14
+/* ---- F8: bond-gated events (nothing saved) --------------------------------------
+ * Run daily after free will (not when it is Off; silent at Subconscious). A member
+ * you are close to (bond 10+) may CONFIDE in you: a kind news line and a mood lift.
+ * Two non-pet members (not the avatar) may SQUABBLE: both moods drop, and the next
+ * day they MAKE UP (moods lift, bond between you and each is untouched). Kid-safe:
+ * words only. Returns events shown. */
+int  family_squabble_start(int id_a, int id_b);   /* 1 if started (none pending) */
+int  family_squabble_pending(void);               /* 1 while one waits to be made up */
+int  family_events_daily(void);
+
 /* ---- F10: random disasters (Phase 5, self-contained, nothing saved) -------------
  * Once a day (Loss on) there is a small chance of a disaster aimed at one member
  * who is not the avatar: an illness wave or a demon night (can take the member),
