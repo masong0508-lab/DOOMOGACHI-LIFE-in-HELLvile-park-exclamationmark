@@ -122,7 +122,16 @@ skipping `playas_avatar()`.
   (only while free will is not Off). The Family list shows "Close to you"
   (bond 10+) or "Wants more time with you" (bond 0-1).
 
+## Done: Phase 5 disasters (no story hooks)
+- `family_disaster_daily()` (sim.c, after free will, before the loss pass): with
+  Loss on, 4% a day to warn about a disaster aimed at a non-avatar member
+  (illness wave, demon night, storm, fire, power cut). Warning toast + news now,
+  outcome next town day. Care in between (you or a housemate) saves them.
+  Illness/demon can take adults, elders and pets; a minor only one time in three
+  (else they pull through); storm/fire/power only drop mood. Nothing is saved
+  (a load cancels a pending one). Loss off: no disasters.
+
 ## Still open
 - Bond gating events (a child confides, siblings squabble and make up) and
   `life_ending_facts`; bond between members (only member-to-player so far).
-- Phase 5 disasters, Phase 4 story contributions, the SCRIPT_STYLE amendment.
+- Phase 4 story contributions, disaster story hooks, a tone review of the\n  disaster lines, the SCRIPT_STYLE amendment.

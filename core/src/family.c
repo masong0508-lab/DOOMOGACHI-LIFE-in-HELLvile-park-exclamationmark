@@ -18,6 +18,8 @@
 
 static uint8_t will_ = 2;   /* F7 free will level (FAMILY_WILL_NORMAL), saved in the family section's spare byte */
 static FamilyMember fam_[FAMILY_MAX];
+static uint8_t dis_kind_;          /* F10 pending disaster (not saved) */
+static uint16_t dis_id_;
 #define BOND_DEFAULT 0x83u
 static uint8_t bond_[FAMILY_MAX];   /* F7/F8: low nibble bond, high nibble mood, parallel to fam_ */
 static uint8_t fam_n_;
@@ -293,6 +295,7 @@ int family_remove(int id)
 void family_clear(void)
 {
     neglect_grace_ = 0;
+    dis_kind_ = 0;
     will_ = FAMILY_WILL_NORMAL;
     memset(fam_, 0, sizeof(fam_));
     memset(bond_, BOND_DEFAULT, sizeof(bond_));
@@ -477,6 +480,7 @@ int family_load(const uint8_t *src, uint32_t len)
     memset(bond_, BOND_DEFAULT, sizeof(bond_));
     fam_n_ = (uint8_t)n;
     will_ = (uint8_t)((src[1] >= 1 && src[1] <= 5) ? src[1] - 1 : FAMILY_WILL_NORMAL);
+    dis_kind_ = 0;
     neglect_grace_ = 1;                 /* F6: a load never costs a day of care */
     return 1;
 }
@@ -782,6 +786,63 @@ int family_grief_damage_pct(void)
 int family_grief_hurt_pct(void)
 {
     return 100 + (100 - family_grief_damage_pct()) / 2;
+}
+
+/* ---- F10: disasters ----------------------------------------------------------- */
+static const char *const dis_warn_[FAMDIS_COUNT] = { "",
+    "An illness is going around. %s looks unwell!", "A demon night is coming. %s is in danger!",
+    "A storm is rolling in. %s is scared!", "Smoke! %s is near a fire!", "The power is out. %s is in the dark!" };
+
+int family_disaster_pending(void) { return dis_kind_; }
+int family_disaster_target(void) { return dis_kind_ ? (int)dis_id_ : -1; }
+
+int family_disaster_start(int kind, int id)
+{
+    char msg[NEWS_LEN];
+    if (dis_kind_ || kind <= FAMDIS_NONE || kind >= FAMDIS_COUNT || find_slot(id) < 0) return 0;
+    dis_kind_ = (uint8_t)kind;
+    dis_id_ = (uint16_t)id;
+    doomo_snprintf(msg, sizeof(msg), dis_warn_[kind], member_name_(id));
+    ui_toast(msg);
+    sim_news_push(msg);
+    return 1;
+}
+
+int family_disaster_daily(void)
+{
+    int i, lost = 0;
+    if (!loss_on_) { dis_kind_ = 0; return 0; }
+    if (dis_kind_) {
+        int kind = dis_kind_, id = dis_id_;
+        char msg[NEWS_LEN];
+        dis_kind_ = 0;
+        i = find_slot(id);
+        if (i < 0) return 0;
+        if (fam_[i].spare) {                           /* cared for in time */
+            doomo_snprintf(msg, sizeof(msg), "%s is safe. Good thing you were there!", member_name_(id));
+            sim_news_push(msg);
+            return 0;
+        }
+        if (kind == FAMDIS_ILLNESS || kind == FAMDIS_DEMON) {
+            int lethal = !is_minor_member_(&fam_[i]) || sim_chance(33);
+            if (lethal) {
+                lost += family_lose(id, kind == FAMDIS_DEMON ? FAMLOSS_DEMON : FAMLOSS_ILLNESS);
+                return lost;
+            }
+            doomo_snprintf(msg, sizeof(msg), "%s pulled through. Phew!", member_name_(id));
+        } else {
+            doomo_snprintf(msg, sizeof(msg), "%s got through it, but is shaken.", member_name_(id));
+        }
+        if ((bond_[i] >> 4) >= 3) bond_[i] = (uint8_t)(bond_[i] - 0x30u);   /* mood drops */
+        sim_news_push(msg);
+        return 0;
+    }
+    if (fam_n_ && sim_chance(4)) {                     /* a new one: never the avatar */
+        int cands[FAMILY_MAX], nc = 0;
+        for (i = 0; i < fam_n_; i++) if (fam_[i].id != playas_avatar()) cands[nc++] = i;
+        if (nc) family_disaster_start(FAMDIS_ILLNESS + sim_rand(FAMDIS_COUNT - 1), fam_[cands[sim_rand(nc)]].id);
+    }
+    return 0;
 }
 
 /* ---- F7: free will -------------------------------------------------------------- */

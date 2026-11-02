@@ -679,6 +679,7 @@ static void day_rollover(void)
     sim_news_daily();
     family_age_daily();                  /* F4: the household grows up */
     family_freewill_daily();             /* F7: the household looks after itself */
+    family_disaster_daily();             /* F10: warnings and outcomes (Loss on) */
     family_loss_daily();                 /* F6: neglect and old age */
 }
 

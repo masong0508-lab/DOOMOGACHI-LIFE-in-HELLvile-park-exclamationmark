@@ -572,3 +572,38 @@ TEST(family_bond_care_decay_and_save)
     family_remove(a);                                                /* bond follows its member */
     CHECK_EQ(family_bond(b), FAMILY_BOND_MAX);
 }
+
+TEST(family_disasters)
+{
+    int a, k;
+    fresh();
+    family_loss_set(1);
+    CHECK_EQ(family_disaster_pending(), FAMDIS_NONE);
+    a = family_pool_add(FAMROLE_SIBLING, LIFE_ADULT, 5u, "Ann", PRONOUN_SHE);
+    k = family_pool_add(FAMROLE_CHILD, LIFE_CHILD, 6u, "Pip", PRONOUN_HE);
+    CHECK(a >= 0 && k >= 0);
+    /* a warning, then an unprevented illness takes an adult the next day */
+    CHECK(family_disaster_start(FAMDIS_ILLNESS, a));
+    CHECK(!family_disaster_start(FAMDIS_FIRE, k));                   /* one at a time */
+    CHECK_EQ(family_disaster_target(), a);
+    CHECK_EQ(family_memorial_count(), 0);
+    CHECK_EQ(family_disaster_daily(), 1);
+    CHECK_EQ(family_memorial_count(), 1);
+    /* care in between saves a member */
+    CHECK(family_disaster_start(FAMDIS_DEMON, k));
+    family_care(k);
+    CHECK_EQ(family_disaster_daily(), 0);
+    CHECK_EQ(family_count(), 1);
+    /* a storm only frightens: nobody is lost */
+    CHECK(family_disaster_start(FAMDIS_STORM, k));
+    CHECK_EQ(family_disaster_daily(), 0);
+    CHECK_EQ(family_count(), 1);
+    CHECK_EQ(family_disaster_pending(), FAMDIS_NONE);
+    /* Loss off: nothing happens, the pending one is dropped */
+    CHECK(family_disaster_start(FAMDIS_ILLNESS, k));
+    family_loss_set(0);
+    CHECK_EQ(family_disaster_daily(), 0);
+    CHECK_EQ(family_count(), 1);
+    CHECK_EQ(family_disaster_pending(), FAMDIS_NONE);
+    family_loss_set(1);
+}

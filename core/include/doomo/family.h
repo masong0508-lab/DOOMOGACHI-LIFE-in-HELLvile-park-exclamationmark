@@ -273,6 +273,25 @@ int  family_freewill_daily(void);
  * hits on you do family_grief_hurt_pct() percent (150 at first). Derived from
  * the memorials, so nothing new is saved. 100 = no effect. */
 #define FAMILY_GRIEF_DAYS 14
+/* ---- F10: random disasters (Phase 5, self-contained, nothing saved) -------------
+ * Once a day (Loss on) there is a small chance of a disaster aimed at one member
+ * who is not the avatar: an illness wave or a demon night (can take the member),
+ * or a storm, fire or power cut (only frighten and hurt: mood drops). A warning
+ * toast and news line come first; the outcome lands the NEXT town day, unless
+ * someone cared for the target in between (you, or a housemate under free
+ * will): then they are saved. Adults, elders and pets can be lost; a minor only
+ * ever to illness or Hell, and only one time in three (otherwise they recover),
+ * always off-screen via family_lose(). Loss off: no disasters at all. A pending
+ * disaster is dropped by a load or family_clear (the warning day is the player's
+ * one chance, and a load gives a fresh one). */
+enum { FAMDIS_NONE = 0, FAMDIS_ILLNESS, FAMDIS_DEMON, FAMDIS_STORM, FAMDIS_FIRE, FAMDIS_POWER,
+       FAMDIS_COUNT };
+int  family_disaster_start(int kind, int id);   /* 1 if started (a member, none pending) */
+int  family_disaster_pending(void);             /* the FAMDIS_* kind, 0 = none */
+int  family_disaster_target(void);              /* member id, -1 = none */
+int  family_disaster_daily(void);               /* resolve a pending one or roll a new one;
+                                                   returns members lost */
+
 /* ---- F7/F8: bond and mood (one byte per member, in table order) -------------
  * low nibble bond 0..15 (default 3), high nibble mood 0..15 (default 8). A care
  * act (yours or a housemate's) raises the bond; days nobody cares for a pool
