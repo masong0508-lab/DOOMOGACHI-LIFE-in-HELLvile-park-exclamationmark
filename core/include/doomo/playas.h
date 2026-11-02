@@ -143,4 +143,9 @@ int  playas_switch(int id, int how);
 /* The new-game hero choice (PA2 calls it once, before the story starts). */
 void playas_set_hero_kind(int kind);
 
+/* (PA1) the day's check: 1 if a lost / possessed / removed avatar sent you
+ * back to the hero. PA4 records where the hero stood with playas_set_hero_pos. */
+int  playas_check(void);
+void playas_set_hero_pos(int x, int y, int map, int dir);
+
 #endif

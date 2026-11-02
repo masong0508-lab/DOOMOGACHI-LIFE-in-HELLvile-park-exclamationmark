@@ -693,7 +693,8 @@ TEST(save_version1_loads_with_life_stages)
     /* (+ the LIFE chunk LS1 adds: the news feed sim_init wrote, which a
      * version-1 save never had: its header, its bytes and the bit stream's
      * flags) */
-    CHECK(n <= sizeof(save_v1_classic) + 32 + SAVE_BUDGET_CHUNK_HDR + 8 +
+    /* (+ PA1: the empty PLAY chunk's header, written for everyone) */
+    CHECK(n <= sizeof(save_v1_classic) + 32 + SAVE_BUDGET_CHUNK_HDR + 8 + SAVE_BUDGET_CHUNK_HDR +
                SAVE_BUDGET_LZ_WORST(doomo_save_ext_life->size()));
     CHECK_EQ(RES_STAGE(town_res(V1A_BABY)), LIFE_BABY);
     CHECK_EQ(RES_STAGE(town_res(V1A_KID_MADEOVER)), LIFE_CHILD);

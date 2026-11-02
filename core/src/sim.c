@@ -13,6 +13,7 @@
  * rounding, which keeps the integer math cheap and the result independent
  * of the frame rate, OPT_DAY_LENGTH and OPT_SIM_SPEED.
  */
+#include "doomo/playas.h"
 #include "sim_int.h"
 #include "doomo/family.h"
 
@@ -678,6 +679,7 @@ static void day_rollover(void)
     sim_soul_daily();
     sim_news_daily();
     family_age_daily();                  /* F4: the household grows up */
+    playas_check();                      /* PA1: a lost or possessed avatar sends you back to the hero */
     family_freewill_daily();             /* F7: the household looks after itself */
     family_help_daily();                 /* F9: a helping hand (bonus) */
     family_events_daily();               /* F8: confidences, squabbles, making up */

@@ -12,6 +12,8 @@
  * from doomo_town.story.quest: the 28 legacy BEAT_C* ids alias onto
  * episodes (story_beat_episode) and are never reordered (SPEC C19).
  */
+#include "doomo/playas.h"
+#include "doomo/platform.h"
 #include "doomo/doomo.h"
 #include "doomo/story_vm.h"
 #include "doomo/home.h"
@@ -77,6 +79,7 @@ void story_episode_set_done(int beat, int on)
 {
     int e = story_beat_episode(beat) - BEAT_P0;
     if (e < 0) return;
+    if (playas_story_locked()) { plat_log("PLAYAS: blocked story_episode_set_done"); return; }   /* PA1 barrier */
     if (on) stry.episode_done[e >> 3] = (uint8_t)(stry.episode_done[e >> 3] | (1u << (e & 7)));
     else stry.episode_done[e >> 3] = (uint8_t)(stry.episode_done[e >> 3] & ~(1u << (e & 7)));
 }

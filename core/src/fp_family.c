@@ -51,7 +51,14 @@ static const char *const cause_names[FAMLOSS_COUNT] = {
     "Moved far away"
 };
 
-static int rows(void) { return family_count() + 2; }
+/* the last row ("Switch back") exists only while you play someone other than the hero (PA1) */
+static int rows(void) { return family_count() + 2 + (playas_is_hero() ? 0 : 1); }
+
+static int back_target(void)
+{
+    int t = playas_recent(0);
+    return t != PLAYAS_ID_NONE && playas_can_be(t) ? t : PLAYAS_ID_HERO;
+}
 static int vis(void) { return fp_big() ? 6 : 4; }
 
 static const char *member_name(int id, char *buf)
@@ -408,7 +415,8 @@ static void fam_update(void)
         audio_sfx(SFX_SELECT);
         if (W.sel < m) open_member(family_member(W.sel));
         else if (W.sel == m) ui_choice(-1, "Care for everyone", care_top, 5, care_top_pick);
-        else add_member();
+        else if (W.sel == m + 1) add_member();
+        else if (playas_switch(back_target(), PLAYAS_SWITCH_TAGIN)) ui_toast(STR_ICON_STAR " Switched back!");
         return;
     }
     if (btn_pressed(BTN_B)) {
@@ -474,10 +482,13 @@ static void fam_draw(void)
                 else if (needs_care(id)) fp_bubble(x + w - 16, y + 12, ICON_CLOUD, PAL_UI_RED, W.t / 6);
             } else if (idx == m) {
                 draw_row(x, y, w, rh, sel, ICON_HEART, PAL_UI_RED, "Care for everyone", "Play, talk, clean, comfort");
-            } else {
+            } else if (idx == m + 1) {
                 int full = family_count() >= family_cap();
                 draw_row(x, y, w, rh, sel, ICON_STAR, PAL_UI_GOLD, "Add a member",
                          full ? "The household is full" : "Neighbour, new person, pet, baby");
+            } else {
+                member_name(back_target(), nm);
+                draw_row(x, y, w, rh, sel, ICON_SMILE, PAL_UI_GOLD, "Switch back", nm);
             }
         } else {
             const FamilyMemorial *mm = family_memorial(idx);

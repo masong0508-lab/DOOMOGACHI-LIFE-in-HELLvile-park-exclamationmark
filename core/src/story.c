@@ -5,6 +5,8 @@
  * trigger / place events to the main plot, the side quests and small talk.
  * The plot itself is in story_script.c.
  */
+#include "doomo/playas.h"
+#include "doomo/platform.h"
 #include "story_int.h"
 #include "combat_int.h"     /* AF_USED (read only: actor slots) */
 #include "overworld_int.h"  /* the VM host: ownpc_cast / ownpc_act / ow_cam / ow_run_beat */
@@ -29,6 +31,7 @@ int story_flag(int f)
 void story_set_flag(int f, int on)
 {
     if (f < 0 || f >= DOOMO_STORY_FLAGS) return;
+    if (playas_story_locked()) { plat_log("PLAYAS: blocked story_set_flag"); return; }   /* PA1 barrier */
     if (on) doomo_town.story.flags[f >> 3] |= (uint8_t)(1 << (f & 7));
     else    doomo_town.story.flags[f >> 3] &= (uint8_t)~(1 << (f & 7));
 }
@@ -115,6 +118,7 @@ void story_set_beat(int beat)
     DoomoStoryState *s = &doomo_town.story;
     int ch;
     if (beat < 0 || beat >= BEAT_COUNT) return;
+    if (playas_story_locked()) { plat_log("PLAYAS: blocked story_set_beat"); return; }   /* PA1 barrier */
     ch = beat_ch[beat];
     if (ch > s->chapter && s->chapter >= 1) {
         int c;

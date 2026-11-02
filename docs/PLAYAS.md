@@ -15,7 +15,7 @@ only to the hero (PA4).
 | package | wave | what |
 |---|---|---|
 | **PA0** | W2 | this contract: `playas.h`, the weak defaults, the header byte 47 |
-| PA1 | W3 | `playas.c`: the `PLAY` chunk, the story barrier, the sim hooks, ACTOR sites |
+| PA1 | W3 | `playas.c`: the `PLAY` chunk, the story barrier, the sim hooks, ACTOR sites. **State half landed (2 Nov 2026)**, see section 7 |
 | PA3a | W4 | `@( m \| f \| n )` text codes picked by `playas_you_gender()` |
 | PA5 | W4 | `SCENE_PLAYAS`, the character switcher |
 | PA2 | W5 | the hero choice: SUNNY, MARVIN or your own (`hero.c`, `hero_preset`) |
@@ -200,3 +200,24 @@ memory and the slot, old and 0xFF headers). Every check holds after the
 owners land too: it tests a fresh town and compares byte 47 with
 `playas_profile_flags()`, not with 0. PA1's own behaviour is
 `test_playas.c`.
+
+## 7. PA1: what landed (`core/src/playas.c`, 2 Nov 2026)
+
+* **State**: small zero-initialised statics; the avatar is an offset from the
+  hero, so all-zero means "you are the hero". Recent ring of 4 (newest first,
+  never the current avatar), hero kind, hero position (`playas_set_hero_pos`,
+  for PA4), New life flag.
+* **Rules**: `playas_available` = story mode at `STORY_CH_DONE`, Free play
+  with any ending seen, or New life. `playas_can_be` = not yourself, the hero,
+  a living or ghost resident, or a non-pet family member (pets wait for F5).
+* **Barrier**: `story_set_flag`, `story_set_beat`, `story_episode_set_done`
+  refuse while `playas_story_locked()` and log `PLAYAS: blocked <what>`. Still
+  open: side missions, VM ops, overworld auto events (PA4).
+* **Sim**: `playas_check()` runs in `day_rollover`; a lost, possessed or
+  removed avatar sends you back to the hero with a toast.
+* **`PLAY` chunk**: 32 B header only (no pockets yet), empty while default.
+  save.c still writes the 10 B chunk header for everyone (`test_save.c`'s v1
+  re-save bound allows for it).
+* **Family screen**: "Play as them" switches for real; a "Switch back" row
+  shows while you play someone else.
+* **Not here**: how a switch is shown (PA4/PA5). Tests: `core/tests/test_playas.c`.
