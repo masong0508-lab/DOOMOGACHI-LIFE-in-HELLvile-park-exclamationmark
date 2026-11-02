@@ -152,7 +152,18 @@ const char *story_pet_name(void)
 static void default_player(void)
 {
     DoomoResident *p = town_res(DOOMO_PLAYER_ID);
+    const DoomoResident *pre;
     if (!p) return;
+    /* PA2: a fresh game's hero is the chosen preset (SUNNY / MARVIN). Only an
+     * untouched protagonist ("You", set by town_new) is replaced, so a named
+     * or created hero is never overwritten. HERO_CUSTOM has no preset. */
+    pre = hero_preset(playas_hero_kind());
+    if (pre && (p->status == RES_EMPTY || !p->name[0] || strcmp(p->name, "You") == 0)) {
+        *p = *pre;
+        p->flags = (uint8_t)((p->flags | RF_PLAYER) & ~RF_HELLBORN);
+        p->status = RES_ALIVE;
+        return;
+    }
     if (p->status == RES_EMPTY || !p->name[0]) {
         resident_generate(p, doomo_town.seed ^ 0x5EEDu);
         memcpy(p->name, "Sunny", 6);

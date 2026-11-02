@@ -1,0 +1,51 @@
+/* test_hero.c - PA2: hero presets and the new-game default player. */
+#include <string.h>
+#include "test.h"
+#include "doomo/doomo.h"
+#include "doomo/playas.h"
+#include "doomo/story.h"
+#include "doomo/town.h"
+#include "doomo/sim.h"
+
+TEST(hero_presets_exist_for_sunny_and_marvin_only)
+{
+    const DoomoResident *s = hero_preset(HERO_SUNNY), *m = hero_preset(HERO_MARVIN);
+    CHECK(hero_preset(HERO_CUSTOM) == NULL);
+    CHECK(hero_preset(HERO_COOP_FIRST) == NULL);
+    CHECK(s && m);
+    if (!s || !m) return;
+    CHECK(strcmp(s->name, "Sunny") == 0 && strcmp(m->name, "Marvin") == 0);
+    CHECK_EQ(s->pronoun, PRONOUN_SHE);
+    CHECK_EQ(m->pronoun, PRONOUN_HE);
+    CHECK_EQ(s->look.species, SPECIES_BUNNYKIN);
+    CHECK_EQ(m->look.species, SPECIES_FOXKIN);
+    CHECK(s->flags & RF_PLAYER);
+    CHECK(!(m->flags & RF_HELLBORN));
+}
+
+TEST(hero_new_story_game_uses_the_chosen_preset)
+{
+    town_new(TOWN_STORY, 77, TOWN_POP_PREMADE);
+    sim_init();
+    playas_set_hero_kind(HERO_MARVIN);
+    story_new_game();
+    CHECK(strcmp(doomo_town.player.name, "Marvin") == 0);
+    CHECK_EQ(doomo_town.player.pronoun, PRONOUN_HE);
+    CHECK_EQ(playas_you_gender(), GENDER_M);
+    town_new(TOWN_STORY, 77, TOWN_POP_PREMADE);
+    playas_set_hero_kind(HERO_SUNNY);
+    story_new_game();
+    CHECK(strcmp(doomo_town.player.name, "Sunny") == 0);
+    CHECK_EQ(playas_you_gender(), GENDER_F);
+    playas_set_hero_kind(HERO_CUSTOM);
+}
+
+TEST(hero_created_name_is_never_overwritten)
+{
+    town_new(TOWN_STORY, 78, TOWN_POP_PREMADE);
+    memcpy(doomo_town.player.name, "Zed", 4);
+    playas_set_hero_kind(HERO_MARVIN);
+    story_new_game();
+    CHECK(strcmp(doomo_town.player.name, "Zed") == 0);
+    playas_set_hero_kind(HERO_CUSTOM);
+}
