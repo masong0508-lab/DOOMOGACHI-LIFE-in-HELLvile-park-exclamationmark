@@ -118,7 +118,7 @@ static void ut_rect(int x, int y, int w, int h, uint8_t c)
  * which re-rasterised every big glyph twice per frame (the PS1 title ran
  * at 11.6 fps, 60% of its 81 ms in text_emit). 16 KB of RAM is cheap
  * there. */
-#define SC_POOL 4096
+#define SC_POOL 2560                   /* was 4096 (RAM pass, -6,144 B); the title draws ~1150 rects a frame, a full pool only skips caching */
 #define SC_ENT  160
 #define SC_HASH 256
 #endif

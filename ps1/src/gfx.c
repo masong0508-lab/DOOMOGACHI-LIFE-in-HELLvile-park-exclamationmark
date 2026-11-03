@@ -413,7 +413,7 @@ void gfx_busy_end(void)
  * block, which moves the progress bar. It is drawn straight into the picture
  * that is on screen (like the small banner above). Nothing has to be put
  * back afterwards: every game frame is cleared (isbg) and redrawn in full. */
-#define LS_TEXT_MAX 64
+#define LS_TEXT_MAX 40
 
 static void busy_box(TILE *t, int x, int y, int w, int h, int r, int g, int b)
 {
