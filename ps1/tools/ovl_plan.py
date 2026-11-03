@@ -181,16 +181,25 @@ MODAL_CALLBACKS = {
     "creator": ("cb_discard", "cb_name", "cb_nick", "cb_reset"),
     "exorcism_scene": ("cb_exit", "cb_name", "cb_prayer", "cb_to_tools", "cb_water",
                        "cb_lost_choice", "cb_lost_confirm", "cb_typed"),
+    # F-phase family wizard + member screens: every callback goes to ui_choice / ui_confirm /
+    # ui_text_entry only (wz_neighbour goes to fp_pick and stays resident, so it is not listed)
+    "fp_apartments": ("house_pick",),
+    "fp_family": ("care_all", "care_top_pick", "do_remove", "do_renamed", "member_act",
+                  "role_done", "role_more", "will_pick", "wz_kind", "wz_named", "wz_pron",
+                  "wz_stage"),
     "fp_graveyard": ("cb_grave",),
     "fp_island": ("cb_name_island", "cb_pet_name", "cb_title"),
     "fp_newisland": ("cb_ask_name", "cb_name", "cb_seed"),
-    "fp_options": ("cb_defaults", "cb_monster_final", "cb_monster_typed"),
+    # E11: cb_adult is the Mature row's "Are you 18 or older?" confirm
+    "fp_options": ("cb_adult", "cb_defaults", "cb_monster_final", "cb_monster_typed"),
     "fp_resident": ("cb_advice", "cb_help_choice", "cb_monster_typed", "cb_rest_final",
                     "cb_rest_first"),
     "fp_roster": ("cb_search",),
     "fp_saveload": ("cb_erase1", "cb_erase2", "cb_load", "cb_overwrite"),
     "overworld": ("title_yes",),
     "pet_scene": ("on_named",),
+    # new-life confirms (ui_confirm only)
+    "playas_scene": ("nl_done", "nl_start"),
     "story_mg": ("te_cb",),
     "studio": ("leave_choice",),
     "studio_edit": ("notes_tools", "order_tools", "song_tools", "title_done"),
