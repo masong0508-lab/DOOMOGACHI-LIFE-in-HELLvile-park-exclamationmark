@@ -109,5 +109,9 @@ int  plat_hold_frame(int on);
  * only move bytes. */
 const uint8_t *plat_pack_blob(uint32_t *size);
 uint32_t plat_pack_read(uint32_t off, void *dst, uint32_t len);
+/* (E2) A scratch buffer for the mslot scene to decode a content pack's still into (PACK_CG_W x
+ * PACK_CG_H bytes at most; `cap` is set to its size). The default is NULL and cap 0, so LZ and
+ * streamed art is skipped and nothing is reserved. */
+uint8_t *plat_mslot_buf(uint32_t *cap);
 
 #endif

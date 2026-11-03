@@ -219,6 +219,11 @@ uint32_t story_fingerprint(void);
  * frame) queues its opening SAY lines at once, so a caller's later
  * ui_say / ui_choice lands after them. */
 void vm_stop(void);
+/* (E2) Save / restore the VM around a nested run (SCENE_MSLOT runs a pack's script while the
+ * built-in script that pushed it waits). VM_SNAP_MAX bytes hold it (scriptvm.c asserts). */
+#define VM_SNAP_MAX 160
+void vm_snapshot(void *dst);
+void vm_restore(const void *src);
 /* The operands of the last VM_EXT / VM_PUSHED op: its resident (a VMD_WHO
  * DATA, decoded: -1 narrator) and its VMD_ARG / VMD_UNLOCK operand. */
 int  vm_ext_who(void);

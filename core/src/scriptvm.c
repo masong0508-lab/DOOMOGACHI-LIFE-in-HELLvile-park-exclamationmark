@@ -58,6 +58,10 @@ static struct {
     uint16_t last_who;
 } vm;
 
+DOOMO_STATIC_ASSERT(sizeof(vm) <= VM_SNAP_MAX, vm_snapshot_fits);
+void vm_snapshot(void *dst) { memcpy(dst, &vm, sizeof(vm)); }
+void vm_restore(const void *src) { memcpy(&vm, src, sizeof(vm)); }
+
 int16_t vm_fmt_target = -1;
 
 /* ---- the formatter ------------------------------------------------------------ */

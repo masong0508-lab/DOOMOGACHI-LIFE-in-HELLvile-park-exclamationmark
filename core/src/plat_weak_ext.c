@@ -33,6 +33,12 @@ WEAK uint32_t plat_test_flags(void) { return 0; }
 
 WEAK int plat_hold_frame(int on) { (void)on; return 0; }
 
+WEAK uint8_t *plat_mslot_buf(uint32_t *cap)
+{
+    if (cap) *cap = 0;
+    return 0;
+}
+
 WEAK const uint8_t *plat_pack_blob(uint32_t *size)
 {
     if (size) *size = 0;

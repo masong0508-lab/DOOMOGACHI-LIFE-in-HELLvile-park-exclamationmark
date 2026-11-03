@@ -1,0 +1,27 @@
+# mslots.txt - the mature scene slots (E2). `push mslot N` in a built-in script (push_args.txt) calls
+# slot N; a content pack's script for that slot plays when Mature is "On + pack", anything else
+# plays the fade-to-black. Numbers are add-only (a pack stores its scenes by slot), 0..MSLOT_MAX - 1
+# (pack.h). One line per slot: NUMBER NAME  # where it belongs. Built-in text never shows any
+# of this: the fallback is a fade to black.
+0   wedding_night          # the wedding night (after the wedding scene, any partner)
+1   hot_tub                # the hot tub scene
+2   ending_e12             # E12 Grumbleguts' Kitchen
+3   ending_e13             # E13 Vex After Dark
+4   ending_e14             # E14 Together
+8   grumbleguts_first_kiss # route: Grumbleguts
+9   grumbleguts_date_night
+10  grumbleguts_stay_over
+11  vex_first_kiss         # route: Vex
+12  vex_date_night
+13  vex_stay_over
+14  together_first_kiss    # route: the player and the partner they chose (E14)
+15  together_date_night
+16  together_stay_over
+32  free_1                 # post-game, free for packs
+33  free_2                 # post-game, free for packs
+34  free_3                 # post-game, free for packs
+35  free_4                 # post-game, free for packs
+36  free_5                 # post-game, free for packs
+37  free_6                 # post-game, free for packs
+38  free_7                 # post-game, free for packs
+39  free_8                 # post-game, free for packs

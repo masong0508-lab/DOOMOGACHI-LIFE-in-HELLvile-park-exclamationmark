@@ -14,6 +14,7 @@
 #include "doomo/house_api.h"
 #include "doomo/unlock_ids.h"
 #include "doomo/ending.h"
+#include "doomo/pack.h"
 #include "story_ch12.h"       /* S2: Chapters 1-2 as VM content */
 #include "story_ch34.h"       /* S3: Chapters 3-4 as VM content */
 
@@ -379,6 +380,7 @@ static void host_push(const StoryOp *o)
     case PEND_CONCERT: story_push_scene(&SCENE_CONCERT, arg, PEND_CONCERT, CTX_VM, 0); break;
     case PEND_DREAM: story_push_scene(&SCENE_DREAM, arg, PEND_DREAM, CTX_VM, 0); break;
     case PEND_TIMING: story_push_scene(&SCENE_STORY_TIMING, (uint16_t)arg, PEND_TIMING, CTX_VM, 0); break;
+    case PEND_MSLOT: story_push_scene(&SCENE_MSLOT, arg, PEND_MSLOT, CTX_VM, 0); break;
     case PEND_MINIGAME_SIDE: story_push_scene(&SCENE_STORY_MG, (uint16_t)arg, PEND_MINIGAME_SIDE, CTX_VM, 0); break;
     default: vm_resume(1); break;
     }
@@ -548,6 +550,7 @@ static int pending_result(const StoryPending *p)
     case PEND_PET: return pet_exists() ? 1 : 0;
     case PEND_TIMING: return autowin ? 3 : story_timing_result();
     case PEND_MINIGAME_SIDE: return autowin ? 1 : story_mg_result();
+    case PEND_MSLOT: return mslot_result();
     case PEND_CREATOR: {
         const DoomoResident *pl = town_res(DOOMO_PLAYER_ID);
         return (pl && pl->status != RES_EMPTY && pl->name[0]) ? 1 : 0; }

@@ -7,6 +7,11 @@
 #include "test.h"
 #include "doomo/pack.h"
 #include "doomo/txt.h"
+#include "doomo/story_vm.h"
+#include "doomo/camfx.h"
+#include "doomo/ending.h"
+#include "doomo/options_store.h"
+#include "doomo/doomo.h"
 
 #define MAXPACK 8192
 static uint8_t g_pk[MAXPACK];
@@ -100,5 +105,52 @@ TEST(pack_refuses_damaged_copies)
     CHECK_EQ(pack_script(0), 0);
     CHECK(!txt_pack_is_live(TXT_PACK_USER_FIRST));
     CHECK_EQ(pack_open_image(g_pk, g_n), 1);
+    pack_close();
+}
+
+/* ---- E2: SCENE_MSLOT ---- */
+static void mframe(uint32_t b) { plat_begin_frame(); doomo_frame(b); plat_end_frame(); }
+
+TEST(mslot_runs_the_packs_script_and_gives_the_vm_back)
+{
+    int n = 0;
+    test_reset();
+    CHECK(load());
+    CHECK_EQ(pack_open_image(g_pk, g_n), 1);
+    opt_set(OPT_MATURE, MATURE_PACK);
+    vm_set_var(5, 77);
+    scene_push(&SCENE_MSLOT, 0);
+    while (scene_top() == &SCENE_MSLOT && n++ < 200) mframe(0);
+    CHECK(n < 60);
+    CHECK_EQ(mslot_result(), 1);
+    CHECK_EQ(vm_var(5), 77);
+    for (n = 0; n < 30; n++) mframe(0);
+    CHECK_EQ(camfx_fade_level(), 0);
+    pack_close();
+}
+
+TEST(mslot_without_a_pack_plays_the_fade_and_reports_0)
+{
+    int n = 0;
+    test_reset();
+    opt_set(OPT_MATURE, MATURE_PACK);
+    scene_push(&SCENE_MSLOT, 3);
+    while (scene_top() == &SCENE_MSLOT && n++ < 200) mframe(0);
+    CHECK(n < 100);
+    CHECK_EQ(mslot_result(), 0);
+    for (n = 0; n < 30; n++) mframe(0);
+    CHECK_EQ(camfx_fade_level(), 0);
+}
+
+TEST(mslot_with_a_pack_but_mature_below_pack_still_falls_back)
+{
+    int n = 0;
+    test_reset();
+    CHECK(load());
+    CHECK_EQ(pack_open_image(g_pk, g_n), 1);
+    opt_set(OPT_MATURE, MATURE_ON);
+    scene_push(&SCENE_MSLOT, 0);
+    while (scene_top() == &SCENE_MSLOT && n++ < 200) mframe(0);
+    CHECK_EQ(mslot_result(), 0);
     pack_close();
 }

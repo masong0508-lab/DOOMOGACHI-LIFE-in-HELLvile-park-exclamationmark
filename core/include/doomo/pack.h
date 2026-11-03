@@ -169,4 +169,14 @@ int  pack_open_image(const uint8_t *blob, uint32_t size);
 void pack_close(void);
 int  pack_script_bind(int slot, void *buf, uint32_t cap);
 
+/* ---- E2: the mature scene slot host (core/src/mslot.c) -----------------
+ * `push mslot N` pushes SCENE_MSLOT with arg = N. With OPT_MATURE = "On + pack", a valid open
+ * pack and a script for slot N, the scene runs that pack's script (entry: script 1 of the pack's
+ * text pack; index 0 is the empty script every pack starts with) on the story VM, which it saves
+ * and restores around it, and shows the pack's art (`show cg N`). Anything else plays the safe
+ * fade-to-black. mslot_result() is what the pushing script finds in var 0: 1 when the pack's
+ * scene ran, 0 for the fallback. Art that is LZ or streamed needs a buffer from the port
+ * (plat_mslot_buf, plat_ext.h); without one the art is skipped and the script still plays. */
+int  mslot_result(void);
+
 #endif
