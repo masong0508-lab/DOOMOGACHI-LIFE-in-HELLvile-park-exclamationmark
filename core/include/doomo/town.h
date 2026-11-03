@@ -140,7 +140,8 @@ enum {
 };
 #define OPT2_COUNT (OPT2_END - OPT2_FIRST)
 /* Option pages (DoomoOptionInfo.page). */
-enum { OPTPAGE_GAME, OPTPAGE_CONTROLS, OPTPAGE_SHOOTER, OPTPAGE_SIM, OPTPAGE_AUDIO,
+/* (U2) OPTPAGE_QUICK is the front page: callers that pass 0 land on it. */
+enum { OPTPAGE_QUICK, OPTPAGE_GAME, OPTPAGE_CONTROLS, OPTPAGE_SHOOTER, OPTPAGE_SIM, OPTPAGE_AUDIO,
        OPTPAGE_DISPLAY, OPTPAGE_PERF, OPTPAGE_ACCESS, OPTPAGE_CHEATS, OPTPAGE_COUNT };
 /* Opens the paged Options screen on top of the current scene (pause menus
  * use it: the scene below stays frozen; B comes back). */

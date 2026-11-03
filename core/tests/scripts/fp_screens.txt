@@ -61,7 +61,7 @@ press A
 wait 30
 expect-scene ISLAND
 shot loaded_island
-push OPTIONS 4
+push OPTIONS 5
 wait 20
 shot options_display
 press DOWN

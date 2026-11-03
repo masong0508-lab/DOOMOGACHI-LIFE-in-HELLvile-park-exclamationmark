@@ -8,7 +8,7 @@
 #include "doomo/options_store.h"
 
 const char *const doomo_option_page_names[OPTPAGE_COUNT] = {
-    "Game", "Controls", "Shooter", "Life Sim", "Audio", "Display",
+    "Quick", "Game", "Controls", "Shooter", "Life Sim", "Audio", "Display",
     "Performance", "Accessibility", "Cheats"
 };
 

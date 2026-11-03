@@ -9,12 +9,18 @@
  * "I AM A MONSTER" and confirming. Mature (E11, last row of the Game page) can be
  * lowered freely; raising it asks for the grown-ups' code when one is set, then
  * for an 18+ confirm. arg = the page to open on.
+ *
+ * U2: the first page is "Quick" (language, music, sound, text speed, difficulty, gore and a
+ * Preset row), so the common changes are one press away; Loss (Life Sim) and Rumble (Controls,
+ * only where there is a motor) have rows; a preset sets many options at once.
  */
 #include "fp_int.h"
 #include "doomo/options_store.h"
 #include "doomo/ending.h"
+#include "doomo/plat_ext.h"
 
 #define ROWS_MAX 24
+#define ROW_PRESET 100          /* U2: the Quick page's preset row (not an option id) */
 
 static const char *const opt_help[OPT_COUNT] = {
     /* GORE */ "Cute: confetti, hearts, plush stuffing. Brutal: full Doom. Cute + Gore (after the ending): both at once.",
@@ -83,8 +89,57 @@ static const char *const opt_help[OPT_COUNT] = {
     /* 3D_FAST */ "Faster: the 3D view at half resolution, scaled up, for a smoother shooter. Better: full resolution, up to 20 fps."
 };
 
+/* U2: presets. Applying one first puts every ordinary option back to its default, then lays the
+ * list over it. Language, volumes, Mature, Monster Mode, cheats, skins and themes, and the
+ * Performance page are never touched. */
+typedef struct { uint8_t opt, val; } PresetSet;
+static const PresetSet pre_comfort[] = {
+    { OPT_DIFFICULTY, 0 }, { OPT_GORE, GORE_CUTE }, { OPT_AIM_ASSIST, 3 }, { OPT_LOCK_ON, 1 },
+    { OPT_SCREEN_SHAKE, 1 }, { OPT_HEAD_BOB, 1 }, { OPT_REDUCE_FLASH, 1 }, { OPT_UI_BOUNCE, 1 },
+    { OPT_POSSESSION_RATE, 0 }, { OPT_EVENT_RATE, 0 }, { OPT_SUBTITLES, 1 }
+};
+static const PresetSet pre_classic[] = {
+    { OPT_GORE, GORE_BRUTAL }, { OPT_DIFFICULTY, 2 }, { OPT_CONTROL_SCHEME, CONTROLS_CLASSIC },
+    { OPT_COMBAT_FEEL, 2 }, { OPT_CAMERA_DEFAULT, 0 }, { OPT_HUD_LAYOUT, 1 }, { OPT_CROSSHAIR, 1 },
+    { OPT_AIM_ASSIST, 0 }, { OPT_LOCK_ON, 0 }, { OPT_DAMAGE_NUMBERS, 0 }, { OPT_HIT_MARKERS, 0 },
+    { OPT_HEAD_BOB, 2 }
+};
+static const PresetSet pre_cozy[] = {
+    { OPT_GORE, GORE_CUTE }, { OPT_DIFFICULTY, 0 }, { OPT_SIM_SPEED, 0 }, { OPT_AUTOSAVE, 2 },
+    { OPT_POSSESSION_RATE, 1 }, { OPT_EVENT_RATE, 0 }, { OPT_WEATHER, 2 }, { OPT_LOSS, 0 },
+    { OPT_PET_NOTIFICATIONS, 1 }, { OPT_NEWS_TICKER, 1 }, { OPT_CONFETTI_AMOUNT, 1 }
+};
+static const PresetSet pre_hard[] = {
+    { OPT_DIFFICULTY, 3 }, { OPT_GORE, GORE_BRUTAL }, { OPT_AIM_ASSIST, 0 }, { OPT_LOCK_ON, 0 },
+    { OPT_DAMAGE_NUMBERS, 0 }, { OPT_HIT_MARKERS, 0 }, { OPT_HUD_LAYOUT, 2 }, { OPT_DEMON_DENSITY, 2 },
+    { OPT_POSSESSION_RATE, 3 }, { OPT_EVENT_RATE, 2 }, { OPT_AUTOSAVE, 0 }, { OPT_LOSS, 1 },
+    { OPT_COMBAT_FEEL, 2 }, { OPT_CROSSHAIR, 0 }, { OPT_SIM_SPEED, 2 }
+};
+static const PresetSet pre_access[] = {
+    { OPT_SUBTITLES, 1 }, { OPT_REDUCE_FLASH, 1 }, { OPT_SCREEN_SHAKE, 0 }, { OPT_HEAD_BOB, 0 },
+    { OPT_FONT_STYLE, 1 }, { OPT_UI_BOUNCE, 0 }, { OPT_AIM_ASSIST, 3 }, { OPT_LOCK_ON, 1 },
+    { OPT_LCD_FILTER, 0 }
+};
+#define PRESET_N 6
+static const char *const preset_name[PRESET_N] = {
+    "Default", "Comfort", "Classic DOOM", "Cozy life", "Hardcore", "Max accessibility"
+};
+static const char *const preset_help[PRESET_N] = {
+    "Every ordinary setting back to how the game ships. A confirm asks first.",
+    "Gentle: Plushie, cute gore, strong aim help, less shake and bobbing, calm island.",
+    "Brutal gore, Nightmare, Classic controls, no aim help, classic HUD and crosshair.",
+    "Chill island: plushie, slow sim, rare possessions, weather, no family loss.",
+    "Ultra-Hellvile, brutal, no aim help, minimal HUD, swarms, chaos, loss on.",
+    "Subtitles, no flashing, no shake, bold text, strong aim help, still menus."
+};
+static const PresetSet *const preset_set[PRESET_N] = { 0, pre_comfort, pre_classic, pre_cozy, pre_hard, pre_access };
+static const uint8_t preset_len[PRESET_N] = {
+    0, DOOMO_COUNTOF(pre_comfort), DOOMO_COUNTOF(pre_classic), DOOMO_COUNTOF(pre_cozy),
+    DOOMO_COUNTOF(pre_hard), DOOMO_COUNTOF(pre_access)
+};
+
 static struct {
-    int page, sel, top, t;
+    int page, sel, top, t, preset;
     int rows[ROWS_MAX], nrows;
     char typed[24];
     uint8_t phase, pend;          /* E11: waiting on the code scene; the Mature level asked for */
@@ -99,6 +154,8 @@ static const DoomoOptionInfo *info_of(int opt)
 
 static const char *help_of(int opt)
 {
+    if (opt == OPT_LOSS) return "Family members can be lost over a life. Off: nobody is ever lost.";
+    if (opt == OPT_RUMBLE) return "Controller rumble, apart from Screen shake.";
     if (opt == OPT_MATURE)
         return "Adult scenes. Off: cutaways. Censored: censor bars. On: implied, then a fade. Going up asks for the grown-ups' code (if set) and your age.";
     return opt < OPT_COUNT && opt_help[opt] ? opt_help[opt] : "";
@@ -113,15 +170,29 @@ static int value_ok(int opt, int v)
     return unlock_ok(UL_CAT_SKIN, opt, v);
 }
 
+/* U2: the Quick page lists these (the same options as on their own pages), then the preset row. */
+static const uint8_t quick_rows[] = { OPT_LANGUAGE, OPT_MUSIC_VOL, OPT_SFX_VOL, OPT_TEXT_SPEED,
+                                      OPT_DIFFICULTY, OPT_GORE };
+
 static void build_rows(void)
 {
     int i;
     O.nrows = 0;
+    if (O.page == OPTPAGE_QUICK) {
+        for (i = 0; i < (int)DOOMO_COUNTOF(quick_rows); i++) O.rows[O.nrows++] = quick_rows[i];
+        O.rows[O.nrows++] = ROW_PRESET;
+        O.sel = DOOMO_MIN(O.sel, O.nrows);
+        return;
+    }
     if (O.page == OPTPAGE_GAME) O.rows[O.nrows++] = OPT_LANGUAGE;      /* first row */
     for (i = 0; i < OPT_COUNT && O.nrows < ROWS_MAX; i++)
         if (doomo_option_info[i].page == O.page && i != OPT_LANGUAGE &&
             (i != OPT_DRAW_DIST || input_feel()) && (i != OPT_3D_FAST || plat_name()[0] == 'G'))
             O.rows[O.nrows++] = i;       /* draw distance: PS1 3D only; 3D quality: GBA only */
+    for (i = OPT_LOSS; i < OPT2_END && O.nrows < ROWS_MAX; i++)          /* U2: Loss (Life Sim), Rumble */
+        if (doomo_option2_info[i - OPT2_FIRST].page == O.page &&
+            (i != OPT_RUMBLE || (plat_features() & PLATF_RUMBLE)))
+            O.rows[O.nrows++] = i;
     if (O.page == OPTPAGE_GAME && O.nrows < ROWS_MAX) O.rows[O.nrows++] = OPT_MATURE;   /* E11: last row */
     O.sel = DOOMO_MIN(O.sel, O.nrows);       /* last row = "Defaults" */
 }
@@ -229,11 +300,47 @@ static void cb_defaults(int yes)
     if (!yes) return;
     for (i = 0; i < O.nrows; i++) {
         int opt = O.rows[i];
-        if (opt == OPT_MONSTER_MODE || opt == OPT_LANGUAGE) continue;   /* never silently */
+        if (opt == OPT_MONSTER_MODE || opt == OPT_LANGUAGE || opt == ROW_PRESET) continue;   /* never silently */
         opt_set(opt, info_of(opt)->def);
     }
     audio_sfx(SFX_SPARKLE);
     ui_toast("Page reset to defaults.");
+}
+
+/* U2: the options a preset may change: not language, volumes, Mature, Monster Mode, cheats, skins and
+ * themes, cursor, camera filter, nor anything on the Performance page. */
+static int preset_may(int opt)
+{
+    const DoomoOptionInfo *oi = info_of(opt);
+    if (oi->page == OPTPAGE_CHEATS || oi->page == OPTPAGE_PERF) return 0;
+    switch (opt) {
+    case OPT_MONSTER_MODE: case OPT_LANGUAGE: case OPT_MUSIC_VOL: case OPT_SFX_VOL: case OPT_VOICE_VOL:
+    case OPT_MATURE: case OPT_WINDOW_SKIN: case OPT_TITLE_THEME: case OPT_CURSOR: case OPT_CAMERA_FILTER:
+        return 0;
+    }
+    return 1;
+}
+
+static void preset_apply(int n)
+{
+    int i;
+    if (n < 0 || n >= PRESET_N) return;
+    for (i = 0; i < OPT2_END; i++) {
+        if (i == OPT_COUNT) { i = OPT2_FIRST - 1; continue; }
+        if (preset_may(i)) opt_set(i, info_of(i)->def);
+    }
+    for (i = 0; i < preset_len[n]; i++) {
+        const PresetSet *s = &preset_set[n][i];
+        if (preset_may(s->opt) && value_ok(s->opt, s->val)) opt_set(s->opt, s->val);
+    }
+}
+
+static void cb_preset(int yes)
+{
+    if (!yes) return;
+    preset_apply(O.preset);
+    audio_sfx(SFX_SPARKLE);
+    ui_toast("Preset applied.");
 }
 
 static void opt_update(void)
@@ -258,7 +365,12 @@ static void opt_update(void)
     if (btn_repeat(BTN_DOWN)) { O.sel = (O.sel + 1) % (O.nrows + 1); audio_sfx(SFX_CURSOR); }
     if (O.sel < O.top) O.top = O.sel;
     if (O.sel >= O.top + vis) O.top = O.sel - vis + 1;
-    if (O.sel < O.nrows) {
+    if (O.sel < O.nrows && O.rows[O.sel] == ROW_PRESET) {        /* U2: pick with LEFT/RIGHT, A applies */
+        if (btn_repeat(BTN_LEFT)) { O.preset = (O.preset + PRESET_N - 1) % PRESET_N; audio_sfx(SFX_CURSOR); }
+        if (btn_repeat(BTN_RIGHT)) { O.preset = (O.preset + 1) % PRESET_N; audio_sfx(SFX_CURSOR); }
+        if (btn_pressed(BTN_A))
+            ui_confirm("Apply this preset? Language, volumes, Mature and Monster Mode stay as they are.", cb_preset);
+    } else if (O.sel < O.nrows) {
         if (btn_repeat(BTN_LEFT)) change(O.rows[O.sel], -1);
         if (btn_repeat(BTN_RIGHT) || btn_pressed(BTN_A)) change(O.rows[O.sel], 1);
     } else if (btn_pressed(BTN_A)) {
@@ -297,6 +409,10 @@ static void opt_draw(void)
             ui_value_row(x + 12, y, w - 18, STR_ICON_STAR " Reset page to defaults", "", row == O.sel);
             continue;
         }
+        if (O.rows[row] == ROW_PRESET) {
+            ui_value_row(x + 12, y, w - 18, "Preset", preset_name[O.preset], row == O.sel);
+            continue;
+        }
         {
             int opt = O.rows[row], v = opt_get(opt);
             const DoomoOptionInfo *oi = info_of(opt);
@@ -321,7 +437,9 @@ static void opt_draw(void)
         const char *help = "Put every setting on this page back.";
         uint8_t c = st->text_dim;
         int hy = y0 + vis * 11 + 6;
-        if (O.sel < O.nrows) {
+        if (O.sel < O.nrows && O.rows[O.sel] == ROW_PRESET) {
+            help = preset_help[O.preset];
+        } else if (O.sel < O.nrows) {
             int opt = O.rows[O.sel], v = opt_get(opt), k;
             const DoomoOptionInfo *oi = info_of(opt);
             help = help_of(opt);
@@ -343,7 +461,8 @@ static void opt_draw(void)
         if (big) ui_text_wrap(x + 2, hy + 2, w - 4, help, c, 1);
         else fp_marquee(x + 2, hy + 2, w - 4, help, c, O.t);
     }
-    ui_hint(STR_ICON_ARROW_L STR_ICON_ARROW_R " Change  L/R Page  " STR_ICON_B " Done", style);
+    ui_hint((O.sel < O.nrows && O.rows[O.sel] == ROW_PRESET) ? STR_ICON_ARROW_L STR_ICON_ARROW_R " Pick  " STR_ICON_A " Apply  L/R Page  " STR_ICON_B " Done"
+                                                         : STR_ICON_ARROW_L STR_ICON_ARROW_R " Change  L/R Page  " STR_ICON_B " Done", style);
     fp_fx_draw();
 }
 

@@ -15,7 +15,7 @@ expect-scene ISLAND
 # Monster Mode (typed "I AM A MONSTER" + confirmation), then laying an
 # innocent citizen to rest (typed + confirmed again), the farewell, the
 # graveyard.
-push OPTIONS 0
+push OPTIONS 1
 wait 20
 expect-scene OPTIONS
 shot options_game

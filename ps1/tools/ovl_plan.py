@@ -191,7 +191,8 @@ MODAL_CALLBACKS = {
     "fp_island": ("cb_name_island", "cb_pet_name", "cb_title"),
     "fp_newisland": ("cb_ask_name", "cb_name", "cb_seed"),
     # E11: cb_adult is the Mature row's "Are you 18 or older?" confirm
-    "fp_options": ("cb_adult", "cb_defaults", "cb_monster_final", "cb_monster_typed"),
+    # U2: cb_preset is the Quick page's "Apply this preset?" confirm
+    "fp_options": ("cb_adult", "cb_defaults", "cb_monster_final", "cb_monster_typed", "cb_preset"),
     "fp_resident": ("cb_advice", "cb_help_choice", "cb_monster_typed", "cb_rest_final",
                     "cb_rest_first"),
     "fp_roster": ("cb_search",),

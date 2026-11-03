@@ -11,10 +11,11 @@
 #include "doomo/save_budget.h"
 
 static int g_cfg_on;                      /* the fake platform keeps a config record */
+static int g_motor;                       /* U2: ... and a rumble motor */
 static uint8_t g_cfg[PLAT_CONFIG_MAX];
 static int g_cfg_len, g_cfg_writes, g_changed_opt = -1, g_changed_val;
 
-uint32_t plat_features(void) { return g_cfg_on ? PLATF_CONFIG : 0; }
+uint32_t plat_features(void) { return (g_cfg_on ? PLATF_CONFIG : 0) | (g_motor ? PLATF_RUMBLE : 0); }
 int plat_config_read(uint8_t *dst, uint32_t cap)
 {
     uint32_t n = (uint32_t)g_cfg_len < cap ? (uint32_t)g_cfg_len : cap;
@@ -35,6 +36,7 @@ static void fresh(int cfg_on)
 {
     test_reset();
     g_cfg_on = cfg_on;
+    g_motor = 0;
     seccode_clear();                    /* U5: no code left over from an earlier test */
     memset(g_cfg, 0, sizeof(g_cfg));
     g_cfg_len = 0;
@@ -390,6 +392,123 @@ TEST(u5_picker_b_on_the_mature_screen_goes_back_to_the_language)
     CHECK_EQ(opt_get(OPT_LANGUAGE), LANG_ES);
     opt_set(OPT_LANGUAGE, LANG_EN);
     CHECK(opt_config_first_boot());
+}
+
+/* ---- U2: the Quick page, the Loss and Rumble rows, presets ---- */
+static void open_quick(void)
+{
+    scene_set(&SCENE_OPTIONS, 0);                  /* callers that pass 0 land on Quick */
+    idle(4);
+    CHECK(scene_top() == &SCENE_OPTIONS);
+}
+
+static void apply_preset(int right_presses)
+{
+    int i;
+    for (i = 0; i < 6; i++) press(BTN_DOWN);       /* Language, Music, Sound, Text, Difficulty, Gore, Preset */
+    for (i = 0; i < right_presses; i++) press(BTN_RIGHT);
+    press(BTN_A);                                  /* "Apply this preset?" */
+    CHECK(scene_top() == &SCENE_CONFIRM);
+    idle(2);
+    press(BTN_LEFT);                               /* Yes */
+    press(BTN_A);
+    idle(2);
+    CHECK(scene_top() == &SCENE_OPTIONS);
+}
+
+TEST(u2_quick_page_is_first_and_music_is_one_press_down)
+{
+    fresh(0);
+    CHECK_EQ(OPTPAGE_QUICK, 0);
+    open_quick();
+    CHECK_EQ(opt_get(OPT_MUSIC_VOL), 7);
+    press(BTN_DOWN);                               /* Language is the first row, Music the second */
+    press(BTN_LEFT);
+    CHECK_EQ(opt_get(OPT_MUSIC_VOL), 6);
+    CHECK_EQ(opt_get(OPT_LANGUAGE), LANG_EN);
+}
+
+TEST(u2_loss_row_ends_the_life_sim_page)
+{
+    fresh(0);
+    scene_set(&SCENE_OPTIONS, OPTPAGE_SIM);
+    idle(4);
+    CHECK_EQ(opt_get(OPT_LOSS), 1);
+    press(BTN_UP);                                 /* wraps to "Reset page" */
+    press(BTN_UP);                                 /* the last option: Loss */
+    press(BTN_LEFT);
+    CHECK_EQ(opt_get(OPT_LOSS), 0);
+    press(BTN_RIGHT);
+    CHECK_EQ(opt_get(OPT_LOSS), 1);
+}
+
+TEST(u2_rumble_row_shows_only_with_a_motor)
+{
+    fresh(0);
+    scene_set(&SCENE_OPTIONS, OPTPAGE_CONTROLS);
+    idle(4);
+    press(BTN_UP); press(BTN_UP);
+    press(BTN_LEFT);                               /* no motor: the last row is Turn buttons */
+    CHECK_EQ(opt_get(OPT_RUMBLE), 1);
+    CHECK_EQ(opt_get(OPT_TURN_SWAP), 1);
+    fresh(0);
+    g_motor = 1;
+    scene_set(&SCENE_OPTIONS, OPTPAGE_CONTROLS);
+    idle(4);
+    press(BTN_UP); press(BTN_UP);
+    press(BTN_LEFT);
+    CHECK_EQ(opt_get(OPT_RUMBLE), 0);
+    CHECK_EQ(opt_get(OPT_TURN_SWAP), 0);
+    CHECK_EQ(g_changed_opt, OPT_RUMBLE);
+}
+
+TEST(u2_preset_comfort_changes_play_settings_but_not_the_machine_ones)
+{
+    fresh(0);
+    opt_set(OPT_MUSIC_VOL, 3);
+    opt_set(OPT_LANGUAGE, LANG_ES);
+    opt_set(OPT_MATURE, MATURE_CENSORED);
+    opt_set(OPT_MONSTER_MODE, 1);
+    opt_set(OPT_CHEAT_DISCO, 1);
+    opt_set(OPT_EFFECTS, 0);
+    opt_set(OPT_FOV, 2);                           /* an ordinary option: back to its default first */
+    open_quick();
+    apply_preset(1);                               /* Comfort */
+    CHECK_EQ(opt_get(OPT_DIFFICULTY), 0);
+    CHECK_EQ(opt_get(OPT_AIM_ASSIST), 3);
+    CHECK_EQ(opt_get(OPT_FOV), 1);
+    CHECK_EQ(opt_get(OPT_MUSIC_VOL), 3);
+    CHECK_EQ(opt_get(OPT_LANGUAGE), LANG_ES);
+    CHECK_EQ(opt_mature(), MATURE_CENSORED);
+    CHECK_EQ(opt_get(OPT_MONSTER_MODE), 1);
+    CHECK_EQ(opt_get(OPT_CHEAT_DISCO), 1);
+    CHECK_EQ(opt_get(OPT_EFFECTS), 0);             /* the Performance page is never touched */
+}
+
+TEST(u2_preset_hardcore_then_cozy_flips_loss_and_default_resets)
+{
+    fresh(0);
+    open_quick();
+    apply_preset(4);                               /* Hardcore */
+    CHECK_EQ(opt_get(OPT_DIFFICULTY), 3);
+    CHECK_EQ(opt_get(OPT_LOSS), 1);
+    CHECK_EQ(opt_get(OPT_GORE), GORE_BRUTAL);
+    press(BTN_A);                                  /* the row still says Hardcore */
+    CHECK(scene_top() == &SCENE_CONFIRM);
+    idle(2);
+    press(BTN_A);                                  /* the default answer is No: nothing changes */
+    idle(2);
+    CHECK_EQ(opt_get(OPT_DIFFICULTY), 3);
+    press(BTN_RIGHT);                              /* Max accessibility */
+    press(BTN_RIGHT);                              /* wraps to Default */
+    press(BTN_A);
+    idle(2);
+    press(BTN_LEFT);
+    press(BTN_A);
+    idle(2);
+    CHECK_EQ(opt_get(OPT_DIFFICULTY), 1);
+    CHECK_EQ(opt_get(OPT_GORE), GORE_CUTE);
+    CHECK_EQ(opt_get(OPT_LOSS), 1);                /* Default has Loss on */
 }
 
 /* ---- U5: the adults' security code ---- */

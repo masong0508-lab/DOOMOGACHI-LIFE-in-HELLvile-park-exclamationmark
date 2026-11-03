@@ -13,7 +13,7 @@ press A
 wait 10
 expect-scene ISLAND
 # The island lives: Turbo sim speed + 15-minute days until dusk and night.
-push OPTIONS 2
+push OPTIONS 3
 wait 10
 press RIGHT
 press RIGHT

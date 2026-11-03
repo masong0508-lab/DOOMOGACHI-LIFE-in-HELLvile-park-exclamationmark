@@ -9,7 +9,7 @@ seed 7
 scene TITLE
 wait 2
 expect-lang en
-push OPTIONS 0
+push OPTIONS 1
 wait 10
 press RIGHT
 wait 6
@@ -54,7 +54,7 @@ wait 30
 shot es_saveload_saved
 press B
 wait 10
-push OPTIONS 4
+push OPTIONS 5
 wait 20
 shot es_options_display
 press B
@@ -67,13 +67,13 @@ wait 10
 # a language with no strings yet: English text, its own name on the row
 lang pt-BR
 expect-lang pt-BR
-push OPTIONS 0
+push OPTIONS 1
 wait 20
 shot ptbr_options_game
 press B
 wait 10
 # the Options row offers only ready languages: from pt-BR, RIGHT -> English
-push OPTIONS 0
+push OPTIONS 1
 wait 10
 press RIGHT
 wait 6
