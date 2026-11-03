@@ -134,6 +134,31 @@ static const char *save_err(void)
  *     expect-money / lang setups and checks (core/native/runner_main.c). The harness
  *     sends the rest of the script line as `arg`; w[] are its words. --- */
 static int is_digit(char c) { return c >= '0' && c <= '9'; }
+/* PSn00bSDK's libc has no atoi/strtoul (the CI build failed with implicit declarations), so parse
+ * the two shapes the harness uses by hand: plain decimal, and 0x-prefixed hex (the old strtoul base 0). */
+static unsigned long h_num(const char *s)
+{
+    unsigned long v = 0;
+    if (s[0] == '0' && (s[1] == 'x' || s[1] == 'X')) {
+        for (s += 2; ; s++) {
+            char c = *s;
+            if (c >= '0' && c <= '9') v = v * 16 + (unsigned long)(c - '0');
+            else if (c >= 'a' && c <= 'f') v = v * 16 + (unsigned long)(c - 'a' + 10);
+            else if (c >= 'A' && c <= 'F') v = v * 16 + (unsigned long)(c - 'A' + 10);
+            else break;
+        }
+        return v;
+    }
+    while (is_digit(*s)) v = v * 10 + (unsigned long)(*s++ - '0');
+    return v;
+}
+static int h_atoi(const char *s)
+{
+    int neg = 0;
+    while (*s == ' ' || *s == '\t') s++;
+    if (*s == '-') { neg = 1; s++; } else if (*s == '+') s++;
+    return neg ? -(int)h_num(s) : (int)h_num(s);
+}
 
 static int res_named(const char *nm)
 {
@@ -146,7 +171,7 @@ static int res_named(const char *nm)
 static int item_named(const char *nm)
 {
     int i;
-    if (is_digit(nm[0])) return atoi(nm);
+    if (is_digit(nm[0])) return h_atoi(nm);
     for (i = 1; i < ITEM_COUNT; i++)
         if (doomo_items[i].name && !strcmp(doomo_items[i].name, nm)) return i;
     return -1;
@@ -160,7 +185,7 @@ static int problem_kind(const char *nm)
         { "lonely", PROB_LONELY }
     };
     unsigned i;
-    if (is_digit(nm[0])) return atoi(nm);
+    if (is_digit(nm[0])) return h_atoi(nm);
     for (i = 0; i < sizeof(kinds) / sizeof(kinds[0]); i++)
         if (!strcmp(kinds[i].n, nm)) return kinds[i].k;
     return -1;
@@ -187,10 +212,10 @@ static int run_m0(const char *c, const char *a)
     char buf[64], *w[4] = { "", "", "", "" };
     int n = words(a, buf, sizeof(buf), w);
     if (!strcmp(c, "expect-money")) {
-        uint32_t min = (uint32_t)strtoul(w[0][0] ? w[0] : "0", NULL, 0);
+        uint32_t min = (uint32_t)h_num(w[0][0] ? w[0] : "0");
         reply(doomo_town.money >= min, doomo_town.money >= min ? "purse ok" : "purse too small", NULL);
     } else if (!strcmp(c, "item") || !strcmp(c, "expect-item")) {
-        int it = item_named(w[0]), k = n > 1 ? atoi(w[1]) : 1;
+        int it = item_named(w[0]), k = n > 1 ? h_atoi(w[1]) : 1;
         if (!HAVE(inv_add) || !HAVE(inv_count) || it <= ITEM_NONE || it >= ITEM_COUNT) {
             reply(0, "unknown item", w[0]);
         } else if (c[0] == 'i') {
@@ -210,11 +235,11 @@ static int run_m0(const char *c, const char *a)
             else
                 reply(sim_problem_raise(who, kind, 0xFFFF, it) >= 0, "problem", w[0]);
         } else {
-            int want = n > 1 ? atoi(w[1]) != 0 : 1;
+            int want = n > 1 ? h_atoi(w[1]) != 0 : 1;
             reply((sim_problem_for(who) >= 0) == want, want ? "no open problem for" : "a problem is still open for", w[0]);
         }
     } else if (!strcmp(c, "expect-rel")) {
-        int x = res_named(w[0]), y = res_named(w[1]), want = n > 2 ? atoi(w[2]) != 0 : 1;
+        int x = res_named(w[0]), y = res_named(w[1]), want = n > 2 ? h_atoi(w[2]) != 0 : 1;
         if (x < 0 || y < 0 || !HAVE(rel_kind))
             reply(0, "expect-rel needs two citizens' names:", w[1]);
         else
