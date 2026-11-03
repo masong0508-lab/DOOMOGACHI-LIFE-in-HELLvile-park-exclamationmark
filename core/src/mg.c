@@ -302,14 +302,15 @@ void mg_scene_update(void)
         mg_fx_update();
         break;
     case MGP_PAUSE:
-        { int sel = mg.pause_sel; pause_menu_nav(&sel, 3); mg.pause_sel = (uint8_t)sel; }
+        { int sel = mg.pause_sel; pause_menu_nav(&sel, 4); mg.pause_sel = (uint8_t)sel; }
+        if (mg.pause_sel == 1 && btn_pressed(BTN_LEFT | BTN_RIGHT)) pause_music_nudge(btn_pressed(BTN_LEFT) ? -1 : 1);
         if (btn_pressed(BTN_START) || btn_pressed(BTN_B) ||
             (btn_pressed(BTN_A) && mg.pause_sel == 0)) {
             mg.phase = MGP_PLAY;
             input_eat();
-        } else if (btn_pressed(BTN_A) && mg.pause_sel == 1) {
+        } else if (btn_pressed(BTN_A) && mg.pause_sel == 2) {
             options_open(OPTPAGE_AUDIO);
-        } else if (btn_pressed(BTN_A)) {
+        } else if (btn_pressed(BTN_A) && mg.pause_sel == 3) {
             leave();
         }
         break;
@@ -494,8 +495,13 @@ static void draw_ready(void)
 
 static void draw_pause(void)
 {
-    static const char *const labels[3] = { "Resume", "Options", "Quit" };
-    pause_menu_draw(labels, 3, mg.pause_sel, 0, mg.t, WIN_CUTE);
+    char mb[24];
+    const char *labels[4];
+    labels[0] = "Resume";
+    labels[1] = pause_music_label(mb, sizeof mb);
+    labels[2] = "Options";
+    labels[3] = "Quit";
+    pause_menu_draw(labels, 4, mg.pause_sel, 1u << 1, mg.t, WIN_CUTE);
 }
 
 static void draw_end(void)

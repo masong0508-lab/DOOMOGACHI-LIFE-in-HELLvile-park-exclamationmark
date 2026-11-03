@@ -13,7 +13,7 @@
 j1_boot_menu		2	32	U5/U6: boot -> title menu
 j2_continue		3	64	U6: boot -> story continued (Continue first, done)
 j3_title_music		9	20	U2: title -> Options music volume -1 -> title (target 5)
-j4_combat_music		11	26	U3a: combat pause -> music volume -1 -> fight (target 4)
+j4_combat_music		4	32	U3a: combat pause -> Music row -1 -> fight (target 4, met)
 j5_title_lang		5	12	U5: title -> language Spanish -> title
 j6_ow_save		3	12	U3b: START, START quick-saves from the story pause menu (met: 2; the Save row still works)
 j7_island_save		3	56	U3c: START, START quick-saves from the island menu (met: 2; the Save/Load row still works)

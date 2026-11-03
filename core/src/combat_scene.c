@@ -57,16 +57,18 @@ static void fit_text(char *s, int maxw)
 /* ---- pause menu --------------------------------------------------------- */
 /* Settings live in Options (the paged screen, pushed on top: the fight
  * stays frozen underneath and B comes back here). */
-enum { PM_RESUME, PM_WEAPON, PM_CAMERA, PM_OPTIONS, PM_QUIT, PM_COUNT };
+enum { PM_RESUME, PM_MUSIC, PM_WEAPON, PM_CAMERA, PM_OPTIONS, PM_QUIT, PM_COUNT };
 
 static void pause_update(void)
 {
     if (btn_pressed(BTN_START) || btn_pressed(BTN_B)) { cs_state = CS_PLAY; audio_sfx(SFX_CANCEL); return; }
     pause_menu_nav(&cs_sel, PM_COUNT);
     if (cs_sel == PM_CAMERA && btn_pressed(BTN_LEFT | BTN_RIGHT)) { combat_toggle_camera(); audio_sfx(SFX_CURSOR); }
+    if (cs_sel == PM_MUSIC && btn_pressed(BTN_LEFT | BTN_RIGHT)) pause_music_nudge(btn_pressed(BTN_LEFT) ? -1 : 1);
     if (!btn_pressed(BTN_A)) return;
     switch (cs_sel) {
     case PM_RESUME: cs_state = CS_PLAY; break;
+    case PM_MUSIC: break;
     case PM_WEAPON: cs_state = CS_WEAPONS; cs_wsel = doomo_player.weapon_slot; cs_top = 0; break;
     case PM_CAMERA: combat_toggle_camera(); break;
     case PM_OPTIONS: options_open(OPTPAGE_CONTROLS); return;
@@ -77,16 +79,17 @@ static void pause_update(void)
 
 static void pause_draw(void)
 {
-    char wb[40], wl[48];
+    char wb[40], wl[48], mb[24];
     const char *labels[PM_COUNT];
     weld_name(combat_weapon(), wb, sizeof(wb));
     doomo_snprintf(wl, sizeof(wl), "Weapons: %s", wb);
     labels[PM_RESUME] = "Resume";
+    labels[PM_MUSIC] = pause_music_label(mb, sizeof mb);
     labels[PM_WEAPON] = wl;
     labels[PM_CAMERA] = doomo_player.camera == CAM_FIRST_PERSON ? "Camera: 1st person" : "Camera: 3rd person";
     labels[PM_OPTIONS] = "Options";
     labels[PM_QUIT] = "Quit level";
-    pause_menu_draw(labels, PM_COUNT, cs_sel, 1u << PM_CAMERA, cs_t, style_now());
+    pause_menu_draw(labels, PM_COUNT, cs_sel, (1u << PM_CAMERA) | (1u << PM_MUSIC), cs_t, style_now());
 }
 
 /* ---- weapon select ----------------------------------------------------- */

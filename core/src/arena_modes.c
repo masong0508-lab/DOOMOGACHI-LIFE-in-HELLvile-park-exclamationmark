@@ -418,13 +418,15 @@ static void fight_tick(void)
 static void pause_update(void)
 {
     if (btn_pressed(BTN_START) || btn_pressed(BTN_B)) { am.state = am.prev_state; audio_sfx(SFX_CANCEL); return; }
-    { int sel = am.sel; pause_menu_nav(&sel, 4); am.sel = (uint8_t)sel; }
-    if (am.sel == 1 && btn_pressed(BTN_LEFT | BTN_RIGHT)) { combat_toggle_camera(); audio_sfx(SFX_CURSOR); }
+    { int sel = am.sel; pause_menu_nav(&sel, 5); am.sel = (uint8_t)sel; }
+    if (am.sel == 1 && btn_pressed(BTN_LEFT | BTN_RIGHT)) pause_music_nudge(btn_pressed(BTN_LEFT) ? -1 : 1);
+    if (am.sel == 2 && btn_pressed(BTN_LEFT | BTN_RIGHT)) { combat_toggle_camera(); audio_sfx(SFX_CURSOR); }
     if (!btn_pressed(BTN_A)) return;
-    if (am.sel == 2) { options_open(OPTPAGE_CONTROLS); return; }
+    if (am.sel == 3) { options_open(OPTPAGE_CONTROLS); return; }
     audio_sfx(SFX_SELECT);
     if (am.sel == 0) am.state = am.prev_state;
-    else if (am.sel == 1) combat_toggle_camera();
+    else if (am.sel == 1) return;                       /* the Music row is changed with left / right */
+    else if (am.sel == 2) combat_toggle_camera();
     else game_over(0);
 }
 
@@ -527,12 +529,14 @@ static void shop_draw(void)
 
 static void pause_draw(void)
 {
-    const char *labels[4];
+    char mb[24];
+    const char *labels[5];
     labels[0] = "Resume";
-    labels[1] = doomo_player.camera == CAM_FIRST_PERSON ? "Camera: 1st person" : "Camera: 3rd person";
-    labels[2] = "Options";
-    labels[3] = "Give up";
-    pause_menu_draw(labels, 4, am.sel, 1u << 1, am.t, WIN_HELL);
+    labels[1] = pause_music_label(mb, sizeof mb);
+    labels[2] = doomo_player.camera == CAM_FIRST_PERSON ? "Camera: 1st person" : "Camera: 3rd person";
+    labels[3] = "Options";
+    labels[4] = "Give up";
+    pause_menu_draw(labels, 5, am.sel, (1u << 1) | (1u << 2), am.t, WIN_HELL);
 }
 
 static void results_draw(void)

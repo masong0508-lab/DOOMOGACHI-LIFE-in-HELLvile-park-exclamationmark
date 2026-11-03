@@ -13,7 +13,7 @@
 #include "levels_int.h"
 
 enum { BR_INTRO, BR_PLAY, BR_PAUSE, BR_DONE, BR_DEAD };
-enum { BP_RESUME, BP_WEAPON, BP_CAMERA, BP_OPTIONS, BP_RESTART, BP_QUIT, BP_COUNT };
+enum { BP_RESUME, BP_MUSIC, BP_WEAPON, BP_CAMERA, BP_OPTIONS, BP_RESTART, BP_QUIT, BP_COUNT };
 
 static struct {
     uint8_t  level, mode, demo, state, sel, news;
@@ -157,13 +157,15 @@ static void pause_update(void)
     { int sel = br.sel; pause_menu_nav(&sel, BP_COUNT); br.sel = (uint8_t)sel; }
     if (btn_pressed(BTN_LEFT) || btn_pressed(BTN_RIGHT)) {
         int dir = btn_down(BTN_LEFT) ? -1 : 1;
-        if (br.sel == BP_WEAPON) combat_next_weapon(dir);
+        if (br.sel == BP_MUSIC) pause_music_nudge(dir);
+        else if (br.sel == BP_WEAPON) combat_next_weapon(dir);
         else if (br.sel == BP_CAMERA) { combat_toggle_camera(); audio_sfx(SFX_CURSOR); }
     }
     if (!btn_pressed(BTN_A)) return;
     audio_sfx(SFX_SELECT);
     switch (br.sel) {
     case BP_RESUME: br.state = BR_PLAY; break;
+    case BP_MUSIC: break;
     case BP_WEAPON: combat_next_weapon(1); break;
     case BP_CAMERA: combat_toggle_camera(); break;
     case BP_OPTIONS: options_open(OPTPAGE_CONTROLS); break;
@@ -306,16 +308,17 @@ static void hud_extras(void)
 
 static void pause_draw(void)
 {
-    char wb[40];
+    char wb[40], mb[24];
     const char *labels[BP_COUNT];
     weld_name(combat_weapon(), wb, sizeof(wb));
     labels[BP_RESUME] = "Resume";
+    labels[BP_MUSIC] = pause_music_label(mb, sizeof mb);
     labels[BP_WEAPON] = wb;
     labels[BP_CAMERA] = doomo_player.camera == CAM_FIRST_PERSON ? "Camera: 1st person" : "Camera: 3rd person";
     labels[BP_OPTIONS] = "Options";
     labels[BP_RESTART] = "Restart level";
     labels[BP_QUIT] = "Quit level";
-    pause_menu_draw(labels, BP_COUNT, br.sel, (1u << BP_WEAPON) | (1u << BP_CAMERA), br.t, style_now());
+    pause_menu_draw(labels, BP_COUNT, br.sel, (1u << BP_MUSIC) | (1u << BP_WEAPON) | (1u << BP_CAMERA), br.t, style_now());
 }
 
 /* one tally row: label, value text, points (counting up) */

@@ -237,7 +237,7 @@ before it begins.
 | J1 boot -> title menu | 2 | 0 | (U5/U6) |
 | J2 boot -> story continued | 3 | 0 | 3 (U6, Continue first: done) |
 | J3 title -> music volume -1 in Options -> title | 9 | 1 | 5 (U2) |
-| J4 combat pause -> music volume -1 -> back in the fight | 11 | 1 | 4 (U3a) |
+| J4 combat pause -> music volume -1 -> back in the fight | 4 | 0 | 4 (U3a: done, the pause shell's Music row) |
 | J5 title -> language to Spanish -> title | 5 | 1 | (U5) |
 | J6 story overworld: save from the pause menu, walk on | 2 | 0 | 3 (U3b quick save: done, START twice) |
 | J7 island: save from the START menu, back to the hub | 2 | 1 | 3 (U3c quick save: done, START twice) |

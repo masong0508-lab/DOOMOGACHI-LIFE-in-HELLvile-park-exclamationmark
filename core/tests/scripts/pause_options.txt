@@ -9,6 +9,7 @@ shot pause_menu
 press DOWN
 press DOWN
 press DOWN
+press DOWN
 press A
 wait 12
 expect-scene OPTIONS

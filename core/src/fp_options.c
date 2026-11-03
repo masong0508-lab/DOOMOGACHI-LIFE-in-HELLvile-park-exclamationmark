@@ -296,6 +296,25 @@ int pause_menu_nav(int *sel, int n)
     return 1;
 }
 
+const char *pause_music_label(char *buf, int n)
+{
+    int v = opt_get(OPT_MUSIC_VOL);
+    if (v <= 0) doomo_snprintf(buf, (size_t)n, "Music: off");
+    else doomo_snprintf(buf, (size_t)n, "Music: %d", v);
+    return buf;
+}
+
+int pause_music_nudge(int dir)
+{
+    int v = opt_get(OPT_MUSIC_VOL), nv = v + (dir < 0 ? -1 : 1);
+    if (nv < 0) nv = 0;
+    if (nv > doomo_option_info[OPT_MUSIC_VOL].count - 1) nv = doomo_option_info[OPT_MUSIC_VOL].count - 1;
+    if (nv == v) return 0;
+    opt_set(OPT_MUSIC_VOL, nv);
+    audio_sfx(SFX_CURSOR);
+    return 1;
+}
+
 void pause_menu_draw(const char *const *labels, int n, int sel, unsigned lr_mask, int t, int style)
 {
     int sw = plat_screen_w(), sh = plat_screen_h(), big = sh >= 200;

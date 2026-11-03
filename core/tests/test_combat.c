@@ -423,7 +423,7 @@ TEST(combat_scene_pause_finish_and_death)
     CHECK_EQ(combat_stats()->ticks, t0);              /* paused */
     shot("combat_pause");
     cam = doomo_player.camera;
-    frame(BTN_DOWN); frame(0); frame(BTN_DOWN); frame(0);       /* -> Camera */
+    frame(BTN_DOWN); frame(0); frame(BTN_DOWN); frame(0); frame(BTN_DOWN); frame(0);   /* Music, Weapons -> Camera */
     frame(BTN_A); frame(0);
     CHECK(doomo_player.camera != cam);
     frame(BTN_UP); frame(0);                                    /* -> Weapons */
@@ -568,4 +568,35 @@ TEST(combat_api_misc)
     combat_start(MAPID_COUNT + 3);
     for (t = 0; t < 30; t++) tick(BTN_UP);
     CHECK(doomo_player.hp == 100);
+}
+
+/* U3a: the pause shell's Music row changes the volume on the spot, clamps, and never leaves the fight */
+TEST(u3a_pause_music_row_changes_the_volume_in_place)
+{
+    int i, v;
+    scene_set(&SCENE_TITLE, 0);
+    opt_set(OPT_MUSIC_VOL, 7);
+    scene_push(&SCENE_COMBAT, MAPID_VAPE_CELLAR);
+    for (i = 0; i < 40; i++) frame(0);
+    frame(BTN_START); frame(0);
+    frame(BTN_DOWN); frame(0);                        /* Resume -> Music */
+    frame(BTN_LEFT); frame(0);
+    CHECK_EQ(opt_get(OPT_MUSIC_VOL), 6);
+    frame(BTN_RIGHT); frame(0); frame(BTN_RIGHT); frame(0);
+    CHECK_EQ(opt_get(OPT_MUSIC_VOL), 8);
+    frame(BTN_A); frame(0);                           /* A on the row does nothing (no quit) */
+    CHECK(scene_top() == &SCENE_COMBAT);
+    CHECK_EQ(opt_get(OPT_MUSIC_VOL), 8);
+    for (i = 0; i < 15; i++) { frame(BTN_RIGHT); frame(0); }
+    v = opt_get(OPT_MUSIC_VOL);
+    CHECK_EQ(v, doomo_option_info[OPT_MUSIC_VOL].count - 1);       /* clamped at the top */
+    for (i = 0; i < 15; i++) { frame(BTN_LEFT); frame(0); }
+    CHECK_EQ(opt_get(OPT_MUSIC_VOL), 0);                           /* and at off */
+    {
+        char b[24];
+        CHECK_STR(pause_music_label(b, sizeof b), "Music: off");
+    }
+    frame(BTN_B); frame(0);                           /* back in the fight */
+    CHECK(scene_top() == &SCENE_COMBAT);
+    opt_set(OPT_MUSIC_VOL, 7);
 }
