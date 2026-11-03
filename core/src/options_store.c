@@ -102,15 +102,24 @@ static void put_machine(int opt, int v)
     else doomo_town.opt[opt] = (uint8_t)v;
 }
 
+static int s_first_boot;       /* U5: the platform keeps a record and none was there at boot */
+
+int opt_config_first_boot(void) { return s_first_boot; }
+void opt_config_first_boot_done(void) { s_first_boot = 0; }
+
 int opt_config_load(void)
 {
     uint8_t rec[PLAT_CONFIG_MAX];
     int n, k, lang_before = opt_get(OPT_LANGUAGE);
+    s_first_boot = 0;
     if (!have_config()) return 0;
     memset(rec, 0, sizeof(rec));
     n = plat_config_read(rec, sizeof(rec));
-    if (n < (int)OPT_CONFIG_SETTINGS_SZ || rec[0] != 'D' || rec[1] != 'O' || rec[2] != OPT_CONFIG_VERSION) return 0;
-    if (crc16(rec, 30) != (uint16_t)(rec[30] | (rec[31] << 8))) return 0;
+    if (n < (int)OPT_CONFIG_SETTINGS_SZ || rec[0] != 'D' || rec[1] != 'O' || rec[2] != OPT_CONFIG_VERSION ||
+        crc16(rec, 30) != (uint16_t)(rec[30] | (rec[31] << 8))) {
+        s_first_boot = 1;                                   /* no valid record: first boot (U5) */
+        return 0;
+    }
     s_quiet = 1;
     for (k = 0; k < 7; k++) put_machine(k_rec[k], rec[4 + k]);
     s_quiet = 0;

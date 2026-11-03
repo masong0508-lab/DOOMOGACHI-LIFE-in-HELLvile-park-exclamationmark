@@ -28,5 +28,10 @@ void opt_machine_changed(int opt, int value);
 int  opt_config_load(void);
 /* Write the record now (opt_machine_changed does it on every change). 1 = stored. */
 int  opt_config_save(void);
+/* U5: 1 when the platform keeps a config record (PLATF_CONFIG) and opt_config_load found none, so this
+ * is the machine's first boot and SCENE_LANG_PICK runs once. Always 0 where nothing is kept (native,
+ * DC for now). _done() clears it (the picker calls it after it wrote the record). */
+int  opt_config_first_boot(void);
+void opt_config_first_boot_done(void);
 
 #endif

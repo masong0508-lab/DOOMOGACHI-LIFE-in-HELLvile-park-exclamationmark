@@ -180,3 +180,42 @@ TEST(u0_platform_is_told)
     CHECK_EQ(g_changed_opt, OPT_RUMBLE);
     CHECK_EQ(g_changed_val, 0);
 }
+
+/* ---- U5: the first-boot language picker ---- */
+static void frame(uint32_t b) { plat_begin_frame(); doomo_frame(b); plat_end_frame(); }
+
+TEST(u5_first_boot_only_where_a_record_is_kept_and_missing)
+{
+    fresh(0);
+    CHECK(!opt_config_load());
+    CHECK(!opt_config_first_boot());               /* no record kept here (native): never asks */
+    fresh(1);
+    CHECK(!opt_config_load());
+    CHECK(opt_config_first_boot());                /* kept, but empty: first boot */
+    opt_config_save();
+    CHECK(opt_config_load());
+    CHECK(!opt_config_first_boot());               /* the record exists now */
+}
+
+TEST(u5_picker_applies_the_choice_saves_and_hands_to_the_title)
+{
+    int i;
+    fresh(1);
+    CHECK(!scene_is_reserved_stub(&SCENE_LANG_PICK));
+    CHECK(!opt_config_load());
+    scene_set(&SCENE_LANG_PICK, 0);
+    for (i = 0; i < 10; i++) frame(0);
+    CHECK(scene_top() == &SCENE_LANG_PICK);
+    frame(BTN_DOWN);                               /* English -> the next ready language */
+    frame(0);
+    CHECK_EQ(opt_get(OPT_LANGUAGE), LANG_ES);
+    g_cfg_writes = 0;
+    frame(BTN_A);
+    frame(0);
+    CHECK(scene_top() == &SCENE_TITLE);
+    CHECK(g_cfg_writes >= 1);
+    CHECK(!opt_config_first_boot());
+    CHECK(opt_config_load());                      /* the record keeps Spanish */
+    CHECK_EQ(opt_get(OPT_LANGUAGE), LANG_ES);
+    opt_set(OPT_LANGUAGE, LANG_EN);
+}

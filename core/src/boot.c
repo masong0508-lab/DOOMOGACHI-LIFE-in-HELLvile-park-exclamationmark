@@ -5,6 +5,8 @@
  * and a giant heart iris wipes to SCENE_TITLE. A / START skip ahead.
  */
 #include "ui_internal.h"
+#include "doomo/options_store.h"
+#include "doomo/plat_ext.h"
 
 #define T_LAND   24
 #define T_TEXT   30
@@ -51,6 +53,13 @@ static void heart_face(int cx, int cy, int s, int t)
     }
 }
 
+/* U5: the very first boot of a console with a config record asks for the language once */
+static void boot_next(void)
+{
+    if (opt_config_first_boot() && !(plat_test_flags() & PLAT_TEST_NO_PICKER)) scene_set(&SCENE_LANG_PICK, 0);
+    else scene_set(&SCENE_TITLE, 0);
+}
+
 static void boot_enter(int arg)
 {
     (void)arg;
@@ -64,12 +73,12 @@ static void boot_update(void)
     if (t == T_TEXT + 2) audio_sfx(SFX_SPARKLE);
     if (t == T_WIPE) audio_sfx(SFX_HAPPY);
     if (t >= T_END) {
-        scene_set(&SCENE_TITLE, 0);
+        boot_next();
         return;
     }
     if (t < T_WIPE && t > 4 && btn_pressed(BTN_A | BTN_START | BTN_B)) {
         /* skip: straight to the wipe */
-        scene_set(&SCENE_TITLE, 0);
+        boot_next();
     }
 }
 
