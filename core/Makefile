@@ -141,6 +141,8 @@ story-check:
 	    echo "story-check: show compiled in a pack without role=mslot|ending"; exit 1; fi
 	@$(PYTHON) $(CORE)/tools/textpack.py --data $(CORE)/tests/fixtures/e0_builtin_ok \
 	    --out-root "$(BUILD)/e0pack/ok" >/dev/null
+	@# --- E7: the content pack tool (tools/mpack): format read from pack.h, seeded refusals ---
+	@$(PYTHON) -I $(CORE)/../tools/mpack/test_mpack.py | tail -n 1
 	@echo "story-check: user packs OK (fixture byte-identical, $$(ls $(CORE)/tests/fixtures/e0_bad/*.dsc | wc -l) seeded refusals)"
 # --- end P0 ---
 
