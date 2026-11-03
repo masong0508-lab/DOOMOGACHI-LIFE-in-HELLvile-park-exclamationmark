@@ -928,6 +928,15 @@ static void mood_add_(int i, int d)
     bond_[i] = (uint8_t)((bond_[i] & 15u) | ((unsigned)m << 4));
 }
 
+/* LS3: the life event engine nudges moods and reads names through these. */
+void family_mood_add(int id, int delta)
+{
+    int i = find_slot(id);
+    if (i >= 0) mood_add_(i, delta);
+}
+
+const char *family_name(int id) { return member_name_(id); }
+
 static void news2_(const char *fmt, int a, int b)
 {
     char msg[NEWS_LEN], n1[DOOMO_NAME_LEN + 1], n2[DOOMO_NAME_LEN + 1];

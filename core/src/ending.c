@@ -99,13 +99,17 @@ int ending_resolve_finale(void)
     /* secret outranks bad outranks good: E11, then E10, before the rules below */
     if (e11_ok_()) return ENDING_E11;
     if (e10_ok_()) return ENDING_E10;
-    /* secret > bad > good (ending.h). Provisional until E3 / E4 land their rules: the better
-     * good ending E02 needs a real household (3+ members, the player included) and nobody
-     * lost to neglect; otherwise the default E01. E06 / E07 (the parade) and the secret
-     * finales stay with their content packages. */
+    /* secret > bad > good (ending.h). E3's rule for the two finale good endings: E02, the better
+     * one, needs a real household (3+ members, the player included), nobody lost to neglect, and
+     * at least one close tie to show for it: a housemate with a closest housemate, a child, a
+     * couple you matched, or a happy island (average happiness 60+). Anything less is the default
+     * E01. E06 / E07 (the parade) and the other endings stay with their own packages. */
     LifeEndingFacts f;
     life_ending_facts(&f);
-    return (f.household >= 3 && f.neglect_deaths == 0) ? ENDING_E02 : ENDING_E01;
+    if (f.household >= 3 && f.neglect_deaths == 0 &&
+        (f.best_friends >= 1 || f.kids >= 1 || f.couples >= 1 || f.happiness >= 60))
+        return ENDING_E02;
+    return ENDING_E01;
 }
 
 int ending_partner(void)

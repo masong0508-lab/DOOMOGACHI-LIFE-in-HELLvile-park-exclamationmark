@@ -9007,8 +9007,9 @@ script s31_rivet {
   WAIT 8 0
   WAIT 8 0
   WAIT 8 0
-  JIF 12 @8
-  JMP 0 @8
+  WAIT 8 0
+  JIF 12 @9
+  JMP 0 @9
   HOME 0 2
   SETF 241 0
   SETF 242 0
@@ -9025,6 +9026,7 @@ script s31_squeaker {
   SFX 0 40
   WAIT 5 0
   WAIT 13 0
+  WAIT 8 0
   END 0 0
 }
 script s31_wake {
@@ -9032,6 +9034,7 @@ script s31_wake {
   HOLD 13 0
   SFX 0 39
   WAIT 5 0
+  WAIT 8 0
   WAIT 8 0
   SHAKE 11 0
   MUSIC 0 11
@@ -9193,6 +9196,7 @@ script s33_retreat {
 script s33_rivet_call {
   WAIT 8 0
   WAIT 8 0
+  WAIT 8 0
   END 0 0
 }
 script s33_rivet_upgrade {
@@ -9276,15 +9280,17 @@ script s35_grampy {
   DATA 3 T
   DATA 3 T
   DATA 4 @10
-  DATA 4 @24
+  DATA 4 @26
   PUSH 4 88
-  JLT 0 @20
+  JLT 0 @22
   DATA 0 0
-  JLT 0 @24
+  JLT 0 @26
   DATA 0 1
   SETF 41 0
   BEFRIEND 253 3
   DATA 2 88
+  WAIT 8 0
+  WAIT 8 0
   WAIT 13 0
   END 0 0
   SETF 41 0
@@ -9306,15 +9312,16 @@ script s35_hattie {
   DATA 3 T
   DATA 3 T
   DATA 4 @13
-  DATA 4 @30
+  DATA 4 @31
   PUSH 4 71
-  JLT 0 @24
+  JLT 0 @25
   DATA 0 0
-  JLT 0 @30
+  JLT 0 @31
   DATA 0 1
   SETF 40 0
   BEFRIEND 253 3
   DATA 2 71
+  WAIT 8 0
   WAIT 8 0
   WAIT 8 0
   END 0 0

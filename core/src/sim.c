@@ -16,6 +16,7 @@
 #include "doomo/playas.h"
 #include "sim_int.h"
 #include "doomo/family.h"
+#include "doomo/life_events.h"
 
 SimState sim_s;
 
@@ -683,6 +684,7 @@ static void day_rollover(void)
     family_freewill_daily();             /* F7: the household looks after itself */
     family_help_daily();                 /* F9: a helping hand (bonus) */
     family_events_daily();               /* F8: confidences, squabbles, making up */
+    life_events_daily();                 /* LS3: a potluck, a lucky find, a rotten day ... */
     family_disaster_daily();             /* F10: warnings and outcomes (Loss on) */
     family_loss_daily();                 /* F6: neglect and old age */
 }

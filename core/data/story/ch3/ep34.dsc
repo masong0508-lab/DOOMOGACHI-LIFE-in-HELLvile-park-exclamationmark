@@ -120,6 +120,8 @@ go:
   say hattie SAD "There was someone else in / there too. She hated every / second." [HEART]
   [R8]
   say hattie HAPPY "{..}She had great timing, / though."
+  [R8]
+  say hattie HAPPY "The demon kept asking if / I was comfortable in / there. {.}I said: dinner first."
   end
 lost:
   setf 40
@@ -152,6 +154,10 @@ go:
   setf 41
   befriend grampy 3
   say grampy HAPPY "Sunny! You're Sunny! I / remember everything! {..} / Where are my glasses?"
+  [R8]
+  say grampy HAPPY "Back in '74 I was possessed / for a weekend. {.}Best / weekend of my LIFE."
+  [R8]
+  say nar "(Nobody asks. Nobody wants / to ask.)"
   [R13]
   say grampy SAD "{d}...The mouse who threw / the seeds. I never said / thank you." [HEART]
   end

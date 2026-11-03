@@ -26,6 +26,8 @@ script s31_wake
   [R5]
   say nar "You wake up on the floor. / The front door is buzzing / like a wasp in a jar."
   [R8]
+  say nar "(You are wearing one sock / and a bathrobe that is / not yours. Worth it.)"
+  [R8]
   shake SHK_RUMBLE
   music SONG_INVASION
   say nar "(Outside, the sky is red. / Not sunset red. / Wrong red.)" [HEART]
@@ -52,6 +54,8 @@ script s31_squeaker
   say nar "The whole demon pack flees / the honk. Single file. Very / well behaved."
   [R13]
   say ID_SQUEAKER HAPPY "Hell's got nothing on a / room full of six-year-olds / on cake."
+  [R8]
+  say ID_SQUEAKER HAPPY "I also do ADULT parties. / {.}Adult balloon animals. / {.}Mostly giraffes."
 end
 
 # Hattie and Grampy in the road: possessions three and four, staged
@@ -131,6 +135,8 @@ script s31_rivet
   say rivet HAPPY "@P! Quit gawking and grab / a plate. They're heavy. / That's the point."
   give ITEM_HELLSTEEL 3
   say rivet NEUTRAL "Three welded plates. They / snap onto your windows. / Check your Shelter tab."
+  [R8]
+  say rivet HAPPY "I'm very good with my / hands. {.}Welding. I meant / welding."
   [R8]
   say rivet HAPPY "And THIS. A toaster turret. / Fires every twelve frames. / Wind it every twenty shots."
   [R8]

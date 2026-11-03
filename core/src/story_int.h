@@ -252,7 +252,8 @@ enum { CB_LIFE_FAMILY_ADD = CB_LIFE_FIRST,  /* ARG = resident: join the househol
                                                VAR0 = 0 on success, else FAM_ERR_* */
        CB_LIFE_HOUSEHOLD,                    /* VAR0 = household size, the player included */
        CB_LIFE_KIDS,                         /* VAR0 = children in the household           */
-       CB_LIFE_PARTNER };                    /* VAR0 = the partner's resident id, -1 if none */
+       CB_LIFE_PARTNER,                      /* VAR0 = the partner's resident id, -1 if none */
+       CB_LIFE_EVENT };                      /* LS3: ARG = LEV_* id: fire that life event; VAR0 = 1 if it ran */
 /* --- end K0 --- */
 enum { GRB_DISH = 1,            /* a dish fed (+1, capped at 15)                 */
        GRB_EXES,                /* the exes met so far = value (0..7)            */

@@ -172,4 +172,4 @@ skipping `playas_avatar()`.
 ## Still open
 - The new family screens, toasts and event lines are English-only until the L8 re-translation pass.
 - The ENDING_E02 finale rule (`ending_resolve_finale`: household 3+ and no neglect deaths) is still the provisional one; the real good-ending rule is a design call for you (E3), the bad ones are E4.
-- Phase 4 is wired to the LS3 life-event engine / `CB_LIFE_*` callbacks (the engine is not in the tree yet; away helping runs from `family_help_daily` meanwhile), disaster story hooks (hand-written scripts, Loss Off = rescue), and an owner tone check of the disaster, loss and event lines (a first read found them kid-safe and non-graphic).
+- Phase 4 is wired to the LS3 life-event engine / `CB_LIFE_*` callbacks (LS3's engine landed 2026-11-03 in `core/src/life_events.c`; away helping still runs from `family_help_daily`, and the disaster hooks are still to wire), disaster story hooks (hand-written scripts, Loss Off = rescue), and an owner tone check of the disaster, loss and event lines (a first read found them kid-safe and non-graphic).

@@ -329,6 +329,8 @@ int  family_disaster_daily(void);               /* resolve a pending one or roll
 #define FAMILY_BOND_MAX 15
 int  family_bond(int id);                  /* 0..15; 0 for a non-member */
 int  family_mood(int id);                  /* 0..15 */
+void family_mood_add(int id, int delta);   /* clamped 0..15 (LS3 events); no-op for a non-member */
+const char *family_name(int id);           /* the member's name, "" if none (LS3 news lines) */
 void family_bond_add(int id, int delta);   /* clamped */
 const char *family_bond_line(int id);      /* "Close to you" / "Wants more time with you" / NULL */
 int  family_close_id(int id);              /* the housemate this member is closest to, or -1 (derived, not saved) */

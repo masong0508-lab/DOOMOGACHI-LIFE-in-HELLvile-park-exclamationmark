@@ -234,6 +234,8 @@ script s33_rivet_call
   say rivet NEUTRAL "Oh, and my sign says zero / days since the last fire. / It's on fire."
   [R8]
   say rivet NEUTRAL "{d}It's a different fire."
+  [R8]
+  say rivet NEUTRAL "Also, Vex asked if I do / house calls. {.}I said I / only do FIRE calls."
 end
 
 script s33_rivet_upgrade

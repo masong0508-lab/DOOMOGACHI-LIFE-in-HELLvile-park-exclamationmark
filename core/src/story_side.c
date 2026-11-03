@@ -15,6 +15,7 @@
  */
 #include "story_int.h"
 #include "doomo/family.h"
+#include "doomo/life_events.h"
 #include "doomo/life.h"
 #include "overworld_int.h"   /* S4: ownpc_find / ownpc_cast (a verb's resident) */
 #include "doomo/unlock_ids.h" /* S4: UL_STORY_SONG2 (CB_SIDE_ONCE) */
@@ -1068,6 +1069,7 @@ void side_callback(int cb, int choice)
     case CB_LIFE_HOUSEHOLD: vm_set_var(0, life_family_count()); break;
     case CB_LIFE_KIDS: { LifeEndingFacts f; life_ending_facts(&f); vm_set_var(0, f.kids); break; }
     case CB_LIFE_PARTNER: vm_set_var(0, life_player_partner()); break;
+    case CB_LIFE_EVENT: vm_set_var(0, life_event_fire(choice)); break;   /* LS3 */
     /* --- end LS5 --- */
     default: break;
     }
