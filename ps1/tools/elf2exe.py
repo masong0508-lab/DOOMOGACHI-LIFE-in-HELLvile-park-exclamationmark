@@ -83,6 +83,10 @@ def main(argv):
     except Exception:
         gp = 0
     end = max(bss_hi if bss_hi is not None else hi, ovl_hi or 0, sym_end) - 0x80000000
+    # the layout in one line, so a log shows what sets the end (image / bss / overlay slot)
+    print("elf2exe: layout: image 0x%x-0x%x (%d B), bss 0x%x-0x%x (%d B), overlay slot ends 0x%x, _end 0x%x" % (
+        lo, hi, hi - lo, bss_lo or 0, bss_hi or 0, (bss_hi - bss_lo) if bss_lo is not None else 0,
+        ovl_hi or 0, sym_end))
     if end > 0x200000 - 0x10000:
         print("elf2exe: image + bss end at 0x%x, leaves no room for the stack "
               "in 2 MB RAM" % (end + 0x80000000))

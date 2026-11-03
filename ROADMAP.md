@@ -316,6 +316,7 @@ Worked example (U6c):
 | CI | `doomo-ci-fix-gen-ps1-nov02za` | `CI: regenerate core/gen text packs; PS1 hcmd.c without atoi/strtoul` | check-gen was STALE on 110 generated files (text_*.c, lang_tab_es.c, txt_dict.c): regenerated with `make -C core gen`, `make -C core check-gen` now clean; PS1 build failed (-Werror, implicit atoi/strtoul in ps1/src/hcmd.c): replaced by local h_atoi/h_num (decimal + 0x hex); core + ps1 only |
 | CI | `doomo-ci-ps1-diag-nov02zb` | `CI: PS1 link says how far over the RAM limit it is and which objects stay resident` | the PS1 disc fails at link: image + bss end at 0x801f3b00, 15,104 B past the 64 KB stack reserve (limit 0x801f0000); no size change here: elf2exe prints the overshoot and ovl_plan runs with OVL_WHY=1 so the next log lists the biggest resident objects; the real cut is the next patch |
 | CI | `doomo-ci-ps1-modal-cb-nov02zc` | `CI: PS1 overlay planner knows the family wizard and Mature-row modal callbacks` | ovl_plan.py MODAL_CALLBACKS lacked fp_family's 12 ui_choice/ui_confirm/ui_text_entry callbacks, fp_options cb_adult (E11), fp_apartments house_pick and playas_scene nl_done/nl_start, so they and what they reach stayed in resident RAM (fp_family 5.8 KB, fp_options 4.5 KB in the log); PS1 disc was 15,104 B past the stack reserve; expected to free up to ~10 KB, not measured here (no PS1 toolchain); planner still keeps any callback resident that a resident taker reaches |
+| CI | `doomo-ci-ps1-slot-diag-nov02zd` | `CI: PS1 log shows which overlay group sets the slot and the image/bss/slot layout` | after nov02zc the PS1 disc is 10,608 B over the stack reserve (was 15,104 B); no size change here: ovl_plan prints each group's RAM need (house net of its borrowed .bss) and elf2exe prints image / bss / slot ends, so the next cut targets what actually binds |
 
 How the owner applies patches (so nobody has to ask again): from Termux, one pasted line per patch, oldest first, each line
 is the full template above (`cd` repo, `git pull --ff-only`, `rm -rf ~/vs && mkdir ~/vs`, `unzip -qo` the zip from
@@ -342,3 +343,4 @@ and the reply gives the line with NAME and MESSAGE filled in, plus a ROADMAP row
 <!-- doomo-ci-fix-gen-ps1-nov02za -->
 <!-- doomo-ci-ps1-diag-nov02zb -->
 <!-- doomo-ci-ps1-modal-cb-nov02zc -->
+<!-- doomo-ci-ps1-slot-diag-nov02zd -->

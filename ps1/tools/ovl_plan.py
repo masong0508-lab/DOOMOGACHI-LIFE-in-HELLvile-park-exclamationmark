@@ -853,6 +853,20 @@ def main(argv):
                             print("ovl_plan:   %s:%s -> %s %s:%s" % (base(objs[n[0]].path), n[1],
                                   PARTS[g][part_of[t][1] - 1][0], base(objs[t[0]].path), t[1]))
         # --- end H4 ---
+        # which group sets the slot: each group's RAM need (the house is linked lower, over its borrowed
+        # .bss, so it is shown net of that; the rest of the slot is the biggest of these)
+        dem = []
+        for g in sorted(groups):
+            sz = sum(node_size(n) for n in groups[g] if n not in part_of)
+            if g in PARTS:
+                sz += max((sum(node_size(n) for n, v in part_of.items() if v == (g, k))
+                           for k in range(1, len(PARTS[g]) + 1)), default=0)
+            if borrow and g in BORROW_GROUPS:
+                sz -= borrow_bytes
+            dem.append((sz, g))
+        dem.sort(reverse=True)
+        print("ovl_plan: slot demand (estimate, house net of borrowed .bss): " +
+              ", ".join("%s %d B" % (g, sz) for sz, g in dem[:6]))
         if os.environ.get("OVL_WHY"):
             c = collections.Counter()
             for n in resident:
