@@ -156,9 +156,15 @@ skipping `playas_avatar()`.
   the member has no player-bond line to show ("Close to you" / "Wants more time
   with you" still come first). LS5 can read `family_close_id` for best friends.
 
+## Done: PA1 landed, Phase 1 and LS5 facts are wired
+- `playas.c` is in the tree (strong `playas_switch`, `playas_recent`, `playas_story_locked`). Family > "Play as them" and "Switched back!" switch for real (`fp_family.c`), the recent-characters hop is in `overworld.c` / `playas_scene.c`.
+- `life_ending_facts` is strong in `family.c` (household, kids, best friends via `family_close_id`, neglect deaths). `make -C core test`: 722 passed, 0 failed.
+
+## Done: Phase 4 away helping (no LS3 yet)
+- An adult, elder or teen with bond 5+ may leave for a day (`family_away_start`, news "headed out to lend a hand"; the Family list shows "Away helping today"). The next town day `family_away_return` brings home H$20-60 (two days in three) or a small find (scrap, gears, glitter, flowers or a blood orange). One trip at a time, nothing saved (a load cancels it), not when free will is Off, silent at Subconscious, a lost member or one you now play brings nothing. Children, babies and toddlers still give their gift or smile at once and never leave. Same story wait as before. Test: `family_away_helping`; `make -C core test` 723 passed, 0 failed.
+
 ## Still open
-- `life_ending_facts` (kids, best friends; LS5's, still a weak default, now has `family_close_id` to read).
-- Phase 1 switching is still waiting on PA1 (no `playas.c` in the tree yet; `weak_playas.c` is the stand-in).
-- Phase 4 via LS3 (away helping, item returns), disaster story hooks (hand-written
-  scripts, Loss Off = rescue), and an owner tone check of the disaster, loss and
-  event lines (a first read found them kid-safe and non-graphic).
+- Asking for the security code when Mature is turned on later, and the 18+ confirm, belong to E11. Until it lands, the options screen has no code check (the ASK mode of SCENE_SECURITY_CODE exists, nothing pushes it yet).
+- The new family screens, toasts and event lines are English-only until the L8 re-translation pass.
+- The ENDING_E02 finale rule (`ending_resolve_finale`: household 3+ and no neglect deaths) is still the provisional one; E3 and E4 own the real rules.
+- Phase 4 is wired to the LS3 life-event engine / `CB_LIFE_*` callbacks (the engine is not in the tree yet; away helping runs from `family_help_daily` meanwhile), disaster story hooks (hand-written scripts, Loss Off = rescue), and an owner tone check of the disaster, loss and event lines (a first read found them kid-safe and non-graphic).

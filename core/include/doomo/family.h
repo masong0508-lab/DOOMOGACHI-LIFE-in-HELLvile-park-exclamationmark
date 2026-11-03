@@ -284,6 +284,13 @@ int  family_freewill_daily(void);
  * 2 = gift, 3 = a smile. */
 int  family_help_do(int id);
 int  family_help_daily(void);
+/* Away helping (Phase 4): the daily pass sends an adult, elder or teen (bond 5+) out for a day;
+ * the next town day they come home with H$ or a small find (flowers, scrap, gears, glitter, a
+ * blood orange). One trip at a time, nothing saved (a load cancels it). Children, babies and
+ * toddlers never leave. family_away_id() = who is away, -1 = nobody. */
+int  family_away_id(void);
+int  family_away_start(int id);     /* 1 = they left */
+int  family_away_return(void);      /* 1 = they brought something home */
 
 /* ---- F8: bond-gated events (nothing saved) --------------------------------------
  * Run daily after free will (not when it is Off; silent at Subconscious). A member

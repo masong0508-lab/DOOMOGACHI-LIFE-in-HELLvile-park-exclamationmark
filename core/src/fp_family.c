@@ -479,7 +479,8 @@ static void fam_draw(void)
                 if (!f) continue;
                 doomo_snprintf(l2, sizeof(l2), "%s - %s", role_names[f->role % FAMROLE_COUNT],
                                f->role == FAMROLE_PET ? "Pet" : doomo_life_stage_names[f->stage % LIFE_COUNT]);
-                if (family_bond_line(id)) doomo_snprintf(l2, sizeof(l2), "%s", family_bond_line(id));
+                if (id == family_away_id()) doomo_snprintf(l2, sizeof(l2), "Away helping today");
+                else if (family_bond_line(id)) doomo_snprintf(l2, sizeof(l2), "%s", family_bond_line(id));
                 else if (family_close_line(id)) doomo_snprintf(l2, sizeof(l2), "%s", family_close_line(id));
                 draw_row(x, y, w, rh, sel, role_icon(f->role), PP(PAINT_ROSE, 1), member_name(id, nm), l2);
                 if (id == playas_avatar()) fp_tag(x + w - 30, y + 3, "you", PAL_UI_GOLD, PAL_WHITE);

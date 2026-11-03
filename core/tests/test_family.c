@@ -653,6 +653,46 @@ TEST(family_helpers)
     CHECK_EQ(family_help_daily(), 0);
 }
 
+TEST(family_away_helping)
+{
+    int a, k, i, back = 0;
+    uint32_t m0;
+    fresh();
+    a = family_pool_add(FAMROLE_SIBLING, LIFE_ADULT, 5u, "Ann", PRONOUN_SHE);
+    k = family_pool_add(FAMROLE_CHILD, LIFE_CHILD, 6u, "Pip", PRONOUN_HE);
+    CHECK(a >= 0 && k >= 0);
+    CHECK_EQ(family_away_id(), -1);
+    CHECK(!family_away_start(a));                                   /* bond 3: not yet */
+    family_bond_add(a, 4); family_bond_add(k, 4);
+    CHECK(!family_away_start(k));                                   /* a child never leaves */
+    CHECK(family_away_start(a));
+    CHECK_EQ(family_away_id(), a);
+    CHECK(!family_away_start(a));                                   /* one trip at a time */
+    family_freewill_set(FAMILY_WILL_SUBCONSCIOUS);
+    m0 = doomo_town.money;
+    for (i = 0; i < 40 && !back; i++) { back = family_away_return(); family_away_start(a); if (back) break; }
+    CHECK(back || doomo_town.money > m0 || family_away_id() == a);
+    /* the daily pass: leave one day, home the next */
+    fresh();
+    a = family_pool_add(FAMROLE_SIBLING, LIFE_ADULT, 5u, "Ann", PRONOUN_SHE);
+    family_bond_add(a, 12);
+    family_freewill_set(FAMILY_WILL_SUBCONSCIOUS);
+    doomo_town.mode = TOWN_FREEPLAY;                                 /* no story wait */
+    for (i = 0; i < 400 && family_away_id() < 0; i++) family_help_daily();
+    CHECK_EQ(family_away_id(), a);
+    CHECK_EQ(family_help_daily(), 1);                               /* the next day: home with something */
+    CHECK_EQ(family_away_id(), -1);
+    /* a trip does not survive Off, and a lost member brings nothing */
+    CHECK(family_away_start(a));
+    family_freewill_set(FAMILY_WILL_OFF);
+    CHECK_EQ(family_help_daily(), 0);
+    CHECK_EQ(family_away_id(), -1);
+    family_freewill_set(FAMILY_WILL_NORMAL);
+    CHECK(family_away_start(a));
+    family_lose(a, FAMLOSS_ILLNESS);
+    CHECK_EQ(family_away_return(), 0);
+}
+
 TEST(family_helpers_wait_for_the_story)
 {
     int a, i, n = 0;

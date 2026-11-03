@@ -24,6 +24,8 @@ static uint16_t sq_a_, sq_b_;      /* F8 pending squabble */
 static uint8_t sq_on_;
 static uint8_t dis_kind_;          /* F10 pending disaster (not saved) */
 static uint16_t dis_id_;
+static uint8_t away_on_;           /* F9 a member is away helping until tomorrow (not saved) */
+static uint16_t away_id_;
 #define BOND_DEFAULT 0x83u
 static uint8_t bond_[FAMILY_MAX];   /* F7/F8: low nibble bond, high nibble mood, parallel to fam_ */
 static uint8_t fam_n_;
@@ -303,6 +305,7 @@ void family_clear(void)
     neglect_grace_ = 0;
     sq_on_ = 0;
     dis_kind_ = 0;
+    away_on_ = 0;
     will_ = FAMILY_WILL_NORMAL;
     memset(fam_, 0, sizeof(fam_));
     memset(bond_, BOND_DEFAULT, sizeof(bond_));
@@ -524,6 +527,7 @@ int family_load(const uint8_t *src, uint32_t len)
     fam_n_ = (uint8_t)n;
     will_ = (uint8_t)((src[1] >= 1 && src[1] <= 5) ? src[1] - 1 : FAMILY_WILL_NORMAL);
     dis_kind_ = 0;
+    away_on_ = 0;
     sq_on_ = 0;
     neglect_grace_ = 1;                 /* F6: a load never costs a day of care */
     return 1;
@@ -1012,17 +1016,63 @@ int family_help_do(int id)
     return kind;
 }
 
+/* F9 "away helping": an adult, elder or teen with bond 5+ spends a day away and comes home the next
+ * town day with something: H$ (two days in three) or a small find. Children and babies never leave
+ * (they give their gift or smile at once). Nothing is saved: a load cancels the trip. */
+int family_away_id(void) { return away_on_ ? (int)away_id_ : -1; }
+
+static int away_can_(const FamilyMember *m)
+{
+    return m->role != FAMROLE_PET && m->id != playas_avatar() &&
+           (m->stage == LIFE_ADULT || m->stage == LIFE_ELDER || m->stage == LIFE_TEEN);
+}
+
+int family_away_start(int id)
+{
+    int i = find_slot(id);
+    char msg[NEWS_LEN];
+    if (away_on_ || i < 0 || !away_can_(&fam_[i]) || (bond_[i] & 15u) < 5) return 0;
+    away_on_ = 1;
+    away_id_ = (uint16_t)id;
+    if (will_ != FAMILY_WILL_SUBCONSCIOUS) {
+        doomo_snprintf(msg, sizeof(msg), "%s headed out to lend a hand today.", member_name_(id));
+        sim_news_push(msg);
+    }
+    return 1;
+}
+
+int family_away_return(void)
+{
+    static const uint8_t finds[5] = { ITEM_SCRAP, ITEM_GEARS, ITEM_GLITTER, ITEM_FLOWERS, ITEM_BLOOD_ORANGE };
+    int id = (int)away_id_, i, find;
+    char msg[NEWS_LEN];
+    if (!away_on_) return 0;
+    away_on_ = 0;
+    i = find_slot(id);
+    if (i < 0 || !away_can_(&fam_[i])) return 0;           /* lost, or you are playing them now */
+    find = sim_rand(3) == 0;
+    if (!find) return family_help_do(id) != 0;
+    inv_add(finds[sim_rand(5)], 1);
+    doomo_snprintf(msg, sizeof(msg), "%s is back and found something for you!", member_name_(id));
+    if (will_ != FAMILY_WILL_SUBCONSCIOUS) sim_news_push(msg);
+    return 1;
+}
+
 int family_help_daily(void)
 {
     static const uint8_t pct[5] = { 0, 3, 6, 10, 14 };
     int cands[FAMILY_MAX], nc = 0, i;
-    if (will_ == FAMILY_WILL_OFF || !fam_n_) return 0;
+    if (will_ == FAMILY_WILL_OFF || !fam_n_) { away_on_ = 0; return 0; }
     /* a bonus once the story is cleared; free play has no story to wait for */
-    if (doomo_town.mode == TOWN_STORY && story_chapter() != STORY_CH_DONE) return 0;
+    if (doomo_town.mode == TOWN_STORY && story_chapter() != STORY_CH_DONE) { away_on_ = 0; return 0; }
+    if (away_on_) return family_away_return();            /* home again: that is today's help */
     if (!sim_chance(pct[will_])) return 0;   /* no household: no RNG draw */
     for (i = 0; i < fam_n_; i++)
         if (fam_[i].id != playas_avatar() && fam_[i].role != FAMROLE_PET && (bond_[i] & 15u) >= 5) cands[nc++] = i;
-    return nc ? family_help_do(fam_[cands[sim_rand(nc)]].id) != 0 : 0;
+    if (!nc) return 0;
+    i = cands[sim_rand(nc)];
+    if (away_can_(&fam_[i])) { family_away_start(fam_[i].id); return 0; }   /* they come back tomorrow */
+    return family_help_do(fam_[i].id) != 0;
 }
 
 /* ---- F7: free will -------------------------------------------------------------- */

@@ -310,6 +310,7 @@ Worked example (U6c):
 | U3a | `doomo-u3a-pause-shell-nov02u` | `U3a: pause shell Music row (J4 11 -> 4 presses)` | every pause menu (combat, Hell Breach levels, arena, minigames) gets a Music row under Resume that LEFT/RIGHT changes on the spot (`pause_music_label/nudge` in fp_options.c); J4 is START, DOWN, LEFT, B, budget 4. Other rows moved down one: combat, pause_options and levels_modes tests updated. `make -C core test` 711/711, 154 scripts, 19 journeys. Not built for GBA/PS1 here |
 | E1 | `doomo-w4-adult-gate-nov02v` | `E1: real adult allow-list (mature_adult_ok)` | strong mature_adult_ok: premade adult, name matches, not custom, not kid cast (compiled copy checked against kid_cast.txt); core only |
 | U5 | `doomo-w4-mature-code-nov02w` | `U5: first-boot Mature question and security code` | first-boot Mature question + SCENE_SECURITY_CODE (4-digit code, salted hash in config bytes 32..47); skipping the code keeps Mature Off; core only, not built for GBA/PS1 |
+| F9 | `doomo-f9-away-helping-nov02x` | `F9: household members go away helping for a day (Phase 4)` | adult, elder or teen with bond 5+ leaves for a day and comes home the next town day with H$ or a small find; Family list shows "Away helping today"; nothing saved; not wired to LS3 (engine not in the tree); `make -C core test` 723/723, core only, not built for GBA/PS1 |
 
 How the owner applies patches (so nobody has to ask again): from Termux, one pasted line per patch, oldest first, each line
 is the full template above (`cd` repo, `git pull --ff-only`, `rm -rf ~/vs && mkdir ~/vs`, `unzip -qo` the zip from
@@ -330,3 +331,4 @@ and the reply gives the line with NAME and MESSAGE filled in, plus a ROADMAP row
 <!-- doomo-u3a-pause-shell-nov02u -->
 <!-- doomo-w4-adult-gate-nov02v -->
 <!-- doomo-w4-mature-code-nov02w -->
+<!-- doomo-f9-away-helping-nov02x -->
