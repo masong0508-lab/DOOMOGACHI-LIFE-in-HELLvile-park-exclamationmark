@@ -325,10 +325,10 @@ static void preset_apply(int n)
 {
     int i;
     if (n < 0 || n >= PRESET_N) return;
-    for (i = 0; i < OPT2_END; i++) {
-        if (i == OPT_COUNT) { i = OPT2_FIRST - 1; continue; }
+    for (i = 0; i < OPT_COUNT; i++)
         if (preset_may(i)) opt_set(i, info_of(i)->def);
-    }
+    for (i = OPT2_FIRST; i < OPT2_END; i++)
+        if (preset_may(i)) opt_set(i, info_of(i)->def);
     for (i = 0; i < preset_len[n]; i++) {
         const PresetSet *s = &preset_set[n][i];
         if (preset_may(s->opt) && value_ok(s->opt, s->val)) opt_set(s->opt, s->val);
