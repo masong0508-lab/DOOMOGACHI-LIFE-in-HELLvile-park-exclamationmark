@@ -75,8 +75,30 @@ int ending_count_seen(void)
     return n;
 }
 
+/* E10 "Every Sparkle": every secret sparkle there is (HaHaland 0..7, Hellvile 16..23, the united
+ * park 24..31: slots 8..15 hold none) and the dream D2 played. E11 "One More Time": a New Game+
+ * run that has seen the bottle and opened the suitcase. */
+static int sparkles_all_(void)
+{
+    int i;
+    for (i = 0; i < 32; i++)
+        if (!(i >= 8 && i < 16) && !story_flag(STORY_FLAG_SECRET_FIRST + i)) return 0;
+    return 1;
+}
+
+static int e10_ok_(void) { return sparkles_all_() && story_episode_done(BEAT_D2); }
+static int e11_ok_(void) { return story_flag(SF_NGPLUS) && story_flag(SF_BOTTLE_SEEN) && story_flag(SF_SUITCASE_OPEN); }
+
+void ending_check_sparkles(void)
+{
+    if (e10_ok_() && !ending_seen(ENDING_E10)) ending_reach(ENDING_E10);
+}
+
 int ending_resolve_finale(void)
 {
+    /* secret outranks bad outranks good: E11, then E10, before the rules below */
+    if (e11_ok_()) return ENDING_E11;
+    if (e10_ok_()) return ENDING_E10;
     /* secret > bad > good (ending.h). Provisional until E3 / E4 land their rules: the better
      * good ending E02 needs a real household (3+ members, the player included) and nobody
      * lost to neglect; otherwise the default E01. E06 / E07 (the parade) and the secret
@@ -125,6 +147,7 @@ void ending_finale_reached(void)
     ending_reach(ending_resolve_finale());
     ending_check_family();
     ending_check_bonejangles();
+    ending_check_sparkles();
 }
 
 /* E09 "Bonejangles Bows": the Feast is over (any outcome) and the machine-heart piece is found. */

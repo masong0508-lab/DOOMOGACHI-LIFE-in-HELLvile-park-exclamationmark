@@ -13,6 +13,7 @@
 #include "doomo/txt.h"
 #include "doomo/house_api.h"
 #include "doomo/unlock_ids.h"
+#include "doomo/ending.h"
 #include "story_ch12.h"       /* S2: Chapters 1-2 as VM content */
 #include "story_ch34.h"       /* S3: Chapters 3-4 as VM content */
 
@@ -743,6 +744,7 @@ void story_trigger_ow(int tag)
             ui_toast(STR_ICON_SPARK " A secret sparkle!");
             for (i = 0; i < 32; i++) n += story_flag(STORY_FLAG_SECRET_FIRST + i);
             if (n >= 15) unlock_grant(USTORY_SECRETS);
+            ending_check_sparkles();                 /* E10: the last one may complete them */
         }
         return;
     }

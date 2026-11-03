@@ -108,6 +108,56 @@ TEST(ending_retired_slots_never_trigger_count_or_show)
     CHECK(ending_visible(ENDING_E06));                 /* a live one is still listed */
 }
 
+static void all_sparkles(int on)
+{
+    int i;
+    for (i = 0; i < 32; i++) story_set_flag(STORY_FLAG_SECRET_FIRST + i, on);
+}
+
+TEST(ending_e10_needs_every_sparkle_and_d2)
+{
+    int i;
+    fresh();
+    all_sparkles(0);
+    story_episode_set_done(BEAT_D2, 0);
+    ending_check_sparkles();
+    CHECK(!ending_seen(ENDING_E10));
+    for (i = 0; i < 32; i++) if (!(i >= 8 && i < 16)) story_set_flag(STORY_FLAG_SECRET_FIRST + i, 1);
+    ending_check_sparkles();                            /* every sparkle, but D2 not played */
+    CHECK(!ending_seen(ENDING_E10));
+    CHECK_EQ(ending_resolve_finale(), ENDING_E01);
+    story_episode_set_done(BEAT_D2, 1);
+    story_set_flag(STORY_FLAG_SECRET_FIRST + 20, 0);    /* one missing */
+    ending_check_sparkles();
+    CHECK(!ending_seen(ENDING_E10));
+    story_set_flag(STORY_FLAG_SECRET_FIRST + 20, 1);
+    CHECK_EQ(ending_resolve_finale(), ENDING_E10);      /* secret outranks the good finale */
+    ending_check_sparkles();
+    CHECK(ending_seen(ENDING_E10));
+    CHECK_EQ(ending_pending(), ENDING_E10);
+    ending_take_pending();
+    ending_check_sparkles();                            /* once only: no second card */
+    CHECK_EQ(ending_pending(), ENDING_NONE);
+    all_sparkles(0);
+    story_episode_set_done(BEAT_D2, 0);
+}
+
+TEST(ending_e11_needs_new_game_plus_the_bottle_and_the_suitcase)
+{
+    fresh();
+    story_set_flag(SF_NGPLUS, 0); story_set_flag(SF_BOTTLE_SEEN, 1); story_set_flag(SF_SUITCASE_OPEN, 1);
+    CHECK_EQ(ending_resolve_finale(), ENDING_E01);      /* not a New Game+ */
+    story_set_flag(SF_NGPLUS, 1); story_set_flag(SF_BOTTLE_SEEN, 0);
+    CHECK_EQ(ending_resolve_finale(), ENDING_E01);      /* no bottle */
+    story_set_flag(SF_BOTTLE_SEEN, 1); story_set_flag(SF_SUITCASE_OPEN, 0);
+    CHECK_EQ(ending_resolve_finale(), ENDING_E01);      /* no suitcase */
+    story_set_flag(SF_SUITCASE_OPEN, 1);
+    CHECK_EQ(ending_resolve_finale(), ENDING_E11);
+    ending_finale_reached();
+    CHECK(ending_seen(ENDING_E11));
+    story_set_flag(SF_NGPLUS, 0); story_set_flag(SF_BOTTLE_SEEN, 0); story_set_flag(SF_SUITCASE_OPEN, 0);
+}
+
 TEST(ending_e09_needs_the_feast_over_and_the_heart_found)
 {
     fresh();

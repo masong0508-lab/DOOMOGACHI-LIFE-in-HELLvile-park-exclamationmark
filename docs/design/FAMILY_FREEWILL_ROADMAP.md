@@ -166,7 +166,10 @@ skipping `playas_avatar()`.
 ## Done: E11 Mature on the options screen
 - Game page, last row: **Mature** (Off, Censored, On; the pack level comes with a pack). Lowering it never asks. Raising it asks for the grown-ups' code first when one is set (SCENE_SECURITY_CODE, ASK; three wrong tries lock it as before, backing out changes nothing), then "Are you 18 or older?" (default No). With no code set only the 18+ question is asked. "Reset page" puts Mature back to Off. Tests: three `e11_options_mature_*` in test_options_store.c; `make -C core test` 726 passed, 0 failed.
 
+## Done: E3 secret finales E10 and E11 (rules only)
+- `ending_resolve_finale` now ranks secret above the rest: E11 (needs `SF_NGPLUS`, `SF_BOTTLE_SEEN`, `SF_SUITCASE_OPEN`), then E10 (every secret sparkle that exists, slots 0..7 and 16..31, plus dream D2 played), then the provisional good rule. `ending_check_sparkles()` also fires when the last sparkle is found after the finale. Tests: `ending_e10_*`, `ending_e11_*`; `make -C core test` 728 passed, 0 failed. Nothing sets `SF_NGPLUS` yet (the NG+ restart is not built), so E11 cannot fire in play until it is.
+
 ## Still open
 - The new family screens, toasts and event lines are English-only until the L8 re-translation pass.
-- The ENDING_E02 finale rule (`ending_resolve_finale`: household 3+ and no neglect deaths) is still the provisional one; E3 and E4 own the real rules.
+- The ENDING_E02 finale rule (`ending_resolve_finale`: household 3+ and no neglect deaths) is still the provisional one; the real good-ending rule is a design call for you (E3), the bad ones are E4.
 - Phase 4 is wired to the LS3 life-event engine / `CB_LIFE_*` callbacks (the engine is not in the tree yet; away helping runs from `family_help_daily` meanwhile), disaster story hooks (hand-written scripts, Loss Off = rescue), and an owner tone check of the disaster, loss and event lines (a first read found them kid-safe and non-graphic).
