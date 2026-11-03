@@ -504,14 +504,14 @@ static void picnic(void)
     fp_achieve(UL_FP_PICNIC);
 }
 
-static void collect_rent(void)
+/* LS-QA: rent collects itself once a day, a moment after the hub is idle (RENT_AUTO_IDLE ticks with
+ * no menu open); the Town Hall row still works, and says so when today's is already in. */
+#define RENT_AUTO_IDLE 90
+
+static void collect_rent_now(void)
 {
     int i, n = 0, amount;
     char buf[64];
-    if (fp_rent_day() == doomo_town.day + 1) {
-        ui_say(-1, "You've already collected today's rent. Come back tomorrow!");
-        return;
-    }
     for (i = 0; i < DOOMO_MAX_RESIDENTS; i++)
         if (doomo_town.res[i].status == RES_ALIVE || doomo_town.res[i].status == RES_GHOST) n++;
     amount = 50 + n * 2;
@@ -523,6 +523,15 @@ static void collect_rent(void)
     audio_sfx(SFX_PICKUP);
     fp_fx_burst(fp_sw() / 2, fp_sh() / 2, FX_COIN, 16);
     fp_achieve(UL_FP_LANDLORD);
+}
+
+static void collect_rent(void)
+{
+    if (fp_rent_day() == doomo_town.day + 1) {
+        ui_say(-1, "You've already collected today's rent. Come back tomorrow!");
+        return;
+    }
+    collect_rent_now();
 }
 
 static void run_entry(const Entry *e)
@@ -785,6 +794,7 @@ static void island_update(void)
     if (fp_island_song() != I.song) { I.song = fp_island_song(); audio_music(I.song); }
     if (I.menu_open) { menu_update(); return; }
     I.idle++;
+    if (I.idle == RENT_AUTO_IDLE && fp_rent_day() != doomo_town.day + 1) collect_rent_now();   /* LS-QA */
     if (btn_repeat(BTN_LEFT)) I.sel = move_dir(I.sel, -1, 0);
     if (btn_repeat(BTN_RIGHT)) I.sel = move_dir(I.sel, 1, 0);
     if (btn_repeat(BTN_UP)) I.sel = move_dir(I.sel, 0, -1);

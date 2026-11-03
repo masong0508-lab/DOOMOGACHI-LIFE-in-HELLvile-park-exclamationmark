@@ -137,8 +137,12 @@ uint32_t plat_entropy(void)
 /* input */
 static uint32_t read_pad(void)
 {
-    uint32_t k = (~(uint32_t)REG_KEYINPUT) & KEY_MASK;
-    uint32_t b = DOOMO_INPUT_SYNTH_XY;
+    uint16_t ime = REG_IME;
+    uint32_t k, b = DOOMO_INPUT_SYNTH_XY;
+    REG_IME = 0;                                   /* LS-IN: take and clear the VBlank latch atomically */
+    k = ((~(uint32_t)REG_KEYINPUT) & KEY_MASK) | gba_key_latch;
+    gba_key_latch = 0;
+    REG_IME = ime;
     gba_keys = k;
     if (k & KEY_UP)     b |= BTN_UP;
     if (k & KEY_DOWN)   b |= BTN_DOWN;

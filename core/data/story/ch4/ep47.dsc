@@ -97,7 +97,7 @@ script s47_buffet
   [R13]
   say ID_HONKERS NEUTRAL "Napkin?"
   [R5]
-  say grumble HAPPY "For you, sweetheart, I'll / use it. Nice fold. {.}Seven. / Needs salt."
+  say grumble HAPPY "For you, sweetheart, I'll / use it. Nice fold. {.}Seven. / Needs salt. And a lawyer."
   [R5]
   say nar "The napkin is not / interested."
   [R21]
@@ -112,7 +112,7 @@ script s47_stage
   sfx SFX_FANFARE
   say mayor HAPPY "Citizens of Hillvile! / Citizens of Hellvile! / Citizens of... BOTH!"
   [R5]
-  say mayor HAPPY "Population: one thousand / and one." [HEART]
+  say mayor HAPPY "Population: one thousand / and one. Plus whoever / is under the buffet." [HEART]
   [R5]
   say nar "@E, horned, sits on his / hat. Beeps once. The hat / allows it."
   [R5]

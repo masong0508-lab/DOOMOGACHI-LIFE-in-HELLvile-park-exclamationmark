@@ -156,4 +156,17 @@ int  ending_kid_cast(int id);
 enum { MATURE_OFF, MATURE_CENSORED, MATURE_ON, MATURE_PACK, MATURE_LEVELS };
 int  opt_mature(void);
 
+
+/* ---- E4 additions (strong only: ending.c) ---------------------------------
+ * Route state. ending_route_add: meter += amount (40 offers, 120 starts dating); returns the
+ * meter. ending_route_set: move a route forward to RSTAGE_* (or REFUSED); needs mature_adult_ok
+ * and PA9's two-way gate for the partner (ROUTE_ANY takes `partner`, the others ignore it);
+ * returns 1 if it changed. ending_route_partner: the resident id a route is with, -1 none.
+ * COMMITTED / MARRIED plus Mature not Off makes the finale E12 / E13 / E14. */
+int  ending_route_stage(int route);
+int  ending_route_meter(int route);
+int  ending_route_partner(int route);
+int  ending_route_add(int route, int amount);
+int  ending_route_set(int route, int stage, int partner);
+
 #endif

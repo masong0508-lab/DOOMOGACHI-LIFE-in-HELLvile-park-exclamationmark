@@ -17,6 +17,7 @@
 #include "doomo/family.h"
 #include "doomo/life_events.h"
 #include "doomo/life.h"
+#include "doomo/ending.h"
 #include "overworld_int.h"   /* S4: ownpc_find / ownpc_cast (a verb's resident) */
 #include "doomo/unlock_ids.h" /* S4: UL_STORY_SONG2 (CB_SIDE_ONCE) */
 
@@ -1071,6 +1072,12 @@ void side_callback(int cb, int choice)
     case CB_LIFE_PARTNER: vm_set_var(0, life_player_partner()); break;
     case CB_LIFE_EVENT: vm_set_var(0, life_event_fire(choice)); break;   /* LS3 */
     /* --- end LS5 --- */
+    /* --- E4: romance routes (story_int.h CB_ROUTE_*) --- */
+    case CB_ROUTE_STAGE: vm_set_var(0, ending_route_stage(choice & 15)); break;
+    case CB_ROUTE_ADD: vm_set_var(0, ending_route_add(choice & 15, (choice >> 4) & 0xFF)); break;
+    case CB_ROUTE_SET: vm_set_var(0, ending_route_set(choice & 15, (choice >> 4) & 15, (choice >> 8) & 0x3FF)); break;
+    case CB_ROUTE_PARTNER: vm_set_var(0, ending_route_partner(choice & 15)); break;
+    /* --- end E4 --- */
     default: break;
     }
 }

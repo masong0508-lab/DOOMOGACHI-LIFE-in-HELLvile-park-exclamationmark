@@ -12,6 +12,11 @@
 
 void gba_irq_dispatch(uint32_t flags);
 
+/* LS-IN, the press latch: the pad used to be read once per 30 Hz tick, so on the slow hub frames
+ * (about 100 ms of drawing) a tap that began and ended between two reads was lost. Every VBlank now
+ * ORs the held keys in here; read_pad() takes them with the live reading and clears the latch. */
+volatile uint32_t gba_key_latch;
+
 MixVoice mix_voice[MIX_VOICES];
 static int8_t mixbuf[2 * MIX_SAMPLES] __attribute__((aligned(4)));
 static int16_t acc[MIX_SAMPLES];
@@ -78,6 +83,7 @@ void gba_irq_dispatch(uint32_t flags)
 {
     if (flags & IRQ_VBLANK) {
         gba_vblanks++;
+        gba_key_latch |= (~(uint32_t)REG_KEYINPUT) & KEY_MASK;
         audio_vblank_mix();
     }
 }

@@ -1,5 +1,6 @@
-# life_rent (M0): the island hub -> today's rent collected (Town Hall,
-# Collect rent). Budget: budgets.tsv life_rent.
+# life_rent (M0; LS-QA): the island hub -> today's rent collected. Rent now
+# collects itself after the hub has sat idle a moment, so the journey is
+# zero presses: it only waits. Budget: budgets.tsv life_rent.
 scene NEW_ISLAND
 wait 10
 press A
@@ -16,12 +17,7 @@ expect-scene ISLAND
 wait 30
 money 500
 journey-begin life_rent
-press A
-wait 1
-press DOWN
-press DOWN
-press A
-wait 1
+wait 70
 expect-money 551
 journey-end life_rent
 shot rent

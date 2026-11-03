@@ -14,6 +14,9 @@
 #include "doomo/platform.h"
 #include "doomo/ui.h"
 #include "doomo/town.h"
+#include "doomo/sim.h"
+#include "doomo/roster.h"
+#include "doomo/resident.h"
 
 #define RECENT_N 4
 #define PF_NEWLIFE 1u
@@ -175,6 +178,65 @@ static uint32_t play_write(uint8_t *d, uint32_t cap)
     d[20] = P.pos.map; d[21] = P.pos.dir;
     d[24] = P.flags & PF_HEROPOS ? 1 : 0;
     return PLAY_SZ_HEADER;
+}
+
+
+/* ---- PA9: the play-as romance gate ------------------------------------------
+ * Pairs that do not touch "you" (the hero, the avatar, a family pool member)
+ * are exactly LS0's sim_romance_ok: a one-way crush stays one-way. A pair that
+ * does touch you is stricter, because mature slots and routes hang off it:
+ *   - both sides alive and ADULT / ELDER (no teens, kids or babies);
+ *   - BOTH directions accept: each side's preference takes the other's
+ *     pronoun group (the player's confession needs the NPC to be open too);
+ *   - never family (REL_FAMILY, or a pool child / parent / sibling /
+ *     grandparent / pet), never a kid-coded premade (KID / TEEN roster traits). */
+static int touches_you(int id) { return id == PLAYAS_ID_HERO || id == playas_avatar() || in_family(id); }
+
+static int pron_grp(int p) { return p == PRONOUN_SHE ? ROMANCE_SHE : p == PRONOUN_HE ? ROMANCE_HE : ROMANCE_THEY; }
+
+typedef struct { int ok, stage, pronoun, pref; } RomSide;
+
+static RomSide rom_side(int id)
+{
+    RomSide s = { 0, LIFE_ADULT, PRONOUN_THEY, ROMANCE_NONE };
+    const FamilyIdentity *fi;
+    const FamilyMember *fm;
+    const DoomoResident *r;
+    int role = family_role(id);
+    if (role == FAMROLE_CHILD || role == FAMROLE_PARENT || role == FAMROLE_SIBLING ||
+        role == FAMROLE_GRANDPARENT || role == FAMROLE_PET) return s;
+    if (in_family(id)) {
+        fi = family_identity(id);
+        fm = family_find(id);
+        if (!fi || !fm) return s;
+        s.stage = fm->stage; s.pronoun = fi->pronoun; s.pref = fi->romance;
+        s.ok = 1;
+        return s;
+    }
+    r = town_res(id);
+    if (!r || r->status != RES_ALIVE) return s;
+    if (id < DOOMO_PLAYER_ID && (roster_traits(id) & (ROSTER_T_KID | ROSTER_T_TEEN))) return s;
+    s.stage = sim_life_stage(id); s.pronoun = r->pronoun; s.pref = RES_ROMANCE(r);
+    s.ok = 1;
+    return s;
+}
+
+static int accepts(const RomSide *a, const RomSide *b)
+{
+    return a->pref != ROMANCE_NONE && (a->pref == ROMANCE_ANY || a->pref == pron_grp(b->pronoun));
+}
+
+int playas_romance_ok(int from, int to)
+{
+    RomSide a, b;
+    if (from == to) return 0;
+    if (!touches_you(from) && !touches_you(to)) return sim_romance_ok(from, to);
+    a = rom_side(from); b = rom_side(to);
+    if (!a.ok || !b.ok) return 0;
+    if (!LIFE_IS_ADULT(a.stage) || !LIFE_IS_ADULT(b.stage)) return 0;
+    if (!accepts(&a, &b) || !accepts(&b, &a)) return 0;
+    if (!in_family(from) && !in_family(to) && rel_kind(from, to) == REL_FAMILY) return 0;
+    return 1;
 }
 
 static void play_reset(void) { memset(&P, 0, sizeof P); }

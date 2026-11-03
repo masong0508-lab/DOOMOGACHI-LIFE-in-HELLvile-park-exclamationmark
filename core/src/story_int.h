@@ -254,6 +254,11 @@ enum { CB_LIFE_FAMILY_ADD = CB_LIFE_FIRST,  /* ARG = resident: join the househol
        CB_LIFE_KIDS,                         /* VAR0 = children in the household           */
        CB_LIFE_PARTNER,                      /* VAR0 = the partner's resident id, -1 if none */
        CB_LIFE_EVENT };                      /* LS3: ARG = LEV_* id: fire that life event; VAR0 = 1 if it ran */
+/* E4: the romance route hooks (CB_ROUTE block). ARG = route (ROUTE_*) in bits 0..3. */
+enum { CB_ROUTE_STAGE = CB_ROUTE_FIRST,   /* VAR0 = the route's RSTAGE_*                                   */
+       CB_ROUTE_ADD,                      /* ARG bits 4..11 = meter to add; VAR0 = the meter after         */
+       CB_ROUTE_SET,                      /* ARG bits 4..7 = RSTAGE_*, bits 8..17 = partner (ROUTE_ANY); VAR0 = 1 if it moved */
+       CB_ROUTE_PARTNER };                /* VAR0 = the route's resident id, -1 none                       */
 /* --- end K0 --- */
 enum { GRB_DISH = 1,            /* a dish fed (+1, capped at 15)                 */
        GRB_EXES,                /* the exes met so far = value (0..7)            */

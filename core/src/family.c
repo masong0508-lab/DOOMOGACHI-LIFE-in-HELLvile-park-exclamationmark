@@ -196,7 +196,7 @@ static int role_ok(int id, int stage, int role, int self)
     /* LS0: adults only, both ways; a resident also passes the full gate */
     if (!LIFE_IS_ADULT(stage) || !LIFE_IS_ADULT(sim_life_stage(DOOMO_PLAYER_ID))) return FAM_ERR_GATE;
     if (id < DOOMO_MAX_RESIDENTS &&
-        !(sim_romance_ok(DOOMO_PLAYER_ID, id) && sim_romance_ok(id, DOOMO_PLAYER_ID)))
+        !(playas_romance_ok(DOOMO_PLAYER_ID, id) && playas_romance_ok(id, DOOMO_PLAYER_ID)))
         return FAM_ERR_GATE;
     return 0;
 }

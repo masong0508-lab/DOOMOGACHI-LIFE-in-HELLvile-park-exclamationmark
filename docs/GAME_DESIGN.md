@@ -248,7 +248,7 @@ before it begins.
 | a problem that needs an item not in the bag: find, shop, help | 26 | 3 | 3 (LS-QA: buy on the spot) |
 | feed a citizen found by name | 6 + name | 3 | (LS-QA) |
 | introduce two citizens found by name | 13 + 2 names | 4 | (LS-QA) |
-| collect today's rent | 4 | 0 | 0 (LS-QA: automatic) |
+| collect today's rent | 0 | 0 | 0 (LS-QA: automatic, done) |
 | save the island | 2 (= J7) | 1 | 3 (U3c: done) |
 | open the news | 1 | 1 | |
 | open the Doomogachi | 1 | 1 | |

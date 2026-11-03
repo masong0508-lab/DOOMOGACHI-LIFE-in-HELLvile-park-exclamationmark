@@ -103,6 +103,18 @@ The PS1 life-sim status checklist (what is verified, written, or missing on that
   family, pockets and profiles (K0), life stages + two-way adult-only romance
   gate (LS0), journey/tap meter (M0), PG-21 register + lint (E5).
 
+- Wave 6 (2026-11-03, `make -C core test` 754/754 + story-check): PA9 `playas_romance_ok` is now the real play-as gate (anything touching
+  the hero, the avatar or a family pool member needs both sides adult/elder, both directions accepting, never family, never a kid-coded
+  premade; `family_add` partner check uses it). E4 core: `ending_route_*` (meter 40 offers, 120 dates; set/forward-only; adult + PA9 gate),
+  story callbacks `CB_ROUTE_STAGE/ADD/SET/PARTNER`, and the finale now resolves secret > sexy (E12 Grumbleguts, E13 Vex, E14 any adult
+  partner; only while Mature is not Off) > bad (E08 two or more neglect losses, E06 empty parade: alone, no friend/couple, happiness 1..34) > good.
+  LS-QA part: rent collects itself after the island hub has idled 90 ticks (`life_rent` 4 -> 0 presses; Town Hall row still works).
+  LS-IN (GBA): the VBlank IRQ latches held keys (`gba_key_latch`) and `read_pad` takes them, so a tap between two slow hub frames is no
+  longer lost. WRITTEN WITHOUT AN ARM COMPILER: build the ROM and check the hub on hardware/mGBA before trusting it. E6d: two Ch4 punch-ups
+  in `ch4/ep47.dsc` (text only, flow lock unchanged). U3b was already done. NOT done in W6: LS-QA's "B = next problem" (life_help_next 9 -> 2)
+  and "buy on the spot" (life_missing_item 26 -> 3); E4's route scripts themselves (nothing calls CB_ROUTE_* yet) and the E12-E14 mature
+  scenes; the rest of E6d (more Ch4 + epilogue beats).
+
 **Started, saved on branches, not landed** (resume these first). CHECKED 2026-11-02: `git branch -a` shows only `claude/nice-allen-gr6czm`, so the branches named here (fut-u0, fut-g3, fut-g9, fut-g11, fut-h2, fut-h7, fut-l4, fut-w6, fut-w7, ...) are NOT in the repo; treat every item below as not started unless you can recover the branch. Hold the Door itself (waves, guests, panel, captions) is already built in `core/src/home_defend.c` / `home_draw.c`; what H7 still needs is only the PS1 black frame, which needs a PS1 run
 - Life sim wave 2: LS1, U0, E0, PA0, E6a, E6b (may land before the session ends).
 - G3, G9, H2, W6 (branches fut-g3 / fut-g9 / fut-h2 / fut-w6).

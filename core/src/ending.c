@@ -31,6 +31,7 @@
 #include "doomo/roster.h"
 #include "doomo/resident.h"
 #include "doomo/sim.h"
+#include "doomo/playas.h"
 
 static DoomoEnds E;
 
@@ -94,18 +95,96 @@ void ending_check_sparkles(void)
     if (e10_ok_() && !ending_seen(ENDING_E10)) ending_reach(ENDING_E10);
 }
 
+/* ---- E4: the romance routes and the sexy endings (E12 Grumbleguts, E13 Vex, E14 any premade adult) ----
+ * A route is COMMITTED or MARRIED when the story's route scripts (CB_ROUTE_*) or the life sim's
+ * partner say so. Every participant passes mature_adult_ok (R10) and PA9's two-way gate, and the
+ * sexy endings exist only while Mature is not Off (answer 21): Off keeps the finale exactly as
+ * it was, so nothing adult ever fires for a player who left it off. */
+static int route_resident_(int r)
+{
+    if (r == ROUTE_GRUMBLEGUTS) return ROSTER_ID_GRUMBLEGUTS;
+    if (r == ROUTE_VEX) return ROSTER_ID_VEX;
+    return ends()->route_partner == 0xFFFFu ? -1 : (int)ends()->route_partner;
+}
+
+int ending_route_stage(int r) { return (r >= 0 && r < ROUTE_COUNT) ? ends()->route_stage[r] : RSTAGE_NONE; }
+int ending_route_meter(int r) { return (r >= 0 && r < ROUTE_COUNT) ? ends()->route_meter[r] : 0; }
+int ending_route_partner(int r) { return (r >= 0 && r < ROUTE_COUNT) ? route_resident_(r) : -1; }
+
+static int route_pair_ok_(int id)
+{
+    return id >= 0 && mature_adult_ok(id) &&
+           playas_romance_ok(DOOMO_PLAYER_ID, id) && playas_romance_ok(id, DOOMO_PLAYER_ID);
+}
+
+/* Meter: +amount (clamped 0..255). 40 offers the route, 120 starts dating (a refused route stays refused). */
+int ending_route_add(int r, int amount)
+{
+    DoomoEnds *e = ends();
+    int m;
+    if (r < 0 || r >= ROUTE_COUNT || e->route_stage[r] == RSTAGE_REFUSED) return 0;
+    m = DOOMO_CLAMP((int)e->route_meter[r] + amount, 0, 255);
+    e->route_meter[r] = (uint8_t)m;
+    if (e->route_stage[r] == RSTAGE_NONE && m >= 40) e->route_stage[r] = RSTAGE_OFFERED;
+    if (e->route_stage[r] == RSTAGE_OFFERED && m >= 120) e->route_stage[r] = RSTAGE_DATING;
+    return m;
+}
+
+/* Move a route to `stage` (forward only, or REFUSED). ROUTE_ANY takes its partner here. Returns 1 if it changed. */
+int ending_route_set(int r, int stage, int partner)
+{
+    DoomoEnds *e = ends();
+    if (r < 0 || r >= ROUTE_COUNT || stage <= RSTAGE_NONE || stage >= RSTAGE_COUNT) return 0;
+    if (stage != RSTAGE_REFUSED && stage <= e->route_stage[r]) return 0;
+    if (e->route_stage[r] == RSTAGE_REFUSED && stage != RSTAGE_REFUSED) return 0;
+    if (stage != RSTAGE_REFUSED) {
+        if (r == ROUTE_ANY) {
+            if (!route_pair_ok_(partner)) return 0;
+            e->route_partner = (uint16_t)partner;
+        } else if (!route_pair_ok_(route_resident_(r))) return 0;
+    }
+    e->route_stage[r] = (uint8_t)stage;
+    return 1;
+}
+
+static int route_done_(int r)
+{
+    int st = ending_route_stage(r);
+    return st == RSTAGE_COMMITTED || st == RSTAGE_MARRIED;
+}
+
+/* The sexy ending the finale plays, or -1. Grumbleguts and Vex have their own; anyone else is E14. */
+static int sexy_finale_(void)
+{
+    int p;
+    if (opt_mature() == MATURE_OFF) return -1;
+    if (route_done_(ROUTE_GRUMBLEGUTS) && route_pair_ok_(ROSTER_ID_GRUMBLEGUTS)) return ENDING_E12;
+    if (route_done_(ROUTE_VEX) && route_pair_ok_(ROSTER_ID_VEX)) return ENDING_E13;
+    p = route_done_(ROUTE_ANY) ? route_resident_(ROUTE_ANY) : life_player_partner();
+    if (p >= 0 && p < DOOMO_MAX_RESIDENTS && route_pair_ok_(p)) return ENDING_E14;
+    return -1;
+}
+
 int ending_resolve_finale(void)
 {
-    /* secret outranks bad outranks good: E11, then E10, before the rules below */
+    /* secret outranks sexy outranks bad outranks good: E11, E10, then E12..E14, then the bad ones */
     if (e11_ok_()) return ENDING_E11;
     if (e10_ok_()) return ENDING_E10;
-    /* secret > bad > good (ending.h). E3's rule for the two finale good endings: E02, the better
-     * one, needs a real household (3+ members, the player included), nobody lost to neglect, and
-     * at least one close tie to show for it: a housemate with a closest housemate, a child, a
-     * couple you matched, or a happy island (average happiness 60+). Anything less is the default
-     * E01. E06 / E07 (the parade) and the other endings stay with their own packages. */
     LifeEndingFacts f;
+    int sx = sexy_finale_();
+    if (sx >= 0) return sx;
     life_ending_facts(&f);
+    /* E4's two live bad endings (E05 and E07 are retired). E08 "Lights Out": two or more of the
+     * household were lost to neglect. E06 "The Empty Parade": nobody came: no household, no
+     * closest friend, no couple you matched, and an island that is unhappy (average happiness
+     * under 35, and above 0: an island with nobody on it has no parade to be empty). */
+    if (f.neglect_deaths >= 2) return ENDING_E08;
+    if (f.household <= 1 && f.best_friends == 0 && f.couples == 0 && f.happiness > 0 && f.happiness < 35)
+        return ENDING_E06;
+    /* E3's rule for the two good finale endings: E02, the better one, needs a real household
+     * (3+ members, the player included), nobody lost to neglect, and at least one close tie: a
+     * housemate with a closest housemate, a child, a couple you matched, or a happy island
+     * (average happiness 60+). Anything less is the default E01. */
     if (f.household >= 3 && f.neglect_deaths == 0 &&
         (f.best_friends >= 1 || f.kids >= 1 || f.couples >= 1 || f.happiness >= 60))
         return ENDING_E02;
