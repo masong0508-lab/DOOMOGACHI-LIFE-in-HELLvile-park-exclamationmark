@@ -291,6 +291,74 @@ TEST(u5_picker_censored_also_needs_a_code_and_a_mismatch_starts_over)
     CHECK_EQ(seccode_check("0003"), 1);
 }
 
+/* ---- E11: Mature on the options screen --------------------------------------------- */
+static void open_game_options(void)
+{
+    scene_set(&SCENE_OPTIONS, OPTPAGE_GAME);
+    idle(4);
+    CHECK(scene_top() == &SCENE_OPTIONS);
+    press(BTN_UP);                                 /* wraps to "Reset page" ... */
+    press(BTN_UP);                                 /* ... then the last row: Mature */
+}
+
+TEST(e11_options_mature_without_a_code_only_asks_for_18)
+{
+    fresh(0);
+    open_game_options();
+    press(BTN_A);                                  /* Off -> Censored: the 18+ question */
+    CHECK(scene_top() == &SCENE_CONFIRM);
+    CHECK_EQ(opt_mature(), MATURE_OFF);            /* nothing moves until yes */
+    idle(2);
+    press(BTN_A);                                  /* the default answer is No */
+    idle(2);
+    CHECK(scene_top() == &SCENE_OPTIONS);
+    CHECK_EQ(opt_mature(), MATURE_OFF);
+    press(BTN_A);
+    idle(2);
+    press(BTN_LEFT);                               /* Yes */
+    press(BTN_A);
+    idle(2);
+    CHECK(scene_top() == &SCENE_OPTIONS);
+    CHECK_EQ(opt_mature(), MATURE_CENSORED);
+    press(BTN_LEFT);                               /* lowering never asks */
+    CHECK(scene_top() == &SCENE_OPTIONS);
+    CHECK_EQ(opt_mature(), MATURE_OFF);
+}
+
+TEST(e11_options_mature_with_a_code_asks_the_code_then_18)
+{
+    fresh(0);
+    CHECK(seccode_set("4321"));
+    open_game_options();
+    press(BTN_A);
+    CHECK(scene_top() == &SCENE_SECURITY_CODE);    /* the code first */
+    enter_code("1111");                            /* wrong: asked again, nothing changes */
+    CHECK(scene_top() == &SCENE_SECURITY_CODE);
+    CHECK_EQ(opt_mature(), MATURE_OFF);
+    enter_code("4321");
+    idle(2);
+    CHECK(scene_top() == &SCENE_CONFIRM);          /* then the 18+ question */
+    idle(2);
+    press(BTN_LEFT);
+    press(BTN_A);
+    idle(2);
+    CHECK(scene_top() == &SCENE_OPTIONS);
+    CHECK_EQ(opt_mature(), MATURE_CENSORED);
+}
+
+TEST(e11_options_mature_backing_out_of_the_code_changes_nothing)
+{
+    fresh(0);
+    CHECK(seccode_set("4321"));
+    open_game_options();
+    press(BTN_A);
+    CHECK(scene_top() == &SCENE_SECURITY_CODE);
+    press(BTN_B);                                  /* never mind */
+    idle(3);
+    CHECK(scene_top() == &SCENE_OPTIONS);
+    CHECK_EQ(opt_mature(), MATURE_OFF);
+}
+
 TEST(u5_picker_skipping_the_code_leaves_mature_off)
 {
     picker_to_mature();

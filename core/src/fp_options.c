@@ -6,9 +6,13 @@
  * still locked (window skins, title themes, cursors, filters, crosshairs:
  * UL_CAT_SKIN; cheats: UL_CAT_CHEAT) show as "???" with their unlock hint
  * and are skipped. Monster Mode can only be switched ON after typing
- * "I AM A MONSTER" and confirming. arg = the page to open on.
+ * "I AM A MONSTER" and confirming. Mature (E11, last row of the Game page) can be
+ * lowered freely; raising it asks for the grown-ups' code when one is set, then
+ * for an 18+ confirm. arg = the page to open on.
  */
 #include "fp_int.h"
+#include "doomo/options_store.h"
+#include "doomo/ending.h"
 
 #define ROWS_MAX 24
 
@@ -83,10 +87,26 @@ static struct {
     int page, sel, top, t;
     int rows[ROWS_MAX], nrows;
     char typed[24];
+    uint8_t phase, pend;          /* E11: waiting on the code scene; the Mature level asked for */
 } O;
+
+enum { PH_NONE, PH_CODE };
+
+static const DoomoOptionInfo *info_of(int opt)
+{
+    return opt >= OPT2_FIRST ? &doomo_option2_info[opt - OPT2_FIRST] : &doomo_option_info[opt];
+}
+
+static const char *help_of(int opt)
+{
+    if (opt == OPT_MATURE)
+        return "Adult scenes. Off: cutaways. Censored: censor bars. On: implied, then a fade. Going up asks for the grown-ups' code (if set) and your age.";
+    return opt < OPT_COUNT && opt_help[opt] ? opt_help[opt] : "";
+}
 
 static int value_ok(int opt, int v)
 {
+    if (opt == OPT_MATURE) return v <= MATURE_ON;               /* the pack level comes with a pack */
     if (opt == OPT_LANGUAGE) return doomo_lang_info[v].ready;    /* lang.h: offered languages */
     if (opt >= OPT_CHEAT_BIG_HEAD && opt <= OPT_CHEAT_ALL_GHOSTS && v > 0)
         return unlock_ok(UL_CAT_CHEAT, 0, opt);
@@ -102,6 +122,7 @@ static void build_rows(void)
         if (doomo_option_info[i].page == O.page && i != OPT_LANGUAGE &&
             (i != OPT_DRAW_DIST || input_feel()) && (i != OPT_3D_FAST || plat_name()[0] == 'G'))
             O.rows[O.nrows++] = i;       /* draw distance: PS1 3D only; 3D quality: GBA only */
+    if (O.page == OPTPAGE_GAME && O.nrows < ROWS_MAX) O.rows[O.nrows++] = OPT_MATURE;   /* E11: last row */
     O.sel = DOOMO_MIN(O.sel, O.nrows);       /* last row = "Defaults" */
 }
 
@@ -146,9 +167,43 @@ static void cb_monster_typed(int ok)
                cb_monster_final);
 }
 
+/* E11: lowering Mature is free; raising it asks for the code (when one is set), then for 18+. */
+static void cb_adult(int yes)
+{
+    if (yes) {
+        opt_set(OPT_MATURE, O.pend);
+        audio_sfx(SFX_SELECT);
+        ui_toast("Mature scenes are on.");
+    } else {
+        audio_sfx(SFX_CANCEL);
+        ui_toast("Mature stays as it was.");
+    }
+}
+
+static void change_mature(int d)
+{
+    int v = opt_get(OPT_MATURE), nv;
+    if (v > MATURE_ON) v = MATURE_ON;
+    nv = (v + 3 + d) % 3;
+    if (nv <= v) {                                   /* down (or the wrap to Off): nothing to ask */
+        opt_set(OPT_MATURE, nv);
+        audio_sfx(SFX_CURSOR);
+        return;
+    }
+    O.pend = (uint8_t)nv;
+    audio_sfx(SFX_CURSOR);
+    if (seccode_is_set()) {
+        O.phase = PH_CODE;
+        scene_push(&SCENE_SECURITY_CODE, SECCODE_ASK);
+    } else {
+        ui_confirm("Mature scenes are for adults. Are you 18 or older?", cb_adult);
+    }
+}
+
 static void change(int opt, int d)
 {
-    const DoomoOptionInfo *oi = &doomo_option_info[opt];
+    const DoomoOptionInfo *oi = info_of(opt);
+    if (opt == OPT_MATURE) { change_mature(d); return; }
     int v = opt_get(opt), k;
     if (opt == OPT_MONSTER_MODE) {
         if (v) { opt_set(opt, 0); audio_sfx(SFX_HAPPY); ui_toast(STR_ICON_HEART " Monster Mode is off. Phew!"); }
@@ -175,7 +230,7 @@ static void cb_defaults(int yes)
     for (i = 0; i < O.nrows; i++) {
         int opt = O.rows[i];
         if (opt == OPT_MONSTER_MODE || opt == OPT_LANGUAGE) continue;   /* never silently */
-        opt_set(opt, doomo_option_info[opt].def);
+        opt_set(opt, info_of(opt)->def);
     }
     audio_sfx(SFX_SPARKLE);
     ui_toast("Page reset to defaults.");
@@ -186,6 +241,12 @@ static void opt_update(void)
     int vis = fp_big() ? 13 : 8;
     O.t++;
     if (fp_is_freeplay()) fp_live(); else fp_fx_tick();
+    if (O.phase == PH_CODE) {                           /* back from SCENE_SECURITY_CODE */
+        O.phase = PH_NONE;
+        if (seccode_scene_result()) ui_confirm("Mature scenes are for adults. Are you 18 or older?", cb_adult);
+        else { audio_sfx(SFX_ERROR); ui_toast("Mature stays as it was."); }
+        return;
+    }
     if (btn_pressed(BTN_L | BTN_R)) {
         O.page = (O.page + (btn_pressed(BTN_L) ? OPTPAGE_COUNT - 1 : 1)) % OPTPAGE_COUNT;
         O.sel = O.top = 0;
@@ -238,7 +299,7 @@ static void opt_draw(void)
         }
         {
             int opt = O.rows[row], v = opt_get(opt);
-            const DoomoOptionInfo *oi = &doomo_option_info[opt];
+            const DoomoOptionInfo *oi = info_of(opt);
             /* a value name is passed as it is (constant text: lang_tr()
              * remembers its translation, L1); numbers are built in val */
             const char *shown = oi->values ? oi->values[v] : val;
@@ -262,8 +323,8 @@ static void opt_draw(void)
         int hy = y0 + vis * 11 + 6;
         if (O.sel < O.nrows) {
             int opt = O.rows[O.sel], v = opt_get(opt), k;
-            const DoomoOptionInfo *oi = &doomo_option_info[opt];
-            help = opt_help[opt] ? opt_help[opt] : "";
+            const DoomoOptionInfo *oi = info_of(opt);
+            help = help_of(opt);
             for (k = 1; k < oi->count; k++) {
                 int nv = (v + k) % oi->count;
                 if (!value_ok(opt, nv)) {

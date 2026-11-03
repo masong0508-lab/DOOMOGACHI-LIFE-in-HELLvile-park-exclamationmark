@@ -163,8 +163,10 @@ skipping `playas_avatar()`.
 ## Done: Phase 4 away helping (no LS3 yet)
 - An adult, elder or teen with bond 5+ may leave for a day (`family_away_start`, news "headed out to lend a hand"; the Family list shows "Away helping today"). The next town day `family_away_return` brings home H$20-60 (two days in three) or a small find (scrap, gears, glitter, flowers or a blood orange). One trip at a time, nothing saved (a load cancels it), not when free will is Off, silent at Subconscious, a lost member or one you now play brings nothing. Children, babies and toddlers still give their gift or smile at once and never leave. Same story wait as before. Test: `family_away_helping`; `make -C core test` 723 passed, 0 failed.
 
+## Done: E11 Mature on the options screen
+- Game page, last row: **Mature** (Off, Censored, On; the pack level comes with a pack). Lowering it never asks. Raising it asks for the grown-ups' code first when one is set (SCENE_SECURITY_CODE, ASK; three wrong tries lock it as before, backing out changes nothing), then "Are you 18 or older?" (default No). With no code set only the 18+ question is asked. "Reset page" puts Mature back to Off. Tests: three `e11_options_mature_*` in test_options_store.c; `make -C core test` 726 passed, 0 failed.
+
 ## Still open
-- Asking for the security code when Mature is turned on later, and the 18+ confirm, belong to E11. Until it lands, the options screen has no code check (the ASK mode of SCENE_SECURITY_CODE exists, nothing pushes it yet).
 - The new family screens, toasts and event lines are English-only until the L8 re-translation pass.
 - The ENDING_E02 finale rule (`ending_resolve_finale`: household 3+ and no neglect deaths) is still the provisional one; E3 and E4 own the real rules.
 - Phase 4 is wired to the LS3 life-event engine / `CB_LIFE_*` callbacks (the engine is not in the tree yet; away helping runs from `family_help_daily` meanwhile), disaster story hooks (hand-written scripts, Loss Off = rescue), and an owner tone check of the disaster, loss and event lines (a first read found them kid-safe and non-graphic).
