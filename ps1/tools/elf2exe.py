@@ -86,6 +86,8 @@ def main(argv):
     if end > 0x200000 - 0x10000:
         print("elf2exe: image + bss end at 0x%x, leaves no room for the stack "
               "in 2 MB RAM" % (end + 0x80000000))
+        print("elf2exe: %d B over the limit 0x%x (the stack reserve is 64 KB); "
+              "shrink at least that much" % (end - (0x200000 - 0x10000), 0x80000000 + 0x200000 - 0x10000))
         return 1
     hdr = bytearray(2048)
     hdr[0:8] = b"PS-X EXE"

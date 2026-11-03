@@ -314,6 +314,7 @@ Worked example (U6c):
 | E11 | `doomo-e11-options-mature-nov02y` | `E11: Mature row on the options screen (code check + 18+ confirm)` | Game page, last row: raising Mature asks the grown-ups' code when one is set, then "Are you 18 or older?"; lowering is free; Reset page puts it back to Off; three tests; `make -C core test` 726/726; core only, not built for GBA/PS1; the rest of the redesigned options screen is still U2 |
 | E3 | `doomo-e3-secret-endings-nov02z` | `E3: secret finales E10 (every sparkle + D2) and E11 (NG+ with bottle and suitcase)` | ending_resolve_finale ranks secret first; ending_check_sparkles fires on the last sparkle; two tests; `make -C core test` 728/728; core only; nothing sets SF_NGPLUS yet so E11 waits for the NG+ restart; the good-ending (E02) rule is still provisional |
 | CI | `doomo-ci-fix-gen-ps1-nov02za` | `CI: regenerate core/gen text packs; PS1 hcmd.c without atoi/strtoul` | check-gen was STALE on 110 generated files (text_*.c, lang_tab_es.c, txt_dict.c): regenerated with `make -C core gen`, `make -C core check-gen` now clean; PS1 build failed (-Werror, implicit atoi/strtoul in ps1/src/hcmd.c): replaced by local h_atoi/h_num (decimal + 0x hex); core + ps1 only |
+| CI | `doomo-ci-ps1-diag-nov02zb` | `CI: PS1 link says how far over the RAM limit it is and which objects stay resident` | the PS1 disc fails at link: image + bss end at 0x801f3b00, 15,104 B past the 64 KB stack reserve (limit 0x801f0000); no size change here: elf2exe prints the overshoot and ovl_plan runs with OVL_WHY=1 so the next log lists the biggest resident objects; the real cut is the next patch |
 
 How the owner applies patches (so nobody has to ask again): from Termux, one pasted line per patch, oldest first, each line
 is the full template above (`cd` repo, `git pull --ff-only`, `rm -rf ~/vs && mkdir ~/vs`, `unzip -qo` the zip from
@@ -338,3 +339,4 @@ and the reply gives the line with NAME and MESSAGE filled in, plus a ROADMAP row
 <!-- doomo-e11-options-mature-nov02y -->
 <!-- doomo-e3-secret-endings-nov02z -->
 <!-- doomo-ci-fix-gen-ps1-nov02za -->
+<!-- doomo-ci-ps1-diag-nov02zb -->

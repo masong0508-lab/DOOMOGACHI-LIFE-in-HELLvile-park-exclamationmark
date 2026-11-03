@@ -129,7 +129,9 @@ if(DOOMO_USE_OVERLAYS)
 	set(_ovl_c  ${CMAKE_CURRENT_BINARY_DIR}/ovl_table.c)
 	add_custom_command(
 		OUTPUT  ${_ovl_ld} ${_ovl_c}
-		COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/ovl_plan.py
+		# OVL_WHY=1 also prints the 40 biggest group objects and 60 biggest core objects that stay resident,
+		# so a disc that ends too high names its own culprits in the CI log
+		COMMAND ${CMAKE_COMMAND} -E env OVL_WHY=1 ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/ovl_plan.py
 		        --readelf ${TOOLCHAIN_READELF} --out-ld ${_ovl_ld} --out-c ${_ovl_c} --report
 		        $<TARGET_OBJECTS:doomo_objs>
 		DEPENDS doomo_objs $<TARGET_OBJECTS:doomo_objs> ${CMAKE_CURRENT_SOURCE_DIR}/tools/ovl_plan.py
