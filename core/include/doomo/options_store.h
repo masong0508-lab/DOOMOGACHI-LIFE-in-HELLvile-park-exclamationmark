@@ -34,4 +34,24 @@ int  opt_config_save(void);
 int  opt_config_first_boot(void);
 void opt_config_first_boot_done(void);
 
+/* ---- the adults' security code (U5 / E11; user answer 20) ----
+ * A 4-digit parental PIN, kept as a salted hash in bytes 32..47 of the machine record (layout in
+ * options_store.c). Turning Mature content on asks for it (E11); the first-boot screen sets it (U5).
+ * With no code set nothing is asked. Scenes: SCENE_SECURITY_CODE (seccode_scene.c). */
+#define SECCODE_LEN 4
+int  seccode_is_set(void);
+int  seccode_set(const char *code);      /* SECCODE_LEN ASCII digits; 1 = stored, 0 = bad input */
+void seccode_clear(void);                /* forget the code (the caller asked for the old one first) */
+/* 1 = right (or no code set), 0 = wrong (a try is used), -1 = locked: no tries left. Three wrong
+ * in a row lock the session; after a restart a locked machine grants one try per boot. */
+int  seccode_check(const char *code);
+int  seccode_tries_left(void);
+
+/* SCENE_SECURITY_CODE's arg (scenes.h): SET asks for a new code twice (B on the first digit skips),
+ * ASK asks for the existing one (nothing set = passes at once). The outcome of the last run,
+ * until the scene is entered again: 1 = a code was set / the right code was entered, 0 = skipped,
+ * cancelled or locked. */
+enum { SECCODE_SET = 0, SECCODE_ASK = 1 };
+int  seccode_scene_result(void);
+
 #endif

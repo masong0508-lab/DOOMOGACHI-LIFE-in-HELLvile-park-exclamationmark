@@ -35,6 +35,7 @@ static void fresh(int cfg_on)
 {
     test_reset();
     g_cfg_on = cfg_on;
+    seccode_clear();                    /* U5: no code left over from an earlier test */
     memset(g_cfg, 0, sizeof(g_cfg));
     g_cfg_len = 0;
     g_cfg_writes = 0;
@@ -197,6 +198,30 @@ TEST(u5_first_boot_only_where_a_record_is_kept_and_missing)
     CHECK(!opt_config_first_boot());               /* the record exists now */
 }
 
+static void idle(int n) { while (n-- > 0) frame(0); }
+static void press(uint32_t b) { frame(b); frame(0); }
+
+/* type four digits into SCENE_SECURITY_CODE: UP d times on each digit, A to move on / confirm */
+static void enter_code(const char *c)
+{
+    int i, k;
+    for (i = 0; i < 4; i++) {
+        for (k = 0; k < c[i] - '0'; k++) press(BTN_UP);
+        press(BTN_A);
+    }
+}
+
+static void picker_to_mature(void)
+{
+    fresh(1);
+    CHECK(!opt_config_load());
+    scene_set(&SCENE_LANG_PICK, 0);
+    idle(10);
+    CHECK(scene_top() == &SCENE_LANG_PICK);
+    press(BTN_A);                                  /* keep English: on to the Mature question */
+    idle(10);
+}
+
 TEST(u5_picker_applies_the_choice_saves_and_hands_to_the_title)
 {
     int i;
@@ -210,12 +235,215 @@ TEST(u5_picker_applies_the_choice_saves_and_hands_to_the_title)
     frame(0);
     CHECK_EQ(opt_get(OPT_LANGUAGE), LANG_ES);
     g_cfg_writes = 0;
-    frame(BTN_A);
+    press(BTN_A);                                  /* language kept: the Mature question follows */
+    CHECK(scene_top() == &SCENE_LANG_PICK);
+    CHECK(opt_config_first_boot());                /* not done yet */
+    idle(10);
+    press(BTN_A);                                  /* Off, the default: no code, on to the title */
     frame(0);
     CHECK(scene_top() == &SCENE_TITLE);
     CHECK(g_cfg_writes >= 1);
     CHECK(!opt_config_first_boot());
+    CHECK_EQ(opt_mature(), MATURE_OFF);
+    CHECK(!seccode_is_set());
     CHECK(opt_config_load());                      /* the record keeps Spanish */
     CHECK_EQ(opt_get(OPT_LANGUAGE), LANG_ES);
     opt_set(OPT_LANGUAGE, LANG_EN);
+}
+
+TEST(u5_picker_mature_on_asks_a_grown_up_for_a_code)
+{
+    picker_to_mature();
+    CHECK(scene_top() == &SCENE_LANG_PICK);
+    press(BTN_DOWN);
+    press(BTN_DOWN);
+    press(BTN_DOWN);                               /* stops at On */
+    press(BTN_A);
+    CHECK(scene_top() == &SCENE_SECURITY_CODE);
+    enter_code("1204");                            /* choose ... */
+    CHECK(scene_top() == &SCENE_SECURITY_CODE);    /* ... and confirm */
+    enter_code("1204");
+    idle(2);
+    CHECK(scene_top() == &SCENE_TITLE);
+    CHECK_EQ(seccode_scene_result(), 1);
+    CHECK_EQ(opt_mature(), MATURE_ON);
+    CHECK(seccode_is_set());
+    CHECK_EQ(seccode_check("1204"), 1);
+    CHECK_EQ(seccode_check("1205"), 0);
+    CHECK(!opt_config_first_boot());
+}
+
+TEST(u5_picker_censored_also_needs_a_code_and_a_mismatch_starts_over)
+{
+    picker_to_mature();
+    press(BTN_DOWN);                               /* Censored */
+    press(BTN_A);
+    CHECK(scene_top() == &SCENE_SECURITY_CODE);
+    enter_code("0001");
+    enter_code("0002");                            /* does not match: the scene stays and starts over */
+    CHECK(scene_top() == &SCENE_SECURITY_CODE);
+    CHECK(!seccode_is_set());
+    enter_code("0003");
+    enter_code("0003");
+    idle(2);
+    CHECK(scene_top() == &SCENE_TITLE);
+    CHECK_EQ(opt_mature(), MATURE_CENSORED);
+    CHECK_EQ(seccode_check("0003"), 1);
+}
+
+TEST(u5_picker_skipping_the_code_leaves_mature_off)
+{
+    picker_to_mature();
+    press(BTN_DOWN);
+    press(BTN_DOWN);                               /* On */
+    press(BTN_A);
+    CHECK(scene_top() == &SCENE_SECURITY_CODE);
+    press(BTN_B);                                  /* B on the first digit: no code */
+    idle(2);
+    CHECK_EQ(seccode_scene_result(), 0);
+    CHECK(scene_top() == &SCENE_LANG_PICK);        /* asked again, back on Off, nothing stuck */
+    CHECK(!seccode_is_set());
+    CHECK_EQ(opt_mature(), MATURE_OFF);
+    idle(10);
+    press(BTN_A);
+    idle(2);
+    CHECK(scene_top() == &SCENE_TITLE);
+    CHECK_EQ(opt_mature(), MATURE_OFF);
+    CHECK(!opt_config_first_boot());
+}
+
+TEST(u5_picker_b_on_the_mature_screen_goes_back_to_the_language)
+{
+    picker_to_mature();
+    press(BTN_B);
+    idle(10);
+    frame(BTN_DOWN);                               /* the language list answers again */
+    frame(0);
+    CHECK_EQ(opt_get(OPT_LANGUAGE), LANG_ES);
+    opt_set(OPT_LANGUAGE, LANG_EN);
+    CHECK(opt_config_first_boot());
+}
+
+/* ---- U5: the adults' security code ---- */
+TEST(u5_code_set_check_and_the_tries)
+{
+    int i;
+    fresh(1);
+    CHECK(!seccode_is_set());
+    CHECK_EQ(seccode_check("1234"), 1);            /* nothing set: nothing to ask */
+    CHECK_EQ(seccode_set("12"), 0);                /* not four digits */
+    CHECK_EQ(seccode_set("12a4"), 0);
+    CHECK_EQ(seccode_set("12345"), 0);
+    CHECK_EQ(seccode_set(NULL), 0);
+    CHECK(!seccode_is_set());
+    CHECK_EQ(seccode_set("4821"), 1);
+    CHECK(seccode_is_set());
+    CHECK_EQ(seccode_tries_left(), 3);
+    CHECK_EQ(seccode_check("4821"), 1);
+    CHECK_EQ(seccode_check("0000"), 0);
+    CHECK_EQ(seccode_tries_left(), 2);
+    CHECK_EQ(seccode_check("4821"), 1);            /* a right code clears the count */
+    CHECK_EQ(seccode_tries_left(), 3);
+    for (i = 0; i < 3; i++) CHECK_EQ(seccode_check("0000"), 0);
+    CHECK_EQ(seccode_tries_left(), 0);
+    CHECK_EQ(seccode_check("4821"), -1);           /* locked, even for the right code */
+    /* a restart: a locked machine grants one try per boot */
+    CHECK(opt_config_load());
+    CHECK_EQ(seccode_tries_left(), 1);
+    CHECK_EQ(seccode_check("0000"), 0);
+    CHECK_EQ(seccode_tries_left(), 0);
+    CHECK(opt_config_load());
+    CHECK_EQ(seccode_check("4821"), 1);            /* the right code gets back in and clears it */
+    CHECK_EQ(seccode_tries_left(), 3);
+    seccode_clear();
+    CHECK(!seccode_is_set());
+    CHECK_EQ(seccode_check("anything"), 1);
+}
+
+static int has_text(const uint8_t *b, int n, const char *t)
+{
+    int i, k = (int)strlen(t);
+    for (i = 0; i + k <= n; i++) if (memcmp(b + i, t, (size_t)k) == 0) return 1;
+    return 0;
+}
+
+TEST(u5_code_is_stored_salted_in_the_record_and_survives_a_restart)
+{
+    uint8_t saved[PLAT_CONFIG_MAX], hash1[4];
+    fresh(1);
+    opt_config_save();
+    seccode_set("4821");
+    CHECK_EQ(g_cfg_len, (int)PLAT_CONFIG_MAX);
+    CHECK_EQ(g_cfg[32], 1);                        /* version */
+    CHECK_EQ(g_cfg[33] & 1, 1);                    /* a code is set */
+    CHECK(!has_text(g_cfg, (int)sizeof g_cfg, "4821"));    /* the digits themselves are never kept */
+    memcpy(hash1, g_cfg + 40, 4);
+    seccode_set("4821");                           /* the same code again: a new salt, a new hash */
+    CHECK(memcmp(hash1, g_cfg + 40, 4) != 0);
+    opt_set(OPT_MATURE, MATURE_ON);                /* a settings write keeps the code */
+    CHECK_EQ(g_cfg[33] & 1, 1);
+    memcpy(saved, g_cfg, sizeof saved);
+    seccode_clear();                               /* forget it in RAM and in the record ... */
+    CHECK(!seccode_is_set());
+    CHECK_EQ(g_cfg[33], 0);
+    memcpy(g_cfg, saved, sizeof saved);            /* ... and put the old record back: a restart */
+    CHECK(opt_config_load());
+    CHECK(seccode_is_set());
+    CHECK_EQ(seccode_check("4821"), 1);
+    CHECK_EQ(seccode_check("4822"), 0);
+    /* a flipped byte in the block: the code is gone, the settings stay */
+    memcpy(g_cfg, saved, sizeof saved);
+    g_cfg[41] ^= 1;
+    CHECK(opt_config_load());
+    CHECK(!seccode_is_set());
+    CHECK_EQ(opt_get(OPT_MATURE), MATURE_ON);
+}
+
+TEST(u5_code_works_for_the_session_where_no_record_is_kept)
+{
+    fresh(0);
+    CHECK_EQ(seccode_set("7777"), 1);
+    CHECK(seccode_is_set());
+    CHECK_EQ(seccode_check("7777"), 1);
+    CHECK_EQ(seccode_check("7770"), 0);
+    CHECK_EQ(g_cfg_writes, 0);
+}
+
+TEST(u5_code_scene_asks_and_reports)
+{
+    int i;
+    fresh(1);
+    scene_set(&SCENE_TITLE, 0);
+    scene_push(&SCENE_SECURITY_CODE, SECCODE_ASK);
+    idle(2);
+    CHECK(scene_top() == &SCENE_TITLE);            /* no code set: nothing to ask, passes at once */
+    CHECK_EQ(seccode_scene_result(), 1);
+    seccode_set("4821");
+    scene_push(&SCENE_SECURITY_CODE, SECCODE_ASK);
+    enter_code("4820");
+    CHECK(scene_top() == &SCENE_SECURITY_CODE);    /* wrong: stays, a try is used */
+    CHECK_EQ(seccode_tries_left(), 2);
+    enter_code("4821");
+    idle(2);
+    CHECK(scene_top() == &SCENE_TITLE);
+    CHECK_EQ(seccode_scene_result(), 1);
+    /* three wrong in a row: locked, and the scene closes itself with result 0 */
+    scene_push(&SCENE_SECURITY_CODE, SECCODE_ASK);
+    for (i = 0; i < 3; i++) enter_code("0000");
+    CHECK(scene_top() == &SCENE_SECURITY_CODE);
+    idle(100);
+    CHECK(scene_top() == &SCENE_TITLE);
+    CHECK_EQ(seccode_scene_result(), 0);
+    scene_push(&SCENE_SECURITY_CODE, SECCODE_ASK);   /* still locked this boot: closes again without a try */
+    idle(100);
+    CHECK(scene_top() == &SCENE_TITLE);
+    CHECK_EQ(seccode_scene_result(), 0);
+    /* B backs out of an ask (after a restart's one try) */
+    CHECK(opt_config_load());
+    scene_push(&SCENE_SECURITY_CODE, SECCODE_ASK);
+    press(BTN_B);
+    idle(2);
+    CHECK(scene_top() == &SCENE_TITLE);
+    CHECK_EQ(seccode_scene_result(), 0);
+    CHECK_EQ(seccode_tries_left(), 1);             /* backing out used no try */
 }

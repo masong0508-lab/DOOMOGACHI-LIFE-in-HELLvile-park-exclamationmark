@@ -174,7 +174,7 @@ main game, working on native, GBA, PS1 and (later) Dreamcast.
 |---|---|---|
 | W2 (finish) | LS1, U0, E0, PA0, E6a, E6b | news as records + LIFE save chunk; settings core (OPT2); ending/pack contracts + VM ops; play-as contract; PG-21 punch-up of Ch1-2 |
 | W3 | PA1, U1g, U1p, U2, E2, E7 | play-as core (PLAY chunk, story barrier, actor retargeting); GBA config sector; PS1 config file; **options screen redesign**; mature scene slots + host; content-pack format + `mpack.py` + templates |
-| W4 | F1, E1, U3a, U5, PA3a, PA5 | **family core** (household up to 20 / GBA 10, Sims-style chosen relationships); ending engine; **pause shell**; first-boot language picker; gender-aware text; character switcher |
+| W4 (done in the core 2026-11-02) | ~~F1~~, ~~E1~~, ~~U3a~~, ~~U5~~, ~~PA3a~~, ~~PA5~~ | **family core** (household up to 20 / GBA 10, Sims-style chosen relationships); ending engine; **pause shell**; first-boot language picker; gender-aware text; character switcher |
 | W5 | LS3, PA2, U6, E11, E3, E6c | life event engine; **hero choice: SUNNY (female), MARVIN (male fox), make-your-own**; Continue-first title + flow; mature filter + 18+ confirm; good/secret endings; Ch3 punch-up |
 | W6 | LS-QA, LS-IN, PA9, U3b, E4, E6d | fewer taps; press latch; romance/mature gates for heroes; story pause; bad + sexy endings and romance routes; Ch4 + epilogue punch-up |
 | W7 | PA4, U3c, LS4, LS6, E8, E9 | overworld handoff; island START menu; event + family content; streamlined progression; GBA mature ROM variant; PS1 mature disc |
@@ -309,6 +309,7 @@ Worked example (U6c):
 | U5 | `doomo-u5-lang-picker-nov02t` | `U5: first-boot language picker (SCENE_LANG_PICK)` | on a console with a config record and none saved yet, boot goes to the picker once: UP/DOWN applies the language live, A/START writes the record and opens the title. Native, tests and harnesses skip it. `make -C core test` 710/710. Not built for GBA/PS1 here; the Mature question and the security code (SCENE_SECURITY_CODE) are the other U5 parts and are still open |
 | U3a | `doomo-u3a-pause-shell-nov02u` | `U3a: pause shell Music row (J4 11 -> 4 presses)` | every pause menu (combat, Hell Breach levels, arena, minigames) gets a Music row under Resume that LEFT/RIGHT changes on the spot (`pause_music_label/nudge` in fp_options.c); J4 is START, DOWN, LEFT, B, budget 4. Other rows moved down one: combat, pause_options and levels_modes tests updated. `make -C core test` 711/711, 154 scripts, 19 journeys. Not built for GBA/PS1 here |
 | E1 | `doomo-w4-adult-gate-nov02v` | `E1: real adult allow-list (mature_adult_ok)` | strong mature_adult_ok: premade adult, name matches, not custom, not kid cast (compiled copy checked against kid_cast.txt); core only |
+| U5 | `doomo-w4-mature-code-nov02w` | `U5: first-boot Mature question and security code` | first-boot Mature question + SCENE_SECURITY_CODE (4-digit code, salted hash in config bytes 32..47); skipping the code keeps Mature Off; core only, not built for GBA/PS1 |
 
 How the owner applies patches (so nobody has to ask again): from Termux, one pasted line per patch, oldest first, each line
 is the full template above (`cd` repo, `git pull --ff-only`, `rm -rf ~/vs && mkdir ~/vs`, `unzip -qo` the zip from
@@ -328,3 +329,4 @@ and the reply gives the line with NAME and MESSAGE filled in, plus a ROADMAP row
 <!-- doomo-u5-lang-picker-nov02t -->
 <!-- doomo-u3a-pause-shell-nov02u -->
 <!-- doomo-w4-adult-gate-nov02v -->
+<!-- doomo-w4-mature-code-nov02w -->

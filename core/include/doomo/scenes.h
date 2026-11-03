@@ -109,7 +109,8 @@ extern const DoomoScene SCENE_HOME, SCENE_HOME_MART, SCENE_STORY_MG, SCENE_STORY
  *                    it also asks about Mature content and sets the code)
  * SCENE_SECURITY_CODE the adults' security code (parental PIN) entry: set it
  *                    (U5, first boot) or ask for it before Mature turns on
- *                    (E11); arg: U5 defines (LIFESIM_PLAN section 6) */
+ *                    (E11); arg SECCODE_SET / SECCODE_ASK and the outcome
+ *                    seccode_scene_result() are in options_store.h (U5) */
 extern const DoomoScene SCENE_FAMILY, SCENE_PLAYAS, SCENE_ENDING_CARD, SCENE_MSLOT,
        SCENE_LANG_PICK, SCENE_SECURITY_CODE;
 /* 1 if `s` is still one of the K0 placeholders above (weak_scenes.c). */

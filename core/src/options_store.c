@@ -18,6 +18,7 @@
 #include "doomo/ending.h"
 #include "doomo/family.h"
 #include "doomo/lang.h"
+#include "doomo/rng.h"
 
 static const char *const v_off_on_[] = { "Off", "On" };
 static const char *const v_mature_[] = { "Off", "Censored", "On", "On + pack" };
@@ -102,6 +103,109 @@ static void put_machine(int opt, int v)
     else doomo_town.opt[opt] = (uint8_t)v;
 }
 
+/* ---- the adults' security code (U5 / E11; user answer 20) ----
+ * A 4-digit parental PIN that turning Mature content on asks for. It lives in bytes 32..47 of the
+ * machine config record (life_contract.h CONFIG_SZ_SECURITY), never as the digits themselves:
+ *   0 version (1) | 1 flags (bit 0: a code is set) | 2 wrong tries in a row | 3 0 |
+ *   4..7 salt | 8..11 hash of salt + digits | 12..13 0 | 14..15 CRC-16/CCITT of bytes 0..13
+ * The RAM copy is always kept (so a platform without a record, native, still has a code for the
+ * session); a platform with a record gets it written on every change (s_sec_dirty). Tries: three
+ * wrong in a row lock the session; after a reboot a locked record grants one try per boot until a
+ * right code clears the count, so a forgotten code never bricks the machine and brute force is
+ * one guess per restart. */
+#define SEC_VERSION 1
+#define SEC_TRIES   3
+static uint8_t s_sec[CONFIG_SZ_SECURITY];
+static uint8_t s_sec_dirty;
+static uint8_t s_sec_wrong;      /* wrong tries this boot (RAM only) */
+
+static int sec_digits_ok(const char *c)
+{
+    int i;
+    if (!c) return 0;
+    for (i = 0; i < SECCODE_LEN; i++) if (c[i] < '0' || c[i] > '9') return 0;
+    return c[SECCODE_LEN] == 0;
+}
+
+static uint32_t sec_hash(const uint8_t *salt, const char *code)
+{
+    uint32_t h = 2166136261u;
+    int i;
+    for (i = 0; i < 4; i++) h = (h ^ salt[i]) * 16777619u;
+    for (i = 0; i < SECCODE_LEN; i++) h = (h ^ (uint8_t)code[i]) * 16777619u;
+    h ^= h >> 15; h *= 0x2C1B3C6Du; h ^= h >> 12;
+    return h;
+}
+
+static void sec_seal(void)
+{
+    uint16_t c = crc16(s_sec, 14);
+    s_sec[14] = (uint8_t)c; s_sec[15] = (uint8_t)(c >> 8);
+}
+
+static int sec_block_ok(const uint8_t *b)
+{
+    return b[0] == SEC_VERSION && crc16(b, 14) == (uint16_t)(b[14] | (b[15] << 8));
+}
+
+int seccode_is_set(void) { return s_sec[0] == SEC_VERSION && (s_sec[1] & 1); }
+
+int seccode_tries_left(void)
+{
+    int r = s_sec[2];
+    if (!seccode_is_set()) return SEC_TRIES;
+    if (r < SEC_TRIES) return SEC_TRIES - r;
+    return s_sec_wrong == 0 ? 1 : 0;
+}
+
+int seccode_set(const char *code)
+{
+    uint32_t salt, h;
+    int i;
+    if (!sec_digits_ok(code)) return 0;
+    salt = rng_next(&doomo_rng);
+    memset(s_sec, 0, sizeof s_sec);
+    s_sec[0] = SEC_VERSION; s_sec[1] = 1;
+    for (i = 0; i < 4; i++) s_sec[4 + i] = (uint8_t)(salt >> (8 * i));
+    h = sec_hash(s_sec + 4, code);
+    for (i = 0; i < 4; i++) s_sec[8 + i] = (uint8_t)(h >> (8 * i));
+    sec_seal();
+    s_sec_wrong = 0;
+    s_sec_dirty = 1;
+    opt_config_save();
+    return 1;
+}
+
+void seccode_clear(void)
+{
+    memset(s_sec, 0, sizeof s_sec);
+    s_sec_wrong = 0;
+    s_sec_dirty = 1;
+    opt_config_save();
+}
+
+int seccode_check(const char *code)
+{
+    uint32_t h;
+    int i, ok = 1;
+    if (!seccode_is_set()) return 1;                  /* nothing to ask */
+    if (seccode_tries_left() == 0) return -1;
+    if (!sec_digits_ok(code)) return 0;
+    h = sec_hash(s_sec + 4, code);
+    for (i = 0; i < 4; i++) ok &= s_sec[8 + i] == (uint8_t)(h >> (8 * i));
+    if (ok) {
+        if (s_sec[2]) { s_sec[2] = 0; sec_seal(); s_sec_dirty = 1; opt_config_save(); }
+        s_sec_wrong = 0;
+        return 1;
+    }
+    if (s_sec[2] < 255) s_sec[2]++;
+    if (s_sec_wrong < 255) s_sec_wrong++;
+    sec_seal();
+    s_sec_dirty = 1;
+    opt_config_save();
+    return 0;
+}
+
 static int s_first_boot;       /* U5: the platform keeps a record and none was there at boot */
 
 int opt_config_first_boot(void) { return s_first_boot; }
@@ -120,6 +224,10 @@ int opt_config_load(void)
         s_first_boot = 1;                                   /* no valid record: first boot (U5) */
         return 0;
     }
+    if (n >= (int)PLAT_CONFIG_MAX && sec_block_ok(rec + OPT_CONFIG_SETTINGS_SZ)) memcpy(s_sec, rec + OPT_CONFIG_SETTINGS_SZ, sizeof s_sec);
+    else memset(s_sec, 0, sizeof s_sec);
+    s_sec_dirty = 0;
+    s_sec_wrong = 0;
     s_quiet = 1;
     for (k = 0; k < 7; k++) put_machine(k_rec[k], rec[4 + k]);
     s_quiet = 0;
@@ -141,7 +249,9 @@ int opt_config_save(void)
     memset(rec + 11, 0, 19);
     c = crc16(rec, 30);
     rec[30] = (uint8_t)c; rec[31] = (uint8_t)(c >> 8);
-    return plat_config_write(rec, PLAT_CONFIG_MAX);
+    if (s_sec_dirty) memcpy(rec + OPT_CONFIG_SETTINGS_SZ, s_sec, sizeof s_sec);
+    if (plat_config_write(rec, PLAT_CONFIG_MAX)) { s_sec_dirty = 0; return 1; }
+    return 0;
 }
 
 void opt_machine_changed(int opt, int value)
