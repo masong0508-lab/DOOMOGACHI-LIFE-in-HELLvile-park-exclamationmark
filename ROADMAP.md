@@ -308,6 +308,7 @@ Worked example (U6c):
 | E6a/E6b | `doomo-e6ab-ch12-punchup-nov02s` | `E6a/E6b: four more adult-only beats in Ch1-2 (Grampy, Haze, Sandwichy, Father Fuzz)` | text only: ep14, ep21, ep22, ep24; `make -C core test` passes, register lint 0 findings, save/flow locks ok; Spanish and the other languages are missing for L8 |
 | U5 | `doomo-u5-lang-picker-nov02t` | `U5: first-boot language picker (SCENE_LANG_PICK)` | on a console with a config record and none saved yet, boot goes to the picker once: UP/DOWN applies the language live, A/START writes the record and opens the title. Native, tests and harnesses skip it. `make -C core test` 710/710. Not built for GBA/PS1 here; the Mature question and the security code (SCENE_SECURITY_CODE) are the other U5 parts and are still open |
 | U3a | `doomo-u3a-pause-shell-nov02u` | `U3a: pause shell Music row (J4 11 -> 4 presses)` | every pause menu (combat, Hell Breach levels, arena, minigames) gets a Music row under Resume that LEFT/RIGHT changes on the spot (`pause_music_label/nudge` in fp_options.c); J4 is START, DOWN, LEFT, B, budget 4. Other rows moved down one: combat, pause_options and levels_modes tests updated. `make -C core test` 711/711, 154 scripts, 19 journeys. Not built for GBA/PS1 here |
+| E1 | `doomo-w4-adult-gate-nov02v` | `E1: real adult allow-list (mature_adult_ok)` | strong mature_adult_ok: premade adult, name matches, not custom, not kid cast (compiled copy checked against kid_cast.txt); core only |
 
 How the owner applies patches (so nobody has to ask again): from Termux, one pasted line per patch, oldest first, each line
 is the full template above (`cd` repo, `git pull --ff-only`, `rm -rf ~/vs && mkdir ~/vs`, `unzip -qo` the zip from
@@ -326,3 +327,4 @@ and the reply gives the line with NAME and MESSAGE filled in, plus a ROADMAP row
 <!-- doomo-e6ab-ch12-punchup-nov02s -->
 <!-- doomo-u5-lang-picker-nov02t -->
 <!-- doomo-u3a-pause-shell-nov02u -->
+<!-- doomo-w4-adult-gate-nov02v -->

@@ -3,11 +3,11 @@
  * LIFESIM_PLAN E0 + section 6 amendments; add-only after E0).
  *
  * Implementation: core/src/ending.c (E1: the rule table, the strong 'ENDS'
- * descriptor, the routes and the strong mature_adult_ok). Until E1 lands
- * every function here is a weak default in core/src/weak_endings.c that
- * says "nothing seen, nobody qualifies": no ending is ever recorded and
- * mature_adult_ok() refuses everyone, so every mature slot (E2) plays its
- * fade-to-black fallback. That is the safe default (LIFESIM_PLAN E2 note).
+ * descriptor, the routes and the strong mature_adult_ok). The weak defaults in
+ * core/src/weak_endings.c stay as the safe "nothing seen, nobody
+ * qualifies" answer for a build that leaves ending.c out: no ending is
+ * recorded and mature_adult_ok() refuses everyone, so every mature slot
+ * (E2) plays its fade-to-black fallback (LIFESIM_PLAN E2 note).
  *
  * THE ENDINGS (user answers 18, 19, 21; DECISIONS "ENDINGS"):
  * 14 endings in four categories, plus a 15th, very secret joke ending
@@ -141,6 +141,9 @@ void ending_check_bonejangles(void);
  * sim-born). Every mature slot, sexy ending, override-art lookup and route
  * participant calls it. */
 int  mature_adult_ok(int id);
+/* 1 if premade citizen `id` is on the kid-coded cast (the compiled copy of
+ * core/data/story/kid_cast.txt; E1 strong, no weak default: the gate above is the caller). */
+int  ending_kid_cast(int id);
 
 /* ---- the Mature option (U0 owns the strong definition, town.h) ----------
  * OPT_MATURE's value: MATURE_OFF / CENSORED / ON / PACK. The VM's `jmat`

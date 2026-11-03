@@ -1,5 +1,8 @@
 /* test_ending.c - E1: the endings engine (core/src/ending.c): reach, seen
  * counters, the pending card, the finale and the 'ENDS' chunk round trip. */
+#include <stdio.h>
+#include <stdlib.h>
+#include <ctype.h>
 #include <string.h>
 #include "test.h"
 #include "doomo/doomo.h"
@@ -9,6 +12,10 @@
 #include "doomo/save_budget.h"
 #include "doomo/scenes.h"
 #include "doomo/story.h"
+#include "doomo/town.h"
+#include "doomo/roster.h"
+#include "doomo/resident.h"
+#include "doomo/playas.h"
 #include "doomo/map.h"
 #include "../src/story_int.h"
 
@@ -166,4 +173,87 @@ TEST(ending_e09_the_heart_is_hidden_once_in_bone_cathedral_only)
             }
     }
     CHECK_EQ(hearts, 1);
+}
+
+/* ---- the adult gate (R10): mature_adult_ok ---- */
+TEST(adult_gate_refuses_everyone_it_must)
+{
+    int id;
+    test_reset();
+    town_new(TOWN_STORY, 5, TOWN_POP_PREMADE);
+    CHECK_EQ(mature_adult_ok(-1), 0);
+    CHECK_EQ(mature_adult_ok(DOOMO_MAX_RESIDENTS), 0);          /* the slot past the premades */
+    CHECK_EQ(mature_adult_ok(DOOMO_PLAYER_ID), 0);              /* the hero is not a route participant */
+    CHECK_EQ(mature_adult_ok(PLAYAS_ID_FAMILY_FIRST), 0);       /* a family pool member */
+    CHECK_EQ(mature_adult_ok(DOOMO_MAX_RESIDENTS + 5000), 0);
+    CHECK_EQ(mature_adult_ok(ROSTER_ID_PIP), 0);                /* a kid */
+    CHECK_EQ(mature_adult_ok(563), 0);                          /* Wisp, the imp-kid ghost */
+    /* the two route partners and a grown-up townsperson qualify */
+    CHECK_EQ(mature_adult_ok(ROSTER_ID_GRUMBLEGUTS), 1);
+    CHECK_EQ(mature_adult_ok(ROSTER_ID_VEX), 1);
+    CHECK_EQ(mature_adult_ok(ROSTER_ID_MAYOR), 1);
+    /* the property over all 1000 premades: a yes is always an adult, never a kid, teen or kid-cast */
+    for (id = 0; id < DOOMO_MAX_RESIDENTS; id++) {
+        if (!mature_adult_ok(id)) continue;
+        CHECK(LIFE_IS_ADULT(RES_STAGE(town_res(id))));
+        CHECK(!(roster_traits(id) & (ROSTER_T_KID | ROSTER_T_TEEN)));
+        CHECK(!ending_kid_cast(id));
+    }
+    /* every KID and TEEN premade is a no */
+    for (id = 0; id < DOOMO_MAX_RESIDENTS; id++)
+        if (roster_traits(id) & (ROSTER_T_KID | ROSTER_T_TEEN)) CHECK_EQ(mature_adult_ok(id), 0);
+}
+
+TEST(adult_gate_follows_edits_to_the_slot)
+{
+    DoomoResident *r;
+    test_reset();
+    town_new(TOWN_STORY, 5, TOWN_POP_PREMADE);
+    r = town_res(ROSTER_ID_VEX);
+    CHECK_EQ(mature_adult_ok(ROSTER_ID_VEX), 1);
+    resident_set_stage(r, LIFE_ELDER);                           /* an elder counts as an adult (LS0) */
+    CHECK_EQ(mature_adult_ok(ROSTER_ID_VEX), 1);
+    resident_set_stage(r, LIFE_TEEN);
+    CHECK_EQ(mature_adult_ok(ROSTER_ID_VEX), 0);
+    resident_set_stage(r, LIFE_CHILD);
+    CHECK_EQ(mature_adult_ok(ROSTER_ID_VEX), 0);
+    resident_set_stage(r, LIFE_ADULT);
+    CHECK_EQ(mature_adult_ok(ROSTER_ID_VEX), 1);
+    r->flags |= RF_CUSTOM;                                       /* player-made or edited */
+    CHECK_EQ(mature_adult_ok(ROSTER_ID_VEX), 0);
+    r->flags &= (uint8_t)~RF_CUSTOM;
+    CHECK_EQ(mature_adult_ok(ROSTER_ID_VEX), 1);
+    memcpy(r->name, "Somebody", 9);                             /* the slot no longer holds the premade */
+    CHECK_EQ(mature_adult_ok(ROSTER_ID_VEX), 0);
+    /* an island that did not start as the premade town has no premade citizens at all */
+    test_reset();
+    town_new(TOWN_FREEPLAY, 5, TOWN_POP_EMPTY);
+    CHECK_EQ(mature_adult_ok(ROSTER_ID_VEX), 0);
+}
+
+/* the compiled kid cast is the file (E5's core/data/story/kid_cast.txt): same ids both ways */
+TEST(adult_gate_kid_cast_matches_the_file)
+{
+    char path[512], line[200];
+    int from_file[DOOMO_MAX_RESIDENTS], n = 0, i, id;
+    FILE *f;
+    snprintf(path, sizeof path, "%s/../../data/story/kid_cast.txt", test_golden_dir);
+    f = fopen(path, "r");
+    CHECK(f != NULL);
+    if (!f) return;
+    while (fgets(line, sizeof line, f)) {
+        if (!isdigit((unsigned char)line[0])) continue;       /* comments, @E, @scene */
+        id = atoi(line);
+        CHECK(id >= 0 && id < DOOMO_MAX_RESIDENTS);
+        CHECK(ending_kid_cast(id));                           /* every id in the file is compiled in */
+        if (n < DOOMO_MAX_RESIDENTS) from_file[n++] = id;
+    }
+    fclose(f);
+    CHECK(n >= 2);
+    for (id = 0; id < DOOMO_MAX_RESIDENTS; id++) {            /* and nothing compiled in that the file lacks */
+        int in_file = 0;
+        for (i = 0; i < n; i++) in_file |= from_file[i] == id;
+        CHECK_EQ(ending_kid_cast(id), in_file);
+    }
+    CHECK_EQ(ending_kid_cast(-1), 0);
 }

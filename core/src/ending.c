@@ -8,12 +8,14 @@
  * chunk keeps the 32 B state; an untouched state writes nothing, so a save that never
  * reached an ending stays byte-identical.
  *
- * What this is not (yet): the rules that pick E02..E14 (E3 good + secret, E4 bad + sexy,
- * the route scripts) and the strong mature_adult_ok() allow-list. mature_adult_ok() stays
- * the weak "nobody" answer in weak_endings.c on purpose: no mature slot or sexy ending can
- * play until the adult allow-list lands. Today the story's credits reach the default good
- * ending, E01; each content package adds its own ending_reach() call.
- * State is 32 B of .bss. */
+ * The adult gate (R10): mature_adult_ok() is strong here (allow-list below). Every mature slot, sexy
+ * ending, override-art lookup and romance route participant asks it; it is the one place that
+ * says who may be in adult material.
+ *
+ * What this is not (yet): the rules that pick E02..E14 (E3 good + secret, E4 bad + sexy, the
+ * route scripts). Today the story's credits reach the default good ending, E01; each content
+ * package adds its own ending_reach() call.
+ * State is 32 B of .bss; the allow-list is 18 B of const data. */
 #include <string.h>
 #include "doomo/doomo.h"
 #include "doomo/ending.h"
@@ -25,6 +27,10 @@
 #include "doomo/unlock_ids.h"
 #include "doomo/unlocks.h"
 #include "doomo/story.h"
+#include "doomo/town.h"
+#include "doomo/roster.h"
+#include "doomo/resident.h"
+#include "doomo/sim.h"
 
 static DoomoEnds E;
 
@@ -191,3 +197,37 @@ static const DoomoSaveExt ends_ext = {
     SAVE_EXT_TAG_ENDS, ENDS_VERSION, ends_size, ends_write, ends_read, ends_reset, SAVE_EXT_MAX_ENDS
 };
 const DoomoSaveExt *const doomo_save_ext_endings = &ends_ext;
+
+/* ---- the adult gate (R10; E1) ---------------------------------------------
+ * 1 only if resident `id` may appear in a mature or romance scene. All of these must hold:
+ *   - id is a slot of a TOWN_POP_PREMADE island (not the player, a family pool id or a negative);
+ *   - the slot still holds the premade citizen: its name equals roster_name(id), so a renamed
+ *     or replaced slot (custom, sim-born, moved-in stranger) never qualifies;
+ *   - not RF_CUSTOM (made or edited by the player);
+ *   - life stage ADULT or ELDER (LS0: an elder counts as an adult), and the roster's own traits
+ *     do not say KID or TEEN (belt and braces: a stage that was edited down never lets a kid in);
+ *   - not on the kid-coded cast (core/data/story/kid_cast.txt, E5).
+ * The kid cast is the same list as the file; test_ending.c reads the file and fails if the two
+ * ever differ, so adding a kid to the file without this table is caught. */
+static const uint16_t kid_cast_ids[] = { 42, 563, 72, 127, 530, 540, 582, 597, 820 };
+
+int ending_kid_cast(int id)
+{
+    unsigned i;
+    for (i = 0; i < sizeof kid_cast_ids / sizeof kid_cast_ids[0]; i++)
+        if (kid_cast_ids[i] == id) return 1;
+    return 0;
+}
+
+int mature_adult_ok(int id)
+{
+    const DoomoResident *r;
+    if (id < 0 || id >= DOOMO_MAX_RESIDENTS) return 0;
+    if (doomo_town.population != TOWN_POP_PREMADE) return 0;
+    r = town_res(id);
+    if (!r || (r->flags & RF_CUSTOM)) return 0;
+    if (strncmp(roster_name(id), r->name, DOOMO_NAME_LEN) != 0) return 0;
+    if (!LIFE_IS_ADULT(sim_life_stage(id))) return 0;
+    if (roster_traits(id) & (ROSTER_T_KID | ROSTER_T_TEEN)) return 0;
+    return !ending_kid_cast(id);
+}

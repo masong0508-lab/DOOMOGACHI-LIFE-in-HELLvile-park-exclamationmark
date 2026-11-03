@@ -54,7 +54,7 @@ WEAK int ending_count_seen(void) { return 0; }
 WEAK int ending_resolve_finale(void) { return ENDING_E01; }
 WEAK int ending_partner(void) { return -1; }
 
-/* ---- the adult gate (E1): nobody until the real allow-list lands ---- */
+/* ---- the adult gate: ending.c has the real allow-list; this is the safe fallback (nobody) ---- */
 WEAK int mature_adult_ok(int id) { (void)id; return 0; }
 
 /* ---- content packs (E2): none ---- */
