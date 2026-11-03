@@ -153,4 +153,20 @@ uint32_t pack_art_read(int kind, uint32_t uid, void *dst, uint32_t cap);
  * txt_user_set), or 0 when the pack has none (the fallback plays). */
 int  pack_script(int slot);
 
+/* ---- E2 additions (pack.c) ---------------------------------------------
+ * pack_open() asks the platform (plat_pack_blob, else plat_pack_read);
+ * these let a host that already holds the bytes (the native runner's pack
+ * file, the tests) hand them over. Same validation, same result.
+ * pack_close() forgets the open pack (and its registered scripts).
+ * pack_art() returns a pointer only for a RAW entry of an addressable
+ * pack; an LZ entry, or a streamed pack, is read with pack_art_read(),
+ * which decodes into dst (returns the decoded bytes, 0 if it does not
+ * fit in cap). Scripts are stored RAW (mpack.py refuses otherwise):
+ * pack_open() registers each with txt_user_set() when the pack is
+ * addressable; a streamed pack's scripts are loaded by the host with
+ * pack_script_bind() into its own buffer (>= the entry's size). */
+int  pack_open_image(const uint8_t *blob, uint32_t size);
+void pack_close(void);
+int  pack_script_bind(int slot, void *buf, uint32_t cap);
+
 #endif

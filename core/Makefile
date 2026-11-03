@@ -142,7 +142,10 @@ story-check:
 	@$(PYTHON) $(CORE)/tools/textpack.py --data $(CORE)/tests/fixtures/e0_builtin_ok \
 	    --out-root "$(BUILD)/e0pack/ok" >/dev/null
 	@# --- E7: the content pack tool (tools/mpack): format read from pack.h, seeded refusals ---
-	@$(PYTHON) -I $(CORE)/../tools/mpack/test_mpack.py | tail -n 1
+	@$(PYTHON) -I $(ROOT)/tools/mpack/test_mpack.py | tail -n 1
+	@$(PYTHON) -I $(ROOT)/tools/mpack/mpack.py example --out "$(BUILD)/e0pack/example.dmpk" >/dev/null
+	@cmp "$(BUILD)/e0pack/example.dmpk" $(CORE)/tests/fixtures/example.dmpk || \
+	    { echo "story-check: core/tests/fixtures/example.dmpk is stale (tools/mpack/mpack.py example)"; exit 1; }
 	@echo "story-check: user packs OK (fixture byte-identical, $$(ls $(CORE)/tests/fixtures/e0_bad/*.dsc | wc -l) seeded refusals)"
 # --- end P0 ---
 

@@ -20,7 +20,7 @@ MANIFEST (one directive per line, # comments, paths relative to the file):
   author  Author (<= 20 ASCII)
   port    gba | ps1 | dc | native
   flags   sfw_example attested             (optional)
-  codec   auto | raw | lz                  (optional, default auto)
+  codec   auto | raw | lz                  (optional, default auto; scripts are always raw)
   cg       SLOT FILE                       full-screen still of mature slot SLOT
   portrait ID   FILE                       portrait override of resident id ID
   figure   ID   FILE                       standing figure override of id ID
@@ -194,7 +194,8 @@ def build(spec, F):
         seen.add(uid)
         codec = spec.get("codec", "auto")
         stored, cid = data, 0
-        if codec in ("auto", "lz"):
+        # scripts stay RAW: pack.c hands them to txt_user_set() in place
+        if kind != "script" and codec in ("auto", "lz"):
             z = lz_encode(data)
             if codec == "lz" or len(z) < len(data):
                 stored, cid = z, F["codecs"].index("lz")
@@ -324,6 +325,8 @@ def validate(pack, F, want_port=None, gba_default_cap=False):
             bad.append("%s: cg slot %d out of 0..%d" % (tag, arg, F["MSLOT_MAX"] - 1))
         if kn == "script":
             slot = uid & 0xFFFF
+            if F["codecs"][codec] != "raw":
+                bad.append("%s: scripts must be stored raw (they are read in place)" % tag)
             if slot >= F["MSLOT_MAX"]:
                 bad.append("%s: script slot %d out of 0..%d" % (tag, slot, F["MSLOT_MAX"] - 1))
             if not F["USER_FIRST"] <= arg < F["USER_END"]:
