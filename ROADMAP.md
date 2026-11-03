@@ -111,9 +111,14 @@ The PS1 life-sim status checklist (what is verified, written, or missing on that
   LS-QA part: rent collects itself after the island hub has idled 90 ticks (`life_rent` 4 -> 0 presses; Town Hall row still works).
   LS-IN (GBA): the VBlank IRQ latches held keys (`gba_key_latch`) and `read_pad` takes them, so a tap between two slow hub frames is no
   longer lost. WRITTEN WITHOUT AN ARM COMPILER: build the ROM and check the hub on hardware/mGBA before trusting it. E6d: two Ch4 punch-ups
-  in `ch4/ep47.dsc` (text only, flow lock unchanged). U3b was already done. NOT done in W6: LS-QA's "B = next problem" (life_help_next 9 -> 2)
-  and "buy on the spot" (life_missing_item 26 -> 3); E4's route scripts themselves (nothing calls CB_ROUTE_* yet) and the E12-E14 mature
-  scenes; the rest of E6d (more Ch4 + epilogue beats).
+  in `ch4/ep47.dsc` (text only, flow lock unchanged). U3b was already done. NOT done in step 1 (see step 2 below): LS-QA's "B = next problem" (life_help_next 9 -> 2)
+  Step 2 (754 -> 757 tests): LS-QA done: B on the island hub opens the next citizen with a problem (`life_help_next` 9 -> 2 presses) and
+  Help! buys a missing wanted item on the spot when you can afford it (`life_missing_item` 26 -> 2). E4 done in C: `ending_route_daily()`
+  (day_rollover, only while Mature is not Off) grows a route by how close you are to the partner (friend +3, best friend +6, dating +10,
+  married +14), moves it DATING -> KISSED -> STAYED -> COMMITTED (committed makes them the household partner) and queues the route's mature
+  slot (mslots 8..16); the finale queues slots 2..4 for E12..E14; the story overworld shows a queued slot when idle (`ending_take_mslot`).
+  Slots play as fade-to-black unless Mature is "On + pack". No dsc route scripts were needed. E6d: three more epilogue punch-ups
+  (text only). Still open: the mature pack content itself (E2 packs), and a real-hardware look at the hub's B shortcut and the press latch.
 
 **Started, saved on branches, not landed** (resume these first). CHECKED 2026-11-02: `git branch -a` shows only `claude/nice-allen-gr6czm`, so the branches named here (fut-u0, fut-g3, fut-g9, fut-g11, fut-h2, fut-h7, fut-l4, fut-w6, fut-w7, ...) are NOT in the repo; treat every item below as not started unless you can recover the branch. Hold the Door itself (waves, guests, panel, captions) is already built in `core/src/home_defend.c` / `home_draw.c`; what H7 still needs is only the PS1 black frame, which needs a PS1 run
 - Life sim wave 2: LS1, U0, E0, PA0, E6a, E6b (may land before the session ends).

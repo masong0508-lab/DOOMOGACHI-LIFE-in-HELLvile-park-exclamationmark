@@ -376,6 +376,9 @@ static int auto_events(void)
         scene_push(&SCENE_ENDING_CARD, ending_take_pending());
         return 1;
     }
+    {   int m = ending_take_mslot();            /* E4: a route scene or an adult ending's slot */
+        if (m >= 0) { scene_push(&SCENE_MSLOT, m); return 1; }
+    }
     if (b == BEAT_C1_ARRIVE) {
         if (!story_flag(SF_TITLE_CH1)) {
             story_set_flag(SF_TITLE_CH1, 1);

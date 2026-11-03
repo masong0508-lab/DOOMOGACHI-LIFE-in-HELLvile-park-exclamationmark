@@ -779,6 +779,27 @@ static void isl_ready(void)
     }
 }
 
+/* LS-QA: B on the hub opens the next citizen with a problem (round robin); 0 if nobody has one,
+ * and B then opens the START menu as before. */
+static int open_next_problem(void)
+{
+    static uint16_t last = 0xFFFF;
+    int i, n = sim_problem_count(), best = -1, first = -1;
+    for (i = 0; i < n; i++) {
+        const DoomoProblem *p = sim_problem(i);
+        if (!p || p->resident >= DOOMO_MAX_RESIDENTS) continue;
+        if (first < 0 || p->resident < first) first = p->resident;
+        if (p->resident > (int)last && (best < 0 || p->resident < best)) best = p->resident;
+    }
+    if (best < 0) best = first;
+    if (best < 0) return 0;
+    last = (uint16_t)best;
+    I.idle = 0;
+    audio_sfx(SFX_SELECT);
+    fp_open_resident(best);
+    return 1;
+}
+
 static void island_update(void)
 {
     int old = I.sel;
@@ -808,6 +829,7 @@ static void island_update(void)
         open_menu(L);
         return;
     }
+    if (btn_pressed(BTN_B) && open_next_problem()) return;     /* LS-QA: B = the next problem */
     if (btn_pressed(BTN_START | BTN_B)) { open_menu(&menu_loc); return; }
     if (btn_pressed(BTN_R)) { audio_sfx(SFX_SELECT); scene_push(&SCENE_ROSTER, 0); return; }
     if (btn_pressed(BTN_L)) { audio_sfx(SFX_SELECT); scene_push(&SCENE_NEWS, 0); return; }

@@ -165,6 +165,55 @@ static int sexy_finale_(void)
     return -1;
 }
 
+
+/* ---- E4: the route's daily tick and its scene slots -----------------------------------------
+ * Each day, with Mature not Off, every route whose partner passes the adult gate grows by how close
+ * you are to them (friend +3, best friend +6, dating +10, married +14). Reaching DATING, KISSED and
+ * STAYED queues that route's mature slot (mslots.txt 8..16: first kiss / date night / stay over for
+ * Grumbleguts, Vex and "together"); COMMITTED makes them your partner in the household. The slot
+ * plays as the fade-to-black unless Mature is "On + pack" (mslot.c), and is shown by the story
+ * overworld when it is idle (ending_take_mslot). Nothing is queued while Mature is Off. */
+static int8_t pending_mslot_ = -1;
+
+int ending_take_mslot(void)
+{
+    int m = pending_mslot_;
+    pending_mslot_ = -1;
+    return m;
+}
+
+static void queue_mslot_(int slot) { if (pending_mslot_ < 0) pending_mslot_ = (int8_t)slot; }
+
+static int route_slot_base_(int r) { return r == ROUTE_GRUMBLEGUTS ? 8 : r == ROUTE_VEX ? 11 : 14; }
+
+void ending_route_daily(void)
+{
+    int r;
+    if (opt_mature() == MATURE_OFF) return;
+    for (r = 0; r < ROUTE_COUNT; r++) {
+        int p = r == ROUTE_ANY ? (ends()->route_partner != 0xFFFFu ? (int)ends()->route_partner : life_player_partner())
+                               : route_resident_(r);
+        int k, gain, before, st;
+        if (ending_route_stage(r) == RSTAGE_REFUSED || !route_pair_ok_(p)) continue;
+        if (r == ROUTE_ANY && ends()->route_partner == 0xFFFFu) ends()->route_partner = (uint16_t)p;
+        k = rel_kind(DOOMO_PLAYER_ID, p);
+        gain = k == REL_FRIEND ? 3 : k == REL_BEST_FRIEND ? 6 : k == REL_DATING ? 10 : k == REL_MARRIED ? 14 : 0;
+        if (!gain) continue;
+        before = ending_route_stage(r);
+        ending_route_add(r, gain);
+        st = ending_route_stage(r);
+        if (st == RSTAGE_DATING && before < RSTAGE_DATING) queue_mslot_(route_slot_base_(r) + 1);   /* date night */
+        if (st == RSTAGE_DATING && ending_route_meter(r) >= 160 && ending_route_set(r, RSTAGE_KISSED, p))
+            queue_mslot_(route_slot_base_(r));                                                       /* first kiss */
+        if (ending_route_stage(r) == RSTAGE_KISSED && ending_route_meter(r) >= 200 &&
+            ending_route_set(r, RSTAGE_STAYED, p))
+            queue_mslot_(route_slot_base_(r) + 2);                                                   /* stay over */
+        if (ending_route_stage(r) == RSTAGE_STAYED && ending_route_meter(r) >= 240 &&
+            ending_route_set(r, RSTAGE_COMMITTED, p))
+            family_add(p, FAMROLE_PARTNER, sim_life_stage(p));                                       /* the household */
+    }
+}
+
 int ending_resolve_finale(void)
 {
     /* secret outranks sexy outranks bad outranks good: E11, E10, then E12..E14, then the bad ones */
@@ -226,8 +275,10 @@ int ending_take_pending(void)
 
 void ending_finale_reached(void)
 {
+    int k = ending_resolve_finale();
     ends()->flags |= ENDF_FINALE_DONE;
-    ending_reach(ending_resolve_finale());
+    ending_reach(k);
+    if (k >= ENDING_E12 && k <= ENDING_E14) queue_mslot_(2 + (k - ENDING_E12));   /* the E12..E14 scene slots */
     ending_check_family();
     ending_check_bonejangles();
     ending_check_sparkles();

@@ -109,3 +109,54 @@ TEST(e4_the_default_finale_is_not_a_bad_ending)
     CHECK(ending_resolve_finale() == ENDING_E01 || ending_resolve_finale() == ENDING_E06);
     CHECK(ending_category(ending_resolve_finale()) != ENDCAT_SEXY);
 }
+
+/* ---- E4: the daily route tick ---- */
+static void open_to_vex(void)
+{
+    DoomoResident *v = town_res(ROSTER_ID_VEX);
+    v->romance = (uint8_t)((v->romance & ~ROMANCE_PREF_MASK) | ROMANCE_ANY);
+    doomo_town.player.romance = (uint8_t)((doomo_town.player.romance & ~ROMANCE_PREF_MASK) | ROMANCE_ANY);
+}
+
+TEST(e4_route_daily_does_nothing_while_mature_is_off)
+{
+    int i;
+    fresh6();
+    open_to_vex();
+    opt2_set(OPT_MATURE, MATURE_OFF);
+    rel_set_kind(DOOMO_PLAYER_ID, ROSTER_ID_VEX, REL_DATING);
+    for (i = 0; i < 40; i++) ending_route_daily();
+    CHECK_EQ(ending_route_stage(ROUTE_VEX), RSTAGE_NONE);
+    CHECK_EQ(ending_take_mslot(), -1);
+}
+
+TEST(e4_route_daily_walks_a_dating_vex_to_committed_and_queues_scenes)
+{
+    int i, slots[8], n = 0, m;
+    fresh6();
+    open_to_vex();
+    opt2_set(OPT_MATURE, MATURE_ON);
+    rel_set_kind(DOOMO_PLAYER_ID, ROSTER_ID_VEX, REL_DATING);
+    for (i = 0; i < 60 && ending_route_stage(ROUTE_VEX) != RSTAGE_COMMITTED; i++) {
+        ending_route_daily();
+        while ((m = ending_take_mslot()) >= 0 && n < 8) slots[n++] = m;
+    }
+    CHECK_EQ(ending_route_stage(ROUTE_VEX), RSTAGE_COMMITTED);
+    CHECK_EQ(n, 3);
+    CHECK(slots[0] == 12 && slots[1] == 11 && slots[2] == 13);     /* date night, first kiss, stay over */
+    CHECK_EQ(life_player_partner(), ROSTER_ID_VEX);
+    CHECK_EQ(ending_resolve_finale(), ENDING_E13);
+    opt2_set(OPT_MATURE, MATURE_OFF);
+}
+
+TEST(e4_route_daily_ignores_kids_and_non_friends)
+{
+    int i;
+    fresh6();
+    open_to_vex();
+    opt2_set(OPT_MATURE, MATURE_ON);
+    for (i = 0; i < 30; i++) ending_route_daily();                  /* no relationship: no growth */
+    CHECK_EQ(ending_route_stage(ROUTE_VEX), RSTAGE_NONE);
+    CHECK_EQ(ending_route_stage(ROUTE_ANY), RSTAGE_NONE);
+    opt2_set(OPT_MATURE, MATURE_OFF);
+}

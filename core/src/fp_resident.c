@@ -336,6 +336,17 @@ static void do_help(void)
         return;
     default: break;
     }
+    /* LS-QA: buy on the spot. A problem that wants an item you don't carry buys it for you when you
+     * can afford the shop price, so Help! works in one press instead of a trip to the shop. */
+    if (p->kind == PROB_WANTS_ITEM && p->item > ITEM_NONE && p->item < ITEM_COUNT &&
+        doomo_town.items[p->item] == 0 && doomo_items[p->item].price > 0 &&
+        doomo_town.money >= doomo_items[p->item].price) {
+        doomo_town.money -= doomo_items[p->item].price;
+        inv_add(p->item, 1);
+        doomo_snprintf(buf, sizeof(buf), STR_ICON_COIN " Bought %s: -%u H$",
+                       doomo_items[p->item].name, (unsigned)doomo_items[p->item].price);
+        ui_toast(buf);
+    }
     {
         uint32_t m0 = doomo_town.money;
         sim_problem_resolve(help_index);

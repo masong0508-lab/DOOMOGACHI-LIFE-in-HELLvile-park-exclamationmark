@@ -16,6 +16,7 @@
 #include "doomo/playas.h"
 #include "sim_int.h"
 #include "doomo/family.h"
+#include "doomo/ending.h"
 #include "doomo/life_events.h"
 
 SimState sim_s;
@@ -687,6 +688,7 @@ static void day_rollover(void)
     life_events_daily();                 /* LS3: a potluck, a lucky find, a rotten day ... */
     family_disaster_daily();             /* F10: warnings and outcomes (Loss on) */
     family_loss_daily();                 /* F6: neglect and old age */
+    ending_route_daily();                /* E4: romance routes grow, queue their scenes */
 }
 
 static void minute_step(void)

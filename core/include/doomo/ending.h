@@ -169,4 +169,9 @@ int  ending_route_partner(int route);
 int  ending_route_add(int route, int amount);
 int  ending_route_set(int route, int stage, int partner);
 
+/* E4: once a day (sim day_rollover): routes grow with how close you are to their partner and queue
+ * their mature scene slots; the story overworld shows a queued slot when idle (-1 none). Weak: no-ops. */
+void ending_route_daily(void);
+int  ending_take_mslot(void);
+
 #endif

@@ -44,7 +44,7 @@ script se1_after
   [R5]
   say nar "Help folks. Hunt secrets. / Make friends on both sides / of the river. Pet the pet."
   [R13]
-  say nar "Oh, and your suitcase is / still packed. Since the bus. / It's been judging you."
+  say nar "Oh, and your suitcase is / still packed. Since the bus. / It's judging you. Hard."
 end
 
 script se2_suitcase
@@ -91,7 +91,7 @@ script se_wisp_chair
 end
 
 script se_grumble
-  say grumble HAPPY "Sugar! Come up and see my / gate sometime. {..}It's a / dessert trolley now."
+  say grumble HAPPY "Sugar! Come up and see my / gate sometime. {..}It's a / dessert trolley. Wipe feet."
 end
 
 script se_mayor
@@ -99,5 +99,5 @@ script se_mayor
 end
 
 script se_vex
-  say vex NEUTRAL "The jar rained on my / sunflowers this morning. / Only mine. Very precise."
+  say vex NEUTRAL "The jar rained on my / sunflowers this morning. / Only mine. Invoice later."
 end

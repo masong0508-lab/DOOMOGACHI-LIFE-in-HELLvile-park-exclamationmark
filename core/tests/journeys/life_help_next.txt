@@ -1,6 +1,6 @@
-# life_help_next (M0): the island hub -> the next citizen with a problem
-# helped, the wanted item already in the bag (Citizens, START filters,
-# Tag: Has a problem, open them, Help!). Budget: budgets.tsv life_help_next.
+# life_help_next (M0; LS-QA): the island hub -> the next citizen with a problem
+# helped, the wanted item already in the bag. B on the hub opens the next
+# citizen with a problem; A is Help!. Budget: budgets.tsv life_help_next.
 scene NEW_ISLAND
 wait 10
 press A
@@ -20,18 +20,7 @@ item Perfume -99
 item Perfume 1
 expect-problem Fiddlestick
 journey-begin life_help_next
-press R
-wait 1
-expect-scene ROSTER
-press START
-press DOWN
-press DOWN
-press DOWN
-press RIGHT
 press B
-wait 1
-shot problems
-press A
 wait 1
 expect-scene RESIDENT
 press A

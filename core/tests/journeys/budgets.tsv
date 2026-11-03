@@ -20,8 +20,8 @@ j7_island_save		3	56	U3c: START, START quick-saves from the island menu (met: 2;
 j8_ow_title		5	13	U3b: story overworld -> title screen
 j9_new_island		9	110	U6: boot -> new Classic island hub (target 10, met by U6e)
 life_new_island		5	62	U6/LS6: New Island screen -> hub
-life_help_next		9	22	LS-QA: hub -> next problem helped, item in the bag (target 2)
-life_missing_item	26	71	LS-QA: hub -> problem needing an item not in the bag, bought, helped (target 3)
+life_help_next		2	10	LS-QA: hub -> next problem helped, item in the bag (met: B, A)
+life_missing_item	2	10	LS-QA: hub -> problem needing an item not in the bag, bought on the spot, helped (met: B, A)
 life_feed		6	26	LS-QA: hub -> a citizen found by name and fed (+ the name typed)
 life_introduce		13	47	LS-QA: hub -> two citizens found by name and introduced (+ both names typed)
 life_rent		0	72	LS-QA: hub -> today's rent collected by itself (met: 0 presses; ticks are the idle wait)

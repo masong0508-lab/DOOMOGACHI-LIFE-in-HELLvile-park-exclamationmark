@@ -53,6 +53,8 @@ WEAK void ending_mark(int k) { (void)k; plat_log("STUB: ending_mark"); }
 WEAK int ending_count_seen(void) { return 0; }
 WEAK int ending_resolve_finale(void) { return ENDING_E01; }
 WEAK int ending_partner(void) { return -1; }
+WEAK void ending_route_daily(void) {}
+WEAK int ending_take_mslot(void) { return -1; }
 
 /* ---- the adult gate: ending.c has the real allow-list; this is the safe fallback (nobody) ---- */
 WEAK int mature_adult_ok(int id) { (void)id; return 0; }

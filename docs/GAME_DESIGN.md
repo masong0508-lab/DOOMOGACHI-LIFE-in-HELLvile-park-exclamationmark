@@ -244,8 +244,8 @@ before it begins.
 | J8 story overworld -> title screen | 5 | 1 | (U3b) |
 | J9 boot -> a new Classic island's hub | 11 | 1 | 10 (U6c) |
 | new island: New Island screen -> hub | 7 | 1 | (U6/LS6) |
-| help the next citizen with a problem (item in the bag) | 9 | 3 | 2 (LS-QA: B = next problem) |
-| a problem that needs an item not in the bag: find, shop, help | 26 | 3 | 3 (LS-QA: buy on the spot) |
+| help the next citizen with a problem (item in the bag) | 2 | 3 | 2 (LS-QA: B = next problem, done) |
+| a problem that needs an item not in the bag: find, shop, help | 2 | 3 | 3 (LS-QA: buy on the spot, done) |
 | feed a citizen found by name | 6 + name | 3 | (LS-QA) |
 | introduce two citizens found by name | 13 + 2 names | 4 | (LS-QA) |
 | collect today's rent | 0 | 0 | 0 (LS-QA: automatic, done) |

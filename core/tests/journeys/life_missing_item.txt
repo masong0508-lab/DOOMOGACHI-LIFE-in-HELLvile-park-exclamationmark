@@ -1,4 +1,5 @@
-# life_missing_item (M0): the island hub -> a citizen who wants an item
+# life_missing_item (LS-QA: bought on the spot by Help!)
+# was: life_missing_item (M0): the island hub -> a citizen who wants an item
 # that is not in the bag: find them (Citizens, Has a problem), Help! says
 # "You don't have one", back to the hub, the Shop, buy it, back to them,
 # Help!. Budget: budgets.tsv life_missing_item.
@@ -20,58 +21,12 @@ problem Fiddlestick item Flowers
 item Flowers -99
 expect-money 40
 journey-begin life_missing_item
-press R
-wait 1
-expect-scene ROSTER
-press START
-press DOWN
-press DOWN
-press DOWN
-press RIGHT
 press B
-wait 1
-press A
-wait 1
-expect-scene RESIDENT
-press A
-wait 1
-expect-problem Fiddlestick
-press A
-wait 2
-press A
-wait 2
-press B
-wait 1
-press B
-wait 1
-expect-scene ISLAND
-press DOWN
-press LEFT
-press A
-wait 1
-press A
-wait 1
-expect-scene SHOP
-press R
-press DOWN
-press A
-wait 1
-press A
-wait 1
-expect-item Flowers 1
-press B
-wait 1
-expect-scene ISLAND
-press B
-wait 1
-press R
-wait 1
-expect-scene ROSTER
-press A
 wait 1
 expect-scene RESIDENT
 press A
 wait 1
 expect-problem Fiddlestick 0
+expect-money 0
 journey-end life_missing_item
 shot helped
