@@ -1166,7 +1166,7 @@ static void draw_movein(void)
     if (cr.mode == CR_EDIT) draw_curtain_stage(sw, ground, t);
     else if (cr.mode == CR_PLAYER) draw_cottage(bx - (crl.big ? 8 : 4), ground, bw + (crl.big ? 16 : 8), t);
     else draw_building(bx, ground, bw, hell, t);
-    im = figure_image(RES_LOOK_PTR(&cr.draft), RES_ALIVE, cr_preview_expr());
+    im = figure_image(RES_LOOK_VIEW(&cr.draft), RES_ALIVE, cr_preview_expr());
     if (im) {
         int fw = im->w * sc, fh = im->h * sc, hop = movein_hop(t, walking);
         ui_fill_ellipse(fx, ground + 2, fw / 4 - hop / 3, 2 + sc,

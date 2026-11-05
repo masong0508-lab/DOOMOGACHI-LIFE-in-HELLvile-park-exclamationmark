@@ -199,9 +199,11 @@ int song_section_of_voice(const uint8_t *voice)
 static const uint8_t *voice_of(int id)
 {
     static const uint8_t def_voice[VOICE_COUNT] = { 16, 14, 18, 12, 8 };
+    static uint8_t buf[VOICE_COUNT];     /* one slot: used before the next lookup */
     const DoomoResident *r = id >= 0 ? town_res(id) : NULL;
     if (!r || (id < DOOMO_MAX_RESIDENTS && r->status == RES_EMPTY)) return def_voice;
-    return RES_VOICE_PTR(r);
+    res_get_voice(r, buf);
+    return buf;
 }
 
 int song_singer_section(const DoomoSong *s, int i)

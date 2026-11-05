@@ -23,6 +23,7 @@
 #ifndef DOOMO_RESIDENT_ACC_H
 #define DOOMO_RESIDENT_ACC_H
 
+#include <string.h>
 #include "gene.h"
 
 #define RES_SPECIES(r)          ((r)->look.species)
@@ -32,11 +33,31 @@
 #define RES_LOOK(r, gf)         (((const uint8_t *)&(r)->look)[1 + (gf)])
 #define RES_SET_LOOK(r, gf, v)  (((uint8_t *)&(r)->look)[1 + (gf)] = (uint8_t)(v))
 
-/* Whole-record uses (v1 layout only: the flip replaces these with res_look() style copies).
- * RES_LOOK_PTR(r) is a DoomoLook pointer for read-only passes and copies. */
-#define RES_LOOK_PTR(r)         (&(r)->look)
-#define RES_VOICE_PTR(r)        ((r)->voice)
-#define RES_PERSONA_PTR(r)      ((r)->persona)
+/* Whole-record uses: copy OUT, never point INTO the record. After the flip the look, voice and
+ * persona live bit-packed in the gene and have no address, so every whole-record use goes through
+ * these. Today they copy from the v1 members; the flip redefines only these bodies.
+ *   res_get_look(r, &l)      copy the wide look out         res_set_look(r, &l)   store one back
+ *   res_get_voice(r, v5)     VOICE_COUNT bytes out          res_set_voice(r, v5)
+ *   res_get_persona(r, p)    PERS_COUNT bytes out           res_set_persona(r, p)
+ *   RES_LOOK_VIEW(r)         const DoomoLook * to a temporary copy (a C99 compound literal): valid
+ *   RES_VOICE_VIEW(r)        to the end of the enclosing block, so use it as a call argument or in
+ *   RES_PERSONA_VIEW(r)      one statement, never keep it in a longer-lived pointer or return it.
+ * A function that must hand a pointer back keeps its own static or caller-supplied buffer. */
+static inline void res_get_look(const DoomoResident *r, DoomoLook *out)  { *out = r->look; }
+static inline void res_set_look(DoomoResident *r, const DoomoLook *l)    { r->look = *l; }
+static inline void res_get_voice(const DoomoResident *r, uint8_t *out)   { memcpy(out, r->voice, VOICE_COUNT); }
+static inline void res_set_voice(DoomoResident *r, const uint8_t *v)     { memcpy(r->voice, v, VOICE_COUNT); }
+static inline void res_get_persona(const DoomoResident *r, uint8_t *out) { memcpy(out, r->persona, PERS_COUNT); }
+static inline void res_set_persona(DoomoResident *r, const uint8_t *p)   { memcpy(r->persona, p, PERS_COUNT); }
+static inline const DoomoLook *res_look_view_(const DoomoResident *r, DoomoLook *tmp)
+{ res_get_look(r, tmp); return tmp; }
+static inline const uint8_t *res_voice_view_(const DoomoResident *r, uint8_t *tmp)
+{ res_get_voice(r, tmp); return tmp; }
+static inline const uint8_t *res_persona_view_(const DoomoResident *r, uint8_t *tmp)
+{ res_get_persona(r, tmp); return tmp; }
+#define RES_LOOK_VIEW(r)     res_look_view_((r), &(DoomoLook){0})
+#define RES_VOICE_VIEW(r)    res_voice_view_((r), (uint8_t[VOICE_COUNT]){0})
+#define RES_PERSONA_VIEW(r)  res_persona_view_((r), (uint8_t[PERS_COUNT]){0})
 
 #define RES_VOICE(r, i)         ((r)->voice[i])
 #define RES_SET_VOICE(r, i, v)  ((r)->voice[i] = (uint8_t)(v))

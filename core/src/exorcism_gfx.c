@@ -260,17 +260,17 @@ void exo_church(int dread, uint32_t t, int floor_y)
 void exo_fuzz(int cx, int foot_y, uint32_t t, int expr)
 {
     const DoomoResident *f = town_res(ROSTER_ID_FATHER_FUZZ);
-    const DoomoLook *look;
+    DoomoLook look;
     const DoomoImage *img;
     int k;
     if (f && f->status != RES_EMPTY && f->status != RES_DEAD &&
         strncmp(f->name, roster_name(ROSTER_ID_FATHER_FUZZ), DOOMO_NAME_LEN) == 0)
-        look = RES_LOOK_PTR(f);
+        res_get_look(f, &look);
     else if (roster_premade(ROSTER_ID_FATHER_FUZZ))
-        look = RES_LOOK_PTR(roster_premade(ROSTER_ID_FATHER_FUZZ));
+        res_get_look(roster_premade(ROSTER_ID_FATHER_FUZZ), &look);
     else
         return;
-    img = figure_image(look, RES_ALIVE, expr);
+    img = figure_image(&look, RES_ALIVE, expr);
     if (!img) return;
     /* soft contact shadow */
     for (k = -1; k <= 1; k++) {

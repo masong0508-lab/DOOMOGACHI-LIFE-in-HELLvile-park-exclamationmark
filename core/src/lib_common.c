@@ -933,7 +933,7 @@ static void lobby_draw(void)
             else if (lob.nope_t < 40) expr = EXPR_SHOCK;
             else if (lob.sel_t < 45) expr = EXPR_TALK;
             else if (town_is_night() && ((lob.t / 200) & 1)) expr = EXPR_SLEEPY;
-            img = figure_image(RES_LOOK_PTR(q), status, expr);
+            img = figure_image(RES_LOOK_VIEW(q), status, expr);
             if (img) plat_image(qx, qy, img, 1, 0, 0);
         }
         /* desk */

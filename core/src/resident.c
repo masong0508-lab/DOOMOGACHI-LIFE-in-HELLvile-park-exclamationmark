@@ -735,26 +735,35 @@ static void gen_rest(DoomoResident *res, DoomoRng *r, int hell)
 void resident_generate(DoomoResident *r, uint32_t seed)
 {
     DoomoRng rng;
+    DoomoLook lk;
     rng_seed(&rng, seed);
     memset(r, 0, sizeof(*r));
-    gen_look(RES_LOOK_PTR(r), &rng, 0);
+    res_get_look(r, &lk);
+    gen_look(&lk, &rng, 0);
+    res_set_look(r, &lk);
     gen_rest(r, &rng, 0);
 }
 
 void resident_generate_hellborn(DoomoResident *r, uint32_t seed)
 {
     DoomoRng rng;
+    DoomoLook lk;
     rng_seed(&rng, seed ^ 0x48E11B0Du);
     memset(r, 0, sizeof(*r));
-    gen_look(RES_LOOK_PTR(r), &rng, 1);
+    res_get_look(r, &lk);
+    gen_look(&lk, &rng, 1);
+    res_set_look(r, &lk);
     gen_rest(r, &rng, 1);
 }
 
 void resident_randomize_look(DoomoResident *r, uint32_t seed)
 {
     DoomoRng rng;
+    DoomoLook lk;
     rng_seed(&rng, seed ^ 0x100C0000u);
-    gen_look(RES_LOOK_PTR(r), &rng, (r->flags & RF_HELLBORN) != 0);
+    res_get_look(r, &lk);
+    gen_look(&lk, &rng, (r->flags & RF_HELLBORN) != 0);
+    res_set_look(r, &lk);
 }
 
 /* ---------------------------------------------------------------------- */
@@ -777,8 +786,9 @@ static int fix_range(uint8_t *v, int lo, int hi, int def)
 
 int resident_sanitize(DoomoResident *r)
 {
-    DoomoLook *l = RES_LOOK_PTR(r);
+    DoomoLook lk, *l = &lk;          /* copy out, fix, store back: the look has no address after the flip */
     int n = 0, i, end;
+    res_get_look(r, &lk);
 
     n += fix_enum(&l->species, SPECIES_COUNT, SPECIES_HUMAN);
     n += fix_enum(&l->body, BODY_COUNT, BODY_AVERAGE);
@@ -831,6 +841,7 @@ int resident_sanitize(DoomoResident *r)
     n += fix_enum(&l->aura, AURA_COUNT, AURA_NONE);
     n += fix_enum(&l->pattern, PATTERN_COUNT, PATTERN_SOLID);
     n += fix_max(&l->pattern_color, PAL_PAINT_COUNT - 1);
+    res_set_look(r, &lk);
 
     /* name: printable ASCII, NUL-terminated, zero padded */
     end = DOOMO_NAME_LEN - 1;
@@ -881,9 +892,10 @@ int resident_sanitize(DoomoResident *r)
 
 void resident_default(DoomoResident *r)
 {
-    DoomoLook *l = RES_LOOK_PTR(r);
+    DoomoLook lk, *l = &lk;
     int i;
     memset(r, 0, sizeof(*r));
+    memset(&lk, 0, sizeof lk);
     l->species = SPECIES_CATFOLK;
     l->body = BODY_AVERAGE;
     l->height = 7; l->build = 8;
@@ -906,6 +918,7 @@ void resident_default(DoomoResident *r)
     l->shoes = SHOES_SNEAKERS; l->shoes_color = PAINT_WHITE;
     l->hat_color = PAINT_LEMON; l->accessory_color = PAINT_MINT;
     l->pattern_color = PAINT_WHITE;
+    res_set_look(r, &lk);
     memcpy(r->name, "Mochi", 6);
     for (i = 0; i < VOICE_COUNT; i++) RES_SET_VOICE(r, i, 16);
     for (i = 0; i < PERS_COUNT; i++) RES_SET_PERSONA(r, i, 8);

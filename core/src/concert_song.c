@@ -671,7 +671,9 @@ static const uint8_t *syllable_voice(ConcertPlayer *p, uint32_t mask, uint8_t *t
     if (!c || !mask) {
         r = town_res(p->song->singer);
         p->voice_k = 0;
-        return r ? RES_VOICE_PTR(r) : NULL;
+        if (!r) return NULL;
+        res_get_voice(r, tmp);
+        return tmp;
     }
     pick = (p->ticks / 3 + p->sung) % cnt;
     for (i = 0; i < c->n; i++)
@@ -680,7 +682,7 @@ static const uint8_t *syllable_voice(ConcertPlayer *p, uint32_t mask, uint8_t *t
     p->voice_k = (int8_t)k;
     r = town_res(c->ids[k]);
     if (!r) return NULL;
-    memcpy(tmp, RES_VOICE_PTR(r), VOICE_COUNT);
+    res_get_voice(r, tmp);
     return tmp;
 }
 
@@ -688,7 +690,10 @@ static const uint8_t *lead_voice(const ConcertPlayer *p)
 {
     const DoomoResident *r = town_res(p->cast ? p->cast->ids[p->voice_k > 0 ? p->voice_k : 0]
                                               : p->song->singer);
-    return r ? RES_VOICE_PTR(r) : NULL;
+    static uint8_t buf[VOICE_COUNT];     /* one slot: the callers use it before asking again */
+    if (!r) return NULL;
+    res_get_voice(r, buf);
+    return buf;
 }
 
 /* vowels colour the sung tone: "aah" round, "eee" thin, "ooo" soft */

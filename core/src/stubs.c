@@ -410,13 +410,15 @@ WEAK void figure_render(const DoomoLook *l, int status, int expr, int anim,
 static const DoomoLook *stub_look_of(int id, int *status)
 {
     static DoomoResident def;
+    static DoomoLook buf;            /* one slot: the callers use it before asking again */
     const DoomoResident *r = town_res(id);
     if (!r || r->status == RES_EMPTY) {
         if (RES_LOOK(&def, GF_EYE_COUNT) == 0) resident_default(&def);
         r = &def;
     }
     *status = r->status;
-    return &(*RES_LOOK_PTR(r));
+    res_get_look(r, &buf);
+    return &buf;
 }
 WEAK const DoomoImage *portrait_image(int resident_id, int expr)
 {

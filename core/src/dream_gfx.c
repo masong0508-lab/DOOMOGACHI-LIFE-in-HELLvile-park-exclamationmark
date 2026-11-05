@@ -816,7 +816,7 @@ void dream_draw_vignette(int v, const DreamCast *c, int t, int creep, int nightm
     case 1: {   /* the giant plush */
         int who = c->crush >= 0 ? c->crush : c->friend_id >= 0 ? c->friend_id : c->dreamer;
         const DoomoResident *r = town_res(who);
-        const DoomoImage *img = r ? figure_image(RES_LOOK_PTR(r), RES_ALIVE, creep >= 10 ? EXPR_SHOCK : EXPR_LOVE) : NULL;
+        const DoomoImage *img = r ? figure_image(RES_LOOK_VIEW(r), RES_ALIVE, creep >= 10 ? EXPR_SHOCK : EXPR_LOVE) : NULL;
         int gx = cx + ui_wave(t, 80, 2), gy = ground + (big ? 30 : 34);
         for (k = 0; k < 6; k++)
             ui_heart(gx + ui_wave(t + k * 30, 120, sw / 3), ground - (int)((tt * 2 + (uint32_t)k * 31) % (uint32_t)ground),

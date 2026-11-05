@@ -299,7 +299,7 @@ def gf(field):
 
 
 def whole(s, e0, end, ptr_expr, deref):
-    """A whole look / array: `&E->look` -> RES_LOOK_PTR(E); a copy or compare -> (*RES_LOOK_PTR(E))."""
+    """A whole look / array: `&E->look` -> RES_LOOK_VIEW(E) (a read-only copy-out view); a copy or compare -> (*RES_LOOK_VIEW(E))."""
     b = e0
     while b > 0 and s[b - 1] in " \t\r\n":
         b -= 1
@@ -350,7 +350,7 @@ def plan(s, off, mem):
     if mem == "look":
         j2 = skip_ws(s, j)
         if s[j2] != ".":
-            return whole(s, e0, j, "RES_LOOK_PTR(%s)" % ptr, True)
+            return whole(s, e0, j, "RES_LOOK_VIEW(%s)" % ptr, True)
         j2 = skip_ws(s, j2 + 1)
         m = re.match(r"\w+", s[j2:])
         if not m:

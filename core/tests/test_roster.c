@@ -118,8 +118,8 @@ TEST(roster_names_are_unique_and_findable)
 
 static int look_cmp(const void *a, const void *b)
 {
-    return memcmp(RES_LOOK_PTR(roster_premade(*(const int *)a)),
-                  RES_LOOK_PTR(roster_premade(*(const int *)b)), sizeof(DoomoLook));
+    return memcmp(RES_LOOK_VIEW(roster_premade(*(const int *)a)),
+                  RES_LOOK_VIEW(roster_premade(*(const int *)b)), sizeof(DoomoLook));
 }
 
 TEST(roster_looks_are_unique)
@@ -238,7 +238,7 @@ TEST(roster_uses_every_catalog_option)
     memset(seen, 0, sizeof(seen));
     for (i = 0; i < ROSTER_COUNT; i++) {
         const DoomoResident *r = roster_premade(i);
-        const DoomoLook *l = RES_LOOK_PTR(r);
+        const DoomoLook *l = RES_LOOK_VIEW(r);
         const int v[24] = { l->species, l->body, l->head_shape, l->eye_style, l->brow_style,
             l->nose_style, l->mouth_style, l->ears, l->hair_style, l->facial_hair, l->horns,
             l->tail, l->wings, l->halo, l->marking, l->top, l->bottom, l->shoes, l->hat,

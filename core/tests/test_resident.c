@@ -5,7 +5,7 @@
 
 static int in_range(const DoomoResident *r)
 {
-    const DoomoLook *l = RES_LOOK_PTR(r);
+    const DoomoLook *l = RES_LOOK_VIEW(r);
     int i;
     if (l->species >= SPECIES_COUNT || l->body >= BODY_COUNT || l->height > 15 ||
         l->build > 15 || l->skin > 39 || l->head_shape >= HEAD_COUNT || l->head_size > 15 ||
@@ -189,17 +189,17 @@ TEST(default_and_helpers)
     CHECK_EQ(look_paint(PAINT_ROSE, 9), PAL_PAINT(PAINT_ROSE, 2));
     CHECK_EQ(look_paint(LOOK_NO_COLOR, 1), 0);
     RES_SET_LOOK(&r, GF_SKIN, SKIN_TAN);
-    CHECK_EQ(look_skin(RES_LOOK_PTR(&r), 0), PAL_SKIN(SKIN_TAN, 0));
+    CHECK_EQ(look_skin(RES_LOOK_VIEW(&r), 0), PAL_SKIN(SKIN_TAN, 0));
     RES_SET_LOOK(&r, GF_SKIN, 8 + PAINT_MINT);
-    CHECK_EQ(look_skin(RES_LOOK_PTR(&r), 2), PAL_PAINT(PAINT_MINT, 2));
+    CHECK_EQ(look_skin(RES_LOOK_VIEW(&r), 2), PAL_PAINT(PAINT_MINT, 2));
     /* randomize_look keeps the name & personality */
     resident_generate(&r, 5);
     {
         DoomoResident before = r;
         resident_randomize_look(&r, 77);
         CHECK(memcmp(r.name, before.name, sizeof(r.name)) == 0);
-        CHECK(memcmp(RES_PERSONA_PTR(&r), RES_PERSONA_PTR(&before), sizeof(RES_PERSONA_PTR(&r))) == 0);
-        CHECK(memcmp(RES_LOOK_PTR(&r), RES_LOOK_PTR(&before), sizeof((*RES_LOOK_PTR(&r)))) != 0);
+        CHECK(memcmp(RES_PERSONA_VIEW(&r), RES_PERSONA_VIEW(&before), PERS_COUNT) == 0);
+        CHECK(memcmp(RES_LOOK_VIEW(&r), RES_LOOK_VIEW(&before), sizeof(DoomoLook)) != 0);
         CHECK_EQ(resident_sanitize(&r), 0);
     }
 }

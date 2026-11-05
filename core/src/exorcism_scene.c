@@ -194,7 +194,7 @@ static void make_dummy(void)
     RES_SET_LOOK(&r, GF_ACCESSORY, ACC_BOWTIE);
     RES_SET_LOOK(&r, GF_ACCESSORY_COLOR, PAINT_BUBBLEGUM);
     RES_SET_LOOK(&r, GF_CHEEKS, CHEEK_BLUSH);
-    X.dummy = (*RES_LOOK_PTR(&r));
+    X.dummy = (*RES_LOOK_VIEW(&r));
 }
 
 /* --- S3: the prayer pattern (story_vm.h TPAT_PRAYER), all on A --- */

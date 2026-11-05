@@ -370,7 +370,7 @@ static int decide_activity(int id, const DoomoResident *r)
     int traits = sim_traits(id), stage = RES_STAGE(r);
     int hell = RES_DISTRICT(id) || (r->flags & RF_HELLBORN);
     int sleep_at, wake_at, asleep, w[ACT_COUNT], total, i, pick;
-    const uint8_t *p = RES_PERSONA_PTR(r);
+    const uint8_t *p = RES_PERSONA_VIEW(r);
 
     /* the restless dead and the possessed keep their own hours */
     if (r->status == RES_POSSESSED)
@@ -501,7 +501,7 @@ static int species_pct(const DoomoResident *r, int stat)
 static void apply_needs(int id, DoomoResident *r, int m)
 {
     const int8_t *fx = act_fx[r->activity < ACT_COUNT ? r->activity : 0];
-    const uint8_t *p = RES_PERSONA_PTR(r);
+    const uint8_t *p = RES_PERSONA_VIEW(r);
     int h = doomo_town.minute / 60, s, rate, target, tr, sp_hunger, sp_hygiene;
     Dither dz = { 0, 0 };
 
