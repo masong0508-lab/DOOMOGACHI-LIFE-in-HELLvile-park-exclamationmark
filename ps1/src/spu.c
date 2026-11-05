@@ -325,6 +325,20 @@ void audio_hw_init(void)
     s_ready = 1;
 }
 
+/* SFX.BIN is on the disc (sfxdisc.c): convert every effect once at boot,
+ * right after the CD is up, instead of one disc read per frame later. */
+void audio_hw_sfx_preload(void)
+{
+#ifdef DOOMO_SFX_ON_DISC
+    int id;
+    if (!s_ready)
+        return;
+    for (id = 1; id < SFX_COUNT; id++)
+        convert_sfx(id);
+    s_bg_next = SFX_COUNT;
+#endif
+}
+
 /* Background conversion: one effect per frame after the core is up. */
 void audio_hw_frame(void)
 {

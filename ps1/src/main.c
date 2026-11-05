@@ -102,6 +102,7 @@ static void plat_init_hw(void)
     memcard_init();      /* blocks ~2-3 s (BIOS _bu_init) */
     audio_hw_init();
     overlay_init();      /* CD + OVL.BIN header: scene code comes from the disc */
+    audio_hw_sfx_preload();   /* SFX.BIN (PCM is not in the EXE) -> SPU RAM */
     dbg("ps1: hardware ready (%s)\n", plat_name());
 }
 

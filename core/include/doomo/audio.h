@@ -149,7 +149,14 @@ typedef struct DoomoSfxInfo {
     uint32_t len;         /* bytes                                         */
     uint32_t rate;        /* Hz                                            */
 } DoomoSfxInfo;
+#ifdef DOOMO_SFX_ON_DISC
+/* PS1: the PCM is not linked, it is read from SFX.BIN on the disc (ps1/src/sfxdisc.c).
+ * Returns `len` bytes at `offset` in a window that stays valid until the next call,
+ * or NULL when the disc has no SFX.BIN. */
+const int8_t *plat_sfx_pcm(uint32_t offset, uint32_t len);
+#else
 extern const int8_t doomo_sfx_pcm_data[];
+#endif
 extern const uint32_t doomo_sfx_pcm_total;
 extern const DoomoSfxInfo doomo_sfx_info[SFX_COUNT];
 

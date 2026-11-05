@@ -267,6 +267,7 @@ uint32_t pad_read(void);                 /* BTN_* bitmask */
 int      pad_analog(int *lx, int *ly, int *rx, int *ry);
 uint32_t pad_stick_mask(void);           /* BTN_ bits mirrored from the left stick */
 void     audio_hw_init(void);
+void     audio_hw_sfx_preload(void);   /* after overlay_init(): SFX.BIN -> SPU RAM */
 void     audio_hw_frame(void);
 void     audio_hw_hush(int on);      /* silence the SPU while the BIOS blocks the loop */
 int      audio_selftest(void);       /* SPU checks, PASS/FAIL on the TTY */

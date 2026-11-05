@@ -1089,3 +1089,14 @@ screens under 30 fps; everything pushed over the island holds 30.
   `plat_rect` calls per frame on the 2D layer. GBA and native builds keep
   the valve. The close shot is otherwise identical on all platforms, and
   any new detail added to it should follow the same pattern.
+
+### SFX PCM on the disc (patch 42)
+
+`core/gen/sfx_data.c`'s 47,793 B PCM array is not linked into the game EXE
+(`DOOMO_SFX_ON_DISC`, set by `ps1/CMakeLists.txt`; `tools/sfxgen.py` wraps the
+array in `#ifndef`). `ps1/tools/sfxbin.py` writes it to `SFX.BIN`; `src/sfxdisc.c`
+reads one effect's sectors into a 6 KB window (`plat_sfx_pcm`, called by the core's
+`audio_sfx_pcm`), and `audio_hw_sfx_preload()` converts every effect to SPU RAM at
+boot, after `overlay_init()`. Net: -41 KB resident; the disc ends at `0x801e8290`
+(about 95 KB below the stack top). Simpler than the ADPCM + wave table plan in
+design_grow.md (the jukebox waveform reads the PCM through the window).

@@ -692,6 +692,9 @@ def emit(blobs):
         len(blobs) - 1, total, BUDGET))
     out.append('#include "doomo/audio.h"\n\n')
     out.append("const uint32_t doomo_sfx_pcm_total = %du;\n\n" % total)
+    # PS1 (ps1/CMakeLists.txt): the PCM is read from SFX.BIN on the disc
+    # (ps1/tools/sfxbin.py), so the array is compiled out of its EXE
+    out.append("#ifndef DOOMO_SFX_ON_DISC\n")
     out.append("const int8_t doomo_sfx_pcm_data[%d] = {\n" % max(1, total))
     flat = []
     for b in blobs:
@@ -700,7 +703,7 @@ def emit(blobs):
         flat = [0]
     for i in range(0, len(flat), 20):
         out.append("    " + ",".join("%d" % v for v in flat[i:i + 20]) + ",\n")
-    out.append("};\n\n")
+    out.append("};\n#endif\n\n")
     out.append("/* {offset, length, rate} */\n")
     out.append("const DoomoSfxInfo doomo_sfx_info[SFX_COUNT] = {\n")
     off = 0

@@ -64,6 +64,19 @@ add_custom_command(
 	COMMENT "Packing the story text (core/tools/textpack.py -> TEXT.BIN)"
 	VERBATIM)
 add_custom_target(textbin DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/TEXT.BIN)
+# SFX.BIN: the sound effect PCM (core/gen/sfx_data.c) for src/sfxdisc.c
+set(DOOMO_ISO_SFX "")
+if(DOOMO_CORE)
+	add_custom_command(
+		OUTPUT  ${CMAKE_CURRENT_BINARY_DIR}/SFX.BIN
+		COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/sfxbin.py
+		        ${CORE_DIR}/gen/sfx_data.c ${CMAKE_CURRENT_BINARY_DIR}/SFX.BIN
+		DEPENDS ${CORE_DIR}/gen/sfx_data.c ${CMAKE_CURRENT_SOURCE_DIR}/tools/sfxbin.py
+		COMMENT "Packing the sound effects (tools/sfxbin.py -> SFX.BIN)"
+		VERBATIM)
+	set(DOOMO_ISO_SFX "<file name=\"SFX.BIN\" type=\"data\" source=\"SFX.BIN\" />")
+	set(DOOMO_SFX_DEP ${CMAKE_CURRENT_BINARY_DIR}/SFX.BIN)
+endif()
 # --- end S2 ---
 
 list(LENGTH CORE_SRCS _ncore)
@@ -170,6 +183,10 @@ foreach(_t doomo_objs ${DOOMO_EXE_NAME})
 	if(DOOMO_CORE)
 		target_compile_definitions(${_t} PRIVATE DOOMO_HAVE_CORE=1)
 	endif()
+	if(DOOMO_CORE)
+		# the core's SFX PCM is read from SFX.BIN, not linked (src/sfxdisc.c)
+		target_compile_definitions(${_t} PRIVATE DOOMO_SFX_ON_DISC=1)
+	endif()
 	if(DOOMO_PAL)
 		target_compile_definitions(${_t} PRIVATE DOOMO_PAL=1)
 	endif()
@@ -244,7 +261,7 @@ add_custom_command(
 	        -c ${CMAKE_CURRENT_BINARY_DIR}/${DOOMO_EXE_NAME}.cue
 	        ${DOOMO_ISO_XML}
 	DEPENDS ${DOOMO_EXE_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/system.cnf
-	        ${CMAKE_CURRENT_BINARY_DIR}/TEXT.BIN
+	        ${CMAKE_CURRENT_BINARY_DIR}/TEXT.BIN ${DOOMO_SFX_DEP}
 	        ${CMAKE_CURRENT_SOURCE_DIR}/iso.xml
 	        ${CMAKE_CURRENT_SOURCE_DIR}/README.md
 	WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}

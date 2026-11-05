@@ -88,7 +88,11 @@ const int8_t *audio_sfx_pcm(int sfx, uint32_t *len, uint32_t *rate)
     in = &doomo_sfx_info[sfx];
     if (len) *len = in->len;
     if (rate) *rate = in->rate;
+#ifdef DOOMO_SFX_ON_DISC
+    return in->len ? plat_sfx_pcm(in->offset, in->len) : NULL;
+#else
     return in->len ? &doomo_sfx_pcm_data[in->offset] : NULL;
+#endif
 }
 
 void audio_sfx(int sfx)

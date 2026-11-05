@@ -4,6 +4,7 @@
 
 const uint32_t doomo_sfx_pcm_total = 47793u;
 
+#ifndef DOOMO_SFX_ON_DISC
 const int8_t doomo_sfx_pcm_data[47793] = {
     0,-5,-13,-14,-13,-24,-37,32,48,-43,-61,-50,-39,-62,-85,71,96,-81,-109,-86,
     -65,-100,-124,98,121,-98,-120,-88,-65,-95,-116,93,113,-93,-112,-82,-62,-90,-108,88,
@@ -2396,6 +2397,7 @@ const int8_t doomo_sfx_pcm_data[47793] = {
     -5,-5,-5,-4,-3,-1,0,2,3,4,4,3,3,2,1,0,0,-1,-1,-1,
     0,0,0,0,0,-1,-2,-2,-3,-3,-4,-4,-4,
 };
+#endif
 
 /* {offset, length, rate} */
 const DoomoSfxInfo doomo_sfx_info[SFX_COUNT] = {
