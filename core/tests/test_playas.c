@@ -311,3 +311,49 @@ TEST(ls5_life_hooks_and_facts)
     side_callback(CB_LIFE_FAMILY_ADD, 99999);        /* nobody there */
     CHECK(vm_var(0) < 0);
 }
+
+/* ---- PA10 part 1: the play-as stress save ----------------------------------------------------
+ * A finished story, a full household (pets and a grown-up child among them), a New life played
+ * as a family member, life events fired, a memorial: save it, check it stays under PA10's
+ * 32,768 B gate (36 KB cap minus a 4 KB margin), load it back, and see the same person. */
+static uint8_t pa10_image[DOOMO_SAVE_SLOT1_MAX + 4096];
+
+TEST(pa10_stress_save_round_trips_under_the_gate)
+{
+    int i, n = 0, who = -1, lost = -1, pets = 0;
+    uint32_t sz;
+    DoomoSaveInfo info;
+    fresh();
+    cleared();
+    family_tier_story_done();                            /* tier 1, then tier 2: the biggest household */
+    family_tier_story_done();
+    for (i = 0; i < FAMILY_MAX; i++) {
+        int role = (i % 5 == 4) ? FAMROLE_PET : (i % 3 == 0 ? FAMROLE_CHILD : FAMROLE_HOUSEMATE);
+        int stage = role == FAMROLE_PET ? LIFE_ADULT : (i % 4 == 1 ? LIFE_TEEN : LIFE_ADULT);
+        int id = family_pool_add(role, stage, 100u + (uint32_t)i, "Pa Ten", PRONOUN_THEY);
+        if (id < 0) break;
+        n++;
+        if (role == FAMROLE_PET) pets++;
+        else if (who < 0 && playas_can_be(id)) who = id;
+        else if (lost < 0 && role != FAMROLE_PET) lost = id;
+    }
+    CHECK(n >= 10 && who >= 0 && pets >= 1);
+    CHECK(playas_new_life_ok());
+    CHECK(playas_new_life(who));
+    CHECK_EQ(playas_avatar(), who);
+    if (lost >= 0) family_lose(lost, 0);                 /* a memorial in the save */
+    sz = save_serialize(pa10_image, sizeof(pa10_image));
+    CHECK(sz > 0);
+    printf("      PA10 stress save: %u B for %d members (%d pets), gate 32768 B\n", (unsigned)sz, n, pets);
+    CHECK(sz + 0u <= 32768u);
+    CHECK(save_info_from(pa10_image, sz, &info));
+    CHECK(info.flags & PLAYAS_HF_NEW_LIFE);
+    CHECK(info.flags & PLAYAS_HF_PLAYING_OTHER);
+    memset(&doomo_town, 0x5A, sizeof(doomo_town));
+    doomo_save_ext_playas->reset();
+    CHECK(save_deserialize(pa10_image, sz));
+    CHECK_EQ(playas_avatar(), who);                      /* the same person after the load */
+    CHECK(playas_profile_flags() & PLAYAS_HF_NEW_LIFE);
+    CHECK(playas_story_locked());                        /* and the story still belongs to the hero */
+    CHECK_EQ(family_count_role(FAMROLE_PET), pets);
+}
