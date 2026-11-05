@@ -296,11 +296,11 @@ void sim_check_problems(int id, DoomoResident *r)
     else if (s[STAT_HEALTH] < 35) kind = PROB_SICK;
     else if (s[STAT_HUNGER] < 22) kind = PROB_HUNGRY;
     else if (s[STAT_HYGIENE] < 18) kind = PROB_DIRTY;
-    else if (s[STAT_SOCIAL] < 18) kind = (r->persona[PERS_EXPRESSION] >= 8) ? PROB_WANTS_FRIEND : PROB_LONELY;
+    else if (s[STAT_SOCIAL] < 18) kind = (RES_PERSONA(r, PERS_EXPRESSION) >= 8) ? PROB_WANTS_FRIEND : PROB_LONELY;
     else if (s[STAT_HAPPY] < 32) kind = PROB_BORED;
     else if (s[STAT_HAPPY] < 75 && sim_chance(3)) {
         kind = PROB_WANTS_ITEM;
-        if (r->like_food < 12 && sim_chance(50)) item = ITEM_CUPCAKE + r->like_food;
+        if (RES_LIKE_FOOD(r) < 12 && sim_chance(50)) item = ITEM_CUPCAKE + RES_LIKE_FOOD(r);
         else {
             static const uint8_t gifts[] = { ITEM_PLUSHIE, ITEM_FLOWERS, ITEM_VIDEO_GAME,
                                              ITEM_SKULL_TRINKET, ITEM_PERFUME, ITEM_BOARD_GAME,
@@ -631,13 +631,13 @@ void sim_news_fluff(void)
         sim_news_rec(NT_PIE, 0, NEWS_IDS(a, NEWS_NONE, NEWS_NONE));
         break;
     case 5:
-        sim_news_rec(NT_SAYS, ra->catchphrase % CATCHPHRASE_COUNT, NEWS_IDS(a, NEWS_NONE, NEWS_NONE));
+        sim_news_rec(NT_SAYS, RES_CATCHPHRASE(ra) % CATCHPHRASE_COUNT, NEWS_IDS(a, NEWS_NONE, NEWS_NONE));
         break;
     case 6:
-        sim_news_rec(NT_CLASS, ra->like_hobby % HOBBY_COUNT, NEWS_IDS(a, NEWS_NONE, NEWS_NONE));
+        sim_news_rec(NT_CLASS, RES_LIKE_HOBBY(ra) % HOBBY_COUNT, NEWS_IDS(a, NEWS_NONE, NEWS_NONE));
         break;
     case 7:
-        sim_news_rec(NT_SHARING, ra->like_food % FOOD_COUNT, NEWS_IDS(a, b, NEWS_NONE));
+        sim_news_rec(NT_SHARING, RES_LIKE_FOOD(ra) % FOOD_COUNT, NEWS_IDS(a, b, NEWS_NONE));
         break;
     default:
         sim_news_rec(sim_chance(50) ? NT_STARGAZING : NT_GIGGLING, 0, NEWS_IDS(a, b, NEWS_NONE));

@@ -16,10 +16,10 @@ TEST(hero_presets_exist_for_sunny_and_marvin_only)
     CHECK(s && m);
     if (!s || !m) return;
     CHECK(strcmp(s->name, "Sunny") == 0 && strcmp(m->name, "Marvin") == 0);
-    CHECK_EQ(s->pronoun, PRONOUN_SHE);
-    CHECK_EQ(m->pronoun, PRONOUN_HE);
-    CHECK_EQ(s->look.species, SPECIES_BUNNYKIN);
-    CHECK_EQ(m->look.species, SPECIES_FOXKIN);
+    CHECK_EQ(RES_PRONOUN(s), PRONOUN_SHE);
+    CHECK_EQ(RES_PRONOUN(m), PRONOUN_HE);
+    CHECK_EQ(RES_SPECIES(s), SPECIES_BUNNYKIN);
+    CHECK_EQ(RES_SPECIES(m), SPECIES_FOXKIN);
     CHECK(s->flags & RF_PLAYER);
     CHECK(!(m->flags & RF_HELLBORN));
 }
@@ -31,7 +31,7 @@ TEST(hero_new_story_game_uses_the_chosen_preset)
     playas_set_hero_kind(HERO_MARVIN);
     story_new_game();
     CHECK(strcmp(doomo_town.player.name, "Marvin") == 0);
-    CHECK_EQ(doomo_town.player.pronoun, PRONOUN_HE);
+    CHECK_EQ(RES_PRONOUN(&doomo_town.player), PRONOUN_HE);
     CHECK_EQ(playas_you_gender(), GENDER_M);
     town_new(TOWN_STORY, 77, TOWN_POP_PREMADE);
     playas_set_hero_kind(HERO_SUNNY);

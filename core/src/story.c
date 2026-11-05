@@ -169,11 +169,11 @@ static void default_player(void)
     if (p->status == RES_EMPTY || !p->name[0]) {
         resident_generate(p, doomo_town.seed ^ 0x5EEDu);
         memcpy(p->name, "Sunny", 6);
-        p->look.species = SPECIES_BUNNYKIN;
-        p->look.ears = EARS_BUNNY;
-        p->look.tail = TAIL_BUNNY;
-        p->look.horns = HORNS_NONE;
-        p->look.wings = WINGS_NONE;
+        RES_SET_SPECIES(p, SPECIES_BUNNYKIN);
+        RES_SET_LOOK(p, GF_EARS, EARS_BUNNY);
+        RES_SET_LOOK(p, GF_TAIL, TAIL_BUNNY);
+        RES_SET_LOOK(p, GF_HORNS, HORNS_NONE);
+        RES_SET_LOOK(p, GF_WINGS, WINGS_NONE);
         p->status = RES_ALIVE;
         resident_sanitize(p);
     }

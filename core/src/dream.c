@@ -72,12 +72,12 @@ void dream_cast(int id, DreamCast *c)
     c->dreamer = (int16_t)id;
     c->friend_id = c->crush = c->rival = -1;
     if (!r) return;
-    c->food = (uint8_t)(r->like_food % FOOD_COUNT);
-    c->hate_food = (uint8_t)(r->hate_food % FOOD_COUNT);
-    c->hobby = (uint8_t)(r->like_hobby % HOBBY_COUNT);
-    c->fear = (uint8_t)(r->fear % FEAR_COUNT);
-    c->color = (uint8_t)(r->like_color % PAL_PAINT_COUNT);
-    c->music = (uint8_t)(r->like_music % MUSIC_COUNT);
+    c->food = (uint8_t)(RES_LIKE_FOOD(r) % FOOD_COUNT);
+    c->hate_food = (uint8_t)(RES_HATE_FOOD(r) % FOOD_COUNT);
+    c->hobby = (uint8_t)(RES_LIKE_HOBBY(r) % HOBBY_COUNT);
+    c->fear = (uint8_t)(RES_FEAR(r) % FEAR_COUNT);
+    c->color = (uint8_t)(RES_LIKE_COLOR(r) % PAL_PAINT_COUNT);
+    c->music = (uint8_t)(RES_LIKE_MUSIC(r) % MUSIC_COUNT);
     c->edgy = (uint8_t)(id < DOOMO_MAX_RESIDENTS && (RES_DISTRICT(id) || (r->flags & RF_HELLBORN)));
     c->possessed = (uint8_t)(r->status == RES_POSSESSED);
     n = rel_list(id, rel, DOOMO_COUNTOF(rel));

@@ -470,7 +470,7 @@ TEST(concert_lyrics_dump)
         const DoomoResident *r = town_res(ids[i]);
         int take;
         for (take = 0; take < 2; take++) {
-            concert_song_make(&s, ids[i], r->like_music, take);
+            concert_song_make(&s, ids[i], RES_LIKE_MUSIC(r), take);
             printf("\n== %s (%d) - \"%s\" [%s] %s\n", r->name, ids[i], s.title,
                    doomo_music_names[s.genre], s.edgy ? "EDGY" : "");
             for (l = 0; l < CONCERT_LINES; l++) {

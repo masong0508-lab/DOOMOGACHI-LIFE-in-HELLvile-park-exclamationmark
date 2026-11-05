@@ -65,7 +65,7 @@ static void scribble_misc(uint32_t seed)
     opt_set(OPT_GORE, GORE_BRUTAL);
     for (i = 0; i < 20; i++) grave_add(rng_range(&r, 1000));
     memcpy(doomo_town.player.name, "Player One", 11);
-    doomo_town.player.look.hair_style = HAIR_FLAME;
+    RES_SET_LOOK(&doomo_town.player, GF_HAIR_STYLE, HAIR_FLAME);
 }
 
 static uint32_t roundtrip(const char *what)

@@ -34,11 +34,11 @@ static void tfmt(char *o, int cap, const char *t, int id)
             switch (t[1]) {
             case 'N': s = r ? r->name : ""; break;
             case 'J': s = (id < DOOMO_MAX_RESIDENTS && roster_job(id)[0] && !(r->flags & RF_CUSTOM)) ? roster_job(id) : "neighbour"; break;
-            case 'F': s = r ? doomo_food_names[r->like_food % FOOD_COUNT] : ""; break;
-            case 'H': s = r ? doomo_hobby_names[r->like_hobby % HOBBY_COUNT] : ""; break;
-            case 'M': s = r ? doomo_music_names[r->like_music % MUSIC_COUNT] : ""; break;
-            case 'X': s = r ? doomo_fear_names[r->fear % FEAR_COUNT] : ""; break;
-            case 'C': s = r ? doomo_catchphrases[r->catchphrase % CATCHPHRASE_COUNT] : ""; break;
+            case 'F': s = r ? doomo_food_names[RES_LIKE_FOOD(r) % FOOD_COUNT] : ""; break;
+            case 'H': s = r ? doomo_hobby_names[RES_LIKE_HOBBY(r) % HOBBY_COUNT] : ""; break;
+            case 'M': s = r ? doomo_music_names[RES_LIKE_MUSIC(r) % MUSIC_COUNT] : ""; break;
+            case 'X': s = r ? doomo_fear_names[RES_FEAR(r) % FEAR_COUNT] : ""; break;
+            case 'C': s = r ? doomo_catchphrases[RES_CATCHPHRASE(r) % CATCHPHRASE_COUNT] : ""; break;
             case 'B': s = (id < DOOMO_MAX_RESIDENTS && !(r->flags & RF_CUSTOM)) ? roster_bio(id) : "A proud citizen of Hellvile Park."; break;
             case 'Y': doomo_snprintf(yrs, sizeof(yrs), "%d", 3 + (int)(doomo_hash32((uint32_t)id) % 40)); s = yrs; break;
             case 'P': s = story_player_name(); break;
@@ -164,7 +164,7 @@ const char *story_small_talk(int id, int variant, char *buf, int cap)
     int traits = id < DOOMO_MAX_RESIDENTS ? roster_traits(id) : 0;
     if (!r || r->status == RES_EMPTY) { buf[0] = 0; return buf; }
     if (variant == 0) {
-        int sp = r->persona[PERS_SPEECH], q = r->persona[PERS_QUIRK];
+        int sp = RES_PERSONA(r, PERS_SPEECH), q = RES_PERSONA(r, PERS_QUIRK);
         if (r->status == RES_POSSESSED) t = pick(topic_possessed, DOOMO_COUNTOF(topic_possessed), h);
         else if (q >= 12) t = pick(greet_quirky, DOOMO_COUNTOF(greet_quirky), h);
         else if (sp <= 4) t = pick(greet_polite, DOOMO_COUNTOF(greet_polite), h);

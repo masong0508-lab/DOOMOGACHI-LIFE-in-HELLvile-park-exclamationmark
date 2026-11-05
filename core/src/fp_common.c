@@ -206,7 +206,7 @@ const char *fp_job(int id)
         const char *j = roster_job(id);
         if (j && j[0]) return j;
     }
-    h = doomo_hash32((uint32_t)id * 2654435761u ^ r->like_hobby ^ ((uint32_t)r->catchphrase << 8));
+    h = doomo_hash32((uint32_t)id * 2654435761u ^ RES_LIKE_HOBBY(r) ^ ((uint32_t)RES_CATCHPHRASE(r) << 8));
     return (r->flags & RF_HELLBORN) ? hell_jobs[h & 31] : hill_jobs[h & 31];
 }
 
@@ -221,12 +221,12 @@ const char *fp_bio(int id)
     }
     if (r->flags & RF_CUSTOM)
         doomo_snprintf(buf, sizeof(buf), "Made with love. Into %s, scared of %s.",
-                       doomo_hobby_names[r->like_hobby % HOBBY_COUNT],
-                       doomo_fear_names[r->fear % FEAR_COUNT]);
+                       doomo_hobby_names[RES_LIKE_HOBBY(r) % HOBBY_COUNT],
+                       doomo_fear_names[RES_FEAR(r) % FEAR_COUNT]);
     else
         doomo_snprintf(buf, sizeof(buf), "Loves %s. Can't stand %s.",
-                       doomo_hobby_names[r->like_hobby % HOBBY_COUNT],
-                       doomo_food_names[r->hate_food % FOOD_COUNT]);
+                       doomo_hobby_names[RES_LIKE_HOBBY(r) % HOBBY_COUNT],
+                       doomo_food_names[RES_HATE_FOOD(r) % FOOD_COUNT]);
     return buf;
 }
 

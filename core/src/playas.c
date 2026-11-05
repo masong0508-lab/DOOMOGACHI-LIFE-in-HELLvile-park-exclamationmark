@@ -70,7 +70,7 @@ int playas_gender(int id)
     const FamilyIdentity *fi;
     const DoomoResident *r;
     if ((fi = family_identity(id)) != NULL) pr = fi->pronoun;
-    else if ((r = town_res(id)) != NULL && r->status != RES_EMPTY) pr = r->pronoun;
+    else if ((r = town_res(id)) != NULL && r->status != RES_EMPTY) pr = RES_PRONOUN(r);
     else return GENDER_N;
     return pr == PRONOUN_SHE ? GENDER_F : pr == PRONOUN_HE ? GENDER_M : GENDER_N;
 }
@@ -218,7 +218,7 @@ static RomSide rom_side(int id)
     r = town_res(id);
     if (!r || r->status != RES_ALIVE) return s;
     if (id < DOOMO_PLAYER_ID && (roster_traits(id) & (ROSTER_T_KID | ROSTER_T_TEEN))) return s;
-    s.stage = sim_life_stage(id); s.pronoun = r->pronoun; s.pref = RES_ROMANCE(r);
+    s.stage = sim_life_stage(id); s.pronoun = RES_PRONOUN(r); s.pref = RES_ROMANCE(r);
     s.ok = 1;
     return s;
 }

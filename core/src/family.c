@@ -154,7 +154,7 @@ static void make_ident(int id, uint32_t seed, const char *name, int pronoun)
     memset(f, 0, sizeof(*f));
     f->seed = seed;
     memcpy(f->name, r.name, DOOMO_NAME_LEN);
-    f->pronoun = r.pronoun;
+    f->pronoun = RES_PRONOUN(&r);
     f->romance = (uint8_t)RES_ROMANCE(&r);
     if (name) {
         memset(f->name, 0, sizeof(f->name));
@@ -271,7 +271,7 @@ int family_resident(int id, DoomoResident *out)
     resident_generate(out, f->seed);
     memset(out->name, 0, sizeof(out->name));
     memcpy(out->name, f->name, strlen(f->name));
-    out->pronoun = f->pronoun;
+    RES_SET_PRONOUN(out, f->pronoun);
     resident_set_romance(out, f->romance);
     resident_set_stage(out, fam_[i].stage);
     out->status = RES_ALIVE;

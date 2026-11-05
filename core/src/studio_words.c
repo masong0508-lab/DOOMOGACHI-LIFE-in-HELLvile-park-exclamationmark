@@ -533,8 +533,8 @@ void tab_choir_draw(StRect r)
                 const DoomoImage *img = portrait_image(id, (singing >> studio.csel) & 1 ? EXPR_TALK : EXPR_HAPPY);
                 if (img) plat_image(r.x + r.w - 56, iy - 2, img, 1, 0, 0);
                 doomo_snprintf(buf, sizeof(buf), "Loves %s, fears %s",
-                               doomo_music_names[res->like_music % MUSIC_COUNT],
-                               doomo_fear_names[res->fear % FEAR_COUNT]);
+                               doomo_music_names[RES_LIKE_MUSIC(res) % MUSIC_COUNT],
+                               doomo_fear_names[RES_FEAR(res) % FEAR_COUNT]);
                 ui_text(r.x + 8, iy + 11, buf, st->text_dim);
                 ui_text(r.x + 8, iy + 22, RES_DISTRICT(id) && id < DOOMO_MAX_RESIDENTS ? "From Hellvile"
                         : id == DOOMO_PLAYER_ID ? "That's you!" : "From Hillvile", st->text_dim);

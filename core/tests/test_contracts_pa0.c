@@ -95,15 +95,15 @@ TEST(pa0_fresh_town_plays_the_hero)
 TEST(pa0_gender_from_pronoun)
 {
     town_new(TOWN_STORY, 7, TOWN_POP_PREMADE);
-    doomo_town.res[5].pronoun = PRONOUN_SHE;
+    RES_SET_PRONOUN(&doomo_town.res[5], PRONOUN_SHE);
     CHECK_EQ(playas_gender(5), GENDER_F);
-    doomo_town.res[5].pronoun = PRONOUN_HE;
+    RES_SET_PRONOUN(&doomo_town.res[5], PRONOUN_HE);
     CHECK_EQ(playas_gender(5), GENDER_M);
-    doomo_town.res[5].pronoun = PRONOUN_THEY;
+    RES_SET_PRONOUN(&doomo_town.res[5], PRONOUN_THEY);
     CHECK_EQ(playas_gender(5), GENDER_N);
-    doomo_town.res[5].pronoun = PRONOUN_IT;
+    RES_SET_PRONOUN(&doomo_town.res[5], PRONOUN_IT);
     CHECK_EQ(playas_gender(5), GENDER_N);
-    doomo_town.res[5].pronoun = PRONOUN_XE;
+    RES_SET_PRONOUN(&doomo_town.res[5], PRONOUN_XE);
     CHECK_EQ(playas_gender(5), GENDER_N);
     doomo_town.res[6].status = RES_EMPTY;
     CHECK_EQ(playas_gender(6), GENDER_N);
@@ -111,9 +111,9 @@ TEST(pa0_gender_from_pronoun)
     CHECK_EQ(playas_gender(5000), GENDER_N);
     /* "you" is the avatar: the hero on a fresh town */
     doomo_town.player.status = RES_ALIVE;
-    doomo_town.player.pronoun = PRONOUN_HE;
+    RES_SET_PRONOUN(&doomo_town.player, PRONOUN_HE);
     CHECK_EQ(playas_you_gender(), GENDER_M);
-    doomo_town.player.pronoun = PRONOUN_SHE;
+    RES_SET_PRONOUN(&doomo_town.player, PRONOUN_SHE);
     CHECK_EQ(playas_you_gender(), GENDER_F);
 }
 

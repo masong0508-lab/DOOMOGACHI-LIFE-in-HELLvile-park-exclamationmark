@@ -561,8 +561,8 @@ TEST(cook_customers_and_serving)
     }
     /* make customer 0 crave Ramen and serve them a Fish Ramen */
     id = cook_customer(0);
-    town_res(id)->like_food = 14;
-    town_res(id)->hate_food = 46;
+    RES_SET_LIKE_FOOD(town_res(id), 14);
+    RES_SET_HATE_FOOD(town_res(id), 46);
     inv_add(ITEM_FISH_RAMEN, 1);
     meals = progress_get(PROG_MEALS_SERVED);
     {
@@ -583,8 +583,8 @@ TEST(cook_customers_and_serving)
     CHECK_EQ(cook_serve(0, ITEM_FISH_RAMEN, line, sizeof(line), &tip), SERVE_FAIL);   /* already fed */
     /* hated flavour */
     id = cook_customer(1);
-    town_res(id)->like_food = 0;
-    town_res(id)->hate_food = 17;                                  /* Pizza */
+    RES_SET_LIKE_FOOD(town_res(id), 0);
+    RES_SET_HATE_FOOD(town_res(id), 17);                                  /* Pizza */
     inv_add(ITEM_PICKLE_PIZZA, 1);
     CHECK_EQ(cook_serve(1, ITEM_PICKLE_PIZZA, line, sizeof(line), &tip), SERVE_HATE);
     CHECK_EQ(tip, 0);
@@ -593,13 +593,13 @@ TEST(cook_customers_and_serving)
     CHECK_EQ(cook_serve(2, ITEM_TAKOYAKI, line, sizeof(line), &tip), SERVE_FAIL);
     /* aligned items use the sim's own favourite reaction */
     id = cook_customer(2);
-    town_res(id)->like_food = ITEM_BLOOD_ORANGE - ITEM_CUPCAKE;
+    RES_SET_LIKE_FOOD(town_res(id), ITEM_BLOOD_ORANGE - ITEM_CUPCAKE);
     inv_add(ITEM_BLOOD_ORANGE, 1);
     CHECK_EQ(cook_serve(2, ITEM_BLOOD_ORANGE, line, sizeof(line), &tip), SERVE_FAV);
     CHECK_EQ(town_res(id)->mood, MOOD_ECSTATIC);
     inv_add(ITEM_CUPCAKE, 1);
-    town_res(cook_customer(3))->like_food = 1;
-    town_res(cook_customer(3))->hate_food = 2;
+    RES_SET_LIKE_FOOD(town_res(cook_customer(3)), 1);
+    RES_SET_HATE_FOOD(town_res(cook_customer(3)), 2);
     CHECK_EQ(cook_serve(3, ITEM_CUPCAKE, line, sizeof(line), &tip), SERVE_OK);
     CHECK(unlock_has(FC_UL_FULL_HOUSE));
     CHECK(served_fav);

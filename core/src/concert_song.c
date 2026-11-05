@@ -415,7 +415,7 @@ void concert_cast_make(ConcertCast *c, int lead, int mode, int choir_n, int layo
             for (b = a; b > 0; b--) {
                 const DoomoResident *x = town_res(c->ids[order[b - 1]]);
                 const DoomoResident *y = town_res(c->ids[order[b]]);
-                int px = x ? x->voice[VOICE_PITCH] : 16, py = y ? y->voice[VOICE_PITCH] : 16;
+                int px = x ? RES_VOICE(x, VOICE_PITCH) : 16, py = y ? RES_VOICE(y, VOICE_PITCH) : 16;
                 if (px >= py) break;
                 { uint8_t t = order[b]; order[b] = order[b - 1]; order[b - 1] = t; }
             }

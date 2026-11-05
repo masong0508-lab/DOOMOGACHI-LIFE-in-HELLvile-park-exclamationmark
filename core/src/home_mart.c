@@ -196,7 +196,7 @@ int home_mart_rows(int tab, int black, HomeMartRow *out, int cap)
                 int best = -1;
                 for (i = 0; i < total && best < 0; i++)
                     if (sells(i, 0) && !locked(home_furn(i)) && home_visit_want_met(w[k], r, i, -1) &&
-                        !home_visit_fear_hit(r->fear, i))
+                        !home_visit_fear_hit(RES_FEAR(r), i))
                         best = i;
                 if (best < 0) continue;
                 out[n].furn = (uint16_t)best;

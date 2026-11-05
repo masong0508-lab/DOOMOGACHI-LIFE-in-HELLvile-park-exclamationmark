@@ -261,8 +261,8 @@ TEST(sim_care_reactions_depend_on_taste)
     town_new(TOWN_FREEPLAY, 9, TOWN_POP_PREMADE);
     sim_init();
     r = town_res(10);
-    r->like_food = 0;                                /* Cupcakes */
-    r->hate_food = 6;                                /* Hell Peppers */
+    RES_SET_LIKE_FOOD(r, 0);                                /* Cupcakes */
+    RES_SET_HATE_FOOD(r, 6);                                /* Hell Peppers */
     fav_item = ITEM_CUPCAKE;
     hate_item = ITEM_HELL_PEPPERS;
     r->stat[STAT_HUNGER] = 40;
@@ -354,14 +354,14 @@ TEST(sim_romance_rules)
     b = town_res(2);
     a->status = b->status = RES_ALIVE;
     resident_set_romance(a, ROMANCE_ANY);
-    b->pronoun = PRONOUN_SHE;
+    RES_SET_PRONOUN(b, PRONOUN_SHE);
     CHECK(sim_romance_ok(1, 2));
     resident_set_romance(a, ROMANCE_HE);
     CHECK(!sim_romance_ok(1, 2));
-    b->pronoun = PRONOUN_HE;
+    RES_SET_PRONOUN(b, PRONOUN_HE);
     CHECK(sim_romance_ok(1, 2));
     resident_set_romance(a, ROMANCE_THEY);
-    b->pronoun = PRONOUN_XE;
+    RES_SET_PRONOUN(b, PRONOUN_XE);
     CHECK(sim_romance_ok(1, 2));
     resident_set_romance(a, ROMANCE_NONE);
     CHECK(!sim_romance_ok(1, 2));
@@ -440,9 +440,9 @@ TEST(sim_babies_blend_their_parents)
     CHECK_EQ(baby, 400);
     k = town_res(baby);
     CHECK_EQ(k->status, RES_ALIVE);
-    CHECK(k->look.species == a->look.species || k->look.species == b->look.species);
-    CHECK(k->look.skin == a->look.skin || k->look.skin == b->look.skin);
-    CHECK_EQ(k->look.body, BODY_TINY);
+    CHECK(RES_SPECIES(k) == RES_SPECIES(a) || RES_SPECIES(k) == RES_SPECIES(b));
+    CHECK(RES_LOOK(k, GF_SKIN) == RES_LOOK(a, GF_SKIN) || RES_LOOK(k, GF_SKIN) == RES_LOOK(b, GF_SKIN));
+    CHECK_EQ(RES_LOOK(k, GF_BODY), BODY_TINY);
     CHECK_EQ(RES_ROMANCE(k), ROMANCE_NONE);
     CHECK_EQ(RES_STAGE(k), LIFE_BABY);               /* LS0 */
     CHECK_EQ(rel_kind(40, baby), REL_FAMILY);

@@ -641,7 +641,7 @@ static void gen_look(DoomoLook *l, DoomoRng *r, int hell)
 /* ---------------------------------------------------------------------- */
 static void gen_rest(DoomoResident *res, DoomoRng *r, int hell)
 {
-    const DoomoSpeciesInfo *si = &doomo_species_info[res->look.species];
+    const DoomoSpeciesInfo *si = &doomo_species_info[RES_SPECIES(res)];
     int i, corr;
     const char *first;
 
@@ -653,29 +653,29 @@ static void gen_rest(DoomoResident *res, DoomoRng *r, int hell)
     for (i = 0; i < DOOMO_NAME_LEN - 1 && first[i]; i++) res->name[i] = first[i];
 
     /* voice: little critters squeak, big ones rumble */
-    for (i = 0; i < VOICE_COUNT; i++) res->voice[i] = (uint8_t)rng_range(r, 32);
-    switch (res->look.species) {
+    for (i = 0; i < VOICE_COUNT; i++) RES_SET_VOICE(res, i, (uint8_t)rng_range(r, 32));
+    switch (RES_SPECIES(res)) {
     case SPECIES_MOUSEKIN: case SPECIES_BUNNYKIN: case SPECIES_CHERUB:
     case SPECIES_BATLING: case SPECIES_PLUSHIE:
-        res->voice[VOICE_PITCH] = (uint8_t)rng_between(r, 18, 31); break;
+        RES_SET_VOICE(res, VOICE_PITCH, (uint8_t)rng_between(r, 18, 31)); break;
     case SPECIES_BEARKIN: case SPECIES_HELLHOUND: case SPECIES_SKELETON:
     case SPECIES_MUMMY:
-        res->voice[VOICE_PITCH] = (uint8_t)rng_between(r, 0, 14); break;
+        RES_SET_VOICE(res, VOICE_PITCH, (uint8_t)rng_between(r, 0, 14)); break;
     default: break;
     }
 
     /* personality */
-    res->persona[PERS_MOVEMENT] = (uint8_t)rng_range(r, 16);
+    RES_SET_PERSONA(res, PERS_MOVEMENT, (uint8_t)rng_range(r, 16));
     if (hell) {
-        res->persona[PERS_SPEECH] = (uint8_t)rng_between(r, 6, 15);
-        res->persona[PERS_EXPRESSION] = (uint8_t)rng_range(r, 16);
-        res->persona[PERS_ATTITUDE] = (uint8_t)rng_between(r, 0, 12);
-        res->persona[PERS_QUIRK] = (uint8_t)rng_between(r, 4, 15);
+        RES_SET_PERSONA(res, PERS_SPEECH, (uint8_t)rng_between(r, 6, 15));
+        RES_SET_PERSONA(res, PERS_EXPRESSION, (uint8_t)rng_range(r, 16));
+        RES_SET_PERSONA(res, PERS_ATTITUDE, (uint8_t)rng_between(r, 0, 12));
+        RES_SET_PERSONA(res, PERS_QUIRK, (uint8_t)rng_between(r, 4, 15));
     } else {
-        res->persona[PERS_SPEECH] = (uint8_t)rng_between(r, 0, 10);
-        res->persona[PERS_EXPRESSION] = (uint8_t)rng_between(r, 4, 15);
-        res->persona[PERS_ATTITUDE] = (uint8_t)rng_between(r, 5, 15);
-        res->persona[PERS_QUIRK] = (uint8_t)rng_between(r, 0, 10);
+        RES_SET_PERSONA(res, PERS_SPEECH, (uint8_t)rng_between(r, 0, 10));
+        RES_SET_PERSONA(res, PERS_EXPRESSION, (uint8_t)rng_between(r, 4, 15));
+        RES_SET_PERSONA(res, PERS_ATTITUDE, (uint8_t)rng_between(r, 5, 15));
+        RES_SET_PERSONA(res, PERS_QUIRK, (uint8_t)rng_between(r, 0, 10));
     }
 
     /* stats */
@@ -694,37 +694,37 @@ static void gen_rest(DoomoResident *res, DoomoRng *r, int hell)
     {
         static const Pick pr[] = { { PRONOUN_SHE, 38 }, { PRONOUN_HE, 38 },
             { PRONOUN_THEY, 20 }, { PRONOUN_IT, 2 }, { PRONOUN_XE, 2 } };
-        res->pronoun = (uint8_t)PICK(r, pr);
-        if (res->look.species == SPECIES_ROBOT && rng_chance(r, 30)) res->pronoun = PRONOUN_IT;
+        RES_SET_PRONOUN(res, (uint8_t)PICK(r, pr));
+        if (RES_SPECIES(res) == SPECIES_ROBOT && rng_chance(r, 30)) RES_SET_PRONOUN(res, PRONOUN_IT);
     }
     {
         static const Pick ro[] = { { ROMANCE_ANY, 70 }, { ROMANCE_SHE, 8 },
             { ROMANCE_HE, 8 }, { ROMANCE_THEY, 8 }, { ROMANCE_NONE, 6 } };
         res->romance = (uint8_t)PICK(r, ro);
     }
-    res->bday_month = (uint8_t)rng_range(r, 12);
-    res->bday_day = (uint8_t)rng_between(r, 1, 28);
+    RES_SET_BDAY_MONTH(res, (uint8_t)rng_range(r, 12));
+    RES_SET_BDAY_DAY(res, (uint8_t)rng_between(r, 1, 28));
 
     /* likes */
     if (hell && rng_chance(r, 60)) {
         static const uint8_t hf[] = { 2, 3, 4, 6, 8, 11, 36, 37, 38, 39, 40, 41,
                                       42, 43, 44, 47 };
-        res->like_food = ONE_OF(r, hf);
+        RES_SET_LIKE_FOOD(res, ONE_OF(r, hf));
     } else {
-        res->like_food = (uint8_t)rng_range(r, hell ? FOOD_COUNT : 36);
+        RES_SET_LIKE_FOOD(res, (uint8_t)rng_range(r, hell ? FOOD_COUNT : 36));
     }
     do {
-        res->hate_food = (uint8_t)rng_range(r, FOOD_COUNT);
-    } while (res->hate_food == res->like_food);
-    res->like_hobby = (uint8_t)(hell ? rng_between(r, 18, 31) : rng_range(r, 24));
-    res->like_music = (uint8_t)(hell ? rng_between(r, 9, 15) : rng_range(r, 12));
-    res->like_color = rng_chance(r, 60) ? res->look.top_color
-                                        : (uint8_t)rng_range(r, PAL_PAINT_COUNT);
-    res->fear = (uint8_t)(hell ? rng_between(r, 12, 23) : rng_range(r, 17));
-    if (hell) res->catchphrase = (uint8_t)(rng_chance(r, 80) ? rng_between(r, 36, 63)
-                                                              : rng_range(r, 36));
-    else res->catchphrase = (uint8_t)(rng_chance(r, 88) ? rng_range(r, 36)
-                                                        : rng_between(r, 36, 43));
+        RES_SET_HATE_FOOD(res, (uint8_t)rng_range(r, FOOD_COUNT));
+    } while (RES_HATE_FOOD(res) == RES_LIKE_FOOD(res));
+    RES_SET_LIKE_HOBBY(res, (uint8_t)(hell ? rng_between(r, 18, 31) : rng_range(r, 24)));
+    RES_SET_LIKE_MUSIC(res, (uint8_t)(hell ? rng_between(r, 9, 15) : rng_range(r, 12)));
+    RES_SET_LIKE_COLOR(res, rng_chance(r, 60) ? RES_LOOK(res, GF_TOP_COLOR)
+                                        : (uint8_t)rng_range(r, PAL_PAINT_COUNT));
+    RES_SET_FEAR(res, (uint8_t)(hell ? rng_between(r, 12, 23) : rng_range(r, 17)));
+    if (hell) RES_SET_CATCHPHRASE(res, (uint8_t)(rng_chance(r, 80) ? rng_between(r, 36, 63)
+                                                              : rng_range(r, 36)));
+    else RES_SET_CATCHPHRASE(res, (uint8_t)(rng_chance(r, 88) ? rng_range(r, 36)
+                                                        : rng_between(r, 36, 43)));
     res->exorcism = 0;
     res->level = 0;
     res->mood = res->stat[STAT_HAPPY] >= 75 ? MOOD_HAPPY : MOOD_OK;
@@ -907,19 +907,19 @@ void resident_default(DoomoResident *r)
     l->hat_color = PAINT_LEMON; l->accessory_color = PAINT_MINT;
     l->pattern_color = PAINT_WHITE;
     memcpy(r->name, "Mochi", 6);
-    for (i = 0; i < VOICE_COUNT; i++) r->voice[i] = 16;
-    for (i = 0; i < PERS_COUNT; i++) r->persona[i] = 8;
-    r->persona[PERS_QUIRK] = 4;
+    for (i = 0; i < VOICE_COUNT; i++) RES_SET_VOICE(r, i, 16);
+    for (i = 0; i < PERS_COUNT; i++) RES_SET_PERSONA(r, i, 8);
+    RES_SET_PERSONA(r, PERS_QUIRK, 4);
     r->stat[STAT_HUNGER] = 80; r->stat[STAT_HAPPY] = 80;
     r->stat[STAT_HYGIENE] = 90; r->stat[STAT_ENERGY] = 90;
     r->stat[STAT_HEALTH] = 100; r->stat[STAT_SANITY] = 100;
     r->stat[STAT_CORRUPTION] = 0; r->stat[STAT_SOCIAL] = 70;
     r->status = RES_ALIVE;
-    r->pronoun = PRONOUN_THEY;
+    RES_SET_PRONOUN(r, PRONOUN_THEY);
     r->romance = ROMANCE_ANY;
-    r->bday_month = 3; r->bday_day = 14;
-    r->like_food = 0; r->hate_food = 46; r->like_hobby = 0; r->like_music = 0;
-    r->like_color = PAINT_BUBBLEGUM; r->fear = 0; r->catchphrase = 0;
+    RES_SET_BDAY_MONTH(r, 3); RES_SET_BDAY_DAY(r, 14);
+    RES_SET_LIKE_FOOD(r, 0); RES_SET_HATE_FOOD(r, 46); RES_SET_LIKE_HOBBY(r, 0); RES_SET_LIKE_MUSIC(r, 0);
+    RES_SET_LIKE_COLOR(r, PAINT_BUBBLEGUM); RES_SET_FEAR(r, 0); RES_SET_CATCHPHRASE(r, 0);
     r->mood = MOOD_HAPPY; r->activity = ACT_HOME;
 }
 
@@ -967,10 +967,10 @@ int life_romance_pair_ok(int sa, int sb)
 
 int persona_type(const DoomoResident *r)
 {
-    return ((r->persona[PERS_MOVEMENT] >= 8) << 3) |
-           ((r->persona[PERS_EXPRESSION] >= 8) << 2) |
-           ((r->persona[PERS_SPEECH] >= 8) << 1) |
-           (r->persona[PERS_ATTITUDE] >= 8);
+    return ((RES_PERSONA(r, PERS_MOVEMENT) >= 8) << 3) |
+           ((RES_PERSONA(r, PERS_EXPRESSION) >= 8) << 2) |
+           ((RES_PERSONA(r, PERS_SPEECH) >= 8) << 1) |
+           (RES_PERSONA(r, PERS_ATTITUDE) >= 8);
 }
 
 uint8_t look_paint(uint8_t paint, int shade)

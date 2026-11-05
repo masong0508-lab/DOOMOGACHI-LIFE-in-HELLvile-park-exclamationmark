@@ -159,8 +159,8 @@ static void use_item(int item)
     const DoomoResident *r = me();
     const char *line = "";
     int fi = item - ITEM_CUPCAKE;
-    int fav = r && doomo_items[item].category == ICAT_FOOD && fi == r->like_food;
-    int hate = r && doomo_items[item].category == ICAT_FOOD && fi == r->hate_food;
+    int fav = r && doomo_items[item].category == ICAT_FOOD && fi == RES_LIKE_FOOD(r);
+    int hate = r && doomo_items[item].category == ICAT_FOOD && fi == RES_HATE_FOOD(r);
     int creepy = r && (r->status == RES_POSSESSED || r->status == RES_SOUL_LOST);
     R.popup = POP_NONE;
     switch (R.item_mode) {
@@ -478,7 +478,7 @@ static void do_action(int a)
         line = sim_talk(R.id);
         ui_say(R.id, line);
         if (r->status == RES_ALIVE && (fp_t() & 3) == 0)
-            ui_say(R.id, doomo_catchphrases[r->catchphrase % CATCHPHRASE_COUNT]);
+            ui_say(R.id, doomo_catchphrases[RES_CATCHPHRASE(r) % CATCHPHRASE_COUNT]);
         break;
     case FPA_COMFORT:
         line = sim_comfort(R.id);
@@ -818,22 +818,22 @@ static void draw_care(const RLayout *L, const DoomoResident *r, int style)
 static int about_line(int i, char *buf, int cap, uint8_t *icon)
 {
     const DoomoResident *r = me();
-    int m = r->bday_month % 12;
+    int m = RES_BDAY_MONTH(r) % 12;
     *icon = ICON_STAR;
     switch (i) {
     case 0: *icon = ICON_WRENCH; doomo_snprintf(buf, cap, "Job: %s", fp_job(R.id)); return 1;
     case 1: *icon = ICON_SMILE; doomo_snprintf(buf, cap, "Type: %s",
                                         doomo_persona_type_names[persona_type(r) % PERSONA_TYPE_COUNT]); return 1;
-    case 2: *icon = ICON_SPARK; doomo_snprintf(buf, cap, "%s, %s", doomo_species_names[r->look.species % SPECIES_COUNT],
-                                        doomo_pronoun_names[r->pronoun % PRONOUN_COUNT]); return 1;
-    case 3: *icon = ICON_EGG; doomo_snprintf(buf, cap, "Birthday: %s %d", doomo_month_names[m], r->bday_day); return 1;
+    case 2: *icon = ICON_SPARK; doomo_snprintf(buf, cap, "%s, %s", doomo_species_names[RES_SPECIES(r) % SPECIES_COUNT],
+                                        doomo_pronoun_names[RES_PRONOUN(r) % PRONOUN_COUNT]); return 1;
+    case 3: *icon = ICON_EGG; doomo_snprintf(buf, cap, "Birthday: %s %d", doomo_month_names[m], RES_BDAY_DAY(r)); return 1;
     case 4: *icon = ICON_HEART; doomo_snprintf(buf, cap, "Falls for: %s", doomo_romance_names[RES_ROMANCE(r) % ROMANCE_COUNT]); return 1;
-    case 5: *icon = ICON_FOOD; doomo_snprintf(buf, cap, "Loves: %s", doomo_food_names[r->like_food % FOOD_COUNT]); return 1;
-    case 6: *icon = ICON_X; doomo_snprintf(buf, cap, "Hates: %s", doomo_food_names[r->hate_food % FOOD_COUNT]); return 1;
-    case 7: *icon = ICON_STAR; doomo_snprintf(buf, cap, "Hobby: %s", doomo_hobby_names[r->like_hobby % HOBBY_COUNT]); return 1;
-    case 8: *icon = ICON_NOTE; doomo_snprintf(buf, cap, "Music: %s", doomo_music_names[r->like_music % MUSIC_COUNT]); return 1;
-    case 9: *icon = ICON_DROP; doomo_snprintf(buf, cap, "Colour: %s", doomo_paint_names[r->like_color % PAL_PAINT_COUNT]); return 2;
-    case 10: *icon = ICON_GHOST; doomo_snprintf(buf, cap, "Fear: %s", doomo_fear_names[r->fear % FEAR_COUNT]); return 1;
+    case 5: *icon = ICON_FOOD; doomo_snprintf(buf, cap, "Loves: %s", doomo_food_names[RES_LIKE_FOOD(r) % FOOD_COUNT]); return 1;
+    case 6: *icon = ICON_X; doomo_snprintf(buf, cap, "Hates: %s", doomo_food_names[RES_HATE_FOOD(r) % FOOD_COUNT]); return 1;
+    case 7: *icon = ICON_STAR; doomo_snprintf(buf, cap, "Hobby: %s", doomo_hobby_names[RES_LIKE_HOBBY(r) % HOBBY_COUNT]); return 1;
+    case 8: *icon = ICON_NOTE; doomo_snprintf(buf, cap, "Music: %s", doomo_music_names[RES_LIKE_MUSIC(r) % MUSIC_COUNT]); return 1;
+    case 9: *icon = ICON_DROP; doomo_snprintf(buf, cap, "Colour: %s", doomo_paint_names[RES_LIKE_COLOR(r) % PAL_PAINT_COUNT]); return 2;
+    case 10: *icon = ICON_GHOST; doomo_snprintf(buf, cap, "Fear: %s", doomo_fear_names[RES_FEAR(r) % FEAR_COUNT]); return 1;
     case 11: *icon = ICON_HOUSE; doomo_snprintf(buf, cap, "Born in %s, lives in %s",
                                          (r->flags & RF_HELLBORN) ? "Hellvile" : "Hillvile",
                                          fp_district_name(RES_DISTRICT(R.id))); return 1;
@@ -867,7 +867,7 @@ static void draw_about(const RLayout *L, const DoomoResident *r, int style)
     if (R.about_scroll == 0) {
         ui_text_wrap(x, y, w, fp_bio(R.id), st->text, 1);
         y += lines * FONT_LINE + 2;
-        doomo_snprintf(buf, sizeof(buf), "\"%s\"", doomo_catchphrases[r->catchphrase % CATCHPHRASE_COUNT]);
+        doomo_snprintf(buf, sizeof(buf), "\"%s\"", doomo_catchphrases[RES_CATCHPHRASE(r) % CATCHPHRASE_COUNT]);
         fp_marquee(x, y, w, buf, st->accent, fp_t());
         y += FONT_LINE + 3;
     }
@@ -878,8 +878,8 @@ static void draw_about(const RLayout *L, const DoomoResident *r, int style)
         fp_icon(x, y, icon, st->accent);
         fp_marquee(x + 9, y, w - 9 - (k == 2 ? 10 : 0), buf, st->text, fp_t() + i * 20);
         if (k == 2) {
-            ui_round_rect(x + w - 8, y, 8, 8, 2, PP(r->like_color % 32, 0));
-            ui_round_rect(x + w - 7, y + 1, 6, 6, 1, PP(r->like_color % 32, 1));
+            ui_round_rect(x + w - 8, y, 8, 8, 2, PP(RES_LIKE_COLOR(r) % 32, 0));
+            ui_round_rect(x + w - 7, y + 1, 6, 6, 1, PP(RES_LIKE_COLOR(r) % 32, 1));
         }
         y += FONT_LINE + 1;
     }
@@ -998,8 +998,8 @@ static void draw_items(int style)
         }
         fp_icon(x + 16, ry + 1, fp_item_icon(it), st->accent);
         ui_text(x + 25, ry + 1, doomo_items[it].name, st->text);
-        if (R.item_mode == FPA_FEED && r && fi == r->like_food) ui_heart(x + w - 40, ry + 4, 3, PP(PAINT_ROSE, 1));
-        if (R.item_mode == FPA_FEED && r && fi == r->hate_food) fp_icon(x + w - 43, ry + 1, ICON_SKULL, PAL_GRAY);
+        if (R.item_mode == FPA_FEED && r && fi == RES_LIKE_FOOD(r)) ui_heart(x + w - 40, ry + 4, 3, PP(PAINT_ROSE, 1));
+        if (R.item_mode == FPA_FEED && r && fi == RES_HATE_FOOD(r)) fp_icon(x + w - 43, ry + 1, ICON_SKULL, PAL_GRAY);
         doomo_snprintf(cnt, sizeof(cnt), "x%d", inv_count(it));
         ui_text(x + w - 26, ry + 1, cnt, st->text_dim);
     }

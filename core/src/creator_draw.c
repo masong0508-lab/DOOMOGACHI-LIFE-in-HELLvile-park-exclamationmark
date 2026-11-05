@@ -667,7 +667,7 @@ static void draw_footer(const CrRow *row, int x, int y, int w)
 static void draw_persona_panel(int x, int y, int w, int h)
 {
     const UiStyle *st = ui_style(list_style());
-    int pt = persona_type(&cr.draft), q = cr.draft.persona[PERS_QUIRK] / 4;
+    int pt = persona_type(&cr.draft), q = RES_PERSONA(&cr.draft, PERS_QUIRK) / 4;
     char text[200];
     int fitn, total, pages, page, skip, nb;
     if (h < 22) return;
@@ -1042,7 +1042,7 @@ static void draw_copy(void)
             const char *sp;
             doomo_snprintf(b2, sizeof(b2), "%s", r->name[0] ? r->name : "???");
             ui_text(x + 24, yy + 1, fit(b2, w / 2, buf), st->text);
-            sp = fit(doomo_species_names[r->look.species % SPECIES_COUNT], w / 2 - 34, buf);
+            sp = fit(doomo_species_names[RES_SPECIES(r) % SPECIES_COUNT], w / 2 - 34, buf);
             ui_text(x + w - 12 - ui_text_width(sp), yy + 1, sp, st->text_dim);
         }
     }

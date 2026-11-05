@@ -126,8 +126,8 @@ static int v1_newborn(const DoomoResident *r)
     /* sim_make_baby() before LS0: ROMANCE_NONE, tiny body, pyjamas, no
      * beard and never RF_CUSTOM (a creator edit sets it) */
     return !(r->flags & RF_CUSTOM) && RES_ROMANCE(r) == ROMANCE_NONE &&
-           r->look.body == BODY_TINY && r->look.top == TOP_PAJAMAS &&
-           r->look.facial_hair == FHAIR_NONE;
+           RES_LOOK(r, GF_BODY) == BODY_TINY && RES_LOOK(r, GF_TOP) == TOP_PAJAMAS &&
+           RES_LOOK(r, GF_FACIAL_HAIR) == FHAIR_NONE;
 }
 
 int town_life_migrate_v1(void)

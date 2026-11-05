@@ -248,7 +248,7 @@ int exorcism_odds_with(int resident_id, unsigned item_mask)
     static const int8_t diff[4] = { 15, 0, -10, -20 };
     if (r && resident_id >= 0 && resident_id < DOOMO_MAX_RESIDENTS && r->status != RES_EMPTY) {
         odds += r->stat[STAT_SANITY] / 5;
-        odds += doomo_species_info[r->look.species % SPECIES_COUNT].holy_affinity / 10;
+        odds += doomo_species_info[RES_SPECIES(r) % SPECIES_COUNT].holy_affinity / 10;
         odds -= RES_EXO_FAILS(r) * 6;                   /* it digs in deeper */
         if (r->level >= 50) odds += 5;                  /* they trust you    */
     } else {
@@ -320,17 +320,17 @@ const char *exorcism_clue(int resident_id, int k, char *buf, int cap)
     switch (k & 3) {
     case 0:
         if (rm && roster_job(p)[0]) doomo_snprintf(buf, cap, "Works as: %s", roster_job(p));
-        else doomo_snprintf(buf, cap, "Loves %s", doomo_hobby_names[r->like_hobby % HOBBY_COUNT]);
+        else doomo_snprintf(buf, cap, "Loves %s", doomo_hobby_names[RES_LIKE_HOBBY(r) % HOBBY_COUNT]);
         break;
     case 1:
         doomo_snprintf(buf, cap, "Acts like a %s", doomo_persona_type_names[persona_type(r)]);
         break;
     case 2:
-        doomo_snprintf(buf, cap, "Craves %s", doomo_food_names[r->like_food % FOOD_COUNT]);
+        doomo_snprintf(buf, cap, "Craves %s", doomo_food_names[RES_LIKE_FOOD(r) % FOOD_COUNT]);
         break;
     default:
         if (rm && roster_bio(p)[0]) doomo_snprintf(buf, cap, "\"%s\"", roster_bio(p));
-        else doomo_snprintf(buf, cap, "Secretly fears %s", doomo_fear_names[r->fear % FEAR_COUNT]);
+        else doomo_snprintf(buf, cap, "Secretly fears %s", doomo_fear_names[RES_FEAR(r) % FEAR_COUNT]);
         break;
     }
     return buf;

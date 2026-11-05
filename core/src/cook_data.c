@@ -344,8 +344,8 @@ int cook_serve(int i, int item, char *buf, int cap, int *tip)
         return SERVE_FAIL;
     }
     copy_line(buf, cap, line);
-    if (fi >= 0 && fi == r->like_food) kind = SERVE_FAV;
-    else if (fi >= 0 && fi == r->hate_food) kind = SERVE_HATE;
+    if (fi >= 0 && fi == RES_LIKE_FOOD(r)) kind = SERVE_FAV;
+    else if (fi >= 0 && fi == RES_HATE_FOOD(r)) kind = SERVE_HATE;
     /* sim_feed already knows the old menu's flavours; a dish's flavour
      * (a Fish Ramen is Ramen) is this kitchen's own bonus */
     if (!aligned && kind != SERVE_OK && buf && cap > 0) {

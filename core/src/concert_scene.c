@@ -163,7 +163,7 @@ static void pick_crowd(void)
             int id = (start + k * 7) % DOOMO_MAX_RESIDENTS, j, dup = 0;
             const DoomoResident *r = town_res(id);
             if (!r || (r->status != RES_ALIVE && r->status != RES_GHOST)) continue;
-            if (pass == 0 && r->like_music != C.genre) continue;
+            if (pass == 0 && RES_LIKE_MUSIC(r) != C.genre) continue;
             for (j = 0; j < C.cast.n; j++) if (C.cast.ids[j] == id) dup = 1;
             for (j = 0; j < n; j++) if (C.v.crowd[j] == id) dup = 1;
             if (!dup) C.v.crowd[n++] = (int16_t)id;
@@ -184,7 +184,7 @@ static int fans_in_crowd(void)
     int i, f = 0;
     for (i = 0; i < C.v.ncrowd; i++) {
         const DoomoResident *r = C.v.crowd[i] >= 0 ? town_res(C.v.crowd[i]) : NULL;
-        if (r && r->like_music == C.genre) f++;
+        if (r && RES_LIKE_MUSIC(r) == C.genre) f++;
     }
     return f;
 }
@@ -214,7 +214,7 @@ static void setup_defaults(int lead, int mode)
     const DoomoResident *r = town_res(lead);
     C.lead = lead;
     C.mode = mode;
-    C.genre = r ? r->like_music % MUSIC_COUNT : 0;
+    C.genre = r ? RES_LIKE_MUSIC(r) % MUSIC_COUNT : 0;
     C.take = (int)(doomo_town.day & 3);
     C.stage_sel = -1;                         /* auto */
     C.layout = CHOIR_RISERS;
@@ -789,7 +789,7 @@ static void setup_draw(void)
         case ROW_ACT: val = mode_names[C.mode]; break;
         case ROW_GENRE:
             doomo_snprintf(buf, sizeof(buf), "%s%s", doomo_music_names[C.genre],
-                           r && r->like_music == C.genre ? " " STR_ICON_HEART : "");
+                           r && RES_LIKE_MUSIC(r) == C.genre ? " " STR_ICON_HEART : "");
             val = buf;
             break;
         case ROW_STAGE:

@@ -384,7 +384,7 @@ static void sheet_anim(void)
     for (i = 0; i < 3; i++) {
         DoomoResident r;
         sample_resident(i * 3 + 2, &r);
-        if (i == 0) r.look.aura = AURA_SPARKLES;
+        if (i == 0) RES_SET_LOOK(&r, GF_AURA, AURA_SPARKLES);
         for (k = 0; k < 8; k++) {
             int x = 2 + k * 50, y = 2 + i * 140;
             portrait_render(&r.look, RES_ALIVE, EXPR_NEUTRAL, an[k], por);

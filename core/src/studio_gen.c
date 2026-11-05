@@ -576,11 +576,11 @@ static void muse_of(int id, Muse *m)
     memset(m, 0, sizeof(*m));
     if (!r) r = town_res(DOOMO_PLAYER_ID);
     copy_name(m->n, r->name[0] ? r->name : "Fluffy");
-    lower_into(m->f, sizeof(m->f), doomo_food_names[r->like_food % FOOD_COUNT]);
-    lower_into(m->h, sizeof(m->h), doomo_hobby_names[r->like_hobby % HOBBY_COUNT]);
-    lower_into(m->m, sizeof(m->m), doomo_music_names[r->like_music % MUSIC_COUNT]);
-    lower_into(m->r, sizeof(m->r), doomo_fear_names[r->fear % FEAR_COUNT]);
-    m->c = doomo_catchphrases[r->catchphrase % CATCHPHRASE_COUNT];
+    lower_into(m->f, sizeof(m->f), doomo_food_names[RES_LIKE_FOOD(r) % FOOD_COUNT]);
+    lower_into(m->h, sizeof(m->h), doomo_hobby_names[RES_LIKE_HOBBY(r) % HOBBY_COUNT]);
+    lower_into(m->m, sizeof(m->m), doomo_music_names[RES_LIKE_MUSIC(r) % MUSIC_COUNT]);
+    lower_into(m->r, sizeof(m->r), doomo_fear_names[RES_FEAR(r) % FEAR_COUNT]);
+    m->c = doomo_catchphrases[RES_CATCHPHRASE(r) % CATCHPHRASE_COUNT];
     m->d = (id < DOOMO_MAX_RESIDENTS && RES_DISTRICT(id)) ? "Hellvile" : "Hillvile";
     copy_name(m->b, b >= 0 ? st_name(b) : "my plushie");
     copy_name(m->l, l >= 0 ? st_name(l) : "someone");
@@ -980,7 +980,7 @@ void studio_inspire(DoomoSong *s, int muse, int genre, uint32_t seed)
 {
     const DoomoResident *r = town_res(muse >= 0 ? muse : DOOMO_PLAYER_ID);
     int keep_layout = s->choir_layout;
-    if (genre < 0) genre = r ? r->like_music % MUSIC_COUNT : 0;
+    if (genre < 0) genre = r ? RES_LIKE_MUSIC(r) % MUSIC_COUNT : 0;
     song_clear(s);
     s->choir_layout = (uint8_t)keep_layout;
     s->genre = (uint8_t)genre;

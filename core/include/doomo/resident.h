@@ -209,4 +209,6 @@ uint8_t look_skin(const DoomoLook *l, int shade);
  * all produce the same value for resident_generate(seed)). */
 uint32_t resident_fingerprint(const DoomoResident *r);
 
+#include "resident_acc.h"   /* RES_LOOK(), RES_PRONOUN(), ... (P0.M0a) */
+
 #endif

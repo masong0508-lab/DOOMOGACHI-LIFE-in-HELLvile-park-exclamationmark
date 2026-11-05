@@ -128,7 +128,7 @@ static void make_custom(int id, int stage, int pronoun, int romance, uint32_t se
     DoomoResident *r = town_res(id);
     resident_generate(r, seed);
     r->flags |= RF_CUSTOM;
-    r->pronoun = (uint8_t)pronoun;
+    RES_SET_PRONOUN(r, (uint8_t)pronoun);
     resident_set_romance(r, romance);
     resident_set_stage(r, stage);
     doomo_snprintf(r->name, DOOMO_NAME_LEN, "Z%03d", id);

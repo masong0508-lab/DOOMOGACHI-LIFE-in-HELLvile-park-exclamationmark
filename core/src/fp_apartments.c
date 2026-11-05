@@ -227,8 +227,8 @@ static void draw_window(const ALayout *L, int x, int y, int id, int sel)
         return;
     }
     /* wallpaper in the citizen's favourite colour */
-    wall0 = PAL_PAINT(r->like_color % 32, 2);
-    wall1 = PAL_PAINT(r->like_color % 32, 1);
+    wall0 = PAL_PAINT(RES_LIKE_COLOR(r) % 32, 2);
+    wall1 = PAL_PAINT(RES_LIKE_COLOR(r) % 32, 1);
     if (hell) { wall0 = ui_darker(wall1); wall1 = ui_darker(wall0); }
     if (st == RES_DEAD) {
         plat_rect(x, y, w, h, PAL_RAMP(RAMP_STONE, 1));

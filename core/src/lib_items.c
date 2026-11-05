@@ -157,10 +157,10 @@ static void tally(void)
         const DoomoResident *r = &doomo_town.res[id];
         int f;
         if (r->status == RES_EMPTY || r->status == RES_DEAD) continue;
-        f = r->like_food % FOOD_COUNT;
+        f = RES_LIKE_FOOD(r) % FOOD_COUNT;
         I.love[f]++;
         if (I.fan[f] < 0 || r->level > doomo_town.res[I.fan[f]].level) I.fan[f] = (int16_t)id;
-        I.hate[r->hate_food % FOOD_COUNT]++;
+        I.hate[RES_HATE_FOOD(r) % FOOD_COUNT]++;
     }
 }
 
@@ -300,7 +300,7 @@ static void fan_club(int f)
     I.club_n = 0;
     for (id = 0; id < DOOMO_MAX_RESIDENTS && I.club_n < 4; id++) {
         const DoomoResident *r = &doomo_town.res[id];
-        if (r->status != RES_EMPTY && r->status != RES_DEAD && r->like_food % FOOD_COUNT == f)
+        if (r->status != RES_EMPTY && r->status != RES_DEAD && RES_LIKE_FOOD(r) % FOOD_COUNT == f)
             I.club[I.club_n++] = (int16_t)id;
     }
 }

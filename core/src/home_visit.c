@@ -189,7 +189,7 @@ static int has_lit_lamp(const HomeRoom *room)
 
 int home_visit_fear_room(const DoomoResident *r, const HomeRoom *room)
 {
-    return r && r->fear == 1 && !has_lit_lamp(room);
+    return r && RES_FEAR(r) == 1 && !has_lit_lamp(room);
 }
 
 static int put(Gen *g, int furn, int x, int y, int rot, int sub, int pa, int pb)
@@ -360,19 +360,19 @@ static int gen_room(int id, int force, HomeRoom *out, HomeVisit *info)
         info->ops = g.ops;
         return 1;
     }
-    g.fear = r->fear < FEAR_COUNT ? r->fear : -1;
+    g.fear = RES_FEAR(r) < FEAR_COUNT ? RES_FEAR(r) : -1;
     g.ghost = status == RES_GHOST;
     /* the layout from the personality (HF sec.3.2) */
-    if (r->persona[PERS_QUIRK] >= 10) g.layout = 1;                       /* chaotic */
-    else if (r->persona[PERS_EXPRESSION] < 6 && r->persona[PERS_SPEECH] < 8) g.layout = 2;   /* shy */
-    else if (r->persona[PERS_EXPRESSION] >= 10 && r->persona[PERS_SPEECH] >= 8) g.layout = 3; /* show-off */
+    if (RES_PERSONA(r, PERS_QUIRK) >= 10) g.layout = 1;                       /* chaotic */
+    else if (RES_PERSONA(r, PERS_EXPRESSION) < 6 && RES_PERSONA(r, PERS_SPEECH) < 8) g.layout = 2;   /* shy */
+    else if (RES_PERSONA(r, PERS_EXPRESSION) >= 10 && RES_PERSONA(r, PERS_SPEECH) >= 8) g.layout = 3; /* show-off */
     else g.layout = 0;                                                   /* tidy */
     info->layout = (uint8_t)g.layout;
     /* the set: Hellborn in Hillvile get a mix */
     hill_hell = g.hell;
     if ((flags & RF_HELLBORN) && !g.hell) hill_hell = rng_range(&g.rng, 2);
     set = &visit_sets[hill_hell];
-    out->wall_paint = (uint8_t)(r->like_color < 32 ? r->like_color : PAINT_BUBBLEGUM);
+    out->wall_paint = (uint8_t)(RES_LIKE_COLOR(r) < 32 ? RES_LIKE_COLOR(r) : PAINT_BUBBLEGUM);
     out->floor_paint = floor_partner[out->wall_paint & 31];
     {
         static const uint8_t wp[2][4] = { { 0, 1, 4, 7 }, { 3, 5, 6, 3 } }, fl[2][4] = { { 1, 0, 2, 7 }, { 3, 5, 6, 3 } };
@@ -395,7 +395,7 @@ static int gen_room(int id, int force, HomeRoom *out, HomeVisit *info)
             place_small(&g, FURN_SPRINKLE_VASE, table, PAINT_WHITE, -1);
             place_small(&g, FURN_BLOSSOM_BRANCH, table, -1, -1);
         }
-        n = r->like_hobby < HOBBY_COUNT ? hobby_pieces[r->like_hobby][1] : FURN_CUPCAKE_PLUSH;
+        n = RES_LIKE_HOBBY(r) < HOBBY_COUNT ? hobby_pieces[RES_LIKE_HOBBY(r)][1] : FURN_CUPCAKE_PLUSH;
         if (bed >= 0 && home_furn(n) && (home_furn(n)->flags & FF_SMALL)) place_small(&g, n, bed, -1, -1);
         else place_small(&g, set->plush[0], bed, -1, -1);
         place_wall(&g, FURN_FRAMED_CANDID, -1, -1);
@@ -438,22 +438,22 @@ static int gen_room(int id, int force, HomeRoom *out, HomeVisit *info)
         lamp = place_floor(&g, set->lamp[rng_range(&g.rng, 3)], -1, -1);
     if (g.fear == 1 && lamp < 0) lamp = place_small(&g, FURN_MOON_LAMP, table, -1, -1);
     /* the likes */
-    if (r->like_hobby < HOBBY_COUNT) {
-        int h0 = hobby_pieces[r->like_hobby][0], h1 = hobby_pieces[r->like_hobby][1];
+    if (RES_LIKE_HOBBY(r) < HOBBY_COUNT) {
+        int h0 = hobby_pieces[RES_LIKE_HOBBY(r)][0], h1 = hobby_pieces[RES_LIKE_HOBBY(r)][1];
         if (hill_hell && h0 == FURN_RAINBOW_BOOKCASE) h0 = FURN_BONE_BOOKCASE;
         n = place_any(&g, h0, -1, -1);
         if (n >= 0) info->hobby_obj = (uint8_t)n;
         if (rng_chance(&g.rng, 60)) {
-            n = place_any(&g, h1, h1 == FURN_BAND_POSTER ? genre_paint[r->like_music % MUSIC_COUNT] : -1, -1);
+            n = place_any(&g, h1, h1 == FURN_BAND_POSTER ? genre_paint[RES_LIKE_MUSIC(r) % MUSIC_COUNT] : -1, -1);
             if (info->hobby_obj == 0xFF && n >= 0) info->hobby_obj = (uint8_t)n;
         }
     }
-    if (r->like_food < FOOD_COUNT) {
-        int s = snack_pieces[food_snack[r->like_food]];
+    if (RES_LIKE_FOOD(r) < FOOD_COUNT) {
+        int s = snack_pieces[food_snack[RES_LIKE_FOOD(r)]];
         if (home_furn(s) && (home_furn(s)->flags & FF_SMALL)) place_small(&g, s, table, -1, -1);
         else place_floor(&g, s, -1, -1);
     }
-    place_wall(&g, FURN_BAND_POSTER, genre_paint[r->like_music % MUSIC_COUNT], -1);
+    place_wall(&g, FURN_BAND_POSTER, genre_paint[RES_LIKE_MUSIC(r) % MUSIC_COUNT], -1);
     /* storage, a plant, a clock, a plush on the bed */
     place_floor(&g, set->store[rng_range(&g.rng, 4)], -1, -1);
     if (rng_chance(&g.rng, 70)) place_floor(&g, set->plant[rng_range(&g.rng, 3)], -1, -1);
@@ -513,9 +513,9 @@ void home_visit_wants(int id, uint8_t out[3])
     rng_seed(&rng, ((uint32_t)(doomo_town.day / 7) ^ (uint32_t)id) * 0x2545F491u ^ doomo_town.seed ^ HOME_CTX_WANTS);
     while (n < 3 && guard++ < 32) {
         int w = rng_range(&rng, HWANT_COUNT), k, dup = 0;
-        if (r && r->fear == 1 && n == 0) w = HWANT_LAMP;                /* The Dark wants light */
-        if (r && r->fear == 22 && w == HWANT_CUTE) continue;            /* Cute Things */
-        if (r && r->fear == 21 && w == HWANT_PLUSH) continue;           /* Hugs */
+        if (r && RES_FEAR(r) == 1 && n == 0) w = HWANT_LAMP;                /* The Dark wants light */
+        if (r && RES_FEAR(r) == 22 && w == HWANT_CUTE) continue;            /* Cute Things */
+        if (r && RES_FEAR(r) == 21 && w == HWANT_PLUSH) continue;           /* Hugs */
         for (k = 0; k < n; k++) dup |= out[k] == w;
         if (!dup) out[n++] = (uint8_t)w;
     }
@@ -539,9 +539,9 @@ int home_visit_want_met(int want, const DoomoResident *r, int furn, int pa)
     case HWANT_BOOK: return f->interact == FI_READ;
     case HWANT_SNACK: return f->interact == FI_EAT;
     case HWANT_MUSIC: return f->interact == FI_MUSIC;
-    case HWANT_HOBBY: return r && r->like_hobby < HOBBY_COUNT &&
-                             (hobby_pieces[r->like_hobby][0] == furn || hobby_pieces[r->like_hobby][1] == furn);
-    case HWANT_COLOR: return r && paint == r->like_color;
+    case HWANT_HOBBY: return r && RES_LIKE_HOBBY(r) < HOBBY_COUNT &&
+                             (hobby_pieces[RES_LIKE_HOBBY(r)][0] == furn || hobby_pieces[RES_LIKE_HOBBY(r)][1] == furn);
+    case HWANT_COLOR: return r && paint == RES_LIKE_COLOR(r);
     case HWANT_RUG: return (f->flags & FF_RUG) != 0;
     case HWANT_WALL: return (f->flags & FF_WALL) != 0;
     case HWANT_TABLE: return f->role == FR_TABLE;
@@ -567,19 +567,19 @@ int home_visit_react(const DoomoResident *r, int furn, int pa, const char **line
     const char *const *lines;
     if (line) *line = "";
     if (!r || !f) return HVR_NONE;
-    lines = r->persona[PERS_SPEECH] >= 8 ? lines_blunt : lines_polite;
+    lines = RES_PERSONA(r, PERS_SPEECH) >= 8 ? lines_blunt : lines_polite;
     paint = pa >= 0 && pa < 32 ? pa : f->paint_a;
-    if (home_visit_fear_hit(r->fear, furn)) react = HVR_FLEE;
-    else if (r->like_food < FOOD_COUNT && r->hate_food < FOOD_COUNT &&
-             snack_pieces[food_snack[r->hate_food]] == furn &&
-             snack_pieces[food_snack[r->like_food]] != furn) react = HVR_EW;
-    else if (r->like_hobby < HOBBY_COUNT &&
-             (hobby_pieces[r->like_hobby][0] == furn || hobby_pieces[r->like_hobby][1] == furn)) react = HVR_BANG;
-    else if (paint == r->like_color) react = HVR_HEARTS;
-    else if (r->persona[PERS_ATTITUDE] >= 10 && (f->interact == FI_SIT || (f->flags & FF_LIGHT))) react = HVR_SIT;
-    else if (r->persona[PERS_ATTITUDE] < 5) react = HVR_NOD;
-    else if (r->persona[PERS_EXPRESSION] >= 10) react = HVR_DOUBLE_TAKE;
-    else if (r->persona[PERS_EXPRESSION] >= 5) react = HVR_DAWNING;
+    if (home_visit_fear_hit(RES_FEAR(r), furn)) react = HVR_FLEE;
+    else if (RES_LIKE_FOOD(r) < FOOD_COUNT && RES_HATE_FOOD(r) < FOOD_COUNT &&
+             snack_pieces[food_snack[RES_HATE_FOOD(r)]] == furn &&
+             snack_pieces[food_snack[RES_LIKE_FOOD(r)]] != furn) react = HVR_EW;
+    else if (RES_LIKE_HOBBY(r) < HOBBY_COUNT &&
+             (hobby_pieces[RES_LIKE_HOBBY(r)][0] == furn || hobby_pieces[RES_LIKE_HOBBY(r)][1] == furn)) react = HVR_BANG;
+    else if (paint == RES_LIKE_COLOR(r)) react = HVR_HEARTS;
+    else if (RES_PERSONA(r, PERS_ATTITUDE) >= 10 && (f->interact == FI_SIT || (f->flags & FF_LIGHT))) react = HVR_SIT;
+    else if (RES_PERSONA(r, PERS_ATTITUDE) < 5) react = HVR_NOD;
+    else if (RES_PERSONA(r, PERS_EXPRESSION) >= 10) react = HVR_DOUBLE_TAKE;
+    else if (RES_PERSONA(r, PERS_EXPRESSION) >= 5) react = HVR_DAWNING;
     else react = HVR_DEADPAN;
     if (line) *line = lines[react];
     return react;
@@ -694,7 +694,7 @@ int home_visit_thank(int id, int furn, int pa, int *thanks_furn)
         all &= ok;
     }
     if (all && !((s->wants[0] | (s->wants[1] << 8)) == id + 1 && (s->wants[2] | (s->wants[3] << 8)) == (week & 0xFFFF))) {
-        int give = r->like_hobby < HOBBY_COUNT ? hobby_pieces[r->like_hobby][0] : FURN_CUPCAKE_PLUSH;
+        int give = RES_LIKE_HOBBY(r) < HOBBY_COUNT ? hobby_pieces[RES_LIKE_HOBBY(r)][0] : FURN_CUPCAKE_PLUSH;
         s->wants[0] = (uint8_t)(id + 1); s->wants[1] = (uint8_t)((id + 1) >> 8);
         s->wants[2] = (uint8_t)week; s->wants[3] = (uint8_t)(week >> 8);
         if (home_grant(give) && thanks_furn) *thanks_furn = give;

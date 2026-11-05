@@ -17,9 +17,9 @@ enum { TONE_SWEET, TONE_BUBBLY, TONE_BLUNT, TONE_ODD, TONE_COUNT };
 
 static int tone_of(const DoomoResident *r)
 {
-    if (r->persona[PERS_QUIRK] >= 13) return TONE_ODD;
-    if (r->persona[PERS_SPEECH] >= 11) return TONE_BLUNT;
-    if (r->persona[PERS_EXPRESSION] >= 10) return TONE_BUBBLY;
+    if (RES_PERSONA(r, PERS_QUIRK) >= 13) return TONE_ODD;
+    if (RES_PERSONA(r, PERS_SPEECH) >= 11) return TONE_BLUNT;
+    if (RES_PERSONA(r, PERS_EXPRESSION) >= 10) return TONE_BUBBLY;
     return TONE_SWEET;
 }
 
@@ -147,7 +147,7 @@ const char *sim_feed(int id, int item)
         cared(id, r, 1, 1);
         return say("The %s falls right through me... it's the thought!", food);
     }
-    if (fi == r->like_food) {
+    if (fi == RES_LIKE_FOOD(r)) {
         apply_item(r, item, 150);
         sim_stat_add(r, STAT_HAPPY, 30);
         sim_set_transient(id, TR_ECSTATIC, 6);
@@ -155,10 +155,10 @@ const char *sim_feed(int id, int item)
         r->mood = MOOD_ECSTATIC;
         return pick_tone(r, fav, food);
     }
-    if (fi == r->hate_food) {
+    if (fi == RES_HATE_FOOD(r)) {
         apply_item(r, item, 50);
         sim_stat_add(r, STAT_HAPPY, -18);
-        sim_set_transient(id, r->persona[PERS_SPEECH] >= 10 ? TR_ANGRY : TR_SAD, 2);
+        sim_set_transient(id, RES_PERSONA(r, PERS_SPEECH) >= 10 ? TR_ANGRY : TR_SAD, 2);
         cared(id, r, 0, -3);
         return pick_tone(r, hate, food);
     }
@@ -170,7 +170,7 @@ const char *sim_feed(int id, int item)
     }
     apply_item(r, item, 100);
     cared(id, r, 1, 2);
-    if (doomo_species_info[r->look.species % SPECIES_COUNT].flags & SPF_MECHANICAL)
+    if (doomo_species_info[RES_SPECIES(r) % SPECIES_COUNT].flags & SPF_MECHANICAL)
         return say("%s: fuel accepted. Beep boop! Thank you.", food);
     return pick_tone(r, ok, food);
 }
@@ -180,24 +180,24 @@ static int gift_taste(const DoomoResident *r, int item)
 {
     if (doomo_items[item].category == ICAT_FOOD) {
         int fi = item - ITEM_CUPCAKE;
-        return fi == r->like_food ? 2 : fi == r->hate_food ? -1 : 1;
+        return fi == RES_LIKE_FOOD(r) ? 2 : fi == RES_HATE_FOOD(r) ? -1 : 1;
     }
     switch (item) {
-    case ITEM_VIDEO_GAME: return r->like_hobby == 5 ? 2 : 1;          /* Video Games   */
-    case ITEM_BOARD_GAME: return r->like_hobby == 14 ? 2 : 1;         /* Board Games   */
+    case ITEM_VIDEO_GAME: return RES_LIKE_HOBBY(r) == 5 ? 2 : 1;          /* Video Games   */
+    case ITEM_BOARD_GAME: return RES_LIKE_HOBBY(r) == 14 ? 2 : 1;         /* Board Games   */
     case ITEM_SKULL_TRINKET:
-        if (r->like_hobby == 31) return 2;                            /* Skull Collecting */
-        return (r->flags & RF_HELLBORN) ? 2 : (r->fear == 4 ? -1 : 1);
+        if (RES_LIKE_HOBBY(r) == 31) return 2;                            /* Skull Collecting */
+        return (r->flags & RF_HELLBORN) ? 2 : (RES_FEAR(r) == 4 ? -1 : 1);
     case ITEM_PLUSHIE:
-        if (r->fear == 22) return -1;                                 /* Cute Things   */
-        return r->like_hobby == 20 ? 2 : 1;                           /* Plush Making  */
-    case ITEM_FLOWERS: return r->like_hobby == 2 ? 2 : (r->fear == 8 ? -1 : 1); /* bees! */
+        if (RES_FEAR(r) == 22) return -1;                                 /* Cute Things   */
+        return RES_LIKE_HOBBY(r) == 20 ? 2 : 1;                           /* Plush Making  */
+    case ITEM_FLOWERS: return RES_LIKE_HOBBY(r) == 2 ? 2 : (RES_FEAR(r) == 8 ? -1 : 1); /* bees! */
     case ITEM_HOLY_WATER: case ITEM_ROSARY: case ITEM_PLUSH_CROSS: case ITEM_HYMN_BOOK:
-        if (r->fear == 17 || r->fear == 19 || r->fear == 20) return -1;
+        if (RES_FEAR(r) == 17 || RES_FEAR(r) == 19 || RES_FEAR(r) == 20) return -1;
         return (r->flags & RF_HELLBORN) ? 0 : 1;
     case ITEM_DEMON_HORN: case ITEM_HELLSTEEL:
-        return r->like_hobby == 30 ? 2 : (r->flags & RF_HELLBORN) ? 1 : 0;   /* Welding */
-    case ITEM_GLITTER: return r->like_hobby == 6 ? 2 : 1;             /* Painting      */
+        return RES_LIKE_HOBBY(r) == 30 ? 2 : (r->flags & RF_HELLBORN) ? 1 : 0;   /* Welding */
+    case ITEM_GLITTER: return RES_LIKE_HOBBY(r) == 6 ? 2 : 1;             /* Painting      */
     default: return 1;
     }
 }
@@ -256,7 +256,7 @@ const char *sim_gift(int id, int item)
         cared(id, r, 6, 10);
         if (sim_partner_of(id) >= 0)
             return "A ring?! I'll give it to my sweetheart... or keep it?";
-        return r->persona[PERS_EXPRESSION] >= 8 ? "A RING?! For ME?! *faints happily*"
+        return RES_PERSONA(r, PERS_EXPRESSION) >= 8 ? "A RING?! For ME?! *faints happily*"
                                                 : "A ring. ...I'll treasure it. Forever.";
     }
     t = gift_taste(r, item);
@@ -306,7 +306,7 @@ const char *sim_clean(int id)
         sim_stat_add(r, STAT_HYGIENE, 40);
         return demon_line(id);
     }
-    sp = r->look.species;
+    sp = RES_SPECIES(r);
     resolve_kind(id, PROB_DIRTY);
     if (r->status == RES_GHOST) return "You scrub the air. The ghost giggles.";
     if (r->stat[STAT_HYGIENE] >= 95) {
@@ -314,7 +314,7 @@ const char *sim_clean(int id)
         return "I'm already sparkly clean!";
     }
     r->stat[STAT_HYGIENE] = 100;
-    if (r->fear == 13) {                                  /* Bath Time */
+    if (RES_FEAR(r) == 13) {                                  /* Bath Time */
         sim_stat_add(r, STAT_HAPPY, -8);
         sim_set_transient(id, TR_SCARED, 1);
         cared(id, r, 1, 1);
@@ -357,7 +357,7 @@ const char *sim_play(int id)
         cared(id, r, 0, 0);
         return pick_tone(r, tired, NULL);
     }
-    hobby = doomo_hobby_names[r->like_hobby % HOBBY_COUNT];
+    hobby = doomo_hobby_names[RES_LIKE_HOBBY(r) % HOBBY_COUNT];
     sim_stat_add(r, STAT_ENERGY, -10);
     sim_stat_add(r, STAT_HAPPY, 16);
     sim_stat_add(r, STAT_SOCIAL, 14);
@@ -387,7 +387,7 @@ const char *sim_talk(int id)
     roll = sim_rand(8);
     switch (r->mood) {
     case MOOD_LOVESICK: return "Do you think... someone could like me back?";
-    case MOOD_ANGRY: return r->persona[PERS_SPEECH] >= 10 ? "Not now. I'm FUMING." : "Hmph! I'm a bit cross.";
+    case MOOD_ANGRY: return RES_PERSONA(r, PERS_SPEECH) >= 10 ? "Not now. I'm FUMING." : "Hmph! I'm a bit cross.";
     case MOOD_SAD: return "I'm feeling a little blue today...";
     case MOOD_SCARED: return "Did you hear that?! Something's out there...";
     case MOOD_CORRUPTED: return "The purple fog... it sings to me...";
@@ -396,15 +396,15 @@ const char *sim_talk(int id)
     }
     switch (roll) {
     case 0: case 1:
-        return say("%s", doomo_catchphrases[r->catchphrase % CATCHPHRASE_COUNT]);
+        return say("%s", doomo_catchphrases[RES_CATCHPHRASE(r) % CATCHPHRASE_COUNT]);
     case 2: return say("Have you tried %s? It's my favourite!",
-                       doomo_food_names[r->like_food % FOOD_COUNT]);
+                       doomo_food_names[RES_LIKE_FOOD(r) % FOOD_COUNT]);
     case 3: return say("I've been really into %s lately!",
-                       doomo_hobby_names[r->like_hobby % HOBBY_COUNT]);
+                       doomo_hobby_names[RES_LIKE_HOBBY(r) % HOBBY_COUNT]);
     case 4: return say("I can't stand %s. Just saying.",
-                       doomo_food_names[r->hate_food % FOOD_COUNT]);
+                       doomo_food_names[RES_HATE_FOOD(r) % FOOD_COUNT]);
     case 5: return say("Don't tell anyone, but I'm scared of %s.",
-                       doomo_fear_names[r->fear % FEAR_COUNT]);
+                       doomo_fear_names[RES_FEAR(r) % FEAR_COUNT]);
     case 6: return say("Tonight's %s night at the concert hall!",
                        doomo_music_names[sim_concert_genre()]);
     default:
@@ -438,7 +438,7 @@ const char *sim_heal(int id, int item)
     if (item == ITEM_CHILL_PILL) resolve_kind(id, PROB_NIGHTMARE);
     if (doomo_items[item].holy) resolve_kind(id, PROB_CORRUPTION);
     cared(id, r, 2, 3);
-    if (r->fear == 9 && item == ITEM_MEDICINE) return "Is there a NEEDLE?! ...oh, it's syrup. Phew.";
+    if (RES_FEAR(r) == 9 && item == ITEM_MEDICINE) return "Is there a NEEDLE?! ...oh, it's syrup. Phew.";
     if (item == ITEM_ENERGY_DRINK) return "WOAH! I CAN SEE SOUNDS! THANK YOU!";
     if (item == ITEM_CHILL_PILL) return "Mmm... everything is soft and okay now.";
     return pick_tone(r, ok, NULL);
@@ -470,7 +470,7 @@ const char *sim_comfort(int id)
     resolve_kind(id, PROB_LONELY);
     if (tr == TR_SAD || tr == TR_SCARED || tr == TR_ANGRY) sim_set_transient(id, TR_NONE, 0);
     cared(id, r, 2, 3);
-    if (r->fear == 21) {                                   /* Hugs */
+    if (RES_FEAR(r) == 21) {                                   /* Hugs */
         sim_stat_add(r, STAT_HAPPY, -6);
         return "Ack! Too much hug! ...but thanks.";
     }

@@ -369,7 +369,7 @@ static void build_picks(int cust)
         for (it = 1; it < ITEM_COUNT; it++) {
             int fav;
             if (doomo_items[it].category != ICAT_FOOD || inv_count(it) <= 0) continue;
-            fav = r && cook_item_food(it) >= 0 && cook_item_food(it) == r->like_food;
+            fav = r && cook_item_food(it) >= 0 && cook_item_food(it) == RES_LIKE_FOOD(r);
             if (fav == (pass == 0)) K.picks[n++] = (uint8_t)it;
         }
     K.npicks = (uint8_t)n;
@@ -1078,7 +1078,7 @@ static void draw_counter(void)
         }
         if (!served) {
             /* the order bubble: what they're craving */
-            const char *food = doomo_food_names[r->like_food % FOOD_COUNT];
+            const char *food = doomo_food_names[RES_LIKE_FOOD(r) % FOOD_COUNT];
             /* on the small screen every other bubble floats higher, so
              * they may be wider than a seat without bumping */
             int slot = w / FC_CUSTOMERS, lift = (!big && (i & 1)) ? 14 : 0;
@@ -1142,8 +1142,8 @@ static void draw_counter(void)
                 ui_text(px + 16, ry + 1, doomo_items[it].name, PAL_RAMP(RAMP_WOOD, 1));
                 doomo_snprintf(buf, sizeof(buf), "x%d", inv_count(it));
                 ui_text(px + pw - 12 - ui_text_width(buf), ry + 1, buf, PAL_RAMP(RAMP_WOOD, 2));
-                if (r && fi >= 0 && fi == r->like_food) ui_heart(px + pw - 40, ry + 5, 3, PAL_PAINT(PAINT_ROSE, 1));
-                if (r && fi >= 0 && fi == r->hate_food) ui_text(px + pw - 44, ry + 1, STR_ICON_SKULL, PAL_RAMP(RAMP_STONE, 3));
+                if (r && fi >= 0 && fi == RES_LIKE_FOOD(r)) ui_heart(px + pw - 40, ry + 5, 3, PAL_PAINT(PAINT_ROSE, 1));
+                if (r && fi >= 0 && fi == RES_HATE_FOOD(r)) ui_text(px + pw - 44, ry + 1, STR_ICON_SKULL, PAL_RAMP(RAMP_STONE, 3));
             }
             if (K.npicks > vis)
                 ui_scroll_arrows(px + pw - 6, py + 16, py + 16 + vis * 13, K.pick_top > 0, K.pick_top + vis < K.npicks);

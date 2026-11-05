@@ -112,7 +112,7 @@ static const char *job_of(int id)
     if (is_premade(id)) return roster_job(id);
     if (!r) return "";
     if (r->flags & RF_PLAYER) return "You!";
-    return hobby_jobs[r->like_hobby % HOBBY_COUNT];
+    return hobby_jobs[RES_LIKE_HOBBY(r) % HOBBY_COUNT];
 }
 
 static const char *bio_of(int id, char *buf, int cap)
@@ -121,10 +121,10 @@ static const char *bio_of(int id, char *buf, int cap)
     if (is_premade(id)) return roster_bio(id);
     if (!r) return "";
     doomo_snprintf(buf, cap, "Loves %s and %s. Scared of %s. Says \"%s\" a lot.",
-                   doomo_food_names[r->like_food % FOOD_COUNT],
-                   doomo_hobby_names[r->like_hobby % HOBBY_COUNT],
-                   doomo_fear_names[r->fear % FEAR_COUNT],
-                   doomo_catchphrases[r->catchphrase % CATCHPHRASE_COUNT]);
+                   doomo_food_names[RES_LIKE_FOOD(r) % FOOD_COUNT],
+                   doomo_hobby_names[RES_LIKE_HOBBY(r) % HOBBY_COUNT],
+                   doomo_fear_names[RES_FEAR(r) % FEAR_COUNT],
+                   doomo_catchphrases[RES_CATCHPHRASE(r) % CATCHPHRASE_COUNT]);
     return buf;
 }
 
@@ -171,7 +171,7 @@ static int cmp(int a, int b)
     switch (lib_b.sort % SO_COUNT) {
     case SO_NAME: d = name_cmp(ra->name, rb->name); break;
     case SO_FRIEND: d = (int)rb->level - (int)ra->level; if (!d) d = name_cmp(ra->name, rb->name); break;
-    case SO_SPECIES: d = (int)ra->look.species - (int)rb->look.species; if (!d) d = name_cmp(ra->name, rb->name); break;
+    case SO_SPECIES: d = (int)RES_SPECIES(ra) - (int)RES_SPECIES(rb); if (!d) d = name_cmp(ra->name, rb->name); break;
     default: break;
     }
     return d ? d : a - b;
@@ -391,7 +391,7 @@ static void preview(int x, int y, int w, int h)
     ui_text_shadow(tx, ty, r->name, st->accent, st->fill_lo);
     ui_text(tx, ty + 10, lib_fit(job_of(id), tw, buf, sizeof(buf)), st->text);
     if (big) {
-        ui_text(tx, ty + 20, lib_fit(doomo_species_names[r->look.species % SPECIES_COUNT], tw, buf, sizeof(buf)),
+        ui_text(tx, ty + 20, lib_fit(doomo_species_names[RES_SPECIES(r) % SPECIES_COUNT], tw, buf, sizeof(buf)),
                 st->text_dim);
         const char *sn = status_name(r, &sc);
         chip(tx, ty + 32, RES_DISTRICT(id) ? "Hellvile" : "Hillvile",
@@ -428,9 +428,9 @@ static int page_profile(int id, int x, int y, int w, int bottom, const UiStyle *
     char v[48], bb[160];
     int ly = y, c = cast_of(id), lines;
     lib_kv(x, ly, w, "Job", job_of(id), st->text_dim, st->text); ly += FONT_LINE;
-    lib_kv(x, ly, w, "Species", doomo_species_names[r->look.species % SPECIES_COUNT], st->text_dim, st->text); ly += FONT_LINE;
-    lib_kv(x, ly, w, "Pronouns", doomo_pronoun_names[r->pronoun % PRONOUN_COUNT], st->text_dim, st->text); ly += FONT_LINE;
-    doomo_snprintf(v, sizeof(v), "%s %d", doomo_month_names[r->bday_month % 12], r->bday_day);
+    lib_kv(x, ly, w, "Species", doomo_species_names[RES_SPECIES(r) % SPECIES_COUNT], st->text_dim, st->text); ly += FONT_LINE;
+    lib_kv(x, ly, w, "Pronouns", doomo_pronoun_names[RES_PRONOUN(r) % PRONOUN_COUNT], st->text_dim, st->text); ly += FONT_LINE;
+    doomo_snprintf(v, sizeof(v), "%s %d", doomo_month_names[RES_BDAY_MONTH(r) % 12], RES_BDAY_DAY(r));
     lib_kv(x, ly, w, "Birthday", v, st->text_dim, st->text); ly += FONT_LINE;
     lib_kv(x, ly, w, "Type", doomo_persona_type_names[persona_type(r) % PERSONA_TYPE_COUNT], st->text_dim, st->text);
     ly += FONT_LINE;
@@ -440,7 +440,7 @@ static int page_profile(int id, int x, int y, int w, int bottom, const UiStyle *
         for (k = 0; k < PERS_COUNT; k++) {
             int bx = x + (k % 2) * (w / 2), by = ly + 2 + (k / 2) * FONT_LINE;
             ui_text(bx, by, axis[k], st->text_dim);
-            bar5(bx + w / 2 - 46, by + 2, r->persona[k], PAL_PAINT(PAINT_TEAL, 1));
+            bar5(bx + w / 2 - 46, by + 2, RES_PERSONA(r, k), PAL_PAINT(PAINT_TEAL, 1));
         }
         ly += 3 * FONT_LINE + 4;
     }
@@ -462,17 +462,17 @@ static void page_likes(int id, int x, int y, int w, int bottom, const UiStyle *s
     char v[64];
     int ly = y;
     lib_b.scroll_max = 0;
-    lib_kv(x, ly, w, STR_ICON_FOOD " Food", doomo_food_names[r->like_food % FOOD_COUNT], st->text_dim, st->text); ly += FONT_LINE;
-    lib_kv(x, ly, w, STR_ICON_STAR " Hobby", doomo_hobby_names[r->like_hobby % HOBBY_COUNT], st->text_dim, st->text); ly += FONT_LINE;
-    lib_kv(x, ly, w, STR_ICON_NOTE " Music", doomo_music_names[r->like_music % MUSIC_COUNT], st->text_dim, st->text); ly += FONT_LINE;
-    lib_kv(x, ly, w - 12, STR_ICON_HEART " Colour", doomo_paint_names[r->like_color % PAL_PAINT_COUNT], st->text_dim, st->text);
-    ui_round_rect(x + w - 9, ly, 9, 8, 2, PAL_PAINT(r->like_color % PAL_PAINT_COUNT, 0));
-    ui_round_rect(x + w - 8, ly + 1, 7, 6, 2, PAL_PAINT(r->like_color % PAL_PAINT_COUNT, 1));
+    lib_kv(x, ly, w, STR_ICON_FOOD " Food", doomo_food_names[RES_LIKE_FOOD(r) % FOOD_COUNT], st->text_dim, st->text); ly += FONT_LINE;
+    lib_kv(x, ly, w, STR_ICON_STAR " Hobby", doomo_hobby_names[RES_LIKE_HOBBY(r) % HOBBY_COUNT], st->text_dim, st->text); ly += FONT_LINE;
+    lib_kv(x, ly, w, STR_ICON_NOTE " Music", doomo_music_names[RES_LIKE_MUSIC(r) % MUSIC_COUNT], st->text_dim, st->text); ly += FONT_LINE;
+    lib_kv(x, ly, w - 12, STR_ICON_HEART " Colour", doomo_paint_names[RES_LIKE_COLOR(r) % PAL_PAINT_COUNT], st->text_dim, st->text);
+    ui_round_rect(x + w - 9, ly, 9, 8, 2, PAL_PAINT(RES_LIKE_COLOR(r) % PAL_PAINT_COUNT, 0));
+    ui_round_rect(x + w - 8, ly + 1, 7, 6, 2, PAL_PAINT(RES_LIKE_COLOR(r) % PAL_PAINT_COUNT, 1));
     ly += FONT_LINE;
-    lib_kv(x, ly, w, STR_ICON_X " Hates", doomo_food_names[r->hate_food % FOOD_COUNT], st->text_dim, st->text); ly += FONT_LINE;
-    lib_kv(x, ly, w, STR_ICON_FROWN " Fear", doomo_fear_names[r->fear % FEAR_COUNT], st->text_dim, st->text); ly += FONT_LINE;
+    lib_kv(x, ly, w, STR_ICON_X " Hates", doomo_food_names[RES_HATE_FOOD(r) % FOOD_COUNT], st->text_dim, st->text); ly += FONT_LINE;
+    lib_kv(x, ly, w, STR_ICON_FROWN " Fear", doomo_fear_names[RES_FEAR(r) % FEAR_COUNT], st->text_dim, st->text); ly += FONT_LINE;
     if (ly + 2 * FONT_LINE <= bottom) {
-        doomo_snprintf(v, sizeof(v), "\"%s\"", doomo_catchphrases[r->catchphrase % CATCHPHRASE_COUNT]);
+        doomo_snprintf(v, sizeof(v), "\"%s\"", doomo_catchphrases[RES_CATCHPHRASE(r) % CATCHPHRASE_COUNT]);
         ui_text_wrap(x, ly + 2, w, v, st->accent, 1);
     }
     if (lib_big() && ly + 5 * FONT_LINE <= bottom) {
@@ -480,7 +480,7 @@ static void page_likes(int id, int x, int y, int w, int bottom, const UiStyle *s
         ly += 3 * FONT_LINE;
         for (k = 0; k < PERS_COUNT && ly + FONT_LINE <= bottom; k++, ly += FONT_LINE) {
             ui_text(x, ly, doomo_persona_axis_names[k], st->text_dim);
-            bar5(x + w - 42, ly + 2, r->persona[k], PAL_PAINT(PAINT_TEAL, 1));
+            bar5(x + w - 42, ly + 2, RES_PERSONA(r, k), PAL_PAINT(PAINT_TEAL, 1));
         }
     }
 }

@@ -889,7 +889,7 @@ void concert_draw_crowd(const StageView *v, const StageLayout *L)
             plat_rect(x - 14, f - 24 - b, 29, 24, PAL_RAMP(RAMP_STONE, 1));
         }
         /* fans of this genre hold up hearts */
-        if (id >= 0 && res_of(id) && res_of(id)->like_music == v->genre && hype > 40 &&
+        if (id >= 0 && res_of(id) && RES_LIKE_MUSIC(res_of(id)) == v->genre && hype > 40 &&
             ((v->t / 20 + (uint32_t)i) & 3) == 0)
             ui_heart(x + 10, f - 58 - b - (int)(v->t % 20) / 4, 4, PAL_PAINT(PAINT_BUBBLEGUM, 1));
     }

@@ -181,19 +181,19 @@ static void make_dummy(void)
 {
     DoomoResident r;
     resident_default(&r);
-    r.look.species = SPECIES_PLUSHIE;
-    r.look.skin = 8 + PAINT_CARAMEL;
-    r.look.eye_style = EYE_BUTTON;
-    r.look.eye_color = PAINT_JET;
-    r.look.mouth_style = MOUTH_STITCHED;
-    r.look.ears = EARS_BEAR;
-    r.look.marking = MARK_STITCHES;
-    r.look.marking_color = PAINT_ROSE;
-    r.look.hair_style = HAIR_BALD;
-    r.look.top = TOP_NONE;
-    r.look.accessory = ACC_BOWTIE;
-    r.look.accessory_color = PAINT_BUBBLEGUM;
-    r.look.cheeks = CHEEK_BLUSH;
+    RES_SET_SPECIES(&r, SPECIES_PLUSHIE);
+    RES_SET_LOOK(&r, GF_SKIN, 8 + PAINT_CARAMEL);
+    RES_SET_LOOK(&r, GF_EYE_STYLE, EYE_BUTTON);
+    RES_SET_LOOK(&r, GF_EYE_COLOR, PAINT_JET);
+    RES_SET_LOOK(&r, GF_MOUTH_STYLE, MOUTH_STITCHED);
+    RES_SET_LOOK(&r, GF_EARS, EARS_BEAR);
+    RES_SET_LOOK(&r, GF_MARKING, MARK_STITCHES);
+    RES_SET_LOOK(&r, GF_MARKING_COLOR, PAINT_ROSE);
+    RES_SET_LOOK(&r, GF_HAIR_STYLE, HAIR_BALD);
+    RES_SET_LOOK(&r, GF_TOP, TOP_NONE);
+    RES_SET_LOOK(&r, GF_ACCESSORY, ACC_BOWTIE);
+    RES_SET_LOOK(&r, GF_ACCESSORY_COLOR, PAINT_BUBBLEGUM);
+    RES_SET_LOOK(&r, GF_CHEEKS, CHEEK_BLUSH);
     X.dummy = r.look;
 }
 

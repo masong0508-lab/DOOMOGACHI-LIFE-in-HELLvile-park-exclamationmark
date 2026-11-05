@@ -220,17 +220,17 @@ int sim_compat(int a, int b)
     int i, diff = 0, c;
     if (!ra || !rb || ra->status == RES_EMPTY || rb->status == RES_EMPTY) return 0;
     for (i = 0; i < PERS_COUNT; i++) {
-        int d = ra->persona[i] - rb->persona[i];
+        int d = RES_PERSONA(ra, i) - RES_PERSONA(rb, i);
         diff += d < 0 ? -d : d;
     }
     /* 0 (twins) .. 75 (opposites) -> +3 .. -3 */
     c = 3 - diff / 11;
-    if (ra->like_hobby == rb->like_hobby) c += 2;
-    if (ra->like_music == rb->like_music) c += 1;
-    if (ra->like_food == rb->like_food) c += 1;
-    if (ra->like_food == rb->hate_food || rb->like_food == ra->hate_food) c -= 1;
+    if (RES_LIKE_HOBBY(ra) == RES_LIKE_HOBBY(rb)) c += 2;
+    if (RES_LIKE_MUSIC(ra) == RES_LIKE_MUSIC(rb)) c += 1;
+    if (RES_LIKE_FOOD(ra) == RES_LIKE_FOOD(rb)) c += 1;
+    if (RES_LIKE_FOOD(ra) == RES_HATE_FOOD(rb) || RES_LIKE_FOOD(rb) == RES_HATE_FOOD(ra)) c -= 1;
     /* two blunt, unhinged folks rub each other the wrong way */
-    if (ra->persona[PERS_SPEECH] >= 12 && rb->persona[PERS_SPEECH] >= 12) c -= 1;
+    if (RES_PERSONA(ra, PERS_SPEECH) >= 12 && RES_PERSONA(rb, PERS_SPEECH) >= 12) c -= 1;
     return DOOMO_CLAMP(c, -6, 6);
 }
 
@@ -255,7 +255,7 @@ int sim_romance_ok(int from, int to)
     if (!life_romance_pair_ok(sim_life_stage(from), sim_life_stage(to))) return 0;
     pa = RES_ROMANCE(a);
     if (pa == ROMANCE_NONE) return 0;
-    if (pa != ROMANCE_ANY && pa != pronoun_group(b->pronoun)) return 0;
+    if (pa != ROMANCE_ANY && pa != pronoun_group(RES_PRONOUN(b))) return 0;
     if (rel_kind(from, to) == REL_FAMILY) return 0;
     return 1;
 }
@@ -441,8 +441,8 @@ static int decide_activity(int id, const DoomoResident *r)
     }
     if (doomo_town.mode == TOWN_STORY && doomo_town.story.chapter < 2 && !hell)
         w[ACT_VAPE_SHOP] = 0;
-    w[hobby_venue[r->like_hobby % HOBBY_COUNT]] += 22;
-    if (r->like_music == sim_concert_genre() && (h >= 17 || h < 2)) w[ACT_CONCERT] += 30;
+    w[hobby_venue[RES_LIKE_HOBBY(r) % HOBBY_COUNT]] += 22;
+    if (RES_LIKE_MUSIC(r) == sim_concert_genre() && (h >= 17 || h < 2)) w[ACT_CONCERT] += 30;
     if (r->stat[STAT_SOCIAL] < 35) { w[ACT_CAFE] += 10; w[ACT_PARK] += 8; w[ACT_HOME] /= 2; }
     if (r->stat[STAT_ENERGY] < 30) w[ACT_HOME] += 25;
     if (r->stat[STAT_SANITY] < 35) w[ACT_CHURCH] += 10;
@@ -479,7 +479,7 @@ static const int8_t act_fx[ACT_COUNT][STAT_COUNT] = {
 
 static int species_pct(const DoomoResident *r, int stat)
 {
-    int sp = r->look.species, fl = doomo_species_info[sp % SPECIES_COUNT].flags;
+    int sp = RES_SPECIES(r), fl = doomo_species_info[sp % SPECIES_COUNT].flags;
     if (stat == STAT_HUNGER) {
         if (sp == SPECIES_GHOST) return 20;
         if (fl & SPF_MECHANICAL) return 30;
@@ -551,17 +551,17 @@ static void apply_needs(int id, DoomoResident *r, int m)
     if (r->stat[STAT_CORRUPTION] > 60) rate -= 2;
     if (sim_s.night && r->activity != ACT_SLEEPING) {
         rate -= 1;
-        if (r->fear == 1 /* The Dark */) rate -= 2;
+        if (RES_FEAR(r) == 1 /* The Dark */) rate -= 2;
     }
-    if (r->stat[STAT_SOCIAL] < 15 && r->fear == 11 /* Being Alone */) rate -= 2;
+    if (r->stat[STAT_SOCIAL] < 15 && RES_FEAR(r) == 11 /* Being Alone */) rate -= 2;
     if (r->stat[STAT_SANITY] < 60 && rate == 0) rate = 1;
     sim_stat_add(r, STAT_SANITY, dith_div(&dz, rate, m, 60));
 
     /* happiness: the activity, a favourite pastime, then a drift toward
      * how well cared-for they are */
     rate = fx[STAT_HAPPY];
-    if (hobby_venue[r->like_hobby % HOBBY_COUNT] == r->activity && r->activity != ACT_HOME) rate += 2;
-    if (r->activity == ACT_CONCERT && r->like_music == sim_concert_genre()) rate += 4;
+    if (hobby_venue[RES_LIKE_HOBBY(r) % HOBBY_COUNT] == r->activity && r->activity != ACT_HOME) rate += 2;
+    if (r->activity == ACT_CONCERT && RES_LIKE_MUSIC(r) == sim_concert_genre()) rate += 4;
     sim_stat_add(r, STAT_HAPPY, dith_div(&dz, rate, m, 120));
     target = (r->stat[STAT_HUNGER] + r->stat[STAT_HYGIENE] + r->stat[STAT_ENERGY] +
               r->stat[STAT_HEALTH] + r->stat[STAT_SOCIAL] * 2 + r->stat[STAT_SANITY]) * 3 / 28;
@@ -671,7 +671,7 @@ static void day_rollover(void)
     for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) {
         DoomoResident *r = &doomo_town.res[i];
         if (r->status != RES_ALIVE && r->status != RES_GHOST) continue;
-        if (r->bday_month == month && r->bday_day == dom) {
+        if (RES_BDAY_MONTH(r) == month && RES_BDAY_DAY(r) == dom) {
             sim_stat_add(r, STAT_HAPPY, 25);
             sim_set_transient(i, TR_ECSTATIC, 8);
             if (sim_chance(60) || (r->flags & RF_FAVORITE))

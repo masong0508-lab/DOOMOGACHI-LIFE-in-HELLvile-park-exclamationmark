@@ -917,16 +917,16 @@ static void home_enter(int arg)
         audio_music(H->visit.music);
         if (!H->host_out) {
             DoomoResident *r = town_res(id);
-            H->react = (uint8_t)(r && r->persona[PERS_EXPRESSION] >= 10 ? HVR_DOUBLE_TAKE : HVR_DAWNING);
+            H->react = (uint8_t)(r && RES_PERSONA(r, PERS_EXPRESSION) >= 10 ? HVR_DOUBLE_TAKE : HVR_DAWNING);
             H->react_age = 0;
             H->react_actor = AC_HOST;
             H->react_line = H->visit.kind == HVK_POSSESSED ? "...come in. Stay." :
                             H->visit.kind == HVK_GHOST ? "Oh. You can see me?" :
-                            r && r->persona[PERS_SPEECH] >= 8 ? "Oh. It's you. Come in." : "Welcome! Come in!";
+                            r && RES_PERSONA(r, PERS_SPEECH) >= 8 ? "Oh. It's you. Come in." : "Welcome! Come in!";
         } else if (H->visit.kind == HVK_AWAY) {
             DoomoResident *r = town_res(id);
             doomo_snprintf(H->line, sizeof(H->line), "A note: \"Back soon! %s\"",
-                           r ? doomo_catchphrases[r->catchphrase % CATCHPHRASE_COUNT] : "");
+                           r ? doomo_catchphrases[RES_CATCHPHRASE(r) % CATCHPHRASE_COUNT] : "");
             say(H->line);
         }
     } else {

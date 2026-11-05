@@ -412,7 +412,7 @@ static const DoomoLook *stub_look_of(int id, int *status)
     static DoomoResident def;
     const DoomoResident *r = town_res(id);
     if (!r || r->status == RES_EMPTY) {
-        if (def.look.eye_count == 0) resident_default(&def);
+        if (RES_LOOK(&def, GF_EYE_COUNT) == 0) resident_default(&def);
         r = &def;
     }
     *status = r->status;

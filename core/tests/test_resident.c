@@ -23,7 +23,7 @@ static int in_range(const DoomoResident *r)
     if (r->stat[STAT_CORRUPTION] >= 100) return 0;
     if (!r->name[0] || r->name[DOOMO_NAME_LEN - 1]) return 0;
     if (r->status != RES_ALIVE) return 0;
-    if (r->like_food == r->hate_food) return 0;
+    if (RES_LIKE_FOOD(r) == RES_HATE_FOOD(r)) return 0;
     return 1;
 }
 
@@ -44,16 +44,16 @@ TEST(generate_20000_seeds_valid_and_sane)
         CHECK_MSG(resident_sanitize(&copy) == 0, "hellborn seed %d: sanitize fixed fields", seed);
         CHECK_MSG(in_range(&h), "hellborn seed %d out of range", seed);
         CHECK(h.flags & RF_HELLBORN);
-        species_hits[r.look.species]++;
-        if (r.look.species == SPECIES_BUNNYKIN ||
-            (r.look.species >= SPECIES_CATFOLK && r.look.species <= SPECIES_OWLKIN)) critters++;
-        if (h.look.species == SPECIES_IMP || h.look.species == SPECIES_GHOUL ||
-            h.look.species == SPECIES_SKELETON || h.look.species == SPECIES_HELLHOUND) hellish++;
+        species_hits[RES_SPECIES(&r)]++;
+        if (RES_SPECIES(&r) == SPECIES_BUNNYKIN ||
+            (RES_SPECIES(&r) >= SPECIES_CATFOLK && RES_SPECIES(&r) <= SPECIES_OWLKIN)) critters++;
+        if (RES_SPECIES(&h) == SPECIES_IMP || RES_SPECIES(&h) == SPECIES_GHOUL ||
+            RES_SPECIES(&h) == SPECIES_SKELETON || RES_SPECIES(&h) == SPECIES_HELLHOUND) hellish++;
         /* species-coherent critters */
-        if (r.look.species == SPECIES_CATFOLK) CHECK(r.look.ears == EARS_CAT && r.look.tail == TAIL_CAT);
-        if (r.look.species == SPECIES_FOXKIN) CHECK(r.look.ears == EARS_FOX && r.look.tail == TAIL_FOX);
-        if (r.look.species == SPECIES_OWLKIN) CHECK(r.look.mouth_style == MOUTH_BEAK);
-        if (r.look.species == SPECIES_CACOBLOB) CHECK(r.look.eye_count == 1);
+        if (RES_SPECIES(&r) == SPECIES_CATFOLK) CHECK(RES_LOOK(&r, GF_EARS) == EARS_CAT && RES_LOOK(&r, GF_TAIL) == TAIL_CAT);
+        if (RES_SPECIES(&r) == SPECIES_FOXKIN) CHECK(RES_LOOK(&r, GF_EARS) == EARS_FOX && RES_LOOK(&r, GF_TAIL) == TAIL_FOX);
+        if (RES_SPECIES(&r) == SPECIES_OWLKIN) CHECK(RES_LOOK(&r, GF_MOUTH_STYLE) == MOUTH_BEAK);
+        if (RES_SPECIES(&r) == SPECIES_CACOBLOB) CHECK(RES_LOOK(&r, GF_EYE_COUNT) == 1);
     }
     /* the vaguely furry heart of the cast: most Hillvile folk are critters */
     CHECK_MSG(critters > 20000 * 55 / 100, "only %d critter-folk", critters);
@@ -149,9 +149,9 @@ TEST(sanitize_fixes_junk_and_is_idempotent)
     fixed = resident_sanitize(&r);
     CHECK(fixed > 40);
     CHECK_EQ(resident_sanitize(&r), 0);
-    CHECK(r.look.eye_count >= 1 && r.look.eye_count <= 3);
-    CHECK(r.look.hair_highlight == LOOK_NO_COLOR);
-    CHECK(r.bday_day >= 1 && r.bday_day <= 28);
+    CHECK(RES_LOOK(&r, GF_EYE_COUNT) >= 1 && RES_LOOK(&r, GF_EYE_COUNT) <= 3);
+    CHECK(RES_LOOK(&r, GF_HAIR_HIGHLIGHT) == LOOK_NO_COLOR);
+    CHECK(RES_BDAY_DAY(&r) >= 1 && RES_BDAY_DAY(&r) <= 28);
     /* random garbage over many seeds */
     for (s = 0; s < 2000; s++) {
         DoomoRng g;
@@ -188,9 +188,9 @@ TEST(default_and_helpers)
     CHECK_EQ(look_paint(PAINT_ROSE, 1), PAL_PAINT(PAINT_ROSE, 1));
     CHECK_EQ(look_paint(PAINT_ROSE, 9), PAL_PAINT(PAINT_ROSE, 2));
     CHECK_EQ(look_paint(LOOK_NO_COLOR, 1), 0);
-    r.look.skin = SKIN_TAN;
+    RES_SET_LOOK(&r, GF_SKIN, SKIN_TAN);
     CHECK_EQ(look_skin(&r.look, 0), PAL_SKIN(SKIN_TAN, 0));
-    r.look.skin = 8 + PAINT_MINT;
+    RES_SET_LOOK(&r, GF_SKIN, 8 + PAINT_MINT);
     CHECK_EQ(look_skin(&r.look, 2), PAL_PAINT(PAINT_MINT, 2));
     /* randomize_look keeps the name & personality */
     resident_generate(&r, 5);

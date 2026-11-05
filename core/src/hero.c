@@ -23,14 +23,14 @@ static void build(DoomoResident *r, uint32_t seed, const char *name,
     resident_generate(r, seed);
     memset(r->name, 0, sizeof(r->name));
     strncpy(r->name, name, sizeof(r->name) - 1);
-    r->look.species = (uint8_t)species;
-    r->look.ears    = (uint8_t)ears;
-    r->look.tail    = (uint8_t)tail;
-    r->look.horns   = HORNS_NONE;
-    r->look.wings   = WINGS_NONE;
+    RES_SET_SPECIES(r, (uint8_t)species);
+    RES_SET_LOOK(r, GF_EARS, (uint8_t)ears);
+    RES_SET_LOOK(r, GF_TAIL, (uint8_t)tail);
+    RES_SET_LOOK(r, GF_HORNS, HORNS_NONE);
+    RES_SET_LOOK(r, GF_WINGS, WINGS_NONE);
     r->status       = RES_ALIVE;
     resident_sanitize(r);
-    r->pronoun = (uint8_t)pronoun;               /* after sanitize: the contract */
+    RES_SET_PRONOUN(r, (uint8_t)pronoun);               /* after sanitize: the contract */
     r->flags   = (uint8_t)((r->flags | RF_PLAYER) & ~RF_HELLBORN);
     r->level   = 0;
 }

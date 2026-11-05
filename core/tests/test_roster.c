@@ -31,11 +31,11 @@ static int accepts(const DoomoResident *who, const DoomoResident *other)
     switch (RES_ROMANCE(who)) {
     case ROMANCE_ANY:  return 1;
     case ROMANCE_NONE: return 0;
-    case ROMANCE_SHE:  return other->pronoun == PRONOUN_SHE;
-    case ROMANCE_HE:   return other->pronoun == PRONOUN_HE;
+    case ROMANCE_SHE:  return RES_PRONOUN(other) == PRONOUN_SHE;
+    case ROMANCE_HE:   return RES_PRONOUN(other) == PRONOUN_HE;
     default:
-        return other->pronoun == PRONOUN_THEY || other->pronoun == PRONOUN_XE ||
-               other->pronoun == PRONOUN_IT;
+        return RES_PRONOUN(other) == PRONOUN_THEY || RES_PRONOUN(other) == PRONOUN_XE ||
+               RES_PRONOUN(other) == PRONOUN_IT;
     }
 }
 
@@ -74,14 +74,14 @@ TEST(roster_records_are_sane)
         CHECK_MSG(memcmp(&copy, r, sizeof(copy)) == 0, "[%d] sanitize changed the record", i);
         CHECK_MSG(r->status == RES_ALIVE, "[%d] not alive", i);
         CHECK(r->exorcism == 0 && r->level == 0 && r->death_cause == DEATH_NONE);
-        CHECK_MSG(r->like_food != r->hate_food, "[%d] likes and hates the same food", i);
+        CHECK_MSG(RES_LIKE_FOOD(r) != RES_HATE_FOOD(r), "[%d] likes and hates the same food", i);
         CHECK_MSG(r->stat[STAT_CORRUPTION] < 100, "[%d] corruption at possession level", i);
         CHECK_MSG(r->stat[STAT_HEALTH] >= 60 && r->stat[STAT_HUNGER] >= 40,
                   "[%d] %s does not start healthy", i, r->name);
         for (k = 0; k < STAT_COUNT; k++) CHECK(r->stat[k] <= 100);
-        CHECK(r->bday_month < 12 && r->bday_day >= 1 && r->bday_day <= 28);
-        if (r->look.species == SPECIES_CACOBLOB) CHECK(r->look.eye_count == 1);
-        if (r->look.species == SPECIES_OWLKIN) CHECK(r->look.mouth_style == MOUTH_BEAK);
+        CHECK(RES_BDAY_MONTH(r) < 12 && RES_BDAY_DAY(r) >= 1 && RES_BDAY_DAY(r) <= 28);
+        if (RES_SPECIES(r) == SPECIES_CACOBLOB) CHECK(RES_LOOK(r, GF_EYE_COUNT) == 1);
+        if (RES_SPECIES(r) == SPECIES_OWLKIN) CHECK(RES_LOOK(r, GF_MOUTH_STYLE) == MOUTH_BEAK);
     }
 }
 
@@ -202,7 +202,7 @@ TEST(roster_story_cast)
         CHECK_EQ(roster_story_npc(cast[k].npc), cast[k].id);
         CHECK_EQ(roster_npc_of(cast[k].id), cast[k].npc);
         CHECK_STR(r->name, cast[k].name);
-        CHECK_EQ(r->look.species, cast[k].species);
+        CHECK_EQ(RES_SPECIES(r), cast[k].species);
         CHECK_EQ(RES_DISTRICT(cast[k].id), cast[k].district);
         CHECK(r->flags & RF_STORY_NPC);
     }
@@ -242,10 +242,10 @@ TEST(roster_uses_every_catalog_option)
         const int v[24] = { l->species, l->body, l->head_shape, l->eye_style, l->brow_style,
             l->nose_style, l->mouth_style, l->ears, l->hair_style, l->facial_hair, l->horns,
             l->tail, l->wings, l->halo, l->marking, l->top, l->bottom, l->shoes, l->hat,
-            l->accessory, l->aura, l->pattern, r->pronoun, RES_ROMANCE(r) };
+            l->accessory, l->aura, l->pattern, RES_PRONOUN(r), RES_ROMANCE(r) };
         for (k = 0; k < 24; k++) seen[k][v[k]] = 1;
-        food[r->like_food] = hobby[r->like_hobby] = music[r->like_music] = 1;
-        fear[r->fear] = phrase[r->catchphrase] = month[r->bday_month] = 1;
+        food[RES_LIKE_FOOD(r)] = hobby[RES_LIKE_HOBBY(r)] = music[RES_LIKE_MUSIC(r)] = 1;
+        fear[RES_FEAR(r)] = phrase[RES_CATCHPHRASE(r)] = month[RES_BDAY_MONTH(r)] = 1;
         top_col[l->top_color] = hair_col[l->hair_color] = eye_col[l->eye_color] = 1;
         cheeks |= l->cheeks;
     }
@@ -273,15 +273,15 @@ TEST(roster_cast_makeup)
     for (i = 0; i < ROSTER_COUNT; i++) {
         const DoomoResident *r = roster_premade(i);
         int t = roster_traits(i);
-        if (r->pronoun == PRONOUN_THEY) they++;
+        if (RES_PRONOUN(r) == PRONOUN_THEY) they++;
         if (t & ROSTER_T_KID) kids++;
         if (t & ROSTER_T_ELDER) elders++;
         if (i < DOOMO_DISTRICT_SIZE) {
-            if (is_critter(r->look.species)) crit++;
+            if (is_critter(RES_SPECIES(r))) crit++;
             corr_hill += r->stat[STAT_CORRUPTION];
         } else {
-            if (is_demonic(r->look.species)) dem++;
-            if (is_critter(r->look.species)) hcrit++;
+            if (is_demonic(RES_SPECIES(r))) dem++;
+            if (is_critter(RES_SPECIES(r))) hcrit++;
             if (t & ROSTER_T_SOFTIE) { soft++; corr_soft += r->stat[STAT_CORRUPTION]; }
             corr_hell += r->stat[STAT_CORRUPTION];
         }

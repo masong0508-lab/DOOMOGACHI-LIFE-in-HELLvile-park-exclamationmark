@@ -134,9 +134,9 @@ void sim_corrupt_natural(int id, int amount)
     if (!r || id >= DOOMO_MAX_RESIDENTS || r->status != RES_ALIVE || !amount) return;
     if (amount > 0) {
         int q, rem;
-        holy = doomo_species_info[r->look.species % SPECIES_COUNT].holy_affinity;
-        if (r->look.halo != HALO_NONE && r->look.halo != HALO_BROKEN) holy += 10;
-        if (r->look.accessory == ACC_ROSARY || r->look.accessory == ACC_CROSS_NECKLACE) holy += 15;
+        holy = doomo_species_info[RES_SPECIES(r) % SPECIES_COUNT].holy_affinity;
+        if (RES_LOOK(r, GF_HALO) != HALO_NONE && RES_LOOK(r, GF_HALO) != HALO_BROKEN) holy += 10;
+        if (RES_LOOK(r, GF_ACCESSORY) == ACC_ROSARY || RES_LOOK(r, GF_ACCESSORY) == ACC_CROSS_NECKLACE) holy += 15;
         holy = DOOMO_CLAMP(holy, 0, 90);
         q = amount * rate_factor() * (100 - holy);
         rem = q % 10000;
@@ -171,7 +171,7 @@ void sim_corrupt(int id, int amount)
 void sim_soul_update(int id, DoomoResident *r, int m)
 {
     int act = r->activity < ACT_COUNT ? r->activity : 0;
-    int base = doomo_species_info[r->look.species % SPECIES_COUNT].base_corruption;
+    int base = doomo_species_info[RES_SPECIES(r) % SPECIES_COUNT].base_corruption;
     int hell = RES_DISTRICT(id) || (r->flags & RF_HELLBORN);
     int up = 0, down = 0, c = r->stat[STAT_CORRUPTION];
     if (r->status == RES_GHOST) { r->stat[STAT_CORRUPTION] = 0; return; }
@@ -185,7 +185,7 @@ void sim_soul_update(int id, DoomoResident *r, int m)
         /* nightmares (chance per game hour in 1/10000) */
         if (act == ACT_SLEEPING) {
             int pct = 1 + (100 - r->stat[STAT_SANITY]) / 8 +
-                      ((r->fear == 1 || r->fear == 4) ? 6 : 0) +
+                      ((RES_FEAR(r) == 1 || RES_FEAR(r) == 4) ? 6 : 0) +
                       (c >= 50 ? 8 : 0) + (rate_factor() >= 150 ? 8 : 0);
             if (sim_roll(600000u) < (uint32_t)(pct * (m > 120 ? 120 : m))) {
                 sim_s.stats.nightmares++;

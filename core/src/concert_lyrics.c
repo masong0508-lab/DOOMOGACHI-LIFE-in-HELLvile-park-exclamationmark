@@ -71,7 +71,7 @@ void concert_job_of(int id, char *buf, int cap)
             j = NULL;
         }
     }
-    if (!j) j = hobby_jobs[r->like_hobby % HOBBY_COUNT];
+    if (!j) j = hobby_jobs[RES_LIKE_HOBBY(r) % HOBBY_COUNT];
     /* lowercase, except place names ("mayor of Hillvile") */
     {
         int keep = 0;
@@ -109,13 +109,13 @@ static void cast_of(int id, int genre, LyCast *c)
     c->music = genre;
     if (!r) { c->name = "Someone"; strcpy(c->job, "citizen"); return; }
     c->name = r->name[0] ? r->name : "Someone";
-    c->food = r->like_food % FOOD_COUNT;
-    c->hate = r->hate_food % FOOD_COUNT;
-    c->hobby = r->like_hobby % HOBBY_COUNT;
-    c->color = r->like_color % PAL_PAINT_COUNT;
-    c->fear = r->fear % FEAR_COUNT;
-    c->phrase = r->catchphrase % CATCHPHRASE_COUNT;
-    c->species = r->look.species % SPECIES_COUNT;
+    c->food = RES_LIKE_FOOD(r) % FOOD_COUNT;
+    c->hate = RES_HATE_FOOD(r) % FOOD_COUNT;
+    c->hobby = RES_LIKE_HOBBY(r) % HOBBY_COUNT;
+    c->color = RES_LIKE_COLOR(r) % PAL_PAINT_COUNT;
+    c->fear = RES_FEAR(r) % FEAR_COUNT;
+    c->phrase = RES_CATCHPHRASE(r) % CATCHPHRASE_COUNT;
+    c->species = RES_SPECIES(r) % SPECIES_COUNT;
     concert_job_of(id, c->job, (int)sizeof(c->job));
     c->partner = sim_partner_of(id);
     if (c->partner >= 0 && !alive_other(c->partner)) c->partner = -1;

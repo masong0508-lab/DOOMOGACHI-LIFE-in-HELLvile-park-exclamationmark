@@ -43,7 +43,7 @@ WEAK int playas_gender(int id)
 {
     const DoomoResident *r = town_res(id);
     if (!r || r->status == RES_EMPTY) return GENDER_N;
-    return r->pronoun == PRONOUN_SHE ? GENDER_F : r->pronoun == PRONOUN_HE ? GENDER_M : GENDER_N;
+    return RES_PRONOUN(r) == PRONOUN_SHE ? GENDER_F : RES_PRONOUN(r) == PRONOUN_HE ? GENDER_M : GENDER_N;
 }
 
 WEAK int playas_you_gender(void) { return playas_gender(playas_avatar()); }

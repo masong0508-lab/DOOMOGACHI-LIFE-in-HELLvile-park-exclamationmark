@@ -181,7 +181,7 @@ TEST(creator_presets_are_valid)
                 const CrRow *row = &cr_tabs[t].rows[k];
                 if (row->kind == RK_ENUM || row->kind == RK_SKIN || row->kind == RK_PAINT)
                     CHECK_MSG(!cr_value_locked(row, cr_row_value(&cr.draft, row)),
-                              "species %d brought a locked %s", cr.draft.look.species, row->label);
+                              "species %d brought a locked %s", RES_SPECIES(&cr.draft), row->label);
             }
     }
     /* the show canon's species (C1) can be made from day one: their first
@@ -215,37 +215,37 @@ TEST(creator_makes_a_new_hillvile_citizen)
     CHECK(scene_top() == &SCENE_CREATOR);
     CHECK_EQ(cr.mode, CR_NEW);
     CHECK_EQ(cr.district, DISTRICT_HILLVILE);
-    start_species = cr.draft.look.species;
+    start_species = RES_SPECIES(&cr.draft);
     /* species: two to the right */
     go_row(CR_TAB_BODY, species_row);
     press_n(BTN_RIGHT, 2);
-    CHECK_EQ(cr.draft.look.species, (start_species + 2) % SPECIES_COUNT);
+    CHECK_EQ(RES_SPECIES(&cr.draft), (start_species + 2) % SPECIES_COUNT);
     /* height slider up */
     go_row(CR_TAB_BODY, row_index(CR_TAB_BODY, offsetof(DoomoResident, look.height), RK_SLIDER));
     press_n(BTN_RIGHT, 3);
-    CHECK_EQ(cr.draft.look.height, 10);
+    CHECK_EQ(RES_LOOK(&cr.draft, GF_HEIGHT), 10);
     /* top colour through the swatch grid: two right, one down */
     go_row(CR_TAB_OUTFIT, row_index(CR_TAB_OUTFIT, offsetof(DoomoResident, look.top_color), RK_PAINT));
     {
-        int before = cr.draft.look.top_color;
+        int before = RES_LOOK(&cr.draft, GF_TOP_COLOR);
         press(BTN_A);
         CHECK_EQ(cr.phase, CRP_COLOR);
         press_n(BTN_RIGHT, 2);
         press(BTN_DOWN);
         press(BTN_A);
         CHECK_EQ(cr.phase, CRP_MAIN);
-        CHECK_EQ(cr.draft.look.top_color, (before + 2 + 8) % PAL_PAINT_COUNT);
+        CHECK_EQ(RES_LOOK(&cr.draft, GF_TOP_COLOR), (before + 2 + 8) % PAL_PAINT_COUNT);
     }
     /* blush off */
     go_row(CR_TAB_FACE, row_index(CR_TAB_FACE, offsetof(DoomoResident, look.cheeks), RK_FLAG));
-    CHECK(cr.draft.look.cheeks & CHEEK_BLUSH);
+    CHECK(RES_LOOK(&cr.draft, GF_CHEEKS) & CHEEK_BLUSH);
     press(BTN_A);
-    CHECK(!(cr.draft.look.cheeks & CHEEK_BLUSH));
+    CHECK(!(RES_LOOK(&cr.draft, GF_CHEEKS) & CHEEK_BLUSH));
     /* personality: quirk to the max */
     go_row(CR_TAB_PERSONA, 4);
     frames(80, BTN_RIGHT);
     frames(1, 0);
-    CHECK_EQ(cr.draft.persona[PERS_QUIRK], 15);
+    CHECK_EQ(RES_PERSONA(&cr.draft, PERS_QUIRK), 15);
     /* move in: there is no name yet, so the keyboard opens first */
     press(BTN_START);
     CHECK_EQ(cr.phase, CRP_MENU);
@@ -264,10 +264,10 @@ TEST(creator_makes_a_new_hillvile_citizen)
     CHECK_EQ(r->status, RES_ALIVE);
     CHECK(r->flags & RF_CUSTOM);
     CHECK(!(r->flags & RF_HELLBORN));
-    CHECK_EQ(r->look.species, (start_species + 2) % SPECIES_COUNT);
-    CHECK_EQ(r->look.height, 10);
-    CHECK(!(r->look.cheeks & CHEEK_BLUSH));
-    CHECK_EQ(r->persona[PERS_QUIRK], 15);
+    CHECK_EQ(RES_SPECIES(r), (start_species + 2) % SPECIES_COUNT);
+    CHECK_EQ(RES_LOOK(r, GF_HEIGHT), 10);
+    CHECK(!(RES_LOOK(r, GF_CHEEKS) & CHEEK_BLUSH));
+    CHECK_EQ(RES_PERSONA(r, PERS_QUIRK), 15);
     {
         DoomoResident copy = *r;
         CHECK_EQ(resident_sanitize(&copy), 0);
@@ -355,7 +355,7 @@ TEST(creator_edits_a_premade_citizen_in_place)
     /* taller, a different build, blush toggled, louder voice */
     top_row = row_index(CR_TAB_BODY, offsetof(DoomoResident, look.height), RK_SLIDER);
     go_row(CR_TAB_BODY, top_row);
-    press(before.look.height < 15 ? BTN_RIGHT : BTN_LEFT);
+    press(RES_LOOK(&before, GF_HEIGHT) < 15 ? BTN_RIGHT : BTN_LEFT);
     go_row(CR_TAB_FACE, row_index(CR_TAB_FACE, offsetof(DoomoResident, look.cheeks), RK_FLAG));
     press(BTN_A);
     press(BTN_START);
@@ -365,9 +365,9 @@ TEST(creator_edits_a_premade_citizen_in_place)
     {
         const DoomoResident *r = town_res(id);
         DoomoResident copy = *r;
-        CHECK_EQ(r->look.height, before.look.height < 15 ? before.look.height + 1
-                                                          : before.look.height - 1);
-        CHECK_EQ(r->look.cheeks & CHEEK_BLUSH, (before.look.cheeks & CHEEK_BLUSH) ^ CHEEK_BLUSH);
+        CHECK_EQ(RES_LOOK(r, GF_HEIGHT), RES_LOOK(&before, GF_HEIGHT) < 15 ? RES_LOOK(&before, GF_HEIGHT) + 1
+                                                          : RES_LOOK(&before, GF_HEIGHT) - 1);
+        CHECK_EQ(RES_LOOK(r, GF_CHEEKS) & CHEEK_BLUSH, (RES_LOOK(&before, GF_CHEEKS) & CHEEK_BLUSH) ^ CHEEK_BLUSH);
         CHECK_STR(r->name, before.name);
         CHECK(memcmp(r->stat, before.stat, sizeof(before.stat)) == 0);
         CHECK_EQ(r->status, before.status);
@@ -454,8 +454,8 @@ TEST(creator_hero_cards_sunny_and_marvin)
         CHECK_EQ(cr.phase, CRP_MOVEIN);
         CHECK_EQ(playas_hero_kind() == (k ? HERO_MARVIN : HERO_SUNNY), 1);
         CHECK_STR(doomo_town.player.name, k ? "Marvin" : "Sunny");
-        CHECK_EQ(doomo_town.player.pronoun, k ? PRONOUN_HE : PRONOUN_SHE);
-        CHECK_EQ(doomo_town.player.look.species, k ? SPECIES_FOXKIN : SPECIES_BUNNYKIN);
+        CHECK_EQ(RES_PRONOUN(&doomo_town.player), k ? PRONOUN_HE : PRONOUN_SHE);
+        CHECK_EQ(RES_SPECIES(&doomo_town.player), k ? SPECIES_FOXKIN : SPECIES_BUNNYKIN);
         CHECK(doomo_town.player.flags & RF_PLAYER);
         CHECK_EQ(creator_last_result(), DOOMO_PLAYER_ID);
     }
@@ -491,7 +491,7 @@ TEST(creator_undo_and_redo)
 {
     int h0;
     open_creator(-1);
-    h0 = cr.draft.look.height;
+    h0 = RES_LOOK(&cr.draft, GF_HEIGHT);
     go_row(CR_TAB_BODY, row_index(CR_TAB_BODY, offsetof(DoomoResident, look.height), RK_SLIDER));
     press(BTN_RIGHT);
     frames(40, 0);                      /* separate steps */
@@ -499,17 +499,17 @@ TEST(creator_undo_and_redo)
     frames(40, 0);
     press(BTN_DOWN);
     press(BTN_LEFT);
-    CHECK_EQ(cr.draft.look.height, h0 + 2);
+    CHECK_EQ(RES_LOOK(&cr.draft, GF_HEIGHT), h0 + 2);
     CHECK_EQ(cr_undo_count(), 3);
     press(BTN_X);                       /* undo: build */
     press(BTN_X);                       /* undo: height +2 */
-    CHECK_EQ(cr.draft.look.height, h0 + 1);
+    CHECK_EQ(RES_LOOK(&cr.draft, GF_HEIGHT), h0 + 1);
     CHECK_EQ(cr_redo_count(), 2);
     press(BTN_Y);
-    CHECK_EQ(cr.draft.look.height, h0 + 2);
+    CHECK_EQ(RES_LOOK(&cr.draft, GF_HEIGHT), h0 + 2);
     press(BTN_X);
     press(BTN_X);
-    CHECK_EQ(cr.draft.look.height, h0);
+    CHECK_EQ(RES_LOOK(&cr.draft, GF_HEIGHT), h0);
     CHECK_EQ(cr_undo_count(), 0);
     /* at least 16 steps are remembered */
     {
@@ -533,7 +533,7 @@ TEST(creator_locked_options_are_shown_but_not_chosen)
     CHECK(cr_value_locked(row, EYE_GOAT));
     CHECK(cr_lock_hint(row, EYE_GOAT)[0]);
     go_row(CR_TAB_FACE, eyes);
-    before = cr.draft.look.eye_style;
+    before = RES_LOOK(&cr.draft, GF_EYE_STYLE);
     /* the picker: walk onto Goat Eyes and try to take them */
     press(BTN_A);
     CHECK_EQ(cr.phase, CRP_PICK);
@@ -545,11 +545,11 @@ TEST(creator_locked_options_are_shown_but_not_chosen)
     CHECK_EQ(cr.phase, CRP_PICK);       /* refused */
     press(BTN_B);
     CHECK_EQ(cr.phase, CRP_MAIN);
-    CHECK_EQ(cr.draft.look.eye_style, before);
+    CHECK_EQ(RES_LOOK(&cr.draft, GF_EYE_STYLE), before);
     /* stepping with LEFT/RIGHT never writes a locked value either */
     for (i = 0; i < EYE_COUNT * 2; i++) {
         press(BTN_RIGHT);
-        CHECK(!cr_value_locked(row, cr.draft.look.eye_style));
+        CHECK(!cr_value_locked(row, RES_LOOK(&cr.draft, GF_EYE_STYLE)));
     }
     /* once unlocked it can be chosen */
     unlock_grant_match(UL_CAT_PART, CLIST_EYE, EYE_GOAT);
@@ -561,7 +561,7 @@ TEST(creator_keeps_a_locked_option_the_citizen_already_has)
     int id;
     DoomoResident r;
     resident_generate(&r, 9);
-    r.look.eye_style = EYE_GOAT;                 /* locked for new choices */
+    RES_SET_LOOK(&r, GF_EYE_STYLE, EYE_GOAT);                 /* locked for new choices */
     doomo_town.res[3] = r;
     id = 3;
     open_creator(id);
@@ -569,7 +569,7 @@ TEST(creator_keeps_a_locked_option_the_citizen_already_has)
           offsetof(DoomoResident, look.eye_style), RK_ENUM)), EYE_GOAT));
     press(BTN_START);
     press(BTN_A);
-    CHECK_EQ(town_res(id)->look.eye_style, EYE_GOAT);
+    CHECK_EQ(RES_LOOK(town_res(id), GF_EYE_STYLE), EYE_GOAT);
 }
 
 TEST(creator_randomiser_respects_locks)
@@ -613,21 +613,21 @@ TEST(creator_species_change_brings_species_parts)
     int species_row = row_index(CR_TAB_BODY, offsetof(DoomoResident, look.species), RK_ENUM);
     open_creator(-1);
     go_row(CR_TAB_BODY, species_row);
-    while (cr.draft.look.species != SPECIES_FOXKIN) press(BTN_RIGHT);
-    CHECK_EQ(cr.draft.look.ears, EARS_FOX);
-    CHECK_EQ(cr.draft.look.tail, TAIL_FOX);
-    while (cr.draft.look.species != SPECIES_OWLKIN) press(BTN_RIGHT);
-    CHECK_EQ(cr.draft.look.mouth_style, MOUTH_BEAK);
-    CHECK_EQ(cr.draft.look.tail, TAIL_FEATHER_FAN);
-    while (cr.draft.look.species != SPECIES_IMP) press(BTN_RIGHT);
-    CHECK_EQ(cr.draft.look.tail, TAIL_DEVIL);
-    CHECK(cr.draft.look.horns != HORNS_NONE);
+    while (RES_SPECIES(&cr.draft) != SPECIES_FOXKIN) press(BTN_RIGHT);
+    CHECK_EQ(RES_LOOK(&cr.draft, GF_EARS), EARS_FOX);
+    CHECK_EQ(RES_LOOK(&cr.draft, GF_TAIL), TAIL_FOX);
+    while (RES_SPECIES(&cr.draft) != SPECIES_OWLKIN) press(BTN_RIGHT);
+    CHECK_EQ(RES_LOOK(&cr.draft, GF_MOUTH_STYLE), MOUTH_BEAK);
+    CHECK_EQ(RES_LOOK(&cr.draft, GF_TAIL), TAIL_FEATHER_FAN);
+    while (RES_SPECIES(&cr.draft) != SPECIES_IMP) press(BTN_RIGHT);
+    CHECK_EQ(RES_LOOK(&cr.draft, GF_TAIL), TAIL_DEVIL);
+    CHECK(RES_LOOK(&cr.draft, GF_HORNS) != HORNS_NONE);
     /* a full preset */
     press(BTN_DOWN);
     press(BTN_RIGHT);
     press(BTN_A);
-    CHECK_EQ(cr.draft.look.horns, HORNS_DEVIL);
-    CHECK_EQ(cr.draft.look.wings, WINGS_TINY_BAT);
+    CHECK_EQ(RES_LOOK(&cr.draft, GF_HORNS), HORNS_DEVIL);
+    CHECK_EQ(RES_LOOK(&cr.draft, GF_WINGS), WINGS_TINY_BAT);
 }
 
 TEST(creator_copy_a_premade_look)
@@ -644,8 +644,8 @@ TEST(creator_copy_a_premade_look)
     CHECK(src != NULL);
     press(BTN_A);
     CHECK_EQ(cr.phase, CRP_MAIN);
-    CHECK_EQ(cr.draft.look.species, src->look.species);
-    CHECK_EQ(cr.draft.look.top, src->look.top);
+    CHECK_EQ(RES_SPECIES(&cr.draft), RES_SPECIES(src));
+    CHECK_EQ(RES_LOOK(&cr.draft, GF_TOP), RES_LOOK(src, GF_TOP));
     CHECK(unlock_has(CRU_COPY_PREMADE));
 }
 

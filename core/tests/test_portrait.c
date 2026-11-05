@@ -103,22 +103,22 @@ TEST(portrait_options_visible_on_other_citizens)
         if (i) {
             /* a hellborn imp; nothing covering the mouth, legs to dress */
             resident_generate_hellborn(&r, seeds[i]);
-            r.look.species = SPECIES_IMP;
-            r.look.accessory = ACC_NONE;
-            r.look.top = TOP_TSHIRT;
-            r.look.eye_count = 2;
-            r.look.facial_hair = FHAIR_NONE;
-            r.look.hair_style = HAIR_SHORT;
-            r.look.ears = EARS_POINTY;
+            RES_SET_SPECIES(&r, SPECIES_IMP);
+            RES_SET_LOOK(&r, GF_ACCESSORY, ACC_NONE);
+            RES_SET_LOOK(&r, GF_TOP, TOP_TSHIRT);
+            RES_SET_LOOK(&r, GF_EYE_COUNT, 2);
+            RES_SET_LOOK(&r, GF_FACIAL_HAIR, FHAIR_NONE);
+            RES_SET_LOOK(&r, GF_HAIR_STYLE, HAIR_SHORT);
+            RES_SET_LOOK(&r, GF_EARS, EARS_POINTY);
         } else {
             resident_default(&r);
-            r.look.species = SPECIES_HUMAN;
-            r.look.skin = SKIN_TAN;
-            r.look.hair_style = HAIR_BALD;
-            r.look.ears = EARS_NORMAL;
-            r.look.tail = TAIL_NONE;
-            r.look.marking = MARK_NONE;
-            r.look.top = TOP_TSHIRT;
+            RES_SET_SPECIES(&r, SPECIES_HUMAN);
+            RES_SET_LOOK(&r, GF_SKIN, SKIN_TAN);
+            RES_SET_LOOK(&r, GF_HAIR_STYLE, HAIR_BALD);
+            RES_SET_LOOK(&r, GF_EARS, EARS_NORMAL);
+            RES_SET_LOOK(&r, GF_TAIL, TAIL_NONE);
+            RES_SET_LOOK(&r, GF_MARKING, MARK_NONE);
+            RES_SET_LOOK(&r, GF_TOP, TOP_TSHIRT);
             (void)seeds;
         }
         for (li = 0; li < (int)(sizeof(lists) / sizeof(lists[0])); li++) {
@@ -374,7 +374,7 @@ TEST(portrait_cache_keeps_uids_until_pixels_change)
     b = portrait_image(id, EXPR_NEUTRAL);
     CHECK(b->uid == uid);
     /* editing the look changes the pixels, so the uid changes */
-    r->look.hair_color = (uint8_t)((r->look.hair_color + 5) % PAL_PAINT_COUNT);
+    RES_SET_LOOK(r, GF_HAIR_COLOR, (uint8_t)((RES_LOOK(r, GF_HAIR_COLOR) + 5) % PAL_PAINT_COUNT));
     b = portrait_image(id, EXPR_NEUTRAL);
     CHECK(b->uid != uid);
     uid = b->uid;
@@ -473,8 +473,8 @@ TEST(portrait_sliced_rerenders_show_only_whole_frames)
     r = town_res(id);
     resident_generate(r, 31337u);
     r->status = RES_ALIVE;
-    r->look.aura = AURA_HEARTS;           /* more animation phases */
-    if (!r->look.tail) r->look.tail = 1;
+    RES_SET_LOOK(r, GF_AURA, AURA_HEARTS);           /* more animation phases */
+    if (!RES_LOOK(r, GF_TAIL)) RES_SET_LOOK(r, GF_TAIL, 1);
     portrait_invalidate(id);
     for (fig = 0; fig < 2; fig++) {
         int t, k, same = 0, changes = 0, ok = 1, uid_ok = 1;

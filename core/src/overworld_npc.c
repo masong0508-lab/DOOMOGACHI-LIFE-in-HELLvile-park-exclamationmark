@@ -138,7 +138,7 @@ static OwNpc *new_npc(int id, int kind, int cx, int cy, int flags)
     n->speed = 20;
     if (kind == NK_RESIDENT) {
         const DoomoResident *r = town_res(id);
-        if (r) n->speed = (uint8_t)(12 + r->persona[PERS_MOVEMENT] * 2);
+        if (r) n->speed = (uint8_t)(12 + RES_PERSONA(r, PERS_MOVEMENT) * 2);
     }
     return n;
 }

@@ -333,9 +333,9 @@ TEST(studio_sanitize_and_sections)
     test_reset();
     town_new(TOWN_FREEPLAY, 1, TOWN_POP_PREMADE);
     s.singer[0] = 0;
-    doomo_town.res[0].voice[VOICE_PITCH] = 30;
+    RES_SET_VOICE(&doomo_town.res[0], VOICE_PITCH, 30);
     CHECK_EQ(song_singer_section(&s, 0), SECTION_SOPRANO);
-    doomo_town.res[0].voice[VOICE_PITCH] = 2;
+    RES_SET_VOICE(&doomo_town.res[0], VOICE_PITCH, 2);
     CHECK_EQ(song_singer_section(&s, 0), SECTION_BASS);
     song_set_section(&s, 0, SECTION_ALTO);
     CHECK_EQ(song_singer_section(&s, 0), SECTION_ALTO);
@@ -541,7 +541,7 @@ TEST(studio_inspire_is_deterministic_and_about_the_muse)
     studio_inspire(&b, 42, -1, 777);
     CHECK(memcmp(&a, &b, sizeof(a)) == 0);
     r = town_res(42);
-    CHECK_EQ(a.genre, r->like_music % MUSIC_COUNT);
+    CHECK_EQ(a.genre, RES_LIKE_MUSIC(r) % MUSIC_COUNT);
     CHECK(song_singer_id(&a, 0) == 42);
     CHECK(song_singer_count(&a) >= 1 && song_singer_count(&a) <= 6);
     for (i = 0; i < SONG_LYRIC_LINES; i++) {
@@ -551,12 +551,12 @@ TEST(studio_inspire_is_deterministic_and_about_the_muse)
         if (strstr(a.lyrics[i], r->name)) mentions++;
         {
             char food[24];
-            const char *f = doomo_food_names[r->like_food];
+            const char *f = doomo_food_names[RES_LIKE_FOOD(r)];
             for (k = 0; f[k] && k < 23; k++) food[k] = (char)((f[k] >= 'A' && f[k] <= 'Z') ? f[k] + 32 : f[k]);
             food[k] = 0;
             if (strstr(low, food)) mentions++;
         }
-        if (strstr(a.lyrics[i], doomo_catchphrases[r->catchphrase])) mentions++;
+        if (strstr(a.lyrics[i], doomo_catchphrases[RES_CATCHPHRASE(r)])) mentions++;
     }
     CHECK_MSG(mentions >= 1, "the lyrics never mention the muse");
     studio_inspire(&b, 42, -1, 778);

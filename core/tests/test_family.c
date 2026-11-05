@@ -332,7 +332,7 @@ TEST(family_pool_add_sets_identity_and_changes_nothing_on_error)
         resident_generate(&g, 777u);
         resident_sanitize(&g);
         CHECK_STR(family_identity(id)->name, g.name);
-        CHECK_EQ(family_identity(id)->pronoun, g.pronoun);
+        CHECK_EQ(family_identity(id)->pronoun, RES_PRONOUN(&g));
     }
     /* bad names: nothing added */
     CHECK_EQ(family_pool_add(FAMROLE_CHILD, LIFE_CHILD, 1u, "", -1), FAM_ERR_NAME);
@@ -383,7 +383,7 @@ TEST(family_resident_builds_the_person_from_the_identity)
     resident_generate(&g, 4242u);
     CHECK(memcmp(&r.look, &g.look, sizeof(r.look)) == 0);            /* the seed is the look */
     CHECK_STR(r.name, "Pip");
-    CHECK_EQ(r.pronoun, PRONOUN_SHE);
+    CHECK_EQ(RES_PRONOUN(&r), PRONOUN_SHE);
     CHECK_EQ(r.status, RES_ALIVE);
     CHECK_EQ(RES_STAGE(&r), LIFE_TODDLER);
     CHECK_EQ(RES_ROMANCE(&r), family_identity(id)->romance);

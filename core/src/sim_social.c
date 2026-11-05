@@ -284,41 +284,41 @@ int sim_make_baby(int pa, int pb)
     if (hellish) resident_generate_hellborn(&baby, seed);
     else resident_generate(&baby, seed);
     /* inherit: every feature comes from mum, dad or the dice */
-    baby.look.species = pick8(a->look.species, b->look.species);
-    baby.look.skin = pick8(a->look.skin, b->look.skin);
-    baby.look.head_shape = pick8(a->look.head_shape, b->look.head_shape);
-    baby.look.eye_style = pick8(a->look.eye_style, b->look.eye_style);
-    baby.look.eye_color = pick8(a->look.eye_color, b->look.eye_color);
-    baby.look.nose_style = pick8(a->look.nose_style, b->look.nose_style);
-    baby.look.hair_color = pick8(a->look.hair_color, b->look.hair_color);
-    baby.look.hair_highlight = pick8(a->look.hair_highlight, b->look.hair_highlight);
-    baby.look.ears = pick8(a->look.ears, b->look.ears);
-    baby.look.horns = pick8(a->look.horns, b->look.horns);
-    baby.look.horn_color = pick8(a->look.horn_color, b->look.horn_color);
-    baby.look.tail = pick8(a->look.tail, b->look.tail);
-    baby.look.wings = pick8(a->look.wings, b->look.wings);
-    baby.look.halo = pick8(a->look.halo, b->look.halo);
-    baby.look.marking = pick8(a->look.marking, b->look.marking);
-    baby.look.marking_color = pick8(a->look.marking_color, b->look.marking_color);
-    baby.look.cheeks = (uint8_t)(CHEEK_BLUSH | ((a->look.cheeks | b->look.cheeks) & CHEEK_FRECKLES));
+    RES_SET_SPECIES(&baby, pick8(RES_SPECIES(a), RES_SPECIES(b)));
+    RES_SET_LOOK(&baby, GF_SKIN, pick8(RES_LOOK(a, GF_SKIN), RES_LOOK(b, GF_SKIN)));
+    RES_SET_LOOK(&baby, GF_HEAD_SHAPE, pick8(RES_LOOK(a, GF_HEAD_SHAPE), RES_LOOK(b, GF_HEAD_SHAPE)));
+    RES_SET_LOOK(&baby, GF_EYE_STYLE, pick8(RES_LOOK(a, GF_EYE_STYLE), RES_LOOK(b, GF_EYE_STYLE)));
+    RES_SET_LOOK(&baby, GF_EYE_COLOR, pick8(RES_LOOK(a, GF_EYE_COLOR), RES_LOOK(b, GF_EYE_COLOR)));
+    RES_SET_LOOK(&baby, GF_NOSE_STYLE, pick8(RES_LOOK(a, GF_NOSE_STYLE), RES_LOOK(b, GF_NOSE_STYLE)));
+    RES_SET_LOOK(&baby, GF_HAIR_COLOR, pick8(RES_LOOK(a, GF_HAIR_COLOR), RES_LOOK(b, GF_HAIR_COLOR)));
+    RES_SET_LOOK(&baby, GF_HAIR_HIGHLIGHT, pick8(RES_LOOK(a, GF_HAIR_HIGHLIGHT), RES_LOOK(b, GF_HAIR_HIGHLIGHT)));
+    RES_SET_LOOK(&baby, GF_EARS, pick8(RES_LOOK(a, GF_EARS), RES_LOOK(b, GF_EARS)));
+    RES_SET_LOOK(&baby, GF_HORNS, pick8(RES_LOOK(a, GF_HORNS), RES_LOOK(b, GF_HORNS)));
+    RES_SET_LOOK(&baby, GF_HORN_COLOR, pick8(RES_LOOK(a, GF_HORN_COLOR), RES_LOOK(b, GF_HORN_COLOR)));
+    RES_SET_LOOK(&baby, GF_TAIL, pick8(RES_LOOK(a, GF_TAIL), RES_LOOK(b, GF_TAIL)));
+    RES_SET_LOOK(&baby, GF_WINGS, pick8(RES_LOOK(a, GF_WINGS), RES_LOOK(b, GF_WINGS)));
+    RES_SET_LOOK(&baby, GF_HALO, pick8(RES_LOOK(a, GF_HALO), RES_LOOK(b, GF_HALO)));
+    RES_SET_LOOK(&baby, GF_MARKING, pick8(RES_LOOK(a, GF_MARKING), RES_LOOK(b, GF_MARKING)));
+    RES_SET_LOOK(&baby, GF_MARKING_COLOR, pick8(RES_LOOK(a, GF_MARKING_COLOR), RES_LOOK(b, GF_MARKING_COLOR)));
+    RES_SET_LOOK(&baby, GF_CHEEKS, (uint8_t)(CHEEK_BLUSH | ((RES_LOOK(a, GF_CHEEKS) | RES_LOOK(b, GF_CHEEKS)) & CHEEK_FRECKLES)));
     /* babies are tiny, big-headed and big-eyed */
-    baby.look.body = BODY_TINY;
-    baby.look.height = (uint8_t)sim_rand(3);
-    baby.look.build = (uint8_t)(6 + sim_rand(5));
-    baby.look.head_size = (uint8_t)(12 + sim_rand(4));
-    baby.look.eye_size = (uint8_t)(11 + sim_rand(5));
-    baby.look.facial_hair = FHAIR_NONE;
-    baby.look.hair_style = sim_chance(60) ? HAIR_BALD : HAIR_MESSY;
-    baby.look.accessory = sim_chance(50) ? ACC_PACIFIER : ACC_NONE;
-    baby.look.top = TOP_PAJAMAS;
-    baby.look.hat = HAT_NONE;
+    RES_SET_LOOK(&baby, GF_BODY, BODY_TINY);
+    RES_SET_LOOK(&baby, GF_HEIGHT, (uint8_t)sim_rand(3));
+    RES_SET_LOOK(&baby, GF_BUILD, (uint8_t)(6 + sim_rand(5)));
+    RES_SET_LOOK(&baby, GF_HEAD_SIZE, (uint8_t)(12 + sim_rand(4)));
+    RES_SET_LOOK(&baby, GF_EYE_SIZE, (uint8_t)(11 + sim_rand(5)));
+    RES_SET_LOOK(&baby, GF_FACIAL_HAIR, FHAIR_NONE);
+    RES_SET_LOOK(&baby, GF_HAIR_STYLE, sim_chance(60) ? HAIR_BALD : HAIR_MESSY);
+    RES_SET_LOOK(&baby, GF_ACCESSORY, sim_chance(50) ? ACC_PACIFIER : ACC_NONE);
+    RES_SET_LOOK(&baby, GF_TOP, TOP_PAJAMAS);
+    RES_SET_LOOK(&baby, GF_HAT, HAT_NONE);
     resident_set_romance(&baby, ROMANCE_NONE);        /* far too young  */
     resident_set_stage(&baby, LIFE_BABY);             /* LS0            */
     {
         int i;
         for (i = 0; i < PERS_COUNT; i++)
-            baby.persona[i] = (uint8_t)DOOMO_CLAMP((a->persona[i] + b->persona[i]) / 2 +
-                                                   sim_rand(5) - 2, 0, 15);
+            RES_SET_PERSONA(&baby, i, (uint8_t)DOOMO_CLAMP((RES_PERSONA(a, i) + RES_PERSONA(b, i)) / 2 +
+                                                   sim_rand(5) - 2, 0, 15));
     }
     baby.status = RES_ALIVE;
     baby.flags = (uint8_t)(hellish ? RF_HELLBORN : 0);
@@ -364,7 +364,7 @@ const char *sim_advise_confess(int id, int target, int encourage)
         if ((pi = sim_problem_find(id, PROB_CONFESS_HELP)) >= 0) sim_problem_remove(pi);
         sim_stat_add(r, STAT_HAPPY, -5);
         sim_set_transient(id, TR_SAD, 3);
-        return r->persona[PERS_EXPRESSION] >= 8 ? "You're right... I'll keep it in my heart. *sniff*"
+        return RES_PERSONA(r, PERS_EXPRESSION) >= 8 ? "You're right... I'll keep it in my heart. *sniff*"
                                                 : "Okay. Forget I said anything.";
     }
     if (!sim_romance_ok(id, target)) {
@@ -376,10 +376,10 @@ const char *sim_advise_confess(int id, int target, int encourage)
     r->level = (uint8_t)DOOMO_MIN(99, r->level + 2);
     if (sim_confess(id, target, 18)) {
         sim_stat_add(r, STAT_HAPPY, 10);
-        return r->persona[PERS_EXPRESSION] >= 8 ? "THEY SAID YES!! I'm floating!! Thank you!!"
+        return RES_PERSONA(r, PERS_EXPRESSION) >= 8 ? "THEY SAID YES!! I'm floating!! Thank you!!"
                                                 : "...They said yes. Thank you. Really.";
     }
-    return r->persona[PERS_SPEECH] >= 10 ? "They said no. Great advice, genius."
+    return RES_PERSONA(r, PERS_SPEECH) >= 10 ? "They said no. Great advice, genius."
                                          : "They said no... but thanks for believing in me.";
 }
 
@@ -398,7 +398,7 @@ const char *sim_advise_propose(int id, int encourage)
         return "You're right. We'll take it slow.";
     }
     if (sim_propose(id, partner, 15))
-        return r->persona[PERS_EXPRESSION] >= 8 ? "WE'RE GETTING MARRIED!! Will you come?!"
+        return RES_PERSONA(r, PERS_EXPRESSION) >= 8 ? "WE'RE GETTING MARRIED!! Will you come?!"
                                                 : "We're engaged. I'm... very happy.";
     return "They weren't ready... I need a hug.";
 }
@@ -441,7 +441,7 @@ const char *sim_make_up(int a, int b)
     ra->level = (uint8_t)DOOMO_MIN(99, ra->level + 1);
     if (k == REL_EX) return "We're better as friends. And that's okay!";
     if (k == REL_DATING || k == REL_MARRIED) return "I'm sorry, sweetie. Hug?";
-    if (ra->persona[PERS_SPEECH] >= 10) return "Ugh, fine. Sorry. Happy now?";
+    if (RES_PERSONA(ra, PERS_SPEECH) >= 10) return "Ugh, fine. Sorry. Happy now?";
     return "I'm sorry! Friends again? *pinky promise*";
 }
 
@@ -670,7 +670,7 @@ static void visit_edge(int index)
     same = ra->activity == rb->activity && sim_is_venue(ra->activity);
     if (same) {
         int c = sim_compat(a, b);
-        int argue = 2 + (ra->persona[PERS_SPEECH] + rb->persona[PERS_SPEECH]) / 8 - c * 2;
+        int argue = 2 + (RES_PERSONA(ra, PERS_SPEECH) + RES_PERSONA(rb, PERS_SPEECH)) / 8 - c * 2;
         if (k == REL_RIVAL) argue += 15;
         else if (k == REL_NEMESIS) argue += 25;
         else if (k == REL_FAMILY || k == REL_MARRIED || k == REL_BEST_FRIEND) argue /= 2;
@@ -696,7 +696,7 @@ static void visit_edge(int index)
             return;
         }
         {
-            int before = k, d = 1 + (c > 0 ? c / 2 : 0) + (ra->like_hobby == rb->like_hobby);
+            int before = k, d = 1 + (c > 0 ? c / 2 : 0) + (RES_LIKE_HOBBY(ra) == RES_LIKE_HOBBY(rb));
             rel_adjust(a, b, d);
             sim_stat_add(ra, STAT_SOCIAL, 3);
             sim_stat_add(rb, STAT_SOCIAL, 3);

@@ -308,7 +308,7 @@ static void set_action_index(int action, int i)
 
 const CrPreset *cr_action_preset(int action, int index)
 {
-    int sp = cr.draft.look.species % SPECIES_COUNT;
+    int sp = RES_SPECIES(&cr.draft) % SPECIES_COUNT;
     switch (action) {
     case CA_SPECIES_PRESET:
         index = DOOMO_CLAMP(index, 0, CR_PRESETS_PER_SPECIES - 1);
@@ -370,14 +370,14 @@ static void species_change(DoomoResident *r, int species)
         if (row && row->kind == RK_SKIN && cr_value_locked(row, v)) continue;
         *fbyte(r, f) = (uint8_t)v;
     }
-    r->look.species = (uint8_t)species;
+    RES_SET_SPECIES(r, (uint8_t)species);
 }
 
 /* Full species preset: species base + the preset itself. */
 static void apply_species_preset(DoomoResident *r, const CrPreset *p)
 {
     int sp = p->kv[0] == (uint8_t)offsetof(DoomoResident, look.species) ? p->kv[1]
-                                                                         : r->look.species;
+                                                                         : RES_SPECIES(r);
     species_change(r, sp);
     apply_kv(r, p, 0);
 }
@@ -458,7 +458,7 @@ void cr_row_set(DoomoResident *r, const CrRow *row, int index)
     switch (row->kind) {
     case RK_ENUM:
         if (row->field == offsetof(DoomoResident, look.species)) {
-            if (r->look.species != row->base + index) species_change(r, row->base + index);
+            if (RES_SPECIES(r) != row->base + index) species_change(r, row->base + index);
         } else {
             enum_put(r, row, row->base + index);
         }
@@ -541,7 +541,7 @@ const char *cr_row_label(const CrRow *row)
 {
     if (!row) return "";
     if (row->kind == RK_SKIN) {
-        switch (cr.draft.look.species) {
+        switch (RES_SPECIES(&cr.draft)) {
         case SPECIES_SLIME:    return "Goo";
         case SPECIES_ROBOT:    return "Plating";
         case SPECIES_SKELETON: return "Bones";
@@ -551,7 +551,7 @@ const char *cr_row_label(const CrRow *row)
         case SPECIES_MUMMY:    return "Wraps";
         case SPECIES_MOTHKIN:  return "Fuzz";
         case SPECIES_ANIMATRONIC: return "Casing";
-        default: return is_critter_like(cr.draft.look.species) ? "Fur" : "Skin";
+        default: return is_critter_like(RES_SPECIES(&cr.draft)) ? "Fur" : "Skin";
         }
     }
     if (row->kind == RK_DISTRICT && cr.mode == CR_PLAYER) return "Lives in";
@@ -714,7 +714,7 @@ static void sparks_update(void)
 
 static void start_talk(void)
 {
-    const char *s = doomo_catchphrases[cr.draft.catchphrase % CATCHPHRASE_COUNT];
+    const char *s = doomo_catchphrases[RES_CATCHPHRASE(&cr.draft) % CATCHPHRASE_COUNT];
     cr.talk = s;
     cr.talk_pos = 0;
     cr.talk_len = (uint8_t)strlen(s);
@@ -727,7 +727,7 @@ static void talk_update(void)
     int interval;
     if (!cr.talk) return;
     cr.talk_t++;
-    interval = 3 - cr.draft.voice[VOICE_SPEED] / 12;           /* 1..3 ticks */
+    interval = 3 - RES_VOICE(&cr.draft, VOICE_SPEED) / 12;           /* 1..3 ticks */
     if (interval < 1) interval = 1;
     if (cr.talk_pos < cr.talk_len) {
         if (cr.talk_t % interval == 0) {
@@ -836,7 +836,7 @@ static void fix_locks(DoomoResident *r)
                     v = row->kind == RK_SKIN ? SKIN_PEACH :
                         row->kind == RK_PAINT ? PAINT_WHITE : 0;
                 if (row->field == offsetof(DoomoResident, look.species)) {
-                    r->look.species = (uint8_t)v;
+                    RES_SET_SPECIES(r, (uint8_t)v);
                 } else {
                     cr_row_set(r, row, v);
                 }
@@ -860,19 +860,19 @@ static void copy_editable(DoomoResident *dst, const DoomoResident *src, int keep
     if (!keep_name) memcpy(dst->name, src->name, DOOMO_NAME_LEN);
     memcpy(dst->voice, src->voice, VOICE_COUNT);
     memcpy(dst->persona, src->persona, PERS_COUNT);
-    dst->pronoun = src->pronoun;
+    RES_SET_PRONOUN(dst, RES_PRONOUN(src));
     /* the preference only: the life stage (Age row) is never rolled or
      * copied by accident; write_town() stores the draft's on purpose */
     resident_set_romance(dst, RES_ROMANCE(src));
-    dst->bday_month = src->bday_month;
-    dst->bday_day = src->bday_day;
-    dst->like_food = src->like_food;
-    dst->like_hobby = src->like_hobby;
-    dst->like_music = src->like_music;
-    dst->like_color = src->like_color;
-    dst->hate_food = src->hate_food;
-    dst->fear = src->fear;
-    dst->catchphrase = src->catchphrase;
+    RES_SET_BDAY_MONTH(dst, RES_BDAY_MONTH(src));
+    RES_SET_BDAY_DAY(dst, RES_BDAY_DAY(src));
+    RES_SET_LIKE_FOOD(dst, RES_LIKE_FOOD(src));
+    RES_SET_LIKE_HOBBY(dst, RES_LIKE_HOBBY(src));
+    RES_SET_LIKE_MUSIC(dst, RES_LIKE_MUSIC(src));
+    RES_SET_LIKE_COLOR(dst, RES_LIKE_COLOR(src));
+    RES_SET_HATE_FOOD(dst, RES_HATE_FOOD(src));
+    RES_SET_FEAR(dst, RES_FEAR(src));
+    RES_SET_CATCHPHRASE(dst, RES_CATCHPHRASE(src));
 }
 
 static void gen_random(DoomoResident *r)
@@ -917,7 +917,7 @@ static void randomise_tab(void)
             break;
         case RK_ACTION:
             if (row->aux == CA_OUTFIT_PRESET)
-                cr.outfit_i = (int8_t)(r.look.top % cr_outfit_preset_count);
+                cr.outfit_i = (int8_t)(RES_LOOK(&r, GF_TOP) % cr_outfit_preset_count);
             break;
         default:
             break;
@@ -945,21 +945,21 @@ static void make_template(DoomoResident *r, int hell)
         apply_species_preset(r, &cr_species_presets[SPECIES_IMP * CR_PRESETS_PER_SPECIES]);
         apply_kv(r, &cr_outfit_presets[13], 1);           /* Hellvile Edge */
         apply_kv(r, &cr_voice_presets[7], 0);             /* Grumbly Imp   */
-        r->persona[PERS_SPEECH] = 11; r->persona[PERS_ATTITUDE] = 5;
-        r->persona[PERS_QUIRK] = 10;
-        r->like_food = 6; r->hate_food = 7; r->like_hobby = 28; r->like_music = 14;
-        r->like_color = PAINT_CHERRY; r->fear = 19; r->catchphrase = 48;
+        RES_SET_PERSONA(r, PERS_SPEECH, 11); RES_SET_PERSONA(r, PERS_ATTITUDE, 5);
+        RES_SET_PERSONA(r, PERS_QUIRK, 10);
+        RES_SET_LIKE_FOOD(r, 6); RES_SET_HATE_FOOD(r, 7); RES_SET_LIKE_HOBBY(r, 28); RES_SET_LIKE_MUSIC(r, 14);
+        RES_SET_LIKE_COLOR(r, PAINT_CHERRY); RES_SET_FEAR(r, 19); RES_SET_CATCHPHRASE(r, 48);
         r->flags = RF_HELLBORN;
         r->stat[STAT_CORRUPTION] = 25;
-        r->bday_month = 9; r->bday_day = 13;
+        RES_SET_BDAY_MONTH(r, 9); RES_SET_BDAY_DAY(r, 13);
     } else {
         apply_species_preset(r, &cr_species_presets[SPECIES_CATFOLK * CR_PRESETS_PER_SPECIES]);
         apply_kv(r, &cr_outfit_presets[0], 1);            /* Comfy Hoodie  */
         /* a Sweet Sunbeam: slowish, polite, expressive, easygoing */
-        r->persona[PERS_MOVEMENT] = 6; r->persona[PERS_SPEECH] = 4;
-        r->persona[PERS_EXPRESSION] = 11; r->persona[PERS_ATTITUDE] = 11;
-        r->persona[PERS_QUIRK] = 3;
-        r->like_food = cute_food[(doomo_frame_count() >> 3) % DOOMO_COUNTOF(cute_food)];
+        RES_SET_PERSONA(r, PERS_MOVEMENT, 6); RES_SET_PERSONA(r, PERS_SPEECH, 4);
+        RES_SET_PERSONA(r, PERS_EXPRESSION, 11); RES_SET_PERSONA(r, PERS_ATTITUDE, 11);
+        RES_SET_PERSONA(r, PERS_QUIRK, 3);
+        RES_SET_LIKE_FOOD(r, cute_food[(doomo_frame_count() >> 3) % DOOMO_COUNTOF(cute_food)]);
     }
     memset(r->name, 0, sizeof(r->name));
     r->status = RES_ALIVE;
@@ -1391,13 +1391,13 @@ static void run_action(const CrRow *row)
         audio_sfx(SFX_BLIP);
         return;
     case CA_MATCH_FUR:
-        if (cr.draft.look.skin < PAL_SKIN_COUNT) {
+        if (RES_LOOK(&cr.draft, GF_SKIN) < PAL_SKIN_COUNT) {
             static const uint8_t natural[PAL_SKIN_COUNT] = {
                 PAINT_PEACH, PAINT_PEACH, PAINT_CARAMEL, PAINT_CARAMEL, PAINT_HONEY,
                 PAINT_CHOCOLATE, PAINT_CHOCOLATE, PAINT_CHARCOAL };
-            cr.draft.look.hair_color = natural[cr.draft.look.skin];
+            RES_SET_LOOK(&cr.draft, GF_HAIR_COLOR, natural[RES_LOOK(&cr.draft, GF_SKIN)]);
         } else {
-            cr.draft.look.hair_color = (uint8_t)(cr.draft.look.skin - 8);
+            RES_SET_LOOK(&cr.draft, GF_HAIR_COLOR, (uint8_t)(RES_LOOK(&cr.draft, GF_SKIN) - 8));
         }
         commit(-1);
         cr_sparkle_burst(5, 0);
@@ -1775,7 +1775,7 @@ static void cr_enter(int arg)
             cr.name_ok = r->name[0] != 0 && strcmp(r->name, "You") != 0;
         } else {
             make_template(&cr.draft, 0);
-            cr.draft.pronoun = PRONOUN_THEY;
+            RES_SET_PRONOUN(&cr.draft, PRONOUN_THEY);
         }
         nick_copy(cr.nick, creator_nickname(DOOMO_PLAYER_ID));
         /* PA2: a hero nobody has made or named yet starts on the cards */

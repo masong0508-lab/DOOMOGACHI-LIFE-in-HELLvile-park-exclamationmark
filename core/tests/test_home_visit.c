@@ -43,7 +43,7 @@ static uint32_t sweep(uint32_t seed, uint32_t *max_ops, int *bad_fear, int *bad_
         h *= 16777619u;
         if (va.ops > *max_ops) *max_ops = va.ops;
         for (i = 0; i < a.nobj; i++)
-            if (home_visit_fear_hit(r->fear, HO_FURN(&a.obj[i]))) (*bad_fear)++;
+            if (home_visit_fear_hit(RES_FEAR(r), HO_FURN(&a.obj[i]))) (*bad_fear)++;
         if (va.kind == HVK_HOME && (a.nobj < 8 || a.nobj > 18)) (*bad_size)++;
         if (va.kind == HVK_HOME && home_visit_fear_room(r, &a)) (*bad_dark)++;
     }
@@ -185,11 +185,11 @@ TEST(home_visit_gifts_wants_reactions)
     if (met) CHECK_EQ(r->level, lvl + 8);
     else CHECK_EQ(r->level, lvl);
     /* reactions: a fear trigger always makes them flee */
-    r->fear = 10;                                                 /* Mirrors */
+    RES_SET_FEAR(r, 10);                                                 /* Mirrors */
     CHECK_EQ(home_visit_react(r, FURN_HEART_MIRROR, -1, &line), HVR_FLEE);
     CHECK(line && line[0]);
-    r->fear = 0;
-    r->like_color = PAINT_LIME;
+    RES_SET_FEAR(r, 0);
+    RES_SET_LIKE_COLOR(r, PAINT_LIME);
     CHECK_EQ(home_visit_react(r, FURN_GARDEN_GNOME, PAINT_LIME, &line) == HVR_HEARTS ||
              home_visit_react(r, FURN_GARDEN_GNOME, PAINT_LIME, &line) == HVR_BANG, 1);
     /* the visitor log */

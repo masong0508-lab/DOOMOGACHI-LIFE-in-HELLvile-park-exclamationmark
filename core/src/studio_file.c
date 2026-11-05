@@ -111,7 +111,7 @@ static void muse_done(int id)
     song_stop();
     r = town_res(id);
     ed_touch(SS, (int)sizeof(DoomoSong));
-    studio_inspire(SS, id, r ? r->like_music % MUSIC_COUNT : -1, doomo_hash32(studio.t * 977u + (uint32_t)id));
+    studio_inspire(SS, id, r ? RES_LIKE_MUSIC(r) % MUSIC_COUNT : -1, doomo_hash32(studio.t * 977u + (uint32_t)id));
     ed_commit();
     studio.slot = -1;
     if (studio_stats.inspired < 0xFFFF) studio_stats.inspired++;
