@@ -670,7 +670,10 @@ static void memorial_add_(const FamilyMember *m, int cause)
     }
 }
 
-int family_lose(int id, int cause)
+/* The one place a member leaves for good. `force` is for the sim's own verdict on a
+ * resident (sim_lay_to_rest, an eviction): the minor rules below belong to the
+ * household's passes, not to what the sim already decided. */
+static int lose_(int id, int cause, int force)
 {
     char msg[64], name[DOOMO_NAME_LEN + 1];
     int minor_gone;
@@ -678,7 +681,7 @@ int family_lose(int id, int cause)
     if (i < 0 || cause < FAMLOSS_AGE || cause >= FAMLOSS_COUNT) return 0;
     /* R5 (amended by the owner): a child can be lost to illness or Hell, only while Loss is on,
      * never to old age or neglect; always off-screen and gentle. */
-    if (is_minor_member_(&fam_[i]) && cause != FAMLOSS_GONE &&
+    if (!force && is_minor_member_(&fam_[i]) && cause != FAMLOSS_GONE &&
         (!loss_on_ || (cause != FAMLOSS_ILLNESS && cause != FAMLOSS_DEMON))) return 0;
     if (fam_[i].role == FAMROLE_PARTNER && cause != FAMLOSS_GONE)
         sim_news_push("You are grieving. Your strength is down for a while.");
@@ -700,6 +703,29 @@ int family_lose(int id, int cause)
     return 1;
 }
 
+int family_lose(int id, int cause) { return lose_(id, cause, 0); }
+
+/* F6: a resident member's death in the sim. The sim decides (sim_lay_to_rest, an eviction), the
+ * household follows: a memorial, the grief for a partner, the toast. A kid is never shown dying
+ * (R5): a minor resident only "moves away". Called from sim_lay_to_rest and swept daily, so a
+ * death that came by any other road is caught too. 1 if a member was taken out. */
+int family_resident_gone(int id)
+{
+    const DoomoResident *r;
+    int cause;
+    if (id < 0 || id >= DOOMO_MAX_RESIDENTS || find_slot(id) < 0) return 0;
+    r = town_res(id);
+    if (r && r->status != RES_DEAD && r->status != RES_EMPTY) return 0;   /* ghosts, the possessed and the soul-lost are still here */
+    if (!r || r->status == RES_EMPTY || is_minor_member_(&fam_[find_slot(id)])) cause = FAMLOSS_GONE;
+    else switch (r->death_cause) {
+    case DEATH_LAID_TO_REST: case DEATH_OLD_AGE: cause = FAMLOSS_AGE; break;
+    case DEATH_MONSTER: case DEATH_DEMON_ATTACK: cause = FAMLOSS_DEMON; break;
+    case DEATH_NEGLECT: cause = FAMLOSS_NEGLECT; break;
+    default: cause = FAMLOSS_ILLNESS; break;
+    }
+    return lose_(id, cause, 1);
+}
+
 void family_care(int id)
 {
     int i = find_slot(id);
@@ -710,13 +736,61 @@ void family_care(int id)
     fam_[i].flags = (uint8_t)(fam_[i].flags & ~FAMILY_FL_NEGLECT);
 }
 
+/* ---- F5: pets (family.h) -------------------------------------------------------- */
+static const char *const pet_kind_names_[FAMPET_COUNT] = {
+    "Imp-cat", "Hellhound pup", "Bat", "Slug", "Crow", "Bone hamster"
+};
+
+const char *family_pet_kind_name(int kind)
+{
+    return (kind >= 0 && kind < FAMPET_COUNT) ? pet_kind_names_[kind] : "";
+}
+
+int family_pet_kind(int id)
+{
+    const FamilyMember *m = family_find(id);
+    if (!m || m->role != FAMROLE_PET || !is_pool(id)) return -1;
+    return (int)(ident_for(id)->seed % FAMPET_COUNT);
+}
+
+static int neglect_of_(const FamilyMember *m)
+{
+    return (int)((m->flags & FAMILY_FL_NEGLECT) >> FAMILY_NEGLECT_SHIFT);
+}
+
+int family_pet_fed(int id)
+{
+    const FamilyMember *m = family_find(id);
+    if (!m || m->role != FAMROLE_PET) return 0;
+    return DOOMO_MAX(0, 100 - 15 * neglect_of_(m));
+}
+
+int family_pet_hungry(int id)
+{
+    const FamilyMember *m = family_find(id);
+    return m && m->role == FAMROLE_PET && neglect_of_(m) >= 2;
+}
+
+int family_pet_tend(int id, int what)
+{
+    const FamilyMember *m = family_find(id);
+    if (!m || m->role != FAMROLE_PET || what < FAMPET_FEED || what > FAMPET_PLAY) return 0;
+    family_care(id);
+    family_mood_add(id, what == FAMPET_PLAY ? 3 : 2);
+    return 1;
+}
+
 int family_loss_daily(void)
 {
     int i, lost = 0;
+    for (i = 0; i < fam_n_; ) {                 /* F6: a resident who died or left the island */
+        if (fam_[i].id < DOOMO_MAX_RESIDENTS && family_resident_gone(fam_[i].id)) { lost++; continue; }
+        i++;
+    }
     if (neglect_grace_) {                       /* the day a save was loaded */
         neglect_grace_ = 0;
         for (i = 0; i < fam_n_; i++) fam_[i].spare = 0;
-        return 0;
+        return lost;
     }
     for (i = 0; i < fam_n_; ) {
         FamilyMember *m = &fam_[i];
@@ -1159,6 +1233,22 @@ const FamilyMemorial *family_memorial(int n)
 int family_memorial_stage(int n) { const FamilyMemorial *e = family_memorial(n); return e ? (e->bits & 7) : -1; }
 int family_memorial_role(int n)  { const FamilyMemorial *e = family_memorial(n); return e ? ((e->bits >> 3) & 7) : -1; }
 
+/* F6: flowers left at a memorial (0..FAMILY_MEM_FLOWERS_MAX), kept in the record's first spare byte. */
+int family_memorial_flowers(int n)
+{
+    const FamilyMemorial *e = family_memorial(n);
+    return e ? DOOMO_MIN(e->spare[0], FAMILY_MEM_FLOWERS_MAX) : 0;
+}
+
+int family_memorial_leave_flowers(int n)
+{
+    const FamilyMemorial *e = family_memorial(n);
+    int idx = mem_n_ - 1 - n;
+    if (!e || idx < 0 || idx >= mem_n_ || mem_[idx].spare[0] >= FAMILY_MEM_FLOWERS_MAX) return 0;
+    mem_[idx].spare[0]++;
+    return 1;
+}
+
 int family_memorial_name(int n, char *out)
 {
     const FamilyMemorial *e = family_memorial(n);
@@ -1194,7 +1284,7 @@ uint32_t family_loss_save(uint8_t *dst, uint32_t cap)
         dst[o + 3] = (uint8_t)(mem_[i].day >> 8);
         dst[o + 4] = mem_[i].cause;
         dst[o + 5] = mem_[i].bits;
-        dst[o + 6] = 0;
+        dst[o + 6] = mem_[i].spare[0];      /* flowers left (0..3) */
         dst[o + 7] = 0;
     }
     return o;
@@ -1214,6 +1304,7 @@ int family_loss_load(const uint8_t *src, uint32_t len)
         tmp[i].day = (uint16_t)(p[2] | (p[3] << 8));
         tmp[i].cause = p[4];
         tmp[i].bits = p[5];
+        tmp[i].spare[0] = (uint8_t)DOOMO_MIN(p[6], FAMILY_MEM_FLOWERS_MAX);
         if (!family_id_ok(tmp[i].id) || tmp[i].cause < FAMLOSS_AGE || tmp[i].cause >= FAMLOSS_COUNT) return 0;
         if ((tmp[i].bits & 7) >= LIFE_COUNT || ((tmp[i].bits >> 3) & 7) >= FAMROLE_COUNT) return 0;
     }

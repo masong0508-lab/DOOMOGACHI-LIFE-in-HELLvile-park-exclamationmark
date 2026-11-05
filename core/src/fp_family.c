@@ -3,7 +3,8 @@
  *
  * Two pages (L / R): Household (every member, A opens that member's menu,
  * the last two rows are "Care for everyone" and "Add a member") and
- * Remembered (the memorials family_lose() leaves behind).
+ * Remembered (the memorials family_lose() leaves behind; A leaves flowers,
+ * up to three posies each). Pets get their own sprite, Feed and Play (F5).
  * Replaces the weak K0 placeholder in weak_scenes.c.
  * Gentle by design: a minor's memorial never states a cause.
  */
@@ -23,7 +24,7 @@ static struct {
     const char *opts[6];
 } W;
 
-enum { MA_CARE, MA_ROLE, MA_RENAME, MA_PROFILE, MA_REMOVE, MA_PLAYAS };
+enum { MA_CARE, MA_ROLE, MA_RENAME, MA_PROFILE, MA_REMOVE, MA_PLAYAS, MA_FEED, MA_PLAY };
 enum { CARE_PLAY, CARE_TALK, CARE_CLEAN, CARE_COMFORT };
 
 static const char *const tabs[2] = { "Household", "Remembered" };
@@ -356,6 +357,17 @@ static void member_act(int c)
         if (W.target < DOOMO_MAX_RESIDENTS && fp_alive(W.target)) ui_say(W.target, sim_talk(W.target));
         else { audio_sfx(SFX_SQUEAK); ui_toast(STR_ICON_HEART " A little love goes a long way."); }
         break;
+    case MA_FEED:
+    case MA_PLAY: {
+        int hungry = family_pet_hungry(W.target), feed = W.acts[c] == MA_FEED;
+        char nm[DOOMO_NAME_LEN], msg[64];
+        if (!family_pet_tend(W.target, feed ? FAMPET_FEED : FAMPET_PLAY)) break;
+        member_name(W.target, nm);
+        doomo_snprintf(msg, sizeof(msg), feed ? (hungry ? "%s wolfs it all down!" : "%s munches happily.")
+                                              : "%s plays until it flops over.", nm);
+        audio_sfx(SFX_SQUEAK);
+        ui_toast(msg);
+        break; }
     case MA_ROLE: ask_role(1, "New role?"); break;
     case MA_RENAME:
         member_name(W.target, W.name);
@@ -378,11 +390,16 @@ static void open_member(int id)
     char q[40], nm[DOOMO_NAME_LEN];
     if (!m) return;
     W.target = id;
-    W.acts[n] = MA_CARE; W.opts[n++] = "Spend time together";
-    if (m->role != FAMROLE_PET) { W.acts[n] = MA_ROLE; W.opts[n++] = "Change role"; }
+    if (m->role == FAMROLE_PET) {              /* F5: a pet is fed and played with, never "played as" */
+        W.acts[n] = MA_FEED; W.opts[n++] = family_pet_hungry(id) ? "Feed (hungry!)" : "Feed";
+        W.acts[n] = MA_PLAY; W.opts[n++] = "Play";
+    } else {
+        W.acts[n] = MA_CARE; W.opts[n++] = "Spend time together";
+        W.acts[n] = MA_ROLE; W.opts[n++] = "Change role";
+    }
     if (id >= FAMILY_POOL_FIRST) { W.acts[n] = MA_RENAME; W.opts[n++] = "Rename"; }
     else { W.acts[n] = MA_PROFILE; W.opts[n++] = "Open profile"; }
-    if (id != playas_avatar()) {
+    if (id != playas_avatar() && m->role != FAMROLE_PET) {
         /* say up front when the story still locks it, instead of a dialog after the pick */
         W.acts[n] = MA_PLAYAS;
         W.opts[n++] = playas_available() ? "Play as them" : "Play as them (locked)";
@@ -391,6 +408,38 @@ static void open_member(int id)
     W.acts[n] = -1; W.opts[n++] = "Never mind";
     doomo_snprintf(q, sizeof(q), "%s (%s)", member_name(id, nm), role_names[m->role % FAMROLE_COUNT]);
     ui_choice(id < DOOMO_MAX_RESIDENTS ? id : -1, q, W.opts, n, member_act);
+}
+
+/* ---- the Remembered page: leave flowers (F6) --------------------------------- */
+static void mem_flowers(int c)
+{
+    int idx = W.target;
+    if (c != 0) return;
+    if (family_memorial_flowers(idx) >= FAMILY_MEM_FLOWERS_MAX) { ui_toast("Their memorial is covered in flowers already."); return; }
+    if (inv_count(ITEM_FLOWERS) <= 0 && !opt_get(OPT_CHEAT_INFINITE_CANDY)) {
+        audio_sfx(SFX_ERROR);
+        ui_toast("You need Flowers (the shop sells them).");
+        return;
+    }
+    if (!family_memorial_leave_flowers(idx)) return;
+    if (!opt_get(OPT_CHEAT_INFINITE_CANDY)) inv_take(ITEM_FLOWERS, 1);
+    audio_sfx(SFX_SPARKLE);
+    fp_fx_burst(fp_sw() / 2, fp_sh() / 2, FX_PETAL, 14);
+    fp_achieve(UL_FP_GARDENER);
+    ui_toast(STR_ICON_HEART " You leave a little posy.");
+}
+
+static void open_memorial(int idx)
+{
+    static const char *const opts[2] = { "Leave flowers", "Never mind" };
+    char nm[DOOMO_NAME_LEN], q[48];
+    int role = family_memorial_role(idx);
+    if (!family_memorial_name(idx, nm))
+        fp_strcpy(nm, role == FAMROLE_PET ? "Your pet" : role == FAMROLE_CHILD ? "Your child" : "Someone dear",
+                  DOOMO_NAME_LEN);
+    W.target = idx;
+    doomo_snprintf(q, sizeof(q), "In memory of %s.", nm);
+    ui_choice(-1, q, opts, 2, mem_flowers);
 }
 
 /* ---- scene --------------------------------------------------------------- */
@@ -423,6 +472,7 @@ static void fam_update(void)
         else if (playas_switch(back_target(), PLAYAS_SWITCH_TAGIN)) ui_toast(STR_ICON_STAR " Switched back!");
         return;
     }
+    if (W.tab == 1 && n && btn_pressed(BTN_A)) { audio_sfx(SFX_SELECT); open_memorial(W.sel); return; }
     if (btn_pressed(BTN_B)) {
         audio_sfx(SFX_CANCEL);
         if (scene_depth() > 1) scene_pop();
@@ -441,6 +491,56 @@ static uint8_t role_icon(int role)
     }
 }
 
+/* F5: a 12 x 10 pixel pet for the household rows, one look per kind, bobbing a little. */
+static int row_pet = -1;           /* set before draw_row: draw this pet kind instead of the icon */
+
+static void pet_sprite(int x, int y, int kind, int t)
+{
+    uint8_t eye = PAL_RAMP(RAMP_STONE, 0), pale = PAL_WHITE;
+    uint8_t body;
+    y += ui_wave(t + kind * 9, 40, 1);
+    switch (kind) {
+    case FAMPET_IMPCAT:                       /* pink cat with little horns and a curly tail */
+        body = PP(PAINT_ROSE, 1);
+        plat_rect(x + 2, y + 4, 8, 5, body);  plat_rect(x + 3, y + 1, 6, 4, body);
+        plat_rect(x + 3, y, 1, 1, PAL_UI_RED); plat_rect(x + 8, y, 1, 1, PAL_UI_RED);
+        plat_rect(x + 10, y + 3, 1, 5, body); plat_rect(x + 9, y + 3, 1, 1, body);
+        break;
+    case FAMPET_HOUND:                        /* brown pup, floppy ears, a red collar */
+        body = PAL_RAMP(RAMP_WOOD, 3);
+        plat_rect(x + 1, y + 4, 9, 5, body);  plat_rect(x + 3, y + 1, 6, 4, body);
+        plat_rect(x + 2, y + 1, 1, 3, PAL_RAMP(RAMP_WOOD, 1)); plat_rect(x + 9, y + 1, 1, 3, PAL_RAMP(RAMP_WOOD, 1));
+        plat_rect(x + 4, y + 5, 4, 1, PAL_UI_RED); plat_rect(x + 10, y + 4, 1, 2, body);
+        break;
+    case FAMPET_BAT:                          /* grey bat, wings out */
+        body = PAL_RAMP(RAMP_STONE, 3);
+        plat_rect(x + 4, y + 2, 4, 6, body);
+        plat_rect(x, y + 3, 4, 3, PAL_RAMP(RAMP_STONE, 2)); plat_rect(x + 8, y + 3, 4, 3, PAL_RAMP(RAMP_STONE, 2));
+        plat_rect(x + 4, y + 1, 1, 1, body); plat_rect(x + 7, y + 1, 1, 1, body);
+        break;
+    case FAMPET_SLUG:                         /* a yellow slug with feelers */
+        body = PP(PAINT_LEMON, 1);
+        plat_rect(x + 1, y + 6, 10, 3, body); plat_rect(x + 8, y + 3, 3, 4, body);
+        plat_rect(x + 8, y + 1, 1, 2, body);  plat_rect(x + 10, y + 1, 1, 2, body);
+        break;
+    case FAMPET_CROW:                         /* black crow with a gold beak */
+        body = PAL_RAMP(RAMP_STONE, 1);
+        plat_rect(x + 3, y + 4, 7, 5, body);  plat_rect(x + 2, y + 1, 5, 4, body);
+        plat_rect(x, y + 3, 2, 1, PAL_UI_GOLD); plat_rect(x + 9, y + 6, 3, 1, body);
+        pale = PAL_UI_GOLD;
+        break;
+    default:                                  /* bone hamster: round, pink, holding a bone */
+        body = PP(PAINT_BUBBLEGUM, 1);
+        plat_rect(x + 2, y + 3, 8, 6, body);  plat_rect(x + 3, y + 2, 6, 1, body);
+        plat_rect(x + 2, y + 1, 2, 2, body);  plat_rect(x + 8, y + 1, 2, 2, body);
+        plat_rect(x + 4, y + 8, 4, 1, pale);
+        break;
+    }
+    plat_rect(x + 4, y + 3, 1, 1, eye);
+    plat_rect(x + 7, y + 3, 1, 1, eye);
+    if (kind == FAMPET_BAT || kind == FAMPET_SLUG) plat_rect(x + 5, y + 5, 2, 1, pale);
+}
+
 static void draw_row(int x, int y, int w, int rh, int sel, uint8_t icon, uint8_t color,
                      const char *line1, const char *line2)
 {
@@ -449,14 +549,16 @@ static void draw_row(int x, int y, int w, int rh, int sel, uint8_t icon, uint8_t
         fp_pill(x + 6, y, w - 8, rh - 2, st->accent_d, ui_darker(st->accent_d), ui_lighter(st->accent_d));
         ui_cursor(x - 2, y + 4);
     }
-    fp_icon(x + 10, y + 3, icon, color);
+    if (row_pet >= 0) pet_sprite(x + 8, y + 3, row_pet, W.t);
+    else fp_icon(x + 10, y + 3, icon, color);
+    row_pet = -1;
     ui_text(x + 22, y + 1, line1, st->text);
     if (line2) ui_text(x + 22, y + 11, line2, st->text_dim);
 }
 
 static void fam_draw(void)
 {
-    int sw = fp_sw(), big = fp_big(), i, x = 8, w = sw - 16;
+    int sw = fp_sw(), big = fp_big(), i, k, x = 8, w = sw - 16;
     int y0 = big ? 50 : 40, rh = 24, n = W.tab == 0 ? rows() : family_memorial_count();
     const UiStyle *st = ui_style(WIN_CUTE);
     char buf[64], nm[DOOMO_NAME_LEN], l2[48];
@@ -479,12 +581,16 @@ static void fam_draw(void)
                 if (!f) continue;
                 doomo_snprintf(l2, sizeof(l2), "%s - %s", role_names[f->role % FAMROLE_COUNT],
                                f->role == FAMROLE_PET ? "Pet" : doomo_life_stage_names[f->stage % LIFE_COUNT]);
+                if (f->role == FAMROLE_PET)
+                    doomo_snprintf(l2, sizeof(l2), "%s - %s", family_pet_kind_name(family_pet_kind(id)),
+                                   family_pet_hungry(id) ? "Hungry!" : "Fed");
                 if (id == family_away_id()) doomo_snprintf(l2, sizeof(l2), "Away helping today");
                 else if (family_bond_line(id)) doomo_snprintf(l2, sizeof(l2), "%s", family_bond_line(id));
                 else if (family_close_line(id)) doomo_snprintf(l2, sizeof(l2), "%s", family_close_line(id));
+                if (f->role == FAMROLE_PET) row_pet = family_pet_kind(id);
                 draw_row(x, y, w, rh, sel, role_icon(f->role), PP(PAINT_ROSE, 1), member_name(id, nm), l2);
                 if (id == playas_avatar()) fp_tag(x + w - 30, y + 3, "you", PAL_UI_GOLD, PAL_WHITE);
-                else if (needs_care(id)) fp_bubble(x + w - 16, y + 12, ICON_CLOUD, PAL_UI_RED, W.t / 6);
+                else if (needs_care(id) || family_pet_hungry(id)) fp_bubble(x + w - 16, y + 12, ICON_CLOUD, PAL_UI_RED, W.t / 6);
             } else if (idx == m) {
                 draw_row(x, y, w, rh, sel, ICON_HEART, PAL_UI_RED, "Care for everyone", "Play, talk, clean, comfort");
             } else if (idx == m + 1) {
@@ -508,10 +614,14 @@ static void fam_draw(void)
                 doomo_snprintf(l2, sizeof(l2), "Day %u - %s", (unsigned)mm->day,
                                cause_names[mm->cause < FAMLOSS_COUNT ? mm->cause : 0]);
             draw_row(x, y, w, rh, sel, ICON_GHOST, PP(PAINT_CYAN, 0), nm, l2);
+            for (k = 0; k < family_memorial_flowers(idx); k++) {        /* the posies left here */
+                plat_rect(x + w - 14 + k * 4, y + 12, 1, 4, PAL_RAMP(RAMP_GRASS, 4));
+                plat_rect(x + w - 15 + k * 4, y + 10, 3, 2, k == 1 ? PP(PAINT_LEMON, 1) : PP(PAINT_BUBBLEGUM, 1));
+            }
         }
     }
     if (n > vis()) ui_scroll_arrows(x + w - 4, y0 - 6, y0 + vis() * rh - 2, W.top > 0, W.top + vis() < n);
-    ui_hint(W.tab ? "L/R Page  " STR_ICON_B " Back" : STR_ICON_A " Open  L/R Page  " STR_ICON_B " Back", WIN_CUTE);
+    ui_hint(W.tab ? STR_ICON_A " Flowers  L/R Page  " STR_ICON_B " Back" : STR_ICON_A " Open  L/R Page  " STR_ICON_B " Back", WIN_CUTE);
     fp_fx_draw();
 }
 

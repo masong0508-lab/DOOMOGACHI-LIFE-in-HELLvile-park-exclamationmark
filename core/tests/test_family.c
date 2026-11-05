@@ -748,3 +748,196 @@ TEST(family_free_play_has_the_full_household_and_play_as_from_day_one)
     CHECK_EQ(family_cap(), HOUSEHOLD_CAP_FULL_T0);
     CHECK(!playas_available());
 }
+
+/* ---- F5 pets, F6 a resident's death and the memorial's flowers (2026-11-04) --------- */
+static int first_free_play_adult(void)
+{
+    int id;
+    for (id = 0; id < DOOMO_MAX_RESIDENTS; id++) {
+        DoomoResident *r = town_res(id);
+        if (r && r->status == RES_ALIVE && !(r->flags & RF_STORY_NPC) && roster_stage(id) == LIFE_ADULT) return id;
+    }
+    return -1;
+}
+
+static void fresh_free_play(void)
+{
+    town_new(TOWN_FREEPLAY, 31, TOWN_POP_PREMADE);
+    sim_init();
+    family_clear();
+    family_loss_clear();
+    family_loss_set(1);
+}
+
+TEST(family_pets_are_real_members_with_needs)
+{
+    int a, b, p, d, kind;
+    fresh_free_play();
+    p = family_pool_add(FAMROLE_PET, LIFE_ADULT, 12345u, "Bun", -1);
+    CHECK(p >= 0);
+    kind = family_pet_kind(p);
+    CHECK(kind >= 0 && kind < FAMPET_COUNT);
+    CHECK(family_pet_kind_name(kind)[0] != 0);
+    CHECK_EQ(family_pet_kind(p), kind);                     /* the same pet, the same kind */
+    CHECK_EQ(family_pet_kind(DOOMO_PLAYER_ID), -1);         /* not a member */
+    CHECK_STR(family_pet_kind_name(-1), "");
+    a = family_pool_add(FAMROLE_HOUSEMATE, LIFE_ADULT, 5u, "Ann", PRONOUN_SHE);
+    CHECK(a >= 0);
+    CHECK_EQ(family_pet_kind(a), -1);                       /* a person is no pet */
+    CHECK_EQ(family_pet_fed(a), 0);
+    CHECK(!family_pet_hungry(a));
+    CHECK(!family_pet_tend(a, FAMPET_FEED));                /* feeding a person does nothing */
+    CHECK(!family_pet_tend(p, 0) && !family_pet_tend(p, 9));
+    /* pets count toward the cap */
+    b = family_count();
+    CHECK_EQ(b, 2);
+    while (family_count() < family_cap()) CHECK(family_pool_add(FAMROLE_PET, LIFE_ADULT, 70u + family_count(), NULL, -1) >= 0);
+    CHECK_EQ(family_pool_add(FAMROLE_PET, LIFE_ADULT, 999u, NULL, -1), FAM_ERR_FULL);
+    CHECK(family_resident(p, &(DoomoResident){0}) == 0);   /* a pet is not a resident */
+    /* its needs: fed 100, hungry from the second untended day, feeding resets it */
+    CHECK_EQ(family_pet_fed(p), 100);
+    CHECK(!family_pet_hungry(p));
+    family_loss_daily();
+    CHECK(!family_pet_hungry(p));
+    CHECK_EQ(family_pet_fed(p), 85);
+    family_loss_daily();
+    CHECK(family_pet_hungry(p));
+    CHECK_EQ(family_pet_fed(p), 70);
+    d = family_bond(p);
+    CHECK(family_pet_tend(p, FAMPET_FEED));
+    CHECK(!family_pet_hungry(p));
+    CHECK_EQ(family_pet_fed(p), 100);
+    CHECK(family_bond(p) > d);
+    d = family_mood(p);
+    CHECK(family_pet_tend(p, FAMPET_PLAY));
+    CHECK(family_mood(p) >= d);
+}
+
+TEST(family_pet_untended_for_a_week_is_lost_and_remembered)
+{
+    int p, i;
+    fresh_free_play();
+    p = family_pool_add(FAMROLE_PET, LIFE_ADULT, 4242u, "Rex", -1);
+    CHECK(p >= 0);
+    for (i = 0; i < FAMILY_NEGLECT_LOSS - 1; i++) { family_loss_daily(); CHECK(family_find(p) != NULL); }
+    CHECK_EQ(family_pet_fed(p), 10);
+    family_loss_daily();
+    CHECK(family_find(p) == NULL);
+    CHECK_EQ(family_memorial_count(), 1);
+    CHECK_EQ(family_memorial(0)->cause, FAMLOSS_NEGLECT);
+    CHECK_EQ(family_memorial_role(0), FAMROLE_PET);
+    /* with Loss off a pet is only ever sad */
+    p = family_pool_add(FAMROLE_PET, LIFE_ADULT, 4243u, "Rex", -1);
+    CHECK(p >= 0);
+    family_loss_set(0);
+    for (i = 0; i < 12; i++) family_loss_daily();
+    CHECK(family_find(p) != NULL);
+    CHECK(family_pet_hungry(p));
+    family_loss_set(1);
+}
+
+TEST(family_resident_death_in_the_sim_is_remembered)
+{
+    int id, kid, n;
+    fresh_free_play();
+    id = first_free_play_adult();
+    CHECK(id >= 0);
+    if (id < 0) return;
+    CHECK(family_add(id, FAMROLE_HOUSEMATE, 0) >= 0);
+    CHECK(!family_resident_gone(id));                        /* alive: nothing happens */
+    CHECK_EQ(family_count(), 1);
+    sim_lay_to_rest(id, DEATH_OLD_AGE);                      /* the sim decides ... */
+    CHECK_EQ(town_res(id)->status, RES_DEAD);
+    CHECK_EQ(family_count(), 0);                             /* ... the household follows */
+    CHECK_EQ(family_memorial_count(), 1);
+    CHECK_EQ(family_memorial(0)->id, id);
+    CHECK_EQ(family_memorial(0)->cause, FAMLOSS_AGE);
+    CHECK_EQ(family_memorial_role(0), FAMROLE_HOUSEMATE);
+    {
+        char nm[DOOMO_NAME_LEN];
+        CHECK(family_memorial_name(0, nm));
+        CHECK(strncmp(nm, town_res(id)->name, DOOMO_NAME_LEN) == 0);
+    }
+    /* a ghost is still home; a death the sim never reported is caught by the daily pass */
+    n = id;
+    for (id = n + 1; id < DOOMO_MAX_RESIDENTS; id++) {
+        DoomoResident *r = town_res(id);
+        if (r && r->status == RES_ALIVE && !(r->flags & RF_STORY_NPC) && roster_stage(id) == LIFE_ADULT) break;
+    }
+    CHECK(id < DOOMO_MAX_RESIDENTS);
+    if (id >= DOOMO_MAX_RESIDENTS) return;
+    CHECK(family_add(id, FAMROLE_HOUSEMATE, 0) >= 0);
+    town_res(id)->status = RES_GHOST;
+    CHECK(!family_resident_gone(id));
+    CHECK_EQ(family_loss_daily(), 0);
+    CHECK_EQ(family_count(), 1);
+    town_res(id)->status = RES_DEAD;
+    town_res(id)->death_cause = DEATH_MONSTER;
+    CHECK_EQ(family_loss_daily(), 1);
+    CHECK_EQ(family_count(), 0);
+    CHECK_EQ(family_memorial(0)->cause, FAMLOSS_DEMON);
+    /* a resident who left the island only "moved away" */
+    for (n = id + 1; n < DOOMO_MAX_RESIDENTS; n++) {
+        DoomoResident *r = town_res(n);
+        if (r && r->status == RES_ALIVE && !(r->flags & RF_STORY_NPC) && roster_stage(n) == LIFE_ADULT) break;
+    }
+    if (n < DOOMO_MAX_RESIDENTS) {
+        CHECK(family_add(n, FAMROLE_SIBLING, 0) >= 0);
+        town_res(n)->status = RES_EMPTY;
+        CHECK_EQ(family_loss_daily(), 1);
+        CHECK_EQ(family_memorial(0)->cause, FAMLOSS_GONE);
+    }
+    /* a minor resident is never shown dying (R5): the sim's death reads as moving away */
+    kid = -1;
+    for (n = 0; n < DOOMO_MAX_RESIDENTS; n++) {
+        DoomoResident *r = town_res(n);
+        if (r && r->status == RES_ALIVE && !(r->flags & RF_STORY_NPC) && n != DOOMO_PLAYER_ID &&
+            family_find(n) == NULL) { kid = n; break; }
+    }
+    CHECK(kid >= 0);
+    if (kid >= 0) {
+        resident_set_stage(town_res(kid), LIFE_CHILD);
+        CHECK(family_add(kid, FAMROLE_CHILD, 0) >= 0);
+        town_res(kid)->status = RES_DEAD;
+        town_res(kid)->death_cause = DEATH_MONSTER;
+        CHECK_EQ(family_loss_daily(), 1);
+        CHECK_EQ(family_memorial(0)->cause, FAMLOSS_GONE);
+    }
+}
+
+TEST(family_memorial_flowers_save_and_old_saves_read_zero)
+{
+    int a, b, k;
+    uint8_t sec[FAMILY_LOSS_SZ_WORST], old[FAMILY_LOSS_SZ_WORST];
+    uint32_t len;
+    fresh_free_play();
+    a = family_pool_add(FAMROLE_SIBLING, LIFE_ADULT, 5u, "Ann", PRONOUN_SHE);
+    b = family_pool_add(FAMROLE_PET, LIFE_ADULT, 6u, "Bun", -1);
+    CHECK(a >= 0 && b >= 0);
+    CHECK(family_lose(a, FAMLOSS_ILLNESS));
+    CHECK(family_lose(b, FAMLOSS_ILLNESS));                  /* memorial 0 = Bun (newest), 1 = Ann */
+    CHECK_EQ(family_memorial_flowers(0), 0);
+    CHECK_EQ(family_memorial_flowers(7), 0);                 /* a bad index is 0, not a crash */
+    CHECK(!family_memorial_leave_flowers(7));
+    for (k = 0; k < FAMILY_MEM_FLOWERS_MAX; k++) CHECK(family_memorial_leave_flowers(1));
+    CHECK(!family_memorial_leave_flowers(1));                /* covered already */
+    CHECK_EQ(family_memorial_flowers(1), FAMILY_MEM_FLOWERS_MAX);
+    CHECK_EQ(family_memorial_flowers(0), 0);                 /* the other is untouched */
+    CHECK(family_memorial_leave_flowers(0));
+    len = family_loss_save(sec, sizeof(sec));
+    CHECK(len > 0);
+    family_loss_clear();
+    CHECK(family_loss_load(sec, len));
+    CHECK_EQ(family_memorial_count(), 2);
+    CHECK_EQ(family_memorial_flowers(0), 1);
+    CHECK_EQ(family_memorial_flowers(1), FAMILY_MEM_FLOWERS_MAX);
+    /* a save from before the flowers has zeros there; garbage there is clamped */
+    memcpy(old, sec, len);
+    old[2 + 6] = 0; old[2 + 8 + 6] = 0;
+    CHECK(family_loss_load(old, len));
+    CHECK_EQ(family_memorial_flowers(0), 0);
+    CHECK_EQ(family_memorial_flowers(1), 0);
+    old[2 + 6] = 200;
+    CHECK(family_loss_load(old, len));
+    CHECK_EQ(family_memorial_flowers(1), FAMILY_MEM_FLOWERS_MAX);
+}

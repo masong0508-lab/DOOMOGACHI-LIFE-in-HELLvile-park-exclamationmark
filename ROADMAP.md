@@ -92,8 +92,7 @@ The PS1 life-sim status checklist (what is verified, written, or missing on that
 - Life sim F6 (loss), core part: pool members can be lost: neglect (`family_care()` resets the count, a warning at 4 days, lost at 7),
   old age (a pool ELDER passes after 31 days in the household), `family_lose(id, cause)`, a memorial of the newest 18 losses
   (`family_memorial*()`), the LIFE chunk's LOSS section, `family_loss_set()` for the future "Loss" option (U0). A child is never lost
-  (R5): minors only ever "move away". Still to do: the graveyard / memorial screen, the care-all UI (F2) that calls
-  `family_care()`, `life_ending_facts().neglect_deaths` (LS5), a resident member's death in the sim, pets' own needs (F5).
+  (R5): minors only ever "move away". Still to do: nothing here since Wave 7 (memorial screen, resident deaths and pets' needs landed there).
 - Life stage forms (F4): `look_for_stage()` (`core/src/portrait_age.c`): baby to elder body and face proportions on every portrait,
   body sprite and fighter image (docs/PORTRAIT.md "Life stages"). Still to do: baby outfits, a baby body shape, elder stoop and
   wrinkles, and a look on real hardware.
@@ -102,6 +101,15 @@ The PS1 life-sim status checklist (what is verified, written, or missing on that
 - Life sim wave 1: shared registry/contracts incl. 15 endings, security code,
   family, pockets and profiles (K0), life stages + two-way adult-only romance
   gate (LS0), journey/tap meter (M0), PG-21 register + lint (E5).
+
+- Wave 7 (2026-11-04, F5 pets + F6 loss, `make -C core test` 761/761): pets are real household members with their own needs. `family_pet_kind/_kind_name` (six kinds from the look seed:
+  imp-cat, hellhound pup, bat, slug, crow, bone hamster), `family_pet_fed` (100 down to 10 over the six untended days) and `family_pet_hungry` (from day 2) are derived from the
+  neglect count, so nothing new is saved; `family_pet_tend(id, FAMPET_FEED/PLAY)` is care plus a mood lift. The family dashboard draws each pet's own 12x10 sprite, shows
+  "Imp-cat - Hungry!" and gives a pet Feed and Play (no role change, no play-as: uplift is still later). F6: `family_resident_gone(id)` takes a household resident out when the
+  sim kills or evicts them (`sim_lay_to_rest` calls it; `family_loss_daily` sweeps too): a memorial (old age / laid to rest = AGE, monster or demon = DEMON, neglect = NEGLECT,
+  else ILLNESS), the partner's grief and a toast; a minor resident only "moves away" (R5); ghosts, the possessed and the soul-lost stay. The Remembered page now opens a memorial
+  with A to leave Flowers (up to 3 posies, `family_memorial_flowers/_leave_flowers`, kept in the memorial record's first spare byte so old saves read 0). 4 new tests.
+  Not built: a separate graveyard scene for the household (the Remembered page is the memorial screen), pet old age, the pets' uplift, GBA/PS1 screens (not run here).
 
 - Wave 6 (2026-11-03, `make -C core test` 754/754 + story-check): PA9 `playas_romance_ok` is now the real play-as gate (anything touching
   the hero, the avatar or a family pool member needs both sides adult/elder, both directions accepting, never family, never a kid-coded

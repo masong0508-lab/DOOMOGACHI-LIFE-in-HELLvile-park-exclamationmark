@@ -16,6 +16,7 @@
  * the victim's friends remember who did it.
  */
 #include "doomo/playas.h"
+#include "doomo/family.h"
 #include "sim_int.h"
 
 /* corruption per game hour by venue (before scaling) */
@@ -318,6 +319,7 @@ void sim_lay_to_rest(int id, int cause)
     sim_problem_drop_for(id);
     sim_s.stats.deaths++;
     portrait_invalidate(id);
+    family_resident_gone(id);                 /* F6: a household member's memorial, grief, toast */
     if (monster) {
         r->flags |= RF_MONSTER_KILL;
         if (doomo_town.monster_meter < 0xFFFF) doomo_town.monster_meter++;

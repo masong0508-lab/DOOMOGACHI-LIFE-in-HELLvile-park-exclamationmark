@@ -244,11 +244,39 @@ int  family_memorial_role(int n);
 /* Copy the name (DOOMO_NAME_LEN bytes) of the n-th memorial into out; 0 when
  * it is not known. */
 int  family_memorial_name(int n, char *out);
+/* A resident member who died in the sim or left the island (sim_lay_to_rest calls this; the daily
+ * pass sweeps too): a memorial, the partner's grief, a toast. A minor resident only "moves away"
+ * (R5). 1 if the member was taken out of the household. */
+int  family_resident_gone(int id);
+/* Flowers left at the n-th memorial (newest first, as family_memorial), 0..FAMILY_MEM_FLOWERS_MAX.
+ * Kept in the record's first spare byte (old saves read 0). leave_flowers() adds one (the caller
+ * takes the item): 1 if it was added, 0 when the memorial is covered already or n is bad. */
+#define FAMILY_MEM_FLOWERS_MAX 3
+int  family_memorial_flowers(int n);
+int  family_memorial_leave_flowers(int n);
 /* The LIFE chunk's LOSS section (life.c's table). */
 uint32_t family_loss_save_size(void);
 uint32_t family_loss_save(uint8_t *dst, uint32_t cap);
 int      family_loss_load(const uint8_t *src, uint32_t len);
 void     family_loss_clear(void);
+
+/* ---- F5: pets ---------------------------------------------------------------------
+ * A pet is a pool member with the role PET: it counts toward the cap, is cared for like anyone
+ * (family_care), can be lost to neglect or a disaster (F6) and leaves a memorial. Pets do not
+ * talk, age or play as anyone yet (the uplift is later). Its own needs are derived from the
+ * neglect count, so nothing new is saved: FED is 100 down to 10 over the six days nobody tends it,
+ * HUNGRY from the second day. The kind comes from the identity's look seed (the same pet is the
+ * same kind on every platform). */
+enum { FAMPET_IMPCAT = 0, FAMPET_HOUND, FAMPET_BAT, FAMPET_SLUG, FAMPET_CROW, FAMPET_HAMSTER,
+       FAMPET_COUNT };
+enum { FAMPET_FEED = 1, FAMPET_PLAY = 2 };
+int  family_pet_kind(int id);                 /* FAMPET_*, -1 for a non-pet */
+const char *family_pet_kind_name(int kind);   /* "Imp-cat", ... ("" if bad) */
+int  family_pet_fed(int id);                  /* 0..100, 0 for a non-pet */
+int  family_pet_hungry(int id);               /* 1 once it has gone two days untended */
+/* Feed or play with a pet: counts as care (resets neglect, raises bond) and lifts its mood.
+ * 1 if id is a pet, else 0. */
+int  family_pet_tend(int id, int what);
 
 /* ---- F7: free will ---------------------------------------------------------
  * While you are not controlling them, household members look after each other:
