@@ -358,6 +358,16 @@ frames or talking phases (the cache's `phase_of()` and the creator's draft bust 
 (in `bodyspr_render()`, P3; no-ops until those land) and `ph_head_only(c, lod)` (head layers only, for
 P3's head impostor).
 
-**Not yet (needs the deep-field set).** `look_resolve_mask`, the per-job resolve, the chibi key's
-filtered run entries, PS1 LZ blocks behind an 8 KB LRU, the test-build hit check, the wave-2 fields and
+**Provisional deep fields (shim).** P0 is not in this tree, so `look_fields.h` / `look_pool.c` stand in:
+16 face fields, a 384 B in-RAM run pool (never saved) and `look_resolve_mask()`. The per-job resolve
+(`job.D`), the animated / body / fighter resolves, the chibi key (only `DFF_CHIBI` run entries are
+hashed) and `look_anim_mask_rid()` (a `DFF_ANIM` field asks for effect frames; the creator's draft
+bust uses it with `LOOK_ID_DRAFT`) all go through it. P0 replaces the two shim files whole.
+
+**Test-build hit check.** Host builds define `DOOMO_HITCHECK` (`CORE_CFLAGS` in `core/Makefile`): every
+exact cache hit of `portrait_image` / `figure_image` is re-rendered from scratch and compared with the
+cached image, so equal keys must give equal pictures. `portrait_hitcheck_count()` / `_fails()` expose it
+(`cache_hits_equal_a_fresh_render_with_and_without_a_run`). Not defined on GBA / PS1 / DC.
+
+**Not yet.** The real deep-field set (P0), PS1 LZ blocks behind an 8 KB LRU, the wave-2 fields and
 lists (M2), `live_p1.txt`, and the mGBA bench of the SPEC's accept numbers.

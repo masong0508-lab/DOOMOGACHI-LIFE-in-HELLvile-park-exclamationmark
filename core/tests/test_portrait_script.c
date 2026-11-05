@@ -373,3 +373,25 @@ TEST(deep_anim_field_asks_for_effect_frames)
     CHECK(!(look_anim_mask_rid(&l, 5, RES_ALIVE, EXPR_NEUTRAL) & LAM_FX));   /* other ids untouched */
     look_pool_drop(4);
 }
+
+TEST(cache_hits_equal_a_fresh_render_with_and_without_a_run)
+{
+    static const uint8_t run[] = { DF_BLUSH2, 2, DF_AURA2, 1, DF_SCLERA, 3 };
+    int id, i;
+    uint32_t n0, bad0;
+    portrait_cache_reset();
+    n0 = portrait_hitcheck_count();
+    bad0 = portrait_hitcheck_fails();
+    for (id = 1; id < 7; id++) {
+        look_pool_drop(id);
+        if (id & 1) look_pool_put(id, RUN_DEEP, run, (int)sizeof(run));
+        for (i = 0; i < 4; i++) {
+            CHECK(portrait_image(id, EXPR_NEUTRAL) != NULL);
+            CHECK(portrait_image(id, EXPR_HAPPY) != NULL);
+        }
+    }
+    CHECK(portrait_hitcheck_count() > n0);                         /* the check ran on hits */
+    CHECK_EQ(portrait_hitcheck_fails(), bad0);                     /* and none differed */
+    for (id = 1; id < 7; id++) look_pool_drop(id);
+    portrait_cache_reset();
+}

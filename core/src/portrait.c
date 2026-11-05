@@ -876,6 +876,35 @@ static void job_pump(void)
  * draws it, the phase shown last */
 void portrait_hold(int on) { hold_on = on; }
 
+#ifdef DOOMO_HITCHECK
+static uint32_t hit_n, hit_bad;
+/* Re-render an exact hit into a scratch buffer and compare. The shared canvas is clobbered, so it is
+ * a sliced job in flight simply restarts (pixels are unaffected). */
+static void hit_verify(int kind, int rid, const DoomoLook *l, int st, int expr, const Phase *p,
+                       int status, const CacheEnt *e, int w, int h)
+{
+    static uint8_t buf[FIGURE_W * FIGURE_H];
+    DoomoLook L = *l;
+    DoomoDeep D;
+    PCtx c;
+    sanitize(&L);
+    pctx_init(&c, &L, st, expr, 0);
+    look_resolve_mask(NULL, rid, LV_ALL, &D);
+    c.d = &D;
+    apply_phase(&c, p);
+    if (kind == CK_FIGURE) render_figure_ctx(&c, buf);
+    else render_portrait_ctx(&c, buf);
+    if (status == RES_EMPTY) vacant(buf, w, h);
+    hit_n++;
+    if (memcmp(buf, e->img.pix, (size_t)(w * h)) != 0) hit_bad++;
+}
+uint32_t portrait_hitcheck_count(void) { return hit_n; }
+uint32_t portrait_hitcheck_fails(void) { return hit_bad; }
+#else
+uint32_t portrait_hitcheck_count(void) { return 0; }
+uint32_t portrait_hitcheck_fails(void) { return 0; }
+#endif
+
 static const DoomoImage *animated(int kind, int rid, const DoomoLook *l, int status, int expr)
 {
     uint32_t lh = look_hash(l) ^ look_run_hash(rid, 0), t = now(), base, key;
@@ -884,10 +913,12 @@ static const DoomoImage *animated(int kind, int rid, const DoomoLook *l, int sta
     int st = status == RES_EMPTY ? RES_ALIVE : status;
     Phase p, q;
     CacheEnt *e;
+    int exact;
     base = ((uint32_t)expr << 8) | ((uint32_t)(status & 15) << 12);
     key = base | phase_of(kind, rid, expr, status, l, t, &p);
     if (job_for(kind, rid, lh, base, 0xFFFFFF00u)) job.want = t;
     e = cache_find(kind, rid, key, lh, 0xFFFFFFFFu);
+    exact = e != NULL;
     if (!e && cache_get(kind, rid, key, lh, 0xFFFFFF00u, 0)) {
         /* only the phase differs: draw it in slices */
         if (!job_for(kind, rid, lh, key, 0xFFFFFFFFu)) job_start(kind, rid, key, lh, l, st, expr, &p);
@@ -933,6 +964,10 @@ static const DoomoImage *animated(int kind, int rid, const DoomoLook *l, int sta
         steps_left();
         steps_used = steps_max();       /* that was this tick's budget      */
     }
+#ifdef DOOMO_HITCHECK
+    if (exact && !hold_on) hit_verify(kind, rid, l, st, expr, &p, status, e, w, h);
+#endif
+    (void)exact;
     /* look ahead: start on the next phase before it is due */
     if (!job.on && steps_max() < DL_STEPS) {
         uint32_t k2 = base | phase_of(kind, rid, expr, status, l, t + PC_AHEAD, &q);

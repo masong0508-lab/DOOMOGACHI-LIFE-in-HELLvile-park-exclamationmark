@@ -49,7 +49,7 @@ ifeq ($(SAN),1)
 CFLAGS_COMMON += -fsanitize=address,undefined -fno-omit-frame-pointer
 LDFLAGS_SAN := -fsanitize=address,undefined
 endif
-CORE_CFLAGS   := $(CFLAGS_COMMON) -I$(CORE_INC)
+CORE_CFLAGS   := $(CFLAGS_COMMON) -DDOOMO_HITCHECK -I$(CORE_INC)
 # Native platform + tests may use the host libc.
 HOST_CFLAGS   := $(CFLAGS_COMMON) -D_POSIX_C_SOURCE=200809L -I$(CORE_INC) -I$(CORE)/native
 

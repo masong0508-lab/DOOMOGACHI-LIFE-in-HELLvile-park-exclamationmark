@@ -100,6 +100,12 @@ uint32_t look_anim_mask_rid(const DoomoLook *l, int rid, int status, int expr);
 /* The cache key of resident `rid`'s look (SPEC 4.5): the gene (+ the deep-look run bytes, once a
  * pool holds any). Equal keys, equal pictures; 0 for an id with no record. */
 uint32_t look_key(int rid);
+/* Test-build check (DOOMO_HITCHECK, host builds): every exact cache hit of portrait_image /
+ * figure_image is re-rendered from scratch and compared with the cached image (equal keys must give
+ * equal pictures, SPEC 4.5). These count the hits checked and the ones that differed; both are 0 in
+ * builds without the check. */
+uint32_t portrait_hitcheck_count(void);
+uint32_t portrait_hitcheck_fails(void);
 /* Drop every cached image and return to the real clock (tests). */
 void portrait_cache_reset(void);
 /* Tests / tools: run the cache on a fake clock `tick` (instead of
