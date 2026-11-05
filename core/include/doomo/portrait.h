@@ -91,6 +91,10 @@ void fighter_render(const DoomoLook *l, int status, int view, int anim,
                     int weapon_frame, uint8_t *out);
 /* Pixel visits of the last render (cost check in tests / tools). */
 uint32_t portrait_last_ops(void);
+/* Animation phases a look needs (LAM_*): effect frames, talking. Shared by the cache and the
+ * creator's draft bust, so a new animated look field is listed in one place. */
+enum { LAM_FX = 1, LAM_TALK = 2 };
+uint32_t look_anim_mask(const DoomoLook *l, int status, int expr);
 /* The cache key of resident `rid`'s look (SPEC 4.5): the gene (+ the deep-look run bytes, once a
  * pool holds any). Equal keys, equal pictures; 0 for an id with no record. */
 uint32_t look_key(int rid);

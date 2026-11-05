@@ -212,3 +212,37 @@ TEST(look_key_follows_the_gene)
     CHECK(look_key(3) != look_key(4));
     CHECK_EQ(look_key(ROSTER_COUNT + 5), 0);
 }
+
+TEST(look_key_changes_when_the_gene_does)
+{
+    DoomoResident *r = town_res(3);
+    DoomoResident keep;
+    uint32_t k0, k1;
+    CHECK(r != NULL);
+    if (!r) return;
+    keep = *r;
+    roster_premade_record(3, r);                  /* a live record for slot 3 */
+    k0 = look_key(3);
+    r->gene[5] ^= 0x10;
+    k1 = look_key(3);
+    *r = keep;
+    CHECK(k0 != 0 && k1 != k0);
+}
+
+TEST(anim_mask_lists_the_animated_looks)
+{
+    DoomoResident r;
+    DoomoLook l;
+    resident_default(&r);
+    l = *RES_LOOK_VIEW(&r);
+    l.aura = AURA_NONE; l.halo = HALO_NONE; l.cheeks = 0; l.hair_style = HAIR_BALD;
+    l.species = SPECIES_HUMAN;
+    CHECK_EQ(look_anim_mask(&l, RES_ALIVE, EXPR_NEUTRAL), 0u);
+    CHECK_EQ(look_anim_mask(&l, RES_ALIVE, EXPR_TALK), (uint32_t)LAM_TALK);
+    CHECK(look_anim_mask(&l, RES_ALIVE, EXPR_LOVE) & LAM_FX);
+    CHECK(look_anim_mask(&l, RES_POSSESSED, EXPR_NEUTRAL) & LAM_FX);
+    l.halo = HALO_STARS;
+    CHECK(look_anim_mask(&l, RES_ALIVE, EXPR_NEUTRAL) & LAM_FX);
+    l.halo = HALO_NONE; l.cheeks = CHEEK_SPARKLES;
+    CHECK(look_anim_mask(&l, RES_ALIVE, EXPR_NEUTRAL) & LAM_FX);
+}

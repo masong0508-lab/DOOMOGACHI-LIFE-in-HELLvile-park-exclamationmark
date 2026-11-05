@@ -693,6 +693,24 @@ static const DoomoResident *res_of(int rid, int *status)
     return r;
 }
 
+/* Which animation phases a look needs (P1.M1, SPEC 4.4 item 7): one list for the cache (phase_of)
+ * and the creator's draft bust (creator_draw.c anim_phase), replacing their hand-written copies.
+ * LAM_FX: the look has effect frames (aura, flame, sparkles, an expression or status that emits
+ * them). Blink, breathing and twitch are the same for every look. */
+uint32_t look_anim_mask(const DoomoLook *l, int status, int expr)
+{
+    uint32_t m = 0;
+    if (l->aura != AURA_NONE || status == RES_POSSESSED || status == RES_SOUL_LOST ||
+        expr == EXPR_SAD || expr == EXPR_LOVE || expr == EXPR_SLEEPY || expr == EXPR_ANGRY ||
+        expr == EXPR_HAPPY || expr == EXPR_DEAD || expr == EXPR_POSSESSED ||
+        l->halo == HALO_FLAME_RING || l->halo == HALO_STARS || (l->cheeks & CHEEK_SPARKLES) ||
+        l->hair_style == HAIR_FLAME ||
+        l->species == SPECIES_TURKEY)           /* the wattle wobbles (portrait_turkey.c) */
+        m |= LAM_FX;
+    if (expr == EXPR_TALK) m |= LAM_TALK;
+    return m;
+}
+
 /* animation phase at tick t (staggered per resident); the low byte of the
  * cache key */
 static int hold_on;   /* portrait_hold() */
@@ -701,12 +719,7 @@ static uint32_t phase_of(int kind, int rid, int expr, int status, const DoomoLoo
                          uint32_t t, Phase *p)
 {
     uint32_t off = (uint32_t)((rid + 1) * 53) & 1023u, ph;
-    int fxon = l->aura != AURA_NONE || status == RES_POSSESSED || status == RES_SOUL_LOST ||
-               expr == EXPR_SAD || expr == EXPR_LOVE || expr == EXPR_SLEEPY || expr == EXPR_ANGRY ||
-               expr == EXPR_HAPPY || expr == EXPR_DEAD || expr == EXPR_POSSESSED ||
-               l->halo == HALO_FLAME_RING || l->halo == HALO_STARS || (l->cheeks & CHEEK_SPARKLES) ||
-               l->hair_style == HAIR_FLAME ||
-               l->species == SPECIES_TURKEY;    /* the wattle wobbles (portrait_turkey.c) */
+    int fxon = (look_anim_mask(l, status, expr) & LAM_FX) != 0;
     memset(p, 0, sizeof(*p));
     if (status == RES_EMPTY) return 0;
     /* portrait_hold() (title figures): one still pose per expression, so

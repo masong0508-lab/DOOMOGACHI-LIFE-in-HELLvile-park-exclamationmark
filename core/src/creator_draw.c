@@ -312,15 +312,12 @@ static uint32_t look_hash(const DoomoLook *l)
 static uint32_t anim_phase(uint32_t t, int expr, const DoomoLook *l, int status)
 {
     uint32_t ph = 0;
-    int fx = l->aura != AURA_NONE || status == RES_POSSESSED || expr == EXPR_LOVE ||
-             expr == EXPR_HAPPY || expr == EXPR_SAD || expr == EXPR_ANGRY || expr == EXPR_SLEEPY ||
-             (l->cheeks & CHEEK_SPARKLES) || l->halo == HALO_STARS || l->halo == HALO_FLAME_RING ||
-             l->hair_style == HAIR_FLAME;
+    int fx = (look_anim_mask(l, status, expr) & LAM_FX) != 0;
     ph |= (t % 110u) >= 106u;
     ph |= ((t >> 5) & 1u) << 1;
     ph |= (uint32_t)((t % 270u) >= 262u) << 2;
     if (fx) ph |= ((t >> FX_SHIFT) & 3u) << 3;
-    if (expr == EXPR_TALK) ph |= ((t >> 2) & 1u) << 5;
+    if (look_anim_mask(l, status, expr) & LAM_TALK) ph |= ((t >> 2) & 1u) << 5;
     return ph;
 }
 

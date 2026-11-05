@@ -680,6 +680,15 @@ static uint32_t look_hash(const DoomoLook *l, int status)
     return h;
 }
 
+/* The memo hash of a resident's look: look_key (the gene + the deep-look run, SPEC 4.5) mixed with
+ * the status. An id look_key does not know (0) falls back to the whole-struct hash. */
+static uint32_t res_hash(int id, const DoomoResident *r)
+{
+    uint32_t k = look_key(id);
+    if (!k) return look_hash(RES_LOOK_VIEW(r), r->status);
+    return (k ^ (uint32_t)r->status) * 16777619u;
+}
+
 /* 1 if this image may be drawn now (cached recently, or budget allows). */
 static int memo_ok(uint32_t key, uint32_t hash, int cost)
 {
@@ -717,7 +726,7 @@ int fp_chibi(int id, int x, int y, int dir, int frame, int flags)
     uint32_t key;
     if (!r) return 0;
     key = 0x10000000u | ((uint32_t)id << 8) | ((uint32_t)(dir & 3) << 4) | (uint32_t)(frame & 15);
-    if (memo_ok(key, look_hash(RES_LOOK_VIEW(r), r->status), 1)) {
+    if (memo_ok(key, res_hash(id, r), 1)) {
         const DoomoImage *img = bodyspr_image(id, dir, frame);
         if (img) {
             plat_image(x, y, img, 1, flags, 0);
@@ -744,7 +753,7 @@ void fp_portrait(int x, int y, int id, int scale, int expr, int style)
     ui_heart(x + 7, y + h / 2, 2, st->fill_lo);
     if (!r) return;
     key = 0x20000000u | ((uint32_t)id << 8) | (uint32_t)(expr & 0xFF);
-    if (memo_ok(key, look_hash(RES_LOOK_VIEW(r), r->status), 3)) {
+    if (memo_ok(key, res_hash(id, r), 3)) {
         const DoomoImage *img = portrait_image(id, expr);
         if (img) plat_image(x + 3, y + 3, img, scale, 0, 0);
     } else {
