@@ -74,7 +74,7 @@ void sh_room_draw(int t)
         switch (a->kind) {
         case SAK_CHIBI:  ra->img = bodyspr_image(a->ref, s.dir, s.frame); break;
         case SAK_FIGURE: r = town_res(a->ref);
-                         ra->img = r ? figure_image(&r->look, r->status, s.expr) : NULL; break;
+                         ra->img = r ? figure_image(RES_LOOK_VIEW(r), r->status, s.expr) : NULL; break;
         case SAK_SPRITE:
         case SAK_MONSTER: {
             int nf = sprite_frames(a->ref);

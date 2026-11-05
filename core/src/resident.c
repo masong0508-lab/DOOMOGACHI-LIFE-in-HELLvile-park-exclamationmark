@@ -700,7 +700,7 @@ static void gen_rest(DoomoResident *res, DoomoRng *r, int hell)
     {
         static const Pick ro[] = { { ROMANCE_ANY, 70 }, { ROMANCE_SHE, 8 },
             { ROMANCE_HE, 8 }, { ROMANCE_THEY, 8 }, { ROMANCE_NONE, 6 } };
-        res->romance = (uint8_t)PICK(r, ro);
+        RES_SET_ROMANCE(res, PICK(r, ro));
     }
     RES_SET_BDAY_MONTH(res, (uint8_t)rng_range(r, 12));
     RES_SET_BDAY_DAY(res, (uint8_t)rng_between(r, 1, 28));
@@ -866,12 +866,13 @@ int resident_sanitize(DoomoResident *r)
         /* romance = preference (bits 0..2) + life stage (bits 4..6); the
          * reserved bits are cleared. A stage outside LIFE_* fails safe: it
          * becomes LIFE_CHILD (no romance) rather than an adult. */
-        int pref = r->romance & ROMANCE_PREF_MASK;
-        int stage = (r->romance & LIFE_STAGE_MASK) >> LIFE_STAGE_SHIFT;
-        int bad = (r->romance & ~(ROMANCE_PREF_MASK | LIFE_STAGE_MASK)) != 0;
+        int pref = RES_ROMANCE(r);
+        int stage = RES_STAGE(r);
+        int bad = 0;                  /* (the reserved bits no longer exist in the gene) */
         if (pref >= ROMANCE_COUNT) { pref = ROMANCE_ANY; bad = 1; }
         if (stage >= LIFE_COUNT) { stage = LIFE_CHILD; bad = 1; }
-        r->romance = (uint8_t)(pref | (stage << LIFE_STAGE_SHIFT));
+        RES_SET_ROMANCE(r, pref);
+        RES_SET_STAGE(r, stage);
         n += bad;
     }
     { uint8_t v = RES_BDAY_MONTH(r); n += fix_enum(&v, 12, 0); RES_SET_BDAY_MONTH(r, v); }
@@ -929,7 +930,7 @@ void resident_default(DoomoResident *r)
     r->stat[STAT_CORRUPTION] = 0; r->stat[STAT_SOCIAL] = 70;
     r->status = RES_ALIVE;
     RES_SET_PRONOUN(r, PRONOUN_THEY);
-    r->romance = ROMANCE_ANY;
+    RES_SET_ROMANCE(r, ROMANCE_ANY);
     RES_SET_BDAY_MONTH(r, 3); RES_SET_BDAY_DAY(r, 14);
     RES_SET_LIKE_FOOD(r, 0); RES_SET_HATE_FOOD(r, 46); RES_SET_LIKE_HOBBY(r, 0); RES_SET_LIKE_MUSIC(r, 0);
     RES_SET_LIKE_COLOR(r, PAINT_BUBBLEGUM); RES_SET_FEAR(r, 0); RES_SET_CATCHPHRASE(r, 0);
@@ -940,13 +941,13 @@ void resident_default(DoomoResident *r)
 void resident_set_romance(DoomoResident *r, int romance)
 {
     if (romance < 0 || romance >= ROMANCE_COUNT) romance = ROMANCE_ANY;
-    r->romance = (uint8_t)((r->romance & LIFE_STAGE_MASK) | (unsigned)romance);
+    RES_SET_ROMANCE(r, romance);
 }
 
 void resident_set_stage(DoomoResident *r, int stage)
 {
     if (stage < 0 || stage >= LIFE_COUNT) stage = LIFE_ADULT;
-    r->romance = (uint8_t)((r->romance & ROMANCE_PREF_MASK) | ((unsigned)stage << LIFE_STAGE_SHIFT));
+    RES_SET_STAGE(r, stage);
 }
 
 /* youth 0 ADULT / ELDER .. 4 BABY (a bad stage counts as a child: fail
@@ -1002,14 +1003,27 @@ uint8_t look_skin(const DoomoLook *l, int shade)
     return PAL_SKIN(SKIN_FAIR, shade);
 }
 
-uint32_t resident_fingerprint(const DoomoResident *r)
+static uint32_t fnv1a(const uint8_t *p, size_t n)
 {
-    const uint8_t *p = (const uint8_t *)r;
     uint32_t h = 2166136261u;
     size_t i;
-    for (i = 0; i < sizeof(*r); i++) {
+    for (i = 0; i < n; i++) {
         h ^= p[i];
         h *= 16777619u;
     }
     return h;
+}
+
+uint32_t resident_fingerprint(const DoomoResident *r)
+{
+    return fnv1a((const uint8_t *)r, sizeof(*r));
+}
+
+uint32_t citizen_fingerprint_v1(const DoomoResident *r)
+{
+    DoomoCitizen c;
+    uint8_t v1[96];
+    res_unpack(r, &c);
+    res_to_v1(&c, v1);
+    return fnv1a(v1, sizeof v1);
 }

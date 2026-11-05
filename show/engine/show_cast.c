@@ -51,7 +51,7 @@ int show_cast_load(const DoomoLook *looks, int n)
     for (i = 0; i < n; i++) {
         DoomoResident *r = &doomo_town.res[i];
         memset(r, 0, sizeof(*r));
-        memcpy(&r->look, &looks[i], sizeof(r->look));
+        res_set_look(r, &looks[i]);
         r->status = RES_ALIVE;
         r->flags = RF_STORY_NPC;
         r->name[0] = (char)('A' + i % 26);

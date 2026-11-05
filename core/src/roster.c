@@ -10,9 +10,22 @@
 
 static int valid(int id) { return id >= 0 && id < ROSTER_COUNT; }
 
+int roster_premade_record(int id, DoomoResident *out)
+{
+    if (!valid(id)) return 0;
+    res_pack(&doomo_roster_premade[id], out);
+    return 1;
+}
+
 const DoomoResident *roster_premade(int id)
 {
-    return valid(id) ? &doomo_roster_premade[id] : NULL;
+    static DoomoResident ring[8];
+    static unsigned next;
+    DoomoResident *r;
+    if (!valid(id)) return NULL;
+    r = &ring[next++ & 7u];
+    roster_premade_record(id, r);
+    return r;
 }
 
 const char *roster_bio(int id)

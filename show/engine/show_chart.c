@@ -94,7 +94,7 @@ void show_chart_draw(uint32_t frame)
     plat_text(24, 155, "palette 0-255", PAL_RAMP(RAMP_VAPE, 0));
 
     /* the portrait engine: figure px=1, bust px=2, chibi px=2 */
-    im = figure_image(&s_fig.look, RES_ALIVE, expr);
+    im = figure_image(RES_LOOK_VIEW(&s_fig), RES_ALIVE, expr);
     if (im) plat_image(108, FLOOR_Y - im->h, im, 1, 0, 0);
     im = portrait_image(CHART_RID, expr);
     if (im) plat_image(172, FLOOR_Y - 2 * im->h, im, 2, 0, 0);

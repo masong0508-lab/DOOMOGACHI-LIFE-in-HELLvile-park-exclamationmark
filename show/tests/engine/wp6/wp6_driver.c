@@ -113,7 +113,7 @@ static void sheet_page(int slot, int page, int first, int print)
         for (i = 0; i <= EXPR_COUNT; i++) {
             int x = 4 + (i % 6) * 52, y = 8 + (i / 6) * 100;
             show_portrait_overrides(-1, i == EXPR_COUNT ? 1 : -1);
-            im = figure_image(&doomo_town.res[slot].look, RES_ALIVE, i == EXPR_COUNT ? 0 : i);
+            im = figure_image(RES_LOOK_VIEW(&doomo_town.res[slot]), RES_ALIVE, i == EXPR_COUNT ? 0 : i);
             show_portrait_overrides(-1, -1);
             cell(page, i, "figure", i == EXPR_COUNT ? 0 : i, i == EXPR_COUNT ? 1 : 0, x, y, 52, 84, im, 1, print);
         }
@@ -224,7 +224,7 @@ static void at65_solo(void)
             portrait_cache_reset();
             portrait_cache_clock((uint32_t)t, 6);
             show_portrait_overrides(s_m65[t - 105][i], -1);
-            im = figure_image(&doomo_town.res[slot].look, RES_ALIVE, st->expr);
+            im = figure_image(RES_LOOK_VIEW(&doomo_town.res[slot]), RES_ALIVE, st->expr);
             show_portrait_overrides(-1, -1);
             printf("wp6 at65 solo t=%d a=%d mouth=%d crc=%08x\n", t, i, s_m65[t - 105][i],
                    (unsigned)img_crc(im));
@@ -282,7 +282,7 @@ int show_selftest_frame(uint32_t frame)
             s_m65[t - 105][i] = st->mouth;
             show_portrait_overrides(st->mouth, st->blink);
             portrait_cache_clock((uint32_t)st->clock, 6);
-            im = figure_image(&doomo_town.res[i].look, RES_ALIVE, st->expr);
+            im = figure_image(RES_LOOK_VIEW(&doomo_town.res[i]), RES_ALIVE, st->expr);
             show_portrait_overrides(-1, -1);
             printf("wp6 at65 drawn t=%d a=%d mouth=%d uid=%08x crc=%08x\n", t, i, st->mouth,
                    (unsigned)(im ? im->uid : 0), (unsigned)img_crc(im));

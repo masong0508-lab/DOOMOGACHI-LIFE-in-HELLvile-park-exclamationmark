@@ -579,23 +579,41 @@ DOOMO_STATIC_ASSERT((48 + 1 + 5 + 5 + 8 + 18 + 7) / 8 == (48 + 1 + 5 + 5 + 8 + 1
 /* the ROMANCE_* preference half of `romance` (field index != F_STAGE) */
 #define IS_ROMANCE_PREF(i) (rfields[i].off == RO(romance) && (i) != F_STAGE)
 
-static int name_len(const DoomoResident *r)
+/* the wire struct's two halves of `romance` (the record itself keeps them in the gene) */
+#define SV_PREF(r)   ((int)((r)->romance & ROMANCE_PREF_MASK))
+#define SV_STAGE(r)  ((int)(((r)->romance & LIFE_STAGE_MASK) >> LIFE_STAGE_SHIFT))
+
+/* the stored record <-> its v1 wire image (what the schema above addresses) */
+static void sv_from_res(const DoomoResident *r, SaveResV1 *w)
+{
+    DoomoCitizen c;
+    res_unpack(r, &c);
+    memcpy(w, &c, sizeof *w);
+}
+static void sv_to_res(const SaveResV1 *w, DoomoResident *r)
+{
+    DoomoCitizen c;
+    memcpy(&c, w, sizeof c);
+    res_pack(&c, r);
+}
+
+static int name_len(const SaveResV1 *r)
 {
     int n = 0;
     while (n < DOOMO_NAME_LEN - 1 && r->name[n]) n++;
     return n;
 }
 
-static uint32_t field_get(const DoomoResident *r, int i)
+static uint32_t field_get(const SaveResV1 *r, int i)
 {
     uint8_t v = ((const uint8_t *)r)[rfields[i].off];
     if (rfields[i].off == LO(hair_highlight) && v == LOOK_NO_COLOR) return 32;
-    if (i == F_STAGE) return (uint32_t)RES_STAGE(r);
-    if (IS_ROMANCE_PREF(i)) return (uint32_t)RES_ROMANCE(r);
+    if (i == F_STAGE) return (uint32_t)SV_STAGE(r);
+    if (IS_ROMANCE_PREF(i)) return (uint32_t)SV_PREF(r);
     return v;
 }
 
-static void field_set(DoomoResident *r, int i, uint32_t v)
+static void field_set(SaveResV1 *r, int i, uint32_t v)
 {
     if (rfields[i].off == LO(hair_highlight) && v == 32) v = LOOK_NO_COLOR;
     if (i == F_STAGE) {
@@ -611,7 +629,7 @@ static void field_set(DoomoResident *r, int i, uint32_t v)
 
 /* field_get(a, i) == field_get(b, i), raw bytes first (the mapped values:
  * hair_highlight's "no colour" and the two halves of `romance`) */
-static inline int field_eq(const DoomoResident *a, const DoomoResident *b, int i)
+static inline int field_eq(const SaveResV1 *a, const SaveResV1 *b, int i)
 {
     uint8_t off = rfields[i].off;
     if (rfields[i].bits == NAME_FIELD) return memcmp(a->name, b->name, DOOMO_NAME_LEN) == 0;
@@ -619,12 +637,12 @@ static inline int field_eq(const DoomoResident *a, const DoomoResident *b, int i
     return (off == LO(hair_highlight) || off == RO(romance)) && field_get(a, i) == field_get(b, i);
 }
 
-static int field_cost(const DoomoResident *r, int i)
+static int field_cost(const SaveResV1 *r, int i)
 {
     return rfields[i].bits == NAME_FIELD ? 4 + 7 * name_len(r) : rfields[i].bits;
 }
 
-static void field_write(const DoomoResident *r, int i)
+static void field_write(const SaveResV1 *r, int i)
 {
     if (rfields[i].bits == NAME_FIELD) {
         int n = name_len(r), k;
@@ -635,7 +653,7 @@ static void field_write(const DoomoResident *r, int i)
     }
 }
 
-static void field_read(DoomoResident *r, int i)
+static void field_read(SaveResV1 *r, int i)
 {
     if (rfields[i].bits == NAME_FIELD) {
         int n = (int)rbits(4), k;
@@ -647,13 +665,13 @@ static void field_read(DoomoResident *r, int i)
     }
 }
 
-static void write_full(const DoomoResident *r)
+static void write_full(const SaveResV1 *r)
 {
     int i;
     for (i = 0; i < NFIELDS; i++) field_write(r, i);
 }
 
-static void read_full(DoomoResident *r)
+static void read_full(SaveResV1 *r)
 {
     int i, n = Z.ld_ver >= 2 ? NFIELDS : NFIELDS_V1;
     memset(r, 0, sizeof(*r));             /* version 1: LIFE_ADULT */
@@ -662,7 +680,7 @@ static void read_full(DoomoResident *r)
 
 /* The fields of r that differ from base (fm[g] bit k = field 8g + k) and
  * the cost in bits of the delta record (without the tag). */
-static int delta_masks(const DoomoResident *r, const DoomoResident *base, uint8_t fm[NGROUPS])
+static int delta_masks(const SaveResV1 *r, const SaveResV1 *base, uint8_t fm[NGROUPS])
 {
     int g, i, bits = NGROUPS;
     for (g = 0; g < NGROUPS; g++) {
@@ -677,14 +695,14 @@ static int delta_masks(const DoomoResident *r, const DoomoResident *base, uint8_
     return bits;
 }
 
-static int full_cost(const DoomoResident *r)
+static int full_cost(const SaveResV1 *r)
 {
     int i, bits = 0;
     for (i = 0; i < NFIELDS; i++) bits += field_cost(r, i);
     return bits;
 }
 
-static void write_delta(const DoomoResident *r, const uint8_t fm[NGROUPS])
+static void write_delta(const SaveResV1 *r, const uint8_t fm[NGROUPS])
 {
     int g, i;
     uint32_t gmask = 0;
@@ -699,7 +717,7 @@ static void write_delta(const DoomoResident *r, const uint8_t fm[NGROUPS])
     }
 }
 
-static void read_delta(DoomoResident *r, const DoomoResident *base)
+static void read_delta(SaveResV1 *r, const SaveResV1 *base)
 {
     int g, i;
     uint32_t gmask = rbits(NGROUPS);
@@ -770,6 +788,7 @@ static void write_town(void)
 {
     const DoomoTown *t = &doomo_town;
     DoomoResident cur, base;
+    SaveResV1 wc, wb;                      /* v1 wire images of cur and base */
     uint8_t fm[NGROUPS];
     int i, n;
 
@@ -815,7 +834,8 @@ static void write_town(void)
     /* the player */
     cur = t->player;
     resident_sanitize(&cur);
-    write_full(&cur);
+    sv_from_res(&cur, &wc);
+    write_full(&wc);
     /* residents */
     i = 0;
     while (i < DOOMO_MAX_RESIDENTS) {
@@ -844,12 +864,14 @@ static void write_town(void)
             i += run;
             continue;
         }
-        if (has_base && delta_masks(&cur, &base, fm) < full_cost(&cur)) {
+        sv_from_res(&cur, &wc);
+        if (has_base) sv_from_res(&base, &wb);
+        if (has_base && delta_masks(&wc, &wb, fm) < full_cost(&wc)) {
             wbits(2, 2);
-            write_delta(&cur, fm);
+            write_delta(&wc, fm);
         } else {
             wbits(3, 2);
-            write_full(&cur);
+            write_full(&wc);
         }
         i++;
     }
@@ -861,7 +883,8 @@ static void write_town(void)
 static int read_town(int apply)
 {
     DoomoTown *t = &doomo_town;
-    DoomoResident tmp, base;
+    DoomoResident base;
+    SaveResV1 wr, wbase;                   /* v1 wire images being decoded */
     uint8_t scal_mode, scal_week, pop;
     uint32_t seed;
     int i, n;
@@ -941,7 +964,8 @@ static int read_town(int apply)
     }
     if (apply) t->edge_count = (uint16_t)n;
     ralign();
-    read_full(apply ? &t->player : &tmp);
+    read_full(&wr);
+    if (apply) sv_to_res(&wr, &t->player);
     i = 0;
     while (i < DOOMO_MAX_RESIDENTS) {
         uint32_t tag = rbits(2);
@@ -961,14 +985,17 @@ static int read_town(int apply)
             if (pop == TOWN_POP_EMPTY) return 0;
             if (apply) {
                 base_of(pop, seed, i, &base);
-                read_delta(&t->res[i], &base);
+                sv_from_res(&base, &wbase);
+                read_delta(&wr, &wbase);
+                sv_to_res(&wr, &t->res[i]);
             } else {
-                memset(&base, 0, sizeof(base));
-                read_delta(&tmp, &base);
+                memset(&wbase, 0, sizeof(wbase));
+                read_delta(&wr, &wbase);
             }
             i++;
         } else {
-            read_full(apply ? &t->res[i] : &tmp);
+            read_full(&wr);
+            if (apply) sv_to_res(&wr, &t->res[i]);
             i++;
         }
     }

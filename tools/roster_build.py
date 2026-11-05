@@ -959,7 +959,7 @@ def emit(schema, by_id, edges, story):
     w("")
     w("DOOMO_STATIC_ASSERT(ROSTER_COUNT == %d, roster_count_matches_data);" % schema.count)
     w("")
-    w("const DoomoResident doomo_roster_premade[ROSTER_COUNT] = {")
+    w("const DoomoCitizen doomo_roster_premade[ROSTER_COUNT] = {")
     for i in range(schema.count):
         c = by_id[i]
         v = c.v

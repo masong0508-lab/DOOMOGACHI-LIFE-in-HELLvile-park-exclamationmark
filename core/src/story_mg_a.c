@@ -35,7 +35,9 @@
 /* Size over speed for this file only (SPEC S4: story_mg_a.c <= 6 KB of
  * code): a handful of ui_* spans per frame at 30 Hz, nothing hot - every
  * toolchain here is GCC (gcc, arm-none-eabi-gcc, mipsel). */
+#if !defined(__clang__)       /* clang has no such pragma (it warns) */
 #pragma GCC optimize ("Os")
+#endif
 
 #define MGA_TAG SAVE_EXT_TAG('S', 'M', 'G', 'A')
 enum { E_HOP, E_ROLL, E_GRID, E_BOB };

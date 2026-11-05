@@ -559,7 +559,11 @@ static void view_model(int t, int scene_t)
     v.z = FX(34);
     v.vw = SCR_W; v.vh = SCR_H;
     v.time = (uint16_t)t;
-    model_set_look(who ? &who->look : NULL);
+    {
+        static DoomoLook who_look;    /* model_set_look keeps the pointer: needs a stable copy */
+        if (who) res_get_look(who, &who_look);
+        model_set_look(who ? &who_look : NULL);
+    }
     plat_view3d(&v);
     model_set_look(NULL);
 }

@@ -73,7 +73,7 @@ DOOMO_STATIC_ASSERT(AGE_COUNT <= 8, age_fits_its_3_bits);
 uint32_t gene_get(const uint8_t *g, int gf);
 void     gene_set(uint8_t *g, int gf, uint32_t v);        /* clamps to the field's max */
 
-/* v1 bridge. gene_pack_v1 writes every field a v1 DoomoResident holds that
+/* v1 bridge. gene_pack_v1 writes every field a v1 DoomoCitizen holds that
  * the gene has: the look (not `species`), voice, persona and the identity
  * members; hair_highlight's "none" (0xFF) is stored as 32 (CF-3); `romance`
  * is the preference half only, and `age` is the life stage (AGE_* above). The
@@ -82,7 +82,7 @@ void     gene_set(uint8_t *g, int gf, uint32_t v);        /* clamps to the field
  * gene_unpack_v1 is the inverse: it overwrites the same members of `r` and
  * leaves everything else (species, name, stats, status, flags, exorcism,
  * level, mood, activity, death_cause) alone. */
-int  gene_pack_v1(const DoomoResident *r, uint8_t g[DOOMO_GENE_BYTES]);
-void gene_unpack_v1(const uint8_t g[DOOMO_GENE_BYTES], DoomoResident *r);
+int  gene_pack_v1(const DoomoCitizen *r, uint8_t g[DOOMO_GENE_BYTES]);
+void gene_unpack_v1(const uint8_t g[DOOMO_GENE_BYTES], DoomoCitizen *r);
 
 #endif

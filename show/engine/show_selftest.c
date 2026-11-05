@@ -113,7 +113,7 @@ int show_selftest_frame(uint32_t frame)
             portrait_cache_clock(CLOCK_T, 6);
             emit('P', i, e, crc_img(portrait_image(i, e)));
             portrait_cache_clock(CLOCK_T, 6);
-            emit('F', i, e, crc_img(figure_image(&doomo_town.res[i].look, RES_ALIVE, e)));
+            emit('F', i, e, crc_img(figure_image(RES_LOOK_VIEW(&doomo_town.res[i]), RES_ALIVE, e)));
         }
         for (d = 0; d < 4; d++) {
             portrait_cache_clock(CLOCK_T, 6);

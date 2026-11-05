@@ -1436,7 +1436,7 @@ static void mouth(PCtx *c)
     case EXPR_SLEEPY: st = MOUTH_DROOL; break;
     case EXPR_SICK: st = MOUTH_WAVY; break;
     case EXPR_DEAD: st = MOUTH_TONGUE; break;
-    case EXPR_TALK: if (!(c->anim & 4)) st = st == MOUTH_BEAK ? st : MOUTH_O; break;
+    case EXPR_TALK: if (!(c->anim & 4)) { st = st == MOUTH_BEAK ? st : MOUTH_O; } break;
     default: break;
     }
     if (phs.h->lod == LOD_TINY) {

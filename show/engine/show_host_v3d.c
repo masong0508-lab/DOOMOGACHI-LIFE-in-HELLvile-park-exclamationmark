@@ -293,7 +293,7 @@ void sh_v3d_draw(int t)
             break;
         case SAK_FIGURE: {
             const DoomoResident *r = town_res(a->ref);
-            img = r ? figure_image(&r->look, r->status, s.expr) : NULL;
+            img = r ? figure_image(RES_LOOK_VIEW(r), r->status, s.expr) : NULL;
             flags = BB_SHADOW;
             break;
         }

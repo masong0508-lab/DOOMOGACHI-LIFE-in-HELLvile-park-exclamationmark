@@ -8,6 +8,7 @@
 #include "test.h"
 #include "doomo/doomo.h"
 #include "doomo/gene.h"
+#define CIT_STAGE(c) (((c).romance & LIFE_STAGE_MASK) >> LIFE_STAGE_SHIFT)
 #include "doomo/look_pool.h"
 #include "doomo/settings.h"
 #include "doomo/roster.h"
@@ -74,20 +75,27 @@ TEST(gene_set_touches_only_its_own_bits_and_clamps)
     }
 }
 
-/* r2 = r with every member the gene carries wiped, then unpacked */
+/* c2 = the unpacked record with every member the gene carries wiped, then unpacked again; and the
+ * whole record survives pack -> res_pack */
 static int bridge_ok(const DoomoResident *r)
 {
     uint8_t g[DOOMO_GENE_BYTES];
-    DoomoResident r2 = *r;
-    int fit = gene_pack_v1(r, g);
-    memset((uint8_t *)&r2.look + 1, 0x77, sizeof(DoomoLook) - 1);
-    memset(r2.voice, 0x77, sizeof r2.voice);
-    memset(r2.persona, 0x77, sizeof r2.persona);
-    r2.pronoun = r2.bday_month = r2.bday_day = r2.like_food = r2.like_hobby =
-        r2.like_music = r2.like_color = r2.hate_food = r2.fear = r2.catchphrase = 0x77;
-    r2.romance = 0;                                    /* preference AND stage come back from the gene */
-    gene_unpack_v1(g, &r2);
-    return fit && memcmp(r, &r2, sizeof r2) == 0
+    DoomoCitizen c, c2;
+    DoomoResident back;
+    int fit;
+    res_unpack(r, &c);
+    fit = gene_pack_v1(&c, g);
+    c2 = c;
+    memset((uint8_t *)&c2.look + 1, 0x77, sizeof(DoomoLook) - 1);
+    memset(c2.voice, 0x77, sizeof c2.voice);
+    memset(c2.persona, 0x77, sizeof c2.persona);
+    c2.pronoun = c2.bday_month = c2.bday_day = c2.like_food = c2.like_hobby =
+        c2.like_music = c2.like_color = c2.hate_food = c2.fear = c2.catchphrase = 0x77;
+    c2.romance = 0;                                    /* preference AND stage come back from the gene */
+    gene_unpack_v1(g, &c2);
+    res_pack(&c2, &back);
+    return fit && memcmp(&c, &c2, sizeof c2) == 0 && memcmp(r, &back, sizeof back) == 0
+        && memcmp(r->gene, g, DOOMO_GENE_BYTES) == 0
         && gene_get(g, GF_SPARE) == 0 && gene_get(g, GF_LOOK_SEED) == 0
         && (int)gene_get(g, GF_AGE) == RES_STAGE(r) && gene_get(g, GF_HANDEDNESS) == 0;
 }
@@ -107,7 +115,7 @@ TEST(gene_bridge_round_trips_generated_citizens)
     for (seed = 1; seed <= 4000; seed++) {
         DoomoResident r;
         resident_generate(&r, seed * 2654435761u);
-        if (r.look.hair_highlight == LOOK_NO_COLOR) none++;
+        if (RES_LOOK(&r, GF_HAIR_HIGHLIGHT) == LOOK_NO_COLOR) none++;
         if (!bridge_ok(&r)) bad++;
     }
     CHECK_EQ(bad, 0);
@@ -117,12 +125,13 @@ TEST(gene_bridge_round_trips_generated_citizens)
 TEST(gene_pack_reports_a_value_that_does_not_fit)
 {
     uint8_t g[DOOMO_GENE_BYTES];
-    DoomoResident r = *roster_premade(0);
+    DoomoCitizen r;
+    res_unpack(roster_premade(0), &r);
     CHECK(gene_pack_v1(&r, g));
     r.look.body = 16;                                  /* the gene's body field is 4 bits */
     CHECK(!gene_pack_v1(&r, g));
     CHECK_EQ(gene_get(g, GF_BODY), 15);                /* clamped, neighbours intact */
-    r = *roster_premade(0);
+    res_unpack(roster_premade(0), &r);
     r.like_music = 16;                                 /* trimmed from 5 to 4 bits */
     CHECK(!gene_pack_v1(&r, g));
 }
@@ -134,22 +143,24 @@ TEST(gene_age_is_the_life_stage_for_every_stage)
     CHECK_EQ(AGE_ADULT, 0);                            /* an old record (stage 0) is an adult */
     CHECK_EQ(AGE_COUNT, LIFE_COUNT);
     for (st = 0; st < LIFE_COUNT; st++) {
-        DoomoResident r = *roster_premade(0);
+        DoomoCitizen r;
+        res_unpack(roster_premade(0), &r);
         r.romance = (uint8_t)((r.romance & ROMANCE_PREF_MASK) | (st << LIFE_STAGE_SHIFT));
         CHECK(gene_pack_v1(&r, g));
         CHECK_EQ((int)gene_get(g, GF_AGE), st);
         CHECK_EQ((int)gene_get(g, GF_ROMANCE), (int)(r.romance & ROMANCE_PREF_MASK));  /* no stage bits leak in */
         r.romance = (uint8_t)(r.romance & ROMANCE_PREF_MASK);   /* forget the stage... */
         gene_unpack_v1(g, &r);                                   /* ...and the gene brings it back */
-        CHECK_EQ(RES_STAGE(&r), st);
-        CHECK_EQ(LIFE_IS_ADULT(RES_STAGE(&r)) ? 1 : 0, (st == LIFE_ADULT || st == LIFE_ELDER) ? 1 : 0);
+        CHECK_EQ(CIT_STAGE(r), st);
+        CHECK_EQ(LIFE_IS_ADULT(CIT_STAGE(r)) ? 1 : 0, (st == LIFE_ADULT || st == LIFE_ELDER) ? 1 : 0);
     }
     /* invalid 3-bit values read as an adult, as resident_sanitize does */
     for (st = LIFE_COUNT; st < 8; st++) {
-        DoomoResident r = *roster_premade(0);
+        DoomoCitizen r;
+        res_unpack(roster_premade(0), &r);
         gene_set(g, GF_AGE, (uint32_t)st);
         gene_unpack_v1(g, &r);
-        CHECK_EQ(RES_STAGE(&r), LIFE_ADULT);
+        CHECK_EQ(CIT_STAGE(r), LIFE_ADULT);
     }
 }
 
@@ -175,10 +186,12 @@ TEST(gene_carries_a_whole_family_through_every_life_stage)
         if (day) grew += family_age_daily();
         for (i = 0; i < n; i++) {
             DoomoResident r;
+            DoomoCitizen c;
             uint8_t g[DOOMO_GENE_BYTES];
             CHECK(family_resident(ids[i], &r));
             CHECK(bridge_ok(&r));                      /* every member survives the gene, stage included */
-            CHECK(gene_pack_v1(&r, g));
+            res_unpack(&r, &c);
+            CHECK(gene_pack_v1(&c, g));
             CHECK_EQ((int)gene_get(g, GF_AGE), RES_STAGE(&r));
             if (day == 0) last[i] = RES_STAGE(&r);
             else {                                     /* nobody gets younger */

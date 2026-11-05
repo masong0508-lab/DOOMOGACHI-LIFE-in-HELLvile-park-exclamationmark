@@ -394,7 +394,7 @@ static void npc_prep(void)
                 DoomoResident *r = &doomo_town.res[rid];
                 resident_default(r);
                 resident_randomize_look(r, n->seed + (uint32_t)k * 7919u);
-                if (n->species) r->look.species = (uint8_t)(n->species - 1);
+                if (n->species) RES_SET_SPECIES(r, n->species - 1);
                 r->status = RES_ALIVE;
             }
             npc_plan(g, k, &s_plan[s_nplan]);

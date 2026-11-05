@@ -55,7 +55,7 @@ static const DoomoImage *actor_image(const ShowHostActor *a, const ShActor *s, i
         return bodyspr_image(a->ref, s->dir, s->frame);
     case SAK_FIGURE:
         r = town_res(a->ref);
-        return r ? figure_image(&r->look, r->status, s->expr) : NULL;
+        return r ? figure_image(RES_LOOK_VIEW(r), r->status, s->expr) : NULL;
     case SAK_SPRITE: {
         int n = sprite_frames(a->ref);
         return sprite_image(a->ref, n > 1 ? (wt / 8) % n : 0);

@@ -50,7 +50,9 @@
  * code): a few dozen spans a frame at 30 Hz, nothing hot - every toolchain
  * here is GCC. No inlining either: every helper is called from several
  * games, and a call is smaller than a copy. */
+#if !defined(__clang__)       /* clang has no such pragma (it warns) */
 #pragma GCC optimize ("Os", "no-inline")
+#endif
 
 #define MGB_TAG SAVE_EXT_TAG('S', 'M', 'G', 'B')
 enum { E_POP, E_STAGE, E_FLY, E_NAP, E_POEM, E_DUET, E_HUG };

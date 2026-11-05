@@ -95,14 +95,14 @@ TEST(fingerprint_golden_file)
     if (test_update_golden) {
         f = fopen(path, "w");
         CHECK_MSG(f != NULL, "cannot write %s", path);
-        fprintf(f, "# resident_fingerprint(resident_generate(seed)) and (_hellborn(seed))\n"
+        fprintf(f, "# citizen_fingerprint_v1(resident_generate(seed)) and (_hellborn(seed))\n"
                    "# seed normal hellborn  (core/tests/test_resident.c; regenerate with\n"
                    "#   $(BUILD)/tests --update-golden fingerprint_golden_file)\n");
         for (i = 0; i < n; i++) {
             DoomoResident a, b;
             resident_generate(&a, seeds[i]);
             resident_generate_hellborn(&b, seeds[i]);
-            fprintf(f, "%u %08x %08x\n", seeds[i], resident_fingerprint(&a), resident_fingerprint(&b));
+            fprintf(f, "%u %08x %08x\n", seeds[i], citizen_fingerprint_v1(&a), citizen_fingerprint_v1(&b));
         }
         fclose(f);
         return;
@@ -119,10 +119,10 @@ TEST(fingerprint_golden_file)
             if (sscanf(line, "%u %x %x", &s, &fa, &fb) != 3) continue;
             resident_generate(&a, s);
             resident_generate_hellborn(&b, s);
-            if (resident_fingerprint(&a) != fa || resident_fingerprint(&b) != fb) {
+            if (citizen_fingerprint_v1(&a) != fa || citizen_fingerprint_v1(&b) != fb) {
                 fclose(f);
                 CHECK_MSG(0, "seed %u: fingerprint %08x/%08x, golden %08x/%08x", s,
-                          resident_fingerprint(&a), resident_fingerprint(&b), fa, fb);
+                          citizen_fingerprint_v1(&a), citizen_fingerprint_v1(&b), fa, fb);
             }
             lines++;
         }

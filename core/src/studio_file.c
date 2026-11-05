@@ -152,7 +152,7 @@ void tab_file_update(void)
     if (btn_pressed(BTN_START)) st_play_from(0);
     if (!btn_pressed(BTN_A)) return;
     if (studio.fsel < SONG_BOOK_SIZE) {
-        static const char *const full_items[4] = { "Save here", "Open", "Favorite " STR_ICON_HEART, "Delete" };
+        static const char *const full_items[4] = { "Save here", "Open", ("Favorite " STR_ICON_HEART), "Delete" };
         static const char *const empty_items[1] = { "Save here" };
         static const char *const titles[SONG_BOOK_SIZE] = { "Page 1", "Page 2", "Page 3",
                                                            "Page 4", "Page 5", "Page 6" };

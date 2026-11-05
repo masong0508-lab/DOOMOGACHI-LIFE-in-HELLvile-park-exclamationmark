@@ -476,7 +476,7 @@ static const DoomoImage *fetch(Act *a)
         im = portrait_image(rid, st->expr);
         break;
     case SHA_FIGURE:
-        im = figure_image(&doomo_town.res[rid].look, show_cast_status(rid), st->expr);
+        im = figure_image(RES_LOOK_VIEW(&doomo_town.res[rid]), show_cast_status(rid), st->expr);
         break;
     case SHA_CHIBI:
         im = bodyspr_image(rid, a->r.view && a->r.view <= 4 ? a->r.view - 1 : st->dir, st->frame);

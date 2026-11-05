@@ -9,6 +9,7 @@
 #ifndef DOOMO_RESIDENT_H
 #define DOOMO_RESIDENT_H
 
+#include <stddef.h>
 #include "types.h"
 #include "catalog.h"
 
@@ -95,7 +96,11 @@ enum { STAT_HUNGER,      /* 100 = stuffed, 0 = starving            */
        STAT_SOCIAL,
        STAT_COUNT };
 
-typedef struct DoomoResident {
+/* DoomoCitizen: the unpacked, wide working record of one resident. It has the v1 layout, byte for
+ * byte (96 B), so it is also the v1 wire image that saves, goldens and the ROM roster use
+ * (res_to_v1 / res_from_v1 are a memcpy). It becomes the 112 B citizen of SPEC 1.2 when DoomoLook
+ * widens to 64 B (M0b-2). Use it as a stack temporary or ROM table, never as stored town state. */
+typedef struct DoomoCitizen {
     DoomoLook look;                 /* 48 */
     char      name[DOOMO_NAME_LEN]; /* 60 */
     uint8_t   voice[VOICE_COUNT];   /* 65  each 0..31 */
@@ -119,15 +124,38 @@ typedef struct DoomoResident {
     uint8_t   mood;                 /* 94  MOOD_* (sim.h) */
     uint8_t   activity;             /* 95  ACT_*  (sim.h) */
     uint8_t   death_cause;          /* 96  DEATH_* (sim.h) */
-} DoomoResident;
+} DoomoCitizen;
+
+
+/* DoomoResident: the stored record, 76 B, all uint8_t / char: no padding, no endianness, 1-byte
+ * alignment (SPEC 1.2). The look (except `species`), voice, persona and identity live bit-packed in
+ * `gene`, so a member is read and written ONLY through the RES_* accessors, res_unpack / res_pack
+ * or res_get_look / res_set_look (resident_acc.h). `romance` is the gene's GF_ROMANCE (preference)
+ * plus GF_AGE (life stage). */
+typedef struct DoomoResident {
+    uint8_t   species;                  /*  0 hot copy of the species                  */
+    uint8_t   stat[STAT_COUNT];         /*  1 each 0..100                              */
+    uint8_t   status;                   /*  9 RES_*                                    */
+    uint8_t   flags;                    /* 10 RF_*                                     */
+    uint8_t   exorcism;                 /* 11 hi nibble attempts, lo nibble failures   */
+    uint8_t   level;                    /* 12 friendship-with-player level 0..99       */
+    uint8_t   mood;                     /* 13 MOOD_* (sim.h)                           */
+    uint8_t   activity;                 /* 14 ACT_*  (sim.h)                           */
+    uint8_t   death_cause;              /* 15 DEATH_* (sim.h)                          */
+    char      name[DOOMO_NAME_LEN];     /* 16 11 chars + NUL                           */
+    uint8_t   gene[48];                 /* 28 384 bits, LSB first (gene.h)             */
+} DoomoResident;                        /* 76 */
 
 DOOMO_STATIC_ASSERT(sizeof(DoomoLook) == 48, look_is_48_bytes);
-DOOMO_STATIC_ASSERT(sizeof(DoomoResident) == 96, resident_is_96_bytes);
+DOOMO_STATIC_ASSERT(sizeof(DoomoCitizen) == 96, citizen_is_96_bytes);
+DOOMO_STATIC_ASSERT(sizeof(DoomoResident) == 76, resident_is_76_bytes);
+DOOMO_STATIC_ASSERT(offsetof(DoomoResident, name) == 16 && offsetof(DoomoResident, gene) == 28,
+                    resident_layout);
 
 /* ---- life stage (LS0) ----------------------------------------------------
  * Every resident has an explicit, saved life stage. It lives in bits 4..6 of
  * `romance` (the ROMANCE_* preference keeps bits 0..2; bits 3 and 7 are
- * reserved and always 0), so DoomoResident stays 96 bytes. Never compare
+ * reserved and always 0), so the record stays small. Never compare
  * `romance` directly: use RES_ROMANCE() / RES_STAGE() and the setters.
  *
  * Stages (user decision 2026-11-01): BABY (newborn: stork, adoption, sim
@@ -152,8 +180,7 @@ enum { LIFE_ADULT = 0, LIFE_BABY, LIFE_TODDLER, LIFE_CHILD, LIFE_TEEN, LIFE_ELDE
 #define ROMANCE_PREF_MASK  0x07u
 #define LIFE_STAGE_SHIFT   4
 #define LIFE_STAGE_MASK    0x70u
-#define RES_ROMANCE(r)     ((int)((r)->romance & ROMANCE_PREF_MASK))
-#define RES_STAGE(r)       ((int)(((r)->romance & LIFE_STAGE_MASK) >> LIFE_STAGE_SHIFT))
+/* RES_ROMANCE(r) / RES_STAGE(r) and their setters are in resident_acc.h (they read the gene). */
 #define LIFE_IS_ADULT(s)   ((s) == LIFE_ADULT || (s) == LIFE_ELDER)
 #define LIFE_IS_MINOR(s)   (!LIFE_IS_ADULT(s))
 /* Set one half of `romance`, keeping the other. Out-of-range values clamp
@@ -207,7 +234,10 @@ uint8_t look_skin(const DoomoLook *l, int shade);
 
 /* FNV-1a over a resident, for parity tests (JS-free: GBA/PS1/native must
  * all produce the same value for resident_generate(seed)). */
-uint32_t resident_fingerprint(const DoomoResident *r);
+uint32_t resident_fingerprint(const DoomoResident *r);   /* FNV-1a over all 76 B */
+/* FNV-1a over the 96 B v1 image (res_to_v1 of the unpacked record): the frozen fingerprint every
+ * golden and cross-platform parity check uses; equals the old 96 B resident_fingerprint. */
+uint32_t citizen_fingerprint_v1(const DoomoResident *r);
 
 #include "resident_acc.h"   /* RES_LOOK(), RES_PRONOUN(), ... (P0.M0a) */
 

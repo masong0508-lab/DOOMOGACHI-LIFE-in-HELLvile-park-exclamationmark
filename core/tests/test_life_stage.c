@@ -52,16 +52,16 @@ TEST(life_stage_bits_and_helpers)
             CHECK_EQ(RES_STAGE(&r), s);
         }
     CHECK(doomo_life_stage_names[LIFE_CHILD] && strcmp(doomo_life_stage_names[LIFE_CHILD], "Child") == 0);
-    /* sanitize: reserved bits cleared, a bad stage fails SAFE (kid), a bad
-     * preference becomes ANY; the stage survives */
-    r.romance = (uint8_t)(0x80 | 0x08 | (LIFE_TEEN << LIFE_STAGE_SHIFT) | ROMANCE_HE);
-    CHECK(resident_sanitize(&r) > 0);
-    CHECK_EQ(r.romance, (LIFE_TEEN << LIFE_STAGE_SHIFT) | ROMANCE_HE);
-    r.romance = (uint8_t)((7 << LIFE_STAGE_SHIFT) | ROMANCE_SHE);
+    /* sanitize: a bad stage fails SAFE (kid), a bad preference becomes ANY; the other half
+     * survives (the gene has no reserved bits, so nothing else can be wrong) */
+    RES_SET_ROMANCE(&r, ROMANCE_HE); RES_SET_STAGE(&r, LIFE_TEEN);
+    CHECK_EQ(resident_sanitize(&r), 0);
+    CHECK_EQ(res_field_get(&r, RES_F_ROMANCE), (LIFE_TEEN << LIFE_STAGE_SHIFT) | ROMANCE_HE);
+    RES_SET_STAGE(&r, 7); RES_SET_ROMANCE(&r, ROMANCE_SHE);
     CHECK(resident_sanitize(&r) > 0);
     CHECK_EQ(RES_STAGE(&r), LIFE_CHILD);
     CHECK_EQ(RES_ROMANCE(&r), ROMANCE_SHE);
-    r.romance = (uint8_t)((LIFE_ELDER << LIFE_STAGE_SHIFT) | 7);
+    RES_SET_STAGE(&r, LIFE_ELDER); RES_SET_ROMANCE(&r, 7);
     CHECK(resident_sanitize(&r) > 0);
     CHECK_EQ(RES_STAGE(&r), LIFE_ELDER);
     CHECK_EQ(RES_ROMANCE(&r), ROMANCE_ANY);

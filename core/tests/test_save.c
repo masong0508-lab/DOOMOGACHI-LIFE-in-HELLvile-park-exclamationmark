@@ -141,11 +141,13 @@ static void fill_random_custom(uint32_t seed, int full_edges)
     rng_seed(&r, seed);
     for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) {
         DoomoResident *res = &doomo_town.res[i];
+        DoomoCitizen c;
         size_t k;
-        /* fully random bytes, then made valid: the worst case for the codec */
-        for (k = 0; k < sizeof(*res); k++) ((uint8_t *)res)[k] = (uint8_t)rng_next(&r);
-        res->status = RES_ALIVE;
-        resident_sanitize(res);
+        /* fully random v1 bytes, then made valid (res_pack clamps and sanitizes): the worst case
+         * for the codec. Saves stay v1 until M1, so only v1 fields are random. */
+        for (k = 0; k < sizeof(c); k++) ((uint8_t *)&c)[k] = (uint8_t)rng_next(&r);
+        c.status = RES_ALIVE;
+        res_pack(&c, res);
     }
     if (full_edges) {
         while (doomo_town.edge_count < DOOMO_MAX_EDGES) {

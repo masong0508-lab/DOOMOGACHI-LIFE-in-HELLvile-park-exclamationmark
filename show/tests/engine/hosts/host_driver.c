@@ -61,10 +61,10 @@ static void cast_init(void)
         resident_randomize_look(r, seeds[i]);
         r->status = RES_ALIVE;
     }
-    doomo_town.res[0].look.species = SPECIES_BUNNYKIN;    /* "sunny" */
-    doomo_town.res[1].look.species = SPECIES_CHERUB;      /* "mayor" */
-    doomo_town.res[2].look.species = SPECIES_SHEEPKIN;    /* "nana"  */
-    doomo_town.res[3].look.species = SPECIES_IMP;         /* "pip" (a kid in the kid test) */
+    RES_SET_SPECIES(&doomo_town.res[0], SPECIES_BUNNYKIN);    /* "sunny" */
+    RES_SET_SPECIES(&doomo_town.res[1], SPECIES_CHERUB);      /* "mayor" */
+    RES_SET_SPECIES(&doomo_town.res[2], SPECIES_SHEEPKIN);    /* "nana"  */
+    RES_SET_SPECIES(&doomo_town.res[3], SPECIES_IMP);         /* "pip" (a kid in the kid test) */
     for (i = 0; i < 8; i++) portrait_invalidate(i);
 }
 

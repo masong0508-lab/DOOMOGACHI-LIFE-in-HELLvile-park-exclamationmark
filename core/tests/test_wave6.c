@@ -45,11 +45,11 @@ TEST(pa9_player_pairs_need_both_sides_to_accept)
     DoomoResident *r;
     fresh6();
     r = town_res(ROSTER_ID_VEX);
-    r->romance = (uint8_t)((r->romance & ~ROMANCE_PREF_MASK) | ROMANCE_ANY);
-    doomo_town.player.romance = (uint8_t)((doomo_town.player.romance & ~ROMANCE_PREF_MASK) | ROMANCE_ANY);
+    RES_SET_ROMANCE(r, ROMANCE_ANY);
+    RES_SET_ROMANCE(&doomo_town.player, ROMANCE_ANY);
     CHECK_EQ(playas_romance_ok(DOOMO_PLAYER_ID, ROSTER_ID_VEX), 1);
     CHECK_EQ(playas_romance_ok(ROSTER_ID_VEX, DOOMO_PLAYER_ID), 1);
-    r->romance = (uint8_t)((r->romance & ~ROMANCE_PREF_MASK) | ROMANCE_NONE);     /* she is not open to it */
+    RES_SET_ROMANCE(r, ROMANCE_NONE);     /* she is not open to it */
     CHECK_EQ(playas_romance_ok(DOOMO_PLAYER_ID, ROSTER_ID_VEX), 0);
     CHECK_EQ(playas_romance_ok(ROSTER_ID_VEX, DOOMO_PLAYER_ID), 0);
 }
@@ -75,14 +75,14 @@ TEST(e4_route_meter_offers_then_dates_and_refusal_sticks)
 TEST(e4_route_set_only_moves_forward_and_only_for_adults)
 {
     fresh6();
-    doomo_town.player.romance = (uint8_t)((doomo_town.player.romance & ~ROMANCE_PREF_MASK) | ROMANCE_ANY);
-    town_res(ROSTER_ID_VEX)->romance = (uint8_t)((town_res(ROSTER_ID_VEX)->romance & ~ROMANCE_PREF_MASK) | ROMANCE_ANY);
+    RES_SET_ROMANCE(&doomo_town.player, ROMANCE_ANY);
+    RES_SET_ROMANCE(town_res(ROSTER_ID_VEX), ROMANCE_ANY);
     CHECK_EQ(ending_route_set(ROUTE_VEX, RSTAGE_KISSED, -1), 1);
     CHECK_EQ(ending_route_set(ROUTE_VEX, RSTAGE_DATING, -1), 0);        /* no going back */
     CHECK_EQ(ending_route_set(ROUTE_ANY, RSTAGE_DATING, ROSTER_ID_PIP), 0);   /* a kid never */
     CHECK_EQ(ending_route_set(ROUTE_ANY, RSTAGE_DATING, -1), 0);
     CHECK_EQ(ending_route_partner(ROUTE_ANY), -1);
-    town_res(ROSTER_ID_MAYOR)->romance = (uint8_t)((town_res(ROSTER_ID_MAYOR)->romance & ~ROMANCE_PREF_MASK) | ROMANCE_ANY);
+    RES_SET_ROMANCE(town_res(ROSTER_ID_MAYOR), ROMANCE_ANY);
     CHECK_EQ(ending_route_set(ROUTE_ANY, RSTAGE_DATING, ROSTER_ID_MAYOR), 1);
     CHECK_EQ(ending_route_partner(ROUTE_ANY), ROSTER_ID_MAYOR);
 }
@@ -91,8 +91,8 @@ TEST(e4_route_set_only_moves_forward_and_only_for_adults)
 TEST(e4_sexy_finale_needs_mature_on_a_committed_adult_route)
 {
     fresh6();
-    doomo_town.player.romance = (uint8_t)((doomo_town.player.romance & ~ROMANCE_PREF_MASK) | ROMANCE_ANY);
-    town_res(ROSTER_ID_GRUMBLEGUTS)->romance = (uint8_t)((town_res(ROSTER_ID_GRUMBLEGUTS)->romance & ~ROMANCE_PREF_MASK) | ROMANCE_ANY);
+    RES_SET_ROMANCE(&doomo_town.player, ROMANCE_ANY);
+    RES_SET_ROMANCE(town_res(ROSTER_ID_GRUMBLEGUTS), ROMANCE_ANY);
     ending_route_set(ROUTE_GRUMBLEGUTS, RSTAGE_COMMITTED, -1);
     opt2_set(OPT_MATURE, MATURE_OFF);
     CHECK_EQ(ending_resolve_finale(), ENDING_E01);                    /* Off: nothing adult fires */
@@ -114,8 +114,8 @@ TEST(e4_the_default_finale_is_not_a_bad_ending)
 static void open_to_vex(void)
 {
     DoomoResident *v = town_res(ROSTER_ID_VEX);
-    v->romance = (uint8_t)((v->romance & ~ROMANCE_PREF_MASK) | ROMANCE_ANY);
-    doomo_town.player.romance = (uint8_t)((doomo_town.player.romance & ~ROMANCE_PREF_MASK) | ROMANCE_ANY);
+    RES_SET_ROMANCE(v, ROMANCE_ANY);
+    RES_SET_ROMANCE(&doomo_town.player, ROMANCE_ANY);
 }
 
 TEST(e4_route_daily_does_nothing_while_mature_is_off)

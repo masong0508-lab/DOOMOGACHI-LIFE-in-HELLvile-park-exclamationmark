@@ -172,7 +172,6 @@ TEST(roster_flags_and_districts)
         /* LS0: the ROM record carries the life stage its traits give */
         CHECK_MSG(RES_STAGE(r) == roster_stage(i), "[%d] stage %d, traits say %d", i,
                   RES_STAGE(r), roster_stage(i));
-        CHECK_MSG((r->romance & ~(ROMANCE_PREF_MASK | LIFE_STAGE_MASK)) == 0, "[%d] reserved romance bits", i);
     }
     CHECK_EQ(roster_stage(-1), LIFE_ADULT);
     CHECK_EQ(roster_stage(ROSTER_ID_PIP), LIFE_CHILD);
