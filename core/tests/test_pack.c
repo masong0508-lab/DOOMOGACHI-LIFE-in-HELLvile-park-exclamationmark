@@ -154,3 +154,50 @@ TEST(mslot_with_a_pack_but_mature_below_pack_still_falls_back)
     CHECK_EQ(mslot_result(), 0);
     pack_close();
 }
+
+/* ---- E2 try-out: every slot, with and without the example pack ------------------------------------
+ * Whatever slot a built-in script, a route or an adult ending pushes (0..MSLOT_MAX-1, or a bad
+ * number), the scene must finish, hand the previous scene back, leave the fade at 0, and report 1
+ * only for a slot the open pack really has a script for. */
+static int run_slot(int slot)
+{
+    int n = 0;
+    const DoomoScene *before = scene_top();
+    scene_push(&SCENE_MSLOT, slot);
+    while (scene_top() == &SCENE_MSLOT && n++ < 300) mframe(0);
+    if (scene_top() == &SCENE_MSLOT || scene_top() != before) return -1;     /* stuck or lost the stack */
+    for (n = 0; n < 30; n++) mframe(0);
+    if (camfx_fade_level() != 0) return -2;                                  /* a fade left on screen */
+    return mslot_result();
+}
+
+TEST(e2_every_slot_falls_back_safely_without_a_pack)
+{
+    int s;
+    test_reset();
+    opt_set(OPT_MATURE, MATURE_PACK);
+    for (s = 0; s < MSLOT_MAX; s++) CHECK_EQ(run_slot(s), 0);
+    CHECK_EQ(run_slot(MSLOT_MAX), 0);                  /* out of range: still a clean fade */
+    CHECK_EQ(run_slot(255), 0);
+    opt_set(OPT_MATURE, MATURE_OFF);
+    CHECK_EQ(run_slot(2), 0);                          /* Mature Off: never anything but the fade */
+}
+
+TEST(e2_the_example_pack_plays_only_the_slots_it_has)
+{
+    int s, played = 0;
+    test_reset();
+    CHECK(load());
+    CHECK_EQ(pack_open_image(g_pk, g_n), 1);
+    opt_set(OPT_MATURE, MATURE_PACK);
+    for (s = 0; s < MSLOT_MAX; s++) {
+        int r = run_slot(s);
+        CHECK(r == 0 || r == 1);                       /* never stuck, never a stray fade */
+        if (r == 1) played++;
+    }
+    CHECK(played >= 1);                                /* slot 0 is the example's */
+    CHECK_EQ(run_slot(0), 1);
+    CHECK_EQ(run_slot(3), 0);                          /* a slot the pack lacks falls back */
+    pack_close();
+    CHECK_EQ(run_slot(0), 0);                          /* closed again: back to the fade */
+}
