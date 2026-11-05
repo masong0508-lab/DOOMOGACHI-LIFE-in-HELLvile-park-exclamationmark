@@ -26,7 +26,13 @@ static const LevRow rows_[LEV_COUNT] = {
     /* RAINY_DAY      */ {  8, 6 },
     /* BAD_DAY        */ {  6, 7 },
     /* TALENT_SHOW    */ {  5, 9 },
-    /* STARGAZING     */ {  6, 9 }
+    /* STARGAZING     */ {  6, 9 },
+    /* BEDTIME_STORY  */ {  9, 4 },
+    /* HOMEWORK_HELP  */ {  8, 5 },
+    /* OLD_STORIES    */ {  7, 8 },
+    /* PET_TRICK      */ {  8, 6 },
+    /* MOVIE_NIGHT    */ {  7, 7 },
+    /* BAKE_OFF       */ {  5, 10 }
 };
 
 static uint8_t cool_[LEV_COUNT];
@@ -54,6 +60,35 @@ static int pick_(int kids_only)
     return n ? ids[sim_rand(n)] : -1;
 }
 
+/* A pet to pick (LS4): family members whose role is PET. */
+static int pets_(int *ids, int max)
+{
+    int i, n = 0, cnt = family_count();
+    for (i = 0; i < cnt && n < max; i++) {
+        int id = family_member(i);
+        const FamilyMember *m = id >= 0 ? family_find(id) : NULL;
+        if (m && m->role == FAMROLE_PET) ids[n++] = id;
+    }
+    return n;
+}
+
+static int pick_pet_(void)
+{
+    int ids[FAMILY_MAX], n = pets_(ids, FAMILY_MAX);
+    return n ? ids[sim_rand(n)] : -1;
+}
+
+/* An elder housemate (LS4): never a pet, never the avatar. */
+static int pick_elder_(void)
+{
+    int ids[FAMILY_MAX], n = people_(ids, FAMILY_MAX, 0), i, e[FAMILY_MAX], ne = 0;
+    for (i = 0; i < n; i++) {
+        const FamilyMember *m = family_find(ids[i]);
+        if (m && m->stage == LIFE_ELDER) e[ne++] = ids[i];
+    }
+    return ne ? e[sim_rand(ne)] : -1;
+}
+
 static int partner_member_(void)
 {
     int p = life_player_partner();
@@ -71,6 +106,11 @@ static int ok_(int ev)
     case LEV_SURPRISE_PARTY: return people_(ids, FAMILY_MAX, 1) >= 1;
     case LEV_ANNIVERSARY: return partner_member_() >= 0;
     case LEV_LUCKY_FIND: case LEV_LETTER: return family_count() >= 1;
+    case LEV_BEDTIME_STORY: return people_(ids, FAMILY_MAX, 1) >= 1 && people_(ids, FAMILY_MAX, 0) >= 2;
+    case LEV_HOMEWORK_HELP: return people_(ids, FAMILY_MAX, 1) >= 1;
+    case LEV_OLD_STORIES: return pick_elder_() >= 0;
+    case LEV_PET_TRICK: return pets_(ids, FAMILY_MAX) >= 1;
+    case LEV_MOVIE_NIGHT: case LEV_BAKE_OFF: return people_(ids, FAMILY_MAX, 0) >= 2;
     default: return 0;
     }
 }
@@ -146,6 +186,37 @@ static void run_(int ev)
         id = pick_(0);
         family_mood_add(id, 2); family_bond_add(id, 1);
         news_("%s and you watched the embers fall from the sky.", family_name(id));
+        break;
+    case LEV_BEDTIME_STORY:
+        id = pick_(1);
+        family_bond_add(id, 1); family_mood_add(id, 3);
+        news_("%s got a bedtime story and was out before the dragon.", family_name(id));
+        break;
+    case LEV_HOMEWORK_HELP:
+        id = pick_(1);
+        family_bond_add(id, 2);
+        news_("You helped %s with homework. Mostly brimstone.", family_name(id));
+        break;
+    case LEV_OLD_STORIES:
+        id = pick_elder_();
+        family_mood_add(id, 3); family_bond_add(id, 1);
+        everyone_mood_(1);
+        news_("%s told the old stories again. Nobody minded.", family_name(id));
+        break;
+    case LEV_PET_TRICK:
+        id = pick_pet_();
+        family_mood_add(id, 3);
+        news_("%s learned a new trick! Nobody knows why.", family_name(id));
+        break;
+    case LEV_MOVIE_NIGHT:
+        everyone_mood_(2);
+        news_("Movie night! The popcorn died during the titles.", NULL);
+        break;
+    case LEV_BAKE_OFF:
+        id = pick_(0);
+        family_mood_add(id, 2); family_bond_add(id, 1);
+        inv_add(ITEM_CUPCAKE, 1);
+        news_("%s won the bake-off. The judges were bribed.", family_name(id));
         break;
     default: break;
     }

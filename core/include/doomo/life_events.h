@@ -3,7 +3,8 @@
  * Once a town day (after the household's own daily passes, sim.c day_rollover) a small
  * chance fires ONE life event from a fixed table: a potluck, a picnic, a surprise party,
  * an anniversary, a lucky find, a fan letter, a rainy day, a rotten day, a talent show,
- * stargazing. Each event has a weight, a cooldown (in town days) and a condition on the
+ * stargazing, and (LS4) a bedtime story, homework help, an elder's old stories, a pet's new
+ * trick, a movie night and a bake-off. Each event has a weight, a cooldown (in town days) and a condition on the
  * household; the effect is mood / bond nudges, a little money or an item, and a news line.
  * Kid-safe: words only, nothing here can hurt or remove a member (that is F6 / F10).
  *
@@ -21,6 +22,9 @@
 
 enum { LEV_POTLUCK = 0, LEV_PICNIC, LEV_SURPRISE_PARTY, LEV_ANNIVERSARY, LEV_LUCKY_FIND,
        LEV_LETTER, LEV_RAINY_DAY, LEV_BAD_DAY, LEV_TALENT_SHOW, LEV_STARGAZING,
+       /* LS4 (2026-11-04) */
+       LEV_BEDTIME_STORY, LEV_HOMEWORK_HELP, LEV_OLD_STORIES, LEV_PET_TRICK,
+       LEV_MOVIE_NIGHT, LEV_BAKE_OFF,
        LEV_COUNT };                       /* append-only: saved cooldowns are by index */
 #define LEV_DAILY_PCT 30                  /* chance per day that one event is tried     */
 

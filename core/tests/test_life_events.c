@@ -1,5 +1,6 @@
 /* test_life_events.c - LS3, the life event engine (core/src/life_events.c), and E3's final
  * good-ending rule (ending_resolve_finale: E01 vs E02). */
+#include <string.h>
 #include "test.h"
 #include "doomo/doomo.h"
 #include "doomo/life.h"
@@ -190,4 +191,71 @@ TEST(finale_e02_needs_a_household_and_a_close_tie_and_no_neglect)
         CHECK_EQ(f.neglect_deaths, 1);
     }
     CHECK_EQ(ending_resolve_finale(), ENDING_E01);
+}
+
+/* ---- LS4: six more events (bedtime story, homework, old stories, pet trick, movie night, bake-off) ---- */
+TEST(ls4_conditions_follow_the_household)
+{
+    int a, k, e, p;
+    fresh();
+    a = family_pool_add(FAMROLE_SIBLING, LIFE_ADULT, 5u, "Ann", PRONOUN_SHE);
+    CHECK(a >= 0);
+    CHECK(!life_event_can(LEV_BEDTIME_STORY) && !life_event_can(LEV_HOMEWORK_HELP));   /* no kid yet */
+    CHECK(!life_event_can(LEV_OLD_STORIES) && !life_event_can(LEV_PET_TRICK));
+    CHECK(!life_event_can(LEV_MOVIE_NIGHT) && !life_event_can(LEV_BAKE_OFF));          /* needs two */
+    k = family_pool_add(FAMROLE_CHILD, LIFE_CHILD, 6u, "Pip", PRONOUN_HE);
+    CHECK(k >= 0);
+    CHECK(life_event_can(LEV_BEDTIME_STORY) && life_event_can(LEV_HOMEWORK_HELP));
+    CHECK(life_event_can(LEV_MOVIE_NIGHT) && life_event_can(LEV_BAKE_OFF));
+    e = family_pool_add(FAMROLE_GRANDPARENT, LIFE_ELDER, 7u, "Gran", PRONOUN_SHE);
+    CHECK(e >= 0 && life_event_can(LEV_OLD_STORIES));
+    p = family_pool_add(FAMROLE_PET, LIFE_ADULT, 8u, "Fang", PRONOUN_THEY);
+    CHECK(p >= 0 && life_event_can(LEV_PET_TRICK));
+}
+
+TEST(ls4_effects_are_kind_and_land_on_the_right_member)
+{
+    int a, k, e, p, m0, b0, n0;
+    fresh();
+    a = family_pool_add(FAMROLE_SIBLING, LIFE_ADULT, 5u, "Ann", PRONOUN_SHE);
+    k = family_pool_add(FAMROLE_CHILD, LIFE_CHILD, 6u, "Pip", PRONOUN_HE);
+    e = family_pool_add(FAMROLE_GRANDPARENT, LIFE_ELDER, 7u, "Gran", PRONOUN_SHE);
+    p = family_pool_add(FAMROLE_PET, LIFE_ADULT, 8u, "Fang", PRONOUN_THEY);
+    CHECK(a >= 0 && k >= 0 && e >= 0 && p >= 0);
+    m0 = family_mood(k); b0 = family_bond(k);
+    CHECK_EQ(life_event_fire(LEV_BEDTIME_STORY), 1);
+    CHECK(family_mood(k) > m0 && family_bond(k) == b0 + 1);          /* only the child */
+    b0 = family_bond(k);
+    CHECK_EQ(life_event_fire(LEV_HOMEWORK_HELP), 1);
+    CHECK(family_bond(k) >= b0 + 1);
+    m0 = family_mood(e); b0 = family_bond(e);
+    CHECK_EQ(life_event_fire(LEV_OLD_STORIES), 1);
+    CHECK(family_mood(e) > m0 && family_bond(e) == b0 + 1);          /* the elder, not another */
+    m0 = family_mood(p);
+    CHECK_EQ(life_event_fire(LEV_PET_TRICK), 1);
+    CHECK(family_mood(p) > m0);
+    m0 = family_mood(a);
+    CHECK_EQ(life_event_fire(LEV_MOVIE_NIGHT), 1);
+    CHECK(family_mood(a) > m0);
+    n0 = inv_count(ITEM_CUPCAKE);
+    CHECK_EQ(life_event_fire(LEV_BAKE_OFF), 1);
+    CHECK_EQ(inv_count(ITEM_CUPCAKE), n0 + 1);
+    CHECK_EQ(family_count(), 4);                                     /* nobody is lost */
+    CHECK_EQ(life_event_total(), 6);
+}
+
+TEST(ls4_old_saves_without_the_new_cooldowns_still_load)
+{
+    uint8_t old[2u + 10u];
+    int a;
+    fresh();
+    a = family_pool_add(FAMROLE_SIBLING, LIFE_ADULT, 5u, "Ann", PRONOUN_SHE);
+    CHECK(a >= 0);
+    memset(old, 0, sizeof(old));
+    old[0] = 3;                                                      /* total 3, 10 old cooldowns */
+    old[2 + LEV_PICNIC] = 2;
+    CHECK_EQ(life_events_load(old, sizeof(old)), 1);
+    CHECK_EQ(life_event_total(), 3);
+    CHECK_EQ(life_event_cooldown(LEV_PICNIC), 2);
+    CHECK_EQ(life_event_cooldown(LEV_BAKE_OFF), 0);                  /* missing bytes read as 0 */
 }

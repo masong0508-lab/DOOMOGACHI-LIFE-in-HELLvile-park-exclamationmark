@@ -386,3 +386,6 @@ and the reply gives the line with NAME and MESSAGE filled in, plus a ROADMAP row
 <!-- doomo-ci-ps1-modal-cb-nov02zc -->
 <!-- doomo-ci-ps1-slot-diag-nov02zd -->
 <!-- doomo-u2-options-redesign-nov02zf -->
+
+<!-- doomo-ls4-life-events-nov04a -->
+LS4 (2026-11-04, `doomo-ls4-life-events-nov04a`): six more household life events appended to the LS3 table (bedtime story, homework help, an elder's old stories, a pet's new trick, movie night, bake-off); append-only, old saves load (missing cooldown bytes read 0); news lines fit NEWS_LEN 64; 3 new tests, `make -C core test` 768/768, story-check clean; core only, not built for GBA/PS1 here.
