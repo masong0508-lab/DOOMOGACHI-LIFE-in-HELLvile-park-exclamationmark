@@ -100,7 +100,7 @@ int main(int argc, char **argv)
             r.flags = rec[4] ? RF_HELLBORN : 0;
             resident_randomize_look(&r, seed);
             w = 48; h = 1;
-            memcpy(buf, &r.look, sizeof r.look);
+            memcpy(buf, RES_LOOK_PTR(&r), sizeof (*RES_LOOK_PTR(&r)));
             break; }
         default:
             fprintf(stderr, "portrait_host: unknown kind %d\n", kind);

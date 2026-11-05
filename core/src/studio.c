@@ -418,7 +418,7 @@ void st_picker_draw(void)
         ui_text(x + 36, yy + 3, st_name(id), sel ? PAL_WHITE : st->text);
         ui_text(x + 36, yy + 12, district_of(id), sel ? ui_lighter(st->accent) : st->text_dim);
         if (r) {
-            int sec = song_section_of_voice(r->voice);
+            int sec = song_section_of_voice(RES_VOICE_PTR(r));
             sl[0] = sec_letter[sec];
             ui_round_rect(x + lw - 6, yy + 6, 9, 11, 3, PAL_PAINT(sec_paint[sec], 0));
             ui_text(x + lw - 4, yy + 7, sl, PAL_WHITE);

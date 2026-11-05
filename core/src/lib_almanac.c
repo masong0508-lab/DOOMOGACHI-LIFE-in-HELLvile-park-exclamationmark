@@ -544,7 +544,7 @@ static void detail(int sw, int sh)
         const DoomoImage *img;
         if (r->status == RES_POSSESSED || r->status == RES_SOUL_LOST) expr = EXPR_POSSESSED;
         else if (r->status == RES_DEAD) expr = EXPR_DEAD;
-        img = figure_image(&r->look, r->status, expr);
+        img = figure_image(RES_LOOK_PTR(r), r->status, expr);
         if (img) plat_image(fx + 2, y + h - 16 - img->h * fs, img, fs, 0, 0);
     }
     if (cast_of(id) >= 0) {

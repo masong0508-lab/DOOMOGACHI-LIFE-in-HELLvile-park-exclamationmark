@@ -32,6 +32,12 @@
 #define RES_LOOK(r, gf)         (((const uint8_t *)&(r)->look)[1 + (gf)])
 #define RES_SET_LOOK(r, gf, v)  (((uint8_t *)&(r)->look)[1 + (gf)] = (uint8_t)(v))
 
+/* Whole-record uses (v1 layout only: the flip replaces these with res_look() style copies).
+ * RES_LOOK_PTR(r) is a DoomoLook pointer for read-only passes and copies. */
+#define RES_LOOK_PTR(r)         (&(r)->look)
+#define RES_VOICE_PTR(r)        ((r)->voice)
+#define RES_PERSONA_PTR(r)      ((r)->persona)
+
 #define RES_VOICE(r, i)         ((r)->voice[i])
 #define RES_SET_VOICE(r, i, v)  ((r)->voice[i] = (uint8_t)(v))
 #define RES_PERSONA(r, i)       ((r)->persona[i])

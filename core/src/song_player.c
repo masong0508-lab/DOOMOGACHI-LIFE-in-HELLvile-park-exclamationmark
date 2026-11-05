@@ -201,7 +201,7 @@ static const uint8_t *voice_of(int id)
     static const uint8_t def_voice[VOICE_COUNT] = { 16, 14, 18, 12, 8 };
     const DoomoResident *r = id >= 0 ? town_res(id) : NULL;
     if (!r || (id < DOOMO_MAX_RESIDENTS && r->status == RES_EMPTY)) return def_voice;
-    return r->voice;
+    return RES_VOICE_PTR(r);
 }
 
 int song_singer_section(const DoomoSong *s, int i)

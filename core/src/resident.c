@@ -737,7 +737,7 @@ void resident_generate(DoomoResident *r, uint32_t seed)
     DoomoRng rng;
     rng_seed(&rng, seed);
     memset(r, 0, sizeof(*r));
-    gen_look(&r->look, &rng, 0);
+    gen_look(RES_LOOK_PTR(r), &rng, 0);
     gen_rest(r, &rng, 0);
 }
 
@@ -746,7 +746,7 @@ void resident_generate_hellborn(DoomoResident *r, uint32_t seed)
     DoomoRng rng;
     rng_seed(&rng, seed ^ 0x48E11B0Du);
     memset(r, 0, sizeof(*r));
-    gen_look(&r->look, &rng, 1);
+    gen_look(RES_LOOK_PTR(r), &rng, 1);
     gen_rest(r, &rng, 1);
 }
 
@@ -754,7 +754,7 @@ void resident_randomize_look(DoomoResident *r, uint32_t seed)
 {
     DoomoRng rng;
     rng_seed(&rng, seed ^ 0x100C0000u);
-    gen_look(&r->look, &rng, (r->flags & RF_HELLBORN) != 0);
+    gen_look(RES_LOOK_PTR(r), &rng, (r->flags & RF_HELLBORN) != 0);
 }
 
 /* ---------------------------------------------------------------------- */
@@ -777,7 +777,7 @@ static int fix_range(uint8_t *v, int lo, int hi, int def)
 
 int resident_sanitize(DoomoResident *r)
 {
-    DoomoLook *l = &r->look;
+    DoomoLook *l = RES_LOOK_PTR(r);
     int n = 0, i, end;
 
     n += fix_enum(&l->species, SPECIES_COUNT, SPECIES_HUMAN);
@@ -846,11 +846,11 @@ int resident_sanitize(DoomoResident *r)
         n++;
     }
 
-    for (i = 0; i < VOICE_COUNT; i++) n += fix_max(&r->voice[i], 31);
-    for (i = 0; i < PERS_COUNT; i++) n += fix_max(&r->persona[i], 15);
+    for (i = 0; i < VOICE_COUNT; i++) { uint8_t v = RES_VOICE(r, i); n += fix_max(&v, 31); RES_SET_VOICE(r, i, v); }
+    for (i = 0; i < PERS_COUNT; i++) { uint8_t v = RES_PERSONA(r, i); n += fix_max(&v, 15); RES_SET_PERSONA(r, i, v); }
     for (i = 0; i < STAT_COUNT; i++) n += fix_max(&r->stat[i], 100);
     n += fix_enum(&r->status, RES_GHOST + 1, RES_ALIVE);
-    n += fix_enum(&r->pronoun, PRONOUN_COUNT, PRONOUN_THEY);
+    { uint8_t v = RES_PRONOUN(r); n += fix_enum(&v, PRONOUN_COUNT, PRONOUN_THEY); RES_SET_PRONOUN(r, v); }
     {
         /* romance = preference (bits 0..2) + life stage (bits 4..6); the
          * reserved bits are cleared. A stage outside LIFE_* fails safe: it
@@ -863,15 +863,15 @@ int resident_sanitize(DoomoResident *r)
         r->romance = (uint8_t)(pref | (stage << LIFE_STAGE_SHIFT));
         n += bad;
     }
-    n += fix_enum(&r->bday_month, 12, 0);
-    n += fix_range(&r->bday_day, 1, 28, 1);
-    n += fix_enum(&r->like_food, FOOD_COUNT, 0);
-    n += fix_enum(&r->like_hobby, HOBBY_COUNT, 0);
-    n += fix_enum(&r->like_music, MUSIC_COUNT, 0);
-    n += fix_max(&r->like_color, PAL_PAINT_COUNT - 1);
-    n += fix_enum(&r->hate_food, FOOD_COUNT, 1);
-    n += fix_enum(&r->fear, FEAR_COUNT, 0);
-    n += fix_enum(&r->catchphrase, CATCHPHRASE_COUNT, 0);
+    { uint8_t v = RES_BDAY_MONTH(r); n += fix_enum(&v, 12, 0); RES_SET_BDAY_MONTH(r, v); }
+    { uint8_t v = RES_BDAY_DAY(r); n += fix_range(&v, 1, 28, 1); RES_SET_BDAY_DAY(r, v); }
+    { uint8_t v = RES_LIKE_FOOD(r); n += fix_enum(&v, FOOD_COUNT, 0); RES_SET_LIKE_FOOD(r, v); }
+    { uint8_t v = RES_LIKE_HOBBY(r); n += fix_enum(&v, HOBBY_COUNT, 0); RES_SET_LIKE_HOBBY(r, v); }
+    { uint8_t v = RES_LIKE_MUSIC(r); n += fix_enum(&v, MUSIC_COUNT, 0); RES_SET_LIKE_MUSIC(r, v); }
+    { uint8_t v = RES_LIKE_COLOR(r); n += fix_max(&v, PAL_PAINT_COUNT - 1); RES_SET_LIKE_COLOR(r, v); }
+    { uint8_t v = RES_HATE_FOOD(r); n += fix_enum(&v, FOOD_COUNT, 1); RES_SET_HATE_FOOD(r, v); }
+    { uint8_t v = RES_FEAR(r); n += fix_enum(&v, FEAR_COUNT, 0); RES_SET_FEAR(r, v); }
+    { uint8_t v = RES_CATCHPHRASE(r); n += fix_enum(&v, CATCHPHRASE_COUNT, 0); RES_SET_CATCHPHRASE(r, v); }
     n += fix_max(&r->level, 99);
     n += fix_enum(&r->mood, MOOD_COUNT, MOOD_OK);
     n += fix_enum(&r->activity, ACT_COUNT, ACT_HOME);
@@ -881,7 +881,7 @@ int resident_sanitize(DoomoResident *r)
 
 void resident_default(DoomoResident *r)
 {
-    DoomoLook *l = &r->look;
+    DoomoLook *l = RES_LOOK_PTR(r);
     int i;
     memset(r, 0, sizeof(*r));
     l->species = SPECIES_CATFOLK;

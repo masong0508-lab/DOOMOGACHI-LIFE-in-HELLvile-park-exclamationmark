@@ -731,7 +731,7 @@ static void talk_update(void)
     if (interval < 1) interval = 1;
     if (cr.talk_pos < cr.talk_len) {
         if (cr.talk_t % interval == 0) {
-            audio_voice_char(cr.draft.voice, cr.talk[cr.talk_pos]);
+            audio_voice_char(RES_VOICE_PTR(&cr.draft), cr.talk[cr.talk_pos]);
             cr.talk_pos++;
         }
     } else if (cr.talk_t > (uint16_t)(cr.talk_len * interval + 45)) {
@@ -748,10 +748,10 @@ static void target_look(DoomoLook *out, uint8_t *locked)
     *locked = 0;
     if (cr.phase == CRP_COPY) {
         const DoomoResident *src = cr_copy_res(cr_copy_id_at(cr.copy_sel));
-        *out = src ? src->look : cr.draft.look;
+        *out = src ? (*RES_LOOK_PTR(src)) : (*RES_LOOK_PTR(&cr.draft));
         return;
     }
-    *out = cr.draft.look;
+    *out = (*RES_LOOK_PTR(&cr.draft));
     if (cr.browse < 0 || !row) return;
     tmp = cr.draft;
     if (row->kind == RK_ACTION) {
@@ -764,7 +764,7 @@ static void target_look(DoomoLook *out, uint8_t *locked)
     } else {
         return;
     }
-    *out = tmp.look;
+    *out = (*RES_LOOK_PTR(&tmp));
     *locked = (uint8_t)cr_value_locked(row, cr.browse);
 }
 
@@ -856,10 +856,10 @@ static uint32_t roll_seed(void)
 /* Copy the identity fields (what the creator edits) from src to dst. */
 static void copy_editable(DoomoResident *dst, const DoomoResident *src, int keep_name)
 {
-    dst->look = src->look;
+    (*RES_LOOK_PTR(dst)) = (*RES_LOOK_PTR(src));
     if (!keep_name) memcpy(dst->name, src->name, DOOMO_NAME_LEN);
-    memcpy(dst->voice, src->voice, VOICE_COUNT);
-    memcpy(dst->persona, src->persona, PERS_COUNT);
+    memcpy(RES_VOICE_PTR(dst), RES_VOICE_PTR(src), VOICE_COUNT);
+    memcpy(RES_PERSONA_PTR(dst), RES_PERSONA_PTR(src), PERS_COUNT);
     RES_SET_PRONOUN(dst, RES_PRONOUN(src));
     /* the preference only: the life stage (Age row) is never rolled or
      * copied by accident; write_town() stores the draft's on purpose */
@@ -1680,7 +1680,7 @@ static void update_copy(void)
     if (btn_pressed(BTN_A)) {
         const DoomoResident *src = cr_copy_res(cr_copy_id_at(cr.copy_sel));
         if (!src) { audio_sfx(SFX_ERROR); return; }
-        cr.draft.look = src->look;
+        (*RES_LOOK_PTR(&cr.draft)) = (*RES_LOOK_PTR(src));
         fix_locks(&cr.draft);
         commit(-1);
         if (cr.copy_src) unlock_grant(CRU_COPY_PREMADE);
@@ -1812,7 +1812,7 @@ static void cr_enter(int arg)
     cr.preset_i = 0;
     refresh_home();
     if (cr.phase == CRP_HERO) hero_preview();
-    cr.shown = cr.draft.look;
+    cr.shown = (*RES_LOOK_PTR(&cr.draft));
     cr.img.uid = 0;
     audio_music(SONG_CREATOR);
     cr_sparkle_burst(8, -1);

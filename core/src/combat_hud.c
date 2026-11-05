@@ -402,10 +402,10 @@ static void weapon_view(void)
     }
     /* the off-paw behind, the gun, the trigger paw in front */
     if (me && w->frame != WFRAME_FISTS)
-        draw_paw(x + gx - 22, y + gy + 8, 7, &me->look);
+        draw_paw(x + gx - 22, y + gy + 8, 7, RES_LOOK_PTR(me));
     if (img) plat_image(x, y, img, 1, 0, 0);
     if (me && w->frame != WFRAME_FISTS && w->frame != WFRAME_DUAL_PISTOLS)
-        draw_paw(x + gx, y + gy + 2, 8, &me->look);
+        draw_paw(x + gx, y + gy + 2, 8, RES_LOOK_PTR(me));
     if (combat_px.flash && combat_ws.behaviour != WB_MELEE)
         muzzle_flash(x + mx, y + my, w);
     if (w->frame == WFRAME_DUAL_PISTOLS && combat_px.flash)

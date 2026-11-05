@@ -265,9 +265,9 @@ void exo_fuzz(int cx, int foot_y, uint32_t t, int expr)
     int k;
     if (f && f->status != RES_EMPTY && f->status != RES_DEAD &&
         strncmp(f->name, roster_name(ROSTER_ID_FATHER_FUZZ), DOOMO_NAME_LEN) == 0)
-        look = &f->look;
+        look = RES_LOOK_PTR(f);
     else if (roster_premade(ROSTER_ID_FATHER_FUZZ))
-        look = &roster_premade(ROSTER_ID_FATHER_FUZZ)->look;
+        look = RES_LOOK_PTR(roster_premade(ROSTER_ID_FATHER_FUZZ));
     else
         return;
     img = figure_image(look, RES_ALIVE, expr);

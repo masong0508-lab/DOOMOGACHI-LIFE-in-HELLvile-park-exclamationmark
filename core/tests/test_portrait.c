@@ -30,7 +30,7 @@ static DoomoLook base_look(void)
 {
     DoomoResident r;
     resident_default(&r);
-    return r.look;
+    return (*RES_LOOK_PTR(&r));
 }
 
 /* hash of everything a player can see of a look */
@@ -123,12 +123,12 @@ TEST(portrait_options_visible_on_other_citizens)
         }
         for (li = 0; li < (int)(sizeof(lists) / sizeof(lists[0])); li++) {
             const OptList *o = &lists[li];
-            DoomoLook l0 = r.look;
+            DoomoLook l0 = (*RES_LOOK_PTR(&r));
             uint32_t h0;
             *((uint8_t *)&l0 + o->off) = 0;
             h0 = look_render_hash(&l0, RES_ALIVE, EXPR_NEUTRAL);
             for (v = 1; v < o->count; v++) {
-                DoomoLook l = r.look;
+                DoomoLook l = (*RES_LOOK_PTR(&r));
                 *((uint8_t *)&l + o->off) = (uint8_t)v;
                 if (look_render_hash(&l, RES_ALIVE, EXPR_NEUTRAL) == h0) {
                     fprintf(stderr, "    citizen %d %s: option %d invisible\n", i, o->name, v);
@@ -265,23 +265,23 @@ TEST(portrait_never_writes_out_of_bounds)
         else if (i < 120) resident_generate_hellborn(&r, (uint32_t)i * 977u);
         else {
             /* garbage bytes: the renderer must clamp, never crash */
-            uint8_t *p = (uint8_t *)&r.look;
-            for (k = 0; k < (int)sizeof(r.look); k++) p[k] = (uint8_t)rng_next(&rng);
+            uint8_t *p = (uint8_t *)&(*RES_LOOK_PTR(&r));
+            for (k = 0; k < (int)sizeof((*RES_LOOK_PTR(&r))); k++) p[k] = (uint8_t)rng_next(&rng);
         }
         memset(buf, CANARY, sizeof(buf));
-        portrait_render(&r.look, status, expr, i * 7, buf + PAD);
+        portrait_render(RES_LOOK_PTR(&r), status, expr, i * 7, buf + PAD);
         if (!canary_ok(buf, PORTRAIT_W * PORTRAIT_H)) bad++;
         memset(buf, CANARY, sizeof(buf));
-        figure_render(&r.look, status, expr, i * 7, buf + PAD);
+        figure_render(RES_LOOK_PTR(&r), status, expr, i * 7, buf + PAD);
         if (!canary_ok(buf, FIGURE_W * FIGURE_H)) bad++;
         for (k = 0; k < 16; k++) {
             memset(buf, CANARY, sizeof(buf));
-            bodyspr_render(&r.look, status, k >> 2, k & 3, buf + PAD);
+            bodyspr_render(RES_LOOK_PTR(&r), status, k >> 2, k & 3, buf + PAD);
             if (!canary_ok(buf, BODYSPR_W * BODYSPR_H)) bad++;
         }
         for (k = 0; k < 35; k++) {
             memset(buf, CANARY, sizeof(buf));
-            fighter_render(&r.look, status, k % 5, k / 5, (i + k) % WFRAME_COUNT, buf + PAD);
+            fighter_render(RES_LOOK_PTR(&r), status, k % 5, k / 5, (i + k) % WFRAME_COUNT, buf + PAD);
             if (!canary_ok(buf, FIGHTER_W * FIGHTER_H)) bad++;
         }
     }
@@ -295,12 +295,12 @@ TEST(portrait_is_deterministic_and_nonempty)
     for (i = 0; i < 20; i++) {
         DoomoResident r;
         resident_generate(&r, 100u + (uint32_t)i);
-        portrait_render(&r.look, RES_ALIVE, EXPR_NEUTRAL, 5, a);
-        portrait_render(&r.look, RES_ALIVE, EXPR_NEUTRAL, 5, b);
+        portrait_render(RES_LOOK_PTR(&r), RES_ALIVE, EXPR_NEUTRAL, 5, a);
+        portrait_render(RES_LOOK_PTR(&r), RES_ALIVE, EXPR_NEUTRAL, 5, b);
         CHECK(memcmp(a, b, PORTRAIT_W * PORTRAIT_H) == 0);
         for (k = 0, n = 0; k < PORTRAIT_W * PORTRAIT_H; k++) n += a[k] != 0;
         CHECK_MSG(n > PORTRAIT_W * PORTRAIT_H / 3, "portrait %d is mostly empty (%d px)", i, n);
-        bodyspr_render(&r.look, RES_ALIVE, 0, 0, a);
+        bodyspr_render(RES_LOOK_PTR(&r), RES_ALIVE, 0, 0, a);
         for (k = 0, n = 0; k < BODYSPR_W * BODYSPR_H; k++) n += a[k] != 0;
         CHECK_MSG(n > 80, "chibi %d is mostly empty (%d px)", i, n);
     }
@@ -390,7 +390,7 @@ TEST(portrait_cache_keeps_uids_until_pixels_change)
     a = fighter_image(id, 0, 4, WFRAME_SNIPER);
     CHECK(a && a->w == FIGHTER_W && a->h == FIGHTER_H);
     CHECK(fighter_image(id, 0, 4, WFRAME_SNIPER)->uid == a->uid);
-    a = figure_image(&r->look, RES_ALIVE, EXPR_NEUTRAL);
+    a = figure_image(RES_LOOK_PTR(r), RES_ALIVE, EXPR_NEUTRAL);
     CHECK(a && a->w == FIGURE_W && a->h == FIGURE_H);
     /* empty slots and silly ids give a placeholder, never NULL */
     CHECK(portrait_image(-7, EXPR_NEUTRAL) != NULL);
@@ -427,9 +427,9 @@ TEST(portrait_render_cost_is_bounded)
         DoomoResident r;
         if (i & 1) resident_generate_hellborn(&r, 9000u + (uint32_t)i);
         else resident_generate(&r, 9000u + (uint32_t)i);
-        portrait_render(&r.look, RES_ALIVE, EXPR_NEUTRAL, i, buf);
+        portrait_render(RES_LOOK_PTR(&r), RES_ALIVE, EXPR_NEUTRAL, i, buf);
         if (portrait_last_ops() > worst) worst = portrait_last_ops();
-        figure_render(&r.look, RES_ALIVE, EXPR_NEUTRAL, i, buf);
+        figure_render(RES_LOOK_PTR(&r), RES_ALIVE, EXPR_NEUTRAL, i, buf);
         if (portrait_last_ops() > worst) worst = portrait_last_ops();
     }
     /* pixel visits per render (each a handful of integer ops) */
@@ -451,12 +451,12 @@ static void run_anim(int id, int figure, int steps, int noise, int n, uint32_t *
     for (t = 0; t < n; t++) {
         const DoomoImage *img;
         portrait_cache_clock((uint32_t)t, steps);
-        if (figure) img = figure_image(&town_res(id)->look, RES_ALIVE, EXPR_LOVE);
+        if (figure) img = figure_image(RES_LOOK_PTR(town_res(id)), RES_ALIVE, EXPR_LOVE);
         else img = portrait_image(id, EXPR_LOVE);
         hash[t] = fnv(img->pix, img->w * img->h, 2166136261u);
         uid[t] = img->uid;
         if (noise && t % 3 == 1)
-            portrait_render(&other.look, RES_ALIVE, EXPR_SAD, t, junk);
+            portrait_render(RES_LOOK_PTR(&other), RES_ALIVE, EXPR_SAD, t, junk);
         if (noise && t % 7 == 4) (void)bodyspr_image(id, t & 3, (t >> 2) & 3);
     }
     portrait_cache_reset();
@@ -512,8 +512,8 @@ static int has_paint(const uint8_t *pix, int n, int paint)
 TEST(portrait_canon_turkey_mayor_and_animatronic_bonejangles)
 {
     static uint8_t buf[PAD + FIGURE_W * FIGURE_H + PAD], a[FIGURE_W * FIGURE_H];
-    const DoomoLook *mayor = &roster_premade(ROSTER_ID_MAYOR)->look;
-    const DoomoLook *bones = &roster_premade(5)->look;
+    const DoomoLook *mayor = RES_LOOK_PTR(roster_premade(ROSTER_ID_MAYOR));
+    const DoomoLook *bones = RES_LOOK_PTR(roster_premade(5));
     const DoomoLook *looks[2];
     uint32_t h[35];
     int i, k, st, e, bad = 0;

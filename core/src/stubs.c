@@ -416,7 +416,7 @@ static const DoomoLook *stub_look_of(int id, int *status)
         r = &def;
     }
     *status = r->status;
-    return &r->look;
+    return &(*RES_LOOK_PTR(r));
 }
 WEAK const DoomoImage *portrait_image(int resident_id, int expr)
 {

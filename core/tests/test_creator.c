@@ -603,8 +603,8 @@ TEST(creator_randomiser_respects_locks)
         press(BTN_START);
         press_n(BTN_DOWN, 2);
         press(BTN_A);
-        CHECK(memcmp(&before.look, &cr.draft.look, sizeof(DoomoLook)) == 0);
-        CHECK(memcmp(before.persona, cr.draft.persona, PERS_COUNT) == 0);
+        CHECK(memcmp(RES_LOOK_PTR(&before), RES_LOOK_PTR(&cr.draft), sizeof(DoomoLook)) == 0);
+        CHECK(memcmp(RES_PERSONA_PTR(&before), RES_PERSONA_PTR(&cr.draft), PERS_COUNT) == 0);
     }
 }
 

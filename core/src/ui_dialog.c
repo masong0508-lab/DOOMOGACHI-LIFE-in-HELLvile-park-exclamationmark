@@ -437,7 +437,7 @@ static void babble(DlgEntry *e, int from, int to, int len)
     int i;
     if (!opt_get(OPT_VOICE_BABBLE) || d_dead) return;
     r = has_portrait(e->speaker) ? town_res(e->speaker) : NULL;
-    voice = (e->flags & DL_GURGLE) ? audio_voice_preset(VOICE_GURGLE) : r ? r->voice : narrator;
+    voice = (e->flags & DL_GURGLE) ? audio_voice_preset(VOICE_GURGLE) : r ? RES_VOICE_PTR(r) : narrator;
     if (!voice) voice = narrator;
     for (i = from; i < to && i < len; i++) {
         char c = e->text[d_page + i];

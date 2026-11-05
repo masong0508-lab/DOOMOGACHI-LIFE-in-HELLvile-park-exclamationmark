@@ -298,6 +298,24 @@ def gf(field):
     return "GF_" + field.upper()
 
 
+def whole(s, e0, end, ptr_expr, deref):
+    """A whole look / array: `&E->look` -> RES_LOOK_PTR(E); a copy or compare -> (*RES_LOOK_PTR(E))."""
+    b = e0
+    while b > 0 and s[b - 1] in " \t\r\n":
+        b -= 1
+    if deref:
+        if s[b - 1:b] == "&":
+            c0 = b - 1
+            while c0 > 0 and s[c0 - 1] in " \t\r\n":
+                c0 -= 1
+            if not (c0 > 0 and (is_id(s[c0 - 1]) or s[c0 - 1] in ")]")):
+                return b - 1, end, ptr_expr
+        return e0, end, "(*%s)" % ptr_expr
+    if s[b - 1:b] == "&":
+        raise Hand("address of a whole array")
+    return e0, end, ptr_expr
+
+
 def plan(s, off, mem):
     """(start, end, replacement) for the member at s[off:off+len(mem)], or raise Hand(reason)."""
     n = len(mem)
@@ -332,7 +350,7 @@ def plan(s, off, mem):
     if mem == "look":
         j2 = skip_ws(s, j)
         if s[j2] != ".":
-            raise Hand("whole look used (copy, pass or compare)")
+            return whole(s, e0, j, "RES_LOOK_PTR(%s)" % ptr, True)
         j2 = skip_ws(s, j2 + 1)
         m = re.match(r"\w+", s[j2:])
         if not m:
@@ -348,7 +366,7 @@ def plan(s, off, mem):
     elif mem in ("voice", "persona"):
         j2 = skip_ws(s, j)
         if s[j2] != "[":
-            raise Hand("whole %s array used" % mem)
+            return whole(s, e0, j, "RES_%s_PTR(%s)" % (mem.upper(), ptr), False)
         close = match_fwd(s, j2)
         if close is None:
             raise Hand("odd index")

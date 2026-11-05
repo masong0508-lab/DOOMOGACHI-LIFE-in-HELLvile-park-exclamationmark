@@ -381,7 +381,7 @@ TEST(family_resident_builds_the_person_from_the_identity)
     CHECK(id >= 0);
     CHECK(family_resident(id, &r));
     resident_generate(&g, 4242u);
-    CHECK(memcmp(&r.look, &g.look, sizeof(r.look)) == 0);            /* the seed is the look */
+    CHECK(memcmp(RES_LOOK_PTR(&r), RES_LOOK_PTR(&g), sizeof((*RES_LOOK_PTR(&r)))) == 0);            /* the seed is the look */
     CHECK_STR(r.name, "Pip");
     CHECK_EQ(RES_PRONOUN(&r), PRONOUN_SHE);
     CHECK_EQ(r.status, RES_ALIVE);

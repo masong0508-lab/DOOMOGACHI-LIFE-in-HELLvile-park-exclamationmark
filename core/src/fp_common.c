@@ -247,10 +247,10 @@ int fp_host_in_town(int roster_id)
 const DoomoLook *fp_host_look(int roster_id)
 {
     const DoomoResident *p;
-    if (fp_host_in_town(roster_id)) return &doomo_town.res[roster_id].look;
+    if (fp_host_in_town(roster_id)) return &(*RES_LOOK_PTR(&doomo_town.res[roster_id]));
     p = roster_premade(roster_id);
-    if (p) return &p->look;
-    return &doomo_town.player.look;
+    if (p) return &(*RES_LOOK_PTR(p));
+    return &(*RES_LOOK_PTR(&doomo_town.player));
 }
 
 const char *fp_activity_name(int act)
@@ -716,14 +716,14 @@ int fp_chibi(int id, int x, int y, int dir, int frame, int flags)
     uint32_t key;
     if (!r) return 0;
     key = 0x10000000u | ((uint32_t)id << 8) | ((uint32_t)(dir & 3) << 4) | (uint32_t)(frame & 15);
-    if (memo_ok(key, look_hash(&r->look, r->status), 1)) {
+    if (memo_ok(key, look_hash(RES_LOOK_PTR(r), r->status), 1)) {
         const DoomoImage *img = bodyspr_image(id, dir, frame);
         if (img) {
             plat_image(x, y, img, 1, flags, 0);
             return 1;
         }
     }
-    placeholder(x + BODYSPR_W / 2, y + BODYSPR_H - 9, 6, look_skin(&r->look, 1));
+    placeholder(x + BODYSPR_W / 2, y + BODYSPR_H - 9, 6, look_skin(RES_LOOK_PTR(r), 1));
     return 0;
 }
 
@@ -743,11 +743,11 @@ void fp_portrait(int x, int y, int id, int scale, int expr, int style)
     ui_heart(x + 7, y + h / 2, 2, st->fill_lo);
     if (!r) return;
     key = 0x20000000u | ((uint32_t)id << 8) | (uint32_t)(expr & 0xFF);
-    if (memo_ok(key, look_hash(&r->look, r->status), 3)) {
+    if (memo_ok(key, look_hash(RES_LOOK_PTR(r), r->status), 3)) {
         const DoomoImage *img = portrait_image(id, expr);
         if (img) plat_image(x + 3, y + 3, img, scale, 0, 0);
     } else {
-        placeholder(x + w / 2, y + h / 2, 10 * scale, look_skin(&r->look, 1));
+        placeholder(x + w / 2, y + h / 2, 10 * scale, look_skin(RES_LOOK_PTR(r), 1));
     }
 }
 

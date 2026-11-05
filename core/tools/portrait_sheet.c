@@ -98,7 +98,7 @@ static DoomoLook base_look(void)
 {
     DoomoResident r;
     resident_default(&r);
-    return r.look;
+    return (*RES_LOOK_PTR(&r));
 }
 
 /* ---- option lists ------------------------------------------------------------- */
@@ -304,9 +304,9 @@ static void sheet_random(int hell)
         int x = 2 + (i % 8) * 50, y = 2 + (i / 8) * 58, yf = 2 + (i / 8) * 82;
         if (hell) resident_generate_hellborn(&r, 1000u + (uint32_t)i * 7919u);
         else resident_generate(&r, 1000u + (uint32_t)i * 7919u);
-        portrait_render(&r.look, RES_ALIVE, EXPR_NEUTRAL, i * 13, por);
+        portrait_render(RES_LOOK_PTR(&r), RES_ALIVE, EXPR_NEUTRAL, i * 13, por);
         count_ops();
-        figure_render(&r.look, RES_ALIVE, EXPR_NEUTRAL, i * 13, fig);
+        figure_render(RES_LOOK_PTR(&r), RES_ALIVE, EXPR_NEUTRAL, i * 13, fig);
         count_ops();
         cell_bg(&s, x, y, 48, 56, i + (i / 8));
         sh_blit(&s, x, y, por, PORTRAIT_W, PORTRAIT_H);
@@ -339,7 +339,7 @@ static void sheet_expressions(void)
         sample_resident(i, &r);
         for (e = 0; e < EXPR_COUNT; e++) {
             int x = 2 + e * 50, y = 12 + i * 58;
-            portrait_render(&r.look, RES_ALIVE, e, 4, por);
+            portrait_render(RES_LOOK_PTR(&r), RES_ALIVE, e, 4, por);
             cell_bg(&s, x, y, 48, 56, e + i);
             sh_blit(&s, x, y, por, PORTRAIT_W, PORTRAIT_H);
         }
@@ -362,8 +362,8 @@ static void sheet_statuses(void)
         sample_resident(i, &r);
         for (k = 0; k < 5; k++) {
             int x = 2 + k * 100, y = 12 + i * 84;
-            portrait_render(&r.look, st[k], EXPR_NEUTRAL, 8, por);
-            figure_render(&r.look, st[k], EXPR_NEUTRAL, 8, fig);
+            portrait_render(RES_LOOK_PTR(&r), st[k], EXPR_NEUTRAL, 8, por);
+            figure_render(RES_LOOK_PTR(&r), st[k], EXPR_NEUTRAL, 8, fig);
             cell_bg(&s, x, y, 48, 82, k + i);
             sh_blit(&s, x, y + 12, por, PORTRAIT_W, PORTRAIT_H);
             cell_bg(&s, x + 49, y, 48, 82, k + i + 1);
@@ -387,8 +387,8 @@ static void sheet_anim(void)
         if (i == 0) RES_SET_LOOK(&r, GF_AURA, AURA_SPARKLES);
         for (k = 0; k < 8; k++) {
             int x = 2 + k * 50, y = 2 + i * 140;
-            portrait_render(&r.look, RES_ALIVE, EXPR_NEUTRAL, an[k], por);
-            figure_render(&r.look, RES_ALIVE, EXPR_NEUTRAL, an[k], fig);
+            portrait_render(RES_LOOK_PTR(&r), RES_ALIVE, EXPR_NEUTRAL, an[k], por);
+            figure_render(RES_LOOK_PTR(&r), RES_ALIVE, EXPR_NEUTRAL, an[k], fig);
             cell_bg(&s, x, y, 48, 56, k);
             sh_blit(&s, x, y, por, PORTRAIT_W, PORTRAIT_H);
             cell_bg(&s, x, y + 57, 48, 80, k + 1);
@@ -411,7 +411,7 @@ static void sheet_walk(void)
         for (d = 0; d < 4; d++)
             for (f = 0; f < 4; f++) {
                 int x = 2 + (d * 4 + f) * 18, y = 2 + i * 26;
-                bodyspr_render(&r.look, RES_ALIVE, d, f, spr);
+                bodyspr_render(RES_LOOK_PTR(&r), RES_ALIVE, d, f, spr);
                 count_ops();
                 cell_bg(&s, x, y, 16, 24, d + i);
                 sh_blit(&s, x, y, spr, BODYSPR_W, BODYSPR_H);
@@ -434,7 +434,7 @@ static void sheet_fighter(void)
         for (v = 0; v < 5; v++)
             for (a = 0; a < 7; a++) {
                 int x = 2 + a * 34, y = 2 + (i * 5 + v) * 50;
-                fighter_render(&r.look, RES_ALIVE, v, a, wf[i], spr);
+                fighter_render(RES_LOOK_PTR(&r), RES_ALIVE, v, a, wf[i], spr);
                 count_ops();
                 cell_bg(&s, x, y, 32, 48, v + a);
                 sh_blit(&s, x, y, spr, FIGHTER_W, FIGHTER_H);
@@ -482,10 +482,10 @@ static void sheet_closeup(void)
         if (i == 0) resident_default(&r);
         else if (i == 3) resident_generate_hellborn(&r, seeds[i]);
         else resident_generate(&r, seeds[i]);
-        portrait_render(&r.look, RES_ALIVE, EXPR_NEUTRAL, 0, por);
-        figure_render(&r.look, RES_ALIVE, EXPR_NEUTRAL, 0, fig);
-        bodyspr_render(&r.look, RES_ALIVE, 0, 0, spr);
-        fighter_render(&r.look, RES_ALIVE, 3, 0, WFRAME_PISTOL, ftr);
+        portrait_render(RES_LOOK_PTR(&r), RES_ALIVE, EXPR_NEUTRAL, 0, por);
+        figure_render(RES_LOOK_PTR(&r), RES_ALIVE, EXPR_NEUTRAL, 0, fig);
+        bodyspr_render(RES_LOOK_PTR(&r), RES_ALIVE, 0, 0, spr);
+        fighter_render(RES_LOOK_PTR(&r), RES_ALIVE, 3, 0, WFRAME_PISTOL, ftr);
         cell_bg(&s, x, 2, 48, 56, i);
         sh_blit(&s, x, 2, por, PORTRAIT_W, PORTRAIT_H);
         cell_bg(&s, x, 60, 48, 80, i + 1);

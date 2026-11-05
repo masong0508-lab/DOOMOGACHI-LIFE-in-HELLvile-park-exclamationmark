@@ -806,7 +806,7 @@ void concert_draw_performers(const StageView *v, const StageLayout *L)
     {
         const DoomoResident *r = res_of(lead);
         if (r) {
-            const DoomoImage *img = figure_image(&r->look, r->status,
+            const DoomoImage *img = figure_image(RES_LOOK_PTR(r), r->status,
                                                  v->sec == SEC_END ? EXPR_HAPPY : EXPR_TALK);
             int b = bob_of(v, 0, 2), sx = cx;
             if (v->lights > 4)

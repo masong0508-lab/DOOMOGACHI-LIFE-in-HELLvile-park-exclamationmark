@@ -650,7 +650,7 @@ static void draw_figures(void)
         if (shown[k] != id && shown[k] >= 0 && id >= 0 && wait[k] < 20 && roster_premade(id)) {
             const DoomoImage *img;
             portrait_hold(2);
-            img = figure_image(&roster_premade(id)->look, RES_ALIVE, expr);
+            img = figure_image(RES_LOOK_PTR(roster_premade(id)), RES_ALIVE, expr);
             portrait_hold(0);
             if (img) shown[k] = id; else { wait[k]++; id = shown[k]; }
         }
@@ -664,8 +664,8 @@ static void draw_figures(void)
         {
             /* GBA: the figure is a set of hardware sprites (above the
              * bitmap; the footer text keeps clear of them) */
-            const DoomoImage *img = figure_image(&p->look, RES_ALIVE, expr);
-            if (!img || !plat_figure_obj(k, x, y + hop, img)) fp_figure(x, y + hop, &p->look, RES_ALIVE, expr);
+            const DoomoImage *img = figure_image(RES_LOOK_PTR(p), RES_ALIVE, expr);
+            if (!img || !plat_figure_obj(k, x, y + hop, img)) fp_figure(x, y + hop, RES_LOOK_PTR(p), RES_ALIVE, expr);
         }
         portrait_hold(0);
     }

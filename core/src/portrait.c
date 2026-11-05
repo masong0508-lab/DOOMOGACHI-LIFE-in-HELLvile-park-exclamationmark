@@ -896,7 +896,7 @@ const DoomoImage *portrait_image(int resident_id, int expr)
     cache_init();
     r = res_of(resident_id, &status);
     if (expr < 0 || expr >= EXPR_COUNT) expr = EXPR_NEUTRAL;
-    look_for_stage(&r->look, RES_STAGE(r), &al);       /* F4: the face of their age */
+    look_for_stage(RES_LOOK_PTR(r), RES_STAGE(r), &al);       /* F4: the face of their age */
     return animated(CK_PORTRAIT, resident_id, &al, status, expr);
 }
 
@@ -907,7 +907,7 @@ const DoomoImage *figure_image(const DoomoLook *l, int status, int expr)
     cache_init();
     if (!l) {
         if (!def_ready) { resident_default(&def); def_ready = 1; }
-        l = &def.look;
+        l = RES_LOOK_PTR(&def);
     }
     if (expr < 0 || expr >= EXPR_COUNT) expr = EXPR_NEUTRAL;
     if (status < 0 || status > 15) status = RES_ALIVE;
@@ -926,7 +926,7 @@ const DoomoImage *bodyspr_image(int resident_id, int dir, int frame)
     r = res_of(resident_id, &status);
     dir &= 3;
     frame &= 3;
-    look_for_stage(&r->look, RES_STAGE(r), &L);        /* F4: the body of their age */
+    look_for_stage(RES_LOOK_PTR(r), RES_STAGE(r), &L);        /* F4: the body of their age */
     lh = look_hash(&L);
     key = (uint32_t)(dir | (frame << 2)) | ((uint32_t)status << 12);
     e = cache_find(CK_BODY, resident_id, key, lh, 0xFFFFFFFFu);
@@ -952,7 +952,7 @@ const DoomoImage *fighter_image(int resident_id, int view, int anim, int weapon_
     view = DOOMO_CLAMP(view, 0, 4);
     anim = DOOMO_CLAMP(anim, 0, 6);
     if (weapon_frame < 0 || weapon_frame >= 64) weapon_frame = 0;
-    look_for_stage(&r->look, RES_STAGE(r), &L);        /* F4: the body of their age */
+    look_for_stage(RES_LOOK_PTR(r), RES_STAGE(r), &L);        /* F4: the body of their age */
     lh = look_hash(&L);
     key = (uint32_t)(view | (anim << 3) | (weapon_frame << 6)) | ((uint32_t)status << 12);
     e = cache_find(CK_FIGHTER, resident_id, key, lh, 0xFFFFFFFFu);
