@@ -4,13 +4,8 @@ scene NEW_ISLAND
 wait 20
 press LEFT
 wait 16
-press A
-wait 10
-press A
+press START
 wait 16
-press DOWN
-press A
-wait 20
 expect-scene TEXT_ENTRY
 type "Mochi Isle\n"
 wait 20

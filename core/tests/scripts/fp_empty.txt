@@ -6,14 +6,9 @@ shot new_island_cards
 press LEFT
 wait 16
 shot new_island_empty
-press A
-wait 10
-press A
+press START
 wait 16
-shot new_island_name_question
-press DOWN
-press A
-wait 20
+shot new_island_name_entry
 expect-scene TEXT_ENTRY
 type "Mochi Isle\n"
 wait 20

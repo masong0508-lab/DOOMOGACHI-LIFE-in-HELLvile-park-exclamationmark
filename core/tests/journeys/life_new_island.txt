@@ -6,11 +6,7 @@ wait 10
 expect-scene NEW_ISLAND
 journey-begin life_new_island
 press A
-wait 10
-press A
 wait 20
-press A
-wait 2
 press A
 wait 2
 press A

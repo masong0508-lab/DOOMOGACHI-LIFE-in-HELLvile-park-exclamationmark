@@ -7,7 +7,8 @@
  *   Random Island         1000 seeded random citizens (type a seed with
  *                         SELECT, reroll with LEFT/RIGHT on the card)
  *
- * Then: name your island? (optional) -> town_new + sim_init -> the island.
+ * Then: town_new + sim_init -> the island. A goes straight there (LS6); START
+ * names the island first (a Town Hall row renames it later too).
  */
 #include "fp_int.h"
 
@@ -53,21 +54,11 @@ static void build(void)
     fp_goto_island(FP_ISLAND_ARG_WELCOME);
 }
 
+/* START: name the island, then build. Cancelling the entry stays on the card. */
 static void cb_name(int ok)
 {
-    if (!ok) N.namebuf[0] = 0;
+    if (!ok) { N.namebuf[0] = 0; return; }
     build();
-}
-
-static void cb_ask_name(int c)
-{
-    if (c == 1) {   /* U6b: "Maybe later" is first, so A, A skips naming */
-        N.namebuf[0] = 0;
-        ui_text_entry("Name your island", N.namebuf, FP_ISLAND_NAME_LEN, cb_name);
-    } else {
-        N.namebuf[0] = 0;
-        build();
-    }
 }
 
 static void cb_seed(int ok)
@@ -102,11 +93,16 @@ static void ni_update(void)
         ui_text_entry("Island seed (number or word)", N.seedbuf, sizeof(N.seedbuf), cb_seed);
         return;
     }
-    if (btn_pressed(BTN_A)) {
-        static const char *const opts[2] = { "Maybe later", "Yes, name it!" };
+    if (btn_pressed(BTN_START)) {
         audio_sfx(SFX_SELECT);
-        fp_fx_burst(fp_sw() / 2, fp_sh() / 2, FX_CONFETTI, 16);
-        ui_choice(-1, "Would you like to give your island a name?", opts, 2, cb_ask_name);
+        N.namebuf[0] = 0;
+        ui_text_entry("Name your island", N.namebuf, FP_ISLAND_NAME_LEN, cb_name);
+        return;
+    }
+    if (btn_pressed(BTN_A)) {   /* LS6: no question in the way; two presses fewer */
+        audio_sfx(SFX_SELECT);
+        N.namebuf[0] = 0;
+        build();
         return;
     }
     if (btn_pressed(BTN_B)) { audio_sfx(SFX_CANCEL); scene_set(&SCENE_TITLE, 0); }
@@ -215,7 +211,7 @@ static void ni_draw(void)
         }
     }
     ui_hint(N.sel == C_RANDOM ? "\x88\x87 Pick  \x89 Reroll  SEL Seed  " STR_ICON_A " Go!"
-                              : "\x88\x87 Pick  " STR_ICON_A " Let's go!  " STR_ICON_B " Back", WIN_CUTE);
+                              : "\x88\x87 Pick  " STR_ICON_A " Go!  START Name  " STR_ICON_B " Back", WIN_CUTE);
     fp_fx_draw();
 }
 

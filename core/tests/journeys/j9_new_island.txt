@@ -16,11 +16,7 @@ wait 2
 expect-scene NEW_ISLAND
 wait 10
 press A
-wait 10
-press A
 wait 20
-press A
-wait 2
 press A
 wait 2
 press A

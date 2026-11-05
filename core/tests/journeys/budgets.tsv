@@ -18,8 +18,8 @@ j5_title_lang		5	12	U5: title -> language Spanish -> title
 j6_ow_save		3	12	U3b: START, START quick-saves from the story pause menu (met: 2; the Save row still works)
 j7_island_save		3	56	U3c: START, START quick-saves from the island menu (met: 2; the Save/Load row still works)
 j8_ow_title		5	13	U3b: story overworld -> title screen
-j9_new_island		9	110	U6: boot -> new Classic island hub (target 10, met by U6e)
-life_new_island		5	62	U6/LS6: New Island screen -> hub
+j9_new_island		7	90	U6/LS6: boot -> new Classic island hub (target 10, met by U6e; A on the card builds, START names, LS6: 9 -> 7)
+life_new_island		3	40	U6/LS6: New Island screen -> hub (met: A builds at once, then the welcome's two presses; START names first)
 life_help_next		2	10	LS-QA: hub -> next problem helped, item in the bag (met: B, A)
 life_missing_item	2	10	LS-QA: hub -> problem needing an item not in the bag, bought on the spot, helped (met: B, A)
 life_feed		6	26	LS-QA: hub -> a citizen found by name and fed (+ the name typed)

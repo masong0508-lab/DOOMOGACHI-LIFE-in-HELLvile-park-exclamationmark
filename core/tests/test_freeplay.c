@@ -71,15 +71,45 @@ TEST(freeplay_new_island_scene_classic)
     int guard = 0;
     scene_set(&SCENE_NEW_ISLAND, 0);
     frames(0, 5);
-    press(BTN_A);                               /* Classic is preselected */
+    press(BTN_A);                               /* Classic is preselected; A builds it (LS6) */
     frames(0, 10);
-    CHECK(top_is(&SCENE_DIALOG));
-    press(BTN_A);                               /* "Maybe later" is first (U6b) */
-    frames(0, 3);
     while (!top_is(&SCENE_ISLAND) && guard++ < 20) { press(BTN_A); frames(0, 2); }
     CHECK(top_is(&SCENE_ISLAND));
     CHECK_EQ(town_count(-1), 1000);
     CHECK(unlock_has(UL_FP_PREMADE_START));
+    CHECK(!unlock_has(UL_FP_NAMER));
+    CHECK_EQ(fp_island_name()[0], 0);
+}
+
+TEST(freeplay_new_island_start_names_it_first)
+{
+    const char *p;
+    int guard = 0;
+    scene_set(&SCENE_NEW_ISLAND, 0);
+    frames(0, 5);
+    press(BTN_START);                           /* LS6: START asks for a name, then builds */
+    frames(0, 5);
+    CHECK(top_is(&SCENE_TEXT_ENTRY));
+    for (p = "Mochi Isle\n"; *p; p++) { ui_text_entry_feed(*p); frames(0, 1); }
+    frames(0, 20);
+    while (!top_is(&SCENE_ISLAND) && guard++ < 20) { press(BTN_A); frames(0, 2); }   /* the welcome */
+    CHECK(top_is(&SCENE_ISLAND));
+    CHECK_EQ(town_count(-1), 1000);
+    CHECK(unlock_has(UL_FP_NAMER));
+    CHECK(strcmp(fp_island_name(), "Mochi Isle") == 0);
+}
+
+TEST(freeplay_new_island_naming_can_be_cancelled)
+{
+    scene_set(&SCENE_NEW_ISLAND, 0);
+    frames(0, 5);
+    press(BTN_START);
+    frames(0, 5);
+    CHECK(top_is(&SCENE_TEXT_ENTRY));
+    press(BTN_B);                               /* backing out stays on the card */
+    frames(0, 10);
+    CHECK(top_is(&SCENE_NEW_ISLAND));
+    CHECK(!unlock_has(UL_FP_NAMER));
 }
 
 TEST(freeplay_empty_island_opens_creator)
@@ -88,10 +118,8 @@ TEST(freeplay_empty_island_opens_creator)
     scene_set(&SCENE_NEW_ISLAND, 0);
     frames(0, 5);
     press(BTN_LEFT);                            /* Empty Island */
-    press(BTN_A);
+    press(BTN_A);                               /* A builds it, no question in the way (LS6) */
     frames(0, 10);
-    press(BTN_A);                               /* "Maybe later" is first (U6b) */
-    frames(0, 3);
     while (!top_is(&SCENE_CREATOR) && guard++ < 20) { press(BTN_A); frames(0, 2); }
     CHECK_EQ(town_count(-1), 0);
     CHECK(top_is(&SCENE_CREATOR));
