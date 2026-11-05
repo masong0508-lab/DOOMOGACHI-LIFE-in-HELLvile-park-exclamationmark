@@ -81,6 +81,32 @@ TEST(freeplay_new_island_scene_classic)
     CHECK_EQ(fp_island_name()[0], 0);
 }
 
+/* LS7: a burst of toasts clears faster, and a line too wide for its pill
+ * holds long enough to scroll to its end instead of running off the screen. */
+TEST(toast_backlog_clears_and_long_lines_scroll)
+{
+    int n;
+    scene_set(&SCENE_TITLE, 0);
+    frames(0, 3);
+    ui_toast_clear();
+    ui_toast("one");
+    ui_toast("two");
+    frames(0, 70);                              /* queued: 9 + 48 + 8 = 65 ticks each */
+    CHECK_EQ(ui_toast_pending(), 1);
+    ui_toast_clear();
+    ui_toast("alone");
+    frames(0, 70);                              /* nobody waiting: 9 + 75 + 8 = 92 */
+    CHECK_EQ(ui_toast_pending(), 1);
+    frames(0, 30);
+    CHECK_EQ(ui_toast_pending(), 0);
+    ui_toast_clear();
+    ui_toast("A very long toast line that can never fit inside its little pill, so it scrolls");
+    frames(0, 100);                             /* a short one would be gone by 92 */
+    CHECK_EQ(ui_toast_pending(), 1);
+    for (n = 0; n < 400 && ui_toast_pending(); n++) frames(0, 1);
+    CHECK_EQ(ui_toast_pending(), 0);            /* and it does finish */
+}
+
 TEST(freeplay_new_island_start_names_it_first)
 {
     const char *p;

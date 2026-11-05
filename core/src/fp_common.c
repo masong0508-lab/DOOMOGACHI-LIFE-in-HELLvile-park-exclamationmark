@@ -577,26 +577,6 @@ void fp_tag(int x, int y, const char *s, uint8_t fill, uint8_t text)
     ui_text(x + 4, y + 2, s, text);
 }
 
-/* Text (translated already) clipped to [x0, x1): the glyphs that fit
- * whole, one plat_text per run of them between blanks (L2a; was one call
- * per glyph). Same pixels: every glyph keeps its own x. */
-static void text_clip(int x, int y, const char *s, uint8_t color, int x0, int x1)
-{
-    char run[64];
-    int n = 0, rx = x;
-    for (;; s++, x += FONT_ADVANCE) {
-        unsigned char c = (unsigned char)*s;
-        int stop = c == 0 || x + FONT_ADVANCE > x1;
-        if (stop || c == ' ' || c == '\n' || x < x0 || n == (int)sizeof(run) - 1) {
-            if (n) { run[n] = 0; plat_text(rx, y, run, color); n = 0; }
-            if (stop) break;
-            if (c == ' ' || c == '\n' || x < x0) continue;
-        }
-        if (!n) rx = x;
-        run[n++] = (char)c;
-    }
-}
-
 void fp_marquee(int x, int y, int w, const char *s, uint8_t color, int t)
 {
     int tw;
@@ -608,7 +588,7 @@ void fp_marquee(int x, int y, int w, const char *s, uint8_t color, int t)
         int span = tw - w + 24, off = (t / 2) % (span + 60);
         off = off < 30 ? 0 : off - 30;
         if (off > span - 24) off = span - 24;
-        text_clip(x - off, y, s, color, x, x + w);
+        ui_text_clip(x - off, y, s, color, x, x + w);
     }
 }
 
@@ -651,7 +631,7 @@ void fp_ticker(int y, int style)
         plat_rect(x0, y + 2, x1 - x0, 8, st->fill_hi);
     }
     len = (int)strlen(line) * FONT_ADVANCE + 60;
-    text_clip(x1 - (t % (len + (x1 - x0))), y + 2, line, st->text, x0, x1);
+    ui_text_clip(x1 - (t % (len + (x1 - x0))), y + 2, line, st->text, x0, x1);
 }
 
 void fp_dots(int x, int y, uint8_t c)

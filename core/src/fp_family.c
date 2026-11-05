@@ -563,7 +563,7 @@ static void fam_draw(void)
     const UiStyle *st = ui_style(WIN_CUTE);
     char buf[64], nm[DOOMO_NAME_LEN], l2[48];
     ui_backdrop(WIN_CUTE, (uint32_t)fp_t());
-    ui_window(4, 3, sw - 8, big ? 30 : 26, WIN_CUTE);
+    ui_window(4, 2, sw - 8, big ? 30 : 24, WIN_CUTE);   /* ends above the tabs (y0 - 13) at both sizes */
     ui_text_center(sw / 2, 8, "Family", st->text);
     doomo_snprintf(buf, sizeof(buf), "Household: %d of %d", family_count(), family_cap());
     ui_text_center(sw / 2, big ? 22 : 17, buf, st->text_dim);

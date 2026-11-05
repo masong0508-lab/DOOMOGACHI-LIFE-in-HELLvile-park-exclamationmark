@@ -282,6 +282,26 @@ int ui_text_width(const char *s)
     return s ? width_raw(lang_tr(s)) : 0;
 }
 
+/* Text (translated already) clipped to [x0, x1): the glyphs that fit whole,
+ * one plat_text per run of them between blanks (L2a; was one call per
+ * glyph). Same pixels: every glyph keeps its own x. */
+void ui_text_clip(int x, int y, const char *s, uint8_t color, int x0, int x1)
+{
+    char run[64];
+    int n = 0, rx = x;
+    for (;; s++, x += FONT_ADVANCE) {
+        unsigned char c = (unsigned char)*s;
+        int stop = c == 0 || x + FONT_ADVANCE > x1;
+        if (stop || c == ' ' || c == '\n' || x < x0 || n == (int)sizeof(run) - 1) {
+            if (n) { run[n] = 0; plat_text(rx, y, run, color); n = 0; }
+            if (stop) break;
+            if (c == ' ' || c == '\n' || x < x0) continue;
+        }
+        if (!n) rx = x;
+        run[n++] = (char)c;
+    }
+}
+
 void ui_text_shadow(int x, int y, const char *s, uint8_t color, uint8_t shadow)
 {
     const char *t;
@@ -796,25 +816,47 @@ void ui_toast(const char *msg)
 
 int ui_toast_pending(void) { return toast_n; }
 
+/* How long the first toast holds still. A line that is wider than its pill
+ * scrolls to its end (1 px a tick after a short beat), so it holds for the
+ * scroll too; when others wait behind it, a short line moves along sooner
+ * so a burst of toasts clears instead of covering the screen's title row. */
+#define TOAST_BEAT 14
+#define TOAST_SHOW_QUEUED 48
+static int toast_overflow(int w)
+{
+    int o = ui_text_width(toast_msg[0]) - (w - 22);
+    return o > 0 ? o : 0;
+}
+
+static int toast_show(int w)
+{
+    int o = toast_overflow(w);
+    if (o > 0) return TOAST_SHOW + TOAST_BEAT + o;
+    return toast_n > 1 ? TOAST_SHOW_QUEUED : TOAST_SHOW;
+}
+
 void ui_toast_clear(void) { toast_n = 0; toast_t = 0; }
 
 void ui_toast_draw(void)
 {
     const UiStyle *st;
     int sw = plat_screen_w(), t, w, x, xf, y = 4, d;
-    int saved = ui_cur_style;
+    int saved = ui_cur_style, show, over, off;
     if (toast_n == 0) return;
     t = toast_t++;
     st = ui_style(WIN_CREAM);
     w = DOOMO_MIN(ui_text_width(toast_msg[0]) + 22, sw - 8);
     xf = sw - w - 4;
+    show = toast_show(w);
+    over = toast_overflow(w);
+    off = over > 0 ? DOOMO_CLAMP(t - TOAST_IN - TOAST_BEAT, 0, over) : 0;
     if (t < TOAST_IN) {
         d = TOAST_IN - t;
         x = xf + d * d * (sw - xf) / (TOAST_IN * TOAST_IN) - (t >= TOAST_IN - 3 ? 2 : 0);
-    } else if (t < TOAST_IN + TOAST_SHOW) {
+    } else if (t < TOAST_IN + show) {
         x = xf;
     } else {
-        d = t - TOAST_IN - TOAST_SHOW;
+        d = t - TOAST_IN - show;
         x = xf + d * d * (sw - xf) / (TOAST_OUT * TOAST_OUT);
     }
     /* G7: a retained panel (it holds still for TOAST_SHOW ticks; the
@@ -822,7 +864,7 @@ void ui_toast_draw(void)
     if (plat_draw_skipped()) {
         /* nothing */
     } else if (UI_PANELS && !plat_panel_begin(PANEL_TOAST, x, y - 1, w + 2, 18,
-                                              ui_key_int(ui_key_str(ui_panel_key(), toast_msg[0]),
+                                              ui_key_int(ui_key_int(ui_key_str(ui_panel_key(), toast_msg[0]), off),
                                                          ui_sparkle_size((t / 2) & 15)))) {
         ui_drop_shadow_under(x + 2, y + 2, w, 15, 4, x, y, w, 15, 4);
         plat_panel_end();
@@ -833,12 +875,13 @@ void ui_toast_draw(void)
         plat_rect(x + 3, y + 10, w - 6, 3, st->fill);
         plat_rect(x + 5, y + 2, DOOMO_MAX(w / 4, 4), 1, PAL_WHITE);
         ui_star(x + 8, y + 7, 4, PAL_UI_GOLD);
-        ui_text(x + 15, y + 4, toast_msg[0], st->text);
+        if (over > 0) ui_text_clip(x + 15 - off, y + 4, lang_tr(toast_msg[0]), st->text, x + 15, x + w - 7);
+        else ui_text(x + 15, y + 4, toast_msg[0], st->text);
         ui_sparkle(x + w - 4, y + 2, (t / 2) & 15, PAL_UI_GOLD);
         if (UI_PANELS) plat_panel_end();
     }
     ui_cur_style = saved;
-    if (toast_t >= TOAST_IN + TOAST_SHOW + TOAST_OUT) {
+    if (toast_t >= TOAST_IN + show + TOAST_OUT) {
         int i;
         for (i = 1; i < toast_n; i++) memcpy(toast_msg[i - 1], toast_msg[i], 56);
         toast_n--;

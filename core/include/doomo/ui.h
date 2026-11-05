@@ -137,6 +137,10 @@ void ui_backdrop(int style, uint32_t t);
 /* ---- text extras ------------------------------------------------------- */
 /* Width of ui_text() output (button icons are drawn as 7 px caps). */
 int  ui_text_width(const char *s);
+/* Text that is already translated (lang_tr), clipped to [x0, x1): the glyphs
+ * that fit whole, one plat_text per run between blanks. fp_marquee and the
+ * toast scroll through it. */
+void ui_text_clip(int x, int y, const char *s, uint8_t color, int x0, int x1);
 void ui_text_shadow(int x, int y, const char *s, uint8_t color, uint8_t shadow);
 void ui_text_outline(int x, int y, const char *s, uint8_t color, uint8_t outline);
 /* Big text (integer scale 2..4) with outline + drop shadow, for titles. */
