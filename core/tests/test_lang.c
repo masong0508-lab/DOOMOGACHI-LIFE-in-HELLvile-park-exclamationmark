@@ -372,3 +372,25 @@ TEST(lang_options_row)
     opt_set(OPT_LANGUAGE, LANG_EN);
     test_reset();
 }
+
+/* U2: the Quick page, the presets and the new rows have Spanish text (ui_main.tsv + ui_scr00.tsv) */
+TEST(lang_options_u2_spanish)
+{
+    static const char *const keys[] = {
+        "Quick", "Preset", "Default", "Classic DOOM", "Cozy life", "Max accessibility", "Preset applied.",
+        "Music: off", "Faster", "Better",
+        "Every ordinary setting back to how the game ships. A confirm asks first.",
+        "Gentle: Plushie, cute gore, strong aim help, less shake and bobbing, calm island.",
+        "Controller rumble, apart from Screen shake.",
+        "Apply this preset? Language, volumes, Mature and Monster Mode stay as they are.",
+        "\x88\x87 Pick  \x8B Apply  L/R Page  \x8C Done"
+    };
+    int i;
+    test_reset();
+    set_lang(LANG_ES);
+    for (i = 0; i < DOOMO_COUNTOF(keys); i++)
+        CHECK_MSG(strcmp(lang_tr(keys[i]), keys[i]) != 0, "no Spanish for \"%s\"", keys[i]);
+    set_lang(LANG_EN);
+    for (i = 0; i < DOOMO_COUNTOF(keys); i++) CHECK(lang_tr(keys[i]) == keys[i]);
+    test_reset();
+}

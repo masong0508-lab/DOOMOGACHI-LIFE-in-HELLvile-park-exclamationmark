@@ -607,3 +607,15 @@ GOLD PACE	RITMO ORO	# levels_play.c
 \x80 CUTE ONLY	\x80 SOLO TIERNO	# levels_play.c
 \x81 BRUTAL ONLY	\x81 SOLO BRUTAL	# levels_play.c
 DEMO		# levels_play.c
+Faster: the 3D view at half resolution, scaled up, for a smoother shooter. Better: full resolution, up to 20 fps.	Más rápido: la vista 3D a media resolución, ampliada, para un shooter más fluido. Mejor: resolución completa, hasta 20 fps.	# fp_options.c
+Every ordinary setting back to how the game ships. A confirm asks first.	Todos los ajustes normales vuelven a como vienen de fábrica. Antes se pide confirmar.	# fp_options.c
+Gentle: Plushie, cute gore, strong aim help, less shake and bobbing, calm island.	Suave: Peluche, gore tierno, mucha ayuda para apuntar, menos sacudidas y vaivén, isla tranquila.	# fp_options.c
+Brutal gore, Nightmare, Classic controls, no aim help, classic HUD and crosshair.	Gore brutal, Pesadilla, controles clásicos, sin ayuda para apuntar, HUD y mira clásicos.	# fp_options.c
+Chill island: plushie, slow sim, rare possessions, weather, no family loss.	Isla tranquila: peluche, simulación lenta, pocas posesiones, clima, sin pérdida de familia.	# fp_options.c
+Ultra-Hellvile, brutal, no aim help, minimal HUD, swarms, chaos, loss on.	Ultra-Hellvile, brutal, sin ayuda para apuntar, HUD mínimo, hordas, caos, con pérdidas.	# fp_options.c
+Subtitles, no flashing, no shake, bold text, strong aim help, still menus.	Subtítulos, sin destellos ni sacudidas, texto en negrita, mucha ayuda para apuntar, menús quietos.	# fp_options.c
+Family members can be lost over a life. Off: nobody is ever lost.	Se pueden perder familiares a lo largo de la vida. No: nadie se pierde jamás.	# fp_options.c
+Controller rumble, apart from Screen shake.	Vibración del control, aparte de la sacudida de pantalla.	# fp_options.c
+Adult scenes. Off: cutaways. Censored: censor bars. On: implied, then a fade. Going up asks for the grown-ups' code (if set) and your age.	Escenas para adultos. No: cortes de escena. Censurado: barras de censura. Sí: insinuadas y luego fundido. Subirlo pide el código de los adultos (si hay) y tu edad.	# fp_options.c
+Mature scenes are for adults. Are you 18 or older?	Las escenas maduras son para adultos. ¿Tienes 18 años o más?	# fp_options.c
+Apply this preset? Language, volumes, Mature and Monster Mode stay as they are.	¿Aplicar este preajuste? Idioma, volúmenes, escenas maduras y Modo Monstruo no cambian.	# fp_options.c
