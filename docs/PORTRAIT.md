@@ -316,3 +316,48 @@ wings and species are never touched. Not yet done: baby-specific outfits
 (an onesie), a dedicated baby body shape (a swaddle), wrinkles and a stoop
 for ELDER (BODY_HUNCHED is the player's choice), and a look at the Q4
 proportions of each stage on real hardware.
+
+## Customisation v2, P1.M1: part scripts, groups, hooks (SPEC 4.4)
+
+**Layer groups.** `DL_STEPS` is 7: 0 back (aura, weapon, behind-body, back hair, back ears), 1 body,
+2a head base, 2b face, 3 neck / front hair / over-hair face / front ears, 4 hat / species bits / horns
+/ face accessories / front outfit / weapon, 5 finish (outlines, halo, status). The old group 2 was
+split in two so a slice can be smaller; the draw order did not change. `PC_AHEAD` is 9.
+
+**Classic golden.** `core/tests/golden/portrait_classic.txt` holds the FNV-1a of bust, figure, body
+sprite and fighter (views 0 and 2) for every 5th premade, frozen before P1 touched the renderer.
+`portrait_classic_golden` must stay green: Classic looks render byte-identically. Regenerate only on
+purpose: `build/tests --update-golden portrait_classic_golden` (from the repo root).
+
+**Part scripts.** A part is a few bytes of ops, not C. Source: `core/data/parts/{face,head}/*.txt`;
+`python3 tools/parts_build.py` writes `core/gen/parts_{face,head}.c` (also run by `make gen`, checked by
+`make check-gen`). The format is in the header comment of `tools/parts_build.py` and the byte layout in
+`core/include/doomo/parts.h`. In short:
+
+- `list FIELD VALUE` opens the script of one style choice; `block group=G anchor=head|torso
+  lod=tiny,mid,big view=portrait,figure,fighter,chibi` is the unit the VM gates by group, anchor, LOD and
+  view, so a part can cost nothing where it is not wanted (chibi gets two dots, the bust gets the detail).
+- Ops: `mat FIELD [light|dark]`, `shade`, `solid`/`decal`, `ellipse`, `capsule`, `tri`, `line`, `dot`,
+  `stamp NAME X Y [Q4]`, `mirror`, `scale`, `region`, and `ifview` / `ifyaw` / `ifanim` ... `endif`.
+- Coordinates are normalised (256 = one radius, steps of 2), so sliders move a part with the head or
+  torso. Stamps are 1bpp, up to 16x16. Materials come from `pm_of()`: choice 0 is today's derivation,
+  `light` / `dark` step the ramp.
+- The build rejects an unknown field / op / name, a coordinate outside -256..254, a block over 255 B, a
+  stamp over 16x16 and a solid part over about 600 px at bust scale.
+- Run a script with `ps_run()` / `ps_run_group()` (`portrait_int.h`). No painter calls it yet; the demo
+  scripts (`m1_demo.txt`) sit on style values no catalog list reaches. M2 wires the live lists in.
+
+**Regions and stamps.** `pc_region()` clips a decal to the head, either eye, the lower face or the
+torso; `pc_stamp()` draws a 1bpp stamp at a Q4 centre and scale.
+
+**Cache keys and animation.** `look_key(rid)` is the gene plus the deep-look run bytes (FNV-1a); the
+free-play memo uses it with the status. `look_anim_mask()` is the one list of looks that need effect
+frames or talking phases (the cache's `phase_of()` and the creator's draft bust both use it).
+
+**Hooks for other packages (CF-38).** `pf_material_init()` (end of `pctx_init()`, P2), `motion_pose()`
+(in `bodyspr_render()`, P3; no-ops until those land) and `ph_head_only(c, lod)` (head layers only, for
+P3's head impostor).
+
+**Not yet (needs the deep-field set).** `look_resolve_mask`, the per-job resolve, the chibi key's
+filtered run entries, PS1 LZ blocks behind an 8 KB LRU, the test-build hit check, the wave-2 fields and
+lists (M2), `live_p1.txt`, and the mGBA bench of the SPEC's accept numbers.
