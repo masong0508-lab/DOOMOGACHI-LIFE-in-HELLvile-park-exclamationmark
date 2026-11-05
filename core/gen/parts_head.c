@@ -6,10 +6,12 @@
 static const PartRef refs[] = {
     { 4, 31, 0 },
 };
+#ifndef DOOMO_PARTS_LZ
 static const uint8_t ops[] = {
     0x02, 0x00, 0x7f, 0x10, 0x02, 0x15, 0x00, 0x03, 0x00, 0x04, 0x00, 0x0d, 0x30, 0x08, 0xe2, 0xb5,
     0x00, 0x83, 0x1e, 0xb5, 0xff, 0x00, 0x00, 0x00,
 };
+#endif
 static const StampRef stamps[] = {
     { 0, 0, 0 },
 };
@@ -17,4 +19,18 @@ static const uint8_t bits[] = {
     0x00,
 };
 
-const PartSet doomo_parts_head = { refs, 1, ops, stamps, 0, bits };
+#if defined(DOOMO_PARTS_LZ) || defined(DOOMO_PARTS_LZ_TEST)
+/* 1 LZ block(s) of at most 2048 raw bytes, each ending on an entry boundary */
+static const uint8_t z[] = {
+    0x17, 0x02, 0x00, 0x7f, 0x10, 0x02, 0x15, 0x00, 0x03, 0x00, 0x04, 0x00, 0x0d, 0x30, 0x08, 0xe2,
+    0xb5, 0x00, 0x83, 0x1e, 0xb5, 0xff, 0x00, 0x00, 0x00,
+};
+static const uint16_t zofs[] = { 0, 25 };
+static const uint16_t rofs[] = { 0, 24 };
+const PartLz doomo_parts_head_lz = { z, zofs, rofs, 1 };
+#endif
+#ifdef DOOMO_PARTS_LZ
+const PartSet doomo_parts_head = { refs, 1, 0, stamps, 0, bits, &doomo_parts_head_lz };
+#else
+const PartSet doomo_parts_head = { refs, 1, ops, stamps, 0, bits, 0 };
+#endif

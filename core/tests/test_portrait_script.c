@@ -395,3 +395,78 @@ TEST(cache_hits_equal_a_fresh_render_with_and_without_a_run)
     for (id = 1; id < 7; id++) look_pool_drop(id);
     portrait_cache_reset();
 }
+
+/* ---- the PS1 LZ part blocks behind the 4-slot LRU (part_lru.c) --------------------------------- */
+#if defined(DOOMO_PARTS_LZ_TEST)
+/* literal-only runs of at most 128 bytes, then one copy: the save codec by hand (no encoder in C) */
+static int lz_make(const uint8_t *raw, int n, uint8_t *out)
+{
+    int o = 0, i = 0;
+    while (i < n) {
+        int k = n - i > 128 ? 128 : n - i;
+        out[o++] = (uint8_t)(k - 1);
+        memcpy(out + o, raw + i, (size_t)k);
+        o += k; i += k;
+    }
+    return o;
+}
+
+#if !defined(DOOMO_PARTS_LZ)       /* the raw arrays are not linked in the LZ build */
+TEST(lz_blocks_of_the_real_sets_equal_the_raw_scripts)
+{
+    const PartLz *zs[2];
+    const PartSet *ss[2];
+    int s;
+    zs[0] = &doomo_parts_face_lz; ss[0] = &doomo_parts_face;
+    zs[1] = &doomo_parts_head_lz; ss[1] = &doomo_parts_head;
+    for (s = 0; s < 2; s++) {
+        const PartLz *z = zs[s];
+        unsigned b;
+        part_lru_reset();
+        CHECK(z->nblk >= 1);
+        for (b = 0; b < z->nblk; b++) {
+            unsigned n = (unsigned)(z->rofs[b + 1] - z->rofs[b]);
+            CHECK(n <= PART_BLK);
+            CHECK(memcmp(part_lz_ops(z, z->rofs[b]), ss[s]->ops + z->rofs[b], n) == 0);
+        }
+    }
+}
+
+#endif
+
+TEST(lz_lru_keeps_four_blocks_and_evicts_the_oldest)
+{
+    static uint8_t raw[6][700], z[6][1000], big[6 * 700 + 4];
+    static uint16_t zofs[7], rofs[7];
+    static uint8_t zbuf[6000];
+    PartLz pl;
+    int b, i, o = 0, zl = 0;
+    for (b = 0; b < 6; b++) {
+        for (i = 0; i < 700; i++) raw[b][i] = (uint8_t)(b * 40 + (i * 7) % 31);
+        rofs[b] = (uint16_t)(b * 700);
+        zofs[b] = (uint16_t)zl;
+        o = lz_make(raw[b], 650, z[b]);
+        /* the last 50 bytes: a copy of 50 from 100 back is not what raw[] holds, so make raw match it */
+        z[b][o++] = (uint8_t)(0x80 | (50 - 3)); z[b][o++] = 100; z[b][o++] = 0;
+        for (i = 650; i < 700; i++) raw[b][i] = raw[b][i - 100];
+        memcpy(zbuf + zl, z[b], (size_t)o);
+        zl += o;
+        memcpy(big + b * 700, raw[b], 700);
+    }
+    rofs[6] = 4200; zofs[6] = (uint16_t)zl;
+    pl.z = zbuf; pl.zofs = zofs; pl.rofs = rofs; pl.nblk = 6;
+    part_lru_reset();
+    for (b = 0; b < 4; b++) CHECK(memcmp(part_lz_ops(&pl, (unsigned)(b * 700 + 5)), raw[b] + 5, 695) == 0);
+    CHECK_EQ(part_lru_loads(), 4u);
+    CHECK(memcmp(part_lz_ops(&pl, 3), raw[0] + 3, 697) == 0);        /* a hit */
+    CHECK_EQ(part_lru_loads(), 4u);
+    CHECK(memcmp(part_lz_ops(&pl, 4 * 700), raw[4], 700) == 0);      /* evicts block 1 (oldest) */
+    CHECK_EQ(part_lru_loads(), 5u);
+    CHECK(memcmp(part_lz_ops(&pl, 0), raw[0], 700) == 0);            /* block 0 survived */
+    CHECK_EQ(part_lru_loads(), 5u);
+    CHECK(memcmp(part_lz_ops(&pl, 700), raw[1], 700) == 0);          /* block 1 was evicted: reload */
+    CHECK_EQ(part_lru_loads(), 6u);
+    CHECK(memcmp(part_lz_ops(&pl, 5 * 700 + 699), raw[5] + 699, 1) == 0);
+    part_lru_reset();
+}
+#endif

@@ -53,12 +53,42 @@ enum {                   /* opcode (+ operand bytes)                            
 typedef struct PartRef { uint8_t list, value; uint16_t ofs; } PartRef;   /* sorted by (list, value) */
 typedef struct StampRef { uint8_t w, h; uint16_t ofs; } StampRef;        /* 1bpp rows, MSB first    */
 
+/* PS1: the scripts are kept as LZ blocks (the save codec: c < 0x80 = c+1 literals, c >= 0x80 = copy
+ * (c & 0x7F) + 3 bytes from the u16 LE distance after it), each at most PART_BLK raw bytes and ending
+ * on an entry boundary, so one entry never straddles two blocks. rofs[b] is the raw offset block b
+ * starts at (rofs[nblk] = the raw size); zofs[b] where its compressed bytes start in z. The raw
+ * offsets in PartRef are the same either way. Built only with DOOMO_PARTS_LZ (PS1) or
+ * DOOMO_PARTS_LZ_TEST (host tests, which check the blocks against the raw array). */
+#define PART_BLK 2048
+typedef struct PartLz {
+    const uint8_t *z;
+    const uint16_t *zofs;
+    const uint16_t *rofs;
+    uint16_t nblk;
+} PartLz;
+
 typedef struct PartSet {
     const PartRef *ref;  uint16_t n;
-    const uint8_t *ops;  /* the blocks                                                               */
+    const uint8_t *ops;  /* the blocks (NULL when only the LZ form is linked)                        */
     const StampRef *st;  uint8_t nst;
     const uint8_t *bits;
+    const PartLz *lz;    /* the LZ form (DOOMO_PARTS_LZ builds), else NULL                           */
 } PartSet;
+
+/* The ops of the entry at raw offset `ofs`. With DOOMO_PARTS_LZ the block is decoded into a four-slot
+ * (8 KB) LRU: the pointer stays valid until three other blocks have been fetched, which one entry's
+ * run never does. */
+#if defined(DOOMO_PARTS_LZ) || defined(DOOMO_PARTS_LZ_TEST)
+const uint8_t *part_lz_ops(const PartLz *z, unsigned ofs);
+extern const PartLz doomo_parts_face_lz, doomo_parts_head_lz;
+uint32_t part_lru_loads(void);       /* blocks decoded since the last reset (tests, bench) */
+void part_lru_reset(void);
+#endif
+#if defined(DOOMO_PARTS_LZ)
+#define PART_OPS(set, ofs) part_lz_ops((set)->lz, (ofs))
+#else
+#define PART_OPS(set, ofs) ((set)->ops + (ofs))
+#endif
 
 extern const PartSet doomo_parts_face;
 extern const PartSet doomo_parts_head;

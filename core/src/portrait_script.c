@@ -271,7 +271,7 @@ int ps_run_group(PCtx *c, int list, int value, int anchor, int group)
     const uint8_t *p;
     int ops = 0;
     if (!set) return 0;
-    p = set->ops + r->ofs;
+    p = PART_OPS(set, r->ofs);
     while (p[0] != PH_END) {
         PartHdr h;
         h.group = p[0]; h.anchor = p[1]; h.lod_views = p[2]; h.len = p[3];

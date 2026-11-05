@@ -278,6 +278,72 @@ def parse(path, fields):
     return stamps, entries
 
 
+PART_BLK = 2048
+
+
+def lz_pack(raw):
+    """The save codec (core/src/save.c): c < 0x80 = c+1 literals, c >= 0x80 = copy (c & 0x7F) + 3 bytes
+    from the u16 LE distance that follows. One block is packed on its own (no history across blocks)."""
+    out, lit, i, n = bytearray(), bytearray(), 0, len(raw)
+
+    def flush():
+        nonlocal lit
+        while lit:
+            k = min(len(lit), 128)
+            out.append(k - 1)
+            out.extend(lit[:k])
+            del lit[:k]
+    while i < n:
+        best, bd = 0, 0
+        for j in range(max(0, i - 65535), i):
+            k = 0
+            while i + k < n and k < 130 and raw[j + k] == raw[i + k]:
+                k += 1
+            if k > best:
+                best, bd = k, i - j
+        if best >= 4:                      # a 3-byte copy costs 3 bytes: only worth it from 4
+            flush()
+            out.append(0x80 | (best - 3))
+            out += bytes([bd & 255, bd >> 8])
+            i += best
+        else:
+            lit.append(raw[i])
+            i += 1
+    flush()
+    return bytes(out)
+
+
+def lz_unpack(c, n):
+    out, i = bytearray(), 0
+    while len(out) < n:
+        b = c[i]
+        i += 1
+        if b < 0x80:
+            out += c[i:i + b + 1]
+            i += b + 1
+        else:
+            d = c[i] | (c[i + 1] << 8)
+            i += 2
+            for _ in range((b & 0x7F) + 3):
+                out.append(out[-d])
+    return bytes(out)
+
+
+def lz_blocks(refs, ops, dirname):
+    """[(raw start, bytes)]: whole entries packed greedily into blocks of at most PART_BLK bytes."""
+    starts = [r[2] for r in refs] or [0]
+    ends = starts[1:] + [len(ops)]
+    blocks, b0 = [], 0
+    for s, e in zip(starts, ends):
+        if e - s > PART_BLK:
+            raise PartError("%s: a script of %d B is over the %d B LZ block" % (dirname, e - s, PART_BLK))
+        if e - b0 > PART_BLK:
+            blocks.append((b0, bytes(ops[b0:s])))
+            b0 = s
+    blocks.append((b0, bytes(ops[b0:])))
+    return blocks
+
+
 def emit(dirname, fields):
     d = os.path.join(ROOT, "core", "data", "parts", dirname)
     stamps, entries = {}, {}
@@ -311,6 +377,19 @@ def emit(dirname, fields):
     if not bits:
         bits = bytearray([0])
 
+    blocks = lz_blocks(refs, ops, dirname)
+    z, zofs, rofs = bytearray(), [], []
+    for start, raw in blocks:
+        rofs.append(start)
+        zofs.append(len(z))
+        c = lz_pack(raw)
+        assert lz_unpack(c, len(raw)) == raw
+        z += c
+    rofs.append(len(ops))
+    zofs.append(len(z))
+    if len(z) >= 65536:
+        raise PartError("%s: LZ scripts over 64 KB" % dirname)
+
     def arr(b):
         return ",\n".join("    " + ", ".join("0x%02x" % x for x in b[i:i + 16]) for i in range(0, len(b), 16)) + ","
 
@@ -319,11 +398,22 @@ def emit(dirname, fields):
          '#include "doomo/doomo.h"', '#include "doomo/parts.h"', "",
          "static const PartRef refs[] = {"]
     L += ["    { %d, %d, %d }," % r for r in refs] or ["    { 0, 0, 0 },"]
-    L += ["};", "static const uint8_t ops[] = {", arr(ops), "};", "static const StampRef stamps[] = {"]
+    L += ["};", "#ifndef DOOMO_PARTS_LZ", "static const uint8_t ops[] = {", arr(ops), "};", "#endif",
+          "static const StampRef stamps[] = {"]
     L += ["    { %d, %d, %d }," % r for r in srefs] or ["    { 0, 0, 0 },"]
     L += ["};", "static const uint8_t bits[] = {", arr(bits), "};", "",
-          "const PartSet doomo_parts_%s = { refs, %d, ops, stamps, %d, bits };" % (dirname, len(refs), len(srefs)), ""]
-    return "\n".join(L), len(refs), len(ops)
+          "#if defined(DOOMO_PARTS_LZ) || defined(DOOMO_PARTS_LZ_TEST)",
+          "/* %d LZ block(s) of at most %d raw bytes, each ending on an entry boundary */" % (len(blocks), PART_BLK),
+          "static const uint8_t z[] = {", arr(z), "};",
+          "static const uint16_t zofs[] = { %s };" % ", ".join(str(x) for x in zofs),
+          "static const uint16_t rofs[] = { %s };" % ", ".join(str(x) for x in rofs),
+          "const PartLz doomo_parts_%s_lz = { z, zofs, rofs, %d };" % (dirname, len(blocks)),
+          "#endif", "#ifdef DOOMO_PARTS_LZ",
+          "const PartSet doomo_parts_%s = { refs, %d, 0, stamps, %d, bits, &doomo_parts_%s_lz };" % (dirname, len(refs), len(srefs), dirname),
+          "#else",
+          "const PartSet doomo_parts_%s = { refs, %d, ops, stamps, %d, bits, 0 };" % (dirname, len(refs), len(srefs)),
+          "#endif", ""]
+    return "\n".join(L), len(refs), len(ops), len(z), len(blocks)
 
 
 def selftest():
@@ -350,6 +440,27 @@ def selftest():
         finally:
             os.unlink(f.name)
     print("selftest: %d rejects OK" % ok)
+    # the LZ blocks: round trip, whole entries per block, none over PART_BLK
+    import random
+    rng = random.Random(7)
+    ops, refs = bytearray(), []
+    for k in range(40):
+        refs.append((0, k, len(ops)))
+        body = bytes(rng.choice((0, 1, 2, 0x1e, 0xf6)) for _ in range(rng.randrange(20, 240)))
+        ops += body + bytes([0xFF, 0, 0, 0])
+    blocks = lz_blocks(refs, ops, "selftest")
+    ends = [r[2] for r in refs] + [len(ops)]
+    for start, raw in blocks:
+        if start not in ends or start + len(raw) not in ends or len(raw) > PART_BLK:
+            print("selftest: LZ block is not on entry boundaries")
+            return 1
+        if lz_unpack(lz_pack(raw), len(raw)) != raw:
+            print("selftest: LZ round trip failed")
+            return 1
+    if b"".join(r for _, r in blocks) != bytes(ops) or len(blocks) < 2:
+        print("selftest: LZ blocks do not tile the ops")
+        return 1
+    print("selftest: LZ %d blocks OK" % len(blocks))
     return 0
 
 
@@ -368,11 +479,11 @@ def main(argv):
     fields = field_ids()
     try:
         for d in ("face", "head"):
-            text, n, size = emit(d, fields)
+            text, n, size, zsize, nblk = emit(d, fields)
             os.makedirs(os.path.join(root, "core", "gen"), exist_ok=True)
             with open(os.path.join(root, "core", "gen", "parts_%s.c" % d), "w") as f:
                 f.write(text)
-            print("parts_build: %s: %d scripts, %d B -> core/gen/parts_%s.c" % (d, n, size, d))
+            print("parts_build: %s: %d scripts, %d B (%d B in %d LZ blocks) -> core/gen/parts_%s.c" % (d, n, size, zsize, nblk, d))
     except PartError as e:
         print("parts_build: error: %s" % e, file=sys.stderr)
         return 1

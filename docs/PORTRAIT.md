@@ -369,5 +369,14 @@ exact cache hit of `portrait_image` / `figure_image` is re-rendered from scratch
 cached image, so equal keys must give equal pictures. `portrait_hitcheck_count()` / `_fails()` expose it
 (`cache_hits_equal_a_fresh_render_with_and_without_a_run`). Not defined on GBA / PS1 / DC.
 
-**Not yet.** The real deep-field set (P0), PS1 LZ blocks behind an 8 KB LRU, the wave-2 fields and
+**PS1 LZ blocks.** `parts_build.py` also packs each script set into LZ blocks (the save codec) of at
+most `PART_BLK` = 2048 raw bytes, ending on entry boundaries, and emits them beside the raw array
+(`PartLz`: `z`, `zofs`, `rofs`). `ps1/CMakeLists.txt` defines `DOOMO_PARTS_LZ`: the raw array is then not
+compiled and `ps_run_group()` reads through `PART_OPS()` -> `part_lz_ops()` (`core/src/part_lru.c`), which
+decodes a block into one of four 2 KB slots (8 KB, least recently used replaced). GBA and host read the
+raw array. Host builds define `DOOMO_PARTS_LZ_TEST`, so the blocks are checked against the raw scripts
+and the LRU is tested with a synthetic set; the whole unit suite also passes with `OPT="-O2
+-DDOOMO_PARTS_LZ"` (the VM reading through the LZ path). Not yet built with the PS1 toolchain.
+
+**Not yet.** The real deep-field set (P0), the wave-2 fields and
 lists (M2), `live_p1.txt`, and the mGBA bench of the SPEC's accept numbers.

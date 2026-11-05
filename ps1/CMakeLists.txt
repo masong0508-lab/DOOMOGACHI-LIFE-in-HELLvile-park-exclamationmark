@@ -192,6 +192,8 @@ foreach(_t doomo_objs ${DOOMO_EXE_NAME})
 		${CORE_DIR}/include ${CMAKE_CURRENT_SOURCE_DIR}/src)
 	target_compile_options(${_t} PRIVATE -O2 -Wall -Wextra)
 	target_compile_definitions(${_t} PRIVATE DOOMO_PLATFORM_PS1=1)
+	# P1.M1: the part scripts link as 2 KB LZ blocks behind an 8 KB LRU (core/src/part_lru.c), not raw
+	target_compile_definitions(${_t} PRIVATE DOOMO_PARTS_LZ=1)
 	if(DOOMO_ENGINE_TEST)
 		target_compile_definitions(${_t} PRIVATE DOOMO_ENGINE_TEST=1)
 	endif()
