@@ -92,6 +92,7 @@ int gene_pack_v1(const DoomoResident *r, uint8_t g[DOOMO_GENE_BYTES])
         if (v > doomo_gene_field[GF_PRONOUN + i].max) fit = 0;
         gene_set(g, GF_PRONOUN + i, v);
     }
+    gene_set(g, GF_AGE, (uint32_t)RES_STAGE(r));      /* the life stage, same numbers */
     return fit;
 }
 
@@ -114,4 +115,7 @@ void gene_unpack_v1(const uint8_t g[DOOMO_GENE_BYTES], DoomoResident *r)
         else
             *ident(r, i) = (uint8_t)v;
     }
+    v = gene_get(g, GF_AGE);
+    if (v >= LIFE_COUNT) v = LIFE_ADULT;              /* 6, 7: invalid, read as an adult */
+    r->romance = (uint8_t)((r->romance & ~LIFE_STAGE_MASK) | ((v << LIFE_STAGE_SHIFT) & LIFE_STAGE_MASK));
 }

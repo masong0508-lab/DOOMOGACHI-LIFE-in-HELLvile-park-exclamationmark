@@ -3,13 +3,16 @@
  * checks prove that every one of the 1000 premade citizens and 4000
  * generated ones survives v1 -> gene -> v1 unchanged, i.e. that every v1
  * value fits its v2 width. Also compiles the look_pool.h and settings.h
- * layout asserts. */
+ * layout asserts. The age tests pin the settled mapping: the gene's `age`
+ * is the life stage (LIFE_*), same numbers, including for a whole family. */
 #include "test.h"
 #include "doomo/doomo.h"
 #include "doomo/gene.h"
 #include "doomo/look_pool.h"
 #include "doomo/settings.h"
 #include "doomo/roster.h"
+#include "doomo/family.h"
+#include "doomo/playas.h"
 
 TEST(gene_layout_matches_the_spec)
 {
@@ -82,11 +85,11 @@ static int bridge_ok(const DoomoResident *r)
     memset(r2.persona, 0x77, sizeof r2.persona);
     r2.pronoun = r2.bday_month = r2.bday_day = r2.like_food = r2.like_hobby =
         r2.like_music = r2.like_color = r2.hate_food = r2.fear = r2.catchphrase = 0x77;
-    r2.romance = (uint8_t)(r->romance & LIFE_STAGE_MASK);
+    r2.romance = 0;                                    /* preference AND stage come back from the gene */
     gene_unpack_v1(g, &r2);
     return fit && memcmp(r, &r2, sizeof r2) == 0
         && gene_get(g, GF_SPARE) == 0 && gene_get(g, GF_LOOK_SEED) == 0
-        && gene_get(g, GF_AGE) == 0 && gene_get(g, GF_HANDEDNESS) == 0;
+        && (int)gene_get(g, GF_AGE) == RES_STAGE(r) && gene_get(g, GF_HANDEDNESS) == 0;
 }
 
 TEST(gene_bridge_round_trips_all_1000_premade_citizens)
@@ -124,13 +127,66 @@ TEST(gene_pack_reports_a_value_that_does_not_fit)
     CHECK(!gene_pack_v1(&r, g));
 }
 
-TEST(gene_pack_keeps_the_life_stage_out_of_romance)
+TEST(gene_age_is_the_life_stage_for_every_stage)
 {
     uint8_t g[DOOMO_GENE_BYTES];
-    DoomoResident r = *roster_premade(0);
-    r.romance = (uint8_t)((r.romance & ROMANCE_PREF_MASK) | (LIFE_CHILD << LIFE_STAGE_SHIFT));
-    CHECK(gene_pack_v1(&r, g));
-    CHECK_EQ(gene_get(g, GF_ROMANCE), r.romance & ROMANCE_PREF_MASK);
-    gene_unpack_v1(g, &r);                             /* the stage bits stay as they were */
-    CHECK_EQ(RES_STAGE(&r), LIFE_CHILD);
+    int st;
+    CHECK_EQ(AGE_ADULT, 0);                            /* an old record (stage 0) is an adult */
+    CHECK_EQ(AGE_COUNT, LIFE_COUNT);
+    for (st = 0; st < LIFE_COUNT; st++) {
+        DoomoResident r = *roster_premade(0);
+        r.romance = (uint8_t)((r.romance & ROMANCE_PREF_MASK) | (st << LIFE_STAGE_SHIFT));
+        CHECK(gene_pack_v1(&r, g));
+        CHECK_EQ((int)gene_get(g, GF_AGE), st);
+        CHECK_EQ((int)gene_get(g, GF_ROMANCE), (int)(r.romance & ROMANCE_PREF_MASK));  /* no stage bits leak in */
+        r.romance = (uint8_t)(r.romance & ROMANCE_PREF_MASK);   /* forget the stage... */
+        gene_unpack_v1(g, &r);                                   /* ...and the gene brings it back */
+        CHECK_EQ(RES_STAGE(&r), st);
+        CHECK_EQ(LIFE_IS_ADULT(RES_STAGE(&r)) ? 1 : 0, (st == LIFE_ADULT || st == LIFE_ELDER) ? 1 : 0);
+    }
+    /* invalid 3-bit values read as an adult, as resident_sanitize does */
+    for (st = LIFE_COUNT; st < 8; st++) {
+        DoomoResident r = *roster_premade(0);
+        gene_set(g, GF_AGE, (uint32_t)st);
+        gene_unpack_v1(g, &r);
+        CHECK_EQ(RES_STAGE(&r), LIFE_ADULT);
+    }
+}
+
+TEST(gene_carries_a_whole_family_through_every_life_stage)
+{
+    static const int stages[] = { LIFE_ADULT, LIFE_BABY, LIFE_TODDLER, LIFE_CHILD,
+                                  LIFE_TEEN, LIFE_ELDER };
+    int ids[FAMILY_MAX], last[FAMILY_MAX], n = 0, i, day, grew = 0;
+    town_new(TOWN_FREEPLAY, 31, TOWN_POP_PREMADE);
+    sim_init();
+    doomo_save_ext_playas->reset();
+    family_tier_story_done();
+    family_tier_story_done();                          /* household tier 2: room for 20 */
+    for (i = 0; i < FAMILY_MAX; i++) {
+        int stage = stages[i % 6];
+        int role = stage == LIFE_ADULT || stage == LIFE_ELDER ? FAMROLE_HOUSEMATE : FAMROLE_CHILD;
+        int id = family_pool_add(role, stage, 900u + (uint32_t)i, "Kin", PRONOUN_THEY);
+        if (id < 0) break;
+        ids[n++] = id;
+    }
+    CHECK(n >= 10);
+    for (day = 0; day < 60; day++) {                   /* two months of growing up */
+        if (day) grew += family_age_daily();
+        for (i = 0; i < n; i++) {
+            DoomoResident r;
+            uint8_t g[DOOMO_GENE_BYTES];
+            CHECK(family_resident(ids[i], &r));
+            CHECK(bridge_ok(&r));                      /* every member survives the gene, stage included */
+            CHECK(gene_pack_v1(&r, g));
+            CHECK_EQ((int)gene_get(g, GF_AGE), RES_STAGE(&r));
+            if (day == 0) last[i] = RES_STAGE(&r);
+            else {                                     /* nobody gets younger */
+                int now = RES_STAGE(&r);
+                CHECK(now == last[i] || now == life_stage_next(last[i]));
+                last[i] = now;
+            }
+        }
+    }
+    CHECK(grew > 0);                                   /* somebody really did grow up */
 }

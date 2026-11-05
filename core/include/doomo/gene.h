@@ -51,9 +51,24 @@ DOOMO_STATIC_ASSERT(GF_PATTERN_COLOR + 1 == GF_VOICE0, gene_look_then_voice);
 typedef struct DoomoGeneField { uint16_t pos, max; uint8_t bits; } DoomoGeneField;
 extern const DoomoGeneField doomo_gene_field[GF_COUNT];
 
-/* look_seed is 11 bits; auto_style, age: see the enums below */
 enum { AUTO_CLASSIC, AUTO_VARIED, AUTO_AUTHORED };
-enum { AGE_AUTO, AGE_BABY, AGE_KID, AGE_TEEN, AGE_ADULT, AGE_ELDER };
+
+/* AGE: the gene's `age` field IS the life stage (resident.h LIFE_*), with the
+ * same numbers, so the gene and the record can never disagree and an old
+ * record (stage 0) is an adult exactly as it is today. This settles the
+ * spec's AGE_AUTO / AGE_KID enum (SPEC 1.2), which predates the explicit
+ * stages: there is no AUTO (the roster and the sim now set a stage on every
+ * citizen) and no single KID (TODDLER and CHILD are separate stages). The
+ * 3-bit field holds 0..7; LIFE_COUNT is 6, so 6 and 7 are invalid and read as
+ * ADULT (like resident_sanitize). */
+#define AGE_ADULT   LIFE_ADULT
+#define AGE_BABY    LIFE_BABY
+#define AGE_TODDLER LIFE_TODDLER
+#define AGE_CHILD   LIFE_CHILD
+#define AGE_TEEN    LIFE_TEEN
+#define AGE_ELDER   LIFE_ELDER
+#define AGE_COUNT   LIFE_COUNT
+DOOMO_STATIC_ASSERT(AGE_COUNT <= 8, age_fits_its_3_bits);
 
 uint32_t gene_get(const uint8_t *g, int gf);
 void     gene_set(uint8_t *g, int gf, uint32_t v);        /* clamps to the field's max */
@@ -61,12 +76,12 @@ void     gene_set(uint8_t *g, int gf, uint32_t v);        /* clamps to the field
 /* v1 bridge. gene_pack_v1 writes every field a v1 DoomoResident holds that
  * the gene has: the look (not `species`), voice, persona and the identity
  * members; hair_highlight's "none" (0xFF) is stored as 32 (CF-3); `romance`
- * is the preference half only. The new core fields are written as 0, and so
- * is the life stage, which has no home in the gene yet (see docs). Returns 1
- * when every value fit its width, 0 when something was clamped.
+ * is the preference half only, and `age` is the life stage (AGE_* above). The
+ * other new core fields are written as 0. Returns 1 when every value fit its
+ * width, 0 when something was clamped.
  * gene_unpack_v1 is the inverse: it overwrites the same members of `r` and
- * leaves everything else (species, name, stats, status, flags, stage bits,
- * exorcism, level, mood, activity, death_cause) alone. */
+ * leaves everything else (species, name, stats, status, flags, exorcism,
+ * level, mood, activity, death_cause) alone. */
 int  gene_pack_v1(const DoomoResident *r, uint8_t g[DOOMO_GENE_BYTES]);
 void gene_unpack_v1(const uint8_t g[DOOMO_GENE_BYTES], DoomoResident *r);
 
