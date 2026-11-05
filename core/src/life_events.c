@@ -32,7 +32,9 @@ static const LevRow rows_[LEV_COUNT] = {
     /* OLD_STORIES    */ {  7, 8 },
     /* PET_TRICK      */ {  8, 6 },
     /* MOVIE_NIGHT    */ {  7, 7 },
-    /* BAKE_OFF       */ {  5, 10 }
+    /* BAKE_OFF       */ {  5, 10 },
+    /* HELPING_HAND   */ {  6,  5 },
+    /* AWAY_TRIP      */ {  5,  6 }
 };
 
 static uint8_t cool_[LEV_COUNT];
@@ -111,6 +113,8 @@ static int ok_(int ev)
     case LEV_OLD_STORIES: return pick_elder_() >= 0;
     case LEV_PET_TRICK: return pets_(ids, FAMILY_MAX) >= 1;
     case LEV_MOVIE_NIGHT: case LEV_BAKE_OFF: return people_(ids, FAMILY_MAX, 0) >= 2;
+    case LEV_HELPING_HAND: return family_helper_count(0) >= 1;
+    case LEV_AWAY_TRIP: return family_away_id() < 0 && family_helper_count(1) >= 1;
     default: return 0;
     }
 }
@@ -217,6 +221,12 @@ static void run_(int ev)
         family_mood_add(id, 2); family_bond_add(id, 1);
         inv_add(ITEM_CUPCAKE, 1);
         news_("%s won the bake-off. The judges were bribed.", family_name(id));
+        break;
+    case LEV_HELPING_HAND:                      /* family_help_do shows its own news line */
+        family_help_do(family_helper_pick(0));
+        break;
+    case LEV_AWAY_TRIP:
+        family_away_start(family_helper_pick(1));
         break;
     default: break;
     }

@@ -325,6 +325,13 @@ int  family_help_daily(void);
 int  family_away_id(void);
 int  family_away_start(int id);     /* 1 = they left */
 int  family_away_return(void);      /* 1 = they brought something home */
+/* LS4b: who can lend a hand right now (not a pet, not the avatar, bond 5+; away = 1 only adults,
+ * elders and teens, who can head out). family_helper_pick draws one with the town RNG (-1 if none);
+ * family_help_call(id) is what a story script's CB_LIFE_HELP does: head out if they can, else help
+ * at once. Returns 1 if they did either. */
+int  family_helper_count(int away);
+int  family_helper_pick(int away);
+int  family_help_call(int id);
 
 /* ---- F8: bond-gated events (nothing saved) --------------------------------------
  * Run daily after free will (not when it is Off; silent at Subconscious). A member

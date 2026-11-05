@@ -259,3 +259,42 @@ TEST(ls4_old_saves_without_the_new_cooldowns_still_load)
     CHECK_EQ(life_event_cooldown(LEV_PICNIC), 2);
     CHECK_EQ(life_event_cooldown(LEV_BAKE_OFF), 0);                  /* missing bytes read as 0 */
 }
+
+/* LS4b: the F9 household helpers are life events and a script hook. */
+TEST(life_events_helping_hand_and_away_trip)
+{
+    int a, k, m0;
+    fresh();
+    CHECK_EQ(life_event_can(LEV_HELPING_HAND), 0);
+    CHECK_EQ(life_event_can(LEV_AWAY_TRIP), 0);
+    a = family_pool_add(FAMROLE_SIBLING, LIFE_ADULT, 5u, "Ann", PRONOUN_SHE);
+    k = family_pool_add(FAMROLE_CHILD, LIFE_CHILD, 6u, "Pip", PRONOUN_HE);
+    CHECK(a >= 0 && k >= 0);
+    CHECK_EQ(family_helper_count(0), 0);                       /* bond is 3: nobody helps yet */
+    CHECK_EQ(life_event_can(LEV_HELPING_HAND), 0);
+    family_bond_add(k, 3);                                     /* a child at bond 5+: can help, cannot head out */
+    CHECK_EQ(family_helper_count(0), 1);
+    CHECK_EQ(family_helper_count(1), 0);
+    CHECK(life_event_can(LEV_HELPING_HAND));
+    CHECK_EQ(life_event_can(LEV_AWAY_TRIP), 0);
+    CHECK_EQ(family_helper_pick(0), k);
+    CHECK_EQ(family_helper_pick(1), -1);
+    CHECK_EQ(life_event_fire(LEV_HELPING_HAND), 1);            /* a gift in the bag */
+    CHECK_EQ(life_event_cooldown(LEV_HELPING_HAND), 5);
+    CHECK_EQ(life_event_fire(LEV_HELPING_HAND), 0);            /* cooling down */
+    family_bond_add(a, 3);                                     /* now an adult can head out */
+    CHECK_EQ(family_helper_count(1), 1);
+    CHECK(life_event_can(LEV_AWAY_TRIP));
+    m0 = (int)doomo_town.money;
+    CHECK_EQ(life_event_fire(LEV_AWAY_TRIP), 1);
+    CHECK_EQ(family_away_id(), a);
+    CHECK_EQ(life_event_can(LEV_AWAY_TRIP), 0);                /* one trip at a time */
+    CHECK_EQ((int)doomo_town.money, m0);                       /* nothing yet: they come back tomorrow */
+    CHECK_EQ(family_away_return(), 1);
+    CHECK_EQ(family_away_id(), -1);
+    /* the avatar never helps */
+    CHECK_EQ(family_help_call(a), 1);                          /* head out again via the script hook */
+    CHECK_EQ(family_away_id(), a);
+    CHECK_EQ(family_help_call(9999), 0);                       /* nobody there */
+    CHECK_EQ(family_help_call(k), 1);                          /* a child helps at once */
+}

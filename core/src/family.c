@@ -1212,6 +1212,32 @@ int family_away_return(void)
     return 1;
 }
 
+int family_helper_count(int away)
+{
+    int i, n = 0;
+    for (i = 0; i < fam_n_; i++)
+        if (fam_[i].id != playas_avatar() && fam_[i].role != FAMROLE_PET && (bond_[i] & 15u) >= 5 &&
+            (!away || away_can_(&fam_[i]))) n++;
+    return n;
+}
+
+int family_helper_pick(int away)
+{
+    int cands[FAMILY_MAX], nc = 0, i;
+    for (i = 0; i < fam_n_; i++)
+        if (fam_[i].id != playas_avatar() && fam_[i].role != FAMROLE_PET && (bond_[i] & 15u) >= 5 &&
+            (!away || away_can_(&fam_[i]))) cands[nc++] = i;
+    return nc ? (int)fam_[cands[sim_rand(nc)]].id : -1;
+}
+
+int family_help_call(int id)
+{
+    int i = find_slot(id);
+    if (i < 0) return 0;
+    if (away_can_(&fam_[i]) && !away_on_) return family_away_start(id);
+    return family_help_do(id) != 0;
+}
+
 int family_help_daily(void)
 {
     static const uint8_t pct[5] = { 0, 3, 6, 10, 14 };

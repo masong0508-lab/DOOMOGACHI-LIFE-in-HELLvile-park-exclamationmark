@@ -1071,6 +1071,7 @@ void side_callback(int cb, int choice)
     case CB_LIFE_KIDS: { LifeEndingFacts f; life_ending_facts(&f); vm_set_var(0, f.kids); break; }
     case CB_LIFE_PARTNER: vm_set_var(0, life_player_partner()); break;
     case CB_LIFE_EVENT: vm_set_var(0, life_event_fire(choice)); break;   /* LS3 */
+    case CB_LIFE_HELP: vm_set_var(0, family_help_call(choice)); break;   /* LS4b */
     /* --- end LS5 --- */
     /* --- E4: romance routes (story_int.h CB_ROUTE_*) --- */
     case CB_ROUTE_STAGE: vm_set_var(0, ending_route_stage(choice & 15)); break;

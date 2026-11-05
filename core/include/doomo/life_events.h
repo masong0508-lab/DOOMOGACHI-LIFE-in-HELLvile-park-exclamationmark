@@ -6,6 +6,10 @@
  * stargazing, and (LS4) a bedtime story, homework help, an elder's old stories, a pet's new
  * trick, a movie night and a bake-off. Each event has a weight, a cooldown (in town days) and a condition on the
  * household; the effect is mood / bond nudges, a little money or an item, and a news line.
+ * LS4b: the F9 household helpers are events too: LEV_HELPING_HAND (a housemate with bond 5+ brings home
+ * H$, a gift or a smile, `family_help_do`) and LEV_AWAY_TRIP (an adult, elder or teen with bond 5+ heads out and
+ * comes home the next day with something, `family_away_start`). The F9 daily pass (`family_help_daily`) still runs
+ * on its own; these add the table's rolls, the cooldowns and the script hook.
  * Kid-safe: words only, nothing here can hurt or remove a member (that is F6 / F10).
  *
  * Nothing rolls without a household (no RNG draw, so a town without a family plays exactly
@@ -25,6 +29,8 @@ enum { LEV_POTLUCK = 0, LEV_PICNIC, LEV_SURPRISE_PARTY, LEV_ANNIVERSARY, LEV_LUC
        /* LS4 (2026-11-04) */
        LEV_BEDTIME_STORY, LEV_HOMEWORK_HELP, LEV_OLD_STORIES, LEV_PET_TRICK,
        LEV_MOVIE_NIGHT, LEV_BAKE_OFF,
+       /* LS4b (F9 wired in): a housemate lends a hand, or heads out to (family_away_*) */
+       LEV_HELPING_HAND, LEV_AWAY_TRIP,
        LEV_COUNT };                       /* append-only: saved cooldowns are by index */
 #define LEV_DAILY_PCT 30                  /* chance per day that one event is tried     */
 

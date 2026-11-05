@@ -697,6 +697,22 @@ TEST(family_story_danger_callbacks)
     CHECK_EQ(vm_var(0), FAMDIS_NONE);
 }
 
+TEST(family_help_callback)
+{
+    int a;
+    fresh();
+    a = family_pool_add(FAMROLE_SIBLING, LIFE_ADULT, 5u, "Ann", PRONOUN_SHE);
+    CHECK(a >= 0);
+    side_callback(CB_LIFE_HELP, a);                                  /* bond 3: they decline */
+    CHECK_EQ(vm_var(0), 0);
+    family_bond_add(a, 3);
+    side_callback(CB_LIFE_HELP, a);
+    CHECK_EQ(vm_var(0), 1);
+    CHECK_EQ(family_away_id(), a);
+    side_callback(CB_LIFE_HELP, 0);                                  /* an empty ARG is harmless */
+    CHECK_EQ(vm_var(0), 0);
+}
+
 TEST(family_bond_events)
 {
     int a, b, pet, m0;
