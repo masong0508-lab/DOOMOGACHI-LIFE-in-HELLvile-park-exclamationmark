@@ -89,8 +89,9 @@ const char *const doomo_wing_names[WINGS_COUNT] = {
     "Tiny Bat", "Mech", "Flame"
 };
 
-const char *const doomo_halo_names[HALO_COUNT] = {
-    "None", "Halo", "Broken Halo", "Flame Ring", "Stars", "Thorns"
+const char *const doomo_halo_names[HALO_ALL_COUNT] = {
+    "None", "Halo", "Broken Halo", "Flame Ring", "Stars", "Thorns",
+    "Double Ring", "Heart Halo", "Square Halo", "Neon Glitch", "Flower Ring", "Saturn Ring"
 };
 
 const char *const doomo_mark_names[MARK_COUNT] = {

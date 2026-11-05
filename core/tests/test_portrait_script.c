@@ -587,3 +587,25 @@ TEST(wave2_face_c_tier_fields_zero_is_today_and_every_choice_is_distinct)
             }
         }
 }
+
+TEST(wave2_halos_are_appended_after_the_live_count_and_every_one_is_distinct)
+{
+    static uint8_t base[PORTRAIT_W * PORTRAIT_H], a[PORTRAIT_W * PORTRAIT_H], b[PORTRAIT_W * PORTRAIT_H];
+    DoomoLook l;
+    int v, w;
+    CHECK_EQ(HALO_DOUBLE_RING, HALO_COUNT);                        /* the new values start at the live count */
+    CHECK_EQ(HALO_ALL_COUNT - HALO_COUNT, 6);
+    memset(&l, 0, sizeof(l));
+    l.eye_style = EYE_ROUND; l.eye_size = 12;
+    portrait_render(&l, RES_ALIVE, EXPR_NEUTRAL, 0, base);
+    for (v = HALO_COUNT; v < HALO_ALL_COUNT; v++) {
+        l.halo = (uint8_t)v;
+        portrait_render(&l, RES_ALIVE, EXPR_NEUTRAL, 0, a);
+        CHECK(px_diff(base, a) > 0);
+        for (w = v + 1; w < HALO_ALL_COUNT; w++) {
+            l.halo = (uint8_t)w;
+            portrait_render(&l, RES_ALIVE, EXPR_NEUTRAL, 0, b);
+            CHECK(px_diff(a, b) > 0);
+        }
+    }
+}

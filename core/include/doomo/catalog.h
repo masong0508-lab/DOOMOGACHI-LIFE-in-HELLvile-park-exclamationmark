@@ -95,7 +95,11 @@ enum { WINGS_NONE, WINGS_BAT, WINGS_ANGEL, WINGS_BUTTERFLY, WINGS_BONE,
        WINGS_COUNT };
 
 enum { HALO_NONE, HALO_HALO, HALO_BROKEN, HALO_FLAME_RING, HALO_STARS,
-       HALO_THORNS, HALO_COUNT };
+       HALO_THORNS, HALO_COUNT,
+       /* B76 (wave 2): appended after the live count, never reordered. The painter draws them, but
+        * HALO_COUNT (creator, saves, sanitising, roster) stays at v1 until the list is flipped live. */
+       HALO_DOUBLE_RING = HALO_COUNT, HALO_HEART, HALO_SQUARE, HALO_GLITCH, HALO_FLOWER, HALO_SATURN,
+       HALO_ALL_COUNT };
 
 enum { MARK_NONE, MARK_STRIPES, MARK_SPOTS, MARK_TRIBAL, MARK_SKULL_PAINT,
        MARK_CHEEK_HEARTS, MARK_STITCHES, MARK_CRACKS, MARK_STAR_FRECKLES,
@@ -188,7 +192,7 @@ extern const char *const doomo_fhair_names[FHAIR_COUNT];
 extern const char *const doomo_horn_names[HORNS_COUNT];
 extern const char *const doomo_tail_names[TAIL_COUNT];
 extern const char *const doomo_wing_names[WINGS_COUNT];
-extern const char *const doomo_halo_names[HALO_COUNT];
+extern const char *const doomo_halo_names[HALO_ALL_COUNT];
 extern const char *const doomo_mark_names[MARK_COUNT];
 extern const char *const doomo_top_names[TOP_COUNT];
 extern const char *const doomo_bottom_names[BOTTOM_COUNT];

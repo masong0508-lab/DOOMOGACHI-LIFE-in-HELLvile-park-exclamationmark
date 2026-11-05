@@ -1511,6 +1511,19 @@ int ph_top_extent(const DoomoLook *l)
     return top;
 }
 
+/* an elliptic ring of pixels (the plain halo's shape) in the three tones of g */
+static void halo_ring(int cx, int cy, int rx, int ry, const PMat *g)
+{
+    int x, yy;
+    for (yy = -(ry >> 4) - 2; yy <= (ry >> 4) + 2; yy++)
+        for (x = -(rx >> 4) - 2; x <= (rx >> 4) + 2; x++) {
+            int u = (x * 16 * 256) / DOOMO_MAX(rx, 1), v = (yy * 16 * 256) / DOOMO_MAX(ry, 1);
+            int d = u * u + v * v;
+            if (d <= 65536 + 34000 && d >= 65536 - 30000)
+                pc_fx((cx >> 4) + x, (cy >> 4) + yy, yy < 0 ? g->c[4] : (yy == 0 ? g->c[3] : g->c[2]));
+        }
+}
+
 void ph_halo(PCtx *c)
 {
     int st = c->l->halo, k;
@@ -1564,6 +1577,55 @@ void ph_halo(PCtx *c)
             pcv.id[DOOMO_CLAMP(yy, 0, pcv.h - 1) * pcv.w + DOOMO_CLAMP(x, 0, pcv.w - 1)] = PID_FX;
         }
         break;
+    case HALO_DOUBLE_RING:
+        halo_ring(hx(0), hy(y), hr(190), hry(54), &g);
+        halo_ring(hx(0), hy(y), hr(120), hry(30), &g);
+        break;
+    case HALO_HEART: {
+        static const int8_t hp[16][2] = { {-6,-2},{-5,-4},{-3,-5},{-1,-3},{0,-2},{1,-3},{3,-5},{5,-4},
+                                          {6,-2},{5,1},{3,3},{1,5},{0,6},{-1,5},{-3,3},{-5,1} };
+        PMat hm;
+        int cx = hx(0) >> 4, cy = hy(y) >> 4, sc = DOOMO_MAX(hr(170) >> 4, 7);
+        pm_paint(&hm, PAINT_BUBBLEGUM);
+        for (k = 0; k < 16; k++) pc_fx(cx + hp[k][0] * sc / 7, cy + hp[k][1] * sc / 14, k < 8 ? hm.c[4] : hm.c[2]);
+        pc_fx(cx - sc / 2, cy - sc / 7, PAL_WHITE);
+        break; }
+    case HALO_SQUARE: {
+        int x, cx = hx(0) >> 4, cy = hy(y) >> 4, w = DOOMO_MAX(hr(150) >> 4, 3), h = DOOMO_MAX(hry(40) >> 4, 1);
+        for (x = -w; x <= w; x++) {
+            pc_fx(cx + x, cy - h, PAL_RAMP(RAMP_STEEL, 5));
+            pc_fx(cx + x, cy + h, PAL_RAMP(RAMP_STEEL, 3));
+        }
+        for (k = -h; k <= h; k++) { pc_fx(cx - w, cy + k, PAL_RAMP(RAMP_STEEL, 4)); pc_fx(cx + w, cy + k, PAL_RAMP(RAMP_STEEL, 4)); }
+        pc_fx(cx - w, cy - h, PAL_PAINT(PAINT_SKY, 2));
+        pc_fx(cx + w, cy - h, PAL_PAINT(PAINT_SKY, 2));
+        break; }
+    case HALO_GLITCH:
+        for (k = 0; k < 20; k++) {
+            int a = k * 256 / 20;
+            int x = (hx(p_cos(a) * 180 / 256) >> 4) + (((k * 7 + (c->anim >> 1)) & 3) - 1);
+            int yy = hy(y + p_sin(a) * 50 / 256) >> 4;
+            pc_fx(x, yy, (k & 1) ? PAL_PAINT(PAINT_SKY, 2) : PAL_PAINT(PAINT_BUBBLEGUM, 2));
+            if (k % 5 == 0) pc_fx(x + 2, yy, PAL_WHITE);
+        }
+        break;
+    case HALO_FLOWER:
+        for (k = 0; k < 8; k++) {
+            int a = k * 32;
+            int x = hx(p_cos(a) * 180 / 256) >> 4, yy = hy(y + p_sin(a) * 50 / 256) >> 4;
+            if (k & 1) { pc_fx(x, yy, PAL_PAINT(PAINT_LIME, 1)); pc_fx(x + 1, yy, PAL_PAINT(PAINT_LIME, 2)); continue; }
+            pc_fx(x - 1, yy, PAL_PAINT(PAINT_BUBBLEGUM, 3)); pc_fx(x + 1, yy, PAL_PAINT(PAINT_BUBBLEGUM, 3));
+            pc_fx(x, yy - 1, PAL_PAINT(PAINT_BUBBLEGUM, 3)); pc_fx(x, yy + 1, PAL_PAINT(PAINT_BUBBLEGUM, 2));
+            pc_fx(x, yy, PAL_PAINT(PAINT_LEMON, 3));
+        }
+        break;
+    case HALO_SATURN: {
+        int cx = hx(0) >> 4, cy = hy(y) >> 4;
+        halo_ring(hx(0), hy(y), hr(230), hry(24), &g);
+        pc_fx(cx, cy - 1, PAL_PAINT(PAINT_TANGERINE, 3)); pc_fx(cx - 1, cy, PAL_PAINT(PAINT_TANGERINE, 3));
+        pc_fx(cx, cy, PAL_PAINT(PAINT_TANGERINE, 2)); pc_fx(cx + 1, cy, PAL_PAINT(PAINT_TANGERINE, 2));
+        pc_fx(cx, cy + 1, PAL_PAINT(PAINT_TANGERINE, 1));
+        break; }
     case HALO_THORNS:
         for (k = 0; k < 18; k++) {
             int a = k * 256 / 18;

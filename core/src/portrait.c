@@ -23,7 +23,7 @@ static void sanitize(DoomoLook *l)
     FIXE(eye_style, EYE_COUNT); FIXE(brow_style, BROW_COUNT); FIXE(nose_style, NOSE_COUNT);
     FIXE(mouth_style, MOUTH_COUNT); FIXE(hair_style, HAIR_COUNT); FIXE(facial_hair, FHAIR_COUNT);
     FIXE(ears, EARS_COUNT); FIXE(horns, HORNS_COUNT); FIXE(tail, TAIL_COUNT);
-    FIXE(wings, WINGS_COUNT); FIXE(halo, HALO_COUNT); FIXE(marking, MARK_COUNT);
+    FIXE(wings, WINGS_COUNT); FIXE(halo, HALO_ALL_COUNT); FIXE(marking, MARK_COUNT);
     FIXE(top, TOP_COUNT); FIXE(bottom, BOTTOM_COUNT); FIXE(shoes, SHOES_COUNT);
     FIXE(hat, HAT_COUNT); FIXE(accessory, ACC_COUNT); FIXE(aura, AURA_COUNT);
     FIXE(pattern, PATTERN_COUNT);
