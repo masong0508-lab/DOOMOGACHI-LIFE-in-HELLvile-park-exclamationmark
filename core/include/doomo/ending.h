@@ -133,6 +133,10 @@ void ending_check_family(void);
  * machine-heart piece is found (SF_BONE_HEART), reach E09. The Feast scenes call this when they
  * set SF_FEAST_DONE; the finale calls it too. Safe to call any time. */
 void ending_check_bonejangles(void);
+/* E12 integration: once a town day (sim day_rollover) the two checks above run again, so E04 and
+ * E09 can arrive after the finale (the partner, the house or the machine heart came later). Story
+ * mode waits for the cleared story; free play and New Game+ do not. */
+void ending_daily(void);
 /* E10 "Every Sparkle": every secret sparkle found and the dream D2 played. The overworld calls this
  * when a sparkle is found; the finale too. The finale itself resolves to E10 / E11 when they
  * hold (secret outranks the rest); E11 needs SF_NGPLUS, SF_BOTTLE_SEEN and SF_SUITCASE_OPEN. */

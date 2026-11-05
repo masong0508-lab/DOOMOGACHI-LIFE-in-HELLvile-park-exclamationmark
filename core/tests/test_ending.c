@@ -307,3 +307,39 @@ TEST(adult_gate_kid_cast_matches_the_file)
     }
     CHECK_EQ(ending_kid_cast(-1), 0);
 }
+
+/* ---- E12: the daily check lets E09 arrive after the finale ------------------------------------ */
+TEST(e12_daily_check_lets_bonejangles_bow_late)
+{
+    fresh();
+    story_set_flag(SF_FEAST_DONE, 1);
+    story_set_flag(SF_BONE_HEART, 0);
+    ending_daily();                                     /* the Feast is over, no heart: nothing */
+    CHECK(!ending_seen(ENDING_E09));
+    story_set_flag(SF_BONE_HEART, 1);                   /* found afterwards, with no cutscene to check it */
+    ending_daily();
+    CHECK(ending_seen(ENDING_E09));
+    CHECK_EQ(ending_pending(), ENDING_E09);
+    ending_daily();                                     /* a second day does not count it twice */
+    CHECK_EQ(ending_count_seen(), 1);
+    story_set_flag(SF_FEAST_DONE, 0);
+    story_set_flag(SF_BONE_HEART, 0);
+}
+
+TEST(e12_daily_check_waits_for_the_story_but_not_free_play)
+{
+    int mode = doomo_town.mode, ch = doomo_town.story.chapter;
+    fresh();
+    story_set_flag(SF_FEAST_DONE, 1);
+    story_set_flag(SF_BONE_HEART, 1);
+    doomo_town.mode = TOWN_STORY;
+    doomo_town.story.chapter = STORY_CH3;               /* story not cleared */
+    ending_daily();
+    CHECK(!ending_seen(ENDING_E09));
+    doomo_town.mode = TOWN_FREEPLAY;
+    ending_daily();
+    CHECK(ending_seen(ENDING_E09));
+    doomo_town.mode = mode; doomo_town.story.chapter = ch;
+    story_set_flag(SF_FEAST_DONE, 0);
+    story_set_flag(SF_BONE_HEART, 0);
+}

@@ -299,6 +299,13 @@ void ending_check_family(void)
         if (home_grade(r) == HG_ETERNAL) { ending_reach(ENDING_E04); return; }
 }
 
+void ending_daily(void)
+{
+    if (doomo_town.mode == TOWN_STORY && story_chapter() != STORY_CH_DONE) return;
+    ending_check_family();
+    ending_check_bonejangles();
+}
+
 /* ---- the 'ENDS' chunk (little endian, 32 B, DoomoEnds' own layout) ---- */
 static int is_default(void)
 {

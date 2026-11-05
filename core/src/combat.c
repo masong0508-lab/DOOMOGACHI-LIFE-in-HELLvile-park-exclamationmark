@@ -10,6 +10,7 @@
  */
 #include "combat_int.h"
 #include "doomo/family.h"
+#include "doomo/ending.h"
 
 DoomoPlayerState  doomo_player;
 CombatSession     combat_s;
@@ -1171,6 +1172,7 @@ static void pickups_tick(void)
         case THING_SCRAP:
             if (a->tflags & THF_MACHINE_HEART) {            /* E09: Bonejangles' missing piece */
                 story_set_flag(SF_BONE_HEART, 1);
+                ending_check_bonejangles();                 /* the Feast may already be over */
                 msg = "A MACHINE HEART?! It's still warm...";
                 doomo_player.pickup_flash = 12;
                 break;

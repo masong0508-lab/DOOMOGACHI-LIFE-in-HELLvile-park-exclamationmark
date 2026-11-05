@@ -689,6 +689,7 @@ static void day_rollover(void)
     family_disaster_daily();             /* F10: warnings and outcomes (Loss on) */
     family_loss_daily();                 /* F6: neglect and old age */
     ending_route_daily();                /* E4: romance routes grow, queue their scenes */
+    ending_daily();                      /* E12: Family Portrait and Bonejangles Bows can arrive late */
 }
 
 static void minute_step(void)
