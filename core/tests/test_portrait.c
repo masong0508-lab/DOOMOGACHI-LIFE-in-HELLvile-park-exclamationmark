@@ -688,3 +688,57 @@ TEST(portrait_lut_matches_formula)
             }
     CHECK_MSG(bad == 0, "%d shade band entries differ from the formula", bad);
 }
+
+/* ---- the Classic golden (P1.M1): every premade renders exactly as before ---------------------
+ * tests/golden/portrait_classic.txt: FNV-1a of bust + figure + body sprite + fighter (view 0/2) for
+ * every 5th premade citizen plus a few statuses/expressions of every 50th. Captured from the
+ * renderer BEFORE P1 touched it; regenerate only on purpose:
+ *   $(BUILD)/tests --update-golden portrait_classic_golden */
+static uint32_t classic_hash(int id, int status, int expr, int anim)
+{
+    static uint8_t por[PORTRAIT_W * PORTRAIT_H], fig[FIGURE_W * FIGURE_H];
+    static uint8_t spr[BODYSPR_W * BODYSPR_H], ftr[FIGHTER_W * FIGHTER_H];
+    DoomoResident r;
+    DoomoLook l;
+    uint32_t h = 2166136261u;
+    roster_premade_record(id, &r);
+    res_get_look(&r, &l);
+    portrait_render(&l, status, expr, anim, por);   h = fnv(por, (int)sizeof(por), h);
+    figure_render(&l, status, expr, anim, fig);     h = fnv(fig, (int)sizeof(fig), h);
+    bodyspr_render(&l, status, 0, anim & 1, spr);   h = fnv(spr, (int)sizeof(spr), h);
+    fighter_render(&l, status, 0, anim, -1, ftr);   h = fnv(ftr, (int)sizeof(ftr), h);
+    fighter_render(&l, status, 2, anim, -1, ftr);   h = fnv(ftr, (int)sizeof(ftr), h);
+    return h;
+}
+
+TEST(portrait_classic_golden)
+{
+    char path[512], line[128];
+    FILE *f;
+    int id, lines = 0;
+    snprintf(path, sizeof(path), "%s/portrait_classic.txt", test_golden_dir);
+    if (test_update_golden) {
+        f = fopen(path, "w");
+        CHECK_MSG(f != NULL, "cannot write %s", path);
+        fprintf(f, "# id status expr anim fnv1a (core/tests/test_portrait.c; frozen before P1)\n");
+        for (id = 0; id < ROSTER_COUNT; id += 5) {
+            int st = RES_ALIVE, ex = EXPR_NEUTRAL, an = id;
+            if (id % 50 == 0) { st = (id / 50) % 3 == 0 ? RES_DEAD : RES_ALIVE; ex = (id / 50) % EXPR_COUNT; an = id * 7; }
+            fprintf(f, "%d %d %d %d %08x\n", id, st, ex, an, (unsigned)classic_hash(id, st, ex, an));
+        }
+        fclose(f);
+        return;
+    }
+    f = fopen(path, "r");
+    CHECK_MSG(f != NULL, "missing %s (run tests --update-golden portrait_classic_golden)", path);
+    if (!f) return;
+    while (fgets(line, sizeof(line), f)) {
+        int st, ex, an;
+        unsigned want;
+        if (line[0] == '#' || sscanf(line, "%d %d %d %d %x", &id, &st, &ex, &an, &want) != 5) continue;
+        CHECK_MSG(classic_hash(id, st, ex, an) == want, "premade %d (status %d expr %d anim %d) renders differently", id, st, ex, an);
+        lines++;
+    }
+    fclose(f);
+    CHECK_EQ(lines, ROSTER_COUNT / 5);
+}

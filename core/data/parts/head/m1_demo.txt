@@ -1,0 +1,9 @@
+# core/data/parts/head/m1_demo.txt - P1.M1 demo head part (see the face demo): a tuft, group 2a.
+list head_shape 31
+block group=2 anchor=head lod=all view=all
+  mat hair_color
+  shade ball
+  solid
+  scale 48
+  tri -60 -150 0 -250 60 -150
+end

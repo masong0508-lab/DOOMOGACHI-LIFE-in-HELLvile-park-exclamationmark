@@ -1,0 +1,48 @@
+# core/data/parts/face/m1_demo.txt - P1.M1 demo scripts. They sit on style values no catalog list
+# reaches (the painters do not call the VM until M2), so the Classic look is untouched; the VM
+# tests draw them. Replace with the real wave-1 parts when the painters are wired.
+stamp heart 8 8
+  .XX..XX.
+  XXXXXXXX
+  XXXXXXXX
+  .XXXXXX.
+  ..XXXX..
+  ...XX...
+  ........
+  ........
+
+# a pair of round eyes with a heart sparkle on the left one (head anchor, 2b)
+list eye_style 63
+block group=3 anchor=head lod=big,mid view=portrait,figure,fighter
+  mat eye_color
+  shade vgrad
+  solid noline
+  mirror on
+  ellipse 60 -20 28 34
+  mat eye_color light
+  decal
+  dot 52 -30 4
+  mirror off
+  mat hair_highlight
+  stamp heart -60 -52 24
+end
+# only the chibi view: two dots
+block group=3 anchor=head lod=tiny view=chibi
+  mat eye_color dark
+  solid noline
+  mirror on
+  dot 60 -20 1
+end
+
+# a blush decal clipped to the face, front views only
+list blush_style 31
+block group=3 anchor=head lod=big view=portrait,figure
+  mat skin light
+  decal
+  region head
+  mirror on
+  ifyaw 0,1
+  ellipse 110 40 28 16
+  endif
+  region none
+end

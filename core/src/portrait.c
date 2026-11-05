@@ -129,8 +129,10 @@ static void finish(PCtx *c)
 
 /* The layers in painter's order, in DL_STEPS groups of roughly equal cost
  * (about 0.1-0.2M cycles each on the GBA) so the cache can spread a
- * re-render over several ticks. */
-#define DL_STEPS 6
+ * re-render over several ticks. The groups: 0 back, 1 body, 2a head base, 2b face, 3 neck and
+ * front hair, 4 hat / horns / accessories / front, 5 finish (P1 split the old group 2 in two,
+ * SPEC 4.4; the draw order is unchanged, so every image is too). */
+#define DL_STEPS 7
 
 static void draw_step(PCtx *c, int step)
 {
@@ -146,17 +148,19 @@ static void draw_step(PCtx *c, int step)
     case 1:
         pb_draw_body(c);
         break;
-    case 2:
+    case 2:                     /* 2a: the head silhouette (+ fur tufts) */
         ph_head_base(c);
+        break;
+    case 3:                     /* 2b: species marks, eyes, brows, nose, mouth */
         ph_face(c);
         break;
-    case 3:
+    case 4:
         pb_draw_neck(c);
         ph_hair_front(c);
         ph_face_over(c);
         ph_ears(c, 1);
         break;
-    case 4:
+    case 5:
         ph_hat(c);
         ph_species_over(c);
         ph_horns(c);
@@ -170,7 +174,7 @@ static void draw_step(PCtx *c, int step)
     }
 }
 
-/* SPECIES_TURKEY (portrait_turkey.c): the same six groups, with the
+/* SPECIES_TURKEY (portrait_turkey.c): the same seven groups, with the
  * turkey's own neck, head, face and Hatter pieces in place of the engine's
  * head, face and hair; everything else (body, outfit, other hats, hair,
  * ears, horns, face accessories, weapons, effects) is the engine's. The
@@ -200,7 +204,9 @@ static void turkey_step(PCtx *c, int step)
     case 2:
         ptk_head(c);
         break;
-    case 3:
+    case 3:                     /* 2b: the turkey face is drawn after the neck (group 4) */
+        break;
+    case 4:
         if (t.top == TOP_SUIT) t.top = TOP_NONE;            /* lapels instead of the collar */
         if (t.accessory == ACC_BOWTIE) t.accessory = ACC_NONE;  /* the floppy bow */
         c->l = &t;
@@ -210,7 +216,7 @@ static void turkey_step(PCtx *c, int step)
         if (engine_hair) ph_hair_front(c);
         if (own->ears != EARS_NONE) ph_ears(c, 1);
         break;
-    case 4:
+    case 5:
         if (ptk_hatter(own)) ptk_hat(c);
         else ph_hat(c);
         ptk_brows(c);
@@ -476,7 +482,7 @@ static void render_fighter_ctx(PCtx *c, int view, int anim, int wframe, uint8_t 
 #define PC_STEPS   DL_STEPS
 #define PC_FXSHIFT 3
 #endif
-#define PC_AHEAD   8           /* ticks of look-ahead for sliced jobs       */
+#define PC_AHEAD   9           /* ticks of look-ahead for sliced jobs       */
 #define PC_STALE   4           /* a job nobody asked about for this long    */
                                /* may be dropped for another one            */
 

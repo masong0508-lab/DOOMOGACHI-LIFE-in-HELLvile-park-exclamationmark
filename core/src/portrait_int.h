@@ -173,6 +173,9 @@ typedef struct PHead {
     int cosv, sinv;         /* Q8 yaw rotation                         */
 } PHead;
 
+/* A material built on demand by pm_of() (P1): a 16-entry memo per context. */
+typedef struct PMemo { uint16_t key; uint8_t used; PMat m; } PMemo;
+
 /* Everything a part painter needs to know about the resident. */
 typedef struct PCtx {
     const DoomoLook *l;
@@ -198,6 +201,7 @@ typedef struct PCtx {
     int armlx, armly, armrx, armry;  /* hand positions (Q4) if posed   */
     int head_id;         /* part id of the head                        */
     int body_id;         /* part id of the torso                       */
+    PMemo memo[16];      /* pm_of() results                            */
 } PCtx;
 
 enum { VK_PORTRAIT, VK_FIGURE, VK_FIGHTER, VK_CHIBI };
@@ -283,5 +287,31 @@ int  pb_ground(void);
 int  pb_nolegs(void);
 void pb_hand(int s, int *x, int *y);
 void pb_set_hand(int s, int x, int y);
+
+/* ---- P1: materials, regions, stamps and the part-script VM (portrait_script.c) ------------ */
+/* View masks of a part script (bit 1 << LOD_*: PHead.lod 0 tiny, 1 mid, 2 big). */
+enum { LODM_TINY = 1, LODM_MID = 2, LODM_BIG = 4 };
+
+/* pm_of(c, lf, tone): the material of colour field `lf` (a GF_* id: skin, hair_color,
+ * hair_highlight, eye_color, horn_color, marking_color, top_color, bottom_color, shoes_color,
+ * hat_color, accessory_color, pattern_color). Choice 0 is today's derivation (pctx_init), so a
+ * script that names a field gets exactly the colours the painters use. `tone` PM_LIGHT / PM_DARK
+ * steps the ramp one shade up / down (memoised); any other field returns the skin. */
+enum { PM_BASE, PM_LIGHT, PM_DARK };
+const PMat *pm_of(PCtx *c, int lf, int tone);
+
+/* decal clip regions (pixel clip rectangles from the head / body layout) */
+enum { REG_NONE, REG_HEAD, REG_EYE_L, REG_EYE_R, REG_MUZZLE, REG_TORSO, REG_COUNT };
+void pc_region(PCtx *c, int region);
+
+/* A 1bpp stamp (w, h 1..16, rows MSB first): set bits become m->c[2] pixels (ids kept), centred on
+ * (x, y) in Q4, scaled by q4 (16 = one pixel per stamp pixel). */
+void pc_stamp(PCtx *c, const uint8_t *m1bpp, int w, int h, int x, int y, int q4, const PMat *m);
+
+/* Run the script of (list, value): the blocks whose anchor is `anchor` (-1 = any) and group is
+ * `group` (-1 = any). Returns the ops executed (0: no script, nothing drawn). */
+int  ps_run(PCtx *c, int list, int value, int anchor);
+int  ps_run_group(PCtx *c, int list, int value, int anchor, int group);
+int  ps_has(int list, int value);          /* 1 if (list, value) has a script */
 
 #endif

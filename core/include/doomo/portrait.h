@@ -91,6 +91,9 @@ void fighter_render(const DoomoLook *l, int status, int view, int anim,
                     int weapon_frame, uint8_t *out);
 /* Pixel visits of the last render (cost check in tests / tools). */
 uint32_t portrait_last_ops(void);
+/* The cache key of resident `rid`'s look (SPEC 4.5): the gene (+ the deep-look run bytes, once a
+ * pool holds any). Equal keys, equal pictures; 0 for an id with no record. */
+uint32_t look_key(int rid);
 /* Drop every cached image and return to the real clock (tests). */
 void portrait_cache_reset(void);
 /* Tests / tools: run the cache on a fake clock `tick` (instead of

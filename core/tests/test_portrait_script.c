@@ -1,0 +1,214 @@
+/* test_portrait_script.c - the part-script VM, materials, regions, stamps and look_key
+ * (owner: portrait / customisation P1.M1). The demo scripts (core/data/parts/) sit on style values
+ * no catalog list reaches, so these tests are the only thing that draws them yet. */
+#include "test.h"
+#include "../src/portrait_int.h"
+#include "doomo/parts.h"
+#include "doomo/gene.h"
+
+static uint8_t buf[PORTRAIT_W * PORTRAIT_H + 16];     /* + canary */
+
+static void setup(PCtx *c, DoomoLook *l, int yaw, int lod, int vk)
+{
+    DoomoResident r;
+    resident_default(&r);
+    *l = *RES_LOOK_VIEW(&r);
+    memset(buf, 0xA5, sizeof(buf));
+    pc_begin(buf, PORTRAIT_W, PORTRAIT_H);
+    pctx_init(c, l, RES_ALIVE, EXPR_NEUTRAL, 0);
+    phead_set(&c->h, PX(PORTRAIT_W / 2), PX(PORTRAIT_H / 2), PX(20), PX(24), yaw, lod);
+    c->view_kind = vk;
+    c->bx = PX(PORTRAIT_W / 2); c->by = PX(PORTRAIT_H * 3 / 4); c->bw = PX(14); c->bh = PX(14);
+}
+
+static int count(int x0, int x1)
+{
+    int x, y, n = 0;
+    for (y = 0; y < PORTRAIT_H; y++)
+        for (x = x0; x < x1; x++)
+            if (pc_get(x, y)) n++;
+    return n;
+}
+
+static uint32_t sum(void)
+{
+    uint32_t h = 2166136261u;
+    int i;
+    for (i = 0; i < PORTRAIT_W * PORTRAIT_H; i++) h = (h ^ buf[i]) * 16777619u;
+    return h;
+}
+
+TEST(script_tables_find_entries)
+{
+    CHECK(ps_has(GF_EYE_STYLE, 63));
+    CHECK(ps_has(GF_BLUSH_STYLE, 31));
+    CHECK(ps_has(GF_HEAD_SHAPE, 31));       /* the head set */
+    CHECK(!ps_has(GF_EYE_STYLE, 62));
+    CHECK(!ps_has(GF_BLUSH_STYLE, 0));
+    CHECK(!ps_has(GF_BODY, 0));
+}
+
+TEST(script_draws_deterministically_inside_the_canvas)
+{
+    PCtx c;
+    DoomoLook l;
+    uint32_t a;
+    int ops, i;
+    setup(&c, &l, 0, 2, VK_PORTRAIT);
+    ops = ps_run(&c, GF_EYE_STYLE, 63, -1);
+    CHECK(ops > 0);
+    CHECK(count(0, PORTRAIT_W) > 0);
+    a = sum();
+    setup(&c, &l, 0, 2, VK_PORTRAIT);
+    CHECK_EQ(ps_run(&c, GF_EYE_STYLE, 63, -1), ops);
+    CHECK_EQ(sum(), a);
+    for (i = 0; i < 16; i++) CHECK_EQ(buf[PORTRAIT_W * PORTRAIT_H + i], 0xA5);   /* canary */
+    CHECK_EQ(ps_run(&c, GF_EYE_STYLE, 62, -1), 0);           /* no script, nothing drawn */
+}
+
+TEST(script_mirror_draws_both_sides_and_the_stamp_one)
+{
+    PCtx c;
+    DoomoLook l;
+    int left, right;
+    setup(&c, &l, 0, 2, VK_PORTRAIT);
+    ps_run_group(&c, GF_EYE_STYLE, 63, PA_HEAD, 3);
+    left = count(0, PORTRAIT_W / 2);
+    right = count(PORTRAIT_W / 2, PORTRAIT_W);
+    CHECK(left > 20 && right > 20);                           /* both eyes */
+    CHECK(left > right);                                      /* the heart is left only */
+}
+
+TEST(script_lod_view_and_anchor_gates)
+{
+    PCtx c;
+    DoomoLook l;
+    int big, chibi;
+    setup(&c, &l, 0, 2, VK_PORTRAIT);
+    big = ps_run(&c, GF_EYE_STYLE, 63, PA_HEAD);
+    CHECK(big > 0);
+    CHECK_EQ(ps_run(&c, GF_EYE_STYLE, 63, PA_TORSO), 0);      /* wrong anchor */
+    CHECK_EQ(ps_run_group(&c, GF_EYE_STYLE, 63, -1, 2), 0);   /* wrong group */
+    setup(&c, &l, 0, 0, VK_CHIBI);                            /* tiny + chibi: the dots only */
+    chibi = ps_run(&c, GF_EYE_STYLE, 63, -1);
+    CHECK(chibi > 0 && chibi < big);
+    CHECK(count(0, PORTRAIT_W) > 0);
+    setup(&c, &l, 0, 2, VK_CHIBI);                            /* big lod in the chibi view: neither */
+    CHECK_EQ(ps_run(&c, GF_EYE_STYLE, 63, -1), 0);
+}
+
+TEST(script_conditions_follow_yaw)
+{
+    PCtx c;
+    DoomoLook l;
+    int front, side;
+    setup(&c, &l, 0, 2, VK_PORTRAIT);
+    pc_part(&c.skin, SH_FLAT, 0);
+    pc_ellipse(PX(PORTRAIT_W / 2), PX(PORTRAIT_H / 2), PX(20), PX(24));
+    front = ps_run(&c, GF_BLUSH_STYLE, 31, -1);
+    setup(&c, &l, 2, 2, VK_PORTRAIT);                         /* left profile: ifyaw 0,1 skips */
+    pc_part(&c.skin, SH_FLAT, 0);
+    pc_ellipse(PX(PORTRAIT_W / 2), PX(PORTRAIT_H / 2), PX(20), PX(24));
+    side = ps_run(&c, GF_BLUSH_STYLE, 31, -1);
+    CHECK(front > side);
+}
+
+TEST(script_head_tuft_draws_in_its_group_only)
+{
+    PCtx c;
+    DoomoLook l;
+    setup(&c, &l, 0, 1, VK_FIGURE);
+    CHECK_EQ(ps_run_group(&c, GF_HEAD_SHAPE, 31, -1, 3), 0);
+    CHECK(ps_run_group(&c, GF_HEAD_SHAPE, 31, -1, 2) > 0);
+    CHECK(count(0, PORTRAIT_W) > 4);
+}
+
+TEST(stamp_draws_the_bits_where_they_are)
+{
+    static const uint8_t checker[8] = { 0xAA, 0x55, 0xAA, 0x55, 0xAA, 0x55, 0xAA, 0x55 };
+    PCtx c;
+    DoomoLook l;
+    PMat m;
+    int x, y, bad = 0;
+    setup(&c, &l, 0, 2, VK_PORTRAIT);
+    pm_paint(&m, 3);
+    CHECK(m.c[2] != 0);
+    pc_stamp(&c, checker, 8, 8, PX(24), PX(24), 16, &m);       /* top left = (20, 20) */
+    for (y = 0; y < 8; y++)
+        for (x = 0; x < 8; x++) {
+            int want = (checker[y] >> (7 - x)) & 1;
+            if ((pc_get(20 + x, 20 + y) != 0) != want) bad++;
+        }
+    CHECK_EQ(bad, 0);
+    CHECK_EQ(pc_get(19, 20), 0);
+    CHECK_EQ(pc_get(28, 20), 0);
+    pc_stamp(&c, checker, 8, 8, PX(24), PX(24), 0, &m);        /* nonsense scale: ignored */
+    pc_stamp(&c, NULL, 8, 8, PX(24), PX(24), 16, &m);
+    pc_stamp(&c, checker, 40, 8, PX(24), PX(24), 16, &m);
+}
+
+TEST(regions_clip_to_their_part_of_the_face)
+{
+    PCtx c;
+    DoomoLook l;
+    int x, y, lmid = -1, rmid = -1, r;
+    for (r = REG_HEAD; r < REG_COUNT; r++) {
+        int minx = 999, maxx = -1, miny = 999, maxy = -1;
+        setup(&c, &l, 0, 2, VK_PORTRAIT);
+        pc_region(&c, r);
+        pc_part(&c.skin, SH_FLAT, 0);
+        pc_rect(0, 0, PX(PORTRAIT_W), PX(PORTRAIT_H));
+        for (y = 0; y < PORTRAIT_H; y++)
+            for (x = 0; x < PORTRAIT_W; x++)
+                if (pc_get(x, y)) {
+                    if (x < minx) minx = x;
+                    if (x > maxx) maxx = x;
+                    if (y < miny) miny = y;
+                    if (y > maxy) maxy = y;
+                }
+        CHECK_MSG(maxx >= 0, "region %d drew nothing", r);
+        CHECK_MSG(maxx - minx < PORTRAIT_W - 2 && maxy - miny < PORTRAIT_H - 2, "region %d is not a clip", r);
+        if (r == REG_EYE_L) lmid = minx + maxx;
+        if (r == REG_EYE_R) rmid = minx + maxx;
+    }
+    CHECK(lmid >= 0 && lmid < rmid);                           /* left eye box is left of the right */
+    setup(&c, &l, 0, 2, VK_PORTRAIT);                          /* REG_NONE lifts the clip */
+    pc_region(&c, REG_HEAD);
+    pc_region(&c, REG_NONE);
+    pc_part(&c.skin, SH_FLAT, 0);
+    pc_rect(0, 0, PX(PORTRAIT_W), PX(PORTRAIT_H));
+    CHECK_EQ(count(0, PORTRAIT_W), PORTRAIT_W * PORTRAIT_H);
+}
+
+TEST(pm_of_returns_today_materials_and_memoised_tones)
+{
+    PCtx c;
+    DoomoLook l;
+    const PMat *a, *b;
+    int lf, tone, bad = 0;
+    setup(&c, &l, 0, 2, VK_PORTRAIT);
+    CHECK(pm_of(&c, GF_SKIN, PM_BASE) == &c.skin);
+    CHECK(pm_of(&c, GF_HAIR_COLOR, PM_BASE) == &c.hair);
+    CHECK(pm_of(&c, GF_EYE_COLOR, PM_BASE) == &c.eye);
+    CHECK(pm_of(&c, GF_BODY, PM_BASE) == &c.skin);             /* not a colour field: skin */
+    a = pm_of(&c, GF_SKIN, PM_LIGHT);
+    CHECK_EQ(a->c[2], c.skin.c[3]);
+    CHECK_EQ(a->c[0], c.skin.c[1]);
+    b = pm_of(&c, GF_SKIN, PM_DARK);
+    CHECK_EQ(b->c[2], c.skin.c[1]);
+    CHECK(pm_of(&c, GF_SKIN, PM_LIGHT) == a);                  /* memo hit, same slot */
+    for (lf = GF_SKIN; lf < GF_COUNT; lf++)                    /* more tones than the memo holds */
+        for (tone = PM_LIGHT; tone <= PM_DARK; tone++) {
+            const PMat *m = pm_of(&c, lf, tone), *base = pm_of(&c, lf, PM_BASE);
+            if (m->c[2] != (tone == PM_LIGHT ? base->c[3] : base->c[1])) bad++;
+        }
+    CHECK_EQ(bad, 0);
+}
+
+TEST(look_key_follows_the_gene)
+{
+    CHECK(look_key(3) != 0);
+    CHECK_EQ(look_key(3), look_key(3));
+    CHECK(look_key(3) != look_key(4));
+    CHECK_EQ(look_key(ROSTER_COUNT + 5), 0);
+}
