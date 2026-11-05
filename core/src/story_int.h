@@ -254,6 +254,11 @@ enum { CB_LIFE_FAMILY_ADD = CB_LIFE_FIRST,  /* ARG = resident: join the househol
        CB_LIFE_KIDS,                         /* VAR0 = children in the household           */
        CB_LIFE_PARTNER,                      /* VAR0 = the partner's resident id, -1 if none */
        CB_LIFE_EVENT };                      /* LS3: ARG = LEV_* id: fire that life event; VAR0 = 1 if it ran */
+/* F10: story danger hooks (CB_FAM block). Hand-written beats only: no random death, Loss Off = rescue. */
+enum { CB_FAM_DANGER = CB_FAM_FIRST,      /* ARG bits 0..3 = FAMDIS_*, bits 4..19 = member id; VAR0 = 1 if started */
+       CB_FAM_RESCUE,                     /* ARG = member id: the scene saved them; VAR0 = 1 if one was pending for them */
+       CB_FAM_DANGER_KIND,                /* VAR0 = the pending FAMDIS_* kind, 0 = none                    */
+       CB_FAM_DANGER_TARGET };            /* VAR0 = the pending target's member id, -1 = none              */
 /* E4: the romance route hooks (CB_ROUTE block). ARG = route (ROUTE_*) in bits 0..3. */
 enum { CB_ROUTE_STAGE = CB_ROUTE_FIRST,   /* VAR0 = the route's RSTAGE_*                                   */
        CB_ROUTE_ADD,                      /* ARG bits 4..11 = meter to add; VAR0 = the meter after         */

@@ -23,6 +23,7 @@ static FamilyMember fam_[FAMILY_MAX];
 static uint16_t sq_a_, sq_b_;      /* F8 pending squabble */
 static uint8_t sq_on_;
 static uint8_t dis_kind_;          /* F10 pending disaster (not saved) */
+static uint8_t dis_story_;         /* 1 = a story beat put it there (never random, Loss Off = rescue) */
 static uint16_t dis_id_;
 static uint8_t away_on_;           /* F9 a member is away helping until tomorrow (not saved) */
 static uint16_t away_id_;
@@ -305,6 +306,7 @@ void family_clear(void)
     neglect_grace_ = 0;
     sq_on_ = 0;
     dis_kind_ = 0;
+    dis_story_ = 0;
     away_on_ = 0;
     will_ = FAMILY_WILL_NORMAL;
     memset(fam_, 0, sizeof(fam_));
@@ -567,6 +569,7 @@ int family_load(const uint8_t *src, uint32_t len)
     fam_n_ = (uint8_t)n;
     will_ = (uint8_t)((src[1] >= 1 && src[1] <= 5) ? src[1] - 1 : FAMILY_WILL_NORMAL);
     dis_kind_ = 0;
+    dis_story_ = 0;
     away_on_ = 0;
     sq_on_ = 0;
     neglect_grace_ = 1;                 /* F6: a load never costs a day of care */
@@ -990,6 +993,7 @@ int family_disaster_start(int kind, int id)
     char msg[NEWS_LEN];
     if (dis_kind_ || kind <= FAMDIS_NONE || kind >= FAMDIS_COUNT || find_slot(id) < 0) return 0;
     dis_kind_ = (uint8_t)kind;
+    dis_story_ = 0;
     dis_id_ = (uint16_t)id;
     doomo_snprintf(msg, sizeof(msg), dis_warn_[kind], member_name_(id));
     ui_toast(msg);
@@ -997,23 +1001,50 @@ int family_disaster_start(int kind, int id)
     return 1;
 }
 
+int family_story_danger(int kind, int id)
+{
+    if (id == playas_avatar() || !family_disaster_start(kind, id)) return 0;
+    dis_story_ = 1;
+    return 1;
+}
+
+int family_disaster_rescue(int id)
+{
+    char msg[NEWS_LEN];
+    if (!dis_kind_ || dis_id_ != id) return 0;
+    dis_kind_ = 0;
+    dis_story_ = 0;
+    doomo_snprintf(msg, sizeof(msg), "%s was rescued!", member_name_(id));
+    sim_news_push(msg);
+    return 1;
+}
+
+int family_disaster_is_story(void) { return dis_kind_ && dis_story_; }
+
 int family_disaster_daily(void)
 {
     int i, lost = 0;
-    if (!loss_on_) { dis_kind_ = 0; return 0; }
+    if (!loss_on_ && !(dis_kind_ && dis_story_)) { dis_kind_ = 0; return 0; }
     if (dis_kind_) {
-        int kind = dis_kind_, id = dis_id_;
+        int kind = dis_kind_, id = dis_id_, story = dis_story_;
         char msg[NEWS_LEN];
         dis_kind_ = 0;
+        dis_story_ = 0;
         i = find_slot(id);
         if (i < 0) return 0;
+        if (!loss_on_) {                               /* a story danger with Loss off: a rescue */
+            doomo_snprintf(msg, sizeof(msg), "%s was rescued in time!", member_name_(id));
+            sim_news_push(msg);
+            return 0;
+        }
         if (fam_[i].spare) {                           /* cared for in time */
             doomo_snprintf(msg, sizeof(msg), "%s is safe. Good thing you were there!", member_name_(id));
             sim_news_push(msg);
             return 0;
         }
         if (kind == FAMDIS_ILLNESS || kind == FAMDIS_DEMON) {
-            int lethal = !is_minor_member_(&fam_[i]) || sim_chance(33);
+            /* a story beat is written by hand: no dice, and a minor always pulls through */
+            int lethal = story ? !is_minor_member_(&fam_[i]) : (!is_minor_member_(&fam_[i]) || sim_chance(33));
             if (lethal) {
                 lost += family_lose(id, kind == FAMDIS_DEMON ? FAMLOSS_DEMON : FAMLOSS_ILLNESS);
                 return lost;

@@ -355,6 +355,17 @@ int  family_disaster_target(void);              /* member id, -1 = none */
 int  family_disaster_daily(void);               /* resolve a pending one or roll a new one;
                                                    returns members lost */
 
+/* F10 story hooks (hand-written story beats, CB_FAM_DANGER / CB_FAM_RESCUE in story_int.h).
+ * A story danger is a disaster a script puts on one member (never the avatar). Same warning,
+ * same one-day chance to care for them, but: no dice (a minor always pulls through; an adult,
+ * elder or pet who nobody cared for is lost through family_lose()), and with the Loss option
+ * Off it is a RESCUE (news "was rescued in time!", nobody is lost) instead of being dropped.
+ * Only one disaster at a time; nothing is saved (a load cancels it, like a random one). */
+int  family_story_danger(int kind, int id);     /* 1 if started */
+int  family_disaster_rescue(int id);            /* a scene saved them: cancel the pending one for
+                                                   this member (random or story); 1 if it was theirs */
+int  family_disaster_is_story(void);            /* 1 while the pending one came from a story beat */
+
 /* ---- F7/F8: bond and mood (one byte per member, in table order) -------------
  * low nibble bond 0..15 (default 3), high nibble mood 0..15 (default 8). A care
  * act (yours or a housemate's) raises the bond; days nobody cares for a pool

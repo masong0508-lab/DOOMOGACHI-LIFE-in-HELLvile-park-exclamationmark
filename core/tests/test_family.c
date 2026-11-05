@@ -611,6 +611,92 @@ TEST(family_disasters)
     family_loss_set(1);
 }
 
+/* F10 story hooks: a hand-written danger has no dice; Loss Off turns it into a rescue. */
+TEST(family_story_danger_rules)
+{
+    int a, k, i;
+    fresh();
+    family_loss_set(1);
+    a = family_pool_add(FAMROLE_SIBLING, LIFE_ADULT, 5u, "Ann", PRONOUN_SHE);
+    k = family_pool_add(FAMROLE_CHILD, LIFE_CHILD, 6u, "Pip", PRONOUN_HE);
+    CHECK(a >= 0 && k >= 0);
+    CHECK(!family_story_danger(FAMDIS_ILLNESS, playas_avatar()));        /* never the avatar */
+    CHECK(!family_story_danger(FAMDIS_ILLNESS, 31999));                  /* nobody there */
+    CHECK(!family_story_danger(FAMDIS_NONE, a));
+    /* a minor in story danger pulls through, every time (no 1-in-3 roll) */
+    for (i = 0; i < 12; i++) {
+        CHECK(family_story_danger(FAMDIS_DEMON, k));
+        CHECK(family_disaster_is_story());
+        CHECK_EQ(family_disaster_daily(), 0);
+        CHECK_EQ(family_count(), 2);
+    }
+    CHECK(!family_disaster_is_story());
+    /* care in the warning day saves an adult */
+    CHECK(family_story_danger(FAMDIS_ILLNESS, a));
+    family_care(a);
+    CHECK_EQ(family_disaster_daily(), 0);
+    CHECK_EQ(family_count(), 2);
+    /* nobody cared (a different adult, no care today): lost, off-screen, with a memorial */
+    a = family_pool_add(FAMROLE_SIBLING, LIFE_ADULT, 8u, "Cal", PRONOUN_HE);
+    CHECK(a >= 0);
+    CHECK_EQ(family_count(), 3);
+    CHECK(family_story_danger(FAMDIS_DEMON, a));
+    CHECK_EQ(family_memorial_count(), 0);
+    CHECK_EQ(family_disaster_daily(), 1);
+    CHECK_EQ(family_memorial_count(), 1);
+    CHECK_EQ(family_count(), 2);
+    /* a scene can save them before the day ends */
+    CHECK(family_story_danger(FAMDIS_ILLNESS, k));
+    CHECK(!family_disaster_rescue(a));                                   /* not their danger */
+    CHECK(family_disaster_rescue(k));
+    CHECK_EQ(family_disaster_pending(), FAMDIS_NONE);
+    CHECK_EQ(family_disaster_target(), -1);
+    CHECK(!family_disaster_rescue(k));
+    /* Loss off: the story danger still plays, as a rescue; a random one is still dropped */
+    a = family_pool_add(FAMROLE_SIBLING, LIFE_ADULT, 9u, "Ben", PRONOUN_HE);
+    CHECK(a >= 0);
+    family_loss_set(0);
+    CHECK(family_story_danger(FAMDIS_ILLNESS, a));
+    CHECK_EQ(family_disaster_daily(), 0);
+    CHECK_EQ(family_disaster_pending(), FAMDIS_NONE);
+    CHECK_EQ(family_count(), 3);
+    CHECK_EQ(family_memorial_count(), 1);                                /* nobody new lost */
+    CHECK(family_disaster_start(FAMDIS_DEMON, a));                       /* random: dropped quietly */
+    CHECK(!family_disaster_is_story());
+    CHECK_EQ(family_disaster_daily(), 0);
+    CHECK_EQ(family_count(), 3);
+    family_loss_set(1);
+}
+
+TEST(family_story_danger_callbacks)
+{
+    int a;
+    fresh();
+    family_loss_set(1);
+    a = family_pool_add(FAMROLE_SIBLING, LIFE_ADULT, 5u, "Ann", PRONOUN_SHE);
+    CHECK(a >= 0);
+    side_callback(CB_FAM_DANGER_KIND, 0);
+    CHECK_EQ(vm_var(0), FAMDIS_NONE);
+    side_callback(CB_FAM_DANGER_TARGET, 0);
+    CHECK_EQ(vm_var(0), -1);
+    side_callback(CB_FAM_DANGER, 0);                                     /* an empty ARG is harmless */
+    CHECK_EQ(vm_var(0), 0);
+    side_callback(CB_FAM_DANGER, FAMDIS_FIRE | (a << 4));
+    CHECK_EQ(vm_var(0), 1);
+    side_callback(CB_FAM_DANGER_KIND, 0);
+    CHECK_EQ(vm_var(0), FAMDIS_FIRE);
+    side_callback(CB_FAM_DANGER_TARGET, 0);
+    CHECK_EQ(vm_var(0), a);
+    side_callback(CB_FAM_DANGER, FAMDIS_STORM | (a << 4));               /* one at a time */
+    CHECK_EQ(vm_var(0), 0);
+    side_callback(CB_FAM_RESCUE, a + 1);
+    CHECK_EQ(vm_var(0), 0);
+    side_callback(CB_FAM_RESCUE, a);
+    CHECK_EQ(vm_var(0), 1);
+    side_callback(CB_FAM_DANGER_KIND, 0);
+    CHECK_EQ(vm_var(0), FAMDIS_NONE);
+}
+
 TEST(family_bond_events)
 {
     int a, b, pet, m0;

@@ -1078,6 +1078,12 @@ void side_callback(int cb, int choice)
     case CB_ROUTE_SET: vm_set_var(0, ending_route_set(choice & 15, (choice >> 4) & 15, (choice >> 8) & 0x3FF)); break;
     case CB_ROUTE_PARTNER: vm_set_var(0, ending_route_partner(choice & 15)); break;
     /* --- end E4 --- */
+    /* --- F10: story danger hooks (story_int.h CB_FAM_*) --- */
+    case CB_FAM_DANGER: vm_set_var(0, family_story_danger(choice & 15, (choice >> 4) & 0xFFFF)); break;
+    case CB_FAM_RESCUE: vm_set_var(0, family_disaster_rescue(choice)); break;
+    case CB_FAM_DANGER_KIND: vm_set_var(0, family_disaster_pending()); break;
+    case CB_FAM_DANGER_TARGET: vm_set_var(0, family_disaster_target()); break;
+    /* --- end F10 --- */
     default: break;
     }
 }
