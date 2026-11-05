@@ -358,3 +358,18 @@ TEST(deep_anim_mask_and_cache_stay_correct_with_a_run)
     look_pool_drop(3);
     portrait_cache_reset();
 }
+
+TEST(deep_anim_field_asks_for_effect_frames)
+{
+    static const uint8_t aura[] = { DF_AURA2, 1 }, blush[] = { DF_BLUSH2, 1 };
+    DoomoLook l;
+    memset(&l, 0, sizeof(l));
+    look_pool_drop(4);
+    CHECK_EQ(look_anim_mask_rid(&l, 4, RES_ALIVE, EXPR_NEUTRAL), look_anim_mask(&l, RES_ALIVE, EXPR_NEUTRAL));
+    CHECK(look_pool_put(4, RUN_DEEP, blush, 2));
+    CHECK(!(look_anim_mask_rid(&l, 4, RES_ALIVE, EXPR_NEUTRAL) & LAM_FX));   /* not animated */
+    CHECK(look_pool_put(4, RUN_DEEP, aura, 2));
+    CHECK(look_anim_mask_rid(&l, 4, RES_ALIVE, EXPR_NEUTRAL) & LAM_FX);
+    CHECK(!(look_anim_mask_rid(&l, 5, RES_ALIVE, EXPR_NEUTRAL) & LAM_FX));   /* other ids untouched */
+    look_pool_drop(4);
+}

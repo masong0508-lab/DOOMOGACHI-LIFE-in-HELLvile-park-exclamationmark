@@ -733,6 +733,15 @@ uint32_t look_anim_mask(const DoomoLook *l, int status, int expr)
     return m;
 }
 
+/* look_anim_mask plus the deep fields of resident/draft `rid` (a DFF_ANIM field asks for effect
+ * frames too). Same list for the cache (phase_of) and the creator's draft bust. */
+uint32_t look_anim_mask_rid(const DoomoLook *l, int rid, int status, int expr)
+{
+    DoomoDeep d;
+    look_resolve_mask(NULL, rid, LV_ALL, &d);
+    return look_anim_mask(l, status, expr) | deep_anim_mask(&d);
+}
+
 /* animation phase at tick t (staggered per resident); the low byte of the
  * cache key */
 static int hold_on;   /* portrait_hold() */
@@ -741,7 +750,7 @@ static uint32_t phase_of(int kind, int rid, int expr, int status, const DoomoLoo
                          uint32_t t, Phase *p)
 {
     uint32_t off = (uint32_t)((rid + 1) * 53) & 1023u, ph;
-    int fxon = (look_anim_mask(l, status, expr) & LAM_FX) != 0;
+    int fxon = (look_anim_mask_rid(l, rid, status, expr) & LAM_FX) != 0;
     memset(p, 0, sizeof(*p));
     if (status == RES_EMPTY) return 0;
     /* portrait_hold() (title figures): one still pose per expression, so

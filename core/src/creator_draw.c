@@ -7,6 +7,7 @@
  * 240x160 (GBA) and 320x240 (PS1).
  */
 #include "creator_int.h"
+#include "doomo/look_pool.h"
 
 CrLayout crl;
 
@@ -312,12 +313,13 @@ static uint32_t look_hash(const DoomoLook *l)
 static uint32_t anim_phase(uint32_t t, int expr, const DoomoLook *l, int status)
 {
     uint32_t ph = 0;
-    int fx = (look_anim_mask(l, status, expr) & LAM_FX) != 0;
+    uint32_t am = look_anim_mask_rid(l, LOOK_ID_DRAFT, status, expr);
+    int fx = (am & LAM_FX) != 0;
     ph |= (t % 110u) >= 106u;
     ph |= ((t >> 5) & 1u) << 1;
     ph |= (uint32_t)((t % 270u) >= 262u) << 2;
     if (fx) ph |= ((t >> FX_SHIFT) & 3u) << 3;
-    if (look_anim_mask(l, status, expr) & LAM_TALK) ph |= ((t >> 2) & 1u) << 5;
+    if (am & LAM_TALK) ph |= ((t >> 2) & 1u) << 5;
     return ph;
 }
 

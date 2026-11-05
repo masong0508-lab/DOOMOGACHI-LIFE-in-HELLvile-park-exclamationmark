@@ -95,6 +95,8 @@ uint32_t portrait_last_ops(void);
  * creator's draft bust, so a new animated look field is listed in one place. */
 enum { LAM_FX = 1, LAM_TALK = 2 };
 uint32_t look_anim_mask(const DoomoLook *l, int status, int expr);
+/* ... plus the deep fields of resident (or draft) `rid`: a DFF_ANIM field asks for effect frames. */
+uint32_t look_anim_mask_rid(const DoomoLook *l, int rid, int status, int expr);
 /* The cache key of resident `rid`'s look (SPEC 4.5): the gene (+ the deep-look run bytes, once a
  * pool holds any). Equal keys, equal pictures; 0 for an id with no record. */
 uint32_t look_key(int rid);
