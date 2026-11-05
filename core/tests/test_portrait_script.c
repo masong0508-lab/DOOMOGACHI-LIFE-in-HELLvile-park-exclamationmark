@@ -539,3 +539,30 @@ TEST(wave2_ear_fold_and_glasses_are_distinct_and_zero_is_today)
     deep_bust(&l, DF_GLASSES2, 2, a);
     CHECK_EQ(px_diff(base, a), 0);
 }
+
+TEST(wave2_hood_head_is_distinct_needs_a_hood_and_no_hat)
+{
+    static uint8_t base[PORTRAIT_W * PORTRAIT_H], a[PORTRAIT_W * PORTRAIT_H], b[PORTRAIT_W * PORTRAIT_H];
+    DoomoLook l;
+    int v, w;
+    memset(&l, 0, sizeof(l));
+    l.eye_style = EYE_ROUND; l.eye_size = 12;
+    l.top = TOP_TSHIRT;                                            /* no hood: the choice draws nothing */
+    portrait_render(&l, RES_ALIVE, EXPR_NEUTRAL, 0, base);
+    deep_bust(&l, DF_HOOD_HEAD, 2, a);
+    CHECK_EQ(px_diff(base, a), 0);
+    l.top = TOP_HOODIE; l.top_color = PAINT_BUBBLEGUM;
+    portrait_render(&l, RES_ALIVE, EXPR_NEUTRAL, 0, base);
+    for (v = 1; v <= 3; v++) {
+        deep_bust(&l, DF_HOOD_HEAD, v, a);
+        CHECK(px_diff(base, a) > 0);
+        for (w = v + 1; w <= 3; w++) {
+            deep_bust(&l, DF_HOOD_HEAD, w, b);
+            CHECK(px_diff(a, b) > 0);
+        }
+    }
+    l.hat = HAT_BEANIE;                                            /* a hat takes the head */
+    portrait_render(&l, RES_ALIVE, EXPR_NEUTRAL, 0, base);
+    deep_bust(&l, DF_HOOD_HEAD, 2, a);
+    CHECK_EQ(px_diff(base, a), 0);
+}

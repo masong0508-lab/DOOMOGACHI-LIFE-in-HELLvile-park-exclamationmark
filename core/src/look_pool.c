@@ -16,6 +16,7 @@ static uint16_t used;
 const DoomoDeep doomo_deep_zero = { { 0 } };
 const uint8_t doomo_df_flags[DF_COUNT] = {
     [DF_BLUSH2] = DFF_CHIBI, [DF_GLASSES2] = DFF_CHIBI, [DF_EAR_FOLD] = DFF_CHIBI,
+    [DF_HOOD_HEAD] = DFF_CHIBI,
     [DF_AURA2] = DFF_CHIBI | DFF_ANIM,
 };
 

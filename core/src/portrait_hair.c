@@ -897,6 +897,45 @@ static void brim(int y, int w, int h)
     hE(0, y, w, h);
 }
 
+/* wave-2 hood (DF_HOOD_HEAD): the head part of a hoodie's or cloak's hood, drawn only when no hat
+ * sits on the head. 1 pushed back on the crown, 2 up with the face opening, 3 up and pulled low with
+ * drawstrings. From behind a raised hood covers the whole head. */
+static void hood_head(PCtx *c)
+{
+    int st = c->d->v[DF_HOOD_HEAD], t = c->l->top;
+    PMat m = c->top, d, w;
+    if (!st || (t != TOP_HOODIE && t != TOP_CLOAK)) return;
+    pm_from3(&d, m.c[0], m.c[1], m.c[2]);
+    pm_paint(&w, PAINT_WHITE);
+    pc_part(&m, SH_SOFT, 0);
+    if (BACK_VIEW) {
+        hE(0, -10, 300, 290);
+        pc_decal(&d, SH_FLAT);
+        hL(0, -280, 0, 240, m.c[0]);
+        return;
+    }
+    if (st == 1) {
+        clip_above(-150);
+        hE(0, -30, 285, 270);
+        pc_noclip();
+        pc_decal(&d, SH_FLAT);
+        hL(-240, -150, 240, -150, m.c[0]);
+        return;
+    }
+    clip_above(st == 3 ? -30 : -70);
+    hE(0, -20, 300, 290);
+    pc_noclip();
+    hQ(-300, -70, -230, -70, -250, st == 3 ? 340 : 300, -330, st == 3 ? 340 : 300);
+    hQ(300, -70, 230, -70, 250, st == 3 ? 340 : 300, 330, st == 3 ? 340 : 300);
+    pc_decal(&d, SH_FLAT);
+    hL(-230, -70, 230, -70, m.c[0]);
+    if (st == 3) {
+        pc_decal(&w, SH_FLAT);
+        hL(-110, 330, -110, 460, w.c[1]);
+        hL(110, 330, 110, 460, w.c[1]);
+    }
+}
+
 void ph_hat(PCtx *c)
 {
     const DoomoLook *l = c->l;
@@ -904,7 +943,7 @@ void ph_hat(PCtx *c)
     PMat m = c->hat, d, w, g;
     int fv = FRONT_VIEW;
     phs.c = c; phs.h = &c->h; phs.s = 1; phs.z = 0;
-    if (st == HAT_NONE) return;
+    if (st == HAT_NONE) { hood_head(c); pc_mask_none(); return; }
     pm_from3(&d, m.c[0], m.c[1], m.c[2]);
     pm_paint(&w, PAINT_WHITE);
     pm_paint(&g, PAINT_LEMON);
