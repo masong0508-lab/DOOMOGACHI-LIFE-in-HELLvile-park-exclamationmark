@@ -310,3 +310,7 @@ uint32_t look_key(int rid)
     if (run) for (i = 0; i < len; i++) h = (h ^ run[i]) * 16777619u;
     return h ? h : 1;
 }
+
+/* ---- hooks (declared in portrait_int.h) -------------------------------------------------- */
+void pf_material_init(PCtx *c) { (void)c; }
+void motion_pose(PCtx *c, int dir, int frame) { (void)c; (void)dir; (void)frame; }

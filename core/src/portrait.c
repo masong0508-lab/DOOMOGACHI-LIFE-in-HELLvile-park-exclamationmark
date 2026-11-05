@@ -98,6 +98,7 @@ void pctx_init(PCtx *c, const DoomoLook *l, int status, int expr, int anim)
             ms[i]->line = pm_line_of(ms[i]->c[1]);
         }
     }
+    pf_material_init(c);
 }
 
 /* ====================================================================== */
@@ -232,6 +233,24 @@ static void turkey_step(PCtx *c, int step)
         finish(c);
         break;
     }
+}
+
+/* The head alone (P3's head impostor): the head layers of groups 0, 2a, 2b, 3 and 4 in the same
+ * order draw_step uses, without the body, outfit, weapons or effects. */
+void ph_head_only(PCtx *c, int lod)
+{
+    c->h.lod = lod;
+    ph_hair_back(c);
+    ph_ears(c, 0);
+    ph_head_base(c);
+    ph_face(c);
+    ph_hair_front(c);
+    ph_face_over(c);
+    ph_ears(c, 1);
+    ph_hat(c);
+    ph_species_over(c);
+    ph_horns(c);
+    ph_face_acc(c);
 }
 
 /* one layer group of any look (the sliced cache job and draw_layers) */
@@ -369,6 +388,7 @@ void bodyspr_render(const DoomoLook *l, int status, int dir, int frame, uint8_t 
     L = *l;
     sanitize(&L);
     pctx_init(&c, &L, status, EXPR_NEUTRAL, frame * 8);
+    motion_pose(&c, dir, frame);
     render_body_ctx(&c, dir, frame, out);
 }
 

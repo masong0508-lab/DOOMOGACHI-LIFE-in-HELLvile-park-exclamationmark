@@ -314,4 +314,12 @@ int  ps_run(PCtx *c, int list, int value, int anchor);
 int  ps_run_group(PCtx *c, int list, int value, int anchor, int group);
 int  ps_has(int list, int value);          /* 1 if (list, value) has a script */
 
+/* ---- P1 hooks for the other customisation packages (SPEC 4.4, CF-38) ----------------------- */
+void pf_material_init(PCtx *c);                /* P2: end of pctx_init(); no-op until P2 lands  */
+void motion_pose(PCtx *c, int dir, int frame); /* P3: bodyspr_render(), after pctx_init()       */
+/* Only the head of the look (hair, ears, head base, face, hat, horns, face accessories) drawn at
+ * c->h's centre and size with level of detail `lod` (LOD_*), for P3's head impostor. Needs
+ * phead_set() done; draws nothing of the body, outfit or effects. */
+void ph_head_only(PCtx *c, int lod);
+
 #endif

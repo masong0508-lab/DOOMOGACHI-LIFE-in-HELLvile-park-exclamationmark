@@ -246,3 +246,25 @@ TEST(anim_mask_lists_the_animated_looks)
     l.halo = HALO_NONE; l.cheeks = CHEEK_SPARKLES;
     CHECK(look_anim_mask(&l, RES_ALIVE, EXPR_NEUTRAL) & LAM_FX);
 }
+
+TEST(head_only_draws_a_head_deterministically)
+{
+    PCtx c;
+    DoomoLook l;
+    uint32_t a;
+    int n, i, lod;
+    for (lod = LOD_TINY; lod <= LOD_BIG; lod++) {
+        setup(&c, &l, 0, lod, VK_PORTRAIT);
+        ph_head_only(&c, lod);
+        n = count(0, PORTRAIT_W);
+        CHECK(n > 100);
+        a = sum();
+        setup(&c, &l, 0, lod, VK_PORTRAIT);
+        ph_head_only(&c, lod);
+        CHECK_EQ(sum(), a);
+        for (i = 0; i < 16; i++) CHECK_EQ(buf[PORTRAIT_W * PORTRAIT_H + i], 0xA5);
+        CHECK_EQ(count(0, PORTRAIT_W), n);
+        /* nothing below the neck line: the body is not drawn */
+        CHECK_EQ(pc_get(PORTRAIT_W / 2, PORTRAIT_H - 1), 0);
+    }
+}
