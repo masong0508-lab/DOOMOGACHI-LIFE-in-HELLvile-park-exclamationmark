@@ -724,7 +724,10 @@ static void draw_left(const RLayout *L, const DoomoResident *r, int style)
         int nw = DOOMO_MIN(ui_text_width(r->name) + 12, w + 4);
         int nx = L->px + (w - nw) / 2;
         fp_pill(nx, y, nw, 12, st->title_bg, st->outline, ui_lighter(st->title_bg));
-        ui_text_shadow(nx + 6, y + 2, r->status == RES_EMPTY ? "Vacant" : r->name, st->title, st->outline);
+        if (r->status != RES_EMPTY && ui_text_width(r->name) > nw - 12)
+            fp_marquee(nx + 6, y + 2, nw - 12, r->name, st->title, t);   /* a long name scrolls, not clipped */
+        else
+            ui_text_shadow(nx + 6, y + 2, r->status == RES_EMPTY ? "Vacant" : r->name, st->title, st->outline);
         y += 14;
     }
     if (r->status == RES_EMPTY) return;
@@ -739,7 +742,7 @@ static void draw_left(const RLayout *L, const DoomoResident *r, int style)
         fp_marquee(L->px + 11, y, w - 11, fp_activity_name(r->activity), st->text_dim, t + 40);
     } else {
         fp_icon(L->px + 2, y, fp_status_icon(r->status), fp_status_color(r->status));
-        ui_text(L->px + 11, y, fp_status_name(r->status), st->text);
+        fp_marquee(L->px + 11, y, w - 11, fp_status_name(r->status), st->text, t);
     }
     y += FONT_LINE;
     if (y + FONT_LINE < fp_sh() - 14) {
