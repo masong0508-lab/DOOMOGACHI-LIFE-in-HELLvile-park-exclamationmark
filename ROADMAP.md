@@ -455,3 +455,20 @@ status table (stale: still describes a developer launcher).
 | P0.M0a (age) | `doomo-p0-age-map-nov05d` | `P0.M0a: settle the age mapping (gene age = life stage) + family test` | supersedes nov05c (contains its files): `AGE_*` are aliases of `LIFE_*`, the bridge carries the stage, 2 tests (every stage; a 20-member household through 60 days of growing up). `make -C core test` 800/800; still additive, no save or screen changes; not built for GBA/PS1 here |
 | P0.M0a (ids) | `doomo-p0-creator-ids-nov05g` | `P0.M0a: creator rows/presets by gene field id, save.c v1 wire struct` | creator rows and presets use gene field ids; `save.c` v1 wire struct. `make -C core test` clean |
 | P0.M0a (copy-out) | `doomo-p0-whole-look-nov05h` | `P0.M0a part 2: whole-look/array sites copy out, no pointers into the record` | `res_get/set_look/voice/persona`, `RES_*_VIEW`; all 94 `RES_*_PTR` sites gone, `repack_sites.py report` = 0 host-build uses. 800/800, 154 scripts. Next: the 96 -> 76 flip (docs/design/customization/P0_M0A_STATUS.md, "Next, in order"); not built for GBA/PS1 here |
+| P1.M2a | `doomo-p1m2a-update` | `P1.M2a: wave-2 face fields pupil, sclera, blush2 (painters + tests)` | `DF_PUPIL`, `DF_SCLERA`, `DF_BLUSH2`; `portrait_render_deep()` for tests and contact sheets |
+| P1.M2b | `doomo-p1m2b-update` | `P1.M2b: wave-2 ear fold and glasses (DF_EAR_FOLD, DF_GLASSES2, painters + tests)` | 7 ear folds, 4 glasses styles; `make unit` 826/826 |
+| P1.M2c | `doomo-p1m2c-update` | `P1.M2c: wave-2 hood head (DF_HOOD_HEAD, painter + tests)` | 3 hood-up styles, hoodie/cloak and no hat only; `make unit` 827/827 |
+| P1.M2d | `doomo-p1m2d-update` | `P1.M2d: wave-2 face C-tier deep fields (lash, lid, liner, bags, freckle, mole, scar2)` | seven bust-only fields in `face_deep()`; `make unit` 828/828 |
+
+<!-- doomo-p1m2-status-nov05 -->
+## Customization P1.M2 status (2026-11-05)
+
+**Done:** all thirteen wave-2 face/head painters (pupil, sclera, blush2, glasses2, ear fold, hood head, lash, lid, liner,
+bags, freckle, mole, scar2), each with a "0 is today, every choice distinct" test. The Classic golden is unchanged.
+**Playable:** nothing new. The painters read the in-RAM shim pool, which only tests fill; no creator row, save field or
+Look Book entry sets a deep value, so in-game portraits are exactly as before. They show only in `portrait_render_deep()`
+(tests, contact sheets).
+**Left in M2:** the 13 list appends (F01, F07, F25, F29, F35, F47, H01, H13, E01, B66, B76, B79, O25) and the art review +
+contact sheets (chibi, back view, hood/hat/glasses interplay). **After M2:** M3 (`DF_MAKEUP`, `DF_FACEPAINT`, `DF_AURA2`,
+A28 expressions, aura/halo detail), the real deep-field set from P0 (replaces `look_fields.h` / `look_pool.c`), `live_p1.txt`,
+the mGBA bench, a PS1-toolchain build of the LZ blocks, then P2-P6. Host unit suite only; not built for GBA/PS1/DC here.

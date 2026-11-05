@@ -5,6 +5,16 @@ A read of the repo plus one native run: `make -C core test` on this tree finishe
 69 scenes, none of them a weak placeholder. **Nothing here was built or run for GBA, PS1 or
 Dreamcast** (no ARM/MIPS/SH4 toolchains, no emulator). Console statements below come from the docs.
 
+## Customization P1.M2 (portrait deep fields), 2026-11-05
+
+- **Built:** 13 wave-2 face/head painters (`DF_PUPIL`, `DF_SCLERA`, `DF_BLUSH2`, `DF_GLASSES2`, `DF_EAR_FOLD`, `DF_HOOD_HEAD`,
+  `DF_LASH`, `DF_LID`, `DF_LINER`, `DF_BAGS`, `DF_FRECKLE`, `DF_MOLE`, `DF_SCAR2`), unit suite 828/828.
+- **Playable:** none of it yet. Only tests set deep values; no creator row, save field or Look Book entry reaches them, so
+  portraits in play are unchanged.
+- **Left:** the 13 list appends (F01, F07, F25, F29, F35, F47, H01, H13, E01, B66, B76, B79, O25), art review and contact
+  sheets, then M3 (`DF_MAKEUP`, `DF_FACEPAINT`, `DF_AURA2`, A28 expressions, aura/halo), P0's real deep-field set, `live_p1.txt`,
+  the mGBA bench and P2-P6. Details: `docs/PORTRAIT.md`, `ROADMAP.md` "Customization P1.M2 status".
+
 ## Playable now (core, native runner)
 
 | Area | What works |

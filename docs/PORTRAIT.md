@@ -378,13 +378,38 @@ raw array. Host builds define `DOOMO_PARTS_LZ_TEST`, so the blocks are checked a
 and the LRU is tested with a synthetic set; the whole unit suite also passes with `OPT="-O2
 -DDOOMO_PARTS_LZ"` (the VM reading through the LZ path). Not yet built with the PS1 toolchain.
 
-**M2 wave-2 face fields (in progress).** Painters read `c->d->v[DF_x]`; 0 is today's picture.
-Done against the shim ids: `DF_PUPIL` (slit, pinpoint, wide, bar: `eye_glossy`), `DF_SCLERA` (white or
-shaded sclera round a smaller iris: `eye_glossy`), `DF_BLUSH2` (slashes, wide round, dots, low bar:
-`blush()`, one pixel on chibis). `portrait_render_deep()` (`look_fields.h`) draws a bust with a given
-deep set for tests and contact sheets. Test: an all-zero set equals `portrait_render`, and every choice
-differs from 0 and from every other choice. Still to do: glasses, ear fold, the hood's head part and the
-C-tier fields, the list appends, the art review and the contact sheets (nothing is live yet).
+**M2 wave-2 face fields (painters done, lists not yet).** Painters read `c->d->v[DF_x]`; 0 is today's
+picture. All of these are done against the shim ids and covered by one distinctness test each
+(all-zero set == `portrait_render`; every choice differs from 0 and from every other choice of its field):
 
-**Not yet.** The real deep-field set (P0), the rest of the wave-2 fields and
-lists (M2), `live_p1.txt`, and the mGBA bench of the SPEC's accept numbers.
+| Field | Choices | Where |
+|---|---|---|
+| `DF_PUPIL` | slit, pinpoint, wide, bar | `eye_glossy` |
+| `DF_SCLERA` | white or shaded sclera round a smaller iris | `eye_glossy` |
+| `DF_BLUSH2` | slashes, wide round, dots, low bar (1 px on chibis) | `blush()` |
+| `DF_GLASSES2` | round, square, half-rim, cat-eye; the accessory slot's glasses/sunglasses/monocle win | `glasses2()` in `ph_face_acc` |
+| `DF_EAR_FOLD` | tip, half lop, full lop, left down, right down, both down, crumpled (7) | `ear_fold_amt()` in `one_ear`; full lop 110 vs both down 190, equal amounts rendered identically |
+| `DF_HOOD_HEAD` | pushed back, up with face opening, up and low with drawstrings; hoodie/cloak and no hat only; covers the whole head from behind | `hood_head()` in `ph_hat` |
+| `DF_LASH` | flicks, wing, lower lashes | `face_deep()` |
+| `DF_LID` | heavy droop line, half-lidded, double crease | `face_deep()` |
+| `DF_LINER` | thin, winged, thick with waterline | `face_deep()` |
+| `DF_BAGS` | one line, two lines, smudge | `face_deep()` |
+| `DF_FRECKLE` | sparse cheeks, nose band, heavy | `face_deep()` |
+| `DF_MOLE` | by the mouth, under the eye, cheek | `face_deep()` |
+| `DF_SCAR2` | across the cheek, through the left eye, across the nose | `face_deep()` |
+
+"Face C-tier" is read as the seven shim fields between `DF_HOOD_HEAD` and `DF_MAKEUP` (the spec has no
+written list); `DF_MAKEUP`, `DF_FACEPAINT` and `DF_AURA2` stay in M3. `face_deep()` draws on the bust only
+(no chibi flag). `DF_EAR_FOLD`, `DF_GLASSES2`, `DF_HOOD_HEAD` and `DF_BLUSH2` are `DFF_CHIBI` in the shim.
+`portrait_render_deep()` (`look_fields.h`) draws a bust with a given deep set for tests and contact sheets.
+Unit suite 828/828. **Nothing is live:** only tests call `look_pool_put()`, no creator row or save field
+sets a deep value, so no player can see any of these yet. The pictures have only been checked as
+"different pixels", not by eye.
+
+**Still to do in M2.** The list appends F01, F07, F25, F29, F35, F47, H01, H13, E01, B66, B76, B79 and
+O25; the art review and contact sheets for all thirteen fields above (chibi, back view and the
+hood/hat/glasses interactions in particular).
+
+**Not yet.** The real deep-field set (P0, replaces the shim), M3 (`DF_MAKEUP`, `DF_FACEPAINT`,
+`DF_AURA2`, the remaining face/head/makeup fields, A28 expressions, aura and halo detail),
+`live_p1.txt`, the mGBA bench of the SPEC's accept numbers, and a PS1-toolchain build of the LZ blocks.
