@@ -451,3 +451,4 @@ Playable on the core: Free Play, creator, life sim and family, Hell Breach shoot
 Biggest open items: run the console builds and harnesses (PS1 harness re-run, GBA latch/hub checks), Dreamcast DC3-DC9,
 GBA fps, mature pack art, MP0/MP1, customization P0-P6, console music, W9-W16 script, L8/L10 languages, and the README
 status table (stale: still describes a developer launcher).
+| P0.M0a (slice) | `doomo-p0-m0a-gene-nov05c` | `P0.M0a: gene codec + v1 bridge + look_pool/settings layouts` | additive only: `gene.h/.c` (83 fields, byte-wise get/set, v1 bridge), `look_pool.h`, `settings.h`, `test_gene.c` (7 tests; all 1000 premade + 4000 generated citizens round-trip). `make -C core test` 799/799, check-gen clean; the 96 -> 76 B repack, roster v2, look_build.py and the stubs are still open (docs/design/customization/P0_M0A_STATUS.md); not built for GBA/PS1 here |
