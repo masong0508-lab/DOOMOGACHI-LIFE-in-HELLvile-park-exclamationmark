@@ -5,6 +5,9 @@
 #include "doomo/doomo.h"
 #include "doomo/home.h"
 #include "doomo/family.h"
+#include "doomo/ending.h"
+#include "doomo/life_events.h"
+#include "doomo/save.h"
 #include "doomo/playas.h"
 #include "doomo/save_ext.h"
 #include "doomo/story.h"
@@ -356,4 +359,71 @@ TEST(pa10_stress_save_round_trips_under_the_gate)
     CHECK(playas_profile_flags() & PLAYAS_HF_NEW_LIFE);
     CHECK(playas_story_locked());                        /* and the story still belongs to the hero */
     CHECK_EQ(family_count_role(FAMROLE_PET), pets);
+}
+
+/* ---- Z1: the joint gate across play-as, family, life events and endings --------------------
+ * One save holds all four at once. Playing as every household member must leave the story
+ * exactly as it was (the PA4/Z1 tour: fingerprint + flags), and the whole lot must survive a
+ * save and load together under the PA10 size gate. */
+TEST(z1_joint_gate_across_the_four_areas)
+{
+    int i, ids[FAMILY_MAX], n = 0, switched = 0, flag = 7, pre_flag;
+    uint32_t fp0, sz, ev_total;
+    int seen1, seen2, cnt;
+    fresh();
+    cleared();
+    family_tier_story_done();
+    family_tier_story_done();
+    for (i = 0; i < FAMILY_MAX; i++) {
+        int role = (i % 4 == 3) ? FAMROLE_PET : (i % 2 ? FAMROLE_CHILD : FAMROLE_HOUSEMATE);
+        int stage = role == FAMROLE_PET ? LIFE_ADULT : (i % 5 == 1 ? LIFE_ELDER : LIFE_ADULT);
+        int id = family_pool_add(role, stage, 300u + (uint32_t)i, "Zed", PRONOUN_THEY);
+        if (id < 0) break;
+        ids[n++] = id;
+    }
+    CHECK(n >= 10);
+    /* endings and life events share the save */
+    ending_mark(ENDING_E01);
+    ending_mark(ENDING_E02);
+    life_event_fire(LEV_LUCKY_FIND);
+    life_event_fire(LEV_PICNIC);
+    life_event_fire(LEV_MOVIE_NIGHT);
+    ev_total = (uint32_t)life_event_total();
+    CHECK(ev_total >= 2);
+    pre_flag = story_flag(flag);
+    fp0 = story_fingerprint();
+    /* the tour: be everyone who can be played, try to write the story, come back */
+    for (i = 0; i < n; i++) {
+        if (!playas_can_be(ids[i])) continue;
+        CHECK(playas_switch(ids[i], PLAYAS_SWITCH_INSTANT));
+        switched++;
+        story_set_flag(flag, !pre_flag);                  /* refused while someone else is played */
+        story_set_beat(0);
+        CHECK_EQ(story_flag(flag), pre_flag);
+        CHECK_EQ((int)story_fingerprint() == (int)fp0, 1);
+        CHECK(playas_switch(PLAYAS_ID_HERO, PLAYAS_SWITCH_INSTANT));
+    }
+    CHECK(switched >= 5);
+    CHECK_EQ((int)story_fingerprint() == (int)fp0, 1);
+    /* one more avatar for the save, then the whole thing round-trips together */
+    for (i = 0; i < n; i++) if (playas_can_be(ids[i])) { CHECK(playas_switch(ids[i], PLAYAS_SWITCH_INSTANT)); break; }
+    seen1 = ending_seen(ENDING_E01); seen2 = ending_seen(ENDING_E02);
+    cnt = family_count();
+    sz = save_serialize(pa10_image, sizeof(pa10_image));
+    CHECK(sz > 0 && sz <= 32768u);
+    printf("      Z1 joint save: %u B (%d members, %d endings seen, %u events)\n",
+           (unsigned)sz, cnt, ending_count_seen(), (unsigned)ev_total);
+    {
+        int who = playas_avatar();
+        memset(&doomo_town, 0x5A, sizeof(doomo_town));
+        doomo_save_ext_playas->reset();
+        CHECK(save_deserialize(pa10_image, sz));
+        CHECK_EQ(playas_avatar(), who);
+        CHECK_EQ(family_count(), cnt);
+        CHECK_EQ(ending_seen(ENDING_E01), seen1);
+        CHECK_EQ(ending_seen(ENDING_E02), seen2);
+        CHECK_EQ(life_event_total(), (int)ev_total);
+        CHECK_EQ((int)story_fingerprint() == (int)fp0, 1);
+        CHECK(playas_story_locked());
+    }
 }

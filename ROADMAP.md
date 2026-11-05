@@ -392,3 +392,6 @@ LS4 (2026-11-04, `doomo-ls4-life-events-nov04a`): six more household life events
 
 <!-- doomo-pa10-stress-save-nov04b -->
 PA10 part 1 (2026-11-04, `doomo-pa10-stress-save-nov04b`): the play-as stress save. `pa10_stress_save_round_trips_under_the_gate` fills tier 2's 20-member household (4 pets), starts a New life as a family member, loses one, saves: 10,086 B against the 32,768 B gate, then loads and checks the avatar, the New life flag, the story barrier and the pet count. `make -C core test` 769/769. Still open in PA10: the ledgers, and integration with E12/Z1.
+
+<!-- doomo-z1-joint-gate-nov04c -->
+Z1 (2026-11-04, `doomo-z1-joint-gate-nov04c`): the joint gate across play-as, family, life events and endings, as one test (`z1_joint_gate_across_the_four_areas`): a tier-2 household of 20, two endings seen, three life events fired; the tour plays as every playable member and checks the story flag, beat and `story_fingerprint` never change; then one save (10,192 B, gate 32,768 B) loads back with the same avatar, household, endings, event total and story fingerprint. `make -C core test` 770/770. Not covered: GBA/PS1 builds (the gate's other half, run on those ports).
