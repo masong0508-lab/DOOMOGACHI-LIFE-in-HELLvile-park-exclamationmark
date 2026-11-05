@@ -509,3 +509,33 @@ TEST(wave2_face_choices_zero_is_today_and_every_choice_is_distinct)
         }
     }
 }
+
+TEST(wave2_ear_fold_and_glasses_are_distinct_and_zero_is_today)
+{
+    static uint8_t base[PORTRAIT_W * PORTRAIT_H], a[PORTRAIT_W * PORTRAIT_H], b[PORTRAIT_W * PORTRAIT_H];
+    DoomoLook l;
+    int v, w;
+    memset(&l, 0, sizeof(l));
+    l.eye_style = EYE_ROUND; l.eye_size = 12; l.ears = EARS_POINTY;
+    portrait_render(&l, RES_ALIVE, EXPR_NEUTRAL, 0, base);
+    for (v = 1; v <= 7; v++) {                                     /* ear fold: 7 choices */
+        deep_bust(&l, DF_EAR_FOLD, v, a);
+        CHECK(px_diff(base, a) > 0);
+        for (w = v + 1; w <= 7; w++) {
+            deep_bust(&l, DF_EAR_FOLD, w, b);
+            CHECK(px_diff(a, b) > 0);
+        }
+    }
+    for (v = 1; v <= 4; v++) {                                     /* glasses: 4 styles */
+        deep_bust(&l, DF_GLASSES2, v, a);
+        CHECK(px_diff(base, a) > 0);
+        for (w = v + 1; w <= 4; w++) {
+            deep_bust(&l, DF_GLASSES2, w, b);
+            CHECK(px_diff(a, b) > 0);
+        }
+    }
+    l.accessory = ACC_GLASSES;                                     /* the accessory slot's glasses win */
+    portrait_render(&l, RES_ALIVE, EXPR_NEUTRAL, 0, base);
+    deep_bust(&l, DF_GLASSES2, 2, a);
+    CHECK_EQ(px_diff(base, a), 0);
+}

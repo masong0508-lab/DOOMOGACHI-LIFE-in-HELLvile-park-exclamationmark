@@ -557,11 +557,25 @@ static void ear_tip(PCtx *c)
     pc_decal(&m, SH_BALL);
 }
 
+/* wave-2 ear fold (DF_EAR_FOLD): how far the tip bends over, added to the twitch that already moves
+ * the tip points. 0 none, 1 tip, 2 half lop, 3 full lop, 4 left down, 5 right down, 6 both down (hangs
+ * further than a lop), 7 crumpled */
+static int ear_fold_amt(const PCtx *c)
+{
+    static const uint8_t amt[8] = { 0, 35, 70, 110, 190, 190, 190, 60 };
+    int f = c->d->v[DF_EAR_FOLD] & 7, a = amt[f];
+    if (f == 4 && phs.s > 0) a = 0;
+    if (f == 5 && phs.s < 0) a = 0;
+    if (f == 7 && phs.s > 0) a = 25;
+    return a;
+}
+
 static void one_ear(PCtx *c, int st, int front)
 {
     uint8_t pink = PAL_RAMP(RAMP_PASTEL_PINK, 5), pink2 = PAL_RAMP(RAMP_PASTEL_PINK, 4);
     int tip = c->l->marking == MARK_FUR_TIPPED_EARS;
     int tw = (phs.s > 0 && c->twitch) ? 30 : 0;     /* ear twitch */
+    tw += ear_fold_amt(c);
     if (c->creepy) { pink = c->skin.c[1]; pink2 = c->skin.c[0]; }
     pc_part(&c->skin, SH_BALL, c->critter ? PF_FUZZ : 0);
     switch (st) {
@@ -1236,6 +1250,46 @@ static int eye_r(PCtx *c)
     return r;
 }
 
+/* wave-2 glasses (DF_GLASSES2): 1 round, 2 square, 3 half-rim, 4 cat-eye. Their own slot, so it is
+ * drawn on top of whatever the accessory slot holds, except another pair of glasses. */
+static void glasses2(PCtx *c, int style, int r, const PMat *m)
+{
+    int s, X, Y, X2, Y2, u = m->c[1], rr = r + 26;
+    for (s = -1; s <= 1; s += 2) {
+        int x, y, hx, hy, ox;
+        eye_pos(c, s, &X, &Y);
+        x = X >> 4; y = Y >> 4;
+        hx = (rr + 8) >> 4; hy = ((rr * 3 / 4) + 12) >> 4;
+        ox = s * hx;                                        /* the outer side of this lens */
+        if (style == 1) {
+            int a, b;
+            for (b = -hx - 1; b <= hx + 1; b++)
+                for (a = -hx - 1; a <= hx + 1; a++) {
+                    int d2 = (a * 16) * (a * 16) + (b * 16) * (b * 16);
+                    if (d2 <= (rr + 4) * (rr + 4) && d2 > (rr - 10) * (rr - 10)) pc_px(x + a, y + b, u);
+                }
+        } else if (style == 2) {
+            pc_line(x - hx, y - hy, x + hx, y - hy, u);
+            pc_line(x - hx, y + hy, x + hx, y + hy, u);
+            pc_line(x - hx, y - hy, x - hx, y + hy, u);
+            pc_line(x + hx, y - hy, x + hx, y + hy, u);
+        } else if (style == 3) {
+            pc_line(x - hx, y - hy, x + hx, y - hy, u);
+            pc_line(x - hx, y - hy, x - hx, y - hy + 2, u);
+            pc_line(x + hx, y - hy, x + hx, y - hy + 2, u);
+        } else {
+            pc_line(x - hx, y + hy, x + hx, y + hy, u);
+            pc_line(x - s * hx, y - hy + 1, x + s * hx, y - hy - 2, u);   /* swept up at the outer end */
+            pc_line(x - hx, y - hy + 1, x - hx, y + hy, u);
+            pc_line(x + hx, y - hy + 1, x + hx, y + hy, u);
+        }
+        pc_line(x + ox, y - 1, x + ox + s * 2, y - 1, u);       /* a stub of the arm */
+        pc_px(x - (hx >> 1), y - (hy >> 1), PAL_WHITE);
+    }
+    eye_pos(c, -1, &X, &Y); eye_pos(c, 1, &X2, &Y2);
+    pc_line((X >> 4) + ((rr + 8) >> 4), (Y >> 4) - 1, (X2 >> 4) - ((rr + 8) >> 4), (Y2 >> 4) - 1, u);
+}
+
 void ph_face_acc(PCtx *c)
 {
     const DoomoLook *l = c->l;
@@ -1370,6 +1424,8 @@ void ph_face_acc(PCtx *c)
     default:
         break;
     }
+    if (c->d->v[DF_GLASSES2] && st != ACC_GLASSES && st != ACC_SUNGLASSES && st != ACC_MONOCLE)
+        glasses2(c, c->d->v[DF_GLASSES2], r, &m);
     pc_mask_none();
 }
 
