@@ -38,6 +38,11 @@ void look_resolve_mask(const DoomoResident *r, int id, uint32_t lv, DoomoDeep *o
  * only DFF_CHIBI entries are hashed. Folded into the portrait cache's look hash. */
 uint32_t look_run_hash(int id, int chibi);
 
+/* One portrait bust drawn with the deep set `d` (portrait.h's portrait_render has none): for tests
+ * and contact sheets. PORTRAIT_W x PORTRAIT_H bytes. */
+void portrait_render_deep(const DoomoLook *l, const DoomoDeep *d, int status, int expr, int anim,
+                          uint8_t *out);
+
 /* LAM_FX if any DFF_ANIM field of `d` is set. */
 uint32_t deep_anim_mask(const DoomoDeep *d);
 

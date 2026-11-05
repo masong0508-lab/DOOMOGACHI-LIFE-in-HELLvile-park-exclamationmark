@@ -378,5 +378,13 @@ raw array. Host builds define `DOOMO_PARTS_LZ_TEST`, so the blocks are checked a
 and the LRU is tested with a synthetic set; the whole unit suite also passes with `OPT="-O2
 -DDOOMO_PARTS_LZ"` (the VM reading through the LZ path). Not yet built with the PS1 toolchain.
 
-**Not yet.** The real deep-field set (P0), the wave-2 fields and
+**M2 wave-2 face fields (in progress).** Painters read `c->d->v[DF_x]`; 0 is today's picture.
+Done against the shim ids: `DF_PUPIL` (slit, pinpoint, wide, bar: `eye_glossy`), `DF_SCLERA` (white or
+shaded sclera round a smaller iris: `eye_glossy`), `DF_BLUSH2` (slashes, wide round, dots, low bar:
+`blush()`, one pixel on chibis). `portrait_render_deep()` (`look_fields.h`) draws a bust with a given
+deep set for tests and contact sheets. Test: an all-zero set equals `portrait_render`, and every choice
+differs from 0 and from every other choice. Still to do: glasses, ear fold, the hood's head part and the
+C-tier fields, the list appends, the art review and the contact sheets (nothing is live yet).
+
+**Not yet.** The real deep-field set (P0), the rest of the wave-2 fields and
 lists (M2), `live_p1.txt`, and the mGBA bench of the SPEC's accept numbers.

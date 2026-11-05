@@ -755,17 +755,35 @@ static void eye_glossy(PCtx *c, int ex, int ey, int erx, int ery, int shear, int
 {
     PMat dark, ring;
     int gx, gy;
+    int dp = c->d->v[DF_PUPIL], ds = c->d->v[DF_SCLERA];     /* wave-2 deep fields, 0 = as today */
+    int ix = erx, iy = ery, pw = pupil, ph = pupil + 10;
     /* soft dark rim, iris gradient, big pupil, bright lower iris, glints */
     if (big) {
         pm_flat(&ring, F.lid);
         pc_decal(&ring, SH_FLAT);
         pc_ellipse_sh(ex, ey, erx + 10, ery + 8, shear);
     }
+    if (ds && big) {
+        /* sclera: the white of the eye shows around a smaller iris (1 white, 2 shaded) */
+        PMat sc;
+        pm_flat(&sc, ds == 2 ? PAL_GRAY_L : PAL_WHITE);
+        pc_decal(&sc, SH_FLAT);
+        pc_ellipse_sh(ex, ey + 2, erx + 6, ery + 4, shear);
+        ix = erx * 80 / 100;
+        iy = ery * 86 / 100;
+    }
     pc_decal(&c->eye, SH_VGRAD);
-    pc_ellipse_sh(ex, ey + 2, erx, ery, shear);
+    pc_ellipse_sh(ex, ey + 2, ix, iy, shear);
     pm_flat(&dark, PAL_PAINT(PAINT_JET, 1));
     pc_decal(&dark, SH_FLAT);
-    if (pupil) pc_ellipse_sh(ex, ey - ery / 10, erx * pupil / 100 + 2, ery * (pupil + 10) / 100 + 2, shear);
+    switch (dp) {                                          /* pupil shape: 1 slit, 2 pinpoint, 3 wide, 4 bar */
+    case 1: pw = 14; ph = 104; break;
+    case 2: pw = 20; ph = 26; break;
+    case 3: pw = 80; ph = 86; break;
+    case 4: pw = 86; ph = 30; break;
+    default: break;
+    }
+    if (pupil || dp) pc_ellipse_sh(ex, ey - iy / 10, ix * pw / 100 + 2, iy * ph / 100 + 2, shear);
     if (big && ery >= 48) {
         /* lighter crescent at the bottom of the iris */
         int x, xa = (ex - erx / 2) >> 4, xb = (ex + erx / 2) >> 4, yb = (ey + ery - 10) >> 4;
@@ -1626,6 +1644,28 @@ static void blush(PCtx *c, int big)
         int bx = F.ex + 46;
         v = fpt(phs.s * bx, cy, &X, &Y);
         if (v <= 30) continue;
+        if (c->d->v[DF_BLUSH2]) {
+            /* wave-2 blush style on top of today's: 1 slashes, 2 wide round, 3 two dots, 4 low bar */
+            int b2 = c->d->v[DF_BLUSH2];
+            PMat m;
+            if (!big) {
+                pc_px(X >> 4, Y >> 4, BLUSH_D);
+            } else if (b2 == 1) {
+                int k;
+                for (k = 0; k < 3; k++) pc_line((X >> 4) - 3 + k * 2, (Y >> 4) + 2, (X >> 4) - 1 + k * 2, (Y >> 4) - 2, BLUSH_D);
+            } else if (b2 == 2) {
+                pm_flat(&m, BLUSH);
+                pc_decal(&m, SH_FLAT);
+                pc_ellipse(X, Y, fshort(hr(80), v), hry(40));
+            } else if (b2 == 3) {
+                pc_px((X >> 4) - 2, Y >> 4, BLUSH_D); pc_px((X >> 4) + 2, Y >> 4, BLUSH_D);
+                pc_px((X >> 4) - 2, (Y >> 4) + 1, BLUSH); pc_px((X >> 4) + 2, (Y >> 4) + 1, BLUSH);
+            } else {
+                pm_flat(&m, BLUSH_D);
+                pc_decal(&m, SH_FLAT);
+                pc_ellipse(X, Y + 8, fshort(hr(70), v), hry(12));
+            }
+        }
         if ((ch & CHEEK_BLUSH) || force) {
             PMat m;
             int rx = hr(l->species == SPECIES_CHERUB ? 66 : 52), ry = hry(26);

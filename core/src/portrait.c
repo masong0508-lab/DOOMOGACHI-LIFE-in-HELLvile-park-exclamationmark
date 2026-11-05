@@ -306,6 +306,20 @@ static void render_portrait_ctx(PCtx *c, uint8_t *out)
     draw_layers(c);
 }
 
+/* portrait_render with a resolved deep-field set (tests, contact sheets) */
+void portrait_render_deep(const DoomoLook *l, const DoomoDeep *d, int status, int expr, int anim,
+                          uint8_t *out)
+{
+    DoomoLook L;
+    PCtx c;
+    if (!l || !d || !out) return;
+    L = *l;
+    sanitize(&L);
+    pctx_init(&c, &L, status, expr, anim);
+    c.d = d;
+    render_portrait_ctx(&c, out);
+}
+
 void portrait_render(const DoomoLook *l, int status, int expr, int anim, uint8_t *out)
 {
     DoomoLook L;

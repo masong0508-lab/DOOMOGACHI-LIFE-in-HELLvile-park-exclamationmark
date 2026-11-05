@@ -470,3 +470,42 @@ TEST(lz_lru_keeps_four_blocks_and_evicts_the_oldest)
     part_lru_reset();
 }
 #endif
+
+/* ---- wave-2 face fields: pupil, sclera, blush (portrait_head.c) ---------------------------- */
+static int px_diff(const uint8_t *a, const uint8_t *b)
+{
+    int i, n = 0;
+    for (i = 0; i < PORTRAIT_W * PORTRAIT_H; i++) n += a[i] != b[i];
+    return n;
+}
+
+static void deep_bust(const DoomoLook *l, int f, int v, uint8_t *out)
+{
+    DoomoDeep d = doomo_deep_zero;
+    d.v[f] = (uint8_t)v;
+    portrait_render_deep(l, &d, RES_ALIVE, EXPR_NEUTRAL, 0, out);
+}
+
+TEST(wave2_face_choices_zero_is_today_and_every_choice_is_distinct)
+{
+    static const struct { int f, n; } fld[] = { { DF_PUPIL, 4 }, { DF_SCLERA, 2 }, { DF_BLUSH2, 4 } };
+    static uint8_t base[PORTRAIT_W * PORTRAIT_H], a[PORTRAIT_W * PORTRAIT_H], b[PORTRAIT_W * PORTRAIT_H];
+    DoomoLook l;
+    DoomoDeep z = doomo_deep_zero;
+    int k, v, w;
+    memset(&l, 0, sizeof(l));
+    l.eye_style = EYE_ROUND; l.eye_size = 12;                      /* a glossy eye big enough to show a pupil */
+    portrait_render(&l, RES_ALIVE, EXPR_NEUTRAL, 0, base);
+    portrait_render_deep(&l, &z, RES_ALIVE, EXPR_NEUTRAL, 0, a);
+    CHECK_EQ(px_diff(base, a), 0);                                 /* an all-zero set is today's picture */
+    for (k = 0; k < 3; k++) {
+        for (v = 1; v <= fld[k].n; v++) {
+            deep_bust(&l, fld[k].f, v, a);
+            CHECK(px_diff(base, a) > 0);                           /* each choice draws something */
+            for (w = v + 1; w <= fld[k].n; w++) {
+                deep_bust(&l, fld[k].f, w, b);
+                CHECK(px_diff(a, b) > 0);                          /* and none repeats another */
+            }
+        }
+    }
+}
