@@ -201,3 +201,87 @@ TEST(e2_the_example_pack_plays_only_the_slots_it_has)
     pack_close();
     CHECK_EQ(run_slot(0), 0);                          /* closed again: back to the fade */
 }
+
+/* ---- E9: a streamed pack (the PS1 / DC disc file) ------------------------------------------
+ * The test plays the disc: plat_pack_read() serves g_pk while g_stream_on is set (else 0, the
+ * default every other test expects), in 7-byte-misaligned reads of at most `len` bytes like the
+ * sector window does, and plat_mslot_script_buf() is the port's script buffer. */
+static int g_stream_on;
+static uint32_t g_stream_reads;
+static uint8_t g_sbuf[PACK_SCRIPT_CAP_PS1] __attribute__((aligned(4)));
+
+uint32_t plat_pack_read(uint32_t off, void *dst, uint32_t len)
+{
+    if (!g_stream_on || off > g_n || len > g_n - off) return 0;
+    memcpy(dst, g_pk + off, len);
+    g_stream_reads++;
+    return len;
+}
+
+uint8_t *plat_mslot_script_buf(uint32_t *cap)
+{
+    if (cap) *cap = g_stream_on ? (uint32_t)sizeof g_sbuf : 0;
+    return g_stream_on ? g_sbuf : NULL;
+}
+
+TEST(e9_a_streamed_pack_opens_and_binds_one_script_at_a_time)
+{
+    char buf[64];
+    static uint8_t small[16] __attribute__((aligned(4)));
+    test_reset();
+    CHECK(load());
+    pack_close();
+    g_stream_on = 1; g_stream_reads = 0;
+    CHECK_EQ(pack_open(), 1);                                  /* header, directory and CRC via plat_pack_read */
+    CHECK(g_stream_reads > 3);
+    CHECK_EQ(pack_streamed(), 1);
+    CHECK_EQ(pack_script(0), 0);                               /* streamed: nothing registered until bound */
+    CHECK(!txt_pack_is_live(TXT_PACK_USER_FIRST));
+    CHECK_EQ(pack_script_bind(0, small, sizeof small), 0);     /* too small a buffer */
+    CHECK_EQ(pack_script_bind(5, g_sbuf, sizeof g_sbuf), 0);   /* a slot the pack lacks */
+    CHECK_EQ(pack_script_bind(0, g_sbuf, sizeof g_sbuf), TXT_PACK_USER_FIRST);
+    CHECK(txt_pack_is_live(TXT_PACK_USER_FIRST));
+    CHECK_EQ(txt_get(TXT_ID(TXT_PACK_USER_FIRST, 0), buf, (int)sizeof buf), 41);
+    pack_script_release();
+    CHECK(!txt_pack_is_live(TXT_PACK_USER_FIRST));
+    CHECK_EQ(pack_script_bind(0, g_sbuf, sizeof g_sbuf), TXT_PACK_USER_FIRST);   /* and again */
+    pack_close();
+    CHECK(!txt_pack_is_live(TXT_PACK_USER_FIRST));
+    CHECK_EQ(pack_streamed(), 0);
+    g_stream_on = 0;
+}
+
+TEST(e9_a_damaged_streamed_pack_is_refused)
+{
+    uint32_t keep;
+    test_reset();
+    CHECK(load());
+    pack_close();
+    g_stream_on = 1;
+    g_pk[g_n - 1] ^= 0xFF;                                     /* the CRC covers the last byte */
+    CHECK_EQ(pack_open(), 0);
+    CHECK_EQ(pack_streamed(), 0);
+    g_pk[g_n - 1] ^= 0xFF;
+    keep = g_n; g_n = 40;                                      /* the file is shorter than the header says */
+    CHECK_EQ(pack_open(), 0);
+    g_n = keep;
+    g_stream_on = 0;
+    CHECK_EQ(pack_open(), 0);                                  /* no disc file: no pack */
+}
+
+TEST(e9_the_example_plays_from_a_streamed_pack_and_leaves_nothing_bound)
+{
+    test_reset();
+    CHECK(load());
+    pack_close();
+    g_stream_on = 1;
+    CHECK_EQ(pack_open(), 1);
+    opt_set(OPT_MATURE, MATURE_PACK);
+    CHECK_EQ(run_slot(0), 1);                                  /* the script plays from the port's buffer */
+    CHECK(!txt_pack_is_live(TXT_PACK_USER_FIRST));             /* released when the scene left */
+    CHECK_EQ(run_slot(3), 0);                                  /* a slot the pack lacks: the fade */
+    CHECK_EQ(run_slot(0), 1);                                  /* and slot 0 works a second time */
+    g_stream_on = 0;
+    pack_close();
+    CHECK_EQ(run_slot(0), 0);
+}

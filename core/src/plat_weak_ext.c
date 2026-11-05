@@ -39,6 +39,12 @@ WEAK uint8_t *plat_mslot_buf(uint32_t *cap)
     return 0;
 }
 
+WEAK uint8_t *plat_mslot_script_buf(uint32_t *cap)
+{
+    if (cap) *cap = 0;
+    return 0;
+}
+
 WEAK const uint8_t *plat_pack_blob(uint32_t *size)
 {
     if (size) *size = 0;

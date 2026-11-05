@@ -113,5 +113,9 @@ uint32_t plat_pack_read(uint32_t off, void *dst, uint32_t len);
  * PACK_CG_H bytes at most; `cap` is set to its size). The default is NULL and cap 0, so LZ and
  * streamed art is skipped and nothing is reserved. */
 uint8_t *plat_mslot_buf(uint32_t *cap);
+/* (E9) The buffer a streamed pack's slot script is read into (4-aligned, PACK_SCRIPT_CAP_PS1 bytes
+ * on the PS1). The default is NULL and cap 0: a streamed pack then has no scripts and every slot
+ * plays the fade-to-black. */
+uint8_t *plat_mslot_script_buf(uint32_t *cap);
 
 #endif

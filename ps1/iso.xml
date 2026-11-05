@@ -20,6 +20,7 @@
 			<file name="DOOMO.EXE"  type="data" source="${DOOMO_EXE_NAME}.exe" />
 			${DOOMO_ISO_OVL}
 			${DOOMO_ISO_SFX}
+			${DOOMO_ISO_PACK}
 			<file name="TEXT.BIN"   type="data" source="TEXT.BIN" />
 			<file name="README.TXT" type="data" source="${PROJECT_SOURCE_DIR}/README.md" />
 			<dummy sectors="1024"/>

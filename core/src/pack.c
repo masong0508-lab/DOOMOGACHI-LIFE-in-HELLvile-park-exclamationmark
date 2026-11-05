@@ -140,6 +140,7 @@ static int check_and_register(void)
             int bit = (int)e.arg - TXT_PACK_USER_FIRST;
             if ((e.uid & 0xFFFFu) >= MSLOT_MAX || bit < 0 || bit >= (int)TXT_PACK_USER_COUNT) return 0;
             if ((used >> bit) & 1u || e.codec != PK_CODEC_RAW || e.size < sizeof t) return 0;
+            if (THIS_PORT == PK_PORT_PS1 && e.size > PACK_SCRIPT_CAP_PS1) return 0;
             used |= (uint16_t)(1u << bit);
             if (!rd(e.off, t, sizeof t) || t[0] != 'T' || t[1] != 'X' || t[2] != 1 || t[3] != e.arg ||
                 !(le16(t + 14) & TXF_RAW)) return 0;
@@ -269,12 +270,25 @@ int pack_script(int slot)
     return (P.user_set >> (e.arg - TXT_PACK_USER_FIRST)) & 1u ? e.arg : 0;
 }
 
+int pack_streamed(void) { return P.open && !P.blob; }
+
+void pack_script_release(void)
+{
+    int i;
+    if (P.blob) return;                                  /* addressable: registered in place, stays */
+    for (i = 0; i < (int)TXT_PACK_USER_COUNT; i++)
+        if (P.user_set & (1u << i)) txt_user_set(TXT_PACK_USER_FIRST + i, NULL);
+    P.user_set = 0;
+}
+
 int pack_script_bind(int slot, void *buf, uint32_t cap)
 {
     Ent e;
     int bit;
     if (slot < 0 || slot >= MSLOT_MAX || !buf || !find(PK_KIND_SCRIPT, PACK_UID_SCRIPT(slot), &e)) return 0;
-    if (e.size > cap || !rd(e.off, buf, e.size)) return 0;
+    if (e.size > cap) return 0;
+    pack_script_release();                               /* streamed: the one buffer is about to change */
+    if (!rd(e.off, buf, e.size)) return 0;
     bit = (int)e.arg - TXT_PACK_USER_FIRST;
     if (!txt_user_set(e.arg, (const uint8_t *)buf)) return 0;
     P.user_set |= (uint16_t)(1u << bit);

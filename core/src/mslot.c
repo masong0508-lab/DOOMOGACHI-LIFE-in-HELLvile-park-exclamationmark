@@ -72,7 +72,15 @@ static void ms_enter(int arg)
     memset(&M, 0, sizeof M);
     g_result = 0;
     if (opt_mature() == MATURE_PACK && pack_open() && arg >= 0 && arg < MSLOT_MAX)
-        pack = pack_script(arg);
+{
+        if (pack_streamed()) {                           /* E9: a disc pack: read the script into the port's buffer */
+            uint32_t cap = 0;
+            uint8_t *sb = plat_mslot_script_buf(&cap);
+            pack = sb ? pack_script_bind(arg, sb, cap) : 0;
+        } else {
+            pack = pack_script(arg);
+        }
+    }
     M.mode = MS_FALLBACK;
     if (pack) {
         vm_snapshot(M.snap);
@@ -86,6 +94,7 @@ static void ms_enter(int arg)
 static void ms_leave(void)
 {
     if (M.mode == MS_PLAY) { vm_stop(); vm_restore(M.snap); camfx_fade(0); }
+    pack_script_release();                               /* E9: the streamed script buffer is only ours while we run */
     M.mode = MS_DONE;
 }
 

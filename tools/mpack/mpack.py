@@ -73,7 +73,7 @@ def load_format():
     f = {k: d[k] for k in (
         "PACK_MAGIC", "PACK_VERSION", "PACK_HEADER_SIZE", "PACK_ENTRY_SIZE", "PACK_NAME_LEN",
         "PACK_AUTHOR_LEN", "PACK_F_SFW_EXAMPLE", "PACK_F_ATTESTED", "PACK_UID_BASE",
-        "PACK_CAP_GBA_DEFAULT", "PACK_CAP_GBA_HARD", "PACK_CAP_DISC", "PACK_ENTRY_CAP_PS1",
+        "PACK_CAP_GBA_DEFAULT", "PACK_CAP_GBA_HARD", "PACK_CAP_DISC", "PACK_ENTRY_CAP_PS1", "PACK_SCRIPT_CAP_PS1",
         "PACK_ENTRIES_MAX", "PACK_CG_W_GBA", "PACK_CG_H_GBA", "PACK_CG_W", "PACK_CG_H", "MSLOT_MAX")}
     f["ports"] = [n[len("PK_PORT_"):].lower() for n in _enum(h, "PK_PORT_GBA") if n.startswith("PK_PORT_") and n != "PK_PORT_COUNT"]
     f["kinds"] = [n[len("PK_KIND_"):].lower() for n in _enum(h, "PK_KIND_CG") if n != "PK_KIND_COUNT"]
@@ -315,6 +315,8 @@ def validate(pack, F, want_port=None, gba_default_cap=False):
         data = pack[off:off + size]
         if pname == "ps1" and size > F["PACK_ENTRY_CAP_PS1"]:
             bad.append("%s: %d bytes is over the PS1 entry cap %d" % (tag, size, F["PACK_ENTRY_CAP_PS1"]))
+        if pname == "ps1" and kn == "script" and size > F["PACK_SCRIPT_CAP_PS1"]:
+            bad.append("%s: %d bytes is over the PS1 script buffer %d" % (tag, size, F["PACK_SCRIPT_CAP_PS1"]))
         if F["codecs"][codec] == "lz":
             try:
                 data = lz_decode(data)

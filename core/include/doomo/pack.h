@@ -97,6 +97,10 @@ DOOMO_STATIC_ASSERT(sizeof(DoomoPackEntry) == 16, pack_entry_is_16_bytes);
 #define PACK_CAP_GBA_HARD    (8u * 1024u * 1024u)
 #define PACK_CAP_DISC        (32u * 1024u * 1024u)   /* PS1 / DC / native       */
 #define PACK_ENTRY_CAP_PS1   (96u * 1024u)
+/* E9: a streamed pack's slot script is read whole into the port's script buffer
+ * (plat_mslot_script_buf, plat_ext.h). The PS1 buffer is this big, so mpack.py refuses a
+ * PS1 pack with a script over it. */
+#define PACK_SCRIPT_CAP_PS1  (8u * 1024u)
 #define PACK_ENTRIES_MAX     1024u
 #define PACK_CG_W_GBA  240
 #define PACK_CG_H_GBA  160
@@ -168,6 +172,14 @@ int  pack_script(int slot);
 int  pack_open_image(const uint8_t *blob, uint32_t size);
 void pack_close(void);
 int  pack_script_bind(int slot, void *buf, uint32_t cap);
+/* E9 (streamed packs: the PS1 / DC disc file). pack_streamed() is 1 when the open pack is read
+ * through plat_pack_read, so its scripts are not addressable. The mslot scene binds the slot's
+ * script into plat_mslot_script_buf() when it starts; for a streamed pack pack_script_bind()
+ * first drops the previous binding (one buffer), and pack_script_release() unregisters every
+ * script bound that way (the scene calls it when it leaves: the buffer is only the scene's while
+ * it runs). Both do nothing for an addressable pack, whose scripts stay registered in place. */
+int  pack_streamed(void);
+void pack_script_release(void);
 
 /* ---- E2: the mature scene slot host (core/src/mslot.c) -----------------
  * `push mslot N` pushes SCENE_MSLOT with arg = N. With OPT_MATURE = "On + pack", a valid open

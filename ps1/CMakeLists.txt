@@ -79,6 +79,21 @@ if(DOOMO_CORE)
 endif()
 # --- end S2 ---
 
+# E9: the mature content pack on the disc (src/packdisc.c). Off unless a pack file is given:
+#   cmake -DDOOMO_PACK_FILE=/path/to/pack.dmpk ...   (built with: mpack.py build, port ps1)
+# The stock disc has no PACK.DMP, links no reader and pays none of its 10 KB of RAM.
+set(DOOMO_PACK_FILE "" CACHE FILEPATH "E9: a DMPK pack (port ps1) to put on the disc as PACK.DMP")
+set(DOOMO_ISO_PACK "")
+set(DOOMO_PACK_ON_DISC OFF)
+if(DOOMO_CORE AND DOOMO_PACK_FILE)
+	if(NOT EXISTS "${DOOMO_PACK_FILE}")
+		message(FATAL_ERROR "DOOMO_PACK_FILE ${DOOMO_PACK_FILE} does not exist")
+	endif()
+	set(DOOMO_PACK_ON_DISC ON)
+	set(DOOMO_ISO_PACK "<file name=\"PACK.DMP\" type=\"data\" source=\"${DOOMO_PACK_FILE}\" />")
+	message(STATUS "doomogachi: content pack ${DOOMO_PACK_FILE} -> PACK.DMP")
+endif()
+
 list(LENGTH CORE_SRCS _ncore)
 message(STATUS "doomogachi: ${_ncore} core sources")
 
@@ -187,6 +202,9 @@ foreach(_t doomo_objs ${DOOMO_EXE_NAME})
 		# the core's SFX PCM is read from SFX.BIN, not linked (src/sfxdisc.c)
 		target_compile_definitions(${_t} PRIVATE DOOMO_SFX_ON_DISC=1)
 	endif()
+	if(DOOMO_PACK_ON_DISC)
+		target_compile_definitions(${_t} PRIVATE DOOMO_PACK_ON_DISC=1)
+	endif()
 	if(DOOMO_PAL)
 		target_compile_definitions(${_t} PRIVATE DOOMO_PAL=1)
 	endif()
@@ -261,7 +279,7 @@ add_custom_command(
 	        -c ${CMAKE_CURRENT_BINARY_DIR}/${DOOMO_EXE_NAME}.cue
 	        ${DOOMO_ISO_XML}
 	DEPENDS ${DOOMO_EXE_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/system.cnf
-	        ${CMAKE_CURRENT_BINARY_DIR}/TEXT.BIN ${DOOMO_SFX_DEP}
+	        ${CMAKE_CURRENT_BINARY_DIR}/TEXT.BIN ${DOOMO_SFX_DEP} ${DOOMO_PACK_FILE}
 	        ${CMAKE_CURRENT_SOURCE_DIR}/iso.xml
 	        ${CMAKE_CURRENT_SOURCE_DIR}/README.md
 	WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
