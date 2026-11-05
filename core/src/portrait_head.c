@@ -2051,6 +2051,68 @@ void ph_head_base(PCtx *c)
     if (h->yaw < 3) cheek_ruffs(c);
 }
 
+/* wave-2 face C-tier deep fields (0 = as today; bust LOD only, they are 1-2 px details):
+ * DF_LASH 1 flicks, 2 wing, 3 lower lashes; DF_LID 1 heavy droop line, 2 half-lidded, 3 double crease;
+ * DF_LINER 1 thin, 2 winged, 3 thick with waterline; DF_BAGS 1 one line, 2 two lines, 3 smudge;
+ * DF_FRECKLE 1 sparse cheeks, 2 nose band, 3 heavy; DF_MOLE 1 by the mouth, 2 under the eye, 3 cheek;
+ * DF_SCAR2 1 across the cheek, 2 through the left eye, 3 across the nose. */
+static void face_deep(PCtx *c, int big)
+{
+    const DoomoDeep *d = c->d;
+    int lash = d->v[DF_LASH], lid = d->v[DF_LID], liner = d->v[DF_LINER], bags = d->v[DF_BAGS];
+    int fr = d->v[DF_FRECKLE], mole = d->v[DF_MOLE], scar = d->v[DF_SCAR2];
+    uint8_t ink = face_ink(c), dk = c->skin.c[0], sk = c->skin.c[2], sc = PAL_RAMP(RAMP_FLESH, 3);
+    int n = c->l->eye_count == 1 ? 1 : 2, s, X, Y, v, k, ry_h = phs.h->ry;
+    int cy = F.ey + (F.ery * 256 / ry_h) + 26;
+    if (!big || c->creepy) return;
+    if (!(lash | lid | liner | bags | fr | mole | scar)) return;
+    pc_mask_none();
+    for (s = (n == 1 ? 0 : -1); s <= (n == 1 ? 0 : 1); s += 2 - (n == 1)) {
+        int px, py, rx, ry, o = s ? s : 1, x;
+        v = fpt(s * F.ex, F.ey, &X, &Y);
+        if (v <= 40) continue;
+        px = X >> 4; py = Y >> 4;
+        rx = DOOMO_MAX(fshort(F.erx, v) >> 4, 2); ry = DOOMO_MAX(F.ery >> 4, 2);
+        if (lash == 1) for (k = 0; k < 3; k++) pc_line(px + o * (rx - 2 * k), py - ry, px + o * (rx - 2 * k + 2), py - ry - 3 + k, ink);
+        else if (lash == 2) {
+            pc_line(px + o * rx, py - ry + 1, px + o * (rx + 4), py - ry - 3, ink);
+            pc_line(px + o * (rx + 4), py - ry - 3, px + o * (rx + 1), py - ry - 1, ink);
+        } else if (lash == 3) for (k = -1; k <= 1; k++) pc_line(px + k * 2, py + ry, px + k * 2, py + ry + 2, ink);
+        if (lid == 1) pc_line(px - rx, py - ry / 2, px + rx, py - ry / 2, dk);
+        else if (lid == 2) for (x = py - ry; x <= py - ry / 3; x++) pc_line(px - rx + 1, x, px + rx - 1, x, sk);
+        else if (lid == 3) { pc_line(px - rx, py - ry - 2, px + rx, py - ry - 2, dk); pc_line(px - rx, py - ry - 4, px + rx, py - ry - 4, dk); }
+        if (liner == 1) pc_line(px - rx, py - ry - 1, px + rx, py - ry - 1, ink);
+        else if (liner == 2) {
+            pc_line(px - rx, py - ry - 1, px + rx, py - ry - 1, ink);
+            pc_line(px + o * rx, py - ry - 1, px + o * (rx + 4), py - ry - 4, ink);
+        } else if (liner == 3) {
+            pc_line(px - rx, py - ry - 1, px + rx, py - ry - 1, ink);
+            pc_line(px - rx, py - ry - 2, px + rx, py - ry - 2, ink);
+            pc_line(px - rx, py + ry, px + rx, py + ry, ink);
+        }
+        if (bags == 1) pc_line(px - rx, py + ry + 2, px + rx, py + ry + 2, dk);
+        else if (bags == 2) { pc_line(px - rx + 1, py + ry + 2, px + rx - 1, py + ry + 2, dk); pc_line(px - rx + 2, py + ry + 4, px + rx - 2, py + ry + 4, dk); }
+        else if (bags == 3) for (x = -rx; x <= rx; x += 2) pc_px(px + x, py + ry + 2 + ((x >> 1) & 1), dk);
+        if (scar == 2 && s <= 0) pc_line(px + 1, py - ry - 3, px - 1, py + ry + 4, sc);
+    }
+    for (s = -1; s <= 1; s += 2) {
+        v = fpt(s * (F.ex + 46), cy, &X, &Y);
+        if (v <= 30) continue;
+        X >>= 4; Y >>= 4;
+        if (fr == 1) { pc_px(X - 1, Y - 1, dk); pc_px(X + 1, Y, dk); pc_px(X, Y + 2, dk); }
+        else if (fr == 3) for (k = 0; k < 7; k++) pc_px(X - 3 + (k * 3) % 7, Y - 2 + (k * 5) % 5, dk);
+        if (scar == 1 && s > 0) { pc_line(X - 3, Y - 5, X + 3, Y + 5, sc); pc_line(X - 1, Y - 3, X + 1, Y - 3, sc); }
+        if (mole == 3 && s < 0) { pc_px(X - 3, Y + 3, ink); pc_px(X - 2, Y + 3, ink); }
+    }
+    if (fr == 2) for (k = -3; k <= 3; k++) {
+        v = fpt(k * 28, F.ny - 70 + ((k & 1) ? 18 : 0), &X, &Y);
+        if (v > 30) pc_px(X >> 4, Y >> 4, dk);
+    }
+    if (mole == 1) { v = fpt(F.mw, F.my + 30, &X, &Y); if (v > 30) { pc_px(X >> 4, Y >> 4, ink); pc_px((X >> 4) + 1, Y >> 4, ink); } }
+    if (mole == 2) { v = fpt(F.ex, F.ey + (F.ery * 256 / ry_h) + 60, &X, &Y); if (v > 30) { pc_px(X >> 4, Y >> 4, ink); pc_px((X >> 4) + 1, Y >> 4, ink); } }
+    if (scar == 3) { v = fpt(-60, F.ny - 80, &X, &Y); if (v > 30) pc_line(X >> 4, Y >> 4, (X >> 4) + 7, (Y >> 4) + 4, sc); }
+}
+
 void ph_face(PCtx *c)
 {
     PHead *h = &c->h;
@@ -2063,6 +2125,7 @@ void ph_face(PCtx *c)
     species_head(c, big);
     blush(c, big);
     eyes(c);
+    face_deep(c, big);
     nose(c);
     mouth(c);
     if (big || h->lod == LOD_MID) {

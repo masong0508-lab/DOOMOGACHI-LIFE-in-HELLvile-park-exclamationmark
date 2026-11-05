@@ -566,3 +566,24 @@ TEST(wave2_hood_head_is_distinct_needs_a_hood_and_no_hat)
     deep_bust(&l, DF_HOOD_HEAD, 2, a);
     CHECK_EQ(px_diff(base, a), 0);
 }
+
+TEST(wave2_face_c_tier_fields_zero_is_today_and_every_choice_is_distinct)
+{
+    static const struct { int f, n; } fld[] = { { DF_LASH, 3 }, { DF_LID, 3 }, { DF_LINER, 3 }, { DF_BAGS, 3 },
+                                                { DF_FRECKLE, 3 }, { DF_MOLE, 3 }, { DF_SCAR2, 3 } };
+    static uint8_t base[PORTRAIT_W * PORTRAIT_H], a[PORTRAIT_W * PORTRAIT_H], b[PORTRAIT_W * PORTRAIT_H];
+    DoomoLook l;
+    int k, v, w;
+    memset(&l, 0, sizeof(l));
+    l.eye_style = EYE_ROUND; l.eye_size = 12;
+    portrait_render(&l, RES_ALIVE, EXPR_NEUTRAL, 0, base);
+    for (k = 0; k < (int)(sizeof(fld) / sizeof(fld[0])); k++)
+        for (v = 1; v <= fld[k].n; v++) {
+            deep_bust(&l, fld[k].f, v, a);
+            CHECK(px_diff(base, a) > 0);
+            for (w = v + 1; w <= fld[k].n; w++) {
+                deep_bust(&l, fld[k].f, w, b);
+                CHECK(px_diff(a, b) > 0);
+            }
+        }
+}
