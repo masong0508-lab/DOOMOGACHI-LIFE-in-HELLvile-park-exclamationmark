@@ -355,6 +355,38 @@ static void aged_toast_(int n)
     ui_toast(msg);
 }
 
+static void mood_add_(int i, int d);
+
+/* F4: a birthday is a family event. The one who grew up beams (+4), everyone else who is
+ * not a pet is proud (+2), and the news says so. Always on (it is not free will's). */
+static void milestone_(int id, int stage)
+{
+    static const char *const lines[LIFE_COUNT] = {
+        NULL, "%s took their first steps!", "%s started school. Backpack: huge.",
+        "%s is a teenager now. Doors will slam.", "%s is all grown up!", "%s is a wise elder now."
+    };
+    char msg[NEWS_LEN];
+    int i, me = find_slot(id);
+    if (me < 0 || stage < 0 || stage >= LIFE_COUNT || !lines[stage]) return;
+    doomo_snprintf(msg, sizeof(msg), lines[stage], member_name_(id));
+    sim_news_push(msg);
+    mood_add_(me, 4);
+    for (i = 0; i < fam_n_; i++)
+        if (i != me && fam_[i].role != FAMROLE_PET) mood_add_(i, 2);
+}
+
+/* Days until this member grows into the next stage: 0 for a pet, an adult, an elder, a resident
+ * (the sim ages them) and a non-member. */
+int family_stage_days_left(int id)
+{
+    int i = find_slot(id), days, left;
+    if (i < 0 || fam_[i].role == FAMROLE_PET || !is_pool(id)) return 0;
+    days = family_stage_days(fam_[i].stage);
+    if (days <= 0) return 0;
+    left = days - (int)(fam_[i].flags & FAMILY_FL_AGE);
+    return left > 0 ? left : 1;
+}
+
 int family_age_daily(void)
 {
     int i;
@@ -386,6 +418,7 @@ int family_age_daily(void)
     for (i = 0; i < aged_n_; i++) {
         aged_toast_(i);
         portrait_invalidate(aged_id_[i]);     /* their old face and body are stale */
+        milestone_(aged_id_[i], aged_st_[i]);
     }
     return aged_n_;
 }
@@ -403,6 +436,13 @@ int family_birth(const char *name, int pronoun)
     if (r < 0) return r;
     doomo_snprintf(msg, sizeof(msg), STR_ICON_HEART " It's a baby! Welcome, %s!", family_identity(r)->name);
     ui_toast(msg);
+    {   /* the welcome party: everyone who is not a pet is over the moon */
+        int i;
+        for (i = 0; i < fam_n_; i++)
+            if (fam_[i].id != r && fam_[i].role != FAMROLE_PET) mood_add_(i, 3);
+        doomo_snprintf(msg, sizeof(msg), "Baby %s has arrived! The whole house is glowing.", family_identity(r)->name);
+        sim_news_push(msg);
+    }
     audio_sfx(SFX_SPARKLE);
     return r;
 }

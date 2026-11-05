@@ -581,6 +581,10 @@ static void fam_draw(void)
                 if (!f) continue;
                 doomo_snprintf(l2, sizeof(l2), "%s - %s", role_names[f->role % FAMROLE_COUNT],
                                f->role == FAMROLE_PET ? "Pet" : doomo_life_stage_names[f->stage % LIFE_COUNT]);
+                if (family_stage_days_left(id) > 0)
+                    doomo_snprintf(l2, sizeof(l2), "%s - %s in %dd", doomo_life_stage_names[f->stage % LIFE_COUNT],
+                                   doomo_life_stage_names[life_stage_next(f->stage) % LIFE_COUNT],
+                                   family_stage_days_left(id));
                 if (f->role == FAMROLE_PET)
                     doomo_snprintf(l2, sizeof(l2), "%s - %s", family_pet_kind_name(family_pet_kind(id)),
                                    family_pet_hungry(id) ? "Hungry!" : "Fed");

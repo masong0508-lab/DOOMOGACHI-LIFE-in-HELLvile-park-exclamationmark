@@ -941,3 +941,55 @@ TEST(family_memorial_flowers_save_and_old_saves_read_zero)
     CHECK(family_loss_load(old, len));
     CHECK_EQ(family_memorial_flowers(1), FAMILY_MEM_FLOWERS_MAX);
 }
+
+/* ---- F4: family events: birthdays, the welcome party, the growing-up countdown --------- */
+TEST(family_growing_up_is_a_family_event)
+{
+    int a, kid, pet, n0, mood_a, mood_kid;
+    fresh_free_play();
+    a = family_pool_add(FAMROLE_HOUSEMATE, LIFE_ADULT, 5u, "Ann", PRONOUN_SHE);
+    kid = family_pool_add(FAMROLE_CHILD, LIFE_BABY, 6u, "Bo", PRONOUN_THEY);
+    pet = family_pool_add(FAMROLE_PET, LIFE_ADULT, 7u, "Bun", -1);
+    CHECK(a >= 0 && kid >= 0 && pet >= 0);
+    CHECK_EQ(family_stage_days_left(kid), family_stage_days(LIFE_BABY));
+    CHECK_EQ(family_stage_days_left(a), 0);                 /* adults do not grow */
+    CHECK_EQ(family_stage_days_left(pet), 0);
+    CHECK_EQ(family_stage_days_left(DOOMO_PLAYER_ID), 0);   /* not a member */
+    mood_a = family_mood(a);
+    mood_kid = family_mood(kid);
+    n0 = sim_news_count();
+    family_age_daily();
+    CHECK_EQ(family_stage_days_left(kid), family_stage_days(LIFE_BABY) - 1);
+    CHECK_EQ(family_mood(a), mood_a);                       /* nothing yet */
+    while (family_stage_days_left(kid) > 1) family_age_daily();
+    CHECK_EQ(family_stage_days_left(kid), 1);
+    CHECK_EQ(sim_news_count(), n0);
+    CHECK_EQ(family_age_daily(), 1);                        /* the birthday */
+    CHECK(family_find(kid)->stage == LIFE_TODDLER);
+    CHECK_EQ(family_mood(kid), mood_kid + 4);               /* they beam */
+    CHECK_EQ(family_mood(a), mood_a + 2);                   /* the family is proud */
+    CHECK_EQ(family_mood(pet), 8);                          /* a pet has no party */
+    CHECK(sim_news_count() > n0);
+    CHECK_EQ(family_stage_days_left(kid), family_stage_days(LIFE_TODDLER));
+}
+
+TEST(family_birth_throws_a_welcome_party)
+{
+    int a, p, baby, mood_a, mood_p, n0;
+    fresh_free_play();
+    a = first_free_play_adult();
+    if (a < 0) return;
+    p = family_pool_add(FAMROLE_PARTNER, LIFE_ADULT, 11u, "Sol", PRONOUN_THEY);
+    if (p < 0) return;                                      /* the gate is closed in this setup */
+    family_add(a, FAMROLE_HOUSEMATE, 0);                    /* a second grown-up, if the cap allows */
+    mood_p = family_mood(p);
+    mood_a = family_find(a) ? family_mood(a) : 0;
+    n0 = sim_news_count();
+    baby = family_birth("Wee", PRONOUN_THEY);
+    CHECK(baby >= 0);
+    CHECK_EQ(family_mood(p), mood_p + 3);
+    if (family_find(a)) CHECK_EQ(family_mood(a), mood_a + 3);
+    CHECK_EQ(family_mood(baby), 8);
+    CHECK(sim_news_count() > n0);
+    CHECK_EQ(family_stage_days_left(baby), family_stage_days(LIFE_BABY));
+}

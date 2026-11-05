@@ -172,6 +172,12 @@ int  family_aged_id(int n);        /* the n-th member that changed stage, or -1 
 int  family_aged_stage(int n);     /* the stage it grew into, or -1             */
 /* Days a member has spent in its present stage (0 for a non-member). */
 int  family_stage_progress(int id);
+/* Days until a pool member grows into the next stage (1..family_stage_days); 0 for a pet, an adult,
+ * an elder, a resident (the sim ages them) and a non-member. The dashboard shows it. */
+int  family_stage_days_left(int id);
+/* Growing up is a family event: a news line per stage ("took their first steps", "started
+ * school", ...), the one who grew up +4 mood and every other non-pet member +2. A birth throws a
+ * welcome party: everyone else +3 and a news line. Moods are saved with the bonds as before. */
 
 /* ---- F4 part 2: births and the growing-up toast ----------------------------
  * family_age_daily() shows one toast per member that grew up ("Mo grew up!

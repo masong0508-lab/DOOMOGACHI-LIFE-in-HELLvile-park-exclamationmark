@@ -111,6 +111,11 @@ The PS1 life-sim status checklist (what is verified, written, or missing on that
   with A to leave Flowers (up to 3 posies, `family_memorial_flowers/_leave_flowers`, kept in the memorial record's first spare byte so old saves read 0). 4 new tests.
   Not built: a separate graveyard scene for the household (the Remembered page is the memorial screen), pet old age, the pets' uplift, GBA/PS1 screens (not run here).
 
+- Wave 7b (2026-11-04, F4 family events, `make -C core test` 763/763): growing up is a family event. `milestone_` (family.c): each stage change adds a news line (first steps, started school,
+  a teenager, all grown up, a wise elder), the one who grew up gets +4 mood and every other non-pet member +2; `family_birth` throws a welcome party (everyone else +3, a news line).
+  `family_stage_days_left(id)` feeds the dashboard: a growing child's row reads "Child - Teen in 4d". The add-member wizard's baby path and the growing-up toast were already there.
+  F3 (house occupancy) was already in `home_draw.c`. Not built: baby outfits, a baby body shape, elder stooping, GBA/PS1 screens (not run here).
+
 - Wave 6 (2026-11-03, `make -C core test` 754/754 + story-check): PA9 `playas_romance_ok` is now the real play-as gate (anything touching
   the hero, the avatar or a family pool member needs both sides adult/elder, both directions accepting, never family, never a kid-coded
   premade; `family_add` partner check uses it). E4 core: `ending_route_*` (meter 40 offers, 120 dates; set/forward-only; adult + PA9 gate),
