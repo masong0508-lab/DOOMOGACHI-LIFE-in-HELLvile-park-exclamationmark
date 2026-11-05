@@ -55,6 +55,7 @@ static void creepy_skin(PMat *m, uint8_t base, int level)
 void pctx_init(PCtx *c, const DoomoLook *l, int status, int expr, int anim)
 {
     memset(c, 0, sizeof(*c));
+    c->d = &doomo_deep_zero;     /* the cache resolves a resident's own set into it */
     c->l = l;
     c->status = status;
     c->expr = (expr >= 0 && expr < EXPR_COUNT) ? expr : EXPR_NEUTRAL;
@@ -556,6 +557,7 @@ typedef struct Job {
     uint32_t want;              /* last tick its resident was asked for      */
     Phase    p;
     DoomoLook L;
+    DoomoDeep D;                /* resolved at job start (P1)                */
     PCtx     c;
 } Job;
 static Job job;
@@ -819,6 +821,7 @@ static void job_start(int kind, int rid, uint32_t key, uint32_t look, const Doom
     job.p = *p;
     job.L = *l;
     sanitize(&job.L);
+    look_resolve_mask(NULL, rid, LV_ALL, &job.D);
 }
 
 /* drop a job nobody asks about any more (frees its blocks for chibis) */
@@ -841,6 +844,7 @@ static void job_pump(void)
         }
         if (job.step == 0) {
             pctx_init(&job.c, &job.L, job.status, job.expr, 0);
+            job.c.d = &job.D;
             apply_phase(&job.c, &job.p);
             if (job.kind == CK_FIGURE) setup_figure(&job.c, (uint8_t *)e->img.pix);
             else setup_portrait(&job.c, (uint8_t *)e->img.pix);
@@ -865,7 +869,7 @@ void portrait_hold(int on) { hold_on = on; }
 
 static const DoomoImage *animated(int kind, int rid, const DoomoLook *l, int status, int expr)
 {
-    uint32_t lh = look_hash(l), t = now(), base, key;
+    uint32_t lh = look_hash(l) ^ look_run_hash(rid, 0), t = now(), base, key;
     int w = kind == CK_FIGURE ? FIGURE_W : PORTRAIT_W;
     int h = kind == CK_FIGURE ? FIGURE_H : PORTRAIT_H;
     int st = status == RES_EMPTY ? RES_ALIVE : status;
@@ -909,7 +913,10 @@ static const DoomoImage *animated(int kind, int rid, const DoomoLook *l, int sta
         e = cache_alloc(kind, rid, key, lh, w, h, 0);
         L = *l;
         sanitize(&L);
+        DoomoDeep D;
         pctx_init(&c, &L, st, expr, 0);
+        look_resolve_mask(NULL, rid, LV_ALL, &D);
+        c.d = &D;
         apply_phase(&c, &p);
         if (kind == CK_FIGURE) render_figure_ctx(&c, (uint8_t *)e->img.pix);
         else render_portrait_ctx(&c, (uint8_t *)e->img.pix);
@@ -967,15 +974,20 @@ const DoomoImage *bodyspr_image(int resident_id, int dir, int frame)
     dir &= 3;
     frame &= 3;
     look_for_stage(RES_LOOK_VIEW(r), RES_STAGE(r), &L);        /* F4: the body of their age */
-    lh = look_hash(&L);
+    lh = look_hash(&L) ^ look_run_hash(resident_id, 1);   /* chibi sees only DFF_CHIBI fields */
     key = (uint32_t)(dir | (frame << 2)) | ((uint32_t)status << 12);
     e = cache_find(CK_BODY, resident_id, key, lh, 0xFFFFFFFFu);
     if (e) return &e->img;
     job_reap();
     e = cache_alloc(CK_BODY, resident_id, key, lh, BODYSPR_W, BODYSPR_H, 0);
     sanitize(&L);
-    pctx_init(&c, &L, status == RES_EMPTY ? RES_ALIVE : status, EXPR_NEUTRAL, frame * 8);
-    render_body_ctx(&c, dir, frame, (uint8_t *)e->img.pix);
+    {
+        DoomoDeep D;
+        pctx_init(&c, &L, status == RES_EMPTY ? RES_ALIVE : status, EXPR_NEUTRAL, frame * 8);
+        look_resolve_mask(NULL, resident_id, LV_CHIBI, &D);
+        c.d = &D;
+        render_body_ctx(&c, dir, frame, (uint8_t *)e->img.pix);
+    }
     return &e->img;
 }
 
@@ -993,15 +1005,20 @@ const DoomoImage *fighter_image(int resident_id, int view, int anim, int weapon_
     anim = DOOMO_CLAMP(anim, 0, 6);
     if (weapon_frame < 0 || weapon_frame >= 64) weapon_frame = 0;
     look_for_stage(RES_LOOK_VIEW(r), RES_STAGE(r), &L);        /* F4: the body of their age */
-    lh = look_hash(&L);
+    lh = look_hash(&L) ^ look_run_hash(resident_id, 0);
     key = (uint32_t)(view | (anim << 3) | (weapon_frame << 6)) | ((uint32_t)status << 12);
     e = cache_find(CK_FIGHTER, resident_id, key, lh, 0xFFFFFFFFu);
     if (e) return &e->img;
     job_reap();
     e = cache_alloc(CK_FIGHTER, resident_id, key, lh, FIGHTER_W, FIGHTER_H, 0);
     sanitize(&L);
-    pctx_init(&c, &L, status == RES_EMPTY ? RES_ALIVE : status, EXPR_NEUTRAL, anim * 8);
-    render_fighter_ctx(&c, view, anim, weapon_frame, (uint8_t *)e->img.pix);
+    {
+        DoomoDeep D;
+        pctx_init(&c, &L, status == RES_EMPTY ? RES_ALIVE : status, EXPR_NEUTRAL, anim * 8);
+        look_resolve_mask(NULL, resident_id, LV_ALL, &D);
+        c.d = &D;
+        render_fighter_ctx(&c, view, anim, weapon_frame, (uint8_t *)e->img.pix);
+    }
     return &e->img;
 }
 

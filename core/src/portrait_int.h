@@ -24,6 +24,7 @@
 #include "doomo/portrait.h"
 #include "doomo/palette.h"
 #include "doomo/catalog.h"
+#include "doomo/look_fields.h"
 
 #define PQ        16                    /* sub-pixel units per pixel */
 
@@ -202,6 +203,7 @@ typedef struct PCtx {
     int head_id;         /* part id of the head                        */
     int body_id;         /* part id of the torso                       */
     PMemo memo[16];      /* pm_of() results                            */
+    const DoomoDeep *d;  /* resolved deep fields (never NULL)          */
 } PCtx;
 
 enum { VK_PORTRAIT, VK_FIGURE, VK_FIGHTER, VK_CHIBI };

@@ -268,3 +268,93 @@ TEST(head_only_draws_a_head_deterministically)
         CHECK_EQ(pc_get(PORTRAIT_W / 2, PORTRAIT_H - 1), 0);
     }
 }
+
+/* ---- the deep-field shim (look_fields.h / look_pool.c) -------------------------------------- */
+#include "doomo/look_pool.h"
+
+TEST(deep_resolve_reads_the_run_and_masks_for_chibis)
+{
+    static const uint8_t run[] = { DF_BLUSH2, 3, DF_SCLERA, 5, DF_BLUSH2, 4, DF_COUNT + 9, 7, DF_MOLE, 0x80 };
+    DoomoDeep d;
+    look_pool_drop(7);
+    look_resolve(NULL, 7, &d);
+    CHECK_EQ(d.v[DF_BLUSH2], 0);
+    CHECK(look_pool_put(7, RUN_DEEP, run, (int)sizeof(run)));
+    look_resolve(NULL, 7, &d);
+    CHECK_EQ(d.v[DF_BLUSH2], 4);
+    CHECK_EQ(d.v[DF_SCLERA], 5);
+    CHECK_EQ(d.v[DF_MOLE], 0);
+    look_resolve_mask(NULL, 7, LV_CHIBI, &d);
+    CHECK_EQ(d.v[DF_BLUSH2], 4);
+    CHECK_EQ(d.v[DF_SCLERA], 0);
+    look_pool_drop(7);
+    look_resolve(NULL, 7, &d);
+    CHECK_EQ(d.v[DF_BLUSH2], 0);
+}
+
+TEST(deep_pool_is_bounded_and_replaces_runs)
+{
+    uint8_t big[200];
+    int n = 0, id;
+    memset(big, 0, sizeof(big));
+    CHECK(!look_pool_put(-1, RUN_DEEP, big, 2));
+    CHECK(!look_pool_put(5000, RUN_DEEP, big, 2));
+    CHECK(!look_pool_put(8, RUN_DEEP, big, 300));
+    for (id = 20; id < 30; id++) n += look_pool_put(id, RUN_DEEP, big, 200);
+    CHECK(n >= 1 && n < 10);
+    for (id = 20; id < 30; id++) look_pool_drop(id);
+    CHECK(look_pool_find(20, RUN_DEEP, &n) == NULL);
+    CHECK(look_pool_put(9, RUN_DEEP, (const uint8_t *)"\x02\x01", 2));
+    CHECK(look_pool_put(9, RUN_DEEP, (const uint8_t *)"\x02\x02\x03\x01", 4));
+    CHECK(look_pool_find(9, RUN_DEEP, &n) != NULL && n == 4);
+    look_pool_drop(9);
+}
+
+TEST(deep_run_hash_is_zero_without_a_run_and_chibi_filtered)
+{
+    static const uint8_t a[] = { DF_SCLERA, 1 }, b[] = { DF_SCLERA, 2 };
+    static const uint8_t c1[] = { DF_BLUSH2, 1 }, c2[] = { DF_BLUSH2, 2 };
+    look_pool_drop(11);
+    CHECK_EQ(look_run_hash(11, 0), 0u);
+    CHECK(look_pool_put(11, RUN_DEEP, a, 2));
+    {
+        uint32_t full = look_run_hash(11, 0);
+        CHECK(full != 0);
+        CHECK_EQ(look_run_hash(11, 1), 0u);
+        look_pool_put(11, RUN_DEEP, b, 2);
+        CHECK(look_run_hash(11, 0) != full);
+        CHECK_EQ(look_run_hash(11, 1), 0u);
+    }
+    look_pool_put(11, RUN_DEEP, c1, 2);
+    {
+        uint32_t k1 = look_run_hash(11, 1);
+        CHECK(k1 != 0);
+        look_pool_put(11, RUN_DEEP, c2, 2);
+        CHECK(look_run_hash(11, 1) != k1);
+    }
+    look_pool_drop(11);
+}
+
+TEST(deep_anim_mask_and_cache_stay_correct_with_a_run)
+{
+    static const uint8_t aura[] = { DF_AURA2, 1 };
+    DoomoDeep d = doomo_deep_zero;
+    const DoomoImage *i0, *i1;
+    uint32_t k0;
+    CHECK_EQ(deep_anim_mask(&d), 0u);
+    d.v[DF_AURA2] = 1;
+    CHECK(deep_anim_mask(&d) & LAM_FX);
+    d.v[DF_AURA2] = 0; d.v[DF_BLUSH2] = 2;
+    CHECK_EQ(deep_anim_mask(&d), 0u);
+    portrait_cache_reset();
+    look_pool_drop(3);
+    i0 = portrait_image(3, EXPR_NEUTRAL);
+    CHECK(i0 != NULL);
+    k0 = look_key(3);
+    look_pool_put(3, RUN_DEEP, aura, 2);
+    CHECK(look_key(3) != k0);
+    i1 = portrait_image(3, EXPR_NEUTRAL);
+    CHECK(i1 != NULL);
+    look_pool_drop(3);
+    portrait_cache_reset();
+}
