@@ -406,7 +406,14 @@ Unit suite 828/828. **Nothing is live:** only tests call `look_pool_put()`, no c
 sets a deep value, so no player can see any of these yet. The pictures have only been checked as
 "different pixels", not by eye.
 
-**Still to do in M2.** The list appends F01, F07, F25, F29, F35, F47, H01, H13, E01, B66, B76, B79 and
+**List appends (B76 done).** B76 halos +6 (Double Ring, Heart Halo, Square Halo, Neon Glitch, Flower Ring,
+Saturn Ring) are in `ph_halo()`, appended after the live count: `HALO_COUNT` stays 6 and `HALO_ALL_COUNT` is 12.
+`portrait.c` sanitises halos to `HALO_ALL_COUNT`, `resident.c`, the creator, saves and the roster still use
+`HALO_COUNT`, so the new values cannot be chosen or saved until the list is flipped live (a premade must wear
+each value, `roster_uses_every_catalog_option`, and the art review must pass). Test:
+`wave2_halos_are_appended_after_the_live_count_and_every_one_is_distinct`. Unit suite 829/829.
+
+**Still to do in M2.** The other list appends F01, F07, F25, F29, F35, F47, H01, H13, E01, B66, B79 and
 O25; the art review and contact sheets for all thirteen fields above (chibi, back view and the
 hood/hat/glasses interactions in particular).
 

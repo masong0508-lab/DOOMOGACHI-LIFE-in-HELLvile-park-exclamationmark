@@ -7,11 +7,13 @@ Dreamcast** (no ARM/MIPS/SH4 toolchains, no emulator). Console statements below 
 
 ## Customization P1.M2 (portrait deep fields), 2026-11-05
 
-- **Built:** 13 wave-2 face/head painters (`DF_PUPIL`, `DF_SCLERA`, `DF_BLUSH2`, `DF_GLASSES2`, `DF_EAR_FOLD`, `DF_HOOD_HEAD`,
+- **Built:** 13 wave-2 face/head painters + 6 halo styles (`DF_PUPIL`, `DF_SCLERA`, `DF_BLUSH2`, `DF_GLASSES2`, `DF_EAR_FOLD`, `DF_HOOD_HEAD`,
   `DF_LASH`, `DF_LID`, `DF_LINER`, `DF_BAGS`, `DF_FRECKLE`, `DF_MOLE`, `DF_SCAR2`), unit suite 828/828.
 - **Playable:** none of it yet. Only tests set deep values; no creator row, save field or Look Book entry reaches them, so
   portraits in play are unchanged.
-- **Left:** the 13 list appends (F01, F07, F25, F29, F35, F47, H01, H13, E01, B66, B76, B79, O25), art review and contact
+- **List appends:** B76 halos +6 painted (appended after the live count, not selectable yet). 12 lists to go: F01, F07,
+  F25, F29, F35, F47, H01, H13, E01, B66, B79, O25.
+- **Left:** the other 12 list appends, flipping lists live (needs P6 premades), art review and contact
   sheets, then M3 (`DF_MAKEUP`, `DF_FACEPAINT`, `DF_AURA2`, A28 expressions, aura/halo), P0's real deep-field set, `live_p1.txt`,
   the mGBA bench and P2-P6. Details: `docs/PORTRAIT.md`, `ROADMAP.md` "Customization P1.M2 status".
 

@@ -460,15 +460,21 @@ status table (stale: still describes a developer launcher).
 | P1.M2c | `doomo-p1m2c-update` | `P1.M2c: wave-2 hood head (DF_HOOD_HEAD, painter + tests)` | 3 hood-up styles, hoodie/cloak and no hat only; `make unit` 827/827 |
 | P1.M2d | `doomo-p1m2d-update` | `P1.M2d: wave-2 face C-tier deep fields (lash, lid, liner, bags, freckle, mole, scar2)` | seven bust-only fields in `face_deep()`; `make unit` 828/828 |
 
+| P1.M2e | `doomo-p1m2e-update` | `P1.M2e: B76 halos +6 (appended after the live count)` | Double Ring, Heart Halo, Square Halo, Neon Glitch, Flower Ring, Saturn Ring in `ph_halo()`; `HALO_COUNT` stays 6 (live), `HALO_ALL_COUNT` = 12 (render limit); `make unit` and `make test` 829/829 |
+
 <!-- doomo-p1m2-status-nov05 -->
 ## Customization P1.M2 status (2026-11-05)
 
 **Done:** all thirteen wave-2 face/head painters (pupil, sclera, blush2, glasses2, ear fold, hood head, lash, lid, liner,
 bags, freckle, mole, scar2), each with a "0 is today, every choice distinct" test. The Classic golden is unchanged.
-**Playable:** nothing new. The painters read the in-RAM shim pool, which only tests fill; no creator row, save field or
+**Playable:** nothing new (the six new halos are not selectable in the creator yet). The painters read the in-RAM shim pool, which only tests fill; no creator row, save field or
 Look Book entry sets a deep value, so in-game portraits are exactly as before. They show only in `portrait_render_deep()`
 (tests, contact sheets).
-**Left in M2:** the 13 list appends (F01, F07, F25, F29, F35, F47, H01, H13, E01, B66, B76, B79, O25) and the art review +
-contact sheets (chibi, back view, hood/hat/glasses interplay). **After M2:** M3 (`DF_MAKEUP`, `DF_FACEPAINT`, `DF_AURA2`,
+**List appends (1 of 13 painted):** B76 halos +6 (P1.M2e). Appended after the live count, so `HALO_COUNT` (creator, saves,
+sanitising, roster) is still 6 and `roster_uses_every_catalog_option` holds; the painter draws all 12 (`HALO_ALL_COUNT`). A list
+flips live (`HALO_COUNT` = `HALO_ALL_COUNT`) only when a premade wears every new value (P6) and the art review passes.
+**Left in M2:** the other 12 list appends: F01 head shapes +12, F07 eye styles +16, F25 eye count to 6, F29 brows +12,
+F35 noses +12, F47 mouths +12, H01 hair +32, H13 facial hair +8, E01 ears +16, B66 horns +10, B79 auras +12, O25 hats +24;
+plus the art review + contact sheets (chibi, back view, hood/hat/glasses interplay). **After M2:** M3 (`DF_MAKEUP`, `DF_FACEPAINT`, `DF_AURA2`,
 A28 expressions, aura/halo detail), the real deep-field set from P0 (replaces `look_fields.h` / `look_pool.c`), `live_p1.txt`,
 the mGBA bench, a PS1-toolchain build of the LZ blocks, then P2-P6. Host unit suite only; not built for GBA/PS1/DC here.
