@@ -13,7 +13,7 @@ usage:
   mpack.py validate PACK [--port P] [--gba-default-cap]
                                             exit 0 and "ok" when valid
   mpack.py info PACK                        header and entry table
-  mpack.py example --out PACK               the repository's SFW example pack
+  mpack.py example --out PACK [--port gba]  the repository's SFW example pack
 
 MANIFEST (one directive per line, # comments, paths relative to the file):
   name    Pack name (<= 20 ASCII)
@@ -323,6 +323,13 @@ def validate(pack, F, want_port=None, gba_default_cap=False):
             except Fail as e:
                 bad.append("%s: %s" % (tag, e))
                 continue
+        if kn == "cg" and pname == "gba":
+            # E8: the GBA shows a still in place from the ROM blob (no buffer to decode into)
+            if F["codecs"][codec] != "raw":
+                bad.append("%s: GBA stills must be stored raw (shown in place from the ROM)" % tag)
+            elif size != F["PACK_CG_W_GBA"] * F["PACK_CG_H_GBA"]:
+                bad.append("%s: a GBA still is %dx%d = %d bytes, this one is %d" % (
+                    tag, F["PACK_CG_W_GBA"], F["PACK_CG_H_GBA"], F["PACK_CG_W_GBA"] * F["PACK_CG_H_GBA"], size))
         if kn == "cg" and arg >= F["MSLOT_MAX"]:
             bad.append("%s: cg slot %d out of 0..%d" % (tag, arg, F["MSLOT_MAX"] - 1))
         if kn == "script":
@@ -415,13 +422,14 @@ def read_manifest(path, F):
     return spec
 
 
-def example_spec(F):
-    """The repository's SFW example: one test-pattern still and the E0 fixture script."""
-    w, h = F["PACK_CG_W"], F["PACK_CG_H"]
+def example_spec(F, port="native"):
+    """The repository's SFW example: one test-pattern still and the E0 fixture script.
+    port gba: the 240x160 still stored raw (E8)."""
+    w, h = (F["PACK_CG_W_GBA"], F["PACK_CG_H_GBA"]) if port == "gba" else (F["PACK_CG_W"], F["PACK_CG_H"])
     cg = bytes(((x // 20 + y // 20) * 7) & 255 for y in range(h) for x in range(w))
     fx = open(os.path.join(ROOT, "core", "tests", "fixtures", "e0_user.pack"), "rb").read()
-    return dict(name="SFW Example", author="Doomogachi", port="native", flags=["sfw_example"],
-                codec="auto", items=[("cg", 0, 0, cg), ("script", 0, fx[3], fx)])
+    return dict(name="SFW Example", author="Doomogachi", port=port, flags=["sfw_example"],
+                codec="raw" if port == "gba" else "auto", items=[("cg", 0, 0, cg), ("script", 0, fx[3], fx)])
 
 
 def main(argv):
@@ -435,7 +443,7 @@ def main(argv):
         if cmd == "build" and out:
             pack = build(read_manifest(args[0], F), F)
         elif cmd == "example" and out:
-            pack = build(example_spec(F), F)
+            pack = build(example_spec(F, args[args.index("--port") + 1] if "--port" in args else "native"), F)
         elif cmd in ("validate", "info"):
             pack = open(args[0], "rb").read()
             if cmd == "info":

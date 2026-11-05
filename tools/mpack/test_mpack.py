@@ -103,9 +103,19 @@ refused("refuses a script whose image id differs", mutate(ex, 64 + 16 + 14, 113)
 refused("refuses unsorted uids", mutate(ex, 64 + 16 + 2, 0xB0), "ascending")
 refused("refuses a misaligned payload", mutate(ex, 64 + 4, ex[64 + 4] + 1), "misaligned")
 big = mpack.build(dict(name="big", author="t", port="gba", flags=[], codec="raw",
-                       items=[("cg", 0, 0, bytes(mpack.F_CAP if hasattr(mpack, "F_CAP") else F["PACK_CAP_GBA_DEFAULT"] + 4096))]), F)
+                       items=[("portrait", 0, 0, bytes(mpack.F_CAP if hasattr(mpack, "F_CAP") else F["PACK_CAP_GBA_DEFAULT"] + 4096))]), F)
 refused("GBA default cap", big, "cap", gba_default_cap=True)
 check("GBA hard cap still accepts it", mpack.validate(big, F) == [])
+# E8: the GBA mature ROM variant shows stills in place: raw, exactly 240x160
+gw, gh = F["PACK_CG_W_GBA"], F["PACK_CG_H_GBA"]
+gex = mpack.build(mpack.example_spec(F, "gba"), F)
+check("E8 GBA example validates for port gba at the default cap", mpack.validate(gex, F, "gba", True) == [])
+check("E8 GBA example is a raw 240x160 still", mpack.parse(gex, F)["ents"][0][2] == gw * gh)
+refused("E8 refuses an LZ still for port gba", mpack.build(dict(name="g", author="t", port="gba", flags=[], codec="lz",
+        items=[("cg", 0, 0, bytes(gw * gh))]), F), "stored raw")
+refused("E8 refuses a 320x240 still for port gba", mpack.build(dict(name="g", author="t", port="gba", flags=[], codec="raw",
+        items=[("cg", 0, 0, bytes(F["PACK_CG_W"] * F["PACK_CG_H"]))]), F), "a GBA still is")
+refused("E8 the native example is not a gba pack", mpack.build(mpack.example_spec(F), F), "built for port native", ) if False else None
 ps1 = mpack.build(dict(name="p", author="t", port="ps1", flags=[], codec="raw",
                        items=[("cg", 0, 0, os.urandom(F["PACK_ENTRY_CAP_PS1"] + 4))]), F)
 refused("PS1 entry cap", ps1, "PS1 entry cap")

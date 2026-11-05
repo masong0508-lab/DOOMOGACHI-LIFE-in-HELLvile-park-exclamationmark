@@ -106,6 +106,16 @@ DOOMO_STATIC_ASSERT(sizeof(DoomoPackEntry) == 16, pack_entry_is_16_bytes);
 #define PACK_CG_H_GBA  160
 #define PACK_CG_W      320                           /* PS1 / DC / native       */
 #define PACK_CG_H      240
+/* E8: the still size of THIS build (the GBA's screen is smaller). mslot.c and the GBA ROM
+ * variant use these; the GBA has no scratch to decode into, so its stills are stored RAW and
+ * shown in place from the ROM blob (mpack.py validate enforces both for port gba). */
+#if defined(DOOMO_PLATFORM_GBA)
+#define PACK_CG_W_THIS PACK_CG_W_GBA
+#define PACK_CG_H_THIS PACK_CG_H_GBA
+#else
+#define PACK_CG_W_THIS PACK_CG_W
+#define PACK_CG_H_THIS PACK_CG_H
+#endif
 
 /* ---- mature scene slots (E2: core/data/story/mslots.txt) ---------------
  * `push mslot N` in a built-in script (push_args.txt). E2 numbers about 32

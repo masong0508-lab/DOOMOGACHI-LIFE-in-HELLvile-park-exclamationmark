@@ -1771,3 +1771,16 @@ in flux.
   `plat_save_scratch()`, extension chunks are staged there too).
 * Draw UI shapes with the `ui_*` primitives (spans, cached rect lists),
   never pixel by pixel: every `plat_rect` is a THUMB -> ARM call.
+
+## 12. The mature ROM variant (E8)
+
+`make -C gba MATURE_PACK=/path/pack.dmpk` builds `build/doomogachi_mature.gba` (objects in `obj-mature`, so it never
+touches the stock ROM). `gba/src/packrom.c` `.incbin`s the pack into `.rodata` (4-aligned) and defines
+`plat_pack_blob()`; `core/src/pack.c` then opens it in place.
+
+- Build the pack with `tools/mpack/mpack.py build MANIFEST --out pack.dmpk` using `port gba`. The Makefile runs
+  `mpack.py validate --port gba --gba-default-cap` first (4 MB; pack.c itself takes up to 8 MB).
+- Stills are 240x160 and stored RAW: the GBA has no scratch to decode into, so they are shown straight from the cartridge.
+  mpack refuses an LZ or wrong-size still for port gba. `mpack.py example --out x.dmpk --port gba` makes the SFW example.
+- Cost: 0 B EWRAM / IWRAM; the ROM grows by the pack's size (the cartridge image is 32 MB either way).
+- Not yet run in mgba with a real pack (no ARM toolchain in the session that wrote it).

@@ -9,6 +9,10 @@
 #                             target scene (SPEED_BASE=LOG: + frame parity)
 #   make -C gba test-life     the life tour (M0): the free-play screens' fps,
 #                             work ms and press-to-picture latency
+#   make -C gba MATURE_PACK=pack.dmpk
+#                             build/doomogachi_mature.gba (E8: the mature ROM
+#                             variant: the game + a DMPK pack for port gba
+#                             linked into the ROM, gba/src/packrom.c)
 #   make -C gba clean
 #
 # Toolchain: arm-none-eabi-gcc + newlib from apt (no devkitPro). Our own
@@ -36,6 +40,11 @@ PYTHON  ?= python3
 HOSTCC  ?= gcc
 
 ENGINE_TEST ?= 0
+# E8: MATURE_PACK=/path/pack.dmpk bakes a content pack into the ROM (the mature variant). The pack
+# is validated first (mpack.py: port gba, 4 MB default cap, stills raw 240x160). Not for the
+# engine-test ROM.
+MATURE_PACK ?=
+MPACK       := $(ROOT)/tools/mpack/mpack.py
 # NOCORE=1 (engine test only): link just the stable core basics (palette,
 # font, fixmath) plus enginetest/standalone/ stand-ins for art and maps,
 # so the renderer can be developed while the core is still landing.
@@ -49,8 +58,14 @@ VARIANT := et
 ROM     := $(GBA)/build/doomogachi_et.gba
 endif
 else
+ifneq ($(MATURE_PACK),)
+VARIANT := mature
+ROM     := $(GBA)/build/doomogachi_mature.gba
+PACK_ABS := $(abspath $(MATURE_PACK))
+else
 VARIANT := game
 ROM     := $(GBA)/build/doomogachi.gba
+endif
 endif
 
 BUILD := $(GBA)/build
@@ -65,6 +80,12 @@ COMMON  := -std=c99 -O2 -g -Wall -Wextra -ffunction-sections -fdata-sections \
 DEFS    := -DDOOMO_PLATFORM_GBA=1
 ifeq ($(ENGINE_TEST),1)
 DEFS    += -DENGINE_TEST=1
+endif
+ifneq ($(MATURE_PACK),)
+ifeq ($(ENGINE_TEST),1)
+$(error MATURE_PACK is for the game ROM, not the engine test)
+endif
+DEFS    += -DDOOMO_PACK_ROM=1 '-DDOOMO_PACK_INCBIN="$(PACK_ABS)"'
 endif
 # debug cutscene viewer (hold SELECT at power-on); `make CUTVIEW=0` compiles it out
 CUTVIEW ?= 1
@@ -152,6 +173,15 @@ $(OBJ)/gba/%.iwram.o: $(GBA)/%.iwram.c
 $(OBJ)/gba/%.o: $(GBA)/%.c
 	@mkdir -p $(dir $@)
 	$(CC) $(GBA_CFLAGS) -mthumb -c $< -o $@
+
+# E8: the baked pack is checked before it is linked, and a changed pack rebuilds packrom.o
+ifneq ($(MATURE_PACK),)
+$(OBJ)/pack.ok: $(PACK_ABS) $(MPACK)
+	@mkdir -p $(dir $@)
+	@$(PYTHON) $(MPACK) validate $(PACK_ABS) --port gba --gba-default-cap || { echo "gba: $(PACK_ABS) is not a valid GBA pack"; exit 1; }
+	@touch $@
+$(OBJ)/gba/src/packrom.o: $(OBJ)/pack.ok $(PACK_ABS)
+endif
 
 $(OBJ)/gba/%.o: $(GBA)/%.s
 	@mkdir -p $(dir $@)

@@ -43,14 +43,14 @@ static void ms_show(const StoryOp *o)
     if (o->a == SHOW_OFF || o->a != PK_KIND_CG) return;      /* only stills are drawn here */
     idx = o->b;
     p = pack_art(PK_KIND_CG, PACK_UID(PK_KIND_CG, idx), &size);
-    if (!p || size < (uint32_t)PACK_CG_W * PACK_CG_H) {
+    if (!p || size < (uint32_t)PACK_CG_W_THIS * PACK_CG_H_THIS) {
         buf = plat_mslot_buf(&cap);
-        if (!buf || cap < (uint32_t)PACK_CG_W * PACK_CG_H) return;
-        if (pack_art_read(PK_KIND_CG, PACK_UID(PK_KIND_CG, idx), buf, cap) != PACK_CG_W * PACK_CG_H) return;
+        if (!buf || cap < (uint32_t)PACK_CG_W_THIS * PACK_CG_H_THIS) return;
+        if (pack_art_read(PK_KIND_CG, PACK_UID(PK_KIND_CG, idx), buf, cap) != PACK_CG_W_THIS * PACK_CG_H_THIS) return;
         p = buf;
     }
-    M.img.w = PACK_CG_W;
-    M.img.h = PACK_CG_H;
+    M.img.w = PACK_CG_W_THIS;
+    M.img.h = PACK_CG_H_THIS;
     M.img.pix = p;
     M.img.uid = doomo_image_new_uid();
     M.art = 1;
