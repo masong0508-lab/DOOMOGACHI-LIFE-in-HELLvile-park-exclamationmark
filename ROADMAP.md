@@ -440,3 +440,14 @@ LS7 (2026-11-04, `doomo-ls7-toast-polish-nov04k`): presentation polish found by 
 <!-- doomo-ls8-name-scroll-nov04l -->
 LS8 (2026-11-04, `doomo-ls8-name-scroll-nov04l`): the care screen's name plate clipped long names ("Judge Hoo"); a name wider than the plate now scrolls with `fp_marquee` like the mood and activity lines under it, and so does a non-living status line. `make -C core test` 789/789; core only.
 | E10 | `doomo-e10-dc-pack-nov05a` | `E10: Dreamcast mature disc (PACK.DMP reader, make -C dc PACK=...)` | `dc/src/packdisc.c`, `PACK_SCRIPT_CAP_DC`, mkcdi.sh + Makefile `PACK=`, host test `dc/tests/packdisc_host.sh`; not built with KOS here |
+| docs | `doomo-roadmap-status-nov05b` | `docs: status check (playable vs left) + docs/STATUS.md` | docs only: adds docs/STATUS.md and a "Status check (2026-11-05)" section to this file |
+
+<!-- doomo-roadmap-status-nov05b -->
+## Status check (2026-11-05)
+
+Full write-up: [docs/STATUS.md](docs/STATUS.md). `make -C core test` ran clean on this tree (0 failures, 154 scripts, 19
+journeys) and all 69 scenes link as real code. Not built or run for GBA, PS1 or Dreamcast in that check.
+Playable on the core: Free Play, creator, life sim and family, Hell Breach shooter, 4-chapter story + epilogue, house, minigames.
+Biggest open items: run the console builds and harnesses (PS1 harness re-run, GBA latch/hub checks), Dreamcast DC3-DC9,
+GBA fps, mature pack art, MP0/MP1, customization P0-P6, console music, W9-W16 script, L8/L10 languages, and the README
+status table (stale: still describes a developer launcher).
