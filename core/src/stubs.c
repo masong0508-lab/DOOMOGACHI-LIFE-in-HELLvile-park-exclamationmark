@@ -19,6 +19,8 @@
  * any "STUB:" line was logged.
  */
 #include "doomo/doomo.h"
+#include "doomo/settings.h"
+#include "doomo/look_pool.h"
 
 #define WEAK __attribute__((weak))
 #define STUB(name) do { static uint8_t once_; \
@@ -1361,3 +1363,15 @@ WEAK uint32_t music_cue_length(int cue) { (void)cue; STUB("music_cue_length"); r
 WEAK const char *music_cue_name(int cue) { (void)cue; STUB("music_cue_name"); return ""; }
 WEAK void mus_drv_tick(void) { STUB("mus_drv_tick"); }
 /* --- end music --- */
+
+/* ======================================================================
+ * customisation v2 contracts (P0.M0a): nothing calls these yet
+ * ==================================================================== */
+WEAK int  settings_load_best(void) { STUB("settings_load_best"); return 0; }
+WEAK int  settings_commit(void) { STUB("settings_commit"); return 0; }
+WEAK void input_context(int ic) { (void)ic; STUB("input_context"); }
+WEAK const uint8_t *look_pool_find(int id, int kind, int *len)
+{ (void)id; (void)kind; if (len) *len = 0; STUB("look_pool_find"); return NULL; }
+WEAK int  look_pool_put(int id, int kind, const uint8_t *data, int len)
+{ (void)id; (void)kind; (void)data; (void)len; STUB("look_pool_put"); return 0; }
+WEAK void look_pool_drop(int id) { (void)id; STUB("look_pool_drop"); }

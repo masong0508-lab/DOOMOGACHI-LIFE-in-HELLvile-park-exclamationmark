@@ -3,26 +3,8 @@
 #include "doomo/doomo.h"
 #include "doomo/gene.h"
 
-/* name@bit:width, LSB-first, from the spec's 1.3 list. max = the width's mask. */
-#define F(pos, bits) { (pos), (uint16_t)((1u << (bits)) - 1u), (bits) }
-const DoomoGeneField doomo_gene_field[GF_COUNT] = {
-    F(0, 4),   F(4, 4),   F(8, 4),   F(12, 6),  F(18, 5),  F(23, 4),   /* body height build skin head_shape head_size */
-    F(27, 6),  F(33, 5),  F(38, 4),  F(42, 4),  F(46, 4),  F(50, 4),   /* eye_style .. eye_tilt */
-    F(54, 3),  F(57, 5),  F(62, 4),  F(66, 5),  F(71, 4),              /* eye_count brow_style brow_height nose_style nose_size */
-    F(75, 5),  F(80, 4),  F(84, 2),  F(86, 6),  F(92, 5),              /* mouth_style mouth_size fangs hair_style hair_color */
-    F(97, 6),  F(103, 4), F(107, 5), F(112, 5), F(117, 5), F(122, 4),  /* hair_highlight facial_hair ears horns horn_color horn_size */
-    F(126, 5), F(131, 5), F(136, 4), F(140, 5), F(145, 5), F(150, 8),  /* tail wings halo marking marking_color cheeks */
-    F(158, 6), F(164, 5), F(169, 5), F(174, 5), F(179, 5), F(184, 5),  /* top top_color bottom bottom_color shoes shoes_color */
-    F(189, 6), F(195, 5), F(200, 5), F(205, 5), F(210, 5), F(215, 5), F(220, 5), /* hat hat_color accessory accessory_color aura pattern pattern_color */
-    F(225, 5), F(230, 5), F(235, 5), F(240, 5), F(245, 5),             /* voice[0..4] */
-    F(250, 4), F(254, 4), F(258, 4), F(262, 4), F(266, 4),             /* persona[0..4] */
-    F(270, 3), F(273, 3), F(276, 4), F(280, 5), F(285, 6), F(291, 5),  /* pronoun romance bday_month bday_day like_food like_hobby */
-    F(296, 4), F(300, 5), F(305, 6), F(311, 5), F(316, 6),             /* like_music like_color hate_food fear catchphrase */
-    F(322, 11), F(333, 2), F(335, 3), F(338, 5), F(343, 4), F(347, 5), /* look_seed auto_style age pupil sclera fur_pattern */
-    F(352, 6), F(358, 5), F(363, 5), F(368, 4), F(372, 4), F(376, 3),  /* fur_color3 glasses outer legwear blush_style ear_fold */
-    F(379, 1), F(380, 1), F(381, 3)                                    /* hood_up handedness gene_spare */
-};
-#undef F
+/* doomo_gene_field[] (bit position, max, width) is generated: core/gen/gene_table.c, from
+ * core/data/look/fields.txt by tools/look_build.py. */
 
 uint32_t gene_get(const uint8_t *g, int gf)
 {

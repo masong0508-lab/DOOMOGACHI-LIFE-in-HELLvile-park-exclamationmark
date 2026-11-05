@@ -944,6 +944,55 @@ def c_str(s):
     return '"' + "".join(out) + '"'
 
 
+def gene_positions():
+    """name -> (bit position, width) from core/data/look/fields.txt (see tools/look_build.py)."""
+    pos, out = 0, {}
+    for line in open(os.path.join(ROOT, "core", "data", "look", "fields.txt")):
+        line = line.split("#", 1)[0].split()
+        if not line:
+            continue
+        out[line[0]] = (pos, int(line[1]))
+        pos += int(line[1])
+    assert pos == 384
+    return out
+
+
+def pack_gene(c, gpos):
+    """The 48 B gene of one premade: what gene_pack_v1() builds from its v1 record (gene.c)."""
+    v = c.v
+    g = [0] * 48
+
+    def put(name, val):
+        p, bits = gpos[name]
+        assert 0 <= val < (1 << bits), (c.name, name, val)
+        for k in range(bits):
+            if (val >> k) & 1:
+                g[(p + k) >> 3] |= 1 << ((p + k) & 7)
+
+    # look: LOOK_ORDER[1:] are the gene fields body .. pattern_color, in order
+    names = list(gpos)
+    for i, key in enumerate(LOOK_ORDER[1:]):
+        val = v[key]
+        if names[i] == "hair_highlight" and val == 0xFF:       # LOOK_NO_COLOR
+            val = 32
+        put(names[i], val)
+    for i, key in enumerate(("pitch", "speed", "quality", "intonation", "accent")):
+        put("voice%d" % i, v[key])
+    for i, key in enumerate(("movement", "speech", "expression", "attitude", "quirk")):
+        put("persona%d" % i, v[key])
+    put("pronoun", v["pronoun"])
+    put("romance", v["romance"] & 7)                           # preference half only
+    put("bday_month", v["birthday"][0])
+    put("bday_day", v["birthday"][1])
+    for gk, key in (("like_food", "food"), ("like_hobby", "hobby"), ("like_music", "music"),
+                    ("like_color", "color"), ("hate_food", "hates"), ("fear", "fear"),
+                    ("catchphrase", "phrase")):
+        put(gk, v[key])
+    put("age", life_stage(v["traits"]))
+    return g
+
+
+
 def emit(schema, by_id, edges, story):
     v_status = schema.status_alive
     L = []
@@ -958,25 +1007,45 @@ def emit(schema, by_id, edges, story):
     w('#include "doomo/roster.h"')
     w("")
     w("DOOMO_STATIC_ASSERT(ROSTER_COUNT == %d, roster_count_matches_data);" % schema.count)
+    w("DOOMO_STATIC_ASSERT(RES_ALIVE == %d, roster_status_is_alive);" % v_status)
     w("")
-    w("const DoomoCitizen doomo_roster_premade[ROSTER_COUNT] = {")
+    gpos = gene_positions()
+    w("/* The 58 B packed premade records (roster v2, SPEC 1.7 / 3.5): the 48 B gene, the hot species")
+    w(" * byte, the 8 stats at 7 bits each (56 bits), flags, and mood (bits 5..7) | activity (0..4).")
+    w(" * Everything else of a v1 premade is constant: ALIVE, exorcism/level/death 0. Unpacked by")
+    w(" * roster_premade_record(). */")
+    w("const DoomoPremadeRec doomo_roster_pack[ROSTER_COUNT] = {")
     for i in range(schema.count):
         c = by_id[i]
         v = c.v
-        look = ",".join(str(v[k]) for k in LOOK_ORDER)
-        voice = ",".join(str(v[k]) for k in ("pitch", "speed", "quality", "intonation", "accent"))
-        pers = ",".join(str(v[k]) for k in ("movement", "speech", "expression", "attitude", "quirk"))
-        stats = ",".join(str(v[k]) for k in ("hunger", "happy", "hygiene", "energy", "health",
-                                             "sanity", "corruption", "social"))
-        # LS0: `romance` packs the ROMANCE_* preference (bits 0..2) and the
-        # LIFE_* stage (bits 4..6, resident.h) the traits give: KID -> CHILD 3,
-        # TEEN 4, ELDER 5, else LIFE_ADULT 0. roster_stage() reads the same traits.
-        rest = [v_status, v["flags"], v["pronoun"], v["romance"] | (life_stage(v["traits"]) << 4),
-                v["birthday"][0],
-                v["birthday"][1], v["food"], v["hobby"], v["music"], v["color"], v["hates"],
-                v["fear"], v["phrase"], 0, 0, v["mood"], v["activity"], 0]
-        w("    /* %3d */ { {%s}, %s, {%s}, {%s}, {%s}, %s }," % (
-            i, look, c_str(c.name), voice, pers, stats, ",".join(str(x) for x in rest)))
+        gene = pack_gene(c, gpos)
+        stats = [v[k] for k in ("hunger", "happy", "hygiene", "energy", "health",
+                                "sanity", "corruption", "social")]
+        assert all(0 <= x <= 100 for x in stats), c.name
+        packed = 0
+        for k, x in enumerate(stats):
+            packed |= x << (7 * k)
+        stat7 = [(packed >> (8 * k)) & 255 for k in range(7)]
+        assert 0 <= v["mood"] < 8 and 0 <= v["activity"] < 32, c.name
+        mood_act = (v["mood"] << 5) | v["activity"]
+        w("    /* %3d */ { {%s}, %d, {%s}, %d, %d }," % (
+            i, ",".join(str(x) for x in gene), v["species"], ",".join(str(x) for x in stat7),
+            v["flags"], mood_act))
+    w("};")
+    w("")
+    # names: NUL separated, 16-bit offsets
+    name_ofs, npos = [], 0
+    w("const char doomo_roster_name_text[] =")
+    for i in range(schema.count):
+        n = by_id[i].name
+        name_ofs.append(npos)
+        npos += len(n) + 1
+        w("    %s \"\\0\"" % c_str(n))
+    w("    ;")
+    assert npos < 65536
+    w("const uint16_t doomo_roster_name_ofs[ROSTER_COUNT] = {")
+    for k in range(0, schema.count, 12):
+        w("    " + ",".join(str(o) for o in name_ofs[k:k + 12]) + ",")
     w("};")
     w("")
     # bios

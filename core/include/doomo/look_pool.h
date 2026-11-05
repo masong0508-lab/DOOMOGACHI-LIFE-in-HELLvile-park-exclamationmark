@@ -1,6 +1,6 @@
 /* look_pool.h - contract for the deep-look pool (customisation v2, SPEC 1.5).
  * P0.M0a lands the layout only: nothing allocates or saves a pool yet, and
- * the functions (look_pool_find/put/drop, the LOOK chunk) arrive with M1. */
+ * the functions are weak stubs until M1 (the real look_pool_find/put/drop, the LOOK chunk). */
 #ifndef DOOMO_LOOK_POOL_H
 #define DOOMO_LOOK_POOL_H
 
@@ -20,5 +20,11 @@ typedef struct DoomoLookPool {
 } DoomoLookPool;
 DOOMO_STATIC_ASSERT(sizeof(DoomoLookPool) == 8200, look_pool_is_8200_bytes);
 DOOMO_STATIC_ASSERT(LOOK_POOL_BYTES + 8 <= DOOMO_SAVE_EXT_MAX, look_pool_fits_one_chunk);
+
+/* The pool API (weak stubs in stubs.c until M1 allocates a pool). A run is the bytes of one kind
+ * (RUN_*) for one id. These shapes are provisional: M1 may refine them before anyone calls them. */
+const uint8_t *look_pool_find(int id, int kind, int *len);        /* NULL if there is no such run */
+int  look_pool_put(int id, int kind, const uint8_t *data, int len); /* 1 stored, 0 pool full       */
+void look_pool_drop(int id);                                      /* every run of one id          */
 
 #endif

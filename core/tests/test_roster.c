@@ -378,3 +378,47 @@ TEST(roster_moves_into_a_town)
         CHECK(family_in_hell >= 3);
     }
 }
+
+/* roster v2 (58 B records): every packed premade unpacks to exactly the v1 citizen the old 96 B ROM
+ * table held. tests/golden/roster_v1.txt was captured from that table and is frozen. */
+TEST(roster_v2_reproduces_every_v1_premade)
+{
+    char path[512], line[128];
+    FILE *f;
+    int lines = 0, i;
+    snprintf(path, sizeof(path), "%s/roster_v1.txt", test_golden_dir);
+    f = fopen(path, "r");
+    CHECK_MSG(f != NULL, "missing %s", path);
+    if (!f) return;
+    while (fgets(line, sizeof(line), f)) {
+        int id;
+        unsigned want;
+        DoomoResident r;
+        DoomoCitizen c;
+        uint8_t v1[96];
+        uint32_t h = 2166136261u;
+        if (line[0] == '#' || sscanf(line, "%d %x", &id, &want) != 2) continue;
+        CHECK(roster_premade_record(id, &r) == 1);
+        res_unpack(&r, &c);
+        res_to_v1(&c, v1);
+        for (i = 0; i < 96; i++) { h ^= v1[i]; h *= 16777619u; }
+        CHECK_MSG(h == want, "premade %d: v1 image %08x, golden %08x", id, (unsigned)h, want);
+        CHECK(strcmp(roster_name(id), r.name) == 0);
+        lines++;
+    }
+    fclose(f);
+    CHECK_EQ(lines, ROSTER_COUNT);
+}
+
+TEST(roster_v2_record_edges)
+{
+    DoomoResident r;
+    CHECK_EQ(sizeof(DoomoPremadeRec), 58);
+    CHECK_EQ(roster_premade_record(-1, &r), 0);
+    CHECK_EQ(r.status, RES_EMPTY);
+    CHECK_EQ(roster_premade_record(ROSTER_COUNT, &r), 0);
+    CHECK_EQ(roster_premade_record(0, &r), 1);
+    CHECK_EQ(r.status, RES_ALIVE);
+    CHECK(roster_premade(ROSTER_COUNT) == NULL);
+    CHECK(roster_premade(999) != NULL);
+}
