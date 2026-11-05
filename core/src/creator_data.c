@@ -6,8 +6,80 @@
  */
 #include "creator_int.h"
 
-#define OFS(m)  ((uint8_t)offsetof(DoomoResident, m))
-#define LK(m)   OFS(look.m)
+/* field ids (resident_acc.h): the creator addresses rows by gene field id, not by byte offset */
+#define CFL_species RES_F_SPECIES
+#define CFL_body GF_BODY
+#define CFL_height GF_HEIGHT
+#define CFL_build GF_BUILD
+#define CFL_skin GF_SKIN
+#define CFL_head_shape GF_HEAD_SHAPE
+#define CFL_head_size GF_HEAD_SIZE
+#define CFL_eye_style GF_EYE_STYLE
+#define CFL_eye_color GF_EYE_COLOR
+#define CFL_eye_size GF_EYE_SIZE
+#define CFL_eye_spacing GF_EYE_SPACING
+#define CFL_eye_height GF_EYE_HEIGHT
+#define CFL_eye_tilt GF_EYE_TILT
+#define CFL_eye_count GF_EYE_COUNT
+#define CFL_brow_style GF_BROW_STYLE
+#define CFL_brow_height GF_BROW_HEIGHT
+#define CFL_nose_style GF_NOSE_STYLE
+#define CFL_nose_size GF_NOSE_SIZE
+#define CFL_mouth_style GF_MOUTH_STYLE
+#define CFL_mouth_size GF_MOUTH_SIZE
+#define CFL_fangs GF_FANGS
+#define CFL_hair_style GF_HAIR_STYLE
+#define CFL_hair_color GF_HAIR_COLOR
+#define CFL_hair_highlight GF_HAIR_HIGHLIGHT
+#define CFL_facial_hair GF_FACIAL_HAIR
+#define CFL_ears GF_EARS
+#define CFL_horns GF_HORNS
+#define CFL_horn_color GF_HORN_COLOR
+#define CFL_horn_size GF_HORN_SIZE
+#define CFL_tail GF_TAIL
+#define CFL_wings GF_WINGS
+#define CFL_halo GF_HALO
+#define CFL_marking GF_MARKING
+#define CFL_marking_color GF_MARKING_COLOR
+#define CFL_cheeks GF_CHEEKS
+#define CFL_top GF_TOP
+#define CFL_top_color GF_TOP_COLOR
+#define CFL_bottom GF_BOTTOM
+#define CFL_bottom_color GF_BOTTOM_COLOR
+#define CFL_shoes GF_SHOES
+#define CFL_shoes_color GF_SHOES_COLOR
+#define CFL_hat GF_HAT
+#define CFL_hat_color GF_HAT_COLOR
+#define CFL_accessory GF_ACCESSORY
+#define CFL_accessory_color GF_ACCESSORY_COLOR
+#define CFL_aura GF_AURA
+#define CFL_pattern GF_PATTERN
+#define CFL_pattern_color GF_PATTERN_COLOR
+#define CFR_pronoun GF_PRONOUN
+#define CFR_bday_month GF_BDAY_MONTH
+#define CFR_bday_day GF_BDAY_DAY
+#define CFR_like_food GF_LIKE_FOOD
+#define CFR_like_hobby GF_LIKE_HOBBY
+#define CFR_like_music GF_LIKE_MUSIC
+#define CFR_like_color GF_LIKE_COLOR
+#define CFR_hate_food GF_HATE_FOOD
+#define CFR_fear GF_FEAR
+#define CFR_catchphrase GF_CATCHPHRASE
+#define CFR_romance RES_F_ROMANCE
+#define CFR_flags RES_F_FLAGS
+#define CFR_name RES_F_NAME
+#define CFR_VOICE_PITCH (GF_VOICE0 + VOICE_PITCH)
+#define CFR_VOICE_SPEED (GF_VOICE0 + VOICE_SPEED)
+#define CFR_VOICE_QUALITY (GF_VOICE0 + VOICE_QUALITY)
+#define CFR_VOICE_INTONATION (GF_VOICE0 + VOICE_INTONATION)
+#define CFR_VOICE_ACCENT (GF_VOICE0 + VOICE_ACCENT)
+#define CFR_PERS_MOVEMENT (GF_PERSONA0 + PERS_MOVEMENT)
+#define CFR_PERS_SPEECH (GF_PERSONA0 + PERS_SPEECH)
+#define CFR_PERS_EXPRESSION (GF_PERSONA0 + PERS_EXPRESSION)
+#define CFR_PERS_ATTITUDE (GF_PERSONA0 + PERS_ATTITUDE)
+#define CFR_PERS_QUIRK (GF_PERSONA0 + PERS_QUIRK)
+#define OFS(m)  ((uint8_t)CFR_##m)
+#define LK(m)   ((uint8_t)CFL_##m)
 #define END     CR_NOFIELD
 
 /* ====================================================================== */
@@ -139,11 +211,11 @@ static const CrRow rows_outfit[] = {
 static const CrRow rows_voice[] = {
     ACTION("Preset", CA_VOICE_PRESET),
     HDR("Voice"),
-    SLIDE_R("Pitch", voice[VOICE_PITCH], 32, n_pitch),
-    SLIDE_R("Speed", voice[VOICE_SPEED], 32, n_speed),
-    SLIDE_R("Quality", voice[VOICE_QUALITY], 32, n_quality),
-    SLIDE_R("Intonation", voice[VOICE_INTONATION], 32, n_inton),
-    SLIDE_R("Accent", voice[VOICE_ACCENT], 32, n_accent),
+    SLIDE_R("Pitch", VOICE_PITCH, 32, n_pitch),
+    SLIDE_R("Speed", VOICE_SPEED, 32, n_speed),
+    SLIDE_R("Quality", VOICE_QUALITY, 32, n_quality),
+    SLIDE_R("Intonation", VOICE_INTONATION, 32, n_inton),
+    SLIDE_R("Accent", VOICE_ACCENT, 32, n_accent),
     ACTION("Test it!", CA_TEST_VOICE),
 };
 
@@ -154,11 +226,11 @@ const char *const doomo_life_stage_names[LIFE_COUNT] = {
 };
 
 static const CrRow rows_persona[] = {
-    SLIDE_R("Movement", persona[PERS_MOVEMENT], 16, n_move),
-    SLIDE_R("Speech", persona[PERS_SPEECH], 16, n_speech),
-    SLIDE_R("Expression", persona[PERS_EXPRESSION], 16, n_expr),
-    SLIDE_R("Attitude", persona[PERS_ATTITUDE], 16, n_attitude),
-    SLIDE_R("Quirk", persona[PERS_QUIRK], 16, n_quirk),
+    SLIDE_R("Movement", PERS_MOVEMENT, 16, n_move),
+    SLIDE_R("Speech", PERS_SPEECH, 16, n_speech),
+    SLIDE_R("Expression", PERS_EXPRESSION, 16, n_expr),
+    SLIDE_R("Attitude", PERS_ATTITUDE, 16, n_attitude),
+    SLIDE_R("Quirk", PERS_QUIRK, 16, n_quirk),
     /* LS0: the saved life stage. Babies and kids never get romance, teens
      * only with teens (sim.h sim_romance_ok); the story hero stays grown */
     ENUM_RM("Age", romance, LIFE_COUNT, doomo_life_stage_names, LIFE_STAGE_MASK),
@@ -616,8 +688,8 @@ const int cr_outfit_preset_count = DOOMO_COUNTOF(cr_outfit_presets);
 /* ====================================================================== */
 /* voice types                                                              */
 #define VOICE(p, s, q, i, a) \
-    OFS(voice[VOICE_PITCH]), p, OFS(voice[VOICE_SPEED]), s, OFS(voice[VOICE_QUALITY]), q, \
-    OFS(voice[VOICE_INTONATION]), i, OFS(voice[VOICE_ACCENT]), a, END
+    OFS(VOICE_PITCH), p, OFS(VOICE_SPEED), s, OFS(VOICE_QUALITY), q, \
+    OFS(VOICE_INTONATION), i, OFS(VOICE_ACCENT), a, END
 
 const CrPreset cr_voice_presets[] = {
     { "Everyday", { VOICE(16, 16, 16, 16, 16) } },

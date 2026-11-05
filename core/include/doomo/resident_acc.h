@@ -64,4 +64,62 @@
 #define RES_CATCHPHRASE(r)       ((r)->catchphrase)
 #define RES_SET_CATCHPHRASE(r, v)((r)->catchphrase = (uint8_t)(v))
 
+/* ---- field ids (creator rows, presets, tests) --------------------------------
+ * A "field id" names one editable value of a resident without a byte offset:
+ *   0 .. GF_COUNT-1     a gene field (gene.h): look, voice, persona, identity
+ *   RES_F_SPECIES       the hot species byte
+ *   RES_F_ROMANCE       the whole romance byte (preference + life stage bits)
+ *   RES_F_FLAGS         RF_* flags
+ *   RES_F_NAME          the name (text; no numeric value)
+ * res_field_get / res_field_set read and write by id. The v1 bodies below go
+ * through the struct; the flip rewrites them over gene_get / gene_set. */
+enum { RES_F_SPECIES = 0x80, RES_F_ROMANCE, RES_F_FLAGS, RES_F_NAME };
+#define RES_F_IS_LOOK(f)  ((f) == RES_F_SPECIES || (f) <= GF_PATTERN_COLOR)
+
+static inline int res_field_get(const DoomoResident *r, int f)
+{
+    if (f == RES_F_SPECIES) return RES_SPECIES(r);
+    if (f == RES_F_ROMANCE) return r->romance;
+    if (f == RES_F_FLAGS)   return r->flags;
+    if (f <= GF_PATTERN_COLOR) return RES_LOOK(r, f);
+    if (f >= GF_VOICE0 && f < GF_VOICE0 + VOICE_COUNT) return RES_VOICE(r, f - GF_VOICE0);
+    if (f >= GF_PERSONA0 && f < GF_PERSONA0 + PERS_COUNT) return RES_PERSONA(r, f - GF_PERSONA0);
+    switch (f) {
+    case GF_PRONOUN:     return RES_PRONOUN(r);
+    case GF_BDAY_MONTH:  return RES_BDAY_MONTH(r);
+    case GF_BDAY_DAY:    return RES_BDAY_DAY(r);
+    case GF_LIKE_FOOD:   return RES_LIKE_FOOD(r);
+    case GF_LIKE_HOBBY:  return RES_LIKE_HOBBY(r);
+    case GF_LIKE_MUSIC:  return RES_LIKE_MUSIC(r);
+    case GF_LIKE_COLOR:  return RES_LIKE_COLOR(r);
+    case GF_HATE_FOOD:   return RES_HATE_FOOD(r);
+    case GF_FEAR:        return RES_FEAR(r);
+    case GF_CATCHPHRASE: return RES_CATCHPHRASE(r);
+    default:             return 0;
+    }
+}
+
+static inline void res_field_set(DoomoResident *r, int f, int v)
+{
+    if (f == RES_F_SPECIES) { RES_SET_SPECIES(r, v); return; }
+    if (f == RES_F_ROMANCE) { r->romance = (uint8_t)v; return; }
+    if (f == RES_F_FLAGS)   { r->flags = (uint8_t)v; return; }
+    if (f <= GF_PATTERN_COLOR) { RES_SET_LOOK(r, f, v); return; }
+    if (f >= GF_VOICE0 && f < GF_VOICE0 + VOICE_COUNT) { RES_SET_VOICE(r, f - GF_VOICE0, v); return; }
+    if (f >= GF_PERSONA0 && f < GF_PERSONA0 + PERS_COUNT) { RES_SET_PERSONA(r, f - GF_PERSONA0, v); return; }
+    switch (f) {
+    case GF_PRONOUN:     RES_SET_PRONOUN(r, v); break;
+    case GF_BDAY_MONTH:  RES_SET_BDAY_MONTH(r, v); break;
+    case GF_BDAY_DAY:    RES_SET_BDAY_DAY(r, v); break;
+    case GF_LIKE_FOOD:   RES_SET_LIKE_FOOD(r, v); break;
+    case GF_LIKE_HOBBY:  RES_SET_LIKE_HOBBY(r, v); break;
+    case GF_LIKE_MUSIC:  RES_SET_LIKE_MUSIC(r, v); break;
+    case GF_LIKE_COLOR:  RES_SET_LIKE_COLOR(r, v); break;
+    case GF_HATE_FOOD:   RES_SET_HATE_FOOD(r, v); break;
+    case GF_FEAR:        RES_SET_FEAR(r, v); break;
+    case GF_CATCHPHRASE: RES_SET_CATCHPHRASE(r, v); break;
+    default: break;
+    }
+}
+
 #endif

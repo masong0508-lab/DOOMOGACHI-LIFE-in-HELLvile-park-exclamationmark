@@ -513,10 +513,27 @@ static uint32_t rvar(void)
 
 /* ====================================================================== */
 /* resident schema                                                          */
+/* The v1 save wire layout of a resident, frozen: 96 bytes, byte for byte what
+ * DoomoResident is today. The schema below addresses fields by offset in THIS
+ * struct, so the save format does not move when DoomoResident shrinks (the
+ * P0.M0a flip); save_pack / save_unpack then go through a v1 view of the
+ * record. Saves stay v1 until M1. */
+typedef struct SaveResV1 {
+    DoomoLook look;
+    char      name[DOOMO_NAME_LEN];
+    uint8_t   voice[VOICE_COUNT];
+    uint8_t   persona[PERS_COUNT];
+    uint8_t   stat[STAT_COUNT];
+    uint8_t   status, flags, pronoun, romance, bday_month, bday_day;
+    uint8_t   like_food, like_hobby, like_music, like_color, hate_food, fear, catchphrase;
+    uint8_t   exorcism, level, mood, activity, death_cause;
+} SaveResV1;
+DOOMO_STATIC_ASSERT(sizeof(SaveResV1) == 96, save_resident_v1_is_96_bytes);
+
 typedef struct { uint8_t off, bits; } RField;
-#define LO(f) ((uint8_t)offsetof(DoomoResident, look.f))
-#define RO(f) ((uint8_t)offsetof(DoomoResident, f))
-#define RA(f, i) ((uint8_t)(offsetof(DoomoResident, f) + (i)))
+#define LO(f) ((uint8_t)offsetof(SaveResV1, look.f))
+#define RO(f) ((uint8_t)offsetof(SaveResV1, f))
+#define RA(f, i) ((uint8_t)(offsetof(SaveResV1, f) + (i)))
 #define NAME_FIELD 0     /* bits == 0 marks the name */
 
 static const RField rfields[] = {

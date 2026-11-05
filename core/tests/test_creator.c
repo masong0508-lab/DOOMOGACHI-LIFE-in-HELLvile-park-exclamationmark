@@ -68,37 +68,38 @@ static int count_living(void)
 /* tables                                                                   */
 TEST(creator_rows_cover_every_field)
 {
-    uint8_t covered[sizeof(DoomoResident)];
+    /* rows address fields by id (resident_acc.h): 0..GF_COUNT-1 are gene fields,
+     * RES_F_SPECIES / ROMANCE / FLAGS / NAME are the record-only ones */
+    uint8_t covered[256];
     int t, i;
     memset(covered, 0, sizeof(covered));
     for (t = 0; t < CR_TAB_COUNT; t++)
         for (i = 0; i < cr_tabs[t].nrows; i++) {
             const CrRow *r = &cr_tabs[t].rows[i];
             if (r->field == CR_NOFIELD) continue;
-            CHECK(r->field < sizeof(DoomoResident));
+            CHECK(r->field < GF_COUNT || (r->field >= RES_F_SPECIES && r->field <= RES_F_NAME));
             covered[r->field] = 1;
-            if (r->kind == RK_NAME)
-                memset(covered + r->field, 1, DOOMO_NAME_LEN);
         }
-    /* every byte of the look ... */
-    for (i = 0; i < (int)sizeof(DoomoLook); i++)
-        CHECK_MSG(covered[i], "look byte %d has no creator row", i);
+    /* every look field (species is the hot byte, the rest are GF_BODY..GF_PATTERN_COLOR) ... */
+    CHECK_MSG(covered[RES_F_SPECIES], "species has no creator row");
+    for (i = GF_BODY; i <= GF_PATTERN_COLOR; i++)
+        CHECK_MSG(covered[i], "look field %d has no creator row", i);
     /* ... and every identity field of the resident */
-    for (i = 0; i < VOICE_COUNT; i++) CHECK(covered[offsetof(DoomoResident, voice) + i]);
-    for (i = 0; i < PERS_COUNT; i++) CHECK(covered[offsetof(DoomoResident, persona) + i]);
-    CHECK(covered[offsetof(DoomoResident, name)]);
-    CHECK(covered[offsetof(DoomoResident, pronoun)]);
-    CHECK(covered[offsetof(DoomoResident, romance)]);
-    CHECK(covered[offsetof(DoomoResident, bday_month)]);
-    CHECK(covered[offsetof(DoomoResident, bday_day)]);
-    CHECK(covered[offsetof(DoomoResident, like_food)]);
-    CHECK(covered[offsetof(DoomoResident, like_hobby)]);
-    CHECK(covered[offsetof(DoomoResident, like_music)]);
-    CHECK(covered[offsetof(DoomoResident, like_color)]);
-    CHECK(covered[offsetof(DoomoResident, hate_food)]);
-    CHECK(covered[offsetof(DoomoResident, fear)]);
-    CHECK(covered[offsetof(DoomoResident, catchphrase)]);
-    CHECK(covered[offsetof(DoomoResident, flags)]);
+    for (i = 0; i < VOICE_COUNT; i++) CHECK(covered[GF_VOICE0 + i]);
+    for (i = 0; i < PERS_COUNT; i++) CHECK(covered[GF_PERSONA0 + i]);
+    CHECK(covered[RES_F_NAME]);
+    CHECK(covered[GF_PRONOUN]);
+    CHECK(covered[RES_F_ROMANCE]);
+    CHECK(covered[GF_BDAY_MONTH]);
+    CHECK(covered[GF_BDAY_DAY]);
+    CHECK(covered[GF_LIKE_FOOD]);
+    CHECK(covered[GF_LIKE_HOBBY]);
+    CHECK(covered[GF_LIKE_MUSIC]);
+    CHECK(covered[GF_LIKE_COLOR]);
+    CHECK(covered[GF_HATE_FOOD]);
+    CHECK(covered[GF_FEAR]);
+    CHECK(covered[GF_CATCHPHRASE]);
+    CHECK(covered[RES_F_FLAGS]);
 }
 
 TEST(creator_enum_rows_match_the_catalog)
@@ -142,7 +143,7 @@ static int preset_ok(const CrPreset *p)
     int i;
     for (i = 0; i + 1 < CR_PRESET_KV; i += 2) {
         if (p->kv[i] == CR_NOFIELD) return 1;
-        if (p->kv[i] >= sizeof(DoomoResident)) return 0;
+        if (p->kv[i] > RES_F_FLAGS) return 0;
     }
     return 0;   /* not terminated */
 }
@@ -156,14 +157,14 @@ TEST(creator_presets_are_valid)
         CHECK_MSG(preset_ok(p), "species preset %d (%s) is malformed", i, p->name);
         CHECK(p->name && p->name[0]);
         /* grouped by species, species first */
-        CHECK_EQ(p->kv[0], offsetof(DoomoResident, look.species));
+        CHECK_EQ(p->kv[0], RES_F_SPECIES);
         CHECK_EQ(p->kv[1], i / CR_PRESETS_PER_SPECIES);
         /* applying it gives a valid resident */
         resident_default(&r);
         {
             int k;
             for (k = 0; k + 1 < CR_PRESET_KV && p->kv[k] != CR_NOFIELD; k += 2)
-                ((uint8_t *)&r)[p->kv[k]] = p->kv[k + 1];
+                res_field_set(&r, p->kv[k], p->kv[k + 1]);
         }
         CHECK_MSG(resident_sanitize(&r) == 0, "preset %s produces invalid values", p->name);
     }
@@ -172,7 +173,7 @@ TEST(creator_presets_are_valid)
     /* switching species on a fresh island never brings in a locked part
      * (a base part another team locks falls back to a neutral one) */
     open_creator(-1);
-    go_row(CR_TAB_BODY, row_index(CR_TAB_BODY, offsetof(DoomoResident, look.species), RK_ENUM));
+    go_row(CR_TAB_BODY, row_index(CR_TAB_BODY, RES_F_SPECIES, RK_ENUM));
     for (sp = 0; sp < SPECIES_COUNT; sp++) {
         int t, k;
         press(BTN_RIGHT);
@@ -206,7 +207,7 @@ TEST(creator_unlock_table_is_in_range)
 /* making a citizen                                                         */
 TEST(creator_makes_a_new_hillvile_citizen)
 {
-    int species_row = row_index(CR_TAB_BODY, offsetof(DoomoResident, look.species), RK_ENUM);
+    int species_row = row_index(CR_TAB_BODY, RES_F_SPECIES, RK_ENUM);
     int start_species, id;
     const DoomoResident *r;
     CHECK(species_row >= 0);
@@ -221,11 +222,11 @@ TEST(creator_makes_a_new_hillvile_citizen)
     press_n(BTN_RIGHT, 2);
     CHECK_EQ(RES_SPECIES(&cr.draft), (start_species + 2) % SPECIES_COUNT);
     /* height slider up */
-    go_row(CR_TAB_BODY, row_index(CR_TAB_BODY, offsetof(DoomoResident, look.height), RK_SLIDER));
+    go_row(CR_TAB_BODY, row_index(CR_TAB_BODY, GF_HEIGHT, RK_SLIDER));
     press_n(BTN_RIGHT, 3);
     CHECK_EQ(RES_LOOK(&cr.draft, GF_HEIGHT), 10);
     /* top colour through the swatch grid: two right, one down */
-    go_row(CR_TAB_OUTFIT, row_index(CR_TAB_OUTFIT, offsetof(DoomoResident, look.top_color), RK_PAINT));
+    go_row(CR_TAB_OUTFIT, row_index(CR_TAB_OUTFIT, GF_TOP_COLOR, RK_PAINT));
     {
         int before = RES_LOOK(&cr.draft, GF_TOP_COLOR);
         press(BTN_A);
@@ -237,7 +238,7 @@ TEST(creator_makes_a_new_hillvile_citizen)
         CHECK_EQ(RES_LOOK(&cr.draft, GF_TOP_COLOR), (before + 2 + 8) % PAL_PAINT_COUNT);
     }
     /* blush off */
-    go_row(CR_TAB_FACE, row_index(CR_TAB_FACE, offsetof(DoomoResident, look.cheeks), RK_FLAG));
+    go_row(CR_TAB_FACE, row_index(CR_TAB_FACE, GF_CHEEKS, RK_FLAG));
     CHECK(RES_LOOK(&cr.draft, GF_CHEEKS) & CHEEK_BLUSH);
     press(BTN_A);
     CHECK(!(RES_LOOK(&cr.draft, GF_CHEEKS) & CHEEK_BLUSH));
@@ -353,10 +354,10 @@ TEST(creator_edits_a_premade_citizen_in_place)
     CHECK(cr.name_ok);
     CHECK_STR(cr.draft.name, before.name);
     /* taller, a different build, blush toggled, louder voice */
-    top_row = row_index(CR_TAB_BODY, offsetof(DoomoResident, look.height), RK_SLIDER);
+    top_row = row_index(CR_TAB_BODY, GF_HEIGHT, RK_SLIDER);
     go_row(CR_TAB_BODY, top_row);
     press(RES_LOOK(&before, GF_HEIGHT) < 15 ? BTN_RIGHT : BTN_LEFT);
-    go_row(CR_TAB_FACE, row_index(CR_TAB_FACE, offsetof(DoomoResident, look.cheeks), RK_FLAG));
+    go_row(CR_TAB_FACE, row_index(CR_TAB_FACE, GF_CHEEKS, RK_FLAG));
     press(BTN_A);
     press(BTN_START);
     press(BTN_A);                       /* named already: straight to the finale */
@@ -492,7 +493,7 @@ TEST(creator_undo_and_redo)
     int h0;
     open_creator(-1);
     h0 = RES_LOOK(&cr.draft, GF_HEIGHT);
-    go_row(CR_TAB_BODY, row_index(CR_TAB_BODY, offsetof(DoomoResident, look.height), RK_SLIDER));
+    go_row(CR_TAB_BODY, row_index(CR_TAB_BODY, GF_HEIGHT, RK_SLIDER));
     press(BTN_RIGHT);
     frames(40, 0);                      /* separate steps */
     press(BTN_RIGHT);
@@ -525,7 +526,7 @@ TEST(creator_undo_and_redo)
 
 TEST(creator_locked_options_are_shown_but_not_chosen)
 {
-    int eyes = row_index(CR_TAB_FACE, offsetof(DoomoResident, look.eye_style), RK_ENUM);
+    int eyes = row_index(CR_TAB_FACE, GF_EYE_STYLE, RK_ENUM);
     const CrRow *row = cr_row_at(CR_TAB_FACE, eyes);
     int i, before;
     CHECK(!unlock_option_ok(CLIST_EYE, EYE_GOAT));
@@ -566,7 +567,7 @@ TEST(creator_keeps_a_locked_option_the_citizen_already_has)
     id = 3;
     open_creator(id);
     CHECK(!cr_value_locked(cr_row_at(CR_TAB_FACE, row_index(CR_TAB_FACE,
-          offsetof(DoomoResident, look.eye_style), RK_ENUM)), EYE_GOAT));
+          GF_EYE_STYLE, RK_ENUM)), EYE_GOAT));
     press(BTN_START);
     press(BTN_A);
     CHECK_EQ(RES_LOOK(town_res(id), GF_EYE_STYLE), EYE_GOAT);
@@ -610,7 +611,7 @@ TEST(creator_randomiser_respects_locks)
 
 TEST(creator_species_change_brings_species_parts)
 {
-    int species_row = row_index(CR_TAB_BODY, offsetof(DoomoResident, look.species), RK_ENUM);
+    int species_row = row_index(CR_TAB_BODY, RES_F_SPECIES, RK_ENUM);
     open_creator(-1);
     go_row(CR_TAB_BODY, species_row);
     while (RES_SPECIES(&cr.draft) != SPECIES_FOXKIN) press(BTN_RIGHT);

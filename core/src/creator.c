@@ -175,8 +175,9 @@ const DoomoSaveExt *const doomo_save_ext_extra = &nick_ext;
 /* small helpers                                                            */
 int creator_last_result(void) { return last_result; }
 
-static uint8_t *fbyte(DoomoResident *r, int field) { return (uint8_t *)r + field; }
-static uint8_t cbyte(const DoomoResident *r, int field) { return ((const uint8_t *)r)[field]; }
+/* A row's `field` is a field id (resident_acc.h), not a byte offset. */
+static int cbyte(const DoomoResident *r, int field) { return res_field_get(r, field); }
+static void sbyte(DoomoResident *r, int field, int v) { res_field_set(r, field, v); }
 
 /* RK_ENUM rows on part of a byte (aux = bit mask, creator_int.h) */
 static int mask_shift(int mask)
@@ -192,9 +193,9 @@ static int enum_get(const DoomoResident *r, const CrRow *row)
 }
 static void enum_put(DoomoResident *r, const CrRow *row, int v)
 {
-    uint8_t *p = fbyte(r, row->field);
-    if (!row->aux) { *p = (uint8_t)v; return; }
-    *p = (uint8_t)((*p & ~row->aux) | ((v << mask_shift(row->aux)) & row->aux));
+    int cur = cbyte(r, row->field);
+    if (!row->aux) { sbyte(r, row->field, v); return; }
+    sbyte(r, row->field, (cur & ~row->aux) | ((v << mask_shift(row->aux)) & row->aux));
 }
 
 /* LS0: the youngest stage the Age row may NOT go older than. The story
@@ -327,7 +328,7 @@ static void apply_kv(DoomoResident *r, const CrPreset *p, int skip_locked)
     int i;
     for (i = 0; i + 1 < CR_PRESET_KV && p->kv[i] != CR_NOFIELD; i += 2) {
         int f = p->kv[i], v = p->kv[i + 1];
-        if (f >= (int)sizeof(DoomoResident)) continue;
+        if (f >= RES_F_NAME) continue;   /* the name is text, not a value */
         if (skip_locked) {
             const CrRow *row = row_of_field(f);
             if (row && row->kind == RK_ENUM && v >= row->base &&
@@ -337,7 +338,7 @@ static void apply_kv(DoomoResident *r, const CrPreset *p, int skip_locked)
                 cr_value_locked(row, v))
                 continue;
         }
-        *fbyte(r, f) = (uint8_t)v;
+        sbyte(r, f, v);
     }
 }
 
@@ -358,7 +359,7 @@ static void species_change(DoomoResident *r, int species)
     int i;
     species = DOOMO_CLAMP(species, 0, SPECIES_COUNT - 1);
     for (i = 0; cr_species_base[i].field != CR_NOFIELD; i++)
-        *fbyte(r, cr_species_base[i].field) = cr_species_base[i].neutral;
+        sbyte(r, cr_species_base[i].field, cr_species_base[i].neutral);
     p = &cr_species_presets[species * CR_PRESETS_PER_SPECIES];
     for (i = 0; i + 1 < CR_PRESET_KV && p->kv[i] != CR_NOFIELD; i += 2) {
         int f = p->kv[i], v = p->kv[i + 1];
@@ -368,7 +369,7 @@ static void species_change(DoomoResident *r, int species)
         if (row && row->kind == RK_ENUM && v >= row->base && cr_value_locked(row, v - row->base))
             continue;
         if (row && row->kind == RK_SKIN && cr_value_locked(row, v)) continue;
-        *fbyte(r, f) = (uint8_t)v;
+        sbyte(r, f, v);
     }
     RES_SET_SPECIES(r, (uint8_t)species);
 }
@@ -376,7 +377,7 @@ static void species_change(DoomoResident *r, int species)
 /* Full species preset: species base + the preset itself. */
 static void apply_species_preset(DoomoResident *r, const CrPreset *p)
 {
-    int sp = p->kv[0] == (uint8_t)offsetof(DoomoResident, look.species) ? p->kv[1]
+    int sp = p->kv[0] == RES_F_SPECIES ? p->kv[1]
                                                                          : RES_SPECIES(r);
     species_change(r, sp);
     apply_kv(r, p, 0);
@@ -448,29 +449,29 @@ int cr_row_value(const DoomoResident *r, const CrRow *row)
 
 void cr_row_set(DoomoResident *r, const CrRow *row, int index)
 {
-    uint8_t *p;
+    int cur;
     if (!row) return;
     index = DOOMO_CLAMP(index, 0, cr_row_count(row) - 1);
     if (row->kind == RK_DISTRICT) { cr.district = (uint8_t)index; refresh_home(); return; }
     if (row->kind == RK_ACTION) { set_action_index(row->aux, index); return; }
     if (row->field == CR_NOFIELD) return;
-    p = fbyte(r, row->field);
+    cur = cbyte(r, row->field);
     switch (row->kind) {
     case RK_ENUM:
-        if (row->field == offsetof(DoomoResident, look.species)) {
+        if (row->field == RES_F_SPECIES) {
             if (RES_SPECIES(r) != row->base + index) species_change(r, row->base + index);
         } else {
             enum_put(r, row, row->base + index);
         }
         break;
     case RK_SLIDER: case RK_PAINT: case RK_SKIN:
-        *p = (uint8_t)index;
+        sbyte(r, row->field, index);
         break;
     case RK_PAINT_NONE:
-        *p = index == 0 ? LOOK_NO_COLOR : (uint8_t)(index - 1);
+        sbyte(r, row->field, index == 0 ? LOOK_NO_COLOR : index - 1);
         break;
     case RK_FLAG: case RK_RFLAG:
-        if (index) *p |= row->aux; else *p &= (uint8_t)~row->aux;
+        sbyte(r, row->field, index ? (cur | row->aux) : (cur & ~row->aux));
         break;
     default:
         break;
@@ -759,7 +760,7 @@ static void target_look(DoomoLook *out, uint8_t *locked)
         if (!p) return;
         if (row->aux == CA_SPECIES_PRESET) apply_species_preset(&tmp, p);
         else apply_kv(&tmp, p, 0);
-    } else if (row->field != CR_NOFIELD && row->field < sizeof(DoomoLook)) {
+    } else if (row->field != CR_NOFIELD && RES_F_IS_LOOK(row->field)) {
         cr_row_set(&tmp, row, cr.browse);
     } else {
         return;
@@ -835,7 +836,7 @@ static void fix_locks(DoomoResident *r)
                 if (cr_value_locked(row, v))
                     v = row->kind == RK_SKIN ? SKIN_PEACH :
                         row->kind == RK_PAINT ? PAINT_WHITE : 0;
-                if (row->field == offsetof(DoomoResident, look.species)) {
+                if (row->field == RES_F_SPECIES) {
                     RES_SET_SPECIES(r, (uint8_t)v);
                 } else {
                     cr_row_set(r, row, v);
@@ -910,7 +911,7 @@ static void randomise_tab(void)
             break;
         case RK_SLIDER: case RK_PAINT: case RK_PAINT_NONE:
         case RK_SKIN: case RK_FLAG:
-            *fbyte(&cr.draft, row->field) = cbyte(&r, row->field);
+            sbyte(&cr.draft, row->field, cbyte(&r, row->field));
             break;
         case RK_NAME:
             if (!cr.name_ok) memcpy(cr.draft.name, r.name, DOOMO_NAME_LEN);
@@ -925,7 +926,7 @@ static void randomise_tab(void)
     }
     if (cr.tab == CR_TAB_BODY)   /* keep the species coherent */
         for (i = 0; cr_species_base[i].field != CR_NOFIELD; i++)
-            *fbyte(&cr.draft, cr_species_base[i].field) = cbyte(&r, cr_species_base[i].field);
+            sbyte(&cr.draft, cr_species_base[i].field, cbyte(&r, cr_species_base[i].field));
     fix_locks(&cr.draft);
     cr.n_random++;
     if (cr.n_random >= 25) unlock_grant(CRU_RANDOMISE_LOTS);
