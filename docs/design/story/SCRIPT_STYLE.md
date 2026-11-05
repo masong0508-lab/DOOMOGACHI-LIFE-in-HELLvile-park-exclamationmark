@@ -207,11 +207,13 @@ xylophone on his own ribs. Use him for the restaurant, the tapes, the
 routines and the maintenance jokes. **His origin is a joke he tells and
 everybody else finds horrifying, not a mystery the player solves.**
 
-**The proposed in-world stand-in** (confirm with the user before any line
-names it): the chain was **"Jangles' Jamboree Family Fun Feedery"** (or
-"Boneyard Buffet & Bandstand"), its tapes are **"the Jamboree Tapes"** and
-its fans are **"tapeheads"**. Never use the real work's names, its
-characters' names or its locations.
+**The in-world stand-in** (the user chose the chain's name, 2026-11-04):
+the chain is **"Boneyard Buffet & Bandstand"**. The earlier proposal
+"Jangles' Jamboree Family Fun Feedery" is dropped. **Still open:** the
+user named only the chain, so the tapes and the fans keep working names
+until confirmed: **"the Bandstand Tapes"** and **"bandstanders"** (the old
+"Jamboree Tapes" and "tapeheads" went with the dropped chain name). Never
+use the real work's names, its characters' names or its locations.
 
 **Hard rules for the parody** (no exceptions):
 
@@ -485,7 +487,7 @@ not the game's plot.
 |---|---|---|
 | **Mayor Giggs** | A cherub with busy little wings | A **Mad-Hatter turkey**: top hat, feather fan, bow tie, tea-party patter. "Gobble gobble, welcome!" His wings **flap** (never buzz). No halo, no cherub. His story stays: the showman who won't look at the sad thing, the lost pet cloud, "I had a cloud once." Art and data: package C1 |
 | **Ratings** | Clinker rates poems "Six. Needs death." | **"Needs salt."** is the rating catchphrase (Grumbleguts, Clinker, GURGLE's "...needs salt."). S164's death-counting scoring is a mechanic: package C1 moves its verdicts to salt; the text never says "Needs death" again |
-| **Bonejangles** | "Skeleton xylophone teacher. Plays his own ribs." | A **semi-living animatronic skeleton**, built as a tribute to an eccentric visual artist obsessed with death. The artist was possessed; the exorcism **failed**; the possession passed into the animatronic. Still the xylophone teacher, still plays his own ribs, still "Clack!". **Who performed the failed exorcism is open** (§11 Q3): W15 decides it with the user, consistently with Lady Smog (eleven years ago) being Father Fuzz's established failed rite and wound. Until then no line names the exorcist. He is the Walten-parody vehicle (§1.3) |
+| **Bonejangles** | "Skeleton xylophone teacher. Plays his own ribs." | A **semi-living animatronic skeleton**, built as a tribute to an eccentric visual artist obsessed with death. The artist was possessed; the exorcism **failed**; the possession passed into the animatronic. Still the xylophone teacher, still plays his own ribs, still "Clack!". **Who performed the failed exorcism: Father Fuzz** (user decision 2026-11-04, §11 Q3). It is a reveal near the late-middle of the game (Ch3), consistent with Lady Smog (eleven years ago) being his established failed rite and wound. Until the reveal no line names the exorcist; foreshadowing is allowed, naming is not. He is the Walten-parody vehicle (§1.3) |
 | **Sunny** | Grampy Bean calls the player "Sunny" | In the show, Sunny is the lead and dies in Season 4. **In the game Sunny lives.** No game text treats Sunny's death as fact. Light foreshadowing or an easter egg is allowed (at most a line or two, post-game, played as a joke) |
 | **Everything else** | | The game's plot, its 27 episodes and 8 specials, the 109 side missions, flags, endings and the house. Show gags may be borrowed as callbacks where they fit (`SERIES_OVERVIEW.md` "Show nods in the game") |
 
@@ -616,15 +618,16 @@ come from these (J3).
 
 ## 11. Open questions for the user (answer before the guide is locked)
 
-1. **The in-world names** for the Walten-parody chain, its tapes and its
-   fans (§1.3 proposes "Jangles' Jamboree Family Fun Feedery", "the
-   Jamboree Tapes", "tapeheads"). Keep, change or pick another?
+1. ~~**The in-world names** for the Walten-parody chain, its tapes and its
+   fans.~~ **Answered in part** (2026-11-04): the chain is "Boneyard Buffet
+   & Bandstand". The tapes and the fans are still open (working names in
+   §1.3).
 2. **How hard to hit the ugly-art jokes.** Proposed: a running gag in
    Bonejangles' thread and the restaurant's leftovers (menus, costumes,
    tape graphics), about one joke a scene there and none elsewhere.
-3. **Bonejangles' failed exorcist.** Unnamed, a new character, or an
-   existing one? Father Fuzz is possible only if it fits Lady Smog
-   staying his established failed rite and wound (§6; W15 owns it).
+3. ~~**Bonejangles' failed exorcist.**~~ **Answered** (2026-11-04): Father
+   Fuzz, revealed near the late-middle of the game (Ch3). It must keep
+   Lady Smog his established failed rite and wound (§6); W15 writes it.
 4. **Sunny's show death in the game.** Proposed: one post-game easter
    egg at most, played as a joke (a "Season 4" poster nobody wants to
    talk about). Or none?

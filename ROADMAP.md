@@ -147,7 +147,7 @@ The PS1 life-sim status checklist (what is verified, written, or missing on that
 **Blocked on the user**
 - Approve building the Flycast emulator core (`make -C dc/harness flycast`);
   until then the Dreamcast build is never actually booted in tests.
-- W15 (Bonejangles origin thread in the game) needs a yes/no.
+- ~~W15 (Bonejangles origin thread) needs a yes/no.~~ Answered 2026-11-04: yes, see the W15 decision record at the end of section 4.
 
 ## By effort: smallest first
 
@@ -167,7 +167,7 @@ a package can only start once the ones it depends on (see the sections below) ha
   gates for heroes), PA3b (Spanish
   gender fixes), PA8 (done 2026-11-02: house, cuts, fishing, almanac, pause menu, care bonds and rewards follow the avatar via `playas_slot()`; GBA/PS1 not rebuilt), E10 (Dreamcast pack
   adapter), E12 (endings integration), Z1 (joint gate).
-- Script: W15 (Bonejangles origin; needs your yes/no).
+- Script: W15 (Bonejangles origin; approved 2026-11-04, decisions recorded below, scripts not written yet).
 - Languages: L9 (language picker).
 - Dreamcast extras: X0 (contracts), X3 (VGA/display options).
 
@@ -258,7 +258,7 @@ H11's code part is done (the GBA keeps and saves the house state; the real-house
 ## 4. Priority 4: script
 
 - Side quests: W6-W8 (side_a), W9-W11 (side_b), W12 free-play chatter,
-  W15 (needs a decision), W16 integration.
+  W15 (approved, see the decision record below), W16 integration.
 - PG-21 punch-ups E6a-E6d (life-sim waves). Swearing budget for the whole game:
   the s-word a few times; the f-word exactly twice (once cut off, once in full near the end).
 - Known gap: four choice questions outside Ch1-2 still need checking for "/" breaks.
@@ -401,3 +401,20 @@ E12 (part, 2026-11-04, `doomo-e12-ending-daily-nov04d`): endings integration. E0
 
 <!-- doomo-e2-slot-tryout-nov04e -->
 E2 try-out (2026-11-04, `doomo-e2-slot-tryout-nov04e`): `pack.c` and `mslot.c` were already built; this runs them hard. `e2_every_slot_falls_back_safely_without_a_pack` pushes every slot 0..63, an out-of-range one and 255 with Mature "On + pack" and no pack (and slot 2 with Mature Off): each finishes, hands the previous scene back, leaves no fade and reports 0. `e2_the_example_pack_plays_only_the_slots_it_has` opens the SFW example pack: slot 0 plays (1), every slot it lacks falls back (0), and closing the pack returns slot 0 to the fade. `make -C core test` 774/774. Not done: loading the real `hellvile_after_dark.dmpk` (it lives outside the repo) and a real-hardware look.
+
+<!-- doomo-w15-decisions-nov04f -->
+### W15 decision record (2026-11-04, the owner's answers; docs only, no script written yet)
+
+- **Go:** Bonejangles' origin thread goes into the game (W15 is unblocked).
+- **The failed exorcist is Father Fuzz.** It is a reveal near the late-middle of the game, which we place in
+  **Ch3**. It has to fit Lady Smog (eleven years ago) staying his established failed rite and wound.
+- **The chain's in-world name is "Boneyard Buffet & Bandstand"** (the "Jangles' Jamboree Family Fun Feedery"
+  proposal is dropped). Never the real work's names, characters or places.
+- **Still open for W15:** the tapes' and the fans' names (working names "the Bandstand Tapes" and "bandstanders",
+  to confirm); the exact Ch3 episode and the beat for the reveal; whether Father Fuzz's own scripts
+  (`sa_fuzz` and the Ch1-2 lines) get one foreshadowing line before it.
+- **Rules that hold:** the origin is a joke Bonejangles tells and everyone else finds horrifying, never a mystery the player
+  solves, no ARG mechanic, no ending gated on lore (SCRIPT_STYLE 1.3). No line names the exorcist before the reveal (foreshadowing
+  is allowed). "Clack!" stays (SCRIPT_LOCKS: 6 uses; W15 adds the animatronic layer around it).
+- **When W15 is written:** `make -C core story-check` (flow lock regenerated with a reason), `make -C core gen && make -C core check-gen`,
+  `make -C core test`, and the Spanish and other languages need the L8 pass.
