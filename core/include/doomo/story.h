@@ -65,6 +65,15 @@ enum { STORY_ARG_CONTINUE = 0,       /* resume doomo_town.story            */
        STORY_ARG_DEBUG_BEAT = 100,
        STORY_ARG_DEBUG_NIGHT = 200 };
 void story_begin(void);
+/* New Game+ (S-HOUSE): MODE_NEW_GAME_PLUS is unlocked by the credits. story_ng_plus_ready() is 1
+ * while the loaded story is finished and that mode is unlocked. story_ng_plus_arm() (1 if it armed)
+ * must be called with that story loaded, then story_begin(): the new run starts with SF_NGPLUS set,
+ * the run count (2 bits of DoomoStoryState.ngplus, up to 3) and the seen endings kept
+ * (ENDF_NGPLUS_KEPT). Everything else is a new story; the unlocks outlive it, so finishing the
+ * second run reaches household tier 2. Arming is consumed by the next story_new_game(). */
+int  story_ng_plus_unlocked(void);     /* the New Game+ mode is unlocked (the credits rolled once) */
+int  story_ng_plus_ready(void);
+int  story_ng_plus_arm(void);
 
 /* Chapters (DoomoStoryState.chapter). */
 enum { STORY_CH_NONE, STORY_CH1, STORY_CH2, STORY_CH3, STORY_CH4,

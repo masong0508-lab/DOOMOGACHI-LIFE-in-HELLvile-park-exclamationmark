@@ -8,6 +8,9 @@
 #include "doomo/roster.h"
 #include "doomo/save_budget.h"
 #include "doomo/ui.h"
+#include "doomo/story.h"
+#include "doomo/ending.h"
+#include "../src/story_int.h"
 
 static void fresh(void)
 {
@@ -992,4 +995,49 @@ TEST(family_birth_throws_a_welcome_party)
     CHECK_EQ(family_mood(baby), 8);
     CHECK(sim_news_count() > n0);
     CHECK_EQ(family_stage_days_left(baby), family_stage_days(LIFE_BABY));
+}
+
+/* ---- S-HOUSE: New Game+ restarts the story and reaches household tier 2 -------------- */
+TEST(new_game_plus_carries_endings_and_reaches_tier_two)
+{
+    DoomoEnds *e;
+    fresh();
+    clear_tiers();
+    e = ending_state();
+    CHECK(e != NULL);
+    if (!e) return;
+    CHECK(!story_ng_plus_ready());                      /* not finished, not unlocked */
+    CHECK(!story_ng_plus_arm());
+    /* the first run finishes: credits unlock the mode, tier 1 is granted */
+    story_new_game();
+    doomo_town.story.chapter = STORY_CH_DONE;
+    CHECK(!story_ng_plus_ready());                      /* finished but the mode is not unlocked yet */
+    unlock_grant(USTORY_NEW_GAME_PLUS);
+    CHECK(story_ng_plus_ready());
+    CHECK_EQ(family_tier_story_done(), HOUSEHOLD_TIER_GAME_DONE);
+    e->seen = (uint16_t)(e->seen | 1u << 2);
+    e->times[2] = 3;
+    CHECK(story_ng_plus_arm());
+    /* what story_begin() does, without the scene: a fresh town, then the creator closes */
+    town_new(TOWN_STORY, 77, TOWN_POP_PREMADE);
+    sim_init();
+    CHECK(!story_flag(SF_NGPLUS));                      /* nothing applies before the new game */
+    story_new_game();
+    CHECK(story_flag(SF_NGPLUS));
+    CHECK_EQ(story_stry()->ngplus & 3, 1);
+    CHECK(ending_seen(2));
+    CHECK_EQ(ending_state()->times[2], 3);
+    CHECK(ending_state()->flags & ENDF_NGPLUS_KEPT);
+    CHECK_EQ(doomo_town.story.chapter, STORY_CH1);      /* the story itself starts over */
+    /* the second finish: 10 -> 20 */
+    CHECK_EQ(family_tier(), HOUSEHOLD_TIER_GAME_DONE);
+    CHECK_EQ(family_tier_story_done(), HOUSEHOLD_TIER_NGPLUS_DONE);
+    CHECK_EQ(family_cap(), HOUSEHOLD_CAP_FULL_T2);
+    /* arming is spent: the next new story is a plain one */
+    town_new(TOWN_STORY, 78, TOWN_POP_PREMADE);
+    sim_init();
+    story_new_game();
+    CHECK(!story_flag(SF_NGPLUS));
+    CHECK_EQ(story_stry()->ngplus & 3, 0);
+    CHECK(!ending_seen(2));
 }

@@ -82,7 +82,7 @@ The PS1 life-sim status checklist (what is verified, written, or missing on that
   (cap 3 -> 10, GBA 6) and finishing it again gives tier 2 (-> 20, GBA 10); `family_tier_story_done()` runs where the
   credits finish (`story_ch34.c`), shows one toast and keeps K0's rule of no table entry (`unlock_grant_quiet()`).
   `family_tier_sync()` gives tier 1 to a story save that was finished before the tiers. Tier 2 only becomes reachable
-  once NG+ can actually start a second run (nothing does yet: `MODE_NEW_GAME_PLUS` is unlocked, never read).
+  once NG+ can actually start a second run (Wave 7c: the title's New story on a finished save now offers New Game+).
 - Life sim F4 part 1 (life cycle): pool members grow BABY 4 / TODDLER 6 / CHILD 10 / TEEN 10 town days into ADULT (`family_age_daily()` from
   `day_rollover`, progress in the low 5 bits of `FamilyMember.flags`), residents mirror the sim's stage, pets and adults do not age.
 - Life sim F4 part 2 (births + toast): one "grew up!" toast per member that changes stage; `family_birth()` makes a BABY pool member
@@ -110,6 +110,12 @@ The PS1 life-sim status checklist (what is verified, written, or missing on that
   else ILLNESS), the partner's grief and a toast; a minor resident only "moves away" (R5); ghosts, the possessed and the soul-lost stay. The Remembered page now opens a memorial
   with A to leave Flowers (up to 3 posies, `family_memorial_flowers/_leave_flowers`, kept in the memorial record's first spare byte so old saves read 0). 4 new tests.
   Not built: a separate graveyard scene for the household (the Remembered page is the memorial screen), pet old age, the pets' uplift, GBA/PS1 screens (not run here).
+
+- Wave 7c (2026-11-04, S-HOUSE New Game+, `make -C core test` 764/764): the New Game+ restart exists, so household tier 2 is reachable. `story_ng_plus_ready()` (finished story + the mode unlocked),
+  `story_ng_plus_arm()` reads the run count and the endings seen/counts from the loaded finished story; the next `story_new_game()` applies them once: `SF_NGPLUS`, the run count (2 bits of
+  `DoomoStry.ngplus`, up to 3) and the endings (`ENDF_NGPLUS_KEPT`), while the story itself starts over and the unlocks outlive it (the second finish grants tier 2: cap 20, GBA 10). The title:
+  New story on a finished save asks "New Game+ / Brand new story / Never mind" (loads the save first); other saves behave as before (journeys unchanged). Not built: the "story house unlock"
+  has no definition in the plans or the code (the story already opens your home through S2), so it still needs a decision; NG+ content (new lines, harder fights); GBA/PS1 screens (not run here).
 
 - Wave 7b (2026-11-04, F4 family events, `make -C core test` 763/763): growing up is a family event. `milestone_` (family.c): each stage change adds a news line (first steps, started school,
   a teenager, all grown up, a wise elder), the one who grew up gets +4 mood and every other non-pet member +2; `family_birth` throws a welcome party (everyone else +3, a news line).

@@ -181,6 +181,51 @@ static void default_player(void)
     p->status = RES_ALIVE;
 }
 
+/* ---- New Game+ (S-HOUSE): a finished story starts a second run ------------------------------
+ * story_ng_plus_arm() reads what a run carries (how many runs, the endings seen and how often)
+ * from the loaded, finished story; the next story_new_game() applies it once. The unlocks
+ * outlive town_new, so a second finish reaches household tier 2 (family_tier_story_done). */
+static struct { uint8_t on, runs, flags; uint16_t seen; uint8_t times[ENDING_COUNT]; } ngp_;
+
+int story_ng_plus_unlocked(void) { return unlock_has(USTORY_NEW_GAME_PLUS); }
+
+int story_ng_plus_ready(void)
+{
+    return doomo_town.mode == TOWN_STORY && doomo_town.story.chapter == STORY_CH_DONE &&
+           story_ng_plus_unlocked();
+}
+
+int story_ng_plus_arm(void)
+{
+    const DoomoEnds *e = ending_state();
+    int k;
+    memset(&ngp_, 0, sizeof(ngp_));
+    if (!story_ng_plus_ready()) return 0;
+    ngp_.runs = (uint8_t)DOOMO_MIN(3, (story_stry()->ngplus & 3) + 1);
+    if (e) {
+        ngp_.seen = e->seen;
+        for (k = 0; k < ENDING_COUNT; k++) ngp_.times[k] = e->times[k];
+    }
+    ngp_.on = 1;
+    return 1;
+}
+
+static void ng_plus_apply_(void)
+{
+    DoomoEnds *e;
+    int k;
+    if (!ngp_.on) return;
+    ngp_.on = 0;
+    story_set_flag(SF_NGPLUS, 1);
+    story_stry()->ngplus = (uint8_t)((story_stry()->ngplus & ~3u) | ngp_.runs);
+    e = ending_state();
+    if (e) {                                   /* the seen endings and their counts carry over */
+        e->seen = (uint16_t)(e->seen | ngp_.seen);
+        for (k = 0; k < ENDING_COUNT; k++) e->times[k] = ngp_.times[k];
+        e->flags = (uint8_t)(e->flags | ENDF_NGPLUS_KEPT);
+    }
+}
+
 void story_new_game(void)
 {
     DoomoStoryState *s = &doomo_town.story;
@@ -196,6 +241,7 @@ void story_new_game(void)
     s->facing = 3;
     s->hp = 100;
     story_set_flag(SF_STARTED, 1);
+    ng_plus_apply_();                            /* a New Game+ run: the flag, the run count, the endings */
     s->quest = BEAT_C1_ARRIVE;
     /* the story cast never dies of neglect */
     for (i = 0; i < NPC_COUNT; i++) {

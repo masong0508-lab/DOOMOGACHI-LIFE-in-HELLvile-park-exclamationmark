@@ -108,6 +108,31 @@ static void start_story(void)
     }
 }
 
+/* New Game+ (S-HOUSE): a finished story offers a second run that keeps the endings seen. */
+static void ng_plus_pick(int c)
+{
+    if (c == 1) { start_story(); return; }
+    if (c != 0) return;
+    if (!load_game(0) || !story_ng_plus_arm()) {
+        audio_sfx(SFX_ERROR);
+        ui_toast("New Game+ needs a finished story save.");
+        return;
+    }
+    audio_sfx(SFX_SELECT);
+    story_begin();
+}
+
+static void new_story_pressed(void)
+{
+    static const char *const opts[3] = { "New Game+", "Brand new story", "Never mind" };
+    if (T.has_story && T.info[0].chapter == STORY_CH_DONE && story_ng_plus_unlocked()) {
+        audio_sfx(SFX_SELECT);
+        ui_choice(-1, "Your story is finished. Start again?", opts, 3, ng_plus_pick);
+        return;
+    }
+    start_story();
+}
+
 static void continue_story(void)
 {
     if (!load_game(0)) {
@@ -236,7 +261,7 @@ static void title_update(void)
     }
     if (!btn_pressed(BTN_A)) return;
     if (T.menu == M_STORY) {
-        if (T.sub_sel == 0) start_story();
+        if (T.sub_sel == 0) new_story_pressed();
         else if (T.has_story) continue_story();
         else { audio_sfx(SFX_ERROR); ui_toast("No story save yet!"); }
     } else {
