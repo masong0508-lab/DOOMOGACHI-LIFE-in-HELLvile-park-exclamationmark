@@ -7,6 +7,7 @@
 #include "doomo/doomo.h"
 #include "doomo/family.h"
 #include "doomo/playas.h"
+#include "doomo/profiles.h"
 #include "doomo/ending.h"
 #include "doomo/save_ext.h"
 #include "doomo/save_budget.h"
@@ -118,6 +119,7 @@ uint8_t playas_profile_flags(void)
     uint8_t f = PLAYAS_HF_MAKE_HERO(P.kind);
     if (P.off != 0) f |= PLAYAS_HF_PLAYING_OTHER;
     if (P.flags & PF_NEWLIFE) f |= PLAYAS_HF_NEW_LIFE;
+    if (prof_guest_count()) f |= PLAYAS_HF_PROFILES;     /* MP0: guests live in this world */
     if (playas_available() && !(P.flags & PF_NEWLIFE)) f |= PLAYAS_HF_STORY_CLEARED;
     return f;
 }

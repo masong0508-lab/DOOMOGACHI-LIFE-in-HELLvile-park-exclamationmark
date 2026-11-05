@@ -14,6 +14,7 @@
  * of the frame rate, OPT_DAY_LENGTH and OPT_SIM_SPEED.
  */
 #include "doomo/playas.h"
+#include "doomo/profiles.h"
 #include "sim_int.h"
 #include "doomo/family.h"
 #include "doomo/ending.h"
@@ -682,6 +683,7 @@ static void day_rollover(void)
     sim_news_daily();
     family_age_daily();                  /* F4: the household grows up */
     playas_check();                      /* PA1: a lost or possessed avatar sends you back to the hero */
+    prof_check_daily();                  /* MP0: a guest whose villager is gone moves out */
     family_freewill_daily();             /* F7: the household looks after itself */
     family_help_daily();                 /* F9: a helping hand (bonus) */
     family_events_daily();               /* F8: confidences, squabbles, making up */
