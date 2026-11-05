@@ -101,6 +101,8 @@ DOOMO_STATIC_ASSERT(sizeof(DoomoPackEntry) == 16, pack_entry_is_16_bytes);
  * (plat_mslot_script_buf, plat_ext.h). The PS1 buffer is this big, so mpack.py refuses a
  * PS1 pack with a script over it. */
 #define PACK_SCRIPT_CAP_PS1  (8u * 1024u)
+/* E10: the Dreamcast reads a streamed script into a 32 KB buffer (16 MB of RAM). */
+#define PACK_SCRIPT_CAP_DC   (32u * 1024u)
 #define PACK_ENTRIES_MAX     1024u
 #define PACK_CG_W_GBA  240
 #define PACK_CG_H_GBA  160

@@ -1,5 +1,5 @@
 #!/bin/sh
-# mkcdi.sh ELF IP_TXT WORKDIR CDI - build the self-booting Dreamcast disc
+# mkcdi.sh ELF IP_TXT WORKDIR CDI [PACK] - build the self-booting Dreamcast disc
 # image from the linked ELF (owner: dreamcast). Called by `make -C dc disc`.
 #
 #   ELF --objcopy--> doomogachi.bin --scramble--> WORKDIR/cd/1ST_READ.BIN
@@ -8,13 +8,14 @@
 #                      ROM checks and its own default logo-free template)
 #   WORKDIR/cd + IP.BIN --mkisofs -C 0,11702 -G IP.BIN--> doomogachi.iso
 #   doomogachi.iso --cdi4dc--> CDI (audio/data image, MSINFO 11702)
+# An optional PACK (a DMPK pack for port dc, E10) is copied to the disc root as PACK.DMP.
 # 1ST_READ.BIN and IP.BIN are also copied next to the CDI.
 #
 # Tools: the KOS sh-elf objcopy, and scramble, makeip, cdi4dc from
 # dc/tools/setup_kos.sh (DC_TOOLS_BASE or <prefix>/bin), genisoimage or
 # mkisofs (or xorriso -as mkisofs) from the host.
 set -eu
-elf=$1; iptxt=$2; work=$3; cdi=$4
+elf=$1; iptxt=$2; work=$3; cdi=$4; pack=${5:-}
 tools=${DC_TOOLS_BASE:-}
 need() {
     for c in "$@"; do
@@ -38,6 +39,10 @@ rm -rf "$work"
 mkdir -p "$work/cd"
 "$objcopy" -R .stack -O binary "$elf" "$work/doomogachi.bin"
 "$scramble" "$work/doomogachi.bin" "$work/cd/1ST_READ.BIN"
+if [ -n "$pack" ]; then
+    [ -f "$pack" ] || die "pack $pack does not exist"
+    cp "$pack" "$work/cd/PACK.DMP"
+fi
 "$makeip" -f "$iptxt" "$work/IP.BIN" >/dev/null
 # -C 0,11702: the data session starts after cdi4dc's audio track (MSINFO)
 # shellcheck disable=SC2086

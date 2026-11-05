@@ -8,6 +8,9 @@
 #                         the Flycast harness scripts when dc/harness exists
 #   make -C dc check-elf  checks on the linked ELF only (no emulator)
 #   make -C dc sizes      section sizes against the 16 MB RAM budget
+#   make -C dc PACK=/path/pack.dmpk disc
+#                         the mature disc: the pack (built with `mpack.py build`, port dc) goes on
+#                         the disc as PACK.DMP and dc/src/packdisc.c is linked (E10)
 #   make -C dc clean
 #
 # Toolchain: KallistiOS and its sh-elf gcc (dc/tools/setup_kos.sh, see
@@ -63,6 +66,11 @@ CDI   := $(BUILD)/doomogachi.cdi
 # KOS_LDFLAGS + KOS_LIBS to the link.
 # The core keeps to C99 (ARCHITECTURE.md); gnu99 is for the KOS headers.
 DEFS   := -DDOOMO_PLATFORM_DC=1
+# E10: an optional mature content pack on the disc (PACK=/path/pack.dmpk)
+PACK   ?=
+ifneq ($(strip $(PACK)),)
+DEFS   += -DDOOMO_PACK_ON_DISC=1
+endif
 CFLAGS := -std=gnu99 -Wall -Wextra -Werror -fno-strict-aliasing -MMD -MP \
           -I$(CORE_INC) -I$(DC)/src -I$(DC)/harness $(DEFS)
 LDFLAGS := -Wl,-Map,$(MAP)
@@ -74,7 +82,7 @@ DC_OBJS   := $(call dc_obj,$(DC_SRCS))
 CORE_OBJS := $(call core_obj,$(CORE_SRCS))
 ALL_OBJS  := $(DC_OBJS) $(CORE_OBJS)
 
-.PHONY: all elf disc all-disc test check-elf harness-test sizes clean
+.PHONY: all elf disc all-disc test check-elf check-packdisc harness-test sizes clean
 .DEFAULT_GOAL := all
 
 all: elf
@@ -98,8 +106,17 @@ $(OBJ)/core/%.o: $(DOOMO_CORE)/%.c
 disc: $(CDI)
 all-disc: elf disc
 
-$(CDI): $(ELF) $(DC)/ip.txt $(DC)/tools/mkcdi.sh
-	sh $(DC)/tools/mkcdi.sh $(ELF) $(DC)/ip.txt $(BUILD)/disc $(CDI)
+# E10: validate the pack for port dc first; a changed PACK rebuilds packdisc.o (stamp) and the disc
+PACKSTAMP := $(BUILD)/pack.stamp
+.PHONY: FORCE
+FORCE:
+$(PACKSTAMP): FORCE
+	@mkdir -p $(BUILD); echo "$(strip $(PACK)) $$(cksum < "$(strip $(PACK))" 2>/dev/null)" | cmp -s - $@ || echo "$(strip $(PACK)) $$(cksum < "$(strip $(PACK))" 2>/dev/null)" > $@
+$(OBJ)/dc/src/packdisc.o: $(PACKSTAMP)
+
+$(CDI): $(ELF) $(DC)/ip.txt $(DC)/tools/mkcdi.sh $(PACKSTAMP)
+	@if [ -n "$(strip $(PACK))" ]; then $(PYTHON) -I $(ROOT)/tools/mpack/mpack.py validate "$(strip $(PACK))" --port dc || exit 1; fi
+	sh $(DC)/tools/mkcdi.sh $(ELF) $(DC)/ip.txt $(BUILD)/disc $(CDI) $(strip $(PACK))
 
 # ---- checks ------------------------------------------------------------------------
 sizes: $(ELF)
@@ -135,7 +152,11 @@ $(BUILD)/doomogachi.nm: $(ELF)
 	$(NM) $(ELF) >$@
 harness-test: $(BUILD)/doomogachi.nm
 
-test: all-disc check-elf harness-test
+# E10: the disc pack reader against a real pack, host cc only (KOS file calls mocked)
+check-packdisc:
+	@sh $(DC)/tests/packdisc_host.sh
+
+test: all-disc check-elf check-packdisc harness-test
 
 clean:
 	rm -rf $(BUILD)

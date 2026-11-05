@@ -411,3 +411,17 @@ called from `main()` right after `plat_init_hw()`): the PVR background steps
 through eight colours every four vblanks, over empty scenes, and the log
 shows `DC: boot easter egg`. It touches no saves and no options. Without the
 buttons it only waits (at most 90 vblanks) for the controller to appear.
+
+## Mature content pack on the disc (E10)
+
+An optional DMPK pack built for port dc (`python3 tools/mpack/mpack.py build manifest.txt --out pack.dmpk`,
+manifest line `port dc`) goes on the disc as `PACK.DMP`:
+
+    make -C dc PACK=/path/pack.dmpk disc
+
+The build validates the pack (`mpack.py validate --port dc`), defines `DOOMO_PACK_ON_DISC`, links
+`dc/src/packdisc.c` and copies the pack to the disc root (`mkcdi.sh ... PACK`). Without `PACK=` the disc is the
+stock one and links none of it. `plat_pack_read` reads `/cd/PACK.DMP` with a 32 KB window; the mslot scene reads a
+slot's script into a 32 KB buffer (`PACK_SCRIPT_CAP_DC`; mpack.py refuses a bigger one) and a still into a
+320x240 buffer (not drawn until the 2D layer, DC3, lands). Cost with a pack: about 140 KB BSS. Test without
+KallistiOS: `sh dc/tests/packdisc_host.sh` (the real reader over a mocked `fs_*`).

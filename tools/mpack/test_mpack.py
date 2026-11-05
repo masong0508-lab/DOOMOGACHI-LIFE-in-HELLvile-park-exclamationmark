@@ -102,6 +102,7 @@ refused("refuses a script id outside the user range",
 refused("refuses a script whose image id differs", mutate(ex, 64 + 16 + 14, 113), "image is pack id")
 refused("refuses unsorted uids", mutate(ex, 64 + 16 + 2, 0xB0), "ascending")
 refused("refuses a misaligned payload", mutate(ex, 64 + 4, ex[64 + 4] + 1), "misaligned")
+fx0 = open(os.path.join(mpack.ROOT, "core", "tests", "fixtures", "e0_user.pack"), "rb").read()
 big = mpack.build(dict(name="big", author="t", port="gba", flags=[], codec="raw",
                        items=[("portrait", 0, 0, bytes(mpack.F_CAP if hasattr(mpack, "F_CAP") else F["PACK_CAP_GBA_DEFAULT"] + 4096))]), F)
 refused("GBA default cap", big, "cap", gba_default_cap=True)
@@ -119,6 +120,11 @@ refused("E8 the native example is not a gba pack", mpack.build(mpack.example_spe
 ps1 = mpack.build(dict(name="p", author="t", port="ps1", flags=[], codec="raw",
                        items=[("cg", 0, 0, os.urandom(F["PACK_ENTRY_CAP_PS1"] + 4))]), F)
 refused("PS1 entry cap", ps1, "PS1 entry cap")
+# E10: a Dreamcast pack's script must fit the 32 KB script buffer
+dcbig = mpack.build(dict(name="d", author="t", port="dc", flags=[], codec="raw",
+                         items=[("script", 0, fx0[3], fx0 + bytes(F["PACK_SCRIPT_CAP_DC"]))]), F)
+refused("E10 refuses a script over the DC buffer", dcbig, "DC script buffer")
+check("E10 the example validates for port dc", mpack.validate(mpack.build(mpack.example_spec(F, "dc"), F), F, "dc") == [])
 for what, spec, needle in (
         ("a cg slot past MSLOT_MAX", dict(items=[("cg", F["MSLOT_MAX"], 0, b"x")]), "cg slot"),
         ("a duplicate script slot", dict(items=[("script", 1, 112, b"x"), ("script", 1, 113, b"x")]), "duplicate"),

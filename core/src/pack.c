@@ -141,6 +141,7 @@ static int check_and_register(void)
             if ((e.uid & 0xFFFFu) >= MSLOT_MAX || bit < 0 || bit >= (int)TXT_PACK_USER_COUNT) return 0;
             if ((used >> bit) & 1u || e.codec != PK_CODEC_RAW || e.size < sizeof t) return 0;
             if (THIS_PORT == PK_PORT_PS1 && e.size > PACK_SCRIPT_CAP_PS1) return 0;
+            if (THIS_PORT == PK_PORT_DC && e.size > PACK_SCRIPT_CAP_DC) return 0;
             used |= (uint16_t)(1u << bit);
             if (!rd(e.off, t, sizeof t) || t[0] != 'T' || t[1] != 'X' || t[2] != 1 || t[3] != e.arg ||
                 !(le16(t + 14) & TXF_RAW)) return 0;
