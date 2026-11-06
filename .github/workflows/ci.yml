@@ -128,7 +128,57 @@ jobs:
 
       # libmgba runs fully headless (no X / audio device needed).
       - name: Headless harness (engine tour, flash save round trip, game smoke)
-        run: make -C gba test
+        run: |
+          # same targets, same order as `make -C gba test`, with the seconds each one took
+          for t in test-et test-save test-game test-coresave test-story test-home test-ow test-lang; do
+            s=$SECONDS
+            make -C gba "$t"
+            echo "::notice title=$t::took $((SECONDS - s)) s"
+          done
+
+      - name: Collect ROMs
+        run: |
+          mkdir -p dist
+          cp gba/build/doomogachi.gba dist/doomogachi.gba
+          cp gba/build/doomogachi_et.gba dist/doomogachi-enginetest.gba
+          ls -l dist
+
+      - name: Upload ROMs
+        uses: actions/upload-artifact@v4
+        with:
+          name: doomogachi-gba
+          path: |
+            dist/doomogachi.gba
+            dist/doomogachi-enginetest.gba
+          if-no-files-found: error
+
+      - name: Upload harness screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gba-harness-screenshots
+          path: gba/build/shots/
+          retention-days: 14
+          if-no-files-found: ignore
+
+  # --------------------------------------------------------------------------
+  # The speed report runs on its own runner, in parallel with the gba job: it is
+  # informational (never gates) and used to add its whole tour to the gba job's time.
+  gba-speed:
+    name: GBA speed report (informational)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install arm-none-eabi + newlib, python3, libmgba
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q --no-install-recommends \
+            gcc make python3 \
+            gcc-arm-none-eabi libnewlib-arm-none-eabi \
+            libmgba-dev
 
       # Informational, never fails the job: real GBA numbers from mGBA (bus wait
       # states, prefetch and halt time are emulated). The speed tour reports every
@@ -136,8 +186,7 @@ jobs:
       # screen's hottest functions (idle, then with the menu open). Read it under
       # the run's "Summary" tab; the logs and tour screenshots are in the
       # gba-speed-report artifact.
-      - name: Speed report (speed tour + title profile; informational)
-        continue-on-error: true
+      - name: Speed report (speed tour + title profile)
         run: |
           {
             echo '## GBA speed report'
@@ -168,31 +217,6 @@ jobs:
             gba/build/shots/title/
           if-no-files-found: ignore
           retention-days: 14
-
-      - name: Collect ROMs
-        run: |
-          mkdir -p dist
-          cp gba/build/doomogachi.gba dist/doomogachi.gba
-          cp gba/build/doomogachi_et.gba dist/doomogachi-enginetest.gba
-          ls -l dist
-
-      - name: Upload ROMs
-        uses: actions/upload-artifact@v4
-        with:
-          name: doomogachi-gba
-          path: |
-            dist/doomogachi.gba
-            dist/doomogachi-enginetest.gba
-          if-no-files-found: error
-
-      - name: Upload harness screenshots
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: gba-harness-screenshots
-          path: gba/build/shots/
-          retention-days: 14
-          if-no-files-found: ignore
 
   # --------------------------------------------------------------------------
   ps1:
