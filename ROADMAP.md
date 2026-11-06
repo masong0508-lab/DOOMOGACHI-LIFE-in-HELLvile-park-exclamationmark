@@ -561,6 +561,7 @@ Not built: a look for the uplifted pet (they use the person look made from their
 
 <!-- doomo-roadmap-status-nov05j -->
 | docs | `doomo-roadmap-status-nov05j` | `docs: status update (done, playable, left) after life sim part 1` | docs only: rewrites docs/STATUS.md |
+| gba | `doomo-gba-flash-settle-nov06a` | `gba: flash verify waits out the program time (0x5F busy value, test-coresave)` | `gba/src/flash_ram.c`: `fl_settle()` (400 spins, ~2,500 cycles) before the verify pass of `fl_program`; mGBA answers every read of a sector being programmed with 0x5F, so a chunk whose last programmed byte is 0x5F passed `fl_wait` at once and the verify then read 0x5F for byte 0 (CI: `test-coresave` `save 1 failed`, `program/verify failed at 0xd0a0`, after the `town-fill` rewrite). Flash block 1,148 B of its 1,152 B stack copy. Checked: `make -C gba test` exit 0, `test-speed` runs |
 
 ## Status check (2026-11-05, second update)
 

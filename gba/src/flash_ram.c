@@ -24,6 +24,15 @@
 
 #define FL ((volatile uint8_t *)0x0E000000)
 
+/* Sit out the chip's program time (~40 us; ~2,500 cycles here) before the
+ * verify pass. A busy chip answers reads of the sector with status, not data,
+ * and some answer with a constant 0x5F (mGBA does, for the sector being
+ * programmed or erased). If the LAST byte programmed is itself 0x5F, fl_wait
+ * "sees" its value at once, the chip is still busy, and the verify reads
+ * 0x5F for the first byte of the sector and fails a good write (data
+ * dependent: CI's core save of seed 4242 ended a chunk on a 0x5F). */
+#define FL_SETTLE_SPINS 400u
+
 /* every function of the block: ARM, in the copied section, never inlined
  * into code outside it */
 #define FLASH_RAM __attribute__((section(".text.flashram"), target("arm"), noinline))
@@ -76,6 +85,12 @@ FLASH_RAM int fl_erase_sector(uint32_t off, int macronix)
     return ok;
 }
 
+FLASH_RAM static void fl_settle(void)
+{
+    volatile uint32_t d;
+    for (d = 0; d < FL_SETTLE_SPINS; d++) { }
+}
+
 FLASH_RAM int fl_program(uint32_t off, const uint8_t *src, uint32_t n, int macronix)
 {
     uint32_t i;
@@ -89,6 +104,7 @@ FLASH_RAM int fl_program(uint32_t off, const uint8_t *src, uint32_t n, int macro
             return 0;
         }
     }
+    fl_settle();
     /* verify */
     for (i = 0; i < n; i++)
         if (FL[off + i] != src[i]) return 0;
