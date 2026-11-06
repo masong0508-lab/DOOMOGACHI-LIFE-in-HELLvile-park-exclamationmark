@@ -45,6 +45,7 @@ int  prof_rename(int profile, const char *name); /* a guest only: 1 ok, PROF_ERR
 int  prof_is_coop(int profile);               /* 1 when the guest plays a co-op hero */
 int  prof_hero_used(int hero_kind);           /* 1 when a guest already plays this co-op hero */         /* moves out; plays back as the hero if active; 1 ok */
 const char *prof_name(int profile);          /* "" for an empty profile, the hero's town name for 0 */
+int  prof_hero(int profile);                  /* the co-op HERO_* a guest plays, -1 a villager or no such guest */
 int  prof_resident(int profile);             /* the villager a guest plays, -1 none (0: the hero id) */
 int  prof_find_resident(int resident);       /* the profile that plays this villager, -1 none        */
 int  prof_active(void);                      /* the profile you are playing (= playas_profile())     */
@@ -57,6 +58,7 @@ int  prof_check_daily(void);
 
 /* ---- a guest's own state (profile 1..3; profile 0 is the save itself: no-ops) ---- */
 int  prof_flag(int profile, int bit);                    /* bit 0..127 */
+#define PROF_FLAG_COOP_QUEST(q) (8 + (q))          /* bit: co-op side quest q (0..3 = Ch1..Ch4) was played (docs/COOP_HEROES.md) */
 void prof_flag_set(int profile, int bit, int on);
 int  prof_quest(int profile, int i);                     /* i 0..15, a byte */
 void prof_quest_set(int profile, int i, int value);

@@ -835,6 +835,7 @@ static void story_update(void)
     }
     if (map_current_id() != ow.map) after_subscene();
     story_vm_pump();                               /* the story VM (S2; SPEC C6 host) */
+    story_coop_tick();                             /* MP1: a co-op hero's side quest */
     story_vm_minute();
     story_poll_callbacks();                        /* conversation callbacks by id */
     story_trigger_poll();

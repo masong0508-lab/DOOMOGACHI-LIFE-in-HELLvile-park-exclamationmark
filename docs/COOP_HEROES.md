@@ -103,7 +103,12 @@ only what shone. The payoff: at the park they light the first lantern themselves
   co-op housemate as the conversation's subject. Two routes (the muffin key, or knock on a PULL door) and a decline; the test
   `coop_ember_quest_plays_both_routes_and_leaves_the_plot_alone` plays both and checks `story_fingerprint` is unchanged.
   Adding the pack renumbers the generated text files (pack ids sort by name), so `core/gen/` and `flow.lock` are regenerated.
-* **Not built**: the trigger (nothing starts `coop_ember_1` yet: talking to the co-op housemate in Ch1 should), the saved
-  "quest done" bit (the PROF guest record needs a spare bit, a save-lock change), the reward, the other 11 quests, the ability
-  effects in play, local simultaneous multiplayer, helping in another world, GBA / PS1 builds. Spanish rows are missing
-  (the rewrite phase allows it). Next step: the trigger and done bit for Ember Ch1.
+* **Built (third patch): the trigger.** Co-op guests only exist post-game (play-as unlocks when the story is done), and a household member
+  is not a person you can talk to on the story map, so a co-op quest does not wait for a chapter. When a guest **plays** Ember on the
+  overworld, `story_coop_tick()` (story.c, called from `overworld.c`) starts her next unplayed quest once. The played bit is the
+  guest's own saved PROF flag `PROF_FLAG_COOP_QUEST(q)` (bit 8+q): no save-lock change, no new field. The quest sets no story
+  flag. Test: `mp1_a_guest_playing_ember_gets_her_first_quest_once`. New accessor `prof_hero(profile)`.
+  A family id has no portrait, so her lines show in a plain box for now.
+* **Not built**: the reward, quests 2-4 (they should come due on later in-game days, one per day), the other 8 quests (Rook, Wick), the
+  ability effects in play, a family portrait for the speaker, local simultaneous multiplayer, helping in another world, GBA / PS1 builds.
+  Spanish rows are missing (the rewrite phase allows it).

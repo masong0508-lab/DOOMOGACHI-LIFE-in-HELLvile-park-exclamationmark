@@ -6,6 +6,7 @@
  * The plot itself is in story_script.c.
  */
 #include "doomo/playas.h"
+#include "doomo/profiles.h"
 #include "doomo/platform.h"
 #include "story_int.h"
 #include "combat_int.h"     /* AF_USED (read only: actor slots) */
@@ -742,6 +743,22 @@ void story_push_cutscene(int cut, int ctx, int extra)
 static int overworld_live(void)
 {
     return scene_top() == &SCENE_STORY && doomo_town.story.chapter != STORY_CH_NONE;
+}
+
+/* MP1 content: when a guest plays a co-op hero (post-game: play-as is locked until the story is done) on the overworld, their
+ * next unplayed side quest starts by itself, once. The played bit is the guest's own saved PROF flag; the plot is untouched
+ * (a co-op hero never sets a story flag). Only Ember's first quest is written. A family id has no portrait, so the lines show
+ * in a plain box until a family body gets a portrait. */
+void story_coop_tick(void)
+{
+    int a = playas_avatar(), p;
+    if (a < PLAYAS_ID_FAMILY_FIRST || !playas_available() || story_talking()) return;
+    p = prof_find_resident(a);
+    if (p < 0 || !prof_is_coop(p) || prof_hero(p) != HERO_COOP_FIRST) return;
+    if (prof_flag(p, PROF_FLAG_COOP_QUEST(0))) return;
+    prof_flag_set(p, PROF_FLAG_COOP_QUEST(0), 1);
+    story_fmt_target = (int16_t)a;
+    story_conv(SCR_COOP_EMBER_1, 0);
 }
 
 void story_interact_npc(int id)

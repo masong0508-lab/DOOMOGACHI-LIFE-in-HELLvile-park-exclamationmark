@@ -837,3 +837,33 @@ TEST(z1_joint_gate_across_the_four_areas)
         CHECK(playas_story_locked());
     }
 }
+
+/* MP1 content: a guest playing Ember gets her Ch1 side quest once, post-game; Rook (no scene yet) and the hero get nothing. */
+TEST(mp1_a_guest_playing_ember_gets_her_first_quest_once)
+{
+    int e;
+    fresh();
+    cleared();
+    vm_stop();
+    CHECK_EQ(prof_guest_add("Embie", -1, HERO_COOP_FIRST), 1);
+    story_coop_tick();                                  /* the hero is the avatar: nothing */
+    CHECK(!vm_running() && !prof_flag(1, PROF_FLAG_COOP_QUEST(0)));
+    CHECK(prof_switch(1));
+    e = playas_avatar();
+    CHECK(e >= PLAYAS_ID_FAMILY_FIRST);
+    story_coop_tick();
+    CHECK(vm_running());
+    CHECK(prof_flag(1, PROF_FLAG_COOP_QUEST(0)));
+    CHECK_EQ(vm_fmt_target, e);
+    vm_stop();
+    story_coop_tick();                                  /* played once: not again */
+    CHECK(!vm_running());
+    CHECK_EQ(prof_hero(1), HERO_COOP_FIRST);
+    CHECK_EQ(prof_hero(9), -1);
+    CHECK(prof_guest_remove(1));
+    CHECK_EQ(prof_guest_add("Rk", -1, HERO_COOP_FIRST + 1), 1);
+    CHECK(prof_switch(1));
+    story_coop_tick();
+    CHECK(!vm_running() && !prof_flag(1, PROF_FLAG_COOP_QUEST(0)));
+    doomo_save_ext_profiles->reset();
+}

@@ -72,6 +72,8 @@ int prof_hero_used(int kind)
     return 0;
 }
 
+int prof_hero(int p) { Guest *g = guest(p); return g ? g->hero : -1; }
+
 int prof_is_coop(int p) { Guest *g = guest(p); return g && g->hero >= 0; }
 
 int prof_guest_add(const char *name, int resident, int hero_kind)

@@ -374,3 +374,10 @@ MP0's profiles (`profiles.c`) had no screen. `SCENE_PLAYAS` now has a players mo
 * Pack ids sort by name, so adding the pack regenerated `core/gen/` (120 files) and `flow.lock` (new pack, script, strings).
 * **Test**: `coop_ember_quest_plays_both_routes_and_leaves_the_plot_alone`. `make -C core test`: unit 859, scripts 160 OK, check-gen and story-check clean.
 * **Not built**: the trigger, the saved done bit, the reward, the other 11 quests.
+
+### MP1 part 4: the co-op quest trigger (2026-11-05)
+
+* Co-op guests only exist post-game and a household member is not talkable on the story map, so the quest does not wait for a chapter: when a guest **plays** Ember on the overworld, `story_coop_tick()` starts her next unplayed quest once (`story.c`, called from `overworld.c` after the VM pump).
+* The played bit is the guest's saved PROF flag `PROF_FLAG_COOP_QUEST(q)` (bit 8+q): no save change. New accessor `prof_hero(profile)`.
+* **Test**: `mp1_a_guest_playing_ember_gets_her_first_quest_once`. `make -C core test`: unit 860, scripts 160 OK, journeys 19 OK, story-check and check-gen clean.
+* **Not built**: the reward, quests 2-4 on later days, Rook's and Wick's quests, a family portrait for the speaker.
