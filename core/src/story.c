@@ -7,6 +7,7 @@
  */
 #include "doomo/playas.h"
 #include "doomo/profiles.h"
+#include "doomo/family.h"
 #include "doomo/platform.h"
 #include "story_int.h"
 #include "combat_int.h"     /* AF_USED (read only: actor slots) */
@@ -763,7 +764,7 @@ int story_coop_quest_due(int p)
     for (q = 0; q < HERO_COOP_QUESTS; q++)
         if (!prof_flag(p, PROF_FLAG_COOP_QUEST(q))) break;
     if (q >= HERO_COOP_QUESTS) return -1;
-    if (q > 0 && prof_quest(p, 0) == (doomo_town.day & 0xFF)) return -1;      /* one per game day */
+    if (q > 0 && prof_quest(p, 0) == (int)(doomo_town.day & 0xFF)) return -1;      /* one per game day */
     return q;
 }
 

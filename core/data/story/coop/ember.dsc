@@ -21,6 +21,7 @@ muffin:
   say target SHOCK "Of COURSE there's a key. {!}"
   [R5]
   say target HAPPY "In Hellvile that's a / Tuesday. {.}Come in. I'll / burn something for you."
+  befriend nana 2
   reward 20 ITEM_CUPCAKE
   end
 knock:
@@ -29,6 +30,7 @@ knock:
   say target HAPPY "It was never locked. {.}I / pushed. It's a PULL door."
   [R13]
   say target NEUTRAL "Do not tell the town."
+  befriend nana 2
   reward 20 ITEM_CUPCAKE
 end
 
@@ -39,11 +41,13 @@ script coop_ember_2
 a:
   say target HAPPY "Three samples. {.}Grape / will never know. {.}Now / hush. I'm cooking."
   say nar "(The room goes very quiet. / Somebody cries a little.)"
+  befriend steamy 2
   reward 30 ITEM_SALAD
   end
 b:
   say target SHOCK "You ATE the evidence?"
   say target HAPPY "...Fair. {.}It needs / salt. I'll fix it."
+  befriend steamy 2
   reward 30 ITEM_SALAD
 end
 
@@ -55,11 +59,13 @@ script coop_ember_3
 a:
   say nar "(Three waves come. / The pilot light never / blinks.)"
   say target HAPPY "Whoever comes in / eats. {.}That's the / house rule."
+  befriend grampy 2
   reward 30 ITEM_CUPCAKE
   end
 b:
   say target HAPPY "Casserole for everyone. / It is not a trap."
   say nar "(Nobody checks the exits.)"
+  befriend grampy 2
   reward 30 ITEM_CUPCAKE
 end
 
@@ -71,11 +77,15 @@ script coop_ember_4
 a:
   say nar "(They sit. {.}They glare. / They pass the salt.)"
   say target HAPPY "Sit. Sit! {.}It's not / a trap, it's a casserole."
+  befriend mayor 2
+  home GRANT furn=teacup_table
   reward 30 ITEM_SKULL_TRINKET
   end
 b:
   say target HAPPY "Hellvile on the left. {.}Hilltop / on the right. {.}Eat."
   say nar "(The table goes quiet / in the good way.)"
+  befriend mayor 2
+  home GRANT furn=teacup_table
   reward 30 ITEM_SKULL_TRINKET
 end
 
@@ -87,11 +97,13 @@ script coop_rook_1
 a:
   say nar "(Four lines in the log. / The fountain hums.)"
   say target HAPPY "Write it down. {.}If it's / nothing, it's a very / small nothing."
+  befriend sootkin 2
   reward 30 ITEM_CANDY_EYEBALLS
   end
 b:
   say target SHOCK "It hums. {.}You heard it too?"
   say target HAPPY "Then I'm not wrong."
+  befriend sootkin 2
   reward 30 ITEM_CANDY_EYEBALLS
 end
 
@@ -103,11 +115,13 @@ script coop_rook_2
 a:
   say target NEUTRAL "Three objects. {.}Exactly / where they were left."
   say target HAPPY "There's a pattern. {.}Look."
+  befriend hattie 2
   reward 30 ITEM_SALAD
   end
 b:
   say nar "(You chalk each spot. / By dawn, one has moved.)"
   say target SHOCK "See? {.}Thorough."
+  befriend hattie 2
   reward 30 ITEM_SALAD
 end
 
@@ -119,11 +133,13 @@ script coop_rook_3
 a:
   say nar "(You board it. {.}The wave / hits the west.)"
   say target SHOCK "West! {.}I said WEST!"
+  befriend anvil 2
   reward 30 ITEM_CUPCAKE
   end
 b:
   say nar "(You board the west. / The wave hits the east. / The house holds.)"
   say target HAPPY "Close enough. {.}Log it."
+  befriend anvil 2
   reward 30 ITEM_CUPCAKE
 end
 
@@ -135,11 +151,15 @@ script coop_rook_4
 a:
   say nar "(You write one line / on the last page.)"
   say target HAPPY "Somebody wrote back. {.}I / have to sit down."
+  befriend mayor 2
+  home GRANT furn=cherry_clock
   reward 30 ITEM_SKULL_TRINKET
   end
 b:
   say nar "(The park goes quiet / and listens to an owl.)"
   say target HAPPY "I should have / said so sooner."
+  befriend mayor 2
+  home GRANT furn=cherry_clock
   reward 30 ITEM_SKULL_TRINKET
 end
 
@@ -151,11 +171,13 @@ script coop_wick_1
 a:
   say nar "(You hang one lantern / on a string. {.}It's / theirs.)"
   say target HAPPY "It's very small. {.}I / love it."
+  befriend lulla 2
   reward 30 ITEM_CANDY_EYEBALLS
   end
 b:
   say nar "(Four lights go by. / Wick only looks twice.)"
   say target HAPPY "Home. {.}Home is shiny."
+  befriend lulla 2
   reward 30 ITEM_CANDY_EYEBALLS
 end
 
@@ -167,11 +189,13 @@ script coop_wick_2
 a:
   say nar "(You get there first / and steer them out.)"
   say target HAPPY "The fog is lifting. {.}Thank / you."
+  befriend haze 2
   reward 30 ITEM_SALAD
   end
 b:
   say nar "(An exorcism hug. {.}The / fuzz goes down a notch.)"
   say target HAPPY "Better. {.}Brighter, but / the good kind."
+  befriend haze 2
   reward 30 ITEM_SALAD
 end
 
@@ -183,11 +207,13 @@ script coop_wick_3
 a:
   say nar "(The household crosses / by lantern light.)"
   say target HAPPY "I didn't move. {.}Not / once."
+  befriend bloom 2
   reward 30 ITEM_CUPCAKE
   end
 b:
   say nar "(You hold the door / until the sky goes grey.)"
   say target HAPPY "Dawn. {.}Look. {.}It's / even shinier."
+  befriend bloom 2
   reward 30 ITEM_CUPCAKE
 end
 
@@ -199,10 +225,14 @@ script coop_wick_4
 a:
   say nar "(It lifts off, crooked / and tiny. {.}Everyone / watches.)"
   say target HAPPY "I've got it. {.}I've / got it. {.}It's very small."
+  befriend fuzz 2
+  home GRANT furn=honey_lamp
   reward 30 ITEM_SKULL_TRINKET
   end
 b:
   say nar "(You hold it with them. / Then let go together.)"
   say target HAPPY "My own light."
+  befriend fuzz 2
+  home GRANT furn=honey_lamp
   reward 30 ITEM_SKULL_TRINKET
 end

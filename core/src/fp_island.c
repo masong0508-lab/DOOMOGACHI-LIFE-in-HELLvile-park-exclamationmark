@@ -13,6 +13,7 @@
  *   SELECT  Family            B      menu
  */
 #include "fp_island.h"
+#include "doomo/game.h"
 
 /* ====================================================================== */
 /* locations                                                                */
@@ -27,6 +28,17 @@ typedef struct {
 } Loc;
 
 #define NOLOC 0xFF
+/* The island's population, counted once per frame: town_count() walks all 1000 residents (112 B apart), and the draw and the
+ * update asked for it three times a frame. Nothing here depends on a count that is a frame old. */
+int fp_island_pop(void)
+{
+    static uint32_t at = 0xFFFFFFFFu;
+    static int pop;
+    uint32_t f = doomo_frame_count();
+    if (f != at) { at = f; pop = town_count(-1); }
+    return pop;
+}
+
 static const Loc locs[] = {
     { "Hillvile Towers", "500 cozy homes on the good side.", LOC_TOWERS, 30, 70, ACTLOC_APARTMENTS, ACT_HOME,
       "Keysie", "Five hundred doors, five hundred keys!" },
@@ -869,7 +881,7 @@ static void draw_plate(int i)
     loc_screen(i, &x, &y);
     if (L->kind == LOC_ARENA && arena_locked())
         doomo_snprintf(buf, sizeof(buf), "%s " STR_ICON_X, L->name);
-    else if (L->kind == LOC_TOWN_HALL && town_count(-1) == 0)
+    else if (L->kind == LOC_TOWN_HALL && fp_island_pop() == 0)
         doomo_snprintf(buf, sizeof(buf), "%s: make citizens!", L->name);
     else if (L->kind == LOC_PET)
         doomo_snprintf(buf, sizeof(buf), "%s", pet_exists() ? doomo_town.pet.name : "Adopt a pet!");
@@ -1012,7 +1024,7 @@ static void island_draw(void)
             draw_round_button(ld[i].x, ld[i].y - 10, ICON_SMILE, "Folks", i == I.sel && !I.menu_open, 0);
     }
     /* an arrow that nags toward Town Hall on an empty island */
-    if (town_count(-1) == 0 && !I.menu_open && locs[I.sel].kind != LOC_TOWN_HALL) {
+    if (!I.menu_open && locs[I.sel].kind != LOC_TOWN_HALL && fp_island_pop() == 0) {
         int k = loc_index_of(LOC_TOWN_HALL), b = ui_wave(fp_t(), 24, 2);
         plat_text(ld[k].x - 3, ld[k].y - 42 + b, STR_ICON_ARROW_D, PAL_UI_RED);
     }

@@ -859,16 +859,34 @@ TEST(mp1_a_guest_playing_ember_gets_her_first_quest_once)
     story_coop_tick();                                  /* the same day: not again, and no second quest yet */
     CHECK(!vm_running());
     CHECK_EQ(story_coop_quest_due(1), -1);
-    doomo_town.day++;                                   /* a later day: quest 2, then 3, then 4, one per day */
-    for (q = 1; q < HERO_COOP_QUESTS; q++) {
+    CHECK(prof_guest_remove(1));
+    for (q = 1; q < HERO_COOP_QUESTS; q++) {            /* a later day: quest 2, 3, 4, one per day */
+        int j;
+        test_reset();                                   /* clears the dialogue the last quest queued */
+        fresh();
+        cleared();
+        vm_stop();
+        doomo_save_ext_profiles->reset();
+        CHECK_EQ(prof_guest_add("Embie", -1, HERO_COOP_FIRST), 1);
+        CHECK(prof_switch(1));
+        for (j = 0; j < q; j++) prof_flag_set(1, PROF_FLAG_COOP_QUEST(j), 1);
+        prof_quest_set(1, 0, doomo_town.day & 0xFF);
+        CHECK_EQ(story_coop_quest_due(1), -1);          /* the same game day: not yet */
+        story_coop_tick();
+        CHECK(!vm_running());
+        doomo_town.day++;
         CHECK_EQ(story_coop_quest_due(1), q);
         story_coop_tick();
         CHECK(vm_running() && prof_flag(1, PROF_FLAG_COOP_QUEST(q)));
         vm_stop();
-        story_coop_tick();
-        CHECK(!vm_running());
-        doomo_town.day++;
+        CHECK(prof_guest_remove(1));
     }
+    test_reset();
+    fresh();
+    cleared();
+    vm_stop();
+    CHECK_EQ(prof_guest_add("Embie", -1, HERO_COOP_FIRST), 1);
+    for (q = 0; q < HERO_COOP_QUESTS; q++) prof_flag_set(1, PROF_FLAG_COOP_QUEST(q), 1);
     CHECK_EQ(story_coop_quest_due(1), -1);              /* all four played */
     CHECK_EQ(prof_hero(1), HERO_COOP_FIRST);
     CHECK_EQ(prof_hero(9), -1);

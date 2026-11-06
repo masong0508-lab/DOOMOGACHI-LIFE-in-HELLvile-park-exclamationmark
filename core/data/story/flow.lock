@@ -968,15 +968,19 @@ script coop_ember_1 {
   DATA 3 T
   DATA 3 T
   DATA 4 @11
-  DATA 4 @15
+  DATA 4 @17
   DATA 4 65535
   END 0 0
   WAIT 13 0
   WAIT 5 0
+  BEFRIEND 253 2
+  DATA 2 1
   REWARD 2 257
   END 0 0
   WAIT 8 0
   WAIT 13 0
+  BEFRIEND 253 2
+  DATA 2 1
   REWARD 2 257
   END 0 0
 }
@@ -987,11 +991,15 @@ script coop_ember_2 {
   DATA 3 T
   DATA 3 T
   DATA 4 @9
-  DATA 4 @11
+  DATA 4 @13
   DATA 4 65535
   END 0 0
+  BEFRIEND 253 2
+  DATA 2 2
   REWARD 3 266
   END 0 0
+  BEFRIEND 253 2
+  DATA 2 2
   REWARD 3 266
   END 0 0
 }
@@ -1002,11 +1010,15 @@ script coop_ember_3 {
   DATA 3 T
   DATA 3 T
   DATA 4 @9
-  DATA 4 @11
+  DATA 4 @13
   DATA 4 65535
   END 0 0
+  BEFRIEND 253 2
+  DATA 2 88
   REWARD 3 257
   END 0 0
+  BEFRIEND 253 2
+  DATA 2 88
   REWARD 3 257
   END 0 0
 }
@@ -1017,11 +1029,17 @@ script coop_ember_4 {
   DATA 3 T
   DATA 3 T
   DATA 4 @9
-  DATA 4 @11
+  DATA 4 @14
   DATA 4 65535
   END 0 0
+  BEFRIEND 253 2
+  DATA 2 0
+  HOME 8 furn:teacup_table
   REWARD 3 273
   END 0 0
+  BEFRIEND 253 2
+  DATA 2 0
+  HOME 8 furn:teacup_table
   REWARD 3 273
   END 0 0
 }
@@ -1032,11 +1050,15 @@ script coop_rook_1 {
   DATA 3 T
   DATA 3 T
   DATA 4 @9
-  DATA 4 @11
+  DATA 4 @13
   DATA 4 65535
   END 0 0
+  BEFRIEND 253 2
+  DATA 2 525
   REWARD 3 261
   END 0 0
+  BEFRIEND 253 2
+  DATA 2 525
   REWARD 3 261
   END 0 0
 }
@@ -1047,11 +1069,15 @@ script coop_rook_2 {
   DATA 3 T
   DATA 3 T
   DATA 4 @9
-  DATA 4 @11
+  DATA 4 @13
   DATA 4 65535
   END 0 0
+  BEFRIEND 253 2
+  DATA 2 71
   REWARD 3 266
   END 0 0
+  BEFRIEND 253 2
+  DATA 2 71
   REWARD 3 266
   END 0 0
 }
@@ -1062,11 +1088,15 @@ script coop_rook_3 {
   DATA 3 T
   DATA 3 T
   DATA 4 @9
-  DATA 4 @11
+  DATA 4 @13
   DATA 4 65535
   END 0 0
+  BEFRIEND 253 2
+  DATA 2 595
   REWARD 3 257
   END 0 0
+  BEFRIEND 253 2
+  DATA 2 595
   REWARD 3 257
   END 0 0
 }
@@ -1077,11 +1107,17 @@ script coop_rook_4 {
   DATA 3 T
   DATA 3 T
   DATA 4 @9
-  DATA 4 @11
+  DATA 4 @14
   DATA 4 65535
   END 0 0
+  BEFRIEND 253 2
+  DATA 2 0
+  HOME 8 furn:cherry_clock
   REWARD 3 273
   END 0 0
+  BEFRIEND 253 2
+  DATA 2 0
+  HOME 8 furn:cherry_clock
   REWARD 3 273
   END 0 0
 }
@@ -1092,11 +1128,15 @@ script coop_wick_1 {
   DATA 3 T
   DATA 3 T
   DATA 4 @9
-  DATA 4 @11
+  DATA 4 @13
   DATA 4 65535
   END 0 0
+  BEFRIEND 253 2
+  DATA 2 36
   REWARD 3 261
   END 0 0
+  BEFRIEND 253 2
+  DATA 2 36
   REWARD 3 261
   END 0 0
 }
@@ -1107,11 +1147,15 @@ script coop_wick_2 {
   DATA 3 T
   DATA 3 T
   DATA 4 @9
-  DATA 4 @11
+  DATA 4 @13
   DATA 4 65535
   END 0 0
+  BEFRIEND 253 2
+  DATA 2 709
   REWARD 3 266
   END 0 0
+  BEFRIEND 253 2
+  DATA 2 709
   REWARD 3 266
   END 0 0
 }
@@ -1122,11 +1166,15 @@ script coop_wick_3 {
   DATA 3 T
   DATA 3 T
   DATA 4 @9
-  DATA 4 @11
+  DATA 4 @13
   DATA 4 65535
   END 0 0
+  BEFRIEND 253 2
+  DATA 2 111
   REWARD 3 257
   END 0 0
+  BEFRIEND 253 2
+  DATA 2 111
   REWARD 3 257
   END 0 0
 }
@@ -1137,11 +1185,17 @@ script coop_wick_4 {
   DATA 3 T
   DATA 3 T
   DATA 4 @9
-  DATA 4 @11
+  DATA 4 @14
   DATA 4 65535
   END 0 0
+  BEFRIEND 253 2
+  DATA 2 77
+  HOME 8 furn:honey_lamp
   REWARD 3 273
   END 0 0
+  BEFRIEND 253 2
+  DATA 2 77
+  HOME 8 furn:honey_lamp
   REWARD 3 273
   END 0 0
 }

@@ -1259,7 +1259,7 @@ static void bc_build(FpBCache *bc, const FpLocDraw *locs, int n, uint32_t key)
 static void draw_walkers(void)
 {
     int i, t = g_t, n = 14;
-    int pop = town_count(-1);
+    int pop = fp_island_pop();
     if (pop <= 0) return;
     if (pop < 40) n = 3 + pop / 6;
     for (i = 0; i < n; i++) {

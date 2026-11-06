@@ -12,6 +12,7 @@
 #include "doomo/ui.h"
 #include "doomo/input.h"
 #include "story_int.h"
+#include "sim_int.h"
 #include "overworld_int.h"
 
 #define NEAR_R (48 * OWQ)                 /* "a few steps" */

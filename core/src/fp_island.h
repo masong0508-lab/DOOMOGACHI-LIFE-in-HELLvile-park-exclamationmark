@@ -60,4 +60,6 @@ void fp_island_draw_map(const FpLocDraw *locs, int n, int sel);
  * parts wholly inside it are not drawn. */
 void fp_island_occluder(int x, int y, int w, int h);
 
+int fp_island_pop(void);     /* town_count(-1), counted once per frame (perf) */
+
 #endif
