@@ -9,6 +9,7 @@
 #include "doomo/life_events.h"
 #include "doomo/save.h"
 #include "doomo/playas.h"
+#include "doomo/profiles.h"
 #include "doomo/save_ext.h"
 #include "doomo/save_budget.h"
 #include "doomo/story.h"
@@ -546,6 +547,93 @@ TEST(pa10_scene_opens_on_the_new_life_list_from_the_title)
     CHECK(scene_top() == &SCENE_PLAYAS);
     CHECK(playas_can_be(b));
     scene_pop();
+}
+
+/* ---- PA10 part 4: the profile picker (SCENE_PLAYAS, PLAYAS_ARG_PROFILES) ------------------- */
+static void pf_tap(int b)
+{
+    plat_begin_frame(); doomo_frame(b); plat_end_frame();
+    plat_begin_frame(); doomo_frame(0); plat_end_frame();
+}
+
+static int first_alive(void)
+{
+    int id;
+    for (id = 0; id < DOOMO_PLAYER_ID; id++) if (playas_can_be(id)) return id;
+    return -1;
+}
+
+TEST(pa10_picker_adds_switches_and_removes_a_player)
+{
+    int v;
+    fresh();
+    cleared();
+    v = first_alive();
+    CHECK(v >= 0);
+    scene_set(&SCENE_UI_GALLERY, 0);
+    scene_push(&SCENE_PLAYAS, PLAYAS_ARG_PROFILES);
+    pf_tap(0);
+    CHECK(scene_top() == &SCENE_PLAYAS);
+    CHECK_EQ(prof_count(), 1);
+    pf_tap(BTN_DOWN);                                   /* the "Add a player..." row */
+    pf_tap(BTN_A);                                      /* the villager list */
+    pf_tap(BTN_A);                                      /* first villager: "joins as a player?" */
+    pf_tap(BTN_UP);                                     /* No -> Yes */
+    pf_tap(BTN_A);
+    CHECK_EQ(prof_guest_count(), 1);
+    CHECK_EQ(prof_resident(1), v);
+    CHECK(prof_name(1)[0] != 0);
+    CHECK(scene_top() == &SCENE_PLAYAS);                /* back on the players list, on the new player */
+    pf_tap(BTN_A);                                      /* play as them */
+    CHECK_EQ(playas_avatar(), v);
+    CHECK_EQ(prof_active(), 1);
+    CHECK(scene_top() == &SCENE_UI_GALLERY);
+    scene_push(&SCENE_PLAYAS, PLAYAS_ARG_PROFILES);
+    pf_tap(0);
+    pf_tap(BTN_DOWN);                                   /* row 1 */
+    pf_tap(BTN_SELECT);                                 /* "moves out?" */
+    pf_tap(BTN_UP);
+    pf_tap(BTN_A);
+    CHECK_EQ(prof_guest_count(), 0);
+    CHECK(playas_is_hero());                            /* the one who moved out was played: back to the hero */
+    CHECK(scene_top() == &SCENE_PLAYAS);
+    scene_pop();
+}
+
+TEST(pa10_picker_is_locked_until_the_story_and_never_removes_the_hero)
+{
+    fresh();
+    doomo_town.mode = TOWN_STORY;                       /* a story still being played */
+    doomo_town.story.chapter = 1;
+    CHECK(!playas_available());
+    scene_set(&SCENE_UI_GALLERY, 0);
+    scene_push(&SCENE_PLAYAS, PLAYAS_ARG_PROFILES);
+    pf_tap(0);
+    pf_tap(BTN_SELECT); pf_tap(BTN_A);                  /* nothing to do in the plain switcher */
+    CHECK_EQ(prof_guest_count(), 0);
+    scene_pop();
+    cleared();
+    scene_push(&SCENE_PLAYAS, PLAYAS_ARG_PROFILES);
+    pf_tap(0);
+    pf_tap(BTN_SELECT);                                 /* SELECT on the hero's row asks nothing */
+    CHECK(scene_top() == &SCENE_PLAYAS);
+    CHECK_EQ(prof_count(), 1);
+    scene_pop();
+}
+
+TEST(pa10_the_switcher_has_a_players_row_and_b_steps_back_to_it)
+{
+    fresh();
+    cleared();
+    scene_set(&SCENE_UI_GALLERY, 0);
+    scene_push(&SCENE_PLAYAS, 0);
+    pf_tap(0);
+    pf_tap(BTN_UP);                                     /* wraps to the last row: Players... */
+    pf_tap(BTN_A);
+    pf_tap(BTN_B);                                      /* the players list -> the switcher */
+    CHECK(scene_top() == &SCENE_PLAYAS);
+    pf_tap(BTN_B);                                      /* the switcher -> out */
+    CHECK(scene_top() == &SCENE_UI_GALLERY);
 }
 
 /* ---- PA10 part 1: the play-as stress save ----------------------------------------------------

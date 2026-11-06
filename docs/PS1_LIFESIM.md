@@ -52,6 +52,7 @@ after a real PS1 run, not before.
 | House (H3 `room.c`) | Native only | Documented as built and measured (docs/PS1.md section 7, `harness/scripts/home.txt`); ROADMAP reconciled 2026-11-02; not re-run since LS1 |
 | Play-as pockets (PA10 part 2): money, bag, health per avatar; `PLAY` chunk up to 800 B | Native only (`test_playas.c`) | Written: about +0.7 KB `.bss`, not linked or run; no PS1 script switches avatars |
 | New life from the title / a fresh world (PA10 part 3) | Native only (3 scripts, 3 tests) | Written: not linked or run; the title choice dialog has up to 5 rows (check the 320x240 fit on the disc) |
+| Profile picker (PA10 part 4): "Players..." list in the Play as scene | Native only (`test_playas.c`, 3 tests) | Written: not linked or run; list rows reuse the 320x240 / 240x160 switcher layout |
 | Mature disc variant (E9), language tables on disc (L6) | Missing | later waves |
 
 ## 4. Suggested PS1-first order

@@ -7,13 +7,18 @@
 #include "doomo/doomo.h"
 #include "doomo/family.h"
 #include "doomo/playas.h"
+#include "doomo/profiles.h"
 #include "doomo/ui.h"
 #include "doomo/audio.h"
 #include "doomo/input.h"
 #include "doomo/platform.h"
 
-static struct { int16_t sel, top, count; uint8_t nl, direct; int16_t rows; } S;   /* nl: picking who the New life starts as; direct: opened on that list (the title) */
+/* nl: picking who the New life starts as; direct: opened on that list (the title);
+ * pf: 0 the switcher, 1 the players list (MP0 profiles), 2 picking the villager a new player is;
+ * pick: that villager while the confirm is up */
+static struct { int16_t sel, top, count; uint8_t nl, direct, pf; int16_t rows, pick; } S;
 static char nl_q[48];
+enum { RK_ID, RK_NEWLIFE, RK_PLAYERS };
 
 static int in_recent(int id)
 {
@@ -57,18 +62,46 @@ static const char *kind_of(int id)
 
 static int vis(void) { return plat_screen_h() >= 200 ? 7 : 5; }
 
+/* PA10 part 4: the villagers a new player can be (alive, not the hero, not already a player) */
+static int pick_id(int want, int *count)
+{
+    int n = 0, id;
+    for (id = 0; id < DOOMO_PLAYER_ID; id++) {
+        const DoomoResident *r = town_res(id);
+        if (!r || r->status != RES_ALIVE || !playas_can_be(id) || prof_find_resident(id) >= 0) continue;
+        if (n == want) return id;
+        n++;
+    }
+    if (count) *count = n;
+    return -1;
+}
+
+static int can_add(void) { return prof_guest_count() < PROF_GUESTS && playas_available(); }
+
+static int has_players_row(void) { return !S.nl && playas_available(); }
+
+/* what row `sel` is in the switcher */
+static int row_kind(int sel)
+{
+    if (sel < S.count) return RK_ID;
+    return (sel == S.count && !S.nl && playas_new_life_ok()) ? RK_NEWLIFE : RK_PLAYERS;
+}
+
 static void recount(void)
 {
     int c = 0;
+    if (S.pf == 1) { S.count = (int16_t)prof_count(); S.rows = (int16_t)(S.count + (can_add() ? 1 : 0)); return; }
+    if (S.pf == 2) { pick_id(-1, &c); S.count = S.rows = (int16_t)c; return; }
     nth_id(-1, &c);
     S.count = (int16_t)c;
-    S.rows = (int16_t)(c + (!S.nl && playas_new_life_ok() ? 1 : 0));
+    S.rows = (int16_t)(c + (!S.nl && playas_new_life_ok() ? 1 : 0) + (has_players_row() ? 1 : 0));
 }
 
 static void ps_enter(int arg)
 {
     memset(&S, 0, sizeof S);
     if (arg == PLAYAS_ARG_PICK_NEWLIFE && playas_new_life_ok()) S.nl = S.direct = 1;
+    if (arg == PLAYAS_ARG_PROFILES && playas_available()) S.pf = S.direct = 1;
     recount();
 }
 
@@ -95,9 +128,75 @@ static void nl_start(int yes)
     recount();
 }
 
+static void pf_join(int yes)
+{
+    char nm[DOOMO_NAME_LEN], msg[40];
+    int r;
+    if (!yes) return;
+    r = prof_guest_add(name_of(S.pick, nm), S.pick, -1);
+    if (r > 0) {
+        doomo_snprintf(msg, sizeof msg, "%s joined!", nm);
+        ui_toast(msg);
+        S.pf = 1; recount(); S.sel = (int16_t)r; S.top = 0;
+    } else {
+        ui_toast(r == PROF_ERR_FULL ? "The island has its players." : "They can't join right now.");
+        S.pf = 1; recount();
+    }
+}
+
+static void pf_leave(int yes)
+{
+    if (!yes) return;
+    if (prof_guest_remove(S.sel) == 1) ui_toast("Moved out.");
+    recount();
+    if (S.sel >= S.rows) S.sel = (int16_t)(S.rows > 0 ? S.rows - 1 : 0);
+}
+
+/* the players list and the villager pick; 1 when it handled the frame */
+static int pf_update(void)
+{
+    int n = S.rows;
+    if (btn_pressed(BTN_B)) {
+        audio_sfx(SFX_CANCEL);
+        if (S.pf == 2) { S.pf = 1; S.sel = S.top = 0; recount(); }
+        else if (S.direct) scene_pop();
+        else { S.pf = 0; S.sel = S.top = 0; recount(); }
+        return 1;
+    }
+    if (n <= 0) return 1;
+    if (btn_repeat(BTN_UP)) { S.sel = (S.sel + n - 1) % n; audio_sfx(SFX_CURSOR); }
+    if (btn_repeat(BTN_DOWN)) { S.sel = (S.sel + 1) % n; audio_sfx(SFX_CURSOR); }
+    if (S.sel < S.top) S.top = S.sel;
+    if (S.sel >= S.top + vis()) S.top = S.sel - vis() + 1;
+    if (S.pf == 1 && btn_pressed(BTN_SELECT) && S.sel >= 1 && S.sel < S.count) {
+        audio_sfx(SFX_SELECT);
+        doomo_snprintf(nl_q, sizeof nl_q, "%s moves out?", prof_name(S.sel));
+        ui_confirm(nl_q, pf_leave);
+        return 1;
+    }
+    if (btn_pressed(BTN_A)) {
+        audio_sfx(SFX_SELECT);
+        if (S.pf == 2) {
+            char nm[DOOMO_NAME_LEN];
+            S.pick = (int16_t)pick_id(S.sel, NULL);
+            if (S.pick < 0) { recount(); return 1; }
+            doomo_snprintf(nl_q, sizeof nl_q, "%s joins as a player?", name_of(S.pick, nm));
+            ui_confirm(nl_q, pf_join);
+        } else if (S.sel >= S.count) {
+            S.pf = 2; S.sel = S.top = 0; recount();
+            if (S.rows <= 0) { ui_toast("Nobody free to join."); S.pf = 1; recount(); }
+        } else if (prof_switch(S.sel)) {
+            ui_toast(STR_ICON_STAR " Now playing!");
+            scene_pop();
+        } else ui_toast("Not right now.");
+    }
+    return 1;
+}
+
 static void ps_update(void)
 {
     int n;
+    if (S.pf) { pf_update(); return; }
     if (btn_pressed(BTN_B)) {
         audio_sfx(SFX_CANCEL);
         if (S.nl && !S.direct) { S.nl = 0; S.sel = S.top = 0; recount(); } else scene_pop();
@@ -112,9 +211,12 @@ static void ps_update(void)
     if (S.sel < S.top) S.top = S.sel;
     if (S.sel >= S.top + vis()) S.top = S.sel - vis() + 1;
     if (btn_pressed(BTN_A)) {
-        int id = S.sel < S.count ? nth_id(S.sel, NULL) : -1;
+        int rk = row_kind(S.sel);
+        int id = rk == RK_ID ? nth_id(S.sel, NULL) : -1;
         audio_sfx(SFX_SELECT);
-        if (S.sel >= S.count) {                  /* PA6: the "Start a new life" row */
+        if (rk == RK_PLAYERS) {                  /* PA10 part 4: the players list */
+            S.pf = 1; S.sel = S.top = 0; recount();
+        } else if (rk == RK_NEWLIFE) {           /* PA6: the "Start a new life" row */
             ui_confirm("Start a new life? The story stays finished. You pick a villager to be.", nl_start);
         } else if (S.nl && id >= 0) {
             char nm[DOOMO_NAME_LEN];
@@ -134,19 +236,49 @@ static void ps_draw(void)
     char nm[DOOMO_NAME_LEN];
     ui_backdrop(WIN_CUTE, (uint32_t)doomo_frame_count());
     ui_window(4, 3, sw - 8, 24, WIN_CUTE);
-    ui_text_center(sw / 2, 9, S.nl ? "New life: who are you?" : "Play as...", st->text);
+    ui_text_center(sw / 2, 9, S.pf == 2 ? "Who joins?" : S.pf ? "Players" : S.nl ? "New life: who are you?" : "Play as...", st->text);
     ui_window(6, y0 - 2, w + 4, vis() * rh + 4, WIN_CUTE);
     if (S.rows <= 0) {
         ui_text_center(sw / 2, y0 + 16, playas_available() ? "Nobody else right now." :
                        "Unlocks after the story.", st->text_dim);
         return;
     }
+    if (S.pf) {
+        for (i = 0; i < vis() && S.top + i < S.rows; i++) {
+            int row = S.top + i, y = y0 + i * rh, id;
+            if (row == S.sel) ui_cursor(10, y + 4);
+            if (S.pf == 2) {
+                id = pick_id(row, NULL);
+                if (id < 0) break;
+                ui_text(24, y, name_of(id, nm), st->text);
+                ui_text(24, y + 9, "Neighbour", st->text_dim);
+            } else if (row >= S.count) {
+                ui_text(24, y, "Add a player...", st->text);
+                ui_text(24, y + 9, "Someone else plays a villager", st->text_dim);
+            } else {
+                char sub[40];
+                id = prof_resident(row);
+                ui_text(24, y, prof_name(row), st->text);
+                if (row == 0) doomo_snprintf(sub, sizeof sub, "The hero%s", prof_active() == 0 ? " - playing" : "");
+                else doomo_snprintf(sub, sizeof sub, "Plays %s%s", name_of(id, nm), prof_active() == row ? " - playing" : "");
+                ui_text(24, y + 9, sub, st->text_dim);
+            }
+        }
+        if (S.rows > vis()) ui_scroll_arrows(sw - 10, y0 - 6, y0 + vis() * rh - 2, S.top > 0, S.top + vis() < S.rows);
+        if (plat_screen_h() >= 200 && S.pf == 1) ui_text_center(sw / 2, y0 + vis() * rh + 8, "A play   SELECT move out   B back", st->text_dim);
+        return;
+    }
     for (i = 0; i < vis() && S.top + i < S.rows; i++) {
         int id = S.top + i < S.count ? nth_id(S.top + i, NULL) : -1, y = y0 + i * rh;
         if (S.top + i == S.sel) ui_cursor(10, y + 4);
         if (S.top + i >= S.count) {
-            ui_text(24, y, "Start a new life...", st->text);
-            ui_text(24, y + 9, "Begin again as a villager", st->text_dim);
+            if (row_kind(S.top + i) == RK_PLAYERS) {
+                ui_text(24, y, "Players...", st->text);
+                ui_text(24, y + 9, "Share the island", st->text_dim);
+            } else {
+                ui_text(24, y, "Start a new life...", st->text);
+                ui_text(24, y + 9, "Begin again as a villager", st->text_dim);
+            }
             continue;
         }
         if (id < 0) break;

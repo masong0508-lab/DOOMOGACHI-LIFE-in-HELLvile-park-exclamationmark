@@ -314,3 +314,18 @@ avatar's. A switch saves the outgoing avatar's three things into a pocket and lo
   `pa10_new_island_villager` (runner command `story-done` makes the town a finished story; `save 0` stores it).
 * **Not built**: a hint for the L / R toggle on the small (240x160) layout beyond its toast and star, a look for the new
   life's first day beyond the narrator line, GBA/PS1 builds (not run here).
+
+## 11. PA10 part 4: the profile picker (`core/src/playas_scene.c`, 5 Nov 2026)
+
+MP0's profiles (`profiles.c`) had no screen. `SCENE_PLAYAS` now has a players mode (no new scene, so the scene tables are untouched).
+
+* **Open it**: the switcher gets a last row "Players..." (any time play-as is available), or push `SCENE_PLAYAS` with
+  `PLAYAS_ARG_PROFILES` (B then leaves; from the switcher B steps back to it).
+* **The list**: the hero (profile 0) and each guest, with "Plays <villager>" and "- playing" on the active one; A plays as them
+  (`prof_switch`). A last row "Add a player..." shows while there is room (3 guests) and play-as is available.
+* **Add**: pick a free neighbour (alive, not the hero, not already a player), confirm. The guest's name is the villager's name
+  (no text entry yet). SELECT on a guest row asks "moves out?"; the hero cannot be removed. Removing the active guest plays back as the hero.
+* **Tests** (`test_playas.c`): `pa10_picker_adds_switches_and_removes_a_player`, `pa10_picker_is_locked_until_the_story_and_never_removes_the_hero`,
+  `pa10_the_switcher_has_a_players_row_and_b_steps_back_to_it`. `make -C core test`: 851 passed.
+* **Not built**: typing a guest's own name, co-op heroes (MP1), the Free mode gates (FREE), the S-HOUSE decision, GBA/PS1 builds (not run here).
+
