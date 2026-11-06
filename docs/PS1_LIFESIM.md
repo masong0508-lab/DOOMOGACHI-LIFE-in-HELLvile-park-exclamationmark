@@ -52,7 +52,9 @@ after a real PS1 run, not before.
 | House (H3 `room.c`) | Native only | Documented as built and measured (docs/PS1.md section 7, `harness/scripts/home.txt`); ROADMAP reconciled 2026-11-02; not re-run since LS1 |
 | Play-as pockets (PA10 part 2): money, bag, health per avatar; `PLAY` chunk up to 800 B | Native only (`test_playas.c`) | Written: about +0.7 KB `.bss`, not linked or run; no PS1 script switches avatars |
 | New life from the title / a fresh world (PA10 part 3) | Native only (3 scripts, 3 tests) | Written: not linked or run; the title choice dialog has up to 5 rows (check the 320x240 fit on the disc) |
-| Profile picker (PA10 part 4): "Players..." list in the Play as scene | Native only (`test_playas.c`, 3 tests) | Written: not linked or run; list rows reuse the 320x240 / 240x160 switcher layout |
+| Profile picker (PA10 part 4): "Players..." list in the Play as scene | Native only (`test_playas.c`) | Written: not linked or run; list rows reuse the 320x240 / 240x160 switcher layout |
+| Free mode play-as gate (`playas_free_unlocked()`), typed guest names, renaming (the name box) | Native only (`test_playas.c`, `test_profiles.c`, script `fp_playas_free`) | Written: not linked or run; the name box needs a PS1 text-entry path (check the pad entry on the disc) |
+| Co-op heroes (MP1 part 1): Ember / Rook / Pip as household housemates, +~300 B `.bss` for the presets | Native only (`test_profiles.c`, `test_hero.c`) | Written: not linked or run; PS1 RAM and GBA EWRAM not re-measured |
 | Mature disc variant (E9), language tables on disc (L6) | Missing | later waves |
 
 ## 4. Suggested PS1-first order

@@ -1,6 +1,6 @@
 # DOOMOGACHI roadmap (what's left)
 
-Last updated 2026-11-01 (evening: F4 parts 1-2, F6 core, life stage forms, E6a/E6b start). The decisions behind this list (tone, PG-21 register,
+Last updated 2026-11-05 (PA10 parts 3-4, MP1 part 1; the older lines below keep their own dates). The decisions behind this list (tone, PG-21 register,
 show canon, life-sim answers, 32 MB GBA cartridge) are summarised at the end.
 Package IDs match the planning files; each package is built in its own worktree,
 reviewed, then landed on `claude/nice-allen-gr6czm`.
@@ -494,7 +494,7 @@ its old days count in the low 5 bits of its flags, and with Loss on it passes pe
 a HOUSEMATE, ADULT, who talks, can be played as (`playas_can_be`), helps, joins free will and never grows old. It is the answer to a pet's old age. An uplifted pet is never a partner (the partner gate refuses it, and a pet
 never was one). Nothing new is saved by the old age; the uplift is kept in the POOL identity's first spare byte (kind + 1; old saves read 0; `family_pool_load` accepts 0..FAMPET_COUNT there and still refuses a used second spare byte).
 The family screen: a pet's menu gets an Uplift row once unlocked ("Uplift (closer bond)" until bond 8, then confirm); rows read "Uplift ready", "Old", "Uplifted Imp-cat". `make -C core test` 839/839, story-check clean, check-gen clean.
-Not built: a look for the uplifted pet (they use the person look made from their seed), GBA/PS1 screens (not run here). Next parts of "life sim core complete": part 4 profile picker (MP0) and the Free mode gates.
+Not built: a look for the uplifted pet (they use the person look made from their seed), GBA/PS1 screens (not run here). Done since then: the profile picker, typed names, renaming, the Free mode gate and the co-op hero characters (PA10 part 4, 4b, MP1 part 1 below). What is still open is in "Left, life sim core".
 
 <!-- doomo-roadmap-status-nov05j -->
 | docs | `doomo-roadmap-status-nov05j` | `docs: status update (done, playable, left) after life sim part 1` | docs only: rewrites docs/STATUS.md |
@@ -504,4 +504,4 @@ Not built: a look for the uplifted pet (they use the person look made from their
 Full write-up: [docs/STATUS.md](docs/STATUS.md). `make -C core test` 839/839, story-check and check-gen clean; not built or run for GBA, PS1 or Dreamcast.
 **Done:** the life sim core through F5 (pets grow old, the uplift), F6-F10, LS3/LS4, tiers and NG+, play-as and New life, MP0 core, endings and routes; settings, title flow, content packs, script Ch1-4.
 **Playable on the core:** Free Play, creator, life sim and family (now with pet old age and the uplift), Hell Breach, the 4-chapter story + epilogue, house, minigames.
-**Left, life sim core:** part 4 profile picker + Free mode gates + MP1; then the console runs, Dreamcast, GBA speed, mature art, customization P0-P6, W9-W16, L8/L10.
+**Left, life sim core (2026-11-05):** co-op hero content (story lines, quests, abilities for Ember/Rook/Pip, and their final names and looks; the ones in `hero.c` are placeholders), local simultaneous multiplayer and helping in another world (the rest of MP1), the S-HOUSE story house unlock (needs a definition from the owner), small polish (uplifted pet look, baby outfits and body shape, elder stoop, a household graveyard scene, the hand-written disaster scripts); then the console runs, Dreamcast, GBA speed, mature art, customization P0-P6, W9-W16, L8/L10.
