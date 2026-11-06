@@ -43,7 +43,10 @@ typedef struct DoomoProblem {
 
 void sim_init(void);                 /* after town_new / load            */
 void sim_tick(void);                 /* advance clock + batch of residents */
-void sim_advance_minutes(int minutes); /* fast-forward (sleeping, travel)  */
+/* fast-forward (sleeping, travel): the town is caught up hour by hour (each
+ * span with its own hour's routine), the last SIM_MAX_ELAPSED minutes at most;
+ * costs one pass over the residents per hour of the skip (13 at most). */
+void sim_advance_minutes(int minutes);
 
 /* Care actions the player performs on a resident (returns a short
  * reaction string for the UI). */

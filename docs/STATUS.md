@@ -21,7 +21,7 @@ The same lists, with the order to take the open items and what needs the owner, 
 
 ## Done (on the branch, core-tested)
 
-- **Life sim core:** family table and pool members (F1), family screen, add-member wizard, care-all (F2), house occupancy (F3), ageing, births and
+- **Life sim core:** hour-by-hour fast-forward, an edge pass that never skips an edge, best-friend / nemesis hysteresis (lifesim core 2, `core/tests/test_sim_core.c`; one 9 h skip costs about 7x the old single pass on the host, once per night's sleep, so re-measure it on the GBA); family table and pool members (F1), family screen, add-member wizard, care-all (F2), house occupancy (F3), ageing, births and
   family events (F4), pets with needs, old age and the uplift (F5, finished by patch `doomo-lifesim1-pet-uplift-nov05i`), loss, memorials and
   flowers (F6), free will, bonds and moods (F7/F8), helpers and away trips (F9), disasters and story danger hooks (F10), life events (LS3/LS4),
   household tiers and New Game+ (S-HOUSE), play-as and New life (PA1-PA9), profile guests (MP0 core), endings and romance routes (E1-E4, E12).
@@ -45,7 +45,7 @@ The same lists, with the order to take the open items and what needs the owner, 
 ## Left to do
 
 **Life sim core (the open parts, in order)**
-1. Part 2: per-avatar pockets (PA10 ledgers): money, items and health are still shared when you switch who you play (the PLAY chunk has the header only).
+1. (Part 2, per-avatar pockets, is done: `docs/PLAYAS.md` section 9.)
 2. Part 3: New life from the title screen and in a fresh world (today it is the character switcher, on a finished island only).
 3. Part 4 (picker scene done 2026-11-05): typed guest names, renaming, the Free mode gate and the co-op hero characters done; still open: co-op hero content and local multiplayer (MP1), the story house unlock decision (S-HOUSE needs a definition).
 4. Smaller: pets' own look when uplifted, baby outfits, a baby body shape, elder stoop, a graveyard scene for the household (the Remembered page serves), the hand-written disaster scripts (need your tone check).

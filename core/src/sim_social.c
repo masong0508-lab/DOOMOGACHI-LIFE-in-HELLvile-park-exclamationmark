@@ -623,7 +623,9 @@ static void romance_step(DoomoEdge *e, int a, int b, DoomoResident *ra, DoomoRes
     }
 }
 
-static void visit_edge(int index)
+/* Returns 1 when the edge at `index` was removed (the next edge slid into its
+ * place, so the caller must not step past it). */
+static int visit_edge(int index)
 {
     DoomoEdge *e = &doomo_town.edges[index];
     int a = e->a, b = e->b, k = e->kind & REL_KIND_MASK, same, night;
@@ -636,11 +638,11 @@ static void visit_edge(int index)
     }
     if (e->kind & REL_CRUSH_AB) bit_set(sim_s.crush_nx, a, 1);
     if (e->kind & REL_CRUSH_BA) bit_set(sim_s.crush_nx, b, 1);
-    if (a >= DOOMO_MAX_RESIDENTS || b >= DOOMO_MAX_RESIDENTS) return;   /* the player */
+    if (a >= DOOMO_MAX_RESIDENTS || b >= DOOMO_MAX_RESIDENTS) return 0;   /* the player */
     ra = &doomo_town.res[a];
     rb = &doomo_town.res[b];
-    if (ra->status == RES_EMPTY || rb->status == RES_EMPTY) return;
-    if (ra->status == RES_DEAD || rb->status == RES_DEAD) return;
+    if (ra->status == RES_EMPTY || rb->status == RES_EMPTY) return 0;
+    if (ra->status == RES_DEAD || rb->status == RES_DEAD) return 0;
     night = sim_s.night;
 
     /* the possessed haunt the people closest to them */
@@ -665,7 +667,7 @@ static void visit_edge(int index)
         sim_corrupt_natural(a, 1);
         sim_corrupt_natural(b, 1);
     }
-    if (!sim_alive_ok(ra) || !sim_alive_ok(rb)) return;
+    if (!sim_alive_ok(ra) || !sim_alive_ok(rb)) return 0;
 
     same = ra->activity == rb->activity && sim_is_venue(ra->activity);
     if (same) {
@@ -693,7 +695,7 @@ static void visit_edge(int index)
                 else
                     sim_news_rec(NT_RIVALS, ra->activity, NEWS_IDS(a, b, NEWS_NONE));
             }
-            return;
+            return 0;
         }
         {
             int before = k, d = 1 + (c > 0 ? c / 2 : 0) + (RES_LIKE_HOBBY(ra) == RES_LIKE_HOBBY(rb));
@@ -719,7 +721,7 @@ static void visit_edge(int index)
                 /* forgotten: make room for new faces */
                 sim_edge_remove(index);
                 sim_s.stats.forgotten++;
-                return;
+                return 1;
             }
         } else if ((k == REL_FRIEND || k == REL_BEST_FRIEND) && sim_chance(3))
             rel_adjust(a, b, -1);
@@ -731,6 +733,7 @@ static void visit_edge(int index)
     }
     if (ra->status == RES_ALIVE && rb->status == RES_ALIVE)
         romance_step(&doomo_town.edges[index], a, b, ra, rb);
+    return 0;
 }
 
 void sim_edges_step(int max_visits)
@@ -747,8 +750,7 @@ void sim_edges_step(int max_visits)
             memset(sim_s.crush_nx, 0, sizeof(sim_s.crush_nx));
             sim_s.edge_cursor = 0;
         }
-        visit_edge(sim_s.edge_cursor);
-        sim_s.edge_cursor++;
+        if (!visit_edge(sim_s.edge_cursor)) sim_s.edge_cursor++;   /* a removed edge: the next one is now here */
         sim_s.edge_credit -= 60;
         n++;
     }

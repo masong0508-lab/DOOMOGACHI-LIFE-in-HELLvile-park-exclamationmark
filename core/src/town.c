@@ -267,6 +267,11 @@ void rel_adjust(int a, int b, int delta)
     /* a little hysteresis: friends stay friends until they drop below 15 */
     if (k == REL_FRIEND && nk == REL_ACQUAINTANCE && v >= 15) nk = REL_FRIEND;
     if (k == REL_RIVAL && nk == REL_ACQUAINTANCE && v <= -15) nk = REL_RIVAL;
+    /* ... and the two extremes hold too (best friends until below 60, nemeses
+     * until above -60), so a bond hovering at 70 or -70 does not flip back and
+     * forth and post its headline again each time it crosses */
+    if (k == REL_BEST_FRIEND && nk == REL_FRIEND && v >= 60) nk = REL_BEST_FRIEND;
+    if (k == REL_NEMESIS && nk == REL_RIVAL && v <= -60) nk = REL_NEMESIS;
     if (nk != k) {
         int ea = e->a, eb = e->b;
         e->kind = (uint8_t)((e->kind & ~REL_KIND_MASK) | nk);

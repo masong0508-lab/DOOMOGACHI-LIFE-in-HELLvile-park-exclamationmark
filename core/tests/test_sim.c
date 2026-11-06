@@ -541,7 +541,10 @@ static uint32_t news_stream(uint32_t h, uint32_t seed, int pop, int days, uint32
 /* The records print exactly what the old 64 B strings held: the stream of
  * three seeded 3-day runs (two premade islands, one random) hashes to the
  * value measured on the tree before LS1 (16,859 bytes of headlines). A
- * deliberate text change updates the constant. */
+ * deliberate text change updates the constant. Re-measured when the edge pass
+ * stopped stepping over an edge it had just dropped and best friends / nemeses
+ * gained hysteresis (the seeded run takes a different, equally valid path: 16,575
+ * bytes). */
 TEST(sim_news_records_print_the_old_headlines)
 {
     uint32_t h = 2166136261u, bytes = 0;
@@ -549,8 +552,8 @@ TEST(sim_news_records_print_the_old_headlines)
     h = news_stream(h, 7, TOWN_POP_PREMADE, 3, &bytes);
     h = news_stream(h, 9, TOWN_POP_RANDOM, 3, &bytes);
     printf("    news stream: %u bytes, hash %08x\n", (unsigned)bytes, (unsigned)h);
-    CHECK_EQ_U(bytes, 16859u);
-    CHECK_EQ_U(h, 0xd284fa6eu);
+    CHECK_EQ_U(bytes, 16575u);
+    CHECK_EQ_U(h, 0x33801c5eu);
 }
 
 TEST(sim_news_records_and_free_lines)

@@ -629,7 +629,10 @@ int sim_mood_of(int id)
 
 /* ---------------------------------------------------------------------- */
 /* one resident                                                             */
-static void update_resident(int id)
+/* force_decide: a fast-forward chunk stands on the last minute of the hour the
+ * elapsed span belongs to, so the routine is chosen again even though the clock
+ * has not crossed an hour boundary since the last update. */
+static void update_resident_ex(int id, int force_decide)
 {
     DoomoResident *r = &doomo_town.res[id];
     uint16_t now16;
@@ -643,7 +646,7 @@ static void update_resident(int id)
     sim_s.stamp[id] = now16;
 
     /* routines change on the hour (or when a need gets urgent) */
-    if (doomo_town.minute / 60 != ((doomo_town.minute + 1440 - el) % 1440) / 60 || el >= 60 ||
+    if (force_decide || doomo_town.minute / 60 != ((doomo_town.minute + 1440 - el) % 1440) / 60 || el >= 60 ||
         r->stat[STAT_HEALTH] < 25 || r->stat[STAT_HUNGER] < 28 || r->stat[STAT_ENERGY] < 12 ||
         r->status != RES_ALIVE) {
         act = decide_activity(id, r);
@@ -657,6 +660,8 @@ static void update_resident(int id)
     sim_check_problems(id, r);
     sim_mood_of(id);
 }
+
+static void update_resident(int id) { update_resident_ex(id, 0); }
 
 /* ---------------------------------------------------------------------- */
 /* the clock                                                                */
@@ -797,17 +802,36 @@ void sim_tick(void)
     if (sim_s.ops > sim_s.max_ops) sim_s.max_ops = sim_s.ops;
 }
 
+/* Fast-forward (sleeping, travel). Residents are caught up hour by hour, not
+ * once at the end: each span is lived with the routine, the night flag and the
+ * breakfast / shower hours of the hour it belongs to. (One catch-up used the
+ * activity of the LAST minute for the whole span: eight hours of sleep gave
+ * about half the rest, and the breakfast bonus was paid for every one of the
+ * eight hours.) A span is closed on the last minute of an hour (:59), where the
+ * clock still reads that hour. Needs never look back further than
+ * SIM_MAX_ELAPSED, so days before that window pass on the clock alone. Cost:
+ * one pass over the town per hour of the window (at most 13), once per call. */
 void sim_advance_minutes(int minutes)
 {
-    int i, passes;
+    int i, passes, window, left, chunk;
     sim_ensure_init();
     if (minutes <= 0) return;
-    for (i = 0; i < minutes; i++) minute_step();
-    /* catch everyone up once, and give the graph a proportional share of
-     * attention (at most one full pass) */
+    window = minutes < SIM_MAX_ELAPSED ? minutes : SIM_MAX_ELAPSED;
+    for (i = minutes - window; i > 0; i--) minute_step();
+    if (minutes > window) {
+        uint16_t now16 = (uint16_t)sim_now();
+        for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) sim_s.stamp[i] = now16;
+    }
     sim_s.new_edges = 0;
-    sim_s.job_budget = 32;
-    for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) update_resident(i);
+    for (left = window; left > 0; left -= chunk) {
+        int to59 = 59 - doomo_town.minute % 60;
+        chunk = to59 > 0 ? to59 : 60;
+        if (chunk > left) chunk = left;
+        for (i = 0; i < chunk; i++) minute_step();
+        sim_s.job_budget = 32;
+        for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) update_resident_ex(i, 1);
+    }
+    /* give the graph a proportional share of attention (at most one full pass) */
     passes = (int)(sim_s.edge_credit / 60u);
     if (passes > doomo_town.edge_count) passes = doomo_town.edge_count;
     for (i = 0; i < passes; i += SIM_EDGE_BATCH) {
