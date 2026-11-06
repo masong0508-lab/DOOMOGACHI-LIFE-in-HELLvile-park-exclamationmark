@@ -161,6 +161,24 @@ Measured on the libmgba harness, `make -C gba test-speed SPEED_GATES=0`, same sc
 passes. EWRAM free: 26,336 -> 24,240 B (-2,096). The invaded map is still 4.5 ms above the 50 ms a 20 fps frame needs on
 average, and the worst frames (75 ms) are far above it, so the next steps are `ow_sprite` setup and the spike frames.
 
+## V4b, landed (2026-11-06), NOT yet measured: cheaper `ow_sprite` setup
+
+Source-only change in `gba/src/ow.iwram.c`, `ow_int.h`, `ow_loops.s` (no GBA toolchain was available when it was written, so it is
+unbuilt and unmeasured; the first thing to do is the check below):
+- `inv` is 65537 when the scale is 1 (nearly every sprite): no software divide.
+- the 16-entry `q[][]` fill is one flat loop (`qq[k] = lc[cls[k ^ (xa & 2)]]`, xa is even).
+- mirrored, unscaled, opaque sprites (`s == 1 && flip && !trans`) skip the per-column gather (~15 cycles a pixel) and copy each row
+  backwards with the new ARM routine `ow_flip_row` (four texels a word read); the edge columns it reads outside the image are the
+  ones `head` / `tail` already mask off.
+- `ow_spr_rows` is a plain `bl` (IWRAM to IWRAM), `ow_shade` is built `Os`.
+
+Check before the next step (exact step: the invaded `vhash-seq` frames must be identical to V4a):
+
+    make -C gba test-ow && make -C gba test-speed SPEED_GATES=0 && python3 gba/tools/speedtable.py --parity
+
+If parity fails, the likeliest cause is `ow_flip_row`'s edge columns (head / tail masks), then the `q[]` fill. Paste the invaded
+work avg / drawn fps here, then go on to the spike frames (log `lc.builds` and body-frame renders per frame) and V5.
+
 ## Steps
 
 - **V0** this document, the baseline, `profile-invaded` and its script. (done)
@@ -180,7 +198,7 @@ average, and the worst frames (75 ms) are far above it, so the next steps are `o
   walking citizen one tick early, in `ownpc_add_billboards`, so the miss lands on
   a lighter frame. Exact; < 1 ms on average, helps only the worst frame.
 - **V3** (dropped: `ow_sprite` already rejects hidden billboards).
-- **V4a** (done, see above) the sprite tables kept across frames. **V4** sprite pixels: only if V1 says sprites are still > 20 ms. The tinted
+- **V4a** (done, see above) the sprite tables kept across frames. **V4b** (landed, unmeasured, see above) cheaper `ow_sprite` setup + mirrored rows. **V4** sprite pixels: only if V1 says sprites are still > 20 ms. The tinted
   path is already one table lookup per pixel and the ARM row loop covers ~95% of
   the pixels, so the remaining gains are small (a cheaper LUT build for the four
   colormaps, ~1 ms) unless V1 surprises us.
