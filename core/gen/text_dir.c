@@ -64,6 +64,7 @@ extern const uint32_t doomo_text_pack_sb_tock[];
 extern const uint32_t doomo_text_pack_sb_vex[];
 extern const uint32_t doomo_text_pack_sb_wisp[];
 extern const uint32_t doomo_text_pack_vmtest[];
+extern const uint32_t doomo_text_pack_zc_embr[];
 extern const uint32_t doomo_text_es_ch1[];
 extern const uint32_t doomo_text_es_ch2[];
 extern const uint32_t doomo_text_es_d1[];
@@ -124,7 +125,7 @@ extern const uint32_t doomo_text_es_sb_vex[];
 extern const uint32_t doomo_text_es_sb_wisp[];
 extern const uint32_t doomo_text_es_vmtest[];
 
-static const uint32_t *const packs[59] = {
+static const uint32_t *const packs[60] = {
     doomo_text_pack_ch1,
     doomo_text_pack_ch2,
     doomo_text_pack_d1,
@@ -184,10 +185,11 @@ static const uint32_t *const packs[59] = {
     doomo_text_pack_sb_vex,
     doomo_text_pack_sb_wisp,
     doomo_text_pack_vmtest,
+    doomo_text_pack_zc_embr,
 };
 
 /* Spanish packs (core/lang/story): same ids, same ops, other strings */
-static const uint32_t *const es_packs[59] = {
+static const uint32_t *const es_packs[60] = {
     doomo_text_es_ch1,
     doomo_text_es_ch2,
     doomo_text_es_d1,
@@ -247,11 +249,12 @@ static const uint32_t *const es_packs[59] = {
     doomo_text_es_sb_vex,
     doomo_text_es_sb_wisp,
     doomo_text_es_vmtest,
+    0,
 };
 
 const uint8_t *txt_plat_pack(int pack)
 {
-    if (pack < 0 || pack >= 59) return 0;
+    if (pack < 0 || pack >= 60) return 0;
     if (es_packs[pack] && lang_get() == LANG_ES) return (const uint8_t *)es_packs[pack];
     return (const uint8_t *)packs[pack];
 }

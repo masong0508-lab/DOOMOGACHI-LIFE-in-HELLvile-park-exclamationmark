@@ -944,6 +944,7 @@ pack sb_tock = kind=side chapter=0 minutes=105
 pack sb_vex = kind=side chapter=0 minutes=80
 pack sb_wisp = kind=side chapter=0 minutes=115
 pack vmtest = kind=episode chapter=0 minutes=0
+pack zc_embr = kind=episode chapter=0 minutes=0
 possessor 0 = clue=T*4 host=steamy name=TALLYWORN name_res=712 offer=T*4 row=0 skin=EXS_STANDARD
 possessor 1 = clue=T*4 flags=EXF_SCRIPTED_FAIL|EXF_FIXED_ODDS host=sprinklepop name=WHEEZLE name_res=707 offer=T*4 row=1 skin=EXS_STANDARD
 script c1_grave {
@@ -956,6 +957,25 @@ script c1_grave {
   END 0 0
 }
 script c1_grave_again {
+  END 0 0
+}
+script coop_ember_1 {
+  WAIT 8 0
+  HOLD 8 0
+  CHOICE 3 T
+  DATA 2 65533
+  DATA 3 T
+  DATA 3 T
+  DATA 3 T
+  DATA 4 @11
+  DATA 4 @14
+  DATA 4 65535
+  END 0 0
+  WAIT 13 0
+  WAIT 5 0
+  END 0 0
+  WAIT 8 0
+  WAIT 13 0
   END 0 0
 }
 script d1_dream {
@@ -10452,3 +10472,4 @@ strings sb_tock = -
 strings sb_vex = S140_NEWS
 strings sb_wisp = S166_A S166_Q S168_NEWS
 strings vmtest = VMT_CAP_A VMT_CAP_B VMT_HELLO VMT_PAGES
+strings zc_embr = -

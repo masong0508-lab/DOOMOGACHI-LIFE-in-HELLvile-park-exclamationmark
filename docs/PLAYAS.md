@@ -367,3 +367,10 @@ MP0's profiles (`profiles.c`) had no screen. `SCENE_PLAYAS` now has a players mo
 * **Rules**: side arcs only (no story flags), adults, small stat deltas.
 * **Test**: `hero_coop_heroes_have_final_names_looks_quests_and_abilities`.
 * **Not built**: the quest scenes, the abilities in play, local simultaneous multiplayer, helping in another world, GBA/PS1 builds.
+
+### MP1 part 3: Ember's Ch1 quest scene (2026-11-05)
+
+* `core/data/story/coop/ember.dsc`: pack `zc_embr`, script `coop_ember_1` "Wrong Side of the Mat" (two routes + decline). Speaker `target` = the co-op housemate. No story flag set.
+* Pack ids sort by name, so adding the pack regenerated `core/gen/` (120 files) and `flow.lock` (new pack, script, strings).
+* **Test**: `coop_ember_quest_plays_both_routes_and_leaves_the_plot_alone`. `make -C core test`: unit 859, scripts 160 OK, check-gen and story-check clean.
+* **Not built**: the trigger, the saved done bit, the reward, the other 11 quests.

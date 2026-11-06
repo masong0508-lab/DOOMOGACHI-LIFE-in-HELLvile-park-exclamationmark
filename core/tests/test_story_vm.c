@@ -742,3 +742,37 @@ TEST(story_vm_e0_push_ending_and_mslot)
     CHECK_EQ(vm_var(0), 0);
     txt_user_set(TXT_PACK_USER_FIRST + 3, NULL);
 }
+
+/* MP1 content: Ember's Ch1 side quest (core/data/story/coop/ember.dsc) plays from "Help her get in?" to its end on
+ * both routes, and sets no story flag (a co-op hero's quest is never the plot). */
+TEST(coop_ember_quest_plays_both_routes_and_leaves_the_plot_alone)
+{
+    int route, i, r;
+    uint32_t fp;
+    for (route = 0; route < 2; route++) {
+        fresh();
+        fp = story_fingerprint();
+        vm_start(SCR_COOP_EMBER_1);
+        for (i = 0; i < 600; i++) {                  /* A through the three lines up to the question */
+            UiDialogDebug d;
+            r = vm_tick();
+            while (r == VM_EXT) r = vm_tick();
+            ui_dialog_debug(&d);
+            if (ui_dialog_active() && strstr(d.text, "Help her get in?")) break;
+            frame(BTN_A); frame(0);
+        }
+        CHECK(i < 600);
+        for (i = 0; i < 90; i++) frame(0);          /* the question types out: the menu opens */
+        if (route == 1) { frame(BTN_DOWN); frame(0); }
+        r = VM_RUN;
+        for (i = 0; i < 800 && r != VM_IDLE; i++) {  /* A through the branch (holds cannot be cut) until the script ends */
+            r = vm_tick();
+            while (r == VM_EXT) r = vm_tick();
+            if (r == VM_IDLE) break;
+            frame(BTN_A); frame(0);
+        }
+        CHECK_EQ(r, VM_IDLE);
+        CHECK_EQ(vm_var(0), route);
+        CHECK_EQ(story_fingerprint(), fp);
+    }
+}

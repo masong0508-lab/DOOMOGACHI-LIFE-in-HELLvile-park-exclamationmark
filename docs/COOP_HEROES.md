@@ -98,7 +98,12 @@ only what shone. The payoff: at the park they light the first lantern themselves
 
 * **Built (core, tested)**: final names, pronouns, look seeds, `hero_coop_info()` (title, one-line story, four quest titles,
   two abilities with the stat and amount), a test that the seeds make the species, ears and tail above.
-* **Not built**: the quest scenes themselves, the ability effects in play, local simultaneous multiplayer, helping in
-  another world, GBA / PS1 builds. The quest and ability text is not in a text pack yet; it is for the writers and
-  for the picker's detail page. Next step: one quest scene (Ember Ch1) as a script on the same runner the
-  other side scripts use.
+* **Built (2026-11-05, second patch)**: **Ember's Ch1 quest "Wrong Side of the Mat"** as a script, `coop_ember_1`
+  (`core/data/story/coop/ember.dsc`, pack `zc_embr`, episode kind, 0 minutes). She is the speaker `target`, so it plays with the
+  co-op housemate as the conversation's subject. Two routes (the muffin key, or knock on a PULL door) and a decline; the test
+  `coop_ember_quest_plays_both_routes_and_leaves_the_plot_alone` plays both and checks `story_fingerprint` is unchanged.
+  Adding the pack renumbers the generated text files (pack ids sort by name), so `core/gen/` and `flow.lock` are regenerated.
+* **Not built**: the trigger (nothing starts `coop_ember_1` yet: talking to the co-op housemate in Ch1 should), the saved
+  "quest done" bit (the PROF guest record needs a spare bit, a save-lock change), the reward, the other 11 quests, the ability
+  effects in play, local simultaneous multiplayer, helping in another world, GBA / PS1 builds. Spanish rows are missing
+  (the rewrite phase allows it). Next step: the trigger and done bit for Ember Ch1.

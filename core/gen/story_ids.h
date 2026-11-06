@@ -61,7 +61,8 @@
 #define PACK_SB_VEX 56
 #define PACK_SB_WISP 57
 #define PACK_VMTEST 58
-#define TXT_NPACKS 59
+#define PACK_ZC_EMBR 59
+#define TXT_NPACKS 60
 
 #define SCR_W1_AGAIN 1u
 #define SCR_W3_PICK 2u
@@ -806,6 +807,7 @@
 #define SCR_VMT_VERB 29708u
 #define SCR_VMT_TIMING 29709u
 #define SCR_VMT_SILENCE 29710u
+#define SCR_COOP_EMBER_1 30209u
 
 #define BSCR_B11_WELCOME 1536u
 #define BSCR_B11_EVERYONE 1537u
