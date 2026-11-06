@@ -489,3 +489,13 @@ a HOUSEMATE, ADULT, who talks, can be played as (`playas_can_be`), helps, joins 
 never was one). Nothing new is saved by the old age; the uplift is kept in the POOL identity's first spare byte (kind + 1; old saves read 0; `family_pool_load` accepts 0..FAMPET_COUNT there and still refuses a used second spare byte).
 The family screen: a pet's menu gets an Uplift row once unlocked ("Uplift (closer bond)" until bond 8, then confirm); rows read "Uplift ready", "Old", "Uplifted Imp-cat". `make -C core test` 839/839, story-check clean, check-gen clean.
 Not built: a look for the uplifted pet (they use the person look made from their seed), GBA/PS1 screens (not run here). Next parts of "life sim core complete": part 2 per-avatar pockets (PA10 ledgers), part 3 New life from the title and a fresh world, part 4 profile picker (MP0) and the Free mode gates.
+
+<!-- doomo-roadmap-status-nov05j -->
+| docs | `doomo-roadmap-status-nov05j` | `docs: status update (done, playable, left) after life sim part 1` | docs only: rewrites docs/STATUS.md |
+
+## Status check (2026-11-05, second update)
+
+Full write-up: [docs/STATUS.md](docs/STATUS.md). `make -C core test` 839/839, story-check and check-gen clean; not built or run for GBA, PS1 or Dreamcast.
+**Done:** the life sim core through F5 (pets grow old, the uplift), F6-F10, LS3/LS4, tiers and NG+, play-as and New life, MP0 core, endings and routes; settings, title flow, content packs, script Ch1-4.
+**Playable on the core:** Free Play, creator, life sim and family (now with pet old age and the uplift), Hell Breach, the 4-chapter story + epilogue, house, minigames.
+**Left, life sim core:** part 2 per-avatar pockets (PA10), part 3 New life from the title and a fresh world, part 4 profile picker + Free mode gates + MP1; then the console runs, Dreamcast, GBA speed, mature art, customization P0-P6, W9-W16, L8/L10.

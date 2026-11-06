@@ -1,7 +1,7 @@
-# Status: what is playable, what is left (2026-11-05)
+# Status: what is done, what is playable, what is left (2026-11-05, second update)
 
-A read of the repo plus one native run: `make -C core test` on this tree finished with 0 failures
-(154 scripted playthroughs, 19 press journeys at 240x160 and 320x240), and the native runner links
+A read of the repo plus native runs: `make -C core test` on this tree finished with 0 failures (839 tests after
+life sim part 1; 154 scripted playthroughs, 19 press journeys at 240x160 and 320x240), `make -C core story-check` and `check-gen` clean, and the native runner links
 69 scenes, none of them a weak placeholder. **Nothing here was built or run for GBA, PS1 or
 Dreamcast** (no ARM/MIPS/SH4 toolchains, no emulator). Console statements below come from the docs.
 
@@ -17,13 +17,24 @@ Dreamcast** (no ARM/MIPS/SH4 toolchains, no emulator). Console statements below 
   sheets, then M3 (`DF_MAKEUP`, `DF_FACEPAINT`, `DF_AURA2`, A28 expressions, aura/halo), P0's real deep-field set, `live_p1.txt`,
   the mGBA bench and P2-P6. Details: `docs/PORTRAIT.md`, `ROADMAP.md` "Customization P1.M2 status".
 
+## Done (on the branch, core-tested)
+
+- **Life sim core:** family table and pool members (F1), family screen, add-member wizard, care-all (F2), house occupancy (F3), ageing, births and
+  family events (F4), pets with needs, old age and the uplift (F5, finished by patch `doomo-lifesim1-pet-uplift-nov05i`), loss, memorials and
+  flowers (F6), free will, bonds and moods (F7/F8), helpers and away trips (F9), disasters and story danger hooks (F10), life events (LS3/LS4),
+  household tiers and New Game+ (S-HOUSE), play-as and New life (PA1-PA9), profile guests (MP0 core), endings and romance routes (E1-E4, E12).
+- **Build and content:** settings core and options redesign (U0, U2), Continue-first title and quick saves (U6, U3), first-boot language picker and
+  Mature gate (U5, E11), content-pack format and readers (E2, E7), mature disc/ROM adapters for GBA, PS1, Dreamcast (E8-E10, host-tested only),
+  script chapters 1-4 + epilogue and side quests (W1-W14), 8 language engine, house (H-series), GBA speed work (G1-G7).
+- **Customization:** gene codec, 13 wave-2 face/head painters and 6 halos (P0.M0a, P1.M2a-e), none selectable yet.
+
 ## Playable now (core, native runner)
 
 | Area | What works |
 |---|---|
 | Title + Free Play | title, New Island (empty / 1000-citizen Classic), island hub, apartments, roster, care, shop, news, options, save/load |
 | Creator | species, body, presets, age and Hellvile looks |
-| Life sim | needs, social, rent, Doomogachi pet + Doomodex, exorcism, dreams, family dashboard + add-member wizard, births, ageing, pets, loss + memorial, New life, 16 household events, New Game+ |
+| Life sim | needs, social, rent, Doomogachi pet + Doomodex, exorcism, dreams, family dashboard + add-member wizard, births, ageing, pets (they grow old, and after the story you can uplift a close pet into a talking, playable housemate), loss + memorial, New life, 16 household events, New Game+ |
 | Shooter | Hell Breach levels (first / third person), arena modes, welding workshop |
 | Story | chapters 1-4 + epilogue, cutscenes, quest log, about 109 live side quests, ending engine with routes and secret endings |
 | House | Live / Build / Photo, HomeMart, Black Market, Hold the Door |
@@ -31,17 +42,21 @@ Dreamcast** (no ARM/MIPS/SH4 toolchains, no emulator). Console statements below 
 
 ## Left to do
 
-1. **Verify on the consoles (biggest gap).** Much recent GBA/PS1 work is "written without a compiler" or "not run on
-   PCSX-Redux": the PS1 harness re-run (ROADMAP Tiny 2), the U1p config file, J6/J7 on the disc, the GBA press latch and
-   hub B shortcut (`docs/HARDWARE_CHECK.md`), family UI on console screens.
+**Life sim core (the open parts, in order)**
+1. Part 2: per-avatar pockets (PA10 ledgers): money, items and health are still shared when you switch who you play (the PLAY chunk has the header only).
+2. Part 3: New life from the title screen and in a fresh world (today it is the character switcher, on a finished island only).
+3. Part 4: the profile picker scene (MP0 has no screen), the Free mode gates (FREE), co-op heroes (MP1), the story house unlock decision (S-HOUSE needs a definition).
+4. Smaller: pets' own look when uplifted, baby outfits, a baby body shape, elder stoop, a graveyard scene for the household (the Remembered page serves), the hand-written disaster scripts (need your tone check).
+
+**Everything else**
+1. **Verify on the consoles (biggest gap).** Much recent GBA/PS1 work is "written without a compiler" or "not run on PCSX-Redux": the PS1 harness re-run,
+   the U1p config file, J6/J7 on the disc, the GBA press latch and hub B shortcut (`docs/HARDWARE_CHECK.md`), family UI on console screens.
 2. **Dreamcast.** Skeleton only (draws nothing). Needs DC3-DC9 and the Flycast approval.
 3. **GBA speed.** Island hub ~7.5 fps, town hall 6.5, combat 10-12, pet 10, concert 13, title 12-14 (G3, G8-G12).
-4. **Features not built.** Mature pack art (loaders exist; PS1 has no stills), multiplayer + profiles (MP0/MP1), deep
-   customization (P0-P6), console music backends + TAPE scratches + remaining cues, Ninth Cloud map and Breach/Arena
-   story variants, Feast scene (S186), baby outfits and elder stoop.
-5. **Script and languages.** W9-W12, W15 (approved, unwritten), W16; re-translate rewritten text (L8); pt-BR, fr, de, it,
-   nl, pl not translated; Chinese and Japanese need a new font path.
-6. **Housekeeping.** The saved branches (G3, G9, G11, H7, L4, W6, W7, ...) are not in the repo. README "Status" still says
-   the game build is a developer launcher with placeholders; the code no longer matches.
+4. **Features not built.** Mature pack art (loaders exist; PS1 has no stills), multiplayer (MP1), deep customization (P0-P6, M2 list appends, M3),
+   console music backends + TAPE scratches, Ninth Cloud map and Breach/Arena story variants, Feast scene (S186).
+5. **Script and languages.** W9-W12, W15 (approved, unwritten), W16; re-translate rewritten text (L8); pt-BR, fr, de, it, nl, pl untranslated;
+   Chinese and Japanese need a new font path.
+6. **Housekeeping.** The saved branches (G3, G9, G11, H7, L4, W6, W7, ...) are not in the repo. README "Status" still says the game build is a developer launcher.
 
 Sources: ROADMAP.md, docs/PS1_LIFESIM.md, docs/HARDWARE_CHECK.md, docs/NEXT_SESSION_PROMPT.md, show/DEFERRED.md.
