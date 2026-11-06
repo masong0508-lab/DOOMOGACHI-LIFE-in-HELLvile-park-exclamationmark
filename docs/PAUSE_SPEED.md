@@ -47,6 +47,8 @@ every paused frame and then dims the full screen outside the window
   `ui_title`, `ui_sparkle`) are put back from the held copy before drawing.
 - **P4** measure: update `docs/GBA.md` pause rows and the EWRAM ledger.
   Target: pause drawn fps >= the visit's (about 23) and EWRAM free unchanged.
+  *Checked here 2026-11-06 (no arm-none-eabi-gcc, so no ROM and no fps):* see
+  "P4 status" below.
 
 ## Acceptance
 
@@ -73,3 +75,24 @@ Design, kept small so it needs no new RAM:
   the platform reports the hold lost (`plat_hold_frame(4)`: a tile frame flip).
 - `HOLD_RESTORE_READY` stays 0: it only gates the early hold.
 Still to do on hardware/mGBA: `make -C gba profile-pause`, parity, ram_ledger (P4).
+
+## P4 status (2026-11-06)
+
+Checked without a GBA toolchain (host only):
+- `make -C core test`: 871 passed, 0 failed, with P2+P3 in the tree.
+- RAM: P2+P3 add 2 bytes of statics in `gba/src/hold.c` (`last_page`,
+  `held_page`) and the `ui_shade_clip` rect in `core/src/ui_raster.c` (a few
+  bytes). No buffer, no new pool: the other Mode 4 page is the copy. The
+  largest statics (`tools/ram_ledger.sh`, host sizes) are unchanged:
+  `buf.0` 104704, `doomo_town` 89504, `doomo_map` 32784.
+
+NOT measured (needs arm-none-eabi-gcc + libmgba; no number below is invented):
+1. `make -C gba profile-pause` and compare with the P0 baseline (pause 13.9
+   drawn fps, 67.4 / 120.7 ms; visit 23.6 fps).
+2. `make -C gba test` (parity: the pause shot must match the full redraw).
+3. `make -C gba test-speed SPEED_BASE=<merge base>`, then copy the new
+   `overworld pause` row into `docs/GBA.md` (rows near the G2 / G5 tables) and
+   `sh tools/ram_ledger.sh` from the GBA link map for the EWRAM ledger.
+Pass: pause drawn fps >= the visit's (about 23) and EWRAM free unchanged. If
+the pause falls short, the next cost to look at is the window repaint itself
+(`ui_window_pop`) and `ow_spr_rows` (18.5% of the old pause profile).
