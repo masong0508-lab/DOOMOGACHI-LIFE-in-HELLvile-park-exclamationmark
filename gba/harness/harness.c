@@ -219,6 +219,8 @@ static uint32_t vframes(void)
 
 static uint32_t keys;
 static void run_frame(void);
+static void wl_check(void);
+static int worklog;             /* --worklog: one line per drawn frame (tick, CPU work ms) */
 
 /* ---- "sync on" (G1): tick-exact scripts. The game ROM's loop waits at its
  * top while the mailbox's hold_at (+64) equals its tick count, running
@@ -329,15 +331,33 @@ static void run_frame(void)
 {
     core->setKeys(core, keys);
     core->runFrame(core);
+    wl_check();
     drain_audio();
 }
 
 /* one event slice (under a scanline) of CPU and video */
+/* --worklog: the ROM's per-frame CPU work (mailbox sum / count), so the spike frames behind the
+ * "max" of an fps line can be found: "harness: work TICK MS" */
+static void wl_check(void)
+{
+    static uint32_t ws0, wn0;
+    uint32_t ws, wn;
+    if (!worklog) return;
+    ws = core->busRead32(core, MAILBOX_ADDR + 32);
+    wn = core->busRead32(core, MAILBOX_ADDR + 36);
+    if (wn != wn0) {
+        if (wn0) printf("harness: work %u %.1f\n", (unsigned)ticks(), (ws - ws0) / 16777.216);
+        ws0 = ws;
+        wn0 = wn;
+    }
+}
+
 static void run_slice(void)
 {
     uint32_t fc = vframes();
     core->setKeys(core, keys);
     core->runLoop(core);
+    wl_check();
     if (vframes() != fc) drain_audio();
 }
 
@@ -1093,6 +1113,7 @@ int main(int argc, char **argv)
         else if (!strcmp(argv[i], "--scale") && i + 1 < argc) scale = atoi(argv[++i]);
         else if (!strcmp(argv[i], "--fail-on-stub")) fail_on_stub = 1;
         else if (!strcmp(argv[i], "--quiet")) quiet = 1;
+        else if (!strcmp(argv[i], "--worklog")) worklog = 1;
         else if (!strcmp(argv[i], "--no-fps-gates")) no_fps_gates = 1;          /* G1 */
         else if (!strcmp(argv[i], "--nm") && i + 1 < argc) load_nm(argv[++i]);
         else if (!strcmp(argv[i], "--golden") && i + 1 < argc) golden_path = argv[++i];   /* H2 */

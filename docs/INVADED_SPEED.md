@@ -103,10 +103,46 @@ its tint), sprites, logic and HUD. The 24 ms gap to hahaland (33.7 ms) is NOT
 the draw-call count or the sprite structure, so look at the world tint, the logic
 (6.9 ms measured before G2 against 3.1 on hahaland) and the toast.
 
+## V1, GBA side (2026-11-06, libmgba harness, `make -C gba profile-invaded`)
+
+First real GBA measurement of this map (the tour's seed and entry; 12 M instructions, 121 video frames).
+Settled: 29.8 logic ticks/s, 14.9 drawn fps, work avg 56.8 ms, max 76.5 ms.
+
+| share of the frame | function | note |
+|---:|---|---|
+| 25.2% | `ow_spr_rows` | the sprite pixel loop (ARM) |
+| 8.1% | `ow_sprite` | per-sprite setup and the rows' clipping |
+| 4.4% | `owf_sprite_luts` | the composed tables, rebuilt per colormap and frame |
+| 2.3% | `draw_sprite` | |
+| **~40%** | **sprites in all** | about 23 ms of the 57 |
+| 8.8% | `plat_overworld` | ground scan (self time) |
+| 5.4% + 1.0% | `ow_tile16`, `tile_src` | ground blocks |
+| 0.7% | `lit_cached` | **the tint-flip tile rebuild: at most ~7 ms spread over the window** |
+| 2.5% / 1.3% | `res_get_look` / `gba_udivmod` | look lookups; software division |
+| ~12% | story / npc logic (`story_update`, `story_draw`, `ownpc_update`, `side_spots`, `story_flag`, `update_resident_ex`, `pn_*`) | |
+| 9.0% | outside known symbols | |
+
+Per-frame work (`--worklog`, lines `harness: work TICK MS`): steady frames sit at 50..60 ms
+(not 15 fps worth of luck: the average is the floor, not the spikes), and about 5 frames in 190
+spike to 67..84 ms (ticks 160, 222, 234, 324, 356 in this run; +17..25 ms each).
+
+What this changes in the plan:
+- **The steady state is the problem, not only the spikes.** 20 fps needs every frame under ~50 ms; the
+  steady frames are 53..60, so about 8 ms must come off the average work first (sprites are 23 ms of it).
+- **V2 (the tint flip) is demoted.** `lit_cached` is 0.7% of the window, and the spikes are 12 ticks
+  apart (222, 234), which does not fit the 30/60-tick level flips. It can only explain a few ms of a spike.
+- The spikes are still unexplained: a per-frame function profile (every frame's hottest symbols) showed no
+  single function in the slow frames, so they are probably spread over several callers or sit in the
+  9% outside known symbols. Next: find the symbols outside the table (IWRAM overlays) and log
+  `lc.builds` / body-frame renders per frame.
+- **Sprite cost is the lever.** Candidates, all exact: cache the composed sprite tables across frames
+  (`owf_sprite_luts`, ~0.7 ms a frame, key = colormap, night, tint level and map), and cheaper setup in
+  `ow_sprite` (23k cycles a frame for ~30 sprites, about 770 cycles each).
+
 ## Steps
 
 - **V0** this document, the baseline, `profile-invaded` and its script. (done)
-- **V1** measure on the GBA: `make -C gba profile-invaded`, paste the function
+- **V1** (GBA numbers done 2026-11-06, see above; per-frame `lc.builds` still open) measure on the GBA: `make -C gba profile-invaded`, paste the function
   split here; add local `gba_cycles()` marks (not committed) around the ground,
   sprites, HUD, toast, logic and `build_billboards()`, and log `lc.builds` (the lit
   tile rebuilds) per drawn frame, and whether the slow frames are the ones right

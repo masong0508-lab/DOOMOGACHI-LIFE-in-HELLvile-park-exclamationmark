@@ -359,10 +359,10 @@ profile-invaded: harness
 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile rom ENGINE_TEST=0
 	@mkdir -p $(SHOTS)/invaded
 	$(PREFIX)nm -n $(BUILD)/doomogachi.elf > $(BUILD)/doomogachi.nm
-	@rc=0; \\
-	$(HARNESS) $(BUILD)/doomogachi.gba --script $(GBA)/harness/scripts/invaded_profile.txt \\
-	    --shots $(SHOTS)/invaded --nm $(BUILD)/doomogachi.nm --no-fps-gates --quiet > $(INVADED_PROFILE_LOG) 2>&1 || rc=1; \\
-	cat $(INVADED_PROFILE_LOG); \\
+	@rc=0; \
+	$(HARNESS) $(BUILD)/doomogachi.gba --script $(GBA)/harness/scripts/invaded_profile.txt \
+	    --shots $(SHOTS)/invaded --nm $(BUILD)/doomogachi.nm --no-fps-gates --worklog --quiet > $(INVADED_PROFILE_LOG) 2>&1 || rc=1; \
+	cat $(INVADED_PROFILE_LOG); \
 	exit $$rc
 
 # --- profile-pause: the overworld pause panel vs the visit under it ---
