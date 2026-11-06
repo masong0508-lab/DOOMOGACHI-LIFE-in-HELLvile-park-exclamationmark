@@ -710,7 +710,10 @@ static int pause_save(void)
 /* U4: the pause menu asks the platform to keep the frame it just showed as the
  * backdrop, so the 3D world is not redrawn every paused frame. A platform that
  * cannot answers 0 and the world is redrawn as before. */
-static uint8_t pause_held;
+/* pause_held: 0 none, 1 held from the open (the platform restores the backdrop
+ * every frame), 2 held once the pop-in ended (GBA, P2/P3: both pages carry the
+ * settled dimmed frame; only the window and title pill repaint) */
+static uint8_t pause_held, pause_full_ok, pause_gaveup;
 #define PAUSE_OFF() do { ow.pause = 0; if (pause_held) { plat_hold_frame(0); pause_held = 0; } } while (0)
 
 static void pause_activate(int sel)
@@ -743,6 +746,8 @@ static void pause_activate(int sel)
 static void pause_update(void)
 {
     ow.pause_t++;
+    /* P2: the frame with the pop-in over was drawn in full and shown: keep it */
+    if (!pause_held && pause_full_ok && !pause_gaveup && plat_hold_frame(2)) pause_held = 2;
     if (btn_pressed(BTN_START) && !ow.visit) { if (pause_save()) PAUSE_OFF(); return; }   /* U3b */
     if (btn_pressed(BTN_B) || btn_pressed(BTN_START)) { PAUSE_OFF(); audio_sfx(SFX_CANCEL); return; }
     if (btn_repeat(BTN_UP)) { ow.pause_sel = (uint8_t)((ow.pause_sel + PM_COUNT - 1) % PM_COUNT); audio_sfx(SFX_CURSOR); }
@@ -856,6 +861,7 @@ static void story_update(void)
     if (btn_pressed(BTN_START)) {
         ow.pause = 1;
         pause_held = (uint8_t)(plat_hold_frame(1) != 0);   /* U4 */
+        pause_full_ok = pause_gaveup = 0;
         ow.pause_t = 0;
         ow.pause_sel = 0;
         audio_sfx(SFX_SELECT);
@@ -1037,6 +1043,18 @@ static void story_draw(void)
     if (ow.banner_t) ow.banner_t--;
     if (!ow.visit && ui_dialog_active()) ow_spawn_under_dialog();   /* --- S1 M5: "beep." --- */
     if (plat_draw_skipped()) return;
+    if (ow.pause && pause_held == 2) {
+        /* P2/P3: anything else on screen (toast, dialogue, a modal over us, a
+         * flash) or a platform that lost the hold: back to the full redraw */
+        if (scene_top() == &SCENE_STORY && !ui_toast_pending() && !ui_dialog_active() &&
+            !ow.flash && !ow.fade && plat_hold_frame(4)) {
+            owfx_draw_pause_ex(1);
+            return;
+        }
+        plat_hold_frame(0);
+        pause_held = 0;
+        pause_gaveup = 1;
+    }
     if (ow.pause && pause_held) { owfx_draw_pause(); return; }   /* U4: the world is the held frame */
     build_billboards();
     ow_view_fill(&v);
@@ -1045,7 +1063,10 @@ static void story_draw(void)
     if (!ow.visit) ow_spawn_draw();                /* --- S1 M5 --- */
     camfx_apply();                                 /* --- S1 M5: the world shakes, the HUD does not (PS1) --- */
     owfx_draw_hud();
-    if (ow.pause) owfx_draw_pause();
+    if (ow.pause) {
+        owfx_draw_pause();
+        if (ow.pause_t >= 12 && !ow.flash && !ow.fade) pause_full_ok = 1;   /* a settled frame was drawn in full */
+    }
     if (ow.flash) plat_checker(0, 0, sw, sh, ow.flash_col);
     if (ow.fade) plat_shade_rect(0, 0, sw, sh, DOOMO_CLAMP(15 - ow.fade, 0, 15));
 }

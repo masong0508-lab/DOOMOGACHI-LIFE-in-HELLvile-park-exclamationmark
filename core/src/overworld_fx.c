@@ -630,7 +630,13 @@ void owfx_minimap(int x, int y, int s, int map_id)
 extern const char *const ow_pause_names[];
 int ow_pause_count(void);
 
-void owfx_draw_pause(void)
+void owfx_draw_pause_ex(int settled);
+void owfx_draw_pause(void) { owfx_draw_pause_ex(0); }
+
+/* settled = 1: the backdrop in the platform's held pages is already dimmed
+ * and has the window's shadow and the title pill's shadow (P2/P3); only what
+ * changes is repainted: the window, the pill, and shading inside the window */
+void owfx_draw_pause_ex(int settled)
 {
     int sw = plat_screen_w(), sh = plat_screen_h(), style = hud_style();
     int big = sh >= 200, w = big ? 236 : 196, h = big ? 196 : 138;
@@ -641,8 +647,9 @@ void owfx_draw_pause(void)
     uint32_t t = doomo_frame_count();
     /* dim the world everywhere but under the opaque window (a full-screen
      * shade wasted ~70% of its pixels on ones the window then painted over) */
-    ui_dim_under_window_pop(x, y, w, h, ow.pause_t, 8);
-    if (!ui_window_pop(x, y, w, h, style, ow.pause_t)) return;
+    if (settled) ui_shade_clip(x, y, w, h);
+    else ui_dim_under_window_pop(x, y, w, h, ow.pause_t, 8);
+    if (!ui_window_pop(x, y, w, h, style, ow.pause_t)) { ui_shade_clip_off(); return; }
     ui_title(sw / 2, y - 6, "Paused", style);
     /* you, waving */
     if (p) {
@@ -668,4 +675,5 @@ void owfx_draw_pause(void)
                        story_friend_count(-1), story_side_done_count(), story_side_count());
         if (big) ui_text_center(sw / 2, y + h - 11, buf, st->text_dim);
     }
+    ui_shade_clip_off();
 }

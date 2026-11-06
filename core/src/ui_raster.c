@@ -772,7 +772,29 @@ static void rr_bands(int x, int y, int w, int h, int r,
     }
 }
 
-static void band_shade(int x, int y, int w, int h, int l) { plat_shade_rect(x, y, w, h, l); }
+/* P2/P3 (docs/PAUSE_SPEED.md): while a clip is set every shade rect of the
+ * UI kit is cut to it (the held pause frame must not shade its backdrop
+ * twice: only shading inside the window repaints) */
+static int sc_on, sc_x0, sc_y0, sc_x1, sc_y1;
+void ui_shade_clip(int x, int y, int w, int h)
+{
+    sc_on = 1; sc_x0 = x; sc_y0 = y; sc_x1 = x + w; sc_y1 = y + h;
+}
+void ui_shade_clip_off(void) { sc_on = 0; }
+static void ui_shade(int x, int y, int w, int h, int l)
+{
+    if (sc_on) {
+        int x1 = x + w, y1 = y + h;
+        if (x < sc_x0) x = sc_x0;
+        if (y < sc_y0) y = sc_y0;
+        if (x1 > sc_x1) x1 = sc_x1;
+        if (y1 > sc_y1) y1 = sc_y1;
+        if (x1 <= x || y1 <= y) return;
+        w = x1 - x; h = y1 - y;
+    }
+    plat_shade_rect(x, y, w, h, l);
+}
+static void band_shade(int x, int y, int w, int h, int l) { ui_shade(x, y, w, h, l); }
 
 /* The top corner of radius r as bands of rows with equal inset (const,
  * generated from ci_tab; test_ui_raster.c checks them): rg_len[r][k] rows
@@ -939,7 +961,7 @@ static void shade_minus(int sx, int sy, int w, int h, int r, int level,
             band_n += len;
         } else {
             for (k = 0; k < bn; k++)
-                plat_shade_rect(ba[k], band_y, bb[k] - ba[k] + 1, band_n, level);
+                ui_shade(ba[k], band_y, bb[k] - ba[k] + 1, band_n, level);
             bn = n; band_y = y; band_n = len;
             for (k = 0; k < n; k++) { ba[k] = a2[k]; bb[k] = b2[k]; }
         }
@@ -947,7 +969,7 @@ static void shade_minus(int sx, int sy, int w, int h, int r, int level,
     }
     {
         int k;
-        for (k = 0; k < bn; k++) plat_shade_rect(ba[k], band_y, bb[k] - ba[k] + 1, band_n, level);
+        for (k = 0; k < bn; k++) ui_shade(ba[k], band_y, bb[k] - ba[k] + 1, band_n, level);
     }
 }
 

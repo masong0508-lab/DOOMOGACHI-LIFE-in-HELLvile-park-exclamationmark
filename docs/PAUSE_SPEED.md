@@ -52,3 +52,24 @@ every paused frame and then dims the full screen outside the window
 
 `make test`, `make -C gba test` (parity), `make -C gba profile-pause` before /
 after, `tools/ram_ledger.sh` unchanged. Needs arm-none-eabi-gcc and libmgba.
+
+## P2 + P3 landed (2026-11-06, not built or measured here: no arm-none-eabi-gcc)
+
+Design, kept small so it needs no new RAM:
+- The early hold (`plat_hold_frame(1)` at open) stays 0 on the GBA: the pop-in
+  frames (`pause_t` < 12) redraw the world and dim as before.
+- Once the pop-in is over, the first full frame (world + dim + window + shadows +
+  title pill) is shown. The next tick calls `plat_hold_frame(2)`: `gba/src/hold.c`
+  DMA-copies the shown Mode 4 page into the other page, so both pages carry the
+  settled frame (P2: the dim happens once, in that frame).
+- From then on `story_draw` calls `owfx_draw_pause_ex(1)`: no world, no dim; the
+  window and the title pill repaint, and `ui_shade_clip` cuts every UI shade rect
+  (the window's and the pill's drop shadows) to the window rect, so nothing
+  outside it is shaded twice (P3: the shadow ring and pill margin simply stay in
+  the pages; no restore list is needed because nothing outside the window/pill
+  changes).
+- Fallback to the full redraw (and it stays off until the menu closes) when a
+  toast is pending, a dialogue or modal is up, the screen flashes or fades, or
+  the platform reports the hold lost (`plat_hold_frame(4)`: a tile frame flip).
+- `HOLD_RESTORE_READY` stays 0: it only gates the early hold.
+Still to do on hardware/mGBA: `make -C gba profile-pause`, parity, ram_ledger (P4).

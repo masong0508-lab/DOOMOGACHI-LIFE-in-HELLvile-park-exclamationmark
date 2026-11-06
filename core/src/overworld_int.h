@@ -231,6 +231,7 @@ void owfx_update(void);
 void owfx_draw_world(void);                /* particles, fireworks          */
 void owfx_draw_hud(void);
 void owfx_draw_pause(void);
+void owfx_draw_pause_ex(int settled);   /* 1: backdrop already dimmed in the held pages */
 const DoomoImage *owfx_marker(int flags, int t);
 const DoomoImage *owfx_emote(int emo);
 void owfx_minimap(int x, int y, int scale, int map_id);

@@ -107,6 +107,9 @@ int  ui_window_pop(int x, int y, int w, int h, int style, int ticks);
  * ui_window_pop(x, y, w, h, .., ticks) draws on the same frame (same pop
  * scale); call it BEFORE the window */
 void ui_dim_under_window_pop(int x, int y, int w, int h, int ticks, int level);
+/* cut every UI shade rect to a rect until _off (the held pause frame, P2/P3) */
+void ui_shade_clip(int x, int y, int w, int h);
+void ui_shade_clip_off(void);
 
 /* ---- primitives (pure plat_rect spans, clipped) ------------------------- */
 /* (integration) Offscreen target: while set, the rects of the primitives
