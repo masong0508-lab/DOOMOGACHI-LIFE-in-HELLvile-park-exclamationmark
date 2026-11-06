@@ -173,3 +173,7 @@ skipping `playas_avatar()`.
 - The new family screens, toasts and event lines are English-only until the L8 re-translation pass.
 - The ENDING_E02 finale rule (`ending_resolve_finale`: household 3+ and no neglect deaths) is still the provisional one; the real good-ending rule is a design call for you (E3), the bad ones are E4.
 - Phase 4 is wired to the LS3 life-event engine / `CB_LIFE_*` callbacks (LS3's engine landed 2026-11-03 in `core/src/life_events.c`; away helping still runs from `family_help_daily`, and the disaster hooks are still to wire), disaster story hooks (hand-written scripts, Loss Off = rescue), and an owner tone check of the disaster, loss and event lines (a first read found them kid-safe and non-graphic).
+
+## Done: F5 part 2, pets grow old and the uplift (doomo-lifesim1-pet-uplift-nov05i)
+- A pet is old after `FAMILY_PET_OLD_DAYS` (45) town days here and passes peacefully `FAMILY_PET_OLD_PASS` (31) old days later (Loss on only; a warning toast 4 days before). Nothing new is saved: the old days use the pet's own age bits.
+- The uplift (`family_uplift`): the story's finish unlocks it (UL_LIFE_PET_UPLIFT, with household tier 1); a pet with bond 8+ becomes a talking, playable housemate who never grows old and is never a partner. The family menu has the row; stories can call `CB_FAM_UPLIFT` / `CB_FAM_UPLIFT_OK`.

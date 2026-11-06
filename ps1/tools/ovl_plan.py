@@ -184,7 +184,7 @@ MODAL_CALLBACKS = {
     # F-phase family wizard + member screens: every callback goes to ui_choice / ui_confirm /
     # ui_text_entry only (wz_neighbour goes to fp_pick and stays resident, so it is not listed)
     "fp_apartments": ("house_pick",),
-    "fp_family": ("care_all", "care_top_pick", "do_remove", "do_renamed", "member_act",
+    "fp_family": ("care_all", "care_top_pick", "do_remove", "do_renamed", "do_uplift", "member_act",
                   "role_done", "role_more", "will_pick", "wz_kind", "wz_named", "wz_pron",
                   "wz_stage"),
     "fp_graveyard": ("cb_grave",),

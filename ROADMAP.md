@@ -478,3 +478,14 @@ F35 noses +12, F47 mouths +12, H01 hair +32, H13 facial hair +8, E01 ears +16, B
 plus the art review + contact sheets (chibi, back view, hood/hat/glasses interplay). **After M2:** M3 (`DF_MAKEUP`, `DF_FACEPAINT`, `DF_AURA2`,
 A28 expressions, aura/halo detail), the real deep-field set from P0 (replaces `look_fields.h` / `look_pool.c`), `live_p1.txt`,
 the mGBA bench, a PS1-toolchain build of the LZ blocks, then P2-P6. Host unit suite only; not built for GBA/PS1/DC here.
+| lifesim1 | `doomo-lifesim1-pet-uplift-nov05i` | `lifesim 1: pets grow old, the late-game uplift (F5 part 2)` | `family_pet_old / _age_days / _old_days_left`, `family_uplift_check / family_uplift / family_uplifted_kind`, Uplift row in a pet's menu, story hooks `CB_FAM_UPLIFT`, `CB_FAM_UPLIFT_OK`; 11 new tests; core + PS1 planner list only |
+
+<!-- doomo-lifesim1-pet-uplift-nov05i -->
+Life sim core, part 1 (2026-11-05, `doomo-lifesim1-pet-uplift-nov05i`): F5 is finished. **Old age:** a pet that has lived 45 town days in the household is old (a toast and a news line);
+its old days count in the low 5 bits of its flags, and with Loss on it passes peacefully after 31 of them (FAMLOSS_AGE, a memorial), with a "slowing down" toast four days before. Loss off: the count holds
+5 short of the end, so the warning always plays first. An old save's long-lived pet starts its count at 0 on the first morning (a full grace month, never a death on load). **Uplift:** the late-game ritual
+(unlock `UL_LIFE_PET_UPLIFT`, granted with household tier 1 when the story is finished, also by `family_tier_sync`; tier 1 alone is enough, so saves from before this get it too): a pet with bond 8+ becomes
+a HOUSEMATE, ADULT, who talks, can be played as (`playas_can_be`), helps, joins free will and never grows old. It is the answer to a pet's old age. An uplifted pet is never a partner (the partner gate refuses it, and a pet
+never was one). Nothing new is saved by the old age; the uplift is kept in the POOL identity's first spare byte (kind + 1; old saves read 0; `family_pool_load` accepts 0..FAMPET_COUNT there and still refuses a used second spare byte).
+The family screen: a pet's menu gets an Uplift row once unlocked ("Uplift (closer bond)" until bond 8, then confirm); rows read "Uplift ready", "Old", "Uplifted Imp-cat". `make -C core test` 839/839, story-check clean, check-gen clean.
+Not built: a look for the uplifted pet (they use the person look made from their seed), GBA/PS1 screens (not run here). Next parts of "life sim core complete": part 2 per-avatar pockets (PA10 ledgers), part 3 New life from the title and a fresh world, part 4 profile picker (MP0) and the Free mode gates.

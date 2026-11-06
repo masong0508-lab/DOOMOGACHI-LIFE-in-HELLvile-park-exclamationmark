@@ -52,7 +52,7 @@ static int valid(int id)
     if (id == PLAYAS_ID_HERO) return 1;
     if (in_family(id)) {
         const FamilyMember *m = family_find(id);
-        return m && m->role != FAMROLE_PET;      /* pets wait for F5's uplift */
+        return m && m->role != FAMROLE_PET;      /* a pet is playable once uplifted: family_uplift() makes it a housemate */
     }
     if (id < 0 || id >= DOOMO_PLAYER_ID) return 0;
     r = town_res(id);

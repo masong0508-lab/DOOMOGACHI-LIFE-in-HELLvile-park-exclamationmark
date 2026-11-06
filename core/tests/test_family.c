@@ -479,7 +479,8 @@ TEST(family_pool_load_rejects_bad_sections)
         memcpy(t, good, n); t[e1 + 6] = 0xE9;              CHECK(!family_pool_load(t, n));      /* not ASCII */
         memcpy(t, good, n); t[e1 + 18] = PRONOUN_COUNT;    CHECK(!family_pool_load(t, n));
         memcpy(t, good, n); t[e1 + 19] = ROMANCE_COUNT;    CHECK(!family_pool_load(t, n));
-        memcpy(t, good, n); t[e1 + 20] = 1;                CHECK(!family_pool_load(t, n));      /* spare bytes are 0 */
+        memcpy(t, good, n); t[e1 + 20] = FAMPET_COUNT + 1; CHECK(!family_pool_load(t, n));      /* F5: the first spare byte is 0 or kind + 1 */
+        memcpy(t, good, n); t[e1 + 21] = 1;                CHECK(!family_pool_load(t, n));      /* the second is 0 */
     }
     CHECK_STR(family_identity(x)->name, "Pip");                      /* every refusal left it alone */
 }

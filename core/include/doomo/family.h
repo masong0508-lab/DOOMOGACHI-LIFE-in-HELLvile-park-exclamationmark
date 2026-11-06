@@ -284,6 +284,33 @@ int  family_pet_hungry(int id);               /* 1 once it has gone two days unt
  * 1 if id is a pet, else 0. */
 int  family_pet_tend(int id, int what);
 
+/* ---- F5 part 2: pets grow old, and the uplift ---------------------------------------
+ * OLD AGE: a pet is old once it has lived FAMILY_PET_OLD_DAYS town days in the household (days since
+ * FamilyMember.since). From then the low 5 bits of its flags count the days it has been old (a pet
+ * never uses them for growing up); with Loss on it passes peacefully after FAMILY_PET_OLD_PASS of
+ * them (FAMLOSS_AGE, a memorial, never a joke). With Loss off the count stops one day short and the
+ * pet simply stays old. A save from before this reads 0 there, so a long-lived pet gets a full
+ * grace month after the load, never a death on the first morning. A toast and a news line mark
+ * the day a pet turns old.
+ * UPLIFT: the late-game ritual (unlock UL_LIFE_PET_UPLIFT, granted with household tier 1 when the
+ * story is finished, also by family_tier_sync) that turns a pet you are close to (bond
+ * FAMILY_UPLIFT_BOND+) into a person: the role becomes HOUSEMATE, the stage ADULT, they can talk,
+ * be played as, help and join the free will passes like anyone, and they no longer grow old.
+ * Nothing new is saved by the old age; the uplift is remembered in the POOL identity's first spare
+ * byte (kind + 1, 0 = never a pet or not uplifted), which old saves read as 0. Their romance is
+ * set to "none": an uplifted pet is family, never a partner. */
+#define FAMILY_PET_OLD_DAYS   45
+#define FAMILY_PET_OLD_PASS   FAMILY_ELDER_DAYS
+#define FAMILY_UPLIFT_BOND    8
+enum { FAMUP_OK = 0, FAMUP_LOCKED = -1, FAMUP_NOT_PET = -2, FAMUP_BOND = -3 };
+int  family_pet_age_days(int id);            /* days in the household, 0 for a non-pet                 */
+int  family_pet_old(int id);                 /* 1 once a pet is old                                    */
+int  family_pet_old_days_left(int id);       /* days until it passes (Loss on), 0 = not old / Loss off */
+int  family_uplift_unlocked(void);           /* UL_LIFE_PET_UPLIFT is granted                          */
+int  family_uplift_check(int id);            /* FAMUP_OK, or why not                                   */
+int  family_uplift(int id);                  /* do it: FAMUP_OK, or why not (nothing changed)          */
+int  family_uplifted_kind(int id);           /* the FAMPET_* an uplifted member once was, -1 if none   */
+
 /* ---- F7: free will ---------------------------------------------------------
  * While you are not controlling them, household members look after each other:
  * once per town day a capable member (teen, adult or elder, not the avatar)

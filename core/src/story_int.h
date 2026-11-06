@@ -259,7 +259,9 @@ enum { CB_LIFE_FAMILY_ADD = CB_LIFE_FIRST,  /* ARG = resident: join the househol
 enum { CB_FAM_DANGER = CB_FAM_FIRST,      /* ARG bits 0..3 = FAMDIS_*, bits 4..19 = member id; VAR0 = 1 if started */
        CB_FAM_RESCUE,                     /* ARG = member id: the scene saved them; VAR0 = 1 if one was pending for them */
        CB_FAM_DANGER_KIND,                /* VAR0 = the pending FAMDIS_* kind, 0 = none                    */
-       CB_FAM_DANGER_TARGET };            /* VAR0 = the pending target's member id, -1 = none              */
+       CB_FAM_DANGER_TARGET,              /* VAR0 = the pending target's member id, -1 = none              */
+       CB_FAM_UPLIFT,                     /* F5: ARG = member id: uplift that pet (all the usual rules); VAR0 = 1 if it happened */
+       CB_FAM_UPLIFT_OK };                /* F5: ARG = member id: VAR0 = 1 if that pet could be uplifted right now */
 /* E4: the romance route hooks (CB_ROUTE block). ARG = route (ROUTE_*) in bits 0..3. */
 enum { CB_ROUTE_STAGE = CB_ROUTE_FIRST,   /* VAR0 = the route's RSTAGE_*                                   */
        CB_ROUTE_ADD,                      /* ARG bits 4..11 = meter to add; VAR0 = the meter after         */

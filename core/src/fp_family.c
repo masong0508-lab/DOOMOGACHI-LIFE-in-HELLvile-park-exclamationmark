@@ -24,7 +24,7 @@ static struct {
     const char *opts[6];
 } W;
 
-enum { MA_CARE, MA_ROLE, MA_RENAME, MA_PROFILE, MA_REMOVE, MA_PLAYAS, MA_FEED, MA_PLAY };
+enum { MA_CARE, MA_ROLE, MA_RENAME, MA_PROFILE, MA_REMOVE, MA_PLAYAS, MA_FEED, MA_PLAY, MA_UPLIFT };
 enum { CARE_PLAY, CARE_TALK, CARE_CLEAN, CARE_COMFORT };
 
 static const char *const tabs[2] = { "Household", "Remembered" };
@@ -348,6 +348,21 @@ static void do_renamed(int ok)
     if (ok) result(family_set_name(W.target, W.name), STR_ICON_STAR " Renamed.");
 }
 
+static void do_uplift(int yes)
+{
+    if (yes) family_uplift(W.target);          /* the toast, news and sparkle are family_uplift's */
+}
+
+static void ask_uplift(void)
+{
+    switch (family_uplift_check(W.target)) {
+    case FAMUP_OK: ui_confirm("Uplift them? They become a person and can talk. It can't be undone.", do_uplift); break;
+    case FAMUP_BOND: ui_say(-1, "They need to be closer to you first. Feed them, play with them, spend time together."); break;
+    case FAMUP_LOCKED: ui_say(-1, "The uplift unlocks after you finish the story."); break;
+    default: break;
+    }
+}
+
 static void member_act(int c)
 {
     if (c < 0 || c > 5 || W.acts[c] < 0) return;
@@ -368,6 +383,7 @@ static void member_act(int c)
         audio_sfx(SFX_SQUEAK);
         ui_toast(msg);
         break; }
+    case MA_UPLIFT: ask_uplift(); break;
     case MA_ROLE: ask_role(1, "New role?"); break;
     case MA_RENAME:
         member_name(W.target, W.name);
@@ -393,6 +409,10 @@ static void open_member(int id)
     if (m->role == FAMROLE_PET) {              /* F5: a pet is fed and played with, never "played as" */
         W.acts[n] = MA_FEED; W.opts[n++] = family_pet_hungry(id) ? "Feed (hungry!)" : "Feed";
         W.acts[n] = MA_PLAY; W.opts[n++] = "Play";
+        if (family_uplift_unlocked()) {        /* F5: the late-game uplift */
+            W.acts[n] = MA_UPLIFT;
+            W.opts[n++] = family_uplift_check(id) == FAMUP_OK ? "Uplift" : "Uplift (closer bond)";
+        }
     } else {
         W.acts[n] = MA_CARE; W.opts[n++] = "Spend time together";
         W.acts[n] = MA_ROLE; W.opts[n++] = "Change role";
@@ -585,9 +605,13 @@ static void fam_draw(void)
                     doomo_snprintf(l2, sizeof(l2), "%s - %s in %dd", doomo_life_stage_names[f->stage % LIFE_COUNT],
                                    doomo_life_stage_names[life_stage_next(f->stage) % LIFE_COUNT],
                                    family_stage_days_left(id));
+                if (family_uplifted_kind(id) >= 0)
+                    doomo_snprintf(l2, sizeof(l2), "Uplifted %s", family_pet_kind_name(family_uplifted_kind(id)));
                 if (f->role == FAMROLE_PET)
                     doomo_snprintf(l2, sizeof(l2), "%s - %s", family_pet_kind_name(family_pet_kind(id)),
-                                   family_pet_hungry(id) ? "Hungry!" : "Fed");
+                                   family_pet_hungry(id) ? "Hungry!" :
+                                   family_uplift_check(id) == FAMUP_OK ? "Uplift ready" :
+                                   family_pet_old(id) ? "Old" : "Fed");
                 if (id == family_away_id()) doomo_snprintf(l2, sizeof(l2), "Away helping today");
                 else if (family_bond_line(id)) doomo_snprintf(l2, sizeof(l2), "%s", family_bond_line(id));
                 else if (family_close_line(id)) doomo_snprintf(l2, sizeof(l2), "%s", family_close_line(id));

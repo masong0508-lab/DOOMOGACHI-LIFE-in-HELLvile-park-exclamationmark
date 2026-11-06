@@ -1085,6 +1085,10 @@ void side_callback(int cb, int choice)
     case CB_FAM_DANGER_KIND: vm_set_var(0, family_disaster_pending()); break;
     case CB_FAM_DANGER_TARGET: vm_set_var(0, family_disaster_target()); break;
     /* --- end F10 --- */
+    /* --- F5: the pet uplift (story_int.h CB_FAM_UPLIFT*) --- */
+    case CB_FAM_UPLIFT: vm_set_var(0, family_uplift(choice) == FAMUP_OK); break;
+    case CB_FAM_UPLIFT_OK: vm_set_var(0, family_uplift_check(choice) == FAMUP_OK); break;
+    /* --- end F5 --- */
     default: break;
     }
 }

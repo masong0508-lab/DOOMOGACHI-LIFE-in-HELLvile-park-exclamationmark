@@ -70,6 +70,7 @@ int family_tier_story_done(void)
     int id = !unlock_has(UL_LIFE_HOUSEHOLD_T1) ? UL_LIFE_HOUSEHOLD_T1
            : !unlock_has(UL_LIFE_HOUSEHOLD_T2) ? UL_LIFE_HOUSEHOLD_T2 : -1;
     if (id < 0 || !unlock_grant_quiet(id)) return 0;
+    if (id == UL_LIFE_HOUSEHOLD_T1) unlock_grant_quiet(UL_LIFE_PET_UPLIFT);   /* F5: the late-game uplift */
     tier_toast_();
     return id == UL_LIFE_HOUSEHOLD_T1 ? HOUSEHOLD_TIER_GAME_DONE : HOUSEHOLD_TIER_NGPLUS_DONE;
 }
@@ -77,6 +78,7 @@ int family_tier_story_done(void)
 int family_tier_sync(int story_done)
 {
     if (!story_done || !unlock_grant_quiet(UL_LIFE_HOUSEHOLD_T1)) return 0;
+    unlock_grant_quiet(UL_LIFE_PET_UPLIFT);
     tier_toast_();
     return 1;
 }
@@ -194,6 +196,8 @@ static int role_ok(int id, int stage, int role, int self)
     if (role != FAMROLE_PARTNER) return 0;
     for (i = 0; i < fam_n_; i++)
         if (i != self && fam_[i].role == FAMROLE_PARTNER) return FAM_ERR_ROLE;   /* one partner */
+    /* F5: a pet is never a partner, and neither is a pet that was uplifted: they are family */
+    if (self >= 0 && (fam_[self].role == FAMROLE_PET || (is_pool(id) && ident_for(id)->spare[0]))) return FAM_ERR_GATE;
     /* LS0: adults only, both ways; a resident also passes the full gate */
     if (!LIFE_IS_ADULT(stage) || !LIFE_IS_ADULT(sim_life_stage(DOOMO_PLAYER_ID))) return FAM_ERR_GATE;
     if (id < DOOMO_MAX_RESIDENTS &&
@@ -613,7 +617,8 @@ uint32_t family_pool_save(uint8_t *dst, uint32_t cap)
         memcpy(dst + o + 6, f->name, DOOMO_NAME_LEN);
         dst[o + 18] = f->pronoun;
         dst[o + 19] = f->romance;
-        dst[o + 20] = dst[o + 21] = 0;
+        dst[o + 20] = f->spare[0];          /* F5: kind + 1 of an uplifted pet, else 0 */
+        dst[o + 21] = 0;
         o += FAMILY_POOL_REC;
     }
     return o;
@@ -658,7 +663,8 @@ int family_pool_load(const uint8_t *src, uint32_t len)
             if ((unsigned char)f->name[j] < 0x20 || (unsigned char)f->name[j] > 0x7E) return 0;
         for (j = len_name; j < DOOMO_NAME_LEN; j++)
             if (f->name[j]) return 0;
-        if (f->pronoun >= PRONOUN_COUNT || f->romance >= ROMANCE_COUNT || p[20] || p[21]) return 0;
+        f->spare[0] = p[20];
+        if (f->pronoun >= PRONOUN_COUNT || f->romance >= ROMANCE_COUNT || p[20] > FAMPET_COUNT || p[21]) return 0;
         mask |= 1u << k;
     }
     memcpy(ident_, tmp, sizeof(ident_));
@@ -823,6 +829,96 @@ int family_pet_tend(int id, int what)
     return 1;
 }
 
+/* ---- F5 part 2: old age and the uplift (family.h) ------------------------------------ */
+int family_pet_age_days(int id)
+{
+    const FamilyMember *m = family_find(id);
+    int d;
+    if (!m || m->role != FAMROLE_PET) return 0;
+    d = (int)doomo_town.day - (int)m->since;
+    return d < 0 ? 0 : d;
+}
+
+int family_pet_old(int id)
+{
+    return family_pet_age_days(id) >= FAMILY_PET_OLD_DAYS;
+}
+
+int family_pet_old_days_left(int id)
+{
+    const FamilyMember *m = family_find(id);
+    int left;
+    if (!m || m->role != FAMROLE_PET || !loss_on_ || !family_pet_old(id)) return 0;
+    left = FAMILY_PET_OLD_PASS - (int)(m->flags & FAMILY_FL_AGE);
+    return left > 0 ? left : 1;
+}
+
+static void pet_old_note_(int id)
+{
+    char msg[NEWS_LEN];
+    doomo_snprintf(msg, sizeof(msg), STR_ICON_HEART " %s is getting old. Treasure them!", member_name_(id));
+    ui_toast(msg);
+    doomo_snprintf(msg, sizeof(msg), "%s has grey whiskers now.", member_name_(id));
+    sim_news_push(msg);
+}
+
+static void pet_slow_note_(int id)
+{
+    char msg[64];
+    doomo_snprintf(msg, sizeof(msg), STR_ICON_HEART " %s is slowing down. Spend time together.", member_name_(id));
+    ui_toast(msg);
+}
+
+int family_uplift_unlocked(void)
+{
+    return unlock_has(UL_LIFE_PET_UPLIFT) || unlock_has(UL_LIFE_HOUSEHOLD_T1);
+}
+
+int family_uplift_check(int id)
+{
+    const FamilyMember *m = family_find(id);
+    if (!m || m->role != FAMROLE_PET || !is_pool(id)) return FAMUP_NOT_PET;
+    if (!family_uplift_unlocked()) return FAMUP_LOCKED;
+    if (family_bond(id) < FAMILY_UPLIFT_BOND) return FAMUP_BOND;
+    return FAMUP_OK;
+}
+
+int family_uplifted_kind(int id)
+{
+    const FamilyMember *m = family_find(id);
+    int k;
+    if (!m || m->role == FAMROLE_PET || !is_pool(id)) return -1;
+    k = (int)ident_for(id)->spare[0] - 1;
+    return (k >= 0 && k < FAMPET_COUNT) ? k : -1;
+}
+
+int family_uplift(int id)
+{
+    int r = family_uplift_check(id), i, k;
+    FamilyIdentity *f;
+    char msg[NEWS_LEN];
+    if (r != FAMUP_OK) return r;
+    i = find_slot(id);
+    k = family_pet_kind(id);
+    f = ident_for(id);
+    f->spare[0] = (uint8_t)(k + 1);
+    f->romance = (uint8_t)ROMANCE_NONE;         /* family, never a partner */
+    fam_[i].role = FAMROLE_HOUSEMATE;
+    fam_[i].stage = LIFE_ADULT;
+    fam_[i].flags = 0;                          /* no old days, no neglect: they start fresh */
+    family_care(id);
+    mood_add_(i, 6);
+    for (r = 0; r < fam_n_; r++)
+        if (r != i && fam_[r].role != FAMROLE_PET) mood_add_(r, 2);
+    portrait_invalidate(id);
+    doomo_snprintf(msg, sizeof(msg), STR_ICON_STAR " %s can talk now! Say hello.", member_name_(id));
+    ui_toast(msg);
+    doomo_snprintf(msg, sizeof(msg), "%s was uplifted and can talk now!", member_name_(id));
+    sim_news_push(msg);
+    audio_sfx(SFX_SPARKLE);
+    return FAMUP_OK;
+}
+
 int family_loss_daily(void)
 {
     int i, lost = 0;
@@ -855,6 +951,18 @@ int family_loss_daily(void)
             doomo_snprintf(msg, sizeof(msg), STR_ICON_HEART " %s needs you! Go and care for them.",
                            member_name_(m->id));
             ui_toast(msg);
+        }
+        /* F5: a pet that has lived FAMILY_PET_OLD_DAYS here is old; the low age bits then count the old days */
+        if (m->role == FAMROLE_PET && family_pet_old(m->id)) {
+            int p = (int)(m->flags & FAMILY_FL_AGE) + 1;
+            if (p == 1) pet_old_note_(m->id);
+            if (loss_on_ && p >= FAMILY_PET_OLD_PASS) {
+                lost += family_lose(m->id, FAMLOSS_AGE);
+                continue;
+            }
+            if (loss_on_ && p == FAMILY_PET_OLD_PASS - 4) pet_slow_note_(m->id);
+            if (!loss_on_ && p > FAMILY_PET_OLD_PASS - 5) p = FAMILY_PET_OLD_PASS - 5;   /* a warning day always comes first */
+            m->flags = (uint8_t)((m->flags & ~FAMILY_FL_AGE) | (unsigned)p);
         }
         /* old age: a pool ELDER (not a pet) spends FAMILY_ELDER_DAYS here */
         if (loss_on_ && m->role != FAMROLE_PET && m->stage == LIFE_ELDER) {
