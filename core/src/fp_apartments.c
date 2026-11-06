@@ -48,10 +48,31 @@ static int slot_of(int floor, int room)
     return A.district * DOOMO_DISTRICT_SIZE + (floor - 1) * ROOMS + (room - 1);
 }
 
+/* The header's "n/500": town_count_district() walks 500 residents (76 B apart, EWRAM on the GBA) and the draw asked every
+ * frame. Kept for AP_OCC_TTL frames per district (0.2 s at 30 Hz) and dropped on entering, so a citizen made in a room
+ * shows at once on the way back and never later than a fifth of a second after any other change. */
+#define AP_OCC_TTL 6u
+static uint32_t occ_at[2];
+static int16_t occ_n[2];
+static uint8_t occ_ok[2];
+
+static int ap_occupied(int hell)
+{
+    uint32_t f = doomo_frame_count();
+    int d = hell ? 1 : 0;
+    if (!occ_ok[d] || f - occ_at[d] >= AP_OCC_TTL) {
+        occ_at[d] = f;
+        occ_n[d] = (int16_t)town_count_district(d, -1);
+        occ_ok[d] = 1;
+    }
+    return occ_n[d];
+}
+
 static void ap_enter(int arg)
 {
     int keep_seen = A.seen_n;
     uint8_t seen[sizeof(A.seen)];
+    occ_ok[0] = occ_ok[1] = 0;
     memcpy(seen, A.seen, sizeof(seen));
     memset(&A, 0, sizeof(A));
     memcpy(A.seen, seen, sizeof(seen));
@@ -374,7 +395,7 @@ static void ap_draw(void)
     }
     /* header */
     {
-        int occ = town_count_district(hell, -1);
+        int occ = ap_occupied(hell);
         doomo_snprintf(buf, sizeof(buf), "%s  %d/500", fp_home_name(hell), occ);
         ui_title(sw / 2, 3, buf, style);
     }
