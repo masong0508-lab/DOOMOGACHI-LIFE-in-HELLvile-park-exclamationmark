@@ -27,6 +27,9 @@ def main():
     for line in open(path, errors='replace'):
         line = line.rstrip('\n')
         m = FPS_RE.match(line)
+        if m and (m.group('label') == 'start' or m.group('label').startswith('settle')):
+            cur = None      # `fps start` / `fps settle (ignore)` lines are not scenes
+            continue
         if m:
             cur = dict(m.groupdict(), funcs=[], outside=None)
             cur['avg'] = float(cur['avg'])
