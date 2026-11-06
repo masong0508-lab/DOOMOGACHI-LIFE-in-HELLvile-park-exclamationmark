@@ -968,14 +968,181 @@ script coop_ember_1 {
   DATA 3 T
   DATA 3 T
   DATA 4 @11
-  DATA 4 @14
+  DATA 4 @15
   DATA 4 65535
   END 0 0
   WAIT 13 0
   WAIT 5 0
+  REWARD 2 257
   END 0 0
   WAIT 8 0
   WAIT 13 0
+  REWARD 2 257
+  END 0 0
+}
+script coop_ember_2 {
+  CHOICE 3 T
+  DATA 2 65533
+  DATA 3 T
+  DATA 3 T
+  DATA 3 T
+  DATA 4 @9
+  DATA 4 @11
+  DATA 4 65535
+  END 0 0
+  REWARD 3 266
+  END 0 0
+  REWARD 3 266
+  END 0 0
+}
+script coop_ember_3 {
+  CHOICE 3 T
+  DATA 2 65533
+  DATA 3 T
+  DATA 3 T
+  DATA 3 T
+  DATA 4 @9
+  DATA 4 @11
+  DATA 4 65535
+  END 0 0
+  REWARD 3 257
+  END 0 0
+  REWARD 3 257
+  END 0 0
+}
+script coop_ember_4 {
+  CHOICE 3 T
+  DATA 2 65533
+  DATA 3 T
+  DATA 3 T
+  DATA 3 T
+  DATA 4 @9
+  DATA 4 @11
+  DATA 4 65535
+  END 0 0
+  REWARD 3 273
+  END 0 0
+  REWARD 3 273
+  END 0 0
+}
+script coop_rook_1 {
+  CHOICE 3 T
+  DATA 2 65533
+  DATA 3 T
+  DATA 3 T
+  DATA 3 T
+  DATA 4 @9
+  DATA 4 @11
+  DATA 4 65535
+  END 0 0
+  REWARD 3 261
+  END 0 0
+  REWARD 3 261
+  END 0 0
+}
+script coop_rook_2 {
+  CHOICE 3 T
+  DATA 2 65533
+  DATA 3 T
+  DATA 3 T
+  DATA 3 T
+  DATA 4 @9
+  DATA 4 @11
+  DATA 4 65535
+  END 0 0
+  REWARD 3 266
+  END 0 0
+  REWARD 3 266
+  END 0 0
+}
+script coop_rook_3 {
+  CHOICE 3 T
+  DATA 2 65533
+  DATA 3 T
+  DATA 3 T
+  DATA 3 T
+  DATA 4 @9
+  DATA 4 @11
+  DATA 4 65535
+  END 0 0
+  REWARD 3 257
+  END 0 0
+  REWARD 3 257
+  END 0 0
+}
+script coop_rook_4 {
+  CHOICE 3 T
+  DATA 2 65533
+  DATA 3 T
+  DATA 3 T
+  DATA 3 T
+  DATA 4 @9
+  DATA 4 @11
+  DATA 4 65535
+  END 0 0
+  REWARD 3 273
+  END 0 0
+  REWARD 3 273
+  END 0 0
+}
+script coop_wick_1 {
+  CHOICE 3 T
+  DATA 2 65533
+  DATA 3 T
+  DATA 3 T
+  DATA 3 T
+  DATA 4 @9
+  DATA 4 @11
+  DATA 4 65535
+  END 0 0
+  REWARD 3 261
+  END 0 0
+  REWARD 3 261
+  END 0 0
+}
+script coop_wick_2 {
+  CHOICE 3 T
+  DATA 2 65533
+  DATA 3 T
+  DATA 3 T
+  DATA 3 T
+  DATA 4 @9
+  DATA 4 @11
+  DATA 4 65535
+  END 0 0
+  REWARD 3 266
+  END 0 0
+  REWARD 3 266
+  END 0 0
+}
+script coop_wick_3 {
+  CHOICE 3 T
+  DATA 2 65533
+  DATA 3 T
+  DATA 3 T
+  DATA 3 T
+  DATA 4 @9
+  DATA 4 @11
+  DATA 4 65535
+  END 0 0
+  REWARD 3 257
+  END 0 0
+  REWARD 3 257
+  END 0 0
+}
+script coop_wick_4 {
+  CHOICE 3 T
+  DATA 2 65533
+  DATA 3 T
+  DATA 3 T
+  DATA 3 T
+  DATA 4 @9
+  DATA 4 @11
+  DATA 4 65535
+  END 0 0
+  REWARD 3 273
+  END 0 0
+  REWARD 3 273
   END 0 0
 }
 script d1_dream {

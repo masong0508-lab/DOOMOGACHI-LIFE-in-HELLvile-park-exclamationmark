@@ -109,6 +109,10 @@ only what shone. The payoff: at the park they light the first lantern themselves
   guest's own saved PROF flag `PROF_FLAG_COOP_QUEST(q)` (bit 8+q): no save-lock change, no new field. The quest sets no story
   flag. Test: `mp1_a_guest_playing_ember_gets_her_first_quest_once`. New accessor `prof_hero(profile)`.
   A family id has no portrait, so her lines show in a plain box for now.
-* **Not built**: the reward, quests 2-4 (they should come due on later in-game days, one per day), the other 8 quests (Rook, Wick), the
-  ability effects in play, a family portrait for the speaker, local simultaneous multiplayer, helping in another world, GBA / PS1 builds.
-  Spanish rows are missing (the rewrite phase allows it).
+* **Built (fourth patch, W6 step 3, not yet test-run)**: a reward on every quest (H$ and a small item, never a plot item); Ember's quests 2-4
+  and all of Rook's and Wick's (12 scripts, all in pack `zc_embr` so no pack id moves), released one per game day by `story_coop_tick`
+  (day stamp in `prof_quest(p, 0)`); family speakers now draw their own portrait (`dlg_res` in ui_dialog.c, `res_of` in portrait.c);
+  the abilities in play (`core/src/story_coop.c`): the passive runs hourly on the overworld, the active is the Y button once per game
+  day (`prof_quest(p, 1)` = the day, PROF flag 12). Rook's and Wick's range checks use the overworld NPC positions.
+* **Not built**: local simultaneous multiplayer, helping in another world, GBA / PS1 builds, Spanish rows. Run `make test` and
+  `make story-check` on this patch before pushing.

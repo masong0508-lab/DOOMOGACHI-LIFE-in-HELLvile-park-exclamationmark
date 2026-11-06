@@ -42,6 +42,9 @@
 #include "doomo/beat.h"
 #include "doomo/camfx.h"
 #include "doomo/txt.h"
+#include "doomo/family.h"
+#include "doomo/playas.h"
+#include "doomo/game.h"
 
 #define DLG_Q 8
 #define DLG_TEXT 200
@@ -234,11 +237,25 @@ static const char *opt_text(const DlgEntry *e, int i)
 }
 
 /* ---------------------------------------------------------------------- */
+/* The resident a line's speaker draws as: a town resident, or (MP1) a family pool member / co-op housemate, whose record is made
+ * from the family identity (refreshed once a frame). NULL when the speaker has none (a pet, an empty slot). */
+static const DoomoResident *dlg_res(int speaker)
+{
+    static DoomoResident fr;
+    static int fid = -1;
+    static uint32_t ffr = 0xFFFFFFFFu;
+    if (speaker < 0) return NULL;
+    if (speaker < PLAYAS_ID_FAMILY_FIRST) return town_res(speaker);
+    if (fid != speaker || ffr != doomo_frame_count()) {
+        if (!family_resident(speaker, &fr)) { fid = -1; return NULL; }
+        fid = speaker; ffr = doomo_frame_count();
+    }
+    return &fr;
+}
+
 static int has_portrait(int speaker)
 {
-    const DoomoResident *r;
-    if (speaker < 0) return 0;
-    r = town_res(speaker);
+    const DoomoResident *r = dlg_res(speaker);
     return r && r->status != RES_EMPTY;
 }
 
@@ -436,7 +453,7 @@ static void babble(DlgEntry *e, int from, int to, int len)
     const uint8_t *voice;
     int i;
     if (!opt_get(OPT_VOICE_BABBLE) || d_dead) return;
-    r = has_portrait(e->speaker) ? town_res(e->speaker) : NULL;
+    r = has_portrait(e->speaker) ? dlg_res(e->speaker) : NULL;
     voice = (e->flags & DL_GURGLE) ? audio_voice_preset(VOICE_GURGLE) : r ? RES_VOICE_VIEW(r) : narrator;
     if (!voice) voice = narrator;
     for (i = from; i < to && i < len; i++) {
@@ -608,7 +625,7 @@ static void dlg_draw(void)
     st = ui_style(portrait ? d_style : WIN_CREAM);
     pill = (e->eflags & EF_LEGACY) || (e->flags & DL_PILL);
     if (portrait) {
-        const DoomoResident *r = town_res(e->speaker);
+        const DoomoResident *r = dlg_res(e->speaker);
         int clock = d_dead ? 0 : d_line_t;
         talking = shown < len;
         expr = talking && (clock / 4) % 2 ? EXPR_TALK : e->expr;
@@ -682,7 +699,7 @@ static void dlg_draw(void)
             img = pimg;
             key = ui_key_int(key, img ? (int32_t)img->uid : -1);
             key = ui_key_int(key, img ? (int32_t)(uintptr_t)img->pix : -1);
-            key = ui_key_str(key, town_res(e->speaker)->name);
+            key = ui_key_str(key, dlg_res(e->speaker)->name);
             if ((e->flags & DL_GURGLE) && talking) key = ui_key_int(key, d_line_t & 2);
         }
         if (choice) {
@@ -702,7 +719,7 @@ static void dlg_draw(void)
         /* kept: only the drop shadows, in the drawing's order */
         ui_window_shadow(b.x, b.y, b.w, b.h);
         if (portrait) {
-            const DoomoResident *r = town_res(e->speaker);
+            const DoomoResident *r = dlg_res(e->speaker);
             int nw = font_text_width(r->name) + 14, w2 = nw * pop / 256, x2 = b.x + 60 + (nw - w2) / 2;
             ui_portrait_shadow(px, b.y - 22 - bob, pimg, 1);
             if (pill && w2 > 6) ui_pill_shadow(x2 + 1, b.y - 8, w2, 12, x2, b.y - 10, w2, 12);
@@ -714,7 +731,7 @@ static void dlg_draw(void)
         if (!use) dlg_text(e, &b, b.y + 8, st->text, st->accent);
 
         if (portrait) {
-            const DoomoResident *r = town_res(e->speaker);
+            const DoomoResident *r = dlg_res(e->speaker);
             int nw = font_text_width(r->name) + 14;
             dlg_portrait(px, b.y - 22 - bob, e->speaker, expr, sx, sy, pimg);
             if (e->flags & DL_GURGLE) {                    /* GURGLE's slot: the belly talks */

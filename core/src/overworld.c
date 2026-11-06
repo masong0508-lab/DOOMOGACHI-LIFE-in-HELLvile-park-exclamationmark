@@ -852,6 +852,7 @@ static void story_update(void)
     if (ow_beat_live()) ow_beat_step();            /* --- S1 M5: the overworld hosts a beat --- */
     if (!ow.visit && auto_events()) return;
     if (ow.pause) { pause_update(); return; }
+    story_coop_ability_tick();                     /* MP1: a co-op hero's passive and Y ability */
     if (btn_pressed(BTN_START)) {
         ow.pause = 1;
         pause_held = (uint8_t)(plat_hold_frame(1) != 0);   /* U4 */

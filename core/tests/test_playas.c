@@ -838,10 +838,10 @@ TEST(z1_joint_gate_across_the_four_areas)
     }
 }
 
-/* MP1 content: a guest playing Ember gets her Ch1 side quest once, post-game; Rook (no scene yet) and the hero get nothing. */
+/* MP1 content: a guest playing a co-op hero gets their quests one per game day, each once; the hero gets none. Quest 1 is due at once. */
 TEST(mp1_a_guest_playing_ember_gets_her_first_quest_once)
 {
-    int e;
+    int e, q;
     fresh();
     cleared();
     vm_stop();
@@ -856,14 +856,57 @@ TEST(mp1_a_guest_playing_ember_gets_her_first_quest_once)
     CHECK(prof_flag(1, PROF_FLAG_COOP_QUEST(0)));
     CHECK_EQ(vm_fmt_target, e);
     vm_stop();
-    story_coop_tick();                                  /* played once: not again */
+    story_coop_tick();                                  /* the same day: not again, and no second quest yet */
     CHECK(!vm_running());
+    CHECK_EQ(story_coop_quest_due(1), -1);
+    doomo_town.day++;                                   /* a later day: quest 2, then 3, then 4, one per day */
+    for (q = 1; q < HERO_COOP_QUESTS; q++) {
+        CHECK_EQ(story_coop_quest_due(1), q);
+        story_coop_tick();
+        CHECK(vm_running() && prof_flag(1, PROF_FLAG_COOP_QUEST(q)));
+        vm_stop();
+        story_coop_tick();
+        CHECK(!vm_running());
+        doomo_town.day++;
+    }
+    CHECK_EQ(story_coop_quest_due(1), -1);              /* all four played */
     CHECK_EQ(prof_hero(1), HERO_COOP_FIRST);
     CHECK_EQ(prof_hero(9), -1);
     CHECK(prof_guest_remove(1));
     CHECK_EQ(prof_guest_add("Rk", -1, HERO_COOP_FIRST + 1), 1);
     CHECK(prof_switch(1));
-    story_coop_tick();
-    CHECK(!vm_running() && !prof_flag(1, PROF_FLAG_COOP_QUEST(0)));
+    story_coop_tick();                                  /* Rook has his own first quest now */
+    CHECK(vm_running() && prof_flag(1, PROF_FLAG_COOP_QUEST(0)));
+    vm_stop();
+    CHECK(prof_guest_remove(1));
+    doomo_save_ext_profiles->reset();
+}
+
+/* MP1 content: Ember's passive tends the housemates at night, and her active feeds the whole household once a day. */
+TEST(mp1_ember_abilities_help_the_household_once_a_day)
+{
+    int id = -1, i, n;
+    uint8_t s0, h0;
+    fresh();
+    cleared();
+    CHECK_EQ(prof_guest_add("Embie", -1, HERO_COOP_FIRST), 1);
+    CHECK(prof_switch(1));
+    for (i = 0; i < DOOMO_MAX_RESIDENTS && id < 0; i++)
+        if (doomo_town.res[i].status == RES_ALIVE && !family_find(i) && family_add(i, FAMROLE_HOUSEMATE, 0) >= 0) id = i;
+    CHECK(id >= 0);
+    doomo_town.res[id].stat[STAT_SANITY] = 50;
+    doomo_town.res[id].stat[STAT_HUNGER] = 40;
+    s0 = doomo_town.res[id].stat[STAT_SANITY];
+    CHECK_EQ(story_coop_passive(HERO_COOP_FIRST, 0), 0);                    /* daytime: nothing */
+    CHECK(story_coop_passive(HERO_COOP_FIRST, 1) >= 1);
+    CHECK_EQ(doomo_town.res[id].stat[STAT_SANITY], s0 + 1);
+    h0 = doomo_town.res[id].stat[STAT_HUNGER];
+    n = story_coop_active(1, HERO_COOP_FIRST);
+    CHECK(n >= 1);
+    CHECK_EQ(doomo_town.res[id].stat[STAT_HUNGER], h0 + 30);
+    CHECK_EQ(story_coop_active(1, HERO_COOP_FIRST), -1);                    /* once per game day */
+    doomo_town.day++;
+    CHECK(story_coop_active(1, HERO_COOP_FIRST) >= 1);
+    CHECK(prof_guest_remove(1));
     doomo_save_ext_profiles->reset();
 }

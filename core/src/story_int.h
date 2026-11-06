@@ -137,6 +137,7 @@ int  feast_front_shot(int panel, uint32_t pt);
 void feast_cut_done(int cut);
 /* cutscene.c: screen y of the top of the current caption box (sh if none) */
 int  cutscene_caption_y(void);
+int  story_coop_quest_due(int profile);     /* the next co-op quest 0..3 that may start now, -1 if none */
 void story_coop_tick(void);                 /* MP1: a co-op hero's side quest starts (story.c) */
 #define story_fmt_target vm_fmt_target              /* @T / @D subject (scriptvm.c) */
 /* 1 while a conversation the story started is still running. */
@@ -366,6 +367,10 @@ const char *story_pet_name(void);
 const char *story_player_name(void);
 
 /* Rewards: money + item + unlock; queues a toast. */
+/* MP1 content (story_coop.c): the co-op heroes' abilities (docs/COOP_HEROES.md). */
+void story_coop_ability_tick(void);         /* overworld, each tick: the hourly passive, the Y-button active */
+int  story_coop_passive(int kind, int night);   /* the passive once; how many were touched */
+int  story_coop_active(int profile, int kind);  /* the active; how many were touched, -1 = already used today */
 void story_reward(int money, int item, int count, int unlock_id);
 
 /* Unlock ids (unlocks_story.c, range 608..735). */

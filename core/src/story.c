@@ -746,19 +746,41 @@ static int overworld_live(void)
 }
 
 /* MP1 content: when a guest plays a co-op hero (post-game: play-as is locked until the story is done) on the overworld, their
- * next unplayed side quest starts by itself, once. The played bit is the guest's own saved PROF flag; the plot is untouched
- * (a co-op hero never sets a story flag). Only Ember's first quest is written. A family id has no portrait, so the lines show
- * in a plain box until a family body gets a portrait. */
+ * next unplayed side quest starts by itself, once, and quests 2-4 come due one per later in-game day. The played bit is the
+ * guest's own saved PROF flag PROF_FLAG_COOP_QUEST(q); prof_quest(p, 0) holds the day (mod 256) the last quest played. The plot
+ * is untouched (a co-op hero never sets a story flag). Each script ends in its own reward; the hero's household bond gets a
+ * care tick. A family speaker draws its own portrait (ui_dialog.c / portrait.c). */
+static const uint16_t coop_scr[HERO_COOP_FILLED][HERO_COOP_QUESTS] = {
+    { SCR_COOP_EMBER_1, SCR_COOP_EMBER_2, SCR_COOP_EMBER_3, SCR_COOP_EMBER_4 },
+    { SCR_COOP_ROOK_1, SCR_COOP_ROOK_2, SCR_COOP_ROOK_3, SCR_COOP_ROOK_4 },
+    { SCR_COOP_WICK_1, SCR_COOP_WICK_2, SCR_COOP_WICK_3, SCR_COOP_WICK_4 },
+};
+
+int story_coop_quest_due(int p)
+{
+    int k = prof_hero(p) - HERO_COOP_FIRST, q;
+    if (k < 0 || k >= HERO_COOP_FILLED) return -1;
+    for (q = 0; q < HERO_COOP_QUESTS; q++)
+        if (!prof_flag(p, PROF_FLAG_COOP_QUEST(q))) break;
+    if (q >= HERO_COOP_QUESTS) return -1;
+    if (q > 0 && prof_quest(p, 0) == (doomo_town.day & 0xFF)) return -1;      /* one per game day */
+    return q;
+}
+
 void story_coop_tick(void)
 {
-    int a = playas_avatar(), p;
+    int a = playas_avatar(), p, q, k;
     if (a < PLAYAS_ID_FAMILY_FIRST || !playas_available() || story_talking()) return;
     p = prof_find_resident(a);
-    if (p < 0 || !prof_is_coop(p) || prof_hero(p) != HERO_COOP_FIRST) return;
-    if (prof_flag(p, PROF_FLAG_COOP_QUEST(0))) return;
-    prof_flag_set(p, PROF_FLAG_COOP_QUEST(0), 1);
+    if (p < 0 || !prof_is_coop(p)) return;
+    q = story_coop_quest_due(p);
+    if (q < 0) return;
+    k = prof_hero(p) - HERO_COOP_FIRST;
+    prof_flag_set(p, PROF_FLAG_COOP_QUEST(q), 1);
+    prof_quest_set(p, 0, doomo_town.day & 0xFF);
+    family_care(a);
     story_fmt_target = (int16_t)a;
-    story_conv(SCR_COOP_EMBER_1, 0);
+    story_conv(coop_scr[k][q], 0);
 }
 
 void story_interact_npc(int id)
