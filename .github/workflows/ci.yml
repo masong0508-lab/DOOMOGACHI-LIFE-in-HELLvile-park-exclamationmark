@@ -213,6 +213,17 @@ jobs:
             echo '```'
           } 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
 
+      # Every scene of the tour with a PC profile: ranked by work ms, how far each is from the 30 fps
+      # budget and which functions to fix first. Informational, never fails the job.
+      - name: Profile every scene (road to 30 fps)
+        run: |
+          {
+            echo
+            echo '## GBA profile of every scene (slowest first; 30 fps needs about 30 ms of work a frame)'
+            echo
+            make -C gba profile-all 2>&1 | grep -E '^\| |^profile-all|rror' || echo '(profile-all produced no table)'
+          } 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
+
       - name: Upload speed report
         if: always()
         uses: actions/upload-artifact@v4
@@ -221,6 +232,7 @@ jobs:
           path: |
             gba/build/speed_tour.log
             gba/build/title_profile.log
+            gba/build/profile_all.log
             gba/build/shots/speed/
             gba/build/shots/title/
           if-no-files-found: ignore
