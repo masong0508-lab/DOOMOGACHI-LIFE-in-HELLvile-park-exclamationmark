@@ -130,6 +130,45 @@ jobs:
       - name: Headless harness (engine tour, flash save round trip, game smoke)
         run: make -C gba test
 
+      # Informational, never fails the job: real GBA numbers from mGBA (bus wait
+      # states, prefetch and halt time are emulated). The speed tour reports every
+      # scene's drawn fps against its floor, and the title profile ranks the title
+      # screen's hottest functions (idle, then with the menu open). Read it under
+      # the run's "Summary" tab; the logs and tour screenshots are in the
+      # gba-speed-report artifact.
+      - name: Speed report (speed tour + title profile; informational)
+        continue-on-error: true
+        run: |
+          {
+            echo '## GBA speed report'
+            echo
+            echo '### Speed tour: drawn fps per scene (gates off; floors missed are listed below the table)'
+            echo '```'
+            make -C gba test-speed SPEED_GATES=0 2>&1 | tail -n 70 || true
+            echo '```'
+            echo '```'
+            { grep 'under the floor' gba/build/speed_tour.log || echo '(no scene is under its floor)'; } | sed 's#^.*harness: ##'
+            echo '```'
+            echo
+            echo '### Title screen: fps, CPU work per tick, hottest functions'
+            echo '```'
+            make -C gba profile-title 2>&1 | grep -E 'harness: (fps|profile of|  +[0-9])' || true
+            echo '```'
+          } 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload speed report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gba-speed-report
+          path: |
+            gba/build/speed_tour.log
+            gba/build/title_profile.log
+            gba/build/shots/speed/
+            gba/build/shots/title/
+          if-no-files-found: ignore
+          retention-days: 14
+
       - name: Collect ROMs
         run: |
           mkdir -p dist

@@ -1,0 +1,37 @@
+# title_profile.txt - where the title screen's time goes on the GBA
+# (make -C gba profile-title; CI prints it in the run summary).
+#
+# Two windows on the game ROM, each measured with `fps` (drawn frames/s and the
+# average / worst CPU work of a drawn tick, in ms) and then sampled with
+# `profile N` (the emulated cycles, wait states included, charged to the
+# function the PC is in: the hottest 25 are printed). A tick over 33 ms drops a
+# frame (the pacing shows a frame every second vblank at best), so the WORST
+# work figure matters as much as the average: one slow tick in a smooth screen
+# reads as stutter.
+#
+#   idle       the title with the two chibis, hills, logo, "PRESS START" (the
+#              parade swaps expressions / pairs while it sits here)
+#   menu open  after START: the main menu window over the same scene
+#
+# `profile` runs about 12M instructions = roughly 2-3 s of emulated time, so a
+# window sees a chibi re-render or two. Numbers belong to this script (a
+# scene's cost depends on the tick it starts on). No expect-fps gates: this
+# reports, speed_tour.txt gates.
+wait 40
+expect-log doomo: init
+seed 1
+scene TITLE
+wait 200
+fps settle (ignore)
+wait 130
+fps title idle
+profile 12000000
+wait 5
+fps settle (ignore)
+press START
+wait 40
+fps settle (ignore)
+wait 130
+fps title menu open
+profile 12000000
+shot title_menu

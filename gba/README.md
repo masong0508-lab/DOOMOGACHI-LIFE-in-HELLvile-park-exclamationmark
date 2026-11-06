@@ -9,6 +9,7 @@ make -C gba                 # build/doomogachi.gba        the game
 make -C gba engine-test     # build/doomogachi_et.gba     3D showcase tour (ENGINE_TEST=1)
 make -C gba test            # headless mGBA tests: engine tour, flash save round trip, game smoke
 make -C gba test-speed      # speed tour: every scene's fps (gated) + frame hashes, as a table
+make -C gba profile-title    # the title screen: fps, CPU work per tick, hottest functions (idle + menu open)
 make -C gba clean
 mgba-qt gba/build/doomogachi.gba     # save type: Flash 1Mb (auto-detected)
 ```

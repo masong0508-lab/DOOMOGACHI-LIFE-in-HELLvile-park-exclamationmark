@@ -135,7 +135,7 @@ CORE_OBJS := $(call core_obj,$(CORE_SRCS))
 # over the core's weak stubs, and the core's strong definitions win over both.
 ALL_OBJS  := $(GBA_OBJS) $(CORE_OBJS)
 
-.PHONY: all rom engine-test engine-test-nocore harness test test-et test-game test-save test-coresave test-home test-ow test-lang test-speed test-life clean sizes
+.PHONY: all rom engine-test engine-test-nocore harness test test-et test-game test-save test-coresave test-home test-ow test-lang test-speed test-life profile-title clean sizes
 .DEFAULT_GOAL := all
 
 # Cartridge size (user decision 2026-11-01): the game ROM is a full 256 Mbit
@@ -312,6 +312,22 @@ test-speed: harness
 	echo "test-speed: log $(SPEED_LOG), shots $(SHOTS)/speed"; \
 	exit $$rc
 # --- end G1 ---
+
+# --- profile-title: where the title screen's time goes (harness/scripts/title_profile.txt):
+# drawn fps + CPU work per tick and the hottest functions (harness `profile`, needs the ELF's
+# symbols), idle and with the menu open. Reports, never gates. Output: build/title_profile.log ---
+TITLE_PROFILE_LOG ?= $(BUILD)/title_profile.log
+profile-title: harness
+	@$(MAKE) --no-print-directory -f $(GBA)/Makefile rom ENGINE_TEST=0
+	@mkdir -p $(SHOTS)/title
+	$(PREFIX)nm -n $(BUILD)/doomogachi.elf > $(BUILD)/doomogachi.nm
+	@rc=0; \
+	$(HARNESS) $(BUILD)/doomogachi.gba --script $(GBA)/harness/scripts/title_profile.txt \
+	    --shots $(SHOTS)/title --nm $(BUILD)/doomogachi.nm --no-fps-gates --quiet > $(TITLE_PROFILE_LOG) 2>&1 || rc=1; \
+	cat $(TITLE_PROFILE_LOG); \
+	echo "profile-title: log $(TITLE_PROFILE_LOG)"; \
+	exit $$rc
+# --- end profile-title ---
 
 # --- M0: the life tour (docs/GBA.md "Life tour"): the island hub, news,
 # island menu, roster, resident and apartments: fps and work ms (expect-fps

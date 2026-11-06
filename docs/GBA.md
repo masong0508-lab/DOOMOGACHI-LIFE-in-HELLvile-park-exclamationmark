@@ -821,6 +821,20 @@ answers within 50-135 ms. (Measured on G7's tree; a cursor's latency
 moves by a frame or three with where its press lands in the 30 Hz tick.) G8 (the island on the tile backend) and LS-IN
 (the press latch) are the packages that move these numbers.
 
+### Where the title's time goes (`make -C gba profile-title`)
+
+`harness/scripts/title_profile.txt` plays the game ROM to the title, lets it settle, and for two windows
+(idle, then the main menu open after START) prints `fps` (drawn frames/s, average and **worst** CPU work of a
+drawn tick in ms) and the harness profiler's hottest 25 functions over about 12M instructions (the emulated
+cycles, wait states and halt time included). It reports and never gates; the log is `build/title_profile.log`.
+
+Read the worst-tick figure as much as the average: a tick over 33 ms drops a frame (the pacing shows a frame
+every second vblank at best), so one slow tick in a smooth screen reads as stutter even when the average is
+fine (the G1 baseline was 27.7 ms average and 62.4 ms worst for the title). CI runs this and the speed tour
+after `make -C gba test` in a step that never fails the job (`continue-on-error`) and prints both in the
+run's Summary tab; the logs and the tour's shots are the `gba-speed-report` artifact. That is how GBA numbers
+reach a session that has no emulator: ask for the Summary text of the latest run.
+
 ### Frame pacing
 
 The core logic runs at 30 Hz (`plat_begin_frame` / `plat_end_frame`, one
