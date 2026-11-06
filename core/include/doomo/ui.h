@@ -103,6 +103,10 @@ int  ui_wave(int t, int period, int amplitude);
 /* Window that boings in: drawn scaled about its centre while ticks < 12.
  * Returns 1 once fully open (draw the contents then). */
 int  ui_window_pop(int x, int y, int w, int h, int style, int ticks);
+/* shade the screen at `level` everywhere but under the opaque window that
+ * ui_window_pop(x, y, w, h, .., ticks) draws on the same frame (same pop
+ * scale); call it BEFORE the window */
+void ui_dim_under_window_pop(int x, int y, int w, int h, int ticks, int level);
 
 /* ---- primitives (pure plat_rect spans, clipped) ------------------------- */
 /* (integration) Offscreen target: while set, the rects of the primitives

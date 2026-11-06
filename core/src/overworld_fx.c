@@ -639,7 +639,9 @@ void owfx_draw_pause(void)
     const UiStyle *st = ui_style(style);
     char buf[48];
     uint32_t t = doomo_frame_count();
-    plat_shade_rect(0, 0, sw, sh, 8);
+    /* dim the world everywhere but under the opaque window (a full-screen
+     * shade wasted ~70% of its pixels on ones the window then painted over) */
+    ui_dim_under_window_pop(x, y, w, h, ow.pause_t, 8);
     if (!ui_window_pop(x, y, w, h, style, ow.pause_t)) return;
     ui_title(sw / 2, y - 6, "Paused", style);
     /* you, waving */

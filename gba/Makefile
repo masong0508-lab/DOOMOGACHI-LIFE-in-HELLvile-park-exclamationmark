@@ -352,3 +352,15 @@ clean:
 	rm -rf $(BUILD)
 
 -include $(shell find $(OBJ) -name '*.d' 2>/dev/null)
+
+# --- profile-pause: the overworld pause panel vs the visit under it ---
+PAUSE_PROFILE_LOG ?= $(BUILD)/pause_profile.log
+profile-pause: harness
+	@$(MAKE) --no-print-directory -f $(GBA)/Makefile rom ENGINE_TEST=0
+	@mkdir -p $(SHOTS)/pause
+	$(PREFIX)nm -n $(BUILD)/doomogachi.elf > $(BUILD)/doomogachi.nm
+	@rc=0; \
+	$(HARNESS) $(BUILD)/doomogachi.gba --script $(GBA)/harness/scripts/pause_profile.txt \
+	    --shots $(SHOTS)/pause --nm $(BUILD)/doomogachi.nm --no-fps-gates --quiet > $(PAUSE_PROFILE_LOG) 2>&1 || rc=1; \
+	cat $(PAUSE_PROFILE_LOG); \
+	exit $$rc

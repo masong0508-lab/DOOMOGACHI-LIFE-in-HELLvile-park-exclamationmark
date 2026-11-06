@@ -1,0 +1,19 @@
+# pause_profile.txt - where the overworld pause panel's time goes on the GBA
+# (make -C gba profile-pause). Same method as title_profile.txt.
+wait 40
+expect-log doomo: init
+seed 1
+scene STORY 10
+wait 200
+fps settle (ignore)
+wait 130
+fps visit
+profile 12000000
+wait 5
+press START
+wait 30
+fps settle (ignore)
+wait 130
+fps pause
+profile 12000000
+shot pause
