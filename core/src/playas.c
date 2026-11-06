@@ -1,7 +1,8 @@
 /* playas.c - PA1: who the player controls (owner: playas; docs/PLAYAS.md).
  * State is zero-initialised statics: the avatar is stored as an offset from
  * the hero, so all-zero means "you are the hero". The 'PLAY' chunk is the
- * 32 B header only (no pockets yet); it is empty while everything is default.
+ * 32 B header plus the PA10 pockets (money, bag and health per avatar); it is
+ * empty while everything is default.
  * Strong definitions of the weak defaults in weak_playas.c. */
 #include <string.h>
 #include "doomo/doomo.h"
@@ -137,11 +138,155 @@ int playas_new_life(int id)
     return 1;
 }
 
+
+/* ---- PA10: per-avatar pockets (docs/PLAYAS.md section 9) ---------------------
+ * Money, the bag and health follow the avatar. The live fields stay where every
+ * shop, gift and cooking site already reads them (doomo_town.money / .items /
+ * .story.hp / .armor), so they always belong to WHOEVER YOU PLAY. A switch saves
+ * the outgoing avatar's three things into a pocket and loads the incoming one's.
+ *   - the hero's whole bag (64 kinds) is one wide stash of two pocket slots, held
+ *     only while somebody else is played;
+ *   - a villager or family member keeps a pocket of 16 stacks (the 16 biggest);
+ *   - 14 villager pockets, most recently used first; the oldest falls back to
+ *     what the sim generates (a small purse and two snacks);
+ *   - a save from before PA10 that is mid play-as has no hero stash: switching
+ *     to the hero keeps what is carried (the old, shared behaviour). */
+#define PK_HERO_SLOTS  2
+#define PK_MAX         (PLAY_POCKETS - PK_HERO_SLOTS)
+#define PK_HP_MAX      200
+#define PK_WIRE_ITEMS  8                         /* offset of the item bytes */
+#define PK_WIRE_ARMOR  40
+#define PK_HERO_ARMOR  72
+DOOMO_STATIC_ASSERT(DOOMO_MAX_ITEMS == 64, pk_hero_stash_counts_fit_two_slots);
+DOOMO_STATIC_ASSERT(PK_WIRE_ITEMS + PLAY_POCKET_ITEMS * 2 <= PK_WIRE_ARMOR, pk_items_before_armor);
+DOOMO_STATIC_ASSERT(PK_WIRE_ARMOR + 1 <= PLAY_SZ_POCKET, pk_armor_fits);
+DOOMO_STATIC_ASSERT(PK_HERO_ARMOR + 1 <= PK_HERO_SLOTS * PLAY_SZ_POCKET, pk_hero_fits);
+
+typedef struct { uint16_t id, hp; uint32_t money; uint8_t item[PLAY_POCKET_ITEMS], count[PLAY_POCKET_ITEMS]; uint8_t armor; } Pocket;
+typedef struct { uint32_t money; uint8_t hp, armor, have; uint8_t items[DOOMO_MAX_ITEMS]; } HeroStash;
+
+static Pocket    pk_[PK_MAX];                    /* newest first */
+static uint8_t   npk_;
+static HeroStash hs_;
+
+static uint8_t hp_live(void) { return doomo_town.story.hp > PK_HP_MAX ? PK_HP_MAX : doomo_town.story.hp; }
+
+static void hero_capture(void)
+{
+    hs_.money = doomo_town.money; hs_.hp = hp_live(); hs_.armor = doomo_town.story.armor;
+    memcpy(hs_.items, doomo_town.items, DOOMO_MAX_ITEMS);
+    hs_.have = 1;
+}
+
+static void hero_apply(void)
+{
+    doomo_town.money = hs_.money; doomo_town.story.hp = hs_.hp; doomo_town.story.armor = hs_.armor;
+    memcpy(doomo_town.items, hs_.items, DOOMO_MAX_ITEMS);
+    memset(&hs_, 0, sizeof hs_);
+}
+
+/* the live money, health and the 16 biggest stacks (ties: the lower item id) */
+static void live_to_pocket(Pocket *p, int id)
+{
+    uint8_t used[DOOMO_MAX_ITEMS];
+    int n, i, best;
+    memset(p, 0, sizeof *p);
+    memset(used, 0, sizeof used);
+    p->id = (uint16_t)id; p->hp = hp_live(); p->armor = doomo_town.story.armor; p->money = doomo_town.money;
+    for (n = 0; n < PLAY_POCKET_ITEMS; n++) {
+        best = -1;
+        for (i = 1; i < ITEM_COUNT; i++)
+            if (doomo_town.items[i] && !used[i] && (best < 0 || doomo_town.items[i] > doomo_town.items[best])) best = i;
+        if (best < 0) break;
+        used[best] = 1;
+        p->item[n] = (uint8_t)best; p->count[n] = doomo_town.items[best];
+    }
+}
+
+static void pocket_to_live(const Pocket *p)
+{
+    int n;
+    doomo_town.money = p->money; doomo_town.story.hp = (uint8_t)p->hp; doomo_town.story.armor = p->armor;
+    memset(doomo_town.items, 0, DOOMO_MAX_ITEMS);
+    for (n = 0; n < PLAY_POCKET_ITEMS; n++)
+        if (p->item[n] > 0 && p->item[n] < ITEM_COUNT) doomo_town.items[p->item[n]] = p->count[n];
+}
+
+/* what the sim generates for someone with no pocket: the town seed and the id make
+ * a purse of H$40..199, full health and two different snacks. Never random. */
+static void pocket_default(Pocket *p, int id)
+{
+    uint32_t h = doomo_town.seed ^ ((uint32_t)id * 2654435761u);
+    int a, b;
+    h ^= h >> 15; h *= 2246822519u; h ^= h >> 13; h *= 3266489917u; h ^= h >> 16;
+    memset(p, 0, sizeof *p);
+    p->id = (uint16_t)id; p->hp = 100; p->money = 40u + (h % 160u);
+    a = ITEM_CUPCAKE + (int)((h >> 8) % 12u);
+    b = ITEM_CUPCAKE + (int)(((h >> 12) % 11u + (unsigned)(a - ITEM_CUPCAKE) + 1u) % 12u);   /* never a */
+    p->item[0] = (uint8_t)a; p->count[0] = (uint8_t)(1u + ((h >> 16) % 3u));
+    p->item[1] = (uint8_t)b; p->count[1] = (uint8_t)(1u + ((h >> 20) % 3u));
+}
+
+static int pk_find(int id)
+{
+    int i;
+    for (i = 0; i < npk_; i++) if (pk_[i].id == id) return i;
+    return -1;
+}
+
+static void pk_remove(int i)
+{
+    for (; i + 1 < npk_; i++) pk_[i] = pk_[i + 1];
+    npk_--;
+}
+
+static void pk_store(const Pocket *p)        /* newest first; the oldest is dropped when full */
+{
+    int i = pk_find(p->id);
+    if (i >= 0) pk_remove(i);
+    if (npk_ == PK_MAX) npk_--;
+    for (i = npk_; i > 0; i--) pk_[i] = pk_[i - 1];
+    pk_[0] = *p;
+    npk_++;
+}
+
+static int pk_take(int id, Pocket *out)
+{
+    int i = pk_find(id);
+    if (i < 0) return 0;
+    *out = pk_[i];
+    pk_remove(i);
+    return 1;
+}
+
+static void pockets_swap(int from, int to)
+{
+    Pocket p;
+    if (from == to) return;
+    if (from == PLAYAS_ID_HERO) hero_capture();
+    else { live_to_pocket(&p, from); pk_store(&p); }
+    if (to == PLAYAS_ID_HERO) { if (hs_.have) hero_apply(); }          /* no stash: an old save, keep what is carried */
+    else { if (!pk_take(to, &p)) pocket_default(&p, to); pocket_to_live(&p); }
+}
+
+int playas_pocket_count(void) { return npk_ + (hs_.have ? PK_HERO_SLOTS : 0); }
+
+/* 1 and *money when id has a pocket held right now (not the avatar, whose things are live) */
+int playas_pocket_money(int id, uint32_t *money)
+{
+    int i;
+    if (id == PLAYAS_ID_HERO) { if (!hs_.have) return 0; if (money) *money = hs_.money; return 1; }
+    if ((i = pk_find(id)) < 0) return 0;
+    if (money) *money = pk_[i].money;
+    return 1;
+}
+
 int playas_switch(int id, int how)
 {
     int from = playas_avatar();
     (void)how;                                   /* PA4 presents it */
     if (!playas_can_be(id)) return 0;
+    pockets_swap(from, id);
     recent_push(from);
     P.off = (int16_t)(id - PLAYAS_ID_HERO);
     recent_drop(id);
@@ -154,6 +299,7 @@ int playas_check(void)
 {
     if (P.off == 0 || valid(playas_avatar())) return 0;
     recent_drop(playas_avatar());
+    pockets_swap(playas_avatar(), PLAYAS_ID_HERO);   /* their pocket is kept, in case they come back */
     P.off = 0;
     recent_drop(PLAYAS_ID_HERO);                  /* the avatar is never in the ring */
     ui_toast("You are back as yourself.");
@@ -161,15 +307,28 @@ int playas_check(void)
     return 1;
 }
 
-/* ---- the 'PLAY' chunk: 32 B header (docs/PLAYAS.md section 4) ------------- */
-static int is_default(void) { return P.off == 0 && P.kind == 0 && P.nrecent == 0 && P.switches == 0 && !P.flags; }
-static uint32_t play_size(void) { return is_default() ? 0u : PLAY_SZ_HEADER; }
+/* ---- the 'PLAY' chunk: 32 B header, the hero stash, the pockets (docs/PLAYAS.md sections 4, 9) ---- */
+static int is_default(void)
+{
+    return P.off == 0 && P.kind == 0 && P.nrecent == 0 && P.switches == 0 && !P.flags && !npk_ && !hs_.have;
+}
+
+static uint32_t play_size(void)
+{
+    if (is_default()) return 0u;
+    return PLAY_SZ_HEADER + (hs_.have ? PK_HERO_SLOTS * PLAY_SZ_POCKET : 0u) + (uint32_t)npk_ * PLAY_SZ_POCKET;
+}
+
+static void put16(uint8_t *d, uint32_t v) { d[0] = (uint8_t)v; d[1] = (uint8_t)(v >> 8); }
+static void put32(uint8_t *d, uint32_t v) { put16(d, v); put16(d + 2, v >> 16); }
+static uint32_t get32(const uint8_t *s) { return (uint32_t)s[0] | ((uint32_t)s[1] << 8) | ((uint32_t)s[2] << 16) | ((uint32_t)s[3] << 24); }
 
 static uint32_t play_write(uint8_t *d, uint32_t cap)
 {
     int i, a = playas_avatar();
-    if (is_default() || cap < PLAY_SZ_HEADER) return 0;
-    memset(d, 0, PLAY_SZ_HEADER);
+    uint32_t sz = play_size(), at = PLAY_SZ_HEADER;
+    if (is_default() || cap < sz) return 0;
+    memset(d, 0, sz);
     d[0] = 1; d[1] = P.flags & PF_NEWLIFE ? 1 : 0;
     d[2] = (uint8_t)a; d[3] = (uint8_t)(a >> 8);
     d[4] = P.kind; d[5] = P.nrecent;
@@ -178,8 +337,24 @@ static uint32_t play_write(uint8_t *d, uint32_t cap)
     d[16] = (uint8_t)P.pos.x; d[17] = (uint8_t)((uint16_t)P.pos.x >> 8);
     d[18] = (uint8_t)P.pos.y; d[19] = (uint8_t)((uint16_t)P.pos.y >> 8);
     d[20] = P.pos.map; d[21] = P.pos.dir;
+    d[22] = (uint8_t)playas_pocket_count();      /* pocket slots that follow (the hero stash is two) */
+    d[23] = hs_.have ? 1 : 0;                    /* bit 0: the hero stash comes first */
     d[24] = P.flags & PF_HEROPOS ? 1 : 0;
-    return PLAY_SZ_HEADER;
+    if (hs_.have) {
+        uint8_t *h = d + at;
+        put16(h, PLAYAS_ID_HERO); put16(h + 2, hs_.hp); put32(h + 4, hs_.money);
+        memcpy(h + PK_WIRE_ITEMS, hs_.items, DOOMO_MAX_ITEMS);
+        h[PK_HERO_ARMOR] = hs_.armor;
+        at += PK_HERO_SLOTS * PLAY_SZ_POCKET;
+    }
+    for (i = 0; i < npk_; i++, at += PLAY_SZ_POCKET) {
+        uint8_t *q = d + at;
+        int n;
+        put16(q, pk_[i].id); put16(q + 2, pk_[i].hp); put32(q + 4, pk_[i].money);
+        for (n = 0; n < PLAY_POCKET_ITEMS; n++) { q[PK_WIRE_ITEMS + 2 * n] = pk_[i].item[n]; q[PK_WIRE_ITEMS + 2 * n + 1] = pk_[i].count[n]; }
+        q[PK_WIRE_ARMOR] = pk_[i].armor;
+    }
+    return sz;
 }
 
 
@@ -241,7 +416,40 @@ int playas_romance_ok(int from, int to)
     return 1;
 }
 
-static void play_reset(void) { memset(&P, 0, sizeof P); }
+static void play_reset(void) { memset(&P, 0, sizeof P); memset(pk_, 0, sizeof pk_); npk_ = 0; memset(&hs_, 0, sizeof hs_); }
+
+/* the pockets after the header; anything that does not make sense is dropped, never trusted */
+static void pockets_read(const uint8_t *s, uint32_t len, int avatar)
+{
+    uint32_t at = PLAY_SZ_HEADER;
+    int slots = s[22], i, n;
+    if (slots > PLAY_POCKETS) slots = PLAY_POCKETS;
+    if ((s[23] & 1) && slots >= PK_HERO_SLOTS && at + PK_HERO_SLOTS * PLAY_SZ_POCKET <= len) {
+        const uint8_t *h = s + at;
+        hs_.hp = (uint8_t)(h[2] > PK_HP_MAX ? 100 : h[2]); hs_.money = get32(h + 4); hs_.armor = h[PK_HERO_ARMOR];
+        for (n = 1; n < ITEM_COUNT; n++) hs_.items[n] = (uint8_t)(h[PK_WIRE_ITEMS + n] > 99 ? 99 : h[PK_WIRE_ITEMS + n]);
+        hs_.have = 1;
+        at += PK_HERO_SLOTS * PLAY_SZ_POCKET;
+        slots -= PK_HERO_SLOTS;
+    }
+    for (i = 0; i < slots && npk_ < PK_MAX && at + PLAY_SZ_POCKET <= len; i++, at += PLAY_SZ_POCKET) {
+        const uint8_t *q = s + at;
+        Pocket p;
+        int id = q[0] | (q[1] << 8), hp = q[2] | (q[3] << 8), m = 0;
+        if (id == PLAYAS_ID_HERO || id == avatar || !valid(id) || pk_find(id) >= 0) continue;
+        memset(&p, 0, sizeof p);
+        p.id = (uint16_t)id; p.hp = (uint16_t)(hp > PK_HP_MAX ? 100 : hp);
+        p.money = get32(q + 4); p.armor = q[PK_WIRE_ARMOR];
+        for (n = 0; n < PLAY_POCKET_ITEMS; n++) {
+            int it = q[PK_WIRE_ITEMS + 2 * n], c = q[PK_WIRE_ITEMS + 2 * n + 1], k;
+            if (it <= 0 || it >= ITEM_COUNT || c <= 0) continue;
+            for (k = 0; k < m && p.item[k] != it; k++) {}
+            if (k < m) continue;                                        /* a duplicate stack */
+            p.item[m] = (uint8_t)it; p.count[m] = (uint8_t)(c > 99 ? 99 : c); m++;
+        }
+        pk_[npk_++] = p;                                                /* the file is newest first */
+    }
+}
 
 static int play_read(const uint8_t *s, uint32_t len, uint16_t ver)
 {
@@ -257,9 +465,10 @@ static int play_read(const uint8_t *s, uint32_t len, uint16_t ver)
     P.pos.map = s[20]; P.pos.dir = s[21];
     if (s[1] & 1) P.flags |= PF_NEWLIFE;
     if (s[24] & 1) P.flags |= PF_HEROPOS;
-    /* the avatar may be gone by now: clamp to the hero */
+    pockets_read(s, len, a);
+    /* the avatar may be gone by now: clamp to the hero (the live things were theirs, so the hero's come back) */
     P.off = (int16_t)(a - PLAYAS_ID_HERO);
-    if (a != PLAYAS_ID_HERO && !valid(a)) P.off = 0;
+    if (a != PLAYAS_ID_HERO && !valid(a)) { P.off = 0; if (hs_.have) hero_apply(); }
     for (i = P.nrecent - 1; i >= 0; i--)
         if (P.recent[i] == playas_avatar() || (P.recent[i] != PLAYAS_ID_HERO && !valid(P.recent[i]))) recent_drop(P.recent[i]);
     return 1;

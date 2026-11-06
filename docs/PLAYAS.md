@@ -233,3 +233,61 @@ owners land too: it tests a fresh town and compares byte 47 with
 * UI: `SCENE_PLAYAS` gets a last row "Start a new life..." while `playas_new_life_ok()`. Confirm, pick a name from the
   list (the same rows as Play as), confirm again. B steps back.
 * Not built: a title-screen entry, and starting a brand-new world as a villager.
+
+## 9. PA10 part 2: per-avatar pockets (`core/src/playas.c`, 5 Nov 2026)
+
+Money, the bag and health belong to whoever you play (user answer 13). The live fields stay where every shop,
+gift and cooking site already reads them (`doomo_town.money`, `.items[]`, `.story.hp`, `.story.armor`), so nothing
+outside `playas.c` changed: they are always the **avatar's**. `playas_switch` (and `playas_check`, when a lost
+avatar sends you home) saves the outgoing avatar's three things into a pocket and loads the incoming one's.
+
+| who | where the things wait while somebody else is played |
+|---|---|
+| the hero | one wide stash of **two pocket slots** (the whole 64-kind bag, money, health, armour), only while another avatar is played |
+| a villager / family member | a **pocket** of 48 B: id, health, money, the **16 biggest stacks** (ties: lower item id), armour |
+| no pocket yet | what the sim generates, never random: from the town seed and the id, a purse of H$40..199, full health and two different snacks |
+
+* **Slots.** 16 in the chunk (`PLAY_POCKETS`): 2 for the hero's stash + **14 villager pockets**, most recently used
+  first. Playing a 15th villager drops the oldest pocket (it falls back to the generated one).
+* **Wire.** After the 32 B header: the hero stash (2 slots) when header byte 23 bit 0 is set, then the pockets,
+  newest first. Header byte 22 = slots that follow. Pocket: id u16, health u16, money u32 at 4, item/count pairs
+  from byte 8, armour at byte 40. Hero stash: the 64 counts from byte 8, armour at byte 72. Everything is clamped
+  on load (health 0..200 else 100, stacks 0..99, no duplicate or unknown item, no pocket for the hero, the avatar
+  or an invalid id). A chunk from before PA10 (header only) reads as before.
+* **Old saves mid play-as** have no hero stash: switching to the hero keeps what is carried (the old shared
+  behaviour), nothing is lost.
+* **Size.** The `PLAY` chunk is `<= 800 B` (`SAVE_EXT_MAX_PLAY`), checked by `pa10_pockets_round_trip_and_the_chunk_stays_under_800`.
+  The stress save (`pa10_stress_save_round_trips_under_the_gate`) is 10,123 B against the 32,768 B gate.
+* **API.** `playas_pocket_count()`, `playas_pocket_money(id, &m)` (the family and almanac screens can show a
+  held purse). The avatar's own things are the live town fields.
+* **GBA / PS1.** `.bss` +~890 B in `playas.c` (14 pockets x 36 B + the 72 B hero stash + a few bytes): not measured
+  on GBA EWRAM or PS1 here; an EWRAM ledger row is still to be added when it is (the budget row above allows
+  play-as <= 64 B for PA1; PA10 needs its own line).
+* **Tests** (`test_playas.c`): pockets follow the avatar (money, bag, health, armour, both ways), the generated pocket
+  is stable, round trip and the 800 B cap with 20 villagers, a hostile chunk is clamped, an old save mid play-as
+  keeps what is carried, a lost avatar sends the hero home with the hero's bag.
+
+## 9. PA10 part 2: per-avatar pockets (`core/src/playas.c`, 5 Nov 2026)
+
+Money, the bag and health belong to whoever you play (user answer 13). The live fields stay where every shop, gift
+and cooking site already reads them (`doomo_town.money`, `.items[]`, `.story.hp`, `.story.armor`), so they are always the
+avatar's. A switch saves the outgoing avatar's three things into a pocket and loads the incoming one's. No call site changes.
+
+* **The hero's stash**: while somebody else is played, the hero's money, health, armour and the whole 64-kind bag sit in
+  one wide stash of two pocket slots (96 B). Switching back to the hero empties the stash into the live fields.
+* **A villager's or family member's pocket** (48 B): resident u16, health u16, money u32, the 16 biggest stacks as
+  (item, count) from offset 8, armour at offset 40. Smaller stacks are not kept (ties: the lower item id).
+* **14 villager pockets**, newest first; the oldest is dropped when full. An id without a pocket gets what the sim
+  generates: a purse of H$40..199 from the town seed and the id (never random), full health, two different snacks.
+* **Chunk**: header bytes 22 (pocket slots that follow, the stash counts two) and 23 (bit 0: the stash comes first).
+  Worst case 32 + 2 x 48 + 14 x 48 = 800 B = `SAVE_EXT_MAX_PLAY`. An all-default chunk is still 0 B. A 32 B header from before
+  PA10 reads fine: with no stash, switching to the hero keeps what is carried (the old shared behaviour, nothing lost).
+* **Loading never trusts the file**: health over 200 becomes 100, stacks over 99 become 99, bad / duplicate / hero /
+  avatar ids and bytes past the end are dropped. An avatar no longer valid on load sends the hero home with the stash.
+* **Lost avatar** (`playas_check`): their pocket is kept, the hero's stash comes back.
+* **API**: `playas_pocket_count()`, `playas_pocket_money(id, &m)` (what is held, not the live avatar's things).
+* **Tests**: `pa10_pockets_*`, `pa10_default_pocket_*`, `pa10_hostile_chunk_*`, `pa10_an_old_save_*`, `pa10_a_lost_avatar_*`;
+  the stress save is 10,123 B against the 32,768 B gate.
+* **Budget**: about +0.7 KB of `.bss` on every platform (14 x 44 B pockets + a 72 B stash), not yet measured on GBA EWRAM / PS1.
+  Add a row to the EWRAM ledger when it is measured.
+* **Not here**: showing money, health or the bag of other avatars in a screen, and per-avatar weapons and ammo (the armoury stays shared).

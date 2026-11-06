@@ -10,6 +10,7 @@
 #include "doomo/save.h"
 #include "doomo/playas.h"
 #include "doomo/save_ext.h"
+#include "doomo/save_budget.h"
 #include "doomo/story.h"
 #include "doomo/town.h"
 #include "doomo/sim.h"
@@ -123,7 +124,7 @@ TEST(playas_pets_and_the_lost_cannot_be_played)
 
 TEST(playas_chunk_round_trips_and_clamps)
 {
-    uint8_t buf[64];
+    uint8_t buf[800];
     int a, k;
     PlayasPos pos;
     fresh();
@@ -134,12 +135,12 @@ TEST(playas_chunk_round_trips_and_clamps)
     playas_set_hero_pos(120, 64, 3, 2);
     CHECK(playas_switch(a, PLAYAS_SWITCH_INSTANT));
     CHECK(playas_switch(k, PLAYAS_SWITCH_INSTANT));
-    CHECK_EQ(doomo_save_ext_playas->size(), 32);
-    CHECK_EQ(doomo_save_ext_playas->write(buf, sizeof(buf)), 32);
+    CHECK_EQ(doomo_save_ext_playas->size(), 32 + 96 + 48);   /* header + the hero's stash + Ann's pocket */
+    CHECK_EQ(doomo_save_ext_playas->write(buf, sizeof(buf)), 32 + 96 + 48);
     doomo_save_ext_playas->reset();
     CHECK(playas_is_hero());
     CHECK_EQ(playas_hero_kind(), HERO_CUSTOM);
-    CHECK(doomo_save_ext_playas->read(buf, 32, 1));
+    CHECK(doomo_save_ext_playas->read(buf, 32 + 96 + 48, 1));
     CHECK_EQ(playas_avatar(), k);
     CHECK_EQ(playas_hero_kind(), HERO_MARVIN);
     CHECK_EQ(playas_recent(0), a);
@@ -148,7 +149,7 @@ TEST(playas_chunk_round_trips_and_clamps)
     CHECK(pos.x == 120 && pos.y == 64 && pos.map == 3 && pos.dir == 2);
     CHECK((playas_profile_flags() & PLAYAS_HF_HERO_MASK) == PLAYAS_HF_MAKE_HERO(HERO_MARVIN));
     family_remove(k);                                 /* gone by load time: clamped */
-    CHECK(doomo_save_ext_playas->read(buf, 32, 1));
+    CHECK(doomo_save_ext_playas->read(buf, 32 + 96 + 48, 1));
     CHECK(playas_is_hero());
     CHECK(!doomo_save_ext_playas->read(buf, 10, 1));  /* short chunk resets */
     CHECK(playas_is_hero());
@@ -313,6 +314,179 @@ TEST(ls5_life_hooks_and_facts)
     CHECK_EQ(vm_var(0), -1);
     side_callback(CB_LIFE_FAMILY_ADD, 99999);        /* nobody there */
     CHECK(vm_var(0) < 0);
+}
+
+/* ---- PA10 part 2: per-avatar pockets ---------------------------------------------------------
+ * Money, the bag and health belong to whoever you play (user answer 13). */
+static void hero_things(uint32_t money, int hp)
+{
+    memset(doomo_town.items, 0, sizeof doomo_town.items);
+    doomo_town.money = money;
+    doomo_town.story.hp = (uint8_t)hp;
+    doomo_town.story.armor = 30;
+    doomo_town.items[ITEM_CUPCAKE] = 5;
+    doomo_town.items[ITEM_ROSARY] = 2;
+    doomo_town.items[ITEM_HELLSTEEL] = 9;         /* a materials stack past the 16 biggest of a villager is still the hero's */
+}
+
+TEST(pa10_pockets_follow_the_avatar)
+{
+    int a, k;
+    uint32_t m = 0;
+    fresh();
+    a = family_pool_add(FAMROLE_SIBLING, LIFE_ADULT, 5u, "Ann", PRONOUN_SHE);
+    k = family_pool_add(FAMROLE_HOUSEMATE, LIFE_ADULT, 6u, "Kit", PRONOUN_HE);
+    cleared();
+    hero_things(500, 80);
+    CHECK(playas_switch(a, PLAYAS_SWITCH_INSTANT));
+    CHECK(doomo_town.money >= 40 && doomo_town.money < 200);        /* the sim's small purse, not the hero's 500 */
+    CHECK_EQ(doomo_town.story.hp, 100);
+    CHECK_EQ(doomo_town.items[ITEM_ROSARY], 0);
+    CHECK_EQ(doomo_town.items[ITEM_HELLSTEEL], 0);
+    CHECK(playas_pocket_money(PLAYAS_ID_HERO, &m) && m == 500);
+    CHECK_EQ(playas_pocket_count(), 2);                              /* the hero's stash */
+    doomo_town.money = 7;                                            /* Ann spends and shops */
+    doomo_town.items[ITEM_PLUSHIE] = 3;
+    doomo_town.story.hp = 55;
+    CHECK(playas_switch(k, PLAYAS_SWITCH_INSTANT));
+    CHECK(playas_pocket_money(a, &m) && m == 7);
+    CHECK_EQ(playas_pocket_count(), 3);
+    doomo_town.money += 1000;                                        /* Kit's own purse */
+    CHECK(playas_switch(a, PLAYAS_SWITCH_INSTANT));                  /* Ann has everything back */
+    CHECK_EQ(doomo_town.money, 7);
+    CHECK_EQ(doomo_town.items[ITEM_PLUSHIE], 3);
+    CHECK_EQ(doomo_town.story.hp, 55);
+    CHECK(playas_pocket_money(k, &m) && m >= 1000);
+    CHECK(playas_switch(PLAYAS_ID_HERO, PLAYAS_SWITCH_INSTANT));     /* and the hero's whole bag, armour too */
+    CHECK_EQ(doomo_town.money, 500);
+    CHECK_EQ(doomo_town.story.hp, 80);
+    CHECK_EQ(doomo_town.story.armor, 30);
+    CHECK_EQ(doomo_town.items[ITEM_CUPCAKE], 5);
+    CHECK_EQ(doomo_town.items[ITEM_ROSARY], 2);
+    CHECK_EQ(doomo_town.items[ITEM_HELLSTEEL], 9);
+    CHECK_EQ(doomo_town.items[ITEM_PLUSHIE], 0);
+    CHECK_EQ(playas_pocket_count(), 2);                              /* Ann's and Kit's; the stash is spent */
+    CHECK(!playas_pocket_money(PLAYAS_ID_HERO, &m));
+}
+
+TEST(pa10_default_pocket_is_stable_and_never_random)
+{
+    int a;
+    uint32_t m1, m2;
+    fresh();
+    a = family_pool_add(FAMROLE_SIBLING, LIFE_ADULT, 5u, "Ann", PRONOUN_SHE);
+    cleared();
+    hero_things(100, 100);
+    CHECK(playas_switch(a, PLAYAS_SWITCH_INSTANT));
+    m1 = doomo_town.money;
+    CHECK(playas_switch(PLAYAS_ID_HERO, PLAYAS_SWITCH_INSTANT));
+    fresh(); a = family_pool_add(FAMROLE_SIBLING, LIFE_ADULT, 5u, "Ann", PRONOUN_SHE); cleared();
+    hero_things(100, 100);
+    CHECK(playas_switch(a, PLAYAS_SWITCH_INSTANT));
+    m2 = doomo_town.money;
+    CHECK_EQ(m1, m2);                                                /* same seed, same id, same purse */
+    CHECK(doomo_town.items[ITEM_CUPCAKE] + doomo_town.items[ITEM_ONIGIRI] + doomo_town.items[ITEM_SOUL_SOUP] +
+          doomo_town.items[ITEM_BRIMSTONE_BAGEL] + doomo_town.items[ITEM_CANDY_EYEBALLS] + doomo_town.items[ITEM_PUDDING] +
+          doomo_town.items[ITEM_HELL_PEPPERS] + doomo_town.items[ITEM_ANGEL_CAKE] + doomo_town.items[ITEM_MEAT_SLAB] +
+          doomo_town.items[ITEM_SALAD] + doomo_town.items[ITEM_MILK] + doomo_town.items[ITEM_COFFEE] >= 2);   /* two snacks */
+}
+
+TEST(pa10_pockets_round_trip_and_the_chunk_stays_under_800)
+{
+    uint8_t buf[1024];
+    int a, k, i, tried = 0;
+    uint32_t sz, m = 0;
+    fresh();
+    a = family_pool_add(FAMROLE_SIBLING, LIFE_ADULT, 5u, "Ann", PRONOUN_SHE);
+    k = family_pool_add(FAMROLE_HOUSEMATE, LIFE_ADULT, 6u, "Kit", PRONOUN_HE);
+    cleared();
+    hero_things(500, 80);
+    CHECK(playas_switch(a, PLAYAS_SWITCH_INSTANT));
+    doomo_town.money = 7; doomo_town.items[ITEM_PLUSHIE] = 3;
+    CHECK(playas_switch(k, PLAYAS_SWITCH_INSTANT));
+    doomo_town.money = 1234;
+    sz = doomo_save_ext_playas->write(buf, sizeof(buf));
+    CHECK_EQ(sz, 32 + 96 + 48);
+    doomo_save_ext_playas->reset();
+    CHECK(playas_is_hero() && playas_pocket_count() == 0);
+    CHECK(doomo_save_ext_playas->read(buf, sz, 1));
+    CHECK_EQ(playas_avatar(), k);
+    CHECK(playas_pocket_money(PLAYAS_ID_HERO, &m) && m == 500);
+    CHECK(playas_pocket_money(a, &m) && m == 7);
+    CHECK(playas_switch(a, PLAYAS_SWITCH_INSTANT));
+    CHECK_EQ(doomo_town.items[ITEM_PLUSHIE], 3);
+    CHECK(playas_switch(PLAYAS_ID_HERO, PLAYAS_SWITCH_INSTANT));
+    CHECK_EQ(doomo_town.money, 500);
+    CHECK_EQ(doomo_town.items[ITEM_HELLSTEEL], 9);
+    /* play as many villagers: only the 14 newest pockets stay, and the chunk never passes 800 B */
+    for (i = 0; i < DOOMO_PLAYER_ID && tried < 20; i++)
+        if (playas_can_be(i)) { CHECK(playas_switch(i, PLAYAS_SWITCH_INSTANT)); doomo_town.money = 1000u + (uint32_t)i; tried++; }
+    CHECK(tried == 20);
+    CHECK(playas_pocket_count() <= PLAY_POCKETS);
+    sz = doomo_save_ext_playas->size();
+    CHECK(sz <= SAVE_EXT_MAX_PLAY);
+    CHECK_EQ(doomo_save_ext_playas->write(buf, sizeof(buf)), sz);
+    CHECK(sz + 0u <= 800u);
+}
+
+TEST(pa10_hostile_chunk_is_clamped)
+{
+    uint8_t buf[800];
+    int a, i;
+    fresh();
+    a = family_pool_add(FAMROLE_SIBLING, LIFE_ADULT, 5u, "Ann", PRONOUN_SHE);
+    cleared();
+    hero_things(500, 80);
+    CHECK(playas_switch(a, PLAYAS_SWITCH_INSTANT));
+    CHECK(doomo_save_ext_playas->write(buf, sizeof(buf)) == 32 + 96);
+    buf[32 + 2] = 250; buf[32 + 3] = 0;                 /* hero stash health out of range */
+    buf[32 + 8 + ITEM_CUPCAKE] = 200;                    /* a stack over 99 */
+    CHECK(doomo_save_ext_playas->read(buf, 32 + 96, 1));
+    CHECK(playas_switch(PLAYAS_ID_HERO, PLAYAS_SWITCH_INSTANT));
+    CHECK_EQ(doomo_town.story.hp, 100);
+    CHECK_EQ(doomo_town.items[ITEM_CUPCAKE], 99);
+    /* a count that claims more slots than the bytes hold, and garbage ids */
+    memset(buf, 0, sizeof buf);
+    buf[0] = 1; buf[2] = (uint8_t)(PLAYAS_ID_HERO & 255); buf[3] = (uint8_t)(PLAYAS_ID_HERO >> 8); buf[22] = 16;
+    for (i = 32; i < 800; i++) buf[i] = (uint8_t)(i * 37);
+    CHECK(doomo_save_ext_playas->read(buf, 100, 1));
+    CHECK(playas_is_hero());
+    CHECK(playas_pocket_count() <= PLAY_POCKETS);
+}
+
+TEST(pa10_an_old_save_mid_play_keeps_what_is_carried)
+{
+    uint8_t buf[800];
+    int a;
+    fresh();
+    a = family_pool_add(FAMROLE_SIBLING, LIFE_ADULT, 5u, "Ann", PRONOUN_SHE);
+    cleared();
+    hero_things(321, 90);
+    CHECK(playas_switch(a, PLAYAS_SWITCH_INSTANT));
+    CHECK(doomo_save_ext_playas->write(buf, sizeof(buf)) >= 32);
+    memset(buf + 22, 0, 3);                              /* the 32 B header of a save from before PA10 */
+    doomo_save_ext_playas->reset();
+    CHECK(doomo_save_ext_playas->read(buf, 32, 1));
+    CHECK_EQ(playas_avatar(), a);
+    doomo_town.money = 77;
+    CHECK(playas_switch(PLAYAS_ID_HERO, PLAYAS_SWITCH_INSTANT));
+    CHECK_EQ(doomo_town.money, 77);                      /* no stash: the shared behaviour, nothing lost */
+}
+
+TEST(pa10_a_lost_avatar_sends_the_hero_home_with_the_hero_bag)
+{
+    int a;
+    fresh();
+    a = family_pool_add(FAMROLE_SIBLING, LIFE_ADULT, 5u, "Ann", PRONOUN_SHE);
+    cleared();
+    hero_things(500, 80);
+    CHECK(playas_switch(a, PLAYAS_SWITCH_INSTANT));
+    doomo_town.money = 9;
+    family_remove(a);
+    CHECK(playas_check());
+    CHECK(playas_is_hero());
+    CHECK_EQ(doomo_town.money, 500);
+    CHECK_EQ(doomo_town.items[ITEM_ROSARY], 2);
 }
 
 /* ---- PA10 part 1: the play-as stress save ----------------------------------------------------

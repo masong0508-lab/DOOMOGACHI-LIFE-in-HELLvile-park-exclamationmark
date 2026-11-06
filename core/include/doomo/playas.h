@@ -158,6 +158,13 @@ int  playas_new_life(int id);
 /* The new-game hero choice (PA2 calls it once, before the story starts). */
 void playas_set_hero_kind(int kind);
 
+/* PA10: pockets. Money, the bag and health belong to whoever you play; a switch swaps them.
+ * playas_pocket_count() = pocket slots held right now (the hero's stash is 2, a villager's 1);
+ * playas_pocket_money(id, &m) = 1 and the money when id has a pocket held (the hero's while
+ * somebody else is played). The avatar's own things are the live town fields. */
+int  playas_pocket_count(void);
+int  playas_pocket_money(int id, uint32_t *money);
+
 /* (PA1) the day's check: 1 if a lost / possessed / removed avatar sent you
  * back to the hero. PA4 records where the hero stood with playas_set_hero_pos. */
 int  playas_check(void);
