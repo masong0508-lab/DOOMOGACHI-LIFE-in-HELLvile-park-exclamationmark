@@ -85,11 +85,17 @@ static void town_fill(uint32_t seed)
     doomo_town.money = rng_next(&r);
     doomo_town.day = (uint32_t)rng_range(&r, 5000);
     for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) {
-        DoomoResident *res = &doomo_town.res[i];
+        DoomoCitizen c;
         size_t k;
-        for (k = 0; k < sizeof(*res); k++) ((uint8_t *)res)[k] = (uint8_t)rng_next(&r);
-        res->status = RES_ALIVE;
-        resident_sanitize(res);
+        /* Fully random v1 bytes, then res_pack (clamps + sanitizes): the same
+         * worst case as the native test (core/tests/test_save.c). Saves still
+         * use the 96 B v1 wire image, so only what v1 can carry may be random:
+         * randomising the 76 B DoomoResident directly also fills the gene bits
+         * v1 has no field for (look_seed ..), which a save/load cannot bring
+         * back, so town_crc() of the loaded town would never match. */
+        for (k = 0; k < sizeof(c); k++) ((uint8_t *)&c)[k] = (uint8_t)rng_next(&r);
+        c.status = RES_ALIVE;
+        res_pack(&c, &doomo_town.res[i]);
     }
     while (doomo_town.edge_count < DOOMO_MAX_EDGES) {
         DoomoEdge *e = rel_get_or_add(rng_range(&r, 1001), rng_range(&r, 1001));
