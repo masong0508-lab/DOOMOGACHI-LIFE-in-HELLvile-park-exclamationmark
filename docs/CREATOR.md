@@ -80,9 +80,13 @@ ears, nose, mouth, fangs, horns, tail, wings, halo, fur marking, eye count -
 | SELECT (tap) | turntable | - | back |
 | X / Y | undo / redo (GBA: SELECT+A / SELECT+B) | - | - |
 
-The START menu: **Move in! / All done!**, Randomise all, Randomise this
-tab, Undo (n), Redo (n), Copy a look..., Possessed peek, Start over /
-Reset changes, Quit.
+The START menu lists only what applies, in five groups with a thin rule
+between them: **Move in! / All done!** | Randomise (one entry: LEFT / RIGHT
+switches *all* / *this tab*; the Home tab only has *all*) | Undo (n), Redo (n)
+(each only while there is something to undo / redo) | Copy a look...,
+Possessed peek | Start over / Reset changes (only once something changed),
+Quit. Nothing is shown greyed out. `cr.menu_sel` holds a `CM_*` id, and
+`cr_menu_list()` / `cr_menu_index()` give the visible order for tests.
 
 ## The preview
 

@@ -976,26 +976,46 @@ static void draw_menu(void)
 {
     const UiStyle *st;
     int sw = crl.sw, sh = crl.sh, ih = crl.big ? 15 : 12;
-    int w = crl.big ? 190 : 150, h = CM_COUNT * ih + 26;
-    int x = (sw - w) / 2, y = (sh - h) / 2 - 2, i, t = (int)cr.phase_t;
+    uint8_t l[CM_COUNT];
+    int n = cr_menu_list(l), gaps = 0, yy = 0, prev = -1;
+    int w = crl.big ? 190 : 172, h, x, y, i, t = (int)cr.phase_t;
     char buf[48];
+    for (i = 1; i < n; i++) if (cr_menu_group(l[i]) != cr_menu_group(l[i - 1])) gaps++;
+    h = n * ih + gaps * 4 + 26;
+    x = (sw - w) / 2;
+    y = (sh - h) / 2 - 2;
     plat_shade_rect(0, 0, sw, sh, 9);
     if (!ui_window_pop(x, y, w, h, WIN_CREAM, t)) return;
     st = ui_style(WIN_CREAM);
     ui_title(x + w / 2, y - 6, "Creator menu", WIN_CREAM);
-    for (i = 0; i < CM_COUNT; i++) {
-        int yy = y + 12 + i * ih, en = cr_menu_enabled(i), sel = i == cr.menu_sel;
-        const char *lbl = cr_menu_label(i, buf);
+    yy = y + 12;
+    for (int k = 0; k < n; k++) {
+        int en = 1, sel;
+        const char *lbl;
+        i = l[k];
+        sel = i == cr.menu_sel;
+        lbl = cr_menu_label(i, buf);
+        if (prev >= 0 && cr_menu_group(i) != prev) {          /* a thin rule between the groups */
+            plat_rect(x + 16, yy + 1, w - 32, 1, st->fill_lo);
+            yy += 4;
+        }
+        prev = cr_menu_group(i);
         if (sel) {
             pill(x + 14, yy - 1, w - 28, ih - 1, st->accent_d, ui_darker(st->accent_d),
                     ui_lighter(st->accent_d));
             ui_cursor(x + 5, yy + 1 + (crl.big ? 1 : 0));
         }
         if (i == CM_DONE) ui_heart(x + 21, yy + 4 + (crl.big ? 1 : 0), 3, PAL_PAINT(PAINT_ROSE, 1));
-        if (i == CM_RANDOM_ALL || i == CM_RANDOM_TAB)
+        if (i == CM_RANDOM)
             ui_star(x + 21, yy + 4 + (crl.big ? 1 : 0), 3, PAL_UI_GOLD);
-        if (i == CM_SPOOKY) plat_text(x + 18, yy + 1, STR_ICON_SKULL, PAL_PAINT(PAINT_GRAPE, 1));
-        ui_text(x + 28, yy + 1 + (crl.big ? 1 : 0), lbl, en ? (sel ? st->text : st->text) : st->text_dim);
+        else if (i == CM_SPOOKY) plat_text(x + 18, yy + 1, STR_ICON_SKULL, PAL_PAINT(PAINT_GRAPE, 1));
+        else if (i == CM_UNDO) plat_text(x + 18, yy + 1, STR_ICON_ARROW_L, st->accent);
+        else if (i == CM_REDO) plat_text(x + 18, yy + 1, STR_ICON_ARROW_R, st->accent);
+        else if (i == CM_COPY) plat_text(x + 18, yy + 1, STR_ICON_SMILE, PAL_PAINT(PAINT_MINT, 0));
+        else if (i == CM_RESET) plat_text(x + 18, yy + 1, STR_ICON_BOLT, PAL_UI_RED);
+        else if (i == CM_QUIT) plat_text(x + 18, yy + 1, STR_ICON_X, PAL_UI_RED);
+        ui_text(x + 28, yy + 1 + (crl.big ? 1 : 0), lbl, en ? st->text : st->text_dim);
+        yy += ih;
     }
 }
 
@@ -1222,8 +1242,11 @@ static void draw_hint(void)
         s = STR_ICON_A " Choose  " STR_ICON_B " Back";
         break;
     case CRP_MENU:
-        s = crl.big ? STR_ICON_A " Select  " STR_ICON_B " Close  (X/Y undo/redo)"
-                    : STR_ICON_A " Select  " STR_ICON_B " Close";
+        if (cr.menu_sel == CM_RANDOM && cr.tab != CR_TAB_HOME)
+            s = STR_ICON_A " Select  " STR_ICON_ARROW_L STR_ICON_ARROW_R " Scope  " STR_ICON_B " Close";
+        else
+            s = crl.big ? STR_ICON_A " Select  " STR_ICON_B " Close  (X/Y undo/redo)"
+                        : STR_ICON_A " Select  " STR_ICON_B " Close";
         break;
     default:
         if ((cr.t / 120) % 3 == 2) {          /* every few seconds: a tip */

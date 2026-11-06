@@ -602,7 +602,8 @@ TEST(creator_randomiser_respects_locks)
         DoomoResident before = cr.draft;
         go_row(CR_TAB_VOICE, 2);
         press(BTN_START);
-        press_n(BTN_DOWN, 2);
+        press(BTN_DOWN);
+        press(BTN_RIGHT);                        /* Randomise: all -> this tab */
         press(BTN_A);
         CHECK(memcmp(RES_LOOK_VIEW(&before), RES_LOOK_VIEW(&cr.draft), sizeof(DoomoLook)) == 0);
         CHECK(memcmp(RES_PERSONA_VIEW(&before), RES_PERSONA_VIEW(&cr.draft), PERS_COUNT) == 0);
@@ -631,12 +632,44 @@ TEST(creator_species_change_brings_species_parts)
     CHECK_EQ(RES_LOOK(&cr.draft, GF_WINGS), WINGS_TINY_BAT);
 }
 
+TEST(creator_menu_lists_only_what_applies)
+{
+    char buf[48];
+    open_creator(-1);
+    press(BTN_START);
+    CHECK_EQ(cr.phase, CRP_MENU);
+    /* a fresh citizen: nothing to undo, redo or reset, so none of those are listed */
+    CHECK_EQ(cr_menu_index(CM_UNDO), -1);
+    CHECK_EQ(cr_menu_index(CM_REDO), -1);
+    CHECK_EQ(cr_menu_index(CM_RESET), -1);
+    CHECK_EQ(cr_menu_index(CM_DONE), 0);
+    CHECK_EQ(cr_menu_index(CM_RANDOM), 1);
+    CHECK(cr_menu_index(CM_COPY) > 0 && cr_menu_index(CM_QUIT) > cr_menu_index(CM_COPY));
+    /* Randomise is one entry; LEFT / RIGHT on it picks the scope (this tab is only for a tab with rows) */
+    press(BTN_DOWN);
+    CHECK_EQ(cr.menu_sel, CM_RANDOM);
+    CHECK(strstr(cr_menu_label(CM_RANDOM, buf), "all") != NULL);
+    press(BTN_RIGHT);
+    CHECK(strstr(cr_menu_label(CM_RANDOM, buf), "this tab") != NULL);
+    press(BTN_A);                               /* rolls the tab, which is a change */
+    CHECK_EQ(cr.phase, CRP_MAIN);
+    press(BTN_START);
+    CHECK(cr_menu_index(CM_UNDO) > 0);
+    CHECK(cr_menu_index(CM_RESET) > 0);
+    CHECK_EQ(cr_menu_index(CM_REDO), -1);
+    press(BTN_B);
+    /* the Home tab has no tab to roll: always everything */
+    go_row(CR_TAB_HOME, 0);
+    press(BTN_START);
+    CHECK(strstr(cr_menu_label(CM_RANDOM, buf), "this tab") == NULL);
+}
+
 TEST(creator_copy_a_premade_look)
 {
     const DoomoResident *src;
     open_creator(-1);
     press(BTN_START);
-    press_n(BTN_DOWN, CM_COPY);
+    press_n(BTN_DOWN, cr_menu_index(CM_COPY));        /* Undo and Redo are not listed yet */
     press(BTN_A);
     CHECK_EQ(cr.phase, CRP_COPY);
     CHECK_EQ(cr.copy_src, 1);           /* empty island: premade citizens */

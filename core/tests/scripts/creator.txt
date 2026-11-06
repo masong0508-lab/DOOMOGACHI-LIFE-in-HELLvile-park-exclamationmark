@@ -259,7 +259,9 @@ press START
 wait 14
 shot 24_menu
 press DOWN
-press DOWN
+press RIGHT
+wait 4
+shot 24b_menu_scope
 press A
 wait 14
 shot 25_randomised_tab
@@ -291,7 +293,6 @@ press DOWN
 press DOWN
 press DOWN
 press DOWN
-press DOWN
 press A
 wait 12
 press DOWN
@@ -309,13 +310,11 @@ press DOWN
 press DOWN
 press DOWN
 press DOWN
-press DOWN
 press A
 wait 20
 shot 30_possessed_peek
 press START
 wait 10
-press DOWN
 press DOWN
 press DOWN
 press DOWN

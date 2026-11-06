@@ -46,15 +46,11 @@ press DOWN
 press DOWN
 press DOWN
 press DOWN
-press DOWN
-press DOWN
 press A
 wait 20
 shot 06_hell_possessed
 press START
 wait 10
-press DOWN
-press DOWN
 press DOWN
 press DOWN
 press DOWN

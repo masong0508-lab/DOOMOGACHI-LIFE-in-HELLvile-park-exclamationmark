@@ -108,7 +108,10 @@ enum { CR_NEW, CR_EDIT, CR_PLAYER };
 enum { CRP_MAIN, CRP_PICK, CRP_COLOR, CRP_MENU, CRP_COPY, CRP_TURN,
        CRP_MOVEIN, CRP_HERO };
 /* START menu entries */
-enum { CM_DONE, CM_RANDOM_ALL, CM_RANDOM_TAB, CM_UNDO, CM_REDO, CM_COPY,
+/* The menu only lists what applies right now (no greyed Undo (0), Reset on a clean citizen):
+ * cr_menu_list() gives the visible entries in order. Randomise is one entry; LEFT / RIGHT on it
+ * switches between everything and this tab. */
+enum { CM_DONE, CM_RANDOM, CM_UNDO, CM_REDO, CM_COPY,
        CM_SPOOKY, CM_RESET, CM_QUIT, CM_COUNT };
 
 typedef struct CrSpark {
@@ -146,7 +149,8 @@ typedef struct CrState {
     /* pickers */
     int16_t  pick_sel, pick_top, pick_orig;
     uint8_t  pick_err;              /* ticks of "locked!" shake              */
-    uint8_t  menu_sel;
+    uint8_t  menu_sel;              /* a CM_ id (not a row number)           */
+    uint8_t  rand_tab;              /* the menu's Randomise scope: 0 all, 1 this tab */
     uint8_t  copy_src;              /* 0 town, 1 premade roster              */
     int16_t  copy_sel, copy_top, copy_count;
     int16_t  copy_memo_k, copy_memo_id;
@@ -226,7 +230,10 @@ int  cr_action_index(int action);
 /* Apartment floor (1..50) and room (1..10) of a resident slot. */
 void cr_home_floor_room(int id, int *floor, int *room);
 const char *cr_menu_label(int i, char *buf);
-int  cr_menu_enabled(int i);
+int  cr_menu_enabled(int i);          /* is the entry listed right now?        */
+int  cr_menu_list(uint8_t *out);       /* the listed CM_ ids in order, returns how many */
+int  cr_menu_index(int cm);            /* row of a CM_ id in that list, -1 = not listed */
+int  cr_menu_group(int cm);            /* entries of one group sit together     */
 /* copy picker: k-th entry's resident id / record / name */
 int  cr_copy_id_at(int k);
 const DoomoResident *cr_copy_res(int id);

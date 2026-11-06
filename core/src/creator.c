@@ -1213,8 +1213,12 @@ const char *cr_menu_label(int i, char *buf)
 {
     switch (i) {
     case CM_DONE:       return cr.mode == CR_NEW ? "Move in!" : "All done!";
-    case CM_RANDOM_ALL: return cr_is_hellish() ? "Randomise (hellish)" : "Randomise all";
-    case CM_RANDOM_TAB: return "Randomise this tab";
+    case CM_RANDOM:
+        if (cr.tab == CR_TAB_HOME)
+            return cr_is_hellish() ? "Randomise (hellish)" : "Randomise all";
+        doomo_snprintf(buf, 48, STR_ICON_ARROW_L " %s " STR_ICON_ARROW_R,
+                       cr.rand_tab ? "Randomise this tab" : cr_is_hellish() ? "Randomise (hellish)" : "Randomise all");
+        return buf;
     case CM_UNDO:  doomo_snprintf(buf, 48, "Undo (%d)", cr_undo_count()); return buf;
     case CM_REDO:  doomo_snprintf(buf, 48, "Redo (%d)", cr_redo_count()); return buf;
     case CM_COPY:       return "Copy a look...";
@@ -1230,9 +1234,35 @@ int cr_menu_enabled(int i)
     switch (i) {
     case CM_UNDO: return cr_undo_count() > 0;
     case CM_REDO: return cr_redo_count() > 0;
-    case CM_RANDOM_TAB: return cr.tab != CR_TAB_HOME;
     case CM_RESET: return cr_dirty();
     default: return 1;
+    }
+}
+
+int cr_menu_list(uint8_t *out)
+{
+    int i, n = 0;
+    for (i = 0; i < CM_COUNT; i++)
+        if (cr_menu_enabled(i)) out[n++] = (uint8_t)i;
+    return n;
+}
+
+int cr_menu_index(int cm)
+{
+    uint8_t l[CM_COUNT];
+    int i, n = cr_menu_list(l);
+    for (i = 0; i < n; i++) if (l[i] == cm) return i;
+    return -1;
+}
+
+int cr_menu_group(int cm)
+{
+    switch (cm) {
+    case CM_DONE: return 0;
+    case CM_RANDOM: return 1;
+    case CM_UNDO: case CM_REDO: return 2;
+    case CM_COPY: case CM_SPOOKY: return 3;
+    default: return 4;
     }
 }
 
@@ -1244,8 +1274,11 @@ static void menu_run(int i)
         audio_sfx(SFX_SELECT);
         finish();
         break;
-    case CM_RANDOM_ALL: go_phase(CRP_MAIN); randomise_all(); break;
-    case CM_RANDOM_TAB: go_phase(CRP_MAIN); randomise_tab(); break;
+    case CM_RANDOM:
+        go_phase(CRP_MAIN);
+        if (cr.rand_tab && cr.tab != CR_TAB_HOME) randomise_tab();
+        else randomise_all();
+        break;
     case CM_UNDO: do_undo(); break;
     case CM_REDO: do_redo(); break;
     case CM_COPY:
@@ -1274,13 +1307,20 @@ static void menu_run(int i)
 
 static void update_menu(void)
 {
+    uint8_t l[CM_COUNT];
+    int n = cr_menu_list(l), k = 0, i;
+    for (i = 0; i < n; i++) if (l[i] <= cr.menu_sel) k = i;     /* an entry that went away: the one before */
+    cr.menu_sel = l[k];
     if (btn_repeat(BTN_UP | BTN_DOWN)) {
-        int d = btn_down(BTN_UP) ? CM_COUNT - 1 : 1;
-        cr.menu_sel = (uint8_t)((cr.menu_sel + d) % CM_COUNT);
+        k = (k + (btn_down(BTN_UP) ? n - 1 : 1)) % n;
+        cr.menu_sel = l[k];
         audio_sfx(SFX_CURSOR);
     }
+    if (cr.menu_sel == CM_RANDOM && cr.tab != CR_TAB_HOME && btn_pressed(BTN_LEFT | BTN_RIGHT)) {
+        cr.rand_tab ^= 1;
+        audio_sfx(SFX_BLIP);
+    }
     if (btn_pressed(BTN_A)) {
-        if (!cr_menu_enabled(cr.menu_sel)) { audio_sfx(SFX_ERROR); return; }
         menu_run(cr.menu_sel);
     } else if (btn_pressed(BTN_B | BTN_START)) {
         audio_sfx(SFX_CANCEL);
