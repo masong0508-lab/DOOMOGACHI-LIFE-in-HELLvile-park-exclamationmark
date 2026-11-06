@@ -13,12 +13,6 @@ toolchain, no emulator); their statements come from the docs and your CI logs. *
 installed `gcc-arm-none-eabi libnewlib-arm-none-eabi libmgba-dev`, built the game ROM and ran the real mGBA harness (`make -C gba`,
 `make -C gba profile-invaded`), so GBA speed numbers can be measured in a session, not only read from your CI logs.
 
-**Evening update 2026-11-06 (owner reports these pushed):** `doomo-invaded-v1-gba-nov06a` (invaded speed V1, GBA side: `profile-invaded` Makefile
-line continuations fixed, harness `--worklog` per-frame work, the measured split in `docs/INVADED_SPEED.md`), `doomo-promptdoc-termux-nov06b` and
-`doomo-promptdoc-priority-nov06c` (`docs/NEXT_SESSION_PROMPT.md`: delivery = zip + Termux command first, unique zip names, parts). CI run #470
-(the V0 invaded doc / baseline / profile target) was green on all jobs; one later run stalled for ~15 min in `apt-get` on the Azure mirror (core and
-GBA were done, the speed and PS1 jobs waited) and passed on re-run: not a code problem. No game code changed in these patches.
-
 **Patches the owner applied that may not be in the zip a session was given:** `doomo-mp1-coop-perf-nov05` (MP1 part 5: co-op quests, rewards, abilities, family
 portrait; its island-population-once-per-frame part is already in this tree), `doomo-perf-ram-nov05b` (apartments header count cached, `tools/ram_ledger.sh`,
 `tools/perf_profile.sh`), and `doomo-p0-contracts-gene-roster-v2-nov05` (contract stubs, `look_build.py` gene table, roster v2 58 B records). Check `git log`

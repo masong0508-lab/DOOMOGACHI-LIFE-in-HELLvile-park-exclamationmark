@@ -5,8 +5,7 @@ A read of the repo plus native runs: `make -C core test` on this tree finished w
 69 scenes, none of them a weak placeholder. **PS1 and Dreamcast were not built or run
 here** (no MIPS/SH4 toolchains, no emulator); their statements below come from the docs. **GBA was** (2026-11-06 evening update: a sandbox with apt built the
 ROM and ran mGBA): the invaded map measures 14.9 drawn fps / 29.8 logic ticks/s, work avg 56.8 ms, max 76.5 ms, sprites ~40% of the frame
-(`docs/INVADED_SPEED.md`); the next steps are exact sprite-table and setup savings, then the spike frames. Patches pushed that day:
-`doomo-invaded-v1-gba-nov06a`, `doomo-promptdoc-termux-nov06b`, `doomo-promptdoc-priority-nov06c` (tools and docs only, no game code).
+(`docs/INVADED_SPEED.md`); the next steps are exact sprite-table and setup savings, then the spike frames.
 
 The same lists, with the order to take the open items and what needs the owner, are in `ROADMAP.md` "Refresh 2026-11-06" (that section is the one kept current).
 
