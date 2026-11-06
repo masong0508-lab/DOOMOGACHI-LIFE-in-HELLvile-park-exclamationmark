@@ -28,6 +28,17 @@ every paused frame and then dims the full screen outside the window
   ticks so the core falls back to today's path. No new EWRAM: use the two
   VRAM pages (the retained-panel code in `panel.c` already reasons about
   front/back page contents).
+  *Plumbing landed (2026-11-06, `gba/src/hold.c`, not built here):* the hold
+  state, the eligibility rules (last flip showed a Mode 4 page, not a skipped
+  tick, a tile-frame flip releases it) and the `hold_flipped` hook in
+  `video_flip`. It still answers 0 (`HOLD_RESTORE_READY` 0), so behaviour and
+  the fps gates are unchanged. **Why the restore is not in P1:** both Mode 4
+  pages are needed to flip, so there is no clean third copy of the backdrop,
+  and the core dims and shades the window's shadow over it on every paused
+  frame (that compounds on a page that is not restored). The restore needs
+  P2 (dim the held pages once) and P3 (keep the ring around the window:
+  shadow, title pill, corners; the 2.5 KB of VRAM at 0x06013600..0x06013FFF is
+  free in Mode 4) together; flip `HOLD_RESTORE_READY` when they land.
 - **P2** dim once: apply the 8-level dim to the held backdrop when the pop-in
   ends (`ow.pause_t` >= 12), not every frame; per frame repaint only the
   window, its drop shadow strip and the title pill margin.

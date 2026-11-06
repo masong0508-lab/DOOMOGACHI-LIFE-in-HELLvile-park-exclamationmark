@@ -171,6 +171,10 @@ void pn_nokeep(void);                     /* a call a panel cannot keep  */
 void pn_frame_begin(void);                /* plat_begin_frame            */
 void pn_flipped(int page);                /* video_flip: page shown, -1 tiles */
 
+/* ---- hold.c (THUMB, U4): the held frame (docs/PAUSE_SPEED.md P1) ---------- */
+void hold_flipped(int page);              /* video_flip: page shown, -1 tiles */
+int  hold_page(void);                     /* page held as the backdrop, -1 none */
+
 /* ---- ow_tiles.c (THUMB): the world of a tile frame ------------------------ */
 /* the composites and the world map shadow for the view in owf (cv.sx/sy
  * set from its scroll); 0 = not possible this frame (the slots the screen

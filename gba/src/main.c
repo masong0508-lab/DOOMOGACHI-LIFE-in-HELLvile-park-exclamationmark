@@ -270,9 +270,11 @@ void video_flip(void)
         REG_DISPCNT = (uint16_t)(DCNT_MODE4 | DCNT_BG2 | DCNT_OBJ | DCNT_OBJ_1D | (page ? DCNT_PAGE : 0));
         cv_shown_m4(page);
         pn_flipped(page);                       /* G7: kept panels are in it */
+        hold_flipped(page);                     /* U4 */
         gba_back = page ? (uint16_t *)VRAM_PAGE0 : (uint16_t *)VRAM_PAGE1;
     } else {
         pn_flipped(-1);
+        hold_flipped(-1);
         gba_back = (uint16_t *)VRAM_PAGE1;      /* the next Mode 4 frame: page 1 */
     }
     postfx_vblank(tiles);       /* S1: BG2 affine, BLDY, palette, OAM DMA */
