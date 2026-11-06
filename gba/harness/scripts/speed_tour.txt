@@ -29,7 +29,8 @@
 # G2 set the overworld visits to its gates (hahaland 24, hellvile and park
 # 29, invaded 15; invaded must also keep its 30 logic ticks/s, which
 # expect-fps cannot check: see the table) and the pause and story map to
-# about 85% of what it measured.
+# about 85% of what it measured. The pause panel's hold (PAUSE_SPEED.md,
+# P2+P3) took it from 12.3 to 28.3 fps and its floor from 11 to 24.
 wait 40
 expect-log doomo: init
 sync on 61
@@ -58,7 +59,7 @@ press START
 wait 30
 fps start
 wait 130
-expect-fps 11 overworld pause
+expect-fps 24 overworld pause
 shot pause
 vhash-seq 30 overworld pause
 press B

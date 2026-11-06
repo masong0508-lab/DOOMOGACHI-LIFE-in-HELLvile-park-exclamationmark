@@ -47,8 +47,7 @@ every paused frame and then dims the full screen outside the window
   `ui_title`, `ui_sparkle`) are put back from the held copy before drawing.
 - **P4** measure: update `docs/GBA.md` pause rows and the EWRAM ledger.
   Target: pause drawn fps >= the visit's (about 23) and EWRAM free unchanged.
-  *Checked here 2026-11-06 (no arm-none-eabi-gcc, so no ROM and no fps):* see
-  "P4 status" below.
+  *Done 2026-11-06:* see "P4 result" below.
 
 ## Acceptance
 
@@ -76,23 +75,32 @@ Design, kept small so it needs no new RAM:
 - `HOLD_RESTORE_READY` stays 0: it only gates the early hold.
 Still to do on hardware/mGBA: `make -C gba profile-pause`, parity, ram_ledger (P4).
 
-## P4 status (2026-11-06)
+## P4 result (2026-11-06, CI: libmgba harness, `make -C gba test-speed`)
 
-Checked without a GBA toolchain (host only):
-- `make -C core test`: 871 passed, 0 failed, with P2+P3 in the tree.
-- RAM: P2+P3 add 2 bytes of statics in `gba/src/hold.c` (`last_page`,
-  `held_page`) and the `ui_shade_clip` rect in `core/src/ui_raster.c` (a few
-  bytes). No buffer, no new pool: the other Mode 4 page is the copy. The
-  largest statics (`tools/ram_ledger.sh`, host sizes) are unchanged:
-  `buf.0` 104704, `doomo_town` 89504, `doomo_map` 32784.
+Measured on the ROM with P2+P3 in (same tour, same seed as the baseline):
 
-NOT measured (needs arm-none-eabi-gcc + libmgba; no number below is invented):
-1. `make -C gba profile-pause` and compare with the P0 baseline (pause 13.9
-   drawn fps, 67.4 / 120.7 ms; visit 23.6 fps).
-2. `make -C gba test` (parity: the pause shot must match the full redraw).
-3. `make -C gba test-speed SPEED_BASE=<merge base>`, then copy the new
-   `overworld pause` row into `docs/GBA.md` (rows near the G2 / G5 tables) and
-   `sh tools/ram_ledger.sh` from the GBA link map for the EWRAM ledger.
-Pass: pause drawn fps >= the visit's (about 23) and EWRAM free unchanged. If
-the pause falls short, the next cost to look at is the window repaint itself
-(`ui_window_pop`) and `ow_spr_rows` (18.5% of the old pause profile).
+| scene | logic ticks/s | drawn fps | work avg / max ms |
+|---|---:|---:|---|
+| overworld pause, before (G-table, `docs/GBA.md`) | 22.5 | 12.3 | 74.8 / 128.3 |
+| overworld pause, after P2+P3 | **29.9** | **28.3** | **23.0 / 80.2** |
+| hahaland visit under it (same run) | 30.0 | 28.6 | 33.7 / 37.7 |
+
+- Target met: the pause now draws as fast as the visit under it (28.3 vs
+  28.6 fps; the target was about 23) and the logic is back at 30 ticks/s. The
+  per-frame work is 23.0 ms (was 74.8), cheaper than the visit's 33.7 ms
+  because no world is drawn.
+- The 80.2 ms max is the pop-in (`pause_t` < 12 redraws the world and dims,
+  as designed) plus the settle copy; the steady state is the 23 ms.
+- The other 15 scenes are unchanged against their previous tour rows (title
+  27.8, hellvile 30.0, park 30.0, invaded 14.9, concert 11.7, island hub 7.5,
+  and so on); no scene is under its floor.
+- EWRAM: 235,808 / 262,144 used, 26,336 B free (`memreport`); IWRAM stack 6,260
+  B (>= 6,144 ok). P2+P3 add 2 B (`hold.c`) plus the shade-clip rect, no buffer.
+  The row before P2+P3 was not recorded in this pass, so "unchanged" rests on
+  the code (no new buffer) and the host ledger, not on an A/B link map.
+- `speed_tour.txt`: the pause floor goes from 11 to 24 (about 85% of 28.3).
+
+Not done here: the `profile-pause` function split (the pasted log was cut off
+before the pause section) and the pixel parity check of the settled frame
+against the full redraw (`make -C gba test`). If the shot `pause` looks right
+in `gba/build/shots/speed/`, P-series is closed.

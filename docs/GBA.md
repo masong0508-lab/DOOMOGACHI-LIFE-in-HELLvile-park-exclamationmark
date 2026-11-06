@@ -925,6 +925,21 @@ Measured (libmgba, work per drawn tick, `54f2983` -> G7; the same on `17d385b`):
 | island town hall menu | 6.5 | 109.9 | 6.5 | 107.7 |
 | every other scene | | within 0.1 ms | | |
 
+#### P: the held pause backdrop (`docs/PAUSE_SPEED.md`, P2 + P3 + P4)
+
+The overworld pause no longer rebuilds and dims the world every frame: the
+settled frame is copied into both Mode 4 pages once, then only the window and
+the title pill repaint. `make -C gba test-speed` on the same tour:
+
+| scene | logic ticks/s | drawn fps | work avg / max ms | before fps | before avg ms |
+|-------|--------------:|----------:|------------------:|-----------:|--------------:|
+| overworld pause | **29.9** | **28.3** | 23.0 / 80.2 | 12.3 | 74.8 |
+
+Every other scene's row is unchanged (hahaland 28.6, hellvile 30.0, park
+30.0, invaded 14.9, concert 11.7, island hub 7.5). EWRAM 26,336 B free after
+the change, IWRAM stack 6,260 B. The 80.2 ms max is the pop-in. The pause
+floor in `speed_tour.txt` is 24.
+
 The visits' work per drawn tick drops by 1.1-1.5 ms (the HUD, drawn every
 frame, cost ~4 ms there), the story map with its narration box by 2.0 ms
 (the profile's 2D share of that frame went from ~18% to ~9%, about a third
