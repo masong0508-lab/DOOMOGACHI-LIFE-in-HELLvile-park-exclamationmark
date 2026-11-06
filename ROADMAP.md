@@ -8,8 +8,16 @@ reviewed, then landed on `claude/nice-allen-gr6czm`.
 ## Refresh 2026-11-06: done, playable, to do
 
 Checked on this tree with the native gcc build only (`make -C core test`: 861 unit tests, 160 scripted playthroughs, 19 press journeys at
-240x160 and 320x240; `check-gen`, `story-check`, `langpack`, `mpack` clean). **Nothing was built or run for GBA, PS1 or Dreamcast here** (no ARM/MIPS/SH4
-toolchain, no emulator); console statements come from the docs and your CI logs.
+240x160 and 320x240; `check-gen`, `story-check`, `langpack`, `mpack` clean). **PS1 and Dreamcast were not built or run in a chat session** (no MIPS/SH4
+toolchain, no emulator); their statements come from the docs and your CI logs. **GBA can be:** on 2026-11-06 a chat sandbox with apt
+installed `gcc-arm-none-eabi libnewlib-arm-none-eabi libmgba-dev`, built the game ROM and ran the real mGBA harness (`make -C gba`,
+`make -C gba profile-invaded`), so GBA speed numbers can be measured in a session, not only read from your CI logs.
+
+**Evening update 2026-11-06 (owner reports these pushed):** `doomo-invaded-v1-gba-nov06a` (invaded speed V1, GBA side: `profile-invaded` Makefile
+line continuations fixed, harness `--worklog` per-frame work, the measured split in `docs/INVADED_SPEED.md`), `doomo-promptdoc-termux-nov06b` and
+`doomo-promptdoc-priority-nov06c` (`docs/NEXT_SESSION_PROMPT.md`: delivery = zip + Termux command first, unique zip names, parts). CI run #470
+(the V0 invaded doc / baseline / profile target) was green on all jobs; one later run stalled for ~15 min in `apt-get` on the Azure mirror (core and
+GBA were done, the speed and PS1 jobs waited) and passed on re-run: not a code problem. No game code changed in these patches.
 
 **Patches the owner applied that may not be in the zip a session was given:** `doomo-mp1-coop-perf-nov05` (MP1 part 5: co-op quests, rewards, abilities, family
 portrait; its island-population-once-per-frame part is already in this tree), `doomo-perf-ram-nov05b` (apartments header count cached, `tools/ram_ledger.sh`,
@@ -34,7 +42,7 @@ before redoing any of them; a zip without `.git` cannot tell.
 | Where | State |
 |---|---|
 | Native runner (core) | everything in the Done table: Free Play (empty or 1000-citizen Classic island), creator, apartments, care, shop, news, family, pets, loss + memorial, New life, NG+, Hell Breach, the 4-chapter story + epilogue, house, minigames, library, concert, studio, 8 languages. 69 scenes, none a weak placeholder |
-| GBA | CI builds the ROM and runs mGBA tests (your Oct logs); EWRAM is nearly full (about 10-13 KB free) and fps is low: island hub ~7.5, town hall 6.5, combat 10-12, pet 10, concert 13, title 12-14. Press latch and hub B shortcut not yet checked on hardware (`docs/HARDWARE_CHECK.md`) |
+| GBA | CI builds the ROM and runs mGBA tests (green on run #470); **invaded map measured 2026-11-06: 14.9 drawn fps, 29.8 logic ticks/s, work avg 56.8 / max 76.5 ms, sprites ~40% of the frame (`docs/INVADED_SPEED.md`)**; EWRAM is nearly full (about 10-13 KB free) and fps is low: island hub ~7.5, town hall 6.5, combat 10-12, pet 10, concert 13, title 12-14. Press latch and hub B shortcut not yet checked on hardware (`docs/HARDWARE_CHECK.md`) |
 | PS1 | CI builds the disc; house room shells were measured earlier (Hell-Cellar 30 fps); the harness re-run, config file, J6/J7 on the disc and the family UI on console screens are not confirmed |
 | Dreamcast | skeleton only (draws nothing) |
 | Not selectable yet | deep customization (M2 painters, M3), mature pack art (loaders exist, PS1 has no stills) |
@@ -44,11 +52,23 @@ before redoing any of them; a zip without `.git` cannot tell.
 1. **Verify on the consoles (the biggest gap).** Run `docs/HARDWARE_CHECK.md` on GBA and PS1, the PS1 harness (`ps1/harness`), the GBA fps test, and measure EWRAM / PS1 RAM after MP0, MP1 and the nov05b change (profiles + co-op code added about 1.5 KB code and 700 B of statics everywhere). Needs the owner or CI; nothing here can substitute.
 2. **PS1 focus (standing instruction, see "Current focus").** PS1 budgets in `docs/PS1.md`, `docs/PS1_LIFESIM.md` checklist, PS1 RAM overlay plan.
 3. **Life sim core, open parts:** (PA10 part 2, per-avatar pockets, is done: `docs/PLAYAS.md` section 9, `pa10_*` tests); part 3 New life from the title and in a fresh world; MP1 left: quests 2-4 on later days, Rook's and Wick's quests, local simultaneous multiplayer, helping in another world; the S-HOUSE story house unlock (**needs your definition**); polish (uplifted pet look, baby outfits and body, elder stoop, a household graveyard scene); hand-written disaster scripts (**need your tone check**).
-4. **GBA speed and RAM:** (invaded: V1 GBA numbers are in `docs/INVADED_SPEED.md`; sprites are ~40% of the frame, the tint rebuild is not the main cost; next V4-style sprite-table caching) first read the CI run's Summary tab ("GBA speed report": the speed tour table and the title profile, `make -C gba profile-title`) and fix what it ranks first, the title included; then G8 tile backend for the island hub and menus, G9 combat HUD and the 30 fps lock with a test, then whatever `tools/perf_profile.sh` and `tools/ram_ledger.sh` rank first; measure on the ROM, not the host.
+4. **GBA speed and RAM:** **invaded (in progress, target 20 fps with 30.0 logic ticks/s):** V0 and V1 (GBA side) are done; steady frames are 50-60 ms so about 8 ms must come off the average (sprites are ~23 ms of it); V2 (tint flip) is demoted (`lit_cached` 0.7%); next, all exact: cache the composed sprite tables across frames (`owf_sprite_luts`, ~0.7 ms a frame), cheaper `ow_sprite` setup (~770 cycles a sprite), find the cause of the ~5-in-190 spike frames (+17..25 ms; log `lc.builds` and body-frame renders per frame), then V5 toast / HUD; each step keeps the invaded `vhash-seq` frames identical. Then, for the other scenes: first read the CI run's Summary tab ("GBA speed report": the speed tour table and the title profile, `make -C gba profile-title`) and fix what it ranks first, the title included; then G8 tile backend for the island hub and menus, G9 combat HUD and the 30 fps lock with a test, then whatever `tools/perf_profile.sh` and `tools/ram_ledger.sh` rank first; measure on the ROM, not the host.
 5. **Customization:** P0 rest (the 96 -> 76 B repack and roster v2 if the p0 patch above is not in your tree, M0b age gate, saves v2), the other 12 M2 list appends, art review, M3, then P2-P6 (`docs/design/customization/P0_M0A_STATUS.md`).
 6. **Dreamcast:** DC3-DC9 and the Flycast approval (**needs you**).
 7. **Script and languages:** W9-W12, W15 (approved, unwritten), W16; L8 re-translation of the rewritten text; pt-BR, fr, de, it, nl, pl untranslated; Chinese and Japanese need a font path (L10).
 8. **Housekeeping:** README "Status" still describes a developer launcher; the saved branches (G3, G9, G11, H7, L4, W6, W7, ...) are not in the repo; mature pack art; console music backends; Ninth Cloud map; Feast scene (S186).
+
+### What can be done next without the owner (pick by the standing focus: PS1 first unless GBA is named)
+
+- GBA, invaded speed: the sprite-table cache and `ow_sprite` setup patches above, the spike hunt; each measured with `make -C gba profile-invaded` / `test-speed` in a session that installs the ARM toolchain and libmgba.
+- CI: an apt retry + timeout patch for `ci.yml` (`Acquire::Retries`, `Acquire::http::Timeout`, a 10-minute cap on the install steps) so a mirror stall fails fast (not built yet).
+- PS1: budgets, harness, RAM overlay plan (`docs/PS1.md`, `docs/PS1_LIFESIM.md`); needs the owner's CI logs, no PS1 toolchain in a chat.
+- Life sim: part 3 (New life from the title), MP1 quests 2-4, Rook's and Wick's quests, polish items.
+- Housekeeping: README "Status" text; customization list appends.
+
+### Not playable yet
+
+Dreamcast (draws nothing); deep customization (M2 painters, M3: no creator row or save field); mature pack art (PS1 has no stills); local simultaneous multiplayer; the S-HOUSE story house unlock; hand-written disaster scripts; pt-BR, fr, de, it, nl, pl text (engine only); Chinese / Japanese (no font path). GBA runs but is slow (invaded 14.9 fps, island hub ~7.5, town hall 6.5).
 
 ### Needs the owner
 
