@@ -434,6 +434,9 @@ static void run_line(char *line)
         /* PA10 part 3: make this town a finished story (save it with `save 0` for the title to find) */
         doomo_town.mode = TOWN_STORY;
         doomo_town.story.chapter = STORY_CH_DONE;
+    } else if (strcmp(cmd, "ending-seen") == 0) {
+        /* PA10 part 4 (FREE): reach an ending, which opens play-as in Free play (the unlock outlives the world) */
+        unlock_grant_quiet(UL_STORY_END(0));
     } else if (strcmp(cmd, "story-fp") == 0) {
         uint32_t fp = story_fingerprint();
         printf("story-fp: 0x%08x\n", (unsigned)fp);

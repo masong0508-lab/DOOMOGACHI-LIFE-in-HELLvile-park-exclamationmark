@@ -3,6 +3,8 @@
  * chunk's family section and the strong life.h functions. Owner: life. */
 #include "test.h"
 #include "doomo/doomo.h"
+#include "doomo/unlocks.h"
+#include "doomo/unlock_ids.h"
 #include "doomo/family.h"
 #include "doomo/playas.h"
 #include "doomo/roster.h"
@@ -848,7 +850,9 @@ TEST(family_free_play_has_the_full_household_and_play_as_from_day_one)
     CHECK_EQ(family_cap(), HOUSEHOLD_CAP_FULL_T2);
     for (i = 0; i < HOUSEHOLD_CAP_FULL_T2; i++)
         CHECK(family_add(PLAYAS_ID_FAMILY_FIRST + i, FAMROLE_HOUSEMATE, LIFE_ADULT) >= 0);
-    CHECK(playas_available());
+    CHECK(!playas_available());                        /* FREE: not before an ending ... */
+    unlock_grant_quiet(UL_STORY_END(0));
+    CHECK(playas_available());                         /* ... and open once one is reached */
     CHECK(playas_can_be(PLAYAS_ID_FAMILY_FIRST));
     town_new(TOWN_STORY, 31, TOWN_POP_PREMADE);        /* a story island still earns it */
     CHECK_EQ(family_cap(), HOUSEHOLD_CAP_FULL_T0);

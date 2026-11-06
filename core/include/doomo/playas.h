@@ -115,6 +115,7 @@ static inline int playas_slot(void)
     return a >= 0 && a <= PLAYAS_ID_HERO ? a : PLAYAS_ID_HERO;
 }
 int  playas_story_locked(void);    /* 1 while story writes are refused (not the hero) */
+int  playas_free_unlocked(void);   /* FREE: Free play may switch (any ending reached, in any world) */
 int  playas_available(void);       /* the post-game unlock (story cleared, or a New
                                       life save, or Free play after completion)       */
 int  playas_can_be(int id);        /* id may be switched to now (PA1 rules)           */

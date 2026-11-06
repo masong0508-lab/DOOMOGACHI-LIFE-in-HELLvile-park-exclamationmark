@@ -2,6 +2,8 @@
  * (family.h "F5 part 2"). Owner: life. */
 #include "test.h"
 #include "doomo/doomo.h"
+#include "doomo/unlocks.h"
+#include "doomo/unlock_ids.h"
 #include "doomo/family.h"
 #include "doomo/playas.h"
 #include "doomo/roster.h"
@@ -12,6 +14,7 @@
 static void fresh_free_play(void)
 {
     town_new(TOWN_FREEPLAY, 31, TOWN_POP_PREMADE);
+    unlock_grant_quiet(UL_STORY_END(0));             /* FREE: Free play opens play-as after an ending */
     sim_init();
     family_clear();
     family_loss_clear();

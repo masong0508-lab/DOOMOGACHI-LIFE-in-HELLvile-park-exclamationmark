@@ -323,9 +323,19 @@ MP0's profiles (`profiles.c`) had no screen. `SCENE_PLAYAS` now has a players mo
   `PLAYAS_ARG_PROFILES` (B then leaves; from the switcher B steps back to it).
 * **The list**: the hero (profile 0) and each guest, with "Plays <villager>" and "- playing" on the active one; A plays as them
   (`prof_switch`). A last row "Add a player..." shows while there is room (3 guests) and play-as is available.
-* **Add**: pick a free neighbour (alive, not the hero, not already a player), confirm. The guest's name is the villager's name
-  (no text entry yet). SELECT on a guest row asks "moves out?"; the hero cannot be removed. Removing the active guest plays back as the hero.
+* **Add**: pick a free neighbour (alive, not the hero, not already a player); the name box opens with the villager's name to edit
+  (1..10 printable chars; a blank name falls back to the villager's; cancel goes back to the list). SELECT on a guest row asks "moves out?"; the hero cannot be removed. Removing the active guest plays back as the hero.
 * **Tests** (`test_playas.c`): `pa10_picker_adds_switches_and_removes_a_player`, `pa10_picker_is_locked_until_the_story_and_never_removes_the_hero`,
   `pa10_the_switcher_has_a_players_row_and_b_steps_back_to_it`. `make -C core test`: 851 passed.
-* **Not built**: typing a guest's own name, co-op heroes (MP1), the Free mode gates (FREE), the S-HOUSE decision, GBA/PS1 builds (not run here).
+* **Not built**: renaming a guest later, co-op heroes (MP1), the S-HOUSE decision, GBA/PS1 builds (not run here).
+
+### FREE: the Free mode gate (`playas_free_unlocked()`)
+
+* Free play no longer switches from day one. `playas_available()` in Free play is true once **any main ending has been reached**
+  (`ending_count_seen()` or any `UL_STORY_END(k)` unlock; the unlocks outlive the world, so a new island keeps it), as this document always said.
+* Always open, so nobody is stranded: a fresh-world New life (`playas_new_life_arm`), a New life save, a save already playing as someone
+  else, and a save with guests. Story mode is unchanged (finished story only).
+* Gated with it: the family "Play as them" row, the switcher's rows, the picker and `prof_guest_add` (`PROF_ERR_LOCKED`).
+* Tests: `pa10_free_play_opens_play_as_after_an_ending`, `pa10_a_blank_name_falls_back_to_the_villagers`; fixtures that assumed day-one play-as
+  grant `UL_STORY_END(0)`; runner command `ending-seen` (script `fp_playas_free`). `make -C core test`: 853 passed, scripts 160 OK.
 

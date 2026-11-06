@@ -128,18 +128,24 @@ static void nl_start(int yes)
     recount();
 }
 
-static void pf_join(int yes)
+static char pf_name[PROF_NAME_LEN];
+
+/* the name was typed (ok) or the entry cancelled: an empty name falls back to the villager's */
+static void pf_join(int ok)
 {
     char nm[DOOMO_NAME_LEN], msg[40];
     int r;
-    if (!yes) return;
-    r = prof_guest_add(name_of(S.pick, nm), S.pick, -1);
+    if (!ok) return;
+    if (!pf_name[0]) name_of(S.pick, pf_name);
+    r = prof_guest_add(pf_name, S.pick, -1);
     if (r > 0) {
-        doomo_snprintf(msg, sizeof msg, "%s joined!", nm);
+        doomo_snprintf(msg, sizeof msg, "%s joined!", prof_name(r));
         ui_toast(msg);
         S.pf = 1; recount(); S.sel = (int16_t)r; S.top = 0;
     } else {
-        ui_toast(r == PROF_ERR_FULL ? "The island has its players." : "They can't join right now.");
+        (void)nm;
+        ui_toast(r == PROF_ERR_FULL ? "The island has its players." :
+                 r == PROF_ERR_NAME ? "Use letters and numbers." : "They can't join right now.");
         S.pf = 1; recount();
     }
 }
@@ -177,11 +183,10 @@ static int pf_update(void)
     if (btn_pressed(BTN_A)) {
         audio_sfx(SFX_SELECT);
         if (S.pf == 2) {
-            char nm[DOOMO_NAME_LEN];
             S.pick = (int16_t)pick_id(S.sel, NULL);
             if (S.pick < 0) { recount(); return 1; }
-            doomo_snprintf(nl_q, sizeof nl_q, "%s joins as a player?", name_of(S.pick, nm));
-            ui_confirm(nl_q, pf_join);
+            name_of(S.pick, pf_name);            /* the villager's name to start from */
+            ui_text_entry("Name the player", pf_name, PROF_NAME_LEN, pf_join);
         } else if (S.sel >= S.count) {
             S.pf = 2; S.sel = S.top = 0; recount();
             if (S.rows <= 0) { ui_toast("Nobody free to join."); S.pf = 1; recount(); }

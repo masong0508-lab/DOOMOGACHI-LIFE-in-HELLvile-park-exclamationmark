@@ -2,6 +2,8 @@
 #include <string.h>
 #include "test.h"
 #include "doomo/doomo.h"
+#include "doomo/unlocks.h"
+#include "doomo/unlock_ids.h"
 #include "doomo/profiles.h"
 #include "doomo/playas.h"
 #include "doomo/save.h"
@@ -13,6 +15,7 @@
 static void fresh(void)
 {
     town_new(TOWN_FREEPLAY, 31, TOWN_POP_PREMADE);
+    unlock_grant_quiet(UL_STORY_END(0));             /* FREE: Free play opens play-as after an ending */
     sim_init();
 }
 

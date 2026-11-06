@@ -3,6 +3,8 @@
 #include <string.h>
 #include "test.h"
 #include "doomo/doomo.h"
+#include "doomo/unlocks.h"
+#include "doomo/unlock_ids.h"
 #include "doomo/home.h"
 #include "doomo/family.h"
 #include "doomo/ending.h"
@@ -577,12 +579,14 @@ TEST(pa10_picker_adds_switches_and_removes_a_player)
     CHECK_EQ(prof_count(), 1);
     pf_tap(BTN_DOWN);                                   /* the "Add a player..." row */
     pf_tap(BTN_A);                                      /* the villager list */
-    pf_tap(BTN_A);                                      /* first villager: "joins as a player?" */
-    pf_tap(BTN_UP);                                     /* No -> Yes */
-    pf_tap(BTN_A);
+    pf_tap(BTN_A);                                      /* first villager: the name entry opens */
+    { int i; for (i = 0; i < 12; i++) ui_text_entry_feed('\b'); }
+    ui_text_entry_feed('Z'); ui_text_entry_feed('e'); ui_text_entry_feed('d');
+    ui_text_entry_feed('\n');                           /* typed "Zed", OK */
+    pf_tap(0);
     CHECK_EQ(prof_guest_count(), 1);
     CHECK_EQ(prof_resident(1), v);
-    CHECK(prof_name(1)[0] != 0);
+    CHECK_STR(prof_name(1), "Zed");
     CHECK(scene_top() == &SCENE_PLAYAS);                /* back on the players list, on the new player */
     pf_tap(BTN_A);                                      /* play as them */
     CHECK_EQ(playas_avatar(), v);
@@ -634,6 +638,55 @@ TEST(pa10_the_switcher_has_a_players_row_and_b_steps_back_to_it)
     CHECK(scene_top() == &SCENE_PLAYAS);
     pf_tap(BTN_B);                                      /* the switcher -> out */
     CHECK(scene_top() == &SCENE_UI_GALLERY);
+}
+
+static void no_endings(void)
+{
+    int k;
+    for (k = 0; k < ENDING_MAIN_COUNT; k++) {
+        int id = UL_STORY_END(k);
+        doomo_town.unlocks[id >> 3] &= (uint8_t)~(1u << (id & 7));
+    }
+}
+
+TEST(pa10_a_blank_name_falls_back_to_the_villagers)
+{
+    int v;
+    fresh();
+    cleared();
+    v = first_alive();
+    scene_set(&SCENE_UI_GALLERY, 0);
+    scene_push(&SCENE_PLAYAS, PLAYAS_ARG_PROFILES);
+    pf_tap(0); pf_tap(BTN_DOWN); pf_tap(BTN_A); pf_tap(BTN_A);
+    { int i; for (i = 0; i < 12; i++) ui_text_entry_feed('\b'); }
+    ui_text_entry_feed('\n');
+    pf_tap(0);
+    CHECK_EQ(prof_guest_count(), 1);
+    CHECK_STR(prof_name(1), town_res(v)->name);
+    scene_pop();
+}
+
+TEST(pa10_free_play_opens_play_as_after_an_ending)
+{
+    int a;
+    fresh();
+    no_endings();
+    a = family_pool_add(FAMROLE_SIBLING, LIFE_ADULT, 5u, "Ann", PRONOUN_SHE);
+    CHECK(!playas_free_unlocked());
+    CHECK(!playas_available());                         /* a free play island with no ending reached */
+    CHECK(!playas_can_be(a));
+    CHECK(!playas_switch(a, PLAYAS_SWITCH_INSTANT));
+    {   int v = 0;
+        while (v < DOOMO_PLAYER_ID && (!town_res(v) || town_res(v)->status != RES_ALIVE)) v++;
+        CHECK_EQ(prof_guest_add("Ann", v, -1), PROF_ERR_LOCKED);
+    }
+    unlock_grant_quiet(UL_STORY_END(ENDING_E01));       /* an ending, in any world */
+    CHECK(playas_free_unlocked());
+    town_new(TOWN_FREEPLAY, 9, TOWN_POP_PREMADE);       /* the unlock outlives the world */
+    CHECK(playas_available());
+    no_endings();
+    playas_new_life_arm();                              /* a fresh-world New life stays open */
+    CHECK(playas_available());
 }
 
 /* ---- PA10 part 1: the play-as stress save ----------------------------------------------------

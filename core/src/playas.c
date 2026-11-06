@@ -10,6 +10,8 @@
 #include "doomo/playas.h"
 #include "doomo/profiles.h"
 #include "doomo/ending.h"
+#include "doomo/unlocks.h"
+#include "doomo/unlock_ids.h"
 #include "doomo/save_ext.h"
 #include "doomo/save_budget.h"
 #include "doomo/life_contract.h"
@@ -40,11 +42,24 @@ int playas_avatar(void) { return PLAYAS_ID_HERO + P.off; }
 int playas_is_hero(void) { return P.off == 0; }
 int playas_story_locked(void) { return P.off != 0; }
 
+int playas_free_unlocked(void)
+{
+    int k;
+    if (ending_count_seen() > 0) return 1;
+    for (k = 0; k < ENDING_MAIN_COUNT; k++)
+        if (!ENDING_IS_RETIRED(k) && unlock_has(UL_STORY_END(k))) return 1;
+    return 0;
+}
+
 int playas_available(void)
 {
     if (P.flags & PF_NEWLIFE) return 1;
     if (doomo_town.mode == TOWN_STORY) return doomo_town.story.chapter == STORY_CH_DONE;
-    return 1;                                   /* free play: switch from the first day */
+    /* FREE (PA10 part 4): Free play unlocks play-as once any ending has been reached (the unlocks
+     * outlive the world); a fresh-world New life, a save already mid-switch and a save with guests
+     * stay open, so nobody is stranded. */
+    if (armed_ || P.off != 0 || prof_guest_count() > 0) return 1;
+    return playas_free_unlocked();
 }
 
 /* the id is a valid avatar (ignoring availability and "already them") */

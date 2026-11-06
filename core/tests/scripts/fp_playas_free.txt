@@ -1,6 +1,7 @@
-# Family: "Play as them" on a fresh free play island works from day one (a story
+# Family: "Play as them" on a free play island works once an ending has been reached (FREE; a story
 # island keeps it locked until the story is finished: test_playas covers that).
 # The member menu offers it, picking it switches, and the list tags who you are.
+ending-seen
 scene NEW_ISLAND
 wait 10
 press A
