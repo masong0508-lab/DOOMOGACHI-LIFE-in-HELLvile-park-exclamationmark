@@ -50,6 +50,8 @@ after a real PS1 run, not before.
 | Story pause + quick save (U3b) | Verified (J6) | Script ready (J6 on the disc, not yet run) |
 | Family table, ageing, births, loss, pets' needs, resident deaths, memorial flowers (F1/F4/F5/F6 core) | Native only | Written; no UI yet (F2) so a PS1 run has nothing to press |
 | House (H3 `room.c`) | Native only | Documented as built and measured (docs/PS1.md section 7, `harness/scripts/home.txt`); ROADMAP reconciled 2026-11-02; not re-run since LS1 |
+| Play-as pockets (PA10 part 2): money, bag, health per avatar; `PLAY` chunk up to 800 B | Native only (`test_playas.c`) | Written: about +0.7 KB `.bss`, not linked or run; no PS1 script switches avatars |
+| New life from the title / a fresh world (PA10 part 3) | Native only (3 scripts, 3 tests) | Written: not linked or run; the title choice dialog has up to 5 rows (check the 320x240 fit on the disc) |
 | Mature disc variant (E9), language tables on disc (L6) | Missing | later waves |
 
 ## 4. Suggested PS1-first order

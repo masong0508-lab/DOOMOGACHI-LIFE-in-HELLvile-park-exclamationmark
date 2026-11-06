@@ -77,8 +77,13 @@ static void nl_done(int yes)
     int id = nth_id(S.sel, NULL);
     if (!yes) { S.nl = S.direct; recount(); return; }
     if (id >= 0 && playas_new_life(id)) {
+        char nm[DOOMO_NAME_LEN], line[80];
         ui_toast(STR_ICON_STAR " A new life begins!");
         scene_pop();
+        /* the first day: whose it is and what is in the pocket (PA10 part 2) */
+        doomo_snprintf(line, sizeof line, "%s's first day. H$%u in the pocket, and a snack or two.",
+                       name_of(playas_avatar(), nm), (unsigned)doomo_town.money);
+        ui_say(-1, line);
     } else { S.nl = S.direct; recount(); }
 }
 

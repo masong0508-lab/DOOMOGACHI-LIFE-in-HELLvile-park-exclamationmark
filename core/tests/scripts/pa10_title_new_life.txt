@@ -1,0 +1,32 @@
+# PA10 part 3: a finished story save on the title offers "New life here": it loads the world and
+# opens the "who are you?" list on top. B on a title-opened list leaves it (the hero plays on).
+story-done
+save 0
+scene TITLE
+wait 150
+press START
+wait 24
+expect-scene TITLE
+# the lead row is Continue; DOWN to Story Mode, A, UP to "New story", A
+press DOWN
+press A
+wait 16
+press UP
+press A
+wait 150
+shot title_finished_choice
+# "New life here" is the first choice
+press A
+wait 60
+expect-scene PLAYAS
+shot title_new_life_list
+press A
+wait 150
+shot new_life_confirm
+# the confirm starts on No: LEFT to Yes, A; then the first-day line appears and is dismissed
+press LEFT
+press A
+wait 150
+shot new_life_first_day
+press A
+wait 20

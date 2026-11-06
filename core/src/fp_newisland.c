@@ -11,6 +11,7 @@
  * names the island first (a Town Hall row renames it later too).
  */
 #include "fp_int.h"
+#include "doomo/playas.h"
 
 enum { C_EMPTY, C_CLASSIC, C_RANDOM, C_COUNT };
 
@@ -30,6 +31,7 @@ static struct {
     char seedbuf[12];
     char namebuf[FP_ISLAND_NAME_LEN];
     int roll_t;
+    uint8_t villager;   /* PA10 part 3: L / R, start as a villager of a premade island (a New life) */
 } N;
 
 static void ni_enter(int arg)
@@ -51,6 +53,12 @@ static void build(void)
     fp_achieve(N.sel == C_EMPTY ? UL_FP_EMPTY_START : N.sel == C_CLASSIC ? UL_FP_PREMADE_START : UL_FP_RANDOM_START);
     if (N.namebuf[0]) fp_achieve(UL_FP_NAMER);
     audio_sfx(SFX_HAPPY);
+    if (N.villager && N.sel != C_EMPTY) {          /* a New life: the "who are you?" list opens over the island */
+        playas_new_life_arm();
+        fp_goto_island(FP_ISLAND_ARG_RETURN);
+        scene_push(&SCENE_PLAYAS, PLAYAS_ARG_PICK_NEWLIFE);
+        return;
+    }
     fp_goto_island(FP_ISLAND_ARG_WELCOME);
 }
 
@@ -92,6 +100,11 @@ static void ni_update(void)
         doomo_snprintf(N.seedbuf, sizeof(N.seedbuf), "%u", (unsigned)N.seed);
         ui_text_entry("Island seed (number or word)", N.seedbuf, sizeof(N.seedbuf), cb_seed);
         return;
+    }
+    if (N.sel != C_EMPTY && btn_pressed(BTN_L | BTN_R)) {      /* an Empty island has nobody to be */
+        N.villager ^= 1;
+        audio_sfx(SFX_BLIP);
+        ui_toast(N.villager ? "You will be a villager: pick who next." : "You will be the caretaker.");
     }
     if (btn_pressed(BTN_START)) {
         audio_sfx(SFX_SELECT);
@@ -198,6 +211,7 @@ static void ni_draw(void)
             doomo_snprintf(sb, sizeof(sb), "Seed %u", (unsigned)N.seed);
             ui_text_center(x + cw / 2, y + ch - 12, sb, cs->text_dim);
         }
+        if (N.villager && i != C_EMPTY) ui_text(x + 4, y + 3, STR_ICON_STAR, cs->accent);    /* the villager mark */
         if (sel) ui_cursor(x + cw / 2 - 4, y + ch + 3);
     }
     {
@@ -210,6 +224,9 @@ static void ni_draw(void)
             ui_text_wrap(12, by + 4, sw - 24, card_desc[N.sel], ui_style(WIN_CREAM)->text, 1);
         }
     }
+    if (big && N.sel == C_CLASSIC)
+        ui_hint("\x88\x87 Pick  " STR_ICON_A " Go!  START Name  L/R Villager  " STR_ICON_B " Back", WIN_CUTE);
+    else
     ui_hint(N.sel == C_RANDOM ? "\x88\x87 Pick  \x89 Reroll  SEL Seed  " STR_ICON_A " Go!"
                               : "\x88\x87 Pick  " STR_ICON_A " Go!  START Name  " STR_ICON_B " Back", WIN_CUTE);
     fp_fx_draw();

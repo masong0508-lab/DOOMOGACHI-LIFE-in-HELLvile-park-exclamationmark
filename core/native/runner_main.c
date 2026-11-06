@@ -430,6 +430,10 @@ static void run_line(char *line)
             snprintf(msg, sizeof(msg), "expected story flag %d to be %d but it is", f, want != 0);
             fail(msg, story_flag(f) ? "1" : "0");
         }
+    } else if (strcmp(cmd, "story-done") == 0) {
+        /* PA10 part 3: make this town a finished story (save it with `save 0` for the title to find) */
+        doomo_town.mode = TOWN_STORY;
+        doomo_town.story.chapter = STORY_CH_DONE;
     } else if (strcmp(cmd, "story-fp") == 0) {
         uint32_t fp = story_fingerprint();
         printf("story-fp: 0x%08x\n", (unsigned)fp);

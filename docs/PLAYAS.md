@@ -305,7 +305,12 @@ avatar's. A switch saves the outgoing avatar's three things into a pocket and lo
 * **API**: `playas_new_life_arm()` (free play only; makes `playas_new_life_ok()` true until a New life starts or
   `town_new` makes another world; never saved). `SCENE_PLAYAS` arg `PLAYAS_ARG_PICK_NEWLIFE` opens straight on the
   list (`S.direct`: B and "no" stay on it); with no New life possible it opens the plain switcher.
+* **New Island screen** (no finished story needed): L / R on the Classic or Random card start the island as a
+  villager (a star on the cards, a toast, and on the big layout the hint says so). A builds the island and opens the
+  same list over it. An Empty island has nobody to be, so the toggle is ignored there.
+* **First day**: after a pick, a narrator line says whose first day it is and the H$ in their pocket (PA10 part 2).
 * **Tests**: `pa10_a_fresh_free_play_world_can_start_a_new_life`, `pa10_arming_is_for_free_play_and_ends_with_the_world`,
-  `pa10_scene_opens_on_the_new_life_list_from_the_title`. The title menu itself has no script yet.
-* **Not built**: a fresh world from the Free Play menu without a finished story, a name or look for the new life's
-  first day, GBA/PS1 builds (not run here).
+  `pa10_scene_opens_on_the_new_life_list_from_the_title`; scripts `pa10_title_new_life`, `pa10_title_fresh_world`,
+  `pa10_new_island_villager` (runner command `story-done` makes the town a finished story; `save 0` stores it).
+* **Not built**: a hint for the L / R toggle on the small (240x160) layout beyond its toast and star, a look for the new
+  life's first day beyond the narrator line, GBA/PS1 builds (not run here).

@@ -1,0 +1,29 @@
+# PA10 part 3: a finished story save on the title offers "New life, fresh world": a new Classic
+# island opens with the "who are you?" list; a pick starts the New life on the island.
+story-done
+save 0
+scene TITLE
+wait 150
+press START
+wait 24
+press DOWN
+press A
+wait 16
+press UP
+press A
+wait 150
+# second choice: "New life, fresh world" (no island is saved, so no warning first)
+press DOWN
+press A
+wait 60
+expect-scene PLAYAS
+shot fresh_world_list
+press A
+wait 150
+press LEFT
+press A
+wait 150
+shot fresh_world_first_day
+press A
+wait 20
+expect-scene ISLAND

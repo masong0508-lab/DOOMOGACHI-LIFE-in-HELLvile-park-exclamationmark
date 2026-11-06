@@ -1,0 +1,21 @@
+# PA10 part 3: on the New Island screen L / R start the island as a villager: the "who are you?"
+# list opens over the island, and a pick starts a New life on it.
+scene NEW_ISLAND
+wait 20
+press R
+wait 4
+shot new_island_villager_on
+press A
+wait 40
+expect-scene PLAYAS
+shot new_island_who_are_you
+press A
+wait 150
+shot new_island_confirm
+press LEFT
+press A
+wait 150
+shot new_island_first_day
+press A
+wait 20
+expect-scene ISLAND
