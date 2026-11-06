@@ -172,6 +172,17 @@ unbuilt and unmeasured; the first thing to do is the check below):
   ones `head` / `tail` already mask off.
 - `ow_spr_rows` is a plain `bl` (IWRAM to IWRAM), `ow_shade` is built `Os`.
 
+CI speed tour after V4b (2026-11-06, `make -C gba test-speed`; EWRAM free still 24,240 B, no scene under its floor):
+
+| scene | V4a -> V4b |
+|---|---|
+| invaded | work avg 54.5 -> 52.0 ms, drawn 15.6 -> 16.2 fps, logic 29.3 ticks/s, max 75.4 -> 77.1 ms |
+| hahaland visit / hellvile visit | 33.7 -> 33.6 / 21.5 -> 21.4 ms (unchanged, as expected: they have no mirrored sprites) |
+
+So V4b is worth about 2.5 ms on invaded: 2 ms above the 50 ms a 20 fps frame needs on average, and the worst frames (77 ms) are not
+touched. Parity against V4a is NOT checked yet (no V4a `vhash-seq` was kept); invaded `vhash-seq` after V4b is `5e74560c`, so the next
+step compares against it.
+
 Check before the next step (exact step: the invaded `vhash-seq` frames must be identical to V4a):
 
     make -C gba test-ow && make -C gba test-speed SPEED_GATES=0 && python3 gba/tools/speedtable.py --parity
