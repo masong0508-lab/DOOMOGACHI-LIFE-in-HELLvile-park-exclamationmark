@@ -12,7 +12,7 @@
 #include "doomo/input.h"
 #include "doomo/platform.h"
 
-static struct { int16_t sel, top, count; uint8_t nl; int16_t rows; } S;          /* nl: picking who the New life starts as */
+static struct { int16_t sel, top, count; uint8_t nl, direct; int16_t rows; } S;   /* nl: picking who the New life starts as; direct: opened on that list (the title) */
 static char nl_q[48];
 
 static int in_recent(int id)
@@ -67,19 +67,19 @@ static void recount(void)
 
 static void ps_enter(int arg)
 {
-    (void)arg;
     memset(&S, 0, sizeof S);
+    if (arg == PLAYAS_ARG_PICK_NEWLIFE && playas_new_life_ok()) S.nl = S.direct = 1;
     recount();
 }
 
 static void nl_done(int yes)
 {
     int id = nth_id(S.sel, NULL);
-    if (!yes) { S.nl = 0; recount(); return; }
+    if (!yes) { S.nl = S.direct; recount(); return; }
     if (id >= 0 && playas_new_life(id)) {
         ui_toast(STR_ICON_STAR " A new life begins!");
         scene_pop();
-    } else { S.nl = 0; recount(); }
+    } else { S.nl = S.direct; recount(); }
 }
 
 static void nl_start(int yes)
@@ -95,7 +95,7 @@ static void ps_update(void)
     int n;
     if (btn_pressed(BTN_B)) {
         audio_sfx(SFX_CANCEL);
-        if (S.nl) { S.nl = 0; S.sel = S.top = 0; recount(); } else scene_pop();
+        if (S.nl && !S.direct) { S.nl = 0; S.sel = S.top = 0; recount(); } else scene_pop();
         return;
     }
     n = S.rows;

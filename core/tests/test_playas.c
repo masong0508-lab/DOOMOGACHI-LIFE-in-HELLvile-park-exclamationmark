@@ -489,6 +489,65 @@ TEST(pa10_a_lost_avatar_sends_the_hero_home_with_the_hero_bag)
     CHECK_EQ(doomo_town.items[ITEM_ROSARY], 2);
 }
 
+/* ---- PA10 part 3: New life from the title, and in a fresh world ---------------------------------- */
+TEST(pa10_a_fresh_free_play_world_can_start_a_new_life)
+{
+    int a;
+    uint8_t buf[800];
+    fresh();                                              /* a brand-new free play island */
+    a = family_pool_add(FAMROLE_SIBLING, LIFE_ADULT, 5u, "Ann", PRONOUN_SHE);
+    CHECK(!playas_new_life_ok());                         /* not armed: free play alone is not a New life */
+    playas_new_life_arm();
+    CHECK(playas_new_life_ok());
+    CHECK(playas_new_life(a));
+    CHECK_EQ(playas_avatar(), a);
+    CHECK(playas_profile_flags() & PLAYAS_HF_NEW_LIFE);
+    CHECK(!playas_new_life_ok());                         /* one New life per world */
+    CHECK(doomo_save_ext_playas->write(buf, sizeof(buf)) >= 32);
+    doomo_save_ext_playas->reset();
+    CHECK(doomo_save_ext_playas->read(buf, 32, 1));
+    CHECK(playas_profile_flags() & PLAYAS_HF_NEW_LIFE);   /* the flag survives the save */
+}
+
+TEST(pa10_arming_is_for_free_play_and_ends_with_the_world)
+{
+    int a;
+    fresh();
+    a = family_pool_add(FAMROLE_SIBLING, LIFE_ADULT, 5u, "Ann", PRONOUN_SHE);
+    doomo_town.mode = TOWN_STORY;                         /* an unfinished story world refuses */
+    doomo_town.story.chapter = 2;
+    playas_new_life_arm();
+    CHECK(!playas_new_life_ok());
+    CHECK(!playas_new_life(a));
+    fresh();                                              /* a new world: armed state is gone */
+    playas_new_life_arm();
+    CHECK(playas_new_life_ok());
+    town_new(TOWN_FREEPLAY, 77, TOWN_POP_PREMADE);
+    CHECK(!playas_new_life_ok());
+    CHECK(playas_is_hero());
+}
+
+TEST(pa10_scene_opens_on_the_new_life_list_from_the_title)
+{
+    int a, b;
+    fresh();
+    a = family_pool_add(FAMROLE_SIBLING, LIFE_ADULT, 5u, "Ann", PRONOUN_SHE);
+    cleared();
+    scene_set(&SCENE_UI_GALLERY, 0);
+    scene_push(&SCENE_PLAYAS, PLAYAS_ARG_PICK_NEWLIFE);
+    plat_begin_frame(); scene_update(); scene_draw();
+    CHECK(scene_top() == &SCENE_PLAYAS);                  /* the list is open, no switcher row first */
+    CHECK(playas_is_hero());
+    scene_pop();
+    CHECK(playas_new_life(a));                            /* once it is a New life the arg opens the plain switcher */
+    b = family_pool_add(FAMROLE_HOUSEMATE, LIFE_ADULT, 6u, "Kit", PRONOUN_HE);
+    scene_push(&SCENE_PLAYAS, PLAYAS_ARG_PICK_NEWLIFE);
+    plat_begin_frame(); scene_update(); scene_draw();
+    CHECK(scene_top() == &SCENE_PLAYAS);
+    CHECK(playas_can_be(b));
+    scene_pop();
+}
+
 /* ---- PA10 part 1: the play-as stress save ----------------------------------------------------
  * A finished story, a full household (pets and a grown-up child among them), a New life played
  * as a family member, life events fired, a memorial: save it, check it stays under PA10's

@@ -155,6 +155,15 @@ int  playas_new_life_ok(void);
  * and switches to id. 1 on success; 0 and nothing changed otherwise. The
  * story stays finished and the hero stays a resident you can switch back to. */
 int  playas_new_life(int id);
+/* PA10 part 3: New life from the title.
+ * SCENE_PLAYAS arg: PLAYAS_ARG_PICK_NEWLIFE opens straight on the "who are you?" list
+ * (no switcher first); B or "no" stays on it, a pick starts the New life and pops.
+ * playas_new_life_arm() lets a brand-new FREE PLAY world start a New life too (the title's
+ * "New life, fresh world"): it makes playas_new_life_ok() true until a New life starts or
+ * another world is made (town_new resets it). It does nothing in story mode, and nothing in a
+ * world that is already a New life. */
+enum { PLAYAS_ARG_SWITCHER = 0, PLAYAS_ARG_PICK_NEWLIFE = 1 };
+void playas_new_life_arm(void);
 /* The new-game hero choice (PA2 calls it once, before the story starts). */
 void playas_set_hero_kind(int kind);
 

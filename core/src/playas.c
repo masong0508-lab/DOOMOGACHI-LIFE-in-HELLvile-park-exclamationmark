@@ -32,6 +32,7 @@ static struct {
     PlayasPos pos;
     uint8_t  flags;
 } P;
+static uint8_t armed_;          /* PA10 part 3: a fresh free play world may start a New life (not saved) */
 
 static int in_family(int id) { return id >= PLAYAS_ID_FAMILY_FIRST && id <= PLAYAS_ID_FAMILY_LAST; }
 
@@ -127,7 +128,14 @@ uint8_t playas_profile_flags(void)
 
 int playas_new_life_ok(void)
 {
-    return !(P.flags & PF_NEWLIFE) && doomo_town.mode == TOWN_STORY && doomo_town.story.chapter == STORY_CH_DONE;
+    if (P.flags & PF_NEWLIFE) return 0;
+    if (armed_ && doomo_town.mode == TOWN_FREEPLAY) return 1;
+    return doomo_town.mode == TOWN_STORY && doomo_town.story.chapter == STORY_CH_DONE;
+}
+
+void playas_new_life_arm(void)
+{
+    armed_ = (uint8_t)(doomo_town.mode == TOWN_FREEPLAY && !(P.flags & PF_NEWLIFE));
 }
 
 int playas_new_life(int id)
@@ -135,6 +143,7 @@ int playas_new_life(int id)
     if (!playas_new_life_ok() || id == PLAYAS_ID_HERO || !playas_can_be(id)) return 0;
     P.flags |= PF_NEWLIFE;
     if (!playas_switch(id, PLAYAS_SWITCH_FADE)) { P.flags &= (uint8_t)~PF_NEWLIFE; return 0; }
+    armed_ = 0;
     return 1;
 }
 
@@ -416,7 +425,7 @@ int playas_romance_ok(int from, int to)
     return 1;
 }
 
-static void play_reset(void) { memset(&P, 0, sizeof P); memset(pk_, 0, sizeof pk_); npk_ = 0; memset(&hs_, 0, sizeof hs_); }
+static void play_reset(void) { armed_ = 0; memset(&P, 0, sizeof P); memset(pk_, 0, sizeof pk_); npk_ = 0; memset(&hs_, 0, sizeof hs_); }
 
 /* the pockets after the header; anything that does not make sense is dropped, never trusted */
 static void pockets_read(const uint8_t *s, uint32_t len, int avatar)

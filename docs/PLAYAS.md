@@ -291,3 +291,21 @@ avatar's. A switch saves the outgoing avatar's three things into a pocket and lo
 * **Budget**: about +0.7 KB of `.bss` on every platform (14 x 44 B pockets + a 72 B stash), not yet measured on GBA EWRAM / PS1.
   Add a row to the EWRAM ledger when it is measured.
 * **Not here**: showing money, health or the bag of other avatars in a screen, and per-avatar weapons and ammo (the armoury stays shared).
+
+## 10. PA10 part 3: New life from the title, and in a fresh world (5 Nov 2026)
+
+* **Title**: with a finished story save, Story Mode > New story asks "Your story is finished. What now?":
+  *New life here* (loads the finished world and opens the "who are you?" list on top of it; B keeps playing the hero),
+  *New life, fresh world*, *New Game+* (only when unlocked), *Brand new story*, *Never mind*. A save that already is a
+  New life does not offer *New life here* (Continue is that). Before, a finished story with New Game+ locked went
+  straight to a new story; now it asks.
+* **Fresh world**: builds a new Classic free play island (`fp_new_island`) and opens the same list. The saved island is not
+  touched: a new island only autosaves into an empty slot until the player saves by hand, and the title warns first when
+  an island is saved. The chosen villager becomes the avatar, the save carries `PLAYAS_HF_NEW_LIFE`, the story is not part of it.
+* **API**: `playas_new_life_arm()` (free play only; makes `playas_new_life_ok()` true until a New life starts or
+  `town_new` makes another world; never saved). `SCENE_PLAYAS` arg `PLAYAS_ARG_PICK_NEWLIFE` opens straight on the
+  list (`S.direct`: B and "no" stay on it); with no New life possible it opens the plain switcher.
+* **Tests**: `pa10_a_fresh_free_play_world_can_start_a_new_life`, `pa10_arming_is_for_free_play_and_ends_with_the_world`,
+  `pa10_scene_opens_on_the_new_life_list_from_the_title`. The title menu itself has no script yet.
+* **Not built**: a fresh world from the Free Play menu without a finished story, a name or look for the new life's
+  first day, GBA/PS1 builds (not run here).

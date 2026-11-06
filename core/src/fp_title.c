@@ -11,6 +11,7 @@
  * Continue), Options, Unlocks, Credits.
  */
 #include "fp_int.h"
+#include "doomo/playas.h"
 
 enum { M_MAIN, M_STORY, M_FREE };
 enum { I_STORY, I_FREE, I_OPTIONS, I_UNLOCKS, I_CREDITS, I_THEME, I_LANG, I_MAIN_N, I_CONTINUE = I_MAIN_N };
@@ -122,28 +123,71 @@ static void ng_plus_pick(int c)
     story_begin();
 }
 
-static void new_story_pressed(void)
-{
-    static const char *const opts[3] = { "New Game+", "Brand new story", "Never mind" };
-    if (T.has_story && T.info[0].chapter == STORY_CH_DONE && story_ng_plus_unlocked()) {
-        audio_sfx(SFX_SELECT);
-        ui_choice(-1, "Your story is finished. Start again?", opts, 3, ng_plus_pick);
-        return;
-    }
-    start_story();
-}
-
-static void continue_story(void)
+static int continue_story(void)
 {
     if (!load_game(0)) {
         audio_sfx(SFX_ERROR);
         doomo_snprintf(fp_tmp, sizeof(fp_tmp), "Couldn't load: %s", save_last_error()[0] ? save_last_error() : "no save");
         ui_toast(fp_tmp);
-        return;
+        return 0;
     }
     audio_sfx(SFX_SELECT);
     sim_init();
     scene_set(&SCENE_STORY, STORY_ARG_CONTINUE);
+    return 1;
+}
+
+/* PA10 part 3: a finished story offers a New life, in this world or in a brand-new one.
+ * "New life here" loads the finished save and opens the "who are you?" list on top of it
+ * (B keeps playing the hero). "Fresh world" builds a new Classic free play island and opens
+ * the same list; the saved island is not touched until the player saves over it (fp_new_island
+ * only autosaves into an empty slot). */
+enum { NS_HERE, NS_FRESH, NS_NGPLUS, NS_NEW, NS_NEVER, NS_COUNT };
+static uint8_t ns_map[NS_COUNT];
+
+static void fresh_world_go(int yes)
+{
+    if (!yes) return;
+    audio_sfx(SFX_SELECT);
+    fp_new_island(TOWN_POP_PREMADE, plat_entropy());
+    playas_new_life_arm();
+    fp_goto_island(FP_ISLAND_ARG_RETURN);
+    scene_push(&SCENE_PLAYAS, PLAYAS_ARG_PICK_NEWLIFE);
+}
+
+static void finished_pick(int c)
+{
+    switch (c >= 0 && c < NS_COUNT ? ns_map[c] : NS_NEVER) {
+    case NS_HERE:
+        if (continue_story()) scene_push(&SCENE_PLAYAS, PLAYAS_ARG_PICK_NEWLIFE);
+        break;
+    case NS_FRESH:
+        if (T.has_free) ui_confirm("A new world as a villager? Your saved island stays until you save over it.", fresh_world_go);
+        else fresh_world_go(1);
+        break;
+    case NS_NGPLUS: ng_plus_pick(0); break;
+    case NS_NEW: start_story(); break;
+    default: break;
+    }
+}
+
+static void new_story_pressed(void)
+{
+    static const char *const names[NS_COUNT] = { "New life here", "New life, fresh world", "New Game+", "Brand new story", "Never mind" };
+    if (T.has_story && T.info[0].chapter == STORY_CH_DONE) {
+        const char *opts[NS_COUNT];
+        int i, n = 0;
+        for (i = 0; i < NS_COUNT; i++) {
+            if (i == NS_NGPLUS && !story_ng_plus_unlocked()) continue;
+            if (i == NS_HERE && (T.info[0].flags & PLAYAS_HF_NEW_LIFE)) continue;   /* already a New life: Continue is that */
+            opts[n] = names[i];
+            ns_map[n++] = (uint8_t)i;
+        }
+        audio_sfx(SFX_SELECT);
+        ui_choice(-1, "Your story is finished. What now?", opts, n, finished_pick);
+        return;
+    }
+    start_story();
 }
 
 static void continue_free(void)
