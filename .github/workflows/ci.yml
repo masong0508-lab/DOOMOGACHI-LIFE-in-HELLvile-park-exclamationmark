@@ -111,16 +111,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Cache the apt packages (a slow runner download only has to succeed once)
+        uses: actions/cache@v4
+        with:
+          path: ~/apt-debs/*.deb
+          key: apt-gba-${{ runner.os }}-noble-v1
+
       - name: Install arm-none-eabi + newlib, python3, libmgba
-        timeout-minutes: 10
+        timeout-minutes: 15
+        env:
+          APT_DEBS: /home/runner/apt-debs
         run: |
-          # a runner's download can crawl (one took 10+ min for what another does in 5 s): stall timeout + retries
-          printf 'Acquire::Retries "5";\nAcquire::http::Timeout "20";\nAcquire::https::Timeout "20";\n' | sudo tee /etc/apt/apt.conf.d/99ci >/dev/null
-          sudo apt-get update -q
-          sudo apt-get install -y -q --no-install-recommends \
-            gcc make python3 \
-            gcc-arm-none-eabi libnewlib-arm-none-eabi \
-            libmgba-dev
+          sh tools/ci_apt.sh gcc make python3 gcc-arm-none-eabi libnewlib-arm-none-eabi libmgba-dev
           arm-none-eabi-gcc --version | head -n 1
 
       - name: Build the game ROM
