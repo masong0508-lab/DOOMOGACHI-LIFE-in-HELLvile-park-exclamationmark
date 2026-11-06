@@ -48,8 +48,7 @@ jobs:
       - name: Install arm-none-eabi + newlib, python3, libmgba
         timeout-minutes: 10
         run: |
-          # the runner's default Azure mirror can crawl (a 57 MB download took 20+ min): main mirror, 20 s stall timeout, 5 retries
-          sudo sed -i 's#http://azure.archive.ubuntu.com/ubuntu#http://archive.ubuntu.com/ubuntu#g' /etc/apt/sources.list /etc/apt/sources.list.d/* 2>/dev/null || true
+          # a runner's download can crawl: stall timeout + retries
           printf 'Acquire::Retries "5";\nAcquire::http::Timeout "20";\nAcquire::https::Timeout "20";\n' | sudo tee /etc/apt/apt.conf.d/99ci >/dev/null
           sudo apt-get update -q
           sudo apt-get install -y -q --no-install-recommends \

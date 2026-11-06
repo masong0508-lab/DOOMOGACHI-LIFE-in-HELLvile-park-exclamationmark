@@ -114,8 +114,7 @@ jobs:
       - name: Install arm-none-eabi + newlib, python3, libmgba
         timeout-minutes: 10
         run: |
-          # the runner's default Azure mirror can crawl (a 57 MB download took 20+ min): main mirror, 20 s stall timeout, 5 retries
-          sudo sed -i 's#http://azure.archive.ubuntu.com/ubuntu#http://archive.ubuntu.com/ubuntu#g' /etc/apt/sources.list /etc/apt/sources.list.d/* 2>/dev/null || true
+          # a runner's download can crawl (one took 10+ min for what another does in 5 s): stall timeout + retries
           printf 'Acquire::Retries "5";\nAcquire::http::Timeout "20";\nAcquire::https::Timeout "20";\n' | sudo tee /etc/apt/apt.conf.d/99ci >/dev/null
           sudo apt-get update -q
           sudo apt-get install -y -q --no-install-recommends \
@@ -165,36 +164,14 @@ jobs:
           retention-days: 14
           if-no-files-found: ignore
 
-  # --------------------------------------------------------------------------
-  # The speed report runs on its own runner, in parallel with the gba job: it is
-  # informational (never gates) and used to add its whole tour to the gba job's time.
-  gba-speed:
-    name: GBA speed report (informational)
-    runs-on: ubuntu-24.04
-    timeout-minutes: 30
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install arm-none-eabi + newlib, python3, libmgba
-        timeout-minutes: 10
-        run: |
-          # the runner's default Azure mirror can crawl (a 57 MB download took 20+ min): main mirror, 20 s stall timeout, 5 retries
-          sudo sed -i 's#http://azure.archive.ubuntu.com/ubuntu#http://archive.ubuntu.com/ubuntu#g' /etc/apt/sources.list /etc/apt/sources.list.d/* 2>/dev/null || true
-          printf 'Acquire::Retries "5";\nAcquire::http::Timeout "20";\nAcquire::https::Timeout "20";\n' | sudo tee /etc/apt/apt.conf.d/99ci >/dev/null
-          sudo apt-get update -q
-          sudo apt-get install -y -q --no-install-recommends \
-            gcc make python3 \
-            gcc-arm-none-eabi libnewlib-arm-none-eabi \
-            libmgba-dev
-
-      # Informational, never fails the job: real GBA numbers from mGBA (bus wait
-      # states, prefetch and halt time are emulated). The speed tour reports every
-      # scene's drawn fps against its floor, and the title profile ranks the title
-      # screen's hottest functions (idle, then with the menu open). Read it under
-      # the run's "Summary" tab; the logs and tour screenshots are in the
-      # gba-speed-report artifact.
+      # Informational, never fails the job (continue-on-error): real GBA numbers from mGBA (bus wait
+      # states, prefetch and halt time are emulated). It used to be its own job with its own apt
+      # install, which hung on a slow runner (10+ min for a 5 s download), so it runs here now, after
+      # the gates, on the runner that already has the toolchain. Read it under the run's "Summary" tab;
+      # the logs and tour screenshots are in the gba-speed-report artifact.
       - name: Speed report (speed tour + title profile)
+        if: always()
+        continue-on-error: true
         run: |
           {
             echo '## GBA speed report'
@@ -214,8 +191,10 @@ jobs:
           } 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
 
       # Every scene of the tour with a PC profile: ranked by work ms, how far each is from the 30 fps
-      # budget and which functions to fix first. Informational, never fails the job.
+      # budget and which functions to fix first.
       - name: Profile every scene (road to 30 fps)
+        if: always()
+        continue-on-error: true
         run: |
           {
             echo
@@ -226,6 +205,7 @@ jobs:
 
       - name: Upload speed report
         if: always()
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: gba-speed-report
