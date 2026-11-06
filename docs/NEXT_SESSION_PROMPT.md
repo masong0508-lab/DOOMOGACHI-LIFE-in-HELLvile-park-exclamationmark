@@ -1,20 +1,29 @@
-# Next-session prompt (paste into a new chat with the repo zip)
+# Next-session prompt (paste into a new chat together with the repo zip; nothing else is needed)
 
-Project: DOOMOGACHI LIFE in HELLvile park! (repo root has core/, docs/, tools/).
-Workflow: deliver every change as a patch zip, doomogachi-w6-stepN.zip, with apply.sh + a
-unified diff (patch -p1 from the repo root, dry run first). Never a full archive.
-Verify before delivering: cd core && make test -j8 (expect 757+ passed, 0 failed) and make story-check.
+Project: DOOMOGACHI LIFE in HELLvile park! (repo root: core/, gba/, ps1/, dc/, docs/, tools/). Owner works from Termux on an Android phone.
 
-Done (W6 steps 1-2): PA9 play-as gate, E4 routes (ending_route_daily, mslot queue),
-sexy/bad finale rules, LS-QA (B = next problem, buy on the spot), LS-IN GBA press latch,
-E6d Ch4/epilogue punch-ups. Mature pack hellvile_after_dark.dmpk (14 non-explicit scene
-scripts, slots 0-4 and 8-16, built with textpack --user + mpack) lives outside the repo;
-the "attested" flag is deliberately unset.
+## Read first, in this order
+1. This file.  2. `ROADMAP.md`, the section "Refresh 2026-11-06" (done / playable / to do / needs the owner).  3. `docs/STATUS.md`.
+4. The doc of the area you touch (`docs/PLAYAS.md`, `docs/COOP_HEROES.md`, `docs/PS1_LIFESIM.md`, `docs/GBA.md`, ...).
+A repo zip has no git history: ask which patches are already applied if the roadmap's list of pending patches matters.
 
-Open:
-1. Real-hardware run of docs/HARDWARE_CHECK.md (hub B shortcut, press latch, mslot playback).
-2. Load the pack in-game with Mature = "On + pack" and confirm each slot plays.
-3. Optional: CG art for the pack, per-port builds (GBA/PS1/DC).
+## How to deliver (the formula; it lives in the repo so nobody retypes it)
+- Never a full archive. Edit a copy of the tree, then build the patch zip:
+  `sh tools/mkpatch.sh doomo-<what>-<monthday><letter> "commit message" PRISTINE_TREE EDITED_TREE OUT_DIR`
+  (NEW name every patch; the zip holds patch.diff, apply.sh, commit.txt, RESTORE.txt). Put the zip in the outputs folder.
+- Tell the owner exactly one command: `sh ~/DOOMOGACHI-LIFE-in-HELLvile-park-exclamationmark/tools/dpatch.sh NAME`
+  (pulls, applies, commits with commit.txt, pushes). Until the repo has tools/dpatch.sh, give the long form from RESTORE.txt.
+- Every patch that changes behaviour also edits the ROADMAP "Refresh" section (move a line from To do to Done) and, if the area has one, its doc.
+- Do not hand-write long one-liners; the zip's RESTORE.txt has the copyable commands, so an interrupted session can be rebuilt.
 
-Rules: built-in text never contains mature content (fade-to-black fallback only);
-mature_adult_ok and the kid-cast list stay untouched.
+## Verify before delivering
+`make -C core -j8 test` (expect 861+ unit, 160+ scripts, 19 journeys, 0 failed), `make -C core check-gen`, `make -C core story-check`; after touching
+generated data run `make -C core gen` first. State plainly what was NOT built or run (GBA / PS1 / DC have no toolchain in a chat sandbox).
+Speed work: `sh tools/perf_profile.sh` ranks core callers by host time; RAM work: `sh tools/ram_ledger.sh`. Host ranks are not console numbers; say so.
+
+## Standing rules
+- Focus on the PS1 build unless the owner names GBA, Dreamcast, show or script work (ROADMAP "Current focus").
+- Built-in text never contains mature content (fade-to-black fallback only); `mature_adult_ok` and the kid-cast list stay untouched; PG-21 register, adults only.
+- Mature pack `hellvile_after_dark.dmpk` lives outside the repo; the "attested" flag is deliberately unset.
+- Keep the owner's tone (Walten Files parody, abrupt comedy); disaster scripts and the S-HOUSE definition wait for the owner.
+- Small patches that stack cleanly; touch as few files as the job needs so patches do not conflict.

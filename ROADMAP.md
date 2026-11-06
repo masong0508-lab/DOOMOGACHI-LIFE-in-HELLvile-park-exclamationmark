@@ -1,9 +1,64 @@
 # DOOMOGACHI roadmap (what's left)
 
-Last updated 2026-11-05 (PA10 parts 3-4, MP1 part 1; the older lines below keep their own dates). The decisions behind this list (tone, PG-21 register,
+Last updated 2026-11-06 (full refresh of done / playable / to do just below; the older lines below keep their own dates and are history). The decisions behind this list (tone, PG-21 register,
 show canon, life-sim answers, 32 MB GBA cartridge) are summarised at the end.
 Package IDs match the planning files; each package is built in its own worktree,
 reviewed, then landed on `claude/nice-allen-gr6czm`.
+
+## Refresh 2026-11-06: done, playable, to do
+
+Checked on this tree with the native gcc build only (`make -C core test`: 861 unit tests, 160 scripted playthroughs, 19 press journeys at
+240x160 and 320x240; `check-gen`, `story-check`, `langpack`, `mpack` clean). **Nothing was built or run for GBA, PS1 or Dreamcast here** (no ARM/MIPS/SH4
+toolchain, no emulator); console statements come from the docs and your CI logs.
+
+**Patches the owner applied that may not be in the zip a session was given:** `doomo-mp1-coop-perf-nov05` (MP1 part 5: co-op quests, rewards, abilities, family
+portrait; its island-population-once-per-frame part is already in this tree), `doomo-perf-ram-nov05b` (apartments header count cached, `tools/ram_ledger.sh`,
+`tools/perf_profile.sh`), and `doomo-p0-contracts-gene-roster-v2-nov05` (contract stubs, `look_build.py` gene table, roster v2 58 B records). Check `git log`
+before redoing any of them; a zip without `.git` cannot tell.
+
+### Done
+
+| Area | What is finished (core, host-tested) |
+|---|---|
+| Life sim | family table + pool, family screen + add-member wizard, care-all (F1-F2); house occupancy (F3); ageing, births, family events (F4); pets, old age, the late-game uplift (F5); loss, memorials, flowers (F6); free will, bonds, moods (F7-F8); helpers, away trips (F9); disasters + story hooks (F10); life events (LS3-LS4); household tiers + New Game+ (S-HOUSE tiers part); news, quick care (LS-QA) |
+| Play as | play-as and New life (PA1-PA9), hero choice cards (PA2), profile guests and the picker, typed names, renaming, the Free mode gate (MP0 core, PA10 parts 3-4b) |
+| Co-op (MP1) | co-op heroes Ember / Rook / Wick with final names and looks (part 1-2), `docs/COOP_HEROES.md` content, Ember's Ch1 quest scene + trigger (parts 3-4); part 5 (quests, rewards, abilities, family portrait) delivered as a patch |
+| Story + content | chapters 1-4 + epilogue (W1-W4), 49 old quests rewritten (W5), about 109 live side quests, ending engine with routes and secret endings (E1-E4, E12), PG-21 adult beats in Ch1-2 (E6a/b), content-pack format + readers (E2, E7), mature-pack adapters for GBA / PS1 / Dreamcast (E8-E10, host-tested only) |
+| Title, settings, UI | Continue-first title, quick saves, island START menu, held-frame backdrop (U6, U3, U4), settings core + options redesign (U0, U2), first-boot language picker + Mature gate (U5, E11), streamlined New Island (LS6) |
+| House, shooter, extras | house Live / Build / Photo + HomeMart + Black Market + Hold the Door (H-series, GBA EWRAM H10-H11), Hell Breach + arena + welding workshop, 7 Fun Fair minigames, Concert Hall, Music Studio, Library, fishing, cooking, 8 languages in the engine (Spanish furthest) |
+| Customization | gene codec, age = life stage, copy-out of all look sites (P0.M0a), 13 wave-2 face/head painters + 6 halos (P1.M2a-e); none selectable in the creator yet |
+| Speed and RAM (host-checked) | GBA speed tour, Mode 4, IWRAM overlay, tile-mode overworld, billboards as sprites, retained panels + 3D Faster/Better (G1-G7); island population counted once per frame; apartments header cached (nov05b); `tools/ram_ledger.sh` and `tools/perf_profile.sh` to find the next ones |
+
+### Playable now
+
+| Where | State |
+|---|---|
+| Native runner (core) | everything in the Done table: Free Play (empty or 1000-citizen Classic island), creator, apartments, care, shop, news, family, pets, loss + memorial, New life, NG+, Hell Breach, the 4-chapter story + epilogue, house, minigames, library, concert, studio, 8 languages. 69 scenes, none a weak placeholder |
+| GBA | CI builds the ROM and runs mGBA tests (your Oct logs); EWRAM is nearly full (about 10-13 KB free) and fps is low: island hub ~7.5, town hall 6.5, combat 10-12, pet 10, concert 13, title 12-14. Press latch and hub B shortcut not yet checked on hardware (`docs/HARDWARE_CHECK.md`) |
+| PS1 | CI builds the disc; house room shells were measured earlier (Hell-Cellar 30 fps); the harness re-run, config file, J6/J7 on the disc and the family UI on console screens are not confirmed |
+| Dreamcast | skeleton only (draws nothing) |
+| Not selectable yet | deep customization (M2 painters, M3), mature pack art (loaders exist, PS1 has no stills) |
+
+### To do, in the order to take them
+
+1. **Verify on the consoles (the biggest gap).** Run `docs/HARDWARE_CHECK.md` on GBA and PS1, the PS1 harness (`ps1/harness`), the GBA fps test, and measure EWRAM / PS1 RAM after MP0, MP1 and the nov05b change (profiles + co-op code added about 1.5 KB code and 700 B of statics everywhere). Needs the owner or CI; nothing here can substitute.
+2. **PS1 focus (standing instruction, see "Current focus").** PS1 budgets in `docs/PS1.md`, `docs/PS1_LIFESIM.md` checklist, PS1 RAM overlay plan.
+3. **Life sim core, open parts:** PA10 part 2 per-avatar pockets (money, items, health are shared when you switch who you play); part 3 New life from the title and in a fresh world; MP1 left: quests 2-4 on later days, Rook's and Wick's quests, local simultaneous multiplayer, helping in another world; the S-HOUSE story house unlock (**needs your definition**); polish (uplifted pet look, baby outfits and body, elder stoop, a household graveyard scene); hand-written disaster scripts (**need your tone check**).
+4. **GBA speed and RAM:** G8 tile backend for the island hub and menus, G9 combat HUD and the 30 fps lock with a test, then whatever `tools/perf_profile.sh` and `tools/ram_ledger.sh` rank first; measure on the ROM, not the host.
+5. **Customization:** P0 rest (the 96 -> 76 B repack and roster v2 if the p0 patch above is not in your tree, M0b age gate, saves v2), the other 12 M2 list appends, art review, M3, then P2-P6 (`docs/design/customization/P0_M0A_STATUS.md`).
+6. **Dreamcast:** DC3-DC9 and the Flycast approval (**needs you**).
+7. **Script and languages:** W9-W12, W15 (approved, unwritten), W16; L8 re-translation of the rewritten text; pt-BR, fr, de, it, nl, pl untranslated; Chinese and Japanese need a font path (L10).
+8. **Housekeeping:** README "Status" still describes a developer launcher; the saved branches (G3, G9, G11, H7, L4, W6, W7, ...) are not in the repo; mature pack art; console music backends; Ninth Cloud map; Feast scene (S186).
+
+### Needs the owner
+
+S-HOUSE definition; tone check of the disaster scripts; Flycast approval; any run on real GBA / PS1 hardware or PCSX-Redux; which pending patch is applied (a repo zip carries no git history).
+
+### How patches work now (so a new session costs no time)
+
+The repo carries its own patch tools. A session builds a zip with `tools/mkpatch.sh`; you apply it with **one short command** (see "Patch workflow" below and
+`docs/NEXT_SESSION_PROMPT.md`). To start a session: upload the repo zip (nothing else is needed), say what you want, and the session reads
+`docs/NEXT_SESSION_PROMPT.md`, this section and `docs/STATUS.md` first.
 
 ## Current focus (standing instruction, set 2026-11-02)
 
@@ -315,11 +370,19 @@ X10 VMU card trading.
 
 ## Patch workflow (Termux) and the next patches
 
-One zip per patch in `~/storage/downloads/`, unpacking to a same-named folder with `apply.sh` (run from the repo root,
-safe to run twice, no network). Use a NEW name for every patch. **The kind of command to send the owner** (replace NAME and
-MESSAGE; it pulls first, unpacks into a scratch folder, applies, commits and pushes; ~/vs is left in place and the next patch's `rm -rf ~/vs` clears it):
+One zip per patch in `~/storage/downloads/`, built by `tools/mkpatch.sh NAME "message" PRISTINE EDITED OUT` and unpacking to a same-named folder with
+`apply.sh`, `patch.diff`, `commit.txt` (the commit message) and `RESTORE.txt` (the copyable commands). Use a NEW name for every patch.
 
-    cd ~/DOOMOGACHI-LIFE-in-HELLvile-park-exclamationmark && git pull --ff-only && rm -rf ~/vs && mkdir ~/vs && unzip -qo ~/storage/downloads/NAME.zip -d ~/vs && sh ~/vs/NAME/apply.sh && git add -A && git commit -m "MESSAGE" && git push
+**The command to send the owner (once `tools/dpatch.sh` is in the repo, which the `doomo-roadmap-formula-nov06` patch does):**
+
+    sh ~/DOOMOGACHI-LIFE-in-HELLvile-park-exclamationmark/tools/dpatch.sh            # newest doomo-*.zip in Downloads
+    sh ~/DOOMOGACHI-LIFE-in-HELLvile-park-exclamationmark/tools/dpatch.sh NAME       # a named one
+
+It pulls (fast-forward only), refuses a dirty tree, unpacks, dry-runs, applies, commits with `commit.txt`, pushes, and logs to `~/dpatch.log`. Run twice is fine.
+Undo before pushing: `git reset --hard HEAD~1`. **The long form** (needed only for the first patch, before `dpatch.sh` exists in the repo; replace NAME and MESSAGE;
+~/vs is cleared by the next patch's `rm -rf ~/vs`):
+
+    cd ~/DOOMOGACHI-LIFE-in-HELLvile-park-exclamationmark && git pull --ff-only && rm -rf ~/vs && mkdir ~/vs && unzip -qo ~/storage/downloads/NAME.zip -d ~/vs && sh ~/vs/NAME/apply.sh && git add -A && { git diff --cached --quiet || git commit -F ~/vs/NAME/commit.txt ; } && git push
 
 Worked example (U6c):
 
