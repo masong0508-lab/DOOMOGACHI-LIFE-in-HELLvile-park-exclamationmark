@@ -25,8 +25,6 @@ wait 1
 expect-scene RESIDENT
 press UP
 press UP
-press UP
-press UP
 press A
 wait 1
 expect-scene PICKER

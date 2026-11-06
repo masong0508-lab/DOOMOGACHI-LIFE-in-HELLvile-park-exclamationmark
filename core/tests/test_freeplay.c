@@ -229,6 +229,11 @@ TEST(freeplay_care_list_is_decluttered)
     CHECK(fp_resident_has_action(FPA_GIVE));
     CHECK(!fp_resident_has_action(FPA_GIFT));
     CHECK(!fp_resident_has_action(FPA_HEAL));
+    /* the housekeeping verbs sit under Manage, not in the care list */
+    CHECK(fp_resident_has_action(FPA_MANAGE));
+    CHECK(!fp_resident_has_action(FPA_EDIT));
+    CHECK(!fp_resident_has_action(FPA_FAV));
+    CHECK(!fp_resident_has_action(FPA_HOME));
     /* no action twice: the count is the number of distinct actions */
     for (a = 0; a < FPA_COUNT; a++) sum += fp_resident_has_action(a);
     CHECK_EQ(sum, fp_resident_action_count());
@@ -245,6 +250,22 @@ TEST(freeplay_care_list_is_decluttered)
     close_dialogs();
     CHECK_EQ(inv_count(ITEM_PLUSHIE) + inv_count(ITEM_MEDICINE), plush0 + med0 - 1);
     CHECK(top_is(&SCENE_RESIDENT));
+    /* Manage -> Favourite (the second row) toggles the star */
+    {
+        int fav0 = (doomo_town.res[id].flags & RF_FAVORITE) != 0;
+        CHECK(fp_resident_select(FPA_MANAGE));
+        press(BTN_A);
+        frames(0, 2);
+        CHECK(top_is(&SCENE_DIALOG));
+        press(BTN_A);                           /* A finishes the question's typing first */
+        frames(0, 2);
+        press(BTN_DOWN);                        /* Edit look -> Favourite */
+        press(BTN_A);
+        frames(0, 2);
+        close_dialogs();
+        CHECK_EQ((doomo_town.res[id].flags & RF_FAVORITE) != 0, !fav0);
+        CHECK(top_is(&SCENE_RESIDENT));
+    }
 }
 
 TEST(freeplay_lay_to_rest_gating)

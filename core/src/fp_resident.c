@@ -21,12 +21,12 @@ static const char *const tab_names[TAB_COUNT] = { "Care", "About", "Friends", "F
 static const char *const act_label[FPA_COUNT] = {
     "Help!", "Feed", "Gift", "Clean", "Play", "Talk", "Heal", "Comfort", "Introduce",
     "Advice", "Edit look", "Favourite", "Exorcise", "Flowers", "Raise ghost", "Visit grave",
-    "Their home", "Lay to rest", "Create here", "Give"
+    "Their home", "Lay to rest", "Create here", "Give", "Manage"
 };
 static const uint8_t act_icon[FPA_COUNT] = {
     ICON_CLOUD, ICON_FOOD, ICON_HEART, ICON_DROP, ICON_STAR, ICON_SMILE, ICON_CROSS,
     ICON_HEART, ICON_ARROW_R, ICON_SPARK, ICON_WRENCH, ICON_STAR, ICON_CROSS, ICON_SPARK,
-    ICON_GHOST, ICON_SKULL, ICON_HOUSE, ICON_SKULL, ICON_EGG, ICON_HEART
+    ICON_GHOST, ICON_SKULL, ICON_HOUSE, ICON_SKULL, ICON_EGG, ICON_HEART, ICON_WRENCH
 };
 
 enum { POP_NONE, POP_ITEMS };
@@ -78,18 +78,18 @@ static void build_actions(void)
         /* decluttered: Gift + Heal are one Give bag; Advice only when there is advice to give */
         ADD(FPA_FEED); ADD(FPA_GIVE); ADD(FPA_CLEAN); ADD(FPA_PLAY); ADD(FPA_TALK);
         ADD(FPA_COMFORT); ADD(FPA_INTRODUCE); if (R.has_advice) ADD(FPA_ADVICE);
-        ADD(FPA_EDIT); ADD(FPA_FAV); ADD(FPA_HOME);
+        ADD(FPA_MANAGE);                      /* Edit look, Favourite, Their home in one place */
         break;
     case RES_POSSESSED:
-        ADD(FPA_EXORCISE); ADD(FPA_TALK); ADD(FPA_FEED); ADD(FPA_GIVE); ADD(FPA_COMFORT); ADD(FPA_FAV);
-        ADD(FPA_HOME);
+        ADD(FPA_EXORCISE); ADD(FPA_TALK); ADD(FPA_FEED); ADD(FPA_GIVE); ADD(FPA_COMFORT);
+        ADD(FPA_MANAGE);
         break;
     case RES_SOUL_LOST:
         ADD(FPA_EXORCISE); ADD(FPA_COMFORT); ADD(FPA_TALK); ADD(FPA_FAV);
         break;
     case RES_GHOST:
         ADD(FPA_TALK); ADD(FPA_PLAY); ADD(FPA_GIVE); ADD(FPA_COMFORT); ADD(FPA_INTRODUCE); ADD(FPA_FEED);
-        ADD(FPA_EDIT); ADD(FPA_FAV); ADD(FPA_HOME);
+        ADD(FPA_MANAGE);
         break;
     case RES_DEAD:
         ADD(FPA_FLOWERS); ADD(FPA_GHOST); ADD(FPA_GRAVE); ADD(FPA_FAV);
@@ -470,6 +470,43 @@ static void raise_ghost(void)
     if (fp_ghost_rite(R.id)) react(EXPR_HAPPY, FX_SPARK, 14);
 }
 
+/* Manage: the housekeeping verbs (Edit look, Favourite, Their home) share one entry so the care
+ * list is only things you do FOR them. Which ones exist depends on how they are. */
+enum { MG_EDIT, MG_FAV, MG_HOME };
+static uint8_t mg_kind[3];
+static int mg_n;
+static char mg_txt[3][16];
+static const char *mg_opts[4];
+static void do_action(int a);
+
+static void cb_manage(int c)
+{
+    if (c < 0 || c >= mg_n) return;                  /* Never mind is the last row */
+    switch (mg_kind[c]) {
+    case MG_EDIT: do_action(FPA_EDIT); break;
+    case MG_FAV: do_action(FPA_FAV); break;
+    case MG_HOME: do_action(FPA_HOME); break;
+    default: break;
+    }
+}
+
+static void open_manage(void)
+{
+    const DoomoResident *r = me();
+    int n = 0, i;
+    if (!r) return;
+    if (r->status == RES_ALIVE || r->status == RES_GHOST) { mg_kind[n] = MG_EDIT; fp_strcpy(mg_txt[n], "Edit look", 16); n++; }
+    mg_kind[n] = MG_FAV;
+    fp_strcpy(mg_txt[n], (r->flags & RF_FAVORITE) ? "Unfavourite" : "Favourite", 16);
+    n++;
+    mg_kind[n] = MG_HOME; fp_strcpy(mg_txt[n], "Their home", 16); n++;
+    for (i = 0; i < n; i++) mg_opts[i] = mg_txt[i];
+    mg_n = n;
+    mg_opts[n] = "Never mind";
+    audio_sfx(SFX_SELECT);
+    ui_choice(R.id, "What would you like to do?", mg_opts, n + 1, cb_manage);
+}
+
 static void do_action(int a)
 {
     const DoomoResident *r = me();
@@ -478,6 +515,7 @@ static void do_action(int a)
     switch (a) {
     case FPA_HELP: do_help(); break;
     case FPA_FEED: case FPA_GIVE: open_items(a); break;
+    case FPA_MANAGE: open_manage(); break;
     case FPA_CLEAN:
         line = sim_clean(R.id);
         audio_sfx(SFX_SPLASH);
