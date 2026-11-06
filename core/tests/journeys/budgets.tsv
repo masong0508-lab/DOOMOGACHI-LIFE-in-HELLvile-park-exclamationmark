@@ -23,7 +23,7 @@ life_new_island		3	40	U6/LS6: New Island screen -> hub (met: A builds at once, t
 life_help_next		2	10	LS-QA: hub -> next problem helped, item in the bag (met: B, A)
 life_missing_item	2	10	LS-QA: hub -> problem needing an item not in the bag, bought on the spot, helped (met: B, A)
 life_feed		6	26	LS-QA: hub -> a citizen found by name and fed (+ the name typed)
-life_introduce		13	47	LS-QA: hub -> two citizens found by name and introduced (+ both names typed)
+life_introduce		12	45	LS-QA: hub -> two citizens found by name and introduced (+ both names typed); the care list lost Heal and an empty Advice, so Introduce is 4 UP from the top, not 5
 life_rent		0	72	LS-QA: hub -> today's rent collected by itself (met: 0 presses; ticks are the idle wait)
 life_news		1	3	hub -> news feed
 life_pet		4	20	hub -> START menu -> the Doomogachi

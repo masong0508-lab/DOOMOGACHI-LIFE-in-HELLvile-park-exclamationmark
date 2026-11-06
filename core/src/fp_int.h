@@ -188,7 +188,7 @@ void fp_open_resident(int id);
 /* ---- the resident screen's actions (fp_resident.c) ----------------------- */
 enum { FPA_HELP, FPA_FEED, FPA_GIFT, FPA_CLEAN, FPA_PLAY, FPA_TALK, FPA_HEAL, FPA_COMFORT,
        FPA_INTRODUCE, FPA_ADVICE, FPA_EDIT, FPA_FAV, FPA_EXORCISE, FPA_FLOWERS, FPA_GHOST,
-       FPA_GRAVE, FPA_HOME, FPA_REST, FPA_CREATE, FPA_COUNT };
+       FPA_GRAVE, FPA_HOME, FPA_REST, FPA_CREATE, FPA_GIVE, FPA_COUNT };
 /* test hooks: the actions offered for the open resident */
 int  fp_resident_action_count(void);
 int  fp_resident_has_action(int a);

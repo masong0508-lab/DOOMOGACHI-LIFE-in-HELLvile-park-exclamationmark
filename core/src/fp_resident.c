@@ -21,12 +21,12 @@ static const char *const tab_names[TAB_COUNT] = { "Care", "About", "Friends", "F
 static const char *const act_label[FPA_COUNT] = {
     "Help!", "Feed", "Gift", "Clean", "Play", "Talk", "Heal", "Comfort", "Introduce",
     "Advice", "Edit look", "Favourite", "Exorcise", "Flowers", "Raise ghost", "Visit grave",
-    "Their home", "Lay to rest", "Create here"
+    "Their home", "Lay to rest", "Create here", "Give"
 };
 static const uint8_t act_icon[FPA_COUNT] = {
     ICON_CLOUD, ICON_FOOD, ICON_HEART, ICON_DROP, ICON_STAR, ICON_SMILE, ICON_CROSS,
     ICON_HEART, ICON_ARROW_R, ICON_SPARK, ICON_WRENCH, ICON_STAR, ICON_CROSS, ICON_SPARK,
-    ICON_GHOST, ICON_SKULL, ICON_HOUSE, ICON_SKULL, ICON_EGG
+    ICON_GHOST, ICON_SKULL, ICON_HOUSE, ICON_SKULL, ICON_EGG, ICON_HEART
 };
 
 enum { POP_NONE, POP_ITEMS };
@@ -56,9 +56,11 @@ static struct {
     int16_t tab_t;
     char    typed[24];
     int16_t pending_other;
+    uint8_t has_advice, dirty;        /* Advice only shows when there is something to advise on */
 } R;
 
 static DoomoResident *me(void) { return fp_res(R.id); }
+static int advice_options(void);
 
 /* ====================================================================== */
 /* building the lists                                                       */
@@ -73,18 +75,20 @@ static void build_actions(void)
     if (sim_problem_for(R.id) >= 0 && s != RES_DEAD) ADD(FPA_HELP);
     switch (s) {
     case RES_ALIVE:
-        ADD(FPA_FEED); ADD(FPA_GIFT); ADD(FPA_CLEAN); ADD(FPA_PLAY); ADD(FPA_TALK); ADD(FPA_HEAL);
-        ADD(FPA_COMFORT); ADD(FPA_INTRODUCE); ADD(FPA_ADVICE); ADD(FPA_EDIT); ADD(FPA_FAV); ADD(FPA_HOME);
+        /* decluttered: Gift + Heal are one Give bag; Advice only when there is advice to give */
+        ADD(FPA_FEED); ADD(FPA_GIVE); ADD(FPA_CLEAN); ADD(FPA_PLAY); ADD(FPA_TALK);
+        ADD(FPA_COMFORT); ADD(FPA_INTRODUCE); if (R.has_advice) ADD(FPA_ADVICE);
+        ADD(FPA_EDIT); ADD(FPA_FAV); ADD(FPA_HOME);
         break;
     case RES_POSSESSED:
-        ADD(FPA_EXORCISE); ADD(FPA_TALK); ADD(FPA_FEED); ADD(FPA_HEAL); ADD(FPA_COMFORT); ADD(FPA_FAV);
+        ADD(FPA_EXORCISE); ADD(FPA_TALK); ADD(FPA_FEED); ADD(FPA_GIVE); ADD(FPA_COMFORT); ADD(FPA_FAV);
         ADD(FPA_HOME);
         break;
     case RES_SOUL_LOST:
         ADD(FPA_EXORCISE); ADD(FPA_COMFORT); ADD(FPA_TALK); ADD(FPA_FAV);
         break;
     case RES_GHOST:
-        ADD(FPA_TALK); ADD(FPA_PLAY); ADD(FPA_GIFT); ADD(FPA_COMFORT); ADD(FPA_INTRODUCE); ADD(FPA_FEED);
+        ADD(FPA_TALK); ADD(FPA_PLAY); ADD(FPA_GIVE); ADD(FPA_COMFORT); ADD(FPA_INTRODUCE); ADD(FPA_FEED);
         ADD(FPA_EDIT); ADD(FPA_FAV); ADD(FPA_HOME);
         break;
     case RES_DEAD:
@@ -103,6 +107,8 @@ static void build_rel(void)
     R.nrel = R.id >= 0 && R.id < DOOMO_MAX_RESIDENTS ? rel_list(R.id, R.rel, REL_MAX) : 0;
     if (R.rel_sel >= R.nrel) R.rel_sel = (int16_t)(R.nrel ? R.nrel - 1 : 0);
     R.rel_built_t = (int16_t)(fp_t() & 0x7FFF);
+    R.has_advice = (uint8_t)(me() && me()->status == RES_ALIVE && advice_options() > 0);
+    R.dirty = 0;
 }
 
 static void build_fun(void)
@@ -133,20 +139,23 @@ static int item_mode_ok(int item)
     int c = doomo_items[item].category;
     switch (R.item_mode) {
     case FPA_FEED: return c == ICAT_FOOD;
-    case FPA_GIFT: return c == ICAT_GIFT;
-    case FPA_HEAL: return c == ICAT_CARE || c == ICAT_EXORCISM;
+    case FPA_GIVE: return c == ICAT_GIFT || c == ICAT_CARE || c == ICAT_EXORCISM;
     default: return 0;
     }
 }
 
 static void open_items(int mode)
 {
-    int i;
+    int i, pass;
     R.item_mode = (uint8_t)mode;
     R.nitems = 0;
-    for (i = 1; i < ITEM_COUNT; i++)
-        if (item_mode_ok(i) && (inv_count(i) > 0 || opt_get(OPT_CHEAT_INFINITE_CANDY)))
-            R.items[R.nitems++] = (uint8_t)i;
+    for (pass = 0; pass < 2; pass++)              /* Give: presents first, then remedies */
+        for (i = 1; i < ITEM_COUNT; i++) {
+            int remedy = doomo_items[i].category != ICAT_GIFT;
+            if (mode == FPA_GIVE ? remedy != pass : pass) continue;
+            if (item_mode_ok(i) && (inv_count(i) > 0 || opt_get(OPT_CHEAT_INFINITE_CANDY)))
+                R.items[R.nitems++] = (uint8_t)i;
+        }
     R.item_sel = 0;
     R.item_top = 0;
     R.popup = POP_ITEMS;
@@ -172,15 +181,16 @@ static void use_item(int item)
         else if (hate) { react(EXPR_SICK, FX_STINK, 8); audio_sfx(SFX_SAD); fp_achieve(UL_FP_HATED_FOOD); }
         else react(EXPR_HAPPY, FX_STAR, 6);
         break;
-    case FPA_GIFT:
-        line = sim_gift(R.id, item);
-        audio_sfx(SFX_HAPPY);
-        react(creepy ? EXPR_POSSESSED : EXPR_LOVE, creepy ? FX_SKULL : FX_HEART, 8);
-        break;
-    case FPA_HEAL:
-        line = sim_heal(R.id, item);
-        audio_sfx(doomo_items[item].holy ? SFX_HOLY : SFX_SPARKLE);
-        react(creepy ? EXPR_ANGRY : EXPR_HAPPY, FX_SPARK, 8);
+    case FPA_GIVE:
+        if (doomo_items[item].category == ICAT_GIFT) {
+            line = sim_gift(R.id, item);
+            audio_sfx(SFX_HAPPY);
+            react(creepy ? EXPR_POSSESSED : EXPR_LOVE, creepy ? FX_SKULL : FX_HEART, 8);
+        } else {
+            line = sim_heal(R.id, item);
+            audio_sfx(doomo_items[item].holy ? SFX_HOLY : SFX_SPARKLE);
+            react(creepy ? EXPR_ANGRY : EXPR_HAPPY, FX_SPARK, 8);
+        }
         break;
     default: break;
     }
@@ -235,7 +245,7 @@ static void cb_advice(int c)
     ui_say(R.id, line);
 }
 
-static void open_advice(void)
+static int advice_options(void)
 {
     uint16_t out[24];
     int n, i, partner = sim_partner_of(R.id), crush = -1, foe = -1, foe_v = 0;
@@ -269,7 +279,13 @@ static void open_advice(void)
         doomo_snprintf(adv_txt[adv_n], 28, "Make up with %s", doomo_town.res[foe].name);
         adv_n++;
     }
-    if (!adv_n) {
+    return adv_n;
+}
+
+static void open_advice(void)
+{
+    int i;
+    if (!advice_options()) {
         ui_say(R.id, "Advice? Hmm... I think I'm doing okay right now! But thanks!");
         return;
     }
@@ -461,7 +477,7 @@ static void do_action(int a)
     if (!r) return;
     switch (a) {
     case FPA_HELP: do_help(); break;
-    case FPA_FEED: case FPA_GIFT: case FPA_HEAL: open_items(a); break;
+    case FPA_FEED: case FPA_GIVE: open_items(a); break;
     case FPA_CLEAN:
         line = sim_clean(R.id);
         audio_sfx(SFX_SPLASH);
@@ -549,8 +565,8 @@ static void set_resident(int id)
     R.rel_sel = 0;
     R.rel_top = 0;
     R.tab_t = 0;
-    build_actions();
     build_rel();
+    build_actions();
     build_fun();
 }
 
@@ -582,7 +598,7 @@ static void care_update(void)
     if (btn_repeat(BTN_DOWN)) { R.sel = (int16_t)((R.sel + 1) % R.nacts); audio_sfx(SFX_CURSOR); }
     if (R.sel < R.top) R.top = R.sel;
     if (R.sel >= R.top + vis) R.top = (int16_t)(R.sel - vis + 1);
-    if (btn_pressed(BTN_A)) do_action(R.acts[R.sel]);
+    if (btn_pressed(BTN_A)) { do_action(R.acts[R.sel]); R.dirty = 1; }
 }
 
 static void friends_update(void)
@@ -644,8 +660,8 @@ static void res_update(void)
         portrait_invalidate(R.id);
         build_rel();
     }
+    if (R.dirty || (fp_t() & 63) == 0) build_rel();
     build_actions();
-    if ((fp_t() & 63) == 0) build_rel();
     r = me();
     if (R.popup == POP_ITEMS) { items_update(); return; }
     if (btn_pressed(BTN_L)) { R.tab = (uint8_t)((R.tab + TAB_COUNT - 1) % TAB_COUNT); R.tab_t = 0; audio_sfx(SFX_BLIP); return; }
@@ -977,7 +993,7 @@ static void draw_items(int style)
     const DoomoResident *r = me();
     int sw = fp_sw(), sh = fp_sh(), vis = fp_big() ? 9 : 6, i;
     int w = DOOMO_MIN(sw - 40, 200), h = vis * 12 + 34, x = (sw - w) / 2, y = (sh - h) / 2 - 4;
-    const char *title = R.item_mode == FPA_FEED ? "Feed what?" : R.item_mode == FPA_GIFT ? "Give what?" : "Which remedy?";
+    const char *title = R.item_mode == FPA_FEED ? "Feed what?" : "Give what?";
     plat_shade_rect(0, 0, sw, sh, 10);
     if (!ui_window_pop(x, y, w, h, style, R.tab_t)) return;
     st = ui_style(style);

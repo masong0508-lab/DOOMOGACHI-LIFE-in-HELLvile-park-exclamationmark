@@ -216,6 +216,37 @@ TEST(freeplay_shop_buy_updates_money_and_bag)
     (void)item;
 }
 
+TEST(freeplay_care_list_is_decluttered)
+{
+    int id, a, sum = 0, plush0, med0;
+    premade_island();
+    id = first_alive(40);
+    CHECK(id >= 0);
+    doomo_town.res[id].status = RES_ALIVE;
+    scene_push(&SCENE_RESIDENT, id);
+    frames(0, 3);
+    /* Gift and Heal became one Give bag */
+    CHECK(fp_resident_has_action(FPA_GIVE));
+    CHECK(!fp_resident_has_action(FPA_GIFT));
+    CHECK(!fp_resident_has_action(FPA_HEAL));
+    /* no action twice: the count is the number of distinct actions */
+    for (a = 0; a < FPA_COUNT; a++) sum += fp_resident_has_action(a);
+    CHECK_EQ(sum, fp_resident_action_count());
+    /* Give hands over a present and a remedy alike */
+    inv_add(ITEM_PLUSHIE, 1);
+    inv_add(ITEM_MEDICINE, 1);
+    plush0 = inv_count(ITEM_PLUSHIE);
+    med0 = inv_count(ITEM_MEDICINE);
+    CHECK(fp_resident_select(FPA_GIVE));
+    press(BTN_A);                               /* the bag opens */
+    frames(0, 2);
+    press(BTN_A);                               /* the first thing in it: a present */
+    frames(0, 2);
+    close_dialogs();
+    CHECK_EQ(inv_count(ITEM_PLUSHIE) + inv_count(ITEM_MEDICINE), plush0 + med0 - 1);
+    CHECK(top_is(&SCENE_RESIDENT));
+}
+
 TEST(freeplay_lay_to_rest_gating)
 {
     int id;
