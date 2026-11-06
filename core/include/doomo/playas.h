@@ -135,6 +135,22 @@ const DoomoResident *hero_preset(int kind);
 /* The look seed of a filled co-op hero (a guest plays a household member made from it), 0 otherwise. */
 uint32_t hero_coop_seed(int kind);
 
+/* MP1 content: the story line, side quests and abilities of a filled co-op hero (docs/COOP_HEROES.md). Data only:
+ * a co-op hero never touches the story flags (the main hero drives the plot) and plays an adult housemate. */
+#define HERO_COOP_QUESTS 4          /* one side quest per chapter, Ch1..Ch4 */
+#define HERO_COOP_ABILITIES 2       /* [0] passive, [1] active              */
+typedef struct HeroCoopInfo {
+    const char *name;               /* final name (the preset's)                              */
+    const char *title;              /* "The Hearth Imp"                                       */
+    const char *line;               /* their story in one line                                */
+    const char *quest[HERO_COOP_QUESTS];
+    const char *ability[HERO_COOP_ABILITIES];
+    uint8_t     stat[HERO_COOP_ABILITIES];   /* the STAT_* each ability works on              */
+    int8_t      amount[HERO_COOP_ABILITIES]; /* its strength per use or per game hour         */
+    uint8_t     species, ears, tail;         /* the final look (hero_coop_seed makes it)      */
+} HeroCoopInfo;
+const HeroCoopInfo *hero_coop_info(int kind);   /* NULL for a main, custom or unfilled kind */
+
 /* The play-as romance gate (PA9): sim_romance_ok (both directions, LS0
  * stages) + the hero rule + kid / teen refusal. Until PA9 it is exactly
  * sim_romance_ok(from, to). Every romance hook touching the hero or the

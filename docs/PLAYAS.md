@@ -358,3 +358,12 @@ MP0's profiles (`profiles.c`) had no screen. `SCENE_PLAYAS` now has a players mo
 * **Not built**: co-op hero *content* (their own story lines, quests and abilities: a co-op hero plays the household member for now),
   local simultaneous multiplayer and helping in someone else's world (the other half of MP1), GBA/PS1 builds (not run here).
 
+
+### MP1 part 2: co-op hero content (2026-11-05)
+
+* **Final names and looks**: Ember (imp, she), Rook (owlkin, he), **Wick** (mothkin, they). The third was "Pip", the show's child, so it is renamed; new look seeds
+  `0x00C0E01D`, `0x00C0E010`, `0x00C0E009`. Saves that already hold a co-op guest keep their old seed.
+* **Content**: story lines, one side quest per chapter and two abilities each: [docs/COOP_HEROES.md](COOP_HEROES.md). Data in `hero_coop_info(kind)`.
+* **Rules**: side arcs only (no story flags), adults, small stat deltas.
+* **Test**: `hero_coop_heroes_have_final_names_looks_quests_and_abilities`.
+* **Not built**: the quest scenes, the abilities in play, local simultaneous multiplayer, helping in another world, GBA/PS1 builds.

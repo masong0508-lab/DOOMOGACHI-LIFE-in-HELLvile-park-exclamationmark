@@ -6,6 +6,8 @@
 #include "doomo/story.h"
 #include "doomo/town.h"
 #include "doomo/sim.h"
+#include "doomo/resident.h"
+#include "doomo/catalog.h"
 #include "doomo/save.h"
 
 TEST(hero_presets_exist_for_sunny_and_marvin_only)
@@ -70,4 +72,32 @@ TEST(hero_kind_is_in_the_save_header_byte)
         CHECK_STR(info.player, kinds[k] == HERO_SUNNY ? "Sunny" : kinds[k] == HERO_MARVIN ? "Marvin" : info.player);
     }
     playas_set_hero_kind(HERO_CUSTOM);
+}
+
+/* MP1 content: the co-op heroes' final names, looks, side quests and abilities (docs/COOP_HEROES.md). */
+TEST(hero_coop_heroes_have_final_names_looks_quests_and_abilities)
+{
+    static const char *const names[HERO_COOP_FILLED] = { "Ember", "Rook", "Wick" };
+    int k, q, a;
+    CHECK(hero_coop_info(HERO_SUNNY) == NULL && hero_coop_info(HERO_CUSTOM) == NULL);
+    CHECK(hero_coop_info(HERO_COOP_LAST) == NULL);
+    for (k = 0; k < HERO_COOP_FILLED; k++) {
+        const HeroCoopInfo *i = hero_coop_info(HERO_COOP_FIRST + k);
+        DoomoResident r;
+        CHECK(i != NULL);
+        if (!i) continue;
+        CHECK_STR(i->name, names[k]);
+        CHECK_STR(hero_preset(HERO_COOP_FIRST + k)->name, names[k]);
+        CHECK(strcmp(i->name, "Pip") != 0);                         /* Pip is the show's child */
+        CHECK(i->title && i->line && i->quest[0]);
+        for (q = 0; q < HERO_COOP_QUESTS; q++) CHECK(i->quest[q] && i->quest[q][0]);
+        for (a = 0; a < HERO_COOP_ABILITIES; a++) CHECK(i->ability[a] && i->amount[a] != 0 && i->stat[a] < STAT_COUNT);
+        resident_generate(&r, hero_coop_seed(HERO_COOP_FIRST + k)); /* the seed makes the final look */
+        CHECK_EQ(RES_SPECIES(&r), i->species);
+        CHECK_EQ(RES_LOOK(&r, GF_EARS), i->ears);
+        CHECK_EQ(RES_LOOK(&r, GF_TAIL), i->tail);
+        CHECK(RES_STAGE(hero_preset(HERO_COOP_FIRST + k)) == LIFE_ADULT);
+    }
+    CHECK(hero_coop_seed(HERO_COOP_FIRST) != hero_coop_seed(HERO_COOP_FIRST + 1));
+    CHECK(hero_coop_seed(HERO_COOP_FIRST + 1) != hero_coop_seed(HERO_COOP_FIRST + 2));
 }
