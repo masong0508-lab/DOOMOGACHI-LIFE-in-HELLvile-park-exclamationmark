@@ -40,7 +40,7 @@ effect (`docs/GBA.md` section 6):
 | HUD | 4.3 | | |
 | toast over the HUD | 2.7 | | the toast is why the HUD panels cannot be retained here |
 | logic | 6.9 | | `ownpc` 2.5, `find_interactables` 1.8 |
-| `build_billboards()` spike | 4 | ~20 every ~18 drawn frames | a sprite-frame rebuild; the 79.5 ms worst frame |
+| periodic spike | | ~20 ms every ~18 drawn frames | blamed on `build_billboards()` at the time; see V1 host side: the tint-level flip is the stronger suspect |
 
 These are old, partial and not summed to the current 57.8 ms: step V1
 measures the current split before anything is changed.
@@ -59,47 +59,80 @@ Facts that bound the options:
   of new RAM at most, and the overlay slots are full, so any cache lives in
   EWRAM, not IWRAM.
 
+## V1, host side (2026-11-06): what the core hands the renderer
+
+Measured with the native runner on `scene STORY 219` (seed 1, 200 ticks) and
+`STORY 10` (hahaland) using throw-away counters (not in the tree). These are
+the core's own numbers, so they hold for the GBA; they are not GBA timings.
+
+| | invaded | hahaland |
+|---|---:|---:|
+| billboards submitted / on screen | 47 / 30 | 24 / 18 |
+| on-screen billboard box area (px) | ~22,300 | ~17,300 |
+| visible flipped / translucent / scaled | 0..2 (<= 3,400 px) / 0 / 0 | |
+| body-sprite requests per tick | 7 | |
+| colormaps used by sprites in a frame | 4 (levels 12..15) | 1 |
+| `plat_rect` / text / image / shade calls per tick | 98 / 6 / 2 / 9 (~420 px shaded) | 86 / 5 / 1 / 0 |
+| view tint level | 2 for 60 ticks, 3 for 30, repeating (90-tick wave) | 0 |
+
+What that rules in and out:
+- **Culling (old V3) is a no-op.** `ow_sprite` returns before any work when the
+  billboard is off screen, so the 17 hidden ones cost only their setup.
+- **A flipped / translucent / scaled row loop is not worth it.** Almost every
+  visible sprite is on the fast `ow_spr_rows` path; flipped ones are at most 3,400
+  px of ~22,300.
+- **The sprite LUT cache does not thrash in the tour.** Four colormaps need four
+  builds a frame, and the tint's two pixel classes leave 8 / 2 = 4 ways, so all
+  four stay. (At night under the tint there are 4 classes, 2 ways and the same four
+  colormaps: that case WOULD thrash, and the tour does not cover it.)
+- **2D calls are not the gap to hahaland**: 98 vs 86 rects, ~420 shaded px.
+- **The periodic ~20 ms spike has two candidates**, and the first is new:
+  1. *Tint-level change.* `plat_overworld` puts `owf.tint_level` into
+     `lc.tint_state`, and `lit_cached()` puts that state in every tile's key.
+     The invaded pulse (`overworld.c`, `lvl = 2 + (ui_wave(..., 90, 2) + 2) / 3`)
+     flips the level 2 <-> 3 twice per 90 ticks, so every lit ground tile and
+     block face on screen is rebuilt (each with the per-pixel `post()` dither) on
+     the frame after a flip: about 15-30 drawn frames apart, which fits the
+     "~every 18 drawn frames" spike better than anything else.
+  2. *A new chibi body frame.* `bodyspr_image()` renders a missing (dir, frame)
+     synchronously (`render_body_ctx`): about one miss per 30 ticks natively,
+     < 1 ms on average, but a single 16-20 ms frame.
+
+Not known until the GBA is profiled: how much of the 57.8 ms is the ground (and
+its tint), sprites, logic and HUD. The 24 ms gap to hahaland (33.7 ms) is NOT
+the draw-call count or the sprite structure, so look at the world tint, the logic
+(6.9 ms measured before G2 against 3.1 on hahaland) and the toast.
+
 ## Steps
 
 - **V0** this document, the baseline, `profile-invaded` and its script. (done)
-- **V1** measure. `make -C gba profile-invaded`; copy the function split into
-  this file (same as the pause baseline). Add `gba_cycles()` marks locally (not
-  committed) around ground, sprites, HUD, toast, logic and `build_billboards()`
-  to get ms per part, and the count of billboards that are on screen versus
-  submitted. No behaviour change. **Everything below is ordered by what V1
-  finds; the estimates are guesses until then.**
-- **V2** the 79.5 ms worst frame (exact). Find what the ~20 ms
-  `build_billboards()` spike rebuilds every ~18 drawn frames (a sprite-frame
-  decode / `sprite_image()` path) and spread it (warm the next frame's images
-  one per tick) or cache it. Expected: max 79.5 -> about 60, logic back to
-  30.0. Does not move fps alone; it is the precondition for a stable 20.
-- **V3** skip what is never seen (exact). Count submitted vs visible
-  billboards (the build window is +-640 x -700..+520 world units, larger than
-  the 240x160 screen): cull in `build_billboards` the sprites whose box is
-  fully off screen and cannot cast into it. Only if V1 shows a real gap; if
-  `ow_sprite` already clips them cheaply this is a no-op.
-- **V4** sprite pixels (exact, the big one). Two routes, V1 picks:
-  1. a per-image, per-light-level lit + tinted texel cache in EWRAM, with the
-     dither applied on blit (only the colormap lookup is cached, the dither
-     stays at the screen pixel: pixel-identical). Budget: the 23 images are
-     20.8 KB padded 8bpp, times 2 levels is too big, so cache only the hot
-     ones (LRU, 12 KB).
-  2. a cheaper tinted row loop in `ow_spr_rows` (`ow_loops.s`): the tinted
-     path was the slow path in every profile (hellvile: "all on the tinted
-     slow path"). A tint-aware ARM row loop is exact and needs no RAM.
-  Expected 3-8 ms.
-- **V5** toast / HUD (exact). The toast makes the HUD redraw every frame. Draw
-  the toast alone into the retained HUD page, as the pause now does for its
-  window, instead of redoing the HUD. Expected about 2-4 ms, only while a toast
-  is up; check how long the toast actually stays on this map first.
-- **V6** logic (not exact in time, needs sign-off). `find_interactables` (1.8
-  ms) and part of `ownpc` (2.5 ms) every second tick instead of every tick.
-  Gameplay-visible by up to one tick, so it needs an OK and a regenerated
-  `vhash-seq`; skip if V2..V5 already reach 20.
-- **V7** (needs a DECISIONS call, not planned) sprite-anchored dither so
-  invaded can use OBJ billboards. It changes pixels and the hashes, and on the
-  other maps tile frames lost to Mode 4 (hahaland 35.6 against 34.7 ms), so it
-  is a last resort.
+- **V1** measure on the GBA: `make -C gba profile-invaded`, paste the function
+  split here; add local `gba_cycles()` marks (not committed) around the ground,
+  sprites, HUD, toast, logic and `build_billboards()`, and log `lc.builds` (the lit
+  tile rebuilds) per drawn frame, and whether the slow frames are the ones right
+  after a tint-level change. Host side done (above).
+- **V2** the tint flip (exact if done in the renderer; the pulse stays). Make the
+  tile cache survive a 2 <-> 3 flip: key the tiles on the tint state, as now, but
+  keep both states warm (a second tile set, or build the other level's tiles one
+  or two per tick ahead of the flip, as the pulse is periodic and known).
+  Expected: removes the ~20-70 ms spike frames (max 79.5 -> about 55) and puts
+  logic back at 30.0. If V1 shows the rebuild is not the spike, fall back to the
+  chibi miss below.
+- **V2b** (only if V1 says so) the chibi miss: render the next walk frame for a
+  walking citizen one tick early, in `ownpc_add_billboards`, so the miss lands on
+  a lighter frame. Exact; < 1 ms on average, helps only the worst frame.
+- **V3** (dropped: `ow_sprite` already rejects hidden billboards).
+- **V4** sprite pixels: only if V1 says sprites are still > 20 ms. The tinted
+  path is already one table lookup per pixel and the ARM row loop covers ~95% of
+  the pixels, so the remaining gains are small (a cheaper LUT build for the four
+  colormaps, ~1 ms) unless V1 surprises us.
+- **V5** toast / HUD (exact): draw the toast alone into the retained HUD page,
+  as the pause does for its window. 2-4 ms while a toast is up; check how long
+  it stays on this map first.
+- **V6** logic (not exact in time, needs sign-off): `find_interactables` (1.8 ms)
+  and part of `ownpc` (2.5 ms) every second tick. Skip if V2..V5 reach 20.
+- **V7** (a DECISIONS call, not planned) sprite-anchored dither for OBJ
+  billboards. Changes pixels; the other maps' tile frames lost to Mode 4.
 
 ## Acceptance
 
