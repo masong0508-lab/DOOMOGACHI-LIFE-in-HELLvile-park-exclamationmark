@@ -19,6 +19,10 @@ typedef struct OwLuts {
     uint32_t tab[OW_LUT_TABLES][64];       /* way w, class slot s: [w * nc + s] (words: built 4 at a time) */
     const uint8_t *key[OW_LUT_TABLES];     /* the colormap a way holds */
     uint8_t ways, victim;
+    /* (V4) what the cached tables were built for (ow_frame_luts_keep): the frame's night / tint */
+    const uint8_t *s_nm, *s_tm;
+    int8_t s_night, s_tint;
+    uint8_t s_ok, dirty;           /* dirty: a table was built since the frame's start */
 } OwLuts;
 
 typedef struct OwFrame {
@@ -67,6 +71,13 @@ void ow_spr_rows(OwSprJob *j) IWRAM_CALL;
  * point owf.luts at L, emptied (overworld.c; plat_overworld per frame,
  * owtest.c per case) */
 void ow_frame_luts(OwLuts *L);
+/* (V4) the same, but the tables built for the same night / tint (levels and maps) as the last
+ * frame stay valid (the colormaps are constant, so nothing else changes them): L (the frame's
+ * working copy, in IWRAM: the pixel loops read it every pixel) is loaded from the backing copy
+ * `store` (EWRAM, slow to read) when its signature matches, else emptied; ow_frame_luts_end(L, store)
+ * saves L back when a table was built */
+void ow_frame_luts_keep(OwLuts *L, OwLuts *store);
+void ow_frame_luts_end(OwLuts *L, OwLuts *store);
 /* (G2) lc[c]: colormap cm composed for each class c the frame uses
  * (overworld.c, THUMB; cached per frame in owf.luts) */
 void owf_sprite_luts(const uint8_t *cm, const uint8_t **lc) IWRAM_CALL;

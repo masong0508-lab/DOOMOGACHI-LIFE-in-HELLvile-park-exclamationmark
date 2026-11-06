@@ -134,6 +134,7 @@ void owf_sprite_luts(const uint8_t *cm, const uint8_t **lc)
     w = L->victim;
     L->victim = (uint8_t)(w + 1 < L->ways ? w + 1 : 0);
     L->key[w] = cm;
+    L->dirty = 1;
     for (c = 0; c < 4; c++) {
         const uint8_t *nm = owf.night_map, *tm = owf.tint_map;
         uint32_t *d;
@@ -175,7 +176,7 @@ found:
 
 /* (G2) the classes of owf.night / owf.tint_level and an empty table cache
  * in L for this frame's sprites (ow_int.h) */
-void ow_frame_luts(OwLuts *L)
+static void frame_luts(OwLuts *L, OwLuts *store)
 {
     int present = 0, nc = 0, c, i;
     for (i = 0; i < 16; i++) {
@@ -186,9 +187,31 @@ void ow_frame_luts(OwLuts *L)
     for (c = 0; c < 4; c++) owf.slot[c] = (uint8_t)(((present >> c) & 1) ? nc++ : 0xFF);
     owf.nc = (uint8_t)nc;
     L->ways = (uint8_t)(OW_LUT_TABLES / nc);
-    L->victim = 0;
-    memset(L->key, 0, sizeof(L->key));
+    if (store && store->s_ok && store->s_night == owf.night && store->s_tint == owf.tint_level &&
+        store->s_nm == owf.night_map && store->s_tm == owf.tint_map) {
+        memcpy(L->tab, store->tab, sizeof(L->tab));      /* (words, 2 KB: EWRAM -> IWRAM) */
+        memcpy(L->key, store->key, sizeof(L->key));
+        L->victim = store->victim;
+        L->dirty = 0;
+    } else {
+        L->victim = 0;
+        memset(L->key, 0, sizeof(L->key));
+        L->dirty = 1;                                    /* the store must follow */
+    }
+    L->s_night = (int8_t)owf.night;
+    L->s_tint = (int8_t)owf.tint_level;
+    L->s_nm = owf.night_map;
+    L->s_tm = owf.tint_map;
+    L->s_ok = 1;
     owf.luts = L;
+}
+
+void ow_frame_luts(OwLuts *L) { frame_luts(L, 0); L->dirty = 0; }
+void ow_frame_luts_keep(OwLuts *L, OwLuts *store) { frame_luts(L, store); }
+void ow_frame_luts_end(OwLuts *L, OwLuts *store)
+{
+    if (L->dirty) memcpy(store, L, sizeof(OwLuts));
+    L->dirty = 0;
 }
 
 /* lit 16x16 tile (front == 0) or 16 x front block front face, cached */
@@ -436,7 +459,8 @@ void plat_overworld(const DoomoOverworldView *v)
     const DoomoMap *m;
     int ty0, ty1, ty, i, n, si, txa, pxa, nt, mode;
     uint32_t rmask[SCREEN_H / TILE + 5];   /* (G2) raised cells per row (bit k: txa + k) */
-    OwLuts luts;                     /* (G2) this frame's sprite tables */
+    OwLuts luts;                     /* (G2) this frame's sprite tables (IWRAM: read per pixel) */
+    static OwLuts luts_store;        /* (V4) their EWRAM backing copy, valid while night / tint stay equal */
     OwMemo fm, tm;                   /* (G2) block fronts, block tops */
     if (gba_nodraw == 1 || !v) return;
     if (gba_nodraw == GBA_NODRAW_CANVAS) {      /* a second world this frame */
@@ -501,7 +525,7 @@ void plat_overworld(const DoomoOverworldView *v)
         cv_ow_failed();                         /* this frame is Mode 4 */
     }
 
-    ow_frame_luts(&luts);            /* (G2) the sprites' pixel classes */
+    ow_frame_luts_keep(&luts, &luts_store);   /* (G2, V4) the sprites' pixel classes */
 
     /* ground: every visible cell's lit tile (16-pixel block copies; the
      * clipped edge tiles go through ow_blit). Blocks and raised floors
@@ -606,5 +630,6 @@ void plat_overworld(const DoomoOverworldView *v)
         }
     }
     while (si < n) draw_sprite(&v->sprites[order[si++]]);
+    ow_frame_luts_end(&luts, &luts_store);
     owf.luts = 0;                    /* the tables die with this frame */
 }

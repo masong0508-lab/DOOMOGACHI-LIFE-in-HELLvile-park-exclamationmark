@@ -139,6 +139,28 @@ What this changes in the plan:
   (`owf_sprite_luts`, ~0.7 ms a frame, key = colormap, night, tint level and map), and cheaper setup in
   `ow_sprite` (23k cycles a frame for ~30 sprites, about 770 cycles each).
 
+## V4a, done (2026-11-06): the composed sprite tables survive from frame to frame
+
+`owf_sprite_luts` (4.4% of the frame) rebuilt the composed colormap tables of the four colormaps every frame. The tables
+depend only on the colormap (constant data), `owf.night` / `owf.tint_level` and the two maps, so `plat_overworld` now keeps an
+EWRAM backing copy (`luts_store`, 2,096 B) and loads the frame's working tables (still on the IWRAM stack: the pixel loops read
+them for every pixel) from it when night / tint are unchanged, saving them back only after a build (`ow_frame_luts_keep` /
+`ow_frame_luts_end`, `OwLuts.dirty`). A first try that made the working tables themselves static (EWRAM) was slower on hahaland
+(28.6 -> 26.5 fps: 16-bit bus, 2 wait states on every lookup) and was dropped.
+
+Measured on the libmgba harness, `make -C gba test-speed SPEED_GATES=0`, same script, base ROM vs this ROM:
+
+| scene | work avg before -> after | drawn fps |
+|---|---|---|
+| invaded | 57.8 -> 54.5 ms (max 79.5 -> 75.4) | 14.9 -> 15.6 |
+| hellvile visit | 23.1 -> 21.5 ms | 30.0 -> 30.0 |
+| hahaland visit | 33.7 -> 33.7 ms | 28.6 -> 28.8 |
+| the other 13 scenes | unchanged | unchanged |
+
+`speedtable.py --parity`: all 16 scenes' `vhash-seq` frames are identical to the base (so this step is exact). `make -C gba test-ow`
+passes. EWRAM free: 26,336 -> 24,240 B (-2,096). The invaded map is still 4.5 ms above the 50 ms a 20 fps frame needs on
+average, and the worst frames (75 ms) are far above it, so the next steps are `ow_sprite` setup and the spike frames.
+
 ## Steps
 
 - **V0** this document, the baseline, `profile-invaded` and its script. (done)
@@ -158,7 +180,7 @@ What this changes in the plan:
   walking citizen one tick early, in `ownpc_add_billboards`, so the miss lands on
   a lighter frame. Exact; < 1 ms on average, helps only the worst frame.
 - **V3** (dropped: `ow_sprite` already rejects hidden billboards).
-- **V4** sprite pixels: only if V1 says sprites are still > 20 ms. The tinted
+- **V4a** (done, see above) the sprite tables kept across frames. **V4** sprite pixels: only if V1 says sprites are still > 20 ms. The tinted
   path is already one table lookup per pixel and the ARM row loop covers ~95% of
   the pixels, so the remaining gains are small (a cheaper LUT build for the four
   colormaps, ~1 ms) unless V1 surprises us.
