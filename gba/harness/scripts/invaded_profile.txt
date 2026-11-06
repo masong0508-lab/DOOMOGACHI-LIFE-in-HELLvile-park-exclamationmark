@@ -1,0 +1,13 @@
+# invaded_profile.txt - where the invaded Hahaland map's time goes on the GBA
+# (make -C gba profile-invaded). Same method as pause_profile.txt: the same
+# seed and entry as the speed tour's `invaded` scene, so the numbers compare.
+wait 40
+expect-log doomo: init
+seed 1
+scene STORY 219
+wait 200
+fps settle (ignore)
+wait 130
+fps invaded
+profile 12000000
+shot invaded

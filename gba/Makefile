@@ -135,7 +135,7 @@ CORE_OBJS := $(call core_obj,$(CORE_SRCS))
 # over the core's weak stubs, and the core's strong definitions win over both.
 ALL_OBJS  := $(GBA_OBJS) $(CORE_OBJS)
 
-.PHONY: all rom engine-test engine-test-nocore harness test test-et test-game test-save test-coresave test-home test-ow test-lang test-speed test-life profile-title clean sizes
+.PHONY: all rom engine-test engine-test-nocore harness test test-et test-game test-save test-coresave test-home test-ow test-lang test-speed test-life profile-title profile-pause profile-invaded clean sizes
 .DEFAULT_GOAL := all
 
 # Cartridge size (user decision 2026-11-01): the game ROM is a full 256 Mbit
@@ -352,6 +352,18 @@ clean:
 	rm -rf $(BUILD)
 
 -include $(shell find $(OBJ) -name '*.d' 2>/dev/null)
+
+# --- profile-invaded: where the invaded Hahaland map's time goes (docs/INVADED_SPEED.md) ---
+INVADED_PROFILE_LOG ?= $(BUILD)/invaded_profile.log
+profile-invaded: harness
+	@$(MAKE) --no-print-directory -f $(GBA)/Makefile rom ENGINE_TEST=0
+	@mkdir -p $(SHOTS)/invaded
+	$(PREFIX)nm -n $(BUILD)/doomogachi.elf > $(BUILD)/doomogachi.nm
+	@rc=0; \\
+	$(HARNESS) $(BUILD)/doomogachi.gba --script $(GBA)/harness/scripts/invaded_profile.txt \\
+	    --shots $(SHOTS)/invaded --nm $(BUILD)/doomogachi.nm --no-fps-gates --quiet > $(INVADED_PROFILE_LOG) 2>&1 || rc=1; \\
+	cat $(INVADED_PROFILE_LOG); \\
+	exit $$rc
 
 # --- profile-pause: the overworld pause panel vs the visit under it ---
 PAUSE_PROFILE_LOG ?= $(BUILD)/pause_profile.log
