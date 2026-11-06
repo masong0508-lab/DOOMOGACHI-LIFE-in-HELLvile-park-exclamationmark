@@ -86,6 +86,38 @@ ow_tile16:
     bx      lr
     .size   ow_tile16, . - ow_tile16
 
+@ (V4b) void ow_flip_row(uint8_t *d, const uint8_t *s, int n)
+@ d[k] = s[-k] for k < n (n even, > 0): one mirrored row for ow_spr_rows.
+@ d is word aligned, s any alignment. The source is read as aligned words
+@ walking down (a REV of each realigned word: four texels per read instead
+@ of one byte read each, which in EWRAM / ROM is most of the cost); whole
+@ words are written (n rounded up to 4) and the source is read up to 7
+@ bytes past s and 3 before s - n + 1. The columns it computes beyond the
+@ sprite's clipped edges are the ones ow_sprite masks off (head / tail).
+    .global ow_flip_row
+    .type   ow_flip_row, %function
+ow_flip_row:
+    stmfd   sp!, {r4-r6, lr}
+    sub     r1, r1, #3                  @ lowest address of the first four texels
+    and     r3, r1, #3
+    bic     r1, r1, #3
+    mov     r3, r3, lsl #3              @ misalignment in bits
+    rsb     r12, r3, #32                @ (offset 0: lsl #32 gives 0)
+    ldr     r4, [r1, #4]                @ the word above the current one
+1:  ldr     r5, [r1], #-4
+    mov     r6, r5, lsr r3
+    orr     r6, r6, r4, lsl r12         @ four texels, ascending
+    mov     r4, r5
+    eor     r5, r6, r6, ror #16         @ r6 = REV(r6)
+    bic     r5, r5, #0xFF0000
+    mov     r6, r6, ror #8
+    eor     r6, r6, r5, lsr #8
+    str     r6, [r0], #4
+    subs    r2, r2, #4
+    bgt     1b
+    ldmfd   sp!, {r4-r6, pc}            @ (ARM caller: ow_sprite)
+    .size   ow_flip_row, . - ow_flip_row
+
 @ (G2) void ow_spr_rows(OwSprJob *j)
 @ A sprite's rows (ow.iwram.c ow_sprite): j->rows rows of j->n pixels
 @ (even, > 0) to VRAM from j->dst (halfword aligned, + 240 bytes per row),

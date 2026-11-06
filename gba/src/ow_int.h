@@ -66,7 +66,11 @@ typedef struct OwSprJob {
     uint32_t head;                 /* +88 0xFF: drop each row's first texel */
     uint32_t tail;                 /* +92 the mask of each row's last quad */
 } OwSprJob;
-void ow_spr_rows(OwSprJob *j) IWRAM_CALL;
+/* (V4b) only ow.iwram.c (ARM, IWRAM) calls ow_spr_rows and ow_flip_row, IWRAM to IWRAM: a plain bl
+ * (4 B a call), not the long_call sequence the ROM callers need (16 B a call with its literal) */
+void ow_spr_rows(OwSprJob *j);
+/* (V4b) d[k] = s[-k], k < n (n even, > 0), d word aligned, s any alignment: a mirrored row (ow_loops.s) */
+void ow_flip_row(uint8_t *d, const uint8_t *s, int n);
 /* (G2) set up owf's pixel classes from owf.night / owf.tint_level and
  * point owf.luts at L, emptied (overworld.c; plat_overworld per frame,
  * owtest.c per case) */

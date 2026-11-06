@@ -74,6 +74,7 @@ void ow_ground(const uint8_t *const *tiles, int ntiles, int o, int y0, int y1, i
     }
 }
 
+__attribute__((optimize("Os")))
 void ow_shade(int x0, int x1, int y0, int y1, const uint8_t *cm)
 {
     int y;
@@ -120,7 +121,8 @@ void ow_sprite(const DoomoImage *img, int x0, int y0, int s, int flags, const ui
     int cx0 = x0, cx1 = x0 + w, cy0 = y0, cy1 = y0 + h, y;
     const int trans = flags & BB_TRANSLUCENT;
     const int flip = flags & BB_FLIPX;
-    const uint32_t inv = 65536u / (uint32_t)s + 1u;     /* x / s = (x * inv) >> 16 */
+    /* x / s = (x * inv) >> 16 (s == 1, nearly every sprite: no software divide) */
+    const uint32_t inv = s == 1 ? 65537u : 65536u / (uint32_t)s + 1u;
     const uint8_t *lc[4];
     int x;
     if (cx0 < owf.ox) cx0 = owf.ox;
@@ -148,8 +150,12 @@ void ow_sprite(const DoomoImage *img, int x0, int y0, int s, int flags, const ui
         j.head = (cx0 & 1) ? 0xFFu : 0u;
         j.tail = (j.n & 2) ? 0x0000FFFFu : 0xFFFFFFFFu;
         if (cx1 & 1) j.tail &= ~(0xFFu << ((j.n & 2) ? 8 : 24));
-        for (k = 0; k < 16; k++)
-            j.q[k >> 2][k & 3] = lc[owf.cls[(k & ~3) | ((xa + k) & 3)]];
+        {
+            /* q[r][k] = lc[cls[r * 4 + ((xa + k) & 3)]]: xa is even, so (xa + k) & 3 = k ^ (xa & 2) */
+            const uint8_t **qq = &j.q[0][0];
+            const int b = xa & 2;
+            for (k = 0; k < 16; k++) qq[k] = lc[owf.cls[k ^ b]];
+        }
         if (s == 1 && !flip && !trans) {
             j.dst = gba_back + cy0 * LINE + (xa >> 1);
             j.src = img->pix + (cy0 - y0) * iw + (xa - x0);
@@ -158,17 +164,29 @@ void ow_sprite(const DoomoImage *img, int x0, int y0, int s, int flags, const ui
             ow_spr_rows(&j);
             return;
         }
-        for (x = xa; x < xb; x++) {
-            /* the masked-off edge pixels just repeat a neighbour's column */
-            int tx = (int)(((uint32_t)(DOOMO_CLAMP(x, cx0, cx1 - 1) - x0) * inv) >> 16);
-            col[x - xa] = (uint8_t)(flip ? iw - 1 - tx : tx);
-        }
+        /* (V4b) mirrored, not scaled (a few billboards a frame): the column gather below costs
+         * ~15 cycles a pixel, ~2/3 of ow_sprite's time on the invaded map. Pixel x shows texel
+         * iw - 1 - (x - x0), so a row is the source row read backwards from there, four texels
+         * a word read (ow_flip_row); the edge columns it reads outside the image are the ones
+         * head / tail mask off */
+        const int mirror = s == 1 && flip && !trans;
+        const int moff = iw - 1 - (xa - x0);
+        if (!mirror)
+            for (x = xa; x < xb; x++) {
+                /* the masked-off edge pixels just repeat a neighbour's column */
+                int tx = (int)(((uint32_t)(DOOMO_CLAMP(x, cx0, cx1 - 1) - x0) * inv) >> 16);
+                col[x - xa] = (uint8_t)(flip ? iw - 1 - tx : tx);
+            }
         for (y = cy0; y < cy1; y++) {
-            const uint8_t *srow = img->pix + (int)(((uint32_t)(y - y0) * inv) >> 16) * iw;
             uint8_t *d = (uint8_t *)buf;
-            for (k = 0; k < j.n; k++) d[k] = srow[col[k]];
-            if (trans)
-                for (k = (xa + y + 1) & 1; k < j.n; k += 2) d[k] = 0;
+            if (mirror) {
+                ow_flip_row(d, img->pix + (y - y0) * iw + moff, j.n);
+            } else {
+                const uint8_t *srow = img->pix + (int)(((uint32_t)(y - y0) * inv) >> 16) * iw;
+                for (k = 0; k < j.n; k++) d[k] = srow[col[k]];
+                if (trans)
+                    for (k = (xa + y + 1) & 1; k < j.n; k += 2) d[k] = 0;
+            }
             j.dst = gba_back + y * LINE + (xa >> 1);
             j.src = d;
             j.rows = 1;
