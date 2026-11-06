@@ -47,10 +47,11 @@ enum {
     HERO_CUSTOM = 0,        /* make your own (the creator's arg -3)          */
     HERO_SUNNY  = 1,        /* female, PRONOUN_SHE (the show's lead)         */
     HERO_MARVIN = 2,        /* male, PRONOUN_HE, a fox                       */
-    HERO_COOP_FIRST = 3,    /* reserved: co-op heroes of guest profiles      */
+    HERO_COOP_FIRST = 3,    /* co-op heroes of guest profiles (MP1: 3..5 are filled) */
     HERO_COOP_LAST  = 7,
     HERO_KIND_COUNT = 8
 };
+#define HERO_COOP_FILLED 3      /* HERO_COOP_FIRST .. +2 have presets: Ember, Rook, Pip */
 #define HERO_IS_MAIN(k) ((unsigned)(k) <= HERO_MARVIN)
 #define HERO_IS_COOP(k) ((k) >= HERO_COOP_FIRST && (k) <= HERO_COOP_LAST)
 
@@ -131,6 +132,8 @@ uint8_t playas_profile_flags(void);
 /* The preset resident of a hero kind (PA2's hero.c), NULL for HERO_CUSTOM,
  * an unfilled co-op id or before PA2. */
 const DoomoResident *hero_preset(int kind);
+/* The look seed of a filled co-op hero (a guest plays a household member made from it), 0 otherwise. */
+uint32_t hero_coop_seed(int kind);
 
 /* The play-as romance gate (PA9): sim_romance_ok (both directions, LS0
  * stages) + the hero rule + kid / teen refusal. Until PA9 it is exactly

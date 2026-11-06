@@ -327,7 +327,7 @@ MP0's profiles (`profiles.c`) had no screen. `SCENE_PLAYAS` now has a players mo
   (1..10 printable chars; a blank name falls back to the villager's; cancel goes back to the list). SELECT on a guest row asks "moves out?"; the hero cannot be removed. Removing the active guest plays back as the hero.
 * **Tests** (`test_playas.c`): `pa10_picker_adds_switches_and_removes_a_player`, `pa10_picker_is_locked_until_the_story_and_never_removes_the_hero`,
   `pa10_the_switcher_has_a_players_row_and_b_steps_back_to_it`. `make -C core test`: 851 passed.
-* **Not built**: renaming a guest later, co-op heroes (MP1), the S-HOUSE decision, GBA/PS1 builds (not run here).
+* **Not built**: the S-HOUSE decision, GBA/PS1 builds (not run here). Renaming and co-op heroes: see the MP1 part below.
 
 ### FREE: the Free mode gate (`playas_free_unlocked()`)
 
@@ -338,4 +338,23 @@ MP0's profiles (`profiles.c`) had no screen. `SCENE_PLAYAS` now has a players mo
 * Gated with it: the family "Play as them" row, the switcher's rows, the picker and `prof_guest_add` (`PROF_ERR_LOCKED`).
 * Tests: `pa10_free_play_opens_play_as_after_an_ending`, `pa10_a_blank_name_falls_back_to_the_villagers`; fixtures that assumed day-one play-as
   grant `UL_STORY_END(0)`; runner command `ending-seen` (script `fp_playas_free`). `make -C core test`: 853 passed, scripts 160 OK.
+
+### MP1 part 1: co-op heroes and renaming a guest
+
+* **Rename**: START on a guest's row opens the name box (`prof_rename(profile, name)`: a guest only, 1..10 printable chars,
+  `PROF_ERR_NAME` otherwise and nothing changes; the hero's name is the town's, so profile 0 is refused). A co-op guest's housemate is renamed too.
+* **Co-op heroes**: `HERO_COOP_FIRST..+2` are filled: **Ember** (she), **Rook** (he), **Pip** (they), each a fixed look seed
+  (`hero_coop_seed(kind)`, `hero_preset(kind)` for the name and pronoun). `HERO_COOP_LAST` and the rest stay reserved (NULL).
+  The names and seeds are placeholders for you to change (`core/src/hero.c`).
+* **How a guest plays one**: `prof_guest_add(name, -1, kind)` makes a **household housemate** (adult, `family_pool_add` from the hero's seed)
+  and the guest plays that member, so play-as, the pockets, the save and the sim need nothing new. It takes a household place
+  (`PROF_ERR_HOUSEHOLD` when full), each hero once (`PROF_ERR_HERO`). Moving out removes the housemate; a housemate lost or
+  removed elsewhere moves the guest out at the daily check. The PROF chunk is unchanged (the hero byte was already there); on load a
+  co-op guest needs a family pool id (the household may load after PROF, so the daily check culls a missing one).
+* **Picker**: "Who joins?" lists the free co-op heroes first ("Co-op hero"), then the neighbours. The players list says "Co-op hero" under them.
+* **API**: `prof_rename`, `prof_is_coop`, `prof_hero_used`, `hero_coop_seed`; `PROF_ERR_HOUSEHOLD`.
+* **Tests**: `mp1_a_co_op_hero_moves_in_as_a_housemate_and_moves_out_with_them`, `mp1_a_co_op_guest_survives_the_chunk_and_a_lost_housemate_moves_out`,
+  `mp1_guests_can_be_renamed`, `mp1_the_picker_adds_a_co_op_hero_and_renames_a_guest`. `make -C core test`: 857 passed, scripts 160 OK.
+* **Not built**: co-op hero *content* (their own story lines, quests and abilities: a co-op hero plays the household member for now),
+  local simultaneous multiplayer and helping in someone else's world (the other half of MP1), GBA/PS1 builds (not run here).
 

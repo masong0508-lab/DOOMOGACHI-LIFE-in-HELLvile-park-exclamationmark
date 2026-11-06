@@ -45,7 +45,7 @@ Dreamcast** (no ARM/MIPS/SH4 toolchains, no emulator). Console statements below 
 **Life sim core (the open parts, in order)**
 1. Part 2: per-avatar pockets (PA10 ledgers): money, items and health are still shared when you switch who you play (the PLAY chunk has the header only).
 2. Part 3: New life from the title screen and in a fresh world (today it is the character switcher, on a finished island only).
-3. Part 4 (picker scene done 2026-11-05): typed guest names and the Free mode gate done; still open: co-op heroes (MP1), the story house unlock decision (S-HOUSE needs a definition).
+3. Part 4 (picker scene done 2026-11-05): typed guest names, renaming, the Free mode gate and the co-op hero characters done; still open: co-op hero content and local multiplayer (MP1), the story house unlock decision (S-HOUSE needs a definition).
 4. Smaller: pets' own look when uplifted, baby outfits, a baby body shape, elder stoop, a graveyard scene for the household (the Remembered page serves), the hand-written disaster scripts (need your tone check).
 
 **Everything else**

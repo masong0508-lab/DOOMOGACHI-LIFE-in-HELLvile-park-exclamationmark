@@ -5,6 +5,7 @@
 #include "doomo/unlocks.h"
 #include "doomo/unlock_ids.h"
 #include "doomo/profiles.h"
+#include "doomo/family.h"
 #include "doomo/playas.h"
 #include "doomo/save.h"
 #include "doomo/save_ext.h"
@@ -57,7 +58,7 @@ TEST(prof_guests_move_in_with_rules)
     CHECK_EQ(prof_guest_add("Bad\x01name", a, -1), PROF_ERR_NAME);
     CHECK_EQ(prof_guest_add("Ana", PLAYAS_ID_HERO, -1), PROF_ERR_RESIDENT);   /* never the hero */
     CHECK_EQ(prof_guest_add("Ana", -1, -1), PROF_ERR_RESIDENT);
-    CHECK_EQ(prof_guest_add("Ana", a, 3), PROF_ERR_HERO);                     /* no co-op hero filled yet */
+    CHECK_EQ(prof_guest_add("Ana", a, HERO_COOP_LAST), PROF_ERR_HERO);        /* a reserved co-op kind is not filled */
     CHECK_EQ(prof_guest_add("Ana", a, 0), PROF_ERR_HERO);                     /* the hero's own kinds are not guests' */
     CHECK_EQ(prof_guest_add("Ana", a, -1), 1);
     CHECK_EQ(prof_guest_add("Dup", a, -1), PROF_ERR_RESIDENT);                /* one person per villager */
@@ -232,4 +233,83 @@ TEST(prof_daily_check_moves_out_a_guest_whose_villager_is_gone)
     CHECK_EQ(prof_resident(1), b);
     CHECK_EQ(prof_check_daily(), 0);
     doomo_save_ext_profiles->reset();                           /* leave no guests behind */
+}
+
+/* ---- MP1: co-op heroes and renaming ---- */
+TEST(mp1_a_co_op_hero_moves_in_as_a_housemate_and_moves_out_with_them)
+{
+    int p, id, n0;
+    fresh();
+    n0 = family_count();
+    p = prof_guest_add("Embie", -1, HERO_COOP_FIRST);
+    CHECK_EQ(p, 1);
+    CHECK(prof_is_coop(1));
+    CHECK_EQ(playas_profile_hero(1), HERO_COOP_FIRST);
+    id = prof_resident(1);
+    CHECK(id >= PLAYAS_ID_FAMILY_FIRST && family_find(id) != NULL);   /* a household member made from the look */
+    CHECK_EQ(family_count(), n0 + 1);
+    CHECK_EQ(family_identity(id)->seed, hero_coop_seed(HERO_COOP_FIRST));
+    CHECK_STR(family_identity(id)->name, "Embie");
+    CHECK(prof_hero_used(HERO_COOP_FIRST));
+    CHECK_EQ(prof_guest_add("Twin", -1, HERO_COOP_FIRST), PROF_ERR_HERO);   /* each hero once */
+    CHECK_EQ(prof_guest_add("Rk", -1, HERO_COOP_FIRST + 1), 2);
+    CHECK_EQ(prof_guest_add("Zz", -1, HERO_COOP_FIRST + HERO_COOP_FILLED), PROF_ERR_HERO);
+    CHECK(prof_switch(1));
+    CHECK_EQ(playas_avatar(), id);
+    CHECK_EQ(prof_active(), 1);
+    CHECK(prof_guest_remove(1));                     /* played: back to the hero; the housemate goes too */
+    CHECK(playas_is_hero());
+    CHECK(family_find(id) == NULL);
+    CHECK_EQ(prof_guest_count(), 1);
+    CHECK(!prof_hero_used(HERO_COOP_FIRST));         /* free to pick again */
+    doomo_save_ext_profiles->reset();
+}
+
+TEST(mp1_a_co_op_guest_survives_the_chunk_and_a_lost_housemate_moves_out)
+{
+    static uint8_t buf[PROF_SZ_TOTAL + 64];
+    uint32_t n;
+    int id;
+    fresh();
+    CHECK_EQ(prof_guest_add("Pip", -1, HERO_COOP_FIRST + 2), 1);
+    id = prof_resident(1);
+    n = doomo_save_ext_profiles->size();
+    CHECK_EQ(doomo_save_ext_profiles->write(buf, n), n);
+    doomo_save_ext_profiles->reset();
+    CHECK(doomo_save_ext_profiles->read(buf, n, 1));
+    CHECK_EQ(prof_guest_count(), 1);
+    CHECK(prof_is_coop(1));
+    CHECK_EQ(prof_resident(1), id);
+    CHECK_EQ(playas_profile_hero(1), HERO_COOP_FIRST + 2);
+    CHECK_EQ(prof_check_daily(), 0);
+    family_remove(id);                               /* the housemate is gone (lost, or removed in the family screen) */
+    CHECK_EQ(prof_check_daily(), 1);
+    CHECK_EQ(prof_guest_count(), 0);
+    CHECK(doomo_save_ext_profiles->read(buf, n, 1)); /* a chunk whose hero byte is hostile is a villager or nothing */
+    buf[PROF_SZ_HEADER + 14] = 6;                    /* HERO_COOP_LAST - 1: unfilled kind -> read as a villager: res is a pool id -> dropped */
+    doomo_save_ext_profiles->reset();
+    CHECK(doomo_save_ext_profiles->read(buf, n, 1));
+    CHECK_EQ(prof_guest_count(), 0);
+    doomo_save_ext_profiles->reset();
+}
+
+TEST(mp1_guests_can_be_renamed)
+{
+    int a, id;
+    fresh();
+    a = alive_from(0);
+    CHECK_EQ(prof_guest_add("Ana", a, -1), 1);
+    CHECK_EQ(prof_rename(1, "Anita"), 1);
+    CHECK_STR(prof_name(1), "Anita");
+    CHECK_EQ(prof_rename(1, ""), PROF_ERR_NAME);
+    CHECK_EQ(prof_rename(1, "Twelve chars"), PROF_ERR_NAME);
+    CHECK_EQ(prof_rename(1, "Bad\x01"), PROF_ERR_NAME);
+    CHECK_STR(prof_name(1), "Anita");                /* a refused name changes nothing */
+    CHECK_EQ(prof_rename(0, "Hero"), 0);             /* the hero's name is the town's, not a guest's */
+    CHECK_EQ(prof_rename(2, "Nobody"), 0);
+    CHECK_EQ(prof_guest_add("Ember", -1, HERO_COOP_FIRST), 2);
+    id = prof_resident(2);
+    CHECK_EQ(prof_rename(2, "Cinder"), 1);
+    CHECK_STR(family_identity(id)->name, "Cinder");  /* the housemate they play is called the same */
+    doomo_save_ext_profiles->reset();
 }

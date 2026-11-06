@@ -12,7 +12,8 @@ TEST(hero_presets_exist_for_sunny_and_marvin_only)
 {
     const DoomoResident *s = hero_preset(HERO_SUNNY), *m = hero_preset(HERO_MARVIN);
     CHECK(hero_preset(HERO_CUSTOM) == NULL);
-    CHECK(hero_preset(HERO_COOP_FIRST) == NULL);
+    CHECK(hero_preset(HERO_COOP_FIRST) != NULL);               /* MP1: the filled co-op heroes have presets */
+    CHECK(hero_preset(HERO_COOP_LAST) == NULL);                /* the rest stay reserved */
     CHECK(s && m);
     if (!s || !m) return;
     CHECK(strcmp(s->name, "Sunny") == 0 && strcmp(m->name, "Marvin") == 0);

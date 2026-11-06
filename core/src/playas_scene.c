@@ -62,10 +62,26 @@ static const char *kind_of(int id)
 
 static int vis(void) { return plat_screen_h() >= 200 ? 7 : 5; }
 
-/* PA10 part 4: the villagers a new player can be (alive, not the hero, not already a player) */
+/* The rows of "Who joins?": the co-op heroes nobody plays yet (MP1), then the villagers a new player can be
+ * (alive, not the hero, not already a player). A row is a villager id, or -(hero kind) for a co-op hero. */
+static int coop_free(int want, int *count)
+{
+    int n = 0, k;
+    for (k = HERO_COOP_FIRST; k < HERO_COOP_FIRST + HERO_COOP_FILLED; k++) {
+        if (prof_hero_used(k)) continue;
+        if (n == want) return -k;
+        n++;
+    }
+    if (count) *count = n;
+    return 0;
+}
+
 static int pick_id(int want, int *count)
 {
-    int n = 0, id;
+    int n = 0, id, nc = 0;
+    if (want >= 0) { int c = coop_free(want, NULL); if (c) return c; }
+    coop_free(-1, &nc);
+    n = nc;
     for (id = 0; id < DOOMO_PLAYER_ID; id++) {
         const DoomoResident *r = town_res(id);
         if (!r || r->status != RES_ALIVE || !playas_can_be(id) || prof_find_resident(id) >= 0) continue;
@@ -73,7 +89,7 @@ static int pick_id(int want, int *count)
         n++;
     }
     if (count) *count = n;
-    return -1;
+    return want >= 0 ? DOOMO_PLAYER_ID + 1000 : -1;   /* past the end */
 }
 
 static int can_add(void) { return prof_guest_count() < PROF_GUESTS && playas_available(); }
@@ -136,8 +152,11 @@ static void pf_join(int ok)
     char nm[DOOMO_NAME_LEN], msg[40];
     int r;
     if (!ok) return;
-    if (!pf_name[0]) name_of(S.pick, pf_name);
-    r = prof_guest_add(pf_name, S.pick, -1);
+    if (!pf_name[0]) {
+        if (S.pick < 0) { strncpy(pf_name, hero_preset(-S.pick)->name, PROF_NAME_LEN - 1); pf_name[PROF_NAME_LEN - 1] = 0; }
+        else name_of(S.pick, pf_name);
+    }
+    r = S.pick < 0 ? prof_guest_add(pf_name, -1, -S.pick) : prof_guest_add(pf_name, S.pick, -1);
     if (r > 0) {
         doomo_snprintf(msg, sizeof msg, "%s joined!", prof_name(r));
         ui_toast(msg);
@@ -145,9 +164,18 @@ static void pf_join(int ok)
     } else {
         (void)nm;
         ui_toast(r == PROF_ERR_FULL ? "The island has its players." :
+                 r == PROF_ERR_HOUSEHOLD ? "The household is full." :
                  r == PROF_ERR_NAME ? "Use letters and numbers." : "They can't join right now.");
         S.pf = 1; recount();
     }
+}
+
+static void pf_renamed(int ok)
+{
+    if (!ok) return;
+    if (!pf_name[0] || prof_rename(S.sel, pf_name) != 1) ui_toast("Use letters and numbers.");
+    else ui_toast("Renamed!");
+    recount();
 }
 
 static void pf_leave(int yes)
@@ -180,12 +208,20 @@ static int pf_update(void)
         ui_confirm(nl_q, pf_leave);
         return 1;
     }
+    if (S.pf == 1 && btn_pressed(BTN_START) && S.sel >= 1 && S.sel < S.count) {   /* rename a guest */
+        audio_sfx(SFX_SELECT);
+        strncpy(pf_name, prof_name(S.sel), PROF_NAME_LEN - 1);
+        pf_name[PROF_NAME_LEN - 1] = 0;
+        ui_text_entry("Rename the player", pf_name, PROF_NAME_LEN, pf_renamed);
+        return 1;
+    }
     if (btn_pressed(BTN_A)) {
         audio_sfx(SFX_SELECT);
         if (S.pf == 2) {
             S.pick = (int16_t)pick_id(S.sel, NULL);
-            if (S.pick < 0) { recount(); return 1; }
-            name_of(S.pick, pf_name);            /* the villager's name to start from */
+            if (S.pick > DOOMO_PLAYER_ID) { recount(); return 1; }
+            if (S.pick < 0) { strncpy(pf_name, hero_preset(-S.pick)->name, PROF_NAME_LEN - 1); pf_name[PROF_NAME_LEN - 1] = 0; }
+            else name_of(S.pick, pf_name);       /* the villager's name to start from */
             ui_text_entry("Name the player", pf_name, PROF_NAME_LEN, pf_join);
         } else if (S.sel >= S.count) {
             S.pf = 2; S.sel = S.top = 0; recount();
@@ -254,23 +290,29 @@ static void ps_draw(void)
             if (row == S.sel) ui_cursor(10, y + 4);
             if (S.pf == 2) {
                 id = pick_id(row, NULL);
-                if (id < 0) break;
-                ui_text(24, y, name_of(id, nm), st->text);
-                ui_text(24, y + 9, "Neighbour", st->text_dim);
+                if (id > DOOMO_PLAYER_ID) break;
+                if (id < 0) {
+                    ui_text(24, y, hero_preset(-id)->name, st->text);
+                    ui_text(24, y + 9, "Co-op hero", st->text_dim);
+                } else {
+                    ui_text(24, y, name_of(id, nm), st->text);
+                    ui_text(24, y + 9, "Neighbour", st->text_dim);
+                }
             } else if (row >= S.count) {
                 ui_text(24, y, "Add a player...", st->text);
-                ui_text(24, y + 9, "Someone else plays a villager", st->text_dim);
+                ui_text(24, y + 9, "A co-op hero or a villager", st->text_dim);
             } else {
                 char sub[40];
                 id = prof_resident(row);
                 ui_text(24, y, prof_name(row), st->text);
                 if (row == 0) doomo_snprintf(sub, sizeof sub, "The hero%s", prof_active() == 0 ? " - playing" : "");
+                else if (prof_is_coop(row)) doomo_snprintf(sub, sizeof sub, "Co-op hero%s", prof_active() == row ? " - playing" : "");
                 else doomo_snprintf(sub, sizeof sub, "Plays %s%s", name_of(id, nm), prof_active() == row ? " - playing" : "");
                 ui_text(24, y + 9, sub, st->text_dim);
             }
         }
         if (S.rows > vis()) ui_scroll_arrows(sw - 10, y0 - 6, y0 + vis() * rh - 2, S.top > 0, S.top + vis() < S.rows);
-        if (plat_screen_h() >= 200 && S.pf == 1) ui_text_center(sw / 2, y0 + vis() * rh + 8, "A play   SELECT move out   B back", st->text_dim);
+        if (plat_screen_h() >= 200 && S.pf == 1) ui_text_center(sw / 2, y0 + vis() * rh + 8, "A play  START rename  SELECT out", st->text_dim);
         return;
     }
     for (i = 0; i < vis() && S.top + i < S.rows; i++) {

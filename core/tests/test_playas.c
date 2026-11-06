@@ -578,7 +578,8 @@ TEST(pa10_picker_adds_switches_and_removes_a_player)
     CHECK(scene_top() == &SCENE_PLAYAS);
     CHECK_EQ(prof_count(), 1);
     pf_tap(BTN_DOWN);                                   /* the "Add a player..." row */
-    pf_tap(BTN_A);                                      /* the villager list */
+    pf_tap(BTN_A);                                      /* the list: the co-op heroes first, then the neighbours */
+    pf_tap(BTN_DOWN); pf_tap(BTN_DOWN); pf_tap(BTN_DOWN);
     pf_tap(BTN_A);                                      /* first villager: the name entry opens */
     { int i; for (i = 0; i < 12; i++) ui_text_entry_feed('\b'); }
     ui_text_entry_feed('Z'); ui_text_entry_feed('e'); ui_text_entry_feed('d');
@@ -657,7 +658,8 @@ TEST(pa10_a_blank_name_falls_back_to_the_villagers)
     v = first_alive();
     scene_set(&SCENE_UI_GALLERY, 0);
     scene_push(&SCENE_PLAYAS, PLAYAS_ARG_PROFILES);
-    pf_tap(0); pf_tap(BTN_DOWN); pf_tap(BTN_A); pf_tap(BTN_A);
+    pf_tap(0); pf_tap(BTN_DOWN); pf_tap(BTN_A);
+    pf_tap(BTN_DOWN); pf_tap(BTN_DOWN); pf_tap(BTN_DOWN); pf_tap(BTN_A);
     { int i; for (i = 0; i < 12; i++) ui_text_entry_feed('\b'); }
     ui_text_entry_feed('\n');
     pf_tap(0);
@@ -687,6 +689,40 @@ TEST(pa10_free_play_opens_play_as_after_an_ending)
     no_endings();
     playas_new_life_arm();                              /* a fresh-world New life stays open */
     CHECK(playas_available());
+}
+
+TEST(mp1_the_picker_adds_a_co_op_hero_and_renames_a_guest)
+{
+    int id;
+    fresh();
+    cleared();
+    scene_set(&SCENE_UI_GALLERY, 0);
+    scene_push(&SCENE_PLAYAS, PLAYAS_ARG_PROFILES);
+    pf_tap(0);
+    pf_tap(BTN_DOWN); pf_tap(BTN_A);                    /* Add a player... : the first row is Ember */
+    pf_tap(BTN_A);                                      /* the name box starts on "Ember" */
+    ui_text_entry_feed('\n');
+    pf_tap(0);
+    CHECK_EQ(prof_guest_count(), 1);
+    CHECK(prof_is_coop(1));
+    CHECK_STR(prof_name(1), "Ember");
+    id = prof_resident(1);
+    CHECK(family_find(id) != NULL);
+    CHECK(scene_top() == &SCENE_PLAYAS);                /* back on the list, on the new player */
+    pf_tap(BTN_START);                                  /* rename */
+    { int i; for (i = 0; i < 12; i++) ui_text_entry_feed('\b'); }
+    ui_text_entry_feed('K'); ui_text_entry_feed('i'); ui_text_entry_feed('t');
+    ui_text_entry_feed('\n');
+    pf_tap(0);
+    CHECK_STR(prof_name(1), "Kit");
+    CHECK_STR(family_identity(id)->name, "Kit");
+    pf_tap(BTN_START);                                  /* an empty rename is refused, the name stays */
+    { int i; for (i = 0; i < 12; i++) ui_text_entry_feed('\b'); }
+    ui_text_entry_feed('\n');
+    pf_tap(0);
+    CHECK_STR(prof_name(1), "Kit");
+    scene_pop();
+    doomo_save_ext_profiles->reset();
 }
 
 /* ---- PA10 part 1: the play-as stress save ----------------------------------------------------
