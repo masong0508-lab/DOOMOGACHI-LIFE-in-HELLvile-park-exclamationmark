@@ -554,7 +554,7 @@ static void collect_rent(void)
     collect_rent_now();
 }
 
-#define HUB_HOLD 6                       /* ticks a clean hub frame is held (the GBA draws every 3rd tick) */
+#define HUB_HOLD 8                       /* ticks a clean hub frame is held (was 6; the GBA draws every 3rd tick) */
 static int hub_held;                     /* hub frames held so far (test hook) */
 int fp_island_hub_held(void) { return hub_held; }
 static int hub_hold_off;                 /* test hook: never hold the hub (every frame drawn in full) */

@@ -175,3 +175,10 @@ full ~64 ms redraw every drawn tick. A toast holds still for 75 ticks between it
 - Test: `island_hub_holds_under_a_steady_toast` (test_island_replay.c): against a run with the hold off every full-drawn tick is
   pixel-identical, the toast timer matches tick for tick, held ticks repeat the picture above the news strip, holds happen.
 - Not measured here (no ARM toolchain in the session): the CI speed tour should show the toast phases at ~30 ticks/s.
+
+## I9: HUB_HOLD 6 -> 8
+
+CI #551 (toast hold + shorter particles): hub 28.7 logic ticks/s, 19.4 drawn fps, 29.2 ms work avg, 78.4 ms max. What is left is the
+periodic full redraw (~64 ms) every HUB_HOLD ticks. HUB_HOLD 8 makes one full frame in 8 ticks instead of 6 (3.75 hub animation
+steps/s instead of 5). Rough model (not a measurement): 29.2 -> ~27.5 ms avg. Only a CI speed report says whether the ticks reach 30.
+Revert or raise it by changing the one number in core/src/fp_island.c.
