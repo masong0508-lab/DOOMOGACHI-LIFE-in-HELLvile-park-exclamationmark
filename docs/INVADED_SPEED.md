@@ -297,12 +297,17 @@ invaded map is also slow, it needs its own V1 on the PS1 harness; its renderer
 (`plat_overworld` in `ps1/src`) shares nothing with the steps above except the
 core's `build_billboards` (V2, V3).
 
-## V10 (2026-11-07): frame-time governor, NOT exact (owner asked for 30 fps)
+## V10 (2026-11-07): frame-time governor, draw-side only, NOT pixel-exact (owner asked for 30 fps)
 
-`gov_pick` in `gba/src/overworld.c`: on a software-path overworld frame with `TINT_RED` (the invaded map only), when the last
-drawn frame's work (`gba_work_last`, set in `main.c`) exceeds `GBA_GOV_MS` (27 ms) the sprites farthest from the screen centre are not
-drawn, until the work fits; with 3 ms to spare they come back. Never dropped: off-screen, fullbright (markers, sparkles) and the nearest
-ring (r < 30 px). Measured on libmgba, `make -C gba test-speed`: invaded 17.5 -> 25.3 drawn fps, work avg 49.2 -> 34.7 ms (max 55.4:
-the body-render spikes), logic 30.1. Every other scene's `vhash-seq` is unchanged; invaded's is now **a331883b** (the reference for later steps).
-30 fps is NOT reached: with the far sprites gone the floor is the ground (~10 ms), logic and the near ring, about 34 ms. Next: ground cost
-in the far rows, or logic every second tick (V6 extended), then re-measure. `speed_tour.txt` invaded floor raised 12.5 -> 22.
+`gov_pick` in `gba/src/overworld.c`. On a software-path overworld frame with `TINT_RED` (the invaded map only), when the last drawn
+frame's work (`gba_work_last`, set in `main.c`) exceeds `GBA_GOV_MS` (30 ms) fewer sprites are DRAWN, nearest to the screen centre first,
+until frames fit; with 2 ms to spare they come back (budget -1/8 / +1/8 per frame). Never dropped: off-screen billboards, fullbright
+ones (markers, sparkles) and the nearest sprite (the player). Nothing in the game sees it: logic, residents, collisions, saves and the
+billboard list are untouched (it only filters the draw order inside the renderer). Scratch is 640 B of static EWRAM, not stack
+(IWRAM main stack stays 6,200 B, >= 6,144).
+
+Measured on libmgba (`make -C gba test-speed`): invaded 17.5 -> **29.2 drawn fps**, work avg 49.5 -> 30.7 ms (max 51.5: the chibi
+body-render spikes, one frame each), logic 30.1 ticks/s. Every other scene's `vhash-seq` is unchanged; invaded's is now **f87e5596**
+(the reference for later steps). Why sprites alone could do it: with every droppable sprite removed the frame is 29.5 ms (ground ~8,
+logic ~7, HUD ~1.5), so the near sprites are what is left to budget. A first version (whole 30 px ring always kept, 27 ms target)
+only got 25.3 fps: the ring alone cost ~5 ms. `speed_tour.txt` invaded floor raised 12.5 -> 25.

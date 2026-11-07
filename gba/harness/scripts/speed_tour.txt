@@ -104,7 +104,7 @@ scene STORY 219
 wait 200
 fps start
 wait 130
-expect-fps 22 invaded
+expect-fps 25 invaded
 shot invaded
 vhash-seq 30 invaded
 
