@@ -154,6 +154,24 @@ int gba_curtains(int sw, int sh, int cw, const uint8_t *body, const uint8_t *lin
     return 1;
 }
 
+/* MS-PF10: the stage wall's unlit LED (core/src/studio_stage.c led_dot): pixels x-2,x-1,x+1,x+2 on rows y-1 and y, and
+ * x-1..x+1 on row y+1, as word read-modify-writes. 0 = not a plain bitmap frame / not word aligned: draw the rects. */
+int gba_led_dot(int x, int y, uint8_t c)
+{
+    cur_vu32_t *w;
+    uint32_t c4 = c * 0x01010101u;
+    if (gba_nodraw != 0 || ((x - 2) & 3) || x < 2 || x + 2 >= SCREEN_W || y < 1 || y + 1 >= SCREEN_H) return 0;
+    w = (cur_vu32_t *)((uint8_t *)gba_back + (y - 1) * SCREEN_W + (x - 2));
+    w[0] = (w[0] & 0x00FF0000u) | (c4 & 0xFF00FFFFu);
+    w[1] = (w[1] & 0xFFFFFF00u) | (c4 & 0x000000FFu);
+    w += SCREEN_W / 4;
+    w[0] = (w[0] & 0x00FF0000u) | (c4 & 0xFF00FFFFu);
+    w[1] = (w[1] & 0xFFFFFF00u) | (c4 & 0x000000FFu);
+    w += SCREEN_W / 4;
+    w[0] = (w[0] & 0x000000FFu) | (c4 & 0xFFFFFF00u);
+    return 1;
+}
+
 static void glyph_dil(const uint16_t *g, int x, int y, uint32_t c4)
 {
     typedef volatile uint32_t vu32_t;

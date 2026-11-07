@@ -311,6 +311,22 @@ static void led_heart(int x, int y, uint8_t c)
 #define led_heart(x, y, c) ui_heart_flat((x), (y), 3, (c))
 #endif
 
+/* MS-PF10: an unlit LED, the three rects (x-2, y-1, 2x2), (x+1, y-1, 2x2), (x-1, y+1, 3x1): ~100 a frame, each paying
+ * a rect call for a handful of pixels. The GBA writes the five words they touch directly (gba/src/video.c), when the
+ * frame is a plain bitmap one and x - 2 is word aligned; the rects otherwise. */
+#if defined(DOOMO_PLATFORM_GBA)
+int gba_led_dot(int x, int y, uint8_t c);
+#endif
+static void led_dot(int x, int y, uint8_t c)
+{
+#if defined(DOOMO_PLATFORM_GBA)
+    if (gba_led_dot(x, y, c)) return;
+#endif
+    plat_rect(x - 2, y - 1, 2, 2, c);
+    plat_rect(x + 1, y - 1, 2, 2, c);
+    plat_rect(x - 1, y + 1, 3, 1, c);
+}
+
 static void draw_wall(int sw, int top, int floor, int t, int beat, int open)
 {
     int y, x, i, h = floor - top, cover = curtain_cover(sw, open);
@@ -325,7 +341,7 @@ static void draw_wall(int sw, int top, int floor, int t, int beat, int open)
             if (x + 3 < cover || x - 3 >= sw - cover) continue;
             /* only the lit LEDs are hearts: the rest are cheap dots (GBA) */
             if (lit) led_heart(x, y, PAL_PAINT(PAINT_BUBBLEGUM, 2));
-            else { plat_rect(x - 2, y - 1, 2, 2, PAL_RAMP(RAMP_VAPE, 3)); plat_rect(x + 1, y - 1, 2, 2, PAL_RAMP(RAMP_VAPE, 3)); plat_rect(x - 1, y + 1, 3, 1, PAL_RAMP(RAMP_VAPE, 3)); }
+            else led_dot(x, y, PAL_RAMP(RAMP_VAPE, 3));
         }
 }
 
