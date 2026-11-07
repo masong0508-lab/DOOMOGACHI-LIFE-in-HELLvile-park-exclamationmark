@@ -928,33 +928,17 @@ static void build_billboards(void)
     int32_t vx0 = ow.camx - 640 * OWQ, vx1 = ow.camx + 640 * OWQ;
     int32_t vy0 = ow.camy - 700 * OWQ, vy1 = ow.camy + 520 * OWQ;
     int i, cx, cy, z, frame;
-    uint32_t t = doomo_frame_count();
+    uint32_t t = doomo_frame_count(), t5 = t / 5;
     ow_bb_count = 0;
-    /* props */
+    /* props (V13: their cell, sprite, flags and frame count are in the prop,
+     * set when it was loaded; the floor and the frame are still read here) */
     for (i = 0; i < ow_prop_count; i++) {
         const OwProp *p = &ow_props[i];
         int32_t x = (int32_t)p->x * OWQ, y = (int32_t)p->y * OWQ;
-        int spr, fl = BB_SHADOW;
-        if (x < vx0 || x > vx1 || y < vy0 || y > vy1) continue;
-        switch (p->type) {
-        case THING_PROP_TREE: spr = SPR_TREE; break;
-        case THING_PROP_LAMP: spr = SPR_LAMP; break;
-        case THING_PROP_BENCH: spr = SPR_BENCH; break;
-        case THING_PROP_FOUNTAIN: spr = SPR_FOUNTAIN; break;
-        case THING_PROP_BARREL: spr = SPR_BARREL; break;
-        case THING_PROP_SKULLS: spr = SPR_SKULL_PILE; break;
-        case THING_PROP_TORCH: spr = SPR_TORCH; fl = BB_FULLBRIGHT; break;
-        case THING_PROP_SIGN: spr = SPR_SIGN; break;
-        case THING_PROP_FLOWERS: spr = SPR_FLOWER_BED; fl = 0; break;
-        case THING_PROP_MAILBOX: spr = SPR_MAILBOX; break;
-        case THING_VAPE_PORTAL: spr = SPR_VAPE_PORTAL; fl = BB_FULLBRIGHT; break;
-        default: continue;
-        }
-        cx = p->x / DOOMO_CELL_UNITS;
-        cy = p->y / DOOMO_CELL_UNITS;
-        z = ow_floor_h(cx, cy) * DOOMO_HEIGHT_STEP;
-        frame = sprite_frames(spr) > 1 ? (int)((t / 5 + (uint32_t)i) % (uint32_t)sprite_frames(spr)) : 0;
-        add_bb(x, y + 8 * OWQ, z, sprite_image(spr, frame), fl, 0);
+        if (!p->spr || x < vx0 || x > vx1 || y < vy0 || y > vy1) continue;
+        z = ow_floor_h(p->cx, p->cy) * DOOMO_HEIGHT_STEP;
+        frame = p->nfr > 1 ? (int)((t5 + (uint32_t)i) % (uint32_t)p->nfr) : 0;
+        add_bb(x, y + 8 * OWQ, z, sprite_image(p->spr, frame), p->fl, 0);
     }
     ownpc_add_billboards(vx0, vy0, vx1, vy1);
     /* side quest spots (the hero's) */

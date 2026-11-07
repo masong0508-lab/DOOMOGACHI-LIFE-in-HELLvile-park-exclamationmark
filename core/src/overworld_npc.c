@@ -50,6 +50,28 @@ static int prop_radius(int type)
     }
 }
 
+/* The sprite and billboard flags a prop is drawn with (0 / 0: not drawn). */
+static void prop_art(int type, uint8_t *spr, uint8_t *fl)
+{
+    int sp, f = BB_SHADOW;
+    switch (type) {
+    case THING_PROP_TREE: sp = SPR_TREE; break;
+    case THING_PROP_LAMP: sp = SPR_LAMP; break;
+    case THING_PROP_BENCH: sp = SPR_BENCH; break;
+    case THING_PROP_FOUNTAIN: sp = SPR_FOUNTAIN; break;
+    case THING_PROP_BARREL: sp = SPR_BARREL; break;
+    case THING_PROP_SKULLS: sp = SPR_SKULL_PILE; break;
+    case THING_PROP_TORCH: sp = SPR_TORCH; f = BB_FULLBRIGHT; break;
+    case THING_PROP_SIGN: sp = SPR_SIGN; break;
+    case THING_PROP_FLOWERS: sp = SPR_FLOWER_BED; f = 0; break;
+    case THING_PROP_MAILBOX: sp = SPR_MAILBOX; break;
+    case THING_VAPE_PORTAL: sp = SPR_VAPE_PORTAL; f = BB_FULLBRIGHT; break;
+    default: sp = SPR_NONE; f = 0; break;
+    }
+    *spr = (uint8_t)sp;
+    *fl = (uint8_t)f;
+}
+
 /* Where demon nest `nest` sits on the invaded map. Read from the map
  * definition itself, so it works before (or without) loading that map. */
 int ow_nest_cell(int nest, int *cx, int *cy)
@@ -98,6 +120,16 @@ void ownpc_load_props(void)
             ow_props[ow_prop_count].y = (int16_t)(t->y * DOOMO_CELL_UNITS + DOOMO_CELL_UNITS / 2);
             ow_props[ow_prop_count].type = t->type;
             ow_props[ow_prop_count].r = (uint8_t)prop_radius(t->type);
+            {
+                OwProp *np = &ow_props[ow_prop_count];
+                int nf;
+                np->cx = (int16_t)(np->x / DOOMO_CELL_UNITS);
+                np->cy = (int16_t)(np->y / DOOMO_CELL_UNITS);
+                prop_art(t->type, &np->spr, &np->fl);
+                nf = np->spr ? sprite_frames(np->spr) : 0;
+                np->nfr = (uint8_t)DOOMO_CLAMP(nf, 0, 255);
+                np->pad = 0;
+            }
             ow_prop_count++;
         }
     }

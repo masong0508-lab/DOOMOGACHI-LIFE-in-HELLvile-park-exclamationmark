@@ -45,6 +45,13 @@ typedef struct OwProp {
     int16_t x, y;            /* world units (cell centre)                    */
     uint8_t type;            /* THING_*                                      */
     uint8_t r;               /* collision radius (0 = walk through)          */
+    /* what never changes while the props live, worked out once by
+     * ownpc_load_props() so that build_billboards() does not redo it on
+     * every drawn frame (V13): its cell, its sprite (SPR_*, 0 = none), the
+     * billboard flags and the sprite's frame count. The floor height and
+     * the animation frame are NOT here: a lift can move a cell's floor. */
+    int16_t cx, cy;
+    uint8_t spr, fl, nfr, pad;
 } OwProp;
 
 enum { EMO_NONE, EMO_TALK, EMO_HEART, EMO_NOTE, EMO_ZZZ, EMO_SWEAT, EMO_SKULL,
