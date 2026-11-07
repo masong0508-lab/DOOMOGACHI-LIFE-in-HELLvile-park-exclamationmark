@@ -177,7 +177,7 @@ static void ar_update(void)
             int s = rng_range(&doomo_rng, nspawn);
             int fl, ce;
             fix16 x = INT2FIX(spawn_x[s] * CELLU + CELLU / 2), y = INT2FIX(spawn_y[s] * CELLU + CELLU / 2);
-            if (fx_dist(x - doomo_player.x, y - doomo_player.y) > INT2FIX(2 * CELLU) &&
+            if (fx_dist_gt(x - doomo_player.x, y - doomo_player.y, INT2FIX(2 * CELLU)) &&
                 cw_fits(x, y, 24, cw_floor(spawn_x[s], spawn_y[s]), 60, 24, &fl, &ce)) {
                 int a = actor_spawn_demon(pick_type(ar_wave), x, y, 1, 0, 0);
                 if (a >= 0) ar_to_spawn--;

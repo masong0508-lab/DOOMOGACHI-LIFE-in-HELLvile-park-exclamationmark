@@ -520,7 +520,7 @@ static void portal_spawn(const LevelBoss *b)
     s = rng_range(&doomo_rng, lv_run.portal_n);
     x = INT2FIX(lv_run.portal_x[s] * CELLU + CELLU / 2);
     y = INT2FIX(lv_run.portal_y[s] * CELLU + CELLU / 2);
-    if (fx_dist(x - doomo_player.x, y - doomo_player.y) < INT2FIX(2 * CELLU)) return;
+    if (fx_dist_lt(x - doomo_player.x, y - doomo_player.y, INT2FIX(2 * CELLU))) return;
     if (!cw_fits(x, y, 18, cw_floor(lv_run.portal_x[s], lv_run.portal_y[s]), 56, 24, &fl, &ce)) return;
     a = actor_spawn_demon(b->add, x, y, 1, 0, 0);
     if (a >= 0) doomo_actors[a].target = TARGET_PLAYER;

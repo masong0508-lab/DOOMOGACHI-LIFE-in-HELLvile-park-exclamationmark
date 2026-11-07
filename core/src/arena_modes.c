@@ -120,7 +120,7 @@ static int spawn_demon(int type)
 {
     int s = rng_range(&doomo_rng, am.nspawn), fl, ce, a;
     fix16 x = INT2FIX(am.spawn_x[s] * CELLU + CELLU / 2), y = INT2FIX(am.spawn_y[s] * CELLU + CELLU / 2);
-    if (fx_dist(x - doomo_player.x, y - doomo_player.y) < INT2FIX(2 * CELLU)) return -1;
+    if (fx_dist_lt(x - doomo_player.x, y - doomo_player.y, INT2FIX(2 * CELLU))) return -1;
     if (!cw_fits(x, y, 24, cw_floor(am.spawn_x[s], am.spawn_y[s]), 60, 24, &fl, &ce)) return -1;
     a = actor_spawn_demon(type, x, y, 1, 0, 0);
     if (a >= 0) {

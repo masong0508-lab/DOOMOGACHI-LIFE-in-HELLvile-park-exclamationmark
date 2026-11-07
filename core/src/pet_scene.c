@@ -93,11 +93,17 @@ static void lcd_dot(int x, int y, int v) { lcd_rect(x, y, 1, 1, v); }
 static void lcd_sprite(int x, int y, const uint8_t *pix, int flip, int ghost_only)
 {
     int i, j;
-    for (j = 0; j < PET_SPR; j++)
-        for (i = 0; i < PET_SPR; i++) {
-            int v = pix[j * PET_SPR + (flip ? PET_SPR - 1 - i : i)];
-            if (v == 1 || v == 2) lcd_dot(x + i + 1, y + j + 1, 4);
+    /* the shadow: one lcd_rect per run of lit pixels in a row (a plat_rect costs the same whatever its size on the
+     * GBA, and this was one per pixel); same colour, same pixels, same clipping */
+    for (j = 0; j < PET_SPR; j++) {
+        int run = -1;
+        for (i = 0; i <= PET_SPR; i++) {
+            int v = i < PET_SPR ? pix[j * PET_SPR + (flip ? PET_SPR - 1 - i : i)] : 0;
+            int lit = v == 1 || v == 2;
+            if (lit && run < 0) run = i;
+            else if (!lit && run >= 0) { lcd_rect(x + run + 1, y + j + 1, i - run, 1, 4); run = -1; }
         }
+    }
     if (ghost_only) return;
     for (j = 0; j < PET_SPR; j++) {
         int run = -1, rv = 0;
@@ -418,15 +424,44 @@ static void shell_colours(uint8_t *hi, uint8_t *md, uint8_t *lo, uint8_t *rim)
 }
 
 /* an egg: the top half narrower and a little taller than the bottom */
+/* the half widths of one egg half (width w, height r) never change between frames: cached per (w, r), so the square
+ * root runs once a row ever, not once a row a frame (fx_isqrt was 14% of this scene). Same numbers as before. */
+#define EGG_HW_SLOTS 8
+#define EGG_HW_MAXR  160
+static struct { int w, r; uint8_t hw[EGG_HW_MAXR + 1]; } egg_hw[EGG_HW_SLOTS];
+static int egg_hw_next;
+
+static const uint8_t *egg_half_widths(int w, int r)
+{
+    int i, dy;
+    if (r <= 0 || r > EGG_HW_MAXR || w < 0 || w > 255) return NULL;
+    for (i = 0; i < EGG_HW_SLOTS; i++) if (egg_hw[i].r == r && egg_hw[i].w == w) return egg_hw[i].hw;
+    i = egg_hw_next;
+    egg_hw_next = (egg_hw_next + 1) % EGG_HW_SLOTS;
+    egg_hw[i].w = w;
+    egg_hw[i].r = r;
+    for (dy = 0; dy <= r; dy++) {
+        uint32_t k = (uint32_t)(r * r - dy * dy) * 256u / (uint32_t)(r * r);
+        uint32_t hw = (uint32_t)w * fx_isqrt(k * 256u) / 256u;
+        egg_hw[i].hw[dy] = (uint8_t)(hw > 255 ? 255 : hw);
+    }
+    return egg_hw[i].hw;
+}
+
 static void egg_fill(int cx, int cy, int rx, int ry, int rxt, int ryt, uint8_t c)
 {
     int y;
+    const uint8_t *tt = egg_half_widths(rxt, ryt), *tb = egg_half_widths(rx, ry);
     for (y = cy - ryt; y <= cy + ry; y++) {
         int top = y < cy, dy = top ? cy - y : y - cy, r = top ? ryt : ry, w = top ? rxt : rx, hw;
+        const uint8_t *tab = top ? tt : tb;
         uint32_t k;
         if (y < 0 || y >= plat_screen_h() || dy > r) continue;
-        k = (uint32_t)(r * r - dy * dy) * 256u / (uint32_t)(r * r);
-        hw = (int)((uint32_t)w * fx_isqrt(k * 256u) / 256u);
+        if (tab) hw = tab[dy];
+        else {
+            k = (uint32_t)(r * r - dy * dy) * 256u / (uint32_t)(r * r);
+            hw = (int)((uint32_t)w * fx_isqrt(k * 256u) / 256u);
+        }
         plat_rect(cx - hw, y, hw * 2 + 1, 1, c);
     }
 }

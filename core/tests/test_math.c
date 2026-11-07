@@ -123,3 +123,49 @@ TEST(fixmath_isqrt_dist_recip)
     CHECK_EQ(fx_recip(0), 0x7FFFFFFF);
     CHECK_EQ(fx_recip(1), 0x7FFFFFFF);
 }
+
+/* the plain bit-by-bit 64-bit root fx_dist used before the split root (the reference the fast one must equal) */
+static fix16 ref_dist(fix16 dx, fix16 dy)
+{
+    int64_t x = dx, y = dy;
+    uint64_t v = (uint64_t)(x * x) + (uint64_t)(y * y), res = 0, bit = (uint64_t)1 << 62;
+    while (bit > v) bit >>= 2;
+    while (bit) {
+        if (v >= res + bit) { v -= res + bit; res = (res >> 1) + bit; } else res >>= 1;
+        bit >>= 2;
+    }
+    if (res > 0x7FFFFFFFu) res = 0x7FFFFFFFu;
+    return (fix16)res;
+}
+
+TEST(fixmath_dist_split_root_is_exact)
+{
+    uint64_t st = 0x9E3779B97F4A7C15ull;
+    int i, k;
+    for (i = 0; i < 400000; i++) {
+        fix16 dx, dy, r;
+        st = st * 6364136223846793005ull + 1442695040888963407ull;
+        k = (int)(st >> 60);                                   /* magnitude class 0..15: tiny .. +-2^31 */
+        dx = (fix16)((int32_t)(st >> 8) >> (k * 2 > 31 ? 31 : k * 2));
+        st = st * 6364136223846793005ull + 1442695040888963407ull;
+        dy = (fix16)((int32_t)(st >> 8) >> (((st >> 60) * 2) > 31 ? 31 : (int)((st >> 60) * 2)));
+        if (i < 4000) { dx = (fix16)(i * 1000003u); dy = (fix16)(i * 7919u); }
+        if (fx_dist(dx, dy) != ref_dist(dx, dy)) { CHECK_MSG(0, "fx_dist(%d,%d) = %d, reference %d", (int)dx, (int)dy, (int)fx_dist(dx, dy), (int)ref_dist(dx, dy)); break; }
+        /* compare helpers equal the root compare, on radii around the true distance and some far ones */
+        {
+            fix16 d = ref_dist(dx, dy);
+            fix16 rs[7];
+            int j;
+            st = st * 6364136223846793005ull + 1442695040888963407ull;
+            rs[0] = d; rs[1] = d - 1; rs[2] = d + 1; rs[3] = 0; rs[4] = -5; rs[5] = (fix16)(st >> 33); rs[6] = 0x7FFFFFFF;
+            for (j = 0; j < 7; j++) {
+                r = rs[j];
+                if (fx_dist_lt(dx, dy, r) != (fx_dist(dx, dy) < r)) { CHECK_MSG(0, "lt(%d,%d,%d)", (int)dx, (int)dy, (int)r); break; }
+                if (fx_dist_gt(dx, dy, r) != (fx_dist(dx, dy) > r)) { CHECK_MSG(0, "gt(%d,%d,%d)", (int)dx, (int)dy, (int)r); break; }
+            }
+        }
+    }
+    CHECK_EQ(fx_dist(0, 0), 0);
+    CHECK_EQ(fx_dist(INT2FIX(1), 0), INT2FIX(1));
+    CHECK_EQ(fx_dist(INT2FIX(30000), INT2FIX(30000)), ref_dist(INT2FIX(30000), INT2FIX(30000)));
+}

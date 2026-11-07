@@ -71,20 +71,47 @@ uint32_t fx_isqrt(uint32_t v)
     return res;
 }
 
+/* floor(sqrt(v)), exactly. (perf) floor(sqrt(v >> 2m)) == floor(sqrt(v) / 2^m), so the top half of the root comes from
+ * the 32-bit root of the top 32 bits of v; only the last m bits (m <= 16) are then found one bit pair at a time
+ * (instead of 32 bit pairs in 64-bit arithmetic, which is slow on the GBA's 32-bit CPU). tests/test_fixmath checks it
+ * against the plain bit-by-bit root. */
 static uint32_t isqrt64(uint64_t v)
 {
-    uint64_t res = 0, bit = (uint64_t)1 << 62;
-    while (bit > v) bit >>= 2;
-    while (bit) {
-        if (v >= res + bit) {
-            v -= res + bit;
-            res = (res >> 1) + bit;
-        } else {
-            res >>= 1;
-        }
-        bit >>= 2;
+    uint32_t hi = (uint32_t)(v >> 32), q;
+    uint64_t rem;
+    int sh = 0, n = 0, m;
+    if (!hi) return fx_isqrt((uint32_t)v);
+    while ((hi >> n) != 0 && n < 32) n++;      /* bit length of v is 32 + n */
+    sh = n & 1 ? n + 1 : n;                    /* even shift: v >> sh fits 32 bits (32 + n - sh <= 32) */
+    m = sh >> 1;
+    q = fx_isqrt((uint32_t)(v >> sh));
+    rem = (v >> sh) - (uint64_t)q * q;         /* 0 <= rem <= 2q */
+    while (m--) {
+        sh -= 2;
+        rem = (rem << 2) | ((v >> sh) & 3u);
+        if (rem >= ((uint64_t)q << 2) + 1u) { rem -= ((uint64_t)q << 2) + 1u; q = (q << 1) | 1u; }
+        else q <<= 1;
     }
-    return (uint32_t)res;
+    return q;
+}
+
+/* fx_dist(dx, dy) < r / > r without the root (exact: floor(sqrt(s)) < r <=> s < r*r; > r <=> s >= (r+1)^2) */
+int fx_dist_lt(fix16 dx, fix16 dy, fix16 r)
+{
+    uint64_t s;
+    if (r <= 0) return 0;
+    s = (uint64_t)((int64_t)dx * dx) + (uint64_t)((int64_t)dy * dy);
+    return s < (uint64_t)(int64_t)r * (uint64_t)(int64_t)r;
+}
+
+int fx_dist_gt(fix16 dx, fix16 dy, fix16 r)
+{
+    uint64_t s, t;
+    if (r < 0) return 1;
+    if (r >= 0x7FFFFFFF) return 0;
+    s = (uint64_t)((int64_t)dx * dx) + (uint64_t)((int64_t)dy * dy);
+    t = (uint64_t)(int64_t)(r + 1) * (uint64_t)(int64_t)(r + 1);
+    return s >= t;
 }
 
 fix16 fx_dist(fix16 dx, fix16 dy)

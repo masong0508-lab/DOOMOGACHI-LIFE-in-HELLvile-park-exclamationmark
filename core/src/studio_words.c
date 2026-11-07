@@ -178,10 +178,9 @@ void tab_lyrics_update(void)
 
 /* the line's text with its syllables in alternating colours; returns the
  * x after it. maxch clips long lines. */
-static int draw_syllables(int x, int y, const char *t, uint8_t c0, uint8_t c1, int maxch, int hl)
+static int draw_syllables(int x, int y, const char *t, const uint8_t *st, int n, uint8_t c0, uint8_t c1, int maxch, int hl)
 {
-    uint8_t st[SONG_LYRIC_LEN];
-    int n = song_syllables(t, st, SONG_LYRIC_LEN), i, len = (int)strlen(t), k = 0;
+    int i, len = (int)strlen(t), k = 0;
     /* MS-P3: with the plain font style in English every glyph is one plat_text at its own x, so a run of
      * glyphs of one colour is one call at the run's x: same pixels (as ui_text_clip does), a quarter of
      * the calls. Other styles / languages keep the one-call-per-glyph path (shadow order, translation). */
@@ -218,14 +217,26 @@ void tab_lyrics_draw(StRect r)
     int pl = song_playing() ? song_pos_line() : -1;
     char buf[40];
     st_panel(r.x, r.y, r.w, 8 * rowh + 8, WIN_CREAM);
+    int onc[SONG_PATTERNS] = { -1, -1, -1, -1 };      /* song_lead_onsets once a pattern a frame, not once a line */
+    uint8_t sel_st[SONG_LYRIC_LEN];                   /* the selected line's syllables, for the detail strip */
+    int sel_n = 0;
     for (i = 0; i < SONG_LYRIC_LINES; i++) {
-        int y = top + i * rowh, sel = i == studio.lsel, on, sy, sung = line_fit(s, i, &on, &sy);
+        int y = top + i * rowh, sel = i == studio.lsel, on = -1, sy, sung;
         int pos = studio_line_pos(s, i);
+        uint8_t sts[SONG_LYRIC_LEN];
+        sy = song_syllables(s->lyrics[i], sts, SONG_LYRIC_LEN);   /* once a line a frame (it was 2-3 lookups) */
+        sung = pos >= 0;
+        if (sung) {
+            int pt = s->order[pos] & 3;
+            if (onc[pt] < 0) onc[pt] = song_lead_onsets(s, pt);
+            on = onc[pt];
+        }
+        if (sel) { memcpy(sel_st, sts, sizeof(sel_st)); sel_n = sy; }
         if (sel) {
             ui_round_rect(r.x + 3, y - 1, r.w - 6, rowh, 3, st->fill_hi);
             ui_cursor(r.x + 3, y + (rowh - 8) / 2);
         }
-        doomo_snprintf(buf, sizeof(buf), "%d", i + 1);
+        buf[0] = (char)('1' + i); buf[1] = 0;                      /* lines 1..8: no snprintf */
         ui_text(r.x + 13, y + (rowh - 9) / 2, buf, st->text_dim);
         if (pos >= 0) {
             char pc[2] = { (char)('A' + (s->order[pos] & 3)), 0 };
@@ -233,7 +244,7 @@ void tab_lyrics_draw(StRect r)
             ui_text(r.x + 23, y + (rowh - 9) / 2, pc, PAL_WHITE);
         }
         if (s->lyrics[i][0]) {
-            draw_syllables(r.x + 35, y + (rowh - 9) / 2, s->lyrics[i], st->text,
+            draw_syllables(r.x + 35, y + (rowh - 9) / 2, s->lyrics[i], sts, sy, st->text,
                            PAL_PAINT(PAINT_GRAPE, 0), maxch, pl == i ? song_pos_syllable() : -1);
         } else {
             ui_text(r.x + 35, y + (rowh - 9) / 2, pos >= 0 ? "~ instrumental ~" : "~ not in the song ~",
@@ -256,13 +267,13 @@ void tab_lyrics_draw(StRect r)
     if (dh >= 30) {
         int dy = r.y + 8 * rowh + 10, line = studio.lsel, pos = studio_line_pos(s, line);
         int gx = r.x + 6, gw = r.w - 12, k, nsy;
-        uint8_t stt[SONG_LYRIC_LEN];
+        const uint8_t *stt = sel_st;
         st_panel(r.x, dy, r.w, dh, WIN_MINT);
         studio_part_label(s, line, buf, sizeof(buf));
         ui_text(gx + 2, dy + 4, STR_ICON_ARROW_L, ui_style_text(WIN_MINT));
         ui_text(gx + 10, dy + 4, buf, ui_style_text(WIN_MINT));
         ui_text(gx + 12 + ui_text_width(buf), dy + 4, STR_ICON_ARROW_R, ui_style_text(WIN_MINT));
-        nsy = song_syllables(s->lyrics[line], stt, SONG_LYRIC_LEN);
+        nsy = sel_n;
         if (pos >= 0 && s->lyrics[line][0]) {
             const uint8_t *lead = s->notes[s->order[pos] & 3][0];
             int sx = gw / SONG_STEPS, ky = dy + 17, syl = 0, lastx = -100;

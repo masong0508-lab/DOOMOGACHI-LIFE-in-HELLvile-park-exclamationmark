@@ -1211,7 +1211,7 @@ static int player_fits(fix16 x, fix16 y, int z, int h, int *fl, int *ce)
         ddx = o->x - x; ddy = o->y - y;
         if (ddx > rr || ddx < -rr || ddy > rr || ddy < -rr) continue;
         if (FIX2INT(o->z) >= z + h || FIX2INT(o->z) + o->height <= z + DOOMO_STEP_UP) continue;
-        if (fx_dist(ddx, ddy) >= rr) continue;
+        if (!fx_dist_lt(ddx, ddy, rr)) continue;
         /* allow moving away from something we already overlap */
         if (fx_dist(o->x - doomo_player.x, o->y - doomo_player.y) < fx_dist(ddx, ddy)) continue;
         return 0;
@@ -1504,7 +1504,7 @@ static void player_tick(const CombatCtl *c)
     if (combat_px.vy > -FIX_ONE / 16 && combat_px.vy < FIX_ONE / 16) combat_px.vy = 0;
     /* move: sub-steps so fast rolls never tunnel through thin walls */
     {
-        int steps = (fx_dist(combat_px.vx, combat_px.vy) > INT2FIX(10)) ? 2 : 1;
+        int steps = fx_dist_gt(combat_px.vx, combat_px.vy, INT2FIX(10)) ? 2 : 1;
         for (i = 0; i < steps; i++) {
             fix16 sx = combat_px.vx / steps, sy = combat_px.vy / steps;
             if (!try_move(sx, sy)) {
@@ -1852,7 +1852,7 @@ void combat_build_view(DoomoView3D *v)
         else if (doomo_player.roll_timer) anim = 5;
         else if (doomo_player.hurt_flash > 14) anim = 6;
         else if (combat_px.flash || combat_px.kick > 64) anim = 4;
-        else if (fx_dist(combat_px.vx, combat_px.vy) > INT2FIX(1)) anim = (combat_px.anim / 48) & 3;
+        else if (fx_dist_gt(combat_px.vx, combat_px.vy, INT2FIX(1))) anim = (combat_px.anim / 48) & 3;
         else anim = 0;
         bbs[n].x = doomo_player.x;
         bbs[n].y = doomo_player.y;

@@ -287,7 +287,7 @@ static void bot_fill(CombatCtl *c)
         if (combat_ws.charge) { c->fire = (uint8_t)((combat_st.ticks % (combat_ws.charge + 4)) < combat_ws.charge); }
         /* always keep moving sideways while fighting (dodges fireballs);
          * flip direction now and then or when blocked */
-        if ((combat_st.ticks % 28) == 0 || fx_dist(doomo_player.x - last_x, doomo_player.y - last_y) < FIX_ONE / 2)
+        if ((combat_st.ticks % 28) == 0 || fx_dist_lt(doomo_player.x - last_x, doomo_player.y - last_y, FIX_ONE / 2))
             if ((combat_st.ticks & 3) == 0) strafe_dir = -strafe_dir;
         if (!safe_side(strafe_dir)) strafe_dir = -strafe_dir;
         if (dd < INT2FIX(5 * CELLU)) {
@@ -310,7 +310,7 @@ static void bot_fill(CombatCtl *c)
         if (map_lift_range(&doomo_map, cx, cy, &lo, &hi) && nf - FIX2INT(doomo_player.z) > DOOMO_STEP_UP) {
             fix16 mx = INT2FIX(cx * CELLU + CELLU / 2), my = INT2FIX(cy * CELLU + CELLU / 2);
             wait_lift = 1;
-            if (fx_dist(mx - doomo_player.x, my - doomo_player.y) > INT2FIX(10)) {
+            if (fx_dist_gt(mx - doomo_player.x, my - doomo_player.y, INT2FIX(10))) {
                 turn_to(fx_atan2(my - doomo_player.y, mx - doomo_player.x));
                 c->move = 1;
             }
@@ -334,7 +334,7 @@ static void bot_fill(CombatCtl *c)
         c->strafe = (int8_t)strafe_dir;
         if (unstick_t == 10) c->jump = 1;
     } else if (!wait_lift) {
-        if (fx_dist(doomo_player.x - last_x, doomo_player.y - last_y) < INT2FIX(2)) {
+        if (fx_dist_lt(doomo_player.x - last_x, doomo_player.y - last_y, INT2FIX(2))) {
             if (++stuck_t > 40) { stuck_t = 0; unstick_t = 16; strafe_dir = -strafe_dir; replan_t = 0; }
         } else {
             stuck_t = 0;

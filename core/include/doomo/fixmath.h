@@ -14,6 +14,9 @@ uint32_t fx_isqrt(uint32_t v);
 /* Approximate distance |(dx,dy)| for 16.16 inputs (result 16.16).
  * Must not overflow for |dx|,|dy| < 32768.0 */
 fix16 fx_dist(fix16 dx, fix16 dy);
+/* The same comparisons as  fx_dist(dx,dy) < r  and  fx_dist(dx,dy) > r  (bit-exact), without the square root. */
+int fx_dist_lt(fix16 dx, fix16 dy, fix16 r);
+int fx_dist_gt(fix16 dx, fix16 dy, fix16 r);
 /* 1/x reciprocal table helper for renderers: returns 65536*65536/x
  * clamped, for x in 16.16 > 0. */
 fix16 fx_recip(fix16 x);

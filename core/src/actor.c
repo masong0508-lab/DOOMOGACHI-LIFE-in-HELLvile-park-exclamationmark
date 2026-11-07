@@ -488,7 +488,7 @@ static int demon_try_move(int idx, fix16 dx, fix16 dy)
         if (ddx > rr || ddx < -rr || ddy > rr || ddy < -rr) continue;
         if (FIX2INT(o->z) >= z + a->height || FIX2INT(o->z) + o->height <= z) continue;
         /* moving away from an overlap is fine */
-        if (fx_dist(ddx, ddy) < rr && fx_dist(o->x - a->x, o->y - a->y) >= fx_dist(ddx, ddy))
+        if (fx_dist_lt(ddx, ddy, rr) && fx_dist(o->x - a->x, o->y - a->y) >= fx_dist(ddx, ddy))
             return 0;
     }
     /* the player */
@@ -497,7 +497,7 @@ static int demon_try_move(int idx, fix16 dx, fix16 dy)
         fix16 rr = INT2FIX(PLAYER_RADIUS + a->radius - 2);
         int pz = FIX2INT(doomo_player.z);
         if (doomo_player.hp > 0 && ddx < rr && ddx > -rr && ddy < rr && ddy > -rr &&
-            fx_dist(ddx, ddy) < rr && !(pz >= z + a->height || pz + DOOMO_PLAYER_HEIGHT <= z))
+            fx_dist_lt(ddx, ddy, rr) && !(pz >= z + a->height || pz + DOOMO_PLAYER_HEIGHT <= z))
             return 0;
     }
     a->x = nx;
@@ -568,7 +568,7 @@ static void demon_melee(int idx)
     fix16 tx, ty;
     int tz;
     target_pos(a, &tx, &ty, &tz);
-    if (fx_dist(tx - a->x, ty - a->y) > INT2FIX(di->melee_range + a->radius)) return;
+    if (fx_dist_gt(tx - a->x, ty - a->y, INT2FIX(di->melee_range + a->radius))) return;
     if (a->target == TARGET_PLAYER) {
         int ang = fx_atan2(doomo_player.y - a->y, doomo_player.x - a->x);
         combat_hurt_player(di->melee_dmg, (ang + 2048) & DOOMO_ANG_MASK, di->mass / 16 + 4, idx);
@@ -1007,7 +1007,7 @@ static void projectile_explode(int idx, int direct)
             for (k = 0; k < ACTOR_MAX; k++) {
                 DoomoActor *o = &doomo_actors[k];
                 if (!(o->flags & AF_SHOOTABLE) || !IS_DEMON(o->type) || o->hp <= 0) continue;
-                if (fx_dist(o->x - a->x, o->y - a->y) > INT2FIX(6 * CELLU)) continue;
+                if (fx_dist_gt(o->x - a->x, o->y - a->y, INT2FIX(6 * CELLU))) continue;
                 if (!cw_los(a->x, a->y, z, o->x, o->y, FIX2INT(o->z) + o->height / 2)) continue;
                 actor_damage(k, a->hp / 3, src, a->angle, 10, a->status_fx, 0);
                 actor_fx(SPR_PLASMA, o->x, o->y, o->z + INT2FIX(o->height / 2), 3);
@@ -1038,7 +1038,7 @@ static int projectile_hits_actor(int idx, fix16 nx, fix16 ny, int nz)
         rr = INT2FIX(o->radius + p->radius);
         ddx = o->x - nx; ddy = o->y - ny;
         if (ddx > rr || ddx < -rr || ddy > rr || ddy < -rr) continue;
-        if (fx_dist(ddx, ddy) > rr) continue;
+        if (fx_dist_gt(ddx, ddy, rr)) continue;
         oz = FIX2INT(o->z);
         if (nz < oz - p->radius || nz > oz + o->height + p->radius) continue;
         return k;
@@ -1138,7 +1138,7 @@ static void projectile_tick(int idx)
         fix16 ddx = doomo_player.x - nx, ddy = doomo_player.y - ny;
         fix16 rr = INT2FIX(PLAYER_RADIUS + a->radius);
         int pz = FIX2INT(doomo_player.z), z = FIX2INT(nz);
-        if (ddx < rr && ddx > -rr && ddy < rr && ddy > -rr && fx_dist(ddx, ddy) < rr &&
+        if (ddx < rr && ddx > -rr && ddy < rr && ddy > -rr && fx_dist_lt(ddx, ddy, rr) &&
             z >= pz - a->radius && z <= pz + DOOMO_PLAYER_HEIGHT + a->radius) {
             int from = fx_atan2(-a->vy, -a->vx);
             combat_hurt_player(a->hp, from, a->aux == PK_SLIME ? 6 : 4, a->owner);
