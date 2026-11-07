@@ -296,3 +296,13 @@ The PS1 docs have no invaded row; `perf_*.txt` has none either. If the PS1
 invaded map is also slow, it needs its own V1 on the PS1 harness; its renderer
 (`plat_overworld` in `ps1/src`) shares nothing with the steps above except the
 core's `build_billboards` (V2, V3).
+
+## V10 (2026-11-07): frame-time governor, NOT exact (owner asked for 30 fps)
+
+`gov_pick` in `gba/src/overworld.c`: on a software-path overworld frame with `TINT_RED` (the invaded map only), when the last
+drawn frame's work (`gba_work_last`, set in `main.c`) exceeds `GBA_GOV_MS` (27 ms) the sprites farthest from the screen centre are not
+drawn, until the work fits; with 3 ms to spare they come back. Never dropped: off-screen, fullbright (markers, sparkles) and the nearest
+ring (r < 30 px). Measured on libmgba, `make -C gba test-speed`: invaded 17.5 -> 25.3 drawn fps, work avg 49.2 -> 34.7 ms (max 55.4:
+the body-render spikes), logic 30.1. Every other scene's `vhash-seq` is unchanged; invaded's is now **a331883b** (the reference for later steps).
+30 fps is NOT reached: with the far sprites gone the floor is the ground (~10 ms), logic and the near ring, about 34 ms. Next: ground cost
+in the far rows, or logic every second tick (V6 extended), then re-measure. `speed_tour.txt` invaded floor raised 12.5 -> 22.

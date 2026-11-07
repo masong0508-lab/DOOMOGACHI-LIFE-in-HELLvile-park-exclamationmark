@@ -432,6 +432,73 @@ static void draw_sprite(const DoomoBillboard *b)
     ow_sprite(img, x0, y0, s, b->flags, doomo_colormap[lvl]);
 }
 
+/* ---- V10: the frame-time governor ------------------------------------------------------------
+ * A drawn frame whose work (the last frame's gba_work_last) exceeds GBA_GOV_MS loses the sprites farthest from the
+ * screen centre until frames fit; with room to spare they come back. Only acts on an over-budget software-path
+ * overworld frame (in practice the invaded map). Never dropped: off-screen billboards (cost nothing), fullbright
+ * ones (quest markers, sparkles), and the nearest ring (class 0: the player and whoever is being talked to). */
+#ifndef GBA_GOV_MS
+#define GBA_GOV_MS 27
+#endif
+#define GOV_HI   ((uint32_t)GBA_GOV_MS * 16780u)
+#define GOV_LO   ((uint32_t)(GBA_GOV_MS - 3) * 16780u)
+#define GOV_FREE 0x7FFFFFFFu
+#define GOV_MIN  1500u
+#define GOV_NCLS 10
+static const uint16_t gov_r2[GOV_NCLS - 1] = { 900, 2025, 3600, 5625, 8100, 11025, 14400, 19600, 28900 };
+static uint32_t gov_budget = GOV_FREE;
+static uint32_t gov_kept;
+static uint32_t gov_seen;
+
+static void gov_pick(const DoomoOverworldView *v, int n, uint32_t drop[4])
+{
+    uint32_t area[GOV_NCLS], total = 0, cum = 0, w = gba_work_last, budget;
+    uint8_t cls[128];
+    int i, c, keep = -1, cx = owf.ox + owf.ow / 2, cy = owf.oy + owf.oh / 2;
+    drop[0] = drop[1] = drop[2] = drop[3] = 0;
+    if (!(gov_seen && gba_frames + 1 - gov_seen <= 2)) { gov_budget = GOV_FREE; gov_kept = 0; }
+    gov_seen = gba_frames + 1;
+    if (!owf.tint_level || v->tint != TINT_RED) { gov_budget = GOV_FREE; return; }          /* only the red-hazed invaded town (TINT_RED) */
+    if (gov_budget == GOV_FREE && w <= GOV_HI) return;
+    for (c = 0; c < GOV_NCLS; c++) area[c] = 0;
+    for (i = 0; i < n; i++) {
+        const DoomoBillboard *b = &v->sprites[i];
+        const DoomoImage *img = b->img;
+        int s, bw, bh, x0, y0, dx, dy, d2;
+        cls[i] = 0xFF;
+        if (!img || !img->pix || !img->w || !img->h || (b->flags & BB_FULLBRIGHT)) continue;
+        s = DOOMO_CLAMP((b->scale ? b->scale : 256) / 256, 1, 4);
+        bw = img->w * s;
+        bh = img->h * s;
+        x0 = owf.ox + (int)((b->x >> 16) / UNITS_PER_PX) - owf.scrollx - bw / 2;
+        y0 = owf.oy + (int)((b->y >> 16) / UNITS_PER_PX) - owf.scrolly - bh - (int)((b->z >> 16) / UNITS_PER_PX);
+        if (x0 >= owf.ox + owf.ow || x0 + bw <= owf.ox || y0 >= owf.oy + owf.oh || y0 + bh <= owf.oy) continue;
+        dx = x0 + bw / 2 - cx;
+        dy = y0 + bh / 2 - cy;
+        d2 = dx * dx + dy * dy;
+        for (c = 0; c < GOV_NCLS - 1 && d2 > (int)gov_r2[c]; c++) {}
+        cls[i] = (uint8_t)c;
+        area[c] += (uint32_t)(bw * bh);
+        total += (uint32_t)(bw * bh);
+    }
+    if (gov_budget == GOV_FREE)      budget = total - total / 8;
+    else if (w > GOV_HI)             budget = gov_kept - gov_kept / 8;
+    else if (w < GOV_LO)             budget = gov_kept + gov_kept / 16 + 256;
+    else                             budget = gov_budget;
+    if (budget < GOV_MIN) budget = GOV_MIN;
+    if (budget >= total) { gov_budget = GOV_FREE; gov_kept = total; return; }
+    for (c = 0; c < GOV_NCLS; c++) {
+        if (cum + area[c] > budget && c > 0) break;
+        cum += area[c];
+        keep = c;
+    }
+    if (keep < 0) keep = 0;
+    gov_budget = budget;
+    gov_kept = cum;
+    for (i = 0; i < n; i++)
+        if (cls[i] != 0xFF && cls[i] > keep) drop[i >> 5] |= 1u << (i & 31);
+}
+
 int16_t ow_order[128];          /* billboards by feet y (ow_tiles.c too) */
 #define order ow_order
 
@@ -574,13 +641,22 @@ void plat_overworld(const DoomoOverworldView *v)
 
     /* sort sprites by feet y */
     n = v->sprites ? DOOMO_MIN(v->sprite_count, 128) : 0;
-    for (i = 0; i < n; i++) {
-        int j = i;
-        while (j > 0 && v->sprites[order[j - 1]].y > v->sprites[i].y) {
-            order[j] = order[j - 1];
-            j--;
+    {
+        uint32_t drop[4];
+        int m = 0;
+        gov_pick(v, n, drop);                       /* V10: sprites the frame cannot afford */
+        for (i = 0; i < n; i++) {
+            int j;
+            if ((drop[i >> 5] >> (i & 31)) & 1u) continue;
+            j = m;
+            while (j > 0 && v->sprites[order[j - 1]].y > v->sprites[i].y) {
+                order[j] = order[j - 1];
+                j--;
+            }
+            order[j] = (int16_t)i;
+            m++;
         }
-        order[j] = (int16_t)i;
+        n = m;
     }
 
     /* raised things row by row, sprites interleaved by their feet */

@@ -20,6 +20,7 @@
 
 volatile uint32_t gba_vblanks;
 uint32_t gba_frames;
+uint32_t gba_work_last;
 uint32_t gba_keys;
 int gba_nodraw;
 
@@ -218,6 +219,7 @@ void plat_end_frame(void)
     if (gba_nodraw == GBA_NODRAW_CANVAS && cv.overflow) cv_drop();   /* G5 */
     if (gba_nodraw != 1) {
         uint32_t w = gba_cycles() - work_c0;
+        gba_work_last = w;
         gba_mailbox.work_sum += w;
         gba_mailbox.work_n++;
         if (w > gba_mailbox.work_max) gba_mailbox.work_max = w;
