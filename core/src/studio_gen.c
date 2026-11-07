@@ -819,20 +819,37 @@ int studio_part_of(const DoomoSong *s, int line, int *who)
     return part;
 }
 
+/* The part a line's mask stands for. Same answers as asking part_mask() for every candidate in turn (choir, each
+ * solo, each duet, each section, each half; the first match wins, test_studio.c keeps a verbatim copy of that
+ * version and compares), but the candidates are built from ONE pass over the singers instead of one
+ * valid_list() + voice lookup per candidate: the old walk was about 100 part_mask() calls (~9 ms on the GBA)
+ * and landed in the one frame where a new line's label was first drawn (the 50.8 ms tick of the sung PERFORM
+ * window, show tick 288, docs/STUDIO_30FPS_PLAN.md section 10). The section masks (a voice lookup per singer)
+ * are only built when the line is not a choir, solo or duet. */
 static int studio_part_of_raw(const DoomoSong *s, int line, int *who)
 {
     uint8_t v[SONG_SINGERS];
-    uint32_t m = song_line_mask(s, line);
+    uint32_t m = song_line_mask(s, line), all = 0, half[2] = { 0, 0 }, sec[SECTION_COUNT];
     int n = valid_list(s, v), i, k;
     if (who) *who = 0;
     if (n <= 1 || !m) return PART_SOLO;
-    if (m == part_mask(s, PART_CHOIR, 0)) return PART_CHOIR;
-    for (k = 0; k < n; k++) if (m == part_mask(s, PART_SOLO, k)) { if (who) *who = k; return PART_SOLO; }
-    for (k = 0; k < n; k++) if (m == part_mask(s, PART_DUET, k)) { if (who) *who = k; return PART_DUET; }
+    for (i = 0; i < n; i++) {
+        all |= 1u << v[i];
+        half[i < (n + 1) / 2 ? 0 : 1] |= 1u << v[i];
+    }
+    if (m == all) return PART_CHOIR;
+    for (k = 0; k < n; k++) if (m == (1u << v[k])) { if (who) *who = k; return PART_SOLO; }
+    for (k = 0; k < n; k++)
+        if (m == ((1u << v[k]) | (1u << v[(k + 1) % n]))) { if (who) *who = k; return PART_DUET; }
+    for (k = 0; k < SECTION_COUNT; k++) sec[k] = 0;
+    for (i = 0; i < n; i++) {
+        int sc = song_singer_section(s, v[i]);
+        if (sc >= 0 && sc < SECTION_COUNT) sec[sc] |= 1u << v[i];
+    }
     for (k = 0; k < SECTION_COUNT; k++)
-        if (m == part_mask(s, PART_SECTION, k)) { if (who) *who = k; return PART_SECTION; }
-    for (k = 0; k < 2; k++) if (m == part_mask(s, PART_HALF, k)) { if (who) *who = k; return PART_HALF; }
-    (void)i;
+        if (m == sec[k]) { if (who) *who = k; return PART_SECTION; }
+    for (k = 0; k < 2; k++)
+        if (m == (half[k] ? half[k] : 1u << v[0])) { if (who) *who = k; return PART_HALF; }
     if (who) *who = -1;
     return PART_CHOIR;
 }

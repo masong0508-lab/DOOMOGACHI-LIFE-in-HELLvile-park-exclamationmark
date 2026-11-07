@@ -410,15 +410,28 @@ profile-studio: harness
 	exit $$rc
 # --- end profile-studio ---
 # --- profile-sung: the sung PERFORM window (gba/harness/scripts/studio_sung.txt, 330 ticks after the curtain) as a
-# per-tick work log, and the slowest ticks in it (tools/worklog_spikes.py): which tick is the 50.8 ms one ---
+# per-tick work log, and the slowest ticks in it (tools/worklog_spikes.py): which tick is the slowest one.
+# SUNG_SLOW_MS=45 also profiles that window once more with only the frames over 45 ms counted as "slow", so the
+# functions that cost extra in the spike frames are named (the 50.8 ms tick was part_mask, not a chibi).
+# SUNG_GATE=--gate makes it fail when a tick is over the 50.2 ms line (3 vblanks) ---
 SUNG_LOG ?= $(BUILD)/sung.log
+SUNG_SLOW_MS ?= 45
+SUNG_PROFILE_N ?= 95000000
+SUNG_GATE ?=
 profile-sung: harness
 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile rom ENGINE_TEST=0
 	$(PREFIX)nm -n $(BUILD)/doomogachi.elf > $(BUILD)/doomogachi.nm
-	@rc=0; \\
-	$(HARNESS) $(BUILD)/doomogachi.gba --script $(GBA)/harness/scripts/studio_sung.txt \\
-	    --nm $(BUILD)/doomogachi.nm --no-fps-gates --worklog --quiet > $(SUNG_LOG) 2>&1 || rc=1; \\
-	python3 $(GBA)/../tools/worklog_median.py $(SUNG_LOG) || rc=1; \\
-	python3 $(GBA)/../tools/worklog_spikes.py $(SUNG_LOG) 14 || rc=1; \\
+	@rc=0; \
+	$(HARNESS) $(BUILD)/doomogachi.gba --script $(GBA)/harness/scripts/studio_sung.txt \
+	    --nm $(BUILD)/doomogachi.nm --no-fps-gates --worklog --quiet > $(SUNG_LOG) 2>&1 || rc=1; \
+	$(PYTHON) $(ROOT)/tools/worklog_median.py $(SUNG_LOG) || rc=1; \
+	$(PYTHON) $(ROOT)/tools/worklog_spikes.py $(SUNG_LOG) 14 $(SUNG_GATE) || rc=1; \
+	sed -e '/^fps sung_all/d' -e '/^wait 330/d' -e 's/^fps end/profile $(SUNG_PROFILE_N)/' \
+	    $(GBA)/harness/scripts/studio_sung.txt > $(BUILD)/sung_profile.txt; \
+	HARNESS_SLOW_MS=$(SUNG_SLOW_MS) $(HARNESS) $(BUILD)/doomogachi.gba --script $(BUILD)/sung_profile.txt \
+	    --nm $(BUILD)/doomogachi.nm --no-fps-gates --worklog --quiet 2>&1 \
+	    | grep -E 'harness: (slow frame|slow frames|slow\+)' > $(BUILD)/sung_spikes.log || true; \
+	echo "frames over $(SUNG_SLOW_MS) ms, and what they spend extra time in (build/sung_spikes.log):"; \
+	cat $(BUILD)/sung_spikes.log; \
 	exit $$rc
 # --- end profile-sung ---

@@ -614,6 +614,105 @@ TEST(studio_choir_fills_and_parts)
     CHECK_EQ(studio_choir_fill(&s, FILL_CLEAR, -1, 0), 0);
 }
 
+/* The old studio_part_of_raw, verbatim: part_mask() asked for every candidate in turn (about 100 calls, each a
+ * valid_list() and, for sections, a voice lookup per singer; ~9 ms on the GBA, the 50.8 ms tick of the sung
+ * PERFORM window). The new one builds the candidates from one pass; every answer must be the same. */
+static int ref_valid_list(const DoomoSong *s, uint8_t *slots)
+{
+    int i, n = 0;
+    for (i = 0; i < SONG_SINGERS; i++) if (song_singer_id(s, i) >= 0) slots[n++] = (uint8_t)i;
+    return n;
+}
+
+static uint32_t ref_part_mask(const DoomoSong *s, int part, int who)
+{
+    uint8_t v[SONG_SINGERS];
+    int n = ref_valid_list(s, v), i;
+    uint32_t m = 0;
+    if (!n) return 0;
+    switch (part) {
+    case PART_SOLO: return 1u << v[((who % n) + n) % n];
+    case PART_DUET:
+        if (n < 2) return 1u << v[0];
+        who = ((who % n) + n) % n;
+        return (1u << v[who]) | (1u << v[(who + 1) % n]);
+    case PART_SECTION:
+        for (i = 0; i < n; i++) if (song_singer_section(s, v[i]) == who) m |= 1u << v[i];
+        return m;
+    case PART_HALF:
+        for (i = 0; i < n; i++) if ((i < (n + 1) / 2) == !who) m |= 1u << v[i];
+        return m ? m : 1u << v[0];
+    default:
+        for (i = 0; i < n; i++) m |= 1u << v[i];
+        return m;
+    }
+}
+
+static int ref_part_of(const DoomoSong *s, int line, int *who)
+{
+    uint8_t v[SONG_SINGERS];
+    uint32_t m = song_line_mask(s, line);
+    int n = ref_valid_list(s, v), k;
+    if (who) *who = 0;
+    if (n <= 1 || !m) return PART_SOLO;
+    if (m == ref_part_mask(s, PART_CHOIR, 0)) return PART_CHOIR;
+    for (k = 0; k < n; k++) if (m == ref_part_mask(s, PART_SOLO, k)) { if (who) *who = k; return PART_SOLO; }
+    for (k = 0; k < n; k++) if (m == ref_part_mask(s, PART_DUET, k)) { if (who) *who = k; return PART_DUET; }
+    for (k = 0; k < SECTION_COUNT; k++)
+        if (m == ref_part_mask(s, PART_SECTION, k)) { if (who) *who = k; return PART_SECTION; }
+    for (k = 0; k < 2; k++) if (m == ref_part_mask(s, PART_HALF, k)) { if (who) *who = k; return PART_HALF; }
+    if (who) *who = -1;
+    return PART_CHOIR;
+}
+
+TEST(studio_part_of_equals_the_candidate_walk)
+{
+    static DoomoSong s;
+    uint32_t r = 12345u;
+    int cfg, seen[PART_COUNT + 1] = { 0 }, line, i, k, checked = 0;
+    test_reset();
+    town_new(TOWN_FREEPLAY, 3, TOWN_POP_PREMADE);
+    for (cfg = 0; cfg < 300; cfg++) {
+        int keep = 1 + cfg % SONG_SINGERS;
+        song_clear(&s);
+        studio_choir_fill(&s, FILL_RANDOM, -1, (uint32_t)cfg + 1);
+        for (i = 0; i < SONG_SINGERS; i++) {                 /* thin the choir out: 1..25 singers, any slots */
+            r = r * 1664525u + 1013904223u;
+            if ((int)((r >> 8) % SONG_SINGERS) >= keep) s.singer[i] = SONG_NO_SINGER;
+            r = r * 1664525u + 1013904223u;
+            song_set_section(&s, i, (int)((r >> 8) % (SECTION_COUNT + 1)) - 1);   /* -1 = auto (the voice) */
+        }
+        for (line = 0; line < SONG_LYRIC_LINES; line++) {
+            uint32_t cand[3 * SONG_SINGERS + SECTION_COUNT + 4];
+            int nc = 0;
+            for (k = 0; k < SONG_SINGERS; k++) {                              /* every mask the walk can name */
+                cand[nc++] = ref_part_mask(&s, PART_SOLO, k);
+                cand[nc++] = ref_part_mask(&s, PART_DUET, k);
+            }
+            for (k = 0; k < SECTION_COUNT; k++) cand[nc++] = ref_part_mask(&s, PART_SECTION, k);
+            cand[nc++] = ref_part_mask(&s, PART_HALF, 0);
+            cand[nc++] = ref_part_mask(&s, PART_HALF, 1);
+            cand[nc++] = ref_part_mask(&s, PART_CHOIR, 0);
+            for (k = 0; k < nc + 8; k++) {                                    /* ... and arbitrary ones */
+                int who_a = -7, who_b = -9, pa, pb;
+                if (k < nc) s.line_singers[line] = cand[k];
+                else { r = r * 1664525u + 1013904223u; s.line_singers[line] = r >> (r & 7); }
+                studio_part_memo_reset();
+                pa = ref_part_of(&s, line, &who_a);
+                pb = studio_part_of(&s, line, &who_b);
+                CHECK_EQ(pb, pa);
+                CHECK_EQ(who_b, who_a);
+                seen[pa]++;
+                checked++;
+            }
+            if (line > 2) break;                                              /* 4 lines a config is plenty */
+        }
+    }
+    CHECK(checked > 20000);
+    for (i = 0; i < PART_COUNT; i++) CHECK(seen[i] > 20);   /* every part kind was really exercised */
+    studio_part_memo_reset();
+}
+
 TEST(studio_autofit_and_word_filter)
 {
     static DoomoSong s;

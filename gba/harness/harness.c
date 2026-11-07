@@ -443,8 +443,12 @@ static int sym_cmp_hits(const void *a, const void *b)
 
 /* --worklog also makes `profile` split its samples into the frames whose CPU work went over the
  * 33.3 ms of a 30 fps frame ("slow") and the rest, and print which functions cost MORE in the slow
- * ones: the spike frames are not in the plain top list, they are a few percent of it. */
-#define SLOW_MS 33.3
+ * ones: the spike frames are not in the plain top list, they are a few percent of it.
+ * env HARNESS_SLOW_MS=45 moves that line, so only the worst frames count as "slow" (make profile-sung does
+ * this: the 50.8 ms PERFORM tick was found that way). */
+#define SLOW_MS_DEFAULT 33.3
+static double slow_ms_cfg(void) { const char *e = getenv("HARNESS_SLOW_MS"); return e ? atof(e) : SLOW_MS_DEFAULT; }
+#define SLOW_MS slow_ms_cfg()
 static uint32_t *fr_hits;          /* cycles per symbol in the frame being sampled */
 static uint64_t *slow_h, *fast_h;  /* cycles per symbol summed over slow / normal frames */
 
