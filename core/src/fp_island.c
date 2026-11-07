@@ -29,14 +29,14 @@ typedef struct {
 } Loc;
 
 #define NOLOC 0xFF
-/* The island's population, counted once per frame: town_count() walks all 1000 residents (112 B apart), and the draw and the
+/* The island's population, counted once every 8 frames (was once a frame, before that three times): town_count() walks all 1000 residents (112 B apart), and the draw and the
  * update asked for it three times a frame. Nothing here depends on a count that is a frame old. */
 int fp_island_pop(void)
 {
     static uint32_t at = 0xFFFFFFFFu;
     static int pop;
     uint32_t f = doomo_frame_count();
-    if (f != at) { at = f; pop = town_count(-1); }
+    if (f - at >= 8u) { at = f; pop = town_count(-1); }   /* (perf) 8 frames old at worst: it only gates the nag arrow and the walker count */
     return pop;
 }
 
