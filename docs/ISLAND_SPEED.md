@@ -100,3 +100,26 @@ So the map costs ~60 ms and must fall to ~10 ms for 30 fps. Only a retained back
 - Mode 0 tile data overlaps both Mode 4 pages, so leaving tile mode (menus, fades) destroys the backdrop: a rebake on return.
 - G5's canvas (canvas.c) is overworld-specific (policy, backoff, billboard OBJs); the island path is better kept separate.
 - Verify with the harness: vhash-seq against the Mode 4 ROM, and fps; the island-only tour is wait/press A x3/wait 200/fps start.
+
+## I4 measurement: how much of the hub is animated (libmgba harness, 2026-11-07)
+
+Tiles (8x8, of 600) the animated content touches in one hub frame, counted with a throw-away marker in `fp_island_gfx.c`
+(not in the tree). The static "soft seams" checker rows are static and are not counted.
+
+| source | tiles / frame |
+|---|---:|
+| animated deco parts (decos phase) | ~107 |
+| building animation + the selected building | ~68 |
+| weather (default option, this seed has some) | ~50 |
+| foam + river shimmer | ~45 |
+| walkers | ~26 |
+| sea glints | ~3 |
+| **union of all** | **~245** (~175 without decos) |
+
+Consequences for the I4 design above:
+- ~245 of 600 tiles (41%) are rebuilt every frame. The 2 x 196 double-buffered pool does not fit; one pool of 392 does, so the
+  map flip needs another way to avoid tearing (map rewrite in the vblank with the pool tiles in place only if the copy fits).
+- Expect the map to cost ~25-30 ms, not ~10 ms: about 20 fps with weather and animated decos. 30 fps needs fewer dirty tiles.
+- Cheapest levers (a DECISIONS call, step I5): hold the deco sway still (-~107), no weather on clear days (-~50),
+  slower foam (-~45). With all three the count is ~125.
+- Seams were first counted as foam (~170 tiles). They are static checkers: put them in the backdrop.
