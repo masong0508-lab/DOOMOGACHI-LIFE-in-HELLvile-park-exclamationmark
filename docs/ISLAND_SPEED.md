@@ -1,0 +1,74 @@
+# Island hub speed on the GBA (sub-roadmap, G8)
+
+Goal: lift the free-play island hub (`SCENE_ISLAND`) and its town hall menu from ~7 drawn fps toward 30, without changing a pixel
+where a step says "exact". Same shape as `docs/PAUSE_SPEED.md` and `docs/INVADED_SPEED.md`: each step lands alone and keeps
+`make test` and `make -C gba test-speed` green. This file is the V0-equivalent: baseline, where the time goes, and the first step.
+
+## Baseline (libmgba harness, `make -C gba profile-all`, 2026-11-06)
+
+| scene | logic ticks/s | drawn fps | work avg / max ms | to lose for 30 fps |
+|---|---:|---:|---|---:|
+| island hub | 12.6 | 7.6 | 96.8 / 106.7 | ~67 ms |
+| island town hall menu | 11.0 | 6.5 | 108.4 / 128.2 | ~78 ms |
+
+Hottest functions, island hub (8 M instructions, 80.6 video frames): `fp_island_draw_map` 10.6%, `vid_rect_narrow` 9.4%, `put` 9.1%,
+`vm_span` 5.6%, `vid_blit` 5.4%, `gba_udivmod` 4.3%, `vm_flush` 3.9%, `vid_rect` 3.5%, `__plat_rect_from_thumb` 2.9%, `use_geo` 2.4%,
+`town_count` 2.3%, `plat_rect_m4` 1.8%, `out_rect` 1.8%, `ellipse_draw` 1.7%, `plat_rect` 1.5%, `plat_clear` 1.4%.
+Town hall menu: `put` 10.7%, `fp_island_draw_map` 9.7%, `vid_shade_words` 9.4% (the menu's dim), `vid_blit` 5.4%, `vm_span` 4.9%,
+`gba_udivmod` 3.6%, `vm_flush` 3.4%.
+
+Reading the hub: the rect pipeline (`fp_island_draw_map` + `put` + `vid_rect_narrow` + `vid_rect` + `__plat_rect_from_thumb` +
+`plat_rect_m4` + `plat_rect` + `vid_rect_full` + `out_rect`) is about 40% of the frame, ~39 ms. Of that, `fp_island_draw_map` and `put`
+together (the phase functions are inlined into the first) are ~20%, ~19 ms, which is the geometry math and the call overhead, not
+pixel fill (`vid_rect_narrow` and friends are the fill). The island is drawn from scratch every frame; only the building sprites are
+cached today (`bc_build`, `fp_island_bcache`). `gba_udivmod` (4.3%) is software division, probably inside that geometry.
+
+## What the frame is made of (native runner, `NEW_ISLAND` to `ISLAND`, 78 frames, 2026-11-06)
+
+Throw-away counters in `plat_rect` (not in the tree). They count `plat_rect` calls only: circles, ellipses, checkers and images are not in
+these numbers. The hash is over the (x, y, w, h, colour) stream a phase emits.
+
+| phase | rect calls / frame | pixels / frame | changes frame to frame | distinct streams in 78 frames |
+|---|---:|---:|---:|---:|
+| sea | 8 | 31,216 | 66 / 77 | 67 |
+| land | 534 | 27,606 | 26 / 77 | 20 |
+| patches | 136 | 5,637 | 3 / 77 | 4 |
+| roads | 125 | 5,785 | **0 / 77** | **1** |
+| decos | 271 | 3,577 | 21 / 77 | 17 |
+| walkers | 48 | 204 | 39 / 77 | 40 |
+| buildings | 214 | 3,817 | 77 / 77 | 78 |
+| weather | 40 | 120 | 77 / 77 | 78 |
+| total | ~1,376 | ~78k | | |
+
+Facts that follow:
+- **Roads never change, patches almost never, land changes in a slow cycle (20 states)**: together 795 of ~1,376 rect calls (58%) and 39k
+  px come from phases whose output repeats. Sea (few calls, a big fill) and walkers / buildings / weather change nearly every frame.
+- A **retained full backdrop** does not fit: 240x160 at 8 bpp is 38 KB and EWRAM free is 24,240 B; both Mode 4 pages are in use
+  (`docs/PAUSE_SPEED.md` P1 reached the same wall). A real full-screen retained layer needs the tile backend (Mode 0, 4 bpp tiles, up to
+  1,200 distinct tiles = 38 KB of the 64 KB BG VRAM), which is a different renderer and the reason G8 is called a tile backend.
+- A **recorded rect list** does fit: 795 rects at 6 bytes (x, y as int16, w, h as uint8, colour) is ~4.8 KB of EWRAM.
+
+## Steps (each lands alone; "exact" = the island's `vhash-seq` frames identical)
+
+- **I0** this document, the baseline and the phase table. (done)
+- **I1** (exact) *record and replay the repeating phases.* Key each of roads / patches / land by what actually drives it (find the
+  inputs first: `fp_t()`, `fp_island_tint()`, the geometry, locations; roads has none that change in the 78 frames), record the phase's
+  `put` / `plat_rect` calls into a ~5 KB EWRAM list when the key changes, and replay the list otherwise: the same calls in the same
+  order, so the same pixels, minus the geometry math (`fp_island_draw_map` self time, `put`, part of `gba_udivmod`). Expected: a few
+  ms to ~10 ms of the ~19 ms geometry share, measured per phase before it is claimed. Needs a host test that live and replayed streams
+  hash equal for every tick of a long run (the hash code above is the model).
+- **I2** (exact) the town hall menu: `fp_island_occluder` already skips screen draws wholly under the menu window; check that the replay
+  honours `hidden()` per rect, and that `vid_shade_words` (9.4%, the dim outside the window) is drawn once or on the retained-dim idea of
+  `docs/PAUSE_SPEED.md` P2.
+- **I3** (exact) `vm_span` / `vm_flush` / `vid_blit` (together ~15%): find what `vm_*` is in the island frame (it is not in the rect
+  path) before choosing; `town_count` (2.3%) and `use_geo` (2.4%) look like per-frame recomputation of something that changes per tick.
+- **I4** (big, exact if the palette fits) the tile backend for the static layers: land + roads + patches (+ sea if its animation can be
+  a palette cycle) as BG tiles, sprites and walkers over them as today. Decide after I1..I3 say how much is left; do not start it first.
+- **I5** (a DECISIONS call, not planned) lower animation rates (sea, decos) so more frames repeat.
+
+## Acceptance
+
+`make test`, `make -C gba test` (parity), `make -C gba test-speed` with the island `vhash-seq` frames identical to the base for I1..I3,
+`make -C gba profile-all` before / after, EWRAM free no lower than 24,240 B less what the step documents. Target for this sub-roadmap:
+island hub and town hall at 30 fps with 30.0 logic ticks/s; I1..I3 alone will not get there (about 67 ms must come off): they are the
+exact, low-risk part, and I4 is the structural one.
