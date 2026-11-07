@@ -1,0 +1,51 @@
+# studio_sung.txt - PERFORM, the sung phase only (docs/STUDIO_30FPS_PLAN.md): the same navigation as studio_profile.txt, then
+# one fps window over the 330 ticks after the first sung line. Run with --worklog and feed the log to tools/worklog_median.py:
+#   build/harness build/doomogachi.gba --script gba/harness/scripts/studio_sung.txt --no-fps-gates --worklog --quiet > sung.log
+#   python3 tools/worklog_median.py sung.log
+wait 40
+expect-log doomo: init
+sync on 61
+seed 1
+scene TITLE
+wait 20
+push STUDIO -107
+wait 100
+expect-scene STUDIO
+wait 130
+press START
+wait 45
+wait 130
+press START
+wait 10
+press R
+wait 20
+wait 130
+press START
+wait 40
+wait 130
+press START
+wait 10
+down SELECT
+press R
+release
+wait 20
+wait 130
+down SELECT
+press R
+release
+wait 20
+press DOWN
+wait 10
+wait 130
+down SELECT
+press R
+release
+wait 20
+wait 130
+press R
+wait 20
+press A
+wait 40
+fps sung_all
+wait 330
+fps end
