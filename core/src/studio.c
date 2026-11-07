@@ -552,6 +552,122 @@ static void tab_icon(int tab, int cx, int cy, uint8_t c)
     }
 }
 
+
+/* ====================================================================== */
+/* baked shapes (GBA / DOOMO_STUDIO_BAKE)                                    */
+/* A UI shape made of many rects (a tab pill: three rounded rects and a highlight, ~20 plat_rect calls) is painted
+ * ONCE through the UI kit's own offscreen target (ui_raster_target: the same rasteriser, so the same pixels) and from
+ * then on drawn with one plat_image. On the GBA a plat_rect call costs ~25 us whatever its size, a small blit a
+ * tenth of that. Index 0 is transparent in an image and no UI shape is painted with it, so the picture is the same
+ * pixel for pixel. The images live in the shared scene scratch (re-claimed and rebuilt when another scene took it). */
+#if defined(DOOMO_PLATFORM_GBA) || defined(DOOMO_STUDIO_BAKE)
+#define ST_BAKE 1
+#else
+#define ST_BAKE 0
+#endif
+
+#if ST_BAKE
+void ur_rect(int x, int y, int w, int h, uint8_t c);     /* ui_raster.c: plat_rect, or the offscreen target while baking */
+#define TP_RECT ur_rect
+#else
+#define TP_RECT plat_rect
+#endif
+
+#if ST_BAKE
+#define BAKE_TAG   0x53424B45u          /* 'SBKE' */
+#define BAKE_ENTS  20
+#define BAKE_POOL  5632
+typedef struct { uint32_t k0, k1; DoomoImage img; int16_t bx, by; } BakeEnt;
+typedef struct { uint16_t top, n; BakeEnt e[BAKE_ENTS]; uint8_t pix[BAKE_POOL]; } BakeSt;
+static BakeSt *bake_st;
+
+static BakeSt *bake_get(void)
+{
+    if (bake_st && scene_scratch_mine(BAKE_TAG)) return bake_st;
+    bake_st = (BakeSt *)scene_scratch(BAKE_TAG, (uint32_t)sizeof(BakeSt));
+    if (bake_st) { bake_st->top = 0; bake_st->n = 0; }
+    return bake_st;
+}
+
+typedef void (*BakeFn)(int x, int y, const int *a);
+
+/* Draws fn(x, y, a) as one image; returns 0 (nothing drawn) when it cannot be baked, and the caller draws the rects.
+ * k0 / k1 name the shape (kind, size, colours): equal keys must mean equal pixels. */
+static int bake_draw(uint32_t k0, uint32_t k1, int x, int y, BakeFn fn, const int *a)
+{
+    BakeSt *b = bake_get();
+    BakeEnt *e;
+    int i, x0, y0, x1, y1, w, h;
+    if (!b || plat_draw_skipped()) return 0;
+    for (i = 0; i < b->n; i++)
+        if (b->e[i].k0 == k0 && b->e[i].k1 == k1) {
+            e = &b->e[i];
+            plat_image(x + e->bx, y + e->by, &e->img, 1, 0, 0);
+            return 1;
+        }
+    ui_raster_target(NULL, 0, 0, 0, 0);                          /* measure */
+    fn(0, 0, a);
+    if (!ui_raster_bounds(&x0, &y0, &x1, &y1)) { ui_raster_target_off(); return 0; }
+    w = x1 - x0; h = y1 - y0;
+    if (w <= 0 || h <= 0 || w * h > 1024) { ui_raster_target_off(); return 0; }
+    if (b->n >= BAKE_ENTS || b->top + ((w * h + 3) & ~3) > BAKE_POOL) { b->n = 0; b->top = 0; }
+    e = &b->e[b->n++];
+    e->k0 = k0; e->k1 = k1;
+    memset(b->pix + b->top, 0, (size_t)(w * h));
+    ui_raster_target(b->pix + b->top, x0, y0, w, h);             /* paint */
+    fn(0, 0, a);
+    ui_raster_target_off();
+    e->img.w = (uint16_t)w; e->img.h = (uint16_t)h;
+    e->img.pix = b->pix + b->top;
+    e->img.uid = doomo_image_new_uid();
+    e->bx = (int16_t)x0; e->by = (int16_t)y0;
+    b->top = (uint16_t)(b->top + ((w * h + 3) & ~3));
+    plat_image(x + e->bx, y + e->by, &e->img, 1, 0, 0);
+    return 1;
+}
+#endif
+
+
+/* a tab's pill: the current tab (3 rounded rects and a highlight, anchor = its outer top-left) and the others (outline
+ * and fill). The same rects as before, drawn straight or, on the GBA, as one baked image. */
+static void tab_pill_sel_rects(int x, int y, const int *a)
+{
+    int w = a[0];
+    uint8_t d = (uint8_t)a[1], dd = (uint8_t)a[2], acc = (uint8_t)a[3], lt = (uint8_t)a[4];
+    ui_round_rect(x + 1, y + 2, w, 14, 5, dd);
+    ui_round_rect(x, y, w, 14, 5, d);
+    ui_round_rect(x + 1, y + 1, w - 2, 12, 4, acc);
+    TP_RECT(x + 4, y + 2, w - 8, 1, lt);
+}
+
+static void tab_pill_sel(int x, int y, int w, const UiStyle *st)
+{
+    int a[5];
+    a[0] = w; a[1] = ui_darker(st->accent); a[2] = ui_darker(ui_darker(st->accent)); a[3] = st->accent;
+    a[4] = ui_lighter(st->accent);
+#if ST_BAKE
+    if (bake_draw(0x10u | (uint32_t)w << 8, (uint32_t)a[1] | (uint32_t)a[2] << 8 | (uint32_t)a[3] << 16 |
+                  (uint32_t)a[4] << 24, x, y, tab_pill_sel_rects, a)) return;
+#endif
+    tab_pill_sel_rects(x, y, a);
+}
+
+static void tab_pill_rects(int x, int y, const int *a)
+{
+    ui_round_rect(x, y, a[0], 12, 4, (uint8_t)a[1]);
+    ui_round_rect(x + 1, y + 1, a[0] - 2, 10, 3, (uint8_t)a[2]);
+}
+
+static void tab_pill(int x, int y, int w, const UiStyle *st)
+{
+    int a[3];
+    a[0] = w; a[1] = st->outline; a[2] = st->fill_hi;
+#if ST_BAKE
+    if (bake_draw(0x11u | (uint32_t)w << 8, (uint32_t)a[1] | (uint32_t)a[2] << 8, x, y, tab_pill_rects, a)) return;
+#endif
+    tab_pill_rects(x, y, a);
+}
+
 /* the tab strip: icons, the current tab spelled out, play status */
 static void draw_tabs(void)
 {
@@ -564,15 +680,11 @@ static void draw_tabs(void)
         const char *nm = tab_names[i];
         w = (sel || wide) ? ui_text_width(nm) + 20 : 17;
         if (sel) {
-            ui_round_rect(x + 1, y + 1 - b, w, 14, 5, ui_darker(ui_darker(st->accent)));
-            ui_round_rect(x, y - 1 - b, w, 14, 5, ui_darker(st->accent));
-            ui_round_rect(x + 1, y - b, w - 2, 12, 4, st->accent);
-            plat_rect(x + 4, y + 1 - b, w - 8, 1, ui_lighter(st->accent));
+            tab_pill_sel(x, y - 1 - b, w, st);
             tab_icon(i, x + 8, y + 5 - b, PAL_WHITE);
             ui_text_shadow(x + 15, y + 2 - b, nm, PAL_WHITE, ui_darker(st->accent));
         } else {
-            ui_round_rect(x, y + 1, w, 12, 4, st->outline);
-            ui_round_rect(x + 1, y + 2, w - 2, 10, 3, st->fill_hi);
+            tab_pill(x, y + 1, w, st);
             tab_icon(i, x + 8, y + 7, st->text_dim);
             if (wide) ui_text(x + 15, y + 3, nm, st->text_dim);
         }
