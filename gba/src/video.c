@@ -333,6 +333,27 @@ void plat_text_outline(int x, int y, const char *s, uint8_t color, uint8_t outli
     vid_text(x, y, s, color);
 }
 
+/* G5: a nonzero gba_nodraw (a skipped tick, a tile frame, the estimate)
+ * takes the slow path in ROM (canvas.c), which calls back the *_m4 body.
+ * (These two were in video.iwram.c; they only dispatch, so they live in ROM
+ * and the IWRAM they used goes to the blit loops.) */
+void plat_checker_slow(int x, int y, int w, int h, uint8_t color) ROM_CALL;
+void plat_line_slow(int x0, int y0, int x1, int y1, uint8_t color) ROM_CALL;
+void plat_checker_m4(int x, int y, int w, int h, uint8_t color) IWRAM_CALL;
+void plat_line_m4(int x0, int y0, int x1, int y1, uint8_t color) IWRAM_CALL;
+
+void plat_checker(int x, int y, int w, int h, uint8_t color)
+{
+    if (!gba_nodraw) plat_checker_m4(x, y, w, h, color);
+    else if (gba_nodraw != 1) plat_checker_slow(x, y, w, h, color);
+}
+
+void plat_line(int x0, int y0, int x1, int y1, uint8_t color)
+{
+    if (!gba_nodraw) plat_line_m4(x0, y0, x1, y1, color);
+    else if (gba_nodraw != 1) plat_line_slow(x0, y0, x1, y1, color);
+}
+
 /* 8bpp image, index 0 transparent, integer scale 1..4 */
 void plat_image(int x, int y, const DoomoImage *img, int scale, int flags,
                 uint8_t color)

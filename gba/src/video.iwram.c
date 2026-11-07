@@ -146,17 +146,23 @@ void vid_text(int x, int y, const char *s, uint32_t color)
     }
 }
 
-/* images: 8bpp, index 0 transparent, integer scale 1..4, walked in VRAM
- * halfword pairs (opaque pairs are written without reading) */
-/* vid_blit (video_loops.s) takes scale 1 without flip itself; this is the rest */
+/* images: 8bpp, index 0 transparent, integer scale 1..4 (any flip), walked in VRAM
+ * halfword pairs (opaque pairs are written without reading).
+ * vid_blit (video_loops.s) takes scale 1 without flip itself; this is the rest.
+ * A source row is expanded ONCE into a pair-aligned line buffer (scale columns
+ * a pixel, flipped, silhouette colour applied, 0 outside the clip) and that
+ * line is then stored for each of the `scale` rows it covers: the pairs are
+ * the very (a, b) the old per-pixel lookup built, so the pixels are the same
+ * (checked against the old routine on random images, scales, flips, clips). */
 __attribute__((optimize("Os")))
 void vid_blit_c(int x, int y, const DoomoImage *img, int scale, int flags, uint32_t color)
 {
-    const int w = img->w * scale, h = img->h * scale;
+    const int iw = img->w, w = iw * scale, h = img->h * scale;
     const int flip = flags & IMG_FLIPX, sil = flags & IMG_SILHOUETTE;
     const uint32_t inv = 65536u / (uint32_t)scale + 1u;    /* v / scale */
-    int x0 = x, x1 = x + w, y0 = y, y1 = y + h, yy, xa, xb;
-    uint16_t lut[SCREEN_W + 2];
+    int x0 = x, x1 = x + w, y0 = y, y1 = y + h, yy, xa, xb, n, last = -1;
+    uint8_t line[SCREEN_W + 4] __attribute__((aligned(4)));
+    const uint16_t *l = (const uint16_t *)line;
     if (x0 < 0) x0 = 0;
     if (y0 < 0) y0 = 0;
     if (x1 > SCREEN_W) x1 = SCREEN_W;
@@ -164,30 +170,36 @@ void vid_blit_c(int x, int y, const DoomoImage *img, int scale, int flags, uint3
     if (x0 >= x1 || y0 >= y1) return;
     xa = x0 & ~1;
     xb = (x1 + 1) & ~1;
-    {
-        int px;
-        for (px = xa; px < xb; px++) {
-            int tx;
-            if (px < x0 || px >= x1) { lut[px - xa] = 0xFFFF; continue; }
-            tx = (int)(((uint32_t)(px - x) * inv) >> 16);
-            if (tx >= img->w) tx = img->w - 1;
-            if (flip) tx = img->w - 1 - tx;
-            lut[px - xa] = (uint16_t)tx;
-        }
-    }
+    n = (xb - xa) >> 1;
+    line[0] = 0;                                /* the clipped half of an edge pair stays transparent */
+    line[xb - xa - 1] = 0;
     for (yy = y0; yy < y1; yy++) {
-        const uint8_t *src = img->pix + (((uint32_t)(yy - y) * inv) >> 16) * img->w;
         uint16_t *p = gba_back + yy * LINE + (xa >> 1);
-        const uint16_t *l = lut;
-        int k, n = (xb - xa) >> 1;
-        for (k = 0; k < n; k++, l += 2, p++) {
-            uint32_t a = l[0] != 0xFFFF ? src[l[0]] : 0;
-            uint32_t b = l[1] != 0xFFFF ? src[l[1]] : 0;
-            if (!(a | b)) continue;
-            if (sil) { if (a) a = color; if (b) b = color; }
-            if (a && b) *p = (uint16_t)(a | (b << 8));
-            else if (a) put_lo(p, a);
-            else put_hi(p, b);
+        int k, sy = (int)(((uint32_t)(yy - y) * inv) >> 16);
+        if (sy != last) {
+            const uint8_t *src = img->pix + sy * iw;
+            int d = x0 - x, j = (int)(((uint32_t)d * inv) >> 16);
+            int ph = d - j * scale, cnt = x1 - x0, step = 1;
+            uint8_t *o = line + (x0 - xa);
+            if (flip) { j = iw - 1 - j; step = -1; }
+            last = sy;
+            do {
+                uint32_t v = src[j];
+                int run = scale - ph;
+                if (sil && v) v = color;
+                if (run > cnt) run = cnt;
+                cnt -= run;
+                ph = 0;
+                j += step;
+                do *o++ = (uint8_t)v; while (--run);
+            } while (cnt > 0);
+        }
+        for (k = 0; k < n; k++, p++) {
+            uint32_t v = l[k];
+            if (!v) continue;
+            if ((v & 0xFF) && (v >> 8)) *(vu16_t *)p = (uint16_t)v;
+            else if (v & 0xFF) put_lo(p, v);
+            else put_hi(p, v >> 8);
         }
     }
 }
@@ -196,24 +208,9 @@ void vid_blit_c(int x, int y, const DoomoImage *img, int scale, int flags, uint3
 
 /* 50% checkerboard: pixel (x+i, y+j) when i + j is even. Each row's
  * pixels all sit in the same byte of consecutive halfwords. */
-/* G5: a nonzero gba_nodraw (a skipped tick, a tile frame, the estimate)
- * takes the slow path in ROM (canvas.c), which calls back the *_m4 body */
-void plat_checker_slow(int x, int y, int w, int h, uint8_t color) ROM_CALL;
-void plat_line_slow(int x0, int y0, int x1, int y1, uint8_t color) ROM_CALL;
+/* G5: plat_checker / plat_line (the gba_nodraw dispatch) are in video.c (ROM): glue, not a loop */
 void plat_checker_m4(int x, int y, int w, int h, uint8_t color) IWRAM_CALL;
 void plat_line_m4(int x0, int y0, int x1, int y1, uint8_t color) IWRAM_CALL;
-
-void plat_checker(int x, int y, int w, int h, uint8_t color)
-{
-    if (!gba_nodraw) plat_checker_m4(x, y, w, h, color);
-    else if (gba_nodraw != 1) plat_checker_slow(x, y, w, h, color);
-}
-
-void plat_line(int x0, int y0, int x1, int y1, uint8_t color)
-{
-    if (!gba_nodraw) plat_line_m4(x0, y0, x1, y1, color);
-    else if (gba_nodraw != 1) plat_line_slow(x0, y0, x1, y1, color);
-}
 
 void plat_checker_m4(int x, int y, int w, int h, uint8_t color)
 {
