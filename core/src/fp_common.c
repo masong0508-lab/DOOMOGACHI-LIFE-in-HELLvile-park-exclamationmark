@@ -789,6 +789,7 @@ void fp_fx_burst(int x, int y, int kind, int n)
         PP(PAINT_LAVENDER, 1), PP(PAINT_TANGERINE, 1)
     };
     int i, k = 0;
+    n = (n * 3 + 2) / 4;                 /* a quarter fewer particles per burst (1 stays 1, 2 stays 2) */
     for (i = 0; i < FX_N && k < n; i++) {
         Fx *f = &fx[i];
         if (f->life) continue;
