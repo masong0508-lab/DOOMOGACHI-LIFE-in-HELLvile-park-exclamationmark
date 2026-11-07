@@ -228,6 +228,28 @@ and EWRAM free (expect about 1,792 B less than 24,240):
 
     make -C gba test-ow && make -C gba test-speed SPEED_GATES=0 && python3 gba/tools/speedtable.py --parity
 
+## V8 measured (CI 2026-11-07), and V9, landed, NOT yet measured on the GBA: the side-quest spots memo
+
+**V8 worked**: invaded work avg 51.9 -> 50.0 ms, drawn 16.5 -> 17.3 fps, logic 30.0 ticks/s, work max 77.1 -> 69.8 ms, `vhash-seq` still
+`5e74560c`; concert 62.3 -> 60.8 ms (`res_get_look` 7.7% -> 4.1%). The only other changed hash is `overworld pause` (`727f6da2` ->
+`e9dd90bd`, logic 29.9 -> 30.1 ticks/s): read as frame timing of the pause animation, to be confirmed by `speedtable.py --parity`.
+
+**V9 (exact).** Host call graph of `scene STORY 219` (400 ticks): `side_spots` ran 1.5 times a tick (the A prompt and `story_draw`) and
+each call made ~98 `story_flag` calls (`raw_state` for every one of the quests), which is the 1.1% `story_flag` + 1.1% `side_spots`
+of the GBA profile. Its answer depends only on the constant quest table, the map and the 2 * NQ side-quest state bits, so
+`story_side.c` keeps the last answer with a copy of the bytes holding those bits (a hit is one `memcmp` of `SPOT_BYTES`; a byte shared
+with other flags only recomputes it sooner). 60-odd bytes of .bss. Checked on the host with a throw-away build that compared every
+memo answer with a fresh scan over the whole suite (871 tests, 160 scripted playthroughs, 19 journeys): no mismatch. Expected about
+1 ms off the invaded frame (50.0 -> ~49 ms).
+
+Not done, found in the same profile: `story_draw` builds ~33 prop billboards per drawn frame (`add_bb`, `sprite_frames`, `map_cell_safe`
+about 13,000 / 15,000 / 13,000 calls per 400 ticks) although the props are static; caching their list per map would be the next
+logic-side step (about 2.9% of the frame is `story_draw` self).
+
+Check on CI (exact step): all `vhash-seq` equal the last table (invaded `5e74560c`), then paste invaded work avg / fps:
+
+    make -C gba test-ow && make -C gba test-speed SPEED_GATES=0 && python3 gba/tools/speedtable.py --parity
+
 ## Steps
 
 - **V0** this document, the baseline, `profile-invaded` and its script. (done)

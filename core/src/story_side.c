@@ -827,7 +827,43 @@ static int same_map(int a, int b)
            (b == MAPID_HAHALAND || b == MAPID_HAHALAND_INVADED);
 }
 
+/* V9 (docs/INVADED_SPEED.md): side_spots() runs every tick on the overworld (the A prompt and the draw) and read ~100
+ * flag pairs each time, ~2% of the invaded frame on the GBA. Its answer is a function of the quest table (constant),
+ * the map and the 2 * NQ side-quest state bits, so the last answer is kept with a copy of the bytes those bits
+ * live in (a byte shared with other flags only makes it recompute sooner). A hit costs one memcmp. */
+#define SPOT_BYTES ((2 * NQ + 7) / 8 + 1)
+#define SPOT_MAX 8
+static struct {
+    uint8_t  snap[SPOT_BYTES];
+    SideSpot out[SPOT_MAX];
+    int16_t  map;
+    int8_t   n;
+    uint8_t  ok;
+} spot_memo;
+
+static int side_spots_scan(int map_id, SideSpot *out, int max);
+
 int side_spots(int map_id, SideSpot *out, int max)
+{
+    const uint8_t *fl = &doomo_town.story.flags[STORY_FLAG_SIDE_FIRST >> 3];
+    int n;
+    if (max != SPOT_MAX || (STORY_FLAG_SIDE_FIRST & 7) != 0 ||
+        ((STORY_FLAG_SIDE_FIRST >> 3) + SPOT_BYTES) * 8 > DOOMO_STORY_FLAGS)
+        return side_spots_scan(map_id, out, max);
+    if (spot_memo.ok && spot_memo.map == map_id && memcmp(spot_memo.snap, fl, SPOT_BYTES) == 0) {
+        n = spot_memo.n;
+    } else {
+        n = side_spots_scan(map_id, spot_memo.out, SPOT_MAX);
+        memcpy(spot_memo.snap, fl, SPOT_BYTES);
+        spot_memo.map = (int16_t)map_id;
+        spot_memo.n = (int8_t)n;
+        spot_memo.ok = 1;
+    }
+    if (n > 0) memcpy(out, spot_memo.out, (size_t)n * sizeof(SideSpot));
+    return n;
+}
+
+static int side_spots_scan(int map_id, SideSpot *out, int max)
 {
     int q, n = 0;
     for (q = 0; q < NQ && n < max; q++) {
