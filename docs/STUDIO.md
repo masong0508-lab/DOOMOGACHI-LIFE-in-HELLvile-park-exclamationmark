@@ -257,7 +257,14 @@ What this says (it corrects two guesses in `MUSIC_STUDIO_ROADMAP.md`):
 **MS-P3 step 1 (2026-11-07, exact, pixel-identical):** `song_syllables` is memoised (10 entries, 570 B `.bss`; a pure function of the line text)
 and `studio_part_of` keeps its last answer per line (keyed on the singers, their sections and the line's mask; reset on entering the studio).
 LYRICS on the same script: **60.4 -> 45.3 ms, 12.4 -> 20.2 drawn fps, logic 22.7 -> 30.1 ticks/s**; every other window unchanged (+-0.3 ms).
-EWRAM free 21,856 -> 21,152 B. LYRICS still needs about 12 ms more: the 213 one-glyph `ui_text` calls of `draw_syllables`.
+EWRAM free 21,856 -> 21,152 B.
+
+**MS-P3 step 2 + MS-P4 step 1 (2026-11-07, exact):** `draw_syllables` draws one `plat_text` per same-colour run instead of one `ui_text`
+per glyph (plain font style, English; other styles keep the old path); LYRICS shot byte-identical (`cmp` of the harness PNG), LYRICS
+**45.3 -> 38.6 ms, 20.3 fps, 30.0 ticks/s**. The chibi look-hash memo in `bodyspr_image` (`blh`) was 32 direct-mapped slots: a 25-voice choir
+collided and redid the look + hash for most singers every frame; it is now 40 slots, fully associative (+480 B). CHOIR 52.3 -> 50.8 ms,
+PERFORM 56.9 -> 52.1 ms and its logic back to 29.3 ticks/s. EWRAM free 20,672 B. CHOIR / PERFORM are now `vid_blit` (15-21%) plus
+`cache_get` / `bodyspr_image` (8-10%) and the rects.
 
 ## INTEGRATION NOTE for the Concert Hall (concert*.c)
 

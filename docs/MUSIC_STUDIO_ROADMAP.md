@@ -66,7 +66,8 @@ Rules every package keeps: the save format stays append-only (old saves load; a 
 > together and should go before MS-P5's wall bake**; LYRICS is 28% per-frame song derivation, so **MS-P3 should cache the syllable split / singer
 > lookups per line, not only batch the text**; no single-syllable spike showed up in the sung window, so **MS-P1 (tuning cache) is lower
 > priority than its position suggests**. Order to take them on GBA: MS-P4, MS-P3, MS-P2, MS-P1, MS-P5.
-> **MS-P3 step 1 landed 2026-11-07** (syllable-split memo + line-part memo, exact): LYRICS 60.4 -> 45.3 ms, 12.4 -> 20.2 fps, logic back to 30.1 ticks/s. Left in MS-P3: batch the per-glyph text of `draw_syllables`. MS-P4 (chibis: CHOIR 52 ms, PERFORM 56 ms) is next; its `res_get_look` share (5-9.5%) still needs a caller trace.
+> **MS-P3 step 1 landed 2026-11-07** (syllable-split memo + line-part memo, exact): LYRICS 60.4 -> 45.3 ms, 12.4 -> 20.2 fps, logic back to 30.1 ticks/s. Left in MS-P3: batch the per-glyph text of `draw_syllables`. MS-P4 (chibis: CHOIR 52 ms, PERFORM 56 ms) is next.
+> **2026-11-07 later:** the `res_get_look` share was the `blh` look-hash memo thrashing (fixed: CHOIR 50.8, PERFORM 52.1 ms); `draw_syllables` now draws glyph runs (LYRICS 38.6 ms, 20.3 fps, shot byte-identical). Remaining for CHOIR / PERFORM: `vid_blit` of 25 chibis a frame (15-21%) and `cache_get` / `bodyspr_image` (8-10%): a per-singer tile cached as one image, redrawn only when the singer, section or selection changes.
 
 | ID | Size | What | Gate |
 |---|---|---|---|

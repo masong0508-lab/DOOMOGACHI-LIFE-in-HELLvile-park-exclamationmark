@@ -182,15 +182,30 @@ static int draw_syllables(int x, int y, const char *t, uint8_t c0, uint8_t c1, i
 {
     uint8_t st[SONG_LYRIC_LEN];
     int n = song_syllables(t, st, SONG_LYRIC_LEN), i, len = (int)strlen(t), k = 0;
-    char ch[2] = { 0, 0 };
+    /* MS-P3: with the plain font style in English every glyph is one plat_text at its own x, so a run of
+     * glyphs of one colour is one call at the run's x: same pixels (as ui_text_clip does), a quarter of
+     * the calls. Other styles / languages keep the one-call-per-glyph path (shadow order, translation). */
+    int runs = opt_get(OPT_FONT_STYLE) == 0 && lang_get() == LANG_EN && !plat_draw_skipped();
+    char run[SONG_LYRIC_LEN], ch[2] = { 0, 0 };
+    int rn = 0, rx = 0;
+    uint8_t rc = 0;
     if (n > SONG_LYRIC_LEN) n = SONG_LYRIC_LEN;
     for (i = 0; i < len && i < maxch; i++) {
+        uint8_t col;
         while (k + 1 < n && st[k + 1] <= i) k++;
         ch[0] = t[i];
         if (i == maxch - 1 && len > maxch) ch[0] = '~';
-        ui_text(x + i * 6, y, ch, (n && i >= st[0] && k == hl) ? PAL_PAINT(PAINT_ROSE, 0)
-                                                               : ((k & 1) ? c1 : c0));
+        col = (n && i >= st[0] && k == hl) ? PAL_PAINT(PAINT_ROSE, 0) : ((k & 1) ? c1 : c0);
+        if (runs && (unsigned char)ch[0] >= 32 && (unsigned char)ch[0] < 127 && rn < (int)sizeof(run) - 1) {
+            if (rn && col != rc) { run[rn] = 0; plat_text(rx, y, run, rc); rn = 0; }
+            if (!rn) { rx = x + i * 6; rc = col; }
+            run[rn++] = ch[0];
+        } else {
+            if (rn) { run[rn] = 0; plat_text(rx, y, run, rc); rn = 0; }
+            ui_text(x + i * 6, y, ch, col);
+        }
     }
+    if (rn) { run[rn] = 0; plat_text(rx, y, run, rc); }
     return x + DOOMO_MIN(len, maxch) * 6;
 }
 

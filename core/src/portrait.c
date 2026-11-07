@@ -1084,9 +1084,9 @@ const DoomoImage *figure_image(const DoomoLook *l, int status, int expr)
  * is asked for every tick (7 a tick on the invaded map), and unpacking the 40-odd look genes, ageing the look and
  * hashing it was ~3% of the GBA frame. The hash is a pure function of the gene bytes and `species` (look_for_stage
  * and look_hash read nothing else), so a hit needs both unchanged: any edit to the look re-computes it. The deep
- * run (look_run_hash) is not memoised; it is a walk of a pool that is empty or tiny. 32 direct-mapped entries,
- * 56 B each; a collision only costs the old path. */
-#define BLH_N 32
+ * run (look_run_hash) is not memoised; it is a walk of a pool that is empty or tiny. 40 entries (fully
+ * associative since MS-P4), 56 B each; a miss only costs the old path. */
+#define BLH_N 40
 typedef struct BodyLH {
     uint8_t  gene[48];
     uint32_t h;
@@ -1144,7 +1144,16 @@ const DoomoImage *bodyspr_image(int resident_id, int dir, int frame)
     r = res_of(resident_id, &status);
     dir &= 3;
     frame &= 3;
-    m = &blh[(uint32_t)resident_id & (BLH_N - 1)];
+    /* MS-P4: fully associative (a 25-voice choir collided in the old 32 direct-mapped slots and redid the
+     * look + hash for most singers every frame); a miss replaces slots round-robin */
+    {
+        static uint8_t blh_next;
+        int bi;
+        m = NULL;
+        for (bi = 0; bi < BLH_N; bi++)
+            if (blh[bi].ok && blh[bi].id == resident_id) { m = &blh[bi]; break; }
+        if (!m) { m = &blh[blh_next]; blh_next = (uint8_t)((blh_next + 1) % BLH_N); m->ok = 0; }
+    }
     if (m->ok && m->id == resident_id && m->species == r->species &&
         memcmp(m->gene, r->gene, sizeof m->gene) == 0) {
         lhl = m->h;

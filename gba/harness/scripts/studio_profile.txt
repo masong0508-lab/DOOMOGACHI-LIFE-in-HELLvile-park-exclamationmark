@@ -71,6 +71,7 @@ wait 10
 fps settle (ignore)
 wait 130
 fps lyrics
+shot lyrics
 profile 8000000
 
 down SELECT
