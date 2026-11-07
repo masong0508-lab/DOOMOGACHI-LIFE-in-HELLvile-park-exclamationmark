@@ -266,6 +266,14 @@ collided and redid the look + hash for most singers every frame; it is now 40 sl
 PERFORM 56.9 -> 52.1 ms and its logic back to 29.3 ticks/s. EWRAM free 20,672 B. CHOIR / PERFORM are now `vid_blit` (15-21%) plus
 `cache_get` / `bodyspr_image` (8-10%) and the rects.
 
+**MS-P2 step 1 (2026-11-07, nov07d, exact):** `ui_backdrop_hole` (ui_draw.c) draws the studio backdrop without what lies wholly inside the opaque
+content panel (`backdrop_hole()` in studio.c: SONG / FILE left panel, LYRICS top panel, NOTES / ORDER / CHOIR / STAGE the whole content area; the
+template picker keeps the full backdrop). Floating notes under the panel are skipped too. `bodyspr_image` tries the look-hash slot an id used last
+(`blh_hint`, 64 B) and `PC_MEMO` is 128 (+128 B EWRAM; EWRAM free 20,544 B). Native shots of every tab over time, 240x160 and 320x240, 98 each: byte-identical.
+GBA work avg: SONG idle 35.2 -> 33.1, NOTES idle 33.4 -> 29.6, ORDER 31.0 -> 27.1, LYRICS 38.6 -> 36.5, CHOIR 50.8 -> 46.9, PERFORM 52.1 -> 51.0 ms
+(measured in the session before the figures above were re-built; not re-profiled on the final tree). Measured while doing it: backdrop + tab strip +
+hint bar ~14 ms of every tab; the 25 CHOIR chibis ~14 ms (CHOIR without them 36.8 ms). See `docs/MUSIC_STUDIO_ROADMAP.md` "Facts to know before MS-P4".
+
 ## INTEGRATION NOTE for the Concert Hall (concert*.c)
 
 1. **Represent generated songs as `DoomoSong`.** Build the song in the shared

@@ -69,6 +69,51 @@ Rules every package keeps: the save format stays append-only (old saves load; a 
 > **MS-P3 step 1 landed 2026-11-07** (syllable-split memo + line-part memo, exact): LYRICS 60.4 -> 45.3 ms, 12.4 -> 20.2 fps, logic back to 30.1 ticks/s. Left in MS-P3: batch the per-glyph text of `draw_syllables`. MS-P4 (chibis: CHOIR 52 ms, PERFORM 56 ms) is next.
 > **2026-11-07 later:** the `res_get_look` share was the `blh` look-hash memo thrashing (fixed: CHOIR 50.8, PERFORM 52.1 ms); `draw_syllables` now draws glyph runs (LYRICS 38.6 ms, 20.3 fps, shot byte-identical). Remaining for CHOIR / PERFORM: `vid_blit` of 25 chibis a frame (15-21%) and `cache_get` / `bodyspr_image` (8-10%): a per-singer tile cached as one image, redrawn only when the singer, section or selection changes.
 
+> **2026-11-07 (nov07d) MS-P2 first step landed: the shared studio frame.** Measured by switching parts of the frame off on the GBA harness:
+> the backdrop + tab strip + hint bar are **~14 ms of every tab** (about 16 ms of the 33 ms an empty tab costs; the tab strip alone ~5 ms,
+> the rest is `ui_backdrop`'s bands, ~60 polka-dot rects, hearts, stars). Most of the backdrop lies under the opaque content panel. Done:
+> `ui_backdrop_hole` + `studio.c backdrop_hole()` skip everything wholly inside the panel's body (exact; native shots identical, see
+> `docs/STUDIO.md`). With it: SONG idle 35.2 -> 33.1, NOTES idle 33.4 -> 29.6, ORDER 31.0 -> 27.1, LYRICS 38.6 -> 36.5 ms. **SONG playing
+> (34.4), LYRICS, CHOIR (46.9) and PERFORM (51.0) are still over 33.3 ms.** The next real step is **MS-P4** (below, with the facts you need).
+> Not done from MS-P2: the tab strip (~5 ms, redrawn every frame; a retained panel / shape image is the lever), the tracker's per-cell rects.
+
+### Facts to know before MS-P4 (chibi tile cache), measured 2026-11-07
+
+* **Cost model (GBA):** one `plat_rect` / `out_rect` is roughly **20 us**, so the *number* of rects matters more than their area. A full-screen
+  studio frame is ~400-540 rects at 240x160 (table in section 1).
+* **The chibis are ~14 ms of CHOIR.** Drawing CHOIR with the 25 `st_chibi` calls removed: 50.8 -> 36.8 ms (22.5 fps). So after chibis are free
+  CHOIR is *still* ~37 ms: it needs the shared-frame savings (MS-P2) **and** fewer tile rects (`ui_round_rect` x 2 and a frame + badge per
+  singer = ~100 rects) to reach 30 ms. MS-P4 alone will not make CHOIR 30 fps.
+* **Where a chibi's time goes:** `vid_blit` (scale 1, no flip: the fast "cached chibi" path in `gba/src/video.iwram.c`, halfword reads when the
+  source is 2-aligned; the cache `pool` is EWRAM, a 16-bit bus), `cache_get` + `bodyspr_image` (look hash, `blh` lookup, `memo`), `memcmp` of the 48 gene
+  bytes per call (1.6%). `bodyspr_image` is called once per chibi per frame; the CHOIR tab draws 25, PERFORM 25 + conductor + crowd silhouettes.
+* **Already done on this path:** `blh` fully associative (40 slots) with a per-id hint slot (nov07d), `memo` 128 entries (nov07d, +128 B EWRAM).
+  A hit is cheap now; remaining cost is per-call overhead x 25 and the blit itself.
+* **Pixels vs calls:** a 16x16 chibi is 256 px; `vid_blit` is ~15% of CHOIR (~7.5 ms for 25 = 0.3 ms each). A pre-composed tile (frame + chibi + badge
+  as ONE `DoomoImage`, redrawn only when singer / section / selection / bop frame changes) turns ~4 rect calls + 1 blit per singer into 1 blit.
+  Tile cache key must include: singer id, section, `sel`, bop (0/1), chibi frame, look hash (`bodyspr_image` already keys on it). Memory: a 25-tile
+  cache is 25 x tw x th bytes (~25 x 24 x 31 = ~19 KB at 240x160): **EWRAM has ~20.5 KB free**, so the tile must live in the portrait `pool`
+  (18,432 B, 16x16 = 1 block each; `PC_BLOCKS` / `CacheEnt`) or in `scene_scratch()`, never new `.bss`. Decide this first.
+* **Retained panels (G7, `gba/src/panel.c`)** already keep a panel's body between frames (a DMA per row from the front page); text / images /
+  checkers lie on it. 8 panels, 80-rect pool. The studio's content panel could use it, but anything drawn *over* the body every frame (all of the
+  tabs) must stay out of the key, as the title and HUD work did. This is the other big lever for SONG / NOTES / ORDER.
+* **PERFORM is not explained.** Its profile shows `res_get_look` at 8-9% (before the `blh` fix; not re-profiled after) but the PERFORM draw code in
+  `studio_stage.c` never calls it directly; `song_player.c:205` calls `res_get_voice`. Profile PERFORM again after nov07d before designing
+  its fix. A logic dip to 22.6 ticks/s appeared on PERFORM before `blh` and went away with it; a 74-88 ms climb at the end of the "later"
+  window is still unexplained. The stage draws ~25 choir chibis + conductor + 18 crowd silhouettes (`IMG_SILHOUETTE` is not the fast blit path:
+  it falls to the byte loop in `vid_blit`) + ~150 checker rows at 320x240.
+* **Silhouettes are slower than chibis:** `vid_blit` with `IMG_SILHOUETTE` skips the halfword fast path. A pre-baked silhouette image per crowd id
+  would be a cheap win for PERFORM.
+
+### How to check a studio drawing change is exact (use this before and after MS-P4)
+
+1. Native, both sizes, every tab over time (this is what proved nov07d): a script `scene TITLE / wait 2 / push STUDIO -107 / wait 20 / expect-scene STUDIO`,
+   then for each tab 14 x (`shot NAME_NN`, `wait 9`) and `press R`, run with `core/build/runner --quiet --script S --shots DIR --saves DIR/s --w 240 --h 160`
+   (and 320x240) on the old and the new tree, `cmp` every PNG. 98 shots a size: all identical for nov07d.
+2. GBA harness `shot`s are **not** a reliable exact check when a change alters frame time: the animation tick a shot lands on moves (nov07d: 3 of 10
+   differed, all pixel noise from drifting hearts / notes). Use `sync on` scripts or the native check above.
+3. Then `make -C gba profile-studio` for the numbers, and `make -C core test`.
+
 | ID | Size | What | Gate |
 |---|---|---|---|
 | **MS-P0** | S | Add `stats` lines to `core/tests/scripts/studio.txt` (the table above, as a regression log). Add `ps1/harness/scripts/perf_studio.txt` (every tab + a full PERFORM show; the other scenes have `perf_*.txt`, the studio has none) and a studio stop in the GBA fps tour. Run the GBA slow-frame report (`--worklog`, `docs/CI_SLOWFRAMES.md`) over a sung line to see the syllable spike. | A table of fps / ms per tab and PERFORM on PS1 and GBA, pasted into `docs/STUDIO.md` Budgets; the top 5 functions of the worst tab and of PERFORM. |
