@@ -799,7 +799,7 @@ void fp_fx_burst(int x, int y, int kind, int n)
         f->y = (int16_t)(y * 16 + rng_between(&doomo_rng, -24, 24));
         f->vx = (int16_t)rng_between(&doomo_rng, -18, 18);
         f->vy = (int16_t)rng_between(&doomo_rng, -30, -10);
-        f->max = f->life = (uint8_t)rng_between(&doomo_rng, 24, 44);
+        f->max = f->life = (uint8_t)rng_between(&doomo_rng, 18, 33);   /* a quarter shorter than 24..44 */
         switch (kind) {
         case FX_HEART: f->color = PP(PAINT_ROSE, 1); break;
         case FX_STAR: case FX_COIN: f->color = PAL_UI_GOLD; break;
@@ -858,6 +858,9 @@ void fp_fx_draw(void)
         int x, y, age;
         char g[2];
         if (!f->life) continue;
+        /* dither fade: in its last 8 ticks a particle is drawn on every other tick (and slot), so it thins out
+         * instead of vanishing; fewer draw calls too */
+        if (f->life < 8 && ((f->life + i) & 1)) continue;
         x = f->x / 16;
         y = f->y / 16;
         age = f->max - f->life;
