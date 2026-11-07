@@ -431,6 +431,9 @@ profile-sung: harness
 	HARNESS_SLOW_MS=$(SUNG_SLOW_MS) $(HARNESS) $(BUILD)/doomogachi.gba --script $(BUILD)/sung_profile.txt \
 	    --nm $(BUILD)/doomogachi.nm --no-fps-gates --worklog --quiet 2>&1 \
 	    | grep -E 'harness: (slow frame|slow frames|slow\+)' > $(BUILD)/sung_spikes.log || true; \
+	$(HARNESS) $(BUILD)/doomogachi.gba --script $(GBA)/harness/scripts/studio_sung.txt --no-fps-gates 2>&1 \
+	    | grep -E '^stg:' | tail -n 1 > $(BUILD)/sung_stg.log || true; \
+	echo "choir sprites (build/sung_stg.log; emit = frames with sprites, spr = sprite entries):"; cat $(BUILD)/sung_stg.log; \
 	echo "frames over $(SUNG_SLOW_MS) ms, and what they spend extra time in (build/sung_spikes.log):"; \
 	cat $(BUILD)/sung_spikes.log; \
 	exit $$rc

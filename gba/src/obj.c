@@ -79,7 +79,10 @@ static XfSlot   xs[OBJ_XF_SLOTS];
 #define STG_N        25                       /* SONG_SINGERS */
 #define STG_TILE(k)  (512 + (k) * 16)         /* 16x32 8bpp = 512 B = 16 tile units of 32 B */
 #define STG_HOLD     15                       /* frames the VRAM stays ours after the last frame that showed them */
-EWRAM_BSS static struct { int16_t x, y; uint8_t slot; } stg[STG_N];   /* this frame's list, in call order */
+#define STG_ENT      64                       /* chibis 25 + mouths 25 + notes 25 would be 75; at most 13 + 13 sing: 64 is plenty */
+#define STG_MINI0    (STG_N * 16)             /* the minis' tiles follow the chibis' (units of 32 B): kind k at + 2k */
+EWRAM_BSS static struct { int16_t x, y; uint8_t slot; uint8_t mini; } stg[STG_ENT];   /* this frame's list, in call order */
+EWRAM_BSS static uint32_t stg_mkey[STAGE_MINI_KINDS];                  /* uploaded 64 bytes' checksum + 1, 0 = nothing */
 EWRAM_BSS static uint32_t stg_key[STG_N];                              /* uploaded (uid, variant), 0 = nothing */
 EWRAM_BSS static uint8_t stg_pix[16 * 24] __attribute__((aligned(4))); /* the baked image */
 EWRAM_BSS static uint16_t stg_dbg[10];       /* diagnostics: begin calls, why not (4), ok, frames emitted, lost, dropped, sprites */
@@ -89,6 +92,7 @@ static void stg_forget(void)
 {
     int i;
     for (i = 0; i < STG_N; i++) stg_key[i] = 0;
+    for (i = 0; i < STAGE_MINI_KINDS; i++) stg_mkey[i] = 0;
 }
 
 /* the OBJ size table: shape 0 square, 1 wide, 2 tall; size 0..3 */
@@ -384,7 +388,7 @@ int plat_stage_obj_begin(void)
 int plat_stage_obj(int slot, int x, int y, const DoomoImage *img, int variant, const DoomoPatch *patch, int npatch)
 {
     uint32_t key;
-    if (!stg_now || stg_n >= STG_N || (unsigned)slot >= (unsigned)STG_N || !img || !img->pix || img->w != 16 ||
+    if (!stg_now || stg_n >= STG_ENT || (unsigned)slot >= (unsigned)STG_N || !img || !img->pix || img->w != 16 ||
         img->h != 24 || (unsigned)variant > 3u)
         return 0;
     key = ((img->uid ? img->uid : ((uint32_t)(uintptr_t)img->pix | 0x80000000u)) << 2 | (uint32_t)variant) + 1u;
@@ -404,6 +408,27 @@ int plat_stage_obj(int slot, int x, int y, const DoomoImage *img, int variant, c
     stg[stg_n].x = (int16_t)x;
     stg[stg_n].y = (int16_t)y;
     stg[stg_n].slot = (uint8_t)slot;
+    stg[stg_n].mini = 0;
+    stg_n++;
+    return 1;
+}
+
+int plat_stage_mini(int kind, int x, int y, const uint8_t *pix)
+{
+    uint32_t h;
+    int i;
+    if (!stg_now || stg_n >= STG_ENT || (unsigned)kind >= (unsigned)STAGE_MINI_KINDS || !pix) return 0;
+    /* the picture of a kind never changes shape, only its colours: four sampled bytes tell (no 64 byte hash a call) */
+    h = ((uint32_t)pix[3] | (uint32_t)pix[8] << 8 | (uint32_t)pix[18] << 16 | (uint32_t)pix[9] << 24) + 1u;
+    if (stg_mkey[kind] != h) {                               /* 8x8 8bpp = 64 B, 2 tile units */
+        vu16 *dst = OBJ_VRAM + (uint32_t)(STG_MINI0 + kind * 2) * 16u;
+        for (i = 0; i < 64; i += 2) *dst++ = (uint16_t)(pix[i] | (pix[i + 1] << 8));
+        stg_mkey[kind] = h;
+    }
+    stg[stg_n].x = (int16_t)x;
+    stg[stg_n].y = (int16_t)y;
+    stg[stg_n].slot = (uint8_t)kind;
+    stg[stg_n].mini = 1;
     stg_n++;
     return 1;
 }
@@ -417,12 +442,19 @@ static int stg_emit(uint16_t *buf, int room, int have, int vram_lost)
     if (have || vram_lost || n > room) { if (n) stg_dbg[7]++; n = 0; }
     if (n) { stg_dbg[5]++; stg_dbg[8] = (uint16_t)(stg_dbg[8] + n); }
     for (j = 0; j < n; j++) {
-        int ox = stg[j].x, oy = stg[j].y - 8;                /* the OBJ is 32 tall, the image its lower 24 rows */
         uint16_t *o = buf + (n - 1 - j) * 4;
-        if (ox <= -16 || ox >= SCREEN_W || oy <= -32 || oy >= SCREEN_H) { o[0] = 0x0200; o[1] = o[2] = o[3] = 0; e++; continue; }
-        o[0] = (uint16_t)((oy & 0xFF) | 0x2000 | (2 << 14));          /* 256 colours, tall */
-        o[1] = (uint16_t)((ox & 0x1FF) | (2 << 14));                  /* 16 x 32 */
-        o[2] = (uint16_t)STG_TILE(stg[j].slot);                       /* priority 0 */
+        int ox = stg[j].x, oy = stg[j].y - (stg[j].mini ? 0 : 8);       /* a chibi OBJ is 32 tall, the image its lower 24 rows */
+        int ow = stg[j].mini ? 8 : 16, oh = stg[j].mini ? 8 : 32;
+        if (ox <= -ow || ox >= SCREEN_W || oy <= -oh || oy >= SCREEN_H) { o[0] = 0x0200; o[1] = o[2] = o[3] = 0; e++; continue; }
+        if (stg[j].mini) {
+            o[0] = (uint16_t)((oy & 0xFF) | 0x2000);                      /* 256 colours, square */
+            o[1] = (uint16_t)(ox & 0x1FF);                                /* 8 x 8 */
+            o[2] = (uint16_t)(512 + STG_MINI0 + stg[j].slot * 2);
+        } else {
+            o[0] = (uint16_t)((oy & 0xFF) | 0x2000 | (2 << 14));          /* 256 colours, tall */
+            o[1] = (uint16_t)((ox & 0x1FF) | (2 << 14));                  /* 16 x 32 */
+            o[2] = (uint16_t)STG_TILE(stg[j].slot);                       /* priority 0 */
+        }
         o[3] = 0;
         e++;
     }

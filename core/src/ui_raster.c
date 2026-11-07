@@ -48,6 +48,12 @@ __attribute__((weak)) int plat_stage_obj(int slot, int x, int y, const DoomoImag
     return 0;
 }
 
+__attribute__((weak)) int plat_stage_mini(int kind, int x, int y, const uint8_t *pix)
+{
+    (void)kind; (void)x; (void)y; (void)pix;
+    return 0;
+}
+
 /* The image's 16x24 pixels with the patches painted over them (platform.h plat_stage_obj). */
 void plat_stage_bake(uint8_t *out, const DoomoImage *img, const DoomoPatch *patch, int npatch)
 {

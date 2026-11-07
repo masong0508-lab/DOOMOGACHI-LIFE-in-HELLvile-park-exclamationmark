@@ -1014,13 +1014,14 @@ TEST(studio_voice_tuning_memo_is_bit_identical)
  * frames must be identical. A wrong planner (a check switched off with studio_stage_obj_fault) must not be. */
 #define CURTAIN_T 30   /* studio_stage.c; the sprites start 20 ticks after it */
 extern int studio_stage_obj_fault;
-static int ts_on, ts_n;
-static struct { int x, y; uint8_t pix[16 * 24]; } ts_sp[SONG_SINGERS];
+static int ts_on, ts_n, ts_chibis;
+/* one entry per plat_stage_obj / plat_stage_mini call, in call order: a 16x24 chibi or an 8x8 mini */
+static struct { int x, y, w, h; uint8_t pix[16 * 24]; } ts_sp[SONG_SINGERS * 3 + 4];
 
 int plat_stage_obj_begin(void)
 {
     if (!ts_on) return 0;
-    ts_n = 0;
+    ts_n = 0; ts_chibis = 0;
     return 1;
 }
 
@@ -1028,10 +1029,20 @@ int plat_stage_obj(int slot, int x, int y, const DoomoImage *img, int variant, c
 {
     (void)variant;
     if (!ts_on || !img || img->w != 16 || img->h != 24 || !img->uid || slot < 0 || slot >= SONG_SINGERS ||
-        ts_n >= SONG_SINGERS)
+        ts_chibis >= SONG_SINGERS || ts_n >= (int)(sizeof(ts_sp) / sizeof(ts_sp[0])))
         return 0;
-    ts_sp[ts_n].x = x; ts_sp[ts_n].y = y;
+    ts_sp[ts_n].x = x; ts_sp[ts_n].y = y; ts_sp[ts_n].w = 16; ts_sp[ts_n].h = 24;
     plat_stage_bake(ts_sp[ts_n].pix, img, patch, npatch);
+    ts_n++; ts_chibis++;
+    return 1;
+}
+
+int plat_stage_mini(int kind, int x, int y, const uint8_t *pix)
+{
+    if (!ts_on || !pix || kind < 0 || kind >= STAGE_MINI_KINDS || ts_n >= (int)(sizeof(ts_sp) / sizeof(ts_sp[0])))
+        return 0;
+    ts_sp[ts_n].x = x; ts_sp[ts_n].y = y; ts_sp[ts_n].w = 8; ts_sp[ts_n].h = 8;
+    memcpy(ts_sp[ts_n].pix, pix, 64);
     ts_n++;
     return 1;
 }
@@ -1040,10 +1051,10 @@ static void ts_paint_sprites(void)
 {
     int i, xx, yy;
     for (i = 0; i < ts_n; i++)
-        for (yy = 0; yy < 24; yy++)
-            for (xx = 0; xx < 16; xx++) {
+        for (yy = 0; yy < ts_sp[i].h; yy++)
+            for (xx = 0; xx < ts_sp[i].w; xx++) {
                 int px = ts_sp[i].x + xx, py = ts_sp[i].y + yy;
-                uint8_t c = ts_sp[i].pix[yy * 16 + xx];
+                uint8_t c = ts_sp[i].pix[yy * ts_sp[i].w + xx];
                 if (c && (unsigned)px < (unsigned)nat_w && (unsigned)py < (unsigned)nat_h) nat_fb[py * nat_w + px] = c;
             }
 }
@@ -1088,7 +1099,7 @@ static int ts_run(int w, int h, int layout, int ticks, long *sprites, long *sing
                 if (ts_a[i] != nat_fb[i]) { fprintf(stderr, "  first diff t=%d at %d,%d (%d vs %d), %d sprites\n", t, i % nat_w, i / nat_w, ts_a[i], nat_fb[i], ts_n);
                     break; }
         bad += d;
-        if (ts_n || studio.show_t >= CURTAIN_T + 20) { *sprites += ts_n; *singers += song_singer_count(SS); (*shown)++; }
+        if (ts_n || studio.show_t >= CURTAIN_T + 20) { *sprites += ts_chibis; *singers += song_singer_count(SS); (*shown)++; }
     }
     scene_pop();
     test_reset();
@@ -1115,7 +1126,7 @@ TEST(studio_stage_sprites_equal_the_bitmap)
 
 TEST(studio_stage_sprites_wrong_planner_is_caught)
 {
-    static const int faults[] = { 1, 2, 8, 32 };
+    static const int faults[] = { 1 | 64, 2, 8, 32 | 64 };
     long sp, sg;
     int f, shown;
     for (f = 0; f < 4; f++) {

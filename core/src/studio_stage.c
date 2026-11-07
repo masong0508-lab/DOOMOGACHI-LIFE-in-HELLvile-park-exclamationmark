@@ -444,7 +444,9 @@ typedef struct { int16_t x0, y0, x1, y1; } SBox;
 
 #ifdef DOOMO_HITCHECK
 /* test only (the native build): bits switch a check of choir_obj_plan off, so a test can show it catches the
- * mismatch. 1 notes, 2 later bitmap chibis, 4 curtains, 8 follow spot, 16 conductor, 32 a singer's own note. */
+ * mismatch. 1 notes, 2 later bitmap chibis, 4 curtains, 8 follow spot, 16 conductor, 32 a singer's own note. Bit 64 is
+ * not a fault but a mode: every note stays in the bitmap (the planner before nov07s), which is what makes the checks
+ * of bits 1 and 32 matter. */
 int studio_stage_obj_fault;
 #define OBJ_FAULT(b) (studio_stage_obj_fault & (b))
 #else
@@ -469,8 +471,26 @@ static int choir_bop(const StageCtx *c, int kk)
     return (c->beat ? 1 : 0) + (sing && song_beat_age() < 2 ? 1 : 0);
 }
 
-/* obj[singer index] = 1: this singer can be a sprite; returns how many */
-static int choir_obj_plan(const StageCtx *c, uint8_t *obj)
+/* The choir's draw order is a list of items: for every singer, back to front, its chibi (with its mouth) and then its
+ * floating note, and after them the fixed overlays (the cover boxes above). An item can be a sprite when no item
+ * drawn after it in the BITMAP touches its box; so the plan goes from the last item to the first and keeps a list
+ * of the boxes of the items that stay in the bitmap. Notes and mouths are sprites too (plat_stage_mini), which is
+ * what lets a whole row of overlapping singers become sprites: before nov07s a note was always a bitmap item, and
+ * on the semicircle (25 singers 14 px apart, boxes 16 px wide) every singer's box met a later note or a later
+ * bitmap neighbour, so none of them could be a sprite.
+ * obj[singer index] = 1: the chibi (and its mouth) is a sprite; objn[singer index] = 1: its note is; returns how
+ * many chibis. */
+/* the follow spot's beam: rows top .. ly, 4 px wide at the top growing by 52 over the height, centred on lx (spot());
+ * a box meets it when it meets the beam's widest row inside the box (a margin of 2 for the integer steps) */
+static int beam_hit(const StageCtx *c, int x0, int y0, int x1, int y1)
+{
+    int den = DOOMO_MAX(c->ly - c->top, 1), yy = DOOMO_MIN(y1, c->ly + 1) - c->top, hw;
+    if (c->lx < 0 || OBJ_FAULT(8) || y0 > c->ly || yy <= 0) return 0;
+    hw = (4 + 52 * yy / den) / 2 + 2;
+    return x0 < c->lx + hw && c->lx - hw < x1;
+}
+
+static int choir_obj_plan(const StageCtx *c, uint8_t *obj, uint8_t *objn)
 {
     SBox cov[12], lb[SONG_SINGERS], ln[SONG_SINGERS];
     int nc = 0, nlb = 0, nln = 0, m, k, nobj = 0, cut = curtain_cover(c->sw, c->open) + 4;
@@ -483,33 +503,71 @@ static int choir_obj_plan(const StageCtx *c, uint8_t *obj)
     cov[nc++] = (SBox){ 0, (int16_t)(c->sh - (c->wide ? 44 : 25) - 10), (int16_t)c->sw, (int16_t)c->sh };   /* karaoke */
     if (!OBJ_FAULT(16))
         cov[nc++] = (SBox){ (int16_t)(cx - 9), (int16_t)(cy - 33), (int16_t)(cx + 22), (int16_t)(cy + 4) };  /* conductor */
-    cov[nc++] = (SBox){ 0, (int16_t)(c->floor + 2), (int16_t)c->sw, (int16_t)c->sh };                        /* crowd */
+    /* the crowd: its chibis start at sh - 20 (back row sh - 26), the glow sticks 4 px higher; below the karaoke
+     * bar's top in every layout, but kept as a box of its own so a change there shows up here */
+    cov[nc++] = (SBox){ 0, (int16_t)(c->sh - 31), (int16_t)c->sw, (int16_t)c->sh };
     for (k = 0; k < studio.applause / 40 && nc < 10; k++) {                           /* hearts */
         int hx = (k * 47 + 13) % c->sw, hy = c->sh - ((c->t * 2 + k * 31) % (c->sh / 2));
         cov[nc++] = (SBox){ (int16_t)(hx - 7), (int16_t)(hy - 7), (int16_t)(hx + 8), (int16_t)(hy + 8) };
     }
-    if (c->lx >= 0 && !OBJ_FAULT(8))                                                  /* follow spot + star */
-        cov[nc++] = (SBox){ (int16_t)(c->lx - 30), (int16_t)c->top, (int16_t)(c->lx + 31), (int16_t)(c->ly + 1) };   /* the beam is 4 wide at the top, 56 at the lead */
+    if (c->lx >= 0 && !OBJ_FAULT(8))                                                  /* the follow spot's star */
+        cov[nc++] = (SBox){ (int16_t)(c->lx - 7), (int16_t)(c->ly - BODYSPR_H - 16), (int16_t)(c->lx + 8), (int16_t)(c->ly - BODYSPR_H + 3) };
     for (m = c->n - 1; m >= 0; m--) {
         int kk = c->ord[m], x = c->px[kk], y = c->py[kk], bop = choir_bop(c, kk), i, ok = 1;
         int x0 = x - BODYSPR_W / 2, y0 = y - BODYSPR_H - bop, x1 = x0 + BODYSPR_W, y1 = y0 + BODYSPR_H;
         int hasn = ((c->singing >> c->slots[kk]) & 1) && ((c->t + kk * 5) % 24) < 12;
         SBox nb = { 0, 0, 0, 0 };
-        if (hasn) {                                                                   /* its note: drawn after it */
+        objn[kk] = 0;
+        if (hasn) {                                                                   /* its note: drawn after its chibi */
             int nx = x + 4, ny = y - BODYSPR_H - 8 - ((c->t + kk * 5) % 24) / 2;
             nb = (SBox){ (int16_t)nx, (int16_t)ny, (int16_t)(nx + 6), (int16_t)(ny + 8) };
+            for (i = 0; i < nc && ok; i++) if (sbox_hit(&cov[i], nb.x0, nb.y0, nb.x1, nb.y1)) ok = 0;
+        if (ok && beam_hit(c, nb.x0, nb.y0, nb.x1, nb.y1)) ok = 0;
+            for (i = 0; i < nln && ok && !OBJ_FAULT(1); i++) if (sbox_hit(&ln[i], nb.x0, nb.y0, nb.x1, nb.y1)) ok = 0;
+            for (i = 0; i < nlb && ok && !OBJ_FAULT(2); i++) if (sbox_hit(&lb[i], nb.x0, nb.y0, nb.x1, nb.y1)) ok = 0;
+            if (OBJ_FAULT(64)) ok = 0;                                                    /* test mode: notes stay bitmap */
+            objn[kk] = (uint8_t)ok;
+            ok = 1;
         }
         for (i = 0; i < nc && ok; i++) if (sbox_hit(&cov[i], x0, y0, x1, y1)) ok = 0;
+        if (ok && beam_hit(c, x0, y0, x1, y1)) ok = 0;
         for (i = 0; i < nln && ok && !OBJ_FAULT(1); i++) if (sbox_hit(&ln[i], x0, y0, x1, y1)) ok = 0;
         for (i = 0; i < nlb && ok && !OBJ_FAULT(2); i++) if (sbox_hit(&lb[i], x0, y0, x1, y1)) ok = 0;
-        /* its own note reaches its box when the note is low and the singer bops up (a note's last row is y + 7) */
-        if (hasn && ok && !OBJ_FAULT(32) && sbox_hit(&nb, x0, y0, x1, y1)) ok = 0;
+        /* its own note, when that stays in the bitmap, reaches its box if the note is low and the singer bops up
+         * (a note's last row is y + 7) */
+        if (hasn && !objn[kk] && ok && !OBJ_FAULT(32) && sbox_hit(&nb, x0, y0, x1, y1)) ok = 0;
         obj[kk] = (uint8_t)ok;
         if (ok) nobj++;
         else lb[nlb++] = (SBox){ (int16_t)x0, (int16_t)y0, (int16_t)x1, (int16_t)y1 };
-        if (hasn) ln[nln++] = nb;
+        if (hasn && !objn[kk]) ln[nln++] = nb;
     }
     return nobj;
+}
+
+/* the 8x8 pictures of plat_stage_mini: kind 0 / 1 the open / shut mouth (origin: the chibi's (7, 14)), 2 + section
+ * the floating note (origin: the note's (x, y)); the same pixels draw_mouth and st_note_glyph make with rects */
+enum { MINI_MOUTH_OPEN, MINI_MOUTH_SHUT, MINI_NOTE0 };
+static const uint8_t *stage_mini_pix(int kind, uint8_t c)
+{
+    static uint8_t pix[STAGE_MINI_KINDS][64], made[STAGE_MINI_KINDS], col[STAGE_MINI_KINDS];
+    uint8_t *p = pix[kind];
+    int i, j;
+    if (made[kind] && col[kind] == c) return p;
+    memset(p, 0, 64);
+    if (kind == MINI_MOUTH_OPEN) {
+        for (j = 0; j < 3; j++) for (i = 0; i < 3; i++) p[j * 8 + i] = PAL_PAINT(PAINT_BLOOD, 0);
+        p[2 * 8 + 1] = PAL_PAINT(PAINT_ROSE, 2);
+    } else if (kind == MINI_MOUTH_SHUT) {
+        for (i = 0; i < 3; i++) p[1 * 8 + i] = PAL_PAINT(PAINT_BLOOD, 0);
+    } else {
+        for (j = 5; j < 8; j++) for (i = 1; i < 4; i++) p[j * 8 + i] = c;      /* the head: plat_rect(x + 1, y + 5, 3, 3) */
+        for (i = 0; i < 5; i++) p[6 * 8 + i] = c;                              /* plat_rect(x, y + 6, 5, 1) */
+        for (j = 0; j < 6; j++) p[j * 8 + 3] = c;                              /* the stem: plat_rect(x + 3, y, 1, 6) */
+        p[1 * 8 + 4] = c;                                                      /* the flag */
+        p[2 * 8 + 5] = c; p[3 * 8 + 5] = c;
+    }
+    made[kind] = 1; col[kind] = c;
+    return p;
 }
 
 static void draw_show(void)
@@ -558,12 +616,13 @@ static void draw_show(void)
     /* the choir, back rows first (smaller y first) */
     {
         int k, m, *px = pxs, *py = pys;
-        uint8_t ord[SONG_SINGERS], obj[SONG_SINGERS];
+        uint8_t ord[SONG_SINGERS], obj[SONG_SINGERS], objn[SONG_SINGERS];
         for (k = 0; k < n; k++) {
             for (m = k; m > 0 && py[ord[m - 1]] > py[k]; m--) ord[m] = ord[m - 1];
             ord[m] = (uint8_t)k;
         }
         memset(obj, 0, sizeof(obj));
+        memset(objn, 0, sizeof(objn));
         /* option C: sprites only in the sung show proper (not the curtain's "Showtime!", not the bows, nothing over it) */
         if (n > 0 && studio.show == 1 && t >= CURTAIN_T + 20 && !studio.pop_n && !studio.msg_t && !studio.picking &&
             !ui_toast_pending() && plat_stage_obj_begin()) {
@@ -571,36 +630,33 @@ static void draw_show(void)
             for (k = 0; k < n; k++) if (slots[k] == lead) { lx = px[k]; ly = py[k]; }
             c.sw = sw; c.sh = sh; c.floor = floor; c.top = top; c.open = open; c.wide = wide; c.t = t; c.beat = beat;
             c.n = n; c.lx = lx; c.ly = ly; c.singing = singing; c.slots = slots; c.ord = ord; c.px = px; c.py = py;
-            choir_obj_plan(&c, obj);
+            choir_obj_plan(&c, obj, objn);
             lx = -1; ly = 0;                                   /* found again below, as before */
         }
         for (m = 0; m < n; m++) {
             int kk = ord[m], x = px[kk], y = py[kk], id = song_singer_id(SS, slots[kk]);
-            int sing = (singing >> slots[kk]) & 1, bop, open_mouth = (song_beat_age() & 2) == 0, np = 0;
-            int cx0, cy0;
+            int sing = (singing >> slots[kk]) & 1, bop, open_mouth = (song_beat_age() & 2) == 0;
+            int cx0, cy0, spr = obj[kk];
             const DoomoImage *img = bodyspr_image(id, 0, 0);
-            DoomoPatch pt[2] = { { 0, 0, 0, 0, 0 }, { 0, 0, 0, 0, 0 } };
             bop = (beat ? 1 : 0) + (sing && song_beat_age() < 2 ? 1 : 0);
             cx0 = x - BODYSPR_W / 2;
             cy0 = y - BODYSPR_H - bop;
-            if (sing && obj[kk]) {                              /* the mouth, as the patches draw_mouth would paint */
-                if (open_mouth) {
-                    pt[0] = (DoomoPatch){ 7, 14, 3, 3, PAL_PAINT(PAINT_BLOOD, 0) };
-                    pt[1] = (DoomoPatch){ 8, 16, 1, 1, PAL_PAINT(PAINT_ROSE, 2) };
-                    np = 2;
-                } else {
-                    pt[0] = (DoomoPatch){ 7, 15, 3, 1, PAL_PAINT(PAINT_BLOOD, 0) };
-                    np = 1;
-                }
-            }
-            if (!(obj[kk] && img && plat_stage_obj(slots[kk], cx0, cy0, img, sing ? 1 + open_mouth : 0, pt, np))) {
+            if (spr && img && !plat_stage_obj(slots[kk], cx0, cy0, img, 0, NULL, 0)) spr = 0;
+            if (spr) {                                          /* the chibi as a sprite, its mouth a mini over it */
+                if (sing)
+                    plat_stage_mini(open_mouth ? MINI_MOUTH_OPEN : MINI_MOUTH_SHUT, cx0 + 7, cy0 + 14,
+                                    stage_mini_pix(open_mouth ? MINI_MOUTH_OPEN : MINI_MOUTH_SHUT, 0));
+            } else {
                 if (img) plat_image(cx0, cy0, img, 1, 0, 0);
                 if (sing) draw_mouth(cx0, cy0, open_mouth);
             }
             if (sing) {
-                if (((t + kk * 5) % 24) < 12)
-                    st_note_glyph(x + 4, y - BODYSPR_H - 8 - ((t + kk * 5) % 24) / 2,
-                                  PAL_PAINT(sec_paint[secs[kk]], 2));
+                if (((t + kk * 5) % 24) < 12) {
+                    int nx = x + 4, ny = y - BODYSPR_H - 8 - ((t + kk * 5) % 24) / 2;
+                    uint8_t nc = PAL_PAINT(sec_paint[secs[kk]], 2);
+                    if (!(objn[kk] && plat_stage_mini(MINI_NOTE0 + secs[kk], nx, ny, stage_mini_pix(MINI_NOTE0 + secs[kk], nc))))
+                        st_note_glyph(nx, ny, nc);
+                }
             }
             if (slots[kk] == lead) { lx = x; ly = y; }
         }

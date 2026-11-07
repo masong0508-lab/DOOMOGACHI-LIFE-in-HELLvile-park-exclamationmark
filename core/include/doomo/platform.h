@@ -86,6 +86,14 @@ typedef struct DoomoPatch { uint8_t x, y, w, h, c; } DoomoPatch;
 int  plat_stage_obj_begin(void);
 int  plat_stage_obj(int slot, int x, int y, const DoomoImage *img, int variant, const DoomoPatch *patch, int npatch);
 void plat_stage_bake(uint8_t *out, const DoomoImage *img, const DoomoPatch *patch, int npatch);
+/* The same stage, the small things the choir carries (nov07s): plat_stage_mini() shows an 8x8 picture (64 bytes, palette
+ * indices, 0 = transparent) as one sprite at (x, y) = its top-left, in the same painter's order as plat_stage_obj():
+ * a singer's mouth and its floating note are minis called right after the singer, so the next singer's sprite
+ * (called later) lies over them exactly as the bitmap would. `kind` (0 .. STAGE_MINI_KINDS - 1) names the picture: the
+ * platform keeps its tiles per kind and uploads again only when the 64 bytes change. Only legal after a
+ * plat_stage_obj_begin() that said 1; returns 0 when it cannot take it. Weak default: 0. */
+#define STAGE_MINI_KINDS 8
+int  plat_stage_mini(int kind, int x, int y, const uint8_t *pix);
 /* Retained panels (G7, foundation, additive). A panel is a part of the 2D
  * picture (a HUD pill, the dialogue box, a toast) that the core draws
  * between plat_panel_begin() and plat_panel_end(): `id` names it (PANEL_*),
