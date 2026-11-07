@@ -161,3 +161,17 @@ clear only outside the sea box, cache `town_count`.
   (120,110) and made `panel_island_hud_and_ticker_are_pixel_identical` fail when run alone. Replays now go through the tap.
 - New test `core/tests/test_island_replay.c`: replayed lists equal live lists, by day and by night, with weather on.
 - Unit suite: 883 passed, 0 failed. Not measured on the GBA (no ARM toolchain in this session).
+
+## I8: the hub holds its frame under a steady toast (exact except the toast's sparkle)
+
+The speed tour's slow window (first ~300 ticks of the hub) is the auto-rent and "NEW UNLOCK" toasts: `ui_toast_pending()` forced a
+full ~64 ms redraw every drawn tick. A toast holds still for 75 ticks between its slide-in and slide-out, so it is part of the frame:
+- `ui_toast_steady()` (ui.c): nonzero from the end of the slide-in to the start of the slide-out (a line wider than its pill: after
+  its scroll ends); the value changes when the queue replaces the line.
+- The hub records it when it draws a full frame (`I.hub_toast`). The held frame (both Mode 4 pages) then carries the toast, and
+  while the same steady toast is up the hub keeps holding and calls `ui_toast_hold()`, so `ui_toast_draw` only advances the timer.
+  Slide-in, slide-out, a new line, a scroll step or any other overlay ends the hold and the frame is drawn in full as before.
+- The toast's sparkle steps with the hub (every HUB_HOLD ticks) instead of every 2 ticks. Nothing else changes.
+- Test: `island_hub_holds_under_a_steady_toast` (test_island_replay.c): against a run with the hold off every full-drawn tick is
+  pixel-identical, the toast timer matches tick for tick, held ticks repeat the picture above the news strip, holds happen.
+- Not measured here (no ARM toolchain in the session): the CI speed tour should show the toast phases at ~30 ticks/s.

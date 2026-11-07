@@ -213,6 +213,13 @@ int  ui_toast_pending(void);
 void ui_toast_clear(void);
 /* 1 when the toast drawn later this frame can touch the rect (generous; ui.c). */
 int  ui_toast_over(int x, int y, int w, int h);
+/* Nonzero while the first toast holds perfectly still (slid in, text not scrolling, not yet sliding out): its pixels
+ * cannot change, except the sparkle, until the value does. The value names the toast (it changes when the queue
+ * replaces the line), so a scene that kept a frame with the toast on it can tell it is still the same toast. */
+int  ui_toast_steady(void);
+/* A scene that kept the last frame, toast included (docs/ISLAND_SPEED.md I8), asks for the toast not to be drawn
+ * over it again this frame: its timer still runs (ui.c ui_toast_draw). Only while ui_toast_steady() is nonzero. */
+void ui_toast_hold(void);
 
 /* Retained panels (G7, platform.h plat_panel_begin): a panel's key starts
  * from ui_panel_key() (the current language and its glyph page, so a

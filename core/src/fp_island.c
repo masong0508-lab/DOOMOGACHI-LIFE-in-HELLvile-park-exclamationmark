@@ -125,6 +125,7 @@ static struct {
     uint8_t hold;                /* (perf) 2 = the popped menu's backdrop is the platform's held frame, 3 = the hub's */
     uint8_t hold_full;           /* a full popped frame was drawn: the next update may hold it */
     uint8_t hub_full;            /* (perf) a clean full hub frame was drawn: the next update may hold it */
+    int16_t hub_toast;           /* (perf, I8) ui_toast_steady() of that frame (0: no toast on it); the hold lasts while it is unchanged */
     uint8_t dirty;               /* (perf) a button went down since the last full hub frame */
     uint32_t full_t;             /* the tick of the last full hub frame */
     uint8_t live;                /* island_update ran since the last island_draw (nothing else is on top) */
@@ -556,6 +557,15 @@ static void collect_rent(void)
 #define HUB_HOLD 6                       /* ticks a clean hub frame is held (the GBA draws every 3rd tick) */
 static int hub_held;                     /* hub frames held so far (test hook) */
 int fp_island_hub_held(void) { return hub_held; }
+static int hub_hold_off;                 /* test hook: never hold the hub (every frame drawn in full) */
+void fp_island_hub_hold_off(int off) { hub_hold_off = off; }
+
+/* (perf, I8) the toast state a held hub frame needs: a toast that was steady when the frame was drawn is on both
+ * pages and still is the same steady toast; without one, none may have appeared */
+static int hub_toast_same(void)
+{
+    return I.hub_toast ? ui_toast_steady() == I.hub_toast : !ui_toast_pending();
+}
 
 /* (perf) let go of the held menu backdrop: whatever an entry does (money, citizens, a new scene) shows
  * behind the menu again, drawn in full, and the next popped frame is held anew */
@@ -1052,10 +1062,11 @@ static void island_draw(void)
      * without a press, a toast, a dialogue, a particle or the clock, so only the news strip (which refills its own
      * bar) is repainted. The hub's animation therefore steps every HUB_HOLD ticks. */
     if (I.hold == 3) {
-        if (!I.menu_open && I.live && !I.dirty && !ui_toast_pending() && !ui_dialog_active() && !fp_fx_any() &&
+        if (!I.menu_open && I.live && !I.dirty && hub_toast_same() && !ui_dialog_active() && !fp_fx_any() &&
             doomo_frame_count() - I.full_t < HUB_HOLD && plat_hold_frame(4)) {
             I.live = 0;
             hub_held++;
+            if (I.hub_toast) ui_toast_hold();      /* it is on the kept page: only its timer runs */
             fp_ticker(sh - 13, style);
             return;
         }
@@ -1118,7 +1129,9 @@ static void island_draw(void)
         I.hold_full = 1;
     if (!I.menu_open && !plat_draw_skipped()) {
         I.full_t = doomo_frame_count();
-        I.hub_full = (uint8_t)(!I.dirty && !ui_toast_pending() && !ui_dialog_active() && !fp_fx_any());
+        I.hub_toast = (int16_t)ui_toast_steady();
+        I.hub_full = (uint8_t)(!hub_hold_off && !I.dirty && (!ui_toast_pending() || I.hub_toast) &&
+                               !ui_dialog_active() && !fp_fx_any());
         I.dirty = 0;
     }
 }

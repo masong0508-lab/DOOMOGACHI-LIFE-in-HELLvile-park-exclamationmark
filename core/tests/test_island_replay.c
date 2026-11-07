@@ -110,3 +110,60 @@ TEST(island_hub_holds_clean_frames_and_redraws_on_input)
     hub_hold_run(320, 240);
     test_set_res(240, 160);
 }
+
+/* (I8) a toast that holds still no longer forces the hub to redraw in full: while it is steady the hub keeps the
+ * frame (toast on it) and only the toast's timer runs. Against the same run with the hold off (every tick drawn in
+ * full), every tick that was drawn in full must be the same picture, the toast must end on the same tick, a
+ * held tick must repeat the previous one above the news strip, and holds must really happen under a toast. */
+#define TNF 220
+#define T0 40
+static void toast_run(int hold_off, const char *msg, uint32_t *full, uint32_t *top, uint8_t *held, uint8_t *pend)
+{
+    int f;
+    doomo_init();
+    test_reset();
+    fp_island_hub_hold_off(hold_off);
+    fp_new_island(TOWN_POP_PREMADE, 4242);
+    scene_set(&SCENE_ISLAND, FP_ISLAND_ARG_RETURN);
+    for (f = 0; f < TNF; f++) {
+        int before = fp_island_hub_held();
+        if (f == T0) ui_toast(msg);
+        plat_begin_frame();
+        doomo_frame(0);
+        plat_end_frame();
+        full[f] = fb_hash();
+        rows_hash(&top[f], 0, nat_h - 14);
+        held[f] = (uint8_t)(fp_island_hub_held() > before);
+        pend[f] = (uint8_t)ui_toast_pending();
+    }
+    fp_island_hub_hold_off(0);
+}
+
+static void toast_hold_run(const char *msg, int w, int h)
+{
+    static uint32_t fa[TNF], ta[TNF], fb[TNF], tb[TNF];
+    static uint8_t ha[TNF], hb[TNF], pa[TNF], pb[TNF];
+    int f, under = 0;
+    test_set_res(w, h);
+    toast_run(0, msg, fa, ta, ha, pa);
+    toast_run(1, msg, fb, tb, hb, pb);
+    for (f = 0; f < TNF; f++) {
+        CHECK_MSG(pa[f] == pb[f], "%dx%d '%.12s': tick %d toast pending %d with holds, %d without", w, h, msg, f, pa[f], pb[f]);
+        CHECK_MSG(!hb[f], "hold-off run held tick %d", f);
+        if (!ha[f]) {
+            CHECK_MSG(fa[f] == fb[f], "%dx%d '%.12s': tick %d was drawn in full but differs from the all-full run", w, h, msg, f);
+        } else {
+            CHECK_MSG(f > 0 && ta[f] == ta[f - 1], "%dx%d '%.12s': held tick %d changed above the news strip", w, h, msg, f);
+            if (pa[f]) under++;
+        }
+    }
+    CHECK_MSG(under > 30, "%dx%d '%.12s': only %d ticks held under the toast", w, h, msg, under);
+}
+
+TEST(island_hub_holds_under_a_steady_toast)
+{
+    toast_hold_run("Rent collected", 240, 160);
+    toast_hold_run("Rent collected", 320, 240);
+    toast_hold_run("NEW UNLOCK: a very long line that has to scroll across its pill", 240, 160);
+    test_set_res(240, 160);
+}

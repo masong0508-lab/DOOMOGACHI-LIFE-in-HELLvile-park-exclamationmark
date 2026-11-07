@@ -799,6 +799,8 @@ void ui_paint_picker_draw(int x, int y, uint8_t paint, int cols)
 #define TOAST_OUT 8
 static char toast_msg[TOAST_Q][56];
 static int toast_n, toast_t;
+static uint8_t toast_gen;               /* changes when the line on screen is replaced (ui_toast_steady) */
+static uint8_t toast_held;              /* ui_toast_hold(): this frame's toast is already on the kept page */
 
 void ui_toast(const char *msg)
 {
@@ -807,6 +809,7 @@ void ui_toast(const char *msg)
     if (toast_n == TOAST_Q) {
         for (i = 1; i < TOAST_Q; i++) memcpy(toast_msg[i - 1], toast_msg[i], 56);
         toast_n--;
+        toast_gen++;
         if (toast_n == 0) toast_t = 0;
     }
     for (i = 0; i < 55 && msg[i]; i++) toast_msg[toast_n][i] = msg[i];
@@ -835,7 +838,7 @@ static int toast_show(int w)
     return toast_n > 1 ? TOAST_SHOW_QUEUED : TOAST_SHOW;
 }
 
-void ui_toast_clear(void) { toast_n = 0; toast_t = 0; }
+void ui_toast_clear(void) { toast_n = 0; toast_t = 0; toast_gen++; toast_held = 0; }
 
 /* The toast's left edge on its tick t (width w): slides in, holds, slides out. */
 static int toast_x(int t, int w, int show)
@@ -868,11 +871,29 @@ int ui_toast_over(int x, int y, int w, int h)
     return !(x + w <= tx - 6 || x >= tx + tw + 2 + 6 || y + h <= 4 - 1 - 6 || y >= 4 - 1 + 18 + 6);
 }
 
+/* The toast holds still from the end of its slide-in to the start of its slide-out, but a line wider than its pill
+ * also scrolls (toast_overflow) and is steady only once the scroll has ended. The sparkle is the one thing that
+ * keeps changing; a scene that keeps the frame lets it step with the scene. */
+int ui_toast_steady(void)
+{
+    int tw, show, o;
+    if (toast_n == 0) return 0;
+    tw = DOOMO_MIN(ui_text_width(toast_msg[0]) + 22, plat_screen_w() - 8);
+    show = toast_show(tw);
+    o = toast_overflow(tw);
+    if (toast_t < TOAST_IN || toast_t >= TOAST_IN + show) return 0;
+    if (o > 0 && toast_t - TOAST_IN - TOAST_BEAT < o) return 0;
+    return 1 + toast_gen;
+}
+
+void ui_toast_hold(void) { toast_held = 1; }
+
 void ui_toast_draw(void)
 {
     const UiStyle *st;
     int t, w, x, y = 4;
-    int saved = ui_cur_style, show, over, off;
+    int saved = ui_cur_style, show, over, off, kept = toast_held;
+    toast_held = 0;
     if (toast_n == 0) return;
     t = toast_t++;
     st = ui_style(WIN_CREAM);
@@ -883,8 +904,8 @@ void ui_toast_draw(void)
     x = toast_x(t, w, show);
     /* G7: a retained panel (it holds still for TOAST_SHOW ticks; the
      * sparkle is off for 14 of every 32); a kept toast draws its shadow */
-    if (plat_draw_skipped()) {
-        /* nothing */
+    if (plat_draw_skipped() || kept) {
+        /* nothing (a kept frame has this toast on it already: the timer is all that moves) */
     } else if (UI_PANELS && !plat_panel_begin(PANEL_TOAST, x, y - 1, w + 2, 18,
                                               ui_key_int(ui_key_int(ui_key_str(ui_panel_key(), toast_msg[0]), off),
                                                          ui_sparkle_size((t / 2) & 15)))) {
@@ -908,6 +929,7 @@ void ui_toast_draw(void)
         for (i = 1; i < toast_n; i++) memcpy(toast_msg[i - 1], toast_msg[i], 56);
         toast_n--;
         toast_t = 0;
+        toast_gen++;
     }
 }
 
