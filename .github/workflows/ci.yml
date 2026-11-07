@@ -235,6 +235,19 @@ jobs:
             echo '```'
           } 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
 
+      # The sung PERFORM window as a per-tick log: the slowest ticks with their show tick (the 50.8 ms one).
+      - name: Profile the Music Studio sung phase
+        if: always()
+        continue-on-error: true
+        run: |
+          {
+            echo
+            echo '## Music Studio PERFORM, sung phase: median, worst and the slowest ticks'
+            echo '```'
+            make -C gba profile-sung 2>&1 | grep -E '^(window|tick |[0-9]+ +[0-9]+ |ticks logic|over the|gba/build/sung.log|.*median)|rror' || echo '(profile-sung produced no output)'
+            echo '```'
+          } 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
+
       - name: Upload speed report
         if: always()
         continue-on-error: true
@@ -247,6 +260,7 @@ jobs:
             gba/build/profile_all.log
             gba/build/invaded_profile.log
             gba/build/studio_profile.log
+            gba/build/sung.log
             gba/build/shots/speed/
             gba/build/shots/title/
           if-no-files-found: ignore
