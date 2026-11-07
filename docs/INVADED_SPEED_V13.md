@@ -10,8 +10,8 @@ flags table that used to be the `switch`). `t / 5` is taken once per frame inste
 
 Kept live on purpose (exactness): `ow_floor_h()` (a lift can move a cell's floor), the animation frame `(t / 5 + i) % frames`,
 `sprite_image()`, and the cull test. The billboards come out in the same order with the same fields.
-RAM: `OwProp` grows 6 -> 14 bytes; the 256-prop table is in the scene scratch (6,472 of 12,288 bytes used before, about 8.5 KB
-after), so EWRAM is unchanged.
+RAM: `OwProp` grows 6 -> 8 bytes (`spr`, and `art` = frame count in bits 0-5 + flag code in bits 6-7); the cell is `x / DOOMO_CELL_UNITS`.
+Scratch 6,472 -> 6,984 B.
 
 ## Checked (host, `make -C core -j8 test`: 873 passed with the temporary dump test, 872 without)
 - 135 runs (every debug beat by day and night, plus the three visit maps), 150 frames each with the player walking: all 2,115
@@ -23,3 +23,12 @@ after), so EWRAM is unchanged.
   worst frames. The dips left over 33.3 ms (36.1 / 37.6 in the last CI run) are not from this loop: to find them, run
   `make -C gba profile-invaded` with `--worklog` and read which functions the over-budget ticks spend their time in.
 - Gate: `make -C gba test-speed` must keep invaded `vhash-seq` f87e5596 and every other scene's hash.
+
+## V13b fix: the first V13 broke the GBA tile cache (2026-11-07)
+The first V13 made `OwProp` 14 bytes, so `OwScratch` went 6,472 -> about 8,520 B. On the GBA the overworld keeps its full lit-tile
+cache and the tile frame only while `gba_big_fits(GBA_BIG_OW)`, i.e. `scene_scratch_used() <= GBA_ARENA_BB - GBA_BIG_OW`
+(26,992 - 2,400 - 17,152 = **7,440 B**). Over that, every overworld map ran on half the cache and without the tile frame: other
+pixels (vhash-seq moved on every overworld scene), other timings, and `lit_cached` / `draw_tile` / `map_cell_safe` high in the
+profile. The host tests could not see it (no arena). `OwProp` is now 8 bytes and `core/src/overworld_int.h` asserts
+`sizeof(OwScratch) <= 7440` and `sizeof(OwProp) == 8`, so this fails at build time instead of in CI.
+Expected on CI: invaded `vhash-seq` back to f87e5596 and every other scene's hash back to its V12 value.

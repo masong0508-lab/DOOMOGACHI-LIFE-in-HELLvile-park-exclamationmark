@@ -936,9 +936,9 @@ static void build_billboards(void)
         const OwProp *p = &ow_props[i];
         int32_t x = (int32_t)p->x * OWQ, y = (int32_t)p->y * OWQ;
         if (!p->spr || x < vx0 || x > vx1 || y < vy0 || y > vy1) continue;
-        z = ow_floor_h(p->cx, p->cy) * DOOMO_HEIGHT_STEP;
-        frame = p->nfr > 1 ? (int)((t5 + (uint32_t)i) % (uint32_t)p->nfr) : 0;
-        add_bb(x, y + 8 * OWQ, z, sprite_image(p->spr, frame), p->fl, 0);
+        z = ow_floor_h(p->x / DOOMO_CELL_UNITS, p->y / DOOMO_CELL_UNITS) * DOOMO_HEIGHT_STEP;
+        frame = OWP_NFR(p) > 1 ? (int)((t5 + (uint32_t)i) % (uint32_t)OWP_NFR(p)) : 0;
+        add_bb(x, y + 8 * OWQ, z, sprite_image(p->spr, frame), OWP_FL(p), 0);
     }
     ownpc_add_billboards(vx0, vy0, vx1, vy1);
     /* side quest spots (the hero's) */

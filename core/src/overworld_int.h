@@ -47,12 +47,24 @@ typedef struct OwProp {
     uint8_t r;               /* collision radius (0 = walk through)          */
     /* what never changes while the props live, worked out once by
      * ownpc_load_props() so that build_billboards() does not redo it on
-     * every drawn frame (V13): its cell, its sprite (SPR_*, 0 = none), the
-     * billboard flags and the sprite's frame count. The floor height and
-     * the animation frame are NOT here: a lift can move a cell's floor. */
-    int16_t cx, cy;
-    uint8_t spr, fl, nfr, pad;
+     * every drawn frame (V13): its sprite (SPR_*, 0 = none) and, in `art`,
+     * the sprite's frame count (bits 0-5) and the billboard flags code
+     * (bits 6-7: OWP_FL_*). The cell is x / DOOMO_CELL_UNITS (a constant
+     * divide); the floor height and the animation frame are NOT stored:
+     * a lift can move a cell's floor.
+     * 8 bytes ON PURPOSE (V13b): the GBA keeps its lit-tile cache and tile
+     * frame only while scene_scratch_used() <= GBA_ARENA_BB - GBA_BIG_OW
+     * (7,440 B); a 14-byte prop pushed the scratch to 8.5 KB and took both
+     * away on every overworld map (changed pixels, +ms). See the assert
+     * on OwScratch below. */
+    uint8_t spr, art;
 } OwProp;
+#define OWP_FL_SHADOW 1
+#define OWP_FL_FULLBRIGHT 2
+#define OWP_NFR(p)  ((p)->art & 63)
+#define OWP_FL(p)   (((p)->art >> 6) == OWP_FL_SHADOW ? BB_SHADOW \
+                     : ((p)->art >> 6) == OWP_FL_FULLBRIGHT ? BB_FULLBRIGHT : 0)
+DOOMO_STATIC_ASSERT(sizeof(OwProp) == 8, owprop_is_8_bytes);
 
 enum { EMO_NONE, EMO_TALK, EMO_HEART, EMO_NOTE, EMO_ZZZ, EMO_SWEAT, EMO_SKULL,
        EMO_BANG /* S1: the double-take "!" */ };
@@ -150,6 +162,9 @@ typedef struct OwScratch {
     uint8_t ext[OW_SCRATCH_EXT];
 } OwScratch;
 DOOMO_STATIC_ASSERT(sizeof(OwScratch) <= DOOMO_SCENE_SCRATCH, ow_scratch_fits);
+/* GBA: GBA_ARENA_SIZE 26992 - GBA_BB_BYTES 2400 - GBA_BIG_OW 17152 = 7,440. Over it the overworld loses its full tile
+ * cache and the tile frame (gba_big_fits(GBA_BIG_OW)), which changes the pixels' path and the frame time. */
+DOOMO_STATIC_ASSERT(sizeof(OwScratch) <= 7440u, ow_scratch_keeps_the_gba_tile_cache);
 extern OwScratch *ow_scr;
 #define ow_npcs (ow_scr->npcs)
 #define ow_props (ow_scr->props)

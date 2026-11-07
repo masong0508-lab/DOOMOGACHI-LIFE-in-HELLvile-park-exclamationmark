@@ -123,12 +123,11 @@ void ownpc_load_props(void)
             {
                 OwProp *np = &ow_props[ow_prop_count];
                 int nf;
-                np->cx = (int16_t)(np->x / DOOMO_CELL_UNITS);
-                np->cy = (int16_t)(np->y / DOOMO_CELL_UNITS);
-                prop_art(t->type, &np->spr, &np->fl);
+                uint8_t fl;
+                prop_art(t->type, &np->spr, &fl);
                 nf = np->spr ? sprite_frames(np->spr) : 0;
-                np->nfr = (uint8_t)DOOMO_CLAMP(nf, 0, 255);
-                np->pad = 0;
+                np->art = (uint8_t)(DOOMO_CLAMP(nf, 0, 63) |
+                                    ((fl & BB_FULLBRIGHT ? OWP_FL_FULLBRIGHT : fl & BB_SHADOW ? OWP_FL_SHADOW : 0) << 6));
             }
             ow_prop_count++;
         }
