@@ -1080,18 +1080,35 @@ const DoomoImage *figure_image(const DoomoLook *l, int status, int expr)
     return animated(CK_FIGURE, -1, l, status, expr);
 }
 
+/* B (docs/STUDIO_30FPS_PLAN.md): the 48-byte gene compare of the look-hash memo, word by word. DoomoResident has no
+ * member wider than a byte, so the compiler cannot assume a record is word aligned: the test is at run time and the
+ * byte-wise memcmp stays as the fallback (an unaligned word load traps on the R3000 and misreads on the ARM7). Same
+ * answer as memcmp(a, b, 48) == 0 on every input. */
+typedef uint32_t __attribute__((may_alias)) gene_w_t;
+static inline int gene_same(const uint8_t *a, const uint8_t *b)
+{
+    if (((uintptr_t)a | (uintptr_t)b) & 3u) return memcmp(a, b, 48) == 0;
+    {
+        const gene_w_t *x = (const gene_w_t *)a, *y = (const gene_w_t *)b;
+        return ((x[0] ^ y[0]) | (x[1] ^ y[1]) | (x[2] ^ y[2]) | (x[3] ^ y[3]) | (x[4] ^ y[4]) | (x[5] ^ y[5]) |
+                (x[6] ^ y[6]) | (x[7] ^ y[7]) | (x[8] ^ y[8]) | (x[9] ^ y[9]) | (x[10] ^ y[10]) |
+                (x[11] ^ y[11])) == 0;
+    }
+}
+
 /* V8 (docs/INVADED_SPEED.md): the look hash of a body, memoised on the resident's raw record. A citizen's body
  * is asked for every tick (7 a tick on the invaded map), and unpacking the 40-odd look genes, ageing the look and
  * hashing it was ~3% of the GBA frame. The hash is a pure function of the gene bytes and `species` (look_for_stage
  * and look_hash read nothing else), so a hit needs both unchanged: any edit to the look re-computes it. The deep
  * run (look_run_hash) is not memoised; it is a walk of a pool that is empty or tiny. 40 entries (fully
- * associative since MS-P4), 56 B each; a miss only costs the old path. */
+ * associative since MS-P4), 60 B each; a miss only costs the old path. */
 #define BLH_N 40
 typedef struct BodyLH {
     uint8_t  gene[48];
     uint32_t h;
     int32_t  id;
     uint8_t  species, ok;
+    uint8_t  ei;                    /* B: the cache entry this body was last found in; a hint, checked on every use */
 } BodyLH;
 static BodyLH blh[BLH_N];
 
@@ -1161,7 +1178,7 @@ const DoomoImage *bodyspr_image(int resident_id, int dir, int frame)
         blh_hint[hi] = (uint8_t)bi;
     }
     if (m->ok && m->id == resident_id && m->species == r->species &&
-        memcmp(m->gene, r->gene, sizeof m->gene) == 0) {
+        gene_same(m->gene, r->gene)) {
         lhl = m->h;
     } else {
         look_for_stage(RES_LOOK_VIEW(r), RES_STAGE(r), &L);    /* F4: the body of their age */
@@ -1175,8 +1192,22 @@ const DoomoImage *bodyspr_image(int resident_id, int dir, int frame)
     }
     lh = lhl ^ look_run_hash(resident_id, 1);             /* chibi sees only DFF_CHIBI fields */
     key = (uint32_t)(dir | (frame << 2)) | ((uint32_t)status << 12);
+    /* B: try the entry this body was found in last time before the general lookup. It is accepted only when it
+     * passes the very test cache_get applies (kind, ready, resident, look hash including the deep run, key), so a
+     * look, species, status, run or facing change, an eviction or a reuse of its blocks all fail it and fall through
+     * to the old path; the touch is the one cache_get makes (stamp and tick, so eviction order is unchanged). What a
+     * hit skips is the memo hash and the scan of cache_find. */
+    e = &ent[m->ei < PC_BLOCKS ? m->ei : 0];
+    if (e->kind == CK_BODY && !e->busy && e->rid == resident_id && e->look == lh && e->key == key) {
+        e->stamp = ++cache_stamp;
+        e->tick = now();
+        return &e->img;
+    }
     e = cache_find(CK_BODY, resident_id, key, lh, 0xFFFFFFFFu);
-    if (e) return &e->img;
+    if (e) {
+        m->ei = (uint8_t)(e - ent);
+        return &e->img;
+    }
     if (!have_look) look_for_stage(RES_LOOK_VIEW(r), RES_STAGE(r), &L);
 #if defined(DOOMO_PLATFORM_GBA)
     if (body_lazy) {

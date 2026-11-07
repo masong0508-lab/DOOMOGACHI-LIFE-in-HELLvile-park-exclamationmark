@@ -1,7 +1,7 @@
 # PERFORM at 30 fps: the options being worked on (GBA)
 
 Written 2026-11-07 (nov07k). Follows `docs/STUDIO_PERFORM_FIXES.md` (parts 1-3) and `docs/MUSIC_STUDIO_ROADMAP.md` (MS-P4).
-**Option A (the ARM `vid_blit`) is built (nov07m, section 7); B and C are not.** Every number is from the GBA harness (`gba/harness/scripts/studio_sung.txt`, 330 ticks after the first sung line).
+**Option A (the ARM `vid_blit`) is built (nov07m, section 7); B is built in a smaller form (nov07n, section 8); C is not.** Every number is from the GBA harness (`gba/harness/scripts/studio_sung.txt`, 330 ticks after the first sung line).
 
 ## 1. Where we are and what 30 fps means
 
@@ -111,3 +111,13 @@ nov07l tried a first ARM `vid_blit` (four body copies, 944 B + the C fallback 57
 `make -C core test`: 873 passed, 0 failed. Not measured: PS1 (untouched by this change), a real GBA (libmgba timings only; VRAM stall behaviour on hardware may differ a little).
 
 **What is left to 33.3 ms:** -7.2 ms. Next in order: **B**, the stage image memo (-3..-5 ms), then C0 / C. Cheap extras for the blit itself, not done: unroll the opaque loop by two (saves about 4 cycles a pair), and test `v == 0` on a 32-bit load to skip two transparent pairs at once; each costs IWRAM bytes (96 B free).
+
+## 8. Option B: landed in a smaller form (nov07n)
+
+**What it is.** Not the whole stage image memo: the per-body hint inside `bodyspr_image` (`core/src/portrait.c`). (1) The look-hash memo compares the 48 gene bytes word by word when both records are 4-byte aligned (`gene_same`; `memcmp` stays as the fallback for unaligned records, which trap on the R3000). (2) Each memo slot (`BodyLH.ei`) remembers the cache entry its body was last found in; that entry is tried first with the same test `cache_get` applies (kind, not busy, resident, look hash incl. the deep run, key) and touched the same way (stamp, tick), so eviction order is unchanged. Any miss takes the old path.
+
+**Measured** (studio_sung.txt, 330 ticks, GBA harness): median work 40.5 -> 38.5 ms, **mean saving 1.95 ms** on the 172 ticks both builds drew (the estimate for B was -3..-5 ms). IWRAM unchanged (25,760 B used). `vhash-seq` over the same 330 ticks is identical to the baseline (`242b1074`): exact. The word compare alone gave 0.4 ms; the hint is most of the gain.
+
+**Check.** `bodyspr_hint_follows_every_input` (core/tests/test_portrait.c): warm answers equal a cold-cache render across facings and frames in three orders, look genes, species, status, deep runs put and dropped, invalidation and 80 looks that reuse every block. Mutations that drop the key, look or word-0 compare, or make `gene_same` always true, fail it. Not caught, and harmless for pixels: dropping the resident or busy check (identical looks draw identical pixels; busy only occurs in the GBA's sliced jobs) and ignoring gene bytes 44..47 (none shows on a chibi).
+
+**Open.** One tick near the end of the sung phase (1639) costs 51.7 ms against 46.4 ms before; it also appears with the silhouette draw removed, so it looks like a tick that now falls on a different phase of the song rather than a cost of this change; not explained yet. What is left to 33.3 ms is about -5 ms: next C0 / C.

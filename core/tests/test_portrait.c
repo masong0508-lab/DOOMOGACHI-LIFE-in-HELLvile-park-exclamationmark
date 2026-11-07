@@ -15,6 +15,8 @@
 #include "doomo/doomo.h"
 #include "doomo/portrait.h"
 #include "doomo/weld.h"
+#include "doomo/look_pool.h"
+#include "doomo/look_fields.h"
 
 #define CANARY 0xA5
 #define PAD    64
@@ -741,4 +743,107 @@ TEST(portrait_classic_golden)
     }
     fclose(f);
     CHECK_EQ(lines, ROSTER_COUNT / 5);
+}
+
+/* ---- bodyspr_image: the per-body cache-entry hint and the word-wise gene compare (STUDIO_30FPS_PLAN B) ----
+ * Whatever the hint does, the pixels must be exactly those of a cold cache. `body_cold` empties the cache and asks
+ * again, so it takes the full path (look hash, cache_find, render); `body_warm` asks twice in a row, so the second
+ * call is a hint hit and has to hand back the same image. Every input the look depends on is changed in turn and
+ * the warm answer has to follow it. */
+static uint32_t body_pix_hash(const DoomoImage *im)
+{
+    return im ? fnv(im->pix, im->w * im->h, 2166136261u) : 0u;
+}
+
+static uint32_t body_cold(int id, int d, int f)
+{
+    portrait_cache_reset();
+    return body_pix_hash(bodyspr_image(id, d, f));
+}
+
+static uint32_t body_warm(int id, int d, int f)
+{
+    const DoomoImage *a = bodyspr_image(id, d, f), *b = bodyspr_image(id, d, f);
+    return (a && a == b) ? body_pix_hash(b) : 0xDEADBEEFu;
+}
+
+TEST(bodyspr_hint_follows_every_input)
+{
+    enum { NID = 3, NRUN = 4 };
+    static const uint8_t runs[NRUN][2] = { { DF_BLUSH2, 3 }, { DF_GLASSES2, 2 }, { DF_EAR_FOLD, 2 },
+                                           { DF_HOOD_HEAD, 1 } };
+    int ids[NID], i, k, order, run_seen = 0;
+    portrait_cache_reset();
+    for (i = 0; i < NID; i++) {
+        ids[i] = town_alloc(DISTRICT_HELLVILE);
+        CHECK(ids[i] >= 0);
+        resident_generate_hellborn(town_res(ids[i]), 900u + (unsigned)i * 31u);
+        town_res(ids[i])->status = RES_ALIVE;
+    }
+    for (i = 0; i < NID; i++) {
+        int id = ids[i];
+        DoomoResident *r = town_res(id);
+        uint32_t ref[16], before, w;
+        for (k = 0; k < 16; k++) ref[k] = body_cold(id, k >> 2, k & 3);
+        /* the hint follows the last facing asked: forward, backward and interleaved orders must all be right */
+        for (order = 0; order < 3; order++)
+            for (k = 0; k < 16; k++) {
+                int kk = order == 0 ? k : order == 1 ? 15 - k : (k * 5 + 3) & 15;
+                CHECK(body_warm(id, kk >> 2, kk & 3) == ref[kk]);
+            }
+        /* a look gene, another gene field, the species byte */
+        before = body_warm(id, 0, 0);
+        RES_SET_LOOK(r, GF_SKIN, (uint8_t)((RES_LOOK(r, GF_SKIN) + 5) % PAL_PAINT_COUNT));
+        RES_SET_LOOK(r, GF_TOP_COLOR, (uint8_t)((RES_LOOK(r, GF_TOP_COLOR) + 7) % PAL_PAINT_COUNT));
+        w = body_warm(id, 0, 0);
+        CHECK(w == body_cold(id, 0, 0));
+        CHECK(w != before);                                   /* the check is sensitive: the pixels did change */
+        RES_SET_LOOK(r, GF_BODY, (uint8_t)((RES_LOOK(r, GF_BODY) + 1) % BODY_COUNT));
+        CHECK(body_warm(id, 1, 2) == body_cold(id, 1, 2));
+        RES_SET_SPECIES(r, (uint8_t)((RES_SPECIES(r) + 1) % SPECIES_COUNT));
+        CHECK(body_warm(id, 0, 0) == body_cold(id, 0, 0));
+        /* the genes in the last word of the record (bytes 44..47) are compared too (none shows on a chibi, so the
+         * answer must simply stay equal to a cold render) */
+        {
+            static const uint8_t late[] = { GF_FUR_COLOR3, GF_GLASSES, GF_OUTER, GF_LEGWEAR, GF_BLUSH_STYLE, GF_EAR_FOLD };
+            for (k = 0; k < (int)sizeof late; k++) {
+                (void)body_warm(id, 0, 0);
+                RES_SET_LOOK(r, late[k], (uint8_t)(RES_LOOK(r, late[k]) + 1));
+                w = body_warm(id, 0, 0);
+                CHECK(w == body_cold(id, 0, 0));
+            }
+        }
+        /* the status is part of the key */
+        w = body_warm(id, 3, 1);
+        r->status = RES_POSSESSED;
+        CHECK(body_warm(id, 3, 1) == body_cold(id, 3, 1));
+        r->status = RES_ALIVE;
+        CHECK(body_warm(id, 3, 1) == w);
+        /* a deep run a chibi shows: put, then dropped again */
+        before = body_warm(id, 0, 0);
+        for (k = 0; k < NRUN; k++) {
+            CHECK(look_pool_put(id, RUN_DEEP, runs[k], 2));
+            w = body_warm(id, 0, 0);
+            CHECK(w == body_cold(id, 0, 0));
+            if (w != before) run_seen++;
+            look_pool_drop(id);
+            CHECK(body_warm(id, 0, 0) == before);
+        }
+        /* eviction: the entry is dropped */
+        before = body_warm(id, 2, 3);
+        portrait_invalidate(id);
+        CHECK(body_warm(id, 2, 3) == before);
+    }
+    CHECK(run_seen > 0);                                      /* at least one run was visible on a chibi */
+    /* stale hints: a stream of other looks reuses every block, then the first bodies are asked again */
+    for (i = 0; i < NID; i++) (void)body_warm(ids[i], 0, 0);
+    for (i = 0; i < 80; i++) {
+        DoomoResident *r = town_res(ids[i % 2]);
+        RES_SET_LOOK(r, GF_SKIN, (uint8_t)(i % PAL_PAINT_COUNT));
+        RES_SET_LOOK(r, GF_BODY, (uint8_t)((i / 3) % BODY_COUNT));
+        CHECK(bodyspr_image(ids[i % 2], i & 3, (i >> 2) & 3) != NULL);
+    }
+    for (i = 0; i < NID; i++) CHECK(body_warm(ids[i], 0, 0) == body_cold(ids[i], 0, 0));
+    for (i = 0; i < NID; i++) look_pool_drop(ids[i]);
+    portrait_cache_reset();
 }
