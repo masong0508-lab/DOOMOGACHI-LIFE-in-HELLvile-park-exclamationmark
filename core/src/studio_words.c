@@ -185,9 +185,13 @@ static int draw_syllables(int x, int y, const char *t, const uint8_t *st, int n,
      * glyphs of one colour is one call at the run's x: same pixels (as ui_text_clip does), a quarter of
      * the calls. Other styles / languages keep the one-call-per-glyph path (shadow order, translation). */
     int runs = opt_get(OPT_FONT_STYLE) == 0 && lang_get() == LANG_EN && !plat_draw_skipped();
-    char run[SONG_LYRIC_LEN], ch[2] = { 0, 0 };
-    int rn = 0, rx = 0;
-    uint8_t rc = 0;
+    /* MS-P3b: the font is fixed-pitch (6 px) and a space draws nothing, so a whole line is at most three plat_text
+     * calls, one per colour (even syllables, odd syllables, the sung one): each colour's string keeps its own
+     * glyphs at their own columns and spaces elsewhere. Same pixels (the glyph cells do not overlap), about a
+     * fifth of the calls of one call per colour change. */
+    char cb[3][SONG_LYRIC_LEN + 1], ch[2] = { 0, 0 };
+    uint8_t cc[3] = { 0, 0, 0 };
+    int ncol = 0, lo[3] = { 0, 0, 0 }, hi[3] = { 0, 0, 0 }, j;
     if (n > SONG_LYRIC_LEN) n = SONG_LYRIC_LEN;
     for (i = 0; i < len && i < maxch; i++) {
         uint8_t col;
@@ -195,16 +199,23 @@ static int draw_syllables(int x, int y, const char *t, const uint8_t *st, int n,
         ch[0] = t[i];
         if (i == maxch - 1 && len > maxch) ch[0] = '~';
         col = (n && i >= st[0] && k == hl) ? PAL_PAINT(PAINT_ROSE, 0) : ((k & 1) ? c1 : c0);
-        if (runs && (unsigned char)ch[0] >= 32 && (unsigned char)ch[0] < 127 && rn < (int)sizeof(run) - 1) {
-            if (rn && col != rc) { run[rn] = 0; plat_text(rx, y, run, rc); rn = 0; }
-            if (!rn) { rx = x + i * 6; rc = col; }
-            run[rn++] = ch[0];
+        if (runs && (unsigned char)ch[0] >= 32 && (unsigned char)ch[0] < 127) {
+            for (j = 0; j < ncol && cc[j] != col; j++) {}
+            if (j == ncol) {
+                if (ncol == 3) { ui_text(x + i * 6, y, ch, col); continue; }   /* cannot happen: three colours */
+                memset(cb[j], ' ', sizeof(cb[j]));
+                cc[j] = col; lo[j] = i; ncol++;
+            }
+            cb[j][i] = ch[0];
+            hi[j] = i;
         } else {
-            if (rn) { run[rn] = 0; plat_text(rx, y, run, rc); rn = 0; }
             ui_text(x + i * 6, y, ch, col);
         }
     }
-    if (rn) { run[rn] = 0; plat_text(rx, y, run, rc); }
+    for (j = 0; j < ncol; j++) {
+        cb[j][hi[j] + 1] = 0;
+        plat_text(x + lo[j] * 6, y, cb[j] + lo[j], cc[j]);
+    }
     return x + DOOMO_MIN(len, maxch) * 6;
 }
 
