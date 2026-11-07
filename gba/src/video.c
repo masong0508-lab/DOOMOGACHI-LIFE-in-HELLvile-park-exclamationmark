@@ -104,6 +104,56 @@ void vid_rect_full(int x0, int y0, int x1, int y1, uint32_t color)
  * origin (x, y): each row lands in at most three aligned words, written
  * with word read-modify-writes (VRAM takes 32-bit accesses). ROM: the
  * outline pass is a few strings a frame, and IWRAM is full. */
+/* MS-PF8: the music studio's curtains (core/src/studio_stage.c draw_curtains). Strips are 6 px: body, body, line, body x3,
+ * alternating shade; left strips start at x = 0, right ones end at the screen edge, so each side is a 12 px period
+ * (3 words) held in registers and stored down every row: no per-rect set-up, no DMA from slow EWRAM. Returns 0 (caller
+ * draws rects) on anything but a plain Mode 4 frame. */
+typedef volatile uint32_t cur_vu32_t;
+static inline void cur_run(cur_vu32_t *w, int n, uint32_t a, uint32_t b, uint32_t c)
+{
+    for (; n >= 3; n -= 3, w += 3) { w[0] = a; w[1] = b; w[2] = c; }
+    if (n > 0) w[0] = a;
+    if (n > 1) w[1] = b;
+}
+
+int gba_curtains(int sw, int sh, int cw, const uint8_t *body, const uint8_t *line)
+{
+    uint8_t pl[12], pr[12];
+    uint32_t tl[3], tr[3], lmask, rmask, la, lb, lc, ra, rb, rc;
+    int cover, nl, rem, hw, fw, rn, ph, s, j, y;
+    cur_vu32_t *row;
+    if (gba_nodraw != 0 || sw != SCREEN_W || (sw % 12) || sh <= 0 || sh > SCREEN_H) return 0;
+    cover = (cw + 5) / 6 * 6;
+    if (cover <= 0 || cover > sw / 2) return 0;
+    for (s = 0; s < 2; s++)
+        for (j = 0; j < 6; j++) {
+            pl[s * 6 + j] = j == 2 ? line[s] : body[s];
+            pr[s * 6 + j] = j == 2 ? line[1 - s] : body[1 - s];
+        }
+    for (j = 0; j < 3; j++) {
+        tl[j] = pl[j * 4] | (uint32_t)pl[j * 4 + 1] << 8 | (uint32_t)pl[j * 4 + 2] << 16 | (uint32_t)pl[j * 4 + 3] << 24;
+        tr[j] = pr[j * 4] | (uint32_t)pr[j * 4 + 1] << 8 | (uint32_t)pr[j * 4 + 2] << 16 | (uint32_t)pr[j * 4 + 3] << 24;
+    }
+    nl = cover / 4;                      /* whole words on the left; rem (0 or 2) px in the word after */
+    rem = cover & 3;
+    lmask = rem ? (1u << (8 * rem)) - 1u : 0;
+    hw = (sw - cover) / 4;               /* right side: the head word (only when rem), then whole words */
+    fw = (sw - cover + 3) / 4;
+    rmask = rem ? 0xFFFFFFFFu << (8 * rem) : 0;
+    rn = SCREEN_W / 4 - fw;
+    ph = fw % 3;                         /* the right tile rotated to start at word fw (absolute phase) */
+    la = tl[0]; lb = tl[1]; lc = tl[2];
+    ra = tr[ph]; rb = tr[(ph + 1) % 3]; rc = tr[(ph + 2) % 3];
+    row = (cur_vu32_t *)gba_back;
+    for (y = 0; y < sh; y++, row += SCREEN_W / 4) {
+        cur_run(row, nl, la, lb, lc);
+        if (lmask) row[nl] = (row[nl] & ~lmask) | (tl[nl % 3] & lmask);
+        if (rmask) row[hw] = (row[hw] & ~rmask) | (tr[hw % 3] & rmask);
+        cur_run(row + fw, rn, ra, rb, rc);
+    }
+    return 1;
+}
+
 static void glyph_dil(const uint16_t *g, int x, int y, uint32_t c4)
 {
     typedef volatile uint32_t vu32_t;

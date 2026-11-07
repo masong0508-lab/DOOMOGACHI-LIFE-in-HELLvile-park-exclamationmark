@@ -258,10 +258,22 @@ static void stage_ellipse(int cx, int cy, int rx, int ry, uint8_t c)
     ui_fill_ellipse(cx, cy, rx, ry, c);
 }
 
+#if defined(DOOMO_PLATFORM_GBA)
+int gba_curtains(int sw, int sh, int cw, const uint8_t *body, const uint8_t *line);
+#endif
+
 static void draw_curtains(int sw, int sh, int open)
 {
     /* open 0 = closed .. 256 = fully open */
     int cw = curtain_cw(sw, open), i, x;
+#if defined(DOOMO_PLATFORM_GBA)
+    /* MS-PF8: the strips as register-held word stores per row (gba/src/video.c), the same pixels as the rects below;
+     * 0 = not a plain bitmap frame, so the rects run */
+    uint8_t body[2], line[2];
+    body[0] = PAL_PAINT(PAINT_BLOOD, 1); body[1] = PAL_PAINT(PAINT_BLOOD, 0);
+    line[0] = PAL_PAINT(PAINT_CHERRY, 2); line[1] = PAL_PAINT(PAINT_CHERRY, 1);
+    if (!gba_curtains(sw, sh, cw, body, line))
+#endif
     for (x = 0; x < cw; x += 6) {
         int sh2 = (x / 6) & 1;
         plat_rect(x, 0, 6, sh, PAL_PAINT(PAINT_BLOOD, sh2 ? 0 : 1));
