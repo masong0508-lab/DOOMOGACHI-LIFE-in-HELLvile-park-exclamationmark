@@ -126,13 +126,25 @@ static int hidden(int x, int y, int w, int h)
 /* (perf, docs/ISLAND_SPEED.md I1) The land (cliff, meadow, plum ground, shores, river and Wall) depends only on
  * the map size and the tint: its rects and checkers are recorded once and replayed in the same order (same
  * pixels, minus the geometry maths and divisions of ~530 rects a frame). */
+/* PS1: its 2 MB RAM is full to the byte (the disc build was 2,368 B over the stack reserve with these lists in:
+ * 8,960 B here and 3,200 B of deco variants below), and a rect costs a prim there anyway, so on PS1 every list
+ * has cap 0: each record overflows and the phase is drawn live, as before I1..I3 (the sea, walker and weather
+ * lists below do the same). The GBA and the native runner are unchanged. */
+#if defined(DOOMO_PLATFORM_PS1)
+#define LR_MAX 0
+#define LR_PATCH 0
+#define LR_ROAD 0
+#else
 #define LR_MAX 640
+#define LR_PATCH 320
+#define LR_ROAD 160
+#endif
 typedef struct { int16_t x, y; uint8_t w, h, c, ck; } LRect;
 typedef struct { LRect *r; int cap, n, over; int32_t key; } LList;
-static LRect lr_land_r[LR_MAX], lr_patch_r[320], lr_road_r[160];
+static LRect lr_land_r[LR_MAX + 1], lr_patch_r[LR_PATCH + 1], lr_road_r[LR_ROAD + 1];
 static LList L_land = { lr_land_r, LR_MAX, 0, 0, -1 };
-static LList L_patch = { lr_patch_r, 320, 0, 0, -1 };   /* (I2) patches and their ember phase */
-static LList L_road = { lr_road_r, 160, 0, 0, -1 };     /* (I2) roads */
+static LList L_patch = { lr_patch_r, LR_PATCH, 0, 0, -1 };   /* (I2) patches and their ember phase */
+static LList L_road = { lr_road_r, LR_ROAD, 0, 0, -1 };     /* (I2) roads */
 /* (I3b, the governor) The animated phases that are plain rects: the sea's wave glints, the walkers, the weather. They
  * read g_q, the animation clock in steps of ANIM_Q ticks, so a list recorded for a step is replayed on every draw
  * inside it (the GBA draws every 3rd tick, so about every second draw replays). Not pixel-exact against the old
@@ -792,12 +804,16 @@ static void draw_deco(const Deco *d)
  * (kind, state, tint) is recorded once, at a fixed spot, as a rect list and replayed shifted to every deco of that kind
  * (same rects, same order, so the same pixels). The ten-odd trees all sway on their own phase, which is why one list
  * for all of them (keyed on the whole state) was rebuilt nearly every frame. */
+#if defined(DOOMO_PLATFORM_PS1)
+#define DV_POOL 0                           /* PS1: no room, every variant is "bad" and the deco is drawn live */
+#else
 #define DV_POOL 400                         /* rects in the shared pool (3.2 KB) */
+#endif
 #define DV_TAGS 28
 #define DV_REC_X 120                        /* where a variant is recorded: far enough from every screen edge */
 #define DV_REC_Y 110
 typedef struct { uint16_t tag, start; uint8_t n, bad; } DVar;
-static LRect dv_pool[DV_POOL];
+static LRect dv_pool[DV_POOL + 1];
 static DVar dv_tab[DV_TAGS];
 static int dv_ntab, dv_used;
 static LRect dv_tmp[40];                    /* a variant's rects shifted to one deco's spot */
