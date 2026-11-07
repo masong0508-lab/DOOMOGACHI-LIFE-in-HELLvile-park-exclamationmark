@@ -1,0 +1,40 @@
+# Build psxavenc (the .STR / XA encoder) from source at a pinned commit and put it on PATH.
+# ps1/CMakeLists.txt uses it to turn trailer/assets/dippinn_logo.mp4 into INTRO.STR, the boot FMV.
+# Without it the intro is left out of the disc, so the PS1 jobs also pass -DDOOMO_INTRO_REQUIRED=ON.
+name: Set up psxavenc
+description: Build psxavenc at a pinned commit (meson + the distro's ffmpeg libraries) and add it to PATH.
+
+inputs:
+  commit:
+    description: psxavenc commit to build (full 40-character SHA).
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Install meson and the ffmpeg development libraries
+      shell: bash
+      run: |
+        set -euo pipefail
+        sudo apt-get update -q
+        sudo apt-get install -y -q --no-install-recommends \
+          meson ninja-build pkg-config gcc \
+          libavformat-dev libavcodec-dev libavutil-dev libswresample-dev libswscale-dev
+
+    - name: Fetch psxavenc
+      uses: actions/checkout@v4
+      with:
+        repository: WonderfulToolchain/psxavenc
+        ref: ${{ inputs.commit }}
+        path: .psxavenc-src
+        persist-credentials: false
+
+    - name: Build and export psxavenc
+      shell: bash
+      run: |
+        set -euo pipefail
+        meson setup .psxavenc-src/build .psxavenc-src --buildtype=release
+        ninja -C .psxavenc-src/build
+        install -D .psxavenc-src/build/psxavenc "$HOME/psxavenc/bin/psxavenc"
+        echo "$HOME/psxavenc/bin" >> "$GITHUB_PATH"
+        "$HOME/psxavenc/bin/psxavenc" -V || true

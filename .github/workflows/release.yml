@@ -28,6 +28,7 @@ concurrency:
 
 env:
   PSN00BSDK_COMMIT: 5d9aa2d3dfc7d6e51c2eb942ab4cdbae5571a40a
+  PSXAVENC_COMMIT: 82f3871c5fe5e82e71016a6636aba25ddddf2ca8
   DEBIAN_FRONTEND: noninteractive
   TAG: ${{ inputs.tag || github.ref_name }}
 
@@ -95,11 +96,16 @@ jobs:
         with:
           commit: ${{ env.PSN00BSDK_COMMIT }}
 
+      - name: psxavenc (boot FMV encoder, from source)
+        uses: ./.github/actions/setup-psxavenc
+        with:
+          commit: ${{ env.PSXAVENC_COMMIT }}
+
       - name: Build the discs (NTSC game, PAL game, engine test)
         working-directory: ps1
         run: |
           for preset in ps1 ps1-pal ps1-enginetest; do
-            cmake --preset "$preset"
+            cmake --preset "$preset" -DDOOMO_INTRO_REQUIRED=ON
             cmake --build --preset "$preset"
           done
 

@@ -33,6 +33,8 @@ concurrency:
 env:
   # PSn00bSDK is built from source at this commit (see docs/BUILDING.md).
   PSN00BSDK_COMMIT: 5d9aa2d3dfc7d6e51c2eb942ab4cdbae5571a40a
+  # the boot FMV encoder (ps1/src/fmv.c, INTRO.STR)
+  PSXAVENC_COMMIT: 82f3871c5fe5e82e71016a6636aba25ddddf2ca8
   DEBIAN_FRONTEND: noninteractive
 
 defaults:
@@ -257,10 +259,15 @@ jobs:
         with:
           commit: ${{ env.PSN00BSDK_COMMIT }}
 
+      - name: psxavenc (boot FMV encoder, from source)
+        uses: ./.github/actions/setup-psxavenc
+        with:
+          commit: ${{ env.PSXAVENC_COMMIT }}
+
       - name: Build the game disc (preset ps1)
         working-directory: ps1
         run: |
-          cmake --preset ps1
+          cmake --preset ps1 -DDOOMO_INTRO_REQUIRED=ON
           cmake --build --preset ps1
 
       - name: Build the engine-test disc (preset ps1-enginetest)

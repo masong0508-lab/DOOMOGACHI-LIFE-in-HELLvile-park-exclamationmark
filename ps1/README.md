@@ -33,7 +33,7 @@ The disc opens with the Dippinn Productions ident (`trailer/assets/dippinn_logo.
 `ps1/src/fmv.c`); START or Cross skips it. The build encodes it to `INTRO.STR` with
 [psxavenc](https://github.com/WonderfulToolchain/psxavenc) (put it on PATH) or uses a
 ready-made one: `cmake -DDOOMO_INTRO_STR=/path/INTRO.STR ...`. No psxavenc and no file:
-the intro is left out (warning). `-DDOOMO_INTRO_FMV=OFF` disables it (harness runs).
+the intro is left out (a warning; `-DDOOMO_INTRO_REQUIRED=ON` makes it an error, CI uses that). `-DDOOMO_INTRO_FMV=OFF` disables it (harness runs).
 
 ## Run
 
