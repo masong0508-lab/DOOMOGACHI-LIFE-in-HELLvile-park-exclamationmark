@@ -65,6 +65,16 @@ static uint32_t p_visit(int f)
     return 0;
 }
 
+/* the invaded map: the objective pill with its bobbing star and a toast
+ * sliding over both pills (the case INVADED_SPEED.md V7 measured) */
+static void s_invaded(void) { story_town(); scene_set(&SCENE_STORY, 219); }
+static uint32_t p_invaded(int f)
+{
+    if (f == 20) ui_toast("Walk into a nest to fight!");
+    if (f == 200) ui_toast("A second toast, with a longer line to show.");
+    return 0;
+}
+
 static void s_narration(void) { story_town(); scene_set(&SCENE_STORY, 110); }
 static uint32_t p_narration(int f)
 {
@@ -192,6 +202,11 @@ static int both(const char *name, Setup s, Pad pad, int n, int min_kept)
 TEST(panel_overworld_hud_is_pixel_identical)
 {
     CHECK(both("visit", s_visit, p_visit, 320, 500));
+}
+
+TEST(panel_invaded_toast_and_star_bob_are_pixel_identical)
+{
+    CHECK(both("invaded", s_invaded, p_invaded, 400, 200));
 }
 
 TEST(panel_dialogue_narration_is_pixel_identical)

@@ -209,6 +209,8 @@ void ui_dialog_style(int style);
 /* Pending toasts (for tests). */
 int  ui_toast_pending(void);
 void ui_toast_clear(void);
+/* 1 when the toast drawn later this frame can touch the rect (generous; ui.c). */
+int  ui_toast_over(int x, int y, int w, int h);
 
 /* Retained panels (G7, platform.h plat_panel_begin): a panel's key starts
  * from ui_panel_key() (the current language and its glyph page, so a

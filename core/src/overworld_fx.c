@@ -381,11 +381,30 @@ static void pill(int x, int y, int w, int h, int style)
     plat_rect(x + 3, y + 2, w - 6, 1, st->gloss);
 }
 
+/* The objective pill's star strip, in pill coordinates: the star (r 4, a 9 x 9
+ * mask) at (8, 6 + bob), bob -1..1, covers x 4..12 and y 1..11; every pixel
+ * of it lies inside the pill's flat fill (the corners' insets are < 4) except
+ * the gloss row at y 2, which pill() draws from x 3 to w - 4. */
+#define STAR_HX 4
+#define STAR_HY 1
+#define STAR_HW 9
+#define STAR_HH 11
+
+/* Redraw the strip the way pill() and ui_star() leave it: the fill, the
+ * gloss row, the star on top (the same calls' pixels, in the same order). */
+static void objective_star(int x, int y, int w, int bob, const UiStyle *st)
+{
+    (void)w;
+    plat_rect(x + STAR_HX, y + STAR_HY, STAR_HW, STAR_HH, st->fill);
+    plat_rect(x + STAR_HX, y + 2, STAR_HW, 1, st->gloss);
+    ui_star(x + 8, y + 6 + bob, 4, ow.visit ? PAL_UI_MINT : PAL_UI_GOLD);
+}
+
 static void draw_objective(int style)
 {
     const char *o = ow.visit ? "Free stroll - enjoy the town!" : story_objective();
     char buf[96];
-    int sw = plat_screen_w(), maxw = sw - 92, w, x = 3, y = 3, lines, bob;
+    int sw = plat_screen_w(), maxw = sw - 92, w, x = 3, y = 3, lines, bob, ph;
     const UiStyle *st = ui_style(style);
     uint32_t t = doomo_frame_count(), key;
     if (!o || !o[0] || plat_draw_skipped()) return;
@@ -399,17 +418,33 @@ static void draw_objective(int style)
         w = maxw + 20;
     }
     bob = ui_wave((int)t, 40, 1);
-    if (UI_PANELS) {
-        /* G7: a retained panel; the star's bob is its only motion */
+    ph = lines * FONT_LINE + 5;
+    if (UI_PANELS && !ui_toast_over(x, y, w, ph)) {
+        /* G7: a retained panel. The star's bob is its only motion, so the
+         * star is not in the panel: its strip (the pill's flat fill, the
+         * gloss row across it, the star) is the panel's hole, redrawn on
+         * every frame, and the bob stays out of the key. While a toast
+         * covers the pill the panel would be spoiled on every frame (and
+         * recaptured on a retry cycle), so then it is drawn plainly. */
         key = ui_key_str(ui_panel_key(), buf);
-        key = ui_key_int(key, style | lines << 4 | (ow.visit != 0) << 8 | (bob + 8) << 12 | maxw << 16);
-        if (!plat_panel_begin(PANEL_OW_OBJECTIVE, x, y, w, lines * FONT_LINE + 5, key)) { plat_panel_end(); return; }
+        key = ui_key_int(key, style | lines << 4 | (ow.visit != 0) << 8 | maxw << 16);
+        if (!plat_panel_begin(PANEL_OW_OBJECTIVE, x, y, w, ph, key)) {
+            plat_panel_end();
+            objective_star(x, y, w, bob, st);
+            return;
+        }
+        pill(x, y, w, lines * FONT_LINE + 4, style);
+        if (lines == 1) ui_text(x + 15, y + 3, buf, st->text);
+        else ui_text_wrap(x + 15, y + 3, maxw, buf, st->text, 1);
+        plat_panel_hole(x + STAR_HX, y + STAR_HY, STAR_HW, STAR_HH);
+        plat_panel_end();
+        objective_star(x, y, w, bob, st);
+        return;
     }
     pill(x, y, w, lines * FONT_LINE + 4, style);
     ui_star(x + 8, y + 6 + bob, 4, ow.visit ? PAL_UI_MINT : PAL_UI_GOLD);
     if (lines == 1) ui_text(x + 15, y + 3, buf, st->text);
     else ui_text_wrap(x + 15, y + 3, maxw, buf, st->text, 1);
-    if (UI_PANELS) plat_panel_end();
 }
 
 static void draw_clock(int style)
@@ -417,14 +452,17 @@ static void draw_clock(int style)
     char tbuf[16], mbuf[16];
     int sw = plat_screen_w(), w, x, y = 3;
     const UiStyle *st = ui_style(style);
-    int night = town_is_night();
+    int night = town_is_night(), use;
     uint32_t key;
     if (plat_draw_skipped()) return;
     town_time_str(tbuf, sizeof(tbuf));
     doomo_snprintf(mbuf, sizeof(mbuf), "%u", (unsigned)doomo_town.money);
     w = DOOMO_MAX(ui_text_width(tbuf), ui_text_width(mbuf) + 8) + 16;
     x = sw - w - 3;
-    if (UI_PANELS) {                            /* G7: a retained panel */
+    /* G7: a retained panel, unless a toast covers it (then it is spoiled on
+     * every frame: draw it plainly, see draw_objective) */
+    use = UI_PANELS && !ui_toast_over(x, y, w, 23);
+    if (use) {
         key = ui_key_str(ui_key_str(ui_panel_key(), tbuf), mbuf);
         key = ui_key_int(key, style | (night != 0) << 4);
         if (!plat_panel_begin(PANEL_OW_CLOCK, x, y, w, 23, key)) { plat_panel_end(); return; }
@@ -440,7 +478,7 @@ static void draw_clock(int style)
     ui_text(x + 13, y + 3, tbuf, st->text);
     plat_text(x + 4, y + 12, STR_ICON_COIN, PAL_UI_GOLD);
     ui_text(x + 13, y + 12, mbuf, st->text);
-    if (UI_PANELS) plat_panel_end();
+    if (use) plat_panel_end();
 }
 
 static void draw_prompt(int style)

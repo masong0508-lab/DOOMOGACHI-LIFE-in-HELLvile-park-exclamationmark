@@ -837,28 +837,50 @@ static int toast_show(int w)
 
 void ui_toast_clear(void) { toast_n = 0; toast_t = 0; }
 
+/* The toast's left edge on its tick t (width w): slides in, holds, slides out. */
+static int toast_x(int t, int w, int show)
+{
+    int sw = plat_screen_w(), xf = sw - w - 4, d;
+    if (t < TOAST_IN) {
+        d = TOAST_IN - t;
+        return xf + d * d * (sw - xf) / (TOAST_IN * TOAST_IN) - (t >= TOAST_IN - 3 ? 2 : 0);
+    }
+    if (t < TOAST_IN + show) return xf;
+    d = t - TOAST_IN - show;
+    return xf + d * d * (sw - xf) / (TOAST_OUT * TOAST_OUT);
+}
+
+/* 1 when the toast that ui_toast_draw() draws later in this same frame can
+ * touch the rect (x, y, w, h): its box, its drop shadow and its sparkle, with
+ * a margin. The HUD asks before a retained panel (platform.h plat_panel_begin):
+ * a panel the toast covers is spoiled on every frame, so drawing it plainly
+ * is the same picture for less work (a capture costs more than a draw). It
+ * only has to be generous: a false 1 costs a capture, never a pixel. */
+int ui_toast_over(int x, int y, int w, int h)
+{
+    int tw, tx, show;
+    if (toast_n == 0) return 0;
+    tw = DOOMO_MIN(ui_text_width(toast_msg[0]) + 22, plat_screen_w() - 8);
+    show = toast_show(tw);
+    if (toast_t >= TOAST_IN + show + TOAST_OUT) return 0;
+    tx = toast_x(toast_t, tw, show);
+    /* the toast panel's rect (x, y - 1, w + 2, 18) with y = 4, plus 6 px */
+    return !(x + w <= tx - 6 || x >= tx + tw + 2 + 6 || y + h <= 4 - 1 - 6 || y >= 4 - 1 + 18 + 6);
+}
+
 void ui_toast_draw(void)
 {
     const UiStyle *st;
-    int sw = plat_screen_w(), t, w, x, xf, y = 4, d;
+    int t, w, x, y = 4;
     int saved = ui_cur_style, show, over, off;
     if (toast_n == 0) return;
     t = toast_t++;
     st = ui_style(WIN_CREAM);
-    w = DOOMO_MIN(ui_text_width(toast_msg[0]) + 22, sw - 8);
-    xf = sw - w - 4;
+    w = DOOMO_MIN(ui_text_width(toast_msg[0]) + 22, plat_screen_w() - 8);
     show = toast_show(w);
     over = toast_overflow(w);
     off = over > 0 ? DOOMO_CLAMP(t - TOAST_IN - TOAST_BEAT, 0, over) : 0;
-    if (t < TOAST_IN) {
-        d = TOAST_IN - t;
-        x = xf + d * d * (sw - xf) / (TOAST_IN * TOAST_IN) - (t >= TOAST_IN - 3 ? 2 : 0);
-    } else if (t < TOAST_IN + show) {
-        x = xf;
-    } else {
-        d = t - TOAST_IN - show;
-        x = xf + d * d * (sw - xf) / (TOAST_OUT * TOAST_OUT);
-    }
+    x = toast_x(t, w, show);
     /* G7: a retained panel (it holds still for TOAST_SHOW ticks; the
      * sparkle is off for 14 of every 32); a kept toast draws its shadow */
     if (plat_draw_skipped()) {
