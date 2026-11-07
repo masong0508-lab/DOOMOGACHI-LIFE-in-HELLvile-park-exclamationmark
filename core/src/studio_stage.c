@@ -515,17 +515,17 @@ static void draw_show(void)
         int k, cw = sw / (STUDIO_CROWD / 2 + 1), cyb = sh - 4;
         for (k = 0; k < STUDIO_CROWD; k++) {
             int id = studio.crowd[k], row = k & 1, x = cw / 2 + (k / 2) * cw + row * cw / 2 - 8;
-            int y = cyb - BODYSPR_H + 8 - row * 6 - ((beat && ((k + t / 8) & 1)) ? 2 : 0);
+            int y = cyb - BODYSPR_H + 8 - row * 6;                 /* nobody bobs on the beat: the crowd stands still */
             if (y < floor + 8) continue;
             if (id >= 0) st_chibi(id, x, y, 3, 0, IMG_SILHOUETTE, PAL_PAINT(PAINT_GRAPE, 0));
             else ui_fill_circle(x + 8, y + 10, 7, PAL_PAINT(PAINT_GRAPE, 0));
-            if ((k * 7 + t / 16) % 5 == 0 || studio.applause > 70) {
+            if (studio.applause > 70 && !(k & 1)) {                /* glow sticks: every other fan, only at high applause */
                 int gx = x + 12, gy = y + 4 - ui_wave(t + k * 9, 30, 2);
                 plat_line(gx, gy, gx + 2, gy - 6, PAL_PAINT(k & 1 ? PAINT_LIME : PAINT_BUBBLEGUM, 2));
             }
         }
         /* hearts float up from a happy crowd */
-        for (k = 0; k < studio.applause / 20; k++) {
+        for (k = 0; k < studio.applause / 40; k++) {                 /* at most two hearts */
             int hx = (k * 47 + 13) % sw, hy = sh - ((t * 2 + k * 31) % (sh / 2));
             ui_heart(hx, hy, 3, PAL_PAINT(PAINT_ROSE, 1));
         }

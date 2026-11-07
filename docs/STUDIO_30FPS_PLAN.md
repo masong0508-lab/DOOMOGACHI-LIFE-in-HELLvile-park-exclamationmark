@@ -121,3 +121,10 @@ nov07l tried a first ARM `vid_blit` (four body copies, 944 B + the C fallback 57
 **Check.** `bodyspr_hint_follows_every_input` (core/tests/test_portrait.c): warm answers equal a cold-cache render across facings and frames in three orders, look genes, species, status, deep runs put and dropped, invalidation and 80 looks that reuse every block. Mutations that drop the key, look or word-0 compare, or make `gene_same` always true, fail it. Not caught, and harmless for pixels: dropping the resident or busy check (identical looks draw identical pixels; busy only occurs in the GBA's sliced jobs) and ignoring gene bytes 44..47 (none shows on a chibi).
 
 **Open.** One tick near the end of the sung phase (1639) costs 51.7 ms against 46.4 ms before; it also appears with the silhouette draw removed, so it looks like a tick that now falls on a different phase of the song rather than a cost of this change; not explained yet. What is left to 33.3 ms is about -5 ms: next C0 / C.
+
+## 9. A quieter crowd (nov07o) - a visual change, by request
+
+Not exact: the frames differ from nov07n on purpose. `STUDIO_CROWD` 12 -> **11** (a row of 6 in front of a row of 5), and the crowd's animations are reduced: nobody bobs on the beat any more, glow sticks show only on every other fan and only above 70 % applause (they used to flicker on for one fan in five all the time), and at most two hearts float up (was five). The singers, conductor, glows, spots and curtains are untouched.
+
+**Measured** (studio_sung.txt, GBA harness): median work 38.5 -> 37.6 ms (steady 38.8 -> 37.9), 2.7 ms below the nov07m baseline; worst tick 50.8 ms (one tick over the 50.2 ms line, the same song tick as in section 8). IWRAM unchanged. `make -C core test`: 874 passed. Not measured: PS1, the intro window, the native 34-shot check (its shots change by design). Left to 33.3 ms: about -4.3 ms, which is Option C's job (section 3).
+

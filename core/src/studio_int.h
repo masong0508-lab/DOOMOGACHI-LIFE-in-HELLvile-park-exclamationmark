@@ -72,7 +72,7 @@ void studio_check_unlocks(void);
 
 /* ---- the scene state ---------------------------------------------------------- */
 #define STUDIO_UNDO_BYTES 768
-#define STUDIO_CROWD 12
+#define STUDIO_CROWD 11            /* the dark crowd: one short row of 5 behind a row of 6 */
 
 typedef void (*StudioPopDone)(int choice);   /* -1 = cancelled */
 
