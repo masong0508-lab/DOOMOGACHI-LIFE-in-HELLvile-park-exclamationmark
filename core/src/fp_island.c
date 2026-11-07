@@ -122,8 +122,11 @@ static struct {
     int menu_t;
     int nent, esel, etop;
     uint8_t menu_dirty;
-    uint8_t hold;                /* (perf) 2 = the popped menu's backdrop is the platform's held frame */
+    uint8_t hold;                /* (perf) 2 = the popped menu's backdrop is the platform's held frame, 3 = the hub's */
     uint8_t hold_full;           /* a full popped frame was drawn: the next update may hold it */
+    uint8_t hub_full;            /* (perf) a clean full hub frame was drawn: the next update may hold it */
+    uint8_t dirty;               /* (perf) a button went down since the last full hub frame */
+    uint32_t full_t;             /* the tick of the last full hub frame */
     uint8_t live;                /* island_update ran since the last island_draw (nothing else is on top) */
     uint8_t prob[FP_LOC_MAX];
     uint16_t here[ACT_COUNT], here_acc[ACT_COUNT];
@@ -550,6 +553,10 @@ static void collect_rent(void)
     collect_rent_now();
 }
 
+#define HUB_HOLD 6                       /* ticks a clean hub frame is held (the GBA draws every 3rd tick) */
+static int hub_held;                     /* hub frames held so far (test hook) */
+int fp_island_hub_held(void) { return hub_held; }
+
 /* (perf) let go of the held menu backdrop: whatever an entry does (money, citizens, a new scene) shows
  * behind the menu again, drawn in full, and the next popped frame is held anew */
 static void hold_drop(void)
@@ -557,6 +564,7 @@ static void hold_drop(void)
     if (I.hold) plat_hold_frame(0);
     I.hold = 0;
     I.hold_full = 0;
+    I.hub_full = 0;
 }
 
 static void run_entry(const Entry *e)
@@ -844,6 +852,9 @@ static void island_update(void)
         if (fp_is_freeplay() && town_hour() < 4) fp_achieve(UL_FP_NIGHT_OWL);
     }
     if (fp_island_song() != I.song) { I.song = fp_island_song(); audio_music(I.song); }
+    /* (perf, docs/ISLAND_SPEED.md I7) a clean full hub frame was shown: hold it, see island_draw */
+    if (!I.menu_open && !I.hold && I.hub_full && plat_hold_frame(2)) { I.hold = 3; I.hub_full = 0; }
+    if (btn_down(0xFFFFFFFFu)) I.dirty = 1;
     if (I.menu_open) { menu_update(); return; }
     I.idle++;
     if (I.idle == RENT_AUTO_IDLE && fp_rent_day() != doomo_town.day + 1) collect_rent_now();   /* LS-QA */
@@ -1037,6 +1048,19 @@ static void island_draw(void)
     /* (perf) a held menu backdrop: nothing but the window moves, so the island is not drawn at all. Anything
      * else on screen (a toast, a dialogue or modal on top, a particle, the menu closing) or a platform that
      * lost the hold gives it up and the frame is drawn in full, as before. */
+    /* (perf, I7) the hub holds its last clean full frame for HUB_HOLD ticks: the map, plate and HUD cannot change
+     * without a press, a toast, a dialogue, a particle or the clock, so only the news strip (which refills its own
+     * bar) is repainted. The hub's animation therefore steps every HUB_HOLD ticks. */
+    if (I.hold == 3) {
+        if (!I.menu_open && I.live && !I.dirty && !ui_toast_pending() && !ui_dialog_active() && !fp_fx_any() &&
+            doomo_frame_count() - I.full_t < HUB_HOLD && plat_hold_frame(4)) {
+            I.live = 0;
+            hub_held++;
+            fp_ticker(sh - 13, style);
+            return;
+        }
+        hold_drop();
+    }
     if (I.hold) {
         if (I.menu_open && I.live && !ui_toast_pending() && !ui_dialog_active() && !fp_fx_any() &&
             plat_hold_frame(4)) {
@@ -1092,6 +1116,11 @@ static void island_draw(void)
     if (I.menu_open && I.menu_t >= 12 && ui_pop_scale(I.menu_t) == 256 && !plat_draw_skipped() &&
         !ui_toast_pending() && !ui_dialog_active() && !fp_fx_any())
         I.hold_full = 1;
+    if (!I.menu_open && !plat_draw_skipped()) {
+        I.full_t = doomo_frame_count();
+        I.hub_full = (uint8_t)(!I.dirty && !ui_toast_pending() && !ui_dialog_active() && !fp_fx_any());
+        I.dirty = 0;
+    }
 }
 
 const DoomoScene SCENE_ISLAND = { "ISLAND", island_enter, NULL, island_update, island_draw, 0 };
