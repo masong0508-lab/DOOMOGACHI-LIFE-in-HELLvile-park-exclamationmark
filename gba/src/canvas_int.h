@@ -174,6 +174,8 @@ void pn_flipped(int page);                /* video_flip: page shown, -1 tiles */
 /* ---- hold.c (THUMB, U4): the held frame (docs/PAUSE_SPEED.md P1) ---------- */
 void hold_flipped(int page);              /* video_flip: page shown, -1 tiles */
 int  hold_page(void);                     /* page held as the backdrop, -1 none */
+int  hold_building(void);                /* I10: a frame is being built over several ticks: video_flip does not flip */
+void pn_suspend(int on);                 /* I10: retained panels off (drawing into the shown page) */
 
 /* ---- ow_tiles.c (THUMB): the world of a tile frame ------------------------ */
 /* the composites and the world map shadow for the view in owf (cv.sx/sy

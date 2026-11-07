@@ -58,6 +58,7 @@ static uint8_t  pool_n;
 static int8_t   cap = -1;          /* panel being drawn             */
 static int8_t   put = -1;          /* kept panel, its shading drawn */
 static uint8_t  nest;              /* begin calls inside a panel     */
+static uint8_t  suspended;         /* I10: drawing into the shown page: no panel is kept, captured or put back */
 static uint8_t  shown;             /* bit i: panel i shown this frame */
 static int8_t   shown_page = -1;   /* the page the last flip showed, -1 tiles */
 static uint16_t flips;             /* Mode 4 flips                   */
@@ -192,7 +193,7 @@ int plat_panel_begin(int id, int x, int y, int w, int h, uint32_t key)
 {
     Pn *p;
     int back;
-    if (cap >= 0 || put >= 0) { nest++; return 1; }   /* (no panels inside panels) */
+    if (suspended || cap >= 0 || put >= 0) { nest++; return 1; }   /* (no panels inside panels) */
     if (gba_nodraw == 1) { put = -2; return 0; }    /* a skipped tick: nothing to draw */
     if (id < 0 || id >= PANEL_COUNT || w <= 0 || h <= 0 || w > 255 || h > 255) { nest++; return 1; }
     if (gba_nodraw == GBA_NODRAW_FIRST) vid_route(clipx(x), clipy(y), clipx(x + w), clipy(y + h));
@@ -278,6 +279,10 @@ void plat_panel_end(void)
     box_shown();
 }
 
+/* I10 (hold.c, PLAT_BUILD_SHOWN): the news strip is drawn into the shown page; panels must not see that page as a
+ * back page. Every begin inside counts as nested (a plain draw) and its end only counts down. */
+void pn_suspend(int on) { suspended = (uint8_t)(on != 0); }
+
 /* ---- the frame ---------------------------------------------------------------- */
 /* plat_begin_frame: nothing shown yet */
 void pn_frame_begin(void)
@@ -285,6 +290,7 @@ void pn_frame_begin(void)
     shown = 0;
     cap = put = -1;
     nest = 0;
+    suspended = 0;
     pn_box[0] = pn_box[1] = pn_box[2] = pn_box[3] = 0;
 }
 

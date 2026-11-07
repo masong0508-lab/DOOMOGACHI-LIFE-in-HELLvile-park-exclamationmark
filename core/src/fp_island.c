@@ -127,6 +127,7 @@ static struct {
     uint8_t hub_full;            /* (perf) a clean full hub frame was drawn: the next update may hold it */
     int16_t hub_toast;           /* (perf, I8) ui_toast_steady() of that frame (0: no toast on it); the hold lasts while it is unchanged */
     uint8_t dirty;               /* (perf) a button went down since the last full hub frame */
+    uint8_t bs;                  /* (perf, I10) slices of a refresh built so far (0: not building) */
     uint32_t full_t;             /* the tick of the last full hub frame */
     uint8_t live;                /* island_update ran since the last island_draw (nothing else is on top) */
     uint8_t prob[FP_LOC_MAX];
@@ -554,7 +555,15 @@ static void collect_rent(void)
     collect_rent_now();
 }
 
-#define HUB_HOLD 8                       /* ticks a clean hub frame is held (was 6; the GBA draws every 3rd tick) */
+#define HUB_HOLD 8                       /* ticks between two hub pictures (was 6; the GBA draws every 3rd tick) */
+/* (perf, I10) On a platform that can build a frame over several ticks (plat_build_frame: the GBA) the new picture
+ * is drawn in HUB_SLICES ticks, the last HUB_SLICES of every HUB_HOLD, into the hidden page while the old one stays
+ * shown, so no tick draws the whole ~70 ms frame. Slice 0..2 draw the map in phases, the last one everything over
+ * it and ends the build. Anything that changes the picture (a press, a toast changing, a dialogue, a particle, a
+ * menu) ends the build and draws the frame in one go as before. */
+#define HUB_SLICES 4
+#define HUB_CUT0 FP_MAP_ROADS            /* slice 0: clear + sea, land, patches */
+#define HUB_CUT1 FP_MAP_BUILDINGS        /* slice 1: roads, decos, walkers; slice 2: buildings, weather */
 static int hub_held;                     /* hub frames held so far (test hook) */
 int fp_island_hub_held(void) { return hub_held; }
 static int hub_hold_off;                 /* test hook: never hold the hub (every frame drawn in full) */
@@ -575,6 +584,7 @@ static void hold_drop(void)
     I.hold = 0;
     I.hold_full = 0;
     I.hub_full = 0;
+    I.bs = 0;
 }
 
 static void run_entry(const Entry *e)
@@ -1050,52 +1060,20 @@ static void draw_menu(int held)
     if (held) ui_shade_clip_off();
 }
 
-static void island_draw(void)
+static void hub_locs(FpLocDraw *ld)
 {
-    FpLocDraw ld[FP_LOC_MAX];
-    int i, sw = fp_sw(), sh = fp_sh(), style = WIN_CUTE;
-    isl_ready();
-    /* (perf) a held menu backdrop: nothing but the window moves, so the island is not drawn at all. Anything
-     * else on screen (a toast, a dialogue or modal on top, a particle, the menu closing) or a platform that
-     * lost the hold gives it up and the frame is drawn in full, as before. */
-    /* (perf, I7) the hub holds its last clean full frame for HUB_HOLD ticks: the map, plate and HUD cannot change
-     * without a press, a toast, a dialogue, a particle or the clock, so only the news strip (which refills its own
-     * bar) is repainted. The hub's animation therefore steps every HUB_HOLD ticks. */
-    if (I.hold == 3) {
-        if (!I.menu_open && I.live && !I.dirty && hub_toast_same() && !ui_dialog_active() && !fp_fx_any() &&
-            doomo_frame_count() - I.full_t < HUB_HOLD && plat_hold_frame(4)) {
-            I.live = 0;
-            hub_held++;
-            if (I.hub_toast) ui_toast_hold();      /* it is on the kept page: only its timer runs */
-            fp_ticker(sh - 13, style);
-            return;
-        }
-        hold_drop();
-    }
-    if (I.hold) {
-        if (I.menu_open && I.live && !ui_toast_pending() && !ui_dialog_active() && !fp_fx_any() &&
-            plat_hold_frame(4)) {
-            I.live = 0;
-            draw_menu(1);
-            return;
-        }
-        hold_drop();
-    }
-    I.live = 0;
+    int i;
     for (i = 0; i < NLOCS; i++) {
         loc_screen(i, &ld[i].x, &ld[i].y);
         ld[i].kind = locs[i].kind;
         ld[i].locked = (uint8_t)(locs[i].kind == LOC_ARENA && arena_locked());
     }
-    fp_island_clear_outside(PAL_RAMP(RAMP_SKY, 5));
-    /* (perf) a fully popped menu window hides most of the map: skip what
-     * lies under its opaque inside (4 px in from the rounded rim) */
-    if (I.menu_open && I.menu_t >= 0 && ui_pop_scale(I.menu_t) == 256) {
-        int mx, my, mw, mh;
-        menu_rect(&mx, &my, &mw, &mh);
-        fp_island_occluder(mx + 4, my + 4, mw - 8, mh - 8);
-    }
-    fp_island_draw_map(ld, NLOCS, I.menu_open ? -1 : I.sel);
+}
+
+/* everything drawn over the map, in the order of a full frame (the last slice of a built refresh draws just this) */
+static void hub_over_map(FpLocDraw *ld, int style)
+{
+    int i, sw = fp_sw(), sh = fp_sh();
     fp_island_occluder(0, 0, 0, 0);
     draw_bubbles(ld);
     /* the corner buttons */
@@ -1123,6 +1101,11 @@ static void island_draw(void)
     if (!I.menu_open) fp_ticker(sh - 13, style);
     if (I.menu_open) draw_menu(0);
     fp_fx_draw();
+}
+
+/* a full hub frame was just drawn (in one go, or its last slice): what the next updates and draws may keep of it */
+static void hub_frame_done(void)
+{
     /* a full frame with the menu fully popped, drawn on this tick and clean of overlays: the next update holds it */
     if (I.menu_open && I.menu_t >= 12 && ui_pop_scale(I.menu_t) == 256 && !plat_draw_skipped() &&
         !ui_toast_pending() && !ui_dialog_active() && !fp_fx_any())
@@ -1134,6 +1117,90 @@ static void island_draw(void)
                                !ui_dialog_active() && !fp_fx_any());
         I.dirty = 0;
     }
+}
+
+static int hub_built;                    /* hub refreshes built over several ticks so far (test hook) */
+int fp_island_hub_built(void) { return hub_built; }
+
+static void island_draw(void)
+{
+    FpLocDraw ld[FP_LOC_MAX];
+    int sh = fp_sh(), style = WIN_CUTE, slice = -1;
+    isl_ready();
+    /* (perf) a held menu backdrop: nothing but the window moves, so the island is not drawn at all. Anything
+     * else on screen (a toast, a dialogue or modal on top, a particle, the menu closing) or a platform that
+     * lost the hold gives it up and the frame is drawn in full, as before. */
+    /* (perf, I7) the hub holds its last clean full frame for HUB_HOLD ticks: the map, plate and HUD cannot change
+     * without a press, a toast, a dialogue, a particle or the clock, so only the news strip (which refills its own
+     * bar) is repainted. The hub's animation therefore steps every HUB_HOLD ticks. */
+    if (I.hold == 3) {
+        if (!I.menu_open && I.live && !I.dirty && hub_toast_same() && !ui_dialog_active() && !fp_fx_any() &&
+            plat_hold_frame(4)) {
+            int age = (int)(doomo_frame_count() - I.full_t);
+            int held = 0;
+            if (!I.bs && age < HUB_HOLD - HUB_SLICES + 1) held = 1;            /* not time to build yet */
+            else if (!I.bs && plat_draw_skipped()) { I.live = 0; return; }     /* a catch-up tick: wait for a drawn one */
+            else if (I.bs && plat_draw_skipped()) { I.live = 0; return; }      /* (the slice waits) */
+            else if (I.bs || plat_build_frame(PLAT_BUILD_START)) slice = I.bs;  /* I10 */
+            else if (age < HUB_HOLD) held = 1;                                 /* this platform cannot build */
+            if (held) {
+                I.live = 0;
+                hub_held++;
+                if (I.hub_toast) ui_toast_hold();      /* it is on the kept page: only its timer runs */
+                fp_ticker(sh - 13, style);
+                return;
+            }
+        }
+        if (slice < 0) hold_drop();
+    }
+    if (I.hold && slice < 0) {
+        if (I.menu_open && I.live && !ui_toast_pending() && !ui_dialog_active() && !fp_fx_any() &&
+            plat_hold_frame(4)) {
+            I.live = 0;
+            draw_menu(1);
+            return;
+        }
+        hold_drop();
+    }
+    I.live = 0;
+    hub_locs(ld);
+    if (slice >= 0) {
+        int last = slice == HUB_SLICES - 1;
+        if (I.hub_toast && !last) ui_toast_hold();    /* the steady toast is on the shown page; the new one gets it last */
+        if (!last) {
+            /* the shown page's news strip keeps moving: drawn first, before the beam gets down to it */
+            plat_build_frame(PLAT_BUILD_SHOWN);
+            fp_ticker(sh - 13, style);
+            plat_build_frame(PLAT_BUILD_HIDDEN);
+            if (slice == 0) {
+                fp_island_clear_outside(PAL_RAMP(RAMP_SKY, 5));
+                fp_island_draw_map_part(ld, NLOCS, I.sel, 0, HUB_CUT0);
+            } else if (slice == 1) {
+                fp_island_draw_map_part(ld, NLOCS, I.sel, HUB_CUT0, HUB_CUT1);
+            } else {
+                fp_island_draw_map_part(ld, NLOCS, I.sel, HUB_CUT1, FP_MAP_PHASES);
+            }
+            I.bs = (uint8_t)(slice + 1);
+            return;
+        }
+        /* the last slice: end the build (this tick flips), the rest of the picture goes on top */
+        hold_drop();
+        hub_built++;
+        hub_over_map(ld, style);
+        hub_frame_done();
+        return;
+    }
+    fp_island_clear_outside(PAL_RAMP(RAMP_SKY, 5));
+    /* (perf) a fully popped menu window hides most of the map: skip what
+     * lies under its opaque inside (4 px in from the rounded rim) */
+    if (I.menu_open && I.menu_t >= 0 && ui_pop_scale(I.menu_t) == 256) {
+        int mx, my, mw, mh;
+        menu_rect(&mx, &my, &mw, &mh);
+        fp_island_occluder(mx + 4, my + 4, mw - 8, mh - 8);
+    }
+    fp_island_draw_map(ld, NLOCS, I.menu_open ? -1 : I.sel);
+    hub_over_map(ld, style);
+    hub_frame_done();
 }
 
 const DoomoScene SCENE_ISLAND = { "ISLAND", island_enter, NULL, island_update, island_draw, 0 };

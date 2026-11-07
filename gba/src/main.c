@@ -266,7 +266,10 @@ void video_flip(void)
     /* G5: a tile frame shows Mode 0 (maps + canvas copied in now); a Mode 4
      * frame shows the page it was drawn into */
     tiles = cv_vblank();
-    if (!tiles) {
+    if (!tiles && hold_building()) {
+        /* I10: a frame is being built in the hidden page over several ticks: the shown page is presented again
+         * (its news strip moves), no flip; the pacing above kept this at 30 Hz */
+    } else if (!tiles) {
         int page = gba_back == (uint16_t *)VRAM_PAGE1;
         REG_BG2CNT = 0;
         REG_DISPCNT = (uint16_t)(DCNT_MODE4 | DCNT_BG2 | DCNT_OBJ | DCNT_OBJ_1D | (page ? DCNT_PAGE : 0));

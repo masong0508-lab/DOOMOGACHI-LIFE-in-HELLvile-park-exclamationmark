@@ -56,6 +56,10 @@ int  fp_island_tint(void);
 /* Sea, land, river + Wall, roads, decorations, walkers, the buildings
  * (back to front; sel bounces) and the weather. */
 void fp_island_draw_map(const FpLocDraw *locs, int n, int sel);
+/* (perf, I10) the same in phases [from, to) of the order below; from == 0 sets the clock up, later parts reuse it */
+enum { FP_MAP_SEA, FP_MAP_LAND, FP_MAP_PATCHES, FP_MAP_ROADS, FP_MAP_DECOS, FP_MAP_WALKERS, FP_MAP_BUILDINGS,
+       FP_MAP_WEATHER, FP_MAP_PHASES };
+void fp_island_draw_map_part(const FpLocDraw *locs, int n, int sel, int from, int to);
 /* An opaque rect drawn over the map later this frame (w <= 0: none): map
  * parts wholly inside it are not drawn. */
 void fp_island_occluder(int x, int y, int w, int h);
@@ -64,6 +68,7 @@ void fp_island_replay_flush(void);          /* test hooks: drop every recorded l
 int  fp_island_replay_hits(void);
 void fp_island_hub_hold_off(int off);       /* test hook: draw every hub frame in full */
 int  fp_island_hub_held(void);              /* hub frames held (not redrawn) so far */
+int  fp_island_hub_built(void);             /* (I10) hub refreshes built over several ticks so far */
 void fp_island_clear_outside(uint8_t c);   /* the sky colour outside the sea box only (the sea covers the rest) */
 int fp_island_pop(void);     /* town_count(-1), counted once per frame (perf) */
 

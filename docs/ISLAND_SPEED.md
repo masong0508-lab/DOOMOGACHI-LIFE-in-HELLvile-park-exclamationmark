@@ -182,3 +182,15 @@ CI #551 (toast hold + shorter particles): hub 28.7 logic ticks/s, 19.4 drawn fps
 periodic full redraw (~64 ms) every HUB_HOLD ticks. HUB_HOLD 8 makes one full frame in 8 ticks instead of 6 (3.75 hub animation
 steps/s instead of 5). Rough model (not a measurement): 29.2 -> ~27.5 ms avg. Only a CI speed report says whether the ticks reach 30.
 Revert or raise it by changing the one number in core/src/fp_island.c.
+
+## I10: the hub's refresh is built over 4 ticks (GBA; exact picture, same 8-tick animation cadence)
+
+Measured on the libmgba harness (island-only script, same seed): the periodic full redraw (~73 ms, 5 vblanks) was the cause of the
+skipped ticks and of drawn fps < 30 in steady state. Now the last HUB_SLICES (4) of every HUB_HOLD (8) ticks draw the new picture into the
+hidden page in slices (map phases, then everything over it) while the old one stays shown; the tick that ends the build flips.
+`plat_build_frame` (plat_ext.h; GBA only, weak 0 elsewhere so host/PS1/DC draw in one go as before). The news strip is drawn into the shown
+page first in each slice tick (retained panels suspended). Anything that changes the picture (press, toast change, dialogue, particle, menu)
+ends the build and draws in one go as before.
+Steady hub (300 ticks): 30.0 logic ticks/s, 30.0 drawn fps, work avg 14.4 ms, max 31.9 ms (was 29.9 / 24.3 / 16.1 / 77.9).
+First 130-tick tour window: 28.6 / 24.4 / 22.2 / 75.5 ms: the toast slide-in/out (~10 full frames each) is NOT fixed yet: next step is a clean
+toast-strip copy (VRAM page gaps, 2 x 2,560 B, unused by the hub) so slides redraw only the strip. EWRAM unchanged (3,556 B free).

@@ -98,6 +98,20 @@ uint32_t plat_test_flags(void);
  * scene_set). */
 int  plat_hold_frame(int on);
 
+/* ---- a frame built over several ticks (I10, docs/ISLAND_SPEED.md) --------------
+ * Only while a frame is held (plat_hold_frame returned 1 and plat_hold_frame(4) still does): the shown page keeps
+ * showing the held picture while the core draws a NEW picture into the other page over several ticks, so no tick
+ * has to draw it all. A tick in the build presents the shown page again (no flip); the tick that ends the build
+ * (plat_hold_frame(0), which every other end of a hold implies too) flips as usual.
+ *   PLAT_BUILD_START   begin (or go on): returns 1 when it can, 0 when it cannot (nothing held, a skipped tick,
+ *                      a platform without the call: the default); the core then draws the picture in one go
+ *   PLAT_BUILD_SHOWN   the next 2D calls draw into the SHOWN page (the news strip, which keeps moving), with
+ *                      retained panels off; only valid inside a build, and only early in the tick (before the
+ *                      beam reaches what is drawn)
+ *   PLAT_BUILD_HIDDEN  back to the hidden page (the build's target) */
+enum { PLAT_BUILD_START = 1, PLAT_BUILD_SHOWN = 2, PLAT_BUILD_HIDDEN = 3 };
+int  plat_build_frame(int op);
+
 /* ---- content packs (E0 pack.h, E2, E7-E10) -----------------------------------
  * blob: a pack that is directly addressable (the GBA mature ROM variant's
  *       baked blob, a native file loaded whole): its bytes and size, or

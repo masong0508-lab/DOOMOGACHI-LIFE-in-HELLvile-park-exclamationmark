@@ -32,17 +32,55 @@
 
 static int8_t last_page = -1;      /* the page the last flip showed, -1 tiles / none */
 static int8_t held_page = -1;      /* the page that was shown when the hold began, -1 none */
+static int8_t building;            /* I10: a frame is being built in the hidden page over several ticks */
+static int8_t on_shown;            /* I10: gba_back is pointed at the shown page (PLAT_BUILD_SHOWN) */
 
 /* video_flip: page now shown (0 / 1), -1 for a tile frame */
 void hold_flipped(int page)
 {
     last_page = (int8_t)page;
-    if (page < 0) held_page = -1;  /* a tile frame ends a hold */
+    if (page < 0) { held_page = -1; building = 0; }  /* a tile frame ends a hold (and a build) */
 }
 
 int hold_page(void)
 {
     return held_page;
+}
+
+int hold_building(void)
+{
+    return building;
+}
+
+/* the hidden page's address back in gba_back, panels back on */
+static void build_hidden(void)
+{
+    if (on_shown) {
+        gba_back = (uint16_t *)(last_page ? VRAM_PAGE0 : VRAM_PAGE1);
+        pn_suspend(0);
+        on_shown = 0;
+    }
+}
+
+/* I10 (plat_ext.h): a frame built over several ticks, in the hidden page, while the held page stays shown */
+int plat_build_frame(int op)
+{
+    switch (op) {
+    case 1:                                            /* PLAT_BUILD_START */
+        if (gba_nodraw == 1 || last_page < 0 || held_page < 0) return 0;
+        building = 1;
+        return 1;
+    case 2:                                            /* PLAT_BUILD_SHOWN */
+        if (!building || gba_nodraw == 1 || last_page < 0) return 0;
+        gba_back = (uint16_t *)(last_page ? VRAM_PAGE1 : VRAM_PAGE0);
+        pn_suspend(1);
+        on_shown = 1;
+        return 1;
+    case 3:                                            /* PLAT_BUILD_HIDDEN */
+        build_hidden();
+        return 1;
+    }
+    return 0;
 }
 
 /* P2/P3: plat_hold_frame(2) after the pop-in's last (settled, dimmed, full)
@@ -65,6 +103,8 @@ static int hold_settle(void)
 int plat_hold_frame(int on)
 {
     if (on == 4) return held_page >= 0;
+    build_hidden();
+    building = 0;                  /* I10: any other end of the hold ends a build, this tick flips */
     held_page = -1;
     if (on == 2) return hold_settle();
     if (!on) return 0;

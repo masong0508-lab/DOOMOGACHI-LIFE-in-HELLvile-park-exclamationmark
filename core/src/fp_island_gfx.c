@@ -1593,61 +1593,75 @@ int fp_island_tint(void)
 }
 
 
-void fp_island_draw_map(const FpLocDraw *locs, int n, int sel)
+/* (perf, I10) The map in phases, so a refresh can be spread over several ticks: sea, land, patches, roads, decos,
+ * walkers, buildings, weather, in the order they are drawn. A call with from == 0 sets up the clock, the tint and
+ * the geometry; a call with from > 0 goes on with the same ones (the phases of one picture must see one clock,
+ * even when the ticks differ). fp_island_draw_map is all of them at once. */
+void fp_island_draw_map_part(const FpLocDraw *locs, int n, int sel, int from, int to)
 {
     int i, order[FP_LOC_MAX];
-    FpBCache *bc = fp_island_bcache();
-    fp_island_geometry();
-    g_t = fp_t();
-    g_q = g_t - g_t % ANIM_Q;
-    g_tint = fp_island_tint();
-    {
-        static int geo_seen = -1;                /* a new screen size: the lists of the animated phases are stale */
-        int geo = M.w | (M.h << 10);
-        if (geo != geo_seen) { geo_seen = geo; L_glint.key = L_walk.key = L_wx.key = -1; }
-    }
-    draw_sea();
-    draw_land();
-    draw_patches();
-    draw_roads();
-    draw_decos();
-    draw_walkers();
-    /* buildings back to front */
-    for (i = 0; i < n; i++) order[i] = i;
-    for (i = 1; i < n; i++) {
-        int j = i, v = order[i];
-        while (j > 0 && locs[order[j - 1]].y > locs[v].y) { order[j] = order[j - 1]; j--; }
-        order[j] = v;
-    }
-    /* (integration, perf) the static parts come from the sprite cache */
-    {
-        uint32_t key = bc_key(locs, n);
-        if (bc->key != key && !plat_draw_skipped()) bc_build(bc, locs, n, key);
-        if (bc->key != key) bc = NULL;           /* (a skipped frame: draw live) */
-    }
-    for (i = 0; i < n; i++) {
-        const FpLocDraw *l = &locs[order[i]];
-        int b = 0;
-        if (l->kind >= LOC_COUNT) continue;
-        if (order[i] == sel) {
-            int ph = g_t % 24;
-            b = ph < 6 ? ph / 2 : ph < 12 ? (12 - ph) / 2 : 0;
-        }
-        shadow(l->x, l->y, 11);
-        if (bc && order[i] < FP_LOC_MAX && bc->spr[order[i]].img.pix) {
-            const FpSprite *sp = &bc->spr[order[i]];
-            /* hidden with a wide margin for its live bits (flags, smoke) */
-            if (hidden(sp->x - 24, l->y - b + sp->y - 24, sp->img.w + 48, sp->img.h + 48))
-                continue;
-            plat_image(sp->x, l->y - b + sp->y, &sp->img, 1, 0, 0);
-            g_pass = PASS_ANIM;
-            fp_island_building(l->kind, l->x, l->y - b, l->locked);
-            g_pass = PASS_ALL;
-        } else {
-            fp_island_building(l->kind, l->x, l->y - b, l->locked);
+    FpBCache *bc;
+    if (from <= 0) {
+        fp_island_geometry();
+        g_t = fp_t();
+        g_q = g_t - g_t % ANIM_Q;
+        g_tint = fp_island_tint();
+        {
+            static int geo_seen = -1;            /* a new screen size: the lists of the animated phases are stale */
+            int geo = M.w | (M.h << 10);
+            if (geo != geo_seen) { geo_seen = geo; L_glint.key = L_walk.key = L_wx.key = -1; }
         }
     }
-    draw_weather(fp_island_weather());
+    if (from <= FP_MAP_SEA && to > FP_MAP_SEA) draw_sea();
+    if (from <= FP_MAP_LAND && to > FP_MAP_LAND) draw_land();
+    if (from <= FP_MAP_PATCHES && to > FP_MAP_PATCHES) draw_patches();
+    if (from <= FP_MAP_ROADS && to > FP_MAP_ROADS) draw_roads();
+    if (from <= FP_MAP_DECOS && to > FP_MAP_DECOS) draw_decos();
+    if (from <= FP_MAP_WALKERS && to > FP_MAP_WALKERS) draw_walkers();
+    if (from <= FP_MAP_BUILDINGS && to > FP_MAP_BUILDINGS) {
+        bc = fp_island_bcache();
+        /* buildings back to front */
+        for (i = 0; i < n; i++) order[i] = i;
+        for (i = 1; i < n; i++) {
+            int j = i, v = order[i];
+            while (j > 0 && locs[order[j - 1]].y > locs[v].y) { order[j] = order[j - 1]; j--; }
+            order[j] = v;
+        }
+        /* (integration, perf) the static parts come from the sprite cache */
+        {
+            uint32_t key = bc_key(locs, n);
+            if (bc->key != key && !plat_draw_skipped()) bc_build(bc, locs, n, key);
+            if (bc->key != key) bc = NULL;       /* (a skipped frame: draw live) */
+        }
+        for (i = 0; i < n; i++) {
+            const FpLocDraw *l = &locs[order[i]];
+            int b = 0;
+            if (l->kind >= LOC_COUNT) continue;
+            if (order[i] == sel) {
+                int ph = g_t % 24;
+                b = ph < 6 ? ph / 2 : ph < 12 ? (12 - ph) / 2 : 0;
+            }
+            shadow(l->x, l->y, 11);
+            if (bc && order[i] < FP_LOC_MAX && bc->spr[order[i]].img.pix) {
+                const FpSprite *sp = &bc->spr[order[i]];
+                /* hidden with a wide margin for its live bits (flags, smoke) */
+                if (hidden(sp->x - 24, l->y - b + sp->y - 24, sp->img.w + 48, sp->img.h + 48))
+                    continue;
+                plat_image(sp->x, l->y - b + sp->y, &sp->img, 1, 0, 0);
+                g_pass = PASS_ANIM;
+                fp_island_building(l->kind, l->x, l->y - b, l->locked);
+                g_pass = PASS_ALL;
+            } else {
+                fp_island_building(l->kind, l->x, l->y - b, l->locked);
+            }
+        }
+    }
+    if (from <= FP_MAP_WEATHER && to > FP_MAP_WEATHER) draw_weather(fp_island_weather());
+}
+
+void fp_island_draw_map(const FpLocDraw *locs, int n, int sel)
+{
+    fp_island_draw_map_part(locs, n, sel, 0, FP_MAP_PHASES);
 }
 
 /* (I3b) plat_clear's replacement: the sea paints the whole map box (full width, rows M.y .. M.y + M.h), so only what
