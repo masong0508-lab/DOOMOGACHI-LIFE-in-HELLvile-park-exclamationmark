@@ -119,6 +119,8 @@ Rules every package keeps: the save format stays append-only (old saves load; a 
 * **Silhouettes are slower than chibis:** `vid_blit` with `IMG_SILHOUETTE` skips the halfword fast path. A pre-baked silhouette image per crowd id
   would be a cheap win for PERFORM.
 
+The PERFORM fix list (karaoke bar, beat hearts, follow spot, note glyph, tuning memo) with gates is in `docs/STUDIO_PERFORM_FIXES.md`.
+
 ### How to check a studio drawing change is exact (use this before and after MS-P4)
 
 1. Native, both sizes, every tab over time (this is what proved nov07d): a script `scene TITLE / wait 2 / push STUDIO -107 / wait 20 / expect-scene STUDIO`,
