@@ -70,6 +70,22 @@ int  plat_draw_skipped(void);
  * slot k (0..1) for this frame, above the whole bitmap: returns 0 when the
  * platform cannot (then draw it with plat_image). Weak default: 0. */
 int  plat_figure_obj(int k, int x, int y, const DoomoImage *img);
+/* The Music Studio stage's choir as hardware sprites (GBA; docs/STUDIO_30FPS_PLAN.md option C, section 11).
+ * plat_stage_obj_begin() is asked once a frame before the choir is drawn: 1 when this frame may use sprites
+ * (the platform has the sprite VRAM and OAM, the frame is a plain bitmap frame), 0 when not. Weak default: 0.
+ * plat_stage_obj() then shows one 16x24 chibi image (BODYSPR_W x BODYSPR_H) as a sprite at (x, y) = the image's
+ * top-left, above the WHOLE bitmap of the frame: the core only calls it for a singer nothing drawn later in the
+ * frame can touch, and calls in painter's order (back first), so a platform keeps that order (later = in front).
+ * `slot` (0..24) is the singer's stable place: the platform keeps its tiles per slot and uploads again only when
+ * (img->uid, variant) changes. `variant` names the patch list below (0 = none); the patches are solid rects in
+ * image coordinates painted over the image, in order, before it is shown (the singing mouth: what the bitmap path
+ * draws with two plat_rect calls). Returns 0 when it cannot take this one (draw it in the bitmap); after a begin
+ * that said 1 it takes any image of 16x24 with a uid. Weak default: 0. plat_stage_bake() paints `npatch` patches
+ * over a copy of the image's 16x24 pixels (out: 384 bytes); the core and the platforms share it. */
+typedef struct DoomoPatch { uint8_t x, y, w, h, c; } DoomoPatch;
+int  plat_stage_obj_begin(void);
+int  plat_stage_obj(int slot, int x, int y, const DoomoImage *img, int variant, const DoomoPatch *patch, int npatch);
+void plat_stage_bake(uint8_t *out, const DoomoImage *img, const DoomoPatch *patch, int npatch);
 /* Retained panels (G7, foundation, additive). A panel is a part of the 2D
  * picture (a HUD pill, the dialogue box, a toast) that the core draws
  * between plat_panel_begin() and plat_panel_end(): `id` names it (PANEL_*),

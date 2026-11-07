@@ -36,6 +36,28 @@ __attribute__((weak)) int plat_figure_obj(int k, int x, int y, const DoomoImage 
     return 0;
 }
 
+/* Weak defaults of the stage sprites (platform.h): none. */
+__attribute__((weak)) int plat_stage_obj_begin(void)
+{
+    return 0;
+}
+__attribute__((weak)) int plat_stage_obj(int slot, int x, int y, const DoomoImage *img, int variant,
+                                         const DoomoPatch *patch, int npatch)
+{
+    (void)slot; (void)x; (void)y; (void)img; (void)variant; (void)patch; (void)npatch;
+    return 0;
+}
+
+/* The image's 16x24 pixels with the patches painted over them (platform.h plat_stage_obj). */
+void plat_stage_bake(uint8_t *out, const DoomoImage *img, const DoomoPatch *patch, int npatch)
+{
+    int i, xx, yy;
+    memcpy(out, img->pix, 16 * 24);
+    for (i = 0; i < npatch; i++)
+        for (yy = patch[i].y; yy < patch[i].y + patch[i].h && yy < 24; yy++)
+            for (xx = patch[i].x; xx < patch[i].x + patch[i].w && xx < 16; xx++) out[yy * 16 + xx] = patch[i].c;
+}
+
 /* Weak defaults of the retained panels (platform.h, G7): nothing is kept,
  * every panel is drawn on every frame. */
 __attribute__((weak)) int plat_panel_begin(int id, int x, int y, int w, int h, uint32_t key)
