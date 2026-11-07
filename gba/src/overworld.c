@@ -443,10 +443,20 @@ static void draw_sprite(const DoomoBillboard *b)
 #endif
 #define GOV_HI   ((uint32_t)GBA_GOV_MS * 16780u)          /* cycles (16.78 MHz) a frame may take */
 #define GOV_LO   ((uint32_t)(GBA_GOV_MS - 2) * 16780u)    /* below this the sprites come back    */
+/* V14: the other overworld maps (not the red-hazed one) are governed too, but only once a frame budget of GOV_MS_N has been
+ * missed GOV_SUSTAIN drawn frames in a row, so a one-frame spike (pop-in, a body render) never drops a sprite, and a map that
+ * fits (park 26 ms, hellvile 22 ms) is never touched. The story map with dialogue (36 ms) and hahaland (34 ms) are the ones it
+ * is for. TINT_RED keeps GBA_GOV_MS and no wait, so the invaded map is exactly as in V10-V13. */
+#ifndef GBA_GOV_MS_N
+#define GBA_GOV_MS_N 29
+#endif
+#define GOV_HI_N ((uint32_t)GBA_GOV_MS_N * 16780u)
+#define GOV_SUSTAIN 3
 #define GOV_FREE 0x7FFFFFFFu
 #define GOV_MIN  600u
 static uint32_t gov_budget = GOV_FREE;    /* sprite box pixels allowed (GOV_FREE: no limit)         */
 static uint32_t gov_kept;                 /* box pixels kept by the last governed frame             */
+static uint8_t  gov_over;                 /* drawn frames in a row over the budget (V14: non-red maps) */
 static uint32_t gov_seen;                 /* gba_frames + 1 when the last governed frame was drawn  */
 /* scratch is static (EWRAM, ~0.4 KB), not on the stack: the IWRAM stack has ~120 B of slack */
 #define GOV_NB 40                         /* distance buckets: d2 >> 9 (about 5 px wide at r = 50)  */
@@ -457,11 +467,16 @@ static void gov_pick(const DoomoOverworldView *v, int n, uint32_t drop[4])
 {
     uint32_t barea[GOV_NB], total = 0, cum = 0, w = gba_work_last, budget, nearest_d = 0xFFFFFFFFu;
     int i, k, nearest = -1, cx = owf.ox + owf.ow / 2, cy = owf.oy + owf.oh / 2;
+    static int red;                                                 /* static, not stack: the IWRAM main stack has little margin */
+    static uint32_t hi, lo;
     drop[0] = drop[1] = drop[2] = drop[3] = 0;
-    if (!(gov_seen && gba_frames + 1 - gov_seen <= 2)) { gov_budget = GOV_FREE; gov_kept = 0; }   /* a gap: start free */
+    if (!(gov_seen && gba_frames + 1 - gov_seen <= 2)) { gov_budget = GOV_FREE; gov_kept = 0; gov_over = 0; }   /* a gap: start free */
     gov_seen = gba_frames + 1;
-    if (!owf.tint_level || v->tint != TINT_RED) { gov_budget = GOV_FREE; return; }
-    if (gov_budget == GOV_FREE && w <= GOV_HI) return;              /* the common case: nothing to do */
+    red = owf.tint_level && v->tint == TINT_RED;
+    hi = red ? GOV_HI : GOV_HI_N;
+    lo = hi - 2u * 16780u;
+    if (w > hi) { if (gov_over < 255) gov_over++; } else gov_over = 0;
+    if (gov_budget == GOV_FREE && (w <= hi || (!red && gov_over < GOV_SUSTAIN))) return;   /* the common case: nothing to do */
     for (k = 0; k < GOV_NB; k++) barea[k] = 0;
     for (i = 0; i < n; i++) {
         const DoomoBillboard *b = &v->sprites[i];
@@ -487,8 +502,8 @@ static void gov_pick(const DoomoOverworldView *v, int n, uint32_t drop[4])
     }
     /* adapt: shrink by 1/8 of what the last frame drew when it was over budget, grow by 1/8 when it had room */
     if (gov_budget == GOV_FREE)      budget = total - total / 8;
-    else if (w > GOV_HI)             budget = gov_kept - gov_kept / 8;
-    else if (w < GOV_LO)             budget = gov_kept + gov_kept / 8 + 128;
+    else if (w > hi)                 budget = gov_kept - gov_kept / 8;
+    else if (w < lo)                 budget = gov_kept + gov_kept / 8 + 128;
     else                             budget = gov_budget;
     if (budget < GOV_MIN) budget = GOV_MIN;
     if (budget >= total) { gov_budget = GOV_FREE; gov_kept = total; return; }
