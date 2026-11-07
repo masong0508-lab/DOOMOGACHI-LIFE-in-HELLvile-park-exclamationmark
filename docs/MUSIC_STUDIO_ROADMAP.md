@@ -64,8 +64,7 @@ Rules every package keeps: the save format stays append-only (old saves load; a 
 > CHOIR 52 ms (15 fps) and PERFORM 56 ms (13 fps) are the real gaps, not the editor tabs (31-36 ms). PERFORM is chibi-bound
 > (`vid_blit` + `res_get_look` + `cache_get` about 35%, the checker wall about 2%), so **MS-P4 (chibi tile cache) pays for CHOIR and PERFORM
 > together and should go before MS-P5's wall bake**; LYRICS is 28% per-frame song derivation, so **MS-P3 should cache the syllable split / singer
-> lookups per line, not only batch the text**; no single-syllable spike showed up in the sung window, so **MS-P1 (tuning cache) is lower
-> priority than its position suggests**. Order to take them on GBA: MS-P4, MS-P3, MS-P2, MS-P1, MS-P5.
+> lookups per line, not only batch the text**; no single-syllable spike showed up in what was believed to be the sung window (it was the instrumental intro: see "Facts to know before MS-P4"; onset spikes are real, +3..6 ms, ~9 of 26 spiky frames per 100), so **MS-P1 (tuning cache) is a small win, not nothing**. Order to take them on GBA: MS-P4, MS-P3, MS-P2, MS-P1, MS-P5.
 > **MS-P3 step 1 landed 2026-11-07** (syllable-split memo + line-part memo, exact): LYRICS 60.4 -> 45.3 ms, 12.4 -> 20.2 fps, logic back to 30.1 ticks/s. Left in MS-P3: batch the per-glyph text of `draw_syllables`. MS-P4 (chibis: CHOIR 52 ms, PERFORM 56 ms) is next.
 > **2026-11-07 later:** the `res_get_look` share was the `blh` look-hash memo thrashing (fixed: CHOIR 50.8, PERFORM 52.1 ms); `draw_syllables` now draws glyph runs (LYRICS 38.6 ms, 20.3 fps, shot byte-identical). Remaining for CHOIR / PERFORM: `vid_blit` of 25 chibis a frame (15-21%) and `cache_get` / `bodyspr_image` (8-10%): a per-singer tile cached as one image, redrawn only when the singer, section or selection changes.
 
@@ -97,11 +96,26 @@ Rules every package keeps: the save format stays append-only (old saves load; a 
 * **Retained panels (G7, `gba/src/panel.c`)** already keep a panel's body between frames (a DMA per row from the front page); text / images /
   checkers lie on it. 8 panels, 80-rect pool. The studio's content panel could use it, but anything drawn *over* the body every frame (all of the
   tabs) must stay out of the key, as the title and HUD work did. This is the other big lever for SONG / NOTES / ORDER.
-* **PERFORM is not explained.** Its profile shows `res_get_look` at 8-9% (before the `blh` fix; not re-profiled after) but the PERFORM draw code in
-  `studio_stage.c` never calls it directly; `song_player.c:205` calls `res_get_voice`. Profile PERFORM again after nov07d before designing
-  its fix. A logic dip to 22.6 ticks/s appeared on PERFORM before `blh` and went away with it; a 74-88 ms climb at the end of the "later"
-  window is still unexplained. The stage draws ~25 choir chibis + conductor + 18 crowd silhouettes (`IMG_SILHOUETTE` is not the fast blit path:
-  it falls to the byte loop in `vid_blit`) + ~150 checker rows at 320x240.
+* **PERFORM's 74-88 ms climb is explained (nov07d tree, GBA harness, per-tick `--worklog` over a whole show).** The show has two phases.
+  The first ~4.5 s (`show_t` 30..~170) is an *instrumental intro* (the lyric bar shows the music-note placeholder); the climb is the **first sung
+  line** ("1st half (13)": 13 singers). Steady work goes **~50 -> ~58 ms** and a one-frame 69 ms spike lands on the first onset. Why it matters
+  more than 8 ms suggests: the intro sits at 49-50 ms, right under the **3-vblank cliff (50.2 ms)**. Past it, a tick takes 4 vblanks, so
+  **logic falls from 30 to ~22 ticks/s and the song plays about 25% slower while someone is singing** (the tempo follows `song_tick` per tick).
+  Fix the draw cost and the tempo comes back before fps does; "PERFORM later" figures in `docs/STUDIO.md` are the pre-first-line intro, not the sung phase.
+  What the sung phase adds (ablation, steady medians, ms: intro 49.3, sung 58.4):
+  karaoke bar **-4.9** (of which the empty bar alone, `plat_shade_rect` + `ui_frame`, is **2.4 even in the intro**; the per-glyph `ui_text` and
+  part label are ~2.5), follow spot (`spot`, ~40 `plat_checker` rows + star) **-1.3**, mouths + floating notes (13 singers: `draw_mouth`, `st_note_glyph`
+  with `ui_fill_ellipse` -> `fx_isqrt`) **-1.1**. Switching the voice tuning search off changes the median by 0.2 ms but cuts the spiky frames
+  26 -> 17 of 100 (it is the +3..6 ms onset spikes; `res_get_voice` 1.5% is `choir_double` / section lookups per syllable, switching it off: no change).
+  Native draw counts agree: rects 385 -> 466, text calls 3 -> 28, checker rows 100 -> 133 (240x160) at the first sung line.
+  **Separate, in the intro: every 16 ticks a +5..7 ms spike is the beat-lit LED hearts** (`draw_wall`: `lit = ... || (beat && d < 3)`, each a
+  `ui_heart_flat`, `hf_row` + `em_finish_row`): switching `beat && d < 3` off removes all of them (7 of 37 frames -> 0) and changes nothing else.
+  Audio output is not a factor (making every `plat_tone` call a no-op: no change). The earlier note that the "sung window showed no spike" was wrong:
+  that window (`perform early/later`) was the intro. **Cheapest PERFORM fixes, in order:** (1) bake the karaoke bar (shade + frame) as a retained panel /
+  shape image: -2.4 ms in every phase; (2) draw the beat hearts as one pre-baked heart image or fewer / flat dots: removes the spikes;
+  (3) per-run `plat_text` for the karaoke line (the LYRICS tab already does this, nov07c): ~-1.5; (4) the follow spot as 4-6 rects, not 40 checker rows: ~-1;
+  (5) a note glyph without `ui_fill_ellipse`: ~-0.5. Together ~-6 ms puts the sung phase near 52 ms, back under the cliff only with (1)+(2)+(3)+(4);
+  the structural fix is still the chibi tile cache (MS-P4).
 * **Silhouettes are slower than chibis:** `vid_blit` with `IMG_SILHOUETTE` skips the halfword fast path. A pre-baked silhouette image per crowd id
   would be a cheap win for PERFORM.
 

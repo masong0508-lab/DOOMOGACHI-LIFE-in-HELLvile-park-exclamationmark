@@ -249,9 +249,7 @@ What this says (it corrects two guesses in `MUSIC_STUDIO_ROADMAP.md`):
   (`vid_blit` + `res_get_look` + `cache_get` is about 35%), the same thing that makes CHOIR slow.
 * LYRICS spends about 28% in per-frame song derivation (`song_syllables`, `part_mask`, `song_singer_id`,
   `res_get_voice`): the syllable split and singer lookups are redone every frame while the lines have not changed.
-* The slow-frame report (`--worklog`) shows no single-syllable spike in the sung window: every frame there is
-  over budget by the same steady 55-62 ms. A short climb to 74-88 ms appears at the end of the "later" window
-  (a phase change in the show, not yet explained).
+* **Correction (2026-11-07, nov07f):** the "sung" PERFORM windows above are the instrumental intro. The first sung line adds ~8.5 ms (50 -> 58 ms) and pushes work past the 3-vblank cliff (50.2 ms), so logic falls to ~22 ticks/s; onset spikes of +3..6 ms are the voice tuning search; the 74-88 ms climb is this step. Breakdown in `docs/MUSIC_STUDIO_ROADMAP.md` "Facts to know before MS-P4".
 * Not measured here: PS1 (needs your PCSX-Redux / CI), the PERFORM bows phase, hold-A note edits.
 
 **MS-P3 step 1 (2026-11-07, exact, pixel-identical):** `song_syllables` is memoised (10 entries, 570 B `.bss`; a pure function of the line text)
