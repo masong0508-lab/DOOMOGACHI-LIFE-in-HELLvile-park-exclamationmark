@@ -876,7 +876,12 @@ static void story_update(void)
     ownpc_update();
     ownpc_acts_update();                           /* --- S1 M5 --- */
     camera_update();
-    find_interactables();
+    /* V6 (docs/INVADED_SPEED.md): on the invaded map the A-prompt search runs every second tick. It only
+     * drives the HUD prompt, so it may trail the player by one tick; a press of A, a stale NPC index or the
+     * first ticks of a map always search fresh, so what A does is unchanged. */
+    if (!(ow.map == MAPID_HAHALAND_INVADED && (ow.t & 1) && ow.t > 2 &&
+          ow.near_npc < ow_npc_count && !btn_pressed(BTN_A)))
+        find_interactables();
     if (!ow.visit) {
         ownpc_double_take_check();
         ow_spawn_update();

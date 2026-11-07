@@ -190,6 +190,23 @@ Check before the next step (exact step: the invaded `vhash-seq` frames must be i
 If parity fails, the likeliest cause is `ow_flip_row`'s edge columns (head / tail masks), then the `q[]` fill. Paste the invaded
 work avg / drawn fps here, then go on to the spike frames (log `lc.builds` and body-frame renders per frame) and V5.
 
+## V6, landed (2026-11-07), NOT yet measured on the GBA: the A-prompt search every second tick (invaded only)
+
+Owner sign-off for V6 given in chat. `overworld.c`: on `MAPID_HAHALAND_INVADED`, `find_interactables()` runs on even ticks only. It
+searches fresh whenever A is pressed, whenever `near_npc` is past `ow_npc_count`, and on the first ticks of a map, so what a press
+of A does is unchanged; only the HUD prompt can trail the player by one tick (33 ms). Other maps are untouched.
+`ownpc_update` is NOT thinned: skipping its ticks would change how fast citizens walk, which is a gameplay change, not a time saving.
+
+Expected: about 1.8 ms off one of the two logic ticks of every drawn frame (the measured `find_interactables` cost), so invaded
+work avg ~52.0 -> ~50.5 ms. That alone does not reach 20 fps (the median is 53; 94 of 115 frames are over 50 ms).
+Host: `make -C core test` 871 / 0 failed, `check-gen`, `story-check` clean.
+
+Check on your CI (the invaded `vhash-seq` may change if a tour frame shows the A prompt one tick late; if it does, that is this step):
+
+    make -C gba test-ow && make -C gba test-speed SPEED_GATES=0 && python3 gba/tools/speedtable.py --parity
+
+Paste the invaded work avg / drawn fps / `vhash-seq` here.
+
 ## Steps
 
 - **V0** this document, the baseline, `profile-invaded` and its script. (done)
