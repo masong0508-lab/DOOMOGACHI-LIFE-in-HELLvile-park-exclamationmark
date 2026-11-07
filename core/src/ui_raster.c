@@ -414,9 +414,11 @@ static void rec_clipped(void)
 }
 
 /* every rect of a shape goes through here (direct draw or recording) */
+void (*ur_tap)(int, int, int, int, uint8_t);   /* (island I2) set while a caller records a shape's rects */
 static void out_rect(int x, int y, int w, int h, uint8_t c)
 {
     if (rec_e) rec_add(x, y, w, h, c);
+    else if (ur_tap) ur_tap(x, y, w, h, c);
     else UR_PLAT_RECT(x, y, w, h, c);
 }
 

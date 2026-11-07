@@ -128,22 +128,55 @@ static int hidden(int x, int y, int w, int h)
  * pixels, minus the geometry maths and divisions of ~530 rects a frame). */
 #define LR_MAX 640
 typedef struct { int16_t x, y; uint8_t w, h, c, ck; } LRect;
-static LRect lr_list[LR_MAX];
-static int lr_n, lr_rec, lr_over;
-static int32_t lr_key = -1;
+typedef struct { LRect *r; int cap, n, over; int32_t key; } LList;
+static LRect lr_land_r[LR_MAX], lr_patch_r[320], lr_road_r[160];
+static LList L_land = { lr_land_r, LR_MAX, 0, 0, -1 };
+static LList L_patch = { lr_patch_r, 320, 0, 0, -1 };   /* (I2) patches and their ember phase */
+static LList L_road = { lr_road_r, 160, 0, 0, -1 };     /* (I2) roads */
+static LList *lr_cur;                        /* the list being recorded, or NULL */
+static int lr_tapped;
+extern void (*ur_tap)(int, int, int, int, uint8_t);    /* ui_raster.c: every rect of a shape */
 static void lr_add(int x, int y, int w, int h, uint8_t c, int ck)
 {
-    if (lr_n < LR_MAX && w > 0 && h > 0 && w < 256 && h < 256) {
-        LRect *r = &lr_list[lr_n++];
+    LList *L = lr_cur;
+    if (L->n < L->cap && w > 0 && h > 0 && w < 256 && h < 256) {
+        LRect *r = &L->r[L->n++];
         r->x = (int16_t)x; r->y = (int16_t)y; r->w = (uint8_t)w; r->h = (uint8_t)h; r->c = c; r->ck = (uint8_t)ck;
-    } else lr_over = 1;
+    } else L->over = 1;
+}
+
+static void lr_tap(int x, int y, int w, int h, uint8_t c)
+{
+    lr_tapped++;
+    lr_add(x, y, w, h, c, 0);
+    if (!hidden(x, y, w, h)) plat_rect(x, y, w, h, c);
+}
+
+/* run body() live, or replay its recorded rects when its key is unchanged (same calls, same order) */
+static void lr_run(LList *L, int32_t key, void (*body)(void))
+{
+    if (g_off) { body(); return; }
+    if (key == L->key && !L->over) {
+        int i;
+        for (i = 0; i < L->n; i++) {
+            const LRect *r = &L->r[i];
+            if (hidden(r->x, r->y, r->w, r->h)) continue;
+            if (r->ck) plat_checker(r->x, r->y, r->w, r->h, r->c);
+            else plat_rect(r->x, r->y, r->w, r->h, r->c);
+        }
+    } else {
+        L->n = 0; L->over = 0; lr_cur = L;
+        body();
+        lr_cur = 0;
+        L->key = L->over ? -1 : key;
+    }
 }
 
 static void put(int x, int y, int w, int h, uint8_t c)
 {
     int j;
     if (!g_off) {
-        if (lr_rec) lr_add(x, y, w, h, c, 0);
+        if (lr_cur) lr_add(x, y, w, h, c, 0);
         if (!hidden(x, y, w, h)) plat_rect(x, y, w, h, c);
         return;
     }
@@ -169,11 +202,18 @@ static void C(int cx, int cy, int r, uint8_t c)
 }
 static void E(int cx, int cy, int rx, int ry, uint8_t c)
 {
-    if (!hidden(cx - rx - 1, cy - ry - 1, 2 * rx + 3, 2 * ry + 3)) ui_fill_ellipse(cx, cy, rx, ry, tc(c));
+    if (hidden(cx - rx - 1, cy - ry - 1, 2 * rx + 3, 2 * ry + 3)) return;
+    if (lr_cur && !g_off) {
+        int n0 = lr_tapped;
+        ur_tap = lr_tap;
+        ui_fill_ellipse(cx, cy, rx, ry, tc(c));
+        ur_tap = 0;
+        if (lr_tapped == n0) lr_cur->over = 1;   /* drawn some other way (a cached shape): not recordable */
+    } else ui_fill_ellipse(cx, cy, rx, ry, tc(c));
 }
 static void CK(int x, int y, int w, int h, uint8_t c)
 {
-    if (!g_off && lr_rec) lr_add(x, y, w, h, c, 1);
+    if (!g_off && lr_cur) lr_add(x, y, w, h, c, 1);
     if (!hidden(x, y, w, h)) plat_checker(x, y, w, h, c);
 }
 
@@ -370,21 +410,7 @@ static void draw_land_tail(void);
 static void draw_land_body(void);
 static void draw_land(void)
 {
-    int32_t key = (int32_t)(M.w | (M.h << 10) | (g_tint << 20));
-    if (key == lr_key && !lr_over && !g_off) {
-        int i;
-        for (i = 0; i < lr_n; i++) {
-            const LRect *r = &lr_list[i];
-            if (hidden(r->x, r->y, r->w, r->h)) continue;
-            if (r->ck) plat_checker(r->x, r->y, r->w, r->h, r->c);
-            else plat_rect(r->x, r->y, r->w, r->h, r->c);
-        }
-    } else if (!g_off) {
-        lr_n = 0; lr_over = 0; lr_rec = 1;
-        draw_land_body();
-        lr_rec = 0;
-        lr_key = lr_over ? -1 : key;
-    } else draw_land_body();
+    lr_run(&L_land, (int32_t)(M.w | (M.h << 10) | (g_tint << 20)), draw_land_body);
     draw_land_tail();
 }
 
@@ -494,7 +520,7 @@ static const Patch hell_patches[] = {
     { 232, 168, 10, 10 }, { 200, 48, 14, 6 }, { 168, 226, 14, 5 }, { 234, 206, 8, 8 }
 };
 
-static void draw_patches(void)
+static void draw_patches_body(void)
 {
     int i, t = g_t;
     for (i = 0; i < DOOMO_COUNTOF(hill_patches); i++) {
@@ -521,6 +547,11 @@ static void draw_patches(void)
     }
 }
 
+static void draw_patches(void)
+{
+    lr_run(&L_patch, (int32_t)(M.w | (M.h << 10) | (g_tint << 20) | (((g_t / 8) % 12) << 24)), draw_patches_body);
+}
+
 /* ---- roads --------------------------------------------------------------- */
 typedef struct { uint8_t x0, y0, x1, y1; } Seg;     /* map units, axis aligned */
 static const Seg roads[] = {
@@ -536,7 +567,7 @@ static const Seg roads[] = {
     { 108, 40, 108, 128 }
 };
 
-static void draw_roads(void)
+static void draw_roads_body(void)
 {
     int i, rw = 3;
     for (i = 0; i < DOOMO_COUNTOF(roads); i++) {
@@ -567,6 +598,11 @@ static void draw_roads(void)
             }
         }
     }
+}
+
+static void draw_roads(void)
+{
+    lr_run(&L_road, (int32_t)(M.w | (M.h << 10) | (g_tint << 20)), draw_roads_body);
 }
 
 /* ---- decorations ----------------------------------------------------------- */

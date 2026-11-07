@@ -123,3 +123,13 @@ Consequences for the I4 design above:
 - Cheapest levers (a DECISIONS call, step I5): hold the deco sway still (-~107), no weather on clear days (-~50),
   slower foam (-~45). With all three the count is ~125.
 - Seams were first counted as foam (~170 tiles). They are static checkers: put them in the backdrop.
+
+## I2 landed: patches and roads recorded and replayed (exact)
+
+Same mechanism as the land (I1): the roads (no time input) and the clover / plum patches (their ember glow cycles every 8 ticks, so
+the key carries `(t / 8) % 12`) are recorded as rects once per key and replayed in order. The patches' ellipses are captured through
+`ur_tap` in `ui_raster.c` (one pointer test in `out_rect`); a shape that is drawn another way (a cached sprite on native) marks the
+list unrecordable and it is drawn live. Hub 81.5 -> 76.3 ms (9.7 -> 10.1 fps, libmgba). The island hub and town hall menu frames
+are identical tick for tick against the I1 ROM (30 + 30 ticks); `make -C core test` 878 passed, 0 failed.
+Cost: 3.9 KB more EWRAM (two lists of 320 and 160 8-byte entries; EWRAM free 12.5 -> 8.6 KB).
+Not yet: `make -C gba test` / `test-speed` with the floors (run in CI), the decos (107 animated tiles; see I4 measurement).
