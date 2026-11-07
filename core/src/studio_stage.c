@@ -604,6 +604,35 @@ static const uint8_t *stage_mini_pix(int kind, uint8_t c)
     return p;
 }
 
+#if defined(DOOMO_PLATFORM_GBA) && !defined(DOOMO_STUDIO_SHADE_BAR)
+/* MS-PF11: a crowd silhouette, only the rows the frame still shows. The curtain strips (opaque, full height, x < cvr
+ * and x >= sw - cvr) and the karaoke bar (opaque on the GBA since MS-PF9: x bx0 .. bx1, y by0 .. by0 + 22) are drawn
+ * after the crowd and cover most of every 16x24 silhouette, so the rows (and whole row bands) lying wholly under them
+ * are not blitted: same final pixels, about a sixth of the blit work. The image is cut into up to three bands (above
+ * the bar, the bar's rows, below it), each a smaller DoomoImage over the same pixels. */
+static void crowd_blit(int x, int y, const DoomoImage *img, int sw, int sh, int cvr, uint8_t col, int wide)
+{
+    int bw = sw - (wide ? 60 : 24), bx0 = sw / 2 - bw / 2, bx1 = bx0 + bw;
+    int by0 = sh - (wide ? 44 : 25), by1 = by0 + 22;
+    int h, rA, rB, lo, hi, w, band;
+    if (!img || !img->pix) return;
+    h = img->h; w = img->w;
+    rA = DOOMO_MAX(0, DOOMO_MIN(h, by0 - y));
+    rB = DOOMO_MAX(rA, DOOMO_MIN(h, by1 - y));
+    if (y + h > sh) h = DOOMO_MAX(rB, sh - y);          /* below the screen */
+    lo = cvr >= bx0 ? 0 : bx0;                          /* what the strips and the bar cover together, on a bar row */
+    hi = sw - cvr <= bx1 ? sw : bx1;
+    for (band = 0; band < 3; band++) {
+        int r0 = band == 0 ? 0 : band == 1 ? rA : rB, r1 = band == 0 ? rA : band == 1 ? rB : h;
+        int hidden = (x + w <= cvr) || (x >= sw - cvr) || (band == 1 && x >= lo && x + w <= hi);
+        DoomoImage sub;
+        if (r1 <= r0 || hidden) continue;
+        sub.w = img->w; sub.h = (uint16_t)(r1 - r0); sub.pix = img->pix + r0 * img->w; sub.uid = 0;
+        plat_image(x, y + r0, &sub, 1, IMG_SILHOUETTE, col);
+    }
+}
+#endif
+
 static void draw_show(void)
 {
     int sw = plat_screen_w(), sh = plat_screen_h(), t = studio.show_t, wide = st_wide();
@@ -719,7 +748,13 @@ static void draw_show(void)
             int id = studio.crowd[k], row = k & 1, x = cw / 2 + (k / 2) * cw + row * cw / 2 - 8;
             int y = cyb - BODYSPR_H + 8 - row * 6;                 /* nobody bobs on the beat: the crowd stands still */
             if (y < floor + 8) continue;
-            if (id >= 0) st_chibi(id, x, y, 3, 0, IMG_SILHOUETTE, PAL_PAINT(PAINT_GRAPE, 0));
+            if (id >= 0) {
+#if defined(DOOMO_PLATFORM_GBA) && !defined(DOOMO_STUDIO_SHADE_BAR)
+                crowd_blit(x, y, bodyspr_image(id, 3, 0), sw, sh, curtain_cover(sw, open), PAL_PAINT(PAINT_GRAPE, 0), wide);
+#else
+                st_chibi(id, x, y, 3, 0, IMG_SILHOUETTE, PAL_PAINT(PAINT_GRAPE, 0));
+#endif
+            }
             else ui_fill_circle(x + 8, y + 10, 7, PAL_PAINT(PAINT_GRAPE, 0));
             if (studio.applause > 70 && !(k & 1)) {                /* glow sticks: every other fan, only at high applause */
                 int gx = x + 12, gy = y + 4 - ui_wave(t + k * 9, 30, 2);
