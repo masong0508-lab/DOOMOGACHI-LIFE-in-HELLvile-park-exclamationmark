@@ -1031,23 +1031,53 @@ const DoomoImage *figure_image(const DoomoLook *l, int status, int expr)
     return animated(CK_FIGURE, -1, l, status, expr);
 }
 
+/* V8 (docs/INVADED_SPEED.md): the look hash of a body, memoised on the resident's raw record. A citizen's body
+ * is asked for every tick (7 a tick on the invaded map), and unpacking the 40-odd look genes, ageing the look and
+ * hashing it was ~3% of the GBA frame. The hash is a pure function of the gene bytes and `species` (look_for_stage
+ * and look_hash read nothing else), so a hit needs both unchanged: any edit to the look re-computes it. The deep
+ * run (look_run_hash) is not memoised; it is a walk of a pool that is empty or tiny. 32 direct-mapped entries,
+ * 56 B each; a collision only costs the old path. */
+#define BLH_N 32
+typedef struct BodyLH {
+    uint8_t  gene[48];
+    uint32_t h;
+    int32_t  id;
+    uint8_t  species, ok;
+} BodyLH;
+static BodyLH blh[BLH_N];
+
 const DoomoImage *bodyspr_image(int resident_id, int dir, int frame)
 {
-    int status;
+    int status, have_look = 0;
     const DoomoResident *r;
-    uint32_t lh, key;
+    uint32_t lh, key, lhl;
     CacheEnt *e;
     PCtx c;
     DoomoLook L;
+    BodyLH *m;
     cache_init();
     r = res_of(resident_id, &status);
     dir &= 3;
     frame &= 3;
-    look_for_stage(RES_LOOK_VIEW(r), RES_STAGE(r), &L);        /* F4: the body of their age */
-    lh = look_hash(&L) ^ look_run_hash(resident_id, 1);   /* chibi sees only DFF_CHIBI fields */
+    m = &blh[(uint32_t)resident_id & (BLH_N - 1)];
+    if (m->ok && m->id == resident_id && m->species == r->species &&
+        memcmp(m->gene, r->gene, sizeof m->gene) == 0) {
+        lhl = m->h;
+    } else {
+        look_for_stage(RES_LOOK_VIEW(r), RES_STAGE(r), &L);    /* F4: the body of their age */
+        have_look = 1;
+        lhl = look_hash(&L);
+        memcpy(m->gene, r->gene, sizeof m->gene);
+        m->species = r->species;
+        m->id = resident_id;
+        m->h = lhl;
+        m->ok = 1;
+    }
+    lh = lhl ^ look_run_hash(resident_id, 1);             /* chibi sees only DFF_CHIBI fields */
     key = (uint32_t)(dir | (frame << 2)) | ((uint32_t)status << 12);
     e = cache_find(CK_BODY, resident_id, key, lh, 0xFFFFFFFFu);
     if (e) return &e->img;
+    if (!have_look) look_for_stage(RES_LOOK_VIEW(r), RES_STAGE(r), &L);
     job_reap();
     e = cache_alloc(CK_BODY, resident_id, key, lh, BODYSPR_W, BODYSPR_H, 0);
     sanitize(&L);

@@ -207,6 +207,27 @@ Check on your CI (the invaded `vhash-seq` may change if a tour frame shows the A
 
 Paste the invaded work avg / drawn fps / `vhash-seq` here.
 
+## V6 measured (CI 2026-11-06 tour) and V8, landed (2026-11-07), NOT yet measured on the GBA: the body look hash memo
+
+**V6 saved nothing measurable**: invaded work avg 52.0 -> 51.9 ms, drawn 16.2 -> 16.5 fps, `vhash-seq` still `5e74560c`. Its 1.8 ms came
+from the pre-G2 profile; `find_interactables` is not among the hot functions of the current profile. (The CI log said "Nothing to be
+done for 'rom'", so check that the V6 commit was in that build.) V6 is harmless but pointless; revert it if you want the map's prompt
+exactly per tick.
+
+**V8 (exact).** Host profile of `scene STORY 219` (400 ticks, gprof call graph): `bodyspr_image` is called 7 times a tick (6 from
+`ownpc_add_billboards`, 1 from `story_draw`), and each call ran `res_get_look` (40-odd `gene_get`), `look_for_stage` and `look_hash`
+just to build the cache key, which is the 3.2% `res_get_look` in the GBA profile. `portrait.c` now memoises that hash per resident
+on the raw record: 32 direct-mapped entries of {48 gene bytes, species, hash, id} (56 B each, 1,792 B of EWRAM .bss; a hit needs
+the gene bytes and `species` equal, which is everything `look_for_stage` / `look_hash` read, so any look edit recomputes). The deep
+run's hash (`look_run_hash`) is still taken every call (the pool is empty or tiny). The image returned is unchanged, so every frame is
+pixel-identical. Expected about 1.5 ms off the invaded frame (52 -> ~50.5 ms); `gba_udivmod` (1.3%) is not explained by this and
+is still open. Host: `make -C core test` 871 / 0 failed.
+
+Check on your CI (exact step: all `vhash-seq` must equal the table of the V6 run, invaded `5e74560c`), then paste invaded work avg / fps
+and EWRAM free (expect about 1,792 B less than 24,240):
+
+    make -C gba test-ow && make -C gba test-speed SPEED_GATES=0 && python3 gba/tools/speedtable.py --parity
+
 ## Steps
 
 - **V0** this document, the baseline, `profile-invaded` and its script. (done)
