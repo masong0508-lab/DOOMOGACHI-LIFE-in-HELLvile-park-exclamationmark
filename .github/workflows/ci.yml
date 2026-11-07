@@ -244,7 +244,7 @@ jobs:
             echo
             echo '## Music Studio PERFORM, sung phase: median, worst and the slowest ticks'
             echo '```'
-            make -C gba profile-sung SUNG_GATE=--gate 2>&1 | grep -E '^(window|tick |[0-9]+ +[0-9]+ |ticks logic|over the|frames over|choir sprites|stg:|harness: slow|gba/build/sung.log|.*median)|rror' || echo '(profile-sung produced no output)'
+            make -C gba profile-sung SUNG_GATE=--gate 2>&1 | grep -E '^(window|tick |[0-9]+ +[0-9]+ |ticks logic|over the|frames over|choir sprites|hottest functions|stg:|harness: slow|harness: +[0-9.]+% |gba/build/sung.log|.*median)|rror' || echo '(profile-sung produced no output)'
             echo '```'
           } 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
 

@@ -145,7 +145,18 @@ int gba_curtains(int sw, int sh, int cw, const uint8_t *body, const uint8_t *lin
     la = tl[0]; lb = tl[1]; lc = tl[2];
     ra = tr[ph]; rb = tr[(ph + 1) % 3]; rc = tr[(ph + 2) % 3];
     row = (cur_vu32_t *)gba_back;
-    for (y = 0; y < sh; y++, row += SCREEN_W / 4) {
+    /* rows 0..8 are painted over by the valance (a full-width rect, drawn right after this): start below them */
+    y = sh > 9 ? 9 : 0;
+    row += y * (SCREEN_W / 4);
+    if (nl == 6 && !rem) {               /* fully open (cover 24): both sides are 6 words, straight-line stores */
+        cur_vu32_t *rr = row + 54;       /* fw = 54, phase 0 */
+        for (; y < sh; y++, row += SCREEN_W / 4, rr += SCREEN_W / 4) {
+            row[0] = la; row[1] = lb; row[2] = lc; row[3] = la; row[4] = lb; row[5] = lc;
+            rr[0] = ra; rr[1] = rb; rr[2] = rc; rr[3] = ra; rr[4] = rb; rr[5] = rc;
+        }
+        return 1;
+    }
+    for (; y < sh; y++, row += SCREEN_W / 4) {
         cur_run(row, nl, la, lb, lc);
         if (lmask) row[nl] = (row[nl] & ~lmask) | (tl[nl % 3] & lmask);
         if (rmask) row[hw] = (row[hw] & ~rmask) | (tr[hw % 3] & rmask);

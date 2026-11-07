@@ -429,8 +429,10 @@ profile-sung: harness
 	sed -e '/^fps sung_all/d' -e '/^wait 330/d' -e 's/^fps end/profile $(SUNG_PROFILE_N)/' \
 	    $(GBA)/harness/scripts/studio_sung.txt > $(BUILD)/sung_profile.txt; \
 	HARNESS_SLOW_MS=$(SUNG_SLOW_MS) $(HARNESS) $(BUILD)/doomogachi.gba --script $(BUILD)/sung_profile.txt \
-	    --nm $(BUILD)/doomogachi.nm --no-fps-gates --worklog --quiet 2>&1 \
-	    | grep -E 'harness: (slow frame|slow frames|slow\+)' > $(BUILD)/sung_spikes.log || true; \
+	    --nm $(BUILD)/doomogachi.nm --no-fps-gates --worklog --quiet > $(BUILD)/sung_prof_full.log 2>&1; \
+	grep -E 'harness: (slow frame|slow frames|slow\+)' $(BUILD)/sung_prof_full.log > $(BUILD)/sung_spikes.log || true; \
+	echo "hottest functions of the whole sung window (harness profile, share of cycles):"; \
+	grep -E '^harness: +[0-9.]+% ' $(BUILD)/sung_prof_full.log | head -n 30; \
 	$(HARNESS) $(BUILD)/doomogachi.gba --script $(GBA)/harness/scripts/studio_sung.txt --no-fps-gates 2>&1 \
 	    | grep -E '^stg:' | tail -n 1 > $(BUILD)/sung_stg.log || true; \
 	echo "choir sprites (build/sung_stg.log; emit = frames with sprites, spr = sprite entries):"; cat $(BUILD)/sung_stg.log; \
