@@ -238,14 +238,19 @@ static void rec_add(int x, int y, int w, int h, uint8_t c)
                                    (uint32_t)h << 23 | (uint32_t)i << 29;
 }
 
+extern void (*ur_tap)(int, int, int, int, uint8_t);
 static void sc_replay(const SEnt *e, int ax, int ay)
 {
     const SRect *r = &sc_pool[e->start], *end = r + e->n;
     sc_replayed += e->n;
     for (; r < end; r++) {
         uint32_t v = *r;
-        UR_PLAT_RECT(ax + (int)(v & 255), ay + (int)((v >> 16) & 127), (int)((v >> 8) & 255),
-                     (int)((v >> 23) & 63), e->pal[v >> 29]);
+        if (ur_tap)                      /* a caller is recording rects: it must see these too */
+            ur_tap(ax + (int)(v & 255), ay + (int)((v >> 16) & 127), (int)((v >> 8) & 255),
+                   (int)((v >> 23) & 63), e->pal[v >> 29]);
+        else
+            UR_PLAT_RECT(ax + (int)(v & 255), ay + (int)((v >> 16) & 127), (int)((v >> 8) & 255),
+                         (int)((v >> 23) & 63), e->pal[v >> 29]);
     }
 }
 
@@ -311,7 +316,7 @@ static int si_draw(SEnt *e, int ax, int ay)
     uint32_t now = doomo_frame_count();
     int again = e->last && now - e->last <= 1u;
     e->last = now ? now : 1;
-    if (ut_on || e->n < SI_MIN_RECTS) return 0;
+    if (ut_on || ur_tap || e->n < SI_MIN_RECTS) return 0;   /* (a tap records rects, not images) */
     if (e->igen != si_gen && (!again || !si_build(e))) return 0;
     plat_image(ax + e->bx, ay + e->by, &e->img, 1, 0, 0);
     si_drawn++;

@@ -148,3 +148,16 @@ Hub 76.3 -> 70.2 ms (10.1 -> 10.7 fps, libmgba); island hub frames identical tic
   differed in 14 sea pixels, animation timing); not yet checked with `make -C gba test-speed` parity.
 Next (I3b): quantized animation clock for building animation / walkers / weather with recorded lists (governor, pixels change),
 clear only outside the sea box, cache `town_count`.
+
+## I3b (governor): animated phases recorded per step, sky clear outside the sea box (NOT pixel-exact vs the old ROM)
+
+- Sea glints, walkers and weather are plain rects: each is recorded once per animation step (`ANIM_Q` = 6 ticks, clock `g_q`) and
+  replayed on the draws inside the step (the GBA draws every 3rd tick). These phases now move in 6-tick steps, so the island hub
+  `vhash-seq` (de7d5caf) and town hall menu (b780a9d1) WILL change; expect new values in CI, then re-pin.
+- `fp_island_clear_outside()` replaces the full `plat_clear`: the sea paints the whole map box, only the strips above and below
+  need the sky colour. Same pixels.
+- Bug fixed on the way (`ui_raster.c`): a cached shape replayed (or drawn as an image) while `ur_tap` was set bypassed the tap and
+  painted straight to the screen. On the first island frame in a process this left a stray tree at the deco recording spot
+  (120,110) and made `panel_island_hud_and_ticker_are_pixel_identical` fail when run alone. Replays now go through the tap.
+- New test `core/tests/test_island_replay.c`: replayed lists equal live lists, by day and by night, with weather on.
+- Unit suite: 883 passed, 0 failed. Not measured on the GBA (no ARM toolchain in this session).

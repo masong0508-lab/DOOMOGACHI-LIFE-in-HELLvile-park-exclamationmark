@@ -1052,7 +1052,7 @@ static void island_draw(void)
         ld[i].kind = locs[i].kind;
         ld[i].locked = (uint8_t)(locs[i].kind == LOC_ARENA && arena_locked());
     }
-    plat_clear(PAL_RAMP(RAMP_SKY, 5));
+    fp_island_clear_outside(PAL_RAMP(RAMP_SKY, 5));
     /* (perf) a fully popped menu window hides most of the map: skip what
      * lies under its opaque inside (4 px in from the rounded rim) */
     if (I.menu_open && I.menu_t >= 0 && ui_pop_scale(I.menu_t) == 256) {

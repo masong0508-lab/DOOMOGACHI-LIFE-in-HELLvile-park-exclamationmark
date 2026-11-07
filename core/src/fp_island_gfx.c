@@ -133,8 +133,21 @@ static LRect lr_land_r[LR_MAX], lr_patch_r[320], lr_road_r[160];
 static LList L_land = { lr_land_r, LR_MAX, 0, 0, -1 };
 static LList L_patch = { lr_patch_r, 320, 0, 0, -1 };   /* (I2) patches and their ember phase */
 static LList L_road = { lr_road_r, 160, 0, 0, -1 };     /* (I2) roads */
+/* (I3b, the governor) The animated phases that are plain rects: the sea's wave glints, the walkers, the weather. They
+ * read g_q, the animation clock in steps of ANIM_Q ticks, so a list recorded for a step is replayed on every draw
+ * inside it (the GBA draws every 3rd tick, so about every second draw replays). Not pixel-exact against the old
+ * ROM: these phases now move in steps of ANIM_Q ticks. */
+#define ANIM_Q 6
+static LRect lr_glint_r[64], lr_walk_r[80], lr_wx_r[100];
+static LList L_glint = { lr_glint_r, 64, 0, 0, -1 };
+static LList L_walk = { lr_walk_r, 80, 0, 0, -1 };
+static LList L_wx = { lr_wx_r, 100, 0, 0, -1 };
+static int g_q;                              /* g_t rounded down to a multiple of ANIM_Q */
+static int g_wx;                             /* the weather being drawn (body of L_wx) */
+static int g_walk_n;                         /* the walker count (body of L_walk) */
 static LList *lr_cur;                        /* the list being recorded, or NULL */
 static int lr_tapped;
+static int lr_hits;                          /* replays so far (test_island_replay.c) */
 static int lr_quiet;                         /* (I3) recording a deco variant: record only, draw nothing */
 extern void (*ur_tap)(int, int, int, int, uint8_t);    /* ui_raster.c: every rect of a shape */
 static void lr_add(int x, int y, int w, int h, uint8_t c, int ck)
@@ -164,6 +177,7 @@ static void lr_run(LList *L, int32_t key, void (*body)(void))
     if (g_off) { body(); return; }
     if (key == L->key && !L->over) {
         int i = 0;
+        lr_hits++;
         while (i < L->n) {
             const LRect *r = &L->r[i];
             if (!g_occ && !r->ck && plat_rect_run && !gba_nodraw) {   /* a run of plain rects, nothing hiding them */
@@ -335,6 +349,24 @@ static uint8_t hell_ground(int row)
     return g[DOOMO_CLAMP(k, 0, 5)];
 }
 
+static void draw_glints_body(void)
+{
+    int i, t = g_q, night = g_tint == TINT_NIGHT;
+    for (i = 0; i < 18; i++) {
+        uint32_t h = doomo_hash32((uint32_t)i * 977u + 5u);
+        int x = M.x + (int)((h & 0xFFF) % (uint32_t)M.w);
+        int y = M.y + 3 + (int)((h >> 12) % (uint32_t)DOOMO_MAX(M.h - 6, 1));
+        int ph = (t / 3 + (int)(h >> 20)) % 64;
+        x = M.x + (x - M.x + t / 8) % M.w;
+        if (fp_island_side_at(x, y) >= 0 || fp_island_side_at(x + 6, y) >= 0) continue;
+        if (ph < 40) {
+            int w = ph < 20 ? 2 + ph / 5 : 6 - (ph - 20) / 5;
+            RG(x, y, w, 1, night ? PAL_RAMP(RAMP_SKY, 4) : golden_hour() ? PAL_RAMP(RAMP_CANDY, 7) : PAL_WHITE);
+            if (w > 3) R(x + 1, y + 1, w - 2, 1, golden_hour() ? PAL_RAMP(RAMP_LAVA, 7) : PAL_RAMP(RAMP_SKY, 7));
+        }
+    }
+}
+
 static void draw_sea(void)
 {
     int i, t = g_t, night = g_tint == TINT_NIGHT;
@@ -349,20 +381,8 @@ static void draw_sea(void)
         R(M.x, y, M.w, DOOMO_MIN(bh, M.y + M.h - y), band[i]);
         if (i) CK(M.x, y, M.w, 1, tc(band[i - 1]));
     }
-    /* wave glints drifting along */
-    for (i = 0; i < 18; i++) {
-        uint32_t h = doomo_hash32((uint32_t)i * 977u + 5u);
-        int x = M.x + (int)((h & 0xFFF) % (uint32_t)M.w);
-        int y = M.y + 3 + (int)((h >> 12) % (uint32_t)DOOMO_MAX(M.h - 6, 1));
-        int ph = (t / 3 + (int)(h >> 20)) % 64;
-        x = M.x + (x - M.x + t / 8) % M.w;
-        if (fp_island_side_at(x, y) >= 0 || fp_island_side_at(x + 6, y) >= 0) continue;
-        if (ph < 40) {
-            int w = ph < 20 ? 2 + ph / 5 : 6 - (ph - 20) / 5;
-            RG(x, y, w, 1, night ? PAL_RAMP(RAMP_SKY, 4) : golden_hour() ? PAL_RAMP(RAMP_CANDY, 7) : PAL_WHITE);
-            if (w > 3) R(x + 1, y + 1, w - 2, 1, golden_hour() ? PAL_RAMP(RAMP_LAVA, 7) : PAL_RAMP(RAMP_SKY, 7));
-        }
-    }
+    /* wave glints drifting along (recorded per animation step) */
+    lr_run(&L_glint, (int32_t)((g_q / ANIM_Q) & 0x3FFF) | (night << 14) | (golden_hour() << 15), draw_glints_body);
     if (night) {
         for (i = 0; i < 14; i++) {
             uint32_t h = doomo_hash32((uint32_t)i * 7919u + 3u);
@@ -1460,12 +1480,9 @@ static void bc_build(FpBCache *bc, const FpLocDraw *locs, int n, uint32_t key)
     bc->key = key;
 }
 
-static void draw_walkers(void)
+static void draw_walkers_body(void)
 {
-    int i, t = g_t, n = 14;
-    int pop = fp_island_pop();
-    if (pop <= 0) return;
-    if (pop < 40) n = 3 + pop / 6;
+    int i, t = g_q, n = g_walk_n;
     for (i = 0; i < n; i++) {
         const Seg *s = &roads[i % DOOMO_COUNTOF(roads)];
         int len = (s->x1 - s->x0) + (s->y1 - s->y0), p, x, y, hell, step;
@@ -1487,6 +1504,15 @@ static void draw_walkers(void)
     }
 }
 
+static void draw_walkers(void)
+{
+    int n = 14, pop = fp_island_pop();
+    if (pop <= 0) return;
+    if (pop < 40) n = 3 + pop / 6;
+    g_walk_n = n;
+    lr_run(&L_walk, (int32_t)((g_q / ANIM_Q) & 0x3FFF) | ((g_tint == TINT_NIGHT) << 14) | (n << 15), draw_walkers_body);
+}
+
 /* ---- weather --------------------------------------------------------------- */
 int fp_island_weather(void)
 {
@@ -1504,10 +1530,9 @@ int fp_island_weather(void)
     return WX_CLEAR;
 }
 
-static void draw_weather(int wx)
+static void draw_weather_body(void)
 {
-    int i, t = g_t;
-    if (wx == WX_CLEAR) return;
+    int i, t = g_q, wx = g_wx;
     for (i = 0; i < 40; i++) {
         uint32_t h = doomo_hash32((uint32_t)i * 2654435761u + 99u);
         int x0 = (int)(h % (uint32_t)M.w), sp = wx == WX_RAIN ? 5 : wx == WX_SNOW ? 1 : 1;
@@ -1525,6 +1550,13 @@ static void draw_weather(int wx)
     }
 }
 
+static void draw_weather(int wx)
+{
+    if (wx == WX_CLEAR) return;
+    g_wx = wx;
+    lr_run(&L_wx, (int32_t)((g_q / ANIM_Q) & 0x3FFF) | (wx << 14), draw_weather_body);
+}
+
 /* ====================================================================== */
 /* entry point                                                              */
 int fp_island_tint(void)
@@ -1539,7 +1571,13 @@ void fp_island_draw_map(const FpLocDraw *locs, int n, int sel)
     FpBCache *bc = fp_island_bcache();
     fp_island_geometry();
     g_t = fp_t();
+    g_q = g_t - g_t % ANIM_Q;
     g_tint = fp_island_tint();
+    {
+        static int geo_seen = -1;                /* a new screen size: the lists of the animated phases are stale */
+        int geo = M.w | (M.h << 10);
+        if (geo != geo_seen) { geo_seen = geo; L_glint.key = L_walk.key = L_wx.key = -1; }
+    }
     draw_sea();
     draw_land();
     draw_patches();
@@ -1583,3 +1621,22 @@ void fp_island_draw_map(const FpLocDraw *locs, int n, int sel)
     }
     draw_weather(fp_island_weather());
 }
+
+/* (I3b) plat_clear's replacement: the sea paints the whole map box (full width, rows M.y .. M.y + M.h), so only what
+ * lies outside it needs the sky colour. Same pixels as a full clear, about 80% of the fill. */
+void fp_island_clear_outside(uint8_t c)
+{
+    int sw = fp_sw(), sh = fp_sh(), y1;
+    fp_island_geometry();
+    y1 = M.y + M.h;
+    if (M.w < sw || M.x < 0 || M.x > 0 || M.h <= 0) { plat_clear(c); return; }
+    plat_rect(0, 0, sw, M.y, c);
+    plat_rect(0, y1, sw, sh - y1, c);
+}
+
+/* test hooks (core/tests/test_island_replay.c): forget every recorded list / count the replays */
+void fp_island_replay_flush(void)
+{
+    L_land.key = L_patch.key = L_road.key = L_glint.key = L_walk.key = L_wx.key = -1;
+}
+int fp_island_replay_hits(void) { return lr_hits; }

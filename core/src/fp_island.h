@@ -60,6 +60,9 @@ void fp_island_draw_map(const FpLocDraw *locs, int n, int sel);
  * parts wholly inside it are not drawn. */
 void fp_island_occluder(int x, int y, int w, int h);
 
+void fp_island_replay_flush(void);          /* test hooks: drop every recorded list, count replays */
+int  fp_island_replay_hits(void);
+void fp_island_clear_outside(uint8_t c);   /* the sky colour outside the sea box only (the sea covers the rest) */
 int fp_island_pop(void);     /* town_count(-1), counted once per frame (perf) */
 
 #endif
