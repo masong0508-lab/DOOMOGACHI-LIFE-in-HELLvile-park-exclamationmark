@@ -930,7 +930,18 @@ static void draw_menu(void)
                  L->kind == LOC_ARENA || L->kind == LOC_LAKE || L->kind == LOC_GRAVEYARD) ? WIN_DARK : WIN_CUTE;
     const UiStyle *st = ui_style(style);
     menu_rect(&x, &y, &w, &h);
-    plat_shade_rect(0, 0, sw, sh, 11);
+    if (I.menu_t >= 0 && ui_pop_scale(I.menu_t) == 256) {
+        /* (perf) the fully popped window is opaque 4 px in from its rim and is drawn over the dimmed screen, so
+         * shading under it is wasted (vid_shade_words was 10% of this scene): dim the four bands around it,
+         * same pixels as before (the same inside the occluder island_draw uses) */
+        int ix = x + 4, iy = y + 4, iw = w - 8, ih = h - 8;
+        if (iy > 0) plat_shade_rect(0, 0, sw, iy, 11);
+        if (sh - (iy + ih) > 0) plat_shade_rect(0, iy + ih, sw, sh - (iy + ih), 11);
+        if (ix > 0) plat_shade_rect(0, iy, ix, ih, 11);
+        if (sw - (ix + iw) > 0) plat_shade_rect(ix + iw, iy, sw - (ix + iw), ih, 11);
+    } else {
+        plat_shade_rect(0, 0, sw, sh, 11);
+    }
     if (!ui_window_pop(x, y, w, h, style, I.menu_t)) return;
     /* title */
     ui_title(x + w / 2, y - 7, L->name, style);
