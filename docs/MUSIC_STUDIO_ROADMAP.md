@@ -58,6 +58,15 @@ Rules every package keeps: the save format stays append-only (old saves load; a 
 
 ### A. Measure first
 
+> **MS-P0 status (2026-11-07): the GBA half is done.** `make -C gba profile-studio` (and a CI step) now measures every tab and PERFORM;
+> the table is in `docs/STUDIO.md` "GBA speed (MS-P0)". Still open: the PS1 `perf_studio.txt`, the `stats` regression lines in
+> `core/tests/scripts/studio.txt`, and the studio stop in the GBA fps tour. **What the GBA numbers change below:** LYRICS 60 ms (12 fps),
+> CHOIR 52 ms (15 fps) and PERFORM 56 ms (13 fps) are the real gaps, not the editor tabs (31-36 ms). PERFORM is chibi-bound
+> (`vid_blit` + `res_get_look` + `cache_get` about 35%, the checker wall about 2%), so **MS-P4 (chibi tile cache) pays for CHOIR and PERFORM
+> together and should go before MS-P5's wall bake**; LYRICS is 28% per-frame song derivation, so **MS-P3 should cache the syllable split / singer
+> lookups per line, not only batch the text**; no single-syllable spike showed up in the sung window, so **MS-P1 (tuning cache) is lower
+> priority than its position suggests**. Order to take them on GBA: MS-P4, MS-P3, MS-P2, MS-P1, MS-P5.
+
 | ID | Size | What | Gate |
 |---|---|---|---|
 | **MS-P0** | S | Add `stats` lines to `core/tests/scripts/studio.txt` (the table above, as a regression log). Add `ps1/harness/scripts/perf_studio.txt` (every tab + a full PERFORM show; the other scenes have `perf_*.txt`, the studio has none) and a studio stop in the GBA fps tour. Run the GBA slow-frame report (`--worklog`, `docs/CI_SLOWFRAMES.md`) over a sung line to see the syllable spike. | A table of fps / ms per tab and PERFORM on PS1 and GBA, pasted into `docs/STUDIO.md` Budgets; the top 5 functions of the worst tab and of PERFORM. |

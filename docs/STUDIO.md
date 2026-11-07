@@ -221,6 +221,39 @@ floats. The player's cost per tick is bounded: a few steps, <= 4 cached
 `plat_tone` calls and at most one voice tuning search (~130
 `audio_voice_freq` calls) per syllable.
 
+### GBA speed (MS-P0, measured 2026-11-07, libmgba, game ROM)
+
+`make -C gba profile-studio` (script `gba/harness/scripts/studio_profile.txt`, CI step "Profile the Music
+Studio"): the studio opens on the 25-voice "Park United!" choir, every tab is measured over 130 logic ticks
+(PERFORM over two shorter windows) and then sampled with `profile`. The budget is 33.3 ms of work per tick for
+30 drawn fps and 30.0 logic ticks/s. Deterministic: two runs gave identical figures.
+
+| window | work avg / max ms | drawn fps | logic ticks/s | hottest functions (share of cycles) |
+|---|---:|---:|---:|---|
+| SONG idle | 35.2 / 35.7 | 24.2 | 30.0 | `vid_rect_narrow` 10%, `vid_rect` 10%, `vid_text` 8%, `ellipse_draw` 5% |
+| SONG playing | 36.2 / 41.1 | 22.8 | 30.0 | same four |
+| NOTES idle | 33.4 / 35.1 | 29.1 | 30.0 | `vid_rect_narrow` 14%, `vid_rect` 12%, `vid_text` 8%, `vid_rect_full` 6% |
+| NOTES playing | 34.7 / 39.3 | 24.7 | 30.0 | same four |
+| ORDER | 31.0 / 32.4 | **30.0** | 30.0 | `vid_text` 13%, `vid_rect_narrow` 12%, `vid_rect` 10% |
+| **LYRICS** | **60.4 / 60.9** | **12.4** | **22.7** | `song_syllables` 8.7%, `part_mask` 7.9%, `vid_text` 7%, `song_singer_id` 6%, `res_get_voice` 5% |
+| **CHOIR** | **52.4 / 54.0** | **15.0** | 30.0 | `vid_blit` 15%, `vid_rect_narrow` 10%, `rr_rows` 5%, `res_get_look` 5% |
+| **PERFORM** early | **56.6 / 62.0** | **12.5** | **22.6** | `vid_blit` 21%, `res_get_look` 9.5%, `vid_rect_narrow` 7%, `cache_get` 5%, `draw_show` 3% |
+| **PERFORM** later | **56.0 / 62.2** | **13.1** | **22.7** | `vid_blit` 19%, `res_get_look` 8.5%, `vid_rect_narrow` 7%, `cache_get` 5% |
+
+What this says (it corrects two guesses in `MUSIC_STUDIO_ROADMAP.md`):
+
+* The editor tabs are at or just over the budget (SONG / NOTES 33-36 ms, ORDER 31 ms); only ORDER holds 30 fps.
+* **LYRICS, CHOIR and PERFORM are about twice over budget** (52-60 ms, 12-15 fps). LYRICS and PERFORM also
+  fall under 30 logic ticks/s, so their logic is not keeping up either.
+* PERFORM is **not** limited by the checker wall: `plat_checker_m4` is about 2% of it. The cost is the chibis
+  (`vid_blit` + `res_get_look` + `cache_get` is about 35%), the same thing that makes CHOIR slow.
+* LYRICS spends about 28% in per-frame song derivation (`song_syllables`, `part_mask`, `song_singer_id`,
+  `res_get_voice`): the syllable split and singer lookups are redone every frame while the lines have not changed.
+* The slow-frame report (`--worklog`) shows no single-syllable spike in the sung window: every frame there is
+  over budget by the same steady 55-62 ms. A short climb to 74-88 ms appears at the end of the "later" window
+  (a phase change in the show, not yet explained).
+* Not measured here: PS1 (needs your PCSX-Redux / CI), the PERFORM bows phase, hold-A note edits.
+
 ## INTEGRATION NOTE for the Concert Hall (concert*.c)
 
 1. **Represent generated songs as `DoomoSong`.** Build the song in the shared

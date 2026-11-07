@@ -221,6 +221,20 @@ jobs:
             echo '```'
           } 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
 
+      # MS-P0 (docs/MUSIC_STUDIO_ROADMAP.md): every Music Studio tab and the PERFORM show, fps + work ms and
+      # the hottest functions of each window, plus the slow-frame report.
+      - name: Profile the Music Studio
+        if: always()
+        continue-on-error: true
+        run: |
+          {
+            echo
+            echo '## Music Studio: every tab and PERFORM (30 fps needs about 30 ms of work a tick)'
+            echo '```'
+            make -C gba profile-studio 2>&1 | grep -E 'harness: (fps|profile of|  +[0-9])|rror' | grep -v 'fps settle' || echo '(profile-studio produced no output)'
+            echo '```'
+          } 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
+
       - name: Upload speed report
         if: always()
         continue-on-error: true
@@ -232,6 +246,7 @@ jobs:
             gba/build/title_profile.log
             gba/build/profile_all.log
             gba/build/invaded_profile.log
+            gba/build/studio_profile.log
             gba/build/shots/speed/
             gba/build/shots/title/
           if-no-files-found: ignore

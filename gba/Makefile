@@ -394,3 +394,18 @@ profile-all: harness
 	echo "profile-all: log $(PROFILE_ALL_LOG)"; \
 	exit $$rc
 # --- end profile-all ---
+
+# --- profile-studio: where the Music Studio's time goes (MS-P0, docs/MUSIC_STUDIO_ROADMAP.md):
+# every tab and the PERFORM show, fps + work per tick and the hottest functions, plus the
+# slow-frame report (--worklog). Reports, never gates. Output: build/studio_profile.log ---
+STUDIO_PROFILE_LOG ?= $(BUILD)/studio_profile.log
+profile-studio: harness
+	@$(MAKE) --no-print-directory -f $(GBA)/Makefile rom ENGINE_TEST=0
+	@mkdir -p $(SHOTS)/studio
+	$(PREFIX)nm -n $(BUILD)/doomogachi.elf > $(BUILD)/doomogachi.nm
+	@rc=0; \
+	$(HARNESS) $(BUILD)/doomogachi.gba --script $(GBA)/harness/scripts/studio_profile.txt \
+	    --shots $(SHOTS)/studio --nm $(BUILD)/doomogachi.nm --no-fps-gates --worklog --quiet > $(STUDIO_PROFILE_LOG) 2>&1 || rc=1; \
+	cat $(STUDIO_PROFILE_LOG); \
+	exit $$rc
+# --- end profile-studio ---

@@ -1,0 +1,97 @@
+# studio_profile.txt - where the Music Studio's time goes on the GBA
+# (make -C gba profile-studio; MS-P0 of docs/MUSIC_STUDIO_ROADMAP.md).
+#
+# Same method as title_profile.txt: each window is measured with `fps` (drawn
+# frames/s and the average / worst CPU work of a drawn tick, in ms) and then
+# sampled with `profile N` (the hottest functions). A tick over 33 ms drops a
+# frame, so the WORST work figure matters as much as the average. The Makefile
+# target adds --worklog so the slow-frame report names the ticks that spike
+# (a sung syllable's voice tuning shows up there).
+#
+# The studio opens on the 25-voice "Park United!" choir (demo arg -107), the
+# same as core/tests/scripts/studio.txt. Windows: SONG idle and playing, NOTES
+# idle and playing, ORDER, LYRICS, CHOIR, then the PERFORM show (two windows:
+# the lead alone, then the full choir). Numbers belong to this script.
+wait 40
+expect-log doomo: init
+sync on 61
+seed 1
+scene TITLE
+wait 20
+push STUDIO -107
+wait 100
+expect-scene STUDIO
+
+# ---- SONG ---------------------------------------------------------------
+fps settle (ignore)
+wait 130
+fps song idle
+profile 8000000
+press START
+wait 45
+fps settle (ignore)
+wait 130
+fps song playing
+profile 8000000
+press START
+wait 10
+
+# ---- NOTES (the tracker) ------------------------------------------------
+press R
+wait 20
+fps settle (ignore)
+wait 130
+fps notes idle
+profile 8000000
+press START
+wait 40
+fps settle (ignore)
+wait 130
+fps notes playing
+profile 8000000
+press START
+wait 10
+
+# ---- ORDER, LYRICS, CHOIR -----------------------------------------------
+down SELECT
+press R
+release
+wait 20
+fps settle (ignore)
+wait 130
+fps order
+profile 8000000
+
+down SELECT
+press R
+release
+wait 20
+press DOWN
+wait 10
+fps settle (ignore)
+wait 130
+fps lyrics
+profile 8000000
+
+down SELECT
+press R
+release
+wait 20
+fps settle (ignore)
+wait 130
+fps choir
+profile 8000000
+
+# ---- PERFORM (the show) -------------------------------------------------
+press R
+wait 20
+press A
+wait 60
+fps settle (ignore)
+wait 20
+fps perform early
+profile 8000000
+wait 30
+fps perform later
+profile 8000000
+shot perform
