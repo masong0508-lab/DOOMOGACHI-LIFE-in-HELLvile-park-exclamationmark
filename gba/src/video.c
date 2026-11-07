@@ -183,6 +183,36 @@ int gba_led_dot(int x, int y, uint8_t c)
     return 1;
 }
 
+/* MS-PF12: a lit wall LED (core/src/studio_stage.c led_heart), the five rects (x-2,y-3,2x1) (x+1,y-3,2x1) (x-3,y-2,7x3)
+ * (x-2,y+1,5x1) (x,y+2,1x1) as 14 word writes. x - 2 must be word aligned (the LED grid is); 0 = draw the rects. */
+int gba_led_heart(int x, int y, uint8_t c)
+{
+    cur_vu32_t *w;
+    uint32_t c4 = c * 0x01010101u;
+    if (gba_nodraw != 0 || ((x - 2) & 3) || x < 6 || x + 3 >= SCREEN_W || y < 3 || y + 2 >= SCREEN_H) return 0;
+    w = (cur_vu32_t *)((uint8_t *)gba_back + (y - 3) * SCREEN_W + (x - 2));      /* w[0] = x-2..x+1 */
+    w[0] = (w[0] & 0x00FF0000u) | (c4 & 0xFF00FFFFu);                           /* row y-3 */
+    w[1] = (w[1] & 0xFFFFFF00u) | (c4 & 0x000000FFu);
+    w += SCREEN_W / 4;
+    w[-1] = (w[-1] & 0x00FFFFFFu) | (c4 & 0xFF000000u);                          /* rows y-2 .. y: x-3 .. x+3 */
+    w[0] = c4;
+    w[1] = (w[1] & 0xFFFF0000u) | (c4 & 0x0000FFFFu);
+    w += SCREEN_W / 4;
+    w[-1] = (w[-1] & 0x00FFFFFFu) | (c4 & 0xFF000000u);
+    w[0] = c4;
+    w[1] = (w[1] & 0xFFFF0000u) | (c4 & 0x0000FFFFu);
+    w += SCREEN_W / 4;
+    w[-1] = (w[-1] & 0x00FFFFFFu) | (c4 & 0xFF000000u);
+    w[0] = c4;
+    w[1] = (w[1] & 0xFFFF0000u) | (c4 & 0x0000FFFFu);
+    w += SCREEN_W / 4;
+    w[0] = c4;                                                                  /* row y+1: x-2 .. x+2 */
+    w[1] = (w[1] & 0xFFFFFF00u) | (c4 & 0x000000FFu);
+    w += SCREEN_W / 4;
+    w[0] = (w[0] & 0xFF00FFFFu) | (c4 & 0x00FF0000u);                           /* row y+2: x */
+    return 1;
+}
+
 static void glyph_dil(const uint16_t *g, int x, int y, uint32_t c4)
 {
     typedef volatile uint32_t vu32_t;

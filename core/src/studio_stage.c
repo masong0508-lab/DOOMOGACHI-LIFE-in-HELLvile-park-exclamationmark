@@ -299,8 +299,14 @@ static void draw_curtains(int sw, int sh, int open)
 /* MS-PF2: a lit LED, ui_heart_flat(x, y, 3, c) as the five rects its spans make (hf_row for s = 3: rows -3..3 hold
  * [-2,-1] + [1,2], [-3,3] x 3, [-2,2], [0,0]). Same pixels, none of the per-row maths and span merging, which were
  * the cost of the ~12 hearts lit at any time. The PS1 / native build keeps the call. */
+#if defined(DOOMO_PLATFORM_GBA)
+int gba_led_heart(int x, int y, uint8_t c);
+#endif
 static void led_heart(int x, int y, uint8_t c)
 {
+#if defined(DOOMO_PLATFORM_GBA)
+    if (gba_led_heart(x, y, c)) return;      /* MS-PF12: the same pixels as direct word writes (gba/src/video.c) */
+#endif
     plat_rect(x - 2, y - 3, 2, 1, c);
     plat_rect(x + 1, y - 3, 2, 1, c);
     plat_rect(x - 3, y - 2, 7, 3, c);
@@ -329,14 +335,14 @@ static void led_dot(int x, int y, uint8_t c)
 
 static void draw_wall(int sw, int top, int floor, int t, int beat, int open)
 {
-    int y, x, i, h = floor - top, cover = curtain_cover(sw, open);
+    int y, x, i, ry, t4 = t / 4, h = floor - top, cover = curtain_cover(sw, open);
     for (i = 0; i < 4; i++)
         plat_rect(0, top + h * i / 4, sw, h / 4 + 1, PAL_RAMP(RAMP_VAPE, 1 + i));
     /* LED hearts: a grid that ripples out from the centre on the beat */
-    for (y = top + 8; y < floor - 10; y += 14)
+    for (y = top + 8, ry = 0; y < floor - 10; y += 14, ry++)       /* ry = (y - top) / 14: 0 for y = top + 8 */
         for (x = 10; x < sw - 6; x += 16) {
-            int d = (x > sw / 2 ? x - sw / 2 : sw / 2 - x) / 16 + (y - top) / 14;
-            int lit = ((t / 4 - d) & 7) == 0 || (beat && d < 3);
+            int d = (x > sw / 2 ? x - sw / 2 : sw / 2 - x) / 16 + ry;
+            int lit = ((t4 - d) & 7) == 0 || (beat && d < 3);
             /* MS-PF8: an LED wholly under the (opaque, full-height) curtain strips is painted over: skip it */
             if (x + 3 < cover || x - 3 >= sw - cover) continue;
             /* only the lit LEDs are hearts: the rest are cheap dots (GBA) */
