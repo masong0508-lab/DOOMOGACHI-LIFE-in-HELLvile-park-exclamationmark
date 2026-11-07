@@ -842,3 +842,68 @@ TEST(studio_editor_templates_inspire_and_stage)
     CHECK_EQ(song_singer_count(&studio.song), SONG_SINGERS);
     test_reset();
 }
+
+/* MS-PF6: the voice-tuning memo returns exactly what the search finds. `ref_tune` is the search as it was before
+ * the memo (copied; it must not be changed to follow the real one). Every pitch, every note, the vowels the
+ * singers use, the spread range; once cold (a miss), once warm (a hit). */
+static uint32_t ref_hz_diff(int a, int b) { return (uint32_t)(a > b ? a - b : b - a); }
+
+static void ref_tune(const uint8_t *v, int midi, char vowel, int spread, uint8_t *out)
+{
+    uint8_t t[VOICE_COUNT];
+    int nat = 45 + v[VOICE_PITCH] * 36 / 31, target = midi, p, a, bp = 0, ba = 0, hz;
+    uint32_t best = 0xFFFFFFFFu, d;
+    while (target < nat - 6) target += 12;
+    while (target > nat + 6) target -= 12;
+    target = DOOMO_CLAMP(target, 45, 81);
+    hz = song_note_hz(target);
+    memcpy(t, v, VOICE_COUNT);
+    t[VOICE_INTONATION] = 0;
+    t[VOICE_ACCENT] = 0;
+    for (p = 0; p < 32; p++) {
+        t[VOICE_PITCH] = (uint8_t)p;
+        d = ref_hz_diff(audio_voice_freq(t, vowel), hz);
+        if (d < best) { best = d; bp = p; }
+    }
+    best = 0xFFFFFFFFu;
+    for (p = DOOMO_MAX(bp - 1, 0), a = bp; p <= DOOMO_MIN(bp + 1, 31); p++) {
+        int k;
+        t[VOICE_PITCH] = (uint8_t)p;
+        for (k = 0; k < 32; k++) {
+            t[VOICE_ACCENT] = (uint8_t)k;
+            d = ref_hz_diff(audio_voice_freq(t, vowel), hz);
+            if (d < best) { best = d; a = p; ba = k; }
+        }
+    }
+    memcpy(out, v, VOICE_COUNT);
+    out[VOICE_PITCH] = (uint8_t)a;
+    out[VOICE_ACCENT] = (uint8_t)DOOMO_CLAMP(ba + spread, 0, 31);
+    out[VOICE_INTONATION] = 0;
+}
+
+TEST(studio_voice_tuning_memo_is_bit_identical)
+{
+    static const char vowels[] = "aeiouyhm";
+    uint32_t hits, miss, pass;
+    int pitch, midi, vi, spread, n = 0;
+    song_tune_cache_reset();
+    for (pass = 0; pass < 2; pass++)
+        for (pitch = 0; pitch < 32; pitch += 3)
+            for (midi = 36; midi <= 96; midi += 5)
+                for (vi = 0; vi < 8; vi++)
+                    for (spread = -2; spread <= 2; spread++) {
+                        uint8_t v[VOICE_COUNT], want[VOICE_COUNT], got[VOICE_COUNT];
+                        int k;
+                        for (k = 0; k < VOICE_COUNT; k++) v[k] = (uint8_t)((pitch * (k + 1) + k * 7) & 31);
+                        v[VOICE_PITCH] = (uint8_t)pitch;
+                        ref_tune(v, midi, vowels[vi], spread, want);
+                        song_tune_voice(v, midi, vowels[vi], spread, got);
+                        CHECK_MSG(memcmp(want, got, VOICE_COUNT) == 0,
+                                  "pass %u pitch %d midi %d vowel %c spread %d", (unsigned)pass, pitch, midi, vowels[vi], spread);
+                        n++;
+                    }
+    song_tune_cache_stats(&hits, &miss);
+    CHECK(n > 1000);
+    CHECK(hits > miss);                 /* the memo is really used */
+    CHECK(miss <= (uint32_t)n / 2);     /* and the second pass is all hits (the table holds the working set or recycles) */
+}

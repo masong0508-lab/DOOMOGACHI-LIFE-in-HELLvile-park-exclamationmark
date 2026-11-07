@@ -174,6 +174,10 @@ uint32_t song_length_ticks(const DoomoSong *s);
 /* "C#4" style name of a MIDI note (buf >= 5 bytes). */
 void song_note_name(int midi, char *buf);
 uint16_t song_note_hz(int midi);
+/* the voice tuner behind the singing blips, and its 64-entry memo (MS-PF6; exposed for tests) */
+void song_tune_voice(const uint8_t *v, int midi, char vowel, int spread, uint8_t *out);
+void song_tune_cache_reset(void);
+void song_tune_cache_stats(uint32_t *hits, uint32_t *miss);
 /* Shift a note by `steps` scale degrees in the song's key/scale. */
 int  song_scale_shift(const DoomoSong *s, int midi, int steps);
 /* Clamp every field into range (after loading / copying foreign songs).

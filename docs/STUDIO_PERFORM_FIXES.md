@@ -1,7 +1,18 @@
 # PERFORM fixes (Music Studio, GBA): the sung-phase step
 
 Written 2026-11-07 (nov07g). Companion to `docs/MUSIC_STUDIO_ROADMAP.md` ("Facts to know before MS-P4") and `docs/STUDIO.md`.
-**None of these is built.** The gains are ablation figures from the GBA harness (nov07d tree), not results of the fixes themselves.
+**Status (nov07h): F3, F5 and F6 are built (part 1); F1, F2 and F4 are not.** The gains in the table are ablation figures from the GBA harness (nov07d tree); the measured result of part 1 is below.
+
+### Part 1 result (F3 + F5 + F6, GBA harness, same `Park United!` demo, the 330 ticks after the first sung line)
+
+| | median work / tick | worst tick | ticks over 50.2 ms | logic ticks/s |
+|---|---|---|---|---|
+| before (nov07g tree) | 57.7 ms | 69.4 ms | 133 of 173 | 25.5 |
+| after F3 + F5 + F6 | 56.1 ms | 64.7 ms | 131 of 171 | 26.5 |
+
+About -1.6 ms steady and -4.7 ms on the worst tick. **That is a step, not the goal:** the sung phase is still over the 3-vblank cliff; F1 (-2.4), F4 (-1.3, only if exact) and a cheaper wall or MS-P4 are still needed.
+Exactness: 34 PERFORM shots at 240x160 and at 320x240 are byte-identical old vs new (also with the GBA note path forced on in the native build: `-DDOOMO_STUDIO_RECT_NOTE`);
+`studio_voice_tuning_memo_is_bit_identical` compares the memo with a copy of the old search for every pitch / note / vowel / spread. F6 note: the search result depends only on (folded target note, vowel), so the memo is 64 x 5 bytes.
 
 ## The problem in three lines
 

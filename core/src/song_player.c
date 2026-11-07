@@ -601,14 +601,36 @@ static uint32_t hz_diff(int a, int b) { return (uint32_t)(a > b ? a - b : b - a)
 
 /* Tune a copy of voice `v` so its blip for `vowel` sounds note `midi` in
  * the octave nearest the voice's own pitch. */
+/* MS-PF6: audio_voice_freq reads only a voice's pitch and accent, and the search below overwrites both, so the
+ * (pitch, accent) pair it finds depends on the folded target note and the vowel alone. A 64-entry table keyed on
+ * those two returns the pair the search found: bit-identical output, and no 3-6 ms spike on a syllable onset
+ * (32 + up to 96 audio_voice_freq calls). Round-robin replacement; 64 x 5 bytes. */
+#define TUNE_CACHE 64
+typedef struct { uint8_t vowel, target, a, ba, ok; } TuneEnt;
+static TuneEnt tune_cache[TUNE_CACHE];
+static uint8_t tune_next;
+static uint32_t tune_hits, tune_miss;      /* read by song_tune_cache_stats (tests) */
+
 static void tune_voice(const uint8_t *v, int midi, char vowel, int spread, uint8_t *out)
 {
     uint8_t t[VOICE_COUNT];
-    int nat = 45 + v[VOICE_PITCH] * 36 / 31, target = midi, p, a, bp = 0, ba = 0, hz;
+    int nat = 45 + v[VOICE_PITCH] * 36 / 31, target = midi, p, a = 0, bp = 0, ba = 0, hz, i;
     uint32_t best = 0xFFFFFFFFu, d;
     while (target < nat - 6) target += 12;
     while (target > nat + 6) target -= 12;
     target = DOOMO_CLAMP(target, 45, 81);
+    for (i = 0; i < TUNE_CACHE; i++) {
+        const TuneEnt *e = &tune_cache[i];
+        if (e->ok && e->vowel == (uint8_t)vowel && e->target == (uint8_t)target) {
+            tune_hits++;
+            memcpy(out, v, VOICE_COUNT);
+            out[VOICE_PITCH] = e->a;
+            out[VOICE_ACCENT] = (uint8_t)DOOMO_CLAMP(e->ba + spread, 0, 31);
+            out[VOICE_INTONATION] = 0;
+            return;
+        }
+    }
+    tune_miss++;
     hz = song_note_hz(target);
     memcpy(t, v, VOICE_COUNT);
     t[VOICE_INTONATION] = 0;
@@ -629,11 +651,22 @@ static void tune_voice(const uint8_t *v, int midi, char vowel, int spread, uint8
             if (d < best) { best = d; a = p; ba = k; }
         }
     }
+    {
+        TuneEnt *e = &tune_cache[tune_next];
+        tune_next = (uint8_t)((tune_next + 1) % TUNE_CACHE);
+        e->vowel = (uint8_t)vowel; e->target = (uint8_t)target;
+        e->a = (uint8_t)a; e->ba = (uint8_t)ba; e->ok = 1;
+    }
     memcpy(out, v, VOICE_COUNT);
     out[VOICE_PITCH] = (uint8_t)a;
     out[VOICE_ACCENT] = (uint8_t)DOOMO_CLAMP(ba + spread, 0, 31);
     out[VOICE_INTONATION] = 0;
 }
+
+/* test hooks: the same function, and the cache's counters / reset */
+void song_tune_voice(const uint8_t *v, int midi, char vowel, int spread, uint8_t *out) { tune_voice(v, midi, vowel, spread, out); }
+void song_tune_cache_reset(void) { memset(tune_cache, 0, sizeof(tune_cache)); tune_next = 0; tune_hits = tune_miss = 0; }
+void song_tune_cache_stats(uint32_t *hits, uint32_t *miss) { *hits = tune_hits; *miss = tune_miss; }
 
 static char syllable_vowel(int syl)
 {

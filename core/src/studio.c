@@ -466,7 +466,15 @@ void st_chibi(int id, int x, int y, int dir, int frame, int flags, uint8_t col)
 void st_note_glyph(int x, int y, uint8_t c)
 {
     /* a tiny eighth note: head at (x, y + 5), stem up, flag */
+#if defined(DOOMO_PLATFORM_GBA) || defined(DOOMO_STUDIO_RECT_NOTE)
+    /* MS-PF5: the head is ui_fill_ellipse(x + 2, y + 6, 2, 1) drawn as the two rects ellipse_draw makes for
+     * r = (2, 1) (half-widths 2 on the middle row, 1 above and below): same pixels, no fx_isqrt. The PS1 /
+     * native build keeps the call: there it is a cached shape image. */
+    plat_rect(x + 1, y + 5, 3, 3, c);
+    plat_rect(x, y + 6, 5, 1, c);
+#else
     ui_fill_ellipse(x + 2, y + 6, 2, 1, c);
+#endif
     plat_rect(x + 3, y, 1, 6, c);
     plat_rect(x + 4, y + 1, 1, 1, c);
     plat_rect(x + 5, y + 2, 1, 2, c);

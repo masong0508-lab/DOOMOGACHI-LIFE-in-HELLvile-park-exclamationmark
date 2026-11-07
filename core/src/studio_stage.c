@@ -306,16 +306,33 @@ static void karaoke(int cx, int y, int w)
     n = DOOMO_MIN(song_syllables(t, st, SONG_LYRIC_LEN), SONG_LYRIC_LEN);
     len = (int)strlen(t);
     x = cx - len * 3;
-    for (i = 0; i < len; i++) {
-        int k = 0, bounce = 0;
-        char ch[2] = { t[i], 0 };
-        uint8_t c;
-        while (k + 1 < n && st[k + 1] <= i) k++;
-        if (n == 0 || i < st[0]) k = -1;
-        if (k >= 0 && k < syl) c = PAL_PAINT(PAINT_LEMON, 2);
-        else if (k == syl && syl >= 0) { c = PAL_PAINT(PAINT_BUBBLEGUM, 2); bounce = song_beat_age() < 4; }
-        else c = PAL_WHITE;
-        ui_text(x + i * 6, y + 7 - bounce, ch, c);
+    {
+        /* MS-PF3: with the plain font style in English every glyph is one plat_text at its own x, so a run of
+         * glyphs with one colour and one bounce is one call at the run's x: the same pixels (as draw_syllables
+         * on the LYRICS tab does), about a quarter of the calls. Other styles / languages keep the old path. */
+        int runs = opt_get(OPT_FONT_STYLE) == 0 && lang_get() == LANG_EN && !plat_draw_skipped();
+        char run[SONG_LYRIC_LEN + 1];
+        int rn = 0, rx = 0, rb = 0;
+        uint8_t rc = 0;
+        for (i = 0; i < len; i++) {
+            int k = 0, bounce = 0;
+            char ch[2] = { t[i], 0 };
+            uint8_t c;
+            while (k + 1 < n && st[k + 1] <= i) k++;
+            if (n == 0 || i < st[0]) k = -1;
+            if (k >= 0 && k < syl) c = PAL_PAINT(PAINT_LEMON, 2);
+            else if (k == syl && syl >= 0) { c = PAL_PAINT(PAINT_BUBBLEGUM, 2); bounce = song_beat_age() < 4; }
+            else c = PAL_WHITE;
+            if (runs && (unsigned char)ch[0] >= 32 && (unsigned char)ch[0] < 127 && rn < (int)sizeof(run) - 1) {
+                if (rn && (c != rc || bounce != rb)) { run[rn] = 0; plat_text(rx, y + 7 - rb, run, rc); rn = 0; }
+                if (!rn) { rx = x + i * 6; rc = c; rb = bounce; }
+                run[rn++] = ch[0];
+            } else {
+                if (rn) { run[rn] = 0; plat_text(rx, y + 7 - rb, run, rc); rn = 0; }
+                ui_text(x + i * 6, y + 7 - bounce, ch, c);
+            }
+        }
+        if (rn) { run[rn] = 0; plat_text(rx, y + 7 - rb, run, rc); }
     }
     /* who has the line */
     studio_part_label(SS, line, buf, sizeof(buf));
