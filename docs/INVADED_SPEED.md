@@ -311,3 +311,16 @@ body-render spikes, one frame each), logic 30.1 ticks/s. Every other scene's `vh
 (the reference for later steps). Why sprites alone could do it: with every droppable sprite removed the frame is 29.5 ms (ground ~8,
 logic ~7, HUD ~1.5), so the near sprites are what is left to budget. A first version (whole 30 px ring always kept, 27 ms target)
 only got 25.3 fps: the ring alone cost ~5 ms. `speed_tour.txt` invaded floor raised 12.5 -> 25.
+
+## V11 (2026-11-07): spikes sliced, ground scan memo, cheaper governor
+
+- **Body renders sliced** (`bodyspr_lazy`, `portrait.c`; GBA only, invaded map only): a missing chibi body was ~20 ms of one frame. It is now a
+  portrait-job-slot job (set-up, then one layer group a tick); meanwhile the citizen shows a cached facing (a citizen with none is skipped
+  a few ticks; the player is never skipped, he renders at once if nothing is cached). Same pixels once drawn; logic never sees it.
+  Invaded max work 51.5 -> 40 ms. A "run a step only on a frame with slack" gate (`BODY_PATIENCE`) measured worse and is off (0).
+- **Ground scan memo (exact, every overworld map):** a ground cell with the same texture, light and height as the one before reuses its lit tile.
+  About -1 ms on the overworld maps; every `vhash-seq` unchanged; hahaland reaches 30.0 fps.
+- **Governor** now buckets sprites by distance (O(n), was an insertion sort).
+- libmgba tour: invaded 29.5 fps, work avg 29.6 ms, max 40, logic 30.0; invaded `vhash-seq` still f87e5596. About 20% of invaded frames are
+  still 33-40 ms (a +4 ms bump every ~10 ticks, the tint wave, the last sliced steps): next, find that 10-tick cost and the HUD / `build_billboards`
+  (`story_draw` 4%).

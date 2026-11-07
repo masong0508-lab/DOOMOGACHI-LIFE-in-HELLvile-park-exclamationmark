@@ -439,7 +439,7 @@ static void draw_sprite(const DoomoBillboard *b)
  * frames fit 30 fps; with GOV_ROOM ms to spare they come back. Never dropped: off-screen billboards (they cost
  * nothing), fullbright ones (quest markers, sparkles) and the nearest sprite (the player). */
 #ifndef GBA_GOV_MS
-#define GBA_GOV_MS 30
+#define GBA_GOV_MS 26
 #endif
 #define GOV_HI   ((uint32_t)GBA_GOV_MS * 16780u)          /* cycles (16.78 MHz) a frame may take */
 #define GOV_LO   ((uint32_t)(GBA_GOV_MS - 2) * 16780u)    /* below this the sprites come back    */
@@ -448,24 +448,27 @@ static void draw_sprite(const DoomoBillboard *b)
 static uint32_t gov_budget = GOV_FREE;    /* sprite box pixels allowed (GOV_FREE: no limit)         */
 static uint32_t gov_kept;                 /* box pixels kept by the last governed frame             */
 static uint32_t gov_seen;                 /* gba_frames + 1 when the last governed frame was drawn  */
-/* scratch is static (EWRAM, 640 B), not on the stack: the IWRAM stack has ~120 B of slack */
-static uint16_t gov_dist[128], gov_area[128];
-static uint8_t gov_idx[128];
+/* scratch is static (EWRAM, ~0.4 KB), not on the stack: the IWRAM stack has ~120 B of slack */
+#define GOV_NB 40                         /* distance buckets: d2 >> 9 (about 5 px wide at r = 50)  */
+static uint16_t gov_area[128];
+static uint8_t  gov_bkt[128];             /* bucket of each sprite, 0xFF: not governed              */
 
 static void gov_pick(const DoomoOverworldView *v, int n, uint32_t drop[4])
 {
-    uint32_t total = 0, cum = 0, w = gba_work_last, budget;
-    int i, k, cnt = 0, cx = owf.ox + owf.ow / 2, cy = owf.oy + owf.oh / 2;
+    uint32_t barea[GOV_NB], total = 0, cum = 0, w = gba_work_last, budget, nearest_d = 0xFFFFFFFFu;
+    int i, k, nearest = -1, cx = owf.ox + owf.ow / 2, cy = owf.oy + owf.oh / 2;
     drop[0] = drop[1] = drop[2] = drop[3] = 0;
     if (!(gov_seen && gba_frames + 1 - gov_seen <= 2)) { gov_budget = GOV_FREE; gov_kept = 0; }   /* a gap: start free */
     gov_seen = gba_frames + 1;
     if (!owf.tint_level || v->tint != TINT_RED) { gov_budget = GOV_FREE; return; }
     if (gov_budget == GOV_FREE && w <= GOV_HI) return;              /* the common case: nothing to do */
+    for (k = 0; k < GOV_NB; k++) barea[k] = 0;
     for (i = 0; i < n; i++) {
         const DoomoBillboard *b = &v->sprites[i];
         const DoomoImage *img = b->img;
-        int s, bw, bh, x0, y0, dx, dy, j;
+        int s, bw, bh, x0, y0, dx, dy;
         uint32_t d2;
+        gov_bkt[i] = 0xFF;                                          /* free: never counted or dropped */
         if (!img || !img->pix || !img->w || !img->h || (b->flags & BB_FULLBRIGHT)) continue;
         s = DOOMO_CLAMP((b->scale ? b->scale : 256) / 256, 1, 4);
         bw = img->w * s;
@@ -476,13 +479,11 @@ static void gov_pick(const DoomoOverworldView *v, int n, uint32_t drop[4])
         dx = x0 + bw / 2 - cx;
         dy = y0 + bh / 2 - cy;
         d2 = (uint32_t)(dx * dx + dy * dy);
+        if (d2 < nearest_d) { nearest_d = d2; nearest = i; }
         gov_area[i] = (uint16_t)DOOMO_MIN(bw * bh, 65535);
+        gov_bkt[i] = (uint8_t)DOOMO_MIN(d2 >> 9, GOV_NB - 1);
+        barea[gov_bkt[i]] += gov_area[i];
         total += gov_area[i];
-        if (d2 > 65535u) d2 = 65535u;
-        for (j = cnt; j > 0 && gov_dist[gov_idx[j - 1]] > d2; j--) gov_idx[j] = gov_idx[j - 1];   /* by distance */
-        gov_dist[i] = (uint16_t)d2;
-        gov_idx[j] = (uint8_t)i;
-        cnt++;
     }
     /* adapt: shrink by 1/8 of what the last frame drew when it was over budget, grow by 1/8 when it had room */
     if (gov_budget == GOV_FREE)      budget = total - total / 8;
@@ -491,14 +492,16 @@ static void gov_pick(const DoomoOverworldView *v, int n, uint32_t drop[4])
     else                             budget = gov_budget;
     if (budget < GOV_MIN) budget = GOV_MIN;
     if (budget >= total) { gov_budget = GOV_FREE; gov_kept = total; return; }
-    for (k = 0; k < cnt; k++) {                                     /* nearest first; the nearest always stays */
-        const int sp = gov_idx[k];
-        if (k > 0 && cum + gov_area[sp] > budget) {
-            drop[sp >> 5] |= 1u << (sp & 31);
-            continue;
-        }
-        cum += gov_area[sp];
+    if (nearest >= 0) {                                             /* the nearest sprite (the player) always stays */
+        cum = gov_area[nearest];
+        barea[gov_bkt[nearest]] -= gov_area[nearest];
     }
+    for (k = 0; k < GOV_NB; k++) {                                  /* whole buckets, nearest first */
+        if (cum + barea[k] <= budget) cum += barea[k];
+        else barea[k] = 0xFFFFFFFFu;                                /* this bucket is dropped */
+    }
+    for (i = 0; i < n; i++)
+        if (gov_bkt[i] != 0xFF && i != nearest && barea[gov_bkt[i]] == 0xFFFFFFFFu) drop[i >> 5] |= 1u << (i & 31);
     gov_budget = budget;
     gov_kept = cum;
 }
@@ -611,6 +614,8 @@ void plat_overworld(const DoomoOverworldView *v)
     nt = (owf.ox + owf.ow - pxa + TILE - 1) / TILE;
     {
         OwMemo gm;
+        const uint8_t *gt = 0;                    /* V11: the tile of the last ground cell, reused for an equal one */
+        int g_tex = -1, g_light = -1, g_fh = 0;
         gm.t = 0;
         for (ty = ty0; ty <= ty1; ty++) {
             const int py = owf.oy + ty * TILE - owf.scrolly;
@@ -628,9 +633,14 @@ void plat_overworld(const DoomoOverworldView *v)
                 int lvl, x0, x1;
                 if (c->wall || c->floor_h > 0) { mask |= 1u << k; continue; }
                 if (ya >= yb) continue;
-                lvl = cell_level(c);
-                if (c->floor_h < 0) lvl -= 3;
-                t = tile_src(lit_memo(&gm, c->floor_tex, lvl, 0));
+                if (gt && c->floor_tex == g_tex && c->light == g_light && c->floor_h == g_fh) {
+                    t = gt;                       /* same texture, light and height: the same lit tile */
+                } else {
+                    lvl = cell_level(c);
+                    if (c->floor_h < 0) lvl -= 3;
+                    t = tile_src(lit_memo(&gm, c->floor_tex, lvl, 0));
+                    gt = t; g_tex = c->floor_tex; g_light = c->light; g_fh = c->floor_h;
+                }
                 x0 = DOOMO_MAX(px, owf.ox);
                 x1 = DOOMO_MIN(px + TILE, owf.ox + owf.ow);
                 if (x0 == px && x1 == px + TILE)

@@ -371,6 +371,7 @@ void ownpc_add_billboards(int32_t vx0, int32_t vy0, int32_t vx1, int32_t vy1)
 {
     int i;
     uint32_t t = doomo_frame_count();
+    bodyspr_lazy(ow.map == MAPID_HAHALAND_INVADED);       /* V11: the invaded map slices its body renders */
     for (i = 0; i < ow_npc_count; i++) {
         const OwNpc *n = &ow_npcs[i];
         int cx, cy, z, f;
@@ -411,6 +412,7 @@ void ownpc_add_billboards(int32_t vx0, int32_t vy0, int32_t vx1, int32_t vy1)
             }
         }
     }
+    bodyspr_lazy(0);
     /* secret sparkles twinkle every few seconds */
     if (!ow.visit) {
         for (i = 0; i < nsecrets; i++) {

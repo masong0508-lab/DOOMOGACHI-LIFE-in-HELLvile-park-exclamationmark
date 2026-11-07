@@ -375,7 +375,7 @@ void figure_render(const DoomoLook *l, int status, int expr, int anim, uint8_t *
 
 /* ====================================================================== */
 /* overworld chibi                                                           */
-static void render_body_ctx(PCtx *c, int dir, int frame, uint8_t *out)
+static void body_setup(PCtx *c, int dir, int frame, uint8_t *out)
 {
     static const int8_t steps[4] = { 0, -1, 0, 1 };
     const DoomoLook *l = c->l;
@@ -393,8 +393,13 @@ static void render_body_ctx(PCtx *c, int dir, int frame, uint8_t *out)
     cy = pb_head_y(c, ry);
     if (cy - ry < PX(4) && ph_top_extent(l) > 400) cy = DOOMO_MAX(cy, ry + PX(2));
     phead_set(&c->h, PX(8), cy, rx, ry, yaw, LOD_TINY);
+}
+
+static void render_body_ctx(PCtx *c, int dir, int frame, uint8_t *out)
+{
+    body_setup(c, dir, frame, out);
     draw_layers(c);
-    if (dir == 2) pc_flipx();
+    if ((dir & 3) == 2) pc_flipx();
 }
 
 void bodyspr_render(const DoomoLook *l, int status, int dir, int frame, uint8_t *out)
@@ -566,6 +571,8 @@ static int steps_left(void)
 /* the sliced re-render in progress */
 typedef struct Job {
     uint8_t  on, step, kind;
+    uint8_t  bdir, bframe;      /* CK_BODY job (V11): the facing and frame being drawn */
+    uint32_t t0;                /* CK_BODY job: the tick it started */
     uint8_t  restarts;          /* times other renders forced a restart      */
     int8_t   e;                 /* cache entry being filled (busy, hidden)   */
     int      status, expr;
@@ -869,8 +876,50 @@ static void job_reap(void)
  * anything else drew on the shared canvas since its last step. A job that
  * keeps getting interrupted finishes in one go on its third try (one
  * whole render in a tick, as without slicing), so it always completes. */
+#if defined(DOOMO_PLATFORM_GBA)
+extern uint32_t gba_work_last;      /* cycles the last drawn frame took (gba/src/main.c) */
+/* V11: a chibi body job. Step 0 is the set-up alone, steps 1..DL_STEPS one layer group each, so no tick
+ * carries more than about 3 ms; and a step only runs on a frame with room (the last one took under
+ * BODY_SLACK), or once the job has waited BODY_PATIENCE ticks. A job another render clobbers restarts. */
+#define BODY_SLACK    ((uint32_t)28 * 16780u)
+#define BODY_PATIENCE 0u
+static void job_pump_body(void)
+{
+    while (job.on && job.kind == CK_BODY && (steps_left() > 0 || job.restarts >= 2)) {
+        CacheEnt *e = &ent[job.e];
+        if (job.restarts < 2 && gba_work_last > BODY_SLACK && now() - job.t0 < BODY_PATIENCE) return;
+        if (job.step && pcv.gen != job.gen) {
+            job.step = 0;
+            if (job.restarts < 255) job.restarts++;
+        }
+        if (job.step == 0) {
+            pctx_init(&job.c, &job.L, job.status, job.expr, job.bframe * 8);
+            job.c.d = &job.D;
+            body_setup(&job.c, job.bdir, job.bframe, (uint8_t *)e->img.pix);
+            job.step = 1;
+        } else {
+            draw_group(&job.c, job.step - 1);
+            if (job.step >= DL_STEPS) {
+                if ((job.bdir & 3) == 2) pc_flipx();
+                e->busy = 0;
+                e->stamp = cache_stamp ? cache_stamp - 1 : 0;
+                e->tick = now();
+                job.on = 0;
+            } else {
+                job.step++;
+            }
+        }
+        job.gen = pcv.gen;
+        steps_used++;
+    }
+}
+#endif
+
 static void job_pump(void)
 {
+#if defined(DOOMO_PLATFORM_GBA)
+    if (job.on && job.kind == CK_BODY) { job_pump_body(); return; }
+#endif
     while (job.on && (steps_left() > 0 || job.restarts >= 2)) {
         CacheEnt *e = &ent[job.e];
         if (job.step && pcv.gen != job.gen) {
@@ -1046,6 +1095,39 @@ typedef struct BodyLH {
 } BodyLH;
 static BodyLH blh[BLH_N];
 
+/* V11 (docs/INVADED_SPEED.md): a body the cache does not have is ~20 ms of one frame on the GBA, and the invaded
+ * map asks for one every few seconds (a citizen turning to a facing it has not shown yet). With bodyspr_lazy(1)
+ * (the overworld sets it for that map only) such a miss is drawn as a sliced job, one layer group a tick through
+ * the portrait job slot, and meanwhile the citizen shows a facing it already has (or is not drawn, if it has
+ * none). Pixels are the same once drawn, nothing but the picture is delayed; logic never sees it. GBA only. */
+#if defined(DOOMO_PLATFORM_GBA)
+static uint8_t body_lazy;
+void bodyspr_lazy(int on) { body_lazy = (uint8_t)on; }   /* 1: a citizen may be skipped, 2: never skip */
+static int body_job_start(int rid, uint32_t key, uint32_t lh, const DoomoLook *L, int status, int dir, int frame)
+{
+    CacheEnt *e = cache_alloc(CK_BODY, rid, key, lh, BODYSPR_W, BODYSPR_H, 1);
+    if (!e) return 0;
+    e->busy = 1;
+    job_hold = 0;
+    job.on = 1;
+    job.step = 0;
+    job.restarts = 0;
+    job.kind = CK_BODY;
+    job.e = (int8_t)(e - ent);
+    job.want = job.t0 = now();
+    job.status = status == RES_EMPTY ? RES_ALIVE : status;
+    job.expr = EXPR_NEUTRAL;
+    job.bdir = (uint8_t)dir;
+    job.bframe = (uint8_t)frame;
+    job.L = *L;
+    sanitize(&job.L);
+    look_resolve_mask(NULL, rid, LV_CHIBI, &job.D);
+    return 1;
+}
+#else
+void bodyspr_lazy(int on) { (void)on; }
+#endif
+
 const DoomoImage *bodyspr_image(int resident_id, int dir, int frame)
 {
     int status, have_look = 0;
@@ -1056,6 +1138,9 @@ const DoomoImage *bodyspr_image(int resident_id, int dir, int frame)
     DoomoLook L;
     BodyLH *m;
     cache_init();
+#if defined(DOOMO_PLATFORM_GBA)
+    if (job.on && job.kind == CK_BODY) job_pump();            /* V11: one slice a tick */
+#endif
     r = res_of(resident_id, &status);
     dir &= 3;
     frame &= 3;
@@ -1078,6 +1163,20 @@ const DoomoImage *bodyspr_image(int resident_id, int dir, int frame)
     e = cache_find(CK_BODY, resident_id, key, lh, 0xFFFFFFFFu);
     if (e) return &e->img;
     if (!have_look) look_for_stage(RES_LOOK_VIEW(r), RES_STAGE(r), &L);
+#if defined(DOOMO_PLATFORM_GBA)
+    if (body_lazy) {
+        const uint32_t smask = 0xFFFFF000u;                   /* same look and status, any facing / frame */
+        CacheEnt *st = cache_get(CK_BODY, resident_id, key, lh, smask, 0);
+        if (job.on && job.kind == CK_BODY && job_for(CK_BODY, resident_id, lh, key, 0xFFFFFFFFu)) {
+            job.want = now();
+        } else if (!job.on) {
+            body_job_start(resident_id, key, lh, &L, status, dir, frame);   /* its first slice runs next tick */
+            if (st) st = cache_get(CK_BODY, resident_id, key, lh, smask, 0);   /* the claim may have evicted it */
+        }
+        if (st || body_lazy == 1) return st ? &st->img : NULL;   /* NULL: not drawn for a few ticks */
+        /* body_lazy == 2 (the player) with nothing cached to show: draw it now, as before */
+    }
+#endif
     job_reap();
     e = cache_alloc(CK_BODY, resident_id, key, lh, BODYSPR_W, BODYSPR_H, 0);
     sanitize(&L);

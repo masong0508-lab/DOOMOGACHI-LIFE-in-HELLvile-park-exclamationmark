@@ -65,6 +65,9 @@ void figure_render(const DoomoLook *l, int status, int expr, int anim,
  * silhouette. */
 const DoomoImage *portrait_image(int resident_id, int expr);
 const DoomoImage *bodyspr_image(int resident_id, int dir, int frame);
+/* V11: while 1 or 2, a body the cache lacks is drawn as a sliced job (GBA only; no-op elsewhere), see portrait.c */
+/* (1: with no facing cached it may be skipped for a few ticks, 2: it is drawn at once) */
+void bodyspr_lazy(int on);
 const DoomoImage *figure_image(const DoomoLook *l, int status, int expr);
 /* portrait_hold(1): until portrait_hold(0), a brand-new expression of a
  * look shown last tick is drawn as a sliced job over a few ticks while the
