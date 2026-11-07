@@ -27,6 +27,8 @@ option(DOOMO_CORE        "Link the portable core (OFF = platform bring-up with f
 option(DOOMO_PACK_ART    "Link the core's textures and skies LZ-compressed (tools/packart.py)" ON)
 option(DOOMO_CUTSCENE_VIEWER "Debug mode: hold SELECT at boot for a cutscene viewer (src/cutview.c)" ON)
 option(DOOMO_OVERLAYS    "Game disc: load scene code from OVL.BIN into one RAM slot (tools/ovl_plan.py)" ON)
+option(DOOMO_INTRO_FMV "Boot-up FMV: the Dippinn Productions ident (src/fmv.c, INTRO.STR on the disc)" ON)
+set(DOOMO_INTRO_STR "" CACHE FILEPATH "A ready-made INTRO.STR (mixed-mode .STR); empty = encode trailer/assets/dippinn_logo.mp4 with psxavenc")
 set(DOOMO_EXE_NAME "doomogachi" CACHE STRING "Output executable base name")
 
 find_package(Python3 COMPONENTS Interpreter REQUIRED)
@@ -92,6 +94,37 @@ if(DOOMO_CORE AND DOOMO_PACK_FILE)
 	set(DOOMO_PACK_ON_DISC ON)
 	set(DOOMO_ISO_PACK "<file name=\"PACK.DMP\" type=\"data\" source=\"${DOOMO_PACK_FILE}\" />")
 	message(STATUS "doomogachi: content pack ${DOOMO_PACK_FILE} -> PACK.DMP")
+endif()
+
+# Boot FMV: INTRO.STR = the ident video as MDEC .STR + XA audio (psxavenc, 320x240 fit,
+# 15 fps, 2x). Without psxavenc and without DOOMO_INTRO_STR the intro is left out.
+set(DOOMO_ISO_INTRO "")
+set(DOOMO_INTRO_ON OFF)
+set(DOOMO_INTRO_DEP "")
+if(DOOMO_INTRO_FMV AND DOOMO_CORE AND NOT DOOMO_ENGINE_TEST)
+	find_program(PSXAVENC psxavenc NO_CMAKE_FIND_ROOT_PATH)
+	set(_intro_src ${DOOMO_ROOT}/trailer/assets/dippinn_logo.mp4)
+	if(DOOMO_INTRO_STR AND EXISTS "${DOOMO_INTRO_STR}")
+		set(DOOMO_INTRO_ON ON)
+		set(DOOMO_INTRO_DEP ${DOOMO_INTRO_STR})
+		set(DOOMO_INTRO_FILE ${DOOMO_INTRO_STR})
+	elseif(PSXAVENC AND EXISTS ${_intro_src})
+		set(DOOMO_INTRO_ON ON)
+		set(DOOMO_INTRO_FILE ${CMAKE_CURRENT_BINARY_DIR}/INTRO.STR)
+		add_custom_command(
+			OUTPUT  ${DOOMO_INTRO_FILE}
+			COMMAND ${PSXAVENC} -t str -f 37800 -c 2 -b 4 -s 320x240 -r 15 -x 2 -q
+			        ${_intro_src} ${DOOMO_INTRO_FILE}
+			DEPENDS ${_intro_src}
+			COMMENT "Encoding the boot FMV (psxavenc -> INTRO.STR)"
+			VERBATIM)
+		set(DOOMO_INTRO_DEP ${DOOMO_INTRO_FILE})
+	else()
+		message(WARNING "doomogachi: boot FMV left out (no psxavenc on PATH and no -DDOOMO_INTRO_STR=)")
+	endif()
+	if(DOOMO_INTRO_ON)
+		set(DOOMO_ISO_INTRO "<file name=\"INTRO.STR\" type=\"mixed\" source=\"${DOOMO_INTRO_FILE}\" />")
+	endif()
 endif()
 
 list(LENGTH CORE_SRCS _ncore)
@@ -204,6 +237,9 @@ foreach(_t doomo_objs ${DOOMO_EXE_NAME})
 		# the core's SFX PCM is read from SFX.BIN, not linked (src/sfxdisc.c)
 		target_compile_definitions(${_t} PRIVATE DOOMO_SFX_ON_DISC=1)
 	endif()
+	if(DOOMO_INTRO_ON)
+		target_compile_definitions(${_t} PRIVATE DOOMO_INTRO_FMV=1)
+	endif()
 	if(DOOMO_PACK_ON_DISC)
 		target_compile_definitions(${_t} PRIVATE DOOMO_PACK_ON_DISC=1)
 	endif()
@@ -281,7 +317,7 @@ add_custom_command(
 	        -c ${CMAKE_CURRENT_BINARY_DIR}/${DOOMO_EXE_NAME}.cue
 	        ${DOOMO_ISO_XML}
 	DEPENDS ${DOOMO_EXE_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/system.cnf
-	        ${CMAKE_CURRENT_BINARY_DIR}/TEXT.BIN ${DOOMO_SFX_DEP} ${DOOMO_PACK_FILE}
+	        ${CMAKE_CURRENT_BINARY_DIR}/TEXT.BIN ${DOOMO_SFX_DEP} ${DOOMO_PACK_FILE} ${DOOMO_INTRO_DEP}
 	        ${CMAKE_CURRENT_SOURCE_DIR}/iso.xml
 	        ${CMAKE_CURRENT_SOURCE_DIR}/README.md
 	WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}

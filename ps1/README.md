@@ -27,6 +27,14 @@ same wildcards as `core/sources.mk`) is compiled with `-O2` and linked as
 objects; platform code builds with `-Werror`. The build also checks that
 the binary only uses R3000 (MIPS I) instructions and fits in 2 MB of RAM.
 
+### Boot FMV
+
+The disc opens with the Dippinn Productions ident (`trailer/assets/dippinn_logo.mp4`,
+`ps1/src/fmv.c`); START or Cross skips it. The build encodes it to `INTRO.STR` with
+[psxavenc](https://github.com/WonderfulToolchain/psxavenc) (put it on PATH) or uses a
+ready-made one: `cmake -DDOOMO_INTRO_STR=/path/INTRO.STR ...`. No psxavenc and no file:
+the intro is left out (warning). `-DDOOMO_INTRO_FMV=OFF` disables it (harness runs).
+
 ## Run
 
 ```sh

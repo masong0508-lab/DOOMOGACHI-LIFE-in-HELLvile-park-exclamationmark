@@ -18,6 +18,7 @@
 		<directory_tree>
 			<file name="SYSTEM.CNF" type="data" source="${PROJECT_SOURCE_DIR}/system.cnf" />
 			<file name="DOOMO.EXE"  type="data" source="${DOOMO_EXE_NAME}.exe" />
+			${DOOMO_ISO_INTRO}
 			${DOOMO_ISO_OVL}
 			${DOOMO_ISO_SFX}
 			${DOOMO_ISO_PACK}

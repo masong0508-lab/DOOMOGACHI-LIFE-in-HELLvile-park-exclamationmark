@@ -261,6 +261,9 @@ void etest_run(void);                    /* never returns */
 extern const uint8_t etest_font[FONT_LAST - FONT_FIRST + 1][5];
 const uint16_t *etest_palette(void);
 
+/* boot-up FMV (fmv.c, DOOMO_INTRO_FMV): plays INTRO.STR if the disc has it */
+void     fmv_intro_play(void);
+
 /* ---- pad / audio / memcard / timing ------------------------------------------ */
 void     pad_init(void);
 uint32_t pad_read(void);                 /* BTN_* bitmask */

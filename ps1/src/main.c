@@ -98,6 +98,9 @@ static void plat_init_hw(void)
     InitGeom();
     timer_init();
     vram_init();
+#ifdef DOOMO_INTRO_FMV
+    fmv_intro_play();    /* Dippinn Productions ident (fmv.c), START skips */
+#endif
     boot_splash();
     memcard_init();      /* blocks ~2-3 s (BIOS _bu_init) */
     audio_hw_init();
