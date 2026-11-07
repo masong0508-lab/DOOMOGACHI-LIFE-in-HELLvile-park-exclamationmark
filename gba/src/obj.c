@@ -44,6 +44,7 @@
  */
 #include "postfx.h"
 #include "canvas_int.h"
+#include <doomo/ui.h>
 
 #define OBJ_VRAM      ((vu16 *)0x06014000)
 #define SLOT_BYTES    4096u
@@ -81,6 +82,7 @@ static XfSlot   xs[OBJ_XF_SLOTS];
 EWRAM_BSS static struct { int16_t x, y; uint8_t slot; } stg[STG_N];   /* this frame's list, in call order */
 EWRAM_BSS static uint32_t stg_key[STG_N];                              /* uploaded (uid, variant), 0 = nothing */
 EWRAM_BSS static uint8_t stg_pix[16 * 24] __attribute__((aligned(4))); /* the baked image */
+EWRAM_BSS static uint16_t stg_dbg[10];       /* diagnostics: begin calls, why not (4), ok, frames emitted, lost, dropped, sprites */
 static uint8_t stg_n, stg_hold, stg_now;      /* entries this frame; frames of VRAM still ours; begin said 1 this frame */
 
 static void stg_forget(void)
@@ -343,18 +345,31 @@ static void fig_pre_flip(void)
 }
 
 /* ---- option C: plat_stage_obj_begin / plat_stage_obj / the entries (platform.h) --------------------------- */
+static void stg_diag(int why)
+{
+    char b[96];
+    stg_dbg[why]++;
+    if ((stg_dbg[0]++ & 127) == 127) {         /* every 128th call: one line in the harness log */
+        doomo_snprintf(b, sizeof(b), "stg: calls %d gate %d slots %d region %d ok %d emit %d lost %d drop %d spr %d",
+                       stg_dbg[0], stg_dbg[1], stg_dbg[2], stg_dbg[3], stg_dbg[4], stg_dbg[5], stg_dbg[6], stg_dbg[7], stg_dbg[8]);
+        plat_log(b);
+    }
+}
+
 int plat_stage_obj_begin(void)
 {
     int dx, dy, s, cx, cy, k;
     stg_n = 0;
     stg_now = 0;
     if (gba_nodraw != 0 || shadow != own_shadow || gba_frames - gba_objvram_r3d_frame() <= 1u ||
-        postfx_xform(&dx, &dy, &s, &cx, &cy))                /* the shake / zoom would move the bitmap, not the OBJs */
+        postfx_xform(&dx, &dy, &s, &cx, &cy)) {              /* the shake / zoom would move the bitmap, not the OBJs */
+        stg_diag(1);
         return 0;
+    }
     if (!stg_hold) {                                         /* first frame: the VRAM must be free */
-        if (slots_used || fig[0].pix || fig[1].pix) return 0;
-        for (k = 0; k < OBJ_XF_SLOTS; k++) if (ST(&xs[k]) != S_FREE) return 0;
-        if (bb_region_take(0) | bb_region_take(1) | bb_region_take(2) | bb_region_take(3)) return 0;
+        if (slots_used || fig[0].pix || fig[1].pix) { stg_diag(2); return 0; }
+        for (k = 0; k < OBJ_XF_SLOTS; k++) if (ST(&xs[k]) != S_FREE) { stg_diag(2); return 0; }
+        if (bb_region_take(0) | bb_region_take(1) | bb_region_take(2) | bb_region_take(3)) { stg_diag(3); return 0; }
     }
     if (gba_objvram_claim(OBJV_OBJ) != OBJV_OBJ) {           /* r3d's tiles were there */
         stg_forget();
@@ -362,6 +377,7 @@ int plat_stage_obj_begin(void)
     }
     pn_nokeep();                                             /* G7: an OBJ is not a panel's pixels */
     stg_now = 1;
+    stg_diag(4);
     return 1;
 }
 
@@ -397,8 +413,9 @@ int plat_stage_obj(int slot, int x, int y, const DoomoImage *img, int variant, c
 static int stg_emit(uint16_t *buf, int room, int have, int vram_lost)
 {
     int j, e = 0, n = stg_n;
-    if (vram_lost && (stg_hold || stg_n)) { stg_forget(); stg_hold = 0; }
-    if (have || vram_lost || n > room) n = 0;
+    if (vram_lost && (stg_hold || stg_n)) { stg_forget(); stg_hold = 0; stg_dbg[6]++; }
+    if (have || vram_lost || n > room) { if (n) stg_dbg[7]++; n = 0; }
+    if (n) { stg_dbg[5]++; stg_dbg[8] = (uint16_t)(stg_dbg[8] + n); }
     for (j = 0; j < n; j++) {
         int ox = stg[j].x, oy = stg[j].y - 8;                /* the OBJ is 32 tall, the image its lower 24 rows */
         uint16_t *o = buf + (n - 1 - j) * 4;
