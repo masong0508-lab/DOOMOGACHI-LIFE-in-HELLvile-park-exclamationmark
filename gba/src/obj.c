@@ -35,7 +35,12 @@
  * billboard there is still on screen draws unsquashed for that frame
  * (bb_region_take).
  *
- * RAM: 128 B shadow + 4 x 24 B slots + 14 B of .bss and .data.
+ * Option C (docs/STUDIO_30FPS_PLAN.md section 11): the Music Studio's choir (up to 25 chibis of 16x24) are OBJs too,
+ * plat_stage_obj below. They take the whole 16 KB of OBJ VRAM (25 x 512 B from tile 512), so they only run while
+ * every squash slot and figure is free, and they keep the squash slots / figures / billboards out of it while
+ * they are up (stg_hold). The core decides which singers may be sprites, so no cover check is made here.
+ *
+ * RAM: 128 B shadow + 4 x 24 B slots + 14 B of .bss and .data; the choir: 25 x 8 B + 100 B of keys + 384 B (EWRAM).
  */
 #include "postfx.h"
 #include "canvas_int.h"
@@ -68,6 +73,21 @@ static uint8_t  shadow_n = OBJ_SHADOW_N;
 static uint8_t  slots_used, any_shown, bb_n, bb_n_last;
 static uint16_t *bb_buf;                 /* G6: the flip's buffer, entries 16.. */
 static XfSlot   xs[OBJ_XF_SLOTS];
+
+/* ---- option C: the choir as OBJs ------------------------------------------------------------------------- */
+#define STG_N        25                       /* SONG_SINGERS */
+#define STG_TILE(k)  (512 + (k) * 16)         /* 16x32 8bpp = 512 B = 16 tile units of 32 B */
+#define STG_HOLD     15                       /* frames the VRAM stays ours after the last frame that showed them */
+EWRAM_BSS static struct { int16_t x, y; uint8_t slot; } stg[STG_N];   /* this frame's list, in call order */
+EWRAM_BSS static uint32_t stg_key[STG_N];                              /* uploaded (uid, variant), 0 = nothing */
+EWRAM_BSS static uint8_t stg_pix[16 * 24] __attribute__((aligned(4))); /* the baked image */
+static uint8_t stg_n, stg_hold, stg_now;      /* entries this frame; frames of VRAM still ours; begin said 1 this frame */
+
+static void stg_forget(void)
+{
+    int i;
+    for (i = 0; i < STG_N; i++) stg_key[i] = 0;
+}
 
 /* the OBJ size table: shape 0 square, 1 wide, 2 tall; size 0..3 */
 static const uint8_t obj_w[3][4] = { { 8, 16, 32, 64 }, { 16, 32, 32, 64 }, { 8, 8, 16, 32 } };
@@ -121,6 +141,7 @@ static uint32_t content_hash(const DoomoImage *img)
 /* the image, bottom-centred in a W x H box, as 8bpp 1D-mapped tiles */
 static void upload(int k, const DoomoImage *img, int W, int H)
 {
+    stg_forget();                              /* option C: the choir's tiles may be here */
     vu16 *dst = OBJ_VRAM + (uint32_t)k * (SLOT_BYTES / 2u);
     int ox = (W - img->w) / 2, oy = H - img->h, tx, ty, r, c;
     for (ty = 0; ty < H / 8; ty++)
@@ -191,6 +212,10 @@ void plat_image_xform(int ax, int ay, const DoomoImage *img, int sx_q8, int sy_q
     asx = sx_q8 < 0 ? -sx_q8 : sx_q8;
     if (flags & IMG_FLIPX) sx_q8 = -sx_q8;
     flags &= ~IMG_FLIPX;
+    if (stg_now || stg_hold) {                 /* option C: the choir has the OBJ VRAM; no slot is taken */
+        draw_unsquashed(ax, ay, img, sx_q8, sy_q8, flags, color);
+        return;
+    }
     if (slots_used >= OBJ_XF_SLOTS) { draw_unsquashed(ax, ay, img, sx_q8, sy_q8, flags, color); return; }
     k = slots_used++;                          /* every call keeps its slot: identity = call order */
     x = &xs[k];
@@ -256,6 +281,7 @@ static struct { const uint8_t *pix; uint32_t uid; int16_t x, y; uint8_t used; } 
 static void fig_upload(int k, const DoomoImage *img)
 {
     int part, tile = SLOT_TILE(2) + k * 120;     /* 3840 B = 120 tiles of 32 B */
+    stg_forget();
     for (part = 0; part < 5; part++) {
         const uint8_t *pp = fig_part[part];
         vu16 *dst = (vu16 *)0x06010000 + (uint32_t)tile * 16u;
@@ -275,7 +301,7 @@ int plat_figure_obj(int k, int x, int y, const DoomoImage *img)
 {
     if (k < 0 || k >= FIG_N || !img || !img->pix || img->w != 48 || img->h != 80) return 0;
     pn_nokeep();                               /* G7 */
-    if (shadow != own_shadow || gba_frames - gba_objvram_r3d_frame() <= 1u || slots_used > 2) return 0;
+    if (shadow != own_shadow || gba_frames - gba_objvram_r3d_frame() <= 1u || slots_used > 2 || stg_now || stg_hold) return 0;
     if (gba_objvram_claim(OBJV_OBJ) != OBJV_OBJ) {           /* r3d's tiles were there */
         fig[0].pix = fig[1].pix = NULL;
         xs[0].key = xs[1].key = 0;
@@ -314,6 +340,78 @@ static void fig_pre_flip(void)
         if (!fig[k].used) fig[k].pix = NULL;    /* re-upload when back */
         fig[k].used = 0;
     }
+}
+
+/* ---- option C: plat_stage_obj_begin / plat_stage_obj / the entries (platform.h) --------------------------- */
+int plat_stage_obj_begin(void)
+{
+    int dx, dy, s, cx, cy, k;
+    stg_n = 0;
+    stg_now = 0;
+    if (gba_nodraw != 0 || shadow != own_shadow || gba_frames - gba_objvram_r3d_frame() <= 1u ||
+        postfx_xform(&dx, &dy, &s, &cx, &cy))                /* the shake / zoom would move the bitmap, not the OBJs */
+        return 0;
+    if (!stg_hold) {                                         /* first frame: the VRAM must be free */
+        if (slots_used || fig[0].pix || fig[1].pix) return 0;
+        for (k = 0; k < OBJ_XF_SLOTS; k++) if (ST(&xs[k]) != S_FREE) return 0;
+        if (bb_region_take(0) | bb_region_take(1) | bb_region_take(2) | bb_region_take(3)) return 0;
+    }
+    if (gba_objvram_claim(OBJV_OBJ) != OBJV_OBJ) {           /* r3d's tiles were there */
+        stg_forget();
+        for (k = 0; k < OBJ_XF_SLOTS; k++) xs[k].key = 0;
+    }
+    pn_nokeep();                                             /* G7: an OBJ is not a panel's pixels */
+    stg_now = 1;
+    return 1;
+}
+
+int plat_stage_obj(int slot, int x, int y, const DoomoImage *img, int variant, const DoomoPatch *patch, int npatch)
+{
+    uint32_t key;
+    if (!stg_now || stg_n >= STG_N || (unsigned)slot >= (unsigned)STG_N || !img || !img->pix || img->w != 16 ||
+        img->h != 24 || (unsigned)variant > 3u)
+        return 0;
+    key = ((img->uid ? img->uid : ((uint32_t)(uintptr_t)img->pix | 0x80000000u)) << 2 | (uint32_t)variant) + 1u;
+    if (stg_key[slot] != key) {
+        vu16 *dst = OBJ_VRAM + (uint32_t)slot * 256u;        /* 512 B per slot */
+        int ty, r, c;
+        plat_stage_bake(stg_pix, img, patch, npatch);
+        for (ty = 0; ty < 4; ty++)                           /* 2 x 4 tiles, 1D mapped; the image bottom-aligned */
+            for (c = 0; c < 2; c++)
+                for (r = 0; r < 8; r++) {
+                    int sy = ty * 8 + r - 8, j;
+                    const uint8_t *row = sy >= 0 ? stg_pix + sy * 16 + c * 8 : NULL;
+                    for (j = 0; j < 8; j += 2) *dst++ = row ? (uint16_t)(row[j] | (row[j + 1] << 8)) : 0;
+                }
+        stg_key[slot] = key;
+    }
+    stg[stg_n].x = (int16_t)x;
+    stg[stg_n].y = (int16_t)y;
+    stg[stg_n].slot = (uint8_t)slot;
+    stg_n++;
+    return 1;
+}
+
+/* the choir's entries go behind the billboards' in buf, the LAST call at the lowest entry (in front); returns how
+ * many were written. Nothing at all on a frame whose post transform is on or whose VRAM another owner took. */
+static int stg_emit(uint16_t *buf, int room, int have, int vram_lost)
+{
+    int j, e = 0, n = stg_n;
+    if (vram_lost && (stg_hold || stg_n)) { stg_forget(); stg_hold = 0; }
+    if (have || vram_lost || n > room) n = 0;
+    for (j = 0; j < n; j++) {
+        int ox = stg[j].x, oy = stg[j].y - 8;                /* the OBJ is 32 tall, the image its lower 24 rows */
+        uint16_t *o = buf + (n - 1 - j) * 4;
+        if (ox <= -16 || ox >= SCREEN_W || oy <= -32 || oy >= SCREEN_H) { o[0] = 0x0200; o[1] = o[2] = o[3] = 0; e++; continue; }
+        o[0] = (uint16_t)((oy & 0xFF) | 0x2000 | (2 << 14));          /* 256 colours, tall */
+        o[1] = (uint16_t)((ox & 0x1FF) | (2 << 14));                  /* 16 x 32 */
+        o[2] = (uint16_t)STG_TILE(stg[j].slot);                       /* priority 0 */
+        o[3] = 0;
+        e++;
+    }
+    if (n) stg_hold = STG_HOLD;
+    else if (stg_hold && --stg_hold == 0) stg_forget();               /* the VRAM is for the others again */
+    return e;
 }
 
 void obj_pre_flip(void)
@@ -373,10 +471,14 @@ void obj_pre_flip(void)
     if (shadow == own_shadow && bb_buf) {
         int i;
         bb_n = (uint8_t)bb_emit(bb_buf, cv.mode != CV_OFF);
+        bb_n = (uint8_t)(bb_n + stg_emit(bb_buf + bb_n * 4, OBJ_BB_ENT_N - bb_n, have, vram_lost));   /* option C: after the billboards */
         for (i = bb_n; i < bb_n_last; i++) bb_buf[i * 4] = 0x0200;
     } else {
         bb_emit(NULL, 0);
+        stg_emit(NULL, 0, 1, 0);          /* no buffer: nothing shown, the hold still runs down */
     }
+    stg_n = 0;
+    stg_now = 0;
     slots_used = 0;
 }
 
@@ -393,6 +495,7 @@ uint32_t obj_bb_reserved(void)
     for (k = 0; k < OBJ_XF_SLOTS; k++)
         if (ST(&xs[k]) != S_FREE) m |= 1u << k;
     if (fig[0].pix || fig[1].pix) m |= 12u;
+    if (stg_hold) m |= 15u;                  /* option C: the choir's 12.8 KB */
     return m;
 }
 

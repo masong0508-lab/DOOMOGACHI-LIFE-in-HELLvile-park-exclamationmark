@@ -436,10 +436,20 @@ static void karaoke(int cx, int y, int w)
  *     bar, the conductor, the crowd and its glow sticks, the floating hearts, the follow spot and its star;
  *   - the floating notes of the singers drawn after this one (a note sits above its own singer and over the rows
  *     behind), and every later chibi that stays in the bitmap (its box, so its mouth too).
- * The mouth is part of the sprite (a patch list), the singer's own note never touches the singer's own box. All the
+ * The mouth is part of the sprite (a patch list); the singer's own note is drawn after it and can reach its box (low
+ * note, bopping singer), then it stays in the bitmap. All the
  * boxes are generous, a false "touched" only keeps a singer in the bitmap. The checks of this are in
  * test_studio.c (studio_stage_sprites_equal_the_bitmap). */
 typedef struct { int16_t x0, y0, x1, y1; } SBox;
+
+#ifdef DOOMO_HITCHECK
+/* test only (the native build): bits switch a check of choir_obj_plan off, so a test can show it catches the
+ * mismatch. 1 notes, 2 later bitmap chibis, 4 curtains, 8 follow spot, 16 conductor, 32 a singer's own note. */
+int studio_stage_obj_fault;
+#define OBJ_FAULT(b) (studio_stage_obj_fault & (b))
+#else
+#define OBJ_FAULT(b) 0
+#endif
 
 static int sbox_hit(const SBox *b, int x0, int y0, int x1, int y1)
 {
@@ -466,30 +476,38 @@ static int choir_obj_plan(const StageCtx *c, uint8_t *obj)
     int nc = 0, nlb = 0, nln = 0, m, k, nobj = 0, cut = curtain_cover(c->sw, c->open) + 4;
     int cx = c->sw / 2, cy = c->floor + (c->wide ? 34 : 19);
     cov[nc++] = (SBox){ 0, 0, (int16_t)c->sw, 28 };                                   /* the title and the applause bar */
-    cov[nc++] = (SBox){ 0, 0, (int16_t)cut, (int16_t)c->sh };                         /* the curtain strips */
-    cov[nc++] = (SBox){ (int16_t)(c->sw - cut), 0, (int16_t)c->sw, (int16_t)c->sh };
+    if (!OBJ_FAULT(4)) {
+        cov[nc++] = (SBox){ 0, 0, (int16_t)cut, (int16_t)c->sh };                     /* the curtain strips */
+        cov[nc++] = (SBox){ (int16_t)(c->sw - cut), 0, (int16_t)c->sw, (int16_t)c->sh };
+    }
     cov[nc++] = (SBox){ 0, (int16_t)(c->sh - (c->wide ? 44 : 25) - 10), (int16_t)c->sw, (int16_t)c->sh };   /* karaoke */
-    cov[nc++] = (SBox){ (int16_t)(cx - 9), (int16_t)(cy - 33), (int16_t)(cx + 22), (int16_t)(cy + 4) };      /* conductor */
+    if (!OBJ_FAULT(16))
+        cov[nc++] = (SBox){ (int16_t)(cx - 9), (int16_t)(cy - 33), (int16_t)(cx + 22), (int16_t)(cy + 4) };  /* conductor */
     cov[nc++] = (SBox){ 0, (int16_t)(c->floor + 2), (int16_t)c->sw, (int16_t)c->sh };                        /* crowd */
     for (k = 0; k < studio.applause / 40 && nc < 10; k++) {                           /* hearts */
         int hx = (k * 47 + 13) % c->sw, hy = c->sh - ((c->t * 2 + k * 31) % (c->sh / 2));
         cov[nc++] = (SBox){ (int16_t)(hx - 7), (int16_t)(hy - 7), (int16_t)(hx + 8), (int16_t)(hy + 8) };
     }
-    if (c->lx >= 0)                                                                   /* follow spot + star */
-        cov[nc++] = (SBox){ (int16_t)(c->lx - 16), (int16_t)c->top, (int16_t)(c->lx + 17), (int16_t)(c->ly + 1) };
+    if (c->lx >= 0 && !OBJ_FAULT(8))                                                  /* follow spot + star */
+        cov[nc++] = (SBox){ (int16_t)(c->lx - 30), (int16_t)c->top, (int16_t)(c->lx + 31), (int16_t)(c->ly + 1) };   /* the beam is 4 wide at the top, 56 at the lead */
     for (m = c->n - 1; m >= 0; m--) {
         int kk = c->ord[m], x = c->px[kk], y = c->py[kk], bop = choir_bop(c, kk), i, ok = 1;
         int x0 = x - BODYSPR_W / 2, y0 = y - BODYSPR_H - bop, x1 = x0 + BODYSPR_W, y1 = y0 + BODYSPR_H;
+        int hasn = ((c->singing >> c->slots[kk]) & 1) && ((c->t + kk * 5) % 24) < 12;
+        SBox nb = { 0, 0, 0, 0 };
+        if (hasn) {                                                                   /* its note: drawn after it */
+            int nx = x + 4, ny = y - BODYSPR_H - 8 - ((c->t + kk * 5) % 24) / 2;
+            nb = (SBox){ (int16_t)nx, (int16_t)ny, (int16_t)(nx + 6), (int16_t)(ny + 8) };
+        }
         for (i = 0; i < nc && ok; i++) if (sbox_hit(&cov[i], x0, y0, x1, y1)) ok = 0;
-        for (i = 0; i < nln && ok; i++) if (sbox_hit(&ln[i], x0, y0, x1, y1)) ok = 0;
-        for (i = 0; i < nlb && ok; i++) if (sbox_hit(&lb[i], x0, y0, x1, y1)) ok = 0;
+        for (i = 0; i < nln && ok && !OBJ_FAULT(1); i++) if (sbox_hit(&ln[i], x0, y0, x1, y1)) ok = 0;
+        for (i = 0; i < nlb && ok && !OBJ_FAULT(2); i++) if (sbox_hit(&lb[i], x0, y0, x1, y1)) ok = 0;
+        /* its own note reaches its box when the note is low and the singer bops up (a note's last row is y + 7) */
+        if (hasn && ok && !OBJ_FAULT(32) && sbox_hit(&nb, x0, y0, x1, y1)) ok = 0;
         obj[kk] = (uint8_t)ok;
         if (ok) nobj++;
         else lb[nlb++] = (SBox){ (int16_t)x0, (int16_t)y0, (int16_t)x1, (int16_t)y1 };
-        if (((c->singing >> c->slots[kk]) & 1) && ((c->t + kk * 5) % 24) < 12) {   /* its note: drawn after it */
-            int nx = x + 4, ny = y - BODYSPR_H - 8 - ((c->t + kk * 5) % 24) / 2;
-            ln[nln++] = (SBox){ (int16_t)nx, (int16_t)ny, (int16_t)(nx + 6), (int16_t)(ny + 8) };
-        }
+        if (hasn) ln[nln++] = nb;
     }
     return nobj;
 }

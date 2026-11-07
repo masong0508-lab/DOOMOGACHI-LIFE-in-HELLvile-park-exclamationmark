@@ -1006,3 +1006,123 @@ TEST(studio_voice_tuning_memo_is_bit_identical)
     CHECK(hits > miss);                 /* the memo is really used */
     CHECK(miss <= (uint32_t)n / 2);     /* and the second pass is all hits (the table holds the working set or recycles) */
 }
+
+/* ---- option C: the choir as hardware sprites (docs/STUDIO_30FPS_PLAN.md section 11) -------------------------------
+ * A test platform that has sprites: plat_stage_obj records each one (its pixels baked with the patches through the
+ * shared plat_stage_bake) and, after the frame, paints them over nat_fb in call order, which is what a platform
+ * that shows sprites above the whole bitmap does. The stage is drawn twice every tick, sprites off and on; the two
+ * frames must be identical. A wrong planner (a check switched off with studio_stage_obj_fault) must not be. */
+#define CURTAIN_T 30   /* studio_stage.c; the sprites start 20 ticks after it */
+extern int studio_stage_obj_fault;
+static int ts_on, ts_n;
+static struct { int x, y; uint8_t pix[16 * 24]; } ts_sp[SONG_SINGERS];
+
+int plat_stage_obj_begin(void)
+{
+    if (!ts_on) return 0;
+    ts_n = 0;
+    return 1;
+}
+
+int plat_stage_obj(int slot, int x, int y, const DoomoImage *img, int variant, const DoomoPatch *patch, int npatch)
+{
+    (void)variant;
+    if (!ts_on || !img || img->w != 16 || img->h != 24 || !img->uid || slot < 0 || slot >= SONG_SINGERS ||
+        ts_n >= SONG_SINGERS)
+        return 0;
+    ts_sp[ts_n].x = x; ts_sp[ts_n].y = y;
+    plat_stage_bake(ts_sp[ts_n].pix, img, patch, npatch);
+    ts_n++;
+    return 1;
+}
+
+static void ts_paint_sprites(void)
+{
+    int i, xx, yy;
+    for (i = 0; i < ts_n; i++)
+        for (yy = 0; yy < 24; yy++)
+            for (xx = 0; xx < 16; xx++) {
+                int px = ts_sp[i].x + xx, py = ts_sp[i].y + yy;
+                uint8_t c = ts_sp[i].pix[yy * 16 + xx];
+                if (c && (unsigned)px < (unsigned)nat_w && (unsigned)py < (unsigned)nat_h) nat_fb[py * nat_w + px] = c;
+            }
+}
+
+static uint8_t ts_a[NAT_MAX_W * NAT_MAX_H];
+
+/* one run of a full 25 singer show at the given size and layout; returns the number of ticks that differed */
+static int ts_run(int w, int h, int layout, int ticks, long *sprites, long *singers, int *shown)
+{
+    int i, t, bad = 0, resid[SONG_SINGERS], n = 0;
+    nat_w = w; nat_h = h;
+    test_reset();
+    town_new(TOWN_FREEPLAY, 1, TOWN_POP_PREMADE);
+    scene_set(&base_scene, 0);
+    scene_push(&SCENE_STUDIO, -2);
+    beat_song(SS, 120, 0, 4);
+    for (i = 0; i < DOOMO_MAX_RESIDENTS && n < SONG_SINGERS; i++) if (st_alive(i)) resid[n++] = i;
+    for (i = 0; i < SONG_SINGERS; i++) SS->singer[i] = (uint16_t)(i < n ? resid[i] : SONG_NO_SINGER);
+    for (i = 0; i < SONG_LYRIC_LINES; i++) {
+        strcpy(SS->lyrics[i], "la la la la");
+        SS->line_singers[i] = i % 3 == 0 ? 0x1FFFFFFu : i % 3 == 1 ? 0x0AAAAAAu : 0x1555555u;
+    }
+    SS->choir_layout = (uint8_t)layout;
+    st_set_tab(STAB_STAGE);
+    press(BTN_A);
+    *sprites = *singers = 0; *shown = 0;
+    for (t = 0; t < ticks && studio.show == 1; t++) {
+        int d;
+        frames(1, 0);
+        if (studio.show != 1) break;
+        if (t % 5 == 0) studio.applause = (uint8_t)((t * 7) % 101);   /* hearts and glow sticks come and go */
+        memset(nat_fb, 0, sizeof(nat_fb)); ts_on = 0; ts_n = 0;
+        stage_draw_full();
+        memcpy(ts_a, nat_fb, (size_t)(nat_w * nat_h));
+        memset(nat_fb, 0, sizeof(nat_fb)); ts_on = 1; ts_n = 0;
+        stage_draw_full();
+        ts_paint_sprites();
+        ts_on = 0;
+        d = memcmp(ts_a, nat_fb, (size_t)(nat_w * nat_h)) != 0;
+        if (d && bad == 0)
+            for (i = 0; i < nat_w * nat_h; i++)
+                if (ts_a[i] != nat_fb[i]) { fprintf(stderr, "  first diff t=%d at %d,%d (%d vs %d), %d sprites\n", t, i % nat_w, i / nat_w, ts_a[i], nat_fb[i], ts_n);
+                    break; }
+        bad += d;
+        if (ts_n || studio.show_t >= CURTAIN_T + 20) { *sprites += ts_n; *singers += song_singer_count(SS); (*shown)++; }
+    }
+    scene_pop();
+    test_reset();
+    nat_w = 240; nat_h = 160;
+    return bad;
+}
+
+TEST(studio_stage_sprites_equal_the_bitmap)
+{
+    long sp, sg;
+    int layout, shown, bad, tot = 0;
+    for (layout = 0; layout < CHOIR_LAYOUT_COUNT; layout++) {
+        bad = ts_run(240, 160, layout, 700, &sp, &sg, &shown);
+        CHECK_MSG(bad == 0, "240x160 layout %d: %d ticks differ", layout, bad);
+        CHECK(shown > 100);
+        printf("    stage sprites 240x160 layout %d: %.1f of %.1f singers per tick (%d ticks)\n", layout,
+               shown ? (double)sp / shown : 0.0, shown ? (double)sg / shown : 0.0, shown);
+        tot += (int)sp;
+    }
+    bad = ts_run(320, 240, CHOIR_RISERS, 700, &sp, &sg, &shown);
+    CHECK_MSG(bad == 0, "320x240: %d ticks differ", bad);
+    CHECK(tot > 0);                                         /* the planner really does choose sprites */
+}
+
+TEST(studio_stage_sprites_wrong_planner_is_caught)
+{
+    static const int faults[] = { 1, 2, 8, 32 };
+    long sp, sg;
+    int f, shown;
+    for (f = 0; f < 4; f++) {
+        int bad;
+        studio_stage_obj_fault = faults[f];
+        bad = ts_run(240, 160, CHOIR_RISERS, 700, &sp, &sg, &shown);
+        studio_stage_obj_fault = 0;
+        CHECK_MSG(bad > 0, "fault %d went unnoticed", faults[f]);
+    }
+}
