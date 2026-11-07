@@ -72,3 +72,31 @@ Facts that follow:
 `make -C gba profile-all` before / after, EWRAM free no lower than 24,240 B less what the step documents. Target for this sub-roadmap:
 island hub and town hall at 30 fps with 30.0 logic ticks/s; I1..I3 alone will not get there (about 67 ms must come off): they are the
 exact, low-risk part, and I4 is the structural one.
+
+## I1 landed, and where the hub's 81.5 ms goes now (libmgba harness, 2026-11-07)
+
+I1 (land recorded once and replayed, exact) is in: hub 94.7 -> 81.5 ms, 9.7 fps. Measured by skipping one phase at a time
+(temporary compile-time mask, not in the tree), work ms per frame:
+
+| phase | ms | | phase | ms |
+|---|---:|---|---|---:|
+| land (replayed) | 12.5 | | sea | 3.2 |
+| buildings | 17.7 | | walkers | 2.1 |
+| decos | 10.4 | | weather | 2.6 |
+| patches | 7.8 | | roads | 4.9 |
+| **everything outside the map** | **21.3** | | whole map skipped | 30.1 fps |
+
+So the map costs ~60 ms and must fall to ~10 ms for 30 fps. Only a retained backdrop can do that; replaying lists in Mode 4 cannot.
+
+## I4 design (tile backend), not built yet
+- Mode 0, one BG (8bpp, map in the last screenblock). Base tiles 0..599 = the static backdrop (all static ops of sea, land, patches,
+  roads, deco and building statics, shadows), written only when the key (map size, tint, locations, selection) changes.
+  Pool tiles 600..991 hold the frame's dirty composites, double-buffered (2 x 196); the 600-entry map is rewritten in the vblank.
+- Per frame, walk the ordered op stream. Dynamic ops (glints, foam, shimmer, animated deco parts, walkers, building animation,
+  weather, the bobbing selected building) draw into tiles initialised from the base tile. A static op is replayed only if its box
+  meets a tile already dirty (z-order stays exact); all other static ops are skipped.
+- Known trap: shade ops (building shadows) read what is beneath, so replaying one over a base that already holds it darkens twice.
+  Needs an unshaded copy of the shadow tiles, or the shade applied to the dynamic item's colour instead.
+- Mode 0 tile data overlaps both Mode 4 pages, so leaving tile mode (menus, fades) destroys the backdrop: a rebake on return.
+- G5's canvas (canvas.c) is overworld-specific (policy, backoff, billboard OBJs); the island path is better kept separate.
+- Verify with the harness: vhash-seq against the Mode 4 ROM, and fps; the island-only tour is wait/press A x3/wait 200/fps start.
