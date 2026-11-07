@@ -4,7 +4,7 @@
 
 The Music Studio (`SCENE_STUDIO`) is where you write songs for the citizens of
 Hellvile Park to sing: the tune on a 4-track tracker, the words line by line,
-and a choir of up to **25 citizens** who sing it on stage. Every song uses one
+and a choir of up to **25 citizens** (host build; **16 on the GBA, 24 on the PS1**, set by `SONG_SINGERS` in `song.h`) who sing it on stage. Every song uses one
 shared format, `DoomoSong` (`core/include/doomo/song.h`), and one shared
 player, so the Concert Hall's generated songs and your own are the same thing.
 
@@ -106,7 +106,7 @@ soprano, >= 15 alto, >= 8 tenor, else bass) and editable (START cycles
 auto -> S -> A -> T -> B). A on a singer: hear their voice (they sing the first
 sung line alone), change singer (the citizen picker), change section, remove.
 SELECT **quick fills**: friends of the selected singer, a Hillvile choir, a
-Hellvile choir, both districts, random 25, share out parts, sort by section,
+Hellvile choir, both districts, random choir, share out parts, sort by section,
 clear. The top row picks the stage arrangement: risers, semicircle,
 sections, pyramid (unlockable).
 
@@ -119,7 +119,7 @@ mouth on each syllable with notes floating up, section glows under whoever
 has the line, a conductor (Father Fuzz, or you if he sings or is missing)
 waving a baton in 4/4, a crowd of citizens in the dark with glowsticks,
 karaoke lyrics (sung syllables gold, the current one pink and bouncing) with
-the part label ("Altos (6)", "Full choir (25)"), and an applause meter.
+the part label ("Altos (6)", "Full choir (16)" on the GBA), and an applause meter.
 Afterwards: stars, applause, an **ENCORE!!** at 80%+, and every singer gains
 happiness (+6..+18) and social, and singers next to each other on the risers
 grow a little closer. SELECT on the poster hands the song to the Concert Hall

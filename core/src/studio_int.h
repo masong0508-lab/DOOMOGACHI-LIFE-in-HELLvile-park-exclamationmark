@@ -99,7 +99,7 @@ typedef struct Studio {
     uint8_t  lsel, ltop;
     int8_t   sing_pos;          /* previewing one line: its order position  */
     /* CHOIR */
-    uint8_t  csel;              /* 0..24 singer slots, 25 = stage row        */
+    uint8_t  csel;              /* 0..SONG_SINGERS-1 singer slots, SONG_SINGERS = stage row */
     uint8_t  picking;
     int16_t  pick_id;
     /* PERFORM */

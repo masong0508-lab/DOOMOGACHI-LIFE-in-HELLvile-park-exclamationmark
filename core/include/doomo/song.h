@@ -21,7 +21,13 @@
 #define SONG_LYRIC_LINES  8
 #define SONG_LYRIC_LEN    28          /* 27 chars + NUL                     */
 #define SONG_TITLE_LEN    16
-#define SONG_SINGERS      25          /* a whole choir                      */
+#if defined(DOOMO_PLATFORM_GBA)
+#define SONG_SINGERS      16          /* choir cap on the GBA               */
+#elif defined(DOOMO_PLATFORM_PS1)
+#define SONG_SINGERS      24          /* choir cap on the PS1               */
+#else
+#define SONG_SINGERS      25          /* a whole choir (host / tests)       */
+#endif
 #define SONG_NO_SINGER    0xFFFF
 
 /* Note cell values. Melodic tracks: 0 rest, 1 hold (tie previous),

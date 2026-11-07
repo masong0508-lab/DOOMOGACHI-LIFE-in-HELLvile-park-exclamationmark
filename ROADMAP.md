@@ -19,6 +19,7 @@ portrait; its island-population-once-per-frame part is already in this tree), `d
 before redoing any of them; a zip without `.git` cannot tell.
 
 ### Done
+- **Choir caps (nov07z):** `SONG_SINGERS` (`core/include/doomo/song.h`) is per platform: GBA 16, PS1 24, host 25 (so the 877 host tests still run the full 25). The choir grid (`studio_words.c`) is 3 rows computed from it (16 = 6/5/5, 24 = 8/8/8, 25 = 9/8/8), the stage-row cursor value, `%d/N` counter and the "both districts" / park-template fills follow it, and `STG_N` in `gba/src/obj.c` is 16 (OBJ VRAM for the choir shrinks from 25 to 16 chibis). The Concert Hall choir picks up the same caps. Old saves with singers in slots above the cap are not kept (owner said no save compatibility). GBA / PS1 not built here: host tests and `-fsyntax-only` with both platform defines only.
 
 | Area | What is finished (core, host-tested) |
 |---|---|

@@ -709,7 +709,7 @@ int studio_choir_fill(DoomoSong *s, int mode, int anchor, uint32_t seed)
         break;
     case FILL_BOTH:
         fill_district(s, 0, DOOMO_DISTRICT_SIZE - 1, 13, &r);
-        fill_district(s, DOOMO_DISTRICT_SIZE, DOOMO_MAX_RESIDENTS - 1, 25, &r);
+        fill_district(s, DOOMO_DISTRICT_SIZE, DOOMO_MAX_RESIDENTS - 1, SONG_SINGERS, &r);
         break;
     case FILL_RANDOM:
         fill_district(s, 0, DOOMO_MAX_RESIDENTS - 1, SONG_SINGERS, &r);
@@ -1195,7 +1195,7 @@ void studio_template_load(DoomoSong *s, int t)
     case TC_PARK:
         if (st_alive(ROSTER_ID_MAYOR)) add_singer(s, ROSTER_ID_MAYOR);
         fill_district(s, 0, DOOMO_DISTRICT_SIZE - 1, 12, &r);
-        fill_district(s, DOOMO_DISTRICT_SIZE, DOOMO_MAX_RESIDENTS - 1, 25, &r);
+        fill_district(s, DOOMO_DISTRICT_SIZE, DOOMO_MAX_RESIDENTS - 1, SONG_SINGERS, &r);
         if (!song_singer_count(s)) add_singer(s, DOOMO_PLAYER_ID);
         break;
     case TC_BAND:

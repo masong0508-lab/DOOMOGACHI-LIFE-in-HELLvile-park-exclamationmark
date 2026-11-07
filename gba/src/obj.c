@@ -76,7 +76,7 @@ static uint16_t *bb_buf;                 /* G6: the flip's buffer, entries 16.. 
 static XfSlot   xs[OBJ_XF_SLOTS];
 
 /* ---- option C: the choir as OBJs ------------------------------------------------------------------------- */
-#define STG_N        25                       /* SONG_SINGERS */
+#define STG_N        16                       /* SONG_SINGERS on the GBA (song.h) */
 #define STG_TILE(k)  (512 + (k) * 16)         /* 16x32 8bpp = 512 B = 16 tile units of 32 B */
 #define STG_HOLD     15                       /* frames the VRAM stays ours after the last frame that showed them */
 #define STG_ENT      64                       /* chibis 25 + mouths 25 + notes 25 would be 75; at most 13 + 13 sing: 64 is plenty */

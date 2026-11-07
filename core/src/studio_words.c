@@ -311,12 +311,17 @@ void tab_lyrics_draw(StRect r)
 
 /* ====================================================================== */
 /* CHOIR                                                                    */
-#define CHOIR_ROW 25
+#define CHOIR_ROW SONG_SINGERS                       /* csel value of the stage row */
+/* the grid is 3 rows: 25 -> 9/8/8, 24 -> 8/8/8, 16 -> 6/5/5 */
+#define CH_R1 (SONG_SINGERS / 3)                     /* slots in rows 1 and 2 */
+#define CH_R0 (SONG_SINGERS - 2 * CH_R1)             /* slots in row 0 */
+#define CH_S1 CH_R0                                  /* first slot of row 1 */
+#define CH_S2 (CH_R0 + CH_R1)                        /* first slot of row 2 */
 
 static void slot_xy(StRect r, int i, int *x, int *y, int *tw, int *th)
 {
-    int wide = st_wide(), row = i < 9 ? 0 : i < 17 ? 1 : 2, col = i < 9 ? i : i < 17 ? i - 9 : i - 17;
-    int cw = wide ? 33 : 25, ch = wide ? 40 : 31, n = row == 0 ? 9 : 8;
+    int wide = st_wide(), row = i < CH_S1 ? 0 : i < CH_S2 ? 1 : 2, col = i < CH_S1 ? i : i < CH_S2 ? i - CH_S1 : i - CH_S2;
+    int cw = wide ? 33 : 25, ch = wide ? 40 : 31, n = row == 0 ? CH_R0 : CH_R1;
     int gx = r.x + (r.w - n * cw) / 2;
     *tw = cw - 2;
     *th = ch - 3;
@@ -449,14 +454,14 @@ void tab_choir_update(void)
         }
         if (btn_repeat(BTN_DOWN)) { studio.csel = 4; audio_sfx(SFX_CURSOR); }
     } else {
-        int row = s < 9 ? 0 : s < 17 ? 1 : 2, col = s < 9 ? s : s < 17 ? s - 9 : s - 17;
+        int row = s < CH_S1 ? 0 : s < CH_S2 ? 1 : 2, col = s < CH_S1 ? s : s < CH_S2 ? s - CH_S1 : s - CH_S2;
         if (btn_repeat(BTN_LEFT)) s = s > 0 ? s - 1 : SONG_SINGERS - 1;
         if (btn_repeat(BTN_RIGHT)) s = s < SONG_SINGERS - 1 ? s + 1 : 0;
         if (btn_repeat(BTN_UP)) {
             if (row == 0) s = CHOIR_ROW;
-            else s = row == 1 ? DOOMO_MIN(col, 8) : 9 + DOOMO_MIN(col, 7);
+            else s = row == 1 ? DOOMO_MIN(col, CH_R0 - 1) : CH_S1 + DOOMO_MIN(col, CH_R1 - 1);
         }
-        if (btn_repeat(BTN_DOWN) && row < 2) s = row == 0 ? 9 + DOOMO_MIN(col, 7) : 17 + col;
+        if (btn_repeat(BTN_DOWN) && row < 2) s = row == 0 ? CH_S1 + DOOMO_MIN(col, CH_R1 - 1) : CH_S2 + col;
         if (s != studio.csel) { studio.csel = (uint8_t)s; audio_sfx(SFX_CURSOR); }
         if (btn_pressed(BTN_A)) {
             if (song_singer_id(SS, studio.csel) >= 0) {
@@ -471,7 +476,7 @@ void tab_choir_update(void)
     }
     if (studio_sel_tap) {
         static const char *const items[8] = { "Friends of this singer", "Hillvile choir",
-                                               "Hellvile choir", "Both districts!", "Random 25",
+                                               "Hellvile choir", "Both districts!", "Random choir",
                                                "Share out parts", "Sort by section",
                                                "Clear the choir" };
         st_popup("Quick fill", items, 8, 0, fill_menu);
@@ -527,7 +532,7 @@ void tab_choir_draw(StRect r)
                    studio_layout_ok(CHOIR_PYRAMID) ? "" : "");
     ui_value_row(r.x + 8, r.y + 4, wide ? 180 : 140, "Stage", buf, studio.csel == CHOIR_ROW);
     layout_icon(r.x + (wide ? 196 : 154), r.y + 5, s->choir_layout, PAL_PAINT(PAINT_GRAPE, 1));
-    doomo_snprintf(buf, sizeof(buf), "%d/25", n);
+    doomo_snprintf(buf, sizeof(buf), "%d/%d", n, SONG_SINGERS);
     ui_text(r.x + r.w - 6 - ui_text_width(buf), r.y + 5, buf, st->text_dim);
     for (i = 0; i < SONG_SINGERS; i++) {
         int x, y, tw, th, id = song_singer_id(s, i), sel = i == studio.csel;
