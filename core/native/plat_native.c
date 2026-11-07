@@ -49,6 +49,7 @@ static uint8_t held_fb[NAT_MAX_W * NAT_MAX_H];
 static int held, held_n;
 int plat_hold_frame(int on)
 {
+    if (on == 4) return held;           /* 4 = "still held?" (the GBA's settled hold; never re-holds) */
     held = 0;
     if (!on) return 0;
     held_n = nat_w * nat_h;

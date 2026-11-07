@@ -143,6 +143,7 @@ enum { FX_HEART, FX_STAR, FX_SPARK, FX_NOTE, FX_STINK, FX_TEAR, FX_CONFETTI,
 void fp_fx_burst(int x, int y, int kind, int n);
 void fp_fx_clear(void);
 void fp_fx_tick(void);          /* step every particle (fp_live does it) */
+int  fp_fx_any(void);            /* 1 while a particle is alive */
 void fp_fx_draw(void);           /* draw (and step) every live particle */
 
 /* ---- citizen picker ---------------------------------------------------- */

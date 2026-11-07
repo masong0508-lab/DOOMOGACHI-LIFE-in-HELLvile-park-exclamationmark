@@ -840,6 +840,14 @@ void fp_fx_tick(void)
     }
 }
 
+/* 1 while any particle is alive (the island's held menu backdrop must not paint over particles) */
+int fp_fx_any(void)
+{
+    int i;
+    for (i = 0; i < FX_N; i++) if (fx[i].life) return 1;
+    return 0;
+}
+
 void fp_fx_draw(void)
 {
     int i;

@@ -14,6 +14,7 @@
  */
 #include "fp_island.h"
 #include "doomo/game.h"
+#include "doomo/plat_ext.h"
 
 /* ====================================================================== */
 /* locations                                                                */
@@ -121,6 +122,9 @@ static struct {
     int menu_t;
     int nent, esel, etop;
     uint8_t menu_dirty;
+    uint8_t hold;                /* (perf) 2 = the popped menu's backdrop is the platform's held frame */
+    uint8_t hold_full;           /* a full popped frame was drawn: the next update may hold it */
+    uint8_t live;                /* island_update ran since the last island_draw (nothing else is on top) */
     uint8_t prob[FP_LOC_MAX];
     uint16_t here[ACT_COUNT], here_acc[ACT_COUNT];
     int scan;
@@ -546,8 +550,18 @@ static void collect_rent(void)
     collect_rent_now();
 }
 
+/* (perf) let go of the held menu backdrop: whatever an entry does (money, citizens, a new scene) shows
+ * behind the menu again, drawn in full, and the next popped frame is held anew */
+static void hold_drop(void)
+{
+    if (I.hold) plat_hold_frame(0);
+    I.hold = 0;
+    I.hold_full = 0;
+}
+
 static void run_entry(const Entry *e)
 {
+    hold_drop();
     if (!e->enabled) {
         audio_sfx(SFX_ERROR);
         if (e->code == E_ACTIVITY) ui_toast(fp_activity_reason(e->act));
@@ -692,6 +706,7 @@ static int move_dir(int from, int dx, int dy)
 
 static void open_menu(const Loc *L)
 {
+    hold_drop();
     I.mloc = L;
     I.menu_open = 1;
     I.menu_t = 0;
@@ -738,6 +753,7 @@ static void island_enter(int arg)
 static void after_wait(void)
 {
     int w = I.wait, first = I.wait_arg;
+    hold_drop();
     I.wait = FP_WAIT_NONE;
     I.wait_arg = 0;
     full_scan();
@@ -767,6 +783,8 @@ static void menu_update(void)
 {
     int vis = fp_big() ? 11 : 7;
     I.menu_t++;
+    /* (perf) the pop-in is over and a full frame was shown: keep it as the backdrop (docs/ISLAND_SPEED.md I6) */
+    if (!I.hold && I.hold_full && plat_hold_frame(2)) I.hold = 2;
     if ((I.menu_t & 31) == 0) { int s = I.esel; build_menu(I.mloc); I.esel = DOOMO_MIN(s, I.nent - 1); }
     if (btn_repeat(BTN_UP)) { I.esel = (I.esel + I.nent - 1) % I.nent; audio_sfx(SFX_CURSOR); }
     if (btn_repeat(BTN_DOWN)) { I.esel = (I.esel + 1) % I.nent; audio_sfx(SFX_CURSOR); }
@@ -816,6 +834,7 @@ static void island_update(void)
 {
     int old = I.sel;
     isl_ready();
+    I.live = 1;
     fp_live();
     if (I.wait) { after_wait(); if (I.wait) return; }
     scan_crowds();
@@ -921,7 +940,9 @@ static void menu_rect(int *x, int *y, int *w, int *h)
     *y = big ? 26 : 18;
 }
 
-static void draw_menu(void)
+/* held = 1: the platform's held frame already has the dimmed island and the window's shadow, so only the
+ * window and the title pill are repainted (every UI shade is cut to the window, as in the overworld's pause) */
+static void draw_menu(int held)
 {
     const Loc *L = I.mloc;
     int sw = fp_sw(), sh = fp_sh(), big = fp_big(), w, h, x, y;
@@ -930,7 +951,9 @@ static void draw_menu(void)
                  L->kind == LOC_ARENA || L->kind == LOC_LAKE || L->kind == LOC_GRAVEYARD) ? WIN_DARK : WIN_CUTE;
     const UiStyle *st = ui_style(style);
     menu_rect(&x, &y, &w, &h);
-    if (I.menu_t >= 0 && ui_pop_scale(I.menu_t) == 256) {
+    if (held) {
+        ui_shade_clip(x, y, w, h);
+    } else if (I.menu_t >= 0 && ui_pop_scale(I.menu_t) == 256) {
         /* (perf) the fully popped window is opaque 4 px in from its rim and is drawn over the dimmed screen, so
          * shading under it is wasted (vid_shade_words was 10% of this scene): dim the four bands around it,
          * same pixels as before (the same inside the occluder island_draw uses) */
@@ -942,7 +965,7 @@ static void draw_menu(void)
     } else {
         plat_shade_rect(0, 0, sw, sh, 11);
     }
-    if (!ui_window_pop(x, y, w, h, style, I.menu_t)) return;
+    if (!ui_window_pop(x, y, w, h, style, I.menu_t)) { if (held) ui_shade_clip_off(); return; }
     /* title */
     ui_title(x + w / 2, y - 7, L->name, style);
     lx = x + 8;
@@ -1003,6 +1026,7 @@ static void draw_menu(void)
         fp_pill(lx, y + h - 22, lw, 18, st->fill_lo, st->outline, st->fill);
         ui_text_wrap(lx + 4, y + h - 21 + (ui_text_wrap(0, 0, lw - 8, d, 0, 0) > 1 ? 0 : 4), lw - 8, d, c, 1);
     }
+    if (held) ui_shade_clip_off();
 }
 
 static void island_draw(void)
@@ -1010,6 +1034,19 @@ static void island_draw(void)
     FpLocDraw ld[FP_LOC_MAX];
     int i, sw = fp_sw(), sh = fp_sh(), style = WIN_CUTE;
     isl_ready();
+    /* (perf) a held menu backdrop: nothing but the window moves, so the island is not drawn at all. Anything
+     * else on screen (a toast, a dialogue or modal on top, a particle, the menu closing) or a platform that
+     * lost the hold gives it up and the frame is drawn in full, as before. */
+    if (I.hold) {
+        if (I.menu_open && I.live && !ui_toast_pending() && !ui_dialog_active() && !fp_fx_any() &&
+            plat_hold_frame(4)) {
+            I.live = 0;
+            draw_menu(1);
+            return;
+        }
+        hold_drop();
+    }
+    I.live = 0;
     for (i = 0; i < NLOCS; i++) {
         loc_screen(i, &ld[i].x, &ld[i].y);
         ld[i].kind = locs[i].kind;
@@ -1049,8 +1086,12 @@ static void island_draw(void)
         }
     }
     if (!I.menu_open) fp_ticker(sh - 13, style);
-    if (I.menu_open) draw_menu();
+    if (I.menu_open) draw_menu(0);
     fp_fx_draw();
+    /* a full frame with the menu fully popped, drawn on this tick and clean of overlays: the next update holds it */
+    if (I.menu_open && I.menu_t >= 12 && ui_pop_scale(I.menu_t) == 256 && !plat_draw_skipped() &&
+        !ui_toast_pending() && !ui_dialog_active() && !fp_fx_any())
+        I.hold_full = 1;
 }
 
 const DoomoScene SCENE_ISLAND = { "ISLAND", island_enter, NULL, island_update, island_draw, 0 };

@@ -121,6 +121,7 @@ void scene_set(const DoomoScene *s, int arg)
 void scene_push(const DoomoScene *s, int arg)
 {
     if (!s) return;
+    plat_hold_frame(0);                       /* a held frame (pause, island menu) ends when the stack changes */
     if (depth >= SCENE_STACK_MAX) {
         plat_log("scene: stack full, replacing top");
         call_leave(stack[depth - 1].s);
@@ -138,6 +139,7 @@ void scene_pop(void)
 {
     const DoomoScene *s;
     if (depth <= 0) return;
+    plat_hold_frame(0);                       /* ... and so does a pop: the scene below resumes on dirty pages */
     s = stack[depth - 1].s;
     depth--;
     log_scene("scene: pop ", s);
