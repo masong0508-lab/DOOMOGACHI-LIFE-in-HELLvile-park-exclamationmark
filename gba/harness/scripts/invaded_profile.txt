@@ -9,5 +9,5 @@ wait 200
 fps settle (ignore)
 wait 130
 fps invaded
-profile 12000000
+profile 48000000
 shot invaded

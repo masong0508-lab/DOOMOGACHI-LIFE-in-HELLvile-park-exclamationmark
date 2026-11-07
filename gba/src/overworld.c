@@ -503,7 +503,9 @@ static void gov_pick(const DoomoOverworldView *v, int n, uint32_t drop[4])
     /* adapt: shrink by 1/8 of what the last frame drew when it was over budget, grow by 1/8 when it had room */
     if (gov_budget == GOV_FREE)      budget = total - total / 8;
     else if (w > hi)                 budget = gov_kept - gov_kept / 8;
-    else if (w < lo)                 budget = gov_kept + gov_kept / 8 + 128;
+    else if (w < lo)                 budget = red ? gov_kept + gov_kept / 8 + 128
+                                                  : gov_budget + gov_budget / 8 + 128;   /* V14b: grow from the budget, not from
+                                                                           what whole buckets kept (it could stay stuck) */
     else                             budget = gov_budget;
     if (budget < GOV_MIN) budget = GOV_MIN;
     if (budget >= total) { gov_budget = GOV_FREE; gov_kept = total; return; }
