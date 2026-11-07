@@ -415,7 +415,7 @@ profile-studio: harness
 # functions that cost extra in the spike frames are named (the 50.8 ms tick was part_mask, not a chibi).
 # SUNG_GATE=--gate makes it fail when a tick is over the 50.2 ms line (3 vblanks) ---
 SUNG_LOG ?= $(BUILD)/sung.log
-SUNG_SLOW_MS ?= 45
+SUNG_SLOW_MS ?= 31
 SUNG_PROFILE_N ?= 95000000
 SUNG_GATE ?=
 profile-sung: harness
