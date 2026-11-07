@@ -138,10 +138,22 @@ static LList L_road = { lr_road_r, 160, 0, 0, -1 };     /* (I2) roads */
  * inside it (the GBA draws every 3rd tick, so about every second draw replays). Not pixel-exact against the old
  * ROM: these phases now move in steps of ANIM_Q ticks. */
 #define ANIM_Q 6
-static LRect lr_glint_r[64], lr_walk_r[80], lr_wx_r[100];
-static LList L_glint = { lr_glint_r, 64, 0, 0, -1 };
-static LList L_walk = { lr_walk_r, 80, 0, 0, -1 };
-static LList L_wx = { lr_wx_r, 100, 0, 0, -1 };
+/* PS1: its 2 MB RAM is full to the byte and a rect costs a prim there anyway, so the lists have no room (cap 0: every
+ * record overflows and the phase is drawn live, still on the 6-tick clock). Elsewhere: sized to the worst case
+ * (glints 18 x 2 rects, walkers 14 x 4, weather 40 x 1 or 16 x 2). */
+#if defined(DOOMO_PLATFORM_PS1)
+#define AL_GLINT 0
+#define AL_WALK  0
+#define AL_WX    0
+#else
+#define AL_GLINT 40
+#define AL_WALK  60
+#define AL_WX    48
+#endif
+static LRect lr_glint_r[AL_GLINT + 1], lr_walk_r[AL_WALK + 1], lr_wx_r[AL_WX + 1];
+static LList L_glint = { lr_glint_r, AL_GLINT, 0, 0, -1 };
+static LList L_walk = { lr_walk_r, AL_WALK, 0, 0, -1 };
+static LList L_wx = { lr_wx_r, AL_WX, 0, 0, -1 };
 static int g_q;                              /* g_t rounded down to a multiple of ANIM_Q */
 static int g_wx;                             /* the weather being drawn (body of L_wx) */
 static int g_walk_n;                         /* the walker count (body of L_walk) */
