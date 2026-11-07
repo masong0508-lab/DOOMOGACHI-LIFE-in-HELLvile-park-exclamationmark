@@ -65,3 +65,33 @@ Ablating on the real GBA ROM showed the wall's lit hearts (~4.4 ms) and the spot
 | part 1 + 2 | **47.0** | **52.9** | **2 of 184** | **29.9** |
 
 Exactness: 34 PERFORM shots at 240x160 and 320x240 byte-identical (default build, and with every GBA path forced on natively: `-DDOOMO_STUDIO_RECT_HEART -DDOOMO_STUDIO_RECT_NOTE -DDOOMO_STUDIO_SPOT_RUNS -DDOOMO_STUDIO_RECT_ELL`); the hidden-LED skip was checked to be sensitive (a wider skip breaks all 34). `make -C core test` green. Not measured: the intro window, PS1.
+
+## Part 3 (nov07j): what is left after part 2, measured (no code change)
+
+State after part 2: sung phase **47.0 ms** median, logic 29.9 ticks/s (tempo restored), about 20 drawn fps. **30 fps needs < 33.3 ms: another -14 ms.** Nothing exact and cheap is left that is worth that much; this is what was measured so nobody repeats it.
+
+Ablation on the GBA harness (the same 330-tick sung window, medians, switching one thing off from the 47.0 ms tree):
+
+| switched off | median | saved |
+|---|---|---|
+| the 25 choir chibis (`st_chibi`) | 33.3 | **13.7** |
+| the 12 crowd silhouettes (`IMG_SILHOUETTE` blits) | 39.0 | **8.0** |
+| crowd glowsticks + floating hearts | 46.5 | 0.5 |
+| wall dots (all unlit LEDs, 3 rects each) | 44.2 | 2.8 |
+| per-call `bodyspr_image` lookups of the choir (pointer reused; **ablation only, not exact in general**) | 43.6 | 3.4 |
+| karaoke shade | 54.2 vs 56.1 at part 1 | ~2 |
+
+So the 37 chibi images a frame (choir 25, crowd 12, conductor) cost about 22 ms: **~0.6 ms each**, of which the 16x24 blit (192 pixel pairs, ~26 cycles a pair in `vid_blit`, source in EWRAM, 16-bit bus) is about 0.3 ms and the cache lookup about 0.14 ms.
+
+Tried and **rejected** (all on the real ROM, all exact, all slower):
+* Branch-free pair merge in `vid_blit` (mask + read-modify-write of every pair): **56.8 ms**, +10. Reading VRAM stalls on the PPU; the original loop stores an opaque pair without reading it.
+* Opaque-first test with a shared silhouette / picture loop: 49.2 ms, +2 (the extra ops cost more than the removed branches).
+* Two pairs a round with a "no zero byte" test and an out-of-line edge pair: 51.7 ms, +4.7.
+* **IWRAM has 0 bytes of slack:** the original `vid_blit` (0x4c4 B) fills it exactly, any larger version fails the `IWRAM overflow` link assert. A faster blit has to be the same size or smaller (hand-written ARM that replaces the C loops is the way to try again).
+* F1 (karaoke bar as a retained panel): not possible exactly, see part 2.
+
+What would actually reach 30 fps (each is a decision, none is built):
+1. **Chibis as hardware OBJs** (choir + crowd, ~22 ms -> a few): the engine already has figure OBJs (`plat_figure_obj`, `ow_obj.c`). OBJ VRAM in bitmap mode is only 16 KB (about 16 chibis at 16x32 8bpp) and OBJs always sit above the bitmap, so the follow spot, the curtains and the karaoke bar (drawn after the chibis today) would need OBJ-priority / window tricks. Needs an owner decision on 4bpp chibis (a visual change) or fewer simultaneous OBJs.
+2. **Hand-written ARM `vid_blit` core** for the scale-1, aligned and odd cases, same size as today: maybe -3..-5 ms; exact.
+3. **Stage-level image memo** for the choir / crowd (skip `bodyspr_image` per frame, -3 ms): needs a portrait-cache epoch plus a look-change signal to stay exact; ~1 day of care.
+4. Not exact, ask first: draw the crowd / wall at half rate, or fewer silhouettes (8.0 ms for 12).
