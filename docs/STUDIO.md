@@ -8,6 +8,8 @@ and a choir of up to **25 citizens** who sing it on stage. Every song uses one
 shared format, `DoomoSong` (`core/include/doomo/song.h`), and one shared
 player, so the Concert Hall's generated songs and your own are the same thing.
 
+Planned work (fps, functionality, fun): [MUSIC_STUDIO_ROADMAP.md](MUSIC_STUDIO_ROADMAP.md).
+
 | File | What |
 |---|---|
 | `core/include/doomo/song.h` | the contract: `DoomoSong`, the player API, the song book |
