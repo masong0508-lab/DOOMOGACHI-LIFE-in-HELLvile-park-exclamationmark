@@ -123,10 +123,30 @@ static int hidden(int x, int y, int w, int h)
            y + h <= g_occ_y1;
 }
 
+/* (perf, docs/ISLAND_SPEED.md I1) The land (cliff, meadow, plum ground, shores, river and Wall) depends only on
+ * the map size and the tint: its rects and checkers are recorded once and replayed in the same order (same
+ * pixels, minus the geometry maths and divisions of ~530 rects a frame). */
+#define LR_MAX 640
+typedef struct { int16_t x, y; uint8_t w, h, c, ck; } LRect;
+static LRect lr_list[LR_MAX];
+static int lr_n, lr_rec, lr_over;
+static int32_t lr_key = -1;
+static void lr_add(int x, int y, int w, int h, uint8_t c, int ck)
+{
+    if (lr_n < LR_MAX && w > 0 && h > 0 && w < 256 && h < 256) {
+        LRect *r = &lr_list[lr_n++];
+        r->x = (int16_t)x; r->y = (int16_t)y; r->w = (uint8_t)w; r->h = (uint8_t)h; r->c = c; r->ck = (uint8_t)ck;
+    } else lr_over = 1;
+}
+
 static void put(int x, int y, int w, int h, uint8_t c)
 {
     int j;
-    if (!g_off) { if (!hidden(x, y, w, h)) plat_rect(x, y, w, h, c); return; }
+    if (!g_off) {
+        if (lr_rec) lr_add(x, y, w, h, c, 0);
+        if (!hidden(x, y, w, h)) plat_rect(x, y, w, h, c);
+        return;
+    }
     if (g_off == G_MEASURE) {
         g_bx0 = DOOMO_MIN(g_bx0, x); g_by0 = DOOMO_MIN(g_by0, y);
         g_bx1 = DOOMO_MAX(g_bx1, x + w); g_by1 = DOOMO_MAX(g_by1, y + h);
@@ -153,6 +173,7 @@ static void E(int cx, int cy, int rx, int ry, uint8_t c)
 }
 static void CK(int x, int y, int w, int h, uint8_t c)
 {
+    if (!g_off && lr_rec) lr_add(x, y, w, h, c, 1);
     if (!hidden(x, y, w, h)) plat_checker(x, y, w, h, c);
 }
 
@@ -345,9 +366,31 @@ static void vm_flush_all(void)
     for (i = 0; i < VM_SLOTS; i++) vm_flush(i);
 }
 
+static void draw_land_tail(void);
+static void draw_land_body(void);
 static void draw_land(void)
 {
-    int row, t = g_t, run0 = -1;
+    int32_t key = (int32_t)(M.w | (M.h << 10) | (g_tint << 20));
+    if (key == lr_key && !lr_over && !g_off) {
+        int i;
+        for (i = 0; i < lr_n; i++) {
+            const LRect *r = &lr_list[i];
+            if (hidden(r->x, r->y, r->w, r->h)) continue;
+            if (r->ck) plat_checker(r->x, r->y, r->w, r->h, r->c);
+            else plat_rect(r->x, r->y, r->w, r->h, r->c);
+        }
+    } else if (!g_off) {
+        lr_n = 0; lr_over = 0; lr_rec = 1;
+        draw_land_body();
+        lr_rec = 0;
+        lr_key = lr_over ? -1 : key;
+    } else draw_land_body();
+    draw_land_tail();
+}
+
+static void draw_land_body(void)
+{
+    int row, run0 = -1;
     /* the cliff under the south rim: the land drawn 3 rows lower first;
      * only the slivers the land does not cover are drawn */
     for (row = 0; row < M.h; row++) {
@@ -408,6 +451,12 @@ static void draw_land(void)
     }
     vm_flush_all();
     if (run0 >= 0) draw_river_run(run0, M.h);
+}
+
+/* the parts that move with time (foam, shimmer) and the cheap seams stay live */
+static void draw_land_tail(void)
+{
+    int row, t = g_t;
     /* foam laps at the shore and a shimmer drifts down the river */
     for (row = (9 - (t / 6) % 9) % 9; row < M.h; row += 9) {
         int k;
