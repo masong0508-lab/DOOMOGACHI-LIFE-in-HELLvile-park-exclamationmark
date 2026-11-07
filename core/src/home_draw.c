@@ -2348,6 +2348,15 @@ static void draw_fitting_preview(int furn, int px, int py, int pw, int ph, uint8
                         px, py, pw, ph, cache, cap);
 }
 
+/* The Score window's box. draw_menu draws it and home_draw names it to the room renderer, from this one place. */
+static void score_box(int sw, int sh, int *x, int *y, int *w, int *h)
+{
+    *w = sw >= 300 ? 230 : 196;
+    *h = sh >= 200 ? 170 : 128;
+    *x = (sw - *w) / 2;
+    *y = (sh - *h) / 2;
+}
+
 static void draw_menu(uint8_t *cache, uint32_t cap)
 {
     int sw = plat_screen_w(), sh = plat_screen_h(), rows = sh >= 200 ? 9 : 6;
@@ -2360,9 +2369,8 @@ static void draw_menu(uint8_t *cache, uint32_t cap)
         return;
     }
     if (H->menu == HMN_SCORE) {
-        int i, x, y, w = sw >= 300 ? 230 : 196, h = sh >= 200 ? 170 : 128, a = H->sc_age, ry;
-        x = (sw - w) / 2;
-        y = (sh - h) / 2;
+        int i, x, y, w, h, a = H->sc_age, ry;
+        score_box(sw, sh, &x, &y, &w, &h);
         if (!ui_window_pop(x, y, w, h, WIN_CUTE, (int)H->t)) return;
         rescore();
         ui_text(x + 8, y + 6, home_room_defs[H->room].name, st->text);
@@ -2722,6 +2730,15 @@ static void home_draw(void)
     cap = DOOMO_SCENE_SCRATCH > used ? DOOMO_SCENE_SCRATCH - used : 0;
     build_view(&v, cache, cap);
     build_actors(&v);
+    /* (C7.3, GBA speed) the Score window is opaque and drawn whole every tick: name its body to the room renderer
+     * BEFORE plat_room so it neither checks nor restores the room under it (a static window cost 51 ms a tick).
+     * The rect is inset by the corner radius (4); the condition is ui_window_pop's "fully popped". The host and
+     * the PS1 stub the call; gba/src/room.c uses it. test_home_score_opaque.c holds the registration. */
+    if (H->menu == HMN_SCORE && ui_pop_scale((int)H->t) == 256) {
+        int bx, by, bw, bh;
+        score_box(sw, sh, &bx, &by, &bw, &bh);
+        plat_room_ui_opaque(bx + 4, by + 4, bw - 8, bh - 8);
+    }
     plat_room(&v);
     if (plat_draw_skipped()) { camfx_apply(); return; }
     draw_effects();
