@@ -497,6 +497,23 @@ static void layout_icon(int x, int y, int layout, uint8_t c)
     }
 }
 
+/* The section badge's rounded body: the same rects as before, drawn straight or, on the GBA, as one small baked image
+ * (st_bake, studio.c). A whole singer's tile is NOT baked: on the GBA a 23 x 28 opaque blit costs more than the
+ * tile's 7 rect fills (measured: +4.3 ms for 25 tiles). */
+
+static void badge_shape(int x, int y, const int *a)
+{
+    ui_round_rect(x, y, 7, 8, 2, (uint8_t)a[0]);
+}
+
+static void badge_draw(int x, int y, uint8_t fill)
+{
+    int a[1];
+    a[0] = fill;
+    if (st_bake(0x31u, fill, x, y, badge_shape, a, 64)) return;
+    badge_shape(x, y, a);
+}
+
 void tab_choir_draw(StRect r)
 {
     const UiStyle *st = ui_style(WIN_CREAM);
@@ -522,7 +539,7 @@ void tab_choir_draw(StRect r)
             if (sel) ui_frame(x - 1, y - 1, tw + 2, th + 2, PAL_PAINT(PAINT_ROSE, 0));
             st_chibi(id, x + (tw - BODYSPR_W) / 2, y + th - BODYSPR_H - 1 - bop, 0,
                      sel ? (int)(studio.t / 8) & 3 : 0, 0, 0);
-            ui_round_rect(x + tw - 8, y + 1, 7, 8, 2, PAL_PAINT(section_paint[sec], 0));
+            badge_draw(x + tw - 8, y + 1, PAL_PAINT(section_paint[sec], 0));
             ui_text(x + tw - 7, y + 1, sl, PAL_WHITE);
         } else {
             ui_round_rect(x, y, tw, th, 4, st->fill_hi);

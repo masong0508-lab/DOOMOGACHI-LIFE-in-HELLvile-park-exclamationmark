@@ -560,25 +560,15 @@ static void tab_icon(int tab, int cx, int cy, uint8_t c)
  * then on drawn with one plat_image. On the GBA a plat_rect call costs ~25 us whatever its size, a small blit a
  * tenth of that. Index 0 is transparent in an image and no UI shape is painted with it, so the picture is the same
  * pixel for pixel. The images live in the shared scene scratch (re-claimed and rebuilt when another scene took it). */
-#if defined(DOOMO_PLATFORM_GBA) || defined(DOOMO_STUDIO_BAKE)
-#define ST_BAKE 1
-#else
-#define ST_BAKE 0
-#endif
-
-#if ST_BAKE
-void ur_rect(int x, int y, int w, int h, uint8_t c);     /* ui_raster.c: plat_rect, or the offscreen target while baking */
-#define TP_RECT ur_rect
-#else
-#define TP_RECT plat_rect
-#endif
+#define TP_RECT ST_RECT
 
 #if ST_BAKE
 #define BAKE_TAG   0x53424B45u          /* 'SBKE' */
-#define BAKE_ENTS  20
-#define BAKE_POOL  5632
+#define BAKE_ENTS  40
+#define BAKE_POOL  10752                /* BakeSt is the whole 12 KB scene scratch (CHOIR's tiles are ~750 B each) */
 typedef struct { uint32_t k0, k1; DoomoImage img; int16_t bx, by; } BakeEnt;
 typedef struct { uint16_t top, n; BakeEnt e[BAKE_ENTS]; uint8_t pix[BAKE_POOL]; } BakeSt;
+DOOMO_STATIC_ASSERT(sizeof(BakeSt) <= DOOMO_SCENE_SCRATCH, studio_bake_fits_scratch);
 static BakeSt *bake_st;
 
 static BakeSt *bake_get(void)
@@ -589,11 +579,11 @@ static BakeSt *bake_get(void)
     return bake_st;
 }
 
-typedef void (*BakeFn)(int x, int y, const int *a);
+typedef StBakeFn BakeFn;
 
-/* Draws fn(x, y, a) as one image; returns 0 (nothing drawn) when it cannot be baked, and the caller draws the rects.
- * k0 / k1 name the shape (kind, size, colours): equal keys must mean equal pixels. */
-static int bake_draw(uint32_t k0, uint32_t k1, int x, int y, BakeFn fn, const int *a)
+/* Draws fn(x, y, a) as one image of at most maxpix pixels; returns 0 (nothing drawn) when it cannot be baked, and the
+ * caller draws the rects. k0 / k1 name the shape (kind, size, colours): equal keys must mean equal pixels. */
+int st_bake(uint32_t k0, uint32_t k1, int x, int y, StBakeFn fn, const int *a, int maxpix)
 {
     BakeSt *b = bake_get();
     BakeEnt *e;
@@ -609,7 +599,7 @@ static int bake_draw(uint32_t k0, uint32_t k1, int x, int y, BakeFn fn, const in
     fn(0, 0, a);
     if (!ui_raster_bounds(&x0, &y0, &x1, &y1)) { ui_raster_target_off(); return 0; }
     w = x1 - x0; h = y1 - y0;
-    if (w <= 0 || h <= 0 || w * h > 1024) { ui_raster_target_off(); return 0; }
+    if (w <= 0 || h <= 0 || w * h > maxpix) { ui_raster_target_off(); return 0; }
     if (b->n >= BAKE_ENTS || b->top + ((w * h + 3) & ~3) > BAKE_POOL) { b->n = 0; b->top = 0; }
     e = &b->e[b->n++];
     e->k0 = k0; e->k1 = k1;
@@ -624,6 +614,17 @@ static int bake_draw(uint32_t k0, uint32_t k1, int x, int y, BakeFn fn, const in
     b->top = (uint16_t)(b->top + ((w * h + 3) & ~3));
     plat_image(x + e->bx, y + e->by, &e->img, 1, 0, 0);
     return 1;
+}
+
+static int bake_draw(uint32_t k0, uint32_t k1, int x, int y, BakeFn fn, const int *a)
+{
+    return st_bake(k0, k1, x, y, fn, a, 1024);
+}
+#else
+int st_bake(uint32_t k0, uint32_t k1, int x, int y, StBakeFn fn, const int *a, int maxpix)
+{
+    (void)k0; (void)k1; (void)x; (void)y; (void)fn; (void)a; (void)maxpix;
+    return 0;
 }
 #endif
 
