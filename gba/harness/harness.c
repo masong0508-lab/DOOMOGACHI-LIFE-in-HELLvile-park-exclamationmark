@@ -441,6 +441,13 @@ static int sym_cmp_hits(const void *a, const void *b)
     return x->hits < y->hits ? 1 : x->hits > y->hits ? -1 : 0;
 }
 
+/* --worklog also makes `profile` split its samples into the frames whose CPU work went over the
+ * 33.3 ms of a 30 fps frame ("slow") and the rest, and print which functions cost MORE in the slow
+ * ones: the spike frames are not in the plain top list, they are a few percent of it. */
+#define SLOW_MS 33.3
+static uint32_t *fr_hits;          /* cycles per symbol in the frame being sampled */
+static uint64_t *slow_h, *fast_h;  /* cycles per symbol summed over slow / normal frames */
+
 static uint32_t *pc_hist;          /* per-PC samples inside `focus` */
 static uint32_t focus_lo, focus_hi;
 
@@ -450,6 +457,8 @@ static void profile(uint32_t steps, const char *focus)
     struct mTiming *timing = &((struct GBA *)core->board)->timing;
     uint32_t i;
     uint64_t total = 0, unknown = 0;
+    uint32_t wws0 = 0, wwn0 = 0, nslow = 0, nfast = 0, nlist = 0;
+    double worst = 0;
     int k;
     focus_lo = focus_hi = 0;
     if (focus) {
@@ -462,6 +471,14 @@ static void profile(uint32_t steps, const char *focus)
         pc_hist = calloc((focus_hi - focus_lo) / 2 + 1, sizeof(uint32_t));
     }
     for (k = 0; k < nsyms; k++) syms[k].hits = 0;
+    if (worklog && nsyms) {
+        free(fr_hits); free(slow_h); free(fast_h);
+        fr_hits = calloc((size_t)nsyms, sizeof(uint32_t));
+        slow_h = calloc((size_t)nsyms, sizeof(uint64_t));
+        fast_h = calloc((size_t)nsyms, sizeof(uint64_t));
+        wws0 = core->busRead32(core, MAILBOX_ADDR + 32);
+        wwn0 = core->busRead32(core, MAILBOX_ADDR + 36);
+    }
     core->setKeys(core, keys);
     for (i = 0; i < steps; i++) {
         /* mGBA: gprs[15] is the executing instruction + 4 (ARM) / + 2 (THUMB)
@@ -479,9 +496,30 @@ static void profile(uint32_t steps, const char *focus)
             if (syms[mid].addr <= pc) { best = mid; lo = mid + 1; }
             else hi = mid - 1;
         }
-        if (best >= 0 && pc - syms[best].addr < 0x10000) syms[best].hits += (uint64_t)dt;
-        else unknown += (uint64_t)dt;
+        if (best >= 0 && pc - syms[best].addr < 0x10000) {
+            syms[best].hits += (uint64_t)dt;
+            if (fr_hits) fr_hits[best] += (uint32_t)dt;
+        } else unknown += (uint64_t)dt;
         total += (uint64_t)dt;
+        if (fr_hits && (i & 31) == 0) {
+            uint32_t wn = core->busRead32(core, MAILBOX_ADDR + 36);
+            if (wn != wwn0) {              /* a drawn frame ended: its work, and its samples */
+                uint32_t ws = core->busRead32(core, MAILBOX_ADDR + 32);
+                double ms = (ws - wws0) / 16777.216;
+                int slow = ms > SLOW_MS;
+                if (slow) {
+                    nslow++;
+                    if (ms > worst) worst = ms;
+                    if (nlist++ < 40) printf("harness: slow frame tick %u work %.1f ms\n", (unsigned)ticks(), ms);
+                } else nfast++;
+                for (k = 0; k < nsyms; k++) {
+                    if (slow) slow_h[k] += fr_hits[k]; else fast_h[k] += fr_hits[k];
+                    fr_hits[k] = 0;
+                }
+                wws0 = ws;
+                wwn0 = wn;
+            }
+        }
     }
     {
         Sym *copy = malloc(sizeof(Sym) * (size_t)(nsyms ? nsyms : 1));
@@ -494,6 +532,31 @@ static void profile(uint32_t steps, const char *focus)
             printf("harness:   %5.1f%%  %s\n", 100.0 * copy[k].hits / (total ? total : 1),
                    copy[k].name);
         free(copy);
+    }
+    if (fr_hits) {
+        /* per symbol: ms per slow frame minus ms per normal frame, biggest first */
+        int r, top[12] = {0}, nt = 0;
+        printf("harness: slow frames: %u of %u over %.1f ms (worst %.1f ms)\n", nslow, nslow + nfast, SLOW_MS, worst);
+        if (nslow && nfast) {
+            for (k = 0; k < nsyms; k++) {
+                double d = slow_h[k] / (double)nslow - fast_h[k] / (double)nfast;
+                if (d <= 0) continue;
+                for (r = 0; r < nt && r < 12; r++)
+                    if (d > slow_h[top[r]] / (double)nslow - fast_h[top[r]] / (double)nfast) break;
+                if (r < 12) {
+                    int q;
+                    for (q = (nt < 12 ? nt : 11); q > r; q--) top[q] = top[q - 1];
+                    top[r] = k;
+                    if (nt < 12) nt++;
+                }
+            }
+            for (r = 0; r < nt; r++) {
+                k = top[r];
+                printf("harness: slow+ %6.2f ms/frame  %s (slow frame %.2f ms, normal frame %.2f ms)\n",
+                       (slow_h[k] / (double)nslow - fast_h[k] / (double)nfast) / 16777.216, syms[k].name,
+                       slow_h[k] / (double)nslow / 16777.216, fast_h[k] / (double)nfast / 16777.216);
+            }
+        }
     }
     if (pc_hist && focus_hi > focus_lo) {
         /* hottest instructions of the focus function (cycles) */

@@ -205,6 +205,20 @@ jobs:
             make -C gba profile-all 2>&1 | grep -E '^\| |^profile-all|rror' || echo '(profile-all produced no table)'
           } 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
 
+      # The over-budget frames of the invaded map (V13: 35.8 ms max against 33.3): which functions cost
+      # MORE in a slow frame than in a normal one, and at which ticks they come ("slow frame tick ...").
+      - name: Profile invaded worst frames
+        if: always()
+        continue-on-error: true
+        run: |
+          {
+            echo
+            echo '## Invaded: what the over-budget frames spend extra time in'
+            echo '```'
+            make -C gba profile-invaded 2>&1 | grep -E 'harness: (fps invaded|slow|profile of|  +[0-9])|rror' || echo '(profile-invaded produced no output)'
+            echo '```'
+          } 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
+
       - name: Upload speed report
         if: always()
         continue-on-error: true
@@ -215,6 +229,7 @@ jobs:
             gba/build/speed_tour.log
             gba/build/title_profile.log
             gba/build/profile_all.log
+            gba/build/invaded_profile.log
             gba/build/shots/speed/
             gba/build/shots/title/
           if-no-files-found: ignore
