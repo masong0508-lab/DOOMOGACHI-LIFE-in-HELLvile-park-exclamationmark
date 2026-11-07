@@ -301,3 +301,5 @@ hint bar ~14 ms of every tab; the 25 CHOIR chibis ~14 ms (CHOIR without them 36.
 The concert module currently does 1, 3 and 4 (`concert_song_export`,
 `edit_in_studio`, `concert_stage_song`), and plays studio songs through the
 shared player.
+
+**Option A (2026-11-07, nov07m, exact):** `vid_blit` in ARM for scale 1 without flip (`video_loops.s`; the rest is `vid_blit_c`). Same script (`studio_profile.txt`): CHOIR **46.5 -> 42.3 ms** (19.9 fps, 30.1 ticks/s), PERFORM intro windows **42.5 / 42.3 -> 36.0 / 35.9 ms**, every editor tab within +-0.1 ms. Sung PERFORM (`studio_sung.txt`): median 47.0 -> 40.5 ms. Details and the exactness checks: `docs/STUDIO_30FPS_PLAN.md` section 7.

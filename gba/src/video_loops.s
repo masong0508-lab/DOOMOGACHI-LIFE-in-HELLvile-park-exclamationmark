@@ -379,3 +379,155 @@ r3d_up2:
 9:  pop     {r4-r8, lr}
     bx      lr
     .size   r3d_up2, . - r3d_up2
+
+@ BLIT_TAIL loop: the pair v (r3) is in hand, p r1, end r2. Zero: skip. Both
+@ pixels set: one halfword store (post-incremented). One pixel: the only read
+@ -modify-write. Falls to .Lbl_mdone at the end of the row.
+    .macro BLIT_TAIL L
+    cmp     r3, #0
+    beq     8f
+    tst     r3, #0xFF00
+    tstne   r3, #0xFF
+    strneh  r3, [r1], #2
+    cmpne   r1, r2
+    bne     \L
+    cmp     r1, r2
+    beq     .Lbl_mdone
+    tst     r3, #0xFF
+    ldrh    r4, [r1]
+    andne   r4, r4, #0xFF00
+    andeq   r4, r4, #0xFF
+    orr     r4, r4, r3
+    strh    r4, [r1]
+8:  add     r1, r1, #2
+    cmp     r1, r2
+    bne     \L
+    b       .Lbl_mdone
+    .endm
+
+@ ---------------------------------------------------------------------------
+@ void vid_blit(int x, int y, const DoomoImage *img, int scale, int flags, uint32_t color)
+@ The common case (scale 1, no flip: cached chibis, building sprites, shape
+@ images) in ARM; anything scaled or flipped goes on to vid_blit_c (video.iwram.c).
+@ Exactly the pixels the C loop wrote (docs/STUDIO_30FPS_PLAN.md, option A):
+@ pairs are walked in VRAM halfwords; an opaque pair is stored with no VRAM
+@ read, a transparent pair is skipped, an edge pair is the only read-modify-
+@ write. Silhouettes use the same tail. Register map:
+@   r0 s (source)   r1 p (VRAM)   r2 end of the middle pairs   r3 pair v
+@   r4 scratch   r5 prev pixel / scratch   r6 rows left   r7 image w
+@   r8 source base (pix + (yy - y) * w - x)   r9 VRAM row base (+ yy * 240)
+@   r10 colour   r11 x0   r12 x1 (clipped)   lr silhouette flag
+@ A pixel at screen X is at r8 + X in the source and r9 + X in VRAM.
+    .section .iwram, "ax", %progbits
+    .arm
+    .align 2
+    .global vid_blit
+    .type   vid_blit, %function
+vid_blit:
+    ldr     r12, [sp]                   @ flags
+    cmp     r3, #1
+    tsteq   r12, #1                     @ IMG_FLIPX
+    bne     vid_blit_c                  @ scaled or flipped: the C path
+    stmfd   sp!, {r4-r11, lr}
+    ldrh    r7, [r2]                    @ w
+    ldrh    r6, [r2, #2]                @ h
+    ldr     r8, [r2, #4]                @ pix
+    ldr     lr, [sp, #36]               @ flags
+    ldr     r10, [sp, #40]              @ colour
+    and     lr, lr, #4                  @ IMG_SILHOUETTE
+    add     r4, r0, r7
+    cmp     r4, #240
+    movgt   r4, #240                    @ x1
+    bic     r5, r0, r0, asr #31         @ x0
+    cmp     r5, r4
+    bge     .Lbl_done
+    add     r9, r1, r6
+    cmp     r9, #160
+    movgt   r9, #160                    @ y1
+    bic     r3, r1, r1, asr #31         @ y0
+    cmp     r3, r9
+    bge     .Lbl_done
+    sub     r6, r9, r3                  @ rows
+    rsb     r9, r3, r3, lsl #4          @ 15 * y0
+    sub     r3, r3, r1                  @ y0 - y
+    mul     r12, r3, r7
+    add     r8, r8, r12
+    sub     r8, r8, r0                  @ source base
+    ldr     r12, =gba_back
+    ldr     r12, [r12]
+    add     r9, r12, r9, lsl #4         @ VRAM row base (240 * y0)
+    mov     r11, r5                     @ x0
+    mov     r12, r4                     @ x1
+.Lbl_row:
+    tst     r11, #1                     @ odd x0: only the right pixel of its pair
+    beq     .Lbl_nolead
+    ldrb    r5, [r8, r11]
+    cmp     r5, #0
+    beq     .Lbl_nolead
+    cmp     lr, #0
+    movne   r5, r10
+    add     r4, r9, r11
+    sub     r4, r4, #1
+    ldrh    r3, [r4]
+    and     r3, r3, #0xFF
+    orr     r3, r3, r5, lsl #8
+    strh    r3, [r4]
+.Lbl_nolead:
+    add     r0, r11, #1
+    bic     r0, r0, #1                  @ first whole pair
+    bic     r2, r12, #1                 @ end of the whole pairs
+    add     r1, r9, r0
+    add     r2, r9, r2
+    add     r0, r8, r0
+    cmp     r1, r2
+    bhs     .Lbl_mdone
+    cmp     lr, #0
+    bne     .Lbl_sil
+    tst     r0, #1
+    bne     .Lbl_odd
+.Lbl_al:                                @ aligned source: a halfword a pair
+    ldrh    r3, [r0], #2
+    BLIT_TAIL .Lbl_al
+.Lbl_odd:                               @ odd source: aligned halfwords, each pair is
+    sub     r0, r0, #1                  @ the high byte of one and the low byte of the next
+    ldrh    r5, [r0], #2
+    mov     r5, r5, lsr #8
+.Lbl_od:
+    ldrh    r4, [r0], #2
+    and     r3, r4, #0xFF
+    orr     r3, r5, r3, lsl #8
+    mov     r5, r4, lsr #8
+    BLIT_TAIL .Lbl_od
+.Lbl_sil:                               @ silhouette: opaque pixels become the colour
+    ldrb    r3, [r0], #1
+    ldrb    r4, [r0], #1
+    cmp     r3, #0
+    movne   r3, r10
+    cmp     r4, #0
+    movne   r4, r10, lsl #8
+    orr     r3, r3, r4
+    BLIT_TAIL .Lbl_sil
+.Lbl_mdone:
+    tst     r12, #1                     @ odd x1: only the left pixel of its pair
+    beq     .Lbl_nodrow
+    sub     r4, r12, #1
+    ldrb    r5, [r8, r4]
+    cmp     r5, #0
+    beq     .Lbl_nodrow
+    cmp     lr, #0
+    movne   r5, r10
+    add     r4, r9, r4
+    ldrh    r3, [r4]
+    and     r3, r3, #0xFF00
+    orr     r3, r3, r5
+    strh    r3, [r4]
+.Lbl_nodrow:
+    add     r8, r8, r7
+    add     r9, r9, #240
+    subs    r6, r6, #1
+    bne     .Lbl_row
+.Lbl_done:
+    ldmfd   sp!, {r4-r11, lr}
+    bx      lr
+    .ltorg
+    .size   vid_blit, . - vid_blit

@@ -1,7 +1,7 @@
 # PERFORM at 30 fps: the options being worked on (GBA)
 
 Written 2026-11-07 (nov07k). Follows `docs/STUDIO_PERFORM_FIXES.md` (parts 1-3) and `docs/MUSIC_STUDIO_ROADMAP.md` (MS-P4).
-**Nothing in this file is built.** Every number is from the GBA harness (`gba/harness/scripts/studio_sung.txt`, 330 ticks after the first sung line).
+**Option A (the ARM `vid_blit`) is built (nov07m, section 7); B and C are not.** Every number is from the GBA harness (`gba/harness/scripts/studio_sung.txt`, 330 ticks after the first sung line).
 
 ## 1. Where we are and what 30 fps means
 
@@ -9,6 +9,7 @@ Written 2026-11-07 (nov07k). Follows `docs/STUDIO_PERFORM_FIXES.md` (parts 1-3) 
 |---|---|---|---|
 | nov07g (start) | 57.7 ms | 25.5 | ~14 |
 | after parts 1-2 (now) | **47.0 ms** | **29.9** | ~20 |
+| after option A (nov07m) | **40.5 ms** | 30.0 | ~20 (worst 46.4, 0 ticks over 50.2) |
 | goal | **< 33.3 ms** | >= 29.5 | 30 |
 
 The GBA draws a tick in 1, 2, 3 or 4 vblanks (16.7 ms each): under 33.4 ms is 30 fps, under 50.2 ms is 20 fps. **The gap is -14 ms.**
@@ -29,7 +30,7 @@ The 37 chibi images a frame (25 + 12 + the conductor) are the only group big eno
 ## 2. The rules that decide what is allowed
 
 1. **The screen must not change** (the owner's rule for this work): every change is checked pixel for pixel (section 6). A change that cannot be exact is *listed here, not built*, until the owner agrees.
-2. **IWRAM has 0 bytes of slack.** The current `vid_blit` (0x4c4 bytes) fills it exactly: any change to resident code must not grow it (the linker fails with `IWRAM overflow`). EWRAM has about 20 KB free (`tools/ram_ledger.sh`).
+2. **IWRAM has little slack.** The old all-C `vid_blit` (0x4c4 bytes) filled it exactly; since nov07m `vid_blit` is 0x25c (ARM, scale 1 without flip) + `vid_blit_c` 0x240 (the rest) = 0x49c, **96 B of real slack** (`__iwram_stack_limit - __iwram_bss_end`). Resident code must not grow past it (the linker fails with `IWRAM overflow`). EWRAM has about 20 KB free (`tools/ram_ledger.sh`).
 3. **VRAM reads stall the CPU** while the PPU draws: an opaque pair must be stored without reading VRAM. Three C rewrites of `vid_blit` that ignored or diluted this were *slower* (+2, +4.7, +10 ms, see `STUDIO_PERFORM_FIXES.md` part 3).
 4. One patch zip per part, each measured on the ROM and reverted if it does not win.
 
@@ -67,7 +68,7 @@ The 37 chibi images a frame (25 + 12 + the conductor) are the only group big eno
 
 | part | what | cost to reach | expected result |
 |---|---|---|---|
-| A | ARM `vid_blit` core | -3..-5 ms | 47 -> ~42-44 |
+| A | ARM `vid_blit` core | -3..-5 ms | 47 -> ~42-44 (**landed nov07m: 47.0 -> 40.5**) |
 | B | stage image memo | -3..-5 ms | -> ~38-41 |
 | C0 | GBA harness exact-compare script (deterministic ticks, `cmp`) | 0 | needed before C |
 | C | choir OBJ hybrid | -8..-11 ms | -> ~28-33 (**goal reached only if all three land**) |
@@ -90,10 +91,23 @@ If A or B does not measure as predicted, C is still the lever; if C fails its co
 4. `make -C core test` green; `make -C gba` builds (no `IWRAM overflow`); `tools/ram_ledger.sh` for EWRAM; the other harness scripts (`speed_tour.txt`) show no regression.
 5. Report honestly in the commit message: the figures measured, and what was not measured (PS1, the intro window).
 
-## 7. Option A status (nov07l): attempted, not landed (no code change)
+## 7. Option A: landed (nov07m)
 
-Tried: `vid_blit` as an ARM stub in `video_loops.s` (scale 1, no flip -> new routine, else the C code renamed `vid_blit_c`). The routine walks each row as runs (transparent run / opaque run / one edge pair) with negative indexes from the span ends, predicated instructions (about 13 cycles an opaque pair, one branch, no VRAM read for opaque pairs), the same loops for silhouettes, odd-source rows rebuilt from two aligned halfwords, odd first / last pixels as separate steps.
+nov07l tried a first ARM `vid_blit` (four body copies, 944 B + the C fallback 576 B = 1,520 B, 300 B over the IWRAM gate) and stopped. nov07m is the second try, in the shape the nov07l notes planned.
 
-Result: it assembled and linked but **overflowed IWRAM**. Old `vid_blit` 1,220 B; new asm 944 B + `vid_blit_c` (scaled / flipped path, still C) 576 B = 1,520 B, about 300 B over the 0x4c4 gate (this tree has 56 B of real slack, `__iwram_stack_limit - __iwram_bss_end`). Not measured on the ROM.
+**What it is.** `vid_blit` is now ARM in `gba/src/video_loops.s` for scale 1 without flip (cached chibis, building sprites, shape images, silhouettes); anything scaled or flipped is one `b vid_blit_c` away (`video.iwram.c`, the old C with its scale-1 branch removed: 576 B). 604 B for the ARM routine, 1,180 B in all, **40 B under the old 1,220 B**. How it stays small: one shared tail (`BLIT_TAIL`) for all three bodies (aligned source, odd source, silhouette), each body only produces the pair `v`:
 
-Where the bytes go: four body copies (aligned / odd x normal / silhouette), about 150-180 B each. Plan for the next try: (1) share X / T / P between normal and silhouette (only the opaque-run store and the partial-pair colour differ), keeping two bodies (aligned, odd) with a small silhouette F loop each: about -230 B; (2) trim setup, lead / trail pixel code and per-row overhead (about -70 B); (3) then measure with `studio_sung.txt` (baseline on this tree: median 47.0 ms, worst 52.9, 2 ticks over 50.2) and add an in-ROM exactness test (`gba/enginetest/et_blittest.c`: new `vid_blit` vs a verbatim copy of the old C over random images, positions, clips, silhouette on / off, both pages compared; log `ET blittest ok`, expect-log in `enginetest.txt`). Facts: `plat_image` maps colour 0 to PAL_BLACK, so `vid_blit` only sees 1..255; silhouettes cost about 0.67 ms each today (the byte loop), more than a chibi, so they are worth as much as the chibis here. Toolchain for this: `apt install gcc-arm-none-eabi libnewlib-arm-none-eabi libmgba-dev` works in the chat sandbox.
+* a pair is `v` = two pixels in one halfword; `v == 0` is skipped; both bytes set is one `strh` with post-increment (no VRAM read); one byte set is the only read-modify-write; the end of the row is tested by comparing `p` with the end pointer, so an opaque pair costs about 12 instructions and one branch;
+* an odd source row reads aligned halfwords and builds each pair from the high byte of one and the low byte of the next (the C code's trick); a silhouette reads bytes and turns each set byte into the colour, then uses the same tail;
+* the odd first pixel and odd last pixel of a clipped row are done outside the loop, the same way the C code did.
+
+**Measured (GBA harness, libmgba, `studio_sung.txt`, 330 ticks after the first sung line):** median **47.0 -> 40.5 ms** (steady 47.2 -> 40.7), worst 52.9 -> 46.4, ticks over 50.2 ms 2 -> 0, logic 29.9 -> 30.0 ticks/s, drawn ~16.6 -> 20.1 fps. That is -6.5 ms, better than the -3..-5 estimate, because silhouettes (12 a frame) gained as much as chibis. Studio profile (`studio_profile.txt`): CHOIR 46.5 -> 42.3 ms, PERFORM intro windows 42.5 / 42.3 -> 36.0 / 35.9 ms. Speed tour: concert +7.9% fps (13.7 vs 12.7), combat +2..3%, island town hall menu +4.7%, every other scene within +-0.7%.
+
+**Exactness (three independent checks):**
+1. `gba/enginetest/et_blittest.c` (new, runs at engine-test boot, `ET blittest ok (6000 cases)`, expect-log in `enginetest.txt`): the new `vid_blit` against a verbatim copy of the old all-C one, 6,000 random images (widths 1-40, odd and even, 4 source alignments, 0-75% transparent), positions clipping on all four sides, scales 1-3, flip, silhouette, over a random background so the edge pairs' read-modify-write counts; both VRAM pages compared row by row after every call and in full at the end. A deliberately wrong variant (the trailing pixel's mask 0xFF00 -> 0xFE00) fails it at case 16: the check is sensitive.
+2. Speed tour with `--parity` against the old ROM: all 16 scenes, 30 frames each, identical output frames.
+3. `vhash-seq 150` over the sung PERFORM phase (ticks 1721-1870): sequence digest `40422a40` on both ROMs. (Plain harness `shot`s are *not* comparable here: the faster ROM lands the shot on another animation tick; see `MUSIC_STUDIO_ROADMAP.md`.)
+
+`make -C core test`: 873 passed, 0 failed. Not measured: PS1 (untouched by this change), a real GBA (libmgba timings only; VRAM stall behaviour on hardware may differ a little).
+
+**What is left to 33.3 ms:** -7.2 ms. Next in order: **B**, the stage image memo (-3..-5 ms), then C0 / C. Cheap extras for the blit itself, not done: unroll the opaque loop by two (saves about 4 cycles a pair), and test `v == 0` on a 32-bit load to skip two transparent pairs at once; each costs IWRAM bytes (96 B free).

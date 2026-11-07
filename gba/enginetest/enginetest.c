@@ -393,6 +393,7 @@ void enginetest_main(void)
     video_load_palette();
     gba_log("ENGINE TEST: boot");
     et_div_test();
+    et_blit_test();
     if (save_test) et_save_test();
     load_own_map();
     px = (int32_t)tour[0].x8 << 19;

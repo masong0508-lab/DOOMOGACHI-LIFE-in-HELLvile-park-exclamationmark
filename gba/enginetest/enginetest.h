@@ -14,5 +14,6 @@
 void et_build_map(DoomoMap *m);
 void et_save_test(void);
 void et_div_test(void);
+void et_blit_test(void);
 
 #endif

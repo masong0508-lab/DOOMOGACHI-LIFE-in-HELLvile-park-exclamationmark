@@ -148,8 +148,9 @@ void vid_text(int x, int y, const char *s, uint32_t color)
 
 /* images: 8bpp, index 0 transparent, integer scale 1..4, walked in VRAM
  * halfword pairs (opaque pairs are written without reading) */
+/* vid_blit (video_loops.s) takes scale 1 without flip itself; this is the rest */
 __attribute__((optimize("Os")))
-void vid_blit(int x, int y, const DoomoImage *img, int scale, int flags, uint32_t color)
+void vid_blit_c(int x, int y, const DoomoImage *img, int scale, int flags, uint32_t color)
 {
     const int w = img->w * scale, h = img->h * scale;
     const int flip = flags & IMG_FLIPX, sil = flags & IMG_SILHOUETTE;
@@ -163,64 +164,6 @@ void vid_blit(int x, int y, const DoomoImage *img, int scale, int flags, uint32_
     if (x0 >= x1 || y0 >= y1) return;
     xa = x0 & ~1;
     xb = (x1 + 1) & ~1;
-    if (scale == 1 && !flip) {
-        /* the common case (cached chibis, building sprites, shape images):
-         * source pairs straight from the row, no column table; only the
-         * first / last VRAM pair may reach one pixel outside the image */
-        int n = (xb - xa) >> 1, lead = xa < x0, trail = xb > x1;
-        for (yy = y0; yy < y1; yy++) {
-            const uint8_t *src = img->pix + (yy - y) * img->w + (xa - x);
-            uint16_t *p = gba_back + yy * LINE + (xa >> 1);
-            int k = 0;
-            if (lead) {                         /* only its right pixel is in */
-                uint32_t b = src[1];
-                if (b) put_hi(p, sil ? color : b);
-                p++; src += 2; k = 1;
-            }
-            if (!sil && !((uintptr_t)src & 1)) {
-                /* aligned source: one halfword read per pair (the chibi
-                 * cache is in EWRAM, a 16-bit bus) */
-                const uint16_t *s2 = (const uint16_t *)src;
-                for (; k < n - trail; k++, p++, s2++) {
-                    uint32_t v = *s2;
-                    if (!v) continue;
-                    if ((v & 0xFF) && (v & 0xFF00)) *p = (uint16_t)v;
-                    else if (v & 0xFF) put_lo(p, v);
-                    else put_hi(p, v >> 8);
-                }
-                src = (const uint8_t *)s2;
-            } else if (!sil) {
-                /* odd source: aligned halfwords, each pair is the high
-                 * byte of one and the low byte of the next (the bytes
-                 * read beside the row are never used) */
-                const uint16_t *s2 = (const uint16_t *)(src - 1);
-                uint32_t prev = *s2++;
-                for (; k < n - trail; k++, p++) {
-                    uint32_t next = *s2++;
-                    uint32_t v = (prev >> 8) | ((next & 0xFF) << 8);
-                    prev = next;
-                    if (!v) continue;
-                    if ((v & 0xFF) && (v & 0xFF00)) *p = (uint16_t)v;
-                    else if (v & 0xFF) put_lo(p, v);
-                    else put_hi(p, v >> 8);
-                }
-                src = (const uint8_t *)s2 - 1;
-            }
-            for (; k < n - trail; k++, p++, src += 2) {
-                uint32_t a = src[0], b = src[1];
-                if (!(a | b)) continue;
-                if (sil) { if (a) a = color; if (b) b = color; }
-                if (a && b) *p = (uint16_t)(a | (b << 8));
-                else if (a) put_lo(p, a);
-                else put_hi(p, b);
-            }
-            if (trail && k < n) {               /* only its left pixel is in */
-                uint32_t a = src[0];
-                if (a) put_lo(p, sil ? color : a);
-            }
-        }
-        return;
-    }
     {
         int px;
         for (px = xa; px < xb; px++) {
