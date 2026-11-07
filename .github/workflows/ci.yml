@@ -300,6 +300,16 @@ jobs:
           cmake --preset ps1 -DDOOMO_INTRO_REQUIRED=ON
           cmake --build --preset ps1
 
+      - name: Biggest PS1 statics (names the culprits when the disc overflows its RAM)
+        if: always()
+        working-directory: ps1
+        run: |
+          nm=$(command -v mipsel-linux-gnu-nm || echo nm)
+          f=$(find build -name 'doomogachi.elf' 2>/dev/null | head -1)
+          if [ -z "$f" ]; then echo "(no doomogachi.elf: the link did not finish)"; exit 0; fi
+          echo "## PS1 game disc: 40 biggest .bss/.data symbols (bytes)" | tee -a "$GITHUB_STEP_SUMMARY"
+          "$nm" -S --size-sort -t d "$f" | grep -E ' [bBdD] ' | tail -40 | tac | awk '{print $2, $4}' | tee -a "$GITHUB_STEP_SUMMARY" || true
+
       - name: Build the engine-test disc (preset ps1-enginetest)
         working-directory: ps1
         run: |
