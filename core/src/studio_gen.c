@@ -776,7 +776,50 @@ void studio_set_part(DoomoSong *s, int line, int part, int who)
     s->line_singers[line] = m;
 }
 
+/* studio_part_of is asked for every line every frame by the LYRICS tab and costs
+ * dozens of part_mask() calls (each one a voice lookup per singer). It is a pure
+ * function of the singers, their sections and the line's mask, so remember the
+ * last answer per line and drop the lot when the singers or sections change
+ * (MS-P3). studio_part_memo_reset() on entering the studio, since a section
+ * left on auto follows the citizen's voice. */
+static struct {
+    uint16_t singer[SONG_SINGERS];
+    uint8_t  section[(SONG_SINGERS + 1) / 2];
+    uint8_t  valid;
+    struct { uint32_t mask; int8_t part, who, ok; } line[SONG_LYRIC_LINES];
+} part_memo;
+
+void studio_part_memo_reset(void) { part_memo.valid = 0; }
+
+static int studio_part_of_raw(const DoomoSong *s, int line, int *who);
+
 int studio_part_of(const DoomoSong *s, int line, int *who)
+{
+    uint32_t m;
+    int part, w = 0;
+    if (!s || line < 0 || line >= SONG_LYRIC_LINES) return studio_part_of_raw(s, line, who);
+    if (!part_memo.valid || memcmp(part_memo.singer, s->singer, sizeof(part_memo.singer)) ||
+        memcmp(part_memo.section, s->section, sizeof(part_memo.section))) {
+        memset(&part_memo, 0, sizeof(part_memo));
+        memcpy(part_memo.singer, s->singer, sizeof(part_memo.singer));
+        memcpy(part_memo.section, s->section, sizeof(part_memo.section));
+        part_memo.valid = 1;
+    }
+    m = song_line_mask(s, line);
+    if (part_memo.line[line].ok && part_memo.line[line].mask == m) {
+        if (who) *who = part_memo.line[line].who;
+        return part_memo.line[line].part;
+    }
+    part = studio_part_of_raw(s, line, &w);
+    part_memo.line[line].mask = m;
+    part_memo.line[line].part = (int8_t)part;
+    part_memo.line[line].who = (int8_t)w;
+    part_memo.line[line].ok = 1;
+    if (who) *who = w;
+    return part;
+}
+
+static int studio_part_of_raw(const DoomoSong *s, int line, int *who)
 {
     uint8_t v[SONG_SINGERS];
     uint32_t m = song_line_mask(s, line);

@@ -211,6 +211,7 @@ void studio_auto_parts(DoomoSong *s);
 /* Line part presets (LYRICS tab). */
 enum { PART_CHOIR, PART_SOLO, PART_DUET, PART_SECTION, PART_HALF, PART_COUNT };
 int  studio_part_of(const DoomoSong *s, int line, int *who);   /* PART_* */
+void studio_part_memo_reset(void);                                 /* forget the memo (studio_enter) */
 void studio_set_part(DoomoSong *s, int line, int part, int who);
 int  studio_part_choices(const DoomoSong *s, int part);        /* # of who values */
 void studio_part_label(const DoomoSong *s, int line, char *buf, int cap);

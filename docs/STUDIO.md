@@ -254,6 +254,11 @@ What this says (it corrects two guesses in `MUSIC_STUDIO_ROADMAP.md`):
   (a phase change in the show, not yet explained).
 * Not measured here: PS1 (needs your PCSX-Redux / CI), the PERFORM bows phase, hold-A note edits.
 
+**MS-P3 step 1 (2026-11-07, exact, pixel-identical):** `song_syllables` is memoised (10 entries, 570 B `.bss`; a pure function of the line text)
+and `studio_part_of` keeps its last answer per line (keyed on the singers, their sections and the line's mask; reset on entering the studio).
+LYRICS on the same script: **60.4 -> 45.3 ms, 12.4 -> 20.2 drawn fps, logic 22.7 -> 30.1 ticks/s**; every other window unchanged (+-0.3 ms).
+EWRAM free 21,856 -> 21,152 B. LYRICS still needs about 12 ms more: the 213 one-glyph `ui_text` calls of `draw_syllables`.
+
 ## INTEGRATION NOTE for the Concert Hall (concert*.c)
 
 1. **Represent generated songs as `DoomoSong`.** Build the song in the shared

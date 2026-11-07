@@ -389,7 +389,47 @@ static int word_syllables(const char *w, int ws, int we, uint8_t *starts, int n,
 }
 #undef PUT
 
+static int syllables_raw(const char *line, uint8_t *starts, int max);
+
+/* The studio asks for the same few lines every frame (the lyric list, the fit
+ * view, the show); the split is a pure function of the text, so a small memo
+ * returns exactly what the scan would (MS-P3). Lines of SONG_LYRIC_LEN or more
+ * characters skip it. 10 entries x 57 B of .bss. */
+#define SYL_MEMO 10
+static struct { char t[SONG_LYRIC_LEN]; uint8_t n; uint8_t st[SONG_LYRIC_LEN]; } syl_memo[SYL_MEMO];
+static uint8_t syl_next;
+
 int song_syllables(const char *line, uint8_t *starts, int max)
+{
+    int i, n, len;
+    if (!line) return 0;
+    if (!starts) max = 0;
+    for (len = 0; len < SONG_LYRIC_LEN && line[len]; len++) {}
+    if (len >= SONG_LYRIC_LEN || !len) return syllables_raw(line, starts, max);
+    for (i = 0; i < SYL_MEMO; i++) {
+        if (syl_memo[i].t[0] == line[0] && !strcmp(syl_memo[i].t, line)) {
+            n = syl_memo[i].n;
+            if (max > 0) memcpy(starts, syl_memo[i].st, (size_t)DOOMO_MIN(n, max));
+            return n;
+        }
+    }
+    {
+        uint8_t full[SONG_LYRIC_LEN];
+        n = syllables_raw(line, full, SONG_LYRIC_LEN);
+        if (n <= SONG_LYRIC_LEN) {
+            i = syl_next;
+            syl_next = (uint8_t)((syl_next + 1) % SYL_MEMO);
+            memcpy(syl_memo[i].t, line, (size_t)len + 1);
+            syl_memo[i].n = (uint8_t)n;
+            memcpy(syl_memo[i].st, full, (size_t)n);
+            if (max > 0) memcpy(starts, full, (size_t)DOOMO_MIN(n, max));
+            return n;
+        }
+    }
+    return syllables_raw(line, starts, max);
+}
+
+static int syllables_raw(const char *line, uint8_t *starts, int max)
 {
     int i = 0, n = 0;
     if (!line) return 0;

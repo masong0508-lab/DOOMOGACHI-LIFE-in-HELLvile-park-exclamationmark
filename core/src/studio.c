@@ -685,6 +685,7 @@ static void new_song(void)
 
 static void studio_enter(int arg)
 {
+    studio_part_memo_reset();
     studio.active = 1;
     studio.t = 0;
     studio.tab_t = 0;
