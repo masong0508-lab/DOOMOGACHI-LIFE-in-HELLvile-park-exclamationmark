@@ -392,7 +392,13 @@ static void karaoke(int cx, int y, int w)
     uint8_t st[SONG_LYRIC_LEN];
     const char *t;
     int n, i, len, x;
+#if defined(DOOMO_PLATFORM_GBA) && !defined(DOOMO_STUDIO_SHADE_BAR)
+    /* MS-PF9: the bar's back is one opaque fill, not a per-pixel colour-map pass over 216x22 pixels (about 1.3 ms a
+     * frame on the GBA). Build with -DDOOMO_STUDIO_SHADE_BAR for the see-through bar. */
+    plat_rect(cx - w / 2, y, w, 22, PAL_PAINT(PAINT_GRAPE, 0));
+#else
     plat_shade_rect(cx - w / 2, y, w, 22, 11);
+#endif
     ui_frame(cx - w / 2, y, w, 22, PAL_PAINT(PAINT_GRAPE, 1));
     if (line < 0 || !SS->lyrics[line][0]) {
         ui_text_center(cx, y + 7, song_playing() ? STR_ICON_NOTE " ~ " STR_ICON_NOTE " ~ " STR_ICON_NOTE
