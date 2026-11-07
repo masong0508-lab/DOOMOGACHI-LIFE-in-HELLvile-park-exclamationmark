@@ -637,7 +637,7 @@ static uint32_t look_hash(const DoomoLook *l)
  * dozen every frame (the scan over PC_BLOCKS entries was 4% of the PS1
  * concert's frame). An entry that was dropped or reused fails the match
  * and the scan runs as before. */
-#define PC_MEMO 64
+#define PC_MEMO 128
 static uint8_t memo[PC_MEMO];
 
 static unsigned memo_slot(int kind, int rid, uint32_t look)
@@ -1147,12 +1147,18 @@ const DoomoImage *bodyspr_image(int resident_id, int dir, int frame)
     /* MS-P4: fully associative (a 25-voice choir collided in the old 32 direct-mapped slots and redid the
      * look + hash for most singers every frame); a miss replaces slots round-robin */
     {
-        static uint8_t blh_next;
-        int bi;
+        static uint8_t blh_next, blh_hint[64];
+        int bi, hi = resident_id & 63;
         m = NULL;
-        for (bi = 0; bi < BLH_N; bi++)
-            if (blh[bi].ok && blh[bi].id == resident_id) { m = &blh[bi]; break; }
-        if (!m) { m = &blh[blh_next]; blh_next = (uint8_t)((blh_next + 1) % BLH_N); m->ok = 0; }
+        /* MS-P2: the slot this id used last is tried first (a choir asks for the same 25 every frame) */
+        bi = blh_hint[hi];
+        if (bi < BLH_N && blh[bi].ok && blh[bi].id == resident_id) m = &blh[bi];
+        else {
+            for (bi = 0; bi < BLH_N; bi++)
+                if (blh[bi].ok && blh[bi].id == resident_id) { m = &blh[bi]; break; }
+        }
+        if (!m) { bi = blh_next; m = &blh[bi]; blh_next = (uint8_t)((blh_next + 1) % BLH_N); m->ok = 0; }
+        blh_hint[hi] = (uint8_t)bi;
     }
     if (m->ok && m->id == resident_id && m->species == r->species &&
         memcmp(m->gene, r->gene, sizeof m->gene) == 0) {

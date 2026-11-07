@@ -140,6 +140,8 @@ void ui_sparkle(int cx, int cy, int phase, uint8_t c);
  * dots, rising hearts and stars, twinkles (style picks the palette:
  * WIN_CUTE / MINT / CREAM / HELL / LCD / DARK). Call it first. */
 void ui_backdrop(int style, uint32_t t);
+/* the same with a hole an opaque window will cover afterwards: nothing wholly inside it is drawn (hx0 >= hx1: none) */
+void ui_backdrop_hole(int style, uint32_t t, int hx0, int hy0, int hx1, int hy1);
 
 /* ---- text extras ------------------------------------------------------- */
 /* Width of ui_text() output (button icons are drawn as 7 px caps). */

@@ -586,15 +586,35 @@ static void draw_tabs(void)
     }
 }
 
-/* floating notes behind everything */
-static void draw_backdrop(void)
+/* The opaque window a tab draws first (ui_window's body covers its rect but for the 4-px corners and its drop
+ * shadow, which lies outside it): the backdrop under it is never seen, so it is not drawn (MS-P2; same pixels).
+ * SONG and FILE draw a left panel, LYRICS a top one, the other tabs the whole content area. Not the template
+ * picker (FILE page 2), whose layout is its own. */
+static void backdrop_hole(StRect r, int *x0, int *y0, int *x1, int *y1)
 {
-    int sw = plat_screen_w(), sh = plat_screen_h(), i;
+    int wx = r.x, wy = r.y, ww = r.w, wh = r.h;
+    *x0 = *y0 = *x1 = *y1 = 0;
+    switch (studio.tab) {
+    case STAB_SONG: ww = st_wide() ? 182 : 146; break;
+    case STAB_LYRICS: wh = 8 * (st_wide() ? 13 : 10) + 8; break;
+    case STAB_FILE: if (studio.fmode == 1) return; break;
+    case STAB_NOTES: case STAB_ORDER: case STAB_CHOIR: case STAB_STAGE: break;
+    default: return;
+    }
+    *x0 = wx + 4; *y0 = wy + 4; *x1 = wx + ww - 4; *y1 = wy + wh - 4;
+}
+
+/* floating notes behind everything */
+static void draw_backdrop(StRect r)
+{
+    int sw = plat_screen_w(), sh = plat_screen_h(), i, hx0, hy0, hx1, hy1;
     uint32_t t = studio.t;
-    ui_backdrop(WIN_CUTE, t);
+    backdrop_hole(r, &hx0, &hy0, &hx1, &hy1);
+    ui_backdrop_hole(WIN_CUTE, t, hx0, hy0, hx1, hy1);
     for (i = 0; i < 7; i++) {
         int x = (int)((i * 53 + 17) % sw) + ui_wave((int)t + i * 40, 90, 6);
         int y = sh - (int)((t / 2 + (uint32_t)i * 37) % (uint32_t)(sh + 20));
+        if (x - 2 >= hx0 && x + 10 <= hx1 && y - 2 >= hy0 && y + 12 <= hy1) continue;     /* under the window */
         st_note_glyph(x, y, PAL_PAINT(i & 1 ? PAINT_LAVENDER : PAINT_ROSE, 2));
     }
 }
@@ -829,9 +849,9 @@ static void studio_draw(void)
         if (studio.pop_n) popup_draw();
         return;
     }
-    draw_backdrop();
-    draw_tabs();
     r = st_content();
+    draw_backdrop(r);
+    draw_tabs();
     switch (studio.tab) {
     case STAB_SONG: tab_song_draw(r); break;
     case STAB_NOTES: tab_notes_draw(r); break;
