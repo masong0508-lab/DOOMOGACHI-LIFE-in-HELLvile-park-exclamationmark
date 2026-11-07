@@ -135,6 +135,7 @@ static LList L_patch = { lr_patch_r, 320, 0, 0, -1 };   /* (I2) patches and thei
 static LList L_road = { lr_road_r, 160, 0, 0, -1 };     /* (I2) roads */
 static LList *lr_cur;                        /* the list being recorded, or NULL */
 static int lr_tapped;
+static int lr_quiet;                         /* (I3) recording a deco variant: record only, draw nothing */
 extern void (*ur_tap)(int, int, int, int, uint8_t);    /* ui_raster.c: every rect of a shape */
 static void lr_add(int x, int y, int w, int h, uint8_t c, int ck)
 {
@@ -149,25 +150,42 @@ static void lr_tap(int x, int y, int w, int h, uint8_t c)
 {
     lr_tapped++;
     lr_add(x, y, w, h, c, 0);
-    if (!hidden(x, y, w, h)) plat_rect(x, y, w, h, c);
+    if (!lr_quiet && !hidden(x, y, w, h)) plat_rect(x, y, w, h, c);
 }
+
+/* (I3) the GBA draws a run of recorded rects in one ARM call (video_loops.s); weak, so other platforms and the
+ * native runner link without it and replay one rect at a time as before. Returns 0 when it drew nothing. */
+extern void plat_rect_run(const void *list, int n) __attribute__((weak));
+extern int gba_nodraw __attribute__((weak));       /* 0: drawing to Mode 4 (the only case the run handles) */
 
 /* run body() live, or replay its recorded rects when its key is unchanged (same calls, same order) */
 static void lr_run(LList *L, int32_t key, void (*body)(void))
 {
     if (g_off) { body(); return; }
     if (key == L->key && !L->over) {
-        int i;
-        for (i = 0; i < L->n; i++) {
+        int i = 0;
+        while (i < L->n) {
             const LRect *r = &L->r[i];
-            if (hidden(r->x, r->y, r->w, r->h)) continue;
-            if (r->ck) plat_checker(r->x, r->y, r->w, r->h, r->c);
-            else plat_rect(r->x, r->y, r->w, r->h, r->c);
+            if (!g_occ && !r->ck && plat_rect_run && !gba_nodraw) {   /* a run of plain rects, nothing hiding them */
+                int j = i + 1;
+                while (j < L->n && !L->r[j].ck) j++;
+                plat_rect_run(r, j - i);
+                i = j;
+                continue;
+            }
+            if (!hidden(r->x, r->y, r->w, r->h)) {
+                if (r->ck) plat_checker(r->x, r->y, r->w, r->h, r->c);
+                else plat_rect(r->x, r->y, r->w, r->h, r->c);
+            }
+            i++;
         }
     } else {
+        int occ = g_occ;
+        g_occ = 0;                           /* record everything: a menu window may be gone when this replays */
         L->n = 0; L->over = 0; lr_cur = L;
         body();
         lr_cur = 0;
+        g_occ = occ;
         L->key = L->over ? -1 : key;
     }
 }
@@ -177,7 +195,7 @@ static void put(int x, int y, int w, int h, uint8_t c)
     int j;
     if (!g_off) {
         if (lr_cur) lr_add(x, y, w, h, c, 0);
-        if (!hidden(x, y, w, h)) plat_rect(x, y, w, h, c);
+        if (!lr_quiet && !hidden(x, y, w, h)) plat_rect(x, y, w, h, c);
         return;
     }
     if (g_off == G_MEASURE) {
@@ -198,7 +216,14 @@ static void R(int x, int y, int w, int h, uint8_t c) { if (w > 0 && h > 0) put(x
 static void RG(int x, int y, int w, int h, uint8_t c) { if (w > 0 && h > 0) put(x, y, w, h, c); }
 static void C(int cx, int cy, int r, uint8_t c)
 {
-    if (!hidden(cx - r - 1, cy - r - 1, 2 * r + 3, 2 * r + 3)) ui_fill_circle(cx, cy, r, tc(c));
+    if (hidden(cx - r - 1, cy - r - 1, 2 * r + 3, 2 * r + 3)) return;
+    if (lr_cur && !g_off) {                  /* (I3) recorded like E(): its rects go through lr_tap */
+        int n0 = lr_tapped;
+        ur_tap = lr_tap;
+        ui_fill_circle(cx, cy, r, tc(c));
+        ur_tap = 0;
+        if (lr_tapped == n0) lr_cur->over = 1;
+    } else ui_fill_circle(cx, cy, r, tc(c));
 }
 static void E(int cx, int cy, int rx, int ry, uint8_t c)
 {
@@ -214,7 +239,7 @@ static void E(int cx, int cy, int rx, int ry, uint8_t c)
 static void CK(int x, int y, int w, int h, uint8_t c)
 {
     if (!g_off && lr_cur) lr_add(x, y, w, h, c, 1);
-    if (!hidden(x, y, w, h)) plat_checker(x, y, w, h, c);
+    if (!lr_quiet && !hidden(x, y, w, h)) plat_checker(x, y, w, h, c);
 }
 
 /* a shaded box with a coloured outline (dark shade of its own colour) */
@@ -635,11 +660,10 @@ static void deco_tree(int x, int y, uint8_t leaf_d, uint8_t leaf, uint8_t leaf_l
     R(x - 3 + sway, y - 12, 1, 1, PAL_WHITE);
 }
 
-static void draw_deco(const Deco *d)
+static void draw_deco_xy(const Deco *d, int x, int y)
 {
-    int x = fp_mx(d->x), y = fp_my(d->y), t = g_t;
+    int t = g_t;
     int sway = ui_wave(t + d->x * 9, 90, 1);
-    if (hidden(x - 24, y - 40, 48, 48)) return;          /* (well inside any deco) */
     switch (d->kind) {
     case D_TREE:
         deco_tree(x, y, PAL_RAMP(RAMP_GRASS, 3), PAL_RAMP(RAMP_GRASS, 5), PAL_RAMP(RAMP_GRASS, 7), sway);
@@ -721,6 +745,101 @@ static void draw_deco(const Deco *d)
         }
         break; }
     default: break;
+    }
+}
+
+static void draw_deco(const Deco *d)
+{
+    int x = fp_mx(d->x), y = fp_my(d->y);
+    if (hidden(x - 24, y - 40, 48, 48)) return;          /* (well inside any deco) */
+    draw_deco_xy(d, x, y);
+}
+
+/* (I3) The decos barely animate: a tree's canopy moves one pixel every ~15 ticks, the flowers nod, a bat comes and
+ * goes. A deco's picture depends only on its kind, the tint and that small state, never on where it stands, so each
+ * (kind, state, tint) is recorded once, at a fixed spot, as a rect list and replayed shifted to every deco of that kind
+ * (same rects, same order, so the same pixels). The ten-odd trees all sway on their own phase, which is why one list
+ * for all of them (keyed on the whole state) was rebuilt nearly every frame. */
+#define DV_POOL 400                         /* rects in the shared pool (3.2 KB) */
+#define DV_TAGS 28
+#define DV_REC_X 120                        /* where a variant is recorded: far enough from every screen edge */
+#define DV_REC_Y 110
+typedef struct { uint16_t tag, start; uint8_t n, bad; } DVar;
+static LRect dv_pool[DV_POOL];
+static DVar dv_tab[DV_TAGS];
+static int dv_ntab, dv_used;
+static LRect dv_tmp[40];                    /* a variant's rects shifted to one deco's spot */
+
+static unsigned deco_state(const Deco *d, unsigned flowers)
+{
+    switch (d->kind) {
+    case D_TREE: case D_TREE_PINK: return (unsigned)(ui_wave(g_t + d->x * 9, 90, 1) + 1);
+    case D_FLOWERS:                return flowers;
+    case D_DEAD_TREE:              return ((g_t / 120 + d->x) % 3 == 0);
+    default:                       return 0;
+    }
+}
+
+static void draw_deco_xy(const Deco *d, int x, int y);
+
+static DVar *dv_get(const Deco *d, unsigned st)
+{
+    uint16_t tag = (uint16_t)((d->kind << 11) | (g_tint << 8) | st);   /* st < 256, g_tint < 8 */
+    DVar *v;
+    int i;
+    for (i = 0; i < dv_ntab; i++) if (dv_tab[i].tag == tag) return &dv_tab[i];
+    if (dv_ntab >= DV_TAGS) { dv_ntab = 0; dv_used = 0; }           /* full: start over (rare) */
+    v = &dv_tab[dv_ntab++];
+    v->tag = tag; v->bad = 0; v->n = 0; v->start = (uint16_t)dv_used;
+    {
+        LList L;
+        int occ = g_occ;
+        L.r = dv_pool + dv_used; L.cap = DOOMO_MIN(DV_POOL - dv_used, 255); L.n = 0; L.over = 0; L.key = 0;
+        g_occ = 0;
+        lr_cur = &L;
+        lr_quiet = 1;
+        draw_deco_xy(d, DV_REC_X, DV_REC_Y);
+        lr_quiet = 0;
+        lr_cur = 0;
+        g_occ = occ;
+        if (L.over) v->bad = 1;
+        else { v->n = (uint8_t)L.n; dv_used += L.n; }
+    }
+    return v;
+}
+
+static void draw_decos(void)
+{
+    unsigned fl = 0;
+    int i, k, t = g_t;
+    if (g_off) { for (i = 0; i < DOOMO_COUNTOF(decos); i++) draw_deco(&decos[i]); return; }
+    for (i = 0; i < 5; i++) fl = fl * 2 + (ui_wave(t + i * 10, 40, 1) > 0);
+    for (i = 0; i < DOOMO_COUNTOF(decos); i++) {
+        const Deco *d = &decos[i];
+        int x = fp_mx(d->x), y = fp_my(d->y), dx = x - DV_REC_X, dy = y - DV_REC_Y;
+        DVar *v;
+        const LRect *r;
+        if (hidden(x - 24, y - 40, 48, 48)) continue;         /* (well inside any deco) */
+        v = dv_get(d, deco_state(d, fl));
+        if (v->bad) { draw_deco_xy(d, x, y); continue; }
+        r = dv_pool + v->start;
+        for (k = 0; k < v->n; ) {
+            int m = DOOMO_MIN(v->n - k, (int)DOOMO_COUNTOF(dv_tmp)), j;
+            if (!g_occ && plat_rect_run && !gba_nodraw) {
+                for (j = 0; j < m; j++) {
+                    dv_tmp[j] = r[k + j];
+                    dv_tmp[j].x = (int16_t)(dv_tmp[j].x + dx);
+                    dv_tmp[j].y = (int16_t)(dv_tmp[j].y + dy);
+                }
+                plat_rect_run(dv_tmp, m);
+            } else {
+                for (j = 0; j < m; j++) {
+                    int rx = r[k + j].x + dx, ry = r[k + j].y + dy;
+                    if (!hidden(rx, ry, r[k + j].w, r[k + j].h)) plat_rect(rx, ry, r[k + j].w, r[k + j].h, r[k + j].c);
+                }
+            }
+            k += m;
+        }
     }
 }
 
@@ -1425,7 +1544,7 @@ void fp_island_draw_map(const FpLocDraw *locs, int n, int sel)
     draw_land();
     draw_patches();
     draw_roads();
-    for (i = 0; i < DOOMO_COUNTOF(decos); i++) draw_deco(&decos[i]);
+    draw_decos();
     draw_walkers();
     /* buildings back to front */
     for (i = 0; i < n; i++) order[i] = i;

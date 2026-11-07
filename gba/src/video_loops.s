@@ -69,6 +69,31 @@ plat_rect_nz:
     .size   plat_rect, . - plat_rect
     .ltorg
 
+@ void plat_rect_run(const void *list, int n)   (island I3: fp_island_gfx.c, weak there; n >= 1, Mode 4 only:
+@ the caller tests gba_nodraw == 0)
+@ Draw n recorded rects in one call: 8-byte entries {int16 x, int16 y, u8 w, u8 h, u8 colour, u8 flag}, each
+@ through plat_rect_m4 (the clip and fill of plat_rect without its call and gba_nodraw test and the thumb veneer).
+    .global plat_rect_run
+    .type   plat_rect_run, %function
+plat_rect_run:
+    stmfd   sp!, {r4, r5, lr}
+    sub     sp, sp, #4                  @ the colour slot plat_rect_m4 reads at [sp]
+    mov     r4, r0
+    mov     r5, r1
+1:  ldrsh   r0, [r4]                    @ x
+    ldrsh   r1, [r4, #2]                @ y
+    ldrb    r2, [r4, #4]                @ w
+    ldrb    r3, [r4, #5]                @ h
+    ldrb    r12, [r4, #6]               @ colour
+    add     r4, r4, #8
+    str     r12, [sp]
+    bl      plat_rect_m4
+    subs    r5, r5, #1
+    bne     1b
+    add     sp, sp, #4
+    ldmfd   sp!, {r4, r5, lr}
+    bx      lr
+
 @ void vid_rect(int x0, int y0, int x1, int y1, uint32_t color)
 @ Fill [x0, x1) x [y0, y1) of the back page (already clipped, non-empty).
 @ Mode 4 VRAM takes halfword / word writes only: an odd first or last

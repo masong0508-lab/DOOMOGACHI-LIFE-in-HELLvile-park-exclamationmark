@@ -133,3 +133,18 @@ list unrecordable and it is drawn live. Hub 81.5 -> 76.3 ms (9.7 -> 10.1 fps, li
 are identical tick for tick against the I1 ROM (30 + 30 ticks); `make -C core test` 878 passed, 0 failed.
 Cost: 3.9 KB more EWRAM (two lists of 320 and 160 8-byte entries; EWRAM free 12.5 -> 8.6 KB).
 Not yet: `make -C gba test` / `test-speed` with the floors (run in CI), the decos (107 animated tiles; see I4 measurement).
+
+## I3 landed: ARM rect-run and the deco variant cache (exact)
+
+Hub 76.3 -> 70.2 ms (10.1 -> 10.7 fps, libmgba); island hub frames identical tick for tick (seq 4f32b3aa).
+- `plat_rect_run(list, n)` (video_loops.s, ~15 instructions, IWRAM headroom is now very small): draws n recorded rects through
+  `plat_rect_m4` in one call. `lr_run` uses it for runs of plain rects when `gba_nodraw == 0` and no occluder is up (weak
+  symbol, so other platforms replay rect by rect as before).
+- Lists are now recorded with the menu occluder off, so a list recorded while the town hall menu is open is complete.
+- `C()` (circles) is recordable like `E()`.
+- Decos: one rect list per (kind, sway state, tint), recorded once at a fixed spot and replayed shifted to each deco (17 variants,
+  15-20 rects each; pool of 400 rects = 3.2 KB EWRAM). A single list keyed on every deco's phase was rebuilt nearly every frame.
+- Town hall menu frames differ from the I2 ROM only because the faster ROM draws ticks the old one skipped (one screenshot
+  differed in 14 sea pixels, animation timing); not yet checked with `make -C gba test-speed` parity.
+Next (I3b): quantized animation clock for building animation / walkers / weather with recorded lists (governor, pixels change),
+clear only outside the sea box, cache `town_count`.
