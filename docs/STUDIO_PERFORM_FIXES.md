@@ -1,7 +1,7 @@
 # PERFORM fixes (Music Studio, GBA): the sung-phase step
 
 Written 2026-11-07 (nov07g). Companion to `docs/MUSIC_STUDIO_ROADMAP.md` ("Facts to know before MS-P4") and `docs/STUDIO.md`.
-**Status (nov07h): F3, F5 and F6 are built (part 1); F1, F2 and F4 are not.** The gains in the table are ablation figures from the GBA harness (nov07d tree); the measured result of part 1 is below.
+**Status (nov07i): F2, F3, F4, F5, F6 are built (parts 1-2); F1 is not (see part 2).** The gains in the table are ablation figures from the GBA harness (nov07d tree); the measured result of part 1 is below.
 
 ### Part 1 result (F3 + F5 + F6, GBA harness, same `Park United!` demo, the 330 ticks after the first sung line)
 
@@ -45,3 +45,23 @@ Be honest about it in the commit message: the first batch restores the tempo onl
 
 * The chibis (~14 ms on CHOIR, the largest share of PERFORM): MS-P4.
 * PS1: unmeasured. The 3-vblank cliff is a GBA (59.7 Hz / 50.2 ms) figure; check where the PS1 equivalent sits before assuming the same fix order.
+
+## Part 2 (nov07i): F2, F4 and three more exact cuts
+
+Ablating on the real GBA ROM showed the wall's lit hearts (~4.4 ms) and the spot cones (~4.3 ms) cost far more than the first estimates. Built, all pixel-identical:
+
+* **F2** `led_heart`: the lit LED as the 5 rects `hf_row` makes for s = 3 (GBA / `DOOMO_STUDIO_RECT_HEART`).
+* **F4** `spot()`: the two divisions per row (`gba_udivmod`) are stepped incrementally (all platforms; negative x extents use the negated floor, = C truncation); on the GBA equal-edge, equal-width rows merge into one taller `plat_checker` (dot phase is taken from the call's own corner, a 2-row shift keeps it).
+* **PF7** `stage_ellipse`: the glows (8x2), the conductor's shadow (7x2) and the valance scallops (8x4) as their ellipse rects (GBA / `DOOMO_STUDIO_RECT_ELL`).
+* **PF8** wall LEDs wholly under the opaque curtain strips are skipped (`curtain_cover`; all platforms).
+* `place()` is computed once a frame instead of twice.
+
+**F1 is not built, on purpose:** a retained panel keeps only `plat_rect` body; the karaoke bar is a *shade* (re-drawn on every kept frame by the contract) plus a hollow frame, and the text lies on the shade, so a kept panel would be invalid. Switching the shade off measured -2 ms, but it cannot be made exact.
+
+| GBA harness, 330 ticks after the first sung line | median work / tick | worst | ticks over 50.2 ms | logic ticks/s |
+|---|---|---|---|---|
+| nov07g tree | 57.7 | 69.4 | 133 of 173 | 25.5 |
+| part 1 | 56.1 | 64.7 | 131 of 171 | 26.5 |
+| part 1 + 2 | **47.0** | **52.9** | **2 of 184** | **29.9** |
+
+Exactness: 34 PERFORM shots at 240x160 and 320x240 byte-identical (default build, and with every GBA path forced on natively: `-DDOOMO_STUDIO_RECT_HEART -DDOOMO_STUDIO_RECT_NOTE -DDOOMO_STUDIO_SPOT_RUNS -DDOOMO_STUDIO_RECT_ELL`); the hidden-LED skip was checked to be sensitive (a wider skip breaks all 34). `make -C core test` green. Not measured: the intro window, PS1.

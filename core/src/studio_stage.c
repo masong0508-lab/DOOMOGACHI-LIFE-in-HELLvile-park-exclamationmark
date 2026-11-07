@@ -218,10 +218,50 @@ static void place(int layout, int k, int n, const StageBox *b, const uint8_t *se
 
 /* ====================================================================== */
 /* drawing                                                                  */
+/* the curtain's half-width at `open` (0 closed .. 256 open), and the columns its 6-px strips really cover on each
+ * side (they are opaque and run the whole screen height) */
+static int curtain_cw(int sw, int open)
+{
+    int half = sw / 2;
+    return half - (half - 22) * open / 256;
+}
+
+static int curtain_cover(int sw, int open)
+{
+    return (curtain_cw(sw, open) + 5) / 6 * 6;
+}
+
+/* MS-PF7: the stage's few fixed-size ellipses (the singers' glows 8x2, the conductor's shadow 7x2, the valance
+ * scallops 8x4) as the rects ellipse_draw makes for them (half-widths 8,8,4 / 7,7,3 / 8,8,7,6,2, merged by
+ * nested_bands): same pixels, no fx_isqrt. The PS1 / native build keeps the cached shape. */
+static void stage_ellipse(int cx, int cy, int rx, int ry, uint8_t c)
+{
+#if defined(DOOMO_PLATFORM_GBA) || defined(DOOMO_STUDIO_RECT_ELL)
+    if (rx == 8 && ry == 2) {
+        plat_rect(cx - 4, cy - 2, 9, 5, c);
+        plat_rect(cx - 8, cy - 1, 17, 3, c);
+        return;
+    }
+    if (rx == 7 && ry == 2) {
+        plat_rect(cx - 3, cy - 2, 7, 5, c);
+        plat_rect(cx - 7, cy - 1, 15, 3, c);
+        return;
+    }
+    if (rx == 8 && ry == 4) {
+        plat_rect(cx - 2, cy - 4, 5, 9, c);
+        plat_rect(cx - 6, cy - 3, 13, 7, c);
+        plat_rect(cx - 7, cy - 2, 15, 5, c);
+        plat_rect(cx - 8, cy - 1, 17, 3, c);
+        return;
+    }
+#endif
+    ui_fill_ellipse(cx, cy, rx, ry, c);
+}
+
 static void draw_curtains(int sw, int sh, int open)
 {
     /* open 0 = closed .. 256 = fully open */
-    int half = sw / 2, cw = half - (half - 22) * open / 256, i, x;
+    int cw = curtain_cw(sw, open), i, x;
     for (x = 0; x < cw; x += 6) {
         int sh2 = (x / 6) & 1;
         plat_rect(x, 0, 6, sh, PAL_PAINT(PAINT_BLOOD, sh2 ? 0 : 1));
@@ -237,15 +277,31 @@ static void draw_curtains(int sw, int sh, int open)
     /* the valance with scallops */
     plat_rect(0, 0, sw, 9, PAL_PAINT(PAINT_BLOOD, 0));
     for (i = 0; i < sw; i += 16) {
-        ui_fill_ellipse(i + 8, 9, 8, 4, PAL_PAINT(PAINT_BLOOD, 0));
+        stage_ellipse(i + 8, 9, 8, 4, PAL_PAINT(PAINT_BLOOD, 0));
         plat_rect(i + 7, 11, 2, 2, PAL_PAINT(PAINT_HONEY, 1));
     }
     plat_rect(0, 7, sw, 1, PAL_PAINT(PAINT_HONEY, 1));
 }
 
-static void draw_wall(int sw, int top, int floor, int t, int beat)
+#if defined(DOOMO_PLATFORM_GBA) || defined(DOOMO_STUDIO_RECT_HEART)
+/* MS-PF2: a lit LED, ui_heart_flat(x, y, 3, c) as the five rects its spans make (hf_row for s = 3: rows -3..3 hold
+ * [-2,-1] + [1,2], [-3,3] x 3, [-2,2], [0,0]). Same pixels, none of the per-row maths and span merging, which were
+ * the cost of the ~12 hearts lit at any time. The PS1 / native build keeps the call. */
+static void led_heart(int x, int y, uint8_t c)
 {
-    int y, x, i, h = floor - top;
+    plat_rect(x - 2, y - 3, 2, 1, c);
+    plat_rect(x + 1, y - 3, 2, 1, c);
+    plat_rect(x - 3, y - 2, 7, 3, c);
+    plat_rect(x - 2, y + 1, 5, 1, c);
+    plat_rect(x, y + 2, 1, 1, c);
+}
+#else
+#define led_heart(x, y, c) ui_heart_flat((x), (y), 3, (c))
+#endif
+
+static void draw_wall(int sw, int top, int floor, int t, int beat, int open)
+{
+    int y, x, i, h = floor - top, cover = curtain_cover(sw, open);
     for (i = 0; i < 4; i++)
         plat_rect(0, top + h * i / 4, sw, h / 4 + 1, PAL_RAMP(RAMP_VAPE, 1 + i));
     /* LED hearts: a grid that ripples out from the centre on the beat */
@@ -253,8 +309,10 @@ static void draw_wall(int sw, int top, int floor, int t, int beat)
         for (x = 10; x < sw - 6; x += 16) {
             int d = (x > sw / 2 ? x - sw / 2 : sw / 2 - x) / 16 + (y - top) / 14;
             int lit = ((t / 4 - d) & 7) == 0 || (beat && d < 3);
+            /* MS-PF8: an LED wholly under the (opaque, full-height) curtain strips is painted over: skip it */
+            if (x + 3 < cover || x - 3 >= sw - cover) continue;
             /* only the lit LEDs are hearts: the rest are cheap dots (GBA) */
-            if (lit) ui_heart_flat(x, y, 3, PAL_PAINT(PAINT_BUBBLEGUM, 2));
+            if (lit) led_heart(x, y, PAL_PAINT(PAINT_BUBBLEGUM, 2));
             else { plat_rect(x - 2, y - 1, 2, 2, PAL_RAMP(RAMP_VAPE, 3)); plat_rect(x + 1, y - 1, 2, 2, PAL_RAMP(RAMP_VAPE, 3)); plat_rect(x - 1, y + 1, 3, 1, PAL_RAMP(RAMP_VAPE, 3)); }
         }
 }
@@ -267,14 +325,41 @@ static void draw_floor(int sw, int floor, int bottom)
     plat_rect(0, floor, sw, 1, PAL_RAMP(RAMP_WOOD, 7));
 }
 
+/* MS-PF4: the follow / sweep spots. The cone is a checker row every 2 px with w = 4 + k * 26 / den and a centre
+ * x = x0 + (x1 - x0) * k / den (k = y - top, den = bottom - top, C division truncating toward zero). The GBA has
+ * no divide instruction (gba_udivmod: two calls a row, ~130 rows a frame), so both are stepped: floor(m * k / den)
+ * grows by floor(2m / den) plus a carried remainder per 2-px step; a negative x extent is the negated floor of its
+ * magnitude, which is what truncation toward zero gives. On the GBA / native test build consecutive rows with the
+ * same left edge and width (the follow spot's, and the cone's flat stretches) are one taller plat_checker: the dot
+ * phase is taken from the call's own corner and a 2-row shift keeps it, so the pixels are the same. */
 static void spot(int x0, int x1, int top, int bottom, uint8_t c)
 {
-    int y;
+    int den = DOOMO_MAX(bottom - top, 1), dx = x1 - x0, m = dx < 0 ? -dx : dx, y;
+    int qw = 0, rw = 0, qx = 0, rx = 0;
+    int w_q = 52 / den, w_r = 52 % den, x_q = (2 * m) / den, x_r = (2 * m) % den;
+#if defined(DOOMO_PLATFORM_GBA) || defined(DOOMO_STUDIO_SPOT_RUNS)
+    int ox = 0, oy = 0, ow = 0, oh = 0;
+#endif
     for (y = top; y < bottom; y += 2) {
-        int w = 4 + (y - top) * 26 / DOOMO_MAX(bottom - top, 1);
-        int x = x0 + (x1 - x0) * (y - top) / DOOMO_MAX(bottom - top, 1);
+        int w = 4 + qw, x = x0 + (dx < 0 ? -qx : qx);
+#if defined(DOOMO_PLATFORM_GBA) || defined(DOOMO_STUDIO_SPOT_RUNS)
+        int l = x - w / 2;
+        if (oh && l == ox && w == ow) oh += 2;
+        else {
+            if (oh) plat_checker(ox, oy, ow, oh, c);
+            ox = l; oy = y; ow = w; oh = 2;
+        }
+#else
         plat_checker(x - w / 2, y, w, 2, c);
+#endif
+        qw += w_q; rw += w_r;
+        if (rw >= den) { rw -= den; qw++; }
+        qx += x_q; rx += x_r;
+        if (rx >= den) { rx -= den; qx++; }
     }
+#if defined(DOOMO_PLATFORM_GBA) || defined(DOOMO_STUDIO_SPOT_RUNS)
+    if (oh) plat_checker(ox, oy, ow, oh, c);
+#endif
 }
 
 static void draw_mouth(int x, int y, int open)
@@ -352,13 +437,15 @@ static void draw_show(void)
     uint32_t singing = song_pos_singers();
     int lead = song_pos_lead(), lx = -1, ly = 0;
     uint8_t slots[SONG_SINGERS], secs[SONG_SINGERS];
+    int pxs[SONG_SINGERS], pys[SONG_SINGERS];
     StageBox b;
     char buf[40];
     /* the choir in order (sections layout: grouped) */
     for (i = 0; i < SONG_SINGERS; i++)
         if (song_singer_id(SS, i) >= 0) { slots[n] = (uint8_t)i; secs[n] = (uint8_t)song_singer_section(SS, i); n++; }
     b.x = 24; b.w = sw - 48; b.floor = floor; b.y = top;
-    draw_wall(sw, top, floor, t, beat);
+    for (i = 0; i < n; i++) place(SS->choir_layout, i, n, &b, secs, &pxs[i], &pys[i]);   /* once a frame, used twice below */
+    draw_wall(sw, top, floor, t, beat, open);
     draw_floor(sw, floor, sh);
     /* risers behind the choir */
     if (SS->choir_layout == CHOIR_RISERS || SS->choir_layout == CHOIR_PYRAMID) {
@@ -379,18 +466,16 @@ static void draw_show(void)
     {
         int k;
         for (k = 0; k < n; k++) {
-            int x, y;
+            int x = pxs[k], y = pys[k];
             if (!((singing >> slots[k]) & 1)) continue;
-            place(SS->choir_layout, k, n, &b, secs, &x, &y);
-            ui_fill_ellipse(x, y, 8, 2, PAL_PAINT(sec_paint[secs[k]], 2));
+            stage_ellipse(x, y, 8, 2, PAL_PAINT(sec_paint[secs[k]], 2));
         }
     }
     /* the choir, back rows first (smaller y first) */
     {
-        int k, m, px[SONG_SINGERS], py[SONG_SINGERS];
+        int k, m, *px = pxs, *py = pys;
         uint8_t ord[SONG_SINGERS];
         for (k = 0; k < n; k++) {
-            place(SS->choir_layout, k, n, &b, secs, &px[k], &py[k]);
             for (m = k; m > 0 && py[ord[m - 1]] > py[k]; m--) ord[m] = ord[m - 1];
             ord[m] = (uint8_t)k;
         }
@@ -420,7 +505,7 @@ static void draw_show(void)
         static const int8_t bx[4] = { 0, -6, 6, 2 }, byy[4] = { 6, 2, 2, -6 };
         int px = cx + 6 + bx[beatn] * DOOMO_MAX(0, 4 - age) / 4;
         int py = cy - 18 + byy[beatn] * DOOMO_MAX(0, 4 - age) / 4;
-        ui_fill_ellipse(cx, cy, 7, 2, PAL_RAMP(RAMP_WOOD, 2));
+        stage_ellipse(cx, cy, 7, 2, PAL_RAMP(RAMP_WOOD, 2));
         st_chibi(studio.conductor, cx - BODYSPR_W / 2, cy - BODYSPR_H, 3, (age < 2) ? 1 : 0, 0, 0);
         plat_line(cx + 4, cy - 12, px, py, PAL_WHITE);
         ui_sparkle(px, py, (t >> 1) & 15, PAL_PAINT(PAINT_LEMON, 2));
