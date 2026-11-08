@@ -97,6 +97,67 @@ int concert_wave_step_check(int arg, int period, int step, int n, int amp)
 }
 #endif
 
+/* (2i + 1) * w / d and the like along a loop: num grows by `step` (num, step
+ * >= 0, den > 0), the quotient and remainder are stepped (one carry at most,
+ * as r < den). Same q as num / den at every step. */
+typedef struct DivStep { int q, r, d, sq, sr; } DivStep;
+
+static void ds_init(DivStep *s, int num, int den, int step)
+{
+    s->d = den;
+    s->q = num / den;
+    s->r = num - s->q * den;
+    s->sq = step / den;
+    s->sr = step - s->sq * den;
+}
+
+static void ds_next(DivStep *s)
+{
+    s->q += s->sq;
+    s->r += s->sr;
+    if (s->r >= s->d) { s->r -= s->d; s->q++; }
+}
+
+/* x % 3 and x % 6 without a division: 2^16, 2^8, 2^4 and 2^2 are 1 mod 3,
+ * so folding the high bits onto the low ones keeps x mod 3; x mod 6 is the
+ * one of x mod 3 and x mod 3 + 3 with the parity of x (concert_mod3_mod6
+ * checks both against % on every 32-bit pattern class) */
+static uint32_t mod3(uint32_t x)
+{
+    x = (x >> 16) + (x & 0xFFFFu);
+    x = (x >> 8) + (x & 0xFFu);
+    x = (x >> 4) + (x & 0xFu);
+    x = (x >> 2) + (x & 3u);
+    x = (x >> 2) + (x & 3u);
+    while (x >= 3u) x -= 3u;
+    return x;
+}
+
+static uint32_t mod6(uint32_t x)
+{
+    uint32_t m = mod3(x);
+    return m + 3u * ((m ^ x) & 1u);
+}
+
+#ifdef DOOMO_HITCHECK
+uint32_t concert_mod3(uint32_t x) { return mod3(x); }
+uint32_t concert_mod6(uint32_t x) { return mod6(x); }
+int concert_div_step_check(int num, int den, int step, int n)
+{
+    DivStep d;
+    int i;
+    ds_init(&d, num, den, step);
+    for (i = 0; i < n; i++, num += step, ds_next(&d))
+        if (d.q != num / den) return i;
+    return -1;
+}
+#endif
+
+/* the steppers want a non-negative argument that does not overflow: the
+ * scene clock below 2^29 ticks (207 days) keeps every t * k + offset of the
+ * stage in range; past that the stage calls ui_wave / divides as before */
+#define STEP_T_OK(t) ((uint32_t)(t) < 0x20000000u)
+
 /* Rects of one column / row band that may grow: a run is flushed (drawn
  * through wall_rect) when the next rect does not continue it. Used where the
  * pieces it merges are drawn in an order in which no two of them overlap. */
@@ -116,15 +177,37 @@ void concert_confetti(int x0, int y0, int w, int h, uint32_t t, int n, int fall)
 {
     static const uint8_t cols[6] = { PAINT_BUBBLEGUM, PAINT_LEMON, PAINT_SKY, PAINT_MINT,
                                      PAINT_LAVENDER, PAINT_TANGERINE };
-    int i;
+    int i, fast;
+    uint32_t t3, tk[4] = { 0, 0, 0, 0 };
+    WaveStep ws;
     if (w <= 0 || h <= 0) return;
+    memset(&ws, 0, sizeof(ws));
+    /* SP6: 8 divisions a piece were 40-60 pieces x ~150 cycles on the GBA.
+     * t / 3 once; the sway stepped; (a + t * k) % h for a < h is (a + (t * k
+     * % h)) % h, one subtraction (while a + t * k cannot wrap 32 bits); k
+     * and the colour by mod3 / mod6. r % w and (r >> 8) % h stay. */
+    fast = STEP_T_OK(t) && (int)t + n * 7 >= 0;
+    t3 = t / 3u;
+    if (fall && fast) {
+        tk[1] = t % (uint32_t)h;
+        tk[2] = (t * 2u) % (uint32_t)h;
+        tk[3] = (t * 3u) % (uint32_t)h;
+    }
+    if (fast) ws_init(&ws, (int)t, 40, 7);
     for (i = 0; i < n; i++) {
-        uint32_t r = hash2((uint32_t)i, 77u);
-        int x = x0 + (int)(r % (uint32_t)w) + ui_wave((int)t + i * 7, 40, 3);
-        int y = y0 + (int)(((r >> 8) % (uint32_t)h + (uint32_t)(fall ? t * (1 + (r >> 20) % 3) : 0)) %
-                           (uint32_t)h);
-        int ph = (int)((t / 3 + r) & 3);
-        uint8_t c = PAL_PAINT(cols[(r >> 4) % 6], 2 - (ph & 1));
+        uint32_t r = hash2((uint32_t)i, 77u), a = (r >> 8) % (uint32_t)h, yo;
+        int x = x0 + (int)(r % (uint32_t)w) + (fast ? ws_val(&ws, 3) : ui_wave((int)t + i * 7, 40, 3));
+        int y, ph = (int)((t3 + r) & 3);
+        uint8_t c = PAL_PAINT(cols[mod6(r >> 4)], 2 - (ph & 1));
+        if (!fall) yo = a;
+        else if (fast) {
+            yo = a + tk[1 + mod3(r >> 20)];
+            if (yo >= (uint32_t)h) yo -= (uint32_t)h;
+        } else {
+            yo = (a + t * (1 + (r >> 20) % 3)) % (uint32_t)h;
+        }
+        y = y0 + (int)yo;
+        if (fast) ws_next(&ws);
         if (ph == 0) plat_rect(x, y, 2, 2, c);
         else if (ph == 1) plat_rect(x, y, 3, 1, c);
         else if (ph == 2) plat_rect(x, y, 1, 2, c);
@@ -304,16 +387,22 @@ static void draw_show(const StageView *v, const Wall *W)
         }
         break; }
     case SHOW_STARS: case SHOW_NOTES: {
+        int t3 = t / 3, fast = STEP_T_OK(t);
+        WaveStep nw;
+        memset(&nw, 0, sizeof(nw));
+        if (fast) ws_init(&nw, t, 30, 5);
         for (i = 0; i < 18; i++) {
             uint32_t r = hash2((uint32_t)i, 9u);
             int sx = W->x + 3 + (int)(r % (uint32_t)(W->w - 6));
             int sy = W->y + 3 + (int)((r >> 10) % (uint32_t)(W->h - 6));
             if (g->show == SHOW_NOTES) {
+                int wv = fast ? ws_val(&nw, 3) : ui_wave(t + i * 5, 30, 3);
                 sy = W->y + W->h - 2 - (int)(((r >> 10) + (uint32_t)t / 2) % (uint32_t)(W->h + 6));
-                concert_note_glyph(sx + ui_wave(t + i * 5, 30, 3), sy, (i & 1) ? c1 : c2);
+                concert_note_glyph(sx + wv, sy, (i & 1) ? c1 : c2);
             } else {
-                ui_sparkle(sx, sy, (t / 3 + (int)r) & 15, (i & 1) ? c1 : PAL_PAINT(PAINT_WHITE, 2));
+                ui_sparkle(sx, sy, (t3 + (int)r) & 15, (i & 1) ? c1 : PAL_PAINT(PAINT_WHITE, 2));
             }
+            if (fast) ws_next(&nw);
         }
         if (g->show == SHOW_STARS) {
             int mx = W->x + W->w / 5, my = W->y + W->h / 3, mr = W->h / 5;
@@ -584,12 +673,6 @@ static void draw_speakers(const StageView *v, const StageLayout *L)
     }
 }
 
-static void lamp_xy(const StageLayout *L, int i, int *x, int *y)
-{
-    *x = L->w * (2 * i + 1) / 12;
-    *y = L->truss_h - 1;
-}
-
 static void draw_truss(const StageView *v, const StageLayout *L)
 {
     const ConcertGenre *g = &concert_genres[v->genre];
@@ -603,14 +686,23 @@ static void draw_truss(const StageView *v, const StageLayout *L)
         plat_line(x + 4, th - 5, x + 8, 1, s0);
     }
     plat_rect(0, 0, L->w, 1, s2);
-    /* lamps: flash on the beat, colour of the genre */
-    for (i = 0; i < 6; i++) {
-        int lx, ly, on = v->lights > 0 && (((v->t / 8) + (uint32_t)i) % 3 != 0 || v->kick > 0);
-        uint8_t c = i % 3 == 0 ? PAL_PAINT(g->c0, 2) : i % 3 == 1 ? PAL_PAINT(g->c1, 2) : PAL_PAINT(g->c2, 2);
-        lamp_xy(L, i, &lx, &ly);
-        plat_rect(lx - 3, ly - 5, 7, 5, PAL_RAMP(RAMP_STONE, 0));
-        plat_rect(lx - 2, ly - 1, 5, 2, on ? c : PAL_RAMP(RAMP_STONE, 2));
-        if (on) plat_rect(lx - 1, ly - 1, 2, 1, PAL_WHITE);
+    /* lamps: flash on the beat, colour of the genre. Lamp i hangs at x =
+     * w * (2i + 1) / 12 (the beams start there too); SP6: that x, the phase
+     * (t / 8 + i) % 3 and i % 3 are stepped, no division per lamp */
+    {
+        uint32_t ph = mod3(v->t / 8u);
+        int i3 = 0;
+        DivStep lxs;
+        ds_init(&lxs, L->w, 12, 2 * L->w);
+        for (i = 0; i < 6; i++, ds_next(&lxs)) {
+            int lx = lxs.q, ly = L->truss_h - 1, on = v->lights > 0 && (ph != 0 || v->kick > 0);
+            uint8_t c = i3 == 0 ? PAL_PAINT(g->c0, 2) : i3 == 1 ? PAL_PAINT(g->c1, 2) : PAL_PAINT(g->c2, 2);
+            plat_rect(lx - 3, ly - 5, 7, 5, PAL_RAMP(RAMP_STONE, 0));
+            plat_rect(lx - 2, ly - 1, 5, 2, on ? c : PAL_RAMP(RAMP_STONE, 2));
+            if (on) plat_rect(lx - 1, ly - 1, 2, 1, PAL_WHITE);
+            if (++ph == 3u) ph = 0;
+            if (++i3 == 3) i3 = 0;
+        }
     }
     /* disco ball for the disco stage */
     if (v->stage == STAGE_DISCO_INFERNO) {
@@ -671,8 +763,8 @@ static void draw_floor(const StageView *v, const StageLayout *L, const StagePal 
     /* the front lip with footlights */
     plat_rect(0, L->stage_front, L->w, L->big ? 7 : 5, p->lip);
     plat_rect(0, L->stage_front, L->w, 1, ui_lighter(p->lip));
-    for (x = 8; x < L->w; x += L->w / 8) {
-        int on = v->lights > 4 && (((uint32_t)x / 8 + v->t / 6) & 1);
+    for (x = 8, i = (int)(v->t / 6u); x < L->w; x += L->w / 8) {
+        int on = v->lights > 4 && (((uint32_t)x / 8 + (uint32_t)i) & 1);
         plat_rect(x, L->stage_front + 1, 4, 2, on ? PAL_PAINT(PAINT_LEMON, 2) : PAL_RAMP(RAMP_STONE, 2));
     }
 }
@@ -717,13 +809,21 @@ void concert_draw_stage(const StageView *v, const StageLayout *L)
     draw_truss(v, L);
     /* beams sweep with the music */
     if (v->lights > 6) {
+        /* SP6: lamp x, the two sweeps (2t + 70i on even lamps, 3t + 70i on
+         * odd ones) and i % 3 stepped; the same targets and colours */
         int n = v->sec == SEC_CHORUS1 || v->sec == SEC_CHORUS2 || v->encore ? 6 : 4;
-        for (i = 0; i < 6; i++) {
-            int lx, ly, tx, c;
+        int fast = STEP_T_OK(v->t), i3 = 0;
+        DivStep lxs;
+        WaveStep sw[2];
+        memset(sw, 0, sizeof(sw));
+        ds_init(&lxs, L->w, 12, 2 * L->w);
+        if (fast) { ws_init(&sw[0], (int)v->t * 2, 260, 140); ws_init(&sw[1], (int)v->t * 3 + 70, 260, 140); }
+        for (i = 0; i < 6; i++, ds_next(&lxs), i3 = i3 == 2 ? 0 : i3 + 1) {
+            int lx = lxs.q, ly = L->truss_h - 1, tx, c, wv = 0;
+            if (fast) { wv = ws_val(&sw[i & 1], L->w / 2 - 10); ws_next(&sw[i & 1]); }
             if (n == 4 && (i == 1 || i == 4)) continue;
-            lamp_xy(L, i, &lx, &ly);
-            tx = L->w / 2 + ui_wave((int)v->t * (i & 1 ? 3 : 2) + i * 70, 260, L->w / 2 - 10);
-            c = i % 3 == 0 ? PAL_PAINT(g->c0, 2) : i % 3 == 1 ? PAL_PAINT(g->c1, 2) : PAL_PAINT(g->c2, 2);
+            tx = L->w / 2 + (fast ? wv : ui_wave((int)v->t * (i & 1 ? 3 : 2) + i * 70, 260, L->w / 2 - 10));
+            c = i3 == 0 ? PAL_PAINT(g->c0, 2) : i3 == 1 ? PAL_PAINT(g->c1, 2) : PAL_PAINT(g->c2, 2);
             beam(lx, ly + 1, tx, L->stage_front, 1, L->big ? 14 : 10, (uint8_t)c);
         }
     }
@@ -993,40 +1093,66 @@ void concert_draw_crowd(const StageView *v, const StageLayout *L)
             if (id >= 0) chibi(id, x, f - b, 1, 3, IMG_SILHOUETTE, PAL_BLACK);
         }
     }
-    /* back rows: silhouettes against the stage light */
-    for (i = 0; i < back; i++) {
-        int id = v->crowd[front + i];
-        int x = (i * 2 + 1) * L->w / (back * 2) + (i & 1) * 3;
-        int f = L->stage_front + (L->big ? 26 : 19) + (i % 3) * 2;
-        int b = 0;
-        switch (g->crowd) {
-        case CROWD_SWAY: case CROWD_WAVE: x += ui_wave((int)v->t + i * 9, 60, 3); break;
-        default: b = ((v->beat + i) & 7) < 2 ? amp - 1 : 0; break;
-        }
-        if (id >= 0) chibi(id, x, f - b, 1, 3, IMG_SILHOUETTE, sil);
-        else {
-            ui_fill_circle(x, f - 18 - b, 6, sil);
-            plat_rect(x - 6, f - 12 - b, 13, 12, sil);
-        }
-        /* glow sticks */
-        if (hype > 20 && (i % 2) == 0) {
-            int sw = ui_wave((int)v->t * 2 + i * 15, 30, 4);
-            uint8_t gc = PAL_PAINT((i & 2) ? g->c1 : g->c2, 2);
-            plat_line(x + 4, f - 14 - b, x + 6 + sw, f - 24 - b, ui_darker(gc));
-            plat_rect(x + 5 + sw, f - 26 - b, 2, 3, gc);
+    /* back rows: silhouettes against the stage light. SP6: the positions,
+     * row offsets and waves are stepped from one i to the next (no division
+     * per fan; same values) */
+    {
+        int fast = STEP_T_OK(v->t), m3 = 0;
+        DivStep dx;
+        WaveStep sway, stick;
+        memset(&dx, 0, sizeof(dx));
+        memset(&sway, 0, sizeof(sway));
+        memset(&stick, 0, sizeof(stick));
+        if (back > 0) ds_init(&dx, L->w, back * 2, 2 * L->w);
+        if (fast) { ws_init(&sway, (int)v->t, 60, 9); ws_init(&stick, (int)v->t * 2, 30, 15); }
+        for (i = 0; i < back; i++) {
+            int id = v->crowd[front + i];
+            int x = dx.q + (i & 1) * 3;
+            int f = L->stage_front + (L->big ? 26 : 19) + m3 * 2;
+            int b = 0;
+            switch (g->crowd) {
+            case CROWD_SWAY: case CROWD_WAVE: x += fast ? ws_val(&sway, 3) : ui_wave((int)v->t + i * 9, 60, 3); break;
+            default: b = ((v->beat + i) & 7) < 2 ? amp - 1 : 0; break;
+            }
+            if (id >= 0) chibi(id, x, f - b, 1, 3, IMG_SILHOUETTE, sil);
+            else {
+                ui_fill_circle(x, f - 18 - b, 6, sil);
+                plat_rect(x - 6, f - 12 - b, 13, 12, sil);
+            }
+            /* glow sticks */
+            if (hype > 20 && (i % 2) == 0) {
+                int sw = fast ? ws_val(&stick, 4) : ui_wave((int)v->t * 2 + i * 15, 30, 4);
+                uint8_t gc = PAL_PAINT((i & 2) ? g->c1 : g->c2, 2);
+                plat_line(x + 4, f - 14 - b, x + 6 + sw, f - 24 - b, ui_darker(gc));
+                plat_rect(x + 5 + sw, f - 26 - b, 2, 3, gc);
+            }
+            ds_next(&dx);
+            if (++m3 == 3) m3 = 0;
+            if (fast) { ws_next(&sway); ws_next(&stick); }
         }
     }
     /* front row: real chibis from behind, big, heads and shoulders */
-    for (i = 0; i < front && i < n; i++) {
+    {
+    int fast = STEP_T_OK(v->t), m5 = 0;
+    uint32_t t15 = v->t / 15u, t3 = v->t / 3u, t5 = v->t / 5u, t20 = v->t / 20u;
+    int rise = (int)(v->t % 20u) / 4;
+    DivStep dx;
+    WaveStep sway;
+    memset(&sway, 0, sizeof(sway));
+    ds_init(&dx, L->w, front * 2, 2 * L->w);
+    if (fast) ws_init(&sway, (int)v->t, 70, 20);
+    for (i = 0; i < front && i < n; i++, ds_next(&dx), m5 = m5 >= 3 ? m5 - 3 : m5 + 2) {
         int id = v->crowd[i];
-        int x = (i * 2 + 1) * L->w / (front * 2) + ((i * 7) % 5) - 2;
+        int x = dx.q + m5 - 2;
         int f = L->h + (L->big ? 22 : 18), b = 0;
-        int arms = v->cheer > 0 || (hype > 70 && ((v->t / 15 + (uint32_t)i) % 4 == 0));
+        int arms = v->cheer > 0 || (hype > 70 && ((t15 + (uint32_t)i) % 4 == 0));
+        int wv = 0;
+        if (fast) { wv = ws_val(&sway, 4); ws_next(&sway); }
         switch (g->crowd) {
         case CROWD_JUMP: b = (((int)v->t / 2 + i * 3) % 8) < 3 ? amp + 1 : 0; break;
         case CROWD_HEADBANG: b = v->beat < 3 ? amp : 0; break;
-        case CROWD_MOSH: b = (int)(hash2(v->t / 3, (uint32_t)i) % (uint32_t)(amp + 2)); x += (int)(hash2(v->t / 5, (uint32_t)i) % 5) - 2; break;
-        case CROWD_SWAY: case CROWD_WAVE: x += ui_wave((int)v->t + i * 20, 70, 4); b = 1; break;
+        case CROWD_MOSH: b = (int)(hash2(t3, (uint32_t)i) % (uint32_t)(amp + 2)); x += (int)(hash2(t5, (uint32_t)i) % 5) - 2; break;
+        case CROWD_SWAY: case CROWD_WAVE: x += fast ? wv : ui_wave((int)v->t + i * 20, 70, 4); b = 1; break;
         default: b = v->beat < 2 ? amp : 0; break;
         }
         if (arms) {
@@ -1044,8 +1170,9 @@ void concert_draw_crowd(const StageView *v, const StageLayout *L)
         }
         /* fans of this genre hold up hearts */
         if (id >= 0 && res_of(id) && RES_LIKE_MUSIC(res_of(id)) == v->genre && hype > 40 &&
-            ((v->t / 20 + (uint32_t)i) & 3) == 0)
-            ui_heart(x + 10, f - 58 - b - (int)(v->t % 20) / 4, 4, PAL_PAINT(PAINT_BUBBLEGUM, 1));
+            ((t20 + (uint32_t)i) & 3) == 0)
+            ui_heart(x + 10, f - 58 - b - rise, 4, PAL_PAINT(PAINT_BUBBLEGUM, 1));
+    }
     }
 }
 

@@ -147,3 +147,81 @@ TEST(concert_wave_step_equals_ui_wave)
                 }
     CHECK(concert_wave_step_check(1234567, 120, 12, 2000, 3) < 0);
 }
+
+/* the stage's division-free helpers: x % 3 and x % 6 by folding (every 32-bit value of many bit-pattern classes and a
+ * long pseudo-random run), and the quotient stepper against num / den */
+uint32_t concert_mod3(uint32_t x);
+uint32_t concert_mod6(uint32_t x);
+int concert_div_step_check(int num, int den, int step, int n);
+TEST(concert_mod3_mod6_and_div_step_equal_division)
+{
+    uint32_t x, r = 12345u;
+    int b, i, den, step;
+    for (x = 0; x < 200000u; x++) {
+        CHECK_EQ_U(concert_mod3(x), x % 3u);
+        CHECK_EQ_U(concert_mod6(x), x % 6u);
+    }
+    for (b = 0; b < 32; b++)
+        for (i = -300; i <= 300; i++) {
+            x = (1u << b) + (uint32_t)i;
+            CHECK_EQ_U(concert_mod3(x), x % 3u);
+            CHECK_EQ_U(concert_mod6(x), x % 6u);
+            x = ~x;
+            CHECK_EQ_U(concert_mod3(x), x % 3u);
+            CHECK_EQ_U(concert_mod6(x), x % 6u);
+        }
+    for (i = 0; i < 2000000; i++) {
+        r = r * 1664525u + 1013904223u;
+        CHECK_EQ_U(concert_mod3(r), r % 3u);
+        CHECK_EQ_U(concert_mod6(r), r % 6u);
+    }
+    for (den = 1; den <= 40; den++)
+        for (step = 0; step <= 700; step += 7)
+            CHECK_MSG(concert_div_step_check(den * 3 + step, den, step, 300) < 0, "den %d step %d", den, step);
+    CHECK(concert_div_step_check(240, 18, 480, 9) < 0);
+    CHECK(concert_div_step_check(320, 14, 640, 7) < 0);
+}
+
+/* concert_confetti (also the dreams' and the results') against its pre-SP6 body, verbatim but for the name: every
+ * piece's rect over many boxes, clocks (incl. the far ones that take the old path) and piece counts */
+static uint32_t old_hash2(uint32_t a, uint32_t b) { return doomo_hash32(a * 2654435761u ^ (b + 0x9E37u)); }
+static void old_confetti(int x0, int y0, int w, int h, uint32_t t, int n, int fall)
+{
+    static const uint8_t cols[6] = { PAINT_BUBBLEGUM, PAINT_LEMON, PAINT_SKY, PAINT_MINT,
+                                     PAINT_LAVENDER, PAINT_TANGERINE };
+    int i;
+    if (w <= 0 || h <= 0) return;
+    for (i = 0; i < n; i++) {
+        uint32_t r = old_hash2((uint32_t)i, 77u);
+        int x = x0 + (int)(r % (uint32_t)w) + ui_wave((int)t + i * 7, 40, 3);
+        int y = y0 + (int)(((r >> 8) % (uint32_t)h + (uint32_t)(fall ? t * (1 + (r >> 20) % 3) : 0)) %
+                           (uint32_t)h);
+        int ph = (int)((t / 3 + r) & 3);
+        uint8_t c = PAL_PAINT(cols[(r >> 4) % 6], 2 - (ph & 1));
+        if (ph == 0) plat_rect(x, y, 2, 2, c);
+        else if (ph == 1) plat_rect(x, y, 3, 1, c);
+        else if (ph == 2) plat_rect(x, y, 1, 2, c);
+        else plat_rect(x, y, 2, 1, c);
+    }
+}
+
+TEST(concert_confetti_equals_the_old_confetti)
+{
+    static uint8_t a[240 * 160];
+    static const uint32_t far[] = { 0x1FFFFFF0u, 0x20000000u, 0x7FFFFF00u, 0x80000005u, 0xFFFFFFF0u };
+    int k, fall;
+    nat_w = 240; nat_h = 160;
+    for (k = 0; k < 400; k++)
+        for (fall = 0; fall < 2; fall++) {
+            int x0 = (k * 7) % 40 - 8, y0 = (k * 3) % 30 - 5, w = 1 + (k * 37) % 240, h = 1 + (k * 53) % 160;
+            int n = (k % 7) * 10;
+            uint32_t t = k < 395 ? (uint32_t)(k * 131) : far[k - 395];
+            memset(nat_fb, 0, sizeof(a));
+            concert_confetti(x0, y0, w, h, t, n, fall);
+            memcpy(a, nat_fb, sizeof(a));
+            memset(nat_fb, 0, sizeof(a));
+            old_confetti(x0, y0, w, h, t, n, fall);
+            CHECK_MSG(memcmp(a, nat_fb, sizeof(a)) == 0, "box %d,%d %dx%d t %u n %d fall %d", x0, y0, w, h,
+                      (unsigned)t, n, fall);
+        }
+}
