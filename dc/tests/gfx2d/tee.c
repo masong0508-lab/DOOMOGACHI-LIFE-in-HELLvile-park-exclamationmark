@@ -22,6 +22,12 @@
  * views (plat_view3d, plat_overworld: DC6, DC7) are drawn by the native
  * renderer and handed to the Dreamcast list as an image, so only the 2D
  * over them is under test.
+ * DC8: the house (plat_room) is the Dreamcast's own renderer
+ * (dc/src/room.c) on the Dreamcast side and room_ref.c on the native side,
+ * which is its reference: identical except the Dreamcast's translucent
+ * ghosts, the selected pieces' pulse and the squash quads.
+ *   DC8_ROOM=ref     room_ref through the 2D calls on both sides (DC3's
+ *                    route, before DC8)
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -32,6 +38,8 @@
 #include "swpvr.h"
 #include "png.h"
 #include "doomo/plat_ext.h"
+#include "room_int.h"
+#include "../../../core/src/home_int.h"
 
 /* the native reference (renamed at compile time, see Makefile) */
 void ref_begin_frame(void);
@@ -61,6 +69,9 @@ void ref_overworld(const DoomoOverworldView *v);
 
 static int inited;
 uint32_t tee_hold_mismatch, tee_frames;
+/* DC8: while set, the 2D calls draw the native reference only (room_ref
+ * draws the native side of plat_room; the Dreamcast side is room.c) */
+int tee_ref_only;
 
 static void tee_init(void)
 {
@@ -84,9 +95,9 @@ void plat_end_frame(void)
 }
 
 void plat_clear(uint8_t c) { ref_clear(c); dc2d_clear(c); }
-void plat_rect(int x, int y, int w, int h, uint8_t c) { ref_rect(x, y, w, h, c); dc2d_rect(x, y, w, h, c); }
+void plat_rect(int x, int y, int w, int h, uint8_t c) { ref_rect(x, y, w, h, c); if (!tee_ref_only) dc2d_rect(x, y, w, h, c); }
 void plat_shade_rect(int x, int y, int w, int h, int l) { ref_shade_rect(x, y, w, h, l); dc2d_shade_rect(x, y, w, h, l); }
-void plat_line(int x0, int y0, int x1, int y1, uint8_t c) { ref_line(x0, y0, x1, y1, c); dc2d_line(x0, y0, x1, y1, c); }
+void plat_line(int x0, int y0, int x1, int y1, uint8_t c) { ref_line(x0, y0, x1, y1, c); if (!tee_ref_only) dc2d_line(x0, y0, x1, y1, c); }
 void plat_checker(int x, int y, int w, int h, uint8_t c) { ref_checker(x, y, w, h, c); dc2d_checker(x, y, w, h, c); }
 void plat_text(int x, int y, const char *s, uint8_t c) { ref_text(x, y, s, c); dc2d_text(x, y, s, c); }
 
@@ -105,7 +116,7 @@ void plat_text_outline(int x, int y, const char *s, uint8_t color, uint8_t outli
 void plat_image(int x, int y, const DoomoImage *img, int scale, int flags, uint8_t color)
 {
     ref_image(x, y, img, scale, flags, color);
-    dc2d_image(x, y, img, scale, flags, color);
+    if (!tee_ref_only) dc2d_image(x, y, img, scale, flags, color);
 }
 
 /* The post effects and the scaled blit. By default the Dreamcast does them
@@ -125,7 +136,7 @@ void plat_image_xform(int ax, int ay, const DoomoImage *img, int sx, int sy, int
 {
     if (sw()) { sw_image_xform(ax, ay, img, sx, sy, flags, color); return; }
     ref_image_xform(ax, ay, img, sx, sy, flags, color);
-    dc2d_image_xform(ax, ay, img, sx, sy, flags, color);
+    if (!tee_ref_only) dc2d_image_xform(ax, ay, img, sx, sy, flags, color);
 }
 
 void plat_post_offset(int dx, int dy)
@@ -203,6 +214,31 @@ void plat_overworld(const DoomoOverworldView *v)
     if (!v) return;
     if (dc7_ow()) dc2d_overworld(v);
     else view_standin(v->vx, v->vy, v->vw, v->vh);
+}
+
+/* DC8: the house. room_ref (the native reference) draws the native frame
+ * only; the Dreamcast list gets room.c's own drawing. DC8_ROOM=ref: room_ref
+ * through the tee on both sides, as before DC8. */
+static int dc8_ref(void)
+{
+    static int v = -1;
+    if (v < 0) { const char *e = getenv("DC8_ROOM"); v = e && strcmp(e, "ref") == 0; }
+    return v;
+}
+
+void plat_room(const DoomoRoomView *v)
+{
+    if (dc8_ref()) { room_ref_draw(v); return; }
+    tee_ref_only = 1;
+    room_ref_draw(v);
+    tee_ref_only = 0;
+    dc2d_room(v);
+}
+
+void plat_room_project(const struct DoomoRoomView *v, fix16 x, fix16 y, int z, int16_t *sx, int16_t *sy)
+{
+    if (dc8_ref()) room_ref_project(v, x, y, z, sx, sy);
+    else dc2d_room_project(v, x, y, z, sx, sy);
 }
 
 int plat_hold_frame(int on)
