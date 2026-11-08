@@ -417,13 +417,14 @@ uint32_t talk_safe_lint_hits(void) { return lint_hits; }
 
 static int lint_fail(int r) { lint_hits++; return r; }
 
-int talk_safe_lint(const char *line, const TalkAudience *aud, int *swears)
+/* strict (the probe): any register word is a problem, nothing is counted */
+static int lint_core(const char *line, const TalkAudience *aud, int *swears, int strict)
 {
     SafHdr h;
     char v[TALK_SHOWN_MAX * 3], word[TALK_TOK_LEN * 2];
     int i, o = 0, nsw = 0, k;
-    if (!line || !aud) return lint_fail(TL_NO_DB);
-    if (!saf_hdr(&h)) return lint_fail(TL_NO_DB);
+    if (!line || !aud) return TL_NO_DB;
+    if (!saf_hdr(&h)) return TL_NO_DB;
     /* the visible text: line codes ([R4], {.}) out, '/' a space, lower case */
     for (i = 0; line[i] && o < (int)sizeof v - 1; i++) {
         char c = line[i];
@@ -439,11 +440,11 @@ int talk_safe_lint(const char *line, const TalkAudience *aud, int *swears)
         char w[48];
         uint32_t so;
         int n, len = 0;
-        if (!talk_db_read(TB_SAFETY, h.reg_off + 8u * (uint32_t)k, r, 8)) return lint_fail(TL_NO_DB);
+        if (!talk_db_read(TB_SAFETY, h.reg_off + 8u * (uint32_t)k, r, 8)) return TL_NO_DB;
         so = le32(r);
-        if (so >= h.str_len) return lint_fail(TL_NO_DB);
+        if (so >= h.str_len) return TL_NO_DB;
         len = (int)(h.str_len - so < sizeof w - 1 ? h.str_len - so : sizeof w - 1);
-        if (!talk_db_read(TB_SAFETY, h.str_off + so, w, (uint32_t)len)) return lint_fail(TL_NO_DB);
+        if (!talk_db_read(TB_SAFETY, h.str_off + so, w, (uint32_t)len)) return TL_NO_DB;
         w[len] = 0;
         if (r[5] & SR_ALLOW) {
             /* blank the allowed phrase out of the text before the checks */
@@ -455,14 +456,15 @@ int talk_safe_lint(const char *line, const TalkAudience *aud, int *swears)
         }
         n = count_word(w, r[5] & SR_HEAD, r[5] & SR_TAIL, v);
         if (!n) continue;
-        if (r[5] & SR_FORBID) return lint_fail(TL_FORBIDDEN);
-        if (r[4] == TR_HATE || r[4] == TR_REALWORLD || r[4] == TR_DISTRESS) return lint_fail(TL_FORBIDDEN);
+        if (r[5] & SR_FORBID) return TL_FORBIDDEN;
+        if (strict) return TL_REGISTER_KID;
+        if (r[4] == TR_HATE || r[4] == TR_REALWORLD || r[4] == TR_DISTRESS) return TL_FORBIDDEN;
         if (r[4] == TR_SEXUAL || (r[5] & SR_SUGGEST)) {
-            if (aud->any_minor || aud->target_minor || aud->avatar_minor) return lint_fail(TL_REGISTER_KID);
-            if (aud->pet) return lint_fail(TL_SEXUAL_PET);
+            if (aud->any_minor || aud->target_minor || aud->avatar_minor) return TL_REGISTER_KID;
+            if (aud->pet) return TL_SEXUAL_PET;
             continue;
         }
-        if (aud->any_minor || aud->target_minor || aud->avatar_minor) return lint_fail(TL_REGISTER_KID);
+        if (aud->any_minor || aud->target_minor || aud->avatar_minor) return TL_REGISTER_KID;
         if (r[4] == TR_STRONG) nsw += n;
     }
     /* the hate list on every word */
@@ -472,12 +474,23 @@ int talk_safe_lint(const char *line, const TalkAudience *aud, int *swears)
         while (v[i] && (wordc(v[i]) || v[i] == '-') && l < (int)sizeof word - 1) word[l++] = v[i++];
         while (v[i] && (wordc(v[i]) || v[i] == '-')) i++;
         word[l] = 0;
-        if (l && talk_safe_hate_word(word, 0)) return lint_fail(TL_HATE);
+        if (l && talk_safe_hate_word(word, 0)) return TL_HATE;
     }
-    if (talk_safe_bubble_lines(v, TALK_BUBBLE_COLS) > TALK_BUBBLE_LINES) return lint_fail(TL_LENGTH);
+    if (talk_safe_bubble_lines(v, TALK_BUBBLE_COLS) > TALK_BUBBLE_LINES) return TL_LENGTH;
     if (nsw) {
-        if (!swears || *swears + nsw > 1) return lint_fail(TL_SWEAR_CAP);
+        if (!swears || *swears + nsw > 1) return TL_SWEAR_CAP;
         *swears += nsw;
     }
     return TL_OK;
+}
+
+int talk_safe_lint(const char *line, const TalkAudience *aud, int *swears)
+{
+    int r = lint_core(line, aud, swears, 0);
+    return r == TL_OK ? TL_OK : lint_fail(r);
+}
+
+int talk_safe_lint_probe(const char *text, const TalkAudience *aud, int strict)
+{
+    return lint_core(text, aud, NULL, strict);
 }

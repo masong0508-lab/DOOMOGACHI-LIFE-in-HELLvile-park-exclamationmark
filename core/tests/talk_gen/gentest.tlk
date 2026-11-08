@@ -1,0 +1,104 @@
+# core/tests/talk_gen/gentest.tlk - the unit tests' grammar (test_talk_gen.c). Not game
+# text: every line is a probe of one generator feature. `make -C core talk` compiles it
+# with the English lexicon into core/build/talk/TALK_gentest.BIN (talkc.py --grammar).
+# The syntax is core/tools/talkc_gen.py's.
+
+# ---- the modifiers and fields (one rule per act, so a test picks it by the act) ----
+@rule core.ask_about
+  "Forms: {x}, {x:pl}, {x:indef}, {x:def}."
+@rule core.ask_opinion
+  "More: {x:lemma}, {x:cap}, {x:up}, {x:s}."
+@rule core.tell act: backchannel
+  "Words: {x.it} {x.is}, {x.has}, {x.does}, {x.was}."
+@rule core.ask_fact act: answer
+  "Attr: {x.adj}, {x.good:indef}, near {x.assoc}."
+@rule core.greet
+  "Hi {you}, I am {me}."
+@rule core.ask_who act: gossip
+  "{them:cap} and {other}."
+@rule core.joke act: laugh
+  "Likes: {food}, {hobby}, {music}."
+@rule core.laugh
+  "Fears: {fear}, hates {hate}."
+@rule core.ask_feeling
+  "Job: {job:indef}."
+  "No job." guard: !fact.job
+# ---- weights, novelty, sub-rules, the fit ----
+@rule core.thank
+  "W1." w=1
+  "W9." w=9
+@rule core.ask_repeat
+  "N1."
+  "N2."
+  "N3."
+  "N4."
+  "N5."
+  "N6."
+  "N7."
+  "N8."
+@rule core.continue
+  "Sub: {sub.word}."
+@rule sub.word
+  "alpha"
+  "beta"
+@rule core.backchannel act: tell
+  "{x} {x} {x} {x} {x} {x} {x} {x} {x} {x}"
+# ---- K-9: one everyday swear a conversation, from a blunt adult ----
+@rule core.insult act: complain
+  "Damn." w=255 guard: blunt&adults_only&!kid_present
+  "Hmph."
+# ---- K-6: a Mature variant only with the option and premade adults ----
+@rule core.mock act: complain
+  "[JMAT]Mature variant." w=255 guard: adults_only&!kid_present&jmat&mature_adult_ok
+  "Cutaway."
+# ---- the cast's own lines win; faces ----
+@rule core.nod act: nod
+  "Generic nod."
+  "Nana nod." guard: speaker=nana_puddin
+@rule core.wave act: wave
+  "[HAPPY]Wave."
+# ---- the optional parts (core.compliment has many lines so the parts get a chance) ----
+@rule core.compliment act: thank
+  "Thanks."
+@rule open
+  "Oh-"
+@rule cb.job
+  "Like my job." guard: fact.job
+@rule cb.night
+  "It is late." guard: night
+@rule tag.plain
+  "Hm."
+@rule tag.catch
+  "{catch}"
+@rule handoff
+  "Right, {other}?"
+# ---- romance (adults only) ----
+@rule core.flirt guard: adults_only&!kid_present&!pet
+  "Oh! Hello." guard: consent
+  "No thanks." guard: !consent
+# ---- the safety banks ----
+@rule refuse.sexual tags: nojoke
+  "Not that."
+@rule refuse.minor tags: nojoke
+  "No. Never that."
+@rule refuse.hate tags: nojoke
+  "Not okay."
+@rule distress tags: nojoke
+  "Please talk to someone you trust."
+@rule deflect.romance tags: nojoke
+  "Not today."
+@rule end.k7 tags: nojoke
+  "We are done here."
+@rule safe
+  "Anyway."
+@rule pet
+  "beep."
+# ---- reactions ----
+@rule react.agree
+  "Agreed, {them}."
+@rule react.disagree
+  "Nope, {them}."
+@rule react.laugh
+  "Ha!"
+@rule core.unknown act: ask_repeat
+  "Eh?"

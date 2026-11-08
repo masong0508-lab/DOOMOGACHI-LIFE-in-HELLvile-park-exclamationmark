@@ -1,0 +1,3 @@
+# expect: write {x:indef}
+@rule core.ask_about
+  "I'd buy a {x} for that."

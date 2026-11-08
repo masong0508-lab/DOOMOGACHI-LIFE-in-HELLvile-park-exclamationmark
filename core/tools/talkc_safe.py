@@ -26,11 +26,13 @@
    core/tests/talk_bad/*.tlk.
 
 The template syntax the lints read (T5a may add to it, never loosen it):
-  @rule NAME [guard: EXPR] [tags: TAG,TAG] [slot: x=LEAF,LEAF]
-    "TEXT" [w=N] [guard: EXPR]
+  @rule NAME [guard: EXPR] [tags: TAG,TAG] [slot: x=LEAF,LEAF] [act: ACT]
+    "TEXT" [w=N] [guard: EXPR] [needs: EXPR]
   EXPR is predicates joined by &, a ! negates one. A line's guard is the
   rule's AND its own. {name} in TEXT is a slot or a sub-rule (a rule NAME,
   or every rule NAME.*); [CODE] is a line code ([LOVE], [R4] ...).
+  (T5a, talkc_gen.py) act: is the reply act of the rule's lines; needs: is
+  more guard terms (x.countable ...); w=N the weight (1 by default).
 """
 import os
 import re
@@ -47,7 +49,7 @@ LEET = {"0": "o", "1": "i", "3": "e", "4": "a", "5": "s", "7": "t", "8": "b", "9
 ROMANCE_ROOTS = ("core.flirt", "core.confess", "core.ask_out", "core.kiss", "beat.romance_adult",
                  "player.flirty", "romance")
 KID_BANKS = ("voice.kid", "kid_moment", "beat.kid_moment")
-REFUSAL_BANKS = ("refuse", "deflect")
+REFUSAL_BANKS = ("refuse", "deflect", "distress", "end")   # T5a: the K-11 and K-7 banks too
 
 
 def squeeze(w):
@@ -271,12 +273,17 @@ def read_tlk(path, die, rel):
         if not s or s.startswith("#"):
             continue
         if s.startswith("@rule"):
-            m = re.match(r"^@rule\s+([a-z0-9_.]+)((?:\s+(?:guard|tags|slot):\s*[^\s]+)*)\s*$", s)
+            m = re.match(r"^@rule\s+([a-z0-9_.]+)((?:\s+(?:guard|tags|slot|act):\s*[^\s]+)*)\s*$", s)
             if not m:
-                die(where, "@rule NAME [guard: EXPR] [tags: T,T] [slot: x=LEAF,LEAF]")
-            cur = {"name": m.group(1), "guard": set(), "tags": set(), "slots": {}, "lines": [], "where": where}
-            for k, v in re.findall(r"(guard|tags|slot):\s*([^\s]+)", m.group(2)):
-                if k == "guard":
+                die(where, "@rule NAME [guard: EXPR] [tags: T,T] [slot: x=LEAF,LEAF] [act: ACT]")
+            cur = {"name": m.group(1), "guard": set(), "tags": set(), "slots": {}, "lines": [], "where": where,
+                   "act": None, "opts": [], "file": rel(path)}
+            for k, v in re.findall(r"(guard|tags|slot|act):\s*([^\s]+)", m.group(2)):
+                if k == "act":
+                    if not re.match(r"^[a-z_]+$", v):
+                        die(where, "act: ACT (a talk.h TA_* name, lower case)")
+                    cur["act"] = v
+                elif k == "guard":
                     cur["guard"] |= _guard(v, where, die)
                 elif k == "tags":
                     cur["tags"] |= set(t for t in v.split(",") if t)
@@ -290,10 +297,14 @@ def read_tlk(path, die, rel):
         m = re.match(r'^"((?:[^"\\]|\\.)*)"((?:\s+(?:w=\d+|guard:\s*[^\s]+|needs:\s*[^\s]+))*)\s*$', s)
         if not m or cur is None:
             die(where, 'a line is "TEXT" [w=N] [guard: EXPR] [needs: ...], after an @rule')
-        g = set()
+        g, needs = set(), set()
         for v in re.findall(r"guard:\s*([^\s]+)", m.group(2)):
             g |= _guard(v, where, die)
+        for v in re.findall(r"needs:\s*([^\s]+)", m.group(2)):
+            needs |= _guard(v, where, die)
+        w = re.findall(r"w=(\d+)", m.group(2))
         cur["lines"].append((m.group(1), cur["guard"] | g, where))
+        cur["opts"].append({"guard": g, "needs": needs, "w": int(w[-1]) if w else 1})
     return T
 
 

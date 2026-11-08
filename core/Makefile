@@ -110,16 +110,23 @@ unit: $(BUILD)/tests talk
 # talk        $(BUILD)/talk/TALK_en.BIN (the native runner and test_talk_db
 #             read it; never committed; the disc builds make their own)
 # talk-check  every talkc.py lint and its seeded bad inputs (in test)
-TALK_DEPS := $(CORE)/tools/talkc.py $(CORE)/tools/talkc_parse.py $(CORE)/tools/talkc_safe.py $(CORE)/include/doomo/talk.h $(CORE)/gen/txt_dict.c $(CORE)/data/story/register.tsv \
+TALK_DEPS := $(CORE)/tools/talkc.py $(CORE)/tools/talkc_parse.py $(CORE)/tools/talkc_safe.py $(CORE)/tools/talkc_gen.py \
+             $(CORE)/include/doomo/talk.h $(CORE)/gen/txt_dict.c $(CORE)/data/story/register.tsv \
              $(shell find $(CORE)/data/talk -type f 2>/dev/null)
-talk: $(BUILD)/talk/TALK_en.BIN
+TALK_GENTEST := $(wildcard $(CORE)/tests/talk_gen/*.tlk)
+talk: $(BUILD)/talk/TALK_en.BIN $(BUILD)/talk/TALK_gentest.BIN
 $(BUILD)/talk/TALK_en.BIN: $(TALK_DEPS)
 	@mkdir -p $(dir $@)
 	@$(PYTHON) $(CORE)/tools/talkc.py --bin --lang en --out $@
+# T5a: the generator tests' grammar (core/tests/talk_gen/) with the English lexicon
+$(BUILD)/talk/TALK_gentest.BIN: $(TALK_DEPS) $(TALK_GENTEST)
+	@mkdir -p $(dir $@)
+	@$(PYTHON) $(CORE)/tools/talkc.py --bin --lang en --grammar $(CORE)/tests/talk_gen --out $@
 talk-check:
 	@$(PYTHON) $(CORE)/tools/talkc.py --check
 	@$(PYTHON) $(CORE)/tools/talkc.py --selftest
 # --- end T1/T2 ---
+
 
 scripts: $(BUILD)/runner
 	sh $(CORE)/tests/run_scripts.sh $(BUILD)/runner $(CORE)/tests/scripts $(BUILD)/shots

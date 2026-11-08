@@ -1,0 +1,3 @@
+# expect: never says the topic
+@rule refuse.minor tags: nojoke
+  "No {x}. Never."

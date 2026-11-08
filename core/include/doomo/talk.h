@@ -284,6 +284,9 @@ int  talk_db_cat_name(int cat, char *out, int cap);
 int  talk_db_cat_root(int cat);
 /* IEEE CRC-32 over len bytes, continuing from crc (start with 0). */
 uint32_t talk_crc32(uint32_t crc, const uint8_t *p, uint32_t len);
+/* (T5a) string idx of a TBK_TXT bank (TB_STRINGS: the template strings)
+ * into out: its length, -1 on error. */
+int  talk_db_string(int bank, int idx, char *out, int cap);
 
 /* =========================================================================
  * T3: the free-text parser (Dreamcast and native; the PS1 never links it:
@@ -460,6 +463,233 @@ int  talk_safe_bubble_lines(const char *line, int cols);
 /* The lint's hit counter (a test fails on any count > 0; release builds
  * log "talk: lint"). */
 uint32_t talk_safe_lint_hits(void);
+/* (T5a) The same lint on a piece of text that is not a bank line, before
+ * the generator puts it in a line: a name the player typed (a custom
+ * resident's; strict: a register word in it is a problem whatever the
+ * room) or a filled-in word ("spice's" squeezes to a hate-list plural; an
+ * adults-only word with a child here). TL_OK or the problem; it counts
+ * nothing and a swear in it is a problem (K-9 is the template's). The
+ * final line still goes through talk_safe_lint(), which counts. */
+int  talk_safe_lint_probe(const char *text, const TalkAudience *aud, int strict);
+
+/* =========================================================================
+ * T5a: the generator (core/src/talk_gen.c; PS1, Dreamcast, native). Design
+ * 3.6, docs/TALK.md "The generator". It writes only from the compiled
+ * database: template strings (TB_STRINGS) chosen by the grammar (TB_GRAMMAR,
+ * core/data/talk/grammar/<lang>/ and voice/<lang>/ .tlk files compiled by
+ * talkc.py; the format is in core/tools/talkc_gen.py) and concept forms
+ * (TB_FORMS). Nothing the player typed is ever copied into a line.
+ *
+ * SAFETY: talk_gen_exchange() runs talk_safe_gate() on the player's
+ * utterance first, every line it writes goes through talk_safe_lint() (S3),
+ * and a hit replaces the line with a `safe` bank line and counts
+ * (talk_safe_lint_hits(); a test fails on any). Romance replies need
+ * TGP_ADULTS_ONLY and !TGP_KID_PRESENT (talkc lint TK3); a concept that may
+ * not be said in the room (adults-only with a child here, a never-generated
+ * one) is never put in a line (talk_gen_concept_ok).
+ *
+ * A reply line has five optional parts (design 3.6):
+ *   [opener] [core] [callback] [tag] [hand-off]
+ * chosen by weighted random from a per-conversation RNG (the seed is a hash
+ * of the town seed, the day and the participants), so the text is the same
+ * on every platform. It must fit the bubble (TALK_BUBBLE_LINES x
+ * TALK_BUBBLE_COLS): the generator re-picks up to 4 times, then drops the
+ * tag, the callback, the opener and the hand-off.
+ * ========================================================================= */
+#define TALK_LINE_MAX      96      /* a generated line: text + line codes, NUL */
+#define TALK_NOVELTY       6       /* the novelty ring of each participant      */
+#define TALK_ROOM_NOVELTY  16      /* the room's ring: no line twice in a talk   */
+#define TALK_EXCHANGE_MAX  4       /* lines one exchange can produce            */
+#define TALK_SENTENCES_MAX 3       /* sentences a line (Q1, design 3.7)         */
+#define TALK_TRACE_ALTS    12
+#define TALK_TRACE_FILLS   12
+
+/* stance on the topic */
+enum { TST_NEUTRAL = 0, TST_PRO, TST_CON, TST_COUNT };
+/* the drama manager's beats (T6 drives them; the grammar reads them) */
+enum { TBEAT_NONE = 0, TBEAT_ARRIVE, TBEAT_SMALLTALK, TBEAT_TOPIC_DIVE, TBEAT_HOUSE, TBEAT_GOSSIP,
+       TBEAT_PROBLEM, TBEAT_RIVALRY, TBEAT_ALLY_ASK, TBEAT_STORY, TBEAT_GAME, TBEAT_KID_MOMENT,
+       TBEAT_ROMANCE_ADULT, TBEAT_WIND_DOWN, TBEAT_COUNT };
+/* mood bands (from MOOD_*) */
+enum { TMB_OK = 0, TMB_HAPPY, TMB_SAD, TMB_ANGRY, TMB_SCARED, TMB_TIRED, TMB_WEIRD, TMB_COUNT };
+/* relationship bands, speaker to addressee */
+enum { TRB_STRANGER = 0, TRB_ACQUAINTANCE, TRB_FRIEND, TRB_BEST, TRB_PARTNER, TRB_RIVAL, TRB_FAMILY,
+       TRB_COUNT };
+/* time of day */
+enum { TTOD_MORNING = 0, TTOD_DAY, TTOD_EVENING, TTOD_NIGHT, TTOD_COUNT };
+/* player act classes (core/data/talk/acts.tsv; openers are chosen by them) */
+enum { TAC_OPEN = 0, TAC_ASK, TAC_TELL, TAC_WARM, TAC_COOL, TAC_THIRD, TAC_FLOW, TAC_ROMANCE,
+       TAC_GESTURE, TAC_SAFETY, TAC_COUNT };
+/* callback kinds: a sim fact that is true now (read through the sim's
+ * accessors when the line is made, so a callback is true by construction) */
+enum { TCB_NONE = 0, TCB_JOB, TCB_PARTNER, TCB_PET, TCB_NEWS, TCB_PROBLEM, TCB_BDAY, TCB_GHOST,
+       TCB_POSSESSED, TCB_HELLBORN, TCB_NIGHT, TCB_MEMORY, TCB_LIKE, TCB_FEAR, TCB_CHAPTER, TCB_FAMILY,
+       TCB_COUNT };
+/* talk memory flags (T6 keeps them in the 'TALK' chunk; TalkConv.mem_flags) */
+#define TMF_COMPLIMENTED 0x01u
+#define TMF_INSULTED     0x02u
+#define TMF_PROMISED     0x04u
+/* grammar entry points besides core.<act> and react.<act> */
+enum { TGE_OPEN = 0, TGE_CB, TGE_TAG, TGE_HANDOFF, TGE_SAFE, TGE_END_K7, TGE_PET, TGE_IDLE,
+       TGE_COUNT };
+
+/* Guard predicates (talkc_gen.py reads this enum: a guard term "kid_present"
+ * is TGP_KID_PRESENT, "fact.job" TGP_FACT_JOB, "x.countable"
+ * TGP_X_COUNTABLE; from TGP_FIRST_VALUED on a term carries a value:
+ * "stance=pro", "speaker=grumbleguts", "mood=sad"). Add-only. */
+enum {
+    TGP_NONE = 0,
+    /* the room (talk_safe_ctx) */
+    TGP_KID_PRESENT, TGP_PET, TGP_ADULTS_ONLY, TGP_JMAT, TGP_MATURE_ADULT_OK,
+    /* the speaker */
+    TGP_KID_SPEAKER, TGP_TEEN, TGP_ELDER, TGP_POLITE, TGP_BLUNT, TGP_FLAT, TGP_LOUD, TGP_SERIOUS,
+    TGP_EASYGOING, TGP_QUIRKY, TGP_QUICK, TGP_SLOW, TGP_HELLBORN, TGP_GHOST, TGP_POSSESSED, TGP_CAST,
+    /* the line */
+    TGP_TOPIC, TGP_TO_PLAYER, TGP_TO_RES, TGP_OTHER, TGP_GROUP, TGP_CONSENT, TGP_CATCH, TGP_NIGHT,
+    TGP_LIKES_TOPIC, TGP_FEARS_TOPIC, TGP_HATES_TOPIC, TGP_FIRST,
+    /* facts (callbacks) */
+    TGP_FACT_JOB, TGP_FACT_PARTNER, TGP_FACT_PET, TGP_FACT_NEWS, TGP_FACT_PROBLEM, TGP_FACT_BDAY,
+    TGP_FACT_MEMORY, TGP_FACT_COMPLIMENTED, TGP_FACT_INSULTED, TGP_FACT_PROMISED, TGP_FACT_FAMILY,
+    /* the topic's forms and data */
+    TGP_X_COUNTABLE, TGP_X_PROPER, TGP_X_MASS, TGP_X_PLURAL, TGP_X_GERUND, TGP_X_PERSON,
+    TGP_X_ADJ, TGP_X_GOOD, TGP_X_BAD, TGP_X_ASSOC,
+    /* valued */
+    TGP_FIRST_VALUED,
+    TGP_STANCE = TGP_FIRST_VALUED,   /* TST_*                              */
+    TGP_SPEAKER,                     /* a cast index (TB_GRAMMAR cast table) */
+    TGP_TYPE,                        /* persona_type() 0..15               */
+    TGP_MOOD,                        /* TMB_*                              */
+    TGP_REL,                         /* TRB_*                              */
+    TGP_ROOT,                        /* the topic's TCR_*                  */
+    TGP_CHAPTER,                     /* STORY_CH_*                         */
+    TGP_TIME,                        /* TTOD_*                             */
+    TGP_BEAT,                        /* TBEAT_*                            */
+    TGP_TONE,                        /* the player's TONE_*                */
+    TGP_PACT,                        /* the act class replied to (TAC_*)   */
+    TGP_ACT,                         /* the act replied to (TA_*)          */
+    TGP_PROB,                        /* the speaker's PROB_*               */
+    TGP_COUNT
+};
+
+/* One conversation as the generator needs it between lines (T6 keeps it in
+ * its TalkState). talk_gen_begin() fills it. */
+typedef struct TalkConv {
+    uint32_t seed;                               /* the conversation seed            */
+    int16_t  avatar;                             /* the player's id (play-as aware)  */
+    int16_t  id[TALK_PARTS_MAX];                 /* residents, pool ids, TALK_PET_ID  */
+    uint8_t  n;                                  /* participants                     */
+    uint8_t  beat;                               /* TBEAT_* (T6; SMALLTALK)          */
+    uint8_t  turn;                               /* the player's turn number         */
+    uint8_t  swears;                             /* K-9: everyday swears said        */
+    uint8_t  spoke, catch_used, refused;         /* a bit per slot                   */
+    uint8_t  consent;                            /* a bit per slot: says yes to a romance act the gate passed (T6 / the sim decide) */
+    uint8_t  ended;                              /* K-7: it is over                  */
+    uint8_t  tone;                               /* the player's last TONE_*         */
+    uint8_t  chapter;                            /* story_chapter() at the start     */
+    uint8_t  lines;                              /* lines made (the RNG stream)      */
+    uint8_t  plain;                              /* 1: the core part only, no opener, callback, tag or hand-off (tests; a short UI preview) */
+    TalkAudience aud;                            /* talk_safe_ctx() of the room       */
+    uint16_t recent[TALK_PARTS_MAX][TALK_NOVELTY]; /* novelty rings: alternatives used, newest first */
+    uint16_t room_recent[TALK_ROOM_NOVELTY];     /* the room's last core alternatives, any speaker (no line twice) */
+    uint16_t mem_topic[TALK_PARTS_MAX];          /* talk memory (T6): last topic      */
+    uint8_t  mem_flags[TALK_PARTS_MAX];          /* talk memory (T6): TMF_*           */
+} TalkConv;
+
+/* One generated line. */
+#define TLF_REACTION 0x01u          /* a reaction to another resident                    */
+#define TLF_SAFE     0x02u          /* S3 replaced it with a safe line (a test fails)    */
+#define TLF_SINCERE  0x04u          /* a refusal, distress or K-7 line: no joke          */
+#define TLF_END      0x08u          /* the conversation ends (K-7)                        */
+#define TLF_HANDOFF  0x10u          /* it hands the talk to another participant           */
+#define TLF_FALLBACK 0x20u          /* nothing fitted the bubble: a safe line (a Q1 failure) */
+typedef struct TalkLine {
+    char     text[TALK_LINE_MAX];   /* the bubble text (ui_dialog line codes kept)      */
+    int8_t   who;                   /* participant slot                                 */
+    int8_t   to;                    /* the slot addressed; -1 the player; -2 everyone    */
+    uint8_t  act;                   /* the reply act (TA_*)                             */
+    uint8_t  stance;                /* TST_*                                            */
+    uint8_t  face;                  /* EXPR_* + 1 of a [FACE] code, 0 none              */
+    uint8_t  flags;                 /* TLF_*                                            */
+    uint16_t topic;                 /* what it is about, TC_NONE                         */
+} TalkLine;
+
+/* What went into a line (tests, the census: Q1-Q4; NULL in the game). */
+enum { TFK_NONE = 0, TFK_NAME, TFK_CONCEPT, TFK_TEXT };
+#define TPART_OPEN    0x01u
+#define TPART_CORE    0x02u
+#define TPART_CB      0x04u
+#define TPART_TAG     0x08u
+#define TPART_HANDOFF 0x10u
+typedef struct TalkFill { uint8_t off, len, kind, cat; } TalkFill;   /* cat: a concept's category */
+typedef struct TalkTrace {
+    uint16_t alt[TALK_TRACE_ALTS];  /* every alternative used, in order              */
+    uint8_t  nalt, nfill;
+    uint8_t  parts;                 /* TPART_* in the line                           */
+    uint8_t  cb;                    /* TCB_* of the callback, 0 none                 */
+    uint16_t cb_val;                /* its value: the fact as read (Q4)              */
+    uint16_t said[4];               /* concepts the line says (Q2)                   */
+    uint8_t  nsaid;
+    uint8_t  picks;                 /* tries spent fitting the bubble                */
+    uint8_t  tic;                   /* the persona type of a tic tag, 0xFF none      */
+    uint8_t  gate;                  /* TG_* of the utterance (talk_gen_exchange)     */
+    uint16_t core_alt;              /* the core part's alternative (Q5), 0xFFFF none */
+    TalkFill fill[TALK_TRACE_FILLS]; /* names, concepts and catchphrases in the text */
+} TalkTrace;
+
+/* One exchange: the player's turn and every resident line in reply. */
+typedef struct TalkExchange {
+    TalkLine line[TALK_EXCHANGE_MAX];
+    uint8_t  n;                     /* lines                                         */
+    uint8_t  gate;                  /* TG_* of the player's utterance                */
+    int8_t   first;                 /* the slot that answered, -1 none               */
+    uint8_t  pad;
+} TalkExchange;
+
+/* An alternative of the grammar, decoded (tests, the census). */
+typedef struct TalkAltInfo {
+    uint16_t rule;
+    uint8_t  act;                   /* the rule's reply act                           */
+    uint8_t  rflags, aflags;        /* talkc_gen.py RF_* / AF_*                       */
+    uint8_t  weight, nterm;
+    uint8_t  term[2 * 16];          /* the rule's then the alternative's guard terms: {pred | neg << 7, value} */
+} TalkAltInfo;
+
+/* 1 if the open database has the generator's banks (TB_GRAMMAR, TB_STRINGS). */
+int  talk_gen_ready(void);
+/* The conversation seed: town seed, day and the participants. */
+uint32_t talk_gen_seed(int avatar, const int *ids, int n);
+/* Start a conversation: the audience (talk_safe_ctx), chapter, beat
+ * SMALLTALK, empty memory. target -1 (everyone) for the audience. */
+void talk_gen_begin(TalkConv *c, int avatar, const int *ids, int n, uint32_t seed);
+/* One line from participant `who` to `to` (a slot, -1 the player, -2
+ * everyone) in reply to `act` about `topic`. Returns 1, or 0 when nothing
+ * fits (the line is then a safe line). tr may be NULL. */
+int  talk_gen_line(TalkConv *c, int who, int to, int act, uint16_t topic, TalkLine *out, TalkTrace *tr);
+/* One exchange: the gate on u (rewritten in place), who answers (the
+ * addressee, else the most interested), up to two reactions between the
+ * residents, a hand-off. A K-7 input ends the conversation (c->ended).
+ * tr: NULL or TALK_EXCHANGE_MAX traces. Returns the number of lines.
+ * (The plain turn-taking here stands in until T6's drama manager.) */
+int  talk_gen_exchange(TalkConv *c, TalkUtter *u, TalkExchange *x, TalkTrace *tr);
+/* The speaker's stance on a concept: their likes +3, their hated food and
+ * fear -3, Hellvile-born flips holy things, plus a fixed personal lean. */
+int  talk_gen_stance(int id, uint16_t topic);
+/* May this concept be said in this room (age class, register, a child here)? */
+int  talk_gen_concept_ok(uint16_t concept, const TalkAudience *aud);
+/* acts.tsv: may `reply` answer `act`; the act's class (TAC_*). */
+int  talk_gen_adjacent(int act, int reply);
+int  talk_gen_act_class(int act);
+/* A resident's like as a concept: which 0 food, 1 hobby, 2 music, 3 fear,
+ * 4 hated food; 0 none. */
+uint16_t talk_gen_like(int id, int which);
+/* The roster id of cast index i (a TGP_SPEAKER value), -1 none. */
+int  talk_gen_cast_id(int i);
+/* An alternative of the grammar (tests, the census): 1 ok. */
+int  talk_gen_alt_info(int alt, TalkAltInfo *out);
+int  talk_gen_nalts(void);
+/* The callback fact of kind cb for resident id as the sim says now (Q4):
+ * 1 and *val when it holds. */
+int  talk_gen_fact(int id, int cb, uint16_t *val);
 
 /* ---- the house hook (T8; weak in core/src/weak_talk.c) ---------------------
  * Start Talk with resident `who` in the room: 1 started, 0 not available

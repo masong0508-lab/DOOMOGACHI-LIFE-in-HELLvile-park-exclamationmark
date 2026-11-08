@@ -1,0 +1,3 @@
+# expect: no rule nope
+@rule core.tell
+  "It's {nope}."

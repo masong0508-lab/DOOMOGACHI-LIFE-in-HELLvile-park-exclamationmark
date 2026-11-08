@@ -1,0 +1,3 @@
+# expect: a face
+@rule core.tell
+  "[R4]Wait for it."

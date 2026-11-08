@@ -1,0 +1,3 @@
+# expect: hate list refuses
+@rule core.tell
+  "Mind the spices."

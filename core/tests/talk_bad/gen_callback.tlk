@@ -1,0 +1,3 @@
+# expect: a callback line stands on a fact
+@rule cb.plain
+  "Like that one time."

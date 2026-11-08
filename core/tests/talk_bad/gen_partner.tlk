@@ -1,0 +1,3 @@
+# expect: a partner line needs guard
+@rule core.greet guard: rel=partner
+  "Hi, you."

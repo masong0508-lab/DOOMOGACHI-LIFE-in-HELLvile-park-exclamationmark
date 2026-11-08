@@ -53,6 +53,13 @@ Outputs:
   --stats     counts and bank sizes
   --hate-hash PLAIN   rewrite core/data/talk/safety/hate.hash from a local
               plaintext list (one word a line; never committed)
+  --grammar DIR   (with --bin) build with the .tlk files of DIR instead of
+              grammar/<lang> + voice/<lang>, without the full bank's
+              requirements (the unit tests' TALK_gentest.BIN)
+T5a (talkc_gen.py): the TB_GRAMMAR bank (rules, alternatives, guard terms,
+symbols, the acts.tsv adjacency table, the game maps) and the TB_STRINGS
+bank (the template texts) from grammar/<lang>/*.tlk and voice/<lang>/*.tlk;
+--selftest adds the seeded bad grammars core/tests/talk_bad/gen_*.tlk.
 T3 / T4 (talkc_parse.py, talkc_safe.py): the TB_PARSE bank from
 rules/<lang>.tsv + rules/common_<lang>.txt + the lexicon + safety/phrases;
 the TB_SAFETY bank from register.tsv + the never-generated concepts +
@@ -89,7 +96,7 @@ DIRENT = 20
 ALIGN = 64
 MAX_CONCEPTS = 4095
 TB = {"CONCEPT": 1, "ASSOC": 2, "ATTR": 3, "FORMS": 4, "CATS": 5, "CATNAMES": 6, "EDGES": 7,
-      "PARSE": 12, "SAFETY": 13}
+      "GRAMMAR": 8, "STRINGS": 9, "PARSE": 12, "SAFETY": 13}
 TBK_RAW, TBK_TXT = 0, 1
 TBF_DC_ONLY = 1
 ROOTS = ["people", "places", "food", "music", "hobbies", "fears", "creatures", "house", "lore",
@@ -1338,7 +1345,8 @@ class Build:
         self.phrases = tp_.load_phrases(os.path.join(sd, "phrases_%s.tsv" % lang), die, rel)
         self.suggestive = tp_.load_suggestive(os.path.join(sd, "suggestive_%s.tsv" % lang), self.by_key, die, rel)
         self.hate = ts_.load_hate(os.path.join(sd, "hate.hash"), die, rel)
-        self.parse_info = self.safety_info = None
+        self.parse_info = self.safety_info = self.gen_info = None
+        self.grammar_files = None          # None: grammar/<lang> + voice/<lang> (strict)
 
     @staticmethod
     def gen_to_row(r):
@@ -1367,6 +1375,15 @@ class Build:
         salt, exact, dele = self.hate
         data, self.safety_info = ts_.build_safety_bank(self, self.suggestive, salt, exact, dele)
         banks.append(("SAFETY", TBK_RAW, 0, data, len(data)))
+        # T5a: the generator's grammar and template strings
+        import talkc_gen as tg_
+        files = self.grammar_files if self.grammar_files is not None else tg_.grammar_files(self.lang)
+        if files:
+            gram, strings, self.gen_info = tg_.build_grammar(self, files, die, rel,
+                                                             strict=self.grammar_files is None)
+            sb, sraw = txt_bank(strings, self.codec)
+            banks.append(("GRAMMAR", TBK_RAW, 0, gram, len(gram)))
+            banks.append(("STRINGS", TBK_TXT, 0, sb, sraw))
         return banks
 
     def t4_problems(self):
@@ -1434,6 +1451,10 @@ def stats(b, blob):
     if b.parse_info:
         print("talkc: PARSE: %(words)d words, %(classes)d word classes, %(rules)d rules, "
               "%(tagsets)d tag sets, %(safe)d safety words" % b.parse_info)
+    if b.gen_info:
+        print("talkc: GRAMMAR: %(files)d files, %(rules)d rules, %(alts)d alternatives, %(terms)d guard terms, "
+              "%(syms)d symbols, %(strings)d template strings, %(entries)d act entries, %(jobs)d roster jobs "
+              "mapped" % b.gen_info)
     if b.safety_info:
         print("talkc: SAFETY: %(reg)d register words (%(forbid)d never in Talk output, %(suggest)d flirting), "
               "%(exact)d hate hashes + %(del)d deletion hashes" % b.safety_info)
@@ -1496,7 +1517,12 @@ def selftest():
         if not m:
             raise Fail("%s: the first line is # expect: TEXT" % rel(path))
         try:
-            if f.endswith(".tlk"):
+            if f.startswith("gen_") and f.endswith(".tlk"):
+                # T5a: the grammar compiler's refusals (talkc_gen.py)
+                import talkc_gen as tg_
+                tg_.build_grammar(b, [path], die, rel, strict=False)
+                got = ""
+            elif f.endswith(".tlk"):
                 got = "\n".join(ts_.lint_tlk(ts_.read_tlk(path, die, rel), b, b.suggestive, die))
             else:
                 tp_.load_rules(path, b.acts, die, rel)
@@ -1547,6 +1573,7 @@ def main(argv):
     lang = "en"
     out = None
     align = ALIGN
+    grammar_dir = None
     mode = "gen"
     i = 0
     while i < len(args):
@@ -1559,6 +1586,8 @@ def main(argv):
             out = args[i + 1]; i += 2; continue
         if a == "--align":
             align = int(args[i + 1]); i += 2; continue
+        if a == "--grammar":
+            grammar_dir = args[i + 1]; i += 2; continue
         if a == "--hate-hash":
             mode = "hate-hash"; out = args[i + 1]; i += 2; continue
         if a in ("--bin", "--check", "--selftest", "--stats", "--seed-from-game"):
@@ -1584,6 +1613,10 @@ def main(argv):
         else:
             b = Build(lang)
             b.fail_on_problems()
+            if grammar_dir:
+                # a test grammar (core/tests/talk_gen/): its .tlk files instead of grammar/<lang>
+                b.grammar_files = [os.path.join(grammar_dir, f) for f in sorted(os.listdir(grammar_dir))
+                                   if f.endswith(".tlk")]
             blob = b.binary(align)
             if mode == "bin":
                 out = out or os.path.join(CORE, "build", "talk", "TALK_%s.BIN" % lang)

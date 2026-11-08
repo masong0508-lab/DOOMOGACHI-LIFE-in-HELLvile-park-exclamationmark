@@ -1,0 +1,3 @@
+# expect: cannot fit the bubble
+@rule core.tell
+  "This line goes on and on about absolutely everything under the sun and the moon and beyond them both"

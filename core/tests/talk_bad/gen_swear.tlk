@@ -1,0 +1,3 @@
+# expect: an everyday swear (K-9) needs guard
+@rule core.insult guard: adults_only&!kid_present act: complain
+  "Damn."

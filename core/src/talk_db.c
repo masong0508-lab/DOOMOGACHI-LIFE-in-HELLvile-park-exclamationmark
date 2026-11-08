@@ -277,6 +277,16 @@ static int bank_string(int id, unsigned idx, char *out, int cap)
     return txt_decode(s, n, out, cap);
 }
 
+int talk_db_string(int bank, int idx, char *out, int cap)
+{
+    if (!out || cap <= 0) return -1;
+    out[0] = 0;
+    if (bank <= 0 || bank >= TB_COUNT || idx < 0 || !db.open || !db.bank[bank].present ||
+        db.bank[bank].kind != TBK_TXT)
+        return -1;
+    return bank_string(bank, (unsigned)idx, out, cap);
+}
+
 static int put(char *out, int cap, int n, const char *src)
 {
     while (*src && n < cap - 1) out[n++] = *src++;

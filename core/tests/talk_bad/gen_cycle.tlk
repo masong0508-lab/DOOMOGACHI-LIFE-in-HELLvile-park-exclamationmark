@@ -1,0 +1,7 @@
+# expect: call themselves
+@rule core.tell
+  "{loop.a}"
+@rule loop.a
+  "{loop.b}"
+@rule loop.b
+  "{loop.a}"
