@@ -934,3 +934,79 @@ const DoomoUnlock doomo_unlocks_creator[] = {
        "Peek at a possessed preview", 0, 0),
     { 0, 0, 0, 0, NULL, NULL, 0, 0 }
 };
+
+/* ====================================================================== */
+/* CR6: row levels and help lines                                           */
+/* Level 1 rows are fine-tuning (proportion sliders, the small cheek extras, voice details): the
+ * START menu's "Rows: just the basics" hides them, "every detail" shows them. */
+int cr_row_level(const CrRow *row)
+{
+    if (!row) return 0;
+    switch (row->kind) {
+    case RK_FLAG:
+        return row->aux != CHEEK_BLUSH && row->aux != CHEEK_FRECKLES;
+    case RK_PAINT_NONE:
+        return 1;                                     /* hair highlight */
+    case RK_ACTION:
+        return row->aux == CA_MATCH_FUR;
+    case RK_SLIDER:
+        switch (row->field) {
+        case LK(head_size): case LK(eye_size): case LK(eye_spacing): case LK(eye_height): case LK(eye_tilt):
+        case LK(brow_height): case LK(nose_size): case LK(mouth_size): case LK(horn_size):
+        case OFS(VOICE_QUALITY): case OFS(VOICE_INTONATION): case OFS(VOICE_ACCENT):
+            return 1;
+        default:
+            return 0;
+        }
+    case RK_ENUM:
+        return row->field == LK(eye_count) || row->field == LK(fangs);
+    case RK_PAINT:
+        return row->field == LK(marking_color) || row->field == LK(pattern_color);
+    default:
+        return 0;
+    }
+}
+
+/* One line on what a row does and how to change it: the tip in the button bar (GBA) and the
+ * second footer line (320x240). Short enough for the GBA's bar. */
+const char *cr_row_help(const CrRow *row)
+{
+    if (!row) return "";
+    switch (row->kind) {
+    case RK_ENUM:
+        if (cr_row_slot(row) >= 0) return STR_ICON_A " see them all as pictures";
+        if (CR_IS_AGE_ROW(row)) return "Their life stage: kids grow up";
+        if (row->field == OFS(pronoun)) return "How others talk about them";
+        if (row->aux == ROMANCE_PREF_MASK) return "Who can catch their eye";
+        return STR_ICON_ARROW_L STR_ICON_ARROW_R " change   " STR_ICON_A " see the list";
+    case RK_SLIDER:
+        if (row->field >= OFS(PERS_MOVEMENT) && row->field <= OFS(PERS_QUIRK))
+            return "Shapes how they act and talk";
+        if (row->field >= OFS(VOICE_PITCH) && row->field <= OFS(VOICE_ACCENT))
+            return "Then try \"Test it!\" to hear them";
+        return STR_ICON_ARROW_L STR_ICON_ARROW_R " slide between the two ends";
+    case RK_PAINT: case RK_PAINT_NONE: case RK_SKIN:
+        return STR_ICON_A " pick from the colour swatches";
+    case RK_FLAG:
+        return STR_ICON_A " switch it on or off";
+    case RK_RFLAG:
+        return row->aux == RF_FAVORITE ? "Favourites sit at the top of lists" : "Where their family comes from";
+    case RK_NAME:
+        return STR_ICON_A " type a name   " STR_ICON_ARROW_L STR_ICON_ARROW_R " ideas";
+    case RK_NICK:
+        return "What friends call them (optional)";
+    case RK_DISTRICT:
+        return "Which side of the park they live on";
+    case RK_ACTION:
+        switch (row->aux) {
+        case CA_SPECIES_PRESET: return STR_ICON_ARROW_L STR_ICON_ARROW_R " try a ready-made look, " STR_ICON_A " keep it";
+        case CA_OUTFIT_PRESET:  return STR_ICON_ARROW_L STR_ICON_ARROW_R " try a whole outfit, " STR_ICON_A " keep it";
+        case CA_VOICE_PRESET:   return STR_ICON_ARROW_L STR_ICON_ARROW_R " try a voice, " STR_ICON_A " keep it";
+        case CA_TEST_VOICE:     return STR_ICON_A " hear their catchphrase";
+        case CA_MATCH_FUR:      return STR_ICON_A " hair takes the fur colour";
+        default: return "";
+        }
+    default:
+        return "";
+    }
+}

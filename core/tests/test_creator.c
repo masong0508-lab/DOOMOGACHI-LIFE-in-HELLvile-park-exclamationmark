@@ -536,15 +536,16 @@ TEST(creator_locked_options_are_shown_but_not_chosen)
     CHECK(cr_lock_hint(row, EYE_GOAT)[0]);
     go_row(CR_TAB_FACE, eyes);
     before = RES_LOOK(&cr.draft, GF_EYE_STYLE);
-    /* the picker: walk onto Goat Eyes and try to take them */
+    /* the picture grid (CR6): walk onto Goat Eyes and try to take them */
     press(BTN_A);
-    CHECK_EQ(cr.phase, CRP_PICK);
-    while (cr.pick_sel != EYE_GOAT) press(BTN_DOWN);
+    CHECK_EQ(cr.phase, CRP_GRID);
+    for (i = 0; i < EYE_COUNT && cr_grid_choice(cr.g_sel) != EYE_GOAT; i++) press(BTN_RIGHT);
+    CHECK_EQ(cr_grid_choice(cr.g_sel), EYE_GOAT);
     CHECK_EQ(cr.browse, EYE_GOAT);
     frames(8, 0);
-    CHECK(cr.shown_locked);             /* silhouette preview */
+    CHECK(cr.shown_locked);             /* shown on the citizen, in lavender */
     press(BTN_A);
-    CHECK_EQ(cr.phase, CRP_PICK);       /* refused */
+    CHECK_EQ(cr.phase, CRP_GRID);       /* refused */
     press(BTN_B);
     CHECK_EQ(cr.phase, CRP_MAIN);
     CHECK_EQ(RES_LOOK(&cr.draft, GF_EYE_STYLE), before);
@@ -776,14 +777,19 @@ TEST(creator_hides_parts_above_the_drafts_age)
         CHECK(RES_LOOK(&cr.draft, GF_HAT) != HAT_TRAFFIC_CONE && RES_LOOK(&cr.draft, GF_HAT) != HAT_TIARA);
     }
     cr.browse = -1;                                      /* off any locked preview */
-    press(BTN_A);                                        /* nor the picker's cursor */
-    CHECK_EQ(cr.phase, CRP_PICK);
+    press(BTN_A);                                        /* nor the grid (CR6): not even listed */
+    CHECK_EQ(cr.phase, CRP_GRID);
+    CHECK_EQ(cr.g_n, HAT_COUNT - 2);
     for (i = 0; i < HAT_COUNT * 2; i++) {
-        press(BTN_DOWN);
-        seen |= cr.pick_sel == HAT_TRAFFIC_CONE || cr.pick_sel == HAT_TIARA;
+        press(BTN_RIGHT);
+        seen |= cr_grid_choice(cr.g_sel) == HAT_TRAFFIC_CONE || cr_grid_choice(cr.g_sel) == HAT_TIARA;
     }
-    press(BTN_R);
-    seen |= cr.pick_sel == HAT_TRAFFIC_CONE || cr.pick_sel == HAT_TIARA;
+    for (i = 0; i < cr.g_nfilt * cr.g_n + cr.g_nfilt; i++) {     /* no chip lists them either */
+        int k;
+        if (i % (cr.g_n + 1) == 0) press(BTN_R);
+        for (k = 0; k < cr.g_n; k++)
+            seen |= cr_grid_choice(k) == HAT_TRAFFIC_CONE || cr_grid_choice(k) == HAT_TIARA;
+    }
     CHECK(!seen);
     frames(2, 0);                                        /* the shorter list draws */
     press(BTN_B);
@@ -832,4 +838,183 @@ TEST(creator_age_change_swaps_grown_up_parts_and_says_so)
     CHECK(LIFE_IS_MINOR(RES_STAGE(town_res(id))));
     CHECK_EQ(RES_LOOK(town_res(id), GF_HAT), HAT_NONE);
     part_age_test_set(GF_HAT, HAT_TRAFFIC_CONE, -1);
+}
+
+/* ---------------------------------------------------------------------- */
+/* CR6: the picture grid, cameras, rows mode, help lines                    */
+static const CrRow *go_part_row(int tab, int field)
+{
+    int i = row_index(tab, field, RK_ENUM);
+    go_row(tab, i);
+    return cr_row_at(tab, i);
+}
+
+TEST(creator_grid_lists_every_choice_with_its_icon)
+{
+    int t, i, k;
+    open_creator(-1);
+    for (t = 0; t < CR_TAB_COUNT; t++)
+        for (i = 0; i < cr_tabs[t].nrows; i++) {
+            const CrRow *row = &cr_tabs[t].rows[i];
+            if (cr_row_slot(row) < 0) continue;
+            go_row(t, i);
+            press(BTN_A);
+            CHECK_MSG(cr.phase == CRP_GRID, "%s does not open the grid", row->label);
+            CHECK_EQ(cr.g_n, cr_visible_count(row));
+            for (k = 0; k < cr.g_n; k++) {
+                int v = cr_grid_choice(k);
+                CHECK_MSG(part_icon_index(cr.g_meta[k]) >= 0, "%s choice %d has no icon", row->label, v);
+                /* CR9: the lock bits made on opening are the locks */
+                CHECK_EQ((cr.g_lock[v >> 3] >> (v & 7)) & 1, cr_value_locked(row, v));
+            }
+            frames(2, 0);
+            press(BTN_B);
+            CHECK_EQ(cr.phase, CRP_MAIN);
+        }
+}
+
+TEST(creator_grid_tries_on_keeps_and_cancels)
+{
+    const CrRow *row;
+    int before, undo, i, v = -1;
+    open_creator(-1);
+    row = go_part_row(CR_TAB_OUTFIT, GF_HAT);
+    before = RES_LOOK(&cr.draft, GF_HAT);
+    press(BTN_A);
+    CHECK_EQ(cr.phase, CRP_GRID);
+    CHECK_EQ(cr_grid_choice(cr.g_sel), before);
+    for (i = 0; i < cr.g_n; i++) {                       /* the cursor tries an open hat on */
+        press(BTN_RIGHT);
+        v = cr_grid_choice(cr.g_sel);
+        if (v != before && !cr_value_locked(row, v)) break;
+    }
+    CHECK(v >= 0 && v != before && !cr_value_locked(row, v));
+    CHECK_EQ(RES_LOOK(&cr.draft, GF_HAT), v);
+    press(BTN_B);                                        /* B puts the old one back */
+    CHECK_EQ(cr.phase, CRP_MAIN);
+    CHECK_EQ(RES_LOOK(&cr.draft, GF_HAT), before);
+    undo = cr_undo_count();
+    press(BTN_A);
+    while (cr_grid_choice(cr.g_sel) != v) press(BTN_RIGHT);
+    press(BTN_A);                                        /* A keeps it, one undo step */
+    CHECK_EQ(cr.phase, CRP_MAIN);
+    CHECK_EQ(RES_LOOK(&cr.draft, GF_HAT), v);
+    CHECK_EQ(cr_undo_count(), undo + 1);
+}
+
+TEST(creator_grid_filters_and_search)
+{
+    const CrRow *row;
+    int f, k, found = 0;
+    open_creator(-1);
+    row = go_part_row(CR_TAB_OUTFIT, GF_HAT);
+    press(BTN_A);
+    CHECK(cr.g_nfilt >= 3);                              /* All, Unlocked, shapes, sets */
+    for (f = 1; f < cr.g_nfilt; f++) {
+        int kind, arg;
+        char b[48];
+        press(BTN_R);
+        CHECK_EQ(cr.g_filter, f);
+        kind = cr.g_filt[f] >> 5;
+        arg = cr.g_filt[f] & 31;
+        CHECK(cr_grid_chip(f, b)[0]);
+        CHECK(cr.g_n > 0);
+        for (k = 0; k < cr.g_n; k++) {
+            int v = cr_grid_choice(k);
+            const PartMeta *m = cr_choice_meta(row, v);
+            if (kind == GFK_OPEN) CHECK(!cr_value_locked(row, v));
+            if (kind == GFK_SHAPE) CHECK_EQ(m->shape, arg);
+            if (kind == GFK_SET) CHECK_EQ(m->set, arg);
+        }
+    }
+    press(BTN_SELECT);                                   /* back to All */
+    CHECK_EQ(cr.g_filter, 0);
+    CHECK_EQ(cr.g_n, cr_visible_count(row));
+    press(BTN_START);                                    /* find "top": the Top Hat */
+    type_text("top");
+    ui_text_entry_feed('\n');
+    frames(2, 0);
+    CHECK_STR(cr.g_find, "top");
+    for (k = 0; k < cr.g_n; k++) {
+        CHECK(part_matches(cr_choice_meta(row, cr_grid_choice(k)), "top"));
+        found |= cr_grid_choice(k) == HAT_TOP_HAT;
+    }
+    CHECK(found);
+    press(BTN_SELECT);
+    CHECK_EQ(cr.g_find[0], 0);
+    press(BTN_B);
+}
+
+TEST(creator_camera_follows_the_slot)
+{
+    open_creator(-1);
+    go_part_row(CR_TAB_OUTFIT, GF_HAT);
+    CHECK_EQ(cr_camera(), CAM_BUST);
+    go_part_row(CR_TAB_OUTFIT, GF_SHOES);
+    CHECK_EQ(cr_camera(), CAM_LEGS);
+    go_part_row(CR_TAB_OUTFIT, GF_TOP);
+    CHECK_EQ(cr_camera(), CAM_FIGURE);
+    go_part_row(CR_TAB_SPOOKY, GF_TAIL);
+    CHECK_EQ(cr_camera(), CAM_BACK);
+    frames(4, 0);                                        /* the back view draws */
+    go_part_row(CR_TAB_SPOOKY, GF_HORNS);
+    CHECK_EQ(cr_camera(), CAM_BUST);
+    go_part_row(CR_TAB_FACE, GF_EYE_STYLE);
+    CHECK_EQ(cr_camera(), CAM_BUST);
+    go_part_row(CR_TAB_BODY, GF_BODY);
+    CHECK_EQ(cr_camera(), CAM_FIGURE);
+}
+
+TEST(creator_rows_mode_hides_the_fine_tuning)
+{
+    int t, i, n_all = 0, n_basic = 0, k;
+    open_creator(-1);
+    CHECK_EQ(cr.show, CR_SHOW_ALL);
+    for (t = 0; t < CR_TAB_COUNT; t++)
+        for (i = 0; i < cr_tabs[t].nrows; i++) n_all += cr_row_shown(t, i);
+    /* the START menu's Rows entry */
+    press(BTN_START);
+    k = cr_menu_index(CM_ROWS);
+    CHECK(k >= 0);
+    while (cr_menu_index(cr.menu_sel) != k) press(BTN_DOWN);
+    press(BTN_A);
+    CHECK_EQ(cr.phase, CRP_MAIN);
+    CHECK_EQ(cr.show, CR_SHOW_SIMPLE);
+    for (t = 0; t < CR_TAB_COUNT; t++)
+        for (i = 0; i < cr_tabs[t].nrows; i++) {
+            const CrRow *row = &cr_tabs[t].rows[i];
+            n_basic += cr_row_shown(t, i);
+            if (row->kind != RK_HEADER) CHECK_EQ(cr_row_shown(t, i), cr_row_level(row) == 0);
+        }
+    CHECK(n_basic < n_all);
+    CHECK(n_basic >= 30);
+    /* the cursor never lands on a hidden row */
+    for (t = 0; t < CR_TAB_COUNT; t++) {
+        for (i = 0; i < 40; i++) {
+            press(BTN_DOWN);
+            CHECK(cr_row_shown(cr.tab, cr.row[cr.tab]));
+            CHECK(cr_cur_row()->kind != RK_HEADER);
+        }
+        frames(2, 0);
+        press(BTN_R);
+    }
+    /* every part row stays in the basics */
+    for (t = 0; t < CR_TAB_COUNT; t++)
+        for (i = 0; i < cr_tabs[t].nrows; i++)
+            if (cr_row_slot(&cr_tabs[t].rows[i]) >= 0) CHECK(cr_row_shown(t, i));
+}
+
+TEST(creator_every_row_has_a_help_line_that_fits)
+{
+    int t, i;
+    for (t = 0; t < CR_TAB_COUNT; t++)
+        for (i = 0; i < cr_tabs[t].nrows; i++) {
+            const CrRow *row = &cr_tabs[t].rows[i];
+            const char *h;
+            if (row->kind == RK_HEADER) continue;
+            h = cr_row_help(row);
+            CHECK_MSG(h[0], "row %s has no help line", row->label);
+            CHECK_MSG(ui_text_width(h) <= 224, "row %s: help \"%s\" is %d px (GBA bar 224)", row->label, h,
+                      ui_text_width(h));
+        }
 }

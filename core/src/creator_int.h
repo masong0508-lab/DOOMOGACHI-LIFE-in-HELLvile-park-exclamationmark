@@ -9,6 +9,8 @@
 #define DOOMO_CREATOR_INT_H
 
 #include "doomo/doomo.h"
+#include "doomo/part_icons.h"
+#include "doomo/part_meta.h"
 
 /* ---- tabs ------------------------------------------------------------- */
 enum { CR_TAB_BODY, CR_TAB_FACE, CR_TAB_HAIR, CR_TAB_SPOOKY, CR_TAB_OUTFIT,
@@ -106,13 +108,26 @@ enum { CRU_MOVE_TO_HELLVILE = 270, CRU_MAKEOVER, CRU_SELF_PORTRAIT,
 
 enum { CR_NEW, CR_EDIT, CR_PLAYER };
 enum { CRP_MAIN, CRP_PICK, CRP_COLOR, CRP_MENU, CRP_COPY, CRP_TURN,
-       CRP_MOVEIN, CRP_HERO };
+       CRP_MOVEIN, CRP_HERO, CRP_GRID };
 /* START menu entries */
 /* The menu only lists what applies right now (no greyed Undo (0), Reset on a clean citizen):
  * cr_menu_list() gives the visible entries in order. Randomise is one entry; LEFT / RIGHT on it
  * switches between everything and this tab. */
 enum { CM_DONE, CM_RANDOM, CM_UNDO, CM_REDO, CM_COPY,
-       CM_SPOOKY, CM_RESET, CM_QUIT, CM_COUNT };
+       CM_SPOOKY, CM_ROWS, CM_RESET, CM_QUIT, CM_COUNT };
+
+/* CR6: how many rows the tabs show (START menu "Show"): the everyday rows, or every fine-tuning
+ * slider and toggle too (cr_row_level). */
+enum { CR_SHOW_SIMPLE, CR_SHOW_ALL, CR_SHOW_COUNT };
+
+/* CR6: the preview's camera (cr_camera): the full figure, the bust (head slots), the legs (shoes,
+ * bottoms) or the back (tails, wings) */
+enum { CAM_FIGURE, CAM_BUST, CAM_LEGS, CAM_BACK };
+
+/* CR6: the part grid (creator_grid.c): every choice of a part row as a picture */
+#define CR_GRID_MAX   128       /* choices of one slot (gene widths <= 64, deep fields <= 127)    */
+#define CR_GRID_FILT  24        /* filter chips of one slot                                      */
+enum { GFK_ALL, GFK_OPEN, GFK_SHAPE, GFK_SET };           /* filter chip kinds (g_filt[] >> 5)     */
 
 typedef struct CrSpark {
     int16_t x, y;           /* 1/16 px, relative to the preview's feet      */
@@ -122,7 +137,7 @@ typedef struct CrSpark {
 } CrSpark;
 
 /* what the shared pixel buffer currently holds */
-enum { CRB_NONE, CRB_PORTRAIT, CRB_FIGHTER };
+enum { CRB_NONE, CRB_PORTRAIT, CRB_FIGHTER, CRB_LEGS };
 
 typedef struct CrState {
     DoomoResident draft;            /* what the player is making             */
@@ -194,6 +209,27 @@ typedef struct CrState {
     /* dimmed tab icons (creator_draw.c), made on first use each session */
     uint8_t  icon_pix[CR_TAB_COUNT][CR_ICON_W * CR_ICON_W];
     DoomoImage icon_img[CR_TAB_COUNT];
+
+    /* CR6: rows shown (CR_SHOW_*) */
+    uint8_t  show;
+
+    /* CR6: the part grid (creator_grid.c) */
+    uint8_t  g_slot;                /* doomo_part_slots index of the open row */
+    uint8_t  g_n;                   /* choices listed (after the filter)      */
+    uint8_t  g_filter, g_nfilt;     /* chip shown / chips of this slot        */
+    uint8_t  g_filt[CR_GRID_FILT];  /* chip: kind << 5 | arg (GFK_*)          */
+    int16_t  g_sel, g_top;          /* cursor (position in g_idx), first row  */
+    uint8_t  g_idx[CR_GRID_MAX];    /* listed choices (row index form)        */
+    uint16_t g_meta[CR_GRID_MAX];   /* their doomo_part_meta rows             */
+    uint8_t  g_lock[CR_GRID_MAX / 8];  /* CR9: lock bit of every choice of the row, made on open */
+    char     g_find[12];            /* search letters ("" none)               */
+    char     g_findbuf[12];
+    uint8_t  icon_buf[PART_ICON_PIX];  /* an unpacked icon (DOOMO_ICONS_RLE builds) */
+
+    /* CR6: a locked part on the citizen, the part alone in lavender (creator_draw.c) */
+    uint8_t  lockpix[FIGURE_W * FIGURE_H];
+    DoomoImage lockimg;
+    uint32_t lockkey;
 } CrState;
 
 /* (integration, memory budget) The editor state (~6.4 KB with the undo
@@ -249,11 +285,39 @@ const DoomoResident *cr_copy_res(int id);
 int  cr_first_selectable(int tab);
 /* The look the preview should show this tick + its status / expression. */
 int  cr_preview_status(void);
+void cr_lock_base(DoomoLook *out);       /* CR6: the draft without the browsed part */
 int  cr_preview_expr(void);
 /* Spawn sparkles around the preview (kind -1 = mixed). */
 void cr_sparkle_burst(int n, int kind);
 /* Columns of the swatch grid of a colour row (8, or 11 with "None"). */
 int  cr_color_cols(const CrRow *row);
+/* ---- CR6 -------------------------------------------------------------------------------------- */
+/* The catalog list of a part row (part_meta.h), -1 for a row that is not a part. */
+int  cr_row_part_list(const CrRow *row);
+/* doomo_part_slots index of a part row, -1 for other rows. */
+int  cr_row_slot(const CrRow *row);
+/* The part meta of choice `index` of a part row, NULL for other rows. */
+const PartMeta *cr_choice_meta(const CrRow *row, int index);
+/* CR6 modes: a row's level (0 everyday, 1 fine-tuning) and whether the tab shows row i now. */
+int  cr_row_level(const CrRow *row);
+int  cr_row_shown(int tab, int i);
+/* One help line for a row (what it does, how to change it). */
+const char *cr_row_help(const CrRow *row);
+/* The section caption a row sits under ("Eyes"), "" if none. */
+const char *cr_row_section(int tab, int i);
+/* The preview camera for this tick (CAM_*). */
+int  cr_camera(void);
+/* picker plumbing shared by the list picker and the grid (creator.c) */
+void cr_pick_preview(const CrRow *row, int index);
+void cr_pick_close(const CrRow *row, int ok);
+/* the grid (creator_grid.c) */
+void cr_grid_open(const CrRow *row);
+void cr_grid_update(void);
+void cr_grid_draw(void);
+void cr_grid_rebuild(void);
+int  cr_grid_choice(int pos);           /* choice (row index form) at grid position pos, -1 */
+const char *cr_grid_chip(int f, char *buf);   /* label of filter chip f */
+void cr_grid_layout(int *cols, int *rows, int *cell, int *gx, int *gy);
 /* public API (also declared in scenes.h) */
 int  creator_last_result(void);
 const char *creator_nickname(int id);
@@ -272,6 +336,12 @@ typedef struct CrLayout {
     int fig_scale, ftr_scale, por_scale;/* figure / turntable / bust scale */
 } CrLayout;
 extern CrLayout crl;
+/* drawing helpers shared with creator_grid.c (CR6) */
+void cr_pill(int x, int y, int w, int h, uint8_t fill, uint8_t outline, uint8_t hi);
+void cr_padlock(int x, int y, uint8_t c, uint8_t hole);
+const char *cr_fit(const char *s, int maxw, char *buf);       /* buf >= 48 */
+const char *cr_marquee(const char *s, int maxw, char *buf);   /* buf >= 48 */
+void cr_draw_tab_icon(int x, int y, int tab);
 /* Rows of the copy picker / option picker that fit. */
 int  cr_pick_rows(void);
 

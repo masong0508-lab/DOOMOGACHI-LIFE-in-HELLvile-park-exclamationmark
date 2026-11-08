@@ -38,7 +38,7 @@ void cr_layout(void)
     crl.lh = crl.ph;
     crl.row_h = crl.big ? 12 : 11;
     crl.rows_y = crl.ly + (crl.big ? 21 : 18);
-    crl.foot_y = crl.ly + crl.lh - (crl.big ? 15 : 13);
+    crl.foot_y = crl.ly + crl.lh - (crl.big ? 26 : 13);     /* CR6: two footer lines on big screens */
     crl.rows = (crl.foot_y - 2 - crl.rows_y) / crl.row_h;
     crl.fig_scale = crl.big ? 2 : 1;
     crl.por_scale = crl.big ? 2 : 1;
@@ -78,7 +78,7 @@ static int list_style(void) { return cr_is_hellish() ? WIN_DARK : WIN_CUTE; }
 /* ====================================================================== */
 /* little helpers                                                           */
 /* s, cut with ".." to fit maxw pixels (buf >= 48). */
-static const char *fit(const char *s, int maxw, char *buf)
+const char *cr_fit(const char *s, int maxw, char *buf)
 {
     int n, i;
     if (ui_text_width(s) <= maxw) return s;
@@ -97,10 +97,10 @@ static const char *fit(const char *s, int maxw, char *buf)
 
 /* rounded pill: outline, fill and a glossy top line (like the UI kit's) */
 /* s scrolled sideways (a marquee) so that it fits maxw pixels. */
-static const char *marquee(const char *s, int maxw, char *buf)
+const char *cr_marquee(const char *s, int maxw, char *buf)
 {
     int n = (int)strlen(s), k = maxw / FONT_ADVANCE, span, off, i;
-    if (ui_text_width(s) <= maxw || k < 3) return fit(s, maxw, buf);
+    if (ui_text_width(s) <= maxw || k < 3) return cr_fit(s, maxw, buf);
     if (k > 46) k = 46;
     span = n - k;
     off = (int)(cr.t / 7) % (span + 12);       /* scroll, then rest a moment */
@@ -111,7 +111,7 @@ static const char *marquee(const char *s, int maxw, char *buf)
     return buf;
 }
 
-static void pill(int x, int y, int w, int h, uint8_t fill, uint8_t outline, uint8_t hi)
+void cr_pill(int x, int y, int w, int h, uint8_t fill, uint8_t outline, uint8_t hi)
 {
     int r = DOOMO_MIN(h / 2, 4);
     if (w <= 2 || h <= 2) { plat_rect(x, y, w, h, fill); return; }
@@ -123,7 +123,7 @@ static void pill(int x, int y, int w, int h, uint8_t fill, uint8_t outline, uint
     }
 }
 
-static void padlock(int x, int y, uint8_t c, uint8_t hole)
+void cr_padlock(int x, int y, uint8_t c, uint8_t hole)
 {
     plat_rect(x + 1, y, 3, 1, c);
     plat_rect(x, y + 1, 1, 2, c);
@@ -175,6 +175,8 @@ static void draw_icon(int x, int y, int tab, int scale, int dim)
         }
     }
 }
+
+void cr_draw_tab_icon(int x, int y, int tab) { draw_icon(x, y, tab, 1, 0); }
 
 /* The dimmed icons of the unselected tabs are blitted from small cached
  * images (one plat_image each instead of ~45 rects). */
@@ -266,14 +268,14 @@ static void draw_tabs(void)
     int ch = crl.big ? 21 : 17;
     int lx = crl.tx - 15, rx = crl.tx + CR_TAB_COUNT * crl.tcell + 2;
     /* bumper hints */
-    pill(lx, crl.ty + 3, 12, 11, st->fill_lo, st->outline, st->fill_hi);
+    cr_pill(lx, crl.ty + 3, 12, 11, st->fill_lo, st->outline, st->fill_hi);
     ui_text(lx + 3, crl.ty + 5, "L", st->text);
-    pill(rx, crl.ty + 3, 12, 11, st->fill_lo, st->outline, st->fill_hi);
+    cr_pill(rx, crl.ty + 3, 12, 11, st->fill_lo, st->outline, st->fill_hi);
     ui_text(rx + 3, crl.ty + 5, "R", st->text);
     for (i = 0; i < CR_TAB_COUNT; i++) {
         int x = crl.tx + i * crl.tcell, w = crl.tcell - 2;
         if (i == cr.tab) continue;
-        pill(x, crl.ty + 2, w, ch - 2, st->fill_lo, st->outline, st->fill_hi);
+        cr_pill(x, crl.ty + 2, w, ch - 2, st->fill_lo, st->outline, st->fill_hi);
         plat_image(x + (w - CR_ICON_W) / 2, crl.ty + 2 + (ch - 2 - CR_ICON_W) / 2, dim_icon(i), 1, 0, 0);
     }
     /* the selected tab: raised, bigger, bouncing, with a pop when it changes */
@@ -323,13 +325,41 @@ static uint32_t anim_phase(uint32_t t, int expr, const DoomoLook *l, int status)
     return ph;
 }
 
+/* CR6: a locked part shown on the citizen: the part alone turns lavender (the pixels where the
+ * look wearing it differs from the draft), the rest of the citizen stays as it is. */
+static void lock_compose(uint8_t *l, const uint8_t *d, int n)
+{
+    uint8_t has[32];
+    int i, diff = 0, opaque = 0, strict;
+    /* a part that reshapes the head (a tall hat, big horns) moves the citizen's own pixels too:
+     * then, inside the citizen, only colours the draft does not use belong to the part */
+    memset(has, 0, sizeof(has));
+    for (i = 0; i < n; i++) {
+        has[d[i] >> 3] |= (uint8_t)(1 << (d[i] & 7));
+        opaque += d[i] != 0;
+        diff += d[i] && l[i] != d[i];
+    }
+    strict = diff * 3 > opaque;
+    for (i = 0; i < n; i++)
+        if (l[i] && l[i] != d[i] && (!strict || !d[i] || !((has[l[i] >> 3] >> (l[i] & 7)) & 1)))
+            l[i] = palette_luma(l[i]) < 100 ? PAL_RAMP(RAMP_VAPE, 2) : PAL_RAMP(RAMP_VAPE, 5);
+}
+
 /* The close-up bust of the draft (rendered into the shared buffer). */
 static const DoomoImage *bust_image(int status, int expr)
 {
+    int locked = cr.shown_locked;
     uint32_t key = look_hash(&cr.shown) ^ (uint32_t)(status * 7919 + expr * 104729 + crl.big) ^
-                   (anim_phase(cr.t, expr, &cr.shown, status) * 2654435761u) ^ 0xB0570000u;
+                   (anim_phase(cr.t, expr, &cr.shown, status) * 2654435761u) ^ 0xB0570000u ^ (uint32_t)locked;
     if (cr.pix_kind != CRB_PORTRAIT || cr.pix_key != key || !cr.img.uid) {
         portrait_render(&cr.shown, status, expr, (int)cr.t, cr.pix);
+        if (locked) {                         /* the draft without the locked part, to compare */
+            DoomoLook base;
+            cr_lock_base(&base);
+            portrait_render(&base, status, expr, (int)cr.t, cr.lockpix);
+            lock_compose(cr.pix, cr.lockpix, PORTRAIT_W * PORTRAIT_H);
+            cr.lockkey = 0;                   /* lockpix was reused */
+        }
         cr.img.w = PORTRAIT_W;
         cr.img.h = PORTRAIT_H;
         if (!crl.big) {
@@ -349,18 +379,72 @@ static const DoomoImage *bust_image(int status, int expr)
     return &cr.img;
 }
 
-/* The turntable body (fighter render, 8 directions). */
-static const DoomoImage *turn_image(int status, int *flip)
+/* CR6: the full figure; a locked part composed in lavender (cr.lockpix) */
+static const DoomoImage *body_image(int status, int expr)
+{
+    const DoomoImage *l = figure_image(&cr.shown, status, expr), *d;
+    uint32_t key;
+    if (!l || !cr.shown_locked) return l;
+    {
+        DoomoLook base;
+        cr_lock_base(&base);
+        d = figure_image(&base, status, expr);
+    }
+    if (!d || d->w != l->w || d->h != l->h) return l;
+    key = l->uid * 2654435761u ^ d->uid ^ 0x10C0u;
+    if (cr.lockkey != key || !cr.lockimg.uid) {
+        memcpy(cr.lockpix, l->pix, (size_t)l->w * l->h);
+        lock_compose(cr.lockpix, d->pix, l->w * l->h);
+        cr.lockimg.w = l->w;
+        cr.lockimg.h = l->h;
+        cr.lockimg.pix = cr.lockpix;
+        cr.lockimg.uid = doomo_image_new_uid();
+        cr.lockkey = key;
+    }
+    return &cr.lockimg;
+}
+
+/* CR6: the legs close up (shoes, bottoms): the lower part of the figure, shown at 2x / 3x */
+#define LEGS_W(big) ((big) ? 36 : 40)
+static const DoomoImage *legs_image(int status, int expr)
+{
+    const DoomoImage *f = body_image(status, expr);
+    int lw = LEGS_W(crl.big), x0 = (FIGURE_W - lw) / 2, y0 = FIGURE_H - lw, r, c;
+    if (!f) return NULL;
+    if (cr.pix_kind != CRB_LEGS || cr.pix_key != f->uid || !cr.img.uid) {
+        for (r = 0; r < lw; r++)
+            for (c = 0; c < lw; c++) cr.pix[r * lw + c] = f->pix[(y0 + r) * FIGURE_W + x0 + c];
+        cr.img.w = (uint16_t)lw;
+        cr.img.h = (uint16_t)lw;
+        cr.img.pix = cr.pix;
+        cr.img.uid = doomo_image_new_uid();
+        cr.pix_kind = CRB_LEGS;
+        cr.pix_key = f->uid;
+    }
+    return &cr.img;
+}
+
+/* The turntable body (fighter render, 8 directions); back = 1: the back camera (CR6, tails and
+ * wings), standing still facing away. */
+static const DoomoImage *turn_image(int status, int *flip, int back)
 {
     static const uint8_t views[8] = { 4, 3, 2, 1, 0, 1, 2, 3 };
-    int v8 = cr.view8 & 7, anim, view = views[v8];
+    int v8 = back ? 4 : cr.view8 & 7, anim, view = views[v8], locked = cr.shown_locked;
     uint32_t key;
     *flip = v8 >= 1 && v8 <= 3;
     anim = cr.roll ? 5 : cr.walking ? (int)((cr.t >> 2) & 3) : (int)((cr.t >> 4) & 1);
     if (!cr.walking && !cr.roll) anim = ((cr.t >> 4) & 1) ? 1 : 0;   /* gentle idle bob */
-    key = look_hash(&cr.shown) ^ (uint32_t)(view * 31 + anim * 977 + status * 7) ^ 0xF1670000u;
+    if (back) anim = 0;
+    key = look_hash(&cr.shown) ^ (uint32_t)(view * 31 + anim * 977 + status * 7) ^ 0xF1670000u ^ (uint32_t)locked << 20;
     if (cr.pix_kind != CRB_FIGHTER || cr.pix_key != key || !cr.img.uid) {
         fighter_render(&cr.shown, status, view, anim, -1, cr.pix);
+        if (locked) {
+            DoomoLook base;
+            cr_lock_base(&base);
+            fighter_render(&base, status, view, anim, -1, cr.lockpix);
+            lock_compose(cr.pix, cr.lockpix, FIGHTER_W * FIGHTER_H);
+            cr.lockkey = 0;
+        }
         cr.img.w = FIGHTER_W;
         cr.img.h = FIGHTER_H;
         cr.img.pix = cr.pix;
@@ -437,11 +521,11 @@ static void name_plate(int cx, int y, int w)
     char buf[48];
     const char *name = cr.draft.name[0] ? cr.draft.name : "Name me!";
     int x = cx - w / 2;
-    pill(x, y, w, 13, st->title_bg, st->outline, ui_lighter(st->title_bg));
+    cr_pill(x, y, w, 13, st->title_bg, st->outline, ui_lighter(st->title_bg));
     if (cr.mode == CR_PLAYER) ui_star(x + 7, y + 6, 3, PAL_UI_GOLD);
     else if (cr_is_hellish()) plat_text(x + 4, y + 3, STR_ICON_PENTA, PAL_PAINT(PAINT_CHERRY, 1));
     else ui_heart(x + 7, y + 6, 3, PAL_PAINT(PAINT_ROSE, 1));
-    ui_text_shadow(x + 13, y + 3, fit(name, w - 18, buf), st->title, st->outline);
+    ui_text_shadow(x + 13, y + 3, cr_fit(name, w - 18, buf), st->title, st->outline);
 }
 
 static void speech_bubble(int x, int y, int w)
@@ -475,7 +559,7 @@ static void lock_bubble(int x, int y, int w)
     h = lines * FONT_LINE + 15;
     ui_round_rect(x, y, w, h, 3, PAL_RAMP(RAMP_VAPE, 1));
     ui_round_rect(x + 1, y + 1, w - 2, h - 2, 2, PAL_RAMP(RAMP_VAPE, 6));
-    padlock(x + 6, y + 3, PAL_RAMP(RAMP_VAPE, 1), PAL_RAMP(RAMP_VAPE, 6));
+    cr_padlock(x + 6, y + 3, PAL_RAMP(RAMP_VAPE, 1), PAL_RAMP(RAMP_VAPE, 6));
     ui_text(x + 14, y + 3, "Locked!", PAL_RAMP(RAMP_VAPE, 0));
     ui_text_wrap(x + 4, y + 12, w - 8, hint, PAL_RAMP(RAMP_VAPE, 1), 1);
 }
@@ -489,10 +573,8 @@ static void draw_pane(void)
     int floor_y = iy + ih * 7 / 10, feet = iy + ih - 20 - (crl.big ? 6 : 0);
     int cx = ix + iw / 2, status = cr_preview_status(), expr = cr_preview_expr();
     int hop = cr.hop ? -ui_wave((int)(9 - cr.hop) * 2, 36, crl.big ? 5 : 3) : 0;
-    int face_cam = (cr.tab == CR_TAB_FACE || cr.tab == CR_TAB_HAIR) && cr.phase != CRP_TURN &&
-                   cr.phase != CRP_COPY;
+    int cam = cr_camera();
     int locked = cr.shown_locked;
-    uint8_t sil = PAL_RAMP(RAMP_VAPE, 4);
     stage_colors(&sg);
     st = ui_style(sg.style);
     if (hop > 0) hop = -hop;
@@ -507,18 +589,20 @@ static void draw_pane(void)
     ui_fill_ellipse(cx, feet, iw / 2 - 5, crl.big ? 8 : 5, sg.rug);
     ui_fill_ellipse(cx - 2, feet - 1, iw / 3, crl.big ? 4 : 2, sg.rug_l);
 
-    if (cr.phase == CRP_TURN) {
+    if (cr.phase == CRP_TURN || cam == CAM_BACK) {
         int flip, sc = crl.ftr_scale;
-        const DoomoImage *im = turn_image(status, &flip);
+        const DoomoImage *im = turn_image(status, &flip, cr.phase != CRP_TURN);
         int fw = im->w * sc, fh = im->h * sc;
         int b = ui_wave((int)cr.t, 14, 2);
         ui_fill_ellipse(cx, feet, fw / 4 + 2, crl.big ? 4 : 3, sg.shadow);
-        plat_image(cx - fw / 2, feet - fh + 2, im, sc, (flip ? IMG_FLIPX : 0) |
-                   (locked ? IMG_SILHOUETTE : 0), sil);
-        /* turn arrows */
-        plat_text(ix + 3 - (b > 0), feet - fh / 2, STR_ICON_ARROW_L, st->accent);
-        plat_text(ix + iw - 9 + (b > 0), feet - fh / 2, STR_ICON_ARROW_R, st->accent);
-    } else if (face_cam) {
+        plat_image(cx - fw / 2, feet - fh + 2 + (cr.phase == CRP_TURN ? 0 : hop), im, sc, flip ? IMG_FLIPX : 0, 0);
+        if (cr.phase == CRP_TURN) {           /* turn arrows */
+            plat_text(ix + 3 - (b > 0), feet - fh / 2, STR_ICON_ARROW_L, st->accent);
+            plat_text(ix + iw - 9 + (b > 0), feet - fh / 2, STR_ICON_ARROW_R, st->accent);
+        } else {
+            ui_text_center(cx, iy + 3, "Back view", st->text_dim);
+        }
+    } else if (cam == CAM_BUST) {
         const DoomoImage *im = bust_image(status, expr);
         int sc = crl.big ? crl.por_scale : 2, bw = im->w * sc, bh = im->h * sc;
         int by = crl.big ? floor_y - bh + 18 + hop / 2 : iy + 6 + hop / 2;
@@ -526,21 +610,24 @@ static void draw_pane(void)
         ui_fill_circle(cx, by + bh / 2, rr + 2, sg.wall[0]);
         ui_fill_circle(cx, by + bh / 2, rr, PAL_WHITE);
         ui_fill_circle(cx, by + bh / 2, rr - 2, sg.wall[0]);
-        plat_image(cx - bw / 2, by, im, sc, locked ? IMG_SILHOUETTE : 0, sil);
+        plat_image(cx - bw / 2, by, im, sc, 0, 0);
+    } else if (cam == CAM_LEGS) {
+        const DoomoImage *im = legs_image(status, expr);
+        int sc = crl.big ? 3 : 2;
+        if (im) {
+            int fw = im->w * sc, fh = im->h * sc;
+            ui_fill_ellipse(cx, feet, fw / 3, crl.big ? 5 : 3, sg.shadow);
+            plat_image(cx - fw / 2, feet - fh + 2 + hop / 2, im, sc, 0, 0);
+        }
     } else {
-        const DoomoImage *im = figure_image(&cr.shown, status, expr);
+        const DoomoImage *im = body_image(status, expr);
         int sc = crl.fig_scale;
         if (im) {
             int fw = im->w * sc, fh = im->h * sc;
             int sq = cr.hop > 6 ? 1 : 0;
             ui_fill_ellipse(cx, feet, fw / 4 + (hop < -2 ? -2 : 1), crl.big ? 4 : 2, sg.shadow);
-            plat_image(cx - fw / 2, feet - fh + 1 + hop + sq, im, sc,
-                       locked ? IMG_SILHOUETTE : 0, sil);
+            plat_image(cx - fw / 2, feet - fh + 1 + hop + sq, im, sc, 0, 0);
         }
-    }
-    if (locked) {
-        int tw = ui_text_big_width("???", crl.big ? 3 : 2);
-        ui_text_big(cx - tw / 2, iy + ih / 3, "???", crl.big ? 3 : 2, PAL_WHITE, PAL_RAMP(RAMP_VAPE, 1));
     }
     draw_sparks(cx, feet, ix, iy, iw, ih);
     /* bubbles & plates */
@@ -589,19 +676,19 @@ static void draw_value(const CrRow *row, int vx_right, int y, int maxw, int sel)
             swatch(vx_right - 18, y, 18, 8, row->kind, idx, locked);
             return;
         }
-        f = sel ? marquee(nm, maxw - 14, buf) : fit(nm, maxw - 14, buf);
+        f = sel ? cr_marquee(nm, maxw - 14, buf) : cr_fit(nm, maxw - 14, buf);
         tw = ui_text_width(f);
         swatch(vx_right - tw - 13, y, 11, 8, row->kind, idx, locked);
         ui_text(vx_right - tw, y, f, locked ? st->text_dim : vc);
         return; }
     default: {
         const char *nm = locked ? "???" : cr_choice_name(row, idx, buf2);
-        const char *f = sel ? marquee(nm, maxw - (locked ? 8 : 0), buf)
-                            : fit(nm, maxw - (locked ? 8 : 0), buf);
+        const char *f = sel ? cr_marquee(nm, maxw - (locked ? 8 : 0), buf)
+                            : cr_fit(nm, maxw - (locked ? 8 : 0), buf);
         int tw = ui_text_width(f);
-        if (locked) padlock(vx_right - tw - 8, y + 1, st->text_dim, st->fill);
+        if (locked) cr_padlock(vx_right - tw - 8, y + 1, st->text_dim, st->fill);
         else if (row->kind == RK_ACTION && cr_value_locked(row, idx))
-            padlock(vx_right - tw - 8, y + 1, st->text_dim, st->fill);
+            cr_padlock(vx_right - tw - 8, y + 1, st->text_dim, st->fill);
         ui_text(vx_right - tw, y, f, locked ? st->text_dim : vc);
         return; }
     }
@@ -617,9 +704,16 @@ static void draw_footer(const CrRow *row, int x, int y, int w)
     if (!row) return;
     idx = cr.browse >= 0 ? cr.browse : cr_row_value(&cr.draft, row);
     if (cr.browse >= 0 && cr_value_locked(row, idx)) {
-        doomo_snprintf(buf, sizeof(buf), "%s", cr_lock_hint(row, idx));
-        padlock(x + 1, y + 1, PAL_PAINT(PAINT_CHERRY, 1), st->fill);
-        ui_text(x + 9, y, fit(buf, w - 10, b2), PAL_PAINT(PAINT_CHERRY, 0));
+        /* CR6: the whole hint, never cut: a marquee on the GBA, two lines on big screens */
+        const PartMeta *m = cr_choice_meta(row, idx);
+        cr_padlock(x + 1, y + 1, PAL_PAINT(PAINT_CHERRY, 1), st->fill);
+        if (crl.big) {
+            ui_text(x + 9, y, cr_fit(m ? part_meta_name(m) : "Locked!", w - 10, b2), PAL_PAINT(PAINT_CHERRY, 0));
+            ui_text(x, y + 11, cr_fit(cr_lock_hint(row, idx), w, b3), PAL_PAINT(PAINT_CHERRY, 0));
+        } else {
+            doomo_snprintf(buf, sizeof(buf), "%s%s%s", m ? part_meta_name(m) : "", m ? ": " : "", cr_lock_hint(row, idx));
+            ui_text(x + 9, y, cr_marquee(buf, w - 10, b2), PAL_PAINT(PAINT_CHERRY, 0));
+        }
         return;
     }
     switch (row->kind) {
@@ -628,12 +722,19 @@ static void draw_footer(const CrRow *row, int x, int y, int w)
                        row->names ? row->names[0] : "", row->names ? row->names[1] : "");
         s = buf;
         break;
-    case RK_ENUM:
+    case RK_ENUM: {
+        const PartMeta *m = cr_choice_meta(row, idx);
+        c = st->text;
+        if (m) {                              /* CR6: a part names its themed set too */
+            doomo_snprintf(buf, sizeof(buf), "%s %d/%d - %s", cr_choice_name(row, idx, b3),
+                           cr_visible_pos(row, idx) + 1, cr_visible_count(row), doomo_part_sets[m->set].name);
+            ui_text(x, y, cr_marquee(buf, w, b2), c);
+            return;
+        }
         doomo_snprintf(buf, sizeof(buf), "%s  %d/%d", cr_choice_name(row, idx, b3), idx + 1,
                        cr_row_count(row));
         s = buf;
-        c = st->text;
-        break;
+        break; }
     case RK_PAINT: case RK_PAINT_NONE: case RK_SKIN:
         doomo_snprintf(buf, sizeof(buf), STR_ICON_A " palette  %s", cr_choice_name(row, idx, b3));
         s = buf;
@@ -660,7 +761,7 @@ static void draw_footer(const CrRow *row, int x, int y, int w)
         break;
     default: break;
     }
-    ui_text(x, y, fit(s, w, b2), c);
+    ui_text(x, y, cr_fit(s, w, b2), c);
 }
 
 static void draw_persona_panel(int x, int y, int w, int h)
@@ -799,27 +900,48 @@ static void draw_list(void)
     const CrTab *tab = &cr_tabs[cr.tab];
     int style = list_style();
     int x = crl.lx, y = crl.ly, w = crl.lw, h = crl.lh;
-    int top = cr.top[cr.tab], vis = crl.rows, i, n = tab->nrows;
-    int bar = n > vis, inner_r = x + w - (bar ? 12 : 7);
+    int top = cr.top[cr.tab], vis = crl.rows, i, n = tab->nrows, shown = 0, drawn = 0, top_ord = 0;
+    int bar, inner_r;
     int t = (int)cr.tab_t;
+    /* CR6: only the rows the current mode shows (cr_row_shown) */
+    for (i = 0; i < n; i++) {
+        if (!cr_row_shown(cr.tab, i)) continue;
+        if (i < top) top_ord++;
+        shown++;
+    }
+    bar = shown > vis;
+    inner_r = x + w - (bar ? 12 : 7);
     ui_window(x, y, w, h, style);
     st = ui_style(style);
-    /* header: icon + tab name + page */
+    /* header: icon + tab name > the selected row's section + page */
     {
-        char pg[8];
-        int hx = x + 6, slide = t < 6 ? (6 - t) * 3 : 0;
+        char pg[8], hb[64], b2[48];
+        const char *sec = cr_row_section(cr.tab, cr.row[cr.tab]);
+        int hx = x + 6, slide = t < 6 ? (6 - t) * 3 : 0, room;
         draw_icon(hx + slide, y + 4, cr.tab, 1, 0);
-        ui_text_shadow(hx + 14 + slide, y + 5, tab->name, st->title_bg, st->outline);
         doomo_snprintf(pg, sizeof(pg), "%d/%d", cr.tab + 1, CR_TAB_COUNT);
+        room = w - 14 - 14 - ui_text_width(pg) - 6;
+        if (sec[0] && strcmp(sec, tab->name) != 0 && cr.phase != CRP_GRID) {
+            doomo_snprintf(hb, sizeof(hb), "%s " STR_ICON_ARROW_R " %s", tab->name, sec);
+            if (ui_text_width(hb) > room)
+                doomo_snprintf(hb, sizeof(hb), "%s " STR_ICON_ARROW_R " %s", tab->shortname, sec);
+            if (ui_text_width(hb) > room)          /* the tab's icon says which tab: the section alone */
+                doomo_snprintf(hb, sizeof(hb), "%s", sec);
+        } else {
+            doomo_snprintf(hb, sizeof(hb), "%s", tab->name);
+        }
+        ui_text_shadow(hx + 14 + slide, y + 5, cr_fit(hb, room, b2), st->title_bg, st->outline);
         ui_text(x + w - 8 - ui_text_width(pg), y + 5, pg, st->text_dim);
         plat_rect(x + 5, y + (crl.big ? 17 : 15), w - 10, 1, st->fill_lo);
     }
-    for (i = 0; i < vis && top + i < n; i++) {
-        const CrRow *row = &tab->rows[top + i];
-        int ry = crl.rows_y + i * crl.row_h;
-        int sel = top + i == cr.row[cr.tab] && cr.phase == CRP_MAIN;
-        int is_cur = top + i == cr.row[cr.tab];
+    for (i = top; i < n && drawn < vis; i++) {
+        const CrRow *row = &tab->rows[i];
+        int ry = crl.rows_y + drawn * crl.row_h;
+        int sel = i == cr.row[cr.tab] && cr.phase == CRP_MAIN;
+        int is_cur = i == cr.row[cr.tab];
         int lw;
+        if (!cr_row_shown(cr.tab, i)) continue;
+        drawn++;
         if (row->kind == RK_HEADER) {
             int tw = ui_text_width(row->label), cx = x + w / 2;
             plat_rect(x + 8, ry + 4, (w - 16 - tw) / 2 - 6, 1, st->fill_lo);
@@ -831,7 +953,7 @@ static void draw_list(void)
         }
         if (sel || (is_cur && cr.phase != CRP_TURN)) {
             int shake = cr.pick_err ? ((cr.pick_err & 2) ? 1 : -1) : 0;
-            pill(x + 11 + shake, ry - 1, inner_r - x - 9, crl.row_h, st->accent_d,
+            cr_pill(x + 11 + shake, ry - 1, inner_r - x - 9, crl.row_h, st->accent_d,
                     ui_darker(st->accent_d), ui_lighter(st->accent_d));
             if (sel) ui_cursor(x + 3, ry + 1);
         }
@@ -845,21 +967,28 @@ static void draw_list(void)
     }
     if (bar) {
         int bx = x + w - 8, th = vis * crl.row_h - 2;
-        int thumb = DOOMO_MAX(5, th * vis / n);
-        int tyy = crl.rows_y + (th - thumb) * top / DOOMO_MAX(1, n - vis);
+        int thumb = DOOMO_MAX(5, th * vis / shown);
+        int tyy = crl.rows_y + (th - thumb) * top_ord / DOOMO_MAX(1, shown - vis);
         ui_round_rect(bx, crl.rows_y, 3, th, 1, st->fill_lo);
         ui_round_rect(bx, tyy, 3, thumb, 1, st->accent);
-        ui_scroll_arrows(bx - 1, crl.rows_y - 5, crl.rows_y + th + 1, top > 0, top + vis < n);
+        ui_scroll_arrows(bx - 1, crl.rows_y - 5, crl.rows_y + th + 1, top_ord > 0, top_ord + vis < shown);
     }
     /* extra panels under short tabs */
     {
-        int used = DOOMO_MIN(vis, n) * crl.row_h;
+        int used = DOOMO_MIN(vis, shown) * crl.row_h;
         int py = crl.rows_y + used + 2, ph = crl.foot_y - 3 - py;
         if (cr.tab == CR_TAB_PERSONA) draw_persona_panel(x + 6, py, w - 12, ph);
         if (cr.tab == CR_TAB_HOME) draw_home_panel(x + 4, py, w - 8, ph);
     }
     plat_rect(x + 5, crl.foot_y - 2, w - 10, 1, st->fill_lo);
-    if (cr.phase == CRP_MAIN) draw_footer(cr_cur_row(), x + 7, crl.foot_y, w - 14);
+    if (cr.phase == CRP_MAIN) {
+        draw_footer(cr_cur_row(), x + 7, crl.foot_y, w - 14);
+        /* CR6: on big screens a second line says what the row is for */
+        if (crl.big && !(cr.browse >= 0 && cr_value_locked(cr_cur_row(), cr.browse))) {
+            char b2[48];
+            ui_text(x + 7, crl.foot_y + 11, cr_fit(cr_row_help(cr_cur_row()), w - 14, b2), st->text_dim);
+        }
+    }
 }
 
 /* ====================================================================== */
@@ -908,13 +1037,13 @@ static void draw_pick(void)
         const char *nm = locked ? "???" : cr_choice_name(row, idx, b2);
         if (sel) {
             int shake = cr.pick_err ? ((cr.pick_err & 2) ? 2 : -2) : 0;
-            pill(x + 11 + shake, yy - 1, w - 26, rh, st->accent_d, ui_darker(st->accent_d),
+            cr_pill(x + 11 + shake, yy - 1, w - 26, rh, st->accent_d, ui_darker(st->accent_d),
                     ui_lighter(st->accent_d));
             ui_cursor(x + 3, yy + 1);
         }
         if (cur) ui_star(x + w - 21, yy + 4, 3, PAL_UI_GOLD);
-        if (locked) padlock(x + 15, yy + 1, st->text_dim, sel ? st->accent_d : st->fill);
-        ui_text(x + (locked ? 23 : 15), yy + 1, fit(nm, w - 44, buf), locked ? st->text_dim : st->text);
+        if (locked) cr_padlock(x + 15, yy + 1, st->text_dim, sel ? st->accent_d : st->fill);
+        ui_text(x + (locked ? 23 : 15), yy + 1, cr_fit(nm, w - 44, buf), locked ? st->text_dim : st->text);
     }
     if (n > vis) {
         int bx = x + w - 8, th = vis * rh - 2;
@@ -927,8 +1056,8 @@ static void draw_pick(void)
         int fy = y + h - 13;
         plat_rect(x + 5, fy - 2, w - 10, 1, st->fill_lo);
         if (cr_value_locked(row, cr.pick_sel)) {
-            padlock(x + 8, fy + 1, PAL_PAINT(PAINT_CHERRY, 1), st->fill);
-            ui_text(x + 16, fy, fit(cr_lock_hint(row, cr.pick_sel), w - 22, buf), PAL_PAINT(PAINT_CHERRY, 0));
+            cr_padlock(x + 8, fy + 1, PAL_PAINT(PAINT_CHERRY, 1), st->fill);
+            ui_text(x + 16, fy, cr_fit(cr_lock_hint(row, cr.pick_sel), w - 22, buf), PAL_PAINT(PAINT_CHERRY, 0));
         } else {
             ui_text(x + 8, fy, STR_ICON_A " choose  " STR_ICON_B " back  L/R page", st->text_dim);
         }
@@ -983,7 +1112,7 @@ static void draw_color(void)
                 ui_text_wrap(x + 8, ny + 11, w - 16, cr_lock_hint(row, cr.pick_sel),
                              PAL_PAINT(PAINT_CHERRY, 0), 1);
         } else if (ny + 22 < y + h) {
-            ui_text_center(x + w / 2, y + h - 13, fit(STR_ICON_A " paint!  " STR_ICON_B " back", w - 12, buf),
+            ui_text_center(x + w / 2, y + h - 13, cr_fit(STR_ICON_A " paint!  " STR_ICON_B " back", w - 12, buf),
                            st->text_dim);
         }
     }
@@ -1020,7 +1149,7 @@ static void draw_menu(void)
         }
         prev = cr_menu_group(i);
         if (sel) {
-            pill(x + 14, yy - 1, w - 28, ih - 1, st->accent_d, ui_darker(st->accent_d),
+            cr_pill(x + 14, yy - 1, w - 28, ih - 1, st->accent_d, ui_darker(st->accent_d),
                     ui_lighter(st->accent_d));
             ui_cursor(x + 5, yy + 1 + (crl.big ? 1 : 0));
         }
@@ -1053,10 +1182,10 @@ static void draw_copy(void)
     /* source pills */
     {
         int bw = (w - 20) / 2;
-        pill(x + 6, y + 16, bw, 12, cr.copy_src == 0 ? st->accent : st->fill_lo, st->outline,
+        cr_pill(x + 6, y + 16, bw, 12, cr.copy_src == 0 ? st->accent : st->fill_lo, st->outline,
                 cr.copy_src == 0 ? ui_lighter(st->accent) : st->fill_hi);
         ui_text_center(x + 6 + bw / 2, y + 18, "Town", cr.copy_src == 0 ? PAL_WHITE : st->text_dim);
-        pill(x + 10 + bw, y + 16, bw, 12, cr.copy_src == 1 ? st->accent : st->fill_lo, st->outline,
+        cr_pill(x + 10 + bw, y + 16, bw, 12, cr.copy_src == 1 ? st->accent : st->fill_lo, st->outline,
                 cr.copy_src == 1 ? ui_lighter(st->accent) : st->fill_hi);
         ui_text_center(x + 10 + bw + bw / 2, y + 18, "Premade", cr.copy_src == 1 ? PAL_WHITE : st->text_dim);
     }
@@ -1070,7 +1199,7 @@ static void draw_copy(void)
         int sel = k == cr.copy_sel;
         if (!r) continue;
         if (sel) {
-            pill(x + 11, yy - 1, w - 22, rh, st->accent_d, ui_darker(st->accent_d),
+            cr_pill(x + 11, yy - 1, w - 22, rh, st->accent_d, ui_darker(st->accent_d),
                     ui_lighter(st->accent_d));
             ui_cursor(x + 3, yy + 1);
         }
@@ -1079,8 +1208,8 @@ static void draw_copy(void)
         {
             const char *sp;
             doomo_snprintf(b2, sizeof(b2), "%s", r->name[0] ? r->name : "???");
-            ui_text(x + 24, yy + 1, fit(b2, w / 2, buf), st->text);
-            sp = fit(doomo_species_names[RES_SPECIES(r) % SPECIES_COUNT], w / 2 - 34, buf);
+            ui_text(x + 24, yy + 1, cr_fit(b2, w / 2, buf), st->text);
+            sp = cr_fit(doomo_species_names[RES_SPECIES(r) % SPECIES_COUNT], w / 2 - 34, buf);
             ui_text(x + w - 12 - ui_text_width(sp), yy + 1, sp, st->text_dim);
         }
     }
@@ -1260,6 +1389,10 @@ static void draw_hint(void)
     case CRP_PICK: case CRP_COLOR: case CRP_COPY:
         s = STR_ICON_A " Choose  " STR_ICON_B " Back";
         break;
+    case CRP_GRID:          /* CR6 */
+        s = crl.big ? STR_ICON_A " Wear  " STR_ICON_B " Back  L/R Filter  START Find  SELECT All"
+                    : STR_ICON_A " Wear " STR_ICON_B " Back L/R Filter START Find";
+        break;
     case CRP_MENU:
         if (cr.menu_sel == CM_RANDOM && cr.tab != CR_TAB_HOME)
             s = STR_ICON_A " Select  " STR_ICON_ARROW_L STR_ICON_ARROW_R " Scope  " STR_ICON_B " Close";
@@ -1271,6 +1404,10 @@ static void draw_hint(void)
         if ((cr.t / 120) % 3 == 2) {          /* every few seconds: a tip */
             s = crl.big ? "SELECT Turn around  Square Undo  Triangle Redo"
                         : "SELECT Turn  SEL+" STR_ICON_A " Undo  SEL+" STR_ICON_B " Redo";
+            break;
+        }
+        if (!crl.big && (cr.t / 120) % 3 == 1 && row && cr_row_help(row)[0]) {   /* CR6: what the row is for */
+            s = cr_row_help(row);
             break;
         }
         if (row && row->kind == RK_SLIDER)
@@ -1326,6 +1463,7 @@ void cr_draw(void)
     case CRP_PICK:  draw_list(); draw_pick(); break;
     case CRP_COLOR: draw_list(); draw_color(); break;
     case CRP_COPY:  draw_list(); draw_copy(); break;
+    case CRP_GRID:  draw_list(); cr_grid_draw(); break;
     case CRP_TURN:
         draw_list();
         plat_shade_rect(crl.lx, crl.ly, crl.lw + 2, crl.lh + 3, 10);

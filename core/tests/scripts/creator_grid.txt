@@ -1,0 +1,130 @@
+# CR6: the creator's picture grid, filters, search, cameras and locked parts (creator_grid.c).
+# A new Hillvile citizen: the Outfit tab's hat row opens the grid (bust camera), the cursor tries
+# hats on, L/R step the filter chips (Unlocked, shapes, themed sets), START finds by letters,
+# a locked hat shows on the citizen in lavender with its hint; shoes zoom to the legs, a tail
+# turns the citizen round; the START menu's "Rows" switch hides the fine-tuning rows.
+scene CREATOR -1
+expect-scene CREATOR
+wait 30
+# ---- Outfit: hats -----------------------------------------------------------
+press R
+wait 4
+press R
+wait 4
+press R
+wait 4
+press R
+wait 12
+# Hat is the 10th row down from the Outfit tab's preset: Top, Top colour, Print, Print colour,
+# Bottom, Bottom colour, Shoes, Shoe colour, Hat
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+wait 8
+shot 01_hat_row
+press A
+wait 14
+shot 02_hat_grid
+press RIGHT
+wait 3
+press RIGHT
+wait 3
+press RIGHT
+wait 10
+shot 03_hat_try_on
+press DOWN
+wait 10
+shot 04_hat_row2
+# a locked hat (the Witch Hat is a reward): lavender on the citizen, the hint in the footer
+press UP
+press LEFT
+wait 10
+shot 05_hat_locked
+# filter chips
+press R
+wait 8
+shot 06_chip_unlocked
+press R
+wait 8
+shot 07_chip_shape
+press R
+press R
+press R
+press R
+wait 8
+shot 08_chip_set
+press SELECT
+wait 6
+shot 09_all_again
+# search: "top" finds the Top Hat (open from the start); A wears it
+press START
+wait 6
+type top
+press START
+wait 10
+shot 10_find_top
+press A
+wait 10
+shot 11_hat_worn
+# ---- shoes: the legs camera --------------------------------------------------
+press UP
+press UP
+wait 8
+shot 12_shoes_row
+press A
+wait 10
+press RIGHT
+wait 10
+shot 13_shoes_grid
+press B
+wait 6
+# ---- Supernatural: a tail turns the citizen round ----------------------------
+press L
+wait 10
+press DOWN
+press DOWN
+press DOWN
+wait 6
+press A
+wait 10
+press RIGHT
+press RIGHT
+wait 12
+shot 14_tail_back
+press B
+wait 6
+# ---- the Rows switch: just the basics -----------------------------------------
+press L
+wait 4
+press L
+wait 10
+shot 15_face_all_rows
+press START
+wait 6
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+wait 4
+shot 16_menu_rows
+press A
+wait 10
+shot 17_face_basics
+press START
+wait 4
+press B
+wait 4
+# eyes grid on the bust
+press DOWN
+press A
+wait 12
+shot 18_eye_grid
+press B
+wait 6

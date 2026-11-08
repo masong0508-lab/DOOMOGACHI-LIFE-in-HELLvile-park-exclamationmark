@@ -21,6 +21,7 @@
 #include "doomo/part_meta.h"
 
 CrState *cr_sp;                         /* the scene scratch (creator_int.h) */
+static void set_show(int show);
 DOOMO_STATIC_ASSERT(sizeof(CrState) <= DOOMO_SCENE_SCRATCH, creator_state_fits_the_scratch);
 static int16_t last_result = -1;
 
@@ -214,7 +215,7 @@ static int age_locked(int stage)
 
 /* ---- CR12: the age gate for parts ----------------------------------------------------------- */
 /* the catalog list of a part row (part_meta.h), or -1 for a row that is not a part */
-static int row_part_list(const CrRow *row)
+int cr_row_part_list(const CrRow *row)
 {
     if (!row || row->kind != RK_ENUM || CR_IS_AGE_ROW(row) || row->aux) return -1;
     if (row->field == RES_F_SPECIES) return PL_SPECIES;
@@ -224,10 +225,23 @@ static int row_part_list(const CrRow *row)
 
 int cr_value_hidden(const CrRow *row, int index)
 {
-    int list = row_part_list(row), v;
+    int list = cr_row_part_list(row), v;
     if (list < 0) return 0;
     v = row->base + index;
     return v != 0 && !part_age_ok(list, v, RES_STAGE(&cr.draft));
+}
+
+int cr_row_slot(const CrRow *row)
+{
+    int list = cr_row_part_list(row);
+    const PartSlotInfo *sl = list >= 0 ? part_slot_of_list(list) : NULL;
+    return sl ? (int)(sl - doomo_part_slots) : -1;
+}
+
+const PartMeta *cr_choice_meta(const CrRow *row, int index)
+{
+    int list = cr_row_part_list(row);
+    return list >= 0 ? part_meta_find(list, row->base + index) : NULL;
 }
 
 int cr_visible_count(const CrRow *row)
@@ -254,7 +268,7 @@ static int age_sweep(int say)
     for (t = 0; t < CR_TAB_COUNT; t++)
         for (i = 0; i < cr_tabs[t].nrows; i++) {
             const CrRow *row = &cr_tabs[t].rows[i];
-            int v, list = row_part_list(row);
+            int v, list = cr_row_part_list(row);
             if (list < 0) continue;
             v = cr_row_value(&cr.draft, row);
             if (!cr_value_hidden(row, v)) continue;
@@ -829,6 +843,16 @@ static void target_look(DoomoLook *out, uint8_t *locked)
     *locked = (uint8_t)cr_value_locked(row, cr.browse);
 }
 
+/* CR6: what a locked part is compared with to show it alone in lavender: the draft with the row's
+ * part taken off (its slot's choice 0) */
+void cr_lock_base(DoomoLook *out)
+{
+    DoomoResident tmp = cr.draft;
+    const CrRow *row = cr_cur_row();
+    if (row && row->kind == RK_ENUM && row->field != CR_NOFIELD && RES_F_IS_LOOK(row->field)) cr_row_set(&tmp, row, 0);
+    res_get_look(&tmp, out);
+}
+
 int cr_preview_status(void)
 {
     if (cr.spooky) return RES_POSSESSED;
@@ -1285,6 +1309,10 @@ const char *cr_menu_label(int i, char *buf)
     case CM_REDO:  doomo_snprintf(buf, 48, "Redo (%d)", cr_redo_count()); return buf;
     case CM_COPY:       return "Copy a look...";
     case CM_SPOOKY:     return cr.spooky ? "Possessed peek: ON" : "Possessed peek: off";
+    case CM_ROWS:
+        doomo_snprintf(buf, 48, STR_ICON_ARROW_L " Rows: %s " STR_ICON_ARROW_R,
+                       cr.show == CR_SHOW_SIMPLE ? "just the basics" : "every detail");
+        return buf;
     case CM_RESET:      return cr.mode == CR_NEW ? "Start over" : "Reset changes";
     case CM_QUIT:       return "Quit";
     default:            return "";
@@ -1323,7 +1351,7 @@ int cr_menu_group(int cm)
     case CM_DONE: return 0;
     case CM_RANDOM: return 1;
     case CM_UNDO: case CM_REDO: return 2;
-    case CM_COPY: case CM_SPOOKY: return 3;
+    case CM_COPY: case CM_SPOOKY: case CM_ROWS: return 3;
     default: return 4;
     }
 }
@@ -1347,6 +1375,11 @@ static void menu_run(int i)
         open_copy(town_count(-1) > 0 ? 0 : 1);
         go_phase(CRP_COPY);
         audio_sfx(SFX_SELECT);
+        break;
+    case CM_ROWS:
+        set_show(cr.show == CR_SHOW_SIMPLE ? CR_SHOW_ALL : CR_SHOW_SIMPLE);
+        audio_sfx(SFX_BLIP);
+        go_phase(CRP_MAIN);
         break;
     case CM_SPOOKY:
         cr.spooky ^= 1;
@@ -1382,6 +1415,10 @@ static void update_menu(void)
         cr.rand_tab ^= 1;
         audio_sfx(SFX_BLIP);
     }
+    if (cr.menu_sel == CM_ROWS && btn_pressed(BTN_LEFT | BTN_RIGHT)) {
+        set_show(cr.show == CR_SHOW_SIMPLE ? CR_SHOW_ALL : CR_SHOW_SIMPLE);
+        audio_sfx(SFX_BLIP);
+    }
     if (btn_pressed(BTN_A)) {
         menu_run(cr.menu_sel);
     } else if (btn_pressed(BTN_B | BTN_START)) {
@@ -1396,16 +1433,61 @@ static void update_menu(void)
 
 /* ====================================================================== */
 /* main list                                                                */
+/* CR6: rows the tab shows in the current mode. A section caption shows while any row of it does. */
+int cr_row_shown(int tab, int i)
+{
+    const CrTab *t = &cr_tabs[tab];
+    int k;
+    if (i < 0 || i >= t->nrows) return 0;
+    if (t->rows[i].kind != RK_HEADER) return cr_row_level(&t->rows[i]) <= cr.show;
+    for (k = i + 1; k < t->nrows && t->rows[k].kind != RK_HEADER; k++)
+        if (cr_row_level(&t->rows[k]) <= cr.show) return 1;
+    return 0;
+}
+
+const char *cr_row_section(int tab, int i)
+{
+    for (; i >= 0; i--)
+        if (cr_tabs[tab].rows[i].kind == RK_HEADER) return cr_tabs[tab].rows[i].label;
+    return "";
+}
+
+/* position of row i among the rows the tab shows */
+static int shown_ord(int tab, int i)
+{
+    int k, n = 0;
+    for (k = 0; k < i; k++) n += cr_row_shown(tab, k);
+    return n;
+}
+
+static int shown_at(int tab, int ord)
+{
+    int k;
+    for (k = 0; k < cr_tabs[tab].nrows; k++)
+        if (cr_row_shown(tab, k) && ord-- == 0) return k;
+    return 0;
+}
+
+static int first_shown(int tab)
+{
+    int i;
+    for (i = 0; i < cr_tabs[tab].nrows; i++)
+        if (cr_tabs[tab].rows[i].kind != RK_HEADER && cr_row_shown(tab, i)) return i;
+    return cr_first_selectable(tab);
+}
+
 static void ensure_visible(void)
 {
     int vis = crl.rows > 0 ? crl.rows : 6;
-    int r = cr.row[cr.tab], top = cr.top[cr.tab];
-    int n = cr_tabs[cr.tab].nrows;
-    if (r - 1 < top && r > 0 && cr_tabs[cr.tab].rows[r - 1].kind == RK_HEADER) top = r - 1;
-    if (r < top) top = r;
-    if (r >= top + vis) top = r - vis + 1;
-    top = DOOMO_CLAMP(top, 0, DOOMO_MAX(0, n - vis));
-    cr.top[cr.tab] = (uint8_t)top;
+    int r = cr.row[cr.tab], tab = cr.tab;
+    int ro = shown_ord(tab, r), to = shown_ord(tab, cr.top[tab]), n = shown_ord(tab, cr_tabs[tab].nrows);
+    if (!cr_row_shown(tab, cr.top[tab])) to = DOOMO_MIN(to, ro);
+    if (ro - 1 < to && ro > 0 && r > 0 && cr_tabs[tab].rows[r - 1].kind == RK_HEADER && cr_row_shown(tab, r - 1))
+        to = ro - 1;
+    if (ro < to) to = ro;
+    if (ro >= to + vis) to = ro - vis + 1;
+    to = DOOMO_CLAMP(to, 0, DOOMO_MAX(0, n - vis));
+    cr.top[tab] = (uint8_t)shown_at(tab, to);
 }
 
 static void move_row(int d)
@@ -1413,7 +1495,7 @@ static void move_row(int d)
     int n = cr_tabs[cr.tab].nrows, r = cr.row[cr.tab], k;
     for (k = 0; k < n; k++) {
         r = (r + d + n) % n;
-        if (cr_tabs[cr.tab].rows[r].kind != RK_HEADER) break;
+        if (cr_tabs[cr.tab].rows[r].kind != RK_HEADER && cr_row_shown(cr.tab, r)) break;
     }
     cr.row[cr.tab] = (uint8_t)r;
     cr.browse = -1;
@@ -1421,15 +1503,52 @@ static void move_row(int d)
     audio_sfx(SFX_CURSOR);
 }
 
+/* CR6: switch the rows the tabs show; a row that is gone moves to the first one shown */
+static void set_show(int show)
+{
+    int t;
+    cr.show = (uint8_t)DOOMO_CLAMP(show, 0, CR_SHOW_COUNT - 1);
+    cr.browse = -1;
+    for (t = 0; t < CR_TAB_COUNT; t++) {
+        uint8_t keep = cr.tab;
+        if (!cr_row_shown(t, cr.row[t])) cr.row[t] = (uint8_t)first_shown(t);
+        cr.tab = (uint8_t)t;
+        ensure_visible();
+        cr.tab = keep;
+    }
+}
+
 static void switch_tab(int d)
 {
     cr.tab = (uint8_t)((cr.tab + d + CR_TAB_COUNT) % CR_TAB_COUNT);
     cr.tab_t = 0;
     cr.browse = -1;
-    if (cr_tabs[cr.tab].rows[cr.row[cr.tab]].kind == RK_HEADER)
-        cr.row[cr.tab] = (uint8_t)cr_first_selectable(cr.tab);
+    if (cr_tabs[cr.tab].rows[cr.row[cr.tab]].kind == RK_HEADER || !cr_row_shown(cr.tab, cr.row[cr.tab]))
+        cr.row[cr.tab] = (uint8_t)first_shown(cr.tab);
     ensure_visible();
     audio_sfx(SFX_CURSOR);
+}
+
+/* CR6: the slot-aware camera. Head parts zoom to the bust, shoes and bottoms to the legs, tails
+ * and wings turn the citizen round; a colour or size row follows its part. */
+int cr_camera(void)
+{
+    const CrRow *row = cr_cur_row();
+    int f;
+    if (cr.phase == CRP_COPY || cr.phase == CRP_HERO || cr.phase == CRP_MOVEIN || !row) return CAM_FIGURE;
+    f = row->field;
+    switch (cr_row_part_list(row) >= 0 ? cr_row_part_list(row) : (int)f) {
+    case GF_SHOES: case GF_BOTTOM: case GF_SHOES_COLOR: case GF_BOTTOM_COLOR:
+        return CAM_LEGS;
+    case GF_TAIL: case GF_WINGS:
+        return CAM_BACK;
+    case GF_HAT: case GF_HAT_COLOR: case GF_HORNS: case GF_HORN_COLOR: case GF_HORN_SIZE: case GF_HALO:
+        return CAM_BUST;
+    default:
+        break;
+    }
+    if (cr.tab == CR_TAB_FACE || cr.tab == CR_TAB_HAIR) return CAM_BUST;
+    return CAM_FIGURE;
 }
 
 static void roll_name(void)
@@ -1608,6 +1727,14 @@ static void press_a(const CrRow *row)
 {
     switch (row->kind) {
     case RK_ENUM:
+        if (cr_row_slot(row) >= 0) {             /* CR6: a part row opens the picture grid */
+            cr_grid_open(row);
+            go_phase(CRP_GRID);
+            audio_sfx(SFX_SELECT);
+            break;
+        }
+        open_picker(row);
+        break;
     case RK_PAINT: case RK_PAINT_NONE: case RK_SKIN:
         open_picker(row);
         break;
@@ -1681,18 +1808,21 @@ static void update_main(void)
 
 /* ====================================================================== */
 /* pickers                                                                  */
-static void pick_preview(const CrRow *row)
+/* a picker's cursor is on choice `index`: put it on the draft (try-on), or show a locked one */
+void cr_pick_preview(const CrRow *row, int index)
 {
-    if (cr_value_locked(row, cr.pick_sel)) {
-        cr.browse = cr.pick_sel;
+    if (cr_value_locked(row, index)) {
+        cr.browse = (int16_t)index;
     } else {
         cr.browse = -1;
-        cr_row_set(&cr.draft, row, cr.pick_sel);
+        cr_row_set(&cr.draft, row, index);
         cr.changed_t = cr.t;
     }
 }
 
-static void pick_close(const CrRow *row, int ok)
+static void pick_preview(const CrRow *row) { cr_pick_preview(row, cr.pick_sel); }
+
+void cr_pick_close(const CrRow *row, int ok)
 {
     if (ok) {
         cr.browse = -1;
@@ -1746,9 +1876,9 @@ static void update_pick(void)
     }
     if (btn_pressed(BTN_A)) {
         if (cr_value_locked(row, cr.pick_sel)) { audio_sfx(SFX_ERROR); cr.pick_err = 14; return; }
-        pick_close(row, 1);
+        cr_pick_close(row, 1);
     } else if (btn_pressed(BTN_B)) {
-        pick_close(row, 0);
+        cr_pick_close(row, 0);
     }
 }
 
@@ -1775,9 +1905,9 @@ static void update_color(void)
     }
     if (btn_pressed(BTN_A)) {
         if (cr_value_locked(row, p)) { audio_sfx(SFX_ERROR); cr.pick_err = 14; return; }
-        pick_close(row, 1);
+        cr_pick_close(row, 1);
     } else if (btn_pressed(BTN_B)) {
-        pick_close(row, 0);
+        cr_pick_close(row, 0);
     }
 }
 
@@ -1929,6 +2059,7 @@ static void cr_enter(int arg)
     cr.orig = cr.draft;
     memcpy(cr.nick_orig, cr.nick, DOOMO_NAME_LEN);
     hist_reset();
+    cr.show = CR_SHOW_ALL;
     for (i = 0; i < CR_TAB_COUNT; i++) cr.row[i] = (uint8_t)cr_first_selectable(i);
     cr.preset_i = 0;
     refresh_home();
@@ -1966,6 +2097,7 @@ static void cr_update(void)
     case CRP_TURN:   update_turn(); break;
     case CRP_MOVEIN: update_movein(); break;
     case CRP_HERO:   update_hero(); break;
+    case CRP_GRID:   cr_grid_update(); break;
     default: break;
     }
     if (scene_top() == &SCENE_CREATOR) preview_update();
