@@ -21,6 +21,16 @@
 
 ## 2. Modes
 
+**Title screen (CL2, C8).** One line under the menu says what the
+highlighted row is ("The plot, chapter by chapter.", "Run an island of
+citizens.", the theme and language rows say LEFT / RIGHT). Continue names
+its save ("Story: Marvin, Ch.1, Day 2" / "Island: 12 citizens, Day 3"); a
+Continue with no save is greyed and says "No story save yet" (A buzzes);
+New story with a save says "Starts over. Old save kept." The help line
+keeps to about 22 characters at 240x160 (the room between the two waving
+figures; the footer makes way while the menu is open) and about 30 at
+320x240. The menu rows no longer flash an empty pill while they settle.
+
 ### Free Play (Tomodachi Life style)
 New Island choices:
 1. **Empty Island**, like the original games. You create every citizen

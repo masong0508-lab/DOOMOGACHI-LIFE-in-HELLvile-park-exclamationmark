@@ -1,0 +1,74 @@
+# CL2 (C8): the title says what each row is. A fresh console: the menu
+# with its help line under it, Story Mode with a greyed Continue ("No story
+# save yet"; A only buzzes). Then with a story and an island saved: the
+# Continue row leads and names the save, the blank row at 320x240 (the
+# pop-in settle wobble) is gone and the 240x160 menu stays on screen.
+wait 5
+press A
+wait 30
+press A
+wait 24
+expect-scene TITLE
+shot fresh_menu
+press DOWN
+wait 6
+shot fresh_free
+press UP
+press A
+wait 20
+shot fresh_story
+press DOWN
+wait 6
+shot fresh_story_continue_greyed
+press A
+wait 10
+expect-scene TITLE
+shot fresh_story_continue_buzz
+press B
+wait 10
+seed 4242
+scene NEW_ISLAND
+wait 10
+press A
+wait 20
+press A
+wait 2
+press A
+wait 10
+save 1
+scene TITLE
+wait 2
+scene STORY 108
+wait 60
+save 0
+scene BOOT
+wait 5
+press A
+wait 30
+press A
+wait 8
+shot saves_menu_popping
+wait 16
+expect-scene TITLE
+shot saves_menu
+press DOWN
+wait 6
+shot saves_story
+press A
+wait 20
+shot saves_story_menu
+press UP
+wait 6
+shot saves_story_new
+press B
+wait 10
+expect-scene TITLE
+press DOWN
+wait 6
+shot saves_free
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+wait 6
+shot saves_last_row

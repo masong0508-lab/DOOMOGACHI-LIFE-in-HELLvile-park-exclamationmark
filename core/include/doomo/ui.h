@@ -169,6 +169,8 @@ void ui_hint(const char *s, int style);
 void ui_title(int cx, int y, const char *s, int style);
 /* Pill-shaped button; selected ones bounce and glow. */
 void ui_button(int x, int y, int w, const char *label, int selected, int style);
+/* The same row greyed out: shown but not available yet (CL2). */
+void ui_button_off(int x, int y, int w, const char *label, int selected, int style);
 /* "Label        < Value >" row for option / creator screens; the
  * selected row gets a pill, the cursor and bouncing arrows. */
 void ui_value_row(int x, int y, int w, const char *label, const char *value,

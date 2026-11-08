@@ -215,7 +215,7 @@ static void cycle_theme(int d)
     if (v == old) {
         const DoomoUnlock *u = unlock_find(UL_CAT_SKIN, OPT_TITLE_THEME, (old + 1) % THEME_N);
         audio_sfx(SFX_ERROR);
-        doomo_snprintf(fp_tmp, sizeof(fp_tmp), "More themes: %s", u && u->how ? u->how : "keep playing!");
+        doomo_snprintf(fp_tmp, sizeof(fp_tmp), "To unlock more themes: %s", u && u->how ? u->how : "keep playing!");
         ui_toast(fp_tmp);
         return;
     }
@@ -307,11 +307,11 @@ static void title_update(void)
     if (T.menu == M_STORY) {
         if (T.sub_sel == 0) new_story_pressed();
         else if (T.has_story) continue_story();
-        else { audio_sfx(SFX_ERROR); ui_toast("No story save yet!"); }
+        else audio_sfx(SFX_ERROR);                 /* C8: greyed, the help line says "No story save yet" */
     } else {
         if (T.sub_sel == 0) { audio_sfx(SFX_SELECT); scene_set(&SCENE_NEW_ISLAND, 0); }
         else if (T.has_free) continue_free();
-        else { audio_sfx(SFX_ERROR); ui_toast("No island saved yet!"); }
+        else audio_sfx(SFX_ERROR);
     }
 }
 
@@ -725,6 +725,79 @@ static void draw_figures(void)
     }
 }
 
+/* CL2 (C8): one line under the menu says what the highlighted row is, so a
+ * new player does not pick blind. The 240x160 layout has room for about 22
+ * characters between the two waving figures (GBA sprites sit above the
+ * text), so each row has a short and a long line; the long ones stay
+ * within about 30 characters, the room between the figures at 320x240. */
+static const char *const help_long[I_MAIN_N] = {
+    "The plot, chapter by chapter.", "Run an island of citizens.", "Sound, language and display.",
+    "Everything you've won so far.", "Who made the game.", "Title theme: LEFT/RIGHT",
+    "Language: LEFT/RIGHT"
+};
+static const char *const help_short[I_MAIN_N] = {
+    "The plot, by chapter", "Run your own island", "Sound, text, display",
+    "Everything you've won", "Who made the game", "Theme: LEFT/RIGHT", "Language: LEFT/RIGHT"
+};
+
+/* the story save, said plainly: "Chapter 2, Day 3" / "finished" */
+static void story_line(char *buf, int cap, const DoomoSaveInfo *si, int big)
+{
+    if (si->chapter == STORY_CH_DONE)
+        doomo_snprintf(buf, cap, big ? "Story: %s, finished" : "Story: finished", si->player);
+    else if (big)
+        doomo_snprintf(buf, cap, "Story: %s, Ch.%d, Day %u", si->player, si->chapter, (unsigned)si->day + 1);
+    else
+        doomo_snprintf(buf, cap, "Story: Ch.%d, Day %u", si->chapter, (unsigned)si->day + 1);
+}
+
+static void island_line(char *buf, int cap, const DoomoSaveInfo *si, int big)
+{
+    if (big)
+        doomo_snprintf(buf, cap, "Island: %d citizens, Day %u", si->residents, (unsigned)si->day + 1);
+    else
+        doomo_snprintf(buf, cap, "Island: Day %u", (unsigned)si->day + 1);
+}
+
+static void menu_help(char *buf, int cap)
+{
+    int big = fp_big();
+    buf[0] = 0;
+    if (T.menu == M_MAIN) {
+        int id = row_id(T.sel);
+        if (id == I_CONTINUE) {
+            if (T.has_story) story_line(buf, cap, &T.info[0], big);
+            else island_line(buf, cap, &T.info[1], big);
+        } else if (id >= 0 && id < I_MAIN_N) {
+            doomo_snprintf(buf, cap, "%s", big ? help_long[id] : help_short[id]);
+        }
+        return;
+    }
+    if (T.menu == M_STORY) {
+        if (T.sub_sel == 0)
+            doomo_snprintf(buf, cap, "%s", T.has_story ? (big ? "Starts over. Old save kept." : "Starts over from Ch.1")
+                                                       : (big ? "From the very beginning." : "From the very start"));
+        else if (T.sub_sel == 1) {
+            if (T.has_story) story_line(buf, cap, &T.info[0], big);
+            else doomo_snprintf(buf, cap, "%s", "No story save yet");
+        } else doomo_snprintf(buf, cap, "%s", big ? "Back to the title menu." : "Back to the title");
+        return;
+    }
+    if (T.sub_sel == 0) doomo_snprintf(buf, cap, "%s", big ? "Build a brand-new island." : "A brand-new island");
+    else if (T.sub_sel == 1) {
+        if (T.has_free) island_line(buf, cap, &T.info[1], big);
+        else doomo_snprintf(buf, cap, "%s", "No island saved yet");
+    } else doomo_snprintf(buf, cap, "%s", big ? "Back to the title menu." : "Back to the title");
+}
+
+static void draw_help(int y)
+{
+    const UiStyle *st = ui_style(WIN_CUTE);
+    char buf[64];
+    menu_help(buf, (int)sizeof(buf));
+    if (buf[0]) ui_text_outline(fp_sw() / 2 - ui_text_width(buf) / 2, y, buf, PAL_WHITE, st->outline);
+}
+
 static void draw_menu(void)
 {
     const UiStyle *st = ui_style(WIN_CUTE);
@@ -743,13 +816,20 @@ static void draw_menu(void)
     }
     if (T.menu == M_MAIN) {
         n = main_n();
-        y0 = sh - n * bh - (big ? 22 : 6);
+        /* C8: the 240x160 rows are 14 high so the help line fits under them
+         * (the footer makes way while the menu is open) */
+        if (!big) bh = 14;
+        else if (n > 7) bh = 16;                   /* Continue + 7 rows: keep clear of the logo */
+        y0 = sh - n * bh - (big ? 26 : 12);
         for (i = 0; i < n; i++) {
             int pop = ui_pop_scale(T.menu_t - i * 2), w = bw * pop / 256;
             int x = (sw - w) / 2, y = y0 + i * bh;
             char label[40];
             int id = row_id(i);
             if (pop <= 0) continue;
+            /* a row whose pop-in has not started yet is not drawn (ui_pop_scale
+             * answers 256 for it, so it showed in full, then shrank to a pill) */
+            if (T.menu_t - i * 2 < 0 && opt_get(OPT_UI_BOUNCE)) continue;
             if (id == I_CONTINUE) {
                 doomo_snprintf(label, sizeof(label), T.has_story ? "Continue" : "Continue island");
             } else if (id == I_LANG) {
@@ -763,12 +843,15 @@ static void draw_menu(void)
             } else {
                 doomo_snprintf(label, sizeof(label), "%s", main_items[id]);
             }
-            if (pop < 250) {
+            /* only while it grows: the settle wobble (250, 244, 249) drew an
+             * empty pill for three ticks (the "blank row" at 320x240) */
+            if (pop < 250 && T.menu_t - i * 2 < 3) {
                 fp_pill(x, y, w, bh - 2, st->fill_hi, st->outline, PAL_WHITE);
                 continue;
             }
             ui_button(x, y, bw, label, i == T.sel, (id == I_THEME || id == I_LANG) ? WIN_MINT : WIN_CUTE);
         }
+        draw_help(y0 + n * bh + (big ? 3 : 0));
         return;
     }
     {
@@ -776,29 +859,18 @@ static void draw_menu(void)
         const char *title = T.menu == M_STORY ? "Story Mode" : "Free Play";
         int has = T.menu == M_STORY ? T.has_story : T.has_free;
         items[0] = T.menu == M_STORY ? "New story" : "New island";
-        items[1] = has ? "Continue" : "Continue (no save)";
+        items[1] = "Continue";                     /* C8: greyed without a save; the help line says so */
         items[2] = "Back";
         y0 = sh - 3 * bh - (big ? 40 : 18);
         ui_title(sw / 2, y0 - 16, title, WIN_CUTE);
         for (i = 0; i < 3; i++) {
             int pop = ui_pop_scale(T.menu_t - i * 2), w = (bw + 20) * pop / 256;
-            if (pop < 250) { fp_pill((sw - w) / 2, y0 + i * bh, w, bh - 2, st->fill_hi, st->outline, PAL_WHITE); continue; }
-            ui_button((sw - bw - 20) / 2, y0 + i * bh, bw + 20, items[i], i == T.sub_sel,
-                      (i == 1 && !has) ? WIN_CREAM : WIN_CUTE);
+            if (T.menu_t - i * 2 < 0 && opt_get(OPT_UI_BOUNCE)) continue;
+            if (pop < 250 && T.menu_t - i * 2 < 3) { fp_pill((sw - w) / 2, y0 + i * bh, w, bh - 2, st->fill_hi, st->outline, PAL_WHITE); continue; }
+            if (i == 1 && !has) ui_button_off((sw - bw - 20) / 2, y0 + i * bh, bw + 20, items[i], i == T.sub_sel, WIN_CUTE);
+            else ui_button((sw - bw - 20) / 2, y0 + i * bh, bw + 20, items[i], i == T.sub_sel, WIN_CUTE);
         }
-        if (T.sub_sel == 1 && has) {
-            const DoomoSaveInfo *pi = &T.info[T.menu == M_STORY ? 0 : 1];
-            {
-                DoomoSaveInfo si = *pi;
-                char buf[64];
-                if (T.menu == M_STORY)
-                    doomo_snprintf(buf, sizeof(buf), "%s - Chapter %d - Day %u", si.player, si.chapter, (unsigned)si.day + 1);
-                else
-                    doomo_snprintf(buf, sizeof(buf), "%d citizens - Day %u - H$ %u", si.residents,
-                                   (unsigned)si.day + 1, (unsigned)si.money);
-                ui_text_outline(sw / 2 - ui_text_width(buf) / 2, y0 + 3 * bh + 2, buf, PAL_WHITE, st->outline);
-            }
-        }
+        draw_help(y0 + 3 * bh + 2);
     }
     (void)t;
 }
@@ -816,8 +888,11 @@ static void title_draw(void)
     {
         /* between the two figures, not under them */
         int m = FIGURE_W + (fp_big() ? 18 : 2) + 3;
-        ui_text_outline(sw - m - ui_text_width(buf), sh - 10, buf, PAL_WHITE, PAL_RAMP(RAMP_STONE, 2));
-        ui_text_outline(m, sh - 10, "(c) HaHaland", PAL_WHITE, PAL_RAMP(RAMP_STONE, 2));
+        /* C8: at 240x160 the menu's help line takes the footer's place */
+        if (fp_big() || !T.started) {
+            ui_text_outline(sw - m - ui_text_width(buf), sh - 10, buf, PAL_WHITE, PAL_RAMP(RAMP_STONE, 2));
+            ui_text_outline(m, sh - 10, "(c) HaHaland", PAL_WHITE, PAL_RAMP(RAMP_STONE, 2));
+        }
     }
     fp_fx_draw();
 }

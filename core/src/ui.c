@@ -1013,6 +1013,19 @@ void ui_button(int x, int y, int w, const char *label, int selected, int style)
     }
 }
 
+/* CL2 (C8 / C11): a row that is there but not available yet. Grey body,
+ * dim label, no glow; the cursor still lands on it so the screen's help
+ * line can say why. */
+void ui_button_off(int x, int y, int w, const char *label, int selected, int style)
+{
+    if (plat_draw_skipped()) return;
+    const UiStyle *st = ui_style(style);
+    int tw = ui_text_width(label);
+    ui_pill(x, y, w, 14, PAL_GRAY_L, selected ? st->accent : PAL_GRAY, PAL_WHITE);
+    ui_text(x + (w - tw) / 2, y + 3, label, selected ? PAL_GRAY_D : PAL_GRAY);
+    if (selected) ui_cursor(x - 9, y + 3);
+}
+
 void ui_value_row(int x, int y, int w, const char *label, const char *value,
                   int selected)
 {
