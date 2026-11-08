@@ -432,4 +432,8 @@ static void best_draw(void)
     }
 }
 
-const DoomoScene SCENE_LIB_BESTIARY = { "LIB_BESTIARY", best_enter, NULL, best_update, best_draw, 0 };
+/* (CL4, PS1 RAM) The scene's name is a named array, not a literal: the resident scene struct would
+ * otherwise pull this file's whole string section (the entries' lore and labels, 4.5 KB) into resident RAM on the PS1
+ * (ovl_plan.py; lib_help.c does the same). */
+static const char best_scene_name[] = "LIB_BESTIARY";
+const DoomoScene SCENE_LIB_BESTIARY = { best_scene_name, best_enter, NULL, best_update, best_draw, 0 };

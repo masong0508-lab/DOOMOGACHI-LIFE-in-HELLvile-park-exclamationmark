@@ -492,30 +492,43 @@ Measured against `16b6929` built the same way, the disc ends at
 (within the plan's 64 B); the slot keeps its 166 KB (now from
 `0x801c7ea0`) and `OVL.BIN` its 24 groups (950 KB packed).
 
-CL4 (first-time tip cards, the Field Guide, the Tips option): resident
-+5,952 B. `tips.c` is resident by design (a card shows over any scene and is
-drawn from `doomo_frame`): its code (~2.0 KB: `tips_draw` 952 B, the input,
-show and drop paths) and the 13 cards' text (~2.7 KB of string literals,
-the `tip_text` table 156 B); the rest is `options_store.c` (the Tips byte
+CL4 (first-time tip cards, the Field Guide, the Tips option): `tips.c` is
+resident by design (a card shows over any scene and is drawn from
+`doomo_frame`): its code (~2.0 KB: `tips_draw` 944 B, the input, show and
+drop paths) and the 13 cards' text (~2.7 KB of string literals, the
+`tip_text` table 156 B), 5,096 B; with `options_store.c` (the Tips byte
 and the seen word in the record and the 'OPT2' chunk, `opt_config_flush`),
-`game.c`, the scene and activity tables and the lobby's Field Guide entry.
-`.bss` +28 B (the card's state, 13 B, and alignment). The Field Guide
-(`lib_help.c`, ~10 KB of code and text) is in the library overlay group:
-its list callback is in `ovl_plan.py`'s `LOCAL_CALLBACKS` and its scene
-name is a named array, so nothing resident points into its string section
-(as a literal the name pulled all 6.4 KB of page text into resident RAM).
-Measured against `b080562` built the same way, the disc ends at
-`0x801edcf0` instead of `0x801ec5b0`, **74,512 B below the stack top**
-(80,464 B before; 8,976 B above the 64 KB reserve and 784 B above the 72 KB
-plan gate); `OVL.BIN` keeps its 24 groups (966 -> 974 KB packed, 1,330 ->
-1,341 KB unpacked) and the slot its size (167 KB). The seen word is in the
-machine config record (`BASLUS-DOOMOC`, bytes 11..15 of the 48 B record):
-no new card block, and it is written with the next save (`save_game` ->
-`opt_config_flush`), not when a card closes (a card write takes about a
-second). If the plan gate is needed back: the cards' 2.7 KB of text could
-move into their callers' overlay groups and be copied into a RAM buffer
-when a card shows. The harness (in lockstep) reports `PLAT_TEST_NO_TIPS`,
-so its scripts and journeys see no card.
+`game.c`, the scene and activity tables and the lobby's Field Guide entry
+the feature costs about 5.9 KB resident, and on `5bb55e7` (73,824 B below
+the stack top, 96 B above the 72 KB plan gate) that put the disc 1.4 KB
+under the gate. The Field Guide (`lib_help.c`, ~10 KB of code and text)
+is in the library overlay group: its list callback is in `ovl_plan.py`'s
+`LOCAL_CALLBACKS` and its scene name is a named array, so nothing resident
+points into its string section. CL4 pays for itself with the same trick in
+four more scenes: a resident `SCENE_*` struct whose name is a literal keeps
+its file's whole generic string section (every literal of the file's
+static tables) in resident RAM, so `SCENE_OPTIONS` (3,412 B),
+`SCENE_ISLAND` (1,736 B), `SCENE_LIB_BESTIARY` (4,552 B) and
+`SCENE_LIB_ITEMS` (2,168 B) now take named arrays and those strings load
+with their overlay groups (freeplay, island, library; none of them sets the
+slot, the house does). Also: the Options page's "Show all tips again" words
+are named arrays (as `opt_draw` literals they shared a section with the
+resident `pause_menu_draw`), `cb_tips_reset` is a `MODAL_CALLBACKS` entry,
+and the Field Guide's lobby book keeps its words out of `lib_common.c`'s
+resident string section. Not done that way: `SCENE_HOME`'s strings
+(888 B) would grow the house group, which sets the slot, and the slot grows
+in 2 KB steps. Measured against `5bb55e7` built the same way, the disc ends
+at `0x801ec8e0` instead of `0x801edfa0`, **79,648 B below the stack top**
+(73,824 B before: CL4 is 5,824 B under the base; 15,712 B above the 64 KB
+reserve, 5,920 B above the 72 KB plan gate); `OVL.BIN` keeps its 24 groups
+(968 -> 984 KB packed, 1,335 -> 1,358 KB unpacked) and the slot its size
+(167 KB; house 130,144 B). The seen word is in the machine config record
+(`BASLUS-DOOMOC`, bytes 11..15 of the 48 B record): no new card block, and
+it is written with the next save (`save_game` -> `opt_config_flush`), not
+when a card closes (a card write takes about a second). The harness (in
+lockstep) reports `PLAT_TEST_NO_TIPS`, so its scripts and journeys see no
+card; the harness target also plays `core/tests/scripts/library_help.txt`
+(the Field Guide's contents and every page).
 
 The biggest remaining consumers of RAM: resident core code (portraits,
 UI, sim, story engine, ...) ~650 KB, merged string literals of resident

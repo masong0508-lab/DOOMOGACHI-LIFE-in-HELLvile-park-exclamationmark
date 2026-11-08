@@ -472,4 +472,8 @@ static void items_draw(void)
     }
 }
 
-const DoomoScene SCENE_LIB_ITEMS = { "LIB_ITEMS", items_enter, NULL, items_update, items_draw, 0 };
+/* (CL4, PS1 RAM) The scene's name is a named array, not a literal: the resident scene struct would
+ * otherwise pull this file's whole string section (the item blurbs and labels, 2.1 KB) into resident RAM on the PS1
+ * (ovl_plan.py; lib_help.c does the same). */
+static const char items_scene_name[] = "LIB_ITEMS";
+const DoomoScene SCENE_LIB_ITEMS = { items_scene_name, items_enter, NULL, items_update, items_draw, 0 };

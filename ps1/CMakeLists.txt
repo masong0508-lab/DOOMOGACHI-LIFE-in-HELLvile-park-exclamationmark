@@ -406,6 +406,9 @@ else()
 		        --out ${_shots}/core_ui_gallery
 		COMMAND ${_run} --exe ${_exe} --cue ${_cue} --script ${CORE_DIR}/tests/scripts/saves.txt
 		        --out ${_shots}/core_saves
+		# CL4: the Field Guide (SCENE_LIB_HELP, the library overlay group: its pages and the lobby's eighth book)
+		COMMAND ${_run} --exe ${_exe} --cue ${_cue} --script ${CORE_DIR}/tests/scripts/library_help.txt
+		        --out ${_shots}/core_library_help
 		${_journeys}
 		DEPENDS disc
 		COMMENT "PCSX-Redux harness: game"

@@ -23,6 +23,11 @@
 #define ROWS_MAX 24
 #define ROW_PRESET 100          /* U2: the Quick page's preset row (not an option id) */
 #define ROW_TIPS_RESET 101      /* CL4: "Show all tips again" (Game page, under Tips) */
+/* CL4: the row's words are named arrays: as literals of opt_draw() they would land in a string section
+ * that the resident pause_menu_draw() shares, so on the PS1 they would stay in resident RAM */
+static const char tips_reset_label[] = "Show all tips again";
+static const char tips_reset_help[] = "Every first-time tip shows again, once, the next time you reach its place.";
+static const char tips_reset_hint[] = STR_ICON_A " Reset  L/R Page  " STR_ICON_B " Done";
 
 static const char *const opt_help[OPT_COUNT] = {
     /* GORE */ "Cute: confetti, hearts, plush stuffing. Brutal: full Doom. Cute + Gore (after the ending): both at once.",
@@ -431,7 +436,7 @@ static void opt_draw(void)
             continue;
         }
         if (O.rows[row] == ROW_TIPS_RESET) {
-            ui_value_row(x + 12, y, w - 18, "Show all tips again", "", row == O.sel);
+            ui_value_row(x + 12, y, w - 18, tips_reset_label, "", row == O.sel);
             continue;
         }
         {
@@ -461,7 +466,7 @@ static void opt_draw(void)
         if (O.sel < O.nrows && O.rows[O.sel] == ROW_PRESET) {
             help = preset_help[O.preset];
         } else if (O.sel < O.nrows && O.rows[O.sel] == ROW_TIPS_RESET) {
-            help = "Every first-time tip shows again, once, the next time you reach its place.";
+            help = tips_reset_help;
         } else if (O.sel < O.nrows) {
             int opt = O.rows[O.sel], v = opt_get(opt), k;
             const DoomoOptionInfo *oi = info_of(opt);
@@ -485,7 +490,7 @@ static void opt_draw(void)
         else fp_marquee(x + 2, hy + 2, w - 4, help, c, O.t);
     }
     ui_hint((O.sel < O.nrows && O.rows[O.sel] == ROW_PRESET) ? STR_ICON_ARROW_L STR_ICON_ARROW_R " Pick  " STR_ICON_A " Apply  L/R Page  " STR_ICON_B " Done"
-            : (O.sel < O.nrows && O.rows[O.sel] == ROW_TIPS_RESET) ? STR_ICON_A " Reset  L/R Page  " STR_ICON_B " Done"
+            : (O.sel < O.nrows && O.rows[O.sel] == ROW_TIPS_RESET) ? tips_reset_hint
                                                          : STR_ICON_ARROW_L STR_ICON_ARROW_R " Change  L/R Page  " STR_ICON_B " Done", style);
     fp_fx_draw();
 }
@@ -550,4 +555,8 @@ void options_open(int page)
     scene_push(&SCENE_OPTIONS, page);
 }
 
-const DoomoScene SCENE_OPTIONS = { "OPTIONS", opt_enter, NULL, opt_update, opt_draw, 0 };
+/* (CL4, PS1 RAM) The scene's name is a named array, not a literal: the resident scene struct would
+ * otherwise pull this file's whole string section (the help lines and value names, 3.4 KB) into resident RAM on the PS1
+ * (ovl_plan.py; lib_help.c does the same). */
+static const char options_scene_name[] = "OPTIONS";
+const DoomoScene SCENE_OPTIONS = { options_scene_name, opt_enter, NULL, opt_update, opt_draw, 0 };

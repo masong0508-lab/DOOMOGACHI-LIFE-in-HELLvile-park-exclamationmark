@@ -67,9 +67,13 @@ const LibWingInfo lib_wings[LIB_WING_COUNT] = {
  * no completion and no visited bit (lib_help.c). */
 #define LIB_BOOKS (LIB_WING_COUNT + 1)
 #define BOOK_HELP LIB_WING_COUNT
+static const char help_book_title[] = STR_ICON_CHECK " FIELD GUIDE", help_book_name[] = "Field Guide",
+    help_book_blurb[] = "Every rule and every word in the game, explained. Read it before you lick anything. "
+                        "Especially the Bestiary.";
+/* named arrays: as literals they would sit in this file's string section, which the resident activities
+ * table keeps in resident RAM on the PS1; this way they load with the Library's overlay group */
 static const LibWingInfo help_book = {
-    STR_ICON_CHECK " FIELD GUIDE", "Field Guide",
-    "Every rule and every word in the game, explained. Read it before you lick anything. Especially the Bestiary.",
+    help_book_title, help_book_name, help_book_blurb,
     ICON_CHECK, PAINT_FOREST, WIN_MINT, WIN_MINT, &SCENE_LIB_HELP
 };
 static const LibWingInfo *book(int w) { return w == BOOK_HELP ? &help_book : &lib_wings[w]; }

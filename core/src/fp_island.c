@@ -1233,7 +1233,11 @@ static void island_draw(void)
     hub_frame_done();
 }
 
-const DoomoScene SCENE_ISLAND = { "ISLAND", island_enter, NULL, island_update, island_draw, 0 };
+/* (CL4, PS1 RAM) The scene's name is a named array, not a literal: the resident scene struct would
+ * otherwise pull this file's whole string section (the menus' rows and lines, 1.7 KB) into resident RAM on the PS1
+ * (ovl_plan.py; lib_help.c does the same). */
+static const char island_scene_name[] = "ISLAND";
+const DoomoScene SCENE_ISLAND = { island_scene_name, island_enter, NULL, island_update, island_draw, 0 };
 
 /* ---- test hooks ------------------------------------------------------------ */
 int fp_island_select_kind(int kind) { I.sel = loc_index_of(kind); return I.sel; }
