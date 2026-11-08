@@ -64,8 +64,13 @@ void fp_island_draw_map_part(const FpLocDraw *locs, int n, int sel, int from, in
  * parts wholly inside it are not drawn. */
 void fp_island_occluder(int x, int y, int w, int h);
 
+/* (SP3, P-I1) bytes of scene scratch (plat_ext.h plat_scene_scratch) the island's recorded lists take where the
+ * platform lends it (the PS1); ps1/tools/ovl_plan.py SCRATCH reserves the same after the island group */
+#define FP_ISLAND_SCRATCH 20480
+int  fp_island_lists_bound(void);           /* test hook: times the lists were (re)bound to a scene scratch */
 void fp_island_replay_flush(void);          /* test hooks: drop every recorded list, count replays */
 int  fp_island_replay_hits(void);
+int  fp_island_replay_overs(void);           /* (SP3) recordings that overflowed their list so far */
 void fp_island_hub_hold_off(int off);       /* test hook: draw every hub frame in full */
 int  fp_island_select_kind(int kind);       /* test hook: the hub's cursor on a LOC_* (it outlives the scene) */
 int  fp_island_hub_held(void);              /* hub frames held (not redrawn) so far */

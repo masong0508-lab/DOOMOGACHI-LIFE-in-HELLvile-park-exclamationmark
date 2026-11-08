@@ -18,6 +18,7 @@
  * strolling the roads.
  */
 #include "fp_island.h"
+#include "doomo/plat_ext.h"          /* SP3: plat_scene_scratch */
 
 /* ====================================================================== */
 /* geometry                                                                 */
@@ -126,52 +127,48 @@ static int hidden(int x, int y, int w, int h)
 /* (perf, docs/ISLAND_SPEED.md I1) The land (cliff, meadow, plum ground, shores, river and Wall) depends only on
  * the map size and the tint: its rects and checkers are recorded once and replayed in the same order (same
  * pixels, minus the geometry maths and divisions of ~530 rects a frame). */
-/* PS1: its 2 MB RAM is full to the byte (the disc build was 2,368 B over the stack reserve with these lists in:
- * 8,960 B here and 3,200 B of deco variants below), and a rect costs a prim there anyway, so on PS1 every list
- * has cap 0: each record overflows and the phase is drawn live, as before I1..I3 (the sea, walker and weather
- * lists below do the same). The GBA and the native runner are unchanged. */
-#if defined(DOOMO_PLATFORM_PS1)
-#define LR_MAX 0
-#define LR_PATCH 0
-#define LR_ROAD 0
-#else
+/* PS1: its 2 MB RAM is full to the byte (the disc build was 2,368 B over the stack reserve with these lists in BSS:
+ * 8,960 B here and 3,200 B of deco variants below). (SP3, P-I1, docs/ISLAND_SPEED.md I12) So on the PS1 they have no
+ * BSS: they live in the scene scratch the platform lends the island (plat_scene_scratch: the overlay slot's unused
+ * tail while the island group is loaded), bound by lr_bind() before every map draw; without it (a platform that
+ * lends none) every list has cap 0, each record overflows and the phase is drawn live, as before I1..I3. The GBA
+ * and the native runner keep them in BSS (the runner can be told to lend scratch: the PS1 path under test). */
 #define LR_MAX 640
 #define LR_PATCH 320
 #define LR_ROAD 160
+#if defined(DOOMO_PLATFORM_PS1)
+#define LR_BSS(n) 0
+#else
+#define LR_BSS(n) (n)
 #endif
 typedef struct { int16_t x, y; uint8_t w, h, c, ck; } LRect;
 typedef struct { LRect *r; int cap, n, over; int32_t key; } LList;
-static LRect lr_land_r[LR_MAX + 1], lr_patch_r[LR_PATCH + 1], lr_road_r[LR_ROAD + 1];
-static LList L_land = { lr_land_r, LR_MAX, 0, 0, -1 };
-static LList L_patch = { lr_patch_r, LR_PATCH, 0, 0, -1 };   /* (I2) patches and their ember phase */
-static LList L_road = { lr_road_r, LR_ROAD, 0, 0, -1 };     /* (I2) roads */
+static LRect lr_land_r[LR_BSS(LR_MAX) + 1], lr_patch_r[LR_BSS(LR_PATCH) + 1], lr_road_r[LR_BSS(LR_ROAD) + 1];
+static LList L_land = { lr_land_r, LR_BSS(LR_MAX), 0, 0, -1 };
+static LList L_patch = { lr_patch_r, LR_BSS(LR_PATCH), 0, 0, -1 };   /* (I2) patches and their ember phase */
+static LList L_road = { lr_road_r, LR_BSS(LR_ROAD), 0, 0, -1 };     /* (I2) roads */
 /* (I3b, the governor) The animated phases that are plain rects: the sea's wave glints, the walkers, the weather. They
  * read g_q, the animation clock in steps of ANIM_Q ticks, so a list recorded for a step is replayed on every draw
  * inside it (the GBA draws every 3rd tick, so about every second draw replays). Not pixel-exact against the old
  * ROM: these phases now move in steps of ANIM_Q ticks. */
 #define ANIM_Q 6
-/* PS1: its 2 MB RAM is full to the byte and a rect costs a prim there anyway, so the lists have no room (cap 0: every
- * record overflows and the phase is drawn live, still on the 6-tick clock). Elsewhere: sized to the worst case
- * (glints 18 x 2 rects, walkers 14 x 4, weather 40 x 1 or 16 x 2). */
-#if defined(DOOMO_PLATFORM_PS1)
-#define AL_GLINT 0
-#define AL_WALK  0
-#define AL_WX    0
-#else
+/* Sized to the worst case (glints 18 x 2 rects, walkers 14 x 4, weather 40 x 1 or 16 x 2); on the PS1 in the scene
+ * scratch like the lists above (without it: cap 0, every record overflows and the phase is drawn live, still on the
+ * 6-tick clock). */
 #define AL_GLINT 40
 #define AL_WALK  60
 #define AL_WX    48
-#endif
-static LRect lr_glint_r[AL_GLINT + 1], lr_walk_r[AL_WALK + 1], lr_wx_r[AL_WX + 1];
-static LList L_glint = { lr_glint_r, AL_GLINT, 0, 0, -1 };
-static LList L_walk = { lr_walk_r, AL_WALK, 0, 0, -1 };
-static LList L_wx = { lr_wx_r, AL_WX, 0, 0, -1 };
+static LRect lr_glint_r[LR_BSS(AL_GLINT) + 1], lr_walk_r[LR_BSS(AL_WALK) + 1], lr_wx_r[LR_BSS(AL_WX) + 1];
+static LList L_glint = { lr_glint_r, LR_BSS(AL_GLINT), 0, 0, -1 };
+static LList L_walk = { lr_walk_r, LR_BSS(AL_WALK), 0, 0, -1 };
+static LList L_wx = { lr_wx_r, LR_BSS(AL_WX), 0, 0, -1 };
 static int g_q;                              /* g_t rounded down to a multiple of ANIM_Q */
 static int g_wx;                             /* the weather being drawn (body of L_wx) */
 static int g_walk_n;                         /* the walker count (body of L_walk) */
 static LList *lr_cur;                        /* the list being recorded, or NULL */
 static int lr_tapped;
 static int lr_hits;                          /* replays so far (test_island_replay.c) */
+static int lr_overs;                         /* (SP3) recordings that overflowed their list so far (test hook) */
 static int lr_quiet;                         /* (I3) recording a deco variant: record only, draw nothing */
 extern void (*ur_tap)(int, int, int, int, uint8_t);    /* ui_raster.c: every rect of a shape */
 static void lr_add(int x, int y, int w, int h, uint8_t c, int ck)
@@ -225,6 +222,7 @@ static void lr_run(LList *L, int32_t key, void (*body)(void))
         lr_cur = 0;
         g_occ = occ;
         L->key = L->over ? -1 : key;
+        lr_overs += L->over;
     }
 }
 
@@ -804,16 +802,14 @@ static void draw_deco(const Deco *d)
  * (kind, state, tint) is recorded once, at a fixed spot, as a rect list and replayed shifted to every deco of that kind
  * (same rects, same order, so the same pixels). The ten-odd trees all sway on their own phase, which is why one list
  * for all of them (keyed on the whole state) was rebuilt nearly every frame. */
-#if defined(DOOMO_PLATFORM_PS1)
-#define DV_POOL 0                           /* PS1: no room, every variant is "bad" and the deco is drawn live */
-#else
-#define DV_POOL 400                         /* rects in the shared pool (3.2 KB) */
-#endif
+#define DV_POOL 400                         /* rects in the shared pool (3.2 KB; PS1: in the scene scratch, lr_bind) */
 #define DV_TAGS 28
 #define DV_REC_X 120                        /* where a variant is recorded: far enough from every screen edge */
 #define DV_REC_Y 110
 typedef struct { uint16_t tag, start; uint8_t n, bad; } DVar;
-static LRect dv_pool[DV_POOL + 1];
+static LRect dv_pool_bss[LR_BSS(DV_POOL) + 1];
+static LRect *dv_pool = dv_pool_bss;
+static int dv_cap = LR_BSS(DV_POOL);        /* 0: no room, every variant is "bad" and the deco is drawn live */
 static DVar dv_tab[DV_TAGS];
 static int dv_ntab, dv_used;
 static LRect dv_tmp[40];                    /* a variant's rects shifted to one deco's spot */
@@ -842,7 +838,7 @@ static DVar *dv_get(const Deco *d, unsigned st)
     {
         LList L;
         int occ = g_occ;
-        L.r = dv_pool + dv_used; L.cap = DOOMO_MIN(DV_POOL - dv_used, 255); L.n = 0; L.over = 0; L.key = 0;
+        L.r = dv_pool + dv_used; L.cap = DOOMO_MIN(dv_cap - dv_used, 255); L.n = 0; L.over = 0; L.key = 0;
         g_occ = 0;
         lr_cur = &L;
         lr_quiet = 1;
@@ -1593,6 +1589,53 @@ int fp_island_tint(void)
 }
 
 
+/* (SP3, P-I1) Where the recorded lists live: the scene scratch when the platform lends one (the PS1), else BSS (or,
+ * on the PS1 without scratch, nowhere: cap 0). Asked before every map draw: the scratch is only good while its
+ * generation stays the same (an overlay load overwrites it), and a new one means every list starts over. */
+/* in the scratch the lists are sized for 320x240 too (the PS1; measured on the Classic island at 320x240: land 761,
+ * patches 174, roads 157 rects; at 240x160 480, 136, 125) */
+#define LRS_LAND  1024
+#define LRS_PATCH 384
+#define LRS_ROAD  256
+#define LRS_GLINT 48
+#define LRS_WALK  64
+#define LRS_WX    64
+#define LRS_DV    512
+#define LR_SCRATCH_RECTS (LRS_LAND + 1 + LRS_PATCH + 1 + LRS_ROAD + 1 + LRS_GLINT + 1 + LRS_WALK + 1 + LRS_WX + 1 + \
+                          LRS_DV + 1)
+DOOMO_STATIC_ASSERT(LR_SCRATCH_RECTS * sizeof(LRect) <= FP_ISLAND_SCRATCH, island_lists_fit_the_scene_scratch);
+static int lr_binds;                         /* times the lists were (re)bound to a scratch (test hook) */
+int fp_island_lists_bound(void) { return lr_binds; }
+
+static void lr_attach(LList *L, LRect **p, LRect *bss, int bss_cap, int cap)
+{
+    if (*p) { L->r = *p; L->cap = cap; *p += cap + 1; }
+    else { L->r = bss; L->cap = bss_cap; }
+    L->n = 0; L->over = 0; L->key = -1;
+}
+
+static void lr_bind(void)
+{
+    static LRect *seen;
+    static uint32_t seen_gen;
+    uint32_t gen = 0;
+    LRect *p = (LRect *)plat_scene_scratch((uint32_t)(LR_SCRATCH_RECTS * sizeof(LRect)), &gen);
+    if (p == seen && (!p || gen == seen_gen)) return;
+    seen = p;
+    seen_gen = gen;
+    if (p) lr_binds++;
+    lr_attach(&L_land, &p, lr_land_r, LR_BSS(LR_MAX), LRS_LAND);
+    lr_attach(&L_patch, &p, lr_patch_r, LR_BSS(LR_PATCH), LRS_PATCH);
+    lr_attach(&L_road, &p, lr_road_r, LR_BSS(LR_ROAD), LRS_ROAD);
+    lr_attach(&L_glint, &p, lr_glint_r, LR_BSS(AL_GLINT), LRS_GLINT);
+    lr_attach(&L_walk, &p, lr_walk_r, LR_BSS(AL_WALK), LRS_WALK);
+    lr_attach(&L_wx, &p, lr_wx_r, LR_BSS(AL_WX), LRS_WX);
+    if (p) { dv_pool = p; dv_cap = LRS_DV; }
+    else { dv_pool = dv_pool_bss; dv_cap = LR_BSS(DV_POOL); }
+    dv_ntab = 0;
+    dv_used = 0;
+}
+
 /* (perf, I10) The map in phases, so a refresh can be spread over several ticks: sea, land, patches, roads, decos,
  * walkers, buildings, weather, in the order they are drawn. A call with from == 0 sets up the clock, the tint and
  * the geometry; a call with from > 0 goes on with the same ones (the phases of one picture must see one clock,
@@ -1601,6 +1644,7 @@ void fp_island_draw_map_part(const FpLocDraw *locs, int n, int sel, int from, in
 {
     int i, order[FP_LOC_MAX];
     FpBCache *bc;
+    lr_bind();
     if (from <= 0) {
         fp_island_geometry();
         g_t = fp_t();
@@ -1682,3 +1726,4 @@ void fp_island_replay_flush(void)
     L_land.key = L_patch.key = L_road.key = L_glint.key = L_walk.key = L_wx.key = -1;
 }
 int fp_island_replay_hits(void) { return lr_hits; }
+int fp_island_replay_overs(void) { return lr_overs; }

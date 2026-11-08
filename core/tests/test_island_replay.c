@@ -55,6 +55,56 @@ TEST(island_replayed_lists_equal_live_lists_by_night)
     compare(23 * 60);
 }
 
+/* (SP3, P-I1) the lists in a scene scratch, as on the PS1 (the overlay slot's tail): every frame equals the live
+ * run's, also across "overlay loads" that wipe the scratch and change its generation (the lists start over), and the
+ * replays happen. */
+static void test_set_res(int w, int h);
+
+static void run_scratch(int minute, uint32_t *out, int *hits, int *binds)
+{
+    int f, b0 = fp_island_lists_bound();
+    nat_scene_scratch(1, 1);
+    doomo_init();
+    test_reset();
+    opt_set(OPT_WEATHER, 2);
+    fp_new_island(TOWN_POP_PREMADE, 4242);
+    doomo_town.minute = (uint16_t)minute;
+    scene_set(&SCENE_ISLAND, FP_ISLAND_ARG_RETURN);
+    for (f = 0; f < NF; f++) {
+        if (f == 37 || f == 90 || f == 91) nat_scene_scratch(1, 1);
+        plat_begin_frame();
+        doomo_frame(0);
+        plat_end_frame();
+        out[f] = fb_hash();
+    }
+    *hits = fp_island_replay_hits();
+    *binds = fp_island_lists_bound() - b0;
+    nat_scene_scratch(0, 1);
+    fp_island_replay_flush();                       /* the next run starts from its own lists */
+}
+
+TEST(island_lists_in_a_scene_scratch_equal_live_lists)
+{
+    static uint32_t a[NF], b[NF];
+    int f, ha, hb, h0, o0, binds, m;
+    for (m = 0; m < 3; m++) {
+        int minute = m == 1 ? 23 * 60 : 12 * 60;
+        if (m == 2) test_set_res(320, 240);           /* the PS1's size: the lists are longer */
+        if (m != 1) run(0, minute, b, &hb);          /* warm-up: the first island run in a process draws its caches */
+        run(1, minute, b, &hb);
+        h0 = fp_island_replay_hits();
+        o0 = fp_island_replay_overs();
+        run_scratch(minute, a, &ha, &binds);
+        CHECK_MSG(fp_island_replay_overs() == o0, "minute %d, %dx%d: %d recordings overflowed their scratch list",
+                  minute, nat_w, nat_h, fp_island_replay_overs() - o0);
+        for (f = 0; f < NF; f++)
+            CHECK_MSG(a[f] == b[f], "minute %d: frame %d differs between lists in a scene scratch and live", minute, f);
+        CHECK_MSG(binds >= 4, "minute %d: the lists were bound to the scratch %d times (wiped 4 times)", minute, binds);
+        CHECK_MSG(ha - h0 > NF, "minute %d: only %d replays from the scene scratch in %d frames", minute, ha - h0, NF);
+    }
+    test_set_res(240, 160);
+}
+
 /* (I7) the hub holds its last clean full frame between full redraws: a held frame is the previous frame everywhere
  * but the news strip, holds really happen, and a press redraws in full at once. */
 static void rows_hash(uint32_t *h, int y0, int y1)

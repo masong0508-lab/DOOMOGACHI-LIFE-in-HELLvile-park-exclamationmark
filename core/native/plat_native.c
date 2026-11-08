@@ -64,6 +64,26 @@ void plat_begin_frame(void) { if (held) memcpy(nat_fb, held_fb, (size_t)held_n);
  * script asks ("tips on", tips_test_force), so the journeys keep their press budgets. */
 uint32_t plat_test_flags(void) { return PLAT_TEST_NO_TIPS; }
 
+/* SP3 (plat_ext.h plat_scene_scratch): none by default (the core keeps its tables in BSS here); a test can lend one,
+ * the PS1 overlay slot's tail in miniature, and wipe it as an overlay load would (native.h nat_scene_scratch) */
+static uint32_t nat_scratch[24576 / 4];
+static int nat_scratch_on;
+static uint32_t nat_scratch_gen;
+void nat_scene_scratch(int on, int wipe)
+{
+    nat_scratch_on = on;
+    if (wipe) {
+        memset(nat_scratch, 0xA5, sizeof(nat_scratch));
+        nat_scratch_gen++;
+    }
+}
+void *plat_scene_scratch(uint32_t bytes, uint32_t *gen)
+{
+    if (gen) *gen = nat_scratch_gen;
+    if (!nat_scratch_on || bytes > sizeof(nat_scratch)) return NULL;
+    return nat_scratch;
+}
+
 /* SP3 (plat_ext.h plat_strip): a clean copy of a band of rows, like the GBA's (in its Mode 4 page gaps) */
 static uint8_t strip_fb[NAT_MAX_W * PLAT_STRIP_MAX_H];
 static int strip_y = -1, strip_h, strip_w;

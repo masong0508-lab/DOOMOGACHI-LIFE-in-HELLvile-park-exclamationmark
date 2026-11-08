@@ -30,6 +30,7 @@
 #include <psxapi.h>
 #include <psxcd.h>
 #include "ps1.h"
+#include "doomo/plat_ext.h"          /* SP3: plat_scene_scratch */
 
 #ifdef DOOMO_OVERLAYS
 
@@ -263,6 +264,28 @@ void plat_code_part(int part)
 /* --- end H4 --- */
 
 uint32_t overlay_loads(void) { return s_loads; }
+
+/* --- SP3 / P-I1 (plat_ext.h plat_scene_scratch): the part of the slot after the group (and its part) that is in
+ * is the running scene's to use: the island records its rect lists there (fp_island_gfx.c, ~19 KB of the ~73 KB the
+ * island group leaves). Any load can overwrite it (a group's code, or a packed group's sectors read into the end of
+ * the slot), so the generation is the load count. ovl_plan.py SCRATCH makes the slot leave room after a group that
+ * asks for it; this checks it again at run time. --- */
+void *plat_scene_scratch(uint32_t bytes, uint32_t *gen)
+{
+    uint8_t *lo;
+    if (gen)
+        *gen = s_loads;
+    if (!s_cur || s_lba < 0)
+        return NULL;
+    lo = s_grp[s_cur].dst + s_grp[s_cur].bytes;
+    if (s_part && s_grp[s_part].dst + s_grp[s_part].bytes > lo)
+        lo = s_grp[s_part].dst + s_grp[s_part].bytes;
+    lo = (uint8_t *)(((uint32_t)lo + 3u) & ~3u);
+    if (lo < __ovl_slot || bytes > (uint32_t)(__ovl_slot_end - lo))
+        return NULL;
+    return lo;
+}
+/* --- end SP3 --- */
 
 void overlay_init(void)
 {

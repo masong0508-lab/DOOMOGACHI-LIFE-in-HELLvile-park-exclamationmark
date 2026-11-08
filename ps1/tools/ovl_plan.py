@@ -77,6 +77,15 @@ GROUPS = [
 ]
 OVL_KINDS = (".text", ".rodata")
 
+# --- SP3 / P-I1: groups whose scene keeps tables in the slot after its code
+# (plat_scene_scratch(), src/overlay.c): bytes the slot must leave free after
+# the group. The island's recorded rect lists (fp_island_gfx.c,
+# FP_ISLAND_SCRATCH in fp_island.h; keep the two equal). The linker script
+# grows the slot if a group gets too big to leave it (it never does today:
+# the slot is set by bigger groups), so the room is there by construction. ---
+SCRATCH = {"island": 20480}
+# --- end SP3 ---
+
 # --- H3 (SPEC C4/C5): the house group borrows the 3D views' tables. Its
 # code and catalog do not fit the slot (the slot is the biggest group and
 # every KB more is resident headroom lost), so the group is linked lower,
@@ -728,6 +737,12 @@ def main(argv):
             L.append("\t\t}")
             last = ".ovl_%02d" % gid[g]
         L.append("\t} > APP_RAM")
+        # --- SP3: the room a group's scene keeps after its code (SCRATCH) ---
+        for g in names:
+            if g in SCRATCH and not (borrow and g in BORROW_GROUPS):
+                L.append("\t. = MAX(., ADDR(.ovl_%02d) + SIZEOF(.ovl_%02d) + %d);\t/* SP3: %s's scene scratch */" % (
+                    gid[g], gid[g], SCRATCH[g], g))
+        # --- end SP3 ---
         # --- H3: the borrowing groups start at __ovl_borrow, their load
         # addresses after the others'; the slot ends past the larger end ---
         if borrow:
@@ -881,6 +896,13 @@ def main(argv):
         dem.sort(reverse=True)
         print("ovl_plan: slot demand (estimate, house net of borrowed .bss): " +
               ", ".join("%s %d B" % (g, sz) for sz, g in dem[:6]))
+        # --- SP3: the scene scratch after a group (SCRATCH) ---
+        for g in sorted(SCRATCH):
+            if g in groups:
+                sz = sum(node_size(n) for n in groups[g] if n not in part_of)
+                print("ovl_plan: %s keeps %d B of scene scratch after its %d B (needs %d B of the slot)" % (
+                    g, SCRATCH[g], sz, sz + SCRATCH[g]))
+        # --- end SP3 ---
         if os.environ.get("OVL_WHY"):
             c = collections.Counter()
             for n in resident:

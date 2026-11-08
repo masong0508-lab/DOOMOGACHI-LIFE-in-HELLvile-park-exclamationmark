@@ -26,6 +26,9 @@ void nat_set_entropy(uint32_t v);      /* S2: the runner's `seed N` (SPEC C18) *
 int  nat_stub_count(void);
 /* SP3: the rows the last plat_strip(PLAT_STRIP_SAVE) kept (the island hub's toast band at its lane); 0: none yet */
 int  nat_strip_band(int *y, int *h);
+/* SP3: lend the core a scene scratch (plat_ext.h plat_scene_scratch) or not; wipe = overwrite it and change its
+ * generation, as a PS1 overlay load does (core/tests/test_island_replay.c) */
+void nat_scene_scratch(int on, int wipe);
 const char *nat_stub_name(int i);
 /* > 0: plat_save_scratch() offers only a window of this many bytes (plus
  * the codec's DOOMO_SAVE_WORK_SIZE, save.h), so saves stream through
