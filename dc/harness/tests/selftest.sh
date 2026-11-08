@@ -21,6 +21,7 @@ for f in title held_up vmu; do
 done
 cmp -s "$out/a/title.png" "$out/a/held_up.png" && { echo "selftest: title and held_up are the same picture"; bad=$((bad+1)); }
 run --script "$here/selftest.txt" --shots "$out/h" --half --quiet >/dev/null 2>&1; check $? 0 "--half run"
+run --script "$here/sync.txt" --sync --shots "$out/s" >"$out/sync.log" 2>&1; check $? 0 "sync.txt (--sync)"
 run --script "$here/fail_log.txt" --quiet >/dev/null 2>&1; check $? 1 "expect-log failure"
 run --script "$here/fail_scene.txt" --quiet >/dev/null 2>&1; check $? 1 "expect-scene failure"
 run --script "$here/fail_ticks.txt" --quiet >/dev/null 2>&1; check $? 1 "expect-ticks failure"

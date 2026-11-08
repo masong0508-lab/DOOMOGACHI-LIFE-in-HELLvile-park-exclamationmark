@@ -1,0 +1,20 @@
+# sync.txt - "sync on": tick-exact waits against tests/mockcore.c (dcrun --sync)
+expect-ticks 0 0
+wait 7
+expect-ticks 7 7
+frames 30
+expect-ticks 7 7
+# press = 1 tick down + 1 up in sync mode, as the native runner
+press START
+expect-ticks 9 9
+scene LIBRARY
+expect-ticks 9 9
+expect-scene LIBRARY
+type "ab"
+expect-ticks 11 11
+expect-log feed 98
+shot held
+sync off
+wait 4
+sync on 24
+expect-ticks 24 24

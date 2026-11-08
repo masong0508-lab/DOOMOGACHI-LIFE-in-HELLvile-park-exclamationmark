@@ -16,6 +16,8 @@ mouse, rumble, the VMU screen and audio.
 | `libretro.h` | the libretro API header (MIT), copied from the pinned Flycast tree |
 | `tests/` | `mockcore.c` (a stand-in core) and `selftest.sh`: tests `dcrun` with no emulator |
 | `compare.py` | DC3: Dreamcast shots (640x480, or `--half`) against the native runner's 320x240 shots of the same script, in RGB565, with diff pictures and a gate |
+| `ui_compare.sh` | DC3: the six UI scripts in `dcrun` and in the native runner, then `compare.py` (`make -C dc ui-compare`) |
+| `known_diffs.tsv` | DC3: the expected differences of those scripts, each with its reason (a platform label, a Dreamcast-only option row, the 3D view that is DC6's) |
 
 ## Build and test
 
@@ -24,6 +26,10 @@ make -C dc/harness            # build/dcrun
 make -C dc/harness test       # dcrun's self-test against tests/mockcore.c
 make -C dc/harness flycast    # build/flycast_libretro.so (estimated 10-20 min at -j2; not yet timed)
 ```
+
+`dc/Makefile` also finds the core at `<toolchain prefix>/flycast_libretro.so`
+(next to `kos/`, e.g. `/opt/toolchains/dc/flycast_libretro.so`, pinned
+commit in `flycast_libretro.commit`), or wherever `FLYCAST=` points.
 
 Host packages (Ubuntu 24.04): `build-essential libegl-dev libgl-dev
 libegl-mesa0 libgl1-mesa-dri` (Mesa's EGL with `EGL_MESA_platform_surfaceless`
@@ -58,6 +64,8 @@ dc/harness/build/dcrun dc/harness/build/flycast_libretro.so dc/build/doomogachi.
 | `--rtc EPOCH` / `--rtc now` | the Dreamcast clock at boot (default 2026-01-01 00:00 UTC, so runs repeat) |
 | `--opt KEY=VALUE` | override a core option (Flycast's keep the `reicast_` prefix) |
 | `--device N TYPE` | `pad`, `keyboard`, `mouse` or `none` on port N (default: 4 pads) |
+| `--sync` | `sync on 0` before the script: the game holds before its first tick, where the native runner starts, and every wait is tick-exact (see `sync`) |
+| `--native-seed N` | `--sync`, and at that first hold the game gets the start `runner --seed N` gets (0x5EED1234 is the runner's default): `plat_entropy()` pinned to N, `doomo_rng` and the start town redone as `doomo_init()` makes them (mailbox command 17). The console boots on real entropy before the harness can reach it, so this is how a Dreamcast run starts in the native runner's state |
 | `--quiet` / `--verbose` | less output / also every core log line |
 
 Exit status: 0 ok, 1 failed expectation, hang or timeout, 2 usage or load
@@ -93,7 +101,7 @@ frames, and the log is what the core logs.
 | command | meaning |
 |---|---|
 | `wait N` / `frames N` | run N ticks / N raw 60 Hz video frames |
-| `press BTN..` | hold 2 ticks, release, 1 more tick |
+| `press BTN..` | down 1 tick, up 1 tick in sync mode (the native runner's press); without sync down 2 ticks, so the maple poll cannot miss it, then up 1 |
 | `hold BTN.. N` / `down BTN..` / `release [BTN..]` | as the native runner |
 | `shot NAME` | write `SHOTS/NAME.png` |
 | `log TEXT` / `expect-log TEXT` | print / fail unless TEXT is in the game's log so far |
@@ -106,16 +114,29 @@ frames, and the log is what the core logs.
 | `device N pad\|keyboard\|mouse\|none` | plug a device into port N |
 | `stick X Y` | left stick, -128..127 |
 | `trigger L\|R V` | analog trigger, 0..255 |
-| `type "TEXT"` / `key "TEXT"` | type on the keyboard, one key every 2 ticks (`\n` Return, `\b` Backspace) |
+| `type "TEXT"` | the native runner's `type`: each character goes to the open text entry (`ui_text_entry_feed`, mailbox command 16), then 1 tick; `\n` is OK, `\b` Backspace; fails when no text entry is open |
+| `key "TEXT"` | type on the Dreamcast keyboard (a port set to `keyboard`), one key every 2 ticks (`\n` Return, `\b` Backspace) |
+| `sync on [TICK]` / `sync off` | tick-exact waits, as `gba/harness`: the game holds at the top of its loop, before it reads the pad, whenever its tick count equals the mailbox's `hold_at`; every wait moves `hold_at` on and runs until the game holds again. When the input changed while held, the hold lasts 3 more video frames first (KOS's maple poll runs once a vblank), so the game reads it on the tick it was given on. The first hold is at absolute tick TICK (default: the next). Shots taken while held run 2 frames first, so the last tick's picture is on screen. In sync mode `draw_all` is set, so a held game never skips a draw to catch up |
 | `mouse DX DY [L][R][M]` | move the mouse on the current port, buttons held for a tick |
 | `expect-rumble [PORT]` | fail unless rumble switched on since the start or the last `expect-rumble` |
 | `vmu-shot NAME` | VMU A1's 48x32 LCD to `SHOTS/NAME.png` (Flycast's VMU overlay, on for one frame) |
+
+Mailbox commands (`scene`, `save`, `seed`, `type`, ...) wait for the game's
+mailbox magic first, so a script may start with one.
 
 Buttons: `A B X Y START UP DOWN LEFT RIGHT L R`; `SELECT` is START+Y (the
 port's convention). Flycast maps the RetroPad's B, A, Y, X to the
 Dreamcast's A, B, X, Y; `dcrun` uses Dreamcast names.
 
 Each rumble change prints `rumble: tick T port P strong|weak S`.
+
+After every video frame `dcrun` also reads the game's work counters: a
+tick whose work took more than 33.3 ms (the 30 fps budget) prints `work:
+tick T took N us`, and the run ends with the number of such ticks and the
+worst one (`dcrun: work over 33333 us on K of N ticks; worst ...`), next
+to the 2D layer's high-water marks (prims and vertex bytes in one frame).
+The work is the game's own `timer_us_gettime64()` from the start of
+`plat_begin_frame` to the end of `plat_end_frame`'s submit, in emulated time.
 
 ## The mailbox
 
@@ -126,11 +147,16 @@ dc_mailbox` in main RAM, with the same fields as the GBA's `GbaMailbox`
 reads it through `RETRO_MEMORY_SYSTEM_RAM` at `addr & 0xFFFFFF`, polls the
 log ring after every video frame and posts commands by writing `arg`, then
 `cmd`, and running until the game clears `cmd`. The command numbers are the
-GBA's.
+GBA's (1-13; 14 and 15 are the GBA's house commands); 16 (`type`) and 17
+(`--native-seed`) are the Dreamcast's own.
 
 ## Limits
 
 - Flycast is not cycle-accurate: speed in the harness is a rough guide only.
+- Flycast cannot open an ELF over 16 MiB ("Failed to open"); the game's ELF
+  with debug info is about 17 MB, so `make -C dc test` boots
+  `build/doomogachi-nodebug.elf` (`strip --strip-debug`) and the CDI, and
+  takes the symbols from `build/doomogachi.nm`.
 - `vmu-shot` reads Flycast's VMU overlay, which draws the LCD with the
   overlay's colours (pixel on: black, off: Flycast's default).
 - Mouse buttons are held for one tick per `mouse` command.

@@ -6,7 +6,8 @@
  * frame (so the EGL + FBO + readback path runs), keeps a 16 MB "main RAM"
  * with a DcMailbox at 0x8C010000 (magic, 30 Hz ticks, log ring, scene,
  * commands), reads 4 ports (pad, analog, trigger, mouse, keyboard), rumbles
- * while A is held, and plays a square wave while START is held.
+ * while A is held, and plays a square wave while START is held. It holds
+ * (no ticks, commands still run) while ticks == hold_at, like the game.
  * Everything it draws depends only on the tick and the input, so two runs
  * give the same PNGs.
  */
@@ -171,6 +172,7 @@ static void run_cmd(void)
         break;
     case DC_HC_SEED: seed_pinned = 1; seed_val = arg; mlog("seed %u", arg); break;
     case DC_HC_FLAG: r = arg == 7; break;
+    case DC_HC_TEXT_FEED: r = arg >= ' ' || arg == '\n'; if (r) mlog("feed %u", arg); break;
     default: r = 0xFFFFFFFFu; break;
     }
     mb->result = r;
@@ -192,7 +194,11 @@ RETRO_API void retro_run(void)
         mlog("mock: boot (rtc %ld)", (long)time(NULL));
         set_scene("BOOT");
     }
-    if (mb->magic == DC_MAILBOX_MAGIC && (frame_no & 1) == 0) {
+    if (mb->magic == DC_MAILBOX_MAGIC && mb->hold_at == mb->ticks) {
+        if (mb->cmd) run_cmd();         /* "sync on": held at the top of the loop */
+    } else if (mb->magic == DC_MAILBOX_MAGIC && frame_no > 10 && (frame_no & 1) == 0) {
+        /* (the first tick comes a frame after the magic, as in the game,
+         * where doomo_init runs in between) */
         mb->ticks++;
         if (mb->ticks == 15) set_scene("TITLE");
         if (mb->cmd) run_cmd();

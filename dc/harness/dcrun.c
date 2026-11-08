@@ -4,7 +4,8 @@
  *   dc/harness/build/dcrun CORE.so CONTENT [--script FILE] [--shots DIR]
  *        [--run-dir DIR] [--fresh] [--frames N] [--timeout SEC]
  *        [--mailbox ADDR | --nm FILE] [--wav FILE] [--rtc EPOCH|now]
- *        [--opt KEY=VALUE]... [--device PORT TYPE]... [--half] [--quiet]
+ *        [--opt KEY=VALUE]... [--device PORT TYPE]... [--half] [--sync]
+ *        [--quiet]
  *
  * Boots CONTENT (an .elf, .cdi, .gdi or .chd) in the Flycast libretro core
  * (dc/harness/build_flycast.sh) with no window and no Sega BIOS (Flycast's
@@ -23,6 +24,8 @@
  * Times are LOGIC TICKS (30 Hz doomo_frame calls) read from the mailbox:
  *   wait N | frames N           N ticks | N raw 60 Hz video frames
  *   press BTN.. | hold BTN.. N | down BTN.. | release [BTN..]
+ *                               press: down 2 ticks, up 1 (sync: down 1,
+ *                               up 1, exactly the native runner's)
  *   shot NAME                   SHOTS/NAME.png (640x480, or 320x240 --half)
  *   log TEXT | expect-log TEXT | expect-scene NAME
  *   mark-ticks | expect-ticks LO HI   ticks since mark-ticks in [LO, HI]
@@ -35,9 +38,24 @@
  *   device N pad|keyboard|mouse|none   what is plugged into port N
  *   stick X Y                   left analog stick, -128..127 (0 0 = centre)
  *   trigger L|R V               analog trigger, 0..255
- *   type "TEXT" | key "TEXT"    type on the keyboard (a port set to
+ *   type "TEXT"                 the native runner's `type`: each char
+ *                               goes to the open text entry
+ *                               (ui_text_entry_feed, mailbox command),
+ *                               then 1 tick; \n = OK, \b = Backspace
+ *   key "TEXT"                  type on the keyboard (a port set to
  *                               keyboard), one key every 2 ticks;
  *                               \n = Return, \b = Backspace
+ *   sync on [TICK] | off        tick-exact waits, as gba/harness: the game
+ *                               holds at the top of its loop (before the
+ *                               pad is read) at the end of every wait, so
+ *                               keys and commands land on the same tick as
+ *                               in the native runner; the first hold is at
+ *                               absolute tick TICK (default: the next).
+ *                               --sync = "sync on 0" before the script,
+ *                               the native runner's start (DC3)
+ * --native-seed N: --sync, and at the tick-0 hold the game gets the start
+ * `runner --seed N` gets (0x5EED1234 is the runner's default): plat_entropy
+ * pinned to N, doomo_rng and the start town as doomo_init() makes them
  *   mouse DX DY [L|R|M|LR..]    move the mouse (a port set to mouse) and
  *                               hold the buttons given for one tick
  *   expect-rumble [PORT]        fail unless rumble was switched on (on
@@ -144,6 +162,10 @@ static struct {
 } core;
 
 static int quiet, fails;
+static int sync_mode;           /* "sync on": the game holds at sync_tick */
+static uint32_t sync_tick;
+#define HOLD_NONE 0xFFFFFFFFu
+#define TICK_BUDGET_US 33333u   /* 30 fps (DECISIONS.md FPS TARGET) */
 static char run_dir[512], sys_dir[600], save_dir[600], shots_dir[512] = ".";
 static int half_shots;
 static double timeout_s = 600;
@@ -763,22 +785,123 @@ static unsigned long tick_now(void)
     return frames_run / 2;
 }
 
+/* DC3: the game's per-tick work (mailbox work_sum / work_n deltas, read
+ * after every video frame): ticks over the 30 fps budget, and the worst */
+static uint32_t wk_sum0, wk_n0;
+static unsigned long wk_over, wk_ticks;
+static uint32_t wk_worst, wk_worst_tick;
+static char wk_worst_scene[25];
+
+static void work_poll(void)
+{
+    uint32_t n, sum, w;
+    if (!mb || !mb_up) return;
+    n = mb->work_n;
+    sum = mb->work_sum;
+    if (n == wk_n0) return;
+    w = (sum - wk_sum0) / (n - wk_n0);  /* mean when several ticks ended in one frame */
+    wk_ticks += n - wk_n0;
+    if (w > TICK_BUDGET_US) {
+        wk_over += n - wk_n0;
+        if (!quiet) printf("work: tick %u took %u us (over the 30 fps budget)\n", mb->ticks, w);
+    }
+    if (w > wk_worst) {
+        wk_worst = w;
+        wk_worst_tick = mb->ticks;
+        for (int i = 0; i < 24; i++) wk_worst_scene[i] = mb->scene[i];
+        wk_worst_scene[24] = 0;
+    }
+    wk_sum0 = sum;
+    wk_n0 = n;
+}
+
 static void run_frame(void)
 {
     core.run();
     frames_run++;
     for (int i = 0; i < 4; i++) ports[i].mdx = ports[i].mdy = 0;
     mb_poll();
+    work_poll();
     if ((frames_run & 63) == 0 && elapsed() > timeout_s) {
         fail("timeout: %.0f s of wall time (tick %lu)", timeout_s, tick_now());
         exit(1);
     }
 }
 
+/* Run until the game's mailbox is up (the commands and sync need it). */
+static int mb_wait_up(void)
+{
+    unsigned long f = 0;
+    if (!mb) return 0;
+    while (!mb_up) {
+        run_frame();
+        if (++f > 3600) { fail("the game never wrote the mailbox magic"); return 0; }
+    }
+    return 1;
+}
+
+/* sync mode: the input the game read at the last release of the hold */
+static Port sync_ports[4];
+
+/* sync mode: release the hold and run until the game holds again at
+ * absolute tick `target`. The pad reaches the game through KOS's maple
+ * poll (one per vblank), so when the input changed while the game was
+ * held, the hold lasts 3 more video frames first: the game then reads
+ * the new input on the tick it was given on, as the native runner does. */
+static int run_until_tick(uint32_t target)
+{
+    unsigned long f = 0;
+    uint32_t last = mb->ticks;
+    if (memcmp(sync_ports, ports, sizeof ports)) {
+        for (int i = 0; i < 3; i++) run_frame();
+        memcpy(sync_ports, ports, sizeof ports);
+    }
+    __sync_synchronize();
+    mb->hold_at = target;
+    while ((int32_t)(mb->ticks - target) < 0) {
+        run_frame();
+        if (mb->ticks != last) { last = mb->ticks; f = 0; }
+        else if (++f > 1200) {
+            fail("hang: no logic tick for 1200 video frames (tick %u, sync)", mb->ticks);
+            return 0;
+        }
+    }
+    sync_tick = target;
+    return 1;
+}
+
+static int sync_on(uint32_t at)
+{
+    if (!mb_wait_up()) { fail("sync: no game mailbox"); return 0; }
+    if (mb->hold_at != HOLD_NONE) { fail("sync: the game already holds"); return 0; }
+    if ((int32_t)(at - mb->ticks) < 0 || (at == mb->ticks && at != 0)) {
+        fail("sync on %u: the game is already at tick %u", at, mb->ticks);
+        return 0;
+    }
+    mb->draw_all = 1;                   /* a held game must not skip a draw to catch up */
+    sync_mode = 1;
+    memcpy(sync_ports, ports, sizeof ports);
+    if (at == mb->ticks) {              /* tick 0: hold before the first tick */
+        mb->hold_at = at;
+        sync_tick = at;
+        return 1;
+    }
+    return run_until_tick(at);
+}
+
+static void sync_off(void)
+{
+    if (!sync_mode) return;
+    mb->hold_at = HOLD_NONE;
+    mb->draw_all = 0;
+    sync_mode = 0;
+}
+
 /* Run until n more logic ticks have passed. Returns 0 on a hang. */
 static int run_ticks(unsigned long n)
 {
     unsigned long start = tick_now(), limit = n * 10 + 1200, f = 0;
+    if (sync_mode) return run_until_tick(sync_tick + (uint32_t)n);
     while (tick_now() - start < n) {
         run_frame();
         if (++f > limit) {
@@ -794,7 +917,8 @@ static int run_ticks(unsigned long n)
 static int mb_cmd(uint32_t cmd, uint32_t arg, const char *name, uint32_t *result)
 {
     unsigned long f = 0;
-    if (!mb || !mb_up) { fail("command %u needs the game's mailbox", cmd); return 0; }
+    if (!mb) { fail("command %u needs the game's mailbox (--nm or --mailbox)", cmd); return 0; }
+    if (!mb_wait_up()) return 0;
     for (int i = 0; i < 20; i++) mb->name[i] = 0;
     if (name)
         for (int i = 0; i < 19 && name[i]; i++) mb->name[i] = name[i];
@@ -993,8 +1117,10 @@ static int run_script(FILE *f)
             if (d < lo || d > hi) fail("line %d: expect-ticks %lu..%lu got %lu", lineno, lo, hi, d);
         } else if (!strcmp(c, "press") && n >= 2) {
             if (!parse_buttons(v + 1, n - 1, &m, &lt, &rt)) return 0;
+            /* sync: the native runner's press, 1 tick down + 1 tick up;
+             * unsynced, 2 ticks down so the maple poll cannot miss it */
             buttons_down(m, lt, rt);
-            if (!run_ticks(2)) return 0;
+            if (!run_ticks(sync_mode ? 1 : 2)) return 0;
             buttons_up(m, lt, rt);
             if (!run_ticks(1)) return 0;
         } else if (!strcmp(c, "hold") && n >= 3) {
@@ -1014,6 +1140,9 @@ static int run_script(FILE *f)
                 buttons_up(m, lt, rt);
             }
         } else if (!strcmp(c, "shot") && n >= 2) {
+            /* sync: the game is held; 2 video frames show the last tick's
+             * picture (the PVR renders and flips it after the submit) */
+            if (sync_mode) { run_frame(); run_frame(); }
             shot(v[1]);
         } else if (!strcmp(c, "log")) {
             printf("%s\n", rest_of(raw, "log"));
@@ -1068,8 +1197,28 @@ static int run_script(FILE *f)
             int16_t val = (int16_t)(t <= 0 ? 0 : t >= 255 ? 0x7FFF : t * 128);
             if (toupper((unsigned char)v[1][0]) == 'L') ports[cur_port].lt = val;
             else ports[cur_port].rt = val;
-        } else if ((!strcmp(c, "type") || !strcmp(c, "key")) && n >= 2) {
+        } else if (!strcmp(c, "key") && n >= 2) {
             if (!type_text(v[1])) return 0;
+        } else if (!strcmp(c, "type") && n >= 2) {
+            /* the native runner's type: each char to the open text entry,
+             * then one tick */
+            for (const char *t = v[1]; *t; t++) {
+                unsigned ch = (unsigned char)*t;
+                if (ch == '\\' && t[1]) {
+                    t++;
+                    ch = *t == 'n' ? '\n' : *t == 'b' ? '\b' : (unsigned char)*t;
+                }
+                if (!mb_cmd(DC_HC_TEXT_FEED, ch, NULL, &r)) return 0;
+                if (!r) { fail("line %d: type: no text entry open", lineno); break; }
+                if (!run_ticks(1)) return 0;
+            }
+        } else if (!strcmp(c, "sync") && n >= 2) {
+            if (!strcmp(v[1], "on") && !sync_mode) {
+                if (!mb_wait_up()) return 0;
+                if (!sync_on(n >= 3 ? (uint32_t)strtoul(v[2], NULL, 0) : mb->ticks + 1)) return 0;
+            } else if (!strcmp(v[1], "off")) {
+                sync_off();
+            }
         } else if (!strcmp(c, "mouse") && n >= 3) {
             Port *p = &ports[cur_port];
             p->mbtn = 0;
@@ -1114,7 +1263,8 @@ static void usage(void)
     fprintf(stderr,
         "usage: dcrun CORE.so CONTENT [--script FILE] [--shots DIR] [--run-dir DIR]\n"
         "             [--fresh] [--frames N] [--timeout SEC] [--mailbox ADDR | --nm FILE]\n"
-        "             [--wav FILE] [--rtc EPOCH|now] [--opt KEY=VALUE]... [--half] [--quiet]\n"
+        "             [--wav FILE] [--rtc EPOCH|now] [--opt KEY=VALUE]... [--half] [--sync]\n"
+        "             [--native-seed N] [--quiet]\n"
         "             [--device PORT pad|keyboard|mouse|none]... [--verbose]\n");
     exit(2);
 }
@@ -1123,7 +1273,8 @@ int main(int argc, char **argv)
 {
     const char *core_path, *content, *script = NULL, *nm_file = NULL, *wav_path = NULL;
     unsigned long raw_frames = 0;
-    int fresh = 0;
+    int fresh = 0, sync_start = 0, native_seed_on = 0;
+    uint32_t native_seed = 0;
     unsigned devs[4] = { RETRO_DEVICE_JOYPAD, RETRO_DEVICE_JOYPAD, RETRO_DEVICE_JOYPAD,
                          RETRO_DEVICE_JOYPAD };
     struct retro_system_av_info av;
@@ -1148,6 +1299,11 @@ int main(int argc, char **argv)
         else if (!strcmp(a, "--nm")) nm_file = NEXT();
         else if (!strcmp(a, "--wav")) wav_path = NEXT();
         else if (!strcmp(a, "--half")) half_shots = 1;
+        else if (!strcmp(a, "--sync")) sync_start = 1;
+        else if (!strcmp(a, "--native-seed")) {
+            native_seed = (uint32_t)strtoul(NEXT(), NULL, 0);
+            native_seed_on = sync_start = 1;
+        }
         else if (!strcmp(a, "--quiet")) quiet = 1;
         else if (!strcmp(a, "--verbose")) quiet = -1;
         else if (!strcmp(a, "--rtc")) {
@@ -1238,9 +1394,14 @@ int main(int argc, char **argv)
     if (script) {
         FILE *f = fopen(script, "r");
         if (!f) die(2, "cannot read %s", script);
-        run_script(f);
+        /* --sync: hold the game before its first tick, where the native
+         * runner starts a script */
+        if (!sync_start || (sync_on(0) &&
+                            (!native_seed_on || mb_cmd(DC_HC_NATIVE_SEED, native_seed, NULL, NULL))))
+            run_script(f);
         fclose(f);
     }
+    sync_off();
     if (mb && !mb_up) fail("the game never wrote the mailbox magic");
 
     if (wav) { wav_header(); fclose(wav); }
@@ -1252,6 +1413,9 @@ int main(int argc, char **argv)
                mb->drawn, mb->ticks, mb->work_n ? mb->work_sum / mb->work_n : 0u, mb->work_max,
                mb->gfx_prims_max, mb->gfx_vbytes_max, mb->gfx_dropped, mb->gfx_uploads,
                mb->gfx_evictions, mb->gfx_tex_live);
+    if (mb && mb_up && wk_ticks)        /* DC3: per tick against the 30 fps budget */
+        printf("dcrun: work over %u us on %lu of %lu ticks; worst %u us at tick %u (%s)\n",
+               TICK_BUDGET_US, wk_over, wk_ticks, wk_worst, wk_worst_tick, wk_worst_scene);
     fflush(stdout);
     core.unload_game();
     core.deinit();

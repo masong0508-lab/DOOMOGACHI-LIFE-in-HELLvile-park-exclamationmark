@@ -62,7 +62,12 @@ enum {
     DC_HC_NONE = 0, DC_HC_SAVE, DC_HC_LOAD, DC_HC_EXISTS, DC_HC_TOWN_FILL,
     DC_HC_TOWN_CRC, DC_HC_VERIFY, DC_HC_SCENE, DC_HC_PUSH,
     DC_HC_SEED = 9, DC_HC_FLAG = 10, DC_HC_TEXT_ARM = 11, DC_HC_TEXT_HIT = 12,
-    DC_HC_STORY_FP = 13
+    DC_HC_STORY_FP = 13,
+    /* 14 and 15 are the GBA's house commands (HC_ROOM_PARITY / _TEST) */
+    DC_HC_TEXT_FEED = 16,                /* ui_text_entry_feed(arg): the native
+                                          * runner's `type`, one char per call */
+    DC_HC_NATIVE_SEED = 17               /* the native runner's `--seed arg` start
+                                          * (dcrun --native-seed, at tick 0) */
 };
 
 #endif

@@ -18,7 +18,8 @@ dc/tools/setup_kos.sh --install-deps   # once: KallistiOS + sh-elf gcc 15 (about
 make dc                                # from the repo root: ELF + CDI
 make -C dc                             # or: just the ELF (+ map, size report)
 make -C dc disc                        # build/doomogachi.cdi (+ 1ST_READ.BIN, IP.BIN)
-make -C dc test                        # ELF + CDI + check-elf + the 2D host test (+ Flycast scripts, DC1)
+make -C dc test                        # ELF + CDI + check-elf + the 2D host test (+ Flycast: boot + ui-compare)
+make -C dc ui-compare                  # DC3: the six UI scripts on Flycast against the native runner
 make dc-host-test                      # the 2D layer on the host only (no KOS needed)
 make -C dc clean
 ```
@@ -34,6 +35,8 @@ are linked directly (never through an archive) with `--gc-sections`.
 | `build/doomogachi.elf` | the program (load address 0x8c010000), with `.map` |
 | `build/doomogachi.cdi` | self-booting disc image (audio/data, MSINFO 11702) |
 | `build/1ST_READ.BIN`, `build/IP.BIN` | the scrambled binary and the bootstrap, for other disc formats |
+| `build/doomogachi-nodebug.elf` | the ELF without debug sections, for Flycast (it cannot open an ELF over 16 MiB) |
+| `build/shots/ui/` | `ui-compare`: Dreamcast and native shots, diff pictures, `summary.txt` |
 
 ## Run
 

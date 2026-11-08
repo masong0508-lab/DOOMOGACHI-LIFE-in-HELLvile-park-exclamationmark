@@ -4,14 +4,14 @@
 # harness's (gba/harness/scripts/smoke.txt), and `wait` counts logic ticks
 # read from the mailbox (dc_mailbox.ticks), not video frames.
 #
-# Nothing is drawn yet except the clear colour (2D arrives with DC3), so
-# the checks use the mailbox log ring and its scene name. The text probe
-# (mailbox commands 11/12, as the GBA's expect-text) is in the game; dcrun
-# gets an expect-text command with DC3, when there is text to draw.
+# The checks use the mailbox log ring and its scene name; the pictures are
+# DC3's job (dc/harness/ui_compare.sh compares them with the native
+# runner). The text probe (mailbox commands 11/12, as the GBA's
+# expect-text) is in the game; dcrun has no expect-text command yet.
 # `frames 300` is 5 s of 60 Hz video; the loop runs on the SH4 timer at
 # 30 Hz, so the tick count must advance by 150 (+-1) over it (expect-ticks).
-# dcrun refuses mailbox commands until the game has written the mailbox
-# magic, so `wait 1` (which waits for it) comes before `seed`.
+# Mailbox commands wait for the game's mailbox magic; `wait 1` first also
+# lets the loop run one tick before `seed`.
 wait 1
 seed 1234
 expect-log DOOMOGACHI DC: boot ok

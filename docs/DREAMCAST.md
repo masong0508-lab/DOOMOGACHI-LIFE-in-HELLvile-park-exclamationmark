@@ -208,8 +208,12 @@ Dreamcast counterpart of `gba/harness` and the PS1 harness:
   Flycast's HLE BIOS (no Sega files), renders through an EGL surfaceless
   GL context (Mesa llvmpipe, GL 4.5 core) into an FBO, and plays the
   runner's script language on 4 ports with the Dreamcast extensions
-  (`port`, `device`, `stick`, `trigger`, `type`, `mouse`,
-  `expect-rumble`, `vmu-shot`, `expect-audio`).
+  (`port`, `device`, `stick`, `trigger`, `key`, `mouse`,
+  `expect-rumble`, `vmu-shot`, `expect-audio`). `--sync` / `sync on`
+  makes every wait tick-exact (the game holds at the top of its loop,
+  as the GBA's "sync on"), `--native-seed N` starts the game in the state
+  `runner --seed N` starts in, and `type` feeds the open text entry as the
+  native runner does, so a script plays the same ticks on both (DC3).
 - `dc_mailbox.h` is the contract with the game: the GBA mailbox's fields
   plus a 4 KB `plat_log` ring and the last scene name, found through the
   `dc_mailbox` symbol (`sh-elf-nm`) and read through the core's
@@ -226,12 +230,15 @@ the exit status for failed `expect-log`/`expect-scene`, timeouts and a
 game that never writes the mailbox. It needs no emulator and no
 KallistiOS.
 
-Status (2026-11-01): `dcrun` and its self-test are done and pass (also
-under ASan/UBSan). The Flycast core has not been built in the development
-sandbox yet (building third-party code there needs the user's approval),
-so booting KallistiOS examples and the determinism check on real
-Dreamcast frames are still to do: `make -C dc/harness flycast`, then
-`dcrun build/flycast_libretro.so $KOS_BASE/examples/dreamcast/pvr/plasma/plasma.elf --script dc/harness/scripts/kos_example.txt` twice and `cmp` the PNGs.
+Status (2026-11-08): `dcrun` and its self-test are done and pass (also
+under ASan/UBSan). The Flycast core is built at the pinned commit (the
+owner approved it, DECISIONS.md 2026-11-08) and sits in the toolchain
+prefix, `/opt/toolchains/dc/flycast_libretro.so`, where `dc/Makefile`
+finds it when `dc/harness/build/` has none. With it, `make -C dc test`
+boots the ELF and the CDI with `dc/tests/boot.txt` and runs DC3's UI
+comparison (section 4). Still to do: the determinism check on a
+KallistiOS example (`dcrun ... plasma.elf --script
+dc/harness/scripts/kos_example.txt` twice and `cmp` the PNGs).
 
 ## 3. The dc/ build (DC2: the skeleton)
 
@@ -332,15 +339,16 @@ Log lines also go to `dbgio` (the serial port on hardware, the emulator's
 console). Harness commands (`dc/src/hcmd.c`) keep the GBA's ids and
 meaning: 1 save, 2 load, 3 exists, 4 town-fill, 5 town-crc, 6 verify,
 7 scene, 8 push, 9 seed (pins `plat_entropy`), 10 story flag, 11/12 the
-text probe (dcrun has no expect-text yet), 13 story fingerprint.
-Results follow the GBA: nonzero means success (dc_mailbox.h). The harness writes `arg`
+text probe (dcrun has no expect-text yet), 13 story fingerprint; the
+Dreamcast adds 16 text feed (`type`) and 17 the native runner's start
+(`--native-seed`), DC3. Results follow the GBA: nonzero means success (dc_mailbox.h). The harness writes `arg`
 (and `name`), then `cmd`; the game runs it between two logic ticks.
 `dc/tests/boot.txt` is the first harness script: boot, `scene: set BOOT`,
 `scene: set TITLE`, then 300 video frames (5 s) that must advance the tick count by
 149..151 (`expect-ticks`, the 30 Hz check).
-`make -C dc test` runs it on the ELF and on the CDI once
-`dc/harness/build/flycast_libretro.so` is built; until then it runs the
-harness's self-test only and says so.
+`make -C dc test` runs it on the ELF (without debug info) and on the CDI
+when the Flycast core is there (`dc/harness/build/` or the toolchain
+prefix); without it, it runs the harness's self-test only and says so.
 
 ### RAM
 
@@ -389,21 +397,23 @@ IP.BIN, which the build copies next to the CDI.
 
 ### Verification so far
 
-DC3 (the 2D layer) is checked on the host: see section 4. Without the
-Flycast harness (DC1) in the tree, DC2 was checked with the
-KallistiOS build only: every core file compiles with gcc 15 and `-Werror`,
+The KallistiOS build: every core file compiles with gcc 15 and `-Werror`,
 the ELF links with no undefined symbols, `check-elf` passes (SH
 little-endian, entry 0x8c010000, the mailbox present, aligned and of the
-right size) and the CDI builds. Booting the ELF and the CDI in Flycast
-(`dc/tests/boot.txt`: BOOT then TITLE, 30 ticks per emulated second) is
-the first thing to run once `dc/harness` lands.
+right size) and the CDI builds. On Flycast (2026-11-08) the ELF and the
+CDI boot with `dc/tests/boot.txt`: BOOT then TITLE, 150 ticks in 300
+video frames. The ELF with its debug info is about 17 MB and Flycast
+cannot open an ELF over 16 MiB, so the harness boots
+`dc/build/doomogachi-nodebug.elf` (`strip --strip-debug`, about 4.5 MB);
+the symbols come from `doomogachi.nm`. The 2D layer (DC3): section 4.
 
 
 ## 4. The 2D layer (DC3)
 
 ```sh
 make dc-host-test        # from the repo root, host gcc only (no KOS, no emulator)
-make -C dc test          # the KOS build + check-elf + the host test + the harness
+make -C dc ui-compare    # the six UI scripts on Flycast against the native runner
+make -C dc test          # the KOS build + check-elf + the host test + the harness (+ ui-compare)
 ```
 
 The core draws a 320x240 logical screen; the PVR draws it at 2x into the
@@ -545,24 +555,74 @@ Measured 2026-11-08 (host, this tree):
 | all 80 runner scripts, hardware effects | 905 shots, 810 exact; the rest differ where the post effects do their hardware job (shakes, palette lerps, blends) |
 | heaviest frame | home_rooms (`room_ref` through the 2D calls): 10,287 prims, 938 KB of vertices, inside the budget; DC8 draws rooms itself |
 
-`dc/harness/compare.py` does the same comparison on real Flycast shots:
-`python3 -I dc/harness/compare.py DC_SHOTS NATIVE_SHOTS --diff DIR` (shots
-of the same script from `dcrun` and from `core/build/runner --w 320 --h 240`).
+### On Flycast
 
-### Owed on Flycast and hardware
+`make -C dc ui-compare` (also the last step of `make -C dc test` when the
+Flycast core is there) runs `dc/harness/ui_compare.sh`: the six UI
+scripts in `dcrun` on the CDI and in `core/build/runner --w 320 --h 240`,
+then `dc/harness/compare.py` on each pair of shots (each Dreamcast pixel
+block against the native pixel in RGB565; gate 99% exact and 99.9% close).
+Shots, diff pictures (grey = exact, yellow = close, red = not) and the
+logs go to `dc/build/shots/ui/`, with `summary.txt`.
 
-The Flycast core is not built in this tree (its build needs the owner's
-permission rule in the sandbox), so the PVR side itself is unverified:
+Both sides play the same ticks: `dcrun --native-seed 0x5EED1234` holds
+the game before its first tick and gives it the native runner's start
+state (`plat_entropy`, `doomo_rng` and the start town of `runner --seed
+0x5EED1234`); every wait is tick-exact (`sync`), `press` is 1 tick down
+and 1 up as in the native runner, and `type` feeds the text entry one
+character a tick as the native runner does. (The first Flycast runs, made
+without these, drifted: dcrun's press was 3 ticks long, its `type` went
+through the keyboard at 2 ticks a key, the game booted on real entropy, and
+4 of the scripts start with a mailbox command that dcrun refused before
+the mailbox was up.)
 
-- the six UI scripts in `dcrun` against the native runner with
-  `compare.py` (gate 99% exact), the shots looked at by eye;
-- the frame time of the 2D layer (the mailbox's `work_max`, and the
-  `gfx_*` counters) on the heaviest screens (island hub, creator,
-  home rooms) against the 33 ms tick, on Flycast and on a real console;
-- the PVR details the software PVR cannot prove: sprite 16-bit UVs and
+Measured 2026-11-08 (Flycast `e7085e20`, the CDI):
+
+| script | shots | result | 2D high-water (prims / vertex bytes a frame) | work per tick (mean / max) |
+|---|---|---|---|---|
+| ui_gallery | 20 | 20 exact | 1,392 / 105,824 | 6.0 / 19.2 ms |
+| fp_title | 8 | 8 exact, 5 of them with the platform label masked | 1,647 / 122,880 | 3.5 / 19.2 ms |
+| fp_screens | 14 | 14 exact | 2,704 / 222,944 | 10.2 / 253.6 ms (3 loading ticks, below) |
+| creator | 36 | 36 exact | 2,681 / 202,432 | 9.5 / 23.1 ms |
+| library_lobby | 5 | 5 exact | 1,156 / 93,472 | 7.3 / 16.7 ms |
+| pause_options | 11 | 8 exact, the Controls page with its Rumble row masked, 2 pause shots 46.4% (below) | 974 / 69,824 | 4.7 / 19.8 ms |
+
+94 of 94 shots pass; 86 match the native runner on every pixel, and no
+prim was dropped. The expected differences are listed with their reasons
+in `dc/harness/known_diffs.tsv` (compare.py `--known`):
+
+- `plat_name()`: the title's corner label reads DC (native: NATIVE).
+- The Controls options page has a Rumble row on the Dreamcast (rumble
+  pack); the native runner has none, so the reset row moves down a line.
+- The pause menu over the Vape Cellar level: every differing pixel is
+  where the native runner shows the 3D level and the Dreamcast draws black,
+  because `plat_view3d` on the Dreamcast is DC6. The 2D menu and HUD on
+  top are exact.
+
+Frame time against the 30 fps target (DECISIONS.md, FPS TARGET): the work
+is the game's own timer from `plat_begin_frame` to the end of the PVR
+submit, in Flycast's emulated time (Flycast is not cycle-accurate, so this
+is a guide until a real console measures it). Every tick of every screen
+in the six scripts stays under 33.3 ms except three loading ticks in
+fp_screens: making the new island (tick 11, 96 ms), saving to the VMU
+(tick 251, 187 ms) and loading from it into the island (tick 323, 254 ms).
+They are one tick each, a pause on a menu action rather than a slow screen;
+the saves are DC4's (VMU saves). The worst steady tick is 23.1 ms (creator,
+the moving-in confirm). The vertex high-water is 223 KB of the 983 KB
+budget.
+
+### Owed on hardware
+
+- The frame time on a real console (Flycast's timing is not exact), on
+  the heaviest screens (island hub, creator, home rooms); and the three
+  loading ticks above (DC4: VMU saves).
+- The PVR details an emulator does not prove: sprite 16-bit UVs and
   point sampling at 2x, the presorted translucent list, the TA bins on
   1-row spans (`opb_overflow_count` 8), MODULATEALPHA with a white
-  texture, video RAM read-back for the remapped textures.
+  texture, video RAM read-back for the remapped textures (exact shading
+  reads textures back with 32-bit uncached reads and tests up to
+  thousands of prims for overlap per shade; its speed on the SH4 is
+  unmeasured).
 
 ## Rumble (X2)
 

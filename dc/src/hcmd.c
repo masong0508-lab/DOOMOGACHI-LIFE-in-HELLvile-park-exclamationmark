@@ -16,6 +16,16 @@
  *   DC_HC_TEXT_ARM         name = needle: plat_text calls are searched for it
  *   DC_HC_TEXT_HIT         1 once the needle was drawn (disarms on a hit)
  *   DC_HC_STORY_FP         story_fingerprint()
+ *   DC_HC_TEXT_FEED c      ui_text_entry_feed(c): the native runner's
+ *                          `type` (dcrun posts one char per tick)
+ *   DC_HC_NATIVE_SEED s    the start the native runner gets from
+ *                          `--seed s` (its default 0x5EED1234), posted by
+ *                          `dcrun --native-seed` while held at tick 0:
+ *                          plat_entropy() pinned to s, and the random part
+ *                          of doomo_init() (game.c) redone with it, so
+ *                          doomo_rng and the start town match the native
+ *                          runner's. The console boots on real entropy
+ *                          before the harness can reach it.
  * and the tick hold of the harness's "sync on" (dc_harness_hold).
  */
 #include "dc_plat.h"
@@ -185,6 +195,19 @@ void dc_harness_cmd(void)
     case DC_HC_STORY_FP:
         r = story_fingerprint();
         dc_logf("hcmd: story-fp %x", (unsigned)r);
+        break;
+    case DC_HC_TEXT_FEED:
+        r = (uint32_t)ui_text_entry_feed((int)arg);
+        break;
+    case DC_HC_NATIVE_SEED:
+        /* as doomo_init(): rng_seed(plat_entropy()), then
+         * town_new(TOWN_FREEPLAY, rng_next(), TOWN_POP_EMPTY) */
+        dc_entropy_pin = arg;
+        dc_entropy_pinned = 1;
+        rng_seed(&doomo_rng, plat_entropy());
+        town_new(TOWN_FREEPLAY, rng_next(&doomo_rng), TOWN_POP_EMPTY);
+        r = 1;
+        dc_logf("hcmd: native seed %x", (unsigned)arg);
         break;
     default:
         break;

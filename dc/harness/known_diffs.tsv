@@ -1,0 +1,14 @@
+# known_diffs.tsv - expected differences between the Dreamcast and the
+# native runner in the DC3 UI scripts (owner: dreamcast; read by
+# compare.py --known). Columns (tab-separated): script, shot, what, reason.
+#   mask X Y W H   a 320x240 rectangle that may differ
+#   gate PCT       the shot passes at PCT % exact (a later package draws the rest)
+# Every entry needs a reason; remove it when the cause goes away.
+fp_title	title_logo_drop.png	mask 214 228 40 12	plat_name() corner label: DC (native: NATIVE)
+fp_title	title_idle.png	mask 214 228 40 12	plat_name() corner label: DC (native: NATIVE)
+fp_title	title_menu.png	mask 214 228 40 12	plat_name() corner label: DC (native: NATIVE)
+fp_title	title_story_menu.png	mask 214 228 40 12	plat_name() corner label: DC (native: NATIVE)
+fp_title	title_theme_row.png	mask 214 228 40 12	plat_name() corner label: DC (native: NATIVE)
+pause_options	opt_0_controls.png	mask 20 100 280 24	Controls page: the Dreamcast has a Rumble row (rumble pack); the native runner has none, so the reset row moves down
+pause_options	pause_menu.png	gate 45	the 3D level behind the pause menu: plat_view3d on the Dreamcast is DC6 (the 2D layer is exact)
+pause_options	pause_back.png	gate 45	the 3D level behind the pause menu: plat_view3d on the Dreamcast is DC6 (the 2D layer is exact)

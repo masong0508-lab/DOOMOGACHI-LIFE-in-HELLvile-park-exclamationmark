@@ -24,7 +24,7 @@ stick 0 0
 trigger R 0
 port 1
 device 3 keyboard
-type "Hi\n"
+key "Hi\n"
 expect-log key: H
 expect-log key: i
 expect-log key: RETURN
@@ -47,3 +47,9 @@ shot held_up
 release
 wait 1
 vmu-shot vmu
+# the native runner's type: chars to the text entry (mailbox), 1 tick each
+mark-ticks
+type "ok\n"
+expect-ticks 3 6
+expect-log feed 111
+expect-log feed 10

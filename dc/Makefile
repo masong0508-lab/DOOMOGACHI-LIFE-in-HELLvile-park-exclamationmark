@@ -9,6 +9,9 @@
 #   make -C dc check-elf  checks on the linked ELF only (no emulator)
 #   make -C dc host-test  the 2D layer on the host against the native runner
 #                         (dc/tests/gfx2d; `make dc-host-test` needs no KOS)
+#   make -C dc ui-compare the six DC3 UI scripts on Flycast against the native
+#                         runner (dc/harness/ui_compare.sh; shots and diffs in
+#                         build/shots/ui); part of `test` when Flycast is there
 #   make -C dc sizes      section sizes against the 16 MB RAM budget
 #   make -C dc PACK=/path/pack.dmpk disc
 #                         the mature disc: the pack (built with `mpack.py build`, port dc) goes on
@@ -55,6 +58,7 @@ CC       := $(KOS_WRAP)/kos-cc
 OBJCOPY  := $(KOS_CC_BASE)/bin/$(KOS_CC_PREFIX)-objcopy
 NM       := $(KOS_CC_BASE)/bin/$(KOS_CC_PREFIX)-nm
 SIZE     := $(KOS_CC_BASE)/bin/$(KOS_CC_PREFIX)-size
+STRIP    := $(KOS_CC_BASE)/bin/$(KOS_CC_PREFIX)-strip
 PYTHON   ?= python3
 
 BUILD := $(DC)/build
@@ -84,7 +88,7 @@ DC_OBJS   := $(call dc_obj,$(DC_SRCS))
 CORE_OBJS := $(call core_obj,$(CORE_SRCS))
 ALL_OBJS  := $(DC_OBJS) $(CORE_OBJS)
 
-.PHONY: all elf disc all-disc test check-elf check-packdisc host-test harness-test sizes clean
+.PHONY: all elf disc all-disc test check-elf check-packdisc host-test harness-test ui-compare sizes clean
 .DEFAULT_GOAL := all
 
 all: elf
@@ -129,26 +133,44 @@ check-elf: $(ELF)
 
 # The Flycast harness (DC1) lives in dc/harness. When its Makefile is in
 # the tree, harness-test runs its self-test (no emulator); when the Flycast
-# core has been built (make -C dc/harness flycast) it also boots the ELF and
-# the CDI with dc/tests/boot.txt. Missing parts are skipped with a note.
+# core is there (make -C dc/harness flycast, or flycast_libretro.so in the
+# toolchain prefix next to kos/) it also boots the ELF and the CDI with
+# dc/tests/boot.txt and runs ui-compare. Missing parts are skipped with a
+# note. Flycast cannot open an ELF over 16 MiB (the debug info makes ours
+# about 17 MB), so the harness boots a copy without debug sections; the
+# symbols come from doomogachi.nm.
 HARNESS := $(DC)/harness
-FLYCAST := $(HARNESS)/build/flycast_libretro.so
+FLYCAST ?= $(firstword $(wildcard $(HARNESS)/build/flycast_libretro.so \
+                                  $(abspath $(KOS_BASE)/..)/flycast_libretro.so))
 DCRUN   := $(HARNESS)/build/dcrun
 SHOTS   := $(BUILD)/shots
-harness-test: $(ELF) $(CDI)
+ELF_RUN := $(BUILD)/doomogachi-nodebug.elf
+RUNNER  := $(ROOT)/core/build/runner
+harness-test: $(ELF) $(CDI) $(ELF_RUN)
 	@if [ ! -f $(HARNESS)/Makefile ]; then \
 	    echo "note: dc/harness (the Flycast harness, DC1) is not in this tree: boot scripts skipped"; exit 0; \
 	fi; \
 	$(MAKE) --no-print-directory -C $(HARNESS) test || exit 1; \
-	if [ ! -f $(FLYCAST) ]; then \
-	    echo "note: $(FLYCAST) not built (make -C dc/harness flycast): boot scripts skipped"; exit 0; \
+	if [ -z "$(FLYCAST)" ]; then \
+	    echo "note: no Flycast core (make -C dc/harness flycast): boot scripts and ui-compare skipped"; exit 0; \
 	fi; \
-	for img in $(ELF) $(CDI); do \
+	for img in $(ELF_RUN) $(CDI); do \
 	    n=$$(basename $$img | tr . _); \
 	    $(DCRUN) $(FLYCAST) $$img --nm $(BUILD)/doomogachi.nm --fresh \
 	        --run-dir $(BUILD)/run --script $(DC)/tests/boot.txt --shots $(SHOTS)/$$n \
 	        --timeout 300 || exit 1; \
-	done
+	done; \
+	$(MAKE) --no-print-directory -f $(DC)/Makefile ui-compare
+
+$(ELF_RUN): $(ELF)
+	$(STRIP) --strip-debug -o $@ $(ELF)
+
+# DC3: the six UI scripts on Flycast against the native runner (host build)
+ui-compare: $(CDI) $(BUILD)/doomogachi.nm
+	@if [ -z "$(FLYCAST)" ]; then echo "ui-compare: no Flycast core (make -C dc/harness flycast)" >&2; exit 1; fi
+	@$(MAKE) --no-print-directory -C $(HARNESS) all
+	@$(MAKE) --no-print-directory -C $(ROOT)/core runner
+	sh $(HARNESS)/ui_compare.sh $(FLYCAST) $(DCRUN) $(CDI) $(BUILD)/doomogachi.nm $(RUNNER) $(SHOTS)/ui
 
 $(BUILD)/doomogachi.nm: $(ELF)
 	$(NM) $(ELF) >$@
