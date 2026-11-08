@@ -67,6 +67,7 @@ void fp_island_occluder(int x, int y, int w, int h);
 void fp_island_replay_flush(void);          /* test hooks: drop every recorded list, count replays */
 int  fp_island_replay_hits(void);
 void fp_island_hub_hold_off(int off);       /* test hook: draw every hub frame in full */
+int  fp_island_select_kind(int kind);       /* test hook: the hub's cursor on a LOC_* (it outlives the scene) */
 int  fp_island_hub_held(void);              /* hub frames held (not redrawn) so far */
 int  fp_island_hub_built(void);             /* (I10) hub refreshes built over several ticks so far */
 void fp_island_clear_outside(uint8_t c);   /* the sky colour outside the sea box only (the sea covers the rest) */

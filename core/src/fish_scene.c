@@ -856,7 +856,7 @@ static void fish_draw_scene(void)
         break;
     case FS_REEL:
         tension_meter();
-        ui_hint("Hold " STR_ICON_A " to reel - let go when it pulls!", WIN_CUTE);
+        ui_hint("Hold " STR_ICON_A " to reel, let go when it pulls!", WIN_CUTE);   /* 223 px: fits 240x160 */
         break;
     case FS_LOST:
         if (F.msg) {

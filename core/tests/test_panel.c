@@ -107,6 +107,7 @@ static void s_island(void)
 {
     test_reset();
     fp_new_island(TOWN_POP_PREMADE, 4242);
+    fp_island_select_kind(LOC_TOWN_HALL);      /* the hub keeps its cursor between visits: every run starts alike */
     scene_set(&SCENE_ISLAND, FP_ISLAND_ARG_RETURN);
 }
 static uint32_t p_island(int f)
@@ -183,6 +184,7 @@ static int compare(const char *name, Setup s, Pad pad, int n, int w, int h, int 
     int f;
     set_res(w, h);
     nat_panel_cache = 0;
+    run(s, pad, n, off);             /* a warm-up: a scene's first run in the process fills statics later runs find */
     run(s, pad, n, off);
     nat_panel_cache = 1;
     run(s, pad, n, on);

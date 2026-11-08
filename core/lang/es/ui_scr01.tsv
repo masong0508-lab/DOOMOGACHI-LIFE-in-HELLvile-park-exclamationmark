@@ -307,7 +307,7 @@ Hold \x8B to wind up, let go to cast! Top of the swing = PERFECT.	¡Mantén \x8B
 Let go of \x8B to cast!	¡Suelta \x8B para lanzar!	# fish_scene.c
 Wait for the big splash...  \x8C Reel in	Espera el gran chapuzón...  \x8C Recoger	# fish_scene.c
 \x8B NOW! Hook it!	\x8B ¡YA! ¡Ánzuelalo!	# fish_scene.c
-Hold \x8B to reel - let go when it pulls!	Mantén \x8B para recoger. ¡Suelta cuando tire!	# fish_scene.c
+Hold \x8B to reel, let go when it pulls!	Mantén \x8B: recoge. ¡Suelta si tira!	# fish_scene.c
 \x88\x87 Choose  \x8B OK	\x88\x87 Elegir  \x8B OK	# fish_scene.c
 \x8B Open  \x88\x87 Rod  \x8C Back	\x8B Abrir  \x88\x87 Caña  \x8C Atrás	# fish_scene.c
 FISHING	PESCA	# fish_scene.c

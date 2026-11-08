@@ -4,7 +4,9 @@
 # SHOTS_DIR/<w>x<h>/<script>/. A script whose first line is
 # "# assert-no-stubs" also fails if any weak stub ran. A line
 # "# runner-flags: ..." among the first five passes those runner options
-# (C3: --gba-input --check-prompts). (owner: foundation)
+# (C3: --gba-input). Every run checks its prompt bars (C3, runner
+# --check-prompts): a bar or ui_hint line too wide for the screen, or a
+# button word the pad lacks, fails the script. (owner: foundation)
 RUNNER=$1
 DIR=$2
 SHOTS=$3
@@ -16,7 +18,7 @@ for s in "$DIR"/*.txt; do
     extra=""
     if head -n 1 "$s" | grep -q "assert-no-stubs"; then extra="--assert-no-stubs"; fi
     flags=$(head -n 5 "$s" | sed -n 's/^# runner-flags: *//p' | head -n 1)
-    extra="$extra $flags"
+    extra="$extra --check-prompts $flags"
     for res in 240x160 320x240; do
         w=${res%x*}
         h=${res#*x}

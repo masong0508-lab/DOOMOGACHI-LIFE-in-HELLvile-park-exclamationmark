@@ -237,6 +237,11 @@ int  ui_prompts_maxw(void);
 /* The bar's text (translated, button glyphs in it) into out[n]; returns its
  * width in pixels (> maxw only when even the prio-0 items do not fit). */
 int  ui_prompts_text(char *out, int n, const UiPrompt *p, int count, int maxw);
+/* The last resort when even that is too wide (and for ui_hint): t (text
+ * already translated) cut in place to its longest run of whole words that
+ * is at most maxw wide; a first word wider than maxw keeps the glyphs that
+ * fit. t is left as it is when it fits. */
+void ui_prompt_cut(char *t, int maxw);
 void ui_prompts(const UiPrompt *p, int count, int style);
 /* the same bar centred at row y, its text at most maxw wide (a screen with
  * something of its own at the bottom edge: the island hub's news ticker) */

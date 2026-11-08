@@ -10,11 +10,14 @@
  *     and names no button the GBA lacks (ui_prompt_stats);
  *   - the bar is a retained panel (PANEL_PROMPT): with the native panel
  *     cache on, every frame of the pet screen and the island hub is
- *     identical to the cache off, and the bar is kept on most frames.
+ *     identical to the cache off, and the bar is kept on most frames;
+ *   - the last resort (ui_prompt_cut): whole words, never wider than asked;
+ *   - C15: the house's caption for its four score dots, once per save.
  */
 #include "test.h"
 #include "../src/fp_island.h"
 #include "../src/weld_int.h"
+#include "../src/home_int.h"
 
 /* a bar's text against the expected one (short names in the failure message) */
 #define CHECK_BAR(got, lit) do { if (strcmp((got), (lit)) != 0) { \
@@ -104,6 +107,48 @@ TEST(prompts_text_fits_by_spacing_then_priority)
     input_set_pad(-1);
 }
 
+/* ---- the last resort: cut to whole words, never wider than asked ------------------ */
+TEST(prompts_cut_keeps_whole_words_and_fits)
+{
+    static const char *const s[] = {
+        "Hold " STR_ICON_A " to reel - let go when it pulls!",
+        STR_ICON_A " Abrir  " STR_ICON_B " Volver  SEL Ordenar  START buscar",
+        "one two three four five six seven eight nine ten eleven twelve thirteen",
+        "Supercalifragilisticexpialidocious-and-then-some-more-glyphs"
+    };
+    char buf[160];
+    int i, maxw;
+    test_reset();
+    for (i = 0; i < (int)DOOMO_COUNTOF(s); i++)
+        for (maxw = 8; maxw <= ui_text_width(s[i]) + 1; maxw++) {
+            int w, n;
+            snprintf(buf, sizeof(buf), "%s", s[i]);
+            ui_prompt_cut(buf, maxw);
+            w = ui_text_width(buf);
+            n = (int)strlen(buf);
+            if (w > maxw) {
+                char m[260];
+                snprintf(m, sizeof(m), "\"%s\" at maxw %d is %d px", buf, maxw, w);
+                test_fail(__FILE__, __LINE__, m);
+                return;
+            }
+            CHECK(strncmp(buf, s[i], (size_t)n) == 0);             /* a prefix of the text */
+            if (ui_text_width(s[i]) <= maxw) CHECK_STR(buf, s[i]); /* a text that fits is not touched */
+            else if (strchr(buf, ' ')) {                           /* cut after a whole word */
+                CHECK(n > 0 && buf[n - 1] != ' ');
+                CHECK(s[i][n] == ' ');
+            }
+        }
+    /* one glyph too wide (the whole string was never measured before): the last word goes */
+    snprintf(buf, sizeof(buf), "%s", s[0]);
+    ui_prompt_cut(buf, ui_text_width(s[0]) - 1);
+    CHECK_STR(buf, "Hold " STR_ICON_A " to reel - let go when it");
+    /* a cut in the middle of the text: the longest whole-word prefix that fits */
+    snprintf(buf, sizeof(buf), "%s", s[2]);
+    ui_prompt_cut(buf, ui_text_width("one two three four") + 5);
+    CHECK_STR(buf, "one two three four");
+}
+
 /* ---- the converted screens, GBA pad, both sizes ---------------------------------- */
 typedef void (*Setup)(void);
 static void s_pet(void) { scene_set(&SCENE_PET, 0); }
@@ -117,6 +162,7 @@ static void s_home(void) { scene_set(&SCENE_HOME, -1); }
 static void s_island(void)
 {
     fp_new_island(TOWN_POP_PREMADE, 4242);
+    fp_island_select_kind(LOC_TOWN_HALL);      /* the hub keeps its cursor between visits: every run starts alike */
     scene_set(&SCENE_ISLAND, FP_ISLAND_ARG_RETURN);
 }
 
@@ -161,6 +207,28 @@ TEST(prompts_fit_and_name_gba_buttons_on_the_converted_screens)
         if (!sweep(sc[i].name, sc[i].s, 320, 240)) return;
     }
     set_res(240, 160);
+}
+
+/* ---- C15: the house names its four score dots once per save ------------------------ */
+static int dots_told(void) { return (doomo_town.unlocks[HUL_RAW_DOTS >> 3] >> (HUL_RAW_DOTS & 7)) & 1; }
+
+TEST(prompts_house_names_its_dots_once_per_save)
+{
+    int f, at = -1;
+    set_res(240, 160);
+    test_reset();
+    CHECK(!dots_told());
+    s_home();
+    for (f = 0; f < 400 && at < 0; f++) {
+        frame(0);
+        if (dots_told()) at = f;
+    }
+    /* after the room is in and the move-in toast has gone (the dots are not covered), and only once */
+    CHECK(at >= 20);
+    CHECK(ui_toast_pending() == 0);
+    s_home();
+    for (f = 0; f < 60; f++) frame(0);
+    CHECK(dots_told());
 }
 
 /* ---- the retained panel ------------------------------------------------------------ */

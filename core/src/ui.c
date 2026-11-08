@@ -1187,20 +1187,22 @@ void ui_prompt_stats(UiPromptStats *out, int reset)
 
 int ui_prompts_maxw(void) { return plat_screen_w() - 16; }
 
-/* the longest prefix of t (cut after a whole word) that is at most maxw wide */
-static void prompt_cut(char *t, int maxw)
+/* t when it is at most maxw wide, else its longest prefix of whole words
+ * that is (no trailing blank); a first word wider than maxw keeps the
+ * glyphs that fit. Measured on the whole string and on each word's end. */
+void ui_prompt_cut(char *t, int maxw)
 {
-    int i, last = 0;
-    for (i = 0; t[i]; i++) {
-        char c = t[i];
+    int i, last = -1;
+    if (width_raw(t) <= maxw) return;
+    for (i = 1; t[i]; i++) {
+        if (t[i] != ' ' || t[i - 1] == ' ') continue;   /* the end of a word: the first blank after it */
         t[i] = 0;
-        if (width_raw(t) > maxw) break;
-        t[i] = c;
-        if (c == ' ') last = i;
+        if (width_raw(t) > maxw) { t[i] = ' '; break; }
+        t[i] = ' ';
+        last = i;
     }
-    if (!t[i]) return;
-    t[last] = 0;
-    while (last > 0 && t[last - 1] == ' ') t[--last] = 0;
+    if (last >= 0) { t[last] = 0; return; }
+    for (i = (int)strlen(t); i > 0 && width_raw(t) > maxw;) t[--i] = 0;
 }
 
 /* The pill. t is translated already (pieces: its runs between button caps
@@ -1245,7 +1247,7 @@ void ui_hint(const char *s, int style)
             if (!(t[i] == ' ' && n && buf[n - 1] == ' ')) buf[n++] = t[i];
         buf[n] = 0;
         if (width_raw(buf) > ui_prompts_maxw()) {
-            prompt_cut(buf, ui_prompts_maxw());
+            ui_prompt_cut(buf, ui_prompts_maxw());
             cut = 1;
         }
         t = buf;
@@ -1369,7 +1371,7 @@ void ui_prompts_at(const UiPrompt *p, int count, int style, int y, int maxw)
     if (key != pmemo.key) {
         cut = 0;
         if (ui_prompts_text(buf, (int)sizeof(pmemo.text), p, count, maxw) > maxw) {
-            prompt_cut(buf, maxw);
+            ui_prompt_cut(buf, maxw);
             cut = 1;
         }
         pmemo.key = key;
