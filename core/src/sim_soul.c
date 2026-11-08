@@ -122,8 +122,18 @@ void sim_possess(int id)
     unlock_grant(353);                         /* "Something wicked" */
 }
 
+/* X4 (SP2): the cap grows with the population (sim_possession_cap), so a count below the cap of an empty town
+ * or at least the cap of a full one decides without counting the 1,000 slots: a hellish town keeps dozens of
+ * residents at 99 corruption, and each of their updates asked (town_count was ~2.7 ms of a GBA entry frame) */
 static int possession_allowed(void)
 {
+    int o = opt_get(OPT_POSSESSION_RATE), lo, hi;
+    if (o <= 0 || (doomo_town.mode == TOWN_STORY && doomo_town.story.chapter < 2)) return 0;
+    lo = o == 1 ? 1 : o == 2 ? 2 : 4;                                   /* the cap at pop 0 */
+    hi = o == 1 ? 1 + DOOMO_MAX_RESIDENTS / 250 : o == 2 ? 2 + DOOMO_MAX_RESIDENTS / 100
+                                                         : 4 + DOOMO_MAX_RESIDENTS / 25;   /* full town */
+    if (sim_s.possessed < lo) return 1;
+    if (sim_s.possessed >= hi) return 0;
     return sim_s.possessed < sim_possession_cap();
 }
 
@@ -134,9 +144,10 @@ void sim_corrupt_natural(int id, int amount)
     if (!r || id >= DOOMO_MAX_RESIDENTS || r->status != RES_ALIVE || !amount) return;
     if (amount > 0) {
         int q, rem;
+        int halo = RES_LOOK(r, GF_HALO), acc = RES_LOOK(r, GF_ACCESSORY);   /* X4: each gene read once */
         holy = doomo_species_info[RES_SPECIES(r) % SPECIES_COUNT].holy_affinity;
-        if (RES_LOOK(r, GF_HALO) != HALO_NONE && RES_LOOK(r, GF_HALO) != HALO_BROKEN) holy += 10;
-        if (RES_LOOK(r, GF_ACCESSORY) == ACC_ROSARY || RES_LOOK(r, GF_ACCESSORY) == ACC_CROSS_NECKLACE) holy += 15;
+        if (halo != HALO_NONE && halo != HALO_BROKEN) holy += 10;
+        if (acc == ACC_ROSARY || acc == ACC_CROSS_NECKLACE) holy += 15;
         holy = DOOMO_CLAMP(holy, 0, 90);
         q = amount * rate_factor() * (100 - holy);
         rem = q % 10000;
@@ -184,8 +195,9 @@ void sim_soul_update(int id, DoomoResident *r, int m)
         if (r->stat[STAT_SANITY] < 30) up += 1;
         /* nightmares (chance per game hour in 1/10000) */
         if (act == ACT_SLEEPING) {
+            int fear = RES_FEAR(r);                        /* X4: one gene read */
             int pct = 1 + (100 - r->stat[STAT_SANITY]) / 8 +
-                      ((RES_FEAR(r) == 1 || RES_FEAR(r) == 4) ? 6 : 0) +
+                      ((fear == 1 || fear == 4) ? 6 : 0) +
                       (c >= 50 ? 8 : 0) + (rate_factor() >= 150 ? 8 : 0);
             if (sim_roll(600000u) < (uint32_t)(pct * (m > 120 ? 120 : m))) {
                 sim_s.stats.nightmares++;

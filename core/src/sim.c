@@ -71,10 +71,36 @@ int sim_chance(int percent)
     return sim_rand(100) < percent;
 }
 
+/* X4 (SP2): exact division by the needs' constants without a divide. The GBA's ARM7 has no divider and Thumb
+ * code has no long multiply, so even `q / 60` with a constant was a library call (gba_udivmod was ~6 ms of a GBA
+ * map-entry frame, when 32 residents a tick are brought up to date). Each quotient is a 32-bit multiply and a
+ * shift, exact over the stated range (test_sim_x4.c checks every value in it), with the plain division beyond.
+ *   q / 60, 120, 240 = (q >> 2, 3, 4) / 15 and q / 360 = (q >> 3) / 45 (floor of a floor), x / 15 =
+ *   (x * 34953) >> 19 for x < 74898 and x / 45 = (x * 23302) >> 20 for x < 74898; x / 100 = (x * 5243) >> 19 for
+ *   0 <= x < 43699 (truncated toward zero for negatives, as C does). */
+#define SIM_DIVQ_MAX (1u << 18)
+static inline uint32_t sim_udiv(uint32_t q, uint32_t div)
+{
+    if (q >= SIM_DIVQ_MAX) return q / div;
+    switch (div) {
+    case 60:  return ((q >> 2) * 34953u) >> 19;
+    case 120: return ((q >> 3) * 34953u) >> 19;
+    case 240: return ((q >> 4) * 34953u) >> 19;
+    case 360: return ((q >> 3) * 23302u) >> 20;
+    default:  return q / div;
+    }
+}
+static inline int sim_div100(int x)
+{
+    if (x >= 0) return x < 43699 ? (int)(((uint32_t)x * 5243u) >> 19) : x / 100;
+    return x > -43699 ? -(int)(((uint32_t)-x * 5243u) >> 19) : x / 100;
+}
+uint32_t sim_udiv_test(uint32_t q, uint32_t div) { return sim_udiv(q, div); }    /* test_sim_x4.c */
+int sim_div100_test(int x) { return sim_div100(x); }
+
 /* round(rate * minutes / div) with unbiased stochastic rounding. Always
- * inlined with a constant div, so the divisions become multiplies (the
- * GBA's ARM7 has no divide instruction). A Dither hands out 8 random bits
- * at a time, so one RNG draw serves four stats. */
+ * inlined with a constant div (sim_udiv: a multiply and a shift). A Dither
+ * hands out 8 random bits at a time, so one RNG draw serves four stats. */
 typedef struct Dither { uint32_t bits; int left; } Dither;
 
 static inline int dither8(Dither *d)
@@ -92,7 +118,7 @@ static inline int dith_div(Dither *dz, int rate, int minutes, int div)
     int q, d, rem, neg = rate < 0;
     if (!rate || minutes <= 0) return 0;
     q = (neg ? -rate : rate) * minutes;
-    d = q / div;
+    d = (int)sim_udiv((uint32_t)q, (uint32_t)div);
     rem = q - d * div;
     if (rem && ((dither8(dz) * div) >> 8) < rem) d++;
     return neg ? -d : d;
@@ -366,7 +392,17 @@ static const uint16_t stage_hours[LIFE_COUNT] = {
     0, ROSTER_T_KID, ROSTER_T_KID, ROSTER_T_KID, ROSTER_T_TEEN, ROSTER_T_ELDER
 };
 
-static int decide_activity(int id, const DoomoResident *r)
+/* X4 (SP2): the gene-packed inputs a resident update reads twice (the routine and the needs), unpacked once per
+ * update instead of once per reader: persona (PERS_COUNT gene reads) and the liked hobby. Pure reads of the gene,
+ * which neither decide_activity nor apply_needs writes, so the values are the ones each reader read before. */
+typedef struct ResIn { uint8_t p[PERS_COUNT]; uint8_t hobby; } ResIn;
+static void res_in(const DoomoResident *r, ResIn *in)
+{
+    res_get_persona(r, in->p);
+    in->hobby = RES_LIKE_HOBBY(r);
+}
+
+static int decide_activity(int id, const DoomoResident *r, const ResIn *in)
 {
     int h = town_hour(), wd = doomo_town.weekday, weekend = wd >= 5;
     uint32_t hh = doomo_hash32((uint32_t)id * 2654435761u ^ doomo_town.seed ^
@@ -374,7 +410,7 @@ static int decide_activity(int id, const DoomoResident *r)
     int traits = sim_traits(id), stage = RES_STAGE(r);
     int hell = RES_DISTRICT(id) || (r->flags & RF_HELLBORN);
     int sleep_at, wake_at, asleep, w[ACT_COUNT], total, i, pick;
-    const uint8_t *p = RES_PERSONA_VIEW(r);
+    const uint8_t *p = in->p;
 
     /* the restless dead and the possessed keep their own hours */
     if (r->status == RES_POSSESSED)
@@ -445,7 +481,7 @@ static int decide_activity(int id, const DoomoResident *r)
     }
     if (doomo_town.mode == TOWN_STORY && doomo_town.story.chapter < 2 && !hell)
         w[ACT_VAPE_SHOP] = 0;
-    w[hobby_venue[RES_LIKE_HOBBY(r) % HOBBY_COUNT]] += 22;
+    w[hobby_venue[in->hobby % HOBBY_COUNT]] += 22;
     if (RES_LIKE_MUSIC(r) == sim_concert_genre() && (h >= 17 || h < 2)) w[ACT_CONCERT] += 30;
     if (r->stat[STAT_SOCIAL] < 35) { w[ACT_CAFE] += 10; w[ACT_PARK] += 8; w[ACT_HOME] /= 2; }
     if (r->stat[STAT_ENERGY] < 30) w[ACT_HOME] += 25;
@@ -502,10 +538,10 @@ static int species_pct(const DoomoResident *r, int stat)
     return 100;
 }
 
-static void apply_needs(int id, DoomoResident *r, int m)
+static void apply_needs(int id, DoomoResident *r, int m, const ResIn *in)
 {
     const int8_t *fx = act_fx[r->activity < ACT_COUNT ? r->activity : 0];
-    const uint8_t *p = RES_PERSONA_VIEW(r);
+    const uint8_t *p = in->p;
     int h = doomo_town.minute / 60, s, rate, target, tr, sp_hunger, sp_hygiene;
     Dither dz = { 0, 0 };
 
@@ -525,16 +561,16 @@ static void apply_needs(int id, DoomoResident *r, int m)
         rate = fx[s] * 4;                                    /* quarter units */
         if (rate < 0) {
             int pct = s == STAT_HUNGER ? sp_hunger : s == STAT_HYGIENE ? sp_hygiene : 100;
-            if (s == STAT_HUNGER) pct = pct * (100 + (p[PERS_MOVEMENT] - 8) * 4) / 100;
-            if (s == STAT_HYGIENE) pct = pct * (100 + (p[PERS_MOVEMENT] - 8) * 2 +
-                                               (p[PERS_QUIRK] - 8) * 3) / 100;
-            if (s == STAT_ENERGY) pct = pct * (100 + (p[PERS_MOVEMENT] - 8) * 3) / 100;
-            if (s == STAT_SOCIAL) pct = pct * (100 + (p[PERS_EXPRESSION] - 8) * 5) / 100;
-            rate = rate * pct / 100;
+            if (s == STAT_HUNGER) pct = sim_div100(pct * (100 + (p[PERS_MOVEMENT] - 8) * 4));
+            if (s == STAT_HYGIENE) pct = sim_div100(pct * (100 + (p[PERS_MOVEMENT] - 8) * 2 +
+                                                           (p[PERS_QUIRK] - 8) * 3));
+            if (s == STAT_ENERGY) pct = sim_div100(pct * (100 + (p[PERS_MOVEMENT] - 8) * 3));
+            if (s == STAT_SOCIAL) pct = sim_div100(pct * (100 + (p[PERS_EXPRESSION] - 8) * 5));
+            rate = sim_div100(rate * pct);
         }
         /* everyone gets peckish and grubby, whatever they do */
-        if (s == STAT_HUNGER) rate -= 8 * sp_hunger / 100;
-        if (s == STAT_HYGIENE) rate -= 4 * sp_hygiene / 100;
+        if (s == STAT_HUNGER) rate -= sim_div100(8 * sp_hunger);
+        if (s == STAT_HYGIENE) rate -= sim_div100(4 * sp_hygiene);
         if (s == STAT_SOCIAL && r->activity == ACT_HOME) rate -= (p[PERS_EXPRESSION] >= 8) ? 4 : 0;
         if (r->activity == ACT_HOME && h >= 5 && h <= 11) {  /* breakfast & shower */
             if (s == STAT_HUNGER) rate += 60;
@@ -564,7 +600,7 @@ static void apply_needs(int id, DoomoResident *r, int m)
     /* happiness: the activity, a favourite pastime, then a drift toward
      * how well cared-for they are */
     rate = fx[STAT_HAPPY];
-    if (hobby_venue[RES_LIKE_HOBBY(r) % HOBBY_COUNT] == r->activity && r->activity != ACT_HOME) rate += 2;
+    if (hobby_venue[in->hobby % HOBBY_COUNT] == r->activity && r->activity != ACT_HOME) rate += 2;
     if (r->activity == ACT_CONCERT && RES_LIKE_MUSIC(r) == sim_concert_genre()) rate += 4;
     sim_stat_add(r, STAT_HAPPY, dith_div(&dz, rate, m, 120));
     target = (r->stat[STAT_HUNGER] + r->stat[STAT_HYGIENE] + r->stat[STAT_ENERGY] +
@@ -582,7 +618,7 @@ static void apply_needs(int id, DoomoResident *r, int m)
     {
         int gap = target - r->stat[STAT_HAPPY];
         int mm = m > 180 ? 180 : m;
-        int d = gap * mm / 360;
+        int d = gap < 0 ? -(int)sim_udiv((uint32_t)(-gap * mm), 360) : (int)sim_udiv((uint32_t)(gap * mm), 360);
         if (!d && gap && ((dither8(&dz) * 360) >> 8) < (gap < 0 ? -gap : gap) * mm)
             d = gap > 0 ? 1 : -1;
         sim_stat_add(r, STAT_HAPPY, d);
@@ -641,6 +677,7 @@ static void update_resident_ex(int id, int force_decide)
     DoomoResident *r = &doomo_town.res[id];
     uint16_t now16;
     int el, act;
+    ResIn in;
     if (r->status == RES_EMPTY || r->status == RES_DEAD) return;
     sim_s.ops++;
     now16 = (uint16_t)sim_now();
@@ -648,15 +685,16 @@ static void update_resident_ex(int id, int force_decide)
     if (el < SIM_MIN_ELAPSED) return;
     if (el > SIM_MAX_ELAPSED) el = SIM_MAX_ELAPSED;
     sim_s.stamp[id] = now16;
+    res_in(r, &in);
 
     /* routines change on the hour (or when a need gets urgent) */
     if (force_decide || doomo_town.minute / 60 != ((doomo_town.minute + 1440 - el) % 1440) / 60 || el >= 60 ||
         r->stat[STAT_HEALTH] < 25 || r->stat[STAT_HUNGER] < 28 || r->stat[STAT_ENERGY] < 12 ||
         r->status != RES_ALIVE) {
-        act = decide_activity(id, r);
+        act = decide_activity(id, r, &in);
         if (act != r->activity) r->activity = (uint8_t)act;
     }
-    apply_needs(id, r, el);
+    apply_needs(id, r, el, &in);
     sim_soul_update(id, r, el);
     if (r->status == RES_EMPTY || r->status == RES_DEAD) return;
     tick_transient(id, el);
@@ -755,6 +793,7 @@ void sim_init(void)
 {
     int i;
     uint16_t now16;
+    ResIn in;
     memset(&sim_s, 0, sizeof(sim_s));
     sim_s.inited = 1;
     sim_s.town_seed = doomo_town.seed;
@@ -775,7 +814,8 @@ void sim_init(void)
     for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) {
         DoomoResident *r = &doomo_town.res[i];
         if (r->status == RES_EMPTY || r->status == RES_DEAD) continue;
-        r->activity = (uint8_t)decide_activity(i, r);
+        res_in(r, &in);
+        r->activity = (uint8_t)decide_activity(i, r, &in);
         sim_mood_of(i);
     }
     sim_events_reset();

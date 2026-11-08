@@ -68,6 +68,8 @@ uint32_t sim_roll(uint32_t den);           /* 0..den-1 (den may exceed 65536) */
 int  sim_scaled(int rate_per_hour, int minutes);
 void sim_stat_add(DoomoResident *r, int stat, int delta);
 int  sim_traits(int id);                 /* ROSTER_T_* of premade citizens */
+uint32_t sim_udiv_test(uint32_t q, uint32_t div);   /* X4: sim.c's exact constant divisions (tests) */
+int  sim_div100_test(int x);
 int  sim_is_kid(int id);
 int  sim_is_teen(int id);
 int  sim_alive_ok(const DoomoResident *r); /* ALIVE or GHOST (can socialise) */
