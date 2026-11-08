@@ -2006,3 +2006,11 @@ A wave ships when its levels pass section 8.10 on their platforms; levels of one
   its kit.
 * **Translation.** All new text is written first and translated after (DECISIONS).
 * **Save size.** `BRCH` about 150 B; checked against `save_budget` and the GBA slot bound in LV0.
+
+## Owner answers (2026-11-08)
+
+1. NG+ is a new **Chapter 5**, and its three endings (Forgive, Collect, Audit yourself) use the unused ending slots E03 / E05 / E07: **yes**.
+2. Notice 13 shows the memorial names of your own town's dead **by default**: **yes**.
+3. The dark cold open (Notice 1, *Day One*) **plays automatically** when New Game+ starts: **yes**.
+4. Six new creator sets for the levels (31 of the 32-set cap): **yes**.
+5. The Duchess becomes **datable** in the good ending: **yes, but only with a lot of hard work and patience** - a long, demanding romance route (many steps, high bond thresholds, setbacks), adults only, under the normal romance rules.
