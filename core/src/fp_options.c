@@ -93,7 +93,7 @@ static const char *const opt_help[OPT_COUNT] = {
     /* DRAW_DIST */ "How far the 3D view reaches. Near is faster in big open maps.",
     /* SHOW_FPS */ "Show how many frames per second the shooter draws.",
     /* LANGUAGE */ "The language of menus and story text. Cambia el idioma del juego.",
-    /* 3D_FAST */ "Faster: half-resolution 3D, scaled up, smoother. Better: full resolution, up to 20 fps."
+    /* 3D_FAST */ "Smooth: fastest, fewer effects. Balanced: sharp while it keeps up. Max: every effect."
 };
 
 /* U2: presets. Applying one first puts every ordinary option back to its default, then lays the
@@ -217,8 +217,9 @@ static void build_rows(void)
     if (O.page == OPTPAGE_GAME) O.rows[O.nrows++] = OPT_LANGUAGE;      /* first row */
     for (i = 0; i < OPT_COUNT && O.nrows < ROWS_MAX; i++)
         if (doomo_option_info[i].page == O.page && i != OPT_LANGUAGE &&
-            (i != OPT_DRAW_DIST || input_feel()) && (i != OPT_3D_FAST || plat_name()[0] == 'G'))
-            O.rows[O.nrows++] = i;       /* draw distance: PS1 3D only; 3D quality: GBA only */
+            (i != OPT_DRAW_DIST || input_feel()))
+            O.rows[O.nrows++] = i;       /* draw distance: PS1 3D only; (SP8) Combat detail: every
+                                          * platform (DECISIONS 2026-11-08; G7 showed it on the GBA only) */
     for (i = OPT_LOSS; i < OPT2_END && O.nrows < ROWS_MAX; i++)          /* U2: Loss (Life Sim), Rumble */
         if (doomo_option2_info[i - OPT2_FIRST].page == O.page &&
             (i != OPT_RUMBLE || (plat_features() & PLATF_RUMBLE)))

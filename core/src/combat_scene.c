@@ -298,10 +298,24 @@ static void intro_card(void)
                 combat_s.hell >= 128 ? PAL_RAMP(RAMP_BLOOD, 0) : PAL_UI_PINK_D);
 }
 
+/* (SP8) Options "Combat detail" (OPT3D_*, town.h): what is drawn, never what happens. Smooth keeps
+ * only the player's drop shadow: every other shadow darkens an ellipse of floor column by column on
+ * every platform. The list is combat.c's per-frame billboards (doomo_frame_bb), so it may be edited
+ * here, after combat_build_view() and before the platform reads it. */
+static void combat_view_detail(DoomoView3D *v)
+{
+    DoomoBillboard *bb = (DoomoBillboard *)(uintptr_t)v->sprites;
+    int i;
+    if (!bb || opt_get(OPT_3D_FAST) != OPT3D_SMOOTH) return;
+    for (i = 0; i < v->sprite_count; i++)
+        if (i != v->player_sprite) bb[i].flags = (uint8_t)(bb[i].flags & ~BB_SHADOW);
+}
+
 static void combat_draw(void)
 {
     DoomoView3D v;
     combat_build_view(&v);
+    combat_view_detail(&v);
     plat_view3d(&v);
     if (cs_state != CS_CARD) combat_draw_hud();   /* C10: the control card owns the screen */
     intro_card();

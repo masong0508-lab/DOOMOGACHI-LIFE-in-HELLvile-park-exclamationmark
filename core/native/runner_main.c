@@ -59,6 +59,8 @@
  *                       on the Options page: opt_set(OPT_LANGUAGE) ->
  *                       lang_changed(); the session keeps it across loads
  *   expect-lang CODE    (P0) fail unless lang_get() is that language
+ *   opt ID VALUE        (SP8) opt_set(ID, VALUE) for an OPT_* id (town.h), e.g.
+ *                       63 1 = Combat detail: Smooth; fails unless opt_get reads it
  *   journey-begin NAME  (M0) start the journey meter (alias: mark NAME)
  *   journey-end [NAME]  (M0) stop it and print "journey: NAME presses=P
  *                       ticks=T depth=D screens=S typed=C"; with --budgets
@@ -480,6 +482,13 @@ static void run_line(char *line)
     /* --- P0: lang CODE. Codes, not numbers, so scripts survive the language
      * registry; L1: any code of core/lang/languages.tsv (lang_find), ready
      * or not. --- */
+    } else if (strcmp(cmd, "opt") == 0) {                          /* SP8 */
+        int id = argc > 1 ? atoi(argv[1]) : -1, v = argc > 2 ? atoi(argv[2]) : 0;
+        if (argc < 3 || id < 0) fail("opt needs an option id and a value, got", argc > 1 ? argv[1] : "");
+        else {
+            opt_set(id, v);
+            if (opt_get(id) != v) fail("opt did not take the value for id", argv[1]);
+        }
     } else if (strcmp(cmd, "lang") == 0 || strcmp(cmd, "expect-lang") == 0) {
         const char *want = argc > 1 ? argv[1] : "";
         int found = lang_find(want), now;

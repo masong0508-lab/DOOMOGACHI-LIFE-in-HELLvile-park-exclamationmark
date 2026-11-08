@@ -122,11 +122,24 @@ enum {
     OPT_DRAW_DIST,       /* PS1 3D view distance cap: 0 near / 1 normal     */
     OPT_SHOW_FPS,        /* 1 = frames-drawn counter in the shooter         */
     OPT_LANGUAGE,        /* a LANG_* id (lang.h, core/lang/languages.tsv; shown first on the Game page) */
-    OPT_3D_FAST,         /* (G7) GBA 3D view: 0 Better (full resolution, at most 20 fps),
-                            1 Faster (half resolution, scaled up); the row shows on the GBA only */
+    OPT_3D_FAST,         /* (G7, SP8) Combat detail: OPT3D_BALANCED / _SMOOTH / _MAX below
+                            (every platform; G7's 0 Better / 1 Faster read as Balanced / Smooth) */
     OPT_COUNT
 };
 DOOMO_STATIC_ASSERT(OPT_COUNT <= 64, options_fit);
+/* (SP8) OPT_3D_FAST's values, the Options "Combat detail" row (Performance page; DECISIONS
+ * 2026-11-08). Logic never depends on it: only what is drawn, and how often.
+ *   BALANCED (default)  the platform's best steady pace; the GBA drops its 3D view to half
+ *                       resolution while full-resolution frames would show below 20 fps
+ *                       (G-C1), the PS1 caps the affine subdivision of far and small quads
+ *   SMOOTH              the speed path: the GBA's half-resolution view at up to 30 fps
+ *                       (G7's "Faster"), the PS1's tighter subdivision cap; billboard drop
+ *                       shadows only under the player (combat_view_detail)
+ *   MAX                 full resolution and every effect; the platform's governor lowers the
+ *                       detail only for the frames that would otherwise fall below its pace
+ * The values keep G7's saved bytes meaning something close: 0 (Better) -> Balanced, 1
+ * (Faster) -> Smooth. */
+enum { OPT3D_BALANCED = 0, OPT3D_SMOOTH = 1, OPT3D_MAX = 2 };
 /* (U0) the options with ids 64 and up. They do not live in doomo_town.opt (its 64 B are full);
  * core/src/options_store.c keeps them in the 'OPT2' save chunk and, for the machine-wide ones,
  * in the 48 B machine config record. opt_get / opt_set / opt_defaults take these ids too.

@@ -59,7 +59,7 @@ static const char *const v_bounce[] = { "Off", "Subtle", "Boingy" };
 static const char *const v_turn[] = { "Normal", "Swapped" };   /* C3: the help line names the pad's buttons */
 static const char *const v_fx[] = { "Low", "Normal" };
 static const char *const v_dist[] = { "Near", "Normal" };
-static const char *const v_3d[] = { "Better", "Faster" };
+static const char *const v_3d[] = { "Balanced", "Smooth", "Max detail" };   /* OPT3D_* (town.h, SP8) */
 static const char *const v_feel[] = { "Classic", "Punchy", "Brutal" };
 
 #define OPT(n, vals, d, pg) { n, (uint8_t)DOOMO_COUNTOF(vals), d, vals, pg }
@@ -130,7 +130,7 @@ const DoomoOptionInfo doomo_option_info[OPT_COUNT] = {
     /* OPT_SHOW_FPS */        OPT("Show FPS", v_off_on, 0, OPTPAGE_PERF),
     /* OPT_LANGUAGE */        OPT("Language", doomo_lang_names, LANG_EN, OPTPAGE_GAME),
     /* (the languages' names in themselves, never translated: lang.h) */
-    /* OPT_3D_FAST */         OPT("3D", v_3d, 0, OPTPAGE_PERF)
+    /* OPT_3D_FAST */         OPT("Combat detail", v_3d, OPT3D_BALANCED, OPTPAGE_PERF)
 };
 
 int opt_get(int opt)
