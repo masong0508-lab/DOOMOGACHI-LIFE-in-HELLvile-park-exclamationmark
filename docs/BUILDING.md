@@ -277,6 +277,7 @@ directly:
 ```sh
 make -C core test                 # core/Makefile, see core/native/README.md
 make -C core runner               # core/build/runner (headless, scripted, PNG shots)
+make -C core talk-census          # Talk: the full census (about 25 min; docs/TALK.md 6d)
 make -C gba                       # gba/Makefile, see docs/GBA.md
 make -C gba engine-test
 cd ps1 && cmake --preset ps1 && cmake --build --preset ps1        # see docs/PS1.md
