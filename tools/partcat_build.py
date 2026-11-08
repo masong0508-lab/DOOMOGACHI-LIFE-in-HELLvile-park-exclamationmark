@@ -35,7 +35,8 @@ FILES (one `#` comment per line allowed):
 STATES: live = selectable today; hidden = painted, not selectable (the list is not flipped yet);
 planned = named, not painted; test = a VM demo value, never selectable.
 
-REJECTED: an unknown set, tag, hide, shape, field, age, method or state; a value that does not fit
+REJECTED: an unknown set, tag, hide, shape, field, age, method or state; a value 0 that is not
+age=all (the age gate swaps a part to its slot's value 0); a value that does not fit
 the gene field's width (deep fields: 1..127); a name that repeats inside a slot; a part without a set
 or a tag; a method=S part without a part script (core/data/parts/<dir>/); a part script without a
 catalog line; a golden (shipped) id whose name changed or that is no longer live.
@@ -250,6 +251,8 @@ def read_catalog():
             meth = a.get("method", slot["method"])
             if age not in AGES or state not in STATES or meth not in METHODS:
                 raise CatError("%s: bad age, state or method" % w)
+            if v == 0 and age != "all":
+                raise CatError("%s: a slot's default (value 0) is for everyone: the age gate swaps to it" % w)
             shape = 0xFF
             if "shape" in a:
                 if a["shape"] not in slot["shapes"]:
@@ -458,6 +461,7 @@ def selftest():
         ("too wide", 'slot hat list=hat name="Hat" method=P\n64 "Big" set=basics tags=plain\n'),
         ("name repeats", 'slot hat list=hat name="Hat" method=P\n0 "A" set=basics tags=plain\n1 "a" set=basics tags=plain\n'),
         ("bad age", 'slot hat list=hat name="Hat" method=P\n0 "A" set=basics tags=plain age=kid\n'),
+        ("adult default", 'slot hat list=hat name="Hat" method=P\n0 "A" set=basics tags=plain age=adult\n'),
         ("script missing", 'slot hat list=hat name="Hat" method=P\n0 "A" set=basics tags=plain method=S\n'),
     ]
     tmp = tempfile.mkdtemp()

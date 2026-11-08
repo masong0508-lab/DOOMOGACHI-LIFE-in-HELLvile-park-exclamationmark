@@ -212,6 +212,13 @@ int  cr_row_value(const DoomoResident *r, const CrRow *row);  /* index form */
 void cr_row_set(DoomoResident *r, const CrRow *row, int index);
 int  cr_row_count(const CrRow *row);                           /* choices    */
 int  cr_value_locked(const CrRow *row, int index);
+/* CR12: 1 if choice `index` of a part row is above the draft's life stage (catalog age class:
+ * TEEN+ for a baby / toddler / child, ADULT for any minor). Such a part is not offered at all:
+ * LEFT / RIGHT and the picker skip it, the picker does not list it. A slot's default (0) never is. */
+int  cr_value_hidden(const CrRow *row, int index);
+/* visible choices of a row (cr_row_count minus the hidden ones), and the visible position of index */
+int  cr_visible_count(const CrRow *row);
+int  cr_visible_pos(const CrRow *row, int index);
 /* Text of choice `index` of a row (buf >= 48 bytes). */
 const char *cr_choice_name(const CrRow *row, int index, char *buf);
 /* Label of a row (the skin row says "Fur", "Goo", "Plating" ...). */

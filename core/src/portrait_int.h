@@ -328,7 +328,11 @@ extern const uint8_t doomo_part_minv[128];
  * is forced onto one grey ramp, so two parts that differ only in colour render the same. */
 void portrait_shape_mode(int on);
 int  portrait_shape_mode_on(void);
+#if defined(DOOMO_PLATFORM_GBA)
+#define p_shape 0                   /* tools only: no RAM for it on the GBA (EWRAM is full) */
+#else
 extern int p_shape;
+#endif
 
 /* ---- P1 hooks for the other customisation packages (SPEC 4.4, CF-38) ----------------------- */
 void pf_material_init(PCtx *c);                /* P2: end of pctx_init(); no-op until P2 lands  */

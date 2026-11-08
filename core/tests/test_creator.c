@@ -10,6 +10,7 @@
 #include "test.h"
 #include "../src/creator_int.h"
 #include "doomo/playas.h"
+#include "doomo/part_meta.h"
 
 static void frames(int n, uint32_t b)
 {
@@ -743,4 +744,92 @@ TEST(creator_draws_every_phase_at_both_sizes)
         o.w = 240; o.h = 160; o.seed = 1; o.quiet = 1; o.save_dir = test_tmp_dir;
         nat_init(&o);
     }
+}
+
+/* ---------------------------------------------------------------------- */
+/* CR12: the age gate for parts                                             */
+static int age_row_index(void)
+{
+    int t, i;
+    for (t = 0; t < CR_TAB_COUNT; t++)
+        for (i = 0; i < cr_tabs[t].nrows; i++)
+            if (CR_IS_AGE_ROW(&cr_tabs[t].rows[i])) return t * 64 + i;
+    return -1;
+}
+
+TEST(creator_hides_parts_above_the_drafts_age)
+{
+    int hat = row_index(CR_TAB_OUTFIT, GF_HAT, RK_ENUM), i, seen = 0;
+    const CrRow *row = cr_row_at(CR_TAB_OUTFIT, hat);
+    part_age_test_set(GF_HAT, HAT_TRAFFIC_CONE, PAGE_ADULT);
+    part_age_test_set(GF_HAT, HAT_TIARA, PAGE_TEEN);
+    open_creator(-1);
+    resident_set_stage(&cr.draft, LIFE_CHILD);
+    CHECK(cr_value_hidden(row, HAT_TRAFFIC_CONE));
+    CHECK(cr_value_hidden(row, HAT_TIARA));
+    CHECK(!cr_value_hidden(row, HAT_NONE));
+    CHECK(!cr_value_hidden(row, HAT_CAP));
+    CHECK_EQ(cr_visible_count(row), HAT_COUNT - 2);
+    go_row(CR_TAB_OUTFIT, hat);
+    for (i = 0; i < HAT_COUNT * 2; i++) {               /* LEFT / RIGHT never land on them */
+        press(BTN_RIGHT);
+        CHECK(RES_LOOK(&cr.draft, GF_HAT) != HAT_TRAFFIC_CONE && RES_LOOK(&cr.draft, GF_HAT) != HAT_TIARA);
+    }
+    cr.browse = -1;                                      /* off any locked preview */
+    press(BTN_A);                                        /* nor the picker's cursor */
+    CHECK_EQ(cr.phase, CRP_PICK);
+    for (i = 0; i < HAT_COUNT * 2; i++) {
+        press(BTN_DOWN);
+        seen |= cr.pick_sel == HAT_TRAFFIC_CONE || cr.pick_sel == HAT_TIARA;
+    }
+    press(BTN_R);
+    seen |= cr.pick_sel == HAT_TRAFFIC_CONE || cr.pick_sel == HAT_TIARA;
+    CHECK(!seen);
+    frames(2, 0);                                        /* the shorter list draws */
+    press(BTN_B);
+    CHECK_EQ(cr.phase, CRP_MAIN);
+    /* a teen may wear the TEEN+ tiara, still not the ADULT cone */
+    resident_set_stage(&cr.draft, LIFE_TEEN);
+    CHECK(!cr_value_hidden(row, HAT_TIARA));
+    CHECK(cr_value_hidden(row, HAT_TRAFFIC_CONE));
+    resident_set_stage(&cr.draft, LIFE_ADULT);
+    CHECK_EQ(cr_visible_count(row), HAT_COUNT);
+    press(BTN_B); press(BTN_A);                          /* leave (discard) */
+    part_age_test_set(GF_HAT, HAT_TRAFFIC_CONE, -1);
+    part_age_test_set(GF_HAT, HAT_TIARA, -1);
+}
+
+TEST(creator_age_change_swaps_grown_up_parts_and_says_so)
+{
+    int a = age_row_index(), hat = row_index(CR_TAB_OUTFIT, GF_HAT, RK_ENUM), i, id, kid = 0;
+    const CrRow *age;
+    CHECK(a >= 0);
+    age = cr_row_at(a / 64, a % 64);
+    part_age_test_set(GF_HAT, HAT_TRAFFIC_CONE, PAGE_ADULT);
+    open_creator(-1);
+    cr_row_set(&cr.draft, cr_row_at(CR_TAB_OUTFIT, hat), HAT_TRAFFIC_CONE);
+    CHECK_EQ(RES_LOOK(&cr.draft, GF_HAT), HAT_TRAFFIC_CONE);
+    go_row(a / 64, a % 64);
+    ui_toast_clear();
+    for (i = 0; i < LIFE_COUNT && !kid; i++) {           /* step the Age row until a minor */
+        press(BTN_RIGHT);
+        kid = LIFE_IS_MINOR(RES_STAGE(&cr.draft));
+    }
+    CHECK(kid);
+    CHECK_EQ(RES_LOOK(&cr.draft, GF_HAT), HAT_NONE);     /* swapped for the slot's default */
+    CHECK(ui_toast_pending() > 0);
+    (void)age;
+    /* the record that reaches the town never carries it either */
+    cr_row_set(&cr.draft, cr_row_at(CR_TAB_OUTFIT, hat), HAT_TRAFFIC_CONE);
+    memcpy(cr.draft.name, "Pip", 4);
+    cr.name_ok = 1;
+    press(BTN_START);
+    CHECK_EQ(cr.phase, CRP_MENU);
+    press(BTN_A);                                        /* Move in! */
+    frames(400, 0);
+    id = creator_last_result();
+    CHECK(id >= 0);
+    CHECK(LIFE_IS_MINOR(RES_STAGE(town_res(id))));
+    CHECK_EQ(RES_LOOK(town_res(id), GF_HAT), HAT_NONE);
+    part_age_test_set(GF_HAT, HAT_TRAFFIC_CONE, -1);
 }

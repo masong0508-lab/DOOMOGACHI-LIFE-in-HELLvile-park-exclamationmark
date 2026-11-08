@@ -8,6 +8,7 @@
  * and a harmonious pastel outfit scheme; Hellvile folk lean demonic and
  * goth but are still drawn cute.
  */
+#include "doomo/part_meta.h"
 #include "doomo/resident.h"
 #include "doomo/palette.h"
 #include "doomo/rng.h"
@@ -742,6 +743,7 @@ void resident_generate(DoomoResident *r, uint32_t seed)
     gen_look(&lk, &rng, 0);
     res_set_look(r, &lk);
     gen_rest(r, &rng, 0);
+    part_age_filter_resident(r, -1);    /* CR12: nothing above their stage (a no-op for adults) */
 }
 
 void resident_generate_hellborn(DoomoResident *r, uint32_t seed)
@@ -754,6 +756,7 @@ void resident_generate_hellborn(DoomoResident *r, uint32_t seed)
     gen_look(&lk, &rng, 1);
     res_set_look(r, &lk);
     gen_rest(r, &rng, 1);
+    part_age_filter_resident(r, -1);    /* CR12 */
 }
 
 void resident_randomize_look(DoomoResident *r, uint32_t seed)

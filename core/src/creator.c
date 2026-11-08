@@ -18,6 +18,7 @@
  */
 #include "creator_int.h"
 #include "doomo/playas.h"
+#include "doomo/part_meta.h"
 
 CrState *cr_sp;                         /* the scene scratch (creator_int.h) */
 DOOMO_STATIC_ASSERT(sizeof(CrState) <= DOOMO_SCENE_SCRATCH, creator_state_fits_the_scratch);
@@ -209,6 +210,65 @@ static int age_locked(int stage)
         strncmp(roster_name(cr.target), cr.draft.name, DOOMO_NAME_LEN) == 0)
         return life_stage_youth(stage) < life_stage_youth(roster_stage(cr.target));
     return 0;
+}
+
+/* ---- CR12: the age gate for parts ----------------------------------------------------------- */
+/* the catalog list of a part row (part_meta.h), or -1 for a row that is not a part */
+static int row_part_list(const CrRow *row)
+{
+    if (!row || row->kind != RK_ENUM || CR_IS_AGE_ROW(row) || row->aux) return -1;
+    if (row->field == RES_F_SPECIES) return PL_SPECIES;
+    if (row->field < GF_COUNT && RES_F_IS_LOOK(row->field)) return row->field;
+    return -1;
+}
+
+int cr_value_hidden(const CrRow *row, int index)
+{
+    int list = row_part_list(row), v;
+    if (list < 0) return 0;
+    v = row->base + index;
+    return v != 0 && !part_age_ok(list, v, RES_STAGE(&cr.draft));
+}
+
+int cr_visible_count(const CrRow *row)
+{
+    int n = cr_row_count(row), i, k = 0;
+    for (i = 0; i < n; i++) k += !cr_value_hidden(row, i);
+    return k;
+}
+
+int cr_visible_pos(const CrRow *row, int index)
+{
+    int i, k = 0;
+    for (i = 0; i < index; i++) k += !cr_value_hidden(row, i);
+    return k;
+}
+
+/* After the Age row changed (or a randomise / copy): every part the draft's stage may not wear
+ * goes back to its slot's default; with `say`, a toast names the first one ("Fishnets are for
+ * grown-ups - swapped for None"). Returns how many were swapped. */
+static int age_sweep(int say)
+{
+    int t, i, n = 0;
+    char m[80];
+    for (t = 0; t < CR_TAB_COUNT; t++)
+        for (i = 0; i < cr_tabs[t].nrows; i++) {
+            const CrRow *row = &cr_tabs[t].rows[i];
+            int v, list = row_part_list(row);
+            if (list < 0) continue;
+            v = cr_row_value(&cr.draft, row);
+            if (!cr_value_hidden(row, v)) continue;
+            if (say && !n) {
+                char b0[48], b1[48];
+                doomo_snprintf(m, sizeof(m), "%s is for %s - swapped for %s", cr_choice_name(row, v, b0),
+                               part_age_class(list, row->base + v) == PAGE_ADULT ? "grown-ups" : "teens and up",
+                               cr_choice_name(row, 0, b1));
+            }
+            cr_row_set(&cr.draft, row, 0);
+            n++;
+        }
+    if (say && n) ui_toast(m);
+    return n;
 }
 
 const CrRow *cr_row_at(int tab, int i)
@@ -846,6 +906,7 @@ static void fix_locks(DoomoResident *r)
                 break;
             }
         }
+    age_sweep(0);                               /* CR12: nothing above the draft's stage */
 }
 
 static uint32_t roll_seed(void)
@@ -1102,6 +1163,7 @@ static int write_town(void)
     DoomoResident *dst;
     int id, first = 0;
     resident_sanitize(&rec);
+    part_age_filter_resident(&rec, -1);         /* CR12: never store a part above their stage */
     if (cr.mode == CR_NEW) {
         id = cr.target >= 0 ? cr.target : town_alloc(cr.district);
         if (id < 0 || !town_res(id) || town_res(id)->status != RES_EMPTY) {
@@ -1514,7 +1576,9 @@ static void step_value(const CrRow *row, int d)
         v = DOOMO_CLAMP(cur + d, 0, n - 1);
         if (v == cur) return;
     } else {
+        int guard = n;
         v = (cur + d + n) % n;
+        while (cr_value_hidden(row, v) && guard-- > 0) v = (v + d + n) % n;   /* CR12 */
     }
     if (cr_value_locked(row, v)) {
         cr.browse = (int16_t)v;
@@ -1523,6 +1587,7 @@ static void step_value(const CrRow *row, int d)
     }
     cr.browse = -1;
     cr_row_set(&cr.draft, row, v);
+    if (CR_IS_AGE_ROW(row)) age_sweep(1);       /* CR12: a younger stage sheds grown-up parts */
     commit(key);
     if (row->kind != RK_SLIDER) cr_sparkle_burst(3, -1);
     audio_sfx(SFX_CURSOR);
@@ -1631,6 +1696,7 @@ static void pick_close(const CrRow *row, int ok)
 {
     if (ok) {
         cr.browse = -1;
+        if (CR_IS_AGE_ROW(row)) age_sweep(1);   /* CR12 */
         commit(cr.tab * 64 + cr.row[cr.tab] + 4096);
         cr_sparkle_burst(6, -1);
         audio_sfx(SFX_SELECT);
@@ -1650,15 +1716,29 @@ int cr_pick_rows(void)
 static void update_pick(void)
 {
     const CrRow *row = cr_cur_row();
-    int n = cr_row_count(row), vis = cr_pick_rows(), old = cr.pick_sel;
+    int n = cr_row_count(row), vis = cr_pick_rows(), old = cr.pick_sel, k;
     if (cr.pick_err) cr.pick_err--;
-    if (btn_repeat(BTN_UP)) cr.pick_sel = (int16_t)((cr.pick_sel + n - 1) % n);
-    if (btn_repeat(BTN_DOWN)) cr.pick_sel = (int16_t)((cr.pick_sel + 1) % n);
-    if (btn_repeat(BTN_LEFT | BTN_L)) cr.pick_sel = (int16_t)DOOMO_MAX(0, cr.pick_sel - vis);
-    if (btn_repeat(BTN_RIGHT | BTN_R)) cr.pick_sel = (int16_t)DOOMO_MIN(n - 1, cr.pick_sel + vis);
+    /* CR12: the cursor and the list skip choices above the draft's age (cr_value_hidden) */
+    if (btn_repeat(BTN_UP))
+        for (k = 0; k < n && (k == 0 || cr_value_hidden(row, cr.pick_sel)); k++)
+            cr.pick_sel = (int16_t)((cr.pick_sel + n - 1) % n);
+    if (btn_repeat(BTN_DOWN))
+        for (k = 0; k < n && (k == 0 || cr_value_hidden(row, cr.pick_sel)); k++)
+            cr.pick_sel = (int16_t)((cr.pick_sel + 1) % n);
+    if (btn_repeat(BTN_LEFT | BTN_L))
+        for (k = 0; k < vis && cr.pick_sel > 0; ) {
+            cr.pick_sel--;
+            if (!cr_value_hidden(row, cr.pick_sel)) k++;
+        }
+    if (btn_repeat(BTN_RIGHT | BTN_R))
+        for (k = 0; k < vis && cr.pick_sel < n - 1; ) {
+            cr.pick_sel++;
+            if (!cr_value_hidden(row, cr.pick_sel)) k++;
+        }
+    while (cr.pick_sel > 0 && cr_value_hidden(row, cr.pick_sel)) cr.pick_sel--;
     if (cr.pick_sel < cr.pick_top) cr.pick_top = cr.pick_sel;
-    if (cr.pick_sel >= cr.pick_top + vis) cr.pick_top = (int16_t)(cr.pick_sel - vis + 1);
-    cr.pick_top = (int16_t)DOOMO_CLAMP(cr.pick_top, 0, DOOMO_MAX(0, n - vis));
+    while (cr_visible_pos(row, cr.pick_sel) - cr_visible_pos(row, cr.pick_top) >= vis) cr.pick_top++;
+    cr.pick_top = (int16_t)DOOMO_CLAMP(cr.pick_top, 0, DOOMO_MAX(0, n - 1));
     if (cr.pick_sel != old) {
         pick_preview(row);
         audio_sfx(SFX_CURSOR);

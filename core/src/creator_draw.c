@@ -865,6 +865,15 @@ static void draw_list(void)
 /* ====================================================================== */
 /* option picker                                                            */
 static int pick_locked_fn_row;
+/* CR12: the i-th choice at or after `from` that the draft's age may see, or -1 */
+static int pick_nth_visible(const CrRow *row, int from, int i)
+{
+    int n = cr_row_count(row), v;
+    for (v = from; v < n; v++)
+        if (!cr_value_hidden(row, v) && i-- == 0) return v;
+    return -1;
+}
+
 static void draw_pick(void)
 {
     const UiStyle *st;
@@ -872,6 +881,7 @@ static void draw_pick(void)
     int x = crl.lx, y = crl.ly, w = crl.lw, h = crl.lh, i, n, vis = cr_pick_rows();
     int rh = 12, ry0 = y + 19, t = (int)cr.phase_t;
     char buf[48], b2[48], title[48];
+    int cr_pick_top_visible;
     (void)pick_locked_fn_row;
     if (!row) return;
     n = cr_row_count(row);
@@ -880,11 +890,20 @@ static void draw_pick(void)
     doomo_snprintf(title, sizeof(title), "%s", cr_row_label(row));
     draw_icon(x + 6, y + 4, cr.tab, 1, 0);
     ui_text_shadow(x + 20, y + 5, title, st->title_bg, st->outline);
-    doomo_snprintf(buf, sizeof(buf), "%d/%d", cr.pick_sel + 1, n);
+    {   /* CR12: choices above the draft's age are not listed, nor counted */
+        int nv = cr_visible_count(row), top = cr.pick_top;
+        doomo_snprintf(buf, sizeof(buf), "%d/%d", cr_visible_pos(row, cr.pick_sel) + 1, nv);
+        n = nv;
+        while (top < cr_row_count(row) && cr_value_hidden(row, top)) top++;
+        cr_pick_top_visible = top;
+    }
     ui_text(x + w - 8 - ui_text_width(buf), y + 5, buf, st->text_dim);
-    for (i = 0; i < vis && cr.pick_top + i < n; i++) {
-        int idx = cr.pick_top + i, yy = ry0 + i * rh;
-        int locked = cr_value_locked(row, idx), sel = idx == cr.pick_sel;
+    for (i = 0; i < vis; i++) {
+        int idx = pick_nth_visible(row, cr_pick_top_visible, i), yy = ry0 + i * rh;
+        int locked, sel;
+        if (idx < 0) break;
+        locked = cr_value_locked(row, idx);
+        sel = idx == cr.pick_sel;
         int cur = idx == cr.pick_orig;
         const char *nm = locked ? "???" : cr_choice_name(row, idx, b2);
         if (sel) {
@@ -900,7 +919,7 @@ static void draw_pick(void)
     if (n > vis) {
         int bx = x + w - 8, th = vis * rh - 2;
         int thumb = DOOMO_MAX(5, th * vis / n);
-        int tyy = ry0 + (th - thumb) * cr.pick_top / DOOMO_MAX(1, n - vis);
+        int tyy = ry0 + (th - thumb) * cr_visible_pos(row, cr.pick_top) / DOOMO_MAX(1, n - vis);
         ui_round_rect(bx, ry0, 3, th, 1, st->fill_lo);
         ui_round_rect(bx, tyy, 3, thumb, 1, st->accent);
     }

@@ -18,6 +18,7 @@
  * new edges are created per tick (an insert into the sorted edge list is
  * a memmove; when the graph is full town.c evicts the weakest bond).
  */
+#include "doomo/part_meta.h"
 #include "sim_int.h"
 
 static int is_taken(int id) { return bit_get(sim_s.taken, id); }
@@ -314,6 +315,7 @@ int sim_make_baby(int pa, int pb)
     RES_SET_LOOK(&baby, GF_HAT, HAT_NONE);
     resident_set_romance(&baby, ROMANCE_NONE);        /* far too young  */
     resident_set_stage(&baby, LIFE_BABY);             /* LS0            */
+    part_age_filter_resident(&baby, LIFE_BABY);       /* CR12: nothing grown-up inherited */
     {
         int i;
         for (i = 0; i < PERS_COUNT; i++)

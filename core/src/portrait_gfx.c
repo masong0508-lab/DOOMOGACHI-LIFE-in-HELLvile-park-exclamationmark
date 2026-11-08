@@ -73,8 +73,12 @@ uint8_t pm_line_of(uint8_t c)
 
 /* CR2: shape-only renders (portrait_int.h portrait_shape_mode): every material on one grey ramp.
  * For direct renders only (tests, contact sheets): the image cache does not key on it. */
+#if defined(DOOMO_PLATFORM_GBA)
+void portrait_shape_mode(int on) { (void)on; }
+#else
 int p_shape;
 void portrait_shape_mode(int on) { p_shape = on != 0; }
+#endif
 int portrait_shape_mode_on(void) { return p_shape; }
 
 void pm_from3(PMat *m, uint8_t dark, uint8_t base, uint8_t light)
