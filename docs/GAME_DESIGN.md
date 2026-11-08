@@ -398,6 +398,12 @@ read. The rules (`core/include/doomo/ui.h`, `core/src/ui.c`):
   55-character toast; the longest is 42). The first news of a session
   gathers for 20 s from its first unlock (a new island's opening minute is
   one digest), and after news has been told the next gathers for 40 s.
+* **The purse flashes.** When the money changes while a purse is on screen
+  (the hub's rent that collects itself, a picnic, a purchase in a shop), the
+  purse pill blinks for about a second: gold when the money went up, pale
+  red when it went down (`fp_money_flash()`, `core/src/fp_common.c`). The
+  hub keeps no frame while it blinks. A change made while no purse was up
+  (another screen, a load) is not flashed when the purse comes back.
 * **The story's first controls hint** ("A Talk  B Run  START Menu  SEL Map")
   is shown in the bottom prompt slot for 4 s once the region banner has gone,
   not as a toast.

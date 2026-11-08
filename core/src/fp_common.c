@@ -497,6 +497,35 @@ void fp_meter(int x, int y, int w, int icon, const char *label, int value, uint8
     if (w - 9 - lw > 8) ui_bar(x + 9 + lw, y + 1, w - 9 - lw, 7, value, 100, fill);
 }
 
+/* CL1 (clarity 1.6f): the purse flashes for a second when the money changes while it is on screen (rent that
+ * collects itself, a picnic, a purchase), so a jump from H$500 to H$2,550 is seen. Called every hub update and by
+ * each pill draw; a change while no purse was shown for a while (another screen, a load) is taken quietly. */
+#define MONEY_FLASH 32                   /* ticks of flashing: 4 blinks */
+#define MONEY_GAP   20                   /* ticks without a look after which a change is not news */
+static uint32_t money_seen;
+static uint16_t money_seen_t, money_flash_t;
+static uint8_t money_flash_on;           /* 0 no flash, 1 money went up, 2 went down */
+
+void fp_money_flash_reset(void)
+{
+    money_seen = doomo_town.money;
+    money_seen_t = (uint16_t)fp_t();
+    money_flash_on = 0;
+}
+
+int fp_money_flash(void)
+{
+    uint16_t t = (uint16_t)fp_t();
+    uint32_t m = doomo_town.money;
+    if ((uint16_t)(t - money_seen_t) > MONEY_GAP) money_flash_on = 0;
+    else if (m != money_seen) { money_flash_on = (uint8_t)(m > money_seen ? 1 : 2); money_flash_t = t; }
+    money_seen = m;
+    money_seen_t = t;
+    if (money_flash_on && (uint16_t)(t - money_flash_t) >= MONEY_FLASH) money_flash_on = 0;
+    if (!money_flash_on) return 0;
+    return (((uint16_t)(t - money_flash_t) >> 2) & 1) ? money_flash_on + 2 : money_flash_on;
+}
+
 int fp_hud(int style)
 {
     const UiStyle *st = ui_style(style);
@@ -523,7 +552,8 @@ int fp_hud(int style)
         key = ui_key_str(key, mbuf);
         key = ui_key_int(key, style | (night != 0) << 4 | (ui_wave(t, 60, 1) > 0) << 5 |
                               ui_sparkle_size((t / 4) & 15) << 6 |
-                              ((t / 6) % 24 == 0 ? ui_sparkle_size((t / 2) & 15) : 0) << 9);
+                              ((t / 6) % 24 == 0 ? ui_sparkle_size((t / 2) & 15) : 0) << 9 |
+                              fp_money_flash() << 13);
         if (!plat_panel_begin(PANEL_FP_HUD, 0, y - 2, sw, 15, key)) { plat_panel_end(); return 16; }
     }
     fp_pill(x, y, w, 12, st->title_bg, st->outline, ui_lighter(st->title_bg));
@@ -548,11 +578,12 @@ void fp_money_pill(int x, int y, int right_align)
 {
     const UiStyle *st = ui_style(WIN_CREAM);
     char buf[20];
-    int w, t = fp_t();
+    int w, t = fp_t(), flash = fp_money_flash();
+    uint8_t fill = flash == 1 ? PAL_UI_GOLD : flash == 2 ? ui_lighter(PAL_UI_RED) : st->fill_hi;
     doomo_snprintf(buf, sizeof(buf), "H$ %u", (unsigned)doomo_town.money);
     w = ui_text_width(buf) + 20;
     if (right_align) x -= w;
-    fp_pill(x, y, w, 12, st->fill_hi, PAL_RAMP(RAMP_CANDY, 2), PAL_WHITE);
+    fp_pill(x, y, w, 12, fill, PAL_RAMP(RAMP_CANDY, 2), PAL_WHITE);
     ui_fill_circle(x + 7, y + 6, 4, PAL_RAMP(RAMP_CANDY, 2));
     ui_fill_circle(x + 7, y + 6, 3, PAL_UI_GOLD);
     plat_rect(x + 7, y + 4, 1, 4, PAL_RAMP(RAMP_CANDY, 3));

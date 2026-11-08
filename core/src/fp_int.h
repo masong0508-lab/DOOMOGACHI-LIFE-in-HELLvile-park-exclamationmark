@@ -96,6 +96,10 @@ int  fp_item_icon(int item);
 int  fp_hud(int style);
 /* Money pill at x (right-aligned at right edge if right != 0). */
 void fp_money_pill(int x, int y, int right_align);
+/* CL1 (1.6f): the purse's flash after the money changed on screen: 0 none, 1 / 2 lit (up / down), 3 / 4 between
+ * blinks. Call it every tick the purse is up (the hub's update does) so a change is noticed when it happens. */
+int  fp_money_flash(void);
+void fp_money_flash_reset(void);                 /* a screen with a purse opens: what it shows now is no news */
 /* Small icon glyph drawn in a colour with a soft shadow. */
 void fp_icon(int x, int y, int icon, uint8_t color);
 /* Thought bubble with an icon (problem markers); phase animates it. */

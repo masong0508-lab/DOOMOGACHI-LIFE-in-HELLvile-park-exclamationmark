@@ -4,6 +4,8 @@
 #include "test.h"
 #include "../src/story_int.h"
 #include "../src/overworld_int.h"
+#include "../src/fp_int.h"
+#include "../src/fp_island.h"
 
 static void frames(int n)
 {
@@ -252,4 +254,36 @@ TEST(story_toasts_never_cover_the_objective)
                   "frame %d: toast (%d,%d %dx%d) over the objective (%d,%d %dx%d)", i, tx, ty, tw, th, ox, oy, ow_, oh);
     }
     CHECK_MSG(checked > 100, "only %d frames checked (top %s, talking %d)", checked, scene_top() ? scene_top()->name : "-", story_talking());
+}
+
+/* 1.6f: money that changes on the hub (rent collecting itself) flashes the purse for about a second, and the hub
+ * keeps no frame while it flashes; a change made while the purse was off screen is not news when it comes back */
+TEST(hub_purse_flashes_when_the_money_changes)
+{
+    int i, lit = 0, held;
+    fp_new_island(TOWN_POP_PREMADE, 4242);
+    fp_set_rent_day(doomo_town.day + 1);              /* today's rent is in: nothing else moves the money */
+    scene_set(&SCENE_ISLAND, FP_ISLAND_ARG_RETURN);
+    frames(60);
+    CHECK_EQ(fp_money_flash(), 0);
+    held = fp_island_hub_held();
+    doomo_town.money += 2050;
+    for (i = 0; i < 30; i++) {
+        frames(1);
+        if (fp_money_flash() == 1) lit++;
+    }
+    CHECK_MSG(lit >= 8, "purse lit on %d of 30 ticks", lit);
+    CHECK_EQ(fp_island_hub_held(), held);             /* every flashing tick was drawn */
+    frames(10);
+    CHECK_EQ(fp_money_flash(), 0);
+    doomo_town.money -= 120;
+    frames(2);
+    CHECK(fp_money_flash() == 2 || fp_money_flash() == 4);
+    frames(40);
+    scene_set(&SCENE_UI_GALLERY, 0);
+    frames(60);
+    doomo_town.money += 500;
+    scene_set(&SCENE_ISLAND, FP_ISLAND_ARG_RETURN);
+    frames(3);
+    CHECK_EQ(fp_money_flash(), 0);
 }

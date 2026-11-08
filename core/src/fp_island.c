@@ -774,6 +774,7 @@ static void island_enter(int arg)
     I.sel = (keep > 0 && keep < NLOCS) ? keep : loc_index_of(LOC_TOWN_HALL);
     fp_island_geometry();
     full_scan();
+    fp_money_flash_reset();
     I.song = fp_island_song();
     audio_music(I.song);
     if (arg == FP_ISLAND_ARG_WELCOME) {
@@ -898,6 +899,7 @@ static void island_update(void)
     /* (perf, docs/ISLAND_SPEED.md I7) a clean full hub frame was shown: hold it, see island_draw */
     if (!I.menu_open && !I.hold && I.hub_full && plat_hold_frame(2)) { I.hold = 3; I.hub_full = 0; }
     if (btn_down(0xFFFFFFFFu)) I.dirty = 1;
+    if (fp_money_flash()) I.dirty = 1;          /* CL1 (1.6f): the purse flashes on a money change; no kept frame */
     if (I.menu_open) { menu_update(); return; }
     if (fp_is_freeplay() && tip_once(TIP_ISLAND)) return;        /* CL4: the button map, once (the press waits) */
     I.idle++;
@@ -1144,14 +1146,15 @@ static void hub_frame_done(void)
 {
     /* a full frame with the menu fully popped, drawn on this tick and clean of overlays: the next update holds it */
     if (I.menu_open && I.menu_t >= 12 && ui_pop_scale(I.menu_t) == 256 && !plat_draw_skipped() &&
-        !ui_toast_pending() && !ui_dialog_active() && !fp_fx_any() && !tip_active())
+        !ui_toast_pending() && !ui_dialog_active() && !fp_fx_any() && !tip_active() && !fp_money_flash())
         I.hold_full = 1;
     if (!I.menu_open && !plat_draw_skipped()) {
         I.full_t = doomo_frame_count();
         I.hub_toast = (int16_t)(tip_active() ? 0 : ui_toast_steady());   /* (CL4) under a card no toast is drawn */
         I.hub_tip = (int16_t)tip_steady();
         I.hub_full = (uint8_t)(!hub_hold_off && !I.dirty && (!toast_shown() || I.hub_toast) &&
-                               (!tip_active() || I.hub_tip) && !ui_dialog_active() && !fp_fx_any());
+                               (!tip_active() || I.hub_tip) && !ui_dialog_active() && !fp_fx_any() &&
+                               !fp_money_flash());
         I.dirty = 0;
     }
 }
@@ -1197,7 +1200,7 @@ static void island_draw(void)
     }
     if (I.hold && slice < 0) {
         if (I.menu_open && I.live && !ui_toast_pending() && !ui_dialog_active() && !fp_fx_any() && !tip_active() &&
-            plat_hold_frame(4)) {
+            !fp_money_flash() && plat_hold_frame(4)) {
             I.live = 0;
             draw_menu(1);
             return;
