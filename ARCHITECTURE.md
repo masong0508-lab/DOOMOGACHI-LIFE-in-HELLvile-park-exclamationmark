@@ -89,6 +89,7 @@ docs/                    design, building, modding the roster
 | roster | roster | core/data/roster/*, tools/roster_build.py, core/gen/roster_data.c, roster.c |
 | portrait | portrait | portrait*.c (portraits, chibi bodies, figures, fighter sprites) |
 | life | sim, exorcism, pet | sim*.c, exorcism*.c, pet*.c (SCENE_EXORCISM, SCENE_PET) |
+| kept backdrops + retained stage (SP7; docs/EXORCISM_SPEED.md) | backdrop | backdrop.c (the backdrop families, the stage, the weak `plat_stage_*` defaults of plat_ext.h); the GBA bakes every family's keys at build time (`gba/src/stage.c`, `backdrop_blob.s`), native keeps one for tests (`core/native/stage_native.c`) |
 | action | map (runtime), actor, weld | map.c, maps.c (registry), actor*.c, combat*.c, weld*.c, tools/mapc.py, core/data/maps/{vape_cellar,cloud_nine_spire,arena}.txt (SCENE_COMBAT, SCENE_WORKSHOP, SCENE_WELD_GAME, SCENE_ARENA) |
 | story | story, audio | story*.c, audio*.c, overworld maps hahaland/hahaland_invaded/hellvile/park_united (SCENE_STORY, SCENE_QUESTLOG, SCENE_CUTSCENE, SCENE_CREDITS) |
 | creator | — | creator*.c (SCENE_CREATOR) |

@@ -420,6 +420,7 @@ against the LAST row, not against a figure from an older base.
 | 28 | CL1 1.6f: the purse flashes on a money change | `9c6b8c3` | 3,092 B | **3,084 B** | -8 B | 6,356 B | "after" measured on `9c6b8c3` + this change (ROM 4,511,992 B); the change itself measured on `38a362d`: 3,444 -> 3,436 B, ROM +272 B, so `9c6b8c3` alone is 3,092 B (row 27's 3,188 B was measured on `4114eb7`). `fp_common.c` keeps the last money seen, two 16-bit ticks and the flash state (9 B, 8 B packed); the hub keeps no frame while the purse blinks (32 ticks after a change). `make -C gba test` passes (on `38a362d` + this) |
 | 29 | SP6: concert loops in the IWRAM UI group (scale-2 images, word checkers, beams) | `7729ada` | 3,540 B | **3,540 B** | 0 | 6,356 B | no EWRAM, no resident IWRAM: `vid_blit2_arm`, its rows, `vid_checker_ui` and `vid_beam_ui` are 1,868 B of the overlay slot's UI group (SP4's group; the slot stays the 3D group's 10,384 B); ROM .text +3,056 B, .rodata +36 B; speed tour frame-exact (16 scenes) |
 | 30 | SP5: held dialogue backdrop, loading fades, governor resume | `87271d8` | 3,540 B | **3,468 B** | -72 B | 6,296 B | measured on `87271d8` (CRA, row 23, changed no EWRAM); the band's state 14 B (`hold.c`), `gba_big_epoch` 4 B, the dialogue hold's state in `overworld.c` 19 B, `ui_dialog.c` 5 B, `scene.c` 4 B, the loading fade 9 B (`loadfade.c`, `gba_vbl_hook`), the red map's governor budget 12 B; the band itself borrows the arena (the overworld's lit-tile cache) and needs no RAM of its own. IWRAM resident +60 B (the VBlank IRQ's hook call): main stack 6,356 -> 6,296 B (>= 6,144). ROM +~3 KB |
+| 31 | SP7: the exorcism's kept backdrop and retained stage (`docs/EXORCISM_SPEED.md`) | `7729ada` | 3,540 B | **3,348 B** | -192 B | 6,356 B | `stage.c` (34 B: the pages' serials and overlay boxes), the altar's outline rects (100 B), `backdrop.c` / the scene's pass state (~58 B); the stage's records and the true-name cache (~1.5 KB) live in the exorcism's scene scratch. IWRAM resident unchanged (11,176 B); the overlay's room group 3,248 -> 3,588 B (`stage_rows`, the partial-row restore; the slot is sized by the 3D group). ROM 4,280,388 -> 6,593,468 B (+2,266,084: the 59 baked church backdrops, `build/gen/backdrops.bin`; the rest code). Exorcism frames identical to `7729ada` (`vhash-seq` of every phase) |
 
 Known claimants still to land (their own packages measure and add rows):
 
@@ -1047,6 +1048,19 @@ DMA a row (EWRAM byte stores from THUMB cost more than the IWRAM rect loops).
 Steps that would reach 30 but change pixels, for the owner to decide (SPEED DEFAULTS lists none of them): the
 LED wall and the beams at 15 Hz (every other tick), the crowd's back rows as hardware sprites with the glow sticks
 and hearts moved in front of them, a simpler flame wall (fewer, wider bars).
+
+### Kept backdrops and the retained stage (SP7, `src/stage.c`)
+
+A scene whose picture is a backdrop from a small key with layers over it (the exorcism's church,
+`docs/EXORCISM_SPEED.md`) can ask `plat_stage_begin` (`plat_ext.h`) for it. The build bakes every
+key of every family (`core/include/doomo/backdrop.h`) with the native runner (`build/native`,
+`runner --bake-backdrops`) into `build/gen/backdrops.bin`, linked by `src/backdrop_blob.s`;
+`plat_stage_restore` copies boxes of it from the ROM (whole rows by 32-bit DMA, partial rows by
+`stage_rows`, ARM in the overlay's room group). Each page keeps the serial of the stage frame it
+holds and the box drawn over it after `plat_stage_end` (`GBA_NODRAW_TRACK`: every 2D call routes
+through `vid_route`, a kept panel adds its rect); a non-stage frame, a tile frame or a held / built
+frame clears the page's serial. The core's stage (`core/src/backdrop.c`) then redraws only the
+layers that changed. `make -C gba profile-exorcism` measures it.
 
 ### Frame pacing
 
