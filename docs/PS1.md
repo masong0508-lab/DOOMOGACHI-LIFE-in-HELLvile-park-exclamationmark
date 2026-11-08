@@ -553,6 +553,24 @@ lockstep) reports `PLAT_TEST_NO_TIPS`, so its scripts and journeys see no
 card; the harness target also plays `core/tests/scripts/library_help.txt`
 (the Field Guide's contents and every page).
 
+CL3 (the shared prompt bar, the pet screen's bar, workshop / studio /
+house legends): measured on `696ffa6` (after CL4) built the same way,
+79,648 B left below the stack top before and 75,952 B with CL3 (-3,696
+B; 74.2 KB, 2,224 B above the 72 KB plan gate, 10,416 B above the 64 KB
+reserve). First built, CL3 took 11 KB and did not link (2,752 B into the
+reserve, on `5bb55e7`); three changes, the same pixels: `ui_width_raw`
+is not inlined (with the bar's new callers GCC -O2 inlined the width loop
+into the toasts, titles, buttons and tabs: `ui.c` 25,272 -> 32,148 B, now
+25,704 B); the bar's text builder is in `ui_prompt.c`, compiled -Os (it
+runs only when a bar changes: 2,384 B instead of 3,084 B at -O2); and the
+house's bar is const tables (`home_draw.c` -328 B in the home group, the
+biggest: its slot demand 131,168 -> 130,596 B, against 130,144 B before
+CL3, fits the same whole sectors again, so the slot does not grow). The rest of CL3's resident cost: `input.c`'s pad names (+524
+B), `fp_options.c`'s per-pad help rows (+816 B), the `unlock_find` memo
+(+340 B), the hub badge, the pet's per-tick geometry. The harness: 19 of 19
+`run.py` PASS, the pet's bar with the PS1's names (L1 / R1, Square /
+Triangle).
+
 The biggest remaining consumers of RAM: resident core code (portraits,
 UI, sim, story engine, ...) ~650 KB, merged string literals of resident
 code ~110 KB, `doomo_town` 107 KB, the display lists 112 KB + OTs 24 KB,

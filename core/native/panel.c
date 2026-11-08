@@ -45,6 +45,7 @@ static NatPanel pn[PANEL_COUNT];
 static int cap = -1;               /* the panel being drawn, -1 none  */
 static int put = -1;               /* the kept panel whose shading is drawn */
 static int depth;                  /* nested 2D calls (plat_image's rects) */
+static int nest;                   /* panels begun inside a panel (drawn as part of it, as gba/src/panel.c) */
 static uint32_t shown_mask;        /* panels shown this frame          */
 static uint32_t shown_frame = 0xFFFFFFFFu;
 
@@ -58,6 +59,7 @@ void nat_panel_reset(void)
     cap = -1;
     put = -1;
     depth = 0;
+    nest = 0;
     shown_mask = 0;
     memset(&nat_panel_stats, 0, sizeof(nat_panel_stats));
 }
@@ -172,7 +174,9 @@ int plat_panel_begin(int id, int x, int y, int w, int h, uint32_t key)
 {
     NatPanel *p;
     int i, j;
-    if (!nat_panel_cache || id < 0 || id >= PANEL_COUNT || cap >= 0 || put >= 0) return 1;
+    if (!nat_panel_cache) return 1;
+    if (cap >= 0 || put >= 0) { nest++; return 1; }   /* no panels inside panels: its end must not close the outer one */
+    if (id < 0 || id >= PANEL_COUNT) { nest++; return 1; }
     p = &pn[id];
     nat_panel_stats.begins++;
     if (!p->pix) {
@@ -222,6 +226,7 @@ void plat_panel_end(void)
     NatPanel *p;
     int i, j;
     if (!nat_panel_cache) return;
+    if (nest) { nest--; return; }
     if (put >= 0) {
         p = &pn[put];
         for (j = DOOMO_MAX(p->y, 0); j < DOOMO_MIN(p->y + p->h, nat_h); j++)
